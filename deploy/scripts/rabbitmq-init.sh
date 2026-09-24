@@ -23,6 +23,7 @@ set -eu
 : "${RABBITMQ_BADGE_OUTBOX_PASSWORD:?RABBITMQ_BADGE_OUTBOX_PASSWORD not set}"
 : "${RABBITMQ_BADGE_SERVICE_PASSWORD:?RABBITMQ_BADGE_SERVICE_PASSWORD not set}"
 : "${RABBITMQ_EXAM_API_PASSWORD:?RABBITMQ_EXAM_API_PASSWORD not set}"
+: "${RABBITMQ_AUTH_API_PASSWORD:?RABBITMQ_AUTH_API_PASSWORD not set}"
 
 RABBIT_HOST="${RABBITMQ_HOST:-rabbitmq}"
 RABBIT_URL="http://${RABBIT_HOST}:15672"
@@ -51,12 +52,14 @@ NS='ExamApp\.Foundation\.Contracts'
 # Publisher event lists (must match OutboxEventRegistry entries actually
 # written by each DB's outbox — see the _comment fields in
 # rabbitmq/definitions.json for the grep-verified source of truth).
-EXAM_OUTBOX_EVENTS="AnswerSubmittedEvent|QuestionCreatedEvent|WorksheetReminderDueEvent|WorksheetAccessRequestedEvent|WorksheetAccessRequestApprovedEvent|WorksheetAccessRequestRejectedEvent|TeacherApplicationSubmittedEvent|TeacherApplicationDecidedEvent|TeacherSchoolRequestSubmittedEvent|IndependentTeacherRegisteredEvent|BookingRequestCreatedEvent|BookingDecisionEvent|UserPreferredLocaleChangedEvent"
+EXAM_OUTBOX_EVENTS="AnswerSubmittedEvent|QuestionCreatedEvent|WorksheetReminderDueEvent|WorksheetAccessRequestedEvent|WorksheetAccessRequestApprovedEvent|WorksheetAccessRequestRejectedEvent|TeacherApplicationSubmittedEvent|TeacherApplicationDecidedEvent|TeacherSchoolRequestSubmittedEvent|IndependentTeacherRegisteredEvent|BookingRequestCreatedEvent|BookingDecisionEvent|UserPreferredLocaleChangedEvent|UserRoleChangedEvent"
 IDENTITY_OUTBOX_EVENTS="LoginAttemptedEvent|UserPreferredLocaleChangedEvent"
 BADGE_OUTBOX_EVENTS="StudentPointsChangedEvent"
-# badge_service consumes everything except StudentPointsChangedEvent.
+# badge_service consumes everything except StudentPointsChangedEvent and UserRoleChangedEvent
+# (the latter is auth-api's own, issue #277 item 4 — its data lives in auth-api's DB).
 BADGE_SERVICE_EVENTS="AnswerSubmittedEvent|QuestionCreatedEvent|WorksheetReminderDueEvent|WorksheetAccessRequestedEvent|WorksheetAccessRequestApprovedEvent|WorksheetAccessRequestRejectedEvent|LoginAttemptedEvent|TeacherApplicationSubmittedEvent|TeacherApplicationDecidedEvent|TeacherSchoolRequestSubmittedEvent|IndependentTeacherRegisteredEvent|BookingRequestCreatedEvent|BookingDecisionEvent|UserPreferredLocaleChangedEvent"
 EXAM_API_EVENTS="StudentPointsChangedEvent"
+AUTH_API_EVENTS="UserRoleChangedEvent"
 
 create_user() {
   user="$1"
@@ -120,5 +123,11 @@ set_perms exam_api \
   "^(exam-api(_error|_skipped)?|${NS}:(${EXAM_API_EVENTS}))\$" \
   '^exam-api(_error|_skipped)?$' \
   "^(exam-api(_error|_skipped)?|${NS}:(${EXAM_API_EVENTS}))\$"
+
+create_user auth_api "${RABBITMQ_AUTH_API_PASSWORD}"
+set_perms auth_api \
+  "^(auth-api(_error|_skipped)?|${NS}:(${AUTH_API_EVENTS}))\$" \
+  '^auth-api(_error|_skipped)?$' \
+  "^(auth-api(_error|_skipped)?|${NS}:(${AUTH_API_EVENTS}))\$"
 
 echo 'rabbitmq-init: done'

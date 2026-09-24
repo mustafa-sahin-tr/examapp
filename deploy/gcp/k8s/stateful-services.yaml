@@ -275,6 +275,7 @@ data:
     : "${RABBITMQ_BADGE_OUTBOX_PASSWORD:?RABBITMQ_BADGE_OUTBOX_PASSWORD not set}"
     : "${RABBITMQ_BADGE_SERVICE_PASSWORD:?RABBITMQ_BADGE_SERVICE_PASSWORD not set}"
     : "${RABBITMQ_EXAM_API_PASSWORD:?RABBITMQ_EXAM_API_PASSWORD not set}"
+    : "${RABBITMQ_AUTH_API_PASSWORD:?RABBITMQ_AUTH_API_PASSWORD not set}"
 
     RABBIT_HOST="${RABBITMQ_HOST:-rabbitmq}"
     RABBIT_URL="http://${RABBIT_HOST}:15672"
@@ -303,12 +304,17 @@ data:
     # Publisher event lists (must match OutboxEventRegistry entries actually
     # written by each DB's outbox — see the _comment fields in
     # rabbitmq/definitions.json for the grep-verified source of truth).
-    EXAM_OUTBOX_EVENTS="AnswerSubmittedEvent|QuestionCreatedEvent|WorksheetReminderDueEvent|WorksheetAccessRequestedEvent|WorksheetAccessRequestApprovedEvent|WorksheetAccessRequestRejectedEvent|TeacherApplicationSubmittedEvent|TeacherApplicationDecidedEvent|IndependentTeacherRegisteredEvent|BookingRequestCreatedEvent|BookingDecisionEvent|UserPreferredLocaleChangedEvent"
+    # issue #277: TeacherSchoolRequestSubmittedEvent (item 1) and UserRoleChangedEvent
+    # (item 4) added — kept in sync with rabbitmq/definitions.json and
+    # deploy/scripts/rabbitmq-init.sh (no shared source between the three, see comment above).
+    EXAM_OUTBOX_EVENTS="AnswerSubmittedEvent|QuestionCreatedEvent|WorksheetReminderDueEvent|WorksheetAccessRequestedEvent|WorksheetAccessRequestApprovedEvent|WorksheetAccessRequestRejectedEvent|TeacherApplicationSubmittedEvent|TeacherApplicationDecidedEvent|TeacherSchoolRequestSubmittedEvent|IndependentTeacherRegisteredEvent|BookingRequestCreatedEvent|BookingDecisionEvent|UserPreferredLocaleChangedEvent|UserRoleChangedEvent"
     IDENTITY_OUTBOX_EVENTS="LoginAttemptedEvent|UserPreferredLocaleChangedEvent"
     BADGE_OUTBOX_EVENTS="StudentPointsChangedEvent"
-    # badge_service consumes everything except StudentPointsChangedEvent.
-    BADGE_SERVICE_EVENTS="AnswerSubmittedEvent|QuestionCreatedEvent|WorksheetReminderDueEvent|WorksheetAccessRequestedEvent|WorksheetAccessRequestApprovedEvent|WorksheetAccessRequestRejectedEvent|LoginAttemptedEvent|TeacherApplicationSubmittedEvent|TeacherApplicationDecidedEvent|IndependentTeacherRegisteredEvent|BookingRequestCreatedEvent|BookingDecisionEvent|UserPreferredLocaleChangedEvent"
+    # badge_service consumes everything except StudentPointsChangedEvent and UserRoleChangedEvent
+    # (the latter is auth-api's own, issue #277 item 4).
+    BADGE_SERVICE_EVENTS="AnswerSubmittedEvent|QuestionCreatedEvent|WorksheetReminderDueEvent|WorksheetAccessRequestedEvent|WorksheetAccessRequestApprovedEvent|WorksheetAccessRequestRejectedEvent|LoginAttemptedEvent|TeacherApplicationSubmittedEvent|TeacherApplicationDecidedEvent|TeacherSchoolRequestSubmittedEvent|IndependentTeacherRegisteredEvent|BookingRequestCreatedEvent|BookingDecisionEvent|UserPreferredLocaleChangedEvent"
     EXAM_API_EVENTS="StudentPointsChangedEvent"
+    AUTH_API_EVENTS="UserRoleChangedEvent"
 
     create_user() {
       user="$1"
@@ -373,6 +379,12 @@ data:
       '^exam-api(_error|_skipped)?$' \
       "^(exam-api(_error|_skipped)?|${NS}:(${EXAM_API_EVENTS}))\$"
 
+    create_user auth_api "${RABBITMQ_AUTH_API_PASSWORD}"
+    set_perms auth_api \
+      "^(auth-api(_error|_skipped)?|${NS}:(${AUTH_API_EVENTS}))\$" \
+      '^auth-api(_error|_skipped)?$' \
+      "^(auth-api(_error|_skipped)?|${NS}:(${AUTH_API_EVENTS}))\$"
+
     echo 'rabbitmq-init: done'
 ---
 apiVersion: batch/v1
@@ -433,6 +445,11 @@ spec:
                 secretKeyRef:
                   name: examapp-secrets
                   key: RABBITMQ_EXAM_API_PASSWORD
+            - name: RABBITMQ_AUTH_API_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: RABBITMQ_AUTH_API_PASSWORD
           volumeMounts:
             - name: rabbitmq-init-script
               mountPath: /scripts

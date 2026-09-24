@@ -5,6 +5,7 @@
       "defaultStudent": "Bir öğrenci",
       "defaultApplicant": "Bir öğretmen",
       "defaultRequester": "Bir öğretmen",
+      "defaultSchool": "bir okul",
       "unnamedWorksheet": "bir sınav",
       "worksheetFallback": "Sınavın",
       "rejectionReasonSuffix": " Gerekçe: {0}"
@@ -32,6 +33,10 @@
     "TeacherApplicationRejected": {
       "title": "Öğretmen başvurunuz reddedildi",
       "body": "Öğretmen başvurunuz reddedildi."
+    },
+    "TeacherSchoolRequestSubmitted": {
+      "title": "Yeni okul katılım talebi",
+      "body": "Yeni okul katılım talebi: {0} → {1}"
     },
     "WorksheetAccessRequested": {
       "title": "Yeni atama izni talebi",

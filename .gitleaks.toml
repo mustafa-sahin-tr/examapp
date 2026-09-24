@@ -15,8 +15,8 @@ description = "Example/template files with CHANGE_ME placeholders — not real s
 paths = [
   '''deploy/\.env\.prod\.example$''',
   '''deploy/gcp/k8s/secret\.example\.yaml$''',
-  # Issue #279: contains only base64 `password_hash` values (RabbitMQ's
-  # salted-SHA256 hash, not the plaintext) for the 6 dev-only RabbitMQ users
+  # Issue #279/#277: contains only base64 `password_hash` values (RabbitMQ's
+  # salted-SHA256 hash, not the plaintext) for the 7 dev-only RabbitMQ users
   # below — never a real secret. Narrowly scoped to this one file, not the
   # whole rabbitmq/ directory (rabbitmq/generate-password-hashes.py and
   # rabbitmq/rabbitmq.conf are not allowlisted and still get scanned).
@@ -45,6 +45,7 @@ regexes = [
   '''devOnlyBadgeOutboxPubPasswordChangeMe123''',
   '''devOnlyBadgeServicePasswordChangeMe123''',
   '''devOnlyExamApiPasswordChangeMe123''',
+  '''devOnlyAuthApiPasswordChangeMe123''',
   '''\*{10}''',
   '''CHANGE_ME[A-Z_]*''',
 ]

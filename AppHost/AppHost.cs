@@ -58,6 +58,10 @@ var badgeServiceRabbitUser = "badge_service";
 var badgeServiceRabbitPassword = builder.AddParameter("rabbitmq-badge-service-password", secret: true);
 var examApiRabbitUser = "exam_api";
 var examApiRabbitPassword = builder.AddParameter("rabbitmq-exam-api-password", secret: true);
+// Issue #277 (madde 4): auth-api's own consumer user (queue "auth-api", UserRoleChangedEvent
+// from exam API's outbox) — same reasoning as the others above.
+var authApiRabbitUser = "auth_api";
+var authApiRabbitPassword = builder.AddParameter("rabbitmq-auth-api-password", secret: true);
 
 // Pinned to the standard AMQP port 5672 (matching docker-compose.yml) because
 // BadgeService/OutboxPublisher's MassTransit setup (cfg.Host(host, "/", ...))
@@ -583,8 +587,20 @@ var authApi = builder.AddProject<Projects.AuthApi>("auth-api")
         context.EnvironmentVariables["MinioConfig__Endpoint"] = ReferenceExpression.Create(
             $"{minioApiEndpoint.Property(EndpointProperty.Host)}:{minioApiEndpoint.Property(EndpointProperty.Port)}");
     })
+    // Issue #277 (madde 4): auth-api hosts a MassTransit consumer (queue "auth-api",
+    // UserRoleChangedEvent from exam API's outbox). Same RabbitMQ:* wiring as
+    // ExamDotnetApi/BadgeService below; without RabbitMQ__Host the bus is not
+    // registered and a startup warning is logged.
+    .WithReference(rabbitmq)
+    .WithEnvironment(context =>
+    {
+        context.EnvironmentVariables["RabbitMQ__Host"] = rabbitmqEndpoint.Property(EndpointProperty.Host);
+    })
+    .WithEnvironment("RabbitMQ__Username", authApiRabbitUser)
+    .WithEnvironment("RabbitMQ__Password", authApiRabbitPassword)
     .WaitFor(postgres)
     .WaitFor(redis)
+    .WaitFor(rabbitmq)
     .WaitFor(minio);
 
 var authApiHttp = authApi.GetEndpoint("http");

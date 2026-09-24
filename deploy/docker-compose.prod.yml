@@ -93,6 +93,7 @@ services:
       RABBITMQ_BADGE_OUTBOX_PASSWORD: ${RABBITMQ_BADGE_OUTBOX_PASSWORD}
       RABBITMQ_BADGE_SERVICE_PASSWORD: ${RABBITMQ_BADGE_SERVICE_PASSWORD}
       RABBITMQ_EXAM_API_PASSWORD: ${RABBITMQ_EXAM_API_PASSWORD}
+      RABBITMQ_AUTH_API_PASSWORD: ${RABBITMQ_AUTH_API_PASSWORD}
     volumes:
       - ./scripts/rabbitmq-init.sh:/rabbitmq-init.sh:ro
     entrypoint: ['sh', '/rabbitmq-init.sh']
@@ -246,11 +247,22 @@ services:
       Keycloak__ClientSecret: ${KEYCLOAK_CLIENT_SECRET}
       Keycloak__AdminClientId: ${KEYCLOAK_ADMIN_CLIENT_ID}
       Keycloak__AdminClientSecret: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+      # Issue #277 (madde 4): auth-api hosts a MassTransit consumer (queue "auth-api") for
+      # exam API's UserRoleChangedEvent. Same pattern as exam-dotnet-api's StudentPointsChangedEvent
+      # consumer above. Dedicated least-privilege user (read-only on its own "auth-api" queue,
+      # cannot publish/forge UserRoleChangedEvent) — created by the rabbitmq-init job below.
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Username: auth_api
+      RabbitMQ__Password: ${RABBITMQ_AUTH_API_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
       keycloak:
         condition: service_started
+      rabbitmq:
+        condition: service_started
+      rabbitmq-init:
+        condition: service_completed_successfully
     networks:
       - exam-net
 

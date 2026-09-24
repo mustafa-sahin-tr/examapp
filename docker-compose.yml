@@ -71,12 +71,22 @@ services:
       - MinioConfig__SecretKey=${MINIO_ROOT_PASSWORD}
       - Keycloak__ClientSecret=${KEYCLOAK_CLIENT_SECRET:?KEYCLOAK_CLIENT_SECRET .env icinde tanimli olmali}
       - Keycloak__AdminClientSecret=${KEYCLOAK_ADMIN_CLIENT_SECRET:?KEYCLOAK_ADMIN_CLIENT_SECRET .env icinde tanimli olmali}
+      # Issue #277 (madde 4): auth-api artık RabbitMQ consumer'ı barındırıyor (kuyruk "auth-api":
+      # exam API'nin outbox'ından UserRoleChangedEvent → Users.Role). Aynı desen exam-dotnet-api'deki
+      # StudentPointsChangedConsumer ile (issue #225). Servise özel, en az yetkili kullanıcı —
+      # bkz. rabbitmq/definitions.json (yalnız "auth-api" kuyruğunu okuyabilir, yalnız
+      # UserRoleChangedEvent exchange'ine configure/write yapabilir).
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Username=auth_api
+      - RabbitMQ__Password=${RABBITMQ_AUTH_API_PASSWORD:?RABBITMQ_AUTH_API_PASSWORD .env icinde tanimli olmali}
     volumes:
       - ./auth-api:/app
       - ./api/ExamApp.Foundation:/api/ExamApp.Foundation
     depends_on:
       exam-pg-container:
         condition: service_healthy
+      rabbitmq:
+        condition: service_started
     networks:
       - mynetwork
 

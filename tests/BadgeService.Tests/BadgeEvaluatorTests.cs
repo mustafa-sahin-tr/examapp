@@ -32,11 +32,13 @@ public class BadgeEvaluatorTests : IDisposable
     private static BadgeDefinition Badge(string ruleType, string ruleConfigJson) => new()
     {
         Id = Guid.NewGuid(),
+        Code = $"test-badge-{Guid.NewGuid():N}",
         Name = "Test Badge",
         Description = "d",
         Category = "c",
         RuleType = ruleType,
         RuleConfigJson = ruleConfigJson,
+        IsActive = true,
     };
 
     private async Task<int> BadgeEarnedCount(int userId)
@@ -265,6 +267,25 @@ public class BadgeEvaluatorTests : IDisposable
 
         (await Progress(1))!.IsCompleted.ShouldBeTrue();
         (await BadgeEarnedCount(1)).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Deactivated_badges_are_never_evaluated_or_awarded()
+    {
+        // Issue #148: IsActive = false must behave exactly like the badge doesn't exist for evaluation.
+        await GivenAsync(ctx =>
+        {
+            var badge = Badge("AnswerCount", "{\"target\":1}");
+            badge.IsActive = false;
+            ctx.BadgeDefinitions.Add(badge);
+            ctx.StudentQuestionAggregates.Add(new StudentQuestionAggregate { Id = Guid.NewGuid(), UserId = 1, TotalQuestions = 5 });
+        });
+
+        await using (var ctx = _db.NewContext())
+            await NewEvaluator(ctx).EvaluateAnswerSubmittedAsync(1, "c");
+
+        (await Progress(1)).ShouldBeNull();
+        (await BadgeEarnedCount(1)).ShouldBe(0);
     }
 
     public void Dispose() => _db.Dispose();

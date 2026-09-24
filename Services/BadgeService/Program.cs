@@ -112,6 +112,7 @@ builder.Services.AddScoped<AnswerSubmissionAggregationService>();
 builder.Services.AddScoped<BadgeEvaluator>();
 builder.Services.AddScoped<StudentReportService>();
 builder.Services.AddScoped<UserResetService>();
+builder.Services.AddScoped<BadgeDefinitionAdminService>();
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();
 builder.Services.Configure<GeminiOptions>(builder.Configuration.GetSection(GeminiOptions.SectionName));
 builder.Services.AddScoped<IQuestionClassifier, GeminiQuestionClassifier>();

@@ -39,8 +39,12 @@ public class BadgeEvaluator
 
         var activitySummary = ActivityAnalytics.Calculate(dailyActivities);
 
+        // Issue #148: deactivated badges are never (re-)evaluated or newly awarded. Re-read on every
+        // call (AsNoTracking, no caching) so an admin's edit/deactivate via BadgeDefinitionAdminService
+        // takes effect on the very next evaluation — no cache to invalidate.
         var badgeDefinitions = await _context.BadgeDefinitions
             .AsNoTracking()
+            .Where(x => x.IsActive)
             .ToListAsync(cancellationToken);
 
         if (badgeDefinitions.Count == 0)

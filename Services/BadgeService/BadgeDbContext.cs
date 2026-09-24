@@ -31,6 +31,10 @@ public class BadgeDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<BadgeDefinition>().HasKey(x => x.Id);
+        // Issue #148: Code is the seeder's non-overwrite key and the admin CRUD API's stable identity.
+        modelBuilder.Entity<BadgeDefinition>()
+            .HasIndex(x => x.Code)
+            .IsUnique();
         modelBuilder.Entity<BadgeEarned>().HasKey(x => x.Id);
 
         modelBuilder.Entity<BadgeEarned>()

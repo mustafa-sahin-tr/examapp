@@ -192,13 +192,15 @@ public class StudentPointsOutboxTests : IDisposable
     {
         StudentPointsBackfillCommand.IsRequested(args).ShouldBe(requested);
         if (requested)
-            StudentPointsBackfillCommand.ParseDryRun(args).ShouldBe(dryRun);
+            StudentPointsBackfillCommand.ParseArgs(args).DryRun.ShouldBe(dryRun);
     }
 
     [Fact]
     public void Command_rejects_unknown_arguments()
         => Should.Throw<ArgumentException>(() =>
-            StudentPointsBackfillCommand.ParseDryRun(new[] { "backfill-student-points", "--force" }));
+            StudentPointsBackfillCommand.ParseArgs(new[] { "backfill-student-points", "--force" }));
+
+    // Flag/ortam matrisi ve dry-run testleri: StudentPointsBackfillCommandFlagTests.cs (issue #243).
 
     [Fact]
     public async Task Answer_submitted_consumer_chain_produces_a_row_the_outbox_publisher_can_publish()

@@ -69,13 +69,20 @@ namespace ExamApp.Api.Controllers
             {
                 if (profile.Role == "Student")
                 {
-                    var student = await _context.Students
-                    .FirstOrDefaultAsync(s => s.UserId == profile.Id);
-                    if (student == null)
+                    // issue #243 review: XP aynı sorguda (ek round-trip yok) toplanır; Level okuma anında XP'den
+                    // hesaplanır (StudentService.GetStudentProfile ile aynı kural, minimum 1). Eskiden ikisi de 0 dönüyordu.
+                    var row = await _context.Students
+                    .Where(s => s.UserId == profile.Id)
+                    .Select(s => new { Student = s, XP = s.StudentPoints.Sum(sp => sp.XP) })
+                    .FirstOrDefaultAsync();
+                    if (row == null)
                         return Ok(profile);
+                    var student = row.Student;
                     profile.Student = new StudentDto
                     {
                         Id = student.Id,
+                        XP = row.XP,
+                        Level = StudentLevel.FromXp(row.XP),
                         GradeId = student.GradeId,
                         SchoolName = student.SchoolName,
                         SchoolId = student.SchoolId,

@@ -16,8 +16,30 @@ public class AnswerSubmissionAggregationService
         _context = context;
     }
 
-    public async Task ProcessAsync(AnswerSubmittedEvent message, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Aggregate'i günceller ve puan değiştiyse <see cref="StudentPointsOutbox"/>'a yazar.
+    /// Idempotency (issue #243): <paramref name="message"/>.EventId dolu (≠ <see cref="Guid.Empty"/>)
+    /// ise, aynı EventId ile daha önce işlenmişse hiçbir şey yapmadan <c>false</c> döner; aksi halde
+    /// aggregate güncellemesiyle AYNI SaveChanges'te bir <see cref="ProcessedAnswerSubmission"/> satırı
+    /// eklenir. Eşzamanlı ikinci teslim PK ihlaline (23505) çarpar ve no-op sayılır. EventId boşsa
+    /// (eski üreticiler) dedup tamamen atlanır — tekrar teslimde aggregate yine güncellenir (önceki
+    /// davranış). Dönüş değeri, çağıranın (bkz. <c>AnswerSubmittedConsumer</c>) badge/streak
+    /// değerlendirmesini atlayıp atlamayacağını belirler: duplicate olduğunda evaluator da atlanır.
+    /// </summary>
+    /// <returns><c>true</c> aggregate yeni uygulandıysa; <c>false</c> duplicate olarak atlandıysa.</returns>
+    public async Task<bool> ProcessAsync(AnswerSubmittedEvent message, CancellationToken cancellationToken = default)
     {
+        var dedupe = message.EventId != Guid.Empty;
+        if (dedupe)
+        {
+            var alreadyProcessed = await _context.ProcessedAnswerSubmissions
+                .AnyAsync(p => p.EventId == message.EventId, cancellationToken);
+            if (alreadyProcessed)
+            {
+                return false;
+            }
+        }
+
         var (questionAggregate, previousPoints) = await UpdateStudentQuestionAggregateAsync(message, cancellationToken);
         var subjectAggregate = await UpdateStudentSubjectAggregateAsync(message, cancellationToken);
         var activity = await UpdateDailyActivityAsync(message, cancellationToken);
@@ -42,8 +64,52 @@ public class AnswerSubmissionAggregationService
             StudentPointsOutbox.Enqueue(_context, questionAggregate.UserId, questionAggregate.TotalPoints, now);
         }
 
-        await _context.SaveChangesAsync(cancellationToken);
+        if (dedupe)
+        {
+            _context.ProcessedAnswerSubmissions.Add(new ProcessedAnswerSubmission
+            {
+                EventId = message.EventId,
+                UserId = message.UserId,
+                ProcessedAt = now,
+            });
+        }
+
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (dedupe && IsUniqueViolation(ex))
+        {
+            // Eşzamanlı ikinci teslim aynı EventId'yle ledger PK'sına (PK_ProcessedAnswerSubmissions)
+            // çarptı — aggregate zaten (ya da az önce) başka bir çağrıda uygulandı. Evaluator da
+            // atlanmalı; çağıran false döndüğünde bunu yapar. DİKKAT: IsUniqueViolation constraint adını
+            // da kontrol eder — aggregate tablolarındaki (StudentQuestionAggregate/StudentSubjectAggregate/
+            // StudentDailyActivity) unique index ihlalleri BURADA yakalanmaz, yukarı fırlar (review fix,
+            // issue #243): aksi halde eşzamanlı ama GERÇEKTEN FARKLI bir cevabın puanı sessizce kaybolurdu.
+            return false;
+        }
+
+        return true;
     }
+
+    /// <summary>
+    /// Only the ledger's own PK (<c>PK_ProcessedAnswerSubmissions</c>) is treated as a duplicate-delivery
+    /// no-op (review fix, issue #243). Without the constraint-name check, a 23505 on any of the OTHER
+    /// unique indexes hit by the same SaveChanges — <c>IX_StudentQuestionAggregates_UserId</c>,
+    /// <c>IX_StudentSubjectAggregates_UserId_SubjectId</c>, <c>IX_StudentDailyActivities_UserId_ActivityDate</c>
+    /// (all from concurrent, GENUINELY DIFFERENT answers for the same user racing on the same aggregate
+    /// row — the partitioner normally serializes this per user, but a second BadgeService instance or a
+    /// direct call could still race) — would be silently swallowed as "duplicate", and that legitimate
+    /// answer's points would vanish with no error, no retry, nothing in the dead-letter queue.
+    /// </summary>
+    private const string ProcessedAnswerSubmissionPrimaryKeyConstraint = "PK_ProcessedAnswerSubmissions";
+
+    private static bool IsUniqueViolation(DbUpdateException ex) =>
+        ex.InnerException is Npgsql.PostgresException
+        {
+            SqlState: "23505",
+            ConstraintName: ProcessedAnswerSubmissionPrimaryKeyConstraint
+        };
 
     private async Task<(StudentQuestionAggregate Aggregate, int PreviousPoints)> UpdateStudentQuestionAggregateAsync(
         AnswerSubmittedEvent message, CancellationToken cancellationToken)

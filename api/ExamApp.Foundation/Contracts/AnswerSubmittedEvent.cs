@@ -4,6 +4,15 @@ namespace ExamApp.Foundation.Contracts;
 
 public class AnswerSubmittedEvent
 {
+    /// <summary>
+    /// Producer-assigned correlation id (issue #243) — matches the outbox row's
+    /// <c>OutboxMessage.Id</c>, same pattern as <see cref="LoginAttemptedEvent.EventId"/>.
+    /// Consumers dedupe on this. Defaults to <see cref="Guid.Empty"/> so that older producers
+    /// (or messages already in-flight before this change) keep the pre-existing at-least-once
+    /// behavior — dedup is skipped entirely when this is empty, never treated as a real id.
+    /// </summary>
+    public Guid EventId { get; set; } = Guid.Empty;
+
     public int UserId { get; set; }
     public int QuestionId { get; set; }
     public int? SubjectId { get; set; }

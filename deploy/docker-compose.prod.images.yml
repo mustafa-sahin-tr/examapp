@@ -19,6 +19,10 @@ services:
   exam-outbox-publisher:
     image: ${ACR_LOGIN_SERVER}/exam-outbox-publisher:${IMAGE_TAG}
 
+  # Issue #84 / #243: same OutboxPublisher image, identity (auth_db) instance.
+  identity-outbox-publisher:
+    image: ${ACR_LOGIN_SERVER}/exam-outbox-publisher:${IMAGE_TAG}
+
   # Issue #225: same OutboxPublisher image, badge DB instance.
   badge-outbox-publisher:
     image: ${ACR_LOGIN_SERVER}/exam-outbox-publisher:${IMAGE_TAG}

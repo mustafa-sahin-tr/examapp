@@ -41,6 +41,98 @@ public class TeacherApprovalServiceTests : IDisposable
         ApprovalStatus = TeacherApprovalStatus.Pending
     };
 
+    // ---- issue #262: liste maskeli, detay tam e-posta ----
+
+    private void UserResolvesTo(int userId, string fullName, string email) =>
+        _authApi.GetUsersByIdsAsync(Arg.Is<IEnumerable<int>>(ids => ids.Contains(userId)), Arg.Any<CancellationToken>())
+            .Returns(new List<UserLookupResultDto> { new() { Id = userId, FullName = fullName, Email = email } });
+
+    [Fact]
+    public async Task Issue262_list_returns_masked_email()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.Teachers.Add(IndependentPending(11));
+            await ctx.SaveChangesAsync();
+        }
+        UserResolvesTo(11, "Ali Veli", "ali.veli@okul.k12.tr");
+
+        await using var check = _db.NewContext();
+        var item = (await NewService(check).GetPendingApplicationsAsync()).Single();
+
+        item.FullName.ShouldBe("Ali Veli");
+        item.Email.ShouldBe("a***@okul.k12.tr");
+    }
+
+    [Fact]
+    public async Task Issue262_detail_returns_full_email_for_a_pending_application()
+    {
+        int teacherId;
+        await using (var ctx = _db.NewContext())
+        {
+            var t = new Teacher { UserId = 12, IsIndependentTutor = false, ApprovalStatus = TeacherApprovalStatus.Pending };
+            var school = new School { Name = "Konya Lisesi" };
+            ctx.Schools.Add(school);
+            await ctx.SaveChangesAsync();
+            t.RequestedSchoolId = school.Id;
+            ctx.Teachers.Add(t);
+            await ctx.SaveChangesAsync();
+            teacherId = t.Id;
+        }
+        UserResolvesTo(12, "Ayşe Yılmaz", "ayse@okul.k12.tr");
+
+        await using var check = _db.NewContext();
+        var detail = await NewService(check).GetPendingApplicationAsync(teacherId);
+
+        detail.ShouldNotBeNull();
+        detail.TeacherId.ShouldBe(teacherId);
+        detail.UserId.ShouldBe(12);
+        detail.FullName.ShouldBe("Ayşe Yılmaz");
+        detail.Email.ShouldBe("ayse@okul.k12.tr");
+        detail.IsIndependentTutor.ShouldBeFalse();
+        detail.RequestedSchoolName.ShouldBe("Konya Lisesi");
+    }
+
+    [Fact]
+    public async Task Issue262_detail_is_null_for_unknown_or_already_decided_applications()
+    {
+        int decidedId;
+        await using (var ctx = _db.NewContext())
+        {
+            var decided = new Teacher { UserId = 13, IsIndependentTutor = true, ApprovalStatus = TeacherApprovalStatus.Approved };
+            ctx.Teachers.Add(decided);
+            await ctx.SaveChangesAsync();
+            decidedId = decided.Id;
+        }
+
+        await using var check = _db.NewContext();
+        (await NewService(check).GetPendingApplicationAsync(decidedId)).ShouldBeNull();
+        (await NewService(check).GetPendingApplicationAsync(987_654)).ShouldBeNull();
+        await _authApi.DidNotReceiveWithAnyArgs().GetUsersByIdsAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task Issue262_detail_survives_auth_api_outage_with_empty_name_and_email()
+    {
+        int teacherId;
+        await using (var ctx = _db.NewContext())
+        {
+            var t = IndependentPending(14);
+            ctx.Teachers.Add(t);
+            await ctx.SaveChangesAsync();
+            teacherId = t.Id;
+        }
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<UserLookupResultDto>>(new HttpRequestException("down")));
+
+        await using var check = _db.NewContext();
+        var detail = await NewService(check).GetPendingApplicationAsync(teacherId);
+
+        detail.ShouldNotBeNull();
+        detail.FullName.ShouldBe(string.Empty);
+        detail.Email.ShouldBe(string.Empty);
+    }
+
     // ---- GetPendingApplicationsAsync ----
 
     [Fact]

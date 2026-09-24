@@ -78,9 +78,11 @@ public class AdminTeacherServiceTests : IDisposable
         await using var ctx = _db.NewContext();
 
         var page2 = await NewService(ctx).ListAsync(page: 2, pageSize: 20, schoolId: null, unassigned: false);
+        // issue #262: UserId DTO'da yok; varsayılan lookup adı "Ad {userId}" üzerinden geri çözülür.
+        var pageUserIds = page2.Items.Select(i => int.Parse(i.FullName.Substring("Ad ".Length))).OrderBy(i => i).ToList();
 
         await _authApi.Received(1).GetUsersWithAccountStatusByIdsAsync(
-            Arg.Is<IEnumerable<int>>(ids => ids.OrderBy(i => i).SequenceEqual(page2.Items.Select(i => i.UserId).OrderBy(i => i))),
+            Arg.Is<IEnumerable<int>>(ids => ids.OrderBy(i => i).SequenceEqual(pageUserIds)),
             Arg.Any<CancellationToken>());
         await _authApi.DidNotReceive().GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>());
     }
@@ -143,7 +145,7 @@ public class AdminTeacherServiceTests : IDisposable
 
         var items = (await NewService(ctx).ListAsync(1, 20, null, false)).Items;
 
-        var bound = items.Single(i => i.UserId == 42);
+        var bound = items.Single(i => i.FullName == "Ad 42");
         bound.FullName.ShouldBe("Ad 42");
         bound.Email.ShouldBe("u***@test.local"); // issue #246: listede maskeli
         bound.SchoolId.ShouldBe(schoolId);
@@ -152,14 +154,14 @@ public class AdminTeacherServiceTests : IDisposable
         bound.ApprovalStatus.ShouldBe("Approved");
         bound.IsEnabled.ShouldBe(true);
 
-        var independent = items.Single(i => i.UserId == 43);
+        var independent = items.Single(i => i.FullName == "Ad 43");
         independent.SchoolId.ShouldBeNull();
         independent.SchoolName.ShouldBeNull();
         independent.IsIndependentTutor.ShouldBeTrue();
         independent.ApprovalStatus.ShouldBe("Rejected");
         independent.IsEnabled.ShouldBe(false);
 
-        items.Single(i => i.UserId == 45).SchoolName.ShouldBe("Eski Okul Adı");
+        items.Single(i => i.FullName == "Ad 45").SchoolName.ShouldBe("Eski Okul Adı");
     }
 
     [Fact]
@@ -172,11 +174,11 @@ public class AdminTeacherServiceTests : IDisposable
 
         var items = (await NewService(ctx).ListAsync(1, 20, null, false)).Items;
 
-        var missing = items.Single(i => i.UserId == 100);
+        var missing = items.Single(i => i.FullName == string.Empty);
         missing.FullName.ShouldBe(string.Empty);
         missing.Email.ShouldBe(string.Empty);
         missing.IsEnabled.ShouldBeNull();
-        var unknownStatus = items.Single(i => i.UserId == 101);
+        var unknownStatus = items.Single(i => i.FullName == "Bilinen");
         unknownStatus.FullName.ShouldBe("Bilinen");
         unknownStatus.IsEnabled.ShouldBeNull();
     }
@@ -285,7 +287,7 @@ public class AdminTeacherServiceTests : IDisposable
         var result = await NewService(ctx).ListAsync(1, 20, null, false);
 
         result.TotalCount.ShouldBe(1);
-        result.Items.Single().UserId.ShouldBe(1);
+        result.Items.Single().FullName.ShouldBe("Ad 1"); // issue #262: UserId artık DTO'da yok
     }
 
     [Fact]

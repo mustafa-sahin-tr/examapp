@@ -762,6 +762,20 @@ public class KeycloakService : IKeycloakService
     /// <summary>Keycloak'a aynı anda en fazla bu kadar kullanıcı okuma isteği (admin listesi sayfası ≤ 100 kullanıcı).</summary>
     public const int AccountStatusMaxParallelism = 8;
 
+    /// <summary>
+    /// Issue #262: bu sayıdan FAZLA id'de toplu yol (devre dışı kullanıcı taraması); az id'de kullanıcı başı GET daha ucuz.
+    /// </summary>
+    public const int AccountStatusBulkThreshold = 4;
+
+    /// <summary>Devre dışı kullanıcı taraması sayfa boyutu.</summary>
+    public const int DisabledScanPageSize = 100;
+
+    /// <summary>
+    /// Devre dışı kullanıcı taramasının üst sınırı (sayfa). Aşılırsa (≥ 1000 devre dışı kullanıcı) tarama sonuçsuz sayılır
+    /// ve kullanıcı başı yola düşülür — büyük listeyi her admin sayfasında taramak kullanıcı başı GET'ten pahalı olurdu.
+    /// </summary>
+    public const int DisabledScanMaxPages = 10;
+
     public async Task<IReadOnlyDictionary<string, bool>> GetUsersEnabledAsync(IReadOnlyCollection<string> keycloakUserIds, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(keycloakUserIds);
@@ -772,6 +786,87 @@ public class KeycloakService : IKeycloakService
 
         // Token hatası KeycloakException olarak çağırana gider (çağıran fail-soft'a çevirir).
         var adminToken = await GetKeycloakAdminTokenAsync(ct);
+
+        if (ids.Count > AccountStatusBulkThreshold)
+        {
+            var scan = await ScanDisabledUsersAsync(adminToken, ct);
+            switch (scan.Status)
+            {
+                case DisabledScanStatus.Complete:
+                    // Kabul edilen ödün: Keycloak'tan silinmiş (auth DB'de kalmış) kullanıcı da "etkin" görünür; kullanıcı başı
+                    // yolda 404 → bilinmiyor (null) idi. Admin listesinde hesap durumu bilgi amaçlıdır; yetki kararı değildir.
+                    foreach (var id in ids)
+                        result[id] = !scan.DisabledIds!.Contains(id);
+                    return result;
+                case DisabledScanStatus.Failed:
+                    return result; // fail-soft: hiçbiri okunamadı (kullanıcı başı 100 GET'le hatalı Keycloak'ı yüklemeyiz)
+                case DisabledScanStatus.Inconclusive:
+                    break; // aşağıdaki kullanıcı başı yola düş
+            }
+        }
+
+        await ReadEnabledPerUserAsync(ids, adminToken, result, ct);
+        return result;
+    }
+
+    private enum DisabledScanStatus { Complete, Inconclusive, Failed }
+
+    private sealed record DisabledScan(DisabledScanStatus Status, HashSet<string>? DisabledIds = null);
+
+    /// <summary>
+    /// Realm'deki devre dışı kullanıcıların id'leri: <c>GET /users?enabled=false&amp;briefRepresentation=true&amp;first&amp;max</c>,
+    /// kısa sayfa gelene kadar. Keycloak filtreyi yok sayıyorsa (yanıtta <c>enabled=true</c> kullanıcı) ya da
+    /// <see cref="DisabledScanMaxPages"/> aşılırsa sonuçsuz. HTTP/JSON hatası ya da iptal → başarısız.
+    /// </summary>
+    private async Task<DisabledScan> ScanDisabledUsersAsync(string adminToken, CancellationToken ct)
+    {
+        var disabled = new HashSet<string>(StringComparer.Ordinal);
+        try
+        {
+            for (var page = 0; page < DisabledScanMaxPages; page++)
+            {
+                var first = page * DisabledScanPageSize;
+                using var request = new HttpRequestMessage(HttpMethod.Get, BuildKeycloakUri(
+                    $"{_keycloakSettings.UserUrl}?enabled=false&briefRepresentation=true&first={first}&max={DisabledScanPageSize}"));
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+                using var response = await _adminHttp.SendAsync(request, ct);
+                if (!response.IsSuccessStatusCode)
+                    return new DisabledScan(DisabledScanStatus.Failed);
+
+                var json = await response.Content.ReadAsStringAsync(ct);
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.ValueKind != JsonValueKind.Array)
+                    return new DisabledScan(DisabledScanStatus.Failed);
+
+                var count = 0;
+                foreach (var user in doc.RootElement.EnumerateArray())
+                {
+                    count++;
+                    // Filtre gerçekten uygulandı mı: her satır açıkça enabled=false olmalı. Değilse bu Keycloak sürümü
+                    // "enabled" parametresini desteklemiyor — "listede yok = etkin" çıkarımı güvenilmez.
+                    if (!user.TryGetProperty("enabled", out var enabledEl) || enabledEl.ValueKind != JsonValueKind.False)
+                        return new DisabledScan(DisabledScanStatus.Inconclusive);
+                    if (user.TryGetProperty("id", out var idEl) && idEl.GetString() is { Length: > 0 } id)
+                        disabled.Add(id);
+                }
+
+                if (count < DisabledScanPageSize)
+                    return new DisabledScan(DisabledScanStatus.Complete, disabled);
+            }
+
+            return new DisabledScan(DisabledScanStatus.Inconclusive);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or JsonException or OperationCanceledException
+                                   or Polly.ExecutionRejectedException or KeycloakException)
+        {
+            return new DisabledScan(DisabledScanStatus.Failed);
+        }
+    }
+
+    /// <summary>Issue #152 yolu: kullanıcı başı <c>GET /users/{id}</c>, sınırlı paralel. Az id'de ya da tarama sonuçsuzsa.</summary>
+    private async Task ReadEnabledPerUserAsync(
+        List<string> ids, string adminToken, System.Collections.Concurrent.ConcurrentDictionary<string, bool> result, CancellationToken ct)
+    {
 
         // Keycloak admin API id listesiyle toplu filtre sunmuyor (GET /users yalnızca search/email/username/q);
         // tüm realm'i sayfalamak yerine kullanıcı başı GET, sınırlı paralel. Retry'sız admin client (_adminHttp,
@@ -820,7 +915,6 @@ public class KeycloakService : IKeycloakService
         });
 
         await Task.WhenAll(tasks);
-        return result;
     }
 
     // ---- Yetkili hesap denetimi (issue #267) ----

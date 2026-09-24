@@ -30,7 +30,8 @@ public class AdminStudentServiceTests : IDisposable
     private AdminStudentService NewService(AppDbContext ctx) => new(ctx, new AdminUserDirectory(_authApi));
 
     // DTO UserId taşımaz; SeedAsync öğrenci numarasını "N{userId}" verir.
-    private static int UserIdOf(ExamApp.Api.Models.Dtos.Admin.AdminStudentListItemDto item) => int.Parse(item.StudentNumber[1..]);
+    // issue #262: numara listede kısmi (****NNNN); seed numarası 2026 + 4 haneli UserId → son 4 hane UserId'dir.
+    private static int UserIdOf(ExamApp.Api.Models.Dtos.Admin.AdminStudentListItemDto item) => int.Parse(item.StudentNumber[^4..]);
 
     private async Task<(int SchoolA, int SchoolB)> SeedAsync(int countA, int countB, int countUnassigned)
     {
@@ -42,11 +43,11 @@ public class AdminStudentServiceTests : IDisposable
 
         var userId = 100;
         for (var i = 0; i < countA; i++, userId++)
-            ctx.Students.Add(new Student { UserId = userId, StudentNumber = $"N{userId}", SchoolId = a.Id });
+            ctx.Students.Add(new Student { UserId = userId, StudentNumber = $"2026{userId:D4}", SchoolId = a.Id });
         for (var i = 0; i < countB; i++, userId++)
-            ctx.Students.Add(new Student { UserId = userId, StudentNumber = $"N{userId}", SchoolId = b.Id });
+            ctx.Students.Add(new Student { UserId = userId, StudentNumber = $"2026{userId:D4}", SchoolId = b.Id });
         for (var i = 0; i < countUnassigned; i++, userId++)
-            ctx.Students.Add(new Student { UserId = userId, StudentNumber = $"N{userId}" });
+            ctx.Students.Add(new Student { UserId = userId, StudentNumber = $"2026{userId:D4}" });
         await ctx.SaveChangesAsync();
         return (a.Id, b.Id);
     }
@@ -140,34 +141,34 @@ public class AdminStudentServiceTests : IDisposable
             await seed.SaveChangesAsync();
             schoolId = school.Id;
             gradeId = grade.Id;
-            seed.Students.Add(new Student { UserId = 42, StudentNumber = "1234", SchoolId = school.Id, GradeId = grade.Id });
-            seed.Students.Add(new Student { UserId = 43, StudentNumber = "5678" });                               // okulsuz, sınıfsız
-            seed.Students.Add(new Student { UserId = 45, StudentNumber = "9999", SchoolName = "Eski Okul Adı" }); // legacy: SchoolId yok
+            seed.Students.Add(new Student { UserId = 42, StudentNumber = "20241234", SchoolId = school.Id, GradeId = grade.Id });
+            seed.Students.Add(new Student { UserId = 43, StudentNumber = "20245678" });                               // okulsuz, sınıfsız
+            seed.Students.Add(new Student { UserId = 45, StudentNumber = "20249999", SchoolName = "Eski Okul Adı" }); // legacy: SchoolId yok
             await seed.SaveChangesAsync();
         }
         await using var ctx = _db.NewContext();
 
         var items = (await NewService(ctx).ListAsync(1, 20, null, false)).Items;
 
-        var bound = items.Single(i => i.StudentNumber == "1234");
+        var bound = items.Single(i => i.StudentNumber == "****1234");
         bound.FullName.ShouldBe("Ad 42");
         bound.Email.ShouldBe("u***@test.local"); // issue #246: listede maskeli
-        bound.StudentNumber.ShouldBe("1234");
+        bound.StudentNumber.ShouldBe("****1234"); // issue #262: yalnızca son 4
         bound.SchoolId.ShouldBe(schoolId);
         bound.SchoolName.ShouldBe("Konya Lisesi");
         bound.GradeId.ShouldBe(gradeId);
         bound.GradeName.ShouldBe("9. Sınıf");
         bound.IsEnabled.ShouldBe(true);
 
-        var bare = items.Single(i => i.StudentNumber == "5678");
-        bare.StudentNumber.ShouldBe("5678");
+        var bare = items.Single(i => i.StudentNumber == "****5678");
+        bare.StudentNumber.ShouldBe("****5678");
         bare.SchoolId.ShouldBeNull();
         bare.SchoolName.ShouldBeNull();
         bare.GradeId.ShouldBeNull();
         bare.GradeName.ShouldBeNull();
         bare.IsEnabled.ShouldBe(false);
 
-        var legacy = items.Single(i => i.StudentNumber == "9999");
+        var legacy = items.Single(i => i.StudentNumber == "****9999");
         legacy.SchoolId.ShouldBeNull();
         legacy.SchoolName.ShouldBe("Eski Okul Adı");
     }
@@ -182,11 +183,11 @@ public class AdminStudentServiceTests : IDisposable
 
         var items = (await NewService(ctx).ListAsync(1, 20, null, false)).Items;
 
-        var missing = items.Single(i => i.StudentNumber == "N100");
+        var missing = items.Single(i => i.StudentNumber == "****0100");
         missing.FullName.ShouldBe(string.Empty);
         missing.Email.ShouldBe(string.Empty);
         missing.IsEnabled.ShouldBeNull();
-        var unknownStatus = items.Single(i => i.StudentNumber == "N101");
+        var unknownStatus = items.Single(i => i.StudentNumber == "****0101");
         unknownStatus.FullName.ShouldBe("Bilinen");
         unknownStatus.IsEnabled.ShouldBeNull();
     }
@@ -248,8 +249,8 @@ public class AdminStudentServiceTests : IDisposable
     {
         await using (var seed = _db.NewContext())
         {
-            seed.Students.Add(new Student { UserId = 1, StudentNumber = "1" });
-            seed.Students.Add(new Student { UserId = 2, StudentNumber = "2", IsDeleted = true });
+            seed.Students.Add(new Student { UserId = 1, StudentNumber = "20240001" });
+            seed.Students.Add(new Student { UserId = 2, StudentNumber = "20240002", IsDeleted = true });
             await seed.SaveChangesAsync();
         }
         await using var ctx = _db.NewContext();
@@ -257,7 +258,7 @@ public class AdminStudentServiceTests : IDisposable
         var result = await NewService(ctx).ListAsync(1, 20, null, false);
 
         result.TotalCount.ShouldBe(1);
-        result.Items.Single().StudentNumber.ShouldBe("1");
+        result.Items.Single().StudentNumber.ShouldBe("****0001");
     }
 
     [Fact]

@@ -10,6 +10,10 @@ namespace ExamApp.Api.Data;
 /// Bilinçli olarak PII içermez: admin kimliği Keycloak <c>sub</c> (takma ad niteliğinde kimlik; ad/e-posta değil),
 /// filtre yalnızca okul id'si + "okulsuz" bayrağı, sonuç yalnızca satır sayısı. Dönen kullanıcıların id'leri/adları yazılmaz.
 /// Kullanıcı FK'sı yok — <see cref="LoginEvent"/> ile aynı gerekçe (admin'in bu DB'de satırı olmayabilir).
+///
+/// issue #262: saklama süresi sınırlı (<c>AdminDataAccessLog:RetentionDays</c>, varsayılan 180 gün) — süresi dolan satırları
+/// günlük Hangfire işi (<c>AdminDataAccessLogRetentionJob</c>) toplu siler. Rate limit'e takılan (429) istekler de
+/// <see cref="Outcome"/>=<see cref="AdminDataAccessOutcome.RateLimited"/> ile buraya yazılır.
 /// </summary>
 public class AdminDataAccessLog
 {
@@ -40,6 +44,17 @@ public class AdminDataAccessLog
     /// <summary>Filtreye uyan toplam kayıt sayısı (yanıttaki totalCount).</summary>
     public int TotalCount { get; set; }
 
+    /// <summary>
+    /// Detay uçlarında erişilen kaydın id'si (issue #262: öğretmen başvurusu detayı → Teacher.Id); liste uçlarında null.
+    /// </summary>
+    public int? TargetId { get; set; }
+
+    /// <summary>
+    /// issue #262: isteğin sonucu. <see cref="AdminDataAccessOutcome.RateLimited"/> satırlarında veri DÖNMEMİŞTİR;
+    /// sayfa/sayı alanları 0'dır. Kalıcı değer string'dir.
+    /// </summary>
+    public AdminDataAccessOutcome Outcome { get; set; } = AdminDataAccessOutcome.Served;
+
     /// <summary>Erişim anı (UTC).</summary>
     public DateTime OccurredAtUtc { get; set; }
 }
@@ -48,5 +63,21 @@ public class AdminDataAccessLog
 public enum AdminDataAccessResource
 {
     StudentList = 1,
-    TeacherList = 2
+    TeacherList = 2,
+
+    /// <summary>issue #262: <c>GET api/admin/teacher-applications</c> (bekleyen öğretmen başvuruları, maskeli e-posta).</summary>
+    TeacherApplicationList = 3,
+
+    /// <summary>issue #262: <c>GET api/admin/teacher-applications/{id}</c> (tam e-posta).</summary>
+    TeacherApplicationDetail = 4
+}
+
+/// <summary>issue #262: audit satırının sonucu. Kalıcı değer string'dir; yeniden adlandırma geçmiş kayıtları bozar.</summary>
+public enum AdminDataAccessOutcome
+{
+    /// <summary>Veri döndü.</summary>
+    Served = 1,
+
+    /// <summary>Kullanıcı başına rate limit aşıldı (429); veri dönmedi. Kötüye kullanım incelemesi için saklanır.</summary>
+    RateLimited = 2
 }

@@ -9,7 +9,14 @@ namespace ExamApp.Api.Services.TeacherApprovals;
 /// <summary>Admin tarafı: bağımsız öğretmen (issue #94) ve okul bağlantısı (issue #234) başvurularını listeleme / onaylama / reddetme.</summary>
 public interface ITeacherApprovalService
 {
+    /// <summary>Bekleyen başvurular, en eski önce. issue #262: e-posta MASKELİ (<c>a***@x.com</c>).</summary>
     Task<List<PendingTeacherApplicationDto>> GetPendingApplicationsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #262: tek bekleyen başvurunun detayı — TAM e-posta ile. Başvuru yoksa / bekleyen değilse null (404).
+    /// Kişisel veri döndürdüğü için çağıran erişimi audit'lemelidir.
+    /// </summary>
+    Task<TeacherApplicationDetailDto?> GetPendingApplicationAsync(int teacherId, CancellationToken ct = default);
 
     /// <summary>
     /// <paramref name="actorAdminKeycloakId"/> issue #157: admin karar audit'i (<c>AdminUserActionLogs</c>)

@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.AdminUsers;
@@ -59,10 +60,7 @@ public class TeacherApprovalService : ITeacherApprovalService
 
     public async Task<List<PendingTeacherApplicationDto>> GetPendingApplicationsAsync(CancellationToken ct = default)
     {
-        var pending = await _context.Teachers
-            .AsNoTracking()
-            .Where(t => t.ApprovalStatus == TeacherApprovalStatus.Pending
-                        && (t.IsIndependentTutor || t.RequestedSchoolId != null))
+        var pending = await PendingApplications()
             .OrderBy(t => t.CreateTime)
             .Select(t => new PendingTeacherApplicationDto
             {
@@ -84,12 +82,47 @@ public class TeacherApprovalService : ITeacherApprovalService
             if (users.TryGetValue(item.UserId, out var user))
             {
                 item.FullName = user.FullName;
-                item.Email = user.Email;
+                // issue #262: listede tam e-posta dönülmez (KVKK veri minimizasyonu); tam adres detay ucunda.
+                item.Email = EmailMask.Apply(user.Email);
             }
         }
 
         return pending;
     }
+
+    public async Task<TeacherApplicationDetailDto?> GetPendingApplicationAsync(int teacherId, CancellationToken ct = default)
+    {
+        var detail = await PendingApplications()
+            .Where(t => t.Id == teacherId)
+            .Select(t => new TeacherApplicationDetailDto
+            {
+                TeacherId = t.Id,
+                UserId = t.UserId,
+                AppliedAt = t.CreateTime,
+                IsIndependentTutor = t.IsIndependentTutor,
+                RequestedSchoolId = t.IsIndependentTutor ? null : t.RequestedSchoolId,
+                RequestedSchoolName = t.IsIndependentTutor || t.RequestedSchool == null ? null : t.RequestedSchool.Name
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (detail == null)
+            return null;
+
+        var users = await ResolveUsersAsync([detail.UserId], ct);
+        if (users.TryGetValue(detail.UserId, out var user))
+        {
+            detail.FullName = user.FullName;
+            detail.Email = user.Email ?? string.Empty; // tam adres — çağıran (controller) erişimi audit'ler
+        }
+
+        return detail;
+    }
+
+    /// <summary>Onay bekleyen başvurular: bağımsız öğretmen (#94) ya da okul bağlantısı talebi (#234). Soft-deleted hariç (global filtre).</summary>
+    private IQueryable<Teacher> PendingApplications() => _context.Teachers
+        .AsNoTracking()
+        .Where(t => t.ApprovalStatus == TeacherApprovalStatus.Pending
+                    && (t.IsIndependentTutor || t.RequestedSchoolId != null));
 
     public async Task<ResponseBaseDto> ApproveAsync(int teacherId, int adminUserId, string actorAdminKeycloakId, CancellationToken ct = default)
     {

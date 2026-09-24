@@ -47,10 +47,10 @@ public class AdminStudentEndpointsTests(IntegrationApiFactory factory) : Integra
             db.Grades.Add(g);
             await db.SaveChangesAsync();
             for (var i = 0; i < 25; i++)
-                db.Students.Add(new Student { UserId = 1000 + i, StudentNumber = $"A{i}", SchoolId = a.Id });
+                db.Students.Add(new Student { UserId = 1000 + i, StudentNumber = $"2026{i:D4}", SchoolId = a.Id });
             for (var i = 0; i < 3; i++)
-                db.Students.Add(new Student { UserId = 2000 + i, StudentNumber = $"B{i}", SchoolId = b.Id, GradeId = g.Id });
-            db.Students.Add(new Student { UserId = 3000, StudentNumber = "U0" });
+                db.Students.Add(new Student { UserId = 2000 + i, StudentNumber = $"3026{i:D4}", SchoolId = b.Id, GradeId = g.Id });
+            db.Students.Add(new Student { UserId = 3000, StudentNumber = "20269999" });
             db.Students.Add(new Student { UserId = 3001, StudentNumber = "D0", SchoolId = b.Id, IsDeleted = true });
             await db.SaveChangesAsync();
             return (a.Id, b.Id, g.Id);
@@ -63,7 +63,7 @@ public class AdminStudentEndpointsTests(IntegrationApiFactory factory) : Integra
         page1.PageSize.ShouldBe(20);
         page1.Items.Count.ShouldBe(20);
         page2!.Items.Count.ShouldBe(5);
-        page1.Items.Concat(page2.Items).Select(i => i.StudentNumber).ShouldBe(Enumerable.Range(0, 25).Select(i => $"A{i}"));
+        page1.Items.Concat(page2.Items).Select(i => i.StudentNumber).ShouldBe(Enumerable.Range(0, 25).Select(i => $"****{i:D4}")); // issue #262: kısmi
         page1.Items.ShouldAllBe(i => i.GradeId == null && i.GradeName == null);
 
         var bursa = await admin.GetFromJsonAsync<Paged<AdminStudentListItemDto>>($"/api/admin/students?schoolId={schoolB}", Json);
@@ -75,7 +75,7 @@ public class AdminStudentEndpointsTests(IntegrationApiFactory factory) : Integra
 
         var unassigned = await admin.GetFromJsonAsync<Paged<AdminStudentListItemDto>>("/api/admin/students?unassigned=true", Json);
         unassigned!.TotalCount.ShouldBe(1);
-        unassigned.Items.Single().StudentNumber.ShouldBe("U0");
+        unassigned.Items.Single().StudentNumber.ShouldBe("****9999");
 
         var all = await admin.GetFromJsonAsync<Paged<AdminStudentListItemDto>>("/api/admin/students?pageSize=1000", Json);
         all!.TotalCount.ShouldBe(29);

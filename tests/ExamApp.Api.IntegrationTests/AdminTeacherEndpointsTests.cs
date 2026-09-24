@@ -61,7 +61,9 @@ public class AdminTeacherEndpointsTests(IntegrationApiFactory factory) : Integra
         page1.PageSize.ShouldBe(20);
         page1.Items.Count.ShouldBe(20);
         page2!.Items.Count.ShouldBe(5);
-        page1.Items.Concat(page2.Items).Select(i => i.UserId).ShouldBe(Enumerable.Range(1000, 25));
+        var pageIds = page1.Items.Concat(page2.Items).Select(i => i.Id).ToList(); // issue #262: UserId artık dönülmez
+        pageIds.ShouldBeUnique();
+        pageIds.ShouldBeInOrder(SortDirection.Ascending);
 
         var bursa = await admin.GetFromJsonAsync<Paged<AdminTeacherListItemDto>>($"/api/admin/teachers?schoolId={schoolB}", Json);
         bursa!.TotalCount.ShouldBe(3);

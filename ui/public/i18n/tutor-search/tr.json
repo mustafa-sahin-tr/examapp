@@ -6,7 +6,7 @@
     "allSubjects": "Tümü",
     "subjectsError": "Ders listesi yüklenemedi.",
     "price": "Ücret",
-    "priceGroup": "Ücret aralığı",
+    "priceGroup": "Ücret aralığı (₺)",
     "minPlaceholder": "Min",
     "maxPlaceholder": "Max",
     "minPriceAria": "Minimum ücret",

@@ -35,7 +35,7 @@ public class TopicStudyLinkServiceTests : IDisposable
         var subject = new Subject { Name = "Matematik" };
         ctx.AddRange(grade, subject);
         // Yönetim işlemleri onaylı öğretmen ister (issue #61 güvenlik incelemesi).
-        ctx.Teachers.Add(new Teacher { UserId = TeacherUserId, ApprovalStatus = TeacherApprovalStatus.Approved, Bio = "t" });
+        ctx.Teachers.Add(new Teacher { UserId = TeacherUserId, ApprovalStatus = TeacherApprovalStatus.Approved, AccountApprovedAt = DateTime.UtcNow, Bio = "t" });
         await ctx.SaveChangesAsync();
 
         var topic = new Topic { Name = "Sayılar", SubjectId = subject.Id, GradeId = grade.Id };

@@ -14,7 +14,9 @@
     "backToCanvas": "Back to canvas",
     "previewTitle": "Preview",
     "saveError": "Something went wrong while saving the question.",
-    "exampleAnswerRequired": "Please provide the correct answer for the worked example."
+    "exampleAnswerRequired": "Please provide the correct answer for the worked example.",
+    "forbidden": "You are not allowed to perform this action on this question.",
+    "loadError": "The question could not be loaded."
   },
   "form": {
     "title": "Create question",

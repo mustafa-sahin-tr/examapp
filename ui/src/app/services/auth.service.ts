@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { BehaviorSubject, catchError, finalize, map, Observable, of, shareReplay, tap, throwError, timeout } from 'rxjs';
 import { CheckStudentResponse } from '../models/check-student-response';
@@ -8,6 +8,7 @@ import { jwtDecode } from 'jwt-decode';
 import { Student } from '../models/student';
 import { Teacher } from '../models/teacher';
 import { LocaleService } from './locale.service';
+import { TEACHER_APPROVAL_PENDING_URL, teacherAccountApprovalOf } from '../models/teacher-approval.model';
 
 export interface UserProfile {
   email: string;
@@ -56,6 +57,34 @@ export class AuthService {
    * bileşenler `computed` ile yeniden hesaplanır. Doğrudan `localStorage.setItem('user', …)` yazma.
    */
   readonly user = signal<UserProfile | null>(this.getUser());
+
+  /**
+   * Issue #287: sunucu 403 `TeacherNotApproved` döndü — profil yenilenene kadar öğretmen onaysız sayılır
+   * (önbellekteki profil eski/eksik olsa da menü hemen kapanır). `refreshProfile()` sonucu sıfırlar.
+   */
+  private readonly teacherNotApprovedByServer = signal(false);
+
+  /**
+   * Issue #287: Teacher realm rolü var ve öğretmen hesabı onaysız (profil `teacherAccountApproved=false` diyor ya da
+   * sunucu 403 `TeacherNotApproved` döndü). Bilinmeyen durum (alan yok) onaysız SAYILMAZ — asıl kapı backend'de.
+   * Öğrenci ve Admin/SuperAdmin (backend'de muaf) için her zaman false. Rol token'dan okunur; token değişimi her zaman `setUser` ile birlikte olur.
+   */
+  readonly isUnapprovedTeacher = computed(() => {
+    const profile = this.user();
+    const flaggedByServer = this.teacherNotApprovedByServer();
+    if (!this.hasRealmRole('Teacher') || this.isTeacherApprovalExempt()) {
+      return false;
+    }
+    return flaggedByServer || teacherAccountApprovalOf(profile) === false;
+  });
+
+  /** Issue #287: Admin/SuperAdmin öğretmen onay kapısından muaftır (backend `ApprovedTeacherRequirement.AdminRoles`). */
+  isTeacherApprovalExempt(): boolean {
+    return this.hasRealmRole('Admin') || this.hasRealmRole('SuperAdmin');
+  }
+
+  /** Issue #287: öğretmen özellikleri açık mı (Teacher değilse true). Bkz. `isUnapprovedTeacher`. */
+  readonly teacherAccountApproved = computed(() => !this.isUnapprovedTeacher());
 
   /** Profili hem localStorage'a hem `user` signal'ına yazar; null → önbellek temizlenir. */
   setUser(profile: UserProfile | null): void {
@@ -294,6 +323,57 @@ export class AuthService {
 
   refresh(): Observable<UserProfile | null> {
     return this.http.post<UserProfile | null>('/api/exam/auth/refresh', {}, { withCredentials: true });
+  }
+
+  /** Devam eden profil yenilemesi (issue #287): guard, layout ve durum sayfası aynı isteği paylaşır. */
+  private profileRefreshInFlight$: Observable<UserProfile | null> | null = null;
+
+  /**
+   * `refresh()` + sonucu `user` signal'ına yazar (null → profil yok, önbellek değişmez). Öğretmen onay durumu
+   * (issue #287) yalnız bu yanıtla gelir. Eşzamanlı çağıranlar tek isteği paylaşır.
+   */
+  refreshProfile(): Observable<UserProfile | null> {
+    if (!this.profileRefreshInFlight$) {
+      this.profileRefreshInFlight$ = this.refresh().pipe(
+        tap((profile) => {
+          if (profile) {
+            this.setUser(profile);
+          }
+          // Güncel profil artık tek kaynak: 403 kaynaklı geçici işaret kaldırılır.
+          this.teacherNotApprovedByServer.set(false);
+        }),
+        finalize(() => (this.profileRefreshInFlight$ = null)),
+        shareReplay({ bufferSize: 1, refCount: false })
+      );
+    }
+    return this.profileRefreshInFlight$;
+  }
+
+  /** Yönlendirme + profil yenilemesi sürüyor mu (aynı anda gelen 403'ler tek kez işlenir). */
+  private handlingTeacherNotApproved = false;
+
+  /**
+   * Issue #287: bir uç 403 `TeacherNotApproved` döndü. Menü hemen kapanır, kullanıcı (zaten orada değilse) bir kez
+   * başvuru durumu sayfasına yönlendirilir ve profil yenilenir. Yenileme bitene kadar gelen diğer 403'ler yok sayılır;
+   * durum sayfası öğretmen uçlarını çağırmadığı için döngü oluşmaz. Teacher rolü olmayanlar etkilenmez.
+   */
+  handleTeacherNotApproved(): void {
+    if (!this.hasRealmRole('Teacher') || this.isTeacherApprovalExempt()) {
+      return;
+    }
+    this.teacherNotApprovedByServer.set(true);
+    if (this.handlingTeacherNotApproved) {
+      return;
+    }
+    this.handlingTeacherNotApproved = true;
+
+    const currentPath = this.router.url.split(/[?#]/)[0];
+    if (currentPath !== TEACHER_APPROVAL_PENDING_URL) {
+      void this.router.navigateByUrl(TEACHER_APPROVAL_PENDING_URL);
+    }
+    this.refreshProfile()
+      .pipe(finalize(() => (this.handlingTeacherNotApproved = false)))
+      .subscribe({ error: () => undefined });
   }
 
   /** Devam eden token yenilemesi; eşzamanlı çağıranlar aynı isteği paylaşır (issue #241). */

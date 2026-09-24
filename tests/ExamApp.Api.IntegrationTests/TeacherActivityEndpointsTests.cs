@@ -37,8 +37,8 @@ public class TeacherActivityEndpointsTests(IntegrationApiFactory factory) : Inte
             db.Grades.Add(grade);
             await db.SaveChangesAsync();
 
-            var owner = new Teacher { UserId = OwnerId, SchoolId = null, IsIndependentTutor = true };
-            var otherTeacher = new Teacher { UserId = OtherTeacherId, SchoolId = null, IsIndependentTutor = true };
+            var owner = new Teacher { UserId = OwnerId, SchoolId = null, IsIndependentTutor = true, AccountApprovedAt = DateTime.UtcNow };
+            var otherTeacher = new Teacher { UserId = OtherTeacherId, SchoolId = null, IsIndependentTutor = true, AccountApprovedAt = DateTime.UtcNow };
             var a = new Student { UserId = StudentAUserId, StudentNumber = "A1", SchoolName = "S", GradeId = grade.Id };
             var b = new Student { UserId = StudentBUserId, StudentNumber = "B1", SchoolName = "S", GradeId = grade.Id };
             db.AddRange(owner, otherTeacher, a, b);

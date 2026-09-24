@@ -52,6 +52,7 @@
     "parentHint": "Hesabınızı veli olarak tamamlamak üzeresiniz. Çocuklarınızı daha sonra profilinizden ekleyebilirsiniz.",
     "success": "Kayıt tamamlandı!",
     "error": "Kayıt başarısız! Lütfen tekrar deneyin.",
+    "teacherAccountPending": "Öğretmen kaydınız alındı; hesabınız yönetici onayı bekliyor.",
     "schoolApprovalPendingTitle": "Okul bağlantınız yönetici onayı bekliyor",
     "schoolApprovalPendingBody": "Hesabınız oluşturuldu. Okul bağlantınız bir yönetici tarafından onaylanana kadar okulun öğrencilerini ve sınıflarını göremezsiniz."
   },

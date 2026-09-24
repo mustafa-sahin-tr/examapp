@@ -83,6 +83,7 @@ public class ExamEndpointsTests(IntegrationApiFactory factory) : IntegrationTest
             await db.SaveChangesAsync();
         });
 
+        await SeedApprovedTeacherAsync(1); // issue #287
         var client = await ClientAsAsync(1, "Teacher", "kc-t", "Teacher");
         var page = await client.GetFromJsonAsync<List<WorksheetDto>>("/api/worksheet/latest?pageNumber=1&pageSize=1", Json);
         page!.Single().Name.ShouldBe("New");

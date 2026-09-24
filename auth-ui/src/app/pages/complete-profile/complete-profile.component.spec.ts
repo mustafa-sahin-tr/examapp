@@ -276,6 +276,7 @@ describe('CompleteProfileComponent', () => {
         approvalStatus: 0,
         requestedSchoolId: 1,
         schoolApprovalPending: true,
+        teacherAccountApproved: true,
       }),
     );
 
@@ -287,7 +288,90 @@ describe('CompleteProfileComponent', () => {
     localStorage.removeItem('user_role');
 
     expect(component.schoolApprovalPending()).toBeTrue();
+    expect(component.accountApprovalPending()).toBeFalse();
     expect(component.isLoading()).toBeFalse();
+  });
+
+  // ── Issue #287: yeni öğretmen hesabı yönetici onayı bekler ─────────────────
+
+  for (const scenario of [
+    { name: 'NoSchoolNotIndependent', form: { isIndependentTutor: false, schoolId: null }, schoolPending: false },
+    { name: 'Independent', form: { isIndependentTutor: true, schoolId: null }, schoolPending: false },
+    { name: 'SchoolRequest', form: { isIndependentTutor: false, schoolId: 1 }, schoolPending: true },
+  ]) {
+    it(`onSubmit_Teacher${scenario.name}AccountNotApproved_ShowsAccountPendingCardAndContinuesToPendingPage`, () => {
+      const fixture = createComponent({ role: 'teacher' });
+      fixture.detectChanges();
+      const component = fixture.componentInstance;
+      const redirectSpy = spyOn(component, 'redirectTo');
+      authServiceSpy.isCachedUserCurrent.and.returnValue(false);
+      authServiceSpy.registerTeacherProfile.and.returnValue(
+        of({
+          accessToken: 'token',
+          expiresIn: 3600,
+          profileId: 99,
+          approvalStatus: 0,
+          requestedSchoolId: scenario.schoolPending ? 1 : null,
+          schoolApprovalPending: scenario.schoolPending,
+          teacherAccountApproved: false,
+        }),
+      );
+
+      component.teacherForm.setValue(scenario.form);
+      component.onSubmit();
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user_role');
+      fixture.detectChanges();
+
+      expect(component.accountApprovalPending()).toBeTrue();
+      expect(component.schoolApprovalPending()).toBe(scenario.schoolPending);
+      expect(redirectSpy).not.toHaveBeenCalled();
+      expect(fixture.nativeElement.querySelector('[data-testid="account-approval-pending"]')).not.toBeNull();
+
+      component.continueAfterPending();
+      expect(redirectSpy).toHaveBeenCalledOnceWith('/teacher-approval-pending');
+    });
+  }
+
+  it('onSubmit_TeacherAccountNotApprovedWithServerMessage_ShowsServerMessageInCard', () => {
+    const fixture = createComponent({ role: 'teacher' });
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    spyOn(component, 'redirectTo');
+    authServiceSpy.isCachedUserCurrent.and.returnValue(false);
+    authServiceSpy.registerTeacherProfile.and.returnValue(
+      of({
+        accessToken: 'token',
+        expiresIn: 3600,
+        profileId: 99,
+        approvalStatus: 0,
+        requestedSchoolId: null,
+        schoolApprovalPending: false,
+        teacherAccountApproved: false,
+        message: 'Öğretmen kaydınız alındı; hesabınız yönetici onayı bekliyor.',
+      }),
+    );
+
+    component.teacherForm.setValue({ isIndependentTutor: false, schoolId: null });
+    component.onSubmit();
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_role');
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="account-approval-message"]')?.textContent?.trim(),
+    ).toBe('Öğretmen kaydınız alındı; hesabınız yönetici onayı bekliyor.');
+  });
+
+  it('continueAfterPending_OnlySchoolApprovalPending_GoesToTests', () => {
+    const fixture = createComponent({ role: 'teacher' });
+    const component = fixture.componentInstance;
+    const redirectSpy = spyOn(component, 'redirectTo');
+    component.schoolApprovalPending.set(true);
+
+    component.continueAfterPending();
+
+    expect(redirectSpy).toHaveBeenCalledOnceWith('/tests');
   });
 
   it('onSubmit_TeacherRegistrationConflict409_SetsSubmitErrorKeepsFormOpen', () => {

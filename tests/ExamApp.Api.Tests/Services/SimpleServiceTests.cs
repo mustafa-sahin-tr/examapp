@@ -1072,6 +1072,7 @@ public class SimpleServiceTests : IDisposable
         {
             var teacher = ctx.Teachers.Single(t => t.Id == teacherId);
             teacher.ApprovalStatus = TeacherApprovalStatus.Approved;
+            teacher.AccountApprovedAt = DateTime.UtcNow; // issue #287: gerçek bir onay hesap onayını da yazar
             await ctx.SaveChangesAsync();
         }
 

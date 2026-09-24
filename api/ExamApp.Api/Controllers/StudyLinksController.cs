@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Teachers.Authorization;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Helpers;
@@ -41,6 +42,7 @@ public class StudyLinksController : BaseController
 
     /// <summary>Konu (topicId) veya alt konu (subTopicId) linkleri — yönetim ekranı, pasifler dahil.</summary>
     [HttpGet]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [Authorize(Roles = ManagerRoles)]
     public async Task<IActionResult> List([FromQuery] TopicStudyLinkQueryDto query, CancellationToken ct)
     {
@@ -53,6 +55,7 @@ public class StudyLinksController : BaseController
     }
 
     [HttpGet("{id:int}")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [Authorize(Roles = ManagerRoles)]
     public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
@@ -65,6 +68,7 @@ public class StudyLinksController : BaseController
     }
 
     [HttpPost]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [EnableRateLimiting(StudyLinkWriteRateLimiting.Policy)]
     [Authorize(Roles = ManagerRoles)]
     public async Task<IActionResult> Create([FromBody] CreateTopicStudyLinkDto request, CancellationToken ct)
@@ -81,6 +85,7 @@ public class StudyLinksController : BaseController
     }
 
     [HttpPut("{id:int}")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [EnableRateLimiting(StudyLinkWriteRateLimiting.Policy)]
     [Authorize(Roles = ManagerRoles)]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateTopicStudyLinkDto request, CancellationToken ct)
@@ -94,6 +99,7 @@ public class StudyLinksController : BaseController
     }
 
     [HttpDelete("{id:int}")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [EnableRateLimiting(StudyLinkWriteRateLimiting.Policy)]
     [Authorize(Roles = ManagerRoles)]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
@@ -108,6 +114,7 @@ public class StudyLinksController : BaseController
 
     /// <summary>Bir kapsamdaki linklerin gösterim sırasını toplu günceller; güncel listeyi döner.</summary>
     [HttpPut("reorder")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [EnableRateLimiting(StudyLinkWriteRateLimiting.Policy)]
     [Authorize(Roles = ManagerRoles)]
     public async Task<IActionResult> Reorder([FromBody] ReorderTopicStudyLinksDto request, CancellationToken ct)

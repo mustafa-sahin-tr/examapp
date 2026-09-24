@@ -5,8 +5,10 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Tutors;
+using ExamApp.Api.Services.Dashboard;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.TeacherApprovals;
+using ExamApp.Api.Services.Teachers;
 using ExamApp.Api.Services.Tenancy;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Localization;
@@ -35,16 +37,26 @@ public class TeacherService : ITeacherService
     // DI'siz (birim test) kurulumda varsayılan (24 saat).
     private readonly TeacherSchoolRequestOptions _schoolRequestOptions;
 
+    // issue #265: aktivite pencereleri yerel (varsayılan Europe/Istanbul) takvim günüdür. DI'siz kurulumda varsayılan takvim.
+    private readonly ILocalDayCalendar _dayCalendar;
+
+    // issue #265: iki aktivite ucunun ortak toplaması tek hesapta paylaşılır. DI'siz (birim test) kurulumda önbellek yok.
+    private readonly ITeacherActivityCache? _activityCache;
+
     public TeacherService(AppDbContext context, IAuthApiClient authApiClient,
         IStringLocalizer<Messages>? localizer = null,
         ISchoolAccessPolicy? schoolAccessPolicy = null,
-        IOptions<TeacherSchoolRequestOptions>? schoolRequestOptions = null)
+        IOptions<TeacherSchoolRequestOptions>? schoolRequestOptions = null,
+        ILocalDayCalendar? dayCalendar = null,
+        ITeacherActivityCache? activityCache = null)
     {
         _context = context;
         _authApiClient = authApiClient;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _schoolAccessPolicy = schoolAccessPolicy ?? new SchoolAccessPolicy(context);
         _schoolRequestOptions = schoolRequestOptions?.Value ?? new TeacherSchoolRequestOptions();
+        _dayCalendar = dayCalendar ?? LocalDayCalendar.Default;
+        _activityCache = activityCache;
     }
 
     /// <summary>
@@ -907,7 +919,7 @@ public class TeacherService : ITeacherService
             .AsNoTracking()
             .CountAsync(wa => wa.CreateUserId == teacherId && wa.CreateTime >= cutoff, ct);
 
-        var activity = await GetStudentActivityAsync(requester, cutoff, ct);
+        var activity = await GetStudentActivityCachedAsync(requester, cutoff, ct);
 
         return new TeacherOwnActivitySummaryDto
         {
@@ -919,7 +931,7 @@ public class TeacherService : ITeacherService
 
     public async Task<TeacherStudentsActivitySummaryDto> GetStudentsActivitySummaryAsync(SchoolScope requester, int days, CancellationToken ct = default)
     {
-        var activity = await GetStudentActivityAsync(requester, ActivityCutoff(days), ct);
+        var activity = await GetStudentActivityCachedAsync(requester, ActivityCutoff(days), ct);
 
         var top = activity
             .OrderByDescending(a => a.QuestionsSolved)
@@ -953,11 +965,29 @@ public class TeacherService : ITeacherService
     }
 
     /// <summary>
-    /// Bugün (UTC) dahil son <paramref name="days"/> takvim günü — admin dashboard trendleriyle
-    /// (DashboardService.GetTrendsAsync) aynı pencere tanımı.
+    /// Bugün dahil son <paramref name="days"/> YEREL takvim gününün başlangıcı (UTC anı) — issue #265: gün sınırı
+    /// <c>Dashboard:TimeZone</c> (varsayılan Europe/Istanbul); TR 00:00-03:00 arası artık bir önceki güne sayılmaz.
+    /// Admin dashboard trendleriyle (DashboardService.GetTrendsAsync) aynı pencere tanımı (<see cref="ILocalDayCalendar"/>).
     /// </summary>
-    private static DateTime ActivityCutoff(int days)
-        => DateTime.UtcNow.Date.AddDays(-(Math.Clamp(days, ActivityMinDays, ActivityMaxDays) - 1));
+    private DateTime ActivityCutoff(int days)
+        => _dayCalendar.LastDays(Math.Clamp(days, ActivityMinDays, ActivityMaxDays)).StartUtc;
+
+    /// <summary>
+    /// issue #265: <see cref="GetStudentActivityAsync"/>'i iki aktivite ucu arasında paylaştırır (bkz. <see cref="ITeacherActivityCache"/>).
+    /// Anahtar = öğretmen + kapsam (okul / kısıtsız) + pencere başlangıcı; pencere başlangıcı days'i, saat dilimini ve yerel
+    /// tarihi zaten kodlar — gün dönünce ya da farklı days'te ayrı girdi olur. Paylaşılan liste salt okunur kullanılır.
+    /// </summary>
+    private async Task<IReadOnlyList<StudentActivity>> GetStudentActivityCachedAsync(
+        SchoolScope requester, DateTime cutoff, CancellationToken ct)
+    {
+        if (_activityCache is null)
+            return await GetStudentActivityAsync(requester, cutoff, ct);
+
+        var key = string.Create(System.Globalization.CultureInfo.InvariantCulture,
+            $"teacher-activity:v1:{requester.UserId}:{requester.SchoolId?.ToString() ?? "-"}:{requester.IsUnrestricted}:{cutoff.Ticks}");
+        return await _activityCache.GetOrCreateAsync<IReadOnlyList<StudentActivity>>(
+            key, async token => await GetStudentActivityAsync(requester, cutoff, token), ct);
+    }
 
     /// <summary>
     /// issue #56: öğretmenin kendi worksheet'lerine atanan öğrencilerin (dashboard/lagging ile aynı kapsam, #222/#235)

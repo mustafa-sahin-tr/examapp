@@ -15,7 +15,15 @@ public class DashboardServiceTrendsTests : IDisposable
 {
     private readonly TestDb _db = TestDb.Create();
 
-    private DashboardService NewService(AppDbContext ctx) => new(ctx);
+    /// <summary>
+    /// issue #265: gün kovaları yerel (Europe/Istanbul, UTC+3) gündür. "Şimdi" bugünün UTC 12:00'ına sabitlenir: bu anda
+    /// TR tarihi UTC tarihiyle aynıdır ve UTC gece yarısı (TR 03:00) aynı TR gününe düşer — aşağıdaki UTC-gün tabanlı
+    /// senaryolar koşunun saatinden bağımsız (eskiden 21:00-24:00 UTC arasında kayabilirdi) aynı sonucu verir.
+    /// </summary>
+    private DashboardService NewService(AppDbContext ctx) => new(ctx, IstanbulAt(Today.AddHours(12)));
+
+    private static LocalDayCalendar IstanbulAt(DateTime utcNow)
+        => new(LocalDayCalendar.DefaultTimeZoneId, new FixedTimeProvider(new DateTimeOffset(utcNow, TimeSpan.Zero)));
 
     /// <summary>Bugünün UTC tarihi, testler boyunca sabit referans olarak kullanılır.</summary>
     private static DateTime Today => DateTime.UtcNow.Date;
@@ -444,6 +452,54 @@ public class DashboardServiceTrendsTests : IDisposable
         var result = await NewService(check).GetTrendsAsync(7);
 
         result.StudentLogin.First().Count.ShouldBe(1);
+    }
+
+    // ---- issue #265: yerel (Europe/Istanbul) gün kovaları ----
+
+    private static DateTime Utc(int y, int mo, int d, int h, int mi = 0) => new(y, mo, d, h, mi, 0, DateTimeKind.Utc);
+
+    [Fact]
+    public async Task GetTrendsAsync_BucketsByIstanbulDay_NotUtcDay()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            await AddLoginEventAsync(ctx, Utc(2026, 9, 24, 22, 30), "Student", success: true); // 25 Eylül 01:30 TR
+            await AddLoginEventAsync(ctx, Utc(2026, 9, 24, 20, 59), "Student", success: true); // 24 Eylül 23:59 TR
+            await AddWorksheetSolvedAsync(ctx, Utc(2026, 9, 24, 21, 0));                       // 25 Eylül 00:00 TR
+            var q = await AddQuestionAsync(ctx);
+            await SetQuestionCreateTimeAsync(ctx, q, Utc(2026, 9, 18, 20, 59));                // 18 Eylül 23:59 TR → pencere dışı
+        }
+
+        await using var check = _db.NewContext();
+        var result = await new DashboardService(check, IstanbulAt(Utc(2026, 9, 25, 10, 0))).GetTrendsAsync(7);
+
+        result.StudentLogin.Select(p => p.Date).ShouldBe(
+            Enumerable.Range(19, 7).Select(d => new DateOnly(2026, 9, d)));
+        result.StudentLogin.Single(p => p.Date == new DateOnly(2026, 9, 25)).Count.ShouldBe(1);
+        result.StudentLogin.Single(p => p.Date == new DateOnly(2026, 9, 24)).Count.ShouldBe(1);
+        result.QuestionSolved.Single(p => p.Date == new DateOnly(2026, 9, 25)).Count.ShouldBe(1);
+        result.QuestionSolved.Single(p => p.Date == new DateOnly(2026, 9, 24)).Count.ShouldBe(0);
+        result.QuestionCreated.Where(p => p.Date == new DateOnly(2026, 9, 19)).ShouldAllBe(p => p.Count == 0);
+    }
+
+    [Fact]
+    public async Task GetTrendsAsync_DstZone_TransitionDayIsCountedAsOneLocalDay()
+    {
+        // Yapılandırılabilir bölge: Europe/Berlin 25 Ekim 2026 25 saatlik gün (03:00 CEST → 02:00 CET).
+        await using (var ctx = _db.NewContext())
+        {
+            await AddLoginEventAsync(ctx, Utc(2026, 10, 24, 22, 30), "Student", success: true); // 25 Ekim 00:30 CEST
+            await AddLoginEventAsync(ctx, Utc(2026, 10, 25, 22, 30), "Student", success: true); // 25 Ekim 23:30 CET
+            await AddLoginEventAsync(ctx, Utc(2026, 10, 25, 23, 30), "Student", success: true); // 26 Ekim 00:30 CET
+        }
+
+        var berlin = new LocalDayCalendar("Europe/Berlin", new FixedTimeProvider(new DateTimeOffset(Utc(2026, 10, 27, 12, 0))));
+        await using var check = _db.NewContext();
+        var result = await new DashboardService(check, berlin).GetTrendsAsync(5);
+
+        result.StudentLogin.Single(p => p.Date == new DateOnly(2026, 10, 25)).Count.ShouldBe(2);
+        result.StudentLogin.Single(p => p.Date == new DateOnly(2026, 10, 26)).Count.ShouldBe(1);
+        result.StudentLogin.Sum(p => p.Count).ShouldBe(3);
     }
 
     public void Dispose() => _db.Dispose();

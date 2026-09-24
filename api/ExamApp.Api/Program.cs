@@ -237,6 +237,21 @@ builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionClassificatio
 builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionQueryService, ExamApp.Api.Services.Questions.QuestionQueryService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionOwnershipGuard, ExamApp.Api.Services.Questions.QuestionOwnershipGuard>(); // issue #287 H1
 builder.Services.AddScoped<IAuthApiClient, AuthApiClient>();
+// issue #265: dashboard gün sınırı yerel takvim (Dashboard:TimeZone, varsayılan Europe/Istanbul; geçersiz kimlik başlangıçta
+// düşer) + iki öğretmen aktivite ucunun ortak toplamasını paylaşan kısa ömürlü süreç içi önbellek.
+builder.Services.AddOptions<ExamApp.Api.Services.Dashboard.DashboardOptions>()
+    .BindConfiguration(ExamApp.Api.Services.Dashboard.DashboardOptions.SectionName)
+    .ValidateDataAnnotations()
+    .Validate(o => ExamApp.Api.Services.Dashboard.LocalDayCalendar.IsKnownTimeZone(o.TimeZone),
+        "Dashboard:TimeZone geçerli bir IANA saat dilimi kimliği olmalı (örn. Europe/Istanbul).")
+    .ValidateOnStart();
+builder.Services.AddSingleton<ExamApp.Api.Services.Dashboard.ILocalDayCalendar>(sp =>
+    new ExamApp.Api.Services.Dashboard.LocalDayCalendar(
+        sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Dashboard.DashboardOptions>>(),
+        sp.GetService<TimeProvider>() ?? TimeProvider.System));
+builder.Services.AddSingleton<ExamApp.Api.Services.Teachers.ITeacherActivityCache>(sp =>
+    new ExamApp.Api.Services.Teachers.TeacherActivityCache(
+        sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Dashboard.DashboardOptions>>()));
 builder.Services.AddScoped<ITeacherService, TeacherService>();
 // issue #277 (madde 3/4): veli kaydı servisi + register sonrası UserRoleChangedEvent yazıcısı.
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentService, ExamApp.Api.Services.Parents.ParentService>();
@@ -305,6 +320,8 @@ builder.Services.AddScoped<IStudentResetScheduler, StudentResetScheduler>();
 builder.Services.AddStudentSelfResetRateLimiting();
 // issue #61: çalışma linki yazma uçları (POST/PUT/DELETE/reorder) için sub başına bellek içi sabit pencere.
 builder.Services.AddStudyLinkWriteRateLimiting();
+// issue #265: öğretmen aktivite uçları — öğretmen (sub) başına dağıtık sabit pencere (#262 sayaç altyapısı).
+builder.Services.AddTeacherActivityRateLimiting();
 
 // PostgreSQL & EF Core (Aspire client integration — reads ConnectionStrings:DefaultConnection,
 // same key as before, so standalone `dotnet run` against appsettings.json is unaffected).

@@ -440,16 +440,9 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
 
     /// <summary>
     /// Yalnızca unique index ihlali yutulur; FK/bağlantı gibi diğer DbUpdateException'lar yukarı fırlar.
-    /// Postgres: SqlState 23505. SQLite (yalnız test sağlayıcısı; Api projesi paketi referanslamaz):
-    /// hata kodu 19 = SQLITE_CONSTRAINT, mesajda "UNIQUE constraint failed".
+    /// Kural tek yerde: <see cref="ExamApp.Api.Helpers.DbUpdateExceptionClassifier"/> (issue #259).
     /// </summary>
-    public static bool IsUniqueViolation(DbUpdateException ex) => ex.InnerException switch
-    {
-        PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } => true,
-        DbException db when db.GetType().Name == "SqliteException"
-            && db.Message.Contains("UNIQUE constraint failed", StringComparison.Ordinal) => true,
-        _ => false
-    };
+    public static bool IsUniqueViolation(DbUpdateException ex) => ExamApp.Api.Helpers.DbUpdateExceptionClassifier.IsUniqueViolation(ex);
 
     /// <summary>İhlal edilen unique index hangi tabloya ait (mesaj seçimi için); çözülemezse null.</summary>
     private static UniqueIndexKind? ViolatedIndex(DbUpdateException ex)

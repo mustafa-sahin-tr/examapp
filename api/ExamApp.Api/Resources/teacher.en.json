@@ -10,6 +10,7 @@
     "savedSchoolApprovalPending": "Teacher saved; your school membership is awaiting administrator approval.",
     "studentRecordExists": "An account with a student record cannot register as a teacher.",
     "registrationChangeNotAllowed": "The school or independent-teacher information of an existing teacher record cannot be changed in this step.",
+    "registrationConflict": "Your registration was created by another request at the same time. Please refresh and try again.",
     "updated": "Teacher updated successfully.",
     "themeUpdated": "Theme preference updated.",
     "themeUpdateFailed": "An error occurred while updating the theme.",

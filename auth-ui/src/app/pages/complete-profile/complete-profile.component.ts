@@ -186,9 +186,18 @@ export class CompleteProfileComponent implements OnInit {
           this.submitError.set(body?.message || 'Mevcut öğretmen kaydınızın okul bilgisi bu adımla değiştirilemez.');
           return;
         }
+        // Issue #259: öğrenci ucunda 409 gövdeli gelirse (student.schoolLocked / student.registrationConflict)
+        // sunucu mesajını göster, formda kal. Gövdesiz 409 = profil zaten tamamlanmış (eski davranış).
+        if (role === 'Student' && err?.status === 409) {
+          const body = err.error as RegisterErrorBody | null;
+          if (body?.message) {
+            this.submitError.set(body.message);
+            return;
+          }
+        }
         if (err?.status === 409) {
           this.snackBar.open('Profiliniz zaten tamamlanmış.', 'Tamam', { duration: 3000 });
-          window.location.href = role === 'Parent' ? '/dashboard' : '/tests';
+          this.redirectTo(role === 'Parent' ? '/dashboard' : '/tests');
           return;
         }
         // Issue #255: token geçerli ama hesap profili sunucuda çözülemedi → 404. Oturum geçersiz
@@ -209,6 +218,11 @@ export class CompleteProfileComponent implements OnInit {
         this.snackBar.open('Profil tamamlanamadı. Lütfen tekrar deneyin.', 'Kapat', { duration: 3000 });
       },
     });
+  }
+
+  /** Tam sayfa yönlendirme; spec'lerde gerçek navigasyonu engellemek için ayrı metot. */
+  redirectTo(url: string): void {
+    window.location.href = url;
   }
 
   private buildRequest(role: AppRole): Observable<RegisterProfileResponse | RegisterTeacherResponse> {

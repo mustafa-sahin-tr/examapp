@@ -6,7 +6,7 @@
     "allSubjects": "All",
     "subjectsError": "The subject list could not be loaded.",
     "price": "Price",
-    "priceGroup": "Price range",
+    "priceGroup": "Price range (₺)",
     "minPlaceholder": "Min",
     "maxPlaceholder": "Max",
     "minPriceAria": "Minimum price",

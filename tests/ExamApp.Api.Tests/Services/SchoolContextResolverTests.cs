@@ -2,6 +2,7 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
 using ExamApp.Api.Tests.Support;
+using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Tests.Services;
 
@@ -223,32 +224,33 @@ public class SchoolContextResolverTests : IDisposable
     }
 
     [Fact]
-    public async Task ResolveSchoolIdAsync_MultipleTeachers_ReturnsFirst()
+    public async Task ResolveSchoolIdAsync_SoftDeletedAndLiveTeacherRows_ReturnsTheLiveRow_AndASecondLiveRowIsRejected()
     {
         var school1Id = await SeedSchoolAsync("Okul 1");
         var school2Id = await SeedSchoolAsync("Okul 2");
 
+        // issue #259: Teachers.UserId canlı satırlar için unique (filtreli index) — soft-delete edilmiş eski satır
+        // yanında tek canlı satır olabilir; resolver silinmiş satırı (global !IsDeleted filtresi) görmez.
         await using (var ctx = _db.NewContext())
         {
-            // Aynı UserId ile iki Teacher satırı (schema tarafından bu tutarsızlık kontrol edilmelidir,
-            // fakat test verisi olarak, resolver FirstOrDefault dönecektir).
             ctx.Teachers.AddRange(
-                new Teacher { UserId = 701, SchoolId = school1Id },
+                new Teacher { UserId = 701, SchoolId = school1Id, IsDeleted = true },
                 new Teacher { UserId = 701, SchoolId = school2Id }
             );
             await ctx.SaveChangesAsync();
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.Teachers.Add(new Teacher { UserId = 701, SchoolId = school1Id });
+            await Should.ThrowAsync<DbUpdateException>(() => ctx.SaveChangesAsync());
         }
 
         await using var testCtx = _db.NewContext();
         var resolver = NewResolver(testCtx);
         var user = new UserProfileDto { Id = 701, KeycloakId = "kc-701", Role = "Teacher" };
 
-        var result = await resolver.ResolveSchoolIdAsync(user);
-
-        // FirstOrDefaultAsync'in order'ı belirsiz, fakat schema'da UserId unique olmalı.
-        // Bu test data integrity'yi gösterir — production'da bu duruma düşülmemeli.
-        result.ShouldNotBeNull();
-        (result == school1Id || result == school2Id).ShouldBeTrue();
+        (await resolver.ResolveSchoolIdAsync(user)).ShouldBe(school2Id);
     }
 
     // ---- Security: Teachers row takes precedence over Students row (issue #234) ----

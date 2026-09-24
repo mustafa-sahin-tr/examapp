@@ -315,17 +315,27 @@ public class WorksheetAssignmentServiceTests : IDisposable
     [InlineData(WorksheetTeacherSharing.Private)]
     [InlineData(WorksheetTeacherSharing.PublicView)]
     [InlineData(WorksheetTeacherSharing.PublicAssignable)]
-    public async Task AssignWorksheetAsync_OwnerOrAdmin_SucceedsRegardlessOfSharing(WorksheetTeacherSharing sharing)
+    public async Task AssignWorksheetAsync_Owner_SucceedsRegardlessOfSharing(WorksheetTeacherSharing sharing)
     {
         var (ws, student, _) = await SeedAsync(sharing);
 
-        await using (var ctx = _db.NewContext())
-            (await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentId: student), userId: OwnerUserId, isAdmin: false))
-                .Success.ShouldBeTrue();
+        await using var ctx = _db.NewContext();
+        (await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentId: student), userId: OwnerUserId, isAdmin: false))
+            .Success.ShouldBeTrue();
+    }
 
-        var (ws2, student2, _) = await SeedAsync(sharing);
-        await using var ctx2 = _db.NewContext();
-        (await NewService(ctx2).AssignAsUserAsync(ctx2, Req(ws2, studentId: student2), userId: 12345, isAdmin: true))
+    // issue #259: sahip/admin senaryoları ayrı testte — aynı DB'ye iki kez SeedAsync aynı UserId'li ikinci canlı
+    // Teachers/Students satırını yazardı (filtreli unique index reddeder).
+    [Theory]
+    [InlineData(WorksheetTeacherSharing.Private)]
+    [InlineData(WorksheetTeacherSharing.PublicView)]
+    [InlineData(WorksheetTeacherSharing.PublicAssignable)]
+    public async Task AssignWorksheetAsync_Admin_SucceedsRegardlessOfSharing(WorksheetTeacherSharing sharing)
+    {
+        var (ws, student, _) = await SeedAsync(sharing);
+
+        await using var ctx = _db.NewContext();
+        (await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentId: student), userId: 12345, isAdmin: true))
             .Success.ShouldBeTrue();
     }
 

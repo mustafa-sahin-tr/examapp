@@ -7,6 +7,8 @@
     "registered": "Student registered successfully.",
     "schoolNotFound": "The selected school was not found.",
     "teacherRecordExists": "An account with a teacher record cannot register as a student.",
+    "schoolLocked": "Your school cannot be changed after registration. Contact a system administrator to change it.",
+    "registrationConflict": "Your registration was updated by another request at the same time. Please refresh and try again.",
     "gradeUpdated": "Student grade updated successfully.",
     "invalidFile": "Invalid file.",
     "reset": {

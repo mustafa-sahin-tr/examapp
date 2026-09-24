@@ -307,6 +307,55 @@ describe('CompleteProfileComponent', () => {
     expect(component.schoolApprovalPending()).toBeFalse();
     expect(routerSpy.navigate).not.toHaveBeenCalled();
   });
+
+  // ── Issue #259: öğrenci kaydında okul kilidi / eşzamanlı kayıt 409'ları ────
+
+  function submitStudentWith409(error: unknown) {
+    const fixture = createComponent({ role: 'student' });
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    authServiceSpy.registerStudentProfile.and.returnValue(
+      throwError(() => new HttpErrorResponse({ status: 409, error })),
+    );
+    const openSpy = spyOn(fixture.debugElement.injector.get(MatSnackBar), 'open');
+    const redirectSpy = spyOn(component, 'redirectTo');
+
+    component.studentForm.setValue({ studentNumber: '123', schoolId: 2, gradeId: 10 });
+    component.onSubmit();
+    fixture.detectChanges();
+    return { fixture, component, openSpy, redirectSpy };
+  }
+
+  it('onSubmit_StudentSchoolLocked409WithMessage_ShowsServerMessageAndStaysOnForm', () => {
+    const errorMsg = 'Okul bilgisi ilk kayıttan sonra değiştirilemez.';
+    const { fixture, component, openSpy, redirectSpy } = submitStudentWith409({ message: errorMsg });
+
+    expect(component.submitError()).toBe(errorMsg);
+    expect(component.isLoading()).toBeFalse();
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(redirectSpy).not.toHaveBeenCalled();
+    expect(routerSpy.navigate).not.toHaveBeenCalled();
+    const alert = fixture.nativeElement.querySelector('[role="alert"]') as HTMLElement | null;
+    expect(alert?.textContent).toContain(errorMsg);
+  });
+
+  it('onSubmit_StudentRegistrationConflict409WithMessage_ShowsServerMessageAndStaysOnForm', () => {
+    const errorMsg = 'Kaydınız şu anda başka bir istekle işleniyor, lütfen tekrar deneyin.';
+    const { component, openSpy, redirectSpy } = submitStudentWith409({ message: errorMsg });
+
+    expect(component.submitError()).toBe(errorMsg);
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(redirectSpy).not.toHaveBeenCalled();
+  });
+
+  it('onSubmit_Student409WithoutBody_KeepsAlreadyCompletedSnackbarAndRedirectsToTests', () => {
+    const { component, openSpy, redirectSpy } = submitStudentWith409(null);
+
+    expect(openSpy).toHaveBeenCalledWith('Profiliniz zaten tamamlanmış.', 'Tamam', jasmine.any(Object));
+    expect(redirectSpy).toHaveBeenCalledWith('/tests');
+    expect(component.submitError()).toBeNull();
+  });
+
   it('onSubmit_ParentRegistrationProfileNotResolved404_SetsSubmitErrorWithoutRedirect', () => {
     const fixture = createComponent({ role: 'parent' });
     fixture.detectChanges();

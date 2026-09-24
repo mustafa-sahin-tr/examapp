@@ -1679,6 +1679,10 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("SchoolId");
 
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasFilter("NOT \"IsDeleted\"");
+
                     b.ToTable("Students");
                 });
 
@@ -2110,6 +2114,10 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("RequestedSchoolId");
 
                     b.HasIndex("SchoolId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasFilter("NOT \"IsDeleted\"");
 
                     b.HasIndex("IsIndependentTutor", "ApprovalStatus");
 

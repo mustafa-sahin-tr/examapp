@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, OnInit } from '@angular/core';
 import { FormGroup, Validators, FormArray, FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -144,41 +145,45 @@ export class QuestionComponent implements OnInit {
   }
 
   loadQuestion() {
-    this.questionService.get(this.id!).subscribe((question) => {
-      this.questionForm.patchValue({
-        text: question.text,
-        subText: question.subText,
-        image: question.imageUrl,
-        subjectId: question.subjectId,
-        topicId: question.topicId,
-        subtopicId: question.subjectId,
-        point: 10,
-        isExample: question.isExample,
-        practiceCorrectAnswer: question.practiceCorrectAnswer,
-        answerColCount: question.answerColCount,
-        hasPassage: question.passage && question.passage.id > 0,
-        passageId: question.passage?.id || 0,
-        passageText: question.passage?.text,
-        passageImage: question.passage?.imageUrl,
-        passageTitle: question.passage?.title,
-      });
+    this.questionService.get(this.id!).subscribe({
+      // Issue #287: soru uçları yetkisiz/sahibi olmayan kullanıcıya gövdesiz 403 döner — sayfa boş kalmasın.
+      error: (err: HttpErrorResponse) => this.notify(err?.status === 403 ? 'common.forbidden' : 'common.loadError'),
+      next: (question) => {
+        this.questionForm.patchValue({
+          text: question.text,
+          subText: question.subText,
+          image: question.imageUrl,
+          subjectId: question.subjectId,
+          topicId: question.topicId,
+          subtopicId: question.subjectId,
+          point: 10,
+          isExample: question.isExample,
+          practiceCorrectAnswer: question.practiceCorrectAnswer,
+          answerColCount: question.answerColCount,
+          hasPassage: question.passage && question.passage.id > 0,
+          passageId: question.passage?.id || 0,
+          passageText: question.passage?.text,
+          passageImage: question.passage?.imageUrl,
+          passageTitle: question.passage?.title,
+        });
 
-      const answerArray = this.questionForm.get('answers') as FormArray;
-      answerArray.clear();
-      for (let i = 0; i < question.answers.length; i++) {
-        answerArray.push(
-          new FormGroup({
-            text: new FormControl(question.answers[i].text),
-            image: new FormControl(question.answers[i].imageUrl),
-          })
-        );
-        if (question.answers[i].id === question.correctAnswer?.id) {
-          this.questionForm.patchValue({ correctAnswer: i });
+        const answerArray = this.questionForm.get('answers') as FormArray;
+        answerArray.clear();
+        for (let i = 0; i < question.answers.length; i++) {
+          answerArray.push(
+            new FormGroup({
+              text: new FormControl(question.answers[i].text),
+              image: new FormControl(question.answers[i].imageUrl),
+            })
+          );
+          if (question.answers[i].id === question.correctAnswer?.id) {
+            this.questionForm.patchValue({ correctAnswer: i });
+          }
         }
-      }
 
-      this.onSubjectChange();
-      this.onTopicChange();
+        this.onSubjectChange();
+        this.onTopicChange();
+      },
     });
   }
 
@@ -414,7 +419,8 @@ export class QuestionComponent implements OnInit {
       },
       error: (err) => {
         console.error('Hata oluştu:', err);
-        alert(this.tr('common.saveError'));
+        // Issue #287: başkasının sorusunu düzenleme / yetkisiz rol → gövdesiz 403.
+        alert(this.tr(err?.status === 403 ? 'common.forbidden' : 'common.saveError'));
       },
     });
 

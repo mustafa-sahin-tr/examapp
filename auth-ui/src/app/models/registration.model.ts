@@ -39,6 +39,8 @@ export interface RegisterTeacherResponse extends RegisterProfileResponse {
    * kadar kapalıdır; kullanıcı ana uygulamadaki başvuru durumu sayfasına yönlendirilir.
    */
   teacherAccountApproved: boolean;
+  /** Issue #287 (review): yerelleştirilmiş sunucu metni; eski sunucularda yok → istemci metni gösterilir. */
+  message?: string;
 }
 
 /** 400 / 409 hata gövdesi (409 → teacher.registrationChangeNotAllowed, localize). */

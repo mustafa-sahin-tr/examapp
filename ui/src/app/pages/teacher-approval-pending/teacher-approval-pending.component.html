@@ -66,6 +66,10 @@
                 <h2>{{ t('pending.title') }}</h2>
                 <p>{{ t('pending.body') }}</p>
                 <p class="tap__muted">{{ t('pending.hint') }}</p>
+                <p class="tap__muted" data-testid="tutor-profile-hint">
+                  {{ t('pending.tutorProfileHint') }}
+                  <a routerLink="/tutor-profile" data-testid="tutor-profile-link">{{ t('pending.tutorProfileLink') }}</a>
+                </p>
               </div>
             </div>
           }

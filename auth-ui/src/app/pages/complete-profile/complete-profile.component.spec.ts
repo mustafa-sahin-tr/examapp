@@ -333,6 +333,36 @@ describe('CompleteProfileComponent', () => {
     });
   }
 
+  it('onSubmit_TeacherAccountNotApprovedWithServerMessage_ShowsServerMessageInCard', () => {
+    const fixture = createComponent({ role: 'teacher' });
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    spyOn(component, 'redirectTo');
+    authServiceSpy.isCachedUserCurrent.and.returnValue(false);
+    authServiceSpy.registerTeacherProfile.and.returnValue(
+      of({
+        accessToken: 'token',
+        expiresIn: 3600,
+        profileId: 99,
+        approvalStatus: 0,
+        requestedSchoolId: null,
+        schoolApprovalPending: false,
+        teacherAccountApproved: false,
+        message: 'Öğretmen kaydınız alındı; hesabınız yönetici onayı bekliyor.',
+      }),
+    );
+
+    component.teacherForm.setValue({ isIndependentTutor: false, schoolId: null });
+    component.onSubmit();
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_role');
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="account-approval-message"]')?.textContent?.trim(),
+    ).toBe('Öğretmen kaydınız alındı; hesabınız yönetici onayı bekliyor.');
+  });
+
   it('continueAfterPending_OnlySchoolApprovalPending_GoesToTests', () => {
     const fixture = createComponent({ role: 'teacher' });
     const component = fixture.componentInstance;

@@ -10,7 +10,9 @@
   "pending": {
     "title": "Başvurunuz inceleniyor",
     "body": "Öğretmen kaydınız alındı ve bir yönetici tarafından inceleniyor. Onaylanana kadar sınav oluşturma, çalışma içerikleri, soru transferi, randevular ve öğretmen paneli kapalıdır.",
-    "hint": "Karar verildiğinde bildirim alırsınız; durumu dilediğiniz zaman bu sayfadan yenileyebilirsiniz."
+    "hint": "Karar verildiğinde bildirim alırsınız; durumu dilediğiniz zaman bu sayfadan yenileyebilirsiniz.",
+    "tutorProfileHint": "Bağımsız özel ders öğretmeni olarak başvurduysanız, onay beklerken özel ders profilinizi hazırlayabilirsiniz:",
+    "tutorProfileLink": "Özel ders profilim"
   },
   "rejected": {
     "title": "Başvurunuz reddedildi",

@@ -13,7 +13,10 @@
       @if (accountApprovalPending()) {
       <div class="notice" role="status" data-testid="account-approval-pending">
         <strong>Öğretmen hesabın yönetici onayı bekliyor</strong>
-        <p>Öğretmen kaydın alındı. Hesabın bir yönetici tarafından onaylanana kadar sınav oluşturma, çalışma içerikleri ve öğretmen paneli gibi öğretmen özellikleri kapalıdır. Başvurunun durumunu bir sonraki sayfadan takip edebilirsin.</p>
+        @if (accountApprovalMessage(); as message) {
+        <p data-testid="account-approval-message">{{ message }}</p>
+        }
+        <p>Hesabın bir yönetici tarafından onaylanana kadar sınav oluşturma, çalışma içerikleri ve öğretmen paneli gibi öğretmen özellikleri kapalıdır. Başvurunun durumunu bir sonraki sayfadan takip edebilirsin.</p>
       </div>
       }
       @if (schoolApprovalPending()) {

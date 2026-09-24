@@ -38,6 +38,11 @@ interface MenuItem {
   roles?: string[];
   /** Issue #287: yalnız hesabı onaylanmamış öğretmene görünür (başvuru durumu girişi). */
   onlyUnapprovedTeacher?: boolean;
+  /**
+   * Issue #287: Teacher'a özel olduğu hâlde onay bekleyen öğretmene de açık (backend izin verir) — ör. özel ders
+   * profili, bağımsız öğretmen başvurusunun formudur. Başvuru türü profilde olmadığından tüm onaysızlara gösterilir.
+   */
+  allowUnapprovedTeacher?: boolean;
 }
 
 @Component({
@@ -172,7 +177,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'tutors', labelKey: 'menu.tutors', icon: 'person_search', route: '/tutors', type: 'menu', roles: ['Student'] },
     { id: 'my-bookings', labelKey: 'menu.myBookings', icon: 'event_available', route: '/my-bookings', type: 'menu', roles: ['Student'] },
     { id: 'students', labelKey: 'menu.students', icon: 'people', route: '/students', type: 'menu', roles: ['Teacher'] },
-    { id: 'tutor-profile', labelKey: 'menu.tutorProfile', icon: 'cast_for_education', route: '/tutor-profile', type: 'menu', roles: ['Teacher'] },
+    { id: 'tutor-profile', labelKey: 'menu.tutorProfile', icon: 'cast_for_education', route: '/tutor-profile', type: 'menu', roles: ['Teacher'], allowUnapprovedTeacher: true },
     { id: 'availability', labelKey: 'menu.availability', icon: 'event_available', route: '/availability', type: 'menu', roles: ['Teacher'] },
     { id: 'booking-requests', labelKey: 'menu.bookingRequests', icon: 'inbox', route: '/booking-requests', type: 'menu', roles: ['Teacher'] },
     { id: 'access-requests', labelKey: 'menu.accessRequests', icon: 'how_to_reg', route: '/assignment-permission-requests', type: 'menu', roles: ['Teacher'] },
@@ -214,7 +219,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     if (!item.roles) {
       return true;
     }
-    const roles = unapprovedTeacher ? this.userRoles.filter((r) => r !== 'Teacher') : this.userRoles;
+    const roles =
+      unapprovedTeacher && !item.allowUnapprovedTeacher ? this.userRoles.filter((r) => r !== 'Teacher') : this.userRoles;
     return item.roles.some((r) => roles.includes(r));
   }
 

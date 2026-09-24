@@ -70,7 +70,8 @@ export const routes: Routes = [
       {
         path: 'tests',
         component: WorksheetListComponent,
-        canActivate: [authGuard],
+        // Issue #287: teacher girişi /tests'e düşer; onaysız öğretmen resolver (exam/list) çalışmadan durum sayfasına gider.
+        canActivate: [authGuard, approvedTeacherGuard],
         resolve: { worksheets: worksheetListResolver },
       },
       // Two-step onboarding: step 1 role picker (skipped when the role is known
@@ -90,13 +91,18 @@ export const routes: Routes = [
       {
         path: 'tests-enhanced',
         component: WorksheetListEnhancedComponent,
-        canActivate: [authGuard],
+        // Issue #287: teacher girişi /tests'e düşer; onaysız öğretmen resolver (exam/list) çalışmadan durum sayfasına gider.
+        canActivate: [authGuard, approvedTeacherGuard],
         resolve: { worksheets: worksheetListResolver },
       },
       { path: 'questions/view', component: QuestionViewComponent, canActivate: [authGuard] },
-      { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponentv3, canActivate: [authGuard] },
-      { path: 'testsolve/v2/:testInstanceId', component: TestSolveCanvasComponentv2, canActivate: [authGuard] },
-      { path: 'test/:testId', component: WorksheetDetailComponent, canActivate: [authGuard] },
+      { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponentv3, canActivate: [authGuard, approvedTeacherGuard] },
+      {
+        path: 'testsolve/v2/:testInstanceId',
+        component: TestSolveCanvasComponentv2,
+        canActivate: [authGuard, approvedTeacherGuard],
+      },
+      { path: 'test/:testId', component: WorksheetDetailComponent, canActivate: [authGuard, approvedTeacherGuard] },
       { path: 'student-profile', component: StudentProfileComponent, canActivate: [authGuard] },
       { path: 'exam', component: TestCreateEnhancedComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },
       { path: 'exam/:id', component: TestCreateEnhancedComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },
@@ -182,8 +188,9 @@ export const routes: Routes = [
       },
       {
         // Issue #95: bağımsız öğretmenin özel ders profili (dersler, ücret, online/yüz yüze).
+        // Issue #287: onay bekleyen öğretmene de açık — bağımsız öğretmen başvurusunun formu (backend izin verir).
         path: 'tutor-profile',
-        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
+        canActivate: [authGuard, roleGuard('Teacher')],
         loadComponent: () =>
           import('./pages/tutor-profile/tutor-profile.component').then((m) => m.TutorProfileComponent),
       },

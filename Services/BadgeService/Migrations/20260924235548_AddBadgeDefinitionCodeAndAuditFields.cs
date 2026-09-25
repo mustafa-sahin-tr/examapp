@@ -88,9 +88,6 @@ namespace BadgeService.Migrations
                 maxLength: 128,
                 nullable: true);
 
-            // Issue #148 owner decision #3/#4: pre-existing badges were already being evaluated for
-            // everyone, so the migration must not silently disable them — default IsActive to true for
-            // both the backfill and any future row that doesn't set it explicitly.
             migrationBuilder.AddColumn<bool>(
                 name: "IsActive",
                 table: "BadgeDefinitions",
@@ -119,11 +116,12 @@ namespace BadgeService.Migrations
                 nullable: true);
 
             // Backfill Code for rows created by BadgeSeeder before this issue (#148) existed, matched by
-            // the Name it seeded them with (see BadgeSeeder.SeedAsync for the same Code assignments used
-            // going forward). Anything not matched below (should not happen — no admin-CRUD existed yet,
-            // so every row was seeder-created) gets a generated fallback Code so the NOT NULL/unique
-            // constraints added below can never fail the migration outright; such a row would need a
-            // manual look before trusting it, so it's tagged obviously ("legacy-<hash>") rather than guessed.
+            // the Name it seeded them with (see BadgeSeederTests.SeedAsync_name_to_code_mapping_covers_...
+            // for the test that keeps this list and BadgeSeeder.BuildDesiredBadges in sync). Anything not
+            // matched below (should not happen — no admin-CRUD existed yet, so every row was
+            // seeder-created) gets a generated fallback Code so the NOT NULL/unique constraints added
+            // below can never fail the migration outright; such a row would need a manual look before
+            // trusting it, so it's tagged obviously ("legacy-<hash>") rather than guessed.
             migrationBuilder.Sql(@"
                 UPDATE ""BadgeDefinitions"" SET ""Code"" = 'first-answer' WHERE ""Name"" = 'İlk Cevap';
                 UPDATE ""BadgeDefinitions"" SET ""Code"" = 'correct-streak-5' WHERE ""Name"" = '5 Doğru Üst Üste';
@@ -184,6 +182,39 @@ namespace BadgeService.Migrations
                 oldType: "character varying(64)",
                 oldMaxLength: 64,
                 oldNullable: true);
+
+            // Code review follow-up (#148, NIT): rows the seeder inserted before this migration existed
+            // have no CreatedBy (the column didn't exist yet) — attribute them to the seeder explicitly
+            // rather than leaving a NULL that would misleadingly read as "unknown human admin".
+            migrationBuilder.Sql(@"
+                UPDATE ""BadgeDefinitions"" SET ""CreatedBy"" = 'system-seed' WHERE ""CreatedBy"" IS NULL;
+            ");
+
+            // Code review follow-up (#148, SHOULD-FIX): 21 pre-existing rows use the legacy rule-config
+            // key names BadgeRuleEvaluator has always accepted as aliases (count/streak/days/
+            // targetMinutes/minutes) instead of the canonical "target" the admin API now always reads and
+            // writes. Normalize them so every row in the DB uses the same shape from here on — restricted
+            // to object-shaped configs that don't already have "target", so it's a no-op for the "bare
+            // number" configs some rows use (e.g. "5") and can never double-write. The evaluator keeps
+            // reading the legacy aliases regardless (safety net for anything this misses).
+            migrationBuilder.Sql(@"
+                UPDATE ""BadgeDefinitions""
+                SET ""RuleConfigJson"" = (
+                    (""RuleConfigJson""::jsonb - 'count' - 'streak' - 'days' - 'targetMinutes' - 'minutes')
+                    || jsonb_build_object('target',
+                        COALESCE(
+                            (""RuleConfigJson""::jsonb->>'count')::int,
+                            (""RuleConfigJson""::jsonb->>'streak')::int,
+                            (""RuleConfigJson""::jsonb->>'days')::int,
+                            (""RuleConfigJson""::jsonb->>'targetMinutes')::int,
+                            (""RuleConfigJson""::jsonb->>'minutes')::int
+                        )
+                    )
+                )::text
+                WHERE jsonb_typeof(""RuleConfigJson""::jsonb) = 'object'
+                  AND NOT (""RuleConfigJson""::jsonb ? 'target')
+                  AND (""RuleConfigJson""::jsonb ?| array['count','streak','days','targetMinutes','minutes']);
+            ");
 
             migrationBuilder.CreateIndex(
                 name: "IX_BadgeDefinitions_Code",

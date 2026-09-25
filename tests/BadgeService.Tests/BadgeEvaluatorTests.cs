@@ -171,6 +171,17 @@ public class BadgeEvaluatorTests : IDisposable
     }
 
     [Fact]
+    public async Task TotalStudyTimeMinutes_rule_also_accepts_the_legacy_targetMinutes_key()
+    {
+        // Code review follow-up (#148, SHOULD-FIX): the migration normalizes this legacy key to "target"
+        // for existing rows, but the evaluator must keep accepting it as a safety net for any row that
+        // migration missed (e.g. a non-object/bare-value config, or a future manual DB edit).
+        var earned = await EarnsAsync(7, Badge("TotalStudyTimeMinutes", """{"targetMinutes": 10}"""), ctx =>
+            ctx.StudentQuestionAggregates.Add(new StudentQuestionAggregate { Id = Guid.NewGuid(), UserId = 7, TotalTimeSeconds = 700 }));
+        earned.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task TotalCorrectAnswers_rule()
     {
         var earned = await EarnsAsync(2, Badge("TotalCorrectAnswers", """{"correct": 5}"""), ctx =>
@@ -286,6 +297,43 @@ public class BadgeEvaluatorTests : IDisposable
 
         (await Progress(1)).ShouldBeNull();
         (await BadgeEarnedCount(1)).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Raising_the_target_after_a_badge_is_earned_does_not_un_earn_it()
+    {
+        // Code review follow-up (#148, SHOULD-FIX): once BadgeEarned exists, it's the permanent record —
+        // an admin raising the threshold afterwards must not flip the (recomputed) progress row back to
+        // "not completed".
+        Guid definitionId;
+        await using (var ctx = _db.NewContext())
+        {
+            var badge = Badge("AnswerCount", "{\"target\":5}");
+            definitionId = badge.Id;
+            ctx.BadgeDefinitions.Add(badge);
+            ctx.StudentQuestionAggregates.Add(new StudentQuestionAggregate { Id = Guid.NewGuid(), UserId = 8, TotalQuestions = 5 });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using (var ctx = _db.NewContext())
+            await NewEvaluator(ctx).EvaluateAnswerSubmittedAsync(8, "c");
+
+        (await BadgeEarnedCount(8)).ShouldBe(1);
+        (await Progress(8))!.IsCompleted.ShouldBeTrue();
+
+        // Admin raises the target well above the student's current total — no new questions answered.
+        await using (var ctx = _db.NewContext())
+        {
+            var definition = await ctx.BadgeDefinitions.SingleAsync(x => x.Id == definitionId);
+            definition.RuleConfigJson = "{\"target\":500}";
+            await ctx.SaveChangesAsync();
+        }
+
+        await using (var ctx = _db.NewContext())
+            await NewEvaluator(ctx).EvaluateAnswerSubmittedAsync(8, "c");
+
+        (await BadgeEarnedCount(8)).ShouldBe(1); // still exactly one BadgeEarned row — never removed
+        (await Progress(8))!.IsCompleted.ShouldBeTrue(); // progress row still reads "completed"
     }
 
     public void Dispose() => _db.Dispose();

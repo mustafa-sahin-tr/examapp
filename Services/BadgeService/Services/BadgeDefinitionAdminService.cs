@@ -93,9 +93,13 @@ public class BadgeDefinitionAdminService
 
         var totalCount = await query.CountAsync(cancellationToken);
 
+        // Code review follow-up (#148, SHOULD-FIX): Category/Name aren't unique — without a final
+        // tie-breaker, Skip/Take pages aren't guaranteed stable across requests (the DB is free to order
+        // ties differently each time), which can duplicate or skip rows between pages. Code is unique.
         var rows = await query
             .OrderBy(x => x.Category)
             .ThenBy(x => x.Name)
+            .ThenBy(x => x.Code)
             .Skip(skip)
             .Take(take)
             .ToListAsync(cancellationToken);
@@ -114,8 +118,15 @@ public class BadgeDefinitionAdminService
     {
         var errors = new List<RuleValidationError>();
 
+        // Code review follow-up (#148, NIT): trim before validating length/format, not just before
+        // storing — otherwise "  " + 100 significant chars can pass length validation but fail once
+        // trimmed at save (or vice versa: pure whitespace already caught by the required-field checks).
+        var iconUrl = Normalize(request.IconUrl);
+        var pathKey = Normalize(request.PathKey);
+        var pathName = Normalize(request.PathName);
+
         ValidateCode(request.Code, errors);
-        ValidateCommonFields(request.Name, request.Description, request.IconUrl, request.Category, request.PathKey, request.PathName, request.PathOrder, errors);
+        ValidateCommonFields(request.Name, request.Description, iconUrl, request.Category, pathKey, pathName, request.PathOrder, errors);
 
         var ruleValid = BadgeRuleTypeCatalog.TryValidateAndNormalize(
             request.RuleType, request.RuleConfigJson, out var normalizedConfig, out var ruleErrors, _logger);
@@ -148,12 +159,12 @@ public class BadgeDefinitionAdminService
             Code = trimmedCode,
             Name = request.Name.Trim(),
             Description = request.Description?.Trim() ?? string.Empty,
-            IconUrl = string.IsNullOrWhiteSpace(request.IconUrl) ? null : request.IconUrl.Trim(),
+            IconUrl = iconUrl,
             Category = request.Category.Trim(),
             RuleType = ResolveCanonicalRuleType(request.RuleType),
             RuleConfigJson = normalizedConfig,
-            PathKey = request.PathKey,
-            PathName = request.PathName,
+            PathKey = pathKey,
+            PathName = pathName,
             PathOrder = request.PathOrder,
             IsActive = true,
             CreatedBy = actorId,
@@ -198,7 +209,12 @@ public class BadgeDefinitionAdminService
         }
 
         var errors = new List<RuleValidationError>();
-        ValidateCommonFields(request.Name, request.Description, request.IconUrl, request.Category, request.PathKey, request.PathName, request.PathOrder, errors);
+
+        var iconUrl = Normalize(request.IconUrl);
+        var pathKey = Normalize(request.PathKey);
+        var pathName = Normalize(request.PathName);
+
+        ValidateCommonFields(request.Name, request.Description, iconUrl, request.Category, pathKey, pathName, request.PathOrder, errors);
 
         var ruleValid = BadgeRuleTypeCatalog.TryValidateAndNormalize(
             request.RuleType, request.RuleConfigJson, out var normalizedConfig, out var ruleErrors, _logger);
@@ -214,12 +230,12 @@ public class BadgeDefinitionAdminService
         // (AsNoTracking, no caching), so the new rule/threshold applies to future evaluations only.
         entity.Name = request.Name.Trim();
         entity.Description = request.Description?.Trim() ?? string.Empty;
-        entity.IconUrl = string.IsNullOrWhiteSpace(request.IconUrl) ? null : request.IconUrl.Trim();
+        entity.IconUrl = iconUrl;
         entity.Category = request.Category.Trim();
         entity.RuleType = ResolveCanonicalRuleType(request.RuleType);
         entity.RuleConfigJson = normalizedConfig;
-        entity.PathKey = request.PathKey;
-        entity.PathName = request.PathName;
+        entity.PathKey = pathKey;
+        entity.PathName = pathName;
         entity.PathOrder = request.PathOrder;
         entity.UpdatedBy = actorId;
         entity.UpdatedByName = actorName;
@@ -276,6 +292,8 @@ public class BadgeDefinitionAdminService
 
         return null;
     }
+
+    private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static void ValidateCode(string code, List<RuleValidationError> errors)
     {

@@ -50,7 +50,12 @@ public class BadgeDefinitionsAdminController : ControllerBase
         return Ok(new BadgeDefinitionAdminListResponse { Items = page.Items, TotalCount = page.TotalCount });
     }
 
-    [HttpGet("{id:guid}")]
+    // Code review follow-up (#148, BLOCKER): MVC's default SuppressAsyncSuffixInActionNames convention
+    // strips "Async" from the route action name, so the actual registered action name is "Get" — using
+    // nameof(GetAsync) ("GetAsync") in CreatedAtAction below silently fails to resolve the route (500 on
+    // every create, even though the row was already saved). Pin the action name explicitly so both sides
+    // agree regardless of that convention.
+    [HttpGet("{id:guid}", Name = "GetBadgeDefinitionById")]
     public async Task<ActionResult<BadgeDefinitionAdminDto>> GetAsync(Guid id, CancellationToken cancellationToken)
     {
         var item = await _service.GetAsync(id, cancellationToken);
@@ -78,7 +83,7 @@ public class BadgeDefinitionsAdminController : ControllerBase
             return ValidationProblemFrom(result);
         }
 
-        return CreatedAtAction(nameof(GetAsync), new { id = result.Value!.Id }, result.Value);
+        return CreatedAtRoute("GetBadgeDefinitionById", new { id = result.Value!.Id }, result.Value);
     }
 
     [HttpPut("{id:guid}")]

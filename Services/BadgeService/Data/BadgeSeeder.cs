@@ -7,12 +7,13 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using BadgeService.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace BadgeService.Data;
 
 public class BadgeSeeder
 {
-    public static async Task SeedAsync(BadgeDbContext context)
+    public static async Task SeedAsync(BadgeDbContext context, ILogger? logger = null)
     {
         // Issue #148 (owner decision #3): the seeder is a ONE-WAY "insert if missing" operation keyed by
         // the stable Code, never an upsert. Once a Code exists (whether it was created by this seeder on
@@ -23,6 +24,58 @@ public class BadgeSeeder
             .ToListAsync();
         var existingCodeSet = new HashSet<string>(existingCodes, StringComparer.OrdinalIgnoreCase);
 
+        var desiredBadges = BuildDesiredBadges();
+
+        var now = DateTime.UtcNow;
+        var toInsert = desiredBadges.Where(badge => !existingCodeSet.Contains(badge.Code)).ToList();
+
+        foreach (var badge in toInsert)
+        {
+            var entity = new BadgeDefinition
+            {
+                Id = Guid.NewGuid(),
+                Code = badge.Code,
+                Name = badge.Name,
+                Description = badge.Description,
+                Category = badge.Category,
+                RuleType = badge.RuleType,
+                RuleConfigJson = badge.RuleConfigJson,
+                IconUrl = badge.IconUrl,
+                PathKey = badge.PathKey,
+                PathName = badge.PathName,
+                PathOrder = badge.PathOrder,
+                IsActive = true,
+                CreatedBy = "system-seed",
+                CreatedAtUtc = now,
+            };
+            context.BadgeDefinitions.Add(entity);
+
+            try
+            {
+                // Code review follow-up (#148, NIT): saved one row at a time (not batched) so that a
+                // race with ANOTHER BadgeService replica seeding concurrently at startup — both see the
+                // Code missing, both try to insert it — only loses the one colliding row (caught below,
+                // logged, seeding continues) instead of failing the whole batch and every badge that
+                // replica would have inserted this run along with it.
+                await context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                context.Entry(entity).State = EntityState.Detached;
+                logger?.LogWarning(
+                    ex, "BadgeSeeder: '{Code}' kodu zaten mevcut (eşzamanlı replica seed'i olabilir), atlanıyor.", badge.Code);
+            }
+
+            existingCodeSet.Add(badge.Code);
+        }
+    }
+
+    /// <summary>Exposed for BadgeSeederTests (InternalsVisibleTo) to assert coverage against the migration's Code backfill map.</summary>
+    internal static IReadOnlyList<(string Name, string Code)> GetDesiredNameCodePairsForTesting() =>
+        BuildDesiredBadges().Select(b => (b.Name, b.Code)).ToList();
+
+    private static List<BadgeSeed> BuildDesiredBadges()
+    {
         var desiredBadges = new List<BadgeSeed>
         {
             CreateBadge(
@@ -209,38 +262,7 @@ public class BadgeSeeder
                 pathOrder: i + 1));
         }
 
-        var now = DateTime.UtcNow;
-        var toInsert = desiredBadges.Where(badge => !existingCodeSet.Contains(badge.Code)).ToList();
-
-        foreach (var badge in toInsert)
-        {
-            context.BadgeDefinitions.Add(new BadgeDefinition
-            {
-                Id = Guid.NewGuid(),
-                Code = badge.Code,
-                Name = badge.Name,
-                Description = badge.Description,
-                Category = badge.Category,
-                RuleType = badge.RuleType,
-                RuleConfigJson = badge.RuleConfigJson,
-                IconUrl = badge.IconUrl,
-                PathKey = badge.PathKey,
-                PathName = badge.PathName,
-                PathOrder = badge.PathOrder,
-                IsActive = true,
-                CreatedBy = "system-seed",
-                CreatedAtUtc = now,
-            });
-
-            // Guards against duplicate Codes within the desiredBadges list itself (a seeder bug, not a
-            // race) causing a unique-index violation mid-SaveChanges.
-            existingCodeSet.Add(badge.Code);
-        }
-
-        if (toInsert.Count > 0)
-        {
-            await context.SaveChangesAsync();
-        }
+        return desiredBadges;
     }
 
     private static BadgeSeed CreateBadge(

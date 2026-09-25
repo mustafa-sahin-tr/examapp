@@ -91,7 +91,12 @@ public class BadgeEvaluator
             }
 
             progress.CurrentValue = Math.Min(currentValue, progress.TargetValue);
-            progress.IsCompleted = progress.CurrentValue >= progress.TargetValue;
+            // Code review follow-up (#148, SHOULD-FIX): once a badge has been earned, raising its
+            // threshold later must never "un-earn" it — BadgeEarned is the permanent record; a
+            // recomputed CurrentValue dipping back below the new TargetValue must not flip IsCompleted
+            // back to false (StudentReportService also treats "earned" as authoritative, but keeping this
+            // in sync avoids progress.IsCompleted silently disagreeing with BadgeEarned).
+            progress.IsCompleted = progress.CurrentValue >= progress.TargetValue || earnedBadgeIds.Contains(definition.Id);
             progress.LastUpdatedUtc = now;
 
             if (progress.IsCompleted && !earnedBadgeIds.Contains(definition.Id))

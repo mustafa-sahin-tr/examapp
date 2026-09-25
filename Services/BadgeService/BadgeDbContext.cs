@@ -47,6 +47,18 @@ public class BadgeDbContext : DbContext
         modelBuilder.Entity<BadgeDefinition>().Property(x => x.UpdatedBy).HasMaxLength(128);
         modelBuilder.Entity<BadgeDefinition>().Property(x => x.CreatedByName).HasMaxLength(128);
         modelBuilder.Entity<BadgeDefinition>().Property(x => x.UpdatedByName).HasMaxLength(128);
+        // Code review follow-up (#148, NIT): match the migration's column defaults in the model itself so
+        // the snapshot doesn't silently disagree with what's actually in the DB (and so `EnsureCreated()`
+        // — used by the Sqlite test DB, which never runs migrations — gets the same IsActive default).
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.IsActive).HasDefaultValue(true);
+        if (Database.IsNpgsql())
+        {
+            // "now()" is Postgres-specific; Sqlite (test DB, via EnsureCreated) has no equivalent function
+            // configured here, so this default is Npgsql-only — the entity's CreatedAtUtc is always set
+            // explicitly by BadgeSeeder/BadgeDefinitionAdminService before insert anyway, so tests aren't
+            // affected either way.
+            modelBuilder.Entity<BadgeDefinition>().Property(x => x.CreatedAtUtc).HasDefaultValueSql("now()");
+        }
         modelBuilder.Entity<BadgeEarned>().HasKey(x => x.Id);
 
         modelBuilder.Entity<BadgeEarned>()

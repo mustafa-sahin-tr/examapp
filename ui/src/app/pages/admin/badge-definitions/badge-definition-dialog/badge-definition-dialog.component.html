@@ -1,0 +1,219 @@
+<ng-container *transloco="let t; prefix: 'admin.badgeDefinitions.dialog'">
+  <h2 mat-dialog-title>{{ isEdit ? t('editTitle') : t('createTitle') }}</h2>
+
+  <mat-dialog-content class="bd-dialog">
+    <form [formGroup]="form" class="bd-form" (ngSubmit)="save()" novalidate>
+      <!-- Kimlik -->
+      <section class="bd-section">
+        <h3>{{ t('sections.identity') }}</h3>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ t('fields.code') }}</mat-label>
+          <input matInput formControlName="code" data-testid="code" autocomplete="off" />
+          @if (isEdit) {
+            <mat-hint>{{ t('hints.codeImmutable') }}</mat-hint>
+          } @else {
+            <mat-hint>{{ t('hints.code') }}</mat-hint>
+          }
+          <mat-error data-testid="code-error">{{ errorText(form.controls.code) }}</mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ t('fields.name') }}</mat-label>
+          <input matInput formControlName="name" data-testid="name" />
+          <mat-error>{{ errorText(form.controls.name) }}</mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ t('fields.description') }}</mat-label>
+          <textarea matInput rows="2" formControlName="description"></textarea>
+          <mat-hint align="end">{{ form.controls.description.value.length }} / {{ limits.descriptionMax }}</mat-hint>
+          <mat-error>{{ errorText(form.controls.description) }}</mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ t('fields.category') }}</mat-label>
+          <input matInput formControlName="category" data-testid="category" [matAutocomplete]="categoryAuto" />
+          <mat-autocomplete #categoryAuto="matAutocomplete">
+            @for (c of filteredCategories(); track c) {
+              <mat-option [value]="c">{{ c }}</mat-option>
+            }
+          </mat-autocomplete>
+          <mat-hint>{{ t('hints.category') }}</mat-hint>
+          <mat-error>{{ errorText(form.controls.category) }}</mat-error>
+        </mat-form-field>
+
+        <div class="bd-icon-row">
+          <mat-form-field appearance="outline" class="bd-grow">
+            <mat-label>{{ t('fields.iconUrl') }}</mat-label>
+            <input matInput formControlName="iconUrl" data-testid="icon-url" placeholder="achievements/first-answer.svg" />
+            <mat-hint>{{ t('hints.iconUrl') }}</mat-hint>
+            <mat-error>{{ errorText(form.controls.iconUrl) }}</mat-error>
+          </mat-form-field>
+          <div class="bd-icon-preview" [attr.aria-label]="t('iconPreview')">
+            @if (iconPreview() && !iconPreviewFailed()) {
+              <img [src]="iconPreview()" alt="" (error)="iconPreviewFailed.set(true)" data-testid="icon-preview" />
+            } @else {
+              <mat-icon>{{ iconPreviewFailed() ? 'broken_image' : 'military_tech' }}</mat-icon>
+            }
+          </div>
+        </div>
+      </section>
+
+      <!-- Yol (opsiyonel) -->
+      <section class="bd-section">
+        <h3>{{ t('sections.path') }}</h3>
+        <p class="bd-help">{{ t('hints.path') }}</p>
+        <div class="bd-row">
+          <mat-form-field appearance="outline" class="bd-grow">
+            <mat-label>{{ t('fields.pathKey') }}</mat-label>
+            <input matInput formControlName="pathKey" />
+            <mat-error>{{ errorText(form.controls.pathKey) }}</mat-error>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="bd-grow">
+            <mat-label>{{ t('fields.pathName') }}</mat-label>
+            <input matInput formControlName="pathName" />
+            <mat-error>{{ errorText(form.controls.pathName) }}</mat-error>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="bd-order">
+            <mat-label>{{ t('fields.pathOrder') }}</mat-label>
+            <input matInput type="number" step="1" formControlName="pathOrder" />
+            <mat-error>{{ errorText(form.controls.pathOrder) }}</mat-error>
+          </mat-form-field>
+        </div>
+      </section>
+
+      <!-- Kural -->
+      <section class="bd-section" data-testid="rule-section">
+        <h3>{{ t('sections.rule') }}</h3>
+
+        @if (ruleTypesLoading()) {
+          <div class="bd-state" aria-busy="true">
+            <mat-spinner diameter="24"></mat-spinner>
+            <span>{{ t('ruleTypesLoading') }}</span>
+          </div>
+        } @else if (ruleTypesError()) {
+          <div class="bd-state bd-state--error" role="alert">
+            <mat-icon>error_outline</mat-icon>
+            <span>{{ t('ruleTypesFailed') }}</span>
+            <button mat-stroked-button type="button" (click)="loadRuleTypes()">{{ t('retry') }}</button>
+          </div>
+        } @else {
+          <mat-form-field appearance="outline">
+            <mat-label>{{ t('fields.ruleType') }}</mat-label>
+            <mat-select formControlName="ruleType" data-testid="rule-type">
+              @for (rt of ruleTypes(); track rt.ruleType) {
+                <mat-option [value]="rt.ruleType">{{ ruleTypeLabel(rt) }}</mat-option>
+              }
+            </mat-select>
+            @if (schema(); as s) {
+              <mat-hint>{{ ruleTypeHint(s) }}</mat-hint>
+            }
+            <mat-error>{{ errorText(form.controls.ruleType) }}</mat-error>
+          </mat-form-field>
+
+          @if (legacyRuleType(); as legacy) {
+            <p class="bd-help bd-help--warn" role="status">{{ t('legacyRuleType', { ruleType: legacy }) }}</p>
+          }
+
+          @if (schema()) {
+            <div class="bd-rule-fields" [formGroup]="ruleForm">
+              @for (field of plainFields(); track field.name) {
+                @let control = ruleControl(field.name);
+                @if (control) {
+                  <mat-form-field appearance="outline" class="bd-grow">
+                    <mat-label>{{ fieldLabel(field) }}</mat-label>
+                    @if (isInteger(field)) {
+                      <input
+                        matInput
+                        type="number"
+                        step="1"
+                        [attr.min]="field.min"
+                        [attr.max]="field.max"
+                        [formControlName]="field.name"
+                        [attr.data-testid]="'rule-' + field.name"
+                      />
+                      @if (field.min != null && field.max != null) {
+                        <mat-hint>{{ t('hints.range', { min: field.min, max: field.max }) }}</mat-hint>
+                      }
+                    } @else if (field.allowedValues?.length) {
+                      <mat-select [formControlName]="field.name" [attr.data-testid]="'rule-' + field.name">
+                        @for (option of field.allowedValues; track option) {
+                          <mat-option [value]="option">{{ option }}</mat-option>
+                        }
+                      </mat-select>
+                    } @else {
+                      <input matInput [formControlName]="field.name" [attr.data-testid]="'rule-' + field.name" />
+                    }
+                    <mat-error>{{ errorText(control) }}</mat-error>
+                  </mat-form-field>
+                }
+              }
+
+              @if (hasSubject()) {
+                <div class="bd-subject">
+                  @if (subjectsLoading()) {
+                    <div class="bd-state" aria-busy="true">
+                      <mat-spinner diameter="24"></mat-spinner>
+                      <span>{{ t('subjectsLoading') }}</span>
+                    </div>
+                  } @else if (subjectsError()) {
+                    <div class="bd-state bd-state--error" role="alert">
+                      <mat-icon>error_outline</mat-icon>
+                      <span>{{ t('subjectsFailed') }}</span>
+                      <button mat-stroked-button type="button" (click)="loadSubjects()">{{ t('retry') }}</button>
+                    </div>
+                  } @else {
+                    <mat-form-field appearance="outline" class="bd-grow">
+                      <mat-label>{{ t('rule.subject') }}</mat-label>
+                      <mat-select
+                        [value]="selectedSubjectId()"
+                        (selectionChange)="selectSubject($event.value)"
+                        data-testid="rule-subject"
+                      >
+                        @for (s of subjects(); track s.id) {
+                          <mat-option [value]="s.id">{{ s.name }}</mat-option>
+                        }
+                      </mat-select>
+                      @if (unmatchedSubjectName(); as legacyName) {
+                        <mat-hint>{{ t('hints.subjectUnmatched', { name: legacyName }) }}</mat-hint>
+                      }
+                    </mat-form-field>
+                  }
+                  @if (subjectErrorText(); as subjectError) {
+                    <p class="bd-field-error" role="alert" data-testid="subject-error">{{ subjectError }}</p>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          @if (ruleError()) {
+            <p class="bd-field-error" role="alert" data-testid="rule-error">{{ ruleError() }}</p>
+          }
+        }
+      </section>
+
+      @if (error()) {
+        <p class="bd-field-error" role="alert" data-testid="dialog-error">{{ error() }}</p>
+      }
+    </form>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()" [disabled]="submitting()">{{ t('cancel') }}</button>
+    <button
+      mat-flat-button
+      color="primary"
+      type="button"
+      data-testid="save"
+      (click)="save()"
+      [disabled]="submitting() || ruleTypesLoading() || ruleTypesError()"
+    >
+      @if (submitting()) {
+        <mat-spinner diameter="18"></mat-spinner>
+      }
+      {{ t('save') }}
+    </button>
+  </mat-dialog-actions>
+</ng-container>

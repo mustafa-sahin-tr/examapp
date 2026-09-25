@@ -1,0 +1,31 @@
+@use '../../../shared/styles/admin-list';
+
+// Issue #148: rozet tanımları listesi; genel liste dili `_admin-list.scss`'ten gelir.
+
+.bd-icon-cell {
+  width: 48px;
+}
+
+.bd-icon {
+  display: block;
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+
+  &--placeholder {
+    font-size: 28px;
+    color: var(--ms-text-weak);
+  }
+}
+
+.bd-code {
+  font-size: 0.8rem;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--main-bg-color);
+  color: var(--ms-text-medium);
+}
+
+.bd-row--inactive td {
+  opacity: 0.7;
+}

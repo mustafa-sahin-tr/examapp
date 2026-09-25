@@ -29,10 +29,26 @@ public class StudentReportService
             return await BuildEmptyReportAsync(userId, cancellationToken);
         }
 
-        var badgeProgress = await _context.StudentBadgeProgresses
+        // Code review follow-up (#148, SHOULD-FIX): a badge already earned must stay visible/marked
+        // completed even if StudentBadgeProgress.IsCompleted was later recomputed to false (e.g. an admin
+        // raised the threshold after the student had already met the old one) — BadgeEarned is the
+        // permanent record, not the recomputed progress row. Fetch it first so both the visibility filter
+        // and IsCompleted below key off "was this ever earned", not the possibly-stale progress flag.
+        var earnedByBadgeId = await _context.BadgeEarned
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .ToDictionaryAsync(x => x.BadgeDefinitionId, x => x.EarnedDate, cancellationToken);
+
+        var progressRows = await _context.StudentBadgeProgresses
             .AsNoTracking()
             .Include(x => x.BadgeDefinition)
             .Where(x => x.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        // Issue #148: deactivated badges are hidden from the catalog, but a badge the student already
+        // earned stays visible — deactivation must not erase history.
+        var badgeProgress = progressRows
+            .Where(x => x.BadgeDefinition.IsActive || earnedByBadgeId.ContainsKey(x.BadgeDefinitionId))
             .OrderBy(x => x.BadgeDefinition.PathKey == null)
             .ThenBy(x => x.BadgeDefinition.PathName)
             .ThenBy(x => x.BadgeDefinition.PathOrder)
@@ -48,13 +64,10 @@ public class StudentReportService
                 PathOrder = x.BadgeDefinition.PathOrder,
                 CurrentValue = x.CurrentValue,
                 TargetValue = x.TargetValue,
-                IsCompleted = x.IsCompleted,
-                EarnedDateUtc = _context.BadgeEarned
-                    .Where(be => be.UserId == userId && be.BadgeDefinitionId == x.BadgeDefinitionId)
-                    .Select(be => (DateTime?)be.EarnedDate)
-                    .FirstOrDefault()
+                IsCompleted = x.IsCompleted || earnedByBadgeId.ContainsKey(x.BadgeDefinitionId),
+                EarnedDateUtc = earnedByBadgeId.TryGetValue(x.BadgeDefinitionId, out var earnedDate) ? earnedDate : null,
             })
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         var dailyActivities = await _context.StudentDailyActivities
             .AsNoTracking()
@@ -111,8 +124,10 @@ public class StudentReportService
 
         var activitySummary = ActivityAnalytics.Calculate(dailyActivities);
 
+        // Issue #148: no progress rows yet — nothing earned, so only active definitions are shown.
         var definitions = await _context.BadgeDefinitions
             .AsNoTracking()
+            .Where(x => x.IsActive)
             .OrderBy(x => x.PathKey == null)
             .ThenBy(x => x.PathName)
             .ThenBy(x => x.PathOrder)

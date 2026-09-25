@@ -177,7 +177,7 @@ public class AnswerSubmittedIdempotencyTests : IDisposable
         {
             seed.BadgeDefinitions.Add(new BadgeDefinition
             {
-                Id = Guid.NewGuid(), Name = "İlk Adım", Description = "İlk soruyu çöz",
+                Id = Guid.NewGuid(), Code = "test-ilk-adim", Name = "İlk Adım", Description = "İlk soruyu çöz",
                 Category = "General", RuleType = "AnswerCount", RuleConfigJson = "{\"target\":1}",
             });
             await seed.SaveChangesAsync();
@@ -217,7 +217,7 @@ public class AnswerSubmittedIdempotencyTests : IDisposable
         {
             seed.BadgeDefinitions.Add(new BadgeDefinition
             {
-                Id = Guid.NewGuid(), Name = "İlk Adım", Description = "İlk soruyu çöz",
+                Id = Guid.NewGuid(), Code = "test-ilk-adim", Name = "İlk Adım", Description = "İlk soruyu çöz",
                 Category = "General", RuleType = "AnswerCount", RuleConfigJson = "{\"target\":1}",
             });
             await seed.SaveChangesAsync();

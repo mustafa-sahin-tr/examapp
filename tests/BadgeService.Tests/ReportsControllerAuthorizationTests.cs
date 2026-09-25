@@ -213,6 +213,7 @@ public class ReportsControllerAuthorizationTests : IDisposable
         ctx.BadgeDefinitions.Add(new BadgeDefinition
         {
             Id = badgeDefId,
+            Code = "test-badge",
             Name = "Test Badge",
             Description = "Test",
             Category = "Test",

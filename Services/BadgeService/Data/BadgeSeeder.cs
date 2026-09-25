@@ -7,31 +7,92 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using BadgeService.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace BadgeService.Data;
 
 public class BadgeSeeder
 {
-    public static async Task SeedAsync(BadgeDbContext context)
+    public static async Task SeedAsync(BadgeDbContext context, ILogger? logger = null)
     {
-        var existingBadges = await context.BadgeDefinitions
-            .ToDictionaryAsync(x => x.Name, StringComparer.OrdinalIgnoreCase);
+        // Issue #148 (owner decision #3): the seeder is a ONE-WAY "insert if missing" operation keyed by
+        // the stable Code, never an upsert. Once a Code exists (whether it was created by this seeder on
+        // a previous run, or by an admin via the new CRUD API), this method never touches that row again
+        // — an admin's edit to Name/Description/RuleConfigJson/etc. survives every restart.
+        var existingCodes = await context.BadgeDefinitions
+            .Select(x => x.Code)
+            .ToListAsync();
+        var existingCodeSet = new HashSet<string>(existingCodes, StringComparer.OrdinalIgnoreCase);
 
+        var desiredBadges = BuildDesiredBadges();
+
+        var now = DateTime.UtcNow;
+        var toInsert = desiredBadges.Where(badge => !existingCodeSet.Contains(badge.Code)).ToList();
+
+        foreach (var badge in toInsert)
+        {
+            var entity = new BadgeDefinition
+            {
+                Id = Guid.NewGuid(),
+                Code = badge.Code,
+                Name = badge.Name,
+                Description = badge.Description,
+                Category = badge.Category,
+                RuleType = badge.RuleType,
+                RuleConfigJson = badge.RuleConfigJson,
+                IconUrl = badge.IconUrl,
+                PathKey = badge.PathKey,
+                PathName = badge.PathName,
+                PathOrder = badge.PathOrder,
+                IsActive = true,
+                CreatedBy = "system-seed",
+                CreatedAtUtc = now,
+            };
+            context.BadgeDefinitions.Add(entity);
+
+            try
+            {
+                // Code review follow-up (#148, NIT): saved one row at a time (not batched) so that a
+                // race with ANOTHER BadgeService replica seeding concurrently at startup — both see the
+                // Code missing, both try to insert it — only loses the one colliding row (caught below,
+                // logged, seeding continues) instead of failing the whole batch and every badge that
+                // replica would have inserted this run along with it.
+                await context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                context.Entry(entity).State = EntityState.Detached;
+                logger?.LogWarning(
+                    ex, "BadgeSeeder: '{Code}' kodu zaten mevcut (eşzamanlı replica seed'i olabilir), atlanıyor.", badge.Code);
+            }
+
+            existingCodeSet.Add(badge.Code);
+        }
+    }
+
+    /// <summary>Exposed for BadgeSeederTests (InternalsVisibleTo) to assert coverage against the migration's Code backfill map.</summary>
+    internal static IReadOnlyList<(string Name, string Code)> GetDesiredNameCodePairsForTesting() =>
+        BuildDesiredBadges().Select(b => (b.Name, b.Code)).ToList();
+
+    private static List<BadgeSeed> BuildDesiredBadges()
+    {
         var desiredBadges = new List<BadgeSeed>
         {
             CreateBadge(
+                code: "first-answer",
                 name: "İlk Cevap",
                 description: "İlk cevabını verdin!",
                 category: "Çözüm",
                 ruleType: "AnswerCount",
-                config: new { count = 1 },
+                config: new { target = 1 },
                 iconUrl: "achievements/disabled-dark.0085b3.svg"),
             CreateBadge(
+                code: "correct-streak-5",
                 name: "5 Doğru Üst Üste",
                 description: "5 doğru cevap arka arkaya verdin.",
                 category: "Performans",
                 ruleType: "CorrectStreak",
-                config: new { streak = 5 },
+                config: new { target = 5 },
                 iconUrl: "achievements/disabled-dark.041736.svg")
         };
 
@@ -48,6 +109,7 @@ public class BadgeSeeder
         {
             var milestone = questionMilestones[i];
             desiredBadges.Add(CreateBadge(
+                code: $"question-hunter-{i + 1}",
                 name: milestone.Name,
                 description: $"Toplam {milestone.Target} soru çözdün.",
                 category: "Çözüm",
@@ -70,6 +132,7 @@ public class BadgeSeeder
         {
             var milestone = correctMilestones[i];
             desiredBadges.Add(CreateBadge(
+                code: $"accuracy-journey-{i + 1}",
                 name: milestone.Name,
                 description: $"Toplam {milestone.Target} doğru cevap verdin.",
                 category: "Performans",
@@ -97,11 +160,12 @@ public class BadgeSeeder
         {
             var milestone = studyTimeMilestones[i];
             desiredBadges.Add(CreateBadge(
+                code: $"study-time-{i + 1}",
                 name: milestone.Name,
                 description: milestone.Description,
                 category: "Çalışma Süresi",
                 ruleType: "TotalStudyTimeMinutes",
-                config: new { targetMinutes = milestone.Minutes },
+                config: new { target = milestone.Minutes },
                 iconUrl: milestone.Icon,
                 pathKey: "study-time",
                 pathName: "Çalışma Süresi Yolu",
@@ -112,36 +176,41 @@ public class BadgeSeeder
 
         foreach (var subject in subjects)
         {
+            var subjectKey = NormalizeKey(subject);
+
             desiredBadges.Add(CreateBadge(
+                code: $"subject-{subjectKey}-mastery",
                 name: $"{subject} Ustası",
                 description: $"{subject} dersinde 100 soru çözdün.",
                 category: "Ders Bazlı",
                 ruleType: "SubjectAnswerCount",
                 config: new { subjectName = subject, target = 100 },
                 iconUrl: "achievements/disabled-dark.0085b3.svg",
-                pathKey: $"subject-{NormalizeKey(subject)}-answers",
+                pathKey: $"subject-{subjectKey}-answers",
                 pathName: $"{subject} Yolculuğu",
                 pathOrder: 1));
 
             desiredBadges.Add(CreateBadge(
+                code: $"subject-{subjectKey}-expert",
                 name: $"{subject} Uzmanı",
                 description: $"{subject} dersinde 60 doğru cevap verdin.",
                 category: "Ders Bazlı",
                 ruleType: "SubjectCorrectCount",
                 config: new { subjectName = subject, target = 60 },
                 iconUrl: "achievements/disabled-dark.041736.svg",
-                pathKey: $"subject-{NormalizeKey(subject)}-answers",
+                pathKey: $"subject-{subjectKey}-answers",
                 pathName: $"{subject} Yolculuğu",
                 pathOrder: 2));
 
             desiredBadges.Add(CreateBadge(
+                code: $"subject-{subjectKey}-time",
                 name: $"{subject} Zaman Ustası",
                 description: $"{subject} dersinde 5 saat çalıştın.",
                 category: "Ders Bazlı",
                 ruleType: "SubjectStudyTimeMinutes",
-                config: new { subjectName = subject, targetMinutes = 300 },
+                config: new { subjectName = subject, target = 300 },
                 iconUrl: "achievements/disabled-dark.0b4480.svg",
-                pathKey: $"subject-{NormalizeKey(subject)}-answers",
+                pathKey: $"subject-{subjectKey}-answers",
                 pathName: $"{subject} Yolculuğu",
                 pathOrder: 3));
         }
@@ -158,11 +227,12 @@ public class BadgeSeeder
         {
             var milestone = streakMilestones[i];
             desiredBadges.Add(CreateBadge(
+                code: $"streak-{i + 1}",
                 name: milestone.Name,
                 description: $"{milestone.Days} gün üst üste çalıştın.",
                 category: "Streak",
                 ruleType: "DailyStreak",
-                config: new { days = milestone.Days },
+                config: new { target = milestone.Days },
                 iconUrl: milestone.Icon,
                 pathKey: "streak-path",
                 pathName: "İstikrar Yolu",
@@ -180,83 +250,23 @@ public class BadgeSeeder
         {
             var milestone = activeDayMilestones[i];
             desiredBadges.Add(CreateBadge(
+                code: $"active-days-{i + 1}",
                 name: milestone.Name,
                 description: $"Toplam {milestone.Days} günde aktif oldun.",
                 category: "Aktivite",
                 ruleType: "ActiveDays",
-                config: new { days = milestone.Days },
+                config: new { target = milestone.Days },
                 iconUrl: milestone.Icon,
                 pathKey: "activity-journey",
                 pathName: "Aktivite Yolu",
                 pathOrder: i + 1));
         }
 
-        foreach (var badge in desiredBadges)
-        {
-            if (existingBadges.TryGetValue(badge.Name, out var existing))
-            {
-                if (!string.Equals(existing.Description, badge.Description, StringComparison.Ordinal))
-                {
-                    existing.Description = badge.Description;
-                }
-
-                if (!string.Equals(existing.Category, badge.Category, StringComparison.Ordinal))
-                {
-                    existing.Category = badge.Category;
-                }
-
-                if (!string.Equals(existing.RuleType, badge.RuleType, StringComparison.Ordinal))
-                {
-                    existing.RuleType = badge.RuleType;
-                }
-
-                if (!string.Equals(existing.RuleConfigJson, badge.RuleConfigJson, StringComparison.Ordinal))
-                {
-                    existing.RuleConfigJson = badge.RuleConfigJson;
-                }
-
-                if (!string.Equals(existing.IconUrl, badge.IconUrl, StringComparison.Ordinal))
-                {
-                    existing.IconUrl = badge.IconUrl;
-                }
-
-                if (!string.Equals(existing.PathKey, badge.PathKey, StringComparison.Ordinal))
-                {
-                    existing.PathKey = badge.PathKey;
-                }
-
-                if (!string.Equals(existing.PathName, badge.PathName, StringComparison.Ordinal))
-                {
-                    existing.PathName = badge.PathName;
-                }
-
-                if (existing.PathOrder != badge.PathOrder)
-                {
-                    existing.PathOrder = badge.PathOrder;
-                }
-            }
-            else
-            {
-                context.BadgeDefinitions.Add(new BadgeDefinition
-                {
-                    Id = Guid.NewGuid(),
-                    Name = badge.Name,
-                    Description = badge.Description,
-                    Category = badge.Category,
-                    RuleType = badge.RuleType,
-                    RuleConfigJson = badge.RuleConfigJson,
-                    IconUrl = badge.IconUrl,
-                    PathKey = badge.PathKey,
-                    PathName = badge.PathName,
-                    PathOrder = badge.PathOrder
-                });
-            }
-        }
-
-        await context.SaveChangesAsync();
+        return desiredBadges;
     }
 
     private static BadgeSeed CreateBadge(
+        string code,
         string name,
         string description,
         string category,
@@ -268,6 +278,7 @@ public class BadgeSeeder
         int? pathOrder = null)
     {
         return new BadgeSeed(
+            Code: code,
             Name: name,
             Description: description,
             Category: category,
@@ -280,6 +291,7 @@ public class BadgeSeeder
     }
 
     private sealed record BadgeSeed(
+        string Code,
         string Name,
         string Description,
         string Category,

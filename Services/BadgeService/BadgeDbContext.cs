@@ -31,6 +31,34 @@ public class BadgeDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<BadgeDefinition>().HasKey(x => x.Id);
+        // Issue #148: Code is the seeder's non-overwrite key and the admin CRUD API's stable identity.
+        modelBuilder.Entity<BadgeDefinition>()
+            .HasIndex(x => x.Code)
+            .IsUnique();
+        // Security review follow-up (M1): DB-level backstop for the limits BadgeDefinitionAdminService
+        // already enforces (400 field errors) — see BadgeDefinitionAdminService.ValidateFieldLengths.
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.Code).HasMaxLength(64);
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.Name).HasMaxLength(100);
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.Description).HasMaxLength(500);
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.Category).HasMaxLength(100);
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.PathKey).HasMaxLength(100);
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.PathName).HasMaxLength(100);
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.CreatedBy).HasMaxLength(128);
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.UpdatedBy).HasMaxLength(128);
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.CreatedByName).HasMaxLength(128);
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.UpdatedByName).HasMaxLength(128);
+        // Code review follow-up (#148, NIT): match the migration's column defaults in the model itself so
+        // the snapshot doesn't silently disagree with what's actually in the DB (and so `EnsureCreated()`
+        // — used by the Sqlite test DB, which never runs migrations — gets the same IsActive default).
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.IsActive).HasDefaultValue(true);
+        if (Database.IsNpgsql())
+        {
+            // "now()" is Postgres-specific; Sqlite (test DB, via EnsureCreated) has no equivalent function
+            // configured here, so this default is Npgsql-only — the entity's CreatedAtUtc is always set
+            // explicitly by BadgeSeeder/BadgeDefinitionAdminService before insert anyway, so tests aren't
+            // affected either way.
+            modelBuilder.Entity<BadgeDefinition>().Property(x => x.CreatedAtUtc).HasDefaultValueSql("now()");
+        }
         modelBuilder.Entity<BadgeEarned>().HasKey(x => x.Id);
 
         modelBuilder.Entity<BadgeEarned>()

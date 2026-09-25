@@ -280,7 +280,8 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<BadgeDbContext>();
     await dbContext.Database.MigrateAsync();
-    await BadgeSeeder.SeedAsync(dbContext);
+    var seederLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("BadgeSeeder");
+    await BadgeSeeder.SeedAsync(dbContext, seederLogger);
 }
 
 if (isBackfillCommand)

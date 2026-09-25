@@ -146,6 +146,12 @@ public class StudentReportServiceTests : IDisposable
                 Id = Guid.NewGuid(), UserId = 1, BadgeDefinitionId = earnedButNowInactive.Id,
                 CurrentValue = 10, TargetValue = 10, IsCompleted = true,
             });
+            // Code review follow-up (#148, SHOULD-FIX): "earned" is now defined by BadgeEarned existing
+            // (see GetBadgeProgressAsync), not just the recomputed progress row's IsCompleted flag.
+            ctx.BadgeEarned.Add(new BadgeEarned
+            {
+                Id = Guid.NewGuid(), UserId = 1, BadgeDefinitionId = earnedButNowInactive.Id, EarnedDate = DateTime.UtcNow,
+            });
             await ctx.SaveChangesAsync();
         }
 
@@ -154,6 +160,50 @@ public class StudentReportServiceTests : IDisposable
 
         report.BadgeProgress.ShouldNotContain(b => b.BadgeDefinitionId == inactiveNeverStartedId);
         report.BadgeProgress.ShouldContain(b => b.BadgeDefinitionId == inactiveButEarnedId && b.IsCompleted);
+    }
+
+    [Fact]
+    public async Task BadgeProgress_keeps_an_earned_badge_visible_and_completed_after_target_raised_then_deactivated()
+    {
+        // Code review follow-up (#148, SHOULD-FIX): raising a badge's target after it was earned can
+        // recompute StudentBadgeProgress.IsCompleted back to false (BadgeEvaluatorTests covers that it
+        // shouldn't, but this pins down the report's OWN fallback — even if IsCompleted somehow reads
+        // false, a BadgeEarned row must still make the badge visible and shown as completed).
+        Guid badgeId;
+        await using (var ctx = _db.NewContext())
+        {
+            var badge = new BadgeDefinition
+            {
+                Id = Guid.NewGuid(), Code = "raised-then-deactivated", Name = "Yükseltilmiş Hedef", Description = "d",
+                Category = "c", RuleType = "AnswerCount", RuleConfigJson = "{\"target\":500}", IsActive = false,
+            };
+            badgeId = badge.Id;
+            ctx.BadgeDefinitions.Add(badge);
+            ctx.StudentQuestionAggregates.Add(new StudentQuestionAggregate
+            {
+                Id = Guid.NewGuid(), UserId = 1, TotalQuestions = 10, CorrectQuestions = 10,
+            });
+            // Simulates a stale/recomputed progress row: target was raised past the student's current
+            // value, so a naive recompute reads IsCompleted = false — but BadgeEarned says otherwise.
+            ctx.StudentBadgeProgresses.Add(new StudentBadgeProgress
+            {
+                Id = Guid.NewGuid(), UserId = 1, BadgeDefinitionId = badge.Id,
+                CurrentValue = 10, TargetValue = 500, IsCompleted = false,
+            });
+            ctx.BadgeEarned.Add(new BadgeEarned
+            {
+                Id = Guid.NewGuid(), UserId = 1, BadgeDefinitionId = badge.Id, EarnedDate = DateTime.UtcNow,
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var report = await NewService(read).GetBadgeProgressAsync(1);
+
+        var item = report.BadgeProgress.ShouldHaveSingleItem();
+        item.BadgeDefinitionId.ShouldBe(badgeId);
+        item.IsCompleted.ShouldBeTrue();
+        item.EarnedDateUtc.ShouldNotBeNull();
     }
 
     [Fact]

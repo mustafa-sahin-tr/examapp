@@ -95,6 +95,9 @@ public class TeacherDto
     /// <summary>issue #287: öğretmen hesabı admin tarafından onaylandı mı — false iken öğretmen özellikleri 403 TeacherNotApproved.</summary>
     public bool TeacherAccountApproved { get; set; }
 
+    /// <summary>issue #289: öğretmen hesap onayı admin tarafından askıya alındı (neden dönülmez). true iken <see cref="TeacherAccountApproved"/> false.</summary>
+    public bool TeacherAccountSuspended { get; set; }
+
     /// <summary>issue #287: mevcut başvurunun durumu: "Pending" | "Approved" | "Rejected".</summary>
     public string TeacherApplicationStatus { get; set; } = string.Empty;
 

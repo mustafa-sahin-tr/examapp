@@ -44,11 +44,12 @@ public class AdminController : BaseController
     private readonly IAdminPasswordResetService _passwordReset;
     private readonly IAdminAccountStatusService _accountStatus;
     private readonly IAdminStudentSchoolService? _studentSchool;
+    private readonly IAdminTeacherSuspensionService? _teacherSuspension;
 
     // Client'a donen tum metinler mesaj sozlugunden gelir (issue #184).
     private readonly IStringLocalizer<Messages> _localizer;
 
-    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations, ITeacherApprovalService teacherApprovals, IAdminTeacherService adminTeachers, IAdminStudentService adminStudents, IAdminDataAccessAuditService dataAccessAudit, IAdminPasswordResetService passwordReset, IAdminAccountStatusService accountStatus, IStringLocalizer<Messages>? localizer = null, IAdminStudentSchoolService? studentSchool = null)
+    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations, ITeacherApprovalService teacherApprovals, IAdminTeacherService adminTeachers, IAdminStudentService adminStudents, IAdminDataAccessAuditService dataAccessAudit, IAdminPasswordResetService passwordReset, IAdminAccountStatusService accountStatus, IStringLocalizer<Messages>? localizer = null, IAdminStudentSchoolService? studentSchool = null, IAdminTeacherSuspensionService? teacherSuspension = null)
     {
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _taxonomy = taxonomy;
@@ -64,6 +65,7 @@ public class AdminController : BaseController
         _accountStatus = accountStatus;
         // DI her zaman verir; parametre yalnızca mevcut (DI'siz) controller testleri derlenmeye devam etsin diye opsiyonel.
         _studentSchool = studentSchool;
+        _teacherSuspension = teacherSuspension;
     }
 
     private async Task<int> CurrentUserIdAsync()
@@ -459,6 +461,80 @@ public class AdminController : BaseController
             _ => StatusCode(StatusCodes.Status502BadGateway, Message("admin.studentSchool.upstreamFailed"))
         };
     }
+
+    // ---- Öğretmen hesap onayı askıya alma / geri açma (issue #289) ----
+
+    /// <summary>
+    /// POST api/admin/teachers/{id}/suspend, gövde <c>{ "reason": string }</c> → öğretmenin (Teacher.Id) hesap onayını askıya
+    /// alır: öğretmen özellikleri kapanır (ApprovedTeacher policy 403 TeacherNotApproved, Hangfire dashboard reddi). Keycloak
+    /// hesabına DOKUNMAZ (#155 ayrı). Yanıt <c>200</c> <see cref="AdminTeacherSuspensionResponseDto"/>. Neden boş / 500'den
+    /// uzun → 400; öğretmen yok → 404; zaten askıda / hesap hiç onaylanmamış / eşzamanlı değişiklik → 409. Hata gövdesi
+    /// <c>{ message, errorCode }</c> (<see cref="AdminTeacherSuspensionErrorCodes"/>). AdminUserActionLogs'a audit'lenir
+    /// (neden yazılmaz); hesap durumu uçlarıyla aynı admin başına rate limit kovası (429).
+    /// </summary>
+    [HttpPost("teachers/{id:int}/suspend")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [EnableRateLimiting(AdminAccountStatusRateLimiting.Policy)]
+    public async Task<IActionResult> SuspendTeacher(int id, [FromBody] AdminTeacherSuspendRequestDto? request, CancellationToken ct)
+    {
+        var actor = KeyCloakId;
+        if (string.IsNullOrWhiteSpace(actor))
+            return Forbid();
+
+        var result = await TeacherSuspension.SuspendAsync(id, request?.Reason, actor, ct);
+        return SuspensionResult(id, result);
+    }
+
+    /// <summary>
+    /// POST api/admin/teachers/{id}/unsuspend (gövde yok) → askıyı kaldırır: hesap onayı yeniden açılır
+    /// (<c>accountApprovedAt = now</c>), askı alanları temizlenir. Öğretmen yok → 404; askıda değil / eşzamanlı değişiklik
+    /// → 409. Sözleşmenin geri kalanı <see cref="SuspendTeacher"/> ile aynı.
+    /// </summary>
+    [HttpPost("teachers/{id:int}/unsuspend")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [EnableRateLimiting(AdminAccountStatusRateLimiting.Policy)]
+    public async Task<IActionResult> UnsuspendTeacher(int id, CancellationToken ct)
+    {
+        var actor = KeyCloakId;
+        if (string.IsNullOrWhiteSpace(actor))
+            return Forbid();
+
+        var result = await TeacherSuspension.UnsuspendAsync(id, actor, ct);
+        return SuspensionResult(id, result);
+    }
+
+    private IAdminTeacherSuspensionService TeacherSuspension => _teacherSuspension
+        ?? throw new InvalidOperationException("IAdminTeacherSuspensionService is not registered.");
+
+    private IActionResult SuspensionResult(int teacherId, AdminTeacherSuspensionResult result) => result.Status switch
+    {
+        AdminTeacherSuspensionStatus.Success => Ok(new AdminTeacherSuspensionResponseDto
+        {
+            TeacherId = teacherId,
+            AccountApproved = result.AccountApprovedAt != null,
+            AccountSuspended = result.AccountSuspendedAt != null,
+            AccountApprovedAt = result.AccountApprovedAt,
+            AccountSuspendedAt = result.AccountSuspendedAt
+        }),
+        AdminTeacherSuspensionStatus.ReasonRequired => BadRequest(
+            Error("admin.teacherSuspension.reasonRequired", AdminTeacherSuspensionErrorCodes.ReasonRequired)),
+        AdminTeacherSuspensionStatus.ReasonTooLong => BadRequest(new
+        {
+            message = _localizer["admin.teacherSuspension.reasonTooLong", AdminTeacherSuspensionService.ReasonMaxLength].Value,
+            errorCode = AdminTeacherSuspensionErrorCodes.ReasonTooLong
+        }),
+        AdminTeacherSuspensionStatus.TargetNotFound => NotFound(
+            Error("admin.teacherSuspension.teacherNotFound", AdminTeacherSuspensionErrorCodes.TeacherNotFound)),
+        AdminTeacherSuspensionStatus.AccountNotApproved => Conflict(
+            Error("admin.teacherSuspension.accountNotApproved", AdminTeacherSuspensionErrorCodes.AccountNotApproved)),
+        AdminTeacherSuspensionStatus.AlreadySuspended => Conflict(
+            Error("admin.teacherSuspension.alreadySuspended", AdminTeacherSuspensionErrorCodes.AlreadySuspended)),
+        AdminTeacherSuspensionStatus.NotSuspended => Conflict(
+            Error("admin.teacherSuspension.notSuspended", AdminTeacherSuspensionErrorCodes.NotSuspended)),
+        _ => Conflict(Error("admin.teacherSuspension.concurrentChange", AdminTeacherSuspensionErrorCodes.ConcurrentChange))
+    };
+
+    private object Error(string key, string errorCode) => new { message = _localizer[key].Value, errorCode };
 
     private object Message(string key) => new { message = _localizer[key].Value };
 

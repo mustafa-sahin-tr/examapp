@@ -103,6 +103,53 @@ describe('TeacherApprovalPendingComponent (issue #287)', () => {
     expect(text()).toContain('Gerekçe belirtilmedi.');
   });
 
+  it('init_Suspended_ShowsSuspendedStateNotPending (issue #289)', () => {
+    // Askıdaki öğretmenin başvurusu `Approved` kalır; sunucu nedeni dönmez.
+    const suspended = profile({
+      teacherAccountApproved: false,
+      teacherAccountSuspended: true,
+      teacherApplicationStatus: 'Approved',
+    });
+    create(suspended, suspended);
+
+    expect(el().querySelector('[data-view="suspended"]')).not.toBeNull();
+    expect(el().querySelector('[data-view="pending"]')).toBeNull();
+    expect(text()).toContain(teacherApprovalTr.suspended.title);
+    expect(text()).toContain(teacherApprovalTr.suspended.contact);
+    expect(text()).not.toContain(teacherApprovalTr.pending.title);
+    expect(el().querySelector('[data-testid="tutor-profile-link"]')).toBeNull();
+    expect(el().querySelector('[data-testid="refresh"]')).not.toBeNull();
+    expect(el().querySelector('[data-testid="go-dashboard"]')).toBeNull();
+  });
+
+  it('init_SuspendedEvenIfApplicationPending_ShowsSuspended (issue #289)', () => {
+    const suspended = profile({
+      teacherAccountApproved: false,
+      teacherAccountSuspended: true,
+      teacherApplicationStatus: 'Pending',
+    });
+    create(suspended, suspended);
+
+    expect(el().querySelector('[data-view="suspended"]')).not.toBeNull();
+  });
+
+  it('refreshButton_SuspensionLifted_ShowsApproved (issue #289)', () => {
+    const suspended = profile({
+      teacherAccountApproved: false,
+      teacherAccountSuspended: true,
+      teacherApplicationStatus: 'Approved',
+    });
+    create(suspended, suspended);
+    respondWith(
+      profile({ teacherAccountApproved: true, teacherAccountSuspended: false, teacherApplicationStatus: 'Approved' })
+    );
+
+    (el().querySelector('[data-testid="refresh"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(el().querySelector('[data-view="approved"]')).not.toBeNull();
+  });
+
   it('refreshButton_ApprovedMeanwhile_ShowsApprovedStateAndDashboardLink', () => {
     const pending = profile({ teacherAccountApproved: false, teacherApplicationStatus: 'Pending' });
     create(pending, pending);

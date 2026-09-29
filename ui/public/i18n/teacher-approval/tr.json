@@ -33,5 +33,11 @@
     "title": "Öğretmen kaydınız bulunamadı",
     "body": "Hesabınız için tamamlanmış bir öğretmen kaydı yok. Devam etmek için öğretmen kaydını tamamlayın.",
     "cta": "Öğretmen kaydını tamamla"
+  },
+  "suspended": {
+    "title": "Öğretmen hesabınız askıya alındı",
+    "body": "Öğretmen hesabınızın onayı bir yönetici tarafından askıya alındı. Öğretmen özelliklerine (sınav oluşturma, çalışma içerikleri, randevular, öğretmen paneli) erişemezsiniz.",
+    "contact": "Ayrıntı için platform yöneticisiyle iletişime geçin.",
+    "meanwhile": "Hesabınız açık kalır; ayarlar gibi öğretmen özelliği gerektirmeyen sayfaları kullanmaya devam edebilirsiniz."
   }
 }

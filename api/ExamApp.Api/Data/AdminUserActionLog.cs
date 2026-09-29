@@ -58,7 +58,11 @@ public enum AdminUserAction
     /// <summary>issue #157: öğretmen başvurusu (bağımsız öğretmen / okul bağlantısı) reddedildi.</summary>
     TeacherRejected = 5,
     /// <summary>issue #277 (madde 8): admin öğrencinin okulunu değiştirdi (Students.SchoolId).</summary>
-    StudentSchoolChanged = 6
+    StudentSchoolChanged = 6,
+    /// <summary>issue #289: öğretmen hesap onayı askıya alındı (Teachers.AccountApprovedAt → null). Neden buraya YAZILMAZ.</summary>
+    TeacherSuspended = 7,
+    /// <summary>issue #289: öğretmen hesap onayının askısı kaldırıldı (Teachers.AccountApprovedAt yeniden dolu).</summary>
+    TeacherUnsuspended = 8
 }
 
 /// <summary>Admin hesap aksiyonunun sonucu. Kalıcı değer string'dir.</summary>

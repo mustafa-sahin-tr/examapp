@@ -132,6 +132,14 @@
   white-space: nowrap;
   color: var(--ms-warning-text);
   background: var(--ms-warning-surface-weak);
+
+  // Issue #289: hesap onayı askıda — tehlike tonu; onay askıyı kaldırmaz.
+  &--suspended {
+    border-color: var(--ms-danger-border);
+    color: var(--ms-danger-text);
+    background: var(--ms-danger-surface-weak);
+    cursor: help;
+  }
 }
 
 // Issue #187: ret gerekçesi (chip'in altında ikincil satır).

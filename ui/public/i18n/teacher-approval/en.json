@@ -33,5 +33,11 @@
     "title": "No teacher record found",
     "body": "Your account does not have a completed teacher record. Complete the teacher registration to continue.",
     "cta": "Complete teacher registration"
+  },
+  "suspended": {
+    "title": "Your teacher account has been suspended",
+    "body": "An administrator has suspended the approval of your teacher account. You cannot access teacher features (creating exams, study content, bookings, teacher dashboard).",
+    "contact": "Please contact the platform administrator for details.",
+    "meanwhile": "Your account stays open; you can keep using pages that do not require teacher features, such as settings."
   }
 }

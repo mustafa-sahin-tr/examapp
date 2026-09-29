@@ -21,6 +21,9 @@ public class TeacherRegistrationResultDto : ResponseBaseDto
     /// <summary>issue #287: öğretmen hesabı onaylı mı (Teachers.AccountApprovedAt dolu). Yeni kayıtta her zaman false.</summary>
     public bool AccountApproved { get; set; }
 
+    /// <summary>issue #289: öğretmen hesap onayı admin tarafından askıya alındı (Teachers.AccountSuspendedAt dolu). Neden dönülmez.</summary>
+    public bool AccountSuspended { get; set; }
+
     /// <summary>
     /// issue #277 (madde 2): reddedilen öğretmenin yeni okul talebi bekleme süresine takıldı → controller 429 +
     /// <c>Retry-After</c> döner. <see cref="RetryAfterUtc"/> yeni talebin açılabileceği an.

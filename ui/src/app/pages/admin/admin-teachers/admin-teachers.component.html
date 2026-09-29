@@ -63,6 +63,23 @@
             <span class="al__chip" [class]="'al__chip--' + row.approvalKey">
               {{ t('approval.' + row.approvalKey) }}
             </span>
+            @if (row.accountSuspended) {
+              @let suspendedDate = row.suspendedAt ? (row.suspendedAt | date: 'short') : '—';
+              <span
+                class="al__chip al__chip--suspended"
+                data-testid="suspended-chip"
+                tabindex="0"
+                [matTooltip]="t('suspension.tooltip', { date: suspendedDate, reason: row.suspensionReason ?? t('suspension.noReason') })"
+              >
+                {{ t('suspension.chip') }}
+              </span>
+              <span class="al__sub" data-testid="suspension-detail">
+                {{ t('suspension.since', { date: suspendedDate }) }}
+                @if (row.suspensionReason) {
+                  · <span class="al__reason">{{ row.suspensionReason }}</span>
+                }
+              </span>
+            }
           </td>
         </ng-container>
 
@@ -108,6 +125,25 @@
                 (click)="toggleAccountStatus(row)"
               >
                 <mat-icon>{{ enable ? 'check_circle' : 'block' }}</mat-icon>
+              </button>
+            }
+            @if (row.accountApproved || row.accountSuspended) {
+              @let unsuspend = row.accountSuspended;
+              <button
+                mat-icon-button
+                type="button"
+                class="al__suspension-action"
+                data-testid="suspension"
+                [class.al__suspension-action--restore]="unsuspend"
+                [matTooltip]="(unsuspend ? 'admin.teacherSuspension.unsuspendAction' : 'admin.teacherSuspension.suspendAction') | transloco"
+                [attr.aria-label]="
+                  (unsuspend ? 'admin.teacherSuspension.unsuspendActionFor' : 'admin.teacherSuspension.suspendActionFor')
+                    | transloco: { name: rowDisplayName(row) }
+                "
+                [disabled]="suspensionDialogOpen()"
+                (click)="toggleSuspension(row)"
+              >
+                <mat-icon>{{ unsuspend ? 'play_circle' : 'pause_circle' }}</mat-icon>
               </button>
             }
           </td>

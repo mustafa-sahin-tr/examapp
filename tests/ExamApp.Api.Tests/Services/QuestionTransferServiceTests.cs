@@ -31,7 +31,7 @@ public class QuestionTransferServiceTests : IDisposable
     {
         QuestionTransferJobDto dto;
         await using (var ctx = _db.NewContext())
-            dto = await NewService(ctx).StartExportAsync(new StartQuestionExportDto { QuestionIds = { 1, 2, 3 } }, default);
+            dto = await NewService(ctx).StartExportAsync(new StartQuestionExportDto { QuestionIds = { 1, 2, 3 } }, new QuestionTransferOwner(77, false), default);
 
         dto.Kind.ShouldBe("Export");
         dto.Status.ShouldBe("Queued");
@@ -40,6 +40,12 @@ public class QuestionTransferServiceTests : IDisposable
 
         await using var check = _db.NewContext();
         (await check.Set<QuestionTransferJob>().CountAsync()).ShouldBe(1);
+        // issue #289 (security D2): sahip CreateUserId'ye, admin bayrağı Hangfire iş argümanına yazılır.
+        (await check.Set<QuestionTransferJob>().SingleAsync()).CreateUserId.ShouldBe(77);
+        _jobs.Received(1).Create(
+            Arg.Is<Hangfire.Common.Job>(j => j.Method.Name == nameof(QuestionTransferJobRunner.RunExportAsync)
+                                             && j.Args.Count == 2 && (bool)j.Args[1]! == false),
+            Arg.Any<Hangfire.States.IState>());
     }
 
     [Fact]
@@ -47,13 +53,19 @@ public class QuestionTransferServiceTests : IDisposable
     {
         QuestionTransferJobDto dto;
         await using (var ctx = _db.NewContext())
-            dto = await NewService(ctx).StartImportAsync("  prod-eu  ", "http://minio/in.zip", default);
+            dto = await NewService(ctx).StartImportAsync("  prod-eu  ", "http://minio/in.zip", new QuestionTransferOwner(77, true), default);
 
         dto.Kind.ShouldBe("Import");
         dto.SourceKey.ShouldBe("prod-eu");
 
         await using var check = _db.NewContext();
-        (await check.Set<QuestionTransferJob>().SingleAsync()).FileUrl.ShouldBe("http://minio/in.zip");
+        var job = await check.Set<QuestionTransferJob>().SingleAsync();
+        job.FileUrl.ShouldBe("http://minio/in.zip");
+        job.CreateUserId.ShouldBe(77);
+        _jobs.Received(1).Create(
+            Arg.Is<Hangfire.Common.Job>(j => j.Method.Name == nameof(QuestionTransferJobRunner.RunImportAsync)
+                                             && j.Args.Count == 2 && (bool)j.Args[1]! == true),
+            Arg.Any<Hangfire.States.IState>());
     }
 
     [Fact]

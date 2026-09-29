@@ -41,6 +41,15 @@
       "upstreamFailed": "Öğrencinin okulu şu anda değiştirilemedi. Lütfen biraz sonra tekrar deneyin.",
       "rateLimited": "Kısa sürede çok fazla okul değişikliği yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     },
+    "teacherSuspension": {
+      "reasonRequired": "Askıya alma nedeni zorunludur.",
+      "reasonTooLong": "Askıya alma nedeni en fazla {0} karakter olabilir.",
+      "teacherNotFound": "Öğretmen bulunamadı.",
+      "accountNotApproved": "Bu öğretmenin hesabı henüz onaylanmamış; askıya alınacak bir onay yok.",
+      "alreadySuspended": "Bu öğretmenin hesap onayı zaten askıda.",
+      "notSuspended": "Bu öğretmenin hesap onayı askıda değil.",
+      "concurrentChange": "Öğretmenin hesap durumu aynı anda başka bir işlemle değişti. Lütfen sayfayı yenileyip tekrar deneyin."
+    },
     "userList": {
       "rateLimited": "Kısa sürede çok fazla liste isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     },

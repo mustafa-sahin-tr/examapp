@@ -199,7 +199,8 @@ public class TeacherService : ITeacherService
                     SchoolId = teacher.SchoolId,
                     RequestedSchoolId = teacher.RequestedSchoolId,
                     ApprovalStatus = teacher.ApprovalStatus,
-                    AccountApproved = teacher.AccountApprovedAt != null
+                    AccountApproved = teacher.AccountApprovedAt != null,
+                    AccountSuspended = teacher.AccountSuspendedAt != null // issue #289
                 };
             }
 
@@ -223,7 +224,8 @@ public class TeacherService : ITeacherService
                         SchoolId = teacher.SchoolId,
                         RequestedSchoolId = teacher.RequestedSchoolId,
                         ApprovalStatus = teacher.ApprovalStatus,
-                        AccountApproved = teacher.AccountApprovedAt != null
+                        AccountApproved = teacher.AccountApprovedAt != null,
+                        AccountSuspended = teacher.AccountSuspendedAt != null // issue #289
                     };
                 }
             }
@@ -459,7 +461,8 @@ public class TeacherService : ITeacherService
             SchoolId = teacher.SchoolId,
             RequestedSchoolId = teacher.RequestedSchoolId,
             ApprovalStatus = teacher.ApprovalStatus,
-            AccountApproved = teacher.AccountApprovedAt != null
+            AccountApproved = teacher.AccountApprovedAt != null,
+            AccountSuspended = teacher.AccountSuspendedAt != null // issue #289
         };
     }
 
@@ -1271,7 +1274,8 @@ public class TeacherService : ITeacherService
         // Sadece onaylı bağımsız öğretmenler (kabul kriteri: ApprovalStatus=Approved).
         var query = _context.Teachers
             .AsNoTracking()
-            .Where(t => t.IsIndependentTutor && t.ApprovalStatus == TeacherApprovalStatus.Approved);
+            // issue #289: askıdaki tutor pazar yerinde listelenmez.
+            .Where(t => t.IsIndependentTutor && t.ApprovalStatus == TeacherApprovalStatus.Approved && t.AccountSuspendedAt == null);
 
         if (filter.SubjectId.HasValue)
             query = query.Where(t => t.TeacherSubjects.Any(ts => ts.SubjectId == filter.SubjectId.Value));
@@ -1336,7 +1340,8 @@ public class TeacherService : ITeacherService
             .AsNoTracking()
             .Where(t => t.Id == teacherId
                         && t.IsIndependentTutor
-                        && t.ApprovalStatus == TeacherApprovalStatus.Approved)
+                        && t.ApprovalStatus == TeacherApprovalStatus.Approved
+                        && t.AccountSuspendedAt == null) // issue #289: askıdaki tutor'un public profili 404
             .Select(t => new
             {
                 t.Id,

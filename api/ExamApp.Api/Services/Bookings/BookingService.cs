@@ -300,7 +300,8 @@ public class BookingService : IBookingService
     {
         var teacher = await _context.Teachers
             .AsNoTracking()
-            .Where(t => t.Id == teacherId && t.ApprovalStatus == TeacherApprovalStatus.Approved)
+            // issue #289: askıdaki öğretmenin takvimi öğrenciye görünmez (onaysız ile aynı 404).
+            .Where(t => t.Id == teacherId && t.ApprovalStatus == TeacherApprovalStatus.Approved && t.AccountSuspendedAt == null)
             .Select(t => new { t.IsIndependentTutor, t.SchoolId })
             .FirstOrDefaultAsync(ct);
 
@@ -371,12 +372,13 @@ public class BookingService : IBookingService
                 s.StartTime,
                 s.EndTime,
                 TeacherApproval = s.Teacher.ApprovalStatus,
+                TeacherSuspended = s.Teacher.AccountSuspendedAt != null, // issue #289
                 TeacherUserId = s.Teacher.UserId
             })
             .FirstOrDefaultAsync(ct);
 
         // Onaysız öğretmenin slotu öğrenciye hiç görünmez → var/yok ayrımı da sızdırılmaz.
-        if (slot == null || slot.TeacherApproval != TeacherApprovalStatus.Approved)
+        if (slot == null || slot.TeacherApproval != TeacherApprovalStatus.Approved || slot.TeacherSuspended)
             return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.slot.notFound"] };
 
         if (ToUtc(slot.Date, slot.StartTime) <= DateTime.UtcNow)

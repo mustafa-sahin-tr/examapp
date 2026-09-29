@@ -8,6 +8,7 @@ using ExamApp.Api.Tests.Support;
 using Hangfire;
 using Hangfire.Dashboard;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ExamApp.Api.Tests.Services;
@@ -25,7 +26,13 @@ public class HangfireDashboardAuthFilterTests : IDisposable
         using var ctx = _db.NewContext();
         ctx.Teachers.AddRange(
             new Teacher { UserId = 1, AccountApprovedAt = DateTime.UtcNow },
-            new Teacher { UserId = 2, ApprovalStatus = TeacherApprovalStatus.Pending });
+            new Teacher { UserId = 2, ApprovalStatus = TeacherApprovalStatus.Pending },
+            // issue #289: onaylıyken askıya alınmış öğretmen.
+            new Teacher
+            {
+                UserId = 5, ApprovalStatus = TeacherApprovalStatus.Approved, AccountApprovedAt = null,
+                AccountSuspendedAt = DateTime.UtcNow, AccountSuspensionReason = "neden"
+            });
         ctx.SaveChanges();
     }
 
@@ -68,5 +75,33 @@ public class HangfireDashboardAuthFilterTests : IDisposable
         (await AuthorizeAsync(2, "Teacher")).ShouldBeFalse();
         (await AuthorizeAsync(3, "Teacher")).ShouldBeFalse();
         (await AuthorizeAsync(4, "Student")).ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// issue #289: dashboard cookie'si SlidingExpiration ile 30 dk yaşar; filtre her istekte guard'a sorduğu için askıya
+    /// alınan öğretmenin mevcut cookie'si bir sonraki istekte reddedilir. Askı kalkınca yeniden açılır.
+    /// </summary>
+    [Fact]
+    public async Task Suspended_teacher_is_denied_and_regains_access_after_unsuspend()
+    {
+        (await AuthorizeAsync(5, "Teacher")).ShouldBeFalse();
+
+        // Aynı kimlikle (cookie'deki principal) önce onaylıyken erişebilen öğretmen askıya alınınca sonraki istek reddedilir.
+        (await AuthorizeAsync(1, "Teacher")).ShouldBeTrue();
+        await using (var ctx = _db.NewContext())
+        {
+            await ctx.Teachers.Where(t => t.UserId == 1).ExecuteUpdateAsync(s => s
+                .SetProperty(t => t.AccountApprovedAt, (DateTime?)null)
+                .SetProperty(t => t.AccountSuspendedAt, DateTime.UtcNow));
+        }
+        (await AuthorizeAsync(1, "Teacher")).ShouldBeFalse();
+
+        await using (var ctx = _db.NewContext())
+        {
+            await ctx.Teachers.Where(t => t.UserId == 1).ExecuteUpdateAsync(s => s
+                .SetProperty(t => t.AccountApprovedAt, DateTime.UtcNow)
+                .SetProperty(t => t.AccountSuspendedAt, (DateTime?)null));
+        }
+        (await AuthorizeAsync(1, "Teacher")).ShouldBeTrue();
     }
 }

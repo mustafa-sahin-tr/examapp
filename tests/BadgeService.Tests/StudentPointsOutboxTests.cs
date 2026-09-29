@@ -217,7 +217,7 @@ public class StudentPointsOutboxTests : IDisposable
         await using (var ctx = _db.NewContext())
         {
             var consumer = new BadgeService.Consumers.AnswerSubmittedConsumer(
-                new AnswerSubmissionAggregationService(ctx), new BadgeEvaluator(ctx, hub));
+                new AnswerSubmissionAggregationService(ctx), BadgeService.Tests.Support.BadgeEvaluatorFactory.Create(ctx, hub));
             var context = Substitute.For<MassTransit.ConsumeContext<AnswerSubmittedEvent>>();
             context.Message.Returns(Answer(userId: 11, point: 35));
             await consumer.Consume(context);

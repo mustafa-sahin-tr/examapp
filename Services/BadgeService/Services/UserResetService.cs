@@ -35,6 +35,12 @@ public class UserResetService
         var earned = await _db.BadgeEarned.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
         if (earned.Count > 0) _db.BadgeEarned.RemoveRange(earned);
 
+        // issue #146: rozetler sıfırlanırken "rozet kazandın" bildirimleri de silinir; aksi halde yeniden
+        // kazanımda (UserId, SourceBadgeDefinitionId) unique index'i yeni bildirimi engellerdi.
+        var badgeNotifications = await _db.Notifications
+            .Where(x => x.UserId == userId && x.Type == BadgeEvaluator.NotificationType).ToListAsync(cancellationToken);
+        if (badgeNotifications.Count > 0) _db.Notifications.RemoveRange(badgeNotifications);
+
         var questionAgg = await _db.StudentQuestionAggregates.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
         if (questionAgg.Count > 0) _db.StudentQuestionAggregates.RemoveRange(questionAgg);
 

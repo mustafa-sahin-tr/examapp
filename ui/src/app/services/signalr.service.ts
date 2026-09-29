@@ -48,6 +48,13 @@ export class SignalRService {
   private readonly teacherApplicationDecidedSubject = new Subject<TeacherApplicationDecidedPayload>();
   public readonly teacherApplicationDecided$ = this.teacherApplicationDecidedSubject.asObservable();
 
+  /**
+   * Issue #146: kalıcı bildirim üretebilen herhangi bir hub push'u geldiğinde tetiklenir (zil sayacını tazelemek için).
+   * Payload taşımaz; tüketici kendi debounce'unu uygular.
+   */
+  private readonly notificationsChangedSubject = new Subject<void>();
+  public readonly notificationsChanged$ = this.notificationsChangedSubject.asObservable();
+
   public startConnection() {
     this.hubConnection = new signalR.HubConnectionBuilder()
       .withUrl('/hub/badges', {
@@ -69,16 +76,19 @@ export class SignalRService {
       this.snackBar.open(`🎉 ${data.badgeName}: ${data.description}`, this.t('common.close'), {
         duration: 4000,
       });
+      this.notificationsChangedSubject.next();
     });
 
     this.hubConnection.on('AccessRequestUpdate', (data: AccessRequestUpdate) => {
       this.accessRequestUpdatesSubject.next(data);
+      this.notificationsChangedSubject.next();
       if (data.kind === 'approved' || data.kind === 'rejected') {
         this.snackBar.open(data.title || data.body, this.t('common.ok'), { duration: 6000 });
       }
     });
 
     this.hubConnection.on('ReminderDue', (data: ReminderDuePayload) => {
+      this.notificationsChangedSubject.next();
       const ref = this.snackBar.open(`⏰ ${data.title}`, this.t('common.notifications.goToExam'), {
         duration: 8000,
       });
@@ -93,6 +103,7 @@ export class SignalRService {
         return;
       }
       this.teacherApplicationSubmittedSubject.next(data);
+      this.notificationsChangedSubject.next();
       const ref = this.snackBar.open(
         this.t('common.notifications.teacherApplication', { name: data.applicantName }),
         this.t('common.notifications.goToApplications'),
@@ -109,6 +120,7 @@ export class SignalRService {
         return;
       }
       this.teacherSchoolRequestSubmittedSubject.next(data);
+      this.notificationsChangedSubject.next();
       const ref = this.snackBar.open(
         this.t('common.notifications.teacherSchoolRequest', { name: data.applicantName, school: data.schoolName }),
         this.t('common.notifications.goToApplications'),
@@ -121,6 +133,7 @@ export class SignalRService {
 
     this.hubConnection.on('TeacherApplicationDecided', (data: TeacherApplicationDecidedPayload) => {
       this.teacherApplicationDecidedSubject.next(data);
+      this.notificationsChangedSubject.next();
       // Güvenlik kararı (issue #157): gerekçe/admin kimliği taşınmaz, backend'in ürettiği sabit metin gösterilir.
       // issue #157 review: yalnızca bağımsız öğretmen başvurusunda (/tutor-profile) bir hedef sayfa var;
       // okul bağlantısı talebinde (isIndependentTutor=false) öğretmenin özel bir profil sayfası yok —
@@ -135,6 +148,12 @@ export class SignalRService {
       } else {
         this.snackBar.open(data.body || data.title, this.t('common.close'), { duration: 8000 });
       }
+    });
+
+    // Issue #146: randevu bildirimleri (BookingRequestCreated vb.) kalıcı yazılır; burada yalnızca zil sayacı tazelenir,
+    // toast gösterilmez (randevu ekranları kendi durumunu yükler).
+    this.hubConnection.on('BookingUpdate', () => {
+      this.notificationsChangedSubject.next();
     });
   }
 

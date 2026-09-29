@@ -192,10 +192,10 @@ public class AnswerSubmittedIdempotencyTests : IDisposable
         e.ClientId = "kc-7";
 
         await using (var ctx = _db.NewContext())
-            await new AnswerSubmittedConsumer(new AnswerSubmissionAggregationService(ctx), new BadgeEvaluator(ctx, hub))
+            await new AnswerSubmittedConsumer(new AnswerSubmissionAggregationService(ctx), BadgeService.Tests.Support.BadgeEvaluatorFactory.Create(ctx, hub))
                 .Consume(Context(e));
         await using (var ctx = _db.NewContext())
-            await new AnswerSubmittedConsumer(new AnswerSubmissionAggregationService(ctx), new BadgeEvaluator(ctx, hub))
+            await new AnswerSubmittedConsumer(new AnswerSubmissionAggregationService(ctx), BadgeService.Tests.Support.BadgeEvaluatorFactory.Create(ctx, hub))
                 .Consume(Context(e)); // redelivery, same EventId
 
         await using var check = _db.NewContext();
@@ -241,7 +241,7 @@ public class AnswerSubmittedIdempotencyTests : IDisposable
         // "Redelivery" of the SAME EventId: ProcessAsync reports it as already processed (duplicate),
         // but the consumer must still run the evaluator.
         await using (var ctx = _db.NewContext())
-            await new AnswerSubmittedConsumer(new AnswerSubmissionAggregationService(ctx), new BadgeEvaluator(ctx, hub))
+            await new AnswerSubmittedConsumer(new AnswerSubmissionAggregationService(ctx), BadgeService.Tests.Support.BadgeEvaluatorFactory.Create(ctx, hub))
                 .Consume(Context(e));
 
         await using var check2 = _db.NewContext();

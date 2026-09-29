@@ -17,12 +17,13 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { AuthService } from '../../services/auth.service';
 import { UserThemeService } from '../../services/user-theme.service';
 import { ThemeConfigService } from '../../services/theme-config.service';
-import { Subject } from 'rxjs';
-import { filter, map, takeUntil } from 'rxjs/operators';
+import { EMPTY, Subject, merge, of } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, filter, map, switchMap, takeUntil } from 'rxjs/operators';
 import { SidenavService } from '../../services/sidenav.service';
 import { TEACHER_APPROVAL_PENDING_URL, teacherAccountApprovalOf } from '../../models/teacher-approval.model';
 import { SignalRService } from '../../services/signalr.service';
 import { WorksheetAccessRequestService } from '../../services/worksheet-access-request.service';
+import { NotificationService } from '../../services/notification.service';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { ColorSchemeToggleComponent } from '../../shared/components/color-scheme-toggle/color-scheme-toggle.component';
 import { LanguageSwitcherComponent } from '../../shared/components/language-switcher/language-switcher.component';
@@ -123,6 +124,11 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   private readonly signalR = inject(SignalRService);
   private readonly accessRequestService = inject(WorksheetAccessRequestService);
   readonly accessRequestCount = this.accessRequestService.pendingCount;
+  private readonly notificationService = inject(NotificationService);
+  /** Issue #146: zil rozetindeki okunmamış kalıcı bildirim sayısı. */
+  readonly unreadNotificationCount = this.notificationService.unreadCount;
+  /** Art arda gelen hub push'larını tek sayaç isteğinde birleştirme penceresi. */
+  static readonly NOTIFICATION_REFRESH_DEBOUNCE_MS = 1000;
   userThemeService = inject(UserThemeService);
   themeConfigService = inject(ThemeConfigService);
   // Search functionality
@@ -283,6 +289,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.signalR.startConnection();
+    this.initNotificationBadge();
 
     // Sözlük yüklendiğinde (ve dil değiştiğinde) örnek arama metinlerini tazele.
     this.transloco.langChanges$.pipe(takeUntil(this.destroy$)).subscribe(() => {
@@ -385,6 +392,30 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
         this.applyUserTheme();
       }
     });
+  }
+
+  /**
+   * Issue #146: okunmamış sayacı oturum açılınca çekilir, sonra yalnızca kalıcı bildirim üreten hub push'larında
+   * (debounce ile) tazelenir — periyodik yoklama yapılmaz. Oturum kapanınca sayaç sıfırlanır (önceki kullanıcının
+   * sayısı görünmez). Hata sessizce yutulur (rozet eski değerde kalır).
+   */
+  private initNotificationBadge(): void {
+    this.isAuthenticated
+      .pipe(
+        distinctUntilChanged(),
+        switchMap((authenticated) => {
+          if (!authenticated) {
+            this.notificationService.resetUnreadCount();
+            return EMPTY;
+          }
+          return merge(
+            of(undefined),
+            this.signalR.notificationsChanged$.pipe(debounceTime(EnhancedLayoutComponent.NOTIFICATION_REFRESH_DEBOUNCE_MS))
+          ).pipe(switchMap(() => this.notificationService.refreshUnreadCount().pipe(catchError(() => EMPTY))));
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe();
   }
 
   private translateAll(keys: readonly string[]): string[] {

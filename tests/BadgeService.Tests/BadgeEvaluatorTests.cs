@@ -20,7 +20,7 @@ public class BadgeEvaluatorTests : IDisposable
             Arg.Any<string>(), Arg.Any<object?[]>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
     }
 
-    private BadgeEvaluator NewEvaluator(BadgeDbContext ctx) => new(ctx, _hub);
+    private BadgeEvaluator NewEvaluator(BadgeDbContext ctx) => BadgeService.Tests.Support.BadgeEvaluatorFactory.Create(ctx, _hub);
 
     private async Task GivenAsync(Action<BadgeDbContext> seed)
     {

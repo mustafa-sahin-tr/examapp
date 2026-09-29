@@ -1,0 +1,17 @@
+{
+  "title": "Bildirimler",
+  "subtitle": "Kazandığın rozetler, hatırlatmalar ve diğer güncellemeler.",
+  "filter": {
+    "label": "Bildirim filtresi",
+    "unread": "Okunmamış",
+    "all": "Tümü"
+  },
+  "loading": "Bildirimlerin yükleniyor...",
+  "loadError": "Bildirimlerin yüklenemedi.",
+  "retry": "Tekrar dene",
+  "empty": {
+    "unread": "Okunmamış bildirimin yok.",
+    "all": "Henüz bir bildirimin yok."
+  },
+  "unreadPrefix": "Okunmamış:"
+}

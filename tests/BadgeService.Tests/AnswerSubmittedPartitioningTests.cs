@@ -62,7 +62,7 @@ public class AnswerSubmittedPartitioningTests : IAsyncLifetime
         await using var provider = new ServiceCollection()
             .AddDbContext<BadgeDbContext>(o => o.UseSqlite(ConnectionString).AddInterceptors(probe))
             .AddScoped<AnswerSubmissionAggregationService>()
-            .AddScoped<BadgeEvaluator>()
+            .AddScoped<BadgeEvaluator>().AddScoped<IUserLocaleResolver, UserLocaleResolver>().AddSingleton(BadgeService.Tests.Support.BadgeEvaluatorFactory.CreateTextFactory())
             .AddSingleton(Substitute.For<IHubContext<BadgeNotificationHub>>())
             .AddMassTransitTestHarness(x =>
             {

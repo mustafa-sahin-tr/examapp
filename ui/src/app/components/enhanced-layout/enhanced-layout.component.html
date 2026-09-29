@@ -62,6 +62,9 @@
         <span class="mobile-toolbar-title">ExamApp</span>
         <app-language-switcher class="mobile-toolbar-actions"></app-language-switcher>
         <app-color-scheme-toggle class="mobile-toolbar-actions"></app-color-scheme-toggle>
+        @if (isAuthenticated | async) {
+          <ng-container *ngTemplateOutlet="notificationBell; context: { $implicit: 'mobile-toolbar-actions' }" />
+        }
       </mat-toolbar>
 
       <!-- Enhanced Toolbar -->
@@ -103,6 +106,8 @@
         <app-color-scheme-toggle class="toolbar-scheme-toggle"></app-color-scheme-toggle>
 
         @if( isAuthenticated | async) {
+
+        <ng-container *ngTemplateOutlet="notificationBell; context: { $implicit: 'toolbar-notifications' }" />
 
         <div class="profile-menu" mat-button [matMenuTriggerFor]="profileMenu">
           <img [src]="'default-avatar.png'" ngSrcset="100w, 200w" class="preview-image"
@@ -149,7 +154,7 @@
             </div>
           </button>
 
-          <button mat-menu-item class="ms-menu-item">
+          <button mat-menu-item class="ms-menu-item" (click)="onNotifications()">
             <mat-icon>notifications</mat-icon>
             <div class="ms-item-content">
               <span class="ms-item-title">{{ t('profile.notifications') }}</span>
@@ -182,6 +187,20 @@
       </main>
     </mat-sidenav-content>
   </mat-sidenav-container>
+
+  <!-- Issue #146: bildirim zili + okunmamış sayacı (masaüstü ve mobil toolbar ortak) -->
+  <ng-template #notificationBell let-hostClass>
+    <button mat-icon-button type="button" class="notification-bell" [ngClass]="hostClass" (click)="onNotifications()"
+      [attr.aria-label]="unreadNotificationCount() > 0
+        ? t('toolbar.notificationsUnread', { count: unreadNotificationCount() })
+        : t('toolbar.notifications')"
+      [matTooltip]="t('toolbar.notifications')">
+      <mat-icon class="notification-bell-icon"
+        [matBadge]="unreadNotificationCount() > 99 ? '99+' : unreadNotificationCount()"
+        [matBadgeHidden]="unreadNotificationCount() === 0"
+        matBadgeColor="warn" matBadgeSize="small">notifications</mat-icon>
+    </button>
+  </ng-template>
 
   <!-- Mobile Bottom Navigation Bar (sınav çözme ekranında gizli: ekranın kendi dock'u var) -->
   <nav class="mobile-bottom-nav" *ngIf="isMobile() && !isExamRoute()">

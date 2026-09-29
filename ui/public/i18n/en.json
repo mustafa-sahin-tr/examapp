@@ -79,7 +79,9 @@
     "toolbar": {
       "newest": "New",
       "popular": "Popular",
-      "searchPlaceholder": "Search ..."
+      "searchPlaceholder": "Search ...",
+      "notifications": "Notifications",
+      "notificationsUnread": "Notifications ({{count}} unread)"
     },
     "search": {
       "recentTitle": "Recent searches",

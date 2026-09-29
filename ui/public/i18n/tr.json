@@ -79,7 +79,9 @@
     "toolbar": {
       "newest": "Yeni",
       "popular": "Popüler",
-      "searchPlaceholder": "Ara ..."
+      "searchPlaceholder": "Ara ...",
+      "notifications": "Bildirimler",
+      "notificationsUnread": "Bildirimler ({{count}} okunmamış)"
     },
     "search": {
       "recentTitle": "Son aramalar",

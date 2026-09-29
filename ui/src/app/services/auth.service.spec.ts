@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { Router, provideRouter } from '@angular/router';
 import { AuthService, UserProfile } from './auth.service';
 import { Teacher } from '../models/teacher';
+import { teacherAccountSuspendedOf } from '../models/teacher-approval.model';
 
 /**
  * Helper: base64url encode (JWT format)
@@ -480,6 +481,41 @@ describe('AuthService — teacher account approval (issue #287)', () => {
     expect(results.length).toBe(2);
     expect(service.user()?.teacher?.rejectionReason).toBe('Eksik');
     expect(service.isUnapprovedTeacher()).toBeTrue();
+  });
+
+  it('refreshProfile_SuspendedTeacher_PersistsFlagToSignalAndLocalStorage_AndCountsAsUnapproved (issue #289)', () => {
+    setup(['Teacher'], profile({ teacherAccountApproved: true, teacherApplicationStatus: 'Approved' }));
+    expect(service.isUnapprovedTeacher()).toBeFalse();
+
+    service.refreshProfile().subscribe();
+    httpMock.expectOne('/api/exam/auth/refresh').flush(
+      profile({ teacherAccountApproved: false, teacherAccountSuspended: true, teacherApplicationStatus: 'Approved' })
+    );
+
+    expect(teacherAccountSuspendedOf(service.user())).toBeTrue();
+    expect(JSON.parse(localStorage.getItem('user') ?? '{}').teacher?.teacherAccountSuspended).toBeTrue();
+    expect(service.isUnapprovedTeacher()).toBeTrue();
+  });
+
+  it('refreshProfile_Unsuspended_ClearsSuspendedFlagAndReopensTeacherFeatures (issue #289)', () => {
+    setup(['Teacher'], profile({ teacherAccountApproved: false, teacherAccountSuspended: true }));
+    expect(teacherAccountSuspendedOf(service.user())).toBeTrue();
+
+    service.refreshProfile().subscribe();
+    httpMock.expectOne('/api/exam/auth/refresh').flush(
+      profile({ teacherAccountApproved: true, teacherAccountSuspended: false, teacherApplicationStatus: 'Approved' })
+    );
+
+    expect(teacherAccountSuspendedOf(service.user())).toBeFalse();
+    expect(service.isUnapprovedTeacher()).toBeFalse();
+  });
+
+  it('teacherAccountSuspendedOf_MissingField_False (login/exchange profile)', () => {
+    // afterEach httpMock.verify() çağırır — rastgele sırada ilk koşan test olsa da TestBed kurulu olmalı.
+    setup(['Teacher'], null);
+    expect(teacherAccountSuspendedOf(profile({ teacherAccountApproved: false }))).toBeFalse();
+    expect(teacherAccountSuspendedOf(profile())).toBeFalse();
+    expect(teacherAccountSuspendedOf(null)).toBeFalse();
   });
 
   it('handleTeacherNotApproved_NavigatesOnceAndRefreshesProfile_EvenForBurstOf403s', () => {

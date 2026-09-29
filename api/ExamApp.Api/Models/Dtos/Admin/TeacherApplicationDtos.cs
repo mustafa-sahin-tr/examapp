@@ -60,6 +60,13 @@ public class TeacherApplicationListItemDto
     /// sonraki (bağımsız/okul) başvurusunda false.
     /// </summary>
     public bool RequiresAccountApproval { get; set; }
+
+    /// <summary>
+    /// issue #289: öğretmenin hesap onayı admin tarafından askıya alınmış (Teachers.AccountSuspendedAt dolu). Askıdaki
+    /// öğretmenin bu başvurusu onaylansa da askı kalkmaz (<see cref="RequiresAccountApproval"/> false); askı yalnızca
+    /// <c>POST api/admin/teachers/{id}/unsuspend</c> ile kalkar. Neden burada dönülmez (admin öğretmen listesinde).
+    /// </summary>
+    public bool AccountSuspended { get; set; }
 }
 
 /// <summary>
@@ -107,6 +114,13 @@ public class TeacherApplicationDetailDto
     /// sonraki (bağımsız/okul) başvurusunda false.
     /// </summary>
     public bool RequiresAccountApproval { get; set; }
+
+    /// <summary>
+    /// issue #289: öğretmenin hesap onayı admin tarafından askıya alınmış (Teachers.AccountSuspendedAt dolu). Askıdaki
+    /// öğretmenin bu başvurusu onaylansa da askı kalkmaz (<see cref="RequiresAccountApproval"/> false); askı yalnızca
+    /// <c>POST api/admin/teachers/{id}/unsuspend</c> ile kalkar. Neden burada dönülmez (admin öğretmen listesinde).
+    /// </summary>
+    public bool AccountSuspended { get; set; }
 }
 
 public class TeacherRejectRequestDto

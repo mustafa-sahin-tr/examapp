@@ -115,6 +115,7 @@ namespace ExamApp.Api.Controllers
                         ThemeCustomConfig = teacher.ThemeCustomConfig,
                         // issue #287: UI onaysız öğretmene öğretmen menülerini kapatıp "onay bekleniyor" gösterir.
                         TeacherAccountApproved = approval.TeacherAccountApproved,
+                        TeacherAccountSuspended = approval.TeacherAccountSuspended, // issue #289
                         TeacherApplicationStatus = approval.TeacherApplicationStatus,
                         RejectionReason = approval.RejectionReason
                     };

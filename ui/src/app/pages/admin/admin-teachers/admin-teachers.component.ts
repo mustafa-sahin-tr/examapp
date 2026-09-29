@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,6 +19,8 @@ import { provideTranslatedPaginatorIntl } from '../../../shared/utils/paginator-
 import { SchoolPagedList, adminListErrorMessage } from '../../../shared/utils/school-paged-list';
 import { openAdminResetPasswordDialog } from '../../../shared/components/admin-reset-password-dialog/admin-reset-password-dialog.component';
 import { openAdminAccountStatusDialog } from '../../../shared/components/admin-account-status-dialog/admin-account-status-dialog.component';
+import { openAdminTeacherSuspensionDialog } from '../../../shared/components/admin-teacher-suspension-dialog/admin-teacher-suspension-dialog.component';
+import { AdminTeacherSuspensionResponse } from '../../../models/admin-teacher-suspension.model';
 
 /** Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183). */
 const ADMIN_SCOPE = 'admin';
@@ -43,6 +46,14 @@ export interface AdminTeacherRow {
   independent: boolean;
   approvalKey: ApprovalKey;
   accountStatus: AccountStatus;
+  /** Issue #289: hesap onaylı ve askıda değil → "Askıya al" aksiyonu. */
+  accountApproved: boolean;
+  /** Issue #289: hesap onayı askıda → "Askı" chip'i + "Askıyı kaldır" aksiyonu. */
+  accountSuspended: boolean;
+  /** ISO-8601; askıda değilse null. */
+  suspendedAt: string | null;
+  /** Admin'in girdiği neden (kırpılmış); yoksa null. */
+  suspensionReason: string | null;
 }
 
 /**
@@ -54,6 +65,7 @@ export interface AdminTeacherRow {
   selector: 'app-admin-teachers',
   standalone: true,
   imports: [
+    DatePipe,
     MatButtonModule,
     MatDialogModule,
     MatIconModule,
@@ -163,6 +175,47 @@ export class AdminTeachersComponent {
     this.list.items.update((items) => items.map((item) => (item.id === id ? { ...item, isEnabled: enabled } : item)));
   }
 
+  /** Askı dialog'u açıkken ikinci bir dialog açılmaz (çift tıklama). */
+  readonly suspensionDialogOpen = signal(false);
+
+  /**
+   * Issue #289 — öğretmen hesap onayını askıya al (zorunlu neden) / askıyı kaldır (basit onay). İstek dialog'dadır;
+   * başarıda satır sunucu yanıtıyla anında güncellenir, hata görülüp vazgeçilirse liste yeniden yüklenir.
+   * Ne onaylı ne askıda olan (başvurusu bekleyen/reddedilen) satırda aksiyon yoktur.
+   */
+  toggleSuspension(row: AdminTeacherRow): void {
+    if (this.suspensionDialogOpen() || (!row.accountApproved && !row.accountSuspended)) return;
+    this.suspensionDialogOpen.set(true);
+    openAdminTeacherSuspensionDialog(this.dialog, {
+      teacherId: row.id,
+      displayName: this.rowDisplayName(row),
+      mode: row.accountSuspended ? 'unsuspend' : 'suspend',
+    })
+      .afterClosed()
+      .subscribe((result) => {
+        this.suspensionDialogOpen.set(false);
+        if (!result) return;
+        if ('refresh' in result) this.list.load();
+        else this.applySuspension(row.id, result.response, result.reason);
+      });
+  }
+
+  private applySuspension(id: number, response: AdminTeacherSuspensionResponse, reason: string | null): void {
+    this.list.items.update((items) =>
+      items.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              accountApproved: response.accountApproved,
+              accountSuspended: response.accountSuspended,
+              accountSuspendedAt: response.accountSuspendedAt,
+              accountSuspensionReason: response.accountSuspended ? reason : null,
+            }
+          : item,
+      ),
+    );
+  }
+
   rowDisplayName(row: AdminTeacherRow): string {
     return (
       row.fullName ??
@@ -195,5 +248,9 @@ function toRow(item: AdminTeacherListItem): AdminTeacherRow {
     independent: item.isIndependentTutor,
     approvalKey: APPROVAL_KEYS[item.approvalStatus] ?? 'pending',
     accountStatus: item.isEnabled === true ? 'active' : item.isEnabled === false ? 'inactive' : 'unknown',
+    accountApproved: item.accountApproved === true,
+    accountSuspended: item.accountSuspended === true,
+    suspendedAt: item.accountSuspendedAt ?? null,
+    suspensionReason: item.accountSuspensionReason?.trim() || null,
   };
 }

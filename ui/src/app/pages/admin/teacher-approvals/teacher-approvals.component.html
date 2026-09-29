@@ -70,6 +70,16 @@
                 {{ t('accountApproval.chip') }}
               </span>
             }
+            @if (row.accountSuspended) {
+              <span
+                class="ta__account-chip ta__account-chip--suspended"
+                data-testid="account-suspended-chip"
+                tabindex="0"
+                [matTooltip]="t('accountSuspended.hint')"
+              >
+                {{ t('accountSuspended.chip') }}
+              </span>
+            }
           </td>
         </ng-container>
 

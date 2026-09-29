@@ -1,1 +1,28 @@
 @use '../../../shared/styles/admin-list';
+
+// Issue #289 — öğretmen hesap onayı askıda: onay chip'inin yanında tehlike tonlu "Askıda" chip'i + ikincil satır.
+.al__chip--suspended {
+  margin-inline-start: 6px;
+  color: var(--ms-danger-text);
+  background: var(--ms-danger-surface-weak);
+  border-color: var(--ms-danger-border);
+  cursor: help;
+}
+
+.al__sub .al__reason {
+  display: inline-block;
+  max-width: 24ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+// Askıya al → uyarı tonu, askıyı kaldır → başarı tonu.
+.al__suspension-action mat-icon {
+  color: var(--ms-warning-text);
+}
+
+.al__suspension-action--restore mat-icon {
+  color: var(--ms-success-text);
+}

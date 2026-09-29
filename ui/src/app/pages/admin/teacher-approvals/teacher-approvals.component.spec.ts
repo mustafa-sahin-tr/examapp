@@ -3,6 +3,8 @@ import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTooltip } from '@angular/material/tooltip';
+import { By } from '@angular/platform-browser';
 import { EMPTY, Observable, Subject, of, throwError } from 'rxjs';
 
 import { PUSH_RELOAD_AUDIT_MS, TeacherApprovalsComponent } from './teacher-approvals.component';
@@ -73,6 +75,7 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
       rejectionReason: null,
       decidedAt: null,
       requiresAccountApproval: false,
+      accountSuspended: false,
     };
 
     const label = component.typeLabel(app);
@@ -95,6 +98,7 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
       rejectionReason: null,
       decidedAt: null,
       requiresAccountApproval: false,
+      accountSuspended: false,
     };
 
     const label = component.typeLabel(app);
@@ -117,6 +121,7 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
       rejectionReason: null,
       decidedAt: null,
       requiresAccountApproval: false,
+      accountSuspended: false,
     };
 
     const label = component.typeLabel(app);
@@ -139,6 +144,7 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
       rejectionReason: null,
       decidedAt: null,
       requiresAccountApproval: false,
+      accountSuspended: false,
     };
 
     const label = component.typeLabel(app);
@@ -161,6 +167,7 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
       rejectionReason: null,
       decidedAt: null,
       requiresAccountApproval: false,
+      accountSuspended: false,
     };
 
     const schoolBased: TeacherApplicationListItem = {
@@ -175,6 +182,7 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
       rejectionReason: null,
       decidedAt: null,
       requiresAccountApproval: false,
+      accountSuspended: false,
     };
 
     const independentLabel = component.typeLabel(independent);
@@ -207,6 +215,7 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
       rejectionReason: null,
       decidedAt: null,
       requiresAccountApproval: false,
+      accountSuspended: false,
       ...overrides,
     };
   }
@@ -515,6 +524,7 @@ describe('TeacherApprovalsComponent — status filter & paging (issue #187)', ()
       rejectionReason: null,
       decidedAt: null,
       requiresAccountApproval: false,
+      accountSuspended: false,
       ...overrides,
     };
   }
@@ -864,6 +874,7 @@ describe('TeacherApprovalsComponent — account approval label (Issue #287)', ()
       rejectionReason: null,
       decidedAt: null,
       requiresAccountApproval: true,
+      accountSuspended: false,
       ...overrides,
     };
   }
@@ -923,5 +934,23 @@ describe('TeacherApprovalsComponent — account approval label (Issue #287)', ()
     expect(rows[0].querySelector('[data-testid="account-approval-chip"]')?.textContent?.trim()).toBe('Hesap onayı');
     expect(rows[0].querySelector('td.mat-column-type')?.textContent).toContain('Öğretmen hesabı');
     expect(rows[1].querySelector('[data-testid="account-approval-chip"]')).toBeNull();
+  });
+
+  it('accountSuspendedChip_RenderedOnlyForSuspendedRows_WithApproveDoesNotLiftHint (issue #289)', () => {
+    create([
+      row({ teacherId: 1, requiresAccountApproval: false, accountSuspended: true }),
+      row({ teacherId: 2, accountSuspended: false }),
+    ]);
+    const rows = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('tr.mat-mdc-row'));
+
+    expect(rows.length).toBe(2);
+    const chip = rows[0].querySelector('[data-testid="account-suspended-chip"]');
+    expect(chip?.textContent?.trim()).toBe(adminTr.approvals.accountSuspended.chip);
+    const tooltip = fixture.debugElement
+      .query(By.css('[data-testid="account-suspended-chip"]'))
+      .injector.get(MatTooltip);
+    expect(tooltip.message).toBe(adminTr.approvals.accountSuspended.hint);
+    expect(tooltip.message).toContain('askıyı kaldırmaz');
+    expect(rows[1].querySelector('[data-testid="account-suspended-chip"]')).toBeNull();
   });
 });

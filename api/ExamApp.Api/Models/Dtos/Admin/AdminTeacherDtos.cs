@@ -1,3 +1,5 @@
+using System;
+
 namespace ExamApp.Api.Models.Dtos.Admin;
 
 /// <summary>
@@ -37,4 +39,19 @@ public class AdminTeacherListItemDto
     /// (auth-api/Keycloak erişilemedi ya da kullanıcı Keycloak'ta yok).
     /// </summary>
     public bool? IsEnabled { get; set; }
+
+    /// <summary>
+    /// issue #289: öğretmen HESABI onaylı ve askıda değil (Teachers.AccountApprovedAt dolu) — öğretmen özellikleri açık.
+    /// UI "askıya al" aksiyonunu yalnızca bu true iken gösterir.
+    /// </summary>
+    public bool AccountApproved { get; set; }
+
+    /// <summary>issue #289: hesap onayı askıda (Teachers.AccountSuspendedAt dolu). UI "askıyı kaldır" aksiyonunu bu true iken gösterir.</summary>
+    public bool AccountSuspended { get; set; }
+
+    /// <summary>issue #289: askıya alma anı (UTC); askıda değilse null.</summary>
+    public DateTime? AccountSuspendedAt { get; set; }
+
+    /// <summary>issue #289: admin'in girdiği askı nedeni; askıda değilse null. Yalnızca admin'e döner.</summary>
+    public string? AccountSuspensionReason { get; set; }
 }

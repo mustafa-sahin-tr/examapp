@@ -9,6 +9,8 @@ export interface CheckkTeacherResponse {
     hasTeacherRecord: boolean;
     teacher: Teacher | null;
     teacherAccountApproved?: boolean;
+    /** Issue #289: hesap onayı askıda (true iken `teacherAccountApproved` false). Neden dönmez. */
+    teacherAccountSuspended?: boolean;
     teacherApplicationStatus?: TeacherApplicationStatus;
     rejectionReason?: string | null;
   }

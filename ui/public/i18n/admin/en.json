@@ -258,6 +258,10 @@
       "chip": "Account approval",
       "hint": "Approving unlocks the teacher account; teacher features stay unavailable until then."
     },
+    "accountSuspended": {
+      "chip": "Account suspended",
+      "hint": "Approving this application does not lift the suspension. Use the Teachers list to lift it."
+    },
     "status": {
       "pending": "Pending",
       "approved": "Approved",
@@ -311,6 +315,12 @@
       "active": "Active",
       "inactive": "Disabled",
       "unknown": "Unknown"
+    },
+    "suspension": {
+      "chip": "Suspended",
+      "since": "since {{date}}",
+      "tooltip": "Suspended on {{date}} — Reason: {{reason}}",
+      "noReason": "No reason given"
     }
   },
   "students": {
@@ -580,6 +590,41 @@
         "forbidden": "You are not allowed to do this.",
         "saveFailed": "Could not save. Please try again."
       }
+    }
+  },
+  "teacherSuspension": {
+    "suspendAction": "Suspend teacher approval",
+    "suspendActionFor": "Suspend teacher approval for {{name}}",
+    "unsuspendAction": "Lift suspension",
+    "unsuspendActionFor": "Lift suspension for {{name}}",
+    "suspend": {
+      "confirmTitle": "Suspend teacher approval?",
+      "confirmIntro": "The teacher account approval of {{name}} will be suspended.",
+      "confirmFeatures": "Teacher features (creating exams, study content, bookings, teacher dashboard) will be closed.",
+      "confirmLogin": "The account is not disabled; the user can still sign in but cannot access teacher features.",
+      "reasonLabel": "Reason for suspension",
+      "reasonPlaceholder": "e.g. complaint under review",
+      "reasonHint": "The reason is visible to administrators only; it is not shown to the teacher.",
+      "required": "A reason is required.",
+      "maxLength": "The reason can be at most {{max}} characters.",
+      "confirm": "Suspend"
+    },
+    "unsuspend": {
+      "confirmTitle": "Lift the suspension?",
+      "confirmIntro": "The teacher account approval of {{name}} will be restored.",
+      "confirmFeatures": "Teacher features become available again.",
+      "confirm": "Lift suspension"
+    },
+    "retry": "Try again",
+    "submitting": "Saving...",
+    "cancel": "Cancel",
+    "errors": {
+      "forbidden": "You are not authorized to perform this action.",
+      "notFound": "Teacher not found.",
+      "upstream": "The server could not be reached. Please try again later.",
+      "rateLimited": "Too many account changes in a short time. Please wait a moment and try again.",
+      "rateLimitedSeconds": "Too many account changes in a short time. Please try again in {{seconds}} seconds.",
+      "generic": "Something went wrong while updating the teacher approval. Please try again."
     }
   }
 }

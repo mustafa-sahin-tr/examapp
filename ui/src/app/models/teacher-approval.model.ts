@@ -40,3 +40,12 @@ export function teacherAccountApprovalOf(profile: UserProfile | null | undefined
   const approved = profile?.teacher?.teacherAccountApproved;
   return typeof approved === 'boolean' ? approved : null;
 }
+
+/**
+ * Issue #289: profildeki öğretmen hesabı askıda mı. Yalnız sunucu açıkça `teacherAccountSuspended: true` derse true;
+ * alan yoksa (login/exchange yanıtı, eski sunucu) false. Askı `teacherAccountApproved=false` ile birlikte gelir —
+ * erişim kararı yine `teacherAccountApprovalOf` / `AuthService.isUnapprovedTeacher` iledir; bu yalnız gösterim içindir.
+ */
+export function teacherAccountSuspendedOf(profile: UserProfile | null | undefined): boolean {
+  return profile?.teacher?.teacherAccountSuspended === true;
+}

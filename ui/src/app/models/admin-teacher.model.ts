@@ -26,6 +26,17 @@ export interface AdminTeacherListItem {
   approvalStatus: AdminTeacherApprovalStatus;
   /** Keycloak hesap durumu: true aktif, false devre dışı, null bilinmiyor (auth-api erişilemedi). */
   isEnabled: boolean | null;
+  /**
+   * Issue #289: öğretmen HESABI onaylı ve askıda değil — öğretmen özellikleri açık. "Askıya al" aksiyonu yalnız
+   * bu true iken gösterilir. (`approvalStatus` başvuru durumudur; askıdaki öğretmende `Approved` kalabilir.)
+   */
+  accountApproved: boolean;
+  /** Issue #289: hesap onayı askıda. "Askıyı kaldır" aksiyonu bu true iken gösterilir. */
+  accountSuspended: boolean;
+  /** Issue #289: askıya alma anı (ISO-8601 UTC); askıda değilse null. */
+  accountSuspendedAt: string | null;
+  /** Issue #289: admin'in girdiği askı nedeni; askıda değilse null. Yalnız admin'e döner. */
+  accountSuspensionReason: string | null;
 }
 
 /** Sorgu parametreleri; `schoolId` ile `unassigned=true` birlikte gönderilemez. */

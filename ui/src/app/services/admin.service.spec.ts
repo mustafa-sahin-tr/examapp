@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 
 import { AdminService } from './admin.service';
 import { AdminTeacherListItem } from '../models/admin-teacher.model';
+import { AdminTeacherSuspensionResponse } from '../models/admin-teacher-suspension.model';
 import { AdminStudentListItem } from '../models/admin-student.model';
 import { Paged } from '../models/test-instance';
 import { AdminPasswordResetResponse } from '../models/admin-password-reset.model';
@@ -30,6 +31,10 @@ describe('AdminService.getTeachers (issue #152)', () => {
         isIndependentTutor: false,
         approvalStatus: 'Approved',
         isEnabled: true,
+        accountApproved: true,
+        accountSuspended: false,
+        accountSuspendedAt: null,
+        accountSuspensionReason: null,
       },
     ],
   };
@@ -260,6 +265,55 @@ describe('AdminService.setAccountStatus (issue #155)', () => {
   });
 });
 
+describe('AdminService.suspendTeacher / unsuspendTeacher (issue #289)', () => {
+  let service: AdminService;
+  let httpMock: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(AdminService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => httpMock.verify());
+
+  it('suspendTeacher_PostsReasonToSuspendEndpoint_ReturnsServerState', () => {
+    let result: AdminTeacherSuspensionResponse | undefined;
+    service.suspendTeacher(12, 'Şikâyet inceleniyor').subscribe((r) => (result = r));
+
+    const req = httpMock.expectOne('/api/exam/admin/teachers/12/suspend');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ reason: 'Şikâyet inceleniyor' });
+    const body: AdminTeacherSuspensionResponse = {
+      teacherId: 12,
+      accountApproved: false,
+      accountSuspended: true,
+      accountApprovedAt: null,
+      accountSuspendedAt: '2026-09-30T10:00:00Z',
+    };
+    req.flush(body);
+
+    expect(result).toEqual(body);
+  });
+
+  it('unsuspendTeacher_PostsWithoutBodyToUnsuspendEndpoint', () => {
+    service.unsuspendTeacher(12).subscribe();
+
+    const req = httpMock.expectOne('/api/exam/admin/teachers/12/unsuspend');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toBeNull();
+    req.flush({
+      teacherId: 12,
+      accountApproved: true,
+      accountSuspended: false,
+      accountApprovedAt: '2026-09-30T10:05:00Z',
+      accountSuspendedAt: null,
+    });
+  });
+});
+
 describe('AdminService.getTeacherApplication (issue #262)', () => {
   let service: AdminService;
   let httpMock: HttpTestingController;
@@ -339,6 +393,7 @@ describe('AdminService.getTeacherApplications (issue #187)', () => {
         rejectionReason: 'Belge eksik',
         decidedAt: '2026-09-21T08:00:00Z',
         requiresAccountApproval: false,
+        accountSuspended: false,
       },
     ],
   };

@@ -115,6 +115,13 @@ export const routes: Routes = [
       },
       { path: 'program-create', component: ProgramCreateComponent, canActivate: [authGuard, roleGuard('Student')] },
       { path: 'certificates', component: BadgeThropyComponent, canActivate: [authGuard] },
+      {
+        // Issue #146: kalıcı bildirim listesi (rozet kazanımı ve diğer BadgeService bildirimleri) — tüm roller.
+        path: 'notifications',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./pages/notifications/notifications.component').then((m) => m.NotificationsComponent),
+      },
       { path: 'study', component: StudyPageComponent, canActivate: [authGuard, roleGuard('Student')] },
       { path: 'study-pages', component: StudyPagesComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },
       { path: 'study-pages/new', component: StudyPageEditorComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },

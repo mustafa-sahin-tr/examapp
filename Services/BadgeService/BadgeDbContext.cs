@@ -137,6 +137,12 @@ public class BadgeDbContext : DbContext
             .IsUnique()
             .HasFilter("\"SourceEventId\" IS NOT NULL");
 
+        // Idempotency (issue #146): bir kullanıcı bir rozet için en fazla bir "BadgeEarned" bildirimi alır.
+        modelBuilder.Entity<Notification>()
+            .HasIndex(x => new { x.UserId, x.SourceBadgeDefinitionId })
+            .IsUnique()
+            .HasFilter("\"SourceBadgeDefinitionId\" IS NOT NULL AND \"Type\" = 'BadgeEarned'");
+
         modelBuilder.Entity<ProcessedLoginAttempt>().HasKey(x => x.Id);
         // Idempotency: aynı login denemesi (event'in kendi EventId'si) en fazla bir kez exam API'ye yazılır.
         modelBuilder.Entity<ProcessedLoginAttempt>()

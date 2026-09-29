@@ -31,10 +31,25 @@ public class BookingServiceTests : IDisposable
 
     private readonly IVideoSessionProvider _videoProvider = Substitute.For<IVideoSessionProvider>();
 
+    /// <summary>
+    /// Issue #294: testler duvar saatine değil sabit bir saate bağlıdır (varsayılan 2026-06-15 12:00 UTC).
+    /// Eskiden <c>DateTime.UtcNow</c> kullanıldığı için "şimdi + 5 dk" slotu UTC 23:00 sonrası gece yarısını
+    /// geçip (23:11 → 00:11) bitişi başlangıçtan önceye düşürüyor, katılım testleri düşüyordu.
+    /// </summary>
+    private static readonly DateTimeOffset DefaultNow = new(2026, 6, 15, 12, 0, 0, TimeSpan.Zero);
+
+    private readonly FixedTimeProvider _clock = new(DefaultNow);
+
+    /// <summary>Servise verilen sabit saatin "şimdi"si; test verisi de buna göre kurulur.</summary>
+    private DateTime Now => _clock.GetUtcNow().UtcDateTime;
+
+    private void SetClock(int hour, int minute) =>
+        _clock.Now = new DateTimeOffset(2026, 6, 15, hour, minute, 0, TimeSpan.Zero);
+
     /// <summary>Issue #97'de eklenen video bağımlılıkları; TimeProvider ile deterministik "now" kontrol ederiz.</summary>
     private BookingService NewService(AppDbContext ctx, TimeProvider? timeProvider = null)
     {
-        var tp = timeProvider ?? TimeProvider.System;
+        var tp = timeProvider ?? _clock;
         // Issue #178: GetMySlotsAsync tekrarlayan kural top-up'ını tetikler; gerçek servisle bağlanır.
         var recurring = new RecurringAvailabilityService(ctx, tp,
             new Microsoft.Extensions.Logging.Abstractions.NullLogger<RecurringAvailabilityService>());
@@ -79,11 +94,23 @@ public class BookingServiceTests : IDisposable
             Date = date,
             StartTime = startTime,
             EndTime = endTime,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = Now
         };
         ctx.TeacherAvailabilitySlots.Add(slot);
         await ctx.SaveChangesAsync();
         return slot.Id;
+    }
+
+    /// <summary>
+    /// Sabit saatten 5 dk sonra başlayan (katılım penceresi içinde) slot. Bitiş başlangıç + 1 saattir; gece
+    /// yarısını geçecekse 23:59'a kırpılır — üretim kodu gün aşan slotu desteklemiyor (bkz. *_CrossingMidnight_* testleri).
+    /// </summary>
+    private Task<int> SeedSlotStartingSoonAsync()
+    {
+        var start = Now.AddMinutes(5);
+        var slotStart = new TimeOnly(start.Hour, start.Minute);
+        var slotEnd = slotStart.AddHours(1) < slotStart ? new TimeOnly(23, 59) : slotStart.AddHours(1);
+        return SeedSlotAsync(TeacherId, DateOnly.FromDateTime(start), slotStart, slotEnd);
     }
 
     // ------ Slot oluşturma (öğretmen) ------
@@ -96,7 +123,7 @@ public class BookingServiceTests : IDisposable
         await using var ctx = _db.NewContext();
         var req = new CreateAvailabilitySlotDto
         {
-            Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            Date = DateOnly.FromDateTime(Now.AddDays(1)),
             StartTime = new TimeOnly(14, 0),
             EndTime = new TimeOnly(15, 0)
         };
@@ -116,7 +143,7 @@ public class BookingServiceTests : IDisposable
         await using var ctx = _db.NewContext();
         var req = new CreateAvailabilitySlotDto
         {
-            Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            Date = DateOnly.FromDateTime(Now.AddDays(1)),
             StartTime = new TimeOnly(15, 0),
             EndTime = new TimeOnly(14, 0)
         };
@@ -132,7 +159,7 @@ public class BookingServiceTests : IDisposable
         await SeedTeacherAsync(TeacherId, TeacherUserId);
 
         await using var ctx = _db.NewContext();
-        var pastDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
+        var pastDate = DateOnly.FromDateTime(Now.AddDays(-1));
         var req = new CreateAvailabilitySlotDto
         {
             Date = pastDate,
@@ -154,7 +181,7 @@ public class BookingServiceTests : IDisposable
         await using var ctx = _db.NewContext();
         var req = new CreateAvailabilitySlotDto
         {
-            Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            Date = DateOnly.FromDateTime(Now.AddDays(1)),
             StartTime = new TimeOnly(14, 0),
             EndTime = new TimeOnly(15, 0)
         };
@@ -169,7 +196,7 @@ public class BookingServiceTests : IDisposable
     public async Task CreateSlotAsync_OverlappingSlot_FailsWithConflict()
     {
         await SeedTeacherAsync(TeacherId, TeacherUserId);
-        var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
+        var futureDate = DateOnly.FromDateTime(Now.AddDays(5));
         await SeedSlotAsync(TeacherId, futureDate, new TimeOnly(14, 0), new TimeOnly(15, 0));
 
         await using var ctx = _db.NewContext();
@@ -195,7 +222,7 @@ public class BookingServiceTests : IDisposable
         var req = new CreateAvailabilitySlotDto
         {
             // 90 günlük üst sınırın ötesi — 9999 gibi uçuk tarihler de aynı dalda reddedilir.
-            Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(91)),
+            Date = DateOnly.FromDateTime(Now.AddDays(91)),
             StartTime = new TimeOnly(14, 0),
             EndTime = new TimeOnly(15, 0)
         };
@@ -215,7 +242,7 @@ public class BookingServiceTests : IDisposable
         await using var ctx = _db.NewContext();
         var req = new CreateAvailabilitySlotDto
         {
-            Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            Date = DateOnly.FromDateTime(Now.AddDays(1)),
             StartTime = new TimeOnly(0, 0),
             EndTime = new TimeOnly(23, 59) // 4 saatlik üst sınırın çok üstünde
         };
@@ -235,7 +262,7 @@ public class BookingServiceTests : IDisposable
         await using var ctx = _db.NewContext();
         var req = new CreateAvailabilitySlotDto
         {
-            Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(90)), // tam sınır
+            Date = DateOnly.FromDateTime(Now.AddDays(90)), // tam sınır
             StartTime = new TimeOnly(10, 0),
             EndTime = new TimeOnly(14, 0) // tam 4 saat
         };
@@ -253,7 +280,7 @@ public class BookingServiceTests : IDisposable
     {
         await SeedTeacherAsync(TeacherId, TeacherUserId);
         await SeedTeacherAsync(OtherTeacherId, OtherTeacherUserId);
-        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(Now.AddDays(5)),
             new TimeOnly(14, 0), new TimeOnly(15, 0));
 
         await using var ctx = _db.NewContext();
@@ -268,7 +295,7 @@ public class BookingServiceTests : IDisposable
     {
         await SeedTeacherAsync(TeacherId, TeacherUserId);
         await SeedStudentAsync(StudentId, StudentUserId);
-        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(Now.AddDays(5)),
             new TimeOnly(14, 0), new TimeOnly(15, 0));
 
         // Create pending booking
@@ -281,7 +308,7 @@ public class BookingServiceTests : IDisposable
                 StudentId = StudentId,
                 AvailabilitySlotId = slotId,
                 Status = BookingStatus.Pending,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = Now
             };
             ctx.Bookings.Add(booking);
             await ctx.SaveChangesAsync();
@@ -300,7 +327,7 @@ public class BookingServiceTests : IDisposable
     {
         await SeedTeacherAsync(TeacherId, TeacherUserId);
         await SeedStudentAsync(StudentId, StudentUserId);
-        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(Now.AddDays(5)),
             new TimeOnly(14, 0), new TimeOnly(15, 0));
 
         _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
@@ -337,7 +364,7 @@ public class BookingServiceTests : IDisposable
     {
         await SeedTeacherAsync(TeacherId, TeacherUserId);
         await SeedStudentAsync(StudentId, StudentUserId);
-        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(Now.AddDays(5)),
             new TimeOnly(14, 0), new TimeOnly(15, 0));
 
         // First booking
@@ -350,7 +377,7 @@ public class BookingServiceTests : IDisposable
                 StudentId = StudentId,
                 AvailabilitySlotId = slotId,
                 Status = BookingStatus.Pending,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = Now
             };
             ctx.Bookings.Add(booking);
             await ctx.SaveChangesAsync();
@@ -372,7 +399,7 @@ public class BookingServiceTests : IDisposable
     {
         await SeedTeacherAsync(TeacherId, TeacherUserId);
         await SeedStudentAsync(StudentId, StudentUserId);
-        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(Now.AddDays(5)),
             new TimeOnly(14, 0), new TimeOnly(15, 0));
 
         int bookingId;
@@ -385,7 +412,7 @@ public class BookingServiceTests : IDisposable
                 StudentId = StudentId,
                 AvailabilitySlotId = slotId,
                 Status = BookingStatus.Pending,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = Now
             };
             ctx.Bookings.Add(booking);
             await ctx.SaveChangesAsync();
@@ -412,7 +439,7 @@ public class BookingServiceTests : IDisposable
         await SeedTeacherAsync(TeacherId, TeacherUserId);
         await SeedTeacherAsync(OtherTeacherId, OtherTeacherUserId);
         await SeedStudentAsync(StudentId, StudentUserId);
-        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(Now.AddDays(5)),
             new TimeOnly(14, 0), new TimeOnly(15, 0));
 
         int bookingId;
@@ -425,7 +452,7 @@ public class BookingServiceTests : IDisposable
                 StudentId = StudentId,
                 AvailabilitySlotId = slotId,
                 Status = BookingStatus.Pending,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = Now
             };
             ctx.Bookings.Add(booking);
             await ctx.SaveChangesAsync();
@@ -444,7 +471,7 @@ public class BookingServiceTests : IDisposable
     {
         await SeedTeacherAsync(TeacherId, TeacherUserId);
         await SeedStudentAsync(StudentId, StudentUserId);
-        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(Now.AddDays(5)),
             new TimeOnly(14, 0), new TimeOnly(15, 0));
 
         int bookingId;
@@ -457,8 +484,8 @@ public class BookingServiceTests : IDisposable
                 StudentId = StudentId,
                 AvailabilitySlotId = slotId,
                 Status = BookingStatus.Approved,
-                CreatedAt = DateTime.UtcNow,
-                DecisionAt = DateTime.UtcNow
+                CreatedAt = Now,
+                DecisionAt = Now
             };
             ctx.Bookings.Add(booking);
             await ctx.SaveChangesAsync();
@@ -478,7 +505,7 @@ public class BookingServiceTests : IDisposable
     {
         await SeedTeacherAsync(TeacherId, TeacherUserId);
         await SeedStudentAsync(StudentId, StudentUserId);
-        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(Now.AddDays(5)),
             new TimeOnly(14, 0), new TimeOnly(15, 0));
 
         int bookingId;
@@ -491,7 +518,7 @@ public class BookingServiceTests : IDisposable
                 StudentId = StudentId,
                 AvailabilitySlotId = slotId,
                 Status = BookingStatus.Pending,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = Now
             };
             ctx.Bookings.Add(booking);
             await ctx.SaveChangesAsync();
@@ -518,7 +545,7 @@ public class BookingServiceTests : IDisposable
     {
         await SeedTeacherAsync(TeacherId, TeacherUserId);
         await SeedStudentAsync(StudentId, StudentUserId);
-        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(Now.AddDays(5)),
             new TimeOnly(14, 0), new TimeOnly(15, 0));
 
         int bookingId;
@@ -531,7 +558,7 @@ public class BookingServiceTests : IDisposable
                 StudentId = StudentId,
                 AvailabilitySlotId = slotId,
                 Status = BookingStatus.Pending,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = Now
             };
             ctx.Bookings.Add(booking);
             await ctx.SaveChangesAsync();
@@ -570,7 +597,7 @@ public class BookingServiceTests : IDisposable
         await SeedTeacherAsync(TeacherId, TeacherUserId);
         await SeedTeacherAsync(OtherTeacherId, OtherTeacherUserId);
         await SeedStudentAsync(StudentId, StudentUserId);
-        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(Now.AddDays(5)),
             new TimeOnly(14, 0), new TimeOnly(15, 0));
 
         int bookingId;
@@ -583,8 +610,8 @@ public class BookingServiceTests : IDisposable
                 StudentId = StudentId,
                 AvailabilitySlotId = slotId,
                 Status = BookingStatus.Approved,
-                CreatedAt = DateTime.UtcNow,
-                DecisionAt = DateTime.UtcNow
+                CreatedAt = Now,
+                DecisionAt = Now
             };
             ctx.Bookings.Add(booking);
             await ctx.SaveChangesAsync();
@@ -592,7 +619,7 @@ public class BookingServiceTests : IDisposable
         }
 
         _videoProvider.CreateOrJoinSessionAsync(Arg.Any<VideoSessionRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new VideoSessionDto { Provider = "Jitsi", RoomName = "test", Domain = "localhost", BaseUrl = "http://localhost", JoinUrl = "http://localhost/test?jwt=x", Token = "x", ExpiresAt = DateTime.UtcNow.AddMinutes(180), IsModerator = false }));
+            .Returns(Task.FromResult(new VideoSessionDto { Provider = "Jitsi", RoomName = "test", Domain = "localhost", BaseUrl = "http://localhost", JoinUrl = "http://localhost/test?jwt=x", Token = "x", ExpiresAt = Now.AddMinutes(180), IsModerator = false }));
 
         await using var ctxVideo = _db.NewContext();
         var result = await NewService(ctxVideo).GetVideoSessionAsync(OtherTeacherUserId, bookingId, CancellationToken.None);
@@ -606,7 +633,7 @@ public class BookingServiceTests : IDisposable
     {
         await SeedTeacherAsync(TeacherId, TeacherUserId);
         await SeedStudentAsync(StudentId, StudentUserId);
-        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(Now.AddDays(5)),
             new TimeOnly(14, 0), new TimeOnly(15, 0));
 
         int bookingId;
@@ -619,7 +646,7 @@ public class BookingServiceTests : IDisposable
                 StudentId = StudentId,
                 AvailabilitySlotId = slotId,
                 Status = BookingStatus.Pending, // Not approved
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = Now
             };
             ctx.Bookings.Add(booking);
             await ctx.SaveChangesAsync();
@@ -659,8 +686,8 @@ public class BookingServiceTests : IDisposable
                 StudentId = StudentId,
                 AvailabilitySlotId = slotId,
                 Status = BookingStatus.Approved,
-                CreatedAt = DateTime.UtcNow,
-                DecisionAt = DateTime.UtcNow
+                CreatedAt = Now,
+                DecisionAt = Now
             };
             ctx.Bookings.Add(booking);
             await ctx.SaveChangesAsync();
@@ -669,7 +696,7 @@ public class BookingServiceTests : IDisposable
 
         var fakeNow = new DateTime(2026, 9, 15, 10, 14, 0, DateTimeKind.Utc);
         await using var ctxVideo = _db.NewContext();
-        var result = await NewService(ctxVideo, new FakeTimeProvider(fakeNow)).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
+        var result = await NewService(ctxVideo, new FixedTimeProvider(new DateTimeOffset(fakeNow))).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
 
         result.Success.ShouldBeFalse();
         result.Conflict.ShouldBeTrue();
@@ -701,8 +728,8 @@ public class BookingServiceTests : IDisposable
                 StudentId = StudentId,
                 AvailabilitySlotId = slotId,
                 Status = BookingStatus.Approved,
-                CreatedAt = DateTime.UtcNow,
-                DecisionAt = DateTime.UtcNow
+                CreatedAt = Now,
+                DecisionAt = Now
             };
             ctx.Bookings.Add(booking);
             await ctx.SaveChangesAsync();
@@ -710,11 +737,11 @@ public class BookingServiceTests : IDisposable
         }
 
         _videoProvider.CreateOrJoinSessionAsync(Arg.Any<VideoSessionRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new VideoSessionDto { Provider = "Jitsi", RoomName = "test", Domain = "localhost", BaseUrl = "http://localhost", JoinUrl = "http://localhost/test?jwt=x", Token = "x", ExpiresAt = DateTime.UtcNow.AddMinutes(180), IsModerator = true }));
+            .Returns(Task.FromResult(new VideoSessionDto { Provider = "Jitsi", RoomName = "test", Domain = "localhost", BaseUrl = "http://localhost", JoinUrl = "http://localhost/test?jwt=x", Token = "x", ExpiresAt = Now.AddMinutes(180), IsModerator = true }));
 
         var fakeNow = new DateTime(2026, 9, 15, 10, 15, 0, DateTimeKind.Utc);
         await using var ctxVideo = _db.NewContext();
-        var result = await NewService(ctxVideo, new FakeTimeProvider(fakeNow)).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
+        var result = await NewService(ctxVideo, new FixedTimeProvider(new DateTimeOffset(fakeNow))).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
 
         result.Success.ShouldBeTrue();
         result.Session.ShouldNotBeNull();
@@ -745,8 +772,8 @@ public class BookingServiceTests : IDisposable
                 StudentId = StudentId,
                 AvailabilitySlotId = slotId,
                 Status = BookingStatus.Approved,
-                CreatedAt = DateTime.UtcNow,
-                DecisionAt = DateTime.UtcNow
+                CreatedAt = Now,
+                DecisionAt = Now
             };
             ctx.Bookings.Add(booking);
             await ctx.SaveChangesAsync();
@@ -754,11 +781,11 @@ public class BookingServiceTests : IDisposable
         }
 
         _videoProvider.CreateOrJoinSessionAsync(Arg.Any<VideoSessionRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new VideoSessionDto { Provider = "Jitsi", RoomName = "test", Domain = "localhost", BaseUrl = "http://localhost", JoinUrl = "http://localhost/test?jwt=x", Token = "x", ExpiresAt = DateTime.UtcNow.AddMinutes(180), IsModerator = true }));
+            .Returns(Task.FromResult(new VideoSessionDto { Provider = "Jitsi", RoomName = "test", Domain = "localhost", BaseUrl = "http://localhost", JoinUrl = "http://localhost/test?jwt=x", Token = "x", ExpiresAt = Now.AddMinutes(180), IsModerator = true }));
 
         var fakeNow = new DateTime(2026, 9, 15, 10, 16, 0, DateTimeKind.Utc);
         await using var ctxVideo = _db.NewContext();
-        var result = await NewService(ctxVideo, new FakeTimeProvider(fakeNow)).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
+        var result = await NewService(ctxVideo, new FixedTimeProvider(new DateTimeOffset(fakeNow))).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
 
         result.Success.ShouldBeTrue();
         result.Session.ShouldNotBeNull();
@@ -789,8 +816,8 @@ public class BookingServiceTests : IDisposable
                 StudentId = StudentId,
                 AvailabilitySlotId = slotId,
                 Status = BookingStatus.Approved,
-                CreatedAt = DateTime.UtcNow,
-                DecisionAt = DateTime.UtcNow
+                CreatedAt = Now,
+                DecisionAt = Now
             };
             ctx.Bookings.Add(booking);
             await ctx.SaveChangesAsync();
@@ -798,11 +825,11 @@ public class BookingServiceTests : IDisposable
         }
 
         _videoProvider.CreateOrJoinSessionAsync(Arg.Any<VideoSessionRequest>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new VideoSessionDto { Provider = "Jitsi", RoomName = "test", Domain = "localhost", BaseUrl = "http://localhost", JoinUrl = "http://localhost/test?jwt=x", Token = "x", ExpiresAt = DateTime.UtcNow.AddMinutes(180), IsModerator = true }));
+            .Returns(Task.FromResult(new VideoSessionDto { Provider = "Jitsi", RoomName = "test", Domain = "localhost", BaseUrl = "http://localhost", JoinUrl = "http://localhost/test?jwt=x", Token = "x", ExpiresAt = Now.AddMinutes(180), IsModerator = true }));
 
         var fakeNow = new DateTime(2026, 9, 15, 12, 0, 0, DateTimeKind.Utc);
         await using var ctxVideo = _db.NewContext();
-        var result = await NewService(ctxVideo, new FakeTimeProvider(fakeNow)).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
+        var result = await NewService(ctxVideo, new FixedTimeProvider(new DateTimeOffset(fakeNow))).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
 
         result.Success.ShouldBeTrue();
         result.Session.ShouldNotBeNull();
@@ -833,8 +860,8 @@ public class BookingServiceTests : IDisposable
                 StudentId = StudentId,
                 AvailabilitySlotId = slotId,
                 Status = BookingStatus.Approved,
-                CreatedAt = DateTime.UtcNow,
-                DecisionAt = DateTime.UtcNow
+                CreatedAt = Now,
+                DecisionAt = Now
             };
             ctx.Bookings.Add(booking);
             await ctx.SaveChangesAsync();
@@ -843,26 +870,25 @@ public class BookingServiceTests : IDisposable
 
         var fakeNow = new DateTime(2026, 9, 15, 12, 1, 0, DateTimeKind.Utc);
         await using var ctxVideo = _db.NewContext();
-        var result = await NewService(ctxVideo, new FakeTimeProvider(fakeNow)).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
+        var result = await NewService(ctxVideo, new FixedTimeProvider(new DateTimeOffset(fakeNow))).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
 
         result.Success.ShouldBeFalse();
         result.Conflict.ShouldBeTrue();
         result.Message.ShouldContain("30");
     }
 
-    [Fact]
-    public async Task GetVideoSessionAsync_TeacherAccess_Succeeds()
+    // Issue #294: öğle ve gece yarısına yakın saatlerde aynı sonuç (23:58 → slot ertesi gün 00:03'te başlar).
+    [Theory]
+    [InlineData(12, 0)]
+    [InlineData(23, 30)]
+    [InlineData(23, 58)]
+    public async Task GetVideoSessionAsync_TeacherAccess_Succeeds(int hour, int minute)
     {
+        SetClock(hour, minute);
         await SeedTeacherAsync(TeacherId, TeacherUserId);
         await SeedStudentAsync(StudentId, StudentUserId);
 
-        // Slot must start within 15 minutes for join window to be active
-        var now = DateTime.UtcNow;
-        var startTime = now.AddMinutes(5); // Start in 5 minutes (within join window)
-        var futureDate = DateOnly.FromDateTime(startTime);
-        var slotStart = new TimeOnly(startTime.Hour, startTime.Minute);
-        var slotEnd = slotStart.AddHours(1);
-        var slotId = await SeedSlotAsync(TeacherId, futureDate, slotStart, slotEnd);
+        var slotId = await SeedSlotStartingSoonAsync();
 
         int bookingId;
         await using (var ctx = _db.NewContext())
@@ -874,8 +900,8 @@ public class BookingServiceTests : IDisposable
                 StudentId = StudentId,
                 AvailabilitySlotId = slotId,
                 Status = BookingStatus.Approved,
-                CreatedAt = DateTime.UtcNow,
-                DecisionAt = DateTime.UtcNow
+                CreatedAt = Now,
+                DecisionAt = Now
             };
             ctx.Bookings.Add(booking);
             await ctx.SaveChangesAsync();
@@ -900,7 +926,7 @@ public class BookingServiceTests : IDisposable
                     BaseUrl = "http://localhost",
                     JoinUrl = "http://localhost/test?jwt=x",
                     Token = "x",
-                    ExpiresAt = DateTime.UtcNow.AddMinutes(180),
+                    ExpiresAt = Now.AddMinutes(180),
                     IsModerator = true
                 });
             });
@@ -913,19 +939,18 @@ public class BookingServiceTests : IDisposable
         result.Session!.IsModerator.ShouldBeTrue();
     }
 
-    [Fact]
-    public async Task GetVideoSessionAsync_StudentAccess_Succeeds()
+    // Issue #294: öğle ve gece yarısına yakın saatlerde aynı sonuç (23:58 → slot ertesi gün 00:03'te başlar).
+    [Theory]
+    [InlineData(12, 0)]
+    [InlineData(23, 30)]
+    [InlineData(23, 58)]
+    public async Task GetVideoSessionAsync_StudentAccess_Succeeds(int hour, int minute)
     {
+        SetClock(hour, minute);
         await SeedTeacherAsync(TeacherId, TeacherUserId);
         await SeedStudentAsync(StudentId, StudentUserId);
 
-        // Slot must start within 15 minutes for join window to be active
-        var now = DateTime.UtcNow;
-        var startTime = now.AddMinutes(5); // Start in 5 minutes (within join window)
-        var futureDate = DateOnly.FromDateTime(startTime);
-        var slotStart = new TimeOnly(startTime.Hour, startTime.Minute);
-        var slotEnd = slotStart.AddHours(1);
-        var slotId = await SeedSlotAsync(TeacherId, futureDate, slotStart, slotEnd);
+        var slotId = await SeedSlotStartingSoonAsync();
 
         int bookingId;
         await using (var ctx = _db.NewContext())
@@ -937,8 +962,8 @@ public class BookingServiceTests : IDisposable
                 StudentId = StudentId,
                 AvailabilitySlotId = slotId,
                 Status = BookingStatus.Approved,
-                CreatedAt = DateTime.UtcNow,
-                DecisionAt = DateTime.UtcNow
+                CreatedAt = Now,
+                DecisionAt = Now
             };
             ctx.Bookings.Add(booking);
             await ctx.SaveChangesAsync();
@@ -963,7 +988,7 @@ public class BookingServiceTests : IDisposable
                     BaseUrl = "http://localhost",
                     JoinUrl = "http://localhost/test?jwt=x",
                     Token = "x",
-                    ExpiresAt = DateTime.UtcNow.AddMinutes(180),
+                    ExpiresAt = Now.AddMinutes(180),
                     IsModerator = false
                 });
             });
@@ -976,19 +1001,18 @@ public class BookingServiceTests : IDisposable
         result.Session!.IsModerator.ShouldBeFalse();
     }
 
-    [Fact]
-    public async Task GetVideoSessionAsync_PassesCorrectRoleToProvider()
+    // Issue #294: öğle ve gece yarısına yakın saatlerde aynı sonuç (23:58 → slot ertesi gün 00:03'te başlar).
+    [Theory]
+    [InlineData(12, 0)]
+    [InlineData(23, 30)]
+    [InlineData(23, 58)]
+    public async Task GetVideoSessionAsync_PassesCorrectRoleToProvider(int hour, int minute)
     {
+        SetClock(hour, minute);
         await SeedTeacherAsync(TeacherId, TeacherUserId);
         await SeedStudentAsync(StudentId, StudentUserId);
 
-        // Slot must start within 15 minutes for join window to be active
-        var now = DateTime.UtcNow;
-        var startTime = now.AddMinutes(5); // Start in 5 minutes (within join window)
-        var futureDate = DateOnly.FromDateTime(startTime);
-        var slotStart = new TimeOnly(startTime.Hour, startTime.Minute);
-        var slotEnd = slotStart.AddHours(1);
-        var slotId = await SeedSlotAsync(TeacherId, futureDate, slotStart, slotEnd);
+        var slotId = await SeedSlotStartingSoonAsync();
 
         int bookingId;
         await using (var ctx = _db.NewContext())
@@ -1000,8 +1024,8 @@ public class BookingServiceTests : IDisposable
                 StudentId = StudentId,
                 AvailabilitySlotId = slotId,
                 Status = BookingStatus.Approved,
-                CreatedAt = DateTime.UtcNow,
-                DecisionAt = DateTime.UtcNow
+                CreatedAt = Now,
+                DecisionAt = Now
             };
             ctx.Bookings.Add(booking);
             await ctx.SaveChangesAsync();
@@ -1021,7 +1045,7 @@ public class BookingServiceTests : IDisposable
                     BaseUrl = "http://localhost",
                     JoinUrl = "http://localhost/test?jwt=x",
                     Token = "x",
-                    ExpiresAt = DateTime.UtcNow.AddMinutes(180),
+                    ExpiresAt = Now.AddMinutes(180),
                     IsModerator = true
                 });
             });
@@ -1042,19 +1066,18 @@ public class BookingServiceTests : IDisposable
         capturedRequest.ParticipantUserId.ShouldBe(TeacherUserId);
     }
 
-    [Fact]
-    public async Task GetVideoSessionAsync_PassesCorrectBookingIdToProvider()
+    // Issue #294: öğle ve gece yarısına yakın saatlerde aynı sonuç (23:58 → slot ertesi gün 00:03'te başlar).
+    [Theory]
+    [InlineData(12, 0)]
+    [InlineData(23, 30)]
+    [InlineData(23, 58)]
+    public async Task GetVideoSessionAsync_PassesCorrectBookingIdToProvider(int hour, int minute)
     {
+        SetClock(hour, minute);
         await SeedTeacherAsync(TeacherId, TeacherUserId);
         await SeedStudentAsync(StudentId, StudentUserId);
 
-        // Slot must start within 15 minutes for join window to be active
-        var now = DateTime.UtcNow;
-        var startTime = now.AddMinutes(5); // Start in 5 minutes (within join window)
-        var futureDate = DateOnly.FromDateTime(startTime);
-        var slotStart = new TimeOnly(startTime.Hour, startTime.Minute);
-        var slotEnd = slotStart.AddHours(1);
-        var slotId = await SeedSlotAsync(TeacherId, futureDate, slotStart, slotEnd);
+        var slotId = await SeedSlotStartingSoonAsync();
 
         int bookingId;
         await using (var ctx = _db.NewContext())
@@ -1066,8 +1089,8 @@ public class BookingServiceTests : IDisposable
                 StudentId = StudentId,
                 AvailabilitySlotId = slotId,
                 Status = BookingStatus.Approved,
-                CreatedAt = DateTime.UtcNow,
-                DecisionAt = DateTime.UtcNow
+                CreatedAt = Now,
+                DecisionAt = Now
             };
             ctx.Bookings.Add(booking);
             await ctx.SaveChangesAsync();
@@ -1087,7 +1110,7 @@ public class BookingServiceTests : IDisposable
                     BaseUrl = "http://localhost",
                     JoinUrl = "http://localhost/test?jwt=x",
                     Token = "x",
-                    ExpiresAt = DateTime.UtcNow.AddMinutes(180),
+                    ExpiresAt = Now.AddMinutes(180),
                     IsModerator = false
                 });
             });
@@ -1106,19 +1129,18 @@ public class BookingServiceTests : IDisposable
         capturedRequest!.BookingId.ShouldBe(bookingId);
     }
 
-    [Fact]
-    public async Task GetVideoSessionAsync_ProviderThrowsException_ReturnsConflict()
+    // Issue #294: öğle ve gece yarısına yakın saatlerde aynı sonuç (23:58 → slot ertesi gün 00:03'te başlar).
+    [Theory]
+    [InlineData(12, 0)]
+    [InlineData(23, 30)]
+    [InlineData(23, 58)]
+    public async Task GetVideoSessionAsync_ProviderThrowsException_ReturnsConflict(int hour, int minute)
     {
+        SetClock(hour, minute);
         await SeedTeacherAsync(TeacherId, TeacherUserId);
         await SeedStudentAsync(StudentId, StudentUserId);
 
-        // Slot starting soon (within join window)
-        var now = DateTime.UtcNow;
-        var startTime = now.AddMinutes(5);
-        var futureDate = DateOnly.FromDateTime(startTime);
-        var slotStart = new TimeOnly(startTime.Hour, startTime.Minute);
-        var slotEnd = slotStart.AddHours(1);
-        var slotId = await SeedSlotAsync(TeacherId, futureDate, slotStart, slotEnd);
+        var slotId = await SeedSlotStartingSoonAsync();
 
         int bookingId;
         await using (var ctx = _db.NewContext())
@@ -1130,8 +1152,8 @@ public class BookingServiceTests : IDisposable
                 StudentId = StudentId,
                 AvailabilitySlotId = slotId,
                 Status = BookingStatus.Approved,
-                CreatedAt = DateTime.UtcNow,
-                DecisionAt = DateTime.UtcNow
+                CreatedAt = Now,
+                DecisionAt = Now
             };
             ctx.Bookings.Add(booking);
             await ctx.SaveChangesAsync();
@@ -1149,16 +1171,94 @@ public class BookingServiceTests : IDisposable
         result.Conflict.ShouldBeTrue();
     }
 
-    private sealed class FakeTimeProvider : TimeProvider
-    {
-        private readonly DateTime _fixedNow;
+    // ------ Gece yarısını geçen slot (issue #294) ------
+    // BUG #300: gün aşan slot desteklenmiyor. Bu testler HATALI mevcut davranışı belgeler; #300 düzeltilince
+    // beklentiler tersine çevrilmeli (Success=true / EndUtc > StartUtc / pencere açılır).
+    // Üretim kodu gün aşan slotu desteklemiyor: slot tek bir Date + TimeOnly başlangıç/bitiş taşıyor ve bitiş
+    // başlangıçla aynı güne yazılıyor. Aşağıdaki testler MEVCUT davranışı belgeler; destek eklenirse güncellenmeli.
 
-        public FakeTimeProvider(DateTime fixedNow)
+    [Fact]
+    public async Task CreateSlotAsync_CrossingMidnight_IsRejected_CurrentBehavior()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+
+        await using var ctx = _db.NewContext();
+        var req = new CreateAvailabilitySlotDto
         {
-            _fixedNow = fixedNow;
+            Date = DateOnly.FromDateTime(Now.AddDays(1)),
+            StartTime = new TimeOnly(23, 30),
+            EndTime = new TimeOnly(0, 30)
+        };
+
+        var result = await NewService(ctx).CreateSlotAsync(TeacherUserId, req);
+
+        // "Bitiş başlangıçtan önce" kuralına takılır (EndTime <= StartTime). BUG #300: düzeltilince Success=true olmalı.
+        result.Success.ShouldBeFalse();
+        result.Slot.ShouldBeNull();
+        await using var verify = _db.NewContext();
+        (await verify.TeacherAvailabilitySlots.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task CreateBookingAsync_CrossingMidnightSlotSeededDirectly_IsAccepted_CurrentBehavior()
+    {
+        // Slot oluşturma ucu reddettiği için böyle bir satır ancak doğrudan veriyle oluşur; rezervasyon yalnızca
+        // başlangıcı kontrol ettiğinden kabul edilir (katılım ise hiç açılmaz, bkz. sonraki test).
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(Now.AddDays(1)),
+            new TimeOnly(23, 30), new TimeOnly(0, 30));
+
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(x => Task.FromResult<IReadOnlyList<UserLookupResultDto>>(new List<UserLookupResultDto>()));
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).CreateBookingAsync(
+            StudentUserId, new CreateBookingDto { AvailabilitySlotId = slotId }, CancellationToken.None);
+
+        result.Success.ShouldBeTrue();
+        // Bitiş, başlangıçla aynı güne yazıldığı için başlangıçtan ÖNCE görünür (23:30 → aynı gün 00:30).
+        result.Booking!.EndUtc.ShouldBeLessThan(result.Booking.StartUtc); // #300 ile tersine döner (EndUtc > StartUtc)
+    }
+
+    [Theory]
+    [InlineData(15, 23, 20)] // pencere açılışı (başlangıç - 15 dk = 23:15) sonrası
+    [InlineData(15, 23, 45)] // ders sırasında
+    [InlineData(16, 0, 10)]  // gece yarısından sonra, ders hâlâ sürüyor
+    public async Task GetVideoSessionAsync_CrossingMidnightSlot_JoinNeverOpens_CurrentBehavior(
+        int day, int hour, int minute)
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var slotId = await SeedSlotAsync(TeacherId, new DateOnly(2026, 6, 15),
+            new TimeOnly(23, 30), new TimeOnly(0, 30));
+
+        int bookingId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Approved,
+                CreatedAt = Now,
+                DecisionAt = Now
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+            bookingId = booking.Id;
         }
 
-        public override DateTimeOffset GetUtcNow() => new(_fixedNow);
+        _clock.Now = new DateTimeOffset(2026, 6, day, hour, minute, 0, TimeSpan.Zero);
+        await using var ctxVideo = _db.NewContext();
+        var result = await NewService(ctxVideo).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
+
+        // Beklenen (destek olsaydı): Success. Gerçek: kapanış = aynı gün 00:30 + 30 dk = 01:00 < şimdi → "pencere kapandı".
+        result.Success.ShouldBeFalse();
+        result.Conflict.ShouldBeTrue();
+        await _videoProvider.DidNotReceiveWithAnyArgs().CreateOrJoinSessionAsync(default!, default);
     }
 
     public void Dispose() => _db.Dispose();

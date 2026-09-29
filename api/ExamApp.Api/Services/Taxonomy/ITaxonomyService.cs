@@ -15,21 +15,25 @@ public interface ITaxonomyService
     /// </summary>
     Task<TaxonomyTreeDto> GetTreeAsync(int? gradeId = null, bool unassignedOnly = false, CancellationToken ct = default);
 
-    Task<ResponseBaseDto> CreateSubjectAsync(UpsertSubjectDto dto, int userId, CancellationToken ct = default);
-    Task<ResponseBaseDto> UpdateSubjectAsync(int id, UpsertSubjectDto dto, int userId, CancellationToken ct = default);
-    Task<ResponseBaseDto> DeleteSubjectAsync(int id, int userId, CancellationToken ct = default);
+    Task<TaxonomyResponseDto> CreateSubjectAsync(UpsertSubjectDto dto, int userId, CancellationToken ct = default);
+    Task<TaxonomyResponseDto> UpdateSubjectAsync(int id, UpsertSubjectDto dto, int userId, CancellationToken ct = default);
+    Task<TaxonomyResponseDto> DeleteSubjectAsync(int id, int userId, CancellationToken ct = default);
 
     /// <summary>Links a subject to a grade (idempotent — already linked is a success no-op).</summary>
-    Task<ResponseBaseDto> AddSubjectGradeAsync(int subjectId, int gradeId, int userId, CancellationToken ct = default);
+    Task<TaxonomyResponseDto> AddSubjectGradeAsync(int subjectId, int gradeId, int userId, CancellationToken ct = default);
 
-    /// <summary>Removes the subject↔grade link only; topics/subtopics/questions are untouched. Idempotent.</summary>
-    Task<ResponseBaseDto> RemoveSubjectGradeAsync(int subjectId, int gradeId, int userId, CancellationToken ct = default);
+    /// <summary>
+    /// Removes the subject↔grade link only; subtopics/questions are untouched. Idempotent. Refused
+    /// (<see cref="TaxonomyErrorCodes.SubjectGradeHasTopics"/>) while the subject still has topics in that grade, and
+    /// (<see cref="TaxonomyErrorCodes.LastGradeLink"/>) when it is the subject's last grade link (issue #249).
+    /// </summary>
+    Task<TaxonomyResponseDto> RemoveSubjectGradeAsync(int subjectId, int gradeId, int userId, CancellationToken ct = default);
 
-    Task<ResponseBaseDto> CreateTopicAsync(UpsertTopicDto dto, int userId, CancellationToken ct = default);
-    Task<ResponseBaseDto> UpdateTopicAsync(int id, UpsertTopicDto dto, int userId, CancellationToken ct = default);
-    Task<ResponseBaseDto> DeleteTopicAsync(int id, int userId, CancellationToken ct = default);
+    Task<TaxonomyResponseDto> CreateTopicAsync(UpsertTopicDto dto, int userId, CancellationToken ct = default);
+    Task<TaxonomyResponseDto> UpdateTopicAsync(int id, UpsertTopicDto dto, int userId, CancellationToken ct = default);
+    Task<TaxonomyResponseDto> DeleteTopicAsync(int id, int userId, CancellationToken ct = default);
 
-    Task<ResponseBaseDto> CreateSubTopicAsync(UpsertSubTopicDto dto, int userId, CancellationToken ct = default);
-    Task<ResponseBaseDto> UpdateSubTopicAsync(int id, UpsertSubTopicDto dto, int userId, CancellationToken ct = default);
-    Task<ResponseBaseDto> DeleteSubTopicAsync(int id, int userId, CancellationToken ct = default);
+    Task<TaxonomyResponseDto> CreateSubTopicAsync(UpsertSubTopicDto dto, int userId, CancellationToken ct = default);
+    Task<TaxonomyResponseDto> UpdateSubTopicAsync(int id, UpsertSubTopicDto dto, int userId, CancellationToken ct = default);
+    Task<TaxonomyResponseDto> DeleteSubTopicAsync(int id, int userId, CancellationToken ct = default);
 }

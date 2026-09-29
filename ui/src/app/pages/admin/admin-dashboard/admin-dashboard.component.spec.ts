@@ -83,6 +83,29 @@ describe('AdminDashboardComponent', () => {
     return TestBed.createComponent(AdminDashboardComponent);
   }
 
+  /*
+   * Issue #285: renk token'ları styles.scss'te yalnızca `.dark-theme` / `.light-theme` altında tanımlı; uygulamada
+   * index.html'deki inline script <html>'e bu class'ı ekler, Karma'nın context.html'i eklemez. Token'ları test
+   * içinde <html> inline stiline sabitleyerek stil/tema yüklemesinden bağımsız hale getiriyoruz. Değerler
+   * test girdisidir (tema paletini temsil etmez); formatları üretimdekiyle aynıdır (6 haneli hex).
+   */
+  const TEST_COLOR_TOKENS: Record<string, string> = {
+    '--primaryColor': '#1c43fe',
+    '--ms-success-text-medium': '#02bb71',
+  };
+
+  beforeEach(() => {
+    for (const [name, value] of Object.entries(TEST_COLOR_TOKENS)) {
+      document.documentElement.style.setProperty(name, value);
+    }
+  });
+
+  afterEach(() => {
+    for (const name of Object.keys(TEST_COLOR_TOKENS)) {
+      document.documentElement.style.removeProperty(name);
+    }
+  });
+
   // ── Route config: admin dışı kullanıcı erişemez ──────────────────────────
 
   it('routes_AdminDashboardPath_IsGuardedByAuthAndAdminGuard', () => {
@@ -492,6 +515,30 @@ describe('AdminDashboardComponent', () => {
     expect(created.scheme.domain.length).toBe(4);
     expect(created.scheme.domain.every((c) => c !== '')).toBeTrue();
     expect(new Set(created.scheme.domain).size).toBe(4);
+    expect(new Set(solved.scheme.domain).size).toBe(4);
+    expect(created.scheme.domain[0]).toBe('rgba(28, 67, 254, 0.1)');
+  });
+
+  it('trendCards_TokenUndefined_StillProducesFourDistinctColorMixTones', () => {
+    // Tema class'ı olmayan ortam: token boş → currentColor. Eski davranış 4 aynı `currentColor` üretiyordu.
+    const root = document.documentElement;
+    const themeClasses = ['dark-theme', 'light-theme'].filter((c) => root.classList.contains(c));
+    root.classList.remove(...themeClasses);
+    root.style.removeProperty('--primaryColor');
+    const warn = spyOn(console, 'warn');
+    try {
+      fixture = configure();
+      component = fixture.componentInstance;
+
+      fixture.detectChanges();
+
+      const [created] = component.trendCards();
+      expect(new Set(created.scheme.domain).size).toBe(4);
+      expect(created.scheme.domain[0]).toBe('color-mix(in srgb, currentColor 10%, transparent)');
+      expect(warn).toHaveBeenCalledWith(jasmine.stringContaining('--primaryColor'));
+    } finally {
+      root.classList.add(...themeClasses);
+    }
   });
 
   it('trendCards_JustAfterTurkeyMidnight_TreatsTurkeyLocalDayAsTodayRegardlessOfBrowserZone', () => {

@@ -28,6 +28,7 @@ import {
   AdminDashboardTrends,
 } from '../../../models/admin-dashboard.model';
 import { dashboardIsoDate } from '../../../shared/utils/dashboard-time-zone.util';
+import { parseCssColor, readCssToken, withAlpha } from '../../../shared/utils/css-color.util';
 
 type SummaryCardKey = 'teachers' | 'students' | 'worksheets' | 'questions';
 
@@ -208,32 +209,6 @@ function toHeatLevel(count: number, thresholds: number[]): number {
   return 1 + thresholds.filter((t) => count > t).length;
 }
 
-/** `--primaryColor` gibi bir token'ı runtime'da çözer; token bulunamazsa SVG için güvenli `currentColor`. */
-function readCssToken(name: string): string {
-  if (typeof getComputedStyle === 'undefined') {
-    return 'currentColor';
-  }
-  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return value || 'currentColor';
-}
-
-/**
- * `#rgb` / `#rrggbb` rengi `rgba(r,g,b,alpha)`'ya çevirir. ngx-charts (d3) `color-mix()` çözemediği için
- * açık tonlar alfa ile üretilir; böylece hücre kart yüzeyinin üstünde temadan bağımsız doğru görünür.
- * Hex olmayan girdi (örn. `currentColor`) olduğu gibi döner.
- */
-function withAlpha(color: string, alpha: number): string {
-  const hex = color.startsWith('#') ? color.slice(1) : '';
-  const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
-  if (!/^[0-9a-f]{6}$/i.test(full)) {
-    return color;
-  }
-  const r = parseInt(full.slice(0, 2), 16);
-  const g = parseInt(full.slice(2, 4), 16);
-  const b = parseInt(full.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
 /**
  * Seviye 0..2 için hücre alfa değerleri (0 = etkinlik yok: soluk ama görünür). Seviye 3 durağı ve seviye 4'ün
  * rengi bunlardan türetilir, bkz. `buildHeatScheme`.
@@ -250,6 +225,12 @@ const HEAT_LEVEL_ALPHAS = [0.1, 0.3, 0.55] as const;
  */
 function buildHeatScheme(name: string, tokenName: string): Color {
   const color = readCssToken(tokenName);
+  if (!parseCssColor(color)) {
+    // Token tanımsız (örn. <html> üzerinde tema class'ı yok) ya da hex değil: withAlpha color-mix() fallback'ine
+    // düşer. d3 bu dizgeyi renk olarak ayrıştıramaz, string enterpolasyonu yapar ve yalnızca yüzde değerini
+    // enterpole eder; tonlar yine farklıdır (bkz. css-color.util başlığı).
+    console.warn(`[admin-dashboard] ${tokenName} rgba'ya çözülemedi ("${color}"); color-mix fallback kullanılıyor.`);
+  }
   const [zero, low, mid] = HEAT_LEVEL_ALPHAS;
   const high = (1 + mid) / 2;
   return {

@@ -10,14 +10,24 @@ namespace ExamApp.Api.Services.Teachers;
 /// <summary>Bir kullanıcının onaylı öğretmen olup olmadığının sonucu.</summary>
 public enum TeacherApprovalCheck
 {
-    /// <summary>Teacher kaydı var ve öğretmen HESABI admin tarafından onaylanmış (<see cref="Teacher.AccountApprovedAt"/> dolu).</summary>
+    /// <summary>
+    /// Teacher kaydı var ve öğretmen HESABI admin tarafından onaylanmış (<see cref="Teacher.AccountApprovedAt"/> dolu) ve
+    /// askıda değil (<see cref="Teacher.AccountSuspendedAt"/> null, issue #289).
+    /// </summary>
     Approved = 0,
 
     /// <summary>Teacher kaydı var ama hesap henüz onaylanmamış (ilk başvuru Pending ya da Rejected).</summary>
     NotApproved = 1,
 
     /// <summary>Kullanıcıya ait (silinmemiş) Teacher kaydı yok.</summary>
-    NoTeacherProfile = 2
+    NoTeacherProfile = 2,
+
+    /// <summary>
+    /// issue #289: hesap onayı admin tarafından askıya alındı (<see cref="Teacher.AccountSuspendedAt"/> dolu). Onaysız
+    /// sayılır: yalnızca <see cref="Approved"/>'a izin veren her çağıran (policy, Hangfire dashboard, çalışma linkleri)
+    /// bunu da reddeder; policy dışarıya yine 403 <c>TeacherNotApproved</c> döner.
+    /// </summary>
+    Suspended = 3
 }
 
 /// <summary>
@@ -59,12 +69,14 @@ public sealed class ApprovedTeacherGuard : IApprovedTeacherGuard
         var row = await _context.Teachers.AsNoTracking()
             .Where(t => t.UserId == userId)
             .OrderBy(t => t.Id)
-            .Select(t => new { t.AccountApprovedAt })
+            .Select(t => new { t.AccountApprovedAt, t.AccountSuspendedAt })
             .FirstOrDefaultAsync(ct);
 
         var result = row switch
         {
             null => TeacherApprovalCheck.NoTeacherProfile,
+            // issue #289: askı önce kontrol edilir — AccountApprovedAt askıda zaten null ama savunma amaçlı ikisine birden bakılır.
+            { AccountSuspendedAt: not null } => TeacherApprovalCheck.Suspended,
             { AccountApprovedAt: not null } => TeacherApprovalCheck.Approved,
             _ => TeacherApprovalCheck.NotApproved,
         };

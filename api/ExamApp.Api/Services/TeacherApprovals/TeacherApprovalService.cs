@@ -103,7 +103,8 @@ public class TeacherApprovalService : ITeacherApprovalService
                     Status = r.Status.ToString(),
                     RejectionReason = r.RejectionReason,
                     DecidedAt = r.DecidedAt,
-                    RequiresAccountApproval = r.RequiresAccountApproval
+                    RequiresAccountApproval = r.RequiresAccountApproval,
+                    AccountSuspended = r.AccountSuspended // issue #289
                 };
             }).ToList()
         };
@@ -134,7 +135,8 @@ public class TeacherApprovalService : ITeacherApprovalService
             Status = row.Status.ToString(),
             RejectionReason = row.RejectionReason,
             DecidedAt = row.DecidedAt,
-            RequiresAccountApproval = row.RequiresAccountApproval
+            RequiresAccountApproval = row.RequiresAccountApproval,
+            AccountSuspended = row.AccountSuspended // issue #289
         };
     }
 
@@ -154,6 +156,7 @@ public class TeacherApprovalService : ITeacherApprovalService
         public string? RejectionReason { get; init; }
         public DateTime? DecidedAt { get; init; }
         public bool RequiresAccountApproval { get; init; }
+        public bool AccountSuspended { get; init; }
     }
 
     private IQueryable<ApplicationRow> Project(IQueryable<Teacher> query) => query
@@ -175,14 +178,18 @@ public class TeacherApprovalService : ITeacherApprovalService
                     : t.ApprovalStatus == TeacherApprovalStatus.Approved && t.School != null ? t.School.Name : null,
             // security review L5: hesabı onaylanmamış ama Approved görünen satır (rolling deploy sırasında eski kodun
             // "okulsuz → Approved" kaydı) karar bekleyen hesap başvurusu olarak Pending gösterilir.
-            Status = t.ApprovalStatus == TeacherApprovalStatus.Approved && t.AccountApprovedAt == null
+            // issue #289: askıdaki öğretmenin AccountApprovedAt'i de null'dur ama hesap kararı verilmiştir — L5 değildir.
+            Status = t.ApprovalStatus == TeacherApprovalStatus.Approved && t.AccountApprovedAt == null && t.AccountSuspendedAt == null
                 ? TeacherApprovalStatus.Pending
                 : t.ApprovalStatus,
             RejectionReason = t.ApprovalStatus == TeacherApprovalStatus.Rejected ? t.RejectionReason : null,
-            RequiresAccountApproval = t.AccountApprovedAt == null,
+            // issue #289: askıdaki öğretmen "hesap onayı bekliyor" değildir; askı yalnızca admin'in unsuspend aksiyonuyla kalkar.
+            RequiresAccountApproval = t.AccountApprovedAt == null && t.AccountSuspendedAt == null,
+            AccountSuspended = t.AccountSuspendedAt != null,
             // issue #187: karar anı = mevcut durumla eşleşen EN SON başarılı admin kararı (#157 audit). Teacher.UpdateTime
             // güvenilir değil (sonraki her profil kaydında SaveChanges onu da günceller).
-            DecidedAt = t.ApprovalStatus == TeacherApprovalStatus.Pending || t.AccountApprovedAt == null && t.ApprovalStatus == TeacherApprovalStatus.Approved
+            DecidedAt = t.ApprovalStatus == TeacherApprovalStatus.Pending
+                        || t.AccountApprovedAt == null && t.AccountSuspendedAt == null && t.ApprovalStatus == TeacherApprovalStatus.Approved
                 ? null
                 : _context.AdminUserActionLogs
                     .Where(l => l.TargetType == AdminUserTargetType.Teacher
@@ -215,9 +222,11 @@ public class TeacherApprovalService : ITeacherApprovalService
     private IQueryable<Teacher> PendingApplications() => _context.Teachers
         .AsNoTracking()
         .Where(t => (t.ApprovalStatus == TeacherApprovalStatus.Pending
-                     && (t.IsIndependentTutor || t.RequestedSchoolId != null || t.AccountApprovedAt == null))
+                     && (t.IsIndependentTutor || t.RequestedSchoolId != null
+                         // issue #289: askıdaki öğretmen (AccountApprovedAt null) hesap onayı bekleyen ilk kayıt DEĞİLDİR.
+                         || (t.AccountApprovedAt == null && t.AccountSuspendedAt == null)))
                     // security review L5: rolling deploy sırasında eski kodun Approved yazdığı, hesabı onaylanmamış kayıt.
-                    || (t.ApprovalStatus == TeacherApprovalStatus.Approved && t.AccountApprovedAt == null));
+                    || (t.ApprovalStatus == TeacherApprovalStatus.Approved && t.AccountApprovedAt == null && t.AccountSuspendedAt == null));
 
     /// <summary>
     /// issue #187: her durumdaki başvurular. Bağımsız öğretmen (her durumda) ya da okul talebi olan öğretmen (Pending;
@@ -230,7 +239,8 @@ public class TeacherApprovalService : ITeacherApprovalService
         .Where(t => t.IsIndependentTutor
                     || t.RequestedSchoolId != null
                     // issue #287: hesabı onaylanmamış (bekleyen ya da reddedilmiş) ilk öğretmen kaydı.
-                    || t.AccountApprovedAt == null
+                    // issue #289: askıdaki öğretmen bu yüzden başvuru sayılmaz (kendi kararı audit'ten tanınır).
+                    || (t.AccountApprovedAt == null && t.AccountSuspendedAt == null)
                     || _context.AdminUserActionLogs.Any(l =>
                         l.TargetType == AdminUserTargetType.Teacher
                         && l.TargetId == t.Id
@@ -292,7 +302,11 @@ public class TeacherApprovalService : ITeacherApprovalService
                     .SetProperty(t => t.RequestedSchoolId, newRequestedSchoolId)
                     // issue #287: İLK başarılı onay öğretmen hesabını açar; önceden onaylı hesabın tarihi korunur
                     // (sonraki bağımsız/okul başvurusunun onayı AccountApprovedAt'i değiştirmez).
-                    .SetProperty(t => t.AccountApprovedAt, t => t.AccountApprovedAt ?? now)
+                    // issue #289: askıdaki öğretmenin başvurusu onaylansa da askı sessizce kalkmaz — AccountApprovedAt
+                    // null kalır; askıyı yalnızca admin'in unsuspend aksiyonu kaldırır. Koşul SQL'de değerlendirilir
+                    // (okuma ile yazma arasında askıya alma yarışında da güvenli).
+                    .SetProperty(t => t.AccountApprovedAt,
+                        t => t.AccountSuspendedAt == null ? t.AccountApprovedAt ?? now : t.AccountApprovedAt)
                     .SetProperty(t => t.UpdateTime, now)
                     .SetProperty(t => t.UpdateUserId, adminUserId), ct);
 
@@ -452,7 +466,8 @@ public class TeacherApprovalService : ITeacherApprovalService
     {
         return _context.Teachers.Where(t => t.Id == teacherId
             && (t.ApprovalStatus == TeacherApprovalStatus.Pending
-                || (t.ApprovalStatus == TeacherApprovalStatus.Approved && t.AccountApprovedAt == null)) // L5
+                || (t.ApprovalStatus == TeacherApprovalStatus.Approved && t.AccountApprovedAt == null
+                    && t.AccountSuspendedAt == null)) // L5 (issue #289: askıdaki öğretmen L5 değil)
             && t.IsIndependentTutor == isIndependent
             && t.RequestedSchoolId == requestedSchoolId);
     }
@@ -475,13 +490,16 @@ public class TeacherApprovalService : ITeacherApprovalService
         if (teacher == null)
             return new ResponseBaseDto { Success = false, NotFound = true, Message = _localizer["admin.teacherApplication.notFound"] };
 
-        if (!teacher.IsIndependentTutor && !teacher.RequestedSchoolId.HasValue && teacher.AccountApprovedAt != null)
+        // issue #289: askıdaki öğretmenin hesabı için verilmiş bir karar vardır (AccountApprovedAt null olsa da) — talebi
+        // yoksa onaylanacak/reddedilecek başvuru yoktur; askı yalnızca admin'in unsuspend aksiyonuyla kalkar.
+        var hasAccountDecision = teacher.AccountApprovedAt != null || teacher.AccountSuspendedAt != null;
+        if (!teacher.IsIndependentTutor && !teacher.RequestedSchoolId.HasValue && hasAccountDecision)
             return Fail(_localizer["admin.teacherApplication.noPendingApplication"]);
 
         // security review L5: hesabı onaylanmamış (AccountApprovedAt null) ama Approved görünen kayıt — rolling deploy
         // sırasında eski kodun okulsuz kaydı Approved başlatması — hâlâ karar bekler. Rejected kararı ise kesindir
         // (#187 idempotency): reddedilen başvuru yeniden onaylanmaz, öğretmen yeni talep açar.
-        var awaitsAccountDecision = teacher.ApprovalStatus == TeacherApprovalStatus.Approved && teacher.AccountApprovedAt == null;
+        var awaitsAccountDecision = teacher.ApprovalStatus == TeacherApprovalStatus.Approved && !hasAccountDecision;
         if (teacher.ApprovalStatus != TeacherApprovalStatus.Pending && !awaitsAccountDecision)
             return AlreadyDecided();
 

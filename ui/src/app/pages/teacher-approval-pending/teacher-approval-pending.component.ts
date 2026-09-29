@@ -8,15 +8,17 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { AuthService } from '../../services/auth.service';
 import { SignalRService } from '../../services/signalr.service';
+import { teacherAccountSuspendedOf } from '../../models/teacher-approval.model';
 
 /** Çeviriler kendi Transloco scope'unda: `public/i18n/teacher-approval/<lang>.json`. */
 const TEACHER_APPROVAL_SCOPE = 'teacher-approval';
 
 /**
  * Sayfanın gösterdiği durum. `approved`: hesap onaylı (öğretmen özellikleri açık); `pending`: ilk başvuru
- * inceleniyor; `rejected`: başvuru reddedildi (gerekçe gösterilir); `noRecord`: öğretmen kaydı yok (kayıt tamamlanmamış).
+ * inceleniyor; `rejected`: başvuru reddedildi (gerekçe gösterilir); `suspended`: onaylı hesap admin tarafından askıya
+ * alındı (#289; neden gösterilmez — sunucu dönmez); `noRecord`: öğretmen kaydı yok (kayıt tamamlanmamış).
  */
-export type TeacherApprovalView = 'approved' | 'pending' | 'rejected' | 'noRecord';
+export type TeacherApprovalView = 'approved' | 'pending' | 'rejected' | 'suspended' | 'noRecord';
 
 /**
  * Issue #287 — öğretmen hesabı onay durumu. Onaysız öğretmenin tek öğretmen ekranı: guard/interceptor buraya
@@ -53,6 +55,10 @@ export class TeacherApprovalPendingComponent implements OnInit {
     }
     if (teacher.teacherAccountApproved === true && !this.auth.isUnapprovedTeacher()) {
       return 'approved';
+    }
+    // #289: askıdaki öğretmenin başvuru durumu `Approved` kalır — "inceleniyor" ile karışmasın diye önce bakılır.
+    if (teacherAccountSuspendedOf(this.auth.user())) {
+      return 'suspended';
     }
     return teacher.teacherApplicationStatus === 'Rejected' ? 'rejected' : 'pending';
   });

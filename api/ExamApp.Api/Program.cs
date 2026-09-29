@@ -310,6 +310,8 @@ builder.Services.AddAdminAccountStatusRateLimiting();
 // issue #277 (madde 8): admin öğrenci okul değişikliği — audit AdminUserActionLogs'a, ayrı rate limit kovası.
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminStudentSchoolService, ExamApp.Api.Services.AdminUsers.AdminStudentSchoolService>();
 builder.Services.AddAdminStudentSchoolRateLimiting();
+// issue #289: öğretmen hesap onayını askıya alma / geri açma — audit AdminUserActionLogs'a; hesap durumu (#155) rate limit kovası.
+builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminTeacherSuspensionService, ExamApp.Api.Services.AdminUsers.AdminTeacherSuspensionService>();
 
 // Student activity reset
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();

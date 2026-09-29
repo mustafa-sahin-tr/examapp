@@ -1,5 +1,6 @@
 using ExamApp.Api.Services.UserRoles;
 using ExamApp.Api.Helpers;
+using ExamApp.Api.Services.Teachers;
 using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
@@ -30,10 +31,15 @@ namespace ExamApp.Api.Controllers
         // Client'a donen tum metinler mesaj sozlugunden gelir (issue #184).
         private readonly IStringLocalizer<Messages> _localizer;
 
+        // issue #289 (security D1): askıdaki öğretmen tutor profilini güncelleyemez. DI her zaman verir; parametre yalnızca
+        // mevcut (DI'siz) controller testleri derlenmeye devam etsin diye opsiyonel.
+        private readonly IApprovedTeacherGuard? _teacherGuard;
+
         public TeacherController(ITeacherService teacherService, UserProfileCacheService userProfileCacheService,
             IKeycloakService keycloakService,
             ILogger<TeacherController> logger,
-            IStringLocalizer<Messages>? localizer = null
+            IStringLocalizer<Messages>? localizer = null,
+            IApprovedTeacherGuard? teacherGuard = null
         )
             : base()
         {
@@ -42,6 +48,7 @@ namespace ExamApp.Api.Controllers
             _keycloakService = keycloakService;
             _logger = logger;
             _localizer = localizer ?? FallbackMessageLocalizer.Instance;
+            _teacherGuard = teacherGuard;
         }
 
         [Authorize] // 🔹 Kullanıcının giriş yapmış olması gerekiyor
@@ -180,6 +187,7 @@ namespace ExamApp.Api.Controllers
                     HasTeacherRecord = true,
                     Teacher = teacher,
                     approval.TeacherAccountApproved,
+                    approval.TeacherAccountSuspended, // issue #289
                     approval.TeacherApplicationStatus,
                     approval.RejectionReason
                 });
@@ -311,11 +319,22 @@ namespace ExamApp.Api.Controllers
         /// (online/yüz yüze) ve ücret &gt; 0 zorunlu; aksi halde 400.
         /// </summary>
         // issue #287 (security review L2): bilerek onaysız öğretmene açık — başvuru formu (bkz. GET tutor-profile).
+        // issue #289 (security D1): İSTİSNA askıdaki öğretmen — askı admin kararıdır, başvuru değil; profilini (ücret, ders,
+        // mod) güncelleyemez → 403 TeacherNotApproved (policy ile aynı gövde). GET açık kalır.
         [Authorize(Roles = "Teacher")]
         [HttpPut("tutor-profile")]
         public async Task<ActionResult<TutorProfileDto>> UpdateTutorProfile([FromBody] UpdateTutorProfileDto request, CancellationToken ct)
         {
             var user = await GetAuthenticatedUserAsync();
+            if (_teacherGuard != null && await _teacherGuard.CheckAsync(user.Id, ct) == TeacherApprovalCheck.Suspended)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new TeacherNotApprovedResponseDto
+                {
+                    Success = false,
+                    ErrorCode = TeacherAccessErrorCodes.TeacherNotApproved,
+                    Message = _localizer["teacher.notApproved"].Value
+                });
+            }
             var result = await _teacherService.UpdateTutorProfileAsync(user.Id, request, ct);
             return MapTutorProfileResult(result);
         }

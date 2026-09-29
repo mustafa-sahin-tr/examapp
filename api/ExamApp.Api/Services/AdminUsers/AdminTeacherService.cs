@@ -50,7 +50,10 @@ public class AdminTeacherService : IAdminTeacherService
                 t.SchoolId,
                 SchoolName = t.School != null ? t.School.Name : t.SchoolName,
                 t.IsIndependentTutor,
-                t.ApprovalStatus
+                t.ApprovalStatus,
+                t.AccountApprovedAt,
+                t.AccountSuspendedAt,
+                t.AccountSuspensionReason
             })
             .ToListAsync(ct);
 
@@ -76,7 +79,12 @@ public class AdminTeacherService : IAdminTeacherService
                     SchoolName = r.SchoolName,
                     IsIndependentTutor = r.IsIndependentTutor,
                     ApprovalStatus = r.ApprovalStatus.ToString(),
-                    IsEnabled = user?.Enabled
+                    IsEnabled = user?.Enabled,
+                    // issue #289: askı alanları (neden yalnızca admin'e döner).
+                    AccountApproved = r.AccountApprovedAt != null && r.AccountSuspendedAt == null,
+                    AccountSuspended = r.AccountSuspendedAt != null,
+                    AccountSuspendedAt = r.AccountSuspendedAt,
+                    AccountSuspensionReason = r.AccountSuspendedAt != null ? r.AccountSuspensionReason : null
                 };
             }).ToList()
         };

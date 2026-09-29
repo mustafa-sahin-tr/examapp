@@ -25,6 +25,7 @@ import { AdminSchoolPagedQuery } from '../models/admin-paged-query.model';
 import { AdminPasswordResetResponse, AdminPasswordResetTarget } from '../models/admin-password-reset.model';
 import { AdminAccountStatusResponse, AdminAccountTarget } from '../models/admin-account-status.model';
 import { AdminStudentSchoolRequest, AdminStudentSchoolResponse } from '../models/admin-student-school.model';
+import { AdminTeacherSuspendRequest, AdminTeacherSuspensionResponse } from '../models/admin-teacher-suspension.model';
 import { Paged } from '../models/test-instance';
 
 interface UpsertSubject {
@@ -215,6 +216,21 @@ export class AdminService {
   setAccountStatus(target: AdminAccountTarget, id: number, enabled: boolean): Observable<AdminAccountStatusResponse> {
     const segment = target === 'teacher' ? 'teachers' : 'students';
     return this.http.patch<AdminAccountStatusResponse>(`${this.baseUrl}/${segment}/${id}/account-status`, { enabled });
+  }
+
+  /**
+   * Issue #289 — öğretmenin (Teacher.Id) hesap onayını askıya alır: öğretmen özellikleri kapanır (Keycloak hesabı
+   * açık kalır). Neden zorunlu (sunucu trim'ler, 1-500). Hatalar `{ message, errorCode }`: 400 (neden boş/uzun),
+   * 404, 409 (zaten askıda / hesap hiç onaylanmamış / eşzamanlı değişiklik), 429 (`Retry-After`).
+   */
+  suspendTeacher(teacherId: number, reason: string): Observable<AdminTeacherSuspensionResponse> {
+    const body: AdminTeacherSuspendRequest = { reason };
+    return this.http.post<AdminTeacherSuspensionResponse>(`${this.baseUrl}/teachers/${teacherId}/suspend`, body);
+  }
+
+  /** Issue #289 — askıyı kaldırır (gövdesiz); hesap onayı yeniden açılır. 409: askıda değil / eşzamanlı değişiklik. */
+  unsuspendTeacher(teacherId: number): Observable<AdminTeacherSuspensionResponse> {
+    return this.http.post<AdminTeacherSuspensionResponse>(`${this.baseUrl}/teachers/${teacherId}/unsuspend`, null);
   }
 
   /**

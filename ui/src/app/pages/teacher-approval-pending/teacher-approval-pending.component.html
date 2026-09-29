@@ -50,6 +50,17 @@
               </div>
             </div>
           }
+          @case ('suspended') {
+            <div class="tap__status" role="status">
+              <mat-icon class="tap__icon" aria-hidden="true">pause_circle</mat-icon>
+              <div>
+                <h2>{{ t('suspended.title') }}</h2>
+                <p>{{ t('suspended.body') }}</p>
+                <p>{{ t('suspended.contact') }}</p>
+                <p class="tap__muted">{{ t('suspended.meanwhile') }}</p>
+              </div>
+            </div>
+          }
           @case ('noRecord') {
             <div class="tap__status" role="status">
               <mat-icon class="tap__icon" aria-hidden="true">person_add</mat-icon>

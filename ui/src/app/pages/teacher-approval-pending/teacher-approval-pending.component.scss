@@ -42,7 +42,8 @@
   background: var(--main-foreground-color);
   border-left: 4px solid var(--primaryColor);
 
-  &--rejected {
+  &--rejected,
+  &--suspended {
     border-left-color: var(--ms-danger-background);
   }
 
@@ -80,7 +81,8 @@
   height: 2rem;
   color: var(--primaryColor);
 
-  .tap__card--rejected & {
+  .tap__card--rejected &,
+  .tap__card--suspended & {
     color: var(--ms-danger-background);
   }
 

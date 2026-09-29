@@ -34,7 +34,7 @@ public class ConsumerTests : IDisposable
         await using var ctx = _db.NewContext();
         var consumer = new AnswerSubmittedConsumer(
             new AnswerSubmissionAggregationService(ctx),
-            new BadgeEvaluator(ctx, hub));
+            BadgeService.Tests.Support.BadgeEvaluatorFactory.Create(ctx, hub));
 
         await consumer.Consume(Context(new AnswerSubmittedEvent
         {

@@ -1,24 +1,40 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using BadgeService.Entities;
 using BadgeService.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace BadgeService.Services;
 
 public class BadgeEvaluator
 {
+    public const string NotificationType = "BadgeEarned";
+
     private readonly BadgeDbContext _context;
     private readonly IHubContext<BadgeNotificationHub> _hub;
+    private readonly IUserLocaleResolver _localeResolver;
+    private readonly INotificationTextFactory _texts;
+    private readonly ILogger<BadgeEvaluator> _logger;
 
-    public BadgeEvaluator(BadgeDbContext context, IHubContext<BadgeNotificationHub> hub)
+    public BadgeEvaluator(
+        BadgeDbContext context,
+        IHubContext<BadgeNotificationHub> hub,
+        IUserLocaleResolver localeResolver,
+        INotificationTextFactory texts,
+        ILogger<BadgeEvaluator>? logger = null)
     {
+        _logger = logger ?? NullLogger<BadgeEvaluator>.Instance;
         _context = context;
         _hub = hub;
+        _localeResolver = localeResolver;
+        _texts = texts;
     }
 
     public async Task EvaluateAnswerSubmittedAsync(int userId, string clientId, CancellationToken cancellationToken = default)
@@ -114,6 +130,15 @@ public class BadgeEvaluator
             }
         }
 
+        // Issue #146: kalıcı bildirim, BadgeEarned satırıyla AYNI SaveChanges'te (atomik) yazılır —
+        // rozet var ama bildirim yok (ya da tersi) durumu oluşamaz. Retry/duplicate teslimde rozet zaten
+        // earnedBadgeIds'te olduğundan newlyEarned boş kalır → ikinci bildirim üretilmez; ayrıca
+        // (UserId, SourceBadgeDefinitionId) filtreli unique index'i son savunma hattıdır.
+        if (newlyEarned.Count > 0)
+        {
+            await AddBadgeEarnedNotificationsAsync(userId, clientId, newlyEarned, now, cancellationToken);
+        }
+
         if (_context.ChangeTracker.HasChanges())
         {
             await _context.SaveChangesAsync(cancellationToken);
@@ -127,6 +152,58 @@ public class BadgeEvaluator
                 Description = badge.Description,
                 IconUrl = badge.IconUrl
             }, cancellationToken);
+        }
+    }
+
+    private async Task AddBadgeEarnedNotificationsAsync(
+        int userId, string clientId, List<BadgeDefinition> newlyEarned, DateTime now, CancellationToken ct)
+    {
+        // Keycloak sub yoksa satır sahipsiz (API sub ile filtreler, SignalR hedefleyemez) ve unique index
+        // yüzünden sonradan üretilemez olurdu; rozet yine kazanılır, bildirim yazılmaz. PII yok: yalnız userId.
+        if (string.IsNullOrWhiteSpace(clientId))
+        {
+            _logger.LogWarning(
+                "BadgeEarned bildirimi atlandı: ClientId (Keycloak sub) boş. UserId={UserId}, Rozet sayısı={Count}",
+                userId, newlyEarned.Count);
+            return;
+        }
+
+        var ids = newlyEarned.Select(b => b.Id).ToList();
+        // Savunma: bildirimi zaten var olan rozet için (ör. BadgeEarned elle silinip yeniden kazanıldı)
+        // ikinci satır eklenmez — unique index ihlali tüm SaveChanges'i düşürürdü.
+        var alreadyNotified = (await _context.Notifications
+                .AsNoTracking()
+                .Where(n => n.UserId == userId && n.Type == NotificationType && n.SourceBadgeDefinitionId != null
+                            && ids.Contains(n.SourceBadgeDefinitionId.Value))
+                .Select(n => n.SourceBadgeDefinitionId!.Value)
+                .ToListAsync(ct))
+            .ToHashSet();
+
+        var keycloakId = clientId;
+        var culture = await _localeResolver.ResolveAsync(userId, keycloakId, ct);
+
+        foreach (var badge in newlyEarned.Where(b => !alreadyNotified.Contains(b.Id)))
+        {
+            var text = _texts.Build(NotificationType, culture, badge.Name);
+            _context.Notifications.Add(new Notification
+            {
+                UserId = userId,
+                UserKeycloakId = keycloakId,
+                Type = NotificationType,
+                Title = text.Title,
+                Body = text.Body,
+                // PII yok: yalnızca UI'ın derin link/ikon kurması için rozet tanımı alanları.
+                Data = JsonSerializer.Serialize(new
+                {
+                    badgeDefinitionId = badge.Id,
+                    badgeCode = badge.Code,
+                    // Seed/eski satırlar doğrulanmamış olabilir; dış URL takip pikseline dönüşmesin.
+                    iconUrl = BadgeIconValidator.IsValid(badge.IconUrl) ? badge.IconUrl : null
+                }),
+                SourceBadgeDefinitionId = badge.Id,
+                IsRead = false,
+                CreatedAt = now
+            });
         }
     }
 }

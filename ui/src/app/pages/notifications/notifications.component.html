@@ -1,0 +1,75 @@
+<section class="ntf" *transloco="let t; prefix: 'notifications'">
+  <header class="ntf__head">
+    <div>
+      <h1>{{ t('title') }}</h1>
+      <p>{{ t('subtitle') }}</p>
+    </div>
+    <mat-button-toggle-group
+      [value]="filter()"
+      (change)="setFilter($event.value)"
+      [attr.aria-label]="t('filter.label')"
+    >
+      <mat-button-toggle value="unread">{{ t('filter.unread') }}</mat-button-toggle>
+      <mat-button-toggle value="all">{{ t('filter.all') }}</mat-button-toggle>
+    </mat-button-toggle-group>
+  </header>
+
+  @if (loading()) {
+    <div class="ntf__state" aria-busy="true" aria-live="polite">
+      <mat-spinner diameter="36" />
+      <span>{{ t('loading') }}</span>
+    </div>
+  } @else if (error()) {
+    <div class="ntf__state ntf__state--error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ t('loadError') }}</span>
+      <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+    </div>
+  } @else if (isEmpty()) {
+    <div class="ntf__state ntf__state--empty">
+      <mat-icon class="ntf__empty-icon">notifications_none</mat-icon>
+      <span>{{ filter() === 'unread' ? t('empty.unread') : t('empty.all') }}</span>
+    </div>
+  } @else {
+    <ul class="ntf__list">
+      @for (row of rows(); track row.notification.id) {
+        <li>
+          <button
+            type="button"
+            class="ntf__item"
+            [class.is-unread]="!row.notification.isRead"
+            [class.is-link]="!!row.route"
+            [attr.data-type]="row.notification.type"
+            [attr.aria-label]="
+              (row.notification.isRead ? '' : t('unreadPrefix') + ' ') + row.notification.title
+            "
+            (click)="open(row)"
+          >
+            <span class="ntf__icon" aria-hidden="true">
+              @if (row.iconUrl) {
+                <img class="ntf__badge-img" [src]="row.iconUrl" alt="" />
+              } @else {
+                <mat-icon>{{ row.icon }}</mat-icon>
+              }
+            </span>
+            <span class="ntf__content">
+              <span class="ntf__title">{{ row.notification.title }}</span>
+              @if (row.notification.body) {
+                <span class="ntf__body">{{ row.notification.body }}</span>
+              }
+              @if (row.relativeTime) {
+                <span class="ntf__time">{{ row.relativeTime }}</span>
+              }
+            </span>
+            @if (!row.notification.isRead) {
+              <span class="ntf__dot" aria-hidden="true"></span>
+            }
+            @if (row.route) {
+              <mat-icon class="ntf__chevron" aria-hidden="true">chevron_right</mat-icon>
+            }
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</section>

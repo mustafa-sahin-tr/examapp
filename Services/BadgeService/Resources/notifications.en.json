@@ -10,6 +10,10 @@
       "worksheetFallback": "The worksheet",
       "rejectionReasonSuffix": " Reason: {0}"
     },
+    "BadgeEarned": {
+      "title": "You earned a new badge!",
+      "body": "You earned the \"{0}\" badge."
+    },
     "BookingRequestCreated": {
       "title": "New lesson request",
       "body": "{0} requested a lesson for {1}."

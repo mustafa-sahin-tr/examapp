@@ -333,6 +333,15 @@
     }
 }
 
+// Issue #146: bildirim zili tema toggle'ı ile profil menüsü arasında
+.toolbar-notifications {
+    margin-right: var(--ms-layout-spacing-xsmall);
+
+    + .profile-menu {
+        margin-left: 0;
+    }
+}
+
 // Responsive Design
 @media (max-width: 768px), ((max-height: 500px) and (orientation: landscape)) {
     $mobile-bottom-nav-height: 64px;

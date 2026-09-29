@@ -10,6 +10,10 @@
       "worksheetFallback": "Sınavın",
       "rejectionReasonSuffix": " Gerekçe: {0}"
     },
+    "BadgeEarned": {
+      "title": "Yeni rozet kazandın!",
+      "body": "\"{0}\" rozetini kazandın."
+    },
     "BookingRequestCreated": {
       "title": "Yeni ders talebi",
       "body": "{0}, {1} için ders talebinde bulundu."

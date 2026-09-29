@@ -124,4 +124,27 @@ describe('SignalRService — admin öğretmen bildirimleri', () => {
       expect(text).toContain('{{school}}');
     }
   });
+
+  // Issue #146: kalıcı bildirim üreten push'lar zil sayacını tazelemek için tetik yayar.
+  for (const event of ['BadgeEarned', 'ReminderDue', 'AccessRequestUpdate', 'TeacherApplicationDecided', 'BookingUpdate']) {
+    it(`notificationsChanged_${event}_Emits`, () => {
+      setup(false);
+      let count = 0;
+      service.notificationsChanged$.subscribe(() => count++);
+
+      handlers.get(event)!({ kind: 'requested', title: 'x', body: 'y', worksheetId: 1, badgeName: 'b', description: 'd' });
+
+      expect(count).toBe(1);
+    });
+  }
+
+  it('notificationsChanged_TeacherSchoolRequestNonAdmin_DoesNotEmit', () => {
+    setup(false);
+    let count = 0;
+    service.notificationsChanged$.subscribe(() => count++);
+
+    handlers.get('TeacherSchoolRequestSubmitted')!(schoolRequest);
+
+    expect(count).toBe(0);
+  });
 });

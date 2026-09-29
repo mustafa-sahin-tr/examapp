@@ -67,6 +67,14 @@ public class Notification
     /// </summary>
     public int? SourceBookingId { get; set; }
 
+    /// <summary>
+    /// Idempotency anahtarı (issue #146, yalnızca <c>Type == "BadgeEarned"</c> için, bkz. BadgeDbContext'teki
+    /// filtreli unique index): kazanılan rozetin <c>BadgeDefinition.Id</c>'si (Guid). (UserId, bu alan)
+    /// çifti başına en fazla bir "rozet kazandın" bildirimi olur; rozet kazanımı zaten kullanıcı başına
+    /// tekildir (BadgeEvaluator earnedBadgeIds kontrolü, seviyeli/tekrarlı rozet yok).
+    /// </summary>
+    public Guid? SourceBadgeDefinitionId { get; set; }
+
     public bool IsRead { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

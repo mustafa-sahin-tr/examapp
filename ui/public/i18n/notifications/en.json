@@ -1,0 +1,17 @@
+{
+  "title": "Notifications",
+  "subtitle": "Badges you have earned, reminders and other updates.",
+  "filter": {
+    "label": "Notification filter",
+    "unread": "Unread",
+    "all": "All"
+  },
+  "loading": "Loading your notifications...",
+  "loadError": "Your notifications could not be loaded.",
+  "retry": "Try again",
+  "empty": {
+    "unread": "You have no unread notifications.",
+    "all": "You have no notifications yet."
+  },
+  "unreadPrefix": "Unread:"
+}

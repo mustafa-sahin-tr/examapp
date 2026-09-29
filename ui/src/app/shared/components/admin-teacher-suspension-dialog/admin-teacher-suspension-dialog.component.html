@@ -1,0 +1,72 @@
+<div class="ts-dialog" *transloco="let t; prefix: 'admin.teacherSuspension'">
+  <header class="ts-header">
+    <mat-icon class="ts-icon" [class.ts-icon--restore]="!isSuspend">{{ isSuspend ? 'pause_circle' : 'play_circle' }}</mat-icon>
+    <div class="ts-header__text">
+      <h2 mat-dialog-title>{{ t(data.mode + '.confirmTitle') }}</h2>
+      <p class="ts-subtitle">{{ data.displayName }}</p>
+    </div>
+  </header>
+
+  <mat-dialog-content class="ts-content">
+    <p class="ts-description">{{ t(data.mode + '.confirmIntro', { name: data.displayName }) }}</p>
+    <ul class="ts-consequences">
+      <li><mat-icon>school</mat-icon><span>{{ t(data.mode + '.confirmFeatures') }}</span></li>
+      @if (isSuspend) {
+        <li data-testid="login-note"><mat-icon>login</mat-icon><span>{{ t('suspend.confirmLogin') }}</span></li>
+      }
+    </ul>
+
+    @if (isSuspend) {
+      <mat-form-field appearance="outline" class="ts-reason" subscriptSizing="dynamic">
+        <mat-label>{{ t('suspend.reasonLabel') }}</mat-label>
+        <textarea
+          matInput
+          data-testid="reason"
+          [formControl]="reasonControl"
+          rows="4"
+          required
+          [maxlength]="maxLength"
+          [placeholder]="t('suspend.reasonPlaceholder')"
+          [readonly]="submitting()"
+        ></textarea>
+        <mat-hint>{{ t('suspend.reasonHint') }}</mat-hint>
+        <mat-hint align="end" data-testid="reason-counter">{{ reasonLength() }} / {{ maxLength }}</mat-hint>
+        @if (reasonControl.hasError('required') || reasonControl.hasError('whitespace')) {
+          <mat-error>{{ t('suspend.required') }}</mat-error>
+        } @else if (reasonControl.hasError('maxlength')) {
+          <mat-error>{{ t('suspend.maxLength', { max: maxLength }) }}</mat-error>
+        }
+      </mat-form-field>
+    }
+
+    @if (error()) {
+      <div class="ts-error" role="alert" data-testid="suspension-error">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ error() }}</span>
+      </div>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="ts-actions">
+    <button mat-stroked-button type="button" (click)="cancel()" [disabled]="submitting()" data-testid="cancel">
+      {{ t('cancel') }}
+    </button>
+    <button
+      mat-flat-button
+      type="button"
+      [class.ts-danger]="isSuspend"
+      [class.ts-primary]="!isSuspend"
+      (click)="confirm()"
+      [disabled]="submitting() || !canConfirm()"
+      [attr.aria-busy]="submitting()"
+      data-testid="confirm"
+    >
+      @if (submitting()) {
+        <mat-spinner diameter="18" class="ts-spinner"></mat-spinner>
+        {{ t('submitting') }}
+      } @else {
+        {{ error() ? t('retry') : t(data.mode + '.confirm') }}
+      }
+    </button>
+  </mat-dialog-actions>
+</div>

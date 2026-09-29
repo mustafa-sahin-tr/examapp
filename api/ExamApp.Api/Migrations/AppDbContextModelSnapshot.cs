@@ -2065,6 +2065,13 @@ namespace ExamApp.Api.Migrations
                     b.Property<DateTime?>("AccountApprovedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("AccountSuspendedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AccountSuspensionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<int>("ApprovalStatus")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")

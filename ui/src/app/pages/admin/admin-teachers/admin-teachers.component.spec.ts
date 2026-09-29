@@ -10,6 +10,8 @@ import { MatDialog } from '@angular/material/dialog';
 import { OverlayContainer } from '@angular/cdk/overlay';
 import { AdminResetPasswordDialogComponent } from '../../../shared/components/admin-reset-password-dialog/admin-reset-password-dialog.component';
 import { AdminAccountStatusDialogComponent } from '../../../shared/components/admin-account-status-dialog/admin-account-status-dialog.component';
+import { AdminTeacherSuspensionDialogComponent } from '../../../shared/components/admin-teacher-suspension-dialog/admin-teacher-suspension-dialog.component';
+import { AdminTeacherSuspensionResponse } from '../../../models/admin-teacher-suspension.model';
 
 import { AdminTeachersComponent } from './admin-teachers.component';
 import { AdminService } from '../../../services/admin.service';
@@ -43,6 +45,10 @@ describe('AdminTeachersComponent', () => {
       isIndependentTutor: false,
       approvalStatus: 'Approved',
       isEnabled: true,
+      accountApproved: true,
+      accountSuspended: false,
+      accountSuspendedAt: null,
+      accountSuspensionReason: null,
       ...overrides,
     };
   }
@@ -65,6 +71,8 @@ describe('AdminTeachersComponent', () => {
       'getSchools',
       'resetPassword',
       'setAccountStatus',
+      'suspendTeacher',
+      'unsuspendTeacher',
     ]);
     adminService.getSchools.and.returnValue(of(schools));
     adminService.getTeachers.and.returnValue(of(paged([teacher()], 45)));
@@ -625,5 +633,224 @@ describe('AdminTeachersComponent', () => {
     expect(adminService.setAccountStatus).toHaveBeenCalledOnceWith('teacher', 12, false);
     expect(adminService.getTeachers).toHaveBeenCalledTimes(1);
     expect(cellTexts('accountStatus')).toEqual([adminTr.teachers.account.inactive]);
+  });
+
+  // ── Öğretmen hesap onayı askıya alma / kaldırma (issue #289) ─────────────
+
+  const SUSPENDED_AT = '2026-09-29T19:03:20Z';
+  const REASON = 'Şikâyet inceleniyor';
+
+  function suspendedTeacher(): AdminTeacherListItem {
+    return teacher({
+      accountApproved: false,
+      accountSuspended: true,
+      accountSuspendedAt: SUSPENDED_AT,
+      accountSuspensionReason: REASON,
+    });
+  }
+
+  function suspensionButtons(): HTMLButtonElement[] {
+    return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button[data-testid="suspension"]'));
+  }
+
+  function suspensionResponse(overrides: Partial<AdminTeacherSuspensionResponse> = {}): AdminTeacherSuspensionResponse {
+    return {
+      teacherId: 12,
+      accountApproved: false,
+      accountSuspended: true,
+      accountApprovedAt: null,
+      accountSuspendedAt: SUSPENDED_AT,
+      ...overrides,
+    };
+  }
+
+  function typeReason(value: string): void {
+    const textarea = TestBed.inject(OverlayContainer)
+      .getContainerElement()
+      .querySelector('textarea[data-testid="reason"]') as HTMLTextAreaElement;
+    textarea.value = value;
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+  }
+
+  const actionFor = (template: string): string => template.replace('{{name}}', 'Ayşe Yılmaz');
+
+  it('suspension_ApprovedRow_ShowsSuspendActionAndNoSuspendedChip', () => {
+    configure();
+    create();
+
+    expect(suspensionButtons().length).toBe(1);
+    expect(suspensionButtons()[0].getAttribute('aria-label')).toBe(actionFor(adminTr.teacherSuspension.suspendActionFor));
+    expect(fixture.nativeElement.querySelector('[data-testid="suspended-chip"]')).toBeNull();
+  });
+
+  it('suspension_SuspendedRow_ShowsChipReasonDateAndUnsuspendAction', () => {
+    configure();
+    adminService.getTeachers.and.returnValue(of(paged([suspendedTeacher()])));
+    create();
+
+    const chip = fixture.nativeElement.querySelector('[data-testid="suspended-chip"]') as HTMLElement;
+    expect(chip.textContent?.trim()).toBe(adminTr.teachers.suspension.chip);
+    const detail = (fixture.nativeElement.querySelector('[data-testid="suspension-detail"]') as HTMLElement).textContent ?? '';
+    expect(detail).toContain(REASON);
+    expect(detail).toMatch(/\d{1,2}\/\d{1,2}\/\d{2}/); // DatePipe 'short'
+    expect(suspensionButtons().length).toBe(1);
+    expect(suspensionButtons()[0].getAttribute('aria-label')).toBe(actionFor(adminTr.teacherSuspension.unsuspendActionFor));
+  });
+
+  it('suspension_PendingOrRejectedRow_HasNoSuspensionAction', () => {
+    configure();
+    adminService.getTeachers.and.returnValue(
+      of(
+        paged([
+          teacher({ id: 1, approvalStatus: 'Pending', accountApproved: false }),
+          teacher({ id: 2, approvalStatus: 'Rejected', accountApproved: false }),
+        ]),
+      ),
+    );
+    create();
+
+    expect(suspensionButtons().length).toBe(0);
+    component.toggleSuspension(component.rows()[0]);
+    expect(component.suspensionDialogOpen()).toBeFalse();
+  });
+
+  it('suspend_OpensReasonDialog_ConfirmDisabledUntilNonBlankReason', async () => {
+    configure();
+    create();
+    const dialog = fixture.debugElement.injector.get(MatDialog);
+    const openSpy = spyOn(dialog, 'open').and.callThrough();
+
+    suspensionButtons()[0].click();
+    await settle();
+
+    expect(openSpy.calls.mostRecent().args[0]).toBe(AdminTeacherSuspensionDialogComponent);
+    const config = openSpy.calls.mostRecent().args[1];
+    expect(config?.data).toEqual({ teacherId: 12, displayName: 'Ayşe Yılmaz', mode: 'suspend' });
+    expect(config?.disableClose).toBeTrue();
+    const container = TestBed.inject(OverlayContainer).getContainerElement();
+    expect(container.textContent).toContain(adminTr.teacherSuspension.suspend.confirmTitle);
+    expect(container.querySelector('textarea')?.getAttribute('maxlength')).toBe('500');
+    expect(overlayButton('confirm').disabled).toBeTrue();
+
+    typeReason('   ');
+    expect(overlayButton('confirm').disabled).toBeTrue();
+    expect(adminService.suspendTeacher).not.toHaveBeenCalled();
+  });
+
+  it('suspend_ConfirmWithReason_SendsTrimmedReasonAndUpdatesRowWithoutReload', async () => {
+    configure();
+    adminService.suspendTeacher.and.returnValue(of(suspensionResponse()));
+    create();
+    adminService.getTeachers.calls.reset();
+
+    suspensionButtons()[0].click();
+    await settle();
+    typeReason(`  ${REASON}  `);
+    const counter = TestBed.inject(OverlayContainer).getContainerElement().querySelector('[data-testid="reason-counter"]');
+    expect(counter?.textContent?.trim()).toBe(`${REASON.length + 4} / 500`);
+    overlayButton('confirm').click();
+    await settle();
+
+    expect(adminService.suspendTeacher).toHaveBeenCalledOnceWith(12, REASON);
+    expect(adminService.getTeachers).not.toHaveBeenCalled();
+    const row = component.rows()[0];
+    expect(row.accountSuspended).toBeTrue();
+    expect(row.accountApproved).toBeFalse();
+    expect(row.suspensionReason).toBe(REASON);
+    expect(row.suspendedAt).toBe(SUSPENDED_AT);
+    expect(fixture.nativeElement.querySelector('[data-testid="suspended-chip"]')).not.toBeNull();
+    expect(suspensionButtons()[0].getAttribute('aria-label')).toBe(actionFor(adminTr.teacherSuspension.unsuspendActionFor));
+    expect(component.suspensionDialogOpen()).toBeFalse();
+  });
+
+  it('unsuspend_SimpleConfirm_CallsUnsuspendAndRowBecomesApproved', async () => {
+    configure();
+    adminService.getTeachers.and.returnValue(of(paged([suspendedTeacher()])));
+    adminService.unsuspendTeacher.and.returnValue(
+      of(
+        suspensionResponse({
+          accountApproved: true,
+          accountSuspended: false,
+          accountSuspendedAt: null,
+          accountApprovedAt: SUSPENDED_AT,
+        }),
+      ),
+    );
+    create();
+
+    suspensionButtons()[0].click();
+    await settle();
+    const container = TestBed.inject(OverlayContainer).getContainerElement();
+    expect(container.textContent).toContain(adminTr.teacherSuspension.unsuspend.confirmTitle);
+    expect(container.querySelector('textarea')).toBeNull();
+    overlayButton('confirm').click();
+    await settle();
+
+    expect(adminService.unsuspendTeacher).toHaveBeenCalledOnceWith(12);
+    expect(adminService.suspendTeacher).not.toHaveBeenCalled();
+    const row = component.rows()[0];
+    expect(row.accountApproved).toBeTrue();
+    expect(row.accountSuspended).toBeFalse();
+    expect(row.suspensionReason).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="suspended-chip"]')).toBeNull();
+    expect(suspensionButtons()[0].getAttribute('aria-label')).toBe(actionFor(adminTr.teacherSuspension.suspendActionFor));
+  });
+
+  it('suspend_Conflict_ShowsBackendMessage_CancelReloadsList', async () => {
+    configure();
+    const message = 'Öğretmen hesabı zaten askıda.';
+    adminService.suspendTeacher.and.returnValue(
+      throwError(() => new HttpErrorResponse({ status: 409, error: { message, errorCode: 'TeacherAlreadySuspended' } })),
+    );
+    create();
+    adminService.getTeachers.calls.reset();
+    adminService.getTeachers.and.returnValue(of(paged([suspendedTeacher()])));
+
+    suspensionButtons()[0].click();
+    await settle();
+    typeReason(REASON);
+    overlayButton('confirm').click();
+    await settle();
+
+    const container = TestBed.inject(OverlayContainer).getContainerElement();
+    expect(container.querySelector('[data-testid="suspension-error"]')?.textContent).toContain(message);
+    expect(overlayButton('confirm').textContent).toContain(adminTr.teacherSuspension.retry);
+    expect(adminService.getTeachers).not.toHaveBeenCalled();
+    overlayButton('cancel').click();
+    await settle();
+
+    expect(adminService.getTeachers).toHaveBeenCalledTimes(1);
+    expect(component.rows()[0].accountSuspended).toBeTrue();
+  });
+
+  it('suspend_RateLimited_ShowsRateLimitText', async () => {
+    configure();
+    adminService.suspendTeacher.and.returnValue(throwError(() => new HttpErrorResponse({ status: 429, error: 'plain' })));
+    create();
+
+    suspensionButtons()[0].click();
+    await settle();
+    typeReason(REASON);
+    overlayButton('confirm').click();
+    await settle();
+
+    const container = TestBed.inject(OverlayContainer).getContainerElement();
+    expect(container.querySelector('[data-testid="suspension-error"]')?.textContent).toContain(
+      adminTr.teacherSuspension.errors.rateLimited,
+    );
+  });
+
+  it('suspension_DoubleClick_OpensSingleDialog', () => {
+    configure();
+    create();
+    const dialog = fixture.debugElement.injector.get(MatDialog);
+    const openSpy = spyOn(dialog, 'open').and.callThrough();
+
+    const row = component.rows()[0];
+    component.toggleSuspension(row);
+    component.toggleSuspension(row);
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
   });
 });

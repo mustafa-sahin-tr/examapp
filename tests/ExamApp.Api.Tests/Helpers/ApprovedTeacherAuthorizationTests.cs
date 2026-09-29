@@ -43,6 +43,7 @@ public class ApprovedTeacherAuthorizationTests : IDisposable
     private const int RejectedTeacherId = 3;
     private const int SwitchedToIndependentId = 4; // hesabı onaylı, tutor başvurusu Pending
     private const int NoTeacherRowId = 5;
+    private const int SuspendedTeacherId = 6; // issue #289: hesap onayı askıya alınmış
 
     private readonly TestDb _db = TestDb.Create();
 
@@ -57,6 +58,11 @@ public class ApprovedTeacherAuthorizationTests : IDisposable
             {
                 UserId = SwitchedToIndependentId, IsIndependentTutor = true, ApprovalStatus = TeacherApprovalStatus.Pending,
                 AccountApprovedAt = DateTime.UtcNow
+            },
+            new Teacher
+            {
+                UserId = SuspendedTeacherId, ApprovalStatus = TeacherApprovalStatus.Approved, AccountApprovedAt = null,
+                AccountSuspendedAt = DateTime.UtcNow, AccountSuspensionReason = "neden"
             });
         ctx.SaveChanges();
     }
@@ -165,6 +171,7 @@ public class ApprovedTeacherAuthorizationTests : IDisposable
     [InlineData(PendingTeacherId)]
     [InlineData(RejectedTeacherId)]
     [InlineData(NoTeacherRowId)]
+    [InlineData(SuspendedTeacherId)] // issue #289: askı dışarıya ayrı bir kod olarak sızmaz
     public async Task Unapproved_teacher_gets_403_with_TeacherNotApproved_body(int userId)
     {
         using var host = await StartHostAsync();

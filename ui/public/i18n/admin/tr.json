@@ -258,6 +258,10 @@
       "chip": "Hesap onayı",
       "hint": "Onay, öğretmenin hesabını açar; onaylanana kadar öğretmen özellikleri kapalıdır."
     },
+    "accountSuspended": {
+      "chip": "Hesap askıda",
+      "hint": "Bu başvuruyu onaylamak askıyı kaldırmaz. Askıyı kaldırmak için Öğretmenler listesini kullanın."
+    },
     "status": {
       "pending": "Bekliyor",
       "approved": "Onaylandı",
@@ -311,6 +315,12 @@
       "active": "Aktif",
       "inactive": "Pasif",
       "unknown": "Bilinmiyor"
+    },
+    "suspension": {
+      "chip": "Askıda",
+      "since": "{{date}} itibarıyla",
+      "tooltip": "Askıya alındı: {{date}} — Neden: {{reason}}",
+      "noReason": "Neden belirtilmedi"
     }
   },
   "students": {
@@ -580,6 +590,41 @@
         "forbidden": "Bu işlem için yetkiniz yok.",
         "saveFailed": "Kaydedilemedi. Lütfen tekrar deneyin."
       }
+    }
+  },
+  "teacherSuspension": {
+    "suspendAction": "Öğretmen onayını askıya al",
+    "suspendActionFor": "{{name}} için öğretmen onayını askıya al",
+    "unsuspendAction": "Askıyı kaldır",
+    "unsuspendActionFor": "{{name}} için askıyı kaldır",
+    "suspend": {
+      "confirmTitle": "Öğretmen onayı askıya alınsın mı?",
+      "confirmIntro": "{{name}} öğretmen hesabının onayı askıya alınacak.",
+      "confirmFeatures": "Öğretmen özellikleri (sınav oluşturma, çalışma içerikleri, randevular, öğretmen paneli) kapanır.",
+      "confirmLogin": "Hesap devre dışı kalmaz; kullanıcı giriş yapabilir ancak öğretmen özelliklerine erişemez.",
+      "reasonLabel": "Askıya alma nedeni",
+      "reasonPlaceholder": "Örn. şikâyet inceleniyor",
+      "reasonHint": "Neden yalnızca yöneticilere gösterilir; öğretmene iletilmez.",
+      "required": "Neden zorunludur.",
+      "maxLength": "Neden en fazla {{max}} karakter olabilir.",
+      "confirm": "Askıya al"
+    },
+    "unsuspend": {
+      "confirmTitle": "Askı kaldırılsın mı?",
+      "confirmIntro": "{{name}} öğretmen hesabının onayı yeniden açılacak.",
+      "confirmFeatures": "Öğretmen özellikleri yeniden kullanılabilir hale gelir.",
+      "confirm": "Askıyı kaldır"
+    },
+    "retry": "Tekrar dene",
+    "submitting": "Kaydediliyor...",
+    "cancel": "İptal",
+    "errors": {
+      "forbidden": "Bu işlem için yetkiniz yok.",
+      "notFound": "Öğretmen bulunamadı.",
+      "upstream": "Sunucuya ulaşılamadı. Lütfen daha sonra tekrar deneyin.",
+      "rateLimited": "Kısa sürede çok fazla hesap değişikliği yapıldı. Lütfen biraz bekleyip tekrar deneyin.",
+      "rateLimitedSeconds": "Kısa sürede çok fazla hesap değişikliği yapıldı. Lütfen {{seconds}} saniye sonra tekrar deneyin.",
+      "generic": "Öğretmen onayı güncellenirken bir sorun oluştu. Lütfen tekrar deneyin."
     }
   }
 }

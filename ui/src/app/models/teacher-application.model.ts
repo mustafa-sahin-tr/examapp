@@ -54,6 +54,11 @@ export interface TeacherApplicationListItem {
    * "öğretmen hesabı onayı"). Hesabı zaten onaylı öğretmenin sonraki (bağımsız/okul) başvurusunda false.
    */
   requiresAccountApproval: boolean;
+  /**
+   * Issue #289: öğretmen hesap onayı admin tarafından askıda. Bu başvuruyu onaylamak askıyı KALDIRMAZ (askı yalnız
+   * admin öğretmen listesindeki "askıyı kaldır" ile kalkar); UI satırda uyarı chip'i gösterir.
+   */
+  accountSuspended: boolean;
 }
 
 /**

@@ -2,6 +2,8 @@ using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.QuestionTransfer;
 using ExamApp.Api.Helpers;
+using ExamApp.Api.Services.Interfaces;
+using System.Security.Claims;
 using ExamApp.Foundation.Localization;
 using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Authentication;
@@ -32,17 +34,40 @@ public class QuestionTransferController : ControllerBase
     // senaryolarda varsayılan dile düşebilmek için opsiyonel.
     private readonly IStringLocalizer<Messages> _localizer;
 
-    public QuestionTransferController(IQuestionTransferService service, IMinIoService minio, IStringLocalizer<Messages>? localizer = null)
+    // issue #289 (security D2): işin sahibi (runner iş başında onu IApprovedTeacherGuard'a sorar). DI her zaman verir.
+    private readonly IUserProfileProvider? _profiles;
+
+    public QuestionTransferController(IQuestionTransferService service, IMinIoService minio, IStringLocalizer<Messages>? localizer = null,
+        IUserProfileProvider? profiles = null)
     {
         _service = service;
         _minio = minio;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
+        _profiles = profiles;
+    }
+
+    /// <summary>
+    /// issue #289 (security D2): çağıranın exam kullanıcı id'si + admin muafiyeti (ApprovedTeacher policy ile aynı roller).
+    /// Öğretmenin profili çözülemezse null → controller 403 (fail-closed; sahipsiz öğretmen işi kuyruğa girmez).
+    /// </summary>
+    private async Task<QuestionTransferOwner?> ResolveOwnerAsync(CancellationToken ct)
+    {
+        var isAdmin = User.IsInRole("Admin") || User.IsInRole("SuperAdmin");
+        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var profile = _profiles is null || string.IsNullOrEmpty(sub) ? null : await _profiles.GetAsync(sub, ct);
+        if (profile is { Id: > 0 })
+            return new QuestionTransferOwner(profile.Id, isAdmin);
+        return isAdmin ? new QuestionTransferOwner(0, IsAdmin: true) : null;
     }
 
     [HttpPost("exports")]
     public async Task<ActionResult<QuestionTransferJobDto>> StartExport([FromBody] StartQuestionExportDto request, CancellationToken ct)
     {
-        var job = await _service.StartExportAsync(request, ct);
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return Forbid();
+
+        var job = await _service.StartExportAsync(request, owner, ct);
         return Ok(job);
     }
 
@@ -56,6 +81,10 @@ public class QuestionTransferController : ControllerBase
             return BadRequest(new { message = _localizer["questionTransfer.fileRequired"].Value });
         }
 
+        var owner = await ResolveOwnerAsync(ct);
+        if (owner is null)
+            return Forbid();
+
         // If sourceKey not provided, infer from manifest.json inside the zip.
         var sourceKey = string.IsNullOrWhiteSpace(request.SourceKey)
             ? await InferSourceKeyFromZipAsync(request.File, ct)
@@ -67,7 +96,7 @@ public class QuestionTransferController : ControllerBase
         await using var uploadStream = request.File.OpenReadStream();
         var url = await _minio.UploadFileAsync(uploadStream, objectName);
 
-        var job = await _service.StartImportAsync(sourceKey, url, ct);
+        var job = await _service.StartImportAsync(sourceKey, url, owner, ct);
         return Ok(job);
     }
 

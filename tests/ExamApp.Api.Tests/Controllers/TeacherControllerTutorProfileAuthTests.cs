@@ -39,7 +39,7 @@ public class TeacherControllerTutorProfileAuthTests
         _cacheService = provider.GetRequiredService<UserProfileCacheService>();
     }
 
-    private TeacherController NewController(UserProfileDto authenticatedUser)
+    private TeacherController NewController(UserProfileDto authenticatedUser, ExamApp.Api.Services.Teachers.IApprovedTeacherGuard? guard = null)
     {
         _authApiClient.GetUserProfileAsync().Returns(authenticatedUser);
 
@@ -73,12 +73,60 @@ public class TeacherControllerTutorProfileAuthTests
         };
 
         var controller = new TeacherController(_teacherService, provider.GetRequiredService<UserProfileCacheService>(), _keycloakService,
-            Substitute.For<ILogger<TeacherController>>())
+            Substitute.For<ILogger<TeacherController>>(), teacherGuard: guard)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
         };
 
         return controller;
+    }
+
+    // ---- issue #289 (security D1): askıdaki öğretmen tutor profilini güncelleyemez ----
+
+    [Fact]
+    public async Task UpdateTutorProfile_SuspendedTeacher_Returns403TeacherNotApproved_AndServiceNotCalled()
+    {
+        var user = new UserProfileDto { Id = 1, KeycloakId = "kc-user-1", Role = "Teacher" };
+        var guard = Substitute.For<ExamApp.Api.Services.Teachers.IApprovedTeacherGuard>();
+        guard.CheckAsync(1, Arg.Any<CancellationToken>()).Returns(ExamApp.Api.Services.Teachers.TeacherApprovalCheck.Suspended);
+
+        var result = await NewController(user, guard).UpdateTutorProfile(new UpdateTutorProfileDto(), CancellationToken.None);
+
+        var obj = result.Result.ShouldBeOfType<ObjectResult>();
+        obj.StatusCode.ShouldBe(403);
+        var body = obj.Value.ShouldBeOfType<ExamApp.Api.Models.Dtos.Teachers.TeacherNotApprovedResponseDto>();
+        body.Success.ShouldBeFalse();
+        body.ErrorCode.ShouldBe("TeacherNotApproved");
+        body.Message.ShouldNotBeNullOrWhiteSpace();
+        await _teacherService.DidNotReceiveWithAnyArgs().UpdateTutorProfileAsync(default, default!, default);
+    }
+
+    [Theory]
+    [InlineData(ExamApp.Api.Services.Teachers.TeacherApprovalCheck.NotApproved)] // başvuru formu: onay bekleyen doldurabilir (#287 L2)
+    [InlineData(ExamApp.Api.Services.Teachers.TeacherApprovalCheck.Approved)]
+    public async Task UpdateTutorProfile_NotSuspendedTeacher_IsServed(ExamApp.Api.Services.Teachers.TeacherApprovalCheck check)
+    {
+        var user = new UserProfileDto { Id = 1, KeycloakId = "kc-user-1", Role = "Teacher" };
+        var guard = Substitute.For<ExamApp.Api.Services.Teachers.IApprovedTeacherGuard>();
+        guard.CheckAsync(1, Arg.Any<CancellationToken>()).Returns(check);
+        _teacherService.UpdateTutorProfileAsync(1, Arg.Any<UpdateTutorProfileDto>(), Arg.Any<CancellationToken>())
+            .Returns(new TutorProfileResultDto { Success = true, Profile = new TutorProfileDto() });
+
+        var result = await NewController(user, guard).UpdateTutorProfile(new UpdateTutorProfileDto(), CancellationToken.None);
+
+        result.Result.ShouldBeOfType<OkObjectResult>();
+    }
+
+    [Fact]
+    public async Task GetTutorProfile_SuspendedTeacher_StaysOpen()
+    {
+        var user = new UserProfileDto { Id = 1, KeycloakId = "kc-user-1", Role = "Teacher" };
+        var guard = Substitute.For<ExamApp.Api.Services.Teachers.IApprovedTeacherGuard>();
+        guard.CheckAsync(1, Arg.Any<CancellationToken>()).Returns(ExamApp.Api.Services.Teachers.TeacherApprovalCheck.Suspended);
+        _teacherService.GetTutorProfileAsync(1, Arg.Any<CancellationToken>())
+            .Returns(new TutorProfileResultDto { Success = true, Profile = new TutorProfileDto() });
+
+        (await NewController(user, guard).GetTutorProfile(CancellationToken.None)).Result.ShouldBeOfType<OkObjectResult>();
     }
 
     // ---- GetTutorProfile Tests ----

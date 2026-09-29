@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using ExamApp.Api.Controllers;
@@ -15,7 +16,26 @@ public class QuestionTransferControllerTests
     private readonly IQuestionTransferService _service = Substitute.For<IQuestionTransferService>();
     private readonly IMinIoService _minio = Substitute.For<IMinIoService>();
 
-    private QuestionTransferController NewController() => new(_service, _minio);
+    private readonly IUserProfileProvider _profiles = Substitute.For<IUserProfileProvider>();
+
+    public QuestionTransferControllerTests()
+    {
+        _profiles.GetAsync("kc-teacher", Arg.Any<CancellationToken>()).Returns(new UserProfileDto { Id = 77, KeycloakId = "kc-teacher" });
+    }
+
+    /// <summary>issue #289 (security D2): varsayılan çağıran exam kullanıcı id'si 77 olan öğretmen.</summary>
+    private QuestionTransferController NewController(string sub = "kc-teacher", params string[] roles)
+    {
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, sub) };
+        claims.AddRange((roles.Length == 0 ? ["Teacher"] : roles).Select(r => new Claim(ClaimTypes.Role, r)));
+        return new(_service, _minio, profiles: _profiles)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test")) }
+            }
+        };
+    }
 
     private static IFormFile ZipFile(string? sourceKeyInManifest)
     {
@@ -39,11 +59,39 @@ public class QuestionTransferControllerTests
     public async Task StartExport_returns_the_job_from_the_service()
     {
         var job = new QuestionTransferJobDto { Id = Guid.NewGuid(), Kind = "export", Status = "Queued" };
-        _service.StartExportAsync(Arg.Any<StartQuestionExportDto>(), Arg.Any<CancellationToken>()).Returns(job);
+        _service.StartExportAsync(Arg.Any<StartQuestionExportDto>(), Arg.Any<QuestionTransferOwner>(), Arg.Any<CancellationToken>()).Returns(job);
 
         var result = await NewController().StartExport(new StartQuestionExportDto { QuestionIds = { 1, 2 } }, default);
 
         result.Result.ShouldBeOfType<OkObjectResult>().Value.ShouldBe(job);
+    }
+
+    [Fact]
+    public async Task StartExport_passes_the_caller_as_job_owner()
+    {
+        _service.StartExportAsync(Arg.Any<StartQuestionExportDto>(), Arg.Any<QuestionTransferOwner>(), Arg.Any<CancellationToken>())
+            .Returns(new QuestionTransferJobDto());
+
+        await NewController().StartExport(new StartQuestionExportDto(), default);
+        await NewController("kc-teacher", "Teacher", "Admin").StartExport(new StartQuestionExportDto(), default);
+
+        await _service.Received(1).StartExportAsync(Arg.Any<StartQuestionExportDto>(), new QuestionTransferOwner(77, false), Arg.Any<CancellationToken>());
+        await _service.Received(1).StartExportAsync(Arg.Any<StartQuestionExportDto>(), new QuestionTransferOwner(77, true), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Teacher_whose_profile_cannot_be_resolved_is_forbidden_but_admin_is_not()
+    {
+        _service.StartExportAsync(Arg.Any<StartQuestionExportDto>(), Arg.Any<QuestionTransferOwner>(), Arg.Any<CancellationToken>())
+            .Returns(new QuestionTransferJobDto());
+
+        (await NewController("kc-unknown").StartExport(new StartQuestionExportDto(), default)).Result.ShouldBeOfType<ForbidResult>();
+        (await NewController("kc-unknown").StartImport(new StartQuestionImportFormDto { File = ZipFile("x") }, default))
+            .Result.ShouldBeOfType<ForbidResult>();
+        await _minio.DidNotReceiveWithAnyArgs().UploadFileAsync(default!, default!);
+
+        (await NewController("kc-unknown", "Admin").StartExport(new StartQuestionExportDto(), default)).Result.ShouldBeOfType<OkObjectResult>();
+        await _service.Received(1).StartExportAsync(Arg.Any<StartQuestionExportDto>(), new QuestionTransferOwner(0, true), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -58,37 +106,37 @@ public class QuestionTransferControllerTests
     {
         _minio.UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>()).Returns("http://minio/obj.zip");
         var job = new QuestionTransferJobDto { Id = Guid.NewGuid(), Kind = "import" };
-        _service.StartImportAsync("from-manifest", "http://minio/obj.zip", Arg.Any<CancellationToken>()).Returns(job);
+        _service.StartImportAsync("from-manifest", "http://minio/obj.zip", Arg.Any<QuestionTransferOwner>(), Arg.Any<CancellationToken>()).Returns(job);
 
         var result = await NewController().StartImport(
             new StartQuestionImportFormDto { File = ZipFile("from-manifest") }, default);
 
         result.Result.ShouldBeOfType<OkObjectResult>().Value.ShouldBe(job);
-        await _service.Received(1).StartImportAsync("from-manifest", "http://minio/obj.zip", Arg.Any<CancellationToken>());
+        await _service.Received(1).StartImportAsync("from-manifest", "http://minio/obj.zip", Arg.Any<QuestionTransferOwner>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task StartImport_falls_back_to_default_when_no_source_key_can_be_determined()
     {
         _minio.UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>()).Returns("u");
-        _service.StartImportAsync("default", "u", Arg.Any<CancellationToken>())
+        _service.StartImportAsync("default", "u", Arg.Any<QuestionTransferOwner>(), Arg.Any<CancellationToken>())
             .Returns(new QuestionTransferJobDto());
 
         await NewController().StartImport(new StartQuestionImportFormDto { File = ZipFile(sourceKeyInManifest: null) }, default);
 
-        await _service.Received(1).StartImportAsync("default", "u", Arg.Any<CancellationToken>());
+        await _service.Received(1).StartImportAsync("default", "u", Arg.Any<QuestionTransferOwner>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task StartImport_prefers_an_explicit_source_key_over_the_manifest()
     {
         _minio.UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>()).Returns("u");
-        _service.StartImportAsync("explicit", "u", Arg.Any<CancellationToken>()).Returns(new QuestionTransferJobDto());
+        _service.StartImportAsync("explicit", "u", Arg.Any<QuestionTransferOwner>(), Arg.Any<CancellationToken>()).Returns(new QuestionTransferJobDto());
 
         await NewController().StartImport(
             new StartQuestionImportFormDto { File = ZipFile("from-manifest"), SourceKey = "  explicit  " }, default);
 
-        await _service.Received(1).StartImportAsync("explicit", "u", Arg.Any<CancellationToken>());
+        await _service.Received(1).StartImportAsync("explicit", "u", Arg.Any<QuestionTransferOwner>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

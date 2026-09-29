@@ -4,6 +4,7 @@ namespace ExamApp.Api.Data;
 
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 /// <summary>
 /// Öğretmen hesabının onay durumu (issue #92). Bağımsız öğretmenler (IsIndependentTutor) ve okul bağlantısı
@@ -65,6 +66,24 @@ public class Teacher : BaseEntity, ISchoolScoped
     /// <c>AddTeacherAccountApprovedAt</c> mevcut onaylı (ve okul bağı onaylanmış) kayıtları geri doldurur.
     /// </summary>
     public DateTime? AccountApprovedAt { get; set; }
+
+    /// <summary>
+    /// issue #289: admin öğretmen hesap onayını askıya aldığı an (UTC). Doluyken <see cref="AccountApprovedAt"/> null'dur
+    /// → öğretmen özellikleri kapalı (<c>IApprovedTeacherGuard</c> <c>Suspended</c> döner; policy yine 403
+    /// <c>TeacherNotApproved</c>). Askıdaki öğretmenin yeni başvurusunun onayı <see cref="AccountApprovedAt"/>'e DOKUNMAZ;
+    /// askı yalnızca admin'in "askıyı kaldır" aksiyonuyla (<c>AdminTeacherSuspensionService</c>) kalkar.
+    /// Keycloak hesabı (<c>Enabled</c>, #155) bundan bağımsızdır.
+    /// </summary>
+    public DateTime? AccountSuspendedAt { get; set; }
+
+    /// <summary>
+    /// issue #289: admin'in askıya alma nedeni (trim'li, 1-500). Yalnızca <see cref="AccountSuspendedAt"/> doluyken dolu.
+    /// Yalnızca admin listesinde döner; öğretmene ve audit log'a (serbest metin/PII) YAZILMAZ.
+    /// Entity bazı eski uçlarda (ör. <c>GET api/teacher/check-teacher</c>) doğrudan serileştirildiği için JSON'a hiç çıkmaz.
+    /// </summary>
+    [MaxLength(500)]
+    [JsonIgnore]
+    public string? AccountSuspensionReason { get; set; }
 
     /// <summary>Admin başvuruyu reddettiğinde girdiği neden (issue #94). Sadece ApprovalStatus=Rejected iken dolu.</summary>
     [MaxLength(500)]

@@ -16,6 +16,11 @@ export interface Teacher {
    */
   teacherAccountApproved?: boolean;
   /**
+   * Issue #289 (`TeacherDto.TeacherAccountSuspended`): hesap onayı admin tarafından askıya alındı. true iken
+   * `teacherAccountApproved` false'tur; neden öğretmene dönmez. Yalnız exam-api refresh doldurur (undefined = bilinmiyor).
+   */
+  teacherAccountSuspended?: boolean;
+  /**
    * Issue #287: mevcut başvurunun durumu. Hesabı onaylı öğretmenin sonraki (bağımsız/okul) başvurusu da
    * `Pending` olabilir — erişim kararı yalnız `teacherAccountApproved` ile verilir.
    */

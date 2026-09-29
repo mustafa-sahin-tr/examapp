@@ -13,10 +13,17 @@ using System.IO;
 
 namespace ExamApp.Api.Services.QuestionTransfer;
 
+/// <summary>
+/// issue #289 (security D2): aktarım işini başlatan kullanıcı. <see cref="UserId"/> işin <c>CreateUserId</c>'sine yazılır;
+/// <see cref="IsAdmin"/> Hangfire iş argümanı olarak saklanır (sunucu tarafı). Runner iş başında sahibin öğretmen
+/// onayını yeniden kontrol eder — admin sahipli iş ApprovedTeacher policy'sindeki admin muafiyetiyle aynı şekilde muaftır.
+/// </summary>
+public sealed record QuestionTransferOwner(int UserId, bool IsAdmin);
+
 public interface IQuestionTransferService
 {
-    Task<QuestionTransferJobDto> StartExportAsync(StartQuestionExportDto request, CancellationToken ct);
-    Task<QuestionTransferJobDto> StartImportAsync(string sourceKey, string uploadedFileUrl, CancellationToken ct);
+    Task<QuestionTransferJobDto> StartExportAsync(StartQuestionExportDto request, QuestionTransferOwner owner, CancellationToken ct);
+    Task<QuestionTransferJobDto> StartImportAsync(string sourceKey, string uploadedFileUrl, QuestionTransferOwner owner, CancellationToken ct);
     Task<QuestionTransferJobDto?> GetJobAsync(Guid id, CancellationToken ct);
     Task<List<QuestionTransferJobDto>> ListJobsAsync(int take, CancellationToken ct);
     Task<Stream?> GetJobFileStreamAsync(Guid jobId, CancellationToken ct);
@@ -50,8 +57,9 @@ public class QuestionTransferService : IQuestionTransferService
         _minioBucket = configuration.GetSection("MinioConfig")["BucketName"] ?? "exam-questions";
     }
 
-    public async Task<QuestionTransferJobDto> StartExportAsync(StartQuestionExportDto request, CancellationToken ct)
+    public async Task<QuestionTransferJobDto> StartExportAsync(StartQuestionExportDto request, QuestionTransferOwner owner, CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(owner);
         // QuestionIds may be empty to indicate "export all".
 
         var job = new QuestionTransferJob
@@ -66,16 +74,20 @@ public class QuestionTransferService : IQuestionTransferService
             Message = "Queued"
         };
 
+        // issue #289 (security D2): CreateUserId = işin sahibi (runner onu guard'a sorar).
+        _db.SetCurrentUser(owner.UserId);
         _db.Add(job);
         await _db.SaveChangesAsync(ct);
 
-        _jobs.Enqueue<QuestionTransferJobRunner>(r => r.RunExportAsync(job.Id));
+        var ownerIsAdmin = owner.IsAdmin;
+        _jobs.Enqueue<QuestionTransferJobRunner>(r => r.RunExportAsync(job.Id, ownerIsAdmin));
 
         return ToDto(job);
     }
 
-    public async Task<QuestionTransferJobDto> StartImportAsync(string sourceKey, string uploadedFileUrl, CancellationToken ct)
+    public async Task<QuestionTransferJobDto> StartImportAsync(string sourceKey, string uploadedFileUrl, QuestionTransferOwner owner, CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(owner);
         var job = new QuestionTransferJob
         {
             Id = Guid.NewGuid(),
@@ -86,10 +98,12 @@ public class QuestionTransferService : IQuestionTransferService
             Message = "Queued"
         };
 
+        _db.SetCurrentUser(owner.UserId); // issue #289 (security D2)
         _db.Add(job);
         await _db.SaveChangesAsync(ct);
 
-        _jobs.Enqueue<QuestionTransferJobRunner>(r => r.RunImportAsync(job.Id));
+        var ownerIsAdmin = owner.IsAdmin;
+        _jobs.Enqueue<QuestionTransferJobRunner>(r => r.RunImportAsync(job.Id, ownerIsAdmin));
 
         return ToDto(job);
     }

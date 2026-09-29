@@ -1,4 +1,5 @@
 using ExamApp.Api.Data;
+using ExamApp.Api.Services.Teachers;
 using Hangfire;
 using Hangfire.Storage;
 using Microsoft.EntityFrameworkCore;
@@ -16,20 +17,61 @@ public class QuestionTransferJobRunner
 {
     private readonly AppDbContext _db;
     private readonly IMinIoService _minio;
+    private readonly IApprovedTeacherGuard _teacherGuard;
 
     private const int ExportBundleSize = 2000;
 
-    public QuestionTransferJobRunner(AppDbContext db, IMinIoService minio)
+    /// <summary>issue #289 (security D2): sahibi artık onaylı öğretmen olmayan işin sonlandırma mesajı.</summary>
+    public const string OwnerNotApprovedMessage = "Job owner's teacher account is not approved (or is suspended); job was not run.";
+
+    public QuestionTransferJobRunner(AppDbContext db, IMinIoService minio, IApprovedTeacherGuard teacherGuard)
     {
         _db = db;
         _minio = minio;
+        _teacherGuard = teacherGuard;
+    }
+
+    /// <summary>
+    /// Eski imza: #289 öncesi kuyruğa girmiş işler için (sahip bilgisi yok, <c>CreateUserId</c> 0 → kontrol atlanır).
+    /// </summary>
+    [Queue("question-transfer")]
+    [AutomaticRetry(Attempts = 2)]
+    public Task RunExportAsync(Guid jobId) => RunExportAsync(jobId, ownerIsAdmin: false);
+
+    /// <summary>Eski imza — bkz. <see cref="RunExportAsync(Guid)"/>.</summary>
+    [Queue("question-transfer")]
+    [AutomaticRetry(Attempts = 0)]
+    public Task RunImportAsync(Guid jobId) => RunImportAsync(jobId, ownerIsAdmin: false);
+
+    /// <summary>
+    /// issue #289 (security D2): iş kuyruğa girdikten sonra sahibi askıya alınmış / onayı kaldırılmış olabilir. Admin sahipli
+    /// iş muaftır (ApprovedTeacher policy'sindeki Admin/SuperAdmin muafiyeti). Sahibi bilinmeyen eski işler (CreateUserId
+    /// null/0) kontrol edilmez. Aksi halde yalnızca <see cref="TeacherApprovalCheck.Approved"/> geçer (fail-closed).
+    /// Reddedilen iş soru yazmadan <see cref="QuestionTransferJobStatus.Failed"/> ile sonlanır (istisna fırlatılmaz →
+    /// Hangfire yeniden denemez).
+    /// </summary>
+    private async Task<bool> RejectIfOwnerNotApprovedAsync(QuestionTransferJob job, bool ownerIsAdmin)
+    {
+        if (ownerIsAdmin || job.CreateUserId is not > 0)
+            return false;
+
+        if (await _teacherGuard.CheckAsync(job.CreateUserId.Value) == TeacherApprovalCheck.Approved)
+            return false;
+
+        job.Status = QuestionTransferJobStatus.Failed;
+        job.Message = OwnerNotApprovedMessage;
+        await _db.SaveChangesAsync();
+        return true;
     }
 
     [Queue("question-transfer")]
     [AutomaticRetry(Attempts = 2)]
-    public async Task RunExportAsync(Guid jobId)
+    public async Task RunExportAsync(Guid jobId, bool ownerIsAdmin)
     {
         var job = await _db.Set<QuestionTransferJob>().FirstAsync(j => j.Id == jobId);
+        if (await RejectIfOwnerNotApprovedAsync(job, ownerIsAdmin))
+            return;
+
         job.Status = QuestionTransferJobStatus.Running;
         job.Message = "Running";
         await _db.SaveChangesAsync();
@@ -512,9 +554,12 @@ public class QuestionTransferJobRunner
 
     [Queue("question-transfer")]
     [AutomaticRetry(Attempts = 0)]
-    public async Task RunImportAsync(Guid jobId)
+    public async Task RunImportAsync(Guid jobId, bool ownerIsAdmin)
     {
         var job = await _db.Set<QuestionTransferJob>().FirstAsync(j => j.Id == jobId);
+        if (await RejectIfOwnerNotApprovedAsync(job, ownerIsAdmin))
+            return;
+
         job.Status = QuestionTransferJobStatus.Running;
         job.Message = "Running";
         await _db.SaveChangesAsync();

@@ -24,16 +24,19 @@ public sealed class TeacherNotApprovedResponseDto
 /// issue #287: öğretmenin onay durumu — UI'ın zaten yüklediği profil yanıtlarına eklenir
 /// (<c>POST api/auth/refresh</c> → <c>teacher</c> alt nesnesi, <c>GET api/teacher/check-teacher</c>).
 /// </summary>
-public sealed record TeacherApprovalState(bool TeacherAccountApproved, string TeacherApplicationStatus, string? RejectionReason)
+public sealed record TeacherApprovalState(bool TeacherAccountApproved, string TeacherApplicationStatus, string? RejectionReason,
+    bool TeacherAccountSuspended = false)
 {
     /// <summary>
     /// <see cref="TeacherAccountApproved"/>: öğretmen özellikleri açık mı (<see cref="Teacher.AccountApprovedAt"/> dolu).
     /// <see cref="TeacherApplicationStatus"/>: mevcut başvurunun durumu ("Pending" | "Approved" | "Rejected") — hesap onaylı
     /// öğretmenin sonraki (bağımsız tutor / okul) başvurusu da Pending olabilir. <see cref="RejectionReason"/> yalnızca
-    /// Rejected iken dolu.
+    /// Rejected iken dolu. <see cref="TeacherAccountSuspended"/> (issue #289): hesap onayı admin tarafından askıya alındı
+    /// (<see cref="Teacher.AccountSuspendedAt"/> dolu) — UI "hesabınız askıya alındı" gösterir. Askı nedeni öğretmene DÖNÜLMEZ.
     /// </summary>
     public static TeacherApprovalState From(Teacher teacher) => new(
-        teacher.AccountApprovedAt != null,
+        teacher.AccountApprovedAt != null && teacher.AccountSuspendedAt == null,
         teacher.ApprovalStatus.ToString(),
-        teacher.ApprovalStatus == TeacherApprovalStatus.Rejected ? teacher.RejectionReason : null);
+        teacher.ApprovalStatus == TeacherApprovalStatus.Rejected ? teacher.RejectionReason : null,
+        teacher.AccountSuspendedAt != null);
 }

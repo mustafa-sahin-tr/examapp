@@ -10,7 +10,8 @@
       "updated": "Subject updated.",
       "deleted": "Subject deleted.",
       "hasTopics": "This subject still has topics. Delete or move the topics first.",
-      "hasQuestions": "This subject has questions linked to it and cannot be deleted."
+      "hasQuestions": "This subject has questions linked to it and cannot be deleted.",
+      "gradeRequired": "A subject must be linked to at least one grade. Select a grade."
     },
     "grade": {
       "invalid": "Invalid grade.",
@@ -20,7 +21,9 @@
       "alreadyLinked": "The subject is already linked to this grade.",
       "linked": "The subject has been linked to the grade.",
       "alreadyUnlinked": "The subject is already not linked to this grade.",
-      "unlinked": "The subject–grade link has been removed."
+      "unlinked": "The subject–grade link has been removed.",
+      "lastLink": "A subject must stay linked to at least one grade; this last grade link cannot be removed. Delete the subject if you want to remove it entirely.",
+      "hasTopics": "This subject still has topics in: {0}. Move or delete the topics in that grade before removing the grade link."
     },
     "topic": {
       "nameRequired": "Topic name cannot be empty.",
@@ -30,7 +33,8 @@
       "updated": "Topic updated.",
       "deleted": "Topic deleted.",
       "hasSubTopics": "This topic still has subtopics. Delete or move them first.",
-      "hasQuestions": "This topic has questions linked to it and cannot be deleted."
+      "hasQuestions": "This topic has questions linked to it and cannot be deleted.",
+      "subjectNotLinkedToGrade": "The subject is not linked to this grade. Link the subject to the grade first."
     },
     "subTopic": {
       "nameRequired": "Subtopic name cannot be empty.",

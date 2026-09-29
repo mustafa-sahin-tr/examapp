@@ -64,10 +64,12 @@ public class BookingService : IBookingService
     private readonly ISchoolAccessPolicy _schoolAccessPolicy;
 
     /// <summary>
-    /// Şimdilik yalnızca görüşme katılım penceresi (issue #97) bu saat kaynağını kullanır;
-    /// diğer metotlardaki <c>DateTime.UtcNow</c> çağrıları issue #96'dan olduğu gibi bırakıldı.
+    /// Servisteki tüm "şimdi" okumaları (geçmiş slot/randevu reddi, açık slot filtresi, zaman damgaları,
+    /// görüşme katılım penceresi — issue #97) bu saat kaynağından gelir; testler sabit saat verebilsin (issue #294).
     /// </summary>
     private readonly TimeProvider _timeProvider;
+
+    private DateTime UtcNow() => _timeProvider.GetUtcNow().UtcDateTime;
 
     private readonly ILogger<BookingService> _logger;
 
@@ -104,14 +106,16 @@ public class BookingService : IBookingService
     public async Task<AvailabilitySlotResultDto> CreateSlotAsync(
         int teacherUserId, CreateAvailabilitySlotDto dto, CancellationToken ct = default)
     {
+        var now = UtcNow();
+
         if (dto.EndTime <= dto.StartTime)
             return SlotFail(_localizer["booking.slot.endBeforeStart"]);
 
-        if (ToUtc(dto.Date, dto.StartTime) <= DateTime.UtcNow)
+        if (ToUtc(dto.Date, dto.StartTime) <= now)
             return SlotFail(_localizer["booking.slot.inPast"]);
 
         // Üst sınırlar sunucu tarafında zorunlu (istemci doğrulaması güvenlik sınırı değildir).
-        var maxDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(MaxAdvanceDays);
+        var maxDate = DateOnly.FromDateTime(now).AddDays(MaxAdvanceDays);
         if (dto.Date > maxDate)
             return SlotFail(_localizer["booking.slot.tooFarAhead", MaxAdvanceDays]);
 
@@ -161,7 +165,7 @@ public class BookingService : IBookingService
             Date = dto.Date,
             StartTime = dto.StartTime,
             EndTime = dto.EndTime,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = now
         };
 
         _context.TeacherAvailabilitySlots.Add(slot);
@@ -311,7 +315,7 @@ public class BookingService : IBookingService
         if (teacher == null || (!teacher.IsIndependentTutor && !_schoolAccessPolicy.CanAccess(requester, teacher.SchoolId)))
             return new AvailabilitySlotListResultDto { Success = false, NotFound = true, Message = _localizer["booking.teacherNotFound"] };
 
-        var now = DateTime.UtcNow;
+        var now = UtcNow();
         var today = DateOnly.FromDateTime(now);
         var timeNow = TimeOnly.FromDateTime(now);
 
@@ -352,6 +356,8 @@ public class BookingService : IBookingService
     public async Task<BookingResultDto> CreateBookingAsync(
         int studentUserId, CreateBookingDto dto, CancellationToken ct = default)
     {
+        var now = UtcNow();
+
         var studentId = await _context.Students
             .AsNoTracking()
             .Where(s => s.UserId == studentUserId)
@@ -381,7 +387,7 @@ public class BookingService : IBookingService
         if (slot == null || slot.TeacherApproval != TeacherApprovalStatus.Approved || slot.TeacherSuspended)
             return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.slot.notFound"] };
 
-        if (ToUtc(slot.Date, slot.StartTime) <= DateTime.UtcNow)
+        if (ToUtc(slot.Date, slot.StartTime) <= now)
             return new BookingResultDto { Success = false, Message = _localizer["booking.request.slotInPast"] };
 
         var alreadyBooked = await _context.Bookings
@@ -422,7 +428,7 @@ public class BookingService : IBookingService
             StudentId = studentId.Value,
             AvailabilitySlotId = slot.Id,
             Status = BookingStatus.Pending,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = now
         };
 
         // Booking satırı + outbox mesajı tek transaction'da (WorksheetAccessRequestService ile aynı
@@ -456,7 +462,7 @@ public class BookingService : IBookingService
                 {
                     Type = OutboxEventRegistry.NameFor<BookingRequestCreatedEvent>(),
                     Content = JsonSerializer.Serialize(@event),
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = now
                 });
                 await _context.SaveChangesAsync(ct);
 
@@ -588,7 +594,7 @@ public class BookingService : IBookingService
         _context.SetCurrentUser(teacherUserId);
 
         booking.Status = newStatus;
-        booking.DecisionAt = DateTime.UtcNow;
+        booking.DecisionAt = UtcNow();
         booking.RejectionReason = newStatus == BookingStatus.Rejected && !string.IsNullOrWhiteSpace(rejectionReason)
             ? rejectionReason.Trim()
             : null;
@@ -612,7 +618,7 @@ public class BookingService : IBookingService
         {
             Type = OutboxEventRegistry.NameFor<BookingDecisionEvent>(),
             Content = JsonSerializer.Serialize(decisionEvent),
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = UtcNow()
         });
 
         // Tek SaveChanges — status + outbox aynı transaction'da (WorksheetAccessRequestService
@@ -668,7 +674,7 @@ public class BookingService : IBookingService
         var options = _videoOptions.Value;
         var startUtc = ToUtc(row.Date, row.StartTime);
         var endUtc = ToUtc(row.Date, row.EndTime);
-        var now = _timeProvider.GetUtcNow().UtcDateTime;
+        var now = UtcNow();
 
         var windowOpensAt = startUtc.AddMinutes(-options.JoinWindowBeforeMinutes);
         var windowClosesAt = endUtc.AddMinutes(options.JoinWindowAfterMinutes);

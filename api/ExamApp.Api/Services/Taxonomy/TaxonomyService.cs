@@ -112,7 +112,7 @@ public class TaxonomyService : ITaxonomyService
 
     // ---- Subject ----
 
-    public async Task<ResponseBaseDto> CreateSubjectAsync(UpsertSubjectDto dto, int userId, CancellationToken ct = default)
+    public async Task<TaxonomyResponseDto> CreateSubjectAsync(UpsertSubjectDto dto, int userId, CancellationToken ct = default)
     {
         var name = dto.Name?.Trim();
         if (string.IsNullOrWhiteSpace(name))
@@ -121,8 +121,11 @@ public class TaxonomyService : ITaxonomyService
         if (await _context.Subjects.AnyAsync(s => s.Name.ToLower() == name.ToLower(), ct))
             return Fail(_localizer["taxonomy.subject.nameAlreadyExists"]);
 
+        // Issue #249: a subject with no grade link never shows up on the grade-filtered admin screen.
         var gradeIds = NormalizeGradeIds(dto.GradeIds);
-        if (gradeIds != null && !await AllGradesExistAsync(gradeIds, ct))
+        if (gradeIds == null)
+            return Fail(_localizer["taxonomy.subject.gradeRequired"], TaxonomyErrorCodes.GradeRequired);
+        if (!await AllGradesExistAsync(gradeIds, ct))
             return Fail(_localizer["taxonomy.grade.invalid"]);
 
         _context.SetCurrentUser(userId);
@@ -132,7 +135,7 @@ public class TaxonomyService : ITaxonomyService
         var subject = new Subject
         {
             Name = name,
-            GradeSubjects = (gradeIds ?? new List<int>())
+            GradeSubjects = gradeIds
                 .Select(gradeId => new GradeSubject { GradeId = gradeId })
                 .ToList(),
         };
@@ -142,7 +145,7 @@ public class TaxonomyService : ITaxonomyService
         return Ok(_localizer["taxonomy.subject.created"], subject.Id, userId);
     }
 
-    public async Task<ResponseBaseDto> UpdateSubjectAsync(int id, UpsertSubjectDto dto, int userId, CancellationToken ct = default)
+    public async Task<TaxonomyResponseDto> UpdateSubjectAsync(int id, UpsertSubjectDto dto, int userId, CancellationToken ct = default)
     {
         var name = dto.Name?.Trim();
         if (string.IsNullOrWhiteSpace(name))
@@ -159,17 +162,38 @@ public class TaxonomyService : ITaxonomyService
         if (gradeIds != null && !await AllGradesExistAsync(gradeIds, ct))
             return Fail(_localizer["taxonomy.grade.invalid"]);
 
+        // Issue #249: every guard runs before anything is mutated — one blocked link rejects the
+        // whole request (name included), so a partial sync is never written. The "at least one grade"
+        // rule needs no check here: an empty/null GradeIds means "leave links alone" (NormalizeGradeIds),
+        // so a sync can never target an empty set. Same accepted TOCTOU as RemoveSubjectGradeAsync.
+        List<GradeSubject>? existingLinks = null;
+        if (gradeIds != null)
+        {
+            existingLinks = await _context.GradeSubjects
+                .Where(gs => gs.SubjectId == subject.Id)
+                .ToListAsync(ct);
+            var removedGradeIds = existingLinks
+                .Select(gs => gs.GradeId)
+                .Where(g => !gradeIds.Contains(g))
+                .Distinct()
+                .ToList();
+            var blocked = await GradeNamesWithTopicsAsync(subject.Id, removedGradeIds, ct);
+            if (blocked.Count > 0)
+                return Fail(_localizer["taxonomy.gradeSubject.hasTopics", string.Join(", ", blocked)],
+                    TaxonomyErrorCodes.SubjectGradeHasTopics);
+        }
+
         _context.SetCurrentUser(userId);
         subject.Name = name;
         if (gradeIds != null)
-            await SyncSubjectGradesAsync(subject.Id, gradeIds, ct);
+            SyncSubjectGrades(subject.Id, existingLinks!, gradeIds);
         await _context.SaveChangesAsync(ct);
         return Ok(_localizer["taxonomy.subject.updated"], subject.Id, userId);
     }
 
     // ---- Subject <-> Grade (GradeSubject) ----
 
-    public async Task<ResponseBaseDto> AddSubjectGradeAsync(int subjectId, int gradeId, int userId, CancellationToken ct = default)
+    public async Task<TaxonomyResponseDto> AddSubjectGradeAsync(int subjectId, int gradeId, int userId, CancellationToken ct = default)
     {
         if (!await _context.Subjects.AnyAsync(s => s.Id == subjectId, ct))
             return Fail(_localizer["taxonomy.subject.notFound"]);
@@ -185,7 +209,7 @@ public class TaxonomyService : ITaxonomyService
         return Ok(_localizer["taxonomy.gradeSubject.linked"], subjectId, userId);
     }
 
-    public async Task<ResponseBaseDto> RemoveSubjectGradeAsync(int subjectId, int gradeId, int userId, CancellationToken ct = default)
+    public async Task<TaxonomyResponseDto> RemoveSubjectGradeAsync(int subjectId, int gradeId, int userId, CancellationToken ct = default)
     {
         if (!await _context.Subjects.AnyAsync(s => s.Id == subjectId, ct))
             return Fail(_localizer["taxonomy.subject.notFound"]);
@@ -198,7 +222,23 @@ public class TaxonomyService : ITaxonomyService
         if (links.Count == 0)
             return Ok(_localizer["taxonomy.gradeSubject.alreadyUnlinked"], subjectId, userId);
 
-        // Only the link row goes (soft delete via ApplyAuditInfo); topics/subtopics/questions stay.
+        // Issue #249 guards. Check-then-write without a transaction (TOCTOU): a topic/link created
+        // concurrently between the checks and SaveChanges can slip through. Accepted on purpose —
+        // admin-only endpoints, very low concurrency, and the result is reversible from the same
+        // screen ("Sınıfları yönet" re-link). Do not add a transaction/lock just for this.
+        //
+        // 1) A subject must keep at least one grade link (otherwise it is unreachable from the
+        //    grade-filtered admin screen). Deleting the subject is the way to drop it entirely.
+        if (!await _context.GradeSubjects.AnyAsync(gs => gs.SubjectId == subjectId && gs.GradeId != gradeId, ct))
+            return Fail(_localizer["taxonomy.gradeSubject.lastLink"], TaxonomyErrorCodes.LastGradeLink);
+
+        // 2) This subject's topics in this grade would become unreachable ("sahipsiz").
+        var blocked = await GradeNamesWithTopicsAsync(subjectId, new List<int> { gradeId }, ct);
+        if (blocked.Count > 0)
+            return Fail(_localizer["taxonomy.gradeSubject.hasTopics", string.Join(", ", blocked)],
+                TaxonomyErrorCodes.SubjectGradeHasTopics);
+
+        // Only the link row goes (soft delete via ApplyAuditInfo).
         _context.SetCurrentUser(userId);
         _context.GradeSubjects.RemoveRange(links);
         await _context.SaveChangesAsync(ct);
@@ -219,15 +259,39 @@ public class TaxonomyService : ITaxonomyService
     }
 
     /// <summary>
-    /// Makes the subject's GradeSubject links equal to <paramref name="desiredGradeIds"/>:
-    /// missing links are added, links not in the list are removed. Caller saves.
+    /// Names (ordered by grade id) of the grades among <paramref name="gradeIds"/> in which the subject
+    /// still has active topics — links that must not be removed (issue #249).
     /// </summary>
-    private async Task SyncSubjectGradesAsync(int subjectId, List<int> desiredGradeIds, CancellationToken ct)
+    private async Task<List<string>> GradeNamesWithTopicsAsync(int subjectId, List<int> gradeIds, CancellationToken ct)
     {
-        var existing = await _context.GradeSubjects
-            .Where(gs => gs.SubjectId == subjectId)
-            .ToListAsync(ct);
+        if (gradeIds.Count == 0) return new List<string>();
 
+        // Blocking grade ids come from Topics first, so a soft-deleted Grade (hidden by the global
+        // query filter) cannot make a blocked link look free.
+        var blockingIds = await _context.Topics
+            .Where(t => t.SubjectId == subjectId && gradeIds.Contains(t.GradeId))
+            .Select(t => t.GradeId)
+            .Distinct()
+            .ToListAsync(ct);
+        if (blockingIds.Count == 0) return new List<string>();
+
+        // Names are only for the message — include soft-deleted grades, fall back to the id.
+        var names = await _context.Grades.IgnoreQueryFilters()
+            .Where(g => blockingIds.Contains(g.Id))
+            .ToDictionaryAsync(g => g.Id, g => g.Name, ct);
+        return blockingIds
+            .OrderBy(id => id)
+            .Select(id => names.TryGetValue(id, out var n) ? n : id.ToString())
+            .ToList();
+    }
+
+    /// <summary>
+    /// Makes the subject's GradeSubject links (<paramref name="existing"/>, already loaded and tracked)
+    /// equal to <paramref name="desiredGradeIds"/>: missing links are added, links not in the list are
+    /// removed. Caller has already checked the removals against topics, and saves.
+    /// </summary>
+    private void SyncSubjectGrades(int subjectId, List<GradeSubject> existing, List<int> desiredGradeIds)
+    {
         var existingGradeIds = existing.Select(gs => gs.GradeId).ToHashSet();
         var desired = desiredGradeIds.ToHashSet();
 
@@ -239,7 +303,7 @@ public class TaxonomyService : ITaxonomyService
             _context.GradeSubjects.Add(new GradeSubject { SubjectId = subjectId, GradeId = gradeId });
     }
 
-    public async Task<ResponseBaseDto> DeleteSubjectAsync(int id, int userId, CancellationToken ct = default)
+    public async Task<TaxonomyResponseDto> DeleteSubjectAsync(int id, int userId, CancellationToken ct = default)
     {
         var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == id, ct);
         if (subject == null)
@@ -259,7 +323,7 @@ public class TaxonomyService : ITaxonomyService
 
     // ---- Topic ----
 
-    public async Task<ResponseBaseDto> CreateTopicAsync(UpsertTopicDto dto, int userId, CancellationToken ct = default)
+    public async Task<TaxonomyResponseDto> CreateTopicAsync(UpsertTopicDto dto, int userId, CancellationToken ct = default)
     {
         var name = dto.Name?.Trim();
         if (string.IsNullOrWhiteSpace(name))
@@ -268,6 +332,8 @@ public class TaxonomyService : ITaxonomyService
             return Fail(_localizer["taxonomy.subject.invalid"]);
         if (!await _context.Grades.AnyAsync(g => g.Id == dto.GradeId, ct))
             return Fail(_localizer["taxonomy.grade.invalid"]);
+        if (!await IsSubjectLinkedToGradeAsync(dto.SubjectId, dto.GradeId, ct))
+            return Fail(_localizer["taxonomy.topic.subjectNotLinkedToGrade"], TaxonomyErrorCodes.SubjectGradeNotLinked);
 
         _context.SetCurrentUser(userId);
         var topic = new Topic { Name = name, SubjectId = dto.SubjectId, GradeId = dto.GradeId };
@@ -276,7 +342,7 @@ public class TaxonomyService : ITaxonomyService
         return Ok(_localizer["taxonomy.topic.created"], topic.Id, userId);
     }
 
-    public async Task<ResponseBaseDto> UpdateTopicAsync(int id, UpsertTopicDto dto, int userId, CancellationToken ct = default)
+    public async Task<TaxonomyResponseDto> UpdateTopicAsync(int id, UpsertTopicDto dto, int userId, CancellationToken ct = default)
     {
         var name = dto.Name?.Trim();
         if (string.IsNullOrWhiteSpace(name))
@@ -289,6 +355,10 @@ public class TaxonomyService : ITaxonomyService
             return Fail(_localizer["taxonomy.subject.invalid"]);
         if (!await _context.Grades.AnyAsync(g => g.Id == dto.GradeId, ct))
             return Fail(_localizer["taxonomy.grade.invalid"]);
+        // Only when the topic moves: an already-orphaned topic (pre-#249 data) can still be renamed in place.
+        var movesPair = topic.SubjectId != dto.SubjectId || topic.GradeId != dto.GradeId;
+        if (movesPair && !await IsSubjectLinkedToGradeAsync(dto.SubjectId, dto.GradeId, ct))
+            return Fail(_localizer["taxonomy.topic.subjectNotLinkedToGrade"], TaxonomyErrorCodes.SubjectGradeNotLinked);
 
         _context.SetCurrentUser(userId);
         topic.Name = name;
@@ -298,7 +368,11 @@ public class TaxonomyService : ITaxonomyService
         return Ok(_localizer["taxonomy.topic.updated"], topic.Id, userId);
     }
 
-    public async Task<ResponseBaseDto> DeleteTopicAsync(int id, int userId, CancellationToken ct = default)
+    /// <summary>Issue #249: a topic is only reachable under a grade its subject is linked to (active GradeSubject).</summary>
+    private Task<bool> IsSubjectLinkedToGradeAsync(int subjectId, int gradeId, CancellationToken ct) =>
+        _context.GradeSubjects.AnyAsync(gs => gs.SubjectId == subjectId && gs.GradeId == gradeId, ct);
+
+    public async Task<TaxonomyResponseDto> DeleteTopicAsync(int id, int userId, CancellationToken ct = default)
     {
         var topic = await _context.Topics.FirstOrDefaultAsync(t => t.Id == id, ct);
         if (topic == null)
@@ -317,7 +391,7 @@ public class TaxonomyService : ITaxonomyService
 
     // ---- SubTopic ----
 
-    public async Task<ResponseBaseDto> CreateSubTopicAsync(UpsertSubTopicDto dto, int userId, CancellationToken ct = default)
+    public async Task<TaxonomyResponseDto> CreateSubTopicAsync(UpsertSubTopicDto dto, int userId, CancellationToken ct = default)
     {
         var name = dto.Name?.Trim();
         if (string.IsNullOrWhiteSpace(name))
@@ -332,7 +406,7 @@ public class TaxonomyService : ITaxonomyService
         return Ok(_localizer["taxonomy.subTopic.created"], subTopic.Id, userId);
     }
 
-    public async Task<ResponseBaseDto> UpdateSubTopicAsync(int id, UpsertSubTopicDto dto, int userId, CancellationToken ct = default)
+    public async Task<TaxonomyResponseDto> UpdateSubTopicAsync(int id, UpsertSubTopicDto dto, int userId, CancellationToken ct = default)
     {
         var name = dto.Name?.Trim();
         if (string.IsNullOrWhiteSpace(name))
@@ -362,7 +436,7 @@ public class TaxonomyService : ITaxonomyService
         return Ok(_localizer["taxonomy.subTopic.updated"], subTopic.Id, userId);
     }
 
-    public async Task<ResponseBaseDto> DeleteSubTopicAsync(int id, int userId, CancellationToken ct = default)
+    public async Task<TaxonomyResponseDto> DeleteSubTopicAsync(int id, int userId, CancellationToken ct = default)
     {
         var subTopic = await _context.SubTopics.FirstOrDefaultAsync(st => st.Id == id, ct);
         if (subTopic == null)
@@ -377,12 +451,13 @@ public class TaxonomyService : ITaxonomyService
         return Ok(_localizer["taxonomy.subTopic.deleted"], id, userId);
     }
 
-    private static ResponseBaseDto Fail(string message) => new() { Success = false, Message = message };
+    private static TaxonomyResponseDto Fail(string message, string? errorCode = null) =>
+        new() { Success = false, Message = message, ErrorCode = errorCode };
 
     /// <summary>Success result + a debounced job to rebuild the classifier cache.</summary>
-    private ResponseBaseDto Ok(string message, int id, int userId)
+    private TaxonomyResponseDto Ok(string message, int id, int userId)
     {
         _jobs.Schedule<IClassifierCacheService>(s => s.RefreshIfStaleAsync(userId), ReconcileDelay);
-        return new ResponseBaseDto { Success = true, Message = message, ObjectId = id };
+        return new TaxonomyResponseDto { Success = true, Message = message, ObjectId = id };
     }
 }

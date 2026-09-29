@@ -10,7 +10,8 @@
       "updated": "Ders güncellendi.",
       "deleted": "Ders silindi.",
       "hasTopics": "Bu derse bağlı konular var. Önce konuları silin veya taşıyın.",
-      "hasQuestions": "Bu derse bağlı sorular var, silinemez."
+      "hasQuestions": "Bu derse bağlı sorular var, silinemez.",
+      "gradeRequired": "Ders en az bir sınıfa bağlı olmalı. Bir sınıf seçin."
     },
     "grade": {
       "invalid": "Geçersiz sınıf.",
@@ -20,7 +21,9 @@
       "alreadyLinked": "Ders zaten bu sınıfa bağlı.",
       "linked": "Ders sınıfa bağlandı.",
       "alreadyUnlinked": "Ders zaten bu sınıfa bağlı değil.",
-      "unlinked": "Ders–sınıf bağlantısı kaldırıldı."
+      "unlinked": "Ders–sınıf bağlantısı kaldırıldı.",
+      "lastLink": "Ders en az bir sınıfa bağlı olmalı; bu son sınıf bağlantısı kaldırılamaz. Dersi tamamen kaldırmak istiyorsanız dersi silin.",
+      "hasTopics": "Bu dersin şu sınıf(lar)da konuları var: {0}. Sınıf bağlantısını kaldırmadan önce bu sınıftaki konuları taşıyın veya silin."
     },
     "topic": {
       "nameRequired": "Konu adı boş olamaz.",
@@ -30,7 +33,8 @@
       "updated": "Konu güncellendi.",
       "deleted": "Konu silindi.",
       "hasSubTopics": "Bu konuya bağlı alt konular var. Önce onları silin veya taşıyın.",
-      "hasQuestions": "Bu konuya bağlı sorular var, silinemez."
+      "hasQuestions": "Bu konuya bağlı sorular var, silinemez.",
+      "subjectNotLinkedToGrade": "Ders bu sınıfa bağlı değil. Önce dersi sınıfa bağlayın."
     },
     "subTopic": {
       "nameRequired": "Alt konu adı boş olamaz.",

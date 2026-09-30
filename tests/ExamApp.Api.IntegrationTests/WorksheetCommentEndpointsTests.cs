@@ -36,7 +36,7 @@ public class WorksheetCommentEndpointsTests(IntegrationApiFactory factory) : Int
         });
         Factory.Services.GetRequiredService<FakeUserDirectory>().Add(new UserLookupResultDto
         {
-            Id = AssignerId, FullName = "Ata Hoca", Email = "ata@mail.local", KeycloakId = "kc-105-assigner"
+            Id = AssignerId, FullName = "Ata Hoca", Email = "ata@mail.local", KeycloakId = "kc-105-t"
         });
 
         await SeedApprovedTeacherAsync(OwnerId);
@@ -124,7 +124,7 @@ public class WorksheetCommentEndpointsTests(IntegrationApiFactory factory) : Int
         ownerReply.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         (await JsonOf(ownerReply)).GetProperty("errorCode").GetString().ShouldBe("NotResponsibleTeacher");
 
-        var assigner = await ClientAsAsync(AssignerId, "Teacher", "kc-105-assigner", "Teacher");
+        var assigner = await ClientAsAsync(AssignerId, "Teacher", "kc-105-t", "Teacher");
         var reply = await assigner.PostAsJsonAsync(Url(seed.WorksheetId), new { parentCommentId = rootId, body = "Payda eşitle." });
         reply.StatusCode.ShouldBe(HttpStatusCode.Created);
         (await JsonOf(reply)).GetProperty("authorRole").GetString().ShouldBe("Teacher");

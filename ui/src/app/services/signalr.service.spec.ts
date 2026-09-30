@@ -234,6 +234,43 @@ describe('SignalRService — admin öğretmen bildirimleri', () => {
       expect(snackBar.open.calls.mostRecent().args[0]).toBe('Yeni yorum');
     });
 
+    // Issue #305 dilim B: birleştirilmiş bildirim — toast yok, yalnız zil sayacı.
+    for (const event of ['WorksheetCommentCreated', 'WorksheetCommentReplied']) {
+      it(`${event}_CoalescedCountAboveOne_RefreshesBellWithoutSnackbar`, () => {
+        setup(false);
+        let count = 0;
+        service.notificationsChanged$.subscribe(() => count++);
+
+        handlers.get(event)!({ ...payload, coalescedCount: 3, title: '3 yeni yorum: Kesirler' });
+
+        expect(count).toBe(1);
+        expect(snackBar.open).not.toHaveBeenCalled();
+        expect(router.navigate).not.toHaveBeenCalled();
+      });
+    }
+
+    it('commentPush_CoalescedCountOneOrMissing_KeepsSnackbar', () => {
+      setup(false);
+
+      handlers.get('WorksheetCommentCreated')!({ ...payload, coalescedCount: 1 });
+      handlers.get('WorksheetCommentCreated')!(payload);
+
+      expect(snackBar.open).toHaveBeenCalledTimes(2);
+    });
+
+    it('commentPush_InvalidCoalescedCount_TreatedAsSingle_ShowsSnackbar', () => {
+      setup(false);
+      let count = 0;
+      service.notificationsChanged$.subscribe(() => count++);
+
+      for (const bad of ['5', 2.5, 0, -4, null, { n: 5 }, Number.MAX_VALUE, NaN]) {
+        handlers.get('WorksheetCommentReplied')!({ ...payload, coalescedCount: bad });
+      }
+
+      expect(count).toBe(8);
+      expect(snackBar.open).toHaveBeenCalledTimes(8);
+    });
+
     it('commentPush_LongTitle_IsTruncated', () => {
       setup(false);
 

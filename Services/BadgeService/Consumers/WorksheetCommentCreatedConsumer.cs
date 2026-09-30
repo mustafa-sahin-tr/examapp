@@ -1,11 +1,8 @@
-using System.Text.Json;
-using BadgeService.Entities;
 using BadgeService.Hubs;
 using BadgeService.Services;
 using ExamApp.Foundation.Contracts;
 using MassTransit;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
 
 namespace BadgeService.Consumers;
 
@@ -50,9 +47,7 @@ public class WorksheetCommentCreatedConsumer : IConsumer<WorksheetCommentCreated
         var e = context.Message;
         var ct = context.CancellationToken;
 
-        var exists = await _db.Notifications
-            .AnyAsync(n => n.Type == NotificationType && n.SourceEventId == e.EventId, ct);
-        if (exists)
+        if (await CommentNotificationCoalescer.IsProcessedAsync(_db, e.EventId, NotificationType, ct))
         {
             _logger.LogInformation(
                 "WorksheetCommentCreated zaten işlenmiş (EventId={EventId}, CommentId={CommentId}); atlanıyor.",
@@ -80,38 +75,28 @@ public class WorksheetCommentCreatedConsumer : IConsumer<WorksheetCommentCreated
                 ? _texts.Resolve($"notifications.{NotificationType}.bodyQuestion", culture, authorName, worksheetTitle)
                 : text.Body;
 
-        var notification = new Notification
-        {
-            UserId = e.RecipientUserId,
-            UserKeycloakId = recipientSub,
-            Type = NotificationType,
-            Title = CommentNotificationSupport.CleanTitle(text.Title),
-            Body = CommentNotificationSupport.CleanBody(body),
-            Data = JsonSerializer.Serialize(new
-            {
-                worksheetId = e.WorksheetId,
-                questionId = e.QuestionId,
-                questionOrder = e.QuestionOrder,
-                commentId = e.CommentId,
-                rootCommentId = e.RootCommentId
-            }),
-            SourceEventId = e.EventId,
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _db.Notifications.Add(notification);
-
-        try
-        {
-            await _db.SaveChangesAsync(ct);
-        }
-        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+        var result = await CommentNotificationCoalescer.WriteAsync(_db, new CommentNotificationRequest(
+            e.EventId, NotificationType, e.RecipientUserId, recipientSub, e.WorksheetId, e.QuestionId, e.QuestionOrder,
+            e.CommentId, e.RootCommentId,
+            new LocalizedNotificationText(text.Title, body),
+            count => CommentNotificationSupport.BuildMany(_texts, NotificationType, culture, worksheetTitle, count,
+                e.QuestionOrder)), ct);
+        if (result.Duplicate)
         {
             _logger.LogInformation(
                 "WorksheetCommentCreated eşzamanlı duplicate (EventId={EventId}, CommentId={CommentId}); atlanıyor.",
                 e.EventId, e.CommentId);
             return;
+        }
+
+        var notification = result.Notification!;
+        // D4 (issue #326): gizleme event'i bu bildirimden önce işlendiyse (tombstone) metin nötrlenir; push de nötr metinle gider.
+        if (await CommentHiddenNeutralizer.IsHiddenAsync(_db, e.CommentId, ct)
+            && await CommentHiddenNeutralizer.NeutralizeAsync(_db, _localeResolver, _texts, e.CommentId, ct) > 0)
+        {
+            var neutral = _texts.Build(CommentHiddenNeutralizer.NeutralTextKey, culture);
+            notification.Title = CommentNotificationSupport.CleanTitle(neutral.Title);
+            notification.Body = CommentNotificationSupport.CleanBody(neutral.Body);
         }
 
         await _hub.Clients.User(recipientSub).SendAsync(NotificationType, new
@@ -124,14 +109,12 @@ public class WorksheetCommentCreatedConsumer : IConsumer<WorksheetCommentCreated
             rootCommentId = e.RootCommentId,
             worksheetTitle,
             title = notification.Title,
-            body = notification.Body
+            body = notification.Body,
+            coalescedCount = notification.CoalescedCount
         }, ct);
 
         _logger.LogInformation(
-            "WorksheetCommentCreated işlendi. EventId={EventId}, CommentId={CommentId}, RecipientUserId={UserId}, NotificationId={NotificationId}",
-            e.EventId, e.CommentId, e.RecipientUserId, notification.Id);
+            "WorksheetCommentCreated işlendi. EventId={EventId}, CommentId={CommentId}, RecipientUserId={UserId}, NotificationId={NotificationId}, Coalesced={Coalesced}, Count={Count}",
+            e.EventId, e.CommentId, e.RecipientUserId, notification.Id, result.Coalesced, notification.CoalescedCount);
     }
-
-    private static bool IsUniqueViolation(DbUpdateException ex) =>
-        ex.InnerException is Npgsql.PostgresException { SqlState: "23505" };
 }

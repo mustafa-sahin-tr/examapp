@@ -3,6 +3,7 @@ using System;
 using BadgeService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace BadgeService.Migrations
 {
     [DbContext(typeof(BadgeDbContext))]
-    partial class BadgeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260930144857_AddNotificationCoalescing")]
+    partial class AddNotificationCoalescing
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -162,19 +165,6 @@ namespace BadgeService.Migrations
                     b.ToTable("BadgeEarned");
                 });
 
-            modelBuilder.Entity("BadgeService.Entities.HiddenCommentTombstone", b =>
-                {
-                    b.Property<int>("CommentId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("HiddenAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("CommentId");
-
-                    b.ToTable("HiddenCommentTombstones");
-                });
-
             modelBuilder.Entity("BadgeService.Entities.Notification", b =>
                 {
                     b.Property<int>("Id")
@@ -266,11 +256,11 @@ namespace BadgeService.Migrations
 
                     b.HasIndex("UserId", "IsRead", "CreatedAt");
 
-                    b.HasIndex("UserKeycloakId", "IsRead", "CreatedAt");
-
-                    b.HasIndex("UserId", "UserKeycloakId", "Type", "RootCommentId")
+                    b.HasIndex("UserId", "Type", "RootCommentId")
                         .IsUnique()
                         .HasFilter("\"RootCommentId\" IS NOT NULL AND \"IsRead\" = FALSE");
+
+                    b.HasIndex("UserKeycloakId", "IsRead", "CreatedAt");
 
                     b.ToTable("Notifications");
                 });
@@ -292,8 +282,6 @@ namespace BadgeService.Migrations
                     b.HasKey("Type", "EventId");
 
                     b.HasIndex("NotificationId");
-
-                    b.HasIndex("ProcessedAt");
 
                     b.ToTable("NotificationEventLogs");
                 });

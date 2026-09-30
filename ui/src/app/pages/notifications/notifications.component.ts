@@ -8,7 +8,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { finalize, interval } from 'rxjs';
-import { AppNotification } from '../../models/notification.model';
+import { AppNotification, COALESCED_COUNT_DISPLAY_MAX, toCoalescedCount } from '../../models/notification.model';
 import { AppRouteLink } from '../../models/worksheet-comment.model';
 import { NotificationService } from '../../services/notification.service';
 import { LocaleService } from '../../services/locale.service';
@@ -31,6 +31,9 @@ export interface NotificationRow {
   /** Issue #309: soru yorumu bildiriminde "Soru {n}" etiketi; yoksa null. */
   questionOrder: number | null;
   relativeTime: string;
+  /** Issue #305 B: birleştirilmiş olay sayısı rozeti ("3", "99+"); tek olayda null. */
+  coalescedLabel: string | null;
+  coalescedCount: number;
 }
 
 const SCOPE = 'notifications';
@@ -150,6 +153,16 @@ export class NotificationsComponent implements OnInit {
       route,
       questionOrder,
       relativeTime: formatRelativeTime(notification.createdAt, now, locale),
+      ...coalesced(notification),
     };
   }
+}
+
+/** Issue #305 B: güvenilmeyen `coalescedCount` → rozet; 1 (ya da bozuk) ise rozet yok. */
+function coalesced(notification: AppNotification): Pick<NotificationRow, 'coalescedCount' | 'coalescedLabel'> {
+  const count = toCoalescedCount(notification.coalescedCount);
+  return {
+    coalescedCount: count,
+    coalescedLabel: count > 1 ? (count > COALESCED_COUNT_DISPLAY_MAX ? `${COALESCED_COUNT_DISPLAY_MAX}+` : String(count)) : null,
+  };
 }

@@ -58,18 +58,18 @@ public class WorksheetCommentConsumersTests : IDisposable
             NullLogger<WorksheetCommentRepliedConsumer>.Instance);
 
     private static WorksheetCommentCreatedEvent Created(Guid? id = null, string sub = "kc-t1", int? questionId = null,
-        string author = "Ayşe K.", string title = "Kesirler", int? questionOrder = null) => new()
+        string author = "Ayşe K.", string title = "Kesirler", int? questionOrder = null, int root = 5, int comment = 7) => new()
     {
-        EventId = id ?? Guid.NewGuid(), CommentId = 7, RootCommentId = 5, WorksheetId = 100, QuestionId = questionId,
+        EventId = id ?? Guid.NewGuid(), CommentId = comment, RootCommentId = root, WorksheetId = 100, QuestionId = questionId,
         QuestionOrder = questionOrder,
         WorksheetTitle = title, AuthorRole = "Student", AuthorDisplayName = author,
         RecipientUserId = 10, RecipientKeycloakId = sub
     };
 
     private static WorksheetCommentRepliedEvent Replied(Guid? id = null, string sub = "kc-s1", string role = "Teacher",
-        string author = "", int? questionOrder = null) => new()
+        string author = "", int? questionOrder = null, int root = 5, int comment = 8) => new()
     {
-        EventId = id ?? Guid.NewGuid(), CommentId = 8, RootCommentId = 5, WorksheetId = 100, QuestionId = 3,
+        EventId = id ?? Guid.NewGuid(), CommentId = comment, RootCommentId = root, WorksheetId = 100, QuestionId = 3,
         QuestionOrder = questionOrder,
         WorksheetTitle = "Kesirler", AuthorRole = role, AuthorDisplayName = author,
         RecipientUserId = 20, RecipientKeycloakId = sub
@@ -144,10 +144,10 @@ public class WorksheetCommentConsumersTests : IDisposable
     }
 
     [Fact]
-    public async Task Created_different_event_ids_for_the_same_comment_make_separate_notifications()
+    public async Task Created_different_event_ids_for_different_threads_make_separate_notifications()
     {
-        await NewCreated(NewHub()).Consume(Context(Created()));
-        await NewCreated(NewHub()).Consume(Context(Created()));
+        await NewCreated(NewHub()).Consume(Context(Created(root: 5)));
+        await NewCreated(NewHub()).Consume(Context(Created(root: 6)));
 
         await using var check = _db.NewContext();
         (await check.Notifications.CountAsync()).ShouldBe(2);
@@ -397,7 +397,7 @@ public class WorksheetCommentConsumersTests : IDisposable
     public async Task Created_without_question_order_keeps_null_in_data_and_the_generic_texts()
     {
         await NewCreated(NewHub()).Consume(Context(Created(questionId: 3)));
-        await NewCreated(NewHub()).Consume(Context(Created()));
+        await NewCreated(NewHub()).Consume(Context(Created(root: 6)));
 
         await using var check = _db.NewContext();
         var list = await check.Notifications.OrderBy(n => n.Id).ToListAsync();
@@ -433,7 +433,7 @@ public class WorksheetCommentConsumersTests : IDisposable
     {
         var hub = NewHub();
         await NewReplied(hub).Consume(Context(Replied(questionOrder: 5)));
-        await NewReplied(NewHub()).Consume(Context(Replied(role: "Student", author: "Burak İ.", questionOrder: 5)));
+        await NewReplied(NewHub()).Consume(Context(Replied(role: "Student", author: "Burak İ.", questionOrder: 5, root: 6)));
 
         await using var check = _db.NewContext();
         var list = await check.Notifications.OrderBy(n => n.Id).ToListAsync();

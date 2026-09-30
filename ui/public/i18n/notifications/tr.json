@@ -14,5 +14,6 @@
     "all": "Henüz bir bildirimin yok."
   },
   "unreadPrefix": "Okunmamış:",
-  "questionTag": "Soru {{order}}"
+  "questionTag": "Soru {{order}}",
+  "coalescedAria": "{{count}} bildirim birleştirildi"
 }

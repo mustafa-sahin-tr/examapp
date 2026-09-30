@@ -70,17 +70,27 @@
       "title": "Yeni yorum: {1}",
       "body": "{0} bir yorum veya soru yazdı.",
       "bodyQuestion": "{0} bir soru hakkında yazdı.",
-      "bodyQuestionOrder": "{0} {2}. soru hakkında yazdı."
+      "bodyQuestionOrder": "{0} {2}. soru hakkında yazdı.",
+      "titleMany": "{2} yeni yorum: {1}",
+      "bodyMany": "{2} yeni yorum veya soru yazıldı.",
+      "bodyManyQuestionOrder": "{3}. soru hakkında {2} yeni yorum yazıldı."
     },
     "WorksheetCommentReplied": {
       "title": "Öğretmenin cevap verdi: {1}",
       "body": "Öğretmenin yorumuna veya sorusuna cevap yazdı.",
-      "bodyQuestionOrder": "Öğretmenin {2}. soru hakkındaki yorumuna veya sorusuna cevap yazdı."
+      "bodyQuestionOrder": "Öğretmenin {2}. soru hakkındaki yorumuna veya sorusuna cevap yazdı.",
+      "titleMany": "{2} yeni cevap: {1}",
+      "bodyMany": "Yorumuna veya sorusuna {2} yeni cevap yazıldı.",
+      "bodyManyQuestionOrder": "{3}. soru hakkındaki yorumuna veya sorusuna {2} yeni cevap yazıldı."
     },
     "WorksheetCommentRepliedByStudent": {
       "title": "Yorumuna cevap geldi: {1}",
       "body": "{0} yorumuna cevap yazdı.",
       "bodyQuestionOrder": "{0} {2}. soru hakkındaki yorumuna cevap yazdı."
+    },
+    "WorksheetCommentHidden": {
+      "title": "Bir yorum kaldırıldı",
+      "body": "Bu bildirimle ilgili yorum moderatör tarafından kaldırıldı."
     }
   }
 }

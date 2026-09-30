@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Bookings;
 using ExamApp.Api.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -90,14 +91,16 @@ public class WorksheetCalendarService : IWorksheetCalendarService
     /// Onaylanmış (Approved) randevular → takvim etkinliği (issue #96). Slot tarih/saatleri saat dilimsiz
     /// duvar saati olduğu için UTC kabul edilerek [fromUtc, toUtc) aralığıyla karşılaştırılır.
     /// Aralık filtresi bellekte uygulanır: DateOnly+TimeOnly birleşimi SQL'e çevrilemiyor, bu yüzden
-    /// önce gün bazında (Date) kabaca daraltılır.
+    /// önce gün bazında (Date) kabaca daraltılır. issue #300: aralıkla KESİŞEN her randevu gösterilir
+    /// (<c>EndUtc &gt; fromUtc &amp;&amp; StartUtc &lt; toUtc</c>); aralıktan önceki gün başlayıp aralığa taşan gün aşan
+    /// randevu da dahil olsun diye ön filtre bir gün geriden başlar.
     /// <paramref name="isTeacherView"/> başlığın kimin adıyla kurulacağını belirler: öğretmen kendi
     /// takviminde karşı tarafı (öğrenciyi), öğrenci ise öğretmeni görmeli.
     /// </summary>
     private async Task<List<CalendarEventDto>> BuildBookingEventsAsync(
         Expression<Func<Booking, bool>> ownerPredicate, DateTime fromUtc, DateTime toUtc, bool isTeacherView, CancellationToken ct)
     {
-        var fromDate = DateOnly.FromDateTime(fromUtc);
+        var fromDate = DateOnly.FromDateTime(fromUtc).AddDays(-1);
         var toDate = DateOnly.FromDateTime(toUtc);
 
         var rows = await _context.Bookings
@@ -121,18 +124,23 @@ public class WorksheetCalendarService : IWorksheetCalendarService
             .ToListAsync(ct);
 
         var inRange = rows
-            .Select(r => new
+            .Select(r =>
             {
-                r.BookingId,
-                r.TeacherId,
-                r.StudentId,
-                r.AvailabilitySlotId,
-                r.TeacherUserId,
-                r.StudentUserId,
-                StartUtc = DateTime.SpecifyKind(r.Date.ToDateTime(r.Start), DateTimeKind.Utc),
-                EndUtc = DateTime.SpecifyKind(r.Date.ToDateTime(r.End), DateTimeKind.Utc)
+                // issue #300: gün aşan slotta bitiş ertesi gün (SlotTimeRange tek kural).
+                var range = SlotTimeRange.From(r.Date, r.Start, r.End);
+                return new
+                {
+                    r.BookingId,
+                    r.TeacherId,
+                    r.StudentId,
+                    r.AvailabilitySlotId,
+                    r.TeacherUserId,
+                    r.StudentUserId,
+                    range.StartUtc,
+                    range.EndUtc
+                };
             })
-            .Where(r => r.StartUtc >= fromUtc && r.StartUtc < toUtc)
+            .Where(r => r.EndUtc > fromUtc && r.StartUtc < toUtc)
             .ToList();
 
         if (inRange.Count == 0)

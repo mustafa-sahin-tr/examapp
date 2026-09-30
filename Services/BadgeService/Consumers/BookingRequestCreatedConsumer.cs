@@ -62,7 +62,7 @@ public class BookingRequestCreatedConsumer : IConsumer<BookingRequestCreatedEven
         var studentName = string.IsNullOrWhiteSpace(e.StudentName)
             ? _texts.Resolve("notifications.common.defaultStudent", culture)
             : e.StudentName;
-        var whenText = $"{e.Date:dd.MM.yyyy} {e.StartTime:HH:mm}-{e.EndTime:HH:mm}";
+        var whenText = BookingWhenText.Format(e.Date, e.StartTime, e.EndTime); // issue #300: gün aşan slotta " (+1)"
         var text = _texts.Build(NotificationType, culture, studentName, whenText);
 
         var notification = new Notification

@@ -104,15 +104,14 @@ public class BookingServiceTests : IDisposable
     }
 
     /// <summary>
-    /// Sabit saatten 5 dk sonra başlayan (katılım penceresi içinde) slot. Bitiş başlangıç + 1 saattir; gece
-    /// yarısını geçecekse 23:59'a kırpılır — üretim kodu gün aşan slotu desteklemiyor (bkz. *_CrossingMidnight_* testleri).
+    /// Sabit saatten 5 dk sonra başlayan (katılım penceresi içinde) 1 saatlik slot. Gece yarısını geçerse bitiş
+    /// ertesi gündür (issue #300, gün aşan slot; bkz. *_CrossingMidnight_* testleri).
     /// </summary>
     private Task<int> SeedSlotStartingSoonAsync()
     {
         var start = Now.AddMinutes(5);
         var slotStart = new TimeOnly(start.Hour, start.Minute);
-        var slotEnd = slotStart.AddHours(1) < slotStart ? new TimeOnly(23, 59) : slotStart.AddHours(1);
-        return SeedSlotAsync(TeacherId, DateOnly.FromDateTime(start), slotStart, slotEnd);
+        return SeedSlotAsync(TeacherId, DateOnly.FromDateTime(start), slotStart, slotStart.AddHours(1));
     }
 
     // ------ Slot oluşturma (öğretmen) ------
@@ -138,8 +137,9 @@ public class BookingServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task CreateSlotAsync_EndTimeBeforeStartTime_Fails()
+    public async Task CreateSlotAsync_EndBeforeStart_IsNextDayAndRejectedAsTooLong()
     {
+        // issue #300: 15:00–14:00 artık "ertesi gün 14:00" demektir (23 saat) → süre üst sınırına takılır.
         await SeedTeacherAsync(TeacherId, TeacherUserId);
 
         await using var ctx = _db.NewContext();
@@ -153,6 +153,25 @@ public class BookingServiceTests : IDisposable
         var result = await NewService(ctx).CreateSlotAsync(TeacherUserId, req);
 
         result.Success.ShouldBeFalse();
+        // code review D4: ertesi gün sayıldığı açıkça söylenir (tooLongNextDay).
+        result.Message.ShouldBe("Bitiş başlangıçtan önce olduğu için ertesi gün sayıldı; aralık 4 saati aşıyor.");
+    }
+
+    [Fact]
+    public async Task CreateSlotAsync_SameDayTooLong_UsesPlainTooLongMessage()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).CreateSlotAsync(TeacherUserId, new CreateAvailabilitySlotDto
+        {
+            Date = DateOnly.FromDateTime(Now.AddDays(1)),
+            StartTime = new TimeOnly(10, 0),
+            EndTime = new TimeOnly(14, 1)
+        });
+
+        result.Success.ShouldBeFalse();
+        result.Message.ShouldBe("Bir müsaitlik aralığı en fazla 4 saat sürebilir.");
     }
 
     [Fact]
@@ -1173,43 +1192,165 @@ public class BookingServiceTests : IDisposable
         result.Conflict.ShouldBeTrue();
     }
 
-    // ------ Gece yarısını geçen slot (issue #294) ------
-    // BUG #300: gün aşan slot desteklenmiyor. Bu testler HATALI mevcut davranışı belgeler; #300 düzeltilince
-    // beklentiler tersine çevrilmeli (Success=true / EndUtc > StartUtc / pencere açılır).
-    // Üretim kodu gün aşan slotu desteklemiyor: slot tek bir Date + TimeOnly başlangıç/bitiş taşıyor ve bitiş
-    // başlangıçla aynı güne yazılıyor. Aşağıdaki testler MEVCUT davranışı belgeler; destek eklenirse güncellenmeli.
+    // ------ Gece yarısını (UTC) geçen slot (issue #300) ------
+    // Kural: EndTime <= StartTime ise bitiş ertesi gün (SlotTimeRange). Sıfır süre reddedilir.
+
+    private static readonly DateOnly MidnightDate = new(2026, 6, 16); // DefaultNow'dan (06-15 12:00) bir gün sonra
 
     [Fact]
-    public async Task CreateSlotAsync_CrossingMidnight_IsRejected_CurrentBehavior()
+    public async Task CreateSlotAsync_CrossingMidnight_SucceedsWithEndOnNextDay()
     {
         await SeedTeacherAsync(TeacherId, TeacherUserId);
 
         await using var ctx = _db.NewContext();
-        var req = new CreateAvailabilitySlotDto
+        var result = await NewService(ctx).CreateSlotAsync(TeacherUserId, new CreateAvailabilitySlotDto
         {
-            Date = DateOnly.FromDateTime(Now.AddDays(1)),
+            Date = MidnightDate,
             StartTime = new TimeOnly(23, 30),
             EndTime = new TimeOnly(0, 30)
-        };
+        });
 
-        var result = await NewService(ctx).CreateSlotAsync(TeacherUserId, req);
+        result.Success.ShouldBeTrue(result.Message);
+        result.Slot!.StartUtc.ShouldBe(new DateTime(2026, 6, 16, 23, 30, 0, DateTimeKind.Utc));
+        result.Slot.EndUtc.ShouldBe(new DateTime(2026, 6, 17, 0, 30, 0, DateTimeKind.Utc));
+        result.Slot.EndUtc.ShouldBeGreaterThan(result.Slot.StartUtc);
 
-        // "Bitiş başlangıçtan önce" kuralına takılır (EndTime <= StartTime). BUG #300: düzeltilince Success=true olmalı.
+        // Saklama modeli değişmez: tek Date + ham saatler (ayrı EndDate kolonu yok).
+        await using var verify = _db.NewContext();
+        var stored = await verify.TeacherAvailabilitySlots.SingleAsync();
+        stored.Date.ShouldBe(MidnightDate);
+        stored.StartTime.ShouldBe(new TimeOnly(23, 30));
+        stored.EndTime.ShouldBe(new TimeOnly(0, 30));
+    }
+
+    [Theory]
+    [InlineData(14, 0)]
+    [InlineData(0, 0)]
+    [InlineData(23, 30)]
+    public async Task CreateSlotAsync_ZeroDuration_IsRejected(int hour, int minute)
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+
+        await using var ctx = _db.NewContext();
+        var time = new TimeOnly(hour, minute);
+        var result = await NewService(ctx).CreateSlotAsync(TeacherUserId, new CreateAvailabilitySlotDto
+        {
+            Date = MidnightDate,
+            StartTime = time,
+            EndTime = time // 24 saatlik slot sayılmaz (PO kararı)
+        });
+
         result.Success.ShouldBeFalse();
-        result.Slot.ShouldBeNull();
+        result.Conflict.ShouldBeFalse();
+        result.Message.ShouldBe("Bitiş saati başlangıç saatiyle aynı olamaz."); // booking.slot.zeroLength (code review D5)
         await using var verify = _db.NewContext();
         (await verify.TeacherAvailabilitySlots.CountAsync()).ShouldBe(0);
     }
 
-    [Fact]
-    public async Task CreateBookingAsync_CrossingMidnightSlotSeededDirectly_IsAccepted_CurrentBehavior()
+    [Theory]
+    [InlineData(22, 0, 2, 0, true)]   // tam 4 saat, gece yarısını geçiyor
+    [InlineData(22, 0, 2, 1, false)]  // 4 saat 1 dk
+    [InlineData(23, 59, 0, 0, true)]  // 1 dk
+    [InlineData(20, 0, 19, 59, false)] // 23 saat 59 dk (ertesi gün)
+    public async Task CreateSlotAsync_CrossingMidnight_DurationLimitUsesNextDayEnd(
+        int startHour, int startMinute, int endHour, int endMinute, bool expectedSuccess)
     {
-        // Slot oluşturma ucu reddettiği için böyle bir satır ancak doğrudan veriyle oluşur; rezervasyon yalnızca
-        // başlangıcı kontrol ettiğinden kabul edilir (katılım ise hiç açılmaz, bkz. sonraki test).
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).CreateSlotAsync(TeacherUserId, new CreateAvailabilitySlotDto
+        {
+            Date = MidnightDate,
+            StartTime = new TimeOnly(startHour, startMinute),
+            EndTime = new TimeOnly(endHour, endMinute)
+        });
+
+        result.Success.ShouldBe(expectedSuccess, result.Message);
+        if (!expectedSuccess)
+            result.Message.ShouldContain(BookingService.MaxSlotDurationHours.ToString());
+    }
+
+    [Fact]
+    public async Task CreateSlotAsync_CrossingMidnightStartingInPast_IsRejected()
+    {
+        // Başlangıç geçmişte (dün 23:30); bitiş (bugün 00:30) gelecekte olsa da geçmiş kuralı başlangıca bakar.
+        SetClock(0, 10);
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).CreateSlotAsync(TeacherUserId, new CreateAvailabilitySlotDto
+        {
+            Date = new DateOnly(2026, 6, 14),
+            StartTime = new TimeOnly(23, 30),
+            EndTime = new TimeOnly(0, 30)
+        });
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+    }
+
+    /// <summary>
+    /// Çakışma UTC [Start, End) aralıklarıyla: önceki günün gün aşan slotu ertesi güne, yeni gün aşan slot ertesi günün
+    /// slotuna taşar. Bitişik aralıklar çakışmaz. Gün ofsetleri <see cref="MidnightDate"/>'e göre.
+    /// </summary>
+    [Theory]
+    // issue örneği: D 23:30–00:30 mevcut, D+1 00:00–00:45 yeni → önceki gün adayı yakalanmalı.
+    [InlineData(0, 23, 30, 0, 30, 1, 0, 0, 0, 45, true)]
+    // tersi: D+1 00:00–00:45 mevcut, D 23:30–00:30 yeni → ertesi gün adayı.
+    [InlineData(1, 0, 0, 0, 45, 0, 23, 30, 0, 30, true)]
+    // iki gün aşan slot aynı gün, kesişiyor.
+    [InlineData(0, 23, 0, 0, 15, 0, 23, 30, 1, 0, true)]
+    // bitişik: D 23:30–00:30 mevcut, D+1 00:30–01:00 yeni → çakışmaz.
+    [InlineData(0, 23, 30, 0, 30, 1, 0, 30, 1, 0, false)]
+    // bitişik: D 22:00–23:30 mevcut, D 23:30–00:30 yeni → çakışmaz.
+    [InlineData(0, 22, 0, 23, 30, 0, 23, 30, 0, 30, false)]
+    // D+1 01:00–02:00 mevcut, D 23:30–00:30 yeni → çakışmaz.
+    [InlineData(1, 1, 0, 2, 0, 0, 23, 30, 0, 30, false)]
+    // D-1'in gün aşan slotu D'nin sabahına taşmaz (D 00:30'a kadar), D 01:00–02:00 yeni → çakışmaz.
+    [InlineData(-1, 23, 30, 0, 30, 0, 1, 0, 2, 0, false)]
+    public async Task CreateSlotAsync_CrossingMidnightOverlap_IsDetectedAcrossDays(
+        int existingDayOffset, int esH, int esM, int eeH, int eeM,
+        int newDayOffset, int nsH, int nsM, int neH, int neM, bool expectedConflict)
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedSlotAsync(TeacherId, MidnightDate.AddDays(existingDayOffset), new TimeOnly(esH, esM), new TimeOnly(eeH, eeM));
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).CreateSlotAsync(TeacherUserId, new CreateAvailabilitySlotDto
+        {
+            Date = MidnightDate.AddDays(newDayOffset),
+            StartTime = new TimeOnly(nsH, nsM),
+            EndTime = new TimeOnly(neH, neM)
+        });
+
+        result.Success.ShouldBe(!expectedConflict, result.Message);
+        result.Conflict.ShouldBe(expectedConflict);
+    }
+
+    [Fact]
+    public async Task CreateSlotAsync_OtherTeachersCrossingMidnightSlot_DoesNotConflict()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedTeacherAsync(OtherTeacherId, OtherTeacherUserId);
+        await SeedSlotAsync(OtherTeacherId, MidnightDate, new TimeOnly(23, 30), new TimeOnly(0, 30));
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).CreateSlotAsync(TeacherUserId, new CreateAvailabilitySlotDto
+        {
+            Date = MidnightDate.AddDays(1),
+            StartTime = new TimeOnly(0, 0),
+            EndTime = new TimeOnly(0, 45)
+        });
+
+        result.Success.ShouldBeTrue(result.Message);
+    }
+
+    [Fact]
+    public async Task CreateBookingAsync_CrossingMidnightSlot_ReturnsEndUtcOnNextDay()
+    {
         await SeedTeacherAsync(TeacherId, TeacherUserId);
         await SeedStudentAsync(StudentId, StudentUserId);
-        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(Now.AddDays(1)),
-            new TimeOnly(23, 30), new TimeOnly(0, 30));
+        var slotId = await SeedSlotAsync(TeacherId, MidnightDate, new TimeOnly(23, 30), new TimeOnly(0, 30));
 
         _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
             .Returns(x => Task.FromResult<IReadOnlyList<UserLookupResultDto>>(new List<UserLookupResultDto>()));
@@ -1219,48 +1360,226 @@ public class BookingServiceTests : IDisposable
             StudentUserId, new CreateBookingDto { AvailabilitySlotId = slotId }, CancellationToken.None);
 
         result.Success.ShouldBeTrue();
-        // Bitiş, başlangıçla aynı güne yazıldığı için başlangıçtan ÖNCE görünür (23:30 → aynı gün 00:30).
-        result.Booking!.EndUtc.ShouldBeLessThan(result.Booking.StartUtc); // #300 ile tersine döner (EndUtc > StartUtc)
+        result.Booking!.StartUtc.ShouldBe(new DateTime(2026, 6, 16, 23, 30, 0, DateTimeKind.Utc));
+        result.Booking.EndUtc.ShouldBe(new DateTime(2026, 6, 17, 0, 30, 0, DateTimeKind.Utc));
+        result.Booking.EndUtc.ShouldBeGreaterThan(result.Booking.StartUtc);
     }
 
-    [Theory]
-    [InlineData(15, 23, 20)] // pencere açılışı (başlangıç - 15 dk = 23:15) sonrası
-    [InlineData(15, 23, 45)] // ders sırasında
-    [InlineData(16, 0, 10)]  // gece yarısından sonra, ders hâlâ sürüyor
-    public async Task GetVideoSessionAsync_CrossingMidnightSlot_JoinNeverOpens_CurrentBehavior(
-        int day, int hour, int minute)
+    [Fact]
+    public async Task Listings_CrossingMidnightSlot_ReturnEndUtcAfterStartUtc()
     {
         await SeedTeacherAsync(TeacherId, TeacherUserId);
         await SeedStudentAsync(StudentId, StudentUserId);
-        var slotId = await SeedSlotAsync(TeacherId, new DateOnly(2026, 6, 15),
-            new TimeOnly(23, 30), new TimeOnly(0, 30));
+        var bookedSlotId = await SeedSlotAsync(TeacherId, MidnightDate, new TimeOnly(23, 30), new TimeOnly(0, 30));
+        await SeedSlotAsync(TeacherId, MidnightDate.AddDays(2), new TimeOnly(23, 0), new TimeOnly(1, 0)); // açık slot
 
-        int bookingId;
         await using (var ctx = _db.NewContext())
         {
             ctx.SetCurrentUser(StudentUserId);
-            var booking = new Booking
+            ctx.Bookings.Add(new Booking
             {
-                TeacherId = TeacherId,
-                StudentId = StudentId,
-                AvailabilitySlotId = slotId,
-                Status = BookingStatus.Approved,
-                CreatedAt = Now,
-                DecisionAt = Now
-            };
-            ctx.Bookings.Add(booking);
+                TeacherId = TeacherId, StudentId = StudentId, AvailabilitySlotId = bookedSlotId,
+                Status = BookingStatus.Approved, CreatedAt = Now, DecisionAt = Now
+            });
             await ctx.SaveChangesAsync();
-            bookingId = booking.Id;
         }
+
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(x => Task.FromResult<IReadOnlyList<UserLookupResultDto>>(new List<UserLookupResultDto>()));
+
+        await using var read = _db.NewContext();
+        var service = NewService(read);
+
+        var mine = await service.GetMySlotsAsync(TeacherUserId, 0, 50);
+        mine.Items.Count.ShouldBe(2);
+        mine.Items.ShouldAllBe(s => s.EndUtc > s.StartUtc);
+        mine.Items.Single(s => s.Id == bookedSlotId).EndUtc.ShouldBe(new DateTime(2026, 6, 17, 0, 30, 0, DateTimeKind.Utc));
+
+        var open = await service.GetTeacherOpenSlotsAsync(TeacherId, ExamApp.Api.Services.Tenancy.SchoolScope.Unrestricted(StudentUserId), 0, 50);
+        open.Items.Count.ShouldBe(1);
+        open.Items[0].EndUtc.ShouldBe(new DateTime(2026, 6, 19, 1, 0, 0, DateTimeKind.Utc));
+
+        var teacherBookings = await service.GetTeacherBookingsAsync(TeacherUserId, 0, 50);
+        var studentBookings = await service.GetStudentBookingsAsync(StudentUserId, 0, 50);
+        foreach (var b in teacherBookings.Items.Concat(studentBookings.Items))
+        {
+            b.EndUtc.ShouldBe(new DateTime(2026, 6, 17, 0, 30, 0, DateTimeKind.Utc));
+            b.EndUtc.ShouldBeGreaterThan(b.StartUtc);
+        }
+    }
+
+    private async Task<int> SeedApprovedCrossingMidnightBookingAsync()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        // 2026-06-15 23:30 → 2026-06-16 00:30; pencere 23:15 → 06-16 01:00.
+        var slotId = await SeedSlotAsync(TeacherId, new DateOnly(2026, 6, 15), new TimeOnly(23, 30), new TimeOnly(0, 30));
+
+        await using var ctx = _db.NewContext();
+        ctx.SetCurrentUser(StudentUserId);
+        var booking = new Booking
+        {
+            TeacherId = TeacherId,
+            StudentId = StudentId,
+            AvailabilitySlotId = slotId,
+            Status = BookingStatus.Approved,
+            CreatedAt = Now,
+            DecisionAt = Now
+        };
+        ctx.Bookings.Add(booking);
+        await ctx.SaveChangesAsync();
+        return booking.Id;
+    }
+
+    [Theory]
+    [InlineData(15, 23, 14, false)] // açılıştan 1 dk önce
+    [InlineData(15, 23, 15, true)]  // açılış anı (başlangıç - 15 dk)
+    [InlineData(15, 23, 45, true)]  // ders sırasında
+    [InlineData(16, 0, 10, true)]   // gece yarısından sonra, ders sürüyor
+    [InlineData(16, 0, 59, true)]   // ertesi gün, bitiş + 30 dk içinde
+    [InlineData(16, 1, 0, true)]    // kapanış anı dahil (ertesi gün 00:30 + 30 dk)
+    [InlineData(16, 1, 1, false)]   // kapandı
+    public async Task GetVideoSessionAsync_CrossingMidnightSlot_WindowSpansIntoNextDay(
+        int day, int hour, int minute, bool expectedOpen)
+    {
+        var bookingId = await SeedApprovedCrossingMidnightBookingAsync();
+
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(x => Task.FromResult<IReadOnlyList<UserLookupResultDto>>(new List<UserLookupResultDto>()));
+        VideoSessionRequest? captured = null;
+        _videoProvider.CreateOrJoinSessionAsync(Arg.Any<VideoSessionRequest>(), Arg.Any<CancellationToken>())
+            .Returns(x =>
+            {
+                captured = (VideoSessionRequest)x[0];
+                return Task.FromResult(new VideoSessionDto { Provider = "Jitsi", RoomName = "r", Token = "x" });
+            });
 
         _clock.Now = new DateTimeOffset(2026, 6, day, hour, minute, 0, TimeSpan.Zero);
         await using var ctxVideo = _db.NewContext();
         var result = await NewService(ctxVideo).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
 
-        // Beklenen (destek olsaydı): Success. Gerçek: kapanış = aynı gün 00:30 + 30 dk = 01:00 < şimdi → "pencere kapandı".
-        result.Success.ShouldBeFalse();
-        result.Conflict.ShouldBeTrue();
-        await _videoProvider.DidNotReceiveWithAnyArgs().CreateOrJoinSessionAsync(default!, default);
+        result.Success.ShouldBe(expectedOpen, result.Message);
+        if (expectedOpen)
+        {
+            captured.ShouldNotBeNull();
+            captured!.StartUtc.ShouldBe(new DateTime(2026, 6, 15, 23, 30, 0, DateTimeKind.Utc));
+            captured.EndUtc.ShouldBe(new DateTime(2026, 6, 16, 0, 30, 0, DateTimeKind.Utc));
+            captured.WindowClosesAtUtc.ShouldBe(new DateTime(2026, 6, 16, 1, 0, 0, DateTimeKind.Utc));
+        }
+        else
+        {
+            result.Conflict.ShouldBeTrue();
+            await _videoProvider.DidNotReceiveWithAnyArgs().CreateOrJoinSessionAsync(default!, default);
+        }
+    }
+
+    [Fact]
+    public async Task GetLiveSessionAccessAsync_CrossingMidnightSlot_WindowUsedByWhiteboardClosesNextDay()
+    {
+        var bookingId = await SeedApprovedCrossingMidnightBookingAsync();
+        _clock.Now = new DateTimeOffset(2026, 6, 16, 0, 59, 0, TimeSpan.Zero);
+
+        await using var ctx = _db.NewContext();
+        var access = await NewService(ctx).GetLiveSessionAccessAsync(StudentUserId, bookingId);
+
+        access.Allowed.ShouldBeTrue();
+        access.Window.OpensAtUtc.ShouldBe(new DateTime(2026, 6, 15, 23, 15, 0, DateTimeKind.Utc));
+        access.Window.ClosesAtUtc.ShouldBe(new DateTime(2026, 6, 16, 1, 0, 0, DateTimeKind.Utc));
+    }
+
+    // ------ Savunma derinliği: hatalı/uzun/sıfır süreli satır (security review O1, L3) ------
+
+    private async Task<int> SeedApprovedBookingAsync(DateOnly date, TimeOnly start, TimeOnly end)
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var slotId = await SeedSlotAsync(TeacherId, date, start, end);
+
+        await using var ctx = _db.NewContext();
+        ctx.SetCurrentUser(StudentUserId);
+        var booking = new Booking
+        {
+            TeacherId = TeacherId, StudentId = StudentId, AvailabilitySlotId = slotId,
+            Status = BookingStatus.Approved, CreatedAt = Now, DecisionAt = Now
+        };
+        ctx.Bookings.Add(booking);
+        await ctx.SaveChangesAsync();
+        return booking.Id;
+    }
+
+    [Theory]
+    // DB'de doğrudan yazılmış 10 saatlik satır (10:00–20:00): pencere başlangıç + 4 saat + 30 dk = 14:30'da kapanır.
+    [InlineData(10, 0, 20, 0, 15, 14, 30, 15, 14, 31)]
+    // Gün aşan 23 saatlik satır (20:00–19:00 ertesi gün): 00:00 + 30 dk = ertesi gün 00:30.
+    [InlineData(20, 0, 19, 0, 16, 0, 30, 16, 0, 31)]
+    public async Task GetLiveSessionAccessAsync_OverlongRow_WindowIsCappedAtMaxSlotDuration(
+        int sH, int sM, int eH, int eM, int closeDay, int closeHour, int closeMinute, int afterDay, int afterHour, int afterMinute)
+    {
+        var bookingId = await SeedApprovedBookingAsync(new DateOnly(2026, 6, 15), new TimeOnly(sH, sM), new TimeOnly(eH, eM));
+        var closesAt = new DateTime(2026, 6, closeDay, closeHour, closeMinute, 0, DateTimeKind.Utc);
+
+        _clock.Now = new DateTimeOffset(closesAt, TimeSpan.Zero);
+        await using (var ctx = _db.NewContext())
+        {
+            var atClose = await NewService(ctx).GetLiveSessionAccessAsync(StudentUserId, bookingId);
+            atClose.Allowed.ShouldBeTrue();
+            atClose.Window.ClosesAtUtc.ShouldBe(closesAt);
+            (atClose.Window.EndUtc - atClose.Window.StartUtc).ShouldBe(BookingService.MaxSlotDuration);
+        }
+
+        _clock.Now = new DateTimeOffset(2026, 6, afterDay, afterHour, afterMinute, 0, TimeSpan.Zero);
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).GetLiveSessionAccessAsync(StudentUserId, bookingId)).Denial
+                .ShouldBe(BookingLiveSessionDenial.WindowClosed);
+    }
+
+    [Theory]
+    [InlineData(14, 0)]  // tam "başlangıç" anı
+    [InlineData(13, 50)] // "açılış" sonrası
+    [InlineData(23, 59)] // 24 saat sayılsaydı açık olurdu
+    public async Task GetLiveSessionAccessAsync_ZeroLengthRow_WindowNeverOpens(int hour, int minute)
+    {
+        var bookingId = await SeedApprovedBookingAsync(new DateOnly(2026, 6, 15), new TimeOnly(14, 0), new TimeOnly(14, 0));
+        _clock.Now = new DateTimeOffset(2026, 6, 15, hour, minute, 0, TimeSpan.Zero);
+
+        await using var ctx = _db.NewContext();
+        var access = await NewService(ctx).GetLiveSessionAccessAsync(StudentUserId, bookingId);
+
+        access.Denial.ShouldBe(BookingLiveSessionDenial.WindowClosed);
+        access.Window.IsValid.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void SlotTimeRange_ZeroLength_IsNotTwentyFourHoursAndOverlapsNothing()
+    {
+        var date = new DateOnly(2026, 6, 15);
+        var zero = SlotTimeRange.From(date, new TimeOnly(14, 0), new TimeOnly(14, 0));
+
+        zero.Duration.ShouldBe(TimeSpan.Zero);
+        zero.IsValid.ShouldBeFalse();
+        SlotTimeRange.DurationOf(new TimeOnly(14, 0), new TimeOnly(14, 0)).ShouldBe(TimeSpan.Zero);
+        SlotTimeRange.CrossesMidnight(new TimeOnly(14, 0), new TimeOnly(14, 0)).ShouldBeFalse();
+        zero.Overlaps(SlotTimeRange.From(date, new TimeOnly(13, 0), new TimeOnly(15, 0))).ShouldBeFalse();
+        SlotTimeRange.From(date, new TimeOnly(13, 0), new TimeOnly(15, 0)).Overlaps(zero).ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(23, 30, 0, 30, 23, 30, 24, 30)]  // gün aşan: bitiş ertesi gün
+    [InlineData(14, 0, 15, 0, 14, 0, 15, 0)]     // aynı gün
+    [InlineData(23, 0, 0, 0, 23, 0, 24, 0)]      // tam gece yarısında biten
+    public void SlotTimeRange_From_PutsEndOnNextDayWhenEndIsNotAfterStart(
+        int sH, int sM, int eH, int eM, int expectedStartHour, int expectedStartMinute, int expectedEndHour, int expectedEndMinute)
+    {
+        var date = new DateOnly(2026, 6, 15);
+        var range = SlotTimeRange.From(date, new TimeOnly(sH, sM), new TimeOnly(eH, eM));
+
+        var midnight = new DateTime(2026, 6, 15, 0, 0, 0, DateTimeKind.Utc);
+        range.StartUtc.ShouldBe(midnight.AddHours(expectedStartHour).AddMinutes(expectedStartMinute));
+        range.EndUtc.ShouldBe(midnight.AddHours(expectedEndHour).AddMinutes(expectedEndMinute));
+        range.StartUtc.Kind.ShouldBe(DateTimeKind.Utc);
+        range.EndUtc.Kind.ShouldBe(DateTimeKind.Utc);
+        range.Duration.ShouldBe(SlotTimeRange.DurationOf(new TimeOnly(sH, sM), new TimeOnly(eH, eM)));
+        range.EndUtc.ShouldBeGreaterThan(range.StartUtc);
     }
 
     public void Dispose() => _db.Dispose();

@@ -18,12 +18,13 @@
     "nextWeek": "Next week",
     "today": "Today",
     "legendLabel": "Color legend",
+    "nextDay": "(+1 day)",
     "tooltip": {
       "student": "Student: {{name}}",
       "past": "Past"
     },
     "draft": {
-      "instruction": "Click an empty cell in the calendar to start a new slot; click other cells on the same day to extend it.",
+      "instruction": "Click an empty cell in the calendar to start a new slot; click other cells to extend it (to run past midnight, click the first cells of the next day).",
       "save": "Save",
       "saving": "Saving...",
       "cancel": "Cancel",
@@ -33,8 +34,7 @@
       "past": "You cannot add a slot in the past.",
       "occupied": "The selection overlaps an existing slot.",
       "tooLong": "A slot can be at most {{hours}} hours long.",
-      "tooFarAhead": "Slots can be added at most {{days}} days ahead.",
-      "crossesDayBoundary": "A slot cannot run across {{time}}; add the parts before and after {{time}} as two separate slots."
+      "tooFarAhead": "Slots can be added at most {{days}} days ahead."
     },
     "delete": {
       "prompt": "Delete this slot?",

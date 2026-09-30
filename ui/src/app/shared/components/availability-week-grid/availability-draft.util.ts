@@ -5,8 +5,8 @@ import { formatSlotRange } from '../../utils/booking-format.util';
 /**
  * Grid üzerinde tıkla-seç ile kurulan TASLAK müsaitlik aralığının saf mantığı (issue #176).
  * Kütüphaneden (FullCalendar) ve Angular'dan bağımsızdır. Taslak mutlak anlardan (`Date`) oluşur; geçmiş,
- * çakışma ve süre kontrolleri an bazlıdır. Gün sınırı ve 90 gün ufku ise backend sözleşmesi gereği UTC
- * gününe göre hesaplanır (bkz. `toSlotRequest`).
+ * çakışma ve süre kontrolleri an bazlıdır. 90 gün ufku backend sözleşmesi gereği UTC gününe göre hesaplanır
+ * (bkz. `toSlotRequest`). Issue #300'den beri gün sınırı yoktur: aralık UTC ya da yerel gece yarısını aşabilir.
  */
 
 /** Grid hücresi = FullCalendar `slotDuration` (30 dk). */
@@ -30,7 +30,7 @@ export interface DraftRange {
 }
 
 /** Tıklamanın taslağa uygulanmama nedeni; `grid.hint.<neden>` çeviri anahtarıyla eşleşir. */
-export type DraftRejection = 'past' | 'occupied' | 'tooLong' | 'tooFarAhead' | 'crossesDayBoundary';
+export type DraftRejection = 'past' | 'occupied' | 'tooLong' | 'tooFarAhead';
 
 export interface DraftClickResult {
   /** Tıklama sonrası taslak. Reddedilen tıklamada mevcut taslak AYNEN döner. */
@@ -42,12 +42,6 @@ function sameLocalDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-function sameUtcDay(a: Date, b: Date): boolean {
-  return (
-    a.getUTCFullYear() === b.getUTCFullYear() && a.getUTCMonth() === b.getUTCMonth() && a.getUTCDate() === b.getUTCDate()
-  );
-}
-
 function overlaps(a: DraftRange, b: DraftRange): boolean {
   return a.start.getTime() < b.end.getTime() && a.end.getTime() > b.start.getTime();
 }
@@ -56,16 +50,16 @@ function overlaps(a: DraftRange, b: DraftRange): boolean {
  * Bir hücre tıklamasını taslağa uygular.
  *
  * Kurallar:
- * - Taslak yoksa ya da tıklama başka bir gündeyse → o hücrede yeni 30 dk'lık taslak.
- * - Aynı günde taslağın DIŞINA tıklama → taslak o hücreyi kapsayacak şekilde genişler.
+ * - Taslak yoksa → o hücrede yeni 30 dk'lık taslak.
+ * - Taslağın DIŞINA tıklama → taslak o hücreyi kapsayacak şekilde genişler. Tıklama başka bir yerel gündeyse
+ *   yalnızca birleşik aralık süre sınırına sığıyorsa genişler (gece yarısını aşan aralık: Pzt 23:00 + Sal 00:30);
+ *   sığmıyorsa taslak o hücreye TAŞINIR (başka güne yeni taslak).
  * - Taslağın İÇİNE tıklama daraltır: ilk hücre → baştan kısalır; son hücre → sondan kısalır;
  *   ortadaki hücre → taslak o hücrede biter. Tek hücrelik taslağa tıklamak taslağı kaldırır.
- * - Aday aralık geçmişte başlıyorsa, mevcut bir slotla kesişiyorsa (aradaki slot dahil), 4 saati aşıyorsa,
- *   90 günden ilerideyse ya da UTC gün sınırını aşıyorsa reddedilir ve mevcut taslak korunur.
- * - Gün sınırı: backend tek bir `date` + `TimeOnly` aralığı tutar ve bunları UTC sayar; bu yüzden taslağın
- *   başlangıç ve bitiş anları aynı UTC gününde olmalıdır (bitiş tam UTC 00:00 da olamaz). Sınır yerel gece
- *   yarısı DEĞİLDİR (TR'de yerel 03:00'e denk gelir); yerel 23:30 hücresi UTC açısından geçerliyse kabul edilir.
- *   Taslak yine de tek bir yerel gün sütununda kalır: başka yerel güne tıklama taslağı oraya taşır.
+ * - Aday aralık geçmişte başlıyorsa, mevcut bir slotla kesişiyorsa (aradaki slot dahil), 4 saati aşıyorsa
+ *   ya da 90 günden ilerideyse reddedilir ve mevcut taslak korunur.
+ * - Gün sınırı YOKTUR (issue #300): backend `endTime <= startTime`'ı ertesi gün bitiş sayar (`SlotTimeRange`), bu
+ *   yüzden UTC gece yarısını (TR'de yerel 03:00) ya da yerel gece yarısını aşan taslak geçerlidir.
  *
  * @param cellStart Tıklanan hücrenin yerel başlangıcı (FullCalendar `dateClick.date`).
  * @param busy Mevcut slotların aralıkları (grid'de göründükleri yerel konumlarıyla).
@@ -80,7 +74,7 @@ export function applyCellClick(
   const reject = (rejection: DraftRejection): DraftClickResult => ({ draft: current, rejection });
 
   let candidate: DraftRange;
-  if (!current || !sameLocalDay(current.start, cell.start)) {
+  if (!current || (!sameLocalDay(current.start, cell.start) && !fitsWithCell(current, cell))) {
     candidate = cell;
   } else if (cell.start.getTime() >= current.start.getTime() && cell.end.getTime() <= current.end.getTime()) {
     // Taslağın içi: daralt.
@@ -114,10 +108,6 @@ export function applyCellClick(
     return reject('tooFarAhead');
   }
 
-  // Bitiş ertesi UTC gününe (tam 00:00 dahil) düşerse `endTime` başlangıçtan küçük kalır; backend reddeder.
-  if (!sameUtcDay(candidate.start, candidate.end)) {
-    return reject('crossesDayBoundary');
-  }
   if (busy.some((range) => overlaps(candidate, range))) {
     return reject('occupied');
   }
@@ -126,6 +116,13 @@ export function applyCellClick(
   }
 
   return { draft: candidate, rejection: null };
+}
+
+/** Taslak + hücre birleşimi süre sınırına sığıyor mu (başka yerel güne tıklamada genişletme mi taşıma mı kararı). */
+function fitsWithCell(current: DraftRange, cell: DraftRange): boolean {
+  const start = Math.min(current.start.getTime(), cell.start.getTime());
+  const end = Math.max(current.end.getTime(), cell.end.getTime());
+  return end - start <= DRAFT_MAX_MINUTES * MINUTE_MS;
 }
 
 function pad2(value: number): string {
@@ -139,6 +136,10 @@ function pad2(value: number): string {
  * buradan üretir; grid, liste ve öğrenci tarafı bu alanları yerel saate çevirerek gösterir. Bu yüzden tıklanan
  * ANIN UTC duvar saati gönderilir — yerel saat gönderilseydi slot, tıklanan hücreden UTC farkı kadar kayık
  * görünürdü.
+ *
+ * Gün aşan taslakta (UTC gece yarısını geçen, ör. TR'de yerel 02:30 – 03:30) `endTime` `startTime`'dan küçük olur
+ * (23:30 → 00:30) ve `date` başlangıcın UTC günüdür (yerel günden bir önceki gün olabilir); backend bunu ertesi gün
+ * bitiş olarak yorumlar (issue #300, `SlotTimeRange`). Eşit saatler (sıfır süre) taslakta oluşamaz (en az 30 dk).
  *
  * Ön koşul: anlar 30 dk'lık hücreye hizalıdır (`applyCellClick` çıktısı böyledir). `draft` dışarıdan da
  * yazılabildiği için hizasız girdi hata vermez; saniye ve milisaniye atılır, saat/dakika olduğu gibi gönderilir.
@@ -193,6 +194,8 @@ export function recurringUntilBounds(draft: DraftRange): RecurringUntilBounds {
  * `until` datepicker'dan gelen yerel gündür (gece yarısı anı). Kullanıcı "bu haftaya kadar" derken grid'de
  * gördüğü yerel günü kasteder; bu yüzden bitiş, o yerel günde taslağın kendi saatinde gerçekleşecek tekrarın
  * UTC günü olarak hesaplanır — böylece seçilen gün her zaman seriye dahildir. Null = süresiz.
+ *
+ * Gün aşan taslakta `endTime < startTime` gider; backend her tekrarın bitişini ertesi güne koyar (issue #300).
  */
 export function toRecurringRuleRequest(draft: DraftRange, until: Date | null): CreateRecurringRuleRequest {
   const s = draft.start;
@@ -206,16 +209,6 @@ export function toRecurringRuleRequest(draft: DraftRange, until: Date | null): C
     effectiveFrom: utcDateOnly(s),
     effectiveUntil: untilAtDraftTime ? utcDateOnly(untilAtDraftTime) : null,
   };
-}
-
-const DAY_MS = 24 * 60 * MINUTE_MS;
-
-/**
- * Verilen andan SONRAKİ UTC gece yarısı — taslağın aşamayacağı gün sınırı. Kullanıcıya yerel saatiyle
- * gösterilir (TR'de 03:00); sabit yazılmaz çünkü dilime ve yaz saati geçişine göre değişir.
- */
-export function nextUtcDayBoundary(after: Date): Date {
-  return new Date((Math.floor(after.getTime() / DAY_MS) + 1) * DAY_MS);
 }
 
 /** Onay çubuğu metni: "Cum 25 Eyl · 14:00 – 15:30" (aktif dil, yerel saat). */

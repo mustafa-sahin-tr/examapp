@@ -19,25 +19,41 @@ public enum BookingWindowState
 /// <summary>
 /// Canlı ders oturumunun (görüşme odası #97, ortak çizim tahtası #98) katılım penceresi. Tek kaynak:
 /// <see cref="VideoOptions.JoinWindowBeforeMinutes"/> / <see cref="VideoOptions.JoinWindowAfterMinutes"/> (varsayılan
-/// başlangıç −15 dk, bitiş +30 dk). Slot tarih-saatleri UTC kabul edilir (<see cref="BookingService.ToUtc"/>).
+/// başlangıç −15 dk, bitiş +30 dk). Slot tarih-saatleri UTC kabul edilir; gün aşan slotta (bitiş &lt; başlangıç) bitiş
+/// ertesi gündür (<see cref="SlotTimeRange.From"/>, issue #300) — ör. 23:30–00:30 penceresi 23:15'te açılır, ertesi gün
+/// 01:00'de kapanır.
+/// <para>
+/// Savunma derinliği (security review O1/L3): pencere hesaplanırken ders süresi
+/// <see cref="BookingService.MaxSlotDuration"/> ile kırpılır — veritabanındaki hatalı/uzun bir satır katılımı başlangıç
+/// + 4 saat + <see cref="VideoOptions.JoinWindowAfterMinutes"/>'ten öteye açık tutamaz. Sıfır süreli (geçersiz) satırın
+/// penceresi hiç açılmaz (<see cref="StateAt"/> daima <see cref="BookingWindowState.Closed"/>).
+/// </para>
 /// </summary>
 public readonly record struct BookingSessionWindow(
     DateTime StartUtc, DateTime EndUtc, DateTime OpensAtUtc, DateTime ClosesAtUtc)
 {
     public static BookingSessionWindow For(DateOnly date, TimeOnly startTime, TimeOnly endTime, VideoOptions options)
     {
-        var startUtc = BookingService.ToUtc(date, startTime);
-        var endUtc = BookingService.ToUtc(date, endTime);
+        var range = SlotTimeRange.From(date, startTime, endTime);
+        var maxEndUtc = range.StartUtc + BookingService.MaxSlotDuration;
+        var endUtc = range.EndUtc > maxEndUtc ? maxEndUtc : range.EndUtc;
         return new BookingSessionWindow(
-            startUtc,
+            range.StartUtc,
             endUtc,
-            startUtc.AddMinutes(-options.JoinWindowBeforeMinutes),
+            range.StartUtc.AddMinutes(-options.JoinWindowBeforeMinutes),
             endUtc.AddMinutes(options.JoinWindowAfterMinutes));
     }
 
-    /// <summary>Sınırlar dahil: tam açılış ve tam kapanış anı <see cref="BookingWindowState.Open"/>'dır (#97 davranışı).</summary>
+    /// <summary>Pozitif süreli ders mi? Sıfır süreli (hatalı) satırın penceresi yoktur.</summary>
+    public bool IsValid => EndUtc > StartUtc;
+
+    /// <summary>
+    /// Sınırlar dahil: tam açılış ve tam kapanış anı <see cref="BookingWindowState.Open"/>'dır (#97 davranışı).
+    /// Geçersiz (sıfır süreli) pencere daima <see cref="BookingWindowState.Closed"/>.
+    /// </summary>
     public BookingWindowState StateAt(DateTime nowUtc)
-        => nowUtc < OpensAtUtc ? BookingWindowState.NotOpen
+        => !IsValid ? BookingWindowState.Closed
+            : nowUtc < OpensAtUtc ? BookingWindowState.NotOpen
             : nowUtc > ClosesAtUtc ? BookingWindowState.Closed
             : BookingWindowState.Open;
 }

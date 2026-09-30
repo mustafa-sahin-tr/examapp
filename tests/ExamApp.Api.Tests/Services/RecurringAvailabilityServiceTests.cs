@@ -330,7 +330,9 @@ public class RecurringAvailabilityServiceTests : IDisposable
 
     public static TheoryData<string, CreateRecurringAvailabilityRuleDto> InvalidRules => new()
     {
-        { "endBeforeStart", new() { DayOfWeek = DayOfWeek.Wednesday, StartTime = new(15, 0), EndTime = new(14, 0), EffectiveFrom = Today } },
+        // issue #300: bitiş < başlangıç = ertesi gün; 15:00–14:00 23 saat → süre üst sınırı.
+        { "endBeforeStartNextDayTooLong", new() { DayOfWeek = DayOfWeek.Wednesday, StartTime = new(15, 0), EndTime = new(14, 0), EffectiveFrom = Today } },
+        { "endEqualsStartMidnight", new() { DayOfWeek = DayOfWeek.Wednesday, StartTime = new(0, 0), EndTime = new(0, 0), EffectiveFrom = Today } },
         { "endEqualsStart", new() { DayOfWeek = DayOfWeek.Wednesday, StartTime = new(14, 0), EndTime = new(14, 0), EffectiveFrom = Today } },
         { "tooLong", new() { DayOfWeek = DayOfWeek.Wednesday, StartTime = new(10, 0), EndTime = new(14, 1), EffectiveFrom = Today } },
         { "tooShort", new() { DayOfWeek = DayOfWeek.Wednesday, StartTime = new(14, 0), EndTime = new(14, 29), EffectiveFrom = Today } },
@@ -760,6 +762,167 @@ public class RecurringAvailabilityServiceTests : IDisposable
         second.Success.ShouldBeTrue();
         second.Rule!.Id.ShouldNotBe(first.Rule!.Id);
         (await RuleSlotDatesAsync(second.Rule.Id)).Count.ShouldBe(13);
+    }
+
+    // ------ Gece yarısını (UTC) geçen kural (issue #300) ------
+
+    [Fact]
+    public async Task CreateRuleAsync_CrossingMidnight_GeneratesSlotsEndingNextDay()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+
+        var result = await CreateRuleAsync(new CreateRecurringAvailabilityRuleDto
+        {
+            DayOfWeek = DayOfWeek.Wednesday, StartTime = new(23, 30), EndTime = new(0, 30), EffectiveFrom = Today
+        });
+
+        result.Success.ShouldBeTrue(result.Message);
+        result.GeneratedSlotIds.Count.ShouldBe(13);
+        var dates = await RuleSlotDatesAsync(result.Rule!.Id);
+        dates.ShouldAllBe(d => d.DayOfWeek == DayOfWeek.Wednesday); // Date = başlangıç günü
+
+        // Listeleme: bitiş ertesi gün (Perşembe 00:30), EndUtc > StartUtc.
+        await using var ctx = _db.NewContext();
+        var mine = await NewBookingService(ctx).GetMySlotsAsync(TeacherUserId, 0, 50);
+        mine.Items.Count.ShouldBe(13);
+        mine.Items.ShouldAllBe(s => s.EndUtc > s.StartUtc && s.EndUtc - s.StartUtc == TimeSpan.FromHours(1));
+        var first = mine.Items.Single(s => s.Date == new DateOnly(2026, 1, 7));
+        first.EndUtc.ShouldBe(new DateTime(2026, 1, 8, 0, 30, 0, DateTimeKind.Utc));
+    }
+
+    [Theory]
+    [InlineData(22, 0, 2, 0, true)]    // tam 4 saat
+    [InlineData(22, 0, 2, 1, false)]   // 4 saat 1 dk
+    [InlineData(23, 45, 0, 15, true)]  // tam 30 dk
+    [InlineData(23, 45, 0, 14, false)] // 29 dk
+    public async Task CreateRuleAsync_CrossingMidnight_DurationLimitsUseNextDayEnd(
+        int sH, int sM, int eH, int eM, bool expectedSuccess)
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+
+        var result = await CreateRuleAsync(new CreateRecurringAvailabilityRuleDto
+        {
+            DayOfWeek = DayOfWeek.Wednesday, StartTime = new(sH, sM), EndTime = new(eH, eM), EffectiveFrom = Today
+        });
+
+        result.Success.ShouldBe(expectedSuccess, result.Message);
+    }
+
+    [Theory]
+    // issue örneği haftalık: Pzt 23:30–00:30 ile Sal 00:00–00:45 çakışır.
+    [InlineData(DayOfWeek.Monday, 23, 30, 0, 30, DayOfWeek.Tuesday, 0, 0, 0, 45, true)]
+    [InlineData(DayOfWeek.Tuesday, 0, 0, 0, 45, DayOfWeek.Monday, 23, 30, 0, 30, true)]
+    // Hafta sınırı: Cmt 23:30–00:30 Pazar'a taşar.
+    [InlineData(DayOfWeek.Saturday, 23, 30, 0, 30, DayOfWeek.Sunday, 0, 0, 0, 45, true)]
+    [InlineData(DayOfWeek.Sunday, 0, 0, 0, 45, DayOfWeek.Saturday, 23, 30, 0, 30, true)]
+    // Bitişik: Pzt 23:30–00:30 ile Sal 00:30–01:30 çakışmaz.
+    [InlineData(DayOfWeek.Monday, 23, 30, 0, 30, DayOfWeek.Tuesday, 0, 30, 1, 30, false)]
+    // Aynı gün sabahı: Pzt 23:30–00:30 Pzt 00:00–00:45'e (önceki gece) dokunmaz.
+    [InlineData(DayOfWeek.Monday, 23, 30, 0, 30, DayOfWeek.Monday, 0, 0, 0, 45, false)]
+    public async Task CreateRuleAsync_CrossingMidnightRuleOverlap_IsDetectedAcrossDays(
+        DayOfWeek existingDay, int esH, int esM, int eeH, int eeM,
+        DayOfWeek newDay, int nsH, int nsM, int neH, int neM, bool expectedConflict)
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        (await CreateRuleAsync(new CreateRecurringAvailabilityRuleDto
+        {
+            DayOfWeek = existingDay, StartTime = new(esH, esM), EndTime = new(eeH, eeM), EffectiveFrom = Today
+        })).Success.ShouldBeTrue();
+
+        var result = await CreateRuleAsync(new CreateRecurringAvailabilityRuleDto
+        {
+            DayOfWeek = newDay, StartTime = new(nsH, nsM), EndTime = new(neH, neM), EffectiveFrom = Today
+        });
+
+        result.Conflict.ShouldBe(expectedConflict, result.Message);
+        result.Success.ShouldBe(!expectedConflict);
+    }
+
+    /// <summary>
+    /// Geçerlilik tarihi kesişimi (EffectiveRangesOverlap, code review O3). X = 2026-01-12 (Pazartesi). A: Pzt 23:30–00:30,
+    /// EffectiveUntil = X → son occurrence Salı X+1 00:30'a taşar.
+    /// </summary>
+    [Theory]
+    // Gerçek çakışma: B Sal 00:00–00:45, EffectiveFrom = X+1 → A'nın X occurrence'ı B'nin ilk occurrence'ına taşar → 409.
+    [InlineData(DayOfWeek.Tuesday, 0, 0, 0, 45, 1, true)]
+    // Muhafazakâr kenar durum (bilinçli): B Pzt 23:00–23:45, EffectiveFrom = X+1. B'nin ilk occurrence'ı X+7, A'nın sonuncusu
+    // X → gerçekte çakışmaz; ama A gün aştığı için bitişi bir gün uzatılır (X+1 >= X+1) → 409. Belgelenmiş yanlış pozitif.
+    [InlineData(DayOfWeek.Monday, 23, 0, 23, 45, 1, true)]
+    // Kontrol: B Sal 00:00–00:45, EffectiveFrom = X+2 → tolerans (X+1) dışında → kabul.
+    [InlineData(DayOfWeek.Tuesday, 0, 0, 0, 45, 2, false)]
+    public async Task CreateRuleAsync_CrossingMidnightRule_EffectiveUntilSpillsIntoNextDay(
+        DayOfWeek newDay, int nsH, int nsM, int neH, int neM, int effectiveFromOffsetFromX, bool expectedConflict)
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        var x = new DateOnly(2026, 1, 12);
+        (await CreateRuleAsync(new CreateRecurringAvailabilityRuleDto
+        {
+            DayOfWeek = DayOfWeek.Monday, StartTime = new(23, 30), EndTime = new(0, 30), EffectiveFrom = Today, EffectiveUntil = x
+        })).Success.ShouldBeTrue();
+
+        var result = await CreateRuleAsync(new CreateRecurringAvailabilityRuleDto
+        {
+            DayOfWeek = newDay, StartTime = new(nsH, nsM), EndTime = new(neH, neM), EffectiveFrom = x.AddDays(effectiveFromOffsetFromX)
+        });
+
+        result.Conflict.ShouldBe(expectedConflict, result.Message);
+        result.Success.ShouldBe(!expectedConflict);
+    }
+
+    [Fact]
+    public async Task CreateRuleAsync_CrossingMidnight_SkipsWeekClashingWithNextDaySlot()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        // Perşembe 00:00–00:45 tekil slot; Çarşamba 23:30–00:30 kuralının 01-07 occurrence'ı ertesi güne taşıp çakışır.
+        await SeedSlotAsync(TeacherId, new DateOnly(2026, 1, 8), new TimeOnly(0, 0), new TimeOnly(0, 45));
+
+        var result = await CreateRuleAsync(new CreateRecurringAvailabilityRuleDto
+        {
+            DayOfWeek = DayOfWeek.Wednesday, StartTime = new(23, 30), EndTime = new(0, 30), EffectiveFrom = Today
+        });
+
+        result.Success.ShouldBeTrue(result.Message);
+        result.SkippedDates.ShouldBe(new[] { new DateOnly(2026, 1, 7) });
+        result.GeneratedSlotIds.Count.ShouldBe(12);
+    }
+
+    [Fact]
+    public async Task CreateRuleAsync_SkipsWeekClashingWithPreviousDaysCrossingMidnightSlot()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        // Salı 23:30–00:30 tekil slot Çarşamba 00:30'a kadar sürer; Çarşamba 00:00–00:45 kuralının 01-07'si atlanmalı.
+        await SeedSlotAsync(TeacherId, new DateOnly(2026, 1, 6), new TimeOnly(23, 30), new TimeOnly(0, 30));
+
+        var result = await CreateRuleAsync(new CreateRecurringAvailabilityRuleDto
+        {
+            DayOfWeek = DayOfWeek.Wednesday, StartTime = new(0, 0), EndTime = new(0, 45), EffectiveFrom = Today
+        });
+
+        result.Success.ShouldBeTrue(result.Message);
+        result.SkippedDates.ShouldBe(new[] { new DateOnly(2026, 1, 7) });
+        result.GeneratedSlotIds.Count.ShouldBe(12);
+    }
+
+    [Fact]
+    public async Task TopUpAsync_CrossingMidnightRule_SkipsOccurrenceClashingWithNextDaySlotAndStaysIdempotent()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        var rule = await CreateRuleAsync(new CreateRecurringAvailabilityRuleDto
+        {
+            DayOfWeek = DayOfWeek.Wednesday, StartTime = new(23, 30), EndTime = new(0, 30), EffectiveFrom = Today
+        });
+        rule.Success.ShouldBeTrue();
+
+        // Ufuk bir hafta ilerler; yeni occurrence 2026-04-08 (Çarşamba), ertesi gün 00:00–00:45 dolu.
+        await SeedSlotAsync(TeacherId, new DateOnly(2026, 4, 9), new TimeOnly(0, 0), new TimeOnly(0, 45));
+        var later = FixedNow.AddDays(7);
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx, later).TopUpAsync(TeacherId, TeacherUserId)).ShouldBe(0);
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx, later).TopUpAsync(TeacherId, TeacherUserId)).ShouldBe(0);
+
+        (await RuleSlotDatesAsync(rule.Rule!.Id)).ShouldNotContain(new DateOnly(2026, 4, 8));
     }
 
     public void Dispose() => _db.Dispose();

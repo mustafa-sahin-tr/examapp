@@ -14,6 +14,10 @@ namespace ExamApp.Api.Data;
 /// (PostgreSQL <c>date</c> + <c>time</c>). Geçmiş kontrolü ve takvim dönüşümü bunları UTC kabul eder;
 /// çok bölgeli kullanım gerekirse ayrı bir issue'da timezone alanı eklenmelidir.
 /// </para>
+/// <para>
+/// issue #300: <see cref="EndTime"/> &lt; <see cref="StartTime"/> ise bitiş ERTESİ GÜNDÜR (gün aşan slot); ayrı bir
+/// bitiş tarihi kolonu yoktur. Saatler her zaman <c>Services.Bookings.SlotTimeRange</c> üzerinden yorumlanır.
+/// </para>
 /// </summary>
 public class TeacherAvailabilitySlot : BaseEntity
 {

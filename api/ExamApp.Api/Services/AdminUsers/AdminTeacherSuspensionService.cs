@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos.Admin;
+using ExamApp.Api.Services.Bookings;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Whiteboard;
 using ExamApp.Foundation.Contracts;
@@ -194,17 +195,13 @@ public class AdminTeacherSuspensionService : IAdminTeacherSuspensionService
 
     /// <summary>
     /// Henüz BİTMEMİŞ (bitiş &gt; şimdi; devam eden ders dahil) Approved randevular. Rejected ve silinmiş (global filtre)
-    /// randevular hariç. Slot saatleri UTC duvar saatidir (<c>BookingService.ToUtc</c>).
+    /// randevular hariç. Slot saatleri UTC duvar saatidir; gün aşan slot (dünün hâlâ süren ve bugünün gün aşan slotu)
+    /// dahildir — koşul <see cref="SlotTimeRange.BookingNotEndedAt"/> (issue #300).
     /// </summary>
     private IQueryable<Booking> UpcomingApprovedBookings(int teacherId, DateTime nowUtc)
-    {
-        var today = DateOnly.FromDateTime(nowUtc);
-        var timeNow = TimeOnly.FromDateTime(nowUtc);
-        return _context.Bookings.Where(b => b.TeacherId == teacherId
-            && b.Status == BookingStatus.Approved
-            && (b.AvailabilitySlot.Date > today
-                || (b.AvailabilitySlot.Date == today && b.AvailabilitySlot.EndTime > timeNow)));
-    }
+        => _context.Bookings
+            .Where(b => b.TeacherId == teacherId && b.Status == BookingStatus.Approved)
+            .Where(SlotTimeRange.BookingNotEndedAt(nowUtc));
 
     private async Task<UserLookup> TryLookupUsersAsync(int teacherId, DateTime nowUtc, CancellationToken ct)
     {

@@ -37,7 +37,8 @@ import {
   CreateAvailabilitySlotRequest,
   CreateRecurringRuleRequest,
 } from '../../../models/booking.model';
-import { activeAppLocale, activeIntlLocale } from '../../utils/active-locale.util';
+import { activeAppLocale } from '../../utils/active-locale.util';
+import { endsOnNextLocalDay } from '../../utils/booking-format.util';
 import {
   DRAFT_MAX_ADVANCE_DAYS,
   DRAFT_MAX_MINUTES,
@@ -46,7 +47,6 @@ import {
   RecurringUntilBounds,
   applyCellClick,
   formatDraftLabel,
-  nextUtcDayBoundary,
   recurringUntilBounds,
   toRecurringRuleRequest,
   toSlotRequest,
@@ -167,19 +167,18 @@ export class AvailabilityWeekGridComponent {
   /** Randevulu slota tıklandı: "silinemez" ipucu; kısa süre sonra ya da sonraki tıklamada kalkar. */
   protected readonly lockedHint = signal(false);
   private lockedHintTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Gün sınırının (UTC 00:00) son tıklanan güne göre YEREL saati, ör. TR'de "03:00"; ipucu metninde kullanılır. */
-  private readonly boundaryTime = signal('');
   /** İpucu metinlerindeki sınır değerleri. */
-  protected readonly hintParams = computed(() => ({
-    hours: DRAFT_MAX_MINUTES / 60,
-    days: DRAFT_MAX_ADVANCE_DAYS,
-    time: this.boundaryTime(),
-  }));
+  protected readonly hintParams = { hours: DRAFT_MAX_MINUTES / 60, days: DRAFT_MAX_ADVANCE_DAYS };
 
   /** Onay çubuğu metni: "Cum 25 Eyl · 14:00 – 15:30". */
   protected readonly draftLabel = computed(() => {
     const draft = this.draft();
     return draft ? formatDraftLabel(draft) : '';
+  });
+  /** Taslak ertesi yerel günde bitiyor (issue #300): çubuktaki aralığa "(+1 gün)" eklenir. */
+  protected readonly draftEndsNextDay = computed(() => {
+    const draft = this.draft();
+    return draft !== null && endsOnNextLocalDay(draft.start, draft.end);
   });
 
   /** "Her hafta tekrarla" kutusu (issue #179); taslakla birlikte sıfırlanır. */
@@ -357,14 +356,6 @@ export class AvailabilityWeekGridComponent {
     }
     const current = this.draft();
     const result = applyCellClick(current, arg.date, this.slotEvents(), new Date());
-    if (result.rejection === 'crossesDayBoundary') {
-      const earliest = current && current.start.getTime() < arg.date.getTime() ? current.start : arg.date;
-      this.boundaryTime.set(
-        new Intl.DateTimeFormat(activeIntlLocale(), { hour: '2-digit', minute: '2-digit' }).format(
-          nextUtcDayBoundary(earliest)
-        )
-      );
-    }
     this.hint.set(result.rejection);
     this.focusScrollRegionIfOutside();
     if (result.draft !== this.draft()) {
@@ -536,9 +527,25 @@ export class AvailabilityWeekGridComponent {
     status: string,
     student: string,
     recurring: string,
-    past: string
+    past: string,
+    nextDay = ''
   ): string {
-    return [p.dayLabel, p.timeRange, status, student, recurring, past].filter((part) => part).join(' · ');
+    const range = nextDay ? `${p.timeRange} ${nextDay}` : p.timeRange;
+    return [p.dayLabel, range, status, student, recurring, past].filter((part) => part).join(' · ');
+  }
+
+  /**
+   * Gün aşan slotun (issue #300) ikinci gün sütunundaki parçası: FullCalendar olayı yerel gece yarısında böler.
+   * Bu parça görsel devamdır; tab durağı, tooltip ve aria etiketi yalnız ilk parçadadır (slot başına tek durak).
+   * İstisna — hafta sınırı (`firstDay: 1`): Pazar 23:30 – Pzt 00:30 slotunun ilk parçası görünen haftanın dışında
+   * kalırsa ekrandaki tek parça budur; o zaman tam etiketli normal olay olarak çizilir (erişilebilir karşılık kaybolmaz).
+   */
+  protected isContinuation(arg: EventContentArg): boolean {
+    if (arg.isStart) {
+      return false;
+    }
+    const start = arg.event.start;
+    return start !== null && start.getTime() >= arg.view.activeStart.getTime();
   }
 
   /** Düzenlenebilir grid'de boş slot silinebilir: tooltip ve `aria-description` eylem ipucunu alır. */

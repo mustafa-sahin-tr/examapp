@@ -353,6 +353,18 @@
     color: var(--ms-text-medium);
   }
 
+  // Gece yarısını aşan aralık (issue #300): "(+1 gün)" işareti; çubukta başlığın `capitalize`'ı devralınmaz.
+  &__next-day {
+    font-weight: 400;
+    text-transform: none;
+    color: var(--ms-text-medium);
+  }
+
+  // Gün aşan slotun ertesi gün parçası: görsel devam, etkileşim ilk parçada.
+  &__ev--continuation {
+    opacity: 0.85;
+  }
+
   &__ev-note {
     overflow: hidden;
     text-overflow: ellipsis;

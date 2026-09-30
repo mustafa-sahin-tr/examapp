@@ -31,7 +31,12 @@
     "announceReported": "Your report was received.",
     "announceAlreadyReported": "You had already reported this comment.",
     "announceHidden": "Comment hidden.",
-    "announceUnhidden": "Comment is visible again."
+    "announceUnhidden": "Comment is visible again.",
+    "visibility": {
+      "school": "This comment is visible only to students and teachers at your school; it is not sent to the worksheet author.",
+      "self": "Only you can see this comment; it is not sent to a teacher.",
+      "self-and-teacher": "Only you and your teacher can see this comment."
+    }
   },
   "composer": {
     "ariaLabel": "Write a comment or question",

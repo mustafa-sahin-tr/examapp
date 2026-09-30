@@ -31,7 +31,12 @@
     "announceReported": "Şikayetin alındı.",
     "announceAlreadyReported": "Bu yorumu zaten şikayet etmiştin.",
     "announceHidden": "Yorum gizlendi.",
-    "announceUnhidden": "Yorum yeniden görünür."
+    "announceUnhidden": "Yorum yeniden görünür.",
+    "visibility": {
+      "school": "Bu yorum yalnız okulundaki öğrenci ve öğretmenlere görünür; worksheet yazarına iletilmez.",
+      "self": "Bu yorumu yalnız sen görebilirsin; bir öğretmene iletilmez.",
+      "self-and-teacher": "Bu yorumu yalnız sen ve öğretmenin görebilir."
+    }
   },
   "composer": {
     "ariaLabel": "Yorum veya soru yaz",

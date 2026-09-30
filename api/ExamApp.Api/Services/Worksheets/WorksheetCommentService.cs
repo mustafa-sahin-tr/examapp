@@ -175,6 +175,9 @@ public class WorksheetCommentService : IWorksheetCommentService
             LockReason = studentLock?.LockReason,
             QuestionOrder = questionOrder,
             StudentCommentsSummary = studentSummary,
+            CommentVisibility = actor.Kind == WorksheetCommentActorKind.Student
+                ? WorksheetCommentVisibilities.For(access.ReaderSchoolId, access.StudentResponsibleTeacherUserId.HasValue)
+                : null,
             NextCursor = hasMore ? EncodeCursor(roots[^1].CreateTime, roots[^1].Id) : null,
             Items = roots.Select(root =>
             {
@@ -323,6 +326,7 @@ public class WorksheetCommentService : IWorksheetCommentService
 
         WorksheetCommentAuthorRole authorRole;
         int? responsibleTeacherUserId = null;
+        ResponsibleTeacherSource? responsibleTeacherSource = null;
         int? authorSchoolId = null;
         if (actor.Kind == WorksheetCommentActorKind.Student)
         {
@@ -335,12 +339,13 @@ public class WorksheetCommentService : IWorksheetCommentService
             // Öğrenci KÖKÜ: ilgili öğretmen yazıldığı anda kayda sabitlenir (cevap yetkisi + dilim 2 bildirim hedefi).
             // issue #305: öğretmen KÖKÜNE yazılan öğrenci reply'ında da (bildirim alan öğretmen okul kapsamı dışında olsa
             // bile o reply'ı görebilsin). Cevap yetkisi yalnız kökün değerinden gelir.
+            // issue #326 (O2): değer erişim bağlamında resolver kuralıyla (ResponsibleTeacherRule) zaten çözüldü; null
+            // olabilir (atama yok + sahip okul dışı/okulsuz) → sabitleme yok: yorum yalnız okul içinde görünür, sahibe
+            // gösterilmez, sahip cevap/moderasyon yapamaz, öğretmen bildirimi gitmez.
             if (parent == null || parent.AuthorRole == WorksheetCommentAuthorRole.Teacher)
             {
-                var responsible = await _responsibleTeacher.ResolveResponsibleTeacherAsync(
-                    new ResponsibleTeacherWorksheet(worksheet.Id, worksheet.CreateUserId, worksheet.SourceWorksheetId),
-                    actor.UserId, ct);
-                responsibleTeacherUserId = responsible?.TeacherUserId;
+                responsibleTeacherUserId = access.StudentResponsibleTeacher?.TeacherUserId;
+                responsibleTeacherSource = access.StudentResponsibleTeacher?.Source;
             }
         }
         else
@@ -364,6 +369,7 @@ public class WorksheetCommentService : IWorksheetCommentService
             AuthorKeycloakId = actor.KeycloakId,
             AuthorRole = authorRole,
             ResponsibleTeacherUserId = responsibleTeacherUserId,
+            ResponsibleTeacherSource = responsibleTeacherSource,
             AuthorSchoolId = authorSchoolId,
             Body = body
         };
@@ -408,8 +414,9 @@ public class WorksheetCommentService : IWorksheetCommentService
 
         if (resolution.TeacherMissing)
         {
-            _logger?.LogWarning(
-                "[WorksheetComments] İlgili öğretmen çözülemedi; öğretmen bildirimi atlandı. CommentId={CommentId}, WorksheetId={WorksheetId}",
+            // issue #326 (O2): sorumlu öğretmen yokluğu artık beklenen bir durum (atamasız + okul dışı/okulsuz sahip).
+            _logger?.LogInformation(
+                "[WorksheetComments] Sorumlu öğretmen yok (atama yok ve sahip öğrenciyle aynı okulda değil ya da sahipsiz); öğretmen bildirimi atlandı. CommentId={CommentId}, WorksheetId={WorksheetId}",
                 comment.Id, worksheet.Id);
         }
 
@@ -658,7 +665,7 @@ public class WorksheetCommentService : IWorksheetCommentService
             comments = VisibleWithRoot(actor, access).Where(c => c.WorksheetId == wsId);
             // Sahip ve admin worksheet'in (kapsamındaki) tüm yorumlarını yönetir; diğer öğretmen yalnız sorumlu olduğu thread'leri.
             if (!access.IsAdmin && !access.IsOwner)
-                comments = comments.Where(ModeratedBy(actor.UserId));
+                comments = comments.Where(ModeratedBy(actor.UserId, access.ReaderSchoolId));
         }
         else
         {
@@ -793,7 +800,9 @@ public class WorksheetCommentService : IWorksheetCommentService
     /// <summary>D1/Y1/O2 ile atlanan öğretmen alıcı — log, yorum Id'si atandıktan SONRA (kayıttan sonra) atılır.</summary>
     private sealed record SkippedRecipient(string Reason, int TeacherUserId, int? CurrentTeacherUserId = null);
 
-    private sealed record TeacherCandidate(int UserId, string? Sub, int? PinnedForStudentUserId, bool IsRootAuthor);
+    /// <param name="PinnedOn">Sabitin durduğu yorum (öğrenci kökü ya da öğretmen köküne yazılan öğrenci reply'ı); kök yazarında null.</param>
+    private sealed record TeacherCandidate(int UserId, string? Sub, int? PinnedForStudentUserId, bool IsRootAuthor,
+        WorksheetComment? PinnedOn = null);
 
     /// <summary>
     /// Alıcı kuralları: öğrenci yazdıysa → ilgili öğretmen "Created" alır (öğrenci kökünde kökte sabitlenmiş
@@ -823,7 +832,7 @@ public class WorksheetCommentService : IWorksheetCommentService
                     // issue #305 D1: kökteki sabit öğretmen eski olabilir → cevapta (parent != null) gönderim anında yeniden
                     // doğrulanır (kök yazarı öğrenci için hâlâ sorumlu mu). Kök yeni yazılıyorsa değer taze, yalnız onay durumu bakılır.
                     if (root.ResponsibleTeacherUserId is > 0)
-                        teachers.Add(new TeacherCandidate(root.ResponsibleTeacherUserId.Value, null, parent != null ? root.AuthorUserId : null, false));
+                        teachers.Add(new TeacherCandidate(root.ResponsibleTeacherUserId.Value, null, parent != null ? root.AuthorUserId : null, false, root));
                     else
                         teacherMissing = true;
                 }
@@ -838,7 +847,7 @@ public class WorksheetCommentService : IWorksheetCommentService
                     if (root.AuthorSchoolId.HasValue && root.AuthorSchoolId == comment.AuthorSchoolId)
                         teachers.Add(new TeacherCandidate(root.AuthorUserId, root.AuthorKeycloakId, null, true));
                     if (comment.ResponsibleTeacherUserId is > 0)
-                        teachers.Add(new TeacherCandidate(comment.ResponsibleTeacherUserId.Value, null, null, false));
+                        teachers.Add(new TeacherCandidate(comment.ResponsibleTeacherUserId.Value, null, null, false, comment));
                     else
                         teacherMissing = true;
                 }
@@ -917,7 +926,8 @@ public class WorksheetCommentService : IWorksheetCommentService
     /// <c>Admin</c> ise geçer (admin sahipli worksheet); doğrulanamazsa (Keycloak hatası, sub yok) geçmez.</item>
     /// <item>Kök yazarı öğretmen (Y1): GÜNCEL <c>Teachers.SchoolId</c> dolu olmalı ve hem kökün <c>AuthorSchoolId</c>'sine hem
     /// reply yazarının <c>AuthorSchoolId</c>'sine eşit olmalı — okuldan ayrılan/bağımsız olan/başka okula taşınan öğretmen alıcı olmaz.
-    /// Sabitlenmiş sorumlu öğretmen okul koşuluna tabi DEĞİL (ilişkisi atamadan gelir).</item>
+    /// Sabitlenmiş sorumlu öğretmen bu ek okul koşuluna tabi DEĞİL: atamadan geliyorsa ilişki atamadır; sahip fallback'iyse
+    /// okul koşulu (#326 O2) sabitleme anında zaten uygulandı ve aşağıdaki yeniden doğrulama güncel kuralla tekrarlar.</item>
     /// <item>Sabit öğretmen, cevap anında (<c>PinnedForStudentUserId</c> dolu): mevcut sorumlu öğretmen çözümleyicisi o öğrenci
     /// için hâlâ AYNI öğretmeni veriyorsa; atama bitti/silindi/başkasına geçtiyse hayır.</item>
     /// </list>
@@ -946,16 +956,24 @@ public class WorksheetCommentService : IWorksheetCommentService
 
         if (candidate.IsRootAuthor)
         {
-            var liveSchoolId = await _context.Teachers.AsNoTracking()
-                .Where(t => t.UserId == teacherUserId)
-                .OrderBy(t => t.Id)
-                .Select(t => t.SchoolId)
-                .FirstOrDefaultAsync(ct);
-            if (liveSchoolId == null || liveSchoolId != root.AuthorSchoolId || liveSchoolId != comment.AuthorSchoolId)
+            // issue #326 (D3): güncel okul tek kaynaktan (UserSchoolResolver).
+            var liveSchoolId = await UserSchoolResolver.ResolveAsync(_context, teacherUserId, ct);
+            if (!UserSchoolResolver.SameSchool(liveSchoolId, root.AuthorSchoolId)
+                || !UserSchoolResolver.SameSchool(liveSchoolId, comment.AuthorSchoolId))
             {
                 skips.Add(new SkippedRecipient("kök yazarı öğretmen güncel okulu eşleşmiyor/okulsuz", teacherUserId));
                 return false;
             }
+        }
+
+        // issue #326 (security O1): sahip kaynaklı sabit (Owner/CopyOwner) — öğretmenin GÜNCEL okulu sabitlenen yorumun
+        // AuthorSchoolId'siyle aynı olmalı (okuma/cevap/moderasyonla aynı PinHolds kuralı). Assignment kaynaklıya dokunulmaz (#105).
+        if (!candidate.IsRootAuthor && candidate.PinnedOn is { } pinnedOn
+            && pinnedOn.ResponsibleTeacherSource != ResponsibleTeacherSource.Assignment
+            && !PinHolds(pinnedOn, teacherUserId, await UserSchoolResolver.ResolveAsync(_context, teacherUserId, ct)))
+        {
+            skips.Add(new SkippedRecipient("sahip kaynaklı sabit: öğretmen artık yazarın okulunda değil", teacherUserId));
+            return false;
         }
 
         if (candidate.PinnedForStudentUserId is { } studentUserId)
@@ -1108,14 +1126,20 @@ public class WorksheetCommentService : IWorksheetCommentService
         /// <summary>İstek sahibi öğretmen ve worksheet'in sahibi.</summary>
         public bool IsOwner { get; init; }
 
-        /// <summary>Okuyucunun exam DB'deki okulu (Students/Teachers.SchoolId); okulsuz/bağımsızsa null.</summary>
+        /// <summary>Okuyucunun okulu (<see cref="UserSchoolResolver"/>, #326 D3); okulsuz/bağımsız/belirsizse null.</summary>
         public int? ReaderSchoolId { get; init; }
 
         /// <summary>Worksheet sahibi (legacy 0/null → null).</summary>
         public int? OwnerUserId { get; init; }
 
-        /// <summary>Öğrenci okuyucunun ilgili öğretmeni (ilgili aktif atamayı yapan, yoksa sahip) — Y1 kapsamı.</summary>
-        public int? StudentResponsibleTeacherUserId { get; init; }
+        /// <summary>
+        /// Öğrenci okuyucunun ilgili öğretmeni (<see cref="ResponsibleTeacherRule"/>: ilgili aktif atamayı yapan, yoksa YALNIZ
+        /// aynı okuldaysa sahip; aksi halde null) — Y1 kapsamı, yorum yazarken sabitlenen değer ve CommentVisibility.
+        /// </summary>
+        public int? StudentResponsibleTeacherUserId => StudentResponsibleTeacher?.TeacherUserId;
+
+        /// <summary>issue #326: <see cref="StudentResponsibleTeacherUserId"/> + kaynağı (yorumda <c>ResponsibleTeacherSource</c> olarak sabitlenir).</summary>
+        public ResponsibleTeacher? StudentResponsibleTeacher { get; init; }
     }
 
     private sealed record StudentLock(string LockReason, string ErrorCode);
@@ -1147,15 +1171,18 @@ public class WorksheetCommentService : IWorksheetCommentService
     /// </summary>
     private async Task<AccessContext> ResolveStudentAccessAsync(Worksheet worksheet, WorksheetCommentActor actor, CancellationToken ct)
     {
-        var student = await _context.Students
+        // issue #326 (D3): #259 unique index canlı Students satırını tekil kılar (OrderBy(Id).First gereksiz). Index'siz
+        // ortamda çoklu canlı satır → hangi öğrenci olduğu belirsiz → erişim yok (tahmin yok, güvenli taraf).
+        var studentRows = await _context.Students
             .AsNoTracking()
             .Where(s => s.UserId == actor.UserId)
-            .OrderBy(s => s.Id)
             .Select(s => new { s.Id, s.GradeId, s.SchoolId })
-            .FirstOrDefaultAsync(ct);
+            .Take(2)
+            .ToListAsync(ct);
 
-        if (student == null)
+        if (studentRows.Count != 1)
             return new AccessContext { Denied = new Denial(WorksheetCommentErrorCodes.WorksheetNotFound, NotFound: true) };
+        var student = studentRows[0];
 
         var hasInstance = await _context.TestInstances
             .AsNoTracking()
@@ -1172,17 +1199,27 @@ public class WorksheetCommentService : IWorksheetCommentService
         if (!canRead)
             return new AccessContext { Denied = new Denial(WorksheetCommentErrorCodes.WorksheetNotFound, NotFound: true) };
 
-        // issue #305 (Y1): öğrencinin ilgili öğretmeni — resolver ile aynı öncelik (ilgili aktif atamayı yapan > worksheet
-        // sahibi; kopyada sahip zaten kopyalayandır). Ek sorgu yok: atama yukarıda çözüldü.
+        // issue #305 (Y1) + #326 (O2): öğrencinin ilgili öğretmeni — resolver'la AYNI kural (ResponsibleTeacherRule): ilgili
+        // aktif atamayı yapan; yoksa sahip (kopyada kopyalayan) YALNIZ öğrenciyle aynı okuldaysa; aksi halde yok. Atama
+        // yukarıda çözüldü; okuyucu ve sahip okulu tek sorgu çiftinde, tek kaynaktan (UserSchoolResolver, D3).
+        // Okuyucu okulu (kapsam + yazar okulu sabitleme) de oradan: öğretmen satırı varsa o esas (#234).
         var ownerUserId = worksheet.CreateUserId is > 0 ? worksheet.CreateUserId : null;
-        var responsibleTeacherUserId = relevantAssignment?.CreateUserId is > 0 ? relevantAssignment.CreateUserId : ownerUserId;
+        // issue #326 (code D5): yukarıda okunan tekil Students satırı yeniden sorgulanmaz.
+        var schools = await UserSchoolResolver.ResolveManyAsync(_context, new[] { actor.UserId, ownerUserId }, ct,
+            new Dictionary<int, int?> { [actor.UserId] = student.SchoolId });
+        var readerSchoolId = schools.GetValueOrDefault(actor.UserId);
+        var responsible = ResponsibleTeacherRule.Decide(
+            new ResponsibleTeacherWorksheet(worksheet.Id, worksheet.CreateUserId, worksheet.SourceWorksheetId),
+            relevantAssignment,
+            ownerUserId is { } owner ? schools.GetValueOrDefault(owner) : null,
+            readerSchoolId);
 
         return new AccessContext
         {
             StudentId = student.Id,
-            ReaderSchoolId = student.SchoolId,
+            ReaderSchoolId = readerSchoolId,
             OwnerUserId = ownerUserId,
-            StudentResponsibleTeacherUserId = responsibleTeacherUserId,
+            StudentResponsibleTeacher = responsible,
             HasInstance = hasInstance,
             EffectiveCommentsEnabled = relevantAssignment?.CommentsEnabledOverride ?? worksheet.CommentsEnabled
         };
@@ -1200,13 +1237,10 @@ public class WorksheetCommentService : IWorksheetCommentService
         // Tek sorgu: istekçinin okulu (#305 kapsam + yazar okulu) ve SchoolOnly kararı için sahibin okulu. Eskiden
         // ResolveSchoolContextAsync + ayrı okul sorgusu vardı (code review: çift sorgu). Admin'in okulu da okunur —
         // yazdığı öğretmen yorumuna AuthorSchoolId sabitlenir; okuma kapsamı admin'de uygulanmaz.
+        // issue #326 (D3): okullar tek kaynaktan (UserSchoolResolver) — eski OrderBy(Id).First seçimi kalktı.
         var ownerId = worksheet.CreateUserId is > 0 ? worksheet.CreateUserId : null;
-        var schoolRows = await _context.Teachers.AsNoTracking()
-            .Where(t => t.UserId == userId || (ownerId != null && t.UserId == ownerId))
-            .OrderBy(t => t.Id)
-            .Select(t => new { t.UserId, t.SchoolId })
-            .ToListAsync(ct);
-        var readerSchoolId = schoolRows.FirstOrDefault(r => r.UserId == userId)?.SchoolId;
+        var schools = await UserSchoolResolver.ResolveManyAsync(_context, new[] { userId, ownerId }, ct);
+        var readerSchoolId = schools.GetValueOrDefault(userId);
 
         // ResolveSchoolContextAsync ile aynı anlam: okul çifti yalnız SchoolOnly + admin değil + sahip değil ise karar girdisi.
         var schoolDecision = worksheet.TeacherSharing == WorksheetTeacherSharing.SchoolOnly && !actor.IsAdmin
@@ -1214,7 +1248,7 @@ public class WorksheetCommentService : IWorksheetCommentService
         var canView = WorksheetAccess.CanView(worksheet.CreateUserId, userId, actor.IsAdmin, worksheet.TeacherSharing,
             worksheet.StudentVisibility,
             schoolDecision ? readerSchoolId : null,
-            schoolDecision ? schoolRows.FirstOrDefault(r => r.UserId == ownerId!.Value)?.SchoolId : null);
+            schoolDecision ? schools.GetValueOrDefault(ownerId!.Value) : null);
 
         var ownAssignments = _context.WorksheetAssignments
             .AsNoTracking()
@@ -1242,7 +1276,8 @@ public class WorksheetCommentService : IWorksheetCommentService
     /// <list type="bullet">
     /// <item>Öğrenci okuyucu: kendi yorumları; aynı okuldaki öğrencilerin yorumları; öğretmen yorumlarından yalnız
     /// (a) aynı okuldaki öğretmeninki, (b) worksheet sahibininki (içerik yazarının duyurusu), (c) kendi ilgili öğretmeninin
-    /// (ilgili aktif atamayı yapan, yoksa sahip — istek başına bir kez çözülür, SQL'e sabit olarak girer) ve (d) bir öğrenci
+    /// (ilgili aktif atamayı yapan, yoksa YALNIZ aynı okuldaysa sahip — #326; istek başına bir kez çözülür, SQL'e sabit olarak
+    /// girer; sorumlu yoksa bu dal boştur) ve (d) bir öğrenci
     /// kökündeki öğretmen cevabı (öğrenci köküne yalnız o thread'in sabitlenmiş sorumlusu cevap yazabilir; kök görünür
     /// değilse reply de görünmez — bkz. <see cref="VisibleWithRoot"/>). Okulsuz okuyucu/yazar: okul eşleşmesi yok (güvenli taraf).</item>
     /// <item>Öğretmen okuyucu: tüm öğretmen yorumları (PO: okul dışı öğretmen yalnız öğretmen yorumlarını görür); kendi
@@ -1277,13 +1312,30 @@ public class WorksheetCommentService : IWorksheetCommentService
                         || (c.ParentComment != null && c.ParentComment.AuthorRole == student)));
         }
 
+        // issue #326 (security O1): sahip kaynaklı (Owner/CopyOwner) sabit yalnız okuyucunun GÜNCEL okulu sabitlenen yorumun
+        // AuthorSchoolId'siyle aynıyken geçerli (PinHolds'un SQL karşılığı); Assignment kaynaklı sabit okul koşulundan bağımsız.
+        const ResponsibleTeacherSource byAssignment = ResponsibleTeacherSource.Assignment;
         return c => c.AuthorRole == teacher
             || c.AuthorSchoolId == school
-            || c.ResponsibleTeacherUserId == uid
+            || (c.ResponsibleTeacherUserId == uid
+                && (c.ResponsibleTeacherSource == byAssignment || c.AuthorSchoolId == school))
             || (c.ParentComment != null
                 && c.ParentComment.AuthorRole == student
-                && c.ParentComment.ResponsibleTeacherUserId == uid);
+                && c.ParentComment.ResponsibleTeacherUserId == uid
+                && (c.ParentComment.ResponsibleTeacherSource == byAssignment || c.ParentComment.AuthorSchoolId == school));
     }
+
+    /// <summary>
+    /// issue #326 (security O1): <paramref name="pinned"/> yorumundaki sabit, <paramref name="teacherUserId"/> için HÂLÂ geçerli
+    /// mi? Sabit bu öğretmene olmalı; kaynağı <see cref="ResponsibleTeacherSource.Assignment"/> ise okul koşulu yok (#105 —
+    /// atama bitse de geçerli); sahip kaynaklıysa (Owner/CopyOwner, ya da kaynağı bilinmeyen) öğretmenin güncel okulu
+    /// (<paramref name="teacherSchoolId"/>) yorumun <see cref="WorksheetComment.AuthorSchoolId"/>'siyle aynı olmalı
+    /// (<see cref="UserSchoolResolver.SameSchool"/>; null≠null). <see cref="VisibleTo"/>/<see cref="ModeratedBy"/> SQL'de aynı ifadeyi uygular.
+    /// </summary>
+    private static bool PinHolds(WorksheetComment pinned, int teacherUserId, int? teacherSchoolId) =>
+        pinned.ResponsibleTeacherUserId == teacherUserId
+        && (pinned.ResponsibleTeacherSource == ResponsibleTeacherSource.Assignment
+            || UserSchoolResolver.SameSchool(teacherSchoolId, pinned.AuthorSchoolId));
 
     /// <summary>
     /// <see cref="VisibleTo"/> + reply ise kökü de görünür (security O1 / code O1): kapsam dışı bir kökün altındaki yorum
@@ -1302,24 +1354,36 @@ public class WorksheetCommentService : IWorksheetCommentService
 
     /// <summary>
     /// issue #305: thread'in sorumlu öğretmeni — öğrenci kökünde sabitlenmiş ilgili öğretmen, öğretmen kökünde (duyuru)
-    /// kökün yazarı. Reply'lar kökün değerini kullanır.
+    /// kökün yazarı. Reply'lar kökün değerini kullanır. issue #326: öğrenci kökünde sabit ancak <see cref="PinHolds"/>
+    /// geçerliyse sayılır (sahip kaynaklıda güncel okul koşulu).
     /// </summary>
-    private static int? ThreadTeacherUserId(WorksheetComment root) =>
-        root.AuthorRole == WorksheetCommentAuthorRole.Student ? root.ResponsibleTeacherUserId : root.AuthorUserId;
+    private static bool IsThreadTeacher(WorksheetComment root, WorksheetCommentActor actor, AccessContext access) =>
+        root.AuthorRole == WorksheetCommentAuthorRole.Student
+            ? PinHolds(root, actor.UserId, access.ReaderSchoolId)
+            : root.AuthorUserId == actor.UserId;
 
     /// <summary>issue #305: gizleme/açma yetkisi — admin, worksheet sahibi ya da thread'in sorumlu öğretmeni. Öğrenci asla.</summary>
     private static bool CanModerate(WorksheetComment root, WorksheetCommentActor actor, AccessContext access) =>
         actor.Kind != WorksheetCommentActorKind.Student
-        && (access.IsAdmin || access.IsOwner || ThreadTeacherUserId(root) == actor.UserId);
+        && (access.IsAdmin || access.IsOwner || IsThreadTeacher(root, actor, access));
 
-    /// <summary><see cref="ThreadTeacherUserId"/> == uid'in SQL karşılığı (moderatör listesi; sahip/admin dışındaki öğretmen).</summary>
-    private static Expression<Func<WorksheetComment, bool>> ModeratedBy(int uid) =>
-        c => (c.ParentCommentId == null
-                && ((c.AuthorRole == WorksheetCommentAuthorRole.Student && c.ResponsibleTeacherUserId == uid)
+    /// <summary>
+    /// <see cref="IsThreadTeacher"/>'ın SQL karşılığı (moderatör listesi; sahip/admin dışındaki öğretmen). issue #326: sahip
+    /// kaynaklı sabitte okuyucunun güncel okulu (<paramref name="readerSchoolId"/>) kökün AuthorSchoolId'siyle aynı olmalı.
+    /// </summary>
+    private static Expression<Func<WorksheetComment, bool>> ModeratedBy(int uid, int? readerSchoolId)
+    {
+        var school = readerSchoolId ?? -1;
+        const ResponsibleTeacherSource byAssignment = ResponsibleTeacherSource.Assignment;
+        return c => (c.ParentCommentId == null
+                && ((c.AuthorRole == WorksheetCommentAuthorRole.Student && c.ResponsibleTeacherUserId == uid
+                        && (c.ResponsibleTeacherSource == byAssignment || c.AuthorSchoolId == school))
                     || (c.AuthorRole == WorksheetCommentAuthorRole.Teacher && c.AuthorUserId == uid)))
             || (c.ParentComment != null
-                && ((c.ParentComment.AuthorRole == WorksheetCommentAuthorRole.Student && c.ParentComment.ResponsibleTeacherUserId == uid)
+                && ((c.ParentComment.AuthorRole == WorksheetCommentAuthorRole.Student && c.ParentComment.ResponsibleTeacherUserId == uid
+                        && (c.ParentComment.ResponsibleTeacherSource == byAssignment || c.ParentComment.AuthorSchoolId == school))
                     || (c.ParentComment.AuthorRole == WorksheetCommentAuthorRole.Teacher && c.ParentComment.AuthorUserId == uid)));
+    }
 
     /// <summary>DTO doldurma bağlamı: moderatör görünümü + istek sahibinin şikayetleri + (moderatöre) şikayet sayıları.</summary>
     private sealed record CommentView(
@@ -1398,13 +1462,16 @@ public class WorksheetCommentService : IWorksheetCommentService
 
     /// <summary>
     /// Kök yazarı öğrenci → yalnızca kökte SABİTLENMİŞ ilgili öğretmen (<see cref="WorksheetComment.ResponsibleTeacherUserId"/>);
-    /// anlık yeniden hesaplama yok — atama bitse de bildirim giden öğretmen cevap yazar. Kök yazarı öğretmen (duyuru) →
+    /// anlık yeniden hesaplama yok — atama bitse de bildirim giden öğretmen cevap yazar. Sabit yoksa (null, #326: atamasız +
+    /// sahip okul dışı/okulsuz) hiçbir öğretmen cevap yazamaz. Sahip kaynaklı sabit (Owner/CopyOwner) yalnız öğretmenin güncel
+    /// okulu kökün AuthorSchoolId'siyle aynıyken geçerli (<see cref="PinHolds"/>); Assignment kaynaklı sabit okul koşulundan
+    /// bağımsız. Kök yazarı öğretmen (duyuru) →
     /// kökün yazarı veya kök açabilen (sahip / aktif atayan) öğretmen.
     /// </summary>
     private static bool TeacherCanReply(WorksheetComment root, WorksheetCommentActor actor, AccessContext access)
     {
         if (root.AuthorRole == WorksheetCommentAuthorRole.Student)
-            return root.ResponsibleTeacherUserId.HasValue && root.ResponsibleTeacherUserId.Value == actor.UserId;
+            return PinHolds(root, actor.UserId, access.ReaderSchoolId);
 
         return root.AuthorUserId == actor.UserId || access.TeacherCanCreateRoot;
     }

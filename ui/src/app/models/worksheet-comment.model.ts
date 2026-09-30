@@ -11,6 +11,23 @@ export type WorksheetCommentAuthorRole = 'Student' | 'Teacher';
 /** `WorksheetCommentLockReasons` — yalnız öğrencide dolu; öğretmen/admin için her zaman null. */
 export type WorksheetCommentLockReason = 'comments-disabled' | 'question-not-answered' | 'worksheet-not-started';
 
+/**
+ * Issue #326 — `WorksheetCommentVisibilities`: öğrencinin yazacağı yorumun kimlere görüneceği. Yalnız öğrenciye dolu.
+ * - `teacher`: okullu öğrenci, sorumlu öğretmen var (varsayılan davranış)
+ * - `school`: okullu öğrenci, sorumlu öğretmen yok — yalnız okuldakiler görür, worksheet yazarına iletilmez
+ * - `self-and-teacher`: okulsuz öğrenci, sorumlu öğretmen var — yalnız kendisi ve öğretmeni görür
+ * - `self`: okulsuz öğrenci, sorumlu öğretmen yok — yalnız kendisi görür
+ */
+export const WORKSHEET_COMMENT_VISIBILITIES = ['teacher', 'school', 'self-and-teacher', 'self'] as const;
+export type WorksheetCommentVisibility = (typeof WORKSHEET_COMMENT_VISIBILITIES)[number];
+
+/** Güvenilmeyen `commentVisibility` değerini doğrular; bilinmeyen/eksik değer null (varsayılan davranış). */
+export function parseCommentVisibility(value: unknown): WorksheetCommentVisibility | null {
+  return typeof value === 'string' && (WORKSHEET_COMMENT_VISIBILITIES as readonly string[]).includes(value)
+    ? (value as WorksheetCommentVisibility)
+    : null;
+}
+
 /** `WorksheetCommentDto` — tek yorum (kök veya reply). */
 export interface WorksheetComment {
   id: number;
@@ -73,6 +90,11 @@ export interface WorksheetCommentPage {
    * Gösterimden önce {@link toQuestionOrder} ile doğrulanır.
    */
   questionOrder?: number | null;
+  /**
+   * Issue #326: öğrencinin yazacağı yorumun görünürlük kapsamı; öğretmen/admin için null. Eski sunucuda alan yok.
+   * Gösterimden önce {@link parseCommentVisibility} ile doğrulanır.
+   */
+  commentVisibility?: WorksheetCommentVisibility | null;
 }
 
 /** `WorksheetCommentOverrideCountsDto` — çağıranın görebildiği aktif atamalardaki override sayıları. */

@@ -60,6 +60,25 @@
   color: var(--ms-action-text);
 }
 
+// Issue #326: yorum görünürlük notu (nötr, composer üstünde)
+.ct__visibility {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ms-text-weak);
+
+  .mat-icon {
+    flex: none;
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+  }
+}
+
 .ct__readonly {
   margin: 0;
   font-size: 13px;

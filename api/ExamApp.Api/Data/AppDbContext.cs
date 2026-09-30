@@ -112,6 +112,7 @@ public class AppDbContext : DbContext
 
     // Worksheet / soru yorum-soru thread'leri (issue #105)
     public DbSet<WorksheetComment> WorksheetComments { get; set; }
+    public DbSet<WorksheetCommentReport> WorksheetCommentReports { get; set; } // issue #305
 
     // Ders planlama / randevu (issue #96)
     public DbSet<TeacherAvailabilitySlot> TeacherAvailabilitySlots { get; set; }
@@ -209,6 +210,18 @@ public class AppDbContext : DbContext
                 .HasFilter("\"ParentCommentId\" IS NULL");
             // Reply'lar: kök başına son N + reply sayfalaması (CreateTime, Id) keyset.
             e.HasIndex(c => new { c.ParentCommentId, c.CreateTime, c.Id });
+        });
+
+        // issue #305: yorum şikayetleri. Aynı kullanıcı aynı yorumu bir kez şikayet eder (soft-delete edilmemişler arasında
+        // tekil — eşzamanlı ikinci istek unique ihlaline düşer, servis idempotent 200'e çevirir). Tekil index CommentId ile
+        // başladığından yorum başına sayım/filtre de onu kullanır. FK ClientNoAction (WorksheetComment ile aynı gerekçe).
+        modelBuilder.Entity<WorksheetCommentReport>(e =>
+        {
+            e.Property(r => r.Reason).HasConversion<string>().HasMaxLength(16);
+            e.HasOne(r => r.Comment).WithMany().HasForeignKey(r => r.CommentId).OnDelete(DeleteBehavior.ClientNoAction);
+            e.HasIndex(r => new { r.CommentId, r.ReporterUserId })
+                .IsUnique()
+                .HasFilter("NOT \"IsDeleted\"");
         });
 
         // Bağımsız öğretmen (issue #92): mevcut tüm öğretmen kayıtları okula bağlı sayılır → Approved.

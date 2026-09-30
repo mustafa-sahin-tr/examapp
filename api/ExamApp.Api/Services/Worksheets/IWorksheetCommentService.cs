@@ -10,7 +10,7 @@ public enum WorksheetCommentActorKind
     Student = 0,
     Teacher = 1,
 
-    /// <summary>Öğretmen/öğrenci olmayan admin: tüm thread'leri okur, yazmaz (moderasyon kapsam dışı).</summary>
+    /// <summary>Öğretmen/öğrenci olmayan admin: tüm thread'leri okur, yorum yazmaz; #305'ten beri gizler/açar (moderasyon).</summary>
     AdminReader = 2
 }
 
@@ -42,4 +42,23 @@ public interface IWorksheetCommentService
     Task<WorksheetCommentRepliesResultDto> GetRepliesAsync(int worksheetId, int rootId, WorksheetCommentRepliesQueryDto query, WorksheetCommentActor actor, CancellationToken ct = default);
 
     Task<WorksheetCommentResultDto> CreateAsync(int worksheetId, CreateWorksheetCommentDto dto, WorksheetCommentActor actor, CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #305: yorumu şikayet et. Okuma yetkisi olan öğrenci/öğretmen, kapsamındaki (okul) başkasının yorumunu şikayet eder;
+    /// kendi yorumu 403. Tekrar şikayet idempotent (200, AlreadyReported). Otomatik gizleme yok.
+    /// </summary>
+    Task<WorksheetCommentReportResultDto> ReportAsync(int worksheetId, int commentId, ReportWorksheetCommentDto dto, WorksheetCommentActor actor, CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #305: yorumu gizle (<paramref name="hidden"/> true, neden zorunlu) ya da aç. Yetki: admin, worksheet sahibi, thread'in
+    /// sorumlu öğretmeni — ve yorum istek sahibinin okul kapsamında olmalı. İdempotent; değişiklik olduysa AdminUserActionLogs'a
+    /// (TargetType=WorksheetComment) aynı transaction'da yazılır. Yanıt moderatör görünümündeki yorumdur.
+    /// </summary>
+    Task<WorksheetCommentResultDto> SetHiddenAsync(int worksheetId, int commentId, bool hidden, HideWorksheetCommentDto? dto, WorksheetCommentActor actor, CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #305: şikayet edilmiş yorumlar (son şikayet önce, sayfalı). <paramref name="worksheetId"/> doluysa o worksheet'te
+    /// istek sahibinin moderatörü olduğu (kapsamındaki) yorumlar; null ise global liste — yalnız admin.
+    /// </summary>
+    Task<WorksheetCommentReportsResultDto> GetReportsAsync(int? worksheetId, WorksheetCommentReportsQueryDto query, WorksheetCommentActor actor, CancellationToken ct = default);
 }

@@ -25,7 +25,13 @@
     "loadMore": "Load more comments",
     "loadMoreError": "More comments could not be loaded.",
     "announceSent": "Your comment was sent.",
-    "announceReplySent": "Your reply was sent."
+    "announceReplySent": "Your reply was sent.",
+    "moderatorView": "Moderator view",
+    "moderatorViewHint": "Shows the content and hide reason of hidden comments.",
+    "announceReported": "Your report was received.",
+    "announceAlreadyReported": "You had already reported this comment.",
+    "announceHidden": "Comment hidden.",
+    "announceUnhidden": "Comment is visible again."
   },
   "composer": {
     "ariaLabel": "Write a comment or question",
@@ -35,7 +41,10 @@
     "send": "Send",
     "counterAria": "{{count}} of {{max}} characters used",
     "tooLong": "You can write at most {{max}} characters.",
-    "shortcutHint": "Ctrl+Enter to send"
+    "shortcutHint": "Ctrl+Enter to send",
+    "piiWarning": "Your message looks like it contains a phone number or an email address. We recommend not sharing personal information in public comments.",
+    "piiConfirmHint": "Are you sure you want to send it?",
+    "sendAnyway": "Send anyway"
   },
   "item": {
     "teacherBadge": "Teacher",
@@ -49,7 +58,19 @@
     "edit": "Edit",
     "showOlder": "Show earlier replies ({{count}})",
     "olderError": "Earlier replies could not be loaded.",
-    "repliesAria": "Replies"
+    "repliesAria": "Replies",
+    "removed": "This comment was removed.",
+    "hiddenBadge": "Hidden",
+    "hiddenMeta": "Hidden: {{date}}",
+    "hiddenReasonLabel": "Reason:",
+    "unhide": "Unhide",
+    "reportedByMe": "Reported",
+    "reportCountOne": "1 report",
+    "reportCount": "{{count}} reports",
+    "menuAria": "Comment actions",
+    "report": "Report",
+    "hide": "Hide",
+    "rootHiddenLock": "This comment was removed, so new replies can't be posted."
   },
   "errors": {
     "rateLimited": "You're going too fast. Please wait a moment and try again.",
@@ -70,7 +91,77 @@
       "WorksheetNotStarted": "Start the test first.",
       "QuestionNotAnswered": "Answer the question first.",
       "NotResponsibleTeacher": "You can't reply to this conversation.",
-      "RateLimited": "You're going too fast. Please wait a moment and try again."
+      "RateLimited": "You're going too fast. Please wait a moment and try again.",
+      "CommentNotFound": "Comment not found.",
+      "CannotReportOwnComment": "You can't report your own comment.",
+      "InvalidReportReason": "Choose a valid report reason.",
+      "ReportNoteTooLong": "The note can be at most 500 characters.",
+      "ModerationTextInvalidCharacters": "The text contains invalid characters.",
+      "HideReasonRequired": "A reason is required.",
+      "HideReasonTooLong": "The reason can be at most 500 characters.",
+      "NotModerator": "You are not allowed to moderate this comment.",
+      "RootCommentHidden": "This comment was removed, so new replies can't be posted."
+    }
+  },
+  "reportDialog": {
+    "title": "Report comment",
+    "intro": "Your report goes to moderators; your identity is not shown to the author.",
+    "reasonLabel": "Reason",
+    "reasons": {
+      "spam": "Spam or advertising",
+      "abuse": "Insults, bullying or harassment",
+      "personalInfo": "Sharing personal information",
+      "other": "Other"
+    },
+    "noteLabel": "Note (optional)",
+    "notePlaceholder": "Anything the moderator should know?",
+    "noteTooLong": "The note can be at most {{max}} characters.",
+    "cancel": "Cancel",
+    "submit": "Report",
+    "submitting": "Sending…",
+    "error": "The report could not be sent."
+  },
+  "hideDialog": {
+    "title": "Hide comment",
+    "intro": "Everyone will see \"This comment was removed\"; only moderators see its content and the reason. You can unhide it later.",
+    "reasonLabel": "Reason for hiding",
+    "reasonPlaceholder": "E.g. personal information shared",
+    "required": "A reason is required.",
+    "tooLong": "The reason can be at most {{max}} characters.",
+    "cancel": "Cancel",
+    "submit": "Hide",
+    "submitting": "Hiding…",
+    "error": "The comment could not be hidden."
+  },
+  "reports": {
+    "title": "Reports ({{count}})",
+    "titleNoCount": "Reports",
+    "loading": "Loading reports…",
+    "loadError": "Reports could not be loaded.",
+    "retry": "Try again",
+    "empty": "No reported comments.",
+    "count": "{{count}} reports",
+    "countOne": "1 report",
+    "lastReported": "Last reported: {{date}}",
+    "reasonsAria": "Report reasons",
+    "notesTitle": "Notes",
+    "hiddenChip": "Hidden",
+    "hiddenReasonLabel": "Hide reason:",
+    "goToComment": "Go to comment",
+    "hide": "Hide",
+    "unhide": "Unhide",
+    "unhideError": "The comment could not be unhidden.",
+    "questionLabel": "Question {{order}}",
+    "worksheetLevel": "Test comment",
+    "listAria": "Reported comments",
+    "paginator": {
+      "itemsPerPage": "Per page",
+      "next": "Next page",
+      "previous": "Previous page",
+      "first": "First page",
+      "last": "Last page",
+      "range": "{{start}}–{{end}} of {{length}}",
+      "rangeEmpty": "0 of {{length}}"
     }
   }
 }

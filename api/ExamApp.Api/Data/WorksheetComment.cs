@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
@@ -19,13 +20,17 @@ public enum WorksheetCommentAuthorRole
 /// Worksheet / soru altındaki yorum-soru thread'i (issue #105). <see cref="QuestionId"/> null ise worksheet
 /// seviyesi (genel) thread, doluysa worksheet içindeki o sorunun (<c>Question.Id</c>) thread'i — ikisi ayrı tutulur.
 /// Tek seviye reply: <see cref="ParentCommentId"/> yalnızca aynı worksheet + aynı QuestionId'deki bir KÖK yoruma
-/// işaret edebilir (servis doğrular). Oluşturulma anı <see cref="BaseEntity.CreateTime"/>; silme soft-delete
-/// (moderasyon kapsam dışı, uç yok). Worksheet retire (soft-delete) olsa da yorumlar görünür kalır.
+/// işaret edebilir (servis doğrular). Oluşturulma anı <see cref="BaseEntity.CreateTime"/>. Worksheet retire (soft-delete)
+/// olsa da yorumlar görünür kalır.
+/// <para>issue #305: moderasyon gizlemesi <see cref="BaseEntity.IsDeleted"/> DEĞİLDİR — gizlenen yorum thread'de
+/// "kaldırıldı" yer tutucusu olarak kalır (reply'ları bağlamını korur), bu yüzden global !IsDeleted filtresine takılmamalı.
+/// Gizli = <see cref="HiddenAt"/> dolu. Okul kapsamı yazarın okulu üzerinden (<see cref="AuthorSchoolId"/>).</para>
 /// </summary>
 public class WorksheetComment : BaseEntity
 {
     public const int BodyMaxLength = 2000;
     public const int KeycloakIdMaxLength = 64;
+    public const int HiddenReasonMaxLength = 500;
 
     [Key]
     public int Id { get; set; }
@@ -53,7 +58,10 @@ public class WorksheetComment : BaseEntity
     /// <summary>
     /// Öğrenci KÖK yorumunda, yazıldığı anda çözülen ilgili öğretmen (atama &gt; kopya sahibi &gt; sahip) kayda sabitlenir.
     /// Bu thread'e öğretmen cevap yetkisi yalnızca bu değerle verilir — atama sonradan bitse/değişse de bildirim giden
-    /// öğretmen cevap yazabilmeye devam eder; dilim 2 bildirim hedefi de budur. Öğretmen kökünde ve reply'larda null.
+    /// öğretmen cevap yazabilmeye devam eder; dilim 2 bildirim hedefi de budur. Öğretmen kökünde null.
+    /// issue #305: öğrencinin ÖĞRETMEN köküne yazdığı reply'da da o öğrencinin ilgili öğretmeni sabitlenir (bildirim alan
+    /// öğretmen okul kapsamı dışında olsa da o reply'ı görebilsin). Cevap yetkisi yalnız KÖKÜN değerinden gelir.
+    /// Öğrenci kökündeki reply'larda ve öğretmen reply'larında null.
     /// </summary>
     public int? ResponsibleTeacherUserId { get; set; }
 
@@ -66,4 +74,24 @@ public class WorksheetComment : BaseEntity
     /// <summary>Düz metin, trim edilmiş, 1..<see cref="BodyMaxLength"/> karakter.</summary>
     [Required, MaxLength(BodyMaxLength)]
     public string Body { get; set; } = string.Empty;
+
+    /// <summary>
+    /// issue #305: yazarın yorum anındaki okulu (öğrencide Students.SchoolId, öğretmende Teachers.SchoolId) — okul kapsamı
+    /// okuma anında join'siz bununla uygulanır; yazarın okulu sonradan değişse de yorum yazıldığı okulda kalır. Okulsuz
+    /// öğrencide / bağımsız öğretmende null (okul eşleşmesi yok — güvenli taraf).
+    /// </summary>
+    public int? AuthorSchoolId { get; set; }
+
+    /// <summary>issue #305: moderasyonla gizlendiği an (UTC); null = görünür. Gizli yorum yer tutucu olarak döner.</summary>
+    public DateTime? HiddenAt { get; set; }
+
+    /// <summary>issue #305: gizleyen moderatörün exam/auth user id'si (sahip / sorumlu öğretmen / admin).</summary>
+    public int? HiddenByUserId { get; set; }
+
+    /// <summary>
+    /// issue #305: gizleme nedeni (1..<see cref="HiddenReasonMaxLength"/>, düz metin). Audit satırına YAZILMAZ (audit PII
+    /// taşımaz); yalnızca moderatör görünümünde döner. Açılınca (unhide) temizlenir.
+    /// </summary>
+    [MaxLength(HiddenReasonMaxLength)]
+    public string? HiddenReason { get; set; }
 }

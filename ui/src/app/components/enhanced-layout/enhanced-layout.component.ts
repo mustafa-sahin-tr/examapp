@@ -203,6 +203,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'admin-schools', labelKey: 'menu.adminSchools', icon: 'apartment', route: '/admin/schools', type: 'menu', roles: ['Admin'] },
     // Issue #148: rozet tanımları yönetimi.
     { id: 'admin-badge-definitions', labelKey: 'menu.adminBadgeDefinitions', icon: 'military_tech', route: '/admin/badge-definitions', type: 'menu', roles: ['Admin'] },
+    // Issue #305: yorum şikayetleri (moderasyon).
+    { id: 'admin-comment-reports', labelKey: 'menu.adminCommentReports', icon: 'flag', route: '/admin/comment-reports', type: 'menu', roles: ['Admin'] },
     { id: 'divider2', labelKey: '', icon: '', route: '', type: 'divider' },
     { id: 'help', labelKey: 'menu.help', icon: 'support', route: '/help', type: 'menu' },
     { id: 'feedback', labelKey: 'menu.feedback', icon: 'feedback', route: '/feedback', type: 'menu' },

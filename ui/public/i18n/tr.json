@@ -71,7 +71,8 @@
       "adminSchools": "Okullar",
       "adminBadgeDefinitions": "Rozetler",
       "help": "Yardım",
-      "feedback": "Geri Bildirim"
+      "feedback": "Geri Bildirim",
+      "adminCommentReports": "Yorum Şikayetleri"
     },
     "bottomNav": {
       "home": "Ana Sayfa",

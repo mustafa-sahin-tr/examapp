@@ -194,6 +194,15 @@ export const routes: Routes = [
           import('./pages/admin/badge-definitions/badge-definitions.component').then((m) => m.BadgeDefinitionsComponent),
       },
       {
+        // Issue #305: tüm worksheet'lerdeki şikayet edilmiş yorumlar (gizle / aç, yoruma git).
+        path: 'admin/comment-reports',
+        canActivate: [authGuard, adminGuard],
+        loadComponent: () =>
+          import('./pages/admin/admin-comment-reports/admin-comment-reports.component').then(
+            (m) => m.AdminCommentReportsComponent
+          ),
+      },
+      {
         // Issue #63: "Soru Çöz" pratik akışı (kapsam seç → tek tek rastgele soru → anlık geri bildirim).
         path: 'practice',
         canActivate: [authGuard, studentGuard],

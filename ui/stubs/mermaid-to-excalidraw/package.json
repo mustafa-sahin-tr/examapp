@@ -1,0 +1,11 @@
+{
+  "name": "@excalidraw/mermaid-to-excalidraw",
+  "version": "0.0.0-disabled",
+  "description": "Issue #98: Excalidraw'ın Mermaid dönüştürücüsü yerine boş modül (mermaid + d3 derlenmez).",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "index.js",
+  "module": "index.js",
+  "types": "index.d.ts"
+}

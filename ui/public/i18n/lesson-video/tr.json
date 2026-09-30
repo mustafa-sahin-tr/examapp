@@ -15,5 +15,10 @@
     "invalidRoute": "Geçersiz ders adresi.",
     "roomUnavailable": "Görüşme odası açılamadı.",
     "addressUnverified": "Görüşme adresi doğrulanamadı."
+  },
+  "tabs": {
+    "label": "Ders görünümü",
+    "video": "Video",
+    "board": "Tahta"
   }
 }

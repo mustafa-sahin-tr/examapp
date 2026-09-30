@@ -93,6 +93,11 @@
       "rateLimited": "Kısa sürede çok fazla yorum yazdınız. Lütfen biraz bekleyip tekrar deneyin.",
       "anonymousStudent": "Öğrenci",
       "anonymousTeacher": "Öğretmen",
+      "hiddenAuthor": "Kaldırıldı",
+      "reported": "Yorum şikayet edildi.",
+      "alreadyReported": "Bu yorumu zaten şikayet ettiniz.",
+      "hidden": "Yorum gizlendi.",
+      "unhidden": "Yorum yeniden görünür.",
       "errors": {
         "bodyInvalidCharacters": "Yorum geçersiz karakterler içeriyor.",
         "rootCommentNotFound": "Yorum bulunamadı.",
@@ -106,7 +111,16 @@
         "commentsDisabled": "Bu test için yorum ve soru yazma kapalı.",
         "worksheetNotStarted": "Bu soruya yorum yazmak için önce testi başlatmalısınız.",
         "questionNotAnswered": "Bu soruya yorum yazmak için önce soruyu cevaplamalısınız.",
-        "notResponsibleTeacher": "Bu başlığa cevap yazma yetkiniz yok."
+        "notResponsibleTeacher": "Bu başlığa cevap yazma yetkiniz yok.",
+        "commentNotFound": "Yorum bulunamadı.",
+        "cannotReportOwnComment": "Kendi yorumunuzu şikayet edemezsiniz.",
+        "invalidReportReason": "Geçersiz şikayet nedeni.",
+        "reportNoteTooLong": "Şikayet açıklaması en fazla 500 karakter olabilir.",
+        "moderationTextInvalidCharacters": "Metin geçersiz karakterler içeriyor.",
+        "hideReasonRequired": "Gizleme nedeni boş olamaz.",
+        "hideReasonTooLong": "Gizleme nedeni en fazla 500 karakter olabilir.",
+        "notModerator": "Bu yorumu yönetme yetkiniz yok.",
+        "rootCommentHidden": "Bu yorum kaldırıldığı için cevap yazılamaz."
       }
     }
   }

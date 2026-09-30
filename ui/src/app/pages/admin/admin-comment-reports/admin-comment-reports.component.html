@@ -1,0 +1,18 @@
+<section class="al" *transloco="let t; prefix: 'admin.commentReports'">
+  <header class="al__head">
+    <div class="al__title">
+      <mat-icon aria-hidden="true">flag</mat-icon>
+      <div>
+        <h1>{{ t('title') }}</h1>
+        <p>{{ t('subtitle') }}</p>
+      </div>
+    </div>
+    <div class="al__tools">
+      <button mat-stroked-button type="button" data-testid="admin-reports-refresh" (click)="refresh()">
+        <mat-icon aria-hidden="true">sync</mat-icon> {{ t('refresh') }}
+      </button>
+    </div>
+  </header>
+
+  <app-comment-report-list [worksheetId]="null" [showHeading]="false" />
+</section>

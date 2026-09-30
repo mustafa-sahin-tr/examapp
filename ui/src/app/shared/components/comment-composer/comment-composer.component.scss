@@ -53,6 +53,49 @@
   }
 }
 
+// Issue #305: PII uyarısı — uyarı tonu, engelleyici değil.
+.cc__pii:empty {
+  display: none;
+}
+
+.cc__pii-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--ms-warning-surface-weak);
+  border: 1px solid var(--ms-warning-border);
+  color: var(--ms-warning-text);
+  font-family: var(--paragraphFontFamily);
+  font-size: 13px;
+  line-height: 1.45;
+
+  > .mat-icon {
+    flex: none;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.cc__pii-text {
+  flex: 1 1 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cc__pii-confirm {
+  font-weight: 700;
+}
+
+.cc__pii-send {
+  min-height: 44px;
+  align-self: center;
+}
+
 @media (max-width: 480px) {
   .cc__send {
     width: 44px;

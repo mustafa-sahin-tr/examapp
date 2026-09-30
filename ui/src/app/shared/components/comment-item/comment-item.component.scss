@@ -196,6 +196,102 @@
   margin-top: 4px;
 }
 
+// ---- Issue #305: moderasyon ----------------------------------------------------------------------------------
+
+.ci__avatar--removed {
+  background: var(--ms-surface-strong);
+  color: var(--ms-text-weak);
+
+  .mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.ci__removed {
+  font-style: italic;
+  color: var(--ms-text-weak);
+  font-size: 13.5px;
+}
+
+.ci__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: var(--ms-surface-strong);
+  color: var(--ms-text);
+
+  .mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+}
+
+.ci__chip--reports {
+  background: var(--ms-warning-surface-weak);
+  border: 1px solid var(--ms-warning-border);
+  color: var(--ms-warning-text);
+}
+
+.ci__chip--hidden {
+  background: var(--ms-surface-strong);
+  color: var(--ms-text-weak);
+}
+
+.ci__menu-btn {
+  margin-left: auto;
+  color: var(--ms-text-weak);
+}
+
+.ci__body--hidden {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.ci__moderation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: 12.5px;
+  color: var(--ms-text-weak);
+
+  bdi {
+    unicode-bidi: isolate;
+    overflow-wrap: anywhere;
+  }
+}
+
+.ci__unhide {
+  min-height: 44px;
+  color: var(--ms-action-text);
+
+  .mat-icon {
+    margin-right: 4px;
+  }
+}
+
+.ci__lock {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+  font-size: 13px;
+  color: var(--ms-text-weak);
+
+  .mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
 @media (max-width: 480px) {
   .ci__comment {
     gap: 10px;

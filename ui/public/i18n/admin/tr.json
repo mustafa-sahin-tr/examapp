@@ -626,5 +626,10 @@
       "rateLimitedSeconds": "Kısa sürede çok fazla hesap değişikliği yapıldı. Lütfen {{seconds}} saniye sonra tekrar deneyin.",
       "generic": "Öğretmen onayı güncellenirken bir sorun oluştu. Lütfen tekrar deneyin."
     }
+  },
+  "commentReports": {
+    "title": "Yorum şikayetleri",
+    "subtitle": "Tüm testlerde şikayet edilen yorumlar. Gizleme herkese \"kaldırıldı\" olarak görünür; içerik ve neden yalnız moderatörlere açıktır.",
+    "refresh": "Yenile"
   }
 }

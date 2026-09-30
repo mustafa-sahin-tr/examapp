@@ -17,8 +17,10 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import {
   EMPTY,
@@ -54,7 +56,9 @@ import { parseUtcDate } from '../../../pages/notifications/notification-format';
 import { LocaleService } from '../../../services/locale.service';
 import { WorksheetCommentService } from '../../../services/worksheet-comment.service';
 import { CommentComposerComponent } from '../comment-composer/comment-composer.component';
+import { openCommentHideDialog } from '../comment-hide-dialog/comment-hide-dialog.component';
 import { CommentItemComponent } from '../comment-item/comment-item.component';
+import { openCommentReportDialog } from '../comment-report-dialog/comment-report-dialog.component';
 import { commentErrorMessage } from './comment-error';
 import { CommentView, ThreadView, canLoadOlderReplies, serverCommentView } from './comment-view';
 
@@ -156,6 +160,7 @@ function toThreadView(root: WorksheetCommentRoot): ThreadView {
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    MatSlideToggleModule,
     TranslocoDirective,
     CommentComposerComponent,
     CommentItemComponent,
@@ -172,6 +177,7 @@ export class CommentThreadComponent {
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly dialog = inject(MatDialog);
 
   readonly worksheetId = input.required<number>();
   /** Boşsa worksheet seviyesi thread; doluysa o sorunun (`Question.id`) thread'i. */
@@ -200,6 +206,15 @@ export class CommentThreadComponent {
    * değil); bilinmiyorsa null. Yalnız değer değişince, HTTP yanıtında ya da bağlam değişiminde yayınlanır.
    */
   readonly questionOrderChange = output<number | null>();
+  /**
+   * Issue #305: görüntüleyen moderatör olabilir mi (öğretmen/admin). Tek başına anahtarı çizmez — bkz.
+   * {@link moderatorByDefault} ve yüklü yorumların `canModerate`'ı. Anahtar yalnız `moderatorView=true` ile yeniden yükler.
+   */
+  readonly canModerateView = input(false);
+  /** Issue #305: tüm thread'in moderatörü (admin / worksheet sahibi) — yorum yüklenmeden de anahtar görünür. */
+  readonly moderatorByDefault = input(false);
+  /** Issue #305: görüntüleyen şikayet edebilir mi (öğrenci/öğretmen; admin değil — sunucu 403 döner). */
+  readonly canReport = input(true);
 
   protected readonly loading = signal(false);
   protected readonly loaded = signal(false);
@@ -221,6 +236,23 @@ export class CommentThreadComponent {
   protected readonly now = signal(Date.now());
   /** Ekran okuyucuya duyurulan son olay (yalnız başarılı gönderim) — görsel olarak gizli live region. */
   protected readonly announcement = signal('');
+  /** Issue #305: moderasyon görünümü açık mı (gizli yorumların içeriği + nedeni). */
+  protected readonly moderatorView = signal(false);
+  /** Issue #305: gizlemeyi kaldır gibi dialogsuz moderasyon aksiyonunun hatası. */
+  protected readonly moderationError = signal<string | null>(null);
+  /**
+   * "Moderasyon görünümü" anahtarı: admin/sahip ya da yüklü thread'de `canModerate` olan en az bir yorum varsa (açıkken
+   * de kapatılabilsin diye görünür kalır). Diğer öğretmenlere gösterilmez.
+   */
+  protected readonly showModeratorToggle = computed(
+    () =>
+      this.canModerateView() &&
+      (this.moderatorByDefault() ||
+        this.moderatorView() ||
+        this.threads().some((t) => t.root.comment.canModerate === true || t.replies.some((r) => r.comment.canModerate === true)))
+  );
+  /** Aynı anda tek moderasyon dialog'u/isteği (çift tıklama). */
+  private moderationBusy = false;
   protected readonly locale = computed(() => this.localeService.localeDefinition().angularLocale);
 
   protected readonly lockMessageKey = computed(() => {
@@ -339,7 +371,11 @@ export class CommentThreadComponent {
       this.loadMoreError.set(null);
       this.loadingMore.set(false);
       return this.api
-        .getThread(ctx.worksheetId, { questionId: ctx.questionId, take: WORKSHEET_COMMENT_DEFAULT_TAKE })
+        .getThread(ctx.worksheetId, {
+          questionId: ctx.questionId,
+          take: WORKSHEET_COMMENT_DEFAULT_TAKE,
+          moderatorView: this.moderatorView(),
+        })
         .pipe(
           tap({
             next: (page) => {
@@ -391,6 +427,7 @@ export class CommentThreadComponent {
         questionId: this.questionId(),
         cursor,
         take: WORKSHEET_COMMENT_DEFAULT_TAKE,
+        moderatorView: this.moderatorView(),
       })
       .pipe(
         finalize(() => {
@@ -435,6 +472,7 @@ export class CommentThreadComponent {
       .getReplies(this.worksheetId(), thread.root.comment.id, {
         cursor: thread.olderStarted ? thread.olderCursor : null,
         take: WORKSHEET_COMMENT_MAX_TAKE,
+        moderatorView: this.moderatorView(),
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -523,7 +561,7 @@ export class CommentThreadComponent {
     if (!thread) {
       return;
     }
-    this.draft.set(thread.root.comment.body);
+    this.draft.set(thread.root.comment.body ?? '');
     this.threads.update((list) => list.filter((t) => t.key !== threadKey));
     this.rootComposer()?.focus();
   }
@@ -554,7 +592,7 @@ export class CommentThreadComponent {
     const pending = thread.root.comment;
     this.api
       // Optimistic kayda yazılmış worksheet/soru kullanılır — bileşenin güncel questionId'si değil.
-      .create(pending.worksheetId, { questionId: pending.questionId, parentCommentId: null, body: pending.body })
+      .create(pending.worksheetId, { questionId: pending.questionId, parentCommentId: null, body: pending.body ?? '' })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (comment) => {
@@ -601,7 +639,7 @@ export class CommentThreadComponent {
       .create(pending.worksheetId, {
         questionId: pending.questionId,
         parentCommentId: pending.parentCommentId,
-        body: pending.body,
+        body: pending.body ?? '',
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -619,6 +657,126 @@ export class CommentThreadComponent {
           setReply((r) => ({ ...r, state: 'failed', error: commentErrorMessage(err, this.t, 'errors.sendFailed') }));
         },
       });
+  }
+
+  // ---- Issue #305: moderasyon ----------------------------------------------------------------------------------
+
+  /** "Moderasyon görünümü" anahtarı: aynı bağlamda `moderatorView` ile yeniden yükler (gönderilmemişler korunur). */
+  protected toggleModeratorView(event: MatSlideToggleChange): void {
+    this.moderatorView.set(event.checked);
+    this.moderationError.set(null);
+    this.reload$.next();
+  }
+
+  /** Şikayet dialog'u; başarıda yorum "şikayet edildi" olur (moderatörse sayaç da artar). */
+  protected reportComment(threadKey: string, key: string): void {
+    const target = this.findComment(threadKey, key);
+    if (!target || target.comment.reportedByMe || this.moderationBusy) {
+      return;
+    }
+    this.moderationBusy = true;
+    const generation = this.generation;
+    openCommentReportDialog(this.dialog, { worksheetId: target.comment.worksheetId, commentId: target.comment.id })
+      .afterClosed()
+      .subscribe((result) => {
+        this.moderationBusy = false;
+        if (!result || generation !== this.generation) {
+          return;
+        }
+        this.patchComment(threadKey, key, (comment) => ({
+          ...comment,
+          reportedByMe: true,
+          reportCount:
+            !result.alreadyReported && typeof comment.reportCount === 'number'
+              ? comment.reportCount + 1
+              : comment.reportCount,
+        }));
+        this.announce(result.alreadyReported ? 'thread.announceAlreadyReported' : 'thread.announceReported');
+      });
+  }
+
+  /** Gizleme dialog'u (zorunlu neden); başarıda sunucunun döndürdüğü yorum yerine yazılır. */
+  protected hideComment(threadKey: string, key: string): void {
+    const target = this.findComment(threadKey, key);
+    if (!target || this.moderationBusy) {
+      return;
+    }
+    this.moderationBusy = true;
+    const generation = this.generation;
+    openCommentHideDialog(this.dialog, { worksheetId: target.comment.worksheetId, commentId: target.comment.id })
+      .afterClosed()
+      .subscribe((updated) => {
+        this.moderationBusy = false;
+        if (!updated || generation !== this.generation) {
+          return;
+        }
+        this.applyModeration(threadKey, key, updated, true);
+        this.announce('thread.announceHidden');
+      });
+  }
+
+  /** Gizlemeyi kaldır — onaysız (geri alınabilir), hata şeritte. */
+  protected unhideComment(threadKey: string, key: string): void {
+    const target = this.findComment(threadKey, key);
+    if (!target || this.moderationBusy) {
+      return;
+    }
+    this.moderationBusy = true;
+    this.moderationError.set(null);
+    const generation = this.generation;
+    this.api
+      .unhide(target.comment.worksheetId, target.comment.id)
+      .pipe(
+        finalize(() => (this.moderationBusy = false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (updated) => {
+          if (generation !== this.generation) {
+            return;
+          }
+          this.applyModeration(threadKey, key, updated, false);
+          this.announce('thread.announceUnhidden');
+        },
+        error: (err: unknown) => {
+          if (generation === this.generation) {
+            this.moderationError.set(commentErrorMessage(err, this.t, 'reports.unhideError'));
+          }
+        },
+      });
+  }
+
+  /**
+   * Gizle/aç sonucu: sunucu yorumu yerine yazılır (eksik alan olursa eski değer + `isHidden`). Kök gizlenince
+   * cevap alanı kapanır; kök açılınca `canReply` bilinmediği için thread yeniden yüklenir.
+   */
+  private applyModeration(threadKey: string, key: string, updated: WorksheetComment | null, hidden: boolean): void {
+    const isRoot = this.findThread(threadKey)?.root.key === key;
+    this.patchComment(threadKey, key, (comment) => ({
+      ...comment,
+      ...(updated && typeof updated.id === 'number' ? updated : {}),
+      isHidden: hidden,
+    }));
+    if (isRoot && hidden) {
+      this.updateThread(threadKey, (t) => ({ ...t, canReply: false }));
+      this.setReplyOpen(threadKey, false);
+    } else if (isRoot) {
+      this.reload$.next();
+    }
+  }
+
+  private findComment(threadKey: string, key: string): CommentView | undefined {
+    const thread = this.findThread(threadKey);
+    const view = thread?.root.key === key ? thread.root : thread?.replies.find((r) => r.key === key);
+    return view && view.state === 'sent' ? view : undefined;
+  }
+
+  private patchComment(threadKey: string, key: string, fn: (comment: WorksheetComment) => WorksheetComment): void {
+    this.updateThread(threadKey, (t) =>
+      t.root.key === key
+        ? { ...t, root: { ...t.root, comment: fn(t.root.comment) } }
+        : { ...t, replies: t.replies.map((r) => (r.key === key ? { ...r, comment: fn(r.comment) } : r)) }
+    );
   }
 
   /** Görsel olarak gizli live region'a duyuru; aynı metin art arda da okunsun diye sonuna görünmez fark eklenir. */

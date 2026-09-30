@@ -1,0 +1,122 @@
+// Issue #305 — yorum moderasyon dialogları (şikayet, gizle) ortak stili. Komponent SCSS'i `@use` ile alır.
+
+.md {
+  padding: 20px 24px 16px;
+  background: var(--ms-surface-weak);
+  color: var(--ms-text);
+  font-family: var(--paragraphFontFamily);
+}
+
+.md__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.md__title {
+  margin: 0;
+  padding: 0;
+  font-family: var(--mainFontFamily);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ms-text-strong);
+}
+
+.md__icon {
+  flex-shrink: 0;
+  font-size: 26px;
+  width: 26px;
+  height: 26px;
+  color: var(--ms-danger-text-medium);
+}
+
+.md__content {
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.md__intro {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ms-text-medium);
+}
+
+.md__label {
+  font-family: var(--mainFontFamily);
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--ms-text-strong);
+}
+
+.md__reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.md__field {
+  width: 100%;
+  margin-top: 6px;
+}
+
+.md__hint--error {
+  color: var(--ms-danger-text);
+}
+
+.md__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--ms-danger-border);
+  background: var(--ms-danger-surface-weak);
+  color: var(--ms-danger-text);
+  font-size: 13px;
+  line-height: 1.5;
+
+  .mat-icon {
+    flex-shrink: 0;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.md__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 0 0;
+  margin: 0;
+  border-top: 1px solid var(--ms-border-weak);
+
+  button {
+    min-height: 44px;
+  }
+}
+
+.md__danger {
+  background: var(--ms-danger-background);
+  color: var(--ms-danger-text-inverse);
+
+  &:hover:not(:disabled) {
+    background: var(--ms-danger-background-hover);
+  }
+
+  &:disabled {
+    background: var(--ms-surface-strong);
+    color: var(--ms-text-weak);
+  }
+}
+
+.md__spinner {
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: middle;
+}

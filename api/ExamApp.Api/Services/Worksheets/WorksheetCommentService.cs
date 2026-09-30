@@ -71,8 +71,14 @@ public class WorksheetCommentService : IWorksheetCommentService
         if (access.Denied is { } denied)
             return Fail<WorksheetCommentPageResultDto>(denied.Code, notFound: denied.NotFound, forbidden: !denied.NotFound);
 
-        if (query.QuestionId.HasValue && !await IsWorksheetQuestionAsync(worksheetId, query.QuestionId.Value, ct))
-            return Fail<WorksheetCommentPageResultDto>(WorksheetCommentErrorCodes.QuestionNotInWorksheet);
+        // Thread tek bir soruya (veya worksheet'e) ait: sıra istek başına TEK sorguyla çözülür, tüm yorumlara aynı değer yazılır.
+        int? questionOrder = null;
+        if (query.QuestionId.HasValue)
+        {
+            questionOrder = await ResolveQuestionOrderAsync(worksheetId, query.QuestionId.Value, ct);
+            if (questionOrder == null)
+                return Fail<WorksheetCommentPageResultDto>(WorksheetCommentErrorCodes.QuestionNotInWorksheet);
+        }
 
         (DateTime CreatedAt, int Id)? cursor = null;
         if (!string.IsNullOrWhiteSpace(query.Cursor))
@@ -146,17 +152,23 @@ public class WorksheetCommentService : IWorksheetCommentService
 
         var repliesByRoot = replies.GroupBy(r => r.ParentCommentId!.Value).ToDictionary(g => g.Key, g => g.ToList());
 
+        var studentSummary = actor.Kind == WorksheetCommentActorKind.Student
+            ? null
+            : await BuildStudentCommentsSummaryAsync(worksheet, actor, ct);
+
         var page = new WorksheetCommentPageDto
         {
             CanWrite = canWrite,
             LockReason = studentLock?.LockReason,
+            QuestionOrder = questionOrder,
+            StudentCommentsSummary = studentSummary,
             NextCursor = hasMore ? EncodeCursor(roots[^1].CreateTime, roots[^1].Id) : null,
             Items = roots.Select(root =>
             {
                 var thread = new WorksheetCommentThreadDto();
-                Fill(thread, root, actor, authorNames);
+                Fill(thread, root, actor, authorNames, questionOrder);
                 thread.Replies = repliesByRoot.TryGetValue(root.Id, out var list)
-                    ? list.Select(r => Fill(new WorksheetCommentDto(), r, actor, authorNames)).ToList()
+                    ? list.Select(r => Fill(new WorksheetCommentDto(), r, actor, authorNames, questionOrder)).ToList()
                     : new List<WorksheetCommentDto>();
                 thread.ReplyCount = replyCounts.GetValueOrDefault(root.Id);
                 thread.CanReply = CanReply(root, actor, access, canWrite);
@@ -216,6 +228,9 @@ public class WorksheetCommentService : IWorksheetCommentService
             replies.RemoveAt(replies.Count - 1);
 
         var names = await ResolveAuthorNamesAsync(replies.Select(r => r.AuthorUserId), ct);
+        var questionOrder = root.QuestionId is { } rootQuestionId
+            ? await ResolveQuestionOrderAsync(worksheetId, rootQuestionId, ct)
+            : null;
         var studentLock = actor.Kind == WorksheetCommentActorKind.Student
             ? await StudentWriteLockAsync(worksheetId, root.QuestionId, access, ct)
             : null;
@@ -225,9 +240,10 @@ public class WorksheetCommentService : IWorksheetCommentService
             Success = true,
             Page = new WorksheetCommentRepliesPageDto
             {
-                Items = replies.Select(r => Fill(new WorksheetCommentDto(), r, actor, names)).ToList(),
+                Items = replies.Select(r => Fill(new WorksheetCommentDto(), r, actor, names, questionOrder)).ToList(),
                 NextCursor = hasMore ? EncodeCursor(replies[^1].CreateTime, replies[^1].Id) : null,
                 ReplyCount = replyCount,
+                QuestionOrder = questionOrder,
                 CanReply = CanReply(root, actor, access, studentCanWrite: studentLock == null)
             }
         };
@@ -262,8 +278,13 @@ public class WorksheetCommentService : IWorksheetCommentService
                 return Fail<WorksheetCommentResultDto>(WorksheetCommentErrorCodes.BodyTooLong);
         }
 
-        if (dto.QuestionId.HasValue && !await IsWorksheetQuestionAsync(worksheetId, dto.QuestionId.Value, ct))
-            return Fail<WorksheetCommentResultDto>(WorksheetCommentErrorCodes.QuestionNotInWorksheet);
+        int? questionOrder = null;
+        if (dto.QuestionId.HasValue)
+        {
+            questionOrder = await ResolveQuestionOrderAsync(worksheetId, dto.QuestionId.Value, ct);
+            if (questionOrder == null)
+                return Fail<WorksheetCommentResultDto>(WorksheetCommentErrorCodes.QuestionNotInWorksheet);
+        }
 
         WorksheetComment? parent = null;
         if (dto.ParentCommentId.HasValue)
@@ -343,7 +364,7 @@ public class WorksheetCommentService : IWorksheetCommentService
 
             if (recipients.Count > 0)
             {
-                AddNotificationOutbox(worksheet, comment, parent, actor, recipients);
+                AddNotificationOutbox(worksheet, comment, parent, actor, recipients, questionOrder);
                 await _context.SaveChangesAsync(ct);
             }
 
@@ -363,7 +384,7 @@ public class WorksheetCommentService : IWorksheetCommentService
             Success = true,
             ObjectId = comment.Id,
             Message = _localizer["worksheets.comments.created"],
-            Comment = Fill(new WorksheetCommentDto(), comment, actor, names)
+            Comment = Fill(new WorksheetCommentDto(), comment, actor, names, questionOrder)
         };
     }
 
@@ -505,7 +526,7 @@ public class WorksheetCommentService : IWorksheetCommentService
     /// <summary>Alıcı başına bir outbox satırı (ChangeTracker'a ekler; çağıran SaveChanges yapar). Gövde/e-posta taşınmaz.</summary>
     private void AddNotificationOutbox(
         Worksheet worksheet, WorksheetComment comment, WorksheetComment? parent, WorksheetCommentActor actor,
-        IReadOnlyList<NotificationRecipient> recipients)
+        IReadOnlyList<NotificationRecipient> recipients, int? questionOrder)
     {
         var rootId = parent?.Id ?? comment.Id;
         var authorDisplayName = comment.AuthorRole == WorksheetCommentAuthorRole.Student
@@ -527,6 +548,7 @@ public class WorksheetCommentService : IWorksheetCommentService
                     RootCommentId = rootId,
                     WorksheetId = worksheet.Id,
                     QuestionId = comment.QuestionId,
+                    QuestionOrder = questionOrder,
                     WorksheetTitle = worksheet.Name,
                     AuthorRole = comment.AuthorRole.ToString(),
                     AuthorDisplayName = authorDisplayName,
@@ -545,6 +567,7 @@ public class WorksheetCommentService : IWorksheetCommentService
                     RootCommentId = rootId,
                     WorksheetId = worksheet.Id,
                     QuestionId = comment.QuestionId,
+                    QuestionOrder = questionOrder,
                     WorksheetTitle = worksheet.Name,
                     AuthorRole = comment.AuthorRole.ToString(),
                     AuthorDisplayName = authorDisplayName,
@@ -721,16 +744,57 @@ public class WorksheetCommentService : IWorksheetCommentService
             .AsNoTracking()
             .FirstOrDefaultAsync(w => w.Id == worksheetId, ct);
 
-    private Task<bool> IsWorksheetQuestionAsync(int worksheetId, int questionId, CancellationToken ct) =>
-        _context.TestQuestions.AsNoTracking().AnyAsync(tq => tq.TestId == worksheetId && tq.QuestionId == questionId, ct);
+    /// <summary>
+    /// Sorunun kullanıcıya gösterilen 1 tabanlı numarası (issue #309, <see cref="WorksheetQuestionNumbering"/>); soru bu
+    /// worksheet'te değilse null (eski <c>IsWorksheetQuestionAsync</c> kontrolünün yerini alır — tek sorgu).
+    /// </summary>
+    private Task<int?> ResolveQuestionOrderAsync(int worksheetId, int questionId, CancellationToken ct) =>
+        WorksheetQuestionNumbering.ResolveNumberAsync(_context, worksheetId, questionId, ct);
+
+    /// <summary>
+    /// Öğretmen/admin için öğrencilerin efektif yorum durumu özeti (issue #309): worksheet varsayılanı + çağıranın
+    /// görebildiği AKTİF atamalardaki override sayıları. Yalnız admin worksheet'in tüm aktif atamalarını sayar; sahip DAHİL
+    /// her öğretmen yalnız KENDİ oluşturduğu aktif atamaları görür (başka öğretmenin atama kararları sızmaz, security L1).
+    /// Tek GROUP BY sorgusu; PII yok.
+    /// </summary>
+    private async Task<WorksheetCommentStudentSummaryDto> BuildStudentCommentsSummaryAsync(
+        Worksheet worksheet, WorksheetCommentActor actor, CancellationToken ct)
+    {
+        var assignments = _context.WorksheetAssignments
+            .AsNoTracking()
+            .Where(a => a.WorksheetId == worksheet.Id)
+            .Where(WorksheetAccess.ActiveAt(DateTime.UtcNow));
+        if (!actor.IsAdmin)
+        {
+            var userId = actor.UserId;
+            assignments = assignments.Where(a => a.CreateUserId == userId);
+        }
+
+        var counts = await assignments
+            .Where(a => a.CommentsEnabledOverride != null)
+            .GroupBy(a => a.CommentsEnabledOverride!.Value)
+            .Select(g => new { Enabled = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+
+        return new WorksheetCommentStudentSummaryDto
+        {
+            WorksheetDefault = worksheet.CommentsEnabled,
+            AssignmentOverrides = new WorksheetCommentOverrideCountsDto
+            {
+                Enabled = counts.Where(c => c.Enabled).Sum(c => c.Count),
+                Disabled = counts.Where(c => !c.Enabled).Sum(c => c.Count)
+            }
+        };
+    }
 
     private WorksheetCommentDto Fill(WorksheetCommentDto target, WorksheetComment source, WorksheetCommentActor actor,
-        IReadOnlyDictionary<int, string?> fullNames)
+        IReadOnlyDictionary<int, string?> fullNames, int? questionOrder)
     {
         fullNames.TryGetValue(source.AuthorUserId, out var fullName);
         target.Id = source.Id;
         target.WorksheetId = source.WorksheetId;
         target.QuestionId = source.QuestionId;
+        target.QuestionOrder = source.QuestionId.HasValue ? questionOrder : null;
         target.ParentCommentId = source.ParentCommentId;
         target.AuthorRole = source.AuthorRole;
         target.AuthorDisplayName = DisplayName(source.AuthorRole, fullName);

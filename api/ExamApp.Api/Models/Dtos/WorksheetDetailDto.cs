@@ -73,7 +73,16 @@ public class WorksheetTeacherInsightsDto
 public class HardestQuestionDto
 {
     public int QuestionId { get; set; }
+
+    /// <summary>Ham <c>WorksheetQuestion.Order</c> (0/1 tabanlı, boşluklu olabilir) — görüntüleme için <see cref="Number"/>.</summary>
     public int Order { get; set; }
+
+    /// <summary>
+    /// issue #309: kullanıcıya gösterilen 1 tabanlı soru numarası (<c>WorksheetQuestionNumbering</c>; test çözme
+    /// ekranı ve yorum <c>questionOrder</c>'ı ile aynı).
+    /// </summary>
+    public int Number { get; set; }
+
     public string? Text { get; set; }
     public string? SubtopicName { get; set; }
     public int AnsweredCount { get; set; }

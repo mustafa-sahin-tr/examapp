@@ -85,6 +85,6 @@ public sealed class AdminStudentSchoolRateLimitPolicy : IRateLimiterPolicy<strin
             AdminUserListRateLimiting.PartitionKey(context.HttpContext), context.HttpContext.Request.Path.Value);
 
         await AdminUserListRateLimiting.WriteRejectionAsync(
-            context, "admin.studentSchool.rateLimited", _options.CurrentValue.WindowSeconds, cancellationToken);
+            context, "admin.studentSchool.rateLimited", _options.CurrentValue.WindowSeconds, errorCode: null, cancellationToken);
     }
 }

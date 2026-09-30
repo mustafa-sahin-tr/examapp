@@ -25,6 +25,12 @@ public class WorksheetCommentRepliedEvent
     /// <summary>Soru bazlı thread ise soru id'si; worksheet seviyesinde null.</summary>
     public int? QuestionId { get; set; }
 
+    /// <summary>
+    /// issue #309: soru thread'inde sorunun worksheet içindeki 1 tabanlı sırası; worksheet seviyesinde (veya eski
+    /// üreticilerden gelen mesajda) null. Geriye uyumlu ek alan — exchange/mesaj tipi adı değişmez.
+    /// </summary>
+    public int? QuestionOrder { get; set; }
+
     /// <summary>Worksheet adı (bildirim metni için); PII değil.</summary>
     public string WorksheetTitle { get; set; } = string.Empty;
 

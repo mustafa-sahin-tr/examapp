@@ -389,6 +389,9 @@ public class WorksheetDetailService : IWorksheetDetailService
                     return (Answered: answered, Correct: correct);
                 });
 
+        // issue #309: gösterilen numara ham Order değil, test çözme ekranı / yorum questionOrder ile aynı konum.
+        var numbers = WorksheetQuestionNumbering.NumberByWorksheetQuestionId(questions);
+
         var hardest = questions
             .Where(wq => statsByWq.TryGetValue(wq.Id, out var s) && s.Answered > 0)
             .Select(wq =>
@@ -402,6 +405,7 @@ public class WorksheetDetailService : IWorksheetDetailService
                 {
                     QuestionId = wq.Question.Id,
                     Order = wq.Order,
+                    Number = numbers[wq.Id],
                     Text = wq.Question.Text,
                     SubtopicName = subtopicName,
                     AnsweredCount = s.Answered,

@@ -1,5 +1,7 @@
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Models.Dtos.WorksheetComments;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Worksheets;
 using ExamApp.Api.Tests.Support;
@@ -564,6 +566,123 @@ public class WorksheetDetailServiceDetailTests : IDisposable
         await SeedAsync();
         await using var ctx = _db.NewContext();
         (await NewService(ctx).GetWorksheetDetailAsync(999999, "Teacher", null, OwnerTeacherUserId)).ShouldBeNull();
+    }
+
+    // ---- issue #309: soru numarası tutarlılığı ----
+
+    [Fact]
+    public async Task Question_number_matches_across_solve_screen_hardest_questions_and_comments()
+    {
+        var w = await SeedAsync();
+        await using (var ctx = _db.NewContext())
+        {
+            // Boşluklu, 0 tabanlı, Id sırasına ters Order; Q2'nin satırı silinmiş, Q4'ün sorusu silinmiş.
+            var wqs = await ctx.TestQuestions.Where(x => x.TestId == w.WorksheetId).ToDictionaryAsync(x => x.Id);
+            wqs[w.Wq3].Order = 0;
+            wqs[w.Wq1].Order = 10;
+            wqs[w.Wq5].Order = 20;
+            wqs[w.Wq4].Order = 5;
+            wqs[w.Wq2].IsDeleted = true;
+            (await ctx.Questions.SingleAsync(q => q.Id == w.Q4)).IsDeleted = true;
+            await ctx.SaveChangesAsync();
+        }
+
+        var expected = new Dictionary<int, int> { [w.Q3] = 1, [w.Q1] = 2, [w.Q5] = 3 };
+
+        // 1) Test çözme ekranı: StartTestAsync'in kurduğu liste, UI'da index + 1.
+        await using (var ctx = _db.NewContext())
+        {
+            var start = await new TestSessionService(ctx).StartTestAsync(w.WorksheetId,
+                new StudentProfileDto { Id = w.StNoAccess, GradeId = w.GradeId });
+            var solveOrder = await ctx.TestInstanceQuestions.AsNoTracking()
+                .Where(q => q.WorksheetInstanceId == start.InstanceId)
+                .OrderBy(q => q.Id)
+                .Select(q => q.WorksheetQuestion.QuestionId)
+                .ToListAsync();
+            solveOrder.Select((qid, i) => (qid, i + 1)).OrderBy(x => x.qid).ShouldBe(expected.Select(e => (e.Key, e.Value)).OrderBy(x => x.Key));
+        }
+
+        // 2) Zor sorular listesi (Number; ham Order korunur).
+        await AddInstanceAsync(w.WorksheetId, w.St1, WorksheetInstanceStatus.Completed,
+            (w.Wq1, C(w, w.Q1)), (w.Wq3, X(w, w.Q3)), (w.Wq5, X(w, w.Q5)));
+        await using (var ctx = _db.NewContext())
+        {
+            var hardest = (await AsTeacher(ctx, w))!.TeacherInsights!.HardestQuestions;
+            hardest.Select(h => (h.QuestionId, h.Number)).OrderBy(x => x.QuestionId).ShouldBe(expected.Select(e => (e.Key, e.Value)).OrderBy(x => x.Key));
+            hardest.Single(h => h.QuestionId == w.Q5).Order.ShouldBe(20);
+        }
+
+        // 3) Yorum questionOrder'ı ve SQL yardımcısı.
+        foreach (var (questionId, number) in expected)
+        {
+            await using var ctx = _db.NewContext();
+            (await WorksheetQuestionNumbering.ResolveNumberAsync(ctx, w.WorksheetId, questionId)).ShouldBe(number);
+            var comments = new WorksheetCommentService(ctx, new WorksheetResponsibleTeacherResolver(ctx), Substitute.For<IAuthApiClient>());
+            var created = await comments.CreateAsync(w.WorksheetId,
+                new CreateWorksheetCommentDto { QuestionId = questionId, Body = "not" },
+                new WorksheetCommentActor(OwnerTeacherUserId, "kc-owner", "Oya Hoca", WorksheetCommentActorKind.Teacher, false));
+            created.Success.ShouldBeTrue(created.ErrorCode);
+            created.Comment!.QuestionOrder.ShouldBe(number);
+        }
+    }
+
+    [Fact]
+    public async Task Question_numbering_breaks_order_ties_by_id_in_sql_and_in_memory()
+    {
+        var w = await SeedAsync();
+        await using (var ctx = _db.NewContext())
+        {
+            foreach (var wq in await ctx.TestQuestions.Where(x => x.TestId == w.WorksheetId).ToListAsync())
+                wq.Order = 7;
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var rows = await read.TestQuestions.AsNoTracking().Where(x => x.TestId == w.WorksheetId).ToListAsync();
+        var inMemory = WorksheetQuestionNumbering.NumberByWorksheetQuestionId(rows);
+        foreach (var row in rows)
+            (await WorksheetQuestionNumbering.ResolveNumberAsync(read, w.WorksheetId, row.QuestionId)).ShouldBe(inMemory[row.Id]);
+        inMemory[w.Wq1].ShouldBe(1);
+        inMemory[w.Wq5].ShouldBe(5);
+    }
+
+    [Fact]
+    public async Task Solve_screen_order_matches_numbering_when_orders_tie()
+    {
+        var w = await SeedAsync();
+        await using (var ctx = _db.NewContext())
+        {
+            // Hepsi aynı Order: sıra yalnız Id ile belirlenir (ThenBy(Id)).
+            foreach (var wq in await ctx.TestQuestions.Where(x => x.TestId == w.WorksheetId).ToListAsync())
+                wq.Order = 3;
+            await ctx.SaveChangesAsync();
+        }
+
+        int instanceId;
+        await using (var ctx = _db.NewContext())
+        {
+            instanceId = (await new TestSessionService(ctx).StartTestAsync(w.WorksheetId,
+                new StudentProfileDto { Id = w.StNoAccess, GradeId = w.GradeId })).InstanceId;
+        }
+
+        Dictionary<int, int> expected;
+        await using (var ctx = _db.NewContext())
+        {
+            var rows = await ctx.TestQuestions.AsNoTracking().Where(x => x.TestId == w.WorksheetId).ToListAsync();
+            var byWq = WorksheetQuestionNumbering.NumberByWorksheetQuestionId(rows);
+            expected = rows.ToDictionary(r => r.QuestionId, r => byWq[r.Id]);
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var dto = (await new TestSessionService(ctx).GetTestInstanceQuestionsAsync(instanceId, 104))!;
+            dto.TestInstanceQuestions.Select((q, i) => (q.Question.Id, i + 1)).OrderBy(x => x.Item1)
+                .ShouldBe(expected.Select(e => (e.Key, e.Value)).OrderBy(x => x.Key));
+
+            var result = (await new TestSessionService(ctx).GetCanvasTestResultAsync(instanceId, 104))!;
+            result.TestInstanceQuestions.Select(q => q.Question.Id)
+                .ShouldBe(dto.TestInstanceQuestions.Select(q => q.Question.Id));
+        }
     }
 
     public void Dispose() => _db.Dispose();

@@ -231,6 +231,29 @@ describe('NotificationsComponent (issue #146)', () => {
     });
   });
 
+  // Issue #309: soru yorumunda "Soru {n}" etiketi; worksheet seviyesinde ya da sıra yoksa etiket yok.
+  it('questionComment_ShowsQuestionOrderTag; worksheetLevel_NoTag', () => {
+    flushList([
+      notification({
+        id: 22,
+        type: 'WorksheetCommentCreated',
+        title: 'Yeni soru',
+        data: JSON.stringify({ worksheetId: 12, questionId: 34, commentId: 58, rootCommentId: 58, questionOrder: 4 }),
+      }),
+      notification({
+        id: 23,
+        type: 'WorksheetCommentCreated',
+        title: 'Yeni yorum',
+        data: JSON.stringify({ worksheetId: 12, questionId: null, commentId: 59, rootCommentId: 59, questionOrder: null }),
+      }),
+    ]);
+
+    const tag = items()[0].querySelector('[data-testid="notification-question-tag"]');
+    expect(tag?.textContent?.trim()).toBe('Soru 4');
+    expect(items()[0].getAttribute('aria-label')).toContain('Soru 4');
+    expect(items()[1].querySelector('[data-testid="notification-question-tag"]')).toBeNull();
+  });
+
   it('readBadgeItem_Click_NavigatesWithoutMarkRead', () => {
     flushList([badgeEarned({ isRead: true })]);
 

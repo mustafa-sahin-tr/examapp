@@ -1369,4 +1369,171 @@ public class WorksheetCommentServiceTests : IDisposable
         OutboxEventRegistry.Resolve(CreatedType).ShouldBe(typeof(WorksheetCommentCreatedEvent));
         OutboxEventRegistry.Resolve(RepliedType).ShouldBe(typeof(WorksheetCommentRepliedEvent));
     }
+
+    // ---- issue #309: soru sırası (questionOrder) ------------------------------------------------------------
+
+    [Fact]
+    public async Task Question_thread_items_and_previews_carry_the_1_based_question_order()
+    {
+        var w = await SeedAsync();
+        var root = Created(await PostAsync(w.WorksheetId, Teacher(Owner), "2. soru notu", questionId: w.Q2));
+        Created(await PostAsync(w.WorksheetId, Teacher(Owner), "ek", questionId: w.Q2, parentId: root));
+        Created(await PostAsync(w.WorksheetId, Teacher(Owner), "genel"));
+
+        var page = (await GetAsync(w.WorksheetId, Teacher(Owner), questionId: w.Q2)).Page!;
+        page.QuestionOrder.ShouldBe(2);
+        (await GetAsync(w.WorksheetId, Teacher(Owner), questionId: w.Q1)).Page!.QuestionOrder.ShouldBe(1); // boş sayfada da
+        (await GetAsync(w.WorksheetId, Teacher(Owner))).Page!.QuestionOrder.ShouldBeNull();
+        var item = page.Items.Single();
+        item.QuestionOrder.ShouldBe(2);
+        item.Replies.Single().QuestionOrder.ShouldBe(2);
+
+        var general = (await GetAsync(w.WorksheetId, Teacher(Owner))).Page!.Items.Single();
+        general.QuestionId.ShouldBeNull();
+        general.QuestionOrder.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Question_order_is_the_position_not_the_raw_order_column()
+    {
+        var w = await SeedAsync();
+        await using (var ctx = _db.NewContext())
+        {
+            // Boşluklu / ters sıra: Q2 önce gelir; silinmiş bir satır sayılmaz.
+            (await ctx.TestQuestions.SingleAsync(x => x.Id == w.Wq1)).Order = 40;
+            (await ctx.TestQuestions.SingleAsync(x => x.Id == w.Wq2)).Order = 7;
+            var gone = new Question { Text = "Q-silinmiş" };
+            ctx.Questions.Add(gone);
+            await ctx.SaveChangesAsync();
+            ctx.TestQuestions.Add(new WorksheetQuestion { TestId = w.WorksheetId, QuestionId = gone.Id, Order = 0, IsDeleted = true });
+            await ctx.SaveChangesAsync();
+        }
+
+        var r1 = await PostAsync(w.WorksheetId, Teacher(Owner), "q1", questionId: w.Q1);
+        var r2 = await PostAsync(w.WorksheetId, Teacher(Owner), "q2", questionId: w.Q2);
+
+        r1.Comment!.QuestionOrder.ShouldBe(2);
+        r2.Comment!.QuestionOrder.ShouldBe(1);
+        (await PostAsync(w.WorksheetId, Teacher(Owner), "genel")).Comment!.QuestionOrder.ShouldBeNull();
+        ShouldFail(await PostAsync(w.WorksheetId, Teacher(Owner), "yabancı", questionId: w.QForeign),
+            WorksheetCommentErrorCodes.QuestionNotInWorksheet);
+    }
+
+    [Fact]
+    public async Task Replies_endpoint_carries_the_question_order_of_the_root()
+    {
+        var w = await SeedAsync();
+        var root = Created(await PostAsync(w.WorksheetId, Teacher(Owner), "q1", questionId: w.Q1));
+        Created(await PostAsync(w.WorksheetId, Teacher(Owner), "ek", questionId: w.Q1, parentId: root));
+
+        var page = (await GetRepliesAsync(w.WorksheetId, root, Teacher(Owner))).Page!;
+        page.QuestionOrder.ShouldBe(1);
+        page.Items.Single().QuestionOrder.ShouldBe(1);
+
+        var general = Created(await PostAsync(w.WorksheetId, Teacher(Owner), "genel"));
+        (await GetRepliesAsync(w.WorksheetId, general, Teacher(Owner))).Page!.QuestionOrder.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Notification_events_carry_the_question_order()
+    {
+        var w = await SeedAsync();
+        await StartAsync(w, w.StudentA, answerQ1: true);
+
+        var root = Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "bu soru?", questionId: w.Q1));
+        Created(await PostAsync(w.WorksheetId, Teacher(Assigner), "şöyle", questionId: w.Q1, parentId: root));
+        Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "genel"));
+
+        var rows = await OutboxAsync();
+        rows.Count.ShouldBe(3);
+        JsonSerializer.Deserialize<WorksheetCommentCreatedEvent>(rows[0].Json)!.QuestionOrder.ShouldBe(1);
+        var replied = JsonSerializer.Deserialize<WorksheetCommentRepliedEvent>(rows.Single(r => r.Type == RepliedType).Json)!;
+        replied.QuestionOrder.ShouldBe(1);
+        rows[1].Json.ShouldContain("\"QuestionOrder\":1");
+        JsonSerializer.Deserialize<WorksheetCommentCreatedEvent>(rows[2].Json)!.QuestionOrder.ShouldBeNull();
+    }
+
+    // ---- issue #309: öğretmen için efektif öğrenci yorum durumu ---------------------------------------------
+
+    /// <summary>
+    /// Seed'in Assigner ataması (override=true) + Owner: aktif false, aktif null, süresi dolmuş true, silinmiş false;
+    /// Assigner: aktif null.
+    /// </summary>
+    private async Task SeedSummaryAssignmentsAsync(World w)
+    {
+        await using var ctx = _db.NewContext();
+        ctx.SetCurrentUser(Owner);
+        var now = DateTime.UtcNow;
+        ctx.WorksheetAssignments.AddRange(
+            new WorksheetAssignment { WorksheetId = w.WorksheetId, GradeId = w.GradeId, StartAt = now.AddDays(-1), CommentsEnabledOverride = false },
+            new WorksheetAssignment { WorksheetId = w.WorksheetId, StudentId = w.StudentB, StartAt = now.AddDays(-1) },
+            new WorksheetAssignment
+            {
+                WorksheetId = w.WorksheetId, StudentId = w.StudentB, StartAt = now.AddDays(-5), EndAt = now.AddDays(-1),
+                CommentsEnabledOverride = true
+            },
+            new WorksheetAssignment
+            {
+                WorksheetId = w.WorksheetId, StudentId = w.StudentB, StartAt = now.AddDays(-1), CommentsEnabledOverride = false,
+                IsDeleted = true
+            },
+            new WorksheetAssignment { WorksheetId = w.OtherWorksheetId, GradeId = w.GradeId, StartAt = now.AddDays(-1), CommentsEnabledOverride = false });
+        await ctx.SaveChangesAsync();
+
+        ctx.SetCurrentUser(Assigner);
+        ctx.WorksheetAssignments.Add(new WorksheetAssignment { WorksheetId = w.WorksheetId, GradeId = w.GradeId, StartAt = now.AddDays(-1) });
+        await ctx.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task Owner_sees_only_own_active_assignments_not_other_teachers()
+    {
+        var w = await SeedAsync(assignmentOverride: true);
+        await SeedSummaryAssignmentsAsync(w);
+
+        var summary = (await GetAsync(w.WorksheetId, Teacher(Owner))).Page!.StudentCommentsSummary!;
+
+        summary.WorksheetDefault.ShouldBeTrue();
+        summary.AssignmentOverrides.Enabled.ShouldBe(0);  // Assigner'ın true ataması sahibe sızmaz (security L1)
+        summary.AssignmentOverrides.Disabled.ShouldBe(1); // Owner'ın aktif false'u (süresi dolmuş/silinmiş/başka ws sayılmaz)
+    }
+
+    [Fact]
+    public async Task Admin_teacher_sees_all_active_assignments()
+    {
+        var w = await SeedAsync(assignmentOverride: true);
+        await SeedSummaryAssignmentsAsync(w);
+
+        var summary = (await GetAsync(w.WorksheetId, Teacher(Owner, isAdmin: true))).Page!.StudentCommentsSummary!;
+
+        summary.AssignmentOverrides.Enabled.ShouldBe(1);
+        summary.AssignmentOverrides.Disabled.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Assigner_sees_only_own_active_assignments()
+    {
+        var w = await SeedAsync(commentsEnabled: false, assignmentOverride: true);
+        await SeedSummaryAssignmentsAsync(w);
+
+        var summary = (await GetAsync(w.WorksheetId, Teacher(Assigner))).Page!.StudentCommentsSummary!;
+
+        summary.WorksheetDefault.ShouldBeFalse();
+        summary.AssignmentOverrides.Enabled.ShouldBe(1);
+        summary.AssignmentOverrides.Disabled.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Admin_sees_all_active_assignments_and_student_gets_no_summary()
+    {
+        var w = await SeedAsync(assignmentOverride: false);
+        await SeedSummaryAssignmentsAsync(w);
+
+        var admin = (await GetAsync(w.WorksheetId, AdminReader)).Page!.StudentCommentsSummary!;
+        admin.AssignmentOverrides.Enabled.ShouldBe(0);
+        admin.AssignmentOverrides.Disabled.ShouldBe(2);
+
+        var student = (await GetAsync(w.WorksheetId, Student(StudentAUser))).Page!;
+        student.StudentCommentsSummary.ShouldBeNull();
+    }
 }

@@ -38,6 +38,8 @@ export interface WorksheetCommentPushPayload {
   questionId: number | null;
   commentId: number;
   rootCommentId: number | null;
+  /** Issue #309: sorunun 1 tabanlı sırası; worksheet seviyesinde null. Snackbar başlığında kullanılmaz. */
+  questionOrder: number | null;
   worksheetTitle: string;
   title: string;
   body: string;

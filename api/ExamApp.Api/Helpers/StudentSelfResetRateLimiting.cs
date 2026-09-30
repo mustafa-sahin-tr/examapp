@@ -110,7 +110,7 @@ public sealed class StudentSelfResetRateLimitPolicy : IRateLimiterPolicy<string>
             AdminUserListRateLimiting.PartitionKey(context.HttpContext), context.HttpContext.Request.Path.Value);
 
         await AdminUserListRateLimiting.WriteRejectionAsync(
-            context, "student.reset.rateLimited", _options.CurrentValue.WindowSeconds, cancellationToken);
+            context, "student.reset.rateLimited", _options.CurrentValue.WindowSeconds, errorCode: null, cancellationToken);
     }
 }
 

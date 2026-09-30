@@ -8,31 +8,26 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { finalize, interval } from 'rxjs';
-import {
-  AppNotification,
-  BADGE_EARNED_NOTIFICATION_TYPE,
-  badgeIconSrc,
-  parseBadgeEarnedData,
-} from '../../models/notification.model';
+import { AppNotification } from '../../models/notification.model';
+import { AppRouteLink } from '../../models/worksheet-comment.model';
 import { NotificationService } from '../../services/notification.service';
 import { LocaleService } from '../../services/locale.service';
-import { formatRelativeTime } from './notification-format';
+import { describeNotification, formatRelativeTime } from './notification-format';
+
+export { BADGE_PROGRESS_ROUTE } from './notification-format';
 
 export type NotificationFilter = 'unread' | 'all';
 
 /** Göreli zaman metinlerinin sayfa açıkken tazelenme aralığı. */
 export const RELATIVE_TIME_TICK_MS = 60_000;
 
-/** Rozet bildirimine tıklanınca gidilen öğrencinin rozet/ilerleme sayfası (`BadgeThropyComponent`). */
-export const BADGE_PROGRESS_ROUTE = '/certificates';
-
 export interface NotificationRow {
   notification: AppNotification;
   /** Rozet ikonunun URL'i; yoksa Material ikonu (`icon`) gösterilir. */
   iconUrl: string | null;
   icon: string;
-  /** Tıklanınca gidilecek route; `null` = yalnızca okundu işaretlenir. */
-  route: string | null;
+  /** Tıklanınca gidilecek hedef; `null` = yalnızca okundu işaretlenir. */
+  route: AppRouteLink | null;
   relativeTime: string;
 }
 
@@ -40,7 +35,8 @@ const SCOPE = 'notifications';
 
 /**
  * Issue #146 — kullanıcının kalıcı bildirim listesi. Başlık/gövde sunucuda yerelleştirilir.
- * Yalnızca `BadgeEarned` türünün `data`'sı yorumlanır; diğer türler genel görünümdedir.
+ * Yalnızca bilinen türlerin `data`'sı yorumlanır (`BadgeEarned` → rozet sayfası; issue #105
+ * `WorksheetCommentCreated`/`WorksheetCommentReplied` → worksheet-detail derin linki); diğerleri genel görünümdedir.
  */
 @Component({
   selector: 'app-notifications',
@@ -118,8 +114,13 @@ export class NotificationsComponent implements OnInit {
   protected open(row: NotificationRow): void {
     const { notification, route } = row;
     const navigate = () => {
-      if (route) {
-        void this.router.navigate([route]);
+      if (!route) {
+        return;
+      }
+      if (route.queryParams) {
+        void this.router.navigate(route.commands, { queryParams: route.queryParams });
+      } else {
+        void this.router.navigate(route.commands);
       }
     };
     if (notification.isRead) {
@@ -139,17 +140,7 @@ export class NotificationsComponent implements OnInit {
   }
 
   private toRow(notification: AppNotification, now: number, locale: string): NotificationRow {
-    const relativeTime = formatRelativeTime(notification.createdAt, now, locale);
-    if (notification.type === BADGE_EARNED_NOTIFICATION_TYPE) {
-      const data = parseBadgeEarnedData(notification.data);
-      return {
-        notification,
-        iconUrl: badgeIconSrc(data?.iconUrl),
-        icon: 'emoji_events',
-        route: BADGE_PROGRESS_ROUTE,
-        relativeTime,
-      };
-    }
-    return { notification, iconUrl: null, icon: 'notifications', route: null, relativeTime };
+    const { icon, iconUrl, route } = describeNotification(notification);
+    return { notification, iconUrl, icon, route, relativeTime: formatRelativeTime(notification.createdAt, now, locale) };
   }
 }

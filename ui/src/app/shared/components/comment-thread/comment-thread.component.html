@@ -1,0 +1,103 @@
+<section class="ct" *transloco="let t; prefix: 'comments'" [attr.aria-busy]="loading()">
+  <!-- Yalnız başarılı gönderim duyurulur; liste live region değil (yükleme/sayfalama okunmaz). -->
+  <span class="ct__sr-only" aria-live="polite" data-testid="comments-announcer">{{ announcement() }}</span>
+
+  @if (loaded()) {
+    @if (lockMessageKey(); as lockKey) {
+      <div
+        class="ct__strip"
+        [class.ct__strip--lock]="lockReason() !== 'comments-disabled'"
+        [class.ct__strip--neutral]="lockReason() === 'comments-disabled'"
+        role="status"
+        data-testid="lock-strip"
+        [attr.data-reason]="lockReason()"
+      >
+        <mat-icon aria-hidden="true">{{ lockReason() === 'comments-disabled' ? 'comments_disabled' : 'lock' }}</mat-icon>
+        <span>{{ t(lockKey) }}</span>
+      </div>
+    } @else if (studentsLockedNotice()) {
+      <div class="ct__strip ct__strip--neutral" role="status" data-testid="teacher-disabled-notice">
+        <mat-icon aria-hidden="true">comments_disabled</mat-icon>
+        <span>{{ t('thread.teacherDisabledNotice') }}</span>
+        @if (showEditSettings()) {
+          <button mat-button type="button" class="ct__strip-action" data-testid="edit-settings" (click)="editSettings.emit()">
+            {{ t('thread.editSettings') }}
+          </button>
+        }
+      </div>
+    }
+
+    @if (canWrite()) {
+      <app-comment-composer
+        data-testid="root-composer"
+        [(draft)]="draft"
+        [placeholder]="t('composer.placeholder')"
+        [ariaLabel]="t('composer.ariaLabel')"
+        (submitted)="submitRoot($event)"
+      />
+    } @else if (!lockReason()) {
+      <p class="ct__readonly" data-testid="read-only">{{ t('thread.readOnly') }}</p>
+    }
+  }
+
+  @if (loading() && !loaded()) {
+    <div class="ct__state" role="status" data-testid="comments-loading">
+      <mat-spinner diameter="36" />
+      <span>{{ t('thread.loading') }}</span>
+    </div>
+  } @else if (error()) {
+    <div class="ct__state ct__state--error" role="alert" data-testid="comments-error">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <span>{{ error() }}</span>
+      <button mat-stroked-button type="button" data-testid="comments-retry" (click)="load()">{{ t('thread.retry') }}</button>
+    </div>
+  } @else if (isEmpty()) {
+    <div class="ct__state ct__state--empty" data-testid="comments-empty">
+      <mat-icon class="ct__empty-icon" aria-hidden="true">forum</mat-icon>
+      <span class="ct__empty-title">{{ t('thread.emptyTitle') }}</span>
+      @if (canWrite()) {
+        <span data-testid="comments-invite">{{ t('thread.emptyInvite') }}</span>
+      }
+    </div>
+  }
+
+  <ul class="ct__list" [attr.aria-label]="t('thread.listAria')">
+    @for (thread of threads(); track thread.key) {
+      <li>
+        <app-comment-item
+          [thread]="thread"
+          [highlightedId]="highlightedId()"
+          [now]="now()"
+          [locale]="locale()"
+          [replyOpen]="isReplyOpen(thread.key)"
+          (replyOpenChange)="setReplyOpen(thread.key, $event)"
+          (replySubmit)="submitReply(thread.key, $event)"
+          (retry)="retry(thread.key, $event)"
+          (discard)="discard(thread.key, $event)"
+          (editRoot)="editRoot(thread.key)"
+          (loadOlder)="loadOlderReplies(thread.key)"
+        />
+      </li>
+    }
+  </ul>
+
+  @if (loaded() && nextCursor()) {
+    <div class="ct__more">
+      <button
+        mat-stroked-button
+        type="button"
+        data-testid="load-more"
+        [disabled]="loadingMore()"
+        (click)="loadMore()"
+      >
+        @if (loadingMore()) {
+          <mat-spinner diameter="18" />
+        }
+        {{ t('thread.loadMore') }}
+      </button>
+    </div>
+  }
+  @if (loadMoreError(); as moreError) {
+    <p class="ct__more-error" role="alert" data-testid="load-more-error">{{ moreError }}</p>
+  }
+</section>

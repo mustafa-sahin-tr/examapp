@@ -103,6 +103,11 @@ export interface Test {
   canAssign?: boolean;
   /** Öğrenci discover listesinde: true ise "Atanan sınavlar", false ise "Keşfet" grubunda gösterilir (issue #14). */
   isAssigned?: boolean;
+  /**
+   * Issue #105: öğrenciler yorum/soru yazabilir mi (worksheet varsayılanı; atama override'ı ayrı). Okumada
+   * `WorksheetDto.CommentsEnabled`; kaydederken `ExamDto.CommentsEnabled` — güncellemede gönderilmezse değişmez.
+   */
+  commentsEnabled?: boolean;
 }
 
 export interface InstanceSummary {

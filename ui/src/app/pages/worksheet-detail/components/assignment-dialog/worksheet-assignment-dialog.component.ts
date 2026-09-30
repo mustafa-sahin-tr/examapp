@@ -11,6 +11,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { WorksheetAssignmentRequest } from '../../../../models/assignment';
 import { Grade, StudentLookup } from '../../../../models/student';
@@ -33,6 +34,18 @@ export interface WorksheetAssignmentDialogData {
    * Verilmezse 'loaded' kabul edilir.
    */
   studentsStatus?: Signal<StudentLookupStatus>;
+  /**
+   * Issue #105: worksheet'in güncel yorum-soru ayarı (`WorksheetDto.commentsEnabled`); "Varsayılan" seçeneğinin
+   * yardımcı metninde gösterilir. Verilmezse açık kabul edilir (backend varsayılanı).
+   */
+  worksheetCommentsEnabled?: boolean;
+}
+
+/** Issue #105: atama override'ı — `default` → `null` (worksheet varsayılanı), `on` → true, `off` → false. */
+export type CommentsOverrideChoice = 'default' | 'on' | 'off';
+
+export function commentsOverrideValue(choice: CommentsOverrideChoice): boolean | null {
+  return choice === 'on' ? true : choice === 'off' ? false : null;
 }
 
 export type StudentLookupStatus = 'loading' | 'loaded' | 'error';
@@ -56,6 +69,7 @@ export interface WorksheetAssignmentDialogResult {
     MatRadioModule,
     MatChipsModule,
     MatCheckboxModule,
+    MatButtonToggleModule,
     TranslocoDirective,
   ],
   // MatDialog ile açılan komponent element injector'dan scope devralmaz; kendi provider'ını verir.
@@ -77,6 +91,7 @@ export class WorksheetAssignmentDialogComponent {
 
   /** Issue #222: bağımsız öğretmende "Sınıfa ata" seçeneği hiç render edilmez, scope 'student'a sabitlenir. */
   protected readonly isIndependentTutor = this.data.isIndependentTutor === true;
+  protected readonly worksheetCommentsEnabled = this.data.worksheetCommentsEnabled !== false;
   private readonly initialScope: 'grade' | 'student' = this.isIndependentTutor
     ? 'student'
     : this.data.scope ?? 'grade';
@@ -90,6 +105,7 @@ export class WorksheetAssignmentDialogComponent {
     hasEndDate: [false],
     endDate: [null as Date | null],
     endTime: ['23:59', Validators.pattern(/^\d{2}:\d{2}$/)],
+    commentsOverride: ['default' as CommentsOverrideChoice],
   });
 
   private readonly scopeSignal = toSignal(this.form.controls.scope.valueChanges, {
@@ -163,7 +179,8 @@ export class WorksheetAssignmentDialogComponent {
       return;
     }
 
-    const { scope, gradeId, studentId, startDate, startTime, hasEndDate, endDate, endTime } = this.form.getRawValue();
+    const { scope, gradeId, studentId, startDate, startTime, hasEndDate, endDate, endTime, commentsOverride } =
+      this.form.getRawValue();
 
     if (scope === 'grade' && !gradeId) {
       this.form.controls.gradeId.setErrors({ required: true });
@@ -184,6 +201,7 @@ export class WorksheetAssignmentDialogComponent {
       endAt: endAt ? endAt.toISOString() : undefined,
       gradeId: scope === 'grade' ? gradeId ?? undefined : undefined,
       studentId: scope === 'student' ? studentId ?? undefined : undefined,
+      commentsEnabledOverride: commentsOverrideValue(commentsOverride),
     };
 
     this.dialogRef.close({ request });

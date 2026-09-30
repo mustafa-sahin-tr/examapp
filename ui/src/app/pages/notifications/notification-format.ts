@@ -1,3 +1,16 @@
+import {
+  AppNotification,
+  BADGE_EARNED_NOTIFICATION_TYPE,
+  badgeIconSrc,
+  parseBadgeEarnedData,
+} from '../../models/notification.model';
+import {
+  AppRouteLink,
+  isWorksheetCommentNotificationType,
+  parseWorksheetCommentNotificationData,
+  worksheetCommentLink,
+} from '../../models/worksheet-comment.model';
+
 /**
  * Issue #146 — bildirim listesi için göreli tarih ("3 dakika önce", "dün").
  * Saf fonksiyon: `now` ve `locale` dışarıdan verilir, test edilebilir.
@@ -36,4 +49,35 @@ export function formatRelativeTime(iso: string, now: number, locale: string): st
     }
   }
   return formatter.format(0, 'second');
+}
+
+/**
+ * Issue #105 — bildirim türüne göre ikon ve derin link. Yalnızca bilinen türlerin `data`'sı yorumlanır;
+ * bozuk/eksik veri genel görünüme düşer (navigasyon yok).
+ */
+export interface NotificationPresentation {
+  icon: string;
+  /** Rozet ikonu (yalnız `BadgeEarned`); yoksa Material ikonu gösterilir. */
+  iconUrl: string | null;
+  /** Tıklanınca gidilecek hedef; `null` = yalnızca okundu işaretlenir. */
+  route: AppRouteLink | null;
+}
+
+/** Rozet bildirimine tıklanınca gidilen öğrencinin rozet/ilerleme sayfası (`BadgeThropyComponent`). */
+export const BADGE_PROGRESS_ROUTE = '/certificates';
+
+export function describeNotification(notification: Pick<AppNotification, 'type' | 'data'>): NotificationPresentation {
+  if (notification.type === BADGE_EARNED_NOTIFICATION_TYPE) {
+    const data = parseBadgeEarnedData(notification.data);
+    return {
+      icon: 'emoji_events',
+      iconUrl: badgeIconSrc(data?.iconUrl),
+      route: { commands: [BADGE_PROGRESS_ROUTE] },
+    };
+  }
+  if (isWorksheetCommentNotificationType(notification.type)) {
+    const ref = parseWorksheetCommentNotificationData(notification.data);
+    return { icon: 'forum', iconUrl: null, route: ref ? worksheetCommentLink(ref) : null };
+  }
+  return { icon: 'notifications', iconUrl: null, route: null };
 }

@@ -42,6 +42,23 @@
         <div class="t-sub">{{ t('form.practiceHintCompact') }}</div>
       </div>
     </div>
+
+    <div class="toggle-row">
+      <button
+        type="button"
+        class="switch"
+        data-testid="comments-toggle"
+        [class.off]="!value('commentsEnabled')"
+        [attr.aria-pressed]="!!value('commentsEnabled')"
+        [attr.aria-label]="t('form.commentsLabel')"
+        [disabled]="form.disabled"
+        (click)="toggleComments()"
+      ></button>
+      <div>
+        <div class="t-label">{{ t('form.commentsLabel') }}</div>
+        <div class="t-sub">{{ t('form.commentsHintCompact') }}</div>
+      </div>
+    </div>
   </ng-container>
 
   <ng-template #fullForm>
@@ -221,6 +238,24 @@
       <div>
         <div class="t-label">{{ t('form.practiceLabel') }}</div>
         <div class="t-sub">{{ t('form.practiceHint') }}</div>
+      </div>
+    </div>
+
+    <!-- Issue #105: öğrenci yorum/soru anahtarı (varsayılan açık) -->
+    <div class="toggle-row">
+      <button
+        type="button"
+        class="switch"
+        data-testid="comments-toggle"
+        [class.off]="!value('commentsEnabled')"
+        [attr.aria-pressed]="!!value('commentsEnabled')"
+        [attr.aria-label]="t('form.commentsLabel')"
+        [disabled]="form.disabled"
+        (click)="toggleComments()"
+      ></button>
+      <div>
+        <div class="t-label">{{ t('form.commentsLabel') }}</div>
+        <div class="t-sub">{{ t('form.commentsHint') }}</div>
       </div>
     </div>
   </section>

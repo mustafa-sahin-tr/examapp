@@ -42,7 +42,10 @@ describe('TestCreateEnhancedComponent', () => {
   let router: jasmine.SpyObj<Router>;
   let snackBar: jasmine.SpyObj<MatSnackBar>;
 
-  function configure(idParam: string | null): ComponentFixture<TestCreateEnhancedComponent> {
+  function configure(
+    idParam: string | null,
+    exam: Record<string, unknown> = {}
+  ): ComponentFixture<TestCreateEnhancedComponent> {
     // Guard: component reads history.state.testValue when there is no :id param.
     window.history.replaceState({}, '');
 
@@ -54,7 +57,7 @@ describe('TestCreateEnhancedComponent', () => {
       'updateVisibility',
     ]);
     testService.get.and.returnValue(
-      of({ id: 1, name: 'X', gradeId: 1, maxDurationSeconds: 600, isPracticeTest: false } as any)
+      of({ id: 1, name: 'X', gradeId: 1, maxDurationSeconds: 600, isPracticeTest: false, ...exam } as any)
     );
     testService.create.and.returnValue(of({ message: 'ok', examId: 42 }));
     testService.bulkImport.and.returnValue(of({}));
@@ -132,6 +135,33 @@ describe('TestCreateEnhancedComponent', () => {
 
     it('is false when there is no id param (exam)', () => {
       expect(configure(null).componentInstance.isEditMode).toBeFalse();
+    });
+  });
+
+  /** Issue #105: öğrenci yorum/soru anahtarı. */
+  describe('commentsEnabled', () => {
+    it('new form defaults to on and sends true', () => {
+      const c = configure(null).componentInstance;
+      expect(c.testForm.get('commentsEnabled')!.value).toBeTrue();
+      c.testForm.patchValue({ name: 'Yeni', gradeId: 1 });
+
+      c.onSubmit();
+
+      expect(testService.create.calls.mostRecent().args[0].commentsEnabled).toBeTrue();
+    });
+
+    it('edit mode patches commentsEnabled=false from the worksheet and sends it back', () => {
+      const c = configure('5', { commentsEnabled: false }).componentInstance;
+      expect(c.testForm.get('commentsEnabled')!.value).toBeFalse();
+
+      c.onSubmit();
+
+      expect(testService.create.calls.mostRecent().args[0].commentsEnabled).toBeFalse();
+    });
+
+    it('edit mode without the field (older API) keeps it on', () => {
+      const c = configure('5').componentInstance;
+      expect(c.testForm.get('commentsEnabled')!.value).toBeTrue();
     });
   });
 

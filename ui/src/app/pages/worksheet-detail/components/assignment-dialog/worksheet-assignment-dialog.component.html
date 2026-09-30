@@ -91,6 +91,29 @@
         <mat-error>{{ t('assignDialog.timeInvalid') }}</mat-error>
       </mat-form-field>
     </div>
+
+    <!-- Issue #105: atamaya özel yorum-soru override'ı (null = worksheet varsayılanı) -->
+    <div class="comments-override">
+      <span class="comments-override__label">{{ t('assignDialog.commentsLabel') }}</span>
+      <mat-button-toggle-group
+        formControlName="commentsOverride"
+        class="comments-override__group"
+        data-testid="comments-override"
+        [attr.aria-label]="t('assignDialog.commentsGroupAria')"
+        [hideSingleSelectionIndicator]="true"
+      >
+        <mat-button-toggle value="default" data-testid="comments-override-default">{{ t('assignDialog.commentsDefault') }}</mat-button-toggle>
+        <mat-button-toggle value="on" data-testid="comments-override-on">{{ t('assignDialog.commentsOn') }}</mat-button-toggle>
+        <mat-button-toggle value="off" data-testid="comments-override-off">{{ t('assignDialog.commentsOff') }}</mat-button-toggle>
+      </mat-button-toggle-group>
+      <div class="helper-text" data-testid="comments-override-helper">
+        {{
+          t('assignDialog.commentsHelper', {
+            state: t(worksheetCommentsEnabled ? 'assignDialog.commentsStateOn' : 'assignDialog.commentsStateOff')
+          })
+        }}
+      </div>
+    </div>
   </form>
 </section>
 

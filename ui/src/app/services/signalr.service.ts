@@ -10,7 +10,14 @@ import {
   TeacherSchoolRequestSubmittedPayload,
 } from '../models/teacher-application.model';
 import { TranslocoService } from '@jsverse/transloco';
+import {
+  WORKSHEET_COMMENT_CREATED_TYPE,
+  WORKSHEET_COMMENT_REPLIED_TYPE,
+  parseWorksheetCommentRef,
+  worksheetCommentLink,
+} from '../models/worksheet-comment.model';
 import { AuthService } from './auth.service';
+import { stripInvisibleControls } from '../shared/utils/display-text.util';
 
 export interface ReminderDuePayload {
   notificationId: number;
@@ -20,6 +27,24 @@ export interface ReminderDuePayload {
   title: string;
   body: string;
 }
+
+/**
+ * Issue #105: `WorksheetCommentCreated` (öğretmene) / `WorksheetCommentReplied` (öğrenciye) push payload'ı.
+ * Güvenilmeyen veri: handler alanları tek tek doğrular (`parseWorksheetCommentRef`, metin uzunluk sınırı).
+ */
+export interface WorksheetCommentPushPayload {
+  notificationId: number;
+  worksheetId: number;
+  questionId: number | null;
+  commentId: number;
+  rootCommentId: number | null;
+  worksheetTitle: string;
+  title: string;
+  body: string;
+}
+
+/** Snackbar'da gösterilecek push başlığının üst sınırı (backend zaten 200'e kırpar). */
+const MAX_PUSH_TITLE_LENGTH = 200;
 
 @Injectable({ providedIn: 'root' })
 export class SignalRService {
@@ -150,10 +175,34 @@ export class SignalRService {
       }
     });
 
+    // Issue #105: yorum bildirimleri kalıcı yazılır (zil sayacı) + "Görüntüle" ile worksheet-detail derin linki.
+    for (const event of [WORKSHEET_COMMENT_CREATED_TYPE, WORKSHEET_COMMENT_REPLIED_TYPE]) {
+      this.hubConnection.on(event, (data: unknown) => this.onWorksheetCommentPush(data));
+    }
+
     // Issue #146: randevu bildirimleri (BookingRequestCreated vb.) kalıcı yazılır; burada yalnızca zil sayacı tazelenir,
     // toast gösterilmez (randevu ekranları kendi durumunu yükler).
     this.hubConnection.on('BookingUpdate', () => {
       this.notificationsChangedSubject.next();
+    });
+  }
+
+  /** Yorum push'u: payload güvenilmez — kimlikler doğrulanmadan link kurulmaz, başlık düz metin ve kırpılır. */
+  private onWorksheetCommentPush(data: unknown): void {
+    this.notificationsChangedSubject.next();
+    const record = data && typeof data === 'object' ? (data as Partial<Record<keyof WorksheetCommentPushPayload, unknown>>) : {};
+    const rawTitle =
+      typeof record.title === 'string' ? stripInvisibleControls(record.title).trim().slice(0, MAX_PUSH_TITLE_LENGTH) : '';
+    const message = rawTitle || this.t('common.notifications.newComment');
+    const ref = parseWorksheetCommentRef(data);
+    if (!ref) {
+      this.snackBar.open(message, this.t('common.close'), { duration: 8000 });
+      return;
+    }
+    const link = worksheetCommentLink(ref);
+    const snack = this.snackBar.open(message, this.t('common.notifications.view'), { duration: 8000 });
+    snack.onAction().subscribe(() => {
+      void this.router.navigate(link.commands, { queryParams: link.queryParams });
     });
   }
 

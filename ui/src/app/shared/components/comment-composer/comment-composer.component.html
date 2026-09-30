@@ -1,0 +1,53 @@
+<div class="cc" *transloco="let t; prefix: 'comments'">
+  <mat-form-field appearance="outline" class="cc__field" subscriptSizing="dynamic">
+    <textarea
+      #textarea
+      matInput
+      class="cc__textarea"
+      data-testid="comment-textarea"
+      dir="auto"
+      rows="2"
+      [value]="draft()"
+      [placeholder]="placeholder()"
+      [attr.aria-label]="ariaLabel()"
+      [attr.aria-describedby]="hintId"
+      [attr.aria-invalid]="tooLong()"
+      (input)="onInput($event)"
+      (keydown)="onKeydown($event)"
+    ></textarea>
+    <mat-hint [id]="hintId" class="cc__hint" [class.cc__hint--error]="tooLong()">
+      @if (tooLong()) {
+        {{ t('composer.tooLong', { max: max }) }}
+      } @else {
+        {{ t('composer.shortcutHint') }}
+      }
+    </mat-hint>
+    <mat-hint
+      align="end"
+      class="cc__counter"
+      data-testid="comment-counter"
+      [class.cc__hint--error]="tooLong()"
+      [attr.aria-label]="t('composer.counterAria', { count: length(), max: max })"
+    >{{ length() }}/{{ max }}</mat-hint>
+  </mat-form-field>
+
+  <div class="cc__actions">
+    @if (showCancel()) {
+      <button mat-button type="button" class="cc__cancel" (click)="cancelled.emit()">
+        {{ t('item.cancelReply') }}
+      </button>
+    }
+    <button
+      mat-flat-button
+      type="button"
+      class="cc__send"
+      data-testid="comment-send"
+      [disabled]="!canSend()"
+      [attr.aria-label]="t('composer.send')"
+      (click)="submit()"
+    >
+      <mat-icon>send</mat-icon>
+      <span class="cc__send-label">{{ t('composer.send') }}</span>
+    </button>
+  </div>
+</div>

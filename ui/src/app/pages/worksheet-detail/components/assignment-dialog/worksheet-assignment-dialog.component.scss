@@ -75,3 +75,25 @@ mat-chip {
     }
   }
 }
+
+/* Issue #105: yorum-soru override'ı */
+.comments-override {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.comments-override__label {
+  font-family: var(--mainFontFamily);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ms-text);
+}
+
+.comments-override__group {
+  align-self: flex-start;
+
+  .mat-button-toggle {
+    min-height: 44px;
+  }
+}

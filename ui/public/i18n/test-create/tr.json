@@ -33,7 +33,10 @@
     "settingsTitle": "Ayarlar",
     "settingsNote": "Testin nasıl çözüleceğini belirler.",
     "save": "Kaydet",
-    "cancel": "İptal"
+    "cancel": "İptal",
+    "commentsLabel": "Yorum ve soru",
+    "commentsHint": "Açıkken öğrenciler bu test ve soruları hakkında yorum ya da soru yazabilir; mevcut yorumlar kapalıyken de görünür.",
+    "commentsHintCompact": "Öğrenciler yorum ve soru yazabilsin"
   },
   "page": {
     "creating": "Oluşturuluyor…",

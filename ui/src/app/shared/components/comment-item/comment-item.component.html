@@ -1,0 +1,127 @@
+<article class="ci" *transloco="let t; prefix: 'comments'" [attr.data-thread-key]="thread().key">
+  <ng-template #commentTpl let-view let-isReply="isReply">
+    <div
+      class="ci__comment"
+      data-testid="comment"
+      [class.ci__comment--reply]="isReply"
+      [class.ci__comment--sending]="view.state === 'sending'"
+      [class.ci__comment--failed]="view.state === 'failed'"
+      [class.ci__comment--highlight]="view.state === 'sent' && highlightedId() === view.comment.id"
+      [attr.data-comment-id]="view.state === 'sent' ? view.comment.id : null"
+      [attr.aria-busy]="view.state === 'sending'"
+      tabindex="-1"
+    >
+      <span class="ci__avatar" [class.ci__avatar--teacher]="view.comment.authorRole === 'Teacher'" aria-hidden="true">
+        {{ initial(view) }}
+      </span>
+      <div class="ci__main">
+        <div class="ci__meta">
+          <span class="ci__author">
+            @if (view.comment.authorDisplayName) {
+              <bdi dir="auto" data-testid="comment-author">{{ view.comment.authorDisplayName }}</bdi>
+            } @else {
+              <span data-testid="comment-author">{{ t('item.you') }}</span>
+            }
+          </span>
+          @if (view.comment.authorRole === 'Teacher') {
+            <span class="ci__teacher-badge" data-testid="teacher-badge">
+              <mat-icon aria-hidden="true">school</mat-icon>{{ t('item.teacherBadge') }}
+            </span>
+          }
+          @if (view.comment.isMine && view.comment.authorDisplayName) {
+            <span class="ci__mine">{{ t('item.mine') }}</span>
+          }
+          @if (view.state === 'sent') {
+            <time class="ci__time" [attr.datetime]="view.comment.createdAt" [attr.title]="absoluteTime(view)">
+              {{ relativeTime(view) }}
+            </time>
+          } @else if (view.state === 'sending') {
+            <span class="ci__time" data-testid="comment-sending">{{ t('item.sending') }}</span>
+          }
+        </div>
+
+        <p class="ci__body" data-testid="comment-body"><bdi dir="auto">{{ view.comment.body }}</bdi></p>
+
+        @if (view.state === 'failed') {
+          <div class="ci__failed" role="alert" data-testid="comment-failed">
+            <mat-icon aria-hidden="true">error_outline</mat-icon>
+            <span class="ci__failed-text">{{ view.error ? t('item.failed') + ': ' + view.error : t('item.failed') }}</span>
+            <span class="ci__failed-actions">
+              <button mat-button type="button" data-testid="comment-retry" (click)="retry.emit(view.key)">
+                {{ t('item.retry') }}
+              </button>
+              <button
+                mat-button
+                type="button"
+                data-testid="comment-edit"
+                (click)="isReply ? editReply(view) : editRoot.emit(view.key)"
+              >
+                {{ t('item.edit') }}
+              </button>
+            </span>
+          </div>
+        }
+      </div>
+    </div>
+  </ng-template>
+
+  <ng-container *ngTemplateOutlet="commentTpl; context: { $implicit: thread().root, isReply: false }" />
+
+  @if (thread().root.state === 'sent') {
+    <div class="ci__replies" [id]="repliesId()">
+      @if (showOlder()) {
+        <button
+          mat-button
+          type="button"
+          class="ci__older"
+          data-testid="load-older-replies"
+          [disabled]="thread().loadingOlder"
+          (click)="loadOlder.emit()"
+        >
+          <mat-icon aria-hidden="true">expand_less</mat-icon>
+          {{ t('item.showOlder', { count: hiddenCount() }) }}
+        </button>
+      }
+      @if (thread().olderError; as olderError) {
+        <p class="ci__older-error" role="alert" data-testid="older-replies-error">{{ olderError }}</p>
+      }
+
+      @if (thread().replies.length) {
+        <ul class="ci__reply-list" [attr.aria-label]="t('item.repliesAria')">
+          @for (reply of thread().replies; track reply.key) {
+            <li>
+              <ng-container *ngTemplateOutlet="commentTpl; context: { $implicit: reply, isReply: true }" />
+            </li>
+          }
+        </ul>
+      }
+
+      @if (thread().canReply) {
+        @if (replyOpen()) {
+          <app-comment-composer
+            class="ci__reply-composer"
+            [(draft)]="replyDraft"
+            [placeholder]="t('composer.replyPlaceholder', { name: thread().root.comment.authorDisplayName || t('item.you') })"
+            [ariaLabel]="t('composer.replyAriaLabel')"
+            [autofocus]="replyAutofocus()"
+            [showCancel]="true"
+            (submitted)="submitReply($event)"
+            (cancelled)="cancelReply()"
+          />
+        } @else {
+          <button
+            mat-button
+            type="button"
+            class="ci__reply-btn"
+            data-testid="reply-button"
+            [attr.aria-controls]="repliesId()"
+            [attr.aria-expanded]="replyOpen()"
+            (click)="toggleReply()"
+          >
+            <mat-icon aria-hidden="true">reply</mat-icon>{{ t('item.reply') }}
+          </button>
+        }
+      }
+    </div>
+  }
+</article>

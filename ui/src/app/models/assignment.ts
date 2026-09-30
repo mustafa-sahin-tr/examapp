@@ -26,6 +26,10 @@ export interface AssignedWorksheet {
   assignmentStatus: string;
   hasStarted: boolean;
   isCompleted: boolean;
+  /** Issue #105: atama override'ı (null = worksheet varsayılanı). */
+  commentsEnabledOverride?: boolean | null;
+  /** Issue #105: öğrenci için etkin değer (`override ?? worksheet.commentsEnabled`). */
+  commentsEnabled?: boolean;
 }
 
 export type AssignmentStudentStatus = 'Scheduled' | 'NotStarted' | 'InProgress' | 'Completed' | 'Expired';
@@ -48,6 +52,8 @@ export interface TeacherWorksheetAssignment {
   isActive: boolean;
   startAt: string;
   endAt?: string | null;
+  /** Issue #105: atama bazlı yorum-soru override'ı; null = worksheet varsayılanı. */
+  commentsEnabledOverride?: boolean | null;
   studentCount: number;
   completedCount: number;
   inProgressCount: number;
@@ -83,6 +89,8 @@ export interface WorksheetAssignmentRequest {
   gradeId?: number | null;
   startAt: string;
   endAt?: string | null;
+  /** Issue #105: bu atamaya özel yorum-soru açık/kapalı; null = worksheet varsayılanı. */
+  commentsEnabledOverride?: boolean | null;
 }
 
 export interface ApiResponse {

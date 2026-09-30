@@ -147,4 +147,97 @@ describe('SignalRService — admin öğretmen bildirimleri', () => {
 
     expect(count).toBe(0);
   });
+
+  // Issue #105: yorum bildirimleri — zil tetiği + "Görüntüle" snackbar'ı (ReminderDue deseni); payload güvenilmez.
+  describe('yorum bildirimleri (issue #105)', () => {
+    const payload = {
+      notificationId: 90,
+      worksheetId: 12,
+      questionId: 34,
+      commentId: 57,
+      rootCommentId: 56,
+      worksheetTitle: 'Kesirler',
+      title: 'Yeni cevap: Kesirler',
+      body: 'Öğretmen cevap yazdı',
+    };
+
+    for (const event of ['WorksheetCommentCreated', 'WorksheetCommentReplied']) {
+      it(`${event}_EmitsNotificationsChangedAndShowsViewSnackbarWithDeepLink`, () => {
+        setup(false);
+        let count = 0;
+        service.notificationsChanged$.subscribe(() => count++);
+
+        handlers.get(event)!(payload);
+
+        expect(count).toBe(1);
+        expect(snackBar.open).toHaveBeenCalledOnceWith(
+          'Yeni cevap: Kesirler',
+          trTranslations.common.notifications.view,
+          { duration: 8000 },
+        );
+        expect(router.navigate).not.toHaveBeenCalled();
+
+        snackAction$.next();
+
+        expect(router.navigate).toHaveBeenCalledOnceWith(['/test', 12], {
+          queryParams: { commentId: 57, questionId: 34, rootCommentId: 56 },
+        });
+      });
+    }
+
+    it('WorksheetCommentCreated_WorksheetLevelRoot_LinkHasOnlyCommentId', () => {
+      setup(false);
+
+      handlers.get('WorksheetCommentCreated')!({ ...payload, questionId: null, commentId: 56, rootCommentId: 56 });
+      snackAction$.next();
+
+      expect(router.navigate).toHaveBeenCalledOnceWith(['/test', 12], { queryParams: { commentId: 56 } });
+    });
+
+    it('commentPush_InvalidIds_NoViewActionButStillRefreshesBell', () => {
+      setup(false);
+      let count = 0;
+      service.notificationsChanged$.subscribe(() => count++);
+
+      handlers.get('WorksheetCommentReplied')!({ ...payload, worksheetId: 'javascript:alert(1)' });
+
+      expect(count).toBe(1);
+      expect(snackBar.open).toHaveBeenCalledOnceWith('Yeni cevap: Kesirler', trTranslations.common.close, {
+        duration: 8000,
+      });
+      snackAction$.next();
+      expect(router.navigate).not.toHaveBeenCalled();
+    });
+
+    it('commentPush_MissingOrNonStringTitle_UsesLocalizedFallback', () => {
+      setup(false);
+
+      handlers.get('WorksheetCommentCreated')!({ ...payload, title: { html: '<b>x</b>' } });
+
+      expect(snackBar.open.calls.mostRecent().args[0]).toBe(trTranslations.common.notifications.newComment);
+    });
+
+    it('commentPush_NullPayload_DoesNotThrow', () => {
+      setup(false);
+
+      expect(() => handlers.get('WorksheetCommentCreated')!(null)).not.toThrow();
+      expect(snackBar.open.calls.mostRecent().args[0]).toBe(trTranslations.common.notifications.newComment);
+    });
+
+    it('commentPush_BidiAndZeroWidthControls_StrippedFromSnackbarText', () => {
+      setup(false);
+
+      handlers.get('WorksheetCommentCreated')!({ ...payload, title: '‮Yeni​ yorum⁦﻿' });
+
+      expect(snackBar.open.calls.mostRecent().args[0]).toBe('Yeni yorum');
+    });
+
+    it('commentPush_LongTitle_IsTruncated', () => {
+      setup(false);
+
+      handlers.get('WorksheetCommentCreated')!({ ...payload, title: 'a'.repeat(500) });
+
+      expect((snackBar.open.calls.mostRecent().args[0] as string).length).toBe(200);
+    });
+  });
 });

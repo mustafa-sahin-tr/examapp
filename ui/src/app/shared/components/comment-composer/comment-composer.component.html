@@ -10,7 +10,7 @@
       [value]="draft()"
       [placeholder]="placeholder()"
       [attr.aria-label]="ariaLabel()"
-      [attr.aria-describedby]="hintId"
+      [attr.aria-describedby]="describedBy()"
       [attr.aria-invalid]="tooLong()"
       (input)="onInput($event)"
       (keydown)="onKeydown($event)"
@@ -30,6 +30,34 @@
       [attr.aria-label]="t('composer.counterAria', { count: length(), max: max })"
     >{{ length() }}/{{ max }}</mat-hint>
   </mat-form-field>
+
+  <!-- Issue #305: kişisel bilgi uyarısı (engellemez; ilk gönderimde onay ister) -->
+  <div class="cc__pii" [id]="piiId" aria-live="polite" data-testid="pii-warning-region">
+    @if (piiDetected()) {
+      <div class="cc__pii-box" data-testid="pii-warning">
+        <mat-icon aria-hidden="true">privacy_tip</mat-icon>
+        <div class="cc__pii-text">
+          <span>{{ t('composer.piiWarning') }}</span>
+          @if (piiConfirmPending()) {
+            <span class="cc__pii-confirm" data-testid="pii-confirm-hint">{{ t('composer.piiConfirmHint') }}</span>
+          }
+        </div>
+        @if (piiConfirmPending()) {
+          <button
+            #sendAnywayBtn
+            mat-stroked-button
+            type="button"
+            class="cc__pii-send"
+            data-testid="pii-send-anyway"
+            [disabled]="!canSend()"
+            (click)="sendAnyway()"
+          >
+            {{ t('composer.sendAnyway') }}
+          </button>
+        }
+      </div>
+    }
+  </div>
 
   <div class="cc__actions">
     @if (showCancel()) {

@@ -26,7 +26,7 @@ public class WorksheetCommentEndpointsTests(IntegrationApiFactory factory) : Int
 
     private static string Url(int worksheetId, string query = "") => $"/api/worksheet/{worksheetId}/comments{query}";
 
-    private sealed record Seed(int WorksheetId, int Q1, int Q2, int Wq1, int StudentA, int AnswerQ1);
+    private sealed record Seed(int WorksheetId, int Q1, int Q2, int Wq1, int StudentA, int AnswerQ1, int SchoolId = 0, int OtherSchoolId = 0);
 
     private async Task<Seed> SeedAsync(bool commentsEnabled = true)
     {
@@ -39,8 +39,17 @@ public class WorksheetCommentEndpointsTests(IntegrationApiFactory factory) : Int
             Id = AssignerId, FullName = "Ata Hoca", Email = "ata@mail.local", KeycloakId = "kc-105-t"
         });
 
-        await SeedApprovedTeacherAsync(OwnerId);
-        await SeedApprovedTeacherAsync(AssignerId);
+        // issue #305 (okul kapsamı): öğrenciler ve öğretmenler aynı okulda — thread okul içinde paylaşılır.
+        var (schoolId, otherSchoolId) = await WithDbAsync(async db =>
+        {
+            var school = new School { Name = "Okul 105" };
+            var other = new School { Name = "Diğer Okul 105" };
+            db.Schools.AddRange(school, other);
+            await db.SaveChangesAsync();
+            return (school.Id, other.Id);
+        });
+        await SeedApprovedTeacherAsync(OwnerId, schoolId);
+        await SeedApprovedTeacherAsync(AssignerId, schoolId);
         await WithDbAsync(async db =>
         {
             db.Teachers.Add(new Teacher { UserId = UnapprovedTeacherId, AccountApprovedAt = null });
@@ -70,9 +79,9 @@ public class WorksheetCommentEndpointsTests(IntegrationApiFactory factory) : Int
             await db.SaveChangesAsync();
 
             db.SetCurrentUser(0);
-            var a = new Student { UserId = StudentAUserId, StudentNumber = "A", GradeId = grade.Id };
-            var b = new Student { UserId = StudentBUserId, StudentNumber = "B", GradeId = grade.Id };
-            var outsider = new Student { UserId = OutsiderUserId, StudentNumber = "C", GradeId = otherGrade.Id };
+            var a = new Student { UserId = StudentAUserId, StudentNumber = "A", GradeId = grade.Id, SchoolId = schoolId };
+            var b = new Student { UserId = StudentBUserId, StudentNumber = "B", GradeId = grade.Id, SchoolId = schoolId };
+            var outsider = new Student { UserId = OutsiderUserId, StudentNumber = "C", GradeId = otherGrade.Id, SchoolId = schoolId };
             db.AddRange(a, b, outsider);
             await db.SaveChangesAsync();
 
@@ -83,7 +92,7 @@ public class WorksheetCommentEndpointsTests(IntegrationApiFactory factory) : Int
             });
             await db.SaveChangesAsync();
 
-            return new Seed(ws.Id, q1.Id, q2.Id, wq1.Id, a.Id, answer.Id);
+            return new Seed(ws.Id, q1.Id, q2.Id, wq1.Id, a.Id, answer.Id, schoolId, otherSchoolId);
         });
     }
 
@@ -157,11 +166,14 @@ public class WorksheetCommentEndpointsTests(IntegrationApiFactory factory) : Int
         var asOwner = await JsonOf(await owner.GetAsync(Url(seed.WorksheetId)));
         asOwner.GetProperty("items")[0].GetProperty("canReply").GetBoolean().ShouldBeFalse();
 
-        // Erişimi olmayan öğrenci → 403.
+        // Erişimi olmayan öğrenci → 404 WorksheetNotFound (issue #305: yok olan worksheet'ten ayırt edilemez).
         var outsider = await ClientAsAsync(OutsiderUserId, "Student", "kc-105-c", "Student");
         var denied = await outsider.GetAsync(Url(seed.WorksheetId));
-        denied.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        (await JsonOf(denied)).GetProperty("errorCode").GetString().ShouldBe("AccessDenied");
+        denied.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await JsonOf(denied)).GetProperty("errorCode").GetString().ShouldBe("WorksheetNotFound");
+        var missingWs = await outsider.GetAsync(Url(999_999));
+        missingWs.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await JsonOf(missingWs)).GetRawText().ShouldBe((await JsonOf(denied)).GetRawText());
     }
 
     [Fact]
@@ -272,10 +284,10 @@ public class WorksheetCommentEndpointsTests(IntegrationApiFactory factory) : Int
             await db.SaveChangesAsync();
         });
 
-        // Instance'ı yok (yalnızca grade uyumuyla erişiyordu) → retired'da kapalı.
+        // Instance'ı yok (yalnızca grade uyumuyla erişiyordu) → retired'da kapalı (404, #305).
         var denied = await b.GetAsync(Url(seed.WorksheetId));
-        denied.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        (await JsonOf(denied)).GetProperty("errorCode").GetString().ShouldBe("AccessDenied");
+        denied.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await JsonOf(denied)).GetProperty("errorCode").GetString().ShouldBe("WorksheetNotFound");
 
         await WithDbAsync(async db =>
         {
@@ -308,7 +320,8 @@ public class WorksheetCommentEndpointsTests(IntegrationApiFactory factory) : Int
                 var c = new WorksheetComment
                 {
                     WorksheetId = seed.WorksheetId, ParentCommentId = root, AuthorUserId = StudentBUserId,
-                    AuthorKeycloakId = "kc-105-b", AuthorRole = WorksheetCommentAuthorRole.Student, Body = $"reply {i}"
+                    AuthorKeycloakId = "kc-105-b", AuthorRole = WorksheetCommentAuthorRole.Student, Body = $"reply {i}",
+                    AuthorSchoolId = seed.SchoolId // #305: yazma yolu yazarın okulunu sabitler
                 };
                 db.WorksheetComments.Add(c);
                 await db.SaveChangesAsync();
@@ -441,5 +454,163 @@ public class WorksheetCommentEndpointsTests(IntegrationApiFactory factory) : Int
         (await b.GetAsync(Url(seed.WorksheetId))).StatusCode.ShouldBe(HttpStatusCode.OK);
         var a = await ClientAsAsync(StudentAUserId, "Student", $"kc-105-rl-{Guid.NewGuid():N}", "Student");
         (await a.PostAsJsonAsync(Url(seed.WorksheetId), new { body = "ben" })).StatusCode.ShouldBe(HttpStatusCode.Created);
+    }
+
+    // ---- issue #305: moderasyon, okul kapsamı --------------------------------------------------------------
+
+    private const int OtherSchoolStudentUserId = 105_104;
+    private const int AdminUserId = 105_900;
+
+    private static string Sub(string name) => $"kc-305-{name}-{Guid.NewGuid():N}";
+
+    private static List<int> ItemIds(JsonElement page) => page.GetProperty("items").EnumerateArray()
+        .Select(i => i.GetProperty("id").GetInt32()).OrderBy(x => x).ToList();
+
+    [Fact]
+    public async Task Report_hide_unhide_and_moderator_lists_end_to_end()
+    {
+        var seed = await SeedAsync();
+        var a = await ClientAsAsync(StudentAUserId, "Student", Sub("a"), "Student");
+        var b = await ClientAsAsync(StudentBUserId, "Student", Sub("b"), "Student");
+        var assigner = await ClientAsAsync(AssignerId, "Teacher", Sub("t"), "Teacher");
+        var owner = await ClientAsAsync(OwnerId, "Teacher", Sub("owner"), "Teacher");
+
+        var rootId = (await JsonOf(await a.PostAsJsonAsync(Url(seed.WorksheetId), new { body = "numaram 0555 555 55 55" })))
+            .GetProperty("id").GetInt32();
+        var replyId = (await JsonOf(await b.PostAsJsonAsync(Url(seed.WorksheetId), new { parentCommentId = rootId, body = "B" })))
+            .GetProperty("id").GetInt32();
+
+        // Şikayet: 200, tekrar idempotent; kendi yorumu 403; geçersiz neden 400.
+        var reported = await b.PostAsJsonAsync($"{Url(seed.WorksheetId)}/{rootId}/report", new { reason = "personalInfo", note = "telefon" });
+        reported.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await JsonOf(reported)).GetProperty("alreadyReported").GetBoolean().ShouldBeFalse();
+        var again = await b.PostAsJsonAsync($"{Url(seed.WorksheetId)}/{rootId}/report", new { reason = "spam" });
+        again.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await JsonOf(again)).GetProperty("alreadyReported").GetBoolean().ShouldBeTrue();
+        var own = await a.PostAsJsonAsync($"{Url(seed.WorksheetId)}/{rootId}/report", new { reason = "spam" });
+        own.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await JsonOf(own)).GetProperty("errorCode").GetString().ShouldBe("CannotReportOwnComment");
+        var bad = await a.PostAsJsonAsync($"{Url(seed.WorksheetId)}/{replyId}/report", new { reason = "nope" });
+        bad.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await JsonOf(bad)).GetProperty("errorCode").GetString().ShouldBe("InvalidReportReason");
+
+        var asB = (await JsonOf(await b.GetAsync(Url(seed.WorksheetId)))).GetProperty("items")[0];
+        asB.GetProperty("reportedByMe").GetBoolean().ShouldBeTrue();
+        asB.GetProperty("reportCount").ValueKind.ShouldBe(JsonValueKind.Null);
+        asB.GetProperty("canModerate").GetBoolean().ShouldBeFalse();
+        asB.GetProperty("isHidden").GetBoolean().ShouldBeFalse();
+
+        // Öğrenci gizleyemez / moderatör listesini göremez (rol kapısı).
+        (await b.PostAsJsonAsync($"{Url(seed.WorksheetId)}/{rootId}/hide", new { reason = "x" })).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await b.GetAsync($"{Url(seed.WorksheetId)}/reports")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+
+        // Sorumlu öğretmen (atayan) gizler: yanıt moderatör görünümünde.
+        var hide = await assigner.PostAsJsonAsync($"{Url(seed.WorksheetId)}/{rootId}/hide", new { reason = "telefon numarası" });
+        hide.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var hidden = await JsonOf(hide);
+        hidden.GetProperty("isHidden").GetBoolean().ShouldBeTrue();
+        hidden.GetProperty("body").GetString().ShouldBe("numaram 0555 555 55 55");
+        hidden.GetProperty("hiddenReason").GetString().ShouldBe("telefon numarası");
+        hidden.GetProperty("canModerate").GetBoolean().ShouldBeTrue();
+        hidden.GetProperty("reportCount").GetInt32().ShouldBe(1);
+
+        // Öğrenci: "kaldırıldı" yer tutucu, reply duruyor, yeni reply 403.
+        var placeholder = (await JsonOf(await b.GetAsync(Url(seed.WorksheetId, "?moderatorView=true")))).GetProperty("items")[0];
+        placeholder.GetProperty("isHidden").GetBoolean().ShouldBeTrue();
+        placeholder.GetProperty("body").ValueKind.ShouldBe(JsonValueKind.Null);
+        placeholder.GetProperty("authorDisplayName").GetString().ShouldBe("Kaldırıldı");
+        placeholder.GetProperty("hiddenReason").ValueKind.ShouldBe(JsonValueKind.Null);
+        placeholder.GetProperty("canReply").GetBoolean().ShouldBeFalse();
+        placeholder.GetProperty("replies")[0].GetProperty("id").GetInt32().ShouldBe(replyId);
+        placeholder.GetRawText().ShouldNotContain("0555");
+        var blocked = await b.PostAsJsonAsync(Url(seed.WorksheetId), new { parentCommentId = rootId, body = "yine" });
+        blocked.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await JsonOf(blocked)).GetProperty("errorCode").GetString().ShouldBe("RootCommentHidden");
+
+        // Sahip moderatör görünümünde gövdeyi görür; varsayılan görünümde görmez.
+        (await JsonOf(await owner.GetAsync(Url(seed.WorksheetId)))).GetProperty("items")[0].GetProperty("body").ValueKind
+            .ShouldBe(JsonValueKind.Null);
+        (await JsonOf(await owner.GetAsync(Url(seed.WorksheetId, "?moderatorView=true")))).GetProperty("items")[0]
+            .GetProperty("body").GetString().ShouldBe("numaram 0555 555 55 55");
+
+        // Moderatör listesi (worksheet) + global admin listesi.
+        var reports = await JsonOf(await owner.GetAsync($"{Url(seed.WorksheetId)}/reports?page=1&pageSize=10"));
+        reports.GetProperty("totalCount").GetInt32().ShouldBe(1);
+        var item = reports.GetProperty("items")[0];
+        item.GetProperty("comment").GetProperty("id").GetInt32().ShouldBe(rootId);
+        item.GetProperty("reportCount").GetInt32().ShouldBe(1);
+        item.GetProperty("reasons").GetProperty("personalInfo").GetInt32().ShouldBe(1);
+        item.GetProperty("notes")[0].GetString().ShouldBe("telefon");
+        item.GetProperty("worksheetTitle").GetString().ShouldBe("Kesirler");
+        item.GetRawText().ShouldNotContain("kc-305");
+
+        var admin = await ClientAsAsync(AdminUserId, "Admin", Sub("admin"), "Admin");
+        var global = await admin.GetAsync("/api/admin/comments/reports");
+        global.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await JsonOf(global)).GetProperty("totalCount").GetInt32().ShouldBe(1);
+        (await owner.GetAsync("/api/admin/comments/reports")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+
+        // Açma + audit (neden audit'e yazılmaz — tabloda böyle bir kolon yok).
+        var unhide = await owner.PostAsync($"{Url(seed.WorksheetId)}/{rootId}/unhide", null);
+        unhide.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await JsonOf(unhide)).GetProperty("isHidden").GetBoolean().ShouldBeFalse();
+        var logs = await WithDbAsync(db => db.AdminUserActionLogs
+            .Where(l => l.TargetType == AdminUserTargetType.WorksheetComment && l.TargetId == rootId)
+            .OrderBy(l => l.Id).ToListAsync());
+        logs.Select(l => l.Action).ShouldBe(new[] { AdminUserAction.CommentHidden, AdminUserAction.CommentUnhidden });
+        logs.ShouldAllBe(l => l.Outcome == AdminUserActionOutcome.Succeeded);
+        var stored = await WithDbAsync(db => db.WorksheetComments.SingleAsync(c => c.Id == rootId));
+        stored.HiddenAt.ShouldBeNull();
+        stored.HiddenReason.ShouldBeNull();
+        stored.AuthorSchoolId.ShouldBe(seed.SchoolId);
+    }
+
+    [Fact]
+    public async Task Student_comments_are_limited_to_the_authors_school()
+    {
+        var seed = await SeedAsync();
+        await WithDbAsync(async db =>
+        {
+            var gradeId = await db.Students.Where(s => s.UserId == StudentAUserId).Select(s => s.GradeId).SingleAsync();
+            db.Students.Add(new Student { UserId = OtherSchoolStudentUserId, StudentNumber = "D", GradeId = gradeId, SchoolId = seed.OtherSchoolId });
+            await db.SaveChangesAsync();
+        });
+        var a = await ClientAsAsync(StudentAUserId, "Student", Sub("a"), "Student");
+        var b = await ClientAsAsync(StudentBUserId, "Student", Sub("b"), "Student");
+        var other = await ClientAsAsync(OtherSchoolStudentUserId, "Student", Sub("d"), "Student");
+        var owner = await ClientAsAsync(OwnerId, "Teacher", Sub("owner"), "Teacher");
+
+        var rootA = (await JsonOf(await a.PostAsJsonAsync(Url(seed.WorksheetId), new { body = "A" }))).GetProperty("id").GetInt32();
+        var rootD = (await JsonOf(await other.PostAsJsonAsync(Url(seed.WorksheetId), new { body = "D" }))).GetProperty("id").GetInt32();
+        var announcement = (await JsonOf(await owner.PostAsJsonAsync(Url(seed.WorksheetId), new { body = "duyuru" }))).GetProperty("id").GetInt32();
+        (await a.PostAsJsonAsync(Url(seed.WorksheetId), new { parentCommentId = announcement, body = "A cevap" })).StatusCode.ShouldBe(HttpStatusCode.Created);
+        (await other.PostAsJsonAsync(Url(seed.WorksheetId), new { parentCommentId = announcement, body = "D cevap" })).StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        var asB = await JsonOf(await b.GetAsync(Url(seed.WorksheetId)));
+        ItemIds(asB).ShouldBe(new[] { rootA, announcement }.OrderBy(x => x).ToList());
+        asB.GetProperty("items").EnumerateArray().Single(i => i.GetProperty("id").GetInt32() == announcement)
+            .GetProperty("replyCount").GetInt32().ShouldBe(1);
+        ItemIds(await JsonOf(await other.GetAsync(Url(seed.WorksheetId)))).ShouldBe(new[] { rootD, announcement }.OrderBy(x => x).ToList());
+
+        // Kapsam dışı köke cevap: 400 InvalidParent (var olduğu sızmaz); replies ucu ve şikayet 404.
+        var cross = await other.PostAsJsonAsync(Url(seed.WorksheetId), new { parentCommentId = rootA, body = "x" });
+        cross.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await JsonOf(cross)).GetProperty("errorCode").GetString().ShouldBe("InvalidParent");
+        (await other.GetAsync($"{Url(seed.WorksheetId)}/{rootA}/replies")).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await other.PostAsJsonAsync($"{Url(seed.WorksheetId)}/{rootA}/report", new { reason = "spam" })).StatusCode
+            .ShouldBe(HttpStatusCode.NotFound);
+
+        // Atayan öğretmen (okul içi, yalnız A'nın sorumlusu): diğer okulun kökünü ve o öğrencinin duyuru cevabını görmez.
+        var assigner = await ClientAsAsync(AssignerId, "Teacher", Sub("t"), "Teacher");
+        var asAssigner = await JsonOf(await assigner.GetAsync(Url(seed.WorksheetId)));
+        ItemIds(asAssigner).ShouldBe(new[] { rootA, announcement }.OrderBy(x => x).ToList());
+        asAssigner.GetProperty("items").EnumerateArray().Single(i => i.GetProperty("id").GetInt32() == announcement)
+            .GetProperty("replyCount").GetInt32().ShouldBe(1);
+
+        // Sahip: D'nin kökünün sorumlusu (atama yok → sahip) olduğu için onu da görür; kendi duyurusunun tüm cevaplarını görür.
+        var asOwner = await JsonOf(await owner.GetAsync(Url(seed.WorksheetId)));
+        ItemIds(asOwner).ShouldBe(new[] { rootA, rootD, announcement }.OrderBy(x => x).ToList());
+        asOwner.GetProperty("items").EnumerateArray().Single(i => i.GetProperty("id").GetInt32() == announcement)
+            .GetProperty("replyCount").GetInt32().ShouldBe(2);
     }
 }

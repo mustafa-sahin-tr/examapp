@@ -32,6 +32,42 @@ public static class WorksheetQuestionNumbering
             .ToDictionary(x => x.Id, x => x.Number);
 
     /// <summary>
+    /// Toplu varyant (issue #305, code review O2): birden çok <c>(worksheetId, questionId)</c> çifti için TEK sorgu —
+    /// ilgili worksheet'lerin numaralanan satırları (<see cref="ResolveNumberAsync"/> ile aynı küme: silinmemiş satır +
+    /// sorusu silinmemiş) çekilir, numara bellekte <c>(Order, Id)</c> konumundan üretilir. Aynı soru iki kez varsa ilk
+    /// konumu. Worksheet'te olmayan çift sözlükte yer almaz.
+    /// </summary>
+    public static async Task<IReadOnlyDictionary<(int WorksheetId, int QuestionId), int>> ResolveNumbersAsync(
+        AppDbContext db, IEnumerable<(int WorksheetId, int QuestionId)> pairs, CancellationToken ct = default)
+    {
+        var wanted = pairs.ToHashSet();
+        var result = new Dictionary<(int, int), int>();
+        if (wanted.Count == 0)
+            return result;
+
+        var worksheetIds = wanted.Select(p => p.WorksheetId).Distinct().ToList();
+        var rows = await db.TestQuestions
+            .AsNoTracking()
+            .Where(tq => worksheetIds.Contains(tq.TestId) && db.Questions.Any(q => q.Id == tq.QuestionId))
+            .Select(tq => new { tq.Id, tq.TestId, tq.QuestionId, tq.Order })
+            .ToListAsync(ct);
+
+        foreach (var group in rows.GroupBy(r => r.TestId))
+        {
+            var number = 0;
+            foreach (var row in group.OrderBy(r => r.Order).ThenBy(r => r.Id))
+            {
+                number++;
+                var key = (group.Key, row.QuestionId);
+                if (wanted.Contains(key))
+                    result.TryAdd(key, number);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Sorunun worksheet içindeki numarası; soru bu worksheet'te değilse null. Tek sorgu: "benden önce gelen numaralanan
     /// kardeş sayısı + 1" (korelasyonlu alt sorgu; SQLite ve PostgreSQL'de aynı). Aynı soru iki kez varsa ilk konumu.
     /// </summary>

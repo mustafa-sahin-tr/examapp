@@ -57,6 +57,19 @@
     "WorksheetReminderDue": {
       "title": "Your worksheet is starting soon",
       "body": "{0} starts in {1} minutes."
+    },
+    "WorksheetCommentCreated": {
+      "title": "New comment: {1}",
+      "body": "{0} wrote a comment or question.",
+      "bodyQuestion": "{0} wrote about a question."
+    },
+    "WorksheetCommentReplied": {
+      "title": "Your teacher replied: {1}",
+      "body": "Your teacher replied to your comment or question."
+    },
+    "WorksheetCommentRepliedByStudent": {
+      "title": "New reply to your comment: {1}",
+      "body": "{0} replied to your comment."
     }
   }
 }

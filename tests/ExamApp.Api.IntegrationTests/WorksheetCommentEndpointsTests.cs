@@ -607,10 +607,19 @@ public class WorksheetCommentEndpointsTests(IntegrationApiFactory factory) : Int
         asAssigner.GetProperty("items").EnumerateArray().Single(i => i.GetProperty("id").GetInt32() == announcement)
             .GetProperty("replyCount").GetInt32().ShouldBe(1);
 
-        // Sahip: D'nin kökünün sorumlusu (atama yok → sahip) olduğu için onu da görür; kendi duyurusunun tüm cevaplarını görür.
+        // issue #326 (O2, PO kararı c): D atamasız ve sahip D'nin okulunda değil → sorumlu öğretmen yok. Sahip D'nin kökünü
+        // ve duyurusuna yazdığı cevabı GÖRMEZ (eskiden sahip fallback'iyle görürdü); yalnız kendi okulundakileri.
         var asOwner = await JsonOf(await owner.GetAsync(Url(seed.WorksheetId)));
-        ItemIds(asOwner).ShouldBe(new[] { rootA, rootD, announcement }.OrderBy(x => x).ToList());
+        ItemIds(asOwner).ShouldBe(new[] { rootA, announcement }.OrderBy(x => x).ToList());
         asOwner.GetProperty("items").EnumerateArray().Single(i => i.GetProperty("id").GetInt32() == announcement)
-            .GetProperty("replyCount").GetInt32().ShouldBe(2);
+            .GetProperty("replyCount").GetInt32().ShouldBe(1);
+        (await owner.PostAsJsonAsync(Url(seed.WorksheetId), new { parentCommentId = rootD, body = "x" })).StatusCode
+            .ShouldBe(HttpStatusCode.BadRequest);
+
+        // Thread yanıtı: öğrenciye yeni yorumunun kapsamı (UI bilgi satırı). Öğretmende alan null.
+        (await JsonOf(await other.GetAsync(Url(seed.WorksheetId)))).GetProperty("commentVisibility").GetString().ShouldBe("school");
+        (await JsonOf(await a.GetAsync(Url(seed.WorksheetId)))).GetProperty("commentVisibility").GetString().ShouldBe("teacher");
+        (asOwner.TryGetProperty("commentVisibility", out var ownerVisibility) ? ownerVisibility.ValueKind : System.Text.Json.JsonValueKind.Null)
+            .ShouldBe(System.Text.Json.JsonValueKind.Null);
     }
 }

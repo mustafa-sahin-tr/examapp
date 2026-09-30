@@ -22,6 +22,7 @@ import { localeDefinitionOf } from '../../../models/locale';
 import { translocoTestingModule } from '../../testing/transloco-testing';
 import rootTr from '../../../../../public/i18n/tr.json';
 import commentsTr from '../../../../../public/i18n/comments/tr.json';
+import commentsEn from '../../../../../public/i18n/comments/en.json';
 
 const BASE = '/api/exam/worksheet/12/comments';
 
@@ -722,6 +723,115 @@ describe('CommentThreadComponent (issue #105)', () => {
       );
 
       expect(q('teacher-summary')).toBeNull();
+    });
+  });
+
+  describe('commentVisibility note (issue #326)', () => {
+    const cases: { visibility: string; text: string; icon: string }[] = [
+      {
+        visibility: 'school',
+        text: 'Bu yorum yalnız okulundaki öğrenci ve öğretmenlere görünür; worksheet yazarına iletilmez.',
+        icon: 'visibility',
+      },
+      { visibility: 'self', text: 'Bu yorumu yalnız sen görebilirsin; bir öğretmene iletilmez.', icon: 'lock' },
+      { visibility: 'self-and-teacher', text: 'Bu yorumu yalnız sen ve öğretmenin görebilir.', icon: 'lock' },
+    ];
+
+    for (const c of cases) {
+      it(`student_${c.visibility}_ShowsNeutralNoteAboveComposer`, () => {
+        create();
+        flushThread(page({ commentVisibility: c.visibility as WorksheetCommentPage['commentVisibility'] }));
+
+        const note = q('visibility-note')!;
+        expect(note).not.toBeNull();
+        expect(note.getAttribute('role')).toBe('note');
+        expect(note.getAttribute('data-visibility')).toBe(c.visibility);
+        expect(note.querySelector('span')?.textContent?.trim()).toBe(c.text);
+        expect(note.querySelector('mat-icon')?.textContent?.trim()).toBe(c.icon);
+        expect(note.querySelector('mat-icon')?.getAttribute('aria-hidden')).toBe('true');
+        // Composer'ın hemen üstünde.
+        expect(note.nextElementSibling?.getAttribute('data-testid')).toBe('root-composer');
+      });
+    }
+
+    it('student_replyComposer_NoNote_OnlyRootComposerHasIt', () => {
+      // Cevabın görünürlüğü kökün kapsamını izler; not yalnız kök yazma alanına aittir.
+      create();
+      flushThread(
+        page({
+          commentVisibility: 'self',
+          items: [root({ id: 2, authorRole: 'Teacher', authorDisplayName: 'Ayşe Öğretmen' }), root({ id: 3 })],
+        })
+      );
+      qa('reply-button').forEach((b) => b.click());
+      fixture.detectChanges();
+
+      expect(qa('comment-textarea').length).toBe(3);
+      expect(qa('visibility-note').length).toBe(1);
+      expect(q('visibility-note')!.nextElementSibling?.getAttribute('data-testid')).toBe('root-composer');
+      expect(el().querySelector('.ct__list [data-testid="visibility-note"]')).toBeNull();
+      expect(el().querySelector('app-comment-item [data-testid="visibility-note"]')).toBeNull();
+    });
+
+    it('student_teacher_NoNote', () => {
+      create();
+      flushThread(page({ commentVisibility: 'teacher' }));
+      expect(q('root-composer')).not.toBeNull();
+      expect(q('visibility-note')).toBeNull();
+    });
+
+    it('student_null_NoNote', () => {
+      create();
+      flushThread(page({ commentVisibility: null }));
+      expect(q('root-composer')).not.toBeNull();
+      expect(q('visibility-note')).toBeNull();
+    });
+
+    it('student_missingField_NoNote', () => {
+      create();
+      flushThread(page());
+      expect(q('visibility-note')).toBeNull();
+    });
+
+    it('student_unknownValue_TreatedAsNull', () => {
+      create();
+      expectThread().flush({ ...page(), commentVisibility: 'everyone' });
+      fixture.detectChanges();
+      expect(q('root-composer')).not.toBeNull();
+      expect(q('visibility-note')).toBeNull();
+    });
+
+    it('student_cannotWrite_NoNote', () => {
+      create();
+      flushThread(page({ canWrite: false, lockReason: 'comments-disabled', commentVisibility: 'self' }));
+      expect(q('root-composer')).toBeNull();
+      expect(q('visibility-note')).toBeNull();
+    });
+
+    it('teacherView_NoNoteEvenIfFieldPresent', () => {
+      create({ viewerIsTeacher: true });
+      flushThread(page({ commentVisibility: 'school' }));
+      expect(q('root-composer')).not.toBeNull();
+      expect(q('visibility-note')).toBeNull();
+    });
+
+    it('loadError_ClearsNote', () => {
+      create();
+      flushThread(page({ commentVisibility: 'self' }));
+      expect(q('visibility-note')).not.toBeNull();
+
+      (fixture.componentInstance as unknown as { load(): void }).load();
+      expectThread().flush({ message: 'x' }, { status: 500, statusText: 'Server Error' });
+      fixture.detectChanges();
+      expect(q('visibility-note')).toBeNull();
+    });
+
+    it('enTranslations_MatchSpec', () => {
+      expect(commentsEn.thread.visibility.school).toBe(
+        'This comment is visible only to students and teachers at your school; it is not sent to the worksheet author.'
+      );
+      expect(commentsEn.thread.visibility.self).toBe('Only you can see this comment; it is not sent to a teacher.');
+      expect(commentsEn.thread.visibility['self-and-teacher']).toBe('Only you and your teacher can see this comment.');
     });
   });
 

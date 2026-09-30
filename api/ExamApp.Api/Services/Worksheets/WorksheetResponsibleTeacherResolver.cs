@@ -65,42 +65,45 @@ public class WorksheetResponsibleTeacherResolver : IWorksheetResponsibleTeacherR
         if (userIds.Count == 0)
             return result;
 
-        // (2)/(3): aktif atama yoksa worksheet'in kendi sahibi — kopyada kopyalayan, değilse orijinal yaratıcı.
-        // Kaynak worksheet'in sahibine hiçbir zaman gidilmez. Legacy (0/null) sahip → öğretmen yok.
-        ResponsibleTeacher? fallback = IsRealUser(worksheet.CreateUserId)
-            ? new ResponsibleTeacher(worksheet.CreateUserId!.Value,
-                worksheet.SourceWorksheetId.HasValue ? ResponsibleTeacherSource.CopyOwner : ResponsibleTeacherSource.Owner,
-                null)
-            : null;
-
         var students = await _context.Students
             .AsNoTracking()
             .Where(s => userIds.Contains(s.UserId))
             .Select(s => new { s.Id, s.UserId, s.GradeId, s.SchoolId })
             .ToListAsync(ct);
 
-        // Students.UserId unique değil (legacy); deterministik olsun diye en küçük Id.
+        // issue #326 (D3): #259 unique index kullanıcı başına tek canlı Students satırı garanti eder (OrderBy(Id) gereksiz).
+        // Index'siz ortamda çoklu canlı satır → hangi öğrenci olduğu belirsiz → atama eşleşmesi yok (güvenli taraf).
         var studentByUserId = students
             .GroupBy(s => s.UserId)
-            .ToDictionary(g => g.Key, g => g.OrderBy(s => s.Id).First());
+            .Where(g => g.Count() == 1)
+            .ToDictionary(g => g.Key, g => g.Single());
 
         var activeAssignments = studentByUserId.Count == 0
             ? new List<AssignmentRow>()
             : await ActiveAssignmentsQuery(worksheet.Id).ToListAsync(ct);
 
+        // Sahip fallback'i için okullar (öğrenciler + sahip) TEK kaynaktan, toplu. Sahipsiz (legacy) worksheet'te fallback
+        // hiç olamayacağından sorgu atılmaz.
+        // Yukarıda okunan tekil Students satırları yeniden sorgulanmaz (kural aynı: öğretmen satırı varsa o esas).
+        var schools = worksheet.CreateUserId is > 0
+            ? await UserSchoolResolver.ResolveManyAsync(_context, userIds.Select(id => (int?)id).Append(worksheet.CreateUserId), ct,
+                studentByUserId.ToDictionary(kv => kv.Key, kv => kv.Value.SchoolId))
+            : new Dictionary<int, int?>();
+        var ownerSchoolId = worksheet.CreateUserId is { } owner ? schools.GetValueOrDefault(owner) : null;
+
         foreach (var userId in userIds)
         {
-            var teacher = fallback;
+            RelevantAssignment? relevant = null;
             if (studentByUserId.TryGetValue(userId, out var student) && activeAssignments.Count > 0)
             {
                 // Hedef/okul koşulu: WorksheetStudentAccess.AssignmentVisibleTo'nun bellek içi eşdeğeri.
-                var relevant = PickRelevant(activeAssignments.Where(a => WorksheetStudentAccess.IsAssignmentVisibleTo(
+                var row = PickRelevant(activeAssignments.Where(a => WorksheetStudentAccess.IsAssignmentVisibleTo(
                     a.StudentId, a.GradeId, a.SchoolId, a.IsPlatformWide, student.Id, student.GradeId, student.SchoolId)));
-                if (relevant != null && IsRealUser(relevant.CreateUserId))
-                    teacher = new ResponsibleTeacher(relevant.CreateUserId!.Value, ResponsibleTeacherSource.Assignment, relevant.Id);
+                if (row != null)
+                    relevant = new RelevantAssignment(row.Id, row.CreateUserId, row.CommentsEnabledOverride);
             }
 
-            result[userId] = teacher;
+            result[userId] = ResponsibleTeacherRule.Decide(worksheet, relevant, ownerSchoolId, schools.GetValueOrDefault(userId));
         }
 
         return result;
@@ -138,6 +141,4 @@ public class WorksheetResponsibleTeacherResolver : IWorksheetResponsibleTeacherR
             .ThenByDescending(a => a.StartAt)
             .ThenByDescending(a => a.Id)
             .FirstOrDefault();
-
-    private static bool IsRealUser(int? userId) => userId.HasValue && userId.Value > 0;
 }

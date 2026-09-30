@@ -2817,6 +2817,10 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("QuestionId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ResponsibleTeacherSource")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<int?>("ResponsibleTeacherUserId")
                         .HasColumnType("integer");
 

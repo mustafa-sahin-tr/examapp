@@ -1,21 +1,10 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 
 namespace ExamApp.Api.Services.Worksheets;
-
-/// <summary>issue #105: ilgili öğretmenin hangi kuraldan geldiği (öncelik sırasıyla).</summary>
-public enum ResponsibleTeacherSource
-{
-    /// <summary>Öğrencinin ilgili aktif ataması var → atamayı yapan (<c>WorksheetAssignment.CreateUserId</c>). Her zaman öncelikli.</summary>
-    Assignment = 0,
-
-    /// <summary>Aktif atama yok, worksheet kopya (<c>SourceWorksheetId</c> dolu) → kopyalayan (kopyanın <c>CreateUserId</c>'si).</summary>
-    CopyOwner = 1,
-
-    /// <summary>Aktif atama yok, worksheet kopya değil → worksheet'in <c>CreateUserId</c>'si (orijinal yaratıcı).</summary>
-    Owner = 2
-}
 
 /// <summary>
 /// Bir öğrencinin bir worksheet'teki yorum thread'leri için ilgili öğretmen. <see cref="AssignmentId"/> yalnızca
@@ -24,17 +13,20 @@ public enum ResponsibleTeacherSource
 public sealed record ResponsibleTeacher(int TeacherUserId, ResponsibleTeacherSource Source, int? AssignmentId);
 
 /// <summary>
-/// issue #105: öğrencinin worksheet'teki "ilgili aktif ataması" + ilgili öğretmen tespiti — TEK kaynak. Yorum yazma yetkisi
-/// (öğretmen cevabı, etkin CommentsEnabled) ve dilim 2'deki bildirim hedefi aynı sonucu kullanır.
+/// issue #105: öğrencinin worksheet'teki "ilgili aktif ataması" + ilgili (sorumlu) öğretmen tespiti — TEK kaynak. Yorum yazma
+/// (sorumlu öğretmen sabitleme), öğretmen cevabı, okul kapsamı ve bildirim hedefi aynı sonucu kullanır.
 /// <para>
 /// İlgili aktif atama: öğrencinin <see cref="ExamApp.Api.Helpers.WorksheetAccess.ActiveAssignmentsFor"/> kümesindeki bu
 /// worksheet'e ait atamalardan öğrenci hedefli olan sınıf hedefliden önce, sonra en yeni <c>StartAt</c>, sonra en büyük Id.
 /// </para>
 /// <para>
-/// İlgili öğretmen önceliği: (1) ilgili aktif atamanın <c>CreateUserId</c>'si (legacy 0/null ise atlanır),
-/// (2) worksheet kopyaysa kopyanın <c>CreateUserId</c>'si, (3) worksheet'in <c>CreateUserId</c>'si. Kaynak worksheet'in
-/// sahibi hiçbir zaman seçilmez. Hiçbiri yoksa (legacy sahipsiz worksheet) null. Retire (soft-delete) edilmiş worksheet
-/// için de çözülür — thread'ler görünür kalır, cevap yetkisi sürer.
+/// İlgili öğretmen önceliği (issue #326 O2, PO kararı c) — kural <see cref="ResponsibleTeacherRule"/>'da:
+/// (1) ilgili aktif atamanın <c>CreateUserId</c>'si (legacy 0/null ise atlanır);
+/// (2) atama yoksa worksheet'in <c>CreateUserId</c>'si (kopyada kopyalayan, değilse orijinal yaratıcı) — YALNIZ bu öğretmenin
+/// okulu öğrencinin okuluyla aynıysa (<see cref="UserSchoolResolver.SameSchool"/>; okulsuz taraf için <c>null == null</c> aynı
+/// okul SAYILMAZ). Aksi halde sorumlu öğretmen YOKTUR (null): yorum yalnız okul içinde görünür, sahibe gösterilmez ve bildirim
+/// gitmez. Kaynak worksheet'in sahibi hiçbir zaman seçilmez; legacy sahipsiz worksheet → null. Retire (soft-delete) edilmiş
+/// worksheet için de çözülür. Okullar <see cref="UserSchoolResolver"/>'dan (D3, tek kaynak).
 /// </para>
 /// </summary>
 public interface IWorksheetResponsibleTeacherResolver
@@ -49,8 +41,9 @@ public interface IWorksheetResponsibleTeacherResolver
     Task<ResponsibleTeacher?> ResolveResponsibleTeacherAsync(ResponsibleTeacherWorksheet worksheet, int studentUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// <see cref="ResolveResponsibleTeacherAsync"/>'in toplu hali (thread listesi): worksheet ve aktif atamaları TEK sefer,
-    /// öğrenciler tek sorguda çekilir. Sözlükte her istenen user id için bir kayıt vardır (öğretmen yoksa değer null).
+    /// <see cref="ResolveResponsibleTeacherAsync(int,int,CancellationToken)"/>'in toplu hali (thread listesi): worksheet ve aktif
+    /// atamaları TEK sefer, öğrenciler ve okullar toplu çekilir. Sözlükte her istenen user id için bir kayıt vardır (öğretmen
+    /// yoksa değer null).
     /// </summary>
     Task<IReadOnlyDictionary<int, ResponsibleTeacher?>> ResolveResponsibleTeachersAsync(
         int worksheetId, IReadOnlyCollection<int> studentUserIds, CancellationToken ct = default);
@@ -72,3 +65,28 @@ public sealed record ResponsibleTeacherWorksheet(int Id, int? CreateUserId, int?
 
 /// <summary>Öğrencinin ilgili aktif atamasının karar için gereken alanları.</summary>
 public sealed record RelevantAssignment(int Id, int? CreateUserId, bool? CommentsEnabledOverride);
+
+/// <summary>
+/// issue #326 (O2): sorumlu öğretmen kuralının saf (sorgusuz) hali — resolver ve yorum servisinin erişim bağlamı (atamayı ve
+/// okulları zaten çözmüş olan) AYNI kararı buradan alır.
+/// </summary>
+public static class ResponsibleTeacherRule
+{
+    /// <param name="worksheet">Worksheet (kopyada sahip = kopyalayan).</param>
+    /// <param name="relevantAssignment">Öğrencinin ilgili aktif ataması; yoksa null.</param>
+    /// <param name="ownerSchoolId">Worksheet sahibinin <see cref="UserSchoolResolver"/> okulu.</param>
+    /// <param name="studentSchoolId">Öğrencinin <see cref="UserSchoolResolver"/> okulu.</param>
+    public static ResponsibleTeacher? Decide(ResponsibleTeacherWorksheet worksheet, RelevantAssignment? relevantAssignment,
+        int? ownerSchoolId, int? studentSchoolId)
+    {
+        if (relevantAssignment is { CreateUserId: > 0 } assignment)
+            return new ResponsibleTeacher(assignment.CreateUserId!.Value, ResponsibleTeacherSource.Assignment, assignment.Id);
+
+        if (worksheet.CreateUserId is not > 0 || !UserSchoolResolver.SameSchool(ownerSchoolId, studentSchoolId))
+            return null;
+
+        return new ResponsibleTeacher(worksheet.CreateUserId.Value,
+            worksheet.SourceWorksheetId.HasValue ? ResponsibleTeacherSource.CopyOwner : ResponsibleTeacherSource.Owner,
+            null);
+    }
+}

@@ -1,6 +1,25 @@
 {
   "Routes": [
     {
+      "DownstreamPathTemplate": "/hub/whiteboard",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "exam-dotnet-api",
+          "Port": 5079
+        }
+      ],
+      "UpstreamPathTemplate": "/hub/whiteboard",
+      "UpstreamHttpMethod": [
+        "GET",
+        "POST"
+      ],
+      "UseWebSockets": true,
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
       "DownstreamPathTemplate": "/hub/badges",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [

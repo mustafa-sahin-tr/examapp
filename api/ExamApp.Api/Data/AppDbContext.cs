@@ -200,6 +200,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<WorksheetComment>(e =>
         {
             e.Property(c => c.AuthorRole).HasConversion<string>().HasMaxLength(16);
+            e.Property(c => c.ResponsibleTeacherSource).HasConversion<string>().HasMaxLength(16); // issue #326
             e.HasOne(c => c.Worksheet).WithMany().HasForeignKey(c => c.WorksheetId).OnDelete(DeleteBehavior.ClientNoAction);
             e.HasOne(c => c.Question).WithMany().HasForeignKey(c => c.QuestionId).OnDelete(DeleteBehavior.ClientNoAction);
             e.HasOne(c => c.ParentComment).WithMany().HasForeignKey(c => c.ParentCommentId).OnDelete(DeleteBehavior.ClientNoAction);

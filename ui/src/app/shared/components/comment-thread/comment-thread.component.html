@@ -65,6 +65,13 @@
       </div>
     }
 
+    @if (visibilityNote(); as note) {
+      <!-- Issue #326: öğrencinin yorumunun kimlere görüneceği (varsayılan dışı kapsamlar) -->
+      <p class="ct__visibility" role="note" data-testid="visibility-note" [attr.data-visibility]="note.visibility">
+        <mat-icon aria-hidden="true">{{ note.icon }}</mat-icon>
+        <span>{{ t(note.key) }}</span>
+      </p>
+    }
     @if (canWrite()) {
       <app-comment-composer
         data-testid="root-composer"

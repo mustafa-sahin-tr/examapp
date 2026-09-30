@@ -162,6 +162,43 @@ public class WorksheetCommentPageDto
     /// AKTİF atamalardaki override sayıları). Öğrenci için her zaman null. Kişisel veri yok (yalnız sayılar).
     /// </summary>
     public WorksheetCommentStudentSummaryDto? StudentCommentsSummary { get; set; }
+
+    /// <summary>
+    /// issue #326 (O2): öğrencinin bu worksheet'e yazacağı yeni yorumun kime görüneceği — bkz.
+    /// <see cref="WorksheetCommentVisibilities"/>. UI yazma alanında bilgi satırını buna göre gösterir
+    /// (<c>school</c> → "Bu yorum yalnız okulunda görünür."). Öğretmen/admin için her zaman null.
+    /// </summary>
+    public string? CommentVisibility { get; set; }
+}
+
+/// <summary>
+/// issue #326 (O2): öğrenci yorumunun görünürlük kapsamı (<see cref="WorksheetCommentPageDto.CommentVisibility"/>). Karar
+/// öğrencinin sorumlu öğretmeni (ilgili aktif atamayı yapan; yoksa yalnız aynı okuldaysa sahip) ve okuluna göre verilir.
+/// Admin her durumda görür; burada sayılmaz.
+/// </summary>
+public static class WorksheetCommentVisibilities
+{
+    /// <summary>Okullu öğrenci + sorumlu öğretmen var: okulundaki öğretmen/öğrenciler ve sorumlu öğretmen görür.</summary>
+    public const string Teacher = "teacher";
+
+    /// <summary>Okullu öğrenci, sorumlu öğretmen YOK: yalnız okulundakiler görür (sahip okul dışıysa görmez, bildirim gitmez).</summary>
+    public const string School = "school";
+
+    /// <summary>Okulsuz öğrenci + sorumlu öğretmen var (ör. bağımsız öğretmenin ataması): yalnız kendisi ve sorumlu öğretmen görür.</summary>
+    public const string SelfAndTeacher = "self-and-teacher";
+
+    /// <summary>Okulsuz öğrenci, sorumlu öğretmen YOK: yalnız kendisi görür.</summary>
+    public const string Self = "self";
+
+    /// <summary>Tek karar noktası.</summary>
+    public static string For(int? studentSchoolId, bool hasResponsibleTeacher) =>
+        (studentSchoolId.HasValue, hasResponsibleTeacher) switch
+        {
+            (true, true) => Teacher,
+            (true, false) => School,
+            (false, true) => SelfAndTeacher,
+            (false, false) => Self
+        };
 }
 
 /// <summary>

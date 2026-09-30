@@ -65,6 +65,15 @@ public class WorksheetComment : BaseEntity
     /// </summary>
     public int? ResponsibleTeacherUserId { get; set; }
 
+    /// <summary>
+    /// issue #326: <see cref="ResponsibleTeacherUserId"/>'nin hangi kuraldan sabitlendiği; sabit yoksa null. Kaynak
+    /// <see cref="Data.ResponsibleTeacherSource.Owner"/>/<see cref="Data.ResponsibleTeacherSource.CopyOwner"/> ise sabit yalnız
+    /// öğretmenin GÜNCEL okulu yorumun <see cref="AuthorSchoolId"/>'siyle aynıyken geçerlidir (okuma, cevap, moderasyon,
+    /// bildirim) — sahip okuldan ayrılınca/bağımsıza geçince thread'e erişimi kalmaz. <see cref="Data.ResponsibleTeacherSource.Assignment"/>
+    /// sabitleri #105 kuralıyla okul koşulundan bağımsızdır.
+    /// </summary>
+    public ResponsibleTeacherSource? ResponsibleTeacherSource { get; set; }
+
     /// <summary>Reply ise kök yorumun Id'si; kök yorumda null.</summary>
     public int? ParentCommentId { get; set; }
 

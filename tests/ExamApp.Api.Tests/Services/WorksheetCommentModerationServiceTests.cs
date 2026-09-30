@@ -126,20 +126,21 @@ public partial class WorksheetCommentServiceTests
     }
 
     [Fact]
-    public async Task Owner_outside_the_school_sees_only_threads_they_are_responsible_for()
+    public async Task Owner_outside_the_school_no_longer_sees_even_the_threads_pinned_to_them_as_owner()
     {
         var w = await SeedSchoolsAsync();
         var rootA = Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "A (atayan sorumlu)"));
         var rootB = Created(await PostAsync(w.WorksheetId, Student(StudentBUser), "B (sahip sorumlu)"));
-        var replyA = Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "A B'ye cevap", parentId: rootB));
+        Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "A B'ye cevap", parentId: rootB));
         await SetTeacherSchoolAsync(Owner, w.OtherSchoolId);
 
+        // issue #326 (security O1): rootB'nin sabiti SAHİP kaynaklı → sahip okuldan ayrılınca geçersiz (eskiden #305'te
+        // sahip okul dışına taşınsa da sorumlusu olduğu thread'i görmeye devam ederdi). Atama kaynaklı sabitler etkilenmez
+        // (bkz. Assignment_pin_is_not_affected_when_the_assigner_changes_school).
         var page = (await GetAsync(w.WorksheetId, Teacher(Owner))).Page!;
-        page.Items.Select(i => i.Id).ShouldBe(new[] { rootB });
-        page.Items.Single().Replies.Select(r => r.Id).ShouldBe(new[] { replyA });
-        page.Items.Single().ReplyCount.ShouldBe(1);
+        page.Items.ShouldBeEmpty();
         ShouldFail(await GetRepliesAsync(w.WorksheetId, rootA, Teacher(Owner)), WorksheetCommentErrorCodes.RootCommentNotFound, notFound: true);
-        (await GetRepliesAsync(w.WorksheetId, rootB, Teacher(Owner))).Page!.ReplyCount.ShouldBe(1);
+        ShouldFail(await GetRepliesAsync(w.WorksheetId, rootB, Teacher(Owner)), WorksheetCommentErrorCodes.RootCommentNotFound, notFound: true);
     }
 
     [Fact]
@@ -187,8 +188,11 @@ public partial class WorksheetCommentServiceTests
         asC.ReplyCount.ShouldBe(2);
         asC.Replies.Select(r => r.Id).ShouldBe(new[] { fromC, fromOwner });
 
-        // Sahip kök yazarı: tüm öğrenci reply'larını görür (duyuru thread'inin sorumlusu). Admin hepsini.
-        (await GetAsync(w.WorksheetId, Teacher(Owner))).Page!.Items.Single().ReplyCount.ShouldBe(3);
+        // Sahip kök yazarı: kendi okulundaki reply'ları görür; issue #326 (O2): atamasız okul dışı öğrencinin (C) reply'ı
+        // sahibe sabitlenmez → sahip görmez (duyuru köküne ayrı istisna yok). Admin hepsini.
+        var asOwner = (await GetAsync(w.WorksheetId, Teacher(Owner))).Page!.Items.Single();
+        asOwner.ReplyCount.ShouldBe(2);
+        asOwner.Replies.Select(r => r.Id).ShouldBe(new[] { fromA, fromOwner });
         (await GetAsync(w.WorksheetId, AdminReader)).Page!.Items.Single().ReplyCount.ShouldBe(3);
     }
 

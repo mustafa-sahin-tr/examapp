@@ -79,11 +79,17 @@ public partial class WorksheetCommentServiceTests
         (await OutboxAsync()).ShouldBeEmpty();
     }
 
-    /// <summary>Atama bitti → sorumlu sahip; sahibin Teacher profili silinmiş; öğrenci yeni kök yazar.</summary>
+    /// <summary>
+    /// Öğrencinin aktif atamasını sahip yapmış → sorumlu sahip (atamadan); sahibin Teacher profili silinmiş; öğrenci yeni kök
+    /// yazar. issue #326: profilsiz sahip okulsuz sayılır → sahip FALLBACK'i artık sorumlu vermez; admin sahibin bildirim yolu
+    /// yalnız atamadan gelen sabitte anlamlı.
+    /// </summary>
     private async Task WriteRootPinnedToProfilelessOwnerAsync(World w, IKeycloakService? keycloak)
     {
         Created(await PostAsync(w.WorksheetId, Teacher(Owner), "duyuru")); // sahibin sub'ı exam DB'ye yazılır
-        await EndAssignmentAsync(w.AssignmentId);
+        await using (var ctx = _db.NewContext())
+            await ctx.WorksheetAssignments.Where(a => a.Id == w.AssignmentId)
+                .ExecuteUpdateAsync(s => s.SetProperty(a => a.CreateUserId, (int?)Owner));
         await using (var ctx = _db.NewContext())
             await ctx.Teachers.Where(t => t.UserId == Owner).ExecuteUpdateAsync(s => s.SetProperty(t => t.IsDeleted, true));
         await ClearOutboxAsync();

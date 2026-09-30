@@ -1,4 +1,5 @@
 import {
+  parseCommentVisibility,
   parseStudentCommentsSummary,
   parseWorksheetCommentNotificationData,
   parseWorksheetCommentRef,
@@ -59,6 +60,20 @@ describe('worksheet-comment.model (issue #309)', () => {
     ];
     for (const value of bad) {
       expect(parseStudentCommentsSummary(value)).withContext(JSON.stringify(value) ?? 'undefined').toBeNull();
+    }
+  });
+});
+
+describe('worksheet-comment.model (issue #326)', () => {
+  it('parseCommentVisibility_AcceptsKnownValues', () => {
+    for (const value of ['teacher', 'school', 'self-and-teacher', 'self']) {
+      expect(parseCommentVisibility(value)).toBe(value as ReturnType<typeof parseCommentVisibility>);
+    }
+  });
+
+  it('parseCommentVisibility_UnknownOrMalformed_ReturnsNull', () => {
+    for (const bad of [null, undefined, '', 'Teacher', 'SELF', 'everyone', ' self', 1, true, {}, ['self']]) {
+      expect(parseCommentVisibility(bad)).withContext(JSON.stringify(bad) ?? 'undefined').toBeNull();
     }
   });
 });

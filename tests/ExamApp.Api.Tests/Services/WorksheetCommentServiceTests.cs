@@ -256,7 +256,8 @@ public partial class WorksheetCommentServiceTests : IDisposable
             ctx.WorksheetComments.Add(new WorksheetComment
             {
                 WorksheetId = w.WorksheetId, AuthorUserId = StudentAUser, AuthorKeycloakId = "kc-101",
-                AuthorRole = WorksheetCommentAuthorRole.Student, Body = "soru", ResponsibleTeacherUserId = Assigner
+                AuthorRole = WorksheetCommentAuthorRole.Student, Body = "soru", ResponsibleTeacherUserId = Assigner,
+                ResponsibleTeacherSource = ResponsibleTeacherSource.Assignment // #326: sabit kaynağıyla yazılır
             });
             var ws = await ctx.Worksheets.SingleAsync(x => x.Id == w.WorksheetId);
             ws.CommentsEnabled = false;
@@ -1298,7 +1299,7 @@ public partial class WorksheetCommentServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Missing_responsible_teacher_skips_the_notification_and_logs_a_warning_with_ids()
+    public async Task Missing_responsible_teacher_skips_the_notification_and_logs_the_ids()
     {
         var w = await SeedAsync();
         await using (var ctx = _db.NewContext())
@@ -1317,7 +1318,9 @@ public partial class WorksheetCommentServiceTests : IDisposable
         }
 
         (await OutboxAsync()).ShouldBeEmpty();
-        var warning = logger.Messages.ShouldHaveSingleItem();
+        // issue #326: sorumlu öğretmen yokluğu beklenen bir durum → Information (uyarı değil).
+        logger.Messages.ShouldBeEmpty();
+        var warning = logger.AllMessages.Single(m => m.Contains("Sorumlu öğretmen yok"));
         warning.ShouldContain($"CommentId={commentId}");
         warning.ShouldContain($"WorksheetId={w.WorksheetId}");
     }

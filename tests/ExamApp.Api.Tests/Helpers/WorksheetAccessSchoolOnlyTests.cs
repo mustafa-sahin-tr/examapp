@@ -281,6 +281,132 @@ public class WorksheetAccessSchoolOnlyTests
         counter.ReaderCount.ShouldBe(1); // iki Teacher satırı tek sorguda (N+1 yok)
     }
 
+    // ---- issue #326 (D3): ResolveSchoolContextAsync okulları UserSchoolResolver'dan çözer ----
+
+    [Fact]
+    public async Task ResolveSchoolContextAsync_UsesTheLiveTeacherRowNotASoftDeletedOne()
+    {
+        using var db = TestDb.Create();
+        int schoolA, schoolB;
+        await using (var seed = db.NewContext())
+        {
+            (schoolA, schoolB) = await SeedSchoolsAsync(seed);
+            seed.Teachers.AddRange(
+                new Teacher { UserId = Owner, SchoolId = schoolA },
+                new Teacher { UserId = Stranger, SchoolId = schoolA, IsDeleted = true }, // eski okul
+                new Teacher { UserId = Stranger, SchoolId = schoolB });                  // canlı satır
+            await seed.SaveChangesAsync();
+        }
+
+        await using var ctx = db.NewContext();
+        var ws = new Worksheet { CreateUserId = Owner, TeacherSharing = WorksheetTeacherSharing.SchoolOnly };
+
+        var (ownerSchoolId, requesterSchoolId) = await ctx.ResolveSchoolContextAsync(ws, Stranger, isAdmin: false);
+
+        ownerSchoolId.ShouldBe(schoolA);
+        requesterSchoolId.ShouldBe(schoolB);
+        WorksheetAccess.CanView(Owner, Stranger, false, WorksheetTeacherSharing.SchoolOnly, WorksheetStudentVisibility.Normal,
+            requesterSchoolId, ownerSchoolId).ShouldBeFalse("silinmiş satırın okulu erişim vermez");
+    }
+
+    [Fact]
+    public async Task ResolveSchoolContextAsync_IndependentTeacherStaysSchoollessEvenWithAStudentRow()
+    {
+        using var db = TestDb.Create();
+        int schoolA;
+        await using (var seed = db.NewContext())
+        {
+            (schoolA, _) = await SeedSchoolsAsync(seed);
+            var grade = new Grade { Name = "5" };
+            seed.Grades.Add(grade);
+            await seed.SaveChangesAsync();
+            seed.Teachers.AddRange(
+                new Teacher { UserId = Owner, SchoolId = schoolA },
+                new Teacher { UserId = Stranger, SchoolId = null, IsIndependentTutor = true });
+            // #234: kendine öğrenci satırıyla okul yazan bağımsız öğretmen o okulun SchoolOnly worksheet'ini göremez.
+            seed.Students.Add(new Student { UserId = Stranger, StudentNumber = "x", GradeId = grade.Id, SchoolId = schoolA });
+            await seed.SaveChangesAsync();
+        }
+
+        await using var ctx = db.NewContext();
+        var ws = new Worksheet { CreateUserId = Owner, TeacherSharing = WorksheetTeacherSharing.SchoolOnly };
+
+        var (_, requesterSchoolId) = await ctx.ResolveSchoolContextAsync(ws, Stranger, isAdmin: false);
+
+        requesterSchoolId.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData(true)]  // istekçinin yalnız öğrenci satırı var
+    [InlineData(false)] // sahibin yalnız öğrenci satırı var
+    public async Task ResolveSchoolContextAsync_StudentRowOnlyPartyGetsNoSchoolOnlyMatch(bool requesterIsStudentOnly)
+    {
+        using var db = TestDb.Create();
+        int schoolA;
+        await using (var seed = db.NewContext())
+        {
+            (schoolA, _) = await SeedSchoolsAsync(seed);
+            var grade = new Grade { Name = "5" };
+            seed.Grades.Add(grade);
+            await seed.SaveChangesAsync();
+            var teacherUser = requesterIsStudentOnly ? Owner : Stranger;
+            var studentOnlyUser = requesterIsStudentOnly ? Stranger : Owner;
+            seed.Teachers.Add(new Teacher { UserId = teacherUser, SchoolId = schoolA });
+            seed.Students.Add(new Student { UserId = studentOnlyUser, StudentNumber = "x", GradeId = grade.Id, SchoolId = schoolA });
+            await seed.SaveChangesAsync();
+        }
+
+        await using var ctx = db.NewContext();
+        var ws = new Worksheet { CreateUserId = Owner, TeacherSharing = WorksheetTeacherSharing.SchoolOnly };
+
+        var (ownerSchoolId, requesterSchoolId) = await ctx.ResolveSchoolContextAsync(ws, Stranger, isAdmin: false);
+
+        (requesterIsStudentOnly ? requesterSchoolId : ownerSchoolId).ShouldBeNull("öğrenci satırı SchoolOnly için okul vermez");
+        WorksheetAccess.CanView(Owner, Stranger, false, WorksheetTeacherSharing.SchoolOnly, WorksheetStudentVisibility.Normal,
+            requesterSchoolId, ownerSchoolId).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task ResolveSchoolContextAsync_TwoLiveTeacherRowsAreAmbiguousAndSchoolless()
+    {
+        using var db = TestDb.Create();
+        int schoolA;
+        await using (var seed = db.NewContext())
+        {
+            int schoolB;
+            (schoolA, schoolB) = await SeedSchoolsAsync(seed);
+            await seed.Database.ExecuteSqlRawAsync("DROP INDEX \"IX_Teachers_UserId\"");
+            seed.Teachers.AddRange(
+                new Teacher { UserId = Owner, SchoolId = schoolA },
+                new Teacher { UserId = Stranger, SchoolId = schoolA },
+                new Teacher { UserId = Stranger, SchoolId = schoolB });
+            await seed.SaveChangesAsync();
+        }
+
+        await using var ctx = db.NewContext();
+        var ws = new Worksheet { CreateUserId = Owner, TeacherSharing = WorksheetTeacherSharing.SchoolOnly };
+
+        (await ctx.ResolveSchoolContextAsync(ws, Stranger, isAdmin: false)).ShouldBe(((int?)schoolA, (int?)null));
+    }
+
+    [Fact]
+    public async Task ResolveSchoolContextAsync_RequesterWithoutAnyRecordIsSchoolless()
+    {
+        using var db = TestDb.Create();
+        int schoolA;
+        await using (var seed = db.NewContext())
+        {
+            (schoolA, _) = await SeedSchoolsAsync(seed);
+            seed.Teachers.Add(new Teacher { UserId = Owner, SchoolId = schoolA });
+            await seed.SaveChangesAsync();
+        }
+
+        await using var ctx = db.NewContext();
+        var ws = new Worksheet { CreateUserId = Owner, TeacherSharing = WorksheetTeacherSharing.SchoolOnly };
+
+        (await ctx.ResolveSchoolContextAsync(ws, Stranger, isAdmin: false)).ShouldBe(((int?)schoolA, (int?)null));
+    }
+
     /// <summary>Gönderilen SELECT komutlarını sayar (DbCommandInterceptor).</summary>
     private sealed class CommandCounter : Microsoft.EntityFrameworkCore.Diagnostics.DbCommandInterceptor
     {

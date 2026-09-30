@@ -85,6 +85,29 @@
       "saveFailed": "Hatırlatma kaydedilemedi, lütfen tekrar deneyin",
       "worksheetNotFound": "Worksheet bulunamadı",
       "notAssigned": "Bu worksheet size atanmamış"
+    },
+
+    "comments": {
+      "created": "Yorumunuz gönderildi.",
+      "readRateLimited": "Yorumlar kısa sürede çok fazla istendi. Lütfen biraz bekleyip tekrar deneyin.",
+      "rateLimited": "Kısa sürede çok fazla yorum yazdınız. Lütfen biraz bekleyip tekrar deneyin.",
+      "anonymousStudent": "Öğrenci",
+      "anonymousTeacher": "Öğretmen",
+      "errors": {
+        "bodyInvalidCharacters": "Yorum geçersiz karakterler içeriyor.",
+        "rootCommentNotFound": "Yorum bulunamadı.",
+        "worksheetNotFound": "Worksheet bulunamadı.",
+        "accessDenied": "Bu testin yorumlarına erişim izniniz yok.",
+        "questionNotInWorksheet": "Soru bu teste ait değil.",
+        "invalidParent": "Yalnızca aynı başlıktaki bir ana yoruma cevap yazılabilir.",
+        "bodyRequired": "Yorum boş olamaz.",
+        "bodyTooLong": "Yorum en fazla 2000 karakter olabilir.",
+        "invalidCursor": "Geçersiz sayfa imleci.",
+        "commentsDisabled": "Bu test için yorum ve soru yazma kapalı.",
+        "worksheetNotStarted": "Bu soruya yorum yazmak için önce testi başlatmalısınız.",
+        "questionNotAnswered": "Bu soruya yorum yazmak için önce soruyu cevaplamalısınız.",
+        "notResponsibleTeacher": "Bu başlığa cevap yazma yetkiniz yok."
+      }
     }
   }
 }

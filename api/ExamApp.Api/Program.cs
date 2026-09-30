@@ -220,6 +220,9 @@ builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetReminderSer
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetCalendarService, ExamApp.Api.Services.Worksheets.WorksheetCalendarService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetReminderDispatcher, ExamApp.Api.Services.Worksheets.WorksheetReminderDispatcher>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetAccessRequestService, ExamApp.Api.Services.Worksheets.WorksheetAccessRequestService>();
+// issue #105: yorum-soru thread'leri + ilgili öğretmen tespiti (dilim 2 bildirim hedefi de bunu kullanır).
+builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetResponsibleTeacherResolver, ExamApp.Api.Services.Worksheets.WorksheetResponsibleTeacherResolver>();
+builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetCommentService, ExamApp.Api.Services.Worksheets.WorksheetCommentService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Bookings.IBookingService, ExamApp.Api.Services.Bookings.BookingService>();
 // Tekrarlayan haftalık müsaitlik kuralları (issue #178) — BookingService top-up için buna bağımlı.
 builder.Services.AddScoped<ExamApp.Api.Services.Bookings.IRecurringAvailabilityService, ExamApp.Api.Services.Bookings.RecurringAvailabilityService>();
@@ -324,6 +327,9 @@ builder.Services.AddStudentSelfResetRateLimiting();
 builder.Services.AddStudyLinkWriteRateLimiting();
 // issue #265: öğretmen aktivite uçları — öğretmen (sub) başına dağıtık sabit pencere (#262 sayaç altyapısı).
 builder.Services.AddTeacherActivityRateLimiting();
+// issue #105: yorum yazma — kullanıcı (sub) başına dağıtık sabit pencere (varsayılan dakikada 10).
+builder.Services.AddWorksheetCommentWriteRateLimiting();
+builder.Services.AddWorksheetCommentReadRateLimiting(); // okuma: dakikada 60 (review O4)
 
 // PostgreSQL & EF Core (Aspire client integration — reads ConnectionStrings:DefaultConnection,
 // same key as before, so standalone `dotnet run` against appsettings.json is unaffected).

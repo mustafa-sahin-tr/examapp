@@ -61,6 +61,11 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
         // issue #155: hesap durumu rate limit'i — aynı gerekçe.
         Environment.SetEnvironmentVariable("RateLimiting__AdminAccountStatus__PermitLimit", "5");
         Environment.SetEnvironmentVariable("RateLimiting__AdminAccountStatus__WindowSeconds", "3600");
+        // issue #105: yorum yazma rate limit'i — 429 testi zamanlamadan bağımsız olsun; testler benzersiz sub kullanır.
+        Environment.SetEnvironmentVariable("RateLimiting__WorksheetCommentWrite__PermitLimit", "5");
+        Environment.SetEnvironmentVariable("RateLimiting__WorksheetCommentWrite__WindowSeconds", "3600");
+        Environment.SetEnvironmentVariable("RateLimiting__WorksheetCommentRead__PermitLimit", "60");
+        Environment.SetEnvironmentVariable("RateLimiting__WorksheetCommentRead__WindowSeconds", "3600");
         // issue #265: öğretmen aktivite toplaması önbelleği süreç içi singleton — Respawn DB'yi sıfırlasa da önceki testin
         // sonucu (aynı UserId + aynı gün) 60 sn dönebilirdi. Testte kapalı (eşzamanlı istek paylaşımı yine aktif).
         Environment.SetEnvironmentVariable("Dashboard__TeacherActivityCacheSeconds", "0");

@@ -2699,6 +2699,9 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<bool?>("CommentsEnabledOverride")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -2752,6 +2755,79 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("StudentId", "WorksheetId", "StartAt");
 
                     b.ToTable("WorksheetAssignments");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.WorksheetComment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AuthorKeycloakId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("AuthorRole")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("AuthorUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("ParentCommentId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("QuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ResponsibleTeacherUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WorksheetId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("ParentCommentId", "CreateTime", "Id");
+
+                    b.HasIndex("WorksheetId", "QuestionId", "CreateTime", "Id");
+
+                    b.HasIndex(new[] { "WorksheetId", "QuestionId", "CreateTime", "Id" }, "IX_WorksheetComments_Roots")
+                        .HasFilter("\"ParentCommentId\" IS NULL");
+
+                    b.ToTable("WorksheetComments");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.WorksheetQuestion", b =>
@@ -3170,6 +3246,11 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<int?>("BookTestId")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("CommentsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
 
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("timestamp with time zone");
@@ -3994,6 +4075,31 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("School");
 
                     b.Navigation("Student");
+
+                    b.Navigation("Worksheet");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.WorksheetComment", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.WorksheetComment", "ParentComment")
+                        .WithMany()
+                        .HasForeignKey("ParentCommentId")
+                        .OnDelete(DeleteBehavior.ClientNoAction);
+
+                    b.HasOne("ExamApp.Api.Data.Question", "Question")
+                        .WithMany()
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.ClientNoAction);
+
+                    b.HasOne("Worksheet", "Worksheet")
+                        .WithMany()
+                        .HasForeignKey("WorksheetId")
+                        .OnDelete(DeleteBehavior.ClientNoAction)
+                        .IsRequired();
+
+                    b.Navigation("ParentComment");
+
+                    b.Navigation("Question");
 
                     b.Navigation("Worksheet");
                 });

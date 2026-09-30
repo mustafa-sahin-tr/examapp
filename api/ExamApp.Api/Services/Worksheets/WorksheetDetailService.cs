@@ -180,6 +180,7 @@ public class WorksheetDetailService : IWorksheetDetailService
                 SubTopicId = worksheet.SubTopicId,
                 MaxDurationSeconds = worksheet.MaxDurationSeconds,
                 IsPracticeTest = worksheet.IsPracticeTest,
+                CommentsEnabled = worksheet.CommentsEnabled, // issue #105
                 Subtitle = worksheet.Subtitle,
                 ImageUrl = worksheet.ImageUrl,
                 BadgeText = worksheet.BadgeText,

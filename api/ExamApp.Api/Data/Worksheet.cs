@@ -50,4 +50,12 @@ public class Worksheet : BaseEntity
     // issue #16: kopya kaynağına atıf; sync yok. Kaynak silinse bile bu değer kalır (FK/navigation yok).
     public int? SourceWorksheetId { get; set; }
 
+    /// <summary>
+    /// issue #105: öğrenciler bu worksheet/sorularına yeni yorum-soru yazabilir mi. Varsayılan AÇIK; mevcut satırlar
+    /// migration ile true doldurulur (DB default + sentinel: AppDbContext). Atama bazında
+    /// <see cref="ExamApp.Api.Data.WorksheetAssignment.CommentsEnabledOverride"/> ile ezilebilir. Kapalıyken mevcut
+    /// yorumlar görünür kalır; öğretmen cevabı engellenmez.
+    /// </summary>
+    public bool CommentsEnabled { get; set; } = true;
+
 }

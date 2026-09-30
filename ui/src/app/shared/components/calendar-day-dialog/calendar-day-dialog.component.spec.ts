@@ -129,8 +129,48 @@ function clickButtonByText(fixture: ComponentFixture<unknown>, text: string): vo
   btn.click();
 }
 
+function booking(start: Date, end: Date): CalendarEvent {
+  return {
+    kind: 'booking',
+    date: start.toISOString(),
+    endDate: end.toISOString(),
+    worksheetId: 0,
+    worksheetTitle: 'Ayşe ile ders',
+    subject: null,
+    imageUrl: null,
+    status: null,
+    remindBeforeMinutes: null,
+    isCompleted: null,
+    teacherName: null,
+  } as CalendarEvent;
+}
+
 describe('CalendarDayDialogComponent', () => {
   const date = new Date(2026, 8, 15);
+
+  describe('gün aşan randevu (issue #300)', () => {
+    function meta(fixture: ComponentFixture<unknown>): string {
+      return (fixture.nativeElement.querySelector('.day-dialog__row-meta')?.textContent ?? '').trim();
+    }
+
+    it('Booking_EndsNextLocalDay_RangeHasPlusOneDay', async () => {
+      const { fixture } = await setup({
+        date,
+        events: [booking(new Date(2026, 8, 15, 23, 30), new Date(2026, 8, 16, 0, 30))],
+      });
+
+      expect(meta(fixture)).toContain('(+1 gün)');
+    });
+
+    it('Booking_SameLocalDay_RangeHasNoPlusOneDay', async () => {
+      const { fixture } = await setup({
+        date,
+        events: [booking(new Date(2026, 8, 15, 14, 0), new Date(2026, 8, 15, 15, 0))],
+      });
+
+      expect(meta(fixture)).not.toContain('+1');
+    });
+  });
 
   it('HatirlatIciyiDuzenle_Clicked_NavigatesWithReminderEditQueryParamAndClosesDialog', async () => {
     const { fixture, router, dialogRef } = await setup({ date, events: [reminder({ worksheetId: 99 })] });

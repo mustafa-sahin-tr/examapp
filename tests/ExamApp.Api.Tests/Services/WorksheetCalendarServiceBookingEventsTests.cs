@@ -109,6 +109,59 @@ public class WorksheetCalendarServiceBookingEventsTests : IDisposable
     }
 
     [Fact]
+    public async Task GetMyCalendarAsync_CrossingMidnightBooking_EndDateIsNextDay()
+    {
+        // issue #300: 23:30–00:30 randevunun bitişi ertesi gün 00:30 (EndDate > Date).
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
+        var slotId = await SeedSlotAsync(TeacherId, date, new TimeOnly(23, 30), new TimeOnly(0, 30));
+        await SeedBookingAsync(TeacherId, StudentId, slotId, BookingStatus.Approved);
+
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(x => Task.FromResult<IReadOnlyList<UserLookupResultDto>>(new List<UserLookupResultDto>()));
+
+        await using var ctx = _db.NewContext();
+        var fromUtc = DateTime.UtcNow.Date;
+        var result = await NewService(ctx).GetMyCalendarAsync(StudentId, "kc-student", null, null, fromUtc, fromUtc.AddDays(30), CancellationToken.None);
+
+        var evt = result.Events.Single(e => e.Kind == "booking");
+        var start = DateTime.SpecifyKind(date.ToDateTime(new TimeOnly(23, 30)), DateTimeKind.Utc);
+        evt.Date.ShouldBe(start);
+        evt.EndDate.ShouldBe(start.AddHours(1));
+    }
+
+    [Fact]
+    public async Task GetMyCalendarAsync_BookingStartingBeforeRangeAndSpillingIn_IsIncluded()
+    {
+        // code review D6: aralık [fromUtc, toUtc) ile KESİŞEN randevu gösterilir. fromUtc = D 00:00.
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var d = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10));
+        var spilling = await SeedSlotAsync(TeacherId, d.AddDays(-1), new TimeOnly(23, 30), new TimeOnly(0, 30)); // D-1 23:30 → D 00:30
+        var endsAtFrom = await SeedSlotAsync(TeacherId, d.AddDays(-1), new TimeOnly(23, 0), new TimeOnly(0, 0)); // D 00:00'da biter
+        var inside = await SeedSlotAsync(TeacherId, d.AddDays(1), new TimeOnly(10, 0), new TimeOnly(11, 0));
+        var startsAtTo = await SeedSlotAsync(TeacherId, d.AddDays(3), new TimeOnly(0, 0), new TimeOnly(1, 0)); // toUtc anında başlar
+        var spillingId = await SeedBookingAsync(TeacherId, StudentId, spilling);
+        await SeedBookingAsync(TeacherId, StudentId, endsAtFrom);
+        var insideId = await SeedBookingAsync(TeacherId, StudentId, inside);
+        await SeedBookingAsync(TeacherId, StudentId, startsAtTo);
+
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(x => Task.FromResult<IReadOnlyList<UserLookupResultDto>>(new List<UserLookupResultDto>()));
+
+        await using var ctx = _db.NewContext();
+        var fromUtc = DateTime.SpecifyKind(d.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+        var result = await NewService(ctx).GetMyCalendarAsync(StudentId, "kc-student", null, null, fromUtc, fromUtc.AddDays(3), CancellationToken.None);
+
+        var bookings = result.Events.Where(e => e.Kind == "booking").ToList();
+        bookings.Select(e => e.BookingId!.Value).ShouldBe([spillingId, insideId], ignoreOrder: true);
+        var spill = bookings.Single(e => e.BookingId == spillingId);
+        spill.Date.ShouldBe(fromUtc.AddMinutes(-30));
+        spill.EndDate.ShouldBe(fromUtc.AddMinutes(30));
+    }
+
+    [Fact]
     public async Task GetMyCalendarAsync_PendingBooking_ExcludesFromCalendar()
     {
         await SeedTeacherAsync(TeacherId, TeacherUserId);

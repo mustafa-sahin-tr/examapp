@@ -1,5 +1,5 @@
 import { AvailabilitySlot } from '../../../models/booking.model';
-import { formatSlotDay, formatSlotRange, isPastSlot } from '../../utils/booking-format.util';
+import { endsOnNextLocalDay, formatSlotDay, formatSlotRange, isPastSlot } from '../../utils/booking-format.util';
 
 /** Slot durumunun grid'deki görsel sınıfı (liste chip'leriyle aynı adlar). */
 export type SlotStatusClass = 'is-free' | 'is-pending' | 'is-approved';
@@ -16,6 +16,11 @@ export interface AvailabilityGridEventProps {
   ruleId: number | null;
   /** "14:00 – 15:00" — listedeki `date` pipe'ıyla aynı yerel saat. */
   timeRange: string;
+  /**
+   * Bitiş ertesi YEREL günde (issue #300, ör. 23:30 – 00:30): şablon aralığa "(+1 gün)" ekler. FullCalendar böyle
+   * bir olayı iki gün sütununa böler; ikinci parça (`isStart` false) devam parçası olarak çizilir.
+   */
+  endsNextDay: boolean;
   /** "20 Eylül 2026 Pazar" */
   dayLabel: string;
 }
@@ -45,6 +50,9 @@ export function slotStatus(slot: AvailabilitySlot): { statusClass: SlotStatusCla
 /**
  * `AvailabilitySlot[]` → grid olayları. Saatler `startUtc`/`endUtc`'den (yerel saate çevrilerek)
  * okunur; geçersiz veya bitişi başlangıçtan sonra olmayan slotlar atlanır.
+ *
+ * Bitiş YALNIZCA `endUtc`'den gelir: gün aşan slotta (issue #300) `endTime` başlangıçtan küçüktür ve `date + endTime`
+ * yanlış (başlangıçtan önceki) bir an verir; backend `endUtc`'yi ertesi güne koyar.
  */
 export function toGridEvents(slots: readonly AvailabilitySlot[]): AvailabilityGridEvent[] {
   const events: AvailabilityGridEvent[] = [];
@@ -80,6 +88,7 @@ export function toGridEvents(slots: readonly AvailabilitySlot[]): AvailabilityGr
         past,
         ruleId,
         timeRange: formatSlotRange(slot.startUtc, slot.endUtc),
+        endsNextDay: endsOnNextLocalDay(start, end),
         dayLabel: formatSlotDay(slot.startUtc),
       },
     });

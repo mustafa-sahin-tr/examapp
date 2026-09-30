@@ -11,7 +11,7 @@ import { TranslocoDirective, TranslocoPipe, TranslocoService } from '@jsverse/tr
 import { finalize } from 'rxjs';
 import { AvailabilitySlot } from '../../../models/booking.model';
 import { BookingService } from '../../../services/booking.service';
-import { formatSlotDay, formatSlotRange } from '../../utils/booking-format.util';
+import { SLOT_NEXT_DAY_KEY, formatSlotDay, formatSlotRange } from '../../utils/booking-format.util';
 
 /** Dialog girdisi — hangi öğretmenin slotları gösterilecek. */
 export interface BookingSlotDialogData {
@@ -67,10 +67,12 @@ export class BookingSlotDialogComponent {
     const sorted = [...this.slots()].sort(
       (a, b) => new Date(a.startUtc).getTime() - new Date(b.startUtc).getTime()
     );
+    // Gün aşan slot (issue #300) aralığın sonuna "(+1 gün)" alır; metin kök sözlükten.
+    const nextDay = this.transloco.translate<string>(SLOT_NEXT_DAY_KEY);
     for (const slot of sorted) {
       const day = formatSlotDay(slot.startUtc);
       const group = byDay.get(day) ?? { day, slots: [] };
-      group.slots.push({ slot, range: formatSlotRange(slot.startUtc, slot.endUtc) });
+      group.slots.push({ slot, range: formatSlotRange(slot.startUtc, slot.endUtc, nextDay) });
       byDay.set(day, group);
     }
     return [...byDay.values()];

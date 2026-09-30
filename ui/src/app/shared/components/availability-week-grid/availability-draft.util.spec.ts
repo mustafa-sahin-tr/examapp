@@ -3,7 +3,6 @@ import {
   DraftRange,
   RECURRING_UNTIL_MIN_DAYS,
   applyCellClick,
-  nextUtcDayBoundary,
   recurringUntilBounds,
   toRecurringRuleRequest,
   toSlotRequest,
@@ -12,9 +11,8 @@ import {
 /**
  * Testler Karma'nın koştuğu makinenin saat diliminden BAĞIMSIZDIR.
  *
- * Genişletme/daraltma kuralları iki sınıra bağlıdır: taslak tek bir YEREL günde kalır (grid sütunu) ve tek bir
- * UTC gününde kalır (backend `date` + `TimeOnly`). UTC gece yarısı dilime göre yerel günün farklı saatine düşer;
- * bu yüzden `BASE`, 25 Eylül 2026 yerel gününün UTC gece yarısıyla bölünen iki parçasından BÜYÜK olanının
+ * Genişletme kuralları eskiden taslağı tek bir UTC gününde tutuyordu (issue #300 ile kalktı); temel testler yine de
+ * gün sınırından uzak bir pencerede koşar. UTC gece yarısı dilime göre yerel günün farklı saatine düşer; bu yüzden `BASE`, 25 Eylül 2026 yerel gününün UTC gece yarısıyla bölünen iki parçasından BÜYÜK olanının
  * (≥ 12 saat) başlangıcıdır. `at(dakika)` o parçanın içinde, yarım saate hizalı anlar üretir.
  */
 const HALF_HOUR_MS = 30 * 60_000;
@@ -101,7 +99,7 @@ describe('availability-draft.util', () => {
       expect(result).toEqual({ draft: null, rejection: null });
     });
 
-    it('farklı yerel güne tıklama taslağı o güne taşır (yeni 30 dk)', () => {
+    it('süre sınırına sığmayan farklı yerel güne tıklama taslağı o güne taşır (yeni 30 dk)', () => {
       const draft = range(at(60), at(180));
       const nextDay = safeBase(2026, 8, 26);
 
@@ -202,54 +200,101 @@ describe('availability-draft.util', () => {
       expect(draft).toEqual(range(at(60), at(120)));
     });
 
-    describe('UTC gün sınırı (backend tek date + TimeOnly tutar)', () => {
+    describe('gece yarısını aşan aralık (issue #300: backend endTime <= startTime ise ertesi gün bitirir)', () => {
       const now = utc(21, 9, 10);
 
-      it('23:00Z–23:30Z hücresi kabul edilir', () => {
-        const result = applyCellClick(null, utc(24, 23, 0), [], now);
+      it('23:30Z–00:00Z hücresi kabul edilir (bitiş tam UTC gece yarısı)', () => {
+        const result = applyCellClick(null, utc(24, 23, 30), [], now);
 
-        expect(result.rejection).toBeNull();
-        expect(result.draft).toEqual(range(utc(24, 23, 0), utc(24, 23, 30)));
+        expect(result).toEqual({ draft: range(utc(24, 23, 30), utc(25, 0, 0)), rejection: null });
       });
 
-      it('23:30Z–00:00Z hücresi reddedilir: bitiş TimeOnly 00:00 olur ve başlangıçtan küçük kalır', () => {
-        expect(applyCellClick(null, utc(24, 23, 30), [], now)).toEqual({ draft: null, rejection: 'crossesDayBoundary' });
-      });
-
-      it('00:00Z hücresi (yeni UTC gününün ilk hücresi) kabul edilir', () => {
-        expect(applyCellClick(null, utc(25, 0, 0), [], now).draft).toEqual(range(utc(25, 0, 0), utc(25, 0, 30)));
-      });
-
-      it('UTC gece yarısının iki yanındaki hücreler tek taslakta birleşmez', () => {
+      it('UTC gece yarısının iki yanındaki hücreler tek taslakta birleşir (yerel dilimden bağımsız)', () => {
         const draft = range(utc(24, 23, 0), utc(24, 23, 30));
 
+        // Aynı yerel gündeyse normal genişletme; farklı yerel gündeyse birleşik aralık 4 saate sığdığı için yine genişler.
         const result = applyCellClick(draft, utc(25, 0, 0), [], now);
 
-        // Aynı yerel gündeyseler red; farklı yerel gündeyseler (ör. UTC dilimi) taslak taşınır. İki durumda da
-        // sonuç tek bir UTC gününde kalır ve 23:00Z–00:30Z aralığı ASLA oluşmaz.
-        const sameLocalDay = draft.start.getDate() === utc(25, 0, 0).getDate();
-        if (sameLocalDay) {
-          expect(result).toEqual({ draft, rejection: 'crossesDayBoundary' });
-        } else {
-          expect(result).toEqual({ draft: range(utc(25, 0, 0), utc(25, 0, 30)), rejection: null });
-        }
+        expect(result).toEqual({ draft: range(utc(24, 23, 0), utc(25, 0, 30)), rejection: null });
       });
 
-      it('yerel 23:30 hücresi, bitişi UTC gece yarısı değilse kabul edilir (sınır yerel gece yarısı değildir)', () => {
-        const cell = new Date(2026, 8, 25, 23, 30);
-        const end = new Date(cell.getTime() + HALF_HOUR_MS);
-        const endsAtUtcMidnight = end.getTime() % DAY_MS === 0;
+      it('yerel gece yarısını aşan genişletme kabul edilir (ertesi günün ilk hücrelerine tıklama)', () => {
+        const draft = range(new Date(2026, 8, 25, 23, 0), new Date(2026, 8, 25, 23, 30));
 
-        const result = applyCellClick(null, cell, [], NOW);
+        const result = applyCellClick(draft, new Date(2026, 8, 26, 0, 30), [], NOW);
 
-        if (endsAtUtcMidnight) {
-          expect(result).toEqual({ draft: null, rejection: 'crossesDayBoundary' });
-        } else {
-          expect(result).toEqual({ draft: range(cell, end), rejection: null });
-        }
+        expect(result).toEqual({ draft: range(new Date(2026, 8, 25, 23, 0), new Date(2026, 8, 26, 1, 0)), rejection: null });
+      });
+
+      it('ertesi günden geriye (önceki günün son hücresine) genişletme de kabul edilir', () => {
+        const draft = range(new Date(2026, 8, 26, 0, 0), new Date(2026, 8, 26, 0, 30));
+
+        const result = applyCellClick(draft, new Date(2026, 8, 25, 23, 30), [], NOW);
+
+        expect(result.draft).toEqual(range(new Date(2026, 8, 25, 23, 30), new Date(2026, 8, 26, 0, 30)));
+      });
+
+      it('gün aşan taslak ertesi gün tarafından daraltılabilir (içeri tıklama gün sütunundan bağımsız)', () => {
+        const draft = range(new Date(2026, 8, 25, 23, 0), new Date(2026, 8, 26, 1, 0));
+
+        const result = applyCellClick(draft, new Date(2026, 8, 26, 0, 30), [], NOW);
+
+        expect(result.draft).toEqual(range(new Date(2026, 8, 25, 23, 0), new Date(2026, 8, 26, 0, 30)));
+      });
+
+      it('birleşik aralık 4 saate sığmıyorsa başka güne tıklama taslağı o hücreye taşır', () => {
+        const draft = range(new Date(2026, 8, 25, 21, 0), new Date(2026, 8, 25, 23, 30));
+        const cell = new Date(2026, 8, 26, 1, 0);
+
+        const result = applyCellClick(draft, cell, [], NOW);
+
+        expect(result).toEqual({ draft: range(cell, new Date(cell.getTime() + HALF_HOUR_MS)), rejection: null });
+      });
+
+      it('ertesi gündeki mevcut slotun üzerinden geçen gün aşan genişletme reddedilir', () => {
+        const draft = range(new Date(2026, 8, 25, 23, 0), new Date(2026, 8, 25, 23, 30));
+        const busy = [range(new Date(2026, 8, 26, 0, 0), new Date(2026, 8, 26, 0, 30))];
+
+        const result = applyCellClick(draft, new Date(2026, 8, 26, 1, 0), busy, NOW);
+
+        expect(result).toEqual({ draft, rejection: 'occupied' });
       });
     });
 
+    describe('İstanbul senaryosu: yerel 02:30–03:30 (UTC+3) = UTC 23:30–00:30, önceki UTC günü', () => {
+      // Anlar ofsetle sabitlenir; sonuç Karma'nın koştuğu makinenin diliminden bağımsızdır.
+      const start = new Date('2026-09-25T02:30:00+03:00');
+      const end = new Date('2026-09-25T03:30:00+03:00');
+      const now = utc(21, 9, 10);
+
+      it('iki tıklamayla kurulan taslak kabul edilir (UTC gece yarısı artık sınır değil)', () => {
+        const first = applyCellClick(null, start, [], now);
+        const second = applyCellClick(first.draft, new Date(end.getTime() - HALF_HOUR_MS), [], now);
+
+        expect(first.rejection).toBeNull();
+        expect(second).toEqual({ draft: range(start, end), rejection: null });
+      });
+
+      it('slot isteği: date başlangıcın UTC günü (24), endTime < startTime', () => {
+        expect(toSlotRequest(range(start, end))).toEqual({
+          date: '2026-09-24',
+          startTime: '23:30:00',
+          endTime: '00:30:00',
+        });
+      });
+
+      it('kural isteği: dayOfWeek ve effectiveFrom UTC gününe (Perşembe 24) göre, endTime < startTime', () => {
+        const request = toRecurringRuleRequest(range(start, end), null);
+
+        expect(request).toEqual({
+          dayOfWeek: 4,
+          startTime: '23:30:00',
+          endTime: '00:30:00',
+          effectiveFrom: '2026-09-24',
+          effectiveUntil: null,
+        });
+      });
+    });
     describe('90 gün ufku (backend: UTC bugün + 90)', () => {
       const now = utc(21, 9, 10);
 
@@ -273,14 +318,6 @@ describe('availability-draft.util', () => {
 
         expect(applyCellClick(null, lastDay, [], lateNow).rejection).toBeNull();
       });
-    });
-  });
-
-  describe('nextUtcDayBoundary', () => {
-    it('verilen andan sonraki UTC gece yarısını döner; tam sınırdaki an için bir SONRAKİ günü', () => {
-      expect(nextUtcDayBoundary(utc(24, 11, 0))).toEqual(utc(25, 0, 0));
-      expect(nextUtcDayBoundary(utc(24, 23, 59))).toEqual(utc(25, 0, 0));
-      expect(nextUtcDayBoundary(utc(25, 0, 0))).toEqual(utc(26, 0, 0));
     });
   });
 

@@ -7,10 +7,11 @@
     "studentRecordNotFound": "Student record not found.",
 
     "slot": {
-      "endBeforeStart": "The end time must be later than the start time.",
+      "zeroLength": "The end time cannot be the same as the start time.",
       "inPast": "An availability slot cannot be created in the past.",
       "tooFarAhead": "An availability slot can be created at most {0} days ahead.",
       "tooLong": "An availability slot can last at most {0} hours.",
+      "tooLongNextDay": "The end time is before the start time, so it was taken as the next day; the slot exceeds {0} hours.",
       "overlapping": "This time range overlaps with an existing availability slot.",
       "duplicate": "This time range is already defined.",
       "created": "Availability slot added.",

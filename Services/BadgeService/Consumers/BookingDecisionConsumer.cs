@@ -73,7 +73,7 @@ public class BookingDecisionConsumer : IConsumer<BookingDecisionEvent>
         var teacherName = string.IsNullOrWhiteSpace(e.TeacherName)
             ? _texts.Resolve("notifications.common.defaultTeacher", culture)
             : e.TeacherName;
-        var whenText = $"{e.Date:dd.MM.yyyy} {e.StartTime:HH:mm}-{e.EndTime:HH:mm}";
+        var whenText = BookingWhenText.Format(e.Date, e.StartTime, e.EndTime); // issue #300: gün aşan slotta " (+1)"
         var reasonSuffix = string.IsNullOrWhiteSpace(e.RejectionReason)
             ? string.Empty
             : _texts.Resolve("notifications.common.rejectionReasonSuffix", culture, e.RejectionReason);

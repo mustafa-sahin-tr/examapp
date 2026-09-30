@@ -49,6 +49,9 @@
             <span class="breq__row-range">
               <mat-icon>schedule</mat-icon>
               {{ row.booking.startUtc | date: 'shortTime' }} – {{ row.booking.endUtc | date: 'shortTime' }}
+              @if (row.endsNextDay) {
+                <span class="breq__row-next-day">{{ 'shared.slotRange.nextDay' | transloco }}</span>
+              }
             </span>
             @if (row.booking.rejectionReason) {
               <span class="breq__row-reason">

@@ -18,12 +18,13 @@
     "nextWeek": "Sonraki hafta",
     "today": "Bugün",
     "legendLabel": "Renk açıklaması",
+    "nextDay": "(+1 gün)",
     "tooltip": {
       "student": "Öğrenci: {{name}}",
       "past": "Geçmiş"
     },
     "draft": {
-      "instruction": "Yeni aralık için takvimde boş bir hücreye tıkla; aynı günde başka hücrelere tıklayarak aralığı genişlet.",
+      "instruction": "Yeni aralık için takvimde boş bir hücreye tıkla; başka hücrelere tıklayarak aralığı genişlet (gece yarısını aşmak için ertesi günün ilk hücrelerine tıkla).",
       "save": "Kaydet",
       "saving": "Kaydediliyor...",
       "cancel": "Vazgeç",
@@ -33,8 +34,7 @@
       "past": "Geçmiş bir saate aralık eklenemez.",
       "occupied": "Seçim mevcut bir aralıkla çakışıyor.",
       "tooLong": "Bir aralık en fazla {{hours}} saat olabilir.",
-      "tooFarAhead": "En fazla {{days}} gün sonrasına aralık eklenebilir.",
-      "crossesDayBoundary": "Bir aralık {{time}} saatini aşamaz; {{time}} öncesini ve sonrasını iki ayrı aralık olarak ekle."
+      "tooFarAhead": "En fazla {{days}} gün sonrasına aralık eklenebilir."
     },
     "delete": {
       "prompt": "Bu aralığı sil?",

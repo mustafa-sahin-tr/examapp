@@ -1,5 +1,6 @@
-import { signal } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
+import { Component, Input, signal } from '@angular/core';
+import { By } from '@angular/platform-browser';
+import { ComponentFixture, DeferBlockBehavior, DeferBlockState, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
@@ -7,6 +8,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { Subject, of, throwError } from 'rxjs';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { provideNativeDateAdapter } from '@angular/material/core';
 
 import { WorksheetDetailComponent } from './worksheet-detail.component';
 import { TestService } from '../../services/test.service';
@@ -17,6 +19,10 @@ import { WorksheetDetail } from '../../models/worksheet-detail';
 import { WorksheetAssignmentDialogData } from './components/assignment-dialog/worksheet-assignment-dialog.component';
 import { StudentService } from '../../services/student.service';
 import { StudentLookup } from '../../models/student';
+import { CommentThreadComponent } from '../../shared/components/comment-thread/comment-thread.component';
+import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
+import { StudyLinkSuggestionsComponent } from '../../shared/components/study-link-suggestions/study-link-suggestions.component';
+import { QuestionRegion } from '../../models/draws';
 
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES } from '../../models/locale';
@@ -353,5 +359,215 @@ describe('WorksheetDetailComponent independent tutor assignment', () => {
 
     expect(component['isIndependentTutor']()).toBeFalse();
     expect(buttons(fixture, 'assign-grade-btn').length).toBeGreaterThan(0);
+  });
+});
+
+/** Soru görüntüleyici stub'ı — thread yerleşimi testinde canvas render'ı gereksiz. */
+@Component({ selector: 'app-question-canvas-view', standalone: true, template: '' })
+class QuestionCanvasViewStubComponent {
+  @Input() questionRegion: unknown;
+  @Input() selectedChoice: unknown;
+  @Input() correctChoice: unknown;
+  @Input() mode: unknown;
+}
+
+@Component({ selector: 'app-study-link-suggestions', standalone: true, template: '' })
+class StudyLinkSuggestionsStubComponent {
+  @Input() testInstanceId: unknown;
+  @Input() questionId: unknown;
+  @Input() testInstanceQuestionId: unknown;
+  @Input() answeredWrong: unknown;
+}
+
+/** Issue #105: yorum/soru thread'lerinin yerleşimi ve bildirim derin linki (commentId vurgusu). */
+describe('WorksheetDetailComponent comment threads', () => {
+  interface SetupOptions {
+    role: 'Student' | 'Teacher';
+    query?: Record<string, string>;
+    completed?: boolean;
+    commentsEnabled?: boolean;
+  }
+
+  async function setup(options: SetupOptions & { renderDeferred?: boolean }) {
+    TestBed.configureTestingModule({
+      // Thread'ler @defer içinde: testte açıkça tetiklenir.
+      deferBlockBehavior: DeferBlockBehavior.Manual,
+      imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideNativeDateAdapter(),
+        { provide: TestService, useValue: jasmine.createSpyObj<TestService>('TestService', ['getWorksheetDetail']) },
+        { provide: Router, useValue: jasmine.createSpyObj<Router>('Router', ['navigate']) },
+        { provide: MatSnackBar, useValue: jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']) },
+        { provide: MatDialog, useValue: jasmine.createSpyObj<MatDialog>('MatDialog', ['open']) },
+        {
+          provide: AuthService,
+          useValue: { hasRole: (r: string) => r === options.role, hasRealmRole: () => false, user: signal(null) },
+        },
+        { provide: StudentService, useValue: { getLookup: () => of([]) } },
+        { provide: GradesService, useValue: { getGrades: () => of([]) } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: convertToParamMap({}), data: {} },
+            params: of({}),
+            queryParams: of(options.query ?? {}),
+            paramMap: of(convertToParamMap({})),
+            queryParamMap: of(convertToParamMap(options.query ?? {})),
+          },
+        },
+      ],
+    });
+    TestBed.overrideComponent(WorksheetDetailComponent, {
+      remove: { imports: [QuestionCanvasViewComponent, StudyLinkSuggestionsComponent] },
+      add: { imports: [QuestionCanvasViewStubComponent, StudyLinkSuggestionsStubComponent] },
+    });
+
+    const fixture = TestBed.createComponent(WorksheetDetailComponent);
+    const component = fixture.componentInstance;
+    component.exam = { id: 12 } as Test;
+    component.ngOnInit();
+    component['detail'].set({
+      worksheet: {
+        id: 12,
+        name: 'Kesirler',
+        canEdit: true,
+        canAssign: true,
+        commentsEnabled: options.commentsEnabled ?? true,
+      },
+      attempts: [],
+      similarWorksheets: [],
+      topicBreakdown: [],
+      outcomes: [],
+      stats: { solverCount: 0, averageScorePercent: null },
+      completedResult: options.completed
+        ? {
+            instanceId: 900,
+            scorePercent: 50,
+            correctCount: 1,
+            wrongCount: 1,
+            emptyCount: 0,
+            durationSeconds: 60,
+            topicSuccess: [],
+            rank: null,
+          }
+        : null,
+    } as unknown as WorksheetDetail);
+    if (options.completed) {
+      component.regions.set([
+        { id: 33, answers: [] },
+        { id: 34, answers: [] },
+      ] as unknown as QuestionRegion[]);
+      component.questions = [{ status: 'correct' }, { status: 'incorrect' }];
+    }
+    fixture.detectChanges();
+    fixture.detectChanges();
+    if (options.renderDeferred !== false) {
+      await renderDeferred(fixture);
+    }
+    return { fixture, component };
+  }
+
+  /** Tüm @defer bloklarını tamamlanmış duruma getirir. */
+  async function renderDeferred(fixture: ComponentFixture<WorksheetDetailComponent>): Promise<void> {
+    for (const block of await fixture.getDeferBlocks()) {
+      await block.render(DeferBlockState.Complete);
+    }
+    fixture.detectChanges();
+  }
+
+  const threads = (fixture: ComponentFixture<WorksheetDetailComponent>) =>
+    fixture.debugElement
+      .queryAll(By.directive(CommentThreadComponent))
+      .map((d) => d.componentInstance as CommentThreadComponent);
+  const byTestId = (fixture: ComponentFixture<WorksheetDetailComponent>, id: string) =>
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(`[data-testid="${id}"]`);
+
+  it('completedStudent_RendersWorksheetThreadAndSelectedQuestionThread', async () => {
+    const { fixture, component } = await setup({ role: 'Student', completed: true });
+
+    expect(byTestId(fixture, 'worksheet-comments')).not.toBeNull();
+    expect(byTestId(fixture, 'question-comments')).not.toBeNull();
+    const all = threads(fixture);
+    expect(all.length).toBe(2);
+    const questionThread = all.find((t) => t.questionId() !== null)!;
+    expect(questionThread.worksheetId()).toBe(12);
+    expect(questionThread.questionId()).toBe(33);
+    const worksheetThread = all.find((t) => t.questionId() === null)!;
+    expect(worksheetThread.viewerIsTeacher()).toBeFalse();
+    expect(worksheetThread.studentsLockedNotice()).toBeFalse();
+
+    // Soru değişince aynı thread yeni soruya geçer (yeniden yükler).
+    component.questionSelected(1);
+    fixture.detectChanges();
+    expect(threads(fixture).find((t) => t.questionId() !== null)!.questionId()).toBe(34);
+  });
+
+  it('teacher_WorksheetThreadOnlyWithTeacherFlags', async () => {
+    const { fixture } = await setup({ role: 'Teacher', commentsEnabled: false });
+
+    expect(byTestId(fixture, 'question-comments')).toBeNull();
+    const all = threads(fixture);
+    expect(all.length).toBe(1);
+    expect(all[0].viewerIsTeacher()).toBeTrue();
+    expect(all[0].studentsLockedNotice()).toBeTrue();
+    expect(all[0].showEditSettings()).toBeTrue();
+  });
+
+  it('startView_StudentStillGetsWorksheetThread', async () => {
+    const { fixture } = await setup({ role: 'Student' });
+
+    expect(byTestId(fixture, 'worksheet-comments')).not.toBeNull();
+    expect(threads(fixture).length).toBe(1);
+  });
+
+  it('deepLink_WorksheetLevelComment_HighlightsInWorksheetThread', async () => {
+    const { fixture, component } = await setup({ role: 'Teacher', query: { commentId: '57', rootCommentId: '56' } });
+
+    expect(component['commentLink']()).toEqual({ worksheetId: 0, commentId: 57, questionId: null, rootCommentId: 56 });
+    const [worksheetThread] = threads(fixture);
+    expect(worksheetThread.highlightCommentId()).toBe(57);
+    expect(worksheetThread.highlightRootId()).toBe(56);
+    expect(byTestId(fixture, 'linked-question-comments')).toBeNull();
+  });
+
+  it('deepLink_QuestionCommentForTeacher_RendersSeparateQuestionThreadCard', async () => {
+    const { fixture } = await setup({ role: 'Teacher', query: { commentId: '57', questionId: '34' } });
+
+    expect(byTestId(fixture, 'linked-question-comments')).not.toBeNull();
+    const questionThread = threads(fixture).find((t) => t.questionId() === 34)!;
+    expect(questionThread.highlightCommentId()).toBe(57);
+    expect(questionThread.viewerIsTeacher()).toBeTrue();
+    const worksheetThread = threads(fixture).find((t) => t.questionId() === null)!;
+    expect(worksheetThread.highlightCommentId()).toBeNull();
+  });
+
+  it('deepLink_QuestionCommentForCompletedStudent_SelectsQuestionInReview', async () => {
+    const { fixture, component } = await setup({
+      role: 'Student',
+      completed: true,
+      query: { commentId: '70', questionId: '34' },
+    });
+    fixture.detectChanges();
+
+    expect(component.currentIndex()).toBe(1);
+    expect(byTestId(fixture, 'linked-question-comments')).toBeNull();
+    const questionThread = threads(fixture).find((t) => t.questionId() !== null)!;
+    expect(questionThread.questionId()).toBe(34);
+    expect(questionThread.highlightCommentId()).toBe(70);
+  });
+
+  it('beforeDeferTrigger_ShowsPlaceholderNotThread', async () => {
+    const { fixture } = await setup({ role: 'Student', completed: true, renderDeferred: false });
+
+    expect(threads(fixture).length).toBe(0);
+    expect(fixture.nativeElement.querySelectorAll('[data-testid="comments-placeholder"]').length).toBe(2);
+  });
+
+  it('deepLink_InvalidCommentId_Ignored', async () => {
+    const { component } = await setup({ role: 'Student', query: { commentId: 'abc', questionId: '34' } });
+
+    expect(component['commentLink']()).toBeNull();
   });
 });

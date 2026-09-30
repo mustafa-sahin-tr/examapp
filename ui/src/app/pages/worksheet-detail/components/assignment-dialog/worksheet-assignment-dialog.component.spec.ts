@@ -8,6 +8,7 @@ import { TranslocoTestingModule } from '@jsverse/transloco';
 import {
   StudentLookupStatus,
   WorksheetAssignmentDialogComponent,
+  commentsOverrideValue,
   WorksheetAssignmentDialogData,
 } from './worksheet-assignment-dialog.component';
 import { StudentLookup } from '../../../../models/student';
@@ -178,6 +179,60 @@ describe('WorksheetAssignmentDialogComponent', () => {
       expect(q(fixture, 'no-students-independent')).toBeNull();
       expect(fixture.componentInstance['filteredStudents']()).toEqual([ada]);
       expect(fixture.componentInstance['form'].controls.studentId.enabled).toBeTrue();
+    });
+  });
+
+  /** Issue #105: atamaya özel yorum-soru override'ı (Varsayılan/Açık/Kapalı). */
+  describe('commentsEnabledOverride', () => {
+    const q = (fixture: { nativeElement: HTMLElement }, id: string) =>
+      fixture.nativeElement.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
+
+    function submitGrade(fixture: ReturnType<typeof create>) {
+      fixture.componentInstance['submit']();
+      return (dialogRef.close.calls.mostRecent().args[0] as { request: { commentsEnabledOverride?: boolean | null } })
+        .request;
+    }
+
+    it('commentsOverrideValue_MapsChoices', () => {
+      expect(commentsOverrideValue('default')).toBeNull();
+      expect(commentsOverrideValue('on')).toBeTrue();
+      expect(commentsOverrideValue('off')).toBeFalse();
+    });
+
+    it('varsayılan seçimde istek null gönderir ve üç seçenek görünür', () => {
+      const fixture = create();
+
+      expect(q(fixture, 'comments-override-default')).not.toBeNull();
+      expect(q(fixture, 'comments-override-on')).not.toBeNull();
+      expect(q(fixture, 'comments-override-off')).not.toBeNull();
+      expect(q(fixture, 'comments-override')!.getAttribute('aria-label')).toBe(
+        worksheetDetailTr.assignDialog.commentsGroupAria
+      );
+      expect(submitGrade(fixture).commentsEnabledOverride).toBeNull();
+    });
+
+    it('Kapalı seçilince istek false, Açık seçilince true gönderir', () => {
+      const fixture = create();
+
+      (q(fixture, 'comments-override-off')!.querySelector('button') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(fixture.componentInstance['form'].controls.commentsOverride.value).toBe('off');
+      expect(submitGrade(fixture).commentsEnabledOverride).toBeFalse();
+
+      (q(fixture, 'comments-override-on')!.querySelector('button') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(submitGrade(fixture).commentsEnabledOverride).toBeTrue();
+    });
+
+    it('yardımcı metin worksheet in güncel değerini gösterir', () => {
+      const on = create({ worksheetCommentsEnabled: true });
+      expect(q(on, 'comments-override-helper')!.textContent).toContain(worksheetDetailTr.assignDialog.commentsStateOn);
+
+      TestBed.resetTestingModule();
+      const off = create({ worksheetCommentsEnabled: false });
+      expect(q(off, 'comments-override-helper')!.textContent).toContain(
+        worksheetDetailTr.assignDialog.commentsStateOff
+      );
     });
   });
 });

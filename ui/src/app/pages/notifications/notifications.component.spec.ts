@@ -208,6 +208,29 @@ describe('NotificationsComponent (issue #146)', () => {
     expect(navigateSpy).toHaveBeenCalledWith([BADGE_PROGRESS_ROUTE]);
   });
 
+  it('worksheetComment_Click_MarksReadAndNavigatesToWorksheetDetailDeepLink', () => {
+    flushList([
+      notification({
+        id: 21,
+        type: 'WorksheetCommentReplied',
+        title: 'Yeni cevap',
+        data: JSON.stringify({ worksheetId: 12, questionId: 34, commentId: 57, rootCommentId: 56 }),
+      }),
+    ]);
+
+    expect(items()[0].querySelector('.ntf__icon mat-icon')?.textContent?.trim()).toBe('forum');
+    // Sunucu metni bidi-izole gösterilir (security D1).
+    expect(items()[0].querySelector('.ntf__title bdi')?.getAttribute('dir')).toBe('auto');
+    expect(items()[0].querySelector('.ntf__body bdi')?.getAttribute('dir')).toBe('auto');
+    expect(items()[0].querySelector('.ntf__chevron')).not.toBeNull();
+    items()[0].click();
+    httpMock.expectOne('/api/badge/notifications/21/read').flush(null, { status: 204, statusText: 'No Content' });
+
+    expect(navigateSpy).toHaveBeenCalledWith(['/test', 12], {
+      queryParams: { commentId: 57, questionId: 34, rootCommentId: 56 },
+    });
+  });
+
   it('readBadgeItem_Click_NavigatesWithoutMarkRead', () => {
     flushList([badgeEarned({ isRead: true })]);
 

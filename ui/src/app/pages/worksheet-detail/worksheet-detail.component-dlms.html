@@ -347,6 +347,24 @@
                         [testInstanceQuestionId]="currentTestInstanceQuestionId()"
                         [answeredWrong]="isCurrentQuestionWrong()"
                       />
+                      <!-- Issue #105: seçili sorunun yorum/soru thread'i; soru değişince yeniden yüklenir -->
+                      @if (d.worksheet.id; as worksheetId) {
+                        <div class="question-comments" data-testid="question-comments">
+                          <h4 class="qc-title"><mat-icon aria-hidden="true">forum</mat-icon>{{ t('comments.questionTitle') }}</h4>
+                          <!-- Issue #105: thread bileşeni ayrı chunk; görünür olunca yüklenir -->
+                          @defer (on viewport) {
+                            <app-comment-thread
+                              [worksheetId]="worksheetId"
+                              [questionId]="region.id"
+                              [highlightCommentId]="questionCommentLink(region.id)?.commentId ?? null"
+                              [highlightRootId]="questionCommentLink(region.id)?.rootCommentId ?? null"
+                              [viewerIsTeacher]="isTeacher"
+                            />
+                          } @placeholder {
+                            <div class="comments-placeholder" data-testid="comments-placeholder">{{ t('comments.placeholder') }}</div>
+                          }
+                        </div>
+                      }
                     }
                   </mat-expansion-panel>
                 </mat-accordion>
@@ -659,6 +677,45 @@
             }
           </div>
         </div>
+      }
+
+      <!-- ================= YORUM / SORU THREAD'LERİ (issue #105) — her görünümde, retired dahil ================= -->
+      @if (d.worksheet.id; as worksheetId) {
+        @if (showLinkedQuestionCard() && commentLink(); as link) {
+          <section class="card comments-card" id="soru-yorumlari" data-testid="linked-question-comments">
+            <h3><span class="dot"></span>{{ t('comments.linkedQuestionTitle') }}</h3>
+            <!-- Yalnız derin linkte çizilen kart: hemen yüklenir -->
+            @defer (on immediate) {
+              <app-comment-thread
+                [worksheetId]="worksheetId"
+                [questionId]="link.questionId"
+                [highlightCommentId]="link.commentId"
+                [highlightRootId]="link.rootCommentId"
+                [viewerIsTeacher]="isTeacher"
+              />
+            } @placeholder {
+              <div class="comments-placeholder" data-testid="comments-placeholder">{{ t('comments.placeholder') }}</div>
+            }
+          </section>
+        }
+
+        <section class="card comments-card" id="yorumlar" data-testid="worksheet-comments">
+          <h3><span class="dot"></span>{{ t('comments.worksheetTitle') }}</h3>
+          <!-- Issue #105: sayfanın altında; görünür olunca ya da derin linkte hemen yüklenir (initial bundle'a girmez) -->
+          @defer (on viewport; when commentLink() !== null; prefetch on idle) {
+            <app-comment-thread
+              [worksheetId]="worksheetId"
+              [highlightCommentId]="worksheetCommentLink()?.commentId ?? null"
+              [highlightRootId]="worksheetCommentLink()?.rootCommentId ?? null"
+              [viewerIsTeacher]="isTeacher"
+              [studentsLockedNotice]="commentsDisabledForStudents()"
+              [showEditSettings]="commentsDisabledForStudents() && canEditWorksheet()"
+              (editSettings)="editWorksheet(worksheetId)"
+            />
+          } @placeholder {
+            <div class="comments-placeholder" data-testid="comments-placeholder">{{ t('comments.placeholder') }}</div>
+          }
+        </section>
       }
 
     </div>

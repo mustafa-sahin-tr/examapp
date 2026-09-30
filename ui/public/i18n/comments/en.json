@@ -1,0 +1,67 @@
+{
+  "thread": {
+    "listAria": "Comments and questions",
+    "loading": "Loading comments…",
+    "loadError": "Comments could not be loaded.",
+    "retry": "Try again",
+    "emptyTitle": "No comments yet",
+    "emptyInvite": "Be the first — ask about what you got stuck on.",
+    "lock": {
+      "question-not-answered": "Answer this question first to comment on it.",
+      "worksheet-not-started": "Start the test first to comment on this question.",
+      "comments-disabled": "New comments and questions are turned off for this test. Existing comments stay visible."
+    },
+    "teacherDisabledNotice": "Worksheet default: student comments and questions are off. An assignment-specific setting can change this; existing comments stay visible.",
+    "editSettings": "Edit settings",
+    "readOnly": "You can only view this conversation.",
+    "loadMore": "Load more comments",
+    "loadMoreError": "More comments could not be loaded.",
+    "announceSent": "Your comment was sent.",
+    "announceReplySent": "Your reply was sent."
+  },
+  "composer": {
+    "ariaLabel": "Write a comment or question",
+    "placeholder": "Write your comment or question…",
+    "replyAriaLabel": "Write a reply",
+    "replyPlaceholder": "Reply to {{name}}…",
+    "send": "Send",
+    "counterAria": "{{count}} of {{max}} characters used",
+    "tooLong": "You can write at most {{max}} characters.",
+    "shortcutHint": "Ctrl+Enter to send"
+  },
+  "item": {
+    "teacherBadge": "Teacher",
+    "you": "You",
+    "mine": "(you)",
+    "reply": "Reply",
+    "cancelReply": "Cancel",
+    "sending": "Sending…",
+    "failed": "Not sent",
+    "retry": "Try again",
+    "edit": "Edit",
+    "showOlder": "Show earlier replies ({{count}})",
+    "olderError": "Earlier replies could not be loaded.",
+    "repliesAria": "Replies"
+  },
+  "errors": {
+    "rateLimited": "You're going too fast. Please wait a moment and try again.",
+    "rateLimitedRetry": "You're going too fast. Try again in {{seconds}} seconds.",
+    "network": "Couldn't reach the server. Check your connection and try again.",
+    "sendFailed": "The comment could not be sent.",
+    "codes": {
+      "WorksheetNotFound": "Test not found.",
+      "AccessDenied": "You don't have access to this test's comments.",
+      "QuestionNotInWorksheet": "This question is not part of the test.",
+      "InvalidParent": "You can't reply to this comment.",
+      "BodyRequired": "The comment can't be empty.",
+      "BodyTooLong": "The comment can be at most 2000 characters.",
+      "BodyInvalidCharacters": "The comment contains invalid characters.",
+      "RootCommentNotFound": "Comment not found.",
+      "InvalidCursor": "The list is out of date; reload the page.",
+      "CommentsDisabled": "Comments are turned off for this test.",
+      "WorksheetNotStarted": "Start the test first.",
+      "QuestionNotAnswered": "Answer the question first.",
+      "NotResponsibleTeacher": "You can't reply to this conversation."
+    }
+  }
+}

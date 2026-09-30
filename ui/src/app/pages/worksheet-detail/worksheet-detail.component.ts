@@ -1,8 +1,21 @@
 import { CommonModule } from '@angular/common';
-import { afterNextRender, Component, computed, DestroyRef, inject, Injector, Input, OnInit, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  DestroyRef,
+  effect,
+  inject,
+  Injector,
+  Input,
+  OnInit,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
-import { ActivatedRoute, NavigationExtras, Router } from '@angular/router';
+import { ActivatedRoute, NavigationExtras, ParamMap, Router } from '@angular/router';
 import { Test, TestInstance, TestInstanceQuestion, WorksheetTeacherSharing } from '../../models/test-instance';
 import { finalize, lastValueFrom } from 'rxjs';
 import { TestService } from '../../services/test.service';
@@ -44,6 +57,8 @@ import { StudyLinkSuggestionsComponent } from '../../shared/components/study-lin
 import { WorksheetAttempt, WorksheetDetail, WorksheetReminder } from '../../models/worksheet-detail';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { LocaleService } from '../../services/locale.service';
+import { CommentThreadComponent } from '../../shared/components/comment-thread/comment-thread.component';
+import { WorksheetCommentRef, toPositiveId } from '../../models/worksheet-comment.model';
 
 interface AssignmentPanelState {
   loading: boolean;
@@ -72,6 +87,7 @@ const WORKSHEET_DETAIL_SCOPE = 'worksheet-detail';
     QuestionCanvasViewComponent,
     QuestionNavigatorComponent,
     StudyLinkSuggestionsComponent,
+    CommentThreadComponent,
     FormsModule,
     MatFormFieldModule,
     MatInputModule,
@@ -100,6 +116,20 @@ export class WorksheetDetailComponent implements OnInit {
 
   constructor() {
     this.warmTranslationScope();
+
+    // Issue #105: soru yorumuna derin linkte (tamamlanan görünüm) soru gezgini ilgili soruya bir kez geçer.
+    effect(() => {
+      const navigator = this.questionNavigator();
+      const index = this.linkedQuestionIndex();
+      const link = this.commentLink();
+      if (!navigator || index < 0 || !link || this.appliedCommentLinkId === link.commentId) {
+        return;
+      }
+      untracked(() => {
+        this.appliedCommentLinkId = link.commentId;
+        navigator.selectQuestion(index);
+      });
+    });
   }
 
   /**
@@ -201,6 +231,49 @@ export class WorksheetDetailComponent implements OnInit {
     }
     return this.completedResult() ? 'completed' : 'start';
   });
+
+  // Yorum / soru thread'leri (issue #105)
+  /** Bildirim derin linki: `?commentId=&questionId=&rootCommentId=` (kimlikler doğrulanır). */
+  protected readonly commentLink = signal<WorksheetCommentRef | null>(null);
+  private appliedCommentLinkId: number | null = null;
+  private readonly questionNavigator = viewChild(QuestionNavigatorComponent);
+
+  /** Worksheet seviyesi yoruma derin link (questionId yok). */
+  protected readonly worksheetCommentLink = computed(() => {
+    const link = this.commentLink();
+    return link && link.questionId === null ? link : null;
+  });
+
+  /** Derin linkteki sorunun soru incelemesindeki sırası; inceleme yoksa / soru bulunamazsa -1. */
+  protected readonly linkedQuestionIndex = computed(() => {
+    const questionId = this.commentLink()?.questionId ?? null;
+    return questionId === null ? -1 : this.regions().findIndex((region) => region.id === questionId);
+  });
+
+  /**
+   * Derin linkteki soru thread'i ayrı kartta gösterilir mi: soru incelemesi yalnız tamamlanan (öğrenci) görünümde
+   * var; öğretmen ve "başla" görünümünde ya da soru incelemede bulunamazsa ayrı kart çizilir.
+   */
+  protected readonly showLinkedQuestionCard = computed(() => {
+    if (this.commentLink()?.questionId == null) {
+      return false;
+    }
+    if (this.view() !== 'completed') {
+      return true;
+    }
+    return this.regions().length > 0 && this.linkedQuestionIndex() < 0;
+  });
+
+  /** Soru incelemesindeki thread için vurgulanacak yorum (derin link o soruya aitse). */
+  protected questionCommentLink(questionId: number): WorksheetCommentRef | null {
+    const link = this.commentLink();
+    return link && link.questionId === questionId ? link : null;
+  }
+
+  /** Öğretmen görünümü: worksheet ayarında öğrenci yorumları kapalı mı (bilgi şeridi). */
+  protected readonly commentsDisabledForStudents = computed(
+    () => this.isTeacher && this.detail()?.worksheet?.commentsEnabled === false
+  );
 
   // Planla & Hatırlat
   protected readonly reminder = signal<WorksheetReminder | null>(null);
@@ -591,6 +664,7 @@ export class WorksheetDetailComponent implements OnInit {
         students: this.studentLookups.asReadonly(),
         studentsStatus: this.studentLookupStatus.asReadonly(),
         isIndependentTutor: this.isIndependentTutor(),
+        worksheetCommentsEnabled: this.detail()?.worksheet?.commentsEnabled !== false,
       } satisfies WorksheetAssignmentDialogData,
     });
 
@@ -934,6 +1008,20 @@ export class WorksheetDetailComponent implements OnInit {
     );
   }
 
+  /** `?commentId=` (zorunlu), `questionId`, `rootCommentId` — URL güvenilmez; geçersiz kimlik yok sayılır. */
+  private parseCommentLink(query: ParamMap): WorksheetCommentRef | null {
+    const commentId = toPositiveId(query.get('commentId'));
+    if (commentId === null) {
+      return null;
+    }
+    return {
+      worksheetId: this.testId ?? 0,
+      commentId,
+      questionId: toPositiveId(query.get('questionId')),
+      rootCommentId: toPositiveId(query.get('rootCommentId')),
+    };
+  }
+
   protected reloadDetail(): void {
     this.loadDetail();
   }
@@ -957,6 +1045,7 @@ export class WorksheetDetailComponent implements OnInit {
 
   ngOnInit() {
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((query) => {
+      this.commentLink.set(this.parseCommentLink(query));
       if (query.get('reminder') === 'edit') {
         this.pendingReminderEdit = true;
         // Detay zaten yüklüyse (sayfa içi query değişimi) hemen uygula.

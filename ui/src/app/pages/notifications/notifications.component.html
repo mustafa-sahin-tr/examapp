@@ -53,9 +53,9 @@
               }
             </span>
             <span class="ntf__content">
-              <span class="ntf__title">{{ row.notification.title }}</span>
+              <span class="ntf__title"><bdi dir="auto">{{ row.notification.title }}</bdi></span>
               @if (row.notification.body) {
-                <span class="ntf__body">{{ row.notification.body }}</span>
+                <span class="ntf__body"><bdi dir="auto">{{ row.notification.body }}</bdi></span>
               }
               @if (row.relativeTime) {
                 <span class="ntf__time">{{ row.relativeTime }}</span>

@@ -191,7 +191,15 @@
     "timeInvalid": "Enter a valid time",
     "hasEndDate": "Set an end time",
     "cancel": "Discard",
-    "save": "Save"
+    "save": "Save",
+    "commentsLabel": "Comments and questions",
+    "commentsGroupAria": "Comments and questions setting for this assignment",
+    "commentsDefault": "Default",
+    "commentsOn": "On",
+    "commentsOff": "Off",
+    "commentsHelper": "Default uses the test’s current setting: {{state}}.",
+    "commentsStateOn": "on",
+    "commentsStateOff": "off"
   },
   "permissionDialog": {
     "title": "Request assign permission",
@@ -204,5 +212,11 @@
     "cancel": "Discard",
     "submit": "Send",
     "submitFailed": "The request could not be sent. Please try again."
+  },
+  "comments": {
+    "worksheetTitle": "Comments and questions",
+    "questionTitle": "Comments on this question",
+    "linkedQuestionTitle": "Comments on the question",
+    "placeholder": "Loading comments…"
   }
 }

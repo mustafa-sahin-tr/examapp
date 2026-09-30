@@ -104,4 +104,57 @@ describe('TestFormComponent', () => {
     expect(applyToAllButtons().length).toBe(0);
     expect(emitted).not.toHaveBeenCalled();
   });
+
+  /** Issue #105: öğrenci yorum/soru anahtarı (varsayılan açık, togglePractice() deseni). */
+  describe('commentsEnabled toggle', () => {
+    const toggle = () =>
+      fixture.debugElement.query(By.css('[data-testid="comments-toggle"]')).nativeElement as HTMLButtonElement;
+
+    beforeEach(() => {
+      component.form.addControl('commentsEnabled', new FormBuilder().control(true));
+    });
+
+    it('commentsToggle_FullForm_RendersOnWithLabel', () => {
+      fixture.detectChanges();
+
+      expect(toggle().classList.contains('off')).toBeFalse();
+      expect(toggle().getAttribute('aria-pressed')).toBe('true');
+      expect(fixture.nativeElement.textContent).toContain(testCreateTr.form.commentsLabel);
+    });
+
+    it('commentsToggle_Click_FlipsControlValue', () => {
+      fixture.detectChanges();
+
+      toggle().click();
+      fixture.detectChanges();
+      expect(component.form.get('commentsEnabled')!.value).toBeFalse();
+      expect(toggle().classList.contains('off')).toBeTrue();
+      expect(toggle().getAttribute('aria-pressed')).toBe('false');
+
+      toggle().click();
+      expect(component.form.get('commentsEnabled')!.value).toBeTrue();
+    });
+
+    it('commentsToggle_Compact_AlsoRendered', () => {
+      component.compact = true;
+      fixture.detectChanges();
+
+      toggle().click();
+      expect(component.form.get('commentsEnabled')!.value).toBeFalse();
+    });
+
+    it('commentsToggle_DisabledForm_DoesNotChange', () => {
+      component.form.disable();
+      fixture.detectChanges();
+
+      expect(toggle().disabled).toBeTrue();
+      component.toggleComments();
+      expect(component.form.get('commentsEnabled')!.value).toBeTrue();
+    });
+
+    it('toggleComments_MissingControl_IsNoop', () => {
+      component.form.removeControl('commentsEnabled');
+      expect(() => component.toggleComments()).not.toThrow();
+    });
+  });
 });

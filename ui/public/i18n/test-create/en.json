@@ -33,7 +33,10 @@
     "settingsTitle": "Settings",
     "settingsNote": "Defines how the test is taken.",
     "save": "Save",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "commentsLabel": "Comments and questions",
+    "commentsHint": "When on, students can post comments or questions about this test and its questions; existing comments stay visible when off.",
+    "commentsHintCompact": "Let students post comments and questions"
   },
   "page": {
     "creating": "Creating…",

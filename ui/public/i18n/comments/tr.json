@@ -1,0 +1,67 @@
+{
+  "thread": {
+    "listAria": "Yorumlar ve sorular",
+    "loading": "Yorumlar yükleniyor…",
+    "loadError": "Yorumlar yüklenemedi.",
+    "retry": "Tekrar dene",
+    "emptyTitle": "Henüz yorum yok",
+    "emptyInvite": "İlk yazan sen ol — takıldığın noktayı sor.",
+    "lock": {
+      "question-not-answered": "Bu soruya yorum yazmak için önce soruyu cevaplamalısın.",
+      "worksheet-not-started": "Bu soruya yorum yazmak için önce testi başlatmalısın.",
+      "comments-disabled": "Bu test için yeni yorum ve soru yazma kapalı. Mevcut yorumlar görünmeye devam eder."
+    },
+    "teacherDisabledNotice": "Worksheet varsayılanı: öğrenci yorum ve soruları kapalı. Atamaya özel ayar bunu değiştirebilir; mevcut yorumlar görünür.",
+    "editSettings": "Ayarları düzenle",
+    "readOnly": "Bu konuşmayı yalnızca görüntüleyebilirsin.",
+    "loadMore": "Daha fazla yorum yükle",
+    "loadMoreError": "Daha fazla yorum yüklenemedi.",
+    "announceSent": "Yorumun gönderildi.",
+    "announceReplySent": "Cevabın gönderildi."
+  },
+  "composer": {
+    "ariaLabel": "Yorum veya soru yaz",
+    "placeholder": "Yorumunu ya da sorunu yaz…",
+    "replyAriaLabel": "Cevap yaz",
+    "replyPlaceholder": "{{name}} için cevap yaz…",
+    "send": "Gönder",
+    "counterAria": "{{max}} karakterden {{count}} karakter kullanıldı",
+    "tooLong": "En fazla {{max}} karakter yazabilirsin.",
+    "shortcutHint": "Göndermek için Ctrl+Enter"
+  },
+  "item": {
+    "teacherBadge": "Öğretmen",
+    "you": "Sen",
+    "mine": "(sen)",
+    "reply": "Yanıtla",
+    "cancelReply": "Vazgeç",
+    "sending": "Gönderiliyor…",
+    "failed": "Gönderilemedi",
+    "retry": "Tekrar dene",
+    "edit": "Düzenle",
+    "showOlder": "Önceki cevapları göster ({{count}})",
+    "olderError": "Önceki cevaplar yüklenemedi.",
+    "repliesAria": "Cevaplar"
+  },
+  "errors": {
+    "rateLimited": "Çok hızlı işlem yapıyorsun. Lütfen biraz bekleyip tekrar dene.",
+    "rateLimitedRetry": "Çok hızlı işlem yapıyorsun. {{seconds}} saniye sonra tekrar dene.",
+    "network": "Sunucuya ulaşılamadı. Bağlantını kontrol edip tekrar dene.",
+    "sendFailed": "Yorum gönderilemedi.",
+    "codes": {
+      "WorksheetNotFound": "Test bulunamadı.",
+      "AccessDenied": "Bu testin yorumlarına erişimin yok.",
+      "QuestionNotInWorksheet": "Soru bu teste ait değil.",
+      "InvalidParent": "Bu yoruma cevap yazılamıyor.",
+      "BodyRequired": "Yorum boş olamaz.",
+      "BodyTooLong": "Yorum en fazla 2000 karakter olabilir.",
+      "BodyInvalidCharacters": "Yorum geçersiz karakterler içeriyor.",
+      "RootCommentNotFound": "Yorum bulunamadı.",
+      "InvalidCursor": "Liste yenilenmeli; sayfayı yeniden yükle.",
+      "CommentsDisabled": "Bu test için yorum yazma kapalı.",
+      "WorksheetNotStarted": "Önce testi başlatmalısın.",
+      "QuestionNotAnswered": "Önce soruyu cevaplamalısın.",
+      "NotResponsibleTeacher": "Bu konuşmaya cevap yazma yetkin yok."
+    }
+  }
+}

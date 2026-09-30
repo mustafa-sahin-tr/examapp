@@ -26,7 +26,9 @@
       "teacherApplication": "Yeni bağımsız öğretmen başvurusu: {{name}}",
       "teacherSchoolRequest": "Yeni okul bağlantısı talebi: {{name}} → {{school}}",
       "goToApplications": "Başvurulara Git",
-      "goToProfile": "Profile Git"
+      "goToProfile": "Profile Git",
+      "newComment": "Yeni yorum",
+      "view": "Görüntüle"
     }
   },
   "layout": {

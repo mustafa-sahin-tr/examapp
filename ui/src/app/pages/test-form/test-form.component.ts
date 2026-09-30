@@ -78,4 +78,12 @@ export class TestFormComponent {
     const c = this.form.get('isPracticeTest');
     c?.setValue(!c.value);
   }
+  /** Issue #105: öğrenci yorum/soru anahtarı; kontrol yoksa (eski form) no-op. */
+  toggleComments() {
+    const c = this.form.get('commentsEnabled');
+    if (!c || c.disabled) {
+      return;
+    }
+    c.setValue(!c.value);
+  }
 }

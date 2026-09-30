@@ -191,7 +191,15 @@
     "timeInvalid": "Geçerli bir saat gir",
     "hasEndDate": "Bitiş zamanı belirle",
     "cancel": "Vazgeç",
-    "save": "Kaydet"
+    "save": "Kaydet",
+    "commentsLabel": "Yorum ve soru",
+    "commentsGroupAria": "Bu atama için yorum ve soru ayarı",
+    "commentsDefault": "Varsayılan",
+    "commentsOn": "Açık",
+    "commentsOff": "Kapalı",
+    "commentsHelper": "Varsayılan, testin güncel ayarını kullanır: {{state}}.",
+    "commentsStateOn": "açık",
+    "commentsStateOff": "kapalı"
   },
   "permissionDialog": {
     "title": "Atama izni iste",
@@ -204,5 +212,11 @@
     "cancel": "Vazgeç",
     "submit": "Gönder",
     "submitFailed": "Talep gönderilemedi. Lütfen tekrar deneyin."
+  },
+  "comments": {
+    "worksheetTitle": "Yorumlar ve sorular",
+    "questionTitle": "Bu soru hakkında yorumlar",
+    "linkedQuestionTitle": "Soru hakkındaki yorumlar",
+    "placeholder": "Yorumlar yükleniyor…"
   }
 }

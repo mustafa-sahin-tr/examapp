@@ -24,6 +24,9 @@ public class BookingDecisionConsumer : IConsumer<BookingDecisionEvent>
     public const string ApprovedType = "BookingApproved";
     public const string RejectedType = "BookingRejected";
 
+    /// <summary>issue #298: otomatik ret metninin sözlük anahtarı (<c>notifications.{key}.title/body</c>); Type değil.</summary>
+    public const string TeacherUnavailableRejectedTextKey = "BookingRejectedTeacherUnavailable";
+
     private readonly BadgeDbContext _db;
     private readonly IHubContext<BadgeNotificationHub> _hub;
     private readonly IUserLocaleResolver _localeResolver;
@@ -61,7 +64,12 @@ public class BookingDecisionConsumer : IConsumer<BookingDecisionEvent>
             return;
         }
 
-        var culture = await _localeResolver.ResolveAsync(e.StudentUserId, e.TargetKeycloakId, ct);
+        // Security review O2 (#298): üretici sub'ı çözemediyse BadgeService'in kendi verisinden çözülür; çözülemezse throw →
+        // retry → badge-service_error (bildirim sessizce sub'sız kaydedilip kaybolmaz — sahiplik sorguları sub'la yapılır).
+        var recipientSub = await NotificationRecipientResolver.ResolveSubAsync(
+            _db, e.StudentUserId, e.TargetKeycloakId, $"BookingDecision (BookingId={e.BookingId})", ct);
+
+        var culture = await _localeResolver.ResolveAsync(e.StudentUserId, recipientSub, ct);
         var teacherName = string.IsNullOrWhiteSpace(e.TeacherName)
             ? _texts.Resolve("notifications.common.defaultTeacher", culture)
             : e.TeacherName;
@@ -69,19 +77,23 @@ public class BookingDecisionConsumer : IConsumer<BookingDecisionEvent>
         var reasonSuffix = string.IsNullOrWhiteSpace(e.RejectionReason)
             ? string.Empty
             : _texts.Resolve("notifications.common.rejectionReasonSuffix", culture, e.RejectionReason);
-        var text = _texts.Build(type, culture, teacherName, whenText, reasonSuffix);
+        // issue #298: öğretmen askıya alındığı için sistemin otomatik reddi — Type yine BookingRejected (idempotency ve UI
+        // aynı), yalnızca metin "öğretmen geçici olarak müsait değil" olur. Askı nedeni event'te yok.
+        var textKey = !e.Approved && e.TeacherUnavailable ? TeacherUnavailableRejectedTextKey : type;
+        var text = _texts.Build(textKey, culture, teacherName, whenText, reasonSuffix);
 
         var notification = new Notification
         {
             UserId = e.StudentUserId,
-            UserKeycloakId = string.IsNullOrWhiteSpace(e.TargetKeycloakId) ? null : e.TargetKeycloakId,
+            UserKeycloakId = recipientSub,
             Type = type,
             Title = text.Title,
             Body = text.Body,
             Data = JsonSerializer.Serialize(new
             {
                 bookingId = e.BookingId,
-                approved = e.Approved
+                approved = e.Approved,
+                teacherUnavailable = e.TeacherUnavailable // issue #298
             }),
             SourceBookingId = e.BookingId,
             IsRead = false,
@@ -104,23 +116,15 @@ public class BookingDecisionConsumer : IConsumer<BookingDecisionEvent>
         }
 
         // SignalR: badge/atama izni akışlarıyla aynı hedefleme — Clients.User(keycloak subject).
-        if (!string.IsNullOrWhiteSpace(e.TargetKeycloakId))
+        await _hub.Clients.User(recipientSub).SendAsync("BookingUpdate", new
         {
-            await _hub.Clients.User(e.TargetKeycloakId).SendAsync("BookingUpdate", new
-            {
-                notificationId = notification.Id,
-                kind = e.Approved ? "approved" : "rejected",
-                bookingId = e.BookingId,
-                title = notification.Title,
-                body = notification.Body
-            }, ct);
-        }
-        else
-        {
-            _logger.LogWarning(
-                "BookingDecision: TargetKeycloakId boş (BookingId={BookingId}); bildirim kaydedildi ama push atlandı.",
-                e.BookingId);
-        }
+            notificationId = notification.Id,
+            kind = e.Approved ? "approved" : "rejected",
+            teacherUnavailable = e.TeacherUnavailable, // issue #298
+            bookingId = e.BookingId,
+            title = notification.Title,
+            body = notification.Body
+        }, ct);
 
         _logger.LogInformation(
             "BookingDecision işlendi. BookingId={BookingId}, Type={Type}, StudentUserId={StudentUserId}, NotificationId={NotificationId}",

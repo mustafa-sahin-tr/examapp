@@ -42,6 +42,11 @@ public class OutboxEventRegistryTests
             .ShouldBe(typeof(WorksheetCommentRepliedEvent));
     }
 
+    [Fact]
+    public void Resolve_knows_the_booking_teacher_unavailable_event_issue_298()
+        => OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<BookingTeacherUnavailableEvent>())
+            .ShouldBe(typeof(BookingTeacherUnavailableEvent));
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]

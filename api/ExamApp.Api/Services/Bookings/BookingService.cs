@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Bookings;
+using ExamApp.Api.Models.Dtos.Teachers;
 using ExamApp.Api.Models.Dtos.Video;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Tenancy;
@@ -557,6 +558,7 @@ public class BookingService : IBookingService
             return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.teacherRecordNotFound"] };
 
         var booking = await _context.Bookings
+            .AsNoTracking()
             .Include(b => b.AvailabilitySlot)
             .Include(b => b.Student)
             .FirstOrDefaultAsync(b => b.Id == bookingId, ct);
@@ -593,9 +595,8 @@ public class BookingService : IBookingService
 
         _context.SetCurrentUser(teacherUserId);
 
-        booking.Status = newStatus;
-        booking.DecisionAt = UtcNow();
-        booking.RejectionReason = newStatus == BookingStatus.Rejected && !string.IsNullOrWhiteSpace(rejectionReason)
+        var decidedAt = UtcNow();
+        var storedReason = newStatus == BookingStatus.Rejected && !string.IsNullOrWhiteSpace(rejectionReason)
             ? rejectionReason.Trim()
             : null;
 
@@ -608,22 +609,64 @@ public class BookingService : IBookingService
             StudentUserId = booking.Student.UserId,
             TargetKeycloakId = studentKeycloakId,
             Approved = newStatus == BookingStatus.Approved,
-            RejectionReason = booking.RejectionReason,
+            RejectionReason = storedReason,
             Date = booking.AvailabilitySlot.Date,
             StartTime = booking.AvailabilitySlot.StartTime,
             EndTime = booking.AvailabilitySlot.EndTime,
-            DecidedAt = booking.DecisionAt.Value
+            DecidedAt = decidedAt
         };
-        _context.OutboxMessages.Add(new OutboxMessage
+
+        // Code review O1 (#298): okuma ile yazma arasında talep başka bir yoldan karara bağlanabilir (öğretmen askıya
+        // alınınca otomatik ret, ya da öğretmenin paralel ikinci isteği). Koşullu UPDATE (Status == Pending) + outbox aynı
+        // transaction'da; 0 satır → "zaten karara bağlandı" ve event YAZILMAZ (öğrenciye çelişen iki bildirim gitmez).
+        // ExecuteUpdate SaveChanges denetimini atladığı için UpdateTime/UpdateUserId açıkça yazılır.
+        var affected = 0;
+        var strategy = _context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
         {
-            Type = OutboxEventRegistry.NameFor<BookingDecisionEvent>(),
-            Content = JsonSerializer.Serialize(decisionEvent),
-            CreatedAt = UtcNow()
+            _context.ChangeTracker.Clear();
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+
+            affected = await _context.Bookings
+                .Where(b => b.Id == bookingId && b.Status == BookingStatus.Pending)
+                .ExecuteUpdateAsync(set => set
+                    .SetProperty(b => b.Status, newStatus)
+                    .SetProperty(b => b.DecisionAt, decidedAt)
+                    .SetProperty(b => b.RejectionReason, storedReason)
+                    .SetProperty(b => b.UpdateTime, decidedAt)
+                    .SetProperty(b => b.UpdateUserId, teacherUserId), ct);
+
+            if (affected == 0)
+            {
+                await tx.RollbackAsync(ct);
+                return;
+            }
+
+            _context.OutboxMessages.Add(new OutboxMessage
+            {
+                Type = OutboxEventRegistry.NameFor<BookingDecisionEvent>(),
+                Content = JsonSerializer.Serialize(decisionEvent),
+                CreatedAt = decidedAt
+            });
+            await _context.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
         });
 
-        // Tek SaveChanges — status + outbox aynı transaction'da (WorksheetAccessRequestService
-        // Approve/Reject ile aynı desen).
-        await _context.SaveChangesAsync(ct);
+        if (affected == 0)
+        {
+            var current = await _context.Bookings.AsNoTracking()
+                .Where(b => b.Id == bookingId)
+                .Select(b => (BookingStatus?)b.Status)
+                .FirstOrDefaultAsync(ct);
+            if (current == null)
+                return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.request.notFound"] };
+
+            return new BookingResultDto
+            {
+                Success = false,
+                Message = _localizer["booking.request.alreadyDecided", current.Value]
+            };
+        }
 
         var result = await QueryBookingsAsync(b => b.Id == bookingId, 0, 1, ct);
 
@@ -654,7 +697,9 @@ public class BookingService : IBookingService
                 StudentUserId = b.Student.UserId,
                 b.AvailabilitySlot.Date,
                 b.AvailabilitySlot.StartTime,
-                b.AvailabilitySlot.EndTime
+                b.AvailabilitySlot.EndTime,
+                // issue #298: ApprovedTeacherGuard ile aynı karar (askı önce, sonra hesap onayı).
+                TeacherAvailable = b.Teacher.AccountSuspendedAt == null && b.Teacher.AccountApprovedAt != null
             })
             .FirstOrDefaultAsync(ct);
 
@@ -669,8 +714,11 @@ public class BookingService : IBookingService
             return BookingLiveSessionAccess.Denied(BookingLiveSessionDenial.NotParticipant, bookingId);
 
         var window = BookingSessionWindow.For(row.Date, row.StartTime, row.EndTime, _videoOptions.Value);
+        // Sıra: taraf → randevu durumu → öğretmen hesabı (issue #298) → pencere.
         var denial = row.Status != BookingStatus.Approved
             ? BookingLiveSessionDenial.NotApproved
+            : !row.TeacherAvailable
+                ? BookingLiveSessionDenial.TeacherUnavailable
             : window.StateAt(UtcNow()) switch
             {
                 BookingWindowState.NotOpen => BookingLiveSessionDenial.WindowNotOpen,
@@ -696,6 +744,10 @@ public class BookingService : IBookingService
                 return VideoFail(forbidden: true, message: _localizer["booking.video.notParticipant"]);
             case BookingLiveSessionDenial.NotApproved:
                 return VideoFail(conflict: true, message: _localizer["booking.video.notApproved"]);
+            case BookingLiveSessionDenial.TeacherUnavailable:
+                // issue #298: askıdaki öğretmenin randevusunda iki taraf da oda token'ı alamaz. 409 + makine okunur kod.
+                return VideoFail(conflict: true, message: _localizer["booking.video.teacherUnavailable"],
+                    errorCode: TeacherAccessErrorCodes.TeacherUnavailable);
             case BookingLiveSessionDenial.WindowNotOpen:
                 return VideoFail(conflict: true, message:
                     _localizer["booking.video.windowNotOpen", options.JoinWindowBeforeMinutes]);
@@ -744,14 +796,15 @@ public class BookingService : IBookingService
     }
 
     private static VideoSessionResultDto VideoFail(
-        string message, bool notFound = false, bool forbidden = false, bool conflict = false)
+        string message, bool notFound = false, bool forbidden = false, bool conflict = false, string? errorCode = null)
         => new()
         {
             Success = false,
             NotFound = notFound,
             Forbidden = forbidden,
             Conflict = conflict,
-            Message = message
+            Message = message,
+            ErrorCode = errorCode
         };
 
     // ------------------------------------------------------------------

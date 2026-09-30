@@ -23,7 +23,8 @@
   "closed": {
     "WindowClosed": "The lesson time is over; the whiteboard is read-only.",
     "BookingCancelled": "The booking is no longer valid; the whiteboard was closed.",
-    "TeacherNotApproved": "The teacher account cannot give lessons right now; the whiteboard was closed.",
+    "TeacherNotApproved": "The teacher is temporarily unavailable; the whiteboard is read-only.",
+    "TeacherUnavailable": "The teacher is temporarily unavailable; the whiteboard is read-only.",
     "AccessRevoked": "Your access to this whiteboard has ended.",
     "generic": "The whiteboard was closed; it is read-only."
   },
@@ -31,7 +32,8 @@
     "UserNotResolved": "Your account could not be verified. Please sign in again.",
     "BookingNotFound": "Lesson not found.",
     "NotParticipant": "You are not a participant of this lesson.",
-    "TeacherNotApproved": "The teacher account cannot give lessons right now.",
+    "TeacherNotApproved": "The teacher is temporarily unavailable.",
+    "TeacherUnavailable": "The teacher is temporarily unavailable.",
     "BookingNotApproved": "The booking is not approved.",
     "WindowNotOpen": "The whiteboard is not open yet; try again closer to the lesson time.",
     "WindowClosed": "The lesson time is over.",

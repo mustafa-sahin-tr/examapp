@@ -67,6 +67,8 @@ public class BookingServiceTests : IDisposable
             Id = teacherId,
             UserId = userId,
             ApprovalStatus = status,
+            // issue #298: canlı ders erişimi randevunun öğretmeninin HESAP onayına da bakar (#287 sonrası onaylı öğretmen).
+            AccountApprovedAt = status == TeacherApprovalStatus.Approved ? DateTime.UtcNow.AddDays(-30) : null,
             Bio = "test"
         };
         ctx.Teachers.Add(teacher);

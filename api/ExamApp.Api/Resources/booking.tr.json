@@ -53,6 +53,7 @@
       "bookingNotFound": "Randevu bulunamadı.",
       "notParticipant": "Bu randevuya katılma yetkiniz yok.",
       "notApproved": "Görüşme yalnızca onaylanmış randevular için başlatılabilir.",
+      "teacherUnavailable": "Öğretmen şu anda geçici olarak müsait değil; görüşme başlatılamaz.",
       "windowNotOpen": "Görüşmeye ders saatinden en erken {0} dakika önce katılabilirsiniz.",
       "windowClosed": "Bu dersin görüşme penceresi kapandı (bitişten {0} dakika sonra kapanır).",
       "providerUnavailable": "Görüşme servisi şu anda yapılandırılmamış. Lütfen daha sonra tekrar deneyin.",

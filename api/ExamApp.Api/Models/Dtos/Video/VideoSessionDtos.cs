@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json.Serialization;
 
 namespace ExamApp.Api.Models.Dtos.Video;
 
@@ -36,9 +37,16 @@ public class VideoSessionDto
 
 /// <summary>
 /// Servisten controller'a görüşme oturumu sonucu. ResponseBaseDto bayrakları HTTP koduna eşlenir
-/// (404 randevu yok, 403 katılımcı değil, 409 onaysız randevu veya katılım penceresi dışı).
+/// (404 randevu yok, 403 katılımcı değil, 409 onaysız randevu, öğretmen müsait değil veya katılım penceresi dışı).
 /// </summary>
 public class VideoSessionResultDto : ResponseBaseDto
 {
     public VideoSessionDto? Session { get; set; }
+
+    /// <summary>
+    /// issue #298: UI'ın ayırt edeceği makine okunur red kodu. Şimdilik yalnızca
+    /// <see cref="Teachers.TeacherAccessErrorCodes.TeacherUnavailable"/> (409). Diğer yanıtlarda alan JSON'a çıkmaz.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ErrorCode { get; set; }
 }

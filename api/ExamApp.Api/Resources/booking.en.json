@@ -53,6 +53,7 @@
       "bookingNotFound": "Booking not found.",
       "notParticipant": "You are not allowed to join this booking.",
       "notApproved": "A meeting can only be started for approved bookings.",
+      "teacherUnavailable": "The teacher is temporarily unavailable; the session cannot be started.",
       "windowNotOpen": "You can join the meeting at the earliest {0} minutes before the lesson starts.",
       "windowClosed": "The meeting window for this lesson is closed (it closes {0} minutes after the end time).",
       "providerUnavailable": "The meeting service is not configured at the moment. Please try again later.",

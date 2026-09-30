@@ -210,6 +210,71 @@ public class TeacherSuspensionBookingEffectsTests : IDisposable
     }
 
     [Fact]
+    public async Task Suspend_counts_crossing_midnight_bookings_that_have_not_ended_yet()
+    {
+        // issue #300: şimdi 2026-06-15 00:10. Dünün gün aşan ve hâlâ süren dersi ile bugünün gün aşan dersi "bitmemiş".
+        _clock.Now = new DateTimeOffset(2026, 6, 15, 0, 10, 0, TimeSpan.Zero);
+        await SeedPeopleAsync();
+        int ongoingFromYesterday, tonight;
+        await using (var ctx = _db.NewContext())
+        {
+            var a = BookingSeed.Add(ctx, TeacherId, StudentA, BookingStatus.Approved, new TimeOnly(23, 30), new TimeOnly(0, 30), Today.AddDays(-1));
+            var b = BookingSeed.Add(ctx, TeacherId, StudentB, BookingStatus.Approved, new TimeOnly(23, 30), new TimeOnly(0, 30), Today);
+            // Dünün gün aşan ama 00:05'te bitmiş dersi ve dünün gün aşmayan dersi: bitti.
+            BookingSeed.Add(ctx, TeacherId, StudentC, BookingStatus.Approved, new TimeOnly(23, 0), new TimeOnly(0, 5), Today.AddDays(-1));
+            BookingSeed.Add(ctx, TeacherId, StudentD, BookingStatus.Approved, new TimeOnly(22, 0), new TimeOnly(23, 0), Today.AddDays(-1));
+            // Sıfır süreli (hatalı) satır, bugün ve yarın: 24 saat sayılmaz, "bitmiş" kabul edilir (security review L3).
+            BookingSeed.Add(ctx, TeacherId, StudentD, BookingStatus.Approved, new TimeOnly(12, 0), new TimeOnly(12, 0), Today);
+            BookingSeed.Add(ctx, TeacherId, StudentD, BookingStatus.Approved, new TimeOnly(12, 0), new TimeOnly(12, 0), Today.AddDays(1));
+            await ctx.SaveChangesAsync();
+            ongoingFromYesterday = a.Id;
+            tonight = b.Id;
+        }
+
+        (await SuspendAsync()).Status.ShouldBe(AdminTeacherSuspensionStatus.Success);
+
+        var events = await EventsAsync<BookingTeacherUnavailableEvent>();
+        events.Select(e => e.StudentUserId).ShouldBe([StudentAUser, StudentBUser], ignoreOrder: true);
+        events.Single(e => e.StudentUserId == StudentAUser).BookingIds.ShouldBe([ongoingFromYesterday]);
+        events.Single(e => e.StudentUserId == StudentBUser).BookingIds.ShouldBe([tonight]);
+    }
+
+    [Theory]
+    [InlineData(-1, 0, 0)]  // dün, 00:00–00:00
+    [InlineData(0, 12, 0)]  // bugün ileride, 12:00–12:00
+    [InlineData(1, 12, 0)]  // yarın
+    public void BookingNotEndedAt_treats_zero_length_rows_as_ended(int dayOffset, int hour, int minute)
+    {
+        var now = new DateTime(2026, 6, 15, 0, 10, 0, DateTimeKind.Utc);
+        var time = new TimeOnly(hour, minute);
+        var booking = new Booking
+        {
+            AvailabilitySlot = new TeacherAvailabilitySlot { Date = Today.AddDays(dayOffset), StartTime = time, EndTime = time }
+        };
+
+        SlotTimeRange.BookingNotEndedAt(now).Compile()(booking).ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(0, 29, true)]  // dünün 23:30–00:30 dersi sürüyor
+    [InlineData(0, 30, false)] // tam bitiş anı: bitmiş (bitiş > şimdi değil)
+    public void BookingNotEndedAt_matches_SlotTimeRange_for_yesterdays_crossing_slot(int hour, int minute, bool expected)
+    {
+        var now = new DateTime(2026, 6, 15, hour, minute, 0, DateTimeKind.Utc);
+        var booking = new Booking
+        {
+            AvailabilitySlot = new TeacherAvailabilitySlot
+            {
+                Date = Today.AddDays(-1), StartTime = new TimeOnly(23, 30), EndTime = new TimeOnly(0, 30)
+            }
+        };
+
+        SlotTimeRange.BookingNotEndedAt(now).Compile()(booking).ShouldBe(expected);
+        (SlotTimeRange.From(booking.AvailabilitySlot.Date, booking.AvailabilitySlot.StartTime, booking.AvailabilitySlot.EndTime).EndUtc > now)
+            .ShouldBe(expected);
+    }
+
+    [Fact]
     public async Task Suspend_without_bookings_writes_no_events_and_skips_the_auth_lookup()
     {
         await SeedPeopleAsync();

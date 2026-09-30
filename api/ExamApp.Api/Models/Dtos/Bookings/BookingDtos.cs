@@ -36,6 +36,10 @@ public class AvailabilitySlotDto
     /// <summary>Slotun başlangıcı UTC olarak (Date + StartTime). UI'ın tarih hesabı yapmasını kolaylaştırır.</summary>
     public DateTime StartUtc { get; set; }
 
+    /// <summary>
+    /// Slotun bitişi UTC olarak. <see cref="EndTime"/> &lt; <see cref="StartTime"/> ise (gün aşan slot, issue #300)
+    /// ertesi günün saatidir; her zaman <see cref="StartUtc"/>'den büyüktür.
+    /// </summary>
     public DateTime EndUtc { get; set; }
 
     /// <summary>Aktif (Pending veya Approved) bir booking var mı — varsa slot yeni talebe kapalıdır.</summary>
@@ -173,6 +177,7 @@ public class BookingDto
     /// <summary>Randevunun başlangıcı UTC olarak (Date + StartTime).</summary>
     public DateTime StartUtc { get; set; }
 
+    /// <summary>Randevunun bitişi UTC olarak; gün aşan slotta ertesi gün (issue #300). Her zaman &gt; <see cref="StartUtc"/>.</summary>
     public DateTime EndUtc { get; set; }
 
     /// <summary>"Pending" | "Approved" | "Rejected"</summary>

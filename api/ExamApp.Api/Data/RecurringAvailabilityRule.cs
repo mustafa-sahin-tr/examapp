@@ -15,6 +15,10 @@ namespace ExamApp.Api.Data;
 /// şekilde UTC kabul edilir. Materialize ufku <c>BookingService.MaxAdvanceDays</c> (90 gün) ile sınırlıdır;
 /// pencere <c>GET /api/booking/slots/mine</c> çağrısında lazy olarak ileri kaydırılır.
 /// </para>
+/// <para>
+/// issue #300: <see cref="EndTime"/> &lt; <see cref="StartTime"/> ise her occurrence'ın bitişi ertesi gündür
+/// (<see cref="DayOfWeek"/> başlangıç günüdür; bkz. <c>Services.Bookings.SlotTimeRange</c>).
+/// </para>
 /// </summary>
 public class RecurringAvailabilityRule : BaseEntity
 {

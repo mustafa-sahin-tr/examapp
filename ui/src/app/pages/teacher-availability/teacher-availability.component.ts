@@ -17,7 +17,7 @@ import {
 import { BookingService } from '../../services/booking.service';
 import { AvailabilityWeekGridComponent } from '../../shared/components/availability-week-grid/availability-week-grid.component';
 import { DraftRange } from '../../shared/components/availability-week-grid/availability-draft.util';
-import { isPastSlot } from '../../shared/utils/booking-format.util';
+import { isPastSlot, slotEndsNextDay } from '../../shared/utils/booking-format.util';
 
 /** Listede tek satır — slotun türetilmiş gösterim alanlarıyla. */
 interface SlotRow {
@@ -28,6 +28,8 @@ interface SlotRow {
   /** " · Ayşe" gibi dile bağlı olmayan öğrenci eki; boşsa gösterilmez. */
   studentSuffix: string;
   statusClass: 'is-free' | 'is-pending' | 'is-approved';
+  /** Bitiş ertesi yerel günde (issue #300): aralığa "(+1 gün)" eklenir. */
+  endsNextDay: boolean;
 }
 
 /**
@@ -295,6 +297,7 @@ export class TeacherAvailabilityComponent implements OnInit {
     return {
       slot,
       past: isPastSlot(slot.startUtc),
+      endsNextDay: slotEndsNextDay(slot.startUtc, slot.endUtc),
       statusKey,
       studentSuffix: slot.isBooked ? studentSuffix : '',
       statusClass,

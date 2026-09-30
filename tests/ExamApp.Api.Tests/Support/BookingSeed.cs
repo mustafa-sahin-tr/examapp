@@ -15,13 +15,21 @@ public static class BookingSeed
     /// öğrenciye <paramref name="status"/> durumlu booking ekler. Aynı öğretmen için farklı saat ver.
     /// </summary>
     public static Booking Add(AppDbContext ctx, int teacherId, int studentId, BookingStatus status, int hour, DateOnly? date = null)
+        => Add(ctx, teacherId, studentId, status, new TimeOnly(hour, 0), new TimeOnly(hour + 1, 0), date);
+
+    /// <summary>
+    /// Serbest saatli slot + booking. <paramref name="end"/> &lt;= <paramref name="start"/> ise gün aşan slottur
+    /// (bitiş ertesi gün, issue #300).
+    /// </summary>
+    public static Booking Add(AppDbContext ctx, int teacherId, int studentId, BookingStatus status,
+        TimeOnly start, TimeOnly end, DateOnly? date = null)
     {
         var slot = new TeacherAvailabilitySlot
         {
             TeacherId = teacherId,
             Date = date ?? DefaultDate,
-            StartTime = new TimeOnly(hour, 0),
-            EndTime = new TimeOnly(hour + 1, 0),
+            StartTime = start,
+            EndTime = end,
             CreatedAt = DateTime.UtcNow,
         };
         ctx.TeacherAvailabilitySlots.Add(slot);

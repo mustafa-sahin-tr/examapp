@@ -12,6 +12,7 @@ import { AuthService } from '../../../services/auth.service';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { activeIntlLocale } from '../../utils/active-locale.util';
 import { formatFullDate } from '../../utils/calendar-month.util';
+import { SLOT_NEXT_DAY_KEY, endsOnNextLocalDay } from '../../utils/booking-format.util';
 import { describeStudyItem } from '../../utils/study-item-display.util';
 
 /** Girdi: bir günün tarihi + o güne düşen etkinlikler. */
@@ -194,7 +195,9 @@ export class CalendarDayDialogComponent {
     if (ev.kind === 'booking') {
       // Onaylanmış ders randevusu (issue #96) — başlık backend'den "<Ad> ile ders" olarak gelir.
       const end = ev.endDate ? new Date(ev.endDate) : null;
-      const range = end ? `${TIME_FMT.format(at)} – ${TIME_FMT.format(end)}` : TIME_FMT.format(at);
+      // Gün aşan ders (issue #300): bitiş `endDate` (= endUtc) ertesi yerel gündeyse "(+1 gün)".
+      const nextDay = end && endsOnNextLocalDay(at, end) ? ` ${this.t(SLOT_NEXT_DAY_KEY)}` : '';
+      const range = end ? `${TIME_FMT.format(at)} – ${TIME_FMT.format(end)}${nextDay}` : TIME_FMT.format(at);
       const target = this.isTeacher ? '/booking-requests' : '/my-bookings';
       return {
         time,

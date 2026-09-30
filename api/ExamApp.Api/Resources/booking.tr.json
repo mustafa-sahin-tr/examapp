@@ -7,10 +7,11 @@
     "studentRecordNotFound": "Öğrenci kaydı bulunamadı.",
 
     "slot": {
-      "endBeforeStart": "Bitiş saati başlangıç saatinden sonra olmalıdır.",
+      "zeroLength": "Bitiş saati başlangıç saatiyle aynı olamaz.",
       "inPast": "Geçmiş bir zaman aralığı tanımlanamaz.",
       "tooFarAhead": "Müsaitlik aralığı en fazla {0} gün sonrası için tanımlanabilir.",
       "tooLong": "Bir müsaitlik aralığı en fazla {0} saat sürebilir.",
+      "tooLongNextDay": "Bitiş başlangıçtan önce olduğu için ertesi gün sayıldı; aralık {0} saati aşıyor.",
       "overlapping": "Bu zaman aralığı mevcut bir müsaitlik aralığıyla çakışıyor.",
       "duplicate": "Bu zaman aralığı zaten tanımlı.",
       "created": "Müsaitlik aralığı eklendi.",

@@ -14,6 +14,7 @@ import { Booking } from '../../models/booking.model';
 import { BookingService } from '../../services/booking.service';
 import { LocaleService } from '../../services/locale.service';
 import { JOIN_WINDOW_TICK_MS, JoinWindowInfo, getJoinWindow } from '../../shared/utils/booking-join-window';
+import { SLOT_NEXT_DAY_KEY, endsOnNextLocalDay } from '../../shared/utils/booking-format.util';
 
 type BookingFilter = 'active' | 'all';
 
@@ -176,6 +177,10 @@ export class StudentBookingsComponent implements OnInit {
       return '—';
     }
     const format = this.timeFormat();
-    return `${format.format(start)} – ${format.format(end)}`;
+    const range = `${format.format(start)} – ${format.format(end)}`;
+    // Gün aşan ders (issue #300): "23:30 – 00:30 (+1 gün)"; metin kök sözlükten.
+    return endsOnNextLocalDay(start, end)
+      ? `${range} ${this.transloco.translate<string>(SLOT_NEXT_DAY_KEY) ?? ''}`.trimEnd()
+      : range;
   }
 }

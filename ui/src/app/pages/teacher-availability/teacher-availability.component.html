@@ -55,6 +55,9 @@
             <span class="avail__row-range">
               <mat-icon>schedule</mat-icon>
               {{ row.slot.startUtc | date: 'shortTime' }} – {{ row.slot.endUtc | date: 'shortTime' }}
+              @if (row.endsNextDay) {
+                <span class="avail__row-next-day">{{ 'shared.slotRange.nextDay' | transloco }}</span>
+              }
               @if (row.slot.recurringAvailabilityRuleId) {
                 <mat-icon class="avail__row-repeat" [title]="t('grid.recurring.tooltip')" [attr.aria-label]="t('grid.recurring.tooltip')">repeat</mat-icon>
               }

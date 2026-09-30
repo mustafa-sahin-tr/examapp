@@ -41,7 +41,7 @@ public class TeacherControllerTutorProfileAuthTests
 
     private TeacherController NewController(UserProfileDto authenticatedUser, ExamApp.Api.Services.Teachers.IApprovedTeacherGuard? guard = null)
     {
-        _authApiClient.GetUserProfileAsync().Returns(authenticatedUser);
+        _authApiClient.GetUserProfileAsync(Arg.Any<CancellationToken>()).Returns(authenticatedUser);
 
         // issue #189: BaseController.GetAuthenticatedUserAsync artık IUserProfileProvider
         // kullanıyor; testte gerçek UserProfileProvider'ı, DB gerektirmeyen bir

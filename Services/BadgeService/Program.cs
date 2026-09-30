@@ -172,14 +172,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             OnMessageReceived = context =>
             {
-                var accessToken = context.Request.Query["access_token"];
-
-                // Bu istek SignalR Hub ise token'ı burada yakala
-                var path = context.HttpContext.Request.Path;
-                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hub/badges"))
-                {
-                    context.Token = accessToken;
-                }
+                // Bu istek SignalR Hub ise token'ı query'den al — yalnızca Authorization header'ı yokken (security O1).
+                var queryToken = BadgeService.Security.SignalRQueryToken.Resolve(context.Request, "/hub/badges");
+                if (queryToken is not null)
+                    context.Token = queryToken;
 
                 return Task.CompletedTask;
             }

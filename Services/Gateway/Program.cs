@@ -224,6 +224,10 @@ app.Use(async (context, next) =>
 });
 
 app.UseWebSockets();    // WebSocket desteği SignalR için gerekli
+
+// Ocelot WS kolu gateway auth'unu atlıyor; upgrade auth'u Ocelot'tan önce burada (bkz. HubWebSocketAuthExtensions).
+app.UseHubWebSocketAuth();
+
 await app.UseOcelot();
 
 app.Run();

@@ -97,6 +97,12 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
                 sp.GetRequiredService<FakeUserDirectory>(),
                 sp.GetRequiredService<FakeKeycloakAccounts>()));
 
+            // auth-api user-profile: kayıtlı Bearer token'lar için sahte yanıt (gerçek AuthApiClient'ın ilettiği token
+            // uçtan uca doğrulanır — SignalR ?access_token= dahil). Kayıtsız istekler olduğu gibi geçer.
+            services.AddSingleton<FakeAuthApiProfiles>();
+            services.ConfigureHttpClientDefaults(http => http.AddHttpMessageHandler(sp =>
+                new FakeAuthApiProfilesHandler(sp.GetRequiredService<FakeAuthApiProfiles>())));
+
             // issue #156: şifre sıfırlama uçları kayıtlı sahte Keycloak hesapları üzerinden uçtan uca çalışır;
             // diğer tüm IKeycloakService çağrıları gerçek servise gider (davranış değişmez).
             services.AddSingleton<FakeKeycloakAccounts>();

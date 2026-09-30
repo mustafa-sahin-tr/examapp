@@ -59,7 +59,7 @@ public class BaseControllerSchoolContextTests : IDisposable
         ClaimsIdentity identity)
     {
         var authApiClient = Substitute.For<IAuthApiClient>();
-        authApiClient.GetUserProfileAsync().Returns(authenticatedUser);
+        authApiClient.GetUserProfileAsync(Arg.Any<CancellationToken>()).Returns(authenticatedUser);
 
         var schoolContextResolver = Substitute.For<ISchoolContextResolver>();
         schoolContextResolver.ResolveSchoolIdAsync(Arg.Any<UserProfileDto>(), Arg.Any<CancellationToken>())

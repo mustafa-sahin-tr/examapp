@@ -1,0 +1,57 @@
+{
+  "canvasLabel": "Ortak çizim tahtası",
+  "loading": "Tahta yükleniyor...",
+  "loadFailed": "Tahta yüklenemedi.",
+  "retry": "Tekrar dene",
+  "dismiss": "Kapat",
+  "status": {
+    "connecting": "Bağlanıyor...",
+    "connected": "Bağlı",
+    "reconnecting": "Yeniden bağlanıyor...",
+    "disconnected": "Bağlantı yok",
+    "closed": "Tahta kapandı"
+  },
+  "peer": {
+    "online": "{{role}} çevrimiçi",
+    "offline": "{{role}} çevrimdışı"
+  },
+  "roles": {
+    "teacher": "Öğretmen",
+    "student": "Öğrenci"
+  },
+  "endingSoon": "Ders bitiyor: tahta yaklaşık {{minutes}} dakika içinde kapanacak.",
+  "closed": {
+    "WindowClosed": "Ders süresi doldu; tahta salt okunur.",
+    "BookingCancelled": "Randevu artık geçerli değil; tahta kapatıldı.",
+    "TeacherNotApproved": "Öğretmen hesabı şu an ders veremiyor; tahta kapatıldı.",
+    "AccessRevoked": "Bu tahtaya erişiminiz sona erdi.",
+    "generic": "Tahta kapatıldı; salt okunur."
+  },
+  "errors": {
+    "UserNotResolved": "Kullanıcı bilgileriniz doğrulanamadı. Lütfen yeniden giriş yapın.",
+    "BookingNotFound": "Ders bulunamadı.",
+    "NotParticipant": "Bu dersin katılımcısı değilsiniz.",
+    "TeacherNotApproved": "Öğretmen hesabı şu an ders veremiyor.",
+    "BookingNotApproved": "Randevu onaylı değil.",
+    "WindowNotOpen": "Tahta henüz açılmadı; ders saatine yakın tekrar deneyin.",
+    "WindowClosed": "Ders süresi doldu.",
+    "NotJoined": "Tahtaya bağlanılamadı.",
+    "BoardClosed": "Tahta kapatıldı.",
+    "TooManyElementsInMessage": "Çok fazla öğe aynı anda gönderilemedi.",
+    "SceneElementLimit": "Tahtadaki öğe sınırına ulaşıldı.",
+    "SceneSizeLimit": "Tahtanın boyut sınırına ulaşıldı.",
+    "InvalidElement": "Bir öğe gönderilemedi.",
+    "ElementTypeNotAllowed": "Bu öğe türü tahtada desteklenmiyor.",
+    "ImagesNotSupported": "Tahtada görsel desteklenmiyor.",
+    "InvalidPointer": "İmleç konumu gönderilemedi.",
+    "RateLimited": "Çok hızlı istek gönderildi; tekrar deneniyor.",
+    "generic": "Tahtaya bağlanılamadı."
+  },
+  "warnings": {
+    "elementTooLarge": "Bu çizim çok uzun olduğu için karşı tarafa gönderilemedi. Daha kısa çizgilerle devam edin.",
+    "unsupportedContent": "Görsel ve gömülü içerik tahtada desteklenmiyor; kaldırıldı.",
+    "sceneLimit": "Tahta sınırına ulaşıldı; yeni çizimler karşı tarafa gönderilemiyor.",
+    "rejected": "Bazı öğeler sunucu tarafından reddedildi.",
+    "linkBlocked": "Yalnızca http(s) bağlantıları açılabilir."
+  }
+}

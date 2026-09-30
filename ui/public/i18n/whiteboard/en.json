@@ -1,0 +1,57 @@
+{
+  "canvasLabel": "Shared drawing board",
+  "loading": "Loading the whiteboard...",
+  "loadFailed": "The whiteboard could not be loaded.",
+  "retry": "Try again",
+  "dismiss": "Close",
+  "status": {
+    "connecting": "Connecting...",
+    "connected": "Connected",
+    "reconnecting": "Reconnecting...",
+    "disconnected": "No connection",
+    "closed": "Whiteboard closed"
+  },
+  "peer": {
+    "online": "{{role}} online",
+    "offline": "{{role}} offline"
+  },
+  "roles": {
+    "teacher": "Teacher",
+    "student": "Student"
+  },
+  "endingSoon": "The lesson is ending: the whiteboard closes in about {{minutes}} minutes.",
+  "closed": {
+    "WindowClosed": "The lesson time is over; the whiteboard is read-only.",
+    "BookingCancelled": "The booking is no longer valid; the whiteboard was closed.",
+    "TeacherNotApproved": "The teacher account cannot give lessons right now; the whiteboard was closed.",
+    "AccessRevoked": "Your access to this whiteboard has ended.",
+    "generic": "The whiteboard was closed; it is read-only."
+  },
+  "errors": {
+    "UserNotResolved": "Your account could not be verified. Please sign in again.",
+    "BookingNotFound": "Lesson not found.",
+    "NotParticipant": "You are not a participant of this lesson.",
+    "TeacherNotApproved": "The teacher account cannot give lessons right now.",
+    "BookingNotApproved": "The booking is not approved.",
+    "WindowNotOpen": "The whiteboard is not open yet; try again closer to the lesson time.",
+    "WindowClosed": "The lesson time is over.",
+    "NotJoined": "Could not join the whiteboard.",
+    "BoardClosed": "The whiteboard was closed.",
+    "TooManyElementsInMessage": "Too many items could not be sent at once.",
+    "SceneElementLimit": "The whiteboard item limit was reached.",
+    "SceneSizeLimit": "The whiteboard size limit was reached.",
+    "InvalidElement": "An item could not be sent.",
+    "ElementTypeNotAllowed": "This item type is not supported on the whiteboard.",
+    "ImagesNotSupported": "Images are not supported on the whiteboard.",
+    "InvalidPointer": "The pointer position could not be sent.",
+    "RateLimited": "Too many requests; retrying.",
+    "generic": "Could not connect to the whiteboard."
+  },
+  "warnings": {
+    "elementTooLarge": "This drawing is too long to send to the other participant. Continue with shorter strokes.",
+    "unsupportedContent": "Images and embedded content are not supported on the whiteboard and were removed.",
+    "sceneLimit": "The whiteboard limit was reached; new drawings cannot be sent.",
+    "rejected": "Some items were rejected by the server.",
+    "linkBlocked": "Only http(s) links can be opened."
+  }
+}

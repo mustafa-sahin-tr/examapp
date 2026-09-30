@@ -322,5 +322,61 @@ describe('availability-week-grid.util', () => {
 
       expect(events.length).toBe(0);
     });
+
+    describe('gün aşan slot (issue #300)', () => {
+      /** Backend şekli: `date` başlangıç günü, `endTime` ham saat (00:30), `endUtc` ERTESİ gün. */
+      const crossing: AvailabilitySlot = {
+        id: 7,
+        teacherId: 10,
+        date: '2026-09-24',
+        startTime: '23:30:00',
+        endTime: '00:30:00',
+        createdAt: '2026-09-15T10:00:00Z',
+        startUtc: '2026-09-24T23:30:00Z',
+        endUtc: '2026-09-25T00:30:00Z',
+        isBooked: false,
+      };
+
+      it('toGridEvents_CrossingSlot_EndComesFromEndUtcNotDatePlusEndTime', () => {
+        const [event] = toGridEvents([crossing]);
+
+        // `date + endTime` = 24 Eylül 00:30Z (başlangıçtan önce) olurdu ve slot atlanırdı.
+        expect(event.start).toEqual(new Date('2026-09-24T23:30:00Z'));
+        expect(event.end).toEqual(new Date('2026-09-25T00:30:00Z'));
+        expect(event.end.getTime() - event.start.getTime()).toBe(60 * 60_000);
+      });
+
+      it('toGridEvents_CrossingSlot_EndsNextDayFollowsLocalCalendarDay', () => {
+        const [event] = toGridEvents([crossing]);
+        const start = new Date(crossing.startUtc);
+        const lastInstant = new Date(new Date(crossing.endUtc).getTime() - 1);
+        const localDayDiffers = start.toDateString() !== lastInstant.toDateString();
+
+        // Dilime göre: UTC/UTC-x'te yerel gün değişir (+1 gün); TR'de 02:30–03:30 aynı yerel gündür.
+        expect(event.extendedProps.endsNextDay).toBe(localDayDiffers);
+      });
+
+      it('toGridEvents_LocalMidnightCrossing_EndsNextDayTrue', () => {
+        const start = new Date(2026, 8, 25, 23, 30);
+        const end = new Date(2026, 8, 26, 0, 30);
+        const [event] = toGridEvents([
+          { ...crossing, startUtc: start.toISOString(), endUtc: end.toISOString() },
+        ]);
+
+        expect(event.extendedProps.endsNextDay).toBeTrue();
+        expect(event.start).toEqual(start);
+        expect(event.end).toEqual(end);
+      });
+
+      it('toGridEvents_SameDaySlot_EndsNextDayFalse', () => {
+        const start = new Date(2026, 8, 25, 14, 0);
+        const end = new Date(2026, 8, 25, 15, 0);
+        const [event] = toGridEvents([
+          { ...crossing, startTime: '14:00:00', endTime: '15:00:00', startUtc: start.toISOString(), endUtc: end.toISOString() },
+        ]);
+
+        expect(event.extendedProps.endsNextDay).toBeFalse();
+      });
+    });
   });
 });

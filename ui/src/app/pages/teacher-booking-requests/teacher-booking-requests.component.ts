@@ -21,6 +21,7 @@ import {
   JoinWindowInfo,
   getJoinWindow,
 } from '../../shared/utils/booking-join-window';
+import { slotEndsNextDay } from '../../shared/utils/booking-format.util';
 
 type RequestFilter = 'pending' | 'all';
 
@@ -31,6 +32,8 @@ interface BookingRow {
   statusClass: 'is-pending' | 'is-approved' | 'is-rejected';
   /** Issue #97: "Derse katıl" butonunun durumu (ipucu metni kök `shared.joinWindow.*` sözlüğünden). */
   join: JoinWindowInfo;
+  /** Bitiş ertesi yerel günde (issue #300): aralığa "(+1 gün)" eklenir. */
+  endsNextDay: boolean;
 }
 
 /** Ret gerekçesi için backend sınırı. */
@@ -211,6 +214,7 @@ export class TeacherBookingRequestsComponent implements OnInit {
     return {
       booking,
       join,
+      endsNextDay: slotEndsNextDay(booking.startUtc, booking.endUtc),
       ...map[booking.status],
     };
   }

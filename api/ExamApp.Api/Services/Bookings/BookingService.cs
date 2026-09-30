@@ -109,10 +109,13 @@ public class BookingService : IBookingService
     {
         var now = UtcNow();
 
-        if (dto.EndTime <= dto.StartTime)
-            return SlotFail(_localizer["booking.slot.endBeforeStart"]);
+        // issue #300: EndTime < StartTime → bitiş ertesi gün (gün aşan slot, SlotTimeRange). Yalnız sıfır süre reddedilir.
+        if (SlotTimeRange.IsZeroLength(dto.StartTime, dto.EndTime))
+            return SlotFail(_localizer["booking.slot.zeroLength"]);
 
-        if (ToUtc(dto.Date, dto.StartTime) <= now)
+        var range = SlotTimeRange.From(dto.Date, dto.StartTime, dto.EndTime);
+
+        if (range.StartUtc <= now)
             return SlotFail(_localizer["booking.slot.inPast"]);
 
         // Üst sınırlar sunucu tarafında zorunlu (istemci doğrulaması güvenlik sınırı değildir).
@@ -120,8 +123,8 @@ public class BookingService : IBookingService
         if (dto.Date > maxDate)
             return SlotFail(_localizer["booking.slot.tooFarAhead", MaxAdvanceDays]);
 
-        if (dto.EndTime - dto.StartTime > MaxSlotDuration)
-            return SlotFail(_localizer["booking.slot.tooLong", MaxSlotDurationHours]);
+        if (range.Duration > MaxSlotDuration)
+            return SlotFail(_localizer[TooLongMessageKey(dto.StartTime, dto.EndTime), MaxSlotDurationHours]);
 
         var teacher = await _context.Teachers
             .AsNoTracking()
@@ -141,14 +144,16 @@ public class BookingService : IBookingService
                 Message = _localizer["booking.teacherNotApproved"]
             };
 
-        // Aynı gün içinde kesişen bir aralık varsa ikinci slot açılmaz — aksi halde öğretmen
-        // aynı saate iki ayrı randevu alabilirdi.
-        var overlaps = await _context.TeacherAvailabilitySlots
+        // Kesişen bir aralık varsa ikinci slot açılmaz — aksi halde öğretmen aynı saate iki ayrı randevu alabilirdi.
+        // issue #300: gün aşan slotlar yüzünden aday yalnız aynı gün değil, önceki/sonraki gündür; tarih aralığıyla
+        // daraltılıp UTC [Start, End) aralıkları bellekte karşılaştırılır (en fazla birkaç satır).
+        var (fromDate, toDate) = SlotTimeRange.CandidateDates(dto.Date);
+        var candidates = await _context.TeacherAvailabilitySlots
             .AsNoTracking()
-            .AnyAsync(s => s.TeacherId == teacher.Id
-                && s.Date == dto.Date
-                && s.StartTime < dto.EndTime
-                && s.EndTime > dto.StartTime, ct);
+            .Where(s => s.TeacherId == teacher.Id && s.Date >= fromDate && s.Date <= toDate)
+            .Select(s => new { s.Date, s.StartTime, s.EndTime })
+            .ToListAsync(ct);
+        var overlaps = candidates.Any(s => SlotTimeRange.From(s.Date, s.StartTime, s.EndTime).Overlaps(range));
 
         if (overlaps)
             return new AvailabilitySlotResultDto
@@ -483,6 +488,7 @@ public class BookingService : IBookingService
         }
 
         var names = await ResolveUserNamesAsync(new[] { slot.TeacherUserId, studentUserId }, ct);
+        var slotRange = SlotTimeRange.From(slot.Date, slot.StartTime, slot.EndTime);
 
         return new BookingResultDto
         {
@@ -500,8 +506,8 @@ public class BookingService : IBookingService
                 Date = slot.Date,
                 StartTime = slot.StartTime,
                 EndTime = slot.EndTime,
-                StartUtc = ToUtc(slot.Date, slot.StartTime),
-                EndUtc = ToUtc(slot.Date, slot.EndTime),
+                StartUtc = slotRange.StartUtc,
+                EndUtc = slotRange.EndUtc,
                 Status = booking.Status.ToString(),
                 CreatedAt = booking.CreatedAt
             }
@@ -845,30 +851,36 @@ public class BookingService : IBookingService
         return new BookingListResultDto
         {
             Success = true,
-            Items = rows.Select(r => new BookingDto
+            Items = rows.Select(r =>
             {
-                Id = r.Id,
-                TeacherId = r.TeacherId,
-                TeacherName = names.TryGetValue(r.TeacherUserId, out var tn) ? tn : null,
-                StudentId = r.StudentId,
-                StudentName = names.TryGetValue(r.StudentUserId, out var sn) ? sn : null,
-                AvailabilitySlotId = r.AvailabilitySlotId,
-                Date = r.Date,
-                StartTime = r.StartTime,
-                EndTime = r.EndTime,
-                StartUtc = ToUtc(r.Date, r.StartTime),
-                EndUtc = ToUtc(r.Date, r.EndTime),
-                Status = r.Status.ToString(),
-                CreatedAt = r.CreatedAt,
-                DecisionAt = r.DecisionAt,
-                RejectionReason = r.RejectionReason
+                var range = SlotTimeRange.From(r.Date, r.StartTime, r.EndTime);
+                return new BookingDto
+                {
+                    Id = r.Id,
+                    TeacherId = r.TeacherId,
+                    TeacherName = names.TryGetValue(r.TeacherUserId, out var tn) ? tn : null,
+                    StudentId = r.StudentId,
+                    StudentName = names.TryGetValue(r.StudentUserId, out var sn) ? sn : null,
+                    AvailabilitySlotId = r.AvailabilitySlotId,
+                    Date = r.Date,
+                    StartTime = r.StartTime,
+                    EndTime = r.EndTime,
+                    StartUtc = range.StartUtc,
+                    EndUtc = range.EndUtc,
+                    Status = r.Status.ToString(),
+                    CreatedAt = r.CreatedAt,
+                    DecisionAt = r.DecisionAt,
+                    RejectionReason = r.RejectionReason
+                };
             }).ToList()
         };
     }
 
-    /// <summary>Slot/booking tarih-saatini UTC DateTime'a çevirir (duvar saati UTC kabul edilir).</summary>
-    internal static DateTime ToUtc(DateOnly date, TimeOnly time)
-        => DateTime.SpecifyKind(date.ToDateTime(time), DateTimeKind.Utc);
+    /// <summary>
+    /// Slot/booking tarih-saatini UTC DateTime'a çevirir (duvar saati UTC kabul edilir). Yalnız BAŞLANGIÇ için;
+    /// bitiş gün aşabilir → aralık için <see cref="SlotTimeRange.From"/> (issue #300).
+    /// </summary>
+    internal static DateTime ToUtc(DateOnly date, TimeOnly time) => SlotTimeRange.ToUtc(date, time);
 
     private static int Normalize(int value, bool isTake = false)
     {
@@ -880,7 +892,10 @@ public class BookingService : IBookingService
 
     private static AvailabilitySlotDto MapSlot(
         int id, int teacherId, DateOnly date, TimeOnly start, TimeOnly end, DateTime createdAt,
-        int? bookingId, BookingStatus? bookingStatus, string? studentName, int? recurringRuleId) => new()
+        int? bookingId, BookingStatus? bookingStatus, string? studentName, int? recurringRuleId)
+    {
+        var range = SlotTimeRange.From(date, start, end);
+        return new AvailabilitySlotDto
         {
             Id = id,
             TeacherId = teacherId,
@@ -888,14 +903,22 @@ public class BookingService : IBookingService
             StartTime = start,
             EndTime = end,
             CreatedAt = createdAt,
-            StartUtc = ToUtc(date, start),
-            EndUtc = ToUtc(date, end),
+            StartUtc = range.StartUtc,
+            EndUtc = range.EndUtc,
             IsBooked = bookingId.HasValue,
             BookingId = bookingId,
             BookingStatus = bookingStatus?.ToString(),
             StudentName = studentName,
             RecurringAvailabilityRuleId = recurringRuleId
         };
+    }
+
+    /// <summary>
+    /// Süre aşımı mesajı: bitiş başlangıçtan önceyse ertesi gün sayıldığı açıkça söylenir (kullanıcı 15:00–14:00'ı
+    /// "1 saat" sanmış olabilir; code review D4).
+    /// </summary>
+    internal static string TooLongMessageKey(TimeOnly start, TimeOnly end)
+        => SlotTimeRange.CrossesMidnight(start, end) ? "booking.slot.tooLongNextDay" : "booking.slot.tooLong";
 
     private static AvailabilitySlotResultDto SlotFail(string message)
         => new() { Success = false, Message = message };

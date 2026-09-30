@@ -86,6 +86,26 @@ describe('TeacherAvailabilityComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('liste: gün aşan slot aralığına "(+1 gün)" eklenir, aynı gündeki slota eklenmez (issue #300)', fakeAsync(() => {
+    const crossingStart = new Date(2026, 8, 25, 23, 30);
+    const crossingEnd = new Date(2026, 8, 26, 0, 30);
+    const crossing: AvailabilitySlot = {
+      ...mockSlot,
+      id: 77,
+      startUtc: crossingStart.toISOString(),
+      endUtc: crossingEnd.toISOString(),
+    };
+    bookingService.getAllMySlots.and.returnValue(of({ items: [mockSlot, crossing], success: true }));
+
+    fixture.detectChanges();
+    tick();
+    fixture.detectChanges();
+
+    const marks = fixture.nativeElement.querySelectorAll('.avail__row-next-day') as NodeListOf<HTMLElement>;
+    expect(marks.length).toBe(1);
+    expect(marks[0].textContent?.trim()).toBe('(+1 gün)');
+  }));
+
   it('should call getAllMySlots on init', fakeAsync(() => {
     fixture.detectChanges();
     tick();

@@ -226,6 +226,9 @@
       "closed": "Ders süresi doldu",
       "unknown": "Ders saati okunamadı."
     },
+    "slotRange": {
+      "nextDay": "(+1 gün)"
+    },
     "pagination": {
       "previous": "Önceki",
       "next": "Sonraki"

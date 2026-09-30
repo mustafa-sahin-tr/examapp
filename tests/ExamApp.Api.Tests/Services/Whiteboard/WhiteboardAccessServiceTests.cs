@@ -55,7 +55,7 @@ public class WhiteboardAccessServiceTests : IDisposable
     }
 
     private async Task<int> SeedAsync(BookingStatus status = BookingStatus.Approved, bool teacherSuspended = false,
-        bool teacherApproved = true)
+        bool teacherApproved = true, TimeOnly? start = null, TimeOnly? end = null)
     {
         await using var ctx = _db.NewContext();
         ctx.Teachers.Add(new Teacher
@@ -71,7 +71,8 @@ public class WhiteboardAccessServiceTests : IDisposable
         });
         ctx.Students.Add(new Student { Id = StudentId, UserId = StudentUserId, StudentNumber = "S20" });
         ctx.Students.Add(new Student { Id = OtherStudentId, UserId = OtherStudentUserId, StudentNumber = "S21" });
-        var booking = BookingSeed.Add(ctx, TeacherId, StudentId, status, 14, SlotDate);
+        var booking = BookingSeed.Add(ctx, TeacherId, StudentId, status,
+            start ?? new TimeOnly(14, 0), end ?? new TimeOnly(15, 0), SlotDate);
         await ctx.SaveChangesAsync();
         return booking.Id;
     }
@@ -147,6 +148,25 @@ public class WhiteboardAccessServiceTests : IDisposable
         _clock.Now = new DateTimeOffset(2026, 6, 15, hour, minute, 0, TimeSpan.Zero);
 
         (await AuthorizeAsync(As(StudentUserId, "Student"), bookingId)).ErrorCode.ShouldBe(expected);
+    }
+
+    // issue #300: 06-15 23:30 → 06-16 00:30 gün aşan randevu; pencere 23:15 → ertesi gün 01:00.
+    [Theory]
+    [InlineData(15, 23, 14, WhiteboardErrorCodes.WindowNotOpen)]
+    [InlineData(15, 23, 15, null)]
+    [InlineData(16, 0, 59, null)]
+    [InlineData(16, 1, 0, null)]
+    [InlineData(16, 1, 1, WhiteboardErrorCodes.WindowClosed)]
+    public async Task Crossing_midnight_booking_window_closes_on_the_next_day(int day, int hour, int minute, string? expected)
+    {
+        var bookingId = await SeedAsync(start: new TimeOnly(23, 30), end: new TimeOnly(0, 30));
+        _clock.Now = new DateTimeOffset(2026, 6, day, hour, minute, 0, TimeSpan.Zero);
+
+        var result = await AuthorizeAsync(As(StudentUserId, "Student"), bookingId);
+
+        result.ErrorCode.ShouldBe(expected);
+        if (expected is null)
+            result.WindowClosesAtUtc.ShouldBe(new DateTime(2026, 6, 16, 1, 0, 0, DateTimeKind.Utc));
     }
 
     [Fact]

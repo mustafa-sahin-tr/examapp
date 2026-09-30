@@ -111,6 +111,27 @@ public class BookingDecisionConsumerTests : IDisposable
         n.Body.ShouldContain("Zaman çakışıyor");
     }
 
+    // issue #300: gün aşan slotta bitiş saatine " (+1)" eklenir; normal slotta eklenmez.
+    [Theory]
+    [InlineData(23, 30, 0, 30, "23:30-00:30 (+1)")]
+    [InlineData(14, 0, 15, 0, "14:00-15:00")]
+    public async Task Consume_BodyShowsNextDayMarkerOnlyForCrossingMidnightSlot(
+        int sH, int sM, int eH, int eM, string expectedRange)
+    {
+        var e = Evt(approved: true);
+        e.Date = new DateOnly(2026, 6, 16);
+        e.StartTime = new TimeOnly(sH, sM);
+        e.EndTime = new TimeOnly(eH, eM);
+
+        await NewConsumer(NewHub()).Consume(Context(e));
+
+        await using var check = _db.NewContext();
+        var n = await check.Notifications.SingleAsync();
+        n.Body.ShouldContain($"16.06.2026 {expectedRange}");
+        if (!expectedRange.Contains("(+1)"))
+            n.Body.ShouldNotContain("(+1)");
+    }
+
     [Fact]
     public async Task Consume_RejectedDecisionWithoutReason_OmitsReasonFromBody()
     {

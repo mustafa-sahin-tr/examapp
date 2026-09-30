@@ -226,6 +226,9 @@
       "closed": "The lesson has ended",
       "unknown": "The lesson time could not be read."
     },
+    "slotRange": {
+      "nextDay": "(+1 day)"
+    },
     "pagination": {
       "previous": "Previous",
       "next": "Next"

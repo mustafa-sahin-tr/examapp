@@ -82,12 +82,13 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
         if (!Enum.IsDefined(dto.DayOfWeek))
             return Fail(_localizer["booking.recurringRule.invalidDayOfWeek"]);
 
-        if (dto.EndTime <= dto.StartTime)
-            return Fail(_localizer["booking.slot.endBeforeStart"]);
+        // issue #300: EndTime < StartTime → occurrence'ın bitişi ertesi gün (SlotTimeRange). Yalnız sıfır süre reddedilir.
+        if (SlotTimeRange.IsZeroLength(dto.StartTime, dto.EndTime))
+            return Fail(_localizer["booking.slot.zeroLength"]);
 
-        var duration = dto.EndTime - dto.StartTime;
+        var duration = SlotTimeRange.DurationOf(dto.StartTime, dto.EndTime);
         if (duration > BookingService.MaxSlotDuration)
-            return Fail(_localizer["booking.slot.tooLong", BookingService.MaxSlotDurationHours]);
+            return Fail(_localizer[BookingService.TooLongMessageKey(dto.StartTime, dto.EndTime), BookingService.MaxSlotDurationHours]);
 
         if (duration < MinRuleDuration)
             return Fail(_localizer["booking.recurringRule.tooShort", MinRuleDurationMinutes]);
@@ -131,13 +132,15 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
         if (activeRules.Count >= MaxActiveRulesPerTeacher)
             return Fail(_localizer["booking.recurringRule.tooMany", MaxActiveRulesPerTeacher]);
 
-        // Aynı gün + saat aralığı kesişiyor (yarı açık) + geçerlilik tarihleri kesişiyor → 409.
+        // Haftalık zaman çizgisinde aralık kesişiyor (yarı açık) + geçerlilik tarihleri kesişiyor → 409.
         // Birebir aynı kural da bu daldan yakalanır; bitişik aralıklar (15:00 bitiş / 15:00 başlangıç) kabul.
+        // issue #300: gün aşan kural (Pzt 23:30–00:30) ertesi günün kuralıyla (Sal 00:00–00:45) da çakışır; bu yüzden
+        // karşılaştırma gün+saat üzerinden haftalık yapılır. Gün aşan kuralın son occurrence'ı EffectiveUntil'in ertesi
+        // gününe taşabildiğinden tarih kesişimi o durumda bir gün toleranslıdır (kenar durumda muhafazakâr 409).
         var overlapping = activeRules.Any(r =>
-            r.DayOfWeek == dto.DayOfWeek
-            && r.StartTime < dto.EndTime && r.EndTime > dto.StartTime
-            && (r.EffectiveUntil == null || r.EffectiveUntil >= dto.EffectiveFrom)
-            && (dto.EffectiveUntil == null || r.EffectiveFrom <= dto.EffectiveUntil));
+            WeeklyOverlaps(r.DayOfWeek, r.StartTime, r.EndTime, dto.DayOfWeek, dto.StartTime, dto.EndTime)
+            && EffectiveRangesOverlap(r.EffectiveFrom, r.EffectiveUntil, r.StartTime, r.EndTime,
+                dto.EffectiveFrom, dto.EffectiveUntil, dto.StartTime, dto.EndTime));
 
         if (overlapping)
             return new RecurringAvailabilityRuleResultDto { Success = false, Conflict = true, Message = _localizer["booking.slot.overlapping"] };
@@ -364,13 +367,17 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
     /// <summary>
     /// Ufuk içindeki mevcut satırlar, tarihe göre indeksli — <b>soft-delete edilmişler dahil</b>
     /// (sweep doğruluğu için). Çakışma kontrolü yalnızca silinmemişlere bakar.
+    /// issue #300: aralık her iki yönde bir gün genişletilir — ilk occurrence önceki günün gün aşan slotuyla,
+    /// son occurrence'ın gün aşan kısmı ertesi günün slotuyla çakışabilir.
     /// </summary>
     private async Task<ExistingSlotIndex> LoadExistingSlotsAsync(int teacherId, DateOnly from, DateOnly to, CancellationToken ct)
     {
+        var (candidateFrom, _) = SlotTimeRange.CandidateDates(from);
+        var (_, candidateTo) = SlotTimeRange.CandidateDates(to);
         var rows = await _context.TeacherAvailabilitySlots
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .Where(s => s.TeacherId == teacherId && s.Date >= from && s.Date <= to)
+            .Where(s => s.TeacherId == teacherId && s.Date >= candidateFrom && s.Date <= candidateTo)
             .Select(s => new ExistingSlot(s.Date, s.StartTime, s.EndTime, s.RecurringAvailabilityRuleId, s.IsDeleted))
             .ToListAsync(ct);
 
@@ -401,8 +408,12 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
             if (ruleId.HasValue && sameDay.Any(e => e.RuleId == ruleId.Value))
                 continue;
 
-            // Aynı güne düşen (silinmemiş) başka bir aralıkla kesişiyor → bu hafta atlanır.
-            if (sameDay.Any(e => !e.IsDeleted && e.StartTime < rule.EndTime && e.EndTime > rule.StartTime))
+            // (Silinmemiş) başka bir aralıkla kesişiyor → bu hafta atlanır. issue #300: adaylar önceki/aynı/sonraki
+            // gün (gün aşan slotlar), karşılaştırma UTC [Start, End) aralığıyla.
+            var range = SlotTimeRange.From(date, rule.StartTime, rule.EndTime);
+            var (fromDate, toDate) = SlotTimeRange.CandidateDates(date);
+            if (existing.Between(fromDate, toDate).Any(e =>
+                    !e.IsDeleted && SlotTimeRange.From(e.Date, e.StartTime, e.EndTime).Overlaps(range)))
             {
                 skipped.Add(date);
                 continue;
@@ -433,6 +444,46 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
         var offset = ((int)rule.DayOfWeek - (int)start.DayOfWeek + 7) % 7;
         for (var date = start.AddDays(offset); date <= end; date = date.AddDays(7))
             yield return date;
+    }
+
+    private const int MinutesPerDay = 24 * 60;
+    private const int MinutesPerWeek = 7 * MinutesPerDay;
+
+    /// <summary>
+    /// İki haftalık kuralın occurrence aralıkları haftalık (dairesel) zaman çizgisinde kesişiyor mu? Gün aşan kural
+    /// (<see cref="SlotTimeRange.CrossesMidnight"/>) ertesi güne, Cumartesi'ninki Pazar'a (hafta başına) taşar.
+    /// Yarı açık aralık: bitişik kurallar çakışmaz.
+    /// </summary>
+    internal static bool WeeklyOverlaps(
+        DayOfWeek dayA, TimeOnly startA, TimeOnly endA, DayOfWeek dayB, TimeOnly startB, TimeOnly endB)
+    {
+        var a = (int)dayA * MinutesPerDay + (int)startA.ToTimeSpan().TotalMinutes;
+        var aEnd = a + (int)SlotTimeRange.DurationOf(startA, endA).TotalMinutes;
+        var b = (int)dayB * MinutesPerDay + (int)startB.ToTimeSpan().TotalMinutes;
+        var bLength = (int)SlotTimeRange.DurationOf(startB, endB).TotalMinutes;
+
+        // B bir hafta geri/ileri kaydırılarak hafta sınırını (Cumartesi → Pazar) aşan durumlar da yakalanır.
+        for (var shift = -MinutesPerWeek; shift <= MinutesPerWeek; shift += MinutesPerWeek)
+        {
+            var bStart = b + shift;
+            if (a < bStart + bLength && bStart < aEnd)
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Geçerlilik tarih aralıkları kesişiyor mu? Gün aşan kuralın son occurrence'ı EffectiveUntil'in ertesi gününe
+    /// taşabildiği için o kuralın bitişi bir gün uzatılır.
+    /// </summary>
+    private static bool EffectiveRangesOverlap(
+        DateOnly fromA, DateOnly? untilA, TimeOnly startA, TimeOnly endA,
+        DateOnly fromB, DateOnly? untilB, TimeOnly startB, TimeOnly endB)
+    {
+        var lastA = untilA?.AddDays(SlotTimeRange.CrossesMidnight(startA, endA) ? 1 : 0);
+        var lastB = untilB?.AddDays(SlotTimeRange.CrossesMidnight(startB, endB) ? 1 : 0);
+        return (lastA == null || lastA >= fromB) && (lastB == null || fromA <= lastB);
     }
 
     private static bool IsMinutePrecision(TimeOnly time)
@@ -512,6 +563,14 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
 
         public IReadOnlyList<ExistingSlot> At(DateOnly date)
             => _byDate.TryGetValue(date, out var list) ? list : Empty;
+
+        /// <summary>[from, to] (iki uç dahil) günlerindeki satırlar.</summary>
+        public IEnumerable<ExistingSlot> Between(DateOnly from, DateOnly to)
+        {
+            for (var d = from; d <= to; d = d.AddDays(1))
+                foreach (var slot in At(d))
+                    yield return slot;
+        }
 
         public void Add(ExistingSlot slot)
         {

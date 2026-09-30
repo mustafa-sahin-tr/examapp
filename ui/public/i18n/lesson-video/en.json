@@ -15,5 +15,10 @@
     "invalidRoute": "Invalid lesson address.",
     "roomUnavailable": "The meeting room could not be opened.",
     "addressUnverified": "The meeting address could not be verified."
+  },
+  "tabs": {
+    "label": "Lesson view",
+    "video": "Video",
+    "board": "Whiteboard"
   }
 }

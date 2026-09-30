@@ -29,16 +29,50 @@
       </div>
     </div>
   } @else if (session()) {
-    @if (mode() === 'iframeApi') {
-      <div #jitsiContainer class="lvid__stage"></div>
-    } @else {
-      <iframe
-        class="lvid__stage"
-        [src]="joinUrl()"
-        [title]="t('roomTitle', { title: title() })"
-        allow="camera; microphone; display-capture; autoplay; fullscreen"
-      ></iframe>
-    }
+    <!-- Issue #98: dar ekranda Video / Tahta sekmeleri; geniş ekranda tahta merkezde, görüntü yan panelde. -->
+    <mat-button-toggle-group
+      class="lvid__tabs"
+      hideSingleSelectionIndicator
+      [value]="pane()"
+      (change)="pane.set($event.value)"
+      [attr.aria-label]="t('tabs.label')"
+    >
+      <mat-button-toggle value="video">
+        <mat-icon aria-hidden="true">videocam</mat-icon>
+        {{ t('tabs.video') }}
+      </mat-button-toggle>
+      <mat-button-toggle value="board">
+        <mat-icon aria-hidden="true">draw</mat-icon>
+        {{ t('tabs.board') }}
+      </mat-button-toggle>
+    </mat-button-toggle-group>
+
+    <div class="lvid__layout">
+      <div class="lvid__board" [class.lvid__pane--inactive]="pane() !== 'board'">
+        @if (bookingId(); as id) {
+          @defer (on idle) {
+            <app-whiteboard [bookingId]="id" />
+          } @placeholder {
+            <div class="lvid__state" aria-busy="true">
+              <mat-spinner diameter="32" />
+            </div>
+          }
+        }
+      </div>
+
+      <div class="lvid__video" [class.lvid__pane--inactive]="pane() !== 'video'">
+        @if (mode() === 'iframeApi') {
+          <div #jitsiContainer class="lvid__stage"></div>
+        } @else {
+          <iframe
+            class="lvid__stage"
+            [src]="joinUrl()"
+            [title]="t('roomTitle', { title: title() })"
+            allow="camera; microphone; display-capture; autoplay; fullscreen"
+          ></iframe>
+        }
+      </div>
+    </div>
   } @else {
     <div class="lvid__state">
       <mat-icon>videocam</mat-icon>

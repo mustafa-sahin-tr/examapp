@@ -13,6 +13,7 @@ import {
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -25,6 +26,8 @@ import {
   JitsiMeetExternalApi,
   JitsiScriptLoaderService,
 } from '../../services/jitsi-script-loader.service';
+import { WhiteboardComponent } from '../../shared/components/whiteboard/whiteboard.component';
+import { provideExcalidrawCanvas } from '../../shared/components/whiteboard/excalidraw-canvas.provider';
 
 /** Sayfanın Transloco scope'u: `public/i18n/lesson-video/<lang>.json` (issue #183). */
 const SCOPE = 'lesson-video';
@@ -36,6 +39,9 @@ const SCOPE = 'lesson-video';
  *   her zaman `https://` ile kurduğu için http self-host (yerel geliştirme) bu yolu kullanır.
  */
 type EmbedMode = 'iframeApi' | 'direct';
+
+/** Dar ekranda (sekmeli yerleşim) görünen bölme — issue #98. Geniş ekranda ikisi birlikte görünür. */
+export type LessonPane = 'video' | 'board';
 
 /** İki adres aynı origin'de mi (geçersiz adres = hayır). */
 function sameOrigin(a: string, b: string): boolean {
@@ -49,8 +55,16 @@ function sameOrigin(a: string, b: string): boolean {
 @Component({
   selector: 'app-lesson-video',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective],
-  providers: [provideTranslocoScope(SCOPE)],
+  imports: [
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    TranslocoDirective,
+    WhiteboardComponent,
+  ],
+  // Issue #98: ortak tahta tuvali (Excalidraw) `@defer` bloğunda ve kendi dinamik chunk'ında yüklenir.
+  providers: [provideTranslocoScope(SCOPE), provideExcalidrawCanvas()],
   templateUrl: './lesson-video.component.html',
   styleUrls: ['./lesson-video.component.scss'],
 })
@@ -72,6 +86,8 @@ export class LessonVideoComponent implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly session = signal<VideoSession | null>(null);
   protected readonly mode = signal<EmbedMode>('direct');
+  /** Dar ekranda seçili bölme (Video / Tahta). */
+  protected readonly pane = signal<LessonPane>('video');
 
   /**
    * Scope sözlüğü yüklendiğinde `true` olur. Başlık şablon dışında (iframe `title` özniteliği ve

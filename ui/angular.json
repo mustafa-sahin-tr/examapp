@@ -33,13 +33,42 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*.woff2",
+                "input": "node_modules/@excalidraw/excalidraw/dist/prod/fonts",
+                "output": "excalidraw-assets/fonts",
+                "ignore": [
+                  "Xiaolai/**"
+                ]
               }
             ],
             "styles": [
               "node_modules/quill/dist/quill.snow.css",
-              "src/styles.scss"
+              "src/styles.scss",
+              {
+                "input": "node_modules/@excalidraw/excalidraw/dist/prod/index.css",
+                "bundleName": "excalidraw",
+                "inject": false
+              }
             ],
             "scripts": [],
+            "allowedCommonJsDependencies": [
+              "react",
+              "react-dom",
+              "react-dom/client",
+              "@braintree/sanitize-url",
+              "canvas-roundrect-polyfill",
+              "es6-promise-pool",
+              "fuzzy",
+              "lodash.debounce",
+              "lodash.throttle",
+              "pica",
+              "png-chunk-text",
+              "png-chunks-encode",
+              "png-chunks-extract",
+              "use-sync-external-store/shim/with-selector.js"
+            ],
             "server": "src/main.server.ts",
             "outputMode": "static",
             "ssr": {

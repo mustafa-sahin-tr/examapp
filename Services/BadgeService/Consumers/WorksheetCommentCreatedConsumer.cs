@@ -72,9 +72,13 @@ public class WorksheetCommentCreatedConsumer : IConsumer<WorksheetCommentCreated
             ? _texts.Resolve("notifications.common.defaultStudent", culture)
             : cleanAuthor;
         var text = _texts.Build(NotificationType, culture, authorName, worksheetTitle);
-        var body = e.QuestionId.HasValue
-            ? _texts.Resolve($"notifications.{NotificationType}.bodyQuestion", culture, authorName, worksheetTitle)
-            : text.Body;
+        // issue #309: soru thread'inde sıra biliniyorsa "{n}. soru"; eski üreticiden (QuestionOrder yok) genel soru metni.
+        var body = e.QuestionOrder is > 0
+            ? _texts.Resolve($"notifications.{NotificationType}.bodyQuestionOrder", culture, authorName, worksheetTitle,
+                e.QuestionOrder.Value)
+            : e.QuestionId.HasValue
+                ? _texts.Resolve($"notifications.{NotificationType}.bodyQuestion", culture, authorName, worksheetTitle)
+                : text.Body;
 
         var notification = new Notification
         {
@@ -87,6 +91,7 @@ public class WorksheetCommentCreatedConsumer : IConsumer<WorksheetCommentCreated
             {
                 worksheetId = e.WorksheetId,
                 questionId = e.QuestionId,
+                questionOrder = e.QuestionOrder,
                 commentId = e.CommentId,
                 rootCommentId = e.RootCommentId
             }),
@@ -114,6 +119,7 @@ public class WorksheetCommentCreatedConsumer : IConsumer<WorksheetCommentCreated
             notificationId = notification.Id,
             worksheetId = e.WorksheetId,
             questionId = e.QuestionId,
+            questionOrder = e.QuestionOrder,
             commentId = e.CommentId,
             rootCommentId = e.RootCommentId,
             worksheetTitle,

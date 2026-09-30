@@ -156,6 +156,8 @@ describe('SignalRService — admin öğretmen bildirimleri', () => {
       questionId: 34,
       commentId: 57,
       rootCommentId: 56,
+      // Issue #309: sıra derin linke girmez, snackbar başlığını değiştirmez.
+      questionOrder: 3,
       worksheetTitle: 'Kesirler',
       title: 'Yeni cevap: Kesirler',
       body: 'Öğretmen cevap yazdı',

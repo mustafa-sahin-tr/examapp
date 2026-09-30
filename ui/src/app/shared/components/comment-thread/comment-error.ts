@@ -12,8 +12,9 @@ function clean(value: unknown): string {
 
 /**
  * Yorum uçlarının hata yanıtını kullanıcı mesajına çevirir (issue #105):
- * - 429: gövde yerelleştirilmiş düz metin (`worksheets.comments.rateLimited`) — yalnız `<` içermiyor ve 300 karakteri
- *   aşmıyorsa gösterilir; aksi hâlde Retry-After ile yerel metin.
+ * - 429 (issue #309): gövde JSON `{ message, errorCode: "RateLimited" }` ise `message` gösterilir. Eski sunucu için
+ *   düz metin gövde de desteklenir — yalnız `<` içermiyor ve 300 karakteri aşmıyorsa. İkisi de yoksa Retry-After ile
+ *   yerel metin.
  * - diğerleri: gövde `{ message, errorCode }` — önce backend `message`, boşsa `errorCode`'un yerel karşılığı.
  * - ağ hatası (status 0): yerel metin.
  * `t` çağrısı `comments` scope'unda çözülen anahtarları alır.
@@ -24,7 +25,14 @@ export function commentErrorMessage(error: unknown, t: CommentTranslate, fallbac
   }
 
   if (error.status === 429) {
-    // Gövde düz metin beklenir; gateway/proxy HTML hata sayfası ya da aşırı uzun metin gösterilmez.
+    const json = error.error && typeof error.error === 'object' ? (error.error as Record<string, unknown>) : null;
+    if (json?.['errorCode'] === 'RateLimited') {
+      const message = clean(json['message']);
+      if (message && !message.includes('<')) {
+        return message;
+      }
+    }
+    // Eski sunucu: gövde düz metin; gateway/proxy HTML hata sayfası ya da aşırı uzun metin gösterilmez.
     const raw = typeof error.error === 'string' ? error.error.trim() : '';
     const text = raw && !raw.includes('<') && raw.length <= MAX_MESSAGE_LENGTH ? raw : '';
     if (text) {

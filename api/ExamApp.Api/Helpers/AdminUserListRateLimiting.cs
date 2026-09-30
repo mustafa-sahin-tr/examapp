@@ -104,7 +104,7 @@ public static class AdminUserListRateLimiting
 
             // Jenerik yedek: kendi OnRejected'ı olmayan policy'ler için. Policy OnRejected'ı varsa bu ÇAĞRILMAZ.
             options.OnRejected = (context, cancellationToken) =>
-                WriteRejectionAsync(context, "common.tooManyRequests", fallbackRetryAfterSeconds: null, cancellationToken);
+                WriteRejectionAsync(context, "common.tooManyRequests", fallbackRetryAfterSeconds: null, errorCode: null, cancellationToken);
 
             options.AddPolicy<string, AdminUserListRateLimitPolicy>(Policy);
         });
@@ -112,9 +112,14 @@ public static class AdminUserListRateLimiting
         return services;
     }
 
-    /// <summary>429 + (biliniyorsa) Retry-After (saniye) + yerelleştirilmiş düz metin body.</summary>
+    /// <summary>
+    /// 429 + (biliniyorsa) Retry-After (saniye) + yerelleştirilmiş body. <paramref name="errorCode"/> verilmezse düz metin
+    /// (mevcut uçların sözleşmesi); verilirse diğer hata yanıtlarıyla aynı biçimde JSON <c>{ message, errorCode }</c>
+    /// (issue #309 — yorum uçları).
+    /// </summary>
     internal static async ValueTask WriteRejectionAsync(
-        OnRejectedContext context, string messageKey, int? fallbackRetryAfterSeconds, CancellationToken cancellationToken)
+        OnRejectedContext context, string messageKey, int? fallbackRetryAfterSeconds, string? errorCode,
+        CancellationToken cancellationToken)
     {
         var response = context.HttpContext.Response;
         response.StatusCode = StatusCodes.Status429TooManyRequests;
@@ -127,7 +132,14 @@ public static class AdminUserListRateLimiting
 
         var localizer = context.HttpContext.RequestServices.GetService<IStringLocalizer<Messages>>()
                         ?? FallbackMessageLocalizer.Instance;
-        await response.WriteAsync(localizer[messageKey].Value, cancellationToken);
+        var message = localizer[messageKey].Value;
+        if (errorCode is null)
+        {
+            await response.WriteAsync(message, cancellationToken);
+            return;
+        }
+
+        await response.WriteAsJsonAsync(new { message, errorCode }, cancellationToken);
     }
 
     /// <summary>
@@ -219,7 +231,7 @@ public sealed class AdminUserListRateLimitPolicy : IRateLimiterPolicy<string>
             await AuditRejectionAsync(context.HttpContext);
 
         await AdminUserListRateLimiting.WriteRejectionAsync(
-            context, "admin.userList.rateLimited", _options.CurrentValue.WindowSeconds, cancellationToken);
+            context, "admin.userList.rateLimited", _options.CurrentValue.WindowSeconds, errorCode: null, cancellationToken);
     }
 
     /// <summary>

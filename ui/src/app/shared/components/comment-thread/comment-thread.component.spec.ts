@@ -650,6 +650,188 @@ describe('CommentThreadComponent (issue #105)', () => {
     expect(q('comment-failed')?.textContent).toContain(commentsTr.errors.rateLimited);
   });
 
+  // ---------------------------------------------------------------- issue #309
+  describe('studentCommentsSummary strip (issue #309)', () => {
+    const summaryText = () => q('teacher-summary-text')?.textContent?.replace(/\s+/g, ' ').trim();
+
+    it('zeroOverrides_ShowsOnlyDefault', () => {
+      create({ viewerIsTeacher: true, showStudentsSummary: true, showEditSettings: true });
+      flushThread(
+        page({ studentCommentsSummary: { worksheetDefault: true, assignmentOverrides: { enabled: 0, disabled: 0 } } })
+      );
+
+      expect(summaryText()).toBe('Öğrenci yorumları: varsayılan açık');
+      expect(q('teacher-summary')?.getAttribute('data-default')).toBe('on');
+      expect(q('edit-settings')).not.toBeNull();
+      expect(q('teacher-disabled-notice')).toBeNull();
+    });
+
+    it('defaultOpen_DisabledOverrides_ShowsCount', () => {
+      create({ viewerIsTeacher: true, showStudentsSummary: true });
+      flushThread(
+        page({ studentCommentsSummary: { worksheetDefault: true, assignmentOverrides: { enabled: 0, disabled: 2 } } })
+      );
+
+      expect(summaryText()).toBe('Öğrenci yorumları: varsayılan açık · 2 atamada kapalı');
+      expect(q('edit-settings')).toBeNull();
+    });
+
+    it('defaultClosed_Mixed_ContraryCountFirst', () => {
+      // commentsEnabled (studentsLockedNotice) sunucu özeti varken kullanılmaz.
+      create({ viewerIsTeacher: true, showStudentsSummary: true, studentsLockedNotice: true });
+      flushThread(
+        page({ studentCommentsSummary: { worksheetDefault: false, assignmentOverrides: { enabled: 1, disabled: 3 } } })
+      );
+
+      expect(summaryText()).toBe('Öğrenci yorumları: varsayılan kapalı · 1 atamada açık · 3 atamada kapalı');
+      expect(q('teacher-summary')?.getAttribute('data-default')).toBe('off');
+      expect(q('teacher-disabled-notice')).toBeNull();
+    });
+
+    it('nullOrMalformedSummary_FallsBackToCommentsEnabledNotice', () => {
+      create({ viewerIsTeacher: true, showStudentsSummary: true, studentsLockedNotice: true });
+      flushThread(page({ studentCommentsSummary: null }));
+
+      expect(q('teacher-summary')).toBeNull();
+      expect(q('teacher-disabled-notice')?.textContent).toContain(commentsTr.thread.teacherDisabledNotice);
+
+      fixture.componentInstance['load']();
+      expectThread().flush({
+        ...page(),
+        studentCommentsSummary: { worksheetDefault: 'yes', assignmentOverrides: { enabled: -1, disabled: 0 } },
+      });
+      fixture.detectChanges();
+      expect(q('teacher-summary')).toBeNull();
+      expect(q('teacher-disabled-notice')).not.toBeNull();
+    });
+
+    it('nullSummary_DefaultOpen_NoStrip', () => {
+      create({ viewerIsTeacher: true, showStudentsSummary: true, studentsLockedNotice: false });
+      flushThread(page());
+
+      expect(q('teacher-summary')).toBeNull();
+      expect(q('teacher-disabled-notice')).toBeNull();
+    });
+
+    it('showStudentsSummaryOff_IgnoresSummary', () => {
+      create({ viewerIsTeacher: true });
+      flushThread(
+        page({ studentCommentsSummary: { worksheetDefault: true, assignmentOverrides: { enabled: 0, disabled: 2 } } })
+      );
+
+      expect(q('teacher-summary')).toBeNull();
+    });
+  });
+
+  describe('questionOrderChange (issue #309)', () => {
+    function subscribe(): jasmine.Spy {
+      const spy = jasmine.createSpy('questionOrderChange');
+      fixture.componentInstance.questionOrderChange.subscribe(spy);
+      return spy;
+    }
+
+    it('questionThread_EmitsPageLevelOrder', () => {
+      create({ questionId: 34 });
+      const spy = subscribe();
+      flushThread(page({ questionOrder: 3, items: [root({ id: 5, questionId: 34, questionOrder: 3 })] }), 34);
+
+      expect(spy).toHaveBeenCalledOnceWith(3);
+    });
+
+    it('emptyQuestionThread_StillEmitsPageLevelOrder', () => {
+      create({ questionId: 34 });
+      const spy = subscribe();
+      flushThread(page({ questionOrder: 5 }), 34);
+
+      expect(q('comments-empty')).not.toBeNull();
+      expect(spy).toHaveBeenCalledOnceWith(5);
+    });
+
+    it('invalidOrMissingPageOrder_Ignored', () => {
+      for (const questionOrder of [0, -1, 2.5, '4' as unknown as number, null, undefined]) {
+        TestBed.resetTestingModule();
+        create({ questionId: 34 });
+        const spy = subscribe();
+        // Öğe düzeyindeki değer artık taranmaz; yalnız sayfa düzeyi geçerlidir.
+        flushThread(page({ questionOrder, items: [root({ id: 5, questionId: 34, questionOrder: 3 })] }), 34);
+        expect(spy).withContext(String(questionOrder)).not.toHaveBeenCalled();
+        http.verify();
+      }
+    });
+
+    it('worksheetThread_NeverEmitsOrder', () => {
+      create();
+      const spy = subscribe();
+      flushThread(page({ questionOrder: 3 }));
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('questionIdChange_EmitsNullThenNewOrder', fakeAsync(() => {
+      create({ questionId: 34 });
+      const spy = subscribe();
+      flushThread(page({ questionOrder: 3 }), 34);
+
+      fixture.componentRef.setInput('questionId', 35);
+      fixture.detectChanges();
+      expect(spy.calls.mostRecent().args).toEqual([null]);
+      tick(COMMENT_CONTEXT_DEBOUNCE_MS);
+      flushThread(page({ questionOrder: 4 }), 35);
+
+      expect(spy.calls.allArgs()).toEqual([[3], [null], [4]]);
+      discardPeriodicTasks();
+    }));
+  });
+
+  describe('429 JSON body (issue #309)', () => {
+    it('send_429RateLimitedJson_ShowsServerMessage', () => {
+      create();
+      flushThread(page());
+
+      typeAndSend('Spam');
+      http.expectOne((r) => r.method === 'POST').flush(
+        { message: 'Çok fazla yorum yazdın, 30 sn bekle.', errorCode: 'RateLimited' },
+        { status: 429, statusText: 'Too Many Requests', headers: { 'Retry-After': '30' } }
+      );
+      fixture.detectChanges();
+
+      expect(q('comment-failed')?.textContent).toContain('Çok fazla yorum yazdın, 30 sn bekle.');
+    });
+
+    it('load_429RateLimitedJson_ShowsServerMessageWithRetry', () => {
+      create();
+      expectThread().flush(
+        { message: 'Yorumlar çok sık yenilendi.', errorCode: 'RateLimited' },
+        { status: 429, statusText: 'Too Many Requests', headers: { 'Retry-After': '10' } }
+      );
+      fixture.detectChanges();
+
+      expect(q('comments-error')?.textContent).toContain('Yorumlar çok sık yenilendi.');
+      expect(q('comments-retry')).not.toBeNull();
+    });
+
+    it('send_429JsonEmptyMessageOrOtherCode_UsesRetryAfterOrLocalText', () => {
+      create();
+      flushThread(page());
+
+      typeAndSend('a');
+      http.expectOne((r) => r.method === 'POST').flush(
+        { message: '', errorCode: 'RateLimited' },
+        { status: 429, statusText: 'Too Many Requests', headers: { 'Retry-After': '15' } }
+      );
+      fixture.detectChanges();
+      expect(q('comment-failed')?.textContent).toContain('15 saniye');
+
+      q('comment-retry')!.click();
+      http.expectOne((r) => r.method === 'POST').flush(
+        { message: 'Sunucu mesajı', errorCode: 'Other' },
+        { status: 429, statusText: 'Too Many Requests' }
+      );
+      fixture.detectChanges();
+      expect(q('comment-failed')?.textContent).toContain(commentsTr.errors.rateLimited);
+    });
+  });
+
   it('teacherNotice_TextStatesWorksheetDefault', () => {
     create({ studentsLockedNotice: true, viewerIsTeacher: true });
     flushThread(page());

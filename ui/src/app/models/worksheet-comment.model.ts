@@ -16,6 +16,11 @@ export interface WorksheetComment {
   id: number;
   worksheetId: number;
   questionId: number | null;
+  /**
+   * Issue #309: soru thread'inde sorunun worksheet içindeki 1 tabanlı sırası; worksheet thread'inde null.
+   * Eski sunucuda alan yok (opsiyonel). Güvenilmeyen değer — gösterimden önce {@link toQuestionOrder} ile doğrulanır.
+   */
+  questionOrder?: number | null;
   parentCommentId: number | null;
   /** Öğrenci: "Ad S."; öğretmen: görünen ad. Düz metin, bidi-izole gösterilir. */
   authorDisplayName: string;
@@ -40,6 +45,29 @@ export interface WorksheetCommentPage {
   nextCursor: string | null;
   canWrite: boolean;
   lockReason: WorksheetCommentLockReason | null;
+  /**
+   * Issue #309: öğretmen/admin için öğrencilerin efektif yorum durumu özeti; öğrencide null. Eski sunucuda alan yok.
+   * Gösterimden önce {@link parseStudentCommentsSummary} ile doğrulanır.
+   */
+  studentCommentsSummary?: WorksheetCommentStudentSummary | null;
+  /**
+   * Issue #309: soru thread'inin 1 tabanlı numarası (sayfa boşken de dolu); worksheet thread'inde null.
+   * Gösterimden önce {@link toQuestionOrder} ile doğrulanır.
+   */
+  questionOrder?: number | null;
+}
+
+/** `WorksheetCommentOverrideCountsDto` — çağıranın görebildiği aktif atamalardaki override sayıları. */
+export interface WorksheetCommentOverrideCounts {
+  enabled: number;
+  disabled: number;
+}
+
+/** `WorksheetCommentStudentSummaryDto` (issue #309). */
+export interface WorksheetCommentStudentSummary {
+  /** Worksheet varsayılanı (`Worksheet.CommentsEnabled`). */
+  worksheetDefault: boolean;
+  assignmentOverrides: WorksheetCommentOverrideCounts;
 }
 
 /** `WorksheetCommentRepliesPageDto` — reply'lar eskiden yeniye. */
@@ -48,6 +76,8 @@ export interface WorksheetCommentRepliesPage {
   nextCursor: string | null;
   canReply: boolean;
   replyCount: number;
+  /** Issue #309: kök soru thread'indeyse 1 tabanlı soru numarası; worksheet seviyesinde null. */
+  questionOrder?: number | null;
 }
 
 /** `CreateWorksheetCommentDto`. */
@@ -83,6 +113,7 @@ export const WORKSHEET_COMMENT_ERROR_CODES = [
   'WorksheetNotStarted',
   'QuestionNotAnswered',
   'NotResponsibleTeacher',
+  'RateLimited',
 ] as const;
 
 export type WorksheetCommentErrorCode = (typeof WORKSHEET_COMMENT_ERROR_CODES)[number];
@@ -98,7 +129,7 @@ export function isWorksheetCommentErrorCode(value: unknown): value is WorksheetC
 
 // ---------------------------------------------------------------------------------------------------------------
 // Bildirim derin linki (issue #105 dilim 3). Kalıcı bildirim `data` JSON'u ve SignalR payload'ı aynı kimlikleri taşır:
-// `{ worksheetId, questionId|null, commentId, rootCommentId }`. İkisi de güvenilmeyen veri sayılır.
+// `{ worksheetId, questionId|null, commentId, rootCommentId, questionOrder|null }` (questionOrder: issue #309). İkisi de güvenilmeyen veri sayılır.
 // ---------------------------------------------------------------------------------------------------------------
 
 /** Kalıcı bildirim `type` değerleri (BadgeService consumer'ları) — SignalR event adlarıyla aynı. */
@@ -114,12 +145,48 @@ export interface WorksheetCommentRef {
   questionId: number | null;
   commentId: number;
   rootCommentId: number | null;
+  /**
+   * Issue #309: sorunun 1 tabanlı sırası (yalnız bildirim `data`'sı / SignalR payload'ından; URL'den okunmaz ve derin
+   * linke yazılmaz — sayfa başlığı sırayı thread yanıtından alır).
+   */
+  questionOrder?: number | null;
 }
 
 /** Route'a giden kimlik alanları: pozitif, güvenli tam sayı; aksi hâlde null. */
 export function toPositiveId(value: unknown): number | null {
   const n = typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
   return typeof n === 'number' && Number.isSafeInteger(n) && n > 0 ? n : null;
+}
+
+/** Soru sırası (issue #309): yalnız pozitif, güvenli tam sayı (JSON number); string/ondalık/0/negatif → null. */
+export function toQuestionOrder(value: unknown): number | null {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : null;
+}
+
+function toCount(value: unknown): number | null {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+/**
+ * Thread yanıtındaki `studentCommentsSummary`'yi doğrular (issue #309). Biçim bozuksa (boolean olmayan varsayılan,
+ * negatif/ondalık sayı) null — UI eski `commentsEnabled` şeridine düşer.
+ */
+export function parseStudentCommentsSummary(value: unknown): WorksheetCommentStudentSummary | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  const overrides = record['assignmentOverrides'];
+  if (typeof record['worksheetDefault'] !== 'boolean' || !overrides || typeof overrides !== 'object') {
+    return null;
+  }
+  const counts = overrides as Record<string, unknown>;
+  const enabled = toCount(counts['enabled']);
+  const disabled = toCount(counts['disabled']);
+  if (enabled === null || disabled === null) {
+    return null;
+  }
+  return { worksheetDefault: record['worksheetDefault'], assignmentOverrides: { enabled, disabled } };
 }
 
 /**
@@ -141,6 +208,7 @@ export function parseWorksheetCommentRef(value: unknown): WorksheetCommentRef | 
     questionId: toPositiveId(record['questionId']),
     commentId,
     rootCommentId: toPositiveId(record['rootCommentId']),
+    questionOrder: toQuestionOrder(record['questionOrder']),
   };
 }
 

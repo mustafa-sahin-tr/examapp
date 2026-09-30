@@ -585,10 +585,11 @@
               <div class="card">
                 <h3><span class="dot"></span>{{ t('teacher.hardestTitle') }}</h3>
                 @for (hard of d.teacherInsights.hardestQuestions; track hard.questionId) {
-                  <div class="hardq">
-                    <span class="qn">{{ hard.order }}</span>
+                  @let hardNumber = hard.number ?? hard.order;
+                  <div class="hardq" data-testid="hardest-question">
+                    <span class="qn" data-testid="hardest-question-number">{{ hardNumber }}</span>
                     <div>
-                      <div class="qt">{{ hard.text || t('teacher.hardFallback', { order: hard.order }) }}</div>
+                      <div class="qt">{{ hard.text || t('teacher.hardFallback', { order: hardNumber }) }}</div>
                       <div class="qs">{{
                         t('teacher.hardSub', {
                           topic: hard.subtopicName || t('teacher.topicUnset'),
@@ -683,7 +684,14 @@
       @if (d.worksheet.id; as worksheetId) {
         @if (showLinkedQuestionCard() && commentLink(); as link) {
           <section class="card comments-card" id="soru-yorumlari" data-testid="linked-question-comments">
-            <h3><span class="dot"></span>{{ t('comments.linkedQuestionTitle') }}</h3>
+            <h3 data-testid="linked-question-title">
+              <span class="dot"></span>
+              @if (linkedQuestionOrder(); as order) {
+                {{ t('comments.linkedQuestionTitleNumbered', { order: order }) }}
+              } @else {
+                {{ t('comments.linkedQuestionTitle') }}
+              }
+            </h3>
             <!-- Yalnız derin linkte çizilen kart: hemen yüklenir -->
             @defer (on immediate) {
               <app-comment-thread
@@ -692,6 +700,7 @@
                 [highlightCommentId]="link.commentId"
                 [highlightRootId]="link.rootCommentId"
                 [viewerIsTeacher]="isTeacher"
+                (questionOrderChange)="onLinkedQuestionOrder(link.questionId, $event)"
               />
             } @placeholder {
               <div class="comments-placeholder" data-testid="comments-placeholder">{{ t('comments.placeholder') }}</div>
@@ -708,8 +717,9 @@
               [highlightCommentId]="worksheetCommentLink()?.commentId ?? null"
               [highlightRootId]="worksheetCommentLink()?.rootCommentId ?? null"
               [viewerIsTeacher]="isTeacher"
+              [showStudentsSummary]="isTeacher"
               [studentsLockedNotice]="commentsDisabledForStudents()"
-              [showEditSettings]="commentsDisabledForStudents() && canEditWorksheet()"
+              [showEditSettings]="isTeacher && canEditWorksheet()"
               (editSettings)="editWorksheet(worksheetId)"
             />
           } @placeholder {

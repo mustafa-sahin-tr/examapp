@@ -13,5 +13,6 @@
     "unread": "Okunmamış bildirimin yok.",
     "all": "Henüz bir bildirimin yok."
   },
-  "unreadPrefix": "Okunmamış:"
+  "unreadPrefix": "Okunmamış:",
+  "questionTag": "Soru {{order}}"
 }

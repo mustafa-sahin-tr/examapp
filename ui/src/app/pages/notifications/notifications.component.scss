@@ -119,6 +119,17 @@
   font-weight: 600;
 }
 
+.ntf__tag {
+  align-self: flex-start;
+  padding: 0.05rem 0.5rem;
+  border: 1px solid var(--ms-info-border);
+  border-radius: 999px;
+  background: var(--ms-info-surface-weak);
+  color: var(--ms-info-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
 .ntf__body {
   font-size: 0.875rem;
   opacity: 0.85;

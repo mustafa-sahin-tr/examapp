@@ -28,6 +28,8 @@ export interface NotificationRow {
   icon: string;
   /** Tıklanınca gidilecek hedef; `null` = yalnızca okundu işaretlenir. */
   route: AppRouteLink | null;
+  /** Issue #309: soru yorumu bildiriminde "Soru {n}" etiketi; yoksa null. */
+  questionOrder: number | null;
   relativeTime: string;
 }
 
@@ -140,7 +142,14 @@ export class NotificationsComponent implements OnInit {
   }
 
   private toRow(notification: AppNotification, now: number, locale: string): NotificationRow {
-    const { icon, iconUrl, route } = describeNotification(notification);
-    return { notification, iconUrl, icon, route, relativeTime: formatRelativeTime(notification.createdAt, now, locale) };
+    const { icon, iconUrl, route, questionOrder } = describeNotification(notification);
+    return {
+      notification,
+      iconUrl,
+      icon,
+      route,
+      questionOrder,
+      relativeTime: formatRelativeTime(notification.createdAt, now, locale),
+    };
   }
 }

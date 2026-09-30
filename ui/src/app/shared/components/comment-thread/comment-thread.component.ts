@@ -46,6 +46,9 @@ import {
   WorksheetCommentPage,
   WorksheetCommentRepliesPage,
   WorksheetCommentRoot,
+  WorksheetCommentStudentSummary,
+  parseStudentCommentsSummary,
+  toQuestionOrder,
 } from '../../../models/worksheet-comment.model';
 import { parseUtcDate } from '../../../pages/notifications/notification-format';
 import { LocaleService } from '../../../services/locale.service';
@@ -82,6 +85,37 @@ const LOCK_REASONS: readonly WorksheetCommentLockReason[] = [
 interface ThreadContext {
   worksheetId: number;
   questionId: number | null;
+}
+
+/** Öğretmen özet şeridinin tek parçası (Transloco anahtarı `comments` scope'unda + parametre). */
+export interface StudentSummaryPart {
+  key: string;
+  params?: Record<string, unknown>;
+}
+
+/** Öğretmen özet şeridi (issue #309): varsayılan metni + sıfır olmayan override sayıları. */
+export interface StudentSummaryStrip {
+  defaultDisabled: boolean;
+  defaultKey: string;
+  parts: StudentSummaryPart[];
+}
+
+/**
+ * `studentCommentsSummary` → şerit metin parçaları. Önce varsayılanın tersi yöndeki override'lar (asıl bilgi), sonra
+ * aynı yöndekiler; sıfır sayılar gösterilmez. Tekil/çoğul ayrı anahtar (en: "1 assignment" / "2 assignments").
+ */
+export function studentSummaryStrip(summary: WorksheetCommentStudentSummary): StudentSummaryStrip {
+  const { enabled, disabled } = summary.assignmentOverrides;
+  const off = { count: disabled, key: 'thread.summary.assignmentsOff' };
+  const on = { count: enabled, key: 'thread.summary.assignmentsOn' };
+  const ordered = summary.worksheetDefault ? [off, on] : [on, off];
+  return {
+    defaultDisabled: !summary.worksheetDefault,
+    defaultKey: summary.worksheetDefault ? 'thread.summary.defaultOn' : 'thread.summary.defaultOff',
+    parts: ordered
+      .filter((item) => item.count > 0)
+      .map((item) => ({ key: item.count === 1 ? `${item.key}One` : item.key, params: { count: item.count } })),
+  };
 }
 
 interface PendingHighlight {
@@ -153,9 +187,19 @@ export class CommentThreadComponent {
    * bu bilgi worksheet'in kendi `commentsEnabled` alanından gelir).
    */
   readonly studentsLockedNotice = input(false);
+  /**
+   * Issue #309: öğretmen görünümünde sunucunun `studentCommentsSummary`'si ile özet şeridi gösterilsin mi (yalnız
+   * worksheet thread'i — soru kartlarında şerit tekrarlanmasın). Alan null/bozuksa `studentsLockedNotice`'a düşülür.
+   */
+  readonly showStudentsSummary = input(false);
   /** Bilgi şeridinde "Ayarları düzenle" gösterilsin mi. */
   readonly showEditSettings = input(false);
   readonly editSettings = output<void>();
+  /**
+   * Issue #309: soru thread'inde sorunun 1 tabanlı sırası — thread sayfasının `questionOrder`'ından (derin linkten
+   * değil); bilinmiyorsa null. Yalnız değer değişince, HTTP yanıtında ya da bağlam değişiminde yayınlanır.
+   */
+  readonly questionOrderChange = output<number | null>();
 
   protected readonly loading = signal(false);
   protected readonly loaded = signal(false);
@@ -164,6 +208,11 @@ export class CommentThreadComponent {
   protected readonly nextCursor = signal<string | null>(null);
   protected readonly canWrite = signal(false);
   protected readonly lockReason = signal<WorksheetCommentLockReason | null>(null);
+  protected readonly studentSummary = signal<WorksheetCommentStudentSummary | null>(null);
+  protected readonly summaryStrip = computed(() => {
+    const summary = this.studentSummary();
+    return summary && this.showStudentsSummary() ? studentSummaryStrip(summary) : null;
+  });
   protected readonly loadingMore = signal(false);
   protected readonly loadMoreError = signal<string | null>(null);
   protected readonly draft = signal('');
@@ -200,6 +249,7 @@ export class CommentThreadComponent {
   private pendingHighlight: PendingHighlight | null = null;
   private highlightTimer: ReturnType<typeof setTimeout> | null = null;
   private tempSequence = 0;
+  private emittedQuestionOrder: number | null = null;
 
   constructor() {
     // Şablon dışından (hata mesajları) senkron `translate()` için scope sözlüğünü render'dan bağımsız yükle.
@@ -270,12 +320,14 @@ export class CommentThreadComponent {
     this.nextCursor.set(null);
     this.canWrite.set(false);
     this.lockReason.set(null);
+    this.studentSummary.set(null);
     this.loadMoreError.set(null);
     this.loadingMore.set(false);
     this.draft.set('');
     this.openReplies.set(new Set<string>());
     this.highlightedId.set(null);
     this.announcement.set('');
+    this.emitQuestionOrder(null);
   }
 
   /** İlk sayfa; aynı bağlamda yeniden yüklemede gönderilmemiş kök yorumlar korunur. */
@@ -298,6 +350,7 @@ export class CommentThreadComponent {
               this.applyPageFlags(page);
               this.threads.set([...unsent, ...(page?.items ?? []).map(toThreadView)]);
               this.loaded.set(true);
+              this.emitQuestionOrder(page?.questionOrder);
               this.tryHighlight();
             },
             error: (err: unknown) => {
@@ -308,6 +361,7 @@ export class CommentThreadComponent {
               this.loaded.set(false);
               this.canWrite.set(false);
               this.lockReason.set(null);
+              this.studentSummary.set(null);
               this.nextCursor.set(null);
               this.error.set(commentErrorMessage(err, this.t, 'thread.loadError'));
               // pendingHighlight korunur: "Tekrar dene" başarılı olunca derin link yine uygulanır.
@@ -575,9 +629,22 @@ export class CommentThreadComponent {
 
   private applyPageFlags(page: WorksheetCommentPage | null): void {
     this.canWrite.set(page?.canWrite === true);
+    this.studentSummary.set(parseStudentCommentsSummary(page?.studentCommentsSummary));
     const reason = page?.lockReason ?? null;
     this.lockReason.set(reason && LOCK_REASONS.includes(reason) ? reason : null);
     this.nextCursor.set(page?.nextCursor || null);
+  }
+
+  /**
+   * Issue #309: sayfa düzeyindeki `questionOrder`'ı (soru thread'inde sayfa boşken de dolu) yayınlar; worksheet
+   * thread'inde ya da geçersiz değerde null. Aynı değer tekrar yayınlanmaz.
+   */
+  private emitQuestionOrder(value: unknown): void {
+    const order = this.questionId() !== null ? toQuestionOrder(value) : null;
+    if (order !== this.emittedQuestionOrder) {
+      this.emittedQuestionOrder = order;
+      this.questionOrderChange.emit(order);
+    }
   }
 
   private mergeReplies(thread: ThreadView, page: WorksheetCommentRepliesPage): ThreadView {
@@ -693,6 +760,7 @@ export class CommentThreadComponent {
         id: -sequence,
         worksheetId: this.worksheetId(),
         questionId: this.questionId(),
+        questionOrder: null,
         parentCommentId,
         authorDisplayName: '',
         authorRole: this.viewerIsTeacher() ? 'Teacher' : 'Student',

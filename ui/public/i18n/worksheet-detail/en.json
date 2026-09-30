@@ -217,6 +217,7 @@
     "worksheetTitle": "Comments and questions",
     "questionTitle": "Comments on this question",
     "linkedQuestionTitle": "Comments on the question",
+    "linkedQuestionTitleNumbered": "Comments on question {{order}}",
     "placeholder": "Loading comments…"
   }
 }

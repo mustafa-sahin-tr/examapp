@@ -187,10 +187,14 @@ public class WorksheetCommentEndpointsTests(IntegrationApiFactory factory) : Int
         q2Page.GetProperty("canWrite").GetBoolean().ShouldBeFalse();
         q2Page.GetProperty("lockReason").GetString().ShouldBe("question-not-answered");
 
-        (await a.PostAsJsonAsync(Url(seed.WorksheetId), new { questionId = seed.Q1, body = "neden A?" }))
-            .StatusCode.ShouldBe(HttpStatusCode.Created);
+        var posted = await a.PostAsJsonAsync(Url(seed.WorksheetId), new { questionId = seed.Q1, body = "neden A?" });
+        posted.StatusCode.ShouldBe(HttpStatusCode.Created);
+        (await JsonOf(posted)).GetProperty("questionOrder").GetInt32().ShouldBe(1); // issue #309
         var q1Page = await JsonOf(await a.GetAsync(Url(seed.WorksheetId, $"?questionId={seed.Q1}")));
         q1Page.GetProperty("items").GetArrayLength().ShouldBe(1);
+        q1Page.GetProperty("items")[0].GetProperty("questionOrder").GetInt32().ShouldBe(1);
+        q1Page.GetProperty("questionOrder").GetInt32().ShouldBe(1);
+        q1Page.GetProperty("studentCommentsSummary").ValueKind.ShouldBe(JsonValueKind.Null); // öğrencide yok
         (await JsonOf(await a.GetAsync(Url(seed.WorksheetId)))).GetProperty("items").GetArrayLength().ShouldBe(0);
     }
 
@@ -357,8 +361,51 @@ public class WorksheetCommentEndpointsTests(IntegrationApiFactory factory) : Int
         for (var i = 0; i < 30; i++)
             (await b.GetAsync($"{Url(seed.WorksheetId)}/{root}/replies")).StatusCode.ShouldBe(HttpStatusCode.OK);
 
-        (await b.GetAsync(Url(seed.WorksheetId))).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
-        (await b.GetAsync($"{Url(seed.WorksheetId)}/{root}/replies")).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        var limitedThread = await b.GetAsync(Url(seed.WorksheetId));
+        await ShouldBeRateLimitedJsonAsync(limitedThread);
+        await ShouldBeRateLimitedJsonAsync(await b.GetAsync($"{Url(seed.WorksheetId)}/{root}/replies"));
+    }
+
+    /// <summary>issue #309: 429 gövdesi diğer hatalarla aynı JSON biçiminde + Retry-After başlığı korunur.</summary>
+    private static async Task ShouldBeRateLimitedJsonAsync(HttpResponseMessage response)
+    {
+        response.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        response.Headers.RetryAfter.ShouldNotBeNull();
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/json");
+        var body = await JsonOf(response);
+        body.GetProperty("errorCode").GetString().ShouldBe("RateLimited");
+        body.GetProperty("message").GetString().ShouldNotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task Teacher_thread_carries_the_student_comments_summary_scoped_to_visible_assignments()
+    {
+        var seed = await SeedAsync(commentsEnabled: false);
+        await WithDbAsync(async db =>
+        {
+            db.SetCurrentUser(AssignerId);
+            var own = await db.WorksheetAssignments.SingleAsync(x => x.WorksheetId == seed.WorksheetId);
+            own.CommentsEnabledOverride = true;
+            db.SetCurrentUser(OwnerId);
+            db.WorksheetAssignments.Add(new WorksheetAssignment
+            {
+                WorksheetId = seed.WorksheetId, StudentId = seed.StudentA, StartAt = DateTime.UtcNow.AddDays(-1),
+                CommentsEnabledOverride = false
+            });
+            await db.SaveChangesAsync();
+        });
+
+        var owner = await ClientAsAsync(OwnerId, "Teacher", "kc-105-owner", "Teacher");
+        var ownerSummary = (await JsonOf(await owner.GetAsync(Url(seed.WorksheetId)))).GetProperty("studentCommentsSummary");
+        ownerSummary.GetProperty("worksheetDefault").GetBoolean().ShouldBeFalse();
+        // Sahip yalnız kendi oluşturduğu atamaları sayar (security L1): Assigner'ın true'su sızmaz.
+        ownerSummary.GetProperty("assignmentOverrides").GetProperty("enabled").GetInt32().ShouldBe(0);
+        ownerSummary.GetProperty("assignmentOverrides").GetProperty("disabled").GetInt32().ShouldBe(1);
+
+        var assigner = await ClientAsAsync(AssignerId, "Teacher", "kc-105-t", "Teacher");
+        var assignerSummary = (await JsonOf(await assigner.GetAsync(Url(seed.WorksheetId)))).GetProperty("studentCommentsSummary");
+        assignerSummary.GetProperty("assignmentOverrides").GetProperty("enabled").GetInt32().ShouldBe(1);
+        assignerSummary.GetProperty("assignmentOverrides").GetProperty("disabled").GetInt32().ShouldBe(0);
     }
 
     [Fact]
@@ -388,7 +435,7 @@ public class WorksheetCommentEndpointsTests(IntegrationApiFactory factory) : Int
             (await b.PostAsJsonAsync(Url(seed.WorksheetId), new { body = $"yorum {i}" })).StatusCode.ShouldBe(HttpStatusCode.Created);
 
         var limited = await b.PostAsJsonAsync(Url(seed.WorksheetId), new { body = "fazla" });
-        limited.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        await ShouldBeRateLimitedJsonAsync(limited);
 
         // Okuma limitli değil; başka kullanıcının kovası ayrı.
         (await b.GetAsync(Url(seed.WorksheetId))).StatusCode.ShouldBe(HttpStatusCode.OK);

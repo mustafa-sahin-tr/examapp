@@ -87,6 +87,6 @@ public sealed class AdminAccountStatusRateLimitPolicy : IRateLimiterPolicy<strin
             AdminUserListRateLimiting.PartitionKey(context.HttpContext), context.HttpContext.Request.Path.Value);
 
         await AdminUserListRateLimiting.WriteRejectionAsync(
-            context, "admin.accountStatus.rateLimited", _options.CurrentValue.WindowSeconds, cancellationToken);
+            context, "admin.accountStatus.rateLimited", _options.CurrentValue.WindowSeconds, errorCode: null, cancellationToken);
     }
 }

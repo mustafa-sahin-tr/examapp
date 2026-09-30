@@ -12,6 +12,14 @@
       "comments-disabled": "New comments and questions are turned off for this test. Existing comments stay visible."
     },
     "teacherDisabledNotice": "Worksheet default: student comments and questions are off. An assignment-specific setting can change this; existing comments stay visible.",
+    "summary": {
+      "defaultOn": "Student comments: on by default",
+      "defaultOff": "Student comments: off by default",
+      "assignmentsOffOne": "off in 1 assignment",
+      "assignmentsOff": "off in {{count}} assignments",
+      "assignmentsOnOne": "on in 1 assignment",
+      "assignmentsOn": "on in {{count}} assignments"
+    },
     "editSettings": "Edit settings",
     "readOnly": "You can only view this conversation.",
     "loadMore": "Load more comments",
@@ -61,7 +69,8 @@
       "CommentsDisabled": "Comments are turned off for this test.",
       "WorksheetNotStarted": "Start the test first.",
       "QuestionNotAnswered": "Answer the question first.",
-      "NotResponsibleTeacher": "You can't reply to this conversation."
+      "NotResponsibleTeacher": "You can't reply to this conversation.",
+      "RateLimited": "You're going too fast. Please wait a moment and try again."
     }
   }
 }

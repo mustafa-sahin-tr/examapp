@@ -13,5 +13,6 @@
     "unread": "You have no unread notifications.",
     "all": "You have no notifications yet."
   },
-  "unreadPrefix": "Unread:"
+  "unreadPrefix": "Unread:",
+  "questionTag": "Question {{order}}"
 }

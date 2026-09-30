@@ -97,6 +97,6 @@ public sealed class StudyLinkWriteRateLimitPolicy : IRateLimiterPolicy<string>
             AdminUserListRateLimiting.PartitionKey(context.HttpContext), context.HttpContext.Request.Path.Value);
 
         await AdminUserListRateLimiting.WriteRejectionAsync(
-            context, "studyLinks.rateLimited", _options.CurrentValue.WindowSeconds, cancellationToken);
+            context, "studyLinks.rateLimited", _options.CurrentValue.WindowSeconds, errorCode: null, cancellationToken);
     }
 }

@@ -37,7 +37,10 @@ export interface SimilarWorksheet {
 
 export interface WorksheetHardestQuestion {
   questionId: number;
+  /** Ham `WorksheetQuestion.Order` (0/1 tabanlı, boşluklu olabilir) — gösterim için `number`. */
   order: number;
+  /** Issue #309: kullanıcıya gösterilen 1 tabanlı soru numarası; eski sunucuda yok → `order`'a düşülür. */
+  number?: number;
   text: string | null;
   subtopicName: string | null;
   answeredCount: number;

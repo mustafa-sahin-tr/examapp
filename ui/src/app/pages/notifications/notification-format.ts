@@ -61,6 +61,11 @@ export interface NotificationPresentation {
   iconUrl: string | null;
   /** Tıklanınca gidilecek hedef; `null` = yalnızca okundu işaretlenir. */
   route: AppRouteLink | null;
+  /**
+   * Issue #309: soru yorumu bildiriminde sorunun 1 tabanlı sırası (`data.questionOrder`) — listede "Soru {n}"
+   * etiketi; yoksa/geçersizse null. Snackbar başlığını etkilemez.
+   */
+  questionOrder: number | null;
 }
 
 /** Rozet bildirimine tıklanınca gidilen öğrencinin rozet/ilerleme sayfası (`BadgeThropyComponent`). */
@@ -73,11 +78,14 @@ export function describeNotification(notification: Pick<AppNotification, 'type' 
       icon: 'emoji_events',
       iconUrl: badgeIconSrc(data?.iconUrl),
       route: { commands: [BADGE_PROGRESS_ROUTE] },
+      questionOrder: null,
     };
   }
   if (isWorksheetCommentNotificationType(notification.type)) {
     const ref = parseWorksheetCommentNotificationData(notification.data);
-    return { icon: 'forum', iconUrl: null, route: ref ? worksheetCommentLink(ref) : null };
+    // Sıra yalnız soru yorumunda anlamlı (worksheet seviyesinde questionId null).
+    const questionOrder = ref?.questionId != null ? (ref.questionOrder ?? null) : null;
+    return { icon: 'forum', iconUrl: null, route: ref ? worksheetCommentLink(ref) : null, questionOrder };
   }
-  return { icon: 'notifications', iconUrl: null, route: null };
+  return { icon: 'notifications', iconUrl: null, route: null, questionOrder: null };
 }

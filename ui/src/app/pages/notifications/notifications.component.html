@@ -41,7 +41,9 @@
             [class.is-link]="!!row.route"
             [attr.data-type]="row.notification.type"
             [attr.aria-label]="
-              (row.notification.isRead ? '' : t('unreadPrefix') + ' ') + row.notification.title
+              (row.notification.isRead ? '' : t('unreadPrefix') + ' ') +
+              row.notification.title +
+              (row.questionOrder ? ', ' + t('questionTag', { order: row.questionOrder }) : '')
             "
             (click)="open(row)"
           >
@@ -54,6 +56,9 @@
             </span>
             <span class="ntf__content">
               <span class="ntf__title"><bdi dir="auto">{{ row.notification.title }}</bdi></span>
+              @if (row.questionOrder) {
+                <span class="ntf__tag" data-testid="notification-question-tag">{{ t('questionTag', { order: row.questionOrder }) }}</span>
+              }
               @if (row.notification.body) {
                 <span class="ntf__body"><bdi dir="auto">{{ row.notification.body }}</bdi></span>
               }

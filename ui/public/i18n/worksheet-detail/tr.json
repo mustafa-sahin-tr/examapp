@@ -217,6 +217,7 @@
     "worksheetTitle": "Yorumlar ve sorular",
     "questionTitle": "Bu soru hakkında yorumlar",
     "linkedQuestionTitle": "Soru hakkındaki yorumlar",
+    "linkedQuestionTitleNumbered": "Soru {{order}} hakkındaki yorumlar",
     "placeholder": "Yorumlar yükleniyor…"
   }
 }

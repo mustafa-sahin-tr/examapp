@@ -270,7 +270,30 @@ export class WorksheetDetailComponent implements OnInit {
     return link && link.questionId === questionId ? link : null;
   }
 
-  /** Öğretmen görünümü: worksheet ayarında öğrenci yorumları kapalı mı (bilgi şeridi). */
+  /**
+   * Issue #309: derin linkli soru kartının thread'inden gelen soru sırası (`questionOrderChange`) — hangi soruya ait
+   * olduğuyla birlikte saklanır; URL'den okunmaz.
+   */
+  private readonly linkedQuestionOrderState = signal<{ questionId: number; order: number | null } | null>(null);
+
+  /**
+   * Kart başlığındaki soru sırası. Derin link başka bir soruya geçince (code review D4) eski sıra gösterilmez —
+   * yeni sorunun thread yanıtı gelene kadar genel başlık.
+   */
+  protected readonly linkedQuestionOrder = computed(() => {
+    const state = this.linkedQuestionOrderState();
+    const questionId = this.commentLink()?.questionId ?? null;
+    return state && questionId !== null && state.questionId === questionId ? state.order : null;
+  });
+
+  protected onLinkedQuestionOrder(questionId: number | null, order: number | null): void {
+    this.linkedQuestionOrderState.set(questionId === null ? null : { questionId, order });
+  }
+
+  /**
+   * Öğretmen görünümü: worksheet ayarında öğrenci yorumları kapalı mı. Issue #309'dan sonra yalnız sunucu
+   * `studentCommentsSummary` döndürmezse (eski sunucu) kullanılan yedek şerit.
+   */
   protected readonly commentsDisabledForStudents = computed(
     () => this.isTeacher && this.detail()?.worksheet?.commentsEnabled === false
   );

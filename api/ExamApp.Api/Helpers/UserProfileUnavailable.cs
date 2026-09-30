@@ -19,7 +19,8 @@ public sealed class UserProfileUnavailableException(Exception inner)
     : Exception("User profile could not be resolved (profile provider failure).", inner);
 
 /// <summary>
-/// <see cref="UserProfileUnavailableException"/> → <c>503 { message }</c> (yerelleştirilmiş <c>common.profileUnavailable</c>).
+/// <see cref="UserProfileUnavailableException"/> (ve doğrudan fırlayan <see cref="CallerAccessTokenMissingException"/> /
+/// <c>UserProfileSubjectMismatchException</c>) → <c>503 { message }</c> (yerelleştirilmiş <c>common.profileUnavailable</c>).
 /// BaseController'a uygulanır (miras alınır); iç hata loglanır, istemciye sızdırılmaz.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = true)]
@@ -27,12 +28,20 @@ public sealed class UserProfileUnavailableFilterAttribute : ExceptionFilterAttri
 {
     public override void OnException(ExceptionContext context)
     {
-        if (context.Exception is not UserProfileUnavailableException ex)
+        // BaseController sağlayıcı hatalarını UserProfileUnavailableException'a sarar. Profil sağlayıcısını doğrudan
+        // çağıran uçlarda da çağıran token'ı eksikliği / profil-sub uyuşmazlığı 500 değil aynı 503 olsun.
+        var inner = context.Exception switch
+        {
+            UserProfileUnavailableException wrapped => wrapped.InnerException ?? wrapped,
+            CallerAccessTokenMissingException or ExamApp.Api.Services.UserProfileSubjectMismatchException => context.Exception,
+            _ => null
+        };
+        if (inner is null)
             return;
 
         var services = context.HttpContext.RequestServices;
         services.GetService<ILoggerFactory>()?.CreateLogger("ExamApp.Api.UserProfile")
-            .LogError(ex.InnerException, "User profile provider failed; request rejected with 503 (fail-closed).");
+            .LogError(inner, "User profile provider failed; request rejected with 503 (fail-closed).");
 
         var localizer = services.GetService<IStringLocalizer<Messages>>() ?? FallbackMessageLocalizer.Instance;
         context.Result = new ObjectResult(new { message = localizer["common.profileUnavailable"].Value })

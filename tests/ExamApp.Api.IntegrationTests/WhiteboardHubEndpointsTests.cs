@@ -3,6 +3,7 @@ using ExamApp.Api.Data;
 using ExamApp.Api.IntegrationTests.Infrastructure;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Whiteboard;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Caching.Distributed;
@@ -165,6 +166,101 @@ public class WhiteboardHubEndpointsTests(IntegrationApiFactory factory) : Integr
         (await Should.ThrowAsync<Microsoft.AspNetCore.SignalR.HubException>(
                 () => teacher.InvokeAsync<JsonElement>("SendElements", bookingId, new[] { Element("stroke-2", 1) })))
             .Message.ShouldContain(WhiteboardErrorCodes.NotJoined);
+    }
+
+    [Fact]
+    public async Task Teacher_connects_with_query_token_only_while_profile_cache_is_empty()
+    {
+        // Canlı E2E hatası: WebSocket'te token yalnızca query string ile gelir, Authorization header'ı yoktur. Profil
+        // Redis'te yokken ApprovedTeacher kapısı auth-api'ye token'sız gidiyor → 401 → 500. Artık doğrulanmış istekte
+        // saklanan token iletilir.
+        const string sub = "kc-wb-teacher-cold";
+        const string queryToken = "wb-teacher-query-token";
+        var bookingId = await SeedBookingAsync();
+        await SeedProfileAsync(StudentUserId, "kc-wb-student", "Student");
+        var authApi = Factory.Services.GetRequiredService<FakeAuthApiProfiles>();
+        authApi.Register(queryToken, new UserProfileDto
+        {
+            Id = TeacherUserId, KeycloakId = sub, Role = "Teacher", FullName = "Cold Teacher", Email = "c@t.local"
+        });
+        var cache = Factory.Services.GetRequiredService<IDistributedCache>();
+        await cache.RemoveAsync(sub);
+
+        var hubUrl = new Uri(Factory.Server.BaseAddress, "hub/whiteboard" + QueryString.Create("access_token", queryToken));
+        await using var teacher = new HubConnectionBuilder()
+            .WithUrl(hubUrl, o =>
+            {
+                o.Transports = HttpTransportType.LongPolling;
+                o.HttpMessageHandlerFactory = _ => Factory.Server.CreateHandler();
+                o.Headers["X-Test-Auth"] = sub;
+                o.Headers["X-Test-Username"] = sub;
+                o.Headers["X-Test-Roles"] = "Teacher";
+            })
+            .Build();
+
+        await teacher.StartAsync();
+        var join = await teacher.InvokeAsync<JsonElement>("JoinBoard", bookingId);
+
+        join.GetProperty("role").GetString().ShouldBe("teacher");
+        authApi.ServedTokens.ShouldContain(queryToken);
+        (await cache.GetStringAsync(sub)).ShouldNotBeNull(); // provider profili cache'ledi
+    }
+
+    [Fact]
+    public async Task Teacher_connects_over_websockets_with_query_token_and_reloads_profile_inside_the_hub()
+    {
+        // Üretim transport'u: WebSocket upgrade'inde header yok, yalnız query token. Negotiate'ten sonra cache yeniden
+        // boşaltılır → JoinBoard (hub çağrısı, 30 sn'lik yeniden doğrulamayla aynı yol) profili WebSocket isteğinin
+        // doğrulanmış token'ıyla yeniden yükler.
+        const string sub = "kc-wb-teacher-ws";
+        const string queryToken = "wb-teacher-ws-query-token";
+        var bookingId = await SeedBookingAsync();
+        await SeedProfileAsync(StudentUserId, "kc-wb-student", "Student");
+        var authApi = Factory.Services.GetRequiredService<FakeAuthApiProfiles>();
+        authApi.Register(queryToken, new UserProfileDto
+        {
+            Id = TeacherUserId, KeycloakId = sub, Role = "Teacher", FullName = "WS Teacher", Email = "w@t.local"
+        });
+        var cache = Factory.Services.GetRequiredService<IDistributedCache>();
+        await cache.RemoveAsync(sub);
+
+        void AddIdentity(IDictionary<string, string> headers)
+        {
+            headers["X-Test-Auth"] = sub;
+            headers["X-Test-Username"] = sub;
+            headers["X-Test-Roles"] = "Teacher";
+        }
+
+        var hubUrl = new Uri(Factory.Server.BaseAddress, "hub/whiteboard" + QueryString.Create("access_token", queryToken));
+        await using var teacher = new HubConnectionBuilder()
+            .WithUrl(hubUrl, o =>
+            {
+                o.Transports = HttpTransportType.WebSockets;
+                o.HttpMessageHandlerFactory = _ => Factory.Server.CreateHandler();
+                AddIdentity(o.Headers);
+                o.WebSocketFactory = async (context, ct) =>
+                {
+                    var wsClient = Factory.Server.CreateWebSocketClient();
+                    wsClient.ConfigureRequest = request =>
+                    {
+                        request.Headers["X-Test-Auth"] = sub;
+                        request.Headers["X-Test-Username"] = sub;
+                        request.Headers["X-Test-Roles"] = "Teacher";
+                    };
+                    return await wsClient.ConnectAsync(context.Uri, ct);
+                };
+            })
+            .Build();
+
+        await teacher.StartAsync();
+        var servedBeforeJoin = authApi.ServedTokens.Count(t => t == queryToken);
+        await cache.RemoveAsync(sub);
+
+        var join = await teacher.InvokeAsync<JsonElement>("JoinBoard", bookingId);
+
+        join.GetProperty("role").GetString().ShouldBe("teacher");
+        authApi.ServedTokens.Count(t => t == queryToken).ShouldBe(servedBeforeJoin + 1);
+        (await cache.GetStringAsync(sub)).ShouldNotBeNull();
     }
 
     [Fact]

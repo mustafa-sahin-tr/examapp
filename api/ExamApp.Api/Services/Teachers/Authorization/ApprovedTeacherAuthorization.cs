@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using ExamApp.Api.Helpers;
+using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Foundation.Security;
 using Microsoft.AspNetCore.Authorization;
@@ -86,7 +88,21 @@ public sealed class ApprovedTeacherAuthorizationHandler : AuthorizationHandler<A
 
         var ct = (context.Resource as HttpContext)?.RequestAborted ?? default;
         var sub = user.FindFirstValue(ClaimTypes.NameIdentifier);
-        var profile = string.IsNullOrEmpty(sub) ? null : await _profiles.GetAsync(sub, ct);
+        UserProfileDto? profile;
+        try
+        {
+            profile = string.IsNullOrEmpty(sub) ? null : await _profiles.GetAsync(sub, ct);
+        }
+        catch (Exception ex) when (IsCallerIdentityFailure(ex))
+        {
+            // Sağlayıcı kesintisi değil, çağıranın kimlik bağlamı sorunlu: istekte iletilecek token yok, auth-api token'ı
+            // reddetti (401/403 — ör. süresi dolmuş token) ya da dönen profil doğrulanan sub'a ait değil. 500 yerine
+            // yetkisiz (403, TeacherNotApproved gövdesi olmadan — Fail çağrıldığı için). Diğer hatalar fail-closed fırlar.
+            _logger.LogWarning("ApprovedTeacher: profil çağıranın kimliğiyle yüklenemedi ({Reason}). Sub={Sub}",
+                ex.GetType().Name, sub);
+            context.Fail(new AuthorizationFailureReason(this, "Caller identity could not be used to load the user profile."));
+            return;
+        }
         var check = profile is { Id: > 0 }
             ? await _guard.CheckAsync(profile.Id, ct)
             : TeacherApprovalCheck.NoTeacherProfile;
@@ -103,4 +119,13 @@ public sealed class ApprovedTeacherAuthorizationHandler : AuthorizationHandler<A
         // FailedRequirements boş kalır. Gereksinimi karşılanmamış bırakmak (pending) sonucu yine Forbidden yapar ve
         // result handler "yalnızca bu gereksinim mi başarısız?" sorusunu (rol eksikliğinden ayırarak) cevaplayabilir.
     }
+
+    /// <summary>Çağıranın kimlik bağlamından kaynaklanan (sağlayıcı kesintisi olmayan) profil yükleme hataları.</summary>
+    private static bool IsCallerIdentityFailure(Exception ex) => ex switch
+    {
+        CallerAccessTokenMissingException => true,
+        UserProfileSubjectMismatchException => true,
+        System.Net.Http.HttpRequestException { StatusCode: System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden } => true,
+        _ => false
+    };
 }

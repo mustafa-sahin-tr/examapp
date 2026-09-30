@@ -4,6 +4,8 @@ using ExamApp.Api.Data;
 using ExamApp.Api.IntegrationTests.Infrastructure;
 using ExamApp.Api.Models.Dtos;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ExamApp.Api.IntegrationTests;
 
@@ -181,6 +183,56 @@ public class StudentAndTeacherEndpointsTests(IntegrationApiFactory factory) : In
         var preset = await WithDbAsync(async db =>
             (await db.Teachers.FirstAsync(t => t.UserId == 30)).ThemePreset);
         preset.ShouldBe("minimal");
+    }
+
+    // ---- check-teacher / check-student: soğuk cache (E2E: login'den hemen sonra 404 "Kullanıcı bulunamadı") ----
+
+    /// <summary>Profil cache'i SEED ETMEYEN istemci: kimlik + Bearer token (JwtBearer SaveToken taklidi).</summary>
+    private HttpClient ColdClient(string sub, string bearerToken, string realmRole)
+    {
+        var client = Factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Test-Auth", sub);
+        client.DefaultRequestHeaders.Add("X-Test-Username", sub);
+        client.DefaultRequestHeaders.Add("X-Test-Roles", realmRole);
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", bearerToken);
+        return client;
+    }
+
+    [Theory]
+    [InlineData("/api/teacher/check-teacher", "Teacher", 970_001)]
+    [InlineData("/api/student/check-student", "Student", 970_002)]
+    public async Task Check_endpoints_load_the_profile_on_a_cold_cache_and_cache_it(string url, string role, int userId)
+    {
+        var sub = $"kc-cold-{userId}";
+        var bearer = $"cold-token-{userId}";
+        var cache = Factory.Services.GetRequiredService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();
+        await cache.RemoveAsync(sub);
+        Factory.Services.GetRequiredService<FakeAuthApiProfiles>().Register(bearer, new UserProfileDto
+        {
+            Id = userId, KeycloakId = sub, Role = role, FullName = "Cold User", Email = "cold@t.local"
+        });
+
+        var response = await ColdClient(sub, bearer, role).GetAsync(url);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await cache.GetStringAsync(sub)).ShouldNotBeNull();
+    }
+
+    [Theory]
+    [InlineData("/api/teacher/check-teacher", "Teacher", 970_003)]
+    [InlineData("/api/student/check-student", "Student", 970_004)]
+    public async Task Check_endpoints_return_503_when_auth_api_rejects_the_token_on_a_cold_cache(string url, string role, int userId)
+    {
+        var sub = $"kc-cold-{userId}";
+        var bearer = $"rejected-token-{userId}";
+        var cache = Factory.Services.GetRequiredService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();
+        await cache.RemoveAsync(sub);
+        Factory.Services.GetRequiredService<FakeAuthApiProfiles>().Reject(bearer);
+
+        var response = await ColdClient(sub, bearer, role).GetAsync(url);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+        (await cache.GetStringAsync(sub)).ShouldBeNull();
     }
 
     [Fact]

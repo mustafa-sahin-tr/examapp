@@ -161,6 +161,15 @@ public static class WorksheetAccess
     {
         return context.WorksheetAssignments
             .Where(WorksheetStudentAccess.AssignmentVisibleTo(studentId, gradeId, schoolId))
-            .Where(a => a.StartAt <= now && (a.EndAt == null || a.EndAt > now));
+            .Where(ActiveAt(now));
     }
+
+    /// <summary>
+    /// "Aktif atama" zaman penceresi (StartAt &lt;= now &lt; EndAt, EndAt null = açık uçlu) — <see cref="ActiveAssignmentsFor"/>
+    /// bunu kullanır. issue #105: yorum thread'inde bir sayfadaki birden çok öğrencinin ilgili öğretmeni toplu çözülürken
+    /// worksheet'in aktif atamaları TEK sorguda bu ifadeyle çekilir, hedef/okul koşulu
+    /// (<see cref="WorksheetStudentAccess.AssignmentVisibleTo"/>) bellek içinde aynı ifadeden uygulanır — tanım tek yerde kalır.
+    /// </summary>
+    public static Expression<Func<WorksheetAssignment, bool>> ActiveAt(DateTime now)
+        => a => a.StartAt <= now && (a.EndAt == null || a.EndAt > now);
 }

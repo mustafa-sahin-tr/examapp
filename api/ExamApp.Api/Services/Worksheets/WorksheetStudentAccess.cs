@@ -32,4 +32,16 @@ public static class WorksheetStudentAccess
         => a => a.StudentId == studentId
             || (a.StudentId == null && a.GradeId != null && a.GradeId == gradeId
                 && (a.IsPlatformWide || (a.SchoolId != null && a.SchoolId == schoolId)));
+
+    /// <summary>
+    /// <see cref="AssignmentVisibleTo"/>'nun bellek içi (SQL'siz) karşılığı — issue #105: ilgili öğretmen toplu çözülürken
+    /// worksheet'in aktif atamaları tek sorguda projeksiyonla çekilir, öğrenci eşleşmesi burada yapılır (expression
+    /// <c>Compile</c> maliyeti yok). İki tanım AYNI kuralı taşımalı; eşdeğerlik
+    /// <c>WorksheetStudentAccessTests</c>'te tüm kombinasyonlar üzerinden doğrulanır — birini değiştiren diğerini de değiştirir.
+    /// </summary>
+    public static bool IsAssignmentVisibleTo(int? assignmentStudentId, int? assignmentGradeId, int? assignmentSchoolId,
+        bool assignmentIsPlatformWide, int studentId, int? gradeId, int? schoolId)
+        => assignmentStudentId == studentId
+            || (assignmentStudentId == null && assignmentGradeId != null && assignmentGradeId == gradeId
+                && (assignmentIsPlatformWide || (assignmentSchoolId != null && assignmentSchoolId == schoolId)));
 }

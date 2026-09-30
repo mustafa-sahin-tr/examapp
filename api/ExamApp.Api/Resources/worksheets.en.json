@@ -85,6 +85,29 @@
       "saveFailed": "The reminder could not be saved, please try again",
       "worksheetNotFound": "Worksheet not found",
       "notAssigned": "This worksheet is not assigned to you"
+    },
+
+    "comments": {
+      "created": "Your comment was posted.",
+      "readRateLimited": "Comments were requested too many times in a short period. Please wait a moment and try again.",
+      "rateLimited": "You posted too many comments in a short time. Please wait a moment and try again.",
+      "anonymousStudent": "Student",
+      "anonymousTeacher": "Teacher",
+      "errors": {
+        "bodyInvalidCharacters": "Comment contains invalid characters.",
+        "rootCommentNotFound": "Comment not found.",
+        "worksheetNotFound": "Worksheet not found.",
+        "accessDenied": "You do not have access to this test's comments.",
+        "questionNotInWorksheet": "The question does not belong to this test.",
+        "invalidParent": "You can only reply to a top-level comment in the same thread.",
+        "bodyRequired": "Comment cannot be empty.",
+        "bodyTooLong": "Comment can be at most 2000 characters.",
+        "invalidCursor": "Invalid page cursor.",
+        "commentsDisabled": "Comments and questions are turned off for this test.",
+        "worksheetNotStarted": "Start the test before commenting on this question.",
+        "questionNotAnswered": "Answer this question before commenting on it.",
+        "notResponsibleTeacher": "You are not allowed to reply in this thread."
+      }
     }
   }
 }

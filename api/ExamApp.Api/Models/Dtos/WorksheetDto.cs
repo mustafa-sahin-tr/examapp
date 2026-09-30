@@ -15,6 +15,9 @@ public class WorksheetDto
     public int? SubTopicId { get; set; } // Alt konu ID'si (isteğe bağlı)
     public int MaxDurationSeconds { get; set; }
     public bool IsPracticeTest { get; set; }
+
+    // issue #105: worksheet varsayılanı — öğrenciler yeni yorum-soru yazabilir mi (atama override'ı hariç).
+    public bool CommentsEnabled { get; set; } = true;
     public string? Subtitle { get; set; }
     public string? ImageUrl { get; set; }
     public string? BadgeText { get; set; }

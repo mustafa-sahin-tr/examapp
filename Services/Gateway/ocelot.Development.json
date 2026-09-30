@@ -2,7 +2,7 @@
   "Routes": [
     {
       "DownstreamPathTemplate": "/hub/whiteboard",
-      "DownstreamScheme": "http",
+      "DownstreamScheme": "ws",
       "DownstreamHostAndPorts": [
         {
           "Host": "exam-dotnet-api",
@@ -11,8 +11,7 @@
       ],
       "UpstreamPathTemplate": "/hub/whiteboard",
       "UpstreamHttpMethod": [
-        "GET",
-        "POST"
+        "GET"
       ],
       "UseWebSockets": true,
       "AuthenticationOptions": {
@@ -21,7 +20,7 @@
     },
     {
       "DownstreamPathTemplate": "/hub/badges",
-      "DownstreamScheme": "http",
+      "DownstreamScheme": "ws",
       "DownstreamHostAndPorts": [
         {
           "Host": "exam-badge-api",
@@ -30,8 +29,7 @@
       ],
       "UpstreamPathTemplate": "/hub/badges",
       "UpstreamHttpMethod": [
-        "GET",
-        "POST"
+        "GET"
       ],
       "UseWebSockets": true
     },

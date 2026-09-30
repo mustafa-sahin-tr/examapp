@@ -145,21 +145,22 @@ builder.Services.AddAuthentication(options =>
             ValidAudiences = validAudiences
         };
         options.RequireHttpsMetadata = false;
+        // Doğrulanan token AuthenticationProperties'te saklanır (varsayılan zaten true; açıkça yazıldı): AuthApiClient
+        // kullanıcı adına auth-api'ye giderken header'sız SignalR WebSocket isteğinde token'ı buradan alır (CallerAccessToken).
+        options.SaveToken = true;
         // Only OnMessageReceived (no logging handlers): the framework's own ILogger already logs
         // token-validation failures at the right level. The previous handlers
         // wrote the token subject/issuer/expiry to stdout on every request.
         options.Events = new JwtBearerEvents
         {
             // issue #98: SignalR WebSocket upgrade Authorization header taşıyamaz; istemci token'ı ?access_token= ile
-            // gönderir. Yalnızca whiteboard hub yolunda kabul edilir (BadgeService /hub/badges ile aynı desen).
+            // gönderir. Yalnızca whiteboard hub yolunda ve Authorization header'ı yokken kabul edilir (security review O1;
+            // BadgeService /hub/badges ile aynı desen).
             OnMessageReceived = context =>
             {
-                var accessToken = context.Request.Query["access_token"];
-                if (!string.IsNullOrEmpty(accessToken) &&
-                    context.HttpContext.Request.Path.StartsWithSegments(ExamApp.Api.Hubs.WhiteboardHub.Path))
-                {
-                    context.Token = accessToken;
-                }
+                var queryToken = ExamApp.Api.Helpers.SignalRQueryToken.Resolve(context.Request, ExamApp.Api.Hubs.WhiteboardHub.Path);
+                if (queryToken is not null)
+                    context.Token = queryToken;
 
                 return Task.CompletedTask;
             }

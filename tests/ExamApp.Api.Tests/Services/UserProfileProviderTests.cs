@@ -62,7 +62,7 @@ public class UserProfileProviderTests : IDisposable
             Role = "Teacher",
             SchoolId = null  // auth-api tarafından null dönebilir
         };
-        authApiClient.GetUserProfileAsync().Returns(profileFromAuthApi);
+        authApiClient.GetUserProfileAsync(Arg.Any<CancellationToken>()).Returns(profileFromAuthApi);
 
         var schoolContextResolver = Substitute.For<ISchoolContextResolver>();
         schoolContextResolver.ResolveSchoolIdAsync(Arg.Any<UserProfileDto>(), Arg.Any<CancellationToken>())
@@ -89,7 +89,7 @@ public class UserProfileProviderTests : IDisposable
         result.SchoolId.ShouldBe(schoolId);  // Resolver tarafından doldurulmuş
 
         // auth-api exactly once çağrılmış
-        _ = authApiClient.Received(1).GetUserProfileAsync();
+        _ = authApiClient.Received(1).GetUserProfileAsync(Arg.Any<CancellationToken>());
         // resolver exactly once çağrılmış
         await schoolContextResolver.Received(1).ResolveSchoolIdAsync(Arg.Any<UserProfileDto>(), Arg.Any<CancellationToken>());
     }
@@ -119,7 +119,7 @@ public class UserProfileProviderTests : IDisposable
             Role = "Student",
             SchoolId = null  // auth-api tarafından null
         };
-        authApiClient.GetUserProfileAsync().Returns(profileFromAuthApi);
+        authApiClient.GetUserProfileAsync(Arg.Any<CancellationToken>()).Returns(profileFromAuthApi);
 
         var schoolContextResolver = Substitute.For<ISchoolContextResolver>();
         schoolContextResolver.ResolveSchoolIdAsync(Arg.Any<UserProfileDto>(), Arg.Any<CancellationToken>())
@@ -141,6 +141,48 @@ public class UserProfileProviderTests : IDisposable
 
         result.ShouldNotBeNull();
         result.SchoolId.ShouldBe(schoolId);
+    }
+
+    [Fact]
+    public async Task GetAsync_ProfileSubMismatch_ThrowsAndDoesNotCache()
+    {
+        // security review O1: iletilen token başka kullanıcınınsa auth-api o kullanıcının profilini döner; doğrulanan
+        // sub'ın cache anahtarına yazılmamalı.
+        var authApiClient = Substitute.For<IAuthApiClient>();
+        authApiClient.GetUserProfileAsync(Arg.Any<CancellationToken>()).Returns(new UserProfileDto
+        {
+            Id = 999, KeycloakId = "kc-someone-else", FullName = "Other", Email = "o@test.com", Role = "Teacher"
+        });
+        var schoolContextResolver = Substitute.For<ISchoolContextResolver>();
+        var cache = new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
+        var cacheService = new UserProfileCacheService(cache, Substitute.For<ILogger<UserProfileCacheService>>());
+        var logger = Substitute.For<ILogger<UserProfileProvider>>();
+        var provider = new UserProfileProvider(cacheService, authApiClient, schoolContextResolver, logger);
+
+        await Should.ThrowAsync<UserProfileSubjectMismatchException>(() => provider.GetAsync("kc-caller"));
+
+        (await cacheService.GetAsync("kc-caller")).ShouldBeNull();
+        (await cacheService.GetAsync("kc-someone-else")).ShouldBeNull();
+        await schoolContextResolver.DidNotReceive().ResolveSchoolIdAsync(Arg.Any<UserProfileDto>(), Arg.Any<CancellationToken>());
+        logger.Received(1).Log(LogLevel.Warning, Arg.Any<EventId>(),
+            Arg.Is<object>(state => state.ToString()!.Contains("kc-caller") && state.ToString()!.Contains("kc-someone-else")),
+            Arg.Any<Exception?>(), Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public async Task GetAsync_PassesCancellationTokenToAuthApi()
+    {
+        using var cts = new CancellationTokenSource();
+        var authApiClient = Substitute.For<IAuthApiClient>();
+        authApiClient.GetUserProfileAsync(Arg.Any<CancellationToken>())
+            .Returns(new UserProfileDto { Id = 1, KeycloakId = "kc-ct", Role = "Student" });
+        var cache = new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
+        var cacheService = new UserProfileCacheService(cache, Substitute.For<ILogger<UserProfileCacheService>>());
+        var provider = new UserProfileProvider(cacheService, authApiClient, Substitute.For<ISchoolContextResolver>());
+
+        await provider.GetAsync("kc-ct", cts.Token);
+
+        await authApiClient.Received(1).GetUserProfileAsync(cts.Token);
     }
 
     // ---- Cache Hit Tests ----
@@ -176,7 +218,7 @@ public class UserProfileProviderTests : IDisposable
         result.SchoolId.ShouldBe(42);
 
         // auth-api hiç çağrılmamış
-        _ = authApiClient.DidNotReceive().GetUserProfileAsync();
+        _ = authApiClient.DidNotReceive().GetUserProfileAsync(Arg.Any<CancellationToken>());
         // resolver hiç çağrılmamış
         await schoolContextResolver.DidNotReceive().ResolveSchoolIdAsync(Arg.Any<UserProfileDto>(), Arg.Any<CancellationToken>());
     }
@@ -206,7 +248,7 @@ public class UserProfileProviderTests : IDisposable
             Role = "Teacher",
             SchoolId = null
         };
-        authApiClient.GetUserProfileAsync().Returns(profileFromAuthApi);
+        authApiClient.GetUserProfileAsync(Arg.Any<CancellationToken>()).Returns(profileFromAuthApi);
 
         var schoolContextResolver = Substitute.For<ISchoolContextResolver>();
         // İlk defa: schoolId döner; ikinci defa: farklı bir schoolId döner (transfer sonrası)

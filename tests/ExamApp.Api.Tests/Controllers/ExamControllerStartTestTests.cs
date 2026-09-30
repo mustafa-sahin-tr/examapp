@@ -33,7 +33,7 @@ public class ExamControllerStartTestTests
 
     private ExamController NewController(UserProfileDto authenticatedUser)
     {
-        _authApiClient.GetUserProfileAsync().Returns(authenticatedUser);
+        _authApiClient.GetUserProfileAsync(Arg.Any<CancellationToken>()).Returns(authenticatedUser);
 
         // issue #189: BaseController.GetAuthenticatedUserAsync artık IUserProfileProvider
         // kullanıyor; testte gerçek UserProfileProvider'ı, DB gerektirmeyen bir

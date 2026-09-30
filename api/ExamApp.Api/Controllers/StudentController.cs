@@ -275,7 +275,9 @@ namespace ExamApp.Api.Controllers
         [HttpGet("check-student")]
         public async Task<IActionResult> CheckStudent()
         {
-            var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+            // Cache-only okuma login'den hemen sonra (profil henüz Redis'te değilken) 404 "Kullanıcı bulunamadı" dönüyordu;
+            // diğer uçlar gibi provider'dan (cache miss'te auth-api) yüklenir. Provider hatası → 503 (UserProfileUnavailableFilter).
+            var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
             if (user == null)
             {
                 return NotFound(new { message = _localizer["student.userNotFound"].Value });

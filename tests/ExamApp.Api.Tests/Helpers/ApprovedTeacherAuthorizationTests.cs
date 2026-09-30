@@ -91,11 +91,31 @@ public class ApprovedTeacherAuthorizationTests : IDisposable
     /// <summary>sub "u{id}" → profil Id; bilinmeyen sub'lar fırlatmaz, Id=0 döner.</summary>
     private sealed class FakeProfiles : IUserProfileProvider
     {
-        public Task<UserProfileDto> GetAsync(string keycloakId, CancellationToken ct = default) =>
-            Task.FromResult(new UserProfileDto
+        /// <summary>Bu sub için profil cache'te yok ve istekte kullanıcı token'ı yok (AuthApiClient davranışı).</summary>
+        public const string NoCallerTokenSub = "no-caller-token";
+
+        /// <summary>auth-api iletilen token'ı reddetti (süresi dolmuş token) → 401/403.</summary>
+        public const string RejectedTokenSub = "rejected-token";
+        public const string ForbiddenTokenSub = "forbidden-token";
+
+        /// <summary>auth-api'nin döndürdüğü profil doğrulanan sub'a ait değil.</summary>
+        public const string MismatchedProfileSub = "mismatched-profile";
+
+        /// <summary>Sağlayıcı kesintisi (auth-api 500) — fail-closed, fırlamaya devam eder.</summary>
+        public const string ProviderOutageSub = "provider-outage";
+
+        public Task<UserProfileDto> GetAsync(string keycloakId, CancellationToken ct = default) => keycloakId switch
+        {
+            NoCallerTokenSub => Task.FromException<UserProfileDto>(new CallerAccessTokenMissingException()),
+            RejectedTokenSub => Task.FromException<UserProfileDto>(new HttpRequestException("401", null, HttpStatusCode.Unauthorized)),
+            ForbiddenTokenSub => Task.FromException<UserProfileDto>(new HttpRequestException("403", null, HttpStatusCode.Forbidden)),
+            MismatchedProfileSub => Task.FromException<UserProfileDto>(new ExamApp.Api.Services.UserProfileSubjectMismatchException()),
+            ProviderOutageSub => Task.FromException<UserProfileDto>(new HttpRequestException("500", null, HttpStatusCode.InternalServerError)),
+            _ => Task.FromResult(new UserProfileDto
             {
                 Id = int.TryParse(keycloakId.TrimStart('u'), out var id) ? id : 0, KeycloakId = keycloakId
-            });
+            })
+        };
     }
 
     private async Task<IHost> StartHostAsync()
@@ -221,6 +241,40 @@ public class ApprovedTeacherAuthorizationTests : IDisposable
 
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         (await response.Content.ReadAsStringAsync()).ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData(FakeProfiles.NoCallerTokenSub)]
+    [InlineData(FakeProfiles.RejectedTokenSub)]
+    [InlineData(FakeProfiles.ForbiddenTokenSub)]
+    [InlineData(FakeProfiles.MismatchedProfileSub)]
+    public async Task Caller_identity_failure_during_profile_load_is_a_bodyless_403_not_a_500(string sub)
+    {
+        // Canlı E2E: WebSocket'te header yokken auth-api 401 → handler fırlatıyor → 500. Token yoksa, auth-api token'ı
+        // reddettiyse (süresi dolmuş) ya da profil başka sub'a aitse artık yetkisiz (403) döner; TeacherNotApproved
+        // gövdesi verilmez (onay durumu bilinmiyor).
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, "/teacher-only");
+        request.Headers.Add("X-Sub", sub);
+        request.Headers.Add("X-Roles", "Teacher");
+
+        var response = await client.SendAsync(request);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await response.Content.ReadAsStringAsync()).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Provider_outage_still_fails_closed_with_an_exception()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, "/teacher-only");
+        request.Headers.Add("X-Sub", FakeProfiles.ProviderOutageSub);
+        request.Headers.Add("X-Roles", "Teacher");
+
+        await Should.ThrowAsync<HttpRequestException>(() => client.SendAsync(request));
     }
 
     // ---------------- Karma uçlar: admin / öğrenci etkilenmez ----------------

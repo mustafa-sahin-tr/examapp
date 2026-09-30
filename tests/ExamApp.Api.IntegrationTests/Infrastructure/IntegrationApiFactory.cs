@@ -69,6 +69,8 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
         // issue #265: öğretmen aktivite toplaması önbelleği süreç içi singleton — Respawn DB'yi sıfırlasa da önceki testin
         // sonucu (aynı UserId + aynı gün) 60 sn dönebilirdi. Testte kapalı (eşzamanlı istek paylaşımı yine aktif).
         Environment.SetEnvironmentVariable("Dashboard__TeacherActivityCacheSeconds", "0");
+        // issue #98: whiteboard hub üretimde YALNIZCA WebSockets kabul eder; TestServer istemcisi LongPolling kullanır.
+        Environment.SetEnvironmentVariable("Whiteboard__AllowedTransports", "WebSockets, LongPolling");
     }
 
     public override async ValueTask DisposeAsync()

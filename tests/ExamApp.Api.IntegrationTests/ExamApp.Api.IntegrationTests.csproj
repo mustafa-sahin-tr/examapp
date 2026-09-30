@@ -7,6 +7,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.11" />
+    <!-- issue #98: whiteboard hub uçtan uca testi (TestServer üzerinden iki SignalR istemcisi) -->
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.11" />
     <PackageReference Include="Testcontainers.PostgreSql" Version="4.0.0" />
     <PackageReference Include="Respawn" Version="6.2.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />

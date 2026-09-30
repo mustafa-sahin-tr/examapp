@@ -46,4 +46,11 @@ public interface IBookingService
     /// Approved değilse ya da katılım penceresi dışındaysa Conflict döner.
     /// </summary>
     Task<VideoSessionResultDto> GetVideoSessionAsync(int callerUserId, int bookingId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Canlı ders oturumu katılım kararı — görüşme odası (#97) ve ortak çizim tahtası (#98) aynı kuralı paylaşır:
+    /// çağıran randevunun öğretmeni/öğrencisi, randevu Approved ve şimdi <see cref="BookingSessionWindow"/> içinde.
+    /// Öğretmen hesabının onay/askı durumu (#287/#289) çağıranın sorumluluğundadır.
+    /// </summary>
+    Task<BookingLiveSessionAccess> GetLiveSessionAccessAsync(int callerUserId, int bookingId, CancellationToken ct = default);
 }

@@ -218,6 +218,8 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<BookingRequestCreatedConsumer, BookingRequestCreatedConsumerDefinition>();
     x.AddConsumer<BookingDecisionConsumer, BookingDecisionConsumerDefinition>();
     x.AddConsumer<UserPreferredLocaleChangedConsumer, UserPreferredLocaleChangedConsumerDefinition>();
+    x.AddConsumer<WorksheetCommentCreatedConsumer, WorksheetCommentCreatedConsumerDefinition>();
+    x.AddConsumer<WorksheetCommentRepliedConsumer, WorksheetCommentRepliedConsumerDefinition>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -250,6 +252,8 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<BookingRequestCreatedConsumer>(context);
             e.ConfigureConsumer<BookingDecisionConsumer>(context);
             e.ConfigureConsumer<UserPreferredLocaleChangedConsumer>(context);
+            e.ConfigureConsumer<WorksheetCommentCreatedConsumer>(context);
+            e.ConfigureConsumer<WorksheetCommentRepliedConsumer>(context);
         });
     });
 });

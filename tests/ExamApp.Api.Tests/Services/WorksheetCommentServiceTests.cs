@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ExamApp.Foundation.Contracts;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.WorksheetComments;
@@ -1036,5 +1037,336 @@ public class WorksheetCommentServiceTests : IDisposable
 
         seen.ShouldBe(Enumerable.Reverse(ids).ToList()); // Id DESC ikincil sıralama — tekrar/atlama yok
         pages.ShouldBe(3);
+    }
+
+    // ---- Bildirim outbox'ı (dilim 2) ------------------------------------------------------------------------
+
+    private async Task<List<(string Type, string Json)>> OutboxAsync()
+    {
+        await using var ctx = _db.NewContext();
+        var rows = await ctx.OutboxMessages.AsNoTracking().OrderBy(o => o.CreatedAt).ToListAsync();
+        return rows.Select(r => (r.Type, r.Content)).ToList();
+    }
+
+    private static string CreatedType => OutboxEventRegistry.NameFor<WorksheetCommentCreatedEvent>();
+    private static string RepliedType => OutboxEventRegistry.NameFor<WorksheetCommentRepliedEvent>();
+
+    [Fact]
+    public async Task Student_root_writes_one_created_event_for_the_pinned_teacher_in_the_same_transaction()
+    {
+        var w = await SeedAsync();
+
+        // Yeniden denemeli execution strategy: transaction strategy dışında açılırsa burada patlar.
+        await using (var ctx = _db.NewContextWithRetryingExecutionStrategy())
+        {
+            var r = await NewService(ctx).CreateAsync(w.WorksheetId,
+                new CreateWorksheetCommentDto { Body = "hocam bu nasıl?" }, Student(StudentAUser));
+            r.Success.ShouldBeTrue(r.ErrorCode);
+        }
+
+        var rows = await OutboxAsync();
+        rows.Count.ShouldBe(1);
+        rows[0].Type.ShouldBe(CreatedType);
+        var e = JsonSerializer.Deserialize<WorksheetCommentCreatedEvent>(rows[0].Json)!;
+        await using var check = _db.NewContext();
+        var root = await check.WorksheetComments.SingleAsync();
+        e.EventId.ShouldNotBe(Guid.Empty);
+        e.CommentId.ShouldBe(root.Id);
+        e.RootCommentId.ShouldBe(root.Id);
+        e.WorksheetId.ShouldBe(w.WorksheetId);
+        e.QuestionId.ShouldBeNull();
+        e.WorksheetTitle.ShouldBe("Kesirler");
+        e.AuthorRole.ShouldBe("Student");
+        e.AuthorDisplayName.ShouldBe("Ayşe Nur K.");
+        e.RecipientUserId.ShouldBe(Assigner);
+        e.RecipientKeycloakId.ShouldBe($"kc-{Assigner}"); // exam DB bilmiyor → auth-api best-effort
+    }
+
+    [Fact]
+    public async Task Notification_payload_carries_no_body_and_no_personal_data()
+    {
+        var w = await SeedAsync();
+        Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "GIZLI-GOVDE-METNI"));
+
+        var json = (await OutboxAsync()).Single().Json;
+
+        json.ShouldNotContain("GIZLI-GOVDE-METNI");
+        json.ShouldNotContain("@mail.local");
+        json.ShouldNotContain("Body", Case.Insensitive);
+        json.ShouldNotContain("Email", Case.Insensitive);
+        json.ShouldNotContain("Ayşe Nur kaya"); // tam ad değil, yalnızca "Ad S." biçimi
+    }
+
+    [Fact]
+    public async Task Student_question_comment_carries_the_question_id()
+    {
+        var w = await SeedAsync();
+        await StartAsync(w, w.StudentA, answerQ1: true);
+
+        Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "bu soru?", questionId: w.Q1));
+
+        var e = JsonSerializer.Deserialize<WorksheetCommentCreatedEvent>((await OutboxAsync()).Single().Json)!;
+        e.QuestionId.ShouldBe(w.Q1);
+    }
+
+    [Fact]
+    public async Task Student_reply_to_another_students_root_notifies_the_teacher_and_the_root_author()
+    {
+        var w = await SeedAsync();
+        var rootA = Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "A soruyor"));
+
+        Created(await PostAsync(w.WorksheetId, Student(StudentBUser), "bence şöyle", parentId: rootA));
+
+        var rows = (await OutboxAsync()).Skip(1).ToList(); // ilk satır A'nın kökü
+        rows.Count.ShouldBe(2);
+        var created = JsonSerializer.Deserialize<WorksheetCommentCreatedEvent>(rows.Single(r => r.Type == CreatedType).Json)!;
+        var replied = JsonSerializer.Deserialize<WorksheetCommentRepliedEvent>(rows.Single(r => r.Type == RepliedType).Json)!;
+        created.RecipientUserId.ShouldBe(Assigner);
+        created.RootCommentId.ShouldBe(rootA);
+        replied.RecipientUserId.ShouldBe(StudentAUser);
+        replied.RecipientKeycloakId.ShouldBe($"kc-{StudentAUser}");
+        replied.AuthorRole.ShouldBe("Student");
+        replied.AuthorDisplayName.ShouldBe("Öğrenci X.");
+        replied.RootCommentId.ShouldBe(rootA);
+        created.EventId.ShouldNotBe(replied.EventId);
+    }
+
+    [Fact]
+    public async Task Student_replying_to_own_root_notifies_only_the_teacher()
+    {
+        var w = await SeedAsync();
+        var rootA = Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "soru"));
+
+        Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "ek not", parentId: rootA));
+
+        var rows = (await OutboxAsync()).Skip(1).ToList();
+        rows.Count.ShouldBe(1);
+        rows[0].Type.ShouldBe(CreatedType);
+        JsonSerializer.Deserialize<WorksheetCommentCreatedEvent>(rows[0].Json)!.RecipientUserId.ShouldBe(Assigner);
+    }
+
+    [Fact]
+    public async Task Teacher_reply_notifies_the_root_author_student_with_the_stored_sub()
+    {
+        var w = await SeedAsync();
+        var rootA = Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "hocam?"));
+
+        Created(await PostAsync(w.WorksheetId, Teacher(Assigner), "cevap bu", parentId: rootA));
+
+        var rows = (await OutboxAsync()).Skip(1).ToList();
+        rows.Count.ShouldBe(1);
+        rows[0].Type.ShouldBe(RepliedType);
+        var e = JsonSerializer.Deserialize<WorksheetCommentRepliedEvent>(rows[0].Json)!;
+        e.RecipientUserId.ShouldBe(StudentAUser);
+        e.RecipientKeycloakId.ShouldBe($"kc-{StudentAUser}");
+        e.AuthorRole.ShouldBe("Teacher");
+        e.AuthorDisplayName.ShouldBeEmpty();
+        rows[0].Json.ShouldNotContain("Ata Hoca");
+        rows[0].Json.ShouldNotContain("cevap bu");
+    }
+
+    [Fact]
+    public async Task Teacher_root_and_teacher_reply_on_a_teacher_root_write_no_event()
+    {
+        var w = await SeedAsync();
+        var announcement = Created(await PostAsync(w.WorksheetId, Teacher(Owner), "duyuru"));
+        Created(await PostAsync(w.WorksheetId, Teacher(Owner), "ek bilgi", parentId: announcement));
+
+        (await OutboxAsync()).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Student_reply_on_a_teacher_root_notifies_the_root_author_teacher()
+    {
+        var w = await SeedAsync();
+        var announcement = Created(await PostAsync(w.WorksheetId, Teacher(Owner), "duyuru"));
+
+        Created(await PostAsync(w.WorksheetId, Student(StudentBUser), "teşekkürler", parentId: announcement));
+
+        var rows = await OutboxAsync();
+        rows.Count.ShouldBe(1);
+        rows[0].Type.ShouldBe(CreatedType);
+        var e = JsonSerializer.Deserialize<WorksheetCommentCreatedEvent>(rows[0].Json)!;
+        e.RecipientUserId.ShouldBe(Owner);
+        e.RecipientKeycloakId.ShouldBe($"kc-{Owner}");
+        e.RootCommentId.ShouldBe(announcement);
+    }
+    private void AuthApiDown() =>
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(ci => Task.FromException<IReadOnlyList<UserLookupResultDto>>(new HttpRequestException("down")));
+
+    [Fact]
+    public async Task Auth_api_is_not_called_when_every_recipient_sub_is_in_the_exam_db()
+    {
+        var w = await SeedAsync();
+        var rootA = Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "hocam?"));
+        _authApi.ClearReceivedCalls();
+
+        Created(await PostAsync(w.WorksheetId, Teacher(Assigner), "cevap", parentId: rootA)); // öğrenci sub'ı kökte
+
+        _authApi.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Sub_missing_in_the_exam_db_is_resolved_from_auth_api_in_one_batched_call()
+    {
+        var w = await SeedAsync();
+        var announcement = Created(await PostAsync(w.WorksheetId, Teacher(Owner), "duyuru"));
+        _authApi.ClearReceivedCalls();
+
+        // Alıcılar: Owner (kökte sub var) + Assigner (DB'de sub yok) → yalnız Assigner için TEK çağrı.
+        Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "hocam?", parentId: announcement));
+
+        var calls = _authApi.ReceivedCalls().Where(c => c.GetMethodInfo().Name == "GetUsersByIdsAsync").ToList();
+        calls.Count.ShouldBe(1);
+        ((IEnumerable<int>)calls[0].GetArguments()[0]!).ShouldBe(new[] { Assigner });
+        var created = (await OutboxAsync()).Select(r => JsonSerializer.Deserialize<WorksheetCommentCreatedEvent>(r.Json)!).ToList();
+        created.Single(e => e.RecipientUserId == Assigner).RecipientKeycloakId.ShouldBe($"kc-{Assigner}");
+        created.Single(e => e.RecipientUserId == Owner).RecipientKeycloakId.ShouldBe($"kc-{Owner}");
+    }
+
+    [Fact]
+    public async Task Auth_api_failure_writes_the_event_with_a_blank_sub_and_the_comment_succeeds()
+    {
+        var w = await SeedAsync();
+        AuthApiDown();
+
+        var result = await PostAsync(w.WorksheetId, Student(StudentAUser), "hocam?");
+
+        result.Success.ShouldBeTrue(result.ErrorCode);
+        var e = JsonSerializer.Deserialize<WorksheetCommentCreatedEvent>((await OutboxAsync()).Single().Json)!;
+        e.RecipientUserId.ShouldBe(Assigner);
+        e.RecipientKeycloakId.ShouldBeEmpty(); // consumer BadgeService verisinden çözer ya da retry/dead-letter
+        await using var check = _db.NewContext();
+        (await check.WorksheetComments.CountAsync()).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Teacher_sub_is_taken_from_the_teachers_earlier_comment_in_the_exam_db()
+    {
+        var w = await SeedAsync();
+        AuthApiDown();
+        var rootA = Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "hocam?"));
+        Created(await PostAsync(w.WorksheetId, Teacher(Assigner), "cevap", parentId: rootA));
+        _authApi.ClearReceivedCalls();
+
+        Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "bir de şu"));
+
+        _authApi.ReceivedCalls().ShouldBeEmpty();
+        var created = (await OutboxAsync()).Where(r => r.Type == CreatedType)
+            .Select(r => JsonSerializer.Deserialize<WorksheetCommentCreatedEvent>(r.Json)!).ToList();
+        created.Count.ShouldBe(2);
+        created.ShouldContain(e => e.RecipientUserId == Assigner && e.RecipientKeycloakId == "");   // ilk kök: sub henüz bilinmiyordu
+        created.ShouldContain(e => e.RecipientUserId == Assigner && e.RecipientKeycloakId == $"kc-{Assigner}");
+    }
+
+    [Fact]
+    public async Task Recipient_without_a_stored_sub_and_a_down_auth_api_gets_an_event_with_the_user_id_only()
+    {
+        var w = await SeedAsync();
+        var rootA = Created(await PostAsync(w.WorksheetId, new WorksheetCommentActor(
+            StudentAUser, "", "Ayşe Nur kaya", WorksheetCommentActorKind.Student, false), "hocam?"));
+        AuthApiDown();
+
+        Created(await PostAsync(w.WorksheetId, Teacher(Assigner), "cevap", parentId: rootA));
+
+        var e = JsonSerializer.Deserialize<WorksheetCommentRepliedEvent>((await OutboxAsync()).Single(r => r.Type == RepliedType).Json)!;
+        e.RecipientUserId.ShouldBe(StudentAUser);
+        e.RecipientKeycloakId.ShouldBeEmpty();
+    }
+    [Fact]
+    public async Task Student_reply_on_a_teacher_root_also_notifies_the_students_responsible_teacher()
+    {
+        var w = await SeedAsync();
+        var announcement = Created(await PostAsync(w.WorksheetId, Teacher(Owner), "duyuru"));
+
+        Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "hocam?", parentId: announcement));
+
+        var recipients = (await OutboxAsync()).Where(r => r.Type == CreatedType)
+            .Select(r => JsonSerializer.Deserialize<WorksheetCommentCreatedEvent>(r.Json)!.RecipientUserId).ToList();
+        recipients.OrderBy(x => x).ShouldBe(new[] { Owner, Assigner });
+    }
+
+    [Fact]
+    public async Task Missing_responsible_teacher_skips_the_notification_and_logs_a_warning_with_ids()
+    {
+        var w = await SeedAsync();
+        await using (var ctx = _db.NewContext())
+        {
+            await ctx.Worksheets.IgnoreQueryFilters().Where(x => x.Id == w.WorksheetId)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.CreateUserId, (int?)null));
+        }
+
+        var logger = new ListLogger<WorksheetCommentService>();
+        int commentId;
+        await using (var ctx = _db.NewContext())
+        {
+            var r = await new WorksheetCommentService(ctx, new WorksheetResponsibleTeacherResolver(ctx), _authApi, logger)
+                .CreateAsync(w.WorksheetId, new CreateWorksheetCommentDto { Body = "kimse yok mu?" }, Student(StudentBUser));
+            commentId = Created(r);
+        }
+
+        (await OutboxAsync()).ShouldBeEmpty();
+        var warning = logger.Messages.ShouldHaveSingleItem();
+        warning.ShouldContain($"CommentId={commentId}");
+        warning.ShouldContain($"WorksheetId={w.WorksheetId}");
+    }
+
+    [Fact]
+    public async Task Transient_failure_on_the_outbox_insert_is_retried_with_one_comment_and_one_correct_outbox_row()
+    {
+        var w = await SeedAsync();
+        var interceptor = new FailFirstCommandInterceptor("INSERT INTO \"OutboxMessages\"");
+
+        await using (var ctx = _db.NewContextWithTransientRetry(interceptor))
+        {
+            var r = await NewService(ctx).CreateAsync(w.WorksheetId,
+                new CreateWorksheetCommentDto { Body = "hocam?" }, Student(StudentAUser));
+            r.Success.ShouldBeTrue(r.ErrorCode);
+        }
+
+        interceptor.Failures.ShouldBe(1);
+        await using var check = _db.NewContext();
+        var comment = await check.WorksheetComments.SingleAsync();
+        var rows = await OutboxAsync();
+        rows.Count.ShouldBe(1);
+        var e = JsonSerializer.Deserialize<WorksheetCommentCreatedEvent>(rows[0].Json)!;
+        e.CommentId.ShouldBe(comment.Id);
+        e.RootCommentId.ShouldBe(comment.Id);
+        e.RecipientUserId.ShouldBe(Assigner);
+    }
+
+    private sealed class ListLogger<T> : Microsoft.Extensions.Logging.ILogger<T>
+    {
+        public List<string> Messages { get; } = new();
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId,
+            TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel == Microsoft.Extensions.Logging.LogLevel.Warning)
+                Messages.Add(formatter(state, exception));
+        }
+    }
+
+    [Fact]
+    public async Task Rejected_comment_writes_no_outbox_row()
+    {
+        var w = await SeedAsync(commentsEnabled: false);
+
+        ShouldFail(await PostAsync(w.WorksheetId, Student(StudentAUser), "hocam?"),
+            WorksheetCommentErrorCodes.CommentsDisabled, forbidden: true);
+
+        (await OutboxAsync()).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Both_comment_events_are_registered_for_the_publisher()
+    {
+        OutboxEventRegistry.Resolve(CreatedType).ShouldBe(typeof(WorksheetCommentCreatedEvent));
+        OutboxEventRegistry.Resolve(RepliedType).ShouldBe(typeof(WorksheetCommentRepliedEvent));
     }
 }

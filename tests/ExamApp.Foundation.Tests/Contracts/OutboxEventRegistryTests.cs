@@ -33,6 +33,15 @@ public class OutboxEventRegistryTests
         => OutboxEventRegistry.Resolve("ExamApp.Foundation.Contracts.QuestionCreatedEvent, ExamApp.Foundation")
             .ShouldBe(typeof(QuestionCreatedEvent));
 
+    [Fact]
+    public void Resolve_knows_the_worksheet_comment_notification_events_issue_105()
+    {
+        OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<WorksheetCommentCreatedEvent>())
+            .ShouldBe(typeof(WorksheetCommentCreatedEvent));
+        OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<WorksheetCommentRepliedEvent>())
+            .ShouldBe(typeof(WorksheetCommentRepliedEvent));
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]

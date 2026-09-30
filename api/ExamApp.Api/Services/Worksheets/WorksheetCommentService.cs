@@ -12,6 +12,7 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos.WorksheetComments;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Teachers;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Localization;
 using ExamApp.Foundation.Persistence;
@@ -31,6 +32,8 @@ public class WorksheetCommentService : IWorksheetCommentService
     private readonly AppDbContext _context;
     private readonly IWorksheetResponsibleTeacherResolver _responsibleTeacher;
     private readonly IAuthApiClient _authApiClient;
+    private readonly IApprovedTeacherGuard _teacherGuard;
+    private readonly IKeycloakService? _keycloak;
     private readonly ILogger<WorksheetCommentService>? _logger;
 
     // Client'a dönen metinler mesaj sözlüğünden (issue #184). DI her zaman gerçek localizer'ı verir.
@@ -47,13 +50,18 @@ public class WorksheetCommentService : IWorksheetCommentService
         IWorksheetResponsibleTeacherResolver responsibleTeacher,
         IAuthApiClient authApiClient,
         ILogger<WorksheetCommentService>? logger = null,
-        IStringLocalizer<Messages>? localizer = null)
+        IStringLocalizer<Messages>? localizer = null,
+        IApprovedTeacherGuard? teacherGuard = null,
+        IKeycloakService? keycloak = null)
     {
         _context = context;
         _responsibleTeacher = responsibleTeacher;
         _authApiClient = authApiClient;
         _logger = logger;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
+        // DI her zaman gerçek guard'ı verir; null yalnız birim testlerde (aynı DbContext üzerinde gerçek karar).
+        _keycloak = keycloak; // null (yalnız birim test) → Admin rolü doğrulanamaz, profilsiz alıcı bildirim almaz (fail-closed)
+        _teacherGuard = teacherGuard ?? new ApprovedTeacherGuard(context);
     }
 
     // ---- Okuma ----------------------------------------------------------------------------------------------
@@ -391,6 +399,13 @@ public class WorksheetCommentService : IWorksheetCommentService
             await tx.CommitAsync(ct);
         });
 
+        foreach (var skip in resolution.Skips)
+        {
+            _logger?.LogInformation(
+                "[WorksheetComments] Öğretmen bildirimi atlandı ({Reason}). CommentId={CommentId}, WorksheetId={WorksheetId}, TeacherUserId={TeacherUserId}, CurrentTeacherUserId={CurrentTeacherUserId}",
+                skip.Reason, comment.Id, worksheet.Id, skip.TeacherUserId, skip.CurrentTeacherUserId);
+        }
+
         if (resolution.TeacherMissing)
         {
             _logger?.LogWarning(
@@ -567,6 +582,23 @@ public class WorksheetCommentService : IWorksheetCommentService
 
             if (changed == 1)
             {
+                // issue #326 (D4): gizlemeyle AYNI transaction'da outbox — BadgeService bildirimlerdeki yazar adını nötrler.
+                if (hidden)
+                {
+                    _context.OutboxMessages.Add(new OutboxMessage
+                    {
+                        Type = OutboxEventRegistry.NameFor<WorksheetCommentHiddenEvent>(),
+                        Content = JsonSerializer.Serialize(new WorksheetCommentHiddenEvent
+                        {
+                            EventId = Guid.NewGuid(),
+                            CommentId = commentId,
+                            RootCommentId = target.Root.Id,
+                            WorksheetId = worksheetId
+                        }),
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+
                 _context.AdminUserActionLogs.Add(new AdminUserActionLog
                 {
                     ActorKeycloakId = actor.KeycloakId,
@@ -756,7 +788,12 @@ public class WorksheetCommentService : IWorksheetCommentService
     /// <summary>KeycloakId boş olabilir: exam DB'de yoksa consumer BadgeService verisinden çözer (sync auth-api çağrısı yok).</summary>
     private sealed record NotificationRecipient(NotificationKind Kind, int UserId, string KeycloakId);
 
-    private sealed record RecipientResolution(List<NotificationRecipient> Recipients, bool TeacherMissing);
+    private sealed record RecipientResolution(List<NotificationRecipient> Recipients, bool TeacherMissing, List<SkippedRecipient> Skips);
+
+    /// <summary>D1/Y1/O2 ile atlanan öğretmen alıcı — log, yorum Id'si atandıktan SONRA (kayıttan sonra) atılır.</summary>
+    private sealed record SkippedRecipient(string Reason, int TeacherUserId, int? CurrentTeacherUserId = null);
+
+    private sealed record TeacherCandidate(int UserId, string? Sub, int? PinnedForStudentUserId, bool IsRootAuthor);
 
     /// <summary>
     /// Alıcı kuralları: öğrenci yazdıysa → ilgili öğretmen "Created" alır (öğrenci kökünde kökte sabitlenmiş
@@ -773,16 +810,20 @@ public class WorksheetCommentService : IWorksheetCommentService
         {
             var wanted = new List<(NotificationKind Kind, int UserId, string? Sub)>();
             var teacherMissing = false;
+            var skippedAll = new List<SkippedRecipient>();
 
             if (actor.Kind == WorksheetCommentActorKind.Student)
             {
                 var root = parent ?? comment;
-                var teachers = new List<(int UserId, string? Sub)>();
+                var teachers = new List<TeacherCandidate>();
+                var skips = new List<SkippedRecipient>();
 
                 if (root.AuthorRole == WorksheetCommentAuthorRole.Student)
                 {
+                    // issue #305 D1: kökteki sabit öğretmen eski olabilir → cevapta (parent != null) gönderim anında yeniden
+                    // doğrulanır (kök yazarı öğrenci için hâlâ sorumlu mu). Kök yeni yazılıyorsa değer taze, yalnız onay durumu bakılır.
                     if (root.ResponsibleTeacherUserId is > 0)
-                        teachers.Add((root.ResponsibleTeacherUserId.Value, null));
+                        teachers.Add(new TeacherCandidate(root.ResponsibleTeacherUserId.Value, null, parent != null ? root.AuthorUserId : null, false));
                     else
                         teacherMissing = true;
                 }
@@ -792,16 +833,22 @@ public class WorksheetCommentService : IWorksheetCommentService
                     // sabitledi — bildirim alan öğretmen okul kapsamı dışında olsa da bu reply'ı görür).
                     // security Y1: kök yazarı öğretmen yalnız reply yazarıyla AYNI okuldaysa alıcı (okul dışı reply'ı
                     // göremez; okullar arası kanal olmasın). Bağımsız (okulsuz) kök yazarı ya da okulsuz öğrenci → alıcı değil.
+                    // Y1 (dilim B): uygunluk yorum anındaki AuthorSchoolId'lere DEĞİL öğretmenin GÜNCEL okuluna göre
+                    // (IsTeacherRecipientEligibleAsync) — okuldan ayrılan/taşınan öğretmen alıcı olmaz.
                     if (root.AuthorSchoolId.HasValue && root.AuthorSchoolId == comment.AuthorSchoolId)
-                        teachers.Add((root.AuthorUserId, root.AuthorKeycloakId));
+                        teachers.Add(new TeacherCandidate(root.AuthorUserId, root.AuthorKeycloakId, null, true));
                     if (comment.ResponsibleTeacherUserId is > 0)
-                        teachers.Add((comment.ResponsibleTeacherUserId.Value, null));
+                        teachers.Add(new TeacherCandidate(comment.ResponsibleTeacherUserId.Value, null, null, false));
                     else
                         teacherMissing = true;
                 }
 
-                foreach (var (userId, sub) in teachers)
-                    wanted.Add((NotificationKind.TeacherNotice, userId, sub));
+                foreach (var candidate in teachers)
+                {
+                    if (await IsTeacherRecipientEligibleAsync(worksheet, comment, parent ?? comment, candidate, skips, ct))
+                        wanted.Add((NotificationKind.TeacherNotice, candidate.UserId, candidate.Sub));
+                }
+                skippedAll.AddRange(skips);
 
                 if (parent != null && parent.AuthorRole == WorksheetCommentAuthorRole.Student)
                     wanted.Add((NotificationKind.StudentReply, parent.AuthorUserId, parent.AuthorKeycloakId));
@@ -850,14 +897,104 @@ public class WorksheetCommentService : IWorksheetCommentService
                 }
             }
 
-            return new RecipientResolution(result, teacherMissing);
+            return new RecipientResolution(result, teacherMissing, skippedAll);
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             _logger?.LogWarning(ex,
                 "[WorksheetComments] Bildirim alıcıları hesaplanamadı; yorum kaydediliyor, bildirim atlanıyor. WorksheetId={WorksheetId}",
                 worksheet.Id);
-            return new RecipientResolution(new List<NotificationRecipient>(), false);
+            return new RecipientResolution(new List<NotificationRecipient>(), false, new List<SkippedRecipient>());
+        }
+    }
+
+    /// <summary>
+    /// issue #305 D1/Y1/O2 — bildirim gönderim anında öğretmen alıcının hâlâ uygun olduğunu doğrular; değilse bildirim GİTMEZ
+    /// (başkasına yönlendirilmez) ve sebep <paramref name="skips"/>'e yazılır (çağıran yorum kaydedildikten sonra loglar):
+    /// <list type="bullet">
+    /// <item>Hesap askıda ya da onaysız (<see cref="IApprovedTeacherGuard"/>: <c>Suspended</c>/<c>NotApproved</c>).</item>
+    /// <item><c>NoTeacherProfile</c> (profil yok ya da soft-delete): yalnız alıcı worksheet SAHİBİ ve Keycloak realm rolü
+    /// <c>Admin</c> ise geçer (admin sahipli worksheet); doğrulanamazsa (Keycloak hatası, sub yok) geçmez.</item>
+    /// <item>Kök yazarı öğretmen (Y1): GÜNCEL <c>Teachers.SchoolId</c> dolu olmalı ve hem kökün <c>AuthorSchoolId</c>'sine hem
+    /// reply yazarının <c>AuthorSchoolId</c>'sine eşit olmalı — okuldan ayrılan/bağımsız olan/başka okula taşınan öğretmen alıcı olmaz.
+    /// Sabitlenmiş sorumlu öğretmen okul koşuluna tabi DEĞİL (ilişkisi atamadan gelir).</item>
+    /// <item>Sabit öğretmen, cevap anında (<c>PinnedForStudentUserId</c> dolu): mevcut sorumlu öğretmen çözümleyicisi o öğrenci
+    /// için hâlâ AYNI öğretmeni veriyorsa; atama bitti/silindi/başkasına geçtiyse hayır.</item>
+    /// </list>
+    /// Neden yönlendirme yok: cevap yetkisi sabit kökteki öğretmendedir (#105; <c>TeacherCanReply</c>) — yeni sorumlu o thread'e
+    /// cevap yazamaz ve moderasyon yapamaz, ona giden bildirim çıkmaz sokak olur. Öğrenci yeni kök yazdığında güncel
+    /// sorumlu öğretmen o kökte sabitlenir ve bildirim ona gider.
+    /// </summary>
+    private async Task<bool> IsTeacherRecipientEligibleAsync(
+        Worksheet worksheet, WorksheetComment comment, WorksheetComment root, TeacherCandidate candidate,
+        List<SkippedRecipient> skips, CancellationToken ct)
+    {
+        var teacherUserId = candidate.UserId;
+        var approval = await _teacherGuard.CheckAsync(teacherUserId, ct);
+        if (approval is TeacherApprovalCheck.Suspended or TeacherApprovalCheck.NotApproved)
+        {
+            skips.Add(new SkippedRecipient($"öğretmen {approval}", teacherUserId));
+            return false;
+        }
+
+        if (approval == TeacherApprovalCheck.NoTeacherProfile
+            && (candidate.IsRootAuthor || !await IsAdminOwnerAsync(worksheet, teacherUserId, ct)))
+        {
+            skips.Add(new SkippedRecipient("öğretmen profili yok/silinmiş ve admin sahip değil", teacherUserId));
+            return false;
+        }
+
+        if (candidate.IsRootAuthor)
+        {
+            var liveSchoolId = await _context.Teachers.AsNoTracking()
+                .Where(t => t.UserId == teacherUserId)
+                .OrderBy(t => t.Id)
+                .Select(t => t.SchoolId)
+                .FirstOrDefaultAsync(ct);
+            if (liveSchoolId == null || liveSchoolId != root.AuthorSchoolId || liveSchoolId != comment.AuthorSchoolId)
+            {
+                skips.Add(new SkippedRecipient("kök yazarı öğretmen güncel okulu eşleşmiyor/okulsuz", teacherUserId));
+                return false;
+            }
+        }
+
+        if (candidate.PinnedForStudentUserId is { } studentUserId)
+        {
+            var current = await _responsibleTeacher.ResolveResponsibleTeacherAsync(
+                new ResponsibleTeacherWorksheet(worksheet.Id, worksheet.CreateUserId, worksheet.SourceWorksheetId), studentUserId, ct);
+            if (current?.TeacherUserId != teacherUserId)
+            {
+                skips.Add(new SkippedRecipient("sabit öğretmen artık sorumlu değil", teacherUserId, current?.TeacherUserId));
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>Alıcı worksheet sahibi VE Keycloak realm rolü Admin mi? Sub exam DB'deki son yorumundan; doğrulanamazsa false (fail-closed).</summary>
+    private async Task<bool> IsAdminOwnerAsync(Worksheet worksheet, int userId, CancellationToken ct)
+    {
+        if (_keycloak == null || worksheet.CreateUserId != userId)
+            return false;
+
+        try
+        {
+            var sub = await _context.WorksheetComments.AsNoTracking()
+                .Where(c => c.AuthorUserId == userId && c.AuthorKeycloakId != "")
+                .OrderByDescending(c => c.Id)
+                .Select(c => c.AuthorKeycloakId)
+                .FirstOrDefaultAsync(ct);
+            if (string.IsNullOrWhiteSpace(sub))
+                return false;
+
+            var roles = await _keycloak.GetUserRolesAsync(sub, ct);
+            return roles.RealmRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            _logger?.LogWarning(ex, "[WorksheetComments] Alıcının Admin rolü doğrulanamadı; bildirim atlanıyor. UserId={UserId}", userId);
+            return false;
         }
     }
 

@@ -162,6 +162,19 @@ namespace BadgeService.Migrations
                     b.ToTable("BadgeEarned");
                 });
 
+            modelBuilder.Entity("BadgeService.Entities.HiddenCommentTombstone", b =>
+                {
+                    b.Property<int>("CommentId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("HiddenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("CommentId");
+
+                    b.ToTable("HiddenCommentTombstones");
+                });
+
             modelBuilder.Entity("BadgeService.Entities.Notification", b =>
                 {
                     b.Property<int>("Id")
@@ -174,6 +187,11 @@ namespace BadgeService.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("CoalescedCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -182,6 +200,12 @@ namespace BadgeService.Migrations
 
                     b.Property<bool>("IsRead")
                         .HasColumnType("boolean");
+
+                    b.Property<int?>("LatestCommentId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("RootCommentId")
+                        .HasColumnType("integer");
 
                     b.Property<int?>("SourceAccessRequestId")
                         .HasColumnType("integer");
@@ -217,6 +241,9 @@ namespace BadgeService.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("LatestCommentId")
+                        .HasFilter("\"LatestCommentId\" IS NOT NULL");
+
                     b.HasIndex("Type", "SourceAccessRequestId")
                         .IsUnique()
                         .HasFilter("\"SourceAccessRequestId\" IS NOT NULL");
@@ -241,7 +268,34 @@ namespace BadgeService.Migrations
 
                     b.HasIndex("UserKeycloakId", "IsRead", "CreatedAt");
 
+                    b.HasIndex("UserId", "UserKeycloakId", "Type", "RootCommentId")
+                        .IsUnique()
+                        .HasFilter("\"RootCommentId\" IS NOT NULL AND \"IsRead\" = FALSE");
+
                     b.ToTable("Notifications");
+                });
+
+            modelBuilder.Entity("BadgeService.Entities.NotificationEventLog", b =>
+                {
+                    b.Property<string>("Type")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("NotificationId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Type", "EventId");
+
+                    b.HasIndex("NotificationId");
+
+                    b.HasIndex("ProcessedAt");
+
+                    b.ToTable("NotificationEventLogs");
                 });
 
             modelBuilder.Entity("BadgeService.Entities.ProcessedAnswerSubmission", b =>

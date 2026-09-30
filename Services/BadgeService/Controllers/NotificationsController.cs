@@ -26,7 +26,7 @@ public class NotificationsController : ControllerBase
     }
 
     public record NotificationDto(
-        int Id, string Type, string Title, string Body, string? Data, bool IsRead, DateTime CreatedAt);
+        int Id, string Type, string Title, string Body, string? Data, bool IsRead, DateTime CreatedAt, int CoalescedCount = 1);
 
     private string? CallerSub => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -51,7 +51,7 @@ public class NotificationsController : ControllerBase
             .OrderByDescending(n => n.CreatedAt)
             .Take(take)
             .Select(n => new NotificationDto(
-                n.Id, n.Type, n.Title, n.Body, n.Data, n.IsRead, n.CreatedAt))
+                n.Id, n.Type, n.Title, n.Body, n.Data, n.IsRead, n.CreatedAt, n.CoalescedCount))
             .ToListAsync(ct);
 
         return Ok(items);

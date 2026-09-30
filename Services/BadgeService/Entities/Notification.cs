@@ -75,6 +75,19 @@ public class Notification
     /// </summary>
     public Guid? SourceBadgeDefinitionId { get; set; }
 
+    /// <summary>
+    /// issue #305 (dilim B): yorum bildirimlerinde thread kökü. (UserId, Type, RootCommentId) için en fazla BİR okunmamış
+    /// satır olur (filtreli unique index); yeni yorum/cevap geldiğinde okunmamış satır güncellenir (birleştirme).
+    /// Yorum bildirimi olmayanlarda ve dilimden önceki satırlarda null (birleştirmeye katılmaz).
+    /// </summary>
+    public int? RootCommentId { get; set; }
+
+    /// <summary>issue #305/#326: bildirimin işaret ettiği EN SON yorum (Data.commentId ile aynı). Yorum gizlenince (D4) bulmak için.</summary>
+    public int? LatestCommentId { get; set; }
+
+    /// <summary>issue #305: bu satıra birleştirilen yorum/cevap sayısı (ilk yorum dahil, en az 1). N&gt;1 iken başlık/gövde "N yeni yorum" biçimindedir.</summary>
+    public int CoalescedCount { get; set; } = 1;
+
     public bool IsRead { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

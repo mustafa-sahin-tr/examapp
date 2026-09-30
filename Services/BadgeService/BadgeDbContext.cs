@@ -20,6 +20,8 @@ public class BadgeDbContext : DbContext
     public DbSet<ProcessedAnswerSubmission> ProcessedAnswerSubmissions => Set<ProcessedAnswerSubmission>();
     public DbSet<AnswerPointAward> AnswerPointAwards => Set<AnswerPointAward>();
     public DbSet<UserLocalePreference> UserLocalePreferences => Set<UserLocalePreference>();
+    public DbSet<NotificationEventLog> NotificationEventLogs => Set<NotificationEventLog>();
+    public DbSet<HiddenCommentTombstone> HiddenCommentTombstones => Set<HiddenCommentTombstone>();
 
     /// <summary>
     /// BadgeService'in kendi transactional outbox'ı (issue #225). exam/identity DB'lerindeki tabloyla
@@ -106,6 +108,8 @@ public class BadgeDbContext : DbContext
             .IsUnique();
 
         modelBuilder.Entity<Notification>().HasKey(x => x.Id);
+        // issue #305: dilimden önceki satırlar da tek yorum sayılır (migration defaultValue = 1).
+        modelBuilder.Entity<Notification>().Property(x => x.CoalescedCount).HasDefaultValue(1);
         modelBuilder.Entity<Notification>()
             .HasIndex(x => new { x.UserId, x.IsRead, x.CreatedAt });
         modelBuilder.Entity<Notification>()
@@ -142,6 +146,27 @@ public class BadgeDbContext : DbContext
             .HasIndex(x => new { x.UserId, x.SourceBadgeDefinitionId })
             .IsUnique()
             .HasFilter("\"SourceBadgeDefinitionId\" IS NOT NULL AND \"Type\" = 'BadgeEarned'");
+
+        // issue #305 (dilim B) birleştirme: (alıcı, tip, kök yorum) başına en fazla BİR okunmamış satır. Eşzamanlı iki
+        // ilk-yorum yarışında ikincisi 23505 alır ve yeniden dener (bu sefer satırı bulur ve birleştirir).
+        modelBuilder.Entity<Notification>()
+            .HasIndex(x => new { x.UserId, x.UserKeycloakId, x.Type, x.RootCommentId })
+            .IsUnique()
+            .HasFilter("\"RootCommentId\" IS NOT NULL AND \"IsRead\" = FALSE");
+        // Yorum gizlenince (issue #326 D4) bildirimleri bulmak için.
+        modelBuilder.Entity<Notification>()
+            .HasIndex(x => x.LatestCommentId)
+            .HasFilter("\"LatestCommentId\" IS NOT NULL");
+
+        // issue #305: birleştirilen event'lerin idempotency kaydı — (Type, EventId) PK, Notification güncellemesiyle AYNI transaction'da.
+        modelBuilder.Entity<NotificationEventLog>().HasKey(x => new { x.Type, x.EventId });
+        modelBuilder.Entity<NotificationEventLog>().HasIndex(x => x.NotificationId);
+        // Retention (NotificationEventLogRetentionJob) ProcessedAt'a göre siler.
+        modelBuilder.Entity<NotificationEventLog>().HasIndex(x => x.ProcessedAt);
+
+        // issue #326 D4 (review O1): gizleme event'i bildirimden önce işlenirse Created/Replied consumer'ı bunu görüp nötrler.
+        modelBuilder.Entity<HiddenCommentTombstone>().HasKey(x => x.CommentId);
+        modelBuilder.Entity<HiddenCommentTombstone>().Property(x => x.CommentId).ValueGeneratedNever();
 
         modelBuilder.Entity<ProcessedLoginAttempt>().HasKey(x => x.Id);
         // Idempotency: aynı login denemesi (event'in kendi EventId'si) en fazla bir kez exam API'ye yazılır.

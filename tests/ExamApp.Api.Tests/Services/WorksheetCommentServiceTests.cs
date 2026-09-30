@@ -77,10 +77,10 @@ public partial class WorksheetCommentServiceTests : IDisposable
 
         // issue #305 (okul kapsamı): sahip/atayan/ilgisiz öğretmen öğrencilerle aynı okulda; ForeignTeacher başka okulda.
         ctx.Teachers.AddRange(
-            new Teacher { UserId = Owner, SchoolId = school.Id },
-            new Teacher { UserId = Assigner, SchoolId = school.Id },
-            new Teacher { UserId = Unrelated, SchoolId = school.Id },
-            new Teacher { UserId = ForeignTeacher, SchoolId = otherSchool.Id });
+            new Teacher { UserId = Owner, SchoolId = school.Id, AccountApprovedAt = DateTime.UtcNow },
+            new Teacher { UserId = Assigner, SchoolId = school.Id, AccountApprovedAt = DateTime.UtcNow },
+            new Teacher { UserId = Unrelated, SchoolId = school.Id, AccountApprovedAt = DateTime.UtcNow },
+            new Teacher { UserId = ForeignTeacher, SchoolId = otherSchool.Id, AccountApprovedAt = DateTime.UtcNow });
         await ctx.SaveChangesAsync();
 
         ctx.SetCurrentUser(Owner);
@@ -1350,6 +1350,9 @@ public partial class WorksheetCommentServiceTests : IDisposable
     {
         public List<string> Messages { get; } = new();
 
+        /// <summary>Tüm seviyeler (Information dahil).</summary>
+        public List<string> AllMessages { get; } = new();
+
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
         public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
@@ -1357,6 +1360,7 @@ public partial class WorksheetCommentServiceTests : IDisposable
         public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId,
             TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
+            AllMessages.Add(formatter(state, exception));
             if (logLevel == Microsoft.Extensions.Logging.LogLevel.Warning)
                 Messages.Add(formatter(state, exception));
         }

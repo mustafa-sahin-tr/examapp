@@ -637,10 +637,10 @@ public class BookingService : IBookingService
     }
 
     // ------------------------------------------------------------------
-    // Görüşme odası (issue #97)
+    // Görüşme odası (issue #97) + ortak katılım kuralı (çizim tahtası, issue #98)
     // ------------------------------------------------------------------
 
-    public async Task<VideoSessionResultDto> GetVideoSessionAsync(
+    public async Task<BookingLiveSessionAccess> GetLiveSessionAccessAsync(
         int callerUserId, int bookingId, CancellationToken ct = default)
     {
         var row = await _context.Bookings
@@ -659,35 +659,53 @@ public class BookingService : IBookingService
             .FirstOrDefaultAsync(ct);
 
         if (row == null)
-            return VideoFail(notFound: true, message: _localizer["booking.video.bookingNotFound"]);
+            return BookingLiveSessionAccess.Denied(BookingLiveSessionDenial.NotFound, bookingId);
 
         var isTeacher = row.TeacherUserId == callerUserId;
         var isStudent = row.StudentUserId == callerUserId;
 
-        // Sadece randevunun iki tarafı odaya girebilir — rol attribute'u tek başına yetmez.
+        // Sadece randevunun iki tarafı katılabilir — rol attribute'u tek başına yetmez.
         if (!isTeacher && !isStudent)
-            return VideoFail(forbidden: true, message: _localizer["booking.video.notParticipant"]);
+            return BookingLiveSessionAccess.Denied(BookingLiveSessionDenial.NotParticipant, bookingId);
 
-        if (row.Status != BookingStatus.Approved)
-            return VideoFail(conflict: true, message: _localizer["booking.video.notApproved"]);
+        var window = BookingSessionWindow.For(row.Date, row.StartTime, row.EndTime, _videoOptions.Value);
+        var denial = row.Status != BookingStatus.Approved
+            ? BookingLiveSessionDenial.NotApproved
+            : window.StateAt(UtcNow()) switch
+            {
+                BookingWindowState.NotOpen => BookingLiveSessionDenial.WindowNotOpen,
+                BookingWindowState.Closed => BookingLiveSessionDenial.WindowClosed,
+                _ => BookingLiveSessionDenial.None
+            };
 
+        return new BookingLiveSessionAccess(denial, row.Id, isTeacher, row.TeacherUserId, row.StudentUserId, window);
+    }
+
+    public async Task<VideoSessionResultDto> GetVideoSessionAsync(
+        int callerUserId, int bookingId, CancellationToken ct = default)
+    {
+        // Katılım kuralı (taraf + Approved + pencere) çizim tahtasıyla (#98) ortak: GetLiveSessionAccessAsync.
+        var access = await GetLiveSessionAccessAsync(callerUserId, bookingId, ct);
         var options = _videoOptions.Value;
-        var startUtc = ToUtc(row.Date, row.StartTime);
-        var endUtc = ToUtc(row.Date, row.EndTime);
-        var now = UtcNow();
 
-        var windowOpensAt = startUtc.AddMinutes(-options.JoinWindowBeforeMinutes);
-        var windowClosesAt = endUtc.AddMinutes(options.JoinWindowAfterMinutes);
+        switch (access.Denial)
+        {
+            case BookingLiveSessionDenial.NotFound:
+                return VideoFail(notFound: true, message: _localizer["booking.video.bookingNotFound"]);
+            case BookingLiveSessionDenial.NotParticipant:
+                return VideoFail(forbidden: true, message: _localizer["booking.video.notParticipant"]);
+            case BookingLiveSessionDenial.NotApproved:
+                return VideoFail(conflict: true, message: _localizer["booking.video.notApproved"]);
+            case BookingLiveSessionDenial.WindowNotOpen:
+                return VideoFail(conflict: true, message:
+                    _localizer["booking.video.windowNotOpen", options.JoinWindowBeforeMinutes]);
+            case BookingLiveSessionDenial.WindowClosed:
+                return VideoFail(conflict: true, message:
+                    _localizer["booking.video.windowClosed", options.JoinWindowAfterMinutes]);
+        }
 
-        if (now < windowOpensAt)
-            return VideoFail(conflict: true, message:
-                _localizer["booking.video.windowNotOpen", options.JoinWindowBeforeMinutes]);
-
-        if (now > windowClosesAt)
-            return VideoFail(conflict: true, message:
-                _localizer["booking.video.windowClosed", options.JoinWindowAfterMinutes]);
-
-        var participantUserId = isTeacher ? row.TeacherUserId : row.StudentUserId;
+        var isTeacher = access.IsTeacher;
+        var participantUserId = isTeacher ? access.TeacherUserId : access.StudentUserId;
         var names = await ResolveUserNamesAsync(new[] { participantUserId }, ct);
         var displayName = names.TryGetValue(participantUserId, out var resolved) && !string.IsNullOrWhiteSpace(resolved)
             ? resolved
@@ -698,13 +716,13 @@ public class BookingService : IBookingService
         {
             session = await _videoSessionProvider.CreateOrJoinSessionAsync(
                 new VideoSessionRequest(
-                    BookingId: row.Id,
+                    BookingId: access.BookingId,
                     ParticipantUserId: participantUserId,
                     ParticipantDisplayName: displayName,
                     ParticipantRole: isTeacher ? VideoParticipantRoles.Teacher : VideoParticipantRoles.Student,
-                    StartUtc: startUtc,
-                    EndUtc: endUtc,
-                    WindowClosesAtUtc: windowClosesAt),
+                    StartUtc: access.Window.StartUtc,
+                    EndUtc: access.Window.EndUtc,
+                    WindowClosesAtUtc: access.Window.ClosesAtUtc),
                 ct);
         }
         catch (InvalidOperationException ex)
@@ -712,7 +730,7 @@ public class BookingService : IBookingService
             // Sağlayıcı yapılandırması eksik/hatalı (secret yok, prod'da dev secret vb.).
             // İstemciye stack trace sızdırmak yerine anlaşılır bir çakışma mesajı döneriz.
             _logger.LogError(ex,
-                "Video sağlayıcısı yapılandırılmamış; görüşme odası üretilemedi. BookingId={BookingId}", row.Id);
+                "Video sağlayıcısı yapılandırılmamış; görüşme odası üretilemedi. BookingId={BookingId}", access.BookingId);
             return VideoFail(conflict: true, message:
                 _localizer["booking.video.providerUnavailable"]);
         }
@@ -720,7 +738,7 @@ public class BookingService : IBookingService
         return new VideoSessionResultDto
         {
             Success = true,
-            ObjectId = row.Id,
+            ObjectId = access.BookingId,
             Session = session
         };
     }

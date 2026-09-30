@@ -4,6 +4,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { AccessRequestUpdate } from '../models/worksheet-access-request.model';
+import { toCoalescedCount } from '../models/notification.model';
 import {
   TeacherApplicationSubmittedPayload,
   TeacherApplicationDecidedPayload,
@@ -43,6 +44,11 @@ export interface WorksheetCommentPushPayload {
   worksheetTitle: string;
   title: string;
   body: string;
+  /**
+   * Issue #305 dilim B: birleştirilmiş okunmamış bildirimin olay sayısı. > 1 ise aynı thread'in bildirimi güncellendi —
+   * toast gösterilmez, yalnız zil sayacı tazelenir. Eski sunucuda yok → 1. Doğrulama {@link toCoalescedCount}.
+   */
+  coalescedCount?: number;
 }
 
 /** Snackbar'da gösterilecek push başlığının üst sınırı (backend zaten 200'e kırpar). */
@@ -193,6 +199,10 @@ export class SignalRService {
   private onWorksheetCommentPush(data: unknown): void {
     this.notificationsChangedSubject.next();
     const record = data && typeof data === 'object' ? (data as Partial<Record<keyof WorksheetCommentPushPayload, unknown>>) : {};
+    // Issue #305 B: birleştirilmiş bildirim (aynı thread'e ardışık yorum) — toast seli olmasın, yalnız zil sayacı.
+    if (toCoalescedCount(record.coalescedCount) > 1) {
+      return;
+    }
     const rawTitle =
       typeof record.title === 'string' ? stripInvisibleControls(record.title).trim().slice(0, MAX_PUSH_TITLE_LENGTH) : '';
     const message = rawTitle || this.t('common.notifications.newComment');

@@ -132,6 +132,14 @@ builder.Services.AddOptions<ProcessedAnswerSubmissionRetentionOptions>()
 builder.Services.AddScoped<IProcessedAnswerSubmissionRetentionJob, ProcessedAnswerSubmissionRetentionJob>();
 builder.Services.AddHostedService<ProcessedAnswerSubmissionRetentionService>();
 
+// issue #305 review: NotificationEventLogs (yorum bildirimi birleştirme idempotency defteri) saklama süresi + temizleme.
+builder.Services.AddOptions<NotificationEventLogRetentionOptions>()
+    .BindConfiguration(NotificationEventLogRetentionOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<INotificationEventLogRetentionJob, NotificationEventLogRetentionJob>();
+builder.Services.AddHostedService<NotificationEventLogRetentionService>();
+
 // Bildirim lokalizasyonu (issue #185): notifications.<dil>.json altında toplanan metinler +
 // hedef kullanıcının UserLocalePreference'tan çözülen dili. IStringLocalizer değil doğrudan
 // JsonResourceStore kullanılır — consumer'larda istek bağlamı (CurrentUICulture) yok, bkz.
@@ -217,6 +225,7 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<UserPreferredLocaleChangedConsumer, UserPreferredLocaleChangedConsumerDefinition>();
     x.AddConsumer<WorksheetCommentCreatedConsumer, WorksheetCommentCreatedConsumerDefinition>();
     x.AddConsumer<WorksheetCommentRepliedConsumer, WorksheetCommentRepliedConsumerDefinition>();
+    x.AddConsumer<WorksheetCommentHiddenConsumer, WorksheetCommentHiddenConsumerDefinition>(); // issue #326 D4
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -252,6 +261,7 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<UserPreferredLocaleChangedConsumer>(context);
             e.ConfigureConsumer<WorksheetCommentCreatedConsumer>(context);
             e.ConfigureConsumer<WorksheetCommentRepliedConsumer>(context);
+            e.ConfigureConsumer<WorksheetCommentHiddenConsumer>(context);
         });
     });
 });

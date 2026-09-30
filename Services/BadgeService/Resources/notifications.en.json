@@ -70,17 +70,27 @@
       "title": "New comment: {1}",
       "body": "{0} wrote a comment or question.",
       "bodyQuestion": "{0} wrote about a question.",
-      "bodyQuestionOrder": "{0} wrote about question {2}."
+      "bodyQuestionOrder": "{0} wrote about question {2}.",
+      "titleMany": "{2} new comments: {1}",
+      "bodyMany": "{2} new comments or questions were posted.",
+      "bodyManyQuestionOrder": "{2} new comments were posted about question {3}."
     },
     "WorksheetCommentReplied": {
       "title": "Your teacher replied: {1}",
       "body": "Your teacher replied to your comment or question.",
-      "bodyQuestionOrder": "Your teacher replied to your comment or question about question {2}."
+      "bodyQuestionOrder": "Your teacher replied to your comment or question about question {2}.",
+      "titleMany": "{2} new replies: {1}",
+      "bodyMany": "{2} new replies were posted to your comment or question.",
+      "bodyManyQuestionOrder": "{2} new replies were posted to your comment or question about question {3}."
     },
     "WorksheetCommentRepliedByStudent": {
       "title": "New reply to your comment: {1}",
       "body": "{0} replied to your comment.",
       "bodyQuestionOrder": "{0} replied to your comment about question {2}."
+    },
+    "WorksheetCommentHidden": {
+      "title": "A comment was removed",
+      "body": "The comment related to this notification was removed by a moderator."
     }
   }
 }

@@ -16,6 +16,22 @@ export interface AppNotification {
   isRead: boolean;
   /** ISO 8601, UTC. */
   createdAt: string;
+  /**
+   * Issue #305 dilim B: aynı thread'in okunmamış yorum bildirimleri tek satırda birleştirilir; satırın temsil ettiği
+   * olay sayısı (başlık sunucuda "N yeni yorum…"). Eski sunucuda yok → 1. Gösterimden önce {@link toCoalescedCount}.
+   */
+  coalescedCount?: number;
+}
+
+/** Birleştirilmiş sayının gösterim üst sınırı ("99+"). */
+export const COALESCED_COUNT_DISPLAY_MAX = 99;
+
+/**
+ * Güvenilmeyen `coalescedCount` (REST öğesi ya da SignalR payload'ı): yalnız pozitif güvenli tam sayı kabul edilir;
+ * yok / bozuk / 0 / negatif / ondalık / string → 1 (tek olay, mevcut davranış).
+ */
+export function toCoalescedCount(value: unknown): number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : 1;
 }
 
 import { BADGE_ICON_PATTERN } from './badge-definition-admin.model';

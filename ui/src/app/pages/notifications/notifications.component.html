@@ -55,7 +55,17 @@
               }
             </span>
             <span class="ntf__content">
-              <span class="ntf__title"><bdi dir="auto">{{ row.notification.title }}</bdi></span>
+              <span class="ntf__title"
+                ><bdi dir="auto">{{ row.notification.title }}</bdi
+                >@if (row.coalescedLabel) {
+                  <span
+                    class="ntf__count"
+                    data-testid="notification-coalesced-count"
+                    [attr.aria-label]="t('coalescedAria', { count: row.coalescedCount })"
+                    >{{ row.coalescedLabel }}</span
+                  >
+                }</span
+              >
               @if (row.questionOrder) {
                 <span class="ntf__tag" data-testid="notification-question-tag">{{ t('questionTag', { order: row.questionOrder }) }}</span>
               }

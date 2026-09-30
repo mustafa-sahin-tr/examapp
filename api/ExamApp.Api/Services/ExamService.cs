@@ -260,6 +260,7 @@ public class ExamService : IExamService
                 SubTopicId = t.SubTopicId,
                 MaxDurationSeconds = t.MaxDurationSeconds,
                 IsPracticeTest = t.IsPracticeTest,
+                CommentsEnabled = t.CommentsEnabled, // issue #105
                 Subtitle = t.Subtitle,
                 ImageUrl = t.ImageUrl,
                 BadgeText = t.BadgeText,
@@ -438,6 +439,7 @@ public class ExamService : IExamService
                 SubTopicId = t.SubTopicId,
                 MaxDurationSeconds = t.MaxDurationSeconds,
                 IsPracticeTest = t.IsPracticeTest,
+                CommentsEnabled = t.CommentsEnabled, // issue #105
                 Subtitle = t.Subtitle,
                 ImageUrl = t.ImageUrl,
                 BadgeText = t.BadgeText,
@@ -491,6 +493,7 @@ public class ExamService : IExamService
                 SubjectId = t.SubjectId,
                 MaxDurationSeconds = t.MaxDurationSeconds,
                 IsPracticeTest = t.IsPracticeTest,
+                CommentsEnabled = t.CommentsEnabled, // issue #105
                 Subtitle = t.Subtitle,
                 ImageUrl = t.ImageUrl,
                 BadgeText = t.BadgeText,
@@ -562,6 +565,7 @@ public class ExamService : IExamService
                     SubTopicId = t.SubTopicId,
                     MaxDurationSeconds = t.MaxDurationSeconds,
                     IsPracticeTest = t.IsPracticeTest,
+                    CommentsEnabled = t.CommentsEnabled, // issue #105
                     Subtitle = t.Subtitle,
                     ImageUrl = t.ImageUrl,
                     BadgeText = t.BadgeText,
@@ -642,6 +646,7 @@ public class ExamService : IExamService
             SubjectId = worksheet.SubjectId,
             MaxDurationSeconds = worksheet.MaxDurationSeconds,
             IsPracticeTest = worksheet.IsPracticeTest,
+            CommentsEnabled = worksheet.CommentsEnabled, // issue #105
             Subtitle = worksheet.Subtitle,
             ImageUrl = worksheet.ImageUrl,
             BadgeText = worksheet.BadgeText,
@@ -688,6 +693,7 @@ public class ExamService : IExamService
                 SubjectId = w.SubjectId,
                 MaxDurationSeconds = w.MaxDurationSeconds,
                 IsPracticeTest = w.IsPracticeTest,
+                CommentsEnabled = w.CommentsEnabled, // issue #105
                 Subtitle = w.Subtitle,
                 ImageUrl = w.ImageUrl,
                 BadgeText = w.BadgeText,

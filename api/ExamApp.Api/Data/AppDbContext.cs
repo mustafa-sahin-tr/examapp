@@ -110,6 +110,9 @@ public class AppDbContext : DbContext
     public DbSet<WorksheetAccessRequest> WorksheetAccessRequests { get; set; }
     public DbSet<WorksheetAccessGrant> WorksheetAccessGrants { get; set; }
 
+    // Worksheet / soru yorum-soru thread'leri (issue #105)
+    public DbSet<WorksheetComment> WorksheetComments { get; set; }
+
     // Ders planlama / randevu (issue #96)
     public DbSet<TeacherAvailabilitySlot> TeacherAvailabilitySlots { get; set; }
     public DbSet<Booking> Bookings { get; set; }
@@ -179,6 +182,34 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Worksheet>()
             .HasIndex(w => new { w.TeacherSharing, w.StudentVisibility, w.GradeId, w.CreateUserId });
+
+        // issue #105: yorum-soru anahtarı varsayılan AÇIK; mevcut satırlar true doldurulur. Sentinel = true: aksi halde EF
+        // CLR default'u (false) "ayarlanmamış" sayıp insert'te DB default'unu (true) yazardı ve öğretmen worksheet'i
+        // kapalı oluşturamazdı. false her zaman açıkça gönderilir, yalnızca true atlanır (DB default'u da true).
+        modelBuilder.Entity<Worksheet>()
+            .Property(w => w.CommentsEnabled)
+            .HasDefaultValue(true)
+            .HasSentinel(true);
+
+        // issue #105: yorum thread'leri. Liste sorgusu (WorksheetId, QuestionId) kapsamında CreateTime'a göre sayfalar;
+        // reply'lar ParentCommentId ile toplanır. AuthorRole string (AdminDataAccessLog deseni).
+        // FK'lar ClientNoAction: worksheet/soru/kök yorum soft-delete edilir (Remove aslında UPDATE); Cascade/SetNull
+        // seçilseydi change tracker'daki yorumlar sessizce silinmiş/null'lanmış olurdu. Retire (soft-delete) edilen
+        // worksheet'in thread'i görünür kalmalı. DB tarafı NO ACTION — fiziksel silme yapılmıyor.
+        modelBuilder.Entity<WorksheetComment>(e =>
+        {
+            e.Property(c => c.AuthorRole).HasConversion<string>().HasMaxLength(16);
+            e.HasOne(c => c.Worksheet).WithMany().HasForeignKey(c => c.WorksheetId).OnDelete(DeleteBehavior.ClientNoAction);
+            e.HasOne(c => c.Question).WithMany().HasForeignKey(c => c.QuestionId).OnDelete(DeleteBehavior.ClientNoAction);
+            e.HasOne(c => c.ParentComment).WithMany().HasForeignKey(c => c.ParentCommentId).OnDelete(DeleteBehavior.ClientNoAction);
+            // Genel (WorksheetId FK'sını da karşılar) + yalnızca kökleri taşıyan kısmi index: kök listesi
+            // (WorksheetId, QuestionId, ParentCommentId IS NULL) ORDER BY CreateTime DESC, Id DESC keyset sayfalaması.
+            e.HasIndex(c => new { c.WorksheetId, c.QuestionId, c.CreateTime, c.Id });
+            e.HasIndex(c => new { c.WorksheetId, c.QuestionId, c.CreateTime, c.Id }, "IX_WorksheetComments_Roots")
+                .HasFilter("\"ParentCommentId\" IS NULL");
+            // Reply'lar: kök başına son N + reply sayfalaması (CreateTime, Id) keyset.
+            e.HasIndex(c => new { c.ParentCommentId, c.CreateTime, c.Id });
+        });
 
         // Bağımsız öğretmen (issue #92): mevcut tüm öğretmen kayıtları okula bağlı sayılır → Approved.
         // Kolon default'u olmazsa EF CLR default'u (0 = Pending) yazar; bu yüzden açıkça Approved.

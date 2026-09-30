@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.StudentReset;
@@ -43,25 +44,25 @@ public class AuthApiClient : IAuthApiClient
 
     /// <summary>
     /// "Kendi profilim" ucu — çağıran kullanıcının kendi token'ı ile gider (auth-api sub'dan kullanıcıyı bulur).
+    /// Token <see cref="CallerAccessToken"/> ile doğrulanmış istekten alınır: header yoksa (SignalR WebSocket,
+    /// <c>?access_token=</c>) JwtBearer'ın sakladığı token. Token hiç yoksa auth-api'ye gidilmez,
+    /// <see cref="CallerAccessTokenMissingException"/> fırlatılır.
     /// </summary>
-    public async Task<UserProfileDto> GetUserProfileAsync()
+    public async Task<UserProfileDto> GetUserProfileAsync(CancellationToken ct = default)
     {
+        var callerToken = await CallerAccessToken.ResolveAsync(_httpContextAccessor.HttpContext)
+            ?? throw new CallerAccessTokenMissingException();
+
         var httpClient = _httpClientFactory.CreateClient();
         var baseUrl = _configuration["AuthApiBaseUrl"]; // Configuration'dan URL oku
         _logger.LogDebug("[AuthApiClient] Base URL: {BaseUrl}", baseUrl);
 
-        var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/auth/user-profile");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/auth/user-profile");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", callerToken);
 
-        // Mevcut request'ten Authorization header'ını al
-        var authHeader = _httpContextAccessor.HttpContext?.Request.Headers["Authorization"];
-        if (!string.IsNullOrEmpty(authHeader))
-        {
-            request.Headers.Add("Authorization", authHeader.ToString());
-        }
-
-        var response = await httpClient.SendAsync(request);
+        using var response = await httpClient.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
-        var content = await response.Content.ReadAsStringAsync();
+        var content = await response.Content.ReadAsStringAsync(ct);
 
         var userProfile = JsonSerializer.Deserialize<UserProfileDto>(content, Json);
         return userProfile;

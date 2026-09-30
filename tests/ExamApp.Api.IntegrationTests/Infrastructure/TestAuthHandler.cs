@@ -46,7 +46,18 @@ public class TestAuthHandler(
         }
 
         var identity = new ClaimsIdentity(claims, Scheme, ClaimTypes.Name, ClaimTypes.Role);
-        var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme);
+        var properties = new AuthenticationProperties();
+
+        // Üretimdeki JwtBearer (SaveToken + OnMessageReceived) taklidi: "Authorization: Bearer x" varsa o, yoksa YALNIZCA
+        // whiteboard hub yolunda query string'deki token saklanır (SignalRQueryToken ile aynı kural).
+        string? header = Request.Headers.Authorization;
+        var savedToken = header is not null && header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+            ? header["Bearer ".Length..].Trim()
+            : ExamApp.Api.Helpers.SignalRQueryToken.Resolve(Request, ExamApp.Api.Hubs.WhiteboardHub.Path);
+        if (!string.IsNullOrEmpty(savedToken))
+            properties.StoreTokens([new AuthenticationToken { Name = "access_token", Value = savedToken }]);
+
+        var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), properties, Scheme);
         return Task.FromResult(AuthenticateResult.Success(ticket));
     }
 }

@@ -1,9 +1,13 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.StudentReset;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -26,12 +30,14 @@ public class AuthApiClientTests
         public HttpRequestMessage? LastRequest { get; private set; }
         public string? LastBody { get; private set; }
         public int Calls { get; private set; }
+        public bool LastCallWasCancelled { get; private set; }
 
         public FakeHandler(Func<HttpRequestMessage, Task<HttpResponseMessage>> respond) => _respond = respond;
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Calls++;
+            LastCallWasCancelled = cancellationToken.IsCancellationRequested;
             LastRequest = request;
             LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
             return await _respond(request);
@@ -44,7 +50,8 @@ public class AuthApiClientTests
     private static (AuthApiClient Client, FakeHandler Handler, IServiceTokenProvider Tokens, ILogger<AuthApiClient> Logger) Build(
         Func<HttpRequestMessage, Task<HttpResponseMessage>> respond,
         IServiceTokenProvider? tokenProvider = null,
-        bool withUserRequest = true)
+        bool withUserRequest = true,
+        HttpContext? requestContext = null)
     {
         var handler = new FakeHandler(respond);
         var factory = Substitute.For<IHttpClientFactory>();
@@ -55,7 +62,11 @@ public class AuthApiClientTests
             .Build();
 
         var accessor = Substitute.For<IHttpContextAccessor>();
-        if (withUserRequest)
+        if (requestContext is not null)
+        {
+            accessor.HttpContext.Returns(requestContext);
+        }
+        else if (withUserRequest)
         {
             var httpContext = new DefaultHttpContext();
             httpContext.Request.Headers.Authorization = UserBearer;
@@ -240,10 +251,52 @@ public class AuthApiClientTests
         await tokens.DidNotReceive().GetAccessTokenAsync(Arg.Any<CancellationToken>());
     }
 
+    // ---- GetUserProfile: iletilen token = doğrulanan token (security review O1) ----
+
+    private const string ProfileBody = "{\"id\":5,\"keycloakId\":\"kc-5\",\"fullName\":\"Ben\"}";
+    private const string QueryToken = "ws-query-token-example";
+
+    /// <summary>
+    /// Kimliklenmiş istek taklidi: <paramref name="scheme"/> ile başarılı authenticate sonucu; <paramref name="savedToken"/>
+    /// JwtBearer'ın <c>SaveToken</c> ile sakladığı (doğruladığı) token. <paramref name="scheme"/> null → kimliksiz istek.
+    /// </summary>
+    private static DefaultHttpContext AuthenticatedContext(string? scheme, string? savedToken = null, string? authorizationHeader = null)
+    {
+        var auth = Substitute.For<IAuthenticationService>();
+        auth.AuthenticateAsync(Arg.Any<HttpContext>(), Arg.Any<string?>()).Returns(_ =>
+        {
+            if (scheme is null)
+                return AuthenticateResult.NoResult();
+            var properties = new AuthenticationProperties();
+            if (savedToken is not null)
+                properties.StoreTokens([new AuthenticationToken { Name = "access_token", Value = savedToken }]);
+            var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "kc-5")], scheme));
+            return AuthenticateResult.Success(new AuthenticationTicket(principal, properties, scheme));
+        });
+
+        var context = new DefaultHttpContext
+        {
+            RequestServices = new ServiceCollection().AddSingleton(auth).BuildServiceProvider()
+        };
+        if (authorizationHeader is not null)
+            context.Request.Headers.Authorization = authorizationHeader;
+        return context;
+    }
+
+    private static DefaultHttpContext HubContext(string? savedToken)
+    {
+        var context = AuthenticatedContext(savedToken is null ? null : "Bearer", savedToken);
+        context.Request.Path = "/hub/whiteboard";
+        context.Request.QueryString = QueryString.Create(SignalRQueryToken.QueryParameter, savedToken ?? string.Empty);
+        return context;
+    }
+
     [Fact]
     public async Task GetUserProfile_still_forwards_the_users_authorization_header()
     {
-        var (client, handler, tokens, _) = Build(_ => Task.FromResult(Json(HttpStatusCode.OK, "{\"id\":5,\"keycloakId\":\"kc-5\",\"fullName\":\"Ben\"}")));
+        // JwtBearer kimliği, token saklanmamış (SaveToken kapalı) → doğrulanan token header'dakidir.
+        var (client, handler, tokens, _) = Build(_ => Task.FromResult(Json(HttpStatusCode.OK, ProfileBody)),
+            requestContext: AuthenticatedContext("Bearer", authorizationHeader: UserBearer));
 
         var profile = await client.GetUserProfileAsync();
 
@@ -251,6 +304,78 @@ public class AuthApiClientTests
         handler.LastRequest!.RequestUri!.ToString().ShouldBe("http://auth-api.test/api/auth/user-profile");
         handler.LastRequest.Headers.Authorization!.ToString().ShouldBe(UserBearer);
         await tokens.DidNotReceive().GetAccessTokenAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetUserProfile_uses_the_validated_query_token_when_there_is_no_authorization_header()
+    {
+        var (client, handler, tokens, _) = Build(
+            _ => Task.FromResult(Json(HttpStatusCode.OK, ProfileBody)), requestContext: HubContext(QueryToken));
+
+        var profile = await client.GetUserProfileAsync();
+
+        profile.Id.ShouldBe(5);
+        handler.LastRequest!.Headers.Authorization!.Scheme.ShouldBe("Bearer");
+        handler.LastRequest.Headers.Authorization.Parameter.ShouldBe(QueryToken);
+        handler.LastRequest.Headers.GetValues("Authorization").ShouldHaveSingleItem();
+        await tokens.DidNotReceive().GetAccessTokenAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetUserProfile_forwards_the_validated_token_not_a_different_authorization_header()
+    {
+        // Kimliği A belirledi (JwtBearer'ın sakladığı), header'da başka bir B var → auth-api'ye A gider.
+        var context = AuthenticatedContext("Bearer", savedToken: "token-a-example", authorizationHeader: "Bearer token-b-example");
+        var (client, handler, _, _) = Build(_ => Task.FromResult(Json(HttpStatusCode.OK, ProfileBody)), requestContext: context);
+
+        await client.GetUserProfileAsync();
+
+        handler.LastRequest!.Headers.Authorization!.Parameter.ShouldBe("token-a-example");
+        handler.LastRequest.Headers.GetValues("Authorization").ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public async Task GetUserProfile_does_not_forward_an_unvalidated_header_when_identity_is_not_from_jwt_bearer()
+    {
+        // /hangfire: kimlik cookie'den; header'daki token doğrulanmadı → iletilmez, açık hata.
+        var context = AuthenticatedContext("HangfireCookie", authorizationHeader: UserBearer);
+        var (client, handler, _, _) = Build(_ => throw new InvalidOperationException("should not be called"), requestContext: context);
+
+        await Should.ThrowAsync<CallerAccessTokenMissingException>(() => client.GetUserProfileAsync());
+        handler.Calls.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task GetUserProfile_without_any_caller_token_throws_a_clear_error_and_does_not_call_auth_api()
+    {
+        var (client, handler, _, _) = Build(
+            _ => throw new InvalidOperationException("should not be called"), requestContext: HubContext(savedToken: null));
+
+        await Should.ThrowAsync<CallerAccessTokenMissingException>(() => client.GetUserProfileAsync());
+        handler.Calls.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task GetUserProfile_without_an_http_context_throws_a_clear_error()
+    {
+        var (client, handler, _, _) = Build(_ => throw new InvalidOperationException("should not be called"), withUserRequest: false);
+
+        await Should.ThrowAsync<CallerAccessTokenMissingException>(() => client.GetUserProfileAsync());
+        handler.Calls.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task GetUserProfile_passes_the_cancellation_token()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var (client, handler, _, _) = Build(_ => Task.FromResult(Json(HttpStatusCode.OK, ProfileBody)),
+            requestContext: AuthenticatedContext("Bearer", savedToken: QueryToken));
+
+        try { await client.GetUserProfileAsync(cts.Token); } catch (OperationCanceledException) { }
+
+        // HttpClient çağıranın token'ını kendi zaman aşımıyla bağlar; iptal isteği handler'a ulaşmalı.
+        handler.LastCallWasCancelled.ShouldBeTrue();
     }
 
     // ---- issue #156: fail-soft olmayan varyant ----

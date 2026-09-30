@@ -6,7 +6,7 @@ namespace ExamApp.Api.Services.Interfaces;
 
 public interface IAuthApiClient
 {
-    Task<UserProfileDto> GetUserProfileAsync();
+    Task<UserProfileDto> GetUserProfileAsync(CancellationToken ct = default);
     Task<IReadOnlyList<UserLookupResultDto>> GetUsersByIdsAsync(IEnumerable<int> userIds, CancellationToken ct = default);
 
     /// <summary>

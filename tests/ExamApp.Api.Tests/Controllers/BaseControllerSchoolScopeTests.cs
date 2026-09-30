@@ -84,7 +84,7 @@ public class BaseControllerSchoolScopeTests : IDisposable
     private TestController NewController(UserProfileDto authenticatedUser, ClaimsIdentity identity)
     {
         var authApiClient = Substitute.For<IAuthApiClient>();
-        authApiClient.GetUserProfileAsync().Returns(authenticatedUser);
+        authApiClient.GetUserProfileAsync(Arg.Any<CancellationToken>()).Returns(authenticatedUser);
 
         var cache = new UserProfileCacheService(
             new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())),

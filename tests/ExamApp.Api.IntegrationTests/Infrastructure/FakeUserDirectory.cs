@@ -39,7 +39,7 @@ public sealed class FakeUserDirectory
 public sealed class FakeUserDirectoryAuthApiClient(
     IAuthApiClient inner, FakeUserDirectory directory, FakeKeycloakAccounts? accounts = null) : IAuthApiClient
 {
-    public Task<UserProfileDto> GetUserProfileAsync() => inner.GetUserProfileAsync();
+    public Task<UserProfileDto> GetUserProfileAsync(CancellationToken ct = default) => inner.GetUserProfileAsync(ct);
 
     public Task<IReadOnlyList<UserLookupResultDto>> GetUsersByIdsAsync(IEnumerable<int> userIds, CancellationToken ct = default)
     {

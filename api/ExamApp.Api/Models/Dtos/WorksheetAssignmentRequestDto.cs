@@ -16,4 +16,7 @@ public class WorksheetAssignmentRequestDto
     public DateTime StartAt { get; set; }
 
     public DateTime? EndAt { get; set; }
+
+    /// <summary>issue #105: bu atamaya özel yorum-soru açık/kapalı. null = worksheet varsayılanı.</summary>
+    public bool? CommentsEnabledOverride { get; set; }
 }

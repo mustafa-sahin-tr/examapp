@@ -336,6 +336,9 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                 examination.GradeId = examDto.GradeId;
                 examination.MaxDurationSeconds = examDto.MaxDurationSeconds;
                 examination.IsPracticeTest = examDto.IsPracticeTest;
+                // issue #105: null = mevcut değer korunur.
+                if (examDto.CommentsEnabled.HasValue)
+                    examination.CommentsEnabled = examDto.CommentsEnabled.Value;
                 examination.Subtitle = examDto.Subtitle;
                 examination.BookTestId = book.BookTests.FirstOrDefault(bt => bt.Id == examDto.BookTestId)?.Id ?? book.BookTests.First().Id;
                 examination.SubjectId = examDto.SubjectId;
@@ -401,6 +404,8 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                     existingExam.GradeId = examDto.GradeId;
                     existingExam.MaxDurationSeconds = examDto.MaxDurationSeconds;
                     existingExam.IsPracticeTest = examDto.IsPracticeTest;
+                    if (examDto.CommentsEnabled.HasValue)
+                        existingExam.CommentsEnabled = examDto.CommentsEnabled.Value;
                     existingExam.Subtitle = examDto.Subtitle;
                     existingExam.BookTestId = bookTestId;
                     existingExam.SubjectId = examDto.SubjectId;
@@ -424,6 +429,8 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                         GradeId = examDto.GradeId,
                         MaxDurationSeconds = examDto.MaxDurationSeconds,
                         IsPracticeTest = examDto.IsPracticeTest,
+                        // issue #105: varsayılan açık.
+                        CommentsEnabled = examDto.CommentsEnabled ?? true,
                         Subtitle = examDto.Subtitle,
                         BookTestId = bookTestId,
                         SubjectId = examDto.SubjectId,
@@ -709,6 +716,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             SubTopicId = source.SubTopicId,
             MaxDurationSeconds = source.MaxDurationSeconds,
             IsPracticeTest = source.IsPracticeTest,
+            CommentsEnabled = true, // issue #105 (review D8): kopyalayan yeni sahip — ayar devralınmaz, varsayılan açık başlar
             Subtitle = source.Subtitle,
             BadgeText = source.BadgeText,
             ImageUrl = source.ImageUrl, // aynı MinIO objesine referans

@@ -18,6 +18,12 @@ public class ExamDto
 
     public bool IsPracticeTest { get; set; }
 
+    /// <summary>
+    /// issue #105: öğrenciler yorum-soru yazabilir mi. null = oluştururken varsayılan (true), güncellerken mevcut
+    /// değer korunur — alanı göndermeyen eski istemciler ayarı yanlışlıkla kapatmasın.
+    /// </summary>
+    public bool? CommentsEnabled { get; set; }
+
     public string? Subtitle { get; set; }
 
     public string? ImageUrl { get; set; }

@@ -47,6 +47,13 @@ public class WorksheetAssignment : BaseEntity
 
     public DateTime? EndAt { get; set; }
 
+    /// <summary>
+    /// issue #105: bu atama için yorum-soru açık/kapalı override'ı. null = worksheet varsayılanı
+    /// (<see cref="Worksheet.CommentsEnabled"/>). Öğrencinin ilgili aktif ataması varsa etkin değer
+    /// <c>CommentsEnabledOverride ?? Worksheet.CommentsEnabled</c>.
+    /// </summary>
+    public bool? CommentsEnabledOverride { get; set; }
+
     [NotMapped]
     public bool IsGradeScoped => GradeId.HasValue && !StudentId.HasValue;
 

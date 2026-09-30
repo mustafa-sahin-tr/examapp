@@ -220,7 +220,9 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             // ataması yapamaz (#222). Öğrenci hedefli atama platform geneli değildir.
             IsPlatformWide = isAdmin && grade != null,
             StartAt = startAtUtc,
-            EndAt = endAtUtc
+            EndAt = endAtUtc,
+            // issue #105: null = worksheet varsayılanı (CommentsEnabled).
+            CommentsEnabledOverride = request.CommentsEnabledOverride
         };
 
         _context.WorksheetAssignments.Add(assignment);
@@ -303,6 +305,8 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                     EndAt = wa.EndAt,
                     IsGradeAssignment = wa.GradeId.HasValue && !wa.StudentId.HasValue,
                     AssignedGradeId = wa.GradeId,
+                    CommentsEnabledOverride = wa.CommentsEnabledOverride,
+                    CommentsEnabled = wa.CommentsEnabledOverride ?? worksheet?.CommentsEnabled ?? true,
                     InstanceId = instance?.Id,
                     InstanceStatus = instance?.Status,
                     InstanceStartTime = instance?.StartTime,
@@ -476,6 +480,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                 IsActive = isActive,
                 StartAt = assignment.StartAt,
                 EndAt = assignment.EndAt,
+                CommentsEnabledOverride = assignment.CommentsEnabledOverride,
                 StudentCount = studentDtos.Count,
                 CompletedCount = completedCount,
                 InProgressCount = inProgressCount,

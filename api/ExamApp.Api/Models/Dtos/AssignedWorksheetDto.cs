@@ -30,6 +30,11 @@ public class AssignedWorksheetDto
     public bool IsGradeAssignment { get; set; }
     public int? AssignedGradeId { get; set; }
 
+    // issue #105: atama override'ı (null = worksheet varsayılanı) ve öğrenci için etkin değer
+    // (CommentsEnabledOverride ?? Worksheet.CommentsEnabled).
+    public bool? CommentsEnabledOverride { get; set; }
+    public bool CommentsEnabled { get; set; } = true;
+
     // Student instance metadata
     public int? InstanceId { get; set; }
     public WorksheetInstanceStatus? InstanceStatus { get; set; }

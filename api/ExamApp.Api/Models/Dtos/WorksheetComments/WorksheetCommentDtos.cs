@@ -19,6 +19,12 @@ public class WorksheetCommentQueryDto
 
     /// <summary>Sayfa başına kök yorum sayısı; 1..50'ye sıkıştırılır, varsayılan 20.</summary>
     public int Take { get; set; } = WorksheetCommentLimits.DefaultPageSize;
+
+    /// <summary>
+    /// issue #305: moderatör görünümü. true ise ve istek sahibi bir yorumun moderatörüyse (worksheet sahibi, thread'in
+    /// sorumlu öğretmeni, admin) o GİZLİ yorumun gövdesi, yazar adı ve gizleme nedeni döner. Diğerlerinde etkisiz.
+    /// </summary>
+    public bool ModeratorView { get; set; }
 }
 
 /// <summary>GET /api/worksheet/{worksheetId}/comments/{rootId}/replies sorgu parametreleri (eskiden yeniye).</summary>
@@ -29,6 +35,9 @@ public class WorksheetCommentRepliesQueryDto
 
     /// <summary>Sayfa başına reply; 1..50'ye sıkıştırılır, varsayılan 20.</summary>
     public int Take { get; set; } = WorksheetCommentLimits.DefaultPageSize;
+
+    /// <summary>issue #305: bkz. <see cref="WorksheetCommentQueryDto.ModeratorView"/>.</summary>
+    public bool ModeratorView { get; set; }
 }
 
 /// <summary>POST /api/worksheet/{worksheetId}/comments gövdesi.</summary>
@@ -68,10 +77,35 @@ public class WorksheetCommentDto
     /// <summary>Yorum istek sahibine mi ait.</summary>
     public bool IsMine { get; set; }
 
-    public string Body { get; set; } = string.Empty;
+    /// <summary>
+    /// Gövde. issue #305: gizli yorumda (<see cref="IsHidden"/>) null — moderatör görünümü hariç
+    /// (<see cref="WorksheetCommentQueryDto.ModeratorView"/>).
+    /// </summary>
+    public string? Body { get; set; } = string.Empty;
 
     /// <summary>UTC.</summary>
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// issue #305: yorum moderasyonla gizlendi. Thread'de "kaldırıldı" yer tutucusu olarak kalır: <see cref="Body"/> null,
+    /// <see cref="AuthorDisplayName"/> sabit metin (moderatör görünümünde gerçek değerler).
+    /// </summary>
+    public bool IsHidden { get; set; }
+
+    /// <summary>issue #305: istek sahibi bu yorumu şikayet etti mi (herkese).</summary>
+    public bool ReportedByMe { get; set; }
+
+    /// <summary>issue #305: istek sahibi bu yorumu gizleyebilir/açabilir mi (sahip, thread'in sorumlu öğretmeni, admin).</summary>
+    public bool CanModerate { get; set; }
+
+    /// <summary>issue #305: aktif şikayet sayısı — yalnız <see cref="CanModerate"/> ise dolu, diğerlerine null.</summary>
+    public int? ReportCount { get; set; }
+
+    /// <summary>issue #305: gizleme nedeni — yalnız moderatör görünümünde ve gizli yorumda dolu.</summary>
+    public string? HiddenReason { get; set; }
+
+    /// <summary>issue #305: gizlenme anı (UTC) — yalnız moderatör görünümünde ve gizli yorumda dolu.</summary>
+    public DateTime? HiddenAt { get; set; }
 }
 
 /// <summary>
@@ -83,11 +117,14 @@ public class WorksheetCommentThreadDto : WorksheetCommentDto
     /// <summary>Son (en yeni) en fazla 5 reply, kendi içinde eskiden yeniye.</summary>
     public List<WorksheetCommentDto> Replies { get; set; } = new();
 
-    /// <summary>Kökün silinmemiş reply'larının toplam sayısı.</summary>
+    /// <summary>
+    /// Kökün silinmemiş reply'larının toplam sayısı — issue #305: yalnız okuyucunun okul kapsamındakiler (gizliler dahil,
+    /// yer tutucu olarak döndükleri için).
+    /// </summary>
     public int ReplyCount { get; set; }
 
     /// <summary>
-    /// İstek sahibi bu thread'e reply yazabilir mi. Öğrencide sayfanın <see cref="WorksheetCommentPageDto.CanWrite"/>'ı ile
+    /// İstek sahibi bu thread'e reply yazabilir mi (#305: kök gizliyse herkese false). Öğrencide sayfanın <see cref="WorksheetCommentPageDto.CanWrite"/>'ı ile
     /// aynı; öğretmende thread bazında (kök yazarı öğrencinin ilgili öğretmeni mi).
     /// </summary>
     public bool CanReply { get; set; }
@@ -164,7 +201,7 @@ public class WorksheetCommentRepliesPageDto
     /// <summary>İstek sahibi bu thread'e reply yazabilir mi (thread sayfasındaki CanReply ile aynı kural).</summary>
     public bool CanReply { get; set; }
 
-    /// <summary>Kökün silinmemiş reply'larının toplam sayısı.</summary>
+    /// <summary>Kökün silinmemiş, okuyucunun okul kapsamındaki reply'larının toplam sayısı (#305).</summary>
     public int ReplyCount { get; set; }
 
     /// <summary>issue #309: kök soru thread'indeyse 1 tabanlı soru numarası; worksheet seviyesinde null.</summary>
@@ -201,12 +238,117 @@ public class WorksheetCommentResultDto : WorksheetCommentResponseDto
     public WorksheetCommentDto? Comment { get; set; }
 }
 
+// ---- issue #305: moderasyon ---------------------------------------------------------------------------------
+
+/// <summary>POST .../comments/{commentId}/report gövdesi.</summary>
+public class ReportWorksheetCommentDto
+{
+    /// <summary><c>"spam" | "abuse" | "personalInfo" | "other"</c> (büyük/küçük harf duyarsız).</summary>
+    public string? Reason { get; set; }
+
+    /// <summary>İsteğe bağlı açıklama; düz metin, trim edilir, en fazla 500 karakter.</summary>
+    public string? Note { get; set; }
+}
+
+/// <summary>POST .../comments/{commentId}/hide gövdesi.</summary>
+public class HideWorksheetCommentDto
+{
+    /// <summary>Gizleme nedeni; düz metin, trim edilir, 1..500 karakter. Audit'e yazılmaz, yorumda saklanır.</summary>
+    public string? Reason { get; set; }
+}
+
+/// <summary>Şikayet yanıtı (200). Tekrar şikayet idempotenttir: <see cref="AlreadyReported"/> true döner, yeni kayıt yazılmaz.</summary>
+public class WorksheetCommentReportResultDto : WorksheetCommentResponseDto
+{
+    /// <summary>İstek sahibi bu yorumu daha önce şikayet etmişti (bu çağrı yeni kayıt yazmadı).</summary>
+    public bool AlreadyReported { get; set; }
+
+    /// <summary>Her başarılı yanıtta true (UI şikayet düğmesini buna göre kapatır).</summary>
+    public bool ReportedByMe { get; set; }
+}
+
+/// <summary>GET .../comments/reports ve GET api/admin/comments/reports sorgusu (sayfa numaralı).</summary>
+public class WorksheetCommentReportsQueryDto
+{
+    /// <summary>1 tabanlı sayfa; &lt; 1 ise 1.</summary>
+    public int Page { get; set; } = 1;
+
+    /// <summary>1..50'ye sıkıştırılır, varsayılan 20.</summary>
+    public int PageSize { get; set; } = WorksheetCommentLimits.DefaultPageSize;
+}
+
+/// <summary>Şikayet nedeni başına sayı.</summary>
+public class WorksheetCommentReportReasonCountsDto
+{
+    public int Spam { get; set; }
+    public int Abuse { get; set; }
+    public int PersonalInfo { get; set; }
+    public int Other { get; set; }
+}
+
+/// <summary>Şikayet edilmiş tek yorum (moderatör listesi). Şikayet edenlerin kimliği yok.</summary>
+public class WorksheetCommentReportItemDto
+{
+    /// <summary>Yorum — moderatör görünümüyle (gizliyse de gövde, gerçek yazar adı ve gizleme nedeni).</summary>
+    public WorksheetCommentDto Comment { get; set; } = new();
+
+    /// <summary>Worksheet adı (global admin listesinde bağlam için; retire edilmiş worksheet'te de dolu).</summary>
+    public string WorksheetTitle { get; set; } = string.Empty;
+
+    public int ReportCount { get; set; }
+
+    public WorksheetCommentReportReasonCountsDto Reasons { get; set; } = new();
+
+    /// <summary>En son şikayet anı (UTC).</summary>
+    public DateTime LastReportedAt { get; set; }
+
+    /// <summary>En yeni en fazla 3 şikayet notu (boş notlar hariç), yeniden eskiye.</summary>
+    public List<string> Notes { get; set; } = new();
+}
+
+public class WorksheetCommentReportsPageDto
+{
+    /// <summary>En son şikayet edilen önce.</summary>
+    public List<WorksheetCommentReportItemDto> Items { get; set; } = new();
+
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalCount { get; set; }
+}
+
+public class WorksheetCommentReportsResultDto : WorksheetCommentResponseDto
+{
+    public WorksheetCommentReportsPageDto? Page { get; set; }
+}
+
+/// <summary>Şikayet nedeni JSON değerleri (camelCase) ↔ enum.</summary>
+public static class WorksheetCommentReportReasons
+{
+    public const int MaxNotesPerItem = 3;
+
+    public static bool TryParse(string? value, out WorksheetCommentReportReason reason)
+    {
+        reason = default;
+        switch (value?.Trim().ToLowerInvariant())
+        {
+            case "spam": reason = WorksheetCommentReportReason.Spam; return true;
+            case "abuse": reason = WorksheetCommentReportReason.Abuse; return true;
+            case "personalinfo": reason = WorksheetCommentReportReason.PersonalInfo; return true;
+            case "other": reason = WorksheetCommentReportReason.Other; return true;
+            default: return false;
+        }
+    }
+}
+
 public static class WorksheetCommentErrorCodes
 {
     /// <summary>404 — worksheet yok (öğretmen için: görme yetkisi de yok — varlık sızdırılmaz).</summary>
     public const string WorksheetNotFound = "WorksheetNotFound";
 
-    /// <summary>403 — öğrencinin worksheet'e erişimi yok (atama yok, keşfedilebilir değil, hiç çözmemiş).</summary>
+    /// <summary>
+    /// Artık dönmüyor (issue #305, varlık sızıntısı): öğrencinin erişemediği worksheet için de 404
+    /// <see cref="WorksheetNotFound"/> döner (#255 test başlatma davranışıyla hizalı). Sabit, eski istemciler için duruyor.
+    /// </summary>
     public const string AccessDenied = "AccessDenied";
 
     /// <summary>400 — questionId bu worksheet'in sorusu değil.</summary>
@@ -244,6 +386,33 @@ public static class WorksheetCommentErrorCodes
 
     /// <summary>403 — öğretmen bu thread'in ilgili öğretmeni değil (veya kök yorum açma yetkisi yok).</summary>
     public const string NotResponsibleTeacher = "NotResponsibleTeacher";
+
+    /// <summary>404 — (#305) yorum bu worksheet'te yok ya da istek sahibinin okul kapsamında değil (varlık sızdırılmaz).</summary>
+    public const string CommentNotFound = "CommentNotFound";
+
+    /// <summary>403 — (#305) kendi yorumunu şikayet edemezsin.</summary>
+    public const string CannotReportOwnComment = "CannotReportOwnComment";
+
+    /// <summary>400 — (#305) reason "spam" | "abuse" | "personalInfo" | "other" değil.</summary>
+    public const string InvalidReportReason = "InvalidReportReason";
+
+    /// <summary>400 — (#305) şikayet notu 500 karakterden uzun.</summary>
+    public const string ReportNoteTooLong = "ReportNoteTooLong";
+
+    /// <summary>400 — (#305) şikayet notu / gizleme nedeni geçersiz karakter içeriyor.</summary>
+    public const string ModerationTextInvalidCharacters = "ModerationTextInvalidCharacters";
+
+    /// <summary>400 — (#305) gizleme nedeni boş.</summary>
+    public const string HideReasonRequired = "HideReasonRequired";
+
+    /// <summary>400 — (#305) gizleme nedeni 500 karakterden uzun.</summary>
+    public const string HideReasonTooLong = "HideReasonTooLong";
+
+    /// <summary>403 — (#305) istek sahibi bu yorumun moderatörü değil (sahip / thread'in sorumlu öğretmeni / admin).</summary>
+    public const string NotModerator = "NotModerator";
+
+    /// <summary>403 — (#305) kök yorum gizlendi; thread'e yeni reply yazılamaz.</summary>
+    public const string RootCommentHidden = "RootCommentHidden";
 
     /// <summary>429 — yorum okuma/yazma rate limit'i aşıldı (issue #309; gövde <c>{ message, errorCode }</c>, Retry-After başlığı).</summary>
     public const string RateLimited = "RateLimited";

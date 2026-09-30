@@ -1,0 +1,137 @@
+<section class="rl" *transloco="let t; prefix: 'comments'" [attr.aria-busy]="loading()">
+  @if (showHeading()) {
+    <h3 class="rl__title" data-testid="reports-title">
+      <mat-icon aria-hidden="true">flag</mat-icon>
+      {{ loaded() ? t('reports.title', { count: totalCount() }) : t('reports.titleNoCount') }}
+    </h3>
+  }
+
+  @if (actionError(); as actionMessage) {
+    <p class="rl__action-error" role="alert" data-testid="reports-action-error">{{ actionMessage }}</p>
+  }
+
+  @if (error(); as message) {
+    <div class="rl__state rl__state--error" role="alert" data-testid="reports-error">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <span>{{ message }}</span>
+      <button mat-stroked-button type="button" data-testid="reports-retry" (click)="reload()">{{ t('reports.retry') }}</button>
+    </div>
+  } @else if (loading() && !loaded()) {
+    <div class="rl__state" role="status" data-testid="reports-loading">
+      <mat-spinner diameter="32" />
+      <span>{{ t('reports.loading') }}</span>
+    </div>
+  } @else if (isEmpty()) {
+    <div class="rl__state rl__state--empty" data-testid="reports-empty">
+      <mat-icon class="rl__empty-icon" aria-hidden="true">verified_user</mat-icon>
+      <span>{{ t('reports.empty') }}</span>
+    </div>
+  } @else {
+    @if (loading()) {
+      <mat-progress-bar class="rl__progress" mode="indeterminate" />
+    }
+    <ul class="rl__list" [class.rl__list--stale]="loading()" [attr.aria-label]="t('reports.listAria')">
+      @for (row of rows(); track row.key) {
+        <li class="rl__item" data-testid="report-row" [attr.data-comment-id]="row.comment.id">
+          <div class="rl__head">
+            @if (isAdminList() && row.worksheetTitle) {
+              <bdi dir="auto" class="rl__worksheet" data-testid="report-worksheet">{{ row.worksheetTitle }}</bdi>
+            }
+            <span class="rl__context">
+              {{ row.questionOrder !== null ? t('reports.questionLabel', { order: row.questionOrder }) : t('reports.worksheetLevel') }}
+            </span>
+            <span class="rl__count" data-testid="report-count">
+              <mat-icon aria-hidden="true">flag</mat-icon>
+              {{ row.reportCount === 1 ? t('reports.countOne') : t('reports.count', { count: row.reportCount }) }}
+            </span>
+            @if (row.comment.isHidden) {
+              <span class="rl__chip" data-testid="report-hidden">
+                <mat-icon aria-hidden="true">visibility_off</mat-icon>{{ t('reports.hiddenChip') }}
+              </span>
+            }
+          </div>
+
+          <div class="rl__comment">
+            <bdi dir="auto" class="rl__author">{{ row.comment.authorDisplayName }}</bdi>
+            <p class="rl__body" [class.rl__body--hidden]="row.comment.isHidden" data-testid="report-body"><bdi dir="auto">{{ row.comment.body ?? '' }}</bdi></p>
+            @if (row.comment.isHidden && row.comment.hiddenReason) {
+              <span class="rl__meta" data-testid="report-hidden-reason">
+                {{ t('reports.hiddenReasonLabel') }} <bdi dir="auto">{{ row.comment.hiddenReason }}</bdi>
+              </span>
+            }
+          </div>
+
+          <ul class="rl__reasons" [attr.aria-label]="t('reports.reasonsAria')">
+            @for (entry of row.reasons; track entry.reason) {
+              <li class="rl__reason" [attr.data-reason]="entry.reason">
+                {{ t('reportDialog.reasons.' + entry.reason) }} · {{ entry.count }}
+              </li>
+            }
+          </ul>
+
+          @if (row.notes.length) {
+            <div class="rl__notes">
+              <span class="rl__notes-title">{{ t('reports.notesTitle') }}</span>
+              <ul>
+                @for (note of row.notes; track $index) {
+                  <li><bdi dir="auto">{{ note }}</bdi></li>
+                }
+              </ul>
+            </div>
+          }
+
+          <div class="rl__footer">
+            <span class="rl__meta">{{ t('reports.lastReported', { date: formatDate(row.lastReportedAt) }) }}</span>
+            <span class="rl__actions">
+              <a
+                mat-button
+                class="rl__action"
+                data-testid="report-go"
+                [routerLink]="row.link.commands"
+                [queryParams]="row.link.queryParams"
+              >
+                <mat-icon aria-hidden="true">open_in_new</mat-icon>{{ t('reports.goToComment') }}
+              </a>
+              <!-- Gizle / aç yalnız sunucu `canModerate` derse; aksi hâlde satırda yalnız "Yoruma git" -->
+              @if (row.comment.canModerate && row.comment.isHidden) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="rl__action"
+                  data-testid="report-unhide"
+                  [disabled]="busyId() !== null"
+                  (click)="unhide(row)"
+                >
+                  <mat-icon aria-hidden="true">visibility</mat-icon>{{ t('reports.unhide') }}
+                </button>
+              } @else if (row.comment.canModerate) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="rl__action rl__action--danger"
+                  data-testid="report-hide"
+                  [disabled]="busyId() !== null"
+                  (click)="hide(row)"
+                >
+                  <mat-icon aria-hidden="true">visibility_off</mat-icon>{{ t('reports.hide') }}
+                </button>
+              }
+            </span>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (!error() && totalCount() > pageSizeOptions[0]) {
+    <mat-paginator
+      class="rl__paginator"
+      [length]="totalCount()"
+      [pageIndex]="pageIndex()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="pageSizeOptions"
+      [disabled]="loading()"
+      (page)="onPage($event)"
+    />
+  }
+</section>

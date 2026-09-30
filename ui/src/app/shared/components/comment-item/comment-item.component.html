@@ -11,25 +11,51 @@
       [attr.aria-busy]="view.state === 'sending'"
       tabindex="-1"
     >
-      <span class="ci__avatar" [class.ci__avatar--teacher]="view.comment.authorRole === 'Teacher'" aria-hidden="true">
-        {{ initial(view) }}
-      </span>
+      @if (placeholder(view)) {
+        <!-- Issue #305: gizli yorum — yazar/gövde gösterilmez (sunucu da döndürmez) -->
+        <span class="ci__avatar ci__avatar--removed" aria-hidden="true">
+          <mat-icon>visibility_off</mat-icon>
+        </span>
+      } @else {
+        <span class="ci__avatar" [class.ci__avatar--teacher]="view.comment.authorRole === 'Teacher'" aria-hidden="true">
+          {{ initial(view) }}
+        </span>
+      }
       <div class="ci__main">
         <div class="ci__meta">
-          <span class="ci__author">
-            @if (view.comment.authorDisplayName) {
-              <bdi dir="auto" data-testid="comment-author">{{ view.comment.authorDisplayName }}</bdi>
-            } @else {
-              <span data-testid="comment-author">{{ t('item.you') }}</span>
+          @if (placeholder(view)) {
+            <span class="ci__removed" data-testid="comment-removed">{{ t('item.removed') }}</span>
+          } @else {
+            <span class="ci__author">
+              @if (view.comment.authorDisplayName) {
+                <bdi dir="auto" data-testid="comment-author">{{ view.comment.authorDisplayName }}</bdi>
+              } @else {
+                <span data-testid="comment-author">{{ t('item.you') }}</span>
+              }
+            </span>
+            @if (view.comment.authorRole === 'Teacher') {
+              <span class="ci__teacher-badge" data-testid="teacher-badge">
+                <mat-icon aria-hidden="true">school</mat-icon>{{ t('item.teacherBadge') }}
+              </span>
             }
-          </span>
-          @if (view.comment.authorRole === 'Teacher') {
-            <span class="ci__teacher-badge" data-testid="teacher-badge">
-              <mat-icon aria-hidden="true">school</mat-icon>{{ t('item.teacherBadge') }}
+            @if (view.comment.isMine && view.comment.authorDisplayName) {
+              <span class="ci__mine">{{ t('item.mine') }}</span>
+            }
+          }
+          @if (revealed(view)) {
+            <span class="ci__chip ci__chip--hidden" data-testid="hidden-badge">
+              <mat-icon aria-hidden="true">visibility_off</mat-icon>{{ t('item.hiddenBadge') }}
             </span>
           }
-          @if (view.comment.isMine && view.comment.authorDisplayName) {
-            <span class="ci__mine">{{ t('item.mine') }}</span>
+          @if (reportCount(view); as count) {
+            <span class="ci__chip ci__chip--reports" data-testid="report-count">
+              <mat-icon aria-hidden="true">flag</mat-icon>{{ count === 1 ? t('item.reportCountOne') : t('item.reportCount', { count: count }) }}
+            </span>
+          }
+          @if (view.comment.reportedByMe && !view.comment.isHidden) {
+            <span class="ci__chip" data-testid="reported-by-me">
+              <mat-icon aria-hidden="true">outlined_flag</mat-icon>{{ t('item.reportedByMe') }}
+            </span>
           }
           @if (view.state === 'sent') {
             <time class="ci__time" [attr.datetime]="view.comment.createdAt" [attr.title]="absoluteTime(view)">
@@ -38,9 +64,65 @@
           } @else if (view.state === 'sending') {
             <span class="ci__time" data-testid="comment-sending">{{ t('item.sending') }}</span>
           }
+          @if (hasMenu(view)) {
+            <button
+              mat-icon-button
+              type="button"
+              class="ci__menu-btn"
+              data-testid="comment-menu"
+              [matMenuTriggerFor]="commentMenu"
+              [attr.aria-label]="t('item.menuAria')"
+            >
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #commentMenu="matMenu" xPosition="before">
+              @if (showReport(view)) {
+                <button
+                  mat-menu-item
+                  type="button"
+                  data-testid="menu-report"
+                  [disabled]="view.comment.reportedByMe"
+                  (click)="report.emit(view.key)"
+                >
+                  <mat-icon aria-hidden="true">{{ view.comment.reportedByMe ? 'check' : 'flag' }}</mat-icon>
+                  <span>{{ view.comment.reportedByMe ? t('item.reportedByMe') : t('item.report') }}</span>
+                </button>
+              }
+              @if (showHide(view)) {
+                <button mat-menu-item type="button" data-testid="menu-hide" (click)="hide.emit(view.key)">
+                  <mat-icon aria-hidden="true">visibility_off</mat-icon>
+                  <span>{{ t('item.hide') }}</span>
+                </button>
+              }
+              @if (showUnhide(view)) {
+                <button mat-menu-item type="button" data-testid="menu-unhide" (click)="unhide.emit(view.key)">
+                  <mat-icon aria-hidden="true">visibility</mat-icon>
+                  <span>{{ t('item.unhide') }}</span>
+                </button>
+              }
+            </mat-menu>
+          }
         </div>
 
-        <p class="ci__body" data-testid="comment-body"><bdi dir="auto">{{ view.comment.body }}</bdi></p>
+        @if (!placeholder(view)) {
+          <p class="ci__body" [class.ci__body--hidden]="revealed(view)" data-testid="comment-body"><bdi dir="auto">{{ view.comment.body ?? '' }}</bdi></p>
+        }
+
+        @if (revealed(view)) {
+          <div class="ci__moderation" data-testid="hidden-details">
+            @if (hiddenAtText(view); as hiddenAt) {
+              <span data-testid="hidden-at">{{ t('item.hiddenMeta', { date: hiddenAt }) }}</span>
+            }
+            @if (view.comment.hiddenReason) {
+              <span data-testid="hidden-reason">{{ t('item.hiddenReasonLabel') }} <bdi dir="auto">{{ view.comment.hiddenReason }}</bdi></span>
+            }
+            @if (view.comment.canModerate) {
+              <button mat-stroked-button type="button" class="ci__unhide" data-testid="unhide-button" (click)="unhide.emit(view.key)">
+                <mat-icon aria-hidden="true">visibility</mat-icon>{{ t('item.unhide') }}
+              </button>
+            }
+          </div>
+        }
 
         @if (view.state === 'failed') {
           <div class="ci__failed" role="alert" data-testid="comment-failed">
@@ -96,7 +178,11 @@
         </ul>
       }
 
-      @if (thread().canReply) {
+      @if (rootHidden()) {
+        <p class="ci__lock" role="note" data-testid="root-hidden-lock">
+          <mat-icon aria-hidden="true">lock</mat-icon>{{ t('item.rootHiddenLock') }}
+        </p>
+      } @else if (thread().canReply) {
         @if (replyOpen()) {
           <app-comment-composer
             class="ci__reply-composer"

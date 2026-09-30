@@ -25,7 +25,13 @@
     "loadMore": "Daha fazla yorum yükle",
     "loadMoreError": "Daha fazla yorum yüklenemedi.",
     "announceSent": "Yorumun gönderildi.",
-    "announceReplySent": "Cevabın gönderildi."
+    "announceReplySent": "Cevabın gönderildi.",
+    "moderatorView": "Moderasyon görünümü",
+    "moderatorViewHint": "Gizlenen yorumların içeriğini ve gizleme nedenini gösterir.",
+    "announceReported": "Şikayetin alındı.",
+    "announceAlreadyReported": "Bu yorumu zaten şikayet etmiştin.",
+    "announceHidden": "Yorum gizlendi.",
+    "announceUnhidden": "Yorum yeniden görünür."
   },
   "composer": {
     "ariaLabel": "Yorum veya soru yaz",
@@ -35,7 +41,10 @@
     "send": "Gönder",
     "counterAria": "{{max}} karakterden {{count}} karakter kullanıldı",
     "tooLong": "En fazla {{max}} karakter yazabilirsin.",
-    "shortcutHint": "Göndermek için Ctrl+Enter"
+    "shortcutHint": "Göndermek için Ctrl+Enter",
+    "piiWarning": "Mesajında telefon numarası ya da e-posta var gibi görünüyor. Kişisel bilgilerini herkese açık yorumlarda paylaşmamanı öneririz.",
+    "piiConfirmHint": "Göndermek istediğine emin misin?",
+    "sendAnyway": "Yine de gönder"
   },
   "item": {
     "teacherBadge": "Öğretmen",
@@ -49,7 +58,19 @@
     "edit": "Düzenle",
     "showOlder": "Önceki cevapları göster ({{count}})",
     "olderError": "Önceki cevaplar yüklenemedi.",
-    "repliesAria": "Cevaplar"
+    "repliesAria": "Cevaplar",
+    "removed": "Bu yorum kaldırıldı.",
+    "hiddenBadge": "Gizli",
+    "hiddenMeta": "Gizlendi: {{date}}",
+    "hiddenReasonLabel": "Neden:",
+    "unhide": "Gizlemeyi kaldır",
+    "reportedByMe": "Şikayet edildi",
+    "reportCountOne": "1 şikayet",
+    "reportCount": "{{count}} şikayet",
+    "menuAria": "Yorum işlemleri",
+    "report": "Şikayet et",
+    "hide": "Gizle",
+    "rootHiddenLock": "Bu yorum kaldırıldığı için yeni cevap yazılamaz."
   },
   "errors": {
     "rateLimited": "Çok hızlı işlem yapıyorsun. Lütfen biraz bekleyip tekrar dene.",
@@ -70,7 +91,77 @@
       "WorksheetNotStarted": "Önce testi başlatmalısın.",
       "QuestionNotAnswered": "Önce soruyu cevaplamalısın.",
       "NotResponsibleTeacher": "Bu konuşmaya cevap yazma yetkin yok.",
-      "RateLimited": "Çok hızlı işlem yapıyorsun. Lütfen biraz bekleyip tekrar dene."
+      "RateLimited": "Çok hızlı işlem yapıyorsun. Lütfen biraz bekleyip tekrar dene.",
+      "CommentNotFound": "Yorum bulunamadı.",
+      "CannotReportOwnComment": "Kendi yorumunu şikayet edemezsin.",
+      "InvalidReportReason": "Geçerli bir şikayet nedeni seç.",
+      "ReportNoteTooLong": "Not en fazla 500 karakter olabilir.",
+      "ModerationTextInvalidCharacters": "Metin geçersiz karakterler içeriyor.",
+      "HideReasonRequired": "Gizleme nedeni zorunlu.",
+      "HideReasonTooLong": "Gizleme nedeni en fazla 500 karakter olabilir.",
+      "NotModerator": "Bu yorumu yönetme yetkin yok.",
+      "RootCommentHidden": "Bu yorum kaldırıldığı için yeni cevap yazılamaz."
+    }
+  },
+  "reportDialog": {
+    "title": "Yorumu şikayet et",
+    "intro": "Şikayetin moderatörlere iletilir; kimliğin yorum sahibine gösterilmez.",
+    "reasonLabel": "Şikayet nedeni",
+    "reasons": {
+      "spam": "Spam ya da reklam",
+      "abuse": "Hakaret, zorbalık ya da taciz",
+      "personalInfo": "Kişisel bilgi paylaşımı",
+      "other": "Diğer"
+    },
+    "noteLabel": "Not (isteğe bağlı)",
+    "notePlaceholder": "Moderatörün bilmesi gereken bir şey var mı?",
+    "noteTooLong": "Not en fazla {{max}} karakter olabilir.",
+    "cancel": "Vazgeç",
+    "submit": "Şikayet et",
+    "submitting": "Gönderiliyor…",
+    "error": "Şikayet gönderilemedi."
+  },
+  "hideDialog": {
+    "title": "Yorumu gizle",
+    "intro": "Yorum herkese \"Bu yorum kaldırıldı\" olarak görünür; içeriği ve nedeni yalnız moderatörler görür. Gizlemeyi sonra kaldırabilirsin.",
+    "reasonLabel": "Gizleme nedeni",
+    "reasonPlaceholder": "Örn. kişisel bilgi paylaşımı",
+    "required": "Gizleme nedeni zorunlu.",
+    "tooLong": "Neden en fazla {{max}} karakter olabilir.",
+    "cancel": "Vazgeç",
+    "submit": "Gizle",
+    "submitting": "Gizleniyor…",
+    "error": "Yorum gizlenemedi."
+  },
+  "reports": {
+    "title": "Şikayetler ({{count}})",
+    "titleNoCount": "Şikayetler",
+    "loading": "Şikayetler yükleniyor…",
+    "loadError": "Şikayetler yüklenemedi.",
+    "retry": "Tekrar dene",
+    "empty": "Şikayet edilmiş yorum yok.",
+    "count": "{{count}} şikayet",
+    "countOne": "1 şikayet",
+    "lastReported": "Son şikayet: {{date}}",
+    "reasonsAria": "Şikayet nedenleri",
+    "notesTitle": "Notlar",
+    "hiddenChip": "Gizli",
+    "hiddenReasonLabel": "Gizleme nedeni:",
+    "goToComment": "Yoruma git",
+    "hide": "Gizle",
+    "unhide": "Gizlemeyi kaldır",
+    "unhideError": "Gizleme kaldırılamadı.",
+    "questionLabel": "Soru {{order}}",
+    "worksheetLevel": "Test yorumu",
+    "listAria": "Şikayet edilen yorumlar",
+    "paginator": {
+      "itemsPerPage": "Sayfa başına",
+      "next": "Sonraki sayfa",
+      "previous": "Önceki sayfa",
+      "first": "İlk sayfa",
+      "last": "Son sayfa",
+      "range": "{{start}}–{{end}} / {{length}}",
+      "rangeEmpty": "0 / {{length}}"
     }
   }
 }

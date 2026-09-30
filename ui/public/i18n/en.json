@@ -71,7 +71,8 @@
       "adminSchools": "Schools",
       "adminBadgeDefinitions": "Badges",
       "help": "Help",
-      "feedback": "Feedback"
+      "feedback": "Feedback",
+      "adminCommentReports": "Comment Reports"
     },
     "bottomNav": {
       "home": "Home",

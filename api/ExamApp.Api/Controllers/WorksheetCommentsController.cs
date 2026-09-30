@@ -84,6 +84,88 @@ public class WorksheetCommentsController : BaseController
         return StatusCode(StatusCodes.Status201Created, result.Comment);
     }
 
+    // ---- issue #305: moderasyon -----------------------------------------------------------------------------
+
+    /// <summary>
+    /// Yorumu şikayet et: gövde <c>{ reason: "spam"|"abuse"|"personalInfo"|"other", note? (≤500) }</c>. 200 + <c>alreadyReported</c>
+    /// (tekrar şikayet idempotent). Kendi yorumu 403, kapsam dışı/yok 404. Yazma kovasını paylaşır.
+    /// </summary>
+    [HttpPost("{commentId:int}/report")]
+    [Authorize(Roles = "Student,Teacher")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)]
+    [EnableRateLimiting(WorksheetCommentWriteRateLimiting.Policy)]
+    public async Task<IActionResult> Report(int worksheetId, int commentId, [FromBody] ReportWorksheetCommentDto dto, CancellationToken ct)
+    {
+        var actor = await ResolveActorAsync(ct);
+        if (actor == null)
+            return ActorNotResolved();
+
+        var result = await _comments.ReportAsync(worksheetId, commentId, dto, actor, ct);
+        return result.Success ? Ok(result) : MapFailure(result);
+    }
+
+    /// <summary>
+    /// Yorumu gizle (soft moderasyon): gövde <c>{ reason (1..500) }</c>. Worksheet sahibi, thread'in sorumlu öğretmeni ya da admin.
+    /// 200 + moderatör görünümündeki yorum. Audit: AdminUserActionLogs (TargetType=WorksheetComment, CommentHidden).
+    /// </summary>
+    [HttpPost("{commentId:int}/hide")]
+    [Authorize(Roles = "Teacher,Admin")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)]
+    [EnableRateLimiting(WorksheetCommentWriteRateLimiting.Policy)]
+    public async Task<IActionResult> Hide(int worksheetId, int commentId, [FromBody] HideWorksheetCommentDto dto, CancellationToken ct)
+    {
+        var actor = await ResolveActorAsync(ct);
+        if (actor == null)
+            return ActorNotResolved();
+
+        var result = await _comments.SetHiddenAsync(worksheetId, commentId, hidden: true, dto, actor, ct);
+        return result.Success ? Ok(result.Comment) : MapFailure(result);
+    }
+
+    /// <summary>Gizlenen yorumu yeniden görünür yap (gövde yok). Yetki ve audit gizleme ile aynı (CommentUnhidden).</summary>
+    [HttpPost("{commentId:int}/unhide")]
+    [Authorize(Roles = "Teacher,Admin")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)]
+    [EnableRateLimiting(WorksheetCommentWriteRateLimiting.Policy)]
+    public async Task<IActionResult> Unhide(int worksheetId, int commentId, CancellationToken ct)
+    {
+        var actor = await ResolveActorAsync(ct);
+        if (actor == null)
+            return ActorNotResolved();
+
+        var result = await _comments.SetHiddenAsync(worksheetId, commentId, hidden: false, dto: null, actor, ct);
+        return result.Success ? Ok(result.Comment) : MapFailure(result);
+    }
+
+    /// <summary>Bu worksheet'te istek sahibinin moderatörü olduğu şikayet edilmiş yorumlar (son şikayet önce, page/pageSize).</summary>
+    [HttpGet("reports")]
+    [Authorize(Roles = "Teacher,Admin")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)]
+    [EnableRateLimiting(WorksheetCommentReadRateLimiting.Policy)]
+    public async Task<IActionResult> GetReports(int worksheetId, [FromQuery] WorksheetCommentReportsQueryDto query, CancellationToken ct)
+    {
+        var actor = await ResolveActorAsync(ct);
+        if (actor == null)
+            return ActorNotResolved();
+
+        var result = await _comments.GetReportsAsync(worksheetId, query, actor, ct);
+        return result.Success ? Ok(result.Page) : MapFailure(result);
+    }
+
+    /// <summary>Admin: tüm worksheet'lerde şikayet edilmiş yorumlar (son şikayet önce, page/pageSize). Gateway: /api/exam/admin/comments/reports.</summary>
+    [HttpGet("~/api/admin/comments/reports")]
+    [Authorize(Roles = "Admin")]
+    [EnableRateLimiting(WorksheetCommentReadRateLimiting.Policy)]
+    public async Task<IActionResult> GetAllReports([FromQuery] WorksheetCommentReportsQueryDto query, CancellationToken ct)
+    {
+        var actor = await ResolveActorAsync(ct);
+        if (actor == null)
+            return ActorNotResolved();
+
+        var result = await _comments.GetReportsAsync(worksheetId: null, query, actor, ct);
+        return result.Success ? Ok(result.Page) : MapFailure(result);
+    }
+
     /// <summary>
     /// Aktör: öğrenci/öğretmen dalı JWT ile doğrulanmış etkin rolden (<see cref="EffectiveRole"/>, #277). Servis hesabı
     /// yorum yazmaz/okumaz (CreateUserId=0 kayıt üretirdi, #222 D2). Profil çözülemezse (Id &lt;= 0) null.
@@ -107,7 +189,10 @@ public class WorksheetCommentsController : BaseController
     private IActionResult ActorNotResolved() =>
         IsServiceAccount ? Forbid() : UserNotResolved(new { message = _localizer["exam.unauthenticated"].Value });
 
-    /// <summary>ResponseBaseDto bayraklarını HTTP koduna çevirir (404 / 403 / 400). Gövde errorCode + message taşır.</summary>
+    /// <summary>
+    /// ResponseBaseDto bayraklarını HTTP koduna çevirir (404 / 403 / 400). Gövde errorCode + message taşır. issue #305:
+    /// öğrenciye erişemediği worksheet için de 404 (WorksheetNotFound) döner.
+    /// </summary>
     private IActionResult MapFailure(WorksheetCommentResponseDto result)
     {
         if (result.NotFound)

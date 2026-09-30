@@ -16,7 +16,7 @@ namespace ExamApp.Api.Tests.Services;
 /// issue #105 (dilim 1): yorum-soru thread'i — toggle/override, çözme şartı, ilgili öğretmen cevabı, görünürlük,
 /// tek seviye reply, gövde doğrulama, sayfalama, retire ve DTO'da kişisel veri olmaması.
 /// </summary>
-public class WorksheetCommentServiceTests : IDisposable
+public partial class WorksheetCommentServiceTests : IDisposable
 {
     private const int Owner = 5000;          // worksheet sahibi
     private const int Assigner = 6000;       // öğrenci A'ya atama yapan öğretmen
@@ -24,6 +24,7 @@ public class WorksheetCommentServiceTests : IDisposable
     private const int StudentAUser = 101;    // atamalı öğrenci
     private const int StudentBUser = 102;    // atamasız, aynı sınıf (keşfet ile erişir)
     private const int OutsiderUser = 103;    // başka sınıf, erişimi yok
+    private const int ForeignTeacher = 7100; // #305: başka okuldaki öğretmen
 
     private readonly TestDb _db = TestDb.Create();
     private readonly IAuthApiClient _authApi = Substitute.For<IAuthApiClient>();
@@ -61,7 +62,7 @@ public class WorksheetCommentServiceTests : IDisposable
     private static readonly WorksheetCommentActor AdminReader = new(9000, "kc-9000", "Admin", WorksheetCommentActorKind.AdminReader, true);
 
     private sealed record World(int GradeId, int WorksheetId, int OtherWorksheetId, int Q1, int Q2, int QForeign,
-        int Wq1, int Wq2, int StudentA, int StudentB, int AssignmentId, int AnswerQ1);
+        int Wq1, int Wq2, int StudentA, int StudentB, int AssignmentId, int AnswerQ1, int SchoolId = 0, int OtherSchoolId = 0);
 
     private async Task<World> SeedAsync(bool commentsEnabled = true, bool? assignmentOverride = null,
         WorksheetTeacherSharing sharing = WorksheetTeacherSharing.Private)
@@ -70,7 +71,16 @@ public class WorksheetCommentServiceTests : IDisposable
         var grade = new Grade { Name = "5" };
         var otherGrade = new Grade { Name = "6" };
         var school = new School { Name = "Okul" };
-        ctx.AddRange(grade, otherGrade, school);
+        var otherSchool = new School { Name = "Diğer Okul" };
+        ctx.AddRange(grade, otherGrade, school, otherSchool);
+        await ctx.SaveChangesAsync();
+
+        // issue #305 (okul kapsamı): sahip/atayan/ilgisiz öğretmen öğrencilerle aynı okulda; ForeignTeacher başka okulda.
+        ctx.Teachers.AddRange(
+            new Teacher { UserId = Owner, SchoolId = school.Id },
+            new Teacher { UserId = Assigner, SchoolId = school.Id },
+            new Teacher { UserId = Unrelated, SchoolId = school.Id },
+            new Teacher { UserId = ForeignTeacher, SchoolId = otherSchool.Id });
         await ctx.SaveChangesAsync();
 
         ctx.SetCurrentUser(Owner);
@@ -110,7 +120,7 @@ public class WorksheetCommentServiceTests : IDisposable
         await ctx.SaveChangesAsync();
 
         return new World(grade.Id, ws.Id, otherWs.Id, q1.Id, q2.Id, qForeign.Id, wq1.Id, wq2.Id, studentA.Id, studentB.Id,
-            assignment.Id, a1.Id);
+            assignment.Id, a1.Id, school.Id, otherSchool.Id);
     }
 
     /// <summary>Öğrenci worksheet'i başlatır; <paramref name="answerQ1"/> ile Q1'i cevaplar (seçmeli veya payload).</summary>
@@ -455,14 +465,14 @@ public class WorksheetCommentServiceTests : IDisposable
     // ---- Görünürlük -----------------------------------------------------------------------------------------
 
     [Fact]
-    public async Task Student_without_access_gets_forbidden()
+    public async Task Student_without_access_gets_not_found_like_a_missing_worksheet()
     {
         var w = await SeedAsync();
         Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "soru"));
 
-        ShouldFail(await GetAsync(w.WorksheetId, Student(OutsiderUser)), WorksheetCommentErrorCodes.AccessDenied, forbidden: true);
-        ShouldFail(await PostAsync(w.WorksheetId, Student(OutsiderUser), "x"), WorksheetCommentErrorCodes.AccessDenied, forbidden: true);
-        ShouldFail(await GetAsync(w.WorksheetId, Student(424242)), WorksheetCommentErrorCodes.AccessDenied, forbidden: true);
+        ShouldFail(await GetAsync(w.WorksheetId, Student(OutsiderUser)), WorksheetCommentErrorCodes.WorksheetNotFound, notFound: true);
+        ShouldFail(await PostAsync(w.WorksheetId, Student(OutsiderUser), "x"), WorksheetCommentErrorCodes.WorksheetNotFound, notFound: true);
+        ShouldFail(await GetAsync(w.WorksheetId, Student(424242)), WorksheetCommentErrorCodes.WorksheetNotFound, notFound: true);
     }
 
     [Fact]
@@ -789,11 +799,11 @@ public class WorksheetCommentServiceTests : IDisposable
         await RetireAsync(w.WorksheetId);
 
         // B: grade uyumlu + Normal (CanStudentStartTest true) ama instance yok → retired'da geçersiz.
-        ShouldFail(await GetAsync(w.WorksheetId, Student(StudentBUser)), WorksheetCommentErrorCodes.AccessDenied, forbidden: true);
-        ShouldFail(await PostAsync(w.WorksheetId, Student(StudentBUser), "x"), WorksheetCommentErrorCodes.AccessDenied, forbidden: true);
+        ShouldFail(await GetAsync(w.WorksheetId, Student(StudentBUser)), WorksheetCommentErrorCodes.WorksheetNotFound, notFound: true);
+        ShouldFail(await PostAsync(w.WorksheetId, Student(StudentBUser), "x"), WorksheetCommentErrorCodes.WorksheetNotFound, notFound: true);
         // A: aktif ataması var ama instance yok → yine kapalı.
-        ShouldFail(await GetAsync(w.WorksheetId, Student(StudentAUser)), WorksheetCommentErrorCodes.AccessDenied, forbidden: true);
-        ShouldFail(await GetRepliesAsync(w.WorksheetId, root, Student(StudentBUser)), WorksheetCommentErrorCodes.AccessDenied, forbidden: true);
+        ShouldFail(await GetAsync(w.WorksheetId, Student(StudentAUser)), WorksheetCommentErrorCodes.WorksheetNotFound, notFound: true);
+        ShouldFail(await GetRepliesAsync(w.WorksheetId, root, Student(StudentBUser)), WorksheetCommentErrorCodes.WorksheetNotFound, notFound: true);
 
         // Instance'ı olan öğrenci okur ve yazar; öğretmen kuralları değişmez.
         await StartAsync(w, w.StudentB);
@@ -954,7 +964,7 @@ public class WorksheetCommentServiceTests : IDisposable
         ShouldFail(await GetRepliesAsync(w.WorksheetId, replies[0], Student(StudentBUser)), WorksheetCommentErrorCodes.RootCommentNotFound, notFound: true);
         ShouldFail(await GetRepliesAsync(w.WorksheetId, otherRoot, Student(StudentBUser)), WorksheetCommentErrorCodes.RootCommentNotFound, notFound: true);
         ShouldFail(await GetRepliesAsync(w.WorksheetId, 999_999, Student(StudentBUser)), WorksheetCommentErrorCodes.RootCommentNotFound, notFound: true);
-        ShouldFail(await GetRepliesAsync(w.WorksheetId, root, Student(OutsiderUser)), WorksheetCommentErrorCodes.AccessDenied, forbidden: true);
+        ShouldFail(await GetRepliesAsync(w.WorksheetId, root, Student(OutsiderUser)), WorksheetCommentErrorCodes.WorksheetNotFound, notFound: true);
         ShouldFail(await GetRepliesAsync(w.WorksheetId, root, Teacher(Unrelated)), WorksheetCommentErrorCodes.WorksheetNotFound, notFound: true);
 
         (await GetRepliesAsync(w.WorksheetId, root, Teacher(Assigner))).Page!.CanReply.ShouldBeTrue();

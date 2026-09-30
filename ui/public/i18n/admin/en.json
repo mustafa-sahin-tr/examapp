@@ -626,5 +626,10 @@
       "rateLimitedSeconds": "Too many account changes in a short time. Please try again in {{seconds}} seconds.",
       "generic": "Something went wrong while updating the teacher approval. Please try again."
     }
+  },
+  "commentReports": {
+    "title": "Comment reports",
+    "subtitle": "Reported comments across all tests. Hidden comments appear as \"removed\" to everyone; content and reason are visible to moderators only.",
+    "refresh": "Refresh"
   }
 }

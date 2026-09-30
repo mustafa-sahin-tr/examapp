@@ -3,6 +3,8 @@ import { ComponentFixture, TestBed, discardPeriodicTasks, fakeAsync, tick } from
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { of } from 'rxjs';
 
 import {
   COMMENT_CONTEXT_DEBOUNCE_MS,
@@ -837,5 +839,202 @@ describe('CommentThreadComponent (issue #105)', () => {
     flushThread(page());
 
     expect(q('teacher-disabled-notice')?.textContent).toContain('Worksheet varsayılanı');
+  });
+
+  // ---- Issue #305: moderasyon ---------------------------------------------------------------------------------
+
+  describe('moderation (issue #305)', () => {
+    const hiddenRoot = (overrides: Partial<WorksheetCommentRoot> = {}) =>
+      root({ isHidden: true, body: null, authorDisplayName: 'Kaldırıldı', canReply: false, ...overrides });
+
+    function stubDialog(result: unknown): jasmine.Spy {
+      const dialog = fixture.debugElement.injector.get(MatDialog);
+      return spyOn(dialog, 'open').and.returnValue({ afterClosed: () => of(result) } as MatDialogRef<unknown>);
+    }
+
+    it('student_NoModeratorToggle; firstLoadWithoutModeratorView', () => {
+      create();
+      const req = expectThread();
+      expect(req.request.params.has('moderatorView')).toBeFalse();
+      req.flush(page({ items: [root()] }));
+      fixture.detectChanges();
+
+      expect(q('moderator-view-toggle')).toBeNull();
+    });
+
+    it('moderatorToggle_ReloadsWithModeratorViewAndRevealsHiddenContent', () => {
+      create({ canModerateView: true, viewerIsTeacher: true });
+      flushThread(page({ items: [hiddenRoot({ canModerate: true })] }));
+      expect(q('comment-removed')).not.toBeNull();
+
+      const toggle = q('moderator-view-toggle')!;
+      expect(toggle.textContent).toContain(commentsTr.thread.moderatorView);
+      toggle.querySelector<HTMLButtonElement>('button')!.click();
+      fixture.detectChanges();
+
+      const req = expectThread();
+      expect(req.request.params.get('moderatorView')).toBe('true');
+      req.flush(
+        page({ items: [hiddenRoot({ canModerate: true, body: 'gizli metin', authorDisplayName: 'Ali K.', hiddenReason: 'spam' })] })
+      );
+      fixture.detectChanges();
+
+      expect(q('comment-removed')).toBeNull();
+      expect(q('comment-body')?.textContent).toContain('gizli metin');
+      expect(q('hidden-reason')?.textContent).toContain('spam');
+    });
+
+    it('moderatorView_OlderRepliesAlsoRequestModeratorView', () => {
+      create({ canModerateView: true, moderatorByDefault: true });
+      flushThread(page({ items: [root({ replyCount: 7 })] }));
+      q('moderator-view-toggle')!.querySelector<HTMLButtonElement>('button')!.click();
+      fixture.detectChanges();
+      expectThread().flush(page({ items: [root({ replyCount: 7 })] }));
+      fixture.detectChanges();
+
+      q('load-older-replies')!.click();
+      const req = http.expectOne((r) => r.url === `${BASE}/1/replies`);
+      expect(req.request.params.get('moderatorView')).toBe('true');
+      req.flush({ items: [], nextCursor: null, canReply: true, replyCount: 7 });
+    });
+
+    it('hiddenRoot_NoReplyButton_ShowsLock', () => {
+      create({ viewerIsTeacher: true });
+      flushThread(page({ items: [hiddenRoot({ replies: [comment({ id: 3, parentCommentId: 1, body: 'cevap' })], replyCount: 1 })] }));
+
+      expect(q('reply-button')).toBeNull();
+      expect(q('root-hidden-lock')).not.toBeNull();
+      expect(qa('comment-body').map((b) => b.textContent?.trim())).toEqual(['cevap']);
+    });
+
+    it('report_OpensDialogWithIds_MarksReportedAndAnnounces', () => {
+      create();
+      flushThread(page({ items: [root({ id: 9 })] }));
+      const open = stubDialog({ alreadyReported: false, reportedByMe: true });
+
+      q('comment-menu')!.click();
+      fixture.detectChanges();
+      document.querySelector<HTMLButtonElement>('.mat-mdc-menu-panel [data-testid="menu-report"]')!.click();
+      fixture.detectChanges();
+
+      expect(open).toHaveBeenCalledTimes(1);
+      expect(open.calls.mostRecent().args[1]).toEqual(jasmine.objectContaining({ data: { worksheetId: 12, commentId: 9 } }));
+      expect(q('reported-by-me')).not.toBeNull();
+      expect(q('comments-announcer')?.textContent).toContain(commentsTr.thread.announceReported);
+    });
+
+    it('report_Cancelled_NoChange', () => {
+      create();
+      flushThread(page({ items: [root({ id: 9 })] }));
+      stubDialog(undefined);
+
+      q('comment-menu')!.click();
+      fixture.detectChanges();
+      document.querySelector<HTMLButtonElement>('.mat-mdc-menu-panel [data-testid="menu-report"]')!.click();
+      fixture.detectChanges();
+
+      expect(q('reported-by-me')).toBeNull();
+    });
+
+    it('hideRoot_ReplacesWithServerComment_ClosesReplies', () => {
+      create({ canModerateView: true, viewerIsTeacher: true });
+      flushThread(page({ items: [root({ id: 9, canModerate: true, reportCount: 2 })] }));
+      expect(q('reply-button')).not.toBeNull();
+      stubDialog({ ...comment({ id: 9 }), isHidden: true, canModerate: true, hiddenReason: 'spam', reportCount: 2 });
+
+      q('comment-menu')!.click();
+      fixture.detectChanges();
+      document.querySelector<HTMLButtonElement>('.mat-mdc-menu-panel [data-testid="menu-hide"]')!.click();
+      fixture.detectChanges();
+
+      expect(q('comment-removed')).not.toBeNull();
+      expect(q('reply-button')).toBeNull();
+      expect(q('root-hidden-lock')).not.toBeNull();
+      expect(q('comments-announcer')?.textContent).toContain(commentsTr.thread.announceHidden);
+    });
+
+    it('unhideReply_PostsAndReplaces; errorShownInStrip', () => {
+      create({ canModerateView: true });
+      flushThread(
+        page({
+          items: [root({ id: 1, replies: [comment({ id: 4, parentCommentId: 1, isHidden: true, body: null, canModerate: true })], replyCount: 1 })],
+        })
+      );
+
+      qa('comment-menu')[1].click();
+      fixture.detectChanges();
+      document.querySelector<HTMLButtonElement>('.mat-mdc-menu-panel [data-testid="menu-unhide"]')!.click();
+      http.expectOne(`${BASE}/4/unhide`).flush({ message: 'Yetkin yok.', errorCode: 'NotModerator' }, { status: 403, statusText: 'Forbidden' });
+      fixture.detectChanges();
+      expect(q('moderation-error')?.textContent).toContain('Yetkin yok.');
+
+      qa('comment-menu')[1].click();
+      fixture.detectChanges();
+      document.querySelector<HTMLButtonElement>('.mat-mdc-menu-panel [data-testid="menu-unhide"]')!.click();
+      http.expectOne(`${BASE}/4/unhide`).flush(comment({ id: 4, parentCommentId: 1, body: 'geri geldi', canModerate: true, isHidden: false }));
+      fixture.detectChanges();
+
+      expect(q('moderation-error')).toBeNull();
+      expect(qa('comment-body').map((b) => b.textContent?.trim())).toContain('geri geldi');
+    });
+
+    it('toggle_TeacherWithoutModeratableComment_Hidden; ownerOrAdmin_Shown', () => {
+      create({ canModerateView: true, viewerIsTeacher: true });
+      flushThread(page({ items: [root({ canModerate: false })] }));
+      expect(q('moderator-view-toggle')).toBeNull();
+
+      TestBed.resetTestingModule();
+      create({ canModerateView: true, moderatorByDefault: true });
+      expect(q('moderator-view-toggle')).not.toBeNull();
+      flushThread(page());
+      expect(q('moderator-view-toggle')).not.toBeNull();
+
+      TestBed.resetTestingModule();
+      create({ canModerateView: true });
+      flushThread(page({ items: [root({ replies: [comment({ id: 2, parentCommentId: 1, canModerate: true })], replyCount: 1 })] }));
+      expect(q('moderator-view-toggle')).not.toBeNull();
+    });
+
+    it('toggleOff_HiddenCommentStaysPlaceholderEvenIfServerReturnsBody', () => {
+      create({ canModerateView: true, viewerIsTeacher: true });
+      flushThread(page({ items: [root({ id: 9, canModerate: true })] }));
+      // Gizleme yanıtı moderatör görünümündeki yorumdur (gövde + gerçek ad) — anahtar kapalıyken gösterilmemeli.
+      stubDialog({ ...comment({ id: 9, body: 'gizlenen gövde', authorDisplayName: 'Ali K.' }), isHidden: true, canModerate: true, hiddenReason: 'spam' });
+
+      q('comment-menu')!.click();
+      fixture.detectChanges();
+      document.querySelector<HTMLButtonElement>('.mat-mdc-menu-panel [data-testid="menu-hide"]')!.click();
+      fixture.detectChanges();
+
+      expect(q('comment-removed')).not.toBeNull();
+      expect(q('comment-body')).toBeNull();
+      expect(el().textContent).not.toContain('gizlenen gövde');
+      expect(q('hidden-reason')).toBeNull();
+    });
+
+    it('unhideRoot_ReloadsThread', () => {
+      create({ canModerateView: true, viewerIsTeacher: true });
+      flushThread(page({ items: [hiddenRoot({ id: 9, canModerate: true })] }));
+      expect(q('reply-button')).toBeNull();
+
+      q('comment-menu')!.click();
+      fixture.detectChanges();
+      document.querySelector<HTMLButtonElement>('.mat-mdc-menu-panel [data-testid="menu-unhide"]')!.click();
+      http.expectOne(`${BASE}/9/unhide`).flush(root({ id: 9, canModerate: true, isHidden: false }));
+      fixture.detectChanges();
+
+      // Kök açılınca canReply bilinmediği için thread yeniden yüklenir.
+      flushThread(page({ items: [root({ id: 9, canModerate: true, canReply: true })] }));
+      expect(q('comment-removed')).toBeNull();
+      expect(q('reply-button')).not.toBeNull();
+      expect(q('comments-announcer')?.textContent).toContain(commentsTr.thread.announceUnhidden);
+    });
+
+    it('canReportFalse_PassesToItems', () => {
+      create({ canReport: false });
+      flushThread(page({ items: [root()] }));
+
+      expect(q('comment-menu')).toBeNull();
+    });
   });
 });

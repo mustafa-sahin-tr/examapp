@@ -26,10 +26,28 @@ export interface WorksheetComment {
   authorDisplayName: string;
   authorRole: WorksheetCommentAuthorRole;
   isMine: boolean;
-  /** Düz metin (en fazla 2000 karakter). Asla HTML olarak yorumlanmaz. */
-  body: string;
+  /**
+   * Düz metin (en fazla 2000 karakter). Asla HTML olarak yorumlanmaz.
+   * Issue #305: gizli yorumda null (moderatör görünümü hariç) — `isHidden` ile birlikte okunur.
+   */
+  body: string | null;
   /** ISO 8601, UTC. */
   createdAt: string;
+  /**
+   * Issue #305: yorum moderasyonla gizlendi. Thread'de "kaldırıldı" yer tutucusu olarak kalır; `body` null,
+   * `authorDisplayName` sabit metin (moderatör görünümünde gerçek değerler). Eski sunucuda alan yok → görünür sayılır.
+   */
+  isHidden?: boolean;
+  /** Issue #305: istek sahibi bu yorumu şikayet etti mi. */
+  reportedByMe?: boolean;
+  /** Issue #305: istek sahibi bu yorumu gizleyebilir/açabilir mi (worksheet sahibi, sorumlu öğretmen, admin). */
+  canModerate?: boolean;
+  /** Issue #305: aktif şikayet sayısı — yalnız `canModerate` ise dolu, diğerlerine null. */
+  reportCount?: number | null;
+  /** Issue #305: gizleme nedeni — yalnız moderatör görünümünde ve gizli yorumda dolu. */
+  hiddenReason?: string | null;
+  /** Issue #305: gizlenme anı (ISO 8601, UTC) — yalnız moderatör görünümünde ve gizli yorumda dolu. */
+  hiddenAt?: string | null;
 }
 
 /** `WorksheetCommentThreadDto` — kök yorum + en son en fazla 5 reply (eskiden yeniye). */
@@ -91,11 +109,75 @@ export interface WorksheetCommentQuery {
   questionId?: number | null;
   cursor?: string | null;
   take?: number;
+  /**
+   * Issue #305: moderatör görünümü — moderatörü olunan GİZLİ yorumların gövdesi, yazar adı ve gizleme nedeni döner.
+   * Moderatör olmayanda sunucuda etkisiz.
+   */
+  moderatorView?: boolean;
 }
 
 export interface WorksheetCommentRepliesQuery {
   cursor?: string | null;
   take?: number;
+  /** Issue #305: bkz. {@link WorksheetCommentQuery.moderatorView}. */
+  moderatorView?: boolean;
+}
+
+// ---- Issue #305: moderasyon --------------------------------------------------------------------------------
+
+/** `ReportWorksheetCommentDto.Reason` değerleri. */
+export const WORKSHEET_COMMENT_REPORT_REASONS = ['spam', 'abuse', 'personalInfo', 'other'] as const;
+export type WorksheetCommentReportReason = (typeof WORKSHEET_COMMENT_REPORT_REASONS)[number];
+
+/** Şikayet notu ve gizleme nedeni üst sınırı (`WorksheetCommentService` doğrulaması). */
+export const WORKSHEET_COMMENT_REPORT_NOTE_MAX_LENGTH = 500;
+export const WORKSHEET_COMMENT_HIDE_REASON_MAX_LENGTH = 500;
+
+/** `ReportWorksheetCommentDto` — POST .../comments/{commentId}/report gövdesi. */
+export interface ReportWorksheetCommentRequest {
+  reason: WorksheetCommentReportReason;
+  note?: string | null;
+}
+
+/** `WorksheetCommentReportResultDto` — şikayet yanıtı (200). Tekrar şikayet idempotent: `alreadyReported` true. */
+export interface WorksheetCommentReportResult {
+  alreadyReported: boolean;
+  reportedByMe: boolean;
+}
+
+/** `HideWorksheetCommentDto` — POST .../comments/{commentId}/hide gövdesi. */
+export interface HideWorksheetCommentRequest {
+  reason: string;
+}
+
+/** `WorksheetCommentReportReasonCountsDto`. */
+export type WorksheetCommentReportReasonCounts = Record<WorksheetCommentReportReason, number>;
+
+/** `WorksheetCommentReportItemDto` — şikayet edilmiş tek yorum (moderatör listesi; şikayet edenlerin kimliği yok). */
+export interface WorksheetCommentReportItem {
+  /** Moderatör görünümündeki yorum (gizliyse de gövde, gerçek yazar adı ve gizleme nedeni). */
+  comment: WorksheetComment;
+  worksheetTitle: string;
+  reportCount: number;
+  reasons: WorksheetCommentReportReasonCounts;
+  /** ISO 8601, UTC. */
+  lastReportedAt: string;
+  /** En yeni en fazla 3 şikayet notu (yeniden eskiye). */
+  notes: string[];
+}
+
+/** `WorksheetCommentReportsPageDto` — `page` 1 tabanlı. */
+export interface WorksheetCommentReportsPage {
+  items: WorksheetCommentReportItem[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface WorksheetCommentReportsQuery {
+  /** 1 tabanlı. */
+  page?: number;
+  pageSize?: number;
 }
 
 /** `WorksheetCommentErrorCodes` — hata gövdesindeki `errorCode`. */
@@ -114,6 +196,16 @@ export const WORKSHEET_COMMENT_ERROR_CODES = [
   'QuestionNotAnswered',
   'NotResponsibleTeacher',
   'RateLimited',
+  // Issue #305: moderasyon
+  'CommentNotFound',
+  'CannotReportOwnComment',
+  'InvalidReportReason',
+  'ReportNoteTooLong',
+  'ModerationTextInvalidCharacters',
+  'HideReasonRequired',
+  'HideReasonTooLong',
+  'NotModerator',
+  'RootCommentHidden',
 ] as const;
 
 export type WorksheetCommentErrorCode = (typeof WORKSHEET_COMMENT_ERROR_CODES)[number];

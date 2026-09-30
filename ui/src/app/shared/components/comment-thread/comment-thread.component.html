@@ -2,6 +2,25 @@
   <!-- Yalnız başarılı gönderim duyurulur; liste live region değil (yükleme/sayfalama okunmaz). -->
   <span class="ct__sr-only" aria-live="polite" data-testid="comments-announcer">{{ announcement() }}</span>
 
+  @if (showModeratorToggle()) {
+    <!-- Issue #305: moderatör görünümü — gizli yorumların içeriği ve nedeni -->
+    <div class="ct__moderation">
+      <mat-slide-toggle
+        data-testid="moderator-view-toggle"
+        aria-describedby="ct-moderation-hint"
+        [checked]="moderatorView()"
+        [disabled]="loading()"
+        (change)="toggleModeratorView($event)"
+      >
+        {{ t('thread.moderatorView') }}
+      </mat-slide-toggle>
+      <span class="ct__moderation-hint" id="ct-moderation-hint">{{ t('thread.moderatorViewHint') }}</span>
+    </div>
+  }
+  @if (moderationError(); as moderationMessage) {
+    <p class="ct__more-error" role="alert" data-testid="moderation-error">{{ moderationMessage }}</p>
+  }
+
   @if (loaded()) {
     @if (lockMessageKey(); as lockKey) {
       <div
@@ -89,12 +108,17 @@
           [now]="now()"
           [locale]="locale()"
           [replyOpen]="isReplyOpen(thread.key)"
+          [moderatorView]="moderatorView()"
+          [canReport]="canReport()"
           (replyOpenChange)="setReplyOpen(thread.key, $event)"
           (replySubmit)="submitReply(thread.key, $event)"
           (retry)="retry(thread.key, $event)"
           (discard)="discard(thread.key, $event)"
           (editRoot)="editRoot(thread.key)"
           (loadOlder)="loadOlderReplies(thread.key)"
+          (report)="reportComment(thread.key, $event)"
+          (hide)="hideComment(thread.key, $event)"
+          (unhide)="unhideComment(thread.key, $event)"
         />
       </li>
     }

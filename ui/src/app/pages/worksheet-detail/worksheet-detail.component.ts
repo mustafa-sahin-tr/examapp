@@ -58,6 +58,7 @@ import { WorksheetAttempt, WorksheetDetail, WorksheetReminder } from '../../mode
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { LocaleService } from '../../services/locale.service';
 import { CommentThreadComponent } from '../../shared/components/comment-thread/comment-thread.component';
+import { CommentReportListComponent } from '../../shared/components/comment-report-list/comment-report-list.component';
 import { WorksheetCommentRef, toPositiveId } from '../../models/worksheet-comment.model';
 
 interface AssignmentPanelState {
@@ -88,6 +89,7 @@ const WORKSHEET_DETAIL_SCOPE = 'worksheet-detail';
     QuestionNavigatorComponent,
     StudyLinkSuggestionsComponent,
     CommentThreadComponent,
+    CommentReportListComponent,
     FormsModule,
     MatFormFieldModule,
     MatInputModule,
@@ -163,6 +165,22 @@ export class WorksheetDetailComponent implements OnInit {
   protected readonly isTeacher = this.authService.hasRole('Teacher');
   /** Admin (uygulama rolü ya da Keycloak realm rolü) backend'de sınıf atama kısıtından muaftır. */
   private readonly isAdmin = this.authService.hasRole('Admin') || this.authService.hasRealmRole('Admin');
+  /**
+   * Issue #305: yorum moderasyonu olası mı (öğretmen/admin) — thread'de "Moderasyon görünümü" anahtarı ve "Şikayetler"
+   * bölümü. Gerçek yetki yorum bazında sunucunun `canModerate`'ı; şikayet listesi yalnız moderatörü olunanları döner.
+   */
+  protected readonly canModerateComments = this.isTeacher || this.isAdmin;
+  /** Issue #305: şikayet ucu Student/Teacher rolüne açık — yalnız admin olan şikayet etmez. */
+  protected readonly canReportComments = this.isTeacher || !this.isAdmin;
+  /** Issue #305: tüm thread'lerin moderatörü (admin ya da worksheet sahibi) — moderasyon anahtarı hemen görünür. */
+  protected readonly commentsModeratorByDefault = computed(
+    () => this.isAdmin || (this.isTeacher && this.detail()?.worksheet?.isOwner === true)
+  );
+  /**
+   * Issue #305: "Şikayetler" kartındaki toplam (listenin ilk yanıtından; ayrı sayım isteği yok). Bilinene kadar ve 0
+   * iken kart gizli — moderatörü olmadığı worksheet'te öğretmen boş kart görmez.
+   */
+  protected readonly commentReportCount = signal<number | null>(null);
   /**
    * Issue #222: okulsuz (bağımsız) öğretmen sınıf bazlı atama yapamaz. Profil önbelleğinden türetilir
    * (`schoolId`, yoksa `teacher.schoolId`); refresh ile okul sonradan gelirse kendiliğinden güncellenir.

@@ -26,7 +26,7 @@ public class AdminUserActionLog
     /// <summary>Hedefin türü (string saklanır).</summary>
     public AdminUserTargetType TargetType { get; set; }
 
-    /// <summary>Hedefin exam DB id'si: <see cref="TargetType"/>'a göre Teacher.Id ya da Student.Id.</summary>
+    /// <summary>Hedefin exam DB id'si: <see cref="TargetType"/>'a göre Teacher.Id, Student.Id ya da WorksheetComments.Id (#305).</summary>
     public int TargetId { get; set; }
 
     /// <summary>Sonuç (string saklanır). Yan etkili aksiyonlarda önce Requested, sonra nihai değer.</summary>
@@ -62,7 +62,14 @@ public enum AdminUserAction
     /// <summary>issue #289: öğretmen hesap onayı askıya alındı (Teachers.AccountApprovedAt → null). Neden buraya YAZILMAZ.</summary>
     TeacherSuspended = 7,
     /// <summary>issue #289: öğretmen hesap onayının askısı kaldırıldı (Teachers.AccountApprovedAt yeniden dolu).</summary>
-    TeacherUnsuspended = 8
+    TeacherUnsuspended = 8,
+    /// <summary>
+    /// issue #305: yorum moderasyonla gizlendi (<see cref="AdminUserTargetType.WorksheetComment"/>). Aktör admin olmayabilir
+    /// (worksheet sahibi / thread'in sorumlu öğretmeni). Neden buraya YAZILMAZ; yorumun kendisinde (HiddenReason) tutulur.
+    /// </summary>
+    CommentHidden = 9,
+    /// <summary>issue #305: gizlenen yorum yeniden görünür yapıldı.</summary>
+    CommentUnhidden = 10
 }
 
 /// <summary>Admin hesap aksiyonunun sonucu. Kalıcı değer string'dir.</summary>
@@ -91,5 +98,7 @@ public enum AdminUserActionOutcome
 public enum AdminUserTargetType
 {
     Teacher = 1,
-    Student = 2
+    Student = 2,
+    /// <summary>issue #305: hedef bir yorum; <see cref="AdminUserActionLog.TargetId"/> = WorksheetComments.Id.</summary>
+    WorksheetComment = 3
 }

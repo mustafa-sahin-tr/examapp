@@ -1,0 +1,62 @@
+<div class="md" *transloco="let t; prefix: 'comments.hideDialog'">
+  <header class="md__header">
+    <mat-icon class="md__icon" aria-hidden="true">visibility_off</mat-icon>
+    <h2 mat-dialog-title class="md__title">{{ t('title') }}</h2>
+  </header>
+
+  <mat-dialog-content class="md__content">
+    <p class="md__intro">{{ t('intro') }}</p>
+
+    <mat-form-field appearance="outline" class="md__field" subscriptSizing="dynamic">
+      <mat-label>{{ t('reasonLabel') }}</mat-label>
+      <textarea
+        matInput
+        rows="3"
+        dir="auto"
+        required
+        data-testid="hide-reason"
+        [value]="reason()"
+        [placeholder]="t('reasonPlaceholder')"
+        [readonly]="submitting()"
+        [attr.aria-invalid]="showRequired() || tooLong()"
+        (input)="onInput($event)"
+        (blur)="touched.set(true)"
+      ></textarea>
+      @if (showRequired()) {
+        <mat-hint class="md__hint--error" data-testid="hide-reason-required">{{ t('required') }}</mat-hint>
+      } @else if (tooLong()) {
+        <mat-hint class="md__hint--error" data-testid="hide-reason-too-long">{{ t('tooLong', { max: max }) }}</mat-hint>
+      }
+      <mat-hint align="end" data-testid="hide-reason-counter" [class.md__hint--error]="tooLong()">{{ length() }}/{{ max }}</mat-hint>
+    </mat-form-field>
+
+    @if (error(); as message) {
+      <div class="md__error" role="alert" data-testid="hide-error">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>{{ message }}</span>
+      </div>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="md__actions">
+    <button mat-stroked-button type="button" data-testid="hide-cancel" [disabled]="submitting()" (click)="cancel()">
+      {{ t('cancel') }}
+    </button>
+    <button
+      mat-flat-button
+      type="button"
+      class="md__danger"
+      data-testid="hide-submit"
+      [disabled]="!canSubmit()"
+      [attr.aria-busy]="submitting()"
+      (click)="submit()"
+    >
+      @if (submitting()) {
+        <mat-spinner diameter="18" class="md__spinner" />
+        {{ t('submitting') }}
+      } @else {
+        {{ t('submit') }}
+      }
+    </button>
+  </mat-dialog-actions>
+</div>

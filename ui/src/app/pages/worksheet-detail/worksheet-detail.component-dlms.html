@@ -359,6 +359,9 @@
                               [highlightCommentId]="questionCommentLink(region.id)?.commentId ?? null"
                               [highlightRootId]="questionCommentLink(region.id)?.rootCommentId ?? null"
                               [viewerIsTeacher]="isTeacher"
+                              [canModerateView]="canModerateComments"
+                              [moderatorByDefault]="commentsModeratorByDefault()"
+                              [canReport]="canReportComments"
                             />
                           } @placeholder {
                             <div class="comments-placeholder" data-testid="comments-placeholder">{{ t('comments.placeholder') }}</div>
@@ -700,6 +703,9 @@
                 [highlightCommentId]="link.commentId"
                 [highlightRootId]="link.rootCommentId"
                 [viewerIsTeacher]="isTeacher"
+                [canModerateView]="canModerateComments"
+                [moderatorByDefault]="commentsModeratorByDefault()"
+                [canReport]="canReportComments"
                 (questionOrderChange)="onLinkedQuestionOrder(link.questionId, $event)"
               />
             } @placeholder {
@@ -720,12 +726,33 @@
               [showStudentsSummary]="isTeacher"
               [studentsLockedNotice]="commentsDisabledForStudents()"
               [showEditSettings]="isTeacher && canEditWorksheet()"
+              [canModerateView]="canModerateComments"
+              [moderatorByDefault]="commentsModeratorByDefault()"
+              [canReport]="canReportComments"
               (editSettings)="editWorksheet(worksheetId)"
             />
           } @placeholder {
             <div class="comments-placeholder" data-testid="comments-placeholder">{{ t('comments.placeholder') }}</div>
           }
         </section>
+
+        <!--
+          Issue #305: moderatör için şikayet edilmiş yorumlar (sayfalı; gizle / aç / yoruma git). Liste kendi ilk isteğiyle
+          toplamı bildirir; toplam bilinene kadar ve 0 iken kart gizli (ayrı sayım isteği yok). Gizli kartta viewport
+          tetiklenmeyeceği için yükleme boşta.
+        -->
+        @if (canModerateComments) {
+          <section
+            class="card comments-card"
+            id="sikayetler"
+            data-testid="worksheet-comment-reports"
+            [style.display]="commentReportCount() ? null : 'none'"
+          >
+            @defer (on idle) {
+              <app-comment-report-list [worksheetId]="worksheetId" (totalCountChange)="commentReportCount.set($event)" />
+            }
+          </section>
+        }
       }
 
     </div>

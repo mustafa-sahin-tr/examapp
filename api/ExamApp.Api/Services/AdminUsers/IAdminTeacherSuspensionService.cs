@@ -17,8 +17,11 @@ public interface IAdminTeacherSuspensionService
     /// (yok → NotFound audit) → durum kontrolü (askıda / hesap onaysız → Conflict audit, yan etki yok) → Requested audit
     /// (fail-closed, yazımdan önce) → koşullu UPDATE (<c>AccountApprovedAt != null &amp;&amp; AccountSuspendedAt == null</c>;
     /// 0 satır → <see cref="AdminTeacherSuspensionStatus.Conflict"/>) → sonuç audit'i. Neden audit'e YAZILMAZ.
+    /// issue #298: <paramref name="actorUserId"/> admin'in exam user id'si — otomatik reddedilen randevuların
+    /// <c>UpdateUserId</c> alanına yazılır (0 = bilinmiyor).
     /// </summary>
-    Task<AdminTeacherSuspensionResult> SuspendAsync(int teacherId, string? reason, string actorKeycloakId, CancellationToken ct = default);
+    Task<AdminTeacherSuspensionResult> SuspendAsync(int teacherId, string? reason, string actorKeycloakId, int actorUserId = 0,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Askıyı kaldırır: yalnızca <c>AccountSuspendedAt != null</c> için; <c>AccountApprovedAt = now</c>, askı alanları null.

@@ -49,4 +49,12 @@ public class BookingDecisionEvent
 
     /// <summary>Kararın verildiği an (UTC).</summary>
     public DateTime DecidedAt { get; set; }
+
+    /// <summary>
+    /// issue #298: true → talep öğretmen kararıyla DEĞİL, öğretmenin hesap onayı askıya alındığı için sistem tarafından
+    /// otomatik reddedildi (<c>AdminTeacherSuspensionService</c>). Consumer "öğretmen geçici olarak müsait değil" metnini
+    /// kullanır. Askı nedeni taşınmaz; <see cref="RejectionReason"/> bu durumda hep null'dır. Eski mesajlarda alan
+    /// yok → false (geriye uyumlu).
+    /// </summary>
+    public bool TeacherUnavailable { get; set; }
 }

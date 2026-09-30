@@ -151,7 +151,8 @@ export class BookingService {
 
   /**
    * Onaylı bir randevu için görüşme odası oturumu üretir/alır (Teacher veya Student).
-   * 409 = randevu onaylı değil ya da katılım penceresi dışında; mesaj backend'den Türkçe gelir.
+   * 409 = randevu onaylı değil, katılım penceresi dışında ya da öğretmen müsait değil (`errorCode: "TeacherUnavailable"`,
+   * issue #298 — bkz. `isTeacherUnavailableError`); mesaj backend'den yerelleştirilmiş gelir.
    */
   getVideoSession(bookingId: number): Observable<VideoSessionResult> {
     return this.http.post<VideoSessionResult>(`${this.baseUrl}/requests/${bookingId}/video-session`, null);

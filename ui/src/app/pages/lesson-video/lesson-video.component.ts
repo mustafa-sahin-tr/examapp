@@ -19,7 +19,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { finalize, map, take } from 'rxjs';
-import { VideoSession } from '../../models/booking.model';
+import {
+  TEACHER_UNAVAILABLE_ERROR_CODE,
+  VideoSession,
+  isTeacherUnavailableError,
+} from '../../models/booking.model';
 import { AuthService } from '../../services/auth.service';
 import { BookingService } from '../../services/booking.service';
 import {
@@ -88,6 +92,11 @@ export class LessonVideoComponent implements OnInit {
   protected readonly mode = signal<EmbedMode>('direct');
   /** Dar ekranda seçili bölme (Video / Tahta). */
   protected readonly pane = signal<LessonPane>('video');
+  /**
+   * Issue #298: backend 409 `errorCode: "TeacherUnavailable"` döndü (öğretmen askıda). Durum kalıcıdır;
+   * "Tekrar dene" gizlenir, yalnızca geri dönüş sunulur.
+   */
+  protected readonly teacherUnavailable = signal(false);
 
   /**
    * Scope sözlüğü yüklendiğinde `true` olur. Başlık şablon dışında (iframe `title` özniteliği ve
@@ -157,6 +166,7 @@ export class LessonVideoComponent implements OnInit {
     this.session.set(null);
     this.loading.set(true);
     this.error.set(null);
+    this.teacherUnavailable.set(false);
 
     this.bookingService
       .getVideoSession(id)
@@ -166,6 +176,10 @@ export class LessonVideoComponent implements OnInit {
       )
       .subscribe({
         next: (res) => {
+          if (res?.errorCode === TEACHER_UNAVAILABLE_ERROR_CODE) {
+            this.showTeacherUnavailable(res.message);
+            return;
+          }
           if (!res?.success || !res.session) {
             this.setError('error.roomUnavailable', res?.message);
             return;
@@ -182,12 +196,27 @@ export class LessonVideoComponent implements OnInit {
           this.session.set(res.session);
         },
         // Yedek mesaj sözlükten gelir; scope henüz yüklenmemiş olabileceği için `selectTranslate`.
-        error: (err: HttpErrorResponse) =>
+        error: (err: HttpErrorResponse) => {
+          if (isTeacherUnavailableError(err.status, err.error)) {
+            this.showTeacherUnavailable((err.error as { message?: unknown }).message);
+            return;
+          }
           this.transloco
             .selectTranslate<string>('error.roomUnavailable', {}, SCOPE)
             .pipe(take(1), takeUntilDestroyed(this.destroyRef))
-            .subscribe((fallback) => this.error.set(this.bookingService.extractError(err, fallback))),
+            .subscribe((fallback) => this.error.set(this.bookingService.extractError(err, fallback)));
+        },
       });
+  }
+
+  /**
+   * Issue #298: öğretmen geçici olarak müsait değil. Backend'in yerelleştirilmiş `message`'ı (metin olarak
+   * interpolasyonla gösterilir) varsa o, yoksa sözlükteki karşılığı. Otomatik yeniden deneme yapılmaz.
+   */
+  private showTeacherUnavailable(serverMessage: unknown): void {
+    this.teacherUnavailable.set(true);
+    const message = typeof serverMessage === 'string' ? serverMessage.trim() : '';
+    this.setError('error.teacherUnavailable', message || null);
   }
 
   /**

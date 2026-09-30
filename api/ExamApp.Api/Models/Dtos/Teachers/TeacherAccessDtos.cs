@@ -7,6 +7,12 @@ public static class TeacherAccessErrorCodes
 {
     /// <summary>Öğretmen hesabı henüz admin tarafından onaylanmadı (ilk başvuru Pending/Rejected ya da Teacher kaydı yok).</summary>
     public const string TeacherNotApproved = "TeacherNotApproved";
+
+    /// <summary>
+    /// issue #298: randevunun ÖĞRETMENİ onaylı değil ya da askıda — canlı ders oturumu (görüşme odası) iki tarafa da
+    /// kapalı (<c>POST api/booking/requests/{id}/video-session</c> → 409). Askı nedeni dönmez.
+    /// </summary>
+    public const string TeacherUnavailable = "TeacherUnavailable";
 }
 
 /// <summary>

@@ -206,8 +206,24 @@ public class WhiteboardHubTests
     }
 
     [Fact]
-    public async Task Suspended_teacher_on_revalidation_closes_board()
+    public async Task Suspended_teacher_on_revalidation_closes_board_with_neutral_reason()
     {
+        // issue #298: randevunun öğretmeni askıda → iki tarafa da nötr TeacherUnavailable (kod + kapanış nedeni).
+        await NewHub().JoinBoard(BookingId);
+        _access.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), BookingId, Arg.Any<CancellationToken>())
+            .Returns(WhiteboardAccessResult.Deny(WhiteboardErrorCodes.TeacherUnavailable, BookingId));
+        _clock.Now = _clock.Now.AddSeconds(31);
+
+        var ex = await Should.ThrowAsync<HubException>(() => NewHub().SendPointer(BookingId, new WhiteboardPointerDto { X = 1, Y = 2 }));
+
+        ex.Message.ShouldBe(WhiteboardErrorCodes.TeacherUnavailable);
+        await _closer.Received(1).CloseAsync(BookingId, WhiteboardCloseReasons.TeacherUnavailable, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Callers_own_unapproved_teacher_account_only_revokes_that_connection()
+    {
+        // Çağıranın KENDİ Teacher hesabı onaysız (randevunun öğretmeni müsait): tahta kapanmaz, yalnızca bağlantı düşer.
         await NewHub().JoinBoard(BookingId);
         _access.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), BookingId, Arg.Any<CancellationToken>())
             .Returns(WhiteboardAccessResult.Deny(WhiteboardErrorCodes.TeacherNotApproved, BookingId));
@@ -216,7 +232,8 @@ public class WhiteboardHubTests
         var ex = await Should.ThrowAsync<HubException>(() => NewHub().SendPointer(BookingId, new WhiteboardPointerDto { X = 1, Y = 2 }));
 
         ex.Message.ShouldBe(WhiteboardErrorCodes.TeacherNotApproved);
-        await _closer.Received(1).CloseAsync(BookingId, WhiteboardCloseReasons.TeacherNotApproved, Arg.Any<CancellationToken>());
+        await _closer.DidNotReceive().CloseAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _closer.Received(1).RevokeConnectionAsync(Arg.Is<WhiteboardMember>(m => m.BookingId == BookingId), Arg.Any<CancellationToken>());
     }
 
     [Fact]

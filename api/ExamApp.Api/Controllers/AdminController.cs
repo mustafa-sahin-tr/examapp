@@ -481,7 +481,7 @@ public class AdminController : BaseController
         if (string.IsNullOrWhiteSpace(actor))
             return Forbid();
 
-        var result = await TeacherSuspension.SuspendAsync(id, request?.Reason, actor, ct);
+        var result = await TeacherSuspension.SuspendAsync(id, request?.Reason, actor, await CurrentUserIdAsync(), ct);
         return SuspensionResult(id, result);
     }
 

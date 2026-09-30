@@ -178,22 +178,12 @@ namespace ExamApp.Api.Controllers
 
             var teacher = await _teacherService.GetTeacher(user.Id);
 
+            // issue #287: onay durumu üst seviyede (teacherAccountApproved / teacherApplicationStatus / rejectionReason).
+            // issue #298: entity yerine DTO — yalnızca izinli alanlar (askı nedeni hiçbir koşulda çıkmaz).
             if (teacher != null)
-            {
-                // issue #287: onay durumu üst seviyede (teacherAccountApproved / teacherApplicationStatus / rejectionReason).
-                var approval = TeacherApprovalState.From(teacher);
-                return Ok(new
-                {
-                    HasTeacherRecord = true,
-                    Teacher = teacher,
-                    approval.TeacherAccountApproved,
-                    approval.TeacherAccountSuspended, // issue #289
-                    approval.TeacherApplicationStatus,
-                    approval.RejectionReason
-                });
-            }
+                return Ok(CheckTeacherRecordResponseDto.From(teacher));
 
-            return Ok(new { HasTeacherRecord = false });
+            return Ok(CheckTeacherResponseDto.NoRecord());
         }
 
         [Authorize]

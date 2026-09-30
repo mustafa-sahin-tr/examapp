@@ -16,8 +16,18 @@ public static class WhiteboardErrorCodes
     /// <summary>Çağıran randevunun öğretmeni ya da öğrencisi değil.</summary>
     public const string NotParticipant = "NotParticipant";
 
-    /// <summary>Öğretmen hesabı onaysız ya da askıda (#287/#289).</summary>
+    /// <summary>
+    /// ÇAĞIRANIN kendi öğretmen hesabı (Teacher rolü) onaysız ya da askıda (#287/#289). Randevunun öğretmeni müsait
+    /// değilse bunun yerine <see cref="TeacherUnavailable"/> döner (#298).
+    /// </summary>
     public const string TeacherNotApproved = "TeacherNotApproved";
+
+    /// <summary>
+    /// issue #298: randevunun ÖĞRETMENİ onaysız ya da askıda — öğretmene de öğrenciye de aynı nötr kod (askı/onay ayrımı ve
+    /// neden sızdırılmaz). Görüşme odasındaki karşılığı da <c>TeacherUnavailable</c>. Askı kalkınca pencere içindeyse
+    /// yeniden katılınabilir.
+    /// </summary>
+    public const string TeacherUnavailable = "TeacherUnavailable";
 
     /// <summary>Randevu Approved değil (Pending/Rejected).</summary>
     public const string BookingNotApproved = "BookingNotApproved";
@@ -64,8 +74,17 @@ public static class WhiteboardCloseReasons
     /// <summary>Randevu artık Approved değil ya da silindi.</summary>
     public const string BookingCancelled = "BookingCancelled";
 
-    /// <summary>Öğretmen hesabı askıya alındı / onayı kalktı.</summary>
+    /// <summary>
+    /// Eski (#98/#289) değer: sunucu #298'den beri GÖNDERMİYOR — yerine <see cref="TeacherUnavailable"/>. UI eski
+    /// istemcilerle uyum için tanımayı sürdürebilir.
+    /// </summary>
     public const string TeacherNotApproved = "TeacherNotApproved";
+
+    /// <summary>
+    /// issue #298: randevunun öğretmeni askıya alındı / hesap onayı kalktı. Gruba (iki tarafa) gider: askıya alma anında
+    /// (<c>AdminTeacherSuspensionService</c>, #311), temizlik turunda ve hub'ın çağrı başı yeniden doğrulamasında.
+    /// </summary>
+    public const string TeacherUnavailable = "TeacherUnavailable";
 
     /// <summary>
     /// Yalnızca bu bağlantıya gönderilir: periyodik yeniden doğrulamada bağlantının yetkisi düştü (temizlik servisi

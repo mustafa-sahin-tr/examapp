@@ -19,10 +19,11 @@
     </div>
   } @else if (error()) {
     <div class="lvid__state lvid__state--error" role="alert">
-      <mat-icon>videocam_off</mat-icon>
+      <mat-icon>{{ teacherUnavailable() ? 'event_busy' : 'videocam_off' }}</mat-icon>
       <span>{{ error() }}</span>
       <div class="lvid__state-actions">
-        @if (bookingId() !== null) {
+        <!-- Issue #298: öğretmen askıdayken tekrar denemek sonucu değiştirmez. -->
+        @if (bookingId() !== null && !teacherUnavailable()) {
           <button mat-flat-button color="primary" type="button" (click)="load()">{{ t('retry') }}</button>
         }
         <button mat-stroked-button type="button" (click)="leave()">{{ t('goBack') }}</button>

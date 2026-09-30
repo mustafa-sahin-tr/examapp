@@ -312,8 +312,23 @@ public class TeacherApprovalService : ITeacherApprovalService
 
             if (affected > 0 && !string.IsNullOrWhiteSpace(targetKeycloakId))
             {
-                AddDecisionOutbox(teacherId, targetKeycloakId, approved: true, isIndependent, now);
-                await _context.SaveChangesAsync(ct);
+                // issue #298: askıdaki öğretmenin başvurusu onaylansa da hesabı açılmaz (bkz. yukarı) → "onaylandı" bildirimi
+                // yanıltıcı olur, outbox hiç yazılmaz (karar ve audit yine yazılır). Askı durumu aynı transaction'da, az önce
+                // güncellenen (kilitli) satırdan okunur — okuma ile yazma arasındaki askıya alma yarışı da kapsanır.
+                var suspended = await _context.Teachers.AsNoTracking()
+                    .Where(t => t.Id == teacherId)
+                    .Select(t => t.AccountSuspendedAt != null)
+                    .FirstOrDefaultAsync(ct);
+                if (suspended)
+                {
+                    _logger.LogInformation(
+                        "TeacherApplicationDecided: Teacher#{TeacherId} is suspended; approval notification suppressed.", teacherId);
+                }
+                else
+                {
+                    AddDecisionOutbox(teacherId, targetKeycloakId, approved: true, isIndependent, now);
+                    await _context.SaveChangesAsync(ct);
+                }
             }
 
             await tx.CommitAsync(ct);

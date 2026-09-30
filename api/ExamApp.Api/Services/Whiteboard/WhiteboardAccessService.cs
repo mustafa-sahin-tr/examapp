@@ -36,7 +36,8 @@ public interface IWhiteboardAccessService
 {
     /// <summary>
     /// Çağıran (JWT principal) bu booking'in tahtasına katılabilir mi? Kural: booking'in öğretmeni ya da öğrencisi,
-    /// booking Approved, şimdi katılım penceresi içinde (<see cref="IBookingService.GetLiveSessionAccessAsync"/>) VE
+    /// booking Approved, booking'in öğretmeni onaylı/askıda değil (#298, öğrenci için de), şimdi katılım penceresi içinde
+    /// (<see cref="IBookingService.GetLiveSessionAccessAsync"/>) VE
     /// çağıran booking'in öğretmeniyse ya da Teacher rolündeyse hesabı onaylı/askıda değil (#287/#289).
     /// </summary>
     Task<WhiteboardAccessResult> AuthorizeAsync(ClaimsPrincipal user, int bookingId, CancellationToken ct = default);
@@ -82,6 +83,8 @@ public sealed class WhiteboardAccessService : IWhiteboardAccessService
             BookingLiveSessionDenial.NotFound => WhiteboardErrorCodes.BookingNotFound,
             BookingLiveSessionDenial.NotParticipant => WhiteboardErrorCodes.NotParticipant,
             BookingLiveSessionDenial.NotApproved => WhiteboardErrorCodes.BookingNotApproved,
+            // issue #298: askıdaki/onaysız öğretmenin randevusunda iki taraf da aynı nötr kodu alır.
+            BookingLiveSessionDenial.TeacherUnavailable => WhiteboardErrorCodes.TeacherUnavailable,
             BookingLiveSessionDenial.WindowNotOpen => WhiteboardErrorCodes.WindowNotOpen,
             BookingLiveSessionDenial.WindowClosed => WhiteboardErrorCodes.WindowClosed,
             _ => null
@@ -134,7 +137,7 @@ public sealed class WhiteboardAccessService : IWhiteboardAccessService
                 result[id] = WhiteboardCloseReasons.BookingCancelled;
             // ApprovedTeacherGuard ile aynı karar: askı önce, sonra onay.
             else if (row.AccountSuspendedAt is not null || row.AccountApprovedAt is null)
-                result[id] = WhiteboardCloseReasons.TeacherNotApproved;
+                result[id] = WhiteboardCloseReasons.TeacherUnavailable; // issue #298
         }
 
         return result;

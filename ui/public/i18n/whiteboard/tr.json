@@ -23,7 +23,8 @@
   "closed": {
     "WindowClosed": "Ders süresi doldu; tahta salt okunur.",
     "BookingCancelled": "Randevu artık geçerli değil; tahta kapatıldı.",
-    "TeacherNotApproved": "Öğretmen hesabı şu an ders veremiyor; tahta kapatıldı.",
+    "TeacherNotApproved": "Öğretmen geçici olarak müsait değil; tahta salt okunur.",
+    "TeacherUnavailable": "Öğretmen geçici olarak müsait değil; tahta salt okunur.",
     "AccessRevoked": "Bu tahtaya erişiminiz sona erdi.",
     "generic": "Tahta kapatıldı; salt okunur."
   },
@@ -31,7 +32,8 @@
     "UserNotResolved": "Kullanıcı bilgileriniz doğrulanamadı. Lütfen yeniden giriş yapın.",
     "BookingNotFound": "Ders bulunamadı.",
     "NotParticipant": "Bu dersin katılımcısı değilsiniz.",
-    "TeacherNotApproved": "Öğretmen hesabı şu an ders veremiyor.",
+    "TeacherNotApproved": "Öğretmen geçici olarak müsait değil.",
+    "TeacherUnavailable": "Öğretmen geçici olarak müsait değil.",
     "BookingNotApproved": "Randevu onaylı değil.",
     "WindowNotOpen": "Tahta henüz açılmadı; ders saatine yakın tekrar deneyin.",
     "WindowClosed": "Ders süresi doldu.",

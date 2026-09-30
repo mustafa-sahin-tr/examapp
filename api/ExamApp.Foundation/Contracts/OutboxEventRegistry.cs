@@ -29,6 +29,7 @@ public static class OutboxEventRegistry
         typeof(IndependentTeacherRegisteredEvent),
         typeof(BookingRequestCreatedEvent),
         typeof(BookingDecisionEvent),
+        typeof(BookingTeacherUnavailableEvent), // issue #298
         typeof(UserPreferredLocaleChangedEvent),
         typeof(StudentPointsChangedEvent),
         typeof(UserRoleChangedEvent), // issue #277 (item 4)

@@ -10,6 +10,7 @@ using ExamApp.Api.Services.StudentReset;
 using ExamApp.Api.Services.Teachers.Seed;
 using ExamApp.Api.Services.Tenancy;
 using ExamApp.Api.Services.Video;
+using ExamApp.Api.Services.Whiteboard;
 using Hangfire;
 using Hangfire.PostgreSql;
 using MassTransit;
@@ -144,9 +145,25 @@ builder.Services.AddAuthentication(options =>
             ValidAudiences = validAudiences
         };
         options.RequireHttpsMetadata = false;
-        // No custom JwtBearerEvents: the framework's own ILogger already logs
+        // Only OnMessageReceived (no logging handlers): the framework's own ILogger already logs
         // token-validation failures at the right level. The previous handlers
         // wrote the token subject/issuer/expiry to stdout on every request.
+        options.Events = new JwtBearerEvents
+        {
+            // issue #98: SignalR WebSocket upgrade Authorization header taşıyamaz; istemci token'ı ?access_token= ile
+            // gönderir. Yalnızca whiteboard hub yolunda kabul edilir (BadgeService /hub/badges ile aynı desen).
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    context.HttpContext.Request.Path.StartsWithSegments(ExamApp.Api.Hubs.WhiteboardHub.Path))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            }
+        };
     });
 
 var serviceClients = builder.Configuration.GetSection("Keycloak:ServiceClients").Get<string[]>();
@@ -228,6 +245,8 @@ builder.Services.AddScoped<ExamApp.Api.Services.Bookings.IBookingService, ExamAp
 builder.Services.AddScoped<ExamApp.Api.Services.Bookings.IRecurringAvailabilityService, ExamApp.Api.Services.Bookings.RecurringAvailabilityService>();
 // Video görüşme (issue #97) — "Video" bölümünü bağlar, IVideoSessionProvider'ı kaydeder.
 builder.Services.AddVideoSessions(builder.Configuration);
+// Ortak çizim tahtası (issue #98) — SignalR hub /hub/whiteboard, bellek içi durum + dakikalık temizlik servisi.
+builder.Services.AddWhiteboard();
 builder.Services.AddScoped<ExamApp.Api.Services.Practice.IPracticeSessionService, ExamApp.Api.Services.Practice.PracticeSessionService>();
 builder.Services.AddScoped<ExamApp.Api.Services.LoginEvents.ILoginEventService, ExamApp.Api.Services.LoginEvents.LoginEventService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
@@ -547,6 +566,7 @@ app.UseHangfireDashboard("/hangfire", app.Environment.IsDevelopment()
     });
 
 app.MapControllers();
+app.MapWhiteboardHub(); // issue #98
 app.MapDefaultEndpoints();
 
 if (!rabbitMqEnabled)

@@ -103,7 +103,9 @@ builder.Services.AddAuthentication()
             // security review) bu olmadan mevcut bağlantı akışı kırılırdı.
             OnMessageReceived = context =>
             {
-                var isHubRequest = context.HttpContext.Request.Path.StartsWithSegments("/hub/badges");
+                // issue #98: /hub/whiteboard (exam API çizim tahtası) aynı desenle korunur.
+                var path = context.HttpContext.Request.Path;
+                var isHubRequest = path.StartsWithSegments("/hub/badges") || path.StartsWithSegments("/hub/whiteboard");
                 var queryToken = context.Request.Query["access_token"];
                 if (isHubRequest && !string.IsNullOrEmpty(queryToken))
                 {

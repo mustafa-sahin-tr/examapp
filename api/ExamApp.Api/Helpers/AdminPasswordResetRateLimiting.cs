@@ -86,6 +86,6 @@ public sealed class AdminPasswordResetRateLimitPolicy : IRateLimiterPolicy<strin
             AdminUserListRateLimiting.PartitionKey(context.HttpContext), context.HttpContext.Request.Path.Value);
 
         await AdminUserListRateLimiting.WriteRejectionAsync(
-            context, "admin.passwordReset.rateLimited", _options.CurrentValue.WindowSeconds, cancellationToken);
+            context, "admin.passwordReset.rateLimited", _options.CurrentValue.WindowSeconds, errorCode: null, cancellationToken);
     }
 }

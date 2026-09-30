@@ -12,6 +12,14 @@
       "comments-disabled": "Bu test için yeni yorum ve soru yazma kapalı. Mevcut yorumlar görünmeye devam eder."
     },
     "teacherDisabledNotice": "Worksheet varsayılanı: öğrenci yorum ve soruları kapalı. Atamaya özel ayar bunu değiştirebilir; mevcut yorumlar görünür.",
+    "summary": {
+      "defaultOn": "Öğrenci yorumları: varsayılan açık",
+      "defaultOff": "Öğrenci yorumları: varsayılan kapalı",
+      "assignmentsOffOne": "1 atamada kapalı",
+      "assignmentsOff": "{{count}} atamada kapalı",
+      "assignmentsOnOne": "1 atamada açık",
+      "assignmentsOn": "{{count}} atamada açık"
+    },
     "editSettings": "Ayarları düzenle",
     "readOnly": "Bu konuşmayı yalnızca görüntüleyebilirsin.",
     "loadMore": "Daha fazla yorum yükle",
@@ -61,7 +69,8 @@
       "CommentsDisabled": "Bu test için yorum yazma kapalı.",
       "WorksheetNotStarted": "Önce testi başlatmalısın.",
       "QuestionNotAnswered": "Önce soruyu cevaplamalısın.",
-      "NotResponsibleTeacher": "Bu konuşmaya cevap yazma yetkin yok."
+      "NotResponsibleTeacher": "Bu konuşmaya cevap yazma yetkin yok.",
+      "RateLimited": "Çok hızlı işlem yapıyorsun. Lütfen biraz bekleyip tekrar dene."
     }
   }
 }

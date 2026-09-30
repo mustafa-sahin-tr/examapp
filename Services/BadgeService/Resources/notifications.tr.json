@@ -61,15 +61,18 @@
     "WorksheetCommentCreated": {
       "title": "Yeni yorum: {1}",
       "body": "{0} bir yorum veya soru yazdı.",
-      "bodyQuestion": "{0} bir soru hakkında yazdı."
+      "bodyQuestion": "{0} bir soru hakkında yazdı.",
+      "bodyQuestionOrder": "{0} {2}. soru hakkında yazdı."
     },
     "WorksheetCommentReplied": {
       "title": "Öğretmenin cevap verdi: {1}",
-      "body": "Öğretmenin yorumuna veya sorusuna cevap yazdı."
+      "body": "Öğretmenin yorumuna veya sorusuna cevap yazdı.",
+      "bodyQuestionOrder": "Öğretmenin {2}. soru hakkındaki yorumuna veya sorusuna cevap yazdı."
     },
     "WorksheetCommentRepliedByStudent": {
       "title": "Yorumuna cevap geldi: {1}",
-      "body": "{0} yorumuna cevap yazdı."
+      "body": "{0} yorumuna cevap yazdı.",
+      "bodyQuestionOrder": "{0} {2}. soru hakkındaki yorumuna cevap yazdı."
     }
   }
 }

@@ -64,6 +64,33 @@ describe('describeNotification (issue #105)', () => {
     expect(result.route).toEqual({ commands: ['/test', 3], queryParams: { commentId: 4 } });
   });
 
+  // Issue #309: liste etiketi için soru sırası; derin linke yazılmaz.
+  it('questionComment_QuestionOrderExposedButNotInLink', () => {
+    const result = describeNotification({
+      type: 'WorksheetCommentCreated',
+      data: data({ worksheetId: 12, questionId: 34, commentId: 56, rootCommentId: 56, questionOrder: 7 }),
+    });
+
+    expect(result.questionOrder).toBe(7);
+    expect(result.route).toEqual({ commands: ['/test', 12], queryParams: { commentId: 56, questionId: 34 } });
+  });
+
+  it('questionOrder_InvalidOrWorksheetLevel_Null', () => {
+    for (const order of [0, -2, 1.5, '3', null, undefined, Number.MAX_SAFE_INTEGER + 2]) {
+      const result = describeNotification({
+        type: 'WorksheetCommentReplied',
+        data: data({ worksheetId: 12, questionId: 34, commentId: 57, rootCommentId: 56, questionOrder: order }),
+      });
+      expect(result.questionOrder).withContext(String(order)).toBeNull();
+    }
+    const worksheetLevel = describeNotification({
+      type: 'WorksheetCommentCreated',
+      data: data({ worksheetId: 12, questionId: null, commentId: 56, rootCommentId: 56, questionOrder: 2 }),
+    });
+    expect(worksheetLevel.questionOrder).toBeNull();
+    expect(describeNotification({ type: 'BadgeEarned', data: data({ questionOrder: 2 }) }).questionOrder).toBeNull();
+  });
+
   it('BadgeEarned_KeepsProgressRoute', () => {
     const result = describeNotification({ type: 'BadgeEarned', data: data({ badgeDefinitionId: 'b1', iconUrl: null }) });
 
@@ -76,6 +103,7 @@ describe('describeNotification (issue #105)', () => {
       icon: 'notifications',
       iconUrl: null,
       route: null,
+      questionOrder: null,
     });
   });
 });

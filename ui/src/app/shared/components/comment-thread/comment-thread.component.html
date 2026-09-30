@@ -15,6 +15,25 @@
         <mat-icon aria-hidden="true">{{ lockReason() === 'comments-disabled' ? 'comments_disabled' : 'lock' }}</mat-icon>
         <span>{{ t(lockKey) }}</span>
       </div>
+    } @else if (summaryStrip()) {
+      @let strip = summaryStrip()!;
+      <!-- Issue #309: öğretmen özeti — worksheet varsayılanı + atama override sayıları (sunucudan) -->
+      <div
+        class="ct__strip ct__strip--neutral"
+        role="status"
+        data-testid="teacher-summary"
+        [attr.data-default]="strip.defaultDisabled ? 'off' : 'on'"
+      >
+        <mat-icon aria-hidden="true">{{ strip.defaultDisabled ? 'comments_disabled' : 'forum' }}</mat-icon>
+        <span data-testid="teacher-summary-text"
+          >{{ t(strip.defaultKey) }}@for (part of strip.parts; track part.key) {<span aria-hidden="true"> · </span>{{ t(part.key, part.params) }}}</span
+        >
+        @if (showEditSettings()) {
+          <button mat-button type="button" class="ct__strip-action" data-testid="edit-settings" (click)="editSettings.emit()">
+            {{ t('thread.editSettings') }}
+          </button>
+        }
+      </div>
     } @else if (studentsLockedNotice()) {
       <div class="ct__strip ct__strip--neutral" role="status" data-testid="teacher-disabled-notice">
         <mat-icon aria-hidden="true">comments_disabled</mat-icon>

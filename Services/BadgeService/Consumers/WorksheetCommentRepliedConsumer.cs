@@ -69,18 +69,28 @@ public class WorksheetCommentRepliedConsumer : IConsumer<WorksheetCommentReplied
             ? _texts.Resolve("notifications.common.unnamedWorksheet", culture)
             : cleanTitle;
 
-        LocalizedNotificationText text;
+        string textKey;
+        string authorName;
         if (string.Equals(e.AuthorRole, "Teacher", StringComparison.OrdinalIgnoreCase))
         {
-            text = _texts.Build(NotificationType, culture, string.Empty, worksheetTitle);
+            textKey = NotificationType;
+            authorName = string.Empty;
         }
         else
         {
-            var authorName = string.IsNullOrWhiteSpace(cleanAuthor)
+            textKey = StudentAuthorTextKey;
+            authorName = string.IsNullOrWhiteSpace(cleanAuthor)
                 ? _texts.Resolve("notifications.common.defaultStudent", culture)
                 : cleanAuthor;
-            text = _texts.Build(StudentAuthorTextKey, culture, authorName, worksheetTitle);
         }
+
+        var text = _texts.Build(textKey, culture, authorName, worksheetTitle);
+
+        // issue #309: soru thread'inde sıra biliniyorsa gövde "{n}. soru hakkındaki" der; yoksa genel metin.
+        var body = e.QuestionOrder is > 0
+            ? _texts.Resolve($"notifications.{textKey}.bodyQuestionOrder", culture, authorName, worksheetTitle,
+                e.QuestionOrder.Value)
+            : text.Body;
 
         var notification = new Notification
         {
@@ -88,11 +98,12 @@ public class WorksheetCommentRepliedConsumer : IConsumer<WorksheetCommentReplied
             UserKeycloakId = recipientSub,
             Type = NotificationType,
             Title = CommentNotificationSupport.CleanTitle(text.Title),
-            Body = CommentNotificationSupport.CleanBody(text.Body),
+            Body = CommentNotificationSupport.CleanBody(body),
             Data = JsonSerializer.Serialize(new
             {
                 worksheetId = e.WorksheetId,
                 questionId = e.QuestionId,
+                questionOrder = e.QuestionOrder,
                 commentId = e.CommentId,
                 rootCommentId = e.RootCommentId
             }),
@@ -120,6 +131,7 @@ public class WorksheetCommentRepliedConsumer : IConsumer<WorksheetCommentReplied
             notificationId = notification.Id,
             worksheetId = e.WorksheetId,
             questionId = e.QuestionId,
+            questionOrder = e.QuestionOrder,
             commentId = e.CommentId,
             rootCommentId = e.RootCommentId,
             worksheetTitle,

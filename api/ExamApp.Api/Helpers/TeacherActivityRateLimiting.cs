@@ -115,6 +115,6 @@ public sealed class TeacherActivityRateLimitPolicy : IRateLimiterPolicy<string>
             AdminUserListRateLimiting.PartitionKey(context.HttpContext), context.HttpContext.Request.Path.Value);
 
         await AdminUserListRateLimiting.WriteRejectionAsync(
-            context, "teacher.activity.rateLimited", _options.CurrentValue.WindowSeconds, cancellationToken);
+            context, "teacher.activity.rateLimited", _options.CurrentValue.WindowSeconds, errorCode: null, cancellationToken);
     }
 }

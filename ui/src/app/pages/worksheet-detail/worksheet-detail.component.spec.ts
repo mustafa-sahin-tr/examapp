@@ -543,6 +543,86 @@ describe('WorksheetDetailComponent comment threads', () => {
     expect(worksheetThread.highlightCommentId()).toBeNull();
   });
 
+  // Issue #309: kart başlığındaki soru sırası thread yanıtından gelir (URL'den değil).
+  it('linkedQuestionCard_TitleUsesQuestionOrderFromThreadThenFallsBack', async () => {
+    const { fixture } = await setup({ role: 'Teacher', query: { commentId: '57', questionId: '34', questionOrder: '9' } });
+    const title = () => byTestId(fixture, 'linked-question-title')!.textContent!.replace(/\s+/g, ' ').trim();
+
+    // Thread yanıtı gelmeden: genel başlık (URL'deki questionOrder yok sayılır).
+    expect(title()).toBe(worksheetDetailTr.comments.linkedQuestionTitle);
+
+    const questionThread = threads(fixture).find((t) => t.questionId() === 34)!;
+    questionThread.questionOrderChange.emit(3);
+    fixture.detectChanges();
+    expect(title()).toBe('Soru 3 hakkındaki yorumlar');
+
+    questionThread.questionOrderChange.emit(null);
+    fixture.detectChanges();
+    expect(title()).toBe(worksheetDetailTr.comments.linkedQuestionTitle);
+  });
+
+  it('linkedQuestionCard_LinkMovesToAnotherQuestion_OldOrderNotShown', async () => {
+    const { fixture, component } = await setup({ role: 'Teacher', query: { commentId: '57', questionId: '34' } });
+    const title = () => byTestId(fixture, 'linked-question-title')!.textContent!.replace(/\s+/g, ' ').trim();
+
+    threads(fixture).find((t) => t.questionId() === 34)!.questionOrderChange.emit(3);
+    fixture.detectChanges();
+    expect(title()).toBe('Soru 3 hakkındaki yorumlar');
+
+    // Code review D4: derin link başka soruya geçince eski sıra başlıkta kalmaz.
+    component['commentLink'].set({ worksheetId: 0, commentId: 60, questionId: 35, rootCommentId: null });
+    fixture.detectChanges();
+    expect(title()).toBe(worksheetDetailTr.comments.linkedQuestionTitle);
+
+    // Aynı soruya geri dönülünce (thread o soru için yeniden yayınlamadan) önceki doğru sıra geçerlidir.
+    component['commentLink'].set({ worksheetId: 0, commentId: 61, questionId: 34, rootCommentId: null });
+    fixture.detectChanges();
+    expect(title()).toBe('Soru 3 hakkındaki yorumlar');
+  });
+
+  it('teacherInsights_HardestQuestionsUseDisplayNumberWithOrderFallback', async () => {
+    const { fixture, component } = await setup({ role: 'Teacher' });
+    component['detail'].update((d) => ({
+      ...d!,
+      teacherInsights: {
+        hardestQuestions: [
+          { questionId: 1, order: 0, number: 1, text: null, subtopicName: 'Kesir', answeredCount: 4, correctPercent: 25 },
+          { questionId: 2, order: 7, text: null, subtopicName: null, answeredCount: 2, correctPercent: 50 },
+        ],
+        difficultyDistribution: { easy: 0, medium: 0, hard: 0 },
+        classifiedCount: 0,
+        totalQuestionCount: 2,
+        unclassifiedCount: 2,
+      },
+    }));
+    fixture.detectChanges();
+
+    const rows = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('[data-testid="hardest-question"]')
+    );
+    expect(rows.length).toBe(2);
+    expect(rows[0].querySelector('[data-testid="hardest-question-number"]')!.textContent!.trim()).toBe('1');
+    expect(rows[0].textContent).toContain('Soru 1');
+    // Eski sunucu (number yok): ham order'a düşülür.
+    expect(rows[1].querySelector('[data-testid="hardest-question-number"]')!.textContent!.trim()).toBe('7');
+  });
+
+  it('teacher_WorksheetThreadShowsStudentsSummaryAndEditSettingsEvenWhenCommentsEnabled', async () => {
+    const { fixture } = await setup({ role: 'Teacher', commentsEnabled: true });
+
+    const [worksheetThread] = threads(fixture);
+    expect(worksheetThread.showStudentsSummary()).toBeTrue();
+    expect(worksheetThread.studentsLockedNotice()).toBeFalse();
+    expect(worksheetThread.showEditSettings()).toBeTrue();
+  });
+
+  it('student_WorksheetThreadHasNoStudentsSummary', async () => {
+    const { fixture } = await setup({ role: 'Student' });
+
+    expect(threads(fixture)[0].showStudentsSummary()).toBeFalse();
+    expect(threads(fixture)[0].showEditSettings()).toBeFalse();
+  });
+
   it('deepLink_QuestionCommentForCompletedStudent_SelectsQuestionInReview', async () => {
     const { fixture, component } = await setup({
       role: 'Student',

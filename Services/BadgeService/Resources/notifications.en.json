@@ -61,15 +61,18 @@
     "WorksheetCommentCreated": {
       "title": "New comment: {1}",
       "body": "{0} wrote a comment or question.",
-      "bodyQuestion": "{0} wrote about a question."
+      "bodyQuestion": "{0} wrote about a question.",
+      "bodyQuestionOrder": "{0} wrote about question {2}."
     },
     "WorksheetCommentReplied": {
       "title": "Your teacher replied: {1}",
-      "body": "Your teacher replied to your comment or question."
+      "body": "Your teacher replied to your comment or question.",
+      "bodyQuestionOrder": "Your teacher replied to your comment or question about question {2}."
     },
     "WorksheetCommentRepliedByStudent": {
       "title": "New reply to your comment: {1}",
-      "body": "{0} replied to your comment."
+      "body": "{0} replied to your comment.",
+      "bodyQuestionOrder": "{0} replied to your comment about question {2}."
     }
   }
 }

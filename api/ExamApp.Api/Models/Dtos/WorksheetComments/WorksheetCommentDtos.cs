@@ -50,6 +50,13 @@ public class WorksheetCommentDto
     public int Id { get; set; }
     public int WorksheetId { get; set; }
     public int? QuestionId { get; set; }
+
+    /// <summary>
+    /// Soru thread'inde sorunun kullanıcıya gösterilen 1 tabanlı numarası (issue #309; <c>WorksheetQuestionNumbering</c>,
+    /// test çözme ekranındaki "Soru n" ile aynı). Worksheet seviyesi thread'de null.
+    /// </summary>
+    public int? QuestionOrder { get; set; }
+
     public int? ParentCommentId { get; set; }
 
     /// <summary>Öğrenci: "Ad S." (soyadın baş harfi); öğretmen: görünen ad. Çözülemezse yerelleştirilmiş rol adı.</summary>
@@ -106,6 +113,43 @@ public class WorksheetCommentPageDto
     /// Öğretmen/admin için her zaman null.
     /// </summary>
     public string? LockReason { get; set; }
+
+    /// <summary>
+    /// issue #309: sayfanın ait olduğu soru thread'inin 1 tabanlı numarası (öğelerdeki <c>QuestionOrder</c> ile aynı;
+    /// sayfa boşken de dolu). Worksheet seviyesi thread'de null.
+    /// </summary>
+    public int? QuestionOrder { get; set; }
+
+    /// <summary>
+    /// issue #309: öğretmen/admin için öğrencilerin efektif yorum durumu özeti (worksheet varsayılanı + çağıranın görebildiği
+    /// AKTİF atamalardaki override sayıları). Öğrenci için her zaman null. Kişisel veri yok (yalnız sayılar).
+    /// </summary>
+    public WorksheetCommentStudentSummaryDto? StudentCommentsSummary { get; set; }
+}
+
+/// <summary>
+/// Öğretmen görünümü için öğrenci yorum durumu (issue #309). Bir öğrencinin efektif değeri
+/// <c>ilgili aktif atamanın override'ı ?? WorksheetDefault</c>'tur; override'sız (null) atamalar sayılmaz.
+/// </summary>
+public class WorksheetCommentStudentSummaryDto
+{
+    /// <summary>Worksheet varsayılanı (<c>Worksheet.CommentsEnabled</c>).</summary>
+    public bool WorksheetDefault { get; set; }
+
+    /// <summary>
+    /// Çağıranın görebildiği aktif atamalardaki override sayıları: admin worksheet'in TÜM aktif atamalarını, sahip dahil
+    /// her öğretmen yalnızca KENDİ oluşturduğu aktif atamaları görür.
+    /// </summary>
+    public WorksheetCommentOverrideCountsDto AssignmentOverrides { get; set; } = new();
+}
+
+public class WorksheetCommentOverrideCountsDto
+{
+    /// <summary><c>CommentsEnabledOverride == true</c> olan aktif atama sayısı.</summary>
+    public int Enabled { get; set; }
+
+    /// <summary><c>CommentsEnabledOverride == false</c> olan aktif atama sayısı.</summary>
+    public int Disabled { get; set; }
 }
 
 /// <summary>GET .../comments/{rootId}/replies yanıtı.</summary>
@@ -122,6 +166,9 @@ public class WorksheetCommentRepliesPageDto
 
     /// <summary>Kökün silinmemiş reply'larının toplam sayısı.</summary>
     public int ReplyCount { get; set; }
+
+    /// <summary>issue #309: kök soru thread'indeyse 1 tabanlı soru numarası; worksheet seviyesinde null.</summary>
+    public int? QuestionOrder { get; set; }
 }
 
 /// <summary>Yazma kilidi nedenleri (maket sözleşmesi).</summary>
@@ -197,6 +244,9 @@ public static class WorksheetCommentErrorCodes
 
     /// <summary>403 — öğretmen bu thread'in ilgili öğretmeni değil (veya kök yorum açma yetkisi yok).</summary>
     public const string NotResponsibleTeacher = "NotResponsibleTeacher";
+
+    /// <summary>429 — yorum okuma/yazma rate limit'i aşıldı (issue #309; gövde <c>{ message, errorCode }</c>, Retry-After başlığı).</summary>
+    public const string RateLimited = "RateLimited";
 }
 
 public static class WorksheetCommentLimits

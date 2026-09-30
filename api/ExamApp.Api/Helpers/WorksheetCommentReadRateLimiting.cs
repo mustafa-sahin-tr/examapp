@@ -4,6 +4,7 @@ using System.Security.Claims;
 using System.Threading;
 using System.Threading.RateLimiting;
 using System.Threading.Tasks;
+using ExamApp.Api.Models.Dtos.WorksheetComments;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Configuration;
@@ -37,7 +38,7 @@ public sealed class WorksheetCommentReadRateLimitOptions
 /// <see cref="AdminUserListRateLimiting"/> (#246/#262) altyapısını yeniden kullanır: aynı <see cref="IFixedWindowCounterStore"/>
 /// (Redis varsa dağıtık — tüm replica'lar ortak sayaç; kesintide fail-open; <c>Redis:Configuration</c> boşsa süreç içi) ve
 /// <see cref="DistributedFixedWindowRateLimiter"/>. Sub'sız istek koşulsuz 401 (ortak kova yok, #279 item 7).
-/// 429 + Retry-After + yerelleştirilmiş <c>worksheets.comments.readRateLimited</c>.
+/// 429 + Retry-After + JSON <c>{ message, errorCode: "RateLimited" }</c> (#309; message = yerelleştirilmiş <c>worksheets.comments.readRateLimited</c>).
 /// </summary>
 public static class WorksheetCommentReadRateLimiting
 {
@@ -116,6 +117,7 @@ public sealed class WorksheetCommentReadRateLimitPolicy : IRateLimiterPolicy<str
             AdminUserListRateLimiting.PartitionKey(context.HttpContext), context.HttpContext.Request.Path.Value);
 
         await AdminUserListRateLimiting.WriteRejectionAsync(
-            context, "worksheets.comments.readRateLimited", _options.CurrentValue.WindowSeconds, cancellationToken);
+            context, "worksheets.comments.readRateLimited", _options.CurrentValue.WindowSeconds,
+            WorksheetCommentErrorCodes.RateLimited, cancellationToken);
     }
 }

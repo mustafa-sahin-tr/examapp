@@ -150,6 +150,7 @@ public class TestSessionService : ITestSessionService
             .Include(tq => tq.Question)
                 .ThenInclude(q => q.QuestionSubTopics)
             .OrderBy(tq => tq.Order)
+            .ThenBy(tq => tq.Id) // issue #309: eşit Order'da kararlı sıra (WorksheetQuestionNumbering ile aynı)
             .ToListAsync();
 
         foreach (var tq in testQuestions)
@@ -197,7 +198,8 @@ public class TestSessionService : ITestSessionService
             Status = instance.Status,
             MaxDurationSeconds = instance.Worksheet.MaxDurationSeconds,
             IsPracticeTest = instance.Worksheet.IsPracticeTest,
-            TestInstanceQuestions = instance.WorksheetInstanceQuestions.Select(tiq => new WorksheetInstanceQuestionDto
+            // issue #309: açık sıra — kaynak WorksheetQuestion'ın (Order, Id)'si (instance satırının kendi sıra alanı yok).
+            TestInstanceQuestions = OrderedForDisplay(instance.WorksheetInstanceQuestions).Select(tiq => new WorksheetInstanceQuestionDto
             {
                 Id = tiq.Id,
                 Order = tiq.WorksheetQuestion.Order,
@@ -275,7 +277,7 @@ public class TestSessionService : ITestSessionService
             Status = testInstance.Status,
             MaxDurationSeconds = testInstance.Worksheet.MaxDurationSeconds,
             IsPracticeTest = testInstance.Worksheet.IsPracticeTest,
-            TestInstanceQuestions = testInstance.WorksheetInstanceQuestions.Select(tiq =>
+            TestInstanceQuestions = OrderedForDisplay(testInstance.WorksheetInstanceQuestions).Select(tiq =>
             {
                 var questionEntity = tiq.WorksheetQuestion.Question;
                 var questionDto = new QuestionDto
@@ -342,6 +344,16 @@ public class TestSessionService : ITestSessionService
 
         return response;
     }
+
+    /// <summary>
+    /// issue #309: UI soru numarasını bu listenin konumundan (index + 1) üretir; sıra kaynak <see cref="WorksheetQuestion"/>'ın
+    /// <c>(Order, Id)</c>'si — <see cref="Helpers.WorksheetQuestionNumbering"/> ile aynı kural. Önceden açık sıra yoktu
+    /// (Include'un döndüğü sıra); fark yalnız eşit Order'da görülür.
+    /// </summary>
+    private static IEnumerable<WorksheetInstanceQuestion> OrderedForDisplay(IEnumerable<WorksheetInstanceQuestion> questions) =>
+        questions
+            .OrderBy(tiq => tiq.WorksheetQuestion.Order)
+            .ThenBy(tiq => tiq.WorksheetQuestion.Id);
 
     public async Task<ResponseBaseDto> SaveAnswer(SaveAnswerDto dto, UserProfileDto user)
     {

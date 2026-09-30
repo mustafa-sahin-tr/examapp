@@ -58,17 +58,19 @@ public class WorksheetCommentConsumersTests : IDisposable
             NullLogger<WorksheetCommentRepliedConsumer>.Instance);
 
     private static WorksheetCommentCreatedEvent Created(Guid? id = null, string sub = "kc-t1", int? questionId = null,
-        string author = "Ayşe K.", string title = "Kesirler") => new()
+        string author = "Ayşe K.", string title = "Kesirler", int? questionOrder = null) => new()
     {
         EventId = id ?? Guid.NewGuid(), CommentId = 7, RootCommentId = 5, WorksheetId = 100, QuestionId = questionId,
+        QuestionOrder = questionOrder,
         WorksheetTitle = title, AuthorRole = "Student", AuthorDisplayName = author,
         RecipientUserId = 10, RecipientKeycloakId = sub
     };
 
     private static WorksheetCommentRepliedEvent Replied(Guid? id = null, string sub = "kc-s1", string role = "Teacher",
-        string author = "") => new()
+        string author = "", int? questionOrder = null) => new()
     {
         EventId = id ?? Guid.NewGuid(), CommentId = 8, RootCommentId = 5, WorksheetId = 100, QuestionId = 3,
+        QuestionOrder = questionOrder,
         WorksheetTitle = "Kesirler", AuthorRole = role, AuthorDisplayName = author,
         RecipientUserId = 20, RecipientKeycloakId = sub
     };
@@ -372,6 +374,88 @@ public class WorksheetCommentConsumersTests : IDisposable
 
         await using var check = _db.NewContext();
         (await check.Notifications.CountAsync()).ShouldBe(2);
+    }
+
+    // ---- issue #309: soru sırası ------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Created_with_question_order_names_the_question_and_puts_it_in_data_and_push()
+    {
+        var hub = NewHub();
+        await NewCreated(hub).Consume(Context(Created(questionId: 3, questionOrder: 4)));
+
+        await using var check = _db.NewContext();
+        var n = await check.Notifications.SingleAsync();
+        n.Body.ShouldBe("Ayşe K. 4. soru hakkında yazdı.");
+        using var data = JsonDocument.Parse(n.Data!);
+        data.RootElement.GetProperty("questionOrder").GetInt32().ShouldBe(4);
+        using var push = JsonDocument.Parse(PushedJson(hub, "kc-t1", "WorksheetCommentCreated")!);
+        push.RootElement.GetProperty("questionOrder").GetInt32().ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task Created_without_question_order_keeps_null_in_data_and_the_generic_texts()
+    {
+        await NewCreated(NewHub()).Consume(Context(Created(questionId: 3)));
+        await NewCreated(NewHub()).Consume(Context(Created()));
+
+        await using var check = _db.NewContext();
+        var list = await check.Notifications.OrderBy(n => n.Id).ToListAsync();
+        list[0].Body.ShouldBe("Ayşe K. bir soru hakkında yazdı."); // eski üretici (alan yok) → genel soru metni
+        list[1].Body.ShouldBe("Ayşe K. bir yorum veya soru yazdı.");
+        foreach (var n in list)
+        {
+            using var data = JsonDocument.Parse(n.Data!);
+            data.RootElement.GetProperty("questionOrder").ValueKind.ShouldBe(JsonValueKind.Null);
+        }
+    }
+
+    [Fact]
+    public async Task Created_with_question_order_in_english()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.UserLocalePreferences.Add(new UserLocalePreference
+            {
+                UserId = 10, KeycloakId = "kc-t1", Locale = "en", UpdatedAtUtc = DateTime.UtcNow
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await NewCreated(NewHub()).Consume(Context(Created(questionId: 3, questionOrder: 2)));
+
+        await using var check = _db.NewContext();
+        (await check.Notifications.SingleAsync()).Body.ShouldBe("Ayşe K. wrote about question 2.");
+    }
+
+    [Fact]
+    public async Task Replied_with_question_order_uses_it_for_teacher_and_student_replies()
+    {
+        var hub = NewHub();
+        await NewReplied(hub).Consume(Context(Replied(questionOrder: 5)));
+        await NewReplied(NewHub()).Consume(Context(Replied(role: "Student", author: "Burak İ.", questionOrder: 5)));
+
+        await using var check = _db.NewContext();
+        var list = await check.Notifications.OrderBy(n => n.Id).ToListAsync();
+        list[0].Body.ShouldBe("Öğretmenin 5. soru hakkındaki yorumuna veya sorusuna cevap yazdı.");
+        list[0].Title.ShouldBe("Öğretmenin cevap verdi: Kesirler");
+        list[1].Body.ShouldBe("Burak İ. 5. soru hakkındaki yorumuna cevap yazdı.");
+        using var data = JsonDocument.Parse(list[0].Data!);
+        data.RootElement.GetProperty("questionOrder").GetInt32().ShouldBe(5);
+        using var push = JsonDocument.Parse(PushedJson(hub, "kc-s1", "WorksheetCommentReplied")!);
+        push.RootElement.GetProperty("questionOrder").GetInt32().ShouldBe(5);
+    }
+
+    [Fact]
+    public async Task Replied_without_question_order_keeps_the_generic_body()
+    {
+        await NewReplied(NewHub()).Consume(Context(Replied()));
+
+        await using var check = _db.NewContext();
+        var n = await check.Notifications.SingleAsync();
+        n.Body.ShouldBe("Öğretmenin yorumuna veya sorusuna cevap yazdı.");
+        using var data = JsonDocument.Parse(n.Data!);
+        data.RootElement.GetProperty("questionOrder").ValueKind.ShouldBe(JsonValueKind.Null);
     }
 
     public void Dispose() => _db.Dispose();

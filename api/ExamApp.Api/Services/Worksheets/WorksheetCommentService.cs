@@ -11,7 +11,9 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos.WorksheetComments;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Localization;
+using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
@@ -317,9 +319,43 @@ public class WorksheetCommentService : IWorksheetCommentService
             Body = body
         };
 
+        // Bildirim alıcıları (issue #105 dilim 2): TEK yazımdan önce; sub önce exam DB, gerekirse best-effort auth-api.
+        var resolution = await ResolveNotificationRecipientsAsync(worksheet, comment, parent, actor, ct);
+        var recipients = resolution.Recipients;
+
         _context.SetCurrentUser(actor.UserId);
-        _context.WorksheetComments.Add(comment);
-        await _context.SaveChangesAsync(ct);
+
+        // Yorum + outbox satır(lar)ı tek transaction'da (yorum Id'si payload'da olduğundan iki SaveChanges,
+        // TeacherApprovalService/TestSessionService ile aynı retry-güvenli desen).
+        var strategy = _context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            // Retry'da önceki denemenin tracker'a bıraktığı yorum (atanmış Id) ve outbox satırları temizlenmezse ikinci
+            // deneme yanlış CommentId'li/çift outbox satırı yazar. Delegate içinde başka tracked entity kullanılmıyor
+            // (worksheet/parent AsNoTracking; yalnız comment + outbox burada eklenir), Clear güvenlidir.
+            _context.ChangeTracker.Clear();
+            comment.Id = 0;
+
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+
+            _context.WorksheetComments.Add(comment);
+            await _context.SaveChangesAsync(ct);
+
+            if (recipients.Count > 0)
+            {
+                AddNotificationOutbox(worksheet, comment, parent, actor, recipients);
+                await _context.SaveChangesAsync(ct);
+            }
+
+            await tx.CommitAsync(ct);
+        });
+
+        if (resolution.TeacherMissing)
+        {
+            _logger?.LogWarning(
+                "[WorksheetComments] İlgili öğretmen çözülemedi; öğretmen bildirimi atlandı. CommentId={CommentId}, WorksheetId={WorksheetId}",
+                comment.Id, worksheet.Id);
+        }
 
         var names = new Dictionary<int, string?> { [actor.UserId] = actor.FullName };
         return new WorksheetCommentResultDto
@@ -329,6 +365,202 @@ public class WorksheetCommentService : IWorksheetCommentService
             Message = _localizer["worksheets.comments.created"],
             Comment = Fill(new WorksheetCommentDto(), comment, actor, names)
         };
+    }
+
+    // ---- Bildirim (issue #105 dilim 2) ----------------------------------------------------------------------
+
+    private enum NotificationKind { TeacherNotice, StudentReply }
+
+    /// <summary>KeycloakId boş olabilir: exam DB'de yoksa consumer BadgeService verisinden çözer (sync auth-api çağrısı yok).</summary>
+    private sealed record NotificationRecipient(NotificationKind Kind, int UserId, string KeycloakId);
+
+    private sealed record RecipientResolution(List<NotificationRecipient> Recipients, bool TeacherMissing);
+
+    /// <summary>
+    /// Alıcı kuralları: öğrenci yazdıysa → ilgili öğretmen "Created" alır (öğrenci kökünde kökte sabitlenmiş
+    /// <see cref="WorksheetComment.ResponsibleTeacherUserId"/>; öğretmen kökünde kökün yazarı VE reply yazan öğrencinin
+    /// sorumlu öğretmeni); reply'sa ayrıca kök yazarı başka bir öğrenciyse o "Replied" alır. Öğretmen reply yazdıysa → kök
+    /// yazarı öğrenci "Replied" alır. Öğretmen KÖKÜ (duyuru), öğretmen kökünün öğretmen cevabı ve kendi kendine bildirim YOK.
+    /// Alıcılar tekil. Sub önce exam DB'den, bulunamayanlar için TEK toplu best-effort auth-api çağrısıyla (2 sn) çözülür; olmazsa boş kalır ve consumer çözer.
+    /// Bildirim hazırlığındaki hata yorumu düşürmez: loglanır, event yazılmaz.
+    /// </summary>
+    private async Task<RecipientResolution> ResolveNotificationRecipientsAsync(
+        Worksheet worksheet, WorksheetComment comment, WorksheetComment? parent, WorksheetCommentActor actor, CancellationToken ct)
+    {
+        try
+        {
+            var wanted = new List<(NotificationKind Kind, int UserId, string? Sub)>();
+            var teacherMissing = false;
+
+            if (actor.Kind == WorksheetCommentActorKind.Student)
+            {
+                var root = parent ?? comment;
+                var teachers = new List<(int UserId, string? Sub)>();
+
+                if (root.AuthorRole == WorksheetCommentAuthorRole.Student)
+                {
+                    if (root.ResponsibleTeacherUserId is > 0)
+                        teachers.Add((root.ResponsibleTeacherUserId.Value, null));
+                    else
+                        teacherMissing = true;
+                }
+                else
+                {
+                    // Öğretmen kökü: kök yazarı + reply'ı yazan öğrencinin ilgili öğretmeni.
+                    teachers.Add((root.AuthorUserId, root.AuthorKeycloakId));
+                    var responsible = await _responsibleTeacher.ResolveResponsibleTeacherAsync(
+                        new ResponsibleTeacherWorksheet(worksheet.Id, worksheet.CreateUserId, worksheet.SourceWorksheetId),
+                        actor.UserId, ct);
+                    if (responsible?.TeacherUserId is > 0)
+                        teachers.Add((responsible.TeacherUserId, null));
+                    else
+                        teacherMissing = true;
+                }
+
+                foreach (var (userId, sub) in teachers)
+                    wanted.Add((NotificationKind.TeacherNotice, userId, sub));
+
+                if (parent != null && parent.AuthorRole == WorksheetCommentAuthorRole.Student)
+                    wanted.Add((NotificationKind.StudentReply, parent.AuthorUserId, parent.AuthorKeycloakId));
+            }
+            else if (actor.Kind == WorksheetCommentActorKind.Teacher
+                && parent != null && parent.AuthorRole == WorksheetCommentAuthorRole.Student)
+            {
+                wanted.Add((NotificationKind.StudentReply, parent.AuthorUserId, parent.AuthorKeycloakId));
+            }
+
+            // Kendine bildirim yok + tekilleştirme.
+            var seen = new HashSet<int>();
+            var result = new List<NotificationRecipient>();
+            foreach (var (kind, userId, sub) in wanted)
+            {
+                if (userId <= 0 || userId == actor.UserId || !seen.Add(userId))
+                    continue;
+
+                var effectiveSub = sub;
+                if (string.IsNullOrWhiteSpace(effectiveSub))
+                {
+                    // Aynı kullanıcının exam DB'deki en son yorumundan (yalnız Keycloak sub; auth-api çağrısı yok).
+                    effectiveSub = await _context.WorksheetComments.AsNoTracking()
+                        .Where(c => c.AuthorUserId == userId && c.AuthorKeycloakId != "")
+                        .OrderByDescending(c => c.Id)
+                        .Select(c => c.AuthorKeycloakId)
+                        .FirstOrDefaultAsync(ct);
+                }
+
+                result.Add(new NotificationRecipient(kind, userId, effectiveSub ?? string.Empty));
+            }
+
+            // 2. Exam DB'de sub bulunamayanlar için TEK toplu auth-api çağrısı (best-effort, 2 sn; WorksheetAccessRequestService
+            // ile aynı kabul edilmiş desen). Hata olursa sub boş kalır → consumer BadgeService verisinden çözer, son çare fırlatır.
+            var blank = result.Where(r => string.IsNullOrWhiteSpace(r.KeycloakId)).Select(r => r.UserId).ToList();
+            if (blank.Count > 0)
+            {
+                var resolved = await LookupSubsBestEffortAsync(blank, worksheet.Id, ct);
+                if (resolved.Count > 0)
+                {
+                    result = result
+                        .Select(r => string.IsNullOrWhiteSpace(r.KeycloakId) && resolved.TryGetValue(r.UserId, out var s)
+                            ? r with { KeycloakId = s }
+                            : r)
+                        .ToList();
+                }
+            }
+
+            return new RecipientResolution(result, teacherMissing);
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            _logger?.LogWarning(ex,
+                "[WorksheetComments] Bildirim alıcıları hesaplanamadı; yorum kaydediliyor, bildirim atlanıyor. WorksheetId={WorksheetId}",
+                worksheet.Id);
+            return new RecipientResolution(new List<NotificationRecipient>(), false);
+        }
+    }
+
+    private async Task<Dictionary<int, string>> LookupSubsBestEffortAsync(List<int> userIds, int worksheetId, CancellationToken ct)
+    {
+        var resolved = new Dictionary<int, string>();
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(AuthorNameLookupTimeout);
+        try
+        {
+            var users = await _authApiClient.GetUsersByIdsAsync(userIds, timeout.Token);
+            foreach (var user in users)
+            {
+                if (!string.IsNullOrWhiteSpace(user.KeycloakId))
+                    resolved[user.Id] = user.KeycloakId;
+            }
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            _logger?.LogWarning(ex,
+                "[WorksheetComments] Bildirim alıcısı sub'ı auth-api'den çözülemedi; event boş sub ile yazılacak. WorksheetId={WorksheetId}",
+                worksheetId);
+        }
+
+        return resolved;
+    }
+
+    /// <summary>Alıcı başına bir outbox satırı (ChangeTracker'a ekler; çağıran SaveChanges yapar). Gövde/e-posta taşınmaz.</summary>
+    private void AddNotificationOutbox(
+        Worksheet worksheet, WorksheetComment comment, WorksheetComment? parent, WorksheetCommentActor actor,
+        IReadOnlyList<NotificationRecipient> recipients)
+    {
+        var rootId = parent?.Id ?? comment.Id;
+        var authorDisplayName = comment.AuthorRole == WorksheetCommentAuthorRole.Student
+            ? FormatStudentDisplayName(actor.FullName) ?? string.Empty
+            : string.Empty;
+        var createdAt = DateTime.SpecifyKind(comment.CreateTime, DateTimeKind.Utc);
+
+        foreach (var r in recipients)
+        {
+            object payload;
+            string type;
+            if (r.Kind == NotificationKind.TeacherNotice)
+            {
+                type = OutboxEventRegistry.NameFor<WorksheetCommentCreatedEvent>();
+                payload = new WorksheetCommentCreatedEvent
+                {
+                    EventId = Guid.NewGuid(),
+                    CommentId = comment.Id,
+                    RootCommentId = rootId,
+                    WorksheetId = worksheet.Id,
+                    QuestionId = comment.QuestionId,
+                    WorksheetTitle = worksheet.Name,
+                    AuthorRole = comment.AuthorRole.ToString(),
+                    AuthorDisplayName = authorDisplayName,
+                    RecipientUserId = r.UserId,
+                    RecipientKeycloakId = r.KeycloakId,
+                    CreatedAtUtc = createdAt
+                };
+            }
+            else
+            {
+                type = OutboxEventRegistry.NameFor<WorksheetCommentRepliedEvent>();
+                payload = new WorksheetCommentRepliedEvent
+                {
+                    EventId = Guid.NewGuid(),
+                    CommentId = comment.Id,
+                    RootCommentId = rootId,
+                    WorksheetId = worksheet.Id,
+                    QuestionId = comment.QuestionId,
+                    WorksheetTitle = worksheet.Name,
+                    AuthorRole = comment.AuthorRole.ToString(),
+                    AuthorDisplayName = authorDisplayName,
+                    RecipientUserId = r.UserId,
+                    RecipientKeycloakId = r.KeycloakId,
+                    CreatedAtUtc = createdAt
+                };
+            }
+
+            _context.OutboxMessages.Add(new OutboxMessage
+            {
+                Type = type,
+                Content = JsonSerializer.Serialize(payload, payload.GetType()),
+                CreatedAt = DateTime.UtcNow
+            });
+        }
     }
 
     // ---- Yetki ----------------------------------------------------------------------------------------------

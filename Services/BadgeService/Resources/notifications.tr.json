@@ -57,6 +57,19 @@
     "WorksheetReminderDue": {
       "title": "Sınavın yaklaşıyor",
       "body": "{0} {1} dakika sonra başlıyor."
+    },
+    "WorksheetCommentCreated": {
+      "title": "Yeni yorum: {1}",
+      "body": "{0} bir yorum veya soru yazdı.",
+      "bodyQuestion": "{0} bir soru hakkında yazdı."
+    },
+    "WorksheetCommentReplied": {
+      "title": "Öğretmenin cevap verdi: {1}",
+      "body": "Öğretmenin yorumuna veya sorusuna cevap yazdı."
+    },
+    "WorksheetCommentRepliedByStudent": {
+      "title": "Yorumuna cevap geldi: {1}",
+      "body": "{0} yorumuna cevap yazdı."
     }
   }
 }

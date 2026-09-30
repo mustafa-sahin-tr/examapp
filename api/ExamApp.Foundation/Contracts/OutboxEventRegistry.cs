@@ -32,6 +32,8 @@ public static class OutboxEventRegistry
         typeof(UserPreferredLocaleChangedEvent),
         typeof(StudentPointsChangedEvent),
         typeof(UserRoleChangedEvent), // issue #277 (item 4)
+        typeof(WorksheetCommentCreatedEvent), // issue #105 (dilim 2)
+        typeof(WorksheetCommentRepliedEvent), // issue #105 (dilim 2)
     };
 
     private static readonly Dictionary<string, Type> ByFullName =

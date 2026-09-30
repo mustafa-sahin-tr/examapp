@@ -178,7 +178,7 @@ public class BadgeEarnedNotificationTests : IDisposable
 
         var list = await NotificationsAsync(1);
         list.Count.ShouldBe(2);
-        list.Select(x => x.SourceBadgeDefinitionId).ToHashSet().ShouldBe(new Guid?[] { a.Id, b.Id }.ToHashSet());
+        list.Select(x => x.SourceBadgeDefinitionId).ToList().ShouldBe(new Guid?[] { a.Id, b.Id }, ignoreOrder: true);
     }
 
     [Fact]

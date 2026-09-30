@@ -1,7 +1,7 @@
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
-using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Services;
 
@@ -21,8 +21,8 @@ namespace ExamApp.Api.Services;
 /// kaydı varsa okul kapsamı HER ZAMAN Teachers.SchoolId'den gelir — profil/önbellekteki rol Student olsa bile.
 /// Aksi halde öğretmen, student/register ile kendine Students.SchoolId=X yazıp (rol önbellekte Student'a döner)
 /// X okulunun kapsamına girebiliyordu. Kayıt uçları artık iki kaydı birbirini dışlayacak şekilde korur; bu kural
-/// halihazırda iki kaydı olan (eski) kullanıcılar için de öğretmen kaydını esas alır. Teachers.UserId unique
-/// değil — deterministik seçim için OrderBy(Id) (TeacherService.Save ile aynı).
+/// halihazırda iki kaydı olan (eski) kullanıcılar için de öğretmen kaydını esas alır. Kural ve çoklu canlı satır
+/// davranışı <see cref="ExamApp.Api.Helpers.UserSchoolResolver"/>'da (issue #326 D3, tek kaynak).
 ///
 /// #194 notu: kullanıcının okulu değiştiğinde (ör. transfer), bu resolver'ın sonucu
 /// UserProfileCacheService üzerinden cache'lenir — okul değişikliğinde ilgili keycloakId için
@@ -45,25 +45,11 @@ public class SchoolContextResolver : ISchoolContextResolver
         if (user.Role is not (nameof(UserRole.Teacher) or nameof(UserRole.Student)))
             return null;
 
-        var teacherRow = await _context.Teachers
-            .AsNoTracking()
-            .Where(t => t.UserId == user.Id)
-            .OrderBy(t => t.Id)
-            .Select(t => new { t.SchoolId })
-            .FirstOrDefaultAsync(ct);
-
-        if (teacherRow != null)
-            return teacherRow.SchoolId;
-
+        // issue #326 (D3): kural tek kaynakta (UserSchoolResolver) — canlı öğretmen satırı önce, yoksa canlı öğrenci satırı.
+        // #259 unique index canlı satırı tekil kılar; index'siz ortamda çoklu canlı satır → null (güvenli taraf, tahmin yok).
         // issue #277 review (security HIGH): profil rolü (auth-api) JWT'den geri kalabilir — Teacher ↔ Student ayrımı burada
         // karar vermez. Öğretmen kaydı yoksa öğrenci kaydının okulu esas alınır (iki kayıt birbirini dışlar, #234/#277 madde 9);
         // dal kararı controller'da JWT'yle doğrulanmış etkin rolle verilir (EffectiveRole).
-
-        return await _context.Students
-            .AsNoTracking()
-            .Where(s => s.UserId == user.Id)
-            .OrderBy(s => s.Id)
-            .Select(s => (int?)s.SchoolId)
-            .FirstOrDefaultAsync(ct);
+        return await UserSchoolResolver.ResolveAsync(_context, user.Id, ct);
     }
 }

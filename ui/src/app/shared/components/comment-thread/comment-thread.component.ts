@@ -49,6 +49,8 @@ import {
   WorksheetCommentRepliesPage,
   WorksheetCommentRoot,
   WorksheetCommentStudentSummary,
+  WorksheetCommentVisibility,
+  parseCommentVisibility,
   parseStudentCommentsSummary,
   toQuestionOrder,
 } from '../../../models/worksheet-comment.model';
@@ -89,6 +91,29 @@ const LOCK_REASONS: readonly WorksheetCommentLockReason[] = [
 interface ThreadContext {
   worksheetId: number;
   questionId: number | null;
+}
+
+/**
+ * Issue #326: öğrencinin yorum görünürlük notu — varsayılan (`teacher`) dışındaki kapsamlar için ikon + `comments`
+ * scope anahtarı. `teacher`/null → not yok.
+ */
+export interface CommentVisibilityNote {
+  visibility: Exclude<WorksheetCommentVisibility, 'teacher'>;
+  icon: 'lock' | 'visibility';
+  key: string;
+}
+
+export function commentVisibilityNote(visibility: WorksheetCommentVisibility | null): CommentVisibilityNote | null {
+  switch (visibility) {
+    case 'school':
+      return { visibility, icon: 'visibility', key: 'thread.visibility.school' };
+    case 'self-and-teacher':
+      return { visibility, icon: 'lock', key: 'thread.visibility.self-and-teacher' };
+    case 'self':
+      return { visibility, icon: 'lock', key: 'thread.visibility.self' };
+    default:
+      return null;
+  }
 }
 
 /** Öğretmen özet şeridinin tek parçası (Transloco anahtarı `comments` scope'unda + parametre). */
@@ -224,6 +249,12 @@ export class CommentThreadComponent {
   protected readonly canWrite = signal(false);
   protected readonly lockReason = signal<WorksheetCommentLockReason | null>(null);
   protected readonly studentSummary = signal<WorksheetCommentStudentSummary | null>(null);
+  /** Issue #326: sunucunun öğrenciye döndüğü yorum görünürlüğü (öğretmen/admin için null). */
+  protected readonly commentVisibility = signal<WorksheetCommentVisibility | null>(null);
+  /** Yazma alanı yanındaki bilgi notu — yalnız öğrenci görünümünde ve yazabiliyorken. */
+  protected readonly visibilityNote = computed(() =>
+    this.viewerIsTeacher() || !this.canWrite() ? null : commentVisibilityNote(this.commentVisibility())
+  );
   protected readonly summaryStrip = computed(() => {
     const summary = this.studentSummary();
     return summary && this.showStudentsSummary() ? studentSummaryStrip(summary) : null;
@@ -353,6 +384,7 @@ export class CommentThreadComponent {
     this.canWrite.set(false);
     this.lockReason.set(null);
     this.studentSummary.set(null);
+    this.commentVisibility.set(null);
     this.loadMoreError.set(null);
     this.loadingMore.set(false);
     this.draft.set('');
@@ -398,6 +430,7 @@ export class CommentThreadComponent {
               this.canWrite.set(false);
               this.lockReason.set(null);
               this.studentSummary.set(null);
+    this.commentVisibility.set(null);
               this.nextCursor.set(null);
               this.error.set(commentErrorMessage(err, this.t, 'thread.loadError'));
               // pendingHighlight korunur: "Tekrar dene" başarılı olunca derin link yine uygulanır.
@@ -788,6 +821,7 @@ export class CommentThreadComponent {
   private applyPageFlags(page: WorksheetCommentPage | null): void {
     this.canWrite.set(page?.canWrite === true);
     this.studentSummary.set(parseStudentCommentsSummary(page?.studentCommentsSummary));
+    this.commentVisibility.set(parseCommentVisibility(page?.commentVisibility));
     const reason = page?.lockReason ?? null;
     this.lockReason.set(reason && LOCK_REASONS.includes(reason) ? reason : null);
     this.nextCursor.set(page?.nextCursor || null);

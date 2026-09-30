@@ -154,8 +154,11 @@ public class WhiteboardAccessServiceTests : IDisposable
     {
         var bookingId = await SeedAsync(teacherSuspended: true);
 
+        // issue #298: öğretmene de öğrenciye de aynı nötr kod.
         (await AuthorizeAsync(As(TeacherUserId, "Teacher"), bookingId)).ErrorCode
-            .ShouldBe(WhiteboardErrorCodes.TeacherNotApproved);
+            .ShouldBe(WhiteboardErrorCodes.TeacherUnavailable);
+        (await AuthorizeAsync(As(StudentUserId, "Student"), bookingId)).ErrorCode
+            .ShouldBe(WhiteboardErrorCodes.TeacherUnavailable);
     }
 
     [Fact]
@@ -164,7 +167,7 @@ public class WhiteboardAccessServiceTests : IDisposable
         var bookingId = await SeedAsync(teacherApproved: false);
 
         (await AuthorizeAsync(As(TeacherUserId), bookingId)).ErrorCode
-            .ShouldBe(WhiteboardErrorCodes.TeacherNotApproved);
+            .ShouldBe(WhiteboardErrorCodes.TeacherUnavailable);
     }
 
     [Fact]
@@ -207,7 +210,7 @@ public class WhiteboardAccessServiceTests : IDisposable
         await using (var ctx = _db.NewContext())
         {
             var invalid = await NewService(ctx).FindInvalidBoardsAsync([approved]);
-            invalid[approved].ShouldBe(WhiteboardCloseReasons.TeacherNotApproved);
+            invalid[approved].ShouldBe(WhiteboardCloseReasons.TeacherUnavailable);
         }
     }
 }

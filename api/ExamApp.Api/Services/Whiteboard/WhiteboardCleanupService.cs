@@ -13,7 +13,7 @@ namespace ExamApp.Api.Services.Whiteboard;
 /// issue #98: açık tahtaları periyodik (varsayılan dakikada bir) tarar ve kapatır — katılım penceresi dolan tahtalar
 /// (<see cref="WhiteboardCloseReasons.WindowClosed"/>), randevusu artık Approved olmayan / silinen
 /// (<see cref="WhiteboardCloseReasons.BookingCancelled"/>) ve öğretmeni askıya alınan
-/// (<see cref="WhiteboardCloseReasons.TeacherNotApproved"/>) tahtalar. Kapanışta <c>BoardClosed</c> yayınlanır, üyeler
+/// (<see cref="WhiteboardCloseReasons.TeacherUnavailable"/>, #298) tahtalar. Kapanışta <c>BoardClosed</c> yayınlanır, üyeler
 /// gruptan çıkarılır, durum silinir. Hiç tahta açık değilse DB'ye gitmez.
 /// </summary>
 public sealed class WhiteboardCleanupService : BackgroundService

@@ -182,18 +182,36 @@ public class BookingDecisionConsumerTests : IDisposable
     }
 
     [Fact]
-    public async Task Consume_MissingKeycloakId_LogsWarningButStoreNotification()
+    public async Task Consume_MissingKeycloakId_ResolvesSubFromLocalePreferenceAndPushes()
     {
+        // Security review O2 (#298): üretici sub'ı çözemediyse BadgeService verisinden çözülür.
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.UserLocalePreferences.Add(new BadgeService.Entities.UserLocalePreference
+            {
+                UserId = 200, KeycloakId = "kc-from-locale", Locale = "tr", UpdatedAtUtc = DateTime.UtcNow
+            });
+            await ctx.SaveChangesAsync();
+        }
         var hub = NewHub();
-        var e = Evt(keycloakId: null);
 
-        await NewConsumer(hub).Consume(Context(e));
+        await NewConsumer(hub).Consume(Context(Evt(keycloakId: null)));
 
         await using var check = _db.NewContext();
-        var n = await check.Notifications.SingleAsync();
-        n.UserKeycloakId.ShouldBeNull();
+        (await check.Notifications.SingleAsync()).UserKeycloakId.ShouldBe("kc-from-locale");
+        await hub.Clients.User("kc-from-locale").Received(1).SendCoreAsync(
+            "BookingUpdate", Arg.Any<object?[]>(), Arg.Any<CancellationToken>());
+    }
 
-        // Should not push (no target keycloak id)
+    [Fact]
+    public async Task Consume_UnresolvableKeycloakId_ThrowsForRetryAndStoresNothing()
+    {
+        var hub = NewHub();
+
+        await Should.ThrowAsync<InvalidOperationException>(() => NewConsumer(hub).Consume(Context(Evt(keycloakId: null))));
+
+        await using var check = _db.NewContext();
+        (await check.Notifications.CountAsync()).ShouldBe(0);
         await hub.Clients.User(Arg.Any<string>()).DidNotReceive().SendCoreAsync(
             Arg.Any<string>(), Arg.Any<object?[]>(), Arg.Any<CancellationToken>());
     }

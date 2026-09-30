@@ -228,8 +228,8 @@ public sealed partial class WhiteboardHub : Hub<IWhiteboardClient>
                 var reason = access.ErrorCode switch
                 {
                     WhiteboardErrorCodes.WindowClosed => WhiteboardCloseReasons.WindowClosed,
-                    WhiteboardErrorCodes.TeacherNotApproved when member.Role == WhiteboardRoles.Teacher
-                        => WhiteboardCloseReasons.TeacherNotApproved,
+                    // issue #298: randevunun öğretmeni müsait değil → tahta iki taraf için kapanır (nötr neden).
+                    WhiteboardErrorCodes.TeacherUnavailable => WhiteboardCloseReasons.TeacherUnavailable,
                     WhiteboardErrorCodes.BookingNotFound or WhiteboardErrorCodes.BookingNotApproved
                         => WhiteboardCloseReasons.BookingCancelled,
                     _ => null

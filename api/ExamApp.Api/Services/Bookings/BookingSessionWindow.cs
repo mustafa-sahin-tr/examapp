@@ -50,13 +50,20 @@ public enum BookingLiveSessionDenial
     NotParticipant = 2,
     NotApproved = 3,
     WindowNotOpen = 4,
-    WindowClosed = 5
+    WindowClosed = 5,
+
+    /// <summary>
+    /// issue #298: randevunun öğretmeninin hesabı onaylı değil ya da askıda (<c>IApprovedTeacherGuard</c> ile aynı karar).
+    /// Öğretmene de öğrenciye de verilir; askı kalkınca (pencere içindeyse) erişim kendiliğinden geri açılır.
+    /// </summary>
+    TeacherUnavailable = 6
 }
 
 /// <summary>
 /// Canlı ders oturumu (görüşme / çizim tahtası) katılım kararı. <see cref="Denial"/> <see cref="BookingLiveSessionDenial.None"/>
-/// ise çağıran randevunun öğretmeni ya da öğrencisidir, randevu Approved'dır ve pencere açıktır. Öğretmen hesabının
-/// onay/askı durumu (#287/#289) burada DEĞİL, çağıranda (policy veya hub erişim servisi) kontrol edilir.
+/// ise çağıran randevunun öğretmeni ya da öğrencisidir, randevu Approved'dır, randevunun öğretmeni onaylı ve askıda
+/// değildir (issue #298, <see cref="BookingLiveSessionDenial.TeacherUnavailable"/>) ve pencere açıktır. ÇAĞIRANIN kendi
+/// öğretmen hesabı (Teacher rolü, #287/#289) ayrıca çağıranda (policy veya hub erişim servisi) kontrol edilir.
 /// </summary>
 public sealed record BookingLiveSessionAccess(
     BookingLiveSessionDenial Denial,

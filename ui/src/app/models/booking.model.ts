@@ -176,4 +176,25 @@ export interface VideoSession {
 export interface VideoSessionResult extends BookingResponseBase {
   objectId?: number | null;
   session?: VideoSession | null;
+  /**
+   * Issue #298: makine okunur red kodu (`VideoSessionResultDto.ErrorCode`). Şimdilik yalnızca
+   * `TeacherUnavailable` (409); diğer yanıtlarda alan gelmez.
+   */
+  errorCode?: string | null;
+}
+
+/** `TeacherAccessErrorCodes.TeacherUnavailable` — öğretmen askıda/onaysız, ders açılamaz (issue #298). */
+export const TEACHER_UNAVAILABLE_ERROR_CODE = 'TeacherUnavailable';
+
+/**
+ * Hata gövdesi (güvenilmeyen veri) `errorCode: "TeacherUnavailable"` taşıyor mu. Yalnızca 409'da anlamlıdır;
+ * başka durum kodlarında `false`.
+ */
+export function isTeacherUnavailableError(status: number, body: unknown): boolean {
+  return (
+    status === 409 &&
+    !!body &&
+    typeof body === 'object' &&
+    (body as Record<string, unknown>)['errorCode'] === TEACHER_UNAVAILABLE_ERROR_CODE
+  );
 }

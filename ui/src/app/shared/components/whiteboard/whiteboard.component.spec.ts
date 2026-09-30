@@ -166,6 +166,28 @@ describe('WhiteboardComponent', () => {
     finish();
   }));
 
+  // Issue #298: anlık kapanma / yeniden doğrulama — salt okunur ve nötr mesaj.
+  it('BoardClosed_TeacherUnavailable_ReadOnlyWithNeutralMessage', fakeAsync(() => {
+    render();
+    hub.emit('BoardClosed', 'TeacherUnavailable');
+    fixture.detectChanges();
+
+    expect(canvas.viewModes.at(-1)).toBeTrue();
+    expect(query('[data-testid="wb-closed"]')?.textContent).toContain(whiteboardTr.closed.TeacherUnavailable);
+    expect(query('[data-testid="wb-error"]')).toBeNull();
+    finish();
+  }));
+
+  it('JoinError_TeacherUnavailable_ReadOnlyWithNeutralMessage', fakeAsync(() => {
+    hub.respond = () => Promise.reject(hubError('TeacherUnavailable'));
+    render();
+
+    expect(query('[data-testid="wb-closed"]')?.textContent).toContain(whiteboardTr.closed.TeacherUnavailable);
+    expect(query('[data-testid="wb-error"]')).toBeNull();
+    expect(hub.calls('JoinBoard').length).toBe(1);
+    finish();
+  }));
+
   it('JoinError_MappedToLocalizedMessageWithRetry', fakeAsync(() => {
     hub.respond = () => Promise.reject(hubError('NotParticipant'));
     render();

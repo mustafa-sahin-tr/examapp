@@ -2,6 +2,8 @@ using System.Reflection;
 using System.Security.Claims;
 using ExamApp.Api.Controllers;
 using ExamApp.Api.Helpers;
+using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.AdminUsers;
 using ExamApp.Api.Services.Classifier;
@@ -14,6 +16,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ExamApp.Api.Tests.Controllers;
 
@@ -36,10 +39,26 @@ public class AdminControllerTeacherSuspensionTests
             HttpContext = new DefaultHttpContext
             {
                 User = new ClaimsPrincipal(new ClaimsIdentity(
-                    sub is null ? [] : [new Claim(ClaimTypes.NameIdentifier, sub)], "Test"))
+                    sub is null ? [] : [new Claim(ClaimTypes.NameIdentifier, sub)], "Test")),
+                // issue #298: aksiyon admin'in exam user id'sini (otomatik reddedilen randevuların UpdateUserId'si) çözer.
+                RequestServices = Services()
             }
         }
     };
+
+    private const int AdminUserId = 7;
+
+    private static IServiceProvider Services()
+    {
+        var profiles = Substitute.For<IUserProfileProvider>();
+        profiles.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new UserProfileDto { Id = AdminUserId, KeycloakId = "kc-admin-sub", Role = "Admin" });
+        return new Microsoft.Extensions.DependencyInjection.ServiceCollection()
+            .AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(
+                new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build())
+            .AddSingleton(profiles)
+            .BuildServiceProvider();
+    }
 
     private static string? Prop(object? value, string name) => value?.GetType().GetProperty(name)?.GetValue(value) as string;
 
@@ -49,7 +68,7 @@ public class AdminControllerTeacherSuspensionTests
     public async Task Suspend_success_returns_200_and_passes_reason_and_actor()
     {
         var at = DateTime.UtcNow;
-        _service.SuspendAsync(9, "neden", "kc-admin-sub", Arg.Any<CancellationToken>())
+        _service.SuspendAsync(9, "neden", "kc-admin-sub", AdminUserId, Arg.Any<CancellationToken>())
             .Returns(new AdminTeacherSuspensionResult(AdminTeacherSuspensionStatus.Success, null, at));
 
         var result = await NewController().SuspendTeacher(9, new AdminTeacherSuspendRequestDto { Reason = "neden" }, default);
@@ -88,7 +107,7 @@ public class AdminControllerTeacherSuspensionTests
     public async Task Failure_statuses_map_to_http_code_localized_message_and_errorCode(
         AdminTeacherSuspensionStatus status, int code, string key, string errorCode)
     {
-        _service.SuspendAsync(Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _service.SuspendAsync(Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new AdminTeacherSuspensionResult(status));
 
         var result = await NewController().SuspendTeacher(9, new AdminTeacherSuspendRequestDto { Reason = "x" }, default);
@@ -104,7 +123,7 @@ public class AdminControllerTeacherSuspensionTests
     [Fact]
     public async Task Too_long_reason_is_400_with_limit_in_message()
     {
-        _service.SuspendAsync(Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _service.SuspendAsync(Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new AdminTeacherSuspensionResult(AdminTeacherSuspensionStatus.ReasonTooLong));
 
         var result = await NewController().SuspendTeacher(9, new AdminTeacherSuspendRequestDto { Reason = "x" }, default);
@@ -117,7 +136,7 @@ public class AdminControllerTeacherSuspensionTests
     [Fact]
     public async Task Missing_body_passes_null_reason_to_service()
     {
-        _service.SuspendAsync(9, null, "kc-admin-sub", Arg.Any<CancellationToken>())
+        _service.SuspendAsync(9, null, "kc-admin-sub", Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new AdminTeacherSuspensionResult(AdminTeacherSuspensionStatus.ReasonRequired));
 
         var result = await NewController().SuspendTeacher(9, null, default);
@@ -132,7 +151,7 @@ public class AdminControllerTeacherSuspensionTests
             .ShouldBeOfType<ForbidResult>();
         (await NewController(sub: null).UnsuspendTeacher(9, default)).ShouldBeOfType<ForbidResult>();
 
-        await _service.DidNotReceiveWithAnyArgs().SuspendAsync(default, default, default!, default);
+        await _service.DidNotReceiveWithAnyArgs().SuspendAsync(default, default, default!, default, default);
         await _service.DidNotReceiveWithAnyArgs().UnsuspendAsync(default, default!, default);
     }
 

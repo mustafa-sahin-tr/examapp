@@ -57,7 +57,10 @@ export const WHITEBOARD_ERROR_CODES = [
   'UserNotResolved',
   'BookingNotFound',
   'NotParticipant',
+  /** Eski (#98/#289): #298'den beri sunucu yerine `TeacherUnavailable` döner; eski yanıt uyumu için duruyor. */
   'TeacherNotApproved',
+  /** Issue #298: randevunun öğretmeni askıda/onaysız — iki tarafa da aynı nötr kod. */
+  'TeacherUnavailable',
   'BookingNotApproved',
   'WindowNotOpen',
   'WindowClosed',
@@ -75,8 +78,17 @@ export const WHITEBOARD_ERROR_CODES = [
 
 export type WhiteboardErrorCode = (typeof WHITEBOARD_ERROR_CODES)[number];
 
-/** `BoardClosed(reason)` değerleri — `WhiteboardCloseReasons`. */
-export const WHITEBOARD_CLOSE_REASONS = ['WindowClosed', 'BookingCancelled', 'TeacherNotApproved', 'AccessRevoked'] as const;
+/**
+ * `BoardClosed(reason)` değerleri — `WhiteboardCloseReasons`. `TeacherNotApproved` #298'den beri sunucudan gelmez
+ * (yerine `TeacherUnavailable`); eski istemci/sunucu uyumu için listede kalır.
+ */
+export const WHITEBOARD_CLOSE_REASONS = [
+  'WindowClosed',
+  'BookingCancelled',
+  'TeacherNotApproved',
+  'TeacherUnavailable',
+  'AccessRevoked',
+] as const;
 
 export type WhiteboardCloseReason = (typeof WHITEBOARD_CLOSE_REASONS)[number];
 

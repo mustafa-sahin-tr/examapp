@@ -1,4 +1,10 @@
-import { BADGE_PROGRESS_ROUTE, describeNotification, formatRelativeTime, parseUtcDate } from './notification-format';
+import {
+  BADGE_PROGRESS_ROUTE,
+  STUDENT_BOOKINGS_ROUTE,
+  describeNotification,
+  formatRelativeTime,
+  parseUtcDate,
+} from './notification-format';
 
 describe('notification-format (issue #146)', () => {
   const now = Date.UTC(2026, 8, 30, 12, 0, 0);
@@ -105,5 +111,62 @@ describe('describeNotification (issue #105)', () => {
       route: null,
       questionOrder: null,
     });
+  });
+
+  // Issue #298: öğretmen askıya alındı — öğrencinin randevu listesine link; data güvenilmeyen veri.
+  it('BookingTeacherUnavailable_ValidData_EventBusyIconAndStudentBookingsLink', () => {
+    const result = describeNotification({
+      type: 'BookingTeacherUnavailable',
+      data: data({ teacherId: 7, bookingIds: [11, 12] }),
+    });
+
+    expect(STUDENT_BOOKINGS_ROUTE).toBe('/my-bookings');
+    expect(result).toEqual({
+      icon: 'event_busy',
+      iconUrl: null,
+      route: { commands: [STUDENT_BOOKINGS_ROUTE] },
+      questionOrder: null,
+    });
+  });
+
+  it('BookingTeacherUnavailable_EmptyBookingIds_StillLinks', () => {
+    const result = describeNotification({ type: 'BookingTeacherUnavailable', data: data({ teacherId: 7, bookingIds: [] }) });
+
+    expect(result.route).toEqual({ commands: [STUDENT_BOOKINGS_ROUTE] });
+  });
+
+  it('BookingTeacherUnavailable_InvalidData_EventBusyIconWithoutLink', () => {
+    const bad = [
+      null,
+      '',
+      'not-json',
+      'null',
+      '[1,2]',
+      data({ bookingIds: [1] }),
+      data({ teacherId: '7', bookingIds: [1] }),
+      data({ teacherId: 0, bookingIds: [1] }),
+      data({ teacherId: 1.5, bookingIds: [1] }),
+      data({ teacherId: 7 }),
+      data({ teacherId: 7, bookingIds: '1,2' }),
+      data({ teacherId: 7, bookingIds: [1, -2] }),
+      data({ teacherId: 7, bookingIds: [1, '2'] }),
+      data({ teacherId: 7, bookingIds: [1, null] }),
+      data({ teacherId: 7, bookingIds: Array.from({ length: 501 }, (_, i) => i + 1) }),
+    ];
+    for (const value of bad) {
+      const result = describeNotification({ type: 'BookingTeacherUnavailable', data: value });
+      expect(result.icon).withContext(String(value)).toBe('event_busy');
+      expect(result.iconUrl).withContext(String(value)).toBeNull();
+      expect(result.route).withContext(String(value)).toBeNull();
+    }
+  });
+
+  it('BookingTeacherUnavailable_HostileExtraFields_IgnoredInLink', () => {
+    const result = describeNotification({
+      type: 'BookingTeacherUnavailable',
+      data: data({ teacherId: 7, bookingIds: [3], url: 'https://evil.test', route: '/admin' }),
+    });
+
+    expect(result.route).toEqual({ commands: ['/my-bookings'] });
   });
 });

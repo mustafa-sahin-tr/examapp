@@ -343,6 +343,10 @@ export class WhiteboardSyncService {
       case 'WindowClosed':
         this.closeBoard('WindowClosed');
         return;
+      // Issue #298: öğretmen askıda/onaysız — tahta salt okunur kapanır, otomatik yeniden denenmez.
+      case 'TeacherUnavailable':
+        this.closeBoard('TeacherUnavailable');
+        return;
       case 'BoardClosed':
         this.closeBoard(null);
         return;
@@ -649,6 +653,10 @@ export class WhiteboardSyncService {
         return 'abort';
       case 'WindowClosed':
         this.closeBoard('WindowClosed');
+        return 'abort';
+      // Issue #298: gönderimdeki yeniden doğrulama öğretmeni müsait bulmadı — kapanır, gönderim döngüsü durur.
+      case 'TeacherUnavailable':
+        this.closeBoard('TeacherUnavailable');
         return 'abort';
       case 'BoardClosed':
         this.closeBoard(null);

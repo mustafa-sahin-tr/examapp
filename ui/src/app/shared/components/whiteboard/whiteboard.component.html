@@ -1,0 +1,63 @@
+<section class="wb" *transloco="let t; prefix: 'whiteboard'" role="region" [attr.aria-label]="t('canvasLabel')">
+  <header class="wb__bar">
+    <span class="wb__status" [attr.data-status]="sync.status()" role="status" aria-live="polite">
+      <mat-icon aria-hidden="true">{{ statusIcon() }}</mat-icon>
+      {{ t('status.' + sync.status()) }}
+    </span>
+
+    @if (sync.peerRole(); as peer) {
+      <span class="wb__peer" [class.wb__peer--online]="sync.peerOnline()" data-testid="wb-peer">
+        <span class="wb__dot" aria-hidden="true"></span>
+        {{ t(sync.peerOnline() ? 'peer.online' : 'peer.offline', { role: t('roles.' + peer) }) }}
+      </span>
+    }
+
+    @if (sync.status() === 'disconnected' && !errorMessageKey()) {
+      <button mat-stroked-button type="button" class="wb__bar-action" (click)="retryConnection()">
+        {{ t('retry') }}
+      </button>
+    }
+  </header>
+
+  @if (endingSoon()) {
+    <div class="wb__notice wb__notice--warn" role="alert" data-testid="wb-ending">
+      <mat-icon aria-hidden="true">schedule</mat-icon>
+      <span>{{ t('endingSoon', { minutes: minutesLeft() }) }}</span>
+    </div>
+  }
+
+  @if (closedMessageKey(); as closedKey) {
+    <div class="wb__notice" role="alert" data-testid="wb-closed">
+      <mat-icon aria-hidden="true">lock</mat-icon>
+      <span>{{ t(closedKey) }}</span>
+    </div>
+  }
+
+  @if (errorMessageKey(); as errorKey) {
+    <div class="wb__notice wb__notice--error" role="alert" data-testid="wb-error">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <span>{{ t(errorKey) }}</span>
+      <button mat-stroked-button type="button" (click)="retryConnection()">{{ t('retry') }}</button>
+    </div>
+  }
+
+  <div class="wb__stage">
+    <div #canvasHost class="wb__canvas"></div>
+
+    @switch (canvasState()) {
+      @case ('loading') {
+        <div class="wb__overlay" aria-busy="true" aria-live="polite">
+          <mat-spinner diameter="36" />
+          <span>{{ t('loading') }}</span>
+        </div>
+      }
+      @case ('failed') {
+        <div class="wb__overlay wb__overlay--error" role="alert">
+          <mat-icon aria-hidden="true">draw</mat-icon>
+          <span>{{ t('loadFailed') }}</span>
+          <button mat-flat-button type="button" (click)="retryCanvas()">{{ t('retry') }}</button>
+        </div>
+      }
+    }
+  </div>
+</section>

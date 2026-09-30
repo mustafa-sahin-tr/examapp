@@ -14,5 +14,6 @@
     "all": "You have no notifications yet."
   },
   "unreadPrefix": "Unread:",
-  "questionTag": "Question {{order}}"
+  "questionTag": "Question {{order}}",
+  "coalescedAria": "{{count}} notifications combined"
 }

@@ -40,6 +40,8 @@ public class OutboxEventRegistryTests
             .ShouldBe(typeof(WorksheetCommentCreatedEvent));
         OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<WorksheetCommentRepliedEvent>())
             .ShouldBe(typeof(WorksheetCommentRepliedEvent));
+        OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<WorksheetCommentHiddenEvent>())
+            .ShouldBe(typeof(WorksheetCommentHiddenEvent)); // issue #326 D4
     }
 
     [Fact]

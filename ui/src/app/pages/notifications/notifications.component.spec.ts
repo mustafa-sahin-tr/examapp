@@ -254,6 +254,25 @@ describe('NotificationsComponent (issue #146)', () => {
     expect(items()[1].querySelector('[data-testid="notification-question-tag"]')).toBeNull();
   });
 
+  it('coalescedComment_ShowsCountBadge; singleOrMissingOrInvalid_NoBadge; capped at 99+', () => {
+    const data = JSON.stringify({ worksheetId: 12, questionId: null, commentId: 59, rootCommentId: 59, questionOrder: null });
+    flushList([
+      notification({ id: 30, type: 'WorksheetCommentCreated', title: '3 yeni yorum: Kesirler', data, coalescedCount: 3 }),
+      notification({ id: 31, type: 'WorksheetCommentCreated', title: 'Yeni yorum', data, coalescedCount: 1 }),
+      notification({ id: 32, type: 'WorksheetCommentCreated', title: 'Yeni yorum', data }),
+      notification({ id: 33, type: 'WorksheetCommentCreated', title: 'x', data, coalescedCount: '7' as unknown as number }),
+      notification({ id: 34, type: 'WorksheetCommentReplied', title: 'Çok', data, coalescedCount: 250 }),
+    ]);
+
+    const badge = (i: number) => items()[i].querySelector('[data-testid="notification-coalesced-count"]');
+    expect(badge(0)?.textContent?.trim()).toBe('3');
+    expect(badge(0)?.getAttribute('aria-label')).toBe('3 bildirim birleştirildi');
+    expect(badge(1)).toBeNull();
+    expect(badge(2)).toBeNull();
+    expect(badge(3)).toBeNull();
+    expect(badge(4)?.textContent?.trim()).toBe('99+');
+  });
+
   it('readBadgeItem_Click_NavigatesWithoutMarkRead', () => {
     flushList([badgeEarned({ isRead: true })]);
 

@@ -1,8 +1,10 @@
 import {
   AppNotification,
   BADGE_EARNED_NOTIFICATION_TYPE,
+  BOOKING_TEACHER_UNAVAILABLE_NOTIFICATION_TYPE,
   badgeIconSrc,
   parseBadgeEarnedData,
+  parseBookingTeacherUnavailableData,
 } from '../../models/notification.model';
 import {
   AppRouteLink,
@@ -71,6 +73,9 @@ export interface NotificationPresentation {
 /** Rozet bildirimine tıklanınca gidilen öğrencinin rozet/ilerleme sayfası (`BadgeThropyComponent`). */
 export const BADGE_PROGRESS_ROUTE = '/certificates';
 
+/** Issue #298: öğrencinin randevu listesi (`StudentBookingsComponent`, route `my-bookings`). */
+export const STUDENT_BOOKINGS_ROUTE = '/my-bookings';
+
 export function describeNotification(notification: Pick<AppNotification, 'type' | 'data'>): NotificationPresentation {
   if (notification.type === BADGE_EARNED_NOTIFICATION_TYPE) {
     const data = parseBadgeEarnedData(notification.data);
@@ -86,6 +91,16 @@ export function describeNotification(notification: Pick<AppNotification, 'type' 
     // Sıra yalnız soru yorumunda anlamlı (worksheet seviyesinde questionId null).
     const questionOrder = ref?.questionId != null ? (ref.questionOrder ?? null) : null;
     return { icon: 'forum', iconUrl: null, route: ref ? worksheetCommentLink(ref) : null, questionOrder };
+  }
+  if (notification.type === BOOKING_TEACHER_UNAVAILABLE_NOTIFICATION_TYPE) {
+    // Issue #298: `data` yalnız doğrulanır, linke taşınmaz; bozuksa navigasyon yok.
+    const data = parseBookingTeacherUnavailableData(notification.data);
+    return {
+      icon: 'event_busy',
+      iconUrl: null,
+      route: data ? { commands: [STUDENT_BOOKINGS_ROUTE] } : null,
+      questionOrder: null,
+    };
   }
   return { icon: 'notifications', iconUrl: null, route: null, questionOrder: null };
 }

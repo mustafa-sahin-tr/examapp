@@ -79,7 +79,8 @@ public class Teacher : BaseEntity, ISchoolScoped
     /// <summary>
     /// issue #289: admin'in askıya alma nedeni (trim'li, 1-500). Yalnızca <see cref="AccountSuspendedAt"/> doluyken dolu.
     /// Yalnızca admin listesinde döner; öğretmene ve audit log'a (serbest metin/PII) YAZILMAZ.
-    /// Entity bazı eski uçlarda (ör. <c>GET api/teacher/check-teacher</c>) doğrudan serileştirildiği için JSON'a hiç çıkmaz.
+    /// <c>[JsonIgnore]</c> savunma katmanıdır: <c>GET api/teacher/check-teacher</c> artık DTO döner (issue #298), ama entity'yi
+    /// doğrudan serileştiren başka bir uç kalırsa ya da eklenirse neden yine JSON'a çıkmaz.
     /// </summary>
     [MaxLength(500)]
     [JsonIgnore]

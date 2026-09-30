@@ -26,6 +26,14 @@
       "title": "Ders talebiniz reddedildi",
       "body": "{0}, {1} için ders talebinizi reddetti.{2}"
     },
+    "BookingRejectedTeacherUnavailable": {
+      "title": "Ders talebiniz yanıtlanamadı",
+      "body": "{1} tarihli ders talebiniz, {0} geçici olarak müsait olmadığı için otomatik olarak reddedildi.{2}"
+    },
+    "BookingTeacherUnavailable": {
+      "title": "Öğretmeniniz geçici olarak müsait değil",
+      "body": "Planlanmış {0} dersinizin öğretmeni geçici olarak müsait değil. Randevularınız listenizde duruyor; bu süre içinde ders odasına katılamazsınız."
+    },
     "TeacherApplicationSubmitted": {
       "title": "Yeni bağımsız öğretmen başvurusu",
       "body": "{0}, bağımsız öğretmen olarak başvurdu ve onay bekliyor."

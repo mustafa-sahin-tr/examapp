@@ -14,7 +14,8 @@
   "error": {
     "invalidRoute": "Geçersiz ders adresi.",
     "roomUnavailable": "Görüşme odası açılamadı.",
-    "addressUnverified": "Görüşme adresi doğrulanamadı."
+    "addressUnverified": "Görüşme adresi doğrulanamadı.",
+    "teacherUnavailable": "Öğretmeniniz geçici olarak müsait değil; bu ders şu anda başlatılamıyor."
   },
   "tabs": {
     "label": "Ders görünümü",

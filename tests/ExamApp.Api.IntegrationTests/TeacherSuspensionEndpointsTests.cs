@@ -74,6 +74,11 @@ public class TeacherSuspensionEndpointsTests(IntegrationApiFactory factory) : In
         check.GetProperty("teacherAccountApproved").GetBoolean().ShouldBeFalse();
         check.GetProperty("teacherAccountSuspended").GetBoolean().ShouldBeTrue();
         checkRaw.ShouldNotContain("Şikayet");
+        // issue #298: entity değil DTO — askı zaman damgası ve tutor profil alanları da çıkmaz.
+        var checkTeacher = check.GetProperty("teacher");
+        checkTeacher.GetProperty("id").GetInt32().ShouldBe(teacherId);
+        checkTeacher.TryGetProperty("accountSuspendedAt", out _).ShouldBeFalse();
+        checkTeacher.TryGetProperty("isSeedData", out _).ShouldBeFalse();
 
         // Admin listesi askı alanlarını taşır.
         var list = await JsonOf(await admin.GetAsync("/api/admin/teachers?pageSize=100"));
@@ -161,5 +166,23 @@ public class TeacherSuspensionEndpointsTests(IntegrationApiFactory factory) : In
         });
         await Expect(await Post($"/api/admin/teachers/{pendingId}/suspend", Reason("neden")),
             HttpStatusCode.Conflict, "TeacherAccountNotApproved");
+    }
+
+    [Fact]
+    public void Suspension_service_gets_all_optional_dependencies_from_DI()
+    {
+        // issue #298 (code review): opsiyonel parametreler DI'da kayıtlı değilse sessizce null kalır → auth lookup ve
+        // tahtanın anlık kapanması üretimde atlanırdı. Gerçek container'dan çözülen örnekte hepsi dolu olmalı.
+        using var scope = Factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<ExamApp.Api.Services.AdminUsers.IAdminTeacherSuspensionService>()
+            .ShouldBeOfType<ExamApp.Api.Services.AdminUsers.AdminTeacherSuspensionService>();
+
+        foreach (var field in new[] { "_authApiClient", "_timeProvider", "_whiteboardStore", "_whiteboardCloser", "_logger" })
+        {
+            var info = typeof(ExamApp.Api.Services.AdminUsers.AdminTeacherSuspensionService)
+                .GetField(field, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .ShouldNotBeNull(field);
+            info.GetValue(service).ShouldNotBeNull(field);
+        }
     }
 }

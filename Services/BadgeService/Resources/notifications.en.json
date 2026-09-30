@@ -26,6 +26,14 @@
       "title": "Your lesson request was rejected",
       "body": "{0} rejected your lesson request for {1}.{2}"
     },
+    "BookingRejectedTeacherUnavailable": {
+      "title": "Your lesson request could not be answered",
+      "body": "Your lesson request for {1} was automatically rejected because {0} is temporarily unavailable.{2}"
+    },
+    "BookingTeacherUnavailable": {
+      "title": "Your teacher is temporarily unavailable",
+      "body": "The teacher of {0} of your scheduled lessons is temporarily unavailable. Your bookings stay in your list; you cannot join the lesson room for now."
+    },
     "TeacherApplicationSubmitted": {
       "title": "New independent teacher application",
       "body": "{0} applied to become an independent teacher and is awaiting approval."

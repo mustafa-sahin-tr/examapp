@@ -14,7 +14,8 @@
   "error": {
     "invalidRoute": "Invalid lesson address.",
     "roomUnavailable": "The meeting room could not be opened.",
-    "addressUnverified": "The meeting address could not be verified."
+    "addressUnverified": "The meeting address could not be verified.",
+    "teacherUnavailable": "Your teacher is temporarily unavailable; this lesson cannot be started right now."
   },
   "tabs": {
     "label": "Lesson view",

@@ -153,6 +153,26 @@ describe('WhiteboardSyncService', () => {
       expect(service.closedReason()).toBe('WindowClosed');
       finish();
     }));
+
+    // Issue #298: öğretmen askıda/onaysız — hata değil, salt okunur kapanış; otomatik yeniden deneme yok.
+    it('JoinError_TeacherUnavailable_ClosesBoardReadOnlyWithoutRetry', fakeAsync(() => {
+      hub.respond = () => Promise.reject(hubError('TeacherUnavailable'));
+      startJoined();
+
+      expect(service.status()).toBe('closed');
+      expect(service.readOnly()).toBeTrue();
+      expect(service.closedReason()).toBe('TeacherUnavailable');
+      expect(service.error()).toBeNull();
+      expect(hub.stopCalls).toBe(1);
+
+      hub.simulateClose();
+      tick(60_000);
+      service.retry();
+      flushMicrotasks();
+      expect(hub.startCalls).toBe(1);
+      expect(hub.calls('JoinBoard').length).toBe(1);
+      finish();
+    }));
   });
 
   describe('sending', () => {
@@ -282,6 +302,25 @@ describe('WhiteboardSyncService', () => {
       canvas.elements = [element('a')];
       localChange();
       expect(hub.calls('JoinBoard').length).toBe(2);
+      finish();
+    }));
+
+    // Issue #298: gönderimdeki yeniden doğrulama öğretmeni müsait bulmadı.
+    it('SendTeacherUnavailable_ClosesBoardAndStopsSending', fakeAsync(() => {
+      hub.respond = (method) =>
+        method === 'JoinBoard' ? Promise.resolve(joinResult()) : Promise.reject(hubError('TeacherUnavailable'));
+      startJoined();
+      canvas.elements = [element('a')];
+      localChange();
+
+      expect(service.status()).toBe('closed');
+      expect(service.closedReason()).toBe('TeacherUnavailable');
+      expect(hub.calls('JoinBoard').length).toBe(1);
+
+      canvas.elements = [element('b')];
+      localChange();
+      tick(5000);
+      expect(hub.sentIds().length).toBe(1);
       finish();
     }));
 
@@ -645,7 +684,7 @@ describe('WhiteboardSyncService', () => {
     }));
 
     it('BoardClosed_AllKnownReasons_Kept', fakeAsync(() => {
-      for (const reason of ['BookingCancelled', 'TeacherNotApproved', 'AccessRevoked']) {
+      for (const reason of ['BookingCancelled', 'TeacherNotApproved', 'TeacherUnavailable', 'AccessRevoked']) {
         const local = TestBed.runInInjectionContext(() => new WhiteboardSyncService());
         local.start(BOOKING_ID, new FakeCanvas());
         flushMicrotasks();

@@ -60,6 +60,57 @@ export function parseBadgeEarnedData(data: string | null): BadgeEarnedNotificati
 }
 
 /**
+ * Issue #298 — `BookingTeacherUnavailableConsumer.NotificationType`: öğrencinin öğretmeni askıya alındı,
+ * planlanmış dersleri etkilendi. Title/body sunucuda yerelleştirilir.
+ */
+export const BOOKING_TEACHER_UNAVAILABLE_NOTIFICATION_TYPE = 'BookingTeacherUnavailable';
+
+/** `BookingTeacherUnavailable` bildiriminin `data` JSON'u (`{ teacherId, bookingIds }`). */
+export interface BookingTeacherUnavailableNotificationData {
+  teacherId: number;
+  bookingIds: number[];
+}
+
+function isPositiveSafeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+}
+
+/** Tek bildirimde kabul edilen en fazla randevu kimliği (savunma sınırı; backend öğrenci başına gruplar). */
+const MAX_BOOKING_IDS = 500;
+
+/**
+ * `BookingTeacherUnavailable` `data` alanını güvenilmeyen veri olarak ayrıştırır. JSON bozuksa, `teacherId`
+ * pozitif tam sayı değilse, `bookingIds` dizi değilse ya da içinde pozitif tam sayı olmayan bir eleman varsa
+ * `null` döner. Fazladan alanlar yok sayılır.
+ */
+export function parseBookingTeacherUnavailableData(
+  data: string | null
+): BookingTeacherUnavailableNotificationData | null {
+  if (!data) {
+    return null;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(data);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return null;
+  }
+  const record = parsed as Record<string, unknown>;
+  const teacherId = record['teacherId'];
+  const bookingIds = record['bookingIds'];
+  if (!isPositiveSafeInteger(teacherId) || !Array.isArray(bookingIds) || bookingIds.length > MAX_BOOKING_IDS) {
+    return null;
+  }
+  if (!bookingIds.every(isPositiveSafeInteger)) {
+    return null;
+  }
+  return { teacherId, bookingIds: [...bookingIds] };
+}
+
+/**
  * Savunma katmanı: `iconUrl` yalnızca uygulamanın kendi rozet ikon yoluna (`achievements/<dosya>.svg`,
  * backend `BadgeIconValidator` ile aynı kural) uyuyorsa kök-göreli `src` olarak döner; aksi hâlde `null`
  * (dış URL / path traversal gösterilmez, çağıran varsayılan ikona düşer).

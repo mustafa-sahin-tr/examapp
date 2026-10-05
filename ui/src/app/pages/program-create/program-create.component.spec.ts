@@ -273,3 +273,76 @@ describe('ProgramCreateComponent - loadProgramSteps() loading/error states (issu
     expect(component.programSteps).toEqual(mockProgramSteps);
   });
 });
+
+describe('ProgramCreateComponent - option icons (issue #319)', () => {
+  let fixture: ComponentFixture<ProgramCreateComponent>;
+
+  const steps: ProgramStep[] = [
+    {
+      id: 1,
+      title: 'Adım 1',
+      description: 'Çalışma türü',
+      options: [
+        { label: 'Süreli Çalışma', value: 'time', icon: 'timer' },
+        { label: 'Eski SVG', value: 'legacy', icon: 'icons/clock.svg' },
+        { label: 'Bozuk', value: 'bad', icon: 'Quiz<b>' },
+        { label: 'İkonsuz', value: 'none' },
+      ],
+      multiple: false,
+      actions: [],
+    },
+  ];
+
+  beforeEach(async () => {
+    const programService = jasmine.createSpyObj<ProgramService>('ProgramService', [
+      'getProgramSteps',
+      'createProgram',
+      'getMyPrograms',
+      'getProgramById',
+      'addStudyPages',
+    ]);
+    programService.getProgramSteps.and.returnValue(of(steps));
+
+    await TestBed.configureTestingModule({
+      imports: [ProgramCreateComponent, translocoTesting],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: ProgramService, useValue: programService },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(ProgramCreateComponent);
+    fixture.detectChanges();
+  });
+
+  function optionButtons(): HTMLElement[] {
+    return fixture.debugElement.queryAll(By.css('.ms-option-button')).map((d) => d.nativeElement as HTMLElement);
+  }
+
+  it('optionIcon_ValidSymbolName_RendersMatIconWithSymbolsFontSetAndName', () => {
+    const [first] = optionButtons();
+    const icon = first.querySelector('mat-icon.ms-option-icon') as HTMLElement;
+
+    expect(icon).withContext('mat-icon render edilmedi').toBeTruthy();
+    expect(icon.textContent?.trim()).toBe('timer');
+    expect(icon.classList).toContain('material-symbols-outlined');
+    expect(icon.getAttribute('aria-hidden')).toBe('true');
+    expect(first.querySelector('img')).toBeNull();
+  });
+
+  it('optionIcon_SvgPathInvalidOrMissing_FallsBackToNeutralIcon', () => {
+    const [, legacy, bad, none] = optionButtons();
+
+    for (const button of [legacy, bad, none]) {
+      expect(button.querySelector('img')).toBeNull();
+      expect(button.querySelector('mat-icon')?.textContent?.trim()).toBe('radio_button_unchecked');
+    }
+  });
+
+  it('optionLabel_AlwaysVisibleNextToIcon', () => {
+    const labels = optionButtons().map((b) => b.querySelector('.ms-option-label')?.textContent?.trim());
+    expect(labels).toEqual(['Süreli Çalışma', 'Eski SVG', 'Bozuk', 'İkonsuz']);
+  });
+});

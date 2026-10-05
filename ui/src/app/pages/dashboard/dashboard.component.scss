@@ -80,6 +80,10 @@ $bp-narrow: 480px; // dar telefon: özet kartları sabit 2 sütun
   color: var(--heading-on-dark);
 }
 
+.dashboard-daily {
+  margin-bottom: 16px;
+}
+
 .last-login-chip {
   display: inline-flex;
   align-items: center;

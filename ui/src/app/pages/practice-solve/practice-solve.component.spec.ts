@@ -2,13 +2,15 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { HttpErrorResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 
 import { PracticeSolveComponent } from './practice-solve.component';
 import { PracticeService } from '../../services/practice.service';
 import { StudentService } from '../../services/student.service';
 import { SubjectService } from '../../services/subject.service';
-import { PracticeAnswerResult, PracticeSession, PracticeSessionReview } from '../../models/practice';
+import { DailySet, PracticeAnswerResult, PracticeSession, PracticeSessionReview } from '../../models/practice';
+import { BadgeService, BadgeProgressResponse } from '../../services/badge.service';
 import { StudentProfile } from '../../models/student-profile';
 import { Question } from '../../models/question';
 import { Subject } from '../../models/subject';
@@ -31,6 +33,7 @@ describe('PracticeSolveComponent', () => {
   let practiceService: jasmine.SpyObj<PracticeService>;
   let studentService: jasmine.SpyObj<StudentService>;
   let subjectService: jasmine.SpyObj<SubjectService>;
+  let badgeService: jasmine.SpyObj<BadgeService>;
   let router: Router;
 
   const emptyHistory: Paged<PracticeSession> = { items: [], totalCount: 0, pageNumber: 1, pageSize: 10 };
@@ -99,6 +102,7 @@ describe('PracticeSolveComponent', () => {
         { provide: PracticeService, useValue: practiceService },
         { provide: StudentService, useValue: studentService },
         { provide: SubjectService, useValue: subjectService },
+        { provide: BadgeService, useValue: badgeService },
         provideRouter([]),
         provideNoopAnimations(),
         {
@@ -126,7 +130,11 @@ describe('PracticeSolveComponent', () => {
       'listSessions',
       'getSessionReview',
       'toQuestionRegion',
+      'getDailySet',
+      'startDailySet',
     ]);
+    badgeService = jasmine.createSpyObj<BadgeService>('BadgeService', ['getUserBadgeProgress']);
+    badgeService.getUserBadgeProgress.and.returnValue(throwError(() => new Error('no badge')));
     studentService = jasmine.createSpyObj<StudentService>('StudentService', ['getProfile']);
     subjectService = jasmine.createSpyObj<SubjectService>('SubjectService', ['getSubjectsByGrade', 'getTopicsBySubjectAndGrade']);
 
@@ -609,5 +617,382 @@ describe('PracticeSolveComponent', () => {
     expect(component.phase()).toBe('review');
     expect(component.reviewError()).toBe('Oturum detayı yüklenemedi.');
     expect(fixture.debugElement.query(By.css('.review .state-box--error'))).toBeTruthy();
+  });
+
+  // ── Günün soruları (daily modu, issue #99) ──────────────────────────────────
+  describe('daily mode', () => {
+    function dailySet(overrides: Partial<DailySet> = {}): DailySet {
+      return {
+        date: '2026-10-05',
+        status: 'NotStarted',
+        total: 5,
+        targetCount: 5,
+        answered: 0,
+        correct: 0,
+        wrong: 0,
+        skipped: 0,
+        sessionId: null,
+        scope: null,
+        ...overrides,
+      };
+    }
+
+    /** Seri `summary.currentActivityStreak`'ten; rozet `currentValue` (en iyi seri, tavanlı) bilerek farklı. */
+    function streakResponse(current: number): BadgeProgressResponse {
+      return {
+        summary: { currentActivityStreak: current } as BadgeProgressResponse['summary'],
+        badgeProgress: [
+          {
+            badgeDefinitionId: 's1',
+            name: 'İstikrarlı Öğrenci I',
+            description: '',
+            iconUrl: '',
+            pathKey: 'streak-path',
+            pathName: 'İstikrar Yolu',
+            pathOrder: 1,
+            currentValue: 6,
+            targetValue: 7,
+            isCompleted: false,
+            earnedDateUtc: null,
+          },
+        ],
+        subjectBreakdown: [],
+      };
+    }
+
+    const reviewWith = (kinds: Array<'correct' | 'wrong' | 'pending'>): PracticeSessionReview => ({
+      session,
+      questions: kinds.map((kind, i) => ({
+        question: buildQuestion({ id: 100 + i }),
+        status: kind === 'pending' ? 'Pending' : 'Answered',
+        isSkipped: false,
+        isCorrect: kind === 'correct',
+        selectedAnswerId: null,
+        timeTaken: 3,
+        shownAt: '2026-10-05T08:00:00Z',
+        answeredAt: kind === 'pending' ? null : '2026-10-05T08:00:10Z',
+      })),
+    });
+
+    const text = (selector: string): string =>
+      (fixture.debugElement.query(By.css(selector))?.nativeElement.textContent ?? '').replace(/\s+/g, ' ').trim();
+
+    afterEach(() => localStorage.removeItem('user'));
+
+    it('ngOnInit_DailyNotStarted_SkipsSetupAndOpensFirstQuestionWithStepStrip', () => {
+      setup({ daily: '1' });
+      practiceService.getDailySet.and.returnValue(of(dailySet()));
+      practiceService.startDailySet.and.returnValue(of({ sessionId: session.id, status: 'NotStarted' as const }));
+      practiceService.getSession.and.returnValue(of(session));
+      practiceService.getNextQuestion.and.returnValue(
+        of({ sessionId: session.id, question: buildQuestion(), poolExhausted: false, answeredCount: 0, correctCount: 0 })
+      );
+
+      fixture.detectChanges();
+
+      expect(component.dailyMode()).toBeTrue();
+      expect(component.phase()).toBe('question');
+      expect(studentService.getProfile).not.toHaveBeenCalled();
+      expect(practiceService.listSessions).not.toHaveBeenCalled();
+      expect(practiceService.getSessionReview).not.toHaveBeenCalled();
+      expect(fixture.debugElement.query(By.css('.practice__stats'))).toBeNull();
+      expect(text('.daily-bar__step')).toBe('Soru 1 / 5');
+      expect(text('app-section-header')).toContain('Günün soruları');
+
+      const items = fixture.debugElement.queryAll(By.css('.daily-steps__item'));
+      expect(items.length).toBe(5);
+      expect(items[0].attributes['aria-current']).toBe('step');
+      expect(items[0].attributes['aria-label']).toBe('1. soru: şu anki soru');
+      expect(items[1].attributes['aria-label']).toBe('2. soru: çözülmedi');
+      expect(fixture.debugElement.query(By.css('.daily-steps')).attributes['role']).toBe('list');
+      expect(fixture.debugElement.query(By.css('.daily-bar__resume'))).toBeNull();
+    });
+
+    it('ngOnInit_DailyInProgress_ResumesSameSetWithResumeNoteAndAnsweredSteps', () => {
+      setup({ daily: '1' });
+      practiceService.getDailySet.and.returnValue(
+        of(dailySet({ status: 'InProgress', answered: 2, correct: 1, wrong: 1, sessionId: session.id }))
+      );
+      practiceService.startDailySet.and.returnValue(of({ sessionId: session.id, status: 'InProgress' as const }));
+      practiceService.getSession.and.returnValue(of({ ...session, answeredCount: 2, correctCount: 1 }));
+      practiceService.getSessionReview.and.returnValue(of(reviewWith(['wrong', 'correct', 'pending'])));
+      practiceService.getNextQuestion.and.returnValue(
+        of({ sessionId: session.id, question: buildQuestion(), poolExhausted: false, answeredCount: 2, correctCount: 1 })
+      );
+
+      fixture.detectChanges();
+
+      expect(component.phase()).toBe('question');
+      expect(component.dailyResults()).toEqual(['wrong', 'correct']);
+      expect(text('.daily-bar__step')).toBe('Soru 3 / 5');
+      const note = fixture.debugElement.query(By.css('.daily-bar__resume'));
+      expect(note.attributes['role']).toBe('status');
+      expect(text('.daily-bar__resume')).toContain('Kaldığın yerden devam ediyorsun');
+
+      const items = fixture.debugElement.queryAll(By.css('.daily-steps__item'));
+      expect(items[0].classes['daily-steps__item--wrong']).toBeTrue();
+      expect(items[0].attributes['aria-label']).toBe('1. soru: yanlış');
+      expect(items[1].classes['daily-steps__item--correct']).toBeTrue();
+      expect(items[2].attributes['aria-current']).toBe('step');
+    });
+
+    it('ngOnInit_DailyCompleted_ShowsAlreadyDoneEndScreenWithoutStartingSession', () => {
+      setup({ daily: '1' });
+      practiceService.getDailySet.and.returnValue(
+        of(dailySet({ status: 'Completed', answered: 5, correct: 4, wrong: 1, sessionId: 77 }))
+      );
+      practiceService.getSessionReview.and.returnValue(
+        of(reviewWith(['correct', 'wrong', 'correct', 'correct', 'correct']))
+      );
+
+      fixture.detectChanges();
+      fixture.detectChanges();
+
+      expect(practiceService.startDailySet).not.toHaveBeenCalled();
+      expect(practiceService.getNextQuestion).not.toHaveBeenCalled();
+      expect(component.phase()).toBe('ended');
+      expect(component.dailyAlreadyDone()).toBeTrue();
+      expect(component.dailyResults()).toEqual(['correct', 'wrong', 'correct', 'correct', 'correct']);
+      expect(text('.daily-ended__title')).toBe('Bugünkü setini zaten tamamladın');
+      expect(text('.daily-ended')).toContain('Kaçırılan günler birikmez');
+
+      const title = fixture.debugElement.query(By.css('.daily-ended__title')).nativeElement as HTMLElement;
+      expect(title.getAttribute('tabindex')).toBe('-1');
+      expect(document.activeElement).toBe(title);
+
+      const buttons = fixture.debugElement.queryAll(By.css('.daily-ended .practice__actions button'));
+      expect(buttons.map((b) => (b.nativeElement.textContent as string).replace(/\s+/g, ' ').trim())).toEqual([
+        'shuffle Serbest pratiğe geç',
+        'fact_check Cevapları incele',
+      ]);
+      buttons[1].nativeElement.click();
+      expect(practiceService.getSessionReview).toHaveBeenCalledWith(77);
+      expect(component.phase()).toBe('review');
+
+      component.closeReview();
+      expect(component.phase()).toBe('ended');
+    });
+
+    it('startDaily_StartReturnsCompleted_ShowsAlreadyDoneWithoutNextAndReviewsReturnedSession', () => {
+      setup({ daily: '1' });
+      // GET henüz NotStarted (oturum açılmış, sessionId dolu) ama start set tamamlandı diyor.
+      practiceService.getDailySet.and.returnValue(
+        of(dailySet({ answered: 5, correct: 3, wrong: 1, skipped: 1, sessionId: 12 }))
+      );
+      practiceService.startDailySet.and.returnValue(of({ sessionId: 88, status: 'Completed' }));
+      practiceService.getSessionReview.and.returnValue(of(reviewWith(['correct', 'wrong', 'correct', 'correct', 'correct'])));
+
+      fixture.detectChanges();
+
+      expect(practiceService.startDailySet).toHaveBeenCalledTimes(1);
+      expect(practiceService.getSession).not.toHaveBeenCalled();
+      expect(practiceService.getNextQuestion).not.toHaveBeenCalled();
+      expect(practiceService.endSession).not.toHaveBeenCalled();
+      expect(component.phase()).toBe('ended');
+      expect(component.dailyAlreadyDone()).toBeTrue();
+      expect(component.dailySessionId()).toBe(88);
+      expect(component.skippedCount()).toBe(1);
+      expect(practiceService.getSessionReview).toHaveBeenCalledWith(88);
+    });
+
+    it('startDaily_Server409_ShowsEmptyState', () => {
+      setup({ daily: '1' });
+      practiceService.getDailySet.and.returnValue(of(dailySet()));
+      practiceService.startDailySet.and.returnValue(
+        throwError(() => new HttpErrorResponse({ status: 409, error: { message: 'boş' } }))
+      );
+
+      fixture.detectChanges();
+
+      expect(practiceService.getDailySet).toHaveBeenCalledTimes(1);
+      expect(component.phase()).toBe('daily');
+      expect(component.daily()?.status).toBe('Empty');
+      expect(component.dailyLoadError()).toBeNull();
+      expect(text('.daily-empty h2')).toBe('Bugün için soru bulunamadı');
+    });
+
+    it('ngOnInit_NotStartedWithSessionId_StillCallsStart', () => {
+      setup({ daily: '1' });
+      practiceService.getDailySet.and.returnValue(of(dailySet({ sessionId: session.id })));
+      practiceService.startDailySet.and.returnValue(of({ sessionId: session.id, status: 'NotStarted' }));
+      practiceService.getSession.and.returnValue(of(session));
+      practiceService.getNextQuestion.and.returnValue(
+        of({ sessionId: session.id, question: buildQuestion(), poolExhausted: false, answeredCount: 0, correctCount: 0 })
+      );
+
+      fixture.detectChanges();
+
+      expect(practiceService.startDailySet).toHaveBeenCalledTimes(1);
+      expect(component.phase()).toBe('question');
+      expect(component.dailyResumed()).toBeFalse();
+    });
+
+    it('advance_LastQuestionAnswered_EndsSessionShowsDoneScreenWithStreakNote', () => {
+      localStorage.setItem('user', JSON.stringify({ id: 16 }));
+      badgeService.getUserBadgeProgress.and.returnValue(of(streakResponse(5)));
+      setup({ daily: '1' });
+      practiceService.getDailySet.and.returnValue(of(dailySet({ total: 1 })));
+      practiceService.startDailySet.and.returnValue(of({ sessionId: session.id, status: 'NotStarted' as const }));
+      practiceService.getSession.and.returnValue(of(session));
+      practiceService.getNextQuestion.and.returnValue(
+        of({ sessionId: session.id, question: buildQuestion(), poolExhausted: false, answeredCount: 0, correctCount: 0 })
+      );
+      practiceService.submitAnswer.and.returnValue(
+        of({ sessionId: session.id, questionId: 9, isCorrect: true, skipped: false, correctAnswerId: 900, answeredCount: 1, correctCount: 1 })
+      );
+      practiceService.endSession.and.returnValue(
+        of({ ...session, status: 'Ended', endTime: '2026-10-05T09:00:00Z', answeredCount: 1, correctCount: 1 })
+      );
+
+      fixture.detectChanges();
+      component.selectAnswer(900);
+      component.submitAnswer();
+      fixture.detectChanges();
+
+      expect(component.dailyResults()).toEqual(['correct']);
+      component.advance();
+      fixture.detectChanges();
+
+      expect(practiceService.getNextQuestion).toHaveBeenCalledTimes(1);
+      expect(practiceService.endSession).toHaveBeenCalledWith(session.id);
+      expect(component.phase()).toBe('ended');
+      expect(component.dailyAlreadyDone()).toBeFalse();
+      expect(text('.daily-ended__title')).toBe('Bugünkü set tamam!');
+      expect(badgeService.getUserBadgeProgress).toHaveBeenCalledWith(16);
+      expect(text('.daily-ended__streak')).toBe(
+        'local_fire_department Günlük seri: 5 gün. 7 günlük rozete 2 gün kaldı.'
+      );
+      expect(document.activeElement).toBe(fixture.debugElement.query(By.css('.daily-ended__title')).nativeElement);
+    });
+
+    it('finishDaily_SessionAlreadyEnded_ShowsEndScreenWithoutEndSession', () => {
+      setup({ daily: '1' });
+      practiceService.getDailySet.and.returnValue(
+        of(dailySet({ status: 'InProgress', answered: 2, correct: 2, sessionId: session.id }))
+      );
+      practiceService.startDailySet.and.returnValue(of({ sessionId: session.id, status: 'InProgress' as const }));
+      practiceService.getSession.and.returnValue(
+        of({ ...session, status: 'Ended', endTime: '2026-10-05T09:00:00Z', answeredCount: 2, correctCount: 2 })
+      );
+      practiceService.getSessionReview.and.returnValue(of(reviewWith(['correct', 'correct'])));
+
+      fixture.detectChanges();
+
+      expect(practiceService.endSession).not.toHaveBeenCalled();
+      expect(practiceService.getNextQuestion).not.toHaveBeenCalled();
+      expect(component.phase()).toBe('ended');
+      expect(component.dailyAlreadyDone()).toBeFalse();
+      expect(component.answeredCount()).toBe(2);
+    });
+
+    it('endScreen_StreakOneDayLeft_UsesSingularKey', () => {
+      localStorage.setItem('user', JSON.stringify({ id: 16 }));
+      badgeService.getUserBadgeProgress.and.returnValue(of(streakResponse(6)));
+      setup({ daily: '1' });
+      practiceService.getDailySet.and.returnValue(of(dailySet({ status: 'Completed', answered: 5, correct: 5 })));
+
+      fixture.detectChanges();
+
+      expect(text('.daily-ended__streak')).toBe(
+        'local_fire_department Günlük seri: 6 gün. 7 günlük rozete 1 gün kaldı.'
+      );
+    });
+
+    it('endScreen_BrokenStreak_HidesNoteEvenIfBadgeValueHigh', () => {
+      localStorage.setItem('user', JSON.stringify({ id: 16 }));
+      badgeService.getUserBadgeProgress.and.returnValue(of(streakResponse(0)));
+      setup({ daily: '1' });
+      practiceService.getDailySet.and.returnValue(of(dailySet({ status: 'Completed', answered: 5, correct: 5 })));
+
+      fixture.detectChanges();
+
+      expect(fixture.debugElement.query(By.css('.daily-ended__streak'))).toBeNull();
+    });
+
+    it('endScreen_NoStreakBadge_HidesStreakNote', () => {
+      setup({ daily: '1' });
+      practiceService.getDailySet.and.returnValue(of(dailySet({ status: 'Completed', answered: 5, correct: 5 })));
+
+      fixture.detectChanges();
+
+      expect(component.phase()).toBe('ended');
+      expect(fixture.debugElement.query(By.css('.daily-ended__streak'))).toBeNull();
+    });
+
+    it('ngOnInit_DailyEmpty_ShowsEmptyStateWithProfileLink', () => {
+      setup({ daily: '1' });
+      practiceService.getDailySet.and.returnValue(of(dailySet({ status: 'Empty', total: 0 })));
+
+      fixture.detectChanges();
+
+      expect(component.phase()).toBe('daily');
+      expect(practiceService.startDailySet).not.toHaveBeenCalled();
+      expect(text('.daily-empty h2')).toBe('Bugün için soru bulunamadı');
+      const link = fixture.debugElement.query(By.css('.daily-empty a[href="/student-profile"]'));
+      expect(link).toBeTruthy();
+    });
+
+    it('ngOnInit_DailyLoadFails_ShowsAlertAndRetryReloads', () => {
+      setup({ daily: '1' });
+      practiceService.getDailySet.and.returnValues(
+        throwError(() => new Error('down')),
+        of(dailySet({ status: 'Empty', total: 0 }))
+      );
+
+      fixture.detectChanges();
+
+      const alert = fixture.debugElement.query(By.css('.state-box--error'));
+      expect(alert.attributes['role']).toBe('alert');
+      expect(text('.state-box--error')).toContain('Günün soruları getirilemedi');
+
+      alert.query(By.css('button')).nativeElement.click();
+      fixture.detectChanges();
+
+      expect(practiceService.getDailySet).toHaveBeenCalledTimes(2);
+      expect(component.dailyLoadError()).toBeNull();
+    });
+
+    it('onHeaderBack_DailyQuestion_NavigatesToDashboardWithoutEndingSession', () => {
+      setup({ daily: '1' });
+      practiceService.getDailySet.and.returnValue(of(dailySet()));
+      practiceService.startDailySet.and.returnValue(of({ sessionId: session.id, status: 'NotStarted' as const }));
+      practiceService.getSession.and.returnValue(of(session));
+      practiceService.getNextQuestion.and.returnValue(
+        of({ sessionId: session.id, question: buildQuestion(), poolExhausted: false, answeredCount: 0, correctCount: 0 })
+      );
+      fixture.detectChanges();
+
+      component.onHeaderBack();
+
+      expect(practiceService.endSession).not.toHaveBeenCalled();
+      expect(router.navigate).toHaveBeenCalledWith(['/dashboard']);
+    });
+
+    it('goFreePractice_FromDailyEnd_SwitchesToSetupAndDropsDailyParam', () => {
+      setup({ daily: '1' });
+      practiceService.getDailySet.and.returnValue(of(dailySet({ status: 'Completed', answered: 5, correct: 5 })));
+      fixture.detectChanges();
+
+      component.goFreePractice();
+      fixture.detectChanges();
+
+      expect(component.dailyMode()).toBeFalse();
+      expect(component.phase()).toBe('setup');
+      expect(studentService.getProfile).toHaveBeenCalled();
+      expect(practiceService.listSessions).toHaveBeenCalled();
+      expect(router.navigate).toHaveBeenCalledWith(
+        [],
+        jasmine.objectContaining({ queryParams: { session: null, daily: null } })
+      );
+    });
+
+    it('ngOnInit_WithoutDailyParam_KeepsRegularSetupFlow', () => {
+      setup();
+      fixture.detectChanges();
+
+      expect(component.dailyMode()).toBeFalse();
+      expect(practiceService.getDailySet).not.toHaveBeenCalled();
+      expect(component.phase()).toBe('setup');
+    });
   });
 });

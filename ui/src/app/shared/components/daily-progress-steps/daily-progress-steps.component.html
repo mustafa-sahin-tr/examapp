@@ -1,0 +1,23 @@
+@if (variant() === 'bar') {
+<div class="daily-bar" role="progressbar" aria-valuemin="0" [attr.aria-valuemax]="total()"
+  [attr.aria-valuenow]="doneCount()" [attr.aria-valuetext]="valueText() || null"
+  [attr.aria-label]="ariaLabel() || null">
+  @for (step of steps(); track step.number) {
+  <span class="daily-bar__segment" [class.daily-bar__segment--done]="step.number <= doneCount()"
+    [class.daily-bar__segment--current]="step.state === 'current'"></span>
+  }
+</div>
+} @else {
+<ol class="daily-steps" role="list" [attr.aria-label]="ariaLabel() || null">
+  @for (step of steps(); track step.number) {
+  <li class="daily-steps__item daily-steps__item--{{ step.state }}" [attr.aria-label]="labelOf(step)"
+    [attr.aria-current]="step.state === 'current' ? 'step' : null">
+    @if (iconOf(step.state); as icon) {
+    <mat-icon aria-hidden="true">{{ icon }}</mat-icon>
+    } @else {
+    <span aria-hidden="true">{{ step.number }}</span>
+    }
+  </li>
+  }
+</ol>
+}

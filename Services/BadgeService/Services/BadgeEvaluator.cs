@@ -150,7 +150,10 @@ public class BadgeEvaluator
             {
                 BadgeName = badge.Name,
                 Description = badge.Description,
-                IconUrl = badge.IconUrl
+                // Security review (#149, D2): same rule as the notification data below.
+                IconUrl = BadgeIconValidator.IsValid(badge.IconUrl) ? badge.IconUrl : null,
+                // Issue #149: allowlisted Material Symbols name (null if unset/unknown) — UI prefers it over IconUrl.
+                Icon = BadgeIconValidator.IsAllowedIcon(badge.Icon) ? badge.Icon : null
             }, cancellationToken);
         }
     }
@@ -198,7 +201,9 @@ public class BadgeEvaluator
                     badgeDefinitionId = badge.Id,
                     badgeCode = badge.Code,
                     // Seed/eski satırlar doğrulanmamış olabilir; dış URL takip pikseline dönüşmesin.
-                    iconUrl = BadgeIconValidator.IsValid(badge.IconUrl) ? badge.IconUrl : null
+                    iconUrl = BadgeIconValidator.IsValid(badge.IconUrl) ? badge.IconUrl : null,
+                    // Issue #149: icon name only (no PII); allowlist-checked like iconUrl.
+                    icon = BadgeIconValidator.IsAllowedIcon(badge.Icon) ? badge.Icon : null
                 }),
                 SourceBadgeDefinitionId = badge.Id,
                 IsRead = false,

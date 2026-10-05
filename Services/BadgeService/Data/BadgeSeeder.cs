@@ -41,6 +41,7 @@ public class BadgeSeeder
                 RuleType = badge.RuleType,
                 RuleConfigJson = badge.RuleConfigJson,
                 IconUrl = badge.IconUrl,
+                Icon = badge.Icon,
                 PathKey = badge.PathKey,
                 PathName = badge.PathName,
                 PathOrder = badge.PathOrder,
@@ -74,6 +75,10 @@ public class BadgeSeeder
     internal static IReadOnlyList<(string Name, string Code)> GetDesiredNameCodePairsForTesting() =>
         BuildDesiredBadges().Select(b => (b.Name, b.Code)).ToList();
 
+    /// <summary>Issue #149: (Code, seed IconUrl, Icon) for BadgeIconBackfillMigrationTests.Backfill_sets_the_seeder_icon_on_every_untouched_seed_row (pins the backfill migration's map) and BadgeIconTests.</summary>
+    internal static IReadOnlyList<(string Code, string? IconUrl, string? Icon)> GetDesiredIconsForTesting() =>
+        BuildDesiredBadges().Select(b => (b.Code, b.IconUrl, b.Icon)).ToList();
+
     private static List<BadgeSeed> BuildDesiredBadges()
     {
         var desiredBadges = new List<BadgeSeed>
@@ -85,7 +90,8 @@ public class BadgeSeeder
                 category: "Çözüm",
                 ruleType: "AnswerCount",
                 config: new { target = 1 },
-                iconUrl: "achievements/disabled-dark.0085b3.svg"),
+                iconUrl: "achievements/disabled-dark.0085b3.svg",
+                icon: "flag"),
             CreateBadge(
                 code: "correct-streak-5",
                 name: "5 Doğru Üst Üste",
@@ -93,7 +99,8 @@ public class BadgeSeeder
                 category: "Performans",
                 ruleType: "CorrectStreak",
                 config: new { target = 5 },
-                iconUrl: "achievements/disabled-dark.041736.svg")
+                iconUrl: "achievements/disabled-dark.041736.svg",
+                icon: "done_all")
         };
 
         var questionMilestones = new (string Name, int Target, string Icon)[]
@@ -116,6 +123,7 @@ public class BadgeSeeder
                 ruleType: "AnswerCount",
                 config: new { target = milestone.Target },
                 iconUrl: milestone.Icon,
+                icon: "gps_fixed",
                 pathKey: "question-hunter",
                 pathName: "Soru Avcısı Yolu",
                 pathOrder: i + 1));
@@ -139,21 +147,22 @@ public class BadgeSeeder
                 ruleType: "TotalCorrectAnswers",
                 config: new { target = milestone.Target },
                 iconUrl: milestone.Icon,
+                icon: "task_alt",
                 pathKey: "accuracy-journey",
                 pathName: "Doğruluk Yolu",
                 pathOrder: i + 1));
         }
 
-        var studyTimeMilestones = new (string Name, int Minutes, string Icon, string Description)[]
+        var studyTimeMilestones = new (string Name, int Minutes, string Icon, string Description, string SymbolIcon)[]
         {
-            ("Hızlı Başlangıç", 5, "achievements/disabled-dark.0085b3.svg", "İlk 5 dakikalık çalışma tamamlandı."),
-            ("Show Time", 30, "achievements/disabled-dark.041736.svg", "Toplam 30 dakika çalıştın."),
-            ("Bilgi Avcısı", 120, "achievements/disabled-dark.0b4480.svg", "Toplam 2 saat çalıştın."),
-            ("Prime Time", 300, "achievements/disabled-dark.148553.svg", "Toplam 5 saat çalıştın."),
-            ("Bilge İzleyici", 600, "achievements/disabled-dark.16380c.svg", "Toplam 10 saat çalıştın."),
-            ("Zaman Yolcusu", 900, "achievements/disabled-dark.1679e1.svg", "Toplam 15 saat çalıştın."),
-            ("Akademik Yolculuk", 1500, "achievements/disabled-dark.1e1b53.svg", "Toplam 25 saat çalıştın."),
-            ("Elit Çalışkan", 3000, "achievements/disabled-dark.21b1cf.svg", "Toplam 50 saat çalıştın.")
+            ("Hızlı Başlangıç", 5, "achievements/disabled-dark.0085b3.svg", "İlk 5 dakikalık çalışma tamamlandı.", "rocket_launch"),
+            ("Show Time", 30, "achievements/disabled-dark.041736.svg", "Toplam 30 dakika çalıştın.", "theater_comedy"),
+            ("Bilgi Avcısı", 120, "achievements/disabled-dark.0b4480.svg", "Toplam 2 saat çalıştın.", "psychology"),
+            ("Prime Time", 300, "achievements/disabled-dark.148553.svg", "Toplam 5 saat çalıştın.", "schedule"),
+            ("Bilge İzleyici", 600, "achievements/disabled-dark.16380c.svg", "Toplam 10 saat çalıştın.", "visibility"),
+            ("Zaman Yolcusu", 900, "achievements/disabled-dark.1679e1.svg", "Toplam 15 saat çalıştın.", "travel_explore"),
+            ("Akademik Yolculuk", 1500, "achievements/disabled-dark.1e1b53.svg", "Toplam 25 saat çalıştın.", "school"),
+            ("Elit Çalışkan", 3000, "achievements/disabled-dark.21b1cf.svg", "Toplam 50 saat çalıştın.", "workspace_premium")
         };
 
         for (var i = 0; i < studyTimeMilestones.Length; i++)
@@ -167,14 +176,22 @@ public class BadgeSeeder
                 ruleType: "TotalStudyTimeMinutes",
                 config: new { target = milestone.Minutes },
                 iconUrl: milestone.Icon,
+                icon: milestone.SymbolIcon,
                 pathKey: "study-time",
                 pathName: "Çalışma Süresi Yolu",
                 pathOrder: i + 1));
         }
 
-        var subjects = new[] { "Türkçe", "Matematik", "Fen Bilimleri", "Sosyal Bilgiler" };
+        // Issue #149: per-subject icon for the "Ustası" badge; "Uzmanı" = verified, "Zaman Ustası" = timer.
+        var subjects = new (string Name, string MasteryIcon)[]
+        {
+            ("Türkçe", "menu_book"),
+            ("Matematik", "calculate"),
+            ("Fen Bilimleri", "science"),
+            ("Sosyal Bilgiler", "public"),
+        };
 
-        foreach (var subject in subjects)
+        foreach (var (subject, masteryIcon) in subjects)
         {
             var subjectKey = NormalizeKey(subject);
 
@@ -186,6 +203,7 @@ public class BadgeSeeder
                 ruleType: "SubjectAnswerCount",
                 config: new { subjectName = subject, target = 100 },
                 iconUrl: "achievements/disabled-dark.0085b3.svg",
+                icon: masteryIcon,
                 pathKey: $"subject-{subjectKey}-answers",
                 pathName: $"{subject} Yolculuğu",
                 pathOrder: 1));
@@ -198,6 +216,7 @@ public class BadgeSeeder
                 ruleType: "SubjectCorrectCount",
                 config: new { subjectName = subject, target = 60 },
                 iconUrl: "achievements/disabled-dark.041736.svg",
+                icon: "verified",
                 pathKey: $"subject-{subjectKey}-answers",
                 pathName: $"{subject} Yolculuğu",
                 pathOrder: 2));
@@ -210,6 +229,7 @@ public class BadgeSeeder
                 ruleType: "SubjectStudyTimeMinutes",
                 config: new { subjectName = subject, target = 300 },
                 iconUrl: "achievements/disabled-dark.0b4480.svg",
+                icon: "timer",
                 pathKey: $"subject-{subjectKey}-answers",
                 pathName: $"{subject} Yolculuğu",
                 pathOrder: 3));
@@ -234,6 +254,7 @@ public class BadgeSeeder
                 ruleType: "DailyStreak",
                 config: new { target = milestone.Days },
                 iconUrl: milestone.Icon,
+                icon: "local_fire_department",
                 pathKey: "streak-path",
                 pathName: "İstikrar Yolu",
                 pathOrder: i + 1));
@@ -257,6 +278,7 @@ public class BadgeSeeder
                 ruleType: "ActiveDays",
                 config: new { target = milestone.Days },
                 iconUrl: milestone.Icon,
+                icon: "event_available",
                 pathKey: "activity-journey",
                 pathName: "Aktivite Yolu",
                 pathOrder: i + 1));
@@ -273,6 +295,7 @@ public class BadgeSeeder
         string ruleType,
         object config,
         string? iconUrl,
+        string? icon,
         string? pathKey = null,
         string? pathName = null,
         int? pathOrder = null)
@@ -285,6 +308,7 @@ public class BadgeSeeder
             RuleType: ruleType,
             RuleConfigJson: JsonSerializer.Serialize(config),
             IconUrl: iconUrl,
+            Icon: icon,
             PathKey: pathKey,
             PathName: pathName,
             PathOrder: pathOrder);
@@ -298,6 +322,7 @@ public class BadgeSeeder
         string RuleType,
         string RuleConfigJson,
         string? IconUrl,
+        string? Icon,
         string? PathKey,
         string? PathName,
         int? PathOrder);

@@ -33,6 +33,9 @@ public class BadgeProgressItemDto
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string? IconUrl { get; set; }
+
+    /// <summary>Issue #149: Material Symbols name (allowlisted), preferred over <see cref="IconUrl"/>; null when unset.</summary>
+    public string? Icon { get; set; }
     public string? PathKey { get; set; }
     public string? PathName { get; set; }
     public int? PathOrder { get; set; }

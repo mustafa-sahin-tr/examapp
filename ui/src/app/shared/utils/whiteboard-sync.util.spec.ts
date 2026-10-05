@@ -1,11 +1,15 @@
 import { WhiteboardElement } from '../../models/whiteboard.model';
 import {
+  ElementStamp,
   WHITEBOARD_MAX_ELEMENTS_PER_CHUNK,
+  WHITEBOARD_MAX_SCENE_ELEMENTS,
   changedElements,
+  exceedsRemoteElementLimit,
+  planTombstonePurge,
+  stampOf,
   chunkOutgoing,
   isSafeHttpUrl,
   isSyncableElement,
-  openWhiteboardLink,
   parseHubErrorCode,
   parsePeerPointer,
   parseUtcDate,
@@ -64,18 +68,6 @@ describe('whiteboard-sync.util', () => {
       expect(isSafeHttpUrl(`https://e.org/${'a'.repeat(2048)}`)).toBeFalse();
     });
 
-    it('OpenWhiteboardLink_Https_OpensNewTabWithNoopenerNoreferrer', () => {
-      const open = jasmine.createSpy('open');
-      expect(openWhiteboardLink('https://example.org', open)).toBeTrue();
-      expect(open).toHaveBeenCalledOnceWith('https://example.org', '_blank', 'noopener,noreferrer');
-    });
-
-    it('OpenWhiteboardLink_JavascriptScheme_BlocksAndDoesNotOpen', () => {
-      const open = jasmine.createSpy('open');
-      expect(openWhiteboardLink('javascript:alert(1)', open)).toBeFalse();
-      expect(openWhiteboardLink('data:text/html;base64,PGI+', open)).toBeFalse();
-      expect(open).not.toHaveBeenCalled();
-    });
   });
 
   describe('element sanitation', () => {
@@ -167,6 +159,78 @@ describe('whiteboard-sync.util', () => {
       expect(parseUtcDate('2026-09-30T12:00:00+02:00')?.toISOString()).toBe('2026-09-30T10:00:00.000Z');
       expect(parseUtcDate('nope')).toBeNull();
       expect(parseUtcDate(42)).toBeNull();
+    });
+  });
+
+  describe('remote element limit (issue #332)', () => {
+    it('Limit_MatchesServerDefault', () => {
+      // api/ExamApp.Api/Services/Whiteboard/WhiteboardOptions.cs → MaxSceneElements
+      expect(WHITEBOARD_MAX_SCENE_ELEMENTS).toBe(5000);
+    });
+
+    it('ExceedsRemoteElementLimit_OnlyCountsRawPayload', () => {
+      expect(exceedsRemoteElementLimit([])).toBeFalse();
+      expect(exceedsRemoteElementLimit([el('a'), el('b')], 2)).toBeFalse();
+      expect(exceedsRemoteElementLimit([el('a'), el('b'), el('c')], 2)).toBeTrue();
+      expect(exceedsRemoteElementLimit(new Array(WHITEBOARD_MAX_SCENE_ELEMENTS + 1).fill(null))).toBeTrue();
+    });
+
+    it('ExceedsRemoteElementLimit_DoesNotMeasureBytes', () => {
+      const stringify = spyOn(JSON, 'stringify').and.callThrough();
+      expect(exceedsRemoteElementLimit([el('big', 1, 1, { text: 'x'.repeat(3 * 1024 * 1024) })])).toBeFalse();
+      expect(stringify).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('tombstone purge plan (issue #332)', () => {
+    const TTL = 1000;
+
+    function known(...elements: WhiteboardElement[]): Map<string, ElementStamp> {
+      return new Map(elements.map((e) => [e.id, stampOf(e)]));
+    }
+
+    it('AcknowledgedTombstone_RecordedThenPurgedAfterTtl', () => {
+      const dead = el('dead', 3, 7, { isDeleted: true });
+      const first = planTombstonePurge([dead], known(dead), new Map(), 10_000, new Set(), TTL);
+      expect(first.purge.size).toBe(0);
+      expect(first.seenAt.get('dead')).toBe(10_000);
+
+      const early = planTombstonePurge([dead], known(dead), first.seenAt, 10_999, new Set(), TTL);
+      expect(early.purge.size).toBe(0);
+      expect(early.seenAt.get('dead')).toBe(10_000);
+
+      const due = planTombstonePurge([dead], known(dead), early.seenAt, 11_000, new Set(), TTL);
+      expect([...due.purge]).toEqual(['dead']);
+      expect(due.seenAt.has('dead')).toBeFalse();
+    });
+
+    it('UnacknowledgedOrLiveElements_NeverPurgedOrTracked', () => {
+      const unsent = el('unsent', 2, 1, { isDeleted: true });
+      const stale = el('stale', 5, 1, { isDeleted: true });
+      const live = el('live');
+      const stamps = known(live, el('stale', 4, 1)); // sunucu stale'in silinmeden önceki hâlini biliyor
+      const plan = planTombstonePurge([unsent, stale, live], stamps, new Map([['stale', 0]]), 1_000_000, new Set(), TTL);
+      expect(plan.purge.size).toBe(0);
+      expect(plan.seenAt.size).toBe(0);
+    });
+
+    it('UpdatedFieldIgnored_AgeMeasuredWithLocalClock', () => {
+      // Karşı tarafın `updated` saati çok eskide olsa da yerelde ilk görülmeden temizlenmez.
+      const dead = el('dead', 2, 1, { isDeleted: true, updated: 1 });
+      const plan = planTombstonePurge([dead], known(dead), new Map(), 5_000_000, new Set(), TTL);
+      expect(plan.purge.size).toBe(0);
+    });
+
+    it('ExcludedIds_NeverPurgedOrTrackedEvenIfStamped', () => {
+      const dead = el('dead', 2, 1, { isDeleted: true });
+      const plan = planTombstonePurge([dead], known(dead), new Map([['dead', 0]]), 1_000_000, new Set(['dead']), TTL);
+      expect(plan.purge.size).toBe(0);
+      expect(plan.seenAt.size).toBe(0);
+    });
+
+    it('SeenAtDropsIdsNoLongerInScene', () => {
+      const plan = planTombstonePurge([], new Map(), new Map([['gone', 1]]), 2, new Set(), TTL);
+      expect(plan.seenAt.size).toBe(0);
     });
   });
 });

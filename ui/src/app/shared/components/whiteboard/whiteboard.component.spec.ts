@@ -1,7 +1,9 @@
 import { PLATFORM_ID, WritableSignal, signal } from '@angular/core';
 import { ComponentFixture, TestBed, discardPeriodicTasks, fakeAsync, flush, flushMicrotasks, tick } from '@angular/core/testing';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { Subject } from 'rxjs';
 
 import whiteboardTr from '../../../../../public/i18n/whiteboard/tr.json';
 import { AuthService } from '../../../services/auth.service';
@@ -11,6 +13,7 @@ import { WHITEBOARD_HUB_CONNECTION_FACTORY } from '../../../services/whiteboard-
 import { translocoTestingModule } from '../../testing/transloco-testing';
 import { FakeCanvas, FakeCanvasLoader, FakeHubConnection, hubError, joinResult } from '../../testing/whiteboard-testing';
 import { WHITEBOARD_CANVAS_LOADER } from './whiteboard-canvas';
+import { WhiteboardLinkDialogComponent } from './whiteboard-link-dialog/whiteboard-link-dialog.component';
 import { WHITEBOARD_CLOCK_TICK_MS, WHITEBOARD_MOUNT_TIMEOUT_MS, WhiteboardComponent } from './whiteboard.component';
 
 /** Gerçek sözlük: bir anahtar bozulursa test kırılır. */
@@ -285,7 +288,7 @@ describe('WhiteboardComponent', () => {
 
   it('Warnings_LinkBlockedAndOversize_ShowSnackbar', fakeAsync(() => {
     render();
-    loader.mountCalls[0].callbacks.onLinkBlocked();
+    loader.mountCalls[0].callbacks.onLinkOpen('javascript:alert(1)');
     expect(snackOpen).toHaveBeenCalledWith(whiteboardTr.warnings.linkBlocked, whiteboardTr.dismiss, jasmine.any(Object));
 
     canvas.elements = [
@@ -305,6 +308,86 @@ describe('WhiteboardComponent', () => {
     expect(hub.calls('SendElements').length).toBe(0);
     finish();
   }));
+
+  describe('link open (issue #332)', () => {
+    let windowOpen: jasmine.Spy;
+    let dialogOpen: jasmine.Spy;
+    let dialogResult: Subject<boolean | undefined>;
+
+    function renderWithLinkSpies(): void {
+      render();
+      windowOpen = spyOn(window, 'open').and.returnValue(null);
+      dialogResult = new Subject<boolean | undefined>();
+      dialogOpen = spyOn(fixture.debugElement.injector.get(MatDialog), 'open').and.returnValue({
+        afterClosed: () => dialogResult.asObservable(),
+      } as unknown as MatDialogRef<unknown>);
+    }
+
+    it('LinkOpen_BlockedSchemes_NeverOpenOrAskAndShowSnackbar', fakeAsync(() => {
+      renderWithLinkSpies();
+      for (const link of ['javascript:alert(1)', 'data:text/html,x', 'file:///etc/passwd', 'vbscript:x', '/relative', null]) {
+        loader.mountCalls[0].callbacks.onLinkOpen(link);
+      }
+      expect(windowOpen).not.toHaveBeenCalled();
+      expect(dialogOpen).not.toHaveBeenCalled();
+      expect(snackOpen).toHaveBeenCalledWith(whiteboardTr.warnings.linkBlocked, whiteboardTr.dismiss, jasmine.any(Object));
+      finish();
+    }));
+
+    it('LinkOpen_SameOrigin_OpensDirectlyInNewTabWithoutDialog', fakeAsync(() => {
+      renderWithLinkSpies();
+      const url = `${window.location.origin}/programs/3/detail`;
+      loader.mountCalls[0].callbacks.onLinkOpen(url);
+      expect(dialogOpen).not.toHaveBeenCalled();
+      expect(windowOpen).toHaveBeenCalledOnceWith(url, '_blank', 'noopener,noreferrer');
+      finish();
+    }));
+
+    it('LinkOpen_ExternalConfirmed_ShowsUrlThenOpensWithNoopener', fakeAsync(() => {
+      renderWithLinkSpies();
+      loader.mountCalls[0].callbacks.onLinkOpen('https://Phish.example.org/login?x=1');
+
+      expect(dialogOpen).toHaveBeenCalledOnceWith(
+        WhiteboardLinkDialogComponent,
+        jasmine.objectContaining({ data: { url: 'https://phish.example.org/login?x=1', host: 'phish.example.org' } })
+      );
+      expect(windowOpen).not.toHaveBeenCalled();
+
+      dialogResult.next(true);
+      expect(windowOpen).toHaveBeenCalledOnceWith('https://phish.example.org/login?x=1', '_blank', 'noopener,noreferrer');
+      finish();
+    }));
+
+    it('LinkOpen_SameOriginSensitivePath_GoesThroughDialog', fakeAsync(() => {
+      renderWithLinkSpies();
+      loader.mountCalls[0].callbacks.onLinkOpen(`${window.location.origin}/realms/exam/protocol/openid-connect/auth`);
+      expect(dialogOpen).toHaveBeenCalledTimes(1);
+      expect(windowOpen).not.toHaveBeenCalled();
+      finish();
+    }));
+
+    it('LinkOpen_DialogAlreadyOpen_NoSecondDialog', fakeAsync(() => {
+      renderWithLinkSpies();
+      loader.mountCalls[0].callbacks.onLinkOpen('https://a.example.org');
+      loader.mountCalls[0].callbacks.onLinkOpen('https://b.example.org');
+      expect(dialogOpen).toHaveBeenCalledTimes(1);
+
+      dialogResult.next(true);
+      expect(windowOpen).toHaveBeenCalledOnceWith('https://a.example.org/', '_blank', 'noopener,noreferrer');
+      finish();
+    }));
+
+    it('LinkOpen_ExternalCancelledOrDismissed_DoesNotOpen', fakeAsync(() => {
+      renderWithLinkSpies();
+      loader.mountCalls[0].callbacks.onLinkOpen('https://example.org');
+      dialogResult.next(false);
+      loader.mountCalls[0].callbacks.onLinkOpen('https://example.org');
+      dialogResult.next(undefined); // ESC / backdrop
+      expect(dialogOpen).toHaveBeenCalledTimes(2);
+      expect(windowOpen).not.toHaveBeenCalled();
+      finish();
+    }));
+  });
 
   it('Destroy_UnmountsCanvasAndStopsConnection', fakeAsync(() => {
     render();

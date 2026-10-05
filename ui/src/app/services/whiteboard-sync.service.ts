@@ -19,6 +19,7 @@ import {
   OutgoingItem,
   WHITEBOARD_MAX_ELEMENT_BYTES,
   changedElements,
+  exceedsRemoteElementLimit,
   chunkOutgoing,
   isCloseReason,
   isCoordinate,
@@ -28,6 +29,7 @@ import {
   parseHubErrorCode,
   parsePeerPointer,
   parseUtcDate,
+  planTombstonePurge,
   rawStampsOf,
   sameStamp,
   sanitizeIncomingElement,
@@ -147,6 +149,15 @@ export class WhiteboardSyncService {
   private resyncRequested = false;
   /** `retry()` bağlantıyı durdururken gelen onclose yeniden bağlanma planlamasın. */
   private restarting = false;
+  /** Sınırı aşan uzak sahne uyarısı gösterildi; bir sonraki başarılı uygulamaya kadar tekrarlanmaz (issue #332). */
+  private remoteLimitWarned = false;
+  /** Onaylı tombstone id → yerelde ilk görüldüğü an (issue #332, bkz. `planTombstonePurge`). */
+  private tombstoneSeenAt = new Map<string, number>();
+  /**
+   * `known`'da damgalı ama sunucuda kabul edildiği kesin olmayan id'ler (tek eleman olarak içerik reddi, onarım devre
+   * kesicisi): tombstone temizliğinden hariç tutulur (issue #332).
+   */
+  private readonly purgeExcluded = new Set<string>();
 
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private sendRetryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -422,6 +433,13 @@ export class WhiteboardSyncService {
     if (!canvas || raw.length === 0) {
       return true;
     }
+    // Issue #332: eleman sayısı sunucu sınırını aşan HAM uzak yük hiç işlenmez (restore/reconcile dev bir dizide tuvali
+    // dondurmasın). Birleşik sahne ve bayt sayılmaz (bkz. WHITEBOARD_MAX_SCENE_ELEMENTS). Tam senkron istenmez — aynı
+    // sahne yine sınırı aşardı; kullanıcı bilgilendirilir.
+    if (exceedsRemoteElementLimit(raw)) {
+      this.rejectRemoteScene(source);
+      return true;
+    }
     const ordered = sortByFractionalIndex(raw);
     let restored: WhiteboardElement[];
     let merged: WhiteboardElement[];
@@ -445,7 +463,17 @@ export class WhiteboardSyncService {
     }
 
     this.stampAfterApply(ordered, restored, merged, before, source);
+    this.remoteLimitWarned = false;
     return true;
+  }
+
+  /** Sınırı aşan uzak sahne/güncelleme uygulanmadı: içerik loglanmaz, kullanıcı bir kez uyarılır. */
+  private rejectRemoteScene(source: RemoteSource): void {
+    console.warn(`[whiteboard] remote ${source} exceeds client element limit; not applied`);
+    if (!this.remoteLimitWarned) {
+      this.remoteLimitWarned = true;
+      this.warningsSubject.next('remoteSceneLimit');
+    }
   }
 
   /**
@@ -472,6 +500,8 @@ export class WhiteboardSyncService {
       if (remote && sameStamp(remote, scene)) {
         this.known.set(element.id, remote);
         this.repairStreak.delete(element.id);
+        // Sunucudan aynen gelen hâl sunucuda var: artık temizlenebilir.
+        this.purgeExcluded.delete(element.id);
         continue;
       }
       const repaired =
@@ -488,6 +518,7 @@ export class WhiteboardSyncService {
         console.warn(`[whiteboard] element ${element.id} repaired ${rounds} times in a row; stopped re-sending`);
         if (repaired) {
           this.known.set(element.id, scene);
+          this.purgeExcluded.add(element.id);
         }
       } else if (rejectedCorrection) {
         this.known.delete(element.id);
@@ -536,8 +567,19 @@ export class WhiteboardSyncService {
 
     this.warnedThisFlush.clear();
     const all = canvas.getElements();
-    const syncable = all.filter(isSyncableElement);
-    if (syncable.length !== all.length) {
+    let syncable = all.filter(isSyncableElement);
+    const removedUnsupported = syncable.length !== all.length;
+    // Issue #332: sunucuya ulaşmış (onaylı) ve yeterince eski tombstone'lar yerel sahneden temizlenir.
+    const tombstones = planTombstonePurge(syncable, this.known, this.tombstoneSeenAt, Date.now(), this.purgeExcluded);
+    this.tombstoneSeenAt = tombstones.seenAt;
+    if (tombstones.purge.size > 0) {
+      syncable = syncable.filter((element) => !tombstones.purge.has(element.id));
+      // Sahnede olmayan id'nin damgası tutulmaz; tombstone yeniden gelirse (JoinBoard) yeniden damgalanır.
+      for (const id of tombstones.purge) {
+        this.known.delete(id);
+      }
+    }
+    if (removedUnsupported || tombstones.purge.size > 0) {
       // Görsel/gömülü içerik (sürükle-bırak, yapıştırma) sunucuda reddedilir: yerel sahneden de kaldırılır.
       canvas.applyElements(syncable);
       if (all.some((element) => !element.isDeleted && !isSyncableElement(element))) {
@@ -632,6 +674,7 @@ export class WhiteboardSyncService {
     const { element } = chunk[0];
     // İçerik loglanmaz: yalnızca id, tip ve kod.
     console.warn(`[whiteboard] element ${element.id} (${element.type}) rejected by server: ${code}`);
+    this.purgeExcluded.add(element.id);
     this.warnOncePerFlush(code === 'SceneElementLimit' || code === 'SceneSizeLimit' ? 'sceneLimit' : 'rejected');
     return 'ok';
   }

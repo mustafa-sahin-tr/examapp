@@ -29,7 +29,6 @@
 }
 
 .bd-row,
-.bd-icon-row,
 .bd-rule-fields {
   display: flex;
   flex-wrap: wrap;
@@ -53,23 +52,143 @@
   min-width: 0;
 }
 
-.bd-icon-preview {
+// ---- ikon seçici (issue #149) ----
+.bd-icon-selected {
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex: 0 0 56px;
-  height: 56px;
-  border-radius: 12px;
-  border: 1px solid var(--ms-border-weak);
-  background: var(--main-bg-color);
+  gap: 12px;
+  margin-bottom: 8px;
 
-  img {
-    max-width: 44px;
-    max-height: 44px;
+  &__text {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
-  mat-icon {
+  &__label {
+    font-size: 12px;
+    color: var(--ms-text-medium);
+  }
+
+  &__name {
+    font-size: 14px;
+    color: var(--ms-text-strong);
+  }
+
+  &__none {
+    font-size: 14px;
     color: var(--ms-text-weak);
+  }
+}
+
+.bd-icon-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.bd-icon-search {
+  flex: 1 1 220px;
+}
+
+.bd-icon-categories {
+  flex: 2 1 320px;
+}
+
+.bd-icon-grid {
+  display: grid;
+  // Dar dialogda taşmasın: hücreler 44px'e kadar büyür, gerekirse küçülür.
+  grid-template-columns: repeat(8, minmax(0, 44px));
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.bd-icon-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 44px;
+  aspect-ratio: 1;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid var(--ms-border);
+  background: var(--ms-surface-medium);
+  color: var(--ms-text-medium);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--ms-text-strong);
+    border-color: var(--ms-action-border);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--ms-action-border-focus);
+    outline-offset: 1px;
+  }
+
+  &--selected {
+    background: var(--ms-action-background-weak);
+    border: 2px solid var(--ms-action-border);
+    color: var(--ms-action-text);
+  }
+}
+
+.bd-icon-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+
+  &__title {
+    font-size: 12px;
+    color: var(--ms-text-medium);
+  }
+
+  &__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  &__item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+
+    figcaption {
+      font-size: 12px;
+      color: var(--ms-text-weak);
+    }
+  }
+}
+
+.bd-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  background: var(--ms-surface-medium);
+  color: var(--ms-text-medium);
+
+  mat-icon {
+    flex: 0 0 auto;
+  }
+
+  &--warn {
+    background: var(--ms-warning-surface);
+    color: var(--ms-warning-text);
+    border: 1px solid var(--ms-warning-text-weak);
   }
 }
 

@@ -17,8 +17,11 @@ import {
   BADGE_DEFINITION_DEFAULT_PAGE_SIZE,
   BADGE_DEFINITION_MAX_PAGE_SIZE,
   BadgeDefinitionAdmin,
+  validLegacyIconUrl,
 } from '../../../models/badge-definition-admin.model';
 import { BadgeDefinitionAdminService } from '../../../services/badge-definition-admin.service';
+import { BadgeMedallionComponent } from '../../../shared/components/badge-medallion/badge-medallion.component';
+import { BADGE_ICON_NAME_PATTERN } from '../../../shared/components/badge-medallion/badge-state.util';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -34,14 +37,28 @@ const ADMIN_SCOPE = 'admin';
 
 export type BadgeStatusFilter = 'active' | 'all';
 
+/**
+ * Issue #149 — ikon geçiş durumu: `new` = Material Symbols adı seçili; `legacy` = yalnız eski SVG (`iconUrl`);
+ * `none` = ikisi de yok (medalyon varsayılan glifi gösterir).
+ */
+export type BadgeIconStatus = 'new' | 'legacy' | 'none';
+
+export function badgeIconStatus(item: Pick<BadgeDefinitionAdmin, 'icon' | 'iconUrl'>): BadgeIconStatus {
+  const icon = item.icon?.trim();
+  if (icon && BADGE_ICON_NAME_PATTERN.test(icon)) return 'new';
+  // Desene uymayan eski yol medalyonda zaten gösterilmez → "İkon yok".
+  return validLegacyIconUrl(item.iconUrl) ? 'legacy' : 'none';
+}
+
 /** Şablonun doğrudan bastığı satır modeli. */
 export interface BadgeDefinitionRow {
   id: string;
   code: string;
   name: string;
   category: string;
-  /** Kök-göreli ikon yolu; ikon yoksa null. */
-  iconSrc: string | null;
+  icon: string | null;
+  iconUrl: string | null;
+  iconStatus: BadgeIconStatus;
   rule: RuleSummary;
   isActive: boolean;
   /** Son değiştiren (yoksa oluşturan). */
@@ -59,6 +76,7 @@ export interface BadgeDefinitionRow {
   standalone: true,
   imports: [
     DatePipe,
+    BadgeMedallionComponent,
     MatButtonModule,
     MatButtonToggleModule,
     MatDialogModule,
@@ -101,6 +119,8 @@ export class BadgeDefinitionsComponent {
   readonly dialogOpen = signal(false);
 
   readonly rows = computed<BadgeDefinitionRow[]>(() => this.items().map(toRow));
+  /** Bu sayfada yalnız eski SVG kullanan rozet sayısı — üstteki geçiş uyarısı için. */
+  readonly legacyIconCount = computed(() => this.rows().filter((r) => r.iconStatus === 'legacy').length);
   readonly isEmpty = computed(() => !this.loading() && !this.error() && this.items().length === 0);
   /** İlk yüklemede spinner; yenilemede tablo yerinde kalır, üstte ilerleme çubuğu. */
   readonly showSpinner = computed(() => this.loading() && this.items().length === 0);
@@ -255,13 +275,14 @@ export class BadgeDefinitionsComponent {
 }
 
 function toRow(item: BadgeDefinitionAdmin): BadgeDefinitionRow {
-  const icon = item.iconUrl?.trim();
   return {
     id: item.id,
     code: item.code,
     name: item.name,
     category: item.category,
-    iconSrc: icon ? (/^(https?:)?\//.test(icon) ? icon : `/${icon}`) : null,
+    icon: item.icon ?? null,
+    iconUrl: item.iconUrl ?? null,
+    iconStatus: badgeIconStatus(item),
     rule: ruleSummary(item),
     isActive: item.isActive,
     // `*By` alanları Keycloak `sub`; görüntüleme adı varsa o gösterilir.

@@ -5,7 +5,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
 
-import { BadgeDefinitionsComponent } from './badge-definitions.component';
+import { BadgeDefinitionsComponent, badgeIconStatus } from './badge-definitions.component';
 import { BadgeDefinitionAdminService } from '../../../services/badge-definition-admin.service';
 import { BadgeDefinitionAdmin } from '../../../models/badge-definition-admin.model';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
@@ -23,6 +23,7 @@ function dto(overrides: Partial<BadgeDefinitionAdmin> = {}): BadgeDefinitionAdmi
     name: 'Soru Avcısı 1',
     description: '',
     iconUrl: 'achievements/q.svg',
+    icon: null,
     category: 'Çözüm',
     ruleType: 'AnswerCount',
     ruleConfigJson: '{"target":10}',
@@ -104,6 +105,69 @@ describe('BadgeDefinitionsComponent', () => {
     expect(summaries).toEqual(['10 soru çöz', 'Matematik dersinde 100 soru çöz']);
     expect(el('status-chip')?.textContent?.trim()).toBe('Aktif');
     expect(fixture.nativeElement.textContent).toContain('admin1');
+  });
+
+  // ── ikon sütunu / geçiş (issue #149) ───────────────────────────────────
+
+  it('badgeIconStatus_ValidName_New_LegacyPathOnly_Legacy_Neither_None', () => {
+    expect(badgeIconStatus({ icon: 'flag', iconUrl: 'achievements/q.svg' })).toBe('new');
+    expect(badgeIconStatus({ icon: null, iconUrl: 'achievements/q.svg' })).toBe('legacy');
+    expect(badgeIconStatus({ icon: 'Bad Name', iconUrl: 'achievements/q.svg' })).withContext('geçersiz ad yok sayılır').toBe('legacy');
+    expect(badgeIconStatus({ icon: null, iconUrl: '  ' })).toBe('none');
+    expect(badgeIconStatus({ icon: null, iconUrl: 'https://evil.example/x.svg' })).withContext('desene uymayan yol').toBe('none');
+    expect(badgeIconStatus({ icon: null, iconUrl: 'achievements/../x.png' })).toBe('none');
+    expect(badgeIconStatus({ icon: null, iconUrl: '/achievements/q.svg' })).toBe('legacy');
+    expect(badgeIconStatus({ icon: null, iconUrl: null })).toBe('none');
+  });
+
+  it('iconColumn_Renders40pxEarnedMedallion_AndStatusChipPerRow', () => {
+    init([
+      dto({ id: 'n', icon: 'flag' }),
+      dto({ id: 'l', icon: null, iconUrl: 'achievements/q.svg' }),
+      dto({ id: 'x', icon: null, iconUrl: null }),
+    ]);
+
+    const cells = [...fixture.nativeElement.querySelectorAll('[data-testid="icon-cell"]')] as HTMLElement[];
+    expect(cells.length).toBe(3);
+    for (const cell of cells) {
+      const medallion = cell.querySelector('app-badge-medallion') as HTMLElement;
+      expect(medallion).withContext('her satırda medalyon').toBeTruthy();
+      expect(medallion.getAttribute('data-state')).toBe('earned');
+      expect(medallion.style.getPropertyValue('--bm-size')).toBe('40px');
+    }
+    expect(cells[0].querySelector('mat-icon')?.textContent?.trim()).toBe('flag');
+    expect(cells[1].querySelector('img')?.getAttribute('src')).withContext('eski SVG yedeği').toBe('/achievements/q.svg');
+    expect(cells[2].querySelector('mat-icon')?.textContent?.trim()).toBe('military_tech');
+
+    const chips = [...fixture.nativeElement.querySelectorAll('[data-testid="icon-status"]')].map((e: Element) =>
+      e.textContent?.trim()
+    );
+    expect(chips).toEqual([
+      adminTr.badgeDefinitions.iconStatus.new,
+      adminTr.badgeDefinitions.iconStatus.legacy,
+      adminTr.badgeDefinitions.iconStatus.none,
+    ]);
+    expect(el('icon-status')?.classList).toContain('bd-icon-chip--new');
+  });
+
+  it('legacyBanner_ShownWithCount_WhenAnyRowUsesLegacySvg', () => {
+    init([dto({ id: 'a', icon: null }), dto({ id: 'b', icon: null }), dto({ id: 'c', icon: 'star' })]);
+
+    expect(component.legacyIconCount()).toBe(2);
+    const banner = el('legacy-icon-banner');
+    expect(banner).toBeTruthy();
+    expect(banner?.getAttribute('role')).toBe('status');
+    expect(banner?.textContent).toContain('2 rozet');
+  });
+
+  it('legacyBanner_Hidden_WhenNoLegacyRows_OrOnLoadError', () => {
+    init([dto({ icon: 'flag' }), dto({ id: 'b2', icon: null, iconUrl: null })]);
+    expect(el('legacy-icon-banner')).toBeNull();
+
+    service.list.and.returnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+    component.load();
+    fixture.detectChanges();
+    expect(el('legacy-icon-banner')).toBeNull();
   });
 
   it('filterAll_ReloadsWithIncludeInactive_FromFirstPage', () => {

@@ -508,6 +508,7 @@
     "loading": "Rozetler yükleniyor...",
     "empty": "Rozet tanımı bulunamadı",
     "emptyActiveHint": "Devre dışı rozetleri görmek için \"Tümü\" filtresini seç.",
+    "legacyIconBanner": "Bu sayfada {{count}} rozet hâlâ eski SVG ikonu kullanıyor. Eski dosyalar kaldırılacak; rozeti düzenleyip listeden yeni bir ikon seç.",
     "filter": {
       "label": "Durum filtresi",
       "active": "Aktif",
@@ -526,6 +527,11 @@
     "status": {
       "active": "Aktif",
       "inactive": "Devre dışı"
+    },
+    "iconStatus": {
+      "new": "Yeni ikon",
+      "legacy": "Eski SVG",
+      "none": "İkon yok"
     },
     "actions": {
       "edit": "Düzenle",
@@ -607,7 +613,6 @@
       "save": "Kaydet",
       "cancel": "Vazgeç",
       "retry": "Tekrar dene",
-      "iconPreview": "İkon önizleme",
       "ruleTypesLoading": "Kural tipleri yükleniyor...",
       "ruleTypesFailed": "Kural tipleri yüklenemedi.",
       "subjectsLoading": "Dersler yükleniyor...",
@@ -615,15 +620,36 @@
       "legacyRuleType": "Bu rozetin kural tipi (\"{{ruleType}}\") artık sunulmuyor; kaydetmek için bir kural tipi seç.",
       "sections": {
         "identity": "Rozet bilgileri",
+        "icon": "İkon",
         "path": "Rozet yolu (opsiyonel)",
         "rule": "Kazanma kuralı"
+      },
+      "icon": {
+        "selected": "Seçili ikon",
+        "none": "İkon seçilmedi (varsayılan gösterilir)",
+        "clear": "Temizle",
+        "legacyWarning": "Bu rozet eski SVG ikonunu kullanıyor ({{path}}). Eski dosyalar kaldırılacak; aşağıdan yeni bir ikon seç.",
+        "loading": "İkonlar yükleniyor...",
+        "loadFailed": "İkon listesi yüklenemedi.",
+        "search": "İkon ara",
+        "categoryFilter": "İkon kategorisi",
+        "categories": {
+          "all": "Tümü",
+          "achievement": "Başarı",
+          "learning": "Ders",
+          "time": "Zaman",
+          "streak": "Seri / aktivite",
+          "other": "Diğer"
+        },
+        "empty": "Seçilebilecek ikon yok.",
+        "noResults": "\"{{query}}\" için ikon bulunamadı. Aramayı veya kategori filtresini değiştir.",
+        "preview": "Önizleme (öğrenci ekranındaki 4 durum)"
       },
       "fields": {
         "code": "Kod",
         "name": "Ad",
         "description": "Açıklama",
         "category": "Kategori",
-        "iconUrl": "İkon yolu",
         "pathKey": "Yol anahtarı",
         "pathName": "Yol adı",
         "pathOrder": "Sıra",
@@ -637,7 +663,6 @@
         "code": "Küçük harf, rakam ve tire; ör. subject-matematik-mastery. Sonradan değiştirilemez.",
         "codeImmutable": "Kod oluşturulduktan sonra değiştirilemez.",
         "category": "Listeden seç veya yeni kategori yaz.",
-        "iconUrl": "achievements/<dosya>.svg biçiminde; boş bırakılabilir.",
         "path": "Aynı yol anahtarına sahip rozetler öğrenci ekranında sırayla bir yol olarak gösterilir.",
         "range": "{{min}} – {{max}}",
         "subjectUnmatched": "Kayıtlı ders: \"{{name}}\" (listede bulunamadı; değiştirmek için yeni ders seç)."
@@ -650,7 +675,6 @@
         "integer": "Tam sayı olmalıdır.",
         "invalid": "Geçersiz değer.",
         "codePattern": "Yalnız küçük harf, rakam ve tek tire (ör. question-hunter-1).",
-        "iconPattern": "achievements/<dosya>.svg biçiminde olmalıdır.",
         "subjectRequired": "Ders seçimi zorunludur.",
         "codeTaken": "Bu koda sahip bir rozet zaten var.",
         "notFound": "Rozet bulunamadı; başka bir yönetici tarafından değiştirilmiş olabilir.",

@@ -15,6 +15,7 @@ describe('BadgeDefinitionAdminService', () => {
     name: 'Soru Avcısı 9',
     description: 'd',
     iconUrl: 'achievements/a.svg',
+    icon: 'flag',
     category: 'Çözüm',
     ruleType: 'AnswerCount',
     ruleConfigJson: '{"target":10}',
@@ -36,6 +37,28 @@ describe('BadgeDefinitionAdminService', () => {
     const req = http.expectOne(`${base}/rule-types`);
     expect(req.request.method).toBe('GET');
     req.flush([]);
+  });
+
+  it('getIcons_GetsOnce_AndCachesForLaterCallers', () => {
+    const icons = [{ name: 'flag', category: 'achievement' }];
+    let first: unknown;
+    let second: unknown;
+    service.getIcons().subscribe((v) => (first = v));
+    http.expectOne(`${base}/icons`).flush(icons);
+    service.getIcons().subscribe((v) => (second = v));
+    http.expectNone(`${base}/icons`);
+    expect(first).toEqual(icons);
+    expect(second).toEqual(icons);
+  });
+
+  it('getIcons_Error_IsNotCached_RetryRequestsAgain', () => {
+    let failed = false;
+    service.getIcons().subscribe({ error: () => (failed = true) });
+    http.expectOne(`${base}/icons`).flush('x', { status: 500, statusText: 'err' });
+    expect(failed).toBeTrue();
+
+    service.getIcons().subscribe();
+    http.expectOne(`${base}/icons`).flush([]);
   });
 
   it('list_SendsIncludeInactiveSkipTake', () => {

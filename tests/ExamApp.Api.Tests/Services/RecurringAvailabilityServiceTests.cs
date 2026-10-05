@@ -5,6 +5,7 @@ using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Video;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -539,10 +540,19 @@ public class RecurringAvailabilityServiceTests : IDisposable
         var raceDate = new DateOnly(2026, 4, 8); // top-up'ın ekleyeceği ilk yeni hafta
 
         // "Sorgu → kaydet" arasına giren eşzamanlı yazıcı: SavingChanges anında aynı occurrence'ı
-        // ikinci bir context ile ekler → unique index (TeacherId, Date, Start, End) ihlali.
-        var interceptor = new ConcurrentInsertInterceptor(async () =>
+        // ikinci bir context ile ekler → unique index (TeacherId, Date, Start, End) ihlali. issue #323: top-up artık
+        // transaction içinde yazar; paylaşılan SQLite bağlantısında yazıcı aynı transaction'a katılır (kilidi atlayan,
+        // ör. doğrudan SQL ile gelen yazıcıyı temsil eder — unique index son savunma hattı olarak kalır).
+        var interceptor = new ConcurrentInsertInterceptor(async owner =>
         {
-            await SeedSlotAsync(TeacherId, raceDate, new TimeOnly(14, 0), new TimeOnly(15, 0));
+            await using var other = _db.NewContext();
+            await other.Database.UseTransactionAsync(owner.Database.CurrentTransaction!.GetDbTransaction());
+            other.SetCurrentUser(TeacherId);
+            other.TeacherAvailabilitySlots.Add(new TeacherAvailabilitySlot
+            {
+                TeacherId = TeacherId, Date = raceDate, StartTime = new TimeOnly(14, 0), EndTime = new TimeOnly(15, 0), CreatedAt = FixedNow
+            });
+            await other.SaveChangesAsync();
         });
 
         await using var ctx = _db.NewContext(interceptor);
@@ -552,10 +562,15 @@ public class RecurringAvailabilityServiceTests : IDisposable
         interceptor.Fired.ShouldBeTrue();
         ctx.ChangeTracker.Entries<TeacherAvailabilitySlot>().ShouldBeEmpty(); // eklenenler detach edildi
 
-        // Bir sonraki (normal) çağrı: yarışılan tarih çakışma olarak atlanır, kalan 3 hafta eklenir.
+        // issue #323: top-up tek transaction'da yazar — çakışmada hiçbir yeni occurrence yarım kalmaz. (Bu simülasyonda
+        // yazıcı aynı transaction'a katıldığı için onun satırı da geri alındı; gerçek kilitsiz yazıcı kendi commit'ini yapar.)
+        await using (var check = _db.NewContext())
+            (await check.TeacherAvailabilitySlots.CountAsync(s => s.Date == raceDate)).ShouldBe(0);
+
+        // Bir sonraki (normal) çağrı eksikleri tamamlar: 4 yeni hafta.
         await using var ctx2 = _db.NewContext();
-        (await NewService(ctx2, later).TopUpAsync(TeacherId, TeacherUserId)).ShouldBe(3);
-        (await RuleSlotDatesAsync(created.Rule!.Id)).ShouldNotContain(raceDate);
+        (await NewService(ctx2, later).TopUpAsync(TeacherId, TeacherUserId)).ShouldBe(4);
+        (await RuleSlotDatesAsync(created.Rule!.Id)).ShouldContain(raceDate);
     }
 
     [Fact]
@@ -565,9 +580,10 @@ public class RecurringAvailabilityServiceTests : IDisposable
         await CreateRuleAsync(WednesdayRule());
 
         // Kaydetmeden hemen önce öğretmen fiziksel silinir → FK ihlali (unique değil) → yutulmaz.
-        var interceptor = new ConcurrentInsertInterceptor(async () =>
+        var interceptor = new ConcurrentInsertInterceptor(async owner =>
         {
             await using var other = _db.NewContext();
+            await other.Database.UseTransactionAsync(owner.Database.CurrentTransaction!.GetDbTransaction());
             await other.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys = ON; DELETE FROM \"Teachers\" WHERE \"Id\" = {0}", TeacherId);
         });
 
@@ -930,9 +946,10 @@ public class RecurringAvailabilityServiceTests : IDisposable
     /// <summary>SaveChanges'ten hemen önce (sorgu bitti, INSERT henüz yok) bir kez "eşzamanlı yazıcı" çalıştırır.</summary>
     private sealed class ConcurrentInsertInterceptor : Microsoft.EntityFrameworkCore.Diagnostics.SaveChangesInterceptor
     {
-        private readonly Func<Task> _concurrentWrite;
+        private readonly Func<AppDbContext, Task> _concurrentWrite;
 
-        public ConcurrentInsertInterceptor(Func<Task> concurrentWrite) => _concurrentWrite = concurrentWrite;
+        /// <param name="concurrentWrite">Kaydeden context'i alır (issue #323: açık transaction'a katılabilmek için).</param>
+        public ConcurrentInsertInterceptor(Func<AppDbContext, Task> concurrentWrite) => _concurrentWrite = concurrentWrite;
 
         public bool Fired { get; private set; }
 
@@ -944,7 +961,7 @@ public class RecurringAvailabilityServiceTests : IDisposable
             if (!Fired)
             {
                 Fired = true;
-                await _concurrentWrite();
+                await _concurrentWrite((AppDbContext)eventData.Context!);
             }
 
             return result;

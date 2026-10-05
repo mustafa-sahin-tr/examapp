@@ -7,6 +7,8 @@
     "studentRecordNotFound": "Student record not found.",
 
     "slot": {
+      "invalidPrecision": "Times must be specified in whole minutes (no seconds).",
+      "busy": "Your availability calendar is being updated by another request. Please try again in a few seconds.",
       "zeroLength": "The end time cannot be the same as the start time.",
       "inPast": "An availability slot cannot be created in the past.",
       "tooFarAhead": "An availability slot can be created at most {0} days ahead.",

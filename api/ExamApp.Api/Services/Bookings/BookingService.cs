@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Bookings;
 using ExamApp.Api.Models.Dtos.Teachers;
@@ -126,6 +127,11 @@ public class BookingService : IBookingService
         if (range.Duration > MaxSlotDuration)
             return SlotFail(_localizer[TooLongMessageKey(dto.StartTime, dto.EndTime), MaxSlotDurationHours]);
 
+        // issue #323: tekrarlayan kural ile aynı dakika hassasiyeti — 10:00:00 / 10:00:01 gibi neredeyse aynı iki satır
+        // unique index'i atlatmasın.
+        if (!SlotTimeRange.IsMinutePrecision(dto.StartTime) || !SlotTimeRange.IsMinutePrecision(dto.EndTime))
+            return SlotFail(_localizer["booking.slot.invalidPrecision"]);
+
         var teacher = await _context.Teachers
             .AsNoTracking()
             .Where(t => t.UserId == teacherUserId)
@@ -144,16 +150,102 @@ public class BookingService : IBookingService
                 Message = _localizer["booking.teacherNotApproved"]
             };
 
-        // Kesişen bir aralık varsa ikinci slot açılmaz — aksi halde öğretmen aynı saate iki ayrı randevu alabilirdi.
-        // issue #300: gün aşan slotlar yüzünden aday yalnız aynı gün değil, önceki/sonraki gündür; tarih aralığıyla
-        // daraltılıp UTC [Start, End) aralıkları bellekte karşılaştırılır (en fazla birkaç satır).
-        var (fromDate, toDate) = SlotTimeRange.CandidateDates(dto.Date);
-        var candidates = await _context.TeacherAvailabilitySlots
-            .AsNoTracking()
-            .Where(s => s.TeacherId == teacher.Id && s.Date >= fromDate && s.Date <= toDate)
-            .Select(s => new { s.Date, s.StartTime, s.EndTime })
-            .ToListAsync(ct);
-        var overlaps = candidates.Any(s => SlotTimeRange.From(s.Date, s.StartTime, s.EndTime).Overlaps(range));
+        _context.SetCurrentUser(teacherUserId);
+
+        // PostgreSQL timestamp mikro saniye hassasiyetindedir; değer retry'da "kendi satırım mı?" karşılaştırması için
+        // DB'ye yazıldığı haliyle (mikro saniyeye kesilmiş) tutulur.
+        var createdAt = new DateTime(now.Ticks - now.Ticks % 10, DateTimeKind.Utc);
+        var slot = new TeacherAvailabilitySlot
+        {
+            TeacherId = teacher.Id,
+            Date = dto.Date,
+            StartTime = dto.StartTime,
+            EndTime = dto.EndTime,
+            CreatedAt = createdAt
+        };
+
+        // issue #323 (security L2): çakışma kontrolü + INSERT öğretmen bazlı advisory lock altında, tek transaction'da —
+        // aksi halde paralel iki istek ikisi de "kesişen yok" görüp kesişen iki slot açabilirdi (unique index yalnız
+        // birebir aynı aralığı yakalar). Retry-on-failure nedeniyle transaction execution strategy İÇİNDE açılır.
+        var overlaps = false;
+        int? committedEarlierId = null;
+        var attempt = 0;
+        var strategy = _context.Database.CreateExecutionStrategy();
+        try
+        {
+            await strategy.ExecuteAsync(async () =>
+            {
+                attempt++;
+                overlaps = false;
+                committedEarlierId = null;
+
+                // Geçici hata sonrası retry (ör. commit'te kopan bağlantı): önceki denemenin satırı geri alınmış olabilir;
+                // her deneme satırı sıfırdan ekler. (acceptAllChangesOnSuccess:false overload'u audit alanlarını yazan
+                // SaveChangesAsync(ct) override'ını atladığı için kullanılmıyor.)
+                ResetForRetry(slot);
+
+                await using var tx = await _context.Database.BeginTransactionAsync(ct);
+                await _context.Database.AcquireTeacherAvailabilityLockAsync(teacher.Id, ct);
+
+                // Kesişen bir aralık varsa ikinci slot açılmaz — aksi halde öğretmen aynı saate iki ayrı randevu alabilirdi.
+                // issue #300: gün aşan slotlar yüzünden aday yalnız aynı gün değil, önceki/sonraki gündür; tarih aralığıyla
+                // daraltılıp UTC [Start, End) aralıkları bellekte karşılaştırılır (en fazla birkaç satır).
+                var (fromDate, toDate) = SlotTimeRange.CandidateDates(dto.Date);
+                var candidates = await _context.TeacherAvailabilitySlots
+                    .AsNoTracking()
+                    .Where(s => s.TeacherId == teacher.Id && s.Date >= fromDate && s.Date <= toDate)
+                    .Select(s => new { s.Id, s.Date, s.StartTime, s.EndTime, s.CreatedAt, s.CreateUserId })
+                    .ToListAsync(ct);
+
+                // Belirsiz commit (code review Uyarı-2): önceki deneme COMMIT etti ama onay kayboldu → strateji yeniden
+                // denedi. Kesişen satır bu isteğin kendi satırıysa (aynı aralık + aynı yazan + aynı CreatedAt anı) 409
+                // yerine başarı sayılır. Yalnız retry'da bakılır; ilk denemede böyle bir satır olamaz.
+                if (attempt > 1)
+                {
+                    var own = candidates.FirstOrDefault(c => c.Date == dto.Date && c.StartTime == dto.StartTime
+                        && c.EndTime == dto.EndTime && c.CreatedAt == createdAt && c.CreateUserId == teacherUserId);
+                    if (own != null)
+                    {
+                        committedEarlierId = own.Id;
+                        return;
+                    }
+                }
+
+                overlaps = candidates.Any(s => SlotTimeRange.From(s.Date, s.StartTime, s.EndTime).Overlaps(range));
+                if (overlaps)
+                    return; // commit yok → dispose'da rollback (kilit bırakılır)
+
+                _context.TeacherAvailabilitySlots.Add(slot);
+                await _context.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            });
+        }
+        catch (DbUpdateException ex) when (DbUpdateExceptionClassifier.IsUniqueViolation(ex))
+        {
+            // Filtreli unique index (TeacherId, Date, StartTime, EndTime) — kilit dışından gelen (ör. doğrudan SQL) yazıcı.
+            // Diğer DbUpdateException'lar (FK, CHECK, bağlantı) bilinçli olarak yukarı fırlar.
+            _logger.LogWarning(ex, "Müsaitlik aralığı eklenemedi (çakışma). TeacherId={TeacherId}", teacher.Id);
+            _context.Entry(slot).State = EntityState.Detached;
+            return new AvailabilitySlotResultDto
+            {
+                Success = false,
+                Conflict = true,
+                Message = _localizer["booking.slot.duplicate"]
+            };
+        }
+        catch (TeacherAvailabilityLockTimeoutException ex)
+        {
+            _logger.LogWarning(ex, "Müsaitlik kilidi zaman aşımı. TeacherId={TeacherId}", teacher.Id);
+            _context.Entry(slot).State = EntityState.Detached;
+            return SlotBusy();
+        }
+
+        if (committedEarlierId.HasValue)
+        {
+            _logger.LogInformation("Müsaitlik aralığı önceki denemede commit edilmiş (onay kaybı); başarı sayıldı. SlotId={SlotId}",
+                committedEarlierId.Value);
+            slot.Id = committedEarlierId.Value;
+        }
 
         if (overlaps)
             return new AvailabilitySlotResultDto
@@ -162,35 +254,6 @@ public class BookingService : IBookingService
                 Conflict = true,
                 Message = _localizer["booking.slot.overlapping"]
             };
-
-        _context.SetCurrentUser(teacherUserId);
-
-        var slot = new TeacherAvailabilitySlot
-        {
-            TeacherId = teacher.Id,
-            Date = dto.Date,
-            StartTime = dto.StartTime,
-            EndTime = dto.EndTime,
-            CreatedAt = now
-        };
-
-        _context.TeacherAvailabilitySlots.Add(slot);
-
-        try
-        {
-            await _context.SaveChangesAsync(ct);
-        }
-        catch (DbUpdateException ex)
-        {
-            // Filtreli unique index (TeacherId, Date, StartTime, EndTime) — eşzamanlı istek yarışı.
-            _logger.LogWarning(ex, "Müsaitlik aralığı eklenemedi (çakışma). TeacherId={TeacherId}", teacher.Id);
-            return new AvailabilitySlotResultDto
-            {
-                Success = false,
-                Conflict = true,
-                Message = _localizer["booking.slot.duplicate"]
-            };
-        }
 
         return new AvailabilitySlotResultDto
         {
@@ -919,6 +982,25 @@ public class BookingService : IBookingService
     /// </summary>
     internal static string TooLongMessageKey(TimeOnly start, TimeOnly end)
         => SlotTimeRange.CrossesMidnight(start, end) ? "booking.slot.tooLongNextDay" : "booking.slot.tooLong";
+
+    /// <summary>
+    /// issue #323: execution strategy retry'ında önceki denemenin (commit edilmemiş, geri alınmış) slot satırını
+    /// change tracker'dan ayırır ve DB'nin verdiği kimliği sıfırlar — sonraki deneme aynı nesneyi yeniden INSERT eder.
+    /// </summary>
+    private void ResetForRetry(TeacherAvailabilitySlot slot)
+    {
+        if (_context.Entry(slot).State != EntityState.Detached)
+            _context.Entry(slot).State = EntityState.Detached;
+        slot.Id = 0;
+    }
+
+    /// <summary>issue #323: öğretmen kilidi zaman aşımı → 409 + "tekrar deneyin" (yeniden denenebilir çakışma).</summary>
+    private AvailabilitySlotResultDto SlotBusy() => new()
+    {
+        Success = false,
+        Conflict = true,
+        Message = _localizer["booking.slot.busy"]
+    };
 
     private static AvailabilitySlotResultDto SlotFail(string message)
         => new() { Success = false, Message = message };

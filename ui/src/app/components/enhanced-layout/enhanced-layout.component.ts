@@ -1,5 +1,5 @@
 import { Component, signal, OnInit, OnDestroy, computed, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
@@ -17,13 +17,14 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { AuthService } from '../../services/auth.service';
 import { UserThemeService } from '../../services/user-theme.service';
 import { ThemeConfigService } from '../../services/theme-config.service';
-import { EMPTY, Subject, merge, of } from 'rxjs';
-import { catchError, debounceTime, distinctUntilChanged, filter, map, switchMap, takeUntil } from 'rxjs/operators';
+import { EMPTY, Subject, fromEvent, merge, of } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, filter, map, switchMap, takeUntil, throttleTime } from 'rxjs/operators';
 import { SidenavService } from '../../services/sidenav.service';
 import { TEACHER_APPROVAL_PENDING_URL, teacherAccountApprovalOf } from '../../models/teacher-approval.model';
 import { SignalRService } from '../../services/signalr.service';
 import { WorksheetAccessRequestService } from '../../services/worksheet-access-request.service';
 import { NotificationService } from '../../services/notification.service';
+import { DirectMessageService } from '../../services/direct-message.service';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { ColorSchemeToggleComponent } from '../../shared/components/color-scheme-toggle/color-scheme-toggle.component';
 import { LanguageSwitcherComponent } from '../../shared/components/language-switcher/language-switcher.component';
@@ -127,6 +128,13 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   private readonly notificationService = inject(NotificationService);
   /** Issue #146: zil rozetindeki okunmamış kalıcı bildirim sayısı. */
   readonly unreadNotificationCount = this.notificationService.unreadCount;
+  private readonly directMessageService = inject(DirectMessageService);
+  private readonly document = inject(DOCUMENT);
+  /** Issue #106: DM menü rozeti — okunmamış mesajı olan konuşma sayısı. */
+  readonly directMessageUnreadCount = this.directMessageService.unreadCount;
+  private readonly isStudent = this.authService.hasRealmRole('Student');
+  /** Pencere odağında DM sayacı en sık bu aralıkla tazelenir (polling değil; yalnız odak olayı). */
+  static readonly DM_FOCUS_REFRESH_THROTTLE_MS = 30_000;
   /** Art arda gelen hub push'larını tek sayaç isteğinde birleştirme penceresi. */
   static readonly NOTIFICATION_REFRESH_DEBOUNCE_MS = 1000;
   userThemeService = inject(UserThemeService);
@@ -182,11 +190,15 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'my-calendar', labelKey: 'menu.myCalendar', icon: 'event_note', route: '/my-calendar', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'tutors', labelKey: 'menu.tutors', icon: 'person_search', route: '/tutors', type: 'menu', roles: ['Student'] },
     { id: 'my-bookings', labelKey: 'menu.myBookings', icon: 'event_available', route: '/my-bookings', type: 'menu', roles: ['Student'] },
+    // Issue #106: öğrenci → öğretmen mesajlaşma (booking ile aynı "öğrenci → öğretmen" ailesi).
+    { id: 'teacher-messages', labelKey: 'menu.teacherMessages', icon: 'forum', route: '/teacher-messages', type: 'menu', roles: ['Student'] },
     { id: 'students', labelKey: 'menu.students', icon: 'people', route: '/students', type: 'menu', roles: ['Teacher'] },
     { id: 'tutor-profile', labelKey: 'menu.tutorProfile', icon: 'cast_for_education', route: '/tutor-profile', type: 'menu', roles: ['Teacher'], allowUnapprovedTeacher: true },
     { id: 'availability', labelKey: 'menu.availability', icon: 'event_available', route: '/availability', type: 'menu', roles: ['Teacher'] },
     { id: 'booking-requests', labelKey: 'menu.bookingRequests', icon: 'inbox', route: '/booking-requests', type: 'menu', roles: ['Teacher'] },
     { id: 'access-requests', labelKey: 'menu.accessRequests', icon: 'how_to_reg', route: '/assignment-permission-requests', type: 'menu', roles: ['Teacher'] },
+    // Issue #106: öğretmenin öğrenci mesajları gelen kutusu.
+    { id: 'student-messages', labelKey: 'menu.studentMessages', icon: 'forum', route: '/student-messages', type: 'menu', roles: ['Teacher'] },
     { id: 'divider1', labelKey: '', icon: '', route: '', type: 'divider' },
     { id: 'study-pages', labelKey: 'menu.studyPages', icon: 'library_add', route: '/study-pages', type: 'menu', roles: ['Teacher'] },
     // Issue #61: öğretmen konu/alt konu çalışma linkleri yönetimi.
@@ -283,6 +295,71 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     }
     this.accessRequestCountLoaded = true;
     this.accessRequestService.refreshPendingCount().subscribe({ error: () => {} });
+    // Issue #106: onay bilgisi geç geldiyse (init'te bilinmiyordu) DM rozeti şimdi çekilir — init çektiyse tekrar etmez.
+    if (!this.directMessageBadgeLoaded) {
+      this.directMessageBadgeLoaded = true;
+      this.directMessageService.refreshUnreadCount('Teacher').subscribe({ error: () => {} });
+    }
+  }
+
+  /** Issue #106: DM menü öğesi mi (rozete ekran okuyucu açıklaması verilir). */
+  isDirectMessageItem(itemId: string): boolean {
+    return itemId === 'teacher-messages' || itemId === 'student-messages';
+  }
+
+  /** Menü öğesinin rozet sayısı (0 → gizli). */
+  menuBadgeCount(itemId: string): number {
+    switch (itemId) {
+      case 'access-requests':
+        return this.accessRequestCount();
+      case 'teacher-messages':
+      case 'student-messages':
+        return this.directMessageUnreadCount();
+      default:
+        return 0;
+    }
+  }
+
+  /**
+   * Issue #106 dilim (c): DM okunmamış rozeti girişte ve pencere odağında (en sık 30 sn'de bir) tazelenir — polling yok.
+   * Öğretmende yalnız onayı bilinen hesapta (gelen kutusu ucu onaysıza 403). Çıkışta sıfırlanır.
+   * Dilim (b) kancası: SignalR DM push'u geldiğinde aynı `refreshUnreadCount` buradan (merge'e bir akış eklenerek) çağrılacak.
+   */
+  /** Öğretmen DM rozeti ilk kez çekildi mi (init ve onay-geç-geldi yolları çift istek atmasın). */
+  private directMessageBadgeLoaded = false;
+
+  private initDirectMessageBadge(): void {
+    const view = this.document.defaultView;
+    if (!this.isStudent && !this.isTeacher) {
+      return;
+    }
+    this.isAuthenticated
+      .pipe(
+        distinctUntilChanged(),
+        switchMap((authenticated) => {
+          if (!authenticated) {
+            this.directMessageService.resetUnreadCount();
+            return EMPTY;
+          }
+          const focus$ = view
+            ? fromEvent(view, 'focus').pipe(throttleTime(EnhancedLayoutComponent.DM_FOCUS_REFRESH_THROTTLE_MS))
+            : EMPTY;
+          return merge(of(undefined), focus$).pipe(
+            switchMap(() => {
+              if (this.isStudent) {
+                return this.directMessageService.refreshUnreadCount('Student').pipe(catchError(() => EMPTY));
+              }
+              if (!this.isTeacherKnownApproved()) {
+                return EMPTY;
+              }
+              this.directMessageBadgeLoaded = true;
+              return this.directMessageService.refreshUnreadCount('Teacher').pipe(catchError(() => EMPTY));
+            })
+          );
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe();
   }
 
   // Computed values
@@ -292,6 +369,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.signalR.startConnection();
     this.initNotificationBadge();
+    this.initDirectMessageBadge();
 
     // Sözlük yüklendiğinde (ve dil değiştiğinde) örnek arama metinlerini tazele.
     this.transloco.langChanges$.pipe(takeUntil(this.destroy$)).subscribe(() => {

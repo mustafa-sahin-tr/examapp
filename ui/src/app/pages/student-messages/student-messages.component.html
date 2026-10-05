@@ -1,0 +1,85 @@
+<div class="dmp" *transloco="let t; prefix: 'direct-messages'">
+  <header class="dmp__head">
+    <h1 class="dmp__title">{{ t('teacher.title') }}</h1>
+    <p class="dmp__subtitle">{{ t('teacher.subtitle') }}</p>
+  </header>
+
+  <div class="dmp__layout" [class.dmp__layout--open]="selection() !== null">
+    <section class="dmp__list" aria-labelledby="sm-inbox-title">
+      <h2 class="dmp__sr" id="sm-inbox-title">{{ t('teacher.inboxLabel') }}</h2>
+      <div class="sm__filters">
+        <mat-button-toggle-group
+          class="sm__toggle"
+          hideSingleSelectionIndicator
+          data-testid="sm-filter"
+          [attr.aria-label]="t('teacher.filterLabel')"
+          [value]="filter()"
+          (change)="onFilter($event)"
+        >
+          @for (f of filters; track f) {
+            <mat-button-toggle class="sm__toggle-btn" [value]="f" [attr.data-testid]="'sm-filter-' + f">
+              {{ t('teacher.filters.' + f) }}
+            </mat-button-toggle>
+          }
+        </mat-button-toggle-group>
+      </div>
+
+      <div class="dmp__list-scroll">
+        @if (loading()) {
+          <div class="dmp__state" role="status" data-testid="sm-loading">
+            <mat-spinner diameter="28" />
+            <span class="dmp__sr">{{ t('list.loading') }}</span>
+          </div>
+        } @else if (error()) {
+          <div class="dmp__state dmp__state--error" role="alert" data-testid="sm-error">
+            <p>{{ error() }}</p>
+            <button mat-stroked-button type="button" class="dmp__btn" data-testid="sm-retry" (click)="load()">{{ t('list.retry') }}</button>
+          </div>
+        } @else if (isEmpty()) {
+          <p class="dmp__state" data-testid="sm-empty">{{ t('teacher.empty.' + filter()) }}</p>
+        } @else {
+          <app-dm-conversation-list
+            [items]="items()"
+            [selectedId]="selectedId()"
+            [showBlocked]="true"
+            (conversationSelect)="open($event)"
+          />
+        }
+      </div>
+
+      @if (total() > pageSize) {
+        <mat-paginator
+          class="dmp__paginator"
+          hidePageSize
+          data-testid="sm-paginator"
+          [length]="total()"
+          [pageSize]="pageSize"
+          [pageIndex]="page() - 1"
+          (page)="onPage($event)"
+        />
+      }
+    </section>
+
+    <section class="dmp__panel">
+      @if (selection(); as s) {
+        <app-dm-conversation
+          class="sm__conversation"
+          viewerRole="Teacher"
+          [conversationId]="s.conversationId"
+          [counterpartName]="s.name"
+          [counterpartAvatar]="s.avatar"
+          [unreadCount]="s.unreadCount"
+          (back)="closePanel()"
+          (markedRead)="onMarkedRead($event)"
+          (blockedChange)="onBlockedChange($event)"
+          (messageSent)="onMessageSent($event)"
+        />
+      } @else {
+        <div class="dmp__placeholder" data-testid="sm-placeholder">
+          <mat-icon aria-hidden="true">mark_chat_unread</mat-icon>
+          <p>{{ t('teacher.selectHint') }}</p>
+        </div>
+      }
+    </section>
+  </div>
+</div>

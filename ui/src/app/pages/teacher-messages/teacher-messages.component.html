@@ -1,0 +1,192 @@
+<div class="dmp" *transloco="let t; prefix: 'direct-messages'">
+  <header class="dmp__head">
+    <h1 class="dmp__title">{{ t('student.title') }}</h1>
+    <p class="dmp__subtitle">{{ t('student.subtitle') }}</p>
+  </header>
+
+  <div class="dmp__layout" [class.dmp__layout--open]="selection() !== null">
+    <section class="dmp__list">
+      <mat-tab-group
+        class="tm__tabs"
+        mat-stretch-tabs
+        animationDuration="0ms"
+        [selectedIndex]="selectedTab()"
+        (selectedIndexChange)="onTabChange($event)"
+      >
+        <!-- Konuşmalarım -->
+        <mat-tab [label]="t('student.tabs.conversations')">
+          <div class="tm__tab-body">
+            <div class="dmp__list-scroll">
+              @if (conversationsLoading()) {
+                <div class="dmp__state" role="status" data-testid="tm-conversations-loading">
+                  <mat-spinner diameter="28" />
+                  <span class="dmp__sr">{{ t('list.loading') }}</span>
+                </div>
+              } @else if (conversationsError()) {
+                <div class="dmp__state dmp__state--error" role="alert" data-testid="tm-conversations-error">
+                  <p>{{ conversationsError() }}</p>
+                  <button mat-stroked-button type="button" class="dmp__btn" (click)="loadConversations()">{{ t('list.retry') }}</button>
+                </div>
+              } @else if (conversations().length === 0) {
+                <p class="dmp__state" data-testid="tm-conversations-empty">{{ t('student.conversationsEmpty') }}</p>
+              } @else {
+                <app-dm-conversation-list
+                  [items]="conversations()"
+                  [selectedId]="selectedConversationId()"
+                  [listLabel]="t('student.conversationsLabel')"
+                  (conversationSelect)="openConversation($event)"
+                />
+              }
+            </div>
+            @if (conversationsTotal() > pageSize) {
+              <mat-paginator
+                class="dmp__paginator"
+                hidePageSize
+                data-testid="tm-conversations-paginator"
+                [length]="conversationsTotal()"
+                [pageSize]="pageSize"
+                [pageIndex]="conversationsPage() - 1"
+                (page)="onConversationsPage($event)"
+              />
+            }
+          </div>
+        </mat-tab>
+
+        <!-- Öğretmenler -->
+        <mat-tab [label]="t('student.tabs.teachers')">
+          <div class="tm__tab-body">
+            <div class="tm__search">
+              <mat-form-field appearance="outline" class="tm__search-field" subscriptSizing="dynamic">
+                <mat-label>{{ t('student.searchLabel') }}</mat-label>
+                <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+                <input
+                  #teacherSearch
+                  matInput
+                  type="search"
+                  autocomplete="off"
+                  data-testid="tm-search"
+                  [value]="searchInput()"
+                  [placeholder]="t('student.searchPlaceholder')"
+                  (input)="onSearchInput($event)"
+                />
+                @if (searchInput()) {
+                  <button
+                    mat-icon-button
+                    matSuffix
+                    type="button"
+                    class="tm__clear"
+                    data-testid="tm-search-clear"
+                    [attr.aria-label]="t('student.clearSearch')"
+                    (click)="clearSearch()"
+                  >
+                    <mat-icon aria-hidden="true">close</mat-icon>
+                  </button>
+                }
+                @if (searchTooShort()) {
+                  <mat-hint data-testid="tm-search-min">{{ t('student.searchMinLength', { min: minSearch }) }}</mat-hint>
+                }
+              </mat-form-field>
+            </div>
+
+            <div class="dmp__list-scroll">
+              @if (teachersLoading()) {
+                <div class="dmp__state" role="status" data-testid="tm-teachers-loading">
+                  <mat-spinner diameter="28" />
+                  <span class="dmp__sr">{{ t('list.loading') }}</span>
+                </div>
+              } @else if (teachersError()) {
+                <div class="dmp__state dmp__state--error" role="alert" data-testid="tm-teachers-error">
+                  <p>{{ teachersError() }}</p>
+                  <button mat-stroked-button type="button" class="dmp__btn" data-testid="tm-teachers-retry" (click)="loadTeachers()">
+                    {{ t('list.retry') }}
+                  </button>
+                </div>
+              } @else if (teachersLoaded() && teachers().length === 0) {
+                <p class="dmp__state" data-testid="tm-teachers-empty">
+                  {{ searchTerm() ? t('student.teachersSearchEmpty', { term: searchTerm() }) : t('student.teachersEmpty') }}
+                </p>
+              } @else {
+                @if (teachersTruncated()) {
+                  <p class="tm__note" role="status" data-testid="tm-truncated">
+                    <mat-icon aria-hidden="true">info</mat-icon><span>{{ t('student.searchTruncated') }}</span>
+                  </p>
+                }
+                <span class="dmp__sr" id="tm-teachers-label">{{ t('student.teachersLabel') }}</span>
+                <mat-radio-group
+                  class="tm__teachers"
+                  aria-labelledby="tm-teachers-label"
+                  data-testid="tm-teachers"
+                  [value]="chosenTeacherId()"
+                  (change)="onTeacherChosen($event)"
+                >
+                  @for (teacher of teachers(); track teacher.teacherId) {
+                    <mat-radio-button class="tm__teacher" [value]="teacher.teacherId" data-testid="tm-teacher">
+                      <span class="tm__teacher-name">{{ teacher.fullName }}</span>
+                      <mat-chip-set class="tm__chips">
+                        @if (teacher.relation === 'both') {
+                          <!-- Geniş ekranda iki chip; dar ekranda tek birleşik chip (BA notu). -->
+                          <mat-chip class="tm__chip tm__chip--wide" disableRipple data-testid="tm-relation">{{ t('relation.school') }}</mat-chip>
+                          <mat-chip class="tm__chip tm__chip--wide" disableRipple data-testid="tm-relation">{{ t('relation.assignment') }}</mat-chip>
+                          <mat-chip class="tm__chip tm__chip--narrow" disableRipple data-testid="tm-relation-both">{{ t('relation.both') }}</mat-chip>
+                        } @else {
+                          <mat-chip class="tm__chip" disableRipple data-testid="tm-relation">{{ t('relation.' + teacher.relation) }}</mat-chip>
+                        }
+                      </mat-chip-set>
+                    </mat-radio-button>
+                  }
+                </mat-radio-group>
+              }
+            </div>
+
+            <div class="tm__footer">
+              @if (teachersTotal() > pageSize) {
+                <mat-paginator
+                  class="dmp__paginator"
+                  hidePageSize
+                  data-testid="tm-teachers-paginator"
+                  [length]="teachersTotal()"
+                  [pageSize]="pageSize"
+                  [pageIndex]="teachersPage() - 1"
+                  (page)="onTeachersPage($event)"
+                />
+              }
+              <button
+                mat-flat-button
+                type="button"
+                class="tm__write"
+                data-testid="tm-write"
+                [disabled]="!chosenTeacher()"
+                [attr.aria-label]="chosenTeacher() ? t('student.writeAria', { name: chosenTeacher()!.fullName }) : t('student.write')"
+                (click)="writeToChosen($event)"
+              >
+                <mat-icon aria-hidden="true">edit</mat-icon>{{ t('student.write') }}
+              </button>
+            </div>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </section>
+
+    <section class="dmp__panel">
+      @if (selection(); as s) {
+        <app-dm-conversation
+          class="tm__conversation"
+          viewerRole="Student"
+          [conversationId]="s.conversationId"
+          [teacherId]="s.teacherId"
+          [counterpartName]="s.name"
+          [counterpartAvatar]="s.avatar"
+          [unreadCount]="s.unreadCount"
+          (back)="closePanel()"
+          (markedRead)="onMarkedRead($event)"
+          (messageSent)="onMessageSent($event)"
+        />
+      } @else {
+        <div class="dmp__placeholder" data-testid="tm-placeholder">
+          <mat-icon aria-hidden="true">forum</mat-icon>
+          <p>{{ t('student.selectHint') }}</p>
+        </div>
+      }
+    </section>
+  </div>
+</div>

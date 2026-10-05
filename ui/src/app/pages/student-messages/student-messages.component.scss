@@ -1,0 +1,21 @@
+@use '../../shared/styles/dm-page';
+
+.sm__filters {
+  padding: 12px;
+  border-bottom: 1px solid var(--ms-border-weak);
+}
+
+.sm__toggle {
+  display: flex;
+  width: 100%;
+}
+
+.sm__toggle-btn {
+  flex: 1;
+  min-height: 44px;
+}
+
+.sm__conversation {
+  flex: 1;
+  min-width: 0;
+}

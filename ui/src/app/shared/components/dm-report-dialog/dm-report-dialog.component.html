@@ -1,0 +1,72 @@
+<div class="md" *transloco="let t; prefix: 'direct-messages.reportDialog'">
+  <header class="md__header">
+    <mat-icon class="md__icon" aria-hidden="true">flag</mat-icon>
+    <h2 mat-dialog-title class="md__title">{{ isMessageReport ? t('titleMessage') : t('titleConversation') }}</h2>
+  </header>
+
+  <mat-dialog-content class="md__content">
+    <p class="md__intro">{{ t('intro') }}</p>
+
+    <span class="md__label" id="dm-report-reason-label">{{ t('reasonLabel') }}</span>
+    <mat-radio-group
+      class="md__reasons"
+      aria-labelledby="dm-report-reason-label"
+      data-testid="dm-report-reasons"
+      [value]="reason()"
+      [disabled]="submitting()"
+      (change)="onReason($event)"
+    >
+      @for (item of reasons; track item) {
+        <mat-radio-button [value]="item" [attr.data-testid]="'dm-report-reason-' + item">{{ t('reasons.' + item) }}</mat-radio-button>
+      }
+    </mat-radio-group>
+
+    <mat-form-field appearance="outline" class="md__field" subscriptSizing="dynamic">
+      <mat-label>{{ t('noteLabel') }}</mat-label>
+      <textarea
+        matInput
+        rows="3"
+        dir="auto"
+        data-testid="dm-report-note"
+        [value]="note()"
+        [placeholder]="t('notePlaceholder')"
+        [readonly]="submitting()"
+        [attr.aria-invalid]="noteTooLong()"
+        (input)="onNote($event)"
+      ></textarea>
+      @if (noteTooLong()) {
+        <mat-hint class="md__hint--error" data-testid="dm-report-note-error">{{ t('noteTooLong', { max: maxNote }) }}</mat-hint>
+      }
+      <mat-hint align="end" data-testid="dm-report-note-counter" [class.md__hint--error]="noteTooLong()">{{ noteLength() }}/{{ maxNote }}</mat-hint>
+    </mat-form-field>
+
+    @if (error(); as message) {
+      <div class="md__error" role="alert" data-testid="dm-report-error">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>{{ message }}</span>
+      </div>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="md__actions">
+    <button mat-stroked-button type="button" data-testid="dm-report-cancel" [disabled]="submitting()" (click)="cancel()">
+      {{ t('cancel') }}
+    </button>
+    <button
+      mat-flat-button
+      type="button"
+      class="md__danger"
+      data-testid="dm-report-submit"
+      [disabled]="!canSubmit()"
+      [attr.aria-busy]="submitting()"
+      (click)="submit()"
+    >
+      @if (submitting()) {
+        <mat-spinner diameter="18" class="md__spinner" />
+        {{ t('submitting') }}
+      } @else {
+        {{ t('submit') }}
+      }
+    </button>
+  </mat-dialog-actions>
+</div>

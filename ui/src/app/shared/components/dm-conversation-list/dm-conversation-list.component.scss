@@ -1,0 +1,137 @@
+.dcl {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dcl__item {
+  border-bottom: 1px solid var(--ms-border-weak);
+}
+
+.dcl__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--ms-text);
+  font-family: var(--paragraphFontFamily);
+  text-align: start;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--ms-background-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ms-focus-ring);
+    outline-offset: -2px;
+  }
+}
+
+.dcl__row--active {
+  background: var(--ms-action-background-weak);
+  box-shadow: inset 3px 0 0 var(--ms-action-background);
+}
+
+.dcl__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--ms-surface-medium);
+  color: var(--ms-text-strong);
+  font-family: var(--mainFontFamily);
+  font-weight: 600;
+}
+
+.dcl__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.dcl__top,
+.dcl__bottom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dcl__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mainFontFamily);
+  font-weight: 500;
+  color: var(--ms-text-strong);
+}
+
+.dcl__row--unread .dcl__name,
+.dcl__row--unread .dcl__preview {
+  font-weight: 700;
+}
+
+.dcl__time {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--ms-text-medium);
+}
+
+.dcl__preview {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--ms-text-medium);
+}
+
+.dcl__you {
+  margin-inline-end: 4px;
+}
+
+.dcl__tag {
+  flex-shrink: 0;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid var(--ms-danger-border);
+  background: var(--ms-danger-surface-weak);
+  color: var(--ms-danger-text);
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.dcl__dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ms-action-background);
+}
+
+.dcl__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

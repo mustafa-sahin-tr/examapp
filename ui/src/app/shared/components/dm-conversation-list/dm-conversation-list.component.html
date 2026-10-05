@@ -1,0 +1,38 @@
+<ul class="dcl" *transloco="let t; prefix: 'direct-messages.list'" [attr.aria-label]="listLabel() || null">
+  @for (item of items(); track item.conversationId) {
+    <li class="dcl__item">
+      <button
+        type="button"
+        class="dcl__row"
+        data-testid="dm-conversation-row"
+        [class.dcl__row--active]="item.conversationId === selectedId()"
+        [class.dcl__row--unread]="item.unreadCount > 0"
+        [attr.aria-current]="item.conversationId === selectedId() ? 'true' : null"
+        (click)="choose(item, $event)"
+      >
+        <span class="dcl__avatar" aria-hidden="true">{{ initial(item.counterpartName) }}</span>
+        <span class="dcl__main">
+          <span class="dcl__top">
+            <span class="dcl__name">{{ item.counterpartName }}</span>
+            <time class="dcl__time">{{ timeText(item.lastMessageAt) }}</time>
+          </span>
+          <span class="dcl__bottom">
+            <span class="dcl__preview" dir="auto" data-testid="dm-row-preview">
+              @if (item.lastMessageIsMine) {
+                <span class="dcl__you">{{ t('you') }}</span>
+              }
+              {{ item.lastMessagePreview }}
+            </span>
+            @if (showBlocked() && item.isBlocked) {
+              <span class="dcl__tag" data-testid="dm-row-blocked">{{ t('blockedTag') }}</span>
+            }
+            @if (item.unreadCount > 0) {
+              <span class="dcl__dot" data-testid="dm-row-unread" aria-hidden="true"></span>
+              <span class="dcl__sr">{{ t('unreadAria', { count: item.unreadCount }) }}</span>
+            }
+          </span>
+        </span>
+      </button>
+    </li>
+  }
+</ul>

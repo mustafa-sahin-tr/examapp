@@ -1,0 +1,369 @@
+// Issue #106 — konuşma paneli (maket 8b / 9 sağ panel). Renkler yalnız token.
+
+:host {
+  display: flex;
+  min-height: 0;
+  height: 100%;
+}
+
+.dmc {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  background: var(--ms-surface-weak);
+  color: var(--ms-text);
+  font-family: var(--paragraphFontFamily);
+}
+
+.dmc__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// ---- Başlık ----
+
+.dmc__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+}
+
+.dmc__back {
+  display: none;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+
+  @media (max-width: 899.98px) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.dmc__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--ms-action-background-weak);
+  color: var(--ms-action-text);
+  font-family: var(--mainFontFamily);
+  font-weight: 600;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.dmc__title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.dmc__name {
+  margin: 0;
+  font-family: var(--mainFontFamily);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ms-text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dmc__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--ms-danger-border);
+  background: var(--ms-danger-surface-weak);
+  color: var(--ms-danger-text);
+  font-size: 12px;
+
+  .mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.dmc__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.dmc__action {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.dmc__icon-action,
+.dmc__report-msg {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 479.98px) {
+  .dmc__action-text {
+    display: none;
+  }
+
+  .dmc__action {
+    padding: 0 10px;
+
+    .mat-icon {
+      margin: 0;
+    }
+  }
+}
+
+// ---- Bantlar ----
+
+.dmc__band {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+
+  .mat-icon {
+    flex-shrink: 0;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.dmc__band--info {
+  background: var(--ms-info-surface-weak);
+  color: var(--ms-info-text);
+  border-bottom: 1px solid var(--ms-info-border);
+}
+
+.dmc__band--muted {
+  border-radius: 8px;
+  background: var(--ms-surface-medium);
+  color: var(--ms-text-medium);
+}
+
+.dmc__band--error {
+  border-radius: 8px;
+  border: 1px solid var(--ms-danger-border);
+  background: var(--ms-danger-surface-weak);
+  color: var(--ms-danger-text);
+}
+
+// ---- Durumlar ----
+
+.dmc__state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  color: var(--ms-text-medium);
+}
+
+.dmc__state--error {
+  color: var(--ms-danger-text);
+}
+
+.dmc__retry {
+  min-height: 44px;
+}
+
+// ---- Mesaj kaydı ----
+
+.dmc__log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+
+  &:focus-visible {
+    outline: 2px solid var(--ms-focus-ring);
+    outline-offset: -2px;
+  }
+}
+
+.dmc__older {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.dmc__older-btn {
+  min-height: 44px;
+}
+
+.dmc__older-error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ms-danger-text);
+}
+
+.dmc__empty {
+  margin: auto;
+  max-width: 320px;
+  text-align: center;
+  color: var(--ms-text-medium);
+  font-size: 14px;
+}
+
+.dmc__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.dmc__row--mine {
+  justify-content: flex-end;
+}
+
+.dmc__bubble {
+  max-width: min(78%, 560px);
+  padding: 8px 12px;
+  border-radius: 14px 14px 14px 4px;
+  background: var(--ms-surface-medium);
+  color: var(--ms-text-strong);
+}
+
+.dmc__bubble--mine {
+  border-radius: 14px 14px 4px 14px;
+  background: var(--ms-action-background);
+  color: var(--ms-action-text-inverse);
+
+  .dmc__time {
+    color: inherit;
+    opacity: 0.85;
+  }
+}
+
+.dmc__body {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.dmc__time {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  text-align: end;
+  color: var(--ms-text-medium);
+}
+
+.dmc__report-msg {
+  color: var(--ms-text-weak);
+
+  &:hover,
+  &:focus-visible {
+    color: var(--ms-danger-text-medium);
+  }
+}
+
+// ---- Yazma alanı ----
+
+.dmc__composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+}
+
+.dmc__compose-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.dmc__field {
+  flex: 1;
+  min-width: 0;
+}
+
+.dmc__hint {
+  color: var(--ms-text-medium);
+}
+
+.dmc__hint--error {
+  color: var(--ms-danger-text);
+}
+
+.dmc__send {
+  min-height: 44px;
+  min-width: 44px;
+  margin-top: 4px;
+  // İki temada da kontrastlı eşleşme (koyu temada --ms-text-inverse koyu tondur).
+  background: var(--ms-action-background);
+  color: var(--ms-action-text-inverse);
+
+  &:hover:not(:disabled) {
+    background: var(--ms-action-background-hover);
+  }
+
+  &:disabled {
+    background: var(--ms-surface-strong);
+    color: var(--ms-text-weak);
+  }
+
+  @media (max-width: 479.98px) {
+    padding: 0 10px;
+
+    .dmc__send-text {
+      display: none;
+    }
+
+    .mat-icon {
+      margin: 0;
+    }
+  }
+}
+
+.dmc__inline-spinner {
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: middle;
+}

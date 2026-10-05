@@ -1,0 +1,122 @@
+@use '../../shared/styles/dm-page';
+
+.tm__tabs {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+// Sekme gövdesi: liste kayar, alt bilgi (sayfalama + "Mesaj yaz") sabit kalır.
+.tm__tab-body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.tm__search {
+  padding: 12px 12px 4px;
+}
+
+.tm__search-field {
+  width: 100%;
+}
+
+.tm__clear {
+  width: 44px;
+  height: 44px;
+}
+
+.tm__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--ms-info-surface-weak);
+  color: var(--ms-info-text);
+  font-size: 13px;
+
+  .mat-icon {
+    flex-shrink: 0;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.tm__teachers {
+  display: flex;
+  flex-direction: column;
+}
+
+.tm__teacher {
+  display: block;
+  min-height: 56px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--ms-border-weak);
+}
+
+.tm__teacher-name {
+  display: block;
+  font-family: var(--mainFontFamily);
+  font-weight: 500;
+  color: var(--ms-text-strong);
+}
+
+.tm__chips {
+  display: block;
+  margin-top: 2px;
+}
+
+.tm__chip {
+  background: var(--ms-surface-medium);
+  color: var(--ms-text-strong);
+  font-size: 12px;
+}
+
+.tm__chip--narrow {
+  display: none;
+}
+
+@media (max-width: 479.98px) {
+  .tm__chip--wide {
+    display: none;
+  }
+
+  .tm__chip--narrow {
+    display: inline-flex;
+  }
+}
+
+.tm__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-top: 1px solid var(--ms-border-weak);
+}
+
+.tm__write {
+  align-self: stretch;
+  min-height: 44px;
+  margin: 8px 12px 0;
+  background: var(--ms-action-background);
+  color: var(--ms-action-text-inverse);
+
+  &:hover:not(:disabled) {
+    background: var(--ms-action-background-hover);
+  }
+
+  &:disabled {
+    background: var(--ms-surface-strong);
+    color: var(--ms-text-weak);
+  }
+}
+
+.tm__conversation {
+  flex: 1;
+  min-width: 0;
+}

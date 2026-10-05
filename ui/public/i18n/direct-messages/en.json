@@ -1,0 +1,156 @@
+{
+  "relation": {
+    "school": "Your school",
+    "assignment": "Assigned you a test",
+    "both": "Your school · Assigned you a test"
+  },
+  "list": {
+    "loading": "Loading",
+    "retry": "Try again",
+    "you": "You:",
+    "unreadAria": "{{count}} unread messages",
+    "blockedTag": "Blocked"
+  },
+  "student": {
+    "title": "Message My Teacher",
+    "subtitle": "Send a message to teachers at your school or teachers who assigned you a test.",
+    "tabs": {
+      "conversations": "My conversations",
+      "teachers": "Teachers"
+    },
+    "searchLabel": "Search teachers",
+    "searchPlaceholder": "Search by name",
+    "clearSearch": "Clear search",
+    "teachersLabel": "Teachers you can message",
+    "teachersEmpty": "There are no teachers you can message right now.",
+    "teachersSearchEmpty": "No teachers match \"{{term}}\".",
+    "teachersError": "Could not load the teacher list.",
+    "write": "Write a message",
+    "writeAria": "Write a message to {{name}}",
+    "conversationsLabel": "My conversations",
+    "conversationsEmpty": "You have no conversations yet. Write your first message from the Teachers tab.",
+    "conversationsError": "Could not load conversations.",
+    "selectHint": "Pick a conversation or start a new message from the Teachers tab.",
+    "searchMinLength": "Type at least {{min}} characters to search.",
+    "searchTruncated": "Too many results; showing the first ones. Type more of the name to narrow your search."
+  },
+  "teacher": {
+    "title": "Student Messages",
+    "subtitle": "Read and reply to messages from your students.",
+    "filterLabel": "Inbox filter",
+    "filters": {
+      "all": "All",
+      "unread": "Unread",
+      "blocked": "Blocked"
+    },
+    "inboxLabel": "Inbox",
+    "empty": {
+      "all": "You have no messages yet.",
+      "unread": "No unread messages.",
+      "blocked": "You have not blocked any students."
+    },
+    "error": "Could not load the inbox.",
+    "selectHint": "Pick a conversation on the left to read it."
+  },
+  "conversation": {
+    "back": "Back to conversation list",
+    "logLabel": "Messages with {{name}}",
+    "loading": "Loading messages",
+    "loadOlder": "Load earlier messages",
+    "loadingOlder": "Loading earlier messages",
+    "loadError": "Could not load messages.",
+    "loadOlderError": "Could not load earlier messages.",
+    "retry": "Try again",
+    "empty": "No messages in this conversation yet.",
+    "emptyNew": "Write your first message. Your teacher's reply will appear here.",
+    "you": "You",
+    "inputLabel": "Message",
+    "inputPlaceholder": "Write your message…",
+    "shortcutHint": "Press Ctrl+Enter to send",
+    "send": "Send",
+    "sendAria": "Send message",
+    "sending": "Sending",
+    "tooLong": "You can write at most {{max}} characters.",
+    "cannotSend": "You can't send messages to this teacher right now.",
+    "relationshipEnded": "You can't reply because your school or test relationship with this student has ended. The conversation stays readable.",
+    "blockedBand": "You blocked this student. They can't send you new messages; you can still reply.",
+    "actionsLabel": "Conversation actions",
+    "reportConversation": "Report conversation",
+    "reportMessage": "Report this message",
+    "block": "Block",
+    "blockAria": "Block {{name}}",
+    "unblock": "Unblock",
+    "unblockAria": "Unblock {{name}}",
+    "reported": "Your report was received.",
+    "alreadyReported": "Your report was received. You had already reported this content.",
+    "blockedDone": "Student blocked.",
+    "unblockedDone": "Student unblocked.",
+    "blockError": "The action could not be completed. Please try again.",
+    "close": "Close",
+    "blockedTag": "Blocked"
+  },
+  "blockDialog": {
+    "blockTitle": "Block student",
+    "blockBody": "{{name}} will not be able to send you new messages. The existing conversation stays readable for both of you, and you can unblock at any time. The student is not told they were blocked.",
+    "unblockTitle": "Unblock student",
+    "unblockBody": "{{name}} will be able to message you again.",
+    "confirmBlock": "Block",
+    "confirmUnblock": "Unblock",
+    "cancel": "Cancel"
+  },
+  "reportDialog": {
+    "titleMessage": "Report message",
+    "titleConversation": "Report conversation",
+    "intro": "Your report goes to the administrators. The other person is not told who reported them.",
+    "reasonLabel": "Reason",
+    "reasons": {
+      "spam": "Unwanted messages (spam)",
+      "abuse": "Insults, harassment or bullying",
+      "personalInfo": "Sharing personal information",
+      "other": "Other"
+    },
+    "noteLabel": "Note (optional)",
+    "notePlaceholder": "Anything the administrator should know",
+    "noteTooLong": "The note can be at most {{max}} characters.",
+    "cancel": "Cancel",
+    "submit": "Report",
+    "submitting": "Sending",
+    "error": "The report could not be sent. Please try again."
+  },
+  "paginator": {
+    "itemsPerPage": "Per page",
+    "next": "Next page",
+    "previous": "Previous page",
+    "first": "First page",
+    "last": "Last page",
+    "range": "{{start}}–{{end}} of {{length}}",
+    "rangeEmpty": "0 of {{length}}"
+  },
+  "errors": {
+    "generic": "The action could not be completed. Please try again.",
+    "network": "Could not reach the server. Check your connection and try again.",
+    "rateLimited": "Too many requests. Please wait a moment and try again.",
+    "rateLimitedRetry": "Too many requests. Try again in {{seconds}} seconds.",
+    "codes": {
+      "CannotMessageTeacher": "You can't send messages to this teacher right now.",
+      "RelationshipEnded": "You can't reply because your school or test relationship with this student has ended.",
+      "ConversationNotFound": "Conversation not found.",
+      "BlockTeacherOnly": "Only the conversation's teacher can do this.",
+      "MessageNotFound": "Message not found.",
+      "CannotReportOwnMessage": "You can't report your own message.",
+      "StudentProfileNotFound": "Your student profile was not found.",
+      "TeacherProfileNotFound": "Your teacher profile was not found.",
+      "BodyRequired": "The message can't be empty.",
+      "BodyTooLong": "The message can be at most 2000 characters.",
+      "BodyInvalidCharacters": "The message contains invalid characters.",
+      "InvalidReportReason": "Please choose a reason.",
+      "ReportNoteTooLong": "The note can be at most 500 characters.",
+      "ReportNoteInvalidCharacters": "The note contains invalid characters.",
+      "InvalidFilter": "Invalid filter.",
+      "SearchTooShort": "Type at least 2 characters to search.",
+      "NameLookupUnavailable": "Teacher names cannot be loaded right now. Please try again shortly.",
+      "InvalidUpToMessageId": "Could not update read status.",
+      "RateLimited": "Too many requests. Please wait a moment and try again."
+    }
+  }
+}

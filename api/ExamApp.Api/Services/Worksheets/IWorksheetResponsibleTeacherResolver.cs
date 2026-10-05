@@ -21,7 +21,8 @@ public sealed record ResponsibleTeacher(int TeacherUserId, ResponsibleTeacherSou
 /// </para>
 /// <para>
 /// İlgili öğretmen önceliği (issue #326 O2, PO kararı c) — kural <see cref="ResponsibleTeacherRule"/>'da:
-/// (1) ilgili aktif atamanın <c>CreateUserId</c>'si (legacy 0/null ise atlanır);
+/// (1) ilgili aktif atamanın <c>CreateUserId</c>'si (legacy 0/null ise atlanır) — issue #334: YALNIZ atayanın güncel okulu
+/// öğrencinin okuluyla aynıysa ya da ikisi de okulsuzsa (<see cref="WorksheetCommentPinRule"/>); değilse (2)'ye geçilir;
 /// (2) atama yoksa worksheet'in <c>CreateUserId</c>'si (kopyada kopyalayan, değilse orijinal yaratıcı) — YALNIZ bu öğretmenin
 /// okulu öğrencinin okuluyla aynıysa (<see cref="UserSchoolResolver.SameSchool"/>; okulsuz taraf için <c>null == null</c> aynı
 /// okul SAYILMAZ). Aksi halde sorumlu öğretmen YOKTUR (null): yorum yalnız okul içinde görünür, sahibe gösterilmez ve bildirim
@@ -76,17 +77,28 @@ public static class ResponsibleTeacherRule
     /// <param name="relevantAssignment">Öğrencinin ilgili aktif ataması; yoksa null.</param>
     /// <param name="ownerSchoolId">Worksheet sahibinin <see cref="UserSchoolResolver"/> okulu.</param>
     /// <param name="studentSchoolId">Öğrencinin <see cref="UserSchoolResolver"/> okulu.</param>
+    /// <param name="assignmentTeacherSchoolId">
+    /// issue #334: ilgili aktif atamayı yapan öğretmenin GÜNCEL <see cref="UserSchoolResolver"/> okulu (atama yoksa yok sayılır).
+    /// </param>
+    /// <remarks>
+    /// issue #334: atamayı yapan da okul koşuluna (<see cref="WorksheetCommentPinRule.SchoolAllows"/>) tabidir — aynı okul ya
+    /// da ikisi de okulsuz (bağımsız istisnası). Sağlanmazsa (öğrenci başka okula geçti / öğretmen taşındı) atayan sorumlu
+    /// OLMAZ ve kural atama yokmuş gibi sahip fallback'ine geçer (sahip de yalnız aynı okuldaysa). Atama yine etkin yorum
+    /// ayarını (<see cref="RelevantAssignment.CommentsEnabledOverride"/>) belirler — bu karar yalnız sorumlu öğretmen içindir.
+    /// </remarks>
     public static ResponsibleTeacher? Decide(ResponsibleTeacherWorksheet worksheet, RelevantAssignment? relevantAssignment,
-        int? ownerSchoolId, int? studentSchoolId)
+        int? ownerSchoolId, int? studentSchoolId, int? assignmentTeacherSchoolId)
     {
-        if (relevantAssignment is { CreateUserId: > 0 } assignment)
+        if (relevantAssignment is { CreateUserId: > 0 } assignment
+            && WorksheetCommentPinRule.SchoolAllows(ResponsibleTeacherSource.Assignment, assignmentTeacherSchoolId, studentSchoolId))
             return new ResponsibleTeacher(assignment.CreateUserId!.Value, ResponsibleTeacherSource.Assignment, assignment.Id);
 
-        if (worksheet.CreateUserId is not > 0 || !UserSchoolResolver.SameSchool(ownerSchoolId, studentSchoolId))
+        if (worksheet.CreateUserId is not > 0)
             return null;
 
-        return new ResponsibleTeacher(worksheet.CreateUserId.Value,
-            worksheet.SourceWorksheetId.HasValue ? ResponsibleTeacherSource.CopyOwner : ResponsibleTeacherSource.Owner,
-            null);
+        var source = worksheet.SourceWorksheetId.HasValue ? ResponsibleTeacherSource.CopyOwner : ResponsibleTeacherSource.Owner;
+        return WorksheetCommentPinRule.SchoolAllows(source, ownerSchoolId, studentSchoolId)
+            ? new ResponsibleTeacher(worksheet.CreateUserId.Value, source, null)
+            : null;
     }
 }

@@ -138,10 +138,15 @@ public partial class WorksheetCommentServiceTests
         (await GetAsync(w.WorksheetId, AdminReader)).Page!.CommentVisibility.ShouldBeNull();
     }
 
-    [Fact]
-    public async Task Schoolless_student_with_an_assignment_sees_self_and_teacher_visibility()
+    /// <summary>issue #334: okulsuz öğrenciye atama — yalnız atayan da okulsuzsa (bağımsız istisnası) sorumlu öğretmen olur.</summary>
+    [Theory]
+    [InlineData(true)]  // bağımsız atayan → SelfAndTeacher, sabit atayanda
+    [InlineData(false)] // okullu atayan → atama olsa bile sorumlu yok (Self), sabit yok
+    public async Task Schoolless_student_with_an_assignment_has_a_teacher_only_if_the_assigner_is_independent(bool independentAssigner)
     {
         var w = await SeedSchoolsAsync();
+        if (independentAssigner)
+            await SetTeacherSchoolAsync(Assigner, null);
         await using (var ctx = _db.NewContext())
         {
             var studentId = await ctx.Students.Where(s => s.UserId == SchoollessStudentUser).Select(s => s.Id).SingleAsync();
@@ -154,11 +159,19 @@ public partial class WorksheetCommentServiceTests
         }
 
         (await GetAsync(w.WorksheetId, Student(SchoollessStudentUser))).Page!.CommentVisibility
-            .ShouldBe(WorksheetCommentVisibilities.SelfAndTeacher);
+            .ShouldBe(independentAssigner ? WorksheetCommentVisibilities.SelfAndTeacher : WorksheetCommentVisibilities.Self);
 
         var root = Created(await PostAsync(w.WorksheetId, Student(SchoollessStudentUser), "soru"));
-        (await PinOfAsync(root)).ShouldBe(Assigner, "atama okul koşulundan bağımsız");
-        (await GetAsync(w.WorksheetId, Teacher(Assigner))).Page!.Items.ShouldContain(i => i.Id == root);
+        if (independentAssigner)
+        {
+            (await PinOfAsync(root)).ShouldBe(Assigner, "okulsuz öğretmen + okulsuz öğrenci: atama ilişkisi korunur");
+            (await GetAsync(w.WorksheetId, Teacher(Assigner))).Page!.Items.ShouldContain(i => i.Id == root);
+        }
+        else
+        {
+            (await PinOfAsync(root)).ShouldBeNull("okullu atayan + okulsuz öğrenci: eşleşme yok");
+            (await GetAsync(w.WorksheetId, Teacher(Assigner))).Page!.Items.ShouldNotContain(i => i.Id == root);
+        }
         (await GetAsync(w.WorksheetId, Teacher(Owner))).Page!.Items.ShouldNotContain(i => i.Id == root);
     }
 
@@ -270,27 +283,6 @@ public partial class WorksheetCommentServiceTests
         await SetTeacherSchoolAsync(Owner, w.OtherSchoolId);
 
         (await ReportsAsync(w.WorksheetId, Teacher(Owner))).Page!.Items.ShouldNotContain(i => i.Comment.Id == root);
-    }
-
-    [Fact]
-    public async Task Assignment_pin_is_not_affected_when_the_assigner_changes_school()
-    {
-        var w = await SeedSchoolsAsync();
-        var root = Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "soru")); // Assigner'a (Assignment) sabit
-        await SetTeacherSchoolAsync(Assigner, w.OtherSchoolId);
-        await ClearOutboxAsync();
-
-        var reply = Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "ek not", parentId: root));
-
-        var thread = (await GetAsync(w.WorksheetId, Teacher(Assigner))).Page!.Items.Single(i => i.Id == root);
-        thread.CanReply.ShouldBeTrue();
-        thread.Replies.Select(r => r.Id).ShouldContain(reply);
-        Created(await PostAsync(w.WorksheetId, Teacher(Assigner), "cevap", parentId: root));
-        (await HideAsync(w.WorksheetId, reply, Teacher(Assigner))).Success.ShouldBeTrue();
-        (await CreatedRecipientsAsync()).ShouldHaveSingleItem().ShouldBe(Assigner, "#105: atama aktif → bildirim sabit öğretmende");
-
-        await SetTeacherSchoolAsync(Assigner, null);
-        (await GetAsync(w.WorksheetId, Teacher(Assigner))).Page!.Items.Single(i => i.Id == root).CanReply.ShouldBeTrue();
     }
 
     [Fact]

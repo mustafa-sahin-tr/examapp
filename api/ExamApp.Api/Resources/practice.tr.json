@@ -7,6 +7,8 @@
     "questionNotFound": "Soru bulunamadı",
     "answerOrSkipRequired": "Bir şık seçilmeli ya da soru pas geçilmeli",
     "answerNotBelongToQuestion": "Seçilen şık bu soruya ait değil",
-    "sessionAlreadyEnded": "Bu pratik oturumu sonlandırılmış"
+    "sessionAlreadyEnded": "Bu pratik oturumu sonlandırılmış",
+    "dailyEmpty": "Bugün için soru bulunamadı",
+    "dailyRateLimited": "Günün soruları kısa sürede çok fazla istendi. Lütfen biraz bekleyip tekrar deneyin."
   }
 }

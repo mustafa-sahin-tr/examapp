@@ -437,6 +437,120 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("ClassifierCacheConfigs");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.DailyQuestionSet", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("GradeId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("PracticeSessionId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ScopeJson")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TargetCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GradeId");
+
+                    b.HasIndex("PracticeSessionId")
+                        .IsUnique()
+                        .HasFilter("\"PracticeSessionId\" IS NOT NULL");
+
+                    b.HasIndex("StudentId", "Day")
+                        .IsUnique()
+                        .HasFilter("NOT \"IsDeleted\"");
+
+                    b.ToTable("DailyQuestionSets");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.DailyQuestionSetItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DailyQuestionSetId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("DailyQuestionSetId", "Order")
+                        .IsUnique();
+
+                    b.HasIndex("DailyQuestionSetId", "QuestionId")
+                        .IsUnique();
+
+                    b.ToTable("DailyQuestionSetItems");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.District", b =>
                 {
                     b.Property<int>("Id")
@@ -3681,6 +3795,51 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Teacher");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.DailyQuestionSet", b =>
+                {
+                    b.HasOne("Grade", "Grade")
+                        .WithMany()
+                        .HasForeignKey("GradeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.PracticeSession", "PracticeSession")
+                        .WithMany()
+                        .HasForeignKey("PracticeSessionId")
+                        .OnDelete(DeleteBehavior.ClientNoAction);
+
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Grade");
+
+                    b.Navigation("PracticeSession");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.DailyQuestionSetItem", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.DailyQuestionSet", "DailyQuestionSet")
+                        .WithMany("Items")
+                        .HasForeignKey("DailyQuestionSetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.Question", "Question")
+                        .WithMany()
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DailyQuestionSet");
+
+                    b.Navigation("Question");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.District", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.Province", "Province")
@@ -4412,6 +4571,11 @@ namespace ExamApp.Api.Migrations
             modelBuilder.Entity("ExamApp.Api.Data.Book", b =>
                 {
                     b.Navigation("BookTests");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.DailyQuestionSet", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.LearningOutcome", b =>

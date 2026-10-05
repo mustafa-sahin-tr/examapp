@@ -47,13 +47,14 @@
             "
             (click)="open(row)"
           >
-            <span class="ntf__icon" aria-hidden="true">
-              @if (row.iconUrl) {
-                <img class="ntf__badge-img" [src]="row.iconUrl" alt="" />
-              } @else {
+            @if (row.badge; as badge) {
+              <!-- Issue #149: 40px "Kazanıldı" medalyonu; medalyon kendisi aria-hidden -->
+              <app-badge-medallion class="ntf__badge" state="earned" [size]="40" [icon]="badge.icon" [iconUrl]="badge.iconUrl" />
+            } @else {
+              <span class="ntf__icon" aria-hidden="true">
                 <mat-icon>{{ row.icon }}</mat-icon>
-              }
-            </span>
+              </span>
+            }
             <span class="ntf__content">
               <span class="ntf__title"
                 ><bdi dir="auto">{{ row.notification.title }}</bdi

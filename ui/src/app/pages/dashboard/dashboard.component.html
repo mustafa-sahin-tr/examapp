@@ -73,17 +73,27 @@
       </ng-template>
 
       <ng-template #badgesContent>
-        <!-- Kazanılan Rozetler (mevcut davranış korunuyor) -->
+        <!-- Kazanılan Rozetler -->
         <div class="badge-group">
           <h3 class="earned-badges-heading">{{ 'dashboard.badges.earnedTitle' | transloco }}</h3>
           <ng-container *ngIf="earnedBadges().length > 0; else badgesEmpty">
             <div class="earned-badges-grid">
-              <div class="badge-icon" *ngFor="let badge of earnedBadges(); trackBy: trackBadge">
-                <img [src]="badge.iconUrl" [alt]="badge.name" />
-                <div class="badge-tooltip" *ngIf="badge.name || badge.description">
-                  <span class="badge-tooltip-name">{{ badge.name }}</span>
-                  <span class="badge-tooltip-desc" *ngIf="badge.description">{{ badge.description }}</span>
-                </div>
+              <!-- Issue #149: 56px medalyon; tooltip hover VE klavye odağında açılır (MatTooltip) -->
+              <div
+                class="badge-icon"
+                *ngFor="let view of earnedBadgeViews(); trackBy: trackBadge"
+                tabindex="0"
+                role="img"
+                [attr.aria-label]="view.ariaLabel"
+                [matTooltip]="view.tooltip"
+                matTooltipClass="badge-tooltip-panel"
+              >
+                <app-badge-medallion
+                  [icon]="view.badge.icon"
+                  [iconUrl]="view.badge.iconUrl"
+                  [state]="view.state"
+                  [size]="56"
+                />
               </div>
             </div>
           </ng-container>
@@ -98,13 +108,17 @@
           <ng-container *ngIf="upcomingBadges().length > 0; else upcomingEmpty">
             <ul class="upcoming-badges">
               <li class="upcoming-badge" *ngFor="let item of upcomingBadges(); trackBy: trackUpcomingBadge">
-                <div class="upcoming-badge-icon">
-                  <img [src]="item.badge.iconUrl" [alt]="item.badge.name" />
-                </div>
+                <app-badge-medallion
+                  [icon]="item.badge.icon"
+                  [iconUrl]="item.badge.iconUrl"
+                  [state]="item.state"
+                  [size]="44"
+                  [progressPercent]="item.percent"
+                />
                 <div class="upcoming-badge-body">
                   <div class="upcoming-badge-row">
-                    <span class="upcoming-badge-name">{{ item.badge.name }}</span>
-                    <span class="upcoming-badge-count">{{ item.badge.currentValue }} / {{ item.badge.targetValue }}</span>
+                    <bdi class="upcoming-badge-name" dir="auto">{{ item.badge.name }}</bdi>
+                    <span class="upcoming-badge-count" [attr.data-state]="item.state">{{ item.stateText }}</span>
                   </div>
                   <div class="upcoming-badge-track" role="progressbar" [attr.aria-valuenow]="item.badge.currentValue"
                     [attr.aria-valuemin]="0" [attr.aria-valuemax]="item.badge.targetValue" [attr.aria-label]="item.badge.name">

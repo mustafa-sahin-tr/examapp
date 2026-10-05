@@ -2,7 +2,6 @@ import {
   AppNotification,
   BADGE_EARNED_NOTIFICATION_TYPE,
   BOOKING_TEACHER_UNAVAILABLE_NOTIFICATION_TYPE,
-  badgeIconSrc,
   parseBadgeEarnedData,
   parseBookingTeacherUnavailableData,
 } from '../../models/notification.model';
@@ -57,10 +56,19 @@ export function formatRelativeTime(iso: string, now: number, locale: string): st
  * Issue #105 — bildirim türüne göre ikon ve derin link. Yalnızca bilinen türlerin `data`'sı yorumlanır;
  * bozuk/eksik veri genel görünüme düşer (navigasyon yok).
  */
+/** Issue #149: rozet bildiriminin medalyon girdileri (ham; biçim doğrulaması `resolveBadgeIcon`'da). */
+export interface NotificationBadgeIcon {
+  icon: string | null;
+  iconUrl: string | null;
+}
+
 export interface NotificationPresentation {
   icon: string;
-  /** Rozet ikonu (yalnız `BadgeEarned`); yoksa Material ikonu gösterilir. */
-  iconUrl: string | null;
+  /**
+   * Issue #149: yalnız `BadgeEarned` — satırda 40px "Kazanıldı" medalyonu (ikon yoksa `military_tech`);
+   * diğer türlerde `null` → Material ikonu (`icon`).
+   */
+  badge: NotificationBadgeIcon | null;
   /** Tıklanınca gidilecek hedef; `null` = yalnızca okundu işaretlenir. */
   route: AppRouteLink | null;
   /**
@@ -81,7 +89,7 @@ export function describeNotification(notification: Pick<AppNotification, 'type' 
     const data = parseBadgeEarnedData(notification.data);
     return {
       icon: 'emoji_events',
-      iconUrl: badgeIconSrc(data?.iconUrl),
+      badge: { icon: data?.icon ?? null, iconUrl: data?.iconUrl ?? null },
       route: { commands: [BADGE_PROGRESS_ROUTE] },
       questionOrder: null,
     };
@@ -90,17 +98,17 @@ export function describeNotification(notification: Pick<AppNotification, 'type' 
     const ref = parseWorksheetCommentNotificationData(notification.data);
     // Sıra yalnız soru yorumunda anlamlı (worksheet seviyesinde questionId null).
     const questionOrder = ref?.questionId != null ? (ref.questionOrder ?? null) : null;
-    return { icon: 'forum', iconUrl: null, route: ref ? worksheetCommentLink(ref) : null, questionOrder };
+    return { icon: 'forum', badge: null, route: ref ? worksheetCommentLink(ref) : null, questionOrder };
   }
   if (notification.type === BOOKING_TEACHER_UNAVAILABLE_NOTIFICATION_TYPE) {
     // Issue #298: `data` yalnız doğrulanır, linke taşınmaz; bozuksa navigasyon yok.
     const data = parseBookingTeacherUnavailableData(notification.data);
     return {
       icon: 'event_busy',
-      iconUrl: null,
+      badge: null,
       route: data ? { commands: [STUDENT_BOOKINGS_ROUTE] } : null,
       questionOrder: null,
     };
   }
-  return { icon: 'notifications', iconUrl: null, route: null, questionOrder: null };
+  return { icon: 'notifications', badge: null, route: null, questionOrder: null };
 }

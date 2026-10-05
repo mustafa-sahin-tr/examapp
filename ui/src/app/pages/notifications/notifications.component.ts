@@ -12,7 +12,8 @@ import { AppNotification, COALESCED_COUNT_DISPLAY_MAX, toCoalescedCount } from '
 import { AppRouteLink } from '../../models/worksheet-comment.model';
 import { NotificationService } from '../../services/notification.service';
 import { LocaleService } from '../../services/locale.service';
-import { describeNotification, formatRelativeTime } from './notification-format';
+import { NotificationBadgeIcon, describeNotification, formatRelativeTime } from './notification-format';
+import { BadgeMedallionComponent } from '../../shared/components/badge-medallion/badge-medallion.component';
 
 export { BADGE_PROGRESS_ROUTE } from './notification-format';
 
@@ -23,8 +24,8 @@ export const RELATIVE_TIME_TICK_MS = 60_000;
 
 export interface NotificationRow {
   notification: AppNotification;
-  /** Rozet ikonunun URL'i; yoksa Material ikonu (`icon`) gösterilir. */
-  iconUrl: string | null;
+  /** Issue #149: rozet bildiriminde 40px "Kazanıldı" medalyonunun girdileri; diğer türlerde null → `icon`. */
+  badge: NotificationBadgeIcon | null;
   icon: string;
   /** Tıklanınca gidilecek hedef; `null` = yalnızca okundu işaretlenir. */
   route: AppRouteLink | null;
@@ -46,7 +47,14 @@ const SCOPE = 'notifications';
 @Component({
   selector: 'app-notifications',
   standalone: true,
-  imports: [MatButtonModule, MatButtonToggleModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective],
+  imports: [
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    TranslocoDirective,
+    BadgeMedallionComponent,
+  ],
   providers: [provideTranslocoScope(SCOPE)],
   templateUrl: './notifications.component.html',
   styleUrls: ['./notifications.component.scss'],
@@ -145,10 +153,10 @@ export class NotificationsComponent implements OnInit {
   }
 
   private toRow(notification: AppNotification, now: number, locale: string): NotificationRow {
-    const { icon, iconUrl, route, questionOrder } = describeNotification(notification);
+    const { icon, badge, route, questionOrder } = describeNotification(notification);
     return {
       notification,
-      iconUrl,
+      badge,
       icon,
       route,
       questionOrder,

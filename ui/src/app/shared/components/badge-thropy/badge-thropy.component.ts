@@ -7,22 +7,48 @@ import {
   OnInit,
   Output,
   SimpleChanges,
+  computed,
   inject,
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { BadgeProgressItem, BadgeService } from '../../../services/badge.service';
 import { LocaleService } from '../../../services/locale.service';
 import { AuthService } from '../../../services/auth.service';
 import { BadgePathComponent } from '../badge-path/badge-path.component';
-import { BadgeThropyItem, BadgeThropyPath, BadgePathLayout, BadgePathPoint } from './badge-thropy.types';
+import { BadgeDetailComponent } from '../badge-detail/badge-detail.component';
+import { BadgeMedallionComponent } from '../badge-medallion/badge-medallion.component';
+import {
+  BadgeMedallionState,
+  BadgeTranslate,
+  badgeAriaLabel,
+  badgeStateText,
+  deriveBadgeState,
+  isEarnedState,
+} from '../badge-medallion/badge-state.util';
+import { BadgeThropyItem, BadgeThropyPath } from './badge-thropy.types';
+
+/** Başlıktaki durum efsanesi (renk körlüğü için şekilli mini medalyonlar). */
+export const BADGE_LEGEND: ReadonlyArray<{ state: BadgeMedallionState; labelKey: string }> = [
+  { state: 'earned', labelKey: 'earned' },
+  { state: 'new', labelKey: 'new' },
+  { state: 'in-progress', labelKey: 'inProgress' },
+  { state: 'locked', labelKey: 'locked' },
+];
 
 @Component({
   selector: 'app-badge-thropy',
-  imports: [MatProgressSpinnerModule, MatButtonModule, BadgePathComponent, TranslocoPipe],
+  imports: [
+    MatProgressSpinnerModule,
+    MatButtonModule,
+    BadgePathComponent,
+    BadgeDetailComponent,
+    BadgeMedallionComponent,
+    TranslocoDirective,
+  ],
   templateUrl: './badge-thropy.component.html',
   styleUrls: ['./badge-thropy.component.scss'],
 })
@@ -32,6 +58,11 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
   /** Boş bırakılırsa sözlükten (`shared.badgeThropy.subtitle`) gelir. */
   @Input() subtitle = '';
   @Input() userId: number = 0;
+  /**
+   * CR Ö1: sayfa zaten kendi bölüm başlığını gösteriyorsa (öğrenci profili) başlık/alt başlık render edilmez;
+   * özet çipi ve efsane kalır.
+   */
+  @Input() showHeading = true;
 
   @Output() badgeSelected = new EventEmitter<string>();
 
@@ -58,9 +89,10 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
   readonly badgePaths = signal<BadgeThropyPath[]>([]);
   readonly standaloneBadges = signal<BadgeThropyItem[]>([]);
   readonly isLoading = signal(false);
-  readonly hasError = signal(false);
   readonly loadError = signal(false);
   readonly selectedBadge = signal<BadgeThropyItem | null>(null);
+  readonly earnedCount = computed(() => this.badges().filter((badge) => isEarnedState(badge.state)).length);
+  readonly legend = BADGE_LEGEND;
 
   ngOnInit(): void {
     this.loadBadges(this.userId);
@@ -90,13 +122,42 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
     }
   }
 
+  /** Tekil rozet kartının erişilebilir adı; medalyon `aria-hidden`. */
+  ariaLabel(t: BadgeTranslate, badge: BadgeThropyItem): string {
+    return badgeAriaLabel(t, {
+      state: badge.state,
+      name: badge.name,
+      current: badge.completedLabel,
+      target: badge.totalLabel,
+      earnedDateUtc: badge.earnedDateUtc,
+      locale: this.localeService.localeDefinition().angularLocale,
+    });
+  }
+
+  stateText(t: BadgeTranslate, badge: BadgeThropyItem): string {
+    return badgeStateText(t, {
+      state: badge.state,
+      current: badge.completedLabel,
+      target: badge.totalLabel,
+      earnedDateUtc: badge.earnedDateUtc,
+      locale: this.localeService.localeDefinition().angularLocale,
+    });
+  }
+
+  /** CR U1: yol düğümü etkinleştirildi — seçimin tek kaynağı burası (aç/kapa dahil). */
+  onPathBadgeSelected(id: string): void {
+    const badge = this.badges().find((item) => item.id === id);
+    if (badge) {
+      this.selectBadge(badge);
+    }
+  }
+
   reload(): void {
     this.loadBadges(this.userId);
   }
 
   private loadBadges(userId: number): void {
     this.isLoading.set(true);
-    this.hasError.set(false);
     this.loadError.set(false);
     this.selectedBadge.set(null);
     const storedUserId = this.authService.getUserIdFromLocalStorage();
@@ -105,7 +166,8 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
-          const mapped = (response?.badgeProgress ?? []).map((item) => this.mapBadge(item));
+          const now = Date.now();
+          const mapped = (response?.badgeProgress ?? []).map((item) => this.mapBadge(item, now));
           this.badges.set(mapped);
 
           const partition = this.partitionBadges(mapped);
@@ -123,7 +185,6 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
         },
         error: (error) => {
           console.error('BadgeThropyComponent: unable to load badge progress', error);
-          this.hasError.set(true);
           this.badges.set([]);
           this.badgePaths.set([]);
           this.standaloneBadges.set([]);
@@ -133,24 +194,31 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
       });
   }
 
-  private mapBadge(source: BadgeProgressItem): BadgeThropyItem {
+  private mapBadge(source: BadgeProgressItem, now: number): BadgeThropyItem {
     const progressValue = source.targetValue > 0 ? (source.currentValue / source.targetValue) * 100 : 0;
     const progressPercent = Math.max(0, Math.min(Math.round(progressValue), 100));
 
     const completedAmount = this.formatNumber(source.currentValue);
     const totalAmount = this.formatNumber(source.targetValue);
+    const remainingAmount = this.formatNumber(Math.max((source.targetValue ?? 0) - (source.currentValue ?? 0), 0));
 
     return {
       id: source.badgeDefinitionId,
       name: source.name,
-      iconUrl: source.iconUrl,
+      icon: source.icon ?? null,
+      iconUrl: source.iconUrl ?? null,
       description: source.description,
       currentValue: source.currentValue,
       targetValue: source.targetValue,
       progressPercent,
       completedLabel: completedAmount,
       totalLabel: totalAmount,
+      remainingLabel: remainingAmount,
       isCompleted: !!source.isCompleted,
+      state: deriveBadgeState(
+        { isCompleted: !!source.isCompleted, earnedDateUtc: source.earnedDateUtc, currentValue: source.currentValue },
+        now
+      ),
       earnedDateUtc: source.earnedDateUtc,
       pathKey: source.pathKey ?? null,
       pathName: source.pathName ?? null,
@@ -181,7 +249,6 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
             badges: [],
             completedCount: 0,
             completionPercent: 0,
-            layout: null,
           };
           pathMap.set(key, group);
         }
@@ -208,7 +275,6 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
       const totalCount = Math.max(path.badges.length, 1);
       path.completedCount = completedCount;
       path.completionPercent = Math.round((completedCount / totalCount) * 100);
-      path.layout = this.createLoopLayout(path.badges, path.key);
 
       if (!path.name && path.badges.length) {
         path.name = path.badges[0].pathName || path.badges[0].name;
@@ -229,79 +295,6 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
     standalone.sort((a, b) => a.name.localeCompare(b.name));
 
     return { paths, standalone };
-  }
-
-  private createLoopLayout(badges: BadgeThropyItem[], pathKey: string): BadgePathLayout {
-    const total = badges.length;
-
-    if (!total) {
-      return {
-        viewBox: '0 0 100 100',
-        height: 280,
-        pathD: 'M 10 50 C 10 20 90 20 90 50 C 90 80 10 80 10 50',
-        arrowId: 'badge-path-arrow-default',
-        points: [],
-      };
-    }
-
-    const viewBox = '0 0 100 100';
-    const height = total > 6 ? 360 : total > 4 ? 320 : 280;
-    const safeKey = (pathKey || 'default').replace(/[^a-zA-Z0-9_-]/g, '-');
-    const arrowId = `badge-path-arrow-${safeKey}`;
-
-    const left = 12;
-    const right = 88;
-    const horizontal = right - left;
-    const topBase = 30;
-    const bottomBase = 70;
-    const curveSpread = 6;
-
-    const topCount = Math.ceil(total / 2);
-    const bottomCount = total - topCount;
-    const points: BadgePathPoint[] = [];
-
-    const createPoint = (ratio: number, yBase: number, invert?: boolean): BadgePathPoint => {
-      const curve = Math.sin(ratio * Math.PI) * curveSpread;
-      const xPercent = invert ? right - horizontal * ratio : left + horizontal * ratio;
-      const yPercent = yBase + (invert ? curve : -curve);
-      return { xPercent, yPercent };
-    };
-
-    if (topCount === total) {
-      for (let index = 0; index < total; index++) {
-        const ratio = total > 1 ? index / (total - 1) : 0.5;
-        const curve = total > 2 ? Math.sin(ratio * Math.PI) * curveSpread : 0;
-        const xPercent = left + horizontal * ratio;
-        const yPercent = 50 - curve;
-        points.push({ xPercent, yPercent });
-      }
-    } else {
-      for (let index = 0; index < topCount; index++) {
-        const ratio = topCount > 1 ? index / (topCount - 1) : 0.5;
-        points.push(createPoint(ratio, topBase, false));
-      }
-
-      for (let index = 0; index < bottomCount; index++) {
-        const ratio = bottomCount > 1 ? index / (bottomCount - 1) : 0.5;
-        points.push(createPoint(ratio, bottomBase, true));
-      }
-    }
-
-    const topCurveY = 18;
-    const bottomCurveY = 82;
-    const pathD = [
-      `M ${left + 0.01} 50`,
-      `C ${left} ${topCurveY} ${right} ${topCurveY} ${right} 50`,
-      `C ${right} ${bottomCurveY} ${left} ${bottomCurveY} ${left} 50`,
-    ].join(' ');
-
-    return {
-      viewBox,
-      height,
-      pathD,
-      arrowId,
-      points,
-    };
   }
 
   private resolveInitialSelection(paths: BadgeThropyPath[], standalone: BadgeThropyItem[]): BadgeThropyItem | null {

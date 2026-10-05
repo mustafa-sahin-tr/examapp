@@ -1,110 +1,102 @@
-<div class="ms-badge-list-container" [class.ms-badge-loading]="isLoading()">
-  <div class="ms-badge-header">
-    <h2 class="ms-badge-title">{{ headingTitle }}</h2>
-    <p class="ms-badge-subtitle">{{ headingSubtitle }}</p>
-  </div>
-  <section class="ms-badge-paths" *ngIf="badgePaths().length">
-    <article class="ms-badge-path" *ngFor="let path of badgePaths()">
-      <app-badge-path [items]="path.badges" [maxPerRow]="6"> </app-badge-path>
-    </article>
-  </section>
+<section class="ms-badge-list-container" *transloco="let t">
+  <header class="ms-badge-header">
+    @if (showHeading) {
+      <div class="ms-badge-heading">
+        <h2 class="ms-badge-title">{{ headingTitle }}</h2>
+        <p class="ms-badge-subtitle">{{ headingSubtitle }}</p>
+      </div>
+    }
+    @if (!isLoading() && !loadError() && badges().length) {
+      <span class="ms-badge-summary-chip" data-testid="badge-earned-summary">
+        {{ t('shared.badgeThropy.earnedSummary', { earned: earnedCount(), total: badges().length }) }}
+      </span>
+    }
+  </header>
 
-  <ng-container *ngIf="!isLoading() && !badgePaths().length && !standaloneBadges().length">
-    <div *ngIf="hasError(); else badgeEmptyState" class="ms-badge-empty ms-badge-error" role="alert">
-      {{ 'shared.badgeThropy.loadFailed' | transloco }}
+  @if (!isLoading() && !loadError() && badges().length) {
+    <ul class="ms-badge-legend" [attr.aria-label]="t('shared.badgeThropy.legendLabel')">
+      @for (entry of legend; track entry.state) {
+        <li class="ms-badge-legend-item">
+          <app-badge-medallion [state]="entry.state" icon="military_tech" [size]="40" />
+          <span>{{ t('shared.badgeMedallion.state.' + entry.labelKey) }}</span>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (isLoading()) {
+    <div class="ms-badge-status" role="status" aria-live="polite">
+      <mat-spinner diameter="36"></mat-spinner>
+      <span>{{ t('shared.badgeThropy.loading') }}</span>
     </div>
-    <ng-template #badgeEmptyState>
-      <div class="ms-badge-empty">{{ 'shared.badgeThropy.notFound' | transloco }}</div>
-    </ng-template>
-  </ng-container>
-  <section class="ms-badge-paths" *ngIf="badgePaths().length">
-    <article class="ms-badge-path" *ngFor="let path of badgePaths()">
-      <header class="ms-badge-path-header">
-        <div class="ms-badge-path-info">
-          <h3>{{ path.name }}</h3>
-          <span class="ms-badge-path-progress">{{ 'shared.badgeThropy.pathProgress' | transloco: { completed: path.completedCount, total: path.badges.length } }}</span>
-        </div>
-        <span class="ms-badge-path-percent">%{{ path.completionPercent }}</span>
-      </header>
-
-      <div class="ms-badge-path-track" *ngIf="path.layout as layout">
-        <div class="ms-badge-path-canvas" [style.height.px]="layout.height">
-          <div class="ms-badge-path-start-arrow" aria-hidden="true"></div>
-          <svg class="ms-badge-path-svg" [attr.viewBox]="layout.viewBox" preserveAspectRatio="none" aria-hidden="true">
-            <defs>
-              <linearGradient [attr.id]="layout.arrowId + '-gradient'" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#60a5fa"></stop>
-                <stop offset="100%" stop-color="#38bdf8"></stop>
-              </linearGradient>
-            </defs>
-
-            <path class="ms-badge-path-line" [attr.d]="layout.pathD" fill="none"
-              [attr.stroke]="'url(#' + layout.arrowId + '-gradient)'" stroke-width="2.5" stroke-linecap="round"
-              stroke-linejoin="round"></path>
-          </svg>
-
-          @if (isLoading()) {
-          <div class="ms-badge-status" role="status" aria-live="polite">
-            <mat-spinner diameter="36"></mat-spinner>
-            <span>{{ 'shared.badgeThropy.loading' | transloco }}</span>
-          </div>
-          } @else if (loadError()) {
-          <div class="ms-badge-status ms-badge-error" role="alert">
-            <span>{{ 'shared.badgeThropy.error' | transloco }}</span>
-            <button mat-stroked-button type="button" (click)="reload()">{{ 'common.retry' | transloco }}</button>
-          </div>
-          } @else {
-          @if (badgePaths().length) {
-          <section class="ms-badge-paths">
-            @for (path of badgePaths(); track path.key) {
-            <article class="ms-badge-path">
-              <app-badge-path [items]="path.badges" [maxPerRow]="6"></app-badge-path>
-            </article>
-            }
-          </section>
-          }
-
-          @if (standaloneBadges().length) {
-          <section class="ms-badge-standalone">
-            <h3 class="ms-badge-standalone-title">{{ 'shared.badgeThropy.standaloneTitle' | transloco }}</h3>
-            <div class="ms-badge-list">
-              @for (badge of standaloneBadges(); track badge.id) {
-              <div class="ms-badge-item" [class.ms-badge-selected]="badge.id === selectedBadge()?.id"
-                [class.ms-badge-completed]="badge.isCompleted" [class.ms-badge-pending]="!badge.isCompleted"
-                (click)="selectBadge(badge)">
-                <img [src]="badge.iconUrl" [alt]="badge.name" class="ms-badge-icon" />
-                <h3 class="ms-badge-name">{{ badge.name }}</h3>
-                <p class="ms-badge-time">{{ badge.completedLabel }} / {{ badge.totalLabel }}</p>
-
-                @if (badge.id === selectedBadge()?.id) {
-                <div class="ms-badge-arrow"></div>
-                }
+  } @else if (loadError()) {
+    <div class="ms-badge-status ms-badge-error" role="alert">
+      <span>{{ t('shared.badgeThropy.error') }}</span>
+      <button mat-stroked-button type="button" (click)="reload()">{{ t('common.retry') }}</button>
+    </div>
+  } @else if (!badgePaths().length && !standaloneBadges().length) {
+    <div class="ms-badge-empty">{{ t('shared.badgeThropy.empty') }}</div>
+  } @else {
+    @if (badgePaths().length) {
+      <section class="ms-badge-paths">
+        @for (path of badgePaths(); track path.key) {
+          <article class="ms-badge-path">
+            <header class="ms-badge-path-header">
+              <div class="ms-badge-path-info">
+                <h3>{{ path.name }}</h3>
+                <span class="ms-badge-path-progress">{{
+                  t('shared.badgeThropy.pathEarned', { completed: path.completedCount, total: path.badges.length })
+                }}</span>
               </div>
-              }
-            </div>
+              <span class="ms-badge-path-percent">%{{ path.completionPercent }}</span>
+            </header>
+            <app-badge-path
+              [items]="path.badges"
+              [maxPerRow]="6"
+              [selectedId]="selectedBadge()?.id ?? null"
+              (badgeSelected)="onPathBadgeSelected($event)"
+            ></app-badge-path>
+          </article>
+        }
+      </section>
+    }
 
-            @if (selectedBadge(); as selected) {
-            @if (!selected.pathKey) {
-            <div class="ms-badge-detail">
-              <div class="ms-badge-content" [class.ms-badge-content-completed]="selected.isCompleted">
-                <div class="ms-badge-content-top">
-                  <h1 class="ms-badge-title">{{ selected.name }}</h1>
-                  <span class="ms-badge-description">{{ selected.description }}</span>
-                  <span class="ms-badge-progress-text">{{ 'shared.badgePath.progress' | transloco: { completed: selected.completedLabel, total: selected.totalLabel } }}</span>
-                </div>
+    @if (standaloneBadges().length) {
+      <section class="ms-badge-standalone">
+        <h3 class="ms-badge-standalone-title">{{ t('shared.badgeThropy.standaloneTitle') }}</h3>
+        <ul class="ms-badge-list">
+          @for (badge of standaloneBadges(); track badge.id) {
+            <li>
+              <button
+                type="button"
+                class="ms-badge-item"
+                [attr.data-state]="badge.state"
+                [class.ms-badge-selected]="badge.id === selectedBadge()?.id"
+                [attr.aria-label]="ariaLabel(t, badge)"
+                [attr.aria-expanded]="badge.id === selectedBadge()?.id"
+                [attr.aria-controls]="badge.id === selectedBadge()?.id ? 'badge-standalone-detail' : null"
+                (click)="selectBadge(badge)"
+              >
+                <app-badge-medallion
+                  [icon]="badge.icon"
+                  [iconUrl]="badge.iconUrl"
+                  [state]="badge.state"
+                  [size]="56"
+                  [progressPercent]="badge.progressPercent"
+                />
+                <bdi class="ms-badge-name" dir="auto" aria-hidden="true">{{ badge.name }}</bdi>
+                <span class="ms-badge-time" aria-hidden="true">{{ stateText(t, badge) }}</span>
+              </button>
+            </li>
+          }
+        </ul>
 
-                <div class="ms-badge-progress">
-                  <div class="ms-badge-progress-bar" [style.width.%]="selected.progressPercent"></div>
-                </div>
-              </div>
-            </div>
-            }
-            }
-          </section>
+        @if (selectedBadge(); as selected) {
+          @if (!selected.pathKey) {
+            <app-badge-detail id="badge-standalone-detail" [badge]="selected" />
           }
-
-          @if (!badgePaths().length && !standaloneBadges().length) {
-          <div class="ms-badge-empty">{{ 'shared.badgeThropy.empty' | transloco }}</div>
-          }
-          }
-        </div>
+        }
+      </section>
+    }
+  }
+</section>

@@ -39,7 +39,7 @@ describe('describeNotification (issue #105)', () => {
     });
 
     expect(result.icon).toBe('forum');
-    expect(result.iconUrl).toBeNull();
+    expect(result.badge).toBeNull();
     expect(result.route).toEqual({ commands: ['/test', 12], queryParams: { commentId: 56, questionId: 34 } });
   });
 
@@ -102,12 +102,30 @@ describe('describeNotification (issue #105)', () => {
 
     expect(result.icon).toBe('emoji_events');
     expect(result.route).toEqual({ commands: [BADGE_PROGRESS_ROUTE] });
+    expect(result.badge).toEqual({ icon: null, iconUrl: null });
+  });
+
+  // Issue #149: medalyon girdileri ham taşınır; biçim doğrulaması medalyonda (resolveBadgeIcon).
+  it('BadgeEarned_WithIconAndIconUrl_PassesBothToBadge', () => {
+    const result = describeNotification({
+      type: 'BadgeEarned',
+      data: data({ badgeDefinitionId: 'b1', icon: ' gps_fixed ', iconUrl: 'achievements/a.svg' }),
+    });
+
+    expect(result.badge).toEqual({ icon: 'gps_fixed', iconUrl: 'achievements/a.svg' });
+  });
+
+  it('BadgeEarned_MalformedData_StillShowsBadgeWithoutIcons', () => {
+    const result = describeNotification({ type: 'BadgeEarned', data: '{not json' });
+
+    expect(result.badge).toEqual({ icon: null, iconUrl: null });
+    expect(result.route).toEqual({ commands: [BADGE_PROGRESS_ROUTE] });
   });
 
   it('UnknownType_GenericIconNoLink', () => {
     expect(describeNotification({ type: 'Other', data: data({ worksheetId: 1, commentId: 2 }) })).toEqual({
       icon: 'notifications',
-      iconUrl: null,
+      badge: null,
       route: null,
       questionOrder: null,
     });
@@ -123,7 +141,7 @@ describe('describeNotification (issue #105)', () => {
     expect(STUDENT_BOOKINGS_ROUTE).toBe('/my-bookings');
     expect(result).toEqual({
       icon: 'event_busy',
-      iconUrl: null,
+      badge: null,
       route: { commands: [STUDENT_BOOKINGS_ROUTE] },
       questionOrder: null,
     });
@@ -156,7 +174,7 @@ describe('describeNotification (issue #105)', () => {
     for (const value of bad) {
       const result = describeNotification({ type: 'BookingTeacherUnavailable', data: value });
       expect(result.icon).withContext(String(value)).toBe('event_busy');
-      expect(result.iconUrl).withContext(String(value)).toBeNull();
+      expect(result.badge).withContext(String(value)).toBeNull();
       expect(result.route).withContext(String(value)).toBeNull();
     }
   });

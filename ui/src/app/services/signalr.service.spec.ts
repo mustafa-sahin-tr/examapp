@@ -4,7 +4,13 @@ import { Router } from '@angular/router';
 import * as signalR from '@microsoft/signalr';
 import { Subject } from 'rxjs';
 
-import { SignalRService } from './signalr.service';
+import { SignalRService, parseBadgeEarnedPush } from './signalr.service';
+import {
+  BADGE_TOAST_DURATION_MS,
+  BADGE_TOAST_PANEL_CLASS,
+  BADGE_TOAST_POLITENESS,
+  BadgeEarnedToastComponent,
+} from '../shared/components/badge-earned-toast/badge-earned-toast.component';
 import { AuthService } from './auth.service';
 import {
   TeacherApplicationSubmittedPayload,
@@ -44,7 +50,7 @@ describe('SignalRService — admin öğretmen bildirimleri', () => {
     spyOn(signalR.HubConnectionBuilder.prototype, 'build').and.returnValue(fakeConnection);
 
     snackAction$ = new Subject<void>();
-    snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
+    snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open', 'openFromComponent']);
     snackBar.open.and.returnValue({ onAction: () => snackAction$.asObservable() } as MatSnackBarRef<TextOnlySnackBar>);
     router = jasmine.createSpyObj<Router>('Router', ['navigate']);
     authService = jasmine.createSpyObj<AuthService>('AuthService', ['hasRole']);
@@ -137,6 +143,66 @@ describe('SignalRService — admin öğretmen bildirimleri', () => {
       expect(count).toBe(1);
     });
   }
+
+  // Issue #149: emoji'li düz snackbar yerine medalyonlu toast bileşeni.
+  describe('BadgeEarned toast (issue #149)', () => {
+    it('BadgeEarned_OpensBadgeToastComponentWithPanelClassAndSixSeconds', () => {
+      setup(false);
+
+      handlers.get('BadgeEarned')!({
+        badgeName: 'Soru Avcısı III',
+        description: '250 soru',
+        iconUrl: 'achievements/a.svg',
+        icon: 'gps_fixed',
+      });
+
+      expect(snackBar.open).not.toHaveBeenCalled();
+      expect(snackBar.openFromComponent).toHaveBeenCalledOnceWith(BadgeEarnedToastComponent, {
+        data: { badgeName: 'Soru Avcısı III', description: '250 soru', icon: 'gps_fixed', iconUrl: 'achievements/a.svg' },
+        panelClass: BADGE_TOAST_PANEL_CLASS,
+        duration: BADGE_TOAST_DURATION_MS,
+        politeness: BADGE_TOAST_POLITENESS,
+      });
+      expect(BADGE_TOAST_POLITENESS).toBe('polite');
+      expect(BADGE_TOAST_PANEL_CLASS).toBe('badge-toast');
+      expect(BADGE_TOAST_DURATION_MS).toBe(6000);
+    });
+
+    it('BadgeEarned_OldServerWithoutIcon_IconNull', () => {
+      setup(false);
+
+      handlers.get('BadgeEarned')!({ badgeName: 'X', description: 'Y', iconUrl: 'achievements/a.svg' });
+
+      const config = snackBar.openFromComponent.calls.mostRecent().args[1];
+      expect(config?.data).toEqual({ badgeName: 'X', description: 'Y', icon: null, iconUrl: 'achievements/a.svg' });
+    });
+
+    it('parseBadgeEarnedPush_HostilePayload_SanitizedAndTruncated', () => {
+      const parsed = parseBadgeEarnedPush({
+        badgeName: String.fromCharCode(0x202e) + 'evil' + String.fromCharCode(0x200b) + 'a'.repeat(400),
+        description: 42,
+        icon: { nested: true },
+        iconUrl: '   ',
+      });
+
+      expect(parsed.badgeName.startsWith('evil')).toBeTrue();
+      expect(parsed.badgeName.length).toBe(200);
+      expect(parsed.description).toBe('');
+      expect(parsed.icon).toBeNull();
+      expect(parsed.iconUrl).toBeNull();
+    });
+
+    it('parseBadgeEarnedPush_NullOrPrimitive_EmptyPayload', () => {
+      for (const value of [null, undefined, 'str', 5]) {
+        expect(parseBadgeEarnedPush(value)).withContext(String(value)).toEqual({
+          badgeName: '',
+          description: '',
+          icon: null,
+          iconUrl: null,
+        });
+      }
+    });
+  });
 
   it('notificationsChanged_TeacherSchoolRequestNonAdmin_DoesNotEmit', () => {
     setup(false);

@@ -1,90 +1,86 @@
-<div class="ms-single-path" *ngIf="layout() as layout">
-  <div class="ms-single-path-track" [style.height.px]="layout.height">
-    <svg class="ms-single-path-svg" [attr.viewBox]="layout.viewBox" preserveAspectRatio="none" aria-hidden="true">
-      <defs>
-        <linearGradient [attr.id]="gradientId" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#60a5fa" />
-          <stop offset="100%" stop-color="#38bdf8" />
-        </linearGradient>
-        <mask [attr.id]="gradientId + '-mask'">
-          <rect x="0" y="0" width="100" height="100" fill="white" />
-          <ng-container *ngFor="let point of layout.nodePoints; index as index">
-            <circle [attr.cx]="point.xPercent" [attr.cy]="point.yPercent" [attr.r]="layout.maskRadius" fill="black" />
-          </ng-container>
-        </mask>
-      </defs>
+@if (layout(); as layout) {
+  <div class="ms-single-path" *transloco="let t">
+    <div
+      class="ms-single-path-track"
+      [style.--path-track-height]="layout.height + 'px'"
+      [style.--slot-width]="layout.slotPercent + '%'"
+    >
+      <svg class="ms-single-path-svg" [attr.viewBox]="layout.viewBox" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <!-- Maske yalnız alfa taşır (white = görünür, black = gizli); tema rengi değildir. -->
+          <mask [attr.id]="maskId" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+            <rect x="0" y="0" width="100" height="100" fill="white" />
+            @for (point of layout.nodePoints; track $index) {
+              <circle [attr.cx]="point.xPercent" [attr.cy]="point.yPercent" [attr.r]="layout.maskRadius" fill="black" />
+            }
+          </mask>
+        </defs>
 
-      <path
-        class="ms-single-path-line"
-        [attr.d]="layout.pathD"
-        fill="none"
-        [attr.stroke]="'url(#' + gradientId + ')'"
-        stroke-width="2.5"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        [attr.mask]="'url(#' + gradientId + '-mask)'"
-      ></path>
-      <ng-container *ngFor="let segment of layout.pathSegments; index as i">
-        <text
-          [attr.x]="segment.midX"
-          [attr.y]="segment.midY"
-          class="ms-path-arrow"
-          text-anchor="middle"
-          dominant-baseline="middle"
-          [attr.transform]="'rotate(' + segment.angle + ' ' + segment.midX + ' ' + segment.midY + ')'"
-        >
-          →
-        </text>
-      </ng-container>
-    </svg>
+        <g [attr.mask]="'url(#' + maskId + ')'">
+          @for (segment of layout.pathSegments; track $index) {
+            <path
+              class="ms-path-segment"
+              [class.ms-path-segment--earned]="segment.status === 'earned'"
+              [class.ms-path-segment--next]="segment.status === 'next'"
+              [class.ms-path-segment--pending]="segment.status === 'pending'"
+              [attr.data-status]="segment.status"
+              [attr.d]="segment.path"
+              fill="none"
+              vector-effect="non-scaling-stroke"
+            ></path>
+          }
+        </g>
+      </svg>
 
-    <div class="ms-single-path-nodes">
-      <ng-container *ngFor="let item of items; index as index; trackBy: trackById">
-        <div
-          class="ms-path-node"
-          [class.ms-path-node-complete]="item.isCompleted"
-          [style.left.%]="layout.nodePoints[index].xPercent"
-          [style.top.%]="layout.nodePoints[index].yPercent"
-        >
-          <div class="ms-path-node-upper">
-            <span class="ms-path-node-icon" (click)="selectBadge(item)">
-              <img [src]="item.iconUrl" [alt]="item.name" />
-            </span>
-          </div>
-          <span class="ms-path-node-name">{{ item.name }}</span>
-          <div class="ms-path-node-lower">
-            <span class="ms-path-node-progress">{{ item.completedLabel }} / {{ item.totalLabel }}</span>
-          </div>
-        </div>
-      </ng-container>
+      <ol class="ms-single-path-nodes">
+        @for (item of items; track item.id; let index = $index) {
+          <li
+            class="ms-path-item"
+            [class.ms-path-item-selected]="selectedId === item.id"
+            [style.--node-x]="layout.nodePoints[index].xPercent + '%'"
+            [style.--node-y]="layout.nodePoints[index].yPercent + '%'"
+          >
+            <button
+              type="button"
+              class="ms-path-node"
+              [attr.data-state]="item.state"
+              [attr.aria-label]="ariaLabel(t, item)"
+              [attr.aria-expanded]="selectedId === item.id"
+              [attr.aria-controls]="selectedId === item.id ? detailId + ' ' + detailId + '-inline' : null"
+              (click)="selectBadge(item)"
+            >
+              <app-badge-medallion
+                [icon]="item.icon"
+                [iconUrl]="item.iconUrl"
+                [state]="item.state"
+                [size]="64"
+                [progressPercent]="item.progressPercent"
+              />
+              <span class="ms-path-node-text" aria-hidden="true">
+                <bdi class="ms-path-node-name" dir="auto">{{ item.name }}</bdi>
+                <span class="ms-path-node-progress">{{ stateText(t, item) }}</span>
+              </span>
+            </button>
+            @if (selectedId === item.id) {
+              <!-- ≤640px: seçili satır yerinde açılır (masaüstünde gizli, alttaki panel gösterilir) -->
+              <app-badge-detail
+                class="ms-path-inline-detail"
+                [attr.id]="detailId + '-inline'"
+                [badge]="item"
+                [compact]="true"
+              />
+            }
+          </li>
+        }
+      </ol>
     </div>
+
+    @if (selectedItem; as selected) {
+      <app-badge-detail class="ms-path-detail" [attr.id]="detailId" [badge]="selected" />
+    }
   </div>
-</div>
-<ng-container *ngIf="selectedBadge() as selected">
-  <ng-container *ngTemplateOutlet="badgeDetail; context: { $implicit: selected }"></ng-container>
-</ng-container>
-<div class="ms-single-path-empty" *ngIf="!layout()">
-  <span>{{ 'shared.badgePath.empty' | transloco }}</span>
-</div>
-
-<ng-template #badgeDetail let-badge>
-  <div class="ms-badge-detail" *transloco="let t; prefix: 'shared.badgePath'">
-    <div class="ms-badge-content" [class.ms-badge-content-completed]="badge?.isCompleted">
-      <div class="ms-badge-content-top">
-        <h1 class="ms-badge-title">{{ badge?.name }}</h1>
-
-        <div class="ms-badge-meta" *ngIf="badge?.pathName">
-          <span class="ms-badge-chip">{{ badge?.pathName }}</span>
-          <span class="ms-badge-chip" *ngIf="badge?.pathOrder as step">{{ t('step', { step: step }) }}</span>
-        </div>
-
-        <span class="ms-badge-description">{{ badge?.description }}</span>
-        <span class="ms-badge-progress-text">{{ t('progress', { completed: badge?.completedLabel, total: badge?.totalLabel }) }}</span>
-      </div>
-
-      <div class="ms-badge-progress">
-        <div class="ms-badge-progress-bar" [style.width.%]="badge?.progressPercent"></div>
-      </div>
-    </div>
+} @else {
+  <div class="ms-single-path-empty" *transloco="let t">
+    <span>{{ t('shared.badgePath.empty') }}</span>
   </div>
-</ng-template>
+}

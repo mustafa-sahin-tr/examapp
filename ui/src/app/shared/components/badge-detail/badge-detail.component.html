@@ -1,0 +1,45 @@
+@if (badge(); as b) {
+  <div class="bd" [class.bd--compact]="compact()" [attr.data-state]="b.state" *transloco="let t">
+    @if (!compact()) {
+      <app-badge-medallion
+        class="bd__medallion"
+        [icon]="b.icon"
+        [iconUrl]="b.iconUrl"
+        [state]="b.state"
+        [size]="72"
+        [progressPercent]="b.progressPercent"
+      />
+    }
+    <div class="bd__body">
+      <div class="bd__top">
+        <h3 class="bd__title"><bdi dir="auto">{{ b.name }}</bdi></h3>
+        @if (b.state === 'new') {
+          <span class="bd__chip bd__chip--new">{{ t('shared.badgeMedallion.newChip') }}</span>
+        }
+        @if (b.pathName) {
+          <bdi class="bd__chip" dir="auto">{{ b.pathName }}</bdi>
+        }
+        @if (b.pathOrder) {
+          <span class="bd__chip">{{ t('shared.badgePath.step', { step: b.pathOrder }) }}</span>
+        }
+      </div>
+      @if (b.description) {
+        <p class="bd__description"><bdi dir="auto">{{ b.description }}</bdi></p>
+      }
+      <span class="bd__state" data-testid="badge-detail-state">{{ stateText(t, b) }}</span>
+      <div
+        class="bd__progress"
+        role="progressbar"
+        [attr.aria-valuenow]="b.currentValue"
+        aria-valuemin="0"
+        [attr.aria-valuemax]="b.targetValue"
+        [attr.aria-label]="t('shared.badgeMedallion.progressAria', { name: b.name })"
+      >
+        <div class="bd__progress-fill" [style.width.%]="b.progressPercent"></div>
+      </div>
+      @if (!isEarned(b)) {
+        <span class="bd__remaining">{{ t('shared.badgeMedallion.remaining', { remaining: b.remainingLabel, percent: b.progressPercent }) }}</span>
+      }
+    </div>
+  </div>
+}

@@ -31,13 +31,17 @@ function notification(overrides: Partial<AppNotification> = {}): AppNotification
   };
 }
 
-function badgeEarned(overrides: Partial<AppNotification> = {}, iconUrl: string | null = BADGE_ICON): AppNotification {
+function badgeEarned(
+  overrides: Partial<AppNotification> = {},
+  iconUrl: string | null = BADGE_ICON,
+  icon: string | null = null
+): AppNotification {
   return notification({
     id: 10,
     type: 'BadgeEarned',
     title: 'Yeni rozet kazandın!',
     body: 'İlk Adım rozetini kazandın.',
-    data: JSON.stringify({ badgeDefinitionId: 'badge-definition-1', badgeCode: 'FIRST_STEP', iconUrl }),
+    data: JSON.stringify({ badgeDefinitionId: 'badge-definition-1', badgeCode: 'FIRST_STEP', iconUrl, icon }),
     ...overrides,
   });
 }
@@ -103,20 +107,38 @@ describe('NotificationsComponent (issue #146)', () => {
     expect(rows[1].classList).not.toContain('is-unread');
   });
 
-  it('badgeEarned_WithIconUrl_ShowsBadgeImage', () => {
+  // Issue #149: rozet satırı 40px "Kazanıldı" medalyonu — icon → iconUrl → military_tech.
+  function medallion(row: HTMLElement): HTMLElement | null {
+    return row.querySelector<HTMLElement>('app-badge-medallion');
+  }
+
+  it('badgeEarned_WithIconUrl_ShowsEarnedMedallionWithRootRelativeImage', () => {
     flushList([badgeEarned()]);
 
-    const img = items()[0].querySelector<HTMLImageElement>('.ntf__badge-img');
-    expect(img).not.toBeNull();
-    expect(img?.getAttribute('src')).toBe(`/${BADGE_ICON}`);
-    expect(items()[0].querySelector('mat-icon')?.textContent).not.toContain('emoji_events');
+    const m = medallion(items()[0]);
+    expect(m).not.toBeNull();
+    expect(m?.getAttribute('data-state')).toBe('earned');
+    expect(m?.getAttribute('aria-hidden')).toBe('true');
+    expect(m?.style.getPropertyValue('--bm-size')).toBe('40px');
+    expect(m?.querySelector('img')?.getAttribute('src')).toBe(`/${BADGE_ICON}`);
+    expect(items()[0].querySelector('.ntf__badge-img')).toBeNull();
+    expect(items()[0].querySelector('.ntf__icon')).toBeNull();
   });
 
-  it('badgeEarned_WithoutIconUrl_FallsBackToEmojiEventsIcon', () => {
+  it('badgeEarned_WithMaterialIcon_ShowsSymbolGlyphOverIconUrl', () => {
+    flushList([badgeEarned({}, BADGE_ICON, 'gps_fixed')]);
+
+    const m = medallion(items()[0]);
+    expect(m?.querySelector('img')).toBeNull();
+    expect(m?.querySelector('.bm__icon')?.textContent?.trim()).toBe('gps_fixed');
+  });
+
+  it('badgeEarned_WithoutIcons_FallsBackToMilitaryTechMedallion', () => {
     flushList([badgeEarned({}, null)]);
 
-    expect(items()[0].querySelector('.ntf__badge-img')).toBeNull();
-    expect(items()[0].querySelector('.ntf__icon mat-icon')?.textContent?.trim()).toBe('emoji_events');
+    const m = medallion(items()[0]);
+    expect(m?.querySelector('img')).toBeNull();
+    expect(m?.querySelector('.bm__icon')?.textContent?.trim()).toBe('military_tech');
   });
 
   for (const [label, iconUrl] of [
@@ -126,13 +148,20 @@ describe('NotificationsComponent (issue #146)', () => {
     ['nonSvg', 'achievements/first-step.png'],
     ['otherFolder', 'assets/first-step.svg'],
   ] as const) {
-    it(`badgeEarned_IconUrlOutsideAchievements_${label}_FallsBackToEmojiEvents`, () => {
+    it(`badgeEarned_IconUrlOutsideAchievements_${label}_FallsBackToMilitaryTech`, () => {
       flushList([badgeEarned({}, iconUrl)]);
 
-      expect(items()[0].querySelector('.ntf__badge-img')).toBeNull();
-      expect(items()[0].querySelector('.ntf__icon mat-icon')?.textContent?.trim()).toBe('emoji_events');
+      const m = medallion(items()[0]);
+      expect(m?.querySelector('img')).toBeNull();
+      expect(m?.querySelector('.bm__icon')?.textContent?.trim()).toBe('military_tech');
     });
   }
+
+  it('badgeEarned_InvalidIconName_FallsBackToIconUrl', () => {
+    flushList([badgeEarned({}, BADGE_ICON, 'Not A Glyph<script>')]);
+
+    expect(medallion(items()[0])?.querySelector('img')?.getAttribute('src')).toBe(`/${BADGE_ICON}`);
+  });
 
   it('badgeEarned_Click_MarksReadAndNavigatesToBadgeProgressPage', () => {
     flushList([badgeEarned()]);
@@ -161,7 +190,7 @@ describe('NotificationsComponent (issue #146)', () => {
     flushList([notification({ id: 5, type: 'SomethingNew', data: JSON.stringify({ iconUrl: BADGE_ICON }) })]);
 
     const row = items()[0];
-    expect(row.querySelector('.ntf__badge-img')).toBeNull();
+    expect(row.querySelector('app-badge-medallion')).toBeNull();
     expect(row.querySelector('.ntf__icon mat-icon')?.textContent?.trim()).toBe('notifications');
 
     row.click();
@@ -169,11 +198,12 @@ describe('NotificationsComponent (issue #146)', () => {
     expect(navigateSpy).not.toHaveBeenCalled();
   });
 
-  it('badgeEarned_MalformedData_FallsBackToEmojiEventsIcon', () => {
+  it('badgeEarned_MalformedData_FallsBackToMilitaryTechMedallion', () => {
     flushList([badgeEarned({ data: '{not json' })]);
 
-    expect(items()[0].querySelector('.ntf__badge-img')).toBeNull();
-    expect(items()[0].querySelector('.ntf__icon mat-icon')?.textContent?.trim()).toBe('emoji_events');
+    const m = items()[0].querySelector('app-badge-medallion');
+    expect(m?.querySelector('img')).toBeNull();
+    expect(m?.querySelector('.bm__icon')?.textContent?.trim()).toBe('military_tech');
   });
 
   it('badgeEarned_ClickThenDestroy_MarkReadStillCompletesAndCountDrops', () => {

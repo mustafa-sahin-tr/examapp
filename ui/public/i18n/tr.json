@@ -121,19 +121,18 @@
     },
     "badgePath": {
       "empty": "Rozet yolu bulunamadı.",
-      "step": "Adım {{step}}",
-      "progress": "{{completed}} / {{total}} tamamlandı"
+      "step": "Adım {{step}}"
     },
     "badgeThropy": {
       "title": "Başarı Rozetleri",
       "subtitle": "Çalışma alışkanlıklarınıza göre rozetlerin durumunu takip edin.",
       "loading": "Rozetler yükleniyor...",
       "error": "Rozet bilgisi alınırken bir hata oluştu.",
-      "loadFailed": "Rozet bilgisi yüklenemedi. Lütfen daha sonra tekrar deneyin.",
-      "notFound": "Rozet bilgisi bulunamadı.",
       "empty": "Henüz kazanılmış veya takip edilen bir rozet yok.",
       "standaloneTitle": "Tekil Rozetler",
-      "pathProgress": "{{completed}} / {{total}} tamamlandı"
+      "earnedSummary": "{{earned}} / {{total}} kazanıldı",
+      "legendLabel": "Rozet durumları",
+      "pathEarned": "{{completed}} / {{total}} kazanıldı"
     },
     "bookingSlotDialog": {
       "title": "{{teacher}} · Randevu Al",
@@ -450,6 +449,37 @@
       "noMatch": "Eşleşen okul yok",
       "pickFromList": "Listeden bir okul seçin; serbest metin kaydedilmez.",
       "clear": "Okul seçimini temizle"
+    },
+    "badgeMedallion": {
+      "aria": {
+        "earned": "Kazanıldı: {{name}}, {{date}}",
+        "earnedNoDate": "Kazanıldı: {{name}}",
+        "new": "Yeni kazanıldı: {{name}}",
+        "inProgress": "İlerlemede: {{name}}, {{current}}/{{target}}",
+        "locked": "Kilitli: {{name}}, {{current}}/{{target}}"
+      },
+      "text": {
+        "earned": "Kazanıldı · {{date}}",
+        "earnedNoDate": "Kazanıldı",
+        "new": "Yeni kazanıldı",
+        "inProgress": "{{current}} / {{target}}",
+        "locked": "Kilitli · {{current}} / {{target}}"
+      },
+      "state": {
+        "earned": "Kazanıldı",
+        "new": "Yeni",
+        "inProgress": "İlerlemede",
+        "locked": "Kilitli"
+      },
+      "newChip": "Yeni",
+      "progressAria": "{{name}} ilerlemesi",
+      "remaining": "Kalan {{remaining}} · %{{percent}}"
+    },
+    "badgeEarnedToast": {
+      "eyebrow": "Yeni rozet kazandın",
+      "action": "Rozetlerim",
+      "close": "Kapat",
+      "fallbackName": "Yeni rozet"
     }
   },
   "dashboard": {
@@ -522,7 +552,8 @@
       "earnedEmpty": "Henüz kazanılmış rozet bulunmuyor.",
       "upcomingTitle": "Sıradaki Rozetler",
       "allCompleted": "Tebrikler, tüm rozetleri tamamladın!",
-      "upcomingEmpty": "Soru çözmeye başladığında rozet ilerlemen burada görünecek."
+      "upcomingEmpty": "Soru çözmeye başladığında rozet ilerlemen burada görünecek.",
+      "newEarned": "Yeni kazanıldı"
     },
     "assignments": {
       "title": "Atanmış Testler",

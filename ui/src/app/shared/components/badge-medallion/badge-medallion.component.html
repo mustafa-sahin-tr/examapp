@@ -1,0 +1,17 @@
+@if (showRing()) {
+  <span class="bm__ring" data-testid="badge-medallion-ring" [style.--bm-progress]="ringPercent() + '%'"></span>
+}
+<span class="bm__shell">
+  @if (iconSource(); as source) {
+    @if (source.kind === 'image') {
+      <img class="bm__img" [src]="source.src" alt="" (error)="onImageError(source.src)" />
+    } @else {
+      <mat-icon class="bm__icon" [class.bm__icon--filled]="filled()" fontSet="material-symbols-outlined">{{ source.name }}</mat-icon>
+    }
+  }
+</span>
+@if (cornerGlyph(); as glyph) {
+  <span class="bm__corner" data-testid="badge-medallion-corner">
+    <mat-icon class="bm__corner-icon" fontSet="material-symbols-outlined">{{ glyph }}</mat-icon>
+  </span>
+}

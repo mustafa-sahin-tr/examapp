@@ -10,7 +10,10 @@ export interface BadgeDefinitionAdmin {
   code: string;
   name: string;
   description: string;
+  /** Eski SVG yolu (`achievements/<dosya>.svg`); #149 geçişi süresince yedek, admin UI'dan düzenlenmez. */
   iconUrl: string | null;
+  /** Issue #149 — allowlist'teki Material Symbols adı (`GET .../icons`); null = ikon seçilmemiş. */
+  icon: string | null;
   category: string;
   ruleType: string;
   ruleConfigJson: string;
@@ -42,7 +45,16 @@ export const BADGE_DEFINITION_DEFAULT_PAGE_SIZE = 50;
 export interface UpdateBadgeDefinitionRequest {
   name: string;
   description: string;
+  /**
+   * Eski SVG yolu. PUT'ta tam üzerine yazılır: düzenlemede mevcut değer AYNEN geri gönderilir (UI düzenletmez),
+   * oluşturmada null.
+   */
   iconUrl: string | null;
+  /**
+   * Issue #149 — HER ZAMAN gönderilir: seçili ikon adı ya da null (temizle). Backend PUT'ta alan yoksa eski ikonu
+   * korur; UI bu "alan yok" davranışına güvenmez.
+   */
+  icon: string | null;
   category: string;
   ruleType: string;
   /** RuleType şemasına uyan ham JSON nesnesi (bkz. `GET .../rule-types`). */
@@ -92,8 +104,20 @@ export const KNOWN_BADGE_CATEGORIES: readonly string[] = [
   'Aktivite',
 ];
 
-/** Backend `BadgeIconValidator` ile aynı kural: boş olabilir, doluysa `achievements/<dosya>.svg`. */
+/**
+ * Eski `iconUrl` biçimi (backend `BadgeIconValidator.IsValid`): yalnız rozet medalyonunun geçiş süresince yedek
+ * SVG'yi güvenle göstermesi için (`resolveBadgeIcon`). Admin UI artık serbest metin ikon yolu almaz.
+ */
 export const BADGE_ICON_PATTERN = /^achievements\/[A-Za-z0-9._-]+\.svg$/;
+
+/**
+ * Geçerli eski SVG yolu (baştaki `/` atılmış, backend biçiminde) ya da null. Desene uymayan değer "eski SVG" sayılmaz:
+ * medalyon onu göstermez (`resolveBadgeIcon`), admin kaydı da onu geri göndermez (400 ile kilitlenmesin).
+ */
+export function validLegacyIconUrl(iconUrl: string | null | undefined): string | null {
+  const path = iconUrl?.trim().replace(/^\/+/, '');
+  return path && BADGE_ICON_PATTERN.test(path) ? path : null;
+}
 
 /** Backend `BadgeDefinitionAdminService.CodePattern` ile aynı: küçük harf/rakam, segmentler tek tireyle. */
 export const BADGE_CODE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -109,3 +133,15 @@ export const BADGE_DEFINITION_LIMITS = {
   pathOrderMin: 1,
   pathOrderMax: 1000,
 } as const;
+
+/** Issue #149 — `GET /api/badge/admin/badge-definitions/icons` eleman tipi (`BadgeIconEntry`). */
+export interface BadgeIconEntry {
+  /** Material Symbols adı. */
+  name: string;
+  /** Kararlı anahtar; etiketi UI çevirir. Bilinmeyen değer `other` sayılır. */
+  category: string;
+}
+
+/** Backend `BadgeIconCatalog.Categories` — seçicideki çiplerin sırası. */
+export const BADGE_ICON_CATEGORIES = ['achievement', 'learning', 'time', 'streak', 'other'] as const;
+export type BadgeIconCategory = (typeof BADGE_ICON_CATEGORIES)[number];

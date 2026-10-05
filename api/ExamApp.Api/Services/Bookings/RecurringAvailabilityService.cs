@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos.Bookings;
 using ExamApp.Foundation.Localization;
 using Microsoft.EntityFrameworkCore;
@@ -95,7 +96,7 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
 
         // Dakika hassasiyeti: saniye/mikrosaniye taşıyan saatler unique index'i anlamsız
         // (14:00:00 vs 14:00:01 iki ayrı kural) ve UI'ı kararsız yapar.
-        if (!IsMinutePrecision(dto.StartTime) || !IsMinutePrecision(dto.EndTime))
+        if (!SlotTimeRange.IsMinutePrecision(dto.StartTime) || !SlotTimeRange.IsMinutePrecision(dto.EndTime))
             return Fail(_localizer["booking.recurringRule.invalidPrecision"]);
 
         if (dto.EffectiveFrom < today)
@@ -122,29 +123,6 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
         if (teacher.ApprovalStatus != TeacherApprovalStatus.Approved)
             return new RecurringAvailabilityRuleResultDto { Success = false, Forbidden = true, Message = _localizer["booking.teacherNotApproved"] };
 
-        // Öğretmenin aynı gündeki aktif kuralları tek sorguda: sayı sınırı + kesişme kontrolü.
-        var activeRules = await _context.RecurringAvailabilityRules
-            .AsNoTracking()
-            .Where(r => r.TeacherId == teacher.Id && r.IsActive)
-            .Select(r => new { r.DayOfWeek, r.StartTime, r.EndTime, r.EffectiveFrom, r.EffectiveUntil })
-            .ToListAsync(ct);
-
-        if (activeRules.Count >= MaxActiveRulesPerTeacher)
-            return Fail(_localizer["booking.recurringRule.tooMany", MaxActiveRulesPerTeacher]);
-
-        // Haftalık zaman çizgisinde aralık kesişiyor (yarı açık) + geçerlilik tarihleri kesişiyor → 409.
-        // Birebir aynı kural da bu daldan yakalanır; bitişik aralıklar (15:00 bitiş / 15:00 başlangıç) kabul.
-        // issue #300: gün aşan kural (Pzt 23:30–00:30) ertesi günün kuralıyla (Sal 00:00–00:45) da çakışır; bu yüzden
-        // karşılaştırma gün+saat üzerinden haftalık yapılır. Gün aşan kuralın son occurrence'ı EffectiveUntil'in ertesi
-        // gününe taşabildiğinden tarih kesişimi o durumda bir gün toleranslıdır (kenar durumda muhafazakâr 409).
-        var overlapping = activeRules.Any(r =>
-            WeeklyOverlaps(r.DayOfWeek, r.StartTime, r.EndTime, dto.DayOfWeek, dto.StartTime, dto.EndTime)
-            && EffectiveRangesOverlap(r.EffectiveFrom, r.EffectiveUntil, r.StartTime, r.EndTime,
-                dto.EffectiveFrom, dto.EffectiveUntil, dto.StartTime, dto.EndTime));
-
-        if (overlapping)
-            return new RecurringAvailabilityRuleResultDto { Success = false, Conflict = true, Message = _localizer["booking.slot.overlapping"] };
-
         var rule = new RecurringAvailabilityRule
         {
             TeacherId = teacher.Id,
@@ -156,26 +134,77 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
             IsActive = true
         };
 
-        var horizon = today.AddDays(BookingService.MaxAdvanceDays);
-        var existing = await LoadExistingSlotsAsync(teacher.Id, today, horizon, ct);
-        var plan = Plan(rule, ruleId: null, existing, today, now, horizon);
-
         _context.SetCurrentUser(teacherUserId);
-        _context.RecurringAvailabilityRules.Add(rule);
-        foreach (var slot in plan.ToAdd)
-        {
-            slot.RecurringAvailabilityRule = rule; // FK, kural insert edildikten sonra EF tarafından bağlanır
-            _context.TeacherAvailabilitySlots.Add(slot);
-        }
 
+        // issue #323 (security L2): kural/slot çakışma kontrolleri + INSERT öğretmen bazlı advisory lock altında, tek
+        // transaction'da (tekil slot oluşturma ve top-up ile AYNI kilit) — paralel istekler kesişen kural/slot açamaz.
+        // Retry-on-failure nedeniyle transaction execution strategy İÇİNDE açılır; her deneme planı sıfırdan kurar.
+        // Bilinen sınır (code review Uyarı-2): COMMIT veritabanına ulaşıp onayı kaybolursa strateji yeniden dener ve kendi
+        // az önce yazdığı kuralı "kesişen kural" görüp 409 döner (veri doğrudur, yalnız yanıt yanlıştır; liste yenilenince
+        // kural görünür). Tekil slotta bu durum CreatedAt eşleşmesiyle başarı sayılır; kuralda CreateTime audit hook'unda
+        // DateTime.UtcNow ile yazıldığı ve yanıt üretilen slot listesini de taşıdığı için ucuz/güvenli bir eşleşme yok.
+        RecurringAvailabilityRuleResultDto? rejection = null;
+        var plan = new MaterializePlan(new List<TeacherAvailabilitySlot>(), new List<DateOnly>());
+        var strategy = _context.Database.CreateExecutionStrategy();
         try
         {
-            // Kural + üretilen slotlar tek SaveChanges → tek transaction (yarım seri kalmaz).
-            await _context.SaveChangesAsync(ct);
+            await strategy.ExecuteAsync(async () =>
+            {
+                DetachForRetry(rule, plan.ToAdd);
+                rejection = null;
+
+                await using var tx = await _context.Database.BeginTransactionAsync(ct);
+                await _context.Database.AcquireTeacherAvailabilityLockAsync(teacher.Id, ct);
+
+                // Öğretmenin aynı gündeki aktif kuralları tek sorguda: sayı sınırı + kesişme kontrolü.
+                var activeRules = await _context.RecurringAvailabilityRules
+                    .AsNoTracking()
+                    .Where(r => r.TeacherId == teacher.Id && r.IsActive)
+                    .Select(r => new { r.DayOfWeek, r.StartTime, r.EndTime, r.EffectiveFrom, r.EffectiveUntil })
+                    .ToListAsync(ct);
+
+                if (activeRules.Count >= MaxActiveRulesPerTeacher)
+                {
+                    rejection = Fail(_localizer["booking.recurringRule.tooMany", MaxActiveRulesPerTeacher]);
+                    return; // commit yok → dispose'da rollback
+                }
+
+                // Haftalık zaman çizgisinde aralık kesişiyor (yarı açık) + geçerlilik tarihleri kesişiyor → 409.
+                // Birebir aynı kural da bu daldan yakalanır; bitişik aralıklar (15:00 bitiş / 15:00 başlangıç) kabul.
+                // issue #300: gün aşan kural (Pzt 23:30–00:30) ertesi günün kuralıyla (Sal 00:00–00:45) da çakışır; bu yüzden
+                // karşılaştırma gün+saat üzerinden haftalık yapılır. Gün aşan kuralın son occurrence'ı EffectiveUntil'in ertesi
+                // gününe taşabildiğinden tarih kesişimi o durumda bir gün toleranslıdır (kenar durumda muhafazakâr 409).
+                var overlapping = activeRules.Any(r =>
+                    WeeklyOverlaps(r.DayOfWeek, r.StartTime, r.EndTime, dto.DayOfWeek, dto.StartTime, dto.EndTime)
+                    && EffectiveRangesOverlap(r.EffectiveFrom, r.EffectiveUntil, r.StartTime, r.EndTime,
+                        dto.EffectiveFrom, dto.EffectiveUntil, dto.StartTime, dto.EndTime));
+
+                if (overlapping)
+                {
+                    rejection = new RecurringAvailabilityRuleResultDto { Success = false, Conflict = true, Message = _localizer["booking.slot.overlapping"] };
+                    return;
+                }
+
+                var horizon = today.AddDays(BookingService.MaxAdvanceDays);
+                var existing = await LoadExistingSlotsAsync(teacher.Id, today, horizon, ct);
+                plan = Plan(rule, ruleId: null, existing, today, now, horizon);
+
+                _context.RecurringAvailabilityRules.Add(rule);
+                foreach (var slot in plan.ToAdd)
+                {
+                    slot.RecurringAvailabilityRule = rule; // FK, kural insert edildikten sonra EF tarafından bağlanır
+                    _context.TeacherAvailabilitySlots.Add(slot);
+                }
+
+                // Kural + üretilen slotlar aynı transaction'da (yarım seri kalmaz).
+                await _context.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            });
         }
         catch (DbUpdateException ex) when (IsUniqueViolation(ex))
         {
-            // Eşzamanlı yarış: yukarıdaki sorgular geçti ama unique index'lerden biri son sözü söyledi.
+            // Kilit dışından gelen (ör. doğrudan SQL) yazıcı: sorgular geçti ama unique index'lerden biri son sözü söyledi.
+            DetachForRetry(rule, plan.ToAdd);
             var violated = ViolatedIndex(ex);
             _logger.LogWarning(ex, "Tekrarlayan kural eklenemedi (unique çakışma: {Index}). TeacherId={TeacherId}",
                 violated?.ToString() ?? "unknown", teacher.Id);
@@ -188,6 +217,15 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
             };
             return new RecurringAvailabilityRuleResultDto { Success = false, Conflict = true, Message = message };
         }
+        catch (TeacherAvailabilityLockTimeoutException ex)
+        {
+            DetachForRetry(rule, plan.ToAdd);
+            _logger.LogWarning(ex, "Tekrarlayan kural: müsaitlik kilidi zaman aşımı. TeacherId={TeacherId}", teacher.Id);
+            return new RecurringAvailabilityRuleResultDto { Success = false, Conflict = true, Message = _localizer["booking.slot.busy"] };
+        }
+
+        if (rejection != null)
+            return rejection;
 
         return new RecurringAvailabilityRuleResultDto
         {
@@ -238,62 +276,102 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
         if (teacherId == null)
             return new RecurringAvailabilityRuleDeleteResultDto { Success = false, NotFound = true, Message = _localizer["booking.teacherRecordNotFound"] };
 
-        var rule = await _context.RecurringAvailabilityRules
-            .FirstOrDefaultAsync(r => r.Id == ruleId, ct);
+        // Hızlı yol (kilitsiz, salt okunur): 404/403 ayrımı. Karar kilit altında yeniden okunan satırla verilir.
+        var owner = await _context.RecurringAvailabilityRules
+            .AsNoTracking()
+            .Where(r => r.Id == ruleId)
+            .Select(r => (int?)r.TeacherId)
+            .FirstOrDefaultAsync(ct);
 
-        if (rule == null)
+        if (owner == null)
             return new RecurringAvailabilityRuleDeleteResultDto { Success = false, NotFound = true, Message = _localizer["booking.recurringRule.notFound"] };
 
         // Başkasının kuralı: 403 (DeleteSlotAsync ile tutarlı; bkz. sınıf yorumu — bilinçli karar).
-        if (rule.TeacherId != teacherId.Value)
+        if (owner.Value != teacherId.Value)
             return new RecurringAvailabilityRuleDeleteResultDto { Success = false, Forbidden = true, Message = _localizer["booking.recurringRule.notOwned"] };
 
         var today = DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime);
-
-        // Bugün dahil gelecekteki occurrence'lar; aktif randevusu olanlar tek sorguda işaretlenir (N+1 yok).
-        var future = await _context.TeacherAvailabilitySlots
-            .Where(s => s.RecurringAvailabilityRuleId == ruleId && s.Date >= today)
-            .Select(s => new
-            {
-                Slot = s,
-                HasActiveBooking = s.Bookings.Any(b => BookingService.ActiveStatuses.Contains(b.Status))
-            })
-            .ToListAsync(ct);
-
         _context.SetCurrentUser(teacherUserId);
 
-        rule.IsActive = false;
-
-        // Seri bugün kapanır; henüz başlamamış kuralda EffectiveUntil >= EffectiveFrom invariant'ı korunur.
-        var closeAt = rule.EffectiveFrom > today ? rule.EffectiveFrom : today;
-        if (rule.EffectiveUntil == null || rule.EffectiveUntil > closeAt)
-            rule.EffectiveUntil = closeAt;
-
-        _context.RecurringAvailabilityRules.Remove(rule); // BaseEntity → soft delete (IsActive/EffectiveUntil de yazılır)
-
-        var result = new RecurringAvailabilityRuleDeleteResultDto
+        // issue #323 (code/security review): seri silme top-up ile AYNI öğretmen kilidi altında, tek transaction'da —
+        // aksi halde kilitsiz okuyan bir top-up silinmekte olan kurala yeni occurrence üretebilirdi. Kural + gelecek slot
+        // sorgusu + SaveChanges kilidin altında. Bilinen sınır: COMMIT onayı kaybolup strateji yeniden denerse kural artık
+        // silinmiş göründüğünden 404 döner (veri doğru, yanıt yanlış).
+        RecurringAvailabilityRuleDeleteResultDto? result = null;
+        var strategy = _context.Database.CreateExecutionStrategy();
+        try
         {
-            Success = true,
-            ObjectId = ruleId,
-            Message = _localizer["booking.recurringRule.deleted"]
-        };
-
-        foreach (var row in future)
-        {
-            if (row.HasActiveBooking)
+            await strategy.ExecuteAsync(async () =>
             {
-                result.PreservedSlotIds.Add(row.Slot.Id);
-                continue;
-            }
+                // Retry: önceki denemenin (geri alınmış) değişiklikleri tekrar uygulanmasın; her deneme sıfırdan okur.
+                _context.ChangeTracker.Clear();
+                result = null;
 
-            _context.TeacherAvailabilitySlots.Remove(row.Slot);
-            result.DeletedSlotIds.Add(row.Slot.Id);
+                await using var tx = await _context.Database.BeginTransactionAsync(ct);
+                await _context.Database.AcquireTeacherAvailabilityLockAsync(teacherId.Value, ct);
+
+                var rule = await _context.RecurringAvailabilityRules
+                    .FirstOrDefaultAsync(r => r.Id == ruleId && r.TeacherId == teacherId.Value, ct);
+                if (rule == null)
+                {
+                    // Kilidi beklerken eşzamanlı bir silme kazandı.
+                    result = new RecurringAvailabilityRuleDeleteResultDto { Success = false, NotFound = true, Message = _localizer["booking.recurringRule.notFound"] };
+                    return;
+                }
+
+                // Bugün dahil gelecekteki occurrence'lar; aktif randevusu olanlar tek sorguda işaretlenir (N+1 yok).
+                var future = await _context.TeacherAvailabilitySlots
+                    .Where(s => s.RecurringAvailabilityRuleId == ruleId && s.Date >= today)
+                    .Select(s => new
+                    {
+                        Slot = s,
+                        HasActiveBooking = s.Bookings.Any(b => BookingService.ActiveStatuses.Contains(b.Status))
+                    })
+                    .ToListAsync(ct);
+
+                rule.IsActive = false;
+
+                // Seri bugün kapanır; henüz başlamamış kuralda EffectiveUntil >= EffectiveFrom invariant'ı korunur.
+                var closeAt = rule.EffectiveFrom > today ? rule.EffectiveFrom : today;
+                if (rule.EffectiveUntil == null || rule.EffectiveUntil > closeAt)
+                    rule.EffectiveUntil = closeAt;
+
+                _context.RecurringAvailabilityRules.Remove(rule); // BaseEntity → soft delete (IsActive/EffectiveUntil de yazılır)
+
+                var attemptResult = new RecurringAvailabilityRuleDeleteResultDto
+                {
+                    Success = true,
+                    ObjectId = ruleId,
+                    Message = _localizer["booking.recurringRule.deleted"]
+                };
+
+                foreach (var row in future)
+                {
+                    if (row.HasActiveBooking)
+                    {
+                        attemptResult.PreservedSlotIds.Add(row.Slot.Id);
+                        continue;
+                    }
+
+                    _context.TeacherAvailabilitySlots.Remove(row.Slot);
+                    attemptResult.DeletedSlotIds.Add(row.Slot.Id);
+                }
+
+                attemptResult.PreservedBookedCount = attemptResult.PreservedSlotIds.Count;
+
+                await _context.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+                result = attemptResult;
+            });
+        }
+        catch (TeacherAvailabilityLockTimeoutException ex)
+        {
+            _context.ChangeTracker.Clear();
+            _logger.LogWarning(ex, "Tekrarlayan kural silme: müsaitlik kilidi zaman aşımı. TeacherId={TeacherId}", teacherId.Value);
+            return new RecurringAvailabilityRuleDeleteResultDto { Success = false, Conflict = true, Message = _localizer["booking.slot.busy"] };
         }
 
-        result.PreservedBookedCount = result.PreservedSlotIds.Count;
-
-        await _context.SaveChangesAsync(ct);
-        return result;
+        return result!;
     }
 
     // ------------------------------------------------------------------
@@ -307,53 +385,56 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
         var horizon = today.AddDays(BookingService.MaxAdvanceDays);
 
         // Ucuz yol: kuralı olmayan öğretmen için tek indeksli sorgu, yazma yok.
-        var rules = await _context.RecurringAvailabilityRules
-            .AsNoTracking()
-            .Where(r => r.TeacherId == teacherId
-                && r.IsActive
-                && (r.EffectiveUntil == null || r.EffectiveUntil >= today))
-            .OrderBy(r => r.Id) // deterministik: aynı güne düşen iki kuraldan hep eski olan önce
-            .ToListAsync(ct);
+        var rules = await LoadTopUpRulesAsync(teacherId, today, ct);
 
         if (rules.Count == 0)
             return 0;
 
-        var existing = await LoadExistingSlotsAsync(teacherId, today, horizon, ct);
-
-        var toAdd = new List<TeacherAvailabilitySlot>();
-        foreach (var rule in rules)
-        {
-            var plan = Plan(rule, rule.Id, existing, today, now, horizon);
-            toAdd.AddRange(plan.ToAdd);
-
-            if (plan.Skipped.Count > 0)
-                _logger.LogInformation(
-                    "Top-up: RuleId={RuleId} için {Count} occurrence çakışma nedeniyle atlandı: {Dates}",
-                    rule.Id, plan.Skipped.Count, string.Join(",", plan.Skipped));
-
-            // Aynı sweep içinde iki kural aynı güne düşerse ikincisi ilkini görsün.
-            foreach (var s in plan.ToAdd)
-                existing.Add(new ExistingSlot(s.Date, s.StartTime, s.EndTime, rule.Id, IsDeleted: false));
-        }
-
-        if (toAdd.Count == 0)
+        // Ucuz yol: kilitsiz ön plan — eklenecek occurrence yoksa (çoğu /mine çağrısı) yazma ve kilit yok.
+        var preview = await PlanTopUpAsync(rules, teacherId, today, now, horizon, logSkipped: false, ct);
+        if (preview.Count == 0)
             return 0;
 
+        // issue #323 (security L2): eklenecekler kilit altında yeniden planlanır — tekil slot / kural oluşturma ile AYNI
+        // öğretmen kilidi; arada açılan kesişen slot görülür ve o hafta atlanır.
+        var toAdd = new List<TeacherAvailabilitySlot>();
         _context.SetCurrentUser(teacherUserId);
-        _context.TeacherAvailabilitySlots.AddRange(toAdd);
-
+        var strategy = _context.Database.CreateExecutionStrategy();
         try
         {
-            await _context.SaveChangesAsync(ct);
+            await strategy.ExecuteAsync(async () =>
+            {
+                DetachForRetry(rule: null, toAdd);
+
+                await using var tx = await _context.Database.BeginTransactionAsync(ct);
+                await _context.Database.AcquireTeacherAvailabilityLockAsync(teacherId, ct);
+
+                // Kurallar da kilit altında YENİDEN okunur (code/security review): ön okumadan sonra silinen/durdurulan
+                // kurala occurrence üretilmez (seri silme aynı kilidi tutar).
+                var lockedRules = await LoadTopUpRulesAsync(teacherId, today, ct);
+                toAdd = await PlanTopUpAsync(lockedRules, teacherId, today, now, horizon, logSkipped: true, ct);
+                if (toAdd.Count == 0)
+                    return;
+
+                _context.TeacherAvailabilitySlots.AddRange(toAdd);
+                await _context.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+            });
         }
         catch (DbUpdateException ex) when (IsUniqueViolation(ex))
         {
-            // Eşzamanlı iki /mine çağrısı aynı occurrence'ı üretmeye çalıştı; unique index kazananı seçti.
-            // Okuma yolu kırılmasın: eklenenleri bırak, bir sonraki çağrı eksikleri tamamlar.
+            // Kilit dışından gelen eşzamanlı yazıcı aynı occurrence'ı üretti; unique index kazananı seçti.
+            // Okuma yolu kırılmasın: transaction geri alındı, bir sonraki çağrı eksikleri tamamlar.
             // Diğer DbUpdateException'lar (FK, bağlantı vb.) bilinçli olarak yukarı fırlar.
             _logger.LogWarning(ex, "Tekrarlayan kural top-up unique çakışması; atlanıyor. TeacherId={TeacherId}", teacherId);
-            foreach (var slot in toAdd)
-                _context.Entry(slot).State = EntityState.Detached;
+            DetachForRetry(rule: null, toAdd);
+            return 0;
+        }
+        catch (TeacherAvailabilityLockTimeoutException ex)
+        {
+            // Okuma yolu (GET /slots/mine) kırılmasın: kilidi tutan yazıcı bitince bir sonraki çağrı eksikleri tamamlar.
+            _logger.LogWarning(ex, "Tekrarlayan kural top-up: müsaitlik kilidi zaman aşımı; atlanıyor. TeacherId={TeacherId}", teacherId);
+            DetachForRetry(rule: null, toAdd);
             return 0;
         }
 
@@ -363,6 +444,69 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
     // ------------------------------------------------------------------
     // Ortak yardımcılar
     // ------------------------------------------------------------------
+
+    /// <summary>
+    /// Top-up'ın işleyeceği kurallar: aktif ve bitişi bugün ya da sonrası. Hem kilitsiz ön plan hem kilit altındaki
+    /// yeniden okuma bu tek sorguyu kullanır.
+    /// </summary>
+    private Task<List<RecurringAvailabilityRule>> LoadTopUpRulesAsync(int teacherId, DateOnly today, CancellationToken ct)
+        => _context.RecurringAvailabilityRules
+            .AsNoTracking()
+            .Where(r => r.TeacherId == teacherId
+                && r.IsActive
+                && (r.EffectiveUntil == null || r.EffectiveUntil >= today))
+            .OrderBy(r => r.Id) // deterministik: aynı güne düşen iki kuraldan hep eski olan önce
+            .ToListAsync(ct);
+
+    /// <summary>
+    /// Top-up planı: her aktif kural için ufka kadar eksik occurrence'lar (çakışanlar atlanır). Aynı sweep içinde iki kural
+    /// aynı güne düşerse ikincisi ilkini görür.
+    /// </summary>
+    private async Task<List<TeacherAvailabilitySlot>> PlanTopUpAsync(
+        List<RecurringAvailabilityRule> rules, int teacherId, DateOnly today, DateTime now, DateOnly horizon,
+        bool logSkipped, CancellationToken ct)
+    {
+        var existing = await LoadExistingSlotsAsync(teacherId, today, horizon, ct);
+
+        var toAdd = new List<TeacherAvailabilitySlot>();
+        foreach (var rule in rules)
+        {
+            var plan = Plan(rule, rule.Id, existing, today, now, horizon);
+            toAdd.AddRange(plan.ToAdd);
+
+            if (logSkipped && plan.Skipped.Count > 0)
+                _logger.LogInformation(
+                    "Top-up: RuleId={RuleId} için {Count} occurrence çakışma nedeniyle atlandı: {Dates}",
+                    rule.Id, plan.Skipped.Count, string.Join(",", plan.Skipped));
+
+            // Aynı sweep içinde iki kural aynı güne düşerse ikincisi ilkini görsün.
+            foreach (var s in plan.ToAdd)
+                existing.Add(new ExistingSlot(s.Date, s.StartTime, s.EndTime, rule.Id, IsDeleted: false));
+        }
+
+        return toAdd;
+    }
+
+    /// <summary>
+    /// issue #323: execution strategy retry'ı ya da yakalanan çakışma sonrası, önceki denemenin (geri alınmış) kural/slot
+    /// nesnelerini change tracker'dan ayırır — sonraki deneme planı ve satırları sıfırdan kurar.
+    /// </summary>
+    private void DetachForRetry(RecurringAvailabilityRule? rule, IEnumerable<TeacherAvailabilitySlot> slots)
+    {
+        foreach (var slot in slots)
+        {
+            if (_context.Entry(slot).State != EntityState.Detached)
+                _context.Entry(slot).State = EntityState.Detached;
+        }
+
+        if (rule != null)
+        {
+            if (_context.Entry(rule).State != EntityState.Detached)
+                _context.Entry(rule).State = EntityState.Detached;
+            rule.Id = 0;
+            rule.GeneratedSlots.Clear();
+        }
+    }
 
     /// <summary>
     /// Ufuk içindeki mevcut satırlar, tarihe göre indeksli — <b>soft-delete edilmişler dahil</b>
@@ -485,9 +629,6 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
         var lastB = untilB?.AddDays(SlotTimeRange.CrossesMidnight(startB, endB) ? 1 : 0);
         return (lastA == null || lastA >= fromB) && (lastB == null || fromA <= lastB);
     }
-
-    private static bool IsMinutePrecision(TimeOnly time)
-        => time.Ticks % TimeSpan.TicksPerMinute == 0;
 
     /// <summary>
     /// Yalnızca unique index ihlali yutulur; FK/bağlantı gibi diğer DbUpdateException'lar yukarı fırlar.

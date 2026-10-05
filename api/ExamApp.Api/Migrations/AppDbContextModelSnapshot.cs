@@ -1476,7 +1476,10 @@ namespace ExamApp.Api.Migrations
                         .IsUnique()
                         .HasFilter("\"IsActive\" AND NOT \"IsDeleted\"");
 
-                    b.ToTable("RecurringAvailabilityRules");
+                    b.ToTable("RecurringAvailabilityRules", t =>
+                        {
+                            t.HasCheckConstraint("CK_RecurringAvailabilityRules_Duration", "\"EndTime\" <> \"StartTime\" AND (CASE WHEN \"EndTime\" > \"StartTime\" THEN \"EndTime\" - \"StartTime\" ELSE \"EndTime\" - \"StartTime\" + interval '24 hours' END) <= interval '4 hours'");
+                        });
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Reward", b =>
@@ -2218,7 +2221,10 @@ namespace ExamApp.Api.Migrations
                         .IsUnique()
                         .HasFilter("NOT \"IsDeleted\"");
 
-                    b.ToTable("TeacherAvailabilitySlots");
+                    b.ToTable("TeacherAvailabilitySlots", t =>
+                        {
+                            t.HasCheckConstraint("CK_TeacherAvailabilitySlots_Duration", "\"EndTime\" <> \"StartTime\" AND (CASE WHEN \"EndTime\" > \"StartTime\" THEN \"EndTime\" - \"StartTime\" ELSE \"EndTime\" - \"StartTime\" + interval '24 hours' END) <= interval '4 hours'");
+                        });
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.TeacherSubject", b =>

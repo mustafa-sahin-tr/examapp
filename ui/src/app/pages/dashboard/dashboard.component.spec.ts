@@ -10,6 +10,8 @@ import { BadgeService, BadgeProgressItem, BadgeProgressResponse } from '../../se
 import { StudentResetService } from '../../services/student-reset.service';
 import { StudentService } from '../../services/student.service';
 import { LocaleService } from '../../services/locale.service';
+import { PracticeService } from '../../services/practice.service';
+import { DailySet } from '../../models/practice';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import trTranslations from '../../../../public/i18n/tr.json';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES, localeDefinitionOf } from '../../models/locale';
@@ -75,11 +77,28 @@ function badgeProgressResponse(badges: BadgeProgressItem[]): BadgeProgressRespon
   };
 }
 
+function dailySetFixture(overrides: Partial<DailySet> = {}): DailySet {
+  return {
+    date: '2026-09-09',
+    status: 'NotStarted',
+    total: 5,
+    targetCount: 5,
+    answered: 0,
+    correct: 0,
+    wrong: 0,
+    skipped: 0,
+    sessionId: null,
+    scope: null,
+    ...overrides,
+  };
+}
+
 describe('DashboardComponent', () => {
   let component: DashboardComponent;
   let testServiceSpy: jasmine.SpyObj<TestService>;
   let badgeServiceSpy: jasmine.SpyObj<BadgeService>;
   let studentServiceSpy: jasmine.SpyObj<StudentService>;
+  let practiceServiceSpy: jasmine.SpyObj<PracticeService>;
 
   function createComponent(): DashboardComponent {
     const fixture = TestBed.createComponent(DashboardComponent);
@@ -100,6 +119,8 @@ describe('DashboardComponent', () => {
     );
     badgeServiceSpy.getUserBadgeProgress.and.returnValue(of(badgeProgressResponse([])));
     studentServiceSpy.getLastLogin.and.returnValue(of({ lastLoginAtUtc: null }));
+    practiceServiceSpy = jasmine.createSpyObj<PracticeService>('PracticeService', ['getDailySet']);
+    practiceServiceSpy.getDailySet.and.returnValue(of(dailySetFixture()));
 
     TestBed.configureTestingModule({
       imports: [DashboardComponent, translocoTesting],
@@ -109,6 +130,7 @@ describe('DashboardComponent', () => {
         { provide: StudentResetService, useValue: jasmine.createSpyObj('StudentResetService', ['resetMyData']) },
         { provide: StudentService, useValue: studentServiceSpy },
         { provide: LocaleService, useValue: localeServiceStub },
+        { provide: PracticeService, useValue: practiceServiceSpy },
         { provide: Router, useValue: jasmine.createSpyObj<Router>('Router', ['navigate']) },
       ],
     });
@@ -530,6 +552,132 @@ describe('DashboardComponent', () => {
       const scroll = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.heatmap-scroll')!;
       expect(fixture.componentInstance.heatmapContainerWidth()).toBe(scroll.clientWidth);
       expect(fixture.componentInstance.heatmapContainerWidth()).toBeGreaterThan(0);
+    });
+  });
+
+  // ── Günün soruları kartı (issue #99) ─────────────────────────────────────────
+  describe('daily questions card', () => {
+    it('ngOnInit_DailySetLoaded_StoresSetAndClearsLoading', () => {
+      component = createComponent();
+
+      component.ngOnInit();
+
+      expect(practiceServiceSpy.getDailySet).toHaveBeenCalledTimes(1);
+      expect(component.dailySet()?.total).toBe(5);
+      expect(component.dailyLoading()).toBeFalse();
+      expect(component.dailyError()).toBeFalse();
+    });
+
+    it('ngOnInit_DailySetFails_OnlyCardErrors_OtherSectionsUnaffected', () => {
+      spyOn(console, 'error');
+      practiceServiceSpy.getDailySet.and.returnValue(throwError(() => new Error('down')));
+      component = createComponent();
+
+      component.ngOnInit();
+
+      expect(component.dailyError()).toBeTrue();
+      expect(component.dailyLoading()).toBeFalse();
+      expect(component.error()).toBeNull();
+      expect(component.loading()).toBeFalse();
+      expect(component.activityApiError()).toBeFalse();
+      expect(component.badgeProgressError()).toBeFalse();
+    });
+
+    it('loadDailySet_RetryAfterError_ReloadsOnlyDailySet', () => {
+      spyOn(console, 'error');
+      practiceServiceSpy.getDailySet.and.returnValues(
+        throwError(() => new Error('down')),
+        of(dailySetFixture({ status: 'InProgress', answered: 2 }))
+      );
+      component = createComponent();
+      component.ngOnInit();
+
+      component.loadDailySet();
+
+      expect(practiceServiceSpy.getDailySet).toHaveBeenCalledTimes(2);
+      expect(testServiceSpy.getActiveAssignments).toHaveBeenCalledTimes(1);
+      expect(component.dailyError()).toBeFalse();
+      expect(component.dailySet()?.status).toBe('InProgress');
+    });
+
+    function withCurrentStreak(response: BadgeProgressResponse, current: number): BadgeProgressResponse {
+      return { ...response, summary: { ...response.summary, currentActivityStreak: current, bestActivityStreak: 9 } };
+    }
+
+    it('dailyStreak_StreakPathBadge_ReturnsSummaryCurrentActivityStreak', () => {
+      badgeServiceSpy.getUserBadgeProgress.and.returnValue(
+        of(
+          withCurrentStreak(
+            badgeProgressResponse([
+              // currentValue en iyi seriye dayanır ve tavanlıdır; seri sayısı buradan okunmaz.
+              buildBadge({ badgeDefinitionId: 's1', pathKey: 'streak-path', currentValue: 5, targetValue: 5 }),
+              buildBadge({ badgeDefinitionId: 'x', pathKey: 'other', currentValue: 40, targetValue: 50 }),
+            ]),
+            3
+          )
+        )
+      );
+      component = createComponent();
+
+      component.ngOnInit();
+
+      expect(component.dailyStreak()).toBe(3);
+    });
+
+    it('dailyStreak_BrokenStreak_BestHighButCurrentZero_IsNull', () => {
+      badgeServiceSpy.getUserBadgeProgress.and.returnValue(
+        of(
+          withCurrentStreak(
+            badgeProgressResponse([
+              buildBadge({ badgeDefinitionId: 's1', pathKey: 'streak-path', currentValue: 7, targetValue: 7, isCompleted: true }),
+            ]),
+            0
+          )
+        )
+      );
+      component = createComponent();
+
+      component.ngOnInit();
+
+      expect(component.dailyStreak()).toBeNull();
+    });
+
+    it('dailyStreak_NoStreakBadge_IsNull', () => {
+      badgeServiceSpy.getUserBadgeProgress.and.returnValue(
+        of(badgeProgressResponse([buildBadge({ pathKey: 'other', currentValue: 4 })]))
+      );
+      component = createComponent();
+
+      component.ngOnInit();
+
+      expect(component.dailyStreak()).toBeNull();
+    });
+
+    it('cardOutputs_NavigateToDailyPracticeFreePracticeAndProfile', () => {
+      component = createComponent();
+      const router = TestBed.inject(Router) as jasmine.SpyObj<Router>;
+
+      component.onDailyStart();
+      component.onDailyFreePractice();
+      component.onDailyGoToProfile();
+
+      expect(router.navigate.calls.allArgs()).toEqual([
+        [['/practice'], { queryParams: { daily: 1 } }],
+        [['/practice']],
+        [['/student-profile']],
+      ]);
+    });
+
+    it('template_RendersCardBetweenWelcomeAndActivitySection', () => {
+      const fixture = TestBed.createComponent(DashboardComponent);
+      fixture.detectChanges();
+
+      const host = fixture.nativeElement as HTMLElement;
+      const card = host.querySelector('app-daily-questions-card');
+      expect(card).toBeTruthy();
+      expect(card?.previousElementSibling?.classList.contains('dashboard-welcome')).toBeTrue();
+      expect(card?.nextElementSibling?.classList.contains('dashboard-section')).toBeTrue();
+      expect(card?.querySelector('[role="region"]')?.getAttribute('aria-label')).toBe('Günün soruları');
     });
   });
 });

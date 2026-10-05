@@ -1,0 +1,148 @@
+<section class="daily-card" role="region" *transloco="let t; prefix: 'dashboard.dailyQuestions'"
+  [attr.aria-label]="t('eyebrow')" [attr.aria-busy]="state() === 'loading' ? 'true' : null"
+  [class.daily-card--done]="state() === 'completed'" [attr.data-state]="state()">
+  @switch (state()) {
+  @case ('loading') {
+  <div class="daily-card__loading" role="status">
+    <span class="daily-card__skeleton daily-card__skeleton--icon" aria-hidden="true"></span>
+    <span class="daily-card__skeleton-lines" aria-hidden="true">
+      <span class="daily-card__skeleton daily-card__skeleton--short"></span>
+      <span class="daily-card__skeleton daily-card__skeleton--long"></span>
+    </span>
+    <span class="daily-card__loading-text">{{ t('loading') }}</span>
+  </div>
+  }
+
+  @case ('error') {
+  <div class="daily-card__message daily-card__message--error" role="alert">
+    <mat-icon aria-hidden="true">cloud_off</mat-icon>
+    <p>{{ t('error') }}</p>
+  </div>
+  <div class="daily-card__actions">
+    <button mat-stroked-button type="button" class="daily-card__cta" data-cta="retry" (click)="retry.emit()">
+      <mat-icon>refresh</mat-icon>
+      {{ t('retry') }}
+    </button>
+  </div>
+  }
+
+  @case ('empty') {
+  <div class="daily-card__head">
+    <span class="daily-card__icon daily-card__icon--info" aria-hidden="true"><mat-icon>inbox</mat-icon></span>
+    <div class="daily-card__text">
+      <span class="daily-card__eyebrow">{{ t('eyebrow') }}</span>
+      <h3 class="daily-card__title">{{ t('emptyTitle') }}</h3>
+      <p class="daily-card__sub">{{ t('emptyText') }}</p>
+    </div>
+  </div>
+  <div class="daily-card__message daily-card__message--info daily-card__note">
+    <mat-icon aria-hidden="true">info</mat-icon>
+    <p>{{ t('emptyHint') }}</p>
+  </div>
+  <div class="daily-card__actions">
+    <button mat-stroked-button type="button" class="daily-card__cta" data-cta="profile" (click)="goToProfile.emit()">
+      <mat-icon>person</mat-icon>
+      {{ t('goToProfile') }}
+    </button>
+  </div>
+  }
+
+  @default {
+  <div class="daily-card__head">
+    <span class="daily-card__icon" [class.daily-card__icon--done]="state() === 'completed'" aria-hidden="true">
+      <mat-icon>{{ state() === 'completed' ? 'check_circle' : 'bolt' }}</mat-icon>
+    </span>
+    <div class="daily-card__text">
+      <span class="daily-card__eyebrow">{{ t('eyebrow') }}</span>
+      @switch (state()) {
+      @case ('inProgress') {
+      <h3 class="daily-card__title">{{ t('titleInProgress') }}</h3>
+      <p class="daily-card__sub">{{ t(remaining() === 1 ? 'subInProgressOne' : 'subInProgress', { count: remaining() }) }}</p>
+      }
+      @case ('completed') {
+      <h3 class="daily-card__title">{{ t('titleDone') }}</h3>
+      <p class="daily-card__sub">{{
+        skipped() > 0
+          ? t('subDoneWithSkipped', { correct: correct(), wrong: wrong(), skipped: skipped() })
+          : t('subDone', { correct: correct(), wrong: wrong() })
+      }}</p>
+      }
+      @case ('lowPool') {
+      <h3 class="daily-card__title">{{ t(total() === 1 ? 'lowPoolTitleOne' : 'lowPoolTitle', { count: total() }) }}</h3>
+      <p class="daily-card__sub">{{ t('subStart') }}</p>
+      }
+      @default {
+      <h3 class="daily-card__title">{{ t(total() === 1 ? 'titleStartOne' : 'titleStart', { count: total() }) }}</h3>
+      <p class="daily-card__sub">{{ t('subStart') }}</p>
+      }
+      }
+    </div>
+  </div>
+
+  <div class="daily-card__progress">
+    <div class="daily-card__bar-row">
+      <app-daily-progress-steps class="daily-card__bar" variant="bar" [total]="total()" [done]="answered()"
+        [currentIndex]="currentIndex()" [ariaLabel]="t('eyebrow')"
+        [valueText]="t('progressAria', { total: total(), done: answered() })" />
+      <span class="daily-card__count" aria-hidden="true">{{ answered() }} / {{ total() }}</span>
+    </div>
+    <mat-chip-set class="daily-card__chips">
+      @if (state() === 'completed') {
+      <mat-chip class="daily-card__chip daily-card__chip--done" disableRipple>
+        <mat-icon matChipAvatar aria-hidden="true">check_circle</mat-icon>
+        {{ t('completed') }}
+      </mat-chip>
+      } @else {
+      <mat-chip class="daily-card__chip" disableRipple>
+        <mat-icon matChipAvatar aria-hidden="true">shuffle</mat-icon>
+        {{ t('scopeRandom') }}
+      </mat-chip>
+      <mat-chip class="daily-card__chip" disableRipple>
+        <mat-icon matChipAvatar aria-hidden="true">timer</mat-icon>
+        {{ t('duration', { minutes: minutes() }) }}
+      </mat-chip>
+      }
+      @if (showStreak()) {
+      <mat-chip class="daily-card__chip daily-card__chip--streak" disableRipple>
+        <mat-icon matChipAvatar aria-hidden="true">local_fire_department</mat-icon>
+        {{ t(streak() === 1 ? 'streakOne' : 'streak', { count: streak() }) }}
+      </mat-chip>
+      }
+    </mat-chip-set>
+  </div>
+
+  <div class="daily-card__actions">
+    @switch (state()) {
+    @case ('completed') {
+    <button mat-stroked-button type="button" class="daily-card__cta" data-cta="freePractice"
+      (click)="freePractice.emit()">
+      <mat-icon>shuffle</mat-icon>
+      {{ t('freePractice') }}
+    </button>
+    }
+    @case ('inProgress') {
+    <button mat-flat-button color="primary" type="button" class="daily-card__cta" data-cta="start"
+      (click)="start.emit()">
+      <mat-icon>play_arrow</mat-icon>
+      {{ t('continue') }}
+    </button>
+    }
+    @default {
+    <button mat-flat-button color="primary" type="button" class="daily-card__cta" data-cta="start"
+      (click)="start.emit()">
+      <mat-icon>play_arrow</mat-icon>
+      {{ t('start') }}
+    </button>
+    }
+    }
+  </div>
+
+  @if (state() === 'lowPool') {
+  <div class="daily-card__message daily-card__message--info daily-card__note">
+    <mat-icon aria-hidden="true">info</mat-icon>
+    <p>{{ t('lowPoolNote', { max: targetCount() }) }}</p>
+  </div>
+  }
+  }
+  }
+</section>

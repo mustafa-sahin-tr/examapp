@@ -19,12 +19,22 @@ import { TestService } from '../../services/test.service';
 import { AssignedWorksheet } from '../../models/assignment';
 import { Test } from '../../models/test-instance';
 import { NgxChartsModule, Color, ScaleType } from '@swimlane/ngx-charts';
-import { BadgeProgressItem, BadgeService, UserActivityResponse } from '../../services/badge.service';
+import {
+  BadgeProgressItem,
+  BadgeProgressSummary,
+  BadgeService,
+  UserActivityResponse,
+} from '../../services/badge.service';
 import { finalize } from 'rxjs';
 import { StudentResetService } from '../../services/student-reset.service';
 import { StudentService } from '../../services/student.service';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { LocaleService } from '../../services/locale.service';
+import { PracticeService } from '../../services/practice.service';
+import { DailySet } from '../../models/practice';
+import { DailyQuestionsCardComponent } from '../../shared/components/daily-questions-card/daily-questions-card.component';
+import { dailyStreakFrom } from '../../shared/utils/daily-streak.util';
+import { currentUserId } from '../../shared/utils/current-user-id.util';
 
 interface AssignmentCardViewModel {
   assignment: AssignedWorksheet;
@@ -49,7 +59,15 @@ interface UpcomingBadgeViewModel {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, MatIconModule, CompactTestCardComponent, SectionHeaderComponent, NgxChartsModule, TranslocoPipe],
+  imports: [
+    CommonModule,
+    MatIconModule,
+    CompactTestCardComponent,
+    SectionHeaderComponent,
+    NgxChartsModule,
+    TranslocoPipe,
+    DailyQuestionsCardComponent,
+  ],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
 })
@@ -61,6 +79,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly studentService = inject(StudentService);
   private readonly transloco = inject(TranslocoService);
   private readonly localeService = inject(LocaleService);
+  private readonly practiceService = inject(PracticeService);
 
   /** `toLocaleDateString` gibi Intl API'lerine verilecek aktif dil etiketi (örn. 'tr', 'en-US'). */
   private get intlLocale(): string {
@@ -81,12 +100,23 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly earnedBadges = signal<BadgeProgressItem[]>([]);
   /** Ham rozet ilerleme listesi (tamamlanan + tamamlanmayan); earnedBadges ve upcomingBadges buradan türer. */
   readonly allBadgeProgress = signal<BadgeProgressItem[]>([]);
+  /** Rozet ilerleme cevabının özeti; günlük seri (`currentActivityStreak`) buradan okunur (#99). */
+  readonly badgeSummary = signal<BadgeProgressSummary | null>(null);
   readonly resetInProgress = signal(false);
   readonly resetMessage = signal<string | null>(null);
 
   /** Issue #126 — önceki giriş zamanı; null ise chip hiç render edilmez. */
   readonly lastLoginAtUtc = signal<string | null>(null);
   readonly lastLoginLabel = computed(() => this.formatLastLogin(this.lastLoginAtUtc()));
+
+  /**
+   * Issue #99 — "Günün soruları" kartı. Kendi yükleniyor/hata durumuna sahiptir; diğer bölümleri etkilemez.
+   * Seri, zaten çekilen rozet ilerlemesindeki `DailyStreak` rozetlerinden türetilir (yoksa null → chip gizli).
+   */
+  readonly dailySet = signal<DailySet | null>(null);
+  readonly dailyLoading = signal(true);
+  readonly dailyError = signal(false);
+  readonly dailyStreak = computed(() => dailyStreakFrom(this.badgeSummary(), this.allBadgeProgress())?.count ?? null);
 
   readonly upcomingBadgesLimit = 3;
   readonly upcomingBadges = computed<UpcomingBadgeViewModel[]>(() =>
@@ -245,6 +275,36 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadUserActivityHeatmap(resolvedUserId);
     this.loadUserBadgeProgress(resolvedUserId);
     this.loadLastLogin();
+    this.loadDailySet();
+  }
+
+  /** Yalnız kartın isteğini (yeniden) yapar; "Tekrar dene" de bunu çağırır. */
+  loadDailySet(): void {
+    this.dailyLoading.set(true);
+    this.dailyError.set(false);
+    this.practiceService.getDailySet().subscribe({
+      next: (set) => {
+        this.dailySet.set(set);
+        this.dailyLoading.set(false);
+      },
+      error: (error) => {
+        console.error('Günün soruları alınamadı', error);
+        this.dailyError.set(true);
+        this.dailyLoading.set(false);
+      },
+    });
+  }
+
+  onDailyStart(): void {
+    void this.router.navigate(['/practice'], { queryParams: { daily: 1 } });
+  }
+
+  onDailyFreePractice(): void {
+    void this.router.navigate(['/practice']);
+  }
+
+  onDailyGoToProfile(): void {
+    void this.router.navigate(['/student-profile']);
   }
 
   onResetMyActivity(): void {
@@ -458,6 +518,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.badgeProgressError.set(false);
     this.earnedBadges.set([]);
     this.allBadgeProgress.set([]);
+    this.badgeSummary.set(null);
 
     this.badgeService
       .getUserBadgeProgress(userId)
@@ -474,6 +535,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
               return bTime - aTime;
             });
           this.allBadgeProgress.set(all);
+          this.badgeSummary.set(response?.summary ?? null);
           this.earnedBadges.set(earned);
         },
         error: (error) => {
@@ -481,6 +543,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           this.badgeProgressError.set(true);
           this.earnedBadges.set([]);
           this.allBadgeProgress.set([]);
+          this.badgeSummary.set(null);
         },
       });
   }
@@ -706,23 +769,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private getUserIdFromLocalStorage(): number | null {
-    if (typeof window === 'undefined') {
-      return null;
-    }
-
-    try {
-      const stored = window.localStorage.getItem('user');
-      if (!stored) {
-        return null;
-      }
-
-      const parsed = JSON.parse(stored);
-      const userId = Number(parsed?.id);
-      return Number.isFinite(userId) && userId > 0 ? userId : null;
-    } catch (error) {
-      console.warn('DashboardComponent: localStorage user verisi okunamadı', error);
-      return null;
-    }
+    return currentUserId();
   }
 
   private updateViewportWidth(): void {

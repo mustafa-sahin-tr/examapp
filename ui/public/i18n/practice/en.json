@@ -103,5 +103,37 @@
   },
   "error": {
     "generic": "The operation could not be completed. Please try again."
+  },
+  "daily": {
+    "title": "Daily questions",
+    "setBadge": "Daily set",
+    "step": "Question {{current}} / {{total}}",
+    "stepAria": "Question {{n}}: {{status}}",
+    "stepsAria": "Daily set progress",
+    "status": {
+      "correct": "correct",
+      "wrong": "wrong",
+      "skipped": "skipped",
+      "current": "current question",
+      "pending": "not solved"
+    },
+    "resumeNote": "You're continuing where you left off. Today's set won't change.",
+    "loading": "Preparing your daily questions...",
+    "loadError": "Could not load daily questions, please try again.",
+    "doneTitle": "Today's set is done!",
+    "alreadyDoneTitle": "You already finished today's set",
+    "doneText": "Great job. A new set awaits tomorrow.",
+    "alreadyDoneText": "Daily questions can be solved once a day. You can keep going with free practice.",
+    "streakNote": "Daily streak: {{count}} days.",
+    "streakNoteOne": "Daily streak: {{count}} day.",
+    "streakNext": "{{remaining}} days to the {{target}}-day badge.",
+    "streakNextOne": "{{remaining}} day to the {{target}}-day badge.",
+    "tomorrow": "A new set arrives tomorrow. Missed days don't accumulate.",
+    "freePractice": "Go to free practice",
+    "review": "Review answers",
+    "backToDashboard": "Back to dashboard",
+    "emptyTitle": "No questions for today",
+    "emptyText": "Your daily set will show up here once questions are added for your grade.",
+    "goToProfile": "Go to profile"
   }
 }

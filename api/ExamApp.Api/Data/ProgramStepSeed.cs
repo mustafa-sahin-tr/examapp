@@ -21,58 +21,58 @@ namespace ExamApp.Api.Data
             {
                 new { Id = 1, Order = 1, Title = "Süreli mi yoksa soru sayısı takipli bir çalışma mı planlamak istersin?", Description = "Süreli mi yoksa soru sayısı takipli bir çalışma mı planlamak istersin?", Multiple = false,
                     Options = new[] {
-                        new { Label = "Süreli Çalışma", Value = "time", Icon = "icons/question-mark.svg", NextStep = (int?)2 },
-                        new { Label = "Soru Sayısı Takipli Çalışma", Value = "question", Icon = "icons/timer.svg", NextStep = (int?)3 }
+                        new { Label = "Süreli Çalışma", Value = "time", Icon = "timer", NextStep = (int?)2 },
+                        new { Label = "Soru Sayısı Takipli Çalışma", Value = "question", Icon = "quiz", NextStep = (int?)3 }
                     },
                     Actions = new[] { new { Label = default(string), Value = default(string) } }.Take(0).ToArray()
                 },
                 new { Id = 2, Order = 2, Title = "Sana uygun olan çalışma süresini seçebilirsin.", Description = "Sana uygun olan çalışma süresini seçebilirsin.", Multiple = false,
                     Options = new[] {
-                        new { Label = "25 dakika çalışma 5 dakika ara", Value = "25-5", Icon = "icons/question-mark.svg", NextStep = (int?)5 },
-                        new { Label = "30 dakika çalışma 10 dakika ara", Value = "30-10", Icon = "icons/question-mark.svg", NextStep = (int?)5 },
-                        new { Label = "40 dakika çalışma 10 dakika ara", Value = "40-10", Icon = "icons/question-mark.svg", NextStep = (int?)5 },
-                        new { Label = "50 dakika çalışma 10 dakika ara", Value = "50-10", Icon = "icons/question-mark.svg", NextStep = (int?)5 }
+                        new { Label = "25 dakika çalışma 5 dakika ara", Value = "25-5", Icon = "hourglass_empty", NextStep = (int?)5 },
+                        new { Label = "30 dakika çalışma 10 dakika ara", Value = "30-10", Icon = "hourglass_top", NextStep = (int?)5 },
+                        new { Label = "40 dakika çalışma 10 dakika ara", Value = "40-10", Icon = "hourglass_bottom", NextStep = (int?)5 },
+                        new { Label = "50 dakika çalışma 10 dakika ara", Value = "50-10", Icon = "hourglass_full", NextStep = (int?)5 }
                     },
                     Actions = new[] { new { Label = default(string), Value = default(string) } }.Take(0).ToArray()
                 },
                 new { Id = 3, Order = 3, Title = "Bir dersten bir günde kaç soru çözersin?", Description = "Bir dersten bir günde kaç soru çözersin?", Multiple = false,
                     Options = new[] {
-                        new { Label = "8", Value = "8", Icon = "icons/question-mark.svg", NextStep = (int?)5 },
-                        new { Label = "12", Value = "12", Icon = "icons/question-mark.svg", NextStep = (int?)5 },
-                        new { Label = "16", Value = "16", Icon = "icons/question-mark.svg", NextStep = (int?)5 }
+                        new { Label = "8", Value = "8", Icon = "note", NextStep = (int?)5 },
+                        new { Label = "12", Value = "12", Icon = "library_books", NextStep = (int?)5 },
+                        new { Label = "16", Value = "16", Icon = "auto_stories", NextStep = (int?)5 }
                     },
                     Actions = new[] { new { Label = default(string), Value = default(string) } }.Take(0).ToArray()
                 },
                 // Id = 4 was a dead duplicate of step 1 (no option pointed to it); removed in FixProgramStepWizardDeadEnd.
                 new { Id = 5, Order = 5, Title = "Bir günde kaç farklı ders çalışmak istersin?", Description = "Bir günde kaç farklı ders çalışmak istersin?", Multiple = false,
                     Options = new[] {
-                        new { Label = "1", Value = "1", Icon = "icons/one-svgrepo-com.svg", NextStep = (int?)6 },
-                        new { Label = "2", Value = "2", Icon = "icons/two-svgrepo-com.svg", NextStep = (int?)6 },
-                        new { Label = "3", Value = "3", Icon = "icons/three-svgrepo-com.svg", NextStep = (int?)6 }
+                        new { Label = "1", Value = "1", Icon = "filter_1", NextStep = (int?)6 },
+                        new { Label = "2", Value = "2", Icon = "filter_2", NextStep = (int?)6 },
+                        new { Label = "3", Value = "3", Icon = "filter_3", NextStep = (int?)6 }
                     },
                     Actions = new[] { new { Label = default(string), Value = default(string) } }.Take(0).ToArray()
                 },
                 new { Id = 6, Order = 6, Title = "Ders çalışamayacağın gün var mı?", Description = "Ders çalışamayacağın gün var mı?", Multiple = true,
                     Options = new[] {
-                        new { Label = "Pazartesi", Value = "1", Icon = "icons/monday-svgrepo-com.svg", NextStep = (int?)7 },
-                        new { Label = "Salı", Value = "2", Icon = "icons/tuesday-svgrepo-com.svg", NextStep = (int?)7 },
-                        new { Label = "Çarşamba", Value = "3", Icon = "icons/wednesday-svgrepo-com.svg", NextStep = (int?)7 },
-                        new { Label = "Perşembe", Value = "4", Icon = "icons/thursday-svgrepo-com.svg", NextStep = (int?)7 },
-                        new { Label = "Cuma", Value = "5", Icon = "icons/friday-svgrepo-com.svg", NextStep = (int?)7 },
-                        new { Label = "Cumartesi", Value = "6", Icon = "icons/saturday-svgrepo-com.svg", NextStep = (int?)7 },
-                        new { Label = "Pazar", Value = "7", Icon = "icons/sunday-svgrepo-com.svg", NextStep = (int?)7 },
-                        new { Label = "Yok", Value = "8", Icon = "icons/null-svgrepo-com.svg", NextStep = (int?)7 }
+                        new { Label = "Pazartesi", Value = "1", Icon = "looks_one", NextStep = (int?)7 },
+                        new { Label = "Salı", Value = "2", Icon = "looks_two", NextStep = (int?)7 },
+                        new { Label = "Çarşamba", Value = "3", Icon = "looks_3", NextStep = (int?)7 },
+                        new { Label = "Perşembe", Value = "4", Icon = "looks_4", NextStep = (int?)7 },
+                        new { Label = "Cuma", Value = "5", Icon = "looks_5", NextStep = (int?)7 },
+                        new { Label = "Cumartesi", Value = "6", Icon = "weekend", NextStep = (int?)7 },
+                        new { Label = "Pazar", Value = "7", Icon = "wb_sunny", NextStep = (int?)7 },
+                        new { Label = "Yok", Value = "8", Icon = "event_available", NextStep = (int?)7 }
                     },
                     Actions = new[] { new { Label = default(string), Value = default(string) } }.Take(0).ToArray()
                 },
                 new { Id = 7, Order = 7, Title = "Çalışırken zorlandığın ders / dersler hangileri?", Description = "Çalışırken zorlandığın ders / dersler hangileri?", Multiple = true,
                     Options = new[] {
                         // Last step: NextStep = null means the wizard proceeds to the "create program" form.
-                        new { Label = "Hayat Bilgisi", Value = "1", Icon = "icons/home-svgrepo-com.svg", NextStep = (int?)null },
-                        new { Label = "Türkçe", Value = "2", Icon = "icons/alphabet-svgrepo-com.svg", NextStep = (int?)null },
-                        new { Label = "Matematik", Value = "3", Icon = "icons/math-svgrepo-com.svg", NextStep = (int?)null },
-                        new { Label = "Fen Bilimleri", Value = "4", Icon = "icons/world-svgrepo-com.svg", NextStep = (int?)null },
-                        new { Label = "Yok", Value = "5", Icon = "icons/null-svgrepo-com.svg", NextStep = (int?)null }
+                        new { Label = "Hayat Bilgisi", Value = "1", Icon = "home", NextStep = (int?)null },
+                        new { Label = "Türkçe", Value = "2", Icon = "spellcheck", NextStep = (int?)null },
+                        new { Label = "Matematik", Value = "3", Icon = "calculate", NextStep = (int?)null },
+                        new { Label = "Fen Bilimleri", Value = "4", Icon = "science", NextStep = (int?)null },
+                        new { Label = "Yok", Value = "5", Icon = "sentiment_satisfied", NextStep = (int?)null }
                     },
                     Actions = new[] { new { Label = default(string), Value = default(string) } }.Take(0).ToArray()
                 }

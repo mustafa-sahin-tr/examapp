@@ -135,12 +135,19 @@ public partial class WorksheetCommentServiceTests
         await SetTeacherSchoolAsync(Owner, w.OtherSchoolId);
 
         // issue #326 (security O1): rootB'nin sabiti SAHİP kaynaklı → sahip okuldan ayrılınca geçersiz (eskiden #305'te
-        // sahip okul dışına taşınsa da sorumlusu olduğu thread'i görmeye devam ederdi). Atama kaynaklı sabitler etkilenmez
-        // (bkz. Assignment_pin_is_not_affected_when_the_assigner_changes_school).
+        // sahip okul dışına taşınsa da sorumlusu olduğu thread'i görmeye devam ederdi). issue #334: atama kaynaklı sabitler de
+        // aynı kurala tabi (bkz. WorksheetCommentAssignmentPinSchoolTests).
         var page = (await GetAsync(w.WorksheetId, Teacher(Owner))).Page!;
         page.Items.ShouldBeEmpty();
         ShouldFail(await GetRepliesAsync(w.WorksheetId, rootA, Teacher(Owner)), WorksheetCommentErrorCodes.RootCommentNotFound, notFound: true);
         ShouldFail(await GetRepliesAsync(w.WorksheetId, rootB, Teacher(Owner)), WorksheetCommentErrorCodes.RootCommentNotFound, notFound: true);
+    }
+
+    /// <summary>A'nın okulunu kaldırır (okulsuz öğrenci) — #334 bağımsız istisnası (okulsuz öğretmen + okulsuz öğrenci) için.</summary>
+    private async Task MakeStudentASchoollessAsync()
+    {
+        await using var ctx = _db.NewContext();
+        await ctx.Students.Where(s => s.UserId == StudentAUser).ExecuteUpdateAsync(s => s.SetProperty(x => x.SchoolId, (int?)null));
     }
 
     [Fact]
@@ -148,8 +155,9 @@ public partial class WorksheetCommentServiceTests
     {
         var w = await SeedSchoolsAsync();
         await SetTeacherSchoolAsync(Assigner, null); // bağımsız tutor
+        await MakeStudentASchoollessAsync();         // #334: bağımsız tutor yalnız okulsuz öğrencisinde sorumlu
         var rootA = Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "A"));
-        var replyB = Created(await PostAsync(w.WorksheetId, Student(StudentBUser), "B cevap", parentId: rootA));
+        var replyA = Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "A ek", parentId: rootA));
         var rootB = Created(await PostAsync(w.WorksheetId, Student(StudentBUser), "B kök"));
         var announcement = Created(await PostAsync(w.WorksheetId, Teacher(Owner), "duyuru"));
         var replyOnAnnouncementA = Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "A duyuruya", parentId: announcement));
@@ -161,7 +169,7 @@ public partial class WorksheetCommentServiceTests
 
         var page = (await GetAsync(w.WorksheetId, Teacher(Assigner))).Page!;
         page.Items.Select(i => i.Id).OrderBy(x => x).ShouldBe(new[] { rootA, announcement });
-        page.Items.Single(i => i.Id == rootA).Replies.Select(r => r.Id).ShouldBe(new[] { replyB });
+        page.Items.Single(i => i.Id == rootA).Replies.Select(r => r.Id).ShouldBe(new[] { replyA });
         var ann = page.Items.Single(i => i.Id == announcement);
         ann.Replies.Select(r => r.Id).ShouldBe(new[] { replyOnAnnouncementA });
         ann.ReplyCount.ShouldBe(1);
@@ -509,6 +517,7 @@ public partial class WorksheetCommentServiceTests
         var w = await SeedSchoolsAsync();
         await AssignOtherSchoolStudentToForeignTeacherAsync(w);
         await SetTeacherSchoolAsync(Assigner, null); // bağımsız tutor, A'nın ilgili öğretmeni
+        await MakeStudentASchoollessAsync();         // #334: bağımsız istisnası — A da okulsuz
 
         var ownerRoot = Created(await PostAsync(w.WorksheetId, Teacher(Owner), "sahip duyurusu"));        // X okulu, sahip
         var tutorRoot = Created(await PostAsync(w.WorksheetId, Teacher(Assigner), "tutor duyurusu"));     // okulsuz, A'nın öğretmeni
@@ -516,12 +525,12 @@ public partial class WorksheetCommentServiceTests
         var rootB = Created(await PostAsync(w.WorksheetId, Student(StudentBUser), "B sorusu"));           // sorumlu: sahip
         var ownerAnswer = Created(await PostAsync(w.WorksheetId, Teacher(Owner), "cevap", parentId: rootB));
 
-        Ids(await GetAsync(w.WorksheetId, Student(StudentAUser))).ShouldBe(new[] { ownerRoot, tutorRoot, rootB });
+        Ids(await GetAsync(w.WorksheetId, Student(StudentAUser))).ShouldBe(new[] { ownerRoot, tutorRoot }); // okulsuz A: B'nin kökü okul içi
         Ids(await GetAsync(w.WorksheetId, Student(StudentBUser))).ShouldBe(new[] { ownerRoot, rootB });
         Ids(await GetAsync(w.WorksheetId, Student(OtherSchoolStudentUser))).ShouldBe(new[] { ownerRoot, foreignRoot });
         Ids(await GetAsync(w.WorksheetId, Student(SchoollessStudentUser))).ShouldBe(new[] { ownerRoot });
         // Öğrenci kökündeki öğretmen cevabı, kökü görene görünür.
-        (await GetAsync(w.WorksheetId, Student(StudentAUser))).Page!.Items.Single(i => i.Id == rootB)
+        (await GetAsync(w.WorksheetId, Student(StudentBUser))).Page!.Items.Single(i => i.Id == rootB)
             .Replies.Select(r => r.Id).ShouldBe(new[] { ownerAnswer });
         // Öğretmenler tüm öğretmen yorumlarını görür (PO).
         Ids(await GetAsync(w.WorksheetId, Teacher(ForeignTeacher))).ShouldBe(new[] { ownerRoot, tutorRoot, foreignRoot });

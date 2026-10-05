@@ -82,28 +82,40 @@ public class WorksheetResponsibleTeacherResolver : IWorksheetResponsibleTeacherR
             ? new List<AssignmentRow>()
             : await ActiveAssignmentsQuery(worksheet.Id).ToListAsync(ct);
 
-        // Sahip fallback'i için okullar (öğrenciler + sahip) TEK kaynaktan, toplu. Sahipsiz (legacy) worksheet'te fallback
-        // hiç olamayacağından sorgu atılmaz.
-        // Yukarıda okunan tekil Students satırları yeniden sorgulanmaz (kural aynı: öğretmen satırı varsa o esas).
-        var schools = worksheet.CreateUserId is > 0
-            ? await UserSchoolResolver.ResolveManyAsync(_context, userIds.Select(id => (int?)id).Append(worksheet.CreateUserId), ct,
-                studentByUserId.ToDictionary(kv => kv.Key, kv => kv.Value.SchoolId))
-            : new Dictionary<int, int?>();
-        var ownerSchoolId = worksheet.CreateUserId is { } owner ? schools.GetValueOrDefault(owner) : null;
-
+        var relevantByUser = new Dictionary<int, RelevantAssignment>();
         foreach (var userId in userIds)
         {
-            RelevantAssignment? relevant = null;
             if (studentByUserId.TryGetValue(userId, out var student) && activeAssignments.Count > 0)
             {
                 // Hedef/okul koşulu: WorksheetStudentAccess.AssignmentVisibleTo'nun bellek içi eşdeğeri.
                 var row = PickRelevant(activeAssignments.Where(a => WorksheetStudentAccess.IsAssignmentVisibleTo(
                     a.StudentId, a.GradeId, a.SchoolId, a.IsPlatformWide, student.Id, student.GradeId, student.SchoolId)));
                 if (row != null)
-                    relevant = new RelevantAssignment(row.Id, row.CreateUserId, row.CommentsEnabledOverride);
+                    relevantByUser[userId] = new RelevantAssignment(row.Id, row.CreateUserId, row.CommentsEnabledOverride);
             }
+        }
 
-            result[userId] = ResponsibleTeacherRule.Decide(worksheet, relevant, ownerSchoolId, schools.GetValueOrDefault(userId));
+        // Okul koşulu için okullar (öğrenciler + sahip + ilgili atamaları yapanlar, #334) TEK kaynaktan, TOPLU (N+1 yok).
+        // Ne sahip ne atayan varsa (legacy) karar okul gerektirmez, sorgu atılmaz.
+        // Yukarıda okunan tekil Students satırları yeniden sorgulanmaz (kural aynı: öğretmen satırı varsa o esas).
+        var assigners = relevantByUser.Values.Select(a => a.CreateUserId).Where(id => id is > 0).ToList();
+        var schools = worksheet.CreateUserId is > 0 || assigners.Count > 0
+            ? await UserSchoolResolver.ResolveManyDetailedAsync(_context,
+                userIds.Select(id => (int?)id).Append(worksheet.CreateUserId).Concat(assigners), ct,
+                studentByUserId.ToDictionary(kv => kv.Key, kv => kv.Value.SchoolId))
+            : new Dictionary<int, UserSchool>();
+        // Kural girdisi: belirsiz okul (çoklu canlı satır) okulsuz sayılmaz (WorksheetCommentPinRule.ForRule, #334).
+        var ownerSchoolId = worksheet.CreateUserId is { } owner ? WorksheetCommentPinRule.ForRule(schools.GetValueOrDefault(owner)) : null;
+
+        foreach (var userId in userIds)
+        {
+            var relevant = relevantByUser.GetValueOrDefault(userId);
+            var assignerSchoolId = relevant?.CreateUserId is { } assigner
+                ? WorksheetCommentPinRule.ForRule(schools.GetValueOrDefault(assigner))
+                : null;
+            result[userId] = ResponsibleTeacherRule.Decide(worksheet, relevant, ownerSchoolId,
+                WorksheetCommentPinRule.ForRule(schools.GetValueOrDefault(userId)),
+                assignerSchoolId);
         }
 
         return result;

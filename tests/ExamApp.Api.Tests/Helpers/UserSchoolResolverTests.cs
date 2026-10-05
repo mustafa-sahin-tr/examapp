@@ -101,6 +101,18 @@ public class UserSchoolResolverTests : IDisposable
         var map = await UserSchoolResolver.ResolveManyAsync(read, new[] { 30, 31 });
         map[30].ShouldBeNull("hangisinin doğru olduğu bilinemez → okulsuz (güvenli taraf)");
         map[31].ShouldBeNull();
+
+        // issue #334: ayrıntılı varyant belirsizliği okulsuzluktan ayırır (aynı sorgu, ikinci okul okuma kodu yok).
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.Teachers.Add(new Teacher { UserId = 32, SchoolId = null });
+            await ctx.SaveChangesAsync();
+        }
+        var detailed = await UserSchoolResolver.ResolveManyDetailedAsync(read, new int?[] { 30, 31, 32, 33 });
+        detailed[30].ShouldBe(new UserSchool(null, true));
+        detailed[31].ShouldBe(new UserSchool(null, true));
+        detailed[32].ShouldBe(new UserSchool(null, false), "tek satır, okulsuz (bağımsız)");
+        detailed[33].ShouldBe(new UserSchool(null, false), "kaydı yok");
     }
 
     [Fact]

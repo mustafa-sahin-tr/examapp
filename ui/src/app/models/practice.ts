@@ -86,3 +86,37 @@ export interface PracticeAnswerResult {
   answeredCount: number;
   correctCount: number;
 }
+
+/**
+ * Günün soruları (issue #99). GET /api/exam/practice/daily cevabı; set yoksa sunucu lazy üretir.
+ * Backend sözleşmesi paralel yazılıyor (DailySetDto önerisi, issue #99 devir notu).
+ */
+export type DailySetStatus = 'NotStarted' | 'InProgress' | 'Completed' | 'Empty';
+
+export interface DailySet {
+  /** Europe/Istanbul günü, `yyyy-MM-dd`. */
+  date: string;
+  status: DailySetStatus;
+  /** Gerçek set boyutu; havuz azsa `targetCount`'tan küçüktür. */
+  total: number;
+  /** Yapılandırılmış hedef N. */
+  targetCount: number;
+  /** `correct + wrong + skipped`. */
+  answered: number;
+  correct: number;
+  wrong: number;
+  skipped: number;
+  /** Günlük setin practice oturumu; başlamadıysa null. Tamamlanmış sette de dolu (review için). */
+  sessionId: number | null;
+  /** #66 kapsam seçimi için ayrılmış; #99'da kullanılmaz. */
+  scope: unknown | null;
+}
+
+/**
+ * POST /api/exam/practice/daily/start cevabı (idempotent). Tamamlanmış sette de 200 + `Completed` +
+ * mevcut `sessionId` döner; 409 yalnız set boşken (`{ message }`).
+ */
+export interface DailySetStartResult {
+  sessionId: number;
+  status: Exclude<DailySetStatus, 'Empty'>;
+}

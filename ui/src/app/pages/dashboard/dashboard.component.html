@@ -6,6 +6,11 @@
   }}</span>
 </div>
 
+<!-- Günün soruları (issue #99): karşılamanın hemen altı; kendi yükleniyor/hata durumu diğer bölümleri etkilemez -->
+<app-daily-questions-card class="dashboard-daily" [dailySet]="dailySet()" [loading]="dailyLoading()"
+  [error]="dailyError()" [streak]="dailyStreak()" (start)="onDailyStart()" (retry)="loadDailySet()"
+  (freePractice)="onDailyFreePractice()" (goToProfile)="onDailyGoToProfile()" />
+
 <!-- 1. Aktivite (heat map) + rozet ilerleme — öncelikli bölüm -->
 <div class="dashboard-section">
   <p class="reset-message" *ngIf="resetMessage() as msg">{{ msg }}</p>

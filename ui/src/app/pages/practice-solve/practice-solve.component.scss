@@ -736,3 +736,87 @@ $bp-mobile: 640px;
     transition: none;
   }
 }
+
+// ── Günün soruları (daily modu, issue #99) ──────────────────────────────────
+// Mevcut kart/istatistik dili korunur; statsBar yerine "Soru n / N" + adım şeridi.
+.daily-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ms-layout-spacing-xsmall);
+  width: min(100%, clamp(680px, 78vw, 1180px));
+  margin: 0 auto;
+  padding: var(--ms-layout-spacing-xsmall) var(--ms-layout-spacing-small);
+  border-radius: 18px;
+  background: var(--ms-surface-weak);
+  border: 1px solid var(--ms-border-weak);
+  box-sizing: border-box;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--ms-layout-spacing-xsmall);
+  }
+
+  &__chip {
+    pointer-events: none;
+  }
+
+  &__step {
+    font-weight: 700;
+    color: var(--ms-text-strong);
+  }
+}
+
+.daily-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ms-layout-spacing-xsmall);
+
+  > mat-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 48px;
+    color: var(--ms-info-text-weak);
+  }
+}
+
+.daily-ended {
+  &__title {
+    outline: none;
+
+    &:focus-visible {
+      outline: 2px solid var(--ms-action-border-focus);
+      outline-offset: 4px;
+      border-radius: 4px;
+    }
+  }
+
+  &__steps {
+    width: 100%;
+  }
+
+  &__streak {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--ms-text-strong);
+
+    mat-icon {
+      color: var(--ms-warning-text-weak);
+    }
+  }
+
+  &__tomorrow {
+    width: 100%;
+    text-align: left;
+  }
+}
+
+@media (max-width: $bp-mobile) {
+  .daily-ended .practice__actions > * {
+    width: 100%;
+  }
+}

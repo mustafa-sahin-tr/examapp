@@ -19,6 +19,13 @@ public class AnswerSubmittedEvent
     public string Subject { get; set; } = string.Empty;
     public int? TopicId { get; set; }
     public int? SubTopicId { get; set; }
+
+    /// <summary>
+    /// Worksheet cevabında <c>WorksheetInstance.Id</c> (&gt; 0). Issue #99: <b>&lt; 0 ise "Günün soruları" pratik cevabıdır</b> ve
+    /// değer <c>-PracticeSessionId</c>'dir (pratik oturumunun worksheet instance'ı yok; negatif aralık gerçek id'lerle
+    /// çakışmaz, BadgeService <c>AnswerPointAward</c> (TestInstanceId, QuestionId) anahtarı oturum başına tekil kalır).
+    /// Asla 0 gönderilmez.
+    /// </summary>
     public int TestInstanceId { get; set; }
 
     /// <summary>
@@ -26,6 +33,7 @@ public class AnswerSubmittedEvent
     /// producer already has it loaded). Not currently used for dedup/consumer logic (that stays keyed on
     /// TestInstanceId+QuestionId, which already identifies the row uniquely for a given student) — carried
     /// for future diagnostics/correlation without another DB round trip.
+    /// Issue #99: <see cref="TestInstanceId"/> &lt; 0 (günlük set) iken bu alan <c>PracticeSessionQuestion.Id</c>'dir.
     /// </summary>
     public int TestInstanceQuestionId { get; set; }
 

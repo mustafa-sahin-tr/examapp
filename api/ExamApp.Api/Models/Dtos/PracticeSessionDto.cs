@@ -59,9 +59,11 @@ public class PracticeAnswerSubmitDto
 
     public bool Skipped { get; set; }
 
-    /// <summary>Saniye.</summary>
-    [Range(0, int.MaxValue)]
+    /// <summary>Saniye. Üst sınır 1 saat (issue #99 security D2: günlük set cevabı süreyi puan/aktivite hattına taşır).</summary>
+    [Range(0, MaxTimeTakenSeconds)]
     public int TimeTaken { get; set; }
+
+    public const int MaxTimeTakenSeconds = 3600;
 }
 
 /// <summary>

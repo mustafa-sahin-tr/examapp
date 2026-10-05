@@ -25,6 +25,7 @@ import { AdminSchoolPagedQuery } from '../models/admin-paged-query.model';
 import { AdminPasswordResetResponse, AdminPasswordResetTarget } from '../models/admin-password-reset.model';
 import { AdminAccountStatusResponse, AdminAccountTarget } from '../models/admin-account-status.model';
 import { AdminStudentSchoolRequest, AdminStudentSchoolResponse } from '../models/admin-student-school.model';
+import { AdminTeacherSchoolRequest, AdminTeacherSchoolResponse } from '../models/admin-teacher-school.model';
 import { AdminTeacherSuspendRequest, AdminTeacherSuspensionResponse } from '../models/admin-teacher-suspension.model';
 import { Paged } from '../models/test-instance';
 
@@ -240,6 +241,16 @@ export class AdminService {
   changeStudentSchool(studentId: number, schoolId: number): Observable<AdminStudentSchoolResponse> {
     const body: AdminStudentSchoolRequest = { schoolId };
     return this.http.put<AdminStudentSchoolResponse>(`${this.baseUrl}/students/${studentId}/school`, body);
+  }
+
+  /**
+   * Issue #313 — öğretmeni (Teacher.Id) okula bağlar / okulunu değiştirir. Bağımsız öğretmenin bağımsız profili değişmez;
+   * yalnız okul yazılır. Hatalar: 400, 403, 404, 409 (eşzamanlı değişiklik → listeyi yenileyip tekrar dene),
+   * 429 (`Retry-After`), 502 (okul değişmedi).
+   */
+  changeTeacherSchool(teacherId: number, schoolId: number): Observable<AdminTeacherSchoolResponse> {
+    const body: AdminTeacherSchoolRequest = { schoolId };
+    return this.http.put<AdminTeacherSchoolResponse>(`${this.baseUrl}/teachers/${teacherId}/school`, body);
   }
 
   // ---- classifier cache ----

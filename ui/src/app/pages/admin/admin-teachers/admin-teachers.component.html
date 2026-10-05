@@ -108,6 +108,31 @@
             >
               <mat-icon>lock_reset</mat-icon>
             </button>
+            @let assignSchool = row.schoolId == null;
+            <!-- #313: backend'in 409 ile reddettiği satırda aksiyon gizlenmez, devre dışı kalır; `disabledInteractive`
+                 sayesinde tooltip (neden) fareyle ve klavye odağıyla görünür, tıklama `changeSchool` içinde yok sayılır. -->
+            <button
+              mat-icon-button
+              type="button"
+              data-testid="change-school"
+              disabledInteractive
+              [matTooltip]="
+                (row.schoolBlockedReason
+                  ? 'admin.teacherSchool.blocked.' + row.schoolBlockedReason
+                  : assignSchool
+                    ? 'admin.teacherSchool.assignAction'
+                    : 'admin.teacherSchool.changeAction'
+                ) | transloco
+              "
+              [attr.aria-label]="
+                (assignSchool ? 'admin.teacherSchool.assignActionFor' : 'admin.teacherSchool.changeActionFor')
+                  | transloco: { name: rowDisplayName(row) }
+              "
+              [disabled]="schoolDialogOpen() || !!row.schoolBlockedReason"
+              (click)="changeSchool(row)"
+            >
+              <mat-icon>{{ assignSchool ? 'add_business' : 'swap_horiz' }}</mat-icon>
+            </button>
             @if (row.accountStatus !== 'unknown') {
               @let enable = row.accountStatus === 'inactive';
               <button

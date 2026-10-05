@@ -1,0 +1,96 @@
+<div class="tsd-dialog" *transloco="let t; prefix: 'admin.teacherSchool'">
+  <header class="tsd-header">
+    <mat-icon class="tsd-icon" aria-hidden="true">{{ mode === 'assign' ? 'add_business' : 'swap_horiz' }}</mat-icon>
+    <div class="tsd-header__text">
+      <h2 mat-dialog-title>{{ mode === 'assign' ? t('assignTitle') : t('changeTitle') }}</h2>
+      <p class="tsd-subtitle" data-testid="teacher-name">{{ data.displayName }}</p>
+    </div>
+  </header>
+
+  <mat-dialog-content class="tsd-content">
+    <p class="tsd-current" data-testid="current-school">
+      {{ t('currentSchool', { school: data.currentSchoolName ?? t('noSchool') }) }}
+    </p>
+
+    <app-school-select
+      [label]="t('newSchool')"
+      [required]="true"
+      [disabled]="submitting() || conflict()"
+      [excludeSchoolId]="data.currentSchoolId"
+      [(value)]="selectedSchoolId"
+      (selectionChange)="onSchoolSelected($event)"
+    />
+
+    @let from = data.currentSchoolName ?? t('noSchool');
+    @let to = selectedSchool()?.name ?? t('notSelected');
+    <div
+      class="tsd-transition"
+      role="group"
+      data-testid="school-transition"
+      [attr.aria-label]="t('transitionAria', { from: from, to: to })"
+    >
+      <span class="tsd-transition__title">{{ t('transitionTitle') }}</span>
+      <span class="tsd-transition__school" [class.tsd-muted]="!data.currentSchoolName" data-testid="transition-from">{{ from }}</span>
+      <mat-icon aria-hidden="true">arrow_forward</mat-icon>
+      <span class="tsd-transition__school" [class.tsd-muted]="!selectedSchool()" data-testid="transition-to">{{ to }}</span>
+    </div>
+
+    <p class="tsd-effects-title">{{ t('effectsTitle') }}</p>
+    <ul class="tsd-effects" data-testid="school-effects">
+      <li><mat-icon aria-hidden="true">school</mat-icon><span>{{ t('effectNewSchool') }}</span></li>
+      @if (mode === 'change') {
+        <li data-testid="effect-old-school">
+          <mat-icon aria-hidden="true">person_off</mat-icon><span>{{ t('effectOldSchool') }}</span>
+        </li>
+      }
+      <li data-testid="effect-pending-request">
+        <mat-icon aria-hidden="true">pending_actions</mat-icon>
+        <span>{{ approvesApplication ? t('effectPendingRequestApproved') : t('effectPendingRequest') }}</span>
+      </li>
+    </ul>
+
+    @if (data.independent) {
+      <div class="tsd-note" data-testid="independent-note">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <span>{{ t('independentNote') }}</span>
+      </div>
+    }
+
+    @if (error()) {
+      <div class="tsd-error" role="alert" data-testid="school-error">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>{{ error() }}</span>
+      </div>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="tsd-actions">
+    <button mat-stroked-button type="button" (click)="cancel()" [disabled]="submitting()" data-testid="cancel">
+      {{ t('cancel') }}
+    </button>
+    @if (conflict()) {
+      <button mat-flat-button type="button" class="tsd-primary" (click)="reload()" data-testid="reload">
+        {{ t('reload') }}
+      </button>
+    } @else {
+      <button
+        mat-flat-button
+        type="button"
+        class="tsd-primary"
+        (click)="confirm()"
+        [disabled]="!canSubmit()"
+        [attr.aria-busy]="submitting()"
+        data-testid="confirm"
+      >
+        @if (submitting()) {
+          <mat-spinner diameter="18" class="tsd-spinner"></mat-spinner>
+          {{ t('submitting') }}
+        } @else if (error()) {
+          {{ t('retry') }}
+        } @else {
+          {{ mode === 'assign' ? t('confirmAssign') : t('confirmChange') }}
+        }
+      </button>
+    }
+  </mat-dialog-actions>
+</div>

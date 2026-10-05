@@ -108,31 +108,42 @@ if you change one, change both **and** regenerate that user's
 `python3 rabbitmq/generate-password-hashes.py` (usernames themselves are
 fixed, non-secret literals, not `.env` values).
 
-**`load_definitions` actually runs on every node boot, not just a fresh
-node** (per RabbitMQ's own definitions-import docs; the `definitions.skip_if_unchanged`
-option added in 3.10+ — which lets a node skip reprocessing an unchanged file
-via checksum — only makes sense if import otherwise happens on every boot).
-Boot-time import **defines any users/vhosts/permissions/etc. from the file
-that don't already exist**; it does **not** delete objects that exist but
-aren't in the file, and it does **not** overwrite an existing user's password
-if that user already exists. So if you already have a local RabbitMQ
-volume/container from before this change (created with just
-`RABBITMQ_DEFAULT_USER`/`PASS`, no `definitions.json`):
-- **A plain restart is enough for the 5 new per-service users** —
-  `docker-compose restart rabbitmq` (or `docker-compose down` + `up -d`
-  *without* removing the volume) re-runs boot-time import, which creates
-  `exam_outbox_pub`/`identity_outbox_pub`/`badge_outbox_pub`/`badge_service`/
-  `exam_api` (they don't exist yet) and their permissions, without touching
-  existing queues/messages or the pre-existing `rabbituser`.
-- **Rotating `rabbituser`'s own password is the one case a restart doesn't
-  cover** — since it already exists, boot import won't update its password
-  even if you change `RABBITMQ_DEFAULT_PASS`/`definitions.json`'s hash for
-  it. Either delete that one user first (management UI → Admin → Users, or
-  `rabbitmqctl delete_user rabbituser`) and let the next boot recreate it
-  from the file, or update its password directly via the management UI.
-- If you'd rather not rely on any of the above, wiping the volume (delete
-  `./rabbitmq/data` / the Aspire RabbitMQ volume) and starting fresh always
-  works too — just loses existing queued messages.
+**Issue #328 — new event exchange permissions.** `load_definitions` runs on
+every node boot and upserts the users/permissions from `definitions.json`
+(verified: a narrowed permission is restored by a restart). The problem is that
+a **running** RabbitMQ does not re-read the file: when you add an event to
+`definitions.json`, `docker-compose up -d` does not recreate/restart the
+`rabbitmq` container (bind-mount content changed, config did not), so
+BadgeService keeps getting `ACCESS_REFUSED - configure access to exchange ...`.
+- **docker-compose:** a one-shot `rabbitmq-permission-sync` container
+  (`rabbitmq/sync-permissions.sh`, `alpine:3.20`) re-runs on every `up -d`,
+  waits for the management API and `POST`s **only the `permissions` block** of
+  `definitions.json` (minus the admin user) to `/api/definitions` (an upsert).
+  The six RabbitMQ consumers/publishers depend on it
+  (`service_completed_successfully`). `definitions.json` stays the single source
+  of truth. Users, passwords, queues and exchanges are not touched. Admin
+  credentials are `RABBITMQ_DEFAULT_USER`/`PASS` from `.env` and must match the
+  existing `rabbituser` in the volume. Network access (`apk add curl jq`) is
+  needed only when the sync container is first created.
+- **Already-running service that got ACCESS_REFUSED:** it keeps retrying/holding
+  the old failure; `depends_on` is not evaluated on restart, so restart it
+  explicitly after the sync: `docker-compose restart exam-badge-api`
+  (or whichever service).
+- **Aspire:** the RabbitMQ resource has no persistent data volume (anonymous
+  volume, fresh on every AppHost start), so boot import applies the current
+  `definitions.json` each time and no sync is needed. If you edit
+  `definitions.json` while the AppHost is running, restart the `rabbitmq`
+  resource (`aspire resource rabbitmq restart`).
+- **Removals are not reverted:** a permission/user deleted from
+  `definitions.json` stays in an existing volume (neither boot import nor the
+  sync deletes). Wipe the volume (`./rabbitmq/data`) to get a clean state; this
+  loses queued messages.
+- **Password rotation is still manual** (not touched by the sync): for a service
+  user, change `.env`/`AppHost` parameter **and** `definitions.json`'s
+  `password_hash` (`python3 rabbitmq/generate-password-hashes.py`), then delete
+  that user (management UI → Admin → Users, or `rabbitmqctl delete_user <name>`)
+  and restart so the next boot recreates it. Same for `rabbituser` (next
+  paragraph).
 
 **The `rabbituser` admin password (management UI login, `:15672`) comes from
 `rabbitmq/definitions.json`'s `password_hash`, not from `.env`/`AppHost`

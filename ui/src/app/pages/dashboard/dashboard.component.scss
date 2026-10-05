@@ -144,27 +144,6 @@ $bp-narrow: 480px; // dar telefon: özet kartları sabit 2 sütun
   gap: 10px;
 }
 
-.upcoming-badge-icon {
-  flex: 0 0 36px;
-  width: 36px;
-  height: 36px;
-  padding: 6px;
-  border-radius: 10px;
-  border: 1px solid var(--ms-border-weak);
-  background-color: var(--ms-surface-weak);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.7;
-}
-
-.upcoming-badge-icon img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  filter: grayscale(0.6);
-}
-
 .upcoming-badge-body {
   flex: 1 1 auto;
   min-width: 0;
@@ -341,81 +320,30 @@ $bp-narrow: 480px; // dar telefon: özet kartları sabit 2 sütun
   gap: 12px;
 }
 
+// Issue #149: tek kap = 56px medalyon; odak halkası klavye ile tooltip açılışını görünür kılar.
 .badge-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  background-color: var(--ms-surface-medium);
-  border: 1px solid var(--ms-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px;
+  display: inline-flex;
+  border-radius: 50%;
   transition: transform 160ms ease;
-  position: relative;
 }
 
 .badge-icon:hover {
   transform: translateY(-2px);
-  z-index: 20;
 }
 
-.badge-icon img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+.badge-icon:focus-visible {
+  outline: 3px solid var(--ms-action-border-focus);
+  outline-offset: 3px;
 }
 
-.badge-tooltip {
-  position: absolute;
-  bottom: calc(100% + 12px);
-  left: 50%;
-  transform: translateX(-50%) scale(0.95);
-  transform-origin: bottom;
-  opacity: 0;
-  pointer-events: none;
-  padding: 12px 14px;
-  border-radius: 14px;
-  min-width: 220px;
-  max-width: 280px;
-  background: linear-gradient(135deg, rgba(96, 165, 250, 0.92), rgba(56, 189, 248, 0.92));
-  color: #0b1324;
-  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.3);
-  backdrop-filter: blur(6px);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  transition: opacity 160ms ease, transform 160ms ease;
-  z-index: 1200;
-}
+@media (prefers-reduced-motion: reduce) {
+  .badge-icon {
+    transition: none;
+  }
 
-.badge-tooltip::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 16px;
-  height: 8px;
-  background: inherit;
-  clip-path: polygon(50% 100%, 0 0, 100% 0);
-}
-
-.badge-icon:hover .badge-tooltip {
-  opacity: 1;
-  transform: translateX(-50%) scale(1);
-}
-
-.badge-tooltip-name {
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.badge-tooltip-desc {
-  font-size: 12px;
-  line-height: 1.4;
-  color: rgba(11, 19, 36, 0.8);
+  .badge-icon:hover {
+    transform: none;
+  }
 }
 
 @media (max-width: $bp-stack) {
@@ -492,15 +420,6 @@ $bp-narrow: 480px; // dar telefon: özet kartları sabit 2 sütun
     gap: 10px;
   }
 
-  .badge-icon {
-    width: 52px;
-    height: 52px;
-    border-radius: 14px;
-  }
-
-  .badge-tooltip {
-    display: none;
-  }
 }
 
 @media (max-width: $bp-narrow) {

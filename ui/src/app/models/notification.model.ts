@@ -34,8 +34,6 @@ export function toCoalescedCount(value: unknown): number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : 1;
 }
 
-import { BADGE_ICON_PATTERN } from './badge-definition-admin.model';
-
 /** `BadgeEvaluator.NotificationType` — rozet kazanımı bildirimi. */
 export const BADGE_EARNED_NOTIFICATION_TYPE = 'BadgeEarned';
 
@@ -43,6 +41,22 @@ export const BADGE_EARNED_NOTIFICATION_TYPE = 'BadgeEarned';
 export interface BadgeEarnedNotificationData {
   badgeDefinitionId: string;
   badgeCode: string;
+  /** Issue #149: Material Symbols adı; eski bildirimde yok → null. Biçim doğrulaması `resolveBadgeIcon`'da. */
+  icon: string | null;
+  /** Ham değer; doğrulanmamış — yalnız `resolveBadgeIcon` üzerinden (medalyon) kullanılır, doğrudan `src` yapılmaz. */
+  iconUrl: string | null;
+}
+
+/**
+ * Issue #149: SignalR `BadgeEarned` push yükü (`BadgeEvaluator` → `{ BadgeName, Description, IconUrl, Icon }`,
+ * camelCase serileşir). Güvenilmez veri: `SignalRService` alanları tek tek doğrular; ikon biçimi
+ * `resolveBadgeIcon`'da denetlenir.
+ */
+export interface BadgeEarnedPushPayload {
+  badgeName: string;
+  description: string;
+  icon: string | null;
+  /** Ham değer; yalnız `resolveBadgeIcon` üzerinden kullanılır. */
   iconUrl: string | null;
 }
 
@@ -68,9 +82,11 @@ export function parseBadgeEarnedData(data: string | null): BadgeEarnedNotificati
     return null;
   }
   const iconUrl = record['iconUrl'];
+  const icon = record['icon'];
   return {
     badgeDefinitionId: record['badgeDefinitionId'],
     badgeCode: typeof record['badgeCode'] === 'string' ? record['badgeCode'] : '',
+    icon: typeof icon === 'string' && icon.trim() ? icon.trim() : null,
     iconUrl: typeof iconUrl === 'string' && iconUrl.trim() ? iconUrl : null,
   };
 }
@@ -124,14 +140,4 @@ export function parseBookingTeacherUnavailableData(
     return null;
   }
   return { teacherId, bookingIds: [...bookingIds] };
-}
-
-/**
- * Savunma katmanı: `iconUrl` yalnızca uygulamanın kendi rozet ikon yoluna (`achievements/<dosya>.svg`,
- * backend `BadgeIconValidator` ile aynı kural) uyuyorsa kök-göreli `src` olarak döner; aksi hâlde `null`
- * (dış URL / path traversal gösterilmez, çağıran varsayılan ikona düşer).
- */
-export function badgeIconSrc(iconUrl: string | null | undefined): string | null {
-  const value = iconUrl?.trim();
-  return value && BADGE_ICON_PATTERN.test(value) ? `/${value}` : null;
 }

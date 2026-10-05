@@ -4147,6 +4147,29 @@ input:-webkit-autofill:focus {
   }
 }
 
+/* Issue #149 — rozet kazanım toast'u (BadgeEarnedToastComponent). Varsayılan inverse-surface zemini medalyon
+   token'larıyla kontrast vermediği için --ms-surface-strong zemin + --ms-warning-text-weak çerçeve. */
+.mat-mdc-snack-bar-container.badge-toast {
+  --mdc-snackbar-container-color: var(--ms-surface-strong);
+  --mdc-snackbar-supporting-text-color: var(--ms-text-strong);
+  --mat-snack-bar-button-color: var(--ms-action-text);
+
+  .mdc-snackbar__surface {
+    border: 1px solid var(--ms-warning-text-weak);
+    border-radius: 12px;
+  }
+
+  .mdc-snackbar__label {
+    padding: 0;
+  }
+}
+
+/* Issue #149 — dashboard rozet tooltip'i: ad / "Yeni kazanıldı" / açıklama ayrı satırlarda. */
+.badge-tooltip-panel .mdc-tooltip__surface {
+  white-space: pre-line;
+  text-align: left;
+}
+
 /* Snackbar animations */
 .mat-mdc-snack-bar-container {
   animation: slideInFromRight 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);

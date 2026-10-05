@@ -130,6 +130,15 @@ describe('StudentProfileComponent', () => {
     expect(badgeThropyInstances.length).toBe(1);
   }));
 
+  // #149 CR Ö1: sayfanın "Rozetlerim" bölüm başlığı varken bileşen kendi başlığını tekrar etmez.
+  it('activeTab_SetToBadgesTab_BadgeThropyRendersWithoutOwnHeading', fakeAsync(() => {
+    activateBadgesTab();
+
+    const thropy = fixture.debugElement.query((debugEl) => debugEl.componentInstance instanceof BadgeThropyComponent);
+    expect((thropy.componentInstance as BadgeThropyComponent).showHeading).toBeFalse();
+    expect((thropy.nativeElement as HTMLElement).querySelector('.ms-badge-title')).toBeNull();
+  }));
+
   it('activeTab_SetToBadgesTab_PassesResolvedStudentIdToBadgeThropy', fakeAsync(() => {
     activateBadgesTab();
 

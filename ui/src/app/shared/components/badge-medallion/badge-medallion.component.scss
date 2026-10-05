@@ -1,0 +1,137 @@
+// Issue #149 — rozet medalyonu. Yalnız --ms-* token'ları; durum renk + kenar biçimi + dolgu + köşe glifi ile ayrışır.
+:host {
+  --bm-size: 56px;
+  --bm-shell-bg: var(--ms-surface-medium);
+  --bm-shell-border: 2px solid var(--ms-text-weak);
+  --bm-icon-color: var(--ms-text-medium);
+  --bm-corner-bg: var(--ms-surface-strong);
+  --bm-corner-color: var(--ms-text-medium);
+
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: var(--bm-size);
+  height: var(--bm-size);
+  box-sizing: border-box;
+}
+
+:host([data-state='earned']),
+:host([data-state='new']) {
+  --bm-shell-bg: var(--ms-action-background-weak);
+  --bm-shell-border: 2px solid var(--ms-action-border);
+  --bm-icon-color: var(--ms-action-text);
+  --bm-corner-bg: var(--ms-success-surface);
+  --bm-corner-color: var(--ms-success-text);
+}
+
+:host([data-state='new']) {
+  --bm-corner-bg: var(--ms-warning-surface);
+  --bm-corner-color: var(--ms-warning-text);
+}
+
+:host([data-state='locked']) {
+  --bm-shell-border: 2px dashed var(--ms-text-weak);
+  --bm-icon-color: var(--ms-text-weak);
+}
+
+// İlerleme halkası: kabuğun 4px dışına taşan conic zemin; kabuk opak olduğu için yalnız halka görünür (mask gerekmez).
+.bm__ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: conic-gradient(var(--ms-action-border-focus) var(--bm-progress, 0%), var(--ms-border) 0);
+}
+
+.bm__shell {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: var(--bm-shell-border);
+  background: var(--bm-shell-bg);
+  color: var(--bm-icon-color);
+  overflow: hidden;
+}
+
+:host([data-state='new']) .bm__shell {
+  box-shadow: 0 0 0 3px var(--ms-warning-text-weak);
+}
+
+// "Yeni" halkası nabzı yalnız hareket tercihi kısıtlanmamışsa, 2 tekrar.
+@media (prefers-reduced-motion: no-preference) {
+  :host([data-state='new']) .bm__shell {
+    animation: bm-new-pulse 1.4s ease-out 2;
+  }
+}
+
+@keyframes bm-new-pulse {
+  0% {
+    box-shadow: 0 0 0 3px var(--ms-warning-text-weak);
+  }
+
+  60% {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--ms-warning-text-weak) 0%, transparent);
+  }
+
+  100% {
+    box-shadow: 0 0 0 3px var(--ms-warning-text-weak);
+  }
+}
+
+.bm__icon {
+  width: auto;
+  height: auto;
+  font-size: calc(var(--bm-size) * 0.5);
+  line-height: 1;
+  color: inherit;
+  font-variation-settings: 'FILL' 0;
+}
+
+.bm__icon--filled {
+  font-variation-settings: 'FILL' 1;
+}
+
+.bm__img {
+  width: 62%;
+  height: 62%;
+  object-fit: contain;
+}
+
+:host([data-state='locked']) .bm__img,
+:host([data-state='in-progress']) .bm__img {
+  filter: grayscale(1);
+  opacity: 0.7;
+}
+
+.bm__corner {
+  position: absolute;
+  z-index: 2;
+  right: -2px;
+  bottom: -2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max(16px, calc(var(--bm-size) * 0.36));
+  height: max(16px, calc(var(--bm-size) * 0.36));
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid var(--ms-surface);
+  background: var(--bm-corner-bg);
+  color: var(--bm-corner-color);
+}
+
+.bm__corner-icon {
+  width: auto;
+  height: auto;
+  font-size: max(11px, calc(var(--bm-size) * 0.22));
+  line-height: 1;
+  color: inherit;
+  font-variation-settings: 'FILL' 1;
+}

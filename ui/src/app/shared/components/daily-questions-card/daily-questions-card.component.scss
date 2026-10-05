@@ -1,0 +1,240 @@
+:host {
+  display: block;
+}
+
+// Dashboard kart dili: surface-weak + border-weak, 12px radius (#99 tasarım notu).
+.daily-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto;
+  grid-template-areas:
+    'head progress actions'
+    'note note note';
+  align-items: center;
+  gap: 12px 24px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface-weak);
+  font-family: var(--paragraphFontFamily);
+
+  &--done {
+    border-color: var(--ms-success-border);
+  }
+
+  // Tek bloklu durumlar (yükleniyor / hata / boş) kendi düzenini kurar.
+  &[data-state='loading'],
+  &[data-state='error'],
+  &[data-state='empty'] {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'head actions'
+      'note note';
+  }
+
+  &__head {
+    grid-area: head;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  &__icon {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ms-action-background-weak);
+    color: var(--primaryColor);
+
+    &--done {
+      background: var(--ms-success-surface-weak);
+      color: var(--ms-success-text-weak);
+    }
+
+    &--info {
+      background: var(--ms-info-surface-weak);
+      color: var(--ms-info-text-weak);
+    }
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  &__eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ms-action-text-weak);
+  }
+
+  &__title {
+    margin: 0;
+    font-family: var(--mainFontFamily);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--ms-text-strong);
+  }
+
+  &__sub {
+    margin: 0;
+    font-size: 13px;
+    color: var(--ms-text-weak);
+  }
+
+  &__progress {
+    grid-area: progress;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  &__bar-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  &__bar {
+    flex: 1;
+  }
+
+  &__count {
+    font-family: var(--mainFontFamily);
+    font-weight: 700;
+    color: var(--ms-text-strong);
+    white-space: nowrap;
+  }
+
+  &__chips {
+    --mdc-chip-container-height: 28px;
+    --mat-chip-container-height: 28px;
+  }
+
+  &__chip {
+    pointer-events: none;
+
+    &--done {
+      --mat-chip-elevated-container-color: var(--ms-success-surface-weak);
+      --mat-chip-label-text-color: var(--ms-success-text-weak);
+      --mat-chip-with-avatar-avatar-color: var(--ms-success-text-weak);
+    }
+  }
+
+  &__actions {
+    grid-area: actions;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  &__cta {
+    min-height: 44px;
+
+    &:focus-visible {
+      outline: 2px solid var(--ms-action-border-focus);
+      outline-offset: 2px;
+    }
+  }
+
+  &__note {
+    grid-area: note;
+  }
+
+  &__message {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+
+    p {
+      margin: 0;
+    }
+
+    &--info {
+      background: var(--ms-info-surface-weak);
+      border: 1px solid var(--ms-info-border);
+      color: var(--ms-info-text-weak);
+    }
+
+    &--error {
+      grid-area: head;
+      background: var(--ms-danger-surface-weak);
+      border: 1px solid var(--ms-danger-border);
+      color: var(--ms-danger-text-weak);
+    }
+  }
+
+  &__loading {
+    grid-area: head;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  &__loading-text {
+    font-size: 13px;
+    color: var(--ms-text-weak);
+  }
+
+  &__skeleton-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__skeleton {
+    display: block;
+    border-radius: 6px;
+    background: var(--ms-border-weak);
+
+    &--icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+    }
+
+    &--short {
+      width: 96px;
+      height: 10px;
+    }
+
+    &--long {
+      width: 200px;
+      height: 14px;
+    }
+  }
+}
+
+@media (max-width: 767px) {
+  .daily-card,
+  .daily-card[data-state='loading'],
+  .daily-card[data-state='error'],
+  .daily-card[data-state='empty'] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'head'
+      'progress'
+      'note'
+      'actions';
+    padding: 16px;
+  }
+
+  .daily-card__actions {
+    justify-content: stretch;
+  }
+
+  .daily-card__cta {
+    width: 100%;
+  }
+}

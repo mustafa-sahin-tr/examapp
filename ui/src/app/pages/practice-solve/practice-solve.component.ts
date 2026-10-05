@@ -1,4 +1,16 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  OnInit,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -11,16 +23,25 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { Observable, forkJoin, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 import { QuestionLiteViewComponent } from '../question-lite-view/question-lite-view.component';
+import {
+  DailyProgressStepsComponent,
+  DailyStepAriaLabelFn,
+  DailyStepResult,
+} from '../../shared/components/daily-progress-steps/daily-progress-steps.component';
+import { BadgeService } from '../../services/badge.service';
+import { DailyStreakInfo, dailyStreakFrom } from '../../shared/utils/daily-streak.util';
+import { currentUserId } from '../../shared/utils/current-user-id.util';
 import { PracticeService } from '../../services/practice.service';
 import { StudentService } from '../../services/student.service';
 import { SubjectService } from '../../services/subject.service';
 import { AnswerChoice, QuestionRegion } from '../../models/draws';
 import {
+  DailySet,
   PracticeAnswerResult,
   PracticeSession,
   PracticeSessionReview,
@@ -43,8 +64,10 @@ const SCOPE = 'practice';
  * - empty:    kapsamda soru yok ya da havuz tükendi; "Kapsamı Değiştir"
  * - ended:    oturum özeti
  * - review:   geçmiş bir oturumun soru soru incelemesi (salt okunur)
+ * - daily:    günün soruları modu (`?daily=1`, issue #99) açılışı: set yükleniyor / hata / havuz boş.
+ *             Daily modunda kurulum atlanır; soru/geri bildirim/bitiş fazları ortaktır.
  */
-type PracticePhase = 'setup' | 'question' | 'feedback' | 'empty' | 'ended' | 'review';
+type PracticePhase = 'setup' | 'question' | 'feedback' | 'empty' | 'ended' | 'review' | 'daily';
 
 interface SubjectTopics {
   subject: Subject;
@@ -70,6 +93,8 @@ interface ReviewEntry {
 }
 
 const SESSION_QUERY_PARAM = 'session';
+/** Günün soruları modu (issue #99): `/practice?daily=1`. */
+const DAILY_QUERY_PARAM = 'daily';
 const HISTORY_PAGE_SIZE = 10;
 const EMPTY_HISTORY: Paged<PracticeSession> = { items: [], totalCount: 0, pageNumber: 1, pageSize: HISTORY_PAGE_SIZE };
 
@@ -96,6 +121,7 @@ const EMPTY_HISTORY: Paged<PracticeSession> = { items: [], totalCount: 0, pageNu
     PaginationComponent,
     QuestionCanvasViewComponentv5,
     QuestionLiteViewComponent,
+    DailyProgressStepsComponent,
     TranslocoDirective,
   ],
   providers: [provideTranslocoScope(SCOPE)],
@@ -111,6 +137,8 @@ export class PracticeSolveComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
+  private readonly badgeService = inject(BadgeService);
 
   // ── Faz / genel durum ───────────────────────────────────────────────────────
   readonly phase = signal<PracticePhase>('setup');
@@ -227,7 +255,47 @@ export class PracticeSolveComponent implements OnInit {
     return r.isCorrect ? 'correct' : 'wrong';
   });
 
+  // ── Günün soruları (daily modu, issue #99) ──────────────────────────────────
+  readonly dailyMode = signal(false);
+  readonly daily = signal<DailySet | null>(null);
+  /** Set getiriliyor / oturum açılıyor (faz `daily`). */
+  readonly dailyLoading = signal(false);
+  readonly dailyLoadError = signal<string | null>(null);
+  /** Cevaplanmış adımların sonucu, çözülme sırasıyla. */
+  readonly dailyResults = signal<DailyStepResult[]>([]);
+  /** Gün içinde tekrar açıldı ve önceden cevaplanmış soru var: "kaldığın yerden" notu. */
+  readonly dailyResumed = signal(false);
+  /** Set zaten tamamlanmışken açıldı: çözme ekranı yerine "zaten tamamladın" bitişi. */
+  readonly dailyAlreadyDone = signal(false);
+  readonly dailyStreak = signal<DailyStreakInfo | null>(null);
+
+  readonly dailyTotal = computed(() => Math.max(0, this.daily()?.total ?? 0));
+  readonly dailyDate = computed(() => this.daily()?.date ?? null);
+  /** Şu an çözülen adım (0 tabanlı); geri bildirimde ve bitişte yok. */
+  readonly dailyCurrentIndex = computed(() => {
+    const done = this.dailyResults().length;
+    return this.phase() === 'question' && done < this.dailyTotal() ? done : null;
+  });
+  /** "Soru n / N" sayacındaki n. */
+  readonly dailyStepNumber = computed(() => {
+    const done = this.dailyResults().length;
+    const n = this.phase() === 'question' ? done + 1 : done;
+    return Math.min(Math.max(n, 1), Math.max(this.dailyTotal(), 1));
+  });
+  /** Bitiş ekranındaki "Cevapları incele" için oturum id'si (tamamlanmış sette GET daily'den gelir). */
+  readonly dailySessionId = computed(() => this.session()?.id ?? this.daily()?.sessionId ?? null);
+  readonly dailyStepAriaLabel: DailyStepAriaLabelFn = (n, state) =>
+    this.text('daily.stepAria', { n, status: this.text(`daily.status.${state}`) });
+
+  private readonly endedTitle = viewChild<ElementRef<HTMLElement>>('endedTitle');
+
   ngOnInit(): void {
+    if (this.route.snapshot.queryParamMap.get(DAILY_QUERY_PARAM) === '1') {
+      this.dailyMode.set(true);
+      this.loadDaily();
+      return;
+    }
+
     this.loadSetupData();
     this.loadHistory(1);
 
@@ -439,6 +507,12 @@ export class PracticeSolveComponent implements OnInit {
   closeReview(): void {
     this.reviewSessionId = null;
     this.review.set(null);
+    if (this.dailyMode()) {
+      // Daily modunda inceleme bitiş ekranından açılır; oraya döner.
+      this.phase.set('ended');
+      this.focusEndedTitle();
+      return;
+    }
     this.resetToSetup();
   }
 
@@ -561,6 +635,11 @@ export class PracticeSolveComponent implements OnInit {
       this.selectedChoice.set(undefined);
 
       if (next.poolExhausted || !next.question) {
+        if (this.dailyMode()) {
+          // Günlük setin soruları bitti: boş durum değil, set bitişi.
+          this.finishDaily();
+          return;
+        }
         this.question.set(null);
         this.region.set(null);
         this.phase.set('empty');
@@ -627,6 +706,9 @@ export class PracticeSolveComponent implements OnInit {
     if (!question) return;
 
     this.result.set(r);
+    if (this.dailyMode()) {
+      this.dailyResults.update((list) => [...list, r.skipped ? 'skipped' : r.isCorrect ? 'correct' : 'wrong']);
+    }
     this.answeredCount.set(r.answeredCount);
     this.correctCount.set(r.correctCount);
     if (r.skipped) this.skippedCount.update((n) => n + 1);
@@ -679,6 +761,11 @@ export class PracticeSolveComponent implements OnInit {
       this.closeReview();
       return;
     }
+    if (this.dailyMode()) {
+      // Günlük set oturumu sonlandırılmaz: aynı gün kaldığı yerden devam edilir.
+      void this.router.navigate(['/dashboard']);
+      return;
+    }
     if (this.phase() === 'setup' || this.phase() === 'ended') {
       void this.router.navigate(['/dashboard']);
       return;
@@ -698,6 +785,227 @@ export class PracticeSolveComponent implements OnInit {
 
   showPassage(): void {
     if (this.isPassageFirstActive()) this.showPassageOnly.set(true);
+  }
+
+  // ── Günün soruları (daily modu) ─────────────────────────────────────────────
+
+  /** Bugünün setini getirir ve duruma göre yönlendirir. */
+  loadDaily(): void {
+    this.phase.set('daily');
+    this.dailyLoading.set(true);
+    this.dailyLoadError.set(null);
+    this.error.set(null);
+
+    this.practiceService
+      .getDailySet()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (set) => {
+          this.daily.set(set);
+          if (set.status === 'Completed') {
+            this.dailyLoading.set(false);
+            this.showDailyCompleted(set);
+            return;
+          }
+          if (set.status === 'Empty' || set.total <= 0) {
+            this.dailyLoading.set(false);
+            return;
+          }
+          // NotStarted'da `sessionId` dolu olabilir; start idempotent olduğu için yine çağrılır.
+          this.startDaily(set);
+        },
+        error: (err: unknown) => {
+          this.dailyLoading.set(false);
+          this.dailyLoadError.set(this.messageOf(err, this.text('daily.loadError')));
+        },
+      });
+  }
+
+  /**
+   * Oturumu açar (idempotent; devam eden sette aynı oturum döner). `status: 'Completed'` gelirse
+   * çözme ekranı açılmaz, `next` çağrılmaz (Ended oturumda 400). 409 yalnız set boşken döner: Empty.
+   */
+  private startDaily(set: DailySet): void {
+    this.practiceService
+      .startDailySet()
+      .pipe(
+        switchMap((start) => {
+          if (start.status === 'Completed') {
+            return of({ completedSessionId: start.sessionId, session: null, results: [] as DailyStepResult[] });
+          }
+          return this.openDailySession(start.sessionId).pipe(
+            map(({ session, results }) => ({ completedSessionId: null, session, results }))
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: ({ completedSessionId, session, results }) => {
+          this.dailyLoading.set(false);
+          if (completedSessionId != null || !session) {
+            const completed: DailySet = { ...set, status: 'Completed', sessionId: completedSessionId ?? set.sessionId };
+            this.daily.set(completed);
+            this.showDailyCompleted(completed);
+            return;
+          }
+          this.session.set(session);
+          this.answeredCount.set(session.answeredCount);
+          this.correctCount.set(session.correctCount);
+          this.skippedCount.set(session.skippedCount);
+          this.dailyResults.set(results);
+          this.dailyResumed.set(set.status === 'InProgress' || session.answeredCount > 0);
+          if (session.status !== 'Active' || results.length >= this.dailyTotal()) {
+            this.finishDaily();
+            return;
+          }
+          this.loadNext();
+        },
+        error: (err: unknown) => {
+          this.dailyLoading.set(false);
+          if (err instanceof HttpErrorResponse && err.status === 409) {
+            // Set boş: havuz boş durumu (faz `daily`).
+            this.daily.set({ ...set, status: 'Empty' });
+            return;
+          }
+          this.dailyLoadError.set(this.messageOf(err, this.text('daily.loadError')));
+        },
+      });
+  }
+
+  /** Aktif günlük oturum + önceden cevaplanmış adımlar (review'dan sırayla; olmazsa sayılardan). */
+  private openDailySession(sessionId: number): Observable<{ session: PracticeSession; results: DailyStepResult[] }> {
+    return this.practiceService.getSession(sessionId).pipe(
+        switchMap((session) => {
+          const results$: Observable<DailyStepResult[]> =
+            session.answeredCount > 0
+              ? this.practiceService.getSessionReview(session.id).pipe(
+                  map((review) => this.resultsFromReview(review)),
+                  catchError(() =>
+                    of(
+                      this.resultsFromCounts(
+                        session.correctCount,
+                        session.answeredCount - session.correctCount - session.skippedCount,
+                        session.skippedCount
+                      )
+                    )
+                  )
+                )
+              : of([]);
+          return results$.pipe(map((results) => ({ session, results })));
+        }),
+    );
+  }
+
+  /** Geri bildirimden sonraki adım: set bittiyse bitiş, değilse sonraki soru. */
+  advance(): void {
+    if (this.dailyMode() && this.dailyResults().length >= this.dailyTotal()) {
+      this.finishDaily();
+      return;
+    }
+    this.loadNext();
+  }
+
+  /**
+   * Günlük set bitti: aktif oturumu kapat (idempotent), bitiş ekranı + seri notu, odak başlığa.
+   * Oturum zaten bitmişse `endSession` çağrılmaz; doğrudan bitiş ekranı.
+   */
+  finishDaily(): void {
+    const session = this.session();
+    if (!session) return;
+    if (session.status !== 'Active') {
+      this.showDailyEnded(session);
+      return;
+    }
+    this.run(this.practiceService.endSession(session.id), () => this.finishDaily(), (ended) =>
+      this.showDailyEnded(ended)
+    );
+  }
+
+  private showDailyEnded(ended: PracticeSession): void {
+    this.session.set(ended);
+    this.answeredCount.set(ended.answeredCount);
+    this.correctCount.set(ended.correctCount);
+    this.skippedCount.set(ended.skippedCount);
+    this.question.set(null);
+    this.region.set(null);
+    this.dailyAlreadyDone.set(false);
+    this.dailyResumed.set(false);
+    this.phase.set('ended');
+    this.loadDailyStreak();
+    this.focusEndedTitle();
+  }
+
+  /** Tamamlanmış set tekrar açıldı: çözme ekranı açılmaz, "zaten tamamladın" bitişi. */
+  private showDailyCompleted(set: DailySet): void {
+    const skipped = Math.max(0, set.skipped);
+    this.dailyAlreadyDone.set(true);
+    this.answeredCount.set(set.answered);
+    this.correctCount.set(set.correct);
+    this.skippedCount.set(skipped);
+    this.dailyResults.set(this.resultsFromCounts(set.correct, set.wrong, skipped));
+    this.phase.set('ended');
+    this.loadDailyStreak();
+    this.focusEndedTitle();
+
+    // Şerit sırası için gerçek sonuçlar; alınamazsa sayılardan türetilen sıra kalır.
+    if (set.sessionId != null) {
+      this.practiceService
+        .getSessionReview(set.sessionId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (review) => {
+            const results = this.resultsFromReview(review);
+            if (results.length) this.dailyResults.set(results);
+          },
+          error: () => undefined,
+        });
+    }
+  }
+
+  /** Daily bitişinden serbest pratiğe: aynı sayfa kurulum fazına döner, `daily` parametresi düşer. */
+  goFreePractice(): void {
+    this.dailyMode.set(false);
+    this.daily.set(null);
+    this.dailyResults.set([]);
+    this.dailyAlreadyDone.set(false);
+    this.dailyResumed.set(false);
+    this.dailyStreak.set(null);
+    this.dailyLoadError.set(null);
+    this.resetToSetup();
+    this.loadSetupData();
+  }
+
+  /** Seri notu yalnız mevcut rozet verisinden; hata/rozet yoksa not gizli kalır (karar 1). */
+  private loadDailyStreak(): void {
+    const userId = currentUserId();
+    if (!userId) return;
+    this.badgeService
+      .getUserBadgeProgress(userId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => this.dailyStreak.set(dailyStreakFrom(response?.summary, response?.badgeProgress)),
+        error: () => this.dailyStreak.set(null),
+      });
+  }
+
+  private focusEndedTitle(): void {
+    afterNextRender(() => this.endedTitle()?.nativeElement.focus(), { injector: this.injector });
+  }
+
+  private resultsFromReview(review: PracticeSessionReview): DailyStepResult[] {
+    return review.questions
+      .filter((row) => row.status !== 'Pending')
+      .map((row) => this.reviewStatusKind(row))
+      .filter((kind): kind is DailyStepResult => kind !== 'pending');
+  }
+
+  /** Sıra bilinmiyorsa: doğrular, yanlışlar, paslar. */
+  private resultsFromCounts(correct: number, wrong: number, skipped: number): DailyStepResult[] {
+    return [
+      ...Array<DailyStepResult>(Math.max(0, correct)).fill('correct'),
+      ...Array<DailyStepResult>(Math.max(0, wrong)).fill('wrong'),
+      ...Array<DailyStepResult>(Math.max(0, skipped)).fill('skipped'),
+    ];
   }
 
   // ── Yardımcılar ─────────────────────────────────────────────────────────────
@@ -723,7 +1031,10 @@ export class PracticeSolveComponent implements OnInit {
   private clearSessionParam(): void {
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { [SESSION_QUERY_PARAM]: null },
+      // Serbest pratiğe geçilince `daily` de düşer; daily modunda kalır (yenileme aynı seti açar).
+      queryParams: this.dailyMode()
+        ? { [SESSION_QUERY_PARAM]: null }
+        : { [SESSION_QUERY_PARAM]: null, [DAILY_QUERY_PARAM]: null },
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });

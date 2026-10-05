@@ -103,5 +103,37 @@
   },
   "error": {
     "generic": "İşlem tamamlanamadı. Lütfen tekrar deneyin."
+  },
+  "daily": {
+    "title": "Günün soruları",
+    "setBadge": "Günlük set",
+    "step": "Soru {{current}} / {{total}}",
+    "stepAria": "{{n}}. soru: {{status}}",
+    "stepsAria": "Günlük set ilerlemesi",
+    "status": {
+      "correct": "doğru",
+      "wrong": "yanlış",
+      "skipped": "pas",
+      "current": "şu anki soru",
+      "pending": "çözülmedi"
+    },
+    "resumeNote": "Kaldığın yerden devam ediyorsun. Bugünkü set değişmez.",
+    "loading": "Günün soruları hazırlanıyor...",
+    "loadError": "Günün soruları getirilemedi, lütfen tekrar dene.",
+    "doneTitle": "Bugünkü set tamam!",
+    "alreadyDoneTitle": "Bugünkü setini zaten tamamladın",
+    "doneText": "Harika iş çıkardın. Yarın yeni bir set seni bekliyor.",
+    "alreadyDoneText": "Günün soruları günde bir kez çözülür. İstersen serbest pratikle devam edebilirsin.",
+    "streakNote": "Günlük seri: {{count}} gün.",
+    "streakNoteOne": "Günlük seri: {{count}} gün.",
+    "streakNext": "{{target}} günlük rozete {{remaining}} gün kaldı.",
+    "streakNextOne": "{{target}} günlük rozete {{remaining}} gün kaldı.",
+    "tomorrow": "Yarın yeni set gelir. Kaçırılan günler birikmez.",
+    "freePractice": "Serbest pratiğe geç",
+    "review": "Cevapları incele",
+    "backToDashboard": "Panoya dön",
+    "emptyTitle": "Bugün için soru bulunamadı",
+    "emptyText": "Sınıfına uygun soru eklendiğinde günlük setin burada görünür.",
+    "goToProfile": "Profilime git"
   }
 }

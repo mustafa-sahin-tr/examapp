@@ -5,6 +5,8 @@ import { QuestionRegion } from '../models/draws';
 import { Question } from '../models/question';
 import { Paged } from '../models/test-instance';
 import {
+  DailySet,
+  DailySetStartResult,
   PracticeAnswerResult,
   PracticeAnswerSubmitRequest,
   PracticeNextQuestion,
@@ -55,6 +57,19 @@ export class PracticeService {
   /** Idempotent; zaten bitmiş oturumda da 200 döner. */
   endSession(sessionId: number): Observable<PracticeSession> {
     return this.http.put<PracticeSession>(`${this.baseUrl}/sessions/${sessionId}/end`, null);
+  }
+
+  /** Günün soruları seti (issue #99); yoksa sunucu bugünün setini üretir. */
+  getDailySet(): Observable<DailySet> {
+    return this.http.get<DailySet>(`${this.baseUrl}/daily`);
+  }
+
+  /**
+   * Günlük setin oturumunu açar ya da var olanı döner (idempotent). Tamamlanmış sette 200 +
+   * `status: 'Completed'` + mevcut oturum; 409 yalnız set boşken.
+   */
+  startDailySet(): Observable<DailySetStartResult> {
+    return this.http.post<DailySetStartResult>(`${this.baseUrl}/daily/start`, null);
   }
 
   /**

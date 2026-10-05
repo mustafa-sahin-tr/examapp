@@ -107,6 +107,26 @@ describe('PracticeService', () => {
     });
   });
 
+  describe('daily set (issue #99)', () => {
+    it('getDailySet_Called_GetsDailyEndpointViaGateway', () => {
+      service.getDailySet().subscribe();
+
+      const req = httpMock.expectOne('/api/exam/practice/daily');
+      expect(req.request.method).toBe('GET');
+      req.flush({});
+    });
+
+    it('startDailySet_Called_PostsToDailyStartEndpoint', () => {
+      let sessionId: number | undefined;
+      service.startDailySet().subscribe((r) => (sessionId = r.sessionId));
+
+      const req = httpMock.expectOne('/api/exam/practice/daily/start');
+      expect(req.request.method).toBe('POST');
+      req.flush({ sessionId: 12 });
+      expect(sessionId).toBe(12);
+    });
+  });
+
   describe('toQuestionRegion', () => {
     function buildQuestion(overrides: Partial<Question> = {}): Question {
       return {

@@ -1,7 +1,13 @@
 <section class="practice" *transloco="let t; prefix: 'practice'">
+  @if (dailyMode()) {
+  <app-section-header [title]="t('daily.title')" iconName="bolt"
+    [subtitle]="dailyDate() ? (dailyDate() | date: 'd MMMM y') ?? '' : ''"
+    [showBackButton]="true" (onBackClick)="onHeaderBack()" />
+  } @else {
   <app-section-header [title]="t('title')" iconName="bolt"
     [subtitle]="t('subtitle')"
     [showBackButton]="true" (onBackClick)="onHeaderBack()" />
+  }
 
   <!-- Oturum çağrısı hatası: her fazda aynı yerde -->
   @if (error(); as message) {
@@ -17,6 +23,34 @@
   }
 
   @switch (phase()) {
+  <!-- ── Günün soruları açılışı (issue #99): yükleniyor / hata / havuz boş ── -->
+  @case ('daily') {
+  <div class="practice__card practice__state" [attr.aria-busy]="dailyLoading() ? 'true' : null">
+    @if (dailyLoading()) {
+    <div class="practice__loading" role="status">
+      <mat-progress-spinner mode="indeterminate" diameter="40" />
+      <p>{{ t('daily.loading') }}</p>
+    </div>
+    } @else if (dailyLoadError()) {
+    <div class="state-box state-box--error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <p class="state-text">{{ dailyLoadError() }}</p>
+      <button mat-stroked-button type="button" (click)="loadDaily()">{{ t('common.retry') }}</button>
+    </div>
+    } @else {
+    <div class="practice__state--empty daily-empty">
+      <mat-icon>inbox</mat-icon>
+      <h2>{{ t('daily.emptyTitle') }}</h2>
+      <p>{{ t('daily.emptyText') }}</p>
+      <div class="practice__actions practice__actions--center">
+        <a mat-stroked-button routerLink="/student-profile">{{ t('daily.goToProfile') }}</a>
+        <a mat-button routerLink="/dashboard">{{ t('daily.backToDashboard') }}</a>
+      </div>
+    </div>
+    }
+  </div>
+  }
+
   <!-- ── Kurulum ─────────────────────────────────────────────────────────── -->
   @case ('setup') {
   <div class="practice__card practice__card--setup" [attr.aria-busy]="setupLoading() ? 'true' : null">
@@ -390,6 +424,75 @@
 
   <!-- ── Oturum özeti ───────────────────────────────────────────────────── -->
   @case ('ended') {
+  @if (dailyMode()) {
+  <!-- Günün soruları bitişi (issue #99): set bitti ya da set zaten tamamlanmışken açıldı -->
+  <div class="practice__card practice__state practice__state--ended daily-ended">
+    <mat-icon>emoji_events</mat-icon>
+    <h2 #endedTitle tabindex="-1" class="daily-ended__title">
+      {{ dailyAlreadyDone() ? t('daily.alreadyDoneTitle') : t('daily.doneTitle') }}
+    </h2>
+    <p class="daily-ended__text">{{ dailyAlreadyDone() ? t('daily.alreadyDoneText') : t('daily.doneText') }}</p>
+
+    @if (dailyTotal() > 0) {
+    <app-daily-progress-steps class="daily-ended__steps" variant="steps" [total]="dailyTotal()"
+      [results]="dailyResults()" [stepAriaLabel]="dailyStepAriaLabel" [ariaLabel]="t('daily.stepsAria')" />
+    }
+
+    <dl class="practice__summary">
+      <div>
+        <dt>{{ t('stats.answered') }}</dt>
+        <dd>{{ answeredCount() }}</dd>
+      </div>
+      <div>
+        <dt>{{ t('stats.correct') }}</dt>
+        <dd class="is-correct">{{ correctCount() }}</dd>
+      </div>
+      <div>
+        <dt>{{ t('stats.wrong') }}</dt>
+        <dd class="is-wrong">{{ wrongCount() }}</dd>
+      </div>
+      <div>
+        <dt>{{ t('stats.skipped') }}</dt>
+        <dd>{{ skippedCount() }}</dd>
+      </div>
+      <div>
+        <dt>{{ t('stats.accuracy') }}</dt>
+        <dd>%{{ accuracy() }}</dd>
+      </div>
+    </dl>
+
+    @if (dailyStreak(); as streak) {
+    <p class="daily-ended__streak">
+      <mat-icon aria-hidden="true">local_fire_department</mat-icon>
+      <span>
+        {{ t(streak.count === 1 ? 'daily.streakNoteOne' : 'daily.streakNote', { count: streak.count }) }}
+        @if (streak.nextTarget != null && streak.remaining != null) {
+        {{ t(streak.remaining === 1 ? 'daily.streakNextOne' : 'daily.streakNext', { target: streak.nextTarget, remaining: streak.remaining }) }}
+        }
+      </span>
+    </p>
+    }
+
+    <div class="state-box state-box--info daily-ended__tomorrow">
+      <mat-icon>info</mat-icon>
+      <p class="state-text">{{ t('daily.tomorrow') }}</p>
+    </div>
+
+    <div class="practice__actions practice__actions--center">
+      <button mat-raised-button color="primary" type="button" (click)="goFreePractice()">
+        <mat-icon>shuffle</mat-icon>
+        {{ t('daily.freePractice') }}
+      </button>
+      @if (dailySessionId(); as sessionId) {
+      <button mat-stroked-button type="button" (click)="openReview(sessionId)">
+        <mat-icon>fact_check</mat-icon>
+        {{ t('daily.review') }}
+      </button>
+      }
+      <a mat-button routerLink="/dashboard">{{ t('daily.backToDashboard') }}</a>
+    </div>
+  </div>
+  } @else {
   <div class="practice__card practice__state practice__state--ended">
     <mat-icon>emoji_events</mat-icon>
     <h2>{{ t('ended.title') }}</h2>
@@ -431,6 +534,7 @@
   </div>
   }
   }
+  }
 </section>
 
 <!-- İstatistik çubuğu: soru, geri bildirim ve boş durumda ortak -->
@@ -460,10 +564,37 @@
   </div>
 </ng-template>
 
+<!-- Günün soruları: statsBar yerine "Soru n / N" + adım şeridi (issue #99) -->
+<ng-template #dailyBar>
+  <div class="daily-bar" *transloco="let t; prefix: 'practice'">
+    <div class="daily-bar__head">
+      <mat-chip-set>
+        <mat-chip class="daily-bar__chip" disableRipple>
+          <mat-icon matChipAvatar aria-hidden="true">bolt</mat-icon>
+          {{ t('daily.setBadge') }}
+        </mat-chip>
+      </mat-chip-set>
+      <span class="daily-bar__step">{{ t('daily.step', { current: dailyStepNumber(), total: dailyTotal() }) }}</span>
+    </div>
+    <app-daily-progress-steps variant="steps" [total]="dailyTotal()" [results]="dailyResults()"
+      [currentIndex]="dailyCurrentIndex()" [stepAriaLabel]="dailyStepAriaLabel" [ariaLabel]="t('daily.stepsAria')" />
+    @if (dailyResumed()) {
+    <div class="state-box state-box--info daily-bar__resume" role="status">
+      <mat-icon>history</mat-icon>
+      <p class="state-text">{{ t('daily.resumeNote') }}</p>
+    </div>
+    }
+  </div>
+</ng-template>
+
 <!-- Soru sahnesi: sınav çözme ekranıyla aynı bileşenler (v5 canvas / lite view) -->
 <ng-template #questionStage>
   <ng-container *transloco="let t; prefix: 'practice'">
+  @if (dailyMode()) {
+  <ng-container *ngTemplateOutlet="dailyBar" />
+  } @else {
   <ng-container *ngTemplateOutlet="statsBar" />
+  }
 
   @if (question(); as q) {
   <article class="question-card" [attr.aria-busy]="busy() ? 'true' : null">
@@ -544,7 +675,7 @@
 
   <div class="practice__actions practice__actions--stage">
     @if (phase() === 'feedback') {
-    <button mat-raised-button color="primary" type="button" (click)="loadNext()" [disabled]="busy()">
+    <button mat-raised-button color="primary" type="button" (click)="advance()" [disabled]="busy()">
       {{ t('stage.nextQuestion') }}
       <mat-icon iconPositionEnd>arrow_forward</mat-icon>
     </button>

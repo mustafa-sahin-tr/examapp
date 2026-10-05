@@ -503,13 +503,52 @@ describe('TaxonomyManagerComponent', () => {
     expect(meta.textContent?.trim()).toBe('1 alt');
   });
 
-  it('subjectRow_WithGrades_ShowsGradeNameChips', () => {
-    fixture = configureWithGrade();
+  // ── Issue #282: ders satırı chip'leri seçili sınıfı tekrarlamaz ─────────
 
-    const chips: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll(
-      '.column:nth-child(1) .grade-chip'
+  /** Ders satırı (sırasıyla) → o satırdaki chip metinleri. */
+  const subjectRowChips = (): string[][] =>
+    Array.from(fixture.nativeElement.querySelectorAll('.column:nth-child(1) .item') as NodeListOf<HTMLElement>).map(
+      (row) => Array.from(row.querySelectorAll('.grade-chip')).map((c) => c.textContent?.trim() ?? '')
     );
-    expect(Array.from(chips).map((c) => c.textContent?.trim())).toEqual(['5. Sınıf', '11. Sınıf']);
+
+  it('subjectRow_GradeSelected_HidesSelectedGradeChipAndShowsOtherGrades', () => {
+    fixture = configureWithGrade(5);
+
+    // Matematik [5, 11] → seçili 5 gizli, yalnız 11 görünür.
+    expect(subjectRowChips()).toEqual([['11. Sınıf']]);
+  });
+
+  it('subjectRow_LinkedOnlyToSelectedGrade_RendersNoChipContainer', () => {
+    fixture = configureWithGrade(11);
+
+    // Matematik [5, 11] → 5. Sınıf; Fizik yalnız [11] → hiç chip (boş kapsayıcı da yok).
+    expect(subjectRowChips()).toEqual([['5. Sınıf'], []]);
+    const rows = fixture.nativeElement.querySelectorAll('.column:nth-child(1) .item') as NodeListOf<HTMLElement>;
+    expect(rows[1].querySelector('.grade-chips')).toBeNull();
+  });
+
+  it('subjectRow_GradeFilterChanges_RecomputesChipsForNewSelection', () => {
+    fixture = configureWithGrade(5);
+    component = fixture.componentInstance;
+    expect(component.otherGradeNamesBySubject().get(1)).toEqual(['11. Sınıf']);
+
+    component.setGradeFilter(11);
+    fixture.detectChanges();
+
+    expect(component.otherGradeNamesBySubject().get(1)).toEqual(['5. Sınıf']);
+    expect(component.otherGradeNamesBySubject().get(2)).toEqual([]);
+    expect(subjectRowChips()).toEqual([['5. Sınıf'], []]);
+  });
+
+  it('manageGrades_OpensDialogWithAllSubjectGradesIncludingSelected', async () => {
+    fixture = configureWithGrade(5);
+    component = fixture.componentInstance;
+
+    await component.manageGrades(subjects[0]);
+
+    // Diyalog dersin TÜM sınıflarını alır (seçili 5 dahil); chip gizleme yalnız ders satırını etkiler.
+    const data = dialog.open.calls.mostRecent().args[1]?.data as { selectedGradeIds: number[] };
+    expect(data.selectedGradeIds).toEqual([5, 11]);
   });
 
   it('manageGrades_DialogReportsChange_ReloadsTaxonomy', async () => {

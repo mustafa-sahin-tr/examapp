@@ -49,14 +49,14 @@ public class BookingNotEndedAtPostgresTests(IntegrationApiFactory factory) : Int
             var tomorrow = Add(Today.AddDays(1), new(9, 0), new(10, 0));
             var endedCrossing = Add(Today.AddDays(-1), new(23, 0), new(0, 5));          // dün 23:00 → bugün 00:05, bitti
             var endedYesterday = Add(Today.AddDays(-1), new(22, 0), new(23, 0));        // bitti
-            var zeroToday = Add(Today, new(12, 0), new(12, 0));                           // sıfır süre: geçersiz → bitmiş
-            var zeroYesterday = Add(Today.AddDays(-1), new(0, 0), new(0, 0));             // sıfır süre
+            // issue #323: sıfır süreli satır artık DB CHECK constraint'iyle reddediliyor (CK_TeacherAvailabilitySlots_Duration);
+            // "sıfır süre → bitmiş" dalı SQLite birim testlerinde (BookingNotEndedAt) kapsanıyor.
             await db.SaveChangesAsync();
 
             return new
             {
                 Expected = new[] { ongoingFromYesterday.Id, tonight.Id, laterToday.Id, tomorrow.Id },
-                NotExpected = new[] { endedCrossing.Id, endedYesterday.Id, zeroToday.Id, zeroYesterday.Id }
+                NotExpected = new[] { endedCrossing.Id, endedYesterday.Id }
             };
         });
 

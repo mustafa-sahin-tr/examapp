@@ -595,6 +595,20 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<TeacherAvailabilitySlot>()
             .HasIndex(s => new { s.RecurringAvailabilityRuleId, s.Date });
 
+        // issue #323 (security O1): servis katmanındaki sıfır süre reddi + 4 saat üst sınırının (gün aşımı dahil) DB
+        // dayanağı — doğrudan SQL/import/hatalı migration uzun bir katılım penceresi açamasın. Yalnız Npgsql: ifade
+        // PostgreSQL time/interval aritmetiği kullanır, SQLite test DB'si (EnsureCreated) bunu çalıştıramaz.
+        if (Database.IsNpgsql())
+        {
+            modelBuilder.Entity<TeacherAvailabilitySlot>()
+                .ToTable(t => t.HasCheckConstraint(
+                    Services.Bookings.SlotTimeRange.SlotDurationCheckName, Services.Bookings.SlotTimeRange.DurationCheckSql));
+
+            modelBuilder.Entity<RecurringAvailabilityRule>()
+                .ToTable(t => t.HasCheckConstraint(
+                    Services.Bookings.SlotTimeRange.RuleDurationCheckName, Services.Bookings.SlotTimeRange.DurationCheckSql));
+        }
+
         modelBuilder.Entity<Booking>()
             .HasOne(b => b.AvailabilitySlot)
             .WithMany(s => s.Bookings)

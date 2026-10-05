@@ -4,16 +4,10 @@
   },
   "wizard": {
     "questionNumber": "Soru {{number}}",
-    "stepCounter": "{{current}} / {{total}}",
     "loading": "Sorular yükleniyor...",
-    "prevQuestion": "Önceki soru",
-    "nextQuestion": "Sonraki soru",
     "loadError": "Sorular yüklenemedi, lütfen tekrar deneyin.",
-    "stepsNotFound": "Program adımları bulunamadı.",
-    "reloadHint": "Sorular yüklenemedi, lütfen sayfayı yenileyin",
     "retry": "Tekrar Dene",
     "noSelection": "Bir seçim yapmadınız",
-    "summaryTitle": "Seçimleriniz:",
     "progress": {
       "label": "Sihirbaz ilerlemesi",
       "current": "Soru {{n}} / {{total}}",
@@ -60,8 +54,8 @@
     "startDateRequired": "Başlangıç tarihi gereklidir",
     "endDateRequired": "Bitiş tarihi gereklidir",
     "endDateAfterStart": "Bitiş tarihi, başlangıç tarihinden sonra olmalıdır",
+    "dateInvalid": "Geçerli bir tarih gir",
     "created": "Program başarıyla oluşturuldu!",
-    "createFailed": "Program oluşturulurken bir hata oluştu",
     "reviewTitle": "Onay özeti",
     "summaryCount": "{{count}} cevap",
     "createFailedInline": "Program oluşturulamadı. Seçimlerin ve girdiğin bilgiler korunuyor; tekrar deneyebilirsin."

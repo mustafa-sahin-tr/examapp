@@ -74,8 +74,8 @@ var authApiRabbitPassword = builder.AddParameter("rabbitmq-auth-api-password", s
 // the StudentPointsChangedEvent exchange) + rabbitmq.conf (which points
 // management.load_definitions at it), mirroring docker-compose.yml's
 // ./rabbitmq/{definitions.json,rabbitmq.conf} mounts. load_definitions runs
-// on every node boot (defines missing users/permissions, never deletes or
-// overwrites an existing user's password) — see .claude/rules/local-dev.md
+// on every node boot (upserts the users'/permissions from the file, never
+// deletes objects and - unverified - does not rotate an existing user's password) — see .claude/rules/local-dev.md
 // if you already have a local Aspire RabbitMQ volume and need to rotate the
 // admin ("rabbituser") password specifically.
 var rabbitmq = builder.AddRabbitMQ("rabbitmq", userName: rabbitUser, password: rabbitPassword, port: 5672)
@@ -83,6 +83,12 @@ var rabbitmq = builder.AddRabbitMQ("rabbitmq", userName: rabbitUser, password: r
     .WithBindMount("../rabbitmq/definitions.json", "/etc/rabbitmq/definitions.json", isReadOnly: true)
     .WithBindMount("../rabbitmq/rabbitmq.conf", "/etc/rabbitmq/rabbitmq.conf", isReadOnly: true);
 var rabbitmqEndpoint = rabbitmq.GetEndpoint("tcp");
+
+// Issue #328: the Aspire RabbitMQ has no persistent data volume (anonymous
+// volume, fresh on every AppHost start), so boot-time load_definitions applies
+// the current definitions.json permissions each time. If you edit
+// definitions.json while the AppHost is running, restart the rabbitmq resource
+// (`aspire resource rabbitmq restart`) - a running node does not re-read it.
 
 // No first-party or Community Toolkit MinIO hosting integration is used here:
 // CommunityToolkit.Aspire.Hosting.Minio exists but is marked deprecated

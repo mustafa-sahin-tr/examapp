@@ -44,6 +44,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_started
+      rabbitmq-permission-sync:
+        condition: service_completed_successfully
     networks:
       - mynetwork
 
@@ -89,6 +91,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_started
+      rabbitmq-permission-sync:
+        condition: service_completed_successfully
     networks:
       - mynetwork
 
@@ -129,6 +133,8 @@ services:
     depends_on:
       exam-pg-container:
         condition: service_healthy
+      rabbitmq-permission-sync:
+        condition: service_completed_successfully
       auth-api:
         condition: service_started
     networks:
@@ -161,6 +167,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_started
+      rabbitmq-permission-sync:
+        condition: service_completed_successfully
     networks:
       - mynetwork
 
@@ -196,6 +204,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_started
+      rabbitmq-permission-sync:
+        condition: service_completed_successfully
     networks:
       - mynetwork
 
@@ -230,6 +240,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_started
+      rabbitmq-permission-sync:
+        condition: service_completed_successfully
       exam-badge-api:
         condition: service_started
     networks:
@@ -381,6 +393,31 @@ services:
       - ./rabbitmq/data:/var/lib/rabbitmq
       - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
       - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    networks:
+      - mynetwork
+
+  # Issue #328: calisan bir rabbitmq container'i definitions.json degisince
+  # yeniden baslamaz (bind-mount icerigi degisince `up -d` recreate etmez), bu
+  # yuzden yeni event exchange izinleri uygulanmaz (ACCESS_REFUSED). Bu tek
+  # seferlik container her `up -d`'de definitions.json'in YALNIZ `permissions`
+  # blogunu (admin haric) management API ile tekrar uygular; tek kaynak
+  # definitions.json. Ag erisimi (apk) yalniz container ilk olusturulurken gerekir.
+  rabbitmq-permission-sync:
+    image: alpine:3.20
+    container_name: rabbitmq-permission-sync
+    restart: "no"
+    entrypoint: ['/bin/sh', '/sync-permissions.sh']
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_DEFAULT_USER:?RABBITMQ_DEFAULT_USER .env icinde tanimli olmali}
+      RABBITMQ_PASS: ${RABBITMQ_DEFAULT_PASS:?RABBITMQ_DEFAULT_PASS .env icinde tanimli olmali}
+      DEFINITIONS_FILE: /definitions.json
+    volumes:
+      - ./rabbitmq/sync-permissions.sh:/sync-permissions.sh:ro
+      - ./rabbitmq/definitions.json:/definitions.json:ro
+    depends_on:
+      rabbitmq:
+        condition: service_started
     networks:
       - mynetwork
 

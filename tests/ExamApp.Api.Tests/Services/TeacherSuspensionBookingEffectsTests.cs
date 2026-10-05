@@ -669,6 +669,155 @@ public class TeacherSuspensionBookingEffectsTests : IDisposable
         (await ctx.AdminUserActionLogs.SingleAsync()).Outcome.ShouldBe(AdminUserActionOutcome.Succeeded);
     }
 
+    private IWhiteboardStore StoreWithBoards(params int[] bookingIds)
+    {
+        var store = Substitute.For<IWhiteboardStore>();
+        store.ListBoards().Returns(bookingIds
+            .Select(id => new WhiteboardBoardInfo(id, _clock.Now.UtcDateTime.AddHours(1))).ToList());
+        return store;
+    }
+
+    [Fact]
+    public async Task Suspend_closes_every_open_board_of_the_teacher_and_only_those()
+    {
+        await SeedPeopleAsync();
+        var mineNow = await AddBookingAsync(TeacherId, StudentA, BookingStatus.Approved, Today, 12);
+        var mineLater = await AddBookingAsync(TeacherId, StudentB, BookingStatus.Approved, Today.AddDays(1), 12);
+        var others = await AddBookingAsync(OtherTeacherId, StudentC, BookingStatus.Approved, Today, 12);
+        var closer = Substitute.For<IWhiteboardSessionCloser>();
+
+        (await SuspendAsync(StoreWithBoards(mineNow, others, mineLater), closer)).Status
+            .ShouldBe(AdminTeacherSuspensionStatus.Success);
+
+        await closer.Received(1).CloseAsync(mineNow, WhiteboardCloseReasons.TeacherUnavailable, Arg.Any<CancellationToken>());
+        await closer.Received(1).CloseAsync(mineLater, WhiteboardCloseReasons.TeacherUnavailable, Arg.Any<CancellationToken>());
+        await closer.DidNotReceive().CloseAsync(others, Arg.Any<string>(), Arg.Any<CancellationToken>());
+        closer.ReceivedCalls().Count().ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Whiteboards_are_closed_only_after_the_suspension_transaction_committed()
+    {
+        await SeedPeopleAsync();
+        var mine = await AddBookingAsync(TeacherId, StudentA, BookingStatus.Approved, Today, 12);
+        await using var ctx = _db.NewContext();
+        var closer = Substitute.For<IWhiteboardSessionCloser>();
+        bool? transactionOpenAtClose = null;
+        DateTime? suspendedAtClose = null;
+        closer.CloseAsync(mine, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            transactionOpenAtClose = ctx.Database.CurrentTransaction is not null;
+            await using var check = _db.NewContext();
+            suspendedAtClose = (await check.Teachers.AsNoTracking().SingleAsync(t => t.Id == TeacherId)).AccountSuspendedAt;
+            return true;
+        });
+
+        var result = await NewSuspensionService(ctx, StoreWithBoards(mine), closer)
+            .SuspendAsync(TeacherId, "neden", AdminSub, AdminUserId);
+
+        result.Status.ShouldBe(AdminTeacherSuspensionStatus.Success);
+        transactionOpenAtClose.ShouldBe(false);
+        suspendedAtClose.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task Rolled_back_suspension_leaves_the_whiteboards_open()
+    {
+        await SeedPeopleAsync();
+        var mine = await AddBookingAsync(TeacherId, StudentA, BookingStatus.Approved, Today, 12);
+        var store = StoreWithBoards(mine);
+        var closer = Substitute.For<IWhiteboardSessionCloser>();
+
+        await using (var ctx = _db.NewContext(new FailCommitInterceptor()))
+        {
+            await Should.ThrowAsync<InvalidOperationException>(() =>
+                NewSuspensionService(ctx, store, closer).SuspendAsync(TeacherId, "neden", AdminSub, AdminUserId));
+        }
+
+        await using var check = _db.NewContext();
+        (await check.Teachers.AsNoTracking().SingleAsync(t => t.Id == TeacherId)).AccountSuspendedAt.ShouldBeNull();
+        store.DidNotReceive().ListBoards();
+        closer.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Concurrent_suspension_conflict_does_not_close_whiteboards()
+    {
+        await SeedPeopleAsync();
+        var mine = await AddBookingAsync(TeacherId, StudentA, BookingStatus.Approved, Today, 12);
+        var store = StoreWithBoards(mine);
+        var closer = Substitute.For<IWhiteboardSessionCloser>();
+        await using var ctx = _db.NewContext();
+        var audit = Substitute.For<IAdminUserActionAuditService>();
+        audit.RecordAsync(Arg.Any<AdminUserActionRecord>(), AdminUserActionOutcome.Requested, Arg.Any<CancellationToken>())
+            .Returns(async _ =>
+            {
+                // Okuma ile koşullu yazma arasında öğretmenin askısı başka bir admin tarafından kaldırıldı/değişti.
+                await using var other = _db.NewContext();
+                await other.Teachers.Where(t => t.Id == TeacherId).ExecuteUpdateAsync(s => s
+                    .SetProperty(t => t.AccountApprovedAt, (DateTime?)null)
+                    .SetProperty(t => t.AccountSuspendedAt, DateTime.UtcNow.AddMinutes(-1))
+                    .SetProperty(t => t.AccountSuspensionReason, "diğer admin"));
+                return 5L;
+            });
+
+        var result = await new AdminTeacherSuspensionService(ctx, audit, null, _authApi, _clock, store, closer)
+            .SuspendAsync(TeacherId, "neden", AdminSub, AdminUserId);
+
+        result.Status.ShouldBe(AdminTeacherSuspensionStatus.Conflict);
+        closer.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Already_suspended_or_never_approved_teacher_does_not_touch_whiteboards()
+    {
+        await SeedPeopleAsync();
+        var mine = await AddBookingAsync(TeacherId, StudentA, BookingStatus.Approved, Today, 12);
+        var others = await AddBookingAsync(OtherTeacherId, StudentB, BookingStatus.Approved, Today, 12);
+        await SuspendAsync(); // tahta bağımlılıkları olmadan ilk askı
+        await using (var ctx = _db.NewContext())
+        {
+            await ctx.Teachers.Where(t => t.Id == OtherTeacherId)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.AccountApprovedAt, (DateTime?)null));
+        }
+        var store = StoreWithBoards(mine, others);
+        var closer = Substitute.For<IWhiteboardSessionCloser>();
+
+        (await SuspendAsync(store, closer)).Status.ShouldBe(AdminTeacherSuspensionStatus.AlreadySuspended);
+        await using (var ctx = _db.NewContext())
+        {
+            (await NewSuspensionService(ctx, store, closer).SuspendAsync(OtherTeacherId, "neden", AdminSub, AdminUserId))
+                .Status.ShouldBe(AdminTeacherSuspensionStatus.AccountNotApproved);
+        }
+
+        closer.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Whiteboard_store_failure_is_swallowed_and_the_suspension_stands()
+    {
+        await SeedPeopleAsync();
+        await AddBookingAsync(TeacherId, StudentA, BookingStatus.Approved, Today, 12);
+        var store = Substitute.For<IWhiteboardStore>();
+        store.ListBoards().Returns(_ => throw new InvalidOperationException("store down"));
+        var closer = Substitute.For<IWhiteboardSessionCloser>();
+
+        (await SuspendAsync(store, closer)).Status.ShouldBe(AdminTeacherSuspensionStatus.Success);
+
+        closer.ReceivedCalls().ShouldBeEmpty();
+        await using var ctx = _db.NewContext();
+        (await ctx.Teachers.AsNoTracking().SingleAsync(t => t.Id == TeacherId)).AccountSuspendedAt.ShouldNotBeNull();
+    }
+
+    /// <summary>COMMIT veritabanına ulaşmadan kalıcı (geçici olmayan) hata → transaction geri alınır, istisna yukarı çıkar.</summary>
+    private sealed class FailCommitInterceptor : Microsoft.EntityFrameworkCore.Diagnostics.DbTransactionInterceptor
+    {
+        public override ValueTask<Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult> TransactionCommittingAsync(
+            System.Data.Common.DbTransaction transaction, Microsoft.EntityFrameworkCore.Diagnostics.TransactionEventData eventData,
+            Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult result, CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("simulated commit failure");
+    }
+
     // ---------------- askıda "onaylandı" bildirimi ----------------
 
     private async Task<ResponseBaseDto> ApproveApplicationAsync(int teacherId)

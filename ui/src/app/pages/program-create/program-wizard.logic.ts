@@ -130,3 +130,18 @@ export function toggleValue(step: ProgramStep, values: readonly string[], option
   // Seçenek sırasını koru: payload ve özet adım sırasına göre okunur.
   return step.options.map((o) => o.value).filter((v) => v === option.value || kept.includes(v));
 }
+
+/**
+ * Son adım tarih kuralı: bitiş, başlangıçtan sonraki bir takvim gününde olmalı (bitiş <= başlangıç geçersiz).
+ * Gün bazında karşılaştırılır; datepicker gece yarısı, varsayılan başlangıç ise saatli "bugün" verir.
+ */
+export function isEndAfterStart(start: Date, end: Date): boolean {
+  const day = (d: Date): number => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  return day(end) > day(start);
+}
+
+/** Yerel takvim günü `yyyy-MM-dd` (backend `DateTime.TryParse` + `.Date` ile aynı günü okur). */
+export function toLocalDateString(date: Date): string {
+  const pad = (n: number): string => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}

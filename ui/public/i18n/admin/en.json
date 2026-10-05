@@ -433,6 +433,55 @@
       "generic": "Something went wrong while changing the school. Please try again."
     }
   },
+  "teacherSchool": {
+    "assignAction": "Assign to school",
+    "assignActionFor": "Assign {{name}} to a school",
+    "changeAction": "Change school",
+    "changeActionFor": "Change school of {{name}}",
+    "blocked": {
+      "suspended": "A teacher whose account approval is suspended cannot change school. Lift the suspension first.",
+      "accountNotApproved": "A teacher whose account is not approved yet cannot be assigned to a school. Approve the application first.",
+      "approvedIndependent": "An approved independent tutor cannot be assigned to a school from this screen."
+    },
+    "assignTitle": "Assign the teacher to a school?",
+    "changeTitle": "Change the teacher's school?",
+    "currentSchool": "Current school: {{school}}",
+    "noSchool": "No school",
+    "newSchool": "New school",
+    "transitionTitle": "Change",
+    "transitionAria": "{{from}} → {{to}}",
+    "notSelected": "No school selected",
+    "effectsTitle": "What this action does",
+    "effectNewSchool": "The teacher will see the new school's students and classes according to school rules.",
+    "effectOldSchool": "Access to the old school's students and their results will be removed.",
+    "effectPendingRequest": "Any pending school request of the teacher is closed.",
+    "effectPendingRequestApproved": "Any pending school request of the teacher is closed and the application status is set to \"Approved\".",
+    "independentNote": "This teacher is registered as an independent tutor (application not approved). Assigning a school does not change their independent tutor details or application status; from now on their school-scoped access is based on the selected school.",
+    "confirmAssign": "Assign to school",
+    "confirmChange": "Change school",
+    "submitting": "Saving...",
+    "cancel": "Cancel",
+    "retry": "Try again",
+    "reload": "Reload list",
+    "close": "Close",
+    "success": {
+      "assigned": "{{name}} was assigned to {{school}}.",
+      "changed": "{{name}}'s school was changed to {{school}}.",
+      "unchanged": "{{name}} is already at this school; nothing was changed.",
+      "updated": "{{name}}'s school was updated.",
+      "cacheStale": "The school was changed, but the session cache could not be cleared; the change may take up to 1 hour to apply."
+    },
+    "errors": {
+      "forbidden": "You are not allowed to change this account's school (administrator/service account or your own account).",
+      "notFound": "Teacher not found.",
+      "upstream": "The identity server could not be reached; the school was not changed. Please try again later.",
+      "rateLimited": "Too many school changes in a short time. Please wait a moment and try again.",
+      "rateLimitedSeconds": "Too many school changes in a short time. Please try again in {{seconds}} seconds.",
+      "invalidSchool": "The selected school was not found. Please pick another school from the list.",
+      "conflict": "The teacher's school was changed in the meantime. Reload the list and try again.",
+      "generic": "Something went wrong while saving the school. Please try again."
+    }
+  },
   "badgeDefinitions": {
     "title": "Badge Definitions",
     "subtitle": "Create and edit badges; activate or deactivate them.",

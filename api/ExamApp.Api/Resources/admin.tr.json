@@ -41,6 +41,19 @@
       "upstreamFailed": "Öğrencinin okulu şu anda değiştirilemedi. Lütfen biraz sonra tekrar deneyin.",
       "rateLimited": "Kısa sürede çok fazla okul değişikliği yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     },
+    "teacherSchool": {
+      "schoolIdRequired": "schoolId alanı zorunludur.",
+      "teacherNotFound": "Öğretmen bulunamadı.",
+      "schoolNotFound": "Seçilen okul bulunamadı.",
+      "accountNotFound": "Bu kullanıcıya bağlı bir oturum açma hesabı bulunamadı.",
+      "self": "Kendi kaydınızın okulunu bu ekrandan değiştiremezsiniz.",
+      "protectedRole": "Yönetici veya servis hesaplarının okulu bu ekrandan değiştirilemez.",
+      "concurrentChange": "Öğretmenin okulu ya da başvuru durumu aynı anda başka bir işlemle değişti. Lütfen sayfayı yenileyip tekrar deneyin.",
+      "upstreamFailed": "Öğretmenin okulu şu anda değiştirilemedi. Lütfen biraz sonra tekrar deneyin.",
+      "independentActive": "Aktif bağımsız öğretmen okula bağlanamaz; önce bağımsız öğretmen profili kapatılmalıdır.",
+      "accountNotApproved": "Öğretmen hesabı henüz onaylanmadı; okula bağlamadan önce hesap onaylanmalıdır.",
+      "accountSuspended": "Öğretmen hesabı askıda; okula bağlamadan önce askı kaldırılmalıdır."
+    },
     "teacherSuspension": {
       "reasonRequired": "Askıya alma nedeni zorunludur.",
       "reasonTooLong": "Askıya alma nedeni en fazla {0} karakter olabilir.",

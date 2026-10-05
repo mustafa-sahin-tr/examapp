@@ -433,6 +433,55 @@
       "generic": "Okul değiştirilirken bir sorun oluştu. Lütfen tekrar deneyin."
     }
   },
+  "teacherSchool": {
+    "assignAction": "Okula bağla",
+    "assignActionFor": "{{name}} öğretmenini okula bağla",
+    "changeAction": "Okulu değiştir",
+    "changeActionFor": "{{name}} öğretmeninin okulunu değiştir",
+    "blocked": {
+      "suspended": "Hesap onayı askıda olan öğretmenin okulu değiştirilemez. Önce askıyı kaldırın.",
+      "accountNotApproved": "Hesabı henüz onaylanmamış öğretmen okula bağlanamaz. Önce başvuruyu onaylayın.",
+      "approvedIndependent": "Onaylı bağımsız öğretmen bu ekrandan okula bağlanamaz."
+    },
+    "assignTitle": "Öğretmen okula bağlansın mı?",
+    "changeTitle": "Öğretmenin okulu değiştirilsin mi?",
+    "currentSchool": "Mevcut okul: {{school}}",
+    "noSchool": "Okulsuz",
+    "newSchool": "Yeni okul",
+    "transitionTitle": "Değişiklik",
+    "transitionAria": "{{from}} → {{to}}",
+    "notSelected": "Okul seçilmedi",
+    "effectsTitle": "Bu işlemin etkileri",
+    "effectNewSchool": "Öğretmen yeni okulun öğrencilerini ve sınıflarını okul kurallarına göre görebilecek.",
+    "effectOldSchool": "Eski okulun öğrencilerine ve sonuçlarına erişimi kalmayacak.",
+    "effectPendingRequest": "Öğretmenin bekleyen bir okul talebi varsa kapatılır.",
+    "effectPendingRequestApproved": "Öğretmenin bekleyen bir okul talebi varsa kapatılır ve başvuru durumu \"Onaylı\" olarak güncellenir.",
+    "independentNote": "Bu öğretmen bağımsız öğretmen olarak kayıtlı (başvurusu onaylı değil). Okula bağlamak bağımsız öğretmen bilgilerini ve başvuru durumunu değiştirmez; öğretmenin okul kapsamındaki erişimi bundan sonra seçilen okula göre belirlenir.",
+    "confirmAssign": "Okula bağla",
+    "confirmChange": "Okulu değiştir",
+    "submitting": "Kaydediliyor...",
+    "cancel": "İptal",
+    "retry": "Tekrar dene",
+    "reload": "Listeyi yenile",
+    "close": "Kapat",
+    "success": {
+      "assigned": "{{name}}, {{school}} okuluna bağlandı.",
+      "changed": "{{name}} öğretmeninin okulu {{school}} olarak değiştirildi.",
+      "unchanged": "{{name}} zaten bu okulda; değişiklik yapılmadı.",
+      "updated": "{{name}} öğretmeninin okul bilgisi güncellendi.",
+      "cacheStale": "Okul değişti ancak oturum önbelleği temizlenemedi; değişiklik 1 saate kadar gecikebilir."
+    },
+    "errors": {
+      "forbidden": "Bu hesabın okulunu değiştirme yetkiniz yok (yönetici/servis hesabı ya da kendi hesabınız).",
+      "notFound": "Öğretmen bulunamadı.",
+      "upstream": "Kimlik sunucusuna ulaşılamadı; okul değiştirilmedi. Lütfen daha sonra tekrar deneyin.",
+      "rateLimited": "Kısa sürede çok fazla okul değişikliği yapıldı. Lütfen biraz bekleyip tekrar deneyin.",
+      "rateLimitedSeconds": "Kısa sürede çok fazla okul değişikliği yapıldı. Lütfen {{seconds}} saniye sonra tekrar deneyin.",
+      "invalidSchool": "Seçilen okul bulunamadı. Lütfen listeden başka bir okul seçin.",
+      "conflict": "Öğretmenin okulu bu arada değiştirildi. Listeyi yenileyip tekrar deneyin.",
+      "generic": "Okul kaydedilirken bir sorun oluştu. Lütfen tekrar deneyin."
+    }
+  },
   "badgeDefinitions": {
     "title": "Rozet Tanımları",
     "subtitle": "Rozetleri oluştur, düzenle; aktifleştir veya devre dışı bırak.",

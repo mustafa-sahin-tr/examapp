@@ -36,12 +36,12 @@ public class AdminUserActionLog
     public DateTime OccurredAtUtc { get; set; }
 
     /// <summary>
-    /// issue #277 review (security L5): <see cref="AdminUserAction.StudentSchoolChanged"/> için önceki okul (Schools.Id;
+    /// issue #277 review (security L5): <see cref="AdminUserAction.StudentSchoolChanged"/> (ve #313 <see cref="AdminUserAction.TeacherSchoolChanged"/>) için önceki okul (Schools.Id;
     /// okulsuzsa null). Diğer aksiyonlarda null. PII değil — yalnızca exam DB id'si.
     /// </summary>
     public int? FromSchoolId { get; set; }
 
-    /// <summary>issue #277 review (security L5): <see cref="AdminUserAction.StudentSchoolChanged"/> için istenen/yeni okul.</summary>
+    /// <summary>issue #277 review (security L5): <see cref="AdminUserAction.StudentSchoolChanged"/> (ve #313 <see cref="AdminUserAction.TeacherSchoolChanged"/>) için istenen/yeni okul.</summary>
     public int? ToSchoolId { get; set; }
 }
 
@@ -69,7 +69,9 @@ public enum AdminUserAction
     /// </summary>
     CommentHidden = 9,
     /// <summary>issue #305: gizlenen yorum yeniden görünür yapıldı.</summary>
-    CommentUnhidden = 10
+    CommentUnhidden = 10,
+    /// <summary>issue #313: admin öğretmenin okulunu ayarladı/değiştirdi (Teachers.SchoolId). Önceki/yeni okul <see cref="AdminUserActionLog.FromSchoolId"/>/<see cref="AdminUserActionLog.ToSchoolId"/>.</summary>
+    TeacherSchoolChanged = 11
 }
 
 /// <summary>Admin hesap aksiyonunun sonucu. Kalıcı değer string'dir.</summary>
@@ -91,7 +93,12 @@ public enum AdminUserActionOutcome
     /// <summary>issue #277 (madde 8): okuma ile koşullu yazma arasında hedef başka bir istekle değişti — yan etki yok.</summary>
     Conflict = 8,
     /// <summary>issue #277 review (security L5): okul değişikliğinde istenen okul yok — yan etki yok (<see cref="AdminUserActionLog.ToSchoolId"/> dolu).</summary>
-    SchoolNotFound = 9
+    SchoolNotFound = 9,
+    /// <summary>
+    /// issue #313 review (O1): okul değişikliği UYGULANDI (DB + Keycloak ipucu) ama profil önbelleği denemelere rağmen
+    /// düşürülemedi — kullanıcı en geç önbellek süresi (1 saat) boyunca eski okulun kapsamında görünebilir. Başarılı sonuçtur.
+    /// </summary>
+    SucceededCacheStale = 10
 }
 
 /// <summary>Admin hesap aksiyonunun hedef türü. Kalıcı değer string'dir.</summary>

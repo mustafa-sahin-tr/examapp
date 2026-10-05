@@ -12,6 +12,11 @@ import { AdminResetPasswordDialogComponent } from '../../../shared/components/ad
 import { AdminAccountStatusDialogComponent } from '../../../shared/components/admin-account-status-dialog/admin-account-status-dialog.component';
 import { AdminTeacherSuspensionDialogComponent } from '../../../shared/components/admin-teacher-suspension-dialog/admin-teacher-suspension-dialog.component';
 import { AdminTeacherSuspensionResponse } from '../../../models/admin-teacher-suspension.model';
+import { AdminTeacherSchoolDialogComponent } from '../../../shared/components/admin-teacher-school-dialog/admin-teacher-school-dialog.component';
+import { AdminTeacherSchoolResponse } from '../../../models/admin-teacher-school.model';
+import { SchoolService } from '../../../services/school.service';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTooltip } from '@angular/material/tooltip';
 
 import { AdminTeachersComponent } from './admin-teachers.component';
 import { AdminService } from '../../../services/admin.service';
@@ -29,11 +34,21 @@ describe('AdminTeachersComponent', () => {
   let fixture: ComponentFixture<AdminTeachersComponent>;
   let component: AdminTeachersComponent;
   let adminService: jasmine.SpyObj<AdminService>;
+  let snackBar: jasmine.SpyObj<MatSnackBar>;
   let router: Router;
 
   const schools: School[] = [
     { id: 5, name: 'Ankara Lisesi', provinceId: null, provinceName: null, districtId: null, districtName: null, addressLine: null },
   ];
+  const izmir: School = {
+    id: 8,
+    name: 'İzmir Lisesi',
+    provinceId: null,
+    provinceName: null,
+    districtId: null,
+    districtName: null,
+    addressLine: null,
+  };
 
   function teacher(overrides: Partial<AdminTeacherListItem> = {}): AdminTeacherListItem {
     return {
@@ -73,13 +88,17 @@ describe('AdminTeachersComponent', () => {
       'setAccountStatus',
       'suspendTeacher',
       'unsuspendTeacher',
+      'changeTeacherSchool',
     ]);
+    snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
     adminService.getSchools.and.returnValue(of(schools));
     adminService.getTeachers.and.returnValue(of(paged([teacher()], 45)));
     queryParams$ = new BehaviorSubject<ParamMap>(convertToParamMap(initialParams));
 
     const providers: (Provider | EnvironmentProviders)[] = [
       { provide: AdminService, useValue: adminService },
+      { provide: SchoolService, useValue: { getSchools: () => of([...schools, izmir]) } },
+      { provide: MatSnackBar, useValue: snackBar },
       provideRouter([]),
       provideNoopAnimations(),
       { provide: ActivatedRoute, useValue: { queryParamMap: queryParams$.asObservable(), snapshot: {} } },
@@ -850,6 +869,257 @@ describe('AdminTeachersComponent', () => {
     const row = component.rows()[0];
     component.toggleSuspension(row);
     component.toggleSuspension(row);
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+  });
+  // ── Okula bağla / okulu değiştir (issue #313) ────────────────────────────
+
+  const schoolTexts = adminTr.teacherSchool;
+
+  function schoolButtons(): HTMLButtonElement[] {
+    return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button[data-testid="change-school"]'));
+  }
+
+  function schoolTooltips(): string[] {
+    return fixture.debugElement
+      .queryAll(By.css('button[data-testid="change-school"]'))
+      .map((de) => de.injector.get(MatTooltip).message);
+  }
+
+  /** Açık dialog'da okul seçer (seçim bileşeninin kendi testi ayrı; burada sayfa entegrasyonu doğrulanır). */
+  async function openSchoolDialogAndPick(pickSchool: School): Promise<void> {
+    schoolButtons()[0].click();
+    await settle();
+    const dialog = fixture.debugElement.injector.get(MatDialog);
+    const instance = dialog.openDialogs[0].componentInstance as AdminTeacherSchoolDialogComponent;
+    instance.selectedSchoolId.set(pickSchool.id);
+    instance.onSchoolSelected(pickSchool);
+    await settle();
+  }
+
+  function schoolResponse(overrides: Partial<AdminTeacherSchoolResponse> = {}): AdminTeacherSchoolResponse {
+    return { teacherId: 12, schoolId: 8, previousSchoolId: 5, changed: true, ...overrides };
+  }
+
+  it('schoolAction_SchooledAndUnassignedRows_ShowChangeAndAssignLabels', () => {
+    configure();
+    adminService.getTeachers.and.returnValue(
+      of(
+        paged([
+          teacher({ id: 1 }),
+          teacher({ id: 2, schoolId: null, schoolName: null, isIndependentTutor: true, approvalStatus: 'Rejected' }),
+        ]),
+      ),
+    );
+    create();
+
+    const labels = schoolButtons().map((b) => b.getAttribute('aria-label'));
+    expect(labels).toEqual([actionFor(schoolTexts.changeActionFor), actionFor(schoolTexts.assignActionFor)]);
+    expect(schoolButtons().map((b) => b.getAttribute('aria-disabled'))).toEqual([null, null]);
+    expect(schoolTooltips()).toEqual([schoolTexts.changeAction, schoolTexts.assignAction]);
+  });
+
+  it('schoolAction_SuspendedNotApprovedAndApprovedIndependent_DisabledWithReasonTooltip', () => {
+    configure();
+    adminService.getTeachers.and.returnValue(
+      of(
+        paged([
+          suspendedTeacher(),
+          teacher({ id: 2, approvalStatus: 'Pending', accountApproved: false }),
+          teacher({ id: 3, schoolId: null, schoolName: null, isIndependentTutor: true, approvalStatus: 'Approved' }),
+        ]),
+      ),
+    );
+    create();
+    const dialog = fixture.debugElement.injector.get(MatDialog);
+    const openSpy = spyOn(dialog, 'open').and.callThrough();
+
+    // Gizlenmez: üç satırda da buton var, devre dışı (disabledInteractive → aria-disabled) ve tooltip nedeni söyler.
+    expect(schoolButtons().length).toBe(3);
+    expect(schoolButtons().map((b) => b.getAttribute('aria-disabled'))).toEqual(['true', 'true', 'true']);
+    expect(schoolTooltips()).toEqual([
+      schoolTexts.blocked.suspended,
+      schoolTexts.blocked.accountNotApproved,
+      schoolTexts.blocked.approvedIndependent,
+    ]);
+    expect(component.rows().map((r) => r.schoolBlockedReason)).toEqual([
+      'suspended',
+      'accountNotApproved',
+      'approvedIndependent',
+    ]);
+
+    schoolButtons().forEach((b) => b.click());
+    component.rows().forEach((r) => component.changeSchool(r));
+
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(component.schoolDialogOpen()).toBeFalse();
+  });
+
+  it('changeSchool_OpensDialogWithRowIdentityAndSendsNoRequestYet', async () => {
+    configure();
+    create();
+    const dialog = fixture.debugElement.injector.get(MatDialog);
+    const openSpy = spyOn(dialog, 'open').and.callThrough();
+
+    schoolButtons()[0].click();
+    await settle();
+
+    expect(openSpy.calls.mostRecent().args[0]).toBe(AdminTeacherSchoolDialogComponent);
+    const config = openSpy.calls.mostRecent().args[1];
+    expect(config?.data).toEqual({
+      teacherId: 12,
+      displayName: 'Ayşe Yılmaz',
+      currentSchoolId: 5,
+      currentSchoolName: 'Ankara Lisesi',
+      independent: false,
+      accountApproved: true,
+    });
+    expect(config?.disableClose).toBeTrue();
+    expect(overlay().textContent).toContain(schoolTexts.changeTitle);
+    expect(overlay().textContent).toContain(schoolTexts.effectPendingRequestApproved);
+    expect(overlayButton('confirm').disabled).toBeTrue();
+    expect(adminService.changeTeacherSchool).not.toHaveBeenCalled();
+  });
+
+  it('changeSchool_ChangedTrue_ShowsChangedSnackbarAndReloadsList', async () => {
+    configure();
+    adminService.changeTeacherSchool.and.returnValue(of(schoolResponse()));
+    create();
+    adminService.getTeachers.calls.reset();
+    adminService.getTeachers.and.returnValue(of(paged([teacher({ schoolId: 8, schoolName: 'İzmir Lisesi' })], 45)));
+
+    await openSchoolDialogAndPick(izmir);
+    overlayButton('confirm').click();
+    await settle();
+
+    expect(adminService.changeTeacherSchool).toHaveBeenCalledOnceWith(12, 8);
+    expect(adminService.getTeachers).toHaveBeenCalledTimes(1);
+    expect(cellTexts('school')).toEqual(['İzmir Lisesi']);
+    expect(component.rows()[0].schoolId).toBe(8);
+    expect(snackBar.open).toHaveBeenCalledOnceWith(
+      schoolTexts.success.changed.replace('{{name}}', 'Ayşe Yılmaz').replace('{{school}}', 'İzmir Lisesi'),
+      schoolTexts.close,
+      jasmine.any(Object),
+    );
+    expect(component.schoolDialogOpen()).toBeFalse();
+  });
+
+  it('assignSchool_UnapprovedIndependentTeacher_ShowsNoteAssignedSnackbarAndReloads', async () => {
+    configure();
+    const independent = teacher({ schoolId: null, schoolName: null, isIndependentTutor: true, approvalStatus: 'Rejected' });
+    adminService.getTeachers.and.returnValue(of(paged([independent])));
+    adminService.changeTeacherSchool.and.returnValue(of(schoolResponse({ previousSchoolId: null })));
+    create();
+    expect(cellTexts('school')).toEqual([adminTr.teachers.independent]);
+    adminService.getTeachers.calls.reset();
+    adminService.getTeachers.and.returnValue(of(paged([{ ...independent, schoolId: 8, schoolName: 'İzmir Lisesi' }])));
+
+    await openSchoolDialogAndPick(izmir);
+    expect(overlay().querySelector('[data-testid="independent-note"]')?.textContent).toContain(schoolTexts.independentNote);
+    expect(overlay().textContent).toContain(schoolTexts.effectPendingRequest);
+    expect(overlay().textContent).not.toContain(schoolTexts.effectPendingRequestApproved);
+    overlayButton('confirm').click();
+    await settle();
+
+    expect(adminService.getTeachers).toHaveBeenCalledTimes(1);
+    expect(component.rows()[0].schoolId).toBe(8);
+    expect(component.rows()[0].independent).toBeTrue();
+    expect(snackBar.open).toHaveBeenCalledOnceWith(
+      schoolTexts.success.assigned.replace('{{name}}', 'Ayşe Yılmaz').replace('{{school}}', 'İzmir Lisesi'),
+      schoolTexts.close,
+      jasmine.any(Object),
+    );
+    expect(schoolButtons()[0].getAttribute('aria-label')).toBe(actionFor(schoolTexts.changeActionFor));
+  });
+
+  it('changeSchool_ChangedFalse_ShowsAlreadyInSchoolSnackbarWithoutReload', async () => {
+    configure();
+    adminService.changeTeacherSchool.and.returnValue(of(schoolResponse({ schoolId: 5, previousSchoolId: 5, changed: false })));
+    create();
+    adminService.getTeachers.calls.reset();
+
+    await openSchoolDialogAndPick(izmir);
+    overlayButton('confirm').click();
+    await settle();
+
+    expect(snackBar.open).toHaveBeenCalledOnceWith(
+      schoolTexts.success.unchanged.replace('{{name}}', 'Ayşe Yılmaz'),
+      schoolTexts.close,
+      jasmine.any(Object),
+    );
+    expect(adminService.getTeachers).not.toHaveBeenCalled();
+  });
+
+  it('changeSchool_ProfileCacheStale_ShowsWarningInsteadOfSuccess', async () => {
+    configure();
+    adminService.changeTeacherSchool.and.returnValue(of(schoolResponse({ profileCacheStale: true })));
+    create();
+    adminService.getTeachers.calls.reset();
+
+    await openSchoolDialogAndPick(izmir);
+    overlayButton('confirm').click();
+    await settle();
+
+    expect(snackBar.open).toHaveBeenCalledOnceWith(
+      schoolTexts.success.cacheStale,
+      schoolTexts.close,
+      jasmine.objectContaining({ duration: 8000 }),
+    );
+    expect(adminService.getTeachers).toHaveBeenCalledTimes(1);
+  });
+
+  it('changeSchool_BackendConflictMessage409_ShowsServerMessageAndReloadButtonReloadsList', async () => {
+    configure();
+    const message = 'Onaylı bağımsız öğretmen okula bağlanamaz.';
+    adminService.changeTeacherSchool.and.returnValue(
+      throwError(() => new HttpErrorResponse({ status: 409, error: { message } })),
+    );
+    create();
+    adminService.getTeachers.calls.reset();
+
+    await openSchoolDialogAndPick(izmir);
+    overlayButton('confirm').click();
+    await settle();
+
+    expect(overlay().querySelector('[data-testid="school-error"]')?.textContent).toContain(message);
+    expect(snackBar.open).toHaveBeenCalledWith(message, schoolTexts.close, jasmine.any(Object));
+    expect(adminService.getTeachers).not.toHaveBeenCalled();
+
+    overlayButton('reload').click();
+    await settle();
+
+    expect(adminService.changeTeacherSchool).toHaveBeenCalledTimes(1);
+    expect(adminService.getTeachers).toHaveBeenCalledTimes(1);
+    expect(component.schoolDialogOpen()).toBeFalse();
+  });
+
+  it('changeSchool_Upstream502ThenCancel_ReloadsListSoRowIsNotStale', async () => {
+    configure();
+    adminService.changeTeacherSchool.and.returnValue(throwError(() => new HttpErrorResponse({ status: 502 })));
+    create();
+    adminService.getTeachers.calls.reset();
+
+    await openSchoolDialogAndPick(izmir);
+    overlayButton('confirm').click();
+    await settle();
+    expect(overlay().querySelector('[data-testid="school-error"]')?.textContent).toContain(schoolTexts.errors.upstream);
+
+    overlayButton('cancel').click();
+    await settle();
+
+    expect(adminService.getTeachers).toHaveBeenCalledTimes(1);
+    expect(cellTexts('school')).toEqual(['Ankara Lisesi']);
+  });
+
+  it('changeSchool_DoubleClick_OpensSingleDialog', () => {
+    configure();
+    create();
+    const dialog = fixture.debugElement.injector.get(MatDialog);
+    const openSpy = spyOn(dialog, 'open').and.callThrough();
+
+    const row = component.rows()[0];
+    component.changeSchool(row);
+    component.changeSchool(row);
 
     expect(openSpy).toHaveBeenCalledTimes(1);
   });

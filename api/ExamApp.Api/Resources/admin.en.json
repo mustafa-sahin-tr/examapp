@@ -41,6 +41,19 @@
       "upstreamFailed": "The student's school could not be changed right now. Please try again shortly.",
       "rateLimited": "Too many school changes in a short time. Please wait a moment and try again."
     },
+    "teacherSchool": {
+      "schoolIdRequired": "The schoolId field is required.",
+      "teacherNotFound": "Teacher not found.",
+      "schoolNotFound": "The selected school was not found.",
+      "accountNotFound": "No sign-in account is linked to this user.",
+      "self": "You cannot change the school of your own record from this screen.",
+      "protectedRole": "The school of administrator or service accounts cannot be changed from this screen.",
+      "concurrentChange": "The teacher's school or application status was changed by another operation at the same time. Please refresh and try again.",
+      "upstreamFailed": "The teacher's school could not be changed right now. Please try again shortly.",
+      "independentActive": "An active independent teacher cannot be linked to a school; close the independent teacher profile first.",
+      "accountNotApproved": "The teacher account has not been approved yet; approve the account before linking a school.",
+      "accountSuspended": "The teacher account is suspended; lift the suspension before linking a school."
+    },
     "teacherSuspension": {
       "reasonRequired": "A suspension reason is required.",
       "reasonTooLong": "The suspension reason can be at most {0} characters.",

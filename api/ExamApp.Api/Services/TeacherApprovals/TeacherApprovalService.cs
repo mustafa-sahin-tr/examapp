@@ -159,44 +159,80 @@ public class TeacherApprovalService : ITeacherApprovalService
         public bool AccountSuspended { get; init; }
     }
 
+    /// <summary>
+    /// issue #313 review (U1-a): reddedilmiş okul talebi olan (hesabı onaylı) okul öğretmeni admin tarafından doğrudan okula
+    /// bağlanınca (<c>AdminTeacherSchoolService</c>) kaydı "onaylı okul öğretmeni" olur (ApprovalStatus=Approved,
+    /// RequestedSchoolId=null, RejectionReason korunur). Başvuru geçmişi o satırı "yeni okula onaylanmış başvuru" gibi
+    /// göstermesin: son başarılı başvuru kararı RED ise (sonrasında onay yok) ve ondan sonra başarılı bir
+    /// <see cref="AdminUserAction.TeacherSchoolChanged"/> varsa satır reddedilmiş başvuru olarak (nedeni ve karar anıyla)
+    /// gösterilir; talep edilen okul bilinmez (null) — bağlanılan okul talep edilmiş gibi gösterilmez.
+    /// </summary>
     private IQueryable<ApplicationRow> Project(IQueryable<Teacher> query) => query
-        .Select(t => new ApplicationRow
+        .Select(t => new
         {
-            TeacherId = t.Id,
-            UserId = t.UserId,
-            AppliedAt = t.CreateTime,
-            IsIndependentTutor = t.IsIndependentTutor,
+            Teacher = t,
+            ReboundAfterRejection = !t.IsIndependentTutor
+                && t.ApprovalStatus == TeacherApprovalStatus.Approved
+                && _context.AdminUserActionLogs.Any(sc =>
+                    sc.TargetType == AdminUserTargetType.Teacher
+                    && sc.TargetId == t.Id
+                    && sc.Action == AdminUserAction.TeacherSchoolChanged
+                    && (sc.Outcome == AdminUserActionOutcome.Succeeded || sc.Outcome == AdminUserActionOutcome.SucceededCacheStale)
+                    && _context.AdminUserActionLogs.Any(r =>
+                        r.TargetType == AdminUserTargetType.Teacher
+                        && r.TargetId == t.Id
+                        && r.Action == AdminUserAction.TeacherRejected
+                        && r.Outcome == AdminUserActionOutcome.Succeeded
+                        && r.OccurredAtUtc <= sc.OccurredAtUtc
+                        && !_context.AdminUserActionLogs.Any(a =>
+                            a.TargetType == AdminUserTargetType.Teacher
+                            && a.TargetId == t.Id
+                            && a.Action == AdminUserAction.TeacherApproved
+                            && a.Outcome == AdminUserActionOutcome.Succeeded
+                            && a.OccurredAtUtc > r.OccurredAtUtc)))
+        })
+        .Select(x => new ApplicationRow
+        {
+            TeacherId = x.Teacher.Id,
+            UserId = x.Teacher.UserId,
+            AppliedAt = x.Teacher.CreateTime,
+            IsIndependentTutor = x.Teacher.IsIndependentTutor,
             // issue #187: onay, okul talebini RequestedSchoolId → SchoolId'ye taşıyıp temizler; onaylı okul talebinde
             // talep edilen okul = öğretmenin okulu. Bağımsız başvuruda okul alanları her zaman null.
-            RequestedSchoolId = t.IsIndependentTutor
+            RequestedSchoolId = x.Teacher.IsIndependentTutor || x.ReboundAfterRejection
                 ? null
-                : t.RequestedSchoolId ?? (t.ApprovalStatus == TeacherApprovalStatus.Approved ? t.SchoolId : null),
-            RequestedSchoolName = t.IsIndependentTutor
+                : x.Teacher.RequestedSchoolId ?? (x.Teacher.ApprovalStatus == TeacherApprovalStatus.Approved ? x.Teacher.SchoolId : null),
+            RequestedSchoolName = x.Teacher.IsIndependentTutor || x.ReboundAfterRejection
                 ? null
-                : t.RequestedSchool != null
-                    ? t.RequestedSchool.Name
-                    : t.ApprovalStatus == TeacherApprovalStatus.Approved && t.School != null ? t.School.Name : null,
+                : x.Teacher.RequestedSchool != null
+                    ? x.Teacher.RequestedSchool.Name
+                    : x.Teacher.ApprovalStatus == TeacherApprovalStatus.Approved && x.Teacher.School != null ? x.Teacher.School.Name : null,
             // security review L5: hesabı onaylanmamış ama Approved görünen satır (rolling deploy sırasında eski kodun
             // "okulsuz → Approved" kaydı) karar bekleyen hesap başvurusu olarak Pending gösterilir.
             // issue #289: askıdaki öğretmenin AccountApprovedAt'i de null'dur ama hesap kararı verilmiştir — L5 değildir.
-            Status = t.ApprovalStatus == TeacherApprovalStatus.Approved && t.AccountApprovedAt == null && t.AccountSuspendedAt == null
+            Status = x.ReboundAfterRejection
+                ? TeacherApprovalStatus.Rejected
+                : x.Teacher.ApprovalStatus == TeacherApprovalStatus.Approved && x.Teacher.AccountApprovedAt == null && x.Teacher.AccountSuspendedAt == null
                 ? TeacherApprovalStatus.Pending
-                : t.ApprovalStatus,
-            RejectionReason = t.ApprovalStatus == TeacherApprovalStatus.Rejected ? t.RejectionReason : null,
+                : x.Teacher.ApprovalStatus,
+            RejectionReason = x.Teacher.ApprovalStatus == TeacherApprovalStatus.Rejected || x.ReboundAfterRejection
+                ? x.Teacher.RejectionReason
+                : null,
             // issue #289: askıdaki öğretmen "hesap onayı bekliyor" değildir; askı yalnızca admin'in unsuspend aksiyonuyla kalkar.
-            RequiresAccountApproval = t.AccountApprovedAt == null && t.AccountSuspendedAt == null,
-            AccountSuspended = t.AccountSuspendedAt != null,
+            RequiresAccountApproval = x.Teacher.AccountApprovedAt == null && x.Teacher.AccountSuspendedAt == null,
+            AccountSuspended = x.Teacher.AccountSuspendedAt != null,
             // issue #187: karar anı = mevcut durumla eşleşen EN SON başarılı admin kararı (#157 audit). Teacher.UpdateTime
             // güvenilir değil (sonraki her profil kaydında SaveChanges onu da günceller).
-            DecidedAt = t.ApprovalStatus == TeacherApprovalStatus.Pending
-                        || t.AccountApprovedAt == null && t.AccountSuspendedAt == null && t.ApprovalStatus == TeacherApprovalStatus.Approved
+            DecidedAt = x.Teacher.ApprovalStatus == TeacherApprovalStatus.Pending
+                        || x.Teacher.AccountApprovedAt == null && x.Teacher.AccountSuspendedAt == null && x.Teacher.ApprovalStatus == TeacherApprovalStatus.Approved
                 ? null
                 : _context.AdminUserActionLogs
                     .Where(l => l.TargetType == AdminUserTargetType.Teacher
-                                && l.TargetId == t.Id
+                                && l.TargetId == x.Teacher.Id
                                 && l.Outcome == AdminUserActionOutcome.Succeeded
-                                && ((t.ApprovalStatus == TeacherApprovalStatus.Approved && l.Action == AdminUserAction.TeacherApproved)
-                                    || (t.ApprovalStatus == TeacherApprovalStatus.Rejected && l.Action == AdminUserAction.TeacherRejected)))
+                                && ((x.Teacher.ApprovalStatus == TeacherApprovalStatus.Approved && !x.ReboundAfterRejection && l.Action == AdminUserAction.TeacherApproved)
+                                    || (x.ReboundAfterRejection && l.Action == AdminUserAction.TeacherRejected)
+                                    || (x.Teacher.ApprovalStatus == TeacherApprovalStatus.Rejected && l.Action == AdminUserAction.TeacherRejected)))
                     .OrderByDescending(l => l.OccurredAtUtc)
                     .Select(l => (DateTime?)l.OccurredAtUtc)
                     .FirstOrDefault()

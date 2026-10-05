@@ -5,6 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { AdminService } from './admin.service';
 import { AdminTeacherListItem } from '../models/admin-teacher.model';
 import { AdminTeacherSuspensionResponse } from '../models/admin-teacher-suspension.model';
+import { AdminTeacherSchoolResponse } from '../models/admin-teacher-school.model';
 import { AdminStudentListItem } from '../models/admin-student.model';
 import { Paged } from '../models/test-instance';
 import { AdminPasswordResetResponse } from '../models/admin-password-reset.model';
@@ -431,5 +432,44 @@ describe('AdminService.getTeacherApplications (issue #187)', () => {
 
     expect(result).toEqual(response);
     expect(result?.items[0].status).toBe('Rejected');
+  });
+});
+
+describe('AdminService.changeTeacherSchool (issue #313)', () => {
+  let service: AdminService;
+  let httpMock: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(AdminService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => httpMock.verify());
+
+  it('changeTeacherSchool_PutsSchoolIdToTeacherSchoolEndpoint_ReturnsServerResponse', () => {
+    let result: AdminTeacherSchoolResponse | undefined;
+    service.changeTeacherSchool(12, 8).subscribe((r) => (result = r));
+
+    const req = httpMock.expectOne('/api/exam/admin/teachers/12/school');
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ schoolId: 8 });
+    const body: AdminTeacherSchoolResponse = { teacherId: 12, schoolId: 8, previousSchoolId: null, changed: true };
+    req.flush(body);
+
+    expect(result).toEqual(body);
+  });
+
+  it('changeTeacherSchool_409_PropagatesError', () => {
+    let status: number | undefined;
+    service.changeTeacherSchool(12, 8).subscribe({ error: (err: HttpErrorResponse) => (status = err.status) });
+
+    httpMock
+      .expectOne('/api/exam/admin/teachers/12/school')
+      .flush({ message: 'Eşzamanlı değişiklik.' }, { status: 409, statusText: 'Conflict' });
+
+    expect(status).toBe(409);
   });
 });

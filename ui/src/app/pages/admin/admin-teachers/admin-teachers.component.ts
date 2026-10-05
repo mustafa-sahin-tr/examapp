@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
@@ -21,6 +22,8 @@ import { openAdminResetPasswordDialog } from '../../../shared/components/admin-r
 import { openAdminAccountStatusDialog } from '../../../shared/components/admin-account-status-dialog/admin-account-status-dialog.component';
 import { openAdminTeacherSuspensionDialog } from '../../../shared/components/admin-teacher-suspension-dialog/admin-teacher-suspension-dialog.component';
 import { AdminTeacherSuspensionResponse } from '../../../models/admin-teacher-suspension.model';
+import { openAdminTeacherSchoolDialog } from '../../../shared/components/admin-teacher-school-dialog/admin-teacher-school-dialog.component';
+import { AdminTeacherSchoolResponse } from '../../../models/admin-teacher-school.model';
 
 /** Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183). */
 const ADMIN_SCOPE = 'admin';
@@ -34,6 +37,9 @@ const APPROVAL_KEYS: Record<AdminTeacherApprovalStatus, ApprovalKey> = {
   Rejected: 'rejected',
 };
 
+/** Issue #313: okul bağlama/değiştirmenin backend'de 409 ile reddedildiği durumlar (`admin.teacherSchool.blocked.*`). */
+export type TeacherSchoolBlockedReason = 'suspended' | 'accountNotApproved' | 'approvedIndependent';
+
 /** Şablonun doğrudan bastığı satır modeli; boş/null alanların yorumu burada tek yerde yapılır. */
 export interface AdminTeacherRow {
   id: number;
@@ -41,6 +47,10 @@ export interface AdminTeacherRow {
   fullName: string | null;
   /** null → "—" */
   email: string | null;
+  /** Issue #313: null → "Okula bağla", dolu → "Okulu değiştir" aksiyonu. */
+  schoolId: number | null;
+  /** Issue #313: backend'in 409 ile reddettiği durum → okul aksiyonu devre dışı + tooltip'te neden; null → serbest. */
+  schoolBlockedReason: TeacherSchoolBlockedReason | null;
   /** null → bağımsızsa "Bağımsız", değilse "—" */
   schoolName: string | null;
   independent: boolean;
@@ -89,6 +99,7 @@ export class AdminTeachersComponent {
   private readonly adminService = inject(AdminService);
   private readonly transloco = inject(TranslocoService);
   private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
 
   readonly displayedColumns = ['fullName', 'email', 'school', 'approvalStatus', 'accountStatus', 'actions'];
   readonly pageSizeOptions = PAGE_SIZE_OPTIONS;
@@ -216,6 +227,66 @@ export class AdminTeachersComponent {
     );
   }
 
+  /** Okul dialog'u açıkken ikinci bir dialog açılmaz (çift tıklama). */
+  readonly schoolDialogOpen = signal(false);
+
+  /**
+   * Issue #313 — öğretmeni okula bağla (okulsuzsa) / okulunu değiştir. Seçim + onay + istek dialog'dadır. Başarıda
+   * snackbar gösterilir; `changed=true` ise liste yeniden yüklenir (onay durumu sütunu da değişebilir), `changed=false`
+   * ("zaten bu okulda") yükleme yapmaz. Hata görülüp vazgeçilirse (ör. 409, 502) liste yeniden yüklenir.
+   * Backend'in 409 ile reddettiği satırlarda (`schoolBlockedReason`) aksiyon devre dışıdır, dialog açılmaz.
+   */
+  changeSchool(row: AdminTeacherRow): void {
+    if (this.schoolDialogOpen() || row.schoolBlockedReason) return;
+    this.schoolDialogOpen.set(true);
+    const displayName = this.rowDisplayName(row);
+    openAdminTeacherSchoolDialog(this.dialog, {
+      teacherId: row.id,
+      displayName,
+      currentSchoolId: row.schoolId,
+      currentSchoolName: row.schoolName,
+      independent: row.independent,
+      accountApproved: row.accountApproved,
+    })
+      .afterClosed()
+      .subscribe((result) => {
+        this.schoolDialogOpen.set(false);
+        if (!result) return;
+        if ('refresh' in result) {
+          this.list.load();
+          return;
+        }
+        this.onSchoolSaved(row, displayName, result.response, result.schoolName);
+      });
+  }
+
+  private onSchoolSaved(
+    row: AdminTeacherRow,
+    displayName: string,
+    response: AdminTeacherSchoolResponse,
+    schoolName: string | null,
+  ): void {
+    // Okul yazıldı ama oturum/profil önbelleği temizlenemedi → başarı yerine uyarı (değişiklik gecikebilir).
+    const cacheStale = response.profileCacheStale === true;
+    const key = cacheStale
+      ? 'cacheStale'
+      : !response.changed
+        ? 'unchanged'
+        : schoolName == null
+          ? 'updated'
+          : row.schoolId == null
+            ? 'assigned'
+            : 'changed';
+    this.snackBar.open(
+      this.transloco.translate<string>(`${ADMIN_SCOPE}.teacherSchool.success.${key}`, { name: displayName, school: schoolName }),
+      this.transloco.translate<string>(`${ADMIN_SCOPE}.teacherSchool.close`),
+      { duration: cacheStale ? 8000 : 4000 },
+    );
+    // changed=true: okul + başvuru durumu sunucuda değişmiş olabilir → satır tahminle değil sunucudan yenilenir.
+    // changed=false yan etkisizdir; satır zaten bayatsa (farklı okul) yine yenilenir.
+    if (response.changed || response.schoolId !== row.schoolId) this.list.load();
+  }
+
   rowDisplayName(row: AdminTeacherRow): string {
     return (
       row.fullName ??
@@ -239,11 +310,25 @@ export class AdminTeachersComponent {
   }
 }
 
+/**
+ * Issue #313 — backend'in okul bağlamayı 409 ile reddettiği durumlar (öncelik sırasıyla): askıdaki hesap, hesabı
+ * onaylanmamış öğretmen, onaylı bağımsız öğretmen. UI bunları önceden devre dışı bırakır; 409 yine de gelirse backend
+ * mesajı dialog'da gösterilir.
+ */
+function teacherSchoolBlockedReason(item: AdminTeacherListItem): TeacherSchoolBlockedReason | null {
+  if (item.accountSuspended === true) return 'suspended';
+  if (item.accountApproved !== true) return 'accountNotApproved';
+  if (item.isIndependentTutor && item.approvalStatus === 'Approved') return 'approvedIndependent';
+  return null;
+}
+
 function toRow(item: AdminTeacherListItem): AdminTeacherRow {
   return {
     id: item.id,
     fullName: item.fullName?.trim() || null,
     email: item.email?.trim() || null,
+    schoolId: item.schoolId ?? null,
+    schoolBlockedReason: teacherSchoolBlockedReason(item),
     schoolName: item.schoolName?.trim() || null,
     independent: item.isIndependentTutor,
     approvalKey: APPROVAL_KEYS[item.approvalStatus] ?? 'pending',

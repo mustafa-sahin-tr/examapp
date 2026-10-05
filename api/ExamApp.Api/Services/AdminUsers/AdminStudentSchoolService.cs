@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.Interfaces;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -35,6 +36,7 @@ public class AdminStudentSchoolService : IAdminStudentSchoolService
     private readonly IAdminUserActionAuditService _audit;
     private readonly IKeycloakService? _keycloak;
     private readonly UserProfileCacheService? _profileCache;
+    private readonly IBackgroundJobClient? _jobs;
     private readonly ILogger<AdminStudentSchoolService> _logger;
 
     public AdminStudentSchoolService(
@@ -43,13 +45,15 @@ public class AdminStudentSchoolService : IAdminStudentSchoolService
         IAdminUserActionAuditService audit,
         IKeycloakService? keycloak = null,
         UserProfileCacheService? profileCache = null,
-        ILogger<AdminStudentSchoolService>? logger = null)
+        ILogger<AdminStudentSchoolService>? logger = null,
+        IBackgroundJobClient? jobs = null)
     {
         _context = context;
         _targets = targets;
         _audit = audit;
         _keycloak = keycloak;
         _profileCache = profileCache;
+        _jobs = jobs;
         _logger = logger ?? NullLogger<AdminStudentSchoolService>.Instance;
     }
 
@@ -132,41 +136,14 @@ public class AdminStudentSchoolService : IAdminStudentSchoolService
 
         // Okul kapsamı (SchoolScope) profil önbelleğinden gelir (#194): düşürülmezse öğrenci önbellek süresi (1 saat) boyunca
         // ESKİ okulun kapsamında kalırdı. Best-effort: Redis/Keycloak hatası DB değişikliğini geri almaz; loglanır.
-        await TryInvalidateProfileAsync(sub, studentId);
-        await TrySyncSchoolClaimAsync(sub, schoolId, studentId);
+        // issue #313: öğretmen okul ucuyla ortak (AdminSchoolMembershipSync: retry + gecikmeli ikinci düşürme). Öğrenci ucunun
+        // HTTP sözleşmesi değişmez — önbellek düşürülemezse yalnızca loglanır.
+        await new AdminSchoolMembershipSync(_keycloak, _profileCache, _jobs, _logger)
+            .ApplyAsync(sub, schoolId, AdminUserTargetType.Student, studentId);
 
         await _audit.TryUpdateOutcomeAsync(auditId, AdminUserActionOutcome.Succeeded);
         _logger.LogInformation("[AdminStudentSchool] Öğrenci okulu değişti: Student#{StudentId} {PreviousSchoolId} → {SchoolId} actor={Actor}",
             studentId, previousSchoolId, schoolId, actorKeycloakId);
         return new(AdminStudentSchoolChangeStatus.Success, previousSchoolId, schoolId, Changed: true);
-    }
-
-    private async Task TryInvalidateProfileAsync(string sub, int studentId)
-    {
-        if (_profileCache is null)
-            return;
-        try
-        {
-            await _profileCache.RemoveAsync(sub);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[AdminStudentSchool] Profil önbelleği düşürülemedi (eski okul en geç 1 saat sürebilir): Student#{StudentId}", studentId);
-        }
-    }
-
-    private async Task TrySyncSchoolClaimAsync(string sub, int schoolId, int studentId)
-    {
-        if (_keycloak is null)
-            return;
-        try
-        {
-            // JWT "school_id" yalnızca ipucudur (#189); yetki DB'den çözülür. Yine de uyuşmazlık uyarısı üretmesin.
-            await _keycloak.SetSchoolIdAttributeAsync(sub, schoolId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "[AdminStudentSchool] Keycloak school_id attribute güncellenemedi: Student#{StudentId}", studentId);
-        }
     }
 }

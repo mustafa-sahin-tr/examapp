@@ -264,6 +264,20 @@ export const routes: Routes = [
           import('./pages/student-bookings/student-bookings.component').then((m) => m.StudentBookingsComponent),
       },
       {
+        // Issue #106: öğrencinin öğretmenlerine doğrudan mesajı (öğretmen arama + konuşmalar).
+        path: 'teacher-messages',
+        canActivate: [authGuard, studentGuard],
+        loadComponent: () =>
+          import('./pages/teacher-messages/teacher-messages.component').then((m) => m.TeacherMessagesComponent),
+      },
+      {
+        // Issue #106: öğretmenin öğrenci mesajları gelen kutusu (onaysız öğretmen giremez; uç da 403 döner).
+        path: 'student-messages',
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
+        loadComponent: () =>
+          import('./pages/student-messages/student-messages.component').then((m) => m.StudentMessagesComponent),
+      },
+      {
         // Issue #97: onaylı bir randevunun video görüşme odası (iki taraf da girer).
         path: 'lessons/:bookingId/video',
         canActivate: [authGuard, roleGuard('Student', 'Teacher'), approvedTeacherGuard],

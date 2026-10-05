@@ -12,10 +12,21 @@ import { AuthService } from '../../services/auth.service';
 import { SignalRService } from '../../services/signalr.service';
 import { WorksheetAccessRequestService } from '../../services/worksheet-access-request.service';
 import { NotificationService } from '../../services/notification.service';
+import { DirectMessageService } from '../../services/direct-message.service';
 import { UserThemeService } from '../../services/user-theme.service';
 import { ThemeConfigService } from '../../services/theme-config.service';
 import { routes } from '../../app.routes';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
+
+/** Issue #106: DM rozet servisi stub'ı (HttpClient gerektirmesin). */
+function directMessageStub(count = 0) {
+  const unreadCount = signal(count);
+  return {
+    unreadCount: unreadCount.asReadonly(),
+    refreshUnreadCount: jasmine.createSpy('refreshUnreadCount').and.returnValue(of(count)),
+    resetUnreadCount: () => unreadCount.set(0),
+  };
+}
 
 /**
  * Issue #154: admin menüsündeki "Öğretmenler"/"Öğrenciler" girişleri.
@@ -41,6 +52,7 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         { provide: AuthService, useValue: authStub },
         { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
         { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0) } },
+        { provide: DirectMessageService, useValue: directMessageStub() },
         { provide: NotificationService, useValue: { unreadCount: signal(0) } },
         { provide: UserThemeService, useValue: {} },
         { provide: ThemeConfigService, useValue: {} },
@@ -196,6 +208,7 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         { provide: AuthService, useValue: authStub },
         { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
         { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0) } },
+        { provide: DirectMessageService, useValue: directMessageStub() },
         { provide: NotificationService, useValue: { unreadCount: signal(0) } },
         { provide: UserThemeService, useValue: {} },
         { provide: ThemeConfigService, useValue: {} },
@@ -264,6 +277,7 @@ describe('EnhancedLayoutComponent notification badge (issue #146)', () => {
           },
         },
         { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0) } },
+        { provide: DirectMessageService, useValue: directMessageStub() },
         {
           provide: NotificationService,
           useValue: {
@@ -401,5 +415,72 @@ describe('EnhancedLayoutComponent notification badge (issue #146)', () => {
     const route = layoutRoute?.children?.find((r) => r.path === 'notifications');
     expect(route).toBeDefined();
     expect(route?.canActivate?.length).toBeGreaterThan(0);
+  });
+});
+
+/** Issue #106: DM menü girişleri ve okunmamış rozeti. Render edilmeden sınıf alanları doğrulanır. */
+describe('EnhancedLayoutComponent direct messages menu (issue #106)', () => {
+  function create(roles: string[], dmCount = 0): EnhancedLayoutComponent {
+    const authStub: Partial<AuthService> = {
+      hasRealmRole: (role: string) => roles.includes(role),
+      isAuthenticated: () => of(true),
+      isUnapprovedTeacher: signal(false),
+    };
+    TestBed.configureTestingModule({
+      imports: [EnhancedLayoutComponent, translocoTestingModule()],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: authStub },
+        { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
+        { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(2) } },
+        { provide: DirectMessageService, useValue: directMessageStub(dmCount) },
+        { provide: NotificationService, useValue: { unreadCount: signal(0) } },
+        { provide: UserThemeService, useValue: {} },
+        { provide: ThemeConfigService, useValue: {} },
+      ],
+    });
+    return TestBed.createComponent(EnhancedLayoutComponent).componentInstance;
+  }
+
+  it('student_SeesTeacherMessagesEntry_NotInbox', () => {
+    const ids = create(['Student']).visibleMenuItems().map((i) => i.id);
+    expect(ids).toContain('teacher-messages');
+    expect(ids).not.toContain('student-messages');
+  });
+
+  it('teacher_SeesStudentMessagesEntry_NotStudentPage', () => {
+    const ids = create(['Teacher']).visibleMenuItems().map((i) => i.id);
+    expect(ids).toContain('student-messages');
+    expect(ids).not.toContain('teacher-messages');
+  });
+
+  it('menuBadgeCount_DmItemsUseDmCount_AccessRequestsKeepOwnCount', () => {
+    const component = create(['Student'], 3);
+    expect(component.menuBadgeCount('teacher-messages')).toBe(3);
+    expect(component.menuBadgeCount('student-messages')).toBe(3);
+    expect(component.menuBadgeCount('access-requests')).toBe(2);
+    expect(component.menuBadgeCount('dashboard')).toBe(0);
+  });
+
+  it('isDirectMessageItem_And_BadgeDescriptionKey', () => {
+    const component = create(['Student'], 2);
+    expect(component.isDirectMessageItem('teacher-messages')).toBeTrue();
+    expect(component.isDirectMessageItem('access-requests')).toBeFalse();
+    const transloco = TestBed.inject(TranslocoService);
+    expect(transloco.translate('layout.dmUnreadBadge', { count: 2 })).toBe('2 okunmamış konuşma');
+  });
+
+  it('menuLabels_TranslatedTrAndEn', () => {
+    create(['Student']);
+    const transloco = TestBed.inject(TranslocoService);
+    expect(transloco.translate('layout.menu.teacherMessages')).toBe('Öğretmenime Yaz');
+    expect(transloco.translate('layout.menu.studentMessages', {}, 'en')).toBe('Student Messages');
+  });
+
+  it('routes_DirectMessagePagesExist', () => {
+    const layoutRoute = routes.find((r) => Array.isArray(r.children));
+    const paths = layoutRoute?.children?.map((r) => r.path);
+    expect(paths).toContain('teacher-messages');
+    expect(paths).toContain('student-messages');
   });
 });

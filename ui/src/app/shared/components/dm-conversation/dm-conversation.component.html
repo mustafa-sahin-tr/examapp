@@ -1,0 +1,187 @@
+<section class="dmc" *transloco="let t; prefix: 'direct-messages.conversation'" aria-labelledby="dm-conversation-title">
+  <header class="dmc__header">
+    <button mat-icon-button type="button" class="dmc__back" data-testid="dm-back" [attr.aria-label]="t('back')" (click)="back.emit()">
+      <mat-icon aria-hidden="true">arrow_back</mat-icon>
+    </button>
+
+    <span class="dmc__avatar" aria-hidden="true">
+      @if (avatarSrc(header().avatar); as src) {
+        <img [src]="src" alt="" referrerpolicy="no-referrer" data-testid="dm-avatar-img" />
+      } @else {
+        {{ initial(header().name) }}
+      }
+    </span>
+    <div class="dmc__title">
+      <h2 class="dmc__name" id="dm-conversation-title" data-testid="dm-counterpart">{{ header().name }}</h2>
+      @if (isTeacher() && header().isBlocked) {
+        <span class="dmc__tag" data-testid="dm-blocked-tag">
+          <mat-icon aria-hidden="true">block</mat-icon>{{ t('blockedTag') }}
+        </span>
+      }
+    </div>
+
+    @if (!isNew()) {
+      <div class="dmc__actions" role="group" [attr.aria-label]="t('actionsLabel')">
+        @if (isTeacher()) {
+          <button
+            mat-stroked-button
+            type="button"
+            class="dmc__action"
+            data-testid="dm-block-toggle"
+            [disabled]="blockBusy() || loading()"
+            [attr.aria-busy]="blockBusy()"
+            [attr.aria-label]="header().isBlocked ? t('unblockAria', { name: header().name }) : t('blockAria', { name: header().name })"
+            (click)="toggleBlock()"
+          >
+            <mat-icon aria-hidden="true">{{ header().isBlocked ? 'lock_open' : 'block' }}</mat-icon>
+            <span class="dmc__action-text">{{ header().isBlocked ? t('unblock') : t('block') }}</span>
+          </button>
+        }
+        <button
+          mat-icon-button
+          type="button"
+          class="dmc__icon-action"
+          data-testid="dm-report-conversation"
+          [disabled]="loading()"
+          [attr.aria-label]="t('reportConversation')"
+          [matTooltip]="t('reportConversation')"
+          (click)="reportConversation()"
+        >
+          <mat-icon aria-hidden="true">flag</mat-icon>
+        </button>
+      </div>
+    }
+  </header>
+
+  @if (isTeacher() && header().isBlocked) {
+    <p class="dmc__band dmc__band--info" role="status" data-testid="dm-blocked-band">
+      <mat-icon aria-hidden="true">info</mat-icon><span>{{ t('blockedBand') }}</span>
+    </p>
+  }
+
+  @if (loading()) {
+    <div class="dmc__state" role="status" data-testid="dm-loading">
+      <mat-spinner diameter="32" />
+      <span class="dmc__sr">{{ t('loading') }}</span>
+    </div>
+  } @else if (loadError()) {
+    <div class="dmc__state dmc__state--error" role="alert" data-testid="dm-load-error">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <p>{{ loadError() }}</p>
+      <button mat-stroked-button type="button" class="dmc__retry" data-testid="dm-retry" (click)="retry()">{{ t('retry') }}</button>
+    </div>
+  } @else {
+    <div
+      #messageLog
+      class="dmc__log"
+      role="log"
+      aria-live="polite"
+      tabindex="0"
+      data-testid="dm-log"
+      [attr.aria-busy]="loadingOlder() ? 'true' : null"
+      [attr.aria-label]="t('logLabel', { name: header().name })"
+    >
+      @if (hasMore()) {
+        <div class="dmc__older">
+          <button
+            mat-stroked-button
+            type="button"
+            class="dmc__older-btn"
+            data-testid="dm-load-older"
+            [disabled]="loadingOlder()"
+            [attr.aria-busy]="loadingOlder()"
+            (click)="loadOlder()"
+          >
+            @if (loadingOlder()) {
+              <mat-spinner diameter="16" class="dmc__inline-spinner" />{{ t('loadingOlder') }}
+            } @else {
+              {{ t('loadOlder') }}
+            }
+          </button>
+          @if (olderError(); as message) {
+            <p class="dmc__older-error" role="alert" data-testid="dm-older-error">{{ message }}</p>
+          }
+        </div>
+      }
+
+      @for (message of messages(); track message.id) {
+        <div class="dmc__row" [class.dmc__row--mine]="message.isMine" data-testid="dm-message">
+          <div class="dmc__bubble" [class.dmc__bubble--mine]="message.isMine">
+            <span class="dmc__sr">{{ message.isMine ? t('you') : header().name }}:</span>
+            <p class="dmc__body" dir="auto" data-testid="dm-message-body">{{ message.body }}</p>
+            <time class="dmc__time" [attr.datetime]="isoOf(message.sentAt)">{{ timeText(message.sentAt) }}</time>
+          </div>
+          @if (!message.isMine) {
+            <button
+              mat-icon-button
+              type="button"
+              class="dmc__report-msg"
+              data-testid="dm-report-message"
+              [attr.aria-label]="t('reportMessage')"
+              [matTooltip]="t('reportMessage')"
+              (click)="reportMessage(message)"
+            >
+              <mat-icon aria-hidden="true">outlined_flag</mat-icon>
+            </button>
+          }
+        </div>
+      } @empty {
+        <p class="dmc__empty" data-testid="dm-empty">{{ isNew() ? t('emptyNew') : t('empty') }}</p>
+      }
+    </div>
+  }
+
+  <footer class="dmc__composer">
+    @if (cannotSendKey(); as key) {
+      <p class="dmc__band dmc__band--muted" role="status" data-testid="dm-cannot-send">
+        <mat-icon aria-hidden="true">info</mat-icon><span>{{ t(key) }}</span>
+      </p>
+    }
+    @if (sendError(); as message) {
+      <p class="dmc__band dmc__band--error" role="alert" data-testid="dm-send-error">
+        <mat-icon aria-hidden="true">error_outline</mat-icon><span>{{ message }}</span>
+      </p>
+    }
+    <div class="dmc__compose-row">
+      <mat-form-field appearance="outline" class="dmc__field" subscriptSizing="dynamic">
+        <mat-label>{{ t('inputLabel') }}</mat-label>
+        <textarea
+          matInput
+          rows="2"
+          dir="auto"
+          data-testid="dm-input"
+          [value]="draft()"
+          [placeholder]="t('inputPlaceholder')"
+          [disabled]="!canSend()"
+          [readonly]="sending()"
+          [attr.aria-invalid]="tooLong()"
+          (input)="onDraft($event)"
+          (keydown)="onComposerKeydown($event)"
+        ></textarea>
+        @if (tooLong()) {
+          <mat-hint class="dmc__hint--error" data-testid="dm-too-long">{{ t('tooLong', { max: maxLength }) }}</mat-hint>
+        } @else {
+          <mat-hint class="dmc__hint">{{ t('shortcutHint') }}</mat-hint>
+        }
+        <mat-hint align="end" id="dm-counter" data-testid="dm-counter" [class.dmc__hint--error]="tooLong()">{{ draftLength() }}/{{ maxLength }}</mat-hint>
+      </mat-form-field>
+      <button
+        mat-flat-button
+        type="button"
+        class="dmc__send"
+        data-testid="dm-send"
+        [disabled]="!canSubmit()"
+        [attr.aria-busy]="sending()"
+        [attr.aria-label]="sending() ? t('sending') : t('sendAria')"
+        (click)="send()"
+      >
+        @if (sending()) {
+          <mat-spinner diameter="18" class="dmc__inline-spinner" />
+        } @else {
+          <mat-icon aria-hidden="true">send</mat-icon>
+        }
+        <span class="dmc__send-text">{{ t('send') }}</span>
+      </button>
+    </div>
+  </footer>
+</section>

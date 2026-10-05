@@ -32,8 +32,9 @@
             (keydown.space)="navigateTo(item.route)" [title]="isSidenavCollapsed() ? t(item.labelKey) : ''"
             [matTooltip]="isSidenavCollapsed() ? t(item.labelKey) : ''" matTooltipPosition="right">
             <mat-icon class="menu-icon"
-              [matBadge]="accessRequestCount()"
-              [matBadgeHidden]="item.id !== 'access-requests' || accessRequestCount() === 0"
+              [matBadge]="menuBadgeCount(item.id) > 99 ? '99+' : menuBadgeCount(item.id)"
+              [matBadgeHidden]="menuBadgeCount(item.id) === 0"
+              [matBadgeDescription]="isDirectMessageItem(item.id) ? t('dmUnreadBadge', { count: menuBadgeCount(item.id) }) : ''"
               matBadgeColor="warn" matBadgeSize="small">{{ item.icon }}</mat-icon>
             <span class="menu-text" *ngIf="!isSidenavCollapsed()">{{ t(item.labelKey) }}</span>
             <div class="ripple-effect"></div>

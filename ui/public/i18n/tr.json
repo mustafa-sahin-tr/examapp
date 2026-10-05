@@ -32,6 +32,7 @@
     }
   },
   "layout": {
+    "dmUnreadBadge": "{{count}} okunmamış konuşma",
     "language": {
       "label": "Dil",
       "switch": "Dili değiştir",
@@ -53,11 +54,13 @@
       "myCalendar": "Planım",
       "tutors": "Özel Ders Öğretmeni Ara",
       "myBookings": "Ders Randevularım",
+      "teacherMessages": "Öğretmenime Yaz",
       "students": "Öğrenciler",
       "tutorProfile": "Özel Ders Profilim",
       "availability": "Müsait Saatlerim",
       "bookingRequests": "Randevu Talepleri",
       "accessRequests": "Atama İzin Talepleri",
+      "studentMessages": "Öğrenci Mesajları",
       "studyPages": "Çalışma Ekleme",
       "studyLinks": "Çalışma Linkleri",
       "examAuthoring": "Test Ekleme",

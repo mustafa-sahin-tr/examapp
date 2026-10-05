@@ -71,7 +71,11 @@ public enum AdminUserAction
     /// <summary>issue #305: gizlenen yorum yeniden görünür yapıldı.</summary>
     CommentUnhidden = 10,
     /// <summary>issue #313: admin öğretmenin okulunu ayarladı/değiştirdi (Teachers.SchoolId). Önceki/yeni okul <see cref="AdminUserActionLog.FromSchoolId"/>/<see cref="AdminUserActionLog.ToSchoolId"/>.</summary>
-    TeacherSchoolChanged = 11
+    TeacherSchoolChanged = 11,
+    /// <summary>issue #106: öğretmen doğrudan mesajlaşmada bir öğrenciyi engelledi (<see cref="AdminUserTargetType.Conversation"/>). Aktör öğretmendir.</summary>
+    DirectMessageStudentBlocked = 12,
+    /// <summary>issue #106: öğretmen doğrudan mesajlaşma engelini kaldırdı.</summary>
+    DirectMessageStudentUnblocked = 13
 }
 
 /// <summary>Admin hesap aksiyonunun sonucu. Kalıcı değer string'dir.</summary>
@@ -107,5 +111,7 @@ public enum AdminUserTargetType
     Teacher = 1,
     Student = 2,
     /// <summary>issue #305: hedef bir yorum; <see cref="AdminUserActionLog.TargetId"/> = WorksheetComments.Id.</summary>
-    WorksheetComment = 3
+    WorksheetComment = 3,
+    /// <summary>issue #106: hedef bir doğrudan mesaj konuşması; <see cref="AdminUserActionLog.TargetId"/> = Conversations.Id (öğrenci/öğretmen çifti oradan).</summary>
+    Conversation = 4
 }

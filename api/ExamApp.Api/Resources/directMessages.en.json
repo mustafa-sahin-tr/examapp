@@ -1,0 +1,35 @@
+{
+  "directMessages": {
+    "sent": "Your message has been sent.",
+    "blocked": "The student has been blocked and can no longer send you new messages.",
+    "unblocked": "The block has been removed.",
+    "reported": "Your report has been received.",
+    "alreadyReported": "You have already reported this content.",
+    "rateLimited": "You sent too many messages in a short time. Please wait a moment and try again.",
+    "readRateLimited": "Messages were requested too often. Please wait a moment and try again.",
+    "reportRateLimited": "You sent too many reports in a short time. Please try again later.",
+    "errors": {
+      "cannotMessageTeacher": "You can't send a message to this teacher right now.",
+      "relationshipEnded": "You can no longer write to this student because your school or test assignment relationship has ended. The conversation history stays readable.",
+      "conversationNotFound": "Conversation not found.",
+      "messageNotFound": "The message was not found in this conversation.",
+      "cannotReportOwnMessage": "You can't report your own message.",
+      "studentProfileNotFound": "Your student record was not found.",
+      "teacherProfileNotFound": "Your teacher record was not found.",
+      "bodyRequired": "The message can't be empty.",
+      "bodyTooLong": "The message can be at most 2000 characters.",
+      "bodyInvalidCharacters": "The message contains invalid characters.",
+      "invalidReportReason": "Choose a valid report reason.",
+      "reportNoteTooLong": "The report note can be at most 500 characters.",
+      "reportNoteInvalidCharacters": "The report note contains invalid characters.",
+      "invalidFilter": "Invalid filter. Allowed values: all, unread, blocked.",
+      "rateLimited": "You sent too many requests in a short time. Please wait a moment and try again.",
+      "blockTeacherOnly": "Only teachers can block.",
+      "searchTooShort": "Enter at least 2 characters to search.",
+      "nameLookupUnavailable": "Teacher names are unavailable right now, so the search could not run. Please try again shortly.",
+      "invalidUpToMessageId": "Send a valid message id (upToMessageId)."
+    },
+    "blockRateLimited": "You performed too many block actions in a short time. Please try again later.",
+    "searchRateLimited": "You searched too often in a short time. Please wait a moment and try again."
+  }
+}

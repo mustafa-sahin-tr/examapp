@@ -14,6 +14,7 @@ import { ProgramStep } from '../../models/programstep';
 import { ProgramService } from '../../services/program.service';
 import { CreateProgramRequest, UserSelection } from '../../models/program.interfaces';
 import { Router } from '@angular/router';
+import { ProgramOptionIconPipe } from './program-option-icon.pipe';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 
 /** Sayfanın Transloco scope'u: `public/i18n/program-create/<lang>.json` (issue #183). */
@@ -49,6 +50,7 @@ export interface UserStepSelection {
     MatDatepickerModule,
     FormsModule,
     TranslocoDirective,
+    ProgramOptionIconPipe,
   ],
   providers: [provideTranslocoScope(SCOPE)],
   templateUrl: './program-create.component.html',

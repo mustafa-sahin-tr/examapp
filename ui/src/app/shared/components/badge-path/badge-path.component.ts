@@ -1,5 +1,4 @@
-import { CommonModule } from '@angular/common';
-import { TranslocoDirective, TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoDirective } from '@jsverse/transloco';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -8,47 +7,71 @@ import {
   OnChanges,
   Output,
   SimpleChanges,
+  inject,
   signal,
 } from '@angular/core';
+import { LocaleService } from '../../../services/locale.service';
+import { BadgeDetailComponent } from '../badge-detail/badge-detail.component';
+import { BadgeMedallionComponent } from '../badge-medallion/badge-medallion.component';
+import { BadgeTranslate, badgeAriaLabel, badgeStateText, isEarnedState } from '../badge-medallion/badge-state.util';
 import { BadgePathPoint, BadgeThropyItem } from '../badge-thropy/badge-thropy.types';
+
+/**
+ * Issue #149: bağlantı çizgisi durumu — kazanılmış segment dolu `--ms-action-border`, sıradaki (son kazanılandan
+ * ilk kazanılmamışa) `--ms-action-border-focus`, sonrakiler kesikli.
+ */
+export type BadgePathSegmentStatus = 'earned' | 'next' | 'pending';
 
 interface BadgePathSegment {
   path: string;
-  midX: number;
-  midY: number;
-  angle: number;
+  status: BadgePathSegmentStatus;
 }
 
 interface BadgePathRenderLayout {
   viewBox: string;
   height: number;
-  pathD: string;
   pathSegments: BadgePathSegment[];
   points: BadgePathPoint[];
   nodePoints: BadgePathPoint[];
   rowCount: number;
   isMultiRow: boolean;
   maskRadius: number;
+  /** Komşu düğümler arası en dar yatay aralık (izin %'si); düğüm genişliği bununla sınırlanır (çakışma olmasın). */
+  slotPercent: number;
 }
 
 @Component({
   selector: 'app-badge-path',
   standalone: true,
-  imports: [CommonModule, TranslocoDirective, TranslocoPipe],
+  imports: [TranslocoDirective, BadgeMedallionComponent, BadgeDetailComponent],
   templateUrl: './badge-path.component.html',
   styleUrls: ['./badge-path.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BadgePathComponent implements OnChanges {
   private static nextInstanceId = 0;
+  private readonly localeService = inject(LocaleService);
 
   @Input({ required: true }) items: BadgeThropyItem[] = [];
   @Input() maxPerRow: number = 4;
+  /**
+   * Issue #149 (CR U1): seçimin tek kaynağı üst bileşen (BadgeThropy). Bu yoldaki bir düğümün id'si ise düğüm
+   * vurgulanır ve detay paneli bu yolun altında açılır; başka yoldaysa/null ise panel yok.
+   */
+  @Input() selectedId: string | null = null;
+  /** Düğüm etkinleştirildi (her tıklamada); seçim/aç-kapa kararını üst bileşen verir. */
   @Output() badgeSelected = new EventEmitter<string>();
-  readonly selectedBadge = signal<BadgeThropyItem | null>(null);
 
   readonly layout = signal<BadgePathRenderLayout | null>(null);
-  readonly gradientId = `badge-path-gradient-${BadgePathComponent.nextInstanceId++}`;
+  /** Düğüm altlarını çizgiden ayıran SVG maskesinin sayfa içinde tekil kimliği. */
+  readonly maskId = `badge-path-mask-${BadgePathComponent.nextInstanceId}`;
+  /** Detay panelinin id'si (`aria-controls` hedefi). */
+  readonly detailId = `badge-path-detail-${BadgePathComponent.nextInstanceId++}`;
+
+  /** `selectedId` bu yolun bir düğümüyse o öğe. */
+  get selectedItem(): BadgeThropyItem | null {
+    return this.selectedId ? (this.items ?? []).find((item) => item.id === this.selectedId) ?? null : null;
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if ('items' in changes || 'maxPerRow' in changes) {
@@ -56,19 +79,30 @@ export class BadgePathComponent implements OnChanges {
     }
   }
 
-  trackById(_: number, item: BadgeThropyItem): string {
-    return item.id;
+  /** Düğümün erişilebilir adı ("Kilitli: Soru Avcısı V, 0/500"); medalyon `aria-hidden`. */
+  ariaLabel(t: BadgeTranslate, item: BadgeThropyItem): string {
+    return badgeAriaLabel(t, {
+      state: item.state,
+      name: item.name,
+      current: item.completedLabel,
+      target: item.totalLabel,
+      earnedDateUtc: item.earnedDateUtc,
+      locale: this.localeService.localeDefinition().angularLocale,
+    });
+  }
+
+  stateText(t: BadgeTranslate, item: BadgeThropyItem): string {
+    return badgeStateText(t, {
+      state: item.state,
+      current: item.completedLabel,
+      target: item.totalLabel,
+      earnedDateUtc: item.earnedDateUtc,
+      locale: this.localeService.localeDefinition().angularLocale,
+    });
   }
 
   selectBadge(badge: BadgeThropyItem): void {
-    if (!badge) {
-      return;
-    }
-
-    const isSame = this.selectedBadge()?.id === badge.id;
-    this.selectedBadge.set(isSame ? null : badge);
-
-    if (!isSame) {
+    if (badge) {
       this.badgeSelected.emit(badge.id);
     }
   }
@@ -104,7 +138,6 @@ export class BadgePathComponent implements OnChanges {
       const isSingleRow = rowCount === 1;
       const fixedGap = 22;
       const rowSlotSpacing = isSingleRow ? fixedGap : slotSpacing;
-      const rowSpan = rowSlotSpacing * Math.max(rowLength - 1, 0);
       const rowStart = left;
       const rowY = isSingleRow ? 50 : startY + rowIndex * rowSpacing;
 
@@ -149,7 +182,6 @@ export class BadgePathComponent implements OnChanges {
     const verticalBend = Math.max(rowSpacing * 0.6, 8);
     const horizontalBend = Math.max(Math.min(slotSpacing * 1.1, width * 0.2), 6);
     const singleRowBend = rowCount === 1 ? Math.max(horizontalBend, 8) : horizontalBend;
-    let pathD = `M ${orderedPoints[0].xPercent} ${orderedPoints[0].yPercent}`;
     const pathSegments: BadgePathSegment[] = [];
 
     for (let index = 1; index < pointCount; index++) {
@@ -185,18 +217,10 @@ export class BadgePathComponent implements OnChanges {
       }
 
       if (segmentPath) {
-        // Calculate midpoint and angle for arrow
-        const midX = (prevPoint.xPercent + currentPoint.xPercent) / 2;
-        const midY = (prevPoint.yPercent + currentPoint.yPercent) / 2;
-        const dx = currentPoint.xPercent - prevPoint.xPercent;
-        const dy = currentPoint.yPercent - prevPoint.yPercent;
-        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-
+        const status = this.segmentStatus(items[index - 1], items[index]);
         pathSegments.push({
           path: segmentPath,
-          midX,
-          midY,
-          angle,
+          status,
         });
       }
     }
@@ -209,18 +233,29 @@ export class BadgePathComponent implements OnChanges {
     const perRowIncrement = 140;
     const height = baseHeight + Math.max(0, rowCount - 1) * perRowIncrement;
     const maskRadius = rowCount > 1 ? 9 : 8;
+    const slotPercent = rowCount > 1 ? slotSpacing : total > 1 ? 22 : 100;
 
     return {
       viewBox: '0 0 100 100',
       height,
-      pathD,
       pathSegments,
       points: orderedPoints.slice(0, pointCount),
       nodePoints,
       rowCount,
       isMultiRow: rowCount > 1,
       maskRadius,
+      slotPercent,
     };
+  }
+
+  private segmentStatus(previous: BadgeThropyItem | undefined, current: BadgeThropyItem | undefined): BadgePathSegmentStatus {
+    if (current && isEarnedState(current.state)) {
+      return 'earned';
+    }
+    if (previous && isEarnedState(previous.state)) {
+      return 'next';
+    }
+    return 'pending';
   }
 
   private clamp(value: number, min: number, max: number): number {

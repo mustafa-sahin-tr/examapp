@@ -121,19 +121,18 @@
     },
     "badgePath": {
       "empty": "No badge path found.",
-      "step": "Step {{step}}",
-      "progress": "{{completed}} / {{total}} completed"
+      "step": "Step {{step}}"
     },
     "badgeThropy": {
       "title": "Achievement Badges",
       "subtitle": "Track your badge progress based on your study habits.",
       "loading": "Loading badges...",
       "error": "Badge information could not be loaded.",
-      "loadFailed": "Badge information could not be loaded. Please try again later.",
-      "notFound": "No badge information found.",
       "empty": "You have no earned or in-progress badges yet.",
       "standaloneTitle": "Standalone Badges",
-      "pathProgress": "{{completed}} / {{total}} completed"
+      "earnedSummary": "{{earned}} / {{total}} earned",
+      "legendLabel": "Badge states",
+      "pathEarned": "{{completed}} / {{total}} earned"
     },
     "bookingSlotDialog": {
       "title": "{{teacher}} · Book a Lesson",
@@ -450,6 +449,37 @@
       "noMatch": "No matching school",
       "pickFromList": "Pick a school from the list; free text is not saved.",
       "clear": "Clear school selection"
+    },
+    "badgeMedallion": {
+      "aria": {
+        "earned": "Earned: {{name}}, {{date}}",
+        "earnedNoDate": "Earned: {{name}}",
+        "new": "Newly earned: {{name}}",
+        "inProgress": "In progress: {{name}}, {{current}}/{{target}}",
+        "locked": "Locked: {{name}}, {{current}}/{{target}}"
+      },
+      "text": {
+        "earned": "Earned · {{date}}",
+        "earnedNoDate": "Earned",
+        "new": "Newly earned",
+        "inProgress": "{{current}} / {{target}}",
+        "locked": "Locked · {{current}} / {{target}}"
+      },
+      "state": {
+        "earned": "Earned",
+        "new": "New",
+        "inProgress": "In progress",
+        "locked": "Locked"
+      },
+      "newChip": "New",
+      "progressAria": "{{name}} progress",
+      "remaining": "{{remaining}} left · {{percent}}%"
+    },
+    "badgeEarnedToast": {
+      "eyebrow": "You earned a new badge",
+      "action": "My badges",
+      "close": "Close",
+      "fallbackName": "New badge"
     }
   },
   "dashboard": {
@@ -522,7 +552,8 @@
       "earnedEmpty": "No badges earned yet.",
       "upcomingTitle": "Upcoming Badges",
       "allCompleted": "Congratulations, you have earned every badge!",
-      "upcomingEmpty": "Your badge progress will appear here once you start answering questions."
+      "upcomingEmpty": "Your badge progress will appear here once you start answering questions.",
+      "newEarned": "Newly earned"
     },
     "assignments": {
       "title": "Assigned Tests",

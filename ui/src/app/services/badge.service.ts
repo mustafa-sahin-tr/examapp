@@ -38,7 +38,13 @@ export interface BadgeProgressItem {
   badgeDefinitionId: string;
   name: string;
   description: string;
-  iconUrl: string;
+  /**
+   * Issue #149: Material Symbols adı (`^[a-z][a-z0-9_]{1,63}$`). Eski sunucuda alan yok → undefined;
+   * UI `icon` → `iconUrl` → `military_tech` sırasıyla düşer (`resolveBadgeIcon`).
+   */
+  icon?: string | null;
+  /** Eski SVG yolu (`achievements/<dosya>.svg`); geçiş süresince yedek, null olabilir. */
+  iconUrl: string | null;
   pathKey?: string | null;
   pathName?: string | null;
   pathOrder?: number | null;

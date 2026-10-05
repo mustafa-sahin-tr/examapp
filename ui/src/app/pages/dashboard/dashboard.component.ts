@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { CompactTestCardComponent } from '../../shared/components/compact-test-card/compact-test-card.component';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 import { TestService } from '../../services/test.service';
@@ -35,6 +36,14 @@ import { DailySet } from '../../models/practice';
 import { DailyQuestionsCardComponent } from '../../shared/components/daily-questions-card/daily-questions-card.component';
 import { dailyStreakFrom } from '../../shared/utils/daily-streak.util';
 import { currentUserId } from '../../shared/utils/current-user-id.util';
+import { stripInvisibleControls } from '../../shared/utils/display-text.util';
+import { BadgeMedallionComponent } from '../../shared/components/badge-medallion/badge-medallion.component';
+import {
+  BadgeMedallionState,
+  badgeAriaLabel,
+  badgeStateText,
+  deriveBadgeState,
+} from '../../shared/components/badge-medallion/badge-state.util';
 
 interface AssignmentCardViewModel {
   assignment: AssignedWorksheet;
@@ -54,6 +63,18 @@ interface UpcomingBadgeViewModel {
   badge: BadgeProgressItem;
   remaining: number;
   percent: number;
+  /** Issue #149: `in-progress` ya da `locked` (currentValue = 0). */
+  state: BadgeMedallionState;
+  /** Her zaman görünen durum metni: "180 / 250" ya da "Kilitli · 0 / 500". */
+  stateText: string;
+}
+
+/** Issue #149 — "Kazanılan Rozetler" ızgarası: 56px medalyon + erişilebilir ad + tooltip (hover ve odak). */
+export interface EarnedBadgeViewModel {
+  badge: BadgeProgressItem;
+  state: BadgeMedallionState;
+  ariaLabel: string;
+  tooltip: string;
 }
 
 @Component({
@@ -62,6 +83,8 @@ interface UpcomingBadgeViewModel {
   imports: [
     CommonModule,
     MatIconModule,
+    MatTooltipModule,
+    BadgeMedallionComponent,
     CompactTestCardComponent,
     SectionHeaderComponent,
     NgxChartsModule,
@@ -119,21 +142,62 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly dailyStreak = computed(() => dailyStreakFrom(this.badgeSummary(), this.allBadgeProgress())?.count ?? null);
 
   readonly upcomingBadgesLimit = 3;
-  readonly upcomingBadges = computed<UpcomingBadgeViewModel[]>(() =>
-    this.allBadgeProgress()
+  readonly upcomingBadges = computed<UpcomingBadgeViewModel[]>(() => {
+    // CR U5: sayılar aktif dile göre biçimlenir (1.250 / 1,250).
+    const numberFormat = new Intl.NumberFormat(this.intlLocale);
+    return this.allBadgeProgress()
       .filter((badge) => !badge.isCompleted)
       .map((badge) => {
         const target = Math.max(badge.targetValue ?? 0, 0);
         const current = Math.min(Math.max(badge.currentValue ?? 0, 0), target);
+        const state = deriveBadgeState(badge);
         return {
           badge,
           remaining: target - current,
           percent: target > 0 ? Math.round((current / target) * 100) : 0,
+          state,
+          stateText: badgeStateText((key, params) => this.transloco.translate<string>(key, params), {
+            state,
+            current: numberFormat.format(badge.currentValue ?? 0),
+            target: numberFormat.format(badge.targetValue ?? 0),
+            locale: this.intlLocale,
+          }),
         };
       })
       .sort((a, b) => a.remaining - b.remaining)
-      .slice(0, this.upcomingBadgesLimit)
-  );
+      .slice(0, this.upcomingBadgesLimit);
+  });
+  readonly earnedBadgeViews = computed<EarnedBadgeViewModel[]>(() => {
+    const now = Date.now();
+    const locale = this.intlLocale;
+    const translate = (key: string, params?: Record<string, unknown>) => this.transloco.translate<string>(key, params);
+    return this.earnedBadges().map((badge) => {
+      const state = deriveBadgeState(badge, now);
+      // Sec D1: tooltip/aria düz metin yüzeyi (<bdi> yok) — bidi/sıfır genişlikli kontroller silinir.
+      const name = stripInvisibleControls(badge.name ?? '').trim();
+      const description = stripInvisibleControls(badge.description ?? '').trim();
+      const lines = [name];
+      if (state === 'new') {
+        lines.push(translate('dashboard.badges.newEarned'));
+      }
+      if (description) {
+        lines.push(description);
+      }
+      return {
+        badge,
+        state,
+        ariaLabel: badgeAriaLabel(translate, {
+          state,
+          name,
+          current: badge.currentValue,
+          target: badge.targetValue,
+          earnedDateUtc: badge.earnedDateUtc,
+          locale,
+        }),
+        tooltip: lines.filter((line) => !!line).join('\n'),
+      };
+    });
+  });
   readonly allBadgesCompleted = computed(
     () => this.allBadgeProgress().length > 0 && this.upcomingBadges().length === 0
   );
@@ -389,8 +453,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     return item.assignment.assignmentId;
   }
 
-  trackBadge(index: number, badge: BadgeProgressItem): string {
-    return badge.badgeDefinitionId;
+  trackBadge(index: number, view: EarnedBadgeViewModel): string {
+    return view.badge.badgeDefinitionId;
   }
 
   trackStatCard(index: number, card: ActivityStatCard): string {

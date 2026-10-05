@@ -4,7 +4,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { AccessRequestUpdate } from '../models/worksheet-access-request.model';
-import { toCoalescedCount } from '../models/notification.model';
+import { BadgeEarnedPushPayload, toCoalescedCount } from '../models/notification.model';
 import {
   TeacherApplicationSubmittedPayload,
   TeacherApplicationDecidedPayload,
@@ -19,6 +19,12 @@ import {
 } from '../models/worksheet-comment.model';
 import { AuthService } from './auth.service';
 import { stripInvisibleControls } from '../shared/utils/display-text.util';
+import {
+  BADGE_TOAST_DURATION_MS,
+  BADGE_TOAST_PANEL_CLASS,
+  BADGE_TOAST_POLITENESS,
+  BadgeEarnedToastComponent,
+} from '../shared/components/badge-earned-toast/badge-earned-toast.component';
 
 export interface ReminderDuePayload {
   notificationId: number;
@@ -53,6 +59,10 @@ export interface WorksheetCommentPushPayload {
 
 /** Snackbar'da gösterilecek push başlığının üst sınırı (backend zaten 200'e kırpar). */
 const MAX_PUSH_TITLE_LENGTH = 200;
+/** Rozet toast'unda açıklama üst sınırı (görselde zaten 2 satıra kırpılır). */
+const MAX_BADGE_DESCRIPTION_LENGTH = 300;
+/** İkon alanları için kaba uzunluk sınırı; biçim `resolveBadgeIcon`'da doğrulanır. */
+const MAX_BADGE_ICON_FIELD_LENGTH = 256;
 
 @Injectable({ providedIn: 'root' })
 export class SignalRService {
@@ -105,12 +115,8 @@ export class SignalRService {
       .then(() => console.log('SignalR bağlantısı kuruldu'))
       .catch((err) => console.error('SignalR bağlantı hatası:', err));
 
-    this.hubConnection.on('BadgeEarned', (data: any) => {
-      this.snackBar.open(`🎉 ${data.badgeName}: ${data.description}`, this.t('common.close'), {
-        duration: 4000,
-      });
-      this.notificationsChangedSubject.next();
-    });
+    // Issue #149: emoji'li düz metin yerine medalyonlu toast; "Rozetlerim" eylemi /certificates.
+    this.hubConnection.on('BadgeEarned', (data: unknown) => this.onBadgeEarnedPush(data));
 
     this.hubConnection.on('AccessRequestUpdate', (data: AccessRequestUpdate) => {
       this.accessRequestUpdatesSubject.next(data);
@@ -195,6 +201,17 @@ export class SignalRService {
     });
   }
 
+  /** Rozet push'u: payload güvenilmez — alanlar tek tek doğrulanır, metin kırpılır ve görünmez kontroller silinir. */
+  private onBadgeEarnedPush(data: unknown): void {
+    this.notificationsChangedSubject.next();
+    this.snackBar.openFromComponent(BadgeEarnedToastComponent, {
+      data: parseBadgeEarnedPush(data),
+      panelClass: BADGE_TOAST_PANEL_CLASS,
+      duration: BADGE_TOAST_DURATION_MS,
+      politeness: BADGE_TOAST_POLITENESS,
+    });
+  }
+
   /** Yorum push'u: payload güvenilmez — kimlikler doğrulanmadan link kurulmaz, başlık düz metin ve kırpılır. */
   private onWorksheetCommentPush(data: unknown): void {
     this.notificationsChangedSubject.next();
@@ -221,4 +238,19 @@ export class SignalRService {
   private t(key: string, params?: Record<string, unknown>): string {
     return this.transloco.translate<string>(key, params) ?? '';
   }
+}
+
+/** Issue #149: `BadgeEarned` hub yükünü toast verisine çevirir; bozuk/eksik alan boş değere düşer (toast yine açılır). */
+export function parseBadgeEarnedPush(data: unknown): BadgeEarnedPushPayload {
+  const record = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
+  return {
+    badgeName: cleanText(record['badgeName'], MAX_PUSH_TITLE_LENGTH),
+    description: cleanText(record['description'], MAX_BADGE_DESCRIPTION_LENGTH),
+    icon: cleanText(record['icon'], MAX_BADGE_ICON_FIELD_LENGTH) || null,
+    iconUrl: cleanText(record['iconUrl'], MAX_BADGE_ICON_FIELD_LENGTH) || null,
+  };
+}
+
+function cleanText(value: unknown, maxLength: number): string {
+  return typeof value === 'string' ? stripInvisibleControls(value).trim().slice(0, maxLength) : '';
 }

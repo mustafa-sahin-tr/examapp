@@ -317,6 +317,114 @@ describe('DashboardComponent', () => {
     });
   });
 
+  describe('badge medallions (issue #149)', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+
+    function render(badges: BadgeProgressItem[]): HTMLElement {
+      badgeServiceSpy.getUserBadgeProgress.and.returnValue(of(badgeProgressResponse(badges)));
+      const fixture = TestBed.createComponent(DashboardComponent);
+      fixture.detectChanges();
+      return fixture.nativeElement as HTMLElement;
+    }
+
+    it('earned_Renders56pxMedallionsFocusableWithImgRoleAriaLabelAndTooltip', () => {
+      const root = render([
+        buildBadge({
+          badgeDefinitionId: 'recent',
+          name: 'Soru Avcısı III',
+          description: '250 soru',
+          icon: 'gps_fixed',
+          isCompleted: true,
+          currentValue: 10,
+          earnedDateUtc: new Date(Date.now() - DAY).toISOString(),
+        }),
+        buildBadge({
+          badgeDefinitionId: 'old',
+          name: 'İlk Cevap',
+          isCompleted: true,
+          currentValue: 10,
+          earnedDateUtc: '2026-01-05T00:00:00Z',
+        }),
+      ]);
+
+      const items = Array.from(root.querySelectorAll<HTMLElement>('.earned-badges-grid .badge-icon'));
+      expect(items.length).toBe(2);
+      for (const item of items) {
+        expect(item.getAttribute('tabindex')).toBe('0');
+        expect(item.getAttribute('role')).toBe('img');
+        expect(item.classList).toContain('mat-mdc-tooltip-trigger');
+        expect(item.querySelector('app-badge-medallion')?.getAttribute('style')).toContain('--bm-size: 56px');
+      }
+      expect(items[0].getAttribute('aria-label')).toBe('Yeni kazanıldı: Soru Avcısı III');
+      expect(items[0].querySelector('app-badge-medallion')?.getAttribute('data-state')).toBe('new');
+      expect(items[1].getAttribute('aria-label')).toBe('Kazanıldı: İlk Cevap, 5 Oca');
+      expect(items[1].querySelector('app-badge-medallion')?.getAttribute('data-state')).toBe('earned');
+      expect(root.querySelector('.earned-badges-grid img:not(app-badge-medallion img)')).toBeNull();
+    });
+
+    it('earnedTooltip_NewBadge_IncludesNewEarnedLineAndDescription', () => {
+      badgeServiceSpy.getUserBadgeProgress.and.returnValue(
+        of(
+          badgeProgressResponse([
+            buildBadge({
+              name: 'Soru Avcısı III',
+              description: '250 soru',
+              isCompleted: true,
+              earnedDateUtc: new Date(Date.now() - DAY).toISOString(),
+            }),
+          ])
+        )
+      );
+      component = createComponent();
+      component.ngOnInit();
+
+      expect(component.earnedBadgeViews()[0].tooltip).toBe('Soru Avcısı III\nYeni kazanıldı\n250 soru');
+    });
+
+    it('upcoming_CountsUseLocaleNumberFormat', () => {
+      const root = render([buildBadge({ name: 'Maraton', currentValue: 1250, targetValue: 5000 })]);
+
+      expect(root.querySelector('.upcoming-badge-count')?.textContent?.trim()).toBe('1.250 / 5.000');
+    });
+
+    it('earned_InvisibleBidiControlsStrippedFromTooltipAndAriaLabel', () => {
+      const evil = String.fromCharCode(0x202e) + 'Avcı' + String.fromCharCode(0x200b);
+      badgeServiceSpy.getUserBadgeProgress.and.returnValue(
+        of(
+          badgeProgressResponse([
+            buildBadge({ name: evil, description: evil, isCompleted: true, earnedDateUtc: '2026-01-05T00:00:00Z' }),
+          ])
+        )
+      );
+      component = createComponent();
+      component.ngOnInit();
+
+      const view = component.earnedBadgeViews()[0];
+      expect(view.tooltip).toBe(['Avcı', 'Avcı'].join(String.fromCharCode(10)));
+      expect(view.ariaLabel).toBe('Kazanıldı: Avcı, 5 Oca');
+    });
+
+    it('upcoming_44pxMedallionWithLockedStateVisibleAndInProgressCount', () => {
+      const root = render([
+        buildBadge({ badgeDefinitionId: 'progress', name: 'Seri', currentValue: 8, targetValue: 10 }),
+        buildBadge({ badgeDefinitionId: 'locked', name: 'Usta', currentValue: 0, targetValue: 10 }),
+      ]);
+
+      const rows = Array.from(root.querySelectorAll<HTMLElement>('.upcoming-badge'));
+      expect(rows.length).toBe(2);
+      const states = rows.map((row) => row.querySelector('app-badge-medallion')?.getAttribute('data-state'));
+      expect(states).toEqual(['in-progress', 'locked']);
+      expect(rows[0].querySelector('app-badge-medallion')?.getAttribute('style')).toContain('--bm-size: 44px');
+      // <56px: ilerleme halkası yok, yanındaki çubuk taşır.
+      expect(rows[0].querySelector('[data-testid="badge-medallion-ring"]')).toBeNull();
+      expect(rows[0].querySelector('[role="progressbar"]')).not.toBeNull();
+      expect(rows.map((row) => row.querySelector('.upcoming-badge-count')?.textContent?.trim())).toEqual([
+        '8 / 10',
+        'Kilitli · 0 / 10',
+      ]);
+    });
+  });
+
   describe('assignment compact cards (issue #188)', () => {
     function assignment(overrides: Partial<AssignedWorksheet>): AssignedWorksheet {
       return {

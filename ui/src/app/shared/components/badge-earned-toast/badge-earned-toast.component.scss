@@ -1,0 +1,63 @@
+// Issue #149 — zemin/çerçeve global `.badge-toast` panelClass'ında (styles.scss); burada yalnız iç yerleşim.
+:host {
+  display: block;
+}
+
+.bet {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.75rem 0.5rem 0.75rem 0.85rem;
+  color: var(--ms-text-strong);
+}
+
+.bet__body {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.bet__eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ms-warning-text-weak);
+}
+
+.bet__name {
+  font-family: var(--mainFontFamily);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ms-text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bet__description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-family: var(--paragraphFontFamily);
+  font-size: 0.85rem;
+  color: var(--ms-text-medium);
+}
+
+.bet__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.bet__action {
+  color: var(--ms-action-text);
+}
+
+.bet__close {
+  color: var(--ms-text-medium);
+}

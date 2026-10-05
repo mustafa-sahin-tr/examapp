@@ -100,10 +100,8 @@
   color: var(--primaryColor);
 }
 
-.ntf__badge-img {
-  width: 2rem;
-  height: 2rem;
-  object-fit: contain;
+.ntf__badge {
+  flex: 0 0 auto;
 }
 
 .ntf__content {

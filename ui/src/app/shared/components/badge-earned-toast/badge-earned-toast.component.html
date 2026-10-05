@@ -1,0 +1,25 @@
+<div class="bet" *transloco="let t; prefix: 'shared.badgeEarnedToast'">
+  <app-badge-medallion class="bet__medallion" state="new" [size]="48" [icon]="data.icon" [iconUrl]="data.iconUrl" />
+  <div class="bet__body">
+    <span class="bet__eyebrow">{{ t('eyebrow') }}</span>
+    <span class="bet__name" data-testid="badge-toast-name"><bdi dir="auto">{{ data.badgeName || t('fallbackName') }}</bdi></span>
+    @if (data.description) {
+      <span class="bet__description"><bdi dir="auto">{{ data.description }}</bdi></span>
+    }
+  </div>
+  <div class="bet__actions">
+    <button mat-button type="button" class="bet__action" data-testid="badge-toast-open" (click)="openBadges()">
+      {{ t('action') }}
+    </button>
+    <button
+      mat-icon-button
+      type="button"
+      class="bet__close"
+      data-testid="badge-toast-close"
+      [attr.aria-label]="t('close')"
+      (click)="dismiss()"
+    >
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+</div>

@@ -249,6 +249,12 @@ builder.Services.AddVideoSessions(builder.Configuration);
 // Ortak çizim tahtası (issue #98) — SignalR hub /hub/whiteboard, bellek içi durum + dakikalık temizlik servisi.
 builder.Services.AddWhiteboard();
 builder.Services.AddScoped<ExamApp.Api.Services.Practice.IPracticeSessionService, ExamApp.Api.Services.Practice.PracticeSessionService>();
+// issue #99: "Günün soruları" — N ve son-X-gün dışlaması config'ten (DailyQuestions), açılışta doğrulanır.
+builder.Services.AddOptions<ExamApp.Api.Services.Practice.DailyQuestionsOptions>()
+    .BindConfiguration(ExamApp.Api.Services.Practice.DailyQuestionsOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<ExamApp.Api.Services.Practice.IDailyQuestionSetService, ExamApp.Api.Services.Practice.DailyQuestionSetService>();
 builder.Services.AddScoped<ExamApp.Api.Services.LoginEvents.ILoginEventService, ExamApp.Api.Services.LoginEvents.LoginEventService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Leaderboards.ILeaderboardService, ExamApp.Api.Services.Leaderboards.LeaderboardService>(); // issue #193
@@ -358,6 +364,7 @@ builder.Services.AddTeacherActivityRateLimiting();
 // issue #105: yorum yazma — kullanıcı (sub) başına dağıtık sabit pencere (varsayılan dakikada 10).
 builder.Services.AddWorksheetCommentWriteRateLimiting();
 builder.Services.AddWorksheetCommentReadRateLimiting(); // okuma: dakikada 60 (review O4)
+builder.Services.AddDailyQuestionsRateLimiting(); // issue #99 security D4: günün soruları, öğrenci başına dakikada 30
 
 // PostgreSQL & EF Core (Aspire client integration — reads ConnectionStrings:DefaultConnection,
 // same key as before, so standalone `dotnet run` against appsettings.json is unaffected).

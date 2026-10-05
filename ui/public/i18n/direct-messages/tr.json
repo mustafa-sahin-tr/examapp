@@ -1,0 +1,156 @@
+{
+  "relation": {
+    "school": "Okulun",
+    "assignment": "Sana sınav atadı",
+    "both": "Okulun · Sana sınav atadı"
+  },
+  "list": {
+    "loading": "Yükleniyor",
+    "retry": "Tekrar dene",
+    "you": "Sen:",
+    "unreadAria": "{{count}} okunmamış mesaj",
+    "blockedTag": "Engellendi"
+  },
+  "student": {
+    "title": "Öğretmenime Yaz",
+    "subtitle": "Okulundaki ya da sana sınav atayan öğretmenlerine mesaj gönder.",
+    "tabs": {
+      "conversations": "Konuşmalarım",
+      "teachers": "Öğretmenler"
+    },
+    "searchLabel": "Öğretmen ara",
+    "searchPlaceholder": "Ad ile ara",
+    "clearSearch": "Aramayı temizle",
+    "teachersLabel": "Mesaj yazabileceğin öğretmenler",
+    "teachersEmpty": "Şu an mesaj yazabileceğin bir öğretmen yok.",
+    "teachersSearchEmpty": "\"{{term}}\" ile eşleşen öğretmen bulunamadı.",
+    "teachersError": "Öğretmen listesi yüklenemedi.",
+    "write": "Mesaj yaz",
+    "writeAria": "{{name}} adlı öğretmene mesaj yaz",
+    "conversationsLabel": "Konuşmalarım",
+    "conversationsEmpty": "Henüz bir konuşman yok. Öğretmenler sekmesinden ilk mesajını yazabilirsin.",
+    "conversationsError": "Konuşmalar yüklenemedi.",
+    "selectHint": "Bir konuşma seç ya da Öğretmenler sekmesinden yeni bir mesaj başlat.",
+    "searchMinLength": "Aramak için en az {{min}} karakter yaz.",
+    "searchTruncated": "Çok fazla sonuç var; ilk sonuçlar gösteriliyor. Aramayı daraltmak için adın daha fazlasını yaz."
+  },
+  "teacher": {
+    "title": "Öğrenci Mesajları",
+    "subtitle": "Öğrencilerinizden gelen mesajları okuyun ve cevaplayın.",
+    "filterLabel": "Gelen kutusu filtresi",
+    "filters": {
+      "all": "Tümü",
+      "unread": "Okunmamış",
+      "blocked": "Engellendi"
+    },
+    "inboxLabel": "Gelen kutusu",
+    "empty": {
+      "all": "Henüz size gelen bir mesaj yok.",
+      "unread": "Okunmamış mesaj yok.",
+      "blocked": "Engellediğiniz öğrenci yok."
+    },
+    "error": "Gelen kutusu yüklenemedi.",
+    "selectHint": "Okumak için soldan bir konuşma seçin."
+  },
+  "conversation": {
+    "back": "Konuşma listesine dön",
+    "logLabel": "{{name}} ile mesajlar",
+    "loading": "Mesajlar yükleniyor",
+    "loadOlder": "Önceki mesajları yükle",
+    "loadingOlder": "Önceki mesajlar yükleniyor",
+    "loadError": "Mesajlar yüklenemedi.",
+    "loadOlderError": "Önceki mesajlar yüklenemedi.",
+    "retry": "Tekrar dene",
+    "empty": "Bu konuşmada henüz mesaj yok.",
+    "emptyNew": "İlk mesajını yaz. Öğretmenin cevap verdiğinde burada görünür.",
+    "you": "Sen",
+    "inputLabel": "Mesaj",
+    "inputPlaceholder": "Mesajınızı yazın…",
+    "shortcutHint": "Göndermek için Ctrl+Enter",
+    "send": "Gönder",
+    "sendAria": "Mesajı gönder",
+    "sending": "Gönderiliyor",
+    "tooLong": "En çok {{max}} karakter yazılabilir.",
+    "cannotSend": "Bu öğretmene şu an mesaj gönderemezsin.",
+    "relationshipEnded": "Bu öğrenciyle okul ya da sınav ilişkiniz sona erdiği için cevap yazamazsınız. Konuşma okunabilir kalır.",
+    "blockedBand": "Bu öğrenciyi engellediniz. Öğrenci size yeni mesaj gönderemez; siz cevap yazabilirsiniz.",
+    "actionsLabel": "Konuşma eylemleri",
+    "reportConversation": "Konuşmayı şikayet et",
+    "reportMessage": "Bu mesajı şikayet et",
+    "block": "Engelle",
+    "blockAria": "{{name}} adlı öğrenciyi engelle",
+    "unblock": "Engeli kaldır",
+    "unblockAria": "{{name}} adlı öğrencinin engelini kaldır",
+    "reported": "Şikayetiniz alındı.",
+    "alreadyReported": "Şikayetiniz alındı. Bu içerik için daha önce şikayette bulunmuştunuz.",
+    "blockedDone": "Öğrenci engellendi.",
+    "unblockedDone": "Engel kaldırıldı.",
+    "blockError": "İşlem tamamlanamadı. Lütfen tekrar deneyin.",
+    "close": "Kapat",
+    "blockedTag": "Engellendi"
+  },
+  "blockDialog": {
+    "blockTitle": "Öğrenciyi engelle",
+    "blockBody": "{{name}} size yeni mesaj gönderemeyecek. Mevcut konuşma iki taraf için okunabilir kalır; engeli istediğiniz zaman kaldırabilirsiniz. Öğrenciye engellendiği bildirilmez.",
+    "unblockTitle": "Engeli kaldır",
+    "unblockBody": "{{name}} size yeniden mesaj gönderebilecek.",
+    "confirmBlock": "Engelle",
+    "confirmUnblock": "Engeli kaldır",
+    "cancel": "Vazgeç"
+  },
+  "reportDialog": {
+    "titleMessage": "Mesajı şikayet et",
+    "titleConversation": "Konuşmayı şikayet et",
+    "intro": "Şikayetiniz yöneticilere iletilir. Karşı tarafa kimin şikayet ettiği bildirilmez.",
+    "reasonLabel": "Neden",
+    "reasons": {
+      "spam": "İstenmeyen mesaj (spam)",
+      "abuse": "Hakaret, taciz ya da zorbalık",
+      "personalInfo": "Kişisel bilgi paylaşımı",
+      "other": "Diğer"
+    },
+    "noteLabel": "Not (isteğe bağlı)",
+    "notePlaceholder": "Yöneticinin bilmesi gereken bir şey varsa yazın",
+    "noteTooLong": "Not en çok {{max}} karakter olabilir.",
+    "cancel": "Vazgeç",
+    "submit": "Şikayet et",
+    "submitting": "Gönderiliyor",
+    "error": "Şikayet gönderilemedi. Lütfen tekrar deneyin."
+  },
+  "paginator": {
+    "itemsPerPage": "Sayfa başına",
+    "next": "Sonraki sayfa",
+    "previous": "Önceki sayfa",
+    "first": "İlk sayfa",
+    "last": "Son sayfa",
+    "range": "{{start}}–{{end}} / {{length}}",
+    "rangeEmpty": "0 / {{length}}"
+  },
+  "errors": {
+    "generic": "İşlem tamamlanamadı. Lütfen tekrar deneyin.",
+    "network": "Sunucuya ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.",
+    "rateLimited": "Çok sık istek gönderildi. Biraz bekleyip tekrar deneyin.",
+    "rateLimitedRetry": "Çok sık istek gönderildi. {{seconds}} saniye sonra tekrar deneyin.",
+    "codes": {
+      "CannotMessageTeacher": "Bu öğretmene şu an mesaj gönderemezsiniz.",
+      "RelationshipEnded": "Bu öğrenciyle okul ya da sınav ilişkiniz sona erdiği için cevap yazamazsınız.",
+      "ConversationNotFound": "Konuşma bulunamadı.",
+      "BlockTeacherOnly": "Bu işlemi yalnız konuşmanın öğretmeni yapabilir.",
+      "MessageNotFound": "Mesaj bulunamadı.",
+      "CannotReportOwnMessage": "Kendi mesajınızı şikayet edemezsiniz.",
+      "StudentProfileNotFound": "Öğrenci profiliniz bulunamadı.",
+      "TeacherProfileNotFound": "Öğretmen profiliniz bulunamadı.",
+      "BodyRequired": "Mesaj boş olamaz.",
+      "BodyTooLong": "Mesaj en çok 2000 karakter olabilir.",
+      "BodyInvalidCharacters": "Mesaj geçersiz karakterler içeriyor.",
+      "InvalidReportReason": "Lütfen bir şikayet nedeni seçin.",
+      "ReportNoteTooLong": "Not en çok 500 karakter olabilir.",
+      "ReportNoteInvalidCharacters": "Not geçersiz karakterler içeriyor.",
+      "InvalidFilter": "Geçersiz filtre.",
+      "SearchTooShort": "Aramak için en az 2 karakter yazın.",
+      "NameLookupUnavailable": "Öğretmen adları şu an getirilemiyor. Biraz sonra tekrar deneyin.",
+      "InvalidUpToMessageId": "Okundu bilgisi güncellenemedi.",
+      "RateLimited": "Çok sık istek gönderildi. Biraz bekleyip tekrar deneyin."
+    }
+  }
+}

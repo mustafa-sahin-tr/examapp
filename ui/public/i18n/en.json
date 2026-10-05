@@ -32,6 +32,7 @@
     }
   },
   "layout": {
+    "dmUnreadBadge": "{{count}} unread conversations",
     "language": {
       "label": "Language",
       "switch": "Change language",
@@ -53,11 +54,13 @@
       "myCalendar": "My Plan",
       "tutors": "Find a Tutor",
       "myBookings": "My Lessons",
+      "teacherMessages": "Message My Teacher",
       "students": "Students",
       "tutorProfile": "My Tutor Profile",
       "availability": "My Availability",
       "bookingRequests": "Lesson Requests",
       "accessRequests": "Assignment Permission Requests",
+      "studentMessages": "Student Messages",
       "studyPages": "Add Study Material",
       "studyLinks": "Study Links",
       "examAuthoring": "Create Test",

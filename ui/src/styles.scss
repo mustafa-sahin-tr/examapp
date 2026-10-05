@@ -2290,13 +2290,6 @@ mat-select {
   color: #555;
 }
 
-.badges-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 10px 0;
-}
-
 .test-score {
   font-weight: bold;
   color: #4caf50;
@@ -2365,15 +2358,6 @@ mat-select {
   display: grid;
   grid-template-columns: repeat(3, minmax(200px, 1fr));
   /* 3 EŞİT SÜTUN */
-  gap: 20px;
-  width: 100%;
-}
-
-
-.badges-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  /* Dinamik Grid */
   gap: 20px;
   width: 100%;
 }

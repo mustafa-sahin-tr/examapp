@@ -63,7 +63,7 @@
       "title": "Subjects",
       "newPlaceholder": "New subject",
       "add": "Add subject",
-      "gradeChipsAria": "Linked grades",
+      "gradeChipsAria": "Other linked grades",
       "topicCount": "{{count}} topics",
       "manageGrades": "Manage Grades",
       "edit": "Edit subject",

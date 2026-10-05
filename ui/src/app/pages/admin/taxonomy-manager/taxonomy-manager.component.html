@@ -99,11 +99,14 @@
                 @if (!isEditing('subject', s.id)) {
                   <span class="name-block">
                     <span class="name">{{ s.name }}</span>
-                    <span class="grade-chips" [attr.aria-label]="t('subjects.gradeChipsAria')">
-                      @for (gn of subjectGradeNames(s); track gn) {
-                        <span class="grade-chip">{{ gn }}</span>
-                      }
-                    </span>
+                    @let otherGrades = otherGradeNamesBySubject().get(s.id) ?? [];
+                    @if (otherGrades.length) {
+                      <span class="grade-chips" [attr.aria-label]="t('subjects.gradeChipsAria')">
+                        @for (gn of otherGrades; track gn) {
+                          <span class="grade-chip">{{ gn }}</span>
+                        }
+                      </span>
+                    }
                   </span>
                   <span class="meta">{{ t('subjects.topicCount', { count: gradeTopics(s).length }) }}</span>
                   <span class="actions" (keydown)="$event.stopPropagation()">

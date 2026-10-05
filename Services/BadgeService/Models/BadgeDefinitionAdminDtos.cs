@@ -11,6 +11,9 @@ public class BadgeDefinitionAdminDto
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string? IconUrl { get; set; }
+
+    /// <summary>Issue #149: Material Symbols name from the allowlist (GET .../icons); null = no icon (UI falls back to iconUrl).</summary>
+    public string? Icon { get; set; }
     public string Category { get; set; } = string.Empty;
     public string RuleType { get; set; } = string.Empty;
     public string RuleConfigJson { get; set; } = string.Empty;
@@ -54,6 +57,9 @@ public class CreateBadgeDefinitionRequest
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string? IconUrl { get; set; }
+
+    /// <summary>Issue #149: Material Symbols name from the allowlist (GET .../icons); null = no icon (UI falls back to iconUrl).</summary>
+    public string? Icon { get; set; }
     public string Category { get; set; } = string.Empty;
     public string RuleType { get; set; } = string.Empty;
 
@@ -74,6 +80,28 @@ public class UpdateBadgeDefinitionRequest
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string? IconUrl { get; set; }
+
+    private string? _icon;
+
+    /// <summary>
+    /// Issue #149: Material Symbols name from the allowlist (GET .../icons). PATCH-like on this one field
+    /// (review fix): property ABSENT from the JSON body → stored icon is kept (older clients); explicit
+    /// <c>null</c>/empty → icon cleared. System.Text.Json only calls the setter when the property is present.
+    /// </summary>
+    public string? Icon
+    {
+        get => _icon;
+        set
+        {
+            _icon = value;
+            IconSpecified = true;
+        }
+    }
+
+    /// <summary>True when <see cref="Icon"/> was present in the request body (even as null).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IconSpecified { get; private set; }
+
     public string Category { get; set; } = string.Empty;
     public string RuleType { get; set; } = string.Empty;
     public string RuleConfigJson { get; set; } = string.Empty;

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading;
@@ -33,6 +34,16 @@ public class BadgeDefinitionsAdminController : ControllerBase
     public ActionResult<object> GetRuleTypes()
     {
         return Ok(BadgeRuleTypeCatalog.All);
+    }
+
+    /// <summary>
+    /// Issue #149: the badge icon allowlist (Material Symbols names) for the admin icon picker —
+    /// <c>[{ name, category }]</c>. The UI reads it from here instead of keeping its own copy.
+    /// </summary>
+    [HttpGet("icons")]
+    public ActionResult<IReadOnlyList<BadgeIconEntry>> GetIcons()
+    {
+        return Ok(BadgeIconCatalog.All);
     }
 
     /// <summary>

@@ -178,6 +178,30 @@ public class BadgeDefinitionsAdminEndpointAuthorizationTests : IAsyncDisposable
         activated!.IsActive.ShouldBeTrue();
     }
 
+    // Issue #149: icon allowlist endpoint — same Admin-only policy as the rest of the controller.
+    [Fact]
+    public async Task Icons_endpoint_rejects_anonymous_and_non_admin_callers()
+    {
+        (await _server.CreateClient().GetAsync("/api/admin/badge-definitions/icons")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+
+        var user = _server.CreateClient();
+        user.DefaultRequestHeaders.Add("X-Test-Sub", "user-1");
+        (await user.GetAsync("/api/admin/badge-definitions/icons")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Icons_endpoint_returns_the_allowlist_as_name_category_pairs_for_admin()
+    {
+        var response = await AdminClient().GetAsync("/api/admin/badge-definitions/icons");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var json = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var items = json.RootElement.EnumerateArray().ToList();
+        items.Count.ShouldBe(BadgeIconCatalog.All.Count);
+        items[0].EnumerateObject().Select(p => p.Name).ShouldBe(new[] { "name", "category" });
+        items.ShouldContain(i => i.GetProperty("name").GetString() == "gps_fixed" && i.GetProperty("category").GetString() == "achievement");
+    }
+
     private HttpClient AdminClient()
     {
         var client = _server.CreateClient();

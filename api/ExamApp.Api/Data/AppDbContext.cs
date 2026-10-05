@@ -114,6 +114,12 @@ public class AppDbContext : DbContext
     public DbSet<WorksheetComment> WorksheetComments { get; set; }
     public DbSet<WorksheetCommentReport> WorksheetCommentReports { get; set; } // issue #305
 
+    // Öğrenci ↔ öğretmen doğrudan mesajlaşma (issue #106)
+    public DbSet<Conversation> Conversations { get; set; }
+    public DbSet<DirectMessage> DirectMessages { get; set; }
+    public DbSet<DirectMessageBlock> DirectMessageBlocks { get; set; }
+    public DbSet<DirectMessageReport> DirectMessageReports { get; set; }
+
     // Ders planlama / randevu (issue #96)
     public DbSet<TeacherAvailabilitySlot> TeacherAvailabilitySlots { get; set; }
     public DbSet<Booking> Bookings { get; set; }
@@ -227,6 +233,51 @@ public class AppDbContext : DbContext
             e.HasIndex(r => new { r.CommentId, r.ReporterUserId })
                 .IsUnique()
                 .HasFilter("NOT \"IsDeleted\"");
+        });
+
+        // issue #106: doğrudan mesajlaşma. Çift başına tek konuşma (tekil index; eşzamanlı ilk mesaj yarışı unique ihlaline
+        // düşer, servis mevcut konuşmayı yeniden okur). Konuşma silinmez; yine de diğer tekil index'lerle aynı NOT IsDeleted
+        // filtresi. Öğretmen gelen kutusu (TeacherUserId, LastMessageAt) ile, öğrenci listesi (StudentUserId, LastMessageAt) ile
+        // sayfalanır — tekil index öğrenci tarafını da karşılar. FK'lar ClientNoAction (WorksheetComment ile aynı gerekçe:
+        // soft-delete'te change tracker bağımlıları sessizce null'lamasın).
+        modelBuilder.Entity<Conversation>(e =>
+        {
+            e.HasIndex(c => new { c.StudentUserId, c.TeacherUserId }).IsUnique().HasFilter("NOT \"IsDeleted\"");
+            e.HasIndex(c => new { c.TeacherUserId, c.LastMessageAt });
+        });
+
+        // Mesajlar konuşma içinde Id ile (keyset, beforeId) sayfalanır; okunmamış sayımı/filtresi kısmi index ile.
+        modelBuilder.Entity<DirectMessage>(e =>
+        {
+            e.Property(m => m.SenderRole).HasConversion<string>().HasMaxLength(16);
+            e.HasOne(m => m.Conversation).WithMany().HasForeignKey(m => m.ConversationId).OnDelete(DeleteBehavior.ClientNoAction);
+            e.HasIndex(m => new { m.ConversationId, m.Id });
+            e.HasIndex(m => new { m.ConversationId, m.SenderUserId }, "IX_DirectMessages_Unread")
+                .HasFilter("\"ReadAt\" IS NULL");
+        });
+
+        // Aktif engel çift başına tekil (kaldırılan = soft-delete edilen satırlar hariç).
+        modelBuilder.Entity<DirectMessageBlock>(e =>
+        {
+            e.HasIndex(b => new { b.TeacherUserId, b.StudentUserId }).IsUnique().HasFilter("NOT \"IsDeleted\"");
+        });
+
+        // Aynı kullanıcı aynı mesajı (mesajsız şikayette aynı konuşmayı) bir kez şikayet eder: iki kısmi tekil index (NULL
+        // MessageId tek index'te birbirinden farklı sayılırdı). Admin Open listesi (Status, CreateTime) ile.
+        modelBuilder.Entity<DirectMessageReport>(e =>
+        {
+            e.Property(r => r.Reason).HasConversion<string>().HasMaxLength(16);
+            e.Property(r => r.Status).HasConversion<string>().HasMaxLength(16);
+            e.Property(r => r.ReporterRole).HasConversion<string>().HasMaxLength(16);
+            e.HasOne(r => r.Conversation).WithMany().HasForeignKey(r => r.ConversationId).OnDelete(DeleteBehavior.ClientNoAction);
+            e.HasOne(r => r.Message).WithMany().HasForeignKey(r => r.MessageId).OnDelete(DeleteBehavior.ClientNoAction);
+            e.HasIndex(r => new { r.MessageId, r.ReporterUserId }, "IX_DirectMessageReports_Message_Reporter")
+                .IsUnique()
+                .HasFilter("\"MessageId\" IS NOT NULL AND NOT \"IsDeleted\"");
+            e.HasIndex(r => new { r.ConversationId, r.ReporterUserId }, "IX_DirectMessageReports_Conversation_Reporter")
+                .IsUnique()
+                .HasFilter("\"MessageId\" IS NULL AND NOT \"IsDeleted\"");
+            e.HasIndex(r => new { r.Status, r.CreateTime });
         });
 
         // Bağımsız öğretmen (issue #92): mevcut tüm öğretmen kayıtları okula bağlı sayılır → Approved.

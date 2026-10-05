@@ -83,7 +83,10 @@ public enum AdminDataAccessResource
     TeacherApplicationList = 3,
 
     /// <summary>issue #262: <c>GET api/admin/teacher-applications/{id}</c> (tam e-posta).</summary>
-    TeacherApplicationDetail = 4
+    TeacherApplicationDetail = 4,
+
+    /// <summary>issue #106: <c>GET api/admin/direct-messages/reports</c> (Open doğrudan mesaj şikayetleri; mesaj gövdesi + taraf adları).</summary>
+    DirectMessageReports = 5
 }
 
 /// <summary>

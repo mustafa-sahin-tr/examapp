@@ -31,8 +31,10 @@ public sealed record WorksheetCommentActor(int UserId, string KeycloakId, string
 /// Başka öğrencinin köküne reply serbest.</para>
 /// <para>Öğretmen yazma (ayar kapalıyken de): kök yorum — worksheet sahibi veya worksheet'e aktif ataması olan öğretmen;
 /// reply — kök yazarı öğrenciyse kök yazılırken sabitlenen ilgili öğretmen (<c>WorksheetComment.ResponsibleTeacherUserId</c>,
-/// <see cref="IWorksheetResponsibleTeacherResolver"/> ile çözülür; #326: atama yoksa ve sahip öğrenciyle aynı okulda değilse
-/// null — o köke hiçbir öğretmen cevap yazamaz), kök yazarı öğretmense kökün yazarı veya kök açabilen öğretmen.
+/// <see cref="IWorksheetResponsibleTeacherResolver"/> ile çözülür; #326/#334: atayan da sahip de öğrenciyle aynı okulda değilse
+/// — okulsuz atayan + okulsuz öğrenci istisnası hariç — null, o köke hiçbir öğretmen cevap yazamaz). Sabit her kullanımda
+/// öğretmenin GÜNCEL okuluyla yeniden doğrulanır (<see cref="WorksheetCommentPinRule"/>); cevap için kök yazarının güncel
+/// okulu da koşulu sağlamalı. Kök yazarı öğretmense kökün yazarı veya kök açabilen öğretmen.
 /// Admin'e yazma muafiyeti yok.</para>
 /// </summary>
 public interface IWorksheetCommentService

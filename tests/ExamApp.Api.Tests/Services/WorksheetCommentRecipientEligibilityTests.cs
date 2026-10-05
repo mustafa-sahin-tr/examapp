@@ -54,15 +54,26 @@ public partial class WorksheetCommentServiceTests
         (await CreatedRecipientsAsync()).OrderBy(x => x).ShouldBe(new[] { Owner, Assigner });
     }
 
-    [Fact]
-    public async Task Pinned_teacher_without_a_school_is_still_notified_because_the_relationship_comes_from_the_assignment()
+    /// <summary>
+    /// issue #334: okulsuz (bağımsız) atayan yalnız okulsuz öğrencisinde sorumlu ve bildirim alıcısı; okullu öğrencide sorumlu
+    /// aynı okuldaki sahibe düşer (#326 fallback'i).
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Independent_assigner_is_notified_only_for_a_schoolless_student(bool studentSchoolless)
     {
         var w = await SeedAsync();
         await SetTeacherSchoolAsync(Assigner, null);
+        if (studentSchoolless)
+        {
+            await using var ctx = _db.NewContext();
+            await ctx.Students.Where(s => s.UserId == StudentAUser).ExecuteUpdateAsync(s => s.SetProperty(x => x.SchoolId, (int?)null));
+        }
 
         Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "soru"));
 
-        (await CreatedRecipientsAsync()).ShouldBe(new[] { Assigner });
+        (await CreatedRecipientsAsync()).ShouldBe(new[] { studentSchoolless ? Assigner : Owner });
     }
 
     [Fact]
@@ -82,11 +93,17 @@ public partial class WorksheetCommentServiceTests
     /// <summary>
     /// Öğrencinin aktif atamasını sahip yapmış → sorumlu sahip (atamadan); sahibin Teacher profili silinmiş; öğrenci yeni kök
     /// yazar. issue #326: profilsiz sahip okulsuz sayılır → sahip FALLBACK'i artık sorumlu vermez; admin sahibin bildirim yolu
-    /// yalnız atamadan gelen sabitte anlamlı.
+    /// yalnız atamadan gelen sabitte anlamlı. issue #334: profilsiz atayan okulsuz sayılır → atama sabiti yalnız okulsuz
+    /// öğrencide geçerli (bağımsız istisnası), bu yüzden A okulsuz yapılır.
     /// </summary>
-    private async Task WriteRootPinnedToProfilelessOwnerAsync(World w, IKeycloakService? keycloak)
+    private async Task<int> WriteRootPinnedToProfilelessOwnerAsync(World w, IKeycloakService? keycloak, bool studentSchoolless = true)
     {
         Created(await PostAsync(w.WorksheetId, Teacher(Owner), "duyuru")); // sahibin sub'ı exam DB'ye yazılır
+        if (studentSchoolless)
+        {
+            await using var ctx = _db.NewContext();
+            await ctx.Students.Where(s => s.UserId == StudentAUser).ExecuteUpdateAsync(s => s.SetProperty(x => x.SchoolId, (int?)null));
+        }
         await using (var ctx = _db.NewContext())
             await ctx.WorksheetAssignments.Where(a => a.Id == w.AssignmentId)
                 .ExecuteUpdateAsync(s => s.SetProperty(a => a.CreateUserId, (int?)Owner));
@@ -97,7 +114,22 @@ public partial class WorksheetCommentServiceTests
         await using var svcCtx = _db.NewContext();
         var service = new WorksheetCommentService(svcCtx, new WorksheetResponsibleTeacherResolver(svcCtx), _authApi,
             teacherGuard: new ApprovedTeacherGuard(svcCtx), keycloak: keycloak);
-        Created(await service.CreateAsync(w.WorksheetId, new CreateWorksheetCommentDto { Body = "soru" }, Student(StudentAUser)));
+        return Created(await service.CreateAsync(w.WorksheetId, new CreateWorksheetCommentDto { Body = "soru" }, Student(StudentAUser)));
+    }
+
+    /// <summary>
+    /// CR-2 (kabul): profilsiz admin atayan + OKULLU öğrenci → atayan okulsuz sayılır, okul koşulu sağlanmaz; sahip fallback'i
+    /// de profilsiz (okulsuz) → sabit yok, bildirim yok (admin okul öğretmeni değil, #326 sahip kuralıyla tutarlı).
+    /// </summary>
+    [Fact]
+    public async Task Profileless_admin_assigner_gets_no_pin_and_no_notification_for_a_school_student()
+    {
+        var w = await SeedAsync();
+
+        var root = await WriteRootPinnedToProfilelessOwnerAsync(w, KeycloakWithRoles("Admin"), studentSchoolless: false);
+
+        (await PinOfAsync(root)).ShouldBeNull();
+        (await OutboxAsync()).ShouldBeEmpty();
     }
 
     private static IKeycloakService KeycloakWithRoles(params string[] realmRoles)

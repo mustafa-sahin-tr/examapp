@@ -8,7 +8,8 @@ namespace ExamApp.Api.Tests.Services;
 /// <summary>
 /// issue #105: ilgili öğretmen önceliği — aktif atama (her zaman) &gt; kopya sahibi &gt; worksheet sahibi.
 /// Kaynak worksheet'in sahibi hiçbir zaman seçilmez. issue #326 (O2): atama yoksa sahip/kopyalayan YALNIZ öğrenciyle aynı
-/// okuldaysa; okulsuz taraf (null == null) aynı okul sayılmaz. Varsayılan seed: sahip, kopyalayan ve öğrenciler Okul A'da.
+/// okuldaysa; okulsuz taraf (null == null) aynı okul sayılmaz. issue #334: atayan da aynı okul koşuluna tabi (tek istisna:
+/// atayan VE öğrenci okulsuz). Varsayılan seed: sahip, kopyalayan, atayanlar ve öğrenciler Okul A'da.
 /// </summary>
 public class WorksheetResponsibleTeacherResolverTests : IDisposable
 {
@@ -38,7 +39,9 @@ public class WorksheetResponsibleTeacherResolverTests : IDisposable
 
         ctx.Teachers.AddRange(
             new Teacher { UserId = SourceOwner, SchoolId = school.Id },
-            new Teacher { UserId = CopyOwner, SchoolId = school.Id });
+            new Teacher { UserId = CopyOwner, SchoolId = school.Id },
+            new Teacher { UserId = Assigner, SchoolId = school.Id },       // #334: atayanın okulu da karar girdisi
+            new Teacher { UserId = OtherAssigner, SchoolId = school.Id });
         await ctx.SaveChangesAsync();
 
         ctx.SetCurrentUser(SourceOwner);
@@ -388,15 +391,146 @@ public class WorksheetResponsibleTeacherResolverTests : IDisposable
     }
 
     [Fact]
-    public async Task Assignment_still_wins_across_schools_and_for_schoolless_parties()
+    public async Task Same_school_assignment_wins_even_when_the_owner_is_out_of_school()
     {
         var w = await SeedAsync();
         await SetTeacherSchoolAsync(SourceOwner, w.OtherSchoolId);
-        await SetStudentSchoolAsync(StudentUserId, null);
         var assignmentId = await AddAssignmentAsync(Assigner, w.SourceWorksheetId, studentId: w.StudentId);
 
         (await ResolveAsync(w.SourceWorksheetId))
             .ShouldBe(new ResponsibleTeacher(Assigner, ResponsibleTeacherSource.Assignment, assignmentId));
+    }
+
+    // ---- issue #334: atayan da güncel okul koşuluna tabi --------------------------------------------------------------
+
+    [Theory]
+    [InlineData(true)]  // atayan başka okula taşındı
+    [InlineData(false)] // atayan bağımsıza geçti (okulsuz), öğrenci okullu
+    public async Task Assigner_outside_the_students_school_is_not_responsible_and_the_same_school_owner_takes_over(bool moved)
+    {
+        var w = await SeedAsync();
+        await AddAssignmentAsync(Assigner, w.SourceWorksheetId, studentId: w.StudentId);
+        await SetTeacherSchoolAsync(Assigner, moved ? w.OtherSchoolId : null);
+
+        (await ResolveAsync(w.SourceWorksheetId))
+            .ShouldBe(new ResponsibleTeacher(SourceOwner, ResponsibleTeacherSource.Owner, null), "atama yokmuş gibi sahip fallback'i");
+
+        await SetTeacherSchoolAsync(SourceOwner, w.OtherSchoolId);
+        (await ResolveAsync(w.SourceWorksheetId)).ShouldBeNull("sahip de okul dışı → sorumlu yok");
+    }
+
+    [Fact]
+    public async Task Student_who_moves_to_another_school_is_no_longer_pinned_to_the_old_schools_assigner()
+    {
+        var w = await SeedAsync();
+        await AddAssignmentAsync(Assigner, w.SourceWorksheetId, studentId: w.StudentId); // öğrenci hedefli: okul değişse de aktif
+        await SetStudentSchoolAsync(StudentUserId, w.OtherSchoolId);
+
+        (await ResolveAsync(w.SourceWorksheetId)).ShouldBeNull("ne atayan ne sahip öğrencinin yeni okulunda");
+    }
+
+    [Fact]
+    public async Task Independent_assigner_keeps_a_schoolless_student()
+    {
+        var w = await SeedAsync();
+        var assignmentId = await AddAssignmentAsync(Assigner, w.SourceWorksheetId, studentId: w.StudentId);
+        await SetTeacherSchoolAsync(Assigner, null);
+        await SetStudentSchoolAsync(StudentUserId, null);
+
+        (await ResolveAsync(w.SourceWorksheetId))
+            .ShouldBe(new ResponsibleTeacher(Assigner, ResponsibleTeacherSource.Assignment, assignmentId), "bağımsız istisnası");
+    }
+
+    [Fact]
+    public async Task School_assigner_is_not_responsible_for_a_schoolless_student()
+    {
+        var w = await SeedAsync();
+        await AddAssignmentAsync(Assigner, w.SourceWorksheetId, studentId: w.StudentId);
+        await SetStudentSchoolAsync(StudentUserId, null);
+
+        (await ResolveAsync(w.SourceWorksheetId)).ShouldBeNull("okullu atayan + okulsuz öğrenci: eşleşme yok");
+    }
+
+    [Fact]
+    public async Task Assigner_without_a_teacher_profile_is_not_responsible()
+    {
+        var w = await SeedAsync();
+        await AddAssignmentAsync(Assigner, w.SourceWorksheetId, studentId: w.StudentId);
+        await using (var ctx = _db.NewContext())
+            await ctx.Teachers.Where(t => t.UserId == Assigner).ExecuteDeleteAsync();
+
+        (await ResolveAsync(w.SourceWorksheetId))
+            .ShouldBe(new ResponsibleTeacher(SourceOwner, ResponsibleTeacherSource.Owner, null), "okulu çözülemeyen atayan sorumlu olmaz");
+    }
+
+    [Fact]
+    public async Task Batch_resolution_applies_the_assigner_school_rule_per_student()
+    {
+        var w = await SeedAsync();
+        var grade = await AddAssignmentAsync(Assigner, w.SourceWorksheetId, gradeId: w.GradeId, platformWide: true);
+        await SetStudentSchoolAsync(OtherStudentUserId, w.OtherSchoolId);
+
+        await using var ctx = _db.NewContext();
+        var map = await NewResolver(ctx).ResolveResponsibleTeachersAsync(w.SourceWorksheetId, new[] { StudentUserId, OtherStudentUserId });
+
+        map[StudentUserId].ShouldBe(new ResponsibleTeacher(Assigner, ResponsibleTeacherSource.Assignment, grade));
+        map[OtherStudentUserId].ShouldBeNull("platform geneli atama aktif ama atayan öğrencinin okulunda değil");
+    }
+
+    [Theory]
+    //          atayan  sahip   öğrenci  beklenen
+    [InlineData(1,      1,      1,       "assignment")]
+    [InlineData(2,      1,      1,       "owner")]
+    [InlineData(null,   1,      1,       "owner")]
+    [InlineData(2,      2,      1,       "none")]
+    [InlineData(1,      null,   null,    "none")]
+    [InlineData(null,   null,   null,    "assignment")] // bağımsız istisnası yalnız atamada
+    [InlineData(null,   1,      null,    "assignment")]
+    [InlineData(1,      1,      null,    "none")]
+    public void Decide_matrix_follows_the_single_school_rule(int? assignerSchool, int? ownerSchool, int? studentSchool, string expected)
+    {
+        var worksheet = new ResponsibleTeacherWorksheet(1, SourceOwner, null);
+        var assignment = new RelevantAssignment(7, Assigner, null);
+
+        var result = ResponsibleTeacherRule.Decide(worksheet, assignment, ownerSchool, studentSchool, assignerSchool);
+
+        var actual = result switch
+        {
+            null => "none",
+            { Source: ResponsibleTeacherSource.Assignment } => "assignment",
+            _ => "owner"
+        };
+        actual.ShouldBe(expected);
+    }
+
+    [Fact]
+    public void Owner_fallback_has_no_schoolless_exception()
+    {
+        ResponsibleTeacherRule.Decide(new ResponsibleTeacherWorksheet(1, SourceOwner, null), null, null, null, null)
+            .ShouldBeNull("sahip fallback'inde okulsuz istisna yok");
+    }
+
+    /// <summary>
+    /// CR-3 (kabul edilen davranış): birden çok aktif atamada önce seçim (öğrenci hedefli &gt; sınıf hedefli &gt; yeni StartAt),
+    /// SONRA okul koşulu; seçilen atayan koşulu sağlamazsa diğer atamaya geçilmez, sahip fallback'ine düşülür.
+    /// </summary>
+    [Fact]
+    public async Task With_several_active_assignments_the_school_rule_applies_after_selection_then_falls_back_to_the_owner()
+    {
+        var w = await SeedAsync();
+        await AddAssignmentAsync(Assigner, w.SourceWorksheetId, studentId: w.StudentId);       // öğrenci hedefli, okul A'lı atayan
+        await SetStudentSchoolAsync(StudentUserId, w.OtherSchoolId);                            // öğrenci B'ye taşındı
+        await SetTeacherSchoolAsync(OtherAssigner, w.OtherSchoolId);
+        await AddAssignmentAsync(OtherAssigner, w.SourceWorksheetId, gradeId: w.GradeId, schoolId: w.OtherSchoolId); // B'de sınıf hedefli
+
+        // Seçilen = öğrenci hedefli (Assigner, okul A) → okul koşulu yok; B'deki sınıf ataması (OtherAssigner) DEVREYE GİRMEZ;
+        // sahip de A'da → sorumlu yok.
+        (await ResolveAsync(w.SourceWorksheetId)).ShouldBeNull();
+
+        // Sahip öğrencinin yeni okuluna geçerse fallback sahibi verir (yine OtherAssigner değil).
+        await SetTeacherSchoolAsync(SourceOwner, w.OtherSchoolId);
+        (await ResolveAsync(w.SourceWorksheetId))
+            .ShouldBe(new ResponsibleTeacher(SourceOwner, ResponsibleTeacherSource.Owner, null));
     }
 
     [Fact]

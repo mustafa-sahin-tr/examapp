@@ -61,8 +61,22 @@ public static class UserSchoolResolver
         AppDbContext context, IEnumerable<int?> userIds, CancellationToken ct = default,
         IReadOnlyDictionary<int, int?>? knownStudentSchools = null)
     {
+        var detailed = await ResolveManyDetailedAsync(context, userIds, ct, knownStudentSchools);
+        return detailed.ToDictionary(kv => kv.Key, kv => kv.Value.SchoolId);
+    }
+
+    /// <summary>
+    /// issue #334 (security Düşük-1): <see cref="ResolveManyAsync(AppDbContext, IEnumerable{int?}, CancellationToken, IReadOnlyDictionary{int, int?}?)"/>
+    /// ile AYNI sorgu ve kural; ek olarak "okulsuz" (null, belirsiz değil) ile "belirsiz" (birden fazla canlı satır → null)
+    /// ayırt edilir (<see cref="UserSchool.Ambiguous"/>). Okulsuzluğa hak tanıyan kararlar (ör. bağımsız öğretmen istisnası)
+    /// belirsiz sonucu okulsuz saymamalı.
+    /// </summary>
+    public static async Task<IReadOnlyDictionary<int, UserSchool>> ResolveManyDetailedAsync(
+        AppDbContext context, IEnumerable<int?> userIds, CancellationToken ct = default,
+        IReadOnlyDictionary<int, int?>? knownStudentSchools = null)
+    {
         var ids = userIds.Where(id => id is > 0).Select(id => id!.Value).Distinct().ToList();
-        var result = new Dictionary<int, int?>();
+        var result = new Dictionary<int, UserSchool>();
         if (ids.Count == 0)
             return result;
 
@@ -73,13 +87,13 @@ public static class UserSchoolResolver
             .ToListAsync(ct);
         var teacherSchools = teacherRows
             .GroupBy(r => r.UserId)
-            .ToDictionary(g => g.Key, g => UniqueOrNull(g.Select(r => r.SchoolId)));
+            .ToDictionary(g => g.Key, g => UniqueOrAmbiguous(g.Select(r => r.SchoolId)));
 
-        var studentSchools = new Dictionary<int, int?>();
+        var studentSchools = new Dictionary<int, UserSchool>();
         if (knownStudentSchools != null)
         {
             foreach (var (userId, schoolId) in knownStudentSchools)
-                studentSchools[userId] = schoolId;
+                studentSchools[userId] = new UserSchool(schoolId, false);
         }
 
         var withoutTeacherRow = ids.Where(id => !teacherSchools.ContainsKey(id) && !studentSchools.ContainsKey(id)).ToList();
@@ -91,7 +105,7 @@ public static class UserSchoolResolver
                 .Select(s => new { s.UserId, s.SchoolId })
                 .ToListAsync(ct);
             foreach (var g in studentRows.GroupBy(r => r.UserId))
-                studentSchools[g.Key] = UniqueOrNull(g.Select(r => r.SchoolId));
+                studentSchools[g.Key] = UniqueOrAmbiguous(g.Select(r => r.SchoolId));
         }
 
         foreach (var id in ids)
@@ -142,12 +156,21 @@ public static class UserSchoolResolver
     }
 
     /// <summary>Tek canlı satır → onun okulu; birden fazla canlı satır (unique index'siz ortam) → belirsiz → null.</summary>
-    private static int? UniqueOrNull(IEnumerable<int?> schools)
+    private static int? UniqueOrNull(IEnumerable<int?> schools) => UniqueOrAmbiguous(schools).SchoolId;
+
+    /// <summary>Tek canlı satır → onun okulu; satır yok → okulsuz; birden fazla canlı satır → belirsiz (okul null).</summary>
+    private static UserSchool UniqueOrAmbiguous(IEnumerable<int?> schools)
     {
         using var e = schools.GetEnumerator();
         if (!e.MoveNext())
-            return null;
+            return new UserSchool(null, false);
         var first = e.Current;
-        return e.MoveNext() ? null : first;
+        return e.MoveNext() ? new UserSchool(null, true) : new UserSchool(first, false);
     }
 }
+
+/// <summary>
+/// issue #334: <see cref="UserSchoolResolver.ResolveManyDetailedAsync"/> sonucu. <see cref="Ambiguous"/> true ise birden fazla
+/// canlı satır bulundu (unique index'siz ortam) ve <see cref="SchoolId"/> null'dır — "okulsuz" DEĞİL, "bilinmiyor".
+/// </summary>
+public readonly record struct UserSchool(int? SchoolId, bool Ambiguous);

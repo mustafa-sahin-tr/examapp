@@ -257,7 +257,8 @@ public partial class WorksheetCommentServiceTests : IDisposable
             {
                 WorksheetId = w.WorksheetId, AuthorUserId = StudentAUser, AuthorKeycloakId = "kc-101",
                 AuthorRole = WorksheetCommentAuthorRole.Student, Body = "soru", ResponsibleTeacherUserId = Assigner,
-                ResponsibleTeacherSource = ResponsibleTeacherSource.Assignment // #326: sabit kaynağıyla yazılır
+                ResponsibleTeacherSource = ResponsibleTeacherSource.Assignment, // #326: sabit kaynağıyla yazılır
+                AuthorSchoolId = w.SchoolId // #334: atama sabiti de yazarın okuluyla eşleşmeli
             });
             var ws = await ctx.Worksheets.SingleAsync(x => x.Id == w.WorksheetId);
             ws.CommentsEnabled = false;

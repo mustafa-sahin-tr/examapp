@@ -231,3 +231,5 @@ app.UseHubWebSocketAuth();
 await app.UseOcelot();
 
 app.Run();
+
+public partial class Program;

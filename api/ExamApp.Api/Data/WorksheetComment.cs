@@ -56,9 +56,12 @@ public class WorksheetComment : BaseEntity
     public WorksheetCommentAuthorRole AuthorRole { get; set; }
 
     /// <summary>
-    /// Öğrenci KÖK yorumunda, yazıldığı anda çözülen ilgili öğretmen (atama &gt; kopya sahibi &gt; sahip) kayda sabitlenir.
-    /// Bu thread'e öğretmen cevap yetkisi yalnızca bu değerle verilir — atama sonradan bitse/değişse de bildirim giden
-    /// öğretmen cevap yazabilmeye devam eder; dilim 2 bildirim hedefi de budur. Öğretmen kökünde null.
+    /// Öğrenci KÖK yorumunda, yazıldığı anda çözülen ilgili öğretmen (atama &gt; kopya sahibi &gt; sahip; issue #326/#334: her
+    /// kaynakta YALNIZ öğretmen öğrencinin okulundaysa, okulsuz öğretmen + okulsuz öğrenci atama ilişkisi istisna) kayda
+    /// sabitlenir. Bu thread'e öğretmen cevap yetkisi yalnızca bu değerle verilir — öğretmen yazarın okulunda kaldıkça atama
+    /// sonradan bitse/değişse de cevap yazabilmeye devam eder (#105); okul koşulu her kullanımda güncel okulla yeniden uygulanır
+    /// (<c>Services.Worksheets.WorksheetCommentPinRule</c>) ve cevap yazmak kök yazarının GÜNCEL okulunun da koşulu sağlamasını
+    /// ister. Dilim 2 bildirim hedefi de budur. Öğretmen kökünde null.
     /// issue #305: öğrencinin ÖĞRETMEN köküne yazdığı reply'da da o öğrencinin ilgili öğretmeni sabitlenir (bildirim alan
     /// öğretmen okul kapsamı dışında olsa da o reply'ı görebilsin). Cevap yetkisi yalnız KÖKÜN değerinden gelir.
     /// Öğrenci kökündeki reply'larda ve öğretmen reply'larında null.
@@ -69,8 +72,9 @@ public class WorksheetComment : BaseEntity
     /// issue #326: <see cref="ResponsibleTeacherUserId"/>'nin hangi kuraldan sabitlendiği; sabit yoksa null. Kaynak
     /// <see cref="Data.ResponsibleTeacherSource.Owner"/>/<see cref="Data.ResponsibleTeacherSource.CopyOwner"/> ise sabit yalnız
     /// öğretmenin GÜNCEL okulu yorumun <see cref="AuthorSchoolId"/>'siyle aynıyken geçerlidir (okuma, cevap, moderasyon,
-    /// bildirim) — sahip okuldan ayrılınca/bağımsıza geçince thread'e erişimi kalmaz. <see cref="Data.ResponsibleTeacherSource.Assignment"/>
-    /// sabitleri #105 kuralıyla okul koşulundan bağımsızdır.
+    /// bildirim) — sahip okuldan ayrılınca/bağımsıza geçince thread'e erişimi kalmaz. issue #334: <see cref="Data.ResponsibleTeacherSource.Assignment"/>
+    /// sabitleri de aynı koşula tabidir; tek istisna öğretmen VE yazar okulsuzken (bağımsız öğretmenin atama ilişkisi). Kural:
+    /// <c>Services.Worksheets.WorksheetCommentPinRule</c>.
     /// </summary>
     public ResponsibleTeacherSource? ResponsibleTeacherSource { get; set; }
 

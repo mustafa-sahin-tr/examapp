@@ -7,7 +7,10 @@ namespace ExamApp.Api.Data;
 /// </summary>
 public enum ResponsibleTeacherSource
 {
-    /// <summary>Öğrencinin ilgili aktif ataması var → atamayı yapan (<c>WorksheetAssignment.CreateUserId</c>). Her zaman öncelikli.</summary>
+    /// <summary>
+    /// Öğrencinin ilgili aktif ataması var → atamayı yapan (<c>WorksheetAssignment.CreateUserId</c>). Öncelikli — issue #334:
+    /// YALNIZ atayan öğrenciyle aynı okuldaysa ya da ikisi de okulsuzsa (bağımsız istisnası).
+    /// </summary>
     Assignment = 0,
 
     /// <summary>

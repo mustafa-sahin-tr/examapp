@@ -13,7 +13,37 @@
     "reloadHint": "The questions could not be loaded, please refresh the page",
     "retry": "Try Again",
     "noSelection": "You have not made a selection",
-    "summaryTitle": "Your selections:"
+    "summaryTitle": "Your selections:",
+    "progress": {
+      "label": "Wizard progress",
+      "current": "Question {{n}} / {{total}}",
+      "currentMax": "Question {{n}} / up to {{total}}",
+      "final": "Final step · {{n}} / {{total}}",
+      "stop": "Question",
+      "done": "completed, edit",
+      "here": "current",
+      "upcoming": "upcoming",
+      "branch": "depends on your path",
+      "finalStop": "Program details"
+    },
+    "hint": {
+      "single": "Choose one option.",
+      "multi": "You can choose more than one."
+    },
+    "continue": "Continue",
+    "back": "Back",
+    "needSelection": "Make a selection to continue",
+    "summary": {
+      "title": "Your selections",
+      "pending": "Awaiting selection",
+      "remaining": "Remaining questions: {{count}}",
+      "edit": "Edit",
+      "all": "All"
+    },
+    "pathChanged": "Your path changed: {{count}} selection(s) from the previous branch were reset.",
+    "undo": "Undo",
+    "emptyTitle": "No questions yet",
+    "emptyBody": "No program steps were found. You can try again in a moment."
   },
   "form": {
     "title": "Create Your Program",
@@ -31,6 +61,9 @@
     "endDateRequired": "An end date is required",
     "endDateAfterStart": "The end date must be later than the start date",
     "created": "The program was created successfully!",
-    "createFailed": "Something went wrong while creating the program"
+    "createFailed": "Something went wrong while creating the program",
+    "reviewTitle": "Review",
+    "summaryCount": "{{count}} answers",
+    "createFailedInline": "The program could not be created. Your selections and details are kept; you can try again."
   }
 }

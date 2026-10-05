@@ -1,0 +1,67 @@
+@switch (view()) {
+  @case ('chips') {
+  <ul class="ss-chips" role="list" [attr.aria-label]="text().title">
+    @for (item of rows(); track item.stepId) {
+    <li>
+      <button type="button" class="ss-chip" [attr.aria-label]="rowAriaLabel(item)" (click)="onEdit(item.stepId)">
+        <mat-icon fontSet="material-symbols-outlined" class="ss-chip__icon" aria-hidden="true">{{ item.icon }}</mat-icon>
+        <span class="ss-chip__value">{{ item.value }}</span>
+      </button>
+    </li>
+    }
+    <li>
+      <button type="button" class="ss-chip ss-chip--all" (click)="openAll()">
+        <mat-icon fontSet="material-symbols-outlined" class="ss-chip__icon" aria-hidden="true">list</mat-icon>
+        <span>{{ text().all }}</span>
+      </button>
+    </li>
+  </ul>
+  }
+  @default {
+  <aside class="ss" [class.ss--sheet]="inSheet" [attr.aria-label]="text().title">
+    <h2 class="ss__title">{{ text().title }}</h2>
+    <ul class="ss__list" role="list">
+      @for (item of rows(); track item.stepId) {
+      <li>
+        <button type="button" class="ss-row" [attr.aria-label]="rowAriaLabel(item)" (click)="onEdit(item.stepId)">
+          <span class="ss-row__tile" aria-hidden="true">
+            <mat-icon fontSet="material-symbols-outlined">{{ item.icon }}</mat-icon>
+            @if (item.extraCount > 0) {
+            <span class="ss-row__extra">+{{ item.extraCount }}</span>
+            }
+          </span>
+          <span class="ss-row__text">
+            <span class="ss-row__caption">{{ item.caption }}</span>
+            <span class="ss-row__value">{{ item.value }}</span>
+          </span>
+          <mat-icon class="ss-row__edit" aria-hidden="true">edit</mat-icon>
+        </button>
+      </li>
+      }
+      @if (view() === 'rail') {
+        @if (pendingCaption(); as caption) {
+        <li class="ss-row ss-row--pending" aria-current="step">
+          <span class="ss-row__tile" aria-hidden="true">
+            <mat-icon fontSet="material-symbols-outlined">more_horiz</mat-icon>
+          </span>
+          <span class="ss-row__text">
+            <span class="ss-row__caption">{{ caption }}</span>
+            <span class="ss-row__value">{{ text().pending }}</span>
+          </span>
+        </li>
+        }
+        @if (remainingCount() > 0) {
+        <li class="ss-row ss-row--remaining">
+          <span class="ss-row__tile" aria-hidden="true">
+            <mat-icon fontSet="material-symbols-outlined">pending</mat-icon>
+          </span>
+          <span class="ss-row__text">
+            <span class="ss-row__value">{{ text().remaining }}</span>
+          </span>
+        </li>
+        }
+      }
+    </ul>
+  </aside>
+  }
+}

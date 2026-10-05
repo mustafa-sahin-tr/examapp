@@ -45,11 +45,12 @@ public class AdminController : BaseController
     private readonly IAdminAccountStatusService _accountStatus;
     private readonly IAdminStudentSchoolService? _studentSchool;
     private readonly IAdminTeacherSuspensionService? _teacherSuspension;
+    private readonly IAdminTeacherSchoolService? _teacherSchool;
 
     // Client'a donen tum metinler mesaj sozlugunden gelir (issue #184).
     private readonly IStringLocalizer<Messages> _localizer;
 
-    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations, ITeacherApprovalService teacherApprovals, IAdminTeacherService adminTeachers, IAdminStudentService adminStudents, IAdminDataAccessAuditService dataAccessAudit, IAdminPasswordResetService passwordReset, IAdminAccountStatusService accountStatus, IStringLocalizer<Messages>? localizer = null, IAdminStudentSchoolService? studentSchool = null, IAdminTeacherSuspensionService? teacherSuspension = null)
+    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations, ITeacherApprovalService teacherApprovals, IAdminTeacherService adminTeachers, IAdminStudentService adminStudents, IAdminDataAccessAuditService dataAccessAudit, IAdminPasswordResetService passwordReset, IAdminAccountStatusService accountStatus, IStringLocalizer<Messages>? localizer = null, IAdminStudentSchoolService? studentSchool = null, IAdminTeacherSuspensionService? teacherSuspension = null, IAdminTeacherSchoolService? teacherSchool = null)
     {
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _taxonomy = taxonomy;
@@ -66,6 +67,7 @@ public class AdminController : BaseController
         // DI her zaman verir; parametre yalnızca mevcut (DI'siz) controller testleri derlenmeye devam etsin diye opsiyonel.
         _studentSchool = studentSchool;
         _teacherSuspension = teacherSuspension;
+        _teacherSchool = teacherSchool;
     }
 
     private async Task<int> CurrentUserIdAsync()
@@ -459,6 +461,57 @@ public class AdminController : BaseController
                 StatusCode(StatusCodes.Status403Forbidden, Message("admin.studentSchool.protectedRole")),
             AdminStudentSchoolChangeStatus.Conflict => Conflict(Message("admin.studentSchool.concurrentChange")),
             _ => StatusCode(StatusCodes.Status502BadGateway, Message("admin.studentSchool.upstreamFailed"))
+        };
+    }
+
+    // ---- Öğretmen okul bağlama / değiştirme (issue #313) ----
+
+    /// <summary>
+    /// PUT api/admin/teachers/{id}/school, gövde <c>{ "schoolId": int }</c> → öğretmeni (Teacher.Id) okula bağlar ya da okulunu
+    /// değiştirir. Yanıt <c>200 { teacherId, schoolId, previousSchoolId, changed, profileCacheStale }</c>; zaten o okuldaysa
+    /// da 200 (<c>changed=false</c>, yan etkisiz). Bağımsız (onaysız) öğretmenin bağımsız profili değişmez (yalnız okul
+    /// yazılır); bekleyen okul talebi temizlenir. schoolId eksik veya okul yok → 400; öğretmen/hesap yok → 404; hedef
+    /// admin/servis hesabı ya da çağıranın kendisi → 403; eşzamanlı değişiklik, onaylı (aktif) bağımsız öğretmen, hesabı
+    /// onaylanmamış ya da askıdaki öğretmen → 409 (ayrı mesajlar); auth-api/Keycloak hatası → 502 (okul değişmez).
+    /// AdminUserActionLogs'a audit'lenir. Rate limit (429) öğrenci okul ucuyla AYNI admin başına kovadır: amaç toplu okul
+    /// taşımayı (öğrenci ya da öğretmen) yavaşlatmak.
+    /// </summary>
+    [HttpPut("teachers/{id:int}/school")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [EnableRateLimiting(AdminStudentSchoolRateLimiting.Policy)]
+    public async Task<IActionResult> ChangeTeacherSchool(int id, [FromBody] AdminTeacherSchoolRequestDto request, CancellationToken ct)
+    {
+        var actor = KeyCloakId;
+        if (string.IsNullOrWhiteSpace(actor))
+            return Forbid();
+        if (request?.SchoolId is not int schoolId)
+            return BadRequest(Message("admin.teacherSchool.schoolIdRequired"));
+
+        var service = _teacherSchool
+            ?? throw new InvalidOperationException("IAdminTeacherSchoolService is not registered.");
+        var result = await service.ChangeSchoolAsync(id, schoolId, actor, ct);
+        return result.Status switch
+        {
+            AdminTeacherSchoolChangeStatus.Success => Ok(new AdminTeacherSchoolResponseDto
+            {
+                TeacherId = id,
+                SchoolId = result.SchoolId ?? schoolId,
+                PreviousSchoolId = result.PreviousSchoolId,
+                Changed = result.Changed,
+                ProfileCacheStale = result.ProfileCacheStale
+            }),
+            AdminTeacherSchoolChangeStatus.TargetNotFound => NotFound(Message("admin.teacherSchool.teacherNotFound")),
+            AdminTeacherSchoolChangeStatus.SchoolNotFound => BadRequest(Message("admin.teacherSchool.schoolNotFound")),
+            AdminTeacherSchoolChangeStatus.AccountNotFound => NotFound(Message("admin.teacherSchool.accountNotFound")),
+            AdminTeacherSchoolChangeStatus.ForbiddenSelf =>
+                StatusCode(StatusCodes.Status403Forbidden, Message("admin.teacherSchool.self")),
+            AdminTeacherSchoolChangeStatus.ForbiddenProtectedRole =>
+                StatusCode(StatusCodes.Status403Forbidden, Message("admin.teacherSchool.protectedRole")),
+            AdminTeacherSchoolChangeStatus.Conflict => Conflict(Message("admin.teacherSchool.concurrentChange")),
+            AdminTeacherSchoolChangeStatus.IndependentActive => Conflict(Message("admin.teacherSchool.independentActive")),
+            AdminTeacherSchoolChangeStatus.AccountNotApproved => Conflict(Message("admin.teacherSchool.accountNotApproved")),
+            AdminTeacherSchoolChangeStatus.AccountSuspended => Conflict(Message("admin.teacherSchool.accountSuspended")),
+            _ => StatusCode(StatusCodes.Status502BadGateway, Message("admin.teacherSchool.upstreamFailed"))
         };
     }
 

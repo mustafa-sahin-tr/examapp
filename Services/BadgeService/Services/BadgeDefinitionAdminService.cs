@@ -122,11 +122,12 @@ public class BadgeDefinitionAdminService
         // storing — otherwise "  " + 100 significant chars can pass length validation but fail once
         // trimmed at save (or vice versa: pure whitespace already caught by the required-field checks).
         var iconUrl = Normalize(request.IconUrl);
+        var icon = Normalize(request.Icon);
         var pathKey = Normalize(request.PathKey);
         var pathName = Normalize(request.PathName);
 
         ValidateCode(request.Code, errors);
-        ValidateCommonFields(request.Name, request.Description, iconUrl, request.Category, pathKey, pathName, request.PathOrder, errors);
+        ValidateCommonFields(request.Name, request.Description, iconUrl, icon, request.Category, pathKey, pathName, request.PathOrder, errors);
 
         var ruleValid = BadgeRuleTypeCatalog.TryValidateAndNormalize(
             request.RuleType, request.RuleConfigJson, out var normalizedConfig, out var ruleErrors, _logger);
@@ -160,6 +161,7 @@ public class BadgeDefinitionAdminService
             Name = request.Name.Trim(),
             Description = request.Description?.Trim() ?? string.Empty,
             IconUrl = iconUrl,
+            Icon = icon,
             Category = request.Category.Trim(),
             RuleType = ResolveCanonicalRuleType(request.RuleType),
             RuleConfigJson = normalizedConfig,
@@ -211,10 +213,15 @@ public class BadgeDefinitionAdminService
         var errors = new List<RuleValidationError>();
 
         var iconUrl = Normalize(request.IconUrl);
+        // Issue #149 review fix: "icon" absent from the body keeps the stored value (not validated — it is
+        // not being changed); present (incl. null) replaces/clears it and is validated against the allowlist.
+        var icon = request.IconSpecified ? Normalize(request.Icon) : entity.Icon;
         var pathKey = Normalize(request.PathKey);
         var pathName = Normalize(request.PathName);
 
-        ValidateCommonFields(request.Name, request.Description, iconUrl, request.Category, pathKey, pathName, request.PathOrder, errors);
+        ValidateCommonFields(
+            request.Name, request.Description, iconUrl, request.IconSpecified ? icon : null,
+            request.Category, pathKey, pathName, request.PathOrder, errors);
 
         var ruleValid = BadgeRuleTypeCatalog.TryValidateAndNormalize(
             request.RuleType, request.RuleConfigJson, out var normalizedConfig, out var ruleErrors, _logger);
@@ -231,6 +238,7 @@ public class BadgeDefinitionAdminService
         entity.Name = request.Name.Trim();
         entity.Description = request.Description?.Trim() ?? string.Empty;
         entity.IconUrl = iconUrl;
+        entity.Icon = icon;
         entity.Category = request.Category.Trim();
         entity.RuleType = ResolveCanonicalRuleType(request.RuleType);
         entity.RuleConfigJson = normalizedConfig;
@@ -317,7 +325,7 @@ public class BadgeDefinitionAdminService
     }
 
     private static void ValidateCommonFields(
-        string name, string? description, string? iconUrl, string category, string? pathKey, string? pathName, int? pathOrder, List<RuleValidationError> errors)
+        string name, string? description, string? iconUrl, string? icon, string category, string? pathKey, string? pathName, int? pathOrder, List<RuleValidationError> errors)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -347,6 +355,12 @@ public class BadgeDefinitionAdminService
             errors.Add(new RuleValidationError("iconUrl", "iconUrl 'achievements/<dosya>.svg' biçiminde olmalıdır."));
         }
 
+        // Issue #149: only allowlisted Material Symbols names (GET .../icons) — never free text.
+        if (!BadgeIconValidator.IsValidIcon(icon))
+        {
+            errors.Add(new RuleValidationError("icon", "icon izinli ikon listesinden (GET api/admin/badge-definitions/icons) bir ad olmalıdır."));
+        }
+
         if (pathKey is { Length: > 0 } && pathKey.Length > MaxPathKeyLength)
         {
             errors.Add(new RuleValidationError("pathKey", $"pathKey en fazla {MaxPathKeyLength} karakter olabilir."));
@@ -373,6 +387,8 @@ public class BadgeDefinitionAdminService
         Name = entity.Name,
         Description = entity.Description,
         IconUrl = entity.IconUrl,
+        // Security review (#149, D1): never echo a non-allowlisted value (e.g. hand-edited DB row).
+        Icon = BadgeIconValidator.IsAllowedIcon(entity.Icon) ? entity.Icon : null,
         Category = entity.Category,
         RuleType = entity.RuleType,
         RuleConfigJson = entity.RuleConfigJson,

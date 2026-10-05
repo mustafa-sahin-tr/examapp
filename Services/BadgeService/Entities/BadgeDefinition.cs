@@ -16,6 +16,13 @@ public class BadgeDefinition
     public string Name { get; set; } = default!;
     public string Description { get; set; } = default!;
     public string? IconUrl { get; set; }
+
+    /// <summary>
+    /// Issue #149: Material Symbols icon name (e.g. <c>gps_fixed</c>), only values from
+    /// <see cref="BadgeService.Services.BadgeIconCatalog"/> are accepted by the admin API. Takes precedence
+    /// over <see cref="IconUrl"/>, which stays as a fallback during the transition and is removed later.
+    /// </summary>
+    public string? Icon { get; set; }
     public string Category { get; set; } = default!;
     public string RuleType { get; set; } = default!; // "AnswerCount", "CorrectStreak" vb.
     public string RuleConfigJson { get; set; } = default!;

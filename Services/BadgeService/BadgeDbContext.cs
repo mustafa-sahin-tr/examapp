@@ -43,6 +43,7 @@ public class BadgeDbContext : DbContext
         modelBuilder.Entity<BadgeDefinition>().Property(x => x.Name).HasMaxLength(100);
         modelBuilder.Entity<BadgeDefinition>().Property(x => x.Description).HasMaxLength(500);
         modelBuilder.Entity<BadgeDefinition>().Property(x => x.Category).HasMaxLength(100);
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.Icon).HasMaxLength(BadgeService.Services.BadgeIconValidator.MaxIconLength);
         modelBuilder.Entity<BadgeDefinition>().Property(x => x.PathKey).HasMaxLength(100);
         modelBuilder.Entity<BadgeDefinition>().Property(x => x.PathName).HasMaxLength(100);
         modelBuilder.Entity<BadgeDefinition>().Property(x => x.CreatedBy).HasMaxLength(128);

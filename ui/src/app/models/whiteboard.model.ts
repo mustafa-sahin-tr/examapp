@@ -125,4 +125,11 @@ export interface WhiteboardElement {
 export type WhiteboardConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'closed';
 
 /** Kullanıcıya snackbar ile gösterilen, akışı durdurmayan uyarılar. */
-export type WhiteboardWarning = 'elementTooLarge' | 'unsupportedContent' | 'sceneLimit' | 'rejected' | 'linkBlocked';
+export type WhiteboardWarning =
+  | 'elementTooLarge'
+  | 'unsupportedContent'
+  | 'sceneLimit'
+  | 'rejected'
+  | 'linkBlocked'
+  /** Uzak sahne istemci sınırını aştı; uygulanmadı (issue #332). */
+  | 'remoteSceneLimit';

@@ -50,8 +50,11 @@ export interface WhiteboardCanvasCallbacks {
   onChange(): void;
   /** Yerel imleç sahne koordinatları. */
   onPointer(pointer: { x: number; y: number; tool: WhiteboardPointerTool }): void;
-  /** http(s) olmayan bir bağlantı açılmak istendi ve engellendi. */
-  onLinkBlocked(): void;
+  /**
+   * Tahtadaki bir bağlantı açılmak istendi (issue #332). Excalidraw'ın kendi açma davranışı her zaman engellenir;
+   * açma kararı (aynı origin / dış origin onayı / engelleme) çağıranındır. `link` güvenilmez girdidir.
+   */
+  onLinkOpen(link: string | null | undefined): void;
 }
 
 /**

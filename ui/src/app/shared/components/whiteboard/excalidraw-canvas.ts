@@ -10,8 +10,7 @@ import type {
 } from '@excalidraw/excalidraw/types';
 
 import { WhiteboardElement, WhiteboardPeerPointer } from '../../../models/whiteboard.model';
-import { openWhiteboardLink } from '../../utils/whiteboard-sync.util';
-import { isBlockedSidebar } from './excalidraw-policy';
+import { guardHyperlinkAnchors, isBlockedSidebar } from './excalidraw-policy';
 import { reconcileRemoteElements, restoreRemoteElements } from './excalidraw-scene';
 import { WhiteboardCanvas, WhiteboardCanvasMount } from './whiteboard-canvas';
 
@@ -31,6 +30,8 @@ export const mountExcalidrawCanvas: WhiteboardCanvasMount = (host, options, call
       return;
     }
     const root = createRoot(host);
+    // Bağlantı balonundaki anchor'ın orta tık / bağlam menüsü / sürükle yolları da onay akışına bağlanır (issue #332).
+    const removeAnchorGuard = guardHyperlinkAnchors(host, (link) => callbacks.onLinkOpen(link));
     let api: ExcalidrawImperativeAPI | null = null;
     let ready = false;
     let destroyed = false;
@@ -61,13 +62,11 @@ export const mountExcalidrawCanvas: WhiteboardCanvasMount = (host, options, call
         callbacks.onChange();
       },
       onPointerUpdate: ({ pointer }) => callbacks.onPointer({ x: pointer.x, y: pointer.y, tool: pointer.tool }),
-      // Excalidraw'ın kendi açma davranışı her zaman engellenir; yalnızca http(s) yeni sekmede noopener ile açılır.
+      // Excalidraw'ın kendi açma davranışı (tuvaldeki bağlantı ikonu ve bağlantı balonu) her zaman engellenir; karar
+      // Angular tarafında verilir: dış origin onay dialogu, aynı origin doğrudan, http(s) dışı engel (issue #332).
       onLinkOpen: (element, event) => {
         event.preventDefault();
-        const opened = openWhiteboardLink(element.link, (url, target, features) => window.open(url, target, features));
-        if (!opened) {
-          callbacks.onLinkBlocked();
-        }
+        callbacks.onLinkOpen(element.link);
       },
       // Gömülü içerik (iframe/embeddable) hiçbir adres için doğrulanmaz → render edilmez; sunucu da reddeder.
       validateEmbeddable: false,
@@ -149,6 +148,7 @@ export const mountExcalidrawCanvas: WhiteboardCanvasMount = (host, options, call
         }
         destroyed = true;
         api = null;
+        removeAnchorGuard();
         root.unmount();
       },
     };

@@ -54,6 +54,14 @@
     "unsupportedContent": "Images and embedded content are not supported on the whiteboard and were removed.",
     "sceneLimit": "The whiteboard limit was reached; new drawings cannot be sent.",
     "rejected": "Some items were rejected by the server.",
-    "linkBlocked": "Only http(s) links can be opened."
+    "linkBlocked": "Only http(s) links can be opened.",
+    "remoteSceneLimit": "Incoming whiteboard content exceeded the allowed limit and was not shown."
+  },
+  "linkDialog": {
+    "title": "Open external link?",
+    "intro": "This link goes to a site outside the app ({{host}}).",
+    "hint": "Do not open it if you do not recognise the address. It opens in a new tab.",
+    "cancel": "Cancel",
+    "proceed": "Open link"
   }
 }

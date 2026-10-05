@@ -139,6 +139,24 @@
     "nameAria": "School name",
     "emptyTitle": "No schools added yet",
     "emptyHint": "Enter a school name and optional province / district / address, then add it",
+    "filter": {
+      "ariaLabel": "Filter the school list",
+      "searchPlaceholder": "Search school names",
+      "searchAria": "Search by school name",
+      "provincePlaceholder": "Province",
+      "provinceAria": "Filter by province",
+      "allProvinces": "All provinces",
+      "districtPlaceholder": "District",
+      "districtNeedsProvince": "District (pick a province first)",
+      "districtAria": "Filter by district",
+      "allDistricts": "All districts",
+      "clear": "Clear filters",
+      "countAria": "{{count}} schools",
+      "countFilteredAria": "{{count}} of {{total}} schools match the filter",
+      "noMatchTitle": "No schools match the filter",
+      "noMatchHint": "Change the search or clear the filters",
+      "pending": "Applying filter…"
+    },
     "actions": {
       "save": "Save",
       "cancel": "Cancel"

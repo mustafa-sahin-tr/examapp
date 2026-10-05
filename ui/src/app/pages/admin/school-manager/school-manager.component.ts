@@ -1,4 +1,6 @@
-import { Component, computed, inject, input, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, input, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -15,13 +17,24 @@ import {
   TranslocoService,
   provideTranslocoScope,
 } from '@jsverse/transloco';
-import { firstValueFrom, take } from 'rxjs';
+import { Subject, debounceTime, firstValueFrom, take } from 'rxjs';
 import { AdminService } from '../../../services/admin.service';
 import { ApiResult, DistrictDto, ProvinceDto, School } from '../../../models/taxonomy';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
 } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import {
+  EMPTY_SCHOOL_LIST_FILTER,
+  MAX_SEARCH_LENGTH,
+  SCHOOL_LIST_QUERY_KEYS,
+  SchoolListFilter,
+  filterSchools,
+  isSchoolListFilterActive,
+  sanitizeSchoolListFilter,
+  schoolListFilterFromParams,
+  schoolListFilterToParams,
+} from './school-list-filter';
 
 /**
  * Issue #150 — Okul yönetimi (liste, yeni okul formu, satır içi düzenle/sil). Eskiden
@@ -32,6 +45,9 @@ import {
  * admin-home'dan devralmaz, provider'ı burada da verir.
  */
 const ADMIN_SCOPE = 'admin';
+
+/** Ad aramasında yazma bitince URL'e yazılana kadar beklenen süre (ms). */
+export const SCHOOL_SEARCH_DEBOUNCE_MS = 300;
 
 @Component({
   selector: 'app-school-manager',
@@ -59,6 +75,9 @@ export class SchoolManagerComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   /** admin-home sekmesine gömülüyken true: sayfa başlığı ve kenar boşluğu admin-home'dan gelir. */
   readonly embedded = input(false);
@@ -91,6 +110,39 @@ export class SchoolManagerComponent implements OnInit {
     () => this.editProvinceId() != null && this.districtsLoading() === this.editProvinceId()
   );
 
+  // ---- liste filtresi (Issue #281) ----
+  /**
+   * URL'den okunan filtre — tek doğruluk kaynağı URL'dir (öğretmen/öğrenci listeleriyle aynı kalıp):
+   * etkileşim yalnız `navigate` eder, state `queryParamMap` aboneliğinden kurulur. Okul ekle/düzenle/sil
+   * yalnız `schools`'u yeniler; filtre URL'de kaldığı için korunur.
+   */
+  private readonly urlFilter = signal<SchoolListFilter>(EMPTY_SCHOOL_LIST_FILTER);
+  /** Yüklü il/ilçe listelerine göre doğrulanmış filtre; listede olmayan id'ler yok sayılır. */
+  readonly filter = computed(() => sanitizeSchoolListFilter(this.urlFilter(), this.provinces(), this.districts()));
+  /** Arama kutusunun anlık metni; URL'e debounce ile yazılır. */
+  readonly searchText = signal('');
+  readonly filteredSchools = computed(() => filterSchools(this.schools(), this.filter()));
+  readonly isFiltered = computed(() => isSchoolListFilterActive(this.filter()));
+  readonly filterDistricts = computed(() => this.districtsOf(this.filter().provinceId));
+  readonly filterDistrictsLoading = computed(
+    () => this.filter().provinceId != null && this.districtsLoading() === this.filter().provinceId
+  );
+  /**
+   * URL'deki il/ilçe henüz doğrulanamadı (iller ya da o ilin ilçeleri yükleniyor). Bu sürede sonuç boşsa
+   * "filtreye uyan okul yok" yerine yükleniyor gösterilir; geçersiz id düzeltilince liste gelir.
+   */
+  readonly filterPending = computed(() => {
+    const raw = this.urlFilter();
+    if (raw.provinceId == null) return false;
+    if (this.provincesLoading()) return true;
+    return raw.districtId != null && this.districtsLoading() === raw.provinceId;
+  });
+  /** Arama kutusu `maxlength`'i; URL'den okunan `q` da bu uzunlukta kırpılır. */
+  readonly maxSearchLength = MAX_SEARCH_LENGTH;
+  private readonly search$ = new Subject<string>();
+  /** En son URL'e yazdığımız arama; URL'den dönen kendi değerimiz kutudaki daha yeni metni ezmesin. */
+  private lastWrittenQ: string | null = null;
+
   // inline add fields
   newSchoolName = '';
   newSchoolAddressLine = '';
@@ -103,9 +155,25 @@ export class SchoolManagerComponent implements OnInit {
 
   constructor() {
     this.preloadScope();
+
+    // `distinctUntilChanged` yerine geçerli URL ile karşılaştırılır: "lise" → temizle → 300 ms içinde
+    // yine "lise" yazılınca son yayılan değer aynı olsa da URL boştur ve yazılmalıdır.
+    this.search$
+      .pipe(debounceTime(SCHOOL_SEARCH_DEBOUNCE_MS), takeUntilDestroyed(this.destroyRef))
+      .subscribe((q) => {
+        if (q.trim() === this.urlFilter().q.trim()) return;
+        this.navigateFilter({ ...this.filter(), q });
+      });
   }
 
   ngOnInit(): void {
+    // Tek yönlü akış: URL → filtre. İlk emisyon derin linkteki filtreyi geri yükler.
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const next = schoolListFilterFromParams(params);
+      this.urlFilter.set(next);
+      if (next.q !== this.lastWrittenQ) this.searchText.set(next.q);
+      this.reconcileFilter();
+    });
     this.loadSchools();
     this.loadProvinces();
   }
@@ -132,6 +200,7 @@ export class SchoolManagerComponent implements OnInit {
       next: (list) => {
         this.provinces.set(list);
         this.provincesLoading.set(false);
+        this.reconcileFilter();
       },
       error: () => {
         this.provincesError.set(this.text('messages.provincesLoadFailed'));
@@ -148,6 +217,7 @@ export class SchoolManagerComponent implements OnInit {
       next: (list) => {
         this.districts.update((d) => ({ ...d, [provinceId]: list }));
         if (this.districtsLoading() === provinceId) this.districtsLoading.set(null);
+        this.reconcileFilter();
       },
       error: () => {
         if (this.districtsLoading() === provinceId) this.districtsLoading.set(null);
@@ -172,6 +242,56 @@ export class SchoolManagerComponent implements OnInit {
     this.editProvinceId.set(provinceId);
     this.editDistrictId.set(null);
     this.ensureDistricts(provinceId);
+  }
+
+  // ---- liste filtresi (Issue #281) ----
+
+  onSearchInput(value: string): void {
+    this.searchText.set(value);
+    this.search$.next(value);
+  }
+
+  /** Filtrede il değişti: ilçe sıfırlanır; ilçeler URL aboneliğinde yüklenir. */
+  onFilterProvinceChange(provinceId: number | null): void {
+    this.navigateFilter({ ...this.filter(), q: this.searchText(), provinceId, districtId: null });
+  }
+
+  onFilterDistrictChange(districtId: number | null): void {
+    this.navigateFilter({ ...this.filter(), q: this.searchText(), districtId });
+  }
+
+  /**
+   * URL'deki il/ilçe id'lerini yüklü listelerle uzlaştırır. İller yüklenmeden hiçbir şey yapmaz (ham id
+   * ile süzülür). Yüklendikten sonra doğrulanmış ilin ilçelerini yükler; doğrulanmış filtre ham filtreden
+   * farklıysa (bilinmeyen il / o ile ait olmayan ilçe) URL `replaceUrl` ile düzeltilir.
+   */
+  private reconcileFilter(): void {
+    if (this.provinces().length === 0) return;
+    const raw = this.urlFilter();
+    const clean = this.filter();
+    this.ensureDistricts(clean.provinceId);
+    if (clean.provinceId !== raw.provinceId || clean.districtId !== raw.districtId) {
+      this.navigateFilter({ ...clean, q: raw.q });
+    }
+  }
+
+  /** Tüm kriterleri tek seferde sıfırlar; bekleyen debounce'lu arama '' ile ezilir (URL'le aynı → yazılmaz). */
+  clearFilters(): void {
+    this.searchText.set('');
+    this.search$.next('');
+    this.navigateFilter(EMPTY_SCHOOL_LIST_FILTER);
+  }
+
+  /** `merge` ile sayfaya ait olmayan param'lar korunur; geçmiş kirlenmesin diye `replaceUrl`. */
+  private navigateFilter(filter: SchoolListFilter): void {
+    const params = schoolListFilterToParams(filter);
+    this.lastWrittenQ = (params[SCHOOL_LIST_QUERY_KEYS.q] as string | null) ?? '';
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: params,
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   /** Liste satırı için "İl / İlçe" metni; ikisi de yoksa boş string. */

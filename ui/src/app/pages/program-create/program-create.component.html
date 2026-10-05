@@ -57,7 +57,7 @@
           [class.ms-option-active]="opt.selected"
           (click)="selectOption(step, opt)"
         >
-          <img [src]="opt.icon" alt="" class="ms-option-icon" />
+          <mat-icon fontSet="material-symbols-outlined" class="ms-option-icon" aria-hidden="true">{{ opt.icon | programOptionIcon }}</mat-icon>
           <b class="ms-option-label">{{ opt.label }}</b>
         </button>
       </div>

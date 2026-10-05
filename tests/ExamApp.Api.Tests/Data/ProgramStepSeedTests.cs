@@ -1,10 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using ExamApp.Api.Data;
+using ExamApp.Api.Migrations;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Xunit;
 
 namespace ExamApp.Api.Tests.Data;
@@ -157,5 +160,78 @@ public class ProgramStepSeedTests
             unreachable.Count == 0,
             "Found seeded ProgramStep id(s) unreachable from the first step: " +
             string.Join(", ", unreachable));
+    }
+
+    // ---- Issue #319: Icon holds a Material Symbols ligature name, not an svg path. ----
+
+    private static readonly Regex MaterialSymbolName = new("^[a-z0-9_]+$", RegexOptions.CultureInvariant);
+
+    [Fact]
+    public void SeedData_EveryOptionIcon_IsAMaterialSymbolName()
+    {
+        var (_, options) = LoadSeedRows();
+
+        var bad = options
+            .Select(o => new { Id = (int)o["Id"]!, Icon = o["Icon"] as string })
+            .Where(o => string.IsNullOrWhiteSpace(o.Icon)
+                        || o.Icon.Contains(".svg")
+                        || o.Icon.Contains("question-mark")
+                        || o.Icon.Contains("question_mark")
+                        || !MaterialSymbolName.IsMatch(o.Icon))
+            .ToList();
+
+        Assert.True(
+            bad.Count == 0,
+            "ProgramStepOption.Icon must be a Material Symbols name ([a-z0-9_]+, no .svg path, no question-mark placeholder): " +
+            string.Join(", ", bad.Select(o => $"OptionId={o.Id} Icon='{o.Icon}'")));
+    }
+
+    [Fact]
+    public void SeedData_IconsWithinTheSameStep_AreDistinct()
+    {
+        var (_, options) = LoadSeedRows();
+
+        var duplicates = options
+            .GroupBy(o => (int)o["ProgramStepId"]!)
+            .SelectMany(step => step
+                .GroupBy(o => (string?)o["Icon"])
+                .Where(g => g.Count() > 1)
+                .Select(g => $"Step={step.Key} Icon='{g.Key}' x{g.Count()}"))
+            .ToList();
+
+        Assert.True(
+            duplicates.Count == 0,
+            "Options of the same wizard step must have distinguishable icons: " + string.Join(", ", duplicates));
+    }
+
+    [Fact]
+    public void Migration_ReplaceProgramStepOptionIcons_UpdatesEverySeededOptionToTheSeedIcon()
+    {
+        // ProgramStepSeed is not wired into the model (no HasData), so existing databases only get
+        // the new icons through this hand-written data migration. Keep the two in lockstep.
+        var (_, options) = LoadSeedRows();
+        var seedIcons = options.ToDictionary(o => (int)o["Id"]!, o => (string?)o["Icon"]);
+
+        var migration = new ReplaceProgramStepOptionIconsWithMaterialSymbols();
+
+        var upIcons = migration.UpOperations
+            .OfType<UpdateDataOperation>()
+            .Where(op => op.Table == "ProgramStepOptions")
+            .ToDictionary(
+                op => (int)op.KeyValues[0, 0]!,
+                op =>
+                {
+                    Assert.Equal(new[] { "Icon" }, op.Columns);
+                    return (string?)op.Values[0, 0];
+                });
+
+        Assert.Equal(seedIcons.OrderBy(kv => kv.Key), upIcons.OrderBy(kv => kv.Key));
+
+        // Down restores svg paths for exactly the same rows.
+        var downIds = migration.DownOperations
+            .OfType<UpdateDataOperation>()
+            .Select(op => (int)op.KeyValues[0, 0]!)
+            .OrderBy(id => id);
+        Assert.Equal(upIcons.Keys.OrderBy(id => id), downIds);
     }
 }

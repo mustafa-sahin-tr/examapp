@@ -241,6 +241,11 @@ builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetAccessReque
 // issue #105: yorum-soru thread'leri + ilgili öğretmen tespiti (dilim 2 bildirim hedefi de bunu kullanır).
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetResponsibleTeacherResolver, ExamApp.Api.Services.Worksheets.WorksheetResponsibleTeacherResolver>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetCommentService, ExamApp.Api.Services.Worksheets.WorksheetCommentService>();
+// issue #106: öğrenci ↔ öğretmen doğrudan mesajlaşma — CanMessage kuralı (tek nokta) + konuşma/mesaj/engel/şikayet servisi.
+builder.Services.AddOptions<ExamApp.Api.Models.Dtos.DirectMessages.DirectMessagingOptions>()
+    .BindConfiguration(ExamApp.Api.Models.Dtos.DirectMessages.DirectMessagingOptions.SectionName); // #361: B yolu bayrağı
+builder.Services.AddScoped<ExamApp.Api.Services.DirectMessages.IDirectMessagePolicy, ExamApp.Api.Services.DirectMessages.DirectMessagePolicy>();
+builder.Services.AddScoped<ExamApp.Api.Services.DirectMessages.IDirectMessageService, ExamApp.Api.Services.DirectMessages.DirectMessageService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Bookings.IBookingService, ExamApp.Api.Services.Bookings.BookingService>();
 // Tekrarlayan haftalık müsaitlik kuralları (issue #178) — BookingService top-up için buna bağımlı.
 builder.Services.AddScoped<ExamApp.Api.Services.Bookings.IRecurringAvailabilityService, ExamApp.Api.Services.Bookings.RecurringAvailabilityService>();
@@ -364,6 +369,8 @@ builder.Services.AddTeacherActivityRateLimiting();
 // issue #105: yorum yazma — kullanıcı (sub) başına dağıtık sabit pencere (varsayılan dakikada 10).
 builder.Services.AddWorksheetCommentWriteRateLimiting();
 builder.Services.AddWorksheetCommentReadRateLimiting(); // okuma: dakikada 60 (review O4)
+// issue #106: doğrudan mesaj — gönderme (dakikada 10), şikayet (saatte 20), okuma (dakikada 60); sub başına dağıtık.
+builder.Services.AddDirectMessageRateLimiting();
 builder.Services.AddDailyQuestionsRateLimiting(); // issue #99 security D4: günün soruları, öğrenci başına dakikada 30
 
 // PostgreSQL & EF Core (Aspire client integration — reads ConnectionStrings:DefaultConnection,

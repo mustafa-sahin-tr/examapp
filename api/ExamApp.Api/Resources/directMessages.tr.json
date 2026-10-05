@@ -1,0 +1,35 @@
+{
+  "directMessages": {
+    "sent": "Mesajınız gönderildi.",
+    "blocked": "Öğrenci engellendi. Size yeni mesaj gönderemez.",
+    "unblocked": "Engel kaldırıldı.",
+    "reported": "Şikayetiniz alındı.",
+    "alreadyReported": "Bu içeriği daha önce şikayet ettiniz.",
+    "rateLimited": "Kısa sürede çok fazla mesaj gönderdiniz. Lütfen biraz bekleyip tekrar deneyin.",
+    "readRateLimited": "Mesajlar kısa sürede çok fazla istendi. Lütfen biraz bekleyip tekrar deneyin.",
+    "reportRateLimited": "Kısa sürede çok fazla şikayet gönderdiniz. Lütfen daha sonra tekrar deneyin.",
+    "errors": {
+      "cannotMessageTeacher": "Bu öğretmene şu an mesaj gönderemezsiniz.",
+      "relationshipEnded": "Bu öğrenciyle okul ya da sınav ataması ilişkiniz sona erdiği için yeni mesaj yazamazsınız. Konuşma geçmişi okunabilir kalır.",
+      "conversationNotFound": "Konuşma bulunamadı.",
+      "messageNotFound": "Mesaj bu konuşmada bulunamadı.",
+      "cannotReportOwnMessage": "Kendi mesajınızı şikayet edemezsiniz.",
+      "studentProfileNotFound": "Öğrenci kaydınız bulunamadı.",
+      "teacherProfileNotFound": "Öğretmen kaydınız bulunamadı.",
+      "bodyRequired": "Mesaj boş olamaz.",
+      "bodyTooLong": "Mesaj en fazla 2000 karakter olabilir.",
+      "bodyInvalidCharacters": "Mesaj geçersiz karakterler içeriyor.",
+      "invalidReportReason": "Geçerli bir şikayet nedeni seçin.",
+      "reportNoteTooLong": "Şikayet notu en fazla 500 karakter olabilir.",
+      "reportNoteInvalidCharacters": "Şikayet notu geçersiz karakterler içeriyor.",
+      "invalidFilter": "Geçersiz filtre. Kullanılabilir değerler: all, unread, blocked.",
+      "rateLimited": "Kısa sürede çok fazla istek gönderdiniz. Lütfen biraz bekleyip tekrar deneyin.",
+      "blockTeacherOnly": "Engelleme yalnızca öğretmenler tarafından yapılabilir.",
+      "searchTooShort": "Arama için en az 2 karakter girin.",
+      "nameLookupUnavailable": "Öğretmen adları şu an alınamıyor; arama yapılamadı. Lütfen biraz sonra tekrar deneyin.",
+      "invalidUpToMessageId": "Geçerli bir mesaj numarası (upToMessageId) gönderin."
+    },
+    "blockRateLimited": "Kısa sürede çok fazla engelleme işlemi yaptınız. Lütfen daha sonra tekrar deneyin.",
+    "searchRateLimited": "Kısa sürede çok fazla arama yaptınız. Lütfen biraz bekleyip tekrar deneyin."
+  }
+}

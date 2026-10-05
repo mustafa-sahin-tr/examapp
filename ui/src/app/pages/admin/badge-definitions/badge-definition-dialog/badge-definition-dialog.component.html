@@ -42,19 +42,135 @@
           <mat-hint>{{ t('hints.category') }}</mat-hint>
           <mat-error>{{ errorText(form.controls.category) }}</mat-error>
         </mat-form-field>
+      </section>
 
-        <div class="bd-icon-row">
-          <mat-form-field appearance="outline" class="bd-grow">
-            <mat-label>{{ t('fields.iconUrl') }}</mat-label>
-            <input matInput formControlName="iconUrl" data-testid="icon-url" placeholder="achievements/first-answer.svg" />
-            <mat-hint>{{ t('hints.iconUrl') }}</mat-hint>
-            <mat-error>{{ errorText(form.controls.iconUrl) }}</mat-error>
-          </mat-form-field>
-          <div class="bd-icon-preview" [attr.aria-label]="t('iconPreview')">
-            @if (iconPreview() && !iconPreviewFailed()) {
-              <img [src]="iconPreview()" alt="" (error)="iconPreviewFailed.set(true)" data-testid="icon-preview" />
+      <!-- İkon (issue #149): yalnız allowlist'ten seçim, serbest metin yok -->
+      <section class="bd-section" data-testid="icon-section">
+        <h3 id="bd-icon-heading">{{ t('sections.icon') }}</h3>
+
+        <div class="bd-icon-selected">
+          <app-badge-medallion [icon]="selectedIcon()" [iconUrl]="legacyIcon()" state="earned" [size]="44" />
+          <div class="bd-icon-selected__text">
+            <span class="bd-icon-selected__label">{{ t('icon.selected') }}</span>
+            @if (selectedIcon(); as name) {
+              <code class="bd-icon-selected__name" data-testid="icon-selected">{{ name }}</code>
             } @else {
-              <mat-icon>{{ iconPreviewFailed() ? 'broken_image' : 'military_tech' }}</mat-icon>
+              <span class="bd-icon-selected__none" data-testid="icon-selected-none">{{ t('icon.none') }}</span>
+            }
+          </div>
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="icon-clear"
+            [disabled]="!selectedIcon()"
+            (click)="clearIcon()"
+          >
+            <mat-icon>close</mat-icon> {{ t('icon.clear') }}
+          </button>
+        </div>
+
+        @if (legacyIcon(); as legacy) {
+          <p class="bd-note bd-note--warn" role="status" data-testid="icon-legacy-warning">
+            <mat-icon>warning_amber</mat-icon>
+            <span>{{ t('icon.legacyWarning', { path: legacy }) }}</span>
+          </p>
+        }
+
+        @if (iconsLoading()) {
+          <div class="bd-state" aria-busy="true" data-testid="icons-loading">
+            <mat-spinner diameter="24"></mat-spinner>
+            <span>{{ t('icon.loading') }}</span>
+          </div>
+        } @else if (iconsError()) {
+          <div class="bd-state bd-state--error" role="alert" data-testid="icons-error">
+            <mat-icon>error_outline</mat-icon>
+            <span>{{ t('icon.loadFailed') }}</span>
+            <button mat-stroked-button type="button" (click)="loadIcons()">{{ t('retry') }}</button>
+          </div>
+        } @else {
+          <div class="bd-icon-tools">
+            <mat-form-field appearance="outline" class="bd-grow bd-icon-search" subscriptSizing="dynamic">
+              <mat-label>{{ t('icon.search') }}</mat-label>
+              <mat-icon matPrefix>search</mat-icon>
+              <input
+                matInput
+                type="search"
+                autocomplete="off"
+                #iconSearch
+                data-testid="icon-search"
+                [value]="iconQuery()"
+                (input)="iconQuery.set(iconSearch.value)"
+              />
+            </mat-form-field>
+            <mat-chip-listbox
+              class="bd-icon-categories"
+              data-testid="icon-categories"
+              hideSingleSelectionIndicator
+              [attr.aria-label]="t('icon.categoryFilter')"
+              [value]="iconCategory()"
+              (change)="onIconCategoryChange($event)"
+            >
+              <mat-chip-option value="all" data-testid="icon-category-all">{{ t('icon.categories.all') }}</mat-chip-option>
+              @for (category of iconCategories; track category) {
+                <mat-chip-option [value]="category" [attr.data-testid]="'icon-category-' + category">
+                  {{ t('icon.categories.' + category) }}
+                </mat-chip-option>
+              }
+            </mat-chip-listbox>
+          </div>
+
+          @if (icons().length === 0) {
+            <p class="bd-note" role="status" data-testid="icons-empty">
+              <mat-icon>info</mat-icon>
+              <span>{{ t('icon.empty') }}</span>
+            </p>
+          } @else if (noIconResults()) {
+            <p class="bd-note" role="status" data-testid="icons-no-results">
+              <mat-icon>info</mat-icon>
+              <span>{{ t('icon.noResults', { query: iconQuery().trim() }) }}</span>
+            </p>
+          } @else {
+            <div class="bd-icon-grid" role="radiogroup" aria-labelledby="bd-icon-heading" data-testid="icon-grid">
+              @for (entry of filteredIcons(); track entry.name; let i = $index) {
+                <button
+                  #iconOption
+                  type="button"
+                  role="radio"
+                  class="bd-icon-option"
+                  [class.bd-icon-option--selected]="entry.name === selectedIcon()"
+                  [attr.aria-checked]="entry.name === selectedIcon()"
+                  [attr.aria-label]="entry.name + ', ' + iconCategoryLabel(entry)"
+                  [attr.title]="entry.name"
+                  [attr.data-icon]="entry.name"
+                  [tabIndex]="entry.name === tabStopIcon() ? 0 : -1"
+                  (click)="selectIcon(entry.name)"
+                  (keydown)="onIconKeydown($event, i)"
+                >
+                  <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">{{ entry.name }}</mat-icon>
+                </button>
+              }
+            </div>
+          }
+        }
+
+        @if (iconError(); as message) {
+          <p class="bd-field-error" role="alert" data-testid="icon-error">{{ message }}</p>
+        }
+
+        <div class="bd-icon-preview" data-testid="icon-preview">
+          <span class="bd-icon-preview__title">{{ t('icon.preview') }}</span>
+          <div class="bd-icon-preview__row">
+            @for (p of previewStates; track p.state) {
+              <figure class="bd-icon-preview__item" [attr.data-state]="p.state">
+                <app-badge-medallion
+                  [icon]="selectedIcon()"
+                  [iconUrl]="legacyIcon()"
+                  [state]="p.state"
+                  [progressPercent]="p.progress"
+                  [size]="56"
+                />
+                <figcaption>{{ 'shared.badgeMedallion.state.' + p.labelKey | transloco }}</figcaption>
+              </figure>
             }
           </div>
         </div>

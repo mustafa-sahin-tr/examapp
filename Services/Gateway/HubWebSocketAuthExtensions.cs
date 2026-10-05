@@ -4,13 +4,14 @@ using Microsoft.AspNetCore.Authentication;
 /// Ocelot'un WebSocket kolu (UseWebSockets=true route'lar) AuthenticationOptions'ı uygulamıyor;
 /// token'sız upgrade doğrudan backend'e proxylenip gateway'de 500'e dönüşüyordu.
 /// Bu middleware Ocelot'tan ÖNCE çalışır:
-///  - /hub/* dışındaki WebSocket upgrade isteği 400 ile reddedilir (yalnız iki SignalR hub'ı WS kullanır;
+///  - AllowedHubPaths dışındaki WebSocket upgrade isteği 400 ile reddedilir (yalnız iki SignalR hub'ı WS kullanır;
 ///    başka route'lar WS'e açık olsaydı auth atlanırdı).
-///  - /hub/* upgrade isteğinde Bearer doğrulanır; başarısızsa 401 + WWW-Authenticate (Challenge).
+///  - İzinli hub upgrade isteğinde Bearer doğrulanır; başarısızsa 401 + WWW-Authenticate (Challenge).
 /// </summary>
 public static class HubWebSocketAuthExtensions
 {
-    public const string HubPathPrefix = "/hub";
+    // Tam yol allowlist'i: yalnız bu iki SignalR hub'ı WebSocket upgrade alabilir.
+    public static readonly string[] AllowedHubPaths = ["/hub/badges", "/hub/whiteboard"];
 
     public static IApplicationBuilder UseHubWebSocketAuth(this IApplicationBuilder app, string scheme = "Bearer")
     {
@@ -18,7 +19,7 @@ public static class HubWebSocketAuthExtensions
         {
             if (context.WebSockets.IsWebSocketRequest)
             {
-                if (!context.Request.Path.StartsWithSegments(HubPathPrefix))
+                if (!AllowedHubPaths.Any(p => context.Request.Path.StartsWithSegments(p)))
                 {
                     context.Response.StatusCode = StatusCodes.Status400BadRequest;
                     return;

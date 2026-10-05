@@ -508,6 +508,7 @@
     "loading": "Loading badges...",
     "empty": "No badge definitions found",
     "emptyActiveHint": "Choose the \"All\" filter to see deactivated badges.",
+    "legacyIconBanner": "{{count}} badge(s) on this page still use a legacy SVG icon. Legacy files will be removed; edit the badge and pick a new icon from the list.",
     "filter": {
       "label": "Status filter",
       "active": "Active",
@@ -526,6 +527,11 @@
     "status": {
       "active": "Active",
       "inactive": "Inactive"
+    },
+    "iconStatus": {
+      "new": "New icon",
+      "legacy": "Legacy SVG",
+      "none": "No icon"
     },
     "actions": {
       "edit": "Edit",
@@ -607,7 +613,6 @@
       "save": "Save",
       "cancel": "Cancel",
       "retry": "Retry",
-      "iconPreview": "Icon preview",
       "ruleTypesLoading": "Loading rule types...",
       "ruleTypesFailed": "Could not load rule types.",
       "subjectsLoading": "Loading subjects...",
@@ -615,15 +620,36 @@
       "legacyRuleType": "This badge's rule type (\"{{ruleType}}\") is no longer offered; choose a rule type to save.",
       "sections": {
         "identity": "Badge details",
+        "icon": "Icon",
         "path": "Badge path (optional)",
         "rule": "Earning rule"
+      },
+      "icon": {
+        "selected": "Selected icon",
+        "none": "No icon selected (default is shown)",
+        "clear": "Clear",
+        "legacyWarning": "This badge uses a legacy SVG icon ({{path}}). Legacy files will be removed; pick a new icon below.",
+        "loading": "Loading icons...",
+        "loadFailed": "Could not load the icon list.",
+        "search": "Search icons",
+        "categoryFilter": "Icon category",
+        "categories": {
+          "all": "All",
+          "achievement": "Achievement",
+          "learning": "Learning",
+          "time": "Time",
+          "streak": "Streak / activity",
+          "other": "Other"
+        },
+        "empty": "No icons available.",
+        "noResults": "No icons match \"{{query}}\". Change the search or category filter.",
+        "preview": "Preview (the 4 states students see)"
       },
       "fields": {
         "code": "Code",
         "name": "Name",
         "description": "Description",
         "category": "Category",
-        "iconUrl": "Icon path",
         "pathKey": "Path key",
         "pathName": "Path name",
         "pathOrder": "Order",
@@ -637,7 +663,6 @@
         "code": "Lowercase letters, digits and hyphens; e.g. subject-math-mastery. Cannot be changed later.",
         "codeImmutable": "The code cannot be changed after creation.",
         "category": "Pick from the list or type a new category.",
-        "iconUrl": "Format achievements/<file>.svg; may be left empty.",
         "path": "Badges sharing a path key are shown to students as an ordered path.",
         "range": "{{min}} – {{max}}",
         "subjectUnmatched": "Saved subject: \"{{name}}\" (not found in the list; pick a subject to change it)."
@@ -650,7 +675,6 @@
         "integer": "Must be a whole number.",
         "invalid": "Invalid value.",
         "codePattern": "Only lowercase letters, digits and single hyphens (e.g. question-hunter-1).",
-        "iconPattern": "Must be in the format achievements/<file>.svg.",
         "subjectRequired": "Please choose a subject.",
         "codeTaken": "A badge with this code already exists.",
         "notFound": "Badge not found; it may have been changed by another admin.",

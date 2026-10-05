@@ -1,9 +1,10 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, catchError, shareReplay, throwError } from 'rxjs';
 import {
   BadgeDefinitionAdmin,
   BadgeDefinitionAdminListResponse,
+  BadgeIconEntry,
   BadgeRuleTypeSchema,
   CreateBadgeDefinitionRequest,
   UpdateBadgeDefinitionRequest,
@@ -18,6 +19,22 @@ import {
 export class BadgeDefinitionAdminService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = '/api/badge/admin/badge-definitions';
+  /** İkon listesi sabit (backend allowlist'i) — oturumda bir kez yüklenir; hata önbelleğe alınmaz. */
+  private icons$: Observable<BadgeIconEntry[]> | null = null;
+
+  /** Issue #149 — admin ikon seçicisinin listesi (`[{ name, category }]`). */
+  getIcons(): Observable<BadgeIconEntry[]> {
+    if (!this.icons$) {
+      this.icons$ = this.http.get<BadgeIconEntry[]>(`${this.baseUrl}/icons`).pipe(
+        catchError((err: unknown) => {
+          this.icons$ = null;
+          return throwError(() => err);
+        }),
+        shareReplay({ bufferSize: 1, refCount: false })
+      );
+    }
+    return this.icons$;
+  }
 
   getRuleTypes(): Observable<BadgeRuleTypeSchema[]> {
     return this.http.get<BadgeRuleTypeSchema[]>(`${this.baseUrl}/rule-types`);

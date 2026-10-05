@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, computed, inject, signal, viewChildren } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
@@ -13,27 +13,36 @@ import {
 } from '@angular/forms';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
+import { MatChipListboxChange, MatChipsModule } from '@angular/material/chips';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
-import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
-import { Observable, map, startWith, take } from 'rxjs';
+import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { Observable, take } from 'rxjs';
 import {
   BADGE_CODE_PATTERN,
   BADGE_DEFINITION_LIMITS as LIMITS,
-  BADGE_ICON_PATTERN,
+  BADGE_ICON_CATEGORIES,
   BadgeDefinitionAdmin,
+  BadgeIconCategory,
+  BadgeIconEntry,
   BadgeRuleFieldSchema,
   BadgeRuleTypeSchema,
   KNOWN_BADGE_CATEGORIES,
   UpdateBadgeDefinitionRequest,
+  validLegacyIconUrl,
 } from '../../../../models/badge-definition-admin.model';
 import { Subject } from '../../../../models/subject';
 import { BadgeDefinitionAdminService } from '../../../../services/badge-definition-admin.service';
 import { SubjectService } from '../../../../services/subject.service';
+import { BadgeMedallionComponent } from '../../../../shared/components/badge-medallion/badge-medallion.component';
+import {
+  BADGE_ICON_NAME_PATTERN,
+  BadgeMedallionState,
+} from '../../../../shared/components/badge-medallion/badge-state.util';
 import {
   RuleFieldValue,
   SUBJECT_ID_FIELD,
@@ -50,6 +59,31 @@ import {
 
 const ADMIN_SCOPE = 'admin';
 
+/** Tasarım notu (Admin G2): ikon ızgarası 8 sütun — Yukarı/Aşağı ok tuşu bu kadar atlar. */
+export const ICON_GRID_COLUMNS = 8;
+
+export type IconCategoryFilter = 'all' | BadgeIconCategory;
+
+/** Canlı önizlemenin 4 durumu (medalyon tablosu sırası); etiketler `shared.badgeMedallion.state.*`. */
+export const ICON_PREVIEW_STATES: readonly { state: BadgeMedallionState; labelKey: string; progress: number | null }[] = [
+  { state: 'earned', labelKey: 'earned', progress: null },
+  { state: 'new', labelKey: 'new', progress: null },
+  { state: 'in-progress', labelKey: 'inProgress', progress: 60 },
+  { state: 'locked', labelKey: 'locked', progress: null },
+];
+
+/** Bilinmeyen kategori `other` sayılır (çip ve etiket çevirisi kapalı kümede kalsın). */
+export function iconCategoryOf(entry: BadgeIconEntry): BadgeIconCategory {
+  return (BADGE_ICON_CATEGORIES as readonly string[]).includes(entry.category)
+    ? (entry.category as BadgeIconCategory)
+    : 'other';
+}
+
+/** Arama: büyük/küçük harf ve `_`/boşluk/tire farkı yok sayılır ("fire dep" → `local_fire_department`). */
+export function normalizeIconQuery(value: string): string {
+  return value.trim().toLocaleLowerCase('en').replace(/[\s_-]+/g, ' ');
+}
+
 export interface BadgeDefinitionDialogData {
   /** Doluysa düzenleme modu (kod değiştirilemez). */
   definition?: BadgeDefinitionAdmin;
@@ -62,7 +96,6 @@ type MainControlName =
   | 'name'
   | 'description'
   | 'category'
-  | 'iconUrl'
   | 'pathKey'
   | 'pathName'
   | 'pathOrder'
@@ -80,7 +113,9 @@ type MainControlName =
   imports: [
     ReactiveFormsModule,
     MatAutocompleteModule,
+    BadgeMedallionComponent,
     MatButtonModule,
+    MatChipsModule,
     MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
@@ -88,6 +123,7 @@ type MainControlName =
     MatProgressSpinnerModule,
     MatSelectModule,
     TranslocoDirective,
+    TranslocoPipe,
   ],
   providers: [provideTranslocoScope(ADMIN_SCOPE)],
   templateUrl: './badge-definition-dialog.component.html',
@@ -116,7 +152,6 @@ export class BadgeDefinitionDialogComponent {
     name: [this.definition?.name ?? '', [Validators.required, notBlank, Validators.maxLength(LIMITS.nameMax)]],
     description: [this.definition?.description ?? '', [Validators.maxLength(LIMITS.descriptionMax)]],
     category: [this.definition?.category ?? '', [Validators.required, notBlank, Validators.maxLength(LIMITS.categoryMax)]],
-    iconUrl: [this.definition?.iconUrl ?? '', [Validators.pattern(BADGE_ICON_PATTERN)]],
     pathKey: [this.definition?.pathKey ?? '', [Validators.maxLength(LIMITS.pathKeyMax)]],
     pathName: [this.definition?.pathName ?? '', [Validators.maxLength(LIMITS.pathNameMax)]],
     pathOrder: this.fb.control<number | null>(this.definition?.pathOrder ?? null, [
@@ -167,19 +202,40 @@ export class BadgeDefinitionDialogComponent {
     const q = this.categoryValue().trim().toLocaleLowerCase('tr');
     return q ? this.categoryOptions().filter((c) => c.toLocaleLowerCase('tr').includes(q)) : this.categoryOptions();
   });
-  private readonly iconValue = toSignal(
-    this.form.controls.iconUrl.valueChanges.pipe(
-      startWith(this.form.controls.iconUrl.value),
-      map((v) => v.trim())
-    ),
-    { requireSync: true }
-  );
-  readonly iconPreviewFailed = signal(false);
-  /** Geçerli biçimdeki ikon için kök-göreli önizleme yolu (`public/achievements/...`). */
-  readonly iconPreview = computed(() => {
-    const value = this.iconValue();
-    return value && BADGE_ICON_PATTERN.test(value) ? `/${value}` : null;
+
+  // ---- icon picker (issue #149) ----
+  readonly iconCategories = BADGE_ICON_CATEGORIES;
+  readonly previewStates = ICON_PREVIEW_STATES;
+  readonly icons = signal<BadgeIconEntry[]>([]);
+  readonly iconsLoading = signal(false);
+  readonly iconsError = signal(false);
+  /** Seçili Material Symbols adı; null = ikon yok (kaydederken `icon: null` gider). */
+  readonly selectedIcon = signal<string | null>(validIconName(this.definition?.icon));
+  readonly iconQuery = signal('');
+  readonly iconCategory = signal<IconCategoryFilter>('all');
+  /** Sunucunun `icon` alanına döndürdüğü 400 hatası — seçicinin altında `role=alert`. */
+  readonly iconError = signal<string | null>(null);
+  /** Düzenlenen rozet yalnız eski SVG kullanıyor ve henüz yeni ikon seçilmedi → geçiş uyarısı. */
+  readonly legacyIcon = computed(() => (this.selectedIcon() ? null : validLegacyIconUrl(this.definition?.iconUrl)));
+  readonly filteredIcons = computed(() => {
+    const q = normalizeIconQuery(this.iconQuery());
+    const category = this.iconCategory();
+    return this.icons().filter(
+      (entry) =>
+        (category === 'all' || iconCategoryOf(entry) === category) &&
+        (!q || normalizeIconQuery(entry.name).includes(q))
+    );
   });
+  readonly noIconResults = computed(
+    () => !this.iconsLoading() && !this.iconsError() && this.icons().length > 0 && this.filteredIcons().length === 0
+  );
+  /** Roving tabindex: ızgaraya Tab ile girilince seçili ikon (görünürse), yoksa ilk ikon odaklanır. */
+  readonly tabStopIcon = computed(() => {
+    const list = this.filteredIcons();
+    const selected = this.selectedIcon();
+    return list.some((e) => e.name === selected) ? selected : list[0]?.name ?? null;
+  });
+  private readonly iconButtons = viewChildren<ElementRef<HTMLButtonElement>>('iconOption');
 
   // ---- submit ----
   readonly submitting = signal(false);
@@ -195,10 +251,98 @@ export class BadgeDefinitionDialogComponent {
       this.ruleError.set(null);
       this.rebuildRuleForm(findRuleTypeSchema(this.ruleTypes(), ruleType));
     });
-    this.form.controls.iconUrl.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.iconPreviewFailed.set(false));
 
     this.loadRuleTypes();
     this.loadSubjects();
+    this.loadIcons();
+  }
+
+  /** Liste servis önbelleğinden gelir (oturumda tek istek); hata önbelleğe alınmaz, "Tekrar dene" yeniden ister. */
+  loadIcons(): void {
+    this.iconsLoading.set(true);
+    this.iconsError.set(false);
+    this.service.getIcons().subscribe({
+      next: (list) => {
+        this.icons.set(list);
+        this.iconsLoading.set(false);
+      },
+      error: () => {
+        this.iconsLoading.set(false);
+        this.iconsError.set(true);
+      },
+    });
+  }
+
+  selectIcon(name: string): void {
+    this.selectedIcon.set(name);
+    this.iconError.set(null);
+  }
+
+  clearIcon(): void {
+    this.selectedIcon.set(null);
+    this.iconError.set(null);
+  }
+
+  setIconCategory(category: IconCategoryFilter): void {
+    this.iconCategory.set(category);
+  }
+
+  /**
+   * Tek seçimli listbox, seçili çipe tekrar tıklanınca onu bırakır (value undefined). Filtre her zaman bir çipe
+   * karşılık gelsin diye mevcut kategori listbox'a geri yazılır (görsel seçim kaybolmaz).
+   */
+  onIconCategoryChange(event: MatChipListboxChange): void {
+    const value = event.value as IconCategoryFilter | null | undefined;
+    if (value == null) {
+      event.source.value = this.iconCategory();
+      return;
+    }
+    this.setIconCategory(value);
+  }
+
+  iconCategoryLabel(entry: BadgeIconEntry): string {
+    return this.text(`dialog.icon.categories.${iconCategoryOf(entry)}`);
+  }
+
+  /**
+   * Radio grubu klavye düzeni (WAI-ARIA radio): Sol/Sağ ±1, Yukarı/Aşağı ±8 (sütun), Home/End uçlar; odak taşınır
+   * ve odaklanan ikon seçilir. Kenarda durur (sarmaz): Sol/Sağ uçta kalır; Yukarı ilk satırda / Aşağı altında hücre
+   * olmayan satırda hiçbir şey yapmaz (başka sütuna atlamaz).
+   */
+  onIconKeydown(event: KeyboardEvent, index: number): void {
+    const count = this.filteredIcons().length;
+    if (count === 0) return;
+    let next: number;
+    switch (event.key) {
+      case 'ArrowRight':
+        next = index + 1;
+        break;
+      case 'ArrowLeft':
+        next = index - 1;
+        break;
+      case 'ArrowDown':
+        next = index + ICON_GRID_COLUMNS;
+        break;
+      case 'ArrowUp':
+        next = index - ICON_GRID_COLUMNS;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = count - 1;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    const vertical = event.key === 'ArrowUp' || event.key === 'ArrowDown';
+    if (vertical && (next < 0 || next >= count)) return;
+    next = Math.max(0, Math.min(count - 1, next));
+    const entry = this.filteredIcons()[next];
+    if (!entry) return;
+    this.selectIcon(entry.name);
+    this.iconButtons()[next]?.nativeElement.focus();
   }
 
   loadRuleTypes(): void {
@@ -289,10 +433,7 @@ export class BadgeDefinitionDialogComponent {
     if (errors['max']) return this.text('dialog.errors.max', { max: errors['max'].max });
     if (errors['integer']) return this.text('dialog.errors.integer');
     if (errors['maxlength']) return this.text('dialog.errors.maxLength', { max: errors['maxlength'].requiredLength });
-    if (errors['pattern']) {
-      if (control === this.form.controls.code) return this.text('dialog.errors.codePattern');
-      if (control === this.form.controls.iconUrl) return this.text('dialog.errors.iconPattern');
-    }
+    if (errors['pattern'] && control === this.form.controls.code) return this.text('dialog.errors.codePattern');
     return this.text('dialog.errors.invalid');
   }
 
@@ -322,7 +463,11 @@ export class BadgeDefinitionDialogComponent {
     const body: UpdateBadgeDefinitionRequest = {
       name: v.name.trim(),
       description: v.description.trim(),
-      iconUrl: v.iconUrl.trim() || null,
+      // Eski SVG yolu UI'dan düzenlenmez; PUT tam üzerine yazdığı için mevcut değer geri gönderilir — yalnız desene
+      // uyuyorsa (aksi halde backend 400 verir ve rozet kaydedilemez kalırdı; geçersiz yol zaten gösterilmiyor).
+      iconUrl: validLegacyIconUrl(this.definition?.iconUrl),
+      // #149: her zaman gönderilir (PUT'ta alanın yokluğu "koru" demektir; UI buna güvenmez).
+      icon: this.selectedIcon(),
       category: v.category.trim(),
       ruleType: schema.ruleType,
       ruleConfigJson: buildRuleConfigJson(schema, this.ruleForm.getRawValue()),
@@ -338,6 +483,7 @@ export class BadgeDefinitionDialogComponent {
     this.submitting.set(true);
     this.error.set(null);
     this.ruleError.set(null);
+    this.iconError.set(null);
     request$.subscribe({
       next: (saved) => {
         this.submitting.set(false);
@@ -374,6 +520,8 @@ export class BadgeDefinitionDialogComponent {
         const message = messages.join(' ');
         if (key === 'ruleConfigJson') {
           this.ruleError.set(message);
+        } else if (key === 'icon') {
+          this.iconError.set(message);
         } else if (key in this.form.controls) {
           this.setServerError(this.form.controls[key as MainControlName], message);
         } else if (this.ruleForm.controls[key]) {
@@ -444,6 +592,12 @@ export class BadgeDefinitionDialogComponent {
   private text(key: string, params?: Record<string, unknown>): string {
     return this.transloco.translate<string>(`${ADMIN_SCOPE}.badgeDefinitions.${key}`, params) ?? '';
   }
+}
+
+/** Yalnız biçimce geçerli ad seçili başlar (backend allowlist dışını zaten null döner). */
+function validIconName(value: string | null | undefined): string | null {
+  const name = value?.trim();
+  return name && BADGE_ICON_NAME_PATTERN.test(name) ? name : null;
 }
 
 function fieldValidators(field: BadgeRuleFieldSchema): ValidatorFn[] {

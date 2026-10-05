@@ -139,6 +139,24 @@ describe('StudentProfileComponent', () => {
     expect((thropy.nativeElement as HTMLElement).querySelector('.ms-badge-title')).toBeNull();
   }));
 
+  // #322: "Bilgi" sekmesindeki eski `student.badges[].imageUrl` blogu kaldirildi; rozetler yalnizca
+  // "Rozetler" sekmesindeki app-badge-thropy ile (tek bolum) gosterilir.
+  it('activeTab_SetToInfoTab_DoesNotRenderLegacyBadgeImageBlock', fakeAsync(() => {
+    studentService.getProfile.and.returnValue(of({ fullName: 'Ada Lovelace', gradeId: 5 } as StudentProfile));
+    fixture.detectChanges();
+    component.activeTab = 1;
+    fixture.detectChanges();
+    tick(500);
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.textContent).toContain('Ada Lovelace');
+    expect(host.querySelector('.badges-container')).toBeNull();
+    expect(host.querySelector('img.badge')).toBeNull();
+    expect(host.textContent).not.toContain('Kazanılan Rozetler');
+    expect(host.querySelectorAll('app-badge-thropy').length).toBe(0);
+  }));
+
   it('activeTab_SetToBadgesTab_PassesResolvedStudentIdToBadgeThropy', fakeAsync(() => {
     activateBadgesTab();
 

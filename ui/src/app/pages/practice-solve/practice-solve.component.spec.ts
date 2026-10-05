@@ -50,7 +50,6 @@ describe('PracticeSolveComponent', () => {
     testsCompleted: 0,
     totalRewards: 0,
     leaderboardRank: 0,
-    badges: [],
     recentTests: [],
   };
 

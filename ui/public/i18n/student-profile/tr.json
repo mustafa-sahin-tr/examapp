@@ -44,7 +44,6 @@
     "testsCompleted": "{{count}} Tamamlanan Test",
     "rewards": "{{count}} Kazanılan Ödül",
     "leaderboardRank": "Liderlik Sıralaması: {{rank}}",
-    "badgesTitle": "🎖 Kazanılan Rozetler",
     "gradeUpdated": "Sınıf güncellendi!",
     "avatarUpdated": "Avatar güncellendi!"
   },

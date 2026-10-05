@@ -44,7 +44,6 @@
     "testsCompleted": "{{count}} Tests Completed",
     "rewards": "{{count}} Rewards Earned",
     "leaderboardRank": "Leaderboard Rank: {{rank}}",
-    "badgesTitle": "🎖 Badges Earned",
     "gradeUpdated": "Grade updated!",
     "avatarUpdated": "Avatar updated!"
   },

@@ -1,0 +1,11 @@
+@if (icon()) {
+<span class="option-card__tile" aria-hidden="true">
+  <mat-icon fontSet="material-symbols-outlined" class="option-card__icon">{{ icon() }}</mat-icon>
+</span>
+}
+<span class="option-card__label">{{ label() }}</span>
+<span class="option-card__mark" aria-hidden="true">
+  @if (selected()) {
+  <mat-icon class="option-card__mark-icon">check</mat-icon>
+  }
+</span>

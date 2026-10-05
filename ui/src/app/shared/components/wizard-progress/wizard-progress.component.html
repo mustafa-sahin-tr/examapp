@@ -1,0 +1,49 @@
+<div class="wp">
+  <ol class="wp__stops" [attr.aria-label]="labels().ariaLabel">
+    @for (stop of stops(); track stop.index) {
+    <li
+      class="wp__item"
+      [class.wp__item--done]="stop.state === 'done'"
+      [class.wp__item--current]="stop.state === 'current'"
+      [class.wp__item--branch]="stop.state === 'branch'"
+      [attr.aria-current]="stop.state === 'current' ? 'step' : null"
+    >
+      @if (stop.state === 'done') {
+      <button type="button" class="wp__stop" [attr.aria-label]="stopLabel(stop)" (click)="goTo.emit(stop.index)">
+        <mat-icon aria-hidden="true">check</mat-icon>
+      </button>
+      } @else {
+      <span class="wp__stop" role="img" [attr.aria-label]="stopLabel(stop)">
+        @if (stop.final) {
+        <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">flag</mat-icon>
+        } @else if (stop.state === 'branch') {
+        <mat-icon fontSet="material-symbols-outlined" aria-hidden="true">call_split</mat-icon>
+        }
+      </span>
+      }
+    </li>
+    }
+  </ol>
+
+  <div
+    class="wp__bar"
+    role="progressbar"
+    aria-valuemin="0"
+    [attr.aria-valuemax]="total()"
+    [attr.aria-valuenow]="currentPosition()"
+    [attr.aria-valuetext]="counterText() || null"
+    [attr.aria-label]="labels().ariaLabel"
+  >
+    @for (stop of stops(); track stop.index) {
+    <span
+      class="wp__segment"
+      [class.wp__segment--done]="stop.state === 'done'"
+      [class.wp__segment--current]="stop.state === 'current'"
+    ></span>
+    }
+  </div>
+
+  @if (counterText()) {
+  <p class="wp__counter">{{ counterText() }}</p>
+  }
+</div>

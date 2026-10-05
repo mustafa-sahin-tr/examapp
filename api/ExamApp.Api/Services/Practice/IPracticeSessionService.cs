@@ -6,7 +6,8 @@ namespace ExamApp.Api.Services.Practice;
 
 /// <summary>
 /// "Soru Çöz" pratik oturumu (issue #62): worksheet'ten bağımsız rastgele soru getirme ve cevap loglama.
-/// Outbox event üretmez, puan/rozet etkilemez (epic #60 MVP kapsamı).
+/// Serbest pratik outbox event üretmez, puan/rozet etkilemez (epic #60 MVP kapsamı); "Günün soruları" (issue #99)
+/// oturumunun cevapları ise AnswerSubmittedEvent ile mevcut puan/rozet hattını besler.
 /// </summary>
 public interface IPracticeSessionService
 {
@@ -35,6 +36,13 @@ public interface IPracticeSessionService
     /// <returns>null: oturum yok ya da bu öğrenciye ait değil.</returns>
     /// <exception cref="InvalidOperationException">Soru bu oturumda gösterilmemiş/zaten cevaplanmış, oturum bitmiş ya da şık soruya ait değilse.</exception>
     Task<PracticeAnswerResultDto?> SubmitAnswerAsync(int sessionId, int studentId, PracticeAnswerSubmitDto dto, CancellationToken ct = default);
+
+    /// <summary>
+    /// <see cref="SubmitAnswerAsync(int, int, PracticeAnswerSubmitDto, CancellationToken)"/> + öğrencinin Keycloak sub'ı.
+    /// Günlük set oturumunda (issue #99) <c>AnswerSubmittedEvent.ClientId</c>'ye yazılır (BadgeService rozet bildirimi
+    /// SignalR'da sub ile hedefler); serbest pratikte kullanılmaz.
+    /// </summary>
+    Task<PracticeAnswerResultDto?> SubmitAnswerAsync(int sessionId, int studentId, PracticeAnswerSubmitDto dto, string? clientId, CancellationToken ct = default);
 
     /// <returns>null: oturum yok ya da bu öğrenciye ait değil.</returns>
     Task<PracticeSessionDto?> EndAsync(int sessionId, int studentId, CancellationToken ct = default);

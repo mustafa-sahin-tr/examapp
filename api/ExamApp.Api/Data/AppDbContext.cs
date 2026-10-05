@@ -131,6 +131,10 @@ public class AppDbContext : DbContext
     public DbSet<PracticeSession> PracticeSessions { get; set; }
     public DbSet<PracticeSessionQuestion> PracticeSessionQuestions { get; set; }
 
+    // "Günün soruları" (issue #99)
+    public DbSet<DailyQuestionSet> DailyQuestionSets { get; set; }
+    public DbSet<DailyQuestionSetItem> DailyQuestionSetItems { get; set; }
+
     // Login denemeleri (issue #84) — BadgeService servis-to-servis yazar, admin dashboard (issue #6) okur.
     public DbSet<LoginEvent> LoginEvents { get; set; }
     public DbSet<AdminDataAccessLog> AdminDataAccessLogs { get; set; } // issue #246
@@ -695,6 +699,58 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<PracticeSessionQuestion>()
             .HasIndex(pq => new { pq.PracticeSessionId, pq.QuestionId })
             .IsUnique();
+
+        // "Günün soruları" (issue #99). (StudentId, Day) unique: eşzamanlı ilk istekler ikinci seti üretemez — kaybeden
+        // taraf unique ihlalini yakalayıp kazananın setini yeniden okur (DailyQuestionSetService). Soft-delete edilmiş satır
+        // hariç (diğer tekil index'lerle aynı desen), aksi halde silinen günün yerine set üretilemezdi.
+        modelBuilder.Entity<DailyQuestionSet>(e =>
+        {
+            e.HasOne(d => d.Student)
+                .WithMany()
+                .HasForeignKey(d => d.StudentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(d => d.Grade)
+                .WithMany()
+                .HasForeignKey(d => d.GradeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Oturum referansı, oturum soft-delete edilse de korunmalı (bkz. TeacherAvailabilitySlot.RecurringAvailabilityRuleId):
+            // SetNull/Cascade, tracked set'in FK'sını Remove() anında null'lardı. Oturum bağımsız fiziksel silinmez; öğrenci
+            // fiziksel silinirse set ve oturum kendi Student cascade'leriyle birlikte gider (NO ACTION statement sonunda denetlenir).
+            e.HasOne(d => d.PracticeSession)
+                .WithMany()
+                .HasForeignKey(d => d.PracticeSessionId)
+                .OnDelete(DeleteBehavior.ClientNoAction);
+
+            e.Property(d => d.ScopeJson).HasMaxLength(2000);
+
+            e.HasIndex(d => new { d.StudentId, d.Day })
+                .IsUnique()
+                .HasFilter("NOT \"IsDeleted\"");
+
+            // Bir pratik oturumu en fazla bir günlük sete bağlıdır; NextQuestion/SubmitAnswer oturumdan seti bununla bulur.
+            e.HasIndex(d => d.PracticeSessionId)
+                .IsUnique()
+                .HasFilter("\"PracticeSessionId\" IS NOT NULL");
+        });
+
+        modelBuilder.Entity<DailyQuestionSetItem>(e =>
+        {
+            e.HasOne(i => i.DailyQuestionSet)
+                .WithMany(d => d.Items)
+                .HasForeignKey(i => i.DailyQuestionSetId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(i => i.Question)
+                .WithMany()
+                .HasForeignKey(i => i.QuestionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Set içinde soru tekrarı yok + sıra tekil (DB seviyesinde garanti).
+            e.HasIndex(i => new { i.DailyQuestionSetId, i.QuestionId }).IsUnique();
+            e.HasIndex(i => new { i.DailyQuestionSetId, i.Order }).IsUnique();
+        });
 
         // Login event'leri (issue #84). Index'ler ileride admin dashboard'un (issue #6)
         // "kullanıcı bazlı son login" ve "tarih aralığı / rol bazlı sayım" sorguları için.

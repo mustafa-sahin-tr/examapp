@@ -1,12 +1,14 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Practice;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Controllers;
@@ -21,6 +23,7 @@ namespace ExamApp.Api.Controllers;
 public class PracticeController : BaseController
 {
     private readonly IPracticeSessionService _practice;
+    private readonly IDailyQuestionSetService _daily;
     private readonly IStudentService _studentService;
 
     // Client'a dönen tüm metinler mesaj sözlüğünden gelir (issue #184).
@@ -30,11 +33,13 @@ public class PracticeController : BaseController
 
     public PracticeController(
         IPracticeSessionService practice,
+        IDailyQuestionSetService daily,
         IStudentService studentService,
         IStringLocalizer<Messages>? localizer = null)
         : base()
     {
         _practice = practice;
+        _daily = daily;
         _studentService = studentService;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
@@ -56,6 +61,40 @@ public class PracticeController : BaseController
         {
             return BadRequest(new { message = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// "Günün soruları" (issue #99): bugünün (Europe/Istanbul) seti ve ilerlemesi; set yoksa ilk istekte üretilir.
+    /// Havuz boşsa ya da sınıf tanımlı değilse 200 + <c>status: "Empty"</c> (hata değil).
+    /// </summary>
+    [HttpGet("daily")]
+    [EnableRateLimiting(DailyQuestionsRateLimiting.Policy)]
+    public async Task<IActionResult> GetDaily(CancellationToken ct)
+    {
+        var (student, error) = await ResolveStudentAsync();
+        if (error != null)
+            return error;
+
+        return Ok(await _daily.GetTodayAsync(student!, ct));
+    }
+
+    /// <summary>
+    /// Bugünün setinin pratik oturumunu açar ya da mevcut oturumu döner (idempotent). Tamamlanmış sette yeni oturum
+    /// açılmaz: 200 + mevcut <c>sessionId</c> + <c>status: "Completed"</c>. Set boşsa 409.
+    /// </summary>
+    [HttpPost("daily/start")]
+    [EnableRateLimiting(DailyQuestionsRateLimiting.Policy)]
+    public async Task<IActionResult> StartDaily(CancellationToken ct)
+    {
+        var (student, error) = await ResolveStudentAsync();
+        if (error != null)
+            return error;
+
+        var result = await _daily.StartTodayAsync(student!, ct);
+        if (result == null)
+            return Conflict(new { message = _localizer["practice.dailyEmpty"].Value });
+
+        return Ok(result);
     }
 
     /// <summary>Öğrencinin geçmiş pratik oturumları, en yeni önce. Sayfalı (<see cref="Paged{T}"/>).</summary>
@@ -133,7 +172,8 @@ public class PracticeController : BaseController
 
         try
         {
-            var result = await _practice.SubmitAnswerAsync(id, student!.Id, dto, ct);
+            // Keycloak sub: günlük set cevabının AnswerSubmittedEvent.ClientId'si (issue #99, rozet bildirimi hedefi).
+            var result = await _practice.SubmitAnswerAsync(id, student!.Id, dto, KeyCloakId, ct);
             if (result == null)
                 return NotFound(new { message = _localizer["practice.sessionNotFound"].Value });
 

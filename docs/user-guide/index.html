@@ -1,0 +1,2299 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ExamApp Kullanıcı Kılavuzu</title>
+<style>
+:root {
+  --ink: #1d1b2e;
+  --muted: #5b5873;
+  --line: #dcd9ea;
+  --accent: #5b3fd6;
+  --accent-soft: #efebff;
+  --note-bg: #eef6ff;
+  --note-line: #3b82f6;
+  --issue-bg: #fff4e5;
+  --issue-line: #e08a00;
+  --bg: #ffffff;
+  --ph-bg: #f4f3f8;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.6 "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+main, .toc, .cover { max-width: 980px; margin: 0 auto; padding: 0 20px; }
+.cover { padding-top: 56px; padding-bottom: 32px; border-bottom: 4px solid var(--accent); }
+.cover-kicker { color: var(--accent); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin: 0; }
+.cover h1 { font-size: 40px; margin: 4px 0 8px; }
+.cover-sub { font-size: 18px; color: var(--muted); margin: 0 0 12px; }
+.cover-meta { font-size: 13px; color: var(--muted); margin: 0; }
+h2 { font-size: 28px; margin: 48px 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--accent); }
+h3 { font-size: 21px; margin: 0 0 6px; color: var(--accent); }
+h3.plain { margin-top: 24px; }
+h4 { font-size: 15px; margin: 18px 0 6px; text-transform: none; color: var(--ink); }
+a { color: var(--accent); }
+code { background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+pre { background: #f6f5fb; border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; font-size: 12.5px; }
+q { quotes: "“" "”"; font-style: italic; }
+.toc { padding-top: 24px; }
+.toc h2 { margin-top: 24px; }
+.toc ol { list-style: none; padding-left: 0; margin: 4px 0; }
+.toc-l2 { padding-left: 18px !important; }
+.toc-l1 > li { font-weight: 600; margin-top: 6px; }
+.toc-l2 { columns: 2; column-gap: 32px; font-weight: 400; font-size: 14px; }
+.toc-l2 li { break-inside: avoid; }
+.toc a { text-decoration: none; }
+.screen { margin: 28px 0; padding: 22px 0 8px; border-top: 1px solid var(--line); }
+.meta { color: var(--muted); font-size: 13px; margin: 0 0 8px; }
+.purpose { margin: 6px 0 12px; }
+figure.shot { margin: 14px 0; break-inside: avoid; page-break-inside: avoid; }
+figure.shot img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 1px 4px rgba(20, 10, 60, .08); }
+figure.shot figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; }
+figure.placeholder .ph {
+  display: flex; align-items: center; justify-content: center;
+  aspect-ratio: 16 / 7; background: var(--ph-bg);
+  border: 2px dashed var(--line); border-radius: 6px; color: var(--muted); font-weight: 600;
+}
+table.fields, table.menu-map { width: 100%; border-collapse: collapse; font-size: 14px; margin: 6px 0 10px; }
+table.fields th, table.fields td, table.menu-map th, table.menu-map td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+table.fields th, table.menu-map th { background: var(--accent-soft); }
+table.fields tr, table.menu-map tr { break-inside: avoid; page-break-inside: avoid; }
+ul.msgs li { margin: 3px 0; }
+.note, .known-issue { border-left: 4px solid; border-radius: 4px; padding: 8px 12px; margin: 12px 0; font-size: 14px; }
+.note { background: var(--note-bg); border-color: var(--note-line); }
+.known-issue { background: var(--issue-bg); border-color: var(--issue-line); }
+.note::before { content: "Not: "; font-weight: 700; }
+.known-issue::before { content: "Bilinen sorun: "; font-weight: 700; }
+.tag-note, .tag-issue { font-size: 12px; font-weight: 700; padding: 1px 6px; border-radius: 4px; }
+.tag-note { background: var(--note-bg); color: var(--note-line); }
+.tag-issue { background: var(--issue-bg); color: #9a5a00; }
+
+@media (max-width: 640px) {
+  body { font-size: 14px; }
+  main, .toc, .cover { padding: 0 16px; }
+  .cover h1 { font-size: 30px; }
+  .toc-l2 { columns: 1; }
+  table.fields { display: block; overflow-x: auto; }
+}
+
+@page { size: A4; margin: 14mm 12mm 16mm; }
+@media print {
+  body { font-size: 10.5pt; line-height: 1.45; }
+  main, .toc, .cover { max-width: none; padding: 0; }
+  .cover { padding-top: 60mm; border-bottom: 0; page-break-after: always; break-after: page; }
+  .cover h1 { font-size: 34pt; }
+  .toc { page-break-after: always; break-after: page; }
+  .toc-l2 { font-size: 9pt; }
+  section.role { page-break-before: always; break-before: page; }
+  h2 { margin-top: 0; }
+  h3, h4 { page-break-after: avoid; break-after: avoid; }
+  .screen { page-break-inside: auto; border-top: 0; padding-top: 6mm; }
+  figure.shot { page-break-inside: avoid; break-inside: avoid; }
+  figure.shot img { max-height: 120mm; width: auto; max-width: 100%; box-shadow: none; }
+  pre { white-space: pre-wrap; }
+  a { color: var(--ink); text-decoration: none; }
+  .note, .known-issue, table.fields th, figure.placeholder .ph { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+h3.sub { font-size: 17px; margin: 18px 0 6px; color: var(--ink); }
+
+</style>
+</head>
+<body>
+<header class="cover">
+<p class="cover-kicker">ExamApp</p>
+<h1>Kullanıcı Kılavuzu</h1>
+<p class="cover-sub">Öğrenci, öğretmen, bağımsız öğretmen, veli, okul yöneticisi ve admin için ekran ekran kullanım rehberi</p>
+<p class="cover-meta">Sürüm: 5 Ekim 2026 · Ekran görüntüleri yerel test ortamından alınmıştır.</p>
+</header>
+<nav class="toc" id="icindekiler"><h2>İçindekiler</h2><ol class="toc-l1"><li><a href="#giris">1. Kılavuz hakkında</a></li><li><a href="#ortak">2. Ortak bölüm: tüm roller</a><ol class="toc-l2"><li><a href="#ortak-karsilama">2.1 Karşılama sayfası</a></li><li><a href="#ortak-giris">2.2 Giriş</a></li><li><a href="#ortak-kayit">2.3 Hesap oluşturma (kayıt)</a></li><li><a href="#ortak-kayit-sihirbazi">2.4 Kayıt sihirbazı: role özel bilgiler</a></li><li><a href="#ortak-sifre">2.5 Şifre: unutma ve sıfırlama</a></li><li><a href="#ortak-ust-cubuk">2.6 Üst çubuk, profil menüsü ve çıkış</a></li><li><a href="#ortak-dil-tema">2.7 Dil ve tema</a></li><li><a href="#ortak-bildirimler">2.8 Bildirimler</a></li></ol></li><li><a href="#ogrenci">3. Öğrenci</a><ol class="toc-l2"><li><a href="#ogrenci-dashboard">3.1 Dashboard (ana sayfa)</a></li><li><a href="#ogrenci-sinavlar">3.2 Sınavlar (Sınav Kütüphanesi)</a></li><li><a href="#ogrenci-test-detay">3.3 Sınav detayı (başlamadan önce)</a></li><li><a href="#ogrenci-test-cozme">3.4 Sınav çözme</a></li><li><a href="#ogrenci-test-sonuc">3.5 Sınav sonucu</a></li><li><a href="#ogrenci-pratik">3.6 Soru Çöz (pratik)</a></li><li><a href="#ogrenci-ders-calisma">3.7 Ders Çalışma</a></li><li><a href="#ogrenci-programlar">3.8 Programlarım</a></li><li><a href="#ogrenci-program-detay">3.9 Program detayı ve çalışma sayfaları</a></li><li><a href="#ogrenci-program-olustur">3.10 Yeni program oluşturma (sihirbaz)</a></li><li><a href="#ogrenci-planim">3.11 Planım (takvim)</a></li><li><a href="#ogrenci-ogretmen-ara">3.12 Özel Ders Öğretmeni Ara</a></li><li><a href="#ogrenci-ogretmen-profili">3.13 Öğretmen profili</a></li><li><a href="#ogrenci-randevu-al">3.14 Randevu alma</a></li><li><a href="#ogrenci-randevularim">3.15 Ders Randevularım</a></li><li><a href="#ogrenci-video-ders">3.16 Video ders ve ortak tahta</a></li><li><a href="#ogrenci-raporlar">3.17 Raporlar (Başarı Rozetleri)</a></li><li><a href="#ogrenci-ayarlar">3.18 Ayarlar (profil)</a></li></ol></li><li><a href="#ogretmen">4. Öğretmen</a><ol class="toc-l2"><li><a href="#ogretmen-basvuru-durumu">4.1 Başvuru durumu (onay bekleyen öğretmen)</a></li><li><a href="#ogretmen-dashboard">4.2 Dashboard (öğretmen paneli ve aktivite)</a></li><li><a href="#ogretmen-sinavlar">4.3 Sınavlar (Testlerim)</a></li><li><a href="#ogretmen-test-detay">4.4 Test detayı (öğretmen görünümü)</a></li><li><a href="#ogretmen-test-ata">4.5 Atama oluşturma (Yeni Atama Oluştur)</a></li><li><a href="#ogretmen-test-olustur">4.6 Yeni Test Oluştur</a></li><li><a href="#ogretmen-test-duzenle">4.7 Testi Düzenle (görünürlük ve paylaşım)</a></li><li><a href="#ogretmen-soru-ekle">4.8 Soru ekleme, soru tespiti ve soruları listeleme</a></li><li><a href="#ogretmen-yorumlar">4.9 Yorumlar, sorular ve moderasyon</a></li><li><a href="#ogretmen-video-tahta">4.10 Video ders ve ortak tahta (whiteboard)</a></li><li><a href="#ogretmen-soru-transferi">4.11 Soru Transferi</a></li><li><a href="#ogretmen-calisma-sayfalari">4.12 Çalışma Ekleme (Çalışma Sayfaları)</a></li><li><a href="#ogretmen-calisma-sayfasi-yeni">4.13 Yeni Çalışma Etkinliği</a></li><li><a href="#ogretmen-calisma-linkleri">4.14 Çalışma Linkleri</a></li><li><a href="#ogretmen-planim">4.15 Planım (öğretmen takvimi)</a></li><li><a href="#ogretmen-musait-saatler">4.16 Müsait Saatlerim</a></li><li><a href="#ogretmen-randevu-talepleri">4.17 Randevu Talepleri</a></li><li><a href="#ogretmen-atama-izin-talepleri">4.18 Atama İzin Talepleri</a></li><li><a href="#ogretmen-ozel-ders-profili">4.19 Özel Ders Profilim (okula bağlı öğretmen)</a></li><li><a href="#ogretmen-raporlar">4.20 Raporlar</a></li><li><a href="#ogretmen-bilinen-sorunlar">4.21 Ayarlar, Öğrenciler, Yardım ve Geri Bildirim</a></li></ol></li><li><a href="#bagimsiz">5. Bağımsız (özel ders) öğretmen</a><ol class="toc-l2"><li><a href="#bagimsiz-basvuru">5.1 Başvuru ve onay</a></li><li><a href="#bagimsiz-ozel-ders-profili">5.2 Özel Ders Profilim</a></li><li><a href="#bagimsiz-musait-saatler">5.3 Müsait Saatlerim</a></li><li><a href="#bagimsiz-randevu-talepleri">5.4 Randevu Talepleri</a></li><li><a href="#bagimsiz-test-yorumlari">5.5 Kendi testinde yorum moderasyonu</a></li><li><a href="#bagimsiz-video-tahta">5.6 Video ders ve ortak tahta</a></li></ol></li><li><a href="#veli">6. Veli</a><ol class="toc-l2"><li><a href="#veli-kayit">6.1 Veli olarak kayıt</a></li><li><a href="#veli-ana-sayfa">6.2 Veli ana sayfası</a></li></ol></li><li><a href="#okul-yoneticisi">7. Okul yöneticisi</a></li><li><a href="#admin">8. Admin (platform yöneticisi)</a><ol class="toc-l2"><li><a href="#admin-dashboard">8.1 Yönetim Paneli (Dashboard)</a></li><li><a href="#admin-yonetim-taksonomi">8.2 Yönetim: Taksonomi</a></li><li><a href="#admin-yonetim-siniflandirma-cache">8.3 Yönetim: Sınıflandırma Cache</a></li><li><a href="#admin-ogretmen-basvurulari">8.4 Öğretmen Başvuruları</a></li><li><a href="#admin-ogretmenler">8.5 Öğretmenler</a></li><li><a href="#admin-sifre-sifirlama">8.6 Şifre sıfırlama</a></li><li><a href="#admin-ogretmen-askiya-alma">8.7 Öğretmen onayını askıya alma</a></li><li><a href="#admin-ogrenciler">8.8 Öğrenciler</a></li><li><a href="#admin-ogrenci-okul-degistir">8.9 Öğrencinin okulunu değiştirme</a></li><li><a href="#admin-okullar">8.10 Okullar (Okul Yönetimi)</a></li><li><a href="#admin-rozetler">8.11 Rozet Tanımları</a></li><li><a href="#admin-rozet-yeni">8.12 Yeni rozet / Rozeti düzenle</a></li><li><a href="#admin-yorum-sikayetleri">8.13 Yorum şikayetleri</a></li><li><a href="#admin-raporlar-ayarlar">8.14 Raporlar ve Ayarlar</a></li></ol></li><li><a href="#ek">Ek: PDF üretme ve kılavuzu güncelleme</a></li></ol></nav>
+<main>
+<section class="role" id="giris">
+<h2>1. Kılavuz hakkında</h2>
+<p>Bu kılavuz ExamApp'i kullanan öğrenci, öğretmen, bağımsız (özel ders) öğretmen, veli, okul yöneticisi ve admin için hazırlandı. Her rol bölümü, o rolün sol menüsündeki ekranları sırayla anlatır. Her ekranda şu başlıklar vardır:</p>
+<ul>
+<li><b>Amacı</b>: ekran ne işe yarar.</li>
+<li><b>Ekran görüntüsü</b>: yerel test ortamından, test hesaplarıyla alındı. Görüntüdeki adlar ve sayılar test verisidir.</li>
+<li><b>Adım adım</b>: en sık yapılan iş.</li>
+<li><b>Alanlar ve butonlar</b>: ekrandaki öğelerin anlamı.</li>
+<li><b>Uyarı ve hata mesajları</b>: uygulamanın gösterdiği metinler, birebir.</li>
+</ul>
+<h3 class="plain">Roller ve menüler</h3>
+<table class="fields"><tr><th>Rol</th><th>Nasıl olunur</th><th>Bölüm</th></tr>
+<tr><td>Öğrenci</td><td>Kayıtta <b>Öğrenci</b> seçilir; sınıf ve öğrenci numarası girilir.</td><td><a href="#ogrenci">3</a></td></tr>
+<tr><td>Öğretmen (okula bağlı)</td><td>Kayıtta <b>Öğretmen</b> ▸ <b>Bir okula bağlıyım</b>. Öğretmen özellikleri admin onayından sonra açılır.</td><td><a href="#ogretmen">4</a></td></tr>
+<tr><td>Bağımsız öğretmen</td><td>Kayıtta <b>Öğretmen</b> ▸ <b>Bağımsız özel ders veriyorum</b>. Admin onayı gerekir; öğretmen menüsünün aynısını görür, özel ders profili açıktır.</td><td><a href="#bagimsiz">5</a></td></tr>
+<tr><td>Veli</td><td>Kayıtta <b>Veli</b> seçilir. Şu an veliye özel ekran yoktur.</td><td><a href="#veli">6</a></td></tr>
+<tr><td>Okul yöneticisi</td><td>Uygulamada ayrı bir rol değildir; okul yönetimini admin yapar.</td><td><a href="#okul-yoneticisi">7</a></td></tr>
+<tr><td>Admin</td><td>Platform yöneticisi; kayıtla alınamaz.</td><td><a href="#admin">8</a></td></tr>
+</table>
+<h3 class="plain">Gösterim</h3>
+<ul>
+<li><b>Kalın</b> metin ekrandaki buton, sekme veya alan adıdır.</li>
+<li><q>Tırnak içindeki</q> metin uygulamanın gösterdiği mesajdır.</li>
+<li><span class="tag-note">Not</span> kutuları ipucu, <span class="tag-issue">Bilinen sorun</span> kutuları kılavuz hazırlanırken yerel ortamda görülen hatalardır; düzeltildiğinde kılavuz güncellenir.</li>
+<li>Adresler (ör. <code>/dashboard</code>) uygulama adresinin sonuna eklenen yoldur.</li>
+</ul>
+</section>
+
+<section class="role" id="ortak">
+<h2>2. Ortak bölüm: tüm roller</h2>
+<p>Bu bölüm her kullanıcının gördüğü ekranları anlatır: giriş ve kayıt, şifre, üst çubuk (dil, tema, bildirimler, profil menüsü). Rol bölümleri bu bilgileri tekrar etmez.</p>
+
+<article class="screen" id="ortak-karsilama">
+<h3>2.1 Karşılama sayfası</h3>
+<p class="meta">Menü: yok (oturum açmadan) · Adres: /welcome</p>
+<p class="purpose"><strong>Amacı:</strong> Platformu tanıtır; giriş ve kayıt bağlantıları buradadır. Oturum açmadan uygulama adresine gelen kullanıcı bu sayfaya yönlenir.</p>
+<figure class="shot"><img src="img/ortak-karsilama.png" alt="Karşılama sayfası"><figcaption>Karşılama sayfası ve üst gezinme çubuğu.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Tarayıcıda uygulama adresini açın; oturumunuz yoksa karşılama sayfası gelir.</li>
+<li>Hesabınız varsa sağ üstteki <b>Giriş Yap</b> bağlantısına tıklayın (bkz. <a href="#ortak-giris">2.2</a>).</li>
+<li>Hesabınız yoksa <b>Kayıt Ol</b> menüsünü açıp <b>Öğrenci</b>, <b>Öğretmen</b> veya <b>Veli</b> seçin (bkz. <a href="#ortak-kayit">2.3</a>).</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Ana Sayfa, Özellikler, Dersler, Nasıl Çalışır?, Fiyatlandırma, SSS, Blog</td><td>Sayfa içindeki tanıtım bölümlerine kaydırır.</td></tr>
+<tr><td>Kayıt Ol ▸ Öğrenci / Öğretmen / Veli</td><td>Seçilen rolle kayıt akışını başlatır. Rol, kaydın ikinci adımında hazır seçili gelir.</td></tr>
+<tr><td>Giriş Yap</td><td>Giriş ekranını açar.</td></tr>
+<tr><td>TR</td><td>Sayfanın dilini değiştirir (Türkçe / English).</td></tr>
+<tr><td>Çalışma Yapraklarını Keşfet</td><td>Tanıtım bölümündeki ana çağrı butonu.</td></tr>
+</table>
+</article>
+
+<article class="screen" id="ortak-giris">
+<h3>2.2 Giriş</h3>
+<p class="meta">Menü: Giriş Yap · Adres: /app/login (giriş formu kimlik sunucusunda açılır)</p>
+<p class="purpose"><strong>Amacı:</strong> Kullanıcı adı (veya e-posta) ve şifreyle ya da Google hesabıyla oturum açmak. Giriş sonrası kullanıcı rolüne göre yönlenir: öğrenci ve öğretmen <b>Dashboard</b>'a, admin <b>Yönetim Paneli</b>'ne, rolü henüz belli olmayan hesap kayıt sihirbazına (<a href="#ortak-kayit-sihirbazi">2.4</a>), onay bekleyen öğretmen <b>Başvuru durumu</b> sayfasına gider.</p>
+<figure class="shot"><img src="img/ortak-giris.png" alt="Giriş ekranı"><figcaption>Giriş ekranı.</figcaption></figure>
+<figure class="shot"><img src="img/ortak-giris-hata.png" alt="Hatalı girişte uyarı"><figcaption>Kullanıcı adı veya şifre yanlışsa formun üstünde uyarı çıkar.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li><b>Kullanıcı adı veya E-Posta</b> alanına hesabınızı yazın.</li>
+<li><b>Şifre</b> alanına şifrenizi yazın.</li>
+<li>Bu cihazda oturumun açık kalmasını istiyorsanız <b>Beni Hatırla</b>'yı işaretleyin.</li>
+<li><b>Giriş Yap</b>'a tıklayın. Google hesabınızla girmek için <b>Google ile Giriş Yap</b>'ı kullanın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Kullanıcı adı veya E-Posta</td><td>Kayıtta verdiğiniz e-posta ya da kullanıcı adı.</td></tr>
+<tr><td>Şifre</td><td>Hesap şifresi.</td></tr>
+<tr><td>Beni Hatırla</td><td>Oturumu tarayıcı kapansa da açık tutar. Ortak bilgisayarda işaretlemeyin.</td></tr>
+<tr><td>Parolanızı mı unuttunuz?</td><td>Şifre sıfırlama ekranını açar (bkz. <a href="#ortak-sifre">2.5</a>).</td></tr>
+<tr><td>Google ile Giriş Yap</td><td>Google hesabıyla giriş. İlk girişte rol seçimi ve profil tamamlama adımları gelir.</td></tr>
+<tr><td>Yeni kullanıcı? Kayıt ol</td><td>Hesap oluşturma formunu açar.</td></tr>
+<tr><td>Türkçe (sağ üst)</td><td>Giriş ekranının dilini değiştirir.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Geçersiz kullanıcı adı veya şifre.</q>: kullanıcı adı ya da şifre yanlış.</li>
+<li><q>Giriş başarısız! Lütfen bilgilerinizi kontrol edin.</q>: giriş isteği sunucuda reddedildi.</li>
+</ul>
+<p class="note">Admin hesabınızın şifresini sıfırladıysa ilk girişte yeni bir şifre belirlemeniz istenir.</p>
+</article>
+
+<article class="screen" id="ortak-kayit">
+<h3>2.3 Hesap oluşturma (kayıt)</h3>
+<p class="meta">Menü: Kayıt Ol · Adres: /app/register</p>
+<p class="purpose"><strong>Amacı:</strong> E-posta ve şifreyle yeni hesap açmak. Rol (Öğrenci, Öğretmen, Veli) bu formda seçilir; okul, sınıf gibi role özel bilgiler girişten sonra kayıt sihirbazında tamamlanır.</p>
+<figure class="shot"><img src="img/ortak-kayit.png" alt="Hesap oluştur formu"><figcaption>Hesap Oluştur formu.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Giriş ekranında <b>Kayıt ol</b>'a ya da karşılama sayfasında <b>Kayıt Ol</b>'a tıklayın.</li>
+<li><b>Ad</b>, <b>Soyad</b> ve <b>E-posta</b> alanlarını doldurun.</li>
+<li><b>Rol</b> listesinden Öğrenci, Öğretmen veya Veli seçin.</li>
+<li><b>Şifre</b> (en az 6 karakter) ve <b>Şifre Tekrar</b> alanlarını doldurun.</li>
+<li><b>Kayıt Ol</b>'a tıklayın. Başarılı olursa giriş ekranına dönülür; yeni hesabınızla giriş yapın.</li>
+<li>İlk girişte kayıt sihirbazı açılır ve role özel bilgileri ister (bkz. <a href="#ortak-kayit-sihirbazi">2.4</a>).</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Ad *, Soyad *</td><td>Zorunlu, en az 2 karakter.</td></tr>
+<tr><td>E-posta *</td><td>Zorunlu, geçerli e-posta biçiminde olmalı. Giriş için kullanılır.</td></tr>
+<tr><td>Rol *</td><td>Öğrenci, Öğretmen veya Veli. Admin rolü kayıtla alınamaz.</td></tr>
+<tr><td>Şifre *, Şifre Tekrar *</td><td>En az 6 karakter; iki alan aynı olmalı. Göz simgesi şifreyi gösterir/gizler.</td></tr>
+<tr><td>Zaten hesabın var mı? Giriş Yap</td><td>Giriş ekranına döner.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Ad zorunludur.</q> / <q>Soyad zorunludur.</q> / <q>En az 2 karakter olmalıdır.</q>: ad veya soyad boş ya da çok kısa.</li>
+<li><q>E-posta zorunludur.</q> / <q>Geçerli bir e-posta giriniz.</q>: e-posta boş ya da hatalı.</li>
+<li><q>Rol seçimi zorunludur.</q>: rol seçilmedi.</li>
+<li><q>Şifre zorunludur.</q> / <q>En az 6 karakter olmalıdır.</q> / <q>Şifreler eşleşmiyor.</q>: şifre kuralları.</li>
+<li><q>Kayıt talebiniz alındı. Hesabınız oluşturulduysa giriş yapabilirsiniz.</q>: kayıt isteği alındı.</li>
+<li><q>Kayıt başarısız! Lütfen bilgilerinizi kontrol edin.</q>: sunucu kaydı reddetti (ör. e-posta kullanımda).</li>
+</ul>
+</article>
+
+<article class="screen" id="ortak-kayit-sihirbazi">
+<h3>2.4 Kayıt sihirbazı: role özel bilgiler</h3>
+<p class="meta">Menü: yok (ilk girişte otomatik) · Adres: /register, /register?role=student|teacher|parent</p>
+<p class="purpose"><strong>Amacı:</strong> Hesabın rolünü kesinleştirmek ve role özel bilgileri almak. İki adımı vardır: <b>1 · Rol Seçimi</b> ve <b>2 · Bilgiler</b>. Rol kayıt formundan, kayıt bağlantısından (<code>?role=</code>) ya da hesaptaki rolden biliniyorsa 1. adım atlanır.</p>
+<figure class="shot placeholder"><div class="ph">Ekran görüntüsü alınamadı</div><figcaption>Not: 1. adım (Rol Seçimi: <q>Nasıl devam etmek istersiniz?</q>) yalnızca rolü hiç belli olmayan hesapta görünür. Yerelde böyle bir test hesabı olmadığı için bu adımın görüntüsü alınamadı.</figcaption></figure>
+<figure class="shot"><img src="img/ortak-kayit-ogrenci.png" alt="Öğrenci bilgileri adımı"><figcaption>Öğrenci: Öğrenci Numarası, Okul (isteğe bağlı) ve Sınıf.</figcaption></figure>
+<figure class="shot"><img src="img/ortak-kayit-ogretmen.png" alt="Öğretmen bilgileri adımı"><figcaption>Öğretmen: çalışma şekli (okula bağlı / bağımsız) ve Okul.</figcaption></figure>
+<figure class="shot"><img src="img/ortak-kayit-veli.png" alt="Veli kaydı adımı"><figcaption>Veli: ek bilgi istenmez; <b>Kaydı Tamamla</b> ile hesap veli olarak tamamlanır.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>(Gerekirse) 1. adımda rolünüzü seçip <b>Devam et</b>'e tıklayın.</li>
+<li><b>Öğrenci</b>: Öğrenci Numarası ve Sınıf'ı girin; okulunuzu listeden seçebilirsiniz.</li>
+<li><b>Öğretmen</b>: <b>Bir okula bağlıyım</b> ise okulunuzu listeden seçin; <b>Bağımsız özel ders veriyorum</b> ise okul seçmeyin.</li>
+<li><b>Veli</b>: bilgilendirme metnini okuyun.</li>
+<li><b>Kaydı Tamamla</b>'ya tıklayın. Öğrenci ve öğretmen Sınavlar sayfasına, veli Dashboard'a yönlenir. Onay bekleyen öğretmen <a href="#ogretmen-basvuru-durumu">Başvuru durumu</a> sayfasını görür.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Öğrenci Numarası</td><td>Öğrenci için zorunlu.</td></tr>
+<tr><td>Sınıf</td><td>Öğrenci için zorunlu. Sorular ve günün soruları bu sınıfa göre gelir.</td></tr>
+<tr><td>Okul</td><td>Yazarak arayın ve listeden seçin; serbest metin kaydedilmez. Öğrencide okul kayda kilitlenir, sonra yalnızca admin değiştirir. Öğretmende okul bağlantısı admin onayıyla etkinleşir.</td></tr>
+<tr><td>Çalışma şekliniz</td><td><b>Bir okula bağlıyım</b> / <b>Bağımsız özel ders veriyorum</b>. Bağımsız öğretmen hesabı admin onayından sonra açılır.</td></tr>
+<tr><td>Geri</td><td>Önceki adıma döner.</td></tr>
+<tr><td>Kaydı Tamamla</td><td>Bilgileri kaydeder; zorunlu alanlar dolana kadar pasiftir.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Sınıf seçimi zorunludur.</q>: öğrenci sınıf seçmedi.</li>
+<li><q>Listeden bir okul seçin; serbest metin kaydedilmez.</q> / <q>Yazdığınız okulu listeden seçin, alanı temizleyin ya da "Bağımsız özel ders veriyorum" seçeneğini işaretleyin.</q>: okul alanına listede olmayan metin yazıldı.</li>
+<li><q>Okul listesi yüklenemedi.</q>: okul listesi alınamadı; <b>Tekrar dene</b>'ye tıklayın.</li>
+<li><q>Kayıt tamamlandı!</q>: kayıt başarılı.</li>
+<li><q>Öğretmen kaydınız alındı; hesabınız yönetici onayı bekliyor.</q>: öğretmen hesabı admin onayına düştü.</li>
+<li><q>Okul bağlantınız yönetici onayı bekliyor</q>: seçilen okul bağlantısı admin onayından sonra etkinleşir; o zamana kadar okulun öğrencileri ve sınıfları görünmez.</li>
+<li><q>Reddedilen okul talebinizden sonra bekleme süresi henüz dolmadı.</q>: reddedilen okul talebinden sonra yeni talep için beklemek gerekir; kalan süre mesajda yazar.</li>
+<li><q>Kayıt başarısız! Lütfen tekrar deneyin.</q>: sunucu hatası.</li>
+</ul>
+</article>
+
+<article class="screen" id="ortak-sifre">
+<h3>2.5 Şifre: unutma ve sıfırlama</h3>
+<p class="meta">Menü: Giriş ekranı ▸ Parolanızı mı unuttunuz? · Adres: kimlik sunucusu</p>
+<p class="purpose"><strong>Amacı:</strong> Şifresini unutan kullanıcının e-postayla yeni şifre belirlemesi. Uygulama içinde ayrı bir şifre değiştirme ekranı yoktur. Admin de bir kullanıcının şifresini sıfırlayabilir (bkz. <a href="#admin-ogretmenler">Admin bölümü</a>).</p>
+<figure class="shot"><img src="img/ortak-sifremi-unuttum.png" alt="Şifremi unuttum ekranı"><figcaption>Parolanızı mı unuttunuz? ekranı.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Giriş ekranında <b>Parolanızı mı unuttunuz?</b>'a tıklayın.</li>
+<li><b>E-Posta</b> alanına hesabınızın e-postasını yazıp <b>Gönder</b>'e tıklayın.</li>
+<li>Gelen e-postadaki bağlantıyla yeni şifrenizi belirleyin.</li>
+<li><b>« Girişe geri dön</b> ile giriş ekranına dönün ve yeni şifreyle giriş yapın.</li>
+</ol>
+<p class="known-issue">Yerel ortamda bu ekran tema stilleri olmadan, düz form olarak açılıyor (görüntüdeki gibi).</p>
+<p class="note">Admin şifrenizi sıfırladıysa size geçici bir şifre iletilir; ilk girişte yeni şifre belirlemeniz istenir ve açık oturumlarınız kapanır.</p>
+</article>
+
+<article class="screen" id="ortak-ust-cubuk">
+<h3>2.6 Üst çubuk, profil menüsü ve çıkış</h3>
+<p class="meta">Menü: her sayfada üstte · Adres: tüm sayfalar</p>
+<p class="purpose"><strong>Amacı:</strong> Dil, tema, bildirimler ve hesap menüsüne her sayfadan erişmek. Soldaki menü rolünüze göre değişir; menüdeki öğeler rol bölümlerinde anlatılır.</p>
+<figure class="shot"><img src="img/ortak-profil-menusu.png" alt="Profil menüsü açık"><figcaption>Sağ üstteki ada tıklanınca açılan profil menüsü.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Sol menüyü daraltmak/genişletmek için logonun yanındaki ok butonunu kullanın.</li>
+<li>Sağ üstte adınıza tıklayarak profil menüsünü açın.</li>
+<li>Oturumu kapatmak için menüden <b>Çıkış Yap</b>'ı seçin.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Menüyü Daralt / Genişlet</td><td>Sol menüyü simge görünümüne alır veya açar.</td></tr>
+<tr><td>Yeni / Popüler, Ara ...</td><td>Üst çubuktaki hızlı filtre ve arama alanı.</td></tr>
+<tr><td>TR</td><td>Dil seçimi (bkz. <a href="#ortak-dil-tema">2.7</a>).</td></tr>
+<tr><td>Ay / güneş anahtarı</td><td>Koyu / açık tema (bkz. <a href="#ortak-dil-tema">2.7</a>).</td></tr>
+<tr><td>Zil</td><td>Bildirimler sayfasını açar; okunmamış bildirim varsa işaret gösterir (bkz. <a href="#ortak-bildirimler">2.8</a>).</td></tr>
+<tr><td>Profil menüsü ▸ Bildirimler</td><td>Bildirimler sayfasını açar.</td></tr>
+<tr><td>Profil menüsü ▸ Çıkış Yap</td><td>Oturumu kapatır.</td></tr>
+<tr><td>Profil menüsü ▸ Profil Bilgileri, Ayarlar (Hesap, Güvenlik), Görevler, Başarılar, Destek</td><td>Menüde görünür; profil ve tema ayarları için sol menüdeki <b>Ayarlar</b>'ı kullanın.</td></tr>
+</table>
+<p class="known-issue">Profil menüsündeki Profil Bilgileri, Ayarlar, Görevler, Başarılar ve Destek öğelerine tıklanınca bir şey olmuyor; üst çubuktaki arama da sonuç sayfası açmıyor. Sol menüdeki <b>Yardım</b> ve <b>Geri Bildirim</b> öğeleri karşılama sayfasına düşüyor.</p>
+</article>
+
+<article class="screen" id="ortak-dil-tema">
+<h3>2.7 Dil ve tema</h3>
+<p class="meta">Menü: üst çubuk ▸ TR ve ay/güneş anahtarı · Adres: tüm sayfalar</p>
+<p class="purpose"><strong>Amacı:</strong> Arayüz dilini (Türkçe / English) ve renk temasını (açık / koyu) seçmek. Seçimler tarayıcıda saklanır; dil tercihi hesabınıza da kaydedilir.</p>
+<figure class="shot"><img src="img/ortak-dil-secimi.png" alt="Dil seçimi menüsü"><figcaption>TR'ye tıklanınca açılan dil listesi.</figcaption></figure>
+<figure class="shot"><img src="img/ortak-koyu-tema.png" alt="Koyu tema"><figcaption>Koyu tema.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Dili değiştirmek için üst çubukta <b>TR</b>'ye tıklayın ve <b>Türkçe</b> ya da <b>English</b>'i seçin. Sayfa hemen o dile geçer.</li>
+<li>Temayı değiştirmek için ay/güneş anahtarına tıklayın (<q>Koyu temaya geç</q> / <q>Açık temaya geç</q>).</li>
+<li>Öğrenciler kart görünümünü ayrıca <b>Ayarlar ▸ Tema Ayarları</b>'ndan kişiselleştirebilir (bkz. <a href="#ogrenci-ayarlar">Öğrenci ▸ Ayarlar</a>).</li>
+</ol>
+</article>
+
+<article class="screen" id="ortak-bildirimler">
+<h3>2.8 Bildirimler</h3>
+<p class="meta">Menü: üst çubuk ▸ zil, profil menüsü ▸ Bildirimler · Adres: /notifications</p>
+<p class="purpose"><strong>Amacı:</strong> Kazanılan rozetleri, hatırlatmaları, randevu kararlarını, yeni yorumları ve öğretmen başvurusu gibi güncellemeleri listelemek. Yeni bildirim ayrıca ekranın köşesinde kısa bir uyarı olarak görünür.</p>
+<figure class="shot"><img src="img/ortak-bildirimler.png" alt="Bildirimler sayfası"><figcaption>Bildirimler sayfası (öğretmen hesabında yeni yorum bildirimi).</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Üst çubuktaki zile tıklayın.</li>
+<li>Sağ üstte <b>Okunmamış</b> veya <b>Tümü</b> filtresini seçin.</li>
+<li>Bir bildirime tıklayarak ilgili sayfaya gidin (ör. yorumun olduğu test, randevularım, başvurular).</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Okunmamış / Tümü</td><td>Listeyi filtreler.</td></tr>
+<tr><td>Bildirim satırı</td><td>Başlık, kısa metin ve ne zaman geldiği. Aynı konudaki birden çok bildirim tek satırda birleştirilebilir.</td></tr>
+<tr><td>Anlık uyarıdaki butonlar</td><td><b>Sınava Git</b>, <b>Başvurulara Git</b>, <b>Profile Git</b>, <b>Görüntüle</b>: bildirimin konusuna götürür.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Okunmamış bildirimin yok.</q> / <q>Henüz bir bildirimin yok.</q>: liste boş.</li>
+<li><q>Bildirimlerin yüklenemedi.</q>: liste alınamadı; <b>Tekrar dene</b>'ye tıklayın.</li>
+</ul>
+</article>
+</section>
+
+<section class="role" id="ogrenci">
+<h2>3. Öğrenci</h2>
+<p>Bu bölüm, <strong>Öğrenci</strong> rolüyle giriş yapan kullanıcının sol menüde gördüğü tüm ekranları anlatır. Öğrenci; kendisine atanan ve keşfet listesindeki sınavları çözer, rastgele sorularla pratik yapar, çalışma programı oluşturur, takvimini izler, bağımsız (özel ders) öğretmen arayıp randevu talep eder ve onaylı derslere video ile katılır. Ekran görüntüleri yerel test ortamında bir test öğrencisi hesabıyla alınmıştır.</p>
+
+<table class="menu-map">
+<tr><th>Menü öğesi</th><th>Ekran</th><th>Bölüm</th></tr>
+<tr><td>Dashboard</td><td>Öğrenci ana sayfası</td><td><a href="#ogrenci-dashboard">3.1</a></td></tr>
+<tr><td>Sınavlar</td><td>Sınav Kütüphanesi, sınav detayı, sınav çözme, sonuç</td><td><a href="#ogrenci-sinavlar">3.2</a> – <a href="#ogrenci-test-sonuc">3.5</a></td></tr>
+<tr><td>Soru Çöz</td><td>Pratik (rastgele soru) oturumu</td><td><a href="#ogrenci-pratik">3.6</a></td></tr>
+<tr><td>Ders Çalışma</td><td>Ders kataloğu, konular ve içerikler</td><td><a href="#ogrenci-ders-calisma">3.7</a></td></tr>
+<tr><td>Programlarım</td><td>Çalışma programları, program detayı, yeni program sihirbazı</td><td><a href="#ogrenci-programlar">3.8</a> – <a href="#ogrenci-program-olustur">3.10</a></td></tr>
+<tr><td>Planım</td><td>Aylık takvim</td><td><a href="#ogrenci-planim">3.11</a></td></tr>
+<tr><td>Özel Ders Öğretmeni Ara</td><td>Öğretmen arama, öğretmen profili, randevu alma</td><td><a href="#ogrenci-ogretmen-ara">3.12</a> – <a href="#ogrenci-randevu-al">3.14</a></td></tr>
+<tr><td>Ders Randevularım</td><td>Randevu listesi ve video ders</td><td><a href="#ogrenci-randevularim">3.15</a> – <a href="#ogrenci-video-ders">3.16</a></td></tr>
+<tr><td>Raporlar</td><td>Başarı Rozetleri</td><td><a href="#ogrenci-raporlar">3.17</a></td></tr>
+<tr><td>Ayarlar</td><td>Profil sekmeleri (Bilgilerim, Rozetler/Liderlik, Ödevler, Takvim, Tema)</td><td><a href="#ogrenci-ayarlar">3.18</a></td></tr>
+</table>
+<p class="known-issue">Menünün altındaki <strong>Yardım</strong> ve <strong>Geri Bildirim</strong> öğelerinin uygulamada karşılığı olan bir sayfa henüz yok; tıklandığında karşılama sayfasına (<code>/welcome</code>) yönlendirir.</p>
+<p class="note"><strong>Çalışma sayfaları ve çalışma linkleri öğrencide nerede görünür?</strong> Öğrenci bunları ayrı bir menüden açmaz. Öğretmenlerin hazırladığı <em>çalışma sayfaları</em> (görsel, link veya kitap sayfası etkinlikleri), program detayındaki <q>Çalışma Sayfası Ekle</q> düğmesiyle programa eklenir ve takvimde açılır (<a href="#ogrenci-program-detay">3.9</a>). Öğretmenlerin konu/alt konu için tanımladığı <em>çalışma linkleri</em> ise tamamlanmış bir sınavın sonuç ekranında, yanlış cevaplanan sorunun altında <q>Bu soruyla ilgili çalışma önerileri</q> başlığıyla listelenir (<a href="#ogrenci-test-sonuc">3.5</a>).</p>
+
+<article class="screen" id="ogrenci-dashboard">
+<h3>3.1 Dashboard (ana sayfa)</h3>
+<p class="meta">Menü: Dashboard · Adres: /dashboard</p>
+<p class="purpose"><strong>Amacı:</strong> Girişten sonra açılan özet sayfa. Günün sorularını, son bir yılın çalışma istatistiklerini, rozet durumunu ve öğretmenin atadığı aktif testleri tek yerde gösterir.</p>
+<figure class="shot"><img src="img/ogrenci-dashboard.png" alt="Öğrenci dashboard ekranı"><figcaption>Öğrenci dashboard'u: karşılama satırı, Günün soruları kartı, istatistik kutuları, aktivite ısı haritası, Rozetler ve Atanmış Testler.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Giriş yaptıktan sonra sol menüden <strong>Dashboard</strong>'a tıklayın. Üstte <q>Hoş geldin</q> ve son giriş zamanınız görünür.</li>
+<li><strong>Günün soruları</strong> kartında <q>Başla</q> ile size özel günlük seti açın; set yarım kaldıysa <q>Devam et</q> görünür. Set Soru Çöz ekranında açılır.</li>
+<li>İstatistik kutularından toplam soru, doğru cevap, çalışma süresi ve aktivite skorunuzu izleyin; ısı haritasında bir güne gelerek o günün soru/doğru/süre değerlerini görün.</li>
+<li><strong>Atanmış Testler</strong> bölümündeki bir karta tıklayarak sınavın detay sayfasına gidin.</li>
+<li>Rozetler kartında kazandığınız ve sıradaki rozetleri takip edin.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Günün soruları</td><td>Sınıfınıza göre hazırlanan günlük soru seti. <q>Seçim yapmana gerek yok, tek tıkla başla.</q> Seri (<q>Seri: N gün</q>) ve tahmini süre gösterilir. <q>Serbest pratiğe geç</q> Soru Çöz ekranını açar.</td></tr>
+<tr><td>Toplam Soru / Doğru Cevap / Çalışma Süresi (dk) / Aktivite Skoru</td><td>Son bir yıla ait toplam değerler.</td></tr>
+<tr><td>Aktivite ısı haritası</td><td>Her kare bir gün; renk koyulaştıkça o gün daha çok çalışılmıştır.</td></tr>
+<tr><td>Rozetler</td><td><q>Kazanılan Rozetler</q> ve <q>Sıradaki Rozetler</q> listeleri.</td></tr>
+<tr><td>Atanmış Testler</td><td>Öğretmenin size atadığı aktif testler; kartta bitiş tarihi (<q>Bitiş: …</q>) yazar.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Günün soruları getirilemedi, lütfen tekrar dene.</q> — günlük set alınamadığında; yanında <q>Tekrar dene</q> düğmesi çıkar.</li>
+<li><q>Bugün için soru bulunamadı</q> / <q>Sınıf bilgin doğru mu? Profilinden kontrol edebilirsin.</q> — sınıfınıza uygun soru yoksa; <q>Profilime git</q> ile sınıfınızı kontrol edin.</li>
+<li><q>Bugünkü set tamam</q> — günlük seti bitirdiğinizde; yarın yeni set gelir.</li>
+<li><q>Rozetler yüklenirken bir sorun oluştu.</q> — rozet bilgisi alınamadığında.</li>
+<li><q>Aktif atanmış test bulunmuyor.</q> / <q>Atanmış testler alınırken bir sorun oluştu.</q></li>
+<li><q>Son bir yıl için aktivite verisi bulunamadı.</q> — hiç çalışma kaydı yoksa.</li>
+</ul>
+<p class="known-issue">Yerel ortamda ekran görüntüsü alınırken <q>Günün soruları getirilemedi, lütfen tekrar dene.</q> ve <q>Rozetler yüklenirken bir sorun oluştu.</q> uyarıları sürekli göründü (ilgili servis yanıt vermedi). Görüntüdeki hata kutuları bu nedenledir.</p>
+</article>
+
+<article class="screen" id="ogrenci-sinavlar">
+<h3>3.2 Sınavlar (Sınav Kütüphanesi)</h3>
+<p class="meta">Menü: Sınavlar · Adres: /tests</p>
+<p class="purpose"><strong>Amacı:</strong> Size atanan, devam eden ve tamamlanan sınavları görmek, yeni sınav keşfetmek, filtrelemek ve sınava başlamak. Ekranın başlığı <q>Sınav Kütüphanesi</q>, alt başlığı <q>Konu ve zorluğa göre test bul, çöz ve ilerlemeni takip et.</q></p>
+<figure class="shot"><img src="img/ogrenci-sinavlar-kesfet.png" alt="Sınav Kütüphanesi Keşfet sekmesi"><figcaption>Keşfet sekmesi: <q>Kaldığın yerden devam et</q> şeridi, filtreler, <q>Atanan sınavlar</q> ve <q>Keşfet</q> kartları.</figcaption></figure>
+<figure class="shot"><img src="img/ogrenci-sinavlar-bana-atananlar.png" alt="Bana Atananlar sekmesi"><figcaption>Bana Atananlar: öğretmenin atadığı sınavlar (<q>Öğretmenin atadı</q> etiketi ve kalan gün).</figcaption></figure>
+<figure class="shot"><img src="img/ogrenci-sinavlar-devam-edenler.png" alt="Devam Edenler sekmesi"><figcaption>Devam Edenler: yarım kalan sınavlar, ilerleme çubuğu ve <q>Devam Et</q> düğmesi.</figcaption></figure>
+<figure class="shot"><img src="img/ogrenci-sinavlar-tamamlananlar.png" alt="Tamamlananlar sekmesi"><figcaption>Tamamlananlar: bitirilen sınavlar, doğru/yanlış sayısı, <q>Sonucu Gör</q> ve tekrar çözme düğmesi.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Sol menüden <strong>Sınavlar</strong>'a tıklayın; ekran <strong>Keşfet</strong> sekmesiyle açılır.</li>
+<li>Üstteki sekmelerden birini seçin: <q>Keşfet</q>, <q>Bana Atananlar</q>, <q>Devam Edenler</q>, <q>Tamamlananlar</q>. Sekme adının yanındaki sayı o sekmedeki sınav adedidir.</li>
+<li>Soldaki <strong>Filtreler</strong> panelinde durum, ders ve sınıf seçerek listeyi daraltın; sağ üstten görünümü (kart/liste) ve sıralamayı (<q>En yeni</q>, <q>Popüler</q>, <q>Süre</q>, <q>Soru sayısı</q>, <q>A–Z</q>) değiştirin.</li>
+<li>Bir sınav kartının ana düğmesine basın: yeni sınavda <q>Başla</q>, yarım sınavda <q>Devam Et</q>, bitmiş sınavda <q>Sonucu Gör</q>. Kartın başlığına tıklamak sınavın detay sayfasını açar.</li>
+<li>Tamamlanan bir sınavı yeniden çözmek için kartın sağ altındaki yenile (<q>Tekrar çöz</q>) simgesini kullanın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Kaldığın yerden devam et</td><td>Yarım kalan sınavlar ve tamamlanma yüzdesi; tıklayınca sınav kaldığı yerden açılır.</td></tr>
+<tr><td>Filtreler: Durum</td><td><q>Başlanmadı</q>, <q>Devam ediyor</q>, <q>Tamamlandı</q>.</td></tr>
+<tr><td>Filtreler: Ders / Sınıf</td><td>Bir veya birden fazla ders ve sınıf seçilebilir. <q>Filtreleri temizle</q> tüm seçimleri kaldırır.</td></tr>
+<tr><td>Kart etiketleri</td><td><q>Öğretmenin atadı</q>, <q>Devam ediyor</q>, <q>Tamamlandı</q>, <q>Çalışma testi</q>; teslim durumu için <q>N gün kaldı</q>, <q>Bugün son gün</q>, <q>Süre doldu</q>.</td></tr>
+<tr><td>Kart bilgileri</td><td>Ders, sınıf, soru sayısı, süre (dk), kaç öğrencinin çözdüğü; tamamlanmışsa <q>N doğru / N yanlış</q>.</td></tr>
+<tr><td>Kart menüsü (⋮)</td><td><q>Detayı gör</q>.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Testler yüklenirken bir sorun oluştu.</q> — liste alınamazsa; <q>Tekrar dene</q> ile yenileyin.</li>
+<li><q>Atanmış testler yüklenirken bir sorun oluştu.</q></li>
+<li><q>Sana atanmış aktif bir sınav yok.</q> — Keşfet sekmesinde atanmış sınav yoksa.</li>
+<li><q>Şu an keşfedilecek yeni sınav yok.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="ogrenci-test-detay">
+<h3>3.3 Sınav detayı (başlamadan önce)</h3>
+<p class="meta">Menü: Sınavlar → sınav kartı · Adres: /test/{sınavNo}</p>
+<p class="purpose"><strong>Amacı:</strong> Sınava başlamadan önce içeriğini (soru sayısı, süre, konu dağılımı, kurallar) görmek, sınavı başlatmak veya ileri bir tarihe planlayıp hatırlatma kurmak.</p>
+<figure class="shot"><img src="img/ogrenci-test-detay.png" alt="Sınav detay sayfası"><figcaption>Sınav detayı: üst bilgi kartı (soru, süre, çözen öğrenci, ortalama başarı), Genel Bakış, Konu Dağılımı, <q>Başlamaya hazır</q> kutusu ve <q>Planla &amp; Hatırlat</q>.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Sınav kütüphanesinde bir sınavın başlığına tıklayın.</li>
+<li><strong>Genel Bakış</strong> ve <strong>Konu Dağılımı</strong> bölümlerinde sınavın kapsamını inceleyin.</li>
+<li>Hemen çözmek için <q>Sınava Başla</q>'ya (yarım bıraktıysanız <q>Devam Et</q>'e) basın; sınav çözme ekranı açılır.</li>
+<li>Sonra çözmek için sağdaki <strong>Planla &amp; Hatırlat</strong> kutusunda <q>Tarih</q>, <q>Saat</q> ve <q>Ne zaman hatırlatılsın</q> alanlarını doldurup <q>Planla</q>'ya basın. Planlanan sınav <strong>Planım</strong> takviminde görünür.</li>
+<li>Kurulu hatırlatıcıyı değiştirmek için <q>Güncelle</q>, kaldırmak için <q>İptal Et</q> düğmesini kullanın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Soru / Süre / Çözen öğrenci / Ort. başarı</td><td>Sınavın özet bilgileri.</td></tr>
+<tr><td>Başlamaya hazır</td><td>Kurallar: <q>süre dolunca otomatik biter</q>, <q>geri dönüp değiştirebilirsin</q>, <q>İnternet kesilse bile cevapların kaydedilir</q>.</td></tr>
+<tr><td>Sınava Başla / Devam Et</td><td>Sınavı başlatır veya kaldığı yerden açar.</td></tr>
+<tr><td>Planla &amp; Hatırlat</td><td>Tarih, saat ve hatırlatma zamanı (<q>N saat önce</q>, <q>N dakika önce</q>) seçilir; <q>Planla</q> / <q>Kaydet</q> / <q>Vazgeç</q>.</td></tr>
+<tr><td>Denemelerin / Benzer Sınavlar</td><td>Daha önceki denemeleriniz (en iyi sonuç, gelişim) ve benzer sınav önerileri (varsa).</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Lütfen tarih ve saat seçin.</q> — hatırlatıcı için tarih/saat boşsa.</li>
+<li><q>Geçmiş bir tarih seçemezsin.</q></li>
+<li><q>Hatırlatıcı kuruldu.</q> / <q>Hatırlatıcı kaydedilemedi.</q></li>
+<li><q>Hatırlatıcı iptal edildi.</q> / <q>Hatırlatıcı iptal edilemedi.</q></li>
+<li><q>Bu teste erişiminiz yok veya test bulunamadı.</q> — size açık olmayan bir sınav adresi açıldığında.</li>
+<li><q>Sınav detayları getirilemedi.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="ogrenci-test-cozme">
+<h3>3.4 Sınav çözme</h3>
+<p class="meta">Menü: Sınavlar → Başla / Devam Et · Adres: /testsolve/{oturumNo}</p>
+<p class="purpose"><strong>Amacı:</strong> Sınav sorularını süre içinde cevaplamak. Cevaplar anında kaydedilir; sınav yarıda bırakılıp daha sonra devam edilebilir.</p>
+<figure class="shot"><img src="img/ogrenci-test-cozme.png" alt="Sınav çözme ekranı"><figcaption>Sınav çözme: üstte kalan süre ve <q>Sınavı Bitir</q>, ortada soru ve şıklar, sağda <q>Soru Haritası</q>, altta gezinme çubuğu.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Soruyu okuyun ve doğru şıkka tıklayın; seçiminiz yeşil işaretlenir.</li>
+<li>Sonraki soruya alt çubuktaki ok ile ya da sağdaki <strong>Soru Haritası</strong>'nda bir numaraya tıklayarak geçin. Cevaplanan sorular haritada renklenir.</li>
+<li>İsterseniz <q>Otomatik geçiş aç</q> ile cevap verince bir sonraki soruya otomatik geçilmesini sağlayın.</li>
+<li>Emin olmadığınız soruyu üstteki işaret simgesiyle (<q>Soruyu işaretle</q>) işaretleyin; sonra <q>İşaretliye git</q> ile dönün.</li>
+<li>Tüm soruları bitirince sağ üstteki <q>Sınavı Bitir</q>'e basın. Süre dolarsa sınav kendiliğinden tamamlanır.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Kalan Süre</td><td>Sınavın kalan süresi (dakika : saniye).</td></tr>
+<tr><td>Cevaplanma oranı</td><td>Cevaplanan / toplam soru (ör. 2/88).</td></tr>
+<tr><td>İşaretle / Bildir / Tam ekran</td><td>Soruyu işaretler, hatalı soruyu bildirir (<q>Soru bildirildi</q>), soruyu tam ekran gösterir.</td></tr>
+<tr><td>Soru Haritası</td><td>Tüm soru numaraları; cevaplanmış ve işaretli sorular farklı renkte.</td></tr>
+<tr><td>Otomatik geçiş açık / kapalı</td><td>Cevaplayınca sonraki soruya kendiliğinden geçer.</td></tr>
+<tr><td>Cevabı Temizle</td><td>Seçili sorunun cevabını siler (<q>Cevap temizlendi</q>).</td></tr>
+<tr><td>Sınavı Bitir</td><td>Sınavı tamamlar ve sonucu kaydeder.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Süre Doldu!</q> — süre bittiğinde; sınav otomatik tamamlanır.</li>
+<li><q>Tüm sorular cevaplanmış</q> — boş soru kalmadığında.</li>
+<li><q>Soru işaretlendi</q> / <q>İşaret kaldırıldı</q></li>
+</ul>
+<p class="known-issue"><q>Sınavı Bitir</q> onay sormadan sınavı kapatır ve öğrenciyi sonuç sayfası yerine <strong>Ayarlar</strong> (profil) sayfasına götürür. Sonucu görmek için Sınavlar → Tamamlananlar → <q>Sonucu Gör</q> yolunu kullanın.</p>
+</article>
+
+<article class="screen" id="ogrenci-test-sonuc">
+<h3>3.5 Sınav sonucu</h3>
+<p class="meta">Menü: Sınavlar → Tamamlananlar → Sonucu Gör · Adres: /test/{sınavNo}</p>
+<p class="purpose"><strong>Amacı:</strong> Tamamlanan sınavın başarı yüzdesini, konu bazlı sonucunu ve soru soru cevaplarınızı incelemek; yanlış yaptığınız sorulardan yeni bir test üretmek ve yanlış sorular için çalışma önerilerini açmak.</p>
+<figure class="shot"><img src="img/ogrenci-test-sonuc.png" alt="Sınav sonuç ekranı"><figcaption>Sonuç görünümü: başarı halkası, doğru/yanlış/boş sayıları, <q>Yanlışlarımdan Test Oluştur</q>, <q>Konu Bazlı Başarın</q>, <q>Sıradaki Adım</q> ve <q>Soru Soru Görünüm</q>.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Sınavlar ekranında <q>Tamamlananlar</q> sekmesine geçin ve sınav kartında <q>Sonucu Gör</q>'e basın.</li>
+<li>Üst kartta başarı yüzdenizi ve <q>N / N doğru</q> özetini okuyun.</li>
+<li><strong>Konu Bazlı Başarın</strong> bölümünde hangi konularda eksik olduğunuzu görün.</li>
+<li><strong>Soru Soru Görünüm</strong> → <q>Sonuçları İncele</q> panelinde soru numaralarına tıklayarak cevabınızı ve doğru şıkkı karşılaştırın.</li>
+<li>Yanlış cevapladığınız bir soruda, altta <q>Bu soruyla ilgili çalışma önerileri</q> listelenir; bir linke tıklayınca içerik yeni sekmede açılır.</li>
+<li>Yanlışlarınızı tekrar çözmek için <q>Yanlışlarımdan Test Oluştur</q>'a basın; yeni test oluşturulup açılır.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Başarı</td><td>Yüzde olarak sınav puanı; yanında doğru, yanlış, boş sayısı ve süre.</td></tr>
+<tr><td>Yanlışlarımdan Test Oluştur</td><td>Yalnızca yanlış cevaplanan sorulardan kişisel bir test hazırlar.</td></tr>
+<tr><td>Konu Bazlı Başarın</td><td>Her konu için doğru/toplam ve yüzde.</td></tr>
+<tr><td>Sıradaki Adım</td><td>Benzer sınav önerileri (<q>Benzer sınav: "…"</q>).</td></tr>
+<tr><td>Sıralaman / Kazandığın Rozet</td><td>Sınıf içindeki sıranız ve eşiği geçtiyseniz kazandığınız rozet (varsa).</td></tr>
+<tr><td>Çalışma önerileri</td><td>Öğretmenlerin soru konusuna tanımladığı video/doküman linkleri; <q>yeni sekmede açılır</q>.</td></tr>
+<tr><td>Yorumlar ve sorular</td><td>Soru veya sınav hakkında öğretmene yorum/soru yazma alanı (sınavda yorumlar açıksa).</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Soru dökümü yükleniyor...</q> — cevaplar yüklenirken.</li>
+<li><q>Test oluşturulamadı.</q> — yanlışlardan test üretilemezse.</li>
+<li><q>Çalışma önerileri şu anda yüklenemedi.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="ogrenci-pratik">
+<h3>3.6 Soru Çöz (pratik)</h3>
+<p class="meta">Menü: Soru Çöz · Adres: /practice</p>
+<p class="purpose"><strong>Amacı:</strong> Süre baskısı olmadan rastgele sorularla pratik yapmak. Her cevaptan sonra sonuç anında gösterilir. Başlık: <q>Soru Çöz</q>, alt başlık: <q>Kapsamını seç, rastgele sorularla pratik yap; her cevaptan sonra sonucu anında gör.</q></p>
+<figure class="shot"><img src="img/ogrenci-pratik.png" alt="Soru Çöz kapsam seçimi"><figcaption>Kapsam seçimi ve <q>Geçmiş Oturumlar</q> listesi.</figcaption></figure>
+<figure class="shot"><img src="img/ogrenci-pratik-soru.png" alt="Pratik oturumunda soru"><figcaption>Pratik oturumu: üstte sayaçlar (Cevaplanan, Doğru, Yanlış, Pas) ve <q>Bitir</q>, altta <q>Pas Geç</q> ve <q>Cevabı Gönder</q>.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Sol menüden <strong>Soru Çöz</strong>'e tıklayın.</li>
+<li><strong>Kapsam</strong> bölümünde isterseniz <q>Dersler</q> listesinden ders, ardından <q>Konular (isteğe bağlı)</q> listesinden konu seçin. Hiçbir şey seçmezseniz sınıfınızdaki tüm derslerden soru gelir.</li>
+<li><q>Başla</q>'ya basın; ilk soru açılır.</li>
+<li>Bir şık seçip <q>Cevabı Gönder</q>'e basın. Sonuç hemen gösterilir; doğru şık işaretlenir. <q>Sonraki Soru</q> ile devam edin. Bilmediğiniz soruyu <q>Pas Geç</q> ile atlayın.</li>
+<li>Bitirmek için sağ üstteki <q>Bitir</q>'e basın. Özet ekranından <q>Yeni Oturum</q>, <q>Oturumu İncele</q> veya <q>Panele dön</q> seçeneklerinden birini seçin.</li>
+<li>Önceki bir oturumu açmak için <strong>Geçmiş Oturumlar</strong> listesindeki satıra tıklayın; devam eden oturuma döner veya biten oturumu soru soru incelersiniz.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Dersler / Konular (isteğe bağlı)</td><td>Pratiğin kapsamı. Seçilenler etiket olarak görünür ve tek tek kaldırılabilir.</td></tr>
+<tr><td>Varsayılan kapsam</td><td><q>kendi sınıfın + tüm dersler</q>.</td></tr>
+<tr><td>Geçmiş Oturumlar</td><td>Tarih, kapsam, soru/doğru/yanlış/pas sayısı, başarı yüzdesi, süre ve durum (<q>Devam ediyor</q> / <q>Tamamlandı</q>).</td></tr>
+<tr><td>Cevabı Gönder / Pas Geç / Sonraki Soru</td><td>Soruyu cevaplar, atlar veya sonraki soruya geçer.</td></tr>
+<tr><td>Bitir</td><td>Oturumu sonlandırır ve özeti gösterir.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Doğru cevap! Harika gidiyorsun.</q> / <q>Yanlış cevap. Doğru şık aşağıda gösteriliyor.</q> / <q>Soru pas geçildi. Doğru şık aşağıda gösteriliyor.</q></li>
+<li><q>Pratik yapabilmek için sınıf bilginin tanımlı olması gerekir.</q> — profilde sınıf yoksa; <q>Profilime git</q>.</li>
+<li><q>Seçtiğin kapsamda soru bulunamadı</q> — <q>Kapsamı Değiştir</q> ile başka ders/konu seçin.</li>
+<li><q>Bu kapsamdaki soruların hepsini çözdün</q></li>
+<li><q>Dersler yüklenemedi.</q> / <q>Geçmiş oturumlar yüklenemedi.</q> / <q>İşlem tamamlanamadı. Lütfen tekrar deneyin.</q></li>
+<li>Günün soruları modunda: <q>Günün soruları günde bir kez çözülür. İstersen serbest pratikle devam edebilirsin.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="ogrenci-ders-calisma">
+<h3>3.7 Ders Çalışma</h3>
+<p class="meta">Menü: Ders Çalışma · Adres: /study</p>
+<p class="purpose"><strong>Amacı:</strong> Dersleri, konuları ve alt konuları gezerek video ve doküman içeriklerine ulaşmak, içerikleri tamamlandı olarak işaretlemek ve not almak.</p>
+<figure class="shot"><img src="img/ogrenci-ders-calisma.png" alt="Ders Çalışma kataloğu"><figcaption>Ders Kataloğu: arama kutusu, <q>İlerleme Durumu</q> ve ders kartları.</figcaption></figure>
+<figure class="shot"><img src="img/ogrenci-ders-calisma-konular.png" alt="Ders konuları listesi"><figcaption>Bir ders seçildiğinde konular ve her konunun tamamlanma yüzdesi.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Sol menüden <strong>Ders Çalışma</strong>'ya tıklayın.</li>
+<li>Ders kartlarından birine (ör. Matematik) tıklayın; o dersin konuları listelenir.</li>
+<li>Bir konuya, sonra bir alt konuya tıklayın; alt konudaki video ve dokümanlar görünür.</li>
+<li>İçeriği açın; video izleyin veya <q>Dokümanı Görüntüle</q> ile dokümanı açın.</li>
+<li>Bitirdiğinizde <q>Tamamlandı Olarak İşaretle</q>'ye basın. Alttaki <q>Notlarım</q> sekmesine kendi notunuzu, <q>Yorumlar</q> sekmesine yorum yazabilirsiniz.</li>
+<li>Geri dönmek için başlığın solundaki ok simgesini kullanın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Ders, konu veya içerik ara</td><td>Katalogda arama yapar.</td></tr>
+<tr><td>İlerleme Durumu</td><td>Tamamlanan içeriklerin yüzdesi.</td></tr>
+<tr><td>Konu kartı</td><td>Konu adı ve <q>%N Tamamlandı</q>.</td></tr>
+<tr><td>Favorilere Ekle / Paylaş / Linki Kopyala</td><td>İçerik sayfasındaki işlemler (<q>Link kopyalandı!</q>).</td></tr>
+<tr><td>Tamamlandı Olarak İşaretle</td><td>İçeriği ilerlemenize ekler.</td></tr>
+<tr><td>Yorumlar / Notlarım</td><td>İçerikle ilgili yorum ve kişisel notlar.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Henüz hiç ders bulunamadı.</q></li>
+<li><q>Bu ders için henüz konu eklenmemiş.</q> / <q>Bu konu için henüz alt konu eklenmemiş.</q></li>
+<li><q>Bu alt konu için henüz içerik eklenmemiş.</q> / <q>İçerik bulunamadı.</q></li>
+<li><q>Henüz hiç yorum yok. İlk yorumu siz yapın!</q></li>
+</ul>
+<p class="known-issue">Bu ekran şu an sunucuya bağlı değil: dersler, konular, ilerleme yüzdesi, yorum ve notlar uygulama içindeki örnek (sabit) verilerden geliyor ve kaydedilmiyor. Ayrıca açık temada <q>Ders Kataloğu</q> başlığı ve kart açıklamaları zemin rengine çok yakın olduğu için zor okunuyor.</p>
+</article>
+
+<article class="screen" id="ogrenci-programlar">
+<h3>3.8 Programlarım</h3>
+<p class="meta">Menü: Programlarım · Adres: /programs</p>
+<p class="purpose"><strong>Amacı:</strong> Kişisel çalışma programlarınızı listelemek, ilerlemelerini izlemek ve yeni program oluşturmak.</p>
+<figure class="shot"><img src="img/ogrenci-programlar.png" alt="Çalışma Programlarım"><figcaption><q>Çalışma Programlarım</q>: üstte toplam/aktif/tamamlanan sayıları, altta program kartları.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Sol menüden <strong>Programlarım</strong>'a tıklayın.</li>
+<li>Kartları <q>Tümü</q>, <q>Aktif</q>, <q>Tamamlanan</q> filtreleriyle süzün.</li>
+<li>Bir programa devam etmek için <q>Devam Et</q>, ayrıntıları görmek için <q>Detaylar</q>'a basın.</li>
+<li>Kart menüsünden (⋮) programı düzenleyin, silin veya yeniden başlatın (<q>Tekrar Başla</q>).</li>
+<li>Yeni program için sağ üstteki <q>Yeni Program Oluştur</q>'a basın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Toplam Program / Aktif Program / Tamamlanan</td><td>Program sayıları.</td></tr>
+<tr><td>Program kartı</td><td>Ad, başlangıç tarihi, süre (<q>N gün</q>), günlük konu (<q>N konu/gün</q>), tür, durum (<q>Başlanmadı</q>, <q>Devam Ediyor</q>, <q>Tamamlandı</q>) ve <q>İlerleme Durumu</q> (<q>N/N sayfa tamamlandı</q>).</td></tr>
+<tr><td>Düzenle / Sil / Tekrar Başla</td><td>Kart menüsündeki işlemler.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Henüz bir çalışma programınız yok</q> — <q>İlk Programımı Oluştur</q> ile başlayın.</li>
+<li><q>Programlar yüklenemedi</q> — <q>Tekrar Dene</q>.</li>
+<li>Silerken: <q>"…" programını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.</q> → <q>Program silindi.</q> / <q>Program silinemedi. Lütfen tekrar deneyin.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="ogrenci-program-detay">
+<h3>3.9 Program detayı ve çalışma sayfaları</h3>
+<p class="meta">Menü: Programlarım → Detaylar · Adres: /programs/{programNo}/detail</p>
+<p class="purpose"><strong>Amacı:</strong> Programın günlük hedefini ve takvimini görmek, programa öğretmenlerin hazırladığı çalışma sayfalarını (görsel, link, kitap sayfası) eklemek ve açmak.</p>
+<figure class="shot"><img src="img/ogrenci-program-detay.png" alt="Program detay sayfası"><figcaption>Program detayı: tarih aralığı, <q>Günde N soru, N konu</q>, tür ve <q>Program Sayfaları</q> takvimi.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Programlarım ekranında bir kartın <q>Detaylar</q> düğmesine basın.</li>
+<li>Takvimde ayı okla değiştirin; sağ üstteki düğmelerle takvim boyutunu (<q>Küçük</q>, <q>Orta</q>, <q>Büyük</q>) seçin.</li>
+<li>Sayfa eklemek için <q>Çalışma Sayfası Ekle</q>'ye basın. Açılan pencerede etkinlik arayın, türe göre (<q>Görsel</q>, <q>Link</q>, <q>Kitap Sayfası</q>) süzün, başlangıç/bitiş tarihi verip kaydedin.</li>
+<li>Takvimdeki bir etkinliğe tıklayın; ayrıntı penceresinde <q>Aç</q> ile içeriği yeni sekmede açın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Program Sayfaları</td><td>Programa eklenmiş çalışma sayfalarının takvimi.</td></tr>
+<tr><td>Çalışma Sayfası Ekle</td><td>Öğretmenlerin oluşturduğu çalışma sayfalarından seçim penceresi.</td></tr>
+<tr><td>Takvim boyutu</td><td>Küçük / Orta / Büyük görünüm.</td></tr>
+<tr><td>Etkinlik ayrıntısı</td><td>Çalışma sayfası numarası, etkinlik tipi, kapak ve <q>Aç</q> bağlantısı.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>En az bir çalışma sayfası seçmelisiniz.</q></li>
+<li><q>Çalışma sayfaları programa eklendi.</q> / <q>Program güncellenemedi.</q></li>
+<li><q>Program bilgisi yüklenemedi.</q></li>
+<li><q>Filtrenizle eşleşen etkinlik bulunamadı.</q> / <q>Etkinlikler yüklenemedi.</q></li>
+<li><q>Bu etkinliğin bağlantısı geçersiz olduğu için açılamıyor.</q></li>
+</ul>
+<p class="known-issue">Bu sayfa açıkken sol menüde <strong>Programlarım</strong> yerine <strong>Dashboard</strong> seçili görünüyor; tarih aralığı da ham biçimde (<code>2026-09-09T00:00:00Z - …</code>) yazıyor.</p>
+</article>
+
+<article class="screen" id="ogrenci-program-olustur">
+<h3>3.10 Yeni program oluşturma (sihirbaz)</h3>
+<p class="meta">Menü: Programlarım → Yeni Program Oluştur · Adres: /program-create</p>
+<p class="purpose"><strong>Amacı:</strong> Birkaç soruyu cevaplayarak size uygun bir çalışma programı oluşturmak.</p>
+<figure class="shot"><img src="img/ogrenci-program-olustur.png" alt="Program oluşturma sihirbazı"><figcaption>Sihirbazın ilk sorusu: <q>Süreli Çalışma</q> veya <q>Soru Sayısı Takipli Çalışma</q>; sağ üstte adım sayacı (1 / 6).</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Programlarım ekranında <q>Yeni Program Oluştur</q>'a basın.</li>
+<li>Her soruda bir seçeneğe tıklayın; sağdaki ok (<q>Sonraki soru</q>) ile ilerleyin, soldaki ok ile geri dönün.</li>
+<li>Son adımda seçimleriniz <q>Seçimleriniz:</q> başlığıyla özetlenir.</li>
+<li><q>Programınızı Oluşturun</q> formunda <q>Program Adı</q>, isteğe bağlı <q>Açıklama</q>, <q>Başlangıç Tarihi</q> ve <q>Bitiş Tarihi</q>'ni girin.</li>
+<li><q>Programı Oluştur</q>'a basın. Değiştirmek için <q>Geri Dön</q>.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Soru N / adım sayacı</td><td>Sihirbazdaki konumunuz.</td></tr>
+<tr><td>Program Adı</td><td>Zorunlu (ör. <q>Örn: Matematik Çalışma Programım</q>).</td></tr>
+<tr><td>Açıklama (İsteğe bağlı)</td><td>Kısa açıklama.</td></tr>
+<tr><td>Başlangıç Tarihi / Bitiş Tarihi</td><td>Zorunlu; bitiş başlangıçtan sonra olmalı.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Program adı gereklidir</q>, <q>Başlangıç tarihi gereklidir</q>, <q>Bitiş tarihi gereklidir</q></li>
+<li><q>Bitiş tarihi, başlangıç tarihinden sonra olmalıdır</q></li>
+<li><q>Bir seçim yapmadınız</q> — bir soruyu boş geçtiğinizde özet satırında.</li>
+<li><q>Program başarıyla oluşturuldu!</q> / <q>Program oluşturulurken bir hata oluştu</q></li>
+<li><q>Sorular yüklenemedi, lütfen tekrar deneyin.</q> / <q>Program adımları bulunamadı.</q></li>
+</ul>
+<p class="known-issue">Bu sayfa açıkken sol menüde <strong>Dashboard</strong> seçili görünüyor.</p>
+</article>
+
+<article class="screen" id="ogrenci-planim">
+<h3>3.11 Planım (takvim)</h3>
+<p class="meta">Menü: Planım · Adres: /my-calendar</p>
+<p class="purpose"><strong>Amacı:</strong> <q>Planladığın sınavları, atama teslim tarihlerini, çalışma planlarını ve ders randevularını tek takvimde gör.</q></p>
+<figure class="shot"><img src="img/ogrenci-planim.png" alt="Planım aylık takvim"><figcaption>Aylık takvim; bugünün tarihi işaretli, teslim tarihi olan bir atama gün hücresinde görünüyor.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Sol menüden <strong>Planım</strong>'a tıklayın.</li>
+<li>Ay adının yanındaki oklarla önceki/sonraki aya geçin; <q>Bugün</q> ile bu aya dönün.</li>
+<li>Bir gündeki etkinliğe tıklayın; gün penceresi açılır.</li>
+<li>Penceredeki düğmeyle işleme gidin: <q>Çözmeye başla</q>, <q>Sonucu gör</q>, <q>Hatırlatıcıyı düzenle</q>, <q>Programa git</q> veya <q>Randevularıma git</q>.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Etkinlik türleri</td><td><q>Hatırlatma</q>, <q>Teslim tarihi</q>, <q>Tamamlanan atama</q>, <q>Çalışma planı</q>, <q>Tamamlanan plan</q>, <q>Ders randevusu</q> (renkleriyle ayrılır).</td></tr>
+<tr><td>+N daha</td><td>Bir günde sığmayan etkinlik sayısı; tıklayınca hepsi listelenir.</td></tr>
+<tr><td>Gün penceresi</td><td>Etkinliğin saati, dersi, son tarihi (<q>Son tarih: …</q>) ve durumu (<q>Tamamlandı</q>, <q>Onaylı randevu</q>).</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Bu ay planlanmış sınav, atama veya randevu yok</q> — <q>Sınavlara git</q> düğmesiyle sınav seçin.</li>
+<li><q>Takvim yüklenemedi</q> — <q>Tekrar dene</q>.</li>
+</ul>
+</article>
+
+<article class="screen" id="ogrenci-ogretmen-ara">
+<h3>3.12 Özel Ders Öğretmeni Ara</h3>
+<p class="meta">Menü: Özel Ders Öğretmeni Ara · Adres: /tutors</p>
+<p class="purpose"><strong>Amacı:</strong> <q>Branşa, ücrete ve ders şekline göre onaylı bağımsız öğretmenleri listeleyin.</q></p>
+<figure class="shot"><img src="img/ogrenci-ogretmen-ara.png" alt="Özel ders öğretmeni arama"><figcaption>Arama filtreleri (Ders, Ücret Min–Max, Online, Yüz yüze) ve öğretmen kartları. Kartlardaki öğretmenler test (seed) verisidir.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Sol menüden <strong>Özel Ders Öğretmeni Ara</strong>'ya tıklayın.</li>
+<li><q>Ders</q> listesinden branş seçin, isterseniz <q>Ücret</q> için <q>Min</q> ve <q>Max</q> girin, <q>Online</q> ve/veya <q>Yüz yüze</q> kutularını işaretleyin.</li>
+<li><q>Filtrele</q>'ye basın; filtreleri sıfırlamak için <q>Temizle</q>.</li>
+<li>Bir öğretmen kartına tıklayarak profilini açın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Ders</td><td>Branş filtresi (<q>Tümü</q> varsayılan).</td></tr>
+<tr><td>Ücret (Min / Max)</td><td>Saatlik ücret aralığı (₺).</td></tr>
+<tr><td>Online / Yüz yüze</td><td>Ders şekli filtresi.</td></tr>
+<tr><td>Öğretmen kartı</td><td>Ad, verdiği dersler, saatlik ücret (<q>N ₺ / saat</q> veya <q>Ücret belirtilmemiş</q>), ders şekli ve kısa tanıtım.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Bu filtrelere uygun öğretmen bulunamadı</q></li>
+<li><q>Öğretmenler aranırken bir sorun oluştu.</q> — <q>Tekrar dene</q>.</li>
+<li><q>Ders listesi yüklenemedi.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="ogrenci-ogretmen-profili">
+<h3>3.13 Öğretmen profili</h3>
+<p class="meta">Menü: Özel Ders Öğretmeni Ara → öğretmen kartı · Adres: /tutors/{öğretmenNo}</p>
+<p class="purpose"><strong>Amacı:</strong> Bağımsız öğretmenin verdiği dersleri, ücretini, ders şeklini ve tanıtımını görmek ve randevu almak.</p>
+<figure class="shot"><img src="img/ogrenci-ogretmen-profili.png" alt="Öğretmen public profili"><figcaption>Öğretmen profili: ad, ücret, <q>Verdiği dersler</q>, <q>Ders şekli</q>, <q>Tanıtım</q> ve <q>Randevu Al</q> düğmesi. Örnek profil boş alanları gösteriyor.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Arama sonuçlarında bir öğretmen kartına tıklayın.</li>
+<li>Profil bilgilerini inceleyin.</li>
+<li>Randevu almak için <q>Randevu Al</q>'a basın (bkz. 3.14). Listeye dönmek için <q>Geri</q>.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Ücret</td><td><q>N ₺ / saat</q> veya <q>Ücret belirtilmemiş</q>.</td></tr>
+<tr><td>Verdiği dersler / Ders şekli / Tanıtım</td><td>Öğretmenin özel ders profilinden gelir; boşsa <q>Ders bilgisi girilmemiş.</q>, <q>Belirtilmemiş.</q>, <q>Öğretmen henüz bir tanıtım yazısı eklememiş.</q> yazar.</td></tr>
+<tr><td>Randevu Al</td><td>Müsait saat seçme penceresini açar.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Öğretmen bulunamadı.</q></li>
+<li><q>Öğretmen profili yüklenirken bir sorun oluştu.</q> — <q>Tekrar dene</q>.</li>
+</ul>
+</article>
+
+<article class="screen" id="ogrenci-randevu-al">
+<h3>3.14 Randevu alma</h3>
+<p class="meta">Menü: Öğretmen profili → Randevu Al · Adres: /tutors/{öğretmenNo} (pencere)</p>
+<p class="purpose"><strong>Amacı:</strong> Öğretmenin tanımladığı müsait saatlerden birini seçip ders randevusu talep etmek. Talep, öğretmen onaylayana kadar <q>Onay bekliyor</q> durumunda kalır.</p>
+<figure class="shot"><img src="img/ogrenci-randevu-al.png" alt="Randevu Al penceresi"><figcaption><q>… · Randevu Al</q> penceresi. Yerel ortamda bu öğretmenin müsait saati olmadığı için boş durum mesajı görünüyor.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Öğretmen profilinde <q>Randevu Al</q>'a basın.</li>
+<li>Pencerede listelenen müsait saatlerden birini seçin.</li>
+<li><q>Randevu Talebi Gönder</q>'e basın. Vazgeçmek için <q>İptal</q>.</li>
+<li>Gönderimden sonra çıkan bildirimdeki <q>Randevularım</q> bağlantısıyla talebinizi takip edin.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Müsait saat seçimi</td><td>Öğretmenin boş zaman aralıkları; gece yarısını aşan aralıklarda <q>(+1 gün)</q> yazar.</td></tr>
+<tr><td>Randevu Talebi Gönder</td><td>Seçilen saat için talep oluşturur; saat seçilmeden pasiftir.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Bu öğretmenin şu anda müsait bir saati yok.</q></li>
+<li><q>Randevu talebin gönderildi, öğretmenin onayı bekleniyor.</q></li>
+<li><q>Randevu talebi oluşturulamadı.</q> / <q>Müsait saatler yüklenemedi.</q></li>
+<li><q>Bu zaman aralığı için zaten bir randevu var.</q> — seçilen saat başkası tarafından alınmışsa.</li>
+</ul>
+</article>
+
+<article class="screen" id="ogrenci-randevularim">
+<h3>3.15 Ders Randevularım</h3>
+<p class="meta">Menü: Ders Randevularım · Adres: /my-bookings</p>
+<p class="purpose"><strong>Amacı:</strong> <q>Öğretmenlerden talep ettiğin özel ders randevuları ve durumları.</q> Onaylanan derse buradan katılınır.</p>
+<figure class="shot"><img src="img/ogrenci-randevularim.png" alt="Ders Randevularım listesi"><figcaption>Randevu satırı: öğretmen, tarih ve saat, durum (<q>Onaylandı</q>), <q>Derse katıl</q> ve <q>Profili gör</q>.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Sol menüden <strong>Ders Randevularım</strong>'a tıklayın.</li>
+<li>Sağ üstte <q>Aktif</q> (yaklaşan) veya <q>Tümü</q> filtresini seçin.</li>
+<li>Durumu izleyin: <q>Onay bekliyor</q>, <q>Onaylandı</q> veya <q>Reddedildi</q> (reddedilenlerde <q>Ret gerekçesi: …</q> yazar).</li>
+<li>Onaylı bir dersin saati geldiğinde <q>Derse katıl</q>'a basın; video ders odası açılır (bkz. 3.16).</li>
+<li>Yeni öğretmen bulmak için <q>Öğretmen Ara</q>.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Aktif / Tümü</td><td>Randevu filtresi.</td></tr>
+<tr><td>Derse katıl</td><td>Yalnızca onaylı randevularda ve ders saatine yakın aktif olur; erken ise <q>Ders başlamadan N dk önce aktif olur</q>, geçmişse <q>Ders süresi doldu</q> ipucu gösterilir.</td></tr>
+<tr><td>Profili gör</td><td>Öğretmenin profilini açar.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Henüz bir ders randevun yok.</q> — <q>Öğretmen ara</q>.</li>
+<li><q>Randevuların yüklenemedi.</q> — <q>Tekrar dene</q>.</li>
+</ul>
+</article>
+
+<article class="screen" id="ogrenci-video-ders">
+<h3>3.16 Video ders ve ortak tahta</h3>
+<p class="meta">Menü: Ders Randevularım → Derse katıl · Adres: /lessons/{randevuNo}/video</p>
+<p class="purpose"><strong>Amacı:</strong> Onaylı özel derse öğretmenle görüntülü katılmak ve <q>Tahta</q> sekmesinde ortak çizim tahtasını kullanmak.</p>
+<figure class="shot"><img src="img/ogrenci-video-ders.png" alt="Video ders odası - pencere kapandı"><figcaption>Ders saati geçmiş bir randevu: <q>Bu dersin görüşme penceresi kapandı (bitişten 30 dakika sonra kapanır).</q> mesajı, <q>Tekrar dene</q> ve <q>Geri dön</q>.</figcaption></figure>
+<figure class="shot placeholder"><div class="ph">Ekran görüntüsü alınamadı</div><figcaption>Not: Etkin görüşme odası ve <q>Tahta</q> sekmesi, yalnızca ders saatine yakın (katılma penceresi açıkken) görünür. Ekran görüntüsü alınırken katılma penceresi açık olan onaylı bir randevu yoktu.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Ders Randevularım ekranında onaylı dersin <q>Derse katıl</q> düğmesine basın.</li>
+<li><q>Görüşme odası hazırlanıyor...</q> mesajından sonra tarayıcının kamera/mikrofon iznini verin.</li>
+<li><q>Video</q> sekmesinde öğretmenle görüşün; öğretmen <q>Moderatör (öğretmen)</q>, siz <q>Katılımcı</q> olarak görünürsünüz.</li>
+<li><q>Tahta</q> sekmesine geçerek ortak çizim tahtasında çizin; bağlantı durumu (<q>Bağlı</q>, <q>Bağlanıyor...</q>) ve karşı tarafın çevrimiçi olup olmadığı üstte görünür.</li>
+<li>Bitirmek için sağ üstteki <q>Dersten ayrıl</q>'a basın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Ders #N</td><td>Randevu numarası.</td></tr>
+<tr><td>Video / Tahta</td><td>Görüntülü görüşme ve ortak çizim tahtası sekmeleri.</td></tr>
+<tr><td>Dersten ayrıl</td><td>Odadan çıkar ve randevu listesine döner.</td></tr>
+<tr><td>Tahta bağlantıları</td><td>Tahtadaki bir dış bağlantı açılmadan önce <q>Dış bağlantı açılsın mı?</q> sorulur.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Görüşme odası bulunamadı.</q> / <q>Görüşme odası açılamadı.</q> / <q>Geçersiz ders adresi.</q></li>
+<li><q>Öğretmeniniz geçici olarak müsait değil; bu ders şu anda başlatılamıyor.</q></li>
+<li>Tahta: <q>Tahta henüz açılmadı; ders saatine yakın tekrar deneyin.</q>, <q>Ders bitiyor: tahta yaklaşık N dakika içinde kapanacak.</q>, <q>Ders süresi doldu; tahta salt okunur.</q>, <q>Tahtada görsel desteklenmiyor.</q>, <q>Tahta yüklenemedi.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="ogrenci-raporlar">
+<h3>3.17 Raporlar (Başarı Rozetleri)</h3>
+<p class="meta">Menü: Raporlar · Adres: /certificates</p>
+<p class="purpose"><strong>Amacı:</strong> <q>Çalışma alışkanlıklarınıza göre rozetlerin durumunu takip edin.</q> Rozet yolları (adım adım rozetler) ve tekil rozetler burada listelenir.</p>
+<figure class="shot"><img src="img/ogrenci-raporlar-rozetler.png" alt="Başarı Rozetleri sayfası"><figcaption><q>Başarı Rozetleri</q> başlığı. Yerel ortamda rozet listesi gelmedi; yalnızca başlık görünüyor.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Sol menüden <strong>Raporlar</strong>'a tıklayın.</li>
+<li>Her rozet yolunda tamamlanan adım sayısını (<q>N / N tamamlandı</q>) izleyin.</li>
+<li><q>Tekil Rozetler</q> bölümünde tek seferlik rozetleri görün.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Rozet yolu</td><td>Sıralı rozetler; her adım <q>Adım N</q> olarak gösterilir.</td></tr>
+<tr><td>Tekil Rozetler</td><td>Bir yola bağlı olmayan rozetler.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Rozetler yükleniyor...</q></li>
+<li><q>Henüz kazanılmış veya takip edilen bir rozet yok.</q></li>
+<li><q>Rozet bilgisi yüklenemedi. Lütfen daha sonra tekrar deneyin.</q> / <q>Rozet bilgisi bulunamadı.</q></li>
+</ul>
+<p class="known-issue">Yerel ortamda sayfa yalnızca başlık kartını gösterdi; ne rozet listesi ne de bir hata/boş durum mesajı çıktı.</p>
+</article>
+
+<article class="screen" id="ogrenci-ayarlar">
+<h3>3.18 Ayarlar (profil)</h3>
+<p class="meta">Menü: Ayarlar · Adres: /student-profile (sağ üst profil menüsündeki <q>Ayarlar, Hesap, Güvenlik</q> de buraya gelir)</p>
+<p class="purpose"><strong>Amacı:</strong> Profil bilgilerinizi ve sınıfınızı güncellemek; puan, rozet ve liderlik sıranızı, ödev/sınav istatistiklerinizi, haftalık çalışma takviminizi görmek ve sınav kartlarının görünüm temasını ayarlamak. Sayfa altı sekmeden oluşur.</p>
+<figure class="shot"><img src="img/ogrenci-ayarlar-neler-var.png" alt="Ayarlar - Neler Var sekmesi"><figcaption><q>Neler Var</q> sekmesi: platformun öne çıkan özelliklerini tanıtan bilgilendirme kartları.</figcaption></figure>
+<figure class="shot"><img src="img/ogrenci-ayarlar-bilgilerim.png" alt="Ayarlar - Bilgilerim sekmesi"><figcaption><q>Bilgilerim</q>: profil fotoğrafı, sınıf seçimi, seviye/XP ve çözülen soru, doğru/yanlış, tamamlanan test, ödül, liderlik sırası.</figcaption></figure>
+<figure class="shot"><img src="img/ogrenci-ayarlar-rozetler-liderlik.png" alt="Ayarlar - Rozetler ve liderlik"><figcaption><q>Rozetler</q>: <q>Puanlarım</q>, <q>Sınıf Sıralaması</q>, <q>Kademe Sıralaması</q>, <q>Rozetlerim</q> ve <q>Liderlik Tabloları</q> (XP Sıralaması, <q>Okulum</q> / <q>Herkes</q>).</figcaption></figure>
+<figure class="shot"><img src="img/ogrenci-ayarlar-odevler.png" alt="Ayarlar - Ödevler ve Sınavlar"><figcaption><q>Ödevler ve Sınavlar</q>: ders bazında çalışma süresi grafiği, özet kutuları ve <q>Haftalık Hedef</q>.</figcaption></figure>
+<figure class="shot"><img src="img/ogrenci-ayarlar-haftalik-takvim.png" alt="Ayarlar - Haftalık Takvim"><figcaption><q>Haftalık Takvim</q>: son bir yılın aktivite ısı haritaları.</figcaption></figure>
+<figure class="shot"><img src="img/ogrenci-ayarlar-tema.png" alt="Ayarlar - Tema Ayarları"><figcaption><q>Tema Ayarları</q>: <q>Kişisel Tema Ayarları</q>, kayıtlı tema durumu, hazır tema seçimi ve <q>Özel Ayarlar</q> anahtarları.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Sol menüden <strong>Ayarlar</strong>'a tıklayın; sayfa <q>Neler Var</q> sekmesiyle açılır.</li>
+<li><q>Bilgilerim</q> sekmesinde sınıfınızı açılır listeden değiştirin; fotoğrafın üzerindeki <q>Değiştir</q> ile avatarınızı güncelleyin.</li>
+<li><q>Rozetler</q> sekmesinde puanınızı, sınıf/kademe sıranızı ve liderlik tablosunu görün; tabloyu <q>Okulum</q> veya <q>Herkes</q> kapsamına çevirin, uzun listede <q>Daha fazla yükle</q>'ye basın.</li>
+<li><q>Ödevler ve Sınavlar</q> ve <q>Haftalık Takvim</q> sekmelerinde çalışma istatistiklerinizi inceleyin; haftalık hedefi <q>Aylık</q> / <q>Bu hafta</q> görünümleri arasında değiştirin.</li>
+<li><q>Tema Ayarları</q> sekmesinde <q>Tema Yükle veya Seç</q> listesinden bir hazır tema (Minimal, Standard, Enhanced, Full) seçin ya da <q>Özel Ayarlar</q> anahtarlarını açıp kapatın.</li>
+<li><q>Önizleme</q> ile deneyin, <q>Kaydet ve Uygula</q> ile kaydedin; <q>Varsayılana Dön</q> ayarları sıfırlar.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Sınıf</td><td>Kayıtlı sınıfınız; pratik ve günün soruları bu sınıfa göre hazırlanır.</td></tr>
+<tr><td>Seviye: N (N XP)</td><td>Kazandığınız deneyim puanı ve seviyeniz.</td></tr>
+<tr><td>Liderlik Sıralaması</td><td>XP'ye göre sıranız; tablonuzda kendi satırınız <q>Sen</q> etiketiyle vurgulanır, altta <q>Senin sıran: #N · N XP</q> yazar.</td></tr>
+<tr><td>Haftalık Hedef</td><td>Haftalık çalışma hedefi ve <q>En uzun haftalık hedef serisi</q>.</td></tr>
+<tr><td>Özel Ayarlar</td><td><q>Renkli Çerçeveler</q>, <q>Gradient Katmanı</q>, <q>İkon Rozetleri</q>, <q>Ribbon Banner</q>, <q>Işıltı Efektleri</q>, <q>İlerleme Çubuğu</q>, <q>Transform Animasyonları</q>, <q>Typography Efektleri</q>: sınav kartlarının görünümünü belirler.</td></tr>
+<tr><td>Önizleme / Kaydet ve Uygula / Varsayılana Dön</td><td>Tema değişikliğini dener, kaydeder veya sıfırlar.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Sınıf güncellendi!</q> / <q>Avatar güncellendi!</q></li>
+<li><q>Sıralama yüklenemedi.</q> / <q>Henüz puan yok</q> / <q>Devamı yüklenemedi.</q></li>
+<li><q>Aktivite verisi alınırken bir hata oluştu.</q> / <q>Son bir yıl için aktivite verisi bulunamadı.</q></li>
+<li><q>Önizleme uygulandı! Kaydet butonuna basarak kalıcı hale getirebilirsiniz.</q></li>
+<li><q>Özel tema ayarlarınız kaydedildi ve mevcut durumunuz oldu!</q> / <q>Özel tema kaydedilemedi.</q></li>
+<li><q>Tema varsayılan ayarlara döndürüldü!</q> / <q>Tema sıfırlanamadı.</q></li>
+</ul>
+<p class="known-issue">Yerel ortamda bazı alanlar tamamlanmamış görünüyor: <q>Neler Var</q> sekmesindeki görseller yüklenmiyor; <q>Ödevler ve Sınavlar</q> sekmesinde grafik ekseni ve özet kutularının başlıkları çeviri anahtarı olarak (<code>student-profile…</code>) görünüyor; <q>Haftalık Takvim</q> ısı haritasında gün adları İngilizce; <q>Rozetler</q> sekmesindeki <q>Rozetlerim</q> kutusu yalnızca başlıktan oluşuyor.</p>
+</article>
+</section>
+
+<section class="role" id="ogretmen">
+<h2>4. Öğretmen</h2>
+<p>Öğretmen rolü, Keycloak'taki <strong>Teacher</strong> rolüne sahip ve hesabı yönetici tarafından onaylanmış kullanıcılar içindir. Öğretmen test (sınav) hazırlar, soru ekler, testleri öğrencilerine atar, çalışma içerikleri hazırlar ve (bağımsız öğretmense) özel ders randevularını yönetir. Bu bölümdeki ekran görüntüleri okula bağlı bir test öğretmen hesabıyla alınmıştır; bağımsız öğretmene özgü ekranlar <a href="#bagimsiz">5. bölümde</a> anlatılır.</p>
+
+<h3 class="sub">Öğretmen menüsü</h3>
+<table class="menu-map">
+<tr><th>Menü öğesi</th><th>Ekran (adres)</th><th>Bölüm</th></tr>
+<tr><td>Dashboard</td><td>Öğretmen paneli (<code>/dashboard</code>)</td><td><a href="#ogretmen-dashboard">4.2</a></td></tr>
+<tr><td>Sınavlar</td><td>Testlerim (<code>/tests</code>)</td><td><a href="#ogretmen-sinavlar">4.3</a></td></tr>
+<tr><td>Planım</td><td>Takvim (<code>/my-calendar</code>)</td><td><a href="#ogretmen-planim">4.15</a></td></tr>
+<tr><td>Öğrenciler</td><td><code>/students</code> — uygulamada karşılığı yok</td><td><a href="#ogretmen-bilinen-sorunlar">4.21</a></td></tr>
+<tr><td>Özel Ders Profilim</td><td><code>/tutor-profile</code></td><td><a href="#ogretmen-ozel-ders-profili">4.19</a>, <a href="#bagimsiz-ozel-ders-profili">5.2</a></td></tr>
+<tr><td>Müsait Saatlerim</td><td><code>/availability</code></td><td><a href="#ogretmen-musait-saatler">4.16</a></td></tr>
+<tr><td>Randevu Talepleri</td><td><code>/booking-requests</code></td><td><a href="#ogretmen-randevu-talepleri">4.17</a></td></tr>
+<tr><td>Atama İzin Talepleri</td><td><code>/assignment-permission-requests</code></td><td><a href="#ogretmen-atama-izin-talepleri">4.18</a></td></tr>
+<tr><td>Çalışma Ekleme</td><td>Çalışma Sayfaları (<code>/study-pages</code>)</td><td><a href="#ogretmen-calisma-sayfalari">4.12</a></td></tr>
+<tr><td>Çalışma Linkleri</td><td><code>/study-links</code></td><td><a href="#ogretmen-calisma-linkleri">4.14</a></td></tr>
+<tr><td>Test Ekleme</td><td>Yeni Test Oluştur (<code>/exam</code>)</td><td><a href="#ogretmen-test-olustur">4.6</a></td></tr>
+<tr><td>Soru Transferi</td><td><code>/question-transfer</code></td><td><a href="#ogretmen-soru-transferi">4.11</a></td></tr>
+<tr><td>Raporlar</td><td>Başarı Rozetleri (<code>/certificates</code>)</td><td><a href="#ogretmen-raporlar">4.20</a></td></tr>
+<tr><td>Ayarlar</td><td><code>/student-profile</code></td><td><a href="#ogretmen-bilinen-sorunlar">4.21</a></td></tr>
+<tr><td>Yardım, Geri Bildirim</td><td><code>/help</code>, <code>/feedback</code> — uygulamada karşılığı yok</td><td><a href="#ogretmen-bilinen-sorunlar">4.21</a></td></tr>
+</table>
+<p class="note">Profil menüsü, dil ve tema seçimi ile bildirimler tüm rollerde aynıdır; <a href="#ortak">Ortak bölüme</a> bakın.</p>
+
+<article class="screen" id="ogretmen-basvuru-durumu">
+<h3>4.1 Başvuru durumu (onay bekleyen öğretmen)</h3>
+<p class="meta">Menü: Başvuru durumu · Adres: /teacher-approval-pending</p>
+<p class="purpose"><strong>Amacı:</strong> Kaydını yeni tamamlamış ya da onayı askıya alınmış öğretmene hesabının durumunu gösterir. Öğretmen hesabı yönetici onaylayana kadar öğretmen özellikleri (sınav oluşturma, çalışma içerikleri, soru transferi, randevular, öğretmen paneli) kapalıdır. Bu sürede menüde yalnızca <strong>Başvuru durumu</strong>, <strong>Özel Ders Profilim</strong>, Raporlar ve Ayarlar görünür; Dashboard veya Sınavlar adresine gidilirse bu sayfaya yönlendirilir.</p>
+<figure class="shot placeholder"><div class="ph">Ekran görüntüsü alınamadı</div><figcaption>Not: Yerel ortamda onay bekleyen, reddedilmiş ya da askıya alınmış bir öğretmen test hesabı yok (tüm öğretmen kayıtları onaylı). Ekran, böyle bir hesapla girişte görünür.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Öğretmen olarak kaydolduktan sonra giriş yapın; sistem sizi bu sayfaya getirir.</li>
+<li>Kartta hesabınızın durumunu okuyun (aşağıdaki tablo).</li>
+<li>Karar verilip verilmediğini görmek için <strong>Durumu yenile</strong> butonuna basın. Karar verildiğinde ayrıca bildirim alırsınız.</li>
+<li>Bağımsız özel ders öğretmeni olarak başvurduysanız, onay beklerken <strong>Özel ders profilim</strong> bağlantısıyla profilinizi hazırlayabilirsiniz.</li>
+<li>Hesap onaylandığında <strong>Öğretmen paneline git</strong> butonu çıkar.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Başvurunuz inceleniyor</td><td>Onay bekleniyor: <q>Öğretmen kaydınız alındı ve bir yönetici tarafından inceleniyor. Onaylanana kadar sınav oluşturma, çalışma içerikleri, soru transferi, randevular ve öğretmen paneli kapalıdır.</q></td></tr>
+<tr><td>Başvurunuz reddedildi</td><td>Reddedildi. <strong>Gerekçe:</strong> alanında yöneticinin yazdığı neden görünür (yoksa <q>Gerekçe belirtilmedi.</q>). <q>Ne yapabilirsiniz?</q> başlığı altında gerekçeyi incelemeniz ve okul ya da platform yöneticisiyle iletişime geçmeniz önerilir.</td></tr>
+<tr><td>Hesabınız onaylandı</td><td><q>Öğretmen hesabınız onaylandı; tüm öğretmen özelliklerini kullanabilirsiniz.</q> — <strong>Öğretmen paneline git</strong>.</td></tr>
+<tr><td>Öğretmen kaydınız bulunamadı</td><td>Hesaba bağlı tamamlanmış öğretmen kaydı yok; <strong>Öğretmen kaydını tamamla</strong> ile kayıt sihirbazına gidilir.</td></tr>
+<tr><td>Öğretmen hesabınız askıya alındı</td><td>Yönetici onayı askıya aldı; öğretmen özelliklerine erişilemez. Hesap açık kalır, ayarlar gibi sayfalar kullanılabilir.</td></tr>
+<tr><td>Durumu yenile</td><td>Durumu sunucudan yeniden okur (<q>Yenileniyor...</q>).</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Başvuru durumunuz alınıyor...</q> — sayfa yüklenirken.</li>
+<li><q>Başvuru durumunuz alınamadı.</q> — durum okunamadığında; <strong>Tekrar dene</strong> ile yeniden denenir.</li>
+<li><q>Durum yenilenemedi. Lütfen biraz sonra tekrar deneyin.</q> — <strong>Durumu yenile</strong> başarısız olduğunda.</li>
+<li><q>Karar verildiğinde bildirim alırsınız; durumu dilediğiniz zaman bu sayfadan yenileyebilirsiniz.</q> — bilgi notu.</li>
+</ul>
+</article>
+
+<article class="screen" id="ogretmen-dashboard">
+<h3>4.2 Dashboard (öğretmen paneli ve aktivite)</h3>
+<p class="meta">Menü: Dashboard · Adres: /dashboard</p>
+<p class="purpose"><strong>Amacı:</strong> Oluşturduğunuz sınavların, atanan öğrencilerin, geride kalan öğrencilerin ve son 7 günün aktivitesinin özetini tek sayfada gösterir.</p>
+<figure class="shot"><img src="img/ogretmen-dashboard.png" alt="Öğretmen dashboard ekranı: Özet kartları, Sınavlarım tablosu ve Geride Kalan Öğrenciler"><figcaption>Öğretmen paneli: Özet, Sınavlarım ve Geride Kalan Öğrenciler.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Sol menüden <strong>Dashboard</strong>'a tıklayın.</li>
+<li><strong>Özet</strong> kartlarında toplam sınav ve benzersiz öğrenci sayısını görün.</li>
+<li><strong>Sınavlarım</strong> tablosunda bir satıra tıklayarak sınavın detayına (<a href="#ogretmen-test-detay">4.4</a>) gidin.</li>
+<li><strong>Geride Kalan Öğrenciler</strong> tablosunda etiketlere göre takip edilmesi gereken öğrencileri belirleyin.</li>
+<li>Sayfanın altındaki <strong>Aktivite Özeti (son 7 gün)</strong> ve <strong>En Aktif Öğrenciler</strong> bölümlerini inceleyin.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Toplam Sınav / Benzersiz Öğrenci</td><td>Oluşturduğunuz sınav sayısı ve bu sınavlara atanmış farklı öğrenci sayısı.</td></tr>
+<tr><td>Sınavlarım (Sınav adı, Atanan öğrenci, Tamamlanma)</td><td>Her sınav için atanan öğrenci sayısı ve tamamlanma yüzdesi. Satır, sınav detayını açar.</td></tr>
+<tr><td>Geride Kalan Öğrenciler (Öğrenci adı, Sınav adı, Etiketler)</td><td>Etiketler: <q>Düşük Tamamlama</q>, <q>Süresi Geçti</q>.</td></tr>
+<tr><td>Benim Aktivitem</td><td>Son 7 günde açtığınız yeni sınav, yeni atama ve etkin öğrenci sayısı.</td></tr>
+<tr><td>Öğrenci Aktivitesi</td><td>Öğrencilerinizin çözdüğü soru, doğru sayısı ve toplam süre.</td></tr>
+<tr><td>En Aktif Öğrenciler</td><td>Çözülen soruya göre sıralı liste (#, Öğrenci, Çözülen Soru, Doğru, Çalışma Süresi).</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Henüz hiç sınav oluşturmadınız. İlk sınavınızı oluşturduğunuzda özet burada görünecek.</q> — hiç sınavınız yokken.</li>
+<li><q>Geride kalan öğrenci yok, harika gidiyorsunuz!</q> — listede kimse yokken.</li>
+<li><q>Son 7 günde öğrencileriniz henüz soru çözmedi.</q> — en aktif öğrenci listesi boşken.</li>
+<li><q>Özet bilgileri alınırken bir sorun oluştu.</q>, <q>Sınav listesi alınırken bir sorun oluştu.</q>, <q>Geride kalan öğrenci listesi alınırken bir sorun oluştu.</q>, <q>Aktivite bilgileriniz alınırken bir sorun oluştu.</q>, <q>Öğrenci aktivitesi alınırken bir sorun oluştu.</q> — ilgili bölüm yüklenemediğinde.</li>
+</ul>
+</article>
+
+<article class="screen" id="ogretmen-sinavlar">
+<h3>4.3 Sınavlar (Testlerim)</h3>
+<p class="meta">Menü: Sınavlar · Adres: /tests</p>
+<p class="purpose"><strong>Amacı:</strong> Oluşturduğunuz (ve isterseniz başkalarının paylaştığı) testleri listeler; buradan yeni test açılır, testler düzenlenir, öğrencilere atanır veya silinir.</p>
+<figure class="shot"><img src="img/ogretmen-sinavlar.png" alt="Testlerim ekranı: filtreler, test kartları, Yeni Test ve Excel'den içe aktar butonları"><figcaption>Testlerim: solda filtreler, sağda test kartları.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Sol menüden <strong>Sınavlar</strong>'a tıklayın.</li>
+<li>Soldaki <strong>Filtreler</strong> panelinden ders, sınıf, süre, soru sayısı, tür veya paylaşım seçin. Başka öğretmenlerin paylaştığı testleri görmek için <strong>Başkalarının sınavları</strong> filtresini kullanın.</li>
+<li>Sağ üstten kart/liste görünümünü ve sıralamayı (<q>En yeni</q>, <q>Popüler</q>, <q>A–Z</q> …) seçin.</li>
+<li>Bir kartta <strong>Düzenle</strong> ile test bilgilerini değiştirin (<a href="#ogretmen-test-duzenle">4.7</a>). Atama yapmak için kartı açıp test detayındaki <strong>Sınıfa Ata</strong> / <strong>Öğrenci Seç</strong> butonlarını kullanın (<a href="#ogretmen-test-ata">4.5</a>).</li>
+<li>Kartın üç nokta menüsünden <strong>Detayı gör</strong>, <strong>Soru Ekle</strong>, <strong>Kendi hesabıma kopyala</strong> (başkasının testi) veya <strong>Sil</strong> seçeneğini kullanın.</li>
+<li>Birden çok kart seçildiğinde alttaki çubukta <strong>Öğrencilere Ata</strong>, <strong>Sil</strong> ve <strong>Seçimi bırak</strong> çıkar (toplu atama henüz açık değildir).</li>
+<li>Yeni test için <strong>Yeni Test</strong> butonuna basın (<a href="#ogretmen-test-olustur">4.6</a>).</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Yeni Test</td><td>Yeni Test Oluştur ekranını açar.</td></tr>
+<tr><td>Excel'den içe aktar</td><td>Bu ekranda henüz çalışmaz (<q>yakında</q> mesajı verir). Excel ile toplu yükleme için Yeni Test Oluştur ekranının sağ panelini kullanın.</td></tr>
+<tr><td>Filtreler</td><td>Ders, Sınıf, Süre, Soru sayısı, Tür (<q>Sadece çalışma testi</q>), Paylaşım. <strong>Filtreleri temizle</strong> hepsini kaldırır.</td></tr>
+<tr><td>Kart bilgisi</td><td>Ders · sınıf, soru sayısı, süre (dk) ve kaç öğrencinin çözdüğü.</td></tr>
+<tr><td>Düzenle / Ata</td><td>Testi düzenler. Karttaki <strong>Ata</strong> şimdilik yalnızca <q>yakında</q> mesajı verir; atama test detayından yapılır.</td></tr>
+<tr><td>Paylaşım rozeti</td><td><q>Herkese Açık · Atanabilir</q>, <q>Herkese Açık · Görüntüleme</q>, <q>Okulum</q> veya <q>… tarafından paylaşıldı</q>.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Bu testi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.</q> — tek test silerken (<strong>Evet, Sil</strong> / <strong>İptal</strong>).</li>
+<li><q>Seçili testlerin tümü kalıcı olarak silinecek. Bu işlem geri alınamaz.</q> — toplu silmede.</li>
+<li><q>{{count}} test silindi.</q> / <q>{{ok}} test silindi, {{fail}} tanesi başarısız.</q> — silme sonucu.</li>
+<li><q>Sınav kendi hesabına kopyalandı.</q> / <q>Kopyalama başarısız.</q> — kopyalama sonucu.</li>
+<li><q>Atama ekranı yakında kullanıma açılacak.</q> — karttaki <strong>Ata</strong> veya toplu <strong>Öğrencilere Ata</strong>.</li>
+<li><q>Excel içe aktarma yakında kullanıma açılacak.</q> — <strong>Excel'den içe aktar</strong>.</li>
+<li><q>Bu kriterlere uygun test yok.</q> — filtre sonucu boşken.</li>
+<li><q>Testler yüklenirken bir sorun oluştu.</q> — liste yüklenemediğinde (<strong>Tekrar dene</strong>).</li>
+</ul>
+</article>
+
+<article class="screen" id="ogretmen-test-detay">
+<h3>4.4 Test detayı (öğretmen görünümü)</h3>
+<p class="meta">Menü: Sınavlar &gt; kart &gt; Detayı gör (veya Dashboard'da sınav satırı) · Adres: /test/:id</p>
+<p class="purpose"><strong>Amacı:</strong> Bir testin sınıf ilerlemesini, atamalarını, öğrencilerin zorlandığı soruları ve soru kalitesini gösterir; buradan soru eklenir, test düzenlenir ve atama yapılır. Sayfanın altında testin yorum/soru konuşması yer alır (<a href="#ogretmen-yorumlar">4.9</a>).</p>
+<figure class="shot"><img src="img/ogretmen-test-detay.png" alt="Öğretmen test detayı: Soru Ekle, Düzenle, Sınıf İlerlemesi, Atama, Zorlanılan Sorular ve Soru Kalitesi kartları"><figcaption>Test detayı, öğretmen görünümü (<q>ÖĞRETMEN</q> etiketi).</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Sınavlar ekranında test kartını açın.</li>
+<li>Üst kartta <strong>Soru Ekle</strong> ile soru ekleme tuvaline (<a href="#ogretmen-soru-ekle">4.8</a>), <strong>Düzenle</strong> ile test düzenleme ekranına gidin.</li>
+<li><strong>Atama</strong> kartında <strong>Sınıfa Ata</strong> veya <strong>Öğrenci Seç</strong> ile atama oluşturun (<a href="#ogretmen-test-ata">4.5</a>).</li>
+<li><strong>Sınıf İlerlemesi</strong> kartında atamadaki öğrencilerin durumunu (Tamamladı, Devam ediyor, Planlandı, Süresi doldu, Başlamadı) izleyin.</li>
+<li><strong>Zorlanılan Sorular</strong> listesinde en düşük başarılı soruları, <strong>Soru Kalitesi</strong> kartında yapay zekâ sınıflandırmasının durumunu görün.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Etiketler (5. Sınıf, 3 soru, Değerlendirme sınavı / Pratik çalışma)</td><td>Testin sınıfı, soru sayısı ve türü.</td></tr>
+<tr><td>Sınıf İlerlemesi</td><td>Atanan, Tamamlayan, Devam eden, Başlamadı, Sınıf ort. sayıları ve öğrenci tablosu (Öğrenci, Durum, Son aktivite).</td></tr>
+<tr><td>Atama</td><td>Mevcut atamalar (<q>hedef · başlangıç</q>, öğrenci sayısı, aktif/planlandı) ve yeni atama butonları.</td></tr>
+<tr><td>Zorlanılan Sorular</td><td>Soru no, konu ve yanıtlayan öğrenci sayısıyla başarı yüzdesi.</td></tr>
+<tr><td>Soru Kalitesi</td><td><q>AI sınıflandırması X / Y soruyu etiketledi.</q> ve Kolay/Orta/Zor dağılımı.</td></tr>
+<tr><td>Kendi hesabıma kopyala / Atama izni iste</td><td>Başka öğretmenin testinde (salt görüntüleme şeridi: <q>… sınavı · Salt görüntüleme</q>) görünür.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Henüz atama yok. Bu sınavı sınıfına veya öğrencilerine ata.</q> — atama yokken.</li>
+<li><q>{{count}} soru sınıflandırılmadı — konu/zorluk elle atanmalı</q> — sınıflandırılmamış soru varken.</li>
+<li><q>Bu teste erişiminiz yok veya test bulunamadı.</q> — yetkisiz/olmayan test.</li>
+<li><q>Sınav detayları getirilemedi.</q> — yükleme hatası.</li>
+<li><q>Atama izni talebiniz gönderildi.</q> / <q>Bu sınav için zaten bekleyen bir talebiniz var.</q> / <q>Talep gönderilemedi. Lütfen tekrar deneyin.</q> — başkasının testi için izin isterken.</li>
+<li><q>Sınav kendi hesabına kopyalandı</q> / <q>Kopyalama başarısız</q>.</li>
+</ul>
+</article>
+
+<article class="screen" id="ogretmen-test-ata">
+<h3>4.5 Atama oluşturma (Yeni Atama Oluştur)</h3>
+<p class="meta">Menü: Sınavlar &gt; test &gt; Sınıfa Ata / Öğrenci Seç · Adres: /test/:id (pencere)</p>
+<p class="purpose"><strong>Amacı:</strong> Testi bir sınıfın tüm öğrencilerine ya da seçilen öğrencilere, başlangıç (ve isteğe bağlı bitiş) zamanıyla atar. Atanan test öğrencinin <q>Bana Atananlar</q> sekmesinde ve takviminde görünür.</p>
+<figure class="shot"><img src="img/ogretmen-test-ata.png" alt="Yeni Atama Oluştur penceresi: Sınıfa Ata / Öğrenciye Ata seçimi, öğrenci listesi, başlangıç tarihi ve saati"><figcaption>Yeni Atama Oluştur penceresi (Öğrenciye Ata seçili).</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Test detayında <strong>Sınıfa Ata</strong> veya <strong>Öğrenci Seç</strong>'e basın.</li>
+<li>Pencerede <strong>Sınıfa Ata</strong> (seçilen sınıftaki tüm öğrenciler) ya da <strong>Öğrenciye Ata</strong> seçin.</li>
+<li>Sınıf veya öğrenci(ler)i seçin. Öğrenci listesini önce sınıf seçerek daraltabilirsiniz.</li>
+<li><strong>Başlangıç Tarihi</strong> ve <strong>Başlangıç Saati</strong>'ni girin. Son tarih gerekiyorsa <strong>Bitiş zamanı belirle</strong>'yi işaretleyip bitiş tarih/saatini girin.</li>
+<li><strong>Yorum ve soru</strong> ayarını seçin: Varsayılan (testin ayarı), Açık veya Kapalı.</li>
+<li><strong>Kaydet</strong>'e basın; vazgeçmek için <strong>Vazgeç</strong>.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Sınıfa Ata / Öğrenciye Ata</td><td>Atama kapsamı. Bağımsız öğretmen sınıf bazlı atama yapamaz.</td></tr>
+<tr><td>Sınıf / Öğrenci</td><td>Zorunlu seçim (kapsama göre).</td></tr>
+<tr><td>Başlangıç Tarihi / Saati</td><td>Atamanın öğrenciye açılacağı an.</td></tr>
+<tr><td>Bitiş zamanı belirle, Bitiş Tarihi / Saati</td><td>İsteğe bağlı son teslim zamanı.</td></tr>
+<tr><td>Yorum ve soru (Varsayılan / Açık / Kapalı)</td><td>Bu atamadaki öğrencilerin yorum yazıp yazamayacağı. <q>Varsayılan, testin güncel ayarını kullanır: açık.</q></td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Sınıf seçimi zorunlu</q>, <q>Öğrenci seçimi zorunlu</q>, <q>Tarih zorunlu</q>, <q>Geçerli bir saat gir</q> — eksik/hatalı alan.</li>
+<li><q>Atanabilecek öğrenci bulunamadı.</q> — listede öğrenci yokken.</li>
+<li><q>Bağımsız öğretmen olarak sınıf bazlı atama yapamazsın; yalnızca randevusu olan öğrencilerini seçerek atayabilirsin.</q> ve <q>Henüz onaylı dersi olan öğrencin yok; randevu onaylanınca burada görünür.</q> — bağımsız öğretmen.</li>
+<li><q>Öğrenci listesi yüklenemedi. Sayfayı yenileyip tekrar dene.</q></li>
+<li><q>Atama oluşturuldu.</q> / <q>Atama oluşturulamadı.</q> / <q>Atama oluşturulurken bir hata oluştu.</q> — kaydetme sonucu.</li>
+</ul>
+</article>
+
+<article class="screen" id="ogretmen-test-olustur">
+<h3>4.6 Yeni Test Oluştur</h3>
+<p class="meta">Menü: Test Ekleme (veya Sınavlar &gt; Yeni Test) · Adres: /exam</p>
+<p class="purpose"><strong>Amacı:</strong> Yeni bir testin künyesini ve sınıflandırmasını girerek testi oluşturur; sağdaki panelden bir Excel dosyasıyla birden çok testi tek seferde oluşturur. Test oluşturulduktan sonra soru ekleme adımına geçilir.</p>
+<figure class="shot"><img src="img/ogretmen-test-olustur.png" alt="Yeni Test Oluştur: Künye ve Sınıflandırma formu, sağda Excel ile Toplu Yükle paneli"><figcaption>Yeni Test Oluştur: solda form, sağda <q>Excel ile Toplu Yükle</q>.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Menüden <strong>Test Ekleme</strong>'ye tıklayın.</li>
+<li><strong>Künye</strong> bölümünde <strong>Test Adı</strong>, <strong>Alt Başlık</strong> ve isteğe bağlı <strong>Açıklama</strong> girin.</li>
+<li><strong>Sınıflandırma</strong> bölümünde <strong>Sınıf</strong>'ı seçin; <strong>Kaynak</strong> adımında Kitap ve Kitap Testi'ni seçin ya da <q>Yeni kitap ekle</q> / <q>Yeni kitap testi ekle</q> ile yenisini yazın; <strong>Konu</strong> adımında Ders, Konu ve Alt Konu seçin.</li>
+<li><strong>Ayarlar</strong>'da süreyi (dakika), <strong>Çalışma testi</strong> ve <strong>Yorum ve soru</strong> anahtarlarını ayarlayın.</li>
+<li><strong>Oluştur ve devam et</strong>'e basın. Test oluşturulur ve soru ekleme adımına geçilir.</li>
+<li>Toplu yükleme için sağdaki alana .xlsx/.xls dosyasını bırakın, <strong>İçe Aktar</strong>'a basın, satırları kontrol edip <strong>N Testi Oluştur</strong>'a basın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Test Adı*, Alt Başlık*, Açıklama</td><td>Testin listelerde ve öğrenci ekranında görünen adı ve tanıtımı.</td></tr>
+<tr><td>Sınıf*, Kitap, Kitap Testi, Ders, Konu, Alt Konu</td><td>Kaynak kitap ve konu bilgisi; soruların doğru öğrencilere önerilmesini sağlar. <strong>Hepsine uygula</strong> seçimi tüm sorulara uygular.</td></tr>
+<tr><td>Süre (dakika)</td><td>Testin çözüm süresi.</td></tr>
+<tr><td>Çalışma testi</td><td>Açıkken puana ve sıralamaya sayılmaz, öğrenci istediği kadar çözer.</td></tr>
+<tr><td>Yorum ve soru</td><td>Açıkken öğrenciler test ve sorular hakkında yorum yazabilir.</td></tr>
+<tr><td>Excel ile Toplu Yükle (HIZLI)</td><td>Excel'in ilk sayfası okunur; tablo sütunları Kitap, Test Adı, Sınıf, Süre, Durum. <strong>Seçili satırı geri al</strong>, <strong>Tümünü geri al</strong>, <strong>Listeyi temizle</strong>.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Form eksik veya hatalı!</q> — zorunlu alanlar boşken.</li>
+<li><q>Önce sınıf seçin.</q> — ders seçmeden önce.</li>
+<li><q>Alt konu seçilmedi</q> — alt konu gerekirken.</li>
+<li><q>Test oluşturuldu.</q>, <q>Soru ekleme adımına geçiliyor...</q> — başarı.</li>
+<li><q>Test oluşturulamadı.</q>, <q>Bir hata oluştu, tekrar deneyin.</q> — hata.</li>
+<li><q>Excel dosyası okunamadı.</q>, <q>Bazı testler oluşturulamadı. Başarılı: {{success}}, Hatalı: {{failed}}</q>, <q>Tüm testler oluşturuldu.</q>, <q>Toplu yükleme sırasında bir hata oluştu.</q> — toplu yükleme.</li>
+<li><q>Henüz dosya yüklenmedi. Bir Excel seçtiğinde satırlar burada listelenir.</q> — toplu yükleme paneli boşken.</li>
+</ul>
+</article>
+
+<article class="screen" id="ogretmen-test-duzenle">
+<h3>4.7 Testi Düzenle (görünürlük ve paylaşım)</h3>
+<p class="meta">Menü: Sınavlar &gt; Düzenle (veya test detayı &gt; Düzenle) · Adres: /exam/:id</p>
+<p class="purpose"><strong>Amacı:</strong> Var olan testin künye ve sınıflandırma bilgilerini, kapak görselini ve görünürlük/paylaşım ayarlarını günceller. Sağdaki <strong>Kart Önizleme</strong> testin listede nasıl görüneceğini gösterir.</p>
+<figure class="shot"><img src="img/ogretmen-test-duzenle.png" alt="Testi Düzenle: Künye ve Sınıflandırma formu, sağda kart önizleme, Değişiklikleri Kaydet ve Soru Ekle butonları"><figcaption>Testi Düzenle ekranı ve kart önizlemesi.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Sınavlar ekranında kartta <strong>Düzenle</strong>'ye basın.</li>
+<li>Künye ve sınıflandırma alanlarını değiştirin (alanlar <a href="#ogretmen-test-olustur">4.6</a> ile aynıdır).</li>
+<li>Gerekirse <strong>Kapak Görseli</strong> alanına görsel sürükleyin ya da <strong>Dosya Seç</strong> ile yükleyin (PNG, JPG, WEBP; önerilen 1200×675, en fazla 2 MB).</li>
+<li><strong>Görünürlük</strong> bölümünde <strong>Öğretmenler Arası Paylaşım</strong> ve <strong>Öğrenciye Görünürlük</strong> seçeneklerini belirleyin; bu değişiklik anında kaydedilir.</li>
+<li><strong>Değişiklikleri Kaydet</strong>'e basın. Soru eklemek için <strong>Soru Ekle</strong>'ye geçin.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Öğretmenler Arası Paylaşım</td><td><strong>Özel</strong>: yalnızca siz ve admin görür/düzenler/atar. <strong>Herkese Açık (Görüntüleme)</strong>: tüm öğretmenler görür, atamak için sizden onay gerekir. <strong>Herkese Açık (Atanabilir)</strong>: tüm öğretmenler görür ve onaysız atayabilir. <strong>Sadece okulum</strong>: yalnızca okulunuzdaki öğretmenler görür ve atar.</td></tr>
+<tr><td>Öğrenciye Görünürlük</td><td><strong>Restricted</strong>: yalnızca atanan öğrenciler görür ve başlatabilir. <strong>Normal</strong>: öğrenci keşfet listesinde görünür ve başlatabilir.</td></tr>
+<tr><td>Kart Önizleme, Sorular</td><td>Kartın görünümü ve testteki soru sayısı.</td></tr>
+<tr><td>Değişiklikleri Kaydet / Soru Ekle</td><td>Formu kaydeder / soru ekleme tuvalini açar.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Bu testi yalnızca oluşturan öğretmen veya yönetici düzenleyebilir. Salt görüntüleme modundasınız.</q> — başkasının testini açtığınızda.</li>
+<li><q>Değişiklikler kaydedildi.</q> — kaydetme başarılı.</li>
+<li><q>Görünürlük ayarları güncellendi.</q> / <q>Görünürlük ayarları güncellenemedi.</q> / <q>Bu sınavın görünürlüğünü değiştirme yetkiniz yok.</q></li>
+<li><q>Bir okula bağlı olmadığınız için bu seçenek artık kullanılamıyor; başka bir seçenek seçin.</q> — okula bağlı değilken <q>Sadece okulum</q> seçiliyse.</li>
+<li><q>Lütfen bir görsel dosyası seçin.</q>, <q>Görsel en fazla 2 MB olabilir.</q>, <q>Kapak görseli güncellendi.</q>, <q>Kapak görseli yüklenemedi.</q></li>
+<li><q>Test bulunamadı.</q>, <q>Test bilgileri yüklenemedi.</q>, <q>Bu teste erişiminiz yok veya test bulunamadı.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="ogretmen-soru-ekle">
+<h3>4.8 Soru ekleme, soru tespiti ve soruları listeleme</h3>
+<p class="meta">Menü: Test detayı / Testi Düzenle &gt; Soru Ekle · Adres: /questioncanvas</p>
+<p class="purpose"><strong>Amacı:</strong> Taranmış kitap sayfalarından soru oluşturur. Sayfa görselleri yüklenir, <strong>Otomatik Algıla</strong> ile sayfadaki sorular, şıklar ve pasajlar otomatik tespit edilir; bölgeler düzeltilip bir teste kaydedilir.</p>
+<figure class="shot"><img src="img/ogretmen-soru-ekle.png" alt="Soru Ekle tuvali: Kitap seç / Kitap testi / Test seç, Sayfalar paneli (İçe Aktar, Klasör Yükle, Otomatik Algıla, Hizala), sürükle-bırak alanı ve Soru Müfettişi"><figcaption>Soru Ekle tuvali: solda sayfalar, ortada tuval, sağda Soru Müfettişi.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Üst çubukta <strong>Kitap seç</strong>, <strong>Kitap testi</strong> ve <strong>Test seç</strong> ile soruların kaydedileceği testi seçin (listede yoksa <q>Yeni test oluştur</q>).</li>
+<li>Sayfaları yükleyin: tuvale <q>Taranmış sayfaları buraya sürükle</q>yin, <strong>Dosya Seç</strong>'e basın ya da <strong>Klasör Yükle</strong> ile bir klasör seçin (klasör adından kitap adı otomatik doldurulur). <strong>İçe Aktar</strong> önceden hazırlanmış bölgeleri yükler.</li>
+<li><strong>Otomatik Algıla</strong>'ya basın; sistem sayfadaki soru, şık ve pasaj bölgelerini tespit eder (soru tespiti).</li>
+<li>Gerekirse çizim modunu (<q>Soru</q>, <q>Şık</q>, <q>Pasaj</q>, <q>Sürükle-Bırak</q>) seçip bölgeleri elle çizin veya düzeltin; <strong>Hizala</strong> ile bölgeleri hizalayın.</li>
+<li>Tuvalde bir soruyu seçin; sağdaki <strong>Soru Müfettişi</strong>'nde etkileşim tipini, şıkları, doğru cevabı, sınıflandırmayı (<q>Yapay Zekâ</q> ile önerilebilir), zorluğu ve uyarıları kontrol edin.</li>
+<li><strong>Kaydet</strong>'e basın. Açılır menüde <q>Kaydet ve Düzelt</q>, <q>Çalışma Sayfasına Gönder</q> ve <q>Sadece modeli eğit</q> seçenekleri vardır.</li>
+<li>Soruları listelemek için test seçiliyken <strong>Ön İzleme</strong>'yi açın: testteki sorular <q>Ön İzleme — Test adı</q> başlığıyla soru, örnek ve pasaj sayısıyla listelenir (<code>/questioncanvas/preview/:testId</code>). Testin soru sayısı ve öğrenci performansı ayrıca test detayında (<a href="#ogretmen-test-detay">4.4</a>) ve Testi Düzenle'deki <q>Sorular</q> alanında görünür.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Kitap seç / Kitap testi / Test seç</td><td>Soruların bağlanacağı kaynak kitap ve hedef test.</td></tr>
+<tr><td>Sayfalar: İçe Aktar, Klasör Yükle, Otomatik Algıla, Hizala</td><td>Sayfa/bölge yükleme, otomatik soru tespiti ve hizalama.</td></tr>
+<tr><td>Şık sayısı, Otomatik ilerle, Otomatik hizalama</td><td>Algılama ve kayıt davranışı ayarları.</td></tr>
+<tr><td>Soru Müfettişi</td><td>Etkileşim Tipi (Çoktan Seçmeli / Sürükle-Bırak), Şıklar, Sınıflandırma, Zorluk, <q>Örnek / çözümlü soru</q>, pasaj seçimi, Uyarılar, <strong>Soruyu Sil</strong>.</td></tr>
+<tr><td>Bölgeleri indir, Tam ekran, Müfettişi gizle/göster</td><td>Yardımcı araçlar.</td></tr>
+<tr><td>Kaydet</td><td>Tespit edilen soruları seçili teste kaydeder.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Henüz sayfa yok.</q> — sayfa yüklenmemişken.</li>
+<li><q>Tuval üzerinde bir soru seçin; şıklar, sınıflandırma ve uyarılar burada görünür.</q> — müfettiş boşken.</li>
+<li><q>Sorular başarıyla kaydedildi</q> — kayıt başarılı.</li>
+<li><q>Soru kaydedilirken hata oluştu!</q> — kayıt hatası.</li>
+<li><q>Lütfen örnek soru için doğru cevabı seçin!</q> — örnek soruda cevap eksikken.</li>
+<li><q>Bu soru üzerinde işlem yapma yetkiniz yok.</q>, <q>Soru yüklenemedi.</q></li>
+<li><q>Ön izleme için test seçilmedi.</q> — test seçmeden ön izleme açıldığında.</li>
+</ul>
+</article>
+
+<article class="screen" id="ogretmen-yorumlar">
+<h3>4.9 Yorumlar, sorular ve moderasyon</h3>
+<p class="meta">Menü: Test detayı &gt; Yorumlar ve sorular · Adres: /test/:id (sayfanın altı)</p>
+<p class="purpose"><strong>Amacı:</strong> Öğrencilerin test ve sorular hakkında yazdığı yorum/soruları görmenizi, cevaplamanızı ve kendi testinizde uygunsuz yorumları gizlemenizi sağlar.</p>
+<figure class="shot"><img src="img/bagimsiz-test-yorumlari.png" alt="Test detayının altında Yorumlar ve sorular bölümü, Moderasyon görünümü anahtarı ve Ayarları düzenle bağlantısı"><figcaption>Kendi testinizde <q>Yorumlar ve sorular</q> bölümü ve <q>Moderasyon görünümü</q> anahtarı (bağımsız öğretmen hesabıyla alınmıştır).</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Test detayını açıp sayfanın altındaki <strong>Yorumlar ve sorular</strong> bölümüne inin.</li>
+<li>Yorumların varsayılan durumu üstteki özet satırında yazar (<q>Öğrenci yorumları: varsayılan açık</q>, <q>1 atamada kapalı</q> …). Değiştirmek için <strong>Ayarları düzenle</strong>'ye basın.</li>
+<li>Bir yoruma cevap vermek için <strong>Yanıtla</strong>'ya basın, metni yazıp <strong>Gönder</strong>'e (veya Ctrl+Enter) basın.</li>
+<li>Uygunsuz bir yorumu yorum menüsünden <strong>Gizle</strong> ile gizleyin; <q>Gizleme nedeni</q> zorunludur. Gizlenen yorum herkese <q>Bu yorum kaldırıldı.</q> olarak görünür.</li>
+<li>Gizlenen yorumların içeriğini ve nedenini görmek için <strong>Moderasyon görünümü</strong> anahtarını açın; gerekirse <strong>Gizlemeyi kaldır</strong>.</li>
+<li>Başkasının testindeki bir yorumu <strong>Şikayet et</strong> ile (Spam ya da reklam, Hakaret…, Kişisel bilgi paylaşımı, Diğer) yöneticiye bildirebilirsiniz.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Moderasyon görünümü</td><td>Gizlenen yorumların içeriğini ve gizleme nedenini gösterir.</td></tr>
+<tr><td>Ayarları düzenle</td><td>Testin yorum ayarını (açık/kapalı) değiştirir.</td></tr>
+<tr><td>Yanıtla / Düzenle / Gizle / Gizlemeyi kaldır / Şikayet et</td><td>Yorum işlemleri. <q>Öğretmen</q> rozeti öğretmen yorumlarını işaretler.</td></tr>
+<tr><td>Yorum kutusu</td><td>En fazla 2000 karakter; <q>Göndermek için Ctrl+Enter</q>.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Henüz yorum yok</q> — konuşma boşken.</li>
+<li><q>Worksheet varsayılanı: öğrenci yorum ve soruları kapalı. Atamaya özel ayar bunu değiştirebilir; mevcut yorumlar görünür.</q> — yorumlar kapalıyken öğretmene.</li>
+<li><q>Gizleme nedeni zorunlu.</q>, <q>Yorum gizlendi.</q>, <q>Yorum yeniden görünür.</q>, <q>Yorum gizlenemedi.</q></li>
+<li><q>Mesajında telefon numarası ya da e-posta var gibi görünüyor. Kişisel bilgilerini herkese açık yorumlarda paylaşmamanı öneririz.</q> — kişisel veri uyarısı (<strong>Yine de gönder</strong>).</li>
+<li><q>Bu konuşmaya cevap yazma yetkin yok.</q>, <q>Bu yorumu yönetme yetkin yok.</q> — yetki dışı işlem.</li>
+<li><q>Çok hızlı işlem yapıyorsun. Lütfen biraz bekleyip tekrar dene.</q>, <q>Sunucuya ulaşılamadı. Bağlantını kontrol edip tekrar dene.</q>, <q>Yorumlar yüklenemedi.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="ogretmen-video-tahta">
+<h3>4.10 Video ders ve ortak tahta (whiteboard)</h3>
+<p class="meta">Menü: Randevu Talepleri &gt; Derse katıl · Adres: /lessons/:bookingId/video</p>
+<p class="purpose"><strong>Amacı:</strong> Onaylanmış bir ders randevusunda öğrenciyle görüntülü görüşme (Jitsi) yapmanızı ve <strong>Tahta</strong> sekmesinde ortak çizim tahtasını kullanmanızı sağlar. Öğretmen odada <q>Moderatör (öğretmen)</q>, öğrenci <q>Katılımcı</q> rolündedir.</p>
+<figure class="shot placeholder"><div class="ph">Ekran görüntüsü alınamadı</div><figcaption>Not: Yerel ortamda katılım penceresi açık (ders saatine yakın) onaylı bir randevu olmadığı için aktif görüşme odası ve tahta görüntülenemedi. Öğrenci tarafındaki <q>pencere kapandı</q> durumu öğrenci bölümünde gösterilmiştir.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li><strong>Randevu Talepleri</strong> ekranında onaylı randevunun yanındaki <strong>Derse katıl</strong>'a basın. Buton ders başlamadan kısa süre önce etkinleşir.</li>
+<li>Oda hazırlanırken <q>Görüşme odası hazırlanıyor...</q> görünür; ardından <strong>Video</strong> sekmesinde görüşme başlar.</li>
+<li><strong>Tahta</strong> sekmesine geçerek ortak tahtaya çizin; bağlantı durumu (<q>Bağlı</q>, <q>Yeniden bağlanıyor...</q>) ve karşı tarafın çevrimiçi olup olmadığı (<q>Öğrenci çevrimiçi</q>) gösterilir.</li>
+<li>Dersi bitirmek için <strong>Dersten ayrıl</strong>'a basın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Video / Tahta sekmeleri</td><td>Görüntülü görüşme ve ortak çizim tahtası.</td></tr>
+<tr><td>Dersten ayrıl</td><td>Odadan çıkar, randevu ekranına döner.</td></tr>
+<tr><td>Tekrar dene / Geri dön</td><td>Hata durumunda odayı yeniden açmayı dener / önceki ekrana döner.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Ders başlamadan {{minutes}} dk önce aktif olur</q>, <q>Ders süresi doldu</q> — katılım penceresi dışında.</li>
+<li><q>Görüşme odası bulunamadı.</q>, <q>Görüşme odası açılamadı.</q>, <q>Görüşme adresi doğrulanamadı.</q>, <q>Geçersiz ders adresi.</q></li>
+<li><q>Öğretmeniniz geçici olarak müsait değil; bu ders şu anda başlatılamıyor.</q> — öğretmen onayı askıdayken (öğrenci tarafı).</li>
+<li><q>Tahta henüz açılmadı; ders saatine yakın tekrar deneyin.</q>, <q>Ders süresi doldu; tahta salt okunur.</q>, <q>Ders bitiyor: tahta yaklaşık {{minutes}} dakika içinde kapanacak.</q></li>
+<li><q>Tahtada görsel desteklenmiyor.</q>, <q>Tahtadaki öğe sınırına ulaşıldı.</q>, <q>Bu çizim çok uzun olduğu için karşı tarafa gönderilemedi. Daha kısa çizgilerle devam edin.</q></li>
+<li><q>Dış bağlantı açılsın mı?</q> — tahtadaki bir bağlantıya tıklandığında (<strong>Bağlantıyı aç</strong> / <strong>Vazgeç</strong>).</li>
+</ul>
+</article>
+
+<article class="screen" id="ogretmen-soru-transferi">
+<h3>4.11 Soru Transferi</h3>
+<p class="meta">Menü: Soru Transferi · Adres: /question-transfer</p>
+<p class="purpose"><strong>Amacı:</strong> Soruları bir paket (ZIP) olarak dışa aktarmak ve başka bir ortamdan alınmış paketi içe aktarmak için kullanılır. İşler arka planda çalışır; durumları <q>İşler</q> bölümünde izlenir.</p>
+<figure class="shot"><img src="img/ogretmen-soru-transferi.png" alt="Soru Transferi: Soruları Dışa Aktar, Soruları İçe Aktar, Export Bundle'ları ve İşler bölümleri"><figcaption>Soru Transferi ekranı.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li><strong>Dışa aktarma:</strong> <strong>Paket Kodu</strong>'nu seçin, <strong>Soru Numaraları</strong>'na id veya aralık yazın (örn: 12, 15, 99, 100-200; boş bırakılırsa tüm sorular) ve <strong>Export Başlat</strong>'a basın.</li>
+<li>Oluşan paketleri <strong>Export Bundle'ları</strong> bölümünden <strong>Index (json)</strong>, <strong>Tek ZIP (package)</strong>, <strong>ZIP</strong> veya <strong>Map</strong> olarak indirin.</li>
+<li><strong>İçe aktarma:</strong> <strong>Soruları İçe Aktar</strong> bölümünde ZIP dosyasını seçin; kaynak, soru sayısı ve zaten var olan soru sayısı çiplerini kontrol edip <strong>Import Başlat</strong>'a basın.</li>
+<li><strong>İşler</strong> bölümünde son 10 işi izleyin; liste otomatik yenilenir, <strong>Şimdi yenile</strong> ile elle yenileyin.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Bundle'lar</td><td>Bundle listesini yeniler.</td></tr>
+<tr><td>Hangfire</td><td>Arka plan işlerinin yönetim panelini (Hangfire dashboard) açar.</td></tr>
+<tr><td>Paket Kodu, Soru Numaraları</td><td>Dışa aktarılacak kaynak ve soru id'leri.</td></tr>
+<tr><td>İşler (Export / Import sütunları)</td><td>İş durumu ve Index / ZIP / Dosya indirme bağlantıları.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Zip seçilmedi</q> — içe aktarma dosyası seçilmeden.</li>
+<li><q>Bu kaynak için henüz bundle yok.</q> — paket listesi boşken.</li>
+<li><q>Henüz iş yok.</q>, <q>Export işi yok.</q>, <q>Import işi yok.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="ogretmen-calisma-sayfalari">
+<h3>4.12 Çalışma Ekleme (Çalışma Sayfaları)</h3>
+<p class="meta">Menü: Çalışma Ekleme · Adres: /study-pages</p>
+<p class="purpose"><strong>Amacı:</strong> Öğrencilerin çalışma programlarına eklenebilecek çalışma etkinliklerini (görsel sayfalar, linkler, kitap sayfa aralıkları) listeler, arar ve siler.</p>
+<figure class="shot"><img src="img/ogretmen-calisma-sayfalari.png" alt="Çalışma Sayfaları listesi: arama kutusu, Ders filtrele ve Yeni Ekle butonu"><figcaption>Çalışma Sayfaları listesi (test hesabında henüz kayıt yok).</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Menüden <strong>Çalışma Ekleme</strong>'ye tıklayın.</li>
+<li><strong>Başlık veya açıklama ara</strong> kutusu ve <strong>Ders filtrele</strong> ile listeyi daraltın; <strong>Önceki</strong> / <strong>Sonraki</strong> ile sayfalar arasında gezinin.</li>
+<li>Bir kartta <strong>Düzenle</strong> ile etkinliği açın, <strong>Sil</strong> ile silin.</li>
+<li>Yeni etkinlik için <strong>Yeni Ekle</strong>'ye basın (<a href="#ogretmen-calisma-sayfasi-yeni">4.13</a>).</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Başlık veya açıklama ara</td><td>Metin araması.</td></tr>
+<tr><td>Ders filtrele</td><td>Tüm Dersler veya tek ders.</td></tr>
+<tr><td>Kart</td><td>Kapak, sayfa sayısı (<q>N Sayfa</q>) veya kitap aralığı, <q>Yeni</q> rozeti.</td></tr>
+<tr><td>Yeni Ekle / Düzenle / Sil</td><td>Etkinlik oluşturma, düzenleme, silme.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Bu çalışma sayfasını silmek istediğinizden emin misiniz? Bu işlem geri alınmaz.</q> — silme onayı (<strong>Evet, Sil</strong> / <strong>İptal</strong>).</li>
+<li><q>Çalışma sayfası silindi.</q> / <q>Silme işleminde hata oluştu.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="ogretmen-calisma-sayfasi-yeni">
+<h3>4.13 Yeni Çalışma Etkinliği</h3>
+<p class="meta">Menü: Çalışma Ekleme &gt; Yeni Ekle · Adres: /study-pages/new (düzenleme: /study-pages/:id)</p>
+<p class="purpose"><strong>Amacı:</strong> Görsel (sayfa resimleri), Link veya Kitap Sayfası tipinde yeni bir çalışma etkinliği oluşturur ve sınıf/ders/konuya bağlar.</p>
+<figure class="shot"><img src="img/ogretmen-calisma-sayfasi-yeni.png" alt="Yeni Çalışma Etkinliği formu: Görsel/Link tipi, Başlık, Açıklama, Sınıf, Ders, Konu, Alt Konu, Yayınla; sağda Resimler paneli"><figcaption>Yeni Çalışma Etkinliği formu.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li><strong>Etkinlik Tipi</strong>'ni seçin: <strong>Görsel</strong>, <strong>Link</strong> veya <strong>Kitap Sayfası</strong>.</li>
+<li><strong>Başlık</strong> (zorunlu) ve <strong>Açıklama</strong> girin; <strong>Sınıf</strong>, <strong>Ders</strong>, <strong>Konu</strong>, <strong>Alt Konu</strong>'yu seçin.</li>
+<li>Görsel tipinde sağdaki <strong>Resimler</strong> panelinden <strong>Resim Seç</strong> ile resim ekleyin veya <strong>JSON Yükle</strong> ile kitap/sayfa listesine göre resimleri getirin; <strong>Klasör Seç - Otomatik Filtrele</strong> ile klasörden eşleşenleri ekleyin.</li>
+<li>Link tipinde <strong>URL</strong> ve <strong>Platform</strong> (EBA, YouTube, Diğer) girin.</li>
+<li>Kitap Sayfası tipinde kitap, kitap testi ve <strong>Başlangıç</strong>/<strong>Bitiş Sayfası</strong> girin.</li>
+<li><strong>Yayınla</strong> anahtarını ayarlayın ve <strong>Kaydet</strong>'e basın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Etkinlik Tipi</td><td>Görsel / Link / Kitap Sayfası.</td></tr>
+<tr><td>Başlık*, Açıklama, Sınıf, Ders, Konu, Alt Konu</td><td>Etkinliğin adı ve sınıflandırması.</td></tr>
+<tr><td>Resimler: JSON Yükle, Resim Seç, ZIP İndir</td><td>Görsel ekleme ve indirme. <q>Dosya Kılavuzu</q> JSON'daki dosyalardan bulunan/eksik olanları gösterir.</td></tr>
+<tr><td>Yayınla</td><td>Açıkken etkinlik öğrencilere görünür.</td></tr>
+<tr><td>Kaydet / İptal</td><td>Formu kaydeder / vazgeçer.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Lütfen gerekli alanları doldurun.</q></li>
+<li><q>En az bir resim seçmelisiniz.</q>, <q>Bu sayfada en az bir resim kalmalı.</q> — görsel tipi.</li>
+<li><q>Link tipi için URL zorunludur.</q>, <q>Geçerli bir http/https URL giriniz.</q> — link tipi.</li>
+<li><q>Kitap seçin veya yeni kitap adı girin.</q>, <q>Kitap testi seçin veya yeni test adı girin.</q>, <q>Başlangıç ve bitiş sayfası zorunludur.</q>, <q>Sayfa numaraları pozitif olmalıdır.</q>, <q>Bitiş sayfası başlangıçtan küçük olamaz.</q> — kitap tipi.</li>
+<li><q>Lütfen JSON dosyası seçin.</q>, <q>JSON dosyası okunamadı. Format: [{"book":"kitap_adi","pages":[87,88,89]}]</q></li>
+<li><q>Çalışma etkinliği kaydedildi.</q> / <q>Kayıt sırasında hata oluştu.</q>; <q>Çalışma etkinliği güncellendi.</q> / <q>Güncelleme sırasında hata oluştu.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="ogretmen-calisma-linkleri">
+<h3>4.14 Çalışma Linkleri</h3>
+<p class="meta">Menü: Çalışma Linkleri · Adres: /study-links</p>
+<p class="purpose"><strong>Amacı:</strong> Konu veya alt konu için video/makale linkleri ekler. Öğrenciler yanlış cevapladıkları sorunun konusu için bu linkleri <q>Bu soruyla ilgili çalışma önerileri</q> olarak görür.</p>
+<figure class="shot"><img src="img/ogretmen-calisma-linkleri.png" alt="Çalışma Linkleri: Ders, Konu, Alt konu seçimi ve link listesi alanı"><figcaption>Çalışma Linkleri: önce ders, konu ve (isteğe bağlı) alt konu seçilir.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li><strong>Ders</strong>, ardından <strong>Konu</strong> seçin. Alt konuya özel link için <strong>Alt konu</strong> seçin; <q>Tümü (konu seviyesi linkler)</q> konunun genel linklerini gösterir.</li>
+<li><strong>Link Ekle</strong>'ye basın; pencerede <strong>Başlık</strong>, <strong>URL</strong>, <strong>Kaynak tipi</strong> (YouTube / Diğer) girin ve <q>Aktif (öğrencilere gösterilsin)</q> seçeneğini ayarlayıp <strong>Kaydet</strong>'e basın.</li>
+<li>Listedeki linkleri sürükleyerek veya <strong>Yukarı taşı</strong>/<strong>Aşağı taşı</strong> ile sıralayın; <strong>Aktif</strong> anahtarıyla aktif/pasif yapın; <strong>Düzenle</strong>/<strong>Sil</strong> ile değiştirin.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Ders / Konu / Alt konu</td><td>Linklerin bağlanacağı kapsam.</td></tr>
+<tr><td>N / M aktif, Toplam N / M</td><td>Aktif link ve toplam link sınırları.</td></tr>
+<tr><td>Link Ekle</td><td>Yeni link penceresi.</td></tr>
+<tr><td>Aktif, Düzenle, Sil, sıralama</td><td>Link yönetimi; yalnızca kendi eklediğiniz linkleri değiştirebilirsiniz.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Konu veya alt konu seçin</q> — kapsam seçilmeden.</li>
+<li><q>Henüz çalışma linki yok</q> — kapsamda link yokken.</li>
+<li><q>Başlık zorunludur.</q>, <q>URL zorunludur.</q>, <q>Geçerli bir http:// veya https:// adresi girin.</q></li>
+<li><q>Aktif link sınırına ulaşıldı ({{max}}/{{max}}). Yeni link eklemek veya bir linki aktifleştirmek için önce bir linki pasifleştirin.</q>, <q>Bu kapsamda en fazla {{max}} link (aktif + pasif) olabilir. Yeni link eklemek için önce bir linki silin.</q></li>
+<li><q>Yalnızca kendi eklediğiniz linkleri düzenleyebilir, aktif/pasif yapabilir veya silebilirsiniz.</q></li>
+<li><q>Çalışma linki eklendi.</q>, <q>Çalışma linki güncellendi.</q>, <q>Çalışma linki silindi.</q>, <q>Sıralama güncellendi.</q>, <q>İşlem tamamlanamadı. Lütfen tekrar deneyin.</q></li>
+<li><q>Çok fazla işlem yapıldı. Lütfen biraz sonra tekrar deneyin.</q> — hız sınırı.</li>
+</ul>
+</article>
+
+<article class="screen" id="ogretmen-planim">
+<h3>4.15 Planım (öğretmen takvimi)</h3>
+<p class="meta">Menü: Planım · Adres: /my-calendar</p>
+<p class="purpose"><strong>Amacı:</strong> Onayladığınız ders randevularını aylık takvimde gösterir.</p>
+<figure class="shot"><img src="img/ogretmen-planim.png" alt="Planım: aylık takvim, önceki/sonraki ay okları ve Bugün butonu"><figcaption>Planım: aylık takvim görünümü.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Menüden <strong>Planım</strong>'a tıklayın.</li>
+<li>Ok butonlarıyla önceki/sonraki aya geçin, <strong>Bugün</strong> ile bu aya dönün.</li>
+<li>Bir güne tıklayarak o günün randevularını açın; pencerede <strong>Randevularıma git</strong> ile randevu ekranına geçin.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Önceki ay / Sonraki ay / Bugün</td><td>Ay gezinmesi.</td></tr>
+<tr><td>Takvim çubukları</td><td><q>Ders randevusu</q> etkinlikleri; bir günde çok etkinlik varsa <q>+N daha</q>.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Bu ay onaylanmış ders randevun yok</q> — boş ay (<strong>Müsait saatlerimi düzenle</strong> bağlantısıyla).</li>
+<li><q>Takvim yüklenemedi</q> — hata (<strong>Tekrar dene</strong>).</li>
+</ul>
+</article>
+
+<article class="screen" id="ogretmen-musait-saatler">
+<h3>4.16 Müsait Saatlerim</h3>
+<p class="meta">Menü: Müsait Saatlerim · Adres: /availability</p>
+<p class="purpose"><strong>Amacı:</strong> Öğrencilerin randevu talep edebileceği zaman aralıklarını haftalık takvimde tanımlar. Ayrıntılı kullanım (tekrarlayan aralıklar dahil) <a href="#bagimsiz-musait-saatler">5.3</a>'te anlatılmıştır.</p>
+<figure class="shot"><img src="img/ogretmen-musait-saatler.png" alt="Müsait Saatlerim: haftalık takvim ızgarası, Bugün butonu ve renk açıklaması"><figcaption>Müsait Saatlerim: haftalık takvim ızgarası.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Takvimde boş bir hücreye tıklayın; aralığı genişletmek için diğer hücrelere tıklayın.</li>
+<li><strong>Kaydet</strong>'e basın (her hafta tekrarlamak için <strong>Her hafta tekrarla</strong>, ardından <strong>Seriyi kaydet</strong>).</li>
+<li>Bir aralığı silmek için üzerine tıklayıp <strong>Sil</strong>'i onaylayın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Önceki hafta / Bugün / Sonraki hafta</td><td>Hafta gezinmesi.</td></tr>
+<tr><td>Renk açıklaması</td><td><q>Boş</q>, <q>Bekleyen talep</q>, <q>Onaylı randevu</q>, <q>Tekrarlayan</q>.</td></tr>
+<tr><td>Randevu Talepleri</td><td>Randevu Talepleri ekranına gider.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Geçmiş bir saate aralık eklenemez.</q>, <q>Seçim mevcut bir aralıkla çakışıyor.</q>, <q>Bir aralık en fazla {{hours}} saat olabilir.</q>, <q>En fazla {{days}} gün sonrasına aralık eklenebilir.</q></li>
+<li><q>Randevusu olan aralık silinemez</q></li>
+<li><q>Müsaitlik aralığı eklendi.</q> / <q>Aralık eklenemedi.</q>; <q>Müsaitlik aralığı silindi.</q> / <q>Aralık silinemedi.</q>; <q>Müsaitlik aralıkları yüklenemedi.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="ogretmen-randevu-talepleri">
+<h3>4.17 Randevu Talepleri</h3>
+<p class="meta">Menü: Randevu Talepleri · Adres: /booking-requests</p>
+<p class="purpose"><strong>Amacı:</strong> Öğrencilerin müsait saatleriniz için gönderdiği ders randevusu taleplerini onaylar veya reddeder; onaylı derse buradan katılırsınız. Talep gelen bir hesapla ayrıntılı kullanım <a href="#bagimsiz-randevu-talepleri">5.4</a>'te anlatılmıştır.</p>
+<figure class="shot"><img src="img/ogretmen-randevu-talepleri.png" alt="Randevu Talepleri: Bekleyenler/Tümü filtresi, Müsait Saatlerim butonu ve boş liste mesajı"><figcaption>Randevu Talepleri (okula bağlı test öğretmeninde talep yok).</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li><strong>Bekleyenler</strong> veya <strong>Tümü</strong> filtresini seçin.</li>
+<li>Bekleyen talepte <strong>Onayla</strong> ya da <strong>Reddet</strong>'e basın (reddederken isteğe bağlı gerekçe yazılır).</li>
+<li>Onaylı randevuda ders saati yaklaşınca <strong>Derse katıl</strong>'a basın (<a href="#ogretmen-video-tahta">4.10</a>).</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Bekleyenler / Tümü</td><td>Talep filtresi.</td></tr>
+<tr><td>Müsait Saatlerim</td><td>Müsaitlik takvimine gider.</td></tr>
+<tr><td>Durum</td><td><q>Bekliyor</q>, <q>Onaylandı</q>, <q>Reddedildi</q>.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Gösterilecek randevu talebi yok.</q> — liste boşken.</li>
+<li><q>Randevu onaylandı.</q>, <q>Randevu reddedildi.</q>, <q>İşlem tamamlanamadı.</q>, <q>Randevu talepleri yüklenemedi.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="ogretmen-atama-izin-talepleri">
+<h3>4.18 Atama İzin Talepleri</h3>
+<p class="meta">Menü: Atama İzin Talepleri · Adres: /assignment-permission-requests</p>
+<p class="purpose"><strong>Amacı:</strong> Paylaşımı <q>Herkese Açık (Görüntüleme)</q> olan testleriniz için diğer öğretmenlerin, testi kendi öğrencilerine atamak amacıyla gönderdiği izin taleplerini onaylar veya reddeder.</p>
+<figure class="shot"><img src="img/ogretmen-atama-izin-talepleri.png" alt="Atama İzin Talepleri tablosu: Talep eden, Sınav, Tarih, Not, Durum ve Onayla/Reddet butonları"><figcaption>Bekleyen bir atama izni talebi (başka bir test öğretmen hesabıyla alınmıştır).</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Menüden <strong>Atama İzin Talepleri</strong>'ne tıklayın; varsayılan filtre <strong>Bekleyenler</strong>'dir, geçmiş talepler için <strong>Tümü</strong>'nü seçin.</li>
+<li>Talep eden öğretmeni, sınavı, tarihi ve notu inceleyin.</li>
+<li><strong>Onayla</strong> ile izni verin ya da <strong>Reddet</strong> ile reddedin.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Talep eden, Sınav, Tarih, Not</td><td>Talebin ayrıntıları.</td></tr>
+<tr><td>Durum</td><td><q>Bekliyor</q>, <q>Onaylandı</q>, <q>Reddedildi</q>.</td></tr>
+<tr><td>Onayla / Reddet</td><td>Talep hakkında karar verir.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Bekleyen atama izni talebi yok</q> — liste boşken.</li>
+<li><q>Talep onaylandı.</q>, <q>Talep reddedildi.</q>, <q>İşlem tamamlanamadı.</q>, <q>Talepler yüklenemedi.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="ogretmen-ozel-ders-profili">
+<h3>4.19 Özel Ders Profilim (okula bağlı öğretmen)</h3>
+<p class="meta">Menü: Özel Ders Profilim · Adres: /tutor-profile</p>
+<p class="purpose"><strong>Amacı:</strong> Özel ders profili yalnızca bağımsız (okula bağlı olmayan) öğretmenler içindir. Okula bağlı öğretmen bu sayfada yalnızca bilgi mesajı görür. Bağımsız öğretmenin formu <a href="#bagimsiz-ozel-ders-profili">5.2</a>'de anlatılır.</p>
+<figure class="shot"><img src="img/ogretmen-ozel-ders-profili-okullu.png" alt="Özel Ders Profilim sayfasında okula bağlı öğretmene gösterilen bilgi mesajı"><figcaption>Okula bağlı öğretmende Özel Ders Profilim.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Menüden <strong>Özel Ders Profilim</strong>'e tıklayın.</li>
+<li>Mesajı okuyun. Özel ders vermek istiyorsanız bağımsız öğretmen olarak başvurmanız gerekir (yönetici onayı gerekir).</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Bilgi mesajı</td><td>Form yerine bilgi kutusu gösterilir.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Tutor profili yalnızca bağımsız öğretmenler için kullanılabilir.</q> — ekranda görünen metin.</li>
+<li><q>Bu özellik bağımsız (okula bağlı olmayan) öğretmenler içindir.</q> — arayüz sözlüğündeki karşılığı.</li>
+</ul>
+<p class="known-issue">Ekranda görünen metin arayüz sözlüğündeki <q>Bu özellik bağımsız (okula bağlı olmayan) öğretmenler içindir.</q> metniyle aynı değildir ("Tutor" kelimesi Türkçeleştirilmemiş).</p>
+</article>
+
+<article class="screen" id="ogretmen-raporlar">
+<h3>4.20 Raporlar</h3>
+<p class="meta">Menü: Raporlar · Adres: /certificates</p>
+<p class="purpose"><strong>Amacı:</strong> <q>Başarı Rozetleri</q> sayfasını açar: <q>Çalışma alışkanlıklarınıza göre rozetlerin durumunu takip edin.</q></p>
+<figure class="shot"><img src="img/ogretmen-raporlar.png" alt="Raporlar menüsünde yalnızca Başarı Rozetleri başlığı görünen sayfa"><figcaption>Raporlar: yerel ortamda yalnızca başlık görünüyor.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Menüden <strong>Raporlar</strong>'a tıklayın.</li>
+<li>Rozet yolları ve tekil rozetler yüklendiğinde başlığın altında listelenir.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Başarı Rozetleri</td><td>Rozet yolları (<q>N / M tamamlandı</q>) ve <q>Tekil Rozetler</q>.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Rozetler yükleniyor...</q>, <q>Rozet bilgisi yüklenemedi. Lütfen daha sonra tekrar deneyin.</q>, <q>Henüz kazanılmış veya takip edilen bir rozet yok.</q></li>
+</ul>
+<p class="known-issue">Yerel ortamda sayfa yalnızca başlığı gösterdi; ne rozet listesi ne boş/hata mesajı görüntülendi. Öğretmen için rozet anlamlı değilse menü öğesinin öğretmene gösterilmemesi değerlendirilmeli.</p>
+</article>
+
+<article class="screen" id="ogretmen-bilinen-sorunlar">
+<h3>4.21 Ayarlar, Öğrenciler, Yardım ve Geri Bildirim</h3>
+<p class="meta">Menü: Ayarlar · Öğrenciler · Yardım · Geri Bildirim · Adres: /student-profile, /students, /help, /feedback</p>
+<p class="purpose"><strong>Amacı:</strong> Ayarlar menüsü öğrenci profil sayfasını (<code>/student-profile</code>) açar. Öğrenciler, Yardım ve Geri Bildirim menü öğeleri henüz bir ekrana bağlı değildir.</p>
+<figure class="shot placeholder"><div class="ph">Ekran görüntüsü alınamadı</div><figcaption>Not: Yerel ortamda öğretmen hesabıyla Ayarlar (<code>/student-profile</code>) boş beyaz sayfa olarak açıldı. Öğrenciler, Yardım ve Geri Bildirim menüleri karşılığı olmayan adreslere gittiği için kullanıcıyı karşılama sayfasına (<code>/welcome</code>) atıyor.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Dil ve tema için sağ üstteki dil ve koyu/açık tema düğmelerini, profil işlemleri için profil menüsünü kullanın (<a href="#ortak">Ortak bölüm</a>).</li>
+<li>Öğrencilerinizin durumunu görmek için Dashboard'daki <q>Geride Kalan Öğrenciler</q> ve test detayındaki <q>Sınıf İlerlemesi</q> bölümlerini kullanın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Ayarlar</td><td>Öğrenci profil sayfası; öğretmende içerik göstermiyor.</td></tr>
+<tr><td>Öğrenciler, Yardım, Geri Bildirim</td><td>Rotası tanımlı değil; karşılama sayfasına gider.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs"><li>Ekranda mesaj gösterilmez; sayfa boş kalır veya karşılama sayfası açılır.</li></ul>
+<p class="known-issue">Bilinen sorun (ayrı issue adayı): öğretmen ve admin için Ayarlar boş sayfa; <code>/students</code>, <code>/help</code>, <code>/feedback</code> rotaları yok.</p>
+</article>
+</section>
+
+<section class="role" id="bagimsiz">
+<h2>5. Bağımsız (özel ders) öğretmen</h2>
+<p>Bağımsız öğretmen ayrı bir rol değildir: Keycloak'ta yine <strong>Teacher</strong> rolündedir, öğretmen kaydında <q>Bağımsız özel ders veriyorum</q> seçeneğini işaretlemiş (sistemde <em>bağımsız özel ders öğretmeni</em> olarak işaretli) ve okula bağlı olmayan öğretmendir. Kayıt sırasında şu uyarı görünür: <q>Bağımsız öğretmen hesapları yönetici onayından sonra etkinleşir.</q> Yönetici panelindeki öğretmen listesinde bu hesapların okul sütununda <q>Bağımsız</q> yazar.</p>
+<p>Menüsü <a href="#ogretmen">öğretmen menüsüyle</a> aynıdır; test, soru, çalışma içerikleri ve atama ekranları 4. bölümde anlatıldığı gibi çalışır. Farklar:</p>
+<ul>
+<li><strong>Özel Ders Profilim</strong> formu yalnızca bağımsız öğretmende açılır; onaylı profiller öğrencilerin <q>Özel Ders Öğretmeni Ara</q> sonuçlarında görünür.</li>
+<li>Öğrenciler bu öğretmenin <strong>Müsait Saatlerim</strong> ekranında açtığı aralıklar için randevu talep eder; talepler <strong>Randevu Talepleri</strong>'nde onaylanır.</li>
+<li>Atama yaparken sınıf bazlı atama yoktur; yalnızca onaylı randevusu olan öğrencilere test atanabilir (<a href="#ogretmen-test-ata">4.5</a>).</li>
+<li>Okul seçenekli paylaşım (<q>Sadece okulum</q>) kullanılamaz.</li>
+</ul>
+<p>Bu bölümün ekran görüntüleri onaylı bir bağımsız öğretmen test hesabıyla alınmıştır.</p>
+
+<article class="screen" id="bagimsiz-basvuru">
+<h3>5.1 Başvuru ve onay</h3>
+<p class="meta">Menü: Başvuru durumu · Adres: /register?role=teacher, /teacher-approval-pending</p>
+<p class="purpose"><strong>Amacı:</strong> Bağımsız öğretmen olarak kaydolmak ve yönetici onayını beklemek.</p>
+<figure class="shot"><img src="img/ortak-kayit-ogretmen.png" alt="Öğretmen kayıt formu: Bir okula bağlıyım / Bağımsız özel ders veriyorum seçenekleri ve Okul alanı"><figcaption>Öğretmen kayıt formu: <q>Bağımsız özel ders veriyorum</q> seçeneği.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Kayıt sihirbazında rol olarak <strong>Öğretmen</strong>'i seçin (<a href="#ortak">Ortak bölüm</a>).</li>
+<li><strong>Çalışma şekliniz</strong> alanında <strong>Bağımsız özel ders veriyorum</strong>'u işaretleyin ve <strong>Kaydı Tamamla</strong>'ya basın.</li>
+<li>Hesabınız yönetici onayını bekler; bu sürede <a href="#ogretmen-basvuru-durumu">Başvuru durumu</a> sayfası açılır. Onay beklerken <strong>Özel Ders Profilim</strong>'i doldurabilirsiniz.</li>
+<li>Yönetici <strong>Öğretmen Başvuruları</strong> ekranında başvurunuzu onayladığında bildirim alırsınız ve tüm öğretmen menüsü açılır.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Bir okula bağlıyım / Bağımsız özel ders veriyorum</td><td>Çalışma şekli. Okula bağlı seçimde Okul alanı kullanılır (okul bağlantısı da yönetici onayı ister).</td></tr>
+<tr><td>Okul</td><td>Yalnızca listeden seçilebilir; serbest metin kaydedilmez.</td></tr>
+<tr><td>Kaydı Tamamla / Geri</td><td>Kaydı gönderir / rol seçimine döner.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Bağımsız öğretmen hesapları yönetici onayından sonra etkinleşir.</q></li>
+<li><q>Öğretmen kaydınız alındı; hesabınız yönetici onayı bekliyor.</q> — kayıt sonrası.</li>
+<li><q>Yazdığınız okulu listeden seçin, alanı temizleyin ya da "Bağımsız özel ders veriyorum" seçeneğini işaretleyin.</q> — okul alanına listede olmayan metin yazıldığında.</li>
+<li><q>Öğretmen kaydı başarısız! Tekrar deneyin.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="bagimsiz-ozel-ders-profili">
+<h3>5.2 Özel Ders Profilim</h3>
+<p class="meta">Menü: Özel Ders Profilim · Adres: /tutor-profile</p>
+<p class="purpose"><strong>Amacı:</strong> Verdiğiniz dersleri, saatlik ücretinizi ve ders şeklinizi öğrencilerin görebileceği şekilde düzenler. Bu bilgiler öğrencinin öğretmen arama sonuçlarında ve öğretmen profil sayfasında görünür.</p>
+<figure class="shot"><img src="img/bagimsiz-ozel-ders-profili.png" alt="Özel Ders Profilim formu: Onaylı bağımsız öğretmen etiketi, Verdiğim dersler, Saatlik ücret, Online / Yüz yüze, Kısa tanıtım ve Kaydet"><figcaption>Özel Ders Profilim formu (<q>Onaylı bağımsız öğretmen</q> etiketi).</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Menüden <strong>Özel Ders Profilim</strong>'e tıklayın.</li>
+<li><strong>Verdiğim dersler</strong> listesinden en az bir ders seçin; seçilenler çip olarak görünür, çipteki çarpı ile kaldırılır.</li>
+<li><strong>Saatlik ücret</strong> girin (yalnızca bilgi amaçlıdır, ödeme alınmaz).</li>
+<li><strong>Ders şekli</strong> altında <strong>Online</strong> ve/veya <strong>Yüz yüze</strong>'yi işaretleyin.</li>
+<li><strong>Kısa tanıtım</strong> alanına deneyiminizi yazın (en fazla 500 karakter).</li>
+<li><strong>Kaydet</strong>'e basın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Durum etiketi</td><td><q>Onaylı bağımsız öğretmen</q>, <q>Onay bekliyor</q> veya <q>Başvurunuz reddedildi</q>.</td></tr>
+<tr><td>Verdiğim dersler*</td><td>En az bir ders seçilmelidir.</td></tr>
+<tr><td>Saatlik ücret*</td><td>₺ cinsinden; öğrenci kartında <q>N ₺ / saat</q> olarak görünür.</td></tr>
+<tr><td>Ders şekli: Online / Yüz yüze</td><td>En az biri seçilmelidir; ikisi birden seçilebilir.</td></tr>
+<tr><td>Kısa tanıtım</td><td>Ders yönteminiz hakkında kısa metin (0 / 500 sayaç).</td></tr>
+<tr><td>Kaydet</td><td>Zorunlu alanlar dolana kadar pasiftir.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Profiliniz onaylanana kadar öğrenci aramalarında görünmez. Bilgilerinizi şimdiden doldurabilirsiniz.</q> — onay beklerken.</li>
+<li><q>En az bir ders seçmelisiniz.</q>, <q>En az birini seçmelisiniz; ikisi birden de seçilebilir.</q> — eksik alan.</li>
+<li><q>Özel ders profiliniz güncellendi.</q> / <q>Profil güncellenemedi.</q> — kaydetme sonucu.</li>
+<li><q>Özel ders profiliniz yüklenirken bir sorun oluştu.</q>, <q>Ders listesi yüklenemedi.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="bagimsiz-musait-saatler">
+<h3>5.3 Müsait Saatlerim</h3>
+<p class="meta">Menü: Müsait Saatlerim · Adres: /availability</p>
+<p class="purpose"><strong>Amacı:</strong> Öğrencilerin randevu talep edebilmesi için müsait olduğunuz zaman aralıklarını haftalık takvimde tanımlar. Tanımladığınız boş aralıklar öğrencinin <q>Randevu Al</q> penceresinde seçilebilir.</p>
+<figure class="shot"><img src="img/bagimsiz-musait-saatler.png" alt="Müsait Saatlerim: haftalık takvim, Bugün, renk açıklaması (Boş, Bekleyen talep, Onaylı randevu, Tekrarlayan) ve Randevu Talepleri butonu"><figcaption>Müsait Saatlerim: haftalık takvim ve renk açıklaması.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Önceki/sonraki hafta oklarıyla ya da <strong>Bugün</strong> ile istediğiniz haftaya gidin.</li>
+<li>Takvimde boş bir hücreye tıklayın; aralığı genişletmek için başka hücrelere tıklayın (gece yarısını aşmak için ertesi günün ilk hücrelerine tıklayın). Seçim <q>Taslak</q> olarak işaretlenir.</li>
+<li>Tek seferlik aralık için <strong>Kaydet</strong>'e basın; vazgeçmek için <strong>Vazgeç</strong>.</li>
+<li>Her hafta aynı saati açmak için <strong>Her hafta tekrarla</strong>'yı işaretleyin, isterseniz <strong>Şu tarihe kadar</strong> alanına bitiş günü girin (boş bırakılırsa süresiz tekrarlar) ve <strong>Seriyi kaydet</strong>'e basın.</li>
+<li>Bir aralığı silmek için üzerine tıklayıp <q>Bu aralığı sil?</q> sorusunu <strong>Sil</strong> ile onaylayın. Tekrarlayan aralıkta <strong>Sadece bu hafta</strong> veya <strong>Tüm seri</strong>'yi seçin.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Randevu Talepleri</td><td>Gelen talepler ekranına gider.</td></tr>
+<tr><td>Renk açıklaması</td><td><q>Boş</q>, <q>Bekleyen talep</q>, <q>Onaylı randevu</q>, <q>Tekrarlayan</q>. Üzerine gelince öğrenci adı veya <q>Geçmiş</q> görünür.</td></tr>
+<tr><td>Her hafta tekrarla, Şu tarihe kadar</td><td>Haftalık seri oluşturur; bitiş en fazla bir yıl ileride olabilir.</td></tr>
+<tr><td>Kaydet / Seriyi kaydet / Vazgeç</td><td>Taslak aralığı kaydeder veya iptal eder.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Geçmiş bir saate aralık eklenemez.</q>, <q>Seçim mevcut bir aralıkla çakışıyor.</q>, <q>Bir aralık en fazla {{hours}} saat olabilir.</q>, <q>En fazla {{days}} gün sonrasına aralık eklenebilir.</q> — seçim kuralları.</li>
+<li><q>Bitiş günü ilk tekrardan sonra ve en fazla bir yıl ileride olmalı.</q> — tekrar bitişi hatalıysa.</li>
+<li><q>Randevusu olan aralık silinemez</q></li>
+<li><q>Müsaitlik aralığı eklendi.</q>, <q>{{count}} hafta için aralık oluşturuldu.</q>, <q>İlk {{count}} hafta oluşturuldu; seri süresiz devam eder.</q>, <q>{{count}} hafta dolu olduğu için atlandı.</q></li>
+<li><q>Müsaitlik aralığı silindi.</q>, <q>{{count}} aralık silindi.</q>, <q>{{count}} randevulu aralık korundu.</q></li>
+<li><q>Aralık eklenemedi.</q>, <q>Tekrarlayan aralık oluşturulamadı.</q>, <q>Aralık silinemedi.</q>, <q>Seri silinemedi.</q>, <q>Müsaitlik aralıkları yüklenemedi.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="bagimsiz-randevu-talepleri">
+<h3>5.4 Randevu Talepleri</h3>
+<p class="meta">Menü: Randevu Talepleri · Adres: /booking-requests</p>
+<p class="purpose"><strong>Amacı:</strong> Öğrencilerin müsait saatleriniz için gönderdiği ders randevusu taleplerini onaylar veya reddeder; onaylı randevuda derse katılım buradan yapılır.</p>
+<figure class="shot"><img src="img/bagimsiz-randevu-talepleri.png" alt="Randevu Talepleri ekranı, Tümü filtresi seçili"><figcaption>Randevu Talepleri, <q>Tümü</q> filtresi. Yerel ortamda bu hesabın talepleri listede görünmedi (bkz. not).</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Menüden <strong>Randevu Talepleri</strong>'ne tıklayın; varsayılan filtre <strong>Bekleyenler</strong>'dir.</li>
+<li>Bekleyen bir talepte öğrenci adını, günü ve saati kontrol edin.</li>
+<li><strong>Onayla</strong>'ya basın; randevu öğrencinin takviminde ve <q>Ders Randevularım</q> ekranında onaylı olarak görünür, öğrenciye bildirim gider.</li>
+<li>Reddetmek için <strong>Reddet</strong>'e basın, isterseniz <strong>Ret gerekçesi (opsiyonel)</strong> yazıp onaylayın; vazgeçmek için <strong>Vazgeç</strong>.</li>
+<li>Geçmiş kararları görmek için <strong>Tümü</strong>'nü seçin. Reddedilen talepte <q>Ret gerekçesi: …</q> görünür.</li>
+<li>Onaylı randevuda ders saati yaklaşınca <strong>Derse katıl</strong>'a basın (<a href="#bagimsiz-video-tahta">5.6</a>).</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Bekleyenler / Tümü</td><td>Talep filtresi.</td></tr>
+<tr><td>Müsait Saatlerim</td><td>Müsaitlik takvimine gider.</td></tr>
+<tr><td>Durum</td><td><q>Bekliyor</q>, <q>Onaylandı</q>, <q>Reddedildi</q>.</td></tr>
+<tr><td>Onayla / Reddet / Vazgeç</td><td>Talep kararı; ret gerekçesi isteğe bağlıdır.</td></tr>
+<tr><td>Derse katıl</td><td>Onaylı randevuda, katılım penceresi açıkken etkin.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Gösterilecek randevu talebi yok.</q> — liste boşken.</li>
+<li><q>Randevu onaylandı.</q>, <q>Randevu reddedildi.</q> — karar sonrası.</li>
+<li><q>İşlem tamamlanamadı.</q>, <q>Randevu talepleri yüklenemedi.</q> — hata.</li>
+<li><q>Bu zaman aralığı için zaten bir randevu var.</q> — çakışan randevu.</li>
+<li><q>Ders başlamadan {{minutes}} dk önce aktif olur</q>, <q>Ders süresi doldu</q> — <strong>Derse katıl</strong> penceresi dışında.</li>
+</ul>
+<p class="known-issue">Yerel ortamda bu hesabın veritabanında bir onaylı ve bir reddedilmiş randevusu olduğu halde <q>Tümü</q> filtresinde liste boş göründü. İki randevunun müsaitlik aralıkları silinmiş (silinmiş olarak işaretli) durumda; liste bu nedenle boş kalıyor olabilir (bkz. 5.6 notu).</p>
+</article>
+
+<article class="screen" id="bagimsiz-test-yorumlari">
+<h3>5.5 Kendi testinde yorum moderasyonu</h3>
+<p class="meta">Menü: Sınavlar &gt; test &gt; Yorumlar ve sorular · Adres: /test/:id</p>
+<p class="purpose"><strong>Amacı:</strong> Kendi oluşturduğunuz testte öğrencilerin yorum ve sorularını yönetmek: cevaplamak, gizlemek, gizlenenleri görmek ve testin yorum ayarını değiştirmek. Kullanım okula bağlı öğretmenle aynıdır (<a href="#ogretmen-yorumlar">4.9</a>).</p>
+<figure class="shot"><img src="img/bagimsiz-test-yorumlari.png" alt="Bağımsız öğretmenin kendi testinin detayı: Öğrenci Seç, Soru Kalitesi ve Yorumlar ve sorular bölümünde Moderasyon görünümü anahtarı"><figcaption>Kendi testinin detayı: <q>Atama</q> kartında yalnızca <q>Öğrenci Seç</q> var; altta <q>Yorumlar ve sorular</q> ve <q>Moderasyon görünümü</q>.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Sınavlar'dan kendi testinizi açın; bağımsız öğretmende <strong>Sınıfa Ata</strong> yoktur, <strong>Öğrenci Seç</strong> ile randevulu öğrencilere atama yapılır.</li>
+<li>Sayfanın altındaki <strong>Yorumlar ve sorular</strong> bölümüne inin.</li>
+<li><strong>Moderasyon görünümü</strong>'nü açarak gizlenen yorumların içeriğini ve gizleme nedenini görün.</li>
+<li>Bir yorumu yorum menüsünden <strong>Gizle</strong> ile gizleyin (neden zorunlu) veya <strong>Gizlemeyi kaldır</strong> ile geri açın.</li>
+<li><strong>Ayarları düzenle</strong> ile öğrenci yorumlarının varsayılan durumunu değiştirin.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Moderasyon görünümü</td><td>Gizlenen yorumların içeriğini ve gizleme nedenini gösterir.</td></tr>
+<tr><td>Öğrenci yorumları: varsayılan açık/kapalı</td><td>Testin yorum ayarı özeti; atamaya özel ayarlar <q>N atamada kapalı/açık</q> olarak eklenir.</td></tr>
+<tr><td>Gizle / Gizlemeyi kaldır / Yanıtla</td><td>Yorum işlemleri.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Yorum herkese "Bu yorum kaldırıldı" olarak görünür; içeriği ve nedeni yalnız moderatörler görür. Gizlemeyi sonra kaldırabilirsin.</q> — gizleme penceresinde.</li>
+<li><q>Gizleme nedeni zorunlu.</q>, <q>Neden en fazla {{max}} karakter olabilir.</q></li>
+<li><q>Yorum gizlendi.</q>, <q>Yorum yeniden görünür.</q>, <q>Yorum gizlenemedi.</q></li>
+<li><q>Bu yorum kaldırıldığı için yeni cevap yazılamaz.</q> — gizlenen yoruma cevap yazılmaya çalışıldığında.</li>
+</ul>
+</article>
+
+<article class="screen" id="bagimsiz-video-tahta">
+<h3>5.6 Video ders ve ortak tahta</h3>
+<p class="meta">Menü: Randevu Talepleri &gt; Derse katıl · Adres: /lessons/:bookingId/video</p>
+<p class="purpose"><strong>Amacı:</strong> Onaylı randevuda öğrenciyle görüntülü ders yapmak ve <strong>Tahta</strong> sekmesinde ortak çizim tahtasını kullanmak. Öğretmen odada <q>Moderatör (öğretmen)</q> rolündedir. Ekranın kullanımı ve mesajları <a href="#ogretmen-video-tahta">4.10</a>'da anlatılmıştır.</p>
+<figure class="shot placeholder"><div class="ph">Ekran görüntüsü alınamadı</div><figcaption>Not: Yerel ortamda katılım penceresi açık onaylı randevu yok. Bu hesabın onaylı randevusunun video adresi açıldığında <q>Randevu bulunamadı.</q> hatası alındı (aşağıdaki nota bakın).</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+<li>Ders saatinden kısa süre önce <strong>Randevu Talepleri</strong>'nde onaylı randevunun <strong>Derse katıl</strong> butonuna basın.</li>
+<li><strong>Video</strong> sekmesinde görüşmeyi yürütün; <strong>Tahta</strong> sekmesinde öğrenciyle birlikte çizin.</li>
+<li>Ders bitince <strong>Dersten ayrıl</strong>'a basın. Ders süresi dolduğunda tahta salt okunur olur.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields">
+<tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Video / Tahta</td><td>Görüşme ve ortak çizim tahtası sekmeleri.</td></tr>
+<tr><td>Dersten ayrıl, Tekrar dene, Geri dön</td><td>Odadan çıkma ve hata durumunda yeniden deneme.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+<li><q>Randevu bulunamadı.</q> — randevu kaydı bulunamadığında (sunucu mesajı).</li>
+<li><q>Bu randevuya katılma yetkiniz yok.</q>, <q>Görüşme yalnızca onaylanmış randevular için başlatılabilir.</q> — sunucu mesajları.</li>
+<li><q>Görüşmeye ders saatinden en erken {0} dakika önce katılabilirsiniz.</q>, <q>Bu dersin görüşme penceresi kapandı (bitişten {0} dakika sonra kapanır).</q> — katılım penceresi dışında ({0} yerine dakika yazılır).</li>
+<li><q>Görüşme servisi şu anda yapılandırılmamış. Lütfen daha sonra tekrar deneyin.</q></li>
+<li><q>Tahta henüz açılmadı; ders saatine yakın tekrar deneyin.</q>, <q>Ders süresi doldu; tahta salt okunur.</q>, <q>Randevu artık geçerli değil; tahta kapatıldı.</q></li>
+</ul>
+<p class="known-issue">Bilinen sorun (ayrı issue adayı): yerel ortamda bu bağımsız öğretmen kendi onaylı randevusunun (#3) video sayfasını açtığında <q>Randevu bulunamadı.</q> hatası aldı. Randevunun bağlı olduğu müsaitlik aralığı veritabanında silinmiş olarak işaretli; video/tahta erişim sorgusu silinmiş aralığı filtrelediği için onaylı randevu bulunamıyor. Onaylı randevusu olan aralığın silinebilmesi veya sorgunun bu durumu ele almaması incelenmeli.</p>
+</article>
+</section>
+
+<section class="role" id="veli">
+<h2>6. Veli</h2>
+<p>Veli rolü uygulamada <strong>yalnızca kayıt adımı</strong> olarak vardır. Kod incelemesine göre (kayıt sihirbazı, <code>ParentService</code>, API'deki <code>UserRole.Parent</code> ve <code>/api/exam/parent/register</code> uç noktası) veli hesabı oluşturulabilir, ancak kayıttan sonra veliye özel bir menü öğesi ya da ekran yoktur.</p>
+<ul>
+  <li>Kenar menüde veliye özel öğe bulunmaz. Veli yalnızca rol kısıtı olmayan öğeleri görür: <em>Raporlar</em>, <em>Ayarlar</em>, <em>Yardım</em>, <em>Geri Bildirim</em>.</li>
+  <li><code>/dashboard</code> adresi veli için ayrı bir görünüm açmaz; öğretmen olmayan herkes gibi öğrenci ana sayfasına düşer.</li>
+  <li>Yerel ortamda veli rolüne sahip test hesabı yoktur (veli kaydı sayısı 0). Bu nedenle veli ekranlarının görüntüsü alınamamıştır.</li>
+</ul>
+
+<article class="screen" id="veli-kayit">
+<h3>6.1 Veli olarak kayıt</h3>
+<p class="meta">Menü: — (kayıt sihirbazı) · Adres: /register?role=parent</p>
+<p class="purpose"><strong>Amacı:</strong> Yeni hesabı veli rolüyle tamamlamak.</p>
+<figure class="shot"><img src="img/ortak-kayit-veli.png" alt="Kayıt sihirbazının veli adımı"><figcaption>Kayıt sihirbazı, 2. adım: veli. Bu adımda doldurulacak alan yoktur.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+  <li>Giriş ekranındaki <em>Kayıt ol</em> bağlantısıyla hesap oluşturun ya da size verilen veli kayıt bağlantısını (<code>?role=parent</code>) açın.</li>
+  <li>Sihirbazın 1. adımında rol sorulursa <em>Veli</em> kartını seçin.</li>
+  <li>2. adımda <em>Kaydı Tamamla</em> düğmesine basın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Geri</td><td>Rol seçimine döner.</td></tr>
+<tr><td>Kaydı Tamamla</td><td>Veli kaydını oluşturur ve ana sayfaya (<code>/dashboard</code>) yönlendirir. İşlem sürerken metin <q>Kaydediliyor…</q> olur.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+  <li><q>Hesabınızı veli olarak tamamlamak üzeresiniz. Çocuklarınızı daha sonra profilinizden ekleyebilirsiniz.</q>: adımın açıklama metni.</li>
+  <li><q>Kayıt tamamlandı!</q>: kayıt başarılı olduğunda.</li>
+  <li><q>Kayıt başarısız! Lütfen tekrar deneyin.</q>: sunucu kaydı tamamlayamadığında.</li>
+</ul>
+<p class="known-issue">Bilinen sorun: yerel ortamda bu adımda başlık (<q>Veli Kaydı</q>) ve açıklama metni ekranda görünmüyor (görüntüde kart boş). Ayrıca açıklamada söz edilen "çocuk ekleme" özelliği kodda yok: API'de veli için yalnızca <code>register</code> ve <code>check-parent</code> uç noktaları var, profil ekranında da çocuk ekleme alanı bulunmuyor.</p>
+</article>
+
+<article class="screen" id="veli-ana-sayfa">
+<h3>6.2 Veli ana sayfası</h3>
+<p class="meta">Menü: Raporlar, Ayarlar, Yardım, Geri Bildirim · Adres: /dashboard</p>
+<p class="purpose"><strong>Amacı:</strong> Velinin giriş yaptıktan sonra gördüğü sayfa. Henüz veliye özel bir içerik yok.</p>
+<figure class="shot placeholder"><div class="ph">Ekran görüntüsü alınamadı</div><figcaption>Not: Yerel ortamda veli rolüne sahip hesap yok ve uygulamada veliye özel ekran bulunmuyor. Veli <code>/dashboard</code> adresinde öğrenci ana sayfasını görür.</figcaption></figure>
+<p class="note">Öğrenci takibi, çocuk ekleme, veli raporları gibi özellikler geliştirildiğinde bu bölüm güncellenecek.</p>
+</article>
+</section>
+
+<section class="role" id="okul-yoneticisi">
+<h2>7. Okul yöneticisi</h2>
+<p>Uygulamada <strong>ayrı bir okul yöneticisi rolü yoktur</strong>. Keycloak'ta tanımlı rol yalnız Admin, Teacher ve Student'tır (Parent rolü dev realm dosyasında var, yerel ortamda kullanıcısı yok). API'deki kullanıcı rolleri Student, Teacher ve Parent'tır. Kodda <code>school-manager</code> adıyla geçen bileşen (<code>pages/admin/school-manager</code>) bir rol değil, adminin okul listesini yönettiği ekrandır.</p>
+<p>Okulla ilgili işlemleri platform yöneticisi (Admin) yapar:</p>
+<table class="fields"><tr><th>İşlem</th><th>Nerede</th></tr>
+<tr><td>Okul ekleme, düzenleme, silme</td><td><a href="#admin-okullar">8.10 Okullar</a> (<code>/admin/schools</code> ya da <em>Yönetim</em> sayfasının <em>Okullar</em> sekmesi)</td></tr>
+<tr><td>Öğretmenin okul bağlantısı talebini onaylama / reddetme</td><td><a href="#admin-ogretmen-basvurulari">8.4 Öğretmen Başvuruları</a></td></tr>
+<tr><td>Öğretmeni okula bağlama ya da okulunu değiştirme</td><td><a href="#admin-ogretmenler">8.5 Öğretmenler</a></td></tr>
+<tr><td>Öğrencinin okulunu değiştirme</td><td><a href="#admin-ogrenci-okul-degistir">8.9 Öğrencinin okulunu değiştirme</a></td></tr>
+</table>
+<figure class="shot placeholder"><div class="ph">Ayrı rol yok</div><figcaption>Not: Okul yöneticisine özel menü ya da ekran bulunmadığı için ekran görüntüsü yok. Okul işlemleri için Admin bölümüne bakın.</figcaption></figure>
+</section>
+
+<section class="role" id="admin">
+<h2>8. Admin (platform yöneticisi)</h2>
+<p>Admin, Keycloak'ta <em>Admin</em> rolüne sahip hesaptır. Giriş yaptıktan sonra <em>Yönetim Paneli</em> (<code>/admin/dashboard</code>) açılır. Admin kullanıcıları, öğretmen onaylarını, okulları, ders taksonomisini, rozetleri ve yorum şikayetlerini yönetir.</p>
+<table class="fields"><tr><th>Menü öğesi</th><th>Ekran</th><th>Bölüm</th></tr>
+<tr><td>Raporlar</td><td>Başarı Rozetleri (<code>/certificates</code>)</td><td><a href="#admin-raporlar-ayarlar">8.14</a></td></tr>
+<tr><td>Ayarlar</td><td>Profil / ayarlar (<code>/student-profile</code>)</td><td><a href="#admin-raporlar-ayarlar">8.14</a> (bilinen sorun)</td></tr>
+<tr><td>Dashboard</td><td>Yönetim Paneli</td><td><a href="#admin-dashboard">8.1</a></td></tr>
+<tr><td>Yönetim</td><td>Sekmeler: Taksonomi, Okullar, Sınıflandırma Cache, Öğretmen Başvuruları</td><td><a href="#admin-yonetim-taksonomi">8.2</a>, <a href="#admin-yonetim-siniflandirma-cache">8.3</a></td></tr>
+<tr><td>Öğretmen Başvuruları</td><td>Öğretmen Başvuruları</td><td><a href="#admin-ogretmen-basvurulari">8.4</a></td></tr>
+<tr><td>Öğretmenler</td><td>Öğretmen listesi</td><td><a href="#admin-ogretmenler">8.5</a>–<a href="#admin-ogretmen-askiya-alma">8.7</a></td></tr>
+<tr><td>Öğrenciler</td><td>Öğrenci listesi</td><td><a href="#admin-ogrenciler">8.8</a>, <a href="#admin-ogrenci-okul-degistir">8.9</a></td></tr>
+<tr><td>Okullar</td><td>Okul Yönetimi</td><td><a href="#admin-okullar">8.10</a></td></tr>
+<tr><td>Rozetler</td><td>Rozet Tanımları</td><td><a href="#admin-rozetler">8.11</a>, <a href="#admin-rozet-yeni">8.12</a></td></tr>
+<tr><td>Yorum Şikayetleri</td><td>Yorum şikayetleri</td><td><a href="#admin-yorum-sikayetleri">8.13</a></td></tr>
+<tr><td>Yardım, Geri Bildirim</td><td>(sayfa yok)</td><td>Bilinen sorun: uygulamada <code>/help</code> ve <code>/feedback</code> rotası tanımlı olmadığından bu öğeler tanıtım sayfasına (<code>/welcome</code>) gider.</td></tr>
+</table>
+<p class="note"><em>Yönetim</em> sayfasındaki <em>Okullar</em> ve <em>Öğretmen Başvuruları</em> sekmeleri, menüdeki <em>Okullar</em> ve <em>Öğretmen Başvuruları</em> ekranlarıyla aynıdır; aynı işlemler iki yerden de yapılabilir.</p>
+
+<article class="screen" id="admin-dashboard">
+<h3>8.1 Yönetim Paneli (Dashboard)</h3>
+<p class="meta">Menü: Dashboard · Adres: /admin/dashboard</p>
+<p class="purpose"><strong>Amacı:</strong> Platformun genel durumunu tek bakışta görmek: öğretmen, öğrenci, test ve soru sayıları, AI ile sınıflandırılmış soru oranı ve son bir yılın etkinlik trendleri.</p>
+<figure class="shot"><img src="img/admin-dashboard.png" alt="Yönetim Paneli sayaç kartları ve trend ısı haritaları"><figcaption>Yönetim Paneli: sayaç kartları ve trendler.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+  <li>Menüden <em>Dashboard</em>'u seçin.</li>
+  <li>Üstteki kartlardan sayıları okuyun. <em>Öğretmen</em> ve <em>Öğrenci</em> kartına tıklayınca ilgili liste açılır.</li>
+  <li><em>Trendler</em> bölümünde bir günün üzerine gelerek o günün sayısını görün.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Öğretmen / Öğrenci / Test / Soru</td><td>Platformdaki toplam kayıt sayıları. Öğretmen ve Öğrenci kartları <a href="#admin-ogretmenler">Öğretmenler</a> ve <a href="#admin-ogrenciler">Öğrenciler</a> listesine götürür.</td></tr>
+<tr><td>AI Sınıflandırılmış</td><td>Yapay zekâ ile konu/alt konu etiketi almış soru sayısı ve oranı (ör. 7 / 117).</td></tr>
+<tr><td>Soru Oluşturma</td><td>Son 1 yılda günlük oluşturulan soru sayısı (ısı haritası).</td></tr>
+<tr><td>Soru Çözme</td><td>Son 1 yılda günlük çözülen soru sayısı.</td></tr>
+<tr><td>Öğrenci Login Trendi</td><td>Son günlerdeki öğrenci giriş sayıları.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+  <li><q>Özet bilgileri alınırken bir sorun oluştu.</q>: sayaçlar alınamadığında.</li>
+  <li><q>Platformda henüz veri yok. Öğretmen, öğrenci, test veya soru eklendiğinde sayaçlar burada güncellenecek.</q>: hiç veri yokken.</li>
+  <li><q>Trend verileri alınırken bir sorun oluştu.</q>: trendler alınamadığında.</li>
+  <li><q>Henüz yeterli veri yok</q>: trend için veri azsa.</li>
+</ul>
+</article>
+
+<article class="screen" id="admin-yonetim-taksonomi">
+<h3>8.2 Yönetim: Taksonomi</h3>
+<p class="meta">Menü: Yönetim → Taksonomi sekmesi · Adres: /admin</p>
+<p class="purpose"><strong>Amacı:</strong> Sınıf → Ders → Konu → Alt Konu ağacını ve konulara bağlı çalışma linklerini yönetmek. Soru ekleme, test oluşturma ve AI sınıflandırma bu ağacı kullanır.</p>
+<figure class="shot"><img src="img/admin-yonetim-taksonomi.png" alt="Taksonomi sekmesi, 5. sınıf seçili"><figcaption>Taksonomi: 5. Sınıf seçili, dersler listeleniyor.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+  <li>Menüden <em>Yönetim</em>'i açın; <em>Taksonomi</em> sekmesi seçili gelir.</li>
+  <li>Üstteki sınıf düğmelerinden birini seçin (ör. <em>5. Sınıf</em>). <em>Dersler</em> sütunu o sınıfın derslerini gösterir.</li>
+  <li>Ders eklemek için <em>Yeni ders</em> alanına adı yazıp <em>+</em> düğmesine basın.</li>
+  <li>Bir derse tıklayın; <em>Konular</em> sütunu dolar. Aynı şekilde konu ekleyin, konu seçince <em>Alt Konular</em> sütunu dolar.</li>
+  <li>Kalem simgesiyle adı düzenleyin ve <em>Kaydet</em> ya da <em>Vazgeç</em> deyin; çöp kutusu simgesiyle silin (onay istenir).</li>
+  <li>Bir dersi başka sınıflara da bağlamak için ders satırındaki <em>Sınıfları Yönet</em> (kep simgesi) düğmesini kullanın, sınıfları işaretleyip <em>Kaydet</em>'e basın.</li>
+  <li>Konu ya da alt konu seçiliyken <em>Çalışma Linkleri</em> sütunundan o konunun linklerini yönetin.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Sınıf düğmeleri</td><td>Listelenecek sınıfı seçer.</td></tr>
+<tr><td>Yeni ders / Yeni konu / Yeni alt konu + (Ders ekle, Konu ekle, Alt konu ekle)</td><td>Seçili sınıfa/derse/konuya yeni kayıt ekler.</td></tr>
+<tr><td>Ders satırındaki etiketler</td><td>Dersin bağlı olduğu diğer sınıflar ve konu sayısı (<q>N konu</q>).</td></tr>
+<tr><td>Sınıfları Yönet</td><td>Dersin bağlı olduğu sınıfları ekler/kaldırır. Pencerede <q>N eklenecek</q>, <q>N kaldırılacak</q> özeti görünür.</td></tr>
+<tr><td>Dersi/Konuyu/Alt konuyu düzenle</td><td>Adı yerinde düzenler.</td></tr>
+<tr><td>Dersi/Konuyu/Alt konuyu sil</td><td>Onaydan sonra siler.</td></tr>
+<tr><td>Çalışma Linkleri</td><td>Seçili konu/alt konunun çalışma linkleri. Konu seçilmeden boş kalır.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+  <li><q>Devam etmek için bir sınıf seç.</q>: sınıf seçilmeden.</li>
+  <li><q>Bu sınıfa bağlı ders yok</q>: seçili sınıfta ders yokken.</li>
+  <li><q>Önce bir ders seç</q> / <q>Önce bir konu seç</q>: üst seviye seçilmeden.</li>
+  <li><q>"{{ad}}" dersini silmek istediğine emin misin?</q> (konu ve alt konu için benzeri): silme onayı.</li>
+  <li><q>Konu adı gerekli</q>: boş adla kaydetmeye çalışınca.</li>
+  <li><q>Taksonomi yüklenemedi</q>, <q>Sınıflar yüklenemedi</q>, <q>İşlem başarısız</q>: sunucu hatalarında.</li>
+</ul>
+<p class="known-issue">Bilinen sorun: yerel ortamda <em>Dersler</em> sütununda, ders adlarının üzerine bağlı sınıf etiketleri biniyor; ders adları okunmuyor (görüntüde görülüyor).</p>
+</article>
+
+<article class="screen" id="admin-yonetim-siniflandirma-cache">
+<h3>8.3 Yönetim: Sınıflandırma Cache</h3>
+<p class="meta">Menü: Yönetim → Sınıflandırma Cache sekmesi · Adres: /admin</p>
+<p class="purpose"><strong>Amacı:</strong> Soruların AI ile konu/alt konuya sınıflandırılmasında kullanılan Gemini önbelleğinin (cached content) durumunu görmek ve taksonomi değiştiğinde yenilemek.</p>
+<figure class="shot"><img src="img/admin-yonetim-siniflandirma-cache.png" alt="Sınıflandırma Cache sekmesi"><figcaption>Sınıflandırma Cache: durum ve yenileme düğmeleri.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+  <li><em>Yönetim</em> sayfasında <em>Sınıflandırma Cache</em> sekmesine geçin.</li>
+  <li>Durum kutusunu okuyun (<q>Cache güncel.</q> ya da güncel değil uyarısı).</li>
+  <li>Taksonomide ders/konu/alt konu değiştirdiyseniz <em>Cache’i Yenile</em>'ye basın ve onay penceresinde <em>Yenile</em>'yi seçin.</li>
+  <li>Bilgileri yeniden çekmek için <em>Durumu yenile</em>'yi kullanın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Cached content, Model</td><td>Etkin önbelleğin kimliği ve kullanılan model.</td></tr>
+<tr><td>Alt konu sayısı (son build)</td><td>Önbellek oluşturulurken taksonomideki alt konu sayısı.</td></tr>
+<tr><td>Son yenileme</td><td>Önbelleğin son oluşturulma zamanı.</td></tr>
+<tr><td>API anahtarı</td><td><q>yapılandırılmış</q> ya da <q>eksik (Gemini:ApiKey)</q>.</td></tr>
+<tr><td>Durumu yenile</td><td>Yalnız durumu yeniden okur.</td></tr>
+<tr><td>Cache’i Yenile</td><td>Güncel taksonomiden yeni önbellek oluşturup etkinleştirir.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+  <li><q>Henüz cache oluşturulmamış.</q></li>
+  <li><q>Cache güncel değil — taksonomi değişmiş. Yenilemen önerilir.</q></li>
+  <li><q>Mevcut ders/konu/alt konu taksonomisinden yeni bir Gemini cached content oluşturulacak ve aktif hale gelecek. Devam edilsin mi?</q>: yenileme onayı.</li>
+  <li><q>Cache durumu alınamadı</q>, <q>Yenileme başarısız</q>: sunucu hatalarında.</li>
+</ul>
+</article>
+
+<article class="screen" id="admin-ogretmen-basvurulari">
+<h3>8.4 Öğretmen Başvuruları</h3>
+<p class="meta">Menü: Öğretmen Başvuruları (ya da Yönetim → Öğretmen Başvuruları sekmesi) · Adres: /admin/teacher-approvals</p>
+<p class="purpose"><strong>Amacı:</strong> Öğretmen hesabı onaylarını, bağımsız (özel ders) öğretmen başvurularını ve öğretmenlerin okul bağlantısı taleplerini onaylamak ya da reddetmek. Hesabı onaylanmamış öğretmen öğretmen özelliklerini kullanamaz; okul bağlantısı onaylanana kadar öğretmen okulun öğrencilerini ve sınıflarını göremez.</p>
+<figure class="shot"><img src="img/admin-ogretmen-basvurulari.png" alt="Öğretmen Başvuruları, Tümü filtresi"><figcaption>Öğretmen Başvuruları, <em>Tümü</em> filtresi: geçmiş başvurular ve durumları.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+  <li>Menüden <em>Öğretmen Başvuruları</em>'nı açın. Varsayılan filtre <em>Onay bekleyenler</em>'dir.</li>
+  <li>Satırdaki <em>Başvuru Türü</em>'ne bakın: <q>Bağımsız</q>, <q>Okul: {okul adı}</q> ya da <q>Öğretmen hesabı</q>. Hesap onayı da gerekiyorsa <q>Hesap onayı</q> etiketi görünür.</li>
+  <li>Gerekirse <em>E-postayı göster</em> ile maskelenmiş e-postanın tamamını görün.</li>
+  <li><em>Onayla</em>'ya basarak başvuruyu onaylayın.</li>
+  <li>Reddetmek için <em>Reddet</em>'e basın, açılan pencerede <em>Red nedeni</em>'ni yazın ve <em>Reddet</em> ile gönderin.</li>
+  <li>Geçmiş kararları görmek için <em>Tümü</em> filtresine geçin; listeyi <em>Yenile</em> ile güncelleyin.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Onay bekleyenler / Tümü</td><td>Yalnız bekleyen başvuruları ya da tüm başvuruları listeler.</td></tr>
+<tr><td>Ad Soyad, E-posta, Başvuru Tarihi</td><td>Başvuran öğretmen. E-posta maskeli gösterilir.</td></tr>
+<tr><td>Başvuru Türü</td><td>Bağımsız / Okul / Öğretmen hesabı; hesap onayı gerekiyorsa <q>+ hesap onayı</q> eklenir. Askıdaki hesaplarda <q>Hesap askıda</q> etiketi çıkar.</td></tr>
+<tr><td>Durum, Karar Tarihi</td><td><q>Bekliyor</q>, <q>Onaylandı</q> ya da <q>Reddedildi</q> (reddedilenlerde <q>Gerekçe: …</q>).</td></tr>
+<tr><td>Onayla / Reddet</td><td>Kararı kaydeder. İşlem sürerken <q>İşleniyor</q> görünür. Karar verilmiş satırlarda <q>İşlem yok</q> yazar.</td></tr>
+<tr><td>Red nedeni</td><td>Zorunlu; başvuru kaydına işlenir ve diğer yöneticilere görünür.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+  <li><q>Bekleyen başvuru yok</q> / <q>Henüz başvuru yok</q>: liste boşken.</li>
+  <li><q>Başvuru onaylandı.</q> / <q>Başvuru reddedildi.</q>: işlem başarılı.</li>
+  <li><q>İşlem tamamlanamadı.</q>, <q>Başvurular alınırken bir sorun oluştu.</q>: sunucu hatası.</li>
+  <li><q>Red nedeni boş olamaz.</q>: neden yazılmadan reddedilirse.</li>
+  <li><q>Gerekçe, geçmiş listesinde diğer yöneticilere görünür; kişisel veri (telefon, TC kimlik no, adres vb.) yazmayın.</q>: red penceresindeki uyarı.</li>
+  <li><q>Bu başvuruyu onaylamak askıyı kaldırmaz. Askıyı kaldırmak için Öğretmenler listesini kullanın.</q>: askıdaki hesaplarda.</li>
+  <li><q>Kısa sürede çok fazla istek yapıldı. Lütfen biraz bekleyip tekrar deneyin.</q>: istek sınırı aşıldığında.</li>
+  <li><q>Bu listeyi görüntüleme yetkiniz yok.</q>: yetkisiz erişimde.</li>
+</ul>
+</article>
+
+<article class="screen" id="admin-ogretmenler">
+<h3>8.5 Öğretmenler</h3>
+<p class="meta">Menü: Öğretmenler · Adres: /admin/teachers</p>
+<p class="purpose"><strong>Amacı:</strong> Platformdaki tüm öğretmenleri listelemek, okula göre filtrelemek ve hesap işlemlerini yapmak: şifre sıfırlama, okula bağlama/okul değiştirme, hesabı devre dışı bırakma/etkinleştirme, öğretmen onayını askıya alma/askıyı kaldırma.</p>
+<figure class="shot"><img src="img/admin-ogretmenler.png" alt="Öğretmenler listesi"><figcaption>Öğretmenler listesi. E-postalar maskeli gösterilir; sağdaki simgeler satır işlemleridir.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+  <li>Menüden <em>Öğretmenler</em>'i açın.</li>
+  <li>Sağ üstteki <em>Okul</em> filtresinden bir okul, <em>Tümü</em> ya da <em>Bağımsız / okulsuz</em> seçin.</li>
+  <li>Satırdaki simgelerle işlem yapın (aşağıdaki tablo). Her işlem bir onay penceresi açar.</li>
+  <li>Sayfa altındaki sayfalama ile diğer kayıtlara geçin; <em>Yenile</em> ile listeyi güncelleyin.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Okul (filtre)</td><td>Tümü / belirli okul / Bağımsız / okulsuz.</td></tr>
+<tr><td>Okul sütunu</td><td>Öğretmenin okulu; bağımsız öğretmenlerde <q>Bağımsız</q>.</td></tr>
+<tr><td>Onay Durumu</td><td><q>Onaylı</q>, <q>Beklemede</q>, <q>Reddedildi</q>; askıdaki hesapta <q>Askıda</q> etiketi (üzerine gelince tarih ve neden).</td></tr>
+<tr><td>Hesap Durumu</td><td><q>Aktif</q>, <q>Pasif</q> ya da <q>Bilinmiyor</q> (Keycloak hesabının durumu).</td></tr>
+<tr><td>Şifreyi sıfırla (kilit simgesi)</td><td>Geçici şifre üretir. Bkz. <a href="#admin-sifre-sifirlama">8.6</a>.</td></tr>
+<tr><td>Okula bağla / Okulu değiştir</td><td>Öğretmeni bir okula bağlar ya da okulunu değiştirir. Pencerede <em>Yeni okul</em> seçilir; etkiler listelenir.</td></tr>
+<tr><td>Devre dışı bırak / Etkinleştir</td><td>Hesabı kapatır (kullanıcı giriş yapamaz, oturumları kapanır) ya da yeniden açar.</td></tr>
+<tr><td>Öğretmen onayını askıya al / Askıyı kaldır</td><td>Öğretmen özelliklerini kapatır ya da yeniden açar. Bkz. <a href="#admin-ogretmen-askiya-alma">8.7</a>.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+  <li><q>Öğretmen bulunamadı</q> / <q>Farklı bir okul filtresi deneyin.</q>: filtre sonucu boşsa.</li>
+  <li><q>Öğretmen listesi alınırken bir sorun oluştu.</q>, <q>Okul listesi alınamadı.</q>: yükleme hatası.</li>
+  <li><q>Hesap onayı askıda olan öğretmenin okulu değiştirilemez. Önce askıyı kaldırın.</q></li>
+  <li><q>Hesabı henüz onaylanmamış öğretmen okula bağlanamaz. Önce başvuruyu onaylayın.</q></li>
+  <li><q>Onaylı bağımsız öğretmen bu ekrandan okula bağlanamaz.</q></li>
+  <li>Okul değişikliği etkileri: <q>Öğretmen yeni okulun öğrencilerini ve sınıflarını okul kurallarına göre görebilecek.</q>, <q>Eski okulun öğrencilerine ve sonuçlarına erişimi kalmayacak.</q>, <q>Öğretmenin bekleyen bir okul talebi varsa kapatılır.</q></li>
+  <li>Başarı: <q>{ad}, {okul} okuluna bağlandı.</q> / <q>{ad} öğretmeninin okulu {okul} olarak değiştirildi.</q> / <q>{ad} zaten bu okulda; değişiklik yapılmadı.</q></li>
+  <li><q>Okul değişti ancak oturum önbelleği temizlenemedi; değişiklik 1 saate kadar gecikebilir.</q></li>
+  <li><q>Öğretmenin okulu bu arada değiştirildi. Listeyi yenileyip tekrar deneyin.</q>: aynı anda başka değişiklik olduysa.</li>
+  <li>Devre dışı bırakma onayı: <q>Hesap devre dışı bırakılsın mı?</q>, <q>Kullanıcının açık olan tüm oturumları kapatılacak.</q>, <q>Hesap tekrar etkinleştirilene kadar kullanıcı giriş yapamayacak.</q></li>
+  <li>Etkinleştirme onayı: <q>Hesap etkinleştirilsin mi?</q>, <q>Kullanıcı mevcut şifresiyle tekrar giriş yapabilecek.</q></li>
+  <li><q>Kimlik sunucusuna ulaşılamadı. Lütfen daha sonra tekrar deneyin.</q>, <q>Kısa sürede çok fazla liste isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="admin-sifre-sifirlama">
+<h3>8.6 Şifre sıfırlama</h3>
+<p class="meta">Menü: Öğretmenler ya da Öğrenciler → satırdaki kilit simgesi · Adres: /admin/teachers, /admin/students</p>
+<p class="purpose"><strong>Amacı:</strong> Şifresini unutan ve kendi başına sıfırlayamayan bir kullanıcıya geçici şifre üretmek.</p>
+<figure class="shot"><img src="img/admin-sifre-sifirlama.png" alt="Şifre sıfırlansın mı onay penceresi"><figcaption>Şifre sıfırlama onay penceresi (bir seed öğretmen için).</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+  <li>Öğretmen ya da öğrenci listesinde kullanıcının satırındaki <em>Şifreyi sıfırla</em> simgesine basın.</li>
+  <li>Penceredeki etkileri okuyun ve <em>Şifreyi sıfırla</em>'ya basın.</li>
+  <li>Açılan <em>Geçici şifre oluşturuldu</em> penceresinde <em>Kopyala</em> ile şifreyi kopyalayın.</li>
+  <li>Şifreyi kullanıcıya güvenli bir kanaldan iletin ve <em>Kopyaladım, kapat</em> ile pencereyi kapatın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Şifreyi sıfırla</td><td>Geçici şifreyi üretir. İşlem sürerken <q>Sıfırlanıyor...</q> yazar.</td></tr>
+<tr><td>İptal</td><td>Hiçbir şey değiştirmeden kapatır.</td></tr>
+<tr><td>Geçici şifre / Kopyala</td><td>Yalnız bir kez gösterilen şifre ve kopyalama düğmesi.</td></tr>
+<tr><td>Kopyaladım, kapat</td><td>Pencereyi kapatır; şifre bir daha gösterilmez.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+  <li><q>{ad} kullanıcısının şifresi geçici bir şifreyle değiştirilecek.</q>, <q>Kullanıcının açık olan tüm oturumları kapatılacak.</q>, <q>Kullanıcı ilk girişte şifresini değiştirmek zorunda kalacak.</q>: onay metinleri.</li>
+  <li><q>Bu şifre bir daha gösterilmeyecek. Pencereyi kapatmadan önce kopyalayıp kullanıcıya güvenli bir kanaldan iletin.</q></li>
+  <li><q>Kopyalandı</q> / <q>Kopyalanamadı; şifreyi seçip elle kopyalayın.</q></li>
+  <li><q>Kullanıcı bulunamadı.</q>, <q>Bu işlem için yetkiniz yok.</q>, <q>Kimlik sunucusuna ulaşılamadı. Lütfen daha sonra tekrar deneyin.</q></li>
+  <li><q>Kısa sürede çok fazla şifre sıfırlama isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin.</q></li>
+  <li><q>Şifre sıfırlanırken bir sorun oluştu. Lütfen tekrar deneyin.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="admin-ogretmen-askiya-alma">
+<h3>8.7 Öğretmen onayını askıya alma</h3>
+<p class="meta">Menü: Öğretmenler → satırdaki askıya alma simgesi · Adres: /admin/teachers</p>
+<p class="purpose"><strong>Amacı:</strong> Bir öğretmenin öğretmen özelliklerini (sınav oluşturma, çalışma içerikleri, randevular, öğretmen paneli) geçici olarak kapatmak; örneğin bir şikâyet incelenirken. Hesap kapanmaz, kullanıcı giriş yapabilir.</p>
+<figure class="shot"><img src="img/admin-ogretmen-askiya-alma.png" alt="Öğretmen onayı askıya alınsın mı penceresi"><figcaption>Askıya alma penceresi; neden alanı zorunludur.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+  <li>Öğretmenler listesinde ilgili satırdaki <em>Öğretmen onayını askıya al</em> simgesine basın.</li>
+  <li><em>Askıya alma nedeni</em> alanına kısa bir neden yazın.</li>
+  <li><em>Askıya al</em>'a basın. Satırda <q>Askıda</q> etiketi görünür.</li>
+  <li>Askıyı kaldırmak için aynı satırdaki <em>Askıyı kaldır</em> simgesine basıp onaylayın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Askıya alma nedeni</td><td>Zorunlu, en fazla 500 karakter. Yalnız yöneticilere gösterilir; öğretmene iletilmez.</td></tr>
+<tr><td>Askıya al</td><td>Onayı askıya alır.</td></tr>
+<tr><td>Askıyı kaldır</td><td>Öğretmen özelliklerini yeniden açar.</td></tr>
+<tr><td>İptal</td><td>Değişiklik yapmadan kapatır.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+  <li><q>Öğretmen özellikleri (sınav oluşturma, çalışma içerikleri, randevular, öğretmen paneli) kapanır.</q></li>
+  <li><q>Hesap devre dışı kalmaz; kullanıcı giriş yapabilir ancak öğretmen özelliklerine erişemez.</q></li>
+  <li><q>Neden zorunludur.</q> / <q>Neden en fazla 500 karakter olabilir.</q></li>
+  <li><q>Askı kaldırılsın mı?</q>, <q>Öğretmen özellikleri yeniden kullanılabilir hale gelir.</q>: askıyı kaldırma onayı.</li>
+  <li><q>Öğretmen bulunamadı.</q>, <q>Sunucuya ulaşılamadı. Lütfen daha sonra tekrar deneyin.</q>, <q>Öğretmen onayı güncellenirken bir sorun oluştu. Lütfen tekrar deneyin.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="admin-ogrenciler">
+<h3>8.8 Öğrenciler</h3>
+<p class="meta">Menü: Öğrenciler · Adres: /admin/students</p>
+<p class="purpose"><strong>Amacı:</strong> Platformdaki tüm öğrencileri listelemek, okula göre filtrelemek; şifre sıfırlamak, okul değiştirmek, hesabı devre dışı bırakmak ya da etkinleştirmek.</p>
+<figure class="shot"><img src="img/admin-ogrenciler.png" alt="Öğrenciler listesi"><figcaption>Öğrenciler listesi; öğrenci numarası ve e-posta maskeli gösterilir.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+  <li>Menüden <em>Öğrenciler</em>'i açın.</li>
+  <li><em>Okul</em> filtresinden okul, <em>Tümü</em> ya da <em>Okulsuz</em> seçin.</li>
+  <li>Satır simgeleriyle işlem yapın: <em>Şifreyi sıfırla</em> (<a href="#admin-sifre-sifirlama">8.6</a>), <em>Okulu değiştir</em> (<a href="#admin-ogrenci-okul-degistir">8.9</a>), <em>Devre dışı bırak</em> / <em>Etkinleştir</em>.</li>
+  <li><em>Sayfa başına</em> ve sayfa düğmeleriyle listede gezinin.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Ad Soyad</td><td>Altında maskeli öğrenci numarası (<q>No: ****</q>).</td></tr>
+<tr><td>E-posta, Okul, Sınıf</td><td>Öğrencinin bilgileri.</td></tr>
+<tr><td>Hesap Durumu</td><td><q>Aktif</q>, <q>Pasif</q>, <q>Bilinmiyor</q>.</td></tr>
+<tr><td>İşlemler</td><td>Şifreyi sıfırla, Okulu değiştir, Devre dışı bırak / Etkinleştir.</td></tr>
+<tr><td>Yenile</td><td>Listeyi yeniden yükler.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+  <li><q>Öğrenci bulunamadı</q> / <q>Farklı bir okul filtresi deneyin.</q></li>
+  <li><q>Öğrenci listesi alınırken bir sorun oluştu.</q></li>
+  <li><q>Kısa sürede çok fazla liste isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin.</q></li>
+  <li><q>Bu listeyi görüntüleme yetkiniz yok.</q></li>
+  <li>Hesap durumu hataları: <q>Kullanıcı bulunamadı.</q>, <q>Kimlik sunucusuna ulaşılamadı. Lütfen daha sonra tekrar deneyin.</q>, <q>Hesap durumu değiştirilirken bir sorun oluştu. Lütfen tekrar deneyin.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="admin-ogrenci-okul-degistir">
+<h3>8.9 Öğrencinin okulunu değiştirme</h3>
+<p class="meta">Menü: Öğrenciler → satırdaki <em>Okulu değiştir</em> simgesi · Adres: /admin/students</p>
+<p class="purpose"><strong>Amacı:</strong> Öğrenciyi başka bir okula taşımak. Öğrenci kayıtta seçtiği okulu kendisi değiştiremez; bu işlem yalnız yöneticiye açıktır.</p>
+<figure class="shot"><img src="img/admin-ogrenci-okul-degistir.png" alt="Öğrencinin okulu değiştirilsin mi penceresi"><figcaption>Okul değiştirme penceresi: mevcut okul, yeni okul seçimi ve etkiler.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+  <li>Öğrenciler listesinde ilgili satırdaki <em>Okulu değiştir</em> simgesine basın.</li>
+  <li><em>Yeni okul</em> alanına okul adı, ilçe ya da il yazıp listeden okulu seçin.</li>
+  <li><em>Bu değişikliğin etkileri</em> bölümünü okuyun ve <em>Okulu değiştir</em>'e basın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Mevcut okul</td><td>Öğrencinin şu anki okulu ya da <q>Okulsuz</q>.</td></tr>
+<tr><td>Yeni okul</td><td>Zorunlu; listeden seçilir.</td></tr>
+<tr><td>Okulu değiştir</td><td>Değişikliği kaydeder (<q>Kaydediliyor...</q>).</td></tr>
+<tr><td>İptal / Listeyi yenile</td><td>Kapatır / çakışma olduğunda listeyi yeniler.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+  <li><q>Öğrenci yeni okulun sınıf ve sınav atamalarını görecek.</q></li>
+  <li><q>Eski okulun öğretmenleri bu öğrenciye ve sonuçlarına erişimi kaybedecek.</q></li>
+  <li><q>Öğrenci okulunu kendisi değiştiremez; sonraki değişiklikler de yalnızca yönetici tarafından yapılabilir.</q></li>
+  <li><q>Seçilen okul bulunamadı. Lütfen listeden başka bir okul seçin.</q></li>
+  <li><q>Öğrencinin okulu bu arada değiştirildi. Listeyi yenileyip tekrar deneyin.</q></li>
+  <li><q>Kimlik sunucusuna ulaşılamadı; okul değiştirilmedi. Lütfen daha sonra tekrar deneyin.</q></li>
+  <li><q>Bu öğrencinin okulunu değiştirme yetkiniz yok.</q>, <q>Okul değiştirilirken bir sorun oluştu. Lütfen tekrar deneyin.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="admin-okullar">
+<h3>8.10 Okullar (Okul Yönetimi)</h3>
+<p class="meta">Menü: Okullar (ya da Yönetim → Okullar sekmesi) · Adres: /admin/schools</p>
+<p class="purpose"><strong>Amacı:</strong> Platformdaki okulları eklemek, düzenlemek ve silmek. Öğrenci/öğretmen kaydındaki okul listesi buradan gelir.</p>
+<figure class="shot"><img src="img/admin-okullar.png" alt="Okul Yönetimi ekranı"><figcaption>Okul Yönetimi: üstte ekleme satırı, altında filtre ve okul listesi.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+  <li>Menüden <em>Okullar</em>'ı açın.</li>
+  <li>Okul eklemek için <em>Yeni okul adı</em>'nı yazın; isterseniz il, ilçe ve açık adres seçip <em>+</em> (<em>Okul ekle</em>) düğmesine basın.</li>
+  <li>Listede aramak için <em>Okul adında ara</em> alanını, il ve ilçe filtrelerini kullanın; <em>Filtreleri temizle</em> ile sıfırlayın.</li>
+  <li>Kalem simgesiyle okulu düzenleyip <em>Kaydet</em>'e, çöp kutusuyla silip onay penceresinde <em>Sil</em>'e basın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Yeni okul adı</td><td>Zorunlu.</td></tr>
+<tr><td>İl (opsiyonel), İlçe (opsiyonel), Açık adres (opsiyonel)</td><td>İlçe, il seçildikten sonra açılır.</td></tr>
+<tr><td>Okul ekle (+)</td><td>Okulu kaydeder.</td></tr>
+<tr><td>Okul adında ara, İl, İlçe</td><td>Listeyi filtreler; ilçe için önce il seçilmelidir (<q>İlçe (önce il seç)</q>).</td></tr>
+<tr><td>Okulu düzenle / Okulu sil</td><td>Satır işlemleri.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+  <li><q>Henüz okul eklenmemiş</q>: liste boşken.</li>
+  <li><q>Filtreye uyan okul yok</q> / <q>Aramayı değiştir ya da filtreleri temizle</q></li>
+  <li><q>"{ad}" okulunu silmek istediğine emin misin?</q>: silme onayı.</li>
+  <li><q>Okullar yüklenemedi</q>, <q>İller yüklenemedi</q>, <q>İlçeler yüklenemedi</q>, <q>İşlem başarısız</q></li>
+</ul>
+</article>
+
+<article class="screen" id="admin-rozetler">
+<h3>8.11 Rozet Tanımları</h3>
+<p class="meta">Menü: Rozetler · Adres: /admin/badge-definitions</p>
+<p class="purpose"><strong>Amacı:</strong> Öğrencilere verilen rozetleri ve kazanma kurallarını yönetmek. Rozetler silinmez; devre dışı bırakılır.</p>
+<figure class="shot"><img src="img/admin-rozetler.png" alt="Rozet Tanımları listesi"><figcaption>Rozet Tanımları: ad, kod, kategori, kural ve durum.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+  <li>Menüden <em>Rozetler</em>'i açın. Varsayılan filtre <em>Aktif</em>'tir; devre dışı rozetler için <em>Tümü</em>'ne geçin.</li>
+  <li>Yeni rozet için <em>Yeni rozet</em>'e basın (<a href="#admin-rozet-yeni">8.12</a>).</li>
+  <li>Bir rozeti değiştirmek için kalem (<em>Düzenle</em>) simgesine basın.</li>
+  <li>Rozeti vermeyi durdurmak için <em>Devre dışı bırak</em> simgesine basıp onaylayın; geri açmak için <em>Aktifleştir</em>'i kullanın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Aktif / Tümü</td><td>Durum filtresi.</td></tr>
+<tr><td>Ad, Kod, Kategori</td><td>Rozet adı (altında rozet yolu ve sırası), değiştirilemeyen kod, kategori.</td></tr>
+<tr><td>Kural</td><td>Kazanma koşulu (ör. <q>21 gün aktif ol</q>, <q>Toplam 1500 dakika çalış</q>).</td></tr>
+<tr><td>Durum, Son değişiklik</td><td><q>Aktif</q> / <q>Devre dışı</q>; son değişiklik tarihi ve yapan.</td></tr>
+<tr><td>Yenile, Yeni rozet, Düzenle, Aktifleştir, Devre dışı bırak</td><td>Liste ve satır işlemleri.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+  <li><q>Rozet tanımı bulunamadı</q> / <q>Devre dışı rozetleri görmek için "Tümü" filtresini seç.</q></li>
+  <li><q>"{ad}" öğrencilere artık verilmeyecek; kazanılmış rozetler kalır.</q>: devre dışı bırakma onayı.</li>
+  <li><q>"{ad}" aktifleştirildi.</q> / <q>"{ad}" devre dışı bırakıldı.</q></li>
+  <li><q>Aktif rozet sayısı üst sınıra ulaştı. Önce başka bir rozeti devre dışı bırakın.</q></li>
+  <li><q>Rozet tanımları yüklenemedi.</q>, <q>Rozet bulunamadı; liste yenileniyor.</q>, <q>İşlem başarısız. Lütfen tekrar deneyin.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="admin-rozet-yeni">
+<h3>8.12 Yeni rozet / Rozeti düzenle</h3>
+<p class="meta">Menü: Rozetler → Yeni rozet (ya da Düzenle) · Adres: /admin/badge-definitions</p>
+<p class="purpose"><strong>Amacı:</strong> Yeni bir rozet tanımlamak ya da mevcut rozetin bilgilerini ve kazanma kuralını değiştirmek.</p>
+<figure class="shot"><img src="img/admin-rozet-yeni.png" alt="Yeni rozet penceresi"><figcaption>Yeni rozet penceresi: Rozet bilgileri, Rozet yolu (opsiyonel), Kazanma kuralı.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+  <li><em>Rozet bilgileri</em>: <em>Kod</em>, <em>Ad</em>, isterseniz <em>Açıklama</em>, <em>Kategori</em> ve <em>İkon yolu</em> girin.</li>
+  <li>Rozet bir dizinin parçasıysa <em>Rozet yolu</em> bölümünde <em>Yol anahtarı</em>, <em>Yol adı</em> ve <em>Sıra</em> girin.</li>
+  <li><em>Kazanma kuralı</em>: <em>Kural tipi</em>'ni seçin, <em>Hedef</em> sayısını yazın; ders bazlı kurallarda <em>Ders</em> seçin.</li>
+  <li><em>Kaydet</em>'e basın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Kod*</td><td>Küçük harf, rakam ve tire; ör. <code>subject-matematik-mastery</code>. Sonradan değiştirilemez.</td></tr>
+<tr><td>Ad*, Açıklama</td><td>Öğrencinin göreceği ad ve açıklama (en fazla 500 karakter).</td></tr>
+<tr><td>Kategori*</td><td>Listeden seçilir ya da yeni kategori yazılır.</td></tr>
+<tr><td>İkon yolu</td><td><code>achievements/&lt;dosya&gt;.svg</code> biçiminde; boş bırakılabilir. Yanındaki düğme ikonu önizler.</td></tr>
+<tr><td>Yol anahtarı, Yol adı, Sıra</td><td>Aynı yol anahtarına sahip rozetler öğrenci ekranında sırayla bir yol olarak gösterilir.</td></tr>
+<tr><td>Kural tipi</td><td>Çözülen soru sayısı, Doğru cevap serisi, Toplam çalışma süresi, Toplam doğru cevap, Aktif gün sayısı, Günlük seri, Derste çözülen soru, Derste doğru cevap, Derste çalışma süresi.</td></tr>
+<tr><td>Hedef, Ders</td><td>Kuralın eşik değeri; ders bazlı kurallarda ders zorunludur.</td></tr>
+<tr><td>Kaydet / Vazgeç</td><td>Kaydeder / kapatır.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+  <li><q>Bu alan zorunludur.</q>, <q>Tam sayı olmalıdır.</q>, <q>En az {min} olmalıdır.</q>, <q>En fazla {max} olmalıdır.</q></li>
+  <li><q>Yalnız küçük harf, rakam ve tek tire (ör. question-hunter-1).</q>: kod biçimi hatalıysa.</li>
+  <li><q>achievements/&lt;dosya&gt;.svg biçiminde olmalıdır.</q>: ikon yolu hatalıysa.</li>
+  <li><q>Ders seçimi zorunludur.</q></li>
+  <li><q>Bu koda sahip bir rozet zaten var.</q></li>
+  <li><q>"{ad}" oluşturuldu.</q> / <q>"{ad}" güncellendi.</q></li>
+  <li><q>Kural tipleri yüklenemedi.</q>, <q>Dersler yüklenemedi.</q>, <q>Kaydedilemedi. Lütfen tekrar deneyin.</q></li>
+  <li><q>Rozet bulunamadı; başka bir yönetici tarafından değiştirilmiş olabilir.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="admin-yorum-sikayetleri">
+<h3>8.13 Yorum şikayetleri</h3>
+<p class="meta">Menü: Yorum Şikayetleri · Adres: /admin/comment-reports</p>
+<p class="purpose"><strong>Amacı:</strong> Tüm testlerde kullanıcıların şikayet ettiği yorumları tek listede görmek ve gerekirse gizlemek. Gizlenen yorum herkese "kaldırıldı" olarak görünür; içerik ve neden yalnız moderatörlere açıktır.</p>
+<figure class="shot"><img src="img/admin-yorum-sikayetleri.png" alt="Yorum şikayetleri listesi"><figcaption>Yorum şikayetleri: her kartta test adı, yorum, şikayet nedenleri ve notlar.</figcaption></figure>
+<h4>Adım adım</h4>
+<ol>
+  <li>Menüden <em>Yorum Şikayetleri</em>'ni açın.</li>
+  <li>Kartta yorumun hangi teste ait olduğunu, şikayet sayısını, nedenleri ve şikayetçinin notlarını okuyun.</li>
+  <li>Yorumu bağlamında görmek için <em>Yoruma git</em>'e basın (ilgili test sayfası açılır ve yorum gösterilir).</li>
+  <li>Gizlemek için <em>Gizle</em>'ye basın, <em>Gizleme nedeni</em>'ni yazıp <em>Gizle</em> ile onaylayın.</li>
+  <li>Gizlenmiş bir yorumu geri açmak için <em>Gizlemeyi kaldır</em>'a basın.</li>
+</ol>
+<h4>Alanlar ve butonlar</h4>
+<table class="fields"><tr><th>Alan / Buton</th><th>Açıklama</th></tr>
+<tr><td>Test adı, <q>Test yorumu</q> / <q>Soru N</q></td><td>Yorumun yeri: testin geneli ya da belirli bir soru.</td></tr>
+<tr><td>Şikayet etiketi</td><td><q>1 şikayet</q> ya da <q>N şikayet</q>.</td></tr>
+<tr><td>Nedenler, Notlar</td><td>Şikayet nedenleri (sayılarıyla) ve şikayet edenlerin notları.</td></tr>
+<tr><td>Son şikayet</td><td>Son şikayetin tarihi.</td></tr>
+<tr><td>Gizli etiketi, Gizleme nedeni</td><td>Gizlenmiş yorumlarda görünür.</td></tr>
+<tr><td>Yoruma git, Gizle, Gizlemeyi kaldır, Yenile</td><td>Kart ve liste işlemleri.</td></tr>
+</table>
+<h4>Uyarı ve hata mesajları</h4>
+<ul class="msgs">
+  <li><q>Şikayet edilmiş yorum yok.</q>: liste boşken.</li>
+  <li><q>Şikayetler yükleniyor…</q> / <q>Şikayetler yüklenemedi.</q></li>
+  <li><q>Yorum herkese "Bu yorum kaldırıldı" olarak görünür; içeriği ve nedeni yalnız moderatörler görür. Gizlemeyi sonra kaldırabilirsin.</q>: gizleme penceresi.</li>
+  <li><q>Gizleme nedeni zorunlu.</q> / <q>Neden en fazla 500 karakter olabilir.</q></li>
+  <li><q>Yorum gizlenemedi.</q> / <q>Gizleme kaldırılamadı.</q></li>
+</ul>
+</article>
+
+<article class="screen" id="admin-raporlar-ayarlar">
+<h3>8.14 Raporlar ve Ayarlar</h3>
+<p class="meta">Menü: Raporlar, Ayarlar · Adres: /certificates, /student-profile</p>
+<p class="purpose"><strong>Amacı:</strong> Bu iki öğe tüm rollerin menüsünde bulunur. <em>Raporlar</em> başarı rozetlerini, <em>Ayarlar</em> profil ve tema ayarlarını gösterir (ayrıntı: Ortak bölüm ve Öğrenci bölümü). Admin için anlamlı bir içerikleri yoktur.</p>
+<figure class="shot placeholder"><div class="ph">Ekran görüntüsü alınamadı</div><figcaption>Not: Yerel ortamda admin hesabıyla <em>Ayarlar</em> (<code>/student-profile</code>) boş sayfa gösteriyor; <em>Raporlar</em> yalnız <q>Başarı Rozetleri</q> başlığını gösteriyor.</figcaption></figure>
+<p class="known-issue">Bilinen sorun: admin (ve öğretmen) için <em>Ayarlar</em> sayfası boş açılıyor; adminin profil/tema ayarı yapabileceği bir ekran yok.</p>
+</article>
+</section>
+
+<section class="role" id="ek">
+<h2>Ek: PDF üretme ve kılavuzu güncelleme</h2>
+<h3 class="plain" id="ek-pdf">PDF olarak kaydetme</h3>
+<p>Kılavuz A4 baskıya göre biçimlenmiştir: her rol yeni sayfada başlar, ekran görüntüleri sayfa arasında bölünmez, içindekiler tablosu ilk sayfalardadır.</p>
+<ol>
+<li><b>Tarayıcıdan:</b> <code>docs/user-guide/index.html</code> dosyasını Chrome veya Edge'de açın, <b>Ctrl+P</b> ▸ Hedef: <b>PDF olarak kaydet</b> ▸ Kağıt: <b>A4</b> ▸ <b>Arka plan grafikleri</b> işaretli ▸ <b>Kaydet</b>.</li>
+<li><b>Komut satırından (Edge, Windows):</b>
+<pre>"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --headless --disable-gpu --no-pdf-header-footer --print-to-pdf="%CD%\kullanici-kilavuzu.pdf" "file:///%CD:\=/%/docs/user-guide/index.html"</pre>
+Chrome için aynı parametreler <code>chrome.exe</code> ile çalışır. Komut repo kökünden çalıştırılır.</li>
+<li><b>Playwright ile (Node):</b>
+<pre>npx playwright install chromium
+node -e "const {chromium}=require('playwright');(async()=&gt;{const b=await chromium.launch();const p=await b.newPage();await p.goto('file://'+require('path').resolve('docs/user-guide/index.html'),{waitUntil:'load'});await p.pdf({path:'kullanici-kilavuzu.pdf',format:'A4',printBackground:true,margin:{top:'14mm',bottom:'16mm',left:'12mm',right:'12mm'}});await b.close()})()"</pre></li>
+</ol>
+<p class="note">PDF repoya eklenmez; gerektiğinde yukarıdaki komutlardan biriyle üretilir.</p>
+<h3 class="plain" id="ek-goruntu">Ekran görüntülerini yenileme</h3>
+<p><code>docs/user-guide/capture-screenshots.js</code> script'i her rol için giriş yapıp ekranları 1440×900 boyutunda, açık temada <code>docs/user-guide/img/</code> klasörüne çeker. Uygulama yerelde çalışırken:</p>
+<pre>npm i playwright &amp;&amp; npx playwright install chromium
+EXAMAPP_TEST_PASSWORD=&lt;test hesaplarının şifresi&gt; node docs/user-guide/capture-screenshots.js            # tümü
+EXAMAPP_TEST_PASSWORD=&lt;...&gt; node docs/user-guide/capture-screenshots.js ogrenci-   # yalnız öğrenci ekranları</pre>
+<p>Şifre yalnızca ortam değişkeninden okunur. Kullanılacak hesaplar <code>EXAMAPP_STUDENT</code>, <code>EXAMAPP_TEACHER</code>, <code>EXAMAPP_TEACHER2</code>, <code>EXAMAPP_TUTOR</code>, <code>EXAMAPP_ADMIN</code>, <code>EXAMAPP_NOROLE</code> değişkenleriyle değiştirilebilir; adres <code>EXAMAPP_BASE_URL</code> ile (varsayılan <code>http://localhost:5678</code>). Not: <b>Soru Çöz</b> ekranının görüntüsü için script bir pratik oturumu başlatır.</p>
+</section>
+</main>
+</body>
+</html>

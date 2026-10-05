@@ -92,6 +92,31 @@
   }
 }
 
+// ---- filtre (Issue #281) ----
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ms-border-weak);
+
+  .filter-search {
+    flex: 2 1 220px;
+    min-width: 180px;
+  }
+
+  .filter-clear {
+    flex-shrink: 0;
+  }
+
+  mat-icon[matPrefix] {
+    padding-inline: 8px 4px;
+    color: var(--ms-text-medium);
+  }
+}
+
 // ---- list ----
 
 .list {

@@ -12,14 +12,29 @@
     </header>
   }
 
-  @if (busy() || schoolsLoading()) {
+  @if (busy() || schoolsLoading() || filterPending()) {
     <mat-progress-bar mode="indeterminate" class="top-bar"></mat-progress-bar>
   }
 
   <mat-card class="column schools-section" appearance="outlined">
     <header class="column-header">
       <h3>{{ t('title') }}</h3>
-      <span class="count">{{ schools().length }}</span>
+      <!-- Issue #281: sayaç filtrelenmiş sonucu gösterir; filtre varken toplam da görünür. Görünen sayı
+           ekran okuyucudan gizlenir, çevrilmiş cümle görünmez status bölgesinde okunur. -->
+      <span class="count" aria-hidden="true">
+        @if (isFiltered()) {
+          {{ filteredSchools().length }} / {{ schools().length }}
+        } @else {
+          {{ schools().length }}
+        }
+      </span>
+      <span class="cdk-visually-hidden count-status" role="status">
+        {{
+          isFiltered()
+            ? t('filter.countFilteredAria', { count: filteredSchools().length, total: schools().length })
+            : t('filter.countAria', { count: schools().length })
+        }}
+      </span>
     </header>
 
     <div class="add-row stacked">
@@ -96,6 +111,65 @@
       </div>
     }
 
+    <!-- Issue #281: istemci tarafı ad / il / ilçe filtresi; durum URL query param'larında. -->
+    <div class="filter-row" role="search" [attr.aria-label]="t('filter.ariaLabel')">
+      <mat-form-field appearance="outline" class="dense filter-search">
+        <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+        <input
+          matInput
+          type="search"
+          class="filter-search-input"
+          [maxlength]="maxSearchLength"
+          [placeholder]="t('filter.searchPlaceholder')"
+          [attr.aria-label]="t('filter.searchAria')"
+          [ngModel]="searchText()"
+          (ngModelChange)="onSearchInput($event)"
+        />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="dense location-select">
+        <mat-select
+          class="filter-province"
+          [placeholder]="t('filter.provincePlaceholder')"
+          [aria-label]="t('filter.provinceAria')"
+          [ngModel]="filter().provinceId"
+          (ngModelChange)="onFilterProvinceChange($event)"
+          [disabled]="provincesLoading() || !!provincesError()"
+        >
+          <mat-option [value]="null">{{ t('filter.allProvinces') }}</mat-option>
+          @for (p of provinces(); track p.id) {
+            <mat-option [value]="p.id">{{ p.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="dense location-select">
+        <mat-select
+          class="filter-district"
+          [placeholder]="
+            filter().provinceId == null ? t('filter.districtNeedsProvince') : t('filter.districtPlaceholder')
+          "
+          [aria-label]="t('filter.districtAria')"
+          [ngModel]="filter().districtId"
+          (ngModelChange)="onFilterDistrictChange($event)"
+          [disabled]="filter().provinceId == null || filterDistrictsLoading()"
+        >
+          <mat-option [value]="null">{{ t('filter.allDistricts') }}</mat-option>
+          @for (d of filterDistricts(); track d.id) {
+            <mat-option [value]="d.id">{{ d.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <button
+        mat-stroked-button
+        type="button"
+        class="filter-clear"
+        (click)="clearFilters()"
+        [disabled]="!isFiltered() && !searchText()"
+      >
+        <mat-icon>filter_alt_off</mat-icon>
+        {{ t('filter.clear') }}
+      </button>
+    </div>
+
     @if (schoolsError()) {
       <div class="state-box state-box--error" role="alert">
         <mat-icon>error_outline</mat-icon>
@@ -115,9 +189,22 @@
         <p class="empty-title">{{ t('emptyTitle') }}</p>
         <p class="empty-hint">{{ t('emptyHint') }}</p>
       </div>
+    } @else if (schools().length > 0 && filteredSchools().length === 0 && filterPending()) {
+      <!-- URL'deki il/ilçe henüz doğrulanmadı: yanlış "sonuç yok" göstermemek için bekleme. -->
+      <div class="empty-state filter-pending" role="status">
+        <mat-icon>hourglass_empty</mat-icon>
+        <p class="empty-title">{{ t('filter.pending') }}</p>
+      </div>
+    } @else if (schools().length > 0 && filteredSchools().length === 0) {
+      <div class="empty-state no-match">
+        <mat-icon>filter_alt_off</mat-icon>
+        <p class="empty-title">{{ t('filter.noMatchTitle') }}</p>
+        <p class="empty-hint">{{ t('filter.noMatchHint') }}</p>
+        <button mat-button type="button" (click)="clearFilters()">{{ t('filter.clear') }}</button>
+      </div>
     } @else {
       <ul class="list schools-list">
-        @for (sc of schools(); track sc.id) {
+        @for (sc of filteredSchools(); track sc.id) {
           <li class="item static">
             @if (!isEditing(sc.id)) {
               <span class="name">{{ sc.name }}</span>

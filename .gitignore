@@ -99,6 +99,7 @@ rabbitmq/*
 !rabbitmq/definitions.json
 !rabbitmq/rabbitmq.conf
 !rabbitmq/generate-password-hashes.py
+!rabbitmq/sync-permissions.sh
 postgres/examdata/
 postgres/examdata*
 nuget-packages/

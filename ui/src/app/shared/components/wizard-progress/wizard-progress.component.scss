@@ -1,0 +1,136 @@
+// Issue #135 — durak yolu. Masaüstü: stepper; ≤600px: segment çubuğu.
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.wp {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.wp__stops {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wp__item {
+  display: flex;
+  align-items: center;
+  flex: 1 1 0;
+  min-width: 0;
+
+  // Duraklar arası bağlantı çizgisi.
+  &:not(:last-child)::after {
+    content: '';
+    flex: 1 1 auto;
+    height: 2px;
+    margin: 0 0.25rem;
+    background: var(--ms-border);
+  }
+
+  &:last-child {
+    flex: 0 0 auto;
+  }
+}
+
+.wp__item--done:not(:last-child)::after {
+  background: var(--primaryColor);
+}
+
+.wp__item--branch:not(:last-child)::after {
+  background: none;
+  border-top: 2px dashed var(--ms-border-strong);
+  height: 0;
+}
+
+.wp__stop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 2px solid var(--ms-border-strong);
+  border-radius: 50%;
+  background: var(--ms-surface);
+  color: var(--ms-text-weak);
+  font: inherit;
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+button.wp__stop {
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 3px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+}
+
+.wp__item--done .wp__stop {
+  border-color: var(--primaryColor);
+  background: var(--primaryColor);
+  color: var(--ms-action-text-inverse);
+}
+
+.wp__item--current .wp__stop {
+  border-color: var(--primaryColor);
+  color: var(--primaryColor);
+  box-shadow: 0 0 0 4px var(--ms-action-background-weak);
+}
+
+.wp__item--branch .wp__stop {
+  border-style: dashed;
+}
+
+.wp__counter {
+  flex: none;
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ms-text-medium);
+  white-space: nowrap;
+}
+
+.wp__bar {
+  display: none;
+  flex: 1 1 auto;
+  gap: 4px;
+  min-width: 0;
+}
+
+.wp__segment {
+  flex: 1 1 0;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ms-border);
+}
+
+.wp__segment--done,
+.wp__segment--current {
+  background: var(--primaryColor);
+}
+
+@media (max-width: 600px) {
+  .wp__stops {
+    display: none;
+  }
+
+  .wp__bar {
+    display: flex;
+  }
+}

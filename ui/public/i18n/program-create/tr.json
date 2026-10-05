@@ -13,7 +13,37 @@
     "reloadHint": "Sorular yüklenemedi, lütfen sayfayı yenileyin",
     "retry": "Tekrar Dene",
     "noSelection": "Bir seçim yapmadınız",
-    "summaryTitle": "Seçimleriniz:"
+    "summaryTitle": "Seçimleriniz:",
+    "progress": {
+      "label": "Sihirbaz ilerlemesi",
+      "current": "Soru {{n}} / {{total}}",
+      "currentMax": "Soru {{n}} / en fazla {{total}}",
+      "final": "Son adım · {{n}} / {{total}}",
+      "stop": "Soru",
+      "done": "tamamlandı, düzenle",
+      "here": "şu an",
+      "upcoming": "sırada",
+      "branch": "yol seçimine göre değişir",
+      "finalStop": "Program bilgileri"
+    },
+    "hint": {
+      "single": "Bir seçenek seç.",
+      "multi": "Birden fazla seçebilirsin."
+    },
+    "continue": "Devam",
+    "back": "Geri",
+    "needSelection": "Devam etmek için bir seçim yap",
+    "summary": {
+      "title": "Seçimlerin",
+      "pending": "Seçim bekleniyor",
+      "remaining": "Kalan sorular: {{count}}",
+      "edit": "Düzenle",
+      "all": "Tümü"
+    },
+    "pathChanged": "Yol değişti: önceki dala ait {{count}} seçim sıfırlandı.",
+    "undo": "Geri al",
+    "emptyTitle": "Henüz soru yok",
+    "emptyBody": "Program adımları bulunamadı. Biraz sonra tekrar deneyebilirsin."
   },
   "form": {
     "title": "Programınızı Oluşturun",
@@ -31,6 +61,9 @@
     "endDateRequired": "Bitiş tarihi gereklidir",
     "endDateAfterStart": "Bitiş tarihi, başlangıç tarihinden sonra olmalıdır",
     "created": "Program başarıyla oluşturuldu!",
-    "createFailed": "Program oluşturulurken bir hata oluştu"
+    "createFailed": "Program oluşturulurken bir hata oluştu",
+    "reviewTitle": "Onay özeti",
+    "summaryCount": "{{count}} cevap",
+    "createFailedInline": "Program oluşturulamadı. Seçimlerin ve girdiğin bilgiler korunuyor; tekrar deneyebilirsin."
   }
 }

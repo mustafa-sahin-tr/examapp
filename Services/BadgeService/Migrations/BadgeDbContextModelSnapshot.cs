@@ -89,6 +89,10 @@ namespace BadgeService.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<string>("Icon")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("IconUrl")
                         .HasColumnType("text");
 

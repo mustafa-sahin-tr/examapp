@@ -1,7 +1,20 @@
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, take } from 'rxjs';
-import { FormsModule } from '@angular/forms';
+import { AbstractControl, FormsModule } from '@angular/forms';
+import { ErrorStateMatcher } from '@angular/material/core';
+import { DOCUMENT } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -10,6 +23,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 
 import { Option, ProgramStep } from '../../models/programstep';
@@ -27,6 +41,8 @@ import { ProgramOptionIconPipe } from './program-option-icon.pipe';
 import {
   WizardAnswers,
   hasDistinctBranches,
+  isEndAfterStart,
+  toLocalDateString,
   reachableFrom,
   remainingRange,
   resolveNext,
@@ -54,7 +70,7 @@ export interface PathChangeNotice {
 }
 
 /**
- * Program oluşturma sihirbazı (issue #135, dilim 1). Durum:
+ * Program oluşturma sihirbazı (issue #135; dilim 1 adım ekranı, dilim 2 son adım + durum ekranları). Durum:
  * - `steps`: API'den gelen adımlar (değiştirilmez; seçimler `answers`'ta tutulur).
  * - `path`: gezinme geçmişi — ilk adımdan şu anki adıma kadar gezilen adım id'leri. Geri gezinme ve
  *   submit bu diziden okunur; böylece API'ye yalnız geçerli yoldaki adımlar gider.
@@ -72,6 +88,7 @@ export interface PathChangeNotice {
     MatFormFieldModule,
     MatInputModule,
     MatDatepickerModule,
+    MatExpansionModule,
     TranslocoDirective,
     ProgramOptionIconPipe,
     OptionCardComponent,
@@ -96,8 +113,14 @@ export class ProgramCreateComponent implements OnInit {
   readonly viewState = signal<WizardViewState>('loading');
   readonly pathChange = signal<PathChangeNotice | null>(null);
   readonly submitting = signal(false);
+  /** Son gönderim başarısız oldu: form üstünde `role=alert` bant; seçimler ve girilenler korunur. */
+  readonly submitError = signal(false);
 
-  // Form alanları (son adım; yeni form tasarımı dilim 2'de).
+  /** Yükleniyor iskeleti: kartta 4 seçenek karosu, rayda 2 satır. */
+  readonly skeletonTiles = [1, 2, 3, 4] as const;
+  readonly skeletonRailRows = [1, 2] as const;
+
+  // Form alanları (son adım).
   readonly programName = signal('');
   readonly programDescription = signal('');
   readonly programStartDate = signal<Date | null>(null);
@@ -105,6 +128,56 @@ export class ProgramCreateComponent implements OnInit {
 
   /** Şu anki adıma girildiği andaki durum; dal değişince "Geri al" buna döner. */
   private entrySnapshot: WizardSnapshot | null = null;
+
+  /** Soru / form başlığı (h2, tabindex=-1); adım ve form aynı öğeyi paylaşır, gezinmeden sonra odak buraya taşınır. */
+  private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
+  /** Gönderim hatası bandı (tabindex=-1); hata sonrası odak buraya taşınır. */
+  private readonly submitAlert = viewChild<ElementRef<HTMLElement>>('submitAlert');
+  /**
+   * Bekleyen odak isteği. Hedef öğe henüz çizilmemiş olabilir (ör. tekrar dene sonrası başlık, hata bandı);
+   * effect viewChild'ı da izlediği için öğe gelince odaklar ve isteği temizler. İlk yüklemede istek yok.
+   */
+  private readonly focusRequest = signal<{ target: 'heading' | 'alert' } | null>(null);
+
+  /** `prefers-reduced-motion: reduce` ise buton içi dönen spinner yerine statik ikon gösterilir. */
+  readonly reducedMotion =
+    inject(DOCUMENT).defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+
+  readonly nameValid = computed(() => this.programName().trim().length > 0);
+  /** Bitiş, başlangıçtan sonraki bir günde olmalı (gün bazında; datepicker gece yarısı verir). */
+  readonly dateOrderInvalid = computed(() => {
+    const start = this.programStartDate();
+    const end = this.programEndDate();
+    return !!start && !!end && !isEndAfterStart(start, end);
+  });
+  readonly formValid = computed(
+    () => this.nameValid() && !!this.programStartDate() && !!this.programEndDate() && !this.dateOrderInvalid(),
+  );
+
+  /** Ad: dokunulduktan sonra boş (yalnız boşluk dahil) ise hata. */
+  readonly nameErrorMatcher: ErrorStateMatcher = {
+    isErrorState: (control: AbstractControl | null) => !!control && control.touched && !this.nameValid(),
+  };
+  /** Başlangıç: dokunulduktan sonra boş / ayrıştırılamıyorsa hata. */
+  readonly startErrorMatcher: ErrorStateMatcher = {
+    isErrorState: (control: AbstractControl | null) => !!control && control.touched && !this.programStartDate(),
+  };
+  /** Bitiş: boşsa (dokunulduktan sonra) ya da tarih sırası bozuksa (başlangıç değişince de) hata. */
+  readonly endErrorMatcher: ErrorStateMatcher = {
+    isErrorState: (control: AbstractControl | null) =>
+      !!control && ((control.touched && !this.programEndDate()) || this.dateOrderInvalid()),
+  };
+
+  constructor() {
+    effect(() => {
+      const request = this.focusRequest();
+      if (!request) return;
+      const target = request.target === 'alert' ? this.submitAlert() : this.heading();
+      if (!target) return;
+      untracked(() => target.nativeElement.focus());
+      this.focusRequest.set(null);
+    });
+  }
 
   readonly stepsById = computed(() => new Map(this.steps().map((s) => [s.id, s] as const)));
 
@@ -173,12 +246,20 @@ export class ProgramCreateComponent implements OnInit {
     return items;
   });
 
+  /** Mobil katlanır onay özetinin başlığı için cevapların kısa listesi. */
+  readonly summaryPreview = computed(() => this.summaryItems().map((item) => item.value).join(' · '));
+
   ngOnInit(): void {
     this.resetFormFields();
     this.loadProgramSteps();
   }
 
-  loadProgramSteps(): void {
+  /** Hata / boş ekranındaki "Tekrar Dene": yükleme başarılı olursa odak soru başlığına taşınır. */
+  retryLoad(): void {
+    this.loadProgramSteps(true);
+  }
+
+  loadProgramSteps(focusOnSuccess = false): void {
     this.viewState.set('loading');
     this.programService.getProgramSteps().subscribe({
       next: (steps) => {
@@ -194,13 +275,14 @@ export class ProgramCreateComponent implements OnInit {
         this.path.set([list[0].id]);
         this.viewState.set('step');
         this.captureEntry();
+        if (focusOnSuccess) this.requestHeadingFocus();
       },
       error: (error) => {
         console.error('Program steps could not be loaded:', error);
         this.steps.set([]);
         this.path.set([]);
+        // Hata ekranı `role=alert` + "Tekrar Dene" taşır; ayrıca snackbar açılmaz.
         this.viewState.set('error');
-        this.notify('wizard.reloadHint', 4000);
       },
     });
   }
@@ -258,6 +340,7 @@ export class ProgramCreateComponent implements OnInit {
     if (target.kind === 'step') {
       this.path.update((path) => [...path, target.stepId]);
       this.captureEntry();
+      this.requestHeadingFocus();
       return;
     }
 
@@ -270,7 +353,9 @@ export class ProgramCreateComponent implements OnInit {
           `değerine işaret ediyor; program oluşturma formuna geçiliyor.`,
       );
     }
+    this.submitError.set(false);
     this.viewState.set('form');
+    this.requestHeadingFocus();
   }
 
   /** Gezinme geçmişinde bir adım geri. */
@@ -279,6 +364,7 @@ export class ProgramCreateComponent implements OnInit {
     this.path.update((path) => path.slice(0, -1));
     this.pathChange.set(null);
     this.captureEntry();
+    this.requestHeadingFocus();
   }
 
   /** Özet satırı / tamamlanan durak: yoldaki o adıma dön, önceki seçim işaretli gelir. */
@@ -291,10 +377,12 @@ export class ProgramCreateComponent implements OnInit {
   goToStop(index: number): void {
     const path = this.path();
     if (index < 0 || index >= path.length) return;
+    if (this.submitting()) return;
     this.path.set(path.slice(0, index + 1));
     this.viewState.set('step');
     this.pathChange.set(null);
     this.captureEntry();
+    this.requestHeadingFocus();
   }
 
   /** Dal değişimini geri al: silinen cevaplar ve dal değişmeden önceki adım geri gelir. */
@@ -306,6 +394,7 @@ export class ProgramCreateComponent implements OnInit {
     this.viewState.set('step');
     this.pathChange.set(null);
     this.captureEntry();
+    this.requestHeadingFocus();
   }
 
   /** Submit isteği: yalnız geçerli yoldaki (gezinme geçmişindeki) cevaplanmış adımlar. */
@@ -322,37 +411,22 @@ export class ProgramCreateComponent implements OnInit {
   }
 
   createProgram(): void {
-    if (this.submitting()) return;
-    const name = this.programName().trim();
+    // Geçersiz form satır içi mat-error ile gösterilir ve buton pasiftir; burası yalnız savunma.
     const start = this.programStartDate();
     const end = this.programEndDate();
-
-    if (!name) {
-      this.notify('form.nameRequired', 2000);
-      return;
-    }
-    if (!start) {
-      this.notify('form.startDateRequired', 2000);
-      return;
-    }
-    if (!end) {
-      this.notify('form.endDateRequired', 2000);
-      return;
-    }
-    if (start >= end) {
-      this.notify('form.endDateAfterStart');
-      return;
-    }
+    if (this.submitting() || !this.formValid() || !start || !end) return;
 
     const request: CreateProgramRequest = {
-      programName: name,
+      programName: this.programName().trim(),
       description: this.programDescription().trim(),
-      startDate: start.toISOString(),
-      endDate: end.toISOString(),
+      // Yerel takvim günü (yyyy-MM-dd): toISOString() TR'de gece yarısını önceki güne kaydırırdı.
+      startDate: toLocalDateString(start),
+      endDate: toLocalDateString(end),
       userSelections: this.buildSelections(),
     };
 
     this.submitting.set(true);
+    this.submitError.set(false);
     this.programService.createProgram(request).subscribe({
       next: () => {
         this.submitting.set(false);
@@ -362,17 +436,24 @@ export class ProgramCreateComponent implements OnInit {
       error: (error) => {
         console.error('Program create error:', error);
         this.submitting.set(false);
-        this.notify('form.createFailed');
+        // Bant `role=alert` ile duyurulur; ayrıca snackbar açmak aynı hatayı iki kez okutur.
+        this.submitError.set(true);
+        this.focusRequest.set({ target: 'alert' });
       },
     });
   }
 
   /** Formdan son soruya dön (girilen değerler korunur). */
   cancelProgramCreation(): void {
-    if (this.path().length === 0) return;
+    if (this.path().length === 0 || this.submitting()) return;
     this.viewState.set('step');
     this.pathChange.set(null);
     this.captureEntry();
+    this.requestHeadingFocus();
+  }
+
+  private requestHeadingFocus(): void {
+    this.focusRequest.set({ target: 'heading' });
   }
 
   private captureEntry(): void {

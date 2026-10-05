@@ -1,5 +1,7 @@
 import { ProgramStep } from '../../models/programstep';
 import {
+  isEndAfterStart,
+  toLocalDateString,
   isExclusiveOption,
   reachableFrom,
   remainingRange,
@@ -76,6 +78,21 @@ describe('program-wizard.logic (issue #135)', () => {
 
     it('toggleValue_Single_Replaces', () => {
       expect(toggleValue(graph.get(1)!, ['a'], graph.get(1)!.options[1])).toEqual(['b']);
+    });
+  });
+
+  describe('isEndAfterStart', () => {
+    it('comparesCalendarDays_IgnoringTimeOfDay', () => {
+      const start = new Date(2026, 9, 6, 15, 30);
+      expect(isEndAfterStart(start, new Date(2026, 9, 7))).toBeTrue();
+      expect(isEndAfterStart(start, new Date(2026, 9, 6, 23, 59))).toBeFalse();
+      expect(isEndAfterStart(start, new Date(2026, 9, 6))).toBeFalse();
+      expect(isEndAfterStart(start, new Date(2026, 9, 5))).toBeFalse();
+    });
+
+    it('toLocalDateString_UsesLocalCalendarDay', () => {
+      expect(toLocalDateString(new Date(2026, 9, 6))).toBe('2026-10-06');
+      expect(toLocalDateString(new Date(2026, 0, 1, 23, 59))).toBe('2026-01-01');
     });
   });
 });

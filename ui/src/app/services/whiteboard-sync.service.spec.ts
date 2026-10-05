@@ -9,6 +9,10 @@ import {
   hubError,
   joinResult,
 } from '../shared/testing/whiteboard-testing';
+import {
+  WHITEBOARD_MAX_SCENE_ELEMENTS,
+  WHITEBOARD_TOMBSTONE_TTL_MS,
+} from '../shared/utils/whiteboard-sync.util';
 import { AuthService } from './auth.service';
 import { WHITEBOARD_HUB_CONNECTION_FACTORY, WhiteboardHubConnectionFactory } from './whiteboard-hub-connection';
 import {
@@ -578,6 +582,159 @@ describe('WhiteboardSyncService', () => {
 
       hub.emit('ElementsUpdated', 'not-an-array');
       expect(canvas.elements.length).toBe(1);
+      finish();
+    }));
+  });
+
+  describe('client scene limit (issue #332)', () => {
+    function rects(count: number, prefix = 'r'): Record<string, unknown>[] {
+      return Array.from({ length: count }, (_, i) => ({ id: `${prefix}${i}`, type: 'rectangle', version: 1, versionNonce: 1 }));
+    }
+
+    it('JoinScene_OverElementLimit_NotAppliedWarnsAndStaysConnected', fakeAsync(() => {
+      hub.respond = (method) =>
+        method === 'JoinBoard'
+          ? Promise.resolve(joinResult({ elements: rects(WHITEBOARD_MAX_SCENE_ELEMENTS + 1) }))
+          : Promise.resolve({ serverVersion: 1, accepted: 0, corrections: [] });
+      startJoined();
+
+      expect(canvas.restoreCalls).toBe(0);
+      expect(canvas.elements).toEqual([]);
+      expect(warnings).toEqual(['remoteSceneLimit']);
+      expect(service.status()).toBe('connected');
+      finish();
+    }));
+
+    it('ElementsUpdated_OverElementLimit_NotAppliedWarnedOnceThenRearmedAfterSuccess', fakeAsync(() => {
+      startJoined();
+      const tooMany = rects(WHITEBOARD_MAX_SCENE_ELEMENTS + 1);
+
+      hub.emit('ElementsUpdated', tooMany);
+      hub.emit('ElementsUpdated', tooMany);
+      expect(canvas.restoreCalls).toBe(0);
+      expect(canvas.elements).toEqual([]);
+      expect(warnings).toEqual(['remoteSceneLimit']);
+      // Tam senkron istenmez (aynı sahne yine sınırı aşardı).
+      expect(hub.calls('JoinBoard').length).toBe(1);
+
+      hub.emit('ElementsUpdated', [{ id: 'ok', type: 'rectangle', version: 1, versionNonce: 1 }]);
+      expect(canvas.elements.map((e) => e.id)).toEqual(['ok']);
+      hub.emit('ElementsUpdated', tooMany);
+      expect(warnings).toEqual(['remoteSceneLimit', 'remoteSceneLimit']);
+      finish();
+    }));
+
+    it('ElementsUpdated_LargeByteSize_StillApplied_ByteLimitIsServerSide', fakeAsync(() => {
+      startJoined();
+      // İstemci bayt ölçmez (sunucu ham metniyle tutarsız ölçüm → griefing); 3 MB'lık tek eleman uygulanır.
+      hub.emit('ElementsUpdated', [{ id: 'big', type: 'text', version: 1, versionNonce: 1, text: 'x'.repeat(3 * 1024 * 1024) }]);
+      expect(canvas.elements.map((e) => e.id)).toEqual(['big']);
+      expect(warnings).toEqual([]);
+      finish();
+    }));
+
+    it('ElementsUpdated_LocalUnsentElementsNearLimit_RemoteUpdateStillApplied', fakeAsync(() => {
+      startJoined();
+      // Yerelde gönderilmemiş elemanlar + uzak güncelleme birlikte sınırı aşsa da uzak güncelleme reddedilmez.
+      hub.respond = (method) =>
+        method === 'SendElements' ? Promise.reject(new Error('transport')) : Promise.resolve(joinResult());
+      canvas.elements = rects(WHITEBOARD_MAX_SCENE_ELEMENTS, 'l').map((r) => element(r['id'] as string));
+
+      hub.emit('ElementsUpdated', rects(2, 'new'));
+
+      expect(canvas.elements.length).toBe(WHITEBOARD_MAX_SCENE_ELEMENTS + 2);
+      expect(warnings).toEqual([]);
+      finish();
+    }));
+  });
+
+  describe('tombstone cleanup (issue #332)', () => {
+    it('AcknowledgedTombstone_PurgedLocallyAfterTtl_NotResent', fakeAsync(() => {
+      startJoined();
+      canvas.elements = [element('keep'), element('gone')];
+      localChange();
+      canvas.elements = [element('keep'), element('gone', 2, { isDeleted: true })];
+      localChange();
+      expect(hub.sentIds()).toEqual([['keep', 'gone'], ['gone']]);
+
+      // Onaylandıktan sonra TTL dolana kadar sahnede kalır (undo geçmişi için).
+      localChange();
+      expect(canvas.elements.map((e) => e.id)).toEqual(['keep', 'gone']);
+
+      tick(WHITEBOARD_TOMBSTONE_TTL_MS);
+      localChange();
+      expect(canvas.elements.map((e) => e.id)).toEqual(['keep']);
+      expect(hub.calls('SendElements').length).toBe(2);
+      finish();
+    }));
+
+    it('RemoteTombstone_PurgedAfterTtl', fakeAsync(() => {
+      startJoined();
+      hub.emit('ElementsUpdated', [{ id: 'r', type: 'rectangle', version: 4, versionNonce: 1, isDeleted: true }]);
+      tick(WHITEBOARD_FLUSH_THROTTLE_MS);
+      flushMicrotasks();
+      expect(canvas.elements.map((e) => e.id)).toEqual(['r']);
+
+      tick(WHITEBOARD_TOMBSTONE_TTL_MS);
+      localChange();
+      expect(canvas.elements).toEqual([]);
+      expect(hub.calls('SendElements').length).toBe(0);
+      finish();
+    }));
+
+    it('UnsentTombstone_NeverPurged', fakeAsync(() => {
+      startJoined();
+      canvas.elements = [element('a')];
+      localChange();
+      // Silme sunucuya ulaşamıyor (taşıma hatası): damga geri alınır, tombstone sahnede kalmalı.
+      hub.respond = (method) =>
+        method === 'SendElements' ? Promise.reject(new Error('transport')) : Promise.resolve(joinResult());
+      canvas.elements = [element('a', 2, { isDeleted: true })];
+      localChange();
+      tick(WHITEBOARD_TOMBSTONE_TTL_MS * 2);
+      localChange();
+
+      expect(canvas.elements.map((e) => e.id)).toEqual(['a']);
+      expect(canvas.elements[0].isDeleted).toBeTrue();
+      finish();
+    }));
+
+    it('ServerRejectedSingleTombstone_StampedButNeverPurged', fakeAsync(() => {
+      spyOn(console, 'warn');
+      startJoined();
+      // Tek eleman olarak içerik reddi: damgalı bırakılır (döngü yok) ama sunucuda yok → temizlenmemeli.
+      hub.respond = (method) =>
+        method === 'SendElements' ? Promise.reject(hubError('InvalidElement')) : Promise.resolve(joinResult());
+      canvas.elements = [element('bad', 2, { isDeleted: true })];
+      localChange();
+      expect(hub.sentIds()).toEqual([['bad']]);
+
+      tick(WHITEBOARD_TOMBSTONE_TTL_MS * 2);
+      localChange();
+      expect(canvas.elements.map((e) => e.id)).toEqual(['bad']);
+      expect(hub.sentIds().length).toBe(1);
+      finish();
+    }));
+
+    it('PurgedTombstone_StampDroppedAndReStampedWhenServerSendsItAgain', fakeAsync(() => {
+      startJoined();
+      const tombstone = { id: 'r', type: 'rectangle', version: 4, versionNonce: 1, isDeleted: true };
+      hub.emit('ElementsUpdated', [tombstone]);
+      tick(WHITEBOARD_FLUSH_THROTTLE_MS);
+      flushMicrotasks();
+      tick(WHITEBOARD_TOMBSTONE_TTL_MS);
+      localChange();
+      expect(canvas.elements).toEqual([]);
+
+      // Aynı tombstone yeniden gelir (ör. sunucu yayını): görünmez olarak eklenir, geri gönderilmez, yine temizlenir.
+      hub.emit('ElementsUpdated', [tombstone]);
+      tick(WHITEBOARD_FLUSH_THROTTLE_MS);
+      flushMicrotasks();
+      expect(canvas.elements.map((e) => e.id)).toEqual(['r']);
+      tick(WHITEBOARD_TOMBSTONE_TTL_MS);
+      localChange();
+      expect(canvas.elements).toEqual([]);
+      expect(hub.calls('SendElements').length).toBe(0);
       finish();
     }));
   });

@@ -104,6 +104,12 @@ public interface IWhiteboardStore
 /// açık tahtalar boşalır. Son katılımcı ayrılınca sahne silinmez; pencere içinde yeniden bağlanan kişi sahneyi geri alır.
 /// Tahta yalnızca <see cref="CloseBoard"/> ile (pencere bitişi / randevu iptali) silinir.
 /// <para>
+/// TOMBSTONE NOTU (issue #332): silinmiş (<c>isDeleted</c>) elemanlar tahta açıkken sahneden ÇIKARILMAZ. UI istemcisi
+/// (<c>ui/src/app/shared/utils/whiteboard-sync.util.ts</c> → <c>planTombstonePurge</c>) sunucuya ulaşmış tombstone'ları
+/// yerelde temizler ve eski bir kopyanın geri gelmemesini buradaki version kuralına bırakır; tombstone budaması
+/// eklenecekse istemci tarafı da gözden geçirilmeli.
+/// </para>
+/// <para>
 /// ÇOKLU INSTANCE NOTU: durum ve SignalR grupları tek süreçtedir. Exam API yatay ölçeklenirse (birden fazla replika)
 /// iki katılımcı farklı replikalara düşüp birbirini göremez — o gün Redis backplane (<c>AddStackExchangeRedis</c>) +
 /// paylaşılan sahne deposu (Redis hash) ya da sticky session gerekir. Prod yok, kapsam dışı bırakıldı.

@@ -17,6 +17,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -26,7 +27,9 @@ import { WhiteboardConnectionStatus, WhiteboardRole, WhiteboardWarning } from '.
 import { ColorSchemeService } from '../../../services/color-scheme.service';
 import { LocaleService } from '../../../services/locale.service';
 import { WhiteboardSyncService } from '../../../services/whiteboard-sync.service';
+import { OpenWindowFn, classifyWhiteboardLink, openInNewTab } from '../../utils/whiteboard-link.util';
 import { WHITEBOARD_CANVAS_LOADER, WhiteboardCanvas, langCodeFor } from './whiteboard-canvas';
+import { openWhiteboardLinkDialog } from './whiteboard-link-dialog/whiteboard-link-dialog.component';
 
 /** Kendi sözlüğü: `public/i18n/whiteboard/<lang>.json`. */
 const SCOPE = 'whiteboard';
@@ -72,6 +75,7 @@ export class WhiteboardComponent {
   private readonly locale = inject(LocaleService);
   private readonly transloco = inject(TranslocoService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
   private readonly zone = inject(NgZone);
   private readonly destroyRef = inject(DestroyRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -81,6 +85,8 @@ export class WhiteboardComponent {
   private initStarted = false;
   private readonly canvas = signal<WhiteboardCanvas | null>(null);
   private destroyed = false;
+  /** Bağlantı onay dialogu açık (issue #332): ikinci bir dialog açılmaz. */
+  private linkDialogOpen = false;
   private clock: ReturnType<typeof setInterval> | null = null;
   /** Devam eden mount'u iptal eder (zaman aşımı/yıkım): yarım React kökü host'ta kalmasın. */
   private mountAbort: AbortController | null = null;
@@ -195,7 +201,7 @@ export class WhiteboardComponent {
           {
             onChange: () => this.sync.notifyLocalChange(),
             onPointer: (pointer) => this.sync.notifyLocalPointer(pointer),
-            onLinkBlocked: () => this.showWarning('linkBlocked'),
+            onLinkOpen: (link) => this.zone.run(() => this.openLink(link)),
           },
           abort.signal
         )
@@ -238,6 +244,37 @@ export class WhiteboardComponent {
       hidden = nowHidden;
     });
     this.zone.runOutsideAngular(() => this.resizeObserver?.observe(host));
+  }
+
+  /**
+   * Tahtadaki bağlantı (issue #332): http(s) dışı şema sessizce engellenir (kısa uyarı), aynı origin doğrudan, dış
+   * origin onaydan sonra açılır. Açılış her zaman yeni sekmede ve `noopener,noreferrer` ile.
+   */
+  private openLink(link: string | null | undefined): void {
+    const target = classifyWhiteboardLink(link, this.document.location.origin);
+    const open: OpenWindowFn = (url, name, features) => this.document.defaultView?.open(url, name, features);
+    switch (target.kind) {
+      case 'blocked':
+        this.showWarning('linkBlocked');
+        return;
+      case 'sameOrigin':
+        openInNewTab(target.url, open);
+        return;
+      case 'external':
+        // Aynı anda tek onay dialogu: art arda tıklamalar (ya da karşı tarafın tetiklediği) üst üste dialog açmaz.
+        if (this.linkDialogOpen) {
+          return;
+        }
+        this.linkDialogOpen = true;
+        openWhiteboardLinkDialog(this.dialog, { url: target.url, host: target.host })
+          .afterClosed()
+          .subscribe((proceed) => {
+            this.linkDialogOpen = false;
+            if (proceed === true && !this.destroyed) {
+              openInNewTab(target.url, open);
+            }
+          });
+    }
   }
 
   private roleLabel(role: WhiteboardRole): string {

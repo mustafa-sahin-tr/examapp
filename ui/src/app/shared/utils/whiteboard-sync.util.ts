@@ -115,21 +115,6 @@ export function isSafeHttpUrl(value: unknown): value is string {
   }
 }
 
-/** `window.open` imzasının kullandığımız kısmı (testte sahte verilir). */
-export type OpenWindowFn = (url: string, target: string, features: string) => unknown;
-
-/**
- * Tahtadaki bağlantıyı açar: yalnızca http(s), yeni sekmede, `noopener,noreferrer` ile.
- * Açıldıysa `true`; şema geçersizse hiçbir şey açılmaz ve `false` döner.
- */
-export function openWhiteboardLink(link: unknown, open: OpenWindowFn): boolean {
-  if (!isSafeHttpUrl(link)) {
-    return false;
-  }
-  open(link, '_blank', 'noopener,noreferrer');
-  return true;
-}
-
 /** Nesneden bir anahtarı çıkarılmış sığ kopya (değer okunmaz). */
 function withoutKey(source: object, key: string): Record<string, unknown> {
   return Object.fromEntries(Object.entries(source).filter(([name]) => name !== key));
@@ -169,6 +154,84 @@ const encoder = new TextEncoder();
 /** Serileştirilmiş (UTF-8 JSON) bayt boyutu. */
 export function jsonByteLength(value: unknown): number {
   return encoder.encode(JSON.stringify(value)).length;
+}
+
+/**
+ * İstemcinin uzak yüke uyguladığı eleman sayısı üst sınırı (issue #332). Kaynak: sunucu varsayılanı
+ * `api/ExamApp.Api/Services/Whiteboard/WhiteboardOptions.cs` → `MaxSceneElements` (5000, silinmiş/tombstone dahil).
+ * appsettings'te `Whiteboard` bölümü tanımlı değil, varsayılan geçerli. Sunucu config ile YÜKSELTİLİRSE bu sabit de
+ * aynı değere çekilmelidir; aksi hâlde sunucunun kabul ettiği büyük bir sahne istemcide uygulanmaz.
+ *
+ * Yalnızca HAM uzak yük (tek `ElementsUpdated`/düzeltme/JoinBoard dizisi) ölçülür: yerel + uzak birleşik sahne
+ * sayılmaz (yerelde henüz gönderilmemiş elemanlar yüzünden meşru uzak güncelleme reddedilmesin). Bayt sınırı da
+ * istemcide UYGULANMAZ: istemcinin ölçtüğü (yeniden serileştirilmiş) boyut sunucunun ham metninden farklıdır ve
+ * karşı taraf sınırın hemen altındaki bir sahneyle bizim tarafımızda reddi tetikleyebilirdi (griefing). Asıl bayt
+ * sınırı sunucudadır (`MaxSceneBytes`, `MaxReceiveMessageBytes`).
+ */
+export const WHITEBOARD_MAX_SCENE_ELEMENTS = 5000;
+
+/** Uzak (güvenilmez) eleman dizisi istemci sınırını aşıyor mu (yalnızca eleman sayısı; O(1)). */
+export function exceedsRemoteElementLimit(raw: readonly unknown[], maxElements = WHITEBOARD_MAX_SCENE_ELEMENTS): boolean {
+  return raw.length > maxElements;
+}
+
+/**
+ * Onaylanmış bir tombstone'un yerel sahnede kalma süresi. Senkron için gerekli değildir; Excalidraw'ın geri alma
+ * (undo) geçmişinin yakın zamanda silinen elemanı sahnede bulabilmesi için beklenir. Bilinen sınır: bu süreden eski bir
+ * silmeyi geri almak (undo) etkisizdir — eleman sahneden temizlenmiştir.
+ */
+export const WHITEBOARD_TOMBSTONE_TTL_MS = 5 * 60_000;
+
+export interface TombstonePurgePlan {
+  /** Sahneden (ve `known`'dan) kaldırılacak tombstone id'leri. */
+  readonly purge: ReadonlySet<string>;
+  /** Güncel "ilk görülme" zamanları (yalnızca hâlâ sahnede bekleyen onaylı tombstone'lar). */
+  readonly seenAt: Map<string, number>;
+}
+
+/**
+ * Yerel sahnede biriken silinmiş (`isDeleted`) elemanların temizlik planı.
+ *
+ * Güvenlik varsayımı: sahnenin otoritesi sunucudur ve sunucu tombstone'u (en yüksek version) tahta açık olduğu sürece
+ * SAKLAR (`WhiteboardStore` tombstone budamaz), yalnızca daha yüksek version'ı kabul edip yayınlar. Silme sunucuya
+ * ulaştıysa (ya da sunucudan geldiyse) yerel kopya artık gerekmez: eski bir kopya geri gelemez (sunucu reddeder),
+ * tombstone'un kendisi yeniden gelirse (JoinBoard) yine görünmez bir tombstone olarak eklenir. Sunucu bir gün
+ * tombstone budarsa bu varsayım yeniden değerlendirilmelidir.
+ *
+ * Yalnızca **onaylı** tombstone'lar silinir: damgası `known`'daki damgayla aynı olanlar. `known` damgası iki durumda
+ * sunucunun kabulü anlamına GELMEZ; bu id'ler `excluded` ile verilir ve temizlenmez:
+ * - tek eleman olarak içerik yüzünden reddedilen (ör. `InvalidElement`) — yeniden gönderim döngüsü olmasın diye
+ *   damgalı bırakılır ama sunucuda yoktur,
+ * - onarım devre kesicisinin damgaladığı — sunucudaki hâliyle eşleşmeyebilir.
+ * Henüz gönderilmemiş bir silme asla temizlenmez — aksi hâlde silme karşı tarafa hiç ulaşmazdı.
+ *
+ * Bilinen sınır: API yeniden başlarsa sunucu sahnesi boşalır (kalıcı saklama yok). Bu durumda yerelde temizlenmiş bir
+ * tombstone'un silinmemiş eski kopyası, o arada çevrimdışı kalıp yeniden bağlanan peer'den sunucuya geri gelebilir.
+ *
+ * Yaş, elemanın `updated` alanından DEĞİL yerel saatle ölçülür (`seenAt`): `updated` karşı tarafın saatidir, güvenilmez.
+ */
+export function planTombstonePurge(
+  elements: readonly Pick<WhiteboardElement, 'id' | 'version' | 'versionNonce' | 'isDeleted'>[],
+  known: ReadonlyMap<string, ElementStamp>,
+  seenAt: ReadonlyMap<string, number>,
+  now: number,
+  excluded: ReadonlySet<string> = new Set<string>(),
+  ttlMs = WHITEBOARD_TOMBSTONE_TTL_MS
+): TombstonePurgePlan {
+  const purge = new Set<string>();
+  const nextSeen = new Map<string, number>();
+  for (const element of elements) {
+    if (!element.isDeleted || excluded.has(element.id) || !sameStamp(known.get(element.id), stampOf(element))) {
+      continue;
+    }
+    const firstSeen = seenAt.get(element.id) ?? now;
+    if (now - firstSeen >= ttlMs) {
+      purge.add(element.id);
+    } else {
+      nextSeen.set(element.id, firstSeen);
+    }
+  }
+  return { purge, seenAt: nextSeen };
 }
 
 /** Boyutu önceden hesaplanmış gönderim kalemi. */

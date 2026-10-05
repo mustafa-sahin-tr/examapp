@@ -1,0 +1,21 @@
+<div class="wbl" *transloco="let t; prefix: 'whiteboard.linkDialog'">
+  <header class="wbl__header">
+    <mat-icon class="wbl__icon" aria-hidden="true">open_in_new</mat-icon>
+    <h2 mat-dialog-title class="wbl__title">{{ t('title') }}</h2>
+  </header>
+
+  <mat-dialog-content class="wbl__content" [id]="descriptionId">
+    <p class="wbl__intro">{{ t('intro', { host: data.host }) }}</p>
+    <p class="wbl__url" dir="ltr" data-testid="wb-link-url">{{ data.url }}</p>
+    <p class="wbl__hint">{{ t('hint') }}</p>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" class="wbl__actions">
+    <button mat-button type="button" data-autofocus data-testid="wb-link-cancel" (click)="cancel()">
+      {{ t('cancel') }}
+    </button>
+    <button mat-flat-button type="button" class="wbl__proceed" data-testid="wb-link-proceed" (click)="proceed()">
+      {{ t('proceed') }}
+    </button>
+  </mat-dialog-actions>
+</div>

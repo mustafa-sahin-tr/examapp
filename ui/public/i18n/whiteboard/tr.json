@@ -54,6 +54,14 @@
     "unsupportedContent": "Görsel ve gömülü içerik tahtada desteklenmiyor; kaldırıldı.",
     "sceneLimit": "Tahta sınırına ulaşıldı; yeni çizimler karşı tarafa gönderilemiyor.",
     "rejected": "Bazı öğeler sunucu tarafından reddedildi.",
-    "linkBlocked": "Yalnızca http(s) bağlantıları açılabilir."
+    "linkBlocked": "Yalnızca http(s) bağlantıları açılabilir.",
+    "remoteSceneLimit": "Gelen tahta içeriği izin verilen sınırı aştığı için gösterilemedi."
+  },
+  "linkDialog": {
+    "title": "Dış bağlantı açılsın mı?",
+    "intro": "Bu bağlantı uygulamanın dışındaki bir siteye ({{host}}) gidiyor.",
+    "hint": "Adresi tanımıyorsanız açmayın. Bağlantı yeni sekmede açılır.",
+    "cancel": "Vazgeç",
+    "proceed": "Bağlantıyı aç"
   }
 }

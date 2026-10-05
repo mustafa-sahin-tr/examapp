@@ -139,6 +139,24 @@
     "nameAria": "Okul adı",
     "emptyTitle": "Henüz okul eklenmemiş",
     "emptyHint": "Okul adı ve isteğe bağlı il / ilçe / adres girip ekle",
+    "filter": {
+      "ariaLabel": "Okul listesini filtrele",
+      "searchPlaceholder": "Okul adında ara",
+      "searchAria": "Okul adına göre ara",
+      "provincePlaceholder": "İl",
+      "provinceAria": "İle göre filtrele",
+      "allProvinces": "Tüm iller",
+      "districtPlaceholder": "İlçe",
+      "districtNeedsProvince": "İlçe (önce il seç)",
+      "districtAria": "İlçeye göre filtrele",
+      "allDistricts": "Tüm ilçeler",
+      "clear": "Filtreleri temizle",
+      "countAria": "{{count}} okul",
+      "countFilteredAria": "{{total}} okuldan {{count}} tanesi filtreye uyuyor",
+      "noMatchTitle": "Filtreye uyan okul yok",
+      "noMatchHint": "Aramayı değiştir ya da filtreleri temizle",
+      "pending": "Filtre uygulanıyor…"
+    },
     "actions": {
       "save": "Kaydet",
       "cancel": "Vazgeç"

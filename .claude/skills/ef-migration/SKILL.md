@@ -18,6 +18,10 @@ dotnet ef migrations remove   # sadece henüz uygulanmamış son migration için
 
 - `Migrations/` altındaki üretilmiş dosyaları **elle düzenleme**. Yanlışsa `remove` et, entity'yi düzelt,
   yeniden `add` et.
+  - **İstisna:** issue gerektiriyorsa `Up()` başına veri doğrulama/backfill için `migrationBuilder.Sql(...)` eklenebilir
+    (ör. ihlal eden satır varsa `RAISE EXCEPTION` ile dur, veriyi sessizce değiştirme). Üretilen çağrılar, Designer ve
+    snapshot değiştirilmez. Emsal: #259 (`AddUniqueActiveUserIdToTeachersAndStudents`), #323
+    (`AddAvailabilitySlotDurationCheckConstraints`).
 - Migration adı ne yaptığını anlatsın: `AddQuestionClassificationSource`, `MakeExamSubtitleNullable`.
   `Update1`, `Fix` gibi isimler yasak.
 - Zaten `database update` ile uygulanmış bir migration'ı `remove` etme — geri almak için yeni migration üret.

@@ -39,9 +39,30 @@ public readonly record struct SlotTimeRange(DateTime StartUtc, DateTime EndUtc)
     /// <summary>Bitiş = başlangıç: oluşturma uçlarında reddedilir (<c>booking.slot.zeroLength</c>).</summary>
     public static bool IsZeroLength(TimeOnly start, TimeOnly end) => end == start;
 
+    /// <summary>
+    /// Saat dakika hassasiyetinde mi (saniye/alt-saniye yok)? 14:00:00 ile 14:00:01 ayrı satır olup unique index'i anlamsız
+    /// kılmasın ve takvim kararlı kalsın (tekrarlayan kural #178; tekil slot #323).
+    /// </summary>
+    public static bool IsMinutePrecision(TimeOnly time) => time.Ticks % TimeSpan.TicksPerMinute == 0;
+
     /// <summary>Tarihten bağımsız süre (gün aşan slotta ertesi güne kadar olan kısım dahil); sıfır süre → 0.</summary>
     public static TimeSpan DurationOf(TimeOnly start, TimeOnly end)
         => CrossesMidnight(start, end) ? TimeSpan.FromDays(1) - (start - end) : end - start;
+
+    /// <summary>
+    /// issue #323 (security O1): <see cref="IsZeroLength"/> + <see cref="DurationOf"/> &lt;= 4 saat kuralının PostgreSQL
+    /// karşılığı — <c>TeacherAvailabilitySlots</c> ve <c>RecurringAvailabilityRules</c> CHECK constraint'i (yalnız Npgsql
+    /// modelinde; SQLite test DB'si <c>time</c> aritmetiği bilmez). Kolonlar <c>time without time zone</c>:
+    /// <c>time - time</c> negatif olabilen <c>interval</c> verir; gün aşan slotta (<c>EndTime &lt; StartTime</c>) +24 saat.
+    /// Üst sınır <c>BookingService.MaxSlotDurationHours</c> ile aynı (değişirse yeni migration gerekir).
+    /// </summary>
+    internal const string DurationCheckSql =
+        "\"EndTime\" <> \"StartTime\" AND (CASE WHEN \"EndTime\" > \"StartTime\" THEN \"EndTime\" - \"StartTime\" "
+        + "ELSE \"EndTime\" - \"StartTime\" + interval '24 hours' END) <= interval '4 hours'";
+
+    internal const string SlotDurationCheckName = "CK_TeacherAvailabilitySlots_Duration";
+
+    internal const string RuleDurationCheckName = "CK_RecurringAvailabilityRules_Duration";
 
     /// <summary>Tarih + saat → UTC <see cref="DateTime"/> (duvar saati UTC kabul edilir).</summary>
     public static DateTime ToUtc(DateOnly date, TimeOnly time)

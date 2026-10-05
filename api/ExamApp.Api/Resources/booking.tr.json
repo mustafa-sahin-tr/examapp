@@ -7,6 +7,8 @@
     "studentRecordNotFound": "Öğrenci kaydı bulunamadı.",
 
     "slot": {
+      "invalidPrecision": "Saatler dakika hassasiyetinde olmalıdır (saniye girilemez).",
+      "busy": "Müsaitlik takviminiz şu anda başka bir işlemle güncelleniyor. Lütfen birkaç saniye sonra tekrar deneyin.",
       "zeroLength": "Bitiş saati başlangıç saatiyle aynı olamaz.",
       "inPast": "Geçmiş bir zaman aralığı tanımlanamaz.",
       "tooFarAhead": "Müsaitlik aralığı en fazla {0} gün sonrası için tanımlanabilir.",

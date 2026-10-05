@@ -96,6 +96,21 @@ export class TaxonomyManagerComponent implements OnInit {
   readonly selectedSubTopic = computed(
     () => this.subTopics().find((st) => st.id === this.selectedSubTopicId()) ?? null
   );
+  /**
+   * Issue #282: ders satırı chip'leri — dersin seçili sınıf DIŞINDAKİ sınıflarının adları (ders id → adlar).
+   * Seçili sınıf üst filtreden zaten belli; tekrarlanmaz. Filtre/ders/sınıf listesi değişince yeniden hesaplanır.
+   * Dersin tüm sınıfları "Sınıfları yönet" diyaloğunda görünmeye devam eder.
+   */
+  readonly otherGradeNamesBySubject = computed(() => {
+    const selected = this.selectedGradeFilter();
+    const names = new Map(this.grades().map((g) => [g.id, g.name] as const));
+    return new Map(
+      this.subjects().map((s) => [
+        s.id,
+        s.gradeIds.filter((id) => id !== selected).map((id) => names.get(id) ?? `#${id}`),
+      ])
+    );
+  });
   /** Çalışma linkleri paneline verilen kapsam adı: alt konu seçiliyse alt konu, değilse konu. */
   readonly studyLinkScopeName = computed(
     () => this.selectedSubTopic()?.name ?? this.selectedTopic()?.name ?? ''
@@ -219,10 +234,6 @@ export class TaxonomyManagerComponent implements OnInit {
     return gradeId == null ? [] : s.topics.filter((t) => t.gradeId === gradeId);
   }
 
-  /** Dersin bağlı olduğu sınıfların adları (chip listesi için). */
-  subjectGradeNames(s: TaxonomySubject): string[] {
-    return s.gradeIds.map((id) => this.gradeName(id));
-  }
 
   /** Scope'a göreli anahtarı senkron çözer; sözlük şablon render edilirken yüklenmiş olur. */
   private text(key: string, params?: Record<string, unknown>): string {

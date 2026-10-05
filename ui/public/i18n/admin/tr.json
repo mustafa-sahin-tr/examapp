@@ -63,7 +63,7 @@
       "title": "Dersler",
       "newPlaceholder": "Yeni ders",
       "add": "Ders ekle",
-      "gradeChipsAria": "Bağlı sınıflar",
+      "gradeChipsAria": "Bağlı diğer sınıflar",
       "topicCount": "{{count}} konu",
       "manageGrades": "Sınıfları Yönet",
       "edit": "Dersi düzenle",

@@ -337,6 +337,12 @@ builder.Services.AddAdminStudentSchoolRateLimiting();
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminTeacherSchoolService, ExamApp.Api.Services.AdminUsers.AdminTeacherSchoolService>();
 // issue #289: öğretmen hesap onayını askıya alma / geri açma — audit AdminUserActionLogs'a; hesap durumu (#155) rate limit kovası.
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminTeacherSuspensionService, ExamApp.Api.Services.AdminUsers.AdminTeacherSuspensionService>();
+// issue #331: askıdaki öğretmende kalmış Pending talepleri kapatan güvenlik ağı (Hangfire, varsayılan 5 dk).
+builder.Services.AddOptions<ExamApp.Api.Services.Bookings.SuspendedTeacherBookingSweepOptions>()
+    .BindConfiguration(ExamApp.Api.Services.Bookings.SuspendedTeacherBookingSweepOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<ExamApp.Api.Services.Bookings.ISuspendedTeacherBookingSweepJob, ExamApp.Api.Services.Bookings.SuspendedTeacherBookingSweepJob>();
 
 // Student activity reset
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();
@@ -590,6 +596,12 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.AdminUsers.IAdminDataAccessLogRete
     ExamApp.Api.Services.AdminUsers.AdminDataAccessLogRetentionJob.RecurringJobId,
     j => j.PurgeExpiredAsync(CancellationToken.None),
     app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.AdminUsers.AdminDataAccessLogOptions>>().Value.Cron);
+
+// issue #331: askı/talep yarışı sonrası askıdaki öğretmende kalan Pending talepleri #298 yoluyla kapatır.
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.Bookings.ISuspendedTeacherBookingSweepJob>(
+    ExamApp.Api.Services.Bookings.SuspendedTeacherBookingSweepJob.RecurringJobId,
+    j => j.SweepAsync(CancellationToken.None),
+    app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Bookings.SuspendedTeacherBookingSweepOptions>>().Value.Cron);
 
 app.Run();
 return 0;

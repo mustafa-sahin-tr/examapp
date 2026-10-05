@@ -247,64 +247,23 @@ public class AdminTeacherSuspensionService : IAdminTeacherSuspensionService
     /// <see cref="BookingDecisionEvent"/> yazar (<c>TeacherUnavailable=true</c>, gerekçe null — askı nedeni öğrenciye gitmez).
     /// <para>
     /// Code review O1: öğretmenin eşzamanlı kararıyla (<c>BookingService.DecideAsync</c>, o da koşullu) yarışmamak için her
-    /// satır <c>Status == Pending</c> koşullu UPDATE ile güncellenir; 0 satır = öğretmen az önce karar verdi → bu talep için
-    /// event yazılmaz (çelişen iki bildirim olmaz). Satır başına tek UPDATE bilinçli: etkilenen id'leri sağlayıcıdan bağımsız
-    /// (RETURNING'siz) kesin bilmenin yolu bu; bir öğretmenin bekleyen talep sayısı küçüktür. Denetim alanları
-    /// (<c>UpdateTime</c>/<c>UpdateUserId</c> = admin, code review D5) açıkça yazılır. Outbox SaveChanges'i çağıranda.
+    /// satır koşullu UPDATE ile güncellenir; 0 satır = öğretmen az önce karar verdi → bu talep için event yazılmaz. Mantık
+    /// issue #331 güvenlik ağıyla (<see cref="SuspendedTeacherBookingSweepJob"/>) paylaşılır:
+    /// <see cref="TeacherUnavailableBookingRejection"/>. Denetim alanları (<c>UpdateTime</c>/<c>UpdateUserId</c> = admin,
+    /// code review D5) açıkça yazılır. Outbox SaveChanges'i çağıranda.
     /// </para>
     /// </summary>
     private async Task<int> RejectPendingBookingsAsync(int teacherId, DateTime nowUtc, int actorUserId, UserLookup lookup)
     {
-        var pending = await PendingBookings(teacherId)
+        var pending = await TeacherUnavailableBookingRejection
+            .SelectPending(_context.Bookings.Where(b => b.TeacherId == teacherId))
             .AsNoTracking()
-            .Select(b => new
-            {
-                b.Id,
-                b.TeacherId,
-                b.StudentId,
-                StudentUserId = b.Student.UserId,
-                b.AvailabilitySlot.Date,
-                b.AvailabilitySlot.StartTime,
-                b.AvailabilitySlot.EndTime
-            })
             .ToListAsync(CancellationToken.None);
 
         int? updateUserId = actorUserId > 0 ? actorUserId : null;
-        var rejected = 0;
-        foreach (var booking in pending)
-        {
-            var id = booking.Id;
-            var updated = await _context.Bookings
-                .Where(b => b.Id == id && b.Status == BookingStatus.Pending)
-                .ExecuteUpdateAsync(set => set
-                    .SetProperty(b => b.Status, BookingStatus.Rejected)
-                    .SetProperty(b => b.DecisionAt, nowUtc)
-                    .SetProperty(b => b.RejectionReason, (string?)null)
-                    .SetProperty(b => b.UpdateTime, nowUtc)
-                    .SetProperty(b => b.UpdateUserId, updateUserId), CancellationToken.None);
-            if (updated == 0)
-                continue;
-
-            rejected++;
-            AddOutbox(new BookingDecisionEvent
-            {
-                BookingId = booking.Id,
-                TeacherId = booking.TeacherId,
-                TeacherName = lookup.TeacherName,
-                StudentId = booking.StudentId,
-                StudentUserId = booking.StudentUserId,
-                TargetKeycloakId = lookup.KeycloakIdOf(booking.StudentUserId),
-                Approved = false,
-                RejectionReason = null,
-                TeacherUnavailable = true,
-                Date = booking.Date,
-                StartTime = booking.StartTime,
-                EndTime = booking.EndTime,
-                DecidedAt = nowUtc
-            }, nowUtc);
-        }
-
-        return rejected;
+        var rejected = await TeacherUnavailableBookingRejection.RejectAsync(
+            _context, pending, nowUtc, updateUserId, _ => lookup.TeacherName, lookup.KeycloakIdOf, CancellationToken.None);
+        return rejected.Count;
     }
 
     /// <summary>

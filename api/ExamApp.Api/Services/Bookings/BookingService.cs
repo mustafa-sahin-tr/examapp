@@ -448,12 +448,15 @@ public class BookingService : IBookingService
                 s.EndTime,
                 TeacherApproval = s.Teacher.ApprovalStatus,
                 TeacherSuspended = s.Teacher.AccountSuspendedAt != null, // issue #289
+                // issue #331 (security D1): "onaylı" tanımı yetkiyle (IApprovedTeacherGuard, #287) hizalı — hesap onayı da şart.
+                TeacherAccountApproved = s.Teacher.AccountApprovedAt != null,
                 TeacherUserId = s.Teacher.UserId
             })
             .FirstOrDefaultAsync(ct);
 
         // Onaysız öğretmenin slotu öğrenciye hiç görünmez → var/yok ayrımı da sızdırılmaz.
-        if (slot == null || slot.TeacherApproval != TeacherApprovalStatus.Approved || slot.TeacherSuspended)
+        if (slot == null || slot.TeacherApproval != TeacherApprovalStatus.Approved || slot.TeacherSuspended
+            || !slot.TeacherAccountApproved)
             return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.slot.notFound"] };
 
         if (ToUtc(slot.Date, slot.StartTime) <= now)
@@ -503,12 +506,27 @@ public class BookingService : IBookingService
         // Booking satırı + outbox mesajı tek transaction'da (WorksheetAccessRequestService ile aynı
         // desen — retry-on-failure execution strategy içinde). booking.Id identity DB'den üretildiği
         // için iki SaveChanges tek transaction ile atomik kılınır; conflict catch tüm bloğu sarar.
+        var teacherUnavailable = false;
         var strategy = _context.Database.CreateExecutionStrategy();
         try
         {
             await strategy.ExecuteAsync(async () =>
             {
+                // Retry'da önceki denemenin (commit edilmemiş) booking/outbox satırları tekrar eklenmesin.
+                _context.ChangeTracker.Clear();
+                booking.Id = 0;
+                teacherUnavailable = false;
+
                 await using var tx = await _context.Database.BeginTransactionAsync(ct);
+
+                // issue #331: yukarıdaki askı kontrolü kilitsiz bir ön okumadır. Askı transaction'ı arada commit olursa
+                // askıdaki öğretmende Pending talep kalırdı. Öğretmen satırı burada FOR SHARE ile kilitlenip koşul AYNI
+                // transaction'da yeniden doğrulanır; askı da aynı satırı UPDATE ettiği için ikisi serileşir.
+                if (!await LockBookableTeacherAsync(slot.TeacherId, ct))
+                {
+                    teacherUnavailable = true;
+                    return; // commit yok → dispose'da rollback
+                }
 
                 _context.Bookings.Add(booking);
                 await _context.SaveChangesAsync(ct);
@@ -538,6 +556,12 @@ public class BookingService : IBookingService
                 await tx.CommitAsync(ct);
             });
         }
+        catch (TeacherAvailabilityLockTimeoutException ex)
+        {
+            // issue #331 (review U1/D3): öğretmen satırı kilidi lock_timeout içinde alınamadı → retry'sız 409 (#323 deseni).
+            _logger.LogWarning(ex, "Randevu talebi: öğretmen satırı kilidi zaman aşımı. TeacherId={TeacherId}", slot.TeacherId);
+            return new BookingResultDto { Success = false, Conflict = true, Message = _localizer["booking.slot.busy"] };
+        }
         catch (DbUpdateException ex)
         {
             // Filtreli unique index: iki öğrenci aynı anda aynı slotu talep etti.
@@ -548,6 +572,14 @@ public class BookingService : IBookingService
                 Conflict = true,
                 Message = _localizer["booking.request.duplicate"]
             };
+        }
+
+        if (teacherUnavailable)
+        {
+            _logger.LogInformation(
+                "Randevu talebi reddedildi: öğretmen talep sırasında askıya alındı/onayı kalktı. SlotId={SlotId} TeacherId={TeacherId}",
+                slot.Id, slot.TeacherId);
+            return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.slot.notFound"] };
         }
 
         var names = await ResolveUserNamesAsync(new[] { slot.TeacherUserId, studentUserId }, ct);
@@ -575,6 +607,60 @@ public class BookingService : IBookingService
                 CreatedAt = booking.CreatedAt
             }
         };
+    }
+
+    /// <summary>
+    /// <see cref="LockBookableTeacherAsync"/>'ın Postgres sorgusu. {0} = Teachers.Id, {1} = Approved. Koşul ön okumayla ve
+    /// öğretmen yetkisiyle (<c>IApprovedTeacherGuard</c>) aynı: başvuru onaylı, hesap onaylı, askıda değil, silinmemiş.
+    /// </summary>
+    internal const string BookableTeacherLockSql = """
+        SELECT "Id" AS "Value" FROM "Teachers"
+        WHERE "Id" = {0} AND "ApprovalStatus" = {1}
+          AND "AccountApprovedAt" IS NOT NULL AND "AccountSuspendedAt" IS NULL AND NOT "IsDeleted"
+        FOR SHARE
+        """;
+
+    /// <summary>
+    /// issue #331 (security L4): talep insert'iyle AYNI transaction'da öğretmenin hâlâ talep alabilir olduğunu (onaylı,
+    /// askıda değil, silinmemiş) doğrular. PostgreSQL'de satır <c>SELECT ... FOR SHARE</c> ile kilitlenir:
+    /// <list type="bullet">
+    /// <item>Askı (<c>AdminTeacherSuspensionService</c>, aynı satıra koşullu UPDATE → satır kilidi) önce gelmişse bu ifade
+    /// askı commit'ini bekler; READ COMMITTED satırı askının yazdığı yeni sürümle yeniden değerlendirir → satır dönmez →
+    /// talep oluşmaz.</item>
+    /// <item>Bu ifade önce gelmişse askının UPDATE'i talep transaction'ının commit'ini bekler; askı ardından Pending talepleri
+    /// okurken yeni talebi görür ve aynı transaction'da otomatik reddeder (#298).</item>
+    /// </list>
+    /// Booking'in Teachers FK kontrolü yalnızca <c>FOR KEY SHARE</c> alır ve askının UPDATE'iyle çakışmaz — yarışın kaynağı
+    /// buydu. <c>FOR SHARE</c> eşzamanlı taleplerin birbirini beklemesine yol açmaz (paylaşımlı kilit). Ayrı bir advisory
+    /// kilit yerine satır kilidi: askı yolunda değişiklik gerektirmez, öğretmen satırını değiştiren her yazıcıyla (onay
+    /// akışları dahil) kendiliğinden serileşir. Postgres dışı sağlayıcılarda (SQLite birim testleri) kilitsiz aynı koşul.
+    /// </summary>
+    private async Task<bool> LockBookableTeacherAsync(int teacherId, CancellationToken ct)
+    {
+        if (!_context.Database.IsNpgsql())
+        {
+            return await _context.Teachers
+                .AsNoTracking()
+                .AnyAsync(t => t.Id == teacherId
+                    && t.ApprovalStatus == TeacherApprovalStatus.Approved
+                    && t.AccountApprovedAt != null
+                    && t.AccountSuspendedAt == null, ct);
+        }
+
+        // Review U1/D3: bekleme üst sınırı (#323 ile aynı 5 sn). SET LOCAL transaction sonunda kendiliğinden geri döner.
+        // 55P03 Npgsql'de geçici sayılır; execution strategy yeniden denemesin diye kalıcı istisnaya çevrilir → 409.
+        await _context.Database.ExecuteSqlRawAsync(TeacherAvailabilityLock.SetLockTimeoutSql, ct);
+        try
+        {
+            var rows = await _context.Database
+                .SqlQueryRaw<int>(BookableTeacherLockSql, teacherId, (int)TeacherApprovalStatus.Approved)
+                .ToListAsync(ct);
+            return rows.Count > 0;
+        }
+        catch (Npgsql.PostgresException ex) when (ex.SqlState == Npgsql.PostgresErrorCodes.LockNotAvailable)
+        {
+            throw new TeacherAvailabilityLockTimeoutException(teacherId, ex);
+        }
     }
 
     public async Task<BookingListResultDto> GetTeacherBookingsAsync(

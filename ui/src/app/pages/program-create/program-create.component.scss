@@ -1,4 +1,4 @@
-// Issue #135 — program oluşturma sihirbazı kabuğu (dilim 1).
+// Issue #135 — program oluşturma sihirbazı (dilim 1 adım ekranı, dilim 2 son adım + durum ekranları).
 // Renkler yalnız tema token'ları (.dark-theme / .light-theme); hex yok.
 
 :host {
@@ -167,6 +167,159 @@
   color: var(--ms-text-strong);
 }
 
+// Başlık programatik odak alır (tabindex=-1): fare/programatik odakta halka yok, klavyede görünür.
+.pc-question:focus {
+  outline: none;
+}
+
+.pc-question:focus-visible {
+  outline: 3px solid var(--ms-action-border-focus);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+// Gönderim hatası bandı (form üstünde, role=alert).
+.pc-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--ms-danger-border);
+  border-radius: 12px;
+  background: var(--ms-danger-surface-weak);
+  color: var(--ms-danger-text);
+
+  mat-icon {
+    flex: none;
+  }
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+}
+
+.pc-alert__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+// Mobil katlanır onay özeti; masaüstünde sağ ray kullanıldığı için gizli.
+.pc-review-panel {
+  display: none;
+  --mat-expansion-container-background-color: var(--ms-surface-weak);
+  --mat-expansion-header-text-color: var(--ms-text-strong);
+  --mat-expansion-header-description-color: var(--ms-text-medium);
+  border: 1px solid var(--ms-border);
+  box-shadow: none;
+}
+
+.pc-review-panel__title {
+  flex: none;
+  font-weight: 700;
+}
+
+.pc-review-panel__preview {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+// Buton içi gönderim göstergesi; buton metin rengini izler.
+.pc-bar__spinner {
+  display: inline-block;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+  --mdc-circular-progress-active-indicator-color: currentColor;
+}
+
+// Yükleniyor: kart + ray iskeleti.
+.pc-loading {
+  margin: 0;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text-medium);
+}
+
+.pc-skeleton__line,
+.pc-skeleton__tile,
+.pc-skeleton__row {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    var(--ms-surface-weak) 0%,
+    var(--ms-surface-medium) 50%,
+    var(--ms-surface-weak) 100%
+  );
+  background-size: 200% 100%;
+  animation: pc-shimmer 1.4s ease-in-out infinite;
+}
+
+.pc-skeleton__line {
+  height: 0.9rem;
+}
+
+.pc-skeleton__line--eyebrow {
+  width: 5rem;
+}
+
+.pc-skeleton__line--title {
+  width: 70%;
+  height: 1.5rem;
+}
+
+.pc-skeleton__line--hint {
+  width: 40%;
+}
+
+.pc-skeleton__line--rail-title {
+  width: 50%;
+  height: 1.1rem;
+}
+
+.pc-skeleton__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.pc-skeleton__tile {
+  min-height: 112px;
+  border-radius: 16px;
+}
+
+.pc-skeleton--rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--ms-border);
+  border-radius: 20px;
+  background: var(--ms-surface);
+}
+
+.pc-skeleton__row {
+  height: 56px;
+  border-radius: 12px;
+}
+
+@keyframes pc-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+
+  to {
+    background-position: -100% 0;
+  }
+}
+
 @media (max-width: 960px) {
   .pc-layout {
     grid-template-columns: minmax(0, 1fr);
@@ -177,6 +330,10 @@
   }
 
   .pc-chips {
+    display: block;
+  }
+
+  .pc-review-panel {
     display: block;
   }
 }
@@ -208,5 +365,25 @@
 
   .pc-form__dates {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pc-skeleton__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pc-skeleton__tile {
+    min-height: 96px;
+  }
+}
+
+// Hareket azaltma tercihi: sayfadaki geçiş ve animasyonlar (iskelet parıltısı dahil) kapalı.
+// Alt komponentler (option-card vb.) kendi stillerinde aynı sorguyu uygular.
+@media (prefers-reduced-motion: reduce) {
+  :host *,
+  :host *::before,
+  :host *::after {
+    animation: none;
+    transition: none;
+    scroll-behavior: auto;
   }
 }

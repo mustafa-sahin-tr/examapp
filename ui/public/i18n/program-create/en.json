@@ -4,16 +4,10 @@
   },
   "wizard": {
     "questionNumber": "Question {{number}}",
-    "stepCounter": "{{current}} / {{total}}",
     "loading": "Loading questions...",
-    "prevQuestion": "Previous question",
-    "nextQuestion": "Next question",
     "loadError": "The questions could not be loaded, please try again.",
-    "stepsNotFound": "No program steps were found.",
-    "reloadHint": "The questions could not be loaded, please refresh the page",
     "retry": "Try Again",
     "noSelection": "You have not made a selection",
-    "summaryTitle": "Your selections:",
     "progress": {
       "label": "Wizard progress",
       "current": "Question {{n}} / {{total}}",
@@ -60,8 +54,8 @@
     "startDateRequired": "A start date is required",
     "endDateRequired": "An end date is required",
     "endDateAfterStart": "The end date must be later than the start date",
+    "dateInvalid": "Enter a valid date",
     "created": "The program was created successfully!",
-    "createFailed": "Something went wrong while creating the program",
     "reviewTitle": "Review",
     "summaryCount": "{{count}} answers",
     "createFailedInline": "The program could not be created. Your selections and details are kept; you can try again."

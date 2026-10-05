@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideNativeDateAdapter } from '@angular/material/core';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subject, of, throwError } from 'rxjs';
 
 import { ProgramCreateComponent } from './program-create.component';
@@ -156,31 +157,54 @@ describe('ProgramCreateComponent (issue #135)', () => {
   afterEach(() => TestBed.resetTestingModule());
 
   describe('yükleme durumları', () => {
-    it('loading_StepsPending_ShowsStatusSpinner', async () => {
+    it('loading_StepsPending_ShowsSkeletonStatusAndRailRows', async () => {
       await setup(new Subject<ProgramStep[]>());
       expect(component.viewState()).toBe('loading');
-      const status = host.querySelector('.pc-state[role="status"]');
+      const status = host.querySelector('.pc-loading');
+      expect(status?.getAttribute('role')).toBe('status');
+      expect(status?.getAttribute('aria-live')).toBe('polite');
       expect(status?.textContent).toContain(programCreateTr.wizard.loading);
+      expect(host.querySelector('.pc-card.pc-skeleton')?.getAttribute('aria-busy')).toBe('true');
+      expect(host.querySelectorAll('.pc-skeleton__tile').length).toBe(4);
+      const rail = host.querySelector('.pc-rail.pc-skeleton--rail');
+      expect(rail?.getAttribute('aria-hidden')).toBe('true');
+      expect(rail?.querySelectorAll('.pc-skeleton__row').length).toBe(2);
     });
 
-    it('error_LoadFails_ShowsAlertAndRetryReloads', async () => {
+    it('error_LoadFails_ShowsAlertHidesRailAndRetryReloads', async () => {
       spyOn(console, 'error');
       await setup(throwError(() => new Error('boom')));
       expect(component.viewState()).toBe('error');
+      // Hata ekranı kendi role=alert'ini taşır; snackbar açılmaz.
+      expect(document.querySelector('.mat-mdc-snack-bar-container')).toBeNull();
       const alert = host.querySelector('.pc-state[role="alert"]');
       expect(alert?.textContent).toContain(programCreateTr.wizard.loadError);
+      expect(alert?.querySelector('mat-icon')?.textContent?.trim()).toBe('cloud_off');
+      expect(host.querySelector('.pc-rail')).toBeNull();
 
       programService.getProgramSteps.and.returnValue(of(seedSteps()));
-      alert!.querySelector('button')!.click();
+      alert!.querySelector<HTMLButtonElement>('.pc-state__retry')!.click();
       fixture.detectChanges();
+      expect(programService.getProgramSteps).toHaveBeenCalledTimes(2);
       expect(component.viewState()).toBe('step');
       expect(currentStepId()).toBe(1);
+      expect(host.querySelector('.pc-rail')).not.toBeNull();
     });
 
-    it('empty_NoSteps_ShowsEmptyState', async () => {
+    it('empty_NoSteps_ShowsInfoStateAndSecondaryRetry', async () => {
       await setup(of([]));
       expect(component.viewState()).toBe('empty');
-      expect(host.textContent).toContain(programCreateTr.wizard.emptyTitle);
+      const state = host.querySelector('.pc-state[role="status"]')!;
+      expect(state.textContent).toContain(programCreateTr.wizard.emptyTitle);
+      expect(state.textContent).toContain(programCreateTr.wizard.emptyBody);
+      expect(state.querySelector('mat-icon')?.textContent?.trim()).toBe('info');
+      const retry = state.querySelector<HTMLButtonElement>('.pc-state__retry')!;
+      expect(retry.hasAttribute('mat-stroked-button')).toBeTrue();
+
+      programService.getProgramSteps.and.returnValue(of(seedSteps()));
+      retry.click();
+      fixture.detectChanges();
+      expect(component.viewState()).toBe('step');
     });
   });
 
@@ -478,6 +502,313 @@ describe('ProgramCreateComponent (issue #135)', () => {
       ];
       await setup(of(steps));
       expect(component.total()).toBe(3);
+    });
+  });
+
+  describe('son adım formu (dilim 2)', () => {
+    beforeEach(() => setup());
+
+    function goToForm(): void {
+      answer('Süreli Çalışma');
+      answer('25 dakika çalışma 5 dakika ara');
+      answer('1');
+      answer('Pazartesi');
+      answer('Matematik');
+      expect(component.viewState()).toBe('form');
+    }
+
+    function submitButton(): HTMLButtonElement {
+      return host.querySelector<HTMLButtonElement>('.pc-bar__submit')!;
+    }
+
+    function typeInto(selector: string, value: string): void {
+      const input = host.querySelector<HTMLInputElement>(selector)!;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+      input.dispatchEvent(new Event('blur'));
+      fixture.detectChanges();
+    }
+
+    function errorTexts(): string[] {
+      return Array.from(host.querySelectorAll('mat-error')).map((e) => e.textContent!.trim());
+    }
+
+    async function settle(): Promise<void> {
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+
+    it('defaults_TodayAndThirtyDaysLater_ReviewTitleAndPanelCount', () => {
+      goToForm();
+      const start = component.programStartDate()!;
+      const end = component.programEndDate()!;
+      expect(start.toDateString()).toBe(new Date().toDateString());
+      expect(Math.round((end.getTime() - start.getTime()) / 86_400_000)).toBe(30);
+      expect(host.querySelector('.pc-question')?.textContent?.trim()).toBe(programCreateTr.form.title);
+      expect(host.querySelector('.pc-rail .ss__title')?.textContent?.trim()).toBe(programCreateTr.form.reviewTitle);
+      expect(host.querySelectorAll('.pc-rail button.ss-row').length).toBe(5);
+      expect(host.querySelector('.pc-review-panel__title')?.textContent?.trim()).toBe('5 cevap');
+      expect(host.querySelector('.pc-review-panel__preview')?.textContent).toContain('Süreli Çalışma');
+      // Çip şeridi formda gösterilmez (yerini katlanır panel alır).
+      expect(host.querySelector('.pc-chips')).toBeNull();
+      expect(host.querySelectorAll('mat-form-field.mat-form-field-appearance-outline').length).toBe(4);
+    });
+
+    it('name_EmptyAfterTouch_ShowsInlineErrorAndDisablesSubmit', async () => {
+      goToForm();
+      await settle();
+      expect(submitButton().disabled).toBeTrue();
+      expect(errorTexts()).toEqual([]);
+
+      typeInto('.pc-form__name', '   ');
+      expect(errorTexts()).toEqual([programCreateTr.form.nameRequired]);
+      expect(submitButton().disabled).toBeTrue();
+
+      typeInto('.pc-form__name', 'Planım');
+      expect(errorTexts()).toEqual([]);
+      expect(submitButton().disabled).toBeFalse();
+    });
+
+    it('dates_EndNotAfterStart_ShowsInlineErrorAndDisablesSubmit', async () => {
+      goToForm();
+      component.programName.set('Planım');
+      const start = component.programStartDate()!;
+      component.programEndDate.set(new Date(start.getFullYear(), start.getMonth(), start.getDate()));
+      await settle();
+
+      expect(component.dateOrderInvalid()).toBeTrue();
+      expect(errorTexts()).toEqual([programCreateTr.form.endDateAfterStart]);
+      expect(submitButton().disabled).toBeTrue();
+
+      component.programEndDate.set(new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1));
+      await settle();
+      expect(errorTexts()).toEqual([]);
+      expect(submitButton().disabled).toBeFalse();
+    });
+
+    it('dates_EndCleared_DisablesSubmitAndShowsRequiredAfterTouch', async () => {
+      goToForm();
+      component.programName.set('Planım');
+      await settle();
+      typeInto('.pc-form__end', '');
+      expect(component.programEndDate()).toBeNull();
+      expect(errorTexts()).toEqual([programCreateTr.form.endDateRequired]);
+      expect(submitButton().disabled).toBeTrue();
+    });
+
+    it('createProgram_InvalidFormCalledDirectly_DoesNothing', () => {
+      goToForm();
+      const open = spyOn(TestBed.inject(MatSnackBar), 'open');
+      component.programName.set('Planım');
+      component.programEndDate.set(component.programStartDate());
+      component.createProgram();
+      component.programName.set('  ');
+      component.programEndDate.set(null);
+      component.createProgram();
+      expect(programService.createProgram).not.toHaveBeenCalled();
+      expect(open).not.toHaveBeenCalled();
+    });
+
+    it('submit_SendsLocalCalendarDays_NotUtcShifted', () => {
+      goToForm();
+      // Datepicker yerel gece yarısı verir; TRT'de toISOString() bunu önceki güne kaydırırdı.
+      component.programStartDate.set(new Date(2026, 9, 10));
+      component.programEndDate.set(new Date(2026, 10, 9));
+      const request = fillFormAndSubmit();
+      expect(request.startDate).toBe('2026-10-10');
+      expect(request.endDate).toBe('2026-11-09');
+    });
+
+    it('dates_UnparsableInput_ShowsInvalidDateMessage', async () => {
+      goToForm();
+      component.programName.set('Planım');
+      await settle();
+      typeInto('.pc-form__start', 'abc');
+      await settle();
+      expect(component.programStartDate()).toBeNull();
+      expect(errorTexts()).toEqual([programCreateTr.form.dateInvalid]);
+      expect(submitButton().disabled).toBeTrue();
+    });
+
+    it('submitting_ShowsSpinnerDisablesFormAndBlocksDoubleClick', () => {
+      const response$ = new Subject<UserProgram>();
+      programService.createProgram.and.returnValue(response$);
+      goToForm();
+      component.programName.set('Planım');
+      fixture.detectChanges();
+
+      submitButton().click();
+      fixture.detectChanges();
+      expect(component.submitting()).toBeTrue();
+      expect(submitButton().disabled).toBeTrue();
+      expect(submitButton().getAttribute('aria-busy')).toBe('true');
+      expect(submitButton().querySelector('mat-spinner')).not.toBeNull();
+      expect(host.querySelector<HTMLButtonElement>('.pc-bar__back')!.disabled).toBeTrue();
+
+      component.createProgram();
+      submitButton().click();
+      expect(programService.createProgram).toHaveBeenCalledTimes(1);
+    });
+
+    it('submitError_ShowsAlertBandAndKeepsSelectionsAndValues', () => {
+      spyOn(console, 'error');
+      const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+      const response$ = new Subject<UserProgram>();
+      programService.createProgram.and.returnValue(response$);
+      goToForm();
+      component.programName.set('Planım');
+      component.programDescription.set('Açıklama');
+      fixture.detectChanges();
+      const answersBefore = component.answers();
+
+      submitButton().click();
+      fixture.detectChanges();
+      response$.error(new Error('500'));
+      fixture.detectChanges();
+
+      const alert = host.querySelector('.pc-alert');
+      expect(alert?.getAttribute('role')).toBe('alert');
+      expect(alert?.textContent).toContain(programCreateTr.form.createFailedInline);
+      expect(component.viewState()).toBe('form');
+      expect(component.programName()).toBe('Planım');
+      expect(component.programDescription()).toBe('Açıklama');
+      expect(component.answers()).toBe(answersBefore);
+      expect(component.path()).toEqual([1, 2, 5, 6, 7]);
+      expect(submitButton().disabled).toBeFalse();
+      expect(submitButton().querySelector('mat-spinner')).toBeNull();
+      expect(navigate).not.toHaveBeenCalled();
+
+      // Tekrar dene: bant kalkar, aynı değerlerle istek gider.
+      programService.createProgram.and.returnValue(of({} as UserProgram));
+      submitButton().click();
+      fixture.detectChanges();
+      expect(host.querySelector('.pc-alert')).toBeNull();
+      expect(programService.createProgram.calls.mostRecent().args[0].programName).toBe('Planım');
+      expect(navigate).toHaveBeenCalledWith(['/programs']);
+    });
+
+    it('submitSuccess_ShowsSnackbarAndNavigates', () => {
+      const open = spyOn(TestBed.inject(MatSnackBar), 'open');
+      const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+      goToForm();
+      fillFormAndSubmit();
+      expect(open).toHaveBeenCalledWith(programCreateTr.form.created, programCreateTr.actions.ok, jasmine.anything());
+      expect(navigate).toHaveBeenCalledWith(['/programs']);
+    });
+
+    it('reviewEdit_RailRowReturnsToThatStepWithSelection', () => {
+      goToForm();
+      const rows = host.querySelectorAll<HTMLButtonElement>('.pc-rail button.ss-row');
+      rows[1].click();
+      fixture.detectChanges();
+      expect(component.viewState()).toBe('step');
+      expect(currentStepId()).toBe(2);
+      expect(cards()[0].getAttribute('aria-checked')).toBe('true');
+      expect(component.path()).toEqual([1, 2]);
+    });
+
+    it('reviewEdit_MobilePanelRowReturnsToThatStep', () => {
+      goToForm();
+      const rows = host.querySelectorAll<HTMLButtonElement>('.pc-review-panel button.ss-row');
+      expect(rows.length).toBe(5);
+      rows[3].click();
+      fixture.detectChanges();
+      expect(currentStepId()).toBe(6);
+    });
+  });
+
+  describe('odak yönetimi', () => {
+    let focus: jasmine.Spy;
+
+    beforeEach(async () => {
+      focus = spyOn(HTMLElement.prototype, 'focus').and.callThrough();
+      await setup();
+    });
+
+    function headingFocusCount(): number {
+      return focus.calls.all().filter((call) => (call.object as HTMLElement).id === 'pc-question').length;
+    }
+
+    it('initialLoad_DoesNotMoveFocus', () => {
+      expect(headingFocusCount()).toBe(0);
+      const heading = host.querySelector('#pc-question')!;
+      expect(heading.tagName).toBe('H2');
+      expect(heading.getAttribute('tabindex')).toBe('-1');
+    });
+
+    it('navigation_MovesFocusToQuestionHeading', () => {
+      answer('Süreli Çalışma');
+      expect(headingFocusCount()).toBe(1);
+      expect(host.querySelector('#pc-question')?.textContent?.trim()).toBe('Çalışma süresi');
+
+      host.querySelector<HTMLButtonElement>('.pc-bar__back')!.click();
+      fixture.detectChanges();
+      expect(headingFocusCount()).toBe(2);
+    });
+
+    it('retrySuccess_MovesFocusToHeading', async () => {
+      TestBed.resetTestingModule();
+      focus.calls.reset();
+      spyOn(console, 'error');
+      await setup(throwError(() => new Error('boom')));
+      programService.getProgramSteps.and.returnValue(of(seedSteps()));
+      host.querySelector<HTMLButtonElement>('.pc-state__retry')!.click();
+      fixture.detectChanges();
+      fixture.detectChanges();
+      expect(headingFocusCount()).toBe(1);
+    });
+
+    it('submitError_MovesFocusToAlertBand', () => {
+      spyOn(console, 'error');
+      programService.createProgram.and.returnValue(throwError(() => new Error('500')));
+      answer('Süreli Çalışma');
+      answer('25 dakika çalışma 5 dakika ara');
+      answer('1');
+      answer('Pazartesi');
+      answer('Matematik');
+      fillFormAndSubmit();
+      fixture.detectChanges();
+      const alert = host.querySelector<HTMLElement>('.pc-alert')!;
+      expect(alert.getAttribute('tabindex')).toBe('-1');
+      expect(focus.calls.all().some((call) => call.object === alert)).toBeTrue();
+    });
+
+    it('enteringFormAndGoingBack_MovesFocusToHeading', () => {
+      answer('Süreli Çalışma');
+      answer('25 dakika çalışma 5 dakika ara');
+      answer('1');
+      answer('Pazartesi');
+      const before = headingFocusCount();
+      answer('Matematik');
+      expect(headingFocusCount()).toBe(before + 1);
+      expect(host.querySelector('#pc-question')?.textContent?.trim()).toBe(programCreateTr.form.title);
+
+      host.querySelector<HTMLButtonElement>('.pc-bar__back')!.click();
+      fixture.detectChanges();
+      expect(currentStepId()).toBe(7);
+      expect(headingFocusCount()).toBe(before + 2);
+    });
+  });
+
+  describe('hareket azaltma', () => {
+    it('reducedMotion_SubmittingShowsStaticIconInsteadOfSpinner', async () => {
+      const original = window.matchMedia.bind(window);
+      spyOn(window, 'matchMedia').and.callFake((query: string) =>
+        query.includes('prefers-reduced-motion') ? ({ matches: true } as MediaQueryList) : original(query),
+      );
+      await setup();
+      expect(component.reducedMotion).toBeTrue();
+      programService.createProgram.and.returnValue(new Subject<UserProgram>());
+      answer('Süreli Çalışma');
+      answer('25 dakika çalışma 5 dakika ara');
+      answer('1');
+      answer('Pazartesi');
+      answer('Matematik');
+      fillFormAndSubmit();
+      const submit = host.querySelector<HTMLButtonElement>('.pc-bar__submit')!;
+      expect(submit.querySelector('mat-spinner')).toBeNull();
+      expect(submit.querySelector('.pc-bar__busy-icon')?.textContent?.trim()).toBe('hourglass_top');
     });
   });
 });

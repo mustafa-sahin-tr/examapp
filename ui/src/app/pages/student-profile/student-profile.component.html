@@ -89,13 +89,6 @@
           </div>
         </div>
 
-        <h3>{{ t('profile.badgesTitle') }}</h3>
-        <div class="badges-container">
-          @for ( badge of student.badges ; track badge.name ) {
-          <img [src]="badge.imageUrl" [matTooltip]="badge.name" class="badge" />
-          }
-        </div>
-
         <!-- <h3>📌 Son Çözülen Testler</h3>
             <mat-list>
               @for (test of student.recentTests ; track test.name) 

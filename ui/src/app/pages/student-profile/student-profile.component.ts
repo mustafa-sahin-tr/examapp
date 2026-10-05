@@ -10,7 +10,6 @@ import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { Grade } from '../../models/student';
@@ -42,7 +41,6 @@ const SCOPE = 'student-profile';
     MatCardModule,
     MatIconModule,
     MatListModule,
-    MatTooltipModule,
     MatSnackBarModule,
     MatSelectModule,
     PointCardComponent,

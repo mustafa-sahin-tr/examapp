@@ -170,6 +170,49 @@ public class TeacherSuspensionBookingEffectsTests : IDisposable
         (await OutboxAsync()).ShouldAllBe(m => !m.Content.Contains("Gizli askı nedeni"));
     }
 
+    private async Task SoftDeleteSlotOfAsync(int bookingId)
+    {
+        await using var ctx = _db.NewContext();
+        var slotId = await ctx.Bookings.IgnoreQueryFilters().Where(b => b.Id == bookingId).Select(b => b.AvailabilitySlotId).SingleAsync();
+        await ctx.TeacherAvailabilitySlots.Where(s => s.Id == slotId)
+            .ExecuteUpdateAsync(set => set.SetProperty(s => s.IsDeleted, true));
+    }
+
+    [Fact]
+    public async Task Suspend_also_rejects_a_pending_request_whose_slot_was_soft_deleted()
+    {
+        // issue #376: SelectPending slot filtresini gevşetir — slotu silinmiş Pending talep INNER JOIN'de düşüp açık kalmaz.
+        await SeedPeopleAsync();
+        var pending = await AddBookingAsync(TeacherId, StudentA, BookingStatus.Pending, Today.AddDays(3), 9);
+        await SoftDeleteSlotOfAsync(pending);
+
+        (await SuspendAsync()).Status.ShouldBe(AdminTeacherSuspensionStatus.Success);
+
+        (await BookingAsync(pending)).Status.ShouldBe(BookingStatus.Rejected);
+        var evt = (await EventsAsync<BookingDecisionEvent>()).ShouldHaveSingleItem();
+        evt.BookingId.ShouldBe(pending);
+        evt.Date.ShouldBe(Today.AddDays(3)); // silinmiş slotun saati event'e taşınır
+        evt.TeacherUnavailable.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Suspend_notifies_the_student_of_an_upcoming_approved_booking_whose_slot_was_soft_deleted()
+    {
+        // issue #376: UpcomingApprovedBookings da slot filtresini gevşetir — ders geçerli, öğrenci bilgilendirilir.
+        await SeedPeopleAsync();
+        var approved = await AddBookingAsync(TeacherId, StudentA, BookingStatus.Approved, Today.AddDays(1), 10);
+        await SoftDeleteSlotOfAsync(approved);
+        var deletedBooking = await AddBookingAsync(TeacherId, StudentB, BookingStatus.Approved, Today.AddDays(1), 11, deleted: true);
+        await SoftDeleteSlotOfAsync(deletedBooking);
+
+        (await SuspendAsync()).Status.ShouldBe(AdminTeacherSuspensionStatus.Success);
+
+        var evt = (await EventsAsync<BookingTeacherUnavailableEvent>()).ShouldHaveSingleItem(); // silinmiş booking hâlâ hariç
+        evt.StudentUserId.ShouldBe(StudentAUser);
+        evt.BookingIds.ShouldBe([approved]);
+        (await BookingAsync(approved)).Status.ShouldBe(BookingStatus.Approved);
+    }
+
     // ---------------- mevcut (onaylı) randevular ----------------
 
     [Fact]

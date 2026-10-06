@@ -211,6 +211,70 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
         result.ShouldBeEmpty();
     }
 
+    // issue #367: solved before it was assigned (no retakes) - the assignment is satisfied, not lagging.
+    [Fact]
+    public async Task GetLaggingStudentsAsync_CompletedBeforeTheAssignment_IsExcluded()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            SchoolTeacher(TeacherId);
+            var gradeId = await SeedGradeAsync(ctx);
+            ctx.SetCurrentUser(TeacherId);
+            var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
+            var student = new Student { UserId = 367, StudentNumber = "a", SchoolId = _teacherSchoolId };
+            ctx.AddRange(ws, student);
+            await ctx.SaveChangesAsync();
+
+            var startAt = DateTime.UtcNow.AddDays(-1);
+            ctx.WorksheetAssignments.Add(new WorksheetAssignment
+            {
+                WorksheetId = ws.Id, StudentId = student.Id, StartAt = startAt, EndAt = DateTime.UtcNow.AddDays(5)
+            });
+            ctx.TestInstances.Add(new WorksheetInstance
+            {
+                WorksheetId = ws.Id, StudentId = student.Id, Status = WorksheetInstanceStatus.Completed,
+                StartTime = startAt.AddDays(-10), EndTime = startAt.AddDays(-10).AddMinutes(20)
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var check = _db.NewContext();
+        (await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId))).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task GetLaggingStudentsAsync_StartedBeforeTheWindowButUnfinished_IsStillLagging()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            SchoolTeacher(TeacherId);
+            var gradeId = await SeedGradeAsync(ctx);
+            ctx.SetCurrentUser(TeacherId);
+            var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
+            var student = new Student { UserId = 368, StudentNumber = "a", SchoolId = _teacherSchoolId };
+            ctx.AddRange(ws, student);
+            await ctx.SaveChangesAsync();
+
+            var startAt = DateTime.UtcNow.AddDays(-1);
+            ctx.WorksheetAssignments.Add(new WorksheetAssignment
+            {
+                WorksheetId = ws.Id, StudentId = student.Id, StartAt = startAt, EndAt = DateTime.UtcNow.AddDays(5)
+            });
+            ctx.TestInstances.Add(new WorksheetInstance
+            {
+                WorksheetId = ws.Id, StudentId = student.Id, Status = WorksheetInstanceStatus.Started,
+                StartTime = startAt.AddDays(-10)
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var check = _db.NewContext();
+        var result = await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId));
+        result.Count.ShouldBe(1);
+        result[0].IsLowCompletion.ShouldBeTrue();
+        result[0].IsExpired.ShouldBeFalse();
+    }
+
     [Fact]
     public async Task GetLaggingStudentsAsync_NotCompletedAndNotExpired_IsLowCompletionOnly()
     {

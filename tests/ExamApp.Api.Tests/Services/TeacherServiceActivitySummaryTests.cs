@@ -51,15 +51,21 @@ public class TeacherServiceActivitySummaryTests : IDisposable
     {
         await using var ctx = _db.NewContext();
 
-        var instance = new WorksheetInstance
+        // issue #367: öğrenci başına worksheet başına tek canlı instance (unique index) — aynı çift için tekrar
+        // çağrıldığında mevcut instance'a satır eklenir.
+        var instance = await ctx.TestInstances.FirstOrDefaultAsync(i => i.StudentId == studentId && i.WorksheetId == worksheetId);
+        if (instance == null)
         {
-            StudentId = studentId,
-            WorksheetId = worksheetId,
-            StartTime = answeredAt,
-            Status = WorksheetInstanceStatus.Started,
-        };
-        ctx.Add(instance);
-        await ctx.SaveChangesAsync();
+            instance = new WorksheetInstance
+            {
+                StudentId = studentId,
+                WorksheetId = worksheetId,
+                StartTime = answeredAt,
+                Status = WorksheetInstanceStatus.Started,
+            };
+            ctx.Add(instance);
+            await ctx.SaveChangesAsync();
+        }
 
         for (var i = 0; i < count; i++)
         {

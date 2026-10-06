@@ -4,6 +4,7 @@
     "studentProfileNotFound": "Öğrenci profili bulunamadı",
     "testNotFound": "Test bulunamadı!",
     "testSessionNotFound": "Test oturumu bulunamadı.",
+    "startTestFailed": "Test başlatılamadı. Lütfen tekrar deneyin.",
     "unexpectedError": "Bir hata oluştu: {0}",
 
     "calendar": {

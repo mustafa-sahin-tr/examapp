@@ -591,9 +591,10 @@ public class ExamController : BaseController
         {
             return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException)
         {
-            return BadRequest(ex.Message);
+            // issue #367 (security Low-3): iç exception metni istemciye sızdırılmaz.
+            return BadRequest(new { message = _localizer["exam.startTestFailed"].Value });
         }
     }
 
@@ -639,21 +640,24 @@ public class ExamController : BaseController
     [HttpPost("save-answer")]
     [Authorize(Roles = "Student,Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
-    public async Task<IActionResult> SaveAnswer([FromBody] SaveAnswerDto dto)
+    public async Task<IActionResult> SaveAnswer([FromBody] SaveAnswerDto dto, CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync();
-        var response = await _testSession.SaveAnswer(dto, user);
-        return Ok(response);
+        var response = await _testSession.SaveAnswer(dto, user, ct);
+        // issue #367: test artık Started değil → 409 { success:false, conflict:true, errorCode:"TestNotInProgress" }.
+        // Diğer başarısızlıklar (soru/instance yok) eski sözleşmeyle 200 + success:false kalır.
+        return response.Conflict ? Conflict(response) : Ok(response);
     }
 
     [HttpPut("end-test/{testInstanceId}")]
     [Authorize(Roles = "Student,Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
-    public async Task<IActionResult> EndTest(int testInstanceId)
+    public async Task<IActionResult> EndTest(int testInstanceId, CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync();
-        var response = await _testSession.EndTest(testInstanceId, user.Id);
-        return Ok(response);
+        var response = await _testSession.EndTest(testInstanceId, user.Id, ct);
+        // issue #367: zaten Completed → 200 success (idempotent); Expired → 409 TestNotInProgress.
+        return response.Conflict ? Conflict(response) : Ok(response);
     }
     [HttpPost]
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287

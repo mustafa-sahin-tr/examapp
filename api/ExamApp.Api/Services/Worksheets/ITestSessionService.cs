@@ -16,7 +16,12 @@ public interface ITestSessionService
 
     Task<WorksheetInstanceResultDto?> GetCanvasTestResultAsync(int testInstanceId, int userId, bool includeCorrectAnswer = false);
 
-    Task<ResponseBaseDto> SaveAnswer(SaveAnswerDto dto, UserProfileDto user);
+    /// <summary>
+    /// issue #367: yalnız <c>Started</c> instance'a yazar; aksi halde <c>Conflict=true</c> +
+    /// <see cref="TestSessionErrorCodes.TestNotInProgress"/>, cevap ve outbox event'i yazılmaz.
+    /// </summary>
+    Task<TestSessionResultDto> SaveAnswer(SaveAnswerDto dto, UserProfileDto user, CancellationToken ct = default);
 
-    Task<ResponseBaseDto> EndTest(int testInstanceId, int userId);
+    /// <summary>issue #367: idempotent — zaten Completed instance için de başarı döner (EndTime değişmez).</summary>
+    Task<TestSessionResultDto> EndTest(int testInstanceId, int userId, CancellationToken ct = default);
 }

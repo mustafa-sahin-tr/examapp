@@ -137,7 +137,7 @@ public class ExamServiceCanvasAndImageTests : IDisposable
     [Fact]
     public async Task Canvas_result_hides_correct_answers_unless_completed_and_requested()
     {
-        int instanceId, correctAnswerId;
+        int instanceId, correctAnswerId, worksheetId;
         await using (var ctx = _db.NewContext())
         {
             var g = new Grade { Name = "5" };
@@ -168,6 +168,7 @@ public class ExamServiceCanvasAndImageTests : IDisposable
             ctx.TestInstances.Add(inst);
             await ctx.SaveChangesAsync();
             instanceId = inst.Id;
+            worksheetId = ws.Id;
         }
 
         await using var ctx2 = _db.NewContext();
@@ -176,6 +177,7 @@ public class ExamServiceCanvasAndImageTests : IDisposable
         // not requesting correct answer -> ok, hidden
         var plain = await svc.GetCanvasTestResultAsync(instanceId, 77, includeCorrectAnswer: false);
         plain.ShouldNotBeNull();
+        plain!.WorksheetId.ShouldBe(worksheetId); // issue #383: UI redirects to /test/{WorksheetId}
         plain!.TestInstanceQuestions[0].Question.CorrectAnswerId.ShouldBeNull();
 
         // requesting correct answer on a NON-completed instance -> null

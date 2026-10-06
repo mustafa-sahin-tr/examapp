@@ -3799,9 +3799,11 @@ namespace ExamApp.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("StudentId");
-
                     b.HasIndex("WorksheetId");
+
+                    b.HasIndex("StudentId", "WorksheetId")
+                        .IsUnique()
+                        .HasFilter("NOT \"IsDeleted\"");
 
                     b.ToTable("TestInstances");
                 });

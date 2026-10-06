@@ -88,7 +88,7 @@ public class QuestionQueryServiceTests : IDisposable
     // ---- GetLastTenPassages ----
 
     [Fact]
-    public async Task GetLastTenPassages_returns_the_ten_newest()
+    public async Task GetLastTenPassages_returns_the_ten_newest_for_admin()
     {
         await using (var ctx = _db.NewContext())
         {
@@ -98,9 +98,31 @@ public class QuestionQueryServiceTests : IDisposable
         }
 
         await using var ctx2 = _db.NewContext();
-        var passages = await NewService(ctx2).GetLastTenPassages();
+        var passages = await NewService(ctx2).GetLastTenPassages(userId: 1, isAdmin: true);
         passages.Count.ShouldBe(10);
         passages.First().Title.ShouldBe("P12");
+    }
+
+    // issue #402 (P4): öğretmen yalnız kendi oluşturduğu paragrafları görür; başka öğretmeninki ve legacy (sahipsiz) yok.
+    [Fact]
+    public async Task GetLastTenPassages_returns_only_the_callers_own_passages_for_a_teacher()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.Passage.Add(new Passage { Title = "legacy", Text = "t" });
+            await ctx.SaveChangesAsync();
+            ctx.SetCurrentUser(7);
+            ctx.Passage.Add(new Passage { Title = "mine", Text = "t" });
+            await ctx.SaveChangesAsync();
+            ctx.SetCurrentUser(8);
+            ctx.Passage.Add(new Passage { Title = "other", Text = "t" });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var ctx2 = _db.NewContext();
+        (await NewService(ctx2).GetLastTenPassages(userId: 7, isAdmin: false))
+            .ShouldHaveSingleItem().Title.ShouldBe("mine");
+        (await NewService(ctx2).GetLastTenPassages(userId: 0, isAdmin: false)).ShouldBeEmpty();
     }
 
     // ---- UpdateCorrectAnswer ----

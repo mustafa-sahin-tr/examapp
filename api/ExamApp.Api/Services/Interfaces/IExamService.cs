@@ -16,7 +16,6 @@ public interface IExamService
 
     Task<List<WorksheetDto>> GetPopularWorksheetsAsync(int? gradeId, int pageNumber, int pageSize, int sinceDays, int? ownerUserId = null);
 
-    Task<List<QuestionDto>> GetExamQuestionsAsync();
 
     Task<WorksheetDto?> GetWorksheetByIdAsync(int id, UserProfileDto userProfile, bool isAdmin);
 

@@ -104,7 +104,13 @@ var rabbitmqEndpoint = rabbitmq.GetEndpoint("tcp");
 var minioRootUser = builder.AddParameter("minio-root-user");
 var minioRootPassword = builder.AddParameter("minio-root-password", secret: true);
 
+// #402 D6: pinned by digest (RELEASE.2025-09-07T16-13-09Z) — same image for the server and the presign init.
+const string minioImageSha256 = "14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e";
+// #402 D7: one value for the exam API's MinioConfig:BucketName and the presign policy's question bucket.
+const string minioQuestionsBucket = "exam-questions";
+
 var minio = builder.AddContainer("minio", "minio/minio")
+    .WithImageSHA256(minioImageSha256)
     .WithArgs("server", "/data", "--console-address", ":9001")
     .WithEnvironment("MINIO_ROOT_USER", minioRootUser)
     .WithEnvironment("MINIO_ROOT_PASSWORD", minioRootPassword)
@@ -113,6 +119,31 @@ var minio = builder.AddContainer("minio", "minio/minio")
     .WithHttpEndpoint(port: 9001, targetPort: 9001, name: "console");
 
 var minioApiEndpoint = minio.GetEndpoint("api");
+
+// Issue #402 (O1): presigned /img URLs expose the signing access key in X-Amz-Credential, so the exam API signs with
+// a dedicated MinIO user that only has s3:GetObject on the image prefixes (never the root user). The Minio .NET SDK
+// has no admin API, so the user + policy are provisioned by a one-shot `mc` run (minio/minio image) running the same script as
+// docker-compose / prod compose / the k8s Job (deploy/scripts/minio-presign-init.sh, idempotent). Dev-only defaults
+// live in appsettings.json's "Parameters" section (minio-presign-access-key / minio-presign-secret-key).
+var minioPresignAccessKey = builder.AddParameter("minio-presign-access-key");
+var minioPresignSecretKey = builder.AddParameter("minio-presign-secret-key", secret: true);
+
+var minioPresignInit = builder.AddContainer("minio-presign-init", "minio/minio") // ships mc; minio/mc is not pullable
+    .WithImageSHA256(minioImageSha256)
+    .WithBindMount("../deploy/scripts/minio-presign-init.sh", "/minio-presign-init.sh", isReadOnly: true)
+    .WithEntrypoint("sh")
+    .WithArgs("/minio-presign-init.sh")
+    .WithEnvironment(context =>
+    {
+        context.EnvironmentVariables["MINIO_URL"] = ReferenceExpression.Create(
+            $"http://{minioApiEndpoint.Property(EndpointProperty.Host)}:{minioApiEndpoint.Property(EndpointProperty.Port)}");
+    })
+    .WithEnvironment("MINIO_QUESTIONS_BUCKET", minioQuestionsBucket)
+    .WithEnvironment("MINIO_ROOT_USER", minioRootUser)
+    .WithEnvironment("MINIO_ROOT_PASSWORD", minioRootPassword)
+    .WithEnvironment("MINIO_PRESIGN_ACCESS_KEY", minioPresignAccessKey)
+    .WithEnvironment("MINIO_PRESIGN_SECRET_KEY", minioPresignSecretKey)
+    .WaitFor(minio);
 
 // ---------------------------------------------------------------------------
 // Jitsi Meet self-host (issue #97) — prosody/jicofo/jvb/jitsi-web, mirroring
@@ -394,6 +425,10 @@ var examDotnetApi = builder.AddProject<Projects.ExamApp_Api>("exam-dotnet-api")
     .WithEnvironment("Redis__Configuration", redis.Resource.ConnectionStringExpression)
     .WithEnvironment("MinioConfig__AccessKey", minioRootUser)
     .WithEnvironment("MinioConfig__SecretKey", minioRootPassword)
+    // Issue #402 (O1): image URLs are presigned with the GetObject-only account, never the root user above.
+    .WithEnvironment("MinioConfig__PresignAccessKey", minioPresignAccessKey)
+    .WithEnvironment("MinioConfig__PresignSecretKey", minioPresignSecretKey)
+    .WithEnvironment("MinioConfig__BucketName", minioQuestionsBucket)
     .WithEnvironment(context =>
     {
         context.EnvironmentVariables["MinioConfig__Endpoint"] = ReferenceExpression.Create(
@@ -429,7 +464,8 @@ var examDotnetApi = builder.AddProject<Projects.ExamApp_Api>("exam-dotnet-api")
     .WaitFor(postgres)
     .WaitFor(redis)
     .WaitFor(rabbitmq)
-    .WaitFor(minio);
+    .WaitFor(minio)
+    .WaitForCompletion(minioPresignInit);
 
 var examDotnetApiHttp = examDotnetApi.GetEndpoint("http");
 

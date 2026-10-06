@@ -69,6 +69,23 @@ spec:
                 secretKeyRef:
                   name: examapp-secrets
                   key: MINIO_ROOT_PASSWORD
+            # Issue #402 (O1): image URLs are presigned with the GetObject-only user created by the
+            # minio-presign-init Job (stateful-services.yaml), never the root user; missing => startup fail-fast.
+            - name: MinioConfig__PresignAccessKey
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: MINIO_PRESIGN_ACCESS_KEY
+            - name: MinioConfig__PresignSecretKey
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: MINIO_PRESIGN_SECRET_KEY
+            - name: MinioConfig__BucketName
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: MINIO_QUESTIONS_BUCKET
             - name: MinioConfig__BaseUrl
               valueFrom:
                 configMapKeyRef:

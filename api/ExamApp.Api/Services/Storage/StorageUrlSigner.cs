@@ -68,11 +68,22 @@ public sealed class MinioStorageUrlSigner : IStorageUrlSigner, IDisposable
         }
 
         var endpoint = FirstNonEmpty(section["PresignEndpoint"], section["Endpoint"]);
-        var accessKey = section["AccessKey"];
-        var secretKey = section["SecretKey"];
+        // issue #402 (O1): imza YALNIZ ayrı presign hesabıyla atılır (s3:GetObject, izinli prefix'ler —
+        // deploy/scripts/minio-presign-init.sh). Erişim anahtarı X-Amz-Credential'da her oturumlu kullanıcıya görünür;
+        // root (MinioConfig:AccessKey) ile imzalamaya geri DÜŞÜLMEZ. Development dışında eksik/root değer açılışta
+        // MinioPresignCredentialGuard ile patlar; burada (Development) imzasız yazılır.
+        var accessKey = section[MinioPresignCredentialGuard.AccessKeyKey];
+        var secretKey = section[MinioPresignCredentialGuard.SecretKeyKey];
         if (string.IsNullOrWhiteSpace(endpoint) || string.IsNullOrWhiteSpace(accessKey) || string.IsNullOrWhiteSpace(secretKey))
         {
-            _logger.LogWarning("[MinIO] Presigning disabled: MinioConfig endpoint/credentials missing. Image URLs are emitted unsigned.");
+            _logger.LogWarning(
+                "[MinIO] Presigning disabled: MinioConfig endpoint or presign credentials (PresignAccessKey/PresignSecretKey) missing. Image URLs are emitted unsigned.");
+            return;
+        }
+        if (MinioPresignCredentialGuard.IsRootKey(accessKey, section["AccessKey"]))
+        {
+            _logger.LogError(
+                "[MinIO] Presigning disabled: MinioConfig:PresignAccessKey equals the root MinioConfig:AccessKey; refusing to expose the root key in image URLs.");
             return;
         }
 

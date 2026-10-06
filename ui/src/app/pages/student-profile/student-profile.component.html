@@ -1,39 +1,6 @@
 @if (student) {
 <ng-container *transloco="let t; prefix: 'student-profile'">
 <mat-tab-group [(selectedIndex)]="activeTab">
-  <mat-tab [label]="t('tabs.what')">
-    <div class="learning-container">
-      <div class="learning-text">
-        <h5>{{ t('learning.eyebrow') }}</h5>
-        <h3>{{ t('learning.title') }}</h3>
-        <p>{{ t('learning.description') }}</p>
-      </div>
-      <div class="learning-image">
-        <img src="/assets/experts.jpg" [alt]="t('learning.expertsAlt')" />
-      </div>
-    </div>
-
-    <div class="features-container">
-      <div class="feature-card">
-        <img src="/assets/certification.svg" [alt]="t('learning.certification.imageAlt')" />
-        <h3>{{ t('learning.certification.title') }}</h3>
-        <p>{{ t('learning.certification.description') }}</p>
-        <a href="#">{{ t('learning.certification.cta') }}</a>
-      </div>
-      <div class="feature-card">
-        <img src="/assets/learning-path.svg" [alt]="t('learning.path.imageAlt')" />
-        <h3>{{ t('learning.path.title') }}</h3>
-        <p>{{ t('learning.path.description') }}</p>
-        <a href="#">{{ t('learning.path.cta') }}</a>
-      </div>
-      <div class="feature-card">
-        <img src="/assets/hands-on.svg" [alt]="t('learning.handsOn.imageAlt')" />
-        <h3>{{ t('learning.handsOn.title') }}</h3>
-        <p>{{ t('learning.handsOn.description') }}</p>
-        <a href="#">{{ t('learning.handsOn.cta') }}</a>
-      </div>
-    </div>
-  </mat-tab>
   <mat-tab [label]="t('tabs.info')">
     <mat-card class="profile-card">
       <mat-card-header>
@@ -104,17 +71,13 @@
     </mat-card>
   </mat-tab>
   <mat-tab [label]="t('tabs.badges')">
-    <div class="points-container">
-      <app-point-card [title]="t('points.myPoints')" value="2,500" icon="whatshot"></app-point-card>
-      <app-point-card [title]="t('points.classRank')" value="3rd" icon="terrain"></app-point-card>
-      <app-point-card [title]="t('points.yearRank')" value="128" icon="flag"></app-point-card>
-    </div>
-    <app-section-header [title]="t('points.myBadges')" icon="assets/icons/badge.png"></app-section-header>
+    <!-- Issue #381: sabit (sahte) puan kartları kaldırıldı; gerçek puan/sıralama verisi ayrı iş. -->
+    <app-section-header [title]="t('points.myBadges')" iconName="military_tech"></app-section-header>
 
     <!-- Bölüm başlığı yukarıdaki section-header'da; rozet bileşeni kendi başlığını tekrar etmez (#149 CR Ö1) -->
     <app-badge-thropy [userId]="reportUserId ?? 0" [showHeading]="false"></app-badge-thropy>
 
-    <app-section-header [title]="t('points.leaderboards')" icon="assets/icons/leaderboard.png"></app-section-header>
+    <app-section-header [title]="t('points.leaderboards')" iconName="leaderboard"></app-section-header>
 
     <div class="leaderboards-container">
       <app-leaderboard></app-leaderboard>
@@ -124,38 +87,6 @@
 
   <!-- Assignments and Exams Tab -->
   <mat-tab [label]="t('tabs.assignments')">
-    <!-- <canvas
-    baseChart
-    [data]="bubbleChartData"
-    [options]="bubbleChartOptions2"
-    [legend]="true"
-    [type]="bubbleChartType"    
-    (chartClick)="chartClicked($event)"
-  >
-  </canvas> -->
-
-    <div class="bubble-chart-container">
-      <!-- <ngx-charts-bubble-chart
-  [view]="[700, 200]"
-  [scheme]="colorScheme"
-  [results]="bubbleData"
-  [xAxis]="showXAxis"
-  [yAxis]="showYAxis"
-  [legend]="showLegend"
-  [showXAxisLabel]="showXAxisLabel"
-  [showYAxisLabel]="showYAxisLabel"
-  [xAxisLabel]="xAxisLabel"
-  [yAxisLabel]="yAxisLabel"
-  [xScaleMin]="yScaleMin"
-  [xScaleMax]="yScaleMax"
-  [yScaleMin]="yScaleMin"
-  [yScaleMax]="yScaleMax"
-  [minRadius]="minRadius"
-  [maxRadius]="maxRadius">
-</ngx-charts-bubble-chart> -->
-
-      <app-bubble-chart></app-bubble-chart>
-    </div>
 
     <div class="number-card-container">
       <ngx-charts-number-card
@@ -190,40 +121,6 @@
   <mat-tab [label]="t('tabs.weeklyCalendar')">
     <div class="heatmap-container">
       <h2>{{ t('heatmap.title') }}</h2>
-      <ngx-charts-heat-map
-        [view]="[1200, 210]"
-        [scheme]="sunsetScheme"
-        [results]="activityData"
-        [xAxis]="true"
-        [yAxis]="true"
-        [legend]="false"
-        [showXAxisLabel]="true"
-        [showYAxisLabel]="true"
-        [gradient]="true"
-        [xAxisTickFormatting]="xAxisTickFormatting"
-      >
-      </ngx-charts-heat-map>
-    </div>
-
-    <div class="heatmap-container">
-      <h2>{{ t('heatmap.titleSecondary') }}</h2>
-      <ngx-charts-heat-map
-        [view]="[1200, 210]"
-        [scheme]="sunsetScheme"
-        [results]="activityData2"
-        [xAxis]="true"
-        [yAxis]="true"
-        [legend]="false"
-        [showXAxisLabel]="true"
-        [showYAxisLabel]="true"
-        [gradient]="true"
-        [xAxisTickFormatting]="xAxisTickFormatting"
-      >
-      </ngx-charts-heat-map>
-    </div>
-
-    <div class="heatmap-container">
-      <h2>{{ t('heatmap.titleApi') }}</h2>
 
       <ng-container *ngIf="!activityApiLoading; else activityHeatmapLoading">
         <ng-container *ngIf="!activityApiError; else activityHeatmapError">

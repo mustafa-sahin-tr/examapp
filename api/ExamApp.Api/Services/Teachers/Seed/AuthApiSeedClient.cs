@@ -46,7 +46,7 @@ public sealed class AuthApiSeedClient : IAuthApiSeedClient
     {
         ArgumentNullException.ThrowIfNull(request);
         return PostAsync<DevSeedUsersRequest, DevSeedUsersResponse>(SeedUsersPath, "seed-users", request,
-            $"{request.Users.Count} hesap", "Keycloak yavaş olabilir; --batch-size küçültün ya da --keycloak-mode partial-import deneyin.", ct);
+            $"{request.Users.Count} hesap", "Keycloak yavaş olabilir; --batch-size küçültün.", ct);
     }
 
     public Task<DevSeedCleanupResponse> CleanupSeedUsersAsync(DevSeedCleanupRequest request, CancellationToken ct = default)
@@ -107,7 +107,7 @@ public sealed class AuthApiSeedClient : IAuthApiSeedClient
             if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
             {
                 throw new TeacherSeedAuthApiException(
-                    $"auth-api servis token'ını reddetti ({(int)response.StatusCode}). Keycloak:AdminClientId servis hesabı 'exam-service' rolüne ya da auth-api Keycloak:ServiceClients listesine sahip olmalı.");
+                    $"auth-api servis token'ını reddetti ({(int)response.StatusCode}). Keycloak:ServiceClientId (exam-service) servis hesabı 'exam-service' rolüne ya da auth-api Keycloak:ServiceClients listesine sahip olmalı.");
             }
             if (!response.IsSuccessStatusCode)
             {

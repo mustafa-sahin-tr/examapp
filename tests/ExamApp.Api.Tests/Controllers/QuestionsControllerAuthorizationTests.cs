@@ -209,12 +209,12 @@ public class QuestionsControllerAuthorizationTests : IDisposable
     private static readonly Caller Owner = new(OwnerTeacher, "Teacher");
     private static readonly Caller Copier = new(CopierTeacher, "Teacher");
     private static readonly Caller Admin = new(AdminUser, "Admin");
-    private static readonly Caller Service = new(0, "", Azp: "exam-admin");
+    private static readonly Caller Service = new(0, "exam-service", Azp: "exam-service");
 
     private static Task<HttpResponseMessage> SendAsync(HttpClient client, Caller caller, HttpMethod method, string path, object? body = null)
     {
         var request = new HttpRequestMessage(method, path);
-        request.Headers.Add("X-Sub", caller.Azp != null ? "service-account-exam-admin" : $"u{caller.UserId}");
+        request.Headers.Add("X-Sub", caller.Azp != null ? "service-account-exam-service" : $"u{caller.UserId}");
         request.Headers.Add("X-Roles", caller.Roles);
         if (caller.Azp != null)
             request.Headers.Add("X-Azp", caller.Azp);

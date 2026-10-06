@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Storage;
 using System.ComponentModel.DataAnnotations;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
@@ -7,7 +8,16 @@ public class QuestionDto
     public int Id { get; set; }
     public string Text { get; set; }
     public string? SubText { get; set; }
+    [StorageUrl(StorageArea.QuestionImage)]
     public string? ImageUrl { get; set; }
+
+    /// <summary>
+    /// issue #365 (S2): canvas görünümünün kullandığı cevap bloğu kırpılmış <c>question-v2</c> görseli (yalnız
+    /// <c>.../question.ext</c> adlı görsellerde; yoksa null). Salt okunur — istemciden okunmaz; çıktıda imzalanır.
+    /// </summary>
+    [StorageUrl(StorageArea.QuestionImage)]
+    public string? ImageUrlV2 => ExamApp.Api.Helpers.QuestionImageVariant.ToV2(ImageUrl);
+
     public string? BookName { get; set; }
     public string CategoryName { get; set; }
 
@@ -73,6 +83,7 @@ public class PassageDto
     public int? Id { get; set; }
     public string? Title { get; set; }
     public string? Text { get; set; }
+    [StorageUrl(StorageArea.QuestionImage)]
     public string? ImageUrl { get; set; }
     public double? X { get; set; }
     public double? Y { get; set; }
@@ -84,6 +95,7 @@ public class AnswerDto
     public int? Id { get; set; }
     public string? Text { get; set; }
     public string? Image { get; set; } // Base64 formatında geliyor
+    [StorageUrl(StorageArea.QuestionImage)]
     public string? ImageUrl { get; set; }
 
     public bool IsCorrect { get; set; }
@@ -100,4 +112,10 @@ public class AnswerDto
 public class QuestionSavedDto : ResponseBaseDto
 {
     public int? QuestionId { get; set; }
+
+    /// <summary>
+    /// True when the request was rejected before anything was written because an input value is invalid
+    /// (e.g. a passage image URL outside the allowlist, issue #365). Lets the controller map to HTTP 400.
+    /// </summary>
+    public bool InvalidInput { get; set; }
 }

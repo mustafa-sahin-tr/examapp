@@ -8,7 +8,8 @@
       "subTopicIdsRequired": "subTopicIds en az bir eleman içermelidir.",
       "noValidSubTopicIds": "Geçerli subTopicIds bulunamadı.",
       "someSubTopicsMissing": "Bazı subTopic kayıtları bulunamadı.",
-      "attached": "Resim başarıyla eklendi."
+      "attached": "Resim başarıyla eklendi.",
+      "invalidUrl": "Geçersiz resim adresi. Yalnızca bu platforma yüklenmiş çalışma sayfası resimleri kullanılabilir; dosya/klasör adında & ve % karakterlerine izin verilmez."
     },
     "content": {
       "imageRequired": "En az bir resim eklemelisiniz.",

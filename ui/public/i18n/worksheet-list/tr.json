@@ -4,8 +4,7 @@
     "titleStudent": "Sınav Kütüphanesi",
     "subtitleTeacher": "Oluşturduğun testleri yönet, düzenle ve öğrencilere ata.",
     "subtitleStudent": "Konu ve zorluğa göre test bul, çöz ve ilerlemeni takip et.",
-    "newTest": "Yeni Test",
-    "importExcel": "Excel'den içe aktar"
+    "newTest": "Yeni Test"
   },
   "tabs": {
     "aria": "Bölümler",
@@ -72,6 +71,8 @@
   "bulk": {
     "selected": "{{count}} seçildi",
     "assign": "Öğrencilere Ata",
+    "assignNotAllowed": "Bu test için atama yetkiniz yok.",
+    "assignSingleOnly": "Atama tek seferde bir test için yapılır; tek test seçin.",
     "delete": "Sil",
     "clear": "Seçimi bırak"
   },
@@ -104,8 +105,6 @@
   "snackbar": {
     "dismiss": "Tamam",
     "close": "Kapat",
-    "assignSoon": "Atama ekranı yakında kullanıma açılacak.",
-    "importSoon": "Excel içe aktarma yakında kullanıma açılacak.",
     "copySuccess": "Sınav kendi hesabına kopyalandı.",
     "copyFailed": "Kopyalama başarısız.",
     "deleted": "{{count}} test silindi.",

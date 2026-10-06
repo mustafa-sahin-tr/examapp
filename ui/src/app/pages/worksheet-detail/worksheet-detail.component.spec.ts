@@ -6,7 +6,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
-import { Subject, of, throwError } from 'rxjs';
+import { BehaviorSubject, NEVER, Observable, Subject, map, of, throwError } from 'rxjs';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { provideNativeDateAdapter } from '@angular/material/core';
 
@@ -266,6 +266,210 @@ describe('WorksheetDetailComponent reminder=edit deep link', () => {
     expect(testService.getWorksheetDetail).toHaveBeenCalledWith(12);
     expect((component as any)['reminderEditing']()).toBeTrue();
     expect((component as any)['showReminderForm']()).toBeTrue();
+  });
+});
+
+/** Issue #377: Testlerim'deki "Ata" `?assign=student` ile gelir; detay hazır olunca atama diyaloğu açılır. */
+describe('WorksheetDetailComponent assign deep link', () => {
+  type Query = Record<string, string>;
+
+  function setup(options: {
+    role: 'Teacher' | 'Student';
+    canAssign?: boolean;
+    query?: Query;
+    gradesError?: boolean;
+    /** Verilirse paramMap/queryParamMap bu subject'lerden gelir (komponentin rotalar arası yeniden kullanımı). */
+    params$?: BehaviorSubject<string>;
+    query$?: BehaviorSubject<Query>;
+    /** testId → `get` yanıtı; verilmezse `{ id }` hemen döner. */
+    examFor?: (id: number) => Observable<Test>;
+  }) {
+    const testService = jasmine.createSpyObj<TestService>('TestService', [
+      'getWorksheetDetail',
+      'get',
+      'getWorksheetAssignmentsForTeacher',
+    ]);
+    testService.getWorksheetDetail.and.callFake((id: number) =>
+      of({
+        worksheet: { id, name: 'Deneme', canEdit: true, canAssign: options.canAssign ?? true },
+        attempts: [],
+        similarWorksheets: [],
+      } as unknown as WorksheetDetail),
+    );
+    testService.get.and.callFake((id: number) => options.examFor?.(id) ?? of({ id, gradeId: 5 } as Test));
+    testService.getWorksheetAssignmentsForTeacher.and.returnValue(NEVER);
+
+    const router = jasmine.createSpyObj<Router>('Router', ['navigate']);
+    router.navigate.and.returnValue(Promise.resolve(true));
+    const dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
+    dialog.open.and.returnValue({ afterClosed: () => of(undefined) } as MatDialogRef<unknown>);
+    const snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
+    const grades = [{ id: 5, name: '5. Sınıf' }];
+    const query = options.query ?? {};
+    const route = {
+      snapshot: { paramMap: convertToParamMap({}), data: {} },
+      params: of({}),
+      queryParams: of(query),
+      paramMap: options.params$
+        ? options.params$.pipe(map((testId) => convertToParamMap({ testId })))
+        : of(convertToParamMap({ testId: '12' })),
+      queryParamMap: options.query$
+        ? options.query$.pipe(map((q) => convertToParamMap(q)))
+        : of(convertToParamMap(query)),
+    };
+
+    TestBed.configureTestingModule({
+      imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: TestService, useValue: testService },
+        { provide: Router, useValue: router },
+        { provide: MatSnackBar, useValue: snackBar },
+        {
+          provide: AuthService,
+          useValue: { hasRole: (r: string) => r === options.role, hasRealmRole: () => false, user: signal(null) },
+        },
+        { provide: StudentService, useValue: { getLookup: () => of([]) } },
+        {
+          provide: GradesService,
+          useValue: { getGrades: () => (options.gradesError ? throwError(() => new Error('boom')) : of(grades)) },
+        },
+        { provide: ActivatedRoute, useValue: route },
+      ],
+    });
+    TestBed.overrideComponent(WorksheetDetailComponent, {
+      add: { providers: [{ provide: MatDialog, useValue: dialog }, { provide: MatSnackBar, useValue: snackBar }] },
+    });
+
+    const component = TestBed.createComponent(WorksheetDetailComponent).componentInstance;
+    return { component, dialog, router, grades, snackBar, route };
+  }
+
+  /** paramMap aboneliği `await lastValueFrom(get)` içerir; mikro görevler boşalsın. */
+  const settle = () => new Promise<void>((resolve) => setTimeout(resolve));
+  const dialogData = (dialog: jasmine.SpyObj<MatDialog>) =>
+    (dialog.open.calls.mostRecent().args[1] as { data: WorksheetAssignmentDialogData }).data;
+
+  it('ngOnInit_AssignStudentQueryAndCanAssign_OpensAssignmentDialogWithStudentScopeAndClearsParam', async () => {
+    const { component, dialog, router, grades, route } = setup({ role: 'Teacher', query: { assign: 'student' } });
+
+    component.ngOnInit();
+    await settle();
+
+    expect(dialog.open).toHaveBeenCalledTimes(1);
+    const data = dialogData(dialog);
+    expect(data.worksheetId).toBe(12);
+    expect(data.scope).toBe('student');
+    expect(data.grades).toEqual(grades as never);
+    expect(router.navigate).toHaveBeenCalledWith([], {
+      relativeTo: route as unknown as ActivatedRoute,
+      queryParams: { assign: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  });
+
+  it('ngOnInit_AssignWithOtherQueryParams_ClearsOnlyAssignAndMergesTheRest', async () => {
+    const { component, router } = setup({
+      role: 'Teacher',
+      query: { assign: 'student', commentId: '7', tab: 'x' },
+    });
+
+    component.ngOnInit();
+    await settle();
+
+    const clearCalls = router.navigate.calls.all().filter((c) => {
+      const extras = c.args[1] as { queryParams?: Record<string, unknown> } | undefined;
+      return extras?.queryParams !== undefined && 'assign' in extras.queryParams;
+    });
+    expect(clearCalls.length).toBe(1);
+    const extras = clearCalls[0].args[1] as { queryParams: Record<string, unknown>; queryParamsHandling: string };
+    // Yalnız `assign` düşürülür; 'merge' sayesinde commentId/tab URL'de kalır.
+    expect(extras.queryParams).toEqual({ assign: null });
+    expect(extras.queryParamsHandling).toBe('merge');
+  });
+
+  it('ngOnInit_AssignQueryButCannotAssign_DoesNotOpenDialogAndShowsInfoSnackbar', async () => {
+    const { component, dialog, snackBar } = setup({ role: 'Teacher', query: { assign: 'student' }, canAssign: false });
+
+    component.ngOnInit();
+    await settle();
+
+    expect(dialog.open).not.toHaveBeenCalled();
+    expect(snackBar.open).toHaveBeenCalledWith(
+      worksheetDetailTr.snackbar.assignNotAllowed,
+      worksheetDetailTr.snackbar.dismiss,
+      jasmine.any(Object),
+    );
+  });
+
+  it('ngOnInit_GradesRequestFails_StillOpensDialogWithEmptyGrades', async () => {
+    const { component, dialog } = setup({ role: 'Teacher', query: { assign: 'student' }, gradesError: true });
+
+    component.ngOnInit();
+    await settle();
+
+    expect(dialog.open).toHaveBeenCalledTimes(1);
+    expect(dialogData(dialog).grades).toEqual([]);
+    expect(dialogData(dialog).scope).toBe('student');
+  });
+
+  it('ngOnInit_ReusedForAnotherWorksheet_OpensDialogOnlyForCurrentWorksheetOnceItsExamLoads', async () => {
+    const params$ = new BehaviorSubject<string>('12');
+    const query$ = new BehaviorSubject<Query>({});
+    const exam34 = new Subject<Test>();
+    const { component, dialog } = setup({
+      role: 'Teacher',
+      params$,
+      query$,
+      examFor: (id) => (id === 34 ? exam34.asObservable() : of({ id, gradeId: 5 } as Test)),
+    });
+
+    component.ngOnInit();
+    await settle();
+    expect(dialog.open).not.toHaveBeenCalled();
+
+    // /test/12 → /test/34?assign=student: 34'ün sınavı henüz gelmedi; önceki (12) sınavla açılmamalı.
+    params$.next('34');
+    query$.next({ assign: 'student' });
+    await settle();
+    expect(dialog.open).not.toHaveBeenCalled();
+
+    exam34.next({ id: 34, gradeId: 5 } as Test);
+    exam34.complete();
+    await settle();
+
+    expect(dialog.open).toHaveBeenCalledTimes(1);
+    expect(dialogData(dialog).worksheetId).toBe(34);
+  });
+
+  it('ngOnInit_AssignQueryForStudent_DoesNotOpenDialog', async () => {
+    const { component, dialog, snackBar } = setup({ role: 'Student', query: { assign: 'student' } });
+
+    component.ngOnInit();
+    await settle();
+
+    expect(dialog.open).not.toHaveBeenCalled();
+    expect(snackBar.open).not.toHaveBeenCalled();
+  });
+
+  it('ngOnInit_NoAssignQuery_DoesNotOpenDialog', async () => {
+    const { component, dialog } = setup({ role: 'Teacher' });
+
+    component.ngOnInit();
+    await settle();
+
+    expect(dialog.open).not.toHaveBeenCalled();
+  });
+
+  it('ngOnInit_UnknownAssignValue_IsIgnored', async () => {
+    const { component, dialog } = setup({ role: 'Teacher', query: { assign: 'everyone' } });
+
+    component.ngOnInit();
+    await settle();
+
+    expect(dialog.open).not.toHaveBeenCalled();
   });
 });
 

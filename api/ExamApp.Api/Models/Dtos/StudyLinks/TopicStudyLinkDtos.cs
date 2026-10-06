@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Storage;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -45,6 +46,7 @@ public class CreateTopicStudyLinkDto
 
     [Required(ErrorMessage = "studyLinks.urlRequired")]
     [MaxLength(TopicStudyLinkLimits.UrlMaxLength, ErrorMessage = "studyLinks.urlTooLong")]
+    [NotStorageUrl("Konu çalışma bağlantısı: dış URL")]
     public string Url { get; set; } = string.Empty;
 
     /// <summary>Boş bırakılırsa URL'den çıkarılır (youtube.com / youtu.be → YouTube, diğerleri → Other).</summary>
@@ -70,6 +72,7 @@ public class UpdateTopicStudyLinkDto
 
     [Required(ErrorMessage = "studyLinks.urlRequired")]
     [MaxLength(TopicStudyLinkLimits.UrlMaxLength, ErrorMessage = "studyLinks.urlTooLong")]
+    [NotStorageUrl("Konu çalışma bağlantısı: dış URL")]
     public string Url { get; set; } = string.Empty;
 
     public TopicStudyLinkSourceType? SourceType { get; set; }
@@ -113,6 +116,7 @@ public class TopicStudyLinkDto
     public int? TopicId { get; set; }
     public int? SubTopicId { get; set; }
     public string Title { get; set; } = string.Empty;
+    [NotStorageUrl("Konu çalışma bağlantısı: dış URL")]
     public string Url { get; set; } = string.Empty;
     public TopicStudyLinkSourceType SourceType { get; set; }
     public int SortOrder { get; set; }
@@ -212,6 +216,7 @@ public class StudyLinkSummaryDto
 {
     public int Id { get; set; }
     public string Title { get; set; } = string.Empty;
+    [NotStorageUrl("Konu çalışma bağlantısı: dış URL")]
     public string Url { get; set; } = string.Empty;
     public TopicStudyLinkSourceType SourceType { get; set; }
 }

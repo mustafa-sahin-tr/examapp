@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Storage;
 using System;
 using System.Collections.Generic;
 using ExamApp.Api.Data;
@@ -32,6 +33,7 @@ public class CalendarEventDto
 
     public string? Subject { get; set; }
 
+    [StorageUrl(StorageArea.WorksheetCover, StorageArea.StudyPage)]
     public string? ImageUrl { get; set; }
 
     // --- reminder alanları ---
@@ -66,6 +68,7 @@ public class CalendarEventDto
     public StudyItemContentType? ContentType { get; set; }
 
     /// <summary>Link tipi — bağlantı adresi (yalnızca ContentType == Link iken dolu).</summary>
+    [NotStorageUrl("Link tipi çalışma etkinliğinin dış bağlantısı (YouTube/EBA vb.), MinIO nesnesi değil")]
     public string? Url { get; set; }
 
     /// <summary>Link tipi — bağlantının platformu (yalnızca ContentType == Link iken dolu).</summary>

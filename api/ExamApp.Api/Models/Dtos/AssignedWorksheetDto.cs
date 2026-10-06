@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Storage;
 using System;
 using ExamApp.Api.Data;
 
@@ -18,6 +19,7 @@ public class AssignedWorksheetDto
     public int MaxDurationSeconds { get; set; }
     public bool IsPracticeTest { get; set; }
     public string? Subtitle { get; set; }
+    [StorageUrl(StorageArea.WorksheetCover)]
     public string? ImageUrl { get; set; }
     public string? BadgeText { get; set; }
     public int? BookTestId { get; set; }

@@ -89,21 +89,12 @@ builder.Services.Configure<KeycloakSettings>(keycloakConfig);
 // gerçek değer taşımıyor ("" placeholder) — Development dışında boş secret ile
 // sessizce 401/invalid_client alınmasın diye açılışta açıkça patlat. Development'ta
 // docker-compose/.env veya Aspire AppHost parametreleri değeri zaten dolduruyor.
-if (!builder.Environment.IsDevelopment())
-{
-    // "devOnly" öneki .env.example/AppHost'taki dev-only Keycloak secret'larının
-    // ortak deseni (bkz. .env.example) — bunlar yanlışlıkla prod/staging'e
-    // taşınmışsa da boş secret'la aynı şekilde reddedilir.
-    static bool IsMissingOrDevOnly(string? value) =>
-        string.IsNullOrWhiteSpace(value) || value.StartsWith("devOnly", StringComparison.OrdinalIgnoreCase);
-
-    if (IsMissingOrDevOnly(keycloakConfig["ClientSecret"]) ||
-        IsMissingOrDevOnly(keycloakConfig["AdminClientSecret"]))
-    {
-        throw new InvalidOperationException(
-            "Keycloak:ClientSecret ve Keycloak:AdminClientSecret ortam değişkeninden (Keycloak__ClientSecret / Keycloak__AdminClientSecret) set edilmeli; Development dışında boş veya dev-only değer bırakılamaz.");
-    }
-}
+// Issue #372: ServiceClientSecret (exam-service, servisler arası token) da aynı kurala tabi.
+ExamApp.Foundation.Security.KeycloakSecretGuard.EnsureConfigured(
+    builder.Environment.IsDevelopment(),
+    ("Keycloak:ClientSecret", keycloakConfig["ClientSecret"]),
+    ("Keycloak:AdminClientSecret", keycloakConfig["AdminClientSecret"]),
+    ("Keycloak:ServiceClientSecret", keycloakConfig["ServiceClientSecret"]));
 
 builder.Services.AddAuthentication(options =>
     {
@@ -233,6 +224,13 @@ builder.Services.AddSingleton<IMinIoService, MinIoService>();
 // issue #365 (S1): bilinen bucket'ları oluşturur + prefix bazlı geçici anonim okuma politikasını uygular/düzeltir.
 builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddHostedService<ExamApp.Api.Services.Storage.MinioBucketBootstrapper>();
+// issue #365 (S2): [StorageUrl] alanları yalnız MVC JSON çıktısında kısa ömürlü imzalı /img URL'sine çevrilir
+// (SignalR/Redis/outbox serileştirmesi etkilenmez); istemciden gelen görsel adresleri StorageAreaPolicy ile
+// normalize edilir. İmzanın host'u gateway'in MinIO downstream adresi: MinioConfig:PresignEndpoint (yoksa Endpoint).
+builder.Services.AddSingleton<ExamApp.Api.Services.Storage.StorageAreaPolicy>();
+builder.Services.AddSingleton<ExamApp.Api.Services.Storage.IStorageUrlSigner, ExamApp.Api.Services.Storage.MinioStorageUrlSigner>();
+builder.Services.AddSingleton<Microsoft.Extensions.Options.IConfigureOptions<Microsoft.AspNetCore.Mvc.JsonOptions>,
+    ExamApp.Api.Services.Storage.StorageUrlJsonOptionsSetup>();
 builder.Services.AddScoped<IExamService, ExamService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetAssignmentService, ExamApp.Api.Services.Worksheets.WorksheetAssignmentService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.ITestSessionService, ExamApp.Api.Services.Worksheets.TestSessionService>();

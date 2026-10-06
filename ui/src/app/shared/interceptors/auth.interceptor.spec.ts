@@ -222,4 +222,57 @@ describe('authInterceptor', () => {
     expect(authServiceSpy.logout).not.toHaveBeenCalled();
     request.flush({});
   });
+
+  describe('MinIO storage images (/img/, issue #365)', () => {
+    const signedUrl =
+      '/img/exam-questions/questions/abc/question-v2.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=ak%2F20261006%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=deadbeef';
+
+    it('intercept_SignedImgRequestWithSession_DoesNotAttachBearerOrCredentials', () => {
+      localStorage.setItem('auth_token', 'token-123');
+
+      http.get(signedUrl, { responseType: 'blob' }).subscribe();
+
+      const request = httpMock.expectOne(signedUrl);
+
+      expect(request.request.headers.has('Authorization')).toBeFalse();
+      expect(request.request.withCredentials).toBeFalse();
+      expect(request.request.urlWithParams).toBe(signedUrl);
+      expect(authServiceSpy.isExpiringSoon).not.toHaveBeenCalled();
+      expect(authServiceSpy.refreshToken).not.toHaveBeenCalled();
+      request.flush(new Blob());
+    });
+
+    it('intercept_ImgRequestWithoutToken_DoesNotLogOut', () => {
+      http.get(signedUrl, { responseType: 'blob' }).subscribe();
+
+      const request = httpMock.expectOne(signedUrl);
+
+      expect(authServiceSpy.logout).not.toHaveBeenCalled();
+      expect(request.request.headers.has('Authorization')).toBeFalse();
+      request.flush(new Blob());
+    });
+
+    it('intercept_AbsoluteSameOriginImgUrl_DoesNotAttachBearer', () => {
+      localStorage.setItem('auth_token', 'token-123');
+      const url = `${location.origin}/img/worksheets/42-background.png?X-Amz-Signature=abc`;
+
+      http.get(url, { responseType: 'blob' }).subscribe();
+
+      const request = httpMock.expectOne(url);
+
+      expect(request.request.headers.has('Authorization')).toBeFalse();
+      request.flush(new Blob());
+    });
+
+    it('intercept_ApiPathContainingImgSegment_StillAttachesBearer', () => {
+      localStorage.setItem('auth_token', 'token-123');
+
+      http.get('/api/exam/img/list').subscribe();
+
+      const request = httpMock.expectOne('/api/exam/img/list');
+
+      expect(request.request.headers.get('Authorization')).toBe('Bearer token-123');
+      request.flush({});
+    });
+  });
 });

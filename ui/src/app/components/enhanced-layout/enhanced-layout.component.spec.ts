@@ -681,6 +681,25 @@ describe('EnhancedLayoutComponent menu routes (issues #374, #373)', () => {
     expect(route?.canActivate).toContain(studentGuard);
   });
 
+  it('study_HiddenForStudentInSidenavAndBottomNav (issue #382)', () => {
+    const student = create(['Student']);
+
+    expect(student.visibleMenuItems().map((i) => i.route)).not.toContain('/study');
+    expect(student.visibleBottomNavItems().map((i) => i.route)).not.toContain('/study');
+    expect(student.visibleMenuItems().map((i) => i.id)).not.toContain('study');
+    expect(student.visibleBottomNavItems().map((i) => i.id)).not.toContain('study');
+  });
+
+  it('routes_Study_RedirectsToDashboardWithoutRenderingSamplePage (issue #382)', () => {
+    const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
+    const route = children.find((r) => r.path === 'study');
+
+    expect(route).toBeDefined();
+    expect(route?.redirectTo).toBe('/dashboard');
+    expect(route?.component).toBeUndefined();
+    expect(route?.loadComponent).toBeUndefined();
+  });
+
   it('allRoutePaths_HelperResolvesNestedPaths', () => {
     const paths = allRoutePaths(routes);
     expect(paths).toContain('/programs/:id/detail');

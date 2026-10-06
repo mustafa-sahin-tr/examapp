@@ -31,7 +31,8 @@
       "resizeFailed": "The image could not be resized!",
       "uploadFailed": "The resized image could not be uploaded!",
       "resized": "Question image resized successfully!",
-      "resizeError": "An error occurred while resizing the question image: {0}"
+      "resizeError": "An error occurred while resizing the question image: {0}",
+      "invalidUrl": "Invalid image address. Only images uploaded to this platform can be used."
     },
 
     "classification": {

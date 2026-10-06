@@ -58,7 +58,7 @@
     "studentTitle": "Öğrenci Bilgileri",
     "teacherTitle": "Öğretmen Bilgileri",
     "parentTitle": "Veli Kaydı",
-    "parentHint": "Hesabınızı veli olarak tamamlamak üzeresiniz. Çocuklarınızı daha sonra profilinizden ekleyebilirsiniz.",
+    "parentHint": "Hesabınızı veli olarak tamamlamak üzeresiniz.",
     "success": "Kayıt tamamlandı!",
     "error": "Kayıt başarısız! Lütfen tekrar deneyin.",
     "teacherAccountPending": "Öğretmen kaydınız alındı; hesabınız yönetici onayı bekliyor.",
@@ -80,7 +80,7 @@
   },
   "parent": {
     "title": "Veli Kaydı",
-    "hint": "Hesabınızı veli olarak tamamlamak üzeresiniz. Çocuklarınızı daha sonra profilinizden ekleyebilirsiniz.",
+    "hint": "Hesabınızı veli olarak tamamlamak üzeresiniz.",
     "success": "Veli kaydı başarılı!",
     "error": "Veli kaydı başarısız! Tekrar deneyin."
   }

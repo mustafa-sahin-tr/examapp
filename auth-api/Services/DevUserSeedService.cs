@@ -14,7 +14,7 @@ namespace ExamApp.Api.Services;
 
 /// <summary>
 /// Bkz. <see cref="IDevUserSeedService"/>. Akış: ortam guard'ı → doğrulama (yalnızca seed alanı e-postaları,
-/// hiçbir yazma öncesi) → identity ön yükleme (soft-delete dahil) → Keycloak (tekil admin API ya da partial
+/// hiçbir yazma öncesi) → identity ön yükleme (soft-delete dahil) → Keycloak (tekil admin API; partial import #372 ile kaldırıldı
 /// import) → identity <c>User</c> upsert (tek transaction) → isteğe bağlı outbox event.
 ///
 /// <para>Güvenlik: e-posta <see cref="SeedDataConventions.IsSeedEmail"/> ile sınırlı — gerçek bir kullanıcının
@@ -65,9 +65,7 @@ public sealed class DevUserSeedService : IDevUserSeedService
         Validate(request);
 
         var role = AllowedRoles.First(r => r.Equals(request.Role, StringComparison.OrdinalIgnoreCase));
-        var mode = request.Mode.Equals(DevSeedUsersRequest.ModePartialImport, StringComparison.OrdinalIgnoreCase)
-            ? DevSeedUsersRequest.ModePartialImport
-            : DevSeedUsersRequest.ModeAdminApi;
+        var mode = DevSeedUsersRequest.ModeAdminApi;
 
         var response = new DevSeedUsersResponse { Mode = mode };
         var results = request.Users
@@ -93,10 +91,7 @@ public sealed class DevUserSeedService : IDevUserSeedService
 
         // ---- 1) Keycloak ----
         var sw = Stopwatch.StartNew();
-        if (mode == DevSeedUsersRequest.ModePartialImport)
-            await SeedKeycloakPartialImportAsync(request, role, results, StateOf, ct);
-        else
-            await SeedKeycloakAdminApiAsync(request, role, results, StateOf, ct);
+        await SeedKeycloakAdminApiAsync(request, role, results, StateOf, ct);
         response.KeycloakElapsedMs = sw.ElapsedMilliseconds;
 
         // ---- 2) Identity DB ----
@@ -357,9 +352,10 @@ public sealed class DevUserSeedService : IDevUserSeedService
             throw new ArgumentException("Parola en az 6 karakter olmalı.", nameof(request));
         if (!AllowedRoles.Contains(request.Role, StringComparer.OrdinalIgnoreCase))
             throw new ArgumentException("Rol Student/Teacher/Parent olmalı.", nameof(request));
-        if (!request.Mode.Equals(DevSeedUsersRequest.ModeAdminApi, StringComparison.OrdinalIgnoreCase) &&
-            !request.Mode.Equals(DevSeedUsersRequest.ModePartialImport, StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException($"Mode '{DevSeedUsersRequest.ModeAdminApi}' ya da '{DevSeedUsersRequest.ModePartialImport}' olmalı.", nameof(request));
+        if (request.Mode.Equals("partial-import", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Mode 'partial-import' kaldırıldı (#372: Keycloak partialImport manage-realm ister, servis hesaplarında yok); 'admin-api' kullanın.", nameof(request));
+        if (!request.Mode.Equals(DevSeedUsersRequest.ModeAdminApi, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException($"Mode yalnızca '{DevSeedUsersRequest.ModeAdminApi}' olabilir.", nameof(request));
 
         var duplicate = request.Users
             .Select(u => u.Email?.Trim() ?? string.Empty)
@@ -532,85 +528,6 @@ public sealed class DevUserSeedService : IDevUserSeedService
                 result.KeycloakStatus = DevSeedUsersResponse.StatusFailed;
                 result.Error = ex.Message;
                 _logger.LogWarning(ex, "dev seed-users: Keycloak hatası ({Email})", result.Email);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Tek istek: partialImport (SKIP), roller + önceden hash'lenmiş parola. Import'ta <c>realmRoles</c> realm
-    /// varsayılan rolünü (default-roles-*: account rolleri → JWT <c>aud=account</c>) otomatik eklemez; açıkça
-    /// eklenir, yoksa exam API/BadgeService token'ı reddeder. SKIPPED olanlar için id username ile aranır ve
-    /// (yalnızca seed kaydı varsa) eksik roller tamamlanır.
-    /// </summary>
-    private async Task SeedKeycloakPartialImportAsync(
-        DevSeedUsersRequest request, string role, List<DevSeedUserResult> results, Func<string, IdentityState> stateOf, CancellationToken ct)
-    {
-        var credential = KeycloakPasswordHasher.HashPbkdf2Sha512(request.Password);
-        var users = request.Users.Select(ToSeedUser).ToList();
-
-        KeycloakPartialImportResult import;
-        string defaultRole;
-        try
-        {
-            defaultRole = await _keycloak.GetRealmDefaultRoleNameAsync(ct);
-            import = await _keycloak.PartialImportUsersAsync(users, new[] { role, defaultRole }, credential, ct);
-        }
-        catch (KeycloakException ex)
-        {
-            foreach (var r in results)
-            {
-                r.KeycloakStatus = DevSeedUsersResponse.StatusFailed;
-                r.Error = ex.Message;
-            }
-            _logger.LogWarning(ex, "dev seed-users: partial import başarısız");
-            return;
-        }
-
-        var roles = new RoleCache(_keycloak);
-
-        for (var i = 0; i < users.Count; i++)
-        {
-            var result = results[i];
-            try
-            {
-                if (!import.Results.TryGetValue(users[i].Username, out var entry))
-                {
-                    result.KeycloakStatus = DevSeedUsersResponse.StatusFailed;
-                    result.Error = "Partial import sonucu bu kullanıcıyı içermiyor.";
-                    continue;
-                }
-
-                var isAdded = entry.Action.Equals("ADDED", StringComparison.OrdinalIgnoreCase);
-                var state = stateOf(result.Email);
-                if (!isAdded && state == IdentityState.Foreign)
-                {
-                    // Yabancı: id araması dahil hiçbir Keycloak çağrısı yapılmaz.
-                    MarkForeign(result, ForeignError);
-                    continue;
-                }
-
-                var keycloakId = entry.Id ?? await _keycloak.FindUserIdByUsernameAsync(users[i].Username, ct);
-                if (keycloakId is null)
-                {
-                    result.KeycloakStatus = DevSeedUsersResponse.StatusFailed;
-                    result.Error = $"Partial import '{entry.Action}' döndü ama kullanıcı id'si bulunamadı.";
-                    continue;
-                }
-
-                if (isAdded)
-                {
-                    result.KeycloakId = keycloakId;
-                    result.KeycloakStatus = DevSeedUsersResponse.StatusCreated;
-                    continue;
-                }
-
-                await TryRepairExistingAsync(keycloakId, request.Users[i], result, role, defaultRole, state, roles, request, ct);
-            }
-            catch (KeycloakException ex)
-            {
-                result.KeycloakId = null;
-                result.KeycloakStatus = DevSeedUsersResponse.StatusFailed;
-                result.Error = ex.Message;
             }
         }
     }

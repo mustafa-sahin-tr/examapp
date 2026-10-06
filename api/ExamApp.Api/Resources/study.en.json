@@ -8,7 +8,8 @@
       "subTopicIdsRequired": "subTopicIds must contain at least one item.",
       "noValidSubTopicIds": "No valid subTopicIds were found.",
       "someSubTopicsMissing": "Some subTopic records could not be found.",
-      "attached": "Image attached successfully."
+      "attached": "Image attached successfully.",
+      "invalidUrl": "Invalid image address. Only study page images uploaded to this platform can be used, and file or folder names must not contain the & or % characters."
     },
     "content": {
       "imageRequired": "You must add at least one image.",

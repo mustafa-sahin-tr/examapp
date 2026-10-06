@@ -103,7 +103,9 @@ public class WorksheetCalendarService : IWorksheetCalendarService
         var fromDate = DateOnly.FromDateTime(fromUtc).AddDays(-1);
         var toDate = DateOnly.FromDateTime(toUtc);
 
+        // issue #376: onaylı randevu slotu silinse de takvimde görünür (yalnız slot filtresi kapanır).
         var rows = await _context.Bookings
+            .WithSoftDeletedSlots()
             .AsNoTracking()
             .Where(ownerPredicate)
             .Where(b => b.Status == BookingStatus.Approved

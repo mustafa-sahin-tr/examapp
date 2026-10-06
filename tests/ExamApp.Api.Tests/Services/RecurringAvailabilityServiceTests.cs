@@ -716,6 +716,37 @@ public class RecurringAvailabilityServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Booked_recurring_occurrence_cannot_be_deleted_by_series_or_single_delete()
+    {
+        // issue #376: aktif randevulu occurrence ne "tüm seri" ne "sadece bu hafta" ile silinir; randevu listede kalır.
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync();
+        var created = await CreateRuleAsync(WednesdayRule());
+        var bookedSlotId = created.GeneratedSlotIds[1];
+        await SeedBookingAsync(bookedSlotId);
+        await using (var ctx = _db.NewContext())
+            await ctx.Bookings.Where(b => b.AvailabilitySlotId == bookedSlotId)
+                .ExecuteUpdateAsync(set => set.SetProperty(b => b.Status, BookingStatus.Approved));
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).DeleteRuleAsync(TeacherUserId, created.Rule!.Id)).PreservedSlotIds.ShouldBe(new[] { bookedSlotId });
+
+        await using (var ctx = _db.NewContext())
+        {
+            var single = await NewBookingService(ctx).DeleteSlotAsync(TeacherUserId, bookedSlotId);
+            single.Conflict.ShouldBeTrue();
+            single.ErrorCode.ShouldBe(BookingErrorCodes.SlotHasActiveBooking);
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            (await ctx.TeacherAvailabilitySlots.IgnoreQueryFilters().SingleAsync(s => s.Id == bookedSlotId)).IsDeleted.ShouldBeFalse();
+            var list = await NewBookingService(ctx).GetTeacherBookingsAsync(TeacherUserId, 0, 50);
+            list.Items.ShouldHaveSingleItem().AvailabilitySlotId.ShouldBe(bookedSlotId);
+        }
+    }
+
+    [Fact]
     public async Task DeleteRuleAsync_NotYetStartedRule_KeepsEffectiveUntilNotBeforeEffectiveFrom()
     {
         await SeedTeacherAsync(TeacherId, TeacherUserId);

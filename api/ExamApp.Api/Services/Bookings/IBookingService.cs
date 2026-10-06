@@ -19,8 +19,11 @@ public interface IBookingService
     /// <summary>Öğretmenin kendi slotları (geçmiş + gelecek), aktif booking durumuyla birlikte.</summary>
     Task<AvailabilitySlotListResultDto> GetMySlotsAsync(int teacherUserId, int skip, int take, CancellationToken ct = default);
 
-    /// <summary>Öğretmen kendi slotunu siler. Aktif (Pending/Approved) booking'i varsa silinemez.</summary>
-    Task<ResponseBaseDto> DeleteSlotAsync(int teacherUserId, int slotId, CancellationToken ct = default);
+    /// <summary>
+    /// Öğretmen kendi slotunu siler. Aktif (Pending/Approved) booking'i varsa silinemez → Conflict +
+    /// <see cref="BookingErrorCodes.SlotHasActiveBooking"/> (issue #376; kontrol + silme öğretmen müsaitlik kilidi altında).
+    /// </summary>
+    Task<AvailabilitySlotDeleteResultDto> DeleteSlotAsync(int teacherUserId, int slotId, CancellationToken ct = default);
 
     /// <summary>Öğrenciye açık liste: onaylı öğretmenin gelecekteki, aktif booking'i olmayan slotları.</summary>
     Task<AvailabilitySlotListResultDto> GetTeacherOpenSlotsAsync(int teacherId, SchoolScope requester, int skip, int take, CancellationToken ct = default);

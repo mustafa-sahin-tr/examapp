@@ -59,3 +59,18 @@ drown out everything). `coverage/` is gitignored.
   transitions (SQLite has no `SKIP LOCKED`).
 - Hangfire job execution end to end.
 - The full `ExamService` / `QuestionService` transactional flows.
+
+## CI (`.github/workflows/tests.yml`, #416)
+
+Runs on `pull_request` to master and `push` to master. Branch protection is **not** changed;
+these are the checks that exist:
+
+| Check | Runs | Status |
+|---|---|---|
+| `dotnet-unit` | Foundation/Api/OutboxPublisher/BadgeService/AuthApi/Gateway tests with `--filter "Category!=Integration"` | required-candidate |
+| `integration` | `ExamApp.Api.IntegrationTests` + tests tagged `[Trait("Category","Integration")]` (Testcontainers Postgres) | `continue-on-error` (PO decision) |
+| `ui-tests` | `ui/` `ng test` (yarn, ChromeHeadlessCI) | `continue-on-error` until #394 |
+| `auth-ui-tests` | `auth-ui/` `ng test` (npm ci, ChromeHeadlessCI) | required-candidate |
+
+Any test that needs Docker/Postgres in a unit project must carry `[Trait("Category", "Integration")]`
+so `dotnet-unit` skips it. UI CI uses `karma.ci.conf.js` (`--no-sandbox` launcher); local `ng test` is unchanged.

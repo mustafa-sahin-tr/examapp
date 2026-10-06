@@ -162,6 +162,7 @@ var app = builder.Build();
 app.UseCors("SignalRCors");
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRouteRoleAuth();
 
 app.Use(async (context, next) =>
 {

@@ -19,7 +19,7 @@
         <div class="hero">
           <div class="hero-media">
             @if (d.worksheet.imageUrl) {
-              <img [src]="d.worksheet.imageUrl" [alt]="d.worksheet.name" />
+              <img [src]="d.worksheet.imageUrl" [alt]="d.worksheet.name" [appStorageImageRetry]="imageRefresh" />
             } @else {
               <div class="thumb"><mat-icon>schedule</mat-icon></div>
             }
@@ -120,7 +120,8 @@
               <h3><span class="dot"></span>{{ t('start.sampleTitle') }}</h3>
               @if (d.sampleQuestion?.imageUrl) {
                 <div class="sample">
-                  <img [src]="d.sampleQuestion!.imageUrl" [alt]="t('start.sampleAlt')" class="sample-img" />
+                  <img [src]="d.sampleQuestion!.imageUrl" [alt]="t('start.sampleAlt')" class="sample-img"
+                    [appStorageImageRetry]="imageRefresh" />
                 </div>
               } @else {
                 <div class="sample">
@@ -422,7 +423,7 @@
         <div class="hero">
           <div class="hero-media small">
             @if (d.worksheet.imageUrl) {
-              <img [src]="d.worksheet.imageUrl" [alt]="d.worksheet.name" />
+              <img [src]="d.worksheet.imageUrl" [alt]="d.worksheet.name" [appStorageImageRetry]="imageRefresh" />
             } @else {
               <div class="thumb"><mat-icon>schedule</mat-icon></div>
             }

@@ -22,7 +22,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
-import { Observable, forkJoin, of } from 'rxjs';
+import { EMPTY, Observable, forkJoin, of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
@@ -36,6 +36,8 @@ import {
 import { BadgeService } from '../../services/badge.service';
 import { DailyStreakInfo, dailyStreakFrom } from '../../shared/utils/daily-streak.util';
 import { currentUserId } from '../../shared/utils/current-user-id.util';
+import { createStorageImageResolver } from '../../shared/utils/storage-image-refresh.util';
+import { StorageImageRetryDirective } from '../../shared/directives/storage-image-retry.directive';
 import { PracticeService } from '../../services/practice.service';
 import { StudentService } from '../../services/student.service';
 import { SubjectService } from '../../services/subject.service';
@@ -123,6 +125,7 @@ const EMPTY_HISTORY: Paged<PracticeSession> = { items: [], totalCount: 0, pageNu
     QuestionLiteViewComponent,
     DailyProgressStepsComponent,
     TranslocoDirective,
+    StorageImageRetryDirective,
   ],
   providers: [provideTranslocoScope(SCOPE)],
   templateUrl: './practice-solve.component.html',
@@ -228,6 +231,28 @@ export class PracticeSolveComponent implements OnInit {
   readonly selectedAnswerId = signal<number | null>(null);
   readonly selectedChoice = signal<AnswerChoice | undefined>(undefined);
   readonly result = signal<PracticeAnswerResult | null>(null);
+
+  /**
+   * issue #365 (S3): görsel yüklenemezse (imzalı URL'nin süresi doldu) oturumun salt okunur review'u yeniden çekilir ve
+   * aynı görselin taze imzalı URL'siyle bir kez yeniden denenir. `next` değil `review`: cevaplanmış soruda `next` yeni
+   * soru seçerdi (yan etki); review bekleyen sorunun doğru şıkkını zaten gizler.
+   */
+  readonly stageImageRefresh = createStorageImageResolver(
+    () => {
+      const id = this.session()?.id;
+      return id != null ? this.practiceService.getSessionReview(id) : EMPTY;
+    },
+    // Soru değişince (cevap sonrası sonraki soru) 30 sn'lik önbellekteki eski review yeni sorunun görselini içermez.
+    { cacheKey: () => `${this.session()?.id}:${this.question()?.id}` }
+  );
+  /** Geçmiş oturum inceleme ekranı için aynısı (incelenen oturumun review'u). */
+  readonly reviewImageRefresh = createStorageImageResolver(
+    () => {
+      const id = this.review()?.session.id;
+      return id != null ? this.practiceService.getSessionReview(id) : EMPTY;
+    },
+    { cacheKey: () => this.review()?.session.id }
+  );
   readonly answeredCount = signal(0);
   readonly correctCount = signal(0);
   readonly skippedCount = signal(0);

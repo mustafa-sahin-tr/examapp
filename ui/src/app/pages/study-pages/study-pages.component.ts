@@ -28,6 +28,8 @@ import { StudyPageService } from '../../services/study-page.service';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { createStorageImageResolver } from '../../shared/utils/storage-image-refresh.util';
+import { StorageImageRetryDirective } from '../../shared/directives/storage-image-retry.directive';
 
 /**
  * Çeviriler kendi Transloco scope'unda: `public/i18n/study-pages/<lang>.json` (issue #183).
@@ -71,6 +73,7 @@ const PLATFORM_LABEL_KEYS: Record<StudyPageLinkPlatform, string> = {
     PaginationComponent,
     TranslocoDirective,
     TranslocoPipe,
+    StorageImageRetryDirective,
   ],
   providers: [provideTranslocoScope(STUDY_PAGES_SCOPE)],
 })
@@ -96,6 +99,14 @@ export class StudyPagesComponent {
   pageSize = 10;
   selectedSubjectId = signal<number | null>(null);
   deletingId = signal<number | null>(null);
+
+  /**
+   * issue #365 (S3): kapak görseli yüklenemezse (imzalı URL'nin süresi doldu) aynı sayfa (aynı filtre) yeniden çekilir
+   * ve görsel taze imzalı URL'siyle bir kez yeniden denenir; liste durumu değişmez.
+   */
+  readonly coverImageRefresh = createStorageImageResolver(() => this.studyPageService.getPaged(this.currentFilter()), {
+    cacheKey: () => JSON.stringify(this.currentFilter()),
+  });
 
   constructor() {
     this.preloadScope();
@@ -174,14 +185,18 @@ export class StudyPagesComponent {
     });
   }
 
+  private currentFilter(page: number = this.pageNumber) {
+    return {
+      search: this.searchControl.value || '',
+      subjectId: this.selectedSubjectId(),
+      pageNumber: page,
+      pageSize: this.pageSize,
+    };
+  }
+
   private loadPages(page: number) {
     this.studyPageService
-      .getPaged({
-        search: this.searchControl.value || '',
-        subjectId: this.selectedSubjectId(),
-        pageNumber: page,
-        pageSize: this.pageSize,
-      })
+      .getPaged(this.currentFilter(page))
       .subscribe((result) => {
         this.pagedStudyPagesSignal.set(result);
         this.deletingId.set(null);

@@ -161,7 +161,7 @@
               </button>
             </div>
 
-            <app-question-canvas-view-v5 #canvasView [questionRegion]="questionData.region"
+            <app-question-canvas-view-v5 #canvasView [questionRegion]="questionData.region" [imageRefresh]="imageRefresh"
               [selectedChoice]="selectedChoices().get(questionData.region.id)"
               (choiceSelected)="selectChoiceForQuestion($event, questionData.index)" (answerOpened)="openAnswer($event)"
               [correctAnswerVisible]="correctAnswerVisible" [class]="'canvas-view-' + questionsPerView()">
@@ -187,7 +187,7 @@
 
             <!-- Soru İçeriği -->
             <div class="question-content">
-              <app-question-lite-view [question]="questionData.question.question"
+              <app-question-lite-view [question]="questionData.question.question" [imageRefresh]="imageRefresh"
                 [selectedAnswerId]="questionData.question.selectedAnswerId"
                 [isPracticeTest]="testInstance.isPracticeTest"
                 (answerSelected)="selectAnswerForQuestion($event, questionData.index)"

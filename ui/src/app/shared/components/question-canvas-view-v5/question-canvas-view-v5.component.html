@@ -1,12 +1,12 @@
 <div #qcvRoot class="qcv4-root" *transloco="let t; prefix: 'shared.questionCanvas'">
   <div class="qcv4-passage" *ngIf="!hidePassage && passageImageSource() as pUrl">
-    <img class="qcv4-passage__image" [src]="pUrl" [alt]="t('passageAlt')" />
+    <img class="qcv4-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
   </div>
   <div class="qcv4-container" [class]="'layout-' + currentLayout()">
     <div class="qcv4-question-image-wrapper">
       <div #questionImageBox [style.marginLeft.px]="currentMarginLeft()" class="qcv4-main-image-box">
         <img #questionImage class="qcv4-question-image" [src]="questionImageSource()" [alt]="t('questionAlt')"
-          [style.width.px]="questionImageWidth()" (load)="updateVisualScale()" />
+          [style.width.px]="questionImageWidth()" (load)="updateVisualScale()" [appStorageImageRetry]="imageRefresh" />
       </div>
     </div>
     <div class="qcv4-answers-grid" [style.marginLeft.px]="answerMarginLeft()">
@@ -16,7 +16,7 @@
         (mouseenter)="hoverAnswer(answer)" (mouseleave)="hoverAnswer(null)" (click)="selectAnswer($index)"
         (keydown.enter)="selectAnswer($index)" (keydown.space)="$event.preventDefault(); selectAnswer($index)">
         <img class="qcv4-answer-image" [src]="answer.imageUrl" [alt]="t('choiceAria', { label: $index + 1 })"
-          [style.width.px]="getScaledAnswerWidth(answer)" />
+          [style.width.px]="getScaledAnswerWidth(answer)" [appStorageImageRetry]="imageRefresh" />
       </div>
       }
 

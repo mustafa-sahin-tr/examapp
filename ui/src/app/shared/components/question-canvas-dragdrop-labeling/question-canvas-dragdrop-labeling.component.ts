@@ -5,6 +5,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoDirective, TranslocoPipe } from '@jsverse/transloco';
 import { QuestionRegion } from '../../../models/draws';
+import { StorageImageResolver } from '../../utils/storage-image-refresh.util';
+import { StorageImageRetryDirective } from '../../directives/storage-image-retry.directive';
 
 export interface DragDropLabelingPlanV1 {
   version: 1;
@@ -24,7 +26,15 @@ export interface DragDropLabelingPlacement {
 @Component({
   selector: 'app-question-canvas-dragdrop-labeling',
   standalone: true,
-  imports: [CommonModule, DragDropModule, MatIconModule, MatButtonModule, TranslocoDirective, TranslocoPipe],
+  imports: [
+    CommonModule,
+    DragDropModule,
+    MatIconModule,
+    MatButtonModule,
+    TranslocoDirective,
+    TranslocoPipe,
+    StorageImageRetryDirective,
+  ],
   templateUrl: './question-canvas-dragdrop-labeling.component.html',
   styleUrls: ['./question-canvas-dragdrop-labeling.component.scss'],
 })
@@ -38,6 +48,9 @@ export class QuestionCanvasDragDropLabelingComponent {
     this._plan.set(this.parsePlan(value));
     this.resetStateFromPlan();
   }
+
+  /** issue #365 (S3): görsel yüklenemezse taze imzalı URL'yi bulan fonksiyon (sahip sayfa verir). */
+  @Input() imageRefresh: StorageImageResolver | null = null;
 
   // If true, show immediate feedback (IsExample)
   @Input() practiceFeedback = false;

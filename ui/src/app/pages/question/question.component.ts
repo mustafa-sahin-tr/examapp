@@ -28,6 +28,9 @@ import { BookService } from '../../services/book.service';
 import { Passage } from '../../models/question';
 import { PassageCardComponent } from '../../shared/components/passage-card/passage-card.component';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { EMPTY } from 'rxjs';
+import { createStorageImageResolver } from '../../shared/utils/storage-image-refresh.util';
+import { StorageImageRetryDirective } from '../../shared/directives/storage-image-retry.directive';
 
 /** Sayfa metinleri kendi Transloco scope'unda: `public/i18n/question/<lang>.json` (issue #183). */
 const QUESTION_SCOPE = 'question';
@@ -53,6 +56,7 @@ const QUESTION_SCOPE = 'question';
     QuillModule,
     PassageCardComponent,
     TranslocoDirective,
+    StorageImageRetryDirective,
   ],
   providers: [provideTranslocoScope(QUESTION_SCOPE)],
 })
@@ -63,6 +67,14 @@ export class QuestionComponent implements OnInit {
   topics: Topic[] = [];
   subTopics: SubTopic[] = [];
   id: number | null = null;
+  /**
+   * issue #365 (S3): düzenlenen sorunun kayıtlı görseli yüklenemezse (imzalı URL'nin süresi doldu) soru yeniden çekilir
+   * ve taze imzalı URL ile bir kez yeniden denenir. Yeni seçilen dosya önizlemeleri (data:) etkilenmez.
+   */
+  readonly imageRefresh = createStorageImageResolver(
+    () => (this.id != null ? this.questionService.get(this.id) : EMPTY),
+    { cacheKey: () => this.id }
+  );
   point: number = 5;
   isEditMode: boolean = false;
   testInstance: TestInstance = {

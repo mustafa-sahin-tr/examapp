@@ -7,7 +7,9 @@
       "answerSaved": "Cevap başarıyla kaydedildi.",
       "instanceNotFound": "Test oturumu bulunamadı.",
       "ended": "Test başarıyla sonlandırıldı.",
-      "alreadyCompleted": "Bu test zaten tamamlanmış."
+      "alreadyCompleted": "Bu test zaten tamamlanmış.",
+      "answerRejectedNotInProgress": "Test tamamlandığı için cevap artık kaydedilemez.",
+      "notInProgress": "Bu test artık devam etmiyor."
     },
 
     "accessRequest": {

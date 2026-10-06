@@ -13,6 +13,19 @@
     "answeredRatio": "Completion rate",
     "answeredPercent": "{{percent}}% complete"
   },
+  "finish": {
+    "dialogTitle": "Finish test",
+    "dialogUnanswered": "{{count}} question(s) left blank. Do you still want to finish the test? You can't change your answers afterwards.",
+    "dialogAllAnswered": "You've answered every question. Do you want to finish the test? You can't change your answers afterwards.",
+    "dialogConfirm": "Finish test",
+    "dialogCancel": "Keep going",
+    "saveFailed": "Your last answer couldn't be saved, so the test wasn't finished. Check your connection and try again.",
+    "completeFailed": "The test couldn't be finished. Please try again.",
+    "alreadyCompleted": "This test is no longer in progress (finished or expired), so you've been taken to the results page.",
+    "dismiss": "OK",
+    "timeUpTitle": "Time is up",
+    "retry": "Try again"
+  },
   "question": {
     "bookmark": "Bookmark question",
     "removeBookmark": "Remove bookmark",

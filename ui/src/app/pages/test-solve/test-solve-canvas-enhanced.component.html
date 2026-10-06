@@ -64,7 +64,7 @@
           <mat-icon>pause</mat-icon>
         </button>
         }
-        <button mat-raised-button color="primary" (click)="completeTest()" class="complete-btn">
+        <button mat-raised-button color="primary" (click)="confirmFinishTest()" [disabled]="finishing()" class="complete-btn">
           <mat-icon>done_all</mat-icon>
           {{ t('header.finishTest') }}
         </button>

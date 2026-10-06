@@ -13,6 +13,19 @@
     "answeredRatio": "Cevaplanma oranı",
     "answeredPercent": "%{{percent}} tamamlandı"
   },
+  "finish": {
+    "dialogTitle": "Sınavı bitir",
+    "dialogUnanswered": "{{count}} soru boş. Yine de sınavı bitirmek istiyor musun? Bitirdikten sonra cevaplarını değiştiremezsin.",
+    "dialogAllAnswered": "Tüm soruları cevapladın. Sınavı bitirmek istiyor musun? Bitirdikten sonra cevaplarını değiştiremezsin.",
+    "dialogConfirm": "Sınavı Bitir",
+    "dialogCancel": "Vazgeç",
+    "saveFailed": "Son cevabın kaydedilemedi, sınav bitirilmedi. Bağlantını kontrol edip tekrar dene.",
+    "completeFailed": "Sınav bitirilemedi. Lütfen tekrar dene.",
+    "alreadyCompleted": "Bu sınav artık devam etmiyor (tamamlanmış ya da süresi dolmuş); sonuç sayfasına yönlendirildin.",
+    "dismiss": "Tamam",
+    "timeUpTitle": "Süre doldu",
+    "retry": "Tekrar dene"
+  },
   "question": {
     "bookmark": "Soruyu işaretle",
     "removeBookmark": "İşareti kaldır",

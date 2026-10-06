@@ -98,6 +98,72 @@ public class WorksheetAssignmentServiceTeacherViewTests : IDisposable
         assignment.NotStartedCount.ShouldBe(1);
     }
 
+    // issue #367: one live instance per (student, worksheet) - a test solved BEFORE it was assigned cannot be started
+    // again, so a Completed instance satisfies a later assignment. An unfinished one still has to start in the window.
+    [Fact]
+    public async Task Completed_before_the_assignment_then_assigned_counts_as_Completed_but_an_unfinished_early_start_does_not()
+    {
+        int wsId, schoolId;
+        await using (var ctx = _db.NewContext())
+        {
+            var g = new Grade { Name = "7" };
+            var school = new School { Name = "Okul" };
+            ctx.AddRange(g, school);
+            await ctx.SaveChangesAsync();
+            schoolId = school.Id;
+            var ws = new Worksheet { Name = "W", Description = "", GradeId = g.Id };
+            ctx.Worksheets.Add(ws);
+            await ctx.SaveChangesAsync();
+            wsId = ws.Id;
+
+            var done = new Student { UserId = 11, StudentNumber = "1", SchoolName = "s", SchoolId = school.Id, GradeId = g.Id };
+            var open = new Student { UserId = 12, StudentNumber = "2", SchoolName = "s", SchoolId = school.Id, GradeId = g.Id };
+            ctx.AddRange(done, open);
+            await ctx.SaveChangesAsync();
+
+            var startAt = DateTime.UtcNow.AddDays(-1);
+            ctx.SetCurrentUser(TeacherUserId);
+            ctx.WorksheetAssignments.Add(new WorksheetAssignment
+            {
+                WorksheetId = ws.Id, GradeId = g.Id, StartAt = startAt, EndAt = DateTime.UtcNow.AddDays(5),
+            });
+            ctx.TestInstances.AddRange(
+                new WorksheetInstance
+                {
+                    StudentId = done.Id, WorksheetId = ws.Id, Status = WorksheetInstanceStatus.Completed,
+                    StartTime = startAt.AddDays(-10), EndTime = startAt.AddDays(-10).AddMinutes(20),
+                },
+                new WorksheetInstance
+                {
+                    StudentId = open.Id, WorksheetId = ws.Id, Status = WorksheetInstanceStatus.Started,
+                    StartTime = startAt.AddDays(-10),
+                });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var result = await NewService(read).GetWorksheetAssignmentsForTeacherAsync(wsId, SchoolScope.For(TeacherUserId, schoolId));
+
+        var assignment = result.Assignments.ShouldHaveSingleItem();
+        assignment.CompletedCount.ShouldBe(1);
+        assignment.InProgressCount.ShouldBe(0);
+        assignment.NotStartedCount.ShouldBe(1);
+    }
+
+    [Theory]
+    // (instance start offset from StartAt in hours, status, has EndAt, expected)
+    [InlineData(-240, WorksheetInstanceStatus.Completed, true, true)]     // completed before the window: counts
+    [InlineData(-240, WorksheetInstanceStatus.Started, true, false)]      // unfinished early start: does not
+    [InlineData(1, WorksheetInstanceStatus.Started, true, true)]          // started inside: counts (caller resolves status)
+    [InlineData(24 * 30, WorksheetInstanceStatus.Completed, true, false)] // started after EndAt: never
+    [InlineData(24 * 30, WorksheetInstanceStatus.Completed, false, true)] // open-ended window
+    public void AssignmentInstanceWindow_rule(int offsetHours, WorksheetInstanceStatus status, bool hasEndAt, bool expected)
+    {
+        var startAt = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+        DateTime? endAt = hasEndAt ? startAt.AddDays(7) : null;
+        AssignmentInstanceWindow.Counts(startAt.AddHours(offsetHours), status, startAt, endAt).ShouldBe(expected);
+    }
+
     // ---- WorksheetAssignment entity ----
 
     [Theory]

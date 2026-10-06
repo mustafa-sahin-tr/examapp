@@ -109,6 +109,111 @@ public class TestSessionServiceFlowTests : IDisposable
         result.Message.ShouldContain("tamamlan");
     }
 
+    // issue #367 (security review): retake point farming. EndTest always stamps EndTime; the old `EndTime == null`
+    // lookup never found the completed instance, so start-test opened a fresh Started one (new TestInstanceId →
+    // BadgeService awards the same questions again).
+    [Fact]
+    public async Task StartTest_after_a_real_EndTest_returns_alreadyCompleted_and_creates_no_new_instance()
+    {
+        var w = await SeedAsync();
+        int first;
+        await using (var ctx = _db.NewContext())
+        {
+            var service = NewService(ctx);
+            first = (await service.StartTestAsync(w.WorksheetId, Student(w))).InstanceId;
+            (await service.EndTest(first, w.StudentUserId)).Success.ShouldBeTrue();
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var retake = await NewService(ctx).StartTestAsync(w.WorksheetId, Student(w));
+            retake.Success.ShouldBeFalse();
+            retake.InstanceId.ShouldBe(first);
+            retake.Message.ShouldContain("tamamlan");
+        }
+
+        await using var check = _db.NewContext();
+        (await check.TestInstances.CountAsync()).ShouldBe(1);
+        (await check.TestInstanceQuestions.CountAsync()).ShouldBe(2);
+    }
+
+    [Theory]
+    [InlineData(WorksheetInstanceStatus.Completed)]
+    [InlineData(WorksheetInstanceStatus.Expired)]
+    public async Task StartTest_refuses_any_finished_instance_even_with_an_EndTime(WorksheetInstanceStatus status)
+    {
+        var w = await SeedAsync();
+        int existingId;
+        await using (var ctx = _db.NewContext())
+        {
+            var inst = new WorksheetInstance
+            {
+                StudentId = w.StudentId, WorksheetId = w.WorksheetId, Status = status,
+                StartTime = DateTime.UtcNow.AddHours(-1), EndTime = DateTime.UtcNow.AddMinutes(-30),
+            };
+            ctx.TestInstances.Add(inst);
+            await ctx.SaveChangesAsync();
+            existingId = inst.Id;
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var result = await NewService(ctx).StartTestAsync(w.WorksheetId, Student(w));
+            result.Success.ShouldBeFalse();
+            result.InstanceId.ShouldBe(existingId);
+        }
+
+        (await _db.NewContext().TestInstances.CountAsync()).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task StartTest_after_a_soft_deleted_attempt_starts_fresh()
+    {
+        // Student self-reset (StudentResetJob) soft-deletes instances; the unique index is filtered on NOT IsDeleted.
+        var w = await SeedAsync();
+        int old;
+        await using (var ctx = _db.NewContext())
+        {
+            var inst = new WorksheetInstance
+            {
+                StudentId = w.StudentId, WorksheetId = w.WorksheetId, Status = WorksheetInstanceStatus.Completed,
+                StartTime = DateTime.UtcNow.AddHours(-1), EndTime = DateTime.UtcNow.AddMinutes(-30), IsDeleted = true,
+            };
+            ctx.TestInstances.Add(inst);
+            await ctx.SaveChangesAsync();
+            old = inst.Id;
+        }
+
+        await using var ctx2 = _db.NewContext();
+        var result = await NewService(ctx2).StartTestAsync(w.WorksheetId, Student(w));
+        result.Success.ShouldBeTrue();
+        result.InstanceId.ShouldNotBe(old);
+    }
+
+    // issue #367 (security Low-3): only the (StudentId, WorksheetId) index takes the "read the winner" path.
+    [Fact]
+    public async Task Only_the_live_instance_unique_index_is_treated_as_a_concurrent_start()
+    {
+        var w = await SeedAsync();
+
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.TestInstances.AddRange(
+                new WorksheetInstance { StudentId = w.StudentId, WorksheetId = w.WorksheetId, Status = WorksheetInstanceStatus.Started, StartTime = DateTime.UtcNow },
+                new WorksheetInstance { StudentId = w.StudentId, WorksheetId = w.WorksheetId, Status = WorksheetInstanceStatus.Started, StartTime = DateTime.UtcNow });
+            var dup = await Should.ThrowAsync<DbUpdateException>(() => ctx.SaveChangesAsync());
+            TestSessionService.IsDuplicateLiveInstanceViolation(dup).ShouldBeTrue();
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            // A different unique index (IX_Students_UserId) must not be swallowed.
+            ctx.Students.Add(new Student { UserId = w.StudentUserId, StudentNumber = "dup", SchoolName = "s" });
+            var other = await Should.ThrowAsync<DbUpdateException>(() => ctx.SaveChangesAsync());
+            TestSessionService.IsDuplicateLiveInstanceViolation(other).ShouldBeFalse();
+        }
+    }
+
     // ---- GetTestInstanceQuestionsAsync ----
 
     [Fact]
@@ -152,10 +257,14 @@ public class TestSessionServiceFlowTests : IDisposable
 
         await using (var ctx = _db.NewContext())
         {
-            // a started (not completed) instance — must be excluded
+            // a started (not completed) instance — must be excluded. issue #367: one live instance per
+            // (student, worksheet) (unique index), so it lives on a second worksheet.
+            var other = new Worksheet { Name = "Other", Description = "", GradeId = w.GradeId };
+            ctx.Worksheets.Add(other);
+            await ctx.SaveChangesAsync();
             ctx.TestInstances.Add(new WorksheetInstance
             {
-                StudentId = w.StudentId, WorksheetId = w.WorksheetId,
+                StudentId = w.StudentId, WorksheetId = other.Id,
                 Status = WorksheetInstanceStatus.Started, StartTime = DateTime.UtcNow,
             });
 

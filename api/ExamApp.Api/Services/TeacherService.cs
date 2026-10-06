@@ -1482,7 +1482,8 @@ public class TeacherService : ITeacherService
     }
 
     /// <summary>
-    /// Tek atama penceresi için "Completed" kuralı: pencere içindeki en son instance
+    /// Tek atama penceresi için "Completed" kuralı: pencerede sayılan en son instance
+    /// (AssignmentInstanceWindow; issue #367: pencereden önce tamamlanmış instance da sayılır)
     /// Completed ise ya da Started olup EndTime dolmuşsa tamamlanmıştır.
     /// </summary>
     private static bool IsCompletedInWindow(AssignmentWindow window, List<InstanceSnapshot>? studentInstances)
@@ -1492,11 +1493,9 @@ public class TeacherService : ITeacherService
             return false;
         }
 
-        var relevantInstance = studentInstances
-            .Where(ti => ti.StartTime >= window.StartAt
-                         && (!window.EndAt.HasValue || ti.StartTime <= window.EndAt.Value))
-            .OrderByDescending(ti => ti.StartTime)
-            .FirstOrDefault();
+        // issue #367: ortak pencere kuralı (atamadan önce tamamlanmış instance da sayılır) — AssignmentInstanceWindow.
+        var relevantInstance = AssignmentInstanceWindow.SelectRelevant(
+            studentInstances, window.StartAt, window.EndAt, ti => ti.StartTime, ti => ti.Status);
 
         if (relevantInstance == null)
         {

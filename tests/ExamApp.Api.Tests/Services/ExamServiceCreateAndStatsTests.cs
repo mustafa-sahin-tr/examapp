@@ -196,9 +196,14 @@ public class ExamServiceCreateAndStatsTests : IDisposable
                     new() { WorksheetQuestionId = wq.Id, SelectedAnswerId = correct.Id, TimeTaken = 120 },
                 },
             };
+            // issue #367: one live instance per (student, worksheet) — the open attempt is on a second worksheet with
+            // the same name/grade, so it still lands in the same statistics group.
+            var ws2 = new Worksheet { Name = "Test A", Description = "", GradeId = gradeId };
+            ctx.Worksheets.Add(ws2);
+            await ctx.SaveChangesAsync();
             var started = new WorksheetInstance
             {
-                StudentId = studentId, WorksheetId = ws.Id, Status = WorksheetInstanceStatus.Started,
+                StudentId = studentId, WorksheetId = ws2.Id, Status = WorksheetInstanceStatus.Started,
                 StartTime = DateTime.UtcNow,
             };
             ctx.TestInstances.AddRange(completed, started);

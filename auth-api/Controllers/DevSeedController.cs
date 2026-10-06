@@ -10,7 +10,7 @@ namespace ExamApp.Api.Controllers;
 /// <summary>
 /// Dev-only toplu kullanıcı oluşturma ucu (issue #217). Koruma katmanları: (1) servis yalnızca
 /// Development/Staging'de DI'a kayıtlı — yoksa 404; (2) controller ortamı ayrıca denetler — 404;
-/// (3) yalnızca servis token'ı (<c>Service</c> policy — exam-admin client_credentials, BadgeService
+/// (3) yalnızca servis token'ı (<c>Service</c> policy — exam-service client_credentials, BadgeService
 /// ResetController ile aynı desen); (4) servis kendisi de ortamı denetler (<see cref="DevSeedEnvironmentException"/> → 404);
 /// (5) gateway <c>/api/auth/dev/*</c> yolunu engeller — CLI <c>AuthApiBaseUrl</c> ile doğrudan gelir.
 /// </summary>

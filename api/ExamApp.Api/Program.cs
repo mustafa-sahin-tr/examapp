@@ -96,6 +96,11 @@ ExamApp.Foundation.Security.KeycloakSecretGuard.EnsureConfigured(
     ("Keycloak:AdminClientSecret", keycloakConfig["AdminClientSecret"]),
     ("Keycloak:ServiceClientSecret", keycloakConfig["ServiceClientSecret"]));
 
+// Issue #402 (O1): görsel URL'leri root ile değil ayrı GetObject-only MinIO hesabıyla imzalanır — Development dışında
+// MinioConfig:PresignAccessKey/PresignSecretKey eksik, dev-only ya da root ile aynıysa açılışta patla.
+ExamApp.Api.Services.Storage.MinioPresignCredentialGuard.EnsureConfigured(
+    builder.Environment.IsDevelopment(), builder.Configuration.GetSection("MinioConfig"));
+
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = "smart";

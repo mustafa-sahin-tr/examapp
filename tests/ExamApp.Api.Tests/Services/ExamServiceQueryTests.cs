@@ -117,26 +117,6 @@ public class ExamServiceQueryTests : IDisposable
         dto.Subtitle.ShouldBe("s");
     }
 
-    // ---- GetExamQuestionsAsync ----
-
-    [Fact]
-    public async Task GetExamQuestions_maps_the_subject_name_as_category()
-    {
-        await using (var ctx = _db.NewContext())
-        {
-            var subject = new Subject { Name = "Türkçe" };
-            ctx.Subjects.Add(subject);
-            await ctx.SaveChangesAsync();
-            ctx.Questions.Add(new Question { Text = "q", SubjectId = subject.Id, Point = 3 });
-            await ctx.SaveChangesAsync();
-        }
-
-        await using var read = _db.NewContext();
-        var q = (await NewService(read).GetExamQuestionsAsync()).ShouldHaveSingleItem();
-        q.CategoryName.ShouldBe("Türkçe");
-        q.Point.ShouldBe(3);
-    }
-
     // ---- EndTest ----
 
     private async Task<(int studentUserId, int instanceId)> SeedStartedInstanceAsync(WorksheetInstanceStatus status = WorksheetInstanceStatus.Started)

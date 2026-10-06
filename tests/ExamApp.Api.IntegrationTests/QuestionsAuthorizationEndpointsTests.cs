@@ -61,11 +61,12 @@ public class QuestionsAuthorizationEndpointsTests(IntegrationApiFactory factory)
     {
         var (worksheetId, questionId) = await SeedAsync();
 
+        // issue #402 (security D1): başkasının testi/sorusu "yok" ile aynı 404.
         var other = await ClientAsAsync(OtherTeacherId, "Teacher", "kc-q-other", "Teacher");
         (await other.DeleteAsync($"/api/questions/test/{worksheetId}/question/{questionId}"))
-            .StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+            .StatusCode.ShouldBe(HttpStatusCode.NotFound);
         (await other.PutAsJsonAsync($"/api/questions/{questionId}/correct-answer", new { correctAnswerId = 1, scale = 1 }))
-            .StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+            .StatusCode.ShouldBe(HttpStatusCode.NotFound);
 
         var owner = await ClientAsAsync(OwnerId, "Teacher", "kc-q-owner", "Teacher");
         (await owner.DeleteAsync($"/api/questions/test/{worksheetId}/question/{questionId}"))

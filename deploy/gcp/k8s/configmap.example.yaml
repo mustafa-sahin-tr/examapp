@@ -13,6 +13,8 @@ data:
   KEYCLOAK_HOST_INTERNAL: http://keycloak.examapp.svc.cluster.local:8080
   MINIO_ENDPOINT: minio.examapp.svc.cluster.local:9000
   MINIO_BASE_URL: https://exam.example.com/img
+  # Issue #402 (D7): exam API MinioConfig:BucketName AND the presign policy's question bucket.
+  MINIO_QUESTIONS_BUCKET: exam-questions
   GEMINI_MODEL: models/gemini-3.5-flash-lite
   GEMINI_CACHED_CONTENT: cachedContents/REPLACE_ME
   TZ: Europe/Istanbul

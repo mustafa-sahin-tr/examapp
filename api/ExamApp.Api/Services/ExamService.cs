@@ -581,22 +581,6 @@ public class ExamService : IExamService
             .ToList();
     }
 
-    public async Task<List<QuestionDto>> GetExamQuestionsAsync()
-    {
-        return await _context.Questions
-            .Include(q => q.Subject)
-            .Select(q => new QuestionDto
-            {
-                Id = q.Id,
-                Text = q.Text,
-                SubText = q.SubText,
-                ImageUrl = q.ImageUrl,
-                CategoryName = q.Subject.Name,
-                Point = q.Point
-            })
-            .ToListAsync();
-    }
-
     public async Task<WorksheetDto?> GetWorksheetByIdAsync(int id, UserProfileDto userProfile, bool isAdmin)
     {
         var worksheet = await _context.Worksheets

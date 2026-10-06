@@ -17,7 +17,7 @@ namespace ExamApp.Api.IntegrationTests;
 /// </summary>
 public class SignedImageUrlEndpointsTests(IntegrationApiFactory factory) : IntegrationTestBase(factory)
 {
-    // IntegrationApiFactory: MinioConfig__Endpoint=localhost:9000, AccessKey/SecretKey=x, BucketName=test.
+    // IntegrationApiFactory: MinioConfig__Endpoint=localhost:9000, PresignAccessKey=test-presign, PresignSecretKey=x (#402), BucketName=test.
     private const string GatewayMinioHost = "localhost:9000";
     private const string TestSk = "x";
     private const string QuestionImage = "/img/test/questions/abc/question.jpg";
@@ -269,6 +269,7 @@ public class SignedImageUrlEndpointsTests(IntegrationApiFactory factory) : Integ
         await SeedApprovedTeacherAsync(teacherUserId);
         var passageId = await WithDbAsync(async db =>
         {
+            db.SetCurrentUser(teacherUserId); // issue #402 (P5): yalnız kendi paragrafına bağlanabilir
             var p = new Passage { Title = "P", Text = "t", ImageUrl = PassageImage };
             db.Passage.Add(p);
             await db.SaveChangesAsync();

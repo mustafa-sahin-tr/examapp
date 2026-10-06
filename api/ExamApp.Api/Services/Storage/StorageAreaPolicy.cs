@@ -48,6 +48,13 @@ public sealed class StorageAreaPolicy
         };
     }
 
+    /// <summary>
+    /// issue #402 (O1): tüm alanların (bucket, prefix) allowlist'i — presign hesabının MinIO politikası
+    /// (<c>deploy/scripts/minio-presign-init.sh</c>) bununla birebir eşleşmeli (drift testi).
+    /// </summary>
+    public IReadOnlyList<(string Bucket, string Prefix)> AllowedPrefixes() =>
+        _rules.Values.SelectMany(r => r).Distinct().ToList();
+
     /// <summary>Nesne verilen alanlardan en az birinin allowlist'inde mi? <c>question-transfer/</c> her zaman hayır.</summary>
     public bool IsAllowed(string bucket, string key, IReadOnlyList<StorageArea> areas)
     {

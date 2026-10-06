@@ -34,8 +34,8 @@ public class StorageUrlSignerTests : IDisposable
         {
             ["MinioConfig:Endpoint"] = endpoint,
             ["MinioConfig:PresignEndpoint"] = presignEndpoint,
-            ["MinioConfig:AccessKey"] = ak,
-            ["MinioConfig:SecretKey"] = sk,
+            ["MinioConfig:PresignAccessKey"] = ak,
+            ["MinioConfig:PresignSecretKey"] = sk,
             ["MinioConfig:BucketName"] = bucket,
         }).Build();
         var signer = new MinioStorageUrlSigner(config, new StorageAreaPolicy(config), _clock,
@@ -227,14 +227,69 @@ public class StorageUrlSignerTests : IDisposable
             .ShouldBe("/img/exam-questions/questions/1/a.jpg");
     }
 
+    // issue #402 (O1): imza yalnız presign hesabıyla — root (MinioConfig:AccessKey/SecretKey) tek başına imzalamaz,
+    // presign anahtarı root ile aynıysa da imzalanmaz; imzalı URL'de görünen anahtar presign anahtarıdır.
     [Fact]
-    public void Kill_switch_disables_signing_and_emits_values_unchanged()
+    public void Root_credentials_alone_never_sign()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["MinioConfig:Endpoint"] = SignHost,
+            ["MinioConfig:AccessKey"] = "root-ak",
+            ["MinioConfig:SecretKey"] = "root-sk-0001",
+        }).Build();
+        using var signer = new MinioStorageUrlSigner(config, new StorageAreaPolicy(config), _clock,
+            NullLogger<MinioStorageUrlSigner>.Instance);
+
+        signer.SignForBrowser("/img/exam-questions/questions/1/a.jpg", Question).ShouldBe("/img/exam-questions/questions/1/a.jpg");
+    }
+
+    [Fact]
+    public void Presign_key_equal_to_root_key_is_refused()
     {
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["MinioConfig:Endpoint"] = SignHost,
             ["MinioConfig:AccessKey"] = TestAk,
             ["MinioConfig:SecretKey"] = TestSk,
+            ["MinioConfig:PresignAccessKey"] = TestAk,
+            ["MinioConfig:PresignSecretKey"] = TestSk,
+        }).Build();
+        using var signer = new MinioStorageUrlSigner(config, new StorageAreaPolicy(config), _clock,
+            NullLogger<MinioStorageUrlSigner>.Instance);
+
+        signer.SignForBrowser("/img/exam-questions/questions/1/a.jpg", Question).ShouldBe("/img/exam-questions/questions/1/a.jpg");
+    }
+
+    [Fact]
+    public void Signed_url_carries_the_presign_key_not_the_root_key()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["MinioConfig:Endpoint"] = SignHost,
+            ["MinioConfig:AccessKey"] = "root-ak",
+            ["MinioConfig:SecretKey"] = "root-sk-0001",
+            ["MinioConfig:PresignAccessKey"] = TestAk,
+            ["MinioConfig:PresignSecretKey"] = TestSk,
+        }).Build();
+        using var signer = new MinioStorageUrlSigner(config, new StorageAreaPolicy(config), _clock,
+            NullLogger<MinioStorageUrlSigner>.Instance);
+
+        var signed = signer.SignForBrowser("/img/exam-questions/questions/1/a.jpg", Question);
+        signed.ShouldNotBeNull();
+        signed.ShouldContain("X-Amz-Credential=" + TestAk + "%2F");
+        signed.ShouldNotContain("root-ak");
+        SigV4PresignVerifier.VerifyImgUrl(signed!, SignHost, TestSk, T0.UtcDateTime).Valid.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Kill_switch_disables_signing_and_emits_values_unchanged()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["MinioConfig:Endpoint"] = SignHost,
+            ["MinioConfig:PresignAccessKey"] = TestAk,
+            ["MinioConfig:PresignSecretKey"] = TestSk,
             ["MinioConfig:PresignImageUrls"] = "false",
         }).Build();
         using var signer = new MinioStorageUrlSigner(config, new StorageAreaPolicy(config), _clock,
@@ -251,8 +306,8 @@ public class StorageUrlSignerTests : IDisposable
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["MinioConfig:Endpoint"] = SignHost,
-            ["MinioConfig:AccessKey"] = TestAk,
-            ["MinioConfig:SecretKey"] = TestSk,
+            ["MinioConfig:PresignAccessKey"] = TestAk,
+            ["MinioConfig:PresignSecretKey"] = TestSk,
         }).Build();
         using var signer = new MinioStorageUrlSigner(config, new StorageAreaPolicy(config), _clock, logger)
         {

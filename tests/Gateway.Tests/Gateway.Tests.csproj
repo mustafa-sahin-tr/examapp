@@ -16,6 +16,7 @@
     <Compile Include="../../api/ExamApp.Api/Services/Storage/StorageArea.cs" Link="Linked/Storage/StorageArea.cs" />
     <Compile Include="../../api/ExamApp.Api/Services/Storage/StorageAreaPolicy.cs" Link="Linked/Storage/StorageAreaPolicy.cs" />
     <Compile Include="../../api/ExamApp.Api/Services/Storage/StorageUrlSigner.cs" Link="Linked/Storage/StorageUrlSigner.cs" />
+    <Compile Include="../../api/ExamApp.Api/Services/Storage/MinioPresignCredentialGuard.cs" Link="Linked/Storage/MinioPresignCredentialGuard.cs" />
     <Compile Include="../../api/ExamApp.Api/Services/Storage/MinioObjectUrl.cs" Link="Linked/Storage/MinioObjectUrl.cs" />
     <Compile Include="../../api/ExamApp.Api/Services/Storage/MinioBucketPolicies.cs" Link="Linked/Storage/MinioBucketPolicies.cs" />
     <Compile Include="../ExamApp.Api.Tests/Support/SigV4PresignVerifier.cs" Link="Linked/SigV4PresignVerifier.cs" />

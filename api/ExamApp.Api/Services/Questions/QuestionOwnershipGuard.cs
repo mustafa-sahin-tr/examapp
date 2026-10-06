@@ -53,6 +53,26 @@ public interface IQuestionOwnershipGuard
 
     /// <summary>Test (worksheet) sahibi ya da admin — <see cref="WorksheetAccess.CanModify"/> ile aynı kural.</summary>
     Task<QuestionAccessResult> CanModifyWorksheetAsync(int worksheetId, int userId, bool isAdmin, CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #402 (P2): testin sorularını OKUMA — <see cref="WorksheetAccess.CanView"/> ile aynı kural (sahibi/admin,
+    /// PublicView/PublicAssignable, aynı okul için SchoolOnly; okul değerleri DB'den). Legacy (sahipsiz) test yalnız admin.
+    /// </summary>
+    Task<QuestionAccessResult> CanViewWorksheetAsync(int worksheetId, int userId, bool isAdmin, CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #402 (P3): tek soruyu OKUMA. Admin; soru sahibi (<see cref="CanModifyQuestionAsync"/> kuralı); ya da soruyu
+    /// (silinmemiş üyelikle) içeren en az bir test öğretmene <see cref="WorksheetAccess.VisibleToTeacherPredicate"/>
+    /// ile görünür (kendi testi — kopyası dahil —, public ya da aynı okul SchoolOnly).
+    /// </summary>
+    Task<QuestionAccessResult> CanViewQuestionAsync(int questionId, int userId, bool isAdmin, CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #402 (P5): var olan bir paragrafı (Passage) id ile soruya bağlama. Admin; paragrafı oluşturan
+    /// (<c>Passage.CreateUserId</c>); paragraf zaten <paramref name="questionId"/> sorusuna bağlıysa (düzenlemede aynı
+    /// paragrafı geri göndermek); legacy (CreateUserId 0/null) paragrafta ona bağlı sorulardan birinin sahibi.
+    /// </summary>
+    Task<QuestionAccessResult> CanUsePassageAsync(int passageId, int userId, bool isAdmin, int? questionId = null, CancellationToken ct = default);
 }
 
 public sealed class QuestionOwnershipGuard : IQuestionOwnershipGuard
@@ -100,5 +120,83 @@ public sealed class QuestionOwnershipGuard : IQuestionOwnershipGuard
         return WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin)
             ? QuestionAccessResult.Allowed
             : QuestionAccessResult.Forbidden;
+    }
+
+    public async Task<QuestionAccessResult> CanViewWorksheetAsync(int worksheetId, int userId, bool isAdmin, CancellationToken ct = default)
+    {
+        var worksheet = await _context.Worksheets.AsNoTracking()
+            .Where(w => w.Id == worksheetId)
+            .Select(w => new Worksheet
+            {
+                Id = w.Id,
+                CreateUserId = w.CreateUserId,
+                TeacherSharing = w.TeacherSharing,
+                StudentVisibility = w.StudentVisibility
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (worksheet == null)
+            return QuestionAccessResult.NotFound;
+        if (isAdmin)
+            return QuestionAccessResult.Allowed;
+        if (userId <= 0)
+            return QuestionAccessResult.Forbidden;
+
+        var (ownerSchoolId, requesterSchoolId) = await _context.ResolveSchoolContextAsync(worksheet, userId, isAdmin, ct);
+        return WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing,
+                worksheet.StudentVisibility, requesterSchoolId, ownerSchoolId)
+            ? QuestionAccessResult.Allowed
+            : QuestionAccessResult.Forbidden;
+    }
+
+    public async Task<QuestionAccessResult> CanViewQuestionAsync(int questionId, int userId, bool isAdmin, CancellationToken ct = default)
+    {
+        var owner = await CanModifyQuestionAsync(questionId, userId, isAdmin, ct);
+        if (owner != QuestionAccessResult.Forbidden)
+            return owner; // NotFound ya da Allowed (admin / sahibi)
+        if (userId <= 0)
+            return QuestionAccessResult.Forbidden;
+
+        var requesterSchoolId = await _context.ResolveTeacherSchoolIdAsync(userId, ct);
+        // İndeksli taraftan (WorksheetQuestions.QuestionId FK indeksi): sorunun (silinmemiş) üyelikleri → testleri → görünürlük.
+        var visible = await _context.TestQuestions.AsNoTracking()
+            .Where(tq => tq.QuestionId == questionId)
+            .Select(tq => tq.Worksheet)
+            .Where(WorksheetAccess.VisibleToTeacherPredicate(_context, userId, requesterSchoolId))
+            .AnyAsync(ct);
+
+        return visible ? QuestionAccessResult.Allowed : QuestionAccessResult.Forbidden;
+    }
+
+    public async Task<QuestionAccessResult> CanUsePassageAsync(int passageId, int userId, bool isAdmin, int? questionId = null, CancellationToken ct = default)
+    {
+        var row = await _context.Passage.AsNoTracking()
+            .Where(p => p.Id == passageId)
+            .Select(p => new
+            {
+                p.CreateUserId,
+                LinkedToQuestion = questionId != null && p.Questions.Any(q => q.Id == questionId),
+                // Legacy paragraf: bağlı sorulardan biri kullanıcının (damgalı sahip ya da eski soruda orijinal testin sahibi).
+                OwnsLinkedQuestion = userId > 0 && p.Questions.Any(q =>
+                    q.CreateUserId == userId
+                    || ((q.CreateUserId == null || q.CreateUserId == 0) && _context.TestQuestions.Any(tq =>
+                        tq.QuestionId == q.Id
+                        && tq.Worksheet.SourceWorksheetId == null
+                        && tq.Worksheet.CreateUserId == userId)))
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (row == null)
+            return QuestionAccessResult.NotFound;
+        if (isAdmin)
+            return QuestionAccessResult.Allowed;
+        if (userId <= 0)
+            return QuestionAccessResult.Forbidden;
+        if (row.LinkedToQuestion)
+            return QuestionAccessResult.Allowed;
+
+        var createdBy = row.CreateUserId ?? 0;
+        var owns = createdBy > 0 ? createdBy == userId : row.OwnsLinkedQuestion;
+        return owns ? QuestionAccessResult.Allowed : QuestionAccessResult.Forbidden;
     }
 }

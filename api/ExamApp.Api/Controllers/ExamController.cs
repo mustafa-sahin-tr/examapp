@@ -717,8 +717,10 @@ public class ExamController : BaseController
 
 
     [HttpGet("student/statistics")]
-    [Authorize(Roles = "Student,Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
-    [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
+    // Issue #373: yalnız öğrencinin kendi istatistiği — tek tüketici /student-profile (studentGuard). Teacher/Admin 403.
+    [Authorize(Roles = "Student")]
+    // issue #287 / security review L4: Student+Teacher çift rollü onaysız öğretmen öğrenci rolüyle kapıyı aşamaz.
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)]
     public async Task<IActionResult> GetGroupedStudentStatistics()
     {
         var user = await GetAuthenticatedUserAsync();
@@ -727,7 +729,11 @@ public class ExamController : BaseController
             return UserNotResolved(_localizer["exam.unauthenticated"].Value);
         }
         var student = await _studentService.GetStudentProfile(user.Id);
-
+        if (student == null)
+        {
+            // Issue #373 (savunma derinliği): Öğrenci rolü olup Student kaydı olmayan kullanıcı → 404, 500 değil.
+            return NotFound(_localizer["exam.studentProfileNotFound"].Value);
+        }
 
         var result = await _examService.GetGroupedStudentStatistics(student.Id);
         return Ok(result);

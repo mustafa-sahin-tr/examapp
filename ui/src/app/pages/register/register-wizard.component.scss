@@ -10,13 +10,16 @@
     gap: 16px;
   }
 
+  // Issue #378: kart zemini --main-foreground-color (global .mat-mdc-card); metin bu token'la boyanınca
+  // zeminle aynı renge düşüp görünmez oluyordu. Başlık ve açıklama metin token'larından renk alır.
   h2 {
     margin: 0;
+    color: var(--ms-text-strong);
   }
 
   .hint {
     margin: 0;
-    color: var(--main-foreground-color, #6b7280);
+    color: var(--ms-text-medium);
   }
 
   .steps {

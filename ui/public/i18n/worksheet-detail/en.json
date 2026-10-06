@@ -149,6 +149,7 @@
     "shortSeconds": "{{seconds}} sec"
   },
   "snackbar": {
+    "assignNotAllowed": "You do not have permission to assign this test.",
     "dismiss": "OK",
     "close": "Close",
     "createFailed": "The test could not be created.",

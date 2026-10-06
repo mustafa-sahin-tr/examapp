@@ -4,8 +4,7 @@
     "titleStudent": "Test Library",
     "subtitleTeacher": "Manage, edit and assign the tests you have created.",
     "subtitleStudent": "Find tests by topic and difficulty, take them and track your progress.",
-    "newTest": "New Test",
-    "importExcel": "Import from Excel"
+    "newTest": "New Test"
   },
   "tabs": {
     "aria": "Sections",
@@ -72,6 +71,8 @@
   "bulk": {
     "selected": "{{count}} selected",
     "assign": "Assign to Students",
+    "assignNotAllowed": "You do not have permission to assign this test.",
+    "assignSingleOnly": "Assignment works on one test at a time; select a single test.",
     "delete": "Delete",
     "clear": "Clear selection"
   },
@@ -104,8 +105,6 @@
   "snackbar": {
     "dismiss": "OK",
     "close": "Close",
-    "assignSoon": "The assignment screen will be available soon.",
-    "importSoon": "Excel import will be available soon.",
     "copySuccess": "The test was copied to your account.",
     "copyFailed": "Copy failed.",
     "deleted": "{{count}} test(s) deleted.",

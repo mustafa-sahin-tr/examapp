@@ -17,16 +17,20 @@ public class AppDbContext : DbContext
         _currentUserId = userId;
     }
 
-    public override int SaveChanges()
+    // issue #342: audit/soft-delete hook'u bool overload'larda. EF'in parametresiz SaveChanges() ve
+    // SaveChangesAsync(ct) overload'ları bunlara (acceptAllChangesOnSuccess: true) delege eder; böylece
+    // SaveChangesAsync(acceptAllChangesOnSuccess: false) dahil HER overload ApplyAuditInfo'dan geçer ve
+    // hook tek bir kez çalışır (soft-delete edilen satıra ikinci geçişte UpdateTime yazılmaz).
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         ApplyAuditInfo();
-        return base.SaveChanges();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
-    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
         ApplyAuditInfo();
-        return await base.SaveChangesAsync(cancellationToken);
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
 
     private void ApplyAuditInfo()
@@ -42,6 +46,14 @@ public class AppDbContext : DbContext
             }
             else if (entry.State == EntityState.Modified)
             {
+                // issue #342 review: bu kayıtta soft-delete edilen satır (retry'da hook ikinci kez çalışırken Deleted→Modified
+                // olmuş ya da servis IsDeleted=true'yu elle yazmış) güncelleme olarak damgalanmaz; eksik silme alanları doldurulur.
+                if (entry.Entity.IsDeleted && entry.Property(e => e.IsDeleted).IsModified)
+                {
+                    entry.Entity.DeleteTime ??= DateTime.UtcNow;
+                    entry.Entity.DeleteUserId ??= _currentUserId;
+                    continue;
+                }
                 entry.Entity.UpdateTime = DateTime.UtcNow;
                 entry.Entity.UpdateUserId = _currentUserId;
             }

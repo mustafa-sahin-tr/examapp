@@ -8,6 +8,24 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Services.StudentReset;
 
+/// <summary>
+/// Öğrencinin kendi verisini sıfırlar (Hangfire işi, <see cref="StudentResetScheduler"/> kuyruğa alır).
+/// <para>
+/// issue #396 — sıra:
+/// <list type="number">
+/// <item>Öğrencinin açık (Started) oturumları Expired'a çekilir (koşullu UPDATE, #367 satır kilidi): bundan sonra bu
+/// oturumlara cevap/AnswerSubmittedEvent yazılamaz; uçuştaki bir SaveAnswer ya önce commit eder ya da reddedilir.</item>
+/// <item>Sıfırlama zamanı (<c>resetAtUtc</c>) exam API saatinden alınır ve BadgeService'e gönderilir — AnswerSubmittedEvent'in
+/// <c>SubmittedAt</c>'ı da bu saatle yazıldığından karşılaştırma tek saatle yapılır (saat kayması penceresi yok).</item>
+/// <item>BadgeService sıfırlaması (<see cref="IBadgeResetApiClient"/>); yalnız başarılıysa exam verisinin soft-delete'i.
+/// Başarısızsa istisna yukarı fırlar, exam verisi silinmez ve Hangfire işi yeniden dener.</item>
+/// </list>
+/// Retry tüm adımları yeniden çalıştırır (idempotent; sıfırlama zamanı ileri alınır — arada başlatılan oturumun cevapları
+/// da yok sayılır ve oturum zaten silinir).
+/// Tüm denemeler tükenip iş Failed olunca <see cref="StudentResetFailureAlertAttribute"/> Error loglar.
+/// </para>
+/// </summary>
+[StudentResetFailureAlert]
 public sealed class StudentResetJob
 {
     private readonly AppDbContext _db;
@@ -28,6 +46,24 @@ public sealed class StudentResetJob
         if (string.IsNullOrWhiteSpace(keycloakUserId)) throw new ArgumentException("Keycloak user id is required", nameof(keycloakUserId));
 
         _db.SetCurrentUser(userId);
+
+        // 0a) issue #396: close the student's open sessions first — no answer (and no AnswerSubmittedEvent) can be written
+        //     to them after this commits. Conditional UPDATE on the same row lock SaveAnswer takes (#367): an in-flight
+        //     answer either commits before (its SubmittedAt < resetAt below) or is refused.
+        var closedAt = DateTime.UtcNow;
+        await _db.TestInstances
+            .Where(x => x.StudentId == studentId && x.Status == WorksheetInstanceStatus.Started)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(x => x.Status, WorksheetInstanceStatus.Expired)
+                .SetProperty(x => x.EndTime, (DateTime?)closedAt)
+                .SetProperty(x => x.UpdateTime, (DateTime?)closedAt)
+                .SetProperty(x => x.UpdateUserId, (int?)userId), cancellationToken);
+
+        // 0b) issue #396: BadgeService FIRST, with the reset line taken from THIS service's clock (the same clock that
+        //     stamps AnswerSubmittedEvent.SubmittedAt). Throws on failure → nothing below runs, exam data stays intact and
+        //     Hangfire retries the whole job.
+        var resetAtUtc = DateTime.UtcNow;
+        await _badgeResetApiClient.ResetUserAsync(userId, resetAtUtc, cancellationToken);
 
         // 1) Reset Exam/Test progress (instances + answers)
         var instances = await _db.TestInstances
@@ -100,9 +136,6 @@ public sealed class StudentResetJob
         }
 
         await _db.SaveChangesAsync(cancellationToken);
-
-        // 5) Reset BadgeService aggregates/activity/badge progress for the same userId
-        await _badgeResetApiClient.ResetUserAsync(userId, cancellationToken);
     }
 
     private static async Task SoftDeleteByStudentIdAsync<TEntity>(DbSet<TEntity> set, int studentId, CancellationToken ct)

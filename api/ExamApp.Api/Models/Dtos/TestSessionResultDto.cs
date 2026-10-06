@@ -9,6 +9,18 @@ public class TestSessionResultDto : ResponseBaseDto
 {
     /// <summary>Hata durumunda UI özel davranışı için kod — bkz. <see cref="TestSessionErrorCodes"/>. Başarıda null.</summary>
     public string? ErrorCode { get; set; }
+
+    /// <summary>
+    /// issue #396: <see cref="ErrorCode"/>'un alt nedeni (sözleşme aynı kalır: ErrorCode yine TestNotInProgress). Şimdilik
+    /// yalnız <see cref="TestSessionRejectReasons.TimeExpired"/> — oturum süre sınırı yüzünden Expired. Diğer durumlarda null.
+    /// </summary>
+    public string? Reason { get; set; }
+}
+
+public static class TestSessionRejectReasons
+{
+    /// <summary>issue #396: oturum süre sınırı (+ tolerans) dolduğu için Expired; UI "süre doldu" mesajı gösterir.</summary>
+    public const string TimeExpired = "TimeExpired";
 }
 
 public static class TestSessionErrorCodes

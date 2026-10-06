@@ -22,6 +22,7 @@ public class BadgeDbContext : DbContext
     public DbSet<UserLocalePreference> UserLocalePreferences => Set<UserLocalePreference>();
     public DbSet<NotificationEventLog> NotificationEventLogs => Set<NotificationEventLog>();
     public DbSet<HiddenCommentTombstone> HiddenCommentTombstones => Set<HiddenCommentTombstone>();
+    public DbSet<UserResetMarker> UserResetMarkers => Set<UserResetMarker>();
 
     /// <summary>
     /// BadgeService'in kendi transactional outbox'ı (issue #225). exam/identity DB'lerindeki tabloyla
@@ -212,5 +213,11 @@ public class BadgeDbContext : DbContext
         modelBuilder.Entity<UserLocalePreference>()
             .Property(x => x.Locale)
             .HasMaxLength(8);
+
+        // issue #396: kullanıcı başına son sıfırlama zamanı (bkz. UserResetMarker XML doc). UserId dış kaynaklı → ValueGeneratedNever.
+        modelBuilder.Entity<UserResetMarker>().HasKey(x => x.UserId);
+        modelBuilder.Entity<UserResetMarker>()
+            .Property(x => x.UserId)
+            .ValueGeneratedNever();
     }
 }

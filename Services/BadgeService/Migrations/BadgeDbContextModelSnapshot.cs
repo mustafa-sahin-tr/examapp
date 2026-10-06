@@ -547,6 +547,19 @@ namespace BadgeService.Migrations
                     b.ToTable("UserLocalePreferences");
                 });
 
+            modelBuilder.Entity("BadgeService.Entities.UserResetMarker", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("ResetAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("UserResetMarkers");
+                });
+
             modelBuilder.Entity("ExamApp.Foundation.Persistence.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")

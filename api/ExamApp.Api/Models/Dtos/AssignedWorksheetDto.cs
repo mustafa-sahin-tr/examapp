@@ -46,4 +46,10 @@ public class AssignedWorksheetDto
 
     public bool HasStarted => InstanceStatus.HasValue;
     public bool IsCompleted => InstanceStatus == WorksheetInstanceStatus.Completed;
+
+    /// <summary>
+    /// issue #396: oturum bitti mi (Completed ya da süresi dolmuş Expired) — devam/tekrar yok; UI teslim tarihi uyarısını
+    /// ve "devam ediyor" görünümünü buna göre kapatır. <see cref="IsCompleted"/> yalnız puanlı tamamlanmayı söyler.
+    /// </summary>
+    public bool IsFinished => ExamApp.Api.Helpers.WorksheetInstanceStatusRules.IsFinished(InstanceStatus);
 }

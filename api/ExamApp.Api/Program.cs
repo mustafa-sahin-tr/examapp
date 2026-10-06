@@ -363,6 +363,12 @@ builder.Services.AddOptions<ExamApp.Api.Services.Bookings.SuspendedTeacherBookin
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services.AddScoped<ExamApp.Api.Services.Bookings.ISuspendedTeacherBookingSweepJob, ExamApp.Api.Services.Bookings.SuspendedTeacherBookingSweepJob>();
+// issue #396: süresi dolmuş açık test oturumlarını Expired'a çeken güvenlik ağı (Hangfire, varsayılan 5 dk).
+builder.Services.AddOptions<ExamApp.Api.Services.Worksheets.ExpiredTestInstanceSweepOptions>()
+    .BindConfiguration(ExamApp.Api.Services.Worksheets.ExpiredTestInstanceSweepOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IExpiredTestInstanceSweepJob, ExamApp.Api.Services.Worksheets.ExpiredTestInstanceSweepJob>();
 
 // Student activity reset
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();
@@ -623,6 +629,12 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.Bookings.ISuspendedTeacherBookingS
     ExamApp.Api.Services.Bookings.SuspendedTeacherBookingSweepJob.RecurringJobId,
     j => j.SweepAsync(CancellationToken.None),
     app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Bookings.SuspendedTeacherBookingSweepOptions>>().Value.Cron);
+
+// issue #396: öğrenci dönmeyince istek anında kapanamayan, süresi dolmuş Started test oturumlarını Expired'a çeker.
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.Worksheets.IExpiredTestInstanceSweepJob>(
+    ExamApp.Api.Services.Worksheets.ExpiredTestInstanceSweepJob.RecurringJobId,
+    j => j.SweepAsync(CancellationToken.None),
+    app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Worksheets.ExpiredTestInstanceSweepOptions>>().Value.Cron);
 
 app.Run();
 return 0;

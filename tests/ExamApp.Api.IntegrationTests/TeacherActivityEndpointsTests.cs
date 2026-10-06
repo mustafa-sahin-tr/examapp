@@ -127,12 +127,31 @@ public class TeacherActivityEndpointsTests(IntegrationApiFactory factory) : Inte
         (await student.GetAsync(StudentsUrl)).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 
+    [Fact]
+    public async Task Activity_endpoints_are_forbidden_for_unapproved_teacher()
+    {
+        // Issue #287: unapproved teachers hit the authorization gate before parameter validation.
+        // Verify Forbidden (403) is returned even for invalid days=0, proving the gate is checked first.
+        await WithDbAsync(async db =>
+        {
+            db.Teachers.Add(new Teacher { UserId = OwnerId, SchoolId = null, IsIndependentTutor = true, AccountApprovedAt = null });
+            await db.SaveChangesAsync();
+        });
+
+        var teacher = await ClientAsAsync(OwnerId, "Teacher", "kc-56-unapproved", "Teacher");
+
+        (await teacher.GetAsync($"{OwnUrl}?days=0")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await teacher.GetAsync($"{StudentsUrl}?days=0")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
     [InlineData(91)]
     public async Task Days_outside_1_to_90_is_rejected_with_400(int days)
     {
+        // Issue #287: endpoints require approved teacher; seed the teacher before testing parameter validation
+        await SeedApprovedTeacherAsync(OwnerId, schoolId: null);
         var teacher = await ClientAsAsync(OwnerId, "Teacher", "kc-56-owner", "Teacher");
 
         (await teacher.GetAsync($"{OwnUrl}?days={days}")).StatusCode.ShouldBe(HttpStatusCode.BadRequest);

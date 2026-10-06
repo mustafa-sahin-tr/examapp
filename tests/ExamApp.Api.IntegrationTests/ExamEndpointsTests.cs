@@ -78,9 +78,18 @@ public class ExamEndpointsTests(IntegrationApiFactory factory) : IntegrationTest
             var g = new Grade { Name = "3" };
             db.Grades.Add(g);
             await db.SaveChangesAsync();
-            db.Worksheets.Add(new Worksheet { Name = "Old", Description = "", GradeId = g.Id, CreateTime = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) });
-            db.Worksheets.Add(new Worksheet { Name = "New", Description = "", GradeId = g.Id, CreateTime = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc) });
+            // Worksheets must have CreateUserId set to the teacher's user ID for the filter to include them.
+            // Issue ed773a2c (feat: sahiplik): non-admin teachers see only worksheets they created.
+            // ExamService.GetLatestWorksheetsAsync applies this filter via ownerUserId parameter from TeacherOwnerFilter.
+            db.SetCurrentUser(1);
+            var new_ws = new Worksheet { Name = "New", Description = "", GradeId = g.Id };
+            var old_ws = new Worksheet { Name = "Old", Description = "", GradeId = g.Id };
+            db.Worksheets.AddRange(new_ws, old_ws);
             await db.SaveChangesAsync();
+            // AppDbContext.ApplyAuditInfo sets CreateTime=UtcNow on Added, so override with ExecuteUpdateAsync to test CreateTime ordering.
+            // Save "New" first (lower Id), "Old" second (higher Id), then set different CreateTime to ensure ordering by CreateTime, not Id.
+            await db.Worksheets.Where(w => w.Id == new_ws.Id).ExecuteUpdateAsync(s => s.SetProperty(w => w.CreateTime, new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc)));
+            await db.Worksheets.Where(w => w.Id == old_ws.Id).ExecuteUpdateAsync(s => s.SetProperty(w => w.CreateTime, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)));
         });
 
         await SeedApprovedTeacherAsync(1); // issue #287

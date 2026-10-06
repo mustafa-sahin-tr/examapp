@@ -426,12 +426,10 @@ builder.Services.AddOptions<ExamApp.Api.Services.StudentPoints.StudentPointsSync
     .ValidateOnStart();
 if (rabbitMqEnabled)
 {
-    var rabbitMqUsername = builder.Configuration["RabbitMQ:Username"];
-    var rabbitMqPassword = builder.Configuration["RabbitMQ:Password"];
-    if (string.IsNullOrWhiteSpace(rabbitMqUsername) || string.IsNullOrWhiteSpace(rabbitMqPassword))
-    {
-        throw new InvalidOperationException("RabbitMQ:Host tanımlı ama RabbitMQ:Username/RabbitMQ:Password eksik.");
-    }
+    // Issue #371: ortak fail-fast doğrulama (Host burada zaten dolu); eksik Username/Password InvalidOperationException.
+    var rabbitMqSettings = ExamApp.Foundation.Messaging.RabbitMqConnectionSettings.Require(builder.Configuration);
+    var rabbitMqUsername = rabbitMqSettings.Username;
+    var rabbitMqPassword = rabbitMqSettings.Password;
 
     builder.Services.AddMassTransit(x =>
     {

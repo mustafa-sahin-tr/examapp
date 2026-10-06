@@ -91,6 +91,24 @@
     "WorksheetCommentHidden": {
       "title": "A comment was removed",
       "body": "The comment related to this notification was removed by a moderator."
+    },
+    "DirectMessageReceived": {
+      "title": "New message",
+      "body": "You have a new message.",
+      "titleFromStudent": "New message from {0}",
+      "bodyFromStudent": "{0} sent you a message.",
+      "titleFromTeacher": "New message from {0}",
+      "bodyFromTeacher": "{0} sent you a message.",
+      "titleManyFromStudent": "{1} new messages from {0}",
+      "bodyManyFromStudent": "{0} sent you {1} new messages.",
+      "titleManyFromTeacher": "{1} new messages from {0}",
+      "bodyManyFromTeacher": "{0} sent you {1} new messages."
+    },
+    "DirectMessageReported": {
+      "title": "A direct message was reported",
+      "body": "A direct message conversation was reported and needs review.",
+      "bodyStudent": "A student reported a direct message conversation. Review it in the reports list.",
+      "bodyTeacher": "A teacher reported a direct message conversation. Review it in the reports list."
     }
   }
 }

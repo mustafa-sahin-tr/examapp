@@ -91,6 +91,24 @@
     "WorksheetCommentHidden": {
       "title": "Bir yorum kaldırıldı",
       "body": "Bu bildirimle ilgili yorum moderatör tarafından kaldırıldı."
+    },
+    "DirectMessageReceived": {
+      "title": "Yeni mesaj",
+      "body": "Yeni bir mesajın var.",
+      "titleFromStudent": "{0} yeni mesaj gönderdi",
+      "bodyFromStudent": "{0} sana bir mesaj gönderdi.",
+      "titleFromTeacher": "{0} yeni mesaj gönderdi",
+      "bodyFromTeacher": "{0} sana bir mesaj gönderdi.",
+      "titleManyFromStudent": "{0}: {1} yeni mesaj",
+      "bodyManyFromStudent": "{0} sana {1} yeni mesaj gönderdi.",
+      "titleManyFromTeacher": "{0}: {1} yeni mesaj",
+      "bodyManyFromTeacher": "{0} sana {1} yeni mesaj gönderdi."
+    },
+    "DirectMessageReported": {
+      "title": "Bir doğrudan mesaj şikayet edildi",
+      "body": "Bir mesajlaşma şikayet edildi ve incelenmeyi bekliyor.",
+      "bodyStudent": "Bir öğrenci bir mesajlaşmayı şikayet etti. Şikayet listesinden inceleyebilirsin.",
+      "bodyTeacher": "Bir öğretmen bir mesajlaşmayı şikayet etti. Şikayet listesinden inceleyebilirsin."
     }
   }
 }

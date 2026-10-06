@@ -17,6 +17,12 @@ import {
   parseWorksheetCommentRef,
   worksheetCommentLink,
 } from '../models/worksheet-comment.model';
+import {
+  DIRECT_MESSAGE_RECEIVED_TYPE,
+  DIRECT_MESSAGE_REPORTED_TYPE,
+  DirectMessageNotificationRef,
+  toDirectMessageNotificationRef,
+} from '../models/direct-message.model';
 import { AuthService } from './auth.service';
 import { stripInvisibleControls } from '../shared/utils/display-text.util';
 import {
@@ -97,6 +103,14 @@ export class SignalRService {
    */
   private readonly notificationsChangedSubject = new Subject<void>();
   public readonly notificationsChanged$ = this.notificationsChangedSubject.asObservable();
+
+  /**
+   * Issue #106 dilim b: `DirectMessageReceived` push'u (alıcıya, Clients.User(sub)). Payload'dan yalnız doğrulanmış
+   * `{conversationId, senderRole}` yayılır (mesaj gövdesi taşınmaz). Tüketici sidenav rozetini tazeler; açık konuşma
+   * paneli isteyen sayfa aynı akışa abone olup mesajları yeniden yükleyebilir.
+   */
+  private readonly directMessageReceivedSubject = new Subject<DirectMessageNotificationRef>();
+  public readonly directMessageReceived$ = this.directMessageReceivedSubject.asObservable();
 
   public startConnection() {
     this.hubConnection = new signalR.HubConnectionBuilder()
@@ -193,6 +207,22 @@ export class SignalRService {
     for (const event of [WORKSHEET_COMMENT_CREATED_TYPE, WORKSHEET_COMMENT_REPLIED_TYPE]) {
       this.hubConnection.on(event, (data: unknown) => this.onWorksheetCommentPush(data));
     }
+
+    // Issue #106 b: DM bildirimi kalıcı yazılır (zil sayacı) + sidenav DM rozeti tazelenir; toast yok (rozet/zil yeterli).
+    this.hubConnection.on(DIRECT_MESSAGE_RECEIVED_TYPE, (data: unknown) => {
+      this.notificationsChangedSubject.next();
+      const ref = toDirectMessageNotificationRef(data);
+      if (ref) {
+        this.directMessageReceivedSubject.next(ref);
+      }
+    });
+
+    // Issue #106 b: şikayet bildirimi yalnız Admin grubuna gider; istemci kontrolü savunma amaçlı. Yalnız zil sayacı.
+    this.hubConnection.on(DIRECT_MESSAGE_REPORTED_TYPE, () => {
+      if (this.authService.hasRole('Admin')) {
+        this.notificationsChangedSubject.next();
+      }
+    });
 
     // Issue #146: randevu bildirimleri (BookingRequestCreated vb.) kalıcı yazılır; burada yalnızca zil sayacı tazelenir,
     // toast gösterilmez (randevu ekranları kendi durumunu yükler).

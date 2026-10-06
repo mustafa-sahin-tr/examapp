@@ -219,10 +219,14 @@ public sealed class GatewayWebSocketAuthTests : IClassFixture<GatewayWebSocketAu
             });
         }
 
-        public string CreateToken()
+        public string CreateToken(params string[] realmRoles)
         {
+            var claims = new List<Claim> { new("sub", "user-1") };
+            if (realmRoles.Length > 0)
+                claims.Add(new Claim("realm_access",
+                    "{\"roles\":[" + string.Join(",", realmRoles.Select(r => "\"" + r + "\"")) + "]}"));
             var jwt = new JwtSecurityToken(Issuer, "account",
-                [new Claim("sub", "user-1")], DateTime.UtcNow.AddMinutes(-1), DateTime.UtcNow.AddMinutes(10),
+                claims, DateTime.UtcNow.AddMinutes(-1), DateTime.UtcNow.AddMinutes(10),
                 new SigningCredentials(_key, SecurityAlgorithms.HmacSha256));
             return new JwtSecurityTokenHandler().WriteToken(jwt);
         }

@@ -584,12 +584,36 @@ export class WorksheetListComponent implements OnInit {
     return worksheetId != null ? this.assignmentByWorksheetId().get(worksheetId) ?? null : null;
   }
 
-  onAssign(): void {
-    this.snackBar.open(this.tr('snackbar.assignSoon'), this.tr('snackbar.dismiss'), { duration: 3000 });
+  /**
+   * Issue #377: atama, test detayındaki mevcut atama diyaloğuyla yapılır (sınıf/öğrenci listesi, izin ve
+   * bağımsız öğretmen kuralları orada). `?assign=student` detay yüklenince diyaloğu doğrudan açar.
+   */
+  onAssign(worksheetId: number | null | undefined): void {
+    if (worksheetId == null) {
+      return;
+    }
+    this.router.navigate(['/test', worksheetId], { queryParams: { assign: 'student' } });
   }
 
-  onImportExcel(): void {
-    this.snackBar.open(this.tr('snackbar.importSoon'), this.tr('snackbar.dismiss'), { duration: 3000 });
+  /**
+   * Issue #377: atama diyaloğu tek worksheet içindir; toplu çubukta yalnız tek seçimde ve seçili test atanabilirken
+   * (`canAssign !== false`) etkin.
+   */
+  readonly canBulkAssign = computed(() => {
+    const ids = this.selectedIds();
+    if (ids.size !== 1) {
+      return false;
+    }
+    const [id] = ids;
+    const test = this.visibleTests().find((t) => t.id === id);
+    return test !== undefined && test.canAssign !== false;
+  });
+
+  onBulkAssign(): void {
+    if (!this.canBulkAssign()) {
+      return;
+    }
+    this.onAssign([...this.selectedIds()][0]);
   }
 
   onCreate(): void {

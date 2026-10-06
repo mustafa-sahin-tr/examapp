@@ -461,6 +461,17 @@
     color: var(--ms-text-medium);
     border-color: var(--ms-border);
   }
+
+  .wl__bulk-assign:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .wl__bulk-hint {
+    font-weight: 500;
+    font-size: 12px;
+    color: var(--ms-text-medium);
+  }
 }
 
 /* ---------- discover sections (issue #14: "Atanan sınavlar" + "Keşfet") ---------- */

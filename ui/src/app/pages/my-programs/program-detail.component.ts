@@ -26,6 +26,7 @@ import {
 } from '../../models/program.interfaces';
 import { StudyPage } from '../../models/study-page';
 import { describeStudyItem, studyItemTypeIcon } from '../../shared/utils/study-item-display.util';
+import { formatDateOnly } from '../../shared/utils/date-only.util';
 import { AddStudyPagesDialogComponent } from './add-study-pages-dialog.component';
 import { ScheduleDetailDialogComponent } from './schedule-detail-dialog.component';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
@@ -281,6 +282,17 @@ export class ProgramDetailComponent implements OnInit {
     const next = new Date(this.currentMonth);
     next.setMonth(next.getMonth() + 1);
     return next.toLocaleDateString(this.intlLocale, { month: 'long', year: 'numeric' });
+  }
+
+  /**
+   * Issue #386: başlıktaki program tarih aralığı — ham ISO yerine aktif dilde gün biçimi. Tarih-yalnız yorumlandığı
+   * için UTC gece yarısı değerleri yerel saat diliminde önceki güne kaymaz. Tek uç okunabiliyorsa şablon yalnız onu
+   * gösterir (tire yok); iki uç da okunamıyorsa `null` (gizli).
+   */
+  get dateRange(): { start: string; end: string } | null {
+    const start = formatDateOnly(this.userProgram?.startDate || this.program.startDate, this.intlLocale);
+    const end = formatDateOnly(this.userProgram?.endDate || this.program.endDate, this.intlLocale);
+    return start || end ? { start, end } : null;
   }
 
   /** Intl çağrılarında kullanılacak aktif dil (issue #183). */

@@ -46,6 +46,11 @@ interface MenuItem {
    * profili, bağımsız öğretmen başvurusunun formudur. Başvuru türü profilde olmadığından tüm onaysızlara gösterilir.
    */
   allowUnapprovedTeacher?: boolean;
+  /**
+   * Issue #384: yalnız bağımsız öğretmene görünür — profilde `teacher.isIndependentTutor === false` (backend kuralı)
+   * BİLİNEN öğretmende gizlenir. Bayrak henüz yoksa gösterilir; asıl kapı backend ve `independentTeacherGuard`.
+   */
+  onlyIndependentTeacher?: boolean;
 }
 
 @Component({
@@ -195,7 +200,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'my-bookings', labelKey: 'menu.myBookings', icon: 'event_available', route: '/my-bookings', type: 'menu', roles: ['Student'] },
     // Issue #106: öğrenci → öğretmen mesajlaşma (booking ile aynı "öğrenci → öğretmen" ailesi).
     { id: 'teacher-messages', labelKey: 'menu.teacherMessages', icon: 'forum', route: '/teacher-messages', type: 'menu', roles: ['Student'] },
-    { id: 'tutor-profile', labelKey: 'menu.tutorProfile', icon: 'cast_for_education', route: '/tutor-profile', type: 'menu', roles: ['Teacher'], allowUnapprovedTeacher: true },
+    { id: 'tutor-profile', labelKey: 'menu.tutorProfile', icon: 'cast_for_education', route: '/tutor-profile', type: 'menu', roles: ['Teacher'], allowUnapprovedTeacher: true, onlyIndependentTeacher: true },
     { id: 'availability', labelKey: 'menu.availability', icon: 'event_available', route: '/availability', type: 'menu', roles: ['Teacher'] },
     { id: 'booking-requests', labelKey: 'menu.bookingRequests', icon: 'inbox', route: '/booking-requests', type: 'menu', roles: ['Teacher'] },
     { id: 'access-requests', labelKey: 'menu.accessRequests', icon: 'how_to_reg', route: '/assignment-permission-requests', type: 'menu', roles: ['Teacher'] },
@@ -236,9 +241,12 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
    * Issue #287: onaysız öğretmende Teacher rolü öğe görünürlüğü için sayılmaz — yalnız Teacher'a (veya Teacher'la
    * birlikte başka rollere) açılan öğeler, kullanıcının başka bir rolü onları açmıyorsa gizlenir.
    */
-  private isItemAllowed(item: MenuItem, unapprovedTeacher: boolean): boolean {
+  private isItemAllowed(item: MenuItem, unapprovedTeacher: boolean, notIndependent: boolean): boolean {
     if (item.onlyUnapprovedTeacher) {
       return unapprovedTeacher;
+    }
+    if (item.onlyIndependentTeacher && notIndependent) {
+      return false;
     }
     if (!item.roles) {
       return true;
@@ -268,12 +276,21 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   /** Onay durumu profil yenilenince değişebildiği için menü reaktif (issue #287). */
   readonly visibleMenuItems = computed<MenuItem[]>(() => {
     const unapprovedTeacher = this.authService.isUnapprovedTeacher();
-    return this.stripDividers(this.menuItems.filter((item) => this.isItemAllowed(item, unapprovedTeacher)));
+    const notIndependent = this.isKnownNotIndependent();
+    return this.stripDividers(
+      this.menuItems.filter((item) => this.isItemAllowed(item, unapprovedTeacher, notIndependent))
+    );
   });
   readonly visibleBottomNavItems = computed<MenuItem[]>(() => {
     const unapprovedTeacher = this.authService.isUnapprovedTeacher();
-    return this.bottomNavItems.filter((item) => this.isItemAllowed(item, unapprovedTeacher));
+    const notIndependent = this.isKnownNotIndependent();
+    return this.bottomNavItems.filter((item) => this.isItemAllowed(item, unapprovedTeacher, notIndependent));
   });
+
+  /** Issue #384: profil bağımsız olmadığını söylüyor mu (reaktif — `user` signal'ı profil yenilenince değişir). */
+  private isKnownNotIndependent(): boolean {
+    return AuthService.isIndependentTutorOf(this.authService.user()) === false;
+  }
 
   /**
    * Issue #385: seçili menü öğesi her gezinmede (link, geri/ileri, yenileme) URL'den türetilir; detay sayfaları üst

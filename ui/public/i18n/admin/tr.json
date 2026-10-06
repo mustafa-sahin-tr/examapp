@@ -64,6 +64,7 @@
       "newPlaceholder": "Yeni ders",
       "add": "Ders ekle",
       "gradeChipsAria": "Bağlı diğer sınıflar",
+      "moreGradesAria": "{{count}} sınıf daha: {{names}}",
       "topicCount": "{{count}} konu",
       "manageGrades": "Sınıfları Yönet",
       "edit": "Dersi düzenle",

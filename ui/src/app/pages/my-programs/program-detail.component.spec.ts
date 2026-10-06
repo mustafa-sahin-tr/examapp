@@ -1,5 +1,15 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { UserProgramStudyPageSchedule } from '../../models/program.interfaces';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
+import { UserProgram, UserProgramStudyPageSchedule } from '../../models/program.interfaces';
+import { ProgramDetailComponent } from './program-detail.component';
+import { ProgramService } from '../../services/program.service';
+import { LocaleService } from '../../services/locale.service';
+import { translocoTestingModule } from '../../shared/testing/transloco-testing';
+import myProgramsTr from '../../../../public/i18n/my-programs/tr.json';
+import myProgramsEn from '../../../../public/i18n/my-programs/en.json';
 import { StudyPageContentType } from '../../models/study-page';
 import { studyItemTypeIcon } from '../../shared/utils/study-item-display.util';
 
@@ -125,5 +135,73 @@ describe('ProgramDetailComponent - AC #6', () => {
       const imageIcon = studyItemTypeIcon(StudyPageContentType.Image);
       expect(icon).toBe(imageIcon);
     });
+  });
+});
+
+/** Issue #386: başlıktaki tarih aralığı aktif dilde biçimli; ham ISO metni (saat, `Z`) görünmez. */
+describe('ProgramDetailComponent date range header (issue #386)', () => {
+  function create(lang: 'tr' | 'en', program: Partial<UserProgram>): ComponentFixture<ProgramDetailComponent> {
+    const angularLocale = lang === 'tr' ? 'tr' : 'en-US';
+    TestBed.configureTestingModule({
+      imports: [
+        ProgramDetailComponent,
+        translocoTestingModule({
+          langs: { 'my-programs/tr': myProgramsTr, 'my-programs/en': myProgramsEn },
+          translocoConfig: { defaultLang: lang, scopes: { keepCasing: true } },
+        }),
+      ],
+      providers: [
+        provideNoopAnimations(),
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: '5' }) } } },
+        {
+          provide: ProgramService,
+          useValue: { getProgramById: () => of({ id: 5, programName: 'P', studyItemSchedules: [], ...program }) },
+        },
+        { provide: LocaleService, useValue: { localeDefinition: signal({ angularLocale }) } },
+      ],
+    });
+    const fixture = TestBed.createComponent(ProgramDetailComponent);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function metaText(fixture: ComponentFixture<ProgramDetailComponent>): string {
+    return (fixture.nativeElement as HTMLElement).querySelector('.program-meta')?.textContent ?? '';
+  }
+
+  it('turkish_UtcMidnightDates_FormattedWithoutShiftOrRawIso', () => {
+    const fixture = create('tr', { startDate: '2026-09-09T00:00:00Z', endDate: '2026-09-30T00:00:00Z' });
+    const text = metaText(fixture);
+
+    expect(text).toContain('9 Eyl 2026 – 30 Eyl 2026');
+    expect(text).not.toContain('2026-09');
+    expect(text).not.toContain('T00:00');
+  });
+
+  it('english_FormatsInActiveLanguage', () => {
+    const fixture = create('en', { startDate: '2026-09-09T00:00:00Z', endDate: '2026-09-30' });
+    expect(metaText(fixture)).toContain('Sep 9, 2026 – Sep 30, 2026');
+  });
+
+  it('onlyStartParses_ShowsSingleDateWithoutDash', () => {
+    const fixture = create('tr', { startDate: '2026-09-09T00:00:00Z', endDate: 'garbage' });
+    const text = metaText(fixture);
+
+    expect(text).toContain('9 Eyl 2026');
+    expect(text).not.toContain('–');
+  });
+
+  it('onlyEndParses_ShowsSingleDateWithoutDash', () => {
+    const fixture = create('tr', { startDate: 'not-a-date', endDate: '2026-09-30T00:00:00Z' });
+    const text = metaText(fixture);
+
+    expect(text).toContain('30 Eyl 2026');
+    expect(text).not.toContain('–');
+  });
+
+  it('dateRangeKey_ExistsInTrAndEn', () => {
+    expect(myProgramsTr.detail.dateRange).toContain('{{start}}');
+    expect(myProgramsEn.detail.dateRange).toContain('{{end}}');
   });
 });

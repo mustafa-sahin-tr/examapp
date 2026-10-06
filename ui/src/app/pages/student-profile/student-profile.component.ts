@@ -27,6 +27,7 @@ import { UserThemeSwitcherComponent } from '../../components/user-theme-switcher
 import { BadgeService, UserActivityResponse } from '../../services/badge.service';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { LocaleService } from '../../services/locale.service';
+import { currentUserId } from '../../shared/utils/current-user-id.util';
 
 /** Sayfanin Transloco scope'u: `public/i18n/student-profile/<lang>.json` (issue #183). */
 const SCOPE = 'student-profile';
@@ -76,7 +77,11 @@ export class StudentProfileComponent implements OnInit {
   ];
 
   student: StudentProfile | null = null;
-  studentId: number | null = null;
+  /**
+   * BadgeService rapor uclari (`reports/users/{userId}/...`) icin AUTH kullanici id'si (localStorage `user.id`).
+   * StudentProfileDto.Id ogrenci kaydinin id'sidir, kullanici id'si degildir; buradan turetilmez (aksi 403).
+   */
+  reportUserId: number | null = null;
   grades: Grade[] = [];
   activeTab = 0; // Varsayılan olarak ilk sekme açık
   activeTab2 = 1;
@@ -294,7 +299,6 @@ export class StudentProfileComponent implements OnInit {
   activityDataFromApi: Array<{ name: string; series: Array<{ name: string; value: number; extra?: any }> }> = [];
   activityApiLoading = false;
   activityApiError = false;
-  readonly demoActivityUserId = 16;
 
   /**
    * Statik “MUSTAFA” ısı haritası verisi üreten fonksiyon.
@@ -479,10 +483,7 @@ export class StudentProfileComponent implements OnInit {
   }
 
   ngOnInit() {
-    const storedUserId = this.getUserIdFromLocalStorage();
-    if (storedUserId) {
-      this.studentId = storedUserId;
-    }
+    this.reportUserId = currentUserId();
 
     this.studentService.loadGrades().subscribe((response) => {
       this.grades = response;
@@ -490,13 +491,6 @@ export class StudentProfileComponent implements OnInit {
 
     this.studentService.getProfile().subscribe((response) => {
       this.student = response;
-      const resolvedUserId = this.resolveUserIdFromProfile(response);
-      if (resolvedUserId && resolvedUserId !== this.studentId) {
-        this.studentId = resolvedUserId;
-        if (storedUserId) {
-          this.loadUserActivityHeatmap(storedUserId);
-        }
-      }
     });
 
     this.testService.studentStatistics().subscribe((response) => {
@@ -523,8 +517,9 @@ export class StudentProfileComponent implements OnInit {
       console.log('Student Statistics:', this.single);
     });
 
-    const initialUserId = this.studentId ?? this.demoActivityUserId;
-    this.loadUserActivityHeatmap(initialUserId);
+    if (this.reportUserId) {
+      this.loadUserActivityHeatmap(this.reportUserId);
+    }
   }
 
   changeGrade(): void {
@@ -655,43 +650,6 @@ export class StudentProfileComponent implements OnInit {
   private toIsoDateKey(date: Date): string {
     const utc = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
     return new Date(utc).toISOString().split('T')[0];
-  }
-
-  private getUserIdFromLocalStorage(): number | null {
-    if (typeof window === 'undefined') {
-      return null;
-    }
-
-    try {
-      const stored = window.localStorage.getItem('user');
-      console.log('LocalStorage user verisi:', stored);
-      if (!stored) {
-        return null;
-      }
-
-      const parsed = JSON.parse(stored);
-      const userId = Number(parsed?.id);
-      const finalId = Number.isFinite(userId) && userId > 0 ? userId : null;
-      console.log('Çözümlenen userId:', finalId);
-      return finalId;
-    } catch (error) {
-      console.warn('LocalStorage user bilgisi okunamadı', error);
-      return null;
-    }
-  }
-
-  private resolveUserIdFromProfile(profile: StudentProfile | null): number | null {
-    if (!profile) {
-      return null;
-    }
-
-    const candidate = Number(
-      (profile as any)?.userId ??
-        (profile as any)?.id ??
-        (profile as any)?.student?.userId ??
-        (profile as any)?.student?.id
-    );
-    return Number.isFinite(candidate) && candidate > 0 ? candidate : null;
   }
 
   private formatDayLabel(date: Date): string {

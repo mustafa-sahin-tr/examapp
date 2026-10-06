@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+import threading
 from typing import List
 from pathlib import Path
 from ultralytics import YOLO
@@ -12,7 +13,21 @@ import json
 import os
 import logging
 from pyzbar.pyzbar import decode
-app = FastAPI()
+from guards import (
+    BodySizeLimitMiddleware,
+    MAX_ANSWERS_PER_QUESTION,
+    MAX_COORD,
+    MAX_QUESTIONS_PER_REQUEST,
+    clamp_box,
+    safe_join,
+)
+
+_enable_docs = os.getenv("ENABLE_API_DOCS", "").lower() in ("1", "true", "yes")
+app = FastAPI(
+    docs_url="/docs" if _enable_docs else None,
+    redoc_url="/redoc" if _enable_docs else None,
+    openapi_url="/openapi.json" if _enable_docs else None,
+)
 
 
 # Basit log yapılandırması (konsola yazdırır)
@@ -48,17 +63,21 @@ if not os.path.exists(ANSWERS_JSON_PATH):
 class ImageData(BaseModel):
     image_base64: str
 
+# Issue #366: koordinatlar sonlu (nan/inf reddedilir: ge/le), >=0 ve makul ust sinirli.
+Coord = Field(ge=0, le=MAX_COORD)
+
+
 class AnswerBox(BaseModel):
-    x: float
-    y: float
-    width: float
-    height: float
+    x: float = Coord
+    y: float = Coord
+    width: float = Coord
+    height: float = Coord
 
 class QuestionBox(BaseModel):
-    x: float
-    y: float
-    width: float
-    height: float
+    x: float = Coord
+    y: float = Coord
+    width: float = Coord
+    height: float = Coord
     answers: List[AnswerBox]    
 
 class UploadQuestionsRequest(BaseModel):
@@ -67,14 +86,20 @@ class UploadQuestionsRequest(BaseModel):
     questions: List[QuestionBox]
 
 
-# CORS (gerekirse frontend için aç)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Issue #366: servis yalnız gateway arkasindan cagrilir (tarayici dogrudan gelmez); CORS varsayilan
+# KAPALI. Gerekirse CORS_ALLOWED_ORIGINS (virgullu, acik origin listesi) ile acilir; "*" + credentials yok.
+_cors_origins = [o.strip() for o in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip() and o.strip() != "*"]
+if _cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
+    )
+
+# Govde boyut siniri (413) - tum uclar (predict/read-qr/send-to-fix*).
+app.add_middleware(BodySizeLimitMiddleware)
 
 # Modeli yükle (model yolunu değiştir)
 # model = YOLO("runs/detect/train-only-q-v5/weights/best.pt")
@@ -112,7 +137,20 @@ model = YOLO(QUESTION_MODEL_PATH)
 sub_model = YOLO(ANSWER_MODEL_PATH)  # <--- Alt modelin yolu
 
 
+# questions.json / answers.json read-modify-write tek surecte seri olsun.
+_json_lock = threading.Lock()
+
+
+def validate_upload_limits(payload: UploadQuestionsRequest) -> None:
+    # Issue #366: sayi siniri - tek istekle sinirsiz crop/kayit uretilmesin.
+    if len(payload.questions) > MAX_QUESTIONS_PER_REQUEST:
+        raise HTTPException(status_code=422, detail=f"Too many questions (max {MAX_QUESTIONS_PER_REQUEST}).")
+    if any(len(q.answers) > MAX_ANSWERS_PER_QUESTION for q in payload.questions):
+        raise HTTPException(status_code=422, detail=f"Too many answers per question (max {MAX_ANSWERS_PER_QUESTION}).")
+
+
 def upload_answers_logic(payload: UploadQuestionsRequest) -> dict:
+    validate_upload_limits(payload)
     try:
         # 👇 Base64 temizleme
         base64_str = payload.imageData.image_base64
@@ -124,7 +162,7 @@ def upload_answers_logic(payload: UploadQuestionsRequest) -> dict:
         image = Image.open(BytesIO(image_bytes)).convert("RGB")
 
         filename = f"{uuid.uuid4()}.jpg"
-        image_path = os.path.join(ANSWERS_DIR, filename)
+        image_path = safe_join(ANSWERS_DIR, filename)
         image.save(image_path)
 
         image_url = f"{ANSWER_IMAGE_URL_PREFIX}/{filename}"
@@ -146,7 +184,7 @@ def upload_answers_logic(payload: UploadQuestionsRequest) -> dict:
             logger.info(f"Added question: {entry['question']}")
 
         # Mevcut questions.json dosyasına ekle
-        with open(ANSWERS_JSON_PATH, "r+", encoding="utf-8") as f:
+        with _json_lock, open(ANSWERS_JSON_PATH, "r+", encoding="utf-8") as f:
             current_data = json.load(f)
             current_data.extend(new_entries)
             f.seek(0)
@@ -162,10 +200,11 @@ def upload_answers_logic(payload: UploadQuestionsRequest) -> dict:
             "imageFile": filename
         }
 
-    except Exception as e:
-        logger.error(f"Error occurred: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))  
-
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Error occurred")
+        raise HTTPException(status_code=500, detail="Internal error")
 @app.post("/predict")
 def predict(data: ImageData):
     try:
@@ -239,20 +278,22 @@ def predict(data: ImageData):
 
         return {"success": True, "predictions": predictions}
 
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+    except Exception:
+        logger.exception("predict failed")
+        return {"success": False, "error": "Prediction failed"}
 
 
 @app.post("/send-to-fix")
 def upload_questions(payload: UploadQuestionsRequest):
+    validate_upload_limits(payload)
+    # Ön kontrol: answerCount ile eşleşmeyen var mı? (try dışında: 400 olarak kalsın)
+    invalid_questions = [q for q in payload.questions if len(q.answers) != payload.answerCount]
+    if invalid_questions:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{len(invalid_questions)} question(s) have answer count mismatch. Expected {payload.answerCount}."
+        )
     try:
-        # ❗️Ön kontrol: answerCount ile eşleşmeyen var mı?
-        invalid_questions = [q for q in payload.questions if len(q.answers) != payload.answerCount]
-        if invalid_questions:
-            raise HTTPException(
-                status_code=400,
-                detail=f"{len(invalid_questions)} question(s) have answer count mismatch. Expected {payload.answerCount}."
-            )
         # 👇 Base64 temizleme
         base64_str = payload.imageData.image_base64
         if "," in base64_str:
@@ -263,7 +304,7 @@ def upload_questions(payload: UploadQuestionsRequest):
         image = Image.open(BytesIO(image_bytes)).convert("RGB")
 
         filename = f"{uuid.uuid4()}.jpg"
-        image_path = os.path.join(IMAGES_DIR, filename)
+        image_path = safe_join(IMAGES_DIR, filename)
         image.save(image_path)
 
         image_url = f"{QUESTION_IMAGE_URL_PREFIX}/{filename}"
@@ -282,18 +323,17 @@ def upload_questions(payload: UploadQuestionsRequest):
                 }
             }
 
-            left = q.x
-            upper = q.y
-            right = q.x + q.width
-            lower = q.y + q.height
-
-            crop = image.crop((left, upper, right, lower))
+            try:
+                box = clamp_box(q.x, q.y, q.width, q.height, image.width, image.height)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Box is outside the image.")
+            crop = image.crop(box)
 
             crop_filename = f"{filename}_q{idx + 1}.jpg"
-            crop_path = CROPS_DIR / crop_filename
+            crop_path = safe_join(CROPS_DIR, crop_filename)
             crop.save(crop_path)
 
-            crops.append(str(crop_path))
+            crops.append(str(CROPS_DIR / crop_filename))  # goreli yol (mutlak /app/... sizmasin)
 
             # Eğer answer varsa: crop edilmiş görüntüyle birlikte yeni payload oluştur ve gönder
             if q.answers:
@@ -304,7 +344,7 @@ def upload_questions(payload: UploadQuestionsRequest):
 
                 # AnswerBox -> QuestionBox çevir
                 converted_questions = [
-                    QuestionBox(x=a.x - q.x, y=a.y - q.y, width=a.width, height=a.height, answers=[])
+                    QuestionBox(x=max(0.0, a.x - q.x), y=max(0.0, a.y - q.y), width=a.width, height=a.height, answers=[])
                     for a in q.answers
                 ]                
 
@@ -322,7 +362,7 @@ def upload_questions(payload: UploadQuestionsRequest):
             logger.info(f"Added question: {entry['question']}")
 
         # Mevcut questions.json dosyasına ekle
-        with open(QUESTIONS_JSON_PATH, "r+", encoding="utf-8") as f:
+        with _json_lock, open(QUESTIONS_JSON_PATH, "r+", encoding="utf-8") as f:
             current_data = json.load(f)
             current_data.extend(new_entries)
             f.seek(0)
@@ -339,11 +379,11 @@ def upload_questions(payload: UploadQuestionsRequest):
             "crops": crops
         }
 
-    except Exception as e:
-        logger.error(f"Error occurred: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-    
-
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Error occurred")
+        raise HTTPException(status_code=500, detail="Internal error")
 @app.post("/send-to-fix-for-answers")
 def upload_answers(payload: UploadQuestionsRequest):
     return upload_answers_logic(payload)
@@ -373,5 +413,8 @@ async def read_qr_code(request: ImageData):
         qr_data = qr_codes[0].data.decode('utf-8')
         return {"qr_data": qr_data}
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Hata oluştu: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("read-qr failed")
+        raise HTTPException(status_code=500, detail="QR okuma hatasi")

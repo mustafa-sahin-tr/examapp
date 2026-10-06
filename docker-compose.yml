@@ -363,7 +363,7 @@ services:
     stdin_open: true
     ports:
       - '8888:8888' # Jupyter Notebook veya diğer servisler için hazır
-      - '8080:8080' # FastAPI veya diğer servisler için hazır
+      - '127.0.0.1:8080:8080' # FastAPI; yalnız loopback (#366), client trafiği gateway üzerinden
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1

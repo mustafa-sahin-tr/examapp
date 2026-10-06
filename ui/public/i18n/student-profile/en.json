@@ -3,36 +3,11 @@
     "ok": "OK"
   },
   "tabs": {
-    "what": "What",
     "info": "Info",
     "badges": "Badges",
     "assignments": "Assignments and Exams",
     "weeklyCalendar": "Weekly Calendar",
     "theme": "Theme Settings"
-  },
-  "learning": {
-    "eyebrow": "Your premier learning partner",
-    "title": "High-caliber content from industry experts",
-    "description": "Our experts know their topics. The proof? We carefully select them at about a 6% acceptance rate. And we are constantly peer reviewing our content for the freshest, most reliable courses across tech.",
-    "expertsAlt": "Experts",
-    "certification": {
-      "title": "Top-tier certification exam prep",
-      "description": "Prepare for in-demand certs with unlimited practice exams and labs that validate your learning. Get in-moment feedback to maximize your experience and minimize exam-day nerves.",
-      "cta": "Learn more",
-      "imageAlt": "Certification"
-    },
-    "path": {
-      "title": "Curated learning as unique as you",
-      "description": "Take a skill or role assessment to track exactly what you know. With content recommendations and tailor-made learning paths, you can close identified gaps.",
-      "cta": "Take an assessment",
-      "imageAlt": "Learning path"
-    },
-    "handsOn": {
-      "title": "Hands-on experiences",
-      "description": "Dive into our interactive courses, projects, and labs to learn by doing. Then, practice in live sandbox environments and turn your new knowledge into solid skills that stick.",
-      "cta": "See our labs",
-      "imageAlt": "Hands-on"
-    }
   },
   "profile": {
     "changeAvatar": "Change",
@@ -48,9 +23,6 @@
     "avatarUpdated": "Avatar updated!"
   },
   "points": {
-    "myPoints": "My Points",
-    "classRank": "Class Rank",
-    "yearRank": "Year Rank",
     "myBadges": "My Badges",
     "leaderboards": "Leaderboards"
   },
@@ -64,8 +36,6 @@
   },
   "heatmap": {
     "title": "Activity Heatmap",
-    "titleSecondary": "Activity Heatmap 2",
-    "titleApi": "Activity Heatmap (API)",
     "loading": "Loading activity data...",
     "error": "Something went wrong while fetching activity data.",
     "empty": "No activity data found for the last year.",

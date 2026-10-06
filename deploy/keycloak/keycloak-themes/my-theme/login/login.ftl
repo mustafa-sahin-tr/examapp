@@ -1,23 +1,12 @@
 <#import "template.ftl" as layout>
-<@layout.registrationLayout>
-
-<div class="auth-area">
-  <div class="auth-inner">
-
-    <div class="auth-image-col">
-      <img src="${url.resourcesPath}/img/login.png" alt="${msg("loginImageAlt")}">
-    </div>
-
-    <div class="auth-form-col">
-      <div class="auth-form-header">
-        <h3>${msg("welcomeBackTitle")}</h3>
-        <p>${msg("welcomeBackSubtitle")}</p>
-      </div>
-
-      <#if message?? && message.type == "error">
-        <div class="auth-alert auth-alert--error">${kcSanitize(message.summary)?no_esc}</div>
-      </#if>
-
+<#-- Layout (two-column card, locale switcher, global alert) lives in
+     template.ftl and is shared with every other page of this theme (#379). -->
+<@layout.registrationLayout displayInfo=true; section>
+  <#if section = "header">
+    ${msg("welcomeBackTitle")}
+  <#elseif section = "info">
+    ${msg("welcomeBackSubtitle")}
+  <#elseif section = "form">
       <form action="${url.loginAction}" method="post" class="auth-form">
 
         <div class="form-group">
@@ -85,9 +74,5 @@
       <div class="auth-bottom-text">
         <span>${msg("noAccount")} <a href="/app/register">${msg("doRegister")}</a></span>
       </div>
-
-    </div>
-  </div>
-</div>
-
+  </#if>
 </@layout.registrationLayout>

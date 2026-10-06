@@ -140,3 +140,6 @@ TestResults/
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+
+# Yerel dokümanlar (devir dokümanı, kullanıcı kılavuzu) — repoya girmez
+docs-private/

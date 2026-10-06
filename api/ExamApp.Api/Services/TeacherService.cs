@@ -1506,6 +1506,9 @@ public class TeacherService : ITeacherService
         {
             WorksheetInstanceStatus.Completed => true,
             WorksheetInstanceStatus.Started => relevantInstance.EndTime.HasValue,
+            // issue #396: Expired (süre sınırı/sıfırlamayla kapanmış) kasıtlı olarak "teslim edilmedi" sayılır — öğretmen
+            // tamamlanma sayısı puanlı tamamlanmayı ölçer (WorksheetInstanceStatusRules: finished ≠ completed with score).
+            // Atama durumu ekranı aynı oturumu "Expired / süresi doldu" olarak ayrıca gösterir.
             _ => false
         };
     }

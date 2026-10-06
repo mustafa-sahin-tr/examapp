@@ -1,3 +1,5 @@
+using ExamApp.Api.Helpers;
+using ExamApp.Api.Services.Worksheets;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -274,15 +276,18 @@ public class TopicStudyLinkService : ITopicStudyLinkService
         // instance çağıran öğrenciye ait değilse "yok" say (varlık sızdırılmaz).
         var instance = await _context.TestInstances.AsNoTracking()
             .Where(ti => ti.Id == testInstanceId && ti.Student.UserId == studentUserId)
-            .Select(ti => new { ti.Status })
+            .Select(ti => new { ti.Status, ti.StartTime, ti.MaxDurationSeconds })
             .FirstOrDefaultAsync(ct);
 
         if (instance == null)
             return Fail<StudyLinkSuggestionsResultDto>("studyLinks.testInstanceNotFound", notFound: true);
 
-        // Doğru cevaplar (dolayısıyla yanlışlar) yalnızca tamamlanmış sınavda açıklanır — aksi halde
-        // bu uç devam eden sınavda hangi cevabın yanlış olduğunu sızdırırdı.
-        if (instance.Status != WorksheetInstanceStatus.Completed)
+        // Doğru cevaplar (dolayısıyla yanlışlar) yalnızca bitmiş sınavda açıklanır — aksi halde bu uç devam eden sınavda
+        // hangi cevabın yanlış olduğunu sızdırırdı. issue #396: süresi dolan (Expired) sınav da bitmiştir, cevap alamaz;
+        // sonuç ekranıyla (TestSessionService.GetCanvasTestResultAsync) aynı kural.
+        // Süresi dolmuş ama henüz süpürülmemiş (DB'de Started) oturum da bitmiştir — yanıttaki etkin durum (#396).
+        var status = TestTimeLimit.EffectiveStatus(instance.Status, instance.StartTime, instance.MaxDurationSeconds, DateTime.UtcNow);
+        if (!WorksheetInstanceStatusRules.IsFinished(status))
             return new StudyLinkSuggestionsResultDto { Success = true };
 
         // "Yanlış" = işaretlenmiş VE doğru cevaptan farklı (WorksheetDetailService.CreateWorksheetFromMistakesAsync

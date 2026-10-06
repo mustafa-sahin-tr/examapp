@@ -7,7 +7,7 @@ import { NEVER, Observable, Subject, of, throwError } from 'rxjs';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 
 import { TestSolveCanvasComponentv3 } from './test-solve-canvas-v3.component';
-import { isTestCompletedRejection } from './test-solve-canvas-enhanced.component';
+import { isTestCompletedRejection, isTimeExpiredRejection } from './test-solve-canvas-enhanced.component';
 import { TestService } from '../../services/test.service';
 import { TestInstance, TestSessionResult, TestStatus } from '../../models/test-instance';
 import { ConfirmDialogData } from '../../shared/components/confirm-dialog/confirm-dialog.component';
@@ -30,6 +30,8 @@ const OK: TestSessionResult = { success: true, message: '', objectId: 0, notFoun
 const FAILED: TestSessionResult = { ...OK, success: false, message: '' };
 const NOT_IN_PROGRESS: TestSessionResult = { ...FAILED, conflict: true, errorCode: 'TestNotInProgress' };
 const conflict409 = () => new HttpErrorResponse({ status: 409, error: NOT_IN_PROGRESS });
+const TIME_UP: TestSessionResult = { ...NOT_IN_PROGRESS, reason: 'TimeExpired' };
+const timeUp409 = () => new HttpErrorResponse({ status: 409, error: TIME_UP });
 
 /** Mikrotask + makrotask kuyruğunu boşaltır (promise zinciri ve afterClosed aboneliği için). */
 const settle = () => new Promise<void>((resolve) => setTimeout(resolve));
@@ -329,6 +331,89 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
     expect(testService.completeTest).not.toHaveBeenCalled();
     expect(component.finishing()).toBeFalse();
   }));
+
+  // ---- issue #396: timer from the server's remainingSeconds; time-up message ----
+
+  it('the timer starts from the server remaining time, not from zero (reload keeps the elapsed time)', fakeAsync(() => {
+    component.testInstance = buildInstance({ maxDurationSeconds: 600, remainingSeconds: 3 });
+
+    component.initTimerFromServer();
+    expect(component.testDuration).toBe(597);
+
+    component.startTimer();
+    tick(2000);
+    flushMicrotasks();
+    expect(testService.completeTest).not.toHaveBeenCalled();
+
+    tick(1000);
+    flushMicrotasks();
+    expect(dialog.open).not.toHaveBeenCalled();
+    expect(testService.completeTest).toHaveBeenCalledOnceWith(7);
+  }));
+
+  it('elapsed time follows the wall clock, so a throttled background tab does not drift', fakeAsync(() => {
+    component.testInstance = buildInstance({ maxDurationSeconds: 600, remainingSeconds: 100 });
+    // The deadline was computed 40 s ago (tab in the background, interval ticks were throttled away).
+    component.initTimerFromServer(Date.now() - 40_000);
+
+    component.startTimer();
+    tick(1000);
+
+    expect(component.testDuration).toBe(541); // 600 - (100 - 41)
+    component.testTimerSubscription.unsubscribe();
+  }));
+
+  it('opening a test whose server time is already up finishes immediately', fakeAsync(() => {
+    component.testInstance = buildInstance({ maxDurationSeconds: 600, remainingSeconds: 0 });
+
+    component.initTimerFromServer();
+    component.startTimer();
+    flushMicrotasks();
+
+    expect(dialog.open).not.toHaveBeenCalled();
+    expect(testService.completeTest).toHaveBeenCalledOnceWith(7);
+  }));
+
+  it('a test without a time limit never auto-finishes', fakeAsync(() => {
+    component.testInstance = buildInstance({ maxDurationSeconds: 0, remainingSeconds: null });
+
+    component.initTimerFromServer();
+    component.startTimer();
+    tick(5000);
+    flushMicrotasks();
+
+    expect(testService.completeTest).not.toHaveBeenCalled();
+    expect(component.testDuration).toBe(5);
+    component.testTimerSubscription.unsubscribe();
+  }));
+
+  it('a save rejected because time is up shows the time-up message and goes to the result page', async () => {
+    testService.saveAnswer.and.returnValue(throwError(timeUp409));
+
+    await component.completeTest();
+
+    expect(testService.completeTest).not.toHaveBeenCalled();
+    expect(snackBar.open).toHaveBeenCalledTimes(1);
+    expect(snackBar.open.calls.mostRecent().args[0]).toBe(testSolveTr.finish.timeUp);
+    expect(navigateSpy).toHaveBeenCalledOnceWith(['/test', 42], { replaceUrl: true });
+  });
+
+  it('end-test rejected because time is up (200 body) shows the time-up message', async () => {
+    testService.completeTest.and.returnValue(of(TIME_UP));
+
+    await component.completeTest();
+
+    expect(snackBar.open.calls.mostRecent().args[0]).toBe(testSolveTr.finish.timeUp);
+    expect(navigateSpy).toHaveBeenCalledOnceWith(['/test', 42], { replaceUrl: true });
+  });
+
+  it('a plain not-in-progress rejection keeps the generic message', async () => {
+    testService.saveAnswer.and.returnValue(throwError(conflict409));
+
+    await component.completeTest();
+
+    expect(snackBar.open.calls.mostRecent().args[0]).toBe(testSolveTr.finish.alreadyCompleted);
+  });
 });
 
 describe('isTestCompletedRejection', () => {
@@ -340,5 +425,13 @@ describe('isTestCompletedRejection', () => {
     expect(isTestCompletedRejection(new HttpErrorResponse({ status: 500 }))).toBeFalse();
     expect(isTestCompletedRejection({ success: false, conflict: false })).toBeFalse();
     expect(isTestCompletedRejection(null)).toBeFalse();
+  });
+
+  it('issue #396: the time-up reason is recognised only together with the TestNotInProgress code', () => {
+    expect(isTimeExpiredRejection(timeUp409())).toBeTrue();
+    expect(isTimeExpiredRejection(TIME_UP)).toBeTrue();
+    expect(isTimeExpiredRejection(conflict409())).toBeFalse();
+    expect(isTimeExpiredRejection({ success: false, reason: 'TimeExpired' })).toBeFalse();
+    expect(isTimeExpiredRejection(null)).toBeFalse();
   });
 });

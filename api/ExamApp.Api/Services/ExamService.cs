@@ -749,6 +749,8 @@ public class ExamService : IExamService
 
         // 🔹 Total verileri için
         int totalSolved = testInstances.Count;
+        // issue #396: istatistik "puanlı tamamlandı" sayar — süresi dolan (Expired) oturumlar doğru/yanlış/süre toplamına
+        // girmez (WorksheetInstanceStatusRules).
         var completedTests = testInstances.Where(ti => ti.Status == WorksheetInstanceStatus.Completed).ToList();
         int completedCount = completedTests.Count;
         int totalCorrect = 0;

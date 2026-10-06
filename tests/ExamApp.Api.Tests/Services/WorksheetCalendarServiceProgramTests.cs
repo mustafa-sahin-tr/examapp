@@ -64,6 +64,50 @@ public class WorksheetCalendarServiceProgramTests : IDisposable
         return (program.Id, schedule.Id);
     }
 
+    // issue #396: an assignment whose session was closed by the time limit is finished — the deadline event is "done",
+    // the student is not reminded of a test they can no longer take. A still-running session is not.
+    [Theory]
+    [InlineData(WorksheetInstanceStatus.Expired, true)]
+    [InlineData(WorksheetInstanceStatus.Completed, true)]
+    [InlineData(WorksheetInstanceStatus.Started, false)]
+    public async Task GetMyCalendarAsync_AssignmentDeadline_IsCompleted_follows_the_finished_rule(
+        WorksheetInstanceStatus status, bool expected)
+    {
+        int studentId;
+        await using (var ctx = _db.NewContext())
+        {
+            var grade = new Grade { Name = "5" };
+            ctx.Grades.Add(grade);
+            await ctx.SaveChangesAsync();
+            var ws = new Worksheet { Name = "Süreli", Description = "", GradeId = grade.Id };
+            var st = new Student { UserId = 501, StudentNumber = "S501", SchoolName = "S", GradeId = grade.Id };
+            ctx.AddRange(ws, st);
+            await ctx.SaveChangesAsync();
+            studentId = st.Id;
+            ctx.WorksheetAssignments.Add(new WorksheetAssignment
+            {
+                WorksheetId = ws.Id, StudentId = st.Id,
+                StartAt = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc),
+                EndAt = new DateTime(2026, 3, 5, 0, 0, 0, DateTimeKind.Utc),
+            });
+            ctx.TestInstances.Add(new WorksheetInstance
+            {
+                StudentId = st.Id, WorksheetId = ws.Id, Status = status,
+                StartTime = new DateTime(2026, 3, 2, 0, 0, 0, DateTimeKind.Utc),
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var result = await NewService(read).GetMyCalendarAsync(
+            studentId, KeycloakUserId, null, null,
+            new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+            CancellationToken.None);
+
+        result.Events.Single(e => e.Kind == "assignment-deadline").IsCompleted.ShouldBe(expected);
+    }
+
     [Fact]
     public async Task GetMyCalendarAsync_ScheduleFullyInsideRange_ReturnsProgramStudyItemEvent()
     {

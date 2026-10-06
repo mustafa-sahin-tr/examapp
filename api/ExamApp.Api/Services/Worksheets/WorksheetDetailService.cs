@@ -165,7 +165,11 @@ public class WorksheetDetailService : IWorksheetDetailService
             })
             .ToList();
 
+        // issue #396: kitle istatistikleri (ortalama, öğretmen içgörüleri) yalnız puanlı tamamlanmış oturumları sayar;
+        // öğrencinin kendi denemeleri/sonucu bitmiş oturumların hepsini (Completed + süresi dolan Expired) gösterir —
+        // süresi dolan testin sonucu da öğrencinin sonucudur. Kural: WorksheetInstanceStatusRules.
         var completedInstances = instances.Where(i => i.Status == WorksheetInstanceStatus.Completed).ToList();
+        var finishedInstances = instances.Where(i => WorksheetInstanceStatusRules.IsFinished(i.Status)).ToList();
 
         var result = new WorksheetDetailDto
         {
@@ -251,7 +255,7 @@ public class WorksheetDetailService : IWorksheetDetailService
         // ---- attempts (student, own completed) ----
         if (isStudent)
         {
-            var mine = completedInstances
+            var mine = finishedInstances
                 .Where(i => i.StudentId == studentId!.Value)
                 .OrderByDescending(i => i.SortKey)
                 .ToList();
@@ -287,7 +291,7 @@ public class WorksheetDetailService : IWorksheetDetailService
         // ---- completed result (student) ----
         if (isStudent)
         {
-            var latest = completedInstances
+            var latest = finishedInstances
                 .Where(i => i.StudentId == studentId!.Value)
                 .OrderByDescending(i => i.SortKey)
                 .FirstOrDefault();
@@ -337,6 +341,7 @@ public class WorksheetDetailService : IWorksheetDetailService
 
         var perInstance = await _context.TestInstances
             .AsNoTracking()
+            // issue #396: benzer testlerin ortalaması yalnız puanlı tamamlanmış oturumlardan (Expired sayılmaz).
             .Where(ti => ids.Contains(ti.WorksheetId) && ti.Status == WorksheetInstanceStatus.Completed)
             .Select(ti => new
             {
@@ -556,6 +561,7 @@ public class WorksheetDetailService : IWorksheetDetailService
 
         var scored = (await _context.TestInstances
             .AsNoTracking()
+            // issue #396: sıralama/sınıf ortalaması yalnız puanlı tamamlanmış oturumlardan (Expired sayılmaz).
             .Where(ti => ti.WorksheetId == worksheetId
                 && ti.Status == WorksheetInstanceStatus.Completed
                 && cohort.Contains(ti.StudentId))
@@ -609,7 +615,11 @@ public class WorksheetDetailService : IWorksheetDetailService
         if (instance.StudentId != studentId)
             throw new UnauthorizedAccessException(_localizer["worksheets.detail.sessionNotYours"]);
 
-        if (instance.Status != WorksheetInstanceStatus.Completed)
+        // issue #396: bitmiş (Completed ya da süresi dolmuş Expired) oturumun yanlışlarıyla tekrar testi üretilebilir. Etkin
+        // durum: süresi dolmuş ama henüz süpürülmemiş (DB'de Started) oturum da bitmiştir.
+        var effectiveStatus = TestTimeLimit.EffectiveStatus(
+            instance.Status, instance.StartTime, instance.MaxDurationSeconds, DateTime.UtcNow);
+        if (!WorksheetInstanceStatusRules.IsFinished(effectiveStatus))
             throw new InvalidOperationException(_localizer["worksheets.detail.sessionNotCompleted"]);
 
         var expectedName = $"{instance.Worksheet.Name} — Yanlışlarım";

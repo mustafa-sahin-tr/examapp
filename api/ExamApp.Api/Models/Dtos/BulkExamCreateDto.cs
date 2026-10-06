@@ -18,6 +18,7 @@ public class BulkExamItemDto
     public int GradeId { get; set; }
 
     [Required]
+    [Range(0, WorksheetDurationLimits.MaxSeconds)] // issue #396
     public int MaxDurationSeconds { get; set; }
 
     public bool IsPracticeTest { get; set; } = false;

@@ -330,19 +330,19 @@ public class TestCompletionAnswerLockPostgresTests(IntegrationApiFactory factory
                 var worksheet = new Worksheet { Name = "W", Description = "", GradeId = grade.Id };
                 ctx.AddRange(student, worksheet);
                 await ctx.SaveChangesAsync();
-                var first = new WorksheetInstance
-                {
-                    StudentId = student.Id, WorksheetId = worksheet.Id, Status = WorksheetInstanceStatus.Completed,
-                    StartTime = DateTime.UtcNow.AddHours(-2), EndTime = DateTime.UtcNow.AddHours(-1)
-                };
-                var retake = new WorksheetInstance
-                {
-                    StudentId = student.Id, WorksheetId = worksheet.Id, Status = WorksheetInstanceStatus.Completed,
-                    StartTime = DateTime.UtcNow.AddMinutes(-30), EndTime = DateTime.UtcNow
-                };
-                ctx.TestInstances.AddRange(first, retake);
-                await ctx.SaveChangesAsync();
-                retakeId = retake.Id;
+                // Raw SQL, not the EF model: the current model has columns the old schema lacks (issue #396
+                // TestInstances.MaxDurationSeconds), so an entity insert would fail against this migration point.
+                const string insertInstance = """
+                    INSERT INTO "TestInstances" ("StudentId", "WorksheetId", "Status", "StartTime", "EndTime", "CreateTime", "IsDeleted")
+                    VALUES ({0}, {1}, {2}, {3}, {4}, now(), FALSE)
+                    """;
+                var completed = (int)WorksheetInstanceStatus.Completed;
+                await ctx.Database.ExecuteSqlRawAsync(insertInstance,
+                    student.Id, worksheet.Id, completed, DateTime.UtcNow.AddHours(-2), DateTime.UtcNow.AddHours(-1));
+                await ctx.Database.ExecuteSqlRawAsync(insertInstance,
+                    student.Id, worksheet.Id, completed, DateTime.UtcNow.AddMinutes(-30), DateTime.UtcNow);
+                retakeId = await ctx.TestInstances.IgnoreQueryFilters()
+                    .OrderByDescending(i => i.Id).Select(i => i.Id).FirstAsync();
             }
 
             await using (var ctx = new AppDbContext(options))

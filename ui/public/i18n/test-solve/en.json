@@ -24,6 +24,7 @@
     "alreadyCompleted": "This test is no longer in progress (finished or expired), so you've been taken to the results page.",
     "dismiss": "OK",
     "timeUpTitle": "Time is up",
+    "timeUp": "Your time for this test is up; answers after the deadline weren't saved. You've been taken to the results page.",
     "retry": "Try again"
   },
   "question": {

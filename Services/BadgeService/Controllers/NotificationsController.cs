@@ -30,6 +30,27 @@ public class NotificationsController : ControllerBase
 
     private string? CallerSub => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+    /// <summary>
+    /// Rol bazlı (kullanıcıya bağlı olmayan) admin bildirim tipleri: satırlar <c>UserKeycloakId == null</c> yazılır ve Admin
+    /// grubuna push edilir. Yeni bir rol bazlı admin tipi eklenirse buraya da eklenmelidir.
+    /// Okundu durumu bu satırlarda PAYLAŞIMLIDIR: bir admin okundu işaretleyince tüm adminlerde okundu olur (kabul edilen karar).
+    /// </summary>
+    internal static readonly string[] AdminBroadcastTypes =
+    {
+        "TeacherApplicationSubmitted",
+        "TeacherSchoolRequestSubmitted",
+        "DirectMessageReported",
+    };
+
+    /// <summary>Çağıranın görebildiği satırlar: kendi sub'ı + (yalnız sunucu tarafı Admin rolündeyse) rol bazlı admin satırları.</summary>
+    private IQueryable<BadgeService.Entities.Notification> Visible(string sub)
+    {
+        var isAdmin = User.IsInRole("Admin");
+        return _db.Notifications.Where(n =>
+            n.UserKeycloakId == sub
+            || (isAdmin && n.UserKeycloakId == null && AdminBroadcastTypes.Contains(n.Type)));
+    }
+
     /// <summary>Çağıranın son bildirimleri (varsayılan: yalnızca okunmamış, en fazla 20).</summary>
     [HttpGet("me")]
     public async Task<ActionResult<IReadOnlyList<NotificationDto>>> GetMineAsync(
@@ -43,7 +64,7 @@ public class NotificationsController : ControllerBase
 
         take = Math.Clamp(take, 1, 100);
 
-        var query = _db.Notifications.AsNoTracking().Where(n => n.UserKeycloakId == sub);
+        var query = Visible(sub).AsNoTracking();
         if (unreadOnly)
             query = query.Where(n => !n.IsRead);
 
@@ -65,7 +86,7 @@ public class NotificationsController : ControllerBase
         if (string.IsNullOrEmpty(sub))
             return Forbid();
 
-        var count = await _db.Notifications.CountAsync(n => n.UserKeycloakId == sub && !n.IsRead, ct);
+        var count = await Visible(sub).CountAsync(n => !n.IsRead, ct);
         return Ok(count);
     }
 
@@ -77,9 +98,9 @@ public class NotificationsController : ControllerBase
         if (string.IsNullOrEmpty(sub))
             return Forbid();
 
-        var notification = await _db.Notifications.FirstOrDefaultAsync(n => n.Id == id, ct);
-        // Varlık sızdırmamak için başkasının bildirimi de 404 döner.
-        if (notification == null || notification.UserKeycloakId != sub)
+        // Varlık sızdırmamak için başkasının bildirimi (ve Admin olmayanın rol satırı) 404 döner.
+        var notification = await Visible(sub).FirstOrDefaultAsync(n => n.Id == id, ct);
+        if (notification == null)
             return NotFound();
 
         if (!notification.IsRead)

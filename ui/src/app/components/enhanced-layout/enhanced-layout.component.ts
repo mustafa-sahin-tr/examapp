@@ -135,6 +135,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   private readonly isStudent = this.authService.hasRealmRole('Student');
   /** Pencere odağında DM sayacı en sık bu aralıkla tazelenir (polling değil; yalnız odak olayı). */
   static readonly DM_FOCUS_REFRESH_THROTTLE_MS = 30_000;
+  /** Issue #106 b: DM push'ları arka arkaya gelirse tek rozet isteği (ms). */
+  static readonly DM_PUSH_REFRESH_DEBOUNCE_MS = 400;
   /** Art arda gelen hub push'larını tek sayaç isteğinde birleştirme penceresi. */
   static readonly NOTIFICATION_REFRESH_DEBOUNCE_MS = 1000;
   userThemeService = inject(UserThemeService);
@@ -323,7 +325,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   /**
    * Issue #106 dilim (c): DM okunmamış rozeti girişte ve pencere odağında (en sık 30 sn'de bir) tazelenir — polling yok.
    * Öğretmende yalnız onayı bilinen hesapta (gelen kutusu ucu onaysıza 403). Çıkışta sıfırlanır.
-   * Dilim (b) kancası: SignalR DM push'u geldiğinde aynı `refreshUnreadCount` buradan (merge'e bir akış eklenerek) çağrılacak.
+   * Dilim (b): SignalR DM push'u (`directMessageReceived$`) geldiğinde aynı `refreshUnreadCount` çağrılır (polling yok).
    */
   /** Öğretmen DM rozeti ilk kez çekildi mi (init ve onay-geç-geldi yolları çift istek atmasın). */
   private directMessageBadgeLoaded = false;
@@ -344,7 +346,9 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
           const focus$ = view
             ? fromEvent(view, 'focus').pipe(throttleTime(EnhancedLayoutComponent.DM_FOCUS_REFRESH_THROTTLE_MS))
             : EMPTY;
-          return merge(of(undefined), focus$).pipe(
+          // Issue #106 dilim b: SignalR DM push'u anında rozeti tazeler; ardışık push'lar tek istekte birleşir (debounce).
+          const push$ = this.signalR.directMessageReceived$.pipe(debounceTime(EnhancedLayoutComponent.DM_PUSH_REFRESH_DEBOUNCE_MS));
+          return merge(of(undefined), focus$, push$).pipe(
             switchMap(() => {
               if (this.isStudent) {
                 return this.directMessageService.refreshUnreadCount('Student').pipe(catchError(() => EMPTY));

@@ -11,6 +11,12 @@ import {
   parseWorksheetCommentNotificationData,
   worksheetCommentLink,
 } from '../../models/worksheet-comment.model';
+import {
+  DIRECT_MESSAGE_RECEIVED_TYPE,
+  DIRECT_MESSAGE_REPORTED_TYPE,
+  directMessageLink,
+  parseDirectMessageNotificationData,
+} from '../../models/direct-message.model';
 
 /**
  * Issue #146 — bildirim listesi için göreli tarih ("3 dakika önce", "dün").
@@ -99,6 +105,15 @@ export function describeNotification(notification: Pick<AppNotification, 'type' 
     // Sıra yalnız soru yorumunda anlamlı (worksheet seviyesinde questionId null).
     const questionOrder = ref?.questionId != null ? (ref.questionOrder ?? null) : null;
     return { icon: 'forum', badge: null, route: ref ? worksheetCommentLink(ref) : null, questionOrder };
+  }
+  if (notification.type === DIRECT_MESSAGE_RECEIVED_TYPE) {
+    // Issue #106 b: `data` doğrulanır; bozuksa navigasyon yok. Link gönderen rolüne göre doğru gelen kutusuna gider.
+    const ref = parseDirectMessageNotificationData(notification.data);
+    return { icon: 'chat', badge: null, route: ref ? directMessageLink(ref) : null, questionOrder: null };
+  }
+  if (notification.type === DIRECT_MESSAGE_REPORTED_TYPE) {
+    // Admin şikayet bildirimi: şikayet listesi için ayrı bir admin sayfası henüz yok → hedef yok.
+    return { icon: 'report', badge: null, route: null, questionOrder: null };
   }
   if (notification.type === BOOKING_TEACHER_UNAVAILABLE_NOTIFICATION_TYPE) {
     // Issue #298: `data` yalnız doğrulanır, linke taşınmaz; bozuksa navigasyon yok.

@@ -2,10 +2,23 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.11" />
+    <!-- issue #365 (S2): gateway üzerinden imzalı /img testi — API'nin imzalayıcısı (aşağıda link'li kaynak) MinIO SDK'sını kullanır -->
+    <PackageReference Include="Minio" Version="6.0.4" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../Services/Gateway/Gateway.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- issue #365 (S2): API projesine referans verilemez (iki ayrı Program tipi WebApplicationFactory<Program>'ı
+         belirsizleştirir); imzalayıcının GERÇEK kaynağı derlenir ki gateway testi üretim imzasını doğrulasın. -->
+    <Compile Include="../../api/ExamApp.Api/Services/Storage/StorageArea.cs" Link="Linked/Storage/StorageArea.cs" />
+    <Compile Include="../../api/ExamApp.Api/Services/Storage/StorageAreaPolicy.cs" Link="Linked/Storage/StorageAreaPolicy.cs" />
+    <Compile Include="../../api/ExamApp.Api/Services/Storage/StorageUrlSigner.cs" Link="Linked/Storage/StorageUrlSigner.cs" />
+    <Compile Include="../../api/ExamApp.Api/Services/Storage/MinioObjectUrl.cs" Link="Linked/Storage/MinioObjectUrl.cs" />
+    <Compile Include="../../api/ExamApp.Api/Services/Storage/MinioBucketPolicies.cs" Link="Linked/Storage/MinioBucketPolicies.cs" />
+    <Compile Include="../ExamApp.Api.Tests/Support/SigV4PresignVerifier.cs" Link="Linked/SigV4PresignVerifier.cs" />
   </ItemGroup>
 
 </Project>

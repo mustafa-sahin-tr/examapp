@@ -177,6 +177,9 @@ services:
       Jwt__Key: ${JWT_KEY}
       Server__BaseUrl: ${PUBLIC_BASE_URL}
       MinioConfig__Endpoint: minio:9000
+      # Issue #365 (S2): presigned /img URL imzasi bu host:port'a baglanir; ocelot.Production.json'daki
+      # /img downstream'i (exam-minio:9000) ile BIREBIR ayni olmali, yoksa tum gorseller 403 alir.
+      MinioConfig__PresignEndpoint: exam-minio:9000
       MinioConfig__AccessKey: ${MINIO_ROOT_USER}
       MinioConfig__SecretKey: ${MINIO_ROOT_PASSWORD}
       MinioConfig__BaseUrl: ${PUBLIC_BASE_URL}/img

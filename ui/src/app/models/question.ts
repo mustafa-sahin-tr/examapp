@@ -20,6 +20,11 @@ export interface Question {
   text: string;
   subText?: string;
   imageUrl: string;
+  /**
+   * issue #365 (S2): sunucunun `imageUrl`'den türetip imzaladığı `question-v2` varyantı (QuestionDto.ImageUrlV2,
+   * salt okunur). Görsel adı `question.<ext>` değilse null. İstemci bu adresi kendisi türetmez.
+   */
+  imageUrlV2?: string | null;
   bookName?: string;
   category: Subject;
   answers: Answer[];

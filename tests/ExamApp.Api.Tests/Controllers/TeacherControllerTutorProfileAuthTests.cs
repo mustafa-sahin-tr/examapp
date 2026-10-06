@@ -179,7 +179,7 @@ public class TeacherControllerTutorProfileAuthTests
     public async Task GetTutorProfile_NotIndependent_Returns400()
     {
         var user = new UserProfileDto { Id = 1, KeycloakId = "kc-user-1", Role = "Teacher" };
-        var resultDto = new TutorProfileResultDto { Success = false, Forbidden = true, Message = "Tutor profili yalnızca bağımsız öğretmenler için kullanılabilir." };
+        var resultDto = new TutorProfileResultDto { Success = false, Forbidden = true, Message = "Özel ders profili yalnızca bağımsız (okula bağlı olmayan) öğretmenler içindir." };
 
         _teacherService.GetTutorProfileAsync(1, Arg.Any<CancellationToken>()).Returns(resultDto);
 
@@ -218,7 +218,7 @@ public class TeacherControllerTutorProfileAuthTests
         {
             Success = true,
             Profile = profileDto,
-            Message = "Tutor profili güncellendi."
+            Message = "Özel ders profili güncellendi."
         };
 
         _teacherService.UpdateTutorProfileAsync(1, request, Arg.Any<CancellationToken>()).Returns(resultDto);
@@ -271,7 +271,7 @@ public class TeacherControllerTutorProfileAuthTests
         {
             Success = false,
             Forbidden = true,
-            Message = "Tutor profili yalnızca bağımsız öğretmenler için güncellenebilir."
+            Message = "Özel ders profilini yalnızca bağımsız (okula bağlı olmayan) öğretmenler güncelleyebilir."
         };
 
         _teacherService.UpdateTutorProfileAsync(1, request, Arg.Any<CancellationToken>()).Returns(resultDto);

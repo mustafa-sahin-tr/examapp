@@ -7,6 +7,11 @@ export interface Teacher {
   schoolName: string;
   /** `TeacherDto.SchoolId` — okulsuz öğretmende null (issue #191). */
   schoolId?: number | null;
+  /**
+   * Issue #384 (`TeacherDto.IsIndependentTutor`): bağımsız öğretmen mi — backend'in tutor profili kuralı. Yalnız exam-api
+   * refresh doldurur; login yanıtında yoktur → undefined = bilinmiyor.
+   */
+  isIndependentTutor?: boolean;
   themePreset?: string; // 🎨 Theme tercihi
   themeCustomConfig?: string; // 🎨 Custom theme config (JSON)
   /**

@@ -262,11 +262,6 @@
         "extraLife": "Yeni Hak"
       }
     },
-    "studentTimeChart": {
-      "legend": "Gösterge",
-      "xAxis": "Ders",
-      "yAxis": "Çalışma süresi (dk)"
-    },
     "tutorCard": {
       "subjectsAria": "Verdiği dersler",
       "hourlyRate": "{{amount}} ₺ / saat",

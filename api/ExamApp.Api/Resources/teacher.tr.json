@@ -30,14 +30,14 @@
     },
 
     "tutorProfile": {
-      "independentOnly": "Tutor profili yalnızca bağımsız öğretmenler için kullanılabilir.",
-      "independentOnlyUpdate": "Tutor profili yalnızca bağımsız öğretmenler için güncellenebilir.",
+      "independentOnly": "Özel ders profili yalnızca bağımsız (okula bağlı olmayan) öğretmenler içindir.",
+      "independentOnlyUpdate": "Özel ders profilini yalnızca bağımsız (okula bağlı olmayan) öğretmenler güncelleyebilir.",
       "subjectsRequired": "En az bir ders seçilmelidir.",
       "teachingModeRequired": "Ders şekli olarak online veya yüz yüze seçeneklerinden en az biri seçilmelidir.",
       "hourlyRateInvalid": "Saatlik ücret 0'dan büyük olmalıdır.",
       "invalidSubjects": "Geçersiz ders seçimi: {0}",
       "bioTooLong": "Tanıtım metni en fazla 500 karakter olabilir.",
-      "updated": "Tutor profili güncellendi."
+      "updated": "Özel ders profili güncellendi."
     }
   }
 }

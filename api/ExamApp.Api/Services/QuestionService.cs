@@ -6,6 +6,7 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Storage;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Localization;
 using ExamApp.Foundation.Persistence;
@@ -903,8 +904,21 @@ public class QuestionService : IQuestionService
                 };
             }
 
-            // Boyutlandırılmış resmi tekrar yükle
-            var newUrl = await _minioService.UploadFileAsync(resizedImage, question.ImageUrl);
+            // Boyutlandırılmış resmi aynı bucket'ta, aynı questions/ klasöründe YENİ bir key'e yükle (issue #365: eskiden
+            // saklanan URL'nin kendisi key olarak veriliyordu → `/img/{bucket}/img/{bucket}/...` çift URL ve anonim
+            // okunabilir questions/* prefix'i dışında bir nesne). Yeni key tarayıcı önbelleğindeki eski görseli de aşar.
+            if (!MinioObjectUrl.TryParse(question.ImageUrl, out var bucket, out var oldKey) ||
+                !oldKey.StartsWith("questions/", StringComparison.Ordinal))
+            {
+                return new ResponseBaseDto
+                {
+                    Success = false,
+                    Message = _localizer["questions.image.uploadFailed"]
+                };
+            }
+            var folder = oldKey[..oldKey.LastIndexOf('/')];
+            var newKey = $"{folder}/{Guid.NewGuid()}{Path.GetExtension(oldKey)}";
+            var newUrl = await _minioService.UploadFileAsync(resizedImage, newKey, bucket);
             if (string.IsNullOrEmpty(newUrl))
             {
                 return new ResponseBaseDto

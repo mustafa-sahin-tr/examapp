@@ -278,10 +278,8 @@
       ],
       "UpstreamPathTemplate": "/img/{everything}",
       "UpstreamHttpMethod": [
-        "Get",
-        "Post"
-      ],
-      "AddHeadersToRequest": true
+        "Get"
+      ]
     },
     {
       "DownstreamPathTemplate": "/app/{everything}",

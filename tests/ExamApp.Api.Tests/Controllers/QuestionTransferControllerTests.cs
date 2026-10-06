@@ -23,11 +23,11 @@ public class QuestionTransferControllerTests
         _profiles.GetAsync("kc-teacher", Arg.Any<CancellationToken>()).Returns(new UserProfileDto { Id = 77, KeycloakId = "kc-teacher" });
     }
 
-    /// <summary>issue #289 (security D2): varsayılan çağıran exam kullanıcı id'si 77 olan öğretmen.</summary>
+    /// <summary>issue #289 / #365: varsayılan çağıran exam kullanıcı id'si 77 olan Admin (controller Admin-only).</summary>
     private QuestionTransferController NewController(string sub = "kc-teacher", params string[] roles)
     {
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, sub) };
-        claims.AddRange((roles.Length == 0 ? ["Teacher"] : roles).Select(r => new Claim(ClaimTypes.Role, r)));
+        claims.AddRange((roles.Length == 0 ? ["Admin"] : roles).Select(r => new Claim(ClaimTypes.Role, r)));
         return new(_service, _minio, profiles: _profiles)
         {
             ControllerContext = new ControllerContext
@@ -67,26 +67,25 @@ public class QuestionTransferControllerTests
     }
 
     [Fact]
-    public async Task StartExport_passes_the_caller_as_job_owner()
+    public async Task StartExport_passes_the_admin_caller_as_job_owner()
     {
         _service.StartExportAsync(Arg.Any<StartQuestionExportDto>(), Arg.Any<QuestionTransferOwner>(), Arg.Any<CancellationToken>())
             .Returns(new QuestionTransferJobDto());
 
         await NewController().StartExport(new StartQuestionExportDto(), default);
-        await NewController("kc-teacher", "Teacher", "Admin").StartExport(new StartQuestionExportDto(), default);
 
-        await _service.Received(1).StartExportAsync(Arg.Any<StartQuestionExportDto>(), new QuestionTransferOwner(77, false), Arg.Any<CancellationToken>());
         await _service.Received(1).StartExportAsync(Arg.Any<StartQuestionExportDto>(), new QuestionTransferOwner(77, true), Arg.Any<CancellationToken>());
     }
 
+    /// <summary>issue #365: defense-in-depth — attribute'a rağmen Admin olmayan çağıran iş başlatamaz/yükleyemez.</summary>
     [Fact]
-    public async Task Teacher_whose_profile_cannot_be_resolved_is_forbidden_but_admin_is_not()
+    public async Task Non_admin_caller_is_forbidden_and_admin_with_unresolved_profile_owns_job_as_zero()
     {
         _service.StartExportAsync(Arg.Any<StartQuestionExportDto>(), Arg.Any<QuestionTransferOwner>(), Arg.Any<CancellationToken>())
             .Returns(new QuestionTransferJobDto());
 
-        (await NewController("kc-unknown").StartExport(new StartQuestionExportDto(), default)).Result.ShouldBeOfType<ForbidResult>();
-        (await NewController("kc-unknown").StartImport(new StartQuestionImportFormDto { File = ZipFile("x") }, default))
+        (await NewController("kc-teacher", "Teacher").StartExport(new StartQuestionExportDto(), default)).Result.ShouldBeOfType<ForbidResult>();
+        (await NewController("kc-teacher", "Teacher").StartImport(new StartQuestionImportFormDto { File = ZipFile("x") }, default))
             .Result.ShouldBeOfType<ForbidResult>();
         await _minio.DidNotReceiveWithAnyArgs().UploadFileAsync(default!, default!);
 

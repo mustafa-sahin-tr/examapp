@@ -338,8 +338,10 @@ services:
     container_name: minio
     restart: always
     ports:
-      - '9000:9000' # MinIO API Portu
-      - '9001:9001' # MinIO Yönetim Paneli
+      # Issue #365: yalnızca 127.0.0.1'e publish edilir — LAN'dan MinIO API'sine doğrudan (gateway'i atlayarak)
+      # anonim GET / yönetim paneline erişim olmasın (bkz. #100 auth-api, #279 RabbitMQ aynı desen).
+      - '127.0.0.1:9000:9000' # MinIO API Portu
+      - '127.0.0.1:9001:9001' # MinIO Yönetim Paneli
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}

@@ -99,7 +99,7 @@ public class WorksheetDetailServiceDetailTests : IDisposable
             StudentId = studentId,
             Status = status,
             StartTime = DateTime.UtcNow.AddMinutes(-30),
-            EndTime = status == WorksheetInstanceStatus.Completed ? DateTime.UtcNow : (DateTime?)null,
+            EndTime = status != WorksheetInstanceStatus.Started ? DateTime.UtcNow : (DateTime?)null,
             WorksheetInstanceQuestions = answers
                 .Select(a => new WorksheetInstanceQuestion
                 {
@@ -388,6 +388,34 @@ public class WorksheetDetailServiceDetailTests : IDisposable
         attempt.ScorePercent.ShouldBe(50);
         attempt.CorrectCount.ShouldBe(2);
         attempt.TotalCount.ShouldBe(4);
+    }
+
+    // issue #396: an Expired (time limit) session is the student's own finished attempt — it shows in their attempts and
+    // result — but it is not a "completed with score" session for the class average.
+    [Fact]
+    public async Task GetWorksheetDetail_ExpiredAttempt_IsTheStudentsResult_ButNotInTheAverage()
+    {
+        var w = await SeedAsync();
+        await SeedStandardAttemptsAsync(w);
+        // St3's open attempt (1 of 3 answered correctly) was closed by the time limit.
+        await using (var flip = _db.NewContext())
+            await flip.TestInstances.Where(i => i.StudentId == w.St3)
+                .ExecuteUpdateAsync(u => u.SetProperty(i => i.Status, WorksheetInstanceStatus.Expired)
+                    .SetProperty(i => i.EndTime, (DateTime?)DateTime.UtcNow));
+
+        await using (var ctx = _db.NewContext())
+        {
+            // (50 + 100) / 2 -> 75: the expired 33% attempt does not drag the average down.
+            (await AsTeacher(ctx, w))!.Stats.AverageScorePercent.ShouldBe(75);
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var dto = await AsStudent(ctx, w, w.St3);
+            var attempt = dto!.Attempts.ShouldHaveSingleItem();
+            attempt.CorrectCount.ShouldBe(1);
+            dto.CompletedResult.ShouldNotBeNull();
+        }
     }
 
     // ---- completed result + rank ----

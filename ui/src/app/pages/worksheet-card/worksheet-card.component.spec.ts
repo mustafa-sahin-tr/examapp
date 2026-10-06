@@ -6,6 +6,7 @@ import { By } from '@angular/platform-browser';
 
 import { WorksheetCardComponent } from './worksheet-card.component';
 import { Test } from '../../models/test-instance';
+import { AssignedWorksheet } from '../../models/assignment';
 
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES } from '../../models/locale';
@@ -68,5 +69,25 @@ describe('WorksheetCardComponent', () => {
 
   it('süre etiketini scope sözlüğünden biçimlendirir', () => {
     expect(component.getMaxDurationText()).toBe('30dk');
+  });
+
+  // issue #396: süresi dolmuş (Expired) oturum bitmiştir — teslim uyarısı ve "devam ediyor" kenarlığı gösterilmez.
+  it('an expired (finished) assignment shows neither the deadline warning nor in-progress', () => {
+    component.themeConfig = { ...component.themeConfig, borders: true };
+    const endSoon = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+    const base = {
+      isGradeAssignment: false,
+      endAt: endSoon,
+      hasStarted: true,
+      isCompleted: false,
+    } as unknown as AssignedWorksheet;
+
+    component.assignment = { ...base, isFinished: false };
+    expect(component.getStatusBorderClass()).toBe('border-urgent-personal');
+
+    component.assignment = { ...base, isFinished: true };
+    const expiredClass = component.getStatusBorderClass();
+    expect(expiredClass).not.toBe('border-urgent-personal');
+    expect(expiredClass).not.toBe('border-in-progress-personal');
   });
 });

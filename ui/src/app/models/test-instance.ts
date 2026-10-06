@@ -44,6 +44,11 @@ export interface TestInstance {
   testName: string;
   status: TestStatus;
   maxDurationSeconds: number;
+  /**
+   * Issue #396: sunucunun hesapladığı kalan süre (saniye). `null` = süre sınırı yok; bitmiş oturumda 0. Sayaç bundan
+   * başlar — sayfa yenilense ya da sekme arka planda kalsa da süre baştan başlamaz. Eski yanıtta yoksa undefined.
+   */
+  remainingSeconds?: number | null;
   testInstanceQuestions: TestInstanceQuestion[];
   isPracticeTest: boolean;
   /**
@@ -59,6 +64,12 @@ export const TEST_SESSION_ERROR_CODES = {
   testNotInProgress: 'TestNotInProgress',
 } as const;
 
+/** Backend `TestSessionRejectReasons` (issue #396): `errorCode` aynı kalır, alt neden. */
+export const TEST_SESSION_REJECT_REASONS = {
+  /** Oturum süre sınırı (+ tolerans) dolduğu için Expired. */
+  timeExpired: 'TimeExpired',
+} as const;
+
 /**
  * Backend `TestStartResultDto`: `start-test` yanıtı. Issue #367: test artık devam etmiyorsa (Completed/Expired)
  * yeni instance açılmaz; `success: false` + mevcut `instanceId` döner (alreadyCompleted).
@@ -71,6 +82,8 @@ export interface TestStartResult extends ResponseBase {
 /** Backend `TestSessionResultDto`: `save-answer` / `end-test` yanıtı (issue #367). */
 export interface TestSessionResult extends ResponseBase {
   errorCode?: string | null;
+  /** Issue #396: `errorCode` alt nedeni (ör. `TimeExpired`); yoksa null/undefined. */
+  reason?: string | null;
 }
 
 export interface Exam {

@@ -521,6 +521,39 @@ public class TopicStudyLinkServiceTests : IDisposable
         result.Items.SelectMany(i => i.Groups).ShouldAllBe(g => g.Links.Count > 0);
     }
 
+    // issue #396: a session closed by the time limit is finished — wrong answers are revealed like on the result page.
+    [Fact]
+    public async Task ForResult_ExpiredInstance_ReturnsSuggestionsLikeACompletedOne()
+    {
+        var w = await SeedResultWorldAsync();
+        await using (var ctx = _db.NewContext())
+            await ctx.TestInstances.Where(i => i.Id == w.InstanceId)
+                .ExecuteUpdateAsync(u => u.SetProperty(i => i.Status, WorksheetInstanceStatus.Expired));
+
+        await using var read = _db.NewContext();
+        var result = await NewService(read).GetSuggestionsForResultAsync(w.InstanceId, StudentUserId);
+
+        result.Success.ShouldBeTrue();
+        result.Items.Select(i => i.QuestionId).ShouldBe(new[] { w.QWrongMulti, w.QWrongSingle });
+    }
+
+    // issue #396 re-check: overdue but not yet swept (DB still Started) → effective status Expired → revealed.
+    [Fact]
+    public async Task ForResult_OverdueButUnsweptInstance_ReturnsSuggestions()
+    {
+        var w = await SeedResultWorldAsync();
+        await using (var ctx = _db.NewContext())
+            await ctx.TestInstances.Where(i => i.Id == w.InstanceId)
+                .ExecuteUpdateAsync(u => u
+                    .SetProperty(i => i.Status, WorksheetInstanceStatus.Started)
+                    .SetProperty(i => i.StartTime, DateTime.UtcNow.AddHours(-2))
+                    .SetProperty(i => i.MaxDurationSeconds, (int?)600));
+
+        await using var read = _db.NewContext();
+        var result = await NewService(read).GetSuggestionsForResultAsync(w.InstanceId, StudentUserId);
+        result.Items.Select(i => i.QuestionId).ShouldBe(new[] { w.QWrongMulti, w.QWrongSingle });
+    }
+
     [Fact]
     public async Task ForResult_OtherStudentsInstance_IsNotFound()
     {

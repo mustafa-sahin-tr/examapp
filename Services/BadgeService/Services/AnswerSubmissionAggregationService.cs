@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BadgeService.Entities;
@@ -95,6 +96,14 @@ public class AnswerSubmissionAggregationService
 
     private async Task<bool> ProcessOnceAsync(AnswerSubmittedEvent message, bool dedupe, CancellationToken cancellationToken)
     {
+        // issue #396: kullanıcı bu cevap gönderildikten SONRA sıfırlandıysa (UserResetService) event yok sayılır —
+        // sıfırlama AnswerPointAward/ProcessedAnswerSubmission'ı sildiği için aksi halde soft-delete edilmiş instance'ın
+        // puanı yeniden verilirdi. Concurrency retry'ında da yeniden okunur (sıfırlama arada commit etmiş olabilir).
+        if (await IsBeforeUserResetAsync(message, cancellationToken))
+        {
+            return false;
+        }
+
         var award = await ResolvePointAwardAsync(message, cancellationToken);
         if (award.IsStale)
         {
@@ -153,6 +162,36 @@ public class AnswerSubmissionAggregationService
             return false;
         }
 
+        return true;
+    }
+
+    /// <summary>
+    /// issue #396: <paramref name="message"/>'ın <c>SubmittedAt</c>'ı kullanıcının son sıfırlamasından
+    /// (<see cref="UserResetMarker.ResetAtUtc"/>) önceyse true. Sıfırlama kaydı yoksa false.
+    /// </summary>
+    private async Task<bool> IsBeforeUserResetAsync(AnswerSubmittedEvent message, CancellationToken cancellationToken)
+    {
+        var resetAt = await _context.UserResetMarkers
+            .AsNoTracking()
+            .Where(x => x.UserId == message.UserId)
+            .Select(x => (DateTime?)x.ResetAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (resetAt is null)
+        {
+            return false;
+        }
+
+        var submittedAt = EventVersion.Normalize(message.SubmittedAt);
+        if (submittedAt >= EventVersion.Normalize(resetAt.Value))
+        {
+            return false;
+        }
+
+        _logger.LogInformation(
+            "[AnswerSubmission] Sıfırlama öncesi gönderilmiş cevap yok sayıldı (UserId={UserId}, TestInstanceId={TestInstanceId}, " +
+            "QuestionId={QuestionId}, SubmittedAt={SubmittedAt:o}, ResetAt={ResetAt:o}).",
+            message.UserId, message.TestInstanceId, message.QuestionId, submittedAt, resetAt.Value);
         return true;
     }
 

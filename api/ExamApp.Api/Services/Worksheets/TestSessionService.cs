@@ -34,7 +34,10 @@ public class TestSessionService : ITestSessionService
     public async Task<Paged<InstanceSummaryDto>> GetCompletedTestsAsync(StudentProfileDto student, int pageNumber, int pageSize)
     {
         var query = await _context.TestInstances
-            .Where(wi => wi.StudentId == student.Id && wi.Status == WorksheetInstanceStatus.Completed)
+            // issue #396: öğrencinin kendi geçmişi bitmiş oturumları listeler (Completed + Expired) — süresi dolan test de
+            // sonuç sayfasına buradan ulaşılır. Puan, cevaplananlar üzerinden aynı formülle hesaplanır.
+            .Where(wi => wi.StudentId == student.Id
+                && (wi.Status == WorksheetInstanceStatus.Completed || wi.Status == WorksheetInstanceStatus.Expired))
             .Select(wi => new
             {
                 wi.Id,
@@ -89,7 +92,7 @@ public class TestSessionService : ITestSessionService
     {
         var worksheet = await _context.Worksheets
             .Where(w => w.Id == testId)
-            .Select(w => new { w.Id, w.GradeId, w.StudentVisibility })
+            .Select(w => new { w.Id, w.GradeId, w.StudentVisibility, w.MaxDurationSeconds })
             .FirstOrDefaultAsync();
 
         if (worksheet == null)
@@ -123,7 +126,9 @@ public class TestSessionService : ITestSessionService
             StudentId = student.Id,
             Status = WorksheetInstanceStatus.Started,
             WorksheetInstanceQuestions = new List<WorksheetInstanceQuestion>(),
-            StartTime = DateTime.UtcNow
+            StartTime = DateTime.UtcNow,
+            // issue #396: süre sınırının kopyası — öğretmen worksheet süresini sonradan değiştirse de bu oturum etkilenmez.
+            MaxDurationSeconds = worksheet.MaxDurationSeconds
         };
 
         // Teste ait soruları TestQuestion tablosundan çekiyoruz
@@ -190,6 +195,7 @@ public class TestSessionService : ITestSessionService
     /// issue #367: öğrencinin bu worksheet için canlı (silinmemiş) instance'ı varsa start-test yanıtı; yoksa null.
     /// Started olmayan (Completed/Expired) bir instance her zaman önceliklidir — eski veride hem tamamlanmış hem açık
     /// (tekrar çözüm) instance kalmışsa açık olan devam ettirilmez, yine alreadyCompleted döner.
+    /// issue #396: süresi dolmuş Started instance burada Expired'a çekilir ve alreadyCompleted döner (devam/tekrar yok).
     /// </summary>
     private async Task<TestStartResultDto?> ExistingInstanceResultAsync(int studentId, int testId)
     {
@@ -198,13 +204,17 @@ public class TestSessionService : ITestSessionService
             .Where(ti => ti.StudentId == studentId && ti.WorksheetId == testId)
             .OrderBy(ti => ti.Status == WorksheetInstanceStatus.Started ? 1 : 0)
             .ThenByDescending(ti => ti.Id)
-            .Select(ti => new { ti.Id, ti.Status, ti.StartTime })
+            .Select(ti => new { ti.Id, ti.Status, ti.StartTime, ti.MaxDurationSeconds, StudentUserId = ti.Student.UserId })
             .FirstOrDefaultAsync();
 
         if (existing == null)
             return null;
 
-        if (existing.Status != WorksheetInstanceStatus.Started)
+        // issue #396 review: the acting user is the student themself (audit UpdateUserId is not nulled).
+        var status = await ExpireIfOverdueAsync(
+            existing.Id, existing.Status, existing.StartTime, existing.MaxDurationSeconds, existing.StudentUserId);
+
+        if (status != WorksheetInstanceStatus.Started)
         {
             return new TestStartResultDto
             {
@@ -223,6 +233,50 @@ public class TestSessionService : ITestSessionService
         };
     }
 
+    /// <summary>
+    /// issue #396: <paramref name="status"/> Started ve süre (+ tolerans) dolmuşsa instance'ı koşullu UPDATE ile
+    /// (<c>WHERE Status = Started</c>) Expired'a çeker ve sonuç durumunu döner. Koşullu yazma, SaveAnswer/EndTest'in
+    /// aynı satırdaki koşullu UPDATE'leriyle (#367 kilidi) serileşir: yarışı kaybeden 0 satır görür ve kazananın
+    /// yazdığı durumu okur. Süre sınırı yoksa / dolmamışsa <paramref name="status"/> aynen döner (yazma yok).
+    /// Açık bir transaction varsa ona katılır (SaveAnswer). ExecuteUpdate audit hook'unu atladığından UpdateTime burada yazılır.
+    /// </summary>
+    private async Task<WorksheetInstanceStatus> ExpireIfOverdueAsync(
+        int instanceId, WorksheetInstanceStatus status, DateTime startTime, int? maxDurationSeconds, int? actingUserId,
+        CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+        if (status != WorksheetInstanceStatus.Started || !TestTimeLimit.IsOver(startTime, maxDurationSeconds, now))
+            return status;
+
+        var endsAt = TestTimeLimit.EndsAt(startTime, maxDurationSeconds);
+        var expired = await _context.TestInstances
+            .Where(ti => ti.Id == instanceId && ti.Status == WorksheetInstanceStatus.Started)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(ti => ti.Status, WorksheetInstanceStatus.Expired)
+                .SetProperty(ti => ti.EndTime, endsAt)
+                .SetProperty(ti => ti.UpdateTime, (DateTime?)now)
+                .SetProperty(ti => ti.UpdateUserId, actingUserId), ct);
+
+        if (expired == 1)
+            return WorksheetInstanceStatus.Expired;
+
+        // Yarışı başka bir istek kazandı (Completed ya da Expired yazdı) — onun sonucunu oku. IgnoreQueryFilters: satır
+        // arada soft-delete edildiyse (öğrenci sıfırlama) de durumu okunabilsin; sorgu zaten Id ile tek satırdır.
+        return await _context.TestInstances
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(ti => ti.Id == instanceId)
+            .Select(ti => ti.Status)
+            .FirstAsync(ct);
+    }
+
+    /// <summary>
+    /// UI sayacının toplam süresi: oturumun kopyası; yoksa (migration'ın dolduramadığı eski satır) worksheet'in bugünkü
+    /// değeri. Sunucu süre kontrolü yalnız kopyaya bakar.
+    /// </summary>
+    private static int DisplayedLimit(WorksheetInstance instance) =>
+        instance.MaxDurationSeconds ?? instance.Worksheet.MaxDurationSeconds;
+
     public async Task<WorksheetInstanceDto?> GetTestInstanceQuestionsAsync(int testInstanceId, int userId)
     {
         var instance = await _context.TestInstances
@@ -240,12 +294,18 @@ public class TestSessionService : ITestSessionService
         if (instance == null)
             return null;
 
+        // issue #396: GET saftır — süresi dolmuş açık instance yanıtta Expired görünür (UI sonuç sayfasına yönlendirir),
+        // veritabanına yazılmaz (kalıcı yazım: save/end/start ve ExpiredTestInstanceSweepJob).
+        var now = DateTime.UtcNow;
+        var status = TestTimeLimit.EffectiveStatus(instance.Status, instance.StartTime, instance.MaxDurationSeconds, now);
+
         var worksheetInstanceDto = new WorksheetInstanceDto
         {
             Id = instance.Id,
             TestName = instance.Worksheet.Name,
-            Status = instance.Status,
-            MaxDurationSeconds = instance.Worksheet.MaxDurationSeconds,
+            Status = status,
+            MaxDurationSeconds = DisplayedLimit(instance),
+            RemainingSeconds = TestTimeLimit.RemainingSeconds(status, instance.StartTime, instance.MaxDurationSeconds, now),
             IsPracticeTest = instance.Worksheet.IsPracticeTest,
             // issue #309: açık sıra — kaynak WorksheetQuestion'ın (Order, Id)'si (instance satırının kendi sıra alanı yok).
             TestInstanceQuestions = OrderedForDisplay(instance.WorksheetInstanceQuestions).Select(tiq => new WorksheetInstanceQuestionDto
@@ -314,7 +374,15 @@ public class TestSessionService : ITestSessionService
             return null;
         }
 
-        if (includeCorrectAnswer && testInstance.Status != WorksheetInstanceStatus.Completed)
+        // issue #396: GET saftır — süresi dolmuş açık instance yanıtta Expired görünür (çözüm sayfası #383 Started
+        // olmayanı sonuç sayfasına yönlendirir); kalıcı Expired yazımı save/end/start ve süpürücüdedir. Cevap kapısı
+        // (SaveAnswer) aynı kuralı uyguladığından bu oturuma artık cevap yazılamaz.
+        var now = DateTime.UtcNow;
+        var status = TestTimeLimit.EffectiveStatus(testInstance.Status, testInstance.StartTime, testInstance.MaxDurationSeconds, now);
+
+        // Doğru cevaplar yalnız bitmiş teste (Completed/Expired) gösterilir: Started iken gösterilseydi cevaplar
+        // düzeltilebilirdi. Bitmiş oturuma cevap yazılamaz (#367/#396), bu yüzden sonuç sayfası Expired için de açık.
+        if (includeCorrectAnswer && !WorksheetInstanceStatusRules.IsFinished(status))
         {
             return null;
         }
@@ -324,8 +392,9 @@ public class TestSessionService : ITestSessionService
             Id = testInstance.Id,
             WorksheetId = testInstance.WorksheetId,
             TestName = testInstance.Worksheet.Name,
-            Status = testInstance.Status,
-            MaxDurationSeconds = testInstance.Worksheet.MaxDurationSeconds,
+            Status = status,
+            MaxDurationSeconds = DisplayedLimit(testInstance),
+            RemainingSeconds = TestTimeLimit.RemainingSeconds(status, testInstance.StartTime, testInstance.MaxDurationSeconds, now),
             IsPracticeTest = testInstance.Worksheet.IsPracticeTest,
             TestInstanceQuestions = OrderedForDisplay(testInstance.WorksheetInstanceQuestions).Select(tiq =>
             {
@@ -477,13 +546,34 @@ public class TestSessionService : ITestSessionService
             {
                 await transaction.RollbackAsync(ct);
                 _context.ChangeTracker.Clear();
-                return new TestSessionResultDto
-                {
-                    Success = false,
-                    Conflict = true,
-                    ErrorCode = TestSessionErrorCodes.TestNotInProgress,
-                    Message = _localizer["worksheets.session.answerRejectedNotInProgress"]
-                };
+                // Only to pick the message/reason (time-up vs. completed); the decision itself was the locked UPDATE.
+                var finishedAs = await _context.TestInstances
+                    .AsNoTracking()
+                    .Where(ti => ti.Id == testInstanceQuestion.WorksheetInstanceId)
+                    .Select(ti => new { ti.Status, ti.StartTime, ti.MaxDurationSeconds })
+                    .FirstOrDefaultAsync(ct);
+                return NotInProgressAnswer(timeExpired: finishedAs != null
+                    && IsTimeUp(finishedAs.Status, finishedAs.StartTime, finishedAs.MaxDurationSeconds));
+            }
+
+            // issue #396: server-side time limit. Checked AFTER the status lock above, so StartTime/limit and the Expired
+            // write below are decided while we hold the row — a concurrent EndTest waits and then sees Expired. The
+            // Expired write is committed (not rolled back) so the instance is closed for every later request too; nothing
+            // else (answer, revision, outbox) is written. The limit is the instance's own snapshot (copied at start-test).
+            var timing = await _context.TestInstances
+                .AsNoTracking()
+                .Where(ti => ti.Id == testInstanceQuestion.WorksheetInstanceId)
+                .Select(ti => new { ti.StartTime, ti.MaxDurationSeconds })
+                .FirstAsync(ct);
+
+            var status = await ExpireIfOverdueAsync(
+                testInstanceQuestion.WorksheetInstanceId, WorksheetInstanceStatus.Started, timing.StartTime,
+                timing.MaxDurationSeconds, user.Id, ct);
+            if (status != WorksheetInstanceStatus.Started)
+            {
+                await transaction.CommitAsync(ct);
+                _context.ChangeTracker.Clear();
+                return NotInProgressAnswer(timeExpired: IsTimeUp(status, timing.StartTime, timing.MaxDurationSeconds));
             }
 
             // Store MCQ selection and/or structured answer payload
@@ -592,6 +682,18 @@ public class TestSessionService : ITestSessionService
         }, ct);
     }
 
+    /// <param name="timeExpired">issue #396: oturum süre sınırıyla Expired — ayrı mesaj + <see cref="TestSessionRejectReasons.TimeExpired"/>.</param>
+    private TestSessionResultDto NotInProgressAnswer(bool timeExpired) => new()
+    {
+        Success = false,
+        Conflict = true,
+        ErrorCode = TestSessionErrorCodes.TestNotInProgress,
+        Reason = timeExpired ? TestSessionRejectReasons.TimeExpired : null,
+        Message = _localizer[timeExpired
+            ? "worksheets.session.answerRejectedTimeUp"
+            : "worksheets.session.answerRejectedNotInProgress"]
+    };
+
     /// <summary>
     /// Ends a Started instance. issue #367: idempotent — a repeated call (double click, UI retry, two tabs) on an
     /// already Completed instance succeeds without touching it (EndTime stays the first completion's). Only a
@@ -604,6 +706,23 @@ public class TestSessionService : ITestSessionService
     /// </summary>
     public async Task<TestSessionResultDto> EndTest(int testInstanceId, int userId, CancellationToken ct = default)
     {
+        // issue #396: a Started instance past its time limit (+ tolerance) is closed as Expired, not Completed — the
+        // conditional write in ExpireIfOverdueAsync races with SaveAnswer/another EndTest on the same row lock; the
+        // loser falls through to the status read below (Expired → 409, Completed → idempotent success).
+        var timing = await _context.TestInstances
+            .AsNoTracking()
+            .Where(ti => ti.Id == testInstanceId && ti.Student.UserId == userId)
+            .Select(ti => new { ti.Status, ti.StartTime, ti.MaxDurationSeconds })
+            .FirstOrDefaultAsync(ct);
+
+        if (timing != null)
+        {
+            var current = await ExpireIfOverdueAsync(
+                testInstanceId, timing.Status, timing.StartTime, timing.MaxDurationSeconds, userId, ct);
+            if (current == WorksheetInstanceStatus.Expired)
+                return NotInProgressEnd(timeExpired: IsTimeUp(current, timing.StartTime, timing.MaxDurationSeconds));
+        }
+
         var now = DateTime.UtcNow;
         // ExecuteUpdate bypasses the SaveChanges audit hook, so UpdateTime/UpdateUserId are stamped here (the caller
         // is the instance's student — ownership is part of the WHERE).
@@ -626,13 +745,13 @@ public class TestSessionService : ITestSessionService
             };
         }
 
-        var status = await _context.TestInstances
+        var final = await _context.TestInstances
             .AsNoTracking()
             .Where(ti => ti.Id == testInstanceId && ti.Student.UserId == userId)
-            .Select(ti => (WorksheetInstanceStatus?)ti.Status)
+            .Select(ti => new { ti.Status, ti.StartTime, ti.MaxDurationSeconds })
             .FirstOrDefaultAsync(ct);
 
-        return status switch
+        return final?.Status switch
         {
             null => new TestSessionResultDto
             {
@@ -644,13 +763,23 @@ public class TestSessionService : ITestSessionService
                 Success = true,
                 Message = _localizer["worksheets.session.ended"]
             },
-            _ => new TestSessionResultDto
-            {
-                Success = false,
-                Conflict = true,
-                ErrorCode = TestSessionErrorCodes.TestNotInProgress,
-                Message = _localizer["worksheets.session.notInProgress"]
-            }
+            _ => NotInProgressEnd(timeExpired: IsTimeUp(final!.Status, final.StartTime, final.MaxDurationSeconds))
         };
     }
+
+    /// <summary>
+    /// issue #396: "süre doldu" yalnız oturum gerçekten süre sınırıyla kapandıysa — Expired VE süre (+ tolerans) geçmiş.
+    /// Öğrenci sıfırlamasının (StudentResetJob) kapattığı oturum da Expired'dır ama süresi dolmamıştır → genel mesaj.
+    /// </summary>
+    private static bool IsTimeUp(WorksheetInstanceStatus status, DateTime startTime, int? maxDurationSeconds) =>
+        status == WorksheetInstanceStatus.Expired && TestTimeLimit.IsOver(startTime, maxDurationSeconds, DateTime.UtcNow);
+
+    private TestSessionResultDto NotInProgressEnd(bool timeExpired) => new()
+    {
+        Success = false,
+        Conflict = true,
+        ErrorCode = TestSessionErrorCodes.TestNotInProgress,
+        Reason = timeExpired ? TestSessionRejectReasons.TimeExpired : null,
+        Message = _localizer[timeExpired ? "worksheets.session.timeUp" : "worksheets.session.notInProgress"]
+    };
 }

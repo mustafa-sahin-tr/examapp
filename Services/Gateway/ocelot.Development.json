@@ -45,7 +45,10 @@
           "Port": 8080
         }
       ],
-      "UpstreamPathTemplate": "/question-detector-dev/{everything}"
+      "UpstreamPathTemplate": "/question-detector-dev/{everything}",
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
     },
     {
       "DownstreamPathTemplate": "/__blocked/api/auth/dev/{everything}",

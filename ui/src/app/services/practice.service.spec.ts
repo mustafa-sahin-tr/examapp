@@ -244,6 +244,36 @@ describe('PracticeService', () => {
       });
     });
 
+    it('toQuestionRegion_WithSignedImageUrlV2_PassesV2ThroughAndUsesUnsignedPathAsImageId', () => {
+      const signed = '/img/exam-questions/questions/q1/question.jpg?X-Amz-Signature=v1sig';
+      const signedV2 = '/img/exam-questions/questions/q1/question-v2.jpg?X-Amz-Signature=v2sig';
+      const question = buildQuestion({ imageUrl: signed, imageUrlV2: signedV2 });
+
+      const region = service.toQuestionRegion(question);
+
+      expect(region.imageUrl).toBe(signed);
+      expect(region.imageUrlV2).toBe(signedV2);
+      expect(region.imageId).toBe('/img/exam-questions/questions/q1/question.jpg');
+    });
+
+    it('toQuestionRegion_WithoutImageUrlV2_MapsV2AsNull', () => {
+      const region = service.toQuestionRegion(buildQuestion({ imageUrlV2: undefined }));
+
+      expect(region.imageUrlV2).toBeNull();
+    });
+
+    it('toQuestionRegion_SignedPassageImage_KeepsUrlAndUsesUnsignedPathAsImageId', () => {
+      const signedPassage = '/img/exam-questions/passages/p1.jpg?X-Amz-Signature=psig';
+      const question = buildQuestion({
+        passage: { id: 5, title: 't', text: '', imageUrl: signedPassage, x: 0, y: 0, width: 1, height: 1, isCanvasQuestion: true },
+      });
+
+      const region = service.toQuestionRegion(question);
+
+      expect(region.passage?.imageUrl).toBe(signedPassage);
+      expect(region.passage?.imageId).toBe('/img/exam-questions/passages/p1.jpg');
+    });
+
     it('toQuestionRegion_WithoutAnswers_ReturnsEmptyAnswersArray', () => {
       const question = buildQuestion({ answers: undefined as any });
 

@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Storage;
 using System;
 using ExamApp.Api.Data;
 
@@ -19,6 +20,7 @@ public class WorksheetDto
     // issue #105: worksheet varsayılanı — öğrenciler yeni yorum-soru yazabilir mi (atama override'ı hariç).
     public bool CommentsEnabled { get; set; } = true;
     public string? Subtitle { get; set; }
+    [StorageUrl(StorageArea.WorksheetCover)]
     public string? ImageUrl { get; set; }
     public string? BadgeText { get; set; }
     public int? BookTestId { get; set; }

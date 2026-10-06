@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Storage;
 using System.Collections.Generic;
 
 namespace ExamApp.Api.Models.Dtos;
@@ -37,6 +38,7 @@ public class LeaderboardEntryDto
 
     /// <summary>auth-api'den çözülür; erişilemezse boş kalır (lookup ucuyla aynı davranış).</summary>
     public string FullName { get; set; } = string.Empty;
+    [NotStorageUrl("Avatar ön ayar kimliği/dış adres; student-avatars bucket'ı özel ve URL'si sunulmuyor")]
     public string AvatarUrl { get; set; } = string.Empty;
 
     /// <summary>Satır istek sahibinin kendi öğrenci kaydı mı.</summary>

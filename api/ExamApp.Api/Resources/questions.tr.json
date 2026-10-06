@@ -31,7 +31,8 @@
       "resizeFailed": "Resim boyutlandırılamadı!",
       "uploadFailed": "Boyutlandırılmış resim yüklenemedi!",
       "resized": "Soru resmi başarıyla boyutlandırıldı!",
-      "resizeError": "Soru resmi boyutlandırılırken hata oluştu: {0}"
+      "resizeError": "Soru resmi boyutlandırılırken hata oluştu: {0}",
+      "invalidUrl": "Geçersiz resim adresi. Yalnızca bu platforma yüklenmiş resimler kullanılabilir."
     },
 
     "classification": {

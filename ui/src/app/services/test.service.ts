@@ -37,6 +37,7 @@ import {
   WorksheetReminder,
   WorksheetReminderRequest,
 } from '../models/worksheet-detail';
+import { storageImageKey } from '../shared/utils/storage-image-url.util';
 
 @Injectable({
   providedIn: 'root',
@@ -291,8 +292,9 @@ export class TestService {
           classificationSource: question.classificationSource ?? 0,
           isExample: question.isExample,
           passageId: question.passage ? question.passage.id.toString() : '',
-          imageId: question.imageUrl,
+          imageId: storageImageKey(question.imageUrl),
           imageUrl: question.imageUrl,
+          imageUrlV2: question.imageUrlV2 ?? null,
           exampleAnswer: question.isExample ? question.practiceCorrectAnswer : null,
           answers: question.answers.map((answer) => ({
             id: answer.id,
@@ -313,7 +315,7 @@ export class TestService {
                 width: question.passage.width,
                 height: question.passage.height,
                 imageUrl: question.passage.imageUrl,
-                imageId: question.passage.imageUrl,
+                imageId: storageImageKey(question.passage.imageUrl),
               }
             : undefined,
         };
@@ -352,8 +354,9 @@ export class TestService {
           subtopicId: firstSubtopicId,
           subtopicIds,
           passageId: question.passage ? question.passage.id.toString() : '',
-          imageId: question.imageUrl,
+          imageId: storageImageKey(question.imageUrl),
           imageUrl: question.imageUrl,
+          imageUrlV2: question.imageUrlV2 ?? null,
           exampleAnswer: question.isExample ? question.practiceCorrectAnswer : null,
           answers: question.answers.map((answer) => ({
             id: answer.id,
@@ -374,7 +377,7 @@ export class TestService {
                 width: question.passage.width,
                 height: question.passage.height,
                 imageUrl: question.passage.imageUrl,
-                imageId: question.passage.imageUrl,
+                imageId: storageImageKey(question.passage.imageUrl),
               }
             : undefined,
         };

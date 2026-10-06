@@ -55,7 +55,6 @@
       "tutors": "Özel Ders Öğretmeni Ara",
       "myBookings": "Ders Randevularım",
       "teacherMessages": "Öğretmenime Yaz",
-      "students": "Öğrenciler",
       "tutorProfile": "Özel Ders Profilim",
       "availability": "Müsait Saatlerim",
       "bookingRequests": "Randevu Talepleri",
@@ -73,8 +72,6 @@
       "adminStudents": "Öğrenciler",
       "adminSchools": "Okullar",
       "adminBadgeDefinitions": "Rozetler",
-      "help": "Yardım",
-      "feedback": "Geri Bildirim",
       "adminCommentReports": "Yorum Şikayetleri"
     },
     "bottomNav": {
@@ -108,12 +105,7 @@
     "profile": {
       "fallbackName": "Kullanıcı",
       "avatarAlt": "Profil fotoğrafı",
-      "info": "Profil Bilgileri",
-      "settingsSubtitle": "Ayarlar, Hesap, Güvenlik",
-      "tasks": "Görevler",
-      "achievements": "Başarılar",
       "notifications": "Bildirimler",
-      "support": "Destek",
       "logout": "Çıkış Yap"
     }
   },

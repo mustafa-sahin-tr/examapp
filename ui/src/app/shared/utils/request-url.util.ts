@@ -33,3 +33,15 @@ export function isCrossOriginUrl(url: string): boolean {
     return true;
   }
 }
+
+/** Gateway'in MinIO'ya ilettiği nesne yolu öneki (`/img/{bucket}/{key}`, issue #365). */
+const STORAGE_IMAGE_PATH_PREFIX = '/img/';
+
+/**
+ * İstek gateway üzerinden MinIO'ya mı gidiyor (`/img/...`)? Bu adresler imzalı (presigned) URL'lerdir:
+ * kimlik query'deki SigV4 imzasıdır. Bearer başlığı eklenirse MinIO iki kimlik mekanizmasını birden gördüğü
+ * için isteği reddeder ve JWT MinIO erişim loglarına düşer; 401/403'ü de bizim oturumumuzla ilgili değildir.
+ */
+export function isStorageImageUrl(url: string): boolean {
+  return pathnameOf(url).startsWith(STORAGE_IMAGE_PATH_PREFIX);
+}

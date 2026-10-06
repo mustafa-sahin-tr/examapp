@@ -14,6 +14,7 @@ import {
   PracticeSessionReview,
   PracticeSessionStartRequest,
 } from '../models/practice';
+import { storageImageKey } from '../shared/utils/storage-image-url.util';
 
 /**
  * "Soru Çöz" pratik oturumu API'si (issue #62). Tüm çağrılar gateway'deki
@@ -94,8 +95,9 @@ export class PracticeService {
       difficultyLevel: question.difficultyLevel,
       showPassageFirst: question.showPassageFirst,
       passageId: question.passage ? question.passage.id.toString() : '',
-      imageId: question.imageUrl,
+      imageId: storageImageKey(question.imageUrl),
       imageUrl: question.imageUrl,
+      imageUrlV2: question.imageUrlV2 ?? null,
       exampleAnswer: question.isExample ? question.practiceCorrectAnswer : null,
       answers: (question.answers ?? []).map((answer) => ({
         id: answer.id,
@@ -118,7 +120,7 @@ export class PracticeService {
             width: question.passage.width,
             height: question.passage.height,
             imageUrl: question.passage.imageUrl,
-            imageId: question.passage.imageUrl,
+            imageId: storageImageKey(question.passage.imageUrl),
           }
         : undefined,
     };

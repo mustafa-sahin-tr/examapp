@@ -34,4 +34,20 @@ public static class MinioObjectUrl
         key = k;
         return true;
     }
+
+    /// <summary>
+    /// issue #365 (S2): anahtar gateway'den (Ocelot <c>/img/{everything}</c>) imzası bozulmadan geçebilir mi? Ocelot yer
+    /// tutucuyu bir kez decode edip yeniden iletir. Canlı doğrulamada (2026-10-06) boşluk, Türkçe karakter,
+    /// <c>+ ( ) ' ! , = ; @ $ ~</c> geçti; <c>&amp;</c> ve geçerli bir <c>%XX</c> dizisi imzayı bozdu
+    /// (SignatureDoesNotMatch). Bu yüzden <c>&amp;</c>/<c>%</c> içeren anahtar ne imzalanır ne istemciden kabul edilir.
+    /// </summary>
+    public static bool IsGatewaySafeKey(string key)
+    {
+        foreach (var c in key)
+        {
+            if (c is '&' or '%' or '?' or '#' or '\\' || char.IsControl(c))
+                return false;
+        }
+        return true;
+    }
 }

@@ -2,7 +2,7 @@ import { HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { defer, from, of, switchMap } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
-import { isCrossOriginUrl, pathnameOf } from '../utils/request-url.util';
+import { isCrossOriginUrl, isStorageImageUrl, pathnameOf } from '../utils/request-url.util';
 
 /** Kimlik gerektirmeyen, statik i18n sözlükleri (issue #180). */
 const I18N_PATH_PREFIX = '/i18n/';
@@ -42,6 +42,12 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   // Sözlük dosyaları anonim ve statiktir: oturumsuz ziyaretçide `logout()` tetiklememeli,
   // Bearer token da eklenmemelidir. `withCredentials` de açılmaz — statik dosyaya çerez gereksiz.
   if (pathnameOf(req.url).startsWith(I18N_PATH_PREFIX)) {
+    return next(req);
+  }
+
+  // MinIO nesneleri (`/img/...`, issue #365): kimlik URL'deki imzadır. Bearer eklenmez (MinIO çift kimlik
+  // mekanizmasını reddeder, JWT MinIO loglarına sızar), çerez açılmaz, token yoksa da logout tetiklenmez.
+  if (isStorageImageUrl(req.url)) {
     return next(req);
   }
 

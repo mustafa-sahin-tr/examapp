@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Storage;
 using System;
 using System.Text.Json.Serialization;
 
@@ -20,9 +21,11 @@ public class VideoSessionDto
     public string Domain { get; set; } = string.Empty;
 
     /// <summary>Şemayla birlikte taban adres, ör. "http://localhost:8000".</summary>
+    [NotStorageUrl("Jitsi adresi, MinIO nesnesi değil")]
     public string BaseUrl { get; set; } = string.Empty;
 
     /// <summary>Doğrudan tarayıcıda açılabilecek tam katılım adresi (token dahil).</summary>
+    [NotStorageUrl("Jitsi adresi, MinIO nesnesi değil")]
     public string JoinUrl { get; set; } = string.Empty;
 
     /// <summary>Odaya giriş için üretilmiş kısa ömürlü JWT. IFrame API kullanan istemciler bunu ayrıca verir.</summary>

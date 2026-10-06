@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Storage;
 using System;
 using System.Collections.Generic;
 using ExamApp.Api.Data;
@@ -22,6 +23,7 @@ public class StudyItemDto
     public StudyItemContentType ContentType { get; set; }
 
     // Link
+    [NotStorageUrl("Link tipi çalışma etkinliğinin dış bağlantısı (YouTube/EBA vb.), MinIO nesnesi değil")]
     public string? Url { get; set; }
     public StudyItemLinkPlatform? Platform { get; set; }
 
@@ -35,6 +37,7 @@ public class StudyItemDto
 
     // Image
     public int ImageCount { get; set; }
+    [StorageUrl(StorageArea.StudyPage)]
     public string? CoverImageUrl { get; set; }
     public List<StudyItemImageDto> Images { get; set; } = new();
 }
@@ -42,6 +45,7 @@ public class StudyItemDto
 public class StudyItemImageDto
 {
     public int Id { get; set; }
+    [StorageUrl(StorageArea.StudyPage)]
     public string ImageUrl { get; set; } = string.Empty;
     public int SortOrder { get; set; }
     public string? FileName { get; set; }

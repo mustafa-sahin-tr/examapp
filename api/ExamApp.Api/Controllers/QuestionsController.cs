@@ -124,6 +124,11 @@ public class QuestionsController : BaseController
         {
             return BadRequest(new { message = _localizer["questions.saveFailed"].Value });
         }
+        // issue #365 (S2): geçersiz girdi (ör. allowlist dışı paragraf görsel adresi) servis tarafından yazmadan önce reddedilir.
+        if (response.InvalidInput)
+        {
+            return BadRequest(new { message = response.Message });
+        }
         return Ok(response);
     }
 

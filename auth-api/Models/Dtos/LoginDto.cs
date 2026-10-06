@@ -15,6 +15,18 @@ public class CodeDto
 {
     [Required]    
     public string Code { get; set; }
+
+    /// <summary>
+    /// Issue #347: login başlatılırken istemcinin ürettiği PKCE <c>code_verifier</c> (RFC 7636 §4.1:
+    /// 43-128 karakter, <c>[A-Za-z0-9-._~]</c>). Keycloak token ucuna <c>code_verifier</c> olarak iletilir;
+    /// authorization isteğindeki S256 <c>code_challenge</c> ile eşleşmezse Keycloak <c>invalid_grant</c> döner.
+    /// Zorunlu: verifier'sız değişim kabul edilmez (PKCE'siz başlatılmış akış tamamlanamaz).
+    /// </summary>
+    [Required]
+    [RegularExpression(CodeVerifierPattern)]
+    public string CodeVerifier { get; set; } = string.Empty;
+
+    public const string CodeVerifierPattern = @"^[A-Za-z0-9\-._~]{43,128}$";
 }
  
 

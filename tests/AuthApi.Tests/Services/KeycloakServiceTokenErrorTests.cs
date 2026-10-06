@@ -14,6 +14,7 @@ namespace AuthApi.Tests.Services;
 public class KeycloakServiceTokenErrorTests
 {
     private const string ExamplePassword = "wrong-pw-example"; // example credential, test-only
+    private const string ExampleCodeVerifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"; // RFC 7636 örneği, test-only
 
     private sealed class FakeHandler : HttpMessageHandler
     {
@@ -132,9 +133,46 @@ public class KeycloakServiceTokenErrorTests
         var service = Build(_ => Body(HttpStatusCode.BadRequest,
             """{"error":"invalid_grant","error_description":"Code not valid"}"""));
 
-        var ex = await Should.ThrowAsync<KeycloakException>(() => service.ExchangeTokenAsync("code-example"));
+        var ex = await Should.ThrowAsync<KeycloakException>(() => service.ExchangeTokenAsync("code-example", ExampleCodeVerifier));
 
         ex.Kind.ShouldBe(KeycloakFailureKind.InvalidGrant);
+    }
+
+    [Fact]
+    public async Task Exchange_forwards_code_verifier_to_the_keycloak_token_endpoint()
+    {
+        // Issue #347: PKCE — authorization_code isteği code_verifier'ı taşır (Keycloak S256 challenge ile karşılaştırır).
+        Dictionary<string, string>? form = null;
+        var service = Build(request =>
+        {
+            var body = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            form = body.Split('&')
+                .Select(pair => pair.Split('=', 2))
+                .ToDictionary(kv => Uri.UnescapeDataString(kv[0]), kv => Uri.UnescapeDataString(kv[1].Replace('+', ' ')));
+            return Body(HttpStatusCode.OK,
+                """{"access_token":"a","refresh_token":"r","expires_in":60,"refresh_expires_in":1800}""");
+        });
+
+        await service.ExchangeTokenAsync("code-example", ExampleCodeVerifier);
+
+        form.ShouldNotBeNull();
+        form["grant_type"].ShouldBe("authorization_code");
+        form["code"].ShouldBe("code-example");
+        form["code_verifier"].ShouldBe(ExampleCodeVerifier);
+        form["redirect_uri"].ShouldBe("http://app.test/callback");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Exchange_without_code_verifier_throws_before_calling_keycloak(string verifier)
+    {
+        var called = false;
+        var service = Build(_ => { called = true; return Body(HttpStatusCode.OK, "{}"); });
+
+        await Should.ThrowAsync<ArgumentException>(() => service.ExchangeTokenAsync("code-example", verifier));
+
+        called.ShouldBeFalse();
     }
 
     [Fact]

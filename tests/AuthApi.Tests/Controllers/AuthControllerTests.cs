@@ -27,6 +27,8 @@ public class AuthControllerTests : IDisposable
 {
     private const string TestPassword = "pw1234"; // example credential, test-only
     private const string TestSecretPassword = "s3cr3t9"; // example credential, test-only
+    // Issue #347: RFC 7636 Appendix B örnek PKCE verifier'ı (gizli değil, test-only).
+    private const string TestCodeVerifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
 
     private readonly TestDb _db = TestDb.Create();
 
@@ -174,12 +176,12 @@ public class AuthControllerTests : IDisposable
     {
         await using var context = _db.NewContext();
         var keycloak = Substitute.For<IKeycloakService>();
-        keycloak.ExchangeTokenAsync("auth-code-123")
+        keycloak.ExchangeTokenAsync("auth-code-123", TestCodeVerifier)
             .Returns(SuccessfulTokenResponse("kc-sub-2", "teacher@test.local", "Teacher"));
 
         var controller = NewController(keycloak, context);
 
-        var result = await controller.EchangeCode(new CodeDto { Code = "auth-code-123" });
+        var result = await controller.EchangeCode(new CodeDto { Code = "auth-code-123", CodeVerifier = TestCodeVerifier });
 
         result.ShouldBeOfType<OkObjectResult>();
 
@@ -192,6 +194,21 @@ public class AuthControllerTests : IDisposable
         evt.Success.ShouldBeTrue();
     }
 
+    [Fact]
+    public async Task EchangeCode_forwards_the_pkce_code_verifier_to_keycloak()
+    {
+        // Issue #347: controller, istemcinin gönderdiği verifier'ı olduğu gibi token değişimine iletir.
+        await using var context = _db.NewContext();
+        var keycloak = Substitute.For<IKeycloakService>();
+        keycloak.ExchangeTokenAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(SuccessfulTokenResponse("kc-sub-pkce", "pkce@test.local", "Student"));
+
+        var controller = NewController(keycloak, context);
+        await controller.EchangeCode(new CodeDto { Code = "auth-code-pkce", CodeVerifier = TestCodeVerifier });
+
+        await keycloak.Received(1).ExchangeTokenAsync("auth-code-pkce", TestCodeVerifier, Arg.Any<CancellationToken>());
+    }
+
     // ---- Issue #277 review (item 3): EnsureLocalUserAsync (login/exchange sync) stamps
     // RoleUpdatedAtUtc so a late/replayed UserRoleChangedEvent can't overwrite a newer direct
     // sync from Keycloak. ----
@@ -201,13 +218,13 @@ public class AuthControllerTests : IDisposable
     {
         await using var context = _db.NewContext();
         var keycloak = Substitute.For<IKeycloakService>();
-        keycloak.ExchangeTokenAsync("auth-code-new-user")
+        keycloak.ExchangeTokenAsync("auth-code-new-user", TestCodeVerifier)
             .Returns(SuccessfulTokenResponse("kc-sub-new", "new-teacher@test.local", "Teacher"));
 
         var controller = NewController(keycloak, context);
         var before = DateTime.UtcNow;
 
-        await controller.EchangeCode(new CodeDto { Code = "auth-code-new-user" });
+        await controller.EchangeCode(new CodeDto { Code = "auth-code-new-user", CodeVerifier = TestCodeVerifier });
 
         await using var check = _db.NewContext();
         var user = await check.Users.SingleAsync(u => u.KeycloakId == "kc-sub-new");
@@ -222,12 +239,12 @@ public class AuthControllerTests : IDisposable
         await using var context = _db.NewContext();
         var keycloak = Substitute.For<IKeycloakService>();
         // No app role claim yet — profile completion (complete-profile) hasn't happened.
-        keycloak.ExchangeTokenAsync("auth-code-no-role")
+        keycloak.ExchangeTokenAsync("auth-code-no-role", TestCodeVerifier)
             .Returns(SuccessfulTokenResponse("kc-sub-norole", "pending@test.local"));
 
         var controller = NewController(keycloak, context);
 
-        await controller.EchangeCode(new CodeDto { Code = "auth-code-no-role" });
+        await controller.EchangeCode(new CodeDto { Code = "auth-code-no-role", CodeVerifier = TestCodeVerifier });
 
         await using var check = _db.NewContext();
         var user = await check.Users.SingleAsync(u => u.KeycloakId == "kc-sub-norole");
@@ -250,13 +267,13 @@ public class AuthControllerTests : IDisposable
         await context.SaveChangesAsync();
 
         var keycloak = Substitute.For<IKeycloakService>();
-        keycloak.ExchangeTokenAsync("auth-code-role-changed")
+        keycloak.ExchangeTokenAsync("auth-code-role-changed", TestCodeVerifier)
             .Returns(SuccessfulTokenResponse("kc-sub-existing", "existing@test.local", "Teacher"));
 
         var controller = NewController(keycloak, context);
         var before = DateTime.UtcNow;
 
-        await controller.EchangeCode(new CodeDto { Code = "auth-code-role-changed" });
+        await controller.EchangeCode(new CodeDto { Code = "auth-code-role-changed", CodeVerifier = TestCodeVerifier });
 
         await using var check = _db.NewContext();
         var user = await check.Users.SingleAsync(u => u.KeycloakId == "kc-sub-existing");
@@ -272,12 +289,12 @@ public class AuthControllerTests : IDisposable
     {
         await using var context = _db.NewContext();
         var keycloak = Substitute.For<IKeycloakService>();
-        keycloak.ExchangeTokenAsync("bad-code-example")
+        keycloak.ExchangeTokenAsync("bad-code-example", TestCodeVerifier)
             .Returns<TokenResponseDto>(_ => throw new KeycloakException("invalid_grant", 401, KeycloakFailureKind.InvalidGrant));
 
         var controller = NewController(keycloak, context);
 
-        var result = await controller.EchangeCode(new CodeDto { Code = "bad-code-example" });
+        var result = await controller.EchangeCode(new CodeDto { Code = "bad-code-example", CodeVerifier = TestCodeVerifier });
 
         result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status401Unauthorized);
 

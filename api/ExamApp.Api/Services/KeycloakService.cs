@@ -73,43 +73,6 @@ public class KeycloakService : IKeycloakService
         return _cachedAdminToken;
     }
 
-    public async Task<TokenResponseDto> ExchangeTokenAsync(string code)
-    {
-        if (string.IsNullOrWhiteSpace(_keycloakSettings.RedirectUri))
-        {
-            throw new KeycloakException("Keycloak redirect URI is not configured. Set Keycloak:RedirectUri to the same callback URL used in the authorization request (e.g. https://<domain>/app/callback). Do not hard-code localhost for staging/prod.");
-        }
-
-        var body = new Dictionary<string, string>
-            {
-                { "grant_type", "authorization_code" },
-                { "client_id", _keycloakSettings.ClientId },
-                { "client_secret", _keycloakSettings.ClientSecret },
-                { "redirect_uri", _keycloakSettings.RedirectUri },
-                { "code", code }
-            };
-
-        var response = await _http.PostAsync(
-            $"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}",
-            new FormUrlEncodedContent(body)
-        );
-
-        var content = await response.Content.ReadAsStringAsync();
-        if (!response.IsSuccessStatusCode)
-        {
-            // Keycloak error'ını ayıkla
-            using var doc = JsonDocument.Parse(content);
-            var error = doc.RootElement.GetProperty("error").GetString();
-            var description = doc.RootElement.TryGetProperty("error_description", out var descProp)
-                ? descProp.GetString()
-                : null;
-            _logger.LogWarning("Keycloak token exchange failed: {Error} - {Description}", error, description);
-            throw new KeycloakException($"Keycloak login failed: {error} - {description}");
-        }
-
-        return JsonSerializer.Deserialize<TokenResponseDto>(content)!;
-    }
-
     // App-level roles a user may hold — used to recognize which of a user's *current*
     // Keycloak realm-role mappings are "app roles" that must be cleared before assigning
     // a new one (see SetRoleAsync).

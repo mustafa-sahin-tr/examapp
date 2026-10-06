@@ -753,11 +753,11 @@ spec:
                 configMapKeyRef:
                   name: examapp-config
                   key: KEYCLOAK_REALM
-            - name: Keycloak__ClientCallbackUrl
+            - name: Keycloak__RedirectUri
               valueFrom:
                 configMapKeyRef:
                   name: examapp-config
-                  key: KEYCLOAK_CLIENT_CALLBACK_URL
+                  key: KEYCLOAK_REDIRECT_URI
             - name: Cors__AllowedOrigins__0
               valueFrom:
                 configMapKeyRef:

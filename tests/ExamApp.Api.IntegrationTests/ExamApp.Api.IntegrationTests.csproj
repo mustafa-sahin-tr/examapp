@@ -18,4 +18,9 @@
     <ProjectReference Include="../../api/ExamApp.Api/ExamApp.Api.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- issue #365 (S2): SDK'dan bagimsiz SigV4 presign dogrulayicisi (ExamApp.Api.Tests ile paylasilir) -->
+    <Compile Include="../ExamApp.Api.Tests/Support/SigV4PresignVerifier.cs" Link="Infrastructure/SigV4PresignVerifier.cs" />
+  </ItemGroup>
+
 </Project>

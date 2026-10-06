@@ -140,7 +140,6 @@ public class DevUserSeedServiceTests : IDisposable
         await Should.ThrowAsync<ArgumentException>(() => NewService(ctx, kc).SeedAsync(Request(Seed("ok"), email)));
 
         await kc.DidNotReceiveWithAnyArgs().CreateSeedUserAsync(default!, default!, default);
-        await kc.DidNotReceiveWithAnyArgs().PartialImportUsersAsync(default!, default!, default!, default);
         await kc.DidNotReceiveWithAnyArgs().AddRealmRoleMappingAsync(default!, default!, default);
         (await _db.NewContext().Users.CountAsync()).ShouldBe(0);
     }
@@ -556,133 +555,24 @@ public class DevUserSeedServiceTests : IDisposable
         (await _db.NewContext().Users.CountAsync()).ShouldBe(1);
     }
 
-    // ---- partial import ----
+    // ---- partial import kaldırıldı (#372) ----
 
-    private static IKeycloakService FakePartialImportKeycloak(KeycloakPartialImportResult result)
+    [Theory]
+    [InlineData("partial-import")]
+    [InlineData("Partial-Import")]
+    [InlineData("bogus")]
+    public async Task Non_admin_api_mode_is_rejected_with_clear_error_and_nothing_is_written(string mode)
     {
-        var kc = Substitute.For<IKeycloakService>();
-        kc.GetRealmDefaultRoleNameAsync(Arg.Any<CancellationToken>()).Returns(DefaultRole);
-        kc.GetRealmRoleAsync("Teacher", Arg.Any<CancellationToken>()).Returns(new KeycloakRoleDto { id = "role-teacher", name = "Teacher" });
-        kc.GetRealmRoleAsync(DefaultRole, Arg.Any<CancellationToken>()).Returns(new KeycloakRoleDto { id = "role-default", name = DefaultRole });
-        kc.PartialImportUsersAsync(Arg.Any<IReadOnlyList<KeycloakSeedUser>>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<KeycloakHashedCredential>(), Arg.Any<CancellationToken>())
-            .Returns(result);
-        return kc;
-    }
-
-    private static KeycloakPartialImportResult ImportResult(params (string Email, string Action, string? Id)[] entries) =>
-        new(entries.Count(e => e.Action == "ADDED"), entries.Count(e => e.Action == "SKIPPED"), 0,
-            entries.ToDictionary(e => e.Email, e => new KeycloakPartialImportEntry(e.Action, e.Id), StringComparer.OrdinalIgnoreCase));
-
-    [Fact]
-    public async Task Partial_import_sends_default_role_and_prehashed_credential_repairs_skipped_seed_users_adopts_orphans_skips_foreign()
-    {
-        var newEmail = Seed("new");
-        var oldSeed = Seed("oldseed");
-        var orphan = Seed("orphan");   // Keycloak'ta var (SKIPPED), identity'de hiç yok → Adopted
-        var foreign = Seed("foreign"); // Keycloak'ta var, identity'de IsSeedData=false → SkippedForeign
-        await AddIdentityUserAsync(oldSeed, "kc-oldseed", isSeed: true);
-        await AddIdentityUserAsync(foreign, "kc-foreign", isSeed: false);
-
-        var kc = FakePartialImportKeycloak(ImportResult(
-            (newEmail, "ADDED", "kc-new"), (oldSeed, "SKIPPED", null), (orphan, "SKIPPED", "kc-orphan"), (foreign, "SKIPPED", "kc-foreign")));
-        kc.FindUserIdByUsernameAsync(oldSeed, Arg.Any<CancellationToken>()).Returns("kc-oldseed");
-        kc.GetUserRealmRoleNamesAsync("kc-oldseed", Arg.Any<CancellationToken>()).Returns(new List<string> { "Teacher" });
-        kc.GetUserRealmRoleNamesAsync("kc-orphan", Arg.Any<CancellationToken>()).Returns(new List<string> { "Teacher", DefaultRole });
-        kc.GetUserAttributesAsync("kc-orphan", Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<string, string> { [Origin] = OriginValue }); // işaretli yetim
+        var kc = FakeKeycloak();
         await using var ctx = _db.NewContext();
-        var request = Request(newEmail, oldSeed, orphan, foreign);
-        request.Mode = DevSeedUsersRequest.ModePartialImport;
+        var request = Request(Seed("a"));
+        request.Mode = mode;
 
-        var response = await NewService(ctx, kc).SeedAsync(request);
+        var ex = await Should.ThrowAsync<ArgumentException>(() => NewService(ctx, kc).SeedAsync(request));
 
-        response.Mode.ShouldBe(DevSeedUsersRequest.ModePartialImport);
-        response.Results.Single(r => r.Email == newEmail).KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusCreated);
-        response.Results.Single(r => r.Email == newEmail).IdentityStatus.ShouldBe(DevSeedUsersResponse.StatusCreated);
-        response.Results.Single(r => r.Email == oldSeed).KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusExisting);
-        response.Results.Single(r => r.Email == oldSeed).KeycloakId.ShouldBe("kc-oldseed");
-        response.Results.Single(r => r.Email == orphan).KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusAdopted);
-        response.Results.Single(r => r.Email == orphan).IdentityStatus.ShouldBe(DevSeedUsersResponse.StatusCreated);
-        response.Results.Single(r => r.Email == orphan).KeycloakId.ShouldBe("kc-orphan");
-        response.Results.Single(r => r.Email == foreign).KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusSkippedForeign);
-        response.Results.Single(r => r.Email == foreign).UserId.ShouldBeNull();
-
-        await kc.Received(1).PartialImportUsersAsync(
-            Arg.Is<IReadOnlyList<KeycloakSeedUser>>(l => l.Count == 4),
-            Arg.Is<IReadOnlyList<string>>(roles => roles.Contains("Teacher") && roles.Contains(DefaultRole)),
-            Arg.Is<KeycloakHashedCredential>(c => c.CredentialData.Contains("pbkdf2-sha512") && !c.SecretData.Contains(Pw)),
-            Arg.Any<CancellationToken>());
-        await kc.Received(1).AddRealmRoleMappingAsync("kc-oldseed", Arg.Is<KeycloakRoleDto>(r => r.name == DefaultRole), Arg.Any<CancellationToken>());
-        await kc.DidNotReceive().AddRealmRoleMappingAsync("kc-oldseed", Arg.Is<KeycloakRoleDto>(r => r.name == "Teacher"), Arg.Any<CancellationToken>());
-        await kc.DidNotReceive().AddRealmRoleMappingAsync("kc-orphan", Arg.Any<KeycloakRoleDto>(), Arg.Any<CancellationToken>()); // rolleri tamdı
-        await kc.Received(1).EnsureUserAttributesAsync("kc-orphan", Arg.Is<IReadOnlyDictionary<string, string>>(d => d["school_id"] == "42" && d[Origin] == OriginValue), Arg.Any<CancellationToken>());
-        await kc.DidNotReceive().GetUserRealmRoleNamesAsync("kc-foreign", Arg.Any<CancellationToken>());
-        await kc.DidNotReceive().GetUserAttributesAsync("kc-foreign", Arg.Any<CancellationToken>());
-        await kc.DidNotReceive().EnsureUserAttributesAsync("kc-foreign", Arg.Any<IReadOnlyDictionary<string, string>>(), Arg.Any<CancellationToken>());
-        await kc.DidNotReceive().FindUserIdByUsernameAsync(foreign, Arg.Any<CancellationToken>()); // yabancı için id araması dahil hiçbir çağrı yok
+        ex.Message.ShouldContain(mode.Equals("bogus") ? "admin-api" : "kaldırıldı");
         await kc.DidNotReceiveWithAnyArgs().CreateSeedUserAsync(default!, default!, default);
-        await kc.DidNotReceiveWithAnyArgs().ResetPasswordAsync(default!, default!, default);
-        (await _db.NewContext().Users.CountAsync()).ShouldBe(4); // new + oldseed + orphan(adopt) + foreign(önceden vardı, dokunulmadı)
-        (await _db.NewContext().Users.SingleAsync(u => u.Email == foreign)).IsSeedData.ShouldBeFalse();
-    }
-
-    [Fact]
-    public async Task Partial_import_keycloak_exception_marks_every_row_failed_and_writes_nothing()
-    {
-        var kc = Substitute.For<IKeycloakService>();
-        kc.GetRealmDefaultRoleNameAsync(Arg.Any<CancellationToken>()).Returns(DefaultRole);
-        kc.PartialImportUsersAsync(Arg.Any<IReadOnlyList<KeycloakSeedUser>>(), Arg.Any<IReadOnlyList<string>>(), Arg.Any<KeycloakHashedCredential>(), Arg.Any<CancellationToken>())
-            .Returns<KeycloakPartialImportResult>(_ => throw new KeycloakException("403 manage-realm"));
-        await using var ctx = _db.NewContext();
-        var request = Request(Seed("a"), Seed("b"));
-        request.Mode = DevSeedUsersRequest.ModePartialImport;
-
-        var response = await NewService(ctx, kc).SeedAsync(request);
-
-        response.Results.ShouldAllBe(r => r.KeycloakStatus == DevSeedUsersResponse.StatusFailed && r.IdentityStatus == DevSeedUsersResponse.StatusFailed);
-        response.Results.ShouldAllBe(r => r.Error!.Contains("manage-realm") && r.UserId == null);
         (await _db.NewContext().Users.CountAsync()).ShouldBe(0);
-    }
-
-    [Fact]
-    public async Task Partial_import_added_without_id_falls_back_to_username_lookup_and_missing_row_is_failed()
-    {
-        var a = Seed("a");
-        var b = Seed("b");
-        var kc = FakePartialImportKeycloak(ImportResult((a, "ADDED", null)));
-        kc.FindUserIdByUsernameAsync(a, Arg.Any<CancellationToken>()).Returns("kc-a");
-        await using var ctx = _db.NewContext();
-        var request = Request(a, b);
-        request.Mode = DevSeedUsersRequest.ModePartialImport;
-
-        var response = await NewService(ctx, kc).SeedAsync(request);
-
-        var ra = response.Results.Single(r => r.Email == a);
-        ra.KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusCreated);
-        ra.KeycloakId.ShouldBe("kc-a");
-        ra.IdentityStatus.ShouldBe(DevSeedUsersResponse.StatusCreated);
-
-        var rb = response.Results.Single(r => r.Email == b);
-        rb.KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusFailed);
-        rb.Error.ShouldContain("içermiyor");
-        (await _db.NewContext().Users.CountAsync()).ShouldBe(1);
-    }
-
-    [Fact]
-    public void Password_hasher_produces_keycloak_shaped_json_with_512bit_key()
-    {
-        var cred = KeycloakPasswordHasher.HashPbkdf2Sha512("example-pw", iterations: 1000);
-
-        using var sd = JsonDocument.Parse(cred.SecretData);
-        Convert.FromBase64String(sd.RootElement.GetProperty("value").GetString()!).Length.ShouldBe(64);
-        Convert.FromBase64String(sd.RootElement.GetProperty("salt").GetString()!).Length.ShouldBe(16);
-
-        using var cd = JsonDocument.Parse(cred.CredentialData);
-        cd.RootElement.GetProperty("algorithm").GetString().ShouldBe("pbkdf2-sha512");
-        cd.RootElement.GetProperty("hashIterations").GetInt32().ShouldBe(1000);
-
-        // Tuz rastgele: iki çağrı farklı hash üretir.
-        KeycloakPasswordHasher.HashPbkdf2Sha512("example-pw", 1000).SecretData.ShouldNotBe(cred.SecretData);
     }
 
     [Fact]

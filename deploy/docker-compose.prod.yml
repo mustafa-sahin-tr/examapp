@@ -188,6 +188,8 @@ services:
       Keycloak__ClientSecret: ${KEYCLOAK_CLIENT_SECRET}
       Keycloak__AdminClientId: ${KEYCLOAK_ADMIN_CLIENT_ID}
       Keycloak__AdminClientSecret: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+      Keycloak__ServiceClientId: ${KEYCLOAK_SERVICE_CLIENT_ID}
+      Keycloak__ServiceClientSecret: ${KEYCLOAK_SERVICE_CLIENT_SECRET}
       Keycloak__TokenUrl: realms/exam-realm/protocol/openid-connect/token
       Keycloak__RealmRolesUrl: admin/realms/exam-realm/roles
       # Issue #225: exam API hosts a MassTransit consumer (queue "exam-api") for
@@ -290,10 +292,8 @@ services:
       Keycloak__Authority: ${PUBLIC_BASE_URL}/realms/exam-realm
       Keycloak__Host: http://keycloak:8080
       Keycloak__Realm: exam-realm
-      Keycloak__ClientId: ${KEYCLOAK_CLIENT_ID}
-      Keycloak__ClientSecret: ${KEYCLOAK_CLIENT_SECRET}
-      Keycloak__AdminClientId: ${KEYCLOAK_ADMIN_CLIENT_ID}
-      Keycloak__AdminClientSecret: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+      Keycloak__ServiceClientId: ${KEYCLOAK_SERVICE_CLIENT_ID}
+      Keycloak__ServiceClientSecret: ${KEYCLOAK_SERVICE_CLIENT_SECRET}
       Keycloak__TokenUrl: realms/exam-realm/protocol/openid-connect/token
       Keycloak__RealmRolesUrl: admin/realms/exam-realm/roles
       MinioConfig__Endpoint: minio:9000

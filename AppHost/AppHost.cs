@@ -285,6 +285,8 @@ var keycloakAdminPassword = builder.AddParameter("keycloak-admin-password", secr
 // invalid_client_credentials error that looks unrelated to config.
 var keycloakClientSecret = builder.AddParameter("keycloak-client-secret", secret: true);
 var keycloakAdminClientSecret = builder.AddParameter("keycloak-admin-client-secret", secret: true);
+// Issue #372: service-to-service token client (exam-service); no Keycloak admin roles.
+var keycloakServiceClientSecret = builder.AddParameter("keycloak-service-client-secret", secret: true);
 
 // Not pinned to docker-compose.yml's 24.0.1: AddKeycloak enables the
 // "opentelemetry" KC_FEATURES flag by default (for dashboard OTLP export),
@@ -692,6 +694,7 @@ examDotnetApi = examDotnetApi
     .WithEnvironment("Keycloak__Host", keycloakHttp)
     .WithEnvironment("Keycloak__ClientSecret", keycloakClientSecret)
     .WithEnvironment("Keycloak__AdminClientSecret", keycloakAdminClientSecret)
+    .WithEnvironment("Keycloak__ServiceClientSecret", keycloakServiceClientSecret)
     .WithEnvironment("Server__BaseUrl", gatewayPublicUrl)
     // AuthApiBaseUrl is another docker-compose hostname ("auth-api:5079")
     // Ocelot's override mechanism never touches, since it's not an Ocelot
@@ -706,8 +709,7 @@ examDotnetApi = examDotnetApi
 badgeService = badgeService
     .WithReference(keycloak)
     .WithEnvironment("Keycloak__Host", keycloakHttp)
-    .WithEnvironment("Keycloak__ClientSecret", keycloakClientSecret)
-    .WithEnvironment("Keycloak__AdminClientSecret", keycloakAdminClientSecret)
+    .WithEnvironment("Keycloak__ServiceClientSecret", keycloakServiceClientSecret)
     .WithEnvironment("Server__BaseUrl", gatewayPublicUrl)
     // Issue #165: BadgeService now resolves the caller's numeric user id via
     // GET /api/auth/user-profile on auth-api (same client call ExamDotnetApi

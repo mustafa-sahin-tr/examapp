@@ -72,8 +72,8 @@ public sealed class TutorSeedService : ITutorSeedService
         var pendingRatio = options.PendingRatio ?? TutorSeedOptions.DefaultPendingRatioFor(_environment);
         if (options.BatchSize is <= 0 or > TeacherSeedOptions.MaxBatchSize)
             throw new ArgumentException($"Parti boyutu 1..{TeacherSeedOptions.MaxBatchSize} olmalı.", nameof(options));
-        if (options.KeycloakMode != TeacherSeedOptions.KeycloakModeAdminApi && options.KeycloakMode != TeacherSeedOptions.KeycloakModePartialImport)
-            throw new ArgumentException($"Keycloak modu '{TeacherSeedOptions.KeycloakModeAdminApi}' ya da '{TeacherSeedOptions.KeycloakModePartialImport}' olmalı.", nameof(options));
+        if (options.KeycloakMode != TeacherSeedOptions.KeycloakModeAdminApi)
+            throw new ArgumentException($"Keycloak modu yalnızca '{TeacherSeedOptions.KeycloakModeAdminApi}' olabilir (partial-import #372 ile kaldırıldı).", nameof(options));
 
         var pwd = options.DryRun ? null : TeacherSeedService.RequirePassword(_configuration);
 

@@ -155,7 +155,7 @@ public sealed class UsersLookupAuthorizationTests : IAsyncDisposable
         var id = await SeedUserAsync("kc-1", "Ayşe Yılmaz", "ayse@test.local");
         var client = await StartAsync();
 
-        var response = await client.SendAsync(LookupRequest([id, 9999], sub: "svc", roles: ServicePrincipal.ServiceRole, azp: "exam-admin"));
+        var response = await client.SendAsync(LookupRequest([id, 9999], sub: "svc", roles: ServicePrincipal.ServiceRole, azp: "exam-service"));
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var body = await response.Content.ReadAsStringAsync();
@@ -167,9 +167,9 @@ public sealed class UsersLookupAuthorizationTests : IAsyncDisposable
     public async Task Configured_service_client_azp_without_role_gets_200()
     {
         var id = await SeedUserAsync("kc-2", "Ali Veli", "ali@test.local");
-        var client = await StartAsync(serviceClients: ["exam-admin"]);
+        var client = await StartAsync(serviceClients: ["exam-service"]);
 
-        var response = await client.SendAsync(LookupRequest([id], sub: "svc", azp: "exam-admin"));
+        var response = await client.SendAsync(LookupRequest([id], sub: "svc", azp: "exam-service"));
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await response.Content.ReadAsStringAsync()).ShouldContain("ali@test.local");

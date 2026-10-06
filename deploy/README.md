@@ -73,7 +73,7 @@ Doldurman gereken kritik alanlar:
 - `PUBLIC_BASE_URL` (örn: `https://exam.example.com`)
 - Postgres/Redis/Rabbit/MinIO/Keycloak şifreleri (hepsi güçlü olmalı)
 - `JWT_KEY` (32+ karakter)
-- Keycloak client secret’lar (`KEYCLOAK_CLIENT_SECRET`, `KEYCLOAK_ADMIN_CLIENT_SECRET`)
+- Keycloak client secret’lar (`KEYCLOAK_CLIENT_SECRET`, `KEYCLOAK_ADMIN_CLIENT_SECRET`, `KEYCLOAK_SERVICE_CLIENT_SECRET`)
 - BadgeService AI analyzer kontrolü: `BADGE_AI_ACTIVE=true|false`
 
 ## 4) İlk Kurulum (Up)
@@ -109,7 +109,18 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --force-rec
    - Kısa süreli debug için host’ta port publish ekleyebilirsin (prod compose’da yok).
    - Alternatif: VM’ye SSH ile girip `docker exec -it exam-keycloak ...` ile yönet.
 2. `exam-realm` realm’ini oluştur.
-3. `exam-client` ve `exam-admin` client’larını oluştur.
+3. `exam-client`, `exam-admin` ve `exam-service` client’larını oluştur (issue #372):
+   - `exam-admin`: confidential, service accounts açık; service account yalnız `realm-management`
+     `manage-users`, `view-users`, `query-users`, `view-realm` rollerini taşır (auth-api / exam API Keycloak
+     admin REST). `manage-realm` ve `exam-service` rolü VERİLMEZ.
+   - `exam-service`: confidential, service accounts açık, standard/direct-grant kapalı; service account
+     yalnız `exam-service` realm rolünü taşır (realm-management rolü yok). Servisler arası
+     (`BadgeService` ↔ exam API ↔ auth-api) `client_credentials` token'ı bununla alınır.
+   - Mevcut prod realm'ini güncellerken sıra: önce `exam-service` client + rol + secret'ı oluştur ve
+     `KEYCLOAK_SERVICE_CLIENT_ID/SECRET` deploy secret'larını (docker-compose `.env.prod` / k8s
+     `examapp-secrets`) set edip exam API + BadgeService'i yeniden başlat; servisler arası çağrının
+     çalıştığını doğrula; SON olarak `service-account-exam-admin`'den `manage-realm` ve `exam-service`
+     rolünü kaldır.
 4. `redirect URI` olarak `https://<DOMAIN>/app/*` tanımla.
 5. `.env.prod` içine client secret’ları gir.
 6. Ardından:

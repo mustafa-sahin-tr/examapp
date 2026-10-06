@@ -170,7 +170,7 @@ zaten bu parolayla doğar).
 | `--provinces a,b` | Hangi illerin seed okulları (varsayılan: 10 il) |
 | `--limit-schools-per-province N` | İl başına ada göre (tr-TR) sıralı ilk N okul |
 | `--dry-run` | auth-api çağrılmaz, yazılmaz; plan ve hesap listesi raporlanır (parola gerekmez) |
-| `--keycloak-mode admin-api\|partial-import` | Aşağıdaki ölçüme göre seçin (varsayılan `admin-api`) |
+| `--keycloak-mode admin-api` | Yalnızca `admin-api` (varsayılan). `partial-import` #372 ile kaldırıldı; verilirse açık hatayla reddedilir |
 | `--batch-size N` | auth-api'ye istek başına hesap (varsayılan 100, en fazla 500). Ölçüm notu aşağıda |
 | `--reset-password` | Keycloak'ta zaten var olan (`Existing`/`Adopted`) seed hesaplarının parolasını bu koşunun `SeedData:Password` değeriyle sıfırla (varsayılan kapalı) |
 | `--adopt-unmarked` | TEK SEFERLİK incident temizliği: `seed_origin` işareti taşımayan yetimleri de sahiplen ve işaretle (varsayılan kapalı; normal koşuda kullanma) |
@@ -185,11 +185,11 @@ tamamlanan partiler kalıcıdır, tekrar koşu eksikleri tamamlar)**.
 | Mod | İstek / hesap | Ölçülen | ≈ ms/hesap | 86k hesap (10 il tam kapsam) tahmini |
 |---|---|---|---|---|
 | `admin-api` | `POST /users` + `POST role-mappings` (admin token parti başına cache) | 15 hesap → 2 743 ms | **≈180** | ≈ 4,3 saat yalnız Keycloak |
-| `partial-import` | parti başına tek `POST /partialImport` (SKIP), önceden hash'lenmiş `pbkdf2-sha512` parola, `realmRoles` = `Teacher` + realm default rolü | 20 hesap → 442 ms | **≈20–30** | ≈ 35–45 dk Keycloak; identity/exam DB ile toplam ≈ 1–1,5 saat |
 
-Küçük örneklem için `admin-api` yeterli; tam kapsam için `--keycloak-mode partial-import --batch-size 500`
-(gerekirse `--no-events`). Partial import'ta Keycloak parolayı verildiği hash ile saklar ve ilk başarılı
-login'de realm politikasına (argon2) yeniden hash'ler — beklenen davranış. İkisi de idempotenttir; tekrar
+`partial-import` modu (parti başına tek `POST /partialImport`, ≈20–30 ms/hesap) **issue #372 ile kaldırıldı**:
+Keycloak `partialImport` `manage-realm` ister ve artık hiçbir servis hesabında `manage-realm` yok
+(`exam-admin`: yalnızca `manage-users`/`view-users`/`query-users`/`view-realm`). Tam kapsam koşusu `admin-api`
+ile ≈ 4,3 saat sürer; `--batch-size 500` ve `--no-events` ile süre kısaltılabilir. Koşu idempotenttir; tekrar
 koşu Keycloak/identity/exam'de mevcut kaydı bulur ve kopya açmaz.
 
 ### HTTP zaman aşımı / yeniden deneme (resilience) — neden özel ayar var

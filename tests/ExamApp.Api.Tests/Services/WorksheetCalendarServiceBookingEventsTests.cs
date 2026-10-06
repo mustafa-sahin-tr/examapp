@@ -75,6 +75,29 @@ public class WorksheetCalendarServiceBookingEventsTests : IDisposable
     }
 
     [Fact]
+    public async Task GetMyCalendarAsync_ApprovedBookingWithSoftDeletedSlot_IsStillOnTheCalendar()
+    {
+        // issue #376: onaylı randevu slotu silinse de geçerli → takvimden düşmez.
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
+        var slotId = await SeedSlotAsync(TeacherId, date, new TimeOnly(14, 0), new TimeOnly(15, 0));
+        var bookingId = await SeedBookingAsync(TeacherId, StudentId, slotId, BookingStatus.Approved);
+        await using (var del = _db.NewContext())
+            await del.TeacherAvailabilitySlots.Where(s => s.Id == slotId)
+                .ExecuteUpdateAsync(set => set.SetProperty(s => s.IsDeleted, true));
+
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<UserLookupResultDto>>(new List<UserLookupResultDto>()));
+
+        await using var ctx = _db.NewContext();
+        var fromUtc = DateTime.UtcNow.Date;
+        var result = await NewService(ctx).GetMyCalendarAsync(StudentId, "kc-student", null, null, fromUtc, fromUtc.AddDays(30), CancellationToken.None);
+
+        result.Events.Single(e => e.Kind == "booking").BookingId.ShouldBe(bookingId);
+    }
+
+    [Fact]
     public async Task GetMyCalendarAsync_ApprovedBooking_IncludesBookingEvent()
     {
         await SeedTeacherAsync(TeacherId, TeacherUserId);

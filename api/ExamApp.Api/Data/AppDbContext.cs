@@ -920,6 +920,17 @@ public class AppDbContext : DbContext
 
     private static void SetGlobalQueryFilter<T>(ModelBuilder modelBuilder) where T : BaseEntity
     {
+        // issue #376: slotun soft-delete filtresi ADLI — randevu okumaları yalnız bu filtreyi kapatabilsin
+        // (AvailabilitySlotQueryFilter.WithSoftDeletedSlots); booking/öğretmen/öğrenci filtreleri yerinde kalır.
+        // UYARI: TeacherAvailabilitySlot'a ADSIZ bir HasQueryFilter EKLEMEYİN — EF Core 10 aynı entity'de adlı ve adsız
+        // filtreyi birlikte kabul etmez (model doğrulaması hata verir). Ek bir koşul gerekirse ayrı bir ADLI filtre olarak
+        // ekleyin ve WithSoftDeletedSlots'un hangi anahtarları kapattığını gözden geçirin.
+        if (typeof(T) == typeof(TeacherAvailabilitySlot))
+        {
+            modelBuilder.Entity<T>().HasQueryFilter(AvailabilitySlotQueryFilter.SoftDeleteKey, e => !e.IsDeleted);
+            return;
+        }
+
         modelBuilder.Entity<T>().HasQueryFilter(e => !e.IsDeleted);
     }
 }

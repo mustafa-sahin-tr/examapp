@@ -68,7 +68,12 @@ public class BookingController : BaseController
         return result.Success ? Ok(result) : MapFailure(result);
     }
 
-    /// <summary>Öğretmen kendi, aktif randevusu olmayan müsaitlik aralığını siler.</summary>
+    /// <summary>
+    /// Öğretmen kendi, aktif randevusu olmayan müsaitlik aralığını siler (soft delete). Yanıtlar:
+    /// 204 silindi; 404 slot (ya da öğretmen kaydı) yok / zaten silinmiş; 403 slot başka öğretmenin;
+    /// 409 aktif (Pending/Approved) randevu var → <c>errorCode: "SlotHasActiveBooking"</c> (issue #376) ya da öğretmen
+    /// müsaitlik kilidi zaman aşımı (<c>booking.slot.busy</c>, errorCode yok — tekrar denenebilir).
+    /// </summary>
     [HttpDelete("slots/{id:int}")]
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [Authorize(Roles = "Teacher")]
@@ -195,7 +200,10 @@ public class BookingController : BaseController
         return result.Success ? Ok(result) : MapFailure(result);
     }
 
-    /// <summary>Öğretmen kendi slotuna gelen talebi onaylar.</summary>
+    /// <summary>
+    /// Öğretmen kendi slotuna gelen talebi onaylar. Slotu silinmiş talep onaylanamaz → 409 +
+    /// <c>errorCode: "BookingRequestSlotDeleted"</c> (issue #376; yalnız reddedilebilir).
+    /// </summary>
     [HttpPost("requests/{id:int}/approve")]
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [Authorize(Roles = "Teacher")]

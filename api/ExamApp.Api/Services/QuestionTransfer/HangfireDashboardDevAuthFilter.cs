@@ -3,14 +3,11 @@ using Hangfire.Dashboard;
 namespace ExamApp.Api.Services.QuestionTransfer;
 
 /// <summary>
-/// Development-only Hangfire dashboard access: any authenticated user can view.
-/// Keep production locked down via <see cref="HangfireDashboardAuthFilter"/>.
+/// Development-only Hangfire dashboard access. Issue #365: same Admin/SuperAdmin rule as production
+/// (<see cref="HangfireDashboardAuthFilter"/>), only synchronous; the dashboard shows every job's arguments.
 /// </summary>
 public class HangfireDashboardDevAuthFilter : IDashboardAuthorizationFilter
 {
-    public bool Authorize(DashboardContext context)
-    {
-        var httpContext = context.GetHttpContext();
-        return httpContext.User?.Identity?.IsAuthenticated == true;
-    }
+    public bool Authorize(DashboardContext context) =>
+        HangfireDashboardAuthFilter.IsAllowed(context.GetHttpContext().User);
 }

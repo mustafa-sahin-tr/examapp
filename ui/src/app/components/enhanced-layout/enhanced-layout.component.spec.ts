@@ -16,6 +16,7 @@ import { DirectMessageService } from '../../services/direct-message.service';
 import { UserThemeService } from '../../services/user-theme.service';
 import { ThemeConfigService } from '../../services/theme-config.service';
 import { routes } from '../../app.routes';
+import { adminGuard } from '../../shared/guards/admin.guard';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 
 /** Issue #106: DM rozet servisi stub'ı (HttpClient gerektirmesin). */
@@ -126,6 +127,25 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
     expect(student.visibleMenuItems().map((i) => i.route)).not.toContain('/study-links');
   });
 
+  it('visibleMenuItems_QuestionTransfer_OnlyForAdmin (issue #365)', () => {
+    const admin = create(['Admin']);
+    const item = admin.visibleMenuItems().find((i) => i.id === 'questiontransfer');
+    expect(item?.route).toBe('/question-transfer');
+    expect(item?.roles).toEqual(['Admin']);
+
+    for (const role of ['Teacher', 'Student']) {
+      TestBed.resetTestingModule();
+      const other = create([role]);
+      expect(other.visibleMenuItems().map((i) => i.route)).withContext(role).not.toContain('/question-transfer');
+    }
+  });
+
+  it('routes_QuestionTransfer_UsesAdminGuard (issue #365)', () => {
+    const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
+    const route = children.find((r) => r.path === 'question-transfer');
+    expect(route?.canActivate).toContain(adminGuard);
+  });
+
   // ── Issue #287: onaysız öğretmen menüsü ─────────────────────────────────────
 
   const TEACHER_ONLY_ROUTES = [
@@ -134,7 +154,6 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
     '/exam',
     '/study-pages',
     '/study-links',
-    '/question-transfer',
     '/availability',
     '/booking-requests',
     '/assignment-permission-requests',

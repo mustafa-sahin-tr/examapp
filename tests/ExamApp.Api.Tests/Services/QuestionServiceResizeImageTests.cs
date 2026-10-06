@@ -38,32 +38,36 @@ public class QuestionServiceResizeImageTests : IDisposable
 
         (await svc.ResizeQuestionImage(q.Id, 2)).Message.ShouldContain("Soru resmi bulunamadı");
 
-        q.ImageUrl = "questions/x.jpg";
+        q.ImageUrl = "/img/exam-questions/questions/7/x.jpg";
         await ctx.SaveChangesAsync();
         _minio.GetFileStreamAsync(q.ImageUrl).Returns((Stream?)null);
         (await svc.ResizeQuestionImage(q.Id, 2)).Message.ShouldContain("indirilemedi");
     }
 
+    private const string StoredUrl = "/img/exam-questions/questions/7/x.jpg";
+
+    private async Task<int> SeedQuestionAsync(string imageUrl)
+    {
+        await using var ctx = _db.NewContext();
+        var seeded = new Question
+        {
+            Text = "q", ImageUrl = imageUrl,
+            X = 10, Y = 20, Width = 100, Height = 200, SanitizedHeight = 150,
+        };
+        ctx.Questions.Add(seeded);
+        await ctx.SaveChangesAsync();
+        ctx.Answers.Add(new Answer { QuestionId = seeded.Id, Text = "a", X = 5, Y = 5, Width = 30, Height = 40 });
+        await ctx.SaveChangesAsync();
+        return seeded.Id;
+    }
+
     [Fact]
     public async Task Scales_the_image_and_the_stored_geometry_on_success()
     {
-        int qId;
-        await using (var ctx = _db.NewContext())
-        {
-            var seeded = new Question
-            {
-                Text = "q", ImageUrl = "questions/x.jpg",
-                X = 10, Y = 20, Width = 100, Height = 200, SanitizedHeight = 150,
-            };
-            ctx.Questions.Add(seeded);
-            await ctx.SaveChangesAsync();
-            qId = seeded.Id;
-            ctx.Answers.Add(new Answer { QuestionId = seeded.Id, Text = "a", X = 5, Y = 5, Width = 30, Height = 40 });
-            await ctx.SaveChangesAsync();
-        }
-
-        _minio.GetFileStreamAsync("questions/x.jpg").Returns(_ => Png(100, 200));
-        _minio.UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>()).Returns("questions/x-scaled.jpg");
+        var qId = await SeedQuestionAsync(StoredUrl);
+        _minio.GetFileStreamAsync(StoredUrl).Returns(_ => Png(100, 200));
+        _minio.UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>())
+            .Returns(ci => $"/img/{ci.ArgAt<string>(2)}/{ci.ArgAt<string>(1)}");
 
         await using (var ctx = _db.NewContext())
         {
@@ -73,11 +77,57 @@ public class QuestionServiceResizeImageTests : IDisposable
 
         await using var check = _db.NewContext();
         var q = await check.Questions.SingleAsync(x => x.Id == qId);
-        q.ImageUrl.ShouldBe("questions/x-scaled.jpg");
+        q.ImageUrl.ShouldStartWith("/img/exam-questions/questions/7/");
+        q.ImageUrl.ShouldNotBe(StoredUrl);
         q.Width.ShouldBe(50);
         q.Height.ShouldBe(100);
         q.SanitizedHeight.ShouldBe(75);
         q.X.ShouldBe(5);
+    }
+
+    /// <summary>
+    /// issue #365: eskiden saklanan URL'nin kendisi object key olarak veriliyordu → key `/img/exam-questions/questions/...`
+    /// (anonim okunabilir questions/* prefix'i dışı) ve DB'de çift `/img/.../img/...` URL.
+    /// </summary>
+    [Fact]
+    public async Task Resized_image_is_uploaded_under_questions_prefix_of_the_same_bucket_and_url_is_not_doubled()
+    {
+        var qId = await SeedQuestionAsync(StoredUrl);
+        _minio.GetFileStreamAsync(StoredUrl).Returns(_ => Png(100, 200));
+        string? key = null, bucket = null;
+        _minio.UploadFileAsync(Arg.Any<Stream>(), Arg.Do<string>(k => key = k), Arg.Do<string?>(b => bucket = b), Arg.Any<string?>())
+            .Returns(ci => $"/img/{ci.ArgAt<string>(2)}/{ci.ArgAt<string>(1)}");
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).ResizeQuestionImage(qId, 0.5)).Success.ShouldBeTrue();
+
+        bucket.ShouldBe("exam-questions");
+        key.ShouldNotBeNull();
+        key.ShouldStartWith("questions/7/");
+        key.ShouldEndWith(".jpg");
+        key.ShouldNotContain("img/");
+
+        await using var check = _db.NewContext();
+        var url = (await check.Questions.SingleAsync(x => x.Id == qId)).ImageUrl!;
+        url.ShouldBe($"/img/exam-questions/{key}");
+        url.IndexOf("/img/", 1, StringComparison.Ordinal).ShouldBe(-1);
+    }
+
+    [Theory]
+    [InlineData("questions/x.jpg")]                              // /img/{bucket}/ biçimi değil
+    [InlineData("/img/exam-questions/question-transfer/a.zip")]  // questions/ dışı
+    [InlineData("/img/exam-questions/questions/../answers/a.jpg")]
+    public async Task Non_question_image_urls_are_not_rewritten(string storedUrl)
+    {
+        var qId = await SeedQuestionAsync(storedUrl);
+        _minio.GetFileStreamAsync(storedUrl).Returns(_ => Png(100, 200));
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).ResizeQuestionImage(qId, 0.5)).Success.ShouldBeFalse();
+
+        await _minio.DidNotReceiveWithAnyArgs().UploadFileAsync(default!, default!, default, default);
+        await using var check = _db.NewContext();
+        (await check.Questions.SingleAsync(x => x.Id == qId)).ImageUrl.ShouldBe(storedUrl);
     }
 
     public void Dispose() => _db.Dispose();

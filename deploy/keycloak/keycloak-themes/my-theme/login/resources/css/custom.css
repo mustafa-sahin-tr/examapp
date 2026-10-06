@@ -264,6 +264,189 @@ body {
 .auth-bottom-text a:hover { text-decoration: underline; }
 
 /* ===========================
+   Shared pages (issue #379)
+   Reset password, update password, error and the parent-theme pages
+   (info, page expired, ...) render inside the same .auth-* card as the
+   login page via template.ftl; these rules cover what only they use.
+   Keycloak pages cannot see the Angular app's tokens, so the theme keeps
+   its own small token set here.
+   =========================== */
+:root {
+  --kc-primary: #6438c3;
+  --kc-text: #1a1a2e;
+  --kc-text-muted: #6b7280;
+  --kc-label: #374151;
+  --kc-border: #d1d5db;
+  --kc-surface: #ffffff;
+  --kc-danger: #dc2626;
+  --kc-success-bg: #f0fdf4;
+  --kc-success-fg: #15803d;
+  --kc-success-border: #86efac;
+  --kc-info-bg: #eff6ff;
+  --kc-info-fg: #1d4ed8;
+  --kc-info-border: #93c5fd;
+  --kc-warning-bg: #fffbeb;
+  --kc-warning-fg: #b45309;
+  --kc-warning-border: #fcd34d;
+}
+
+/* Alert variants: template.ftl emits auth-alert--{error|success|info|warning} */
+.auth-alert--success {
+  background-color: var(--kc-success-bg);
+  color: var(--kc-success-fg);
+  border: 1px solid var(--kc-success-border);
+}
+
+.auth-alert--info {
+  background-color: var(--kc-info-bg);
+  color: var(--kc-info-fg);
+  border: 1px solid var(--kc-info-border);
+}
+
+.auth-alert--warning {
+  background-color: var(--kc-warning-bg);
+  color: var(--kc-warning-fg);
+  border: 1px solid var(--kc-warning-border);
+}
+
+/* Long words (e-mail addresses, trace ids) must not widen the card */
+.auth-form-col {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Field-level validation */
+.form-control--invalid {
+  border-color: var(--kc-danger);
+}
+
+.field-error {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--kc-danger);
+}
+
+/* Secondary action under the primary button (cancel on update password) */
+.secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--kc-label);
+  background: var(--kc-surface);
+  border: 1px solid var(--kc-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.secondary-btn:hover { border-color: var(--kc-primary); color: var(--kc-primary); }
+
+/* Visible keyboard focus on every interactive element of the card */
+.default-btn:focus-visible,
+.secondary-btn:focus-visible,
+.auth-form-col a:focus-visible,
+#kc-current-locale-link:focus-visible {
+  outline: 2px solid var(--kc-primary);
+  outline-offset: 2px;
+}
+
+/* Body text and links of pages without a form (error, parent info.ftl,
+   login-page-expired.ftl: "p.instruction" + plain links) */
+.auth-form-col .instruction {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--kc-label);
+  margin-bottom: 16px;
+}
+
+.auth-form-col p a,
+.auth-form-col .instruction a {
+  color: var(--kc-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-form-col p a:hover { text-decoration: underline; }
+
+#kc-info-message p + p { margin-top: 12px; }
+
+/* "* Required fields" hint (displayRequiredFields) */
+.required-hint {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--kc-text-muted);
+}
+
+.required { color: var(--kc-danger); }
+
+/* Signed-in-as row + restart link on mid-flow pages (OTP, WebAuthn, ...) */
+.auth-username {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 10px 14px;
+  font-size: 14px;
+  border: 1px solid var(--kc-border);
+  border-radius: 8px;
+}
+
+.auth-username__name {
+  font-weight: 600;
+  color: var(--kc-text);
+}
+
+.auth-username__restart {
+  font-size: 13px;
+  color: var(--kc-primary);
+  text-decoration: none;
+}
+
+.auth-username__restart:hover { text-decoration: underline; }
+
+/* "Try another way" / "switch organization": a submit button styled as link */
+.auth-secondary-action {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.link-btn {
+  padding: 0;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--kc-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.link-btn:hover { text-decoration: underline; }
+
+.link-btn:focus-visible {
+  outline: 2px solid var(--kc-primary);
+  outline-offset: 2px;
+}
+
+/* Text inputs of parent-theme forms that don't carry our .form-control
+   class (OTP, register, ...) — keep them usable and on-brand */
+.auth-form-col input:not(.form-control):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="hidden"]) {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--kc-text);
+  border: 1px solid var(--kc-border);
+  border-radius: 8px;
+}
+
+/* ===========================
    Language selector
    =========================== */
 #kc-locale {
@@ -324,8 +507,15 @@ body {
    =========================== */
 @media (max-width: 768px) {
   .auth-area {
-    padding: 24px 16px;
+    /* top padding leaves room for the absolutely positioned locale switcher
+       so it never covers the card's title (#379) */
+    padding: 64px 16px 24px;
     align-items: flex-start;
+  }
+
+  .auth-options {
+    flex-wrap: wrap;
+    gap: 8px;
   }
 
   .auth-inner {

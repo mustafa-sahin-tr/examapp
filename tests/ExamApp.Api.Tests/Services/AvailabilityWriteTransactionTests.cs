@@ -313,6 +313,74 @@ public class AvailabilityWriteTransactionTests : IDisposable
             (await NewRecurring(ctx).DeleteRuleAsync(TeacherUserId, ruleId)).NotFound.ShouldBeTrue();
     }
 
+    // ---------------- issue #376: tekil slot silme kilit/transaction ----------------
+
+    [Fact]
+    public async Task DeleteSlot_runs_inside_a_retrying_execution_strategy_and_a_failed_commit_retry_deletes_once()
+    {
+        int slotId;
+        await using (var ctx = _db.NewContext())
+            slotId = (await NewBooking(ctx).CreateSlotAsync(TeacherUserId, Slot(Today.AddDays(2), 10, 11))).ObjectId;
+
+        var interceptor = new FailFirstCommitInterceptor();
+        AvailabilitySlotDeleteResultDto result;
+        await using (var ctx = _db.NewContextWithTransientRetry(interceptor))
+            result = await NewBooking(ctx).DeleteSlotAsync(TeacherUserId, slotId);
+
+        interceptor.Failures.ShouldBe(1);
+        result.Success.ShouldBeTrue(result.Message);
+        (await SlotsAsync()).ShouldBeEmpty();
+
+        await using (var ctx = _db.NewContextWithRetryingExecutionStrategy())
+            (await NewBooking(ctx).DeleteSlotAsync(TeacherUserId, slotId)).NotFound.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DeleteSlot_with_an_active_booking_under_the_lock_returns_conflict_and_writes_nothing()
+    {
+        int slotId;
+        await using (var ctx = _db.NewContext())
+        {
+            slotId = (await NewBooking(ctx).CreateSlotAsync(TeacherUserId, Slot(Today.AddDays(2), 10, 11))).ObjectId;
+            ctx.Students.Add(new Student { Id = 20, UserId = 200, StudentNumber = "S20" });
+            ctx.Bookings.Add(new Booking
+            {
+                TeacherId = TeacherId, StudentId = 20, AvailabilitySlotId = slotId, Status = BookingStatus.Approved,
+                CreatedAt = Now.UtcDateTime
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using (var ctx = _db.NewContextWithRetryingExecutionStrategy())
+        {
+            var result = await NewBooking(ctx).DeleteSlotAsync(TeacherUserId, slotId);
+            result.Conflict.ShouldBeTrue();
+            result.ErrorCode.ShouldBe(BookingErrorCodes.SlotHasActiveBooking);
+            ctx.ChangeTracker.Entries().Where(e => e.State != EntityState.Unchanged).ShouldBeEmpty();
+        }
+
+        (await SlotsAsync()).ShouldHaveSingleItem().Id.ShouldBe(slotId);
+    }
+
+    [Fact]
+    public async Task CreateBooking_takes_the_availability_lock_inside_a_retrying_execution_strategy()
+    {
+        int slotId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.Teachers.Single(t => t.Id == TeacherId).AccountApprovedAt = Now.UtcDateTime.AddDays(-1);
+            ctx.Students.Add(new Student { Id = 20, UserId = 200, StudentNumber = "S20" });
+            await ctx.SaveChangesAsync();
+            slotId = (await NewBooking(ctx).CreateSlotAsync(TeacherUserId, Slot(Today.AddDays(2), 10, 11))).ObjectId;
+        }
+
+        await using (var ctx = _db.NewContextWithRetryingExecutionStrategy())
+        {
+            var result = await NewBooking(ctx).CreateBookingAsync(200, new CreateBookingDto { AvailabilitySlotId = slotId });
+            result.Success.ShouldBeTrue(result.Message);
+        }
+    }
+
     [Fact]
     public async Task TopUp_rereads_rules_inside_its_transaction_and_skips_a_rule_stopped_in_between()
     {

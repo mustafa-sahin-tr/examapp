@@ -139,8 +139,18 @@ public class KeycloakService : IKeycloakService
         }
     }
 
-    public async Task<TokenResponseDto> ExchangeTokenAsync(string code, CancellationToken ct = default)
+    /// <summary>
+    /// Authorization code → token. <paramref name="codeVerifier"/> PKCE doğrulayıcısıdır (issue #347) ve
+    /// Keycloak token ucuna <c>code_verifier</c> olarak gider; Keycloak authorization isteğindeki S256
+    /// <c>code_challenge</c> ile karşılaştırır.
+    /// </summary>
+    public async Task<TokenResponseDto> ExchangeTokenAsync(string code, string codeVerifier, CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(codeVerifier))
+        {
+            throw new ArgumentException("PKCE code_verifier is required.", nameof(codeVerifier));
+        }
+
         if (string.IsNullOrWhiteSpace(_keycloakSettings.RedirectUri))
         {
             throw new KeycloakException("Keycloak redirect URI is not configured. Set Keycloak:RedirectUri (e.g. https://<domain>/app/callback).");
@@ -152,7 +162,8 @@ public class KeycloakService : IKeycloakService
                 { "client_id", _keycloakSettings.ClientId },
                 { "client_secret", _keycloakSettings.ClientSecret },
                 { "redirect_uri", _keycloakSettings.RedirectUri },
-                { "code", code }
+                { "code", code },
+                { "code_verifier", codeVerifier }
             };
 
         var content = await PostTokenRequestAsync(BuildKeycloakUri(_keycloakSettings.TokenUrl), body, "code exchange", ct);

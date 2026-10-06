@@ -319,3 +319,31 @@
     display: none;
   }
 }
+
+/* Keycloak hata dönüşü (issue #347) */
+.ms-error-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.ms-error-section h2 {
+  font-family: var(--mainFontFamily);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.ms-error-icon {
+  color: var(--ms-danger-background);
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+}
+
+.ms-retry-button {
+  background-color: var(--ms-action-background);
+  color: var(--ms-action-text-inverse);
+}

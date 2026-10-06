@@ -33,6 +33,7 @@ namespace AuthApi.Tests.Controllers;
 public sealed class LoginErrorResponseTests : IAsyncDisposable
 {
     private const string ExamplePassword = "wrong-pw-example"; // example credential, test-only
+    private const string ExampleCodeVerifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"; // RFC 7636 örneği, test-only
 
     private readonly TestDb _db = TestDb.Create();
     private readonly IKeycloakService _keycloak = Substitute.For<IKeycloakService>();
@@ -269,20 +270,48 @@ public sealed class LoginErrorResponseTests : IAsyncDisposable
     [Fact]
     public async Task Exchange_keycloak_unreachable_returns_503_with_generic_message()
     {
-        _keycloak.ExchangeTokenAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _keycloak.ExchangeTokenAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns<TokenResponseDto>(_ => throw new KeycloakException(
                 "Keycloak code exchange failed: token endpoint unreachable (Connection refused)",
                 new HttpRequestException("Connection refused (keycloak:8080)"),
                 StatusCodes.Status503ServiceUnavailable, KeycloakFailureKind.ProviderUnavailable));
         var client = await StartAsync();
 
-        var response = await client.PostAsJsonAsync("/api/auth/exchange", new { Code = "code-example" });
+        var response = await client.PostAsJsonAsync("/api/auth/exchange", new { Code = "code-example", CodeVerifier = ExampleCodeVerifier });
 
         response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
         var body = await response.Content.ReadAsStringAsync();
         ShouldNotLeakInternals(body);
         body.ShouldNotContain("keycloak:8080");
         MessageOf(body).ShouldBe("Giriş servisine şu anda ulaşılamıyor, lütfen daha sonra tekrar deneyin.");
+    }
+
+    // Issue #347: PKCE verifier zorunlu ve RFC 7636 biçiminde olmalı; aksi halde Keycloak'a hiç gidilmez.
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("too-short")]
+    [InlineData("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk/")] // izinsiz karakter
+    [InlineData("dBjftJeZ4CVP mB92K27uhbUJU1p1r_wW1gFWFOEjXk")]  // boşluk
+    public async Task Exchange_missing_or_malformed_code_verifier_returns_400_without_calling_keycloak(string? verifier)
+    {
+        var client = await StartAsync();
+
+        var response = await client.PostAsJsonAsync("/api/auth/exchange", new { Code = "code-example", CodeVerifier = verifier });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        await _keycloak.DidNotReceiveWithAnyArgs().ExchangeTokenAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task Exchange_without_code_verifier_field_returns_400_without_calling_keycloak()
+    {
+        var client = await StartAsync();
+
+        var response = await client.PostAsJsonAsync("/api/auth/exchange", new { Code = "code-example" });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        await _keycloak.DidNotReceiveWithAnyArgs().ExchangeTokenAsync(default!, default!, default);
     }
 
     private static HttpRequestMessage RefreshRequest(string? refreshToken)

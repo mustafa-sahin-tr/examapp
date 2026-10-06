@@ -123,7 +123,6 @@ public sealed class FakeKeycloakAccountsService(IKeycloakService inner, FakeKeyc
     public Task LogoutAsync(string refreshToken) => inner.LogoutAsync(refreshToken);
     public Task<TokenResponseDto> LoginAsync(string username, string password) => inner.LoginAsync(username, password);
     public Task SetRoleAsync(string keycloakUserId, UserRole userRole) => inner.SetRoleAsync(keycloakUserId, userRole);
-    public Task<TokenResponseDto> ExchangeTokenAsync(string code) => inner.ExchangeTokenAsync(code);
     public Task<TokenResponseDto> RefreshTokenAsync(string refreshToken) => inner.RefreshTokenAsync(refreshToken);
     public Task SetSchoolIdAttributeAsync(string keycloakUserId, int? schoolId) => inner.SetSchoolIdAttributeAsync(keycloakUserId, schoolId);
 }

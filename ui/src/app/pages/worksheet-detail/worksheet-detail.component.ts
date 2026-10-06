@@ -56,6 +56,8 @@ import { QuestionNavigatorComponent } from '../../shared/components/question-nav
 import { StudyLinkSuggestionsComponent } from '../../shared/components/study-link-suggestions/study-link-suggestions.component';
 import { WorksheetAttempt, WorksheetDetail, WorksheetReminder } from '../../models/worksheet-detail';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { createStorageImageResolver } from '../../shared/utils/storage-image-refresh.util';
+import { StorageImageRetryDirective } from '../../shared/directives/storage-image-retry.directive';
 import { LocaleService } from '../../services/locale.service';
 import { CommentThreadComponent } from '../../shared/components/comment-thread/comment-thread.component';
 import { CommentReportListComponent } from '../../shared/components/comment-report-list/comment-report-list.component';
@@ -96,6 +98,7 @@ const WORKSHEET_DETAIL_SCOPE = 'worksheet-detail';
     MatSelectModule,
     MatDatepickerModule,
     TranslocoDirective,
+    StorageImageRetryDirective,
   ],
   providers: [provideTranslocoScope(WORKSHEET_DETAIL_SCOPE)],
   templateUrl: './worksheet-detail.component-dlms.html',
@@ -208,6 +211,14 @@ export class WorksheetDetailComponent implements OnInit {
 
   // Worksheet detail (yeni tasarım verisi)
   protected readonly detail = signal<WorksheetDetail | null>(null);
+  /**
+   * issue #365 (S3): kapak/örnek soru görseli yüklenemezse (imzalı URL'nin süresi doldu) detay yeniden çekilir ve aynı
+   * görselin taze imzalı URL'siyle bir kez yeniden denenir. Sayfa durumu (detail sinyali) değişmez.
+   */
+  protected readonly imageRefresh = createStorageImageResolver(
+    () => this.testService.getWorksheetDetail(this.testId),
+    { cacheKey: () => this.testId }
+  );
   protected readonly detailLoading = signal(false);
   protected readonly detailError = signal<string | null>(null);
   protected readonly fromMistakesLoading = signal(false);

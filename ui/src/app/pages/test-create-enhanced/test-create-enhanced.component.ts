@@ -28,13 +28,15 @@ import { TestFormComponent } from '../test-form/test-form.component';
 import { TestService } from '../../services/test.service';
 import { Test, WorksheetStudentVisibility, WorksheetTeacherSharing } from '../../models/test-instance';
 import { ActivatedRoute, NavigationExtras, Router } from '@angular/router';
-import { Observable, of, switchMap, tap, throwError } from 'rxjs';
+import { EMPTY, Observable, of, switchMap, tap, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   VisibilityChange,
   VisibilitySectionComponent,
 } from '../../shared/components/visibility-section/visibility-section.component';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { createStorageImageResolver } from '../../shared/utils/storage-image-refresh.util';
+import { StorageImageRetryDirective } from '../../shared/directives/storage-image-retry.directive';
 
 /**
  * Test oluşturma/düzenleme akışının çevirileri tek scope'ta toplanır (issue #183):
@@ -57,6 +59,7 @@ const TEST_CREATE_SCOPE = 'test-create';
     TestFormComponent,
     VisibilitySectionComponent,
     TranslocoDirective,
+    StorageImageRetryDirective,
   ],
   providers: [provideTranslocoScope(TEST_CREATE_SCOPE)],
 })
@@ -156,6 +159,14 @@ export class TestCreateEnhancedComponent implements OnInit {
   readonly bulkColumns = ['select', 'bookName', 'name', 'gradeId', 'maxDurationMinutes', 'status'];
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
   testService = inject(TestService);
+  /**
+   * issue #365 (S3): kayıtlı kapak görseli yüklenemezse (imzalı URL'nin süresi doldu) worksheet yeniden çekilir ve
+   * taze imzalı URL ile bir kez yeniden denenir. Yeni seçilen dosyanın önizlemesi (blob:/data:) etkilenmez.
+   */
+  readonly coverImageRefresh = createStorageImageResolver(
+    () => (this.id ? this.testService.get(this.id) : EMPTY),
+    { cacheKey: () => this.id }
+  );
 
   bookService = inject(BookService);
   gradeService = inject(GradesService);

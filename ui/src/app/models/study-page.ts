@@ -70,6 +70,23 @@ export interface StudyPageMinioImage {
   minioUrl: string;
 }
 
+/** issue #365 (S3): `POST study-items/book-pages/lookup` isteğindeki tek sayfa (backend: StudyBookPageRefDto). */
+export interface StudyBookPageRef {
+  book: string;
+  pageNumber: number;
+}
+
+/** issue #365 (S3): backend StudyBookPageLookupResultDto. */
+export interface StudyBookPageLookupResult {
+  book: string;
+  pageNumber: number;
+  exists: boolean;
+  /** Saklama yolu (`/img/study-pages/books/...`, imzasız); kayıtta `minioUrl` olarak geri gönderilir. */
+  minioUrl: string | null;
+  /** Önizleme için kısa ömürlü imzalı URL. */
+  previewUrl: string | null;
+}
+
 // Backend karşılığı: CreateStudyItemRequestDto (api/ExamApp.Api/Models/Dtos/StudyItemRequestDtos.cs)
 export interface StudyPageWriteRequest {
   title: string;

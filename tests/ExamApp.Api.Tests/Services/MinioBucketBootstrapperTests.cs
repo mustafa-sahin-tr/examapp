@@ -6,9 +6,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace ExamApp.Api.Tests.Services;
 
 /// <summary>
-/// issue #365 (S1): bucket'lar artık bucket geneli anonim <c>s3:GetObject *</c> almıyor. Varsayılan bucket'ta yalnız
-/// görsel prefix'leri (questions/answers/passages) anonim okunur; <c>question-transfer/*</c> asla; student-avatars
-/// tamamen özel. Bootstrapper idempotent ve MinIO kesintisinde API'yi düşürmeden yeniden dener.
+/// issue #365: S1 bucket geneli anonim <c>s3:GetObject *</c>'i prefix'e daraltmıştı; S4'ten beri hiçbir bilinen bucket
+/// anonim okunmaz (bootstrapper her bucket'ta politikayı kaldırır). Bootstrapper idempotent ve MinIO kesintisinde API'yi
+/// düşürmeden yeniden dener; bilinmeyen bucket'taki politika yalnız uyarılır.
 /// </summary>
 public class MinioBucketBootstrapperTests
 {
@@ -36,9 +36,6 @@ public class MinioBucketBootstrapperTests
             Strings(st.GetProperty("Resource")));
     }
 
-    private static MinioBucketSpec Spec(string name) =>
-        MinioBucketPolicies.KnownBuckets("exam-questions").Single(b => b.Name == name);
-
     [Fact]
     public void Known_buckets_cover_every_bucket_the_api_writes_to()
     {
@@ -46,54 +43,36 @@ public class MinioBucketBootstrapperTests
             .ShouldBe(new[] { "exam-questions", "exams", "student-avatars", "study-pages", "worksheets" });
     }
 
-    [Fact]
-    public void Default_bucket_policy_only_exposes_image_prefixes_never_question_transfer()
+    /// <summary>issue #365 (S4): hiçbir bilinen bucket anonim okunmaz — görseller yalnız imzalı URL ile.</summary>
+    [Theory]
+    [InlineData("exam-questions")]
+    [InlineData("custom-bank")]
+    public void Every_known_bucket_is_private_with_no_anonymous_policy(string defaultBucket)
     {
-        var (principal, actions, resources) = Parse(MinioBucketPolicies.BuildAnonymousReadPolicy(Spec("exam-questions"))!);
+        var buckets = MinioBucketPolicies.KnownBuckets(defaultBucket);
+
+        buckets.Select(b => b.Name).ShouldContain(defaultBucket);
+        buckets.ShouldAllBe(b => b.AnonymousReadPrefixes == null);
+        buckets.Select(MinioBucketPolicies.BuildAnonymousReadPolicy).ShouldAllBe(p => p == null);
+    }
+
+    [Fact]
+    public void Configured_default_bucket_replaces_the_built_in_name()
+    {
+        MinioBucketPolicies.KnownBuckets("custom-bank").ShouldNotContain(b => b.Name == "exam-questions");
+    }
+
+    [Fact]
+    public void Policy_builder_still_scopes_explicit_prefixes_and_never_grants_list()
+    {
+        // Kod yolu yalnız açıkça prefix verilen bir spec için politika üretir (bugün hiçbir bilinen bucket'ta yok).
+        var (principal, actions, resources) = Parse(MinioBucketPolicies.BuildAnonymousReadPolicy(
+            new MinioBucketSpec("b", ["questions/", "answers"]))!);
 
         principal.ShouldBe(new[] { "*" });
         actions.ShouldBe(new[] { "s3:GetObject" });
-        resources.ShouldBe(new[]
-        {
-            "arn:aws:s3:::exam-questions/questions/*",
-            "arn:aws:s3:::exam-questions/answers/*",
-            "arn:aws:s3:::exam-questions/passages/*",
-        });
-        resources.ShouldNotContain("arn:aws:s3:::exam-questions/*");
-        resources.ShouldAllBe(r => !r.Contains("question-transfer"));
-    }
-
-    [Theory]
-    [InlineData("worksheets")]
-    [InlineData("exams")]
-    [InlineData("study-pages")]
-    public void Image_only_buckets_stay_publicly_readable_for_now(string bucket)
-    {
-        var (_, actions, resources) = Parse(MinioBucketPolicies.BuildAnonymousReadPolicy(Spec(bucket))!);
-
-        actions.ShouldBe(new[] { "s3:GetObject" }); // never s3:ListBucket
-        resources.ShouldBe(new[] { $"arn:aws:s3:::{bucket}/*" });
-    }
-
-    [Fact]
-    public void Student_avatars_bucket_has_no_anonymous_policy()
-    {
-        MinioBucketPolicies.BuildAnonymousReadPolicy(Spec("student-avatars")).ShouldBeNull();
-    }
-
-    [Fact]
-    public void Configured_default_bucket_name_gets_the_image_prefix_policy()
-    {
-        var spec = MinioBucketPolicies.KnownBuckets("custom-bank").Single(b => b.Name == "custom-bank");
-
-        Parse(MinioBucketPolicies.BuildAnonymousReadPolicy(spec)!).Resources
-            .ShouldBe(new[]
-            {
-                "arn:aws:s3:::custom-bank/questions/*",
-                "arn:aws:s3:::custom-bank/answers/*",
-                "arn:aws:s3:::custom-bank/passages/*",
-            });
-        MinioBucketPolicies.KnownBuckets("custom-bank").ShouldNotContain(b => b.Name == "exam-questions");
+        resources.ShouldBe(new[] { "arn:aws:s3:::b/questions/*", "arn:aws:s3:::b/answers/*" });
+        MinioBucketPolicies.BuildAnonymousReadPolicy(new MinioBucketSpec("b", [])).ShouldBeNull();
     }
 
     [Fact]
@@ -117,10 +96,11 @@ public class MinioBucketBootstrapperTests
         first.Count.ShouldBe(5);
         second.ShouldBe(first);
         await _minio.DidNotReceiveWithAnyArgs().UploadFileAsync(default!, default!, default, default);
-        await _minio.Received(1).EnsureBucketAsync("student-avatars", null, Arg.Any<CancellationToken>());
-        await _minio.Received(1).EnsureBucketAsync("exam-questions",
-            Arg.Is<string>(p => p.Contains("exam-questions/questions/*") && !p.Contains("exam-questions/*\"")),
-            Arg.Any<CancellationToken>());
+        // issue #365 (S4): her bucket için politika null → MinIoService.EnsureBucketAsync RemovePolicy çağırır.
+        first.ShouldAllBe(call => call.Item2 == null);
+        foreach (var bucket in new[] { "exam-questions", "worksheets", "exams", "study-pages", "student-avatars" })
+            await _minio.Received(1).EnsureBucketAsync(bucket, null, Arg.Any<CancellationToken>());
+        await _minio.DidNotReceive().EnsureBucketAsync(Arg.Any<string>(), Arg.Is<string?>(p => p != null), Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -10,9 +10,10 @@ using Microsoft.Extensions.Logging;
 namespace ExamApp.Api.Services.Storage;
 
 /// <summary>
-/// issue #365 (S1): açılışta bilinen MinIO bucket'larını oluşturur (yoksa) ve anonim okuma politikalarını
-/// <see cref="MinioBucketPolicies"/>'deki prefix bazlı GEÇİCİ tanıma eşitler. Mevcut bucket'lar da düzeltilir
-/// (eski bucket geneli <c>s3:GetObject *</c> politikası SetPolicy ile değiştirilir).
+/// issue #365: açılışta bilinen MinIO bucket'larını oluşturur (yoksa) ve anonim okuma politikalarını
+/// <see cref="MinioBucketPolicies"/>'deki tanıma eşitler. S4'ten beri tanım her bucket için "özel"dir: mevcut
+/// bucket'lardaki eski politika (bucket geneli <c>s3:GetObject *</c> ya da S1'in prefix politikası) RemovePolicy ile
+/// kaldırılır.
 /// <para>
 /// MinIO'ya ulaşılamazsa API çökmez: başarısız bucket'lar loglanır ve artan aralıkla (üst sınır
 /// <see cref="MaxRetryDelay"/>) tamamı başarılı olana kadar yeniden denenir — düzeltilmemiş bir bucket eski açık

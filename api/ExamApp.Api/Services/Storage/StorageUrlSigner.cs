@@ -59,11 +59,11 @@ public sealed class MinioStorageUrlSigner : IStorageUrlSigner, IDisposable
         _logger = logger;
 
         var section = configuration.GetSection("MinioConfig");
-        // Geçiş anahtarı (varsayılan açık): yanlış PresignEndpoint tüm görselleri 403'e düşürür; bucket'lar özel olana
-        // (S4) kadar imzalamayı yeniden dağıtım olmadan kapatabilmek için. Kapalıyken değerler imzasız yazılır.
+        // Geçiş anahtarı (varsayılan açık). S4'ten beri bucket'lar özel: kapalıyken imzasız yazılan değerler de 403 alır,
+        // yani artık kurtarma değil yalnız teşhis anahtarıdır.
         if (!section.GetValue("PresignImageUrls", true))
         {
-            _logger.LogWarning("[MinIO] Presigning disabled by MinioConfig:PresignImageUrls=false. Image URLs are emitted unsigned.");
+            _logger.LogWarning("[MinIO] Presigning disabled by MinioConfig:PresignImageUrls=false. Image URLs are emitted unsigned and will be rejected (403): all buckets are private (#365 S4).");
             return;
         }
 
@@ -77,7 +77,7 @@ public sealed class MinioStorageUrlSigner : IStorageUrlSigner, IDisposable
         if (string.IsNullOrWhiteSpace(endpoint) || string.IsNullOrWhiteSpace(accessKey) || string.IsNullOrWhiteSpace(secretKey))
         {
             _logger.LogWarning(
-                "[MinIO] Presigning disabled: MinioConfig endpoint or presign credentials (PresignAccessKey/PresignSecretKey) missing. Image URLs are emitted unsigned.");
+                "[MinIO] Presigning disabled: MinioConfig endpoint or presign credentials (PresignAccessKey/PresignSecretKey) missing. Image URLs are emitted unsigned and will be rejected (403): all buckets are private (#365 S4).");
             return;
         }
         if (MinioPresignCredentialGuard.IsRootKey(accessKey, section["AccessKey"]))

@@ -7,7 +7,7 @@
         <div class="question-lite-text" [innerHTML]="question.text | safeHtml"></div>
         }
         @if(question.imageUrl) {
-          <img [src]="question.imageUrl" class="question-lite-image" alt="" />
+          <img [src]="question.imageUrl" class="question-lite-image" alt="" [appStorageImageRetry]="imageRefresh" />
         }
         @if(question.subText) {
           <div class="question-lite-text" [innerHTML]="question.subText | safeHtml"></div>
@@ -41,7 +41,7 @@
                 <span class="answer-label">{{ getAnswerLabel(i) }}</span>
                   <span class="answer-text">{{ answer.text }}</span>
                   @if(answer.imageUrl) {
-                    <img [src]="answer.imageUrl" class="answer-image" alt="" />
+                    <img [src]="answer.imageUrl" class="answer-image" alt="" [appStorageImageRetry]="imageRefresh" />
                   }
           </div>
           }

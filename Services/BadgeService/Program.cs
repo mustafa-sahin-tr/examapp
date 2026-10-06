@@ -1,6 +1,7 @@
 
 
 
+using ExamApp.Foundation.Messaging;
 using BadgeService;
 using BadgeService.Commands;
 using BadgeService.Consumers;
@@ -18,6 +19,7 @@ using ExamApp.Foundation.Localization;
 
 // Komut modu (issue #225/#243): `dotnet run -- backfill-student-points [--dry-run] [--allow-production] [--confirm]`
 // — host kurulur, şema migrate edilir, komut çalışır ve süreç çıkar (Kestrel/MassTransit başlatılmaz).
+// RabbitMQ:* konfigürasyonu bu modda gerekmez (#371): bus hiç başlatılmaz, yalnız BadgeDbContext çözülür.
 var isBackfillCommand = StudentPointsBackfillCommand.IsRequested(args);
 var backfillArgs = default(StudentPointsBackfillCommand.ParsedArgs);
 if (isBackfillCommand)
@@ -207,6 +209,9 @@ builder.Services.AddAuthorization(options =>
 
 
 
+// Issue #371: guest/guest fallback yok; eksik Host/Username/Password açılışta (servis kurulurken) InvalidOperationException.
+// backfill komut modunda bus hiç başlatılmaz (app.Run öncesi çıkış; yalnız BadgeDbContext çözülür), bu yüzden RabbitMQ konfigürasyonu aranmaz.
+var rabbit = isBackfillCommand ? null : RabbitMqConnectionSettings.Require(builder.Configuration);
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<AnswerSubmittedConsumer, AnswerSubmittedConsumerDefinition>();
@@ -231,10 +236,11 @@ builder.Services.AddMassTransit(x =>
 
     x.UsingRabbitMq((context, cfg) =>
     {
-        cfg.Host(builder.Configuration["RabbitMQ:Host"], "/", h =>
+        var rabbitSettings = rabbit ?? throw new InvalidOperationException("RabbitMQ ayarları yüklenmedi (backfill modunda bus başlatılmamalı).");
+        cfg.Host(rabbitSettings.Host, "/", h =>
         {
-            h.Username(builder.Configuration["RabbitMQ:Username"] ?? "guest");
-            h.Password(builder.Configuration["RabbitMQ:Password"] ?? "guest");
+            h.Username(rabbitSettings.Username);
+            h.Password(rabbitSettings.Password);
         });
 
         cfg.ReceiveEndpoint("badge-service", e =>

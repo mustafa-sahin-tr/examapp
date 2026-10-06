@@ -162,6 +162,9 @@ public class QuestionService : IQuestionService
                     {
                         var passage = await _context.Passage
                         .FirstOrDefaultAsync(p => p.Id == questionDto.Passage.Id) ?? throw new InvalidOperationException(_localizer["questions.passageNotFound"]);
+                        // issue #402: güncellemede var olan paragraf artık gerçekten bağlanır (eskiden yalnız varlığı kontrol
+                        // edilip bağlanmıyordu). Sahiplik controller'da (IQuestionOwnershipGuard.CanUsePassageAsync) doğrulanır.
+                        question.PassageId = passage.Id;
                     }
                     else
                     {

@@ -258,6 +258,24 @@ update `.env`'s `RABBITMQ_DEFAULT_PASS` (and/or `AppHost`'s
 existing `rabbituser` (management UI or `rabbitmqctl delete_user rabbituser`)
 so the next boot's import recreates it with the new hash.
 
+**Issue #402 (O1) — MinIO presign account.** Image URLs are presigned with a
+dedicated MinIO user that only has `s3:GetObject` on the image prefixes (its
+access key is visible in `X-Amz-Credential`), never the root user. It is
+created by the one-shot `minio-presign-init` container
+(`deploy/scripts/minio-presign-init.sh`, idempotent) that exam-dotnet-api waits for.
+- **Existing local `.env`:** add the two new lines (values from `.env.example`),
+  otherwise `docker-compose up` refuses to start:
+  ```bash
+  echo 'MINIO_PRESIGN_ACCESS_KEY=exam-presign' >> .env
+  echo 'MINIO_PRESIGN_SECRET_KEY=devOnlyMinioPresignSecretChangeMe123' >> .env
+  ```
+  The access key must differ from `MINIO_ROOT_USER`.
+- **Aspire:** defaults live in `AppHost/appsettings.json`'s `Parameters`
+  (`minio-presign-access-key`, `minio-presign-secret-key`); **restart the AppHost**
+  so the new `minio-presign-init` resource runs before the exam API starts.
+- Without the presign credentials (Development only) the API logs a warning and
+  emits unsigned image URLs; outside Development it fails at startup.
+
 ## Port map (host → container)
 
 | Service | Host port | Notes |

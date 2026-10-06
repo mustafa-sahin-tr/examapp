@@ -40,8 +40,8 @@ public sealed class GatewayImgPresignTests : IClassFixture<GatewayImgPresignTest
             // API kendi MinIO bağlantısı için başka bir adres kullanıyor olabilir; imza gateway'in downstream'i için.
             ["MinioConfig:Endpoint"] = "api-side-minio:9000",
             ["MinioConfig:PresignEndpoint"] = _factory.DownstreamHost,
-            ["MinioConfig:AccessKey"] = TestAk,
-            ["MinioConfig:SecretKey"] = TestSk,
+            ["MinioConfig:PresignAccessKey"] = TestAk,
+            ["MinioConfig:PresignSecretKey"] = TestSk,
             ["MinioConfig:BucketName"] = "exam-questions",
         }).Build();
         return new MinioStorageUrlSigner(config, new StorageAreaPolicy(config),

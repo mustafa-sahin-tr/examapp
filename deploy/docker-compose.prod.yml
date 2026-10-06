@@ -104,7 +104,7 @@ services:
       - exam-net
 
   minio:
-    image: minio/minio
+    image: minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e # RELEASE.2025-09-07T16-13-09Z, pinned by digest (#402 D6)
     container_name: exam-minio
     restart: unless-stopped
     environment:
@@ -113,6 +113,31 @@ services:
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
+    networks:
+      - exam-net
+
+  # Issue #402 (O1): one-shot init — GetObject-only presign user + policy via `mc` (MinIO admin API; the .NET SDK
+  # has none). Idempotent (policy create overwrites, user add updates the secret), so it runs on every deploy like
+  # rabbitmq-init; exam-dotnet-api waits for service_completed_successfully. Script: deploy/scripts/minio-presign-init.sh
+  # (k8s inlines a copy in deploy/gcp/k8s/stateful-services.yaml; MinioPresignAccountTests guards drift).
+  minio-presign-init:
+    # Same pinned image as the minio service: it ships `mc` (minio/mc is not pullable).
+    image: minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    container_name: exam-minio-presign-init
+    restart: 'no'
+    environment:
+      MINIO_URL: http://minio:9000
+      MINIO_QUESTIONS_BUCKET: ${MINIO_QUESTIONS_BUCKET:-exam-questions}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_PRESIGN_ACCESS_KEY: ${MINIO_PRESIGN_ACCESS_KEY}
+      MINIO_PRESIGN_SECRET_KEY: ${MINIO_PRESIGN_SECRET_KEY}
+    volumes:
+      - ./scripts/minio-presign-init.sh:/minio-presign-init.sh:ro
+    entrypoint: ['sh', '/minio-presign-init.sh']
+    depends_on:
+      minio:
+        condition: service_started
     networks:
       - exam-net
 
@@ -182,6 +207,12 @@ services:
       MinioConfig__PresignEndpoint: exam-minio:9000
       MinioConfig__AccessKey: ${MINIO_ROOT_USER}
       MinioConfig__SecretKey: ${MINIO_ROOT_PASSWORD}
+      # Issue #402 (O1): imza root ile DEGIL, minio-presign-init'in olusturdugu GetObject-only hesapla (anahtar URL'de gorunur).
+      # Production'da eksik/devOnly secret ya da root ile ayni access key acilista fail-fast.
+      MinioConfig__PresignAccessKey: ${MINIO_PRESIGN_ACCESS_KEY}
+      MinioConfig__PresignSecretKey: ${MINIO_PRESIGN_SECRET_KEY}
+      # #402 D7: same bucket name as the presign policy (minio-presign-init reads the same variable).
+      MinioConfig__BucketName: ${MINIO_QUESTIONS_BUCKET:-exam-questions}
       MinioConfig__BaseUrl: ${PUBLIC_BASE_URL}/img
       Redis__Configuration: redis:6379,password=${REDIS_PASSWORD}
       Keycloak__Host: http://keycloak:8080
@@ -215,6 +246,8 @@ services:
         condition: service_completed_successfully
       minio:
         condition: service_started
+      minio-presign-init:
+        condition: service_completed_successfully
       keycloak:
         condition: service_started
     networks:

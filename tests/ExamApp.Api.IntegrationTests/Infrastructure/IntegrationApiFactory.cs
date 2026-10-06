@@ -53,6 +53,9 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
         Environment.SetEnvironmentVariable("MinioConfig__Endpoint", "localhost:9000");
         Environment.SetEnvironmentVariable("MinioConfig__AccessKey", "x");
         Environment.SetEnvironmentVariable("MinioConfig__SecretKey", "x");
+        // issue #402 (O1): imza ayrı presign hesabıyla (root AccessKey ile aynı olamaz); Testing ortamında açılış guard'ı ister.
+        Environment.SetEnvironmentVariable("MinioConfig__PresignAccessKey", "test-presign");
+        Environment.SetEnvironmentVariable("MinioConfig__PresignSecretKey", "x");
         // issue #246: admin liste rate limit'i sub başına; bu uçları çağıran testler her test için benzersiz admin sub
         // kullanır. Uzun pencere: 429 testi koşunun süresinden/zamanlamasından bağımsız olsun.
         Environment.SetEnvironmentVariable("RateLimiting__AdminUserList__PermitLimit", "10");

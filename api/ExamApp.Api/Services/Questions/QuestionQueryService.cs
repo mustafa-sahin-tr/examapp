@@ -85,9 +85,16 @@ public class QuestionQueryService : IQuestionQueryService
         return question;
     }
 
-    public async Task<List<PassageDto>> GetLastTenPassages()
+    public async Task<List<PassageDto>> GetLastTenPassages(int userId, bool isAdmin, CancellationToken ct = default)
     {
-        return await _context.Passage
+        if (!isAdmin && userId <= 0)
+            return new List<PassageDto>();
+
+        var query = _context.Passage.AsNoTracking();
+        if (!isAdmin)
+            query = query.Where(p => p.CreateUserId == userId);
+
+        return await query
             .OrderByDescending(p => p.Id)
             .Take(10)
             .Select(p => new PassageDto
@@ -101,7 +108,7 @@ public class QuestionQueryService : IQuestionQueryService
                 Width = p.Width,
                 Height = p.Height,
             })
-            .ToListAsync();
+            .ToListAsync(ct);
     }
 
     public async Task<List<QuestionDto>> GetQuestionByTestId(int testid)

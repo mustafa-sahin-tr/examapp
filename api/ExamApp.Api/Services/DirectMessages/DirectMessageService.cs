@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
@@ -10,7 +11,10 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.DirectMessages;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Worksheets;
+using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Localization;
+using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
@@ -203,7 +207,10 @@ public sealed class DirectMessageService : IDirectMessageService
     }
 
     /// <summary>
-    /// Mesajı (gerekirse konuşmayla birlikte) TEK SaveChanges'ta yazar. Eşzamanlı ilk mesajda ikinci konuşma insert'i tekil
+    /// Mesajı (gerekirse konuşmayla birlikte) ve bildirim outbox satırını TEK transaction'da (iki SaveChanges: payload mesaj/konuşma
+    /// Id'sine ihtiyaç duyar) yazar. Bilinen kısıt (EF execution strategy): COMMIT sonucu bilinmeyen (commit-unknown) bir bağlantı
+    /// hatasında strateji transaction'ı yeniden dener; commit aslında başarılıysa çift mesaj + çift event olasılığı vardır — kabul
+    /// edilmiştir (consumer EventId'ye göre idempotent, yinelenen mesaj kullanıcıya görünür). Eşzamanlı ilk mesajda ikinci konuşma insert'i tekil
     /// index'e takılır: eklenenler ayrılır, kazanan konuşma okunur ve mesaj ona yazılır (çift başına tek konuşma).
     /// </summary>
     private async Task<SendDirectMessageResultDto> AppendAsync(
@@ -212,44 +219,84 @@ public sealed class DirectMessageService : IDirectMessageService
         _context.SetCurrentUser(actor.UserId);
         var role = actor.Kind == DirectMessageActorKind.Student ? DirectMessageSenderRole.Student : DirectMessageSenderRole.Teacher;
 
+        (string SenderName, string RecipientSub)? notify = null;
+        var recipientUserId = actor.Kind == DirectMessageActorKind.Student ? teacherUserId : studentUserId;
+
         for (var attempt = 0; ; attempt++)
         {
             var now = Now;
-            var conversation = await _context.Conversations
-                .FirstOrDefaultAsync(c => c.StudentUserId == studentUserId && c.TeacherUserId == teacherUserId, ct);
-            var created = conversation == null;
-            if (created)
-            {
-                // Konuşmayı yalnız öğrenci açar (öğretmen bu yola ancak mevcut konuşmayla gelir).
-                if (actor.Kind != DirectMessageActorKind.Student)
-                    return Fail<SendDirectMessageResultDto>(DirectMessageErrorCodes.ConversationNotFound, notFound: true);
-                conversation = new Conversation { StudentUserId = studentUserId, TeacherUserId = teacherUserId, LastMessageAt = now };
-                _context.Conversations.Add(conversation);
-            }
-            else
-            {
-                conversation!.LastMessageAt = now;
-            }
+            var existingId = await _context.Conversations.AsNoTracking()
+                .Where(c => c.StudentUserId == studentUserId && c.TeacherUserId == teacherUserId)
+                .Select(c => (int?)c.Id)
+                .FirstOrDefaultAsync(ct);
+            var created = existingId == null;
+            // Konuşmayı yalnız öğrenci açar (öğretmen bu yola ancak mevcut konuşmayla gelir).
+            if (created && actor.Kind != DirectMessageActorKind.Student)
+                return Fail<SendDirectMessageResultDto>(DirectMessageErrorCodes.ConversationNotFound, notFound: true);
 
             // Kotalar (security O2): öğrenci başına günlük yeni konuşma, gönderen başına konuşma içi saatlik mesaj.
-            if (await CheckQuotaAsync(actor.UserId, created ? null : conversation.Id, now, ct) is { } retryAfter)
-            {
-                _context.ChangeTracker.Clear();
+            // Reddedilen gönderim hiçbir şey yazmaz -> outbox event'i de yok (#106 dilim b).
+            if (await CheckQuotaAsync(actor.UserId, existingId, now, ct) is { } retryAfter)
                 return Fail<SendDirectMessageResultDto>(DirectMessageErrorCodes.RateLimited, retryAfterSeconds: retryAfter);
-            }
 
-            var message = new DirectMessage
-            {
-                Conversation = conversation,
-                SenderUserId = actor.UserId,
-                SenderRole = role,
-                Body = body
-            };
-            _context.DirectMessages.Add(message);
+            // Bildirim hedefleme kimliği (alıcı Keycloak sub'ı + gönderenin kısa adı): tek kez, best-effort. Çözülemezse
+            // sub boş gider; BadgeService kendi verisinden çözer, çözemezse retry/dead-letter (mesaj yine de yazılır).
+            notify ??= await ResolveNotifyAsync(actor, recipientUserId, ct);
+            var target = notify.Value;
 
+            Conversation? conversation = null;
+            DirectMessage? message = null;
             try
             {
-                await _context.SaveChangesAsync(ct);
+                // Mesaj + (gerekirse konuşma) + outbox satırı tek transaction'da. Mesaj/konuşma Id'si payload'da olduğundan
+                // iki SaveChanges (Aspire retry-on-failure açık -> execution strategy; her denemede tracker temizlenir).
+                var strategy = _context.Database.CreateExecutionStrategy();
+                await strategy.ExecuteAsync(async () =>
+                {
+                    _context.ChangeTracker.Clear();
+                    await using var tx = await _context.Database.BeginTransactionAsync(ct);
+
+                    if (existingId is int id)
+                    {
+                        conversation = await _context.Conversations.FirstAsync(c => c.Id == id, ct);
+                        conversation.LastMessageAt = now;
+                    }
+                    else
+                    {
+                        conversation = new Conversation { StudentUserId = studentUserId, TeacherUserId = teacherUserId, LastMessageAt = now };
+                        _context.Conversations.Add(conversation);
+                    }
+
+                    message = new DirectMessage
+                    {
+                        Conversation = conversation,
+                        SenderUserId = actor.UserId,
+                        SenderRole = role,
+                        Body = body
+                    };
+                    _context.DirectMessages.Add(message);
+                    await _context.SaveChangesAsync(ct);
+
+                    _context.OutboxMessages.Add(new OutboxMessage
+                    {
+                        Type = OutboxEventRegistry.NameFor<DirectMessageSentEvent>(),
+                        Content = JsonSerializer.Serialize(new DirectMessageSentEvent
+                        {
+                            EventId = Guid.NewGuid(),
+                            ConversationId = conversation.Id,
+                            MessageId = message.Id,
+                            SenderRole = role.ToString(),
+                            SenderDisplayName = target.SenderName,
+                            RecipientUserId = recipientUserId,
+                            RecipientKeycloakId = target.RecipientSub,
+                            CreatedAtUtc = DateTime.SpecifyKind(message.CreateTime, DateTimeKind.Utc)
+                        }),
+                        CreatedAt = DateTime.UtcNow
+                    });
+                    await _context.SaveChangesAsync(ct);
+
+                    await tx.CommitAsync(ct);
+                });
             }
             catch (DbUpdateException ex) when (created && attempt == 0 && DbUpdateExceptionClassifier.IsUniqueViolation(ex))
             {
@@ -261,13 +308,28 @@ public sealed class DirectMessageService : IDirectMessageService
             return new SendDirectMessageResultDto
             {
                 Success = true,
-                ObjectId = message.Id,
-                ConversationId = conversation.Id,
+                ObjectId = message!.Id,
+                ConversationId = conversation!.Id,
                 ConversationCreated = created,
                 Message = _localizer["directMessages.sent"],
                 DirectMessage = ToDto(message, conversation.Id, actor.UserId)
             };
         }
+    }
+
+    /// <summary>
+    /// Bildirim event'i için gönderenin kısa adı ("Ad S.", PII azaltma - #105 ile aynı biçim) ve alıcının Keycloak sub'ı.
+    /// auth-api yoksa/yavaşsa boş değerler döner (fail-soft; consumer varsayılan metne / BadgeService verisine düşer).
+    /// </summary>
+    private async Task<(string SenderName, string RecipientSub)> ResolveNotifyAsync(
+        DirectMessageActor actor, int recipientUserId, CancellationToken ct)
+    {
+        var users = await LookupUsersAsync(new[] { actor.UserId, recipientUserId }, ct);
+        if (users == null)
+            return (string.Empty, string.Empty);
+        var sender = users.TryGetValue(actor.UserId, out var s) ? WorksheetCommentService.FormatStudentDisplayName(s.FullName) : null;
+        var sub = users.TryGetValue(recipientUserId, out var r) ? r.KeycloakId : null;
+        return (sender ?? string.Empty, sub ?? string.Empty);
     }
 
     /// <summary>
@@ -642,6 +704,11 @@ public sealed class DirectMessageService : IDirectMessageService
 
     // ---- Şikayet ----------------------------------------------------------------------------------------------
 
+    /// <summary>
+    /// Şikayeti ve admin bildirim outbox satırını TEK transaction'da (iki SaveChanges: payload rapor Id'sine ihtiyaç duyar) yazar.
+    /// Bilinen kısıt (EF execution strategy): commit-unknown hatada yeniden denemede çift rapor/event olasılığı kabul edilmiştir;
+    /// rapor tekil index'i çift raporu engeller (idempotent yanıt), çift event consumer'da EventId ile ayrı bildirim olabilir.
+    /// </summary>
     public async Task<DirectMessageReportResultDto> ReportAsync(
         DirectMessageActor actor, int conversationId, ReportDirectMessageDto dto, CancellationToken ct = default)
     {
@@ -701,10 +768,37 @@ public sealed class DirectMessageService : IDirectMessageService
             Note = note,
             Status = DirectMessageReportStatus.Open
         };
-        _context.DirectMessageReports.Add(report);
         try
         {
-            await _context.SaveChangesAsync(ct);
+            // Rapor + outbox (admin bildirimi) tek transaction'da; rapor Id'si payload'da olduğundan iki SaveChanges.
+            var strategy = _context.Database.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                // Retry'da önceki denemenin atanmış Id'sini/outbox satırını temizle; yalnız rapor yeniden eklenir.
+                _context.ChangeTracker.Clear();
+                report.Id = 0;
+                await using var tx = await _context.Database.BeginTransactionAsync(ct);
+
+                _context.DirectMessageReports.Add(report);
+                await _context.SaveChangesAsync(ct);
+
+                _context.OutboxMessages.Add(new OutboxMessage
+                {
+                    Type = OutboxEventRegistry.NameFor<DirectMessageReportedEvent>(),
+                    Content = JsonSerializer.Serialize(new DirectMessageReportedEvent
+                    {
+                        EventId = Guid.NewGuid(),
+                        ReportId = report.Id,
+                        ConversationId = conversationId,
+                        ReporterRole = report.ReporterRole.ToString(),
+                        CreatedAtUtc = DateTime.SpecifyKind(report.CreateTime, DateTimeKind.Utc)
+                    }),
+                    CreatedAt = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync(ct);
+
+                await tx.CommitAsync(ct);
+            });
         }
         catch (DbUpdateException ex) when (DbUpdateExceptionClassifier.IsUniqueViolation(ex))
         {

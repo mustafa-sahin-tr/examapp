@@ -19,7 +19,9 @@ internal sealed record CommentNotificationRequest(
     /// <summary>Tek yorum için metin (N=1; yazar adı içerir).</summary>
     LocalizedNotificationText Single,
     /// <summary>N&gt;1 için metin ("N yeni yorum/cevap"; yazar adı YOK).</summary>
-    Func<int, LocalizedNotificationText> Many);
+    Func<int, LocalizedNotificationText> Many,
+    /// <summary>issue #106: yorum dışı thread bildirimi (DM) kendi <c>Data</c> JSON'unu verir; null ise yorum biçimi. DM için RootCommentId = konuşma Id, CommentId = mesaj Id (yeni kolon/migration gerekmez).</summary>
+    string? DataJson = null);
 
 internal sealed record CommentNotificationResult(Notification? Notification, bool Duplicate, bool Coalesced)
 {
@@ -165,7 +167,7 @@ internal static class CommentNotificationCoalescer
             VALUES ({r.Type}, {r.EventId}, {notificationId}, {now})
             ON CONFLICT DO NOTHING", ct) > 0;
 
-    private static string BuildData(CommentNotificationRequest r) => JsonSerializer.Serialize(new
+    private static string BuildData(CommentNotificationRequest r) => r.DataJson ?? JsonSerializer.Serialize(new
     {
         worksheetId = r.WorksheetId,
         questionId = r.QuestionId,

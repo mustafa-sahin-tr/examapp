@@ -226,6 +226,8 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<WorksheetCommentCreatedConsumer, WorksheetCommentCreatedConsumerDefinition>();
     x.AddConsumer<WorksheetCommentRepliedConsumer, WorksheetCommentRepliedConsumerDefinition>();
     x.AddConsumer<WorksheetCommentHiddenConsumer, WorksheetCommentHiddenConsumerDefinition>(); // issue #326 D4
+    x.AddConsumer<DirectMessageSentConsumer, DirectMessageSentConsumerDefinition>(); // issue #106 (dilim b)
+    x.AddConsumer<DirectMessageReportedConsumer, DirectMessageReportedConsumerDefinition>(); // issue #106 (dilim b)
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -262,6 +264,8 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<WorksheetCommentCreatedConsumer>(context);
             e.ConfigureConsumer<WorksheetCommentRepliedConsumer>(context);
             e.ConfigureConsumer<WorksheetCommentHiddenConsumer>(context);
+            e.ConfigureConsumer<DirectMessageSentConsumer>(context);
+            e.ConfigureConsumer<DirectMessageReportedConsumer>(context);
         });
     });
 });

@@ -875,4 +875,116 @@ public class DirectMessageServiceTests : IDisposable
         (await SendToTeacherAsync(SA, TSame, man + zwj + "x" + zwj)).DirectMessage!.Body.ShouldBe(man + "x");
         (await SendToTeacherAsync(SA, TSame, zwj + "  ")).ErrorCode.ShouldBe(DirectMessageErrorCodes.BodyRequired);
     }
+
+    // ---- Outbox / bildirim event'leri (issue #106 dilim b) -----------------------------------------------------
+
+    private async Task<List<T>> OutboxAsync<T>() where T : class
+    {
+        await using var ctx = _db.NewContext();
+        var type = ExamApp.Foundation.Contracts.OutboxEventRegistry.NameFor<T>();
+        var rows = await ctx.OutboxMessages.AsNoTracking().Where(o => o.Type == type).OrderBy(o => o.CreatedAt).ToListAsync();
+        return rows.Select(r => System.Text.Json.JsonSerializer.Deserialize<T>(r.Content)!).ToList();
+    }
+
+    [Fact]
+    public async Task Send_writes_one_sent_event_for_the_counterpart_with_ids_role_short_name_and_sub_but_no_body()
+    {
+        await SeedAsync();
+        var first = await SendToTeacherAsync(SA, TSame, "gizli mesaj gövdesi");
+        var conv = Created(first);
+        var reply = await SendAsync(Teacher(TSame), conv, "cevap gövdesi");
+
+        var events = await OutboxAsync<ExamApp.Foundation.Contracts.DirectMessageSentEvent>();
+        events.Count.ShouldBe(2);
+
+        var toTeacher = events[0];
+        toTeacher.ConversationId.ShouldBe(conv);
+        toTeacher.MessageId.ShouldBe(first.ObjectId);
+        toTeacher.SenderRole.ShouldBe("Student");
+        toTeacher.SenderDisplayName.ShouldBe("Ayşe K."); // soyad kısaltılır
+        toTeacher.RecipientUserId.ShouldBe(TSame);
+        toTeacher.RecipientKeycloakId.ShouldBe($"kc-{TSame}");
+        toTeacher.EventId.ShouldNotBe(Guid.Empty);
+
+        var toStudent = events[1];
+        toStudent.MessageId.ShouldBe(reply.ObjectId);
+        toStudent.SenderRole.ShouldBe("Teacher");
+        toStudent.SenderDisplayName.ShouldBe("Selin A.");
+        toStudent.RecipientUserId.ShouldBe(SA);
+        toStudent.RecipientKeycloakId.ShouldBe($"kc-{SA}");
+        toStudent.EventId.ShouldNotBe(toTeacher.EventId);
+
+        // PII: gövde, e-posta, token payload'da yok.
+        await using var ctx = _db.NewContext();
+        var raw = string.Join('\n', await ctx.OutboxMessages.AsNoTracking().Select(o => o.Content).ToListAsync());
+        raw.ShouldNotContain("gizli mesaj");
+        raw.ShouldNotContain("cevap gövdesi");
+        raw.ShouldNotContain("@");
+    }
+
+    [Fact]
+    public async Task Send_still_succeeds_with_empty_sub_and_name_when_user_lookup_fails()
+    {
+        await SeedAsync();
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns<Task<IReadOnlyList<UserLookupResultDto>>>(_ => throw new HttpRequestException("auth-api down"));
+
+        var sent = await SendToTeacherAsync(SA, TSame);
+        sent.Success.ShouldBeTrue(sent.ErrorCode);
+
+        var e = (await OutboxAsync<ExamApp.Foundation.Contracts.DirectMessageSentEvent>()).Single();
+        e.RecipientKeycloakId.ShouldBeEmpty(); // consumer BadgeService verisinden çözer / retry-dead-letter
+        e.SenderDisplayName.ShouldBeEmpty();
+        e.RecipientUserId.ShouldBe(TSame);
+    }
+
+    [Fact]
+    public async Task Rejected_sends_write_no_event_blocked_unrelated_validation_and_rate_limited()
+    {
+        await SeedAsync();
+        var conv = Created(await SendToTeacherAsync(SA, TSame));
+        (await OutboxAsync<ExamApp.Foundation.Contracts.DirectMessageSentEvent>()).Count.ShouldBe(1);
+
+        // Engel: öğrencinin sonraki gönderimi reddedilir -> event yok.
+        (await BlockAsync(Teacher(TSame), conv)).Success.ShouldBeTrue();
+        ShouldBeForbidden(await SendAsync(Student(SA), conv), DirectMessageErrorCodes.CannotMessageTeacher);
+        ShouldBeForbidden(await SendToTeacherAsync(SA, TSame), DirectMessageErrorCodes.CannotMessageTeacher);
+        // İlişkisiz öğretmen + geçersiz gövde.
+        ShouldBeForbidden(await SendToTeacherAsync(SA, TOtherSchool), DirectMessageErrorCodes.CannotMessageTeacher);
+        (await SendToTeacherAsync(SB, TSame, "   ")).Success.ShouldBeFalse();
+
+        // Kota.
+        _quotas = new DirectMessageQuotaOptions { MessagesPerConversationPerHour = 1 };
+        var convB = Created(await SendToTeacherAsync(SB, TBoth, "1"));
+        (await SendAsync(Student(SB), convB, "2")).RateLimited.ShouldBeTrue();
+
+        // Yalnız başarılı iki gönderim (SA->TSame, SB->TBoth) event üretti.
+        (await OutboxAsync<ExamApp.Foundation.Contracts.DirectMessageSentEvent>()).Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Report_writes_one_reported_event_only_for_a_new_report_without_note_or_reason()
+    {
+        await SeedAsync();
+        var conv = Created(await SendToTeacherAsync(SA, TSame));
+        var reply = (await SendAsync(Teacher(TSame), conv, "cevap")).ObjectId;
+
+        var first = await ReportAsync(Student(SA), conv, reply, "abuse", "çok özel şikayet notu");
+        first.AlreadyReported.ShouldBeFalse();
+        (await ReportAsync(Student(SA), conv, reply, "spam")).AlreadyReported.ShouldBeTrue(); // idempotent -> yeni event yok
+        ShouldBeNotFound(await ReportAsync(Student(SB), conv, null)); // taraf değil -> yazılmaz
+
+        var events = await OutboxAsync<ExamApp.Foundation.Contracts.DirectMessageReportedEvent>();
+        var e = events.Single();
+        e.ReportId.ShouldBe(first.ReportId);
+        e.ConversationId.ShouldBe(conv);
+        e.ReporterRole.ShouldBe("Student");
+        e.EventId.ShouldNotBe(Guid.Empty);
+
+        await using var ctx = _db.NewContext();
+        var type = ExamApp.Foundation.Contracts.OutboxEventRegistry.NameFor<ExamApp.Foundation.Contracts.DirectMessageReportedEvent>();
+        var raw = await ctx.OutboxMessages.AsNoTracking().Where(o => o.Type == type).Select(o => o.Content).SingleAsync();
+        raw.ShouldNotContain("özel şikayet");
+        raw.ShouldNotContain("abuse");
+    }
 }

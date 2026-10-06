@@ -452,9 +452,21 @@ public class TopicStudyLinkServiceTests : IDisposable
         db.TestQuestions.AddRange(wqs);
         await db.SaveChangesAsync();
 
-        WorksheetInstance NewInstance(int studentId, WorksheetInstanceStatus status) => new()
+        // issue #367: öğrenci başına worksheet başına tek canlı instance (unique index) — devam eden kopya aynı sorularla
+        // ikinci bir worksheet'te.
+        var ws2 = new Worksheet { Name = "Deneme 2", Description = "d", GradeId = grade.Id, MaxDurationSeconds = 600 };
+        db.Worksheets.Add(ws2);
+        await db.SaveChangesAsync();
+        var wqs2 = qs.Select((q, i) => new WorksheetQuestion { TestId = ws2.Id, QuestionId = q.Id, Order = i + 1 }).ToList();
+        db.TestQuestions.AddRange(wqs2);
+        await db.SaveChangesAsync();
+
+        WorksheetInstance NewInstance(int studentId, WorksheetInstanceStatus status) => NewInstanceOn(studentId, status, ws.Id, wqs, answers);
+
+        static WorksheetInstance NewInstanceOn(int studentId, WorksheetInstanceStatus status, int worksheetId,
+            List<WorksheetQuestion> wqs, List<(int correct, int wrong)> answers) => new()
         {
-            WorksheetId = ws.Id,
+            WorksheetId = worksheetId,
             StudentId = studentId,
             Status = status,
             StartTime = DateTime.UtcNow.AddMinutes(-30),
@@ -470,7 +482,7 @@ public class TopicStudyLinkServiceTests : IDisposable
 
         var mine = NewInstance(student.Id, WorksheetInstanceStatus.Completed);
         var others = NewInstance(other.Id, WorksheetInstanceStatus.Completed);
-        var inProgress = NewInstance(student.Id, WorksheetInstanceStatus.Started);
+        var inProgress = NewInstanceOn(student.Id, WorksheetInstanceStatus.Started, ws2.Id, wqs2, answers);
         db.TestInstances.AddRange(mine, others, inProgress);
         await db.SaveChangesAsync();
 

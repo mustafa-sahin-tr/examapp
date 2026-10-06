@@ -420,11 +420,10 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 
             foreach (var student in targetStudents)
             {
-                var relevantInstance = instances
-                    .Where(ti => ti.StudentId == student.Id && ti.StartTime >= assignment.StartAt
-                        && (!assignment.EndAt.HasValue || ti.StartTime <= assignment.EndAt.Value))
-                    .OrderByDescending(ti => ti.StartTime)
-                    .FirstOrDefault();
+                // issue #367: ortak pencere kuralı (atamadan önce tamamlanmış instance da sayılır) — AssignmentInstanceWindow.
+                var relevantInstance = AssignmentInstanceWindow.SelectRelevant(
+                    instances.Where(ti => ti.StudentId == student.Id),
+                    assignment.StartAt, assignment.EndAt, ti => ti.StartTime, ti => ti.Status);
 
                 var status = ResolveStudentAssignmentStatus(assignment, relevantInstance, now);
 

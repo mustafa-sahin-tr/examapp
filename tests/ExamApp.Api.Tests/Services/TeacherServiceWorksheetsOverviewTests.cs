@@ -270,8 +270,14 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
         result[0].CompletionPercentage.ShouldBe(25);
     }
 
-    [Fact]
-    public async Task GetWorksheetsOverviewAsync_TestInstanceOutsideAssignmentWindow_IsNotCountedAsCompleted()
+    // issue #367 (product decision): no retakes - one live instance per (student, worksheet). A test COMPLETED before the
+    // assignment window satisfies the assignment (it cannot be started again); an unfinished instance that started
+    // before the window still does not count.
+    [Theory]
+    [InlineData(WorksheetInstanceStatus.Completed, 100)]
+    [InlineData(WorksheetInstanceStatus.Started, 0)]
+    public async Task GetWorksheetsOverviewAsync_TestInstanceStartedBeforeAssignmentWindow_CountsOnlyIfCompleted(
+        WorksheetInstanceStatus status, int expectedPercentage)
     {
         await using (var ctx = _db.NewContext())
         {
@@ -294,14 +300,14 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
             });
             await ctx.SaveChangesAsync();
 
-            // Completed, but before the assignment window started -> should not count.
+            // Started before the assignment window.
             ctx.TestInstances.Add(new WorksheetInstance
             {
                 WorksheetId = ws.Id,
                 StudentId = student.Id,
                 StartTime = startAt.AddDays(-5),
-                EndTime = startAt.AddDays(-5).AddHours(1),
-                Status = WorksheetInstanceStatus.Completed
+                EndTime = status == WorksheetInstanceStatus.Completed ? startAt.AddDays(-5).AddHours(1) : null,
+                Status = status
             });
             await ctx.SaveChangesAsync();
         }
@@ -311,7 +317,7 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
 
         result.Count.ShouldBe(1);
         result[0].AssignedStudentCount.ShouldBe(1);
-        result[0].CompletionPercentage.ShouldBe(0);
+        result[0].CompletionPercentage.ShouldBe(expectedPercentage);
     }
 
     [Fact]

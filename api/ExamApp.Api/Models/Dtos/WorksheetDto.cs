@@ -92,6 +92,8 @@ public class WorksheetInstanceQuestionDto
 public class WorksheetInstanceResultDto
 {
     public int Id { get; set; }
+    /// <summary>issue #383: instance'ın ait olduğu worksheet — UI tamamlanınca /test/{WorksheetId} sonucuna yönlenir.</summary>
+    public int WorksheetId { get; set; }
     public string TestName { get; set; } = default!;
     public WorksheetInstanceStatus Status { get; set; }
     public int MaxDurationSeconds { get; set; }

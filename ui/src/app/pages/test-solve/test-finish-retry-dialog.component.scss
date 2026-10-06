@@ -1,0 +1,11 @@
+.retry-dialog__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mainFontFamily);
+}
+
+.retry-dialog__message {
+  margin: 0;
+  font-family: var(--paragraphFontFamily);
+}

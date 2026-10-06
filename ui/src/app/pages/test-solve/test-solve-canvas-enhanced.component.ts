@@ -15,7 +15,13 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TestService } from '../../services/test.service';
-import { TestInstance, TestInstanceQuestion, TestStatus } from '../../models/test-instance';
+import {
+  TEST_SESSION_ERROR_CODES,
+  TestInstance,
+  TestInstanceQuestion,
+  TestSessionResult,
+  TestStatus,
+} from '../../models/test-instance';
 import { CommonModule } from '@angular/common';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -27,8 +33,15 @@ import { PassageCardComponent } from '../../shared/components/passage-card/passa
 import { ConfettiService } from '../../services/confetti.service';
 import { SpinWheelComponent } from '../../shared/components/spin-wheel/spin-wheel.component';
 import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { HttpErrorResponse } from '@angular/common/http';
 import { AnswerChoice, QuestionRegion } from '../../models/draws';
-import { lastValueFrom } from 'rxjs';
+import { firstValueFrom, lastValueFrom, Observable } from 'rxjs';
+import {
+  ConfirmDialogComponent,
+  ConfirmDialogData,
+} from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { TestFinishRetryDialogComponent, TestFinishRetryDialogData } from './test-finish-retry-dialog.component';
 import { SidenavService } from '../../services/sidenav.service';
 import { MatIconModule } from '@angular/material/icon';
 import { CountdownComponent } from '../../shared/components/countdown/countdown.component';
@@ -42,6 +55,23 @@ import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@js
  * provider'ını orada da vermek gerekir.
  */
 export const TEST_SOLVE_SCOPE = 'test-solve';
+
+/**
+ * Bir cevap kaydının sonucu (issue #383). `completed`: backend testin tamamlandığı için cevabı
+ * reddetti (#367) — sonuç sayfasına geçilir.
+ */
+export type AnswerSaveOutcome = 'saved' | 'failed' | 'completed';
+
+/**
+ * Backend'in "test artık devam etmiyor, cevap/bitirme reddedildi" yanıtını tanır (issue #367/#383):
+ * yalnız gövdedeki `errorCode: 'TestNotInProgress'` (backend 409 ile birlikte her zaman gönderir).
+ * Kodsuz bir 409 bu anlama gelmez; genel hata gibi ele alınır.
+ */
+export function isTestCompletedRejection(source: unknown): boolean {
+  const body = source instanceof HttpErrorResponse ? source.error : source;
+  if (!body || typeof body !== 'object') return false;
+  return (body as Partial<TestSessionResult>).errorCode === TEST_SESSION_ERROR_CODES.testNotInProgress;
+}
 
 @Component({
   selector: 'app-test-solve-v2',
@@ -129,6 +159,18 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
   // Cevap sayısını takip etmek için signal
   public answeredQuestionsCount = signal(0);
+
+  /** Issue #383: "Sınavı Bitir" akışı sürüyor (onay sonrası kayıt + tamamlama); çift tıklamayı engeller. */
+  public readonly finishing = signal(false);
+  /** Uçuşta olan cevap kayıtları; bitirmeden önce hepsi beklenir. */
+  private readonly pendingSaves = new Set<Promise<AnswerSaveOutcome>>();
+  /** Kaydı başarısız olan soru indeksleri; bitirmeden önce yeniden denenir. */
+  private readonly failedSaveIndices = new Set<number>();
+  /** Cevabı değişip henüz başarıyla kaydedilmemiş soru indeksleri; bitirirken hepsi yeniden gönderilir. */
+  private readonly dirtyQuestionIndices = new Set<number>();
+  /** Sonuç sayfasına yönlendirme başladı mı (tekrarlı yönlendirme/bildirimi engeller). */
+  private redirectedToResult = false;
+  protected readonly snackBar = inject(MatSnackBar);
 
   // YENİ: Çoklu soru görüntüleme konfigürasyonu
   public questionsPerView = signal<1 | 2 | 4>(1); // Aynı anda gösterilecek soru sayısı
@@ -256,7 +298,11 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   ) {
     this.sidenavService.setSidenavState(false);
     this.sidenavService.setFullScreen(true);
+    this.navigationWorksheetId = this.readNavigationWorksheetId();
   }
+
+  /** Sonuç sayfası `/test/{worksheetId}`; çözüm ekranına gelen navigasyon state'inden (worksheet-detail). */
+  private readonly navigationWorksheetId: number | null;
 
   ngAfterViewInit() {
     //this.loadQuestions();
@@ -372,9 +418,10 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
       console.log('TestInstance', this.testInstance.testInstanceQuestions);
 
-      // 🚀 Eğer test tamamlandıysa, öğrenci profiline yönlendir
-      if (this.testInstance.status === TestStatus.Completed) {
-        this.router.navigate(['/student-profile']);
+      // Issue #383: devam etmeyen (Completed/Expired/...) teste /testsolve ile girilirse sonuç sayfasına yönlendir.
+      if (this.testInstance.status !== TestStatus.Started) {
+        this.navigateToResult();
+        return;
       }
 
       await this.loadQuestions();
@@ -400,7 +447,8 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     this.testTimerSubscription = interval(1000).subscribe(() => {
       this.testDuration++;
       if (this.testDuration >= this.testInstance.maxDurationSeconds) {
-        this.completeTest();
+        // Süre doldu: onay sormadan bitir (issue #383).
+        void this.completeTest();
       }
     });
   }
@@ -850,23 +898,246 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
   }
 
-  completeTest() {
-    // son soru kaydedilmemiş olaiblir.
+  /** Boş (cevaplanmamış) soru sayısı; örnek sorular sayılmaz. */
+  public unansweredCount(): number {
+    return (this.testInstance?.testInstanceQuestions ?? []).filter(
+      (q) => !q.question?.isExample && !this.isQuestionAnswered(q)
+    ).length;
+  }
+
+  /**
+   * "Sınavı Bitir" butonu (issue #383): önce onay diyaloğu, boş soru sayısıyla. Boş soru olsa da
+   * bitirmeye izin verilir (ürün kararı: engelleme yok). Vazgeç seçilirse sınav sürer.
+   */
+  confirmFinishTest(): void {
+    if (this.finishing() || !this.testInstance) return;
+
+    const unanswered = this.unansweredCount();
+    const data: ConfirmDialogData = {
+      title: this.tr('finish.dialogTitle'),
+      message:
+        unanswered > 0
+          ? this.tr('finish.dialogUnanswered', { count: unanswered })
+          : this.tr('finish.dialogAllAnswered'),
+      confirmText: this.tr('finish.dialogConfirm'),
+      cancelText: this.tr('finish.dialogCancel'),
+      icon: 'flag',
+      confirmColor: 'primary',
+    };
+
+    this.dialog
+      .open(ConfirmDialogComponent, { data, restoreFocus: true })
+      .afterClosed()
+      .subscribe((confirmed) => {
+        if (confirmed === true) {
+          void this.completeTest();
+        }
+      });
+  }
+
+  /**
+   * Testi bitirir (onaysız; süre dolunca doğrudan çağrılır). Sıra (issue #383):
+   * 1) ekrandaki cevap(lar)ı ve daha önce başarısız olan kayıtları gönder, uçuştaki tüm kayıtları bekle;
+   * 2) herhangi biri başarısızsa tamamlama isteği GÖNDERİLMEZ, hata gösterilir, öğrenci tekrar dener;
+   * 3) tamamlama başarılıysa sonuç sayfasına (`/test/{worksheetId}`) gidilir.
+   */
+  async completeTest(): Promise<void> {
+    if (this.finishing() || this.redirectedToResult || !this.testInstance) return;
+    this.finishing.set(true);
     this.autoPlay = false;
-    const currentQuestion = this.testInstance.testInstanceQuestions[this.currentIndex()];
-    if (currentQuestion.selectedAnswerId) {
-      this.persistAnswer(currentQuestion.selectedAnswerId);
-    } else if (this.isNonEmptyPayload(currentQuestion.answerPayload)) {
-      this.persistDragDropPayloadForQuestion(currentQuestion.answerPayload!, this.currentIndex());
+    this.testTimerSubscription?.unsubscribe();
+
+    const saveOutcomes = await this.flushPendingAnswers();
+    if (saveOutcomes.includes('completed')) {
+      this.handleTestAlreadyCompleted();
+      return;
     }
-    this.testService.completeTest(this.testInstance.id).subscribe({
-      next: () => {
-        this.router.navigate(['/student-profile']);
-      },
-      error: (error) => {
+    if (saveOutcomes.includes('failed')) {
+      this.abortFinish('finish.saveFailed');
+      return;
+    }
+
+    let response: TestSessionResult;
+    try {
+      response = await firstValueFrom(this.testService.completeTest(this.testInstance.id));
+    } catch (error) {
+      if (isTestCompletedRejection(error)) {
+        this.handleTestAlreadyCompleted();
+      } else {
         console.error('Error completing test', error);
+        this.abortFinish('finish.completeFailed');
+      }
+      return;
+    }
+
+    if (response?.success === false) {
+      if (isTestCompletedRejection(response)) {
+        this.handleTestAlreadyCompleted();
+      } else {
+        this.abortFinish('finish.completeFailed', response.message);
+      }
+      return;
+    }
+
+    this.navigateToResult();
+  }
+
+  /** Süre doldu mu (sayaç `maxDurationSeconds`'a ulaştı). */
+  protected isTimeUp(): boolean {
+    return !!this.testInstance && this.testDuration >= this.testInstance.maxDurationSeconds;
+  }
+
+  /**
+   * Bitirme başarısız. Süre bitmediyse: akışı aç, hata göster, sayacı sürdür (öğrenci butondan tekrar dener).
+   * Süre bittiyse: öğrenci sayaçsız cevaplamaya devam etmesin diye ekran `disableClose` bir diyalogla kilitlenir;
+   * tek aksiyon "Tekrar dene" → bitirme yeniden denenir.
+   */
+  private abortFinish(messageKey: string, serverMessage?: string): void {
+    const message = serverMessage || this.tr(messageKey);
+
+    if (this.isTimeUp()) {
+      const data: TestFinishRetryDialogData = {
+        title: this.tr('finish.timeUpTitle'),
+        message,
+        retryText: this.tr('finish.retry'),
+      };
+      this.dialog
+        .open(TestFinishRetryDialogComponent, { data, disableClose: true, autoFocus: 'first-tabbable' })
+        .afterClosed()
+        .subscribe((retry) => {
+          this.finishing.set(false);
+          // Diyalog navigasyonda da kapanır (sonuç undefined); yalnız açık "Tekrar dene" yeniden dener.
+          if (retry === true) {
+            void this.completeTest();
+          }
+        });
+      return;
+    }
+
+    this.finishing.set(false);
+    this.showToastMessage(message, 'error');
+    this.startTimer();
+  }
+
+  /** Bitirmeden önce kaydedilmesi gerekenleri gönderir ve uçuştaki tüm kayıtların sonucunu bekler. */
+  private async flushPendingAnswers(): Promise<AnswerSaveOutcome[]> {
+    if (!this.testInstance.isPracticeTest) {
+      // Kaydı başarısız olan ve cevabı değişip henüz kaydedilmemiş (dirty) TÜM sorular — görünür olmasalar da
+      // (önceki görünüm, görünüm boyutu değişimi) — yeniden gönderilir.
+      const indices = new Set<number>([...this.failedSaveIndices, ...this.dirtyQuestionIndices]);
+      if (this.questionsPerView() === 1) {
+        // Tek soru görünümü: aktif soru (süresiyle) her zaman gönderilir.
+        this.endQuestionTimer();
+        const idx = this.currentIndex();
+        const current = this.testInstance.testInstanceQuestions[idx];
+        if (current) {
+          current.timeTaken = this.questionDurations().get(idx) ?? current.timeTaken;
+        }
+        indices.add(idx);
+      }
+      indices.forEach((index) => this.persistQuestionState(index));
+    }
+
+    return Promise.all(Array.from(this.pendingSaves));
+  }
+
+  /** Sorunun mevcut cevabını (MCQ veya drag-drop payload) kaydeder; cevap yoksa istek göndermez. */
+  private persistQuestionState(index: number): void {
+    const question = this.testInstance.testInstanceQuestions[index];
+    if (!question || question.question.isExample) return;
+
+    if (question.selectedAnswerId) {
+      void this.trackAnswerSave(
+        index,
+        this.testService.saveAnswer({
+          testQuestionId: question.id,
+          selectedAnswerId: question.selectedAnswerId,
+          testInstanceId: this.testInstance.id,
+          timeTaken: question.timeTaken,
+        })
+      );
+    } else if (this.isNonEmptyPayload(question.answerPayload)) {
+      this.persistDragDropPayloadForQuestion(question.answerPayload!, index);
+    }
+  }
+
+  /**
+   * Bir kayıt isteğini izler: uçuştayken `pendingSaves`'te tutar, başarısızsa indeksi
+   * `failedSaveIndices`'e yazar. Dönen promise reddedilmez; sonucu {@link AnswerSaveOutcome} ile bildirir.
+   * Bitirme akışı dışında `completed` gelirse (ör. başka sekmede bitirildi) sonuç sayfasına geçilir.
+   */
+  private trackAnswerSave(questionIndex: number, request$: Observable<TestSessionResult>): Promise<AnswerSaveOutcome> {
+    const sentSignature = this.answerSignature(questionIndex);
+    const outcome = firstValueFrom(request$).then(
+      (response): AnswerSaveOutcome => {
+        if (response?.success === false) {
+          return isTestCompletedRejection(response) ? 'completed' : 'failed';
+        }
+        return 'saved';
       },
+      (error: unknown): AnswerSaveOutcome => {
+        if (isTestCompletedRejection(error)) return 'completed';
+        console.error('Error saving answer for question', questionIndex, error);
+        return 'failed';
+      }
+    );
+
+    const tracked: Promise<AnswerSaveOutcome> = outcome.then((result) => {
+      this.pendingSaves.delete(tracked);
+      if (result === 'saved') {
+        this.failedSaveIndices.delete(questionIndex);
+        // İstek uçuştayken cevap yeniden değiştiyse soru dirty kalır.
+        if (this.answerSignature(questionIndex) === sentSignature) {
+          this.dirtyQuestionIndices.delete(questionIndex);
+        }
+      } else if (result === 'failed') {
+        this.failedSaveIndices.add(questionIndex);
+      } else if (!this.finishing()) {
+        this.handleTestAlreadyCompleted();
+      }
+      return result;
     });
+    this.pendingSaves.add(tracked);
+    return tracked;
+  }
+
+  private answerSignature(questionIndex: number): string {
+    const q = this.testInstance?.testInstanceQuestions?.[questionIndex];
+    return `${q?.selectedAnswerId ?? ''}|${q?.answerPayload ?? ''}`;
+  }
+
+  /** Cevabı değişen soruyu dirty işaretler (bitirirken yeniden gönderilir). */
+  protected markQuestionDirty(questionIndex: number): void {
+    this.dirtyQuestionIndices.add(questionIndex);
+  }
+
+  /** Test backend'de zaten tamamlanmış (#367 reddi): bilgi ver ve sonuç sayfasına geç. */
+  private handleTestAlreadyCompleted(): void {
+    if (this.redirectedToResult) return;
+    this.snackBar.open(this.tr('finish.alreadyCompleted'), this.tr('finish.dismiss'), { duration: 4000 });
+    this.navigateToResult();
+  }
+
+  /**
+   * Sonuç sayfası `/test/{worksheetId}`. worksheetId önce yanıttan, yoksa worksheet-detail'in verdiği
+   * navigasyon state'inden okunur; ikisi de yoksa sınav listesine düşülür.
+   */
+  protected navigateToResult(): void {
+    this.redirectedToResult = true;
+    this.testTimerSubscription?.unsubscribe();
+    const worksheetId = this.testInstance?.worksheetId ?? this.navigationWorksheetId;
+    if (worksheetId) {
+      void this.router.navigate(['/test', worksheetId], { replaceUrl: true });
+    } else {
+      void this.router.navigate(['/tests'], { replaceUrl: true });
+    }
+  }
+
+  private readNavigationWorksheetId(): number | null {
+    const fromNavigation = this.router.getCurrentNavigation()?.extras.state?.['worksheetId'];
+    const historyState = typeof history !== 'undefined' ? (history.state as Record<string, unknown> | null) : null;
+    const value = Number(fromNavigation ?? historyState?.['worksheetId']);
+    return Number.isFinite(value) && value > 0 ? value : null;
   }
 
   /** Scope'a göreli anahtarı senkron çevirir. */
@@ -877,6 +1148,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   // Cevap kaydet
   selectAnswer(selectedIndex: any) {
     this.testInstance.testInstanceQuestions[this.currentIndex()].selectedAnswerId = selectedIndex;
+    this.markQuestionDirty(this.currentIndex());
     if (selectedIndex) {
       this.testInstance.testInstanceQuestions[this.currentIndex()].answerPayload = undefined;
     }
@@ -941,22 +1213,16 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     if (this.testInstance.testInstanceQuestions[this.currentIndex()].question.isExample) return;
     this.testInstance.testInstanceQuestions[this.currentIndex()].selectedAnswerId = selectedAnswerId;
 
-    this.testService
-      .saveAnswer({
-        testQuestionId: this.testInstance.testInstanceQuestions[this.currentIndex()].id,
+    const index = this.currentIndex();
+    void this.trackAnswerSave(
+      index,
+      this.testService.saveAnswer({
+        testQuestionId: this.testInstance.testInstanceQuestions[index].id,
         selectedAnswerId: selectedAnswerId,
         testInstanceId: this.testInstance.id,
-        timeTaken: this.testInstance.testInstanceQuestions[this.currentIndex()].timeTaken,
+        timeTaken: this.testInstance.testInstanceQuestions[index].timeTaken,
       })
-      .subscribe({
-        next: () => {
-          // Cevap kaydedildi, sonraki soruya geç
-          //this.nextQuestion();
-        },
-        error: (error) => {
-          console.error('Error saving answer', error);
-        },
-      });
+    );
   }
 
   // Önceki soruya git - Çoklu görünüm desteği ile
@@ -1058,21 +1324,15 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   private persistAnswerForQuestion(selectedAnswerId: number, questionIndex: number) {
     if (this.testInstance.testInstanceQuestions[questionIndex].question.isExample) return;
 
-    this.testService
-      .saveAnswer({
+    void this.trackAnswerSave(
+      questionIndex,
+      this.testService.saveAnswer({
         testQuestionId: this.testInstance.testInstanceQuestions[questionIndex].id,
         selectedAnswerId: selectedAnswerId,
         testInstanceId: this.testInstance.id,
         timeTaken: this.questionDuration, // Bu her soru için ayrı tutulmalı
       })
-      .subscribe({
-        next: () => {
-          console.log(`Answer saved for question ${questionIndex}`);
-        },
-        error: (error) => {
-          console.error('Error saving answer for question', questionIndex, error);
-        },
-      });
+    );
   }
 
   public saveDragDropAnswerForQuestion(answerPayloadJson: string, questionIndex: number) {
@@ -1080,6 +1340,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     question.answerPayload = answerPayloadJson;
     // Drag-drop sorular MCQ gibi selectedAnswerId kullanmıyor; progress için 0 kalsın.
     question.selectedAnswerId = 0;
+    this.markQuestionDirty(questionIndex);
 
     this.updateAnsweredCount();
 
@@ -1095,22 +1356,16 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
     const timeTaken = this.questionDurations().get(questionIndex) ?? this.questionDuration;
 
-    this.testService
-      .saveAnswer({
+    void this.trackAnswerSave(
+      questionIndex,
+      this.testService.saveAnswer({
         testQuestionId: this.testInstance.testInstanceQuestions[questionIndex].id,
         selectedAnswerId: 0,
         answerPayload: answerPayloadJson,
         testInstanceId: this.testInstance.id,
         timeTaken,
       })
-      .subscribe({
-        next: () => {
-          console.log(`Answer payload saved for question ${questionIndex}`);
-        },
-        error: (error) => {
-          console.error('Error saving answer payload for question', questionIndex, error);
-        },
-      });
+    );
   }
 
   // Testi durdur (opsiyonel)
@@ -1532,6 +1787,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   selectAnswerForQuestion(selectedAnswerId: number, questionIndex: number) {
     const question = this.testInstance.testInstanceQuestions[questionIndex];
     question.selectedAnswerId = selectedAnswerId;
+    this.markQuestionDirty(questionIndex);
     // MCQ seçildiyse varsa payload'u temizle.
     if (selectedAnswerId) {
       question.answerPayload = undefined;

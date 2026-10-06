@@ -114,4 +114,22 @@ public class ExamControllerStartTestTests
 
         result.ShouldBeOfType<OkObjectResult>().Value.ShouldBe(expected);
     }
+    [Fact]
+    public async Task StartTest_InvalidOperationException_returns_a_generic_localized_400_without_the_internal_text()
+    {
+        // issue #367 (security Low-3): the exception message must not reach the client.
+        var user = new UserProfileDto { Id = 42, KeycloakId = "kc-1", Role = "Student" };
+        _studentService.GetStudentProfile(42).Returns(new StudentProfileDto { Id = 7, GradeId = 1 });
+        _testSession.StartTestAsync(5, Arg.Any<StudentProfileDto>())
+            .Returns<Task<TestStartResultDto>>(_ => throw new InvalidOperationException("Test instance unique violation but no existing instance found."));
+
+        var controller = NewController(user);
+        var result = await controller.StartTest(5);
+
+        var badRequest = result.ShouldBeOfType<BadRequestObjectResult>();
+        var json = System.Text.Json.JsonSerializer.Serialize(badRequest.Value);
+        json.ShouldNotContain("unique violation");
+        json.ShouldContain("message");
+        json.ShouldNotContain("startTestFailed"); // key resolved to text, not echoed
+    }
 }

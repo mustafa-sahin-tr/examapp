@@ -18,7 +18,6 @@ public interface IKeycloakService
     Task LogoutAsync(string refreshToken);
     Task<TokenResponseDto> LoginAsync(string username, string password);
     Task SetRoleAsync(string keycloakUserId, UserRole userRole) ;
-    Task <TokenResponseDto> ExchangeTokenAsync(string code);
     Task<TokenResponseDto> RefreshTokenAsync(string refreshToken);
 
     /// <summary>

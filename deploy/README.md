@@ -121,7 +121,7 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --force-rec
      `examapp-secrets`) set edip exam API + BadgeService'i yeniden başlat; servisler arası çağrının
      çalıştığını doğrula; SON olarak `service-account-exam-admin`'den `manage-realm` ve `exam-service`
      rolünü kaldır.
-4. `redirect URI` olarak `https://<DOMAIN>/app/*` tanımla.
+4. `redirect URI` olarak yalnızca `https://<DOMAIN>/app/callback` tanımla (joker yok, bkz. PKCE bölümü).
 5. `.env.prod` içine client secret’ları gir.
 6. Ardından:
 
@@ -159,6 +159,27 @@ Gövdesi 16 KB'ı aşan/uzunluğu bilinmeyen/okunamayan "refresh" istekleri say�
   dar CIDR ile kullanılır; `0.0.0.0/0` ve `::/0` başlangıçta reddedilir. Caddy'nin `X-Forwarded-For`'u istemci
   IP'siyle gönderdiğini doğrulayın. Boşsa `RemoteIpAddress` kullanılır.
   Gateway downstream'e her zaman çözülmüş IP'yi `X-Forwarded-For` olarak iletir.
+
+### PKCE zorunluluğu (`exam-client`, issue #347)
+
+Login akışı artık her girişte istemcide (auth-ui) rastgele `state` + PKCE `code_verifier` üretir ve
+Keycloak'a S256 `code_challenge` gönderir; auth-api token değişiminde `code_verifier`'ı iletir.
+Keycloak tarafında PKCE'yi `exam-client` için zorunlu yap:
+
+- Admin console → `exam-realm` → Clients → `exam-client` → **Advanced** sekmesi → *Advanced settings* →
+  **Proof Key for Code Exchange Code Challenge Method** = `S256` → Save.
+- Realm export/import ile yönetiyorsan: `exam-client` → `attributes` içine
+  `"pkce.code.challenge.method": "S256"` (dev export'u `deploy/keycloak/dev-import/realm-export.json` bunu taşır).
+
+**Sıra önemli:** önce PKCE gönderen yeni auth-ui + gateway + auth-api sürümünü deploy et, login'in
+çalıştığını doğrula, **sonra** bu ayarı aç. Ayar önce açılırsa eski istemci `code_challenge` göndermediği
+için her giriş `Missing parameter: code_challenge_method` hatasıyla düşer. Mevcut (zaten import edilmiş)
+realm'lerde `--import-realm` yeniden import etmez; ayar elle yapılmalıdır.
+
+Aynı client'ta **Valid redirect URIs** joker (`https://<DOMAIN>/*`) yerine yalnızca kullanılan callback
+olmalı: `https://<DOMAIN>/app/callback` (birden çok domain varsa her biri için ayrı satır; dev export'u
+`hedefokul.com`, `www.`, `staging.` ve `http://localhost:5678` için bunu taşır). Değer gateway/auth-api
+`Keycloak__RedirectUri` ile birebir aynı olmalıdır.
 
 ### Keycloak Theme (login)
 

@@ -7,7 +7,6 @@ data:
   PUBLIC_BASE_URL: https://staging.hedefokul.com
   CORS_ALLOWED_ORIGIN_0: https://staging.hedefokul.com
   KEYCLOAK_REDIRECT_URI: https://staging.hedefokul.com/app/callback
-  KEYCLOAK_CLIENT_CALLBACK_URL: https://staging.hedefokul.com/app/callback&response_type=code&scope=openid&state=https://staging.hedefokul.com
   KEYCLOAK_REALM: exam-realm
   KEYCLOAK_AUTHORITY: https://staging.hedefokul.com/realms/exam-realm
   KEYCLOAK_HOST_INTERNAL: http://keycloak.examapp.svc.cluster.local:8080

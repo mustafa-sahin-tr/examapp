@@ -1,60 +1,107 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { Router, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap } from '@angular/router';
 
 import { LoginComponent } from './login.component';
 import { LOCALE_STORAGE_KEY } from '../../services/locale-hint.service';
-import { authErrorInterceptor } from '../../shared/interceptors/auth-error.interceptor';
+import { OIDC_FLOW_KEY_PREFIX, OidcLoginRecord } from '../../services/oidc-flow.service';
+import { computeCodeChallenge } from '../../shared/utils/pkce.util';
 
 /**
- * LoginComponent tek iş yapar: token yoksa Keycloak'a (`/oidc-login`) yönlendirir.
+ * LoginComponent tek iş yapar: Keycloak girişini (`/oidc-login`) başlatır. Eski e-posta/şifre formu
+ * (onSubmit, issue #231 testleri) şablonsuz ölü koddu; #347'de kaldırıldı.
  * Gerçek navigasyon testte çalışmasın diye `redirect()` spy'lanır — bu yüzden
  * komponentte ayrı bir `protected redirect(url)` metodu var.
+ * Issue #347: URL'de rastgele state + S256 code_challenge taşınır; niyet ve returnUrl sessionStorage kaydında.
  */
 describe('LoginComponent', () => {
   let fixture: ComponentFixture<LoginComponent>;
   let component: LoginComponent;
   let redirectSpy: jasmine.Spy<(url: string) => void>;
+  let redirected: Promise<string>;
+  const routeStub = { snapshot: { queryParamMap: convertToParamMap({}) } };
+
+  /** startOidcLogin crypto.subtle'ı (zone dışı native promise) bekler; yönlendirmeyi promise olarak yakala. */
+  async function redirectUrl(): Promise<URL> {
+    return new URL(await redirected, 'http://localhost');
+  }
+
+  function storedRecord(state: string): OidcLoginRecord {
+    return JSON.parse(sessionStorage.getItem(OIDC_FLOW_KEY_PREFIX + state)!) as OidcLoginRecord;
+  }
 
   beforeEach(async () => {
     localStorage.clear();
+    sessionStorage.clear();
+    routeStub.snapshot.queryParamMap = convertToParamMap({});
 
     await TestBed.configureTestingModule({
       imports: [LoginComponent],
-      providers: [
-        // Gerçek authErrorInterceptor ile: login 401'inin yönlendirmeye yol açmadığını uçtan uca doğrular (issue #231).
-        provideHttpClient(withInterceptors([authErrorInterceptor])),
-        provideHttpClientTesting(),
-        provideRouter([]),
-      ],
+      providers: [{ provide: ActivatedRoute, useValue: routeStub }],
     }).compileComponents();
 
     fixture = TestBed.createComponent(LoginComponent);
     component = fixture.componentInstance;
     // ngOnInit'ten (detectChanges) önce kur, aksi halde tarayıcı gerçekten yönlenir.
     redirectSpy = spyOn(component as unknown as { redirect: (url: string) => void }, 'redirect');
+    redirected = new Promise<string>((resolve) => redirectSpy.and.callFake(resolve));
   });
 
   afterEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
   });
 
-  it('should create', () => {
+  it('should create', async () => {
     fixture.detectChanges();
+    // Yönlendirme async (crypto.subtle); spy spec bitince kaldırıldığı için beklenmeli, yoksa gerçek navigasyon olur.
+    await redirected;
 
     expect(component).toBeTruthy();
   });
 
-  it('token yokken /oidc-login adresine ui_locales ile yönlendirir', () => {
+  it('/oidc-login adresine ui_locales ile yönlendirir', async () => {
     localStorage.setItem(LOCALE_STORAGE_KEY, 'en');
 
     fixture.detectChanges();
+    const url = await redirectUrl();
 
     expect(redirectSpy).toHaveBeenCalledTimes(1);
-    const url = new URL(redirectSpy.calls.mostRecent().args[0], 'http://localhost');
     expect(url.pathname).toBe('/oidc-login');
     expect(url.searchParams.get('ui_locales')).toBe('en');
+  });
+
+  it('issue #347: state + S256 challenge gönderir, verifier yalnızca sessionStorage kaydında', async () => {
+    fixture.detectChanges();
+    const url = await redirectUrl();
+
+    const state = url.searchParams.get('state')!;
+    expect(state).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(url.searchParams.get('code_challenge_method')).toBe('S256');
+    const record = storedRecord(state);
+    expect(url.searchParams.get('code_challenge')).toBe(await computeCodeChallenge(record.codeVerifier));
+    expect(url.toString()).not.toContain(record.codeVerifier);
+  });
+
+  it('issue #347: ?intent=teacher gateway e iletilir ve kayıtta tutulur, state e gömülmez', async () => {
+    routeStub.snapshot.queryParamMap = convertToParamMap({ intent: 'teacher', returnUrl: '/tests/3' });
+
+    fixture.detectChanges();
+    const url = await redirectUrl();
+
+    const state = url.searchParams.get('state')!;
+    expect(url.searchParams.get('intent')).toBe('teacher');
+    expect(state).not.toContain('~');
+    expect(storedRecord(state).intent).toBe('teacher');
+    expect(storedRecord(state).returnPath).toBe('/tests/3');
+  });
+
+  it('issue #347: dış returnUrl kayda yazılmaz', async () => {
+    routeStub.snapshot.queryParamMap = convertToParamMap({ returnUrl: 'https://evil.example' });
+
+    fixture.detectChanges();
+    const url = await redirectUrl();
+
+    expect(storedRecord(url.searchParams.get('state')!).returnPath).toBeNull();
   });
 
   it('mevcut query parametrelerini koruyarak ui_locales ekler', () => {
@@ -69,49 +116,5 @@ describe('LoginComponent', () => {
 
     expect(url.searchParams.get('redirect_uri')).toBe('/dashboard');
     expect(url.searchParams.get('ui_locales')).toBe('tr');
-  });
-
-  describe('onSubmit hata yolu (issue #231)', () => {
-    const fallback = 'Giriş başarısız! Lütfen bilgilerinizi kontrol edin.';
-    let httpMock: HttpTestingController;
-    let navigateSpy: jasmine.Spy;
-    let snackSpy: jasmine.Spy;
-
-    beforeEach(() => {
-      httpMock = TestBed.inject(HttpTestingController);
-      navigateSpy = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
-      snackSpy = spyOn(component.snackBar, 'open');
-      component.loginForm.setValue({ email: 'ogrenci@example.com', password: 'yanlis-parola' });
-    });
-
-    afterEach(() => httpMock.verify());
-
-    it('401 → /login e yönlendirmez ve backend mesajını gösterir', () => {
-      component.onSubmit();
-      httpMock
-        .expectOne('/api/auth/login')
-        .flush({ message: 'E-posta veya şifre hatalı.' }, { status: 401, statusText: 'Unauthorized' });
-
-      expect(navigateSpy).not.toHaveBeenCalled();
-      expect(snackSpy).toHaveBeenCalledOnceWith('E-posta veya şifre hatalı.', 'Kapat', { duration: 3000 });
-      expect(component.isLoading).toBeFalse();
-    });
-
-    it('503 → backend mesajını gösterir, yönlendirmez', () => {
-      component.onSubmit();
-      httpMock
-        .expectOne('/api/auth/login')
-        .flush({ message: 'Kimlik servisine şu anda ulaşılamıyor.' }, { status: 503, statusText: 'Service Unavailable' });
-
-      expect(navigateSpy).not.toHaveBeenCalled();
-      expect(snackSpy).toHaveBeenCalledOnceWith('Kimlik servisine şu anda ulaşılamıyor.', 'Kapat', { duration: 3000 });
-    });
-
-    it('gövdesiz hata → mevcut sabit metne düşer', () => {
-      component.onSubmit();
-      httpMock.expectOne('/api/auth/login').flush(null, { status: 500, statusText: 'Server Error' });
-
-      expect(snackSpy).toHaveBeenCalledOnceWith(fallback, 'Kapat', { duration: 3000 });
-    });
   });
 });

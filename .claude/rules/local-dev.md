@@ -109,6 +109,53 @@ fails with a clear message; `admin-api`, the default, covers the same ground via
 Order matters: create `exam-service` and restart exam API + BadgeService first,
 only then trim `exam-admin`; the other way round breaks service-to-service calls.
 
+**Issue #347 — PKCE + state on the login flow.** auth-ui (`/app/login`)
+now generates a random `state` and a PKCE `code_verifier` per login (kept in
+`sessionStorage`, key `oidc_flow:<state>`), sends `state` + S256
+`code_challenge` through the gateway's `/oidc-login` to Keycloak, verifies
+`state` on `/app/callback` before exchanging the code, and posts
+`{ code, codeVerifier }` to `/api/auth/exchange`; auth-api forwards it as
+`code_verifier` (and rejects an exchange without one with 400). `/oidc-login`
+without a valid `state`/`code_challenge` no longer goes to Keycloak — it
+redirects to `/app/login` (landing "register as ..." links now point to
+`/app/login?intent=...`). The dev realm export enforces PKCE on `exam-client`
+(`attributes."pkce.code.challenge.method": "S256"`).
+A Keycloak `?error=` return (e.g. the user cancelled) consumes the record and
+shows a "Tekrar dene" button instead of auto-redirecting; going back to
+`/app/callback` after a successful login redirects to the dashboard when the
+stored token is still valid.
+
+`exam-client`'s `redirectUris` in the dev export were narrowed from `/*`
+wildcards to the exact callback actually used: `http://localhost:5678/app/callback`
+(docker-compose **and** Aspire — the gateway is pinned to :5678 and
+`Keycloak:RedirectUri`/`Server__BaseUrl` point there) plus the
+`https://{,www.,staging.}hedefokul.com/app/callback` entries. A running Keycloak
+keeps the old wildcards until changed by hand (Clients → `exam-client` →
+Settings → *Valid redirect URIs*). If you open the app on another origin (LAN IP,
+another port), add that origin's `/app/callback` there, or login fails with
+`Invalid parameter: redirect_uri`.
+
+Known behaviour — email verification in another tab: the record lives in
+`sessionStorage`, which is per tab. If Keycloak's verification link is opened
+in a new tab and that tab lands on `/app/callback`, there is no record there,
+so the user sees "Oturum doğrulanamadı" and is sent to `/login`; the new login
+completes silently through the Keycloak SSO session, but the register intent
+is lost (complete-profile opens without a pre-selected role). This is
+deliberate: sharing state/verifier across tabs (localStorage) would weaken the
+login-CSRF protection.
+
+**If you already have a running Keycloak container/volume**, `--import-realm`
+does not re-import, so enforcement is **not** on yet (the new code still works
+without it — Keycloak verifies the verifier whenever a challenge was sent).
+Enable it **only after** the new auth-ui/gateway/auth-api are running (the
+client must send PKCE before enforcement, otherwise every login fails with
+`Missing parameter: code_challenge_method`): admin console
+(http://localhost:8081, or `:8082/admin/` under Aspire) → `exam-realm` →
+Clients → `exam-client` → **Advanced** tab → *Advanced settings* →
+**Proof Key for Code Exchange Code Challenge Method** = `S256` → Save. Prod
+realms (`deploy/keycloak/import/`, ops-managed) need the same setting, see
+`deploy/README.md` §5.
+
 **Issue #279 (item 1)**: RabbitMQ no longer has a single shared admin user
 (`RABBITMQ_DEFAULT_USER`/`PASS`) that every consumer/publisher reused. Each
 service now connects as its own least-privilege user, defined in

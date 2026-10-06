@@ -1,90 +1,57 @@
-import { Component, inject, Inject, OnInit } from '@angular/core';
-import {
-  FormBuilder,
-  FormGroup,
-  Validators,
-  ReactiveFormsModule,
-  FormControl,
-  MinLengthValidator,
-} from '@angular/forms';
-import { AuthService } from '../../services/auth.service';
+import { Component, inject, OnInit, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { LocaleHintService } from '../../services/locale-hint.service';
-import { Router } from '@angular/router';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { CommonModule } from '@angular/common';
-import { jwtDecode } from 'jwt-decode';
-import { httpErrorMessage } from '../../shared/utils/http-error-message';
+import { OidcFlowService } from '../../services/oidc-flow.service';
 
+/**
+ * `/app/login`: tek işi Keycloak girişini başlatmaktır (issue #347). Eski e-posta/şifre formu (BFF password
+ * grant) şablonsuz ölü koddu ve kaldırıldı; giriş yalnızca OIDC authorization code + PKCE ile yapılır.
+ */
 @Component({
   selector: 'app-login',
   standalone: true,
-  // templateUrl: './login.component.html',
-  template: `<p>Giriş yapılıyor, lütfen bekleyin...</p>`,
-  styleUrls: ['./login.component.scss'],
-  imports: [
-    ReactiveFormsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatCardModule,
-    MatSnackBarModule,
-    MatProgressSpinnerModule,
-    CommonModule,
-  ],
+  template: `
+    @if (startError(); as message) {
+      <p role="alert">{{ message }}</p>
+    } @else {
+      <p>Giriş yapılıyor, lütfen bekleyin...</p>
+    }
+  `,
 })
 export class LoginComponent implements OnInit {
-  authService = inject(AuthService);
-  router = inject(Router);
-  snackBar = inject(MatSnackBar);
   private readonly localeHint = inject(LocaleHintService);
-  isLoading = false;
-  loginForm = new FormGroup({
-    email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
-    password: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(6)] }),
-  });
+  private readonly route = inject(ActivatedRoute);
+  private readonly oidcFlow = inject(OidcFlowService);
+  /** Login başlatılamadıysa (ör. tarayıcı depolaması kapalı) gösterilen mesaj. */
+  readonly startError = signal<string | null>(null);
 
-  ngOnInit() {
-    const token = localStorage.getItem('access_token');
-    //
-    if (token && this.isTokenValid(token)) {
-      this.redirect('/dashboard'); // veya /dashboard gibi temiz bir path
-    } else {
-      // ui_locales (standart OIDC parametresi), Keycloak login ekranının dilini belirler (issue #186).
-      this.redirect(this.withLoginLocale('/oidc-login'));
-    }
-
-    // const token = localStorage.getItem('auth_token');
-    // const role = localStorage.getItem('user_role');
-    // const user = localStorage.getItem('user');
-    // if (token && role) {
-    //   this.isLoading = true;
-    //   this.checkUserSession(role);
-    // }
-  }
-
-  isTokenValid(token: string): boolean {
-    try {
-      const decoded: any = jwtDecode(token);
-      const now = Math.floor(Date.now() / 1000);
-      return decoded.exp && decoded.exp > now;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  checkUserSession(role: string) {
-    this.redirect('/dashboard'); // ✅ Öğretmen veya Veli ise Home sayfasına git
+  ngOnInit(): void {
+    void this.startOidcLogin();
   }
 
   /**
-   * Keycloak'a giden URL'e çözümlenen dili standart OIDC `ui_locales` parametresi olarak
-   * ekler; mevcut query parametreleri korunur. Gateway `/oidc-login` rotasını query'lerle
-   * birlikte Keycloak auth endpoint'ine iletir (`AddQueriesToRequest: true`).
+   * Issue #347: her login'de rastgele `state` + PKCE `code_verifier` üretilir ve sessionStorage'a yazılır;
+   * gateway `/oidc-login` ucu bunları Keycloak'a iletir. Kayıt bağlantılarının `?intent=` niyeti ve
+   * `?returnUrl=` (yalnızca aynı origin göreli yol) state'e gömülmez, kayıtta tutulur.
+   */
+  protected async startOidcLogin(): Promise<void> {
+    const query = this.route.snapshot.queryParamMap;
+    try {
+      const url = await this.oidcFlow.begin({
+        intent: query.get('intent'),
+        returnPath: query.get('returnUrl'),
+      });
+      this.redirect(this.withLoginLocale(url));
+    } catch {
+      this.startError.set('Giriş başlatılamadı. Tarayıcınızın depolama/çerez ayarlarını kontrol edip tekrar deneyin.');
+    }
+  }
+
+  /**
+   * Çözümlenen dili standart OIDC `ui_locales` parametresi olarak URL'e ekler (issue #186); mevcut query
+   * parametreleri korunur. Gateway'in `/oidc-login` middleware'i (`OidcLoginRedirect`) bu değeri biçimini
+   * doğrulayarak Keycloak authorization isteğine kendisi ekler — Ocelot route'u (`AddQueriesToRequest`)
+   * devreye girmez, middleware isteği ondan önce yanıtlar.
    *
    * Not: Keycloak'a özel `kc_locale` bilinçli olarak kullanılmıyor — session'sız ilk
    * `/auth` isteğinde yok sayılıyor, `ui_locales` ise ilk istekte doğru çalışıyor.
@@ -99,30 +66,5 @@ export class LoginComponent implements OnInit {
   /** Tarayıcı navigasyonu — test edilebilirlik için ayrı metot (spec bunu spy'lar). */
   protected redirect(url: string): void {
     window.location.href = url;
-  }
-
-  onSubmit() {
-    if (this.loginForm.valid) {
-      this.isLoading = true;
-      this.authService.login(this.loginForm.value).subscribe({
-        next: (res) => {
-          this.snackBar.open('Giriş başarılı! Yönlendiriliyorsunuz...', 'Tamam', { duration: 3000 });
-          const role = 'Student'; //res.role; // 0 = Student, 1 = Teacher, 2 = Parent
-          this.checkUserSession(role);
-        },
-        error: (error: unknown) => {
-          this.isLoading = false;
-          this.snackBar.open(
-            httpErrorMessage(error, 'Giriş başarısız! Lütfen bilgilerinizi kontrol edin.'),
-            'Kapat',
-            { duration: 3000 }
-          );
-        },
-      });
-    }
-  }
-
-  navigateToRegister() {
-    this.router.navigate(['/register']);
   }
 }

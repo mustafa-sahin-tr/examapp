@@ -104,7 +104,10 @@ public class ClassifierCacheServiceTests : IDisposable
             result.SubTopicCount.ShouldBe(3);
         }
 
-        http.Requests.ShouldHaveSingleItem().RequestUri!.ToString().ShouldContain("/cachedContents?key=test-key");
+        var sent = http.Requests.ShouldHaveSingleItem();
+        sent.RequestUri!.ToString().ShouldEndWith("/cachedContents");
+        sent.RequestUri!.ToString().ShouldNotContain("key=");
+        sent.Headers.GetValues("x-goog-api-key").ShouldBe(new[] { "test-key" });
 
         await using var check = _db.NewContext();
         var row = await check.ClassifierCacheConfigs.FindAsync(ClassifierCacheConfig.SingletonId);

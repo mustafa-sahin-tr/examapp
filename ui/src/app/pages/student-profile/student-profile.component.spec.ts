@@ -157,15 +157,58 @@ describe('StudentProfileComponent', () => {
     expect(host.querySelectorAll('app-badge-thropy').length).toBe(0);
   }));
 
-  it('activeTab_SetToBadgesTab_PassesResolvedStudentIdToBadgeThropy', fakeAsync(() => {
-    activateBadgesTab();
+  describe('report user id (auth user id, not StudentProfileDto.id)', () => {
+    let previousUser: string | null;
 
-    const badgeThropyDebugElement = fixture.debugElement.query((debugEl) => {
-      return debugEl.componentInstance instanceof BadgeThropyComponent;
+    beforeEach(() => {
+      previousUser = localStorage.getItem('user');
+      localStorage.setItem('user', JSON.stringify({ id: 7 }));
     });
 
-    expect(badgeThropyDebugElement).toBeTruthy();
-    const badgeThropyComponent = badgeThropyDebugElement.componentInstance as BadgeThropyComponent;
-    expect(badgeThropyComponent.userId).toBe(component.studentId ?? 0);
-  }));
+    afterEach(() => {
+      if (previousUser === null) {
+        localStorage.removeItem('user');
+      } else {
+        localStorage.setItem('user', previousUser);
+      }
+    });
+
+    // API (StudentProfileDto.Id) ogrenci KAYIT id'sini de gonderir; frontend modelinde alan yok, gercek yuku taklit ediyoruz.
+    const profileWithStudentRecordId3 = { id: 3, fullName: 'Ada' } as unknown as StudentProfile;
+
+    function findBadgeThropy(): BadgeThropyComponent {
+      const debugEl = fixture.debugElement.query((el) => el.componentInstance instanceof BadgeThropyComponent);
+      expect(debugEl).toBeTruthy();
+      return debugEl.componentInstance as BadgeThropyComponent;
+    }
+
+    it('getProfile_ReturnsStudentRecordId3_DoesNotOverrideStoredUserId7', fakeAsync(() => {
+      studentService.getProfile.and.returnValue(of(profileWithStudentRecordId3));
+
+      fixture.detectChanges();
+
+      expect(component.reportUserId).toBe(7);
+      expect(badgeService.getUserActivity).toHaveBeenCalledOnceWith(7);
+      expect(badgeService.getUserActivity).not.toHaveBeenCalledWith(3);
+    }));
+
+    it('activeTab_SetToBadgesTab_PassesStoredUserIdToBadgeThropy', fakeAsync(() => {
+      studentService.getProfile.and.returnValue(of(profileWithStudentRecordId3));
+
+      activateBadgesTab();
+
+      expect(findBadgeThropy().userId).toBe(7);
+      expect(badgeService.getUserBadgeProgress).toHaveBeenCalledWith(7);
+      expect(badgeService.getUserBadgeProgress).not.toHaveBeenCalledWith(3);
+    }));
+
+    it('noStoredUser_DoesNotRequestActivityReport', () => {
+      localStorage.removeItem('user');
+
+      fixture.detectChanges();
+
+      expect(component.reportUserId).toBeNull();
+      expect(badgeService.getUserActivity).not.toHaveBeenCalled();
+    });
+  });
 });

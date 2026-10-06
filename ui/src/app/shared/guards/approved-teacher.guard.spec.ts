@@ -169,7 +169,6 @@ describe('approvedTeacherGuard (issue #287)', () => {
       'study-pages/new',
       'study-pages/:id',
       'study-links',
-      'question-transfer',
       'assignment-permission-requests',
       'my-calendar',
       'availability',
@@ -179,7 +178,8 @@ describe('approvedTeacherGuard (issue #287)', () => {
       expect(guarded(path)).withContext(path).toBeTrue();
     }
     // tutor-profile: bağımsız öğretmen başvurusunun formu — onay bekleyen öğretmene bilerek açık (backend de izin verir).
-    for (const path of ['teacher-approval-pending', 'tutor-profile', 'programs', 'practice', 'tutors', 'student-profile', 'admin']) {
+    // question-transfer: issue #365 ile Admin-only (adminGuard) — onaylı öğretmen kapısı gerekmez.
+    for (const path of ['teacher-approval-pending', 'tutor-profile', 'programs', 'practice', 'tutors', 'student-profile', 'admin', 'question-transfer']) {
       expect(guarded(path)).withContext(path).toBeFalse();
     }
   });

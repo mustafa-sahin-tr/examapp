@@ -6,12 +6,12 @@ using ExamApp.Api.Models.Dtos;
 namespace ExamApp.Api.IntegrationTests;
 
 /// <summary>
-/// Issue #49: QuestionTransferController is Teacher/Admin-only, ProgramController is
+/// Issue #49: QuestionTransferController is Admin-only (#365; was Teacher/Admin), ProgramController is
 /// Student-only (except the anonymous "steps" catalog).
 /// </summary>
 public class RoleAuthorizationEndpointsTests(IntegrationApiFactory factory) : IntegrationTestBase(factory)
 {
-    // ---- QuestionTransferController: Teacher/Admin only ----
+    // ---- QuestionTransferController: Admin only (#365) ----
 
     [Fact]
     public async Task StartExport_is_forbidden_for_a_student()
@@ -50,17 +50,15 @@ public class RoleAuthorizationEndpointsTests(IntegrationApiFactory factory) : In
     }
 
     [Fact]
-    public async Task StartExport_passes_the_authorization_gate_for_a_teacher()
+    public async Task StartExport_is_forbidden_for_an_approved_teacher()
     {
-        await SeedApprovedTeacherAsync(4); // issue #287
+        await SeedApprovedTeacherAsync(4); // issue #365: question transfer is Admin-only
         var teacher = await ClientAsAsync(4, "Teacher", "kc-qt-4", "Teacher");
 
         var response = await teacher.PostAsJsonAsync(
             "/api/question-transfer/exports", new StartQuestionExportDto());
 
-        response.StatusCode.ShouldNotBe(HttpStatusCode.Forbidden);
-        response.StatusCode.ShouldNotBe(HttpStatusCode.Unauthorized);
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 
     [Fact]
@@ -77,13 +75,16 @@ public class RoleAuthorizationEndpointsTests(IntegrationApiFactory factory) : In
     }
 
     [Fact]
-    public async Task ListJobs_and_ListSources_pass_the_authorization_gate_for_a_teacher()
+    public async Task ListJobs_and_ListSources_are_forbidden_for_a_teacher_but_open_to_an_admin()
     {
-        await SeedApprovedTeacherAsync(6); // issue #287
+        await SeedApprovedTeacherAsync(6); // issue #365: question transfer is Admin-only
         var teacher = await ClientAsAsync(6, "Teacher", "kc-qt-6", "Teacher");
+        (await teacher.GetAsync("/api/question-transfer/jobs")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await teacher.GetAsync("/api/question-transfer/exports/sources")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
 
-        (await teacher.GetAsync("/api/question-transfer/jobs")).StatusCode.ShouldBe(HttpStatusCode.OK);
-        (await teacher.GetAsync("/api/question-transfer/exports/sources")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        var admin = await ClientAsAsync(7, "Admin", "kc-qt-7", "Admin");
+        (await admin.GetAsync("/api/question-transfer/jobs")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await admin.GetAsync("/api/question-transfer/exports/sources")).StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
     // ---- ProgramController: Student only (except /steps) ----

@@ -16,6 +16,7 @@ namespace OutboxPublisher.Tests;
 /// so the FOR UPDATE SKIP LOCKED claim and the retry/dead-letter state machine run
 /// against real SQL.
 /// </summary>
+[Trait("Category", "Integration")]
 public class OutboxProcessorTests : IAsyncLifetime
 {
     private readonly PostgreSqlContainer _pg = new PostgreSqlBuilder().WithImage("postgres:16-alpine").Build();

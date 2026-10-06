@@ -3,3 +3,8 @@
   width: 100%;
   max-width: 720px;
 }
+
+// Issue #417: ortak "Hesabım / Şifre değiştir" kartı, profil kartının altında.
+.profile-account-card {
+  margin-top: 1rem;
+}

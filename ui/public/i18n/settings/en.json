@@ -1,0 +1,33 @@
+{
+  "title": "Settings",
+  "subtitle": "Your account details, language preference and account security.",
+  "retry": "Try again",
+  "roles": {
+    "Teacher": "Teacher",
+    "Admin": "Administrator"
+  },
+  "profile": {
+    "title": "Profile",
+    "loading": "Loading your profile...",
+    "loadError": "Your profile could not be loaded.",
+    "stale": "Could not fetch your latest profile; showing saved details.",
+    "empty": "No profile information found.",
+    "name": "Full name",
+    "email": "Email",
+    "role": "Role",
+    "avatarAlt": "Profile photo",
+    "readOnlyHint": "Your name, email and photo are shown here for reference only."
+  },
+  "teacher": {
+    "title": "Teacher details",
+    "school": "School",
+    "noSchool": "Not linked to a school (independent teacher)",
+    "schoolHint": "School details are managed by an administrator.",
+    "tutorProfile": "Edit my tutoring profile"
+  },
+  "language": {
+    "title": "Language",
+    "hint": "Your choice is saved to your account and used on all your devices.",
+    "saving": "Saving your language preference..."
+  }
+}

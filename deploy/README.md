@@ -129,6 +129,37 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --force-rec
 docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
 ```
 
+### Keycloak brute-force koruması (#368)
+
+Repoda prod realm dosyası yok (`deploy/keycloak/import/` boş/gitignored); dev realm'indeki
+(`dev-import/realm-export.json`) ayar prod realm'ine **elle** uygulanmalı. Admin konsolu →
+`exam-realm` → Realm settings → Security defenses → Brute force detection:
+
+- Enabled: **ON**, Mode: *Lockout temporarily* (kalıcı kilit KAPALI — saldırganın bilinen kullanıcıları kalıcı kilitlemesini önler)
+- Max login failures: **5**
+- Wait increment: **1 minute**, Max wait: **5 minutes**
+- Minimum quick login wait: **1 minute**, Quick login check milliseconds: **1000**
+- Failure reset time: **1 hour**
+
+Gateway ayrıca IP başına rate limit uygular (anti-spray/flood; kullanıcı bazlı brute-force'un birincil
+kontrolü yukarıdaki Keycloak kilididir). Sayılan: `/api/auth/login`, `/token` ve `/realms/**` ile
+`/auth/realms/**` altındaki **her POST** (login-actions/authenticate, registration, reset-credentials,
+required-action, token, introspect, revoke...). Muaf (allowlist): `grant_type=refresh_token` ve
+`login-actions/restart`; GET'ler (sayfa/statik kaynak) ve `/api/auth/refresh-token` hiç sayılmaz.
+Aşımda 429 + `Retry-After`. Path önce kanonikleştirilir (`;x`, `%2F`, büyük/küçük harf, sondaki `/`).
+Gövdesi 16 KB'ı aşan/uzunluğu bilinmeyen/okunamayan "refresh" istekleri sayılır (fail-closed).
+
+- Varsayılan **100 istek/dk/IP** (IPv6 için /64 önek tek istemci sayılır). Okul NAT'ı arkasında çok sayıda
+  öğrenci tek IP görünür; sabah yoğun girişte 429 görülürse `RateLimiting__LoginEntry__PermitLimit` /
+  `RateLimiting__LoginEntry__WindowSeconds` (env) ile artırın.
+- **Gerçek istemci IP'si:** prod'da gateway Caddy arkasındadır; varsayılan olarak `X-Forwarded-For`
+  güvenilmez ve tüm kullanıcılar Caddy'nin IP'si altında tek bucket olur. Caddy servisine compose'ta
+  sabit `ipv4_address` verin ve yalnız onu tanımlayın: `ForwardedHeaders__KnownProxies__0=<caddy-ipv4_address>`
+  (/16 alt ağ yerine; ağdaki başka bir container XFF sahteleyemesin). `KnownNetworks` yalnız zorunluysa ve
+  dar CIDR ile kullanılır; `0.0.0.0/0` ve `::/0` başlangıçta reddedilir. Caddy'nin `X-Forwarded-For`'u istemci
+  IP'siyle gönderdiğini doğrulayın. Boşsa `RemoteIpAddress` kullanılır.
+  Gateway downstream'e her zaman çözülmüş IP'yi `X-Forwarded-For` olarak iletir.
+
 ### Keycloak Theme (login)
 
 Custom theme mount’ı prod compose’da aktiftir:

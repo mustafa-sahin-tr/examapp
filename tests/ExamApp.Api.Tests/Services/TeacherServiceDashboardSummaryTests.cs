@@ -118,7 +118,7 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
             ctx.SetCurrentUser(TeacherId);
             var ws1 = new Worksheet { Name = "WS1", Description = "", GradeId = grade.Id };
             var ws2 = new Worksheet { Name = "WS2", Description = "", GradeId = grade.Id };
-            var student = new Student { UserId = 100, StudentNumber = "n1", SchoolId = _teacherSchoolId };
+            var student = new Student { UserId = 100, StudentNumber = "n1", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow };
             ctx.AddRange(ws1, ws2, student);
             await ctx.SaveChangesAsync();
             studentId = student.Id;
@@ -153,8 +153,8 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
             await ctx.SaveChangesAsync();
 
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = grade.Id };
-            var s1 = new Student { UserId = 200, StudentNumber = "a", SchoolId = _teacherSchoolId, GradeId = grade.Id };
-            var s2 = new Student { UserId = 201, StudentNumber = "b", SchoolId = _teacherSchoolId, GradeId = grade.Id };
+            var s1 = new Student { UserId = 200, StudentNumber = "a", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow, GradeId = grade.Id };
+            var s2 = new Student { UserId = 201, StudentNumber = "b", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow, GradeId = grade.Id };
             ctx.AddRange(ws, s1, s2);
             await ctx.SaveChangesAsync();
 
@@ -186,8 +186,8 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
             await ctx.SaveChangesAsync();
 
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = grade.Id };
-            var studentInA = new Student { UserId = 300, StudentNumber = "a", SchoolId = schoolA.Id, GradeId = grade.Id };
-            var studentInB = new Student { UserId = 301, StudentNumber = "b", SchoolId = schoolB.Id, GradeId = grade.Id };
+            var studentInA = new Student { UserId = 300, StudentNumber = "a", SchoolId = schoolA.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
+            var studentInB = new Student { UserId = 301, StudentNumber = "b", SchoolId = schoolB.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
             ctx.AddRange(ws, studentInA, studentInB);
             await ctx.SaveChangesAsync();
 
@@ -218,8 +218,8 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
             var ws1 = new Worksheet { Name = "WS1", Description = "", GradeId = grade.Id };
             var ws2 = new Worksheet { Name = "WS2", Description = "", GradeId = grade.Id };
             // student appears both as a direct assignment target and as part of the grade.
-            var overlapping = new Student { UserId = 400, StudentNumber = "a", SchoolId = _teacherSchoolId, GradeId = grade.Id };
-            var gradeOnly = new Student { UserId = 401, StudentNumber = "b", SchoolId = _teacherSchoolId, GradeId = grade.Id };
+            var overlapping = new Student { UserId = 400, StudentNumber = "a", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow, GradeId = grade.Id };
+            var gradeOnly = new Student { UserId = 401, StudentNumber = "b", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow, GradeId = grade.Id };
             ctx.AddRange(ws1, ws2, overlapping, gradeOnly);
             await ctx.SaveChangesAsync();
 
@@ -253,8 +253,8 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
 
             ctx.SetCurrentUser(TeacherId);
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = grade.Id };
-            var activeStudent = new Student { UserId = 600, StudentNumber = "a", SchoolId = _teacherSchoolId };
-            var deletedStudent = new Student { UserId = 601, StudentNumber = "b", SchoolId = _teacherSchoolId, IsDeleted = true };
+            var activeStudent = new Student { UserId = 600, StudentNumber = "a", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow };
+            var deletedStudent = new Student { UserId = 601, StudentNumber = "b", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow, IsDeleted = true };
             ctx.AddRange(ws, activeStudent, deletedStudent);
             await ctx.SaveChangesAsync();
 
@@ -309,7 +309,7 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
 
             ctx.SetCurrentUser(TeacherId);
             var ws = new Worksheet { Name = "Teacher1 WS", Description = "", GradeId = grade.Id };
-            var student = new Student { UserId = 500, StudentNumber = "a", SchoolId = _teacherSchoolId };
+            var student = new Student { UserId = 500, StudentNumber = "a", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow };
             ctx.AddRange(ws, student);
             await ctx.SaveChangesAsync();
             ctx.WorksheetAssignments.Add(new WorksheetAssignment
@@ -345,8 +345,8 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
 
             ctx.SetCurrentUser(TeacherId);
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = grade.Id };
-            var studentInTeacherSchool = new Student { UserId = 1003, StudentNumber = "a", SchoolId = _teacherSchoolId, GradeId = grade.Id };
-            var studentInOtherSchool = new Student { UserId = 1004, StudentNumber = "b", SchoolId = otherSchool.Id, GradeId = grade.Id };
+            var studentInTeacherSchool = new Student { UserId = 1003, StudentNumber = "a", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow, GradeId = grade.Id };
+            var studentInOtherSchool = new Student { UserId = 1004, StudentNumber = "b", SchoolId = otherSchool.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
             ctx.AddRange(ws, studentInTeacherSchool, studentInOtherSchool);
             await ctx.SaveChangesAsync();
 
@@ -379,8 +379,8 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
 
             ctx.SetCurrentUser(adminUserId); // Admin creates worksheet
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = grade.Id };
-            var studentInTeacherSchool = new Student { UserId = 2001, StudentNumber = "a", SchoolId = _teacherSchoolId, GradeId = grade.Id };
-            var studentInOtherSchool = new Student { UserId = 2002, StudentNumber = "b", SchoolId = otherSchool.Id, GradeId = grade.Id };
+            var studentInTeacherSchool = new Student { UserId = 2001, StudentNumber = "a", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow, GradeId = grade.Id };
+            var studentInOtherSchool = new Student { UserId = 2002, StudentNumber = "b", SchoolId = otherSchool.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
             ctx.AddRange(ws, studentInTeacherSchool, studentInOtherSchool);
             await ctx.SaveChangesAsync();
 
@@ -413,8 +413,8 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
 
             ctx.SetCurrentUser(TeacherId);
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = grade.Id };
-            var student1 = new Student { UserId = 3001, StudentNumber = "a", SchoolId = _teacherSchoolId, GradeId = grade.Id };
-            var student2 = new Student { UserId = 3002, StudentNumber = "b", SchoolId = _teacherSchoolId, GradeId = grade.Id };
+            var student1 = new Student { UserId = 3001, StudentNumber = "a", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow, GradeId = grade.Id };
+            var student2 = new Student { UserId = 3002, StudentNumber = "b", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow, GradeId = grade.Id };
             ctx.AddRange(ws, student1, student2);
             await ctx.SaveChangesAsync();
 

@@ -17,7 +17,7 @@ public partial class WorksheetCommentServiceTests
     private async Task SetStudentSchoolAsync(int userId, int? schoolId)
     {
         await using var ctx = _db.NewContext();
-        await ctx.Students.Where(s => s.UserId == userId).ExecuteUpdateAsync(s => s.SetProperty(x => x.SchoolId, schoolId));
+        await ctx.Students.Where(s => s.UserId == userId).ExecuteUpdateAsync(s => s.SetProperty(x => x.SchoolId, schoolId).SetProperty(x => x.SchoolVerifiedAt, (schoolId) == null ? (DateTime?)null : DateTime.UtcNow));
     }
 
     /// <summary>Atayanın (Assigner) thread'e hiçbir yoldan erişemediğini doğrular (liste, Id ile okuma, cevap, gizle/aç, şikayet).</summary>

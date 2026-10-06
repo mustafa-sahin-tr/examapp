@@ -197,7 +197,7 @@ public partial class WorksheetCommentServiceTests
         await using (var ctx = _db.NewContext())
         {
             await ctx.Students.Where(s => s.UserId == StudentBUser).ExecuteUpdateAsync(s => s.SetProperty(x => x.IsDeleted, true));
-            ctx.Students.Add(new Student { UserId = StudentBUser, StudentNumber = "b2", GradeId = w.GradeId, SchoolId = w.OtherSchoolId });
+            ctx.Students.Add(new Student { UserId = StudentBUser, StudentNumber = "b2", GradeId = w.GradeId, SchoolId = w.OtherSchoolId, SchoolVerifiedAt = DateTime.UtcNow });
             await ctx.SaveChangesAsync();
         }
 

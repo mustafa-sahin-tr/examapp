@@ -2004,6 +2004,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("LastRejectedSchoolId")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("ParentId")
                         .HasColumnType("integer");
 
@@ -2013,6 +2016,18 @@ namespace ExamApp.Api.Migrations
                     b.Property<string>("SchoolName")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("SchoolRejectedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("SchoolRejectedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("SchoolVerifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("SchoolVerifiedByUserId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("StudentNumber")
                         .IsRequired()
@@ -2047,7 +2062,10 @@ namespace ExamApp.Api.Migrations
                         .IsUnique()
                         .HasFilter("NOT \"IsDeleted\"");
 
-                    b.ToTable("Students");
+                    b.ToTable("Students", t =>
+                        {
+                            t.HasCheckConstraint("CK_Students_SchoolVerifiedRequiresSchool", "\"SchoolId\" IS NOT NULL OR \"SchoolVerifiedAt\" IS NULL");
+                        });
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.StudentBadge", b =>

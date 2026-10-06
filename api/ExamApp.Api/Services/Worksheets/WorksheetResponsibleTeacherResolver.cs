@@ -68,7 +68,7 @@ public class WorksheetResponsibleTeacherResolver : IWorksheetResponsibleTeacherR
         var students = await _context.Students
             .AsNoTracking()
             .Where(s => userIds.Contains(s.UserId))
-            .Select(s => new { s.Id, s.UserId, s.GradeId, s.SchoolId })
+            .Select(s => new { s.Id, s.UserId, s.GradeId, SchoolId = s.SchoolVerifiedAt != null ? s.SchoolId : null }) // issue #361: yalnız doğrulanmış okul
             .ToListAsync(ct);
 
         // issue #326 (D3): #259 unique index kullanıcı başına tek canlı Students satırı garanti eder (OrderBy(Id) gereksiz).

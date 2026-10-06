@@ -17,7 +17,7 @@ public partial class WorksheetCommentServiceTests
     private async Task AddStudentAsync(World w, int userId, int? schoolId)
     {
         await using var ctx = _db.NewContext();
-        ctx.Students.Add(new Student { UserId = userId, StudentNumber = $"s{userId}", GradeId = w.GradeId, SchoolId = schoolId });
+        ctx.Students.Add(new Student { UserId = userId, StudentNumber = $"s{userId}", GradeId = w.GradeId, SchoolId = schoolId, SchoolVerifiedAt = (schoolId) == null ? null : DateTime.UtcNow });
         await ctx.SaveChangesAsync();
     }
 
@@ -87,7 +87,7 @@ public partial class WorksheetCommentServiceTests
         // Yazarın okulu sonradan değişse de yorum yazıldığı okulda kalır.
         await using (var ctx = _db.NewContext())
             await ctx.Students.Where(s => s.UserId == StudentAUser)
-                .ExecuteUpdateAsync(s => s.SetProperty(x => x.SchoolId, (int?)w.OtherSchoolId));
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.SchoolId, (int?)w.OtherSchoolId).SetProperty(x => x.SchoolVerifiedAt, DateTime.UtcNow));
         (await StoredCommentAsync(a)).AuthorSchoolId.ShouldBe(w.SchoolId);
     }
 
@@ -147,7 +147,7 @@ public partial class WorksheetCommentServiceTests
     private async Task MakeStudentASchoollessAsync()
     {
         await using var ctx = _db.NewContext();
-        await ctx.Students.Where(s => s.UserId == StudentAUser).ExecuteUpdateAsync(s => s.SetProperty(x => x.SchoolId, (int?)null));
+        await ctx.Students.Where(s => s.UserId == StudentAUser).ExecuteUpdateAsync(s => s.SetProperty(x => x.SchoolId, (int?)null).SetProperty(x => x.SchoolVerifiedAt, (DateTime?)null));
     }
 
     [Fact]

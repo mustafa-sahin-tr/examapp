@@ -365,7 +365,8 @@
       "active": "Active",
       "inactive": "Disabled",
       "unknown": "Unknown"
-    }
+    },
+    "schoolPending": "Approval pending"
   },
   "passwordReset": {
     "action": "Reset password",

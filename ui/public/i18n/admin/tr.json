@@ -365,7 +365,8 @@
       "active": "Aktif",
       "inactive": "Pasif",
       "unknown": "Bilinmiyor"
-    }
+    },
+    "schoolPending": "Onay bekliyor"
   },
   "passwordReset": {
     "action": "Şifreyi sıfırla",

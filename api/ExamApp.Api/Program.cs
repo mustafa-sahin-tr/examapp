@@ -353,6 +353,9 @@ builder.Services.AddStudyBookPageLookupRateLimiting();
 // issue #277 (madde 8): admin öğrenci okul değişikliği — audit AdminUserActionLogs'a, ayrı rate limit kovası.
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminStudentSchoolService, ExamApp.Api.Services.AdminUsers.AdminStudentSchoolService>();
 builder.Services.AddAdminStudentSchoolRateLimiting();
+// issue #361: öğrenci okul üyeliği onayı (platform admin + aynı okulun onaylı öğretmeni); karar uçları yukarıdaki kovayı kullanır.
+builder.Services.AddScoped<ExamApp.Api.Services.StudentSchoolMemberships.IStudentSchoolMembershipService, ExamApp.Api.Services.StudentSchoolMemberships.StudentSchoolMembershipService>();
+builder.Services.AddStudentSchoolRequestListRateLimiting();
 // issue #313: admin öğretmen okul bağlama/değiştirme — öğrenci okul ucuyla aynı audit ve rate limit kovası.
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminTeacherSchoolService, ExamApp.Api.Services.AdminUsers.AdminTeacherSchoolService>();
 // issue #289: öğretmen hesap onayını askıya alma / geri açma — audit AdminUserActionLogs'a; hesap durumu (#155) rate limit kovası.

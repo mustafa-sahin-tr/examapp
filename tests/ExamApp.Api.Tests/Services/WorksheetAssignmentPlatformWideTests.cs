@@ -36,8 +36,8 @@ public class WorksheetAssignmentPlatformWideTests : IDisposable
         ctx.AddRange(grade, a, b);
         await ctx.SaveChangesAsync();
 
-        var studentA = new Student { UserId = 10, StudentNumber = "a", SchoolId = a.Id, GradeId = grade.Id };
-        var studentB = new Student { UserId = 11, StudentNumber = "b", SchoolId = b.Id, GradeId = grade.Id };
+        var studentA = new Student { UserId = 10, StudentNumber = "a", SchoolId = a.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
+        var studentB = new Student { UserId = 11, StudentNumber = "b", SchoolId = b.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
         var studentNone = new Student { UserId = 12, StudentNumber = "n", SchoolId = null, GradeId = grade.Id };
         ctx.AddRange(studentA, studentB, studentNone, new Teacher { UserId = SchoolTeacherUserId, SchoolId = a.Id });
         await ctx.SaveChangesAsync();

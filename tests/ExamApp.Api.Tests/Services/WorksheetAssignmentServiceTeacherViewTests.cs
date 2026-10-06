@@ -69,8 +69,8 @@ public class WorksheetAssignmentServiceTeacherViewTests : IDisposable
             await ctx.SaveChangesAsync();
             wsId = ws.Id;
 
-            var s1 = new Student { UserId = 1, StudentNumber = "1", SchoolName = "s", SchoolId = school.Id, GradeId = g.Id };
-            var s2 = new Student { UserId = 2, StudentNumber = "2", SchoolName = "s", SchoolId = school.Id, GradeId = g.Id };
+            var s1 = new Student { UserId = 1, StudentNumber = "1", SchoolName = "s", SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = g.Id };
+            var s2 = new Student { UserId = 2, StudentNumber = "2", SchoolName = "s", SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = g.Id };
             ctx.AddRange(s1, s2);
             await ctx.SaveChangesAsync();
 
@@ -116,8 +116,8 @@ public class WorksheetAssignmentServiceTeacherViewTests : IDisposable
             await ctx.SaveChangesAsync();
             wsId = ws.Id;
 
-            var done = new Student { UserId = 11, StudentNumber = "1", SchoolName = "s", SchoolId = school.Id, GradeId = g.Id };
-            var open = new Student { UserId = 12, StudentNumber = "2", SchoolName = "s", SchoolId = school.Id, GradeId = g.Id };
+            var done = new Student { UserId = 11, StudentNumber = "1", SchoolName = "s", SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = g.Id };
+            var open = new Student { UserId = 12, StudentNumber = "2", SchoolName = "s", SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = g.Id };
             ctx.AddRange(done, open);
             await ctx.SaveChangesAsync();
 

@@ -88,9 +88,9 @@ public class DirectMessageServiceTests : IDisposable
         ctx.Teachers.AddRange(teachers);
         var students = new[]
         {
-            new Student { UserId = SA, StudentNumber = "a", SchoolId = s1.Id, GradeId = grade.Id },
+            new Student { UserId = SA, StudentNumber = "a", SchoolId = s1.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id },
             new Student { UserId = SNull, StudentNumber = "n", SchoolId = null, GradeId = grade.Id },
-            new Student { UserId = SB, StudentNumber = "b", SchoolId = s1.Id, GradeId = grade.Id }
+            new Student { UserId = SB, StudentNumber = "b", SchoolId = s1.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id }
         };
         ctx.Students.AddRange(students);
         var ws = new Worksheet { Name = "W", Description = "", GradeId = grade.Id, MaxDurationSeconds = 600 };
@@ -400,7 +400,7 @@ public class DirectMessageServiceTests : IDisposable
         await SeedAsync();
         var conv = Created(await SendToTeacherAsync(SA, TSame));
         await using (var ctx = _db.NewContext())
-            await ctx.Students.Where(s => s.UserId == SA).ExecuteUpdateAsync(s => s.SetProperty(x => x.SchoolId, (int?)_w.S2));
+            await ctx.Students.Where(s => s.UserId == SA).ExecuteUpdateAsync(s => s.SetProperty(x => x.SchoolId, (int?)_w.S2).SetProperty(x => x.SchoolVerifiedAt, DateTime.UtcNow));
 
         ShouldBeForbidden(await SendAsync(Student(SA), conv), DirectMessageErrorCodes.CannotMessageTeacher);
         ShouldBeForbidden(await SendAsync(Teacher(TSame), conv), DirectMessageErrorCodes.RelationshipEnded);

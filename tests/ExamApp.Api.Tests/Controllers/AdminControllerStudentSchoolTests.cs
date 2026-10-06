@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ExamApp.Api.Tests.Controllers;
 
@@ -36,13 +37,29 @@ public class AdminControllerStudentSchoolTests
             HttpContext = new DefaultHttpContext
             {
                 User = new ClaimsPrincipal(new ClaimsIdentity(
-                    sub is null ? [] : [new Claim(ClaimTypes.NameIdentifier, sub)], "Test"))
+                    sub is null ? [] : [new Claim(ClaimTypes.NameIdentifier, sub)], "Test")),
+                // issue #361: aksiyon admin'in exam user id'sini (SchoolVerifiedByUserId) çözer.
+                RequestServices = Services()
             }
         }
     };
 
+    private const int AdminUserId = 7;
+
+    private static IServiceProvider Services()
+    {
+        var profiles = Substitute.For<ExamApp.Api.Services.Interfaces.IUserProfileProvider>();
+        profiles.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ExamApp.Api.Models.Dtos.UserProfileDto { Id = AdminUserId, KeycloakId = "kc-admin-sub", Role = "Admin" });
+        return new Microsoft.Extensions.DependencyInjection.ServiceCollection()
+            .AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(
+                new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build())
+            .AddSingleton(profiles)
+            .BuildServiceProvider();
+    }
+
     private void Returns(AdminStudentSchoolChangeResult result) =>
-        _service.ChangeSchoolAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _service.ChangeSchoolAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(result);
 
     private static string? MessageOf(object? value) => value?.GetType().GetProperty("message")?.GetValue(value) as string;
@@ -61,7 +78,7 @@ public class AdminControllerStudentSchoolTests
         dto.SchoolId.ShouldBe(4);
         dto.PreviousSchoolId.ShouldBe(3);
         dto.Changed.ShouldBeTrue();
-        await _service.Received(1).ChangeSchoolAsync(9, 4, "kc-admin-sub", Arg.Any<CancellationToken>());
+        await _service.Received(1).ChangeSchoolAsync(9, 4, "kc-admin-sub", AdminUserId, Arg.Any<CancellationToken>());
     }
 
     [Theory]
@@ -91,7 +108,7 @@ public class AdminControllerStudentSchoolTests
         var result = await NewController().ChangeStudentSchool(9, new AdminStudentSchoolRequestDto(), default);
 
         MessageOf(result.ShouldBeOfType<BadRequestObjectResult>().Value).ShouldBe(Localized("admin.studentSchool.schoolIdRequired"));
-        await _service.DidNotReceiveWithAnyArgs().ChangeSchoolAsync(default, default, default!, default);
+        await _service.DidNotReceiveWithAnyArgs().ChangeSchoolAsync(default, default, default!, default, default);
     }
 
     [Fact]
@@ -100,7 +117,7 @@ public class AdminControllerStudentSchoolTests
         var result = await NewController(sub: null).ChangeStudentSchool(9, new AdminStudentSchoolRequestDto { SchoolId = 4 }, default);
 
         result.ShouldBeOfType<ForbidResult>();
-        await _service.DidNotReceiveWithAnyArgs().ChangeSchoolAsync(default, default, default!, default);
+        await _service.DidNotReceiveWithAnyArgs().ChangeSchoolAsync(default, default, default!, default, default);
     }
 
     [Fact]

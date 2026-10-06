@@ -58,8 +58,8 @@ public class WorksheetResponsibleTeacherResolverTests : IDisposable
         await ctx.SaveChangesAsync();
 
         ctx.SetCurrentUser(0);
-        var student = new Student { UserId = StudentUserId, StudentNumber = "s1", GradeId = grade.Id, SchoolId = school.Id };
-        var other = new Student { UserId = OtherStudentUserId, StudentNumber = "s2", GradeId = grade.Id, SchoolId = school.Id };
+        var student = new Student { UserId = StudentUserId, StudentNumber = "s1", GradeId = grade.Id, SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow };
+        var other = new Student { UserId = OtherStudentUserId, StudentNumber = "s2", GradeId = grade.Id, SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow };
         ctx.Students.AddRange(student, other);
         await ctx.SaveChangesAsync();
 
@@ -345,7 +345,7 @@ public class WorksheetResponsibleTeacherResolverTests : IDisposable
     private async Task SetStudentSchoolAsync(int userId, int? schoolId)
     {
         await using var ctx = _db.NewContext();
-        await ctx.Students.Where(s => s.UserId == userId).ExecuteUpdateAsync(s => s.SetProperty(x => x.SchoolId, schoolId));
+        await ctx.Students.Where(s => s.UserId == userId).ExecuteUpdateAsync(s => s.SetProperty(x => x.SchoolId, schoolId).SetProperty(x => x.SchoolVerifiedAt, (schoolId) == null ? (DateTime?)null : DateTime.UtcNow));
     }
 
     [Fact]
@@ -589,7 +589,7 @@ public class WorksheetResponsibleTeacherResolverTests : IDisposable
         await using (var ctx = _db.NewContext())
         {
             await ctx.Students.Where(s => s.UserId == StudentUserId).ExecuteUpdateAsync(s => s.SetProperty(x => x.IsDeleted, true));
-            ctx.Students.Add(new Student { UserId = StudentUserId, StudentNumber = "s1b", GradeId = w.GradeId, SchoolId = w.OtherSchoolId });
+            ctx.Students.Add(new Student { UserId = StudentUserId, StudentNumber = "s1b", GradeId = w.GradeId, SchoolId = w.OtherSchoolId, SchoolVerifiedAt = DateTime.UtcNow });
             await ctx.SaveChangesAsync();
         }
 

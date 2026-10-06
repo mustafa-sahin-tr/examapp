@@ -33,9 +33,9 @@ public class StudentServiceLookupSchoolScopeTests : IDisposable
         await ctx.SaveChangesAsync();
 
         ctx.Students.AddRange(
-            new Student { UserId = 1, StudentNumber = "A1", SchoolId = a.Id },
-            new Student { UserId = 2, StudentNumber = "A2", SchoolId = a.Id },
-            new Student { UserId = 3, StudentNumber = "B1", SchoolId = b.Id },
+            new Student { UserId = 1, StudentNumber = "A1", SchoolId = a.Id, SchoolVerifiedAt = DateTime.UtcNow },
+            new Student { UserId = 2, StudentNumber = "A2", SchoolId = a.Id, SchoolVerifiedAt = DateTime.UtcNow },
+            new Student { UserId = 3, StudentNumber = "B1", SchoolId = b.Id, SchoolVerifiedAt = DateTime.UtcNow },
             new Student { UserId = 4, StudentNumber = "N1", SchoolId = null });
         await ctx.SaveChangesAsync();
 

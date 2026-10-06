@@ -12,6 +12,12 @@ export interface Student {
   grade: Grade;
   themePreset?: string; // 🎨 Theme tercihi
   themeCustomConfig?: string; // 🎨 Custom theme config (JSON)
+  /** Issue #361: doğrulanmış okul (`POST /api/exam/auth/refresh`); bekleyen üyelikte null. */
+  schoolId?: number | null;
+  /** Issue #361: öğrencinin seçtiği, okul onayı bekleyen okul; doğrulanmışsa/okulsuzsa null. */
+  pendingSchoolId?: number | null;
+  /** Issue #361: bekleyen okulun adı ("Okul onayı bekleniyor" bandı). */
+  pendingSchoolName?: string | null;
 }
 
 export interface StudentLookup {

@@ -47,11 +47,11 @@ public class AdminStudentEndpointsTests(IntegrationApiFactory factory) : Integra
             db.Grades.Add(g);
             await db.SaveChangesAsync();
             for (var i = 0; i < 25; i++)
-                db.Students.Add(new Student { UserId = 1000 + i, StudentNumber = $"2026{i:D4}", SchoolId = a.Id });
+                db.Students.Add(new Student { UserId = 1000 + i, StudentNumber = $"2026{i:D4}", SchoolId = a.Id, SchoolVerifiedAt = DateTime.UtcNow });
             for (var i = 0; i < 3; i++)
-                db.Students.Add(new Student { UserId = 2000 + i, StudentNumber = $"3026{i:D4}", SchoolId = b.Id, GradeId = g.Id });
+                db.Students.Add(new Student { UserId = 2000 + i, StudentNumber = $"3026{i:D4}", SchoolId = b.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = g.Id });
             db.Students.Add(new Student { UserId = 3000, StudentNumber = "20269999" });
-            db.Students.Add(new Student { UserId = 3001, StudentNumber = "D0", SchoolId = b.Id, IsDeleted = true });
+            db.Students.Add(new Student { UserId = 3001, StudentNumber = "D0", SchoolId = b.Id, SchoolVerifiedAt = DateTime.UtcNow, IsDeleted = true });
             await db.SaveChangesAsync();
             return (a.Id, b.Id, g.Id);
         });

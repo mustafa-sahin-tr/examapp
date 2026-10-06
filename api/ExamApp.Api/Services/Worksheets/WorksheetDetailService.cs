@@ -505,7 +505,7 @@ public class WorksheetDetailService : IWorksheetDetailService
     {
         var studentScope = await _context.Students.AsNoTracking()
             .Where(s => s.Id == studentId)
-            .Select(s => new { s.GradeId, s.SchoolId })
+            .Select(s => new { s.GradeId, SchoolId = s.SchoolVerifiedAt != null ? s.SchoolId : null }) // issue #361: yalnız doğrulanmış okul
             .FirstOrDefaultAsync(ct);
         var gradeId = studentScope?.GradeId;
 
@@ -532,7 +532,7 @@ public class WorksheetDetailService : IWorksheetDetailService
             // sıralama/ortalamaya girmez. Okulsuz öğrencide grup atama kümesinin tamamı kalır.
             cohort = studentSchoolId.HasValue
                 ? await _context.Students.AsNoTracking()
-                    .Where(s => studentScoped.Contains(s.Id) && s.SchoolId == studentSchoolId.Value)
+                    .Where(s => studentScoped.Contains(s.Id) && s.SchoolId == studentSchoolId.Value && s.SchoolVerifiedAt != null)
                     .Select(s => s.Id)
                     .ToListAsync(ct)
                 : studentScoped;
@@ -548,7 +548,7 @@ public class WorksheetDetailService : IWorksheetDetailService
             var gradeCohort = _context.Students.AsNoTracking()
                 .Where(s => s.GradeId == gradeId.Value);
             if (studentSchoolId.HasValue)
-                gradeCohort = gradeCohort.Where(s => s.SchoolId == studentSchoolId.Value);
+                gradeCohort = gradeCohort.Where(s => s.SchoolId == studentSchoolId.Value && s.SchoolVerifiedAt != null); // issue #361
 
             cohort = await gradeCohort
                 .Select(s => s.Id)

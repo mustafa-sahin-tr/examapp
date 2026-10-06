@@ -233,7 +233,7 @@ public class AdminTeacherSchoolServiceTests : IDisposable
         int bookedStudent;
         await using (var setup = _db.NewContext())
         {
-            var st = new Student { UserId = 90, StudentNumber = "k", SchoolId = s.SchoolA, GradeId = s.GradeId };
+            var st = new Student { UserId = 90, StudentNumber = "k", SchoolId = s.SchoolA, SchoolVerifiedAt = DateTime.UtcNow, GradeId = s.GradeId };
             setup.Students.Add(st);
             await setup.SaveChangesAsync();
             BookingSeed.Add(setup, s.TeacherId, st.Id, BookingStatus.Approved, 9);
@@ -331,8 +331,8 @@ public class AdminTeacherSchoolServiceTests : IDisposable
         int bookedOtherSchool, newSchoolStudent;
         await using (var setup = _db.NewContext())
         {
-            var booked = new Student { UserId = 91, StudentNumber = "x", SchoolId = s.SchoolA, GradeId = s.GradeId };
-            var inB = new Student { UserId = 92, StudentNumber = "y", SchoolId = s.SchoolB, GradeId = s.GradeId };
+            var booked = new Student { UserId = 91, StudentNumber = "x", SchoolId = s.SchoolA, SchoolVerifiedAt = DateTime.UtcNow, GradeId = s.GradeId };
+            var inB = new Student { UserId = 92, StudentNumber = "y", SchoolId = s.SchoolB, SchoolVerifiedAt = DateTime.UtcNow, GradeId = s.GradeId };
             setup.Students.AddRange(booked, inB);
             await setup.SaveChangesAsync();
             BookingSeed.Add(setup, s.TeacherId, booked.Id, BookingStatus.Approved, 9);
@@ -563,8 +563,8 @@ public class AdminTeacherSchoolServiceTests : IDisposable
         await using (var setup = _db.NewContext())
         {
             setup.SetCurrentUser(TeacherUserId);
-            var stA = new Student { UserId = 80, StudentNumber = "a", SchoolId = s.SchoolA, GradeId = s.GradeId };
-            var stB = new Student { UserId = 81, StudentNumber = "b", SchoolId = s.SchoolB, GradeId = s.GradeId };
+            var stA = new Student { UserId = 80, StudentNumber = "a", SchoolId = s.SchoolA, SchoolVerifiedAt = DateTime.UtcNow, GradeId = s.GradeId };
+            var stB = new Student { UserId = 81, StudentNumber = "b", SchoolId = s.SchoolB, SchoolVerifiedAt = DateTime.UtcNow, GradeId = s.GradeId };
             var ws = new Worksheet { Name = "W", Description = "", GradeId = s.GradeId };
             setup.AddRange(stA, stB, ws);
             await setup.SaveChangesAsync();

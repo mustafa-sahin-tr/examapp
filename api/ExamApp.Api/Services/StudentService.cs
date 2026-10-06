@@ -202,6 +202,8 @@ public class StudentService : IStudentService
                 // teacher/register ile iki tabloya birden satır yazılamaz (#259 unique index'leri tablo başınadır).
                 // Retry-on-failure (Aspire Npgsql) nedeniyle transaction execution strategy İÇİNDE açılır; SaveChanges
                 // değişiklikleri commit'e kadar kabul etmez ki geçici hata sonrası retry INSERT'i yeniden denesin.
+                // issue #342 review: kendi kendine kayıt — audit CreateUserId kaydolan kullanıcı olsun (TeacherService ile aynı).
+                _context.SetCurrentUser(userId);
                 var strategy = _context.Database.CreateExecutionStrategy();
                 await strategy.ExecuteAsync(async () =>
                 {

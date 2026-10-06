@@ -180,8 +180,7 @@ public class BookingService : IBookingService
                 committedEarlierId = null;
 
                 // Geçici hata sonrası retry (ör. commit'te kopan bağlantı): önceki denemenin satırı geri alınmış olabilir;
-                // her deneme satırı sıfırdan ekler. (acceptAllChangesOnSuccess:false overload'u audit alanlarını yazan
-                // SaveChangesAsync(ct) override'ını atladığı için kullanılmıyor.)
+                // her deneme satırı sıfırdan ekler (ResetForRetry).
                 ResetForRetry(slot);
 
                 await using var tx = await _context.Database.BeginTransactionAsync(ct);

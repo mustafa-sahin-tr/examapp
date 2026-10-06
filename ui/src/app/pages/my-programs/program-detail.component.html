@@ -1,10 +1,13 @@
 <div class="program-detail-container" *transloco="let t; prefix: 'my-programs'">
   <h2 class="program-title">{{ userProgram?.programName || program.programName }}</h2>
   <div class="program-meta">
-    <span
-      ><mat-icon>calendar_today</mat-icon> {{ userProgram?.startDate || program.startDate }} -
-      {{ userProgram?.endDate || program.endDate }}</span
-    >
+    @if (dateRange; as range) {
+      <!-- Yalnız bir uç okunabiliyorsa tek tarih; sarkan tire yok. -->
+      <span
+        ><mat-icon>calendar_today</mat-icon>
+        {{ range.start && range.end ? t('detail.dateRange', range) : range.start || range.end }}</span
+      >
+    }
     <span
       ><mat-icon>assignment</mat-icon>
       {{ t('detail.dailyTarget', { questions: program.questionsPerDay, subjects: program.subjectsPerDay }) }}</span

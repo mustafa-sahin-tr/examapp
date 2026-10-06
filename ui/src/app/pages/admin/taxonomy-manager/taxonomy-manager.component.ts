@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import {
   TranslocoDirective,
@@ -33,6 +34,8 @@ type Level = 'subject' | 'topic' | 'subtopic';
 
 /** Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183). */
 const ADMIN_SCOPE = 'admin';
+/** Issue #380: ders satırında gösterilen en fazla sınıf chip'i (fazlası "+N"). */
+export const MAX_VISIBLE_GRADE_CHIPS = 3;
 
 @Component({
   selector: 'app-taxonomy-manager',
@@ -50,6 +53,7 @@ const ADMIN_SCOPE = 'admin';
     MatButtonToggleModule,
     MatDialogModule,
     MatSnackBarModule,
+    MatTooltipModule,
     TranslocoDirective,
     TranslocoPipe,
     TopicStudyLinkManagerComponent,
@@ -96,6 +100,8 @@ export class TaxonomyManagerComponent implements OnInit {
   readonly selectedSubTopic = computed(
     () => this.subTopics().find((st) => st.id === this.selectedSubTopicId()) ?? null
   );
+  /** Issue #380: ders satırında gösterilen en fazla sınıf chip'i; fazlası "+N" chip'inde (tooltip) özetlenir. */
+  readonly maxVisibleGradeChips = MAX_VISIBLE_GRADE_CHIPS;
   /**
    * Issue #282: ders satırı chip'leri — dersin seçili sınıf DIŞINDAKİ sınıflarının adları (ders id → adlar).
    * Seçili sınıf üst filtreden zaten belli; tekrarlanmaz. Filtre/ders/sınıf listesi değişince yeniden hesaplanır.

@@ -258,6 +258,15 @@ export class AuthService {
   }
 
   /**
+   * Issue #384: profildeki `teacher.isIndependentTutor` (backend'in tutor profili kuralıyla aynı bayrak).
+   * Öğretmen kaydı yoksa veya alan henüz gelmediyse (login yanıtı) null = bilinmiyor.
+   */
+  static isIndependentTutorOf(profile: UserProfile | null | undefined): boolean | null {
+    const flag = profile?.teacher?.isIndependentTutor;
+    return typeof flag === 'boolean' ? flag : null;
+  }
+
+  /**
    * Önbellekteki `user` kaydının, elimizdeki access token ile aynı kullanıcıya ait olup
    * olmadığını söyler. Token'ın `sub` claim'i ile kayıttaki `keycloakId` karşılaştırılır.
    * Token yoksa, kayıt yoksa, JSON bozuksa veya kimlikler farklıysa `false` döner.

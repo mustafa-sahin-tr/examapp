@@ -94,7 +94,8 @@
     "pagesAdded": "Study pages were added to the program.",
     "updateFailed": "The program could not be updated.",
     "loadFailed": "Program details could not be loaded.",
-    "typeAria": "Activity type: {{type}}"
+    "typeAria": "Activity type: {{type}}",
+    "dateRange": "{{start}} – {{end}}"
   },
   "addStudyPages": {
     "titleWithoutDate": "Add Page to Program",

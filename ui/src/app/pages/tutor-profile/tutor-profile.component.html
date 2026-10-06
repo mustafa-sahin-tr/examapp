@@ -20,7 +20,7 @@
   } @else if (unavailable()) {
     <div class="tp__state">
       <mat-icon class="tp__state-icon">school</mat-icon>
-      <span>{{ unavailable() }}</span>
+      <span>{{ t('messages.unavailable') }}</span>
     </div>
   } @else if (error()) {
     <div class="tp__state tp__state--error" role="alert">

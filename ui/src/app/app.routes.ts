@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { RegisterWizardComponent } from './pages/register/register-wizard.component';
 import { authGuard } from './shared/guards/auth.guard';
 import { adminGuard } from './shared/guards/admin.guard';
+import { independentTeacherGuard } from './shared/guards/independent-teacher.guard';
 import { studentGuard } from './shared/guards/student.guard';
 import { roleGuard } from './shared/guards/role.guard';
 import { approvedTeacherGuard } from './shared/guards/approved-teacher.guard';
@@ -215,7 +216,8 @@ export const routes: Routes = [
         // Issue #95: bağımsız öğretmenin özel ders profili (dersler, ücret, online/yüz yüze).
         // Issue #287: onay bekleyen öğretmene de açık — bağımsız öğretmen başvurusunun formu (backend izin verir).
         path: 'tutor-profile',
-        canActivate: [authGuard, roleGuard('Teacher')],
+        // Issue #384: okula bağlı öğretmen bu sayfayı görmez (menüde de gizli).
+        canActivate: [authGuard, roleGuard('Teacher'), independentTeacherGuard],
         loadComponent: () =>
           import('./pages/tutor-profile/tutor-profile.component').then((m) => m.TutorProfileComponent),
       },

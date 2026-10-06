@@ -178,3 +178,10 @@ IP'leri: Users → kullanıcı → Sessions.
 1. Keycloak Admin Console → Users → kullanıcı → Role mapping: yetkisiz rolü kaldır ya da hesabı `Enabled=off` yap.
 2. Sessions → Logout (açık oturumları sonlandır).
 3. Sonucu (hesap sayısı, yapılan işlem) issue #267'ye yaz; istismar kanıtı varsa etki analizi ayrı issue.
+
+## #372 sonrası beklenen durum
+
+Servisler arası token artık `exam-service` client'ından alınır; `exam-service` rolünü taşıması BEKLENEN tek hesap
+`service-account-exam-service`'tir (SERVICE_ACCOUNT, `client=exam-service`). `service-account-exam-admin` (veya başka
+herhangi bir hesap) bu rolde görünüyorsa eski yapı geri gelmiş ya da rol kötüye atanmıştır. `exam-admin` `manage-users`
+tutar ve ince taneli yetki politikası olmadan rol atayabilir — bu yüzden realm değişikliklerinden sonra bu komutu çalıştır.

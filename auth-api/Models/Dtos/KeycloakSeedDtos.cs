@@ -14,25 +14,6 @@ public sealed record KeycloakSeedUser(
 public sealed record KeycloakUserCreateResult(string Id, bool AlreadyExisted);
 
 /// <summary>
-/// Önceden hash'lenmiş parola (Keycloak <c>CredentialRepresentation</c>'ın <c>secretData</c> /
-/// <c>credentialData</c> JSON string'leri). Partial import'ta her kullanıcı için aynı hash kullanılır;
-/// böylece Keycloak sunucu tarafında kullanıcı başına PBKDF2/argon2 hesaplamaz.
-/// </summary>
-public sealed record KeycloakHashedCredential(string SecretData, string CredentialData);
-
-/// <summary>
-/// <c>POST /admin/realms/{realm}/partialImport</c> sonucu. <see cref="Results"/> kullanıcı adı → (id, eylem).
-/// <c>ifResourceExists=SKIP</c> ile mevcut kullanıcılar SKIPPED döner; id o durumda boş olabilir.
-/// </summary>
-public sealed record KeycloakPartialImportResult(
-    int Added,
-    int Skipped,
-    int Overwritten,
-    IReadOnlyDictionary<string, KeycloakPartialImportEntry> Results);
-
-public sealed record KeycloakPartialImportEntry(string Action, string? Id);
-
-/// <summary>
 /// Kullanıcı arama sonucu (issue #218 temizliği): id + kullanıcı adı + e-posta + tek değerli attribute'lar
 /// (tam temsil; <c>seed_origin</c> sahiplik kilidi yetim kararında okunur).
 /// </summary>

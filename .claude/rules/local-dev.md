@@ -57,6 +57,58 @@ alone is not enough. Pick one:
 Otherwise, drop the Keycloak container + its Postgres `keycloak` database/volume
 and let it re-import fresh with the new dev-only secret.
 
+**Issue #372**: service-to-service tokens (BadgeService and exam API
+`ServiceTokenProvider`) are no longer obtained with the `exam-admin` client. A new
+confidential client `exam-service` (service account holds **only** the
+`exam-service` realm role, no `realm-management` roles) is defined in
+`deploy/keycloak/dev-import/realm-export.json`; `exam-admin` lost `manage-realm`
+and the `exam-service` role (it keeps `view-realm`, `manage-users`, `view-users`,
+`query-users` — Keycloak admin REST for auth-api/`KeycloakService`).
+`ServicePrincipal.IsService` now accepts only the `exam-service` role or an
+`azp` in the explicit `Keycloak:ServiceClients` list (no implicit `exam-admin`
+default, no `preferred_username` fallback). There is **no fallback** to
+`exam-admin`/`exam-client` credentials in the token providers.
+`KEYCLOAK_SERVICE_CLIENT_SECRET` (`.env.example`, docker-compose) /
+`keycloak-service-client-secret` (`AppHost/appsettings.json` `Parameters`) must
+match `exam-service`'s `secret` in the realm export
+(`devOnlyExamServiceClientSecretChangeMe12345678`); exam API and BadgeService
+fail fast outside Development on an empty/`devOnly` `Keycloak:ServiceClientSecret`.
+
+**If you already have a local `.env`**, add the new line manually:
+```bash
+echo 'KEYCLOAK_SERVICE_CLIENT_SECRET=devOnlyExamServiceClientSecretChangeMe12345678' >> .env
+```
+
+**If you already have a running Keycloak container/volume**, `--import-realm`
+does not re-import, so the `exam-service` client does not exist yet and
+service-to-service calls (BadgeService <-> exam API <-> auth-api) return
+`invalid_client`. Pick one:
+- **(a) Add it manually** — admin console (http://localhost:8081, or `:8082/admin/`
+  under Aspire) → exam-realm → Clients → Create client: Client ID `exam-service`,
+  Client authentication **On**, Service accounts roles **On** (Standard flow /
+  Direct access grants Off) → Credentials → set Client secret to
+  `devOnlyExamServiceClientSecretChangeMe12345678` → Service account roles →
+  Assign role → realm role `exam-service` (and make sure no `realm-management`
+  roles are assigned). Then, **last**, on `exam-admin` → Service account roles:
+  unassign `manage-realm` and the `exam-service` realm role.
+- **(b) Drop only the Keycloak database** and let it re-import fresh. Under
+  Aspire the Keycloak data lives in the `keycloak` database inside the persistent
+  Postgres volume (`examapp-postgres-data`) and in `examapp-keycloak-data`: drop
+  just the `keycloak` DB (e.g. `DROP DATABASE keycloak;` from pgAdmin/psql, then
+  restart the `keycloak` resource) and, if needed, the `examapp-keycloak-data`
+  volume — **never** `examapp-postgres-data`, which also holds the worksheet,
+  identity and badge databases.
+
+Seed note (#372): `partialImport` needs `manage-realm`, which no service account
+has any more, so the `partial-import` mode of `seed-teachers`/`seed-tutors` and of
+auth-api's dev seed-users endpoint was removed (`--keycloak-mode partial-import`
+fails with a clear message; `admin-api`, the default, covers the same ground via
+`POST /users` + role mapping under `manage-users`). `exam-admin` still needs
+`view-realm` (realm default role / realm role lookups).
+
+Order matters: create `exam-service` and restart exam API + BadgeService first,
+only then trim `exam-admin`; the other way round breaks service-to-service calls.
+
 **Issue #279 (item 1)**: RabbitMQ no longer has a single shared admin user
 (`RABBITMQ_DEFAULT_USER`/`PASS`) that every consumer/publisher reused. Each
 service now connects as its own least-privilege user, defined in

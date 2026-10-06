@@ -33,9 +33,9 @@ public sealed record TeacherSeedCommand(TeacherSeedOptions Options, string? Conn
           --limit-schools-per-province <N>     İl başına en fazla N okul — ada göre sıralı ilk N (varsayılan: sınırsız)
           --dry-run                            auth-api'yi çağırma, hiçbir şey yazma; planı raporla
           --no-events                          UserPreferredLocaleChangedEvent outbox satırlarını yazma (hacim için)
-          --keycloak-mode <admin-api|partial-import>
-                                               Keycloak'a yazma yolu (varsayılan: admin-api — kullanıcı başına 2 istek;
-                                               partial-import: parti başına tek istek, önceden hash'lenmiş parola)
+          --keycloak-mode <admin-api>
+                                               Keycloak'a yazma yolu (yalnızca admin-api — kullanıcı başına 2 istek;
+                                               partial-import #372 ile kaldırıldı)
           --batch-size <N>                     auth-api'ye istek başına hesap (varsayılan 100, en fazla 500)
           --reset-password                     Keycloak'ta zaten var olan (mevcut/adopt edilen) seed hesaplarının parolasını
                                                bu koşunun SeedData:Password değeriyle sıfırla (varsayılan: dokunma)
@@ -102,8 +102,8 @@ public sealed record TeacherSeedCommand(TeacherSeedOptions Options, string? Conn
                     mode = raw switch
                     {
                         TeacherSeedOptions.KeycloakModeAdminApi => TeacherSeedOptions.KeycloakModeAdminApi,
-                        TeacherSeedOptions.KeycloakModePartialImport => TeacherSeedOptions.KeycloakModePartialImport,
-                        _ => throw new ArgumentException($"--keycloak-mode admin-api ya da partial-import olmalı: '{raw}'.")
+                        "partial-import" => throw new ArgumentException("--keycloak-mode partial-import kaldırıldı (#372: Keycloak partialImport manage-realm ister, servis hesaplarında yok). admin-api kullanın."),
+                        _ => throw new ArgumentException($"--keycloak-mode yalnızca admin-api olabilir: '{raw}'.")
                     };
                     break;
                 case "--dry-run":

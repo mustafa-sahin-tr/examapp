@@ -39,7 +39,8 @@ public class ServicePrincipalTests
     [Fact]
     public void Azp_match_is_case_insensitive()
         => ServicePrincipal.IsService(
-            User(new Claim("azp", "Exam-Admin"))).ShouldBeTrue();
+            User(new Claim("azp", "Exam-Service")),
+            new[] { "exam-service" }).ShouldBeTrue();
 
     [Fact]
     public void Azp_not_in_allow_list_is_not_a_service()
@@ -48,18 +49,49 @@ public class ServicePrincipalTests
             new[] { "exam-admin" }).ShouldBeFalse();
 
     [Fact]
-    public void Defaults_to_exam_admin_when_no_list_supplied()
+    public void There_is_no_implicit_default_azp_list()
     {
-        ServicePrincipal.IsService(User(new Claim("azp", "exam-admin"))).ShouldBeTrue();
-        ServicePrincipal.IsService(User(new Claim("azp", "exam-admin")), Array.Empty<string>()).ShouldBeTrue();
+        // Issue #372: exam-admin is a Keycloak admin-REST client, not a service caller.
+        ServicePrincipal.IsService(User(new Claim("azp", "exam-admin"))).ShouldBeFalse();
+        ServicePrincipal.IsService(User(new Claim("azp", "exam-admin")), Array.Empty<string>()).ShouldBeFalse();
+        ServicePrincipal.IsService(User(new Claim("azp", "exam-service"))).ShouldBeFalse();
     }
 
     [Theory]
     [InlineData("exam-admin")]
     [InlineData("service-account-exam-admin")]
     [InlineData("EXAM-ADMIN")]
-    public void Legacy_preferred_username_is_accepted(string username)
-        => ServicePrincipal.IsService(User(new Claim("preferred_username", username))).ShouldBeTrue();
+    public void Legacy_preferred_username_is_rejected(string username)
+    {
+        ServicePrincipal.IsService(User(new Claim("preferred_username", username))).ShouldBeFalse();
+        // Even with an unrelated allow-list: the username claim is never consulted.
+        ServicePrincipal.IsService(User(new Claim("preferred_username", username)), new[] { "exam-service" })
+            .ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Exam_admin_service_account_without_the_role_is_rejected()
+        => ServicePrincipal.IsService(User(
+            new Claim("preferred_username", "service-account-exam-admin"),
+            new Claim("azp", "exam-admin"))).ShouldBeFalse();
+
+    [Fact]
+    public void Exam_service_service_account_token_is_accepted()
+        => ServicePrincipal.IsService(User(
+            new Claim("preferred_username", "service-account-exam-service"),
+            new Claim("azp", "exam-service"),
+            new Claim(ClaimTypes.Role, "exam-service"))).ShouldBeTrue();
+
+    [Theory]
+    [InlineData("Teacher")]
+    [InlineData("Student")]
+    [InlineData("Admin")]
+    public void User_tokens_are_not_services(string role)
+        => ServicePrincipal.IsService(User(
+            new Claim("preferred_username", "ali.veli"),
+            new Claim("azp", "exam-client"),
+            new Claim(ClaimTypes.Role, role)),
+            new[] { "exam-service" }).ShouldBeFalse();
 
     [Fact]
     public void A_normal_user_is_not_a_service()

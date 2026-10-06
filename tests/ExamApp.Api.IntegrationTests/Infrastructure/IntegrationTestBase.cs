@@ -96,8 +96,19 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         return client;
     }
 
-    /// <summary>A service-to-service client (client-credentials style: azp = exam-admin).</summary>
+    /// <summary>A service-to-service client (client-credentials style: azp = exam-service).</summary>
     protected HttpClient ServiceClient()
+    {
+        var client = Factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Test-Auth", "service-account-exam-service");
+        client.DefaultRequestHeaders.Add("X-Test-Username", "service-account-exam-service");
+        client.DefaultRequestHeaders.Add("X-Test-Azp", "exam-service");
+        client.DefaultRequestHeaders.Add("X-Test-Roles", "exam-service");
+        return client;
+    }
+
+    /// <summary>Issue #372: the old exam-admin identity (azp/username only, no exam-service role) is NOT a service.</summary>
+    protected HttpClient LegacyExamAdminClient()
     {
         var client = Factory.CreateClient();
         client.DefaultRequestHeaders.Add("X-Test-Auth", "service-account-exam-admin");

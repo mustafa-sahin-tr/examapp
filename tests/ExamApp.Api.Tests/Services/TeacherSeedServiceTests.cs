@@ -257,14 +257,14 @@ public class TeacherSeedServiceTests : IDisposable
 
         await NewService(ctx, authApi).RunAsync(new TeacherSeedOptions
         {
-            Provinces = ["Kars"], EmitEvents = false, KeycloakMode = TeacherSeedOptions.KeycloakModePartialImport
+            Provinces = ["Kars"], EmitEvents = false, KeycloakMode = TeacherSeedOptions.KeycloakModeAdminApi
         });
 
         var request = authApi.Requests.ShouldHaveSingleItem();
         request.Role.ShouldBe("Teacher");
         request.Password.ShouldBe(TestSeedPassword);
         request.EmitLocaleEvents.ShouldBeFalse();
-        request.Mode.ShouldBe(TeacherSeedOptions.KeycloakModePartialImport);
+        request.Mode.ShouldBe(TeacherSeedOptions.KeycloakModeAdminApi);
         request.Users.Count.ShouldBe(15);
         request.Users.Where(u => u.Email.Contains(".100004.")).ShouldAllBe(u => u.SchoolId == _ortaokulId);
         request.Users.Where(u => u.Email.Contains(".100002.")).ShouldAllBe(u => u.SchoolId == _ilkokulId);

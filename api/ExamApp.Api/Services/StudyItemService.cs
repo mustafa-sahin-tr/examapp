@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Storage;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,7 @@ public class StudyItemService : IStudyItemService
     private readonly AppDbContext _context;
     private readonly IMinIoService _minioService;
     private readonly ILogger<StudyItemService> _logger;
+    private readonly StorageAreaPolicy _storagePolicy;
 
     // Client'a ulaşan hata/başarı metinleri buradan gelir (issue #184). DI her zaman gerçek
     // localizer'ı verir; parametre yalnızca DI'sız (birim test) senaryolar için opsiyonel.
@@ -30,12 +32,14 @@ public class StudyItemService : IStudyItemService
         AppDbContext context,
         IMinIoService minioService,
         ILogger<StudyItemService>? logger = null,
-        IStringLocalizer<Messages>? localizer = null)
+        IStringLocalizer<Messages>? localizer = null,
+        StorageAreaPolicy? storagePolicy = null)
     {
         _context = context;
         _minioService = minioService;
         _logger = logger ?? NullLogger<StudyItemService>.Instance;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
+        _storagePolicy = storagePolicy ?? new StorageAreaPolicy((string?)null);
     }
 
     public async Task<Paged<StudyItemDto>> GetPagedAsync(StudyItemFilterDto filter, UserProfileDto user)
@@ -116,11 +120,16 @@ public class StudyItemService : IStudyItemService
 
     public async Task<StudyItemMutationResult> CreateAsync(CreateStudyItemRequestDto request, List<IFormFile> images, UserProfileDto user)
     {
+        if (!TryParseMinioImages(request.MinioImages, out var minioImages))
+        {
+            return StudyItemMutationResult.Fail(_localizer["study.image.invalidUrl"]);
+        }
+
         var validationError = ValidateContent(
             request.ContentType, request.Url,
             request.BookId, request.NewBookName, request.BookTestId, request.NewBookTestName,
             request.StartPage, request.EndPage,
-            hasAnyImage: HasAnyImage(images, request.MinioImages));
+            hasAnyImage: HasAnyImage(images, minioImages));
 
         if (validationError != null)
         {
@@ -157,7 +166,7 @@ public class StudyItemService : IStudyItemService
 
         if (request.ContentType == StudyItemContentType.Image)
         {
-            await AddImagesAsync(entity.Id, images, request.MinioImages, startSortOrder: 1, "create");
+            await AddImagesAsync(entity.Id, images, minioImages, startSortOrder: 1);
             await _context.SaveChangesAsync();
         }
 
@@ -181,9 +190,14 @@ public class StudyItemService : IStudyItemService
             return StudyItemMutationResult.Missing();
         }
 
+        if (!TryParseMinioImages(request.MinioImages, out var minioImages))
+        {
+            return StudyItemMutationResult.Fail(_localizer["study.image.invalidUrl"]);
+        }
+
         // Image tipinde: mevcut (silinmeyen) resimler + yeni gelenler toplamda en az bir olmalı.
         var remainingImageCount = item.Images.Count(i => !i.IsDeleted && !request.RemovedImageIds.Contains(i.Id));
-        var hasAnyImage = remainingImageCount > 0 || HasAnyImage(newImages, request.MinioImages);
+        var hasAnyImage = remainingImageCount > 0 || HasAnyImage(newImages, minioImages);
 
         var validationError = ValidateContent(
             request.ContentType, request.Url,
@@ -224,7 +238,7 @@ public class StudyItemService : IStudyItemService
         if (request.ContentType == StudyItemContentType.Image)
         {
             var sortOrder = item.Images.Count == 0 ? 1 : item.Images.Max(i => i.SortOrder) + 1;
-            await AddImagesAsync(item.Id, newImages, request.MinioImages, sortOrder, "update");
+            await AddImagesAsync(item.Id, newImages, minioImages, sortOrder);
         }
 
         await _context.SaveChangesAsync();
@@ -237,11 +251,19 @@ public class StudyItemService : IStudyItemService
     {
         var result = new AttachStudyItemImageBySubTopicsResultDto();
 
-        var imageUrl = request.ImageUrl?.Trim() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(imageUrl))
+        if (string.IsNullOrWhiteSpace(request.ImageUrl))
         {
             result.Success = false;
             result.Message = _localizer["study.image.urlRequired"];
+            return result;
+        }
+
+        // issue #365 (S2): yalnız study-pages/{books|pages}/... kabul edilir; imzalı URL'nin query'si atılır. Aksi halde
+        // saklanan alan üzerinden question-transfer/ gibi bir nesne imzalatılabilirdi (imza kâhini).
+        if (!_storagePolicy.TryNormalizeRequiredClientUrl(request.ImageUrl, StorageArea.StudyPage, out var imageUrl))
+        {
+            result.Success = false;
+            result.Message = _localizer["study.image.invalidUrl"];
             return result;
         }
 
@@ -527,13 +549,65 @@ public class StudyItemService : IStudyItemService
 
     // ---- Resim yardımcıları ----
 
-    private static bool HasAnyImage(List<IFormFile>? images, string? minioImages)
+    private static bool HasAnyImage(List<IFormFile>? images, IReadOnlyList<MinioImageInfo> minioImages)
     {
         var hasFiles = images != null && images.Any(i => i != null && i.Length > 0);
-        return hasFiles || !string.IsNullOrWhiteSpace(minioImages);
+        return hasFiles || minioImages.Count > 0;
     }
 
-    private async Task AddImagesAsync(int studyItemId, List<IFormFile>? images, string? minioImages, int startSortOrder, string operation)
+    /// <summary>
+    /// issue #365 (S2): <c>MinioImages</c> JSON'u (<c>[{bookName, pageNumber, minioUrl}]</c>) kaydetmeden ÖNCE ayrıştırılır;
+    /// her <c>minioUrl</c> <see cref="StorageArea.StudyPage"/> allowlist'ine normalize edilir (query atılır). Geçersiz JSON,
+    /// eksik alan ya da allowlist dışı adres → false (400); hiçbir görsel kısmen eklenmez. Boş/null → boş liste.
+    /// </summary>
+    private bool TryParseMinioImages(string? minioImages, out IReadOnlyList<MinioImageInfo> parsed)
+    {
+        parsed = Array.Empty<MinioImageInfo>();
+        if (string.IsNullOrWhiteSpace(minioImages))
+        {
+            return true;
+        }
+
+        var list = new List<MinioImageInfo>();
+        try
+        {
+            using var jsonDoc = JsonDocument.Parse(minioImages);
+            if (jsonDoc.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return false;
+            }
+
+            foreach (var item in jsonDoc.RootElement.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object ||
+                    !item.TryGetProperty("minioUrl", out var urlElement) || urlElement.ValueKind != JsonValueKind.String ||
+                    !_storagePolicy.TryNormalizeRequiredClientUrl(urlElement.GetString(), StorageArea.StudyPage, out var normalized))
+                {
+                    _logger.LogWarning("Rejected study item MinioImages entry: minioUrl missing or outside the study-pages allowlist");
+                    return false;
+                }
+
+                var bookName = item.TryGetProperty("bookName", out var b) && b.ValueKind == JsonValueKind.String
+                    ? b.GetString() ?? string.Empty
+                    : string.Empty;
+                var pageNumber = item.TryGetProperty("pageNumber", out var n) && n.ValueKind == JsonValueKind.Number && n.TryGetInt32(out var pn)
+                    ? pn
+                    : 0;
+
+                list.Add(new MinioImageInfo { BookName = bookName, PageNumber = pageNumber, MinioUrl = normalized });
+            }
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Invalid MinioImages JSON on study item");
+            return false;
+        }
+
+        parsed = list;
+        return true;
+    }
+
+    private async Task AddImagesAsync(int studyItemId, List<IFormFile>? images, IReadOnlyList<MinioImageInfo> minioImages, int startSortOrder)
     {
         var sortOrder = startSortOrder;
 
@@ -561,36 +635,17 @@ public class StudyItemService : IStudyItemService
             sortOrder += 1;
         }
 
-        if (string.IsNullOrEmpty(minioImages))
+        foreach (var image in minioImages)
         {
-            return;
-        }
-
-        try
-        {
-            using var jsonDoc = JsonDocument.Parse(minioImages);
-            var jsonArray = jsonDoc.RootElement;
-
-            foreach (var item in jsonArray.EnumerateArray())
+            _context.StudyItemImages.Add(new StudyItemImage
             {
-                var bookName = item.GetProperty("bookName").GetString() ?? string.Empty;
-                var pageNumber = item.GetProperty("pageNumber").GetInt32();
-                var minioUrl = item.GetProperty("minioUrl").GetString() ?? string.Empty;
+                StudyItemId = studyItemId,
+                ImageUrl = image.MinioUrl,
+                SortOrder = sortOrder,
+                FileName = $"{image.BookName}/page_{image.PageNumber}.webp"
+            });
 
-                _context.StudyItemImages.Add(new StudyItemImage
-                {
-                    StudyItemId = studyItemId,
-                    ImageUrl = minioUrl,
-                    SortOrder = sortOrder,
-                    FileName = $"{bookName}/page_{pageNumber}.webp"
-                });
-
-                sortOrder += 1;
-            }
-        }
-        catch (JsonException ex)
-        {
-            _logger.LogWarning(ex, "Invalid MinioImages JSON on study item {Operation}; skipping image import", operation);
+            sortOrder += 1;
         }
     }
 
@@ -639,6 +694,11 @@ public class StudyItemService : IStudyItemService
 
     private static string GetFileNameFromUrl(string imageUrl)
     {
+        if (MinioObjectUrl.TryParse(imageUrl, out _, out var key))
+        {
+            return Path.GetFileName(key);
+        }
+
         if (Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri))
         {
             var fileName = Path.GetFileName(uri.LocalPath);

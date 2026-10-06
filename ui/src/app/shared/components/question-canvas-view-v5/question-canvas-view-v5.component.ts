@@ -15,6 +15,7 @@ import { AnswerChoice, QuestionRegion } from '../../../models/draws';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { questionCanvasImageUrl } from '../../utils/storage-image-url.util';
 
 const EMPTY_REGION: QuestionRegion = {
   id: 0,
@@ -115,8 +116,8 @@ export class QuestionCanvasViewComponentv5 {
     }
 
     this._questionRegion.set(region);
-    const transformedQuestionUrl = this.transformQuestionImageUrl(region.imageUrl);
-    this.questionImageSource.set(transformedQuestionUrl);
+    // issue #365 (S2): v2 varyantı sunucuda türetilip imzalanır; imzalı URL istemcide yeniden yazılamaz.
+    this.questionImageSource.set(questionCanvasImageUrl(region));
     const passageUrl = region?.passage?.imageUrl ?? null;
     this.passageImageSource.set(passageUrl && passageUrl.trim().length > 0 ? passageUrl : null);
     queueMicrotask(() => this.updateVisualScale());
@@ -258,14 +259,6 @@ export class QuestionCanvasViewComponentv5 {
 
   removeQuestion() {
     this.questionRemove.emit(this._questionRegion().id);
-  }
-
-  private transformQuestionImageUrl(url?: string | null): string | null {
-    if (!url) {
-      return null;
-    }
-
-    return url.replace(/question(\.[^/?#]+)?$/i, (_match, ext) => `question-v2${ext ?? ''}`);
   }
 
   /**

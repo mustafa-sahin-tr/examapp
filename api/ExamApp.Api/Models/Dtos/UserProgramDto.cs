@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Storage;
 using System;
 using System.Collections.Generic;
 using ExamApp.Api.Data;
@@ -47,6 +48,7 @@ namespace ExamApp.Api.Models.Dtos
         public int UserProgramId { get; set; }
         public int StudyItemId { get; set; }
         public string StudyItemTitle { get; set; } = string.Empty;
+        [StorageUrl(StorageArea.StudyPage)]
         public string? StudyItemCoverImageUrl { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
@@ -57,6 +59,7 @@ namespace ExamApp.Api.Models.Dtos
         public StudyItemContentType ContentType { get; set; }
 
         // Link tipi — sadece ContentType == Link iken dolu
+        [NotStorageUrl("Link tipi çalışma etkinliğinin dış bağlantısı (YouTube/EBA vb.), MinIO nesnesi değil")]
         public string? Url { get; set; }
         public StudyItemLinkPlatform? Platform { get; set; }
 

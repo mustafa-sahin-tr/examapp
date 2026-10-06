@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Storage;
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.Numerics;
@@ -26,6 +27,7 @@ public class ExamDto
 
     public string? Subtitle { get; set; }
 
+    [StorageUrl(StorageArea.WorksheetCover)]
     public string? ImageUrl { get; set; }
 
     public string? BadgeText { get; set; }

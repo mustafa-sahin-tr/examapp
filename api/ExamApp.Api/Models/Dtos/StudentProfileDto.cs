@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Storage;
 using System;
 using System.Linq.Expressions;
 using ExamApp.Api.Data;
@@ -8,6 +9,7 @@ public class StudentProfileDto
 {
     public int Id { get; set; }
     public string FullName { get; set; } = string.Empty;
+    [NotStorageUrl("Avatar ön ayar kimliği/dış adres; student-avatars bucket'ı özel ve URL'si sunulmuyor")]
     public string AvatarUrl { get; set; } = string.Empty;
     public int? GradeId { get; set; }
     public string? SchoolName { get; set; }
@@ -71,6 +73,7 @@ public class StudentDto
 {
     public int Id { get; set; }
     public string FullName { get; set; } = string.Empty;
+    [NotStorageUrl("Avatar ön ayar kimliği/dış adres; student-avatars bucket'ı özel ve URL'si sunulmuyor")]
     public string AvatarUrl { get; set; } = string.Empty;
     public int? GradeId { get; set; }
     public int XP { get; set; }
@@ -86,6 +89,7 @@ public class TeacherDto
 {
     public int Id { get; set; }
     public string FullName { get; set; } = string.Empty;
+    [NotStorageUrl("Avatar ön ayar kimliği/dış adres; student-avatars bucket'ı özel ve URL'si sunulmuyor")]
     public string AvatarUrl { get; set; } = string.Empty;
     public string? SchoolName { get; set; }
     public int? SchoolId { get; set; }
@@ -115,5 +119,6 @@ public class StudentLookupDto
     public int? GradeId { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
+    [NotStorageUrl("Avatar ön ayar kimliği/dış adres; student-avatars bucket'ı özel ve URL'si sunulmuyor")]
     public string AvatarUrl { get; set; } = string.Empty;
 }

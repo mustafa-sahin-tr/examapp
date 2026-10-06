@@ -298,4 +298,42 @@ describe('QuestionCanvasViewComponentv5', () => {
       expect(result.answerMinWidth).toBe(20 + 283);
     });
   });
+
+  describe('question image source (issue #365 S2)', () => {
+    const signedV1 = '/img/exam-questions/questions/abc/question.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=v1sig';
+    const signedV2 = '/img/exam-questions/questions/abc/question-v2.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=v2sig';
+
+    function renderedSrc(): string | null {
+      return fixture.debugElement.query(By.css('img.qcv4-question-image')).nativeElement.getAttribute('src');
+    }
+
+    it('questionRegion_WithServerSignedImageUrlV2_UsesV2UrlVerbatim', () => {
+      component.questionRegion = buildRegion({ width: 586, height: 513, answers: [], imageUrl: signedV1, imageUrlV2: signedV2 });
+      fixture.detectChanges();
+
+      expect(component.questionImageSource()).toBe(signedV2);
+      expect(renderedSrc()).toBe(signedV2);
+    });
+
+    it('questionRegion_WithoutImageUrlV2_FallsBackToSignedImageUrlUnchanged', () => {
+      component.questionRegion = buildRegion({ width: 586, height: 513, answers: [], imageUrl: signedV1, imageUrlV2: null });
+      fixture.detectChanges();
+
+      // Eski regex query'li URL'yi yeniden yazmaya çalışmamalı: imza bozulmadan aynen kullanılır.
+      expect(component.questionImageSource()).toBe(signedV1);
+      expect(renderedSrc()).toBe(signedV1);
+    });
+
+    it('questionRegion_UnsignedQuestionJpgWithoutV2_DoesNotDeriveV2OnClient', () => {
+      component.questionRegion = buildRegion({ width: 586, height: 513, answers: [], imageUrl: '/img/b/questions/x/question.jpg' });
+
+      expect(component.questionImageSource()).toBe('/img/b/questions/x/question.jpg');
+    });
+
+    it('questionRegion_EmptyImageUrlAndNoV2_SourceIsNull', () => {
+      component.questionRegion = buildRegion({ width: 586, height: 513, answers: [], imageUrl: '', imageUrlV2: undefined });
+
+      expect(component.questionImageSource()).toBeNull();
+    });
+  });
 });

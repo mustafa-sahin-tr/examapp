@@ -50,6 +50,11 @@ export interface QuestionRegion {
   showPassageFirst?: boolean;
   imageId: string;
   imageUrl: string;
+  /**
+   * issue #365 (S2): canvas görünümünün (v5) gösterdiği, cevap bloğu kırpılmış `question-v2` görselinin
+   * sunucuda türetilip imzalanmış adresi. Yoksa (null/undefined) `imageUrl` kullanılır.
+   */
+  imageUrlV2?: string | null;
   exampleAnswer: string | null | undefined;
   isExample: boolean;
   order?: number;

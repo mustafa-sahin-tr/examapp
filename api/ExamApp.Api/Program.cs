@@ -233,6 +233,13 @@ builder.Services.AddSingleton<IMinIoService, MinIoService>();
 // issue #365 (S1): bilinen bucket'ları oluşturur + prefix bazlı geçici anonim okuma politikasını uygular/düzeltir.
 builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddHostedService<ExamApp.Api.Services.Storage.MinioBucketBootstrapper>();
+// issue #365 (S2): [StorageUrl] alanları yalnız MVC JSON çıktısında kısa ömürlü imzalı /img URL'sine çevrilir
+// (SignalR/Redis/outbox serileştirmesi etkilenmez); istemciden gelen görsel adresleri StorageAreaPolicy ile
+// normalize edilir. İmzanın host'u gateway'in MinIO downstream adresi: MinioConfig:PresignEndpoint (yoksa Endpoint).
+builder.Services.AddSingleton<ExamApp.Api.Services.Storage.StorageAreaPolicy>();
+builder.Services.AddSingleton<ExamApp.Api.Services.Storage.IStorageUrlSigner, ExamApp.Api.Services.Storage.MinioStorageUrlSigner>();
+builder.Services.AddSingleton<Microsoft.Extensions.Options.IConfigureOptions<Microsoft.AspNetCore.Mvc.JsonOptions>,
+    ExamApp.Api.Services.Storage.StorageUrlJsonOptionsSetup>();
 builder.Services.AddScoped<IExamService, ExamService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetAssignmentService, ExamApp.Api.Services.Worksheets.WorksheetAssignmentService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.ITestSessionService, ExamApp.Api.Services.Worksheets.TestSessionService>();

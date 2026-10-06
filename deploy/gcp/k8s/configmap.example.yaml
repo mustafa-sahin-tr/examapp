@@ -7,7 +7,6 @@ data:
   PUBLIC_BASE_URL: https://exam.example.com
   CORS_ALLOWED_ORIGIN_0: https://exam.example.com
   KEYCLOAK_REDIRECT_URI: https://exam.example.com/app/callback
-  KEYCLOAK_CLIENT_CALLBACK_URL: https://exam.example.com/app/callback&response_type=code&scope=openid&state=https://exam.example.com
   KEYCLOAK_REALM: exam-realm
   KEYCLOAK_AUTHORITY: https://exam.example.com/realms/exam-realm
   KEYCLOAK_HOST_INTERNAL: http://keycloak.examapp.svc.cluster.local:8080

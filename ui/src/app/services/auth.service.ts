@@ -303,21 +303,6 @@ export class AuthService {
     return !!this.getToken();
   }
 
-  exchangeCodeForToken(code: string) {
-    return this.http.post<TokenResponse>(`/api/auth/exchange`, { code: code }).pipe(
-      tap((res) => {
-        localStorage.setItem(this.tokenKey, res.token);
-        localStorage.setItem(this.roleKey, res.profile.role);
-        localStorage.setItem(this.avatarKey, res.profile.avatar);
-        this.setUser(res.profile);
-        this.isAuthenticatedSubject.next(true);
-        // Profildeki dil tercihi aktif dilden farklıysa uygulanır (issue #181).
-        // Aynıysa no-op olduğu için reload döngüsü oluşmaz.
-        this.localeService.syncFromProfile(res.profile.preferredLocale);
-      })
-    );
-  }
-
   isExpiringSoon(token: string): boolean {
     try {
       const decoded: any = jwtDecode(token);

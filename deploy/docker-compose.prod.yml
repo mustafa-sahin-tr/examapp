@@ -460,7 +460,7 @@ services:
       Kestrel__Port: 5678
       Server__BaseUrl: ${PUBLIC_BASE_URL}
       Keycloak__Realm: exam-realm
-      Keycloak__ClientCallbackUrl: ${PUBLIC_BASE_URL}/app/callback&response_type=code&scope=openid&state=${PUBLIC_BASE_URL}
+      Keycloak__RedirectUri: ${PUBLIC_BASE_URL}/app/callback
       Cors__AllowedOrigins__0: ${PUBLIC_BASE_URL}
       Keycloak__Host: http://keycloak:8080
     depends_on:

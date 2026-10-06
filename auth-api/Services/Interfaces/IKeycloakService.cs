@@ -15,7 +15,7 @@ public interface IKeycloakService
     Task DeleteUserAsync(string userId);
     Task LogoutAsync(string refreshToken);
     Task<TokenResponseDto> LoginAsync(string username, string password, CancellationToken ct = default); Task SetRoleAsync(string keycloakUserId, string userRole);
-    Task<TokenResponseDto> ExchangeTokenAsync(string code, CancellationToken ct = default);
+    Task<TokenResponseDto> ExchangeTokenAsync(string code, string codeVerifier, CancellationToken ct = default);
     Task<TokenResponseDto> RefreshTokenAsync(string refreshToken, CancellationToken ct = default);
     Task<List<KeycloakRoleDto>> GetRealmRolesAsync();
 

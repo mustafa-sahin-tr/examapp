@@ -49,6 +49,16 @@ public class LoginEventsEndpointTests(IntegrationApiFactory factory) : Integrati
     }
 
     [Fact]
+    public async Task Create_is_forbidden_for_the_legacy_exam_admin_identity_without_the_service_role()
+    {
+        var legacy = LegacyExamAdminClient();
+
+        var response = await legacy.PostAsJsonAsync("/api/login-events", ValidEvent());
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
     public async Task Create_returns_400_for_a_successful_login_without_keycloak_user_id()
     {
         // Issue #100: a successful login must carry a verified identity (Keycloak sub).

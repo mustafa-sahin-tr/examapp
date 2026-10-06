@@ -128,7 +128,7 @@
       {
         "id": "c3b7e5a1-9d24-4f68-8a03-1e6c0b4d2f77",
         "name": "exam-service",
-        "description": "Trusted service-to-service caller. Assigned to the exam-admin service account; APIs check this role instead of matching the client id by string.",
+        "description": "Trusted service-to-service caller. Assigned only to the exam-service client service account (issue #372); APIs check this role instead of matching the client id by string.",
         "composite": false,
         "clientRole": false,
         "containerId": "63021bb7-8910-4a5a-be5e-3e552db8d557",
@@ -387,6 +387,7 @@
       ],
       "security-admin-console": [],
       "exam-admin": [],
+      "exam-service": [],
       "exam-client": [],
       "admin-cli": [],
       "account-console": [],
@@ -556,18 +557,34 @@
       "disableableCredentialTypes": [],
       "requiredActions": [],
       "realmRoles": [
-        "default-roles-exam-realm",
-        "exam-service"
+        "default-roles-exam-realm"
       ],
       "clientRoles": {
         "realm-management": [
           "view-realm",
           "query-users",
           "view-users",
-          "manage-users",
-          "manage-realm"
+          "manage-users"
         ]
       },
+      "notBefore": 0,
+      "groups": []
+    },
+    {
+      "id": "4ccbd321-ff9c-4679-b27a-a46ad7b3b338",
+      "username": "service-account-exam-service",
+      "emailVerified": false,
+      "enabled": true,
+      "createdTimestamp": 1787300000000,
+      "totp": false,
+      "serviceAccountClientId": "exam-service",
+      "disableableCredentialTypes": [],
+      "requiredActions": [],
+      "realmRoles": [
+        "default-roles-exam-realm",
+        "exam-service"
+      ],
+      "clientRoles": {},
       "notBefore": 0,
       "groups": []
     },
@@ -821,12 +838,8 @@
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "devOnlyExamAdminClientSecretChangeMe12345678",
-      "redirectUris": [
-        "/*"
-      ],
-      "webOrigins": [
-        "/*"
-      ],
+      "redirectUris": [],
+      "webOrigins": [],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -884,6 +897,108 @@
         },
         {
           "id": "68bb0647-4f5f-464d-9c86-3051298a5a11",
+          "name": "Client IP Address",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "clientAddress",
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "clientAddress",
+            "jsonType.label": "String"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "basic",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    },
+    {
+      "id": "7739bbc3-4f38-491c-8225-aaa0c941daf5",
+      "clientId": "exam-service",
+      "name": "Exam Service",
+      "description": "Service-to-service client_credentials client (issue #372). Service account holds only the exam-service realm role; no realm-management roles.",
+      "rootUrl": "",
+      "adminUrl": "",
+      "baseUrl": "",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "devOnlyExamServiceClientSecretChangeMe12345678",
+      "redirectUris": [],
+      "webOrigins": [],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "frontchannelLogout": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "realm_client": "false",
+        "oidc.ciba.grant.enabled": "false",
+        "client.secret.creation.time": "1787300000",
+        "backchannel.logout.session.required": "true",
+        "post.logout.redirect.uris": "+",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "backchannel.logout.revoke.offline.tokens": "false"
+      },
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "protocolMappers": [
+        {
+          "id": "8b1186a7-a6cb-4711-8752-4c767cac0e29",
+          "name": "Client Host",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "clientHost",
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "clientHost",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "f70d3719-2b16-496e-b7de-3591ec9694e9",
+          "name": "Client ID",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "client_id",
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "client_id",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "f93e658e-0361-4560-80e5-36f0f4cef7ee",
           "name": "Client IP Address",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-usersessionmodel-note-mapper",

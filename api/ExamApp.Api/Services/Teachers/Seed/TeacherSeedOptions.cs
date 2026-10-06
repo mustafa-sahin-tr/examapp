@@ -10,7 +10,6 @@ namespace ExamApp.Api.Services.Teachers.Seed;
 public sealed record TeacherSeedOptions
 {
     public const string KeycloakModeAdminApi = "admin-api";
-    public const string KeycloakModePartialImport = "partial-import";
 
     public const int DefaultBatchSize = 100;
     public const int MaxBatchSize = 500;
@@ -29,7 +28,7 @@ public sealed record TeacherSeedOptions
     /// </summary>
     public bool EmitEvents { get; init; } = true;
 
-    /// <summary><see cref="KeycloakModeAdminApi"/> ya da <see cref="KeycloakModePartialImport"/>.</summary>
+    /// <summary>Yalnızca <see cref="KeycloakModeAdminApi"/> ("partial-import" #372 ile kaldırıldı).</summary>
     public string KeycloakMode { get; init; } = KeycloakModeAdminApi;
 
     /// <summary>auth-api'ye istek başına kaç hesap (1..500).</summary>

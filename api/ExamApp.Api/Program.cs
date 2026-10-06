@@ -89,21 +89,12 @@ builder.Services.Configure<KeycloakSettings>(keycloakConfig);
 // gerçek değer taşımıyor ("" placeholder) — Development dışında boş secret ile
 // sessizce 401/invalid_client alınmasın diye açılışta açıkça patlat. Development'ta
 // docker-compose/.env veya Aspire AppHost parametreleri değeri zaten dolduruyor.
-if (!builder.Environment.IsDevelopment())
-{
-    // "devOnly" öneki .env.example/AppHost'taki dev-only Keycloak secret'larının
-    // ortak deseni (bkz. .env.example) — bunlar yanlışlıkla prod/staging'e
-    // taşınmışsa da boş secret'la aynı şekilde reddedilir.
-    static bool IsMissingOrDevOnly(string? value) =>
-        string.IsNullOrWhiteSpace(value) || value.StartsWith("devOnly", StringComparison.OrdinalIgnoreCase);
-
-    if (IsMissingOrDevOnly(keycloakConfig["ClientSecret"]) ||
-        IsMissingOrDevOnly(keycloakConfig["AdminClientSecret"]))
-    {
-        throw new InvalidOperationException(
-            "Keycloak:ClientSecret ve Keycloak:AdminClientSecret ortam değişkeninden (Keycloak__ClientSecret / Keycloak__AdminClientSecret) set edilmeli; Development dışında boş veya dev-only değer bırakılamaz.");
-    }
-}
+// Issue #372: ServiceClientSecret (exam-service, servisler arası token) da aynı kurala tabi.
+ExamApp.Foundation.Security.KeycloakSecretGuard.EnsureConfigured(
+    builder.Environment.IsDevelopment(),
+    ("Keycloak:ClientSecret", keycloakConfig["ClientSecret"]),
+    ("Keycloak:AdminClientSecret", keycloakConfig["AdminClientSecret"]),
+    ("Keycloak:ServiceClientSecret", keycloakConfig["ServiceClientSecret"]));
 
 builder.Services.AddAuthentication(options =>
     {

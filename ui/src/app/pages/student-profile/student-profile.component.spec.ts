@@ -18,13 +18,20 @@ import { BadgeThropyComponent } from '../../shared/components/badge-thropy/badge
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import studentProfileTr from '../../../../public/i18n/student-profile/tr.json';
 import studentProfileEn from '../../../../public/i18n/student-profile/en.json';
+import accountSecurityTr from '../../../../public/i18n/account-security/tr.json';
+import accountSecurityEn from '../../../../public/i18n/account-security/en.json';
 
 /**
  * Sayfa cevirileri kendi Transloco scope'undadir (issue #183); testte gercek sozluk verilir,
  * sahte ceviri kullanilmaz - boylece bir anahtar bozulursa test kirilir.
  */
 const translocoTesting = translocoTestingModule({
-  langs: { 'student-profile/tr': studentProfileTr, 'student-profile/en': studentProfileEn },
+  langs: {
+    'student-profile/tr': studentProfileTr,
+    'student-profile/en': studentProfileEn,
+    'account-security/tr': accountSecurityTr,
+    'account-security/en': accountSecurityEn,
+  },
 });
 
 describe('StudentProfileComponent', () => {
@@ -230,6 +237,17 @@ describe('StudentProfileComponent', () => {
     tick(500);
     fixture.detectChanges();
   }
+
+  it('infoTab_ShowsAccountSecurityCard_LinkingKeycloakAccountConsole (issue #417)', () => {
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const link = el.querySelector<HTMLAnchorElement>('app-account-security-card .acc-card__link');
+
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute('href')).toBe('/realms/exam-realm/account');
+    expect(link?.getAttribute('target')).toBe('_blank');
+    expect(link?.textContent).toContain(accountSecurityTr.open);
+  });
 
   it('tabs_NoWhatsNewTab_InfoTabIsFirst', () => {
     fixture.detectChanges();

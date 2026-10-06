@@ -1,0 +1,110 @@
+name: tests
+
+# Issue #416: PR'larda backend + UI testleri. Branch protection bu repoda
+# kasıtlı olarak değiştirilmez; hangi check'in required olacağı repo sahibinin kararı.
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  # Kurumsal nexus feed'i CI'da yok; csproj klasörlerindeki nuget.config'ler zaten
+  # yalnız api.nuget.org'u gösteriyor (<clear/> + nuget.org), ekstra ayar gerekmez.
+
+jobs:
+  dotnet-unit:
+    name: dotnet-unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+            tests/Directory.Build.props
+      - name: Restore
+        run: dotnet restore ExamApp.slnx --source https://api.nuget.org/v3/index.json
+      - name: Build
+        run: dotnet build ExamApp.slnx --no-restore -c Release
+      - name: Unit tests (Category=Integration hari�)
+        run: dotnet test ExamApp.slnx --no-build -c Release --filter "Category!=Integration"
+
+  integration:
+    name: integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    # PO kararı: başta bilgilendirici; stabil olunca kaldırılır.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+            tests/Directory.Build.props
+      - name: Restore
+        run: dotnet restore ExamApp.slnx --source https://api.nuget.org/v3/index.json
+      - name: Integration tests (Testcontainers / Postgres)
+        run: dotnet test ExamApp.slnx --no-restore -c Release --filter "Category=Integration"
+
+  ui-tests:
+    name: ui-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # TODO(#394): ui suite şu an takılıyor (düzeltme ayrı branch'te). #394 merge olunca
+    # bu satırı sil ve check'i required yap.
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20 # dockerfiles/ui ile aynı (node:20)
+          cache: yarn
+          cache-dependency-path: ui/yarn.lock
+      # ui/ için yalnız yarn.lock commit'li (package-lock.json yok) -> npm ci kullanılamaz.
+      - run: yarn install --frozen-lockfile
+      - run: npx ng test --watch=false --browsers=ChromeHeadlessCI --karma-config=karma.ci.conf.js
+
+  auth-ui-tests:
+    name: auth-ui-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: auth-ui
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: auth-ui/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npx ng test --watch=false --browsers=ChromeHeadlessCI --karma-config=karma.ci.conf.js

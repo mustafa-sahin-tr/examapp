@@ -12,6 +12,7 @@ namespace BadgeService.Tests;
 /// üretemez): farklı EventId'lerin paralel birleştirmesinde sayaç kaybolmaz, ilk-yorum yarışı tek okunmamış satırla biter,
 /// aynı EventId'nin paralel teslimi sayacı bir kez artırır.
 /// </summary>
+[Trait("Category", "Integration")]
 public class WorksheetCommentCoalescingPostgresTests : IAsyncLifetime
 {
     private readonly PostgreSqlContainer _pg = new PostgreSqlBuilder().WithImage("postgres:16-alpine").Build();

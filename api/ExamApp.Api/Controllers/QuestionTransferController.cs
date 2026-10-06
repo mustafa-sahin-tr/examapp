@@ -1,4 +1,3 @@
-using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.QuestionTransfer;
 using ExamApp.Api.Helpers;
@@ -6,7 +5,6 @@ using ExamApp.Api.Services.Interfaces;
 using System.Security.Claims;
 using ExamApp.Foundation.Localization;
 using Microsoft.Extensions.Localization;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -21,11 +19,15 @@ namespace ExamApp.Api.Controllers;
 
 [ApiController]
 [Route("api/question-transfer")]
-[Authorize(Roles = "Teacher,Admin")]
-// issue #287: tüm uçlar öğretmen (soru bankası/aktarım) yeteneği — Teacher rolündeki çağıranın hesabı onaylı olmalı.
-[Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
+// issue #365 (S1): soru aktarımı (export/import, paket indirme, iş listesi/durumu, kaynaklar) tamamen Admin-only — ürün
+// kararı: en güvenli seçenek. Öğretmenin "export başlatır ama indiremez" kırık akışı da böylece kalkar. Önceden
+// Teacher,Admin + onaylı öğretmen policy'si (#287) idi. Hangfire dashboard oturum uçları HangfireSessionController'a
+// taşındı (aynı URL) ve Admin/SuperAdmin'e daraltıldı.
+[Authorize(Roles = AdminOnly)]
 public class QuestionTransferController : ControllerBase
 {
+    internal const string AdminOnly = "Admin";
+
     private readonly IQuestionTransferService _service;
     private readonly IMinIoService _minio;
 
@@ -47,17 +49,17 @@ public class QuestionTransferController : ControllerBase
     }
 
     /// <summary>
-    /// issue #289 (security D2): çağıranın exam kullanıcı id'si + admin muafiyeti (ApprovedTeacher policy ile aynı roller).
-    /// Öğretmenin profili çözülemezse null → controller 403 (fail-closed; sahipsiz öğretmen işi kuyruğa girmez).
+    /// issue #289 (security D2) / #365: işin sahibi = çağıranın exam kullanıcı id'si (profil çözülemezse 0). Controller
+    /// Admin-only; rol burada yine doğrulanır (defense-in-depth) — Admin değilse null → 403.
     /// </summary>
     private async Task<QuestionTransferOwner?> ResolveOwnerAsync(CancellationToken ct)
     {
-        var isAdmin = User.IsInRole("Admin") || User.IsInRole("SuperAdmin");
+        if (!User.IsInRole(AdminOnly))
+            return null;
+
         var sub = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var profile = _profiles is null || string.IsNullOrEmpty(sub) ? null : await _profiles.GetAsync(sub, ct);
-        if (profile is { Id: > 0 })
-            return new QuestionTransferOwner(profile.Id, isAdmin);
-        return isAdmin ? new QuestionTransferOwner(0, IsAdmin: true) : null;
+        return new QuestionTransferOwner(profile is { Id: > 0 } ? profile.Id : 0, IsAdmin: true);
     }
 
     [HttpPost("exports")]
@@ -344,31 +346,5 @@ public class QuestionTransferController : ControllerBase
         }
 
         return File(stream, "application/octet-stream", $"question-transfer-{id}");
-    }
-
-    // Creates an HttpOnly cookie scoped to /hangfire so the dashboard can be opened in a browser.
-    // Roles must stay in sync with HangfireDashboardAuthFilter (dashboard also allows SuperAdmin).
-    [HttpPost("hangfire/login")]
-    [Authorize(Roles = "Teacher,Admin,SuperAdmin")]
-    public async Task<IActionResult> HangfireLogin(CancellationToken ct)
-    {
-        await HttpContext.SignInAsync(
-            "HangfireCookie",
-            User,
-            new AuthenticationProperties
-            {
-                IsPersistent = false,
-                ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(30)
-            });
-
-        return Ok(new { message = "Hangfire session created" });
-    }
-
-    [HttpPost("hangfire/logout")]
-    [Authorize(Roles = "Teacher,Admin,SuperAdmin")]
-    public async Task<IActionResult> HangfireLogout(CancellationToken ct)
-    {
-        await HttpContext.SignOutAsync("HangfireCookie");
-        return Ok(new { message = "Hangfire session cleared" });
     }
 }

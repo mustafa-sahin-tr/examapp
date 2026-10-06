@@ -5,6 +5,9 @@ using Minio.Exceptions;
 using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
+using System.Linq;
+using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 public interface IMinIoService
@@ -14,6 +17,19 @@ public interface IMinIoService
     Task<Stream?> GetFileStreamAsync(string fileUrl);
 
     Task<bool> DeleteFileByUrlAsync(string fileUrl);
+
+    /// <summary>
+    /// issue #365: bucket'ı yoksa (politikasız, özel) oluşturur ve anonim okuma politikasını verilen JSON'a eşitler.
+    /// <paramref name="anonymousReadPolicyJson"/> null ise bucket'taki politika kaldırılır (tamamen özel).
+    /// İdempotenttir; yalnız <see cref="ExamApp.Api.Services.Storage.MinioBucketBootstrapper"/> çağırır.
+    /// </summary>
+    Task EnsureBucketAsync(string bucketName, string? anonymousReadPolicyJson, CancellationToken ct = default);
+
+    /// <summary>issue #365 (security L1): sunucudaki tüm bucket adları (bilinmeyen bucket'taki politikayı raporlamak için).</summary>
+    Task<IReadOnlyList<string>> ListBucketNamesAsync(CancellationToken ct = default);
+
+    /// <summary>issue #365: bucket politikası JSON'u; politika yoksa null.</summary>
+    Task<string?> GetBucketPolicyAsync(string bucketName, CancellationToken ct = default);
 }
 
 public class MinIoService : IMinIoService
@@ -132,30 +148,10 @@ public class MinIoService : IMinIoService
             _logger.LogDebug("[MinIO] Bucket {Bucket} exists: {Found}", bucketName, found);
             if (!found)
             {
+                // issue #365: bucket özel (politikasız) oluşturulur. Anonim okuma artık bucket geneli değil; bilinen
+                // bucket'ların prefix bazlı politikasını MinioBucketBootstrapper açılışta uygular/düzeltir.
                 await _minioClient.MakeBucketAsync(new MakeBucketArgs().WithBucket(bucketName));
-                _logger.LogInformation("[MinIO] Bucket created: {Bucket}", bucketName);
-
-                // Buckets are private by default; images are served via
-                // direct/unsigned URLs (e.g. the Ocelot /img/* route), which
-                // needs anonymous read access. Equivalent to
-                // `mc anonymous set download` on the bucket.
-                var publicReadPolicy = $$"""
-                {
-                  "Version": "2012-10-17",
-                  "Statement": [
-                    {
-                      "Effect": "Allow",
-                      "Principal": { "AWS": ["*"] },
-                      "Action": ["s3:GetObject"],
-                      "Resource": ["arn:aws:s3:::{{bucketName}}/*"]
-                    }
-                  ]
-                }
-                """;
-                await _minioClient.SetPolicyAsync(new SetPolicyArgs()
-                    .WithBucket(bucketName)
-                    .WithPolicy(publicReadPolicy));
-                _logger.LogInformation("[MinIO] Public read policy applied to bucket: {Bucket}", bucketName);
+                _logger.LogInformation("[MinIO] Bucket created (private): {Bucket}", bucketName);
             }
 
             // Dosyayı MinIO'ya yükle
@@ -173,6 +169,53 @@ public class MinIoService : IMinIoService
         {
             _logger.LogError(e, "[MinIO] operation failed");
             throw;
+        }
+    }
+
+    public async Task EnsureBucketAsync(string bucketName, string? anonymousReadPolicyJson, CancellationToken ct = default)
+    {
+        var found = await _minioClient.BucketExistsAsync(new BucketExistsArgs().WithBucket(bucketName), ct);
+        if (!found)
+        {
+            await _minioClient.MakeBucketAsync(new MakeBucketArgs().WithBucket(bucketName), ct);
+            _logger.LogInformation("[MinIO] Bucket created (private): {Bucket}", bucketName);
+        }
+
+        if (anonymousReadPolicyJson is null)
+        {
+            try
+            {
+                await _minioClient.RemovePolicyAsync(new RemovePolicyArgs().WithBucket(bucketName), ct);
+            }
+            catch (ErrorResponseException e) when (e.Response?.Code == "NoSuchBucketPolicy")
+            {
+                // zaten politikasız
+            }
+            _logger.LogInformation("[MinIO] Bucket {Bucket} is private (no anonymous policy).", bucketName);
+            return;
+        }
+
+        // SetPolicy mevcut politikanın yerine geçer (birleştirmez) — eski bucket geneli politika da böylece düşer.
+        await _minioClient.SetPolicyAsync(new SetPolicyArgs().WithBucket(bucketName).WithPolicy(anonymousReadPolicyJson), ct);
+        _logger.LogInformation("[MinIO] Anonymous read policy applied to bucket {Bucket}.", bucketName);
+    }
+
+    public async Task<IReadOnlyList<string>> ListBucketNamesAsync(CancellationToken ct = default)
+    {
+        var result = await _minioClient.ListBucketsAsync(ct);
+        return result.Buckets.Select(b => b.Name).ToList();
+    }
+
+    public async Task<string?> GetBucketPolicyAsync(string bucketName, CancellationToken ct = default)
+    {
+        try
+        {
+            var policy = await _minioClient.GetPolicyAsync(new GetPolicyArgs().WithBucket(bucketName), ct);
+            return string.IsNullOrWhiteSpace(policy) ? null : policy;
+        }
+        catch (ErrorResponseException e) when (e.Response?.Code == "NoSuchBucketPolicy")
+        {
+            return null;
         }
     }
 }

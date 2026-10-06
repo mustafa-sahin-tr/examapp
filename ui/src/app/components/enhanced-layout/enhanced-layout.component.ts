@@ -206,7 +206,6 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     // Issue #61: öğretmen konu/alt konu çalışma linkleri yönetimi.
     { id: 'study-links', labelKey: 'menu.studyLinks', icon: 'video_library', route: '/study-links', type: 'menu', roles: ['Teacher'] },
     { id: 'exam', labelKey: 'menu.examAuthoring', icon: 'app_registration', route: '/exam', type: 'menu', roles: ['Teacher'] },
-    { id: 'questiontransfer', labelKey: 'menu.questionTransfer', icon: 'swap_horiz', route: '/question-transfer', type: 'menu', roles: ['Teacher'] },
     { id: 'reports', labelKey: 'menu.reports', icon: 'analytics', route: '/certificates', type: 'menu' },
     { id: 'settings', labelKey: 'menu.settings', icon: 'settings', route: '/student-profile', type: 'menu' },
     { id: 'admin-dashboard', labelKey: 'menu.dashboard', icon: 'insights', route: '/admin/dashboard', type: 'menu', roles: ['Admin'] },
@@ -219,6 +218,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'admin-badge-definitions', labelKey: 'menu.adminBadgeDefinitions', icon: 'military_tech', route: '/admin/badge-definitions', type: 'menu', roles: ['Admin'] },
     // Issue #305: yorum şikayetleri (moderasyon).
     { id: 'admin-comment-reports', labelKey: 'menu.adminCommentReports', icon: 'flag', route: '/admin/comment-reports', type: 'menu', roles: ['Admin'] },
+    // Issue #365: soru aktarımı (export/import) yalnız Admin.
+    { id: 'questiontransfer', labelKey: 'menu.questionTransfer', icon: 'swap_horiz', route: '/question-transfer', type: 'menu', roles: ['Admin'] },
     { id: 'divider2', labelKey: '', icon: '', route: '', type: 'divider' },
     { id: 'help', labelKey: 'menu.help', icon: 'support', route: '/help', type: 'menu' },
     { id: 'feedback', labelKey: 'menu.feedback', icon: 'feedback', route: '/feedback', type: 'menu' },

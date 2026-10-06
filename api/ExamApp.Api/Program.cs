@@ -24,6 +24,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 // Komut modu (issue #216 seed-schools, #217 seed-teachers): `dotnet run -- <komut> [...]` — host kurulur
 // ama Kestrel açılmaz; komut çalışıp süreç çıkar. Hatalı kullanım burada yakalanır ki host hiç kurulmasın.
@@ -229,6 +230,9 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IKeycloakService, KeycloakService>();
 builder.Services.AddScoped<IClaimsTransformation, KeycloakRoleTransformer>();
 builder.Services.AddSingleton<IMinIoService, MinIoService>();
+// issue #365 (S1): bilinen bucket'ları oluşturur + prefix bazlı geçici anonim okuma politikasını uygular/düzeltir.
+builder.Services.TryAddSingleton(TimeProvider.System);
+builder.Services.AddHostedService<ExamApp.Api.Services.Storage.MinioBucketBootstrapper>();
 builder.Services.AddScoped<IExamService, ExamService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetAssignmentService, ExamApp.Api.Services.Worksheets.WorksheetAssignmentService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.ITestSessionService, ExamApp.Api.Services.Worksheets.TestSessionService>();

@@ -256,5 +256,38 @@ public class QuestionServiceCreateOrUpdateTests : IDisposable
         (await check.Passage.SingleAsync()).ImageUrl.ShouldBe("/img/exam-questions/passages/3/p.jpg");
     }
 
+    // issue #402: güncellemede var olan paragrafa id ile bağlanma gerçekten PassageId'yi yazar; geri gönderilen adres
+    // kullanılmaz, yeni paragraf oluşturulmaz, MinIO'ya yükleme yapılmaz.
+    [Fact]
+    public async Task Update_linking_an_existing_passage_sets_the_passage_id()
+    {
+        var qId = await SeedQuestionAsync();
+        int passageId;
+        await using (var seed = _db.NewContext())
+        {
+            var p = new Passage { Title = "P", Text = "t", ImageUrl = "/img/exam-questions/passages/1/p.jpg" };
+            seed.Passage.Add(p);
+            await seed.SaveChangesAsync();
+            passageId = p.Id;
+        }
+
+        var dto = new QuestionDto
+        {
+            Id = qId, Text = "yeni",
+            Answers = new List<AnswerDto> { new() { Text = "A", IsCorrect = true } },
+            Passage = new PassageDto { Id = passageId, ImageUrl = "https://legacy.example.com/p.jpg" },
+        };
+
+        QuestionSavedDto result;
+        await using (var ctx = _db.NewContext())
+            result = await NewService(ctx).CreateOrUpdateQuestion(dto);
+
+        result.Success.ShouldBeTrue(result.Message);
+        await using var check = _db.NewContext();
+        (await check.Questions.SingleAsync(x => x.Id == qId)).PassageId.ShouldBe(passageId);
+        (await check.Passage.SingleAsync()).ImageUrl.ShouldBe("/img/exam-questions/passages/1/p.jpg");
+        _minio.ReceivedCalls().ShouldNotContain(c => c.GetMethodInfo().Name == nameof(IMinIoService.UploadFileAsync));
+    }
+
     public void Dispose() => _db.Dispose();
 }

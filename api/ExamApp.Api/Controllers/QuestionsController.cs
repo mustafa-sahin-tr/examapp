@@ -26,6 +26,8 @@ using System.Threading.Tasks;
 // (security review H1): yazma + okuma uçları Teacher/Admin, BadgeService'in çağırdığı uçlar Teacher/Admin/servis,
 // classifier-cache yalnızca Admin/servis. Öğrenci/veli hiçbir uca erişemez (UI'da öğrencinin kullandığı soru ucu yok;
 // test çözme akışı api/worksheet/test-instance üzerinden).
+// issue #402: OKUMA uçları da kaynak kapsamlı — soru/test okuma WorksheetAccess.CanView kuralıyla (görünmeyen → 404,
+// varlık sızdırılmaz), paragraf listesi yalnız çağıranın paragrafları, var olan paragrafa bağlama yalnız sahibine.
 [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
 public class QuestionsController : BaseController
 {
@@ -80,6 +82,10 @@ public class QuestionsController : BaseController
     [Authorize(Roles = AuthoringRoles)]
     public async Task<IActionResult> GetQuestionById(int id)
     {
+        var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
+        if (await DenyUnlessQuestionViewerAsync(id, user.Id) is { } denied)
+            return denied;
+
         var response = await _questionQuery.GetQuestionById(id);
         if (response == null)
         {
@@ -92,15 +98,20 @@ public class QuestionsController : BaseController
     [Authorize(Roles = AuthoringRoles)]
     public async Task<IActionResult> GetLastTenPassages()
     {
-        var passages = await _questionQuery.GetLastTenPassages();
+        var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
+        var passages = await _questionQuery.GetLastTenPassages(user.Id, IsAdmin, HttpContext.RequestAborted);
         return Ok(passages);
     }
 
-    // 🟢 GET /api/questions/{id} - ID ile Soru Çekme
+    // GET /api/questions/bytest/{testid} — testin soruları (doğru cevaplar dahil; yalnız testi görebilen öğretmen/admin).
     [HttpGet("bytest/{testid}")]
     [Authorize(Roles = AuthoringRoles)]
     public async Task<IActionResult> GetQuestionByTestId(int testid)
     {
+        var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
+        if (await DenyUnlessWorksheetViewerAsync(testid, user.Id) is { } denied)
+            return denied;
+
         var questionList = await _questionQuery.GetQuestionByTestId(testid);
         return Ok(questionList);
     }
@@ -109,7 +120,7 @@ public class QuestionsController : BaseController
     [Authorize(Roles = AuthoringRoles)]
     public async Task<IActionResult> CreateOrUpdateQuestion([FromBody] QuestionDto questionDto)
     {
-        var user = await GetAuthenticatedUserAsync();
+        var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
         // issue #287 H1: güncellemede soru sahibi, yeni soruyu teste eklerken test sahibi olmalı (admin muaf).
         var denied = questionDto.Id > 0
             ? await DenyUnlessQuestionOwnerAsync(questionDto.Id, user.Id)
@@ -118,6 +129,11 @@ public class QuestionsController : BaseController
                 : null;
         if (denied != null)
             return denied;
+
+        // issue #402 (P5): var olan paragrafa id ile bağlanırken paragraf çağıranın olmalı (admin muaf).
+        if (questionDto.Passage is { Id: > 0 } passage
+            && await DenyUnlessPassageUsableAsync(passage.Id!.Value, user.Id, questionDto.Id > 0 ? questionDto.Id : null) is { } passageDenied)
+            return passageDenied;
 
         var response = await _questionService.CreateOrUpdateQuestion(questionDto, user.Id);
         if (response == null)
@@ -141,7 +157,7 @@ public class QuestionsController : BaseController
             return BadRequest(_localizer["common.invalidData"].Value);
         }
 
-        var user = await GetAuthenticatedUserAsync();
+        var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
         // issue #287 H1: sorular bir teste ekleniyorsa test sahibi olmalı (admin muaf).
         if (soruDto.Header?.TestId is int testId && testId > 0
             && await DenyUnlessWorksheetOwnerAsync(testId, user.Id) is { } denied)
@@ -177,7 +193,7 @@ public class QuestionsController : BaseController
             return BadRequest(new { message = _localizer["questions.classification.invalidCorrectAnswerId"].Value });
         }
 
-        var user = await GetAuthenticatedUserAsync();
+        var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
         if (await DenyUnlessQuestionOwnerAsync(questionId, user.Id) is { } denied)
             return denied;
 
@@ -210,7 +226,7 @@ public class QuestionsController : BaseController
 
         if (!IsServiceAccount)
         {
-            var user = await GetAuthenticatedUserAsync();
+            var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
             if (await DenyUnlessQuestionOwnerAsync(questionId, user.Id) is { } denied)
                 return denied;
         }
@@ -239,6 +255,14 @@ public class QuestionsController : BaseController
     [Authorize(Policy = QuestionAccessPolicies.TeacherAdminOrService)]
     public async Task<IActionResult> GetQuestionImage(int id, [FromQuery] string variant = "v1")
     {
+        // issue #402: öğretmen yalnız görebildiği sorunun görselini alır; servis hesabı (sınıflandırıcı) muaf.
+        if (!IsServiceAccount)
+        {
+            var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
+            if (await DenyUnlessQuestionViewerAsync(id, user.Id) is { } denied)
+                return denied;
+        }
+
         var question = await _questionQuery.GetQuestionById(id);
         if (question == null || string.IsNullOrWhiteSpace(question.ImageUrl))
         {
@@ -265,7 +289,7 @@ public class QuestionsController : BaseController
     public async Task<IActionResult> RemoveQuestionFromTest(int testId, int questionId)
     {
         // issue #287 H1: yalnızca test sahibi (admin muaf) testinden soru çıkarabilir.
-        var user = await GetAuthenticatedUserAsync();
+        var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
         if (await DenyUnlessWorksheetOwnerAsync(testId, user.Id) is { } denied)
             return denied;
 
@@ -281,25 +305,44 @@ public class QuestionsController : BaseController
 
     // ---------------- issue #287 H1: kaynak sahipliği ----------------
 
-    /// <summary>Soru yoksa 404, sahibi değilse (admin değil) 403; izinliyse null.</summary>
+    /// <summary>
+    /// Soru yoksa YA DA sahibi değilse (admin değil) aynı 404; izinliyse null. issue #402 (security D1): "senin değil" ile
+    /// "yok" ayırt edilmez — id taramasıyla başkasının sorusunun varlığı öğrenilemez.
+    /// </summary>
     private async Task<IActionResult?> DenyUnlessQuestionOwnerAsync(int questionId, int userId) =>
-        await _ownership.CanModifyQuestionAsync(questionId, userId, IsAdmin, HttpContext.RequestAborted) switch
-        {
-            QuestionAccessResult.NotFound => NotFound(new { success = false, message = _localizer["questions.notFound"].Value }),
-            QuestionAccessResult.Forbidden => StatusCode(StatusCodes.Status403Forbidden,
-                new { success = false, message = _localizer["questions.forbidden"].Value }),
-            _ => null
-        };
+        await _ownership.CanModifyQuestionAsync(questionId, userId, IsAdmin, HttpContext.RequestAborted) == QuestionAccessResult.Allowed
+            ? null
+            : NotFound(new { success = false, message = _localizer["questions.notFound"].Value });
 
-    /// <summary>Test yoksa 404, sahibi değilse (admin değil) 403; izinliyse null.</summary>
+    /// <summary>
+    /// issue #402: soru yoksa ya da çağıran göremiyorsa 404 (görünmeyen kaynağın varlığı sızdırılmaz —
+    /// <c>ExamService.GetWorksheetByIdAsync</c> ile aynı davranış); izinliyse null.
+    /// </summary>
+    private async Task<IActionResult?> DenyUnlessQuestionViewerAsync(int questionId, int userId) =>
+        await _ownership.CanViewQuestionAsync(questionId, userId, IsAdmin, HttpContext.RequestAborted) == QuestionAccessResult.Allowed
+            ? null
+            : NotFound(new { success = false, message = _localizer["questions.notFound"].Value });
+
+    /// <summary>issue #402: test yoksa ya da çağıran göremiyorsa 404; izinliyse null.</summary>
+    private async Task<IActionResult?> DenyUnlessWorksheetViewerAsync(int worksheetId, int userId) =>
+        await _ownership.CanViewWorksheetAsync(worksheetId, userId, IsAdmin, HttpContext.RequestAborted) == QuestionAccessResult.Allowed
+            ? null
+            : NotFound(new { success = false, message = _localizer["questions.testNotFound"].Value });
+
+    /// <summary>
+    /// issue #402 (P5, security D2): paragraf yoksa YA DA çağıranın değilse (admin değil) aynı 400 passageNotFound;
+    /// izinliyse null. Başkasının paragraf id'leri varlık kehaneti olarak kullanılamaz.
+    /// </summary>
+    private async Task<IActionResult?> DenyUnlessPassageUsableAsync(int passageId, int userId, int? questionId) =>
+        await _ownership.CanUsePassageAsync(passageId, userId, IsAdmin, questionId, HttpContext.RequestAborted) == QuestionAccessResult.Allowed
+            ? null
+            : BadRequest(new { success = false, message = _localizer["questions.passageNotFound"].Value });
+
+    /// <summary>Test yoksa YA DA sahibi değilse (admin değil) aynı 404 (issue #402 security D1); izinliyse null.</summary>
     private async Task<IActionResult?> DenyUnlessWorksheetOwnerAsync(int worksheetId, int userId) =>
-        await _ownership.CanModifyWorksheetAsync(worksheetId, userId, IsAdmin, HttpContext.RequestAborted) switch
-        {
-            QuestionAccessResult.NotFound => NotFound(new { success = false, message = _localizer["questions.testNotFound"].Value }),
-            QuestionAccessResult.Forbidden => StatusCode(StatusCodes.Status403Forbidden,
-                new { success = false, message = _localizer["questions.testForbidden"].Value }),
-            _ => null
-        };
+        await _ownership.CanModifyWorksheetAsync(worksheetId, userId, IsAdmin, HttpContext.RequestAborted) == QuestionAccessResult.Allowed
+            ? null
+            : NotFound(new { success = false, message = _localizer["questions.testNotFound"].Value });
 }
 
 

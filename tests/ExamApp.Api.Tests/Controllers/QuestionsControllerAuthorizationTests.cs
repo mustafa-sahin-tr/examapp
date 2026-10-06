@@ -142,7 +142,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         var query = Substitute.For<IQuestionQueryService>();
         query.GetQuestionById(Arg.Any<int>()).Returns(new QuestionDto { Id = 1, ImageUrl = "q/question.jpg" });
         query.GetQuestionByTestId(Arg.Any<int>()).Returns(new List<QuestionDto>());
-        query.GetLastTenPassages().Returns(new List<PassageDto>());
+        query.GetLastTenPassages(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(new List<PassageDto>());
 
         var minio = Substitute.For<IMinIoService>();
         minio.GetFileStreamAsync(Arg.Any<string>()).Returns(_ => Task.FromResult<Stream?>(new MemoryStream(new byte[] { 1 })));
@@ -285,7 +285,8 @@ public class QuestionsControllerAuthorizationTests : IDisposable
     }
 
     [Fact]
-    public async Task Non_owner_teacher_gets_403_on_every_write_including_the_copier_of_a_shared_question()
+    // issue #402 (security D1): "senin değil" = "yok" → aynı 404 (varlık kehaneti yok).
+    public async Task Non_owner_teacher_gets_404_on_every_write_including_the_copier_of_a_shared_question()
     {
         using var host = await StartHostAsync();
         using var client = host.GetTestClient();
@@ -303,12 +304,19 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         foreach (var (method, path, body) in writes)
         {
             var response = await SendAsync(client, Copier, method, path, body);
-            response.StatusCode.ShouldBe(HttpStatusCode.Forbidden, $"{method} {path}");
+            response.StatusCode.ShouldBe(HttpStatusCode.NotFound, $"{method} {path}");
             (await response.Content.ReadAsStringAsync()).ShouldContain("\"success\":false");
         }
 
         (await SendAsync(client, Owner, HttpMethod.Put, $"/api/questions/{_copierQuestion}/correct-answer",
-            new { correctAnswerId = 1, scale = 1 })).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+            new { correctAnswerId = 1, scale = 1 })).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+
+        // Yabancı sorudaki yanıt gövdesi, olmayan sorudakiyle birebir aynı.
+        var foreign = await SendAsync(client, Owner, HttpMethod.Put, $"/api/questions/{_copierQuestion}/correct-answer",
+            new { correctAnswerId = 1, scale = 1 });
+        var missing = await SendAsync(client, Owner, HttpMethod.Put, "/api/questions/987654/correct-answer",
+            new { correctAnswerId = 1, scale = 1 });
+        (await foreign.Content.ReadAsStringAsync()).ShouldBe(await missing.Content.ReadAsStringAsync());
     }
 
     [Fact]
@@ -335,6 +343,22 @@ public class QuestionsControllerAuthorizationTests : IDisposable
             new { subjectId = 1 })).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await SendAsync(client, Service, HttpMethod.Put, $"/api/questions/{_copierQuestion}/correct-answer",
             new { correctAnswerId = 1, scale = 1 })).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    // issue #402: okuma da kapsamlı — kopyalayan öğretmen orijinal (private) testi okuyamaz (404, varlık sızmaz) ama kendi
+    // kopyasını ve kopyadaki paylaşılan soruyu okur; başkasının sorusunu okuyamaz.
+    [Fact]
+    public async Task Reads_are_scoped_to_worksheets_the_teacher_can_view()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        (await SendAsync(client, Copier, HttpMethod.Get, $"/api/questions/bytest/{_worksheet}")).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await SendAsync(client, Copier, HttpMethod.Get, $"/api/questions/bytest/{_copyWorksheet}")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await SendAsync(client, Copier, HttpMethod.Get, $"/api/questions/{_legacyQuestion}")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await SendAsync(client, Owner, HttpMethod.Get, $"/api/questions/{_copierQuestion}")).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await SendAsync(client, Owner, HttpMethod.Get, $"/api/questions/{_copierQuestion}/image")).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await SendAsync(client, Owner, HttpMethod.Get, "/api/questions/bytest/987654")).StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
     [Fact]

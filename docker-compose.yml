@@ -17,6 +17,11 @@ services:
       - ConnectionStrings__DefaultConnection=Host=exam_pg_container;Port=5432;Database=worksheet;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       - MinioConfig__AccessKey=${MINIO_ROOT_USER}
       - MinioConfig__SecretKey=${MINIO_ROOT_PASSWORD}
+      # Issue #402 (O1): gorsel URL'leri root ile degil, minio-presign-init'in olusturdugu GetObject-only hesapla imzalanir.
+      - MinioConfig__PresignAccessKey=${MINIO_PRESIGN_ACCESS_KEY:?MINIO_PRESIGN_ACCESS_KEY .env icinde tanimli olmali}
+      - MinioConfig__PresignSecretKey=${MINIO_PRESIGN_SECRET_KEY:?MINIO_PRESIGN_SECRET_KEY .env icinde tanimli olmali}
+      # #402 D7: presign politikasi ile ayni bucket adi (minio-presign-init de bunu okur).
+      - MinioConfig__BucketName=${MINIO_QUESTIONS_BUCKET:-exam-questions}
       - Keycloak__ClientSecret=${KEYCLOAK_CLIENT_SECRET:?KEYCLOAK_CLIENT_SECRET .env icinde tanimli olmali}
       - Keycloak__AdminClientSecret=${KEYCLOAK_ADMIN_CLIENT_SECRET:?KEYCLOAK_ADMIN_CLIENT_SECRET .env icinde tanimli olmali}
       - Keycloak__ServiceClientSecret=${KEYCLOAK_SERVICE_CLIENT_SECRET:?KEYCLOAK_SERVICE_CLIENT_SECRET .env icinde tanimli olmali}
@@ -46,6 +51,8 @@ services:
       rabbitmq:
         condition: service_started
       rabbitmq-permission-sync:
+        condition: service_completed_successfully
+      minio-presign-init:
         condition: service_completed_successfully
     networks:
       - mynetwork
@@ -334,7 +341,7 @@ services:
   #     - ./dockerfiles/nginx/nginx.conf:/etc/nginx/nginx.conf
 
   minio:
-    image: minio/minio
+    image: minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e # RELEASE.2025-09-07T16-13-09Z, pinned by digest (#402 D6)
     container_name: minio
     restart: always
     ports:
@@ -348,6 +355,28 @@ services:
     command: server /data --console-address ":9001"
     volumes:
       - ./minio-data:/data
+    networks:
+      - mynetwork
+
+  # Issue #402 (O1): one-shot — GetObject-only presign kullanicisini + politikasini olusturur/gunceller (idempotent;
+  # her `up -d`'de yeniden kosar, degisen secret'i da uygular). exam-dotnet-api bunun basariyla bitmesini bekler.
+  minio-presign-init:
+    # Same pinned image as the minio service: it ships `mc` (minio/mc is not pullable).
+    image: minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    container_name: minio-presign-init
+    restart: 'no'
+    environment:
+      MINIO_URL: http://minio:9000
+      MINIO_QUESTIONS_BUCKET: ${MINIO_QUESTIONS_BUCKET:-exam-questions}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_PRESIGN_ACCESS_KEY: ${MINIO_PRESIGN_ACCESS_KEY:?MINIO_PRESIGN_ACCESS_KEY .env icinde tanimli olmali}
+      MINIO_PRESIGN_SECRET_KEY: ${MINIO_PRESIGN_SECRET_KEY:?MINIO_PRESIGN_SECRET_KEY .env icinde tanimli olmali}
+    volumes:
+      - ./deploy/scripts/minio-presign-init.sh:/minio-presign-init.sh:ro
+    entrypoint: ['sh', '/minio-presign-init.sh']
+    depends_on:
+      - minio
     networks:
       - mynetwork
 

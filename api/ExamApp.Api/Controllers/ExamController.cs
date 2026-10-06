@@ -546,15 +546,8 @@ public class ExamController : BaseController
         return Ok(result);
     }
 
-    // 🟢 GET /api/exam/questions - Sınav için soruları getir
-    [HttpGet("questions")]
-    [Authorize(Roles = "Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
-    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
-    public async Task<IActionResult> GetExamQuestions()
-    {
-        var questions = await _examService.GetExamQuestionsAsync();
-        return Ok(questions);
-    }
+    // issue #402 (P1): GET api/worksheet/questions (tüm soru bankasını sayfalamasız/kapsamsız döken uç) kaldırıldı —
+    // UI/servis tüketicisi yoktu. Test soruları için kapsamlı uç: GET api/questions/bytest/{testId}.
 
     // // 🟢 POST /api/exam/submit-answer - Öğrencinin cevabını kaydet
     // [HttpPost("submit-answer")]

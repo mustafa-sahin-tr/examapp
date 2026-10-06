@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Storage;
 using System;
 
 namespace ExamApp.Api.Models.Dtos;
@@ -14,6 +15,7 @@ public class InstanceSummaryDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
+    [StorageUrl(StorageArea.WorksheetCover)]
     public string? ImageUrl { get; set; }
     public DateTime CompletedDate { get; set; }
     public int Score { get; set; }

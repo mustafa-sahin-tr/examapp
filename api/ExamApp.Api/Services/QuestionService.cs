@@ -22,6 +22,7 @@ public class QuestionService : IQuestionService
 
     private readonly ImageHelper _imageHelper;
     private readonly IMinIoService _minioService;
+    private readonly StorageAreaPolicy _storagePolicy;
 
     // Client'a donen mesajlar (ResponseBaseDto.Message ve istemciye sizan exception metinleri)
     // buradan gelir (issue #184). Log mesajlari cevrilmez. DI her zaman gercek localizer'i
@@ -32,11 +33,14 @@ public class QuestionService : IQuestionService
         AppDbContext context,
         ImageHelper imageHelper,
         IMinIoService minioService,
-        IStringLocalizer<Messages>? localizer = null)
+        IStringLocalizer<Messages>? localizer = null,
+        StorageAreaPolicy? storagePolicy = null)
     {
         _imageHelper = imageHelper;
         _context = context;
         _minioService = minioService;
+        // DI her zaman yapılandırılmış politikayı verir; DI'sız (birim test) kurulumda varsayılan bucket.
+        _storagePolicy = storagePolicy ?? new StorageAreaPolicy((string?)null);
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
@@ -45,6 +49,26 @@ public class QuestionService : IQuestionService
         // issue #287 H1: audit alanları (CreateUserId = soru sahibi) istek sahibine damgalanır.
         if (actingUserId > 0)
             _context.SetCurrentUser(actingUserId);
+
+        // issue #365 (S2): yeni paragrafın görseli base64 değilse istemcinin gönderdiği adrestir. Hiçbir şey yazılmadan
+        // ÖNCE /img/{varsayılan bucket}/passages/... biçimine indirgenir (imzalı URL'nin query'si atılır); başka her şey
+        // (tam URL, question-transfer/, yabancı bucket, questions/ ya da answers/ nesnesi, & / %) InvalidInput → 400.
+        // Mevcut paragrafa bağlanırken (Id > 0) istemcinin geri gönderdiği adres kullanılmadığı için doğrulanmaz.
+        if (questionDto.Passage is { Id: null or <= 0 } newPassage &&
+            !string.IsNullOrWhiteSpace(newPassage.ImageUrl) && !_imageHelper.IsBase64String(newPassage.ImageUrl))
+        {
+            if (!_storagePolicy.TryNormalizeClientUrl(newPassage.ImageUrl, StorageArea.QuestionImage,
+                    StorageAreaPolicy.PassageImagePrefix, out var normalizedPassageImage))
+            {
+                return new QuestionSavedDto
+                {
+                    Success = false,
+                    InvalidInput = true,
+                    Message = _localizer["questions.image.invalidUrl"]
+                };
+            }
+            newPassage.ImageUrl = normalizedPassageImage;
+        }
 
         try
         {
@@ -144,11 +168,16 @@ public class QuestionService : IQuestionService
                         var passage = new Passage
                         {
                             Title = questionDto.Passage.Title,
-                            Text = questionDto.Passage.Text,
-                            ImageUrl = questionDto.Passage.ImageUrl
+                            Text = questionDto.Passage.Text
                         };
+                        // issue #365 (S2): istemci değeri olduğu gibi saklanmaz. Base64 ise (oluşturma dalıyla aynı)
+                        // yüklenir — eskiden data URI ham hâliyle ImageUrl'e yazılıyordu; değilse metodun başında
+                        // passages/ allowlist'ine normalize edilmiş (query'siz) adrestir.
+                        passage.ImageUrl = await ResolveNewPassageImageAsync(questionDto.Passage.ImageUrl, questionDto.TestId);
                         _context.Passage.Add(passage);
-                        question.PassageId = passage.Id;
+                        // Navigation ile bağla: passage henüz kaydedilmediği için Id = 0'dı ve PassageId = 0 FK hatasıyla
+                        // tüm güncellemeyi düşürüyordu (yeni paragraflı güncelleme hiç çalışmıyordu; #365 testinde ortaya çıktı).
+                        question.Passage = passage;
                     }
                 }
 
@@ -283,14 +312,8 @@ public class QuestionService : IQuestionService
                             Title = questionDto.Passage.Title,
                             Text = questionDto.Passage.Text
                         };
-                        // 📌 Eğer yeni resim varsa, güncelle
-                        if (!string.IsNullOrEmpty(questionDto.Passage.ImageUrl) &&
-                            _imageHelper.IsBase64String(questionDto.Passage.ImageUrl))
-                        {
-                            byte[] imageBytes = Convert.FromBase64String(questionDto.Passage.ImageUrl.Split(',')[1]);
-                            await using var imageStream = new MemoryStream(imageBytes);
-                            passage.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"passages/{questionDto.TestId}/{Guid.NewGuid()}.jpg");
-                        }
+                        // 📌 Base64 görsel yüklenir; değilse metodun başında passages/ allowlist'ine normalize edilmiş adres (#365).
+                        passage.ImageUrl = await ResolveNewPassageImageAsync(questionDto.Passage.ImageUrl, questionDto.TestId);
 
                         _context.Passage.Add(passage);
                         await _context.SaveChangesAsync();
@@ -351,6 +374,31 @@ public class QuestionService : IQuestionService
             };
         }
     }
+
+    /// <summary>
+    /// Yeni paragrafın saklanacak görsel adresi: base64 ise MinIO'ya yüklenir, değilse (metodun başında passages/
+    /// allowlist'ine normalize edilmiş) değer aynen döner; boşsa null.
+    /// </summary>
+    private async Task<string?> ResolveNewPassageImageAsync(string? image, int? testId)
+    {
+        if (string.IsNullOrEmpty(image))
+            return null;
+        if (!_imageHelper.IsBase64String(image))
+            return image;
+
+        byte[] imageBytes = Convert.FromBase64String(image.Split(',')[1]);
+        await using var imageStream = new MemoryStream(imageBytes);
+        return await _minioService.UploadFileAsync(imageStream, PassageObjectKey(testId));
+    }
+
+    /// <summary>
+    /// Paragraf görseli anahtarı: <c>passages/{testId}/{guid}.jpg</c>; test yoksa <c>passages/{guid}.jpg</c>
+    /// (eskiden <c>passages//{guid}.jpg</c> — boş klasör segmenti üretiyordu).
+    /// </summary>
+    internal static string PassageObjectKey(int? testId)
+        => testId is > 0
+            ? $"{StorageAreaPolicy.PassageImagePrefix}{testId}/{Guid.NewGuid()}.jpg"
+            : $"{StorageAreaPolicy.PassageImagePrefix}{Guid.NewGuid()}.jpg";
 
     public async Task<StudyPageAttachImageResponseDto> AttachImageToStudyPage(StudyPageAttachImageDto request)
     {

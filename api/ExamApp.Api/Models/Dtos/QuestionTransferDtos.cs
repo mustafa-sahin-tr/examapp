@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Storage;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -35,6 +36,7 @@ public class QuestionTransferJobDto
     public string SourceKey { get; set; } = "default";
     public int TotalItems { get; set; }
     public int ProcessedItems { get; set; }
+    [NotStorageUrl("question-transfer/* paketleri: asla imzalanmaz, yalnız Admin API akışıyla indirilir (#365)")]
     public string? FileUrl { get; set; }
     public string? Message { get; set; }
 }
@@ -44,6 +46,7 @@ public class QuestionTransferExportBundleDto
     public string SourceKey { get; set; } = "default";
     public int BundleNo { get; set; }
     public int QuestionCount { get; set; }
+    [NotStorageUrl("question-transfer/* paketleri: asla imzalanmaz, yalnız Admin API akışıyla indirilir (#365)")]
     public string? FileUrl { get; set; }
 }
 

@@ -21,6 +21,7 @@ public sealed class BadgeIconBackfillPostgresFixture : IAsyncLifetime
 /// PostgreSQL (its hand-written <c>UPDATE ... FROM (VALUES ...)</c> SQL). The DB is migrated up to
 /// <c>AddBadgeDefinitionIcon</c> (column exists, empty), pre-#149 rows are inserted, then the backfill runs.
 /// </summary>
+[Trait("Category", "Integration")]
 public class BadgeIconBackfillMigrationTests : IClassFixture<BadgeIconBackfillPostgresFixture>, IAsyncLifetime
 {
     private const string SchemaMigration = "AddBadgeDefinitionIcon";

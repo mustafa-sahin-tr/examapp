@@ -12,11 +12,11 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router } from '@angular/router';
-import { take } from 'rxjs';
+import { EMPTY, Observable, catchError, firstValueFrom, map, of, take } from 'rxjs';
 import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { GradesService } from '../../services/grades.service';
 import { SubjectService } from '../../services/subject.service';
-import { StudyPageService } from '../../services/study-page.service';
+import { BOOK_PAGE_LOOKUP_MAX_PAGES, StudyPageService } from '../../services/study-page.service';
 import { BookService } from '../../services/book.service';
 import { Subject } from '../../models/subject';
 import { Topic } from '../../models/topic';
@@ -34,6 +34,13 @@ import {
 } from '../../models/study-page';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 import { AutofocusDirective } from '../../shared/directives/auto-focus.directive';
+import { StorageImageRetryDirective } from '../../shared/directives/storage-image-retry.directive';
+import {
+  StorageImageResolver,
+  createStorageImageResolver,
+  findFreshStorageUrl,
+} from '../../shared/utils/storage-image-refresh.util';
+import { storageImageKey } from '../../shared/utils/storage-image-url.util';
 
 interface NewImageItem {
   file?: File; // Optional for MinIO items
@@ -90,6 +97,32 @@ interface PlatformOption {
  */
 const STUDY_PAGES_SCOPE = 'study-pages';
 
+/**
+ * Kitap sayfası sorgusunun hata metni: servis hatası `{ message }`; model doğrulaması (ASP.NET ProblemDetails)
+ * `{ title, errors: { alan: [mesaj] } }` — ilk alan mesajı, yoksa başlık. Hiçbiri yoksa null (genel metin gösterilir).
+ */
+function lookupErrorMessage(err: unknown): string | null {
+  const body = (err as { error?: unknown })?.error as
+    | { message?: unknown; title?: unknown; errors?: Record<string, unknown> }
+    | null
+    | undefined;
+  if (!body || typeof body !== 'object') {
+    return null;
+  }
+  if (typeof body.message === 'string' && body.message) {
+    return body.message;
+  }
+  if (body.errors && typeof body.errors === 'object') {
+    for (const value of Object.values(body.errors)) {
+      const first = Array.isArray(value) ? value[0] : value;
+      if (typeof first === 'string' && first) {
+        return first;
+      }
+    }
+  }
+  return typeof body.title === 'string' && body.title ? body.title : null;
+}
+
 const CONTENT_TYPE_LABEL_KEYS: Record<StudyPageContentType, string> = {
   [StudyPageContentType.Image]: 'contentType.image',
   [StudyPageContentType.Link]: 'contentType.link',
@@ -124,6 +157,7 @@ const PLATFORM_LABEL_KEYS: Record<StudyPageLinkPlatform, string> = {
     AutofocusDirective,
     TranslocoDirective,
     TranslocoPipe,
+    StorageImageRetryDirective,
   ],
   providers: [provideTranslocoScope(STUDY_PAGES_SCOPE)],
 })
@@ -227,6 +261,32 @@ export class StudyPageEditorComponent implements OnDestroy {
   expectedFiles = signal<ExpectedFile[]>([]);
   jsonProcessing = signal(false);
   jsonFileName = signal<string | null>(null);
+
+  /**
+   * issue #365 (S3): önizleme görseli yüklenemezse (imzalı URL'nin süresi doldu) taze imzalı URL ile bir kez yeniden
+   * denenir. Kitap sayfası önizlemesi tek sayfalık sunucu sorgusuyla, kayıtlı resimler etkinlik yeniden çekilerek
+   * tazelenir. Yerel dosya önizlemeleri (blob:) direktifçe yok sayılır.
+   */
+  readonly imageRefresh: StorageImageResolver = (failedUrl: string) => {
+    const key = storageImageKey(failedUrl);
+    const bookPage = this.newImages().find(
+      (img) => img.isFromMinio && img.bookName && img.pageNumber && storageImageKey(img.previewUrl) === key
+    );
+    if (bookPage) {
+      return this.studyPageService
+        .lookupBookPages([{ book: bookPage.bookName!, pageNumber: bookPage.pageNumber! }])
+        .pipe(
+          map((results) => findFreshStorageUrl(results.map((r) => r.previewUrl), failedUrl)),
+          catchError(() => of(null))
+        );
+    }
+    return this.existingImageRefresh(failedUrl);
+  };
+
+  private readonly existingImageRefresh = createStorageImageResolver(() => {
+    const id = this.editingId();
+    return id != null ? this.studyPageService.getById(id) : (EMPTY as Observable<StudyPage>);
+  });
 
   constructor() {
     this.preloadScope();
@@ -457,7 +517,6 @@ export class StudyPageEditorComponent implements OnDestroy {
         previewUrl: URL.createObjectURL(file),
         selected: expectedFile ? true : false, // Auto-select if matches JSON expectation
         isFromJson: expectedFile ? true : false,
-        minioUrl: expectedFile ? `/img/study-pages/books/${expectedFile.bookName}/page_${expectedFile.pageNumber}.webp` : undefined,
       };
     });
 
@@ -499,15 +558,16 @@ export class StudyPageEditorComponent implements OnDestroy {
       this.generateExpectedFiles(config);
 
       // Auto-create MinIO images for expected files
-      await this.createMinIOImages();
-
-      this.snackBar.open(
-        this.text('editor.messages.jsonLoaded', {
-          count: this.newImages().filter((img) => img.isFromMinio).length,
-        }),
-        this.ok,
-        { duration: 3000 }
-      );
+      // Sorgu hatasında hata mesajı zaten gösterildi; "JSON yüklendi: 0 resim" onu ezmesin (#365 S3 review).
+      if (await this.createMinIOImages()) {
+        this.snackBar.open(
+          this.text('editor.messages.jsonLoaded', {
+            count: this.newImages().filter((img) => img.isFromMinio).length,
+          }),
+          this.ok,
+          { duration: 3000 }
+        );
+      }
     } catch {
       this.snackBar.open(this.text('editor.messages.jsonReadFailed'), this.ok, { duration: 5000 });
       this.jsonFileName.set(null);
@@ -543,71 +603,55 @@ export class StudyPageEditorComponent implements OnDestroy {
     this.expectedFiles.set(expected);
   }
 
-  async createMinIOImages() {
+  /**
+   * JSON kılavuzundaki sayfaların depolamada olup olmadığını sunucuya sorar (issue #365 S3). Bucket'lar özel olduğu için
+   * tarayıcı `/img/...` adresini yoklayamaz ve adresi istemcide üretmez: var olan her sayfa için sunucunun döndürdüğü
+   * saklama yolu (`minioUrl`, kayıtta gönderilir) ve imzalı önizleme URL'si kullanılır. Sorgu hatasında (geçersiz
+   * kitap adı 400, depolama 503) sunucu mesajı gösterilir; kılavuz yüklü kalır (yüklenen dosyalar yine eşleşir).
+   */
+  async createMinIOImages(): Promise<boolean> {
     const expectedFiles = this.expectedFiles();
     const newItems: NewImageItem[] = [];
+    let ok = true;
 
-    for (const expectedFile of expectedFiles) {
-      const minioUrl = `/img/study-pages/books/${expectedFile.bookName}/page_${expectedFile.pageNumber}.webp`;
+    try {
+      for (let start = 0; start < expectedFiles.length; start += BOOK_PAGE_LOOKUP_MAX_PAGES) {
+        const chunk = expectedFiles.slice(start, start + BOOK_PAGE_LOOKUP_MAX_PAGES);
+        const results = await firstValueFrom(
+          this.studyPageService.lookupBookPages(chunk.map((f) => ({ book: f.bookName, pageNumber: f.pageNumber })))
+        );
 
-      const exists = await this.checkMinIOImageExists(minioUrl);
-
-      if (exists) {
-        const encodedUrl = this.encodeMinIOUrl(minioUrl);
-        newItems.push({
-          previewUrl: encodedUrl, // Use encoded URL for preview
-          selected: true,
-          isFromJson: true,
-          minioUrl: minioUrl, // Keep original for reference
-          bookName: expectedFile.bookName,
-          pageNumber: expectedFile.pageNumber,
-          isFromMinio: true,
-        });
-
-        expectedFile.found = true;
+        for (const expectedFile of chunk) {
+          const found = results.find(
+            (r) => r.exists && r.book === expectedFile.bookName && r.pageNumber === expectedFile.pageNumber
+          );
+          if (!found?.minioUrl || !found.previewUrl) {
+            continue;
+          }
+          newItems.push({
+            previewUrl: found.previewUrl,
+            selected: true,
+            isFromJson: true,
+            minioUrl: found.minioUrl,
+            bookName: expectedFile.bookName,
+            pageNumber: expectedFile.pageNumber,
+            isFromMinio: true,
+          });
+          expectedFile.found = true;
+        }
       }
+    } catch (err) {
+      ok = false;
+      this.snackBar.open(lookupErrorMessage(err) || this.text('editor.messages.bookLookupFailed'), this.ok, {
+        duration: 5000,
+      });
     }
 
+    this.expectedFiles.set([...expectedFiles]);
     const existingCount = this.previewItems.length;
     this.newImages.set([...this.newImages(), ...newItems]);
     this.previewIndex.set(existingCount);
-  }
-
-  async checkMinIOImageExists(url: string): Promise<boolean> {
-    try {
-      const encodedUrl = this.encodeMinIOUrl(url);
-
-      // Use GET request directly since HEAD doesn't work with this MinIO setup
-      const response = await fetch(encodedUrl, { method: 'GET' });
-      return response.ok;
-    } catch {
-      return false;
-    }
-  }
-
-  private encodeMinIOUrl(url: string): string {
-    // Find the study-pages path segment
-    const pathMarker = '/img/study-pages/books/';
-    const pathIndex = url.indexOf(pathMarker);
-    if (pathIndex === -1) {
-      return url; // Return original if path not found
-    }
-
-    const baseUrl = url.substring(0, pathIndex + pathMarker.length);
-    const pathPart = url.substring(pathIndex + pathMarker.length);
-
-    // Split into book folder and filename
-    const parts = pathPart.split('/');
-    if (parts.length !== 2) {
-      return url; // Fallback to original if format unexpected
-    }
-
-    const [bookFolder, filename] = parts;
-
-    const encodedBookFolder = encodeURIComponent(bookFolder);
-    const encodedFilename = encodeURIComponent(filename);
-
-    return `${baseUrl}${encodedBookFolder}%2F${encodedFilename}`;
+    return ok;
   }
 
   private findMatchingExpectedFile(fileName: string): ExpectedFile | undefined {
@@ -967,6 +1011,13 @@ export class StudyPageEditorComponent implements OnDestroy {
     this.gradesService.getGrades().subscribe((grades) => {
       this.grades.set(grades);
     });
+  }
+
+  /** Düzenlenen etkinliğin id'si (yeni kayıtta null). */
+  private editingId(): number | null {
+    const idParam = this.route.snapshot.paramMap.get('id');
+    const id = idParam && idParam !== 'new' ? Number(idParam) : NaN;
+    return Number.isFinite(id) ? id : null;
   }
 
   private loadStudyPage(id: number) {

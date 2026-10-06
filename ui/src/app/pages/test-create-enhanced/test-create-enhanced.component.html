@@ -68,7 +68,8 @@
         <p class="card-note">{{ t('page.coverNote') }}</p>
         <div class="drop">
           <div class="thumb">
-            <img *ngIf="previewImage; else thumbIcon" [src]="previewImage" [alt]="t('page.coverAlt')" />
+            <img *ngIf="previewImage; else thumbIcon" [src]="previewImage" [alt]="t('page.coverAlt')"
+              [appStorageImageRetry]="coverImageRefresh" />
             <ng-template #thumbIcon><mat-icon>image</mat-icon></ng-template>
           </div>
           <div class="d-body">
@@ -105,7 +106,7 @@
         <div class="wc">
           <div class="wc-cover">
             <span class="pract" *ngIf="previewIsPractice">{{ t('preview.practice') }}</span>
-            <img *ngIf="previewImage; else coverIcon" [src]="previewImage" alt="" />
+            <img *ngIf="previewImage; else coverIcon" [src]="previewImage" alt="" [appStorageImageRetry]="coverImageRefresh" />
             <ng-template #coverIcon><mat-icon>schedule</mat-icon></ng-template>
           </div>
           <div class="wc-body">

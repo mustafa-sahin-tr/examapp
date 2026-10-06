@@ -12,6 +12,7 @@ import { SubjectService } from '../../services/subject.service';
 import { StudyPageService } from '../../services/study-page.service';
 import { BookService } from '../../services/book.service';
 import {
+  StudyBookPageLookupResult,
   StudyPage,
   StudyPageContentType,
   StudyPageLinkPlatform,
@@ -49,6 +50,7 @@ function configureModule(paramMapId: string | null = 'new') {
     'getById',
     'create',
     'update',
+    'lookupBookPages',
   ]);
   // Varsayilan: bos sayfa dondur (edit mode olmayan testler icin de guvenli)
   studyPageService.getById.and.returnValue(of({} as StudyPage));
@@ -390,6 +392,155 @@ describe('StudyPageEditorComponent', () => {
 
       expect(snackBar.open).toHaveBeenCalledWith('En az bir resim seçmelisiniz.', 'Tamam', jasmine.any(Object));
       expect(studyPageService.create).not.toHaveBeenCalled();
+    });
+  });
+
+  // issue #365 (S3): bucket'lar özel — kitap sayfaları tarayıcıdan yoklanmaz, sunucuya sorulur.
+  describe('JSON-guided book pages (server lookup)', () => {
+    const signed = (book: string, page: number) =>
+      `/img/study-pages/books/${encodeURIComponent(book)}/page_${page}.webp?X-Amz-Signature=s${page}`;
+    const stored = (book: string, page: number) => `/img/study-pages/books/${book}/page_${page}.webp`;
+
+    function jsonEvent(config: unknown): Event {
+      const file = new File([JSON.stringify(config)], 'kilavuz.json', { type: 'application/json' });
+      return { target: { files: [file], value: '' } } as unknown as Event;
+    }
+
+    function found(book: string, page: number): StudyBookPageLookupResult {
+      return { book, pageNumber: page, exists: true, minioUrl: stored(book, page), previewUrl: signed(book, page) };
+    }
+
+    function missing(book: string, page: number): StudyBookPageLookupResult {
+      return { book, pageNumber: page, exists: false, minioUrl: null, previewUrl: null };
+    }
+
+    it('onJsonSelected_AsksTheServerAndAddsOnlyExistingPagesWithSignedPreview_NoBrowserProbe', async () => {
+      const { component, studyPageService } = setupComponent();
+      const fetchSpy = spyOn(window, 'fetch').and.callThrough();
+      studyPageService.lookupBookPages.and.returnValue(of([found('Fen Kitabı', 3), missing('Fen Kitabı', 4)]));
+
+      await component.onJsonSelected(jsonEvent([{ book: 'Fen Kitabı', pages: [3, 4] }]));
+
+      expect(studyPageService.lookupBookPages).toHaveBeenCalledOnceWith([
+        { book: 'Fen Kitabı', pageNumber: 3 },
+        { book: 'Fen Kitabı', pageNumber: 4 },
+      ]);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      const images = component.newImages();
+      expect(images.length).toBe(1);
+      expect(images[0].previewUrl).toBe(signed('Fen Kitabı', 3));
+      expect(images[0].minioUrl).toBe(stored('Fen Kitabı', 3));
+      expect(images[0].isFromMinio).toBeTrue();
+      expect(component.guidanceStats).toEqual({ found: 1, total: 2, missing: 1 });
+    });
+
+    it('onSave_SendsTheServerStoredPathNotTheSignedPreview', async () => {
+      const { component, studyPageService } = setupComponent();
+      studyPageService.lookupBookPages.and.returnValue(of([found('Mat 5', 1)]));
+      studyPageService.create.and.returnValue(of({} as StudyPage));
+      await component.onJsonSelected(jsonEvent([{ book: 'Mat 5', pages: [1] }]));
+      component.form.patchValue({ title: 'Baslik' });
+
+      component.onSave();
+
+      const [payload] = studyPageService.create.calls.mostRecent().args;
+      expect(payload.minioImages).toEqual([{ bookName: 'Mat 5', pageNumber: 1, minioUrl: stored('Mat 5', 1) }]);
+    });
+
+    it('onJsonSelected_LargeGuide_IsLookedUpInChunksOf200', async () => {
+      const { component, studyPageService } = setupComponent();
+      studyPageService.lookupBookPages.and.returnValue(of([]));
+      const pages = Array.from({ length: 250 }, (_, i) => i + 1);
+
+      await component.onJsonSelected(jsonEvent([{ book: 'Mat 5', pages }]));
+
+      expect(studyPageService.lookupBookPages).toHaveBeenCalledTimes(2);
+      expect(studyPageService.lookupBookPages.calls.argsFor(0)[0].length).toBe(200);
+      expect(studyPageService.lookupBookPages.calls.argsFor(1)[0].length).toBe(50);
+    });
+
+    it('onJsonSelected_LookupRejected_ShowsServerMessageAndKeepsTheGuide', async () => {
+      const { component, studyPageService, snackBar } = setupComponent();
+      studyPageService.lookupBookPages.and.returnValue(
+        throwError(() => ({ status: 400, error: { message: 'Geçersiz kitap klasörü adı.' } }))
+      );
+
+      await component.onJsonSelected(jsonEvent([{ book: '../x', pages: [1] }]));
+
+      // Hata mesajı "JSON yüklendi: 0 resim" ile ezilmemeli: SON snackbar hatadır.
+      expect(snackBar.open.calls.mostRecent().args[0]).toBe('Geçersiz kitap klasörü adı.');
+      expect(component.newImages().length).toBe(0);
+      expect(component.hasJsonConfig).toBeTrue();
+    });
+
+    it('onJsonSelected_ModelValidationProblemDetails_ShowsFirstFieldErrorLast', async () => {
+      const { component, studyPageService, snackBar } = setupComponent();
+      studyPageService.lookupBookPages.and.returnValue(
+        throwError(() => ({
+          status: 400,
+          error: {
+            title: 'One or more validation errors occurred.',
+            errors: { 'Pages[0].PageNumber': ['The field PageNumber must be between 1 and 9999.'] },
+          },
+        }))
+      );
+
+      await component.onJsonSelected(jsonEvent([{ book: 'Mat 5', pages: [0] }]));
+
+      expect(snackBar.open.calls.mostRecent().args[0]).toBe('The field PageNumber must be between 1 and 9999.');
+    });
+
+    it('onJsonSelected_LookupFailsWithoutBody_ShowsGenericLookupErrorLast', async () => {
+      const { component, studyPageService, snackBar } = setupComponent();
+      studyPageService.lookupBookPages.and.returnValue(throwError(() => ({ status: 503, error: null })));
+
+      await component.onJsonSelected(jsonEvent([{ book: 'Mat 5', pages: [1] }]));
+
+      expect(snackBar.open.calls.mostRecent().args[0]).toBe(translate('editor.messages.bookLookupFailed'));
+    });
+
+    it('onJsonSelected_Success_ShowsJsonLoadedWithCount', async () => {
+      const { component, studyPageService, snackBar } = setupComponent();
+      studyPageService.lookupBookPages.and.returnValue(of([found('Mat 5', 1)]));
+
+      await component.onJsonSelected(jsonEvent([{ book: 'Mat 5', pages: [1] }]));
+
+      expect(snackBar.open.calls.mostRecent().args[0]).toBe(
+        TestBed.inject(TranslocoService).translate('study-pages.editor.messages.jsonLoaded', { count: 1 })
+      );
+    });
+
+    it('imageRefresh_BookPagePreview_LooksUpThatSinglePageForAFreshSignedUrl', async () => {
+      const { component, studyPageService } = setupComponent();
+      studyPageService.lookupBookPages.and.returnValue(of([found('Mat 5', 7)]));
+      await component.onJsonSelected(jsonEvent([{ book: 'Mat 5', pages: [7] }]));
+      const fresh = signed('Mat 5', 7).replace('s7', 'fresh');
+      studyPageService.lookupBookPages.and.returnValue(of([{ ...found('Mat 5', 7), previewUrl: fresh }]));
+
+      let result: string | null | undefined;
+      component.imageRefresh(signed('Mat 5', 7)).subscribe((u) => (result = u));
+
+      expect(studyPageService.lookupBookPages.calls.mostRecent().args[0]).toEqual([{ book: 'Mat 5', pageNumber: 7 }]);
+      expect(result).toBe(fresh);
+    });
+
+    it('imageRefresh_ExistingImageInEditMode_RefetchesTheStudyItem', () => {
+      const services = configureModule('42');
+      const old = '/img/study-pages/pages/42/a.jpg?X-Amz-Signature=old';
+      const fresh = '/img/study-pages/pages/42/a.jpg?X-Amz-Signature=new';
+      services.studyPageService.getById.and.returnValue(
+        of({ id: 42, title: 'T', images: [{ id: 1, imageUrl: old, sortOrder: 0 }] } as unknown as StudyPage)
+      );
+      const component = TestBed.createComponent(StudyPageEditorComponent).componentInstance;
+      services.studyPageService.getById.and.returnValue(
+        of({ id: 42, title: 'T', images: [{ id: 1, imageUrl: fresh, sortOrder: 0 }] } as unknown as StudyPage)
+      );
+
+      let result: string | null | undefined;
+      component.imageRefresh(old).subscribe((u) => (result = u));
+
+      expect(services.studyPageService.getById).toHaveBeenCalledWith(42);
+      expect(result).toBe(fresh);
     });
   });
 

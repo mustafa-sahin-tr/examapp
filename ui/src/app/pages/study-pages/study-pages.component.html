@@ -43,7 +43,7 @@
       <div *ngFor="let page of pagedStudyPagesSignal().items; trackBy: trackByPage" class="course-card">
         <div class="sp-card-image" [ngClass]="contentTypeClass(page)">
           @if (isImage(page) && page.coverImageUrl) {
-          <img [src]="page.coverImageUrl" [alt]="page.title" class="cover-image">
+          <img [src]="page.coverImageUrl" [alt]="page.title" class="cover-image" [appStorageImageRetry]="coverImageRefresh">
           } @else if (isLink(page)) {
           <div class="image-placeholder">
             <mat-icon>{{ platformIcon(page) }}</mat-icon>

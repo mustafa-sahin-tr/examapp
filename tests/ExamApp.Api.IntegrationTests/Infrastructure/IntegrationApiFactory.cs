@@ -49,7 +49,6 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
         Environment.SetEnvironmentVariable("Keycloak__ServiceClientSecret", "test-only-service-client-secret");
         Environment.SetEnvironmentVariable("Gemini__ApiKey", "");
         Environment.SetEnvironmentVariable("MinioConfig__BucketName", "test");
-        Environment.SetEnvironmentVariable("MinioConfig__BaseUrl", "http://fake-minio");
         Environment.SetEnvironmentVariable("MinioConfig__Endpoint", "localhost:9000");
         Environment.SetEnvironmentVariable("MinioConfig__AccessKey", "x");
         Environment.SetEnvironmentVariable("MinioConfig__SecretKey", "x");
@@ -66,6 +65,9 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
         // issue #155: hesap durumu rate limit'i — aynı gerekçe.
         Environment.SetEnvironmentVariable("RateLimiting__AdminAccountStatus__PermitLimit", "5");
         Environment.SetEnvironmentVariable("RateLimiting__AdminAccountStatus__WindowSeconds", "3600");
+        // issue #365 (S3): kitap sayfası sorgusu — 429 testi için küçük/uzun pencere.
+        Environment.SetEnvironmentVariable("RateLimiting__StudyBookPageLookup__PermitLimit", "10");
+        Environment.SetEnvironmentVariable("RateLimiting__StudyBookPageLookup__WindowSeconds", "3600");
         // issue #105: yorum yazma rate limit'i — 429 testi zamanlamadan bağımsız olsun; testler benzersiz sub kullanır.
         Environment.SetEnvironmentVariable("RateLimiting__WorksheetCommentWrite__PermitLimit", "5");
         Environment.SetEnvironmentVariable("RateLimiting__WorksheetCommentWrite__WindowSeconds", "3600");

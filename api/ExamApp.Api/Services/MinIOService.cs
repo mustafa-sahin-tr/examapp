@@ -30,20 +30,24 @@ public interface IMinIoService
 
     /// <summary>issue #365: bucket politikası JSON'u; politika yoksa null.</summary>
     Task<string?> GetBucketPolicyAsync(string bucketName, CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #365 (S3): nesne var mı (sunucu tarafı StatObject; bucket'lar özel olduğu için tarayıcı artık yoklayamaz).
+    /// Nesne ya da bucket yoksa false; MinIO'ya ulaşılamaması gibi altyapı hataları exception olarak yükselir.
+    /// </summary>
+    Task<bool> ObjectExistsAsync(string bucketName, string objectName, CancellationToken ct = default);
 }
 
 public class MinIoService : IMinIoService
 {
     private readonly IMinioClient _minioClient;
     private readonly string _bucketName;
-    private readonly string _baseUrl;
     private readonly ILogger<MinIoService> _logger;
     public MinIoService(IConfiguration configuration, ILogger<MinIoService> logger)
     {
         _logger = logger;
         var minioConfig = configuration.GetSection("MinioConfig");
         _bucketName = minioConfig["BucketName"];
-        _baseUrl = minioConfig["BaseUrl"];
 
         _minioClient = new MinioClient()
             .WithEndpoint(minioConfig["Endpoint"])
@@ -75,19 +79,13 @@ public class MinIoService : IMinIoService
 
     private (string BucketName, string ObjectName) GetBucketAndObjectNameFromUrl(string fileUrl)
     {
-        // Example: "/img/bucketName/objectName" or full URL
+        // Example: "/img/bucketName/objectName" (UploadFileAsync dönüşü; issue #365: eski MinioConfig:BaseUrl öneki
+        // hiçbir zaman saklanmadı, kaldırıldı)
         if (string.IsNullOrEmpty(fileUrl))
             throw new ArgumentException("fileUrl cannot be null or empty", nameof(fileUrl));
 
-        // Remove base URL if present
-        var url = fileUrl;
-        if (!string.IsNullOrEmpty(_baseUrl) && fileUrl.StartsWith(_baseUrl))
-        {
-            url = fileUrl.Substring(_baseUrl.Length);
-        }
-
         // Remove leading slashes
-        url = url.TrimStart('/');
+        var url = fileUrl.TrimStart('/');
 
         // Find the first slash after bucket name
         var parts = url.Split('/');
@@ -204,6 +202,27 @@ public class MinIoService : IMinIoService
     {
         var result = await _minioClient.ListBucketsAsync(ct);
         return result.Buckets.Select(b => b.Name).ToList();
+    }
+
+    public async Task<bool> ObjectExistsAsync(string bucketName, string objectName, CancellationToken ct = default)
+    {
+        try
+        {
+            await _minioClient.StatObjectAsync(new StatObjectArgs().WithBucket(bucketName).WithObject(objectName), ct);
+            return true;
+        }
+        catch (ObjectNotFoundException)
+        {
+            return false;
+        }
+        catch (BucketNotFoundException)
+        {
+            return false;
+        }
+        catch (ErrorResponseException e) when (e.Response?.Code is "NoSuchKey" or "NoSuchBucket" or "NotFound")
+        {
+            return false;
+        }
     }
 
     public async Task<string?> GetBucketPolicyAsync(string bucketName, CancellationToken ct = default)

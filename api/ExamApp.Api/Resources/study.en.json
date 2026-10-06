@@ -21,6 +21,14 @@
       "pagesMustBePositive": "Page numbers must be positive.",
       "endPageBeforeStartPage": "endPage cannot be smaller than startPage.",
       "invalidContentType": "Invalid contentType."
+    },
+    "bookPages": {
+      "pagesRequired": "At least one page is required.",
+      "tooManyPages": "At most {0} pages can be looked up in one request.",
+      "invalidPage": "Page numbers must be between 1 and {0}.",
+      "invalidBook": "Invalid book folder name. Only letters, digits, spaces and - _ . ( ) , ' + are allowed; the name cannot start or end with a space, start with a dot or contain ..",
+      "storageUnavailable": "The storage service is unavailable right now. Please try again shortly.",
+      "rateLimited": "Too many book page lookups in a short time. Please wait a moment and try again."
     }
   }
 }

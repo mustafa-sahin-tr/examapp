@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
@@ -545,6 +546,120 @@ public class StudyItemService : IStudyItemService
         }
 
         return (book.Id, bookTest.Id, null);
+    }
+
+    // ---- Kitap sayfası sorgusu (issue #365 S3) ----
+
+    /// <summary>İstek başına eş zamanlı StatObject üst sınırı (200 sayfalık istek MinIO'yu boğmasın).</summary>
+    internal const int BookPageLookupConcurrency = 8;
+
+    /// <summary>Süreç geneli eş zamanlı StatObject üst sınırı (aynı anda gelen çok sayıda sorgu toplamda MinIO'yu boğmasın).</summary>
+    internal const int BookPageLookupGlobalConcurrency = 32;
+
+    private static readonly SemaphoreSlim BookPageLookupGlobalGate = new(BookPageLookupGlobalConcurrency);
+
+    public async Task<StudyBookPageLookupResult> LookupBookPagesAsync(IReadOnlyList<StudyBookPageRefDto> pages,
+        CancellationToken ct = default)
+    {
+        if (pages is null || pages.Count == 0)
+            return StudyBookPageLookupResult.Fail(_localizer["study.bookPages.pagesRequired"].Value);
+        if (pages.Count > StudyBookPageLookupRequestDto.MaxPages)
+            return StudyBookPageLookupResult.Fail(_localizer["study.bookPages.tooManyPages", StudyBookPageLookupRequestDto.MaxPages].Value);
+
+        // Önce hepsi doğrulanır: tek bir geçersiz kitap adı bile varsa MinIO'ya hiç gidilmez.
+        var unique = new List<(string Book, int Page, string Key)>();
+        var seen = new HashSet<(string, int)>();
+        foreach (var page in pages)
+        {
+            if (page is null || page.PageNumber < 1 || page.PageNumber > StudyBookPageRefDto.MaxPageNumber)
+                return StudyBookPageLookupResult.Fail(_localizer["study.bookPages.invalidPage", StudyBookPageRefDto.MaxPageNumber].Value);
+            if (!TryBuildBookPageKey(page.Book, page.PageNumber, out var key))
+                return StudyBookPageLookupResult.Fail(_localizer["study.bookPages.invalidBook"].Value);
+            if (seen.Add((page.Book, page.PageNumber)))
+                unique.Add((page.Book, page.PageNumber, key));
+        }
+
+        var exists = new bool[unique.Count];
+        using var gate = new SemaphoreSlim(BookPageLookupConcurrency);
+        // İlk altyapı hatasında kalan StatObject'ler iptal edilir: 503 tüm sayfaların zaman aşımını beklemeden döner.
+        using var failFast = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var token = failFast.Token;
+        try
+        {
+            await Task.WhenAll(unique.Select(async (entry, index) =>
+            {
+                await gate.WaitAsync(token);
+                try
+                {
+                    await BookPageLookupGlobalGate.WaitAsync(token);
+                    try
+                    {
+                        exists[index] = await _minioService.ObjectExistsAsync(MinioBucketPolicies.StudyPagesBucket, entry.Key, token);
+                    }
+                    finally
+                    {
+                        BookPageLookupGlobalGate.Release();
+                    }
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    await failFast.CancelAsync();
+                    throw;
+                }
+                finally
+                {
+                    gate.Release();
+                }
+            }));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            _logger.LogError(ex, "[MinIO] Study book page lookup failed for {Count} page(s)", unique.Count);
+            return StudyBookPageLookupResult.Unavailable(_localizer["study.bookPages.storageUnavailable"].Value);
+        }
+
+        var results = unique.Select((entry, index) =>
+        {
+            var url = exists[index] ? MinioObjectUrl.Build(MinioBucketPolicies.StudyPagesBucket, entry.Key) : null;
+            return new StudyBookPageLookupResultDto
+            {
+                Book = entry.Book,
+                PageNumber = entry.Page,
+                Exists = exists[index],
+                MinioUrl = url,
+                PreviewUrl = url, // MVC JSON çıktısında imzalanır ([StorageUrl])
+            };
+        }).ToList();
+        return StudyBookPageLookupResult.Ok(results);
+    }
+
+    /// <summary>
+    /// Kitap klasörü adı → <c>books/{book}/page_{n}.webp</c>. Sıkı allowlist: harf, rakam, boşluk ve <c>- _ . ( ) , ' +</c>;
+    /// baş/son boşluk, <c>.</c> ile başlama, <c>..</c>, yol ayırıcı (<c>/</c> <c>\</c>), <c>&amp;</c>/<c>%</c> (gateway imzayı
+    /// bozar), kontrol ve birleştirici işaretler reddedilir. Son kontrol olarak anahtar
+    /// <see cref="StorageAreaPolicy"/> (StudyPage alanı) ve <see cref="MinioObjectUrl.IsGatewaySafeKey"/>'den geçmelidir.
+    /// </summary>
+    internal bool TryBuildBookPageKey(string? book, int pageNumber, out string key)
+    {
+        key = string.Empty;
+        if (string.IsNullOrEmpty(book) || book.Length > StudyBookPageRefDto.MaxBookLength ||
+            book != book.Trim() || book.StartsWith('.') || book.Contains("..", StringComparison.Ordinal) ||
+            pageNumber < 1 || pageNumber > StudyBookPageRefDto.MaxPageNumber)
+            return false;
+
+        foreach (var c in book)
+        {
+            if (!(char.IsLetterOrDigit(c) || c is ' ' or '-' or '_' or '.' or '(' or ')' or ',' or '\'' or '+'))
+                return false;
+        }
+
+        var candidate = $"books/{book}/page_{pageNumber}.webp";
+        if (!_storagePolicy.IsAllowed(MinioBucketPolicies.StudyPagesBucket, candidate, [StorageArea.StudyPage]) ||
+            !MinioObjectUrl.IsGatewaySafeKey(candidate))
+            return false;
+
+        key = candidate;
+        return true;
     }
 
     // ---- Resim yardımcıları ----

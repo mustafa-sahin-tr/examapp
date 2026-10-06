@@ -179,4 +179,16 @@ describe('StudyPageService', () => {
       req.flush({ items: [], totalCount: 0, pageNumber: 2, pageSize: 5 });
     });
   });
+
+  // issue #365 (S3)
+  describe('lookupBookPages', () => {
+    it('lookupBookPages_PostsPagesInTheBody_NotInTheUrl', () => {
+      service.lookupBookPages([{ book: 'Fen Kitabı', pageNumber: 3 }]).subscribe();
+
+      const req = httpMock.expectOne('/api/exam/study-items/book-pages/lookup');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ pages: [{ book: 'Fen Kitabı', pageNumber: 3 }] });
+      req.flush([]);
+    });
+  });
 });

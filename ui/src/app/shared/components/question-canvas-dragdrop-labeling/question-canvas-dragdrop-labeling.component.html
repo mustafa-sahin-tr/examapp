@@ -2,11 +2,11 @@
   <div class="dd-canvas">
     <div class="dd-passage" *ngIf="!hidePassage && passageImageUrl() as pUrl">
       <div class="dd-passage__title" *ngIf="passageTitle() as title">{{ title }}</div>
-      <img class="dd-passage__image" [src]="pUrl" [alt]="t('passageAlt')" />
+      <img class="dd-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
     </div>
 
     <div class="dd-image-wrap" *ngIf="imageUrl() as url">
-      <img class="dd-image" [src]="url" [alt]="t('questionAlt')" />
+      <img class="dd-image" [src]="url" [alt]="t('questionAlt')" [appStorageImageRetry]="imageRefresh" />
 
       <div class="dd-overlay" *ngIf="plan() as p">
         <ng-container *ngFor="let z of zones()">

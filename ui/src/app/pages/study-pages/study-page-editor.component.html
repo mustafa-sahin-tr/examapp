@@ -241,7 +241,7 @@
           @if (currentPreview; as preview) {
           <div class="preview">
             <div class="study-preview-image">
-              <img [src]="preview.url" alt="" />
+              <img [src]="preview.url" alt="" [appStorageImageRetry]="imageRefresh" />
               <div class="ms-nav-area ms-nav-prev" (click)="previousImage()"></div>
               <div class="ms-nav-area ms-nav-next" (click)="nextImage()"></div>
               <div class="preview-actions preview-actions-top">
@@ -300,7 +300,7 @@
               [class.thumb-unselected]="!item.selected"
               (click)="setPreview(i)"
             >
-              <img [src]="item.url" alt="" />
+              <img [src]="item.url" alt="" [appStorageImageRetry]="imageRefresh" />
               <div class="thumb-info">
                 <span>{{ item.fileName || t('images.imageFallback') }}</span>
                 <span class="badge-generic" [class.badge-new]="item.type === 'new'">{{
@@ -377,7 +377,7 @@
           <div class="image-list">
             @for (item of selectedItems; track item.key) {
             <div class="image-item">
-              <img [src]="item.url" alt="" (click)="setPreviewByKey(item.key)" class="clickable" />
+              <img [src]="item.url" alt="" (click)="setPreviewByKey(item.key)" class="clickable" [appStorageImageRetry]="imageRefresh" />
               <div class="image-actions">
                 <button mat-stroked-button (click)="setPreviewByKey(item.key)">{{ t('images.viewLarge') }}</button>
                 <button mat-icon-button color="warn" (click)="removeSelectedByKey(item.key)">

@@ -21,6 +21,14 @@
       "pagesMustBePositive": "Sayfa numaraları pozitif olmalıdır.",
       "endPageBeforeStartPage": "endPage, startPage değerinden küçük olamaz.",
       "invalidContentType": "Geçersiz contentType."
+    },
+    "bookPages": {
+      "pagesRequired": "En az bir sayfa gönderilmelidir.",
+      "tooManyPages": "Tek istekte en fazla {0} sayfa sorgulanabilir.",
+      "invalidPage": "Sayfa numarası 1 ile {0} arasında olmalıdır.",
+      "invalidBook": "Geçersiz kitap klasörü adı. Yalnızca harf, rakam, boşluk ve - _ . ( ) , ' + karakterleri kullanılabilir; ad boşlukla başlayıp bitemez, nokta ile başlayamaz ve .. içeremez.",
+      "storageUnavailable": "Depolama servisine şu anda ulaşılamıyor. Lütfen biraz sonra tekrar deneyin.",
+      "rateLimited": "Kısa sürede çok fazla kitap sayfası sorgusu yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     }
   }
 }

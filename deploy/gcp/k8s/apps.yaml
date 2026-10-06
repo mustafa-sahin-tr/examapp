@@ -86,11 +86,6 @@ spec:
                 configMapKeyRef:
                   name: examapp-config
                   key: MINIO_QUESTIONS_BUCKET
-            - name: MinioConfig__BaseUrl
-              valueFrom:
-                configMapKeyRef:
-                  name: examapp-config
-                  key: MINIO_BASE_URL
             - name: Redis__Configuration
               valueFrom:
                 secretKeyRef:
@@ -238,11 +233,6 @@ spec:
                 secretKeyRef:
                   name: examapp-secrets
                   key: MINIO_ROOT_PASSWORD
-            - name: MinioConfig__BaseUrl
-              valueFrom:
-                configMapKeyRef:
-                  name: examapp-config
-                  key: MINIO_BASE_URL
             - name: Keycloak__Authority
               valueFrom:
                 configMapKeyRef:
@@ -419,11 +409,6 @@ spec:
                 secretKeyRef:
                   name: examapp-secrets
                   key: MINIO_ROOT_PASSWORD
-            - name: MinioConfig__BaseUrl
-              valueFrom:
-                configMapKeyRef:
-                  name: examapp-config
-                  key: MINIO_BASE_URL
             - name: ExamApi__BaseUrl
               valueFrom:
                 configMapKeyRef:

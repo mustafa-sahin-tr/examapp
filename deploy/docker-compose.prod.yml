@@ -213,7 +213,6 @@ services:
       MinioConfig__PresignSecretKey: ${MINIO_PRESIGN_SECRET_KEY}
       # #402 D7: same bucket name as the presign policy (minio-presign-init reads the same variable).
       MinioConfig__BucketName: ${MINIO_QUESTIONS_BUCKET:-exam-questions}
-      MinioConfig__BaseUrl: ${PUBLIC_BASE_URL}/img
       Redis__Configuration: redis:6379,password=${REDIS_PASSWORD}
       Keycloak__Host: http://keycloak:8080
       Keycloak__Realm: exam-realm     
@@ -272,7 +271,6 @@ services:
       MinioConfig__Endpoint: minio:9000
       MinioConfig__AccessKey: ${MINIO_ROOT_USER}
       MinioConfig__SecretKey: ${MINIO_ROOT_PASSWORD}
-      MinioConfig__BaseUrl: ${PUBLIC_BASE_URL}/img
       Keycloak__Authority: ${PUBLIC_BASE_URL}/realms/exam-realm
       Keycloak__Host: http://keycloak:8080      
       Keycloak__Realm: exam-realm           
@@ -335,7 +333,6 @@ services:
       MinioConfig__Endpoint: minio:9000
       MinioConfig__AccessKey: ${MINIO_ROOT_USER}
       MinioConfig__SecretKey: ${MINIO_ROOT_PASSWORD}
-      MinioConfig__BaseUrl: ${PUBLIC_BASE_URL}/img
       ExamApi__BaseUrl: http://exam-dotnet-api:5079
       # Issue #165: caller user id lookup via GET /api/auth/user-profile on
       # auth-api. Same value as exam-dotnet-api's AuthApiBaseUrl above.

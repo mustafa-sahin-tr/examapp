@@ -1,6 +1,7 @@
 import { Subject } from 'rxjs';
 import { Answer } from './answer';
 import { Question } from './question';
+import { ResponseBase } from './worksheet-access-request.model';
 
 export enum TestStatus {
   NotStarted = -1,
@@ -45,6 +46,31 @@ export interface TestInstance {
   maxDurationSeconds: number;
   testInstanceQuestions: TestInstanceQuestion[];
   isPracticeTest: boolean;
+  /**
+   * Issue #383: sonuç sayfası `/test/{worksheetId}`. Backend `WorksheetInstanceResultDto` bu alanı
+   * henüz dönmüyorsa undefined kalır; çözüm ekranı o durumda navigasyon state'ine düşer.
+   */
+  worksheetId?: number;
+}
+
+/** Backend `TestSessionErrorCodes` (issue #367). */
+export const TEST_SESSION_ERROR_CODES = {
+  /** 409: oturum artık `Started` değil (Completed/Expired); cevap yazılmadı. */
+  testNotInProgress: 'TestNotInProgress',
+} as const;
+
+/**
+ * Backend `TestStartResultDto`: `start-test` yanıtı. Issue #367: test artık devam etmiyorsa (Completed/Expired)
+ * yeni instance açılmaz; `success: false` + mevcut `instanceId` döner (alreadyCompleted).
+ */
+export interface TestStartResult extends ResponseBase {
+  instanceId: number;
+  startTime: string;
+}
+
+/** Backend `TestSessionResultDto`: `save-answer` / `end-test` yanıtı (issue #367). */
+export interface TestSessionResult extends ResponseBase {
+  errorCode?: string | null;
 }
 
 export interface Exam {

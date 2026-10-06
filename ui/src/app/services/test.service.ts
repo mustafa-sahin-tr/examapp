@@ -14,6 +14,8 @@ import {
   Paged,
   Test,
   TestInstance,
+  TestSessionResult,
+  TestStartResult,
   WorksheetStudentVisibility,
   WorksheetTeacherSharing,
 } from '../models/test-instance';
@@ -101,16 +103,16 @@ export class TestService {
     return this.http.get<TestInstance>(`${this.baseUrl}/test-canvas-instance-result/${testInstanceId}`);
   }
 
-  saveAnswer(studentAnswer: StudentAnswer): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/save-answer`, studentAnswer);
+  saveAnswer(studentAnswer: StudentAnswer): Observable<TestSessionResult> {
+    return this.http.post<TestSessionResult>(`${this.baseUrl}/save-answer`, studentAnswer);
   }
 
-  completeTest(testInstanceId: number): Observable<any> {
-    return this.http.put<any>(`${this.baseUrl}/end-test/${testInstanceId}`, null);
+  completeTest(testInstanceId: number): Observable<TestSessionResult> {
+    return this.http.put<TestSessionResult>(`${this.baseUrl}/end-test/${testInstanceId}`, null);
   }
 
-  startTest(testInstanceId: number): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/start-test/${testInstanceId}`, null);
+  startTest(testInstanceId: number): Observable<TestStartResult> {
+    return this.http.post<TestStartResult>(`${this.baseUrl}/start-test/${testInstanceId}`, null);
   }
 
   loadTest() {

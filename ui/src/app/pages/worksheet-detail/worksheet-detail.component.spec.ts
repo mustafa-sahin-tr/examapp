@@ -14,7 +14,7 @@ import { WorksheetDetailComponent } from './worksheet-detail.component';
 import { TestService } from '../../services/test.service';
 import { GradesService } from '../../services/grades.service';
 import { AuthService, UserProfile } from '../../services/auth.service';
-import { Test, TestInstance } from '../../models/test-instance';
+import { Test, TestInstance, TestStartResult } from '../../models/test-instance';
 import { WorksheetDetail } from '../../models/worksheet-detail';
 import { WorksheetAssignmentDialogData } from './components/assignment-dialog/worksheet-assignment-dialog.component';
 import { StudentService } from '../../services/student.service';
@@ -50,7 +50,12 @@ describe('WorksheetDetailComponent', () => {
   let snackBar: jasmine.SpyObj<MatSnackBar>;
 
   beforeEach(() => {
-    testService = jasmine.createSpyObj<TestService>('TestService', ['getWorksheetDetail', 'copyWorksheet']);
+    testService = jasmine.createSpyObj<TestService>('TestService', [
+      'getWorksheetDetail',
+      'copyWorksheet',
+      'startTest',
+      'get',
+    ]);
     testService.getWorksheetDetail.and.returnValue(of({} as any));
 
     router = jasmine.createSpyObj<Router>('Router', ['navigate']);
@@ -100,6 +105,59 @@ describe('WorksheetDetailComponent', () => {
     it('currentQuestionHelpers_NoResults_ReturnNullAndFalse', () => {
       expect(component['currentTestInstanceQuestionId']()).toBeNull();
       expect(component['isCurrentQuestionWrong']()).toBeFalse();
+    });
+  });
+
+  describe('StartTest (issue #383)', () => {
+    const startResult = (overrides: Partial<TestStartResult>): TestStartResult => ({
+      success: true,
+      message: '',
+      objectId: 0,
+      notFound: false,
+      forbidden: false,
+      conflict: false,
+      instanceId: 0,
+      startTime: '2026-10-06T10:00:00Z',
+      ...overrides,
+    });
+
+    beforeEach(() => {
+      component.testId = 5;
+    });
+
+    it('StartTest_Success_NavigatesToTestsolveWithWorksheetIdState', () => {
+      testService.startTest.and.returnValue(of(startResult({ instanceId: 91 })));
+
+      component.StartTest(5);
+
+      expect(router.navigate).toHaveBeenCalledWith(['/testsolve', 91], { state: { worksheetId: 5 } });
+      expect(testService.getWorksheetDetail).not.toHaveBeenCalled();
+    });
+
+    it('StartTest_AlreadyCompleted_ShowsLocalizedSnackAndReloadsDetailAndWorksheet', () => {
+      const reloaded = { id: 5, instance: { status: 1 } } as unknown as Test;
+      testService.startTest.and.returnValue(
+        of(startResult({ success: false, instanceId: 91, message: 'Bu test zaten tamamlanmış.' }))
+      );
+      testService.get.and.returnValue(of(reloaded));
+
+      component.StartTest(5);
+
+      expect(router.navigate).not.toHaveBeenCalled();
+      expect(snackBar.open).toHaveBeenCalledWith('Bu test zaten tamamlanmış.', 'Tamam', jasmine.any(Object));
+      expect(testService.getWorksheetDetail).toHaveBeenCalledWith(5);
+      expect(testService.get).toHaveBeenCalledWith(5);
+      expect(component.exam).toBe(reloaded);
+    });
+
+    it('StartTest_FailureWithoutInstance_OnlyShowsSnack', () => {
+      testService.startTest.and.returnValue(of(startResult({ success: false, message: 'Hata' })));
+
+      component.StartTest(5);
+
+      expect(snackBar.open).toHaveBeenCalledWith('Hata', 'Tamam', jasmine.any(Object));
+      expect(testService.getWorksheetDetail).not.toHaveBeenCalled();
+      expect(router.navigate).not.toHaveBeenCalled();
     });
   });
 

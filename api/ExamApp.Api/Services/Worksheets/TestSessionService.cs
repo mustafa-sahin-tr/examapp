@@ -109,31 +109,13 @@ public class TestSessionService : ITestSessionService
             throw new UnauthorizedAccessException(_localizer["worksheets.session.accessDenied"]);
         }
 
-        var existing = await _context.TestInstances
-            .FirstOrDefaultAsync(ti => ti.StudentId == student.Id && ti.WorksheetId == testId
-                && ti.EndTime == null);
-
-
+        // issue #367 (security review): tekrar çözüm yok. Eskiden arama `EndTime == null` ileydi; EndTest her zaman
+        // EndTime yazdığı için tamamlanmış test hiç bulunamıyor, start-test yeni bir Started instance açıyordu (aşağıdaki
+        // alreadyCompleted dalı ölüydü) ve BadgeService (TestInstanceId, QuestionId) anahtarıyla puanı yeniden veriyordu.
+        // Artık karar Status'e göre: Started → devam; başka her durum → alreadyCompleted (yeni instance yok).
+        var existing = await ExistingInstanceResultAsync(student.Id, testId);
         if (existing != null)
-        {
-            if (existing.Status == WorksheetInstanceStatus.Completed)
-            {
-                return new TestStartResultDto
-                {
-                    Success = false,
-                    Message = _localizer["worksheets.session.alreadyCompleted"],
-                    InstanceId = existing.Id,
-                    StartTime = existing.StartTime
-                };
-            }
-
-            return new TestStartResultDto
-            {
-                Success = true,
-                InstanceId = existing.Id,
-                StartTime = existing.StartTime
-            };
-        }
+            return existing;
 
         var instance = new WorksheetInstance
         {
@@ -164,13 +146,80 @@ public class TestSessionService : ITestSessionService
         }
 
         _context.TestInstances.Add(instance);
-        await _context.SaveChangesAsync(); // burada audit çalışır
+        try
+        {
+            await _context.SaveChangesAsync(); // burada audit çalışır
+        }
+        catch (DbUpdateException ex) when (IsDuplicateLiveInstanceViolation(ex))
+        {
+            // issue #367: eşzamanlı ikinci start-test (çift tık / iki sekme) IX_TestInstances_StudentId_WorksheetId'ye
+            // düştü: bizimkini bırak, kazananın instance'ını döndür (DailyQuestionSetService ile aynı desen).
+            foreach (var tiq in instance.WorksheetInstanceQuestions.ToList())
+                _context.Entry(tiq).State = EntityState.Detached;
+            _context.Entry(instance).State = EntityState.Detached;
+
+            return await ExistingInstanceResultAsync(student.Id, testId)
+                ?? throw new InvalidOperationException("Test instance unique violation but no existing instance found.");
+        }
 
         return new TestStartResultDto
         {
             Success = true,
             InstanceId = instance.Id,
             StartTime = instance.StartTime
+        };
+    }
+
+    /// <summary>Unique index adı — <see cref="AppDbContext"/> (StudentId, WorksheetId) filtreli unique index'i.</summary>
+    internal const string LiveInstanceUniqueIndexName = "IX_TestInstances_StudentId_WorksheetId";
+
+    /// <summary>
+    /// issue #367 (security Low-3): yalnız (StudentId, WorksheetId) unique index'inin ihlali "kazananı oku" yoluna girer;
+    /// başka bir unique ihlali (ör. soru satırları) yukarı fırlar. Postgres: <c>ConstraintName</c>; SQLite (yalnız birim
+    /// testleri) constraint adı vermez, mesajdaki sütun listesine bakılır.
+    /// </summary>
+    internal static bool IsDuplicateLiveInstanceViolation(DbUpdateException ex) =>
+        DbUpdateExceptionClassifier.IsUniqueViolation(ex)
+        && ex.InnerException switch
+        {
+            Npgsql.PostgresException pg => pg.ConstraintName == LiveInstanceUniqueIndexName,
+            var other => other?.Message.Contains("TestInstances.StudentId, TestInstances.WorksheetId", StringComparison.Ordinal) == true
+        };
+
+    /// <summary>
+    /// issue #367: öğrencinin bu worksheet için canlı (silinmemiş) instance'ı varsa start-test yanıtı; yoksa null.
+    /// Started olmayan (Completed/Expired) bir instance her zaman önceliklidir — eski veride hem tamamlanmış hem açık
+    /// (tekrar çözüm) instance kalmışsa açık olan devam ettirilmez, yine alreadyCompleted döner.
+    /// </summary>
+    private async Task<TestStartResultDto?> ExistingInstanceResultAsync(int studentId, int testId)
+    {
+        var existing = await _context.TestInstances
+            .AsNoTracking()
+            .Where(ti => ti.StudentId == studentId && ti.WorksheetId == testId)
+            .OrderBy(ti => ti.Status == WorksheetInstanceStatus.Started ? 1 : 0)
+            .ThenByDescending(ti => ti.Id)
+            .Select(ti => new { ti.Id, ti.Status, ti.StartTime })
+            .FirstOrDefaultAsync();
+
+        if (existing == null)
+            return null;
+
+        if (existing.Status != WorksheetInstanceStatus.Started)
+        {
+            return new TestStartResultDto
+            {
+                Success = false,
+                Message = _localizer["worksheets.session.alreadyCompleted"],
+                InstanceId = existing.Id,
+                StartTime = existing.StartTime
+            };
+        }
+
+        return new TestStartResultDto
+        {
+            Success = true,
+            InstanceId = existing.Id,
+            StartTime = existing.StartTime
         };
     }
 
@@ -273,6 +322,7 @@ public class TestSessionService : ITestSessionService
         var response = new WorksheetInstanceResultDto
         {
             Id = testInstance.Id,
+            WorksheetId = testInstance.WorksheetId,
             TestName = testInstance.Worksheet.Name,
             Status = testInstance.Status,
             MaxDurationSeconds = testInstance.Worksheet.MaxDurationSeconds,
@@ -355,7 +405,7 @@ public class TestSessionService : ITestSessionService
             .OrderBy(tiq => tiq.WorksheetQuestion.Order)
             .ThenBy(tiq => tiq.WorksheetQuestion.Id);
 
-    public async Task<ResponseBaseDto> SaveAnswer(SaveAnswerDto dto, UserProfileDto user)
+    public async Task<TestSessionResultDto> SaveAnswer(SaveAnswerDto dto, UserProfileDto user, CancellationToken ct = default)
     {
         // issue #279 review (critical fix): exam API's AppDbContext is registered via Aspire's
         // AddNpgsqlDbContext, which enables Npgsql retry-on-failure by default (NpgsqlRetryingExecutionStrategy,
@@ -370,7 +420,7 @@ public class TestSessionService : ITestSessionService
         // delegate more than once on the SAME DbContext instance for a transient failure) so every attempt
         // starts from a clean, freshly-reloaded state — no entity is loaded or mutated outside the delegate.
         var strategy = _context.Database.CreateExecutionStrategy();
-        return await strategy.ExecuteAsync(async () =>
+        return await strategy.ExecuteAsync(async _ =>
         {
             _context.ChangeTracker.Clear();
 
@@ -383,30 +433,63 @@ public class TestSessionService : ITestSessionService
                                 .ThenInclude(q => q.QuestionSubTopics)
                 .FirstOrDefaultAsync(tiq => tiq.WorksheetInstanceId == dto.TestInstanceId &&
                     tiq.Id == dto.TestQuestionId
-                    && tiq.WorksheetInstance.Student.UserId == user.Id);
+                    && tiq.WorksheetInstance.Student.UserId == user.Id, ct);
 
             if (testInstanceQuestion == null)
             {
-                return new ResponseBaseDto
+                return new TestSessionResultDto
                 {
                     Success = false,
                     Message = _localizer["worksheets.session.instanceQuestionNotFound"]
                 };
             }
-            // Store MCQ selection and/or structured answer payload
-            testInstanceQuestion.SelectedAnswerId = dto.SelectedAnswerId > 0 ? dto.SelectedAnswerId : null;
-            testInstanceQuestion.AnswerPayload = string.IsNullOrWhiteSpace(dto.AnswerPayload) ? null : dto.AnswerPayload;
-            testInstanceQuestion.TimeTaken = dto.TimeTaken;
 
             var question = testInstanceQuestion.WorksheetQuestion?.Question;
             if (question == null)
             {
-                return new ResponseBaseDto
+                return new TestSessionResultDto
                 {
                     Success = false,
                     Message = _localizer["worksheets.session.questionDataNotFound"]
                 };
             }
+
+            // issue #279 review: see the AnswerRevision comment below for why the transaction exists at all.
+            await using var transaction = await _context.Database.BeginTransactionAsync(ct);
+
+            // issue #367: the instance must still be Started — otherwise a student could finish the test, read the
+            // correct answers (only exposed once Completed) and rewrite wrong answers into right ones, each rewrite
+            // emitting a fresh AnswerSubmittedEvent (points/badges). The status is checked by a conditional no-op
+            // UPDATE on the instance row as the FIRST statement of the write transaction, not by a prior read:
+            // the UPDATE takes the row's write lock until COMMIT, and EndTest's UPDATE of the same row (Status →
+            // Completed) needs that lock too, so the two serialize:
+            //   - SaveAnswer first → EndTest waits for our commit; the answer lands before completion (in-flight
+            //     answer sent right before "finish" is kept — #383 awaits it before calling end-test).
+            //   - EndTest first → our UPDATE waits, Postgres re-evaluates the WHERE on the committed row (READ
+            //     COMMITTED), sees Completed → 0 rows → reject. Nothing below runs: no answer write, no outbox row.
+            // A plain SELECT of Status here would not lock and could read Started just before EndTest commits.
+            var stillInProgress = await _context.TestInstances
+                .Where(ti => ti.Id == testInstanceQuestion.WorksheetInstanceId
+                    && ti.Status == WorksheetInstanceStatus.Started)
+                .ExecuteUpdateAsync(s => s.SetProperty(ti => ti.Status, ti => ti.Status), ct);
+
+            if (stillInProgress == 0)
+            {
+                await transaction.RollbackAsync(ct);
+                _context.ChangeTracker.Clear();
+                return new TestSessionResultDto
+                {
+                    Success = false,
+                    Conflict = true,
+                    ErrorCode = TestSessionErrorCodes.TestNotInProgress,
+                    Message = _localizer["worksheets.session.answerRejectedNotInProgress"]
+                };
+            }
+
+            // Store MCQ selection and/or structured answer payload
+            testInstanceQuestion.SelectedAnswerId = dto.SelectedAnswerId > 0 ? dto.SelectedAnswerId : null;
+            testInstanceQuestion.AnswerPayload = string.IsNullOrWhiteSpace(dto.AnswerPayload) ? null : dto.AnswerPayload;
+            testInstanceQuestion.TimeTaken = dto.TimeTaken;
 
             var interactionType = question.InteractionType ?? "mcq";
             var isDragDropLabeling = interactionType.Equals("dragDropLabeling", StringComparison.OrdinalIgnoreCase);
@@ -451,17 +534,16 @@ public class TestSessionService : ITestSessionService
             // and the answer/outbox write commit or roll back together, preserving the outbox pattern's
             // "same transaction" guarantee. The immediate follow-up SELECT safely reads our own increment
             // (Postgres/SQLite: our transaction holds the row's write lock until COMMIT, so no other
-            // transaction can interleave between our UPDATE and this SELECT).
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-
+            // transaction can interleave between our UPDATE and this SELECT). The transaction itself is opened
+            // above, before the issue #367 status lock, so the lock, this increment and the outbox insert are one unit.
             await _context.TestInstanceQuestions
                 .Where(x => x.Id == testInstanceQuestion.Id)
-                .ExecuteUpdateAsync(s => s.SetProperty(x => x.AnswerRevision, x => x.AnswerRevision + 1));
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.AnswerRevision, x => x.AnswerRevision + 1), ct);
 
             var newRevision = await _context.TestInstanceQuestions
                 .Where(x => x.Id == testInstanceQuestion.Id)
                 .Select(x => x.AnswerRevision)
-                .FirstAsync();
+                .FirstAsync(ct);
 
             // 1. Event oluştur
             // EventId = outbox satırının Id'si (LoginAttemptedEvent ile aynı desen, issue #243) —
@@ -500,47 +582,75 @@ public class TestSessionService : ITestSessionService
 
 
             // Update Question Count
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-            return new ResponseBaseDto
+            await _context.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            return new TestSessionResultDto
             {
                 Success = true,
                 Message = _localizer["worksheets.session.answerSaved"]
             };
-        });
+        }, ct);
     }
 
-    public async Task<ResponseBaseDto> EndTest(int testInstanceId, int userId)
+    /// <summary>
+    /// Ends a Started instance. issue #367: idempotent — a repeated call (double click, UI retry, two tabs) on an
+    /// already Completed instance succeeds without touching it (EndTime stays the first completion's). Only a
+    /// non-Completed terminal state (Expired) is a conflict.
+    /// <para>
+    /// The Started → Completed write is a conditional UPDATE (<c>WHERE Status = Started</c>), so two concurrent calls
+    /// cannot both stamp EndTime, and it locks the instance row — the same lock <see cref="SaveAnswer"/> takes before
+    /// writing, which is what serializes "complete" against an in-flight answer (see the comment there).
+    /// </para>
+    /// </summary>
+    public async Task<TestSessionResultDto> EndTest(int testInstanceId, int userId, CancellationToken ct = default)
     {
-        var testInstance = await _context.TestInstances
-            .FirstOrDefaultAsync(ti => ti.Id == testInstanceId && ti.Student.UserId == userId);
+        var now = DateTime.UtcNow;
+        // ExecuteUpdate bypasses the SaveChanges audit hook, so UpdateTime/UpdateUserId are stamped here (the caller
+        // is the instance's student — ownership is part of the WHERE).
+        var completed = await _context.TestInstances
+            .Where(ti => ti.Id == testInstanceId
+                && ti.Student.UserId == userId
+                && ti.Status == WorksheetInstanceStatus.Started)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(ti => ti.Status, WorksheetInstanceStatus.Completed)
+                .SetProperty(ti => ti.EndTime, (DateTime?)now)
+                .SetProperty(ti => ti.UpdateTime, (DateTime?)now)
+                .SetProperty(ti => ti.UpdateUserId, (int?)userId), ct);
 
-        if (testInstance == null)
+        if (completed == 1)
         {
-            return new ResponseBaseDto
+            return new TestSessionResultDto
+            {
+                Success = true,
+                Message = _localizer["worksheets.session.ended"]
+            };
+        }
+
+        var status = await _context.TestInstances
+            .AsNoTracking()
+            .Where(ti => ti.Id == testInstanceId && ti.Student.UserId == userId)
+            .Select(ti => (WorksheetInstanceStatus?)ti.Status)
+            .FirstOrDefaultAsync(ct);
+
+        return status switch
+        {
+            null => new TestSessionResultDto
             {
                 Success = false,
                 Message = _localizer["worksheets.session.instanceNotFound"]
-            };
-        }
-
-        if (testInstance.Status != WorksheetInstanceStatus.Started)
-        {
-            return new ResponseBaseDto
+            },
+            WorksheetInstanceStatus.Completed => new TestSessionResultDto
+            {
+                Success = true,
+                Message = _localizer["worksheets.session.ended"]
+            },
+            _ => new TestSessionResultDto
             {
                 Success = false,
-                Message = $"Bu test zaten {testInstance.Status} durumunda."
-            };
-        }
-
-        testInstance.Status = WorksheetInstanceStatus.Completed;
-        testInstance.EndTime = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
-
-        return new ResponseBaseDto
-        {
-            Success = true,
-            Message = _localizer["worksheets.session.ended"]
+                Conflict = true,
+                ErrorCode = TestSessionErrorCodes.TestNotInProgress,
+                Message = _localizer["worksheets.session.notInProgress"]
+            }
         };
     }
 }

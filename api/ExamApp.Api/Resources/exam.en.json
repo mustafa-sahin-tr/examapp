@@ -4,6 +4,7 @@
     "studentProfileNotFound": "Student profile not found",
     "testNotFound": "Test not found!",
     "testSessionNotFound": "Test session not found.",
+    "startTestFailed": "The test could not be started. Please try again.",
     "unexpectedError": "An error occurred: {0}",
 
     "calendar": {

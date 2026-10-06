@@ -724,6 +724,15 @@ public class AppDbContext : DbContext
             .HasFilter("NOT \"IsDeleted\" AND (\"SelectedAnswerId\" IS NOT NULL OR \"AnswerPayload\" IS NOT NULL) AND \"UpdateTime\" IS NOT NULL")
             .IncludeProperties(q => new { q.WorksheetInstanceId, q.IsCorrect, q.TimeTaken });
 
+        // issue #367 (security review): tekrar çözüm yok — öğrenci başına worksheet başına tek canlı instance. Tamamlanmış
+        // teste start-test yeni instance açıp BadgeService'ten (TestInstanceId, QuestionId) anahtarıyla puanı ikinci kez
+        // toplatabiliyordu. Eşzamanlı iki start-test de bu index'e düşer; TestSessionService kazananın instance'ını okur.
+        // Soft-delete (öğrenci sıfırlama, StudentResetJob) satırı index dışına alır.
+        modelBuilder.Entity<WorksheetInstance>()
+            .HasIndex(ti => new { ti.StudentId, ti.WorksheetId })
+            .IsUnique()
+            .HasFilter("NOT \"IsDeleted\"");
+
         // Pratik oturumu (issue #62)
         modelBuilder.Entity<PracticeSession>()
             .HasOne(ps => ps.Student)

@@ -170,14 +170,26 @@ public class ExamServiceQueryTests : IDisposable
         (await NewSession(ctx).EndTest(instanceId, userId: 111)).Success.ShouldBeFalse();
     }
 
+    // issue #367: end-test is idempotent — an already Completed instance is a success, only Expired is a conflict.
     [Fact]
-    public async Task EndTest_rejects_an_instance_that_is_not_started()
+    public async Task EndTest_on_an_already_completed_instance_succeeds_idempotently()
     {
         var (userId, instanceId) = await SeedStartedInstanceAsync(WorksheetInstanceStatus.Completed);
         await using var ctx = _db.NewContext();
         var r = await NewSession(ctx).EndTest(instanceId, userId);
+        r.Success.ShouldBeTrue();
+        r.Conflict.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task EndTest_rejects_an_expired_instance_as_a_conflict()
+    {
+        var (userId, instanceId) = await SeedStartedInstanceAsync(WorksheetInstanceStatus.Expired);
+        await using var ctx = _db.NewContext();
+        var r = await NewSession(ctx).EndTest(instanceId, userId);
         r.Success.ShouldBeFalse();
-        r.Message.ShouldContain("zaten");
+        r.Conflict.ShouldBeTrue();
+        r.ErrorCode.ShouldBe(TestSessionErrorCodes.TestNotInProgress);
     }
 
     [Fact]

@@ -7,7 +7,9 @@
       "answerSaved": "Answer saved successfully.",
       "instanceNotFound": "Test instance not found.",
       "ended": "Test ended successfully.",
-      "alreadyCompleted": "This test has already been completed."
+      "alreadyCompleted": "This test has already been completed.",
+      "answerRejectedNotInProgress": "The test has ended, so answers can no longer be saved.",
+      "notInProgress": "This test is no longer in progress."
     },
 
     "accessRequest": {

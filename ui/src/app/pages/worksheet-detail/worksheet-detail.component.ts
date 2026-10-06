@@ -353,12 +353,34 @@ export class WorksheetDetailComponent implements OnInit {
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe((response) => {
         if (response.success) {
-          this.router.navigate(['/testsolve', response.instanceId]);
-        } else {
-          this.snackBar.open(response.message, 'Tamam', { duration: 2000 });
+          // Issue #383: çözüm ekranı bitince sonuç sayfasına (/test/{worksheetId}) döner.
+          this.router.navigate(['/testsolve', response.instanceId], { state: { worksheetId: id } });
+          return;
+        }
+        this.snackBar.open(response.message, this.tr('snackbar.dismiss'), { duration: 3000 });
+        if (response.instanceId) {
+          // Issue #367/#383: test zaten bitmiş (alreadyCompleted) — sayfayı yenile ki sonuç görünümü dolsun.
+          this.reloadWorksheet();
         }
       });
     }
+  }
+
+  /** Detayı (completedResult) ve instance durumunu taşıyan worksheet'i yeniden yükler. */
+  private reloadWorksheet(): void {
+    this.loadDetail();
+    this.testService
+      .get(this.testId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (exam) => {
+          if (exam) {
+            this.exam = exam;
+          }
+        },
+        // Erişim/404 durumunu loadDetail() hata yolu ele alır.
+        error: () => undefined,
+      });
   }
 
   get instanceStatus(): number | undefined {

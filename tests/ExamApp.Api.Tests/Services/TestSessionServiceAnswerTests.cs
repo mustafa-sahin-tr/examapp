@@ -264,5 +264,147 @@ public class TestSessionServiceAnswerTests : IDisposable
         (await check.TestInstanceQuestions.FirstAsync(x => x.Id == s.TiqId)).AnswerRevision.ShouldBe(2);
     }
 
+    // ---- issue #367: answers are locked once the instance is no longer Started ----
+
+    private async Task SetStatusAsync(int instanceId, WorksheetInstanceStatus status, DateTime? endTime = null)
+    {
+        await using var ctx = _db.NewContext();
+        var instance = await ctx.TestInstances.FirstAsync(i => i.Id == instanceId);
+        instance.Status = status;
+        instance.EndTime = endTime ?? (status == WorksheetInstanceStatus.Started ? null : DateTime.UtcNow);
+        await ctx.SaveChangesAsync();
+    }
+
+    [Theory]
+    [InlineData(WorksheetInstanceStatus.Completed)]
+    [InlineData(WorksheetInstanceStatus.Expired)]
+    public async Task SaveAnswer_on_a_finished_instance_is_rejected_and_writes_nothing(WorksheetInstanceStatus status)
+    {
+        var s = await SeedInstanceAsync();
+
+        // Answer wrong while the test runs, then finish it.
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).SaveAnswer(Dto(s.InstanceId, s.TiqId, s.WrongAnswerId, timeTaken: 12), User)).Success.ShouldBeTrue();
+        await SetStatusAsync(s.InstanceId, status);
+
+        // After seeing the correct answers the student tries to flip the wrong answer.
+        TestSessionResultDto result;
+        await using (var ctx = _db.NewContext())
+            result = await NewService(ctx).SaveAnswer(Dto(s.InstanceId, s.TiqId, s.CorrectAnswerId, timeTaken: 99), User);
+
+        result.Success.ShouldBeFalse();
+        result.Conflict.ShouldBeTrue();
+        result.ErrorCode.ShouldBe(TestSessionErrorCodes.TestNotInProgress);
+        result.Message.ShouldNotBeNullOrWhiteSpace();
+
+        await using var check = _db.NewContext();
+        var tiq = await check.TestInstanceQuestions.FirstAsync(x => x.Id == s.TiqId);
+        tiq.SelectedAnswerId.ShouldBe(s.WrongAnswerId);
+        tiq.IsCorrect.ShouldBeFalse();
+        tiq.TimeTaken.ShouldBe(12);
+        tiq.AnswerRevision.ShouldBe(1);
+        (await check.OutboxMessages.CountAsync()).ShouldBe(1); // only the in-progress answer's event
+        (await check.TestInstances.FirstAsync(i => i.Id == s.InstanceId)).Status.ShouldBe(status);
+    }
+
+    [Fact]
+    public async Task SaveAnswer_on_a_completed_instance_is_rejected_under_a_retrying_execution_strategy()
+    {
+        var s = await SeedInstanceAsync();
+        await SetStatusAsync(s.InstanceId, WorksheetInstanceStatus.Completed);
+
+        await using (var ctx = _db.NewContextWithRetryingExecutionStrategy())
+        {
+            var result = await NewService(ctx).SaveAnswer(Dto(s.InstanceId, s.TiqId, s.CorrectAnswerId), User);
+            result.Conflict.ShouldBeTrue();
+            result.ErrorCode.ShouldBe(TestSessionErrorCodes.TestNotInProgress);
+        }
+
+        await using var check = _db.NewContext();
+        (await check.TestInstanceQuestions.FirstAsync(x => x.Id == s.TiqId)).SelectedAnswerId.ShouldBeNull();
+        (await check.OutboxMessages.AnyAsync()).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task An_answer_saved_right_before_EndTest_is_kept_and_counted()
+    {
+        var s = await SeedInstanceAsync();
+
+        // #383: the UI awaits the last save, then calls end-test on the same scoped context pattern.
+        await using (var ctx = _db.NewContext())
+        {
+            var service = NewService(ctx);
+            (await service.SaveAnswer(Dto(s.InstanceId, s.TiqId, s.CorrectAnswerId), User)).Success.ShouldBeTrue();
+            (await service.EndTest(s.InstanceId, UserId)).Success.ShouldBeTrue();
+        }
+
+        await using var check = _db.NewContext();
+        var tiq = await check.TestInstanceQuestions.FirstAsync(x => x.Id == s.TiqId);
+        tiq.SelectedAnswerId.ShouldBe(s.CorrectAnswerId);
+        tiq.IsCorrect.ShouldBeTrue();
+        (await check.OutboxMessages.CountAsync()).ShouldBe(1);
+        var instance = await check.TestInstances.FirstAsync(i => i.Id == s.InstanceId);
+        instance.Status.ShouldBe(WorksheetInstanceStatus.Completed);
+        instance.EndTime.ShouldNotBeNull();
+        instance.UpdateUserId.ShouldBe(UserId);
+    }
+
+    [Fact]
+    public async Task EndTest_is_idempotent_and_keeps_the_first_EndTime()
+    {
+        var s = await SeedInstanceAsync();
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).EndTest(s.InstanceId, UserId)).Success.ShouldBeTrue();
+
+        DateTime? firstEnd;
+        await using (var check = _db.NewContext())
+            firstEnd = (await check.TestInstances.FirstAsync(i => i.Id == s.InstanceId)).EndTime;
+        firstEnd.ShouldNotBeNull();
+
+        await Task.Delay(20);
+        TestSessionResultDto second;
+        await using (var ctx = _db.NewContext())
+            second = await NewService(ctx).EndTest(s.InstanceId, UserId);
+
+        second.Success.ShouldBeTrue();
+        second.Conflict.ShouldBeFalse();
+        second.ErrorCode.ShouldBeNull();
+        await using var after = _db.NewContext();
+        (await after.TestInstances.FirstAsync(i => i.Id == s.InstanceId)).EndTime.ShouldBe(firstEnd);
+    }
+
+    [Fact]
+    public async Task EndTest_on_an_expired_instance_is_a_conflict()
+    {
+        var s = await SeedInstanceAsync();
+        await SetStatusAsync(s.InstanceId, WorksheetInstanceStatus.Expired);
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).EndTest(s.InstanceId, UserId);
+
+        result.Success.ShouldBeFalse();
+        result.Conflict.ShouldBeTrue();
+        result.ErrorCode.ShouldBe(TestSessionErrorCodes.TestNotInProgress);
+    }
+
+    [Fact]
+    public async Task EndTest_for_someone_elses_or_unknown_instance_fails_without_touching_it()
+    {
+        var s = await SeedInstanceAsync();
+
+        await using (var ctx = _db.NewContext())
+        {
+            var service = NewService(ctx);
+            var foreign = await service.EndTest(s.InstanceId, userId: 999);
+            foreign.Success.ShouldBeFalse();
+            foreign.Conflict.ShouldBeFalse();
+            (await service.EndTest(123456, UserId)).Success.ShouldBeFalse();
+        }
+
+        await using var check = _db.NewContext();
+        (await check.TestInstances.FirstAsync(i => i.Id == s.InstanceId)).Status.ShouldBe(WorksheetInstanceStatus.Started);
+    }
+
     public void Dispose() => _db.Dispose();
 }

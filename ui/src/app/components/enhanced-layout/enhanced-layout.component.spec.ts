@@ -1,10 +1,11 @@
-import { WritableSignal, signal } from '@angular/core';
+import { Component, WritableSignal, signal } from '@angular/core';
 import { ComponentFixture, TestBed, fakeAsync, flush, tick } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideRouter, Router } from '@angular/router';
+import { provideRouter, Router, Routes } from '@angular/router';
 import { TranslocoService } from '@jsverse/transloco';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { BehaviorSubject, NEVER, of, Subject, throwError } from 'rxjs';
 
 import { EnhancedLayoutComponent } from './enhanced-layout.component';
@@ -17,6 +18,7 @@ import { UserThemeService } from '../../services/user-theme.service';
 import { ThemeConfigService } from '../../services/theme-config.service';
 import { routes } from '../../app.routes';
 import { adminGuard } from '../../shared/guards/admin.guard';
+import { studentGuard } from '../../shared/guards/student.guard';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 
 /** Issue #106: DM rozet servisi stub'ı (HttpClient gerektirmesin). */
@@ -96,7 +98,7 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
     }
   });
 
-  it('navigateTo_AdminListEntries_NavigatesToListRouteAndMarksActive', () => {
+  it('navigateTo_AdminListEntries_NavigatesToListRoute', () => {
     const component = create(['Admin']);
     const router = TestBed.inject(Router);
     const navigateSpy = spyOn(router, 'navigate').and.returnValue(Promise.resolve(true));
@@ -104,7 +106,6 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
     for (const entry of ADMIN_LIST_ENTRIES) {
       component.navigateTo(entry.route);
       expect(navigateSpy).toHaveBeenCalledWith([entry.route], {});
-      expect(component.activeMenuItem()).toBe(entry.id);
     }
   });
 
@@ -158,7 +159,6 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
     '/booking-requests',
     '/assignment-permission-requests',
     '/my-calendar',
-    '/students',
   ];
 
   it('visibleMenuItems_UnapprovedTeacher_HidesTeacherItemsAndShowsSingleStatusEntry', () => {
@@ -173,7 +173,9 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
     expect(status.length).toBe(1);
     expect(status[0].route).toBe('/teacher-approval-pending');
     // Rolsüz (herkese açık) öğeler kalır; baştaki/sondaki ayırıcılar temizlenir.
-    expect(routesShown).toContain('/student-profile');
+    expect(routesShown).toContain('/certificates');
+    // Issue #373: Ayarlar (/student-profile) yalnız öğrenciye.
+    expect(routesShown).not.toContain('/student-profile');
     expect(items[0].type).toBe('menu');
     expect(items[items.length - 1].type).toBe('menu');
   });
@@ -578,4 +580,233 @@ describe('EnhancedLayoutComponent DM badge push (issue #106 b)', () => {
     fixture.destroy();
     flush();
   }));
+});
+
+/** Tüm route ağacındaki tam yollar (`/a/b`), parametreli olanlar dahil. */
+function allRoutePaths(list: Routes, parent = ''): string[] {
+  return list.flatMap((r) => {
+    const own = r.path ? `${parent}/${r.path}` : parent;
+    const self = r.path !== undefined && r.path !== '**' ? [own || '/'] : [];
+    return [...self, ...(r.children ? allRoutePaths(r.children, own) : [])];
+  });
+}
+
+function layoutProviders(roles: string[], unapprovedTeacher = false, routeConfig: Routes = []) {
+  const authStub: Partial<AuthService> = {
+    hasRealmRole: (role: string) => roles.includes(role),
+    isAuthenticated: () => of(true),
+    isUnapprovedTeacher: signal(unapprovedTeacher),
+  };
+  return [
+    provideRouter(routeConfig),
+    { provide: AuthService, useValue: authStub },
+    { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
+    { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0) } },
+    { provide: DirectMessageService, useValue: directMessageStub() },
+    { provide: NotificationService, useValue: { unreadCount: signal(0) } },
+    { provide: UserThemeService, useValue: {} },
+    { provide: ThemeConfigService, useValue: {} },
+  ];
+}
+
+/** Issue #374 / #373: rotasız ve role uymayan menü öğeleri gizli; her görünür öğenin rotası tanımlı. */
+describe('EnhancedLayoutComponent menu routes (issues #374, #373)', () => {
+  const ROLE_CASES: Array<{ name: string; roles: string[]; unapproved?: boolean }> = [
+    { name: 'Student', roles: ['Student'] },
+    { name: 'Teacher', roles: ['Teacher'] },
+    { name: 'UnapprovedTeacher', roles: ['Teacher'], unapproved: true },
+    { name: 'Admin', roles: ['Admin'] },
+    { name: 'AdminTeacher', roles: ['Admin', 'Teacher'] },
+  ];
+
+  function create(roles: string[], unapproved = false): EnhancedLayoutComponent {
+    TestBed.configureTestingModule({
+      imports: [EnhancedLayoutComponent, translocoTestingModule()],
+      providers: layoutProviders(roles, unapproved),
+    });
+    return TestBed.createComponent(EnhancedLayoutComponent).componentInstance;
+  }
+
+  for (const roleCase of ROLE_CASES) {
+    it(`everyVisibleMenuItem_${roleCase.name}_HasRouteDefinedInAppRoutes`, () => {
+      const component = create(roleCase.roles, roleCase.unapproved);
+      const defined = new Set(allRoutePaths(routes));
+      const items = [...component.visibleMenuItems(), ...component.visibleBottomNavItems()].filter(
+        (i) => i.type === 'menu'
+      );
+
+      expect(items.length).toBeGreaterThan(0);
+      for (const item of items) {
+        expect(defined.has(item.route)).withContext(`${roleCase.name}: ${item.id} -> ${item.route}`).toBeTrue();
+      }
+    });
+
+    it(`visibleMenuItems_${roleCase.name}_HidesItemsWithoutPage`, () => {
+      const component = create(roleCase.roles, roleCase.unapproved);
+      const ids = component.visibleMenuItems().map((i) => i.id);
+      for (const hidden of ['students', 'help', 'feedback']) {
+        expect(ids).withContext(`${roleCase.name}: ${hidden}`).not.toContain(hidden);
+      }
+    });
+  }
+
+  it('settings_OnlyVisibleToStudent_InSidenavAndBottomNav', () => {
+    const student = create(['Student']);
+    expect(student.visibleMenuItems().map((i) => i.id)).toContain('settings');
+    expect(student.visibleBottomNavItems().map((i) => i.id)).toContain('settings');
+
+    for (const roles of [['Teacher'], ['Admin']]) {
+      TestBed.resetTestingModule();
+      const other = create(roles);
+      expect(other.visibleMenuItems().map((i) => i.route)).withContext(roles[0]).not.toContain('/student-profile');
+      expect(other.visibleBottomNavItems().map((i) => i.route)).withContext(roles[0]).not.toContain('/student-profile');
+    }
+  });
+
+  it('routes_StudentProfile_UsesStudentGuard', () => {
+    const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
+    const route = children.find((r) => r.path === 'student-profile');
+    expect(route?.canActivate).toContain(studentGuard);
+  });
+
+  it('allRoutePaths_HelperResolvesNestedPaths', () => {
+    const paths = allRoutePaths(routes);
+    expect(paths).toContain('/programs/:id/detail');
+    expect(paths).toContain('/admin/teachers');
+    expect(paths).not.toContain('/help');
+  });
+});
+
+@Component({ standalone: true, template: '' })
+class ActiveItemStubPageComponent {}
+
+/** Issue #385: seçili menü öğesi gezinmeden (NavigationEnd) türetilir. */
+describe('EnhancedLayoutComponent active menu item (issue #385)', () => {
+  function create(roles: string[]): EnhancedLayoutComponent {
+    TestBed.configureTestingModule({
+      imports: [EnhancedLayoutComponent, translocoTestingModule()],
+      providers: layoutProviders(roles, false, [{ path: '**', component: ActiveItemStubPageComponent }]),
+    });
+    return TestBed.createComponent(EnhancedLayoutComponent).componentInstance;
+  }
+
+  async function expectActive(component: EnhancedLayoutComponent, cases: Array<[string, string | null]>) {
+    const router = TestBed.inject(Router);
+    for (const [url, expected] of cases) {
+      await router.navigateByUrl(url);
+      expect(component.activeMenuItem()).withContext(url).toBe(expected);
+    }
+  }
+
+  it('student_DetailPagesSelectParentItem_AndUnknownPageSelectsNothing', async () => {
+    await expectActive(create(['Student']), [
+      ['/dashboard', 'dashboard'],
+      ['/programs/5/detail', 'programsm'],
+      ['/program-create', 'programsm'],
+      ['/test/12', 'exams'],
+      ['/notifications', null],
+      ['/student-profile', 'settings'],
+    ]);
+  });
+
+  it('teacher_ExamAndQuestionCanvasSelectExamAuthoring', async () => {
+    await expectActive(create(['Teacher']), [
+      ['/exam', 'exam'],
+      ['/exam/3', 'exam'],
+      ['/questioncanvas', 'exam'],
+      ['/test/12', 'exams'],
+      ['/study-pages/new', 'study-pages'],
+      ['/student-profile', null],
+    ]);
+  });
+
+  it('beforeAnyNavigation_DoesNotDefaultToDashboard', () => {
+    const component = create(['Student']);
+    expect(component.activeMenuItem()).toBeNull();
+  });
+});
+
+/** Issue #375: profil menüsünde yalnız çalışan öğeler (Ayarlar yalnız öğrenciye, Bildirimler, Çıkış). */
+describe('EnhancedLayoutComponent profile menu (issue #375)', () => {
+  let fixture: ComponentFixture<EnhancedLayoutComponent>;
+
+  function setup(roles: string[]): void {
+    const authStub: Partial<AuthService> = {
+      hasRealmRole: (role: string) => roles.includes(role),
+      isAuthenticated: () => of(true),
+      isUnapprovedTeacher: signal(false),
+      isCachedUserCurrent: () => true,
+      refreshProfile: () => NEVER,
+      user: signal(null),
+    };
+    TestBed.configureTestingModule({
+      imports: [EnhancedLayoutComponent, NoopAnimationsModule, translocoTestingModule()],
+      providers: [
+        // Masaüstü düzeni: profil menüsü yalnız masaüstü toolbar'ında (Karma penceresi mobil sorgusuna düşebilir).
+        { provide: BreakpointObserver, useValue: { observe: () => of({ matches: false, breakpoints: {} }) } },
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: AuthService, useValue: authStub },
+        {
+          provide: SignalRService,
+          useValue: {
+            startConnection: () => undefined,
+            accessRequestUpdates$: new Subject(),
+            notificationsChanged$: new Subject<void>().asObservable(),
+            directMessageReceived$: new Subject().asObservable(),
+          },
+        },
+        { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
+        { provide: DirectMessageService, useValue: directMessageStub() },
+        {
+          provide: NotificationService,
+          useValue: { unreadCount: signal(0).asReadonly(), refreshUnreadCount: () => of(0), resetUnreadCount: () => undefined },
+        },
+        { provide: UserThemeService, useValue: { userTheme$: of(null) } },
+        { provide: ThemeConfigService, useValue: {} },
+      ],
+    });
+    fixture = TestBed.createComponent(EnhancedLayoutComponent);
+    fixture.detectChanges();
+  }
+
+  afterEach(() => localStorage.removeItem('user'));
+
+  function openProfileMenu(): HTMLElement[] {
+    const trigger = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.profile-menu');
+    expect(trigger).withContext('profile menu trigger').not.toBeNull();
+    trigger?.click();
+    fixture.detectChanges();
+    return Array.from(document.querySelectorAll<HTMLElement>('.ms-menu-panel .ms-menu-item'));
+  }
+
+  function titles(items: HTMLElement[]): (string | undefined)[] {
+    return items.map((i) => i.querySelector('.ms-item-title')?.textContent?.trim());
+  }
+
+  it('student_SeesSettingsNotificationsAndLogoutOnly', () => {
+    setup(['Student']);
+    const navigateSpy = spyOn(TestBed.inject(Router), 'navigate').and.returnValue(Promise.resolve(true));
+    const items = openProfileMenu();
+
+    expect(titles(items)).toEqual(['Ayarlar', 'Bildirimler', 'Çıkış Yap']);
+    items[0].click();
+    expect(navigateSpy).toHaveBeenCalledWith(['/student-profile'], {});
+  });
+
+  for (const roles of [['Teacher'], ['Admin']]) {
+    it(`${roles[0]}_SeesNotificationsAndLogoutOnly`, () => {
+      setup(roles);
+      expect(titles(openProfileMenu())).toEqual(['Bildirimler', 'Çıkış Yap']);
+    });
+  }
+
+  it('deadProfileHandlers_AreRemoved', () => {
+    setup(['Student']);
+    const component = fixture.componentInstance;
+    for (const handler of ['onProfile', 'onAccountSettings', 'onSupport']) {
+      expect(handler in component).withContext(handler).toBeFalse();
+    }
+  });
 });

@@ -28,6 +28,7 @@ import { DirectMessageService } from '../../services/direct-message.service';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { ColorSchemeToggleComponent } from '../../shared/components/color-scheme-toggle/color-scheme-toggle.component';
 import { LanguageSwitcherComponent } from '../../shared/components/language-switcher/language-switcher.component';
+import { resolveActiveMenuItemId } from './active-menu-item';
 
 interface MenuItem {
   id: string;
@@ -118,7 +119,6 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       ? EnhancedLayoutComponent.SIDENAV_WIDTH_COLLAPSED
       : EnhancedLayoutComponent.SIDENAV_WIDTH_EXPANDED;
   });
-  activeMenuItem = signal('dashboard');
   isSearchFocused = signal(false);
   authService = inject(AuthService);
   private readonly isTeacher = this.authService.hasRealmRole('Teacher');
@@ -132,7 +132,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   private readonly document = inject(DOCUMENT);
   /** Issue #106: DM menü rozeti — okunmamış mesajı olan konuşma sayısı. */
   readonly directMessageUnreadCount = this.directMessageService.unreadCount;
-  private readonly isStudent = this.authService.hasRealmRole('Student');
+  /** Öğrenci mi — Ayarlar (/student-profile) yalnız öğrenciye ait (issue #373, #375). */
+  readonly isStudent = this.authService.hasRealmRole('Student');
   /** Pencere odağında DM sayacı en sık bu aralıkla tazelenir (polling değil; yalnız odak olayı). */
   static readonly DM_FOCUS_REFRESH_THROTTLE_MS = 30_000;
   /** Issue #106 b: DM push'ları arka arkaya gelirse tek rozet isteği (ms). */
@@ -194,7 +195,6 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'my-bookings', labelKey: 'menu.myBookings', icon: 'event_available', route: '/my-bookings', type: 'menu', roles: ['Student'] },
     // Issue #106: öğrenci → öğretmen mesajlaşma (booking ile aynı "öğrenci → öğretmen" ailesi).
     { id: 'teacher-messages', labelKey: 'menu.teacherMessages', icon: 'forum', route: '/teacher-messages', type: 'menu', roles: ['Student'] },
-    { id: 'students', labelKey: 'menu.students', icon: 'people', route: '/students', type: 'menu', roles: ['Teacher'] },
     { id: 'tutor-profile', labelKey: 'menu.tutorProfile', icon: 'cast_for_education', route: '/tutor-profile', type: 'menu', roles: ['Teacher'], allowUnapprovedTeacher: true },
     { id: 'availability', labelKey: 'menu.availability', icon: 'event_available', route: '/availability', type: 'menu', roles: ['Teacher'] },
     { id: 'booking-requests', labelKey: 'menu.bookingRequests', icon: 'inbox', route: '/booking-requests', type: 'menu', roles: ['Teacher'] },
@@ -207,7 +207,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'study-links', labelKey: 'menu.studyLinks', icon: 'video_library', route: '/study-links', type: 'menu', roles: ['Teacher'] },
     { id: 'exam', labelKey: 'menu.examAuthoring', icon: 'app_registration', route: '/exam', type: 'menu', roles: ['Teacher'] },
     { id: 'reports', labelKey: 'menu.reports', icon: 'analytics', route: '/certificates', type: 'menu' },
-    { id: 'settings', labelKey: 'menu.settings', icon: 'settings', route: '/student-profile', type: 'menu' },
+    // Issue #373: /student-profile yalnız öğrenci verisiyle çalışır — öğretmen/admin'de boş açılıyordu.
+    { id: 'settings', labelKey: 'menu.settings', icon: 'settings', route: '/student-profile', type: 'menu', roles: ['Student'] },
     { id: 'admin-dashboard', labelKey: 'menu.dashboard', icon: 'insights', route: '/admin/dashboard', type: 'menu', roles: ['Admin'] },
     { id: 'admin', labelKey: 'menu.admin', icon: 'admin_panel_settings', route: '/admin', type: 'menu', roles: ['Admin'] },
     { id: 'admin-teacher-approvals', labelKey: 'menu.teacherApprovals', icon: 'how_to_reg', route: '/admin/teacher-approvals', type: 'menu', roles: ['Admin'] },
@@ -220,9 +221,6 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'admin-comment-reports', labelKey: 'menu.adminCommentReports', icon: 'flag', route: '/admin/comment-reports', type: 'menu', roles: ['Admin'] },
     // Issue #365: soru aktarımı (export/import) yalnız Admin.
     { id: 'questiontransfer', labelKey: 'menu.questionTransfer', icon: 'swap_horiz', route: '/question-transfer', type: 'menu', roles: ['Admin'] },
-    { id: 'divider2', labelKey: '', icon: '', route: '', type: 'divider' },
-    { id: 'help', labelKey: 'menu.help', icon: 'support', route: '/help', type: 'menu' },
-    { id: 'feedback', labelKey: 'menu.feedback', icon: 'feedback', route: '/feedback', type: 'menu' },
   ];
   // Bottom navigation items for mobile (max 4 primary items + menu trigger)
   bottomNavItems: MenuItem[] = [
@@ -230,7 +228,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'dashboard', labelKey: 'bottomNav.home', icon: 'home', route: '/dashboard', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'exams', labelKey: 'menu.exams', icon: 'quiz', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'study', labelKey: 'bottomNav.study', icon: 'school', route: '/study', type: 'menu', roles: ['Student'] },
-    { id: 'settings', labelKey: 'menu.settings', icon: 'settings', route: '/student-profile', type: 'menu' },
+    // Issue #373: /student-profile yalnız öğrenci verisiyle çalışır — öğretmen/admin'de boş açılıyordu.
+    { id: 'settings', labelKey: 'menu.settings', icon: 'settings', route: '/student-profile', type: 'menu', roles: ['Student'] },
   ];
 
   /**
@@ -275,6 +274,12 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     const unapprovedTeacher = this.authService.isUnapprovedTeacher();
     return this.bottomNavItems.filter((item) => this.isItemAllowed(item, unapprovedTeacher));
   });
+
+  /**
+   * Issue #385: seçili menü öğesi her gezinmede (link, geri/ileri, yenileme) URL'den türetilir; detay sayfaları üst
+   * öğeyi seçer, karşılığı olmayan sayfada hiçbiri seçili değildir. Mobil alt menü aynı id'leri kullanır.
+   */
+  readonly activeMenuItem = computed(() => resolveActiveMenuItemId(this.currentUrl(), this.visibleMenuItems()));
 
   /** Öğretmen ve hesabının onaylı olduğu profilden BİLİNİYOR (bilinmeyen durum onaysız gibi ele alınır). */
   private isTeacherKnownApproved(): boolean {
@@ -400,13 +405,6 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
           this.isMobileSidenavOpen.set(false);
         }
       });
-
-    // Set initial active menu item based on current route
-    const currentRoute = this.router.url;
-    const activeItem = this.menuItems.find((item) => item.route === currentRoute);
-    if (activeItem) {
-      this.activeMenuItem.set(activeItem.id);
-    }
 
     // Abone olarak değer değişimini takip et
     this.globalSearchControl.valueChanges.subscribe((value) => {
@@ -558,10 +556,6 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   navigateTo(route: string, options: any = {}) {
     if (route) {
       this.router.navigate([route], options);
-      const menuItem = this.menuItems.find((item) => item.route === route);
-      if (menuItem) {
-        this.activeMenuItem.set(menuItem.id);
-      }
 
       if (this.isMobile()) {
         this.isMobileSidenavOpen.set(false);
@@ -610,20 +604,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   }
 
   // Profile menu actions
-  onProfile() {
-    this.router.navigate(['/profile']);
-  }
-
-  onAccountSettings() {
-    this.router.navigate(['/settings/account']);
-  }
-
   onNotifications() {
     this.router.navigate(['/notifications']);
-  }
-
-  onSupport() {
-    this.router.navigate(['/support']);
   }
 
   // Track by function for ngFor performance

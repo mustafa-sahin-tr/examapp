@@ -125,53 +125,26 @@
             </div>
           </div>
 
-          <!-- Menü Öğeleri -->
-          <button mat-menu-item class="ms-menu-item">
-            <mat-icon>person</mat-icon>
-            <div class="ms-item-content">
-              <span class="ms-item-title">{{ t('profile.info') }}</span>
-            </div>
-          </button>
+          <!-- Menü Öğeleri (issue #375: yalnız çalışan sayfaya giden öğeler; Ayarlar yalnız öğrenciye, #373) -->
+          @if (isStudent) {
+            <button mat-menu-item class="ms-menu-item profile-settings-item" (click)="navigateTo('/student-profile')">
+              <mat-icon>settings</mat-icon>
+              <div class="ms-item-content">
+                <span class="ms-item-title">{{ t('menu.settings') }}</span>
+              </div>
+            </button>
+          }
 
-          <button mat-menu-item class="ms-menu-item">
-            <mat-icon>settings</mat-icon>
-            <div class="ms-item-content">
-              <span class="ms-item-subtitle">{{ t('profile.settingsSubtitle') }}</span>
-            </div>
-          </button>
-
-          <mat-divider class="ms-menu-divider"></mat-divider>
-          <button mat-menu-item class="ms-menu-item">
-            <mat-icon>assignment</mat-icon>
-            <div class="ms-item-content">
-              <span class="ms-item-title">{{ t('profile.tasks') }}</span>
-            </div>
-          </button>
-
-          <button mat-menu-item class="ms-menu-item">
-            <mat-icon>emoji_events</mat-icon>
-            <div class="ms-item-content">
-              <span class="ms-item-title">{{ t('profile.achievements') }}</span>
-            </div>
-          </button>
-
-          <button mat-menu-item class="ms-menu-item" (click)="onNotifications()">
+          <button mat-menu-item class="ms-menu-item profile-notifications-item" (click)="onNotifications()">
             <mat-icon>notifications</mat-icon>
             <div class="ms-item-content">
               <span class="ms-item-title">{{ t('profile.notifications') }}</span>
             </div>
           </button>
 
-          <button mat-menu-item class="ms-menu-item">
-            <mat-icon>support</mat-icon>
-            <div class="ms-item-content">
-              <span class="ms-item-title">{{ t('profile.support') }}</span>
-            </div>
-          </button>
-
           <mat-divider class="ms-menu-divider"></mat-divider>
 
-          <button mat-menu-item class="ms-menu-item" (click)="logout()">
+          <button mat-menu-item class="ms-menu-item profile-logout-item" (click)="logout()">
             <mat-icon>logout</mat-icon>
             <div class="ms-item-content">
               <span class="ms-item-title">{{ t('profile.logout') }}</span>

@@ -55,7 +55,6 @@
       "tutors": "Find a Tutor",
       "myBookings": "My Lessons",
       "teacherMessages": "Message My Teacher",
-      "students": "Students",
       "tutorProfile": "My Tutor Profile",
       "availability": "My Availability",
       "bookingRequests": "Lesson Requests",
@@ -73,8 +72,6 @@
       "adminStudents": "Students",
       "adminSchools": "Schools",
       "adminBadgeDefinitions": "Badges",
-      "help": "Help",
-      "feedback": "Feedback",
       "adminCommentReports": "Comment Reports"
     },
     "bottomNav": {
@@ -108,12 +105,7 @@
     "profile": {
       "fallbackName": "User",
       "avatarAlt": "Profile picture",
-      "info": "Profile Details",
-      "settingsSubtitle": "Settings, Account, Security",
-      "tasks": "Tasks",
-      "achievements": "Achievements",
       "notifications": "Notifications",
-      "support": "Support",
       "logout": "Log out"
     }
   },

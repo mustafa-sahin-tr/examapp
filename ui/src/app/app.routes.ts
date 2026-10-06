@@ -103,7 +103,8 @@ export const routes: Routes = [
         canActivate: [authGuard, approvedTeacherGuard],
       },
       { path: 'test/:testId', component: WorksheetDetailComponent, canActivate: [authGuard, approvedTeacherGuard] },
-      { path: 'student-profile', component: StudentProfileComponent, canActivate: [authGuard] },
+      // Issue #373: yalnız öğrenci verisiyle çalışır; öğretmen/admin boş sayfa + 500 görüyordu → /dashboard'a yönlendirilir.
+      { path: 'student-profile', component: StudentProfileComponent, canActivate: [authGuard, studentGuard] },
       { path: 'exam', component: TestCreateEnhancedComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },
       { path: 'exam/:id', component: TestCreateEnhancedComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },
       { path: 'programs', component: MyProgramsComponent, canActivate: [authGuard, roleGuard('Student')] },

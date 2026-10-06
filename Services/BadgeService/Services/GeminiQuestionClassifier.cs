@@ -189,10 +189,14 @@ public class GeminiQuestionClassifier : IQuestionClassifier
             },
         };
 
-        var url = $"{_gemini.BaseUrl.TrimEnd('/')}/{model.TrimStart('/')}:generateContent?key={_gemini.ApiKey}";
+        var url = $"{_gemini.BaseUrl.TrimEnd('/')}/{model.TrimStart('/')}:generateContent";
         using var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
 
-        var response = await client.PostAsync(url, content, ct);
+        // API key goes in a header (not the URL) so it never lands in access logs / exception messages (#370).
+        using var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
+        request.Headers.Add("x-goog-api-key", _gemini.ApiKey.Trim());
+
+        using var response = await client.SendAsync(request, ct);
         var payload = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
         {

@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { RegisterWizardComponent } from './pages/register/register-wizard.component';
 import { authGuard } from './shared/guards/auth.guard';
 import { adminGuard } from './shared/guards/admin.guard';
+import { independentTeacherGuard } from './shared/guards/independent-teacher.guard';
 import { studentGuard } from './shared/guards/student.guard';
 import { roleGuard } from './shared/guards/role.guard';
 import { approvedTeacherGuard } from './shared/guards/approved-teacher.guard';
@@ -22,7 +23,6 @@ import { BadgeThropyComponent } from './shared/components/badge-thropy/badge-thr
 import { TestSolveCanvasComponentv2 } from './pages/test-solve/test-solve-canvas-enhanced.component';
 import { EnhancedLayoutComponent } from './components/enhanced-layout/enhanced-layout.component';
 import { TestCreateEnhancedComponent } from './pages/test-create-enhanced/test-create-enhanced.component';
-import { StudyPageComponent } from './components/study-page/study-page.component';
 import { DashboardSwitchComponent } from './pages/dashboard/dashboard-switch.component';
 import { TestSolveCanvasComponentv3 } from './pages/test-solve/test-solve-canvas-v3.component';
 import { QuestionTransferComponent } from './pages/question-transfer/question-transfer.component';
@@ -123,7 +123,9 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/notifications/notifications.component').then((m) => m.NotificationsComponent),
       },
-      { path: 'study', component: StudyPageComponent, canActivate: [authGuard, roleGuard('Student')] },
+      // Issue #382: /study sabit örnek veriyle çalışıyor ve hiçbir şey kaydetmiyordu; gerçek veriye bağlanana kadar
+      // menüden kaldırıldı, eski yer imleri/doğrudan URL öğrencinin ana sayfasına düşer.
+      { path: 'study', redirectTo: '/dashboard', pathMatch: 'full' },
       { path: 'study-pages', component: StudyPagesComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },
       { path: 'study-pages/new', component: StudyPageEditorComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },
       { path: 'study-pages/:id', component: StudyPageEditorComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },
@@ -215,7 +217,8 @@ export const routes: Routes = [
         // Issue #95: bağımsız öğretmenin özel ders profili (dersler, ücret, online/yüz yüze).
         // Issue #287: onay bekleyen öğretmene de açık — bağımsız öğretmen başvurusunun formu (backend izin verir).
         path: 'tutor-profile',
-        canActivate: [authGuard, roleGuard('Teacher')],
+        // Issue #384: okula bağlı öğretmen bu sayfayı görmez (menüde de gizli).
+        canActivate: [authGuard, roleGuard('Teacher'), independentTeacherGuard],
         loadComponent: () =>
           import('./pages/tutor-profile/tutor-profile.component').then((m) => m.TutorProfileComponent),
       },

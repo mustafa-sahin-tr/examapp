@@ -149,6 +149,7 @@
     "shortSeconds": "{{seconds}} sn"
   },
   "snackbar": {
+    "assignNotAllowed": "Bu test için atama yetkiniz yok.",
     "dismiss": "Tamam",
     "close": "Kapat",
     "createFailed": "Test oluşturulamadı.",

@@ -141,7 +141,7 @@ public class AuthApiClient : IAuthApiClient
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
         {
             _logger.LogWarning(
-                "[AuthApiClient] auth-api servis token'ını reddetti ({Status}). Keycloak:AdminClientId hesabı 'exam-service' rolüne ya da auth-api Keycloak:ServiceClients listesine sahip olmalı.",
+                "[AuthApiClient] auth-api servis token'ını reddetti ({Status}). Keycloak:ServiceClientId (exam-service) hesabı 'exam-service' rolüne ya da auth-api Keycloak:ServiceClients listesine sahip olmalı.",
                 (int)response.StatusCode);
         }
         response.EnsureSuccessStatusCode();

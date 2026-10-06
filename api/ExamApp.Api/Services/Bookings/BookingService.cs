@@ -324,7 +324,7 @@ public class BookingService : IBookingService
         };
     }
 
-    public async Task<ResponseBaseDto> DeleteSlotAsync(int teacherUserId, int slotId, CancellationToken ct = default)
+    public async Task<AvailabilitySlotDeleteResultDto> DeleteSlotAsync(int teacherUserId, int slotId, CancellationToken ct = default)
     {
         var teacherId = await _context.Teachers
             .AsNoTracking()
@@ -333,34 +333,77 @@ public class BookingService : IBookingService
             .FirstOrDefaultAsync(ct);
 
         if (teacherId == null)
-            return new ResponseBaseDto { Success = false, NotFound = true, Message = _localizer["booking.teacherRecordNotFound"] };
+            return new AvailabilitySlotDeleteResultDto { Success = false, NotFound = true, Message = _localizer["booking.teacherRecordNotFound"] };
 
-        var slot = await _context.TeacherAvailabilitySlots
-            .FirstOrDefaultAsync(s => s.Id == slotId, ct);
+        // Hızlı yol (kilitsiz, salt okunur): 404/403 ayrımı. Karar kilit altında yeniden okunan satırla verilir.
+        var owner = await _context.TeacherAvailabilitySlots
+            .AsNoTracking()
+            .Where(s => s.Id == slotId)
+            .Select(s => (int?)s.TeacherId)
+            .FirstOrDefaultAsync(ct);
 
-        if (slot == null)
-            return new ResponseBaseDto { Success = false, NotFound = true, Message = _localizer["booking.slot.notFound"] };
+        if (owner == null)
+            return new AvailabilitySlotDeleteResultDto { Success = false, NotFound = true, Message = _localizer["booking.slot.notFound"] };
 
         // Başkasının slotu: 403 (worksheet sahiplik deseniyle tutarlı).
-        if (slot.TeacherId != teacherId.Value)
-            return new ResponseBaseDto { Success = false, Forbidden = true, Message = _localizer["booking.slot.notOwned"] };
-
-        var hasActiveBooking = await _context.Bookings
-            .AsNoTracking()
-            .AnyAsync(b => b.AvailabilitySlotId == slotId && ActiveStatuses.Contains(b.Status), ct);
-
-        if (hasActiveBooking)
-            return new ResponseBaseDto
-            {
-                Success = false,
-                Message = _localizer["booking.slot.hasActiveBooking"]
-            };
+        if (owner.Value != teacherId.Value)
+            return new AvailabilitySlotDeleteResultDto { Success = false, Forbidden = true, Message = _localizer["booking.slot.notOwned"] };
 
         _context.SetCurrentUser(teacherUserId);
-        _context.TeacherAvailabilitySlots.Remove(slot); // BaseEntity → soft delete
-        await _context.SaveChangesAsync(ct);
 
-        return new ResponseBaseDto { Success = true, ObjectId = slotId, Message = _localizer["booking.slot.deleted"] };
+        // issue #376: "aktif randevu yok" kontrolü + soft delete öğretmen müsaitlik kilidi (#323) altında, tek transaction'da.
+        // Randevu talebi (CreateBookingAsync) aynı kilidi alıp slotun hâlâ silinmemiş olduğunu kilidin altında doğrular; böylece
+        // eşzamanlı "talep + silme" ikilisinden biri diğerini görür ve aktif randevulu slot hiçbir sırada silinmez.
+        AvailabilitySlotDeleteResultDto? result = null;
+        var strategy = _context.Database.CreateExecutionStrategy();
+        try
+        {
+            await strategy.ExecuteAsync(async () =>
+            {
+                _context.ChangeTracker.Clear();
+                result = null;
+
+                await using var tx = await _context.Database.BeginTransactionAsync(ct);
+                await _context.Database.AcquireTeacherAvailabilityLockAsync(teacherId.Value, ct);
+
+                var slot = await _context.TeacherAvailabilitySlots
+                    .FirstOrDefaultAsync(s => s.Id == slotId && s.TeacherId == teacherId.Value, ct);
+                if (slot == null)
+                {
+                    // Kilidi beklerken eşzamanlı bir silme (tekil ya da seri) kazandı.
+                    result = new AvailabilitySlotDeleteResultDto { Success = false, NotFound = true, Message = _localizer["booking.slot.notFound"] };
+                    return;
+                }
+
+                var hasActiveBooking = await _context.Bookings
+                    .AsNoTracking()
+                    .AnyAsync(b => b.AvailabilitySlotId == slotId && ActiveStatuses.Contains(b.Status), ct);
+                if (hasActiveBooking)
+                {
+                    result = new AvailabilitySlotDeleteResultDto
+                    {
+                        Success = false,
+                        Conflict = true,
+                        ErrorCode = BookingErrorCodes.SlotHasActiveBooking,
+                        Message = _localizer["booking.slot.hasActiveBooking"]
+                    };
+                    return; // commit yok → dispose'da rollback (kilit bırakılır)
+                }
+
+                _context.TeacherAvailabilitySlots.Remove(slot); // BaseEntity → soft delete
+                await _context.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+                result = new AvailabilitySlotDeleteResultDto { Success = true, ObjectId = slotId, Message = _localizer["booking.slot.deleted"] };
+            });
+        }
+        catch (TeacherAvailabilityLockTimeoutException ex)
+        {
+            _context.ChangeTracker.Clear();
+            _logger.LogWarning(ex, "Slot silme: müsaitlik kilidi zaman aşımı. TeacherId={TeacherId}", teacherId.Value);
+            return new AvailabilitySlotDeleteResultDto { Success = false, Conflict = true, Message = _localizer["booking.slot.busy"] };
+        }
+
+        return result!;
     }
 
     // ------------------------------------------------------------------
@@ -506,6 +549,7 @@ public class BookingService : IBookingService
         // desen — retry-on-failure execution strategy içinde). booking.Id identity DB'den üretildiği
         // için iki SaveChanges tek transaction ile atomik kılınır; conflict catch tüm bloğu sarar.
         var teacherUnavailable = false;
+        var slotGone = false;
         var strategy = _context.Database.CreateExecutionStrategy();
         try
         {
@@ -515,8 +559,19 @@ public class BookingService : IBookingService
                 _context.ChangeTracker.Clear();
                 booking.Id = 0;
                 teacherUnavailable = false;
+                slotGone = false;
 
                 await using var tx = await _context.Database.BeginTransactionAsync(ct);
+
+                // issue #376: slot silme yollarıyla (tekil + seri, #323 öğretmen müsaitlik kilidi) serileşir. Ön okumadan sonra
+                // slot silindiyse talep oluşmaz; aksi halde silinmiş slota bağlı aktif randevu doğabilirdi (silme yolları
+                // "aktif randevu yok" kontrolünü aynı kilidin altında yapar).
+                await _context.Database.AcquireTeacherAvailabilityLockAsync(slot.TeacherId, ct);
+                if (!await _context.TeacherAvailabilitySlots.AsNoTracking().AnyAsync(s => s.Id == slot.Id, ct))
+                {
+                    slotGone = true;
+                    return; // commit yok → dispose'da rollback
+                }
 
                 // issue #331: yukarıdaki askı kontrolü kilitsiz bir ön okumadır. Askı transaction'ı arada commit olursa
                 // askıdaki öğretmende Pending talep kalırdı. Öğretmen satırı burada FOR SHARE ile kilitlenip koşul AYNI
@@ -557,8 +612,10 @@ public class BookingService : IBookingService
         }
         catch (TeacherAvailabilityLockTimeoutException ex)
         {
-            // issue #331 (review U1/D3): öğretmen satırı kilidi lock_timeout içinde alınamadı → retry'sız 409 (#323 deseni).
-            _logger.LogWarning(ex, "Randevu talebi: öğretmen satırı kilidi zaman aşımı. TeacherId={TeacherId}", slot.TeacherId);
+            // issue #331 (review U1/D3) + #376: öğretmen müsaitlik advisory kilidi ya da öğretmen satırı kilidi (FOR SHARE)
+            // lock_timeout içinde alınamadı → retry'sız 409 (#323 deseni).
+            _logger.LogWarning(ex, "Randevu talebi: öğretmen kilidi (müsaitlik advisory / öğretmen satırı) zaman aşımı. TeacherId={TeacherId}",
+                slot.TeacherId);
             return new BookingResultDto { Success = false, Conflict = true, Message = _localizer["booking.slot.busy"] };
         }
         catch (DbUpdateException ex)
@@ -571,6 +628,12 @@ public class BookingService : IBookingService
                 Conflict = true,
                 Message = _localizer["booking.request.duplicate"]
             };
+        }
+
+        if (slotGone)
+        {
+            _logger.LogInformation("Randevu talebi reddedildi: slot talep sırasında silindi. SlotId={SlotId}", slot.Id);
+            return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.slot.notFound"] };
         }
 
         if (teacherUnavailable)
@@ -711,7 +774,9 @@ public class BookingService : IBookingService
         if (teacherId == null)
             return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.teacherRecordNotFound"] };
 
+        // issue #376: slotu soft-delete edilmiş (eski veri) talep de karara bağlanabilmeli → yalnız slot filtresi kapatılır.
         var booking = await _context.Bookings
+            .WithSoftDeletedSlots()
             .AsNoTracking()
             .Include(b => b.AvailabilitySlot)
             .Include(b => b.Student)
@@ -728,6 +793,17 @@ public class BookingService : IBookingService
             {
                 Success = false,
                 Message = _localizer["booking.request.alreadyDecided", booking.Status]
+            };
+
+        // issue #376: slotu soft-delete edilmiş (eski veri) Pending talep yalnız reddedilebilir; onay silinmiş slota yeni
+        // ders bağlardı. Yarış yok: aktif (Pending) talebi olan slot artık silinemez (DeleteSlotAsync, kilit altında).
+        if (newStatus == BookingStatus.Approved && booking.AvailabilitySlot.IsDeleted)
+            return new BookingDecisionResultDto
+            {
+                Success = false,
+                Conflict = true,
+                ErrorCode = BookingErrorCodes.RequestSlotDeleted,
+                Message = _localizer["booking.request.slotDeleted"]
             };
 
         // auth-api lookup best-effort, karar yazılmadan önce (WorksheetAccessRequestService'in
@@ -840,7 +916,10 @@ public class BookingService : IBookingService
     public async Task<BookingLiveSessionAccess> GetLiveSessionAccessAsync(
         int callerUserId, int bookingId, CancellationToken ct = default)
     {
+        // issue #376: onaylı randevu slotu silinse de geçerlidir — slotun saati silinmiş slottan da okunur (yalnız slot
+        // filtresi kapanır; silinmiş booking/öğretmen/öğrenci yine "bulunamadı"dır).
         var row = await _context.Bookings
+            .WithSoftDeletedSlots()
             .AsNoTracking()
             .Where(b => b.Id == bookingId)
             .Select(b => new
@@ -968,7 +1047,9 @@ public class BookingService : IBookingService
     private async Task<BookingListResultDto> QueryBookingsAsync(
         System.Linq.Expressions.Expression<Func<Booking, bool>> predicate, int skip, int take, CancellationToken ct)
     {
+        // issue #376: slotu silinmiş randevu listeden düşmez (öğretmen "Randevu Talepleri", öğrenci "Randevularım").
         var rows = await _context.Bookings
+            .WithSoftDeletedSlots()
             .AsNoTracking()
             .Where(predicate)
             .OrderByDescending(b => b.AvailabilitySlot.Date)

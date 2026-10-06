@@ -49,7 +49,8 @@
       "notOwned": "Bu randevu talebi size ait değil.",
       "alreadyDecided": "Bu talep zaten sonuçlandırılmış ({0}).",
       "approved": "Randevu onaylandı.",
-      "rejected": "Randevu reddedildi."
+      "rejected": "Randevu reddedildi.",
+      "slotDeleted": "Bu talebin müsaitlik aralığı silinmiş; talep onaylanamaz, yalnızca reddedilebilir."
     },
 
     "video": {

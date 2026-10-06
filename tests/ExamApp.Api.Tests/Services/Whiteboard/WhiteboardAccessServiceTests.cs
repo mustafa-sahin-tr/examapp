@@ -7,6 +7,7 @@ using ExamApp.Api.Services.Teachers;
 using ExamApp.Api.Services.Video;
 using ExamApp.Api.Services.Whiteboard;
 using ExamApp.Api.Tests.Support;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -97,6 +98,26 @@ public class WhiteboardAccessServiceTests : IDisposable
         teacher.WindowClosesAtUtc.ShouldBe(new DateTime(2026, 6, 15, 15, 30, 0, DateTimeKind.Utc));
         student.Allowed.ShouldBeTrue();
         student.Role.ShouldBe(WhiteboardRoles.Student);
+    }
+
+    [Fact]
+    public async Task Approved_booking_whose_slot_was_soft_deleted_is_still_allowed()
+    {
+        // issue #376: slotu silinmiş onaylı randevu "BookingNotFound" değil; ders yine yapılır.
+        var bookingId = await SeedAsync();
+        await using (var ctx = _db.NewContext())
+        {
+            var slotId = await ctx.Bookings.Where(b => b.Id == bookingId).Select(b => b.AvailabilitySlotId).SingleAsync();
+            await ctx.TeacherAvailabilitySlots.Where(s => s.Id == slotId)
+                .ExecuteUpdateAsync(set => set.SetProperty(s => s.IsDeleted, true));
+        }
+
+        var teacher = await AuthorizeAsync(As(TeacherUserId, "Teacher"), bookingId);
+        var student = await AuthorizeAsync(As(StudentUserId, "Student"), bookingId);
+
+        teacher.Allowed.ShouldBeTrue(teacher.ErrorCode);
+        teacher.WindowClosesAtUtc.ShouldBe(new DateTime(2026, 6, 15, 15, 30, 0, DateTimeKind.Utc));
+        student.Allowed.ShouldBeTrue(student.ErrorCode);
     }
 
     [Fact]

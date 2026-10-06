@@ -160,8 +160,12 @@ public class StudentResetServiceTokenProviderTests
     {
         ["Keycloak:Host"] = "http://kc:8080/",
         ["Keycloak:TokenUrl"] = "/realms/exam/protocol/openid-connect/token",
-        ["Keycloak:AdminClientId"] = "admin-cli",
-        ["Keycloak:AdminClientSecret"] = "sekret",
+        ["Keycloak:ServiceClientSecret"] = "example-svc-value",
+        // Issue #372: admin / exam-client credentials must never be used for service tokens.
+        ["Keycloak:AdminClientId"] = "exam-admin",
+        ["Keycloak:AdminClientSecret"] = "example-admin-value",
+        ["Keycloak:ClientId"] = "exam-client",
+        ["Keycloak:ClientSecret"] = "example-client-value",
     };
 
     private static ServiceTokenProvider NewProvider(StubHttp http, Dictionary<string, string?>? config = null)
@@ -191,16 +195,40 @@ public class StudentResetServiceTokenProviderTests
     }
 
     [Fact]
-    public async Task Falls_back_to_the_non_admin_client_credentials()
+    public async Task Does_not_fall_back_to_admin_or_exam_client_credentials()
     {
         var http = Ok("tok-abc");
         var provider = NewProvider(http, new Dictionary<string, string?>
         {
             ["Keycloak:Host"] = "http://kc", ["Keycloak:TokenUrl"] = "/token",
-            ["Keycloak:ClientId"] = "exam-api", ["Keycloak:ClientSecret"] = "s",
+            ["Keycloak:AdminClientId"] = "exam-admin", ["Keycloak:AdminClientSecret"] = "example-admin-value",
+            ["Keycloak:ClientId"] = "exam-client", ["Keycloak:ClientSecret"] = "example-client-value",
         });
 
-        (await provider.GetAccessTokenAsync(default)).ShouldBe("tok-abc");
+        await Should.ThrowAsync<InvalidOperationException>(() => provider.GetAccessTokenAsync(default));
+        http.Requests.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Requests_the_token_with_the_exam_service_client()
+    {
+        string? body = null;
+        var http = new StubHttp(req =>
+        {
+            body = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""{"access_token":"t","expires_in":300}"""),
+            };
+        });
+
+        await NewProvider(http).GetAccessTokenAsync(default);
+
+        body.ShouldNotBeNull();
+        body.ShouldContain("client_id=exam-service");
+        body.ShouldContain("client_secret=example-svc-value");
+        body.ShouldNotContain("exam-admin");
+        body.ShouldNotContain("example-admin-value");
     }
 
     [Fact]

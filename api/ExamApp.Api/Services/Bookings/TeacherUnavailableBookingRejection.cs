@@ -38,6 +38,8 @@ internal static class TeacherUnavailableBookingRejection
     /// <summary>Verilen sorgudaki Pending talepleri bildirim alanlarıyla projekte eder.</summary>
     public static IQueryable<PendingBookingRow> SelectPending(IQueryable<Booking> bookings)
         => bookings
+            // issue #376: slotu soft-delete edilmiş (eski veri) Pending talep de reddedilsin; INNER JOIN'de düşmesin.
+            .WithSoftDeletedSlots()
             .Where(b => b.Status == BookingStatus.Pending)
             .Select(b => new PendingBookingRow(
                 b.Id,

@@ -200,6 +200,7 @@ public class AdminTeacherSuspensionService : IAdminTeacherSuspensionService
     /// </summary>
     private IQueryable<Booking> UpcomingApprovedBookings(int teacherId, DateTime nowUtc)
         => _context.Bookings
+            .WithSoftDeletedSlots() // issue #376: slotu silinmiş onaylı randevu da geçerli → bildirim kapsamında
             .Where(b => b.TeacherId == teacherId && b.Status == BookingStatus.Approved)
             .Where(SlotTimeRange.BookingNotEndedAt(nowUtc));
 

@@ -67,8 +67,11 @@ export class TutorProfileComponent implements OnInit {
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
-  /** 404/400: kullanıcı bağımsız öğretmen değil — form yerine bilgilendirme gösterilir. */
-  readonly unavailable = signal<string | null>(null);
+  /**
+   * 404/400: kullanıcı bağımsız öğretmen değil — form yerine bilgilendirme gösterilir. Metin şablonda
+   * `messages.unavailable` ile çevrilir (scope yüklenince ve dil değişince doğru metin; issue #384).
+   */
+  readonly unavailable = signal(false);
   readonly profile = signal<TutorProfile | null>(null);
   readonly subjects = signal<Subject[]>([]);
   readonly subjectsError = signal<string | null>(null);
@@ -137,7 +140,7 @@ export class TutorProfileComponent implements OnInit {
   load(): void {
     this.loading.set(true);
     this.error.set(null);
-    this.unavailable.set(null);
+    this.unavailable.set(false);
 
     this.teacherService
       .getTutorProfile()
@@ -150,7 +153,8 @@ export class TutorProfileComponent implements OnInit {
         error: (err: HttpErrorResponse) => {
           this.profile.set(null);
           if (err.status === 404 || err.status === 400) {
-            this.unavailable.set(this.extractMessage(err, this.text('messages.unavailable')));
+            // Issue #384: sunucu metni yerine UI sözlüğü (şablonda çevrilir).
+            this.unavailable.set(true);
             return;
           }
           this.error.set(this.extractMessage(err, this.text('messages.loadFailed')));

@@ -49,7 +49,8 @@
       "notOwned": "This booking request does not belong to you.",
       "alreadyDecided": "This request has already been resolved ({0}).",
       "approved": "Booking approved.",
-      "rejected": "Booking rejected."
+      "rejected": "Booking rejected.",
+      "slotDeleted": "The availability slot of this request was deleted; it cannot be approved, only rejected."
     },
 
     "video": {

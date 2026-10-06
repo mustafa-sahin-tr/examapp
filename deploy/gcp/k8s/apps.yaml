@@ -119,6 +119,16 @@ spec:
                 secretKeyRef:
                   name: examapp-secrets
                   key: KEYCLOAK_ADMIN_CLIENT_SECRET
+            - name: Keycloak__ServiceClientId
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: KEYCLOAK_SERVICE_CLIENT_ID
+            - name: Keycloak__ServiceClientSecret
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: KEYCLOAK_SERVICE_CLIENT_SECRET
             - name: Keycloak__TokenUrl
               value: realms/exam-realm/protocol/openid-connect/token
             - name: Keycloak__RealmRolesUrl
@@ -363,26 +373,16 @@ spec:
                 configMapKeyRef:
                   name: examapp-config
                   key: KEYCLOAK_REALM
-            - name: Keycloak__ClientId
+            - name: Keycloak__ServiceClientId
               valueFrom:
                 secretKeyRef:
                   name: examapp-secrets
-                  key: KEYCLOAK_CLIENT_ID
-            - name: Keycloak__ClientSecret
+                  key: KEYCLOAK_SERVICE_CLIENT_ID
+            - name: Keycloak__ServiceClientSecret
               valueFrom:
                 secretKeyRef:
                   name: examapp-secrets
-                  key: KEYCLOAK_CLIENT_SECRET
-            - name: Keycloak__AdminClientId
-              valueFrom:
-                secretKeyRef:
-                  name: examapp-secrets
-                  key: KEYCLOAK_ADMIN_CLIENT_ID
-            - name: Keycloak__AdminClientSecret
-              valueFrom:
-                secretKeyRef:
-                  name: examapp-secrets
-                  key: KEYCLOAK_ADMIN_CLIENT_SECRET
+                  key: KEYCLOAK_SERVICE_CLIENT_SECRET
             - name: Keycloak__TokenUrl
               value: realms/exam-realm/protocol/openid-connect/token
             - name: Keycloak__RealmRolesUrl

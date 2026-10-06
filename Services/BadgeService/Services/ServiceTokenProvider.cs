@@ -16,6 +16,8 @@ namespace BadgeService.Services;
 /// </summary>
 public sealed class ServiceTokenProvider : IServiceTokenProvider
 {
+    public const string DefaultServiceClientId = "exam-service";
+
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfiguration _configuration;
     private readonly ILogger<ServiceTokenProvider> _logger;
@@ -57,18 +59,19 @@ public sealed class ServiceTokenProvider : IServiceTokenProvider
                 throw new InvalidOperationException("Keycloak config missing (Keycloak:Host / Keycloak:TokenUrl)");
             }
 
-            // Prefer admin client for server-to-server calls
-            var clientId = _configuration["Keycloak:AdminClientId"];
-            var clientSecret = _configuration["Keycloak:AdminClientSecret"];
-            if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
+            // Issue #372: service-to-service tokens come from the dedicated exam-service client
+            // (service account holds only the exam-service realm role, no Keycloak admin roles).
+            // No fallback to exam-admin / exam-client: a missing secret must fail loudly.
+            var clientId = _configuration["Keycloak:ServiceClientId"];
+            if (string.IsNullOrWhiteSpace(clientId))
             {
-                clientId = _configuration["Keycloak:ClientId"];
-                clientSecret = _configuration["Keycloak:ClientSecret"];
+                clientId = DefaultServiceClientId;
             }
+            var clientSecret = _configuration["Keycloak:ServiceClientSecret"];
 
-            if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
+            if (string.IsNullOrWhiteSpace(clientSecret))
             {
-                throw new InvalidOperationException("Keycloak client credentials missing (Keycloak:AdminClientId/AdminClientSecret or ClientId/ClientSecret)");
+                throw new InvalidOperationException("Keycloak service client credentials missing (Keycloak:ServiceClientSecret; Keycloak:ServiceClientId defaults to exam-service)");
             }
 
             var httpClient = _httpClientFactory.CreateClient();

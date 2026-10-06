@@ -515,4 +515,56 @@ describe('RegisterWizardComponent (Issue #234)', () => {
       expect(registerEn.fields.schoolNotPicked).toBeTruthy();
     });
   });
+
+  // ── Issue #378: veli adımı başlık/açıklama görünür; olmayan "çocuk ekleme" özelliği vaat edilmez ────────
+
+  describe('parent step (issue #378)', () => {
+    const tokens = {
+      '--main-foreground-color': 'rgb(1, 2, 3)',
+      '--ms-text-strong': 'rgb(10, 20, 30)',
+      '--ms-text-medium': 'rgb(40, 50, 60)',
+    };
+
+    beforeEach(() => {
+      // Karma'da tema class'ı yok, token'lar boş; kart zemini token'ı ile metin token'ları ayrı sabitlenir.
+      Object.entries(tokens).forEach(([name, value]) => document.documentElement.style.setProperty(name, value));
+    });
+
+    afterEach(() => {
+      Object.keys(tokens).forEach((name) => document.documentElement.style.removeProperty(name));
+    });
+
+    it('template_ParentRole_RendersTitleAndHint', () => {
+      createComponent('parent');
+      fixture.detectChanges();
+      const el: HTMLElement = fixture.nativeElement;
+
+      expect(el.querySelector('h2')?.textContent?.trim()).toBe(registerTr.wizard.parentTitle);
+      expect(el.querySelector('.hint')?.textContent?.trim()).toBe(registerTr.wizard.parentHint);
+    });
+
+    it('style_ParentTitleAndHint_UseTextTokensNotCardBackgroundToken', () => {
+      createComponent('parent');
+      fixture.detectChanges();
+      const el: HTMLElement = fixture.nativeElement;
+      const h2Color = getComputedStyle(el.querySelector('h2')!).color;
+      const hintColor = getComputedStyle(el.querySelector('.hint')!).color;
+
+      expect(h2Color).toBe(tokens['--ms-text-strong']);
+      expect(hintColor).toBe(tokens['--ms-text-medium']);
+      expect(hintColor).not.toBe(tokens['--main-foreground-color']);
+    });
+
+    it('i18n_ParentHint_DoesNotPromiseChildLinking_TrAndEn', () => {
+      for (const hint of [registerTr.wizard.parentHint, registerTr.parent.hint]) {
+        expect(hint).toBeTruthy();
+        expect(hint).not.toMatch(/çocuk|profil/i);
+      }
+      for (const hint of [registerEn.wizard.parentHint, registerEn.parent.hint]) {
+        expect(hint).toBeTruthy();
+        expect(hint).not.toMatch(/child|profile/i);
+      }
+      expect(registerEn.wizard.parentTitle).toBeTruthy();
+    });
+  });
 });

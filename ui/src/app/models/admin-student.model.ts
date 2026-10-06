@@ -22,6 +22,8 @@ export interface AdminStudentListItem {
   /** Okula bağlı olmayan öğrenci için null. */
   schoolId: number | null;
   schoolName: string | null;
+  /** Issue #361: okul öğrencinin kendi seçimi, henüz onaylanmadı (okul kapsamlı yetki vermez). */
+  schoolPending?: boolean;
   gradeId: number | null;
   gradeName: string | null;
   /** Keycloak hesap durumu: true aktif, false devre dışı, null bilinmiyor (auth-api erişilemedi). */

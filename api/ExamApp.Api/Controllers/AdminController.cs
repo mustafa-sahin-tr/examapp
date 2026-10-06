@@ -442,7 +442,7 @@ public class AdminController : BaseController
 
         var service = _studentSchool
             ?? throw new InvalidOperationException("IAdminStudentSchoolService is not registered.");
-        var result = await service.ChangeSchoolAsync(id, schoolId, actor, ct);
+        var result = await service.ChangeSchoolAsync(id, schoolId, actor, await CurrentUserIdAsync(), ct);
         return result.Status switch
         {
             AdminStudentSchoolChangeStatus.Success => Ok(new AdminStudentSchoolResponseDto

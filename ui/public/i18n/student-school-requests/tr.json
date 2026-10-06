@@ -1,0 +1,34 @@
+{
+  "title": "Bekleyen öğrenci başvuruları",
+  "subtitle": "Kayıt sırasında okulunuzu seçen öğrenciler. Onaylayana kadar okul atamalarını, okul liderlik tablosunu ve okul içi mesajlaşmayı göremezler. Tanımadığınız öğrencileri reddedin.",
+  "unknownStudent": "Adı bilinmeyen öğrenci",
+  "paginator": "Başvuru sayfaları",
+  "columns": {
+    "student": "Öğrenci",
+    "number": "Öğrenci no",
+    "grade": "Sınıf",
+    "school": "Okul",
+    "date": "Kayıt tarihi",
+    "actions": "İşlem"
+  },
+  "actions": {
+    "approve": "Onayla",
+    "reject": "Reddet",
+    "refresh": "Yenile"
+  },
+  "state": {
+    "loading": "Başvurular yükleniyor…",
+    "empty": "Bekleyen öğrenci başvurusu yok."
+  },
+  "rejectDialog": {
+    "title": "Başvuruyu reddet",
+    "message": "{{ name }} adlı öğrencinin {{ school }} üyeliği reddedilecek; öğrencinin okul seçimi temizlenir. Devam edilsin mi?"
+  },
+  "messages": {
+    "approved": "Öğrencinin okul üyeliği onaylandı.",
+    "rejected": "Öğrencinin okul başvurusu reddedildi.",
+    "loadFailed": "Başvurular yüklenemedi.",
+    "actionFailed": "İşlem tamamlanamadı.",
+    "ok": "Tamam"
+  }
+}

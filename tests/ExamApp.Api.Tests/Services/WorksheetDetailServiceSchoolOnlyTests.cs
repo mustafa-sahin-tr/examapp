@@ -47,7 +47,7 @@ public class WorksheetDetailServiceSchoolOnlyTests : IDisposable
             new Teacher { UserId = PeerA, SchoolId = schoolA.Id },
             new Teacher { UserId = OtherB, SchoolId = schoolB.Id },
             new Teacher { UserId = Independent, SchoolId = null, IsIndependentTutor = true });
-        var student = new Student { UserId = 7000, StudentNumber = "s1", GradeId = grade.Id, SchoolId = schoolB.Id };
+        var student = new Student { UserId = 7000, StudentNumber = "s1", GradeId = grade.Id, SchoolId = schoolB.Id, SchoolVerifiedAt = DateTime.UtcNow };
         ctx.Students.Add(student);
 
         var ws = new Worksheet { Name = "Test", Description = "d", GradeId = grade.Id, MaxDurationSeconds = 600 };

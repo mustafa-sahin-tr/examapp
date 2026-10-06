@@ -28,7 +28,7 @@ public class AdminUserListAuditAndRateLimitTests(IntegrationApiFactory factory) 
             db.Schools.Add(school);
             await db.SaveChangesAsync();
             for (var i = 0; i < 3; i++)
-                db.Students.Add(new Student { UserId = 1000 + i, StudentNumber = $"S{i}", SchoolId = school.Id });
+                db.Students.Add(new Student { UserId = 1000 + i, StudentNumber = $"S{i}", SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow });
             db.Teachers.Add(new Teacher { UserId = 2000 });
             await db.SaveChangesAsync();
             return school.Id;

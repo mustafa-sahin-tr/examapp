@@ -61,7 +61,7 @@ public class SeedCleanupServiceTests : IDisposable
         var seedSlotOnly = T(SeedUserSlotOnly, seedClean, seed: true); // müsaitlik verisi var, randevu yok
         var realTeacher = T(RealUserId, real, seed: false);
         var realInSeed = T(RealUser2Id, seedWithReal, seed: false);
-        var realStudent = new Student { UserId = 77, StudentNumber = "S-1", SchoolId = seedWithStudent.Id };
+        var realStudent = new Student { UserId = 77, StudentNumber = "S-1", SchoolId = seedWithStudent.Id, SchoolVerifiedAt = DateTime.UtcNow };
         ctx.Students.Add(realStudent);
         await ctx.SaveChangesAsync();
         (_seedTeacherAId, _seedTeacherBId, _seedTutorId, _seedTeacherWithBookingId, _seedTeacherAuthorId, _seedTeacherSlotOnlyId, _realTeacherId, _realTeacherInSeedSchoolId) =

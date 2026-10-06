@@ -43,9 +43,9 @@ public class AdminStudentServiceTests : IDisposable
 
         var userId = 100;
         for (var i = 0; i < countA; i++, userId++)
-            ctx.Students.Add(new Student { UserId = userId, StudentNumber = $"2026{userId:D4}", SchoolId = a.Id });
+            ctx.Students.Add(new Student { UserId = userId, StudentNumber = $"2026{userId:D4}", SchoolId = a.Id, SchoolVerifiedAt = DateTime.UtcNow });
         for (var i = 0; i < countB; i++, userId++)
-            ctx.Students.Add(new Student { UserId = userId, StudentNumber = $"2026{userId:D4}", SchoolId = b.Id });
+            ctx.Students.Add(new Student { UserId = userId, StudentNumber = $"2026{userId:D4}", SchoolId = b.Id, SchoolVerifiedAt = DateTime.UtcNow });
         for (var i = 0; i < countUnassigned; i++, userId++)
             ctx.Students.Add(new Student { UserId = userId, StudentNumber = $"2026{userId:D4}" });
         await ctx.SaveChangesAsync();
@@ -141,7 +141,7 @@ public class AdminStudentServiceTests : IDisposable
             await seed.SaveChangesAsync();
             schoolId = school.Id;
             gradeId = grade.Id;
-            seed.Students.Add(new Student { UserId = 42, StudentNumber = "20241234", SchoolId = school.Id, GradeId = grade.Id });
+            seed.Students.Add(new Student { UserId = 42, StudentNumber = "20241234", SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id });
             seed.Students.Add(new Student { UserId = 43, StudentNumber = "20245678" });                               // okulsuz, sınıfsız
             seed.Students.Add(new Student { UserId = 45, StudentNumber = "20249999", SchoolName = "Eski Okul Adı" }); // legacy: SchoolId yok
             await seed.SaveChangesAsync();

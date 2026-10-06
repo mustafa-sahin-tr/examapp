@@ -39,6 +39,9 @@ public class StudentService : IStudentService
         _schoolAccessPolicy = schoolAccessPolicy;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
+    /// <summary>issue #361 review: reddedilen okulun aynı öğrenci tarafından yeniden istenebilmesi için geçmesi gereken süre.</summary>
+    public static readonly TimeSpan SchoolRejectCooldown = TimeSpan.FromDays(7);
+
     public async Task<List<GradeDto>> GetGradesAsync(CancellationToken ct = default)
     {
         return await _context.Grades
@@ -58,7 +61,11 @@ public class StudentService : IStudentService
                 // AvatarUrl = s.User.AvatarUrl,
                 GradeId = s.GradeId,
                 SchoolName = s.SchoolName,
-                SchoolId = s.SchoolId,
+                // issue #361: SchoolId yalnız DOĞRULANMIŞ üyelik — bu DTO'yu alan atama/takvim/test başlatma yolları
+                // (ActiveAssignmentsFor) okul kararını buradan verir; beklemedeki okul ayrı alanda (yalnız gösterim).
+                SchoolId = s.SchoolVerifiedAt != null ? s.SchoolId : null,
+                PendingSchoolId = s.SchoolVerifiedAt == null ? s.SchoolId : null,
+                PendingSchoolName = s.SchoolVerifiedAt == null && s.SchoolId != null ? s.School!.Name : null,
                 XP = s.StudentPoints.Sum(sp => sp.XP),
                 TotalQuestionsSolved = _context.StudentPointHistories.Count(p => p.StudentId == s.Id),
                 CorrectAnswers = _context.StudentPointHistories.Count(p => p.StudentId == s.Id && p.Reason == "Doğru Cevap"),
@@ -148,9 +155,28 @@ public class StudentService : IStudentService
             if (!student.SchoolId.HasValue && dto.SchoolId.HasValue)
             {
                 var requestedSchoolId = dto.SchoolId.Value;
+
+                // issue #361 review: reddedilen okul SchoolRejectCooldown dolmadan yeniden istenemez (başka okul serbest) —
+                // ret → hemen yeniden başvuru döngüsüyle okulun onaylayıcıları taciz edilemesin.
+                if (student.LastRejectedSchoolId == requestedSchoolId
+                    && student.SchoolRejectedAt is { } rejectedAt
+                    && rejectedAt > DateTime.UtcNow - SchoolRejectCooldown)
+                {
+                    return new ResponseBaseDto
+                    {
+                        Success = false,
+                        Message = _localizer["student.schoolRecentlyRejected", (int)SchoolRejectCooldown.TotalDays]
+                    };
+                }
+
+                // issue #361: kendi seçilen okul BEKLEMEDE başlar — doğrulama alanları da bu atomik ifadeyle sıfırlanır
+                // (security review Low-1: önceki bir doğrulama yeni okula taşınmasın; DB CHECK ile de korunur).
                 var claimed = await _context.Students
                     .Where(s => s.Id == student.Id && s.SchoolId == null)
-                    .ExecuteUpdateAsync(set => set.SetProperty(s => s.SchoolId, requestedSchoolId));
+                    .ExecuteUpdateAsync(set => set
+                        .SetProperty(s => s.SchoolId, requestedSchoolId)
+                        .SetProperty(s => s.SchoolVerifiedAt, (DateTime?)null)
+                        .SetProperty(s => s.SchoolVerifiedByUserId, (int?)null));
 
                 if (claimed == 0)
                 {

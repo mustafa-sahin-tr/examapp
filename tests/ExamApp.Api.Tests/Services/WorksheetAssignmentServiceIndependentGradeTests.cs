@@ -49,9 +49,9 @@ public class WorksheetAssignmentServiceIndependentGradeTests : IDisposable
 
         var schoolTeacher = new Teacher { UserId = SchoolTeacherUserId, SchoolId = schoolA.Id };
         var tutor = new Teacher { UserId = TutorUserId, SchoolId = null, IsIndependentTutor = true };
-        var studentA = new Student { UserId = 10, StudentNumber = "a", SchoolId = schoolA.Id, GradeId = grade.Id };
-        var studentB = new Student { UserId = 11, StudentNumber = "b", SchoolId = schoolB.Id, GradeId = grade.Id };
-        var studentBooked = new Student { UserId = 12, StudentNumber = "k", SchoolId = schoolB.Id, GradeId = grade.Id };
+        var studentA = new Student { UserId = 10, StudentNumber = "a", SchoolId = schoolA.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
+        var studentB = new Student { UserId = 11, StudentNumber = "b", SchoolId = schoolB.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
+        var studentBooked = new Student { UserId = 12, StudentNumber = "k", SchoolId = schoolB.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
         ctx.AddRange(schoolTeacher, tutor, studentA, studentB, studentBooked);
         await ctx.SaveChangesAsync();
 

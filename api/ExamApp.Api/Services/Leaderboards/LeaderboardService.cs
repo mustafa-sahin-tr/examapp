@@ -120,7 +120,9 @@ public sealed class LeaderboardService : ILeaderboardService
         if (scope == LeaderboardScope.School)
         {
             var id = schoolId ?? throw new ArgumentNullException(nameof(schoolId), "School scope requires a resolved schoolId.");
-            query = query.Where(s => s.SchoolId == id);
+            // issue #361: okul sıralamasında yalnız DOĞRULANMIŞ üyeler — beklemedeki öğrenci okulun listesine girmez (ad/XP
+            // okula sızmaz); kendisi de okul kapsamı alamaz (istekçi okulu doğrulanmış okuldan, CurrentSchoolId null).
+            query = query.Where(s => s.SchoolId == id && s.SchoolVerifiedAt != null);
         }
 
         return query;

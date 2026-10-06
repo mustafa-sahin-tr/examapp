@@ -35,9 +35,9 @@ public class UserSchoolResolverTests : IDisposable
         {
             ctx.Teachers.AddRange(new Teacher { UserId = 1, SchoolId = a }, new Teacher { UserId = 2, SchoolId = null });
             ctx.Students.AddRange(
-                new Student { UserId = 1, StudentNumber = "1", GradeId = grade, SchoolId = b },
-                new Student { UserId = 2, StudentNumber = "2", GradeId = grade, SchoolId = b },
-                new Student { UserId = 3, StudentNumber = "3", GradeId = grade, SchoolId = b });
+                new Student { UserId = 1, StudentNumber = "1", GradeId = grade, SchoolId = b, SchoolVerifiedAt = DateTime.UtcNow },
+                new Student { UserId = 2, StudentNumber = "2", GradeId = grade, SchoolId = b, SchoolVerifiedAt = DateTime.UtcNow },
+                new Student { UserId = 3, StudentNumber = "3", GradeId = grade, SchoolId = b, SchoolVerifiedAt = DateTime.UtcNow });
             await ctx.SaveChangesAsync();
         }
 
@@ -63,7 +63,7 @@ public class UserSchoolResolverTests : IDisposable
                 new Teacher { UserId = 10, SchoolId = b });
             // Yalnız silinmiş öğretmen satırı → öğrenci satırına düşülür.
             ctx.Teachers.Add(new Teacher { UserId = 11, SchoolId = a, IsDeleted = true });
-            ctx.Students.Add(new Student { UserId = 11, StudentNumber = "11", GradeId = grade, SchoolId = b });
+            ctx.Students.Add(new Student { UserId = 11, StudentNumber = "11", GradeId = grade, SchoolId = b, SchoolVerifiedAt = DateTime.UtcNow });
             await ctx.SaveChangesAsync();
         }
 
@@ -92,8 +92,8 @@ public class UserSchoolResolverTests : IDisposable
             await ctx.Database.ExecuteSqlRawAsync("DROP INDEX \"IX_Students_UserId\"");
             ctx.Teachers.AddRange(new Teacher { UserId = 30, SchoolId = a }, new Teacher { UserId = 30, SchoolId = b });
             ctx.Students.AddRange(
-                new Student { UserId = 31, StudentNumber = "a", GradeId = grade, SchoolId = a },
-                new Student { UserId = 31, StudentNumber = "b", GradeId = grade, SchoolId = b });
+                new Student { UserId = 31, StudentNumber = "a", GradeId = grade, SchoolId = a, SchoolVerifiedAt = DateTime.UtcNow },
+                new Student { UserId = 31, StudentNumber = "b", GradeId = grade, SchoolId = b, SchoolVerifiedAt = DateTime.UtcNow });
             await ctx.SaveChangesAsync();
         }
 

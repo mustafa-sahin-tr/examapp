@@ -104,9 +104,9 @@ public partial class WorksheetCommentServiceTests : IDisposable
         await ctx.SaveChangesAsync();
 
         ctx.SetCurrentUser(0);
-        var studentA = new Student { UserId = StudentAUser, StudentNumber = "a", GradeId = grade.Id, SchoolId = school.Id };
-        var studentB = new Student { UserId = StudentBUser, StudentNumber = "b", GradeId = grade.Id, SchoolId = school.Id };
-        var outsider = new Student { UserId = OutsiderUser, StudentNumber = "c", GradeId = otherGrade.Id, SchoolId = school.Id };
+        var studentA = new Student { UserId = StudentAUser, StudentNumber = "a", GradeId = grade.Id, SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow };
+        var studentB = new Student { UserId = StudentBUser, StudentNumber = "b", GradeId = grade.Id, SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow };
+        var outsider = new Student { UserId = OutsiderUser, StudentNumber = "c", GradeId = otherGrade.Id, SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow };
         ctx.Students.AddRange(studentA, studentB, outsider);
         await ctx.SaveChangesAsync();
 

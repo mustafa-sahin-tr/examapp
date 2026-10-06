@@ -50,9 +50,9 @@ public class TeacherServiceIndependentScopeTests : IDisposable
         await ctx.SaveChangesAsync();
 
         var tutor = new Teacher { UserId = TutorUserId, SchoolId = null, IsIndependentTutor = true };
-        var studentA = new Student { UserId = 10, StudentNumber = "a", SchoolName = "A", SchoolId = schoolA.Id, GradeId = grade.Id };
-        var studentB = new Student { UserId = 11, StudentNumber = "b", SchoolName = "B", SchoolId = schoolB.Id, GradeId = grade.Id };
-        var studentBooked = new Student { UserId = 12, StudentNumber = "k", SchoolName = "B", SchoolId = schoolB.Id, GradeId = grade.Id };
+        var studentA = new Student { UserId = 10, StudentNumber = "a", SchoolName = "A", SchoolId = schoolA.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
+        var studentB = new Student { UserId = 11, StudentNumber = "b", SchoolName = "B", SchoolId = schoolB.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
+        var studentBooked = new Student { UserId = 12, StudentNumber = "k", SchoolName = "B", SchoolId = schoolB.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
         ctx.AddRange(tutor, studentA, studentB, studentBooked);
         await ctx.SaveChangesAsync();
 

@@ -55,7 +55,7 @@ public class DirectMessagePostgresTests(IntegrationApiFactory factory) : Integra
                 T(unapproved, school.Id, approved: false)
             };
             db.Teachers.AddRange(teachers);
-            var s = new Student { UserId = student, StudentNumber = $"S{student}", SchoolId = school.Id, GradeId = grade.Id };
+            var s = new Student { UserId = student, StudentNumber = $"S{student}", SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
             db.Students.Add(s);
             var ws = new Worksheet { Name = "DM", Description = "", GradeId = grade.Id, MaxDurationSeconds = 600 };
             db.Worksheets.Add(ws);

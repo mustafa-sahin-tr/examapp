@@ -328,6 +328,13 @@ public class AppDbContext : DbContext
             .IsUnique()
             .HasFilter("NOT \"IsDeleted\"");
 
+        // issue #361 review (security Low-1): doğrulanmış üyelik okulsuz olamaz — okul temizlenirken doğrulama da temizlenmeli
+        // (aksi halde sonradan yazılan okul önceki doğrulamayı miras alırdı). Servis kuralının DB dayanağı.
+        modelBuilder.Entity<Student>()
+            .ToTable(t => t.HasCheckConstraint(
+                "CK_Students_SchoolVerifiedRequiresSchool",
+                "\"SchoolId\" IS NOT NULL OR \"SchoolVerifiedAt\" IS NULL"));
+
         // İl / ilçe referans tabloları + okul adresi (issue #91).
         // Referans kayıtlar silinemez (Restrict) — okul FK'leri nullable, mevcut satırlar etkilenmez.
         modelBuilder.Entity<Province>()

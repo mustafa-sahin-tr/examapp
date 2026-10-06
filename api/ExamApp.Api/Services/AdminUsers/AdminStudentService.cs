@@ -49,6 +49,7 @@ public class AdminStudentService : IAdminStudentService
                 s.UserId,
                 s.StudentNumber,
                 s.SchoolId,
+                SchoolPending = s.SchoolId != null && s.SchoolVerifiedAt == null, // issue #361
                 SchoolName = s.School != null ? s.School.Name : s.SchoolName,
                 s.GradeId,
                 GradeName = s.Grade != null ? s.Grade.Name : null
@@ -77,6 +78,7 @@ public class AdminStudentService : IAdminStudentService
                     StudentNumber = StudentNumberMask.Apply(r.StudentNumber),
                     SchoolId = r.SchoolId,
                     SchoolName = r.SchoolName,
+                    SchoolPending = r.SchoolPending,
                     GradeId = r.GradeId,
                     GradeName = r.GradeName,
                     IsEnabled = user?.Enabled

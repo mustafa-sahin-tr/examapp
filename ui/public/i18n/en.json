@@ -59,6 +59,7 @@
       "availability": "My Availability",
       "bookingRequests": "Lesson Requests",
       "accessRequests": "Assignment Permission Requests",
+      "studentSchoolRequests": "Student School Requests",
       "studentMessages": "Student Messages",
       "studyPages": "Add Study Material",
       "studyLinks": "Study Links",
@@ -555,6 +556,11 @@
       "confirm": "All of your exam progress, assigned personal exams, points and badge/activity data will be reset. Do you want to continue?",
       "queued": "The reset has been queued.",
       "failed": "The reset request could not be sent. Please try again."
+    },
+    "schoolPending": {
+      "title": "School approval pending",
+      "body": "Once a teacher at your school or an administrator approves your {{ school }} membership, school assignments, the school leaderboard and in-school messaging will open up.",
+      "bodyGeneric": "Once a teacher at your school or an administrator approves your school membership, school assignments, the school leaderboard and in-school messaging will open up."
     }
   },
   "myPrograms": {

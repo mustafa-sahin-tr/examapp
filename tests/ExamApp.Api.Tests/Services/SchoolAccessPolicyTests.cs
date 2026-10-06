@@ -91,9 +91,9 @@ public class SchoolAccessPolicyTests : IDisposable
         ctx.Schools.AddRange(a, b);
         await ctx.SaveChangesAsync();
 
-        var a1 = new Student { UserId = 1, StudentNumber = "A1", SchoolId = a.Id };
-        var a2 = new Student { UserId = 2, StudentNumber = "A2", SchoolId = a.Id };
-        var b1 = new Student { UserId = 3, StudentNumber = "B1", SchoolId = b.Id };
+        var a1 = new Student { UserId = 1, StudentNumber = "A1", SchoolId = a.Id, SchoolVerifiedAt = DateTime.UtcNow };
+        var a2 = new Student { UserId = 2, StudentNumber = "A2", SchoolId = a.Id, SchoolVerifiedAt = DateTime.UtcNow };
+        var b1 = new Student { UserId = 3, StudentNumber = "B1", SchoolId = b.Id, SchoolVerifiedAt = DateTime.UtcNow };
         var n1 = new Student { UserId = 4, StudentNumber = "N1", SchoolId = null };
         var n2 = new Student { UserId = 5, StudentNumber = "N2", SchoolId = null };
         ctx.Students.AddRange(a1, a2, b1, n1, n2);

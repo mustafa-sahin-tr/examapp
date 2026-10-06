@@ -151,7 +151,7 @@ public class BaseControllerSchoolContextTests : IDisposable
             ctx.Grades.Add(grade);
             await ctx.SaveChangesAsync();
             gradeId = grade.Id;
-            ctx.Students.Add(new Student { UserId = 201, StudentNumber = "S201", SchoolId = schoolId, GradeId = gradeId });
+            ctx.Students.Add(new Student { UserId = 201, StudentNumber = "S201", SchoolId = schoolId, SchoolVerifiedAt = DateTime.UtcNow, GradeId = gradeId });
             await ctx.SaveChangesAsync();
         }
 

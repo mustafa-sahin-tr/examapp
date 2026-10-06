@@ -1194,7 +1194,7 @@ public class WorksheetCommentService : IWorksheetCommentService
         var studentRows = await _context.Students
             .AsNoTracking()
             .Where(s => s.UserId == actor.UserId)
-            .Select(s => new { s.Id, s.GradeId, s.SchoolId })
+            .Select(s => new { s.Id, s.GradeId, SchoolId = s.SchoolVerifiedAt != null ? s.SchoolId : null }) // issue #361: yalnız doğrulanmış okul
             .Take(2)
             .ToListAsync(ct);
 

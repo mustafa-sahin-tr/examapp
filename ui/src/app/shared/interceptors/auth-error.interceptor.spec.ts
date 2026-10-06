@@ -599,4 +599,26 @@ describe('authErrorInterceptor', () => {
       retryReq.flush(null, { status: 403, statusText: 'Forbidden' });
     });
   });
+
+  describe('401 on MinIO storage images (/img/, issue #365)', () => {
+    it('isRefreshExcluded_SignedImgPath_ReturnsTrue', () => {
+      const req = new HttpRequest('GET', '/img/exam-questions/questions/abc/question.jpg?X-Amz-Signature=x');
+      expect(isRefreshExcluded(req)).toBeTrue();
+    });
+
+    it('ErrorResponse401_OnImgRequest_ThrowsWithoutRefreshOrBearerRetry', (done) => {
+      const url = '/img/exam-questions/questions/abc/question.jpg?X-Amz-Signature=expired';
+
+      http.get(url, { responseType: 'blob' }).subscribe({
+        next: () => fail('should error'),
+        error: (err) => {
+          expect(err.status).toBe(401);
+          expect(authServiceSpy.refreshToken).not.toHaveBeenCalled();
+          done();
+        },
+      });
+
+      httpMock.expectOne(url).flush(new Blob(), { status: 401, statusText: 'Unauthorized' });
+    });
+  });
 });

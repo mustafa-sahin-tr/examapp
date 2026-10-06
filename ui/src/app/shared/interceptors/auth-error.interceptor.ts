@@ -2,7 +2,7 @@ import { HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, throwError, switchMap } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
-import { isCrossOriginUrl, pathnameOf } from '../utils/request-url.util';
+import { isCrossOriginUrl, isStorageImageUrl, pathnameOf } from '../utils/request-url.util';
 
 /**
  * 401'de token yenilemesi DENENMEYECEK uçlar — yol (pathname) tam eşleşmesiyle (issue #241).
@@ -24,7 +24,9 @@ const REFRESH_EXCLUDED_PATHS: ReadonlySet<string> = new Set([
 ]);
 
 export function isRefreshExcluded(req: HttpRequest<unknown>): boolean {
-  return REFRESH_EXCLUDED_PATHS.has(pathnameOf(req.url));
+  // MinIO nesneleri (`/img/...`, issue #365): 401/403 süresi dolmuş/geçersiz imzadır, oturumla ilgisi yok.
+  // Refresh denenip istek Bearer ile tekrarlanırsa JWT MinIO'ya gider ve çift kimlik yüzünden yine reddedilir.
+  return REFRESH_EXCLUDED_PATHS.has(pathnameOf(req.url)) || isStorageImageUrl(req.url);
 }
 
 /**

@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Storage;
 using System.Collections.Generic;
 using ExamApp.Api.Data;
 
@@ -16,6 +17,7 @@ public class CreateStudyItemRequestDto
     public StudyItemContentType ContentType { get; set; } = StudyItemContentType.Image;
 
     // Link
+    [NotStorageUrl("İstek DTO'su: Link tipi dış bağlantı")]
     public string? Url { get; set; }
     public StudyItemLinkPlatform? Platform { get; set; }
 
@@ -44,6 +46,7 @@ public class UpdateStudyItemRequestDto
     public StudyItemContentType ContentType { get; set; } = StudyItemContentType.Image;
 
     // Link
+    [NotStorageUrl("İstek DTO'su: Link tipi dış bağlantı")]
     public string? Url { get; set; }
     public StudyItemLinkPlatform? Platform { get; set; }
 
@@ -73,6 +76,7 @@ public class StudyItemFilterDto
 
 public class AttachStudyItemImageBySubTopicsRequestDto
 {
+    [NotStorageUrl("İstek DTO'su: StudyItemService StorageAreaPolicy ile normalize eder")]
     public string ImageUrl { get; set; } = string.Empty;
     public List<int> SubTopicIds { get; set; } = new();
 }

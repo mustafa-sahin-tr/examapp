@@ -14,7 +14,6 @@ public sealed class DevSeedUsersRequest
     public const int MaxUsersPerRequest = 500;
 
     public const string ModeAdminApi = "admin-api";
-    public const string ModePartialImport = "partial-import";
 
     [Required, MinLength(1), MaxLength(MaxUsersPerRequest)]
     public List<DevSeedUserItem> Users { get; set; } = new();
@@ -30,7 +29,7 @@ public sealed class DevSeedUsersRequest
     /// <summary>Register akışındaki gibi <c>UserPreferredLocaleChangedEvent</c> outbox satırı yazılsın mı?</summary>
     public bool EmitLocaleEvents { get; set; } = true;
 
-    /// <summary><see cref="ModeAdminApi"/> (kullanıcı başına 2 istek) ya da <see cref="ModePartialImport"/> (parti başına tek istek).</summary>
+    /// <summary>yalnızca <see cref="ModeAdminApi"/> (kullanıcı başına 2 istek); "partial-import" #372 ile kaldırıldı (manage-realm gerektiriyordu).</summary>
     public string Mode { get; set; } = ModeAdminApi;
 
     /// <summary>

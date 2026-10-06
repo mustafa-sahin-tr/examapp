@@ -73,7 +73,7 @@ Doldurman gereken kritik alanlar:
 - `PUBLIC_BASE_URL` (örn: `https://exam.example.com`)
 - Postgres/Redis/Rabbit/MinIO/Keycloak şifreleri (hepsi güçlü olmalı)
 - `JWT_KEY` (32+ karakter)
-- Keycloak client secret’lar (`KEYCLOAK_CLIENT_SECRET`, `KEYCLOAK_ADMIN_CLIENT_SECRET`)
+- Keycloak client secret’lar (`KEYCLOAK_CLIENT_SECRET`, `KEYCLOAK_ADMIN_CLIENT_SECRET`, `KEYCLOAK_SERVICE_CLIENT_SECRET`)
 - BadgeService AI analyzer kontrolü: `BADGE_AI_ACTIVE=true|false`
 
 ## 4) İlk Kurulum (Up)
@@ -109,7 +109,18 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --force-rec
    - Kısa süreli debug için host’ta port publish ekleyebilirsin (prod compose’da yok).
    - Alternatif: VM’ye SSH ile girip `docker exec -it exam-keycloak ...` ile yönet.
 2. `exam-realm` realm’ini oluştur.
-3. `exam-client` ve `exam-admin` client’larını oluştur.
+3. `exam-client`, `exam-admin` ve `exam-service` client’larını oluştur (issue #372):
+   - `exam-admin`: confidential, service accounts açık; service account yalnız `realm-management`
+     `manage-users`, `view-users`, `query-users`, `view-realm` rollerini taşır (auth-api / exam API Keycloak
+     admin REST). `manage-realm` ve `exam-service` rolü VERİLMEZ.
+   - `exam-service`: confidential, service accounts açık, standard/direct-grant kapalı; service account
+     yalnız `exam-service` realm rolünü taşır (realm-management rolü yok). Servisler arası
+     (`BadgeService` ↔ exam API ↔ auth-api) `client_credentials` token'ı bununla alınır.
+   - Mevcut prod realm'ini güncellerken sıra: önce `exam-service` client + rol + secret'ı oluştur ve
+     `KEYCLOAK_SERVICE_CLIENT_ID/SECRET` deploy secret'larını (docker-compose `.env.prod` / k8s
+     `examapp-secrets`) set edip exam API + BadgeService'i yeniden başlat; servisler arası çağrının
+     çalıştığını doğrula; SON olarak `service-account-exam-admin`'den `manage-realm` ve `exam-service`
+     rolünü kaldır.
 4. `redirect URI` olarak `https://<DOMAIN>/app/*` tanımla.
 5. `.env.prod` içine client secret’ları gir.
 6. Ardından:
@@ -165,3 +176,4 @@ docker image prune -f
 - Prod stack **tek giriş noktası** olarak Caddy (80/443) kullanır ve tüm trafiği `ocelot-gateway`’e iletir.
 - DB’ler `deploy/postgres/init/01-create-databases.sql` ile **ilk boot’ta** oluşur. Eğer `postgres_data` doluysa init script tekrar çalışmaz.
 - Tüm .NET servisleri (`exam-dotnet-api`, `auth-api`, `exam-badge-api`, `ocelot-gateway`, `exam-outbox-publisher`, `finance-api`, `CatalogService`) `net10.0` (GA) hedefliyor; prod dockerfile'ları `DOTNET_VERSION=10.0` default'u ile stable SDK/runtime image'larını kullanır.
+- **Görsel URL imzası (issue #365 S2):** exam API, `[StorageUrl]` alanlarını kısa ömürlü imzalı `/img/{bucket}/{key}?X-Amz-...` URL'si olarak döner. SigV4 imzası `host` başlığını kapsar ve Ocelot `/img` isteğini Host'u downstream adrese çevirerek MinIO'ya iletir; bu yüzden exam API'nin `MinioConfig:PresignEndpoint` değeri (boşsa `MinioConfig:Endpoint`) gateway'in `/img/{everything}` route'undaki `DownstreamHostAndPorts` ile **birebir aynı host:port** olmalıdır (prod: `ocelot.Production.json` → `exam-minio:9000`; docker-compose dev: `minio:9000`; Aspire: `localhost:9000`, AppHost iki tarafa da aynı değeri verir). Uyuşmazsa MinIO imzayı reddeder ve bucket herkese açık olsa bile **tüm görseller 403** alır. Açılışta API logu bağlanılan host'u yazar (`[MinIO] Presigned image URLs are bound to host ...`). Acil durumda `MinioConfig__PresignImageUrls=false` imzalamayı kapatır (bucket'lar özel olana kadar, S4). Ayar yalnız açılışta okunur: değiştirdikten sonra exam API **yeniden başlatılmalıdır** (container/pod restart; ortam değişkeni değişikliği çalışan süreci etkilemez). İmzalı URL'ler 4 saat geçerlidir; kapatma, daha önce verilmiş URL'leri geri almaz. Gateway route'unun host'unu değiştirirseniz `MinioConfig__PresignEndpoint`'i (`docker-compose.prod.yml`, `gcp/k8s/apps.yaml`) de güncelleyin.

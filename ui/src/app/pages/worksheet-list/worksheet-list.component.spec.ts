@@ -301,6 +301,96 @@ describe('WorksheetListComponent', () => {
     });
   });
 
+  /** Issue #377: "Ata" butonları test detayındaki atama diyaloğuna gider; Excel içe aktarma gizli. */
+  describe('teacher assign actions (issue #377)', () => {
+    let router: jasmine.SpyObj<Router>;
+
+    beforeEach(() => {
+      TestBed.resetTestingModule();
+      fixture = configure(false);
+      component = fixture.componentInstance;
+      router = TestBed.inject(Router) as jasmine.SpyObj<Router>;
+    });
+
+    const bulkAssignButton = () =>
+      fixture.nativeElement.querySelector('.wl__bulkbar .wl__bulk-assign') as HTMLButtonElement | null;
+    const bulkHint = () => fixture.nativeElement.querySelector('.wl__bulk-hint') as HTMLElement | null;
+
+    /** Liste görünümüne geçer (fetch boş liste döner) ve satırları doldurur; 5 numaralı test atanamaz. */
+    function listWithTests(): void {
+      component.setViewMode('list');
+      const items = [
+        { id: 3, name: 'A', canEdit: true, canAssign: true },
+        { id: 4, name: 'B', canEdit: true, canAssign: true },
+        { id: 5, name: 'C', canEdit: true, canAssign: false },
+      ] as Test[];
+      component.paged.set({ items, totalCount: items.length, pageNumber: 1, pageSize: 12 });
+    }
+
+    it('onAssign_WorksheetId_NavigatesToDetailWithAssignStudentQuery', () => {
+      component.onAssign(7);
+
+      expect(router.navigate).toHaveBeenCalledWith(['/test', 7], { queryParams: { assign: 'student' } });
+    });
+
+    it('onAssign_NullId_DoesNotNavigate', () => {
+      component.onAssign(null);
+
+      expect(router.navigate).not.toHaveBeenCalled();
+    });
+
+    it('teacherHeader_DoesNotRenderExcelImportButton', () => {
+      const header = fixture.nativeElement.querySelector('.wl__header-actions') as HTMLElement;
+
+      expect(header).not.toBeNull();
+      expect(header.querySelectorAll('button').length).toBe(1);
+      expect(header.textContent).not.toContain('Excel');
+    });
+
+    it('bulkAssign_SingleSelection_EnabledAndNavigatesForSelectedWorksheet', () => {
+      listWithTests();
+      component.toggleRowSelection(3);
+      fixture.detectChanges();
+
+      expect(component.canBulkAssign()).toBeTrue();
+      expect(bulkAssignButton()!.disabled).toBeFalse();
+      expect(bulkHint()).toBeNull();
+
+      bulkAssignButton()!.click();
+
+      expect(router.navigate).toHaveBeenCalledWith(['/test', 3], { queryParams: { assign: 'student' } });
+    });
+
+    it('bulkAssign_MultipleSelection_DisabledWithSingleOnlyHintAndNoNavigation', () => {
+      listWithTests();
+      component.toggleRowSelection(3);
+      component.toggleRowSelection(4);
+      fixture.detectChanges();
+
+      expect(component.canBulkAssign()).toBeFalse();
+      expect(bulkAssignButton()!.disabled).toBeTrue();
+      expect(bulkHint()!.textContent).toContain(worksheetListTr.bulk.assignSingleOnly);
+
+      component.onBulkAssign();
+
+      expect(router.navigate).not.toHaveBeenCalled();
+    });
+
+    it('bulkAssign_SingleSelectionWithoutAssignPermission_DisabledWithNotAllowedHint', () => {
+      listWithTests();
+      component.toggleRowSelection(5);
+      fixture.detectChanges();
+
+      expect(component.canBulkAssign()).toBeFalse();
+      expect(bulkAssignButton()!.disabled).toBeTrue();
+      expect(bulkHint()!.textContent).toContain(worksheetListTr.bulk.assignNotAllowed);
+
+      component.onBulkAssign();
+
+      expect(router.navigate).not.toHaveBeenCalled();
+    });
+  });
+
   describe('onCopyWorksheet', () => {
     let router: jasmine.SpyObj<Router>;
     let snackBar: jasmine.SpyObj<MatSnackBar>;

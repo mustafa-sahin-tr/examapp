@@ -11,9 +11,6 @@
         <button type="button" class="wl__btn wl__btn--primary" (click)="onCreate()">
           <mat-icon>add</mat-icon><span>{{ t('header.newTest') }}</span>
         </button>
-        <button type="button" class="wl__btn wl__btn--ghost" (click)="onImportExcel()">
-          <mat-icon>upload_file</mat-icon><span>{{ t('header.importExcel') }}</span>
-        </button>
       </div>
     }
   </header>
@@ -223,7 +220,12 @@
       @if (isTeacher && viewMode() === 'list' && selectedIds().size > 0) {
         <div class="wl__bulkbar">
           <span>{{ t('bulk.selected', { count: selectedIds().size }) }}</span>
-          <button type="button" (click)="onAssign()">{{ t('bulk.assign') }}</button>
+          <button type="button" class="wl__bulk-assign" [disabled]="!canBulkAssign()" (click)="onBulkAssign()">{{ t('bulk.assign') }}</button>
+          @if (selectedIds().size > 1) {
+            <span class="wl__bulk-hint">{{ t('bulk.assignSingleOnly') }}</span>
+          } @else if (!canBulkAssign()) {
+            <span class="wl__bulk-hint">{{ t('bulk.assignNotAllowed') }}</span>
+          }
           <button type="button" class="wl__bulk-danger" (click)="bulkDelete()">{{ t('bulk.delete') }}</button>
           <button type="button" class="wl__bulk-clear" (click)="clearSelection()">{{ t('bulk.clear') }}</button>
         </div>
@@ -301,7 +303,7 @@
                     [gradeName]="gradeName(test.gradeId)"
                     [assignment]="assignmentFor(test.id)"
                     (deleteWorksheet)="onDeleteWorksheet($event)"
-                    (assignWorksheet)="onAssign()"
+                    (assignWorksheet)="onAssign($event)"
                     [copying]="copyingIds().has(test.id ?? 0)"
                     (copy)="onCopyWorksheet($event)"
                   ></app-worksheet-list-view-card>
@@ -347,7 +349,7 @@
                 [gradeName]="gradeName(test.gradeId)"
                 [assignment]="assignmentFor(test.id)"
                 (deleteWorksheet)="onDeleteWorksheet($event)"
-                (assignWorksheet)="onAssign()"
+                (assignWorksheet)="onAssign($event)"
                 [copying]="copyingIds().has(test.id ?? 0)"
                 (copy)="onCopyWorksheet($event)"
               ></app-worksheet-list-view-card>

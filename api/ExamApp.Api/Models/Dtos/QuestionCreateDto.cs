@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Storage;
 using System;
 
 namespace ExamApp.Api.Models.Dtos;
@@ -17,6 +18,7 @@ public class StudyPageAttachImageDto
 
 public class StudyPageAttachImageResponseDto : ResponseBaseDto
 {
+    [StorageUrl(StorageArea.StudyPage)]
     public string ImageUrl { get; set; } = string.Empty;
 }
 

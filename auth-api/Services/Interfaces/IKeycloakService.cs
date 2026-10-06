@@ -74,15 +74,6 @@ public interface IKeycloakService
     /// <summary>Realm'in varsayılan rol kompoziti (<c>default-roles-&lt;realm&gt;</c>) — account rolleri/aud bunun içindedir.</summary>
     Task<string> GetRealmDefaultRoleNameAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Realm partial import: tek istekte çok kullanıcı, <c>ifResourceExists=SKIP</c>, verilen realm rolleri ve
-    /// önceden hash'lenmiş parola ile. <c>manage-realm</c> yetkisi gerekir. DİKKAT: import'ta <c>realmRoles</c>
-    /// varsayılan rolü otomatik eklemez — çağıran <see cref="GetRealmDefaultRoleNameAsync"/> sonucunu listeye koymalı.
-    /// </summary>
-    Task<KeycloakPartialImportResult> PartialImportUsersAsync(
-        IReadOnlyList<KeycloakSeedUser> users, IReadOnlyList<string> realmRoleNames, KeycloakHashedCredential credential,
-        CancellationToken ct = default);
-
     // ---- Yetkili hesap denetimi (issue #267) — yalnızca audit-privileged-users komutu kullanır ----
 
     /// <summary>

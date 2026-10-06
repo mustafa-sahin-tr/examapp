@@ -304,8 +304,10 @@ public class StudyItemServiceTests : IDisposable
     [Fact]
     public async Task Create_image_type_imports_images_from_the_minio_images_json_payload()
     {
-        var minioImages = "[{\"bookName\":\"Fen\",\"pageNumber\":1,\"minioUrl\":\"https://minio/x1.webp\"}," +
-                           "{\"bookName\":\"Fen\",\"pageNumber\":2,\"minioUrl\":\"https://minio/x2.webp\"}]";
+        // issue #365 (S2): ikinci adres tarayıcıya verilmiş imzalı URL'nin geri gönderilmiş hâli — query atılıp
+        // ham anahtara (decode) indirgenerek saklanır.
+        var minioImages = "[{\"bookName\":\"Fen\",\"pageNumber\":1,\"minioUrl\":\"/img/study-pages/books/Fen/page_1.webp\"}," +
+                           "{\"bookName\":\"Fen Bilgisi\",\"pageNumber\":2,\"minioUrl\":\"/img/study-pages/books/Fen%20Bilgisi/page_2.webp?X-Amz-Signature=abc\"}]";
 
         await using var ctx = _db.NewContext();
         var result = await NewService(ctx).CreateAsync(
@@ -317,8 +319,123 @@ public class StudyItemServiceTests : IDisposable
 
         result.Error.ShouldBeNull();
         result.Item!.Images.Count.ShouldBe(2);
-        result.Item.Images.Select(i => i.ImageUrl).ShouldBe(new[] { "https://minio/x1.webp", "https://minio/x2.webp" });
-        result.Item.CoverImageUrl.ShouldBe("https://minio/x1.webp");
+        result.Item.Images.Select(i => i.ImageUrl).ShouldBe(new[]
+        {
+            "/img/study-pages/books/Fen/page_1.webp", "/img/study-pages/books/Fen Bilgisi/page_2.webp",
+        });
+        result.Item.Images.Select(i => i.FileName).ShouldBe(new[] { "Fen/page_1.webp", "Fen Bilgisi/page_2.webp" });
+        result.Item.CoverImageUrl.ShouldBe("/img/study-pages/books/Fen/page_1.webp");
+    }
+
+    [Theory]
+    [InlineData("https://minio/x1.webp")]                                                   // dış URL
+    [InlineData("javascript:alert(1)")]
+    [InlineData("/img/study-pages/books/../../exam-questions/question-transfer/index.json")] // ../
+    [InlineData("/img/exam-questions/question-transfer/exports/default/index.json")]        // imza kâhini denemesi
+    [InlineData("/img/exam-questions/questions/1/q.jpg")]                                   // yabancı bucket
+    public async Task Create_rejects_minio_images_outside_the_study_pages_allowlist_and_saves_nothing(string url)
+    {
+        var minioImages = "[{\"bookName\":\"Fen\",\"pageNumber\":1,\"minioUrl\":\"/img/study-pages/books/Fen/page_1.webp\"}," +
+                          "{\"bookName\":\"Fen\",\"pageNumber\":2,\"minioUrl\":\"" + url + "\"}]";
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).CreateAsync(
+            new CreateStudyItemRequestDto { Title = "Resimli", ContentType = StudyItemContentType.Image, MinioImages = minioImages },
+            new List<IFormFile>(), Teacher());
+
+        result.Item.ShouldBeNull();
+        result.Error.ShouldNotBeNull();
+        await using var check = _db.NewContext();
+        (await check.StudyItems.CountAsync()).ShouldBe(0);
+        (await check.StudyItemImages.CountAsync()).ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData("not json")]
+    [InlineData("{\"minioUrl\":\"/img/study-pages/books/Fen/page_1.webp\"}")] // dizi değil
+    [InlineData("[{\"bookName\":\"Fen\",\"pageNumber\":1}]")]                 // minioUrl yok
+    public async Task Create_rejects_malformed_minio_images_payload(string minioImages)
+    {
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).CreateAsync(
+            new CreateStudyItemRequestDto { Title = "Resimli", ContentType = StudyItemContentType.Image, MinioImages = minioImages },
+            new List<IFormFile>(), Teacher());
+
+        result.Error.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task Update_rejects_minio_images_outside_the_allowlist()
+    {
+        var id = await AddPageAsync("Mevcut", published: true);
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).UpdateAsync(id,
+            new UpdateStudyItemRequestDto
+            {
+                Title = "Mevcut", ContentType = StudyItemContentType.Image,
+                MinioImages = "[{\"bookName\":\"x\",\"pageNumber\":1,\"minioUrl\":\"/img/exam-questions/question-transfer/exports/default/index.json\"}]",
+            },
+            new List<IFormFile>(), Teacher());
+
+        result.Error.ShouldNotBeNull();
+        await using var check = _db.NewContext();
+        (await check.StudyItemImages.CountAsync()).ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData("https://evil.example.com/a.webp")]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("/img/exam-questions/question-transfer/exports/default/bundle-0001.zip")]
+    [InlineData("/img/worksheets/1-background.png")]
+    [InlineData("/img/study-pages/../exam-questions/questions/1.jpg")]
+    [InlineData("/img/study-pages/books/A&B/page_1.webp")]
+    public async Task Attach_by_subtopics_rejects_urls_outside_the_study_pages_allowlist(string url)
+    {
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).AttachImageBySubTopicsAsync(
+            new AttachStudyItemImageBySubTopicsRequestDto { ImageUrl = url, SubTopicIds = [1] }, Teacher());
+
+        result.Success.ShouldBeFalse();
+        // Mesaj, gateway'den imzası bozulmadan geçemeyen karakterleri adıyla söyler (#365 review).
+        result.Message.ShouldContain("&");
+        result.Message.ShouldContain("%");
+        await using var check = _db.NewContext();
+        (await check.StudyItemImages.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Attach_by_subtopics_stores_the_normalized_unsigned_key()
+    {
+        int subTopicId;
+        await using (var seed = _db.NewContext())
+        {
+            var grade = new Grade { Name = "5" };
+            var subject = new Subject { Name = "Fen" };
+            seed.AddRange(grade, subject);
+            await seed.SaveChangesAsync();
+            var topic = new Topic { Name = "Konu", GradeId = grade.Id, SubjectId = subject.Id };
+            seed.Topics.Add(topic);
+            await seed.SaveChangesAsync();
+            var st = new SubTopic { Name = "Alt Konu", TopicId = topic.Id };
+            seed.SubTopics.Add(st);
+            await seed.SaveChangesAsync();
+            subTopicId = st.Id;
+        }
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).AttachImageBySubTopicsAsync(
+            new AttachStudyItemImageBySubTopicsRequestDto
+            {
+                ImageUrl = "/img/study-pages/books/Kitap%20Ad%C4%B1/1.jpg?X-Amz-Date=20261006T120000Z&X-Amz-Signature=abc",
+                SubTopicIds = [subTopicId],
+            }, Teacher());
+
+        result.Success.ShouldBeTrue(result.Message);
+        await using var check = _db.NewContext();
+        var image = await check.StudyItemImages.SingleAsync();
+        image.ImageUrl.ShouldBe("/img/study-pages/books/Kitap Adı/1.jpg");
+        image.FileName.ShouldBe("1.jpg");
     }
 
     [Fact]

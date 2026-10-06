@@ -48,6 +48,7 @@ import { CountdownComponent } from '../../shared/components/countdown/countdown.
 import { Answer } from '../../models/answer';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { questionCanvasImageUrl, storageImageKey } from '../../shared/utils/storage-image-url.util';
 
 /**
  * Sınav çözme ekranının metinleri kendi Transloco scope'unda: `public/i18n/test-solve/<lang>.json`
@@ -1407,11 +1408,16 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     const region = regions[index];
     const tasks: Promise<void>[] = [];
 
-    tasks.push(this.preloadImage(region.imageId ?? region.imageUrl ?? `question-${region.id}`, region.imageUrl));
+    // issue #365 (S2): v5 görünümünün göstereceği görsel (sunucunun imzaladığı v2, yoksa asıl görsel) ısıtılır.
+    // Ön-yükleme haritasının anahtarı imzasız yoldur: aynı nesne için yeni imzalı URL gelirse BU bileşen onu yeniden
+    // ön-yüklemez. Tarayıcının HTTP önbelleği ise tam URL'ye (query dahil) göre çalışır; farklı imzalı URL tarayıcı için
+    // ayrı bir kaynaktır ve <img> onu gösterirken yeniden indirilir (sunucu aynı 15 dk diliminde aynı URL'yi verir).
+    const questionUrl = questionCanvasImageUrl(region);
+    tasks.push(this.preloadImage(storageImageKey(questionUrl) || `question-${region.id}`, questionUrl));
 
     const passageUrl = region?.passage?.imageUrl ?? null;
     if (passageUrl) {
-      const passageKey = region.passage?.imageId ?? `${region.id}-passage`;
+      const passageKey = storageImageKey(passageUrl) || `${region.id}-passage`;
       tasks.push(this.preloadImage(passageKey, passageUrl));
     }
 

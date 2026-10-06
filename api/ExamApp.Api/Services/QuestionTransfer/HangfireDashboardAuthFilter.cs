@@ -1,49 +1,19 @@
 using System.Security.Claims;
-using ExamApp.Api.Services.Interfaces;
-using ExamApp.Api.Services.Teachers;
 using Hangfire.Dashboard;
 
 namespace ExamApp.Api.Services.QuestionTransfer;
 
 /// <summary>
-/// Production Hangfire dashboard erişimi: Admin/SuperAdmin ya da hesabı ONAYLI öğretmen (issue #287, security review L3).
-/// Yalnızca <c>IsInRole("Teacher")</c> yetmez — kayıtta Teacher rolü hemen verilir, hesap admin onayına kadar bekler.
-/// Async filtre: onay kontrolü <see cref="IApprovedTeacherGuard"/> ile DB'den yapılır (istek scope'undan çözülür).
-/// Profil çözülemezse fail-closed (erişim yok).
+/// Production Hangfire dashboard erişimi: yalnız Admin/SuperAdmin. issue #365 (S1): dashboard tüm işlerin argümanlarını
+/// kiracılar arası gösterir; daha önce açık olan onaylı öğretmen erişimi (#287) kaldırıldı. Rol listesi
+/// <see cref="ExamApp.Api.Controllers.HangfireSessionController"/> ile senkron kalmalı.
 /// </summary>
 public class HangfireDashboardAuthFilter : IDashboardAsyncAuthorizationFilter
 {
-    public async Task<bool> AuthorizeAsync(DashboardContext context)
-    {
-        var httpContext = context.GetHttpContext();
-        var user = httpContext.User;
-        if (user?.Identity?.IsAuthenticated != true)
-            return false;
+    // Roller /hangfire cookie'sindeki principal anlık görüntüsünden gelir (login anı, 30 dk sliding) — her istekte canlı
+    // DB/Keycloak kontrolü yok; rolü alınan admin cookie süresi dolana kadar erişebilir.
+    public Task<bool> AuthorizeAsync(DashboardContext context) => Task.FromResult(IsAllowed(context.GetHttpContext().User));
 
-        if (user.IsInRole("Admin") || user.IsInRole("SuperAdmin"))
-            return true;
-
-        if (!user.IsInRole("Teacher"))
-            return false;
-
-        var sub = user.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(sub))
-            return false;
-
-        try
-        {
-            var services = httpContext.RequestServices;
-            var profile = await services.GetRequiredService<IUserProfileProvider>().GetAsync(sub, httpContext.RequestAborted);
-            if (profile is not { Id: > 0 })
-                return false;
-
-            return await services.GetRequiredService<IApprovedTeacherGuard>().CheckAsync(profile.Id, httpContext.RequestAborted)
-                   == TeacherApprovalCheck.Approved;
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            // Fail-closed: profil/DB hatasında dashboard açılmaz.
-            return false;
-        }
-    }
+    internal static bool IsAllowed(ClaimsPrincipal? user) =>
+        user?.Identity?.IsAuthenticated == true && (user.IsInRole("Admin") || user.IsInRole("SuperAdmin"));
 }

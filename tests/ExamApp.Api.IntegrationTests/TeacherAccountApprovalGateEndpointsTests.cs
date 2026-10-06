@@ -78,7 +78,7 @@ public class TeacherAccountApprovalGateEndpointsTests(IntegrationApiFactory fact
         });
         var teacher = await ClientAsAsync(userId, "Teacher", NewSub("kc-rejected"), "Teacher");
 
-        (await teacher.GetAsync("/api/question-transfer/jobs")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await teacher.GetAsync("/api/teacher/dashboard-summary")).StatusCode.ShouldBe(HttpStatusCode.Forbidden); // #365: question-transfer artık Admin-only, kapı için başka öğretmen ucu
         var check = await JsonOf(await teacher.GetAsync("/api/teacher/check-teacher"));
         check.GetProperty("teacherAccountApproved").GetBoolean().ShouldBeFalse();
         check.GetProperty("teacherApplicationStatus").GetString().ShouldBe("Rejected");

@@ -28,7 +28,8 @@ namespace ExamApp.Api.Helpers;
 /// <para>
 /// Kural (<c>SchoolContextResolver</c>'ın #234/#277 kuralı): kullanıcının CANLI (silinmemiş) <c>Teachers</c> satırı varsa okul
 /// HER ZAMAN oradan gelir (SchoolId null ise okulsuz/bağımsız → null, öğrenci satırına düşülmez). Canlı öğretmen satırı yoksa
-/// canlı <c>Students</c> satırının SchoolId'si. İkisi de yoksa null. Öğretmen satırı önce gelir, çünkü öğretmen kendine
+/// canlı <c>Students</c> satırının DOĞRULANMIŞ SchoolId'si (issue #361: <c>SchoolVerifiedAt</c> null ise beklemedeki üyelik →
+/// null, okulsuz). İkisi de yoksa null. Öğretmen satırı önce gelir, çünkü öğretmen kendine
 /// <c>Students.SchoolId=X</c> yazıp X'in öğrenci verisine erişememeli (#234 security).
 /// </para>
 /// <para>
@@ -54,8 +55,9 @@ public static class UserSchoolResolver
     /// pozitif id için bir kayıt vardır (okulsuz/kayıtsız/belirsiz → null).
     /// </summary>
     /// <param name="knownStudentSchools">
-    /// Çağıranın zaten okuduğu TEKİL canlı Students satırları (user id → SchoolId). Bu kullanıcılar için Students sorgusu
-    /// atlanır (kural aynı: öğretmen satırı varsa yine o esas). Yalnız tek canlı satırı doğrulanmış kullanıcıları ver.
+    /// Çağıranın zaten okuduğu TEKİL canlı Students satırları (user id → DOĞRULANMIŞ SchoolId, issue #361:
+    /// <c>Student.VerifiedSchoolId</c> — ham <c>SchoolId</c> verme). Bu kullanıcılar için Students sorgusu atlanır (kural aynı:
+    /// öğretmen satırı varsa yine o esas). Yalnız tek canlı satırı doğrulanmış kullanıcıları ver.
     /// </param>
     public static async Task<IReadOnlyDictionary<int, int?>> ResolveManyAsync(
         AppDbContext context, IEnumerable<int?> userIds, CancellationToken ct = default,
@@ -102,7 +104,8 @@ public static class UserSchoolResolver
             var studentRows = await context.Students
                 .AsNoTracking()
                 .Where(s => withoutTeacherRow.Contains(s.UserId))
-                .Select(s => new { s.UserId, s.SchoolId })
+                // issue #361: doğrulanmamış (beklemedeki) öğrenci üyeliği okul kapsamı vermez → okulsuz sayılır.
+                .Select(s => new { s.UserId, SchoolId = s.SchoolVerifiedAt != null ? s.SchoolId : null })
                 .ToListAsync(ct);
             foreach (var g in studentRows.GroupBy(r => r.UserId))
                 studentSchools[g.Key] = UniqueOrAmbiguous(g.Select(r => r.SchoolId));

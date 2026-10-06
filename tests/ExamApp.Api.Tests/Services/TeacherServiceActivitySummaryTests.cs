@@ -119,11 +119,11 @@ public class TeacherServiceActivitySummaryTests : IDisposable
             new Teacher { UserId = TeacherId, SchoolId = s1.Id },
             new Teacher { UserId = OtherTeacherId, SchoolId = s1.Id });
 
-        var a = new Student { UserId = 101, StudentNumber = "a", SchoolName = "S1", SchoolId = s1.Id, GradeId = grade.Id };
-        var b = new Student { UserId = 102, StudentNumber = "b", SchoolName = "S1", SchoolId = s1.Id, GradeId = grade.Id };
-        var c = new Student { UserId = 103, StudentNumber = "c", SchoolName = "S1", SchoolId = s1.Id, GradeId = grade.Id };
-        var d = new Student { UserId = 104, StudentNumber = "d", SchoolName = "S1", SchoolId = s1.Id, GradeId = otherGrade.Id };
-        var x = new Student { UserId = 105, StudentNumber = "x", SchoolName = "S2", SchoolId = s2.Id, GradeId = grade.Id };
+        var a = new Student { UserId = 101, StudentNumber = "a", SchoolName = "S1", SchoolId = s1.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
+        var b = new Student { UserId = 102, StudentNumber = "b", SchoolName = "S1", SchoolId = s1.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
+        var c = new Student { UserId = 103, StudentNumber = "c", SchoolName = "S1", SchoolId = s1.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
+        var d = new Student { UserId = 104, StudentNumber = "d", SchoolName = "S1", SchoolId = s1.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = otherGrade.Id };
+        var x = new Student { UserId = 105, StudentNumber = "x", SchoolName = "S2", SchoolId = s2.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
         ctx.Students.AddRange(a, b, c, d, x);
         await ctx.SaveChangesAsync();
 
@@ -281,7 +281,7 @@ public class TeacherServiceActivitySummaryTests : IDisposable
             await ctx.SaveChangesAsync();
             ctx.Teachers.Add(new Teacher { UserId = TeacherId, SchoolId = school.Id });
             for (var i = 0; i < 12; i++)
-                ctx.Students.Add(new Student { UserId = 200 + i, StudentNumber = $"n{i}", SchoolName = "S", SchoolId = school.Id, GradeId = grade.Id });
+                ctx.Students.Add(new Student { UserId = 200 + i, StudentNumber = $"n{i}", SchoolName = "S", SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id });
             await ctx.SaveChangesAsync();
             studentIds.AddRange(await ctx.Students.OrderBy(s => s.Id).Select(s => s.Id).ToListAsync());
 
@@ -378,9 +378,9 @@ public class TeacherServiceActivitySummaryTests : IDisposable
             ctx.Teachers.AddRange(
                 new Teacher { UserId = TeacherId, SchoolId = s1.Id },
                 new Teacher { UserId = s2TeacherId, SchoolId = s2.Id });
-            var a = new Student { UserId = 401, StudentNumber = "s1", SchoolName = "S1", SchoolId = s1.Id, GradeId = grade.Id };
-            var x = new Student { UserId = 402, StudentNumber = "s2", SchoolName = "S2", SchoolId = s2.Id, GradeId = grade.Id };
-            var y = new Student { UserId = 403, StudentNumber = "s2d", SchoolName = "S2", SchoolId = s2.Id, GradeId = null };
+            var a = new Student { UserId = 401, StudentNumber = "s1", SchoolName = "S1", SchoolId = s1.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
+            var x = new Student { UserId = 402, StudentNumber = "s2", SchoolName = "S2", SchoolId = s2.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
+            var y = new Student { UserId = 403, StudentNumber = "s2d", SchoolName = "S2", SchoolId = s2.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = null };
             ctx.AddRange(a, x, y);
             await ctx.SaveChangesAsync();
 
@@ -450,8 +450,8 @@ public class TeacherServiceActivitySummaryTests : IDisposable
             await ctx.SaveChangesAsync();
 
             var tutor = new Teacher { UserId = TutorUserId, SchoolId = null, IsIndependentTutor = true };
-            var a = new Student { UserId = 301, StudentNumber = "a", SchoolName = "A", SchoolId = school.Id, GradeId = grade.Id };
-            var k = new Student { UserId = 302, StudentNumber = "k", SchoolName = "A", SchoolId = school.Id, GradeId = grade.Id };
+            var a = new Student { UserId = 301, StudentNumber = "a", SchoolName = "A", SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
+            var k = new Student { UserId = 302, StudentNumber = "k", SchoolName = "A", SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
             ctx.AddRange(tutor, a, k);
             await ctx.SaveChangesAsync();
             BookingSeed.Add(ctx, tutor.Id, k.Id, BookingStatus.Approved, 8);

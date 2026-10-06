@@ -23,6 +23,7 @@ import { SidenavService } from '../../services/sidenav.service';
 import { TEACHER_APPROVAL_PENDING_URL, teacherAccountApprovalOf } from '../../models/teacher-approval.model';
 import { SignalRService } from '../../services/signalr.service';
 import { WorksheetAccessRequestService } from '../../services/worksheet-access-request.service';
+import { StudentSchoolRequestService } from '../../services/student-school-request.service';
 import { NotificationService } from '../../services/notification.service';
 import { DirectMessageService } from '../../services/direct-message.service';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
@@ -131,6 +132,11 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   private readonly signalR = inject(SignalRService);
   private readonly accessRequestService = inject(WorksheetAccessRequestService);
   readonly accessRequestCount = this.accessRequestService.pendingCount;
+  // Issue #361: bekleyen öğrenci okul başvuruları rozeti (onaylı öğretmen + admin); sayfa kararları sonrası liste tazelemesi
+  // de aynı signal'ı günceller.
+  private readonly studentSchoolRequestService = inject(StudentSchoolRequestService);
+  readonly studentSchoolRequestCount = this.studentSchoolRequestService.pendingCount;
+  private studentSchoolRequestCountLoaded = false;
   private readonly notificationService = inject(NotificationService);
   /** Issue #146: zil rozetindeki okunmamış kalıcı bildirim sayısı. */
   readonly unreadNotificationCount = this.notificationService.unreadCount;
@@ -210,6 +216,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'availability', labelKey: 'menu.availability', icon: 'event_available', route: '/availability', type: 'menu', roles: ['Teacher'] },
     { id: 'booking-requests', labelKey: 'menu.bookingRequests', icon: 'inbox', route: '/booking-requests', type: 'menu', roles: ['Teacher'] },
     { id: 'access-requests', labelKey: 'menu.accessRequests', icon: 'how_to_reg', route: '/assignment-permission-requests', type: 'menu', roles: ['Teacher'] },
+    // Issue #361: okulunu seçen öğrencilerin üyelik onayı (bağımsız öğretmende liste boş döner).
+    { id: 'student-school-requests', labelKey: 'menu.studentSchoolRequests', icon: 'person_add', route: '/student-school-requests', type: 'menu', roles: ['Teacher'] },
     // Issue #106: öğretmenin öğrenci mesajları gelen kutusu.
     { id: 'student-messages', labelKey: 'menu.studentMessages', icon: 'forum', route: '/student-messages', type: 'menu', roles: ['Teacher'] },
     { id: 'divider1', labelKey: '', icon: '', route: '', type: 'divider' },
@@ -225,6 +233,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'admin-teacher-approvals', labelKey: 'menu.teacherApprovals', icon: 'how_to_reg', route: '/admin/teacher-approvals', type: 'menu', roles: ['Admin'] },
     { id: 'admin-teachers', labelKey: 'menu.adminTeachers', icon: 'groups', route: '/admin/teachers', type: 'menu', roles: ['Admin'] },
     { id: 'admin-students', labelKey: 'menu.adminStudents', icon: 'school', route: '/admin/students', type: 'menu', roles: ['Admin'] },
+    // Issue #361: tüm okulların bekleyen öğrenci okul üyelikleri.
+    { id: 'admin-student-school-requests', labelKey: 'menu.studentSchoolRequests', icon: 'person_add', route: '/admin/student-school-requests', type: 'menu', roles: ['Admin'] },
     { id: 'admin-schools', labelKey: 'menu.adminSchools', icon: 'apartment', route: '/admin/schools', type: 'menu', roles: ['Admin'] },
     // Issue #148: rozet tanımları yönetimi.
     { id: 'admin-badge-definitions', labelKey: 'menu.adminBadgeDefinitions', icon: 'military_tech', route: '/admin/badge-definitions', type: 'menu', roles: ['Admin'] },
@@ -325,11 +335,24 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     }
     this.accessRequestCountLoaded = true;
     this.accessRequestService.refreshPendingCount().subscribe({ error: () => {} });
+    this.loadStudentSchoolRequestCount();
     // Issue #106: onay bilgisi geç geldiyse (init'te bilinmiyordu) DM rozeti şimdi çekilir — init çektiyse tekrar etmez.
     if (!this.directMessageBadgeLoaded) {
       this.directMessageBadgeLoaded = true;
       this.directMessageService.refreshUnreadCount('Teacher').subscribe({ error: () => {} });
     }
+  }
+
+  /**
+   * Issue #361: bekleyen öğrenci okul başvurusu sayısı — onaylı öğretmen (onay bilindiğinde) ve admin için bir kez çekilir;
+   * sonrası başvuru sayfasının liste yüklemeleriyle güncellenir. Hata sessizce yutulur (rozet 0 kalır).
+   */
+  private loadStudentSchoolRequestCount(): void {
+    if (this.studentSchoolRequestCountLoaded) {
+      return;
+    }
+    this.studentSchoolRequestCountLoaded = true;
+    this.studentSchoolRequestService.refreshPendingCount().subscribe({ error: () => {} });
   }
 
   /** Issue #106: DM menü öğesi mi (rozete ekran okuyucu açıklaması verilir). */
@@ -342,6 +365,9 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     switch (itemId) {
       case 'access-requests':
         return this.accessRequestCount();
+      case 'student-school-requests':
+      case 'admin-student-school-requests':
+        return this.studentSchoolRequestCount();
       case 'teacher-messages':
       case 'student-messages':
         return this.directMessageUnreadCount();
@@ -410,6 +436,11 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       this.filteredSuggestions = [...this.searchHistory];
     });
 
+    // Issue #361: admin için bekleyen öğrenci okul başvurusu rozeti (öğretmende onay bilinince çekilir).
+    if (this.authService.hasRealmRole('Admin')) {
+      this.loadStudentSchoolRequestCount();
+    }
+
     if (this.isTeacher) {
       this.signalR.accessRequestUpdates$.pipe(takeUntil(this.destroy$)).subscribe((update) => {
         if (update.kind === 'requested' && this.isTeacherKnownApproved()) {
@@ -462,7 +493,9 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       (profile == 'Teacher' && !JSON.parse(user).teacher) ||
       // Issue #287: onay durumu yalnız refresh ile gelir; onaylı olduğu bilinmeyen öğretmende her açılışta tazelenir
       // (admin onayı sonrası menü/erişim açılsın).
-      (profile == 'Teacher' && JSON.parse(user).teacher?.teacherAccountApproved !== true);
+      (profile == 'Teacher' && JSON.parse(user).teacher?.teacherAccountApproved !== true) ||
+      // Issue #361: okul üyeliği onay bekleyen öğrencide her açılışta tazelenir (onay sonrası band kalksın, okul kapsamı açılsın).
+      (profile == 'Student' && JSON.parse(user).student?.pendingSchoolId != null);
     if (refresh) {
       // Reaktif profil kaynağı (issue #191): schoolId ve öğretmen onay durumu (#287) yalnızca bu refresh ile gelir;
       // `refreshProfile` sonucu `user` signal'ına yazar.

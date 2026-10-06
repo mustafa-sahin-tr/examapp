@@ -12,6 +12,7 @@ import { EnhancedLayoutComponent } from './enhanced-layout.component';
 import { AuthService, UserProfile } from '../../services/auth.service';
 import { SignalRService } from '../../services/signalr.service';
 import { WorksheetAccessRequestService } from '../../services/worksheet-access-request.service';
+import { StudentSchoolRequestService } from '../../services/student-school-request.service';
 import { NotificationService } from '../../services/notification.service';
 import { DirectMessageService } from '../../services/direct-message.service';
 import { UserThemeService } from '../../services/user-theme.service';
@@ -58,6 +59,7 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         { provide: AuthService, useValue: authStub },
         { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
         { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0) } },
+        { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
         { provide: DirectMessageService, useValue: directMessageStub() },
         { provide: NotificationService, useValue: { unreadCount: signal(0) } },
         { provide: UserThemeService, useValue: {} },
@@ -161,6 +163,7 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
     '/availability',
     '/booking-requests',
     '/assignment-permission-requests',
+    '/student-school-requests',
     '/my-calendar',
   ];
 
@@ -234,6 +237,7 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
         { provide: AuthService, useValue: authStub },
         { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
         { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0) } },
+        { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
         { provide: DirectMessageService, useValue: directMessageStub() },
         { provide: NotificationService, useValue: { unreadCount: signal(0) } },
         { provide: UserThemeService, useValue: {} },
@@ -258,6 +262,46 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
   it('routes_TeacherApprovalPendingRoute_Exists', () => {
     const layoutRoute = routes.find((r) => Array.isArray(r.children));
     expect(layoutRoute?.children?.map((r) => r.path)).toContain('teacher-approval-pending');
+  });
+
+  // ── Issue #361: bekleyen öğrenci okul başvuruları ───────────────────────────
+
+  it('visibleMenuItems_StudentSchoolRequests_TeacherAndAdminOnly (issue #361)', () => {
+    expect(create(['Teacher']).visibleMenuItems().map((i) => i.route)).toContain('/student-school-requests');
+
+    TestBed.resetTestingModule();
+    const admin = create(['Admin']).visibleMenuItems().map((i) => i.route);
+    expect(admin).toContain('/admin/student-school-requests');
+    expect(admin).not.toContain('/student-school-requests');
+
+    TestBed.resetTestingModule();
+    const student = create(['Student']).visibleMenuItems().map((i) => i.route);
+    expect(student).not.toContain('/student-school-requests');
+    expect(student).not.toContain('/admin/student-school-requests');
+  });
+
+  it('routes_StudentSchoolRequests_GuardedByRole (issue #361)', () => {
+    const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
+    const teacherRoute = children.find((r) => r.path === 'student-school-requests');
+    const adminRoute = children.find((r) => r.path === 'admin/student-school-requests');
+    expect(teacherRoute?.canActivate?.length).toBe(3);
+    expect(adminRoute?.canActivate).toContain(adminGuard);
+  });
+
+  it('menuBadgeCount_StudentSchoolRequests_UsesPendingCount (issue #361)', () => {
+    const component = create(['Teacher']);
+    const service = TestBed.inject(StudentSchoolRequestService) as unknown as { pendingCount: WritableSignal<number> };
+    service.pendingCount.set(3);
+    expect(component.menuBadgeCount('student-school-requests')).toBe(3);
+    expect(component.menuBadgeCount('admin-student-school-requests')).toBe(3);
+    expect(component.menuBadgeCount('access-requests')).toBe(0);
+  });
+
+  it('menuLabel_StudentSchoolRequests_TranslatedTrAndEn (issue #361)', () => {
+    create(['Teacher']);
+    const transloco = TestBed.inject(TranslocoService);
+    expect(transloco.translate('layout.menu.studentSchoolRequests')).toBe('Öğrenci Okul Başvuruları');
+    expect(transloco.translate('layout.menu.studentSchoolRequests', {}, 'en')).toBe('Student School Requests');
   });
 });
 
@@ -304,6 +348,7 @@ describe('EnhancedLayoutComponent notification badge (issue #146)', () => {
           },
         },
         { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0) } },
+        { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
         { provide: DirectMessageService, useValue: directMessageStub() },
         {
           provide: NotificationService,
@@ -461,6 +506,7 @@ describe('EnhancedLayoutComponent direct messages menu (issue #106)', () => {
         { provide: AuthService, useValue: authStub },
         { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
         { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(2) } },
+        { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
         { provide: DirectMessageService, useValue: directMessageStub(dmCount) },
         { provide: NotificationService, useValue: { unreadCount: signal(0) } },
         { provide: UserThemeService, useValue: {} },
@@ -547,6 +593,7 @@ describe('EnhancedLayoutComponent DM badge push (issue #106 b)', () => {
           },
         },
         { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
+        { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
         {
           provide: DirectMessageService,
           useValue: { unreadCount: signal(0).asReadonly(), refreshUnreadCount: dmRefresh, resetUnreadCount: () => undefined },
@@ -616,6 +663,7 @@ function layoutProviders(
     { provide: AuthService, useValue: authStub },
     { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
     { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0) } },
+    { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
     { provide: DirectMessageService, useValue: directMessageStub() },
     { provide: NotificationService, useValue: { unreadCount: signal(0) } },
     { provide: UserThemeService, useValue: {} },
@@ -818,6 +866,7 @@ describe('EnhancedLayoutComponent profile menu (issue #375)', () => {
           },
         },
         { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
+        { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
         { provide: DirectMessageService, useValue: directMessageStub() },
         {
           provide: NotificationService,

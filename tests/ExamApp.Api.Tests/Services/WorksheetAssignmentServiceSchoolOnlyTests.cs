@@ -38,8 +38,8 @@ public class WorksheetAssignmentServiceSchoolOnlyTests : IDisposable
         await ctx.SaveChangesAsync();
 
         var ws = new Worksheet { Name = "W", Description = "", GradeId = grade.Id, TeacherSharing = sharing };
-        var studentA = new Student { UserId = 10, StudentNumber = "a", SchoolId = schoolA.Id, GradeId = grade.Id };
-        var studentB = new Student { UserId = 11, StudentNumber = "b", SchoolId = schoolB.Id, GradeId = grade.Id };
+        var studentA = new Student { UserId = 10, StudentNumber = "a", SchoolId = schoolA.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
+        var studentB = new Student { UserId = 11, StudentNumber = "b", SchoolId = schoolB.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
         ctx.AddRange(ws, studentA, studentB,
             new Teacher { UserId = OwnerA, SchoolId = schoolA.Id },
             new Teacher { UserId = PeerA, SchoolId = schoolA.Id },

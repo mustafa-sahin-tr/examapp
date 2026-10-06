@@ -59,6 +59,7 @@
       "availability": "Müsait Saatlerim",
       "bookingRequests": "Randevu Talepleri",
       "accessRequests": "Atama İzin Talepleri",
+      "studentSchoolRequests": "Öğrenci Okul Başvuruları",
       "studentMessages": "Öğrenci Mesajları",
       "studyPages": "Çalışma Ekleme",
       "studyLinks": "Çalışma Linkleri",
@@ -555,6 +556,11 @@
       "confirm": "Tüm sınav ilerlemen, atanmış kişisel sınavların, puanların ve rozet/aktivite verilerin sıfırlanacak. Devam edilsin mi?",
       "queued": "Sıfırlama işlemi kuyruğa alındı.",
       "failed": "Sıfırlama isteği gönderilemedi. Lütfen tekrar deneyin."
+    },
+    "schoolPending": {
+      "title": "Okul onayı bekleniyor",
+      "body": "{{ school }} üyeliğiniz okulunuzun öğretmeni veya yönetici tarafından onaylanınca okul atamaları, okul liderlik tablosu ve okul içi mesajlaşma açılacak.",
+      "bodyGeneric": "Okul üyeliğiniz okulunuzun öğretmeni veya yönetici tarafından onaylanınca okul atamaları, okul liderlik tablosu ve okul içi mesajlaşma açılacak."
     }
   },
   "myPrograms": {

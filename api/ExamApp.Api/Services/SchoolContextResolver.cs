@@ -12,7 +12,8 @@ namespace ExamApp.Api.Services;
 ///   Teacher, Teachers'da UserId eşleşen satır var, SchoolId dolu   -> o SchoolId
 ///   Teacher, satır var, SchoolId null (bağımsız öğretmen)          -> null
 ///   Teacher, Teachers'da satır yok                                 -> Students satırının SchoolId'si (yoksa null; #277 review)
-///   Student, Students'da UserId eşleşen satır var, SchoolId dolu   -> o SchoolId
+///   Student, Students'da UserId eşleşen satır var, SchoolId dolu   -> o SchoolId (issue #361: YALNIZ SchoolVerifiedAt
+///            doluysa; kendi seçtiği, onay bekleyen okul -> null)
 ///   Student, satır var, SchoolId null                              -> null
 ///   Student, Students'da satır yok                                 -> null
 ///   Admin / Service / Parent / diğer roller                        -> null (sorgu atılmaz)

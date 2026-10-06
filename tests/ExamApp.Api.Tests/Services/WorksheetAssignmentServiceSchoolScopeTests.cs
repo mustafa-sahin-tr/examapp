@@ -35,8 +35,8 @@ public class WorksheetAssignmentServiceSchoolScopeTests : IDisposable
         await ctx.SaveChangesAsync();
 
         var ws = new Worksheet { Name = "W", Description = "", GradeId = grade.Id };
-        var studentA = new Student { UserId = 10, StudentNumber = "a", SchoolId = schoolA.Id, GradeId = grade.Id };
-        var studentB = new Student { UserId = 11, StudentNumber = "b", SchoolId = schoolB.Id, GradeId = grade.Id };
+        var studentA = new Student { UserId = 10, StudentNumber = "a", SchoolId = schoolA.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
+        var studentB = new Student { UserId = 11, StudentNumber = "b", SchoolId = schoolB.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
         var studentNone = new Student { UserId = 12, StudentNumber = "n", SchoolId = null, GradeId = grade.Id };
         var owner = new Teacher { UserId = OwnerUserId, SchoolId = schoolA.Id };
         ctx.AddRange(ws, studentA, studentB, studentNone, owner);

@@ -58,7 +58,7 @@ public class AdminStudentSchoolService : IAdminStudentSchoolService
     }
 
     public async Task<AdminStudentSchoolChangeResult> ChangeSchoolAsync(
-        int studentId, int schoolId, string actorKeycloakId, CancellationToken ct = default)
+        int studentId, int schoolId, string actorKeycloakId, int? actorUserId = null, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(actorKeycloakId))
             throw new InvalidOperationException("Admin student school change requires the actor's Keycloak subject.");
@@ -71,7 +71,7 @@ public class AdminStudentSchoolService : IAdminStudentSchoolService
         // Soft-delete edilmiş öğrenci global filtre ile dışarıda → 404.
         var current = await _context.Students.AsNoTracking()
             .Where(s => s.Id == studentId)
-            .Select(s => new { s.SchoolId })
+            .Select(s => new { s.SchoolId, s.SchoolVerifiedAt })
             .FirstOrDefaultAsync(ct);
         if (current is null)
         {
@@ -88,7 +88,10 @@ public class AdminStudentSchoolService : IAdminStudentSchoolService
             return new(AdminStudentSchoolChangeStatus.SchoolNotFound);
         }
 
-        if (previousSchoolId == schoolId)
+        // issue #361: admin ataması üyeliği HEMEN doğrular. Zaten aynı okulda ve doğrulanmışsa yan etkisiz; aynı okulda ama
+        // beklemedeyse (öğrencinin kendi seçimi) bu çağrı onu doğrular (Changed=true — üyelik durumu değişti).
+        var previousVerifiedAt = current.SchoolVerifiedAt;
+        if (previousSchoolId == schoolId && previousVerifiedAt.HasValue)
             return new(AdminStudentSchoolChangeStatus.Success, previousSchoolId, schoolId, Changed: false);
 
         var target = await _targets.ResolveAsync(AdminUserTargetType.Student, studentId, actorKeycloakId, ct);
@@ -121,10 +124,14 @@ public class AdminStudentSchoolService : IAdminStudentSchoolService
         // Koşullu güncelleme: okunduğu andaki okul hâlâ aynıysa (eşzamanlı admin değişikliği / öğrencinin ilk okul ataması
         // #259 ile yarışta son yazan kazanmasın). ExecuteUpdate SaveChanges audit'ini atlar; UpdateTime açıkça yazılır.
         var now = DateTime.UtcNow;
+        int? verifierUserId = actorUserId is > 0 ? actorUserId : null;
         var affected = await _context.Students
-            .Where(s => s.Id == studentId && s.SchoolId == previousSchoolId)
+            // issue #361: okunduğu andaki doğrulama durumu da koşulda — arada bir okul onayı/reddi olduysa Conflict.
+            .Where(s => s.Id == studentId && s.SchoolId == previousSchoolId && s.SchoolVerifiedAt == previousVerifiedAt)
             .ExecuteUpdateAsync(set => set
                 .SetProperty(s => s.SchoolId, schoolId)
+                .SetProperty(s => s.SchoolVerifiedAt, now)
+                .SetProperty(s => s.SchoolVerifiedByUserId, verifierUserId)
                 .SetProperty(s => s.UpdateTime, now), CancellationToken.None);
 
         if (affected == 0)

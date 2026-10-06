@@ -13,7 +13,12 @@ public class StudentProfileDto
     public string AvatarUrl { get; set; } = string.Empty;
     public int? GradeId { get; set; }
     public string? SchoolName { get; set; }
+    /// <summary>issue #361: DOĞRULANMIŞ okul (yetki kararları buna bakar); beklemedeki üyelikte null.</summary>
     public int? SchoolId { get; set; }
+    /// <summary>issue #361: öğrencinin kendi kaydında seçtiği, onay bekleyen okul (doğrulanmışsa null).</summary>
+    public int? PendingSchoolId { get; set; }
+    /// <summary>issue #361: <see cref="PendingSchoolId"/> okulunun adı (yalnız gösterim).</summary>
+    public string? PendingSchoolName { get; set; }
     public int XP { get; set; }
     public int Level { get; set; } // 🟢 En son seviy
 
@@ -79,7 +84,12 @@ public class StudentDto
     public int XP { get; set; }
     public int Level { get; set; } // 🟢 En son seviy
     public string? SchoolName { get; set; }
+    /// <summary>issue #361: DOĞRULANMIŞ okul; beklemedeki üyelikte null (bkz. <see cref="PendingSchoolId"/>).</summary>
     public int? SchoolId { get; set; }
+    /// <summary>issue #361: onay bekleyen okul üyeliği (öğrencinin kendi seçtiği okul); yoksa null. UI "Okul onayı bekleniyor".</summary>
+    public int? PendingSchoolId { get; set; }
+    /// <summary>issue #361: <see cref="PendingSchoolId"/> okulunun adı.</summary>
+    public string? PendingSchoolName { get; set; }
     public string StudentNumber { get; set; } = string.Empty;
     public string? ThemePreset { get; set; } = "standard"; // 🎨 Theme tercihi
     public string? ThemeCustomConfig { get; set; } // 🎨 Custom theme config (JSON)

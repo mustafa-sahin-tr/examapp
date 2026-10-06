@@ -68,7 +68,7 @@ public partial class WorksheetCommentServiceTests
         if (studentSchoolless)
         {
             await using var ctx = _db.NewContext();
-            await ctx.Students.Where(s => s.UserId == StudentAUser).ExecuteUpdateAsync(s => s.SetProperty(x => x.SchoolId, (int?)null));
+            await ctx.Students.Where(s => s.UserId == StudentAUser).ExecuteUpdateAsync(s => s.SetProperty(x => x.SchoolId, (int?)null).SetProperty(x => x.SchoolVerifiedAt, (DateTime?)null));
         }
 
         Created(await PostAsync(w.WorksheetId, Student(StudentAUser), "soru"));
@@ -102,7 +102,7 @@ public partial class WorksheetCommentServiceTests
         if (studentSchoolless)
         {
             await using var ctx = _db.NewContext();
-            await ctx.Students.Where(s => s.UserId == StudentAUser).ExecuteUpdateAsync(s => s.SetProperty(x => x.SchoolId, (int?)null));
+            await ctx.Students.Where(s => s.UserId == StudentAUser).ExecuteUpdateAsync(s => s.SetProperty(x => x.SchoolId, (int?)null).SetProperty(x => x.SchoolVerifiedAt, (DateTime?)null));
         }
         await using (var ctx = _db.NewContext())
             await ctx.WorksheetAssignments.Where(a => a.Id == w.AssignmentId)

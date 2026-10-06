@@ -75,7 +75,11 @@ public enum AdminUserAction
     /// <summary>issue #106: öğretmen doğrudan mesajlaşmada bir öğrenciyi engelledi (<see cref="AdminUserTargetType.Conversation"/>). Aktör öğretmendir.</summary>
     DirectMessageStudentBlocked = 12,
     /// <summary>issue #106: öğretmen doğrudan mesajlaşma engelini kaldırdı.</summary>
-    DirectMessageStudentUnblocked = 13
+    DirectMessageStudentUnblocked = 13,
+    /// <summary>issue #361: öğrencinin bekleyen okul üyeliği onaylandı (Students.SchoolVerifiedAt). Aktör admin ya da aynı okulun onaylı öğretmeni; <see cref="AdminUserActionLog.ToSchoolId"/> = okul.</summary>
+    StudentSchoolApproved = 14,
+    /// <summary>issue #361: öğrencinin bekleyen okul üyeliği reddedildi (Students.SchoolId temizlendi). Aktör admin ya da aynı okulun onaylı öğretmeni.</summary>
+    StudentSchoolRejected = 15
 }
 
 /// <summary>Admin hesap aksiyonunun sonucu. Kalıcı değer string'dir.</summary>

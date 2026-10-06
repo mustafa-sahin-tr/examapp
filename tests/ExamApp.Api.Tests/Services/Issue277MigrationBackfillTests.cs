@@ -27,7 +27,7 @@ public class Issue277MigrationBackfillTests : IDisposable
             var s = new School { Name = "A" };
             ctx.AddRange(g, s);
             await ctx.SaveChangesAsync();
-            var st = new Student { UserId = 1, StudentNumber = "n", GradeId = g.Id, SchoolId = s.Id };
+            var st = new Student { UserId = 1, StudentNumber = "n", GradeId = g.Id, SchoolId = s.Id, SchoolVerifiedAt = DateTime.UtcNow };
             var w = new Worksheet { Name = "W", Description = "", GradeId = g.Id };
             ctx.AddRange(st, w,
                 new Teacher { UserId = teacherUserId, IsIndependentTutor = true },

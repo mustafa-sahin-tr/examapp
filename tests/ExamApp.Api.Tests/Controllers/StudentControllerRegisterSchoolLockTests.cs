@@ -88,7 +88,7 @@ public class StudentControllerRegisterSchoolLockTests : IDisposable
         await ctx.SaveChangesAsync();
         if (existingStudentInSchoolA)
         {
-            ctx.Students.Add(new Student { UserId = UserId, StudentNumber = "s1", SchoolId = a.Id, GradeId = g.Id });
+            ctx.Students.Add(new Student { UserId = UserId, StudentNumber = "s1", SchoolId = a.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = g.Id });
             await ctx.SaveChangesAsync();
         }
         return (a.Id, b.Id, g.Id);
@@ -133,7 +133,8 @@ public class StudentControllerRegisterSchoolLockTests : IDisposable
     }
 
     [Fact]
-    public async Task First_school_assignment_is_cached_from_the_database()
+    // issue #361: kendi kaydında seçilen okul BEKLEMEDE — profil önbelleğine doğrulanmış okul (null) yazılır, istenen değil.
+    public async Task First_school_assignment_is_pending_so_cached_school_is_null()
     {
         var (schoolA, _, gradeId) = await SeedAsync();
         await using var ctx = _db.NewContext();
@@ -142,6 +143,6 @@ public class StudentControllerRegisterSchoolLockTests : IDisposable
         var result = await controller.RegisterStudent(new RegisterStudentDto { StudentNumber = "s1", SchoolId = schoolA, GradeId = gradeId });
 
         result.ShouldBeOfType<OkObjectResult>();
-        (await _cache.GetAsync(KeycloakId))!.SchoolId.ShouldBe(schoolA);
+        (await _cache.GetAsync(KeycloakId))!.SchoolId.ShouldBeNull();
     }
 }

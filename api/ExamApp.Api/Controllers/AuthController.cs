@@ -76,7 +76,8 @@ namespace ExamApp.Api.Controllers
                     // hesaplanır (StudentService.GetStudentProfile ile aynı kural, minimum 1). Eskiden ikisi de 0 dönüyordu.
                     var row = await _context.Students
                     .Where(s => s.UserId == profile.Id)
-                    .Select(s => new { Student = s, XP = s.StudentPoints.Sum(sp => sp.XP) })
+                    .Select(s => new { Student = s, XP = s.StudentPoints.Sum(sp => sp.XP),
+                        PendingSchoolName = s.SchoolVerifiedAt == null && s.SchoolId != null ? s.School!.Name : null })
                     .FirstOrDefaultAsync();
                     if (row == null)
                         return Ok(profile);
@@ -88,7 +89,10 @@ namespace ExamApp.Api.Controllers
                         Level = StudentLevel.FromXp(row.XP),
                         GradeId = student.GradeId,
                         SchoolName = student.SchoolName,
-                        SchoolId = student.SchoolId,
+                        // issue #361: yalnız doğrulanmış okul; beklemedeki üyelik ayrı alanda (UI "Okul onayı bekleniyor").
+                        SchoolId = student.VerifiedSchoolId,
+                        PendingSchoolId = student.SchoolVerifiedAt == null ? student.SchoolId : null,
+                        PendingSchoolName = row.PendingSchoolName,
                         AvatarUrl = profile.Avatar,
                         FullName = profile.FullName,
                         ThemePreset = student.ThemePreset,

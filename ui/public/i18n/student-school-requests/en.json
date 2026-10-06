@@ -1,0 +1,34 @@
+{
+  "title": "Pending student requests",
+  "subtitle": "Students who chose your school when registering. Until approved they cannot see school assignments, the school leaderboard or in-school messaging. Reject students you do not recognise.",
+  "unknownStudent": "Unknown student",
+  "paginator": "Request pages",
+  "columns": {
+    "student": "Student",
+    "number": "Student no.",
+    "grade": "Grade",
+    "school": "School",
+    "date": "Registered",
+    "actions": "Action"
+  },
+  "actions": {
+    "approve": "Approve",
+    "reject": "Reject",
+    "refresh": "Refresh"
+  },
+  "state": {
+    "loading": "Loading requests…",
+    "empty": "There are no pending student requests."
+  },
+  "rejectDialog": {
+    "title": "Reject request",
+    "message": "{{ name }}'s membership of {{ school }} will be rejected and the student's school choice cleared. Continue?"
+  },
+  "messages": {
+    "approved": "The student's school membership was approved.",
+    "rejected": "The student's school request was rejected.",
+    "loadFailed": "Requests could not be loaded.",
+    "actionFailed": "The action could not be completed.",
+    "ok": "OK"
+  }
+}

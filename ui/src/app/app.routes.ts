@@ -134,9 +134,10 @@ export const routes: Routes = [
           import('./pages/study-links/study-links.component').then((m) => m.StudyLinksComponent),
       },
       {
+        // Issue #365: soru aktarımı (soru bankası export/import) yalnız Admin — backend de Admin-only.
         path: 'question-transfer',
         component: QuestionTransferComponent,
-        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
+        canActivate: [authGuard, adminGuard],
       },
       {
         path: 'assignment-permission-requests',

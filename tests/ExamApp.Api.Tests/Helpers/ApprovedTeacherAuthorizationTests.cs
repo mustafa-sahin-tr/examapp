@@ -440,7 +440,6 @@ public class ApprovedTeacherAuthorizationTests : IDisposable
     [InlineData(typeof(BookingController), nameof(BookingController.CreateVideoSession), ApprovedTeacherPolicies.TeacherOrStudentCapability)]
     [InlineData(typeof(StudentController), nameof(StudentController.GetStudentLookup), ApprovedTeacherPolicies.TeacherCapability)]
     [InlineData(typeof(QuestionsController), nameof(QuestionsController.CreateOrUpdateQuestion), ApprovedTeacherPolicies.TeacherCapability)]
-    [InlineData(typeof(QuestionTransferController), nameof(QuestionTransferController.HangfireLogin), ApprovedTeacherPolicies.TeacherCapability)]
     public void Representative_teacher_endpoints_are_gated(Type controller, string action, string policy)
     {
         AuthorizeAttributesOf(controller.GetMethod(action)!).ShouldContain(a => a.Policy == policy);

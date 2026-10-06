@@ -193,7 +193,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'dashboard', labelKey: 'menu.dashboard', icon: 'dashboard', route: '/dashboard', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'exams', labelKey: 'menu.exams', icon: 'quiz', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'practice', labelKey: 'menu.practice', icon: 'bolt', route: '/practice', type: 'menu', roles: ['Student'] },
-    { id: 'study', labelKey: 'menu.study', icon: 'school', route: '/study', type: 'menu', roles: ['Student'] },
+    // Issue #382: 'study' (/study, Ders Çalışma) örnek veriyle çalıştığı için menüden ve alt navigasyondan kaldırıldı.
     { id: 'programsm', labelKey: 'menu.programs', icon: 'assignment_ind', route: '/programs', type: 'menu', roles: ['Student'] },
     { id: 'my-calendar', labelKey: 'menu.myCalendar', icon: 'event_note', route: '/my-calendar', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'tutors', labelKey: 'menu.tutors', icon: 'person_search', route: '/tutors', type: 'menu', roles: ['Student'] },
@@ -232,7 +232,6 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'teacher-approval-status', labelKey: 'menu.teacherApprovalStatus', icon: 'hourglass_top', route: TEACHER_APPROVAL_PENDING_URL, type: 'menu', onlyUnapprovedTeacher: true },
     { id: 'dashboard', labelKey: 'bottomNav.home', icon: 'home', route: '/dashboard', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'exams', labelKey: 'menu.exams', icon: 'quiz', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
-    { id: 'study', labelKey: 'bottomNav.study', icon: 'school', route: '/study', type: 'menu', roles: ['Student'] },
     // Issue #373: /student-profile yalnız öğrenci verisiyle çalışır — öğretmen/admin'de boş açılıyordu.
     { id: 'settings', labelKey: 'menu.settings', icon: 'settings', route: '/student-profile', type: 'menu', roles: ['Student'] },
   ];

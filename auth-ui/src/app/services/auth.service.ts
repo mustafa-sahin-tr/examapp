@@ -164,6 +164,24 @@ export class AuthService {
     return localStorage.getItem(this.tokenKey);
   }
 
+  /**
+   * Saklı erişim token'ı var ve süresi dolmamış mı (yalnızca `exp` okunur, imza doğrulanmaz — UI kararı içindir).
+   * Issue #347: başarılı girişten sonra geri tuşuyla `/app/callback`'e dönülünce state kaydı tüketilmiş
+   * olur; oturum zaten geçerliyse hata göstermeden hedefe gidilir.
+   */
+  hasValidSessionToken(): boolean {
+    const token = this.getToken();
+    if (!token) {
+      return false;
+    }
+    try {
+      const { exp } = jwtDecode<{ exp?: number }>(token);
+      return typeof exp === 'number' && exp > Math.floor(Date.now() / 1000);
+    } catch {
+      return false;
+    }
+  }
+
   getUserRole(): string | null {
     return localStorage.getItem(this.roleKey);
   }
@@ -234,8 +252,12 @@ export class AuthService {
     return !!this.getToken();
   }
 
-  exchangeCodeForToken(code: string) {
-    return this.http.post<TokenResponse>(`/api/auth/exchange`, { code: code }).pipe(
+  /**
+   * Authorization code'u auth-api üzerinden token'a çevirir. `codeVerifier` login başlatılırken üretilen
+   * PKCE doğrulayıcısıdır (issue #347); auth-api bunu Keycloak token ucuna `code_verifier` olarak iletir.
+   */
+  exchangeCodeForToken(code: string, codeVerifier: string) {
+    return this.http.post<TokenResponse>(`/api/auth/exchange`, { code, codeVerifier }).pipe(
       tap((res) => {
         // Yeni oturum yazılmadan önce önceki kullanıcıya ait önbellek kalıntılarını at.
         this.clearCachedUser();

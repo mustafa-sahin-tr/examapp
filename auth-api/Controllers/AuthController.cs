@@ -527,7 +527,7 @@ namespace ExamApp.Api.Controllers
             TokenResponseDto tokenDto;
             try
             {
-                tokenDto = await _keycloakService.ExchangeTokenAsync(dto.Code, HttpContext.RequestAborted);
+                tokenDto = await _keycloakService.ExchangeTokenAsync(dto.Code, dto.CodeVerifier, HttpContext.RequestAborted);
             }
             catch (KeycloakException ex)
             {

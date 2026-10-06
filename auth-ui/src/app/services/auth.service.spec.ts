@@ -242,6 +242,30 @@ describe('AuthService (auth-ui)', () => {
     }));
   });
 
+  describe('hasValidSessionToken (issue #347)', () => {
+    it('token yoksa false', () => {
+      expect(service.hasValidSessionToken()).toBeFalse();
+    });
+
+    it('süresi dolmamış token → true', () => {
+      localStorage.setItem('auth_token', createToken('u-1'));
+      expect(service.hasValidSessionToken()).toBeTrue();
+    });
+
+    it('süresi dolmuş veya bozuk token → false', () => {
+      const expired =
+        base64urlEncode(JSON.stringify({ alg: 'none' })) +
+        '.' +
+        base64urlEncode(JSON.stringify({ sub: 'u', exp: Math.floor(Date.now() / 1000) - 10 })) +
+        '.x';
+      localStorage.setItem('auth_token', expired);
+      expect(service.hasValidSessionToken()).toBeFalse();
+
+      localStorage.setItem('auth_token', 'not-a-jwt');
+      expect(service.hasValidSessionToken()).toBeFalse();
+    });
+  });
+
   describe('exchangeCodeForToken', () => {
     describe('Kriter 1: Kullanıcı değişince profil bilgisi güncellenmeli', () => {
       it('exchangeCodeForToken_ClearsCachedUserBeforeSettingNewToken', (done) => {
@@ -252,7 +276,7 @@ describe('AuthService (auth-ui)', () => {
         const newToken = createToken('new-user-123');
         const newKeycloakId = 'new-user-123';
 
-        service.exchangeCodeForToken('code-123').subscribe(() => {
+        service.exchangeCodeForToken('code-123', 'v'.repeat(43)).subscribe(() => {
           // Yeni token ve role yazılmış
           expect(localStorage.getItem('auth_token')).toBe(newToken);
           expect(localStorage.getItem('user_role')).toBe('student');
@@ -286,13 +310,15 @@ describe('AuthService (auth-ui)', () => {
       const newToken = createToken('user-xyz');
       const newKeycloakId = 'user-xyz';
 
-      service.exchangeCodeForToken('code-456').subscribe(() => {
+      service.exchangeCodeForToken('code-456', 'v'.repeat(43)).subscribe(() => {
         expect(localStorage.getItem('auth_token')).toBe(newToken);
         expect(localStorage.getItem('user_role')).toBe('teacher');
         done();
       });
 
       const req = httpMock.expectOne('/api/auth/exchange');
+      // Issue #347: PKCE code_verifier code ile birlikte auth-api'ye gider.
+      expect(req.request.body).toEqual({ code: 'code-456', codeVerifier: 'v'.repeat(43) });
       const response: TokenResponse = {
         token: newToken,
         roles: ['teacher'],
@@ -324,7 +350,7 @@ describe('AuthService (auth-ui)', () => {
         role: 'student',
       };
 
-      service.exchangeCodeForToken('code-999').subscribe(() => {
+      service.exchangeCodeForToken('code-999', 'v'.repeat(43)).subscribe(() => {
         // Manuel olarak user'ı ekle (auth-ui spec'i user döndürmüyor, ama gözlemci bunu bilmeli)
         localStorage.setItem('user', JSON.stringify(profile));
 

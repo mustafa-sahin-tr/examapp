@@ -127,6 +127,34 @@ public class WorksheetDetailServiceFromMistakesTests : IDisposable
         ex.Message.ShouldContain("tamamlan");
     }
 
+    // issue #396: a session closed by the time limit is finished too — its mistakes can be practised.
+    [Fact]
+    public async Task CreateWorksheetFromMistakes_ExpiredInstance_IsAllowed()
+    {
+        var w = await SeedAsync();
+        var instanceId = await AddInstanceAsync(w.SourceWorksheetId, w.StudentId, WorksheetInstanceStatus.Expired,
+            (w.Wq1, w.Q1Wrong), (w.Wq2, w.Q2Correct));
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).CreateWorksheetFromMistakesAsync(instanceId, w.StudentId, StudentUserId);
+        result.ShouldNotBeNull();
+    }
+
+    // issue #396 re-check: an overdue session the sweeper has not closed yet (still Started in the DB) is finished too.
+    [Fact]
+    public async Task CreateWorksheetFromMistakes_OverdueButUnsweptInstance_IsAllowed()
+    {
+        var w = await SeedAsync();
+        var instanceId = await AddInstanceAsync(w.SourceWorksheetId, w.StudentId, WorksheetInstanceStatus.Started,
+            (w.Wq1, w.Q1Wrong));
+        await using (var ctx = _db.NewContext())
+            await ctx.TestInstances.Where(i => i.Id == instanceId)
+                .ExecuteUpdateAsync(u => u.SetProperty(i => i.MaxDurationSeconds, (int?)60)); // started 30 min ago
+
+        await using var read = _db.NewContext();
+        (await NewService(read).CreateWorksheetFromMistakesAsync(instanceId, w.StudentId, StudentUserId)).ShouldNotBeNull();
+    }
+
     [Fact]
     public async Task CreateWorksheetFromMistakes_NoWrongAnswers_ThrowsInvalidOperation()
     {

@@ -9,7 +9,9 @@
       "ended": "Test başarıyla sonlandırıldı.",
       "alreadyCompleted": "Bu test zaten tamamlanmış.",
       "answerRejectedNotInProgress": "Test tamamlandığı için cevap artık kaydedilemez.",
-      "notInProgress": "Bu test artık devam etmiyor."
+      "notInProgress": "Bu test artık devam etmiyor.",
+      "answerRejectedTimeUp": "Test süresi dolduğu için cevap artık kaydedilemez.",
+      "timeUp": "Test süresi doldu."
     },
 
     "accessRequest": {

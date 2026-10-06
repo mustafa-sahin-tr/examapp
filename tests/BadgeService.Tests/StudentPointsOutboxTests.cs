@@ -99,7 +99,7 @@ public class StudentPointsOutboxTests : IDisposable
 
         await using (var ctx = _db.NewContext())
         {
-            var result = await new ResetController(new UserResetService(ctx)).ResetUserAsync(7, CancellationToken.None);
+            var result = await new ResetController(new UserResetService(ctx)).ResetUserAsync(7, null, CancellationToken.None);
             result.ShouldBeOfType<Microsoft.AspNetCore.Mvc.OkObjectResult>();
         }
 

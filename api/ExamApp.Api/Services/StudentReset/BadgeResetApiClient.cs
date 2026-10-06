@@ -10,7 +10,9 @@ namespace ExamApp.Api.Services.StudentReset;
 
 public interface IBadgeResetApiClient
 {
-    Task ResetUserAsync(int userId, CancellationToken cancellationToken);
+    /// <param name="resetAtUtc">issue #396: sıfırlama çizgisi (exam API saati); BadgeService bundan önce gönderilmiş
+    /// AnswerSubmittedEvent'leri yok sayar.</param>
+    Task ResetUserAsync(int userId, DateTime resetAtUtc, CancellationToken cancellationToken);
 }
 
 public sealed class BadgeResetApiClient : IBadgeResetApiClient
@@ -26,7 +28,10 @@ public sealed class BadgeResetApiClient : IBadgeResetApiClient
         _tokenProvider = tokenProvider;
     }
 
-    public async Task ResetUserAsync(int userId, CancellationToken cancellationToken)
+    /// <summary>issue #396: hata mesajına eklenen yanıt gövdesinin üst sınırı (log/Hangfire paneli şişmesin).</summary>
+    internal const int MaxErrorBodyLength = 512;
+
+    public async Task ResetUserAsync(int userId, DateTime resetAtUtc, CancellationToken cancellationToken)
     {
         var baseUrl = _configuration["BadgeApiBaseUrl"]?.TrimEnd('/');
         if (string.IsNullOrWhiteSpace(baseUrl))
@@ -43,11 +48,14 @@ public sealed class BadgeResetApiClient : IBadgeResetApiClient
         // 1) Direct container base URL: http://exam-badge-api:8006  -> /api/reset/users/{id}
         // 2) Gateway base URL:          http://ocelot-gateway:5678 -> /api/badge/reset/users/{id}
         // 3) If baseUrl already includes /api/badge, allow /reset/users/{id}
+        // issue #396: "O" (round-trip, +00:00/Z) → BadgeService DateTimeOffset olarak bağlar; URL-encode '+' için şart.
+        var query = "?resetAtUtc=" + Uri.EscapeDataString(
+            new DateTimeOffset(DateTime.SpecifyKind(resetAtUtc, DateTimeKind.Utc)).ToString("O", System.Globalization.CultureInfo.InvariantCulture));
         var candidates = new List<string>
         {
-            $"{baseUrl}/api/reset/users/{userId}",
-            $"{baseUrl}/api/badge/reset/users/{userId}",
-            $"{baseUrl}/reset/users/{userId}",
+            $"{baseUrl}/api/reset/users/{userId}{query}",
+            $"{baseUrl}/api/badge/reset/users/{userId}{query}",
+            $"{baseUrl}/reset/users/{userId}{query}",
         };
 
         HttpResponseMessage? lastResponse = null;
@@ -58,7 +66,7 @@ public sealed class BadgeResetApiClient : IBadgeResetApiClient
 
             var response = await httpClient.DeleteAsync(url, cancellationToken);
             lastResponse = response;
-            lastBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            lastBody = Truncate(await response.Content.ReadAsStringAsync(cancellationToken));
 
             if (response.IsSuccessStatusCode)
             {
@@ -77,4 +85,10 @@ public sealed class BadgeResetApiClient : IBadgeResetApiClient
             $"Badge reset endpoint not found (404) for all candidates. BaseUrl: {baseUrl}. " +
             $"Tried: {string.Join(" | ", candidates)}. Last body: {lastBody}");
     }
+
+    /// <summary>issue #396: hata gövdesini <see cref="MaxErrorBodyLength"/> karaktere kırpar.</summary>
+    internal static string Truncate(string? body) =>
+        body is null ? string.Empty
+        : body.Length <= MaxErrorBodyLength ? body
+        : body[..MaxErrorBodyLength] + "…(truncated)";
 }

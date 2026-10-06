@@ -733,6 +733,13 @@ public class AppDbContext : DbContext
             .IsUnique()
             .HasFilter("NOT \"IsDeleted\"");
 
+        // issue #396: süresi dolmuş açık oturum süpürücüsü (ExpiredTestInstanceSweepJob) yalnız canlı Started satırları
+        // tarar; tamamlanmış/silinmiş/süre sınırı olmayan satırlar index dışında kalır.
+        modelBuilder.Entity<WorksheetInstance>()
+            .HasIndex(ti => ti.StartTime)
+            .HasDatabaseName("IX_TestInstances_StartTime_Started")
+            .HasFilter("\"Status\" = 0 AND NOT \"IsDeleted\" AND \"MaxDurationSeconds\" > 0");
+
         // Pratik oturumu (issue #62)
         modelBuilder.Entity<PracticeSession>()
             .HasOne(ps => ps.Student)

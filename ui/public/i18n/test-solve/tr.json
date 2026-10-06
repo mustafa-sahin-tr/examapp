@@ -24,6 +24,7 @@
     "alreadyCompleted": "Bu sınav artık devam etmiyor (tamamlanmış ya da süresi dolmuş); sonuç sayfasına yönlendirildin.",
     "dismiss": "Tamam",
     "timeUpTitle": "Süre doldu",
+    "timeUp": "Sınav süren doldu; süre dolduktan sonraki cevaplar kaydedilmedi. Sonuç sayfasına yönlendirildin.",
     "retry": "Tekrar dene"
   },
   "question": {

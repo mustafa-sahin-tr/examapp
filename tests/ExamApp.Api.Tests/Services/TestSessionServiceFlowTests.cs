@@ -296,5 +296,34 @@ public class TestSessionServiceFlowTests : IDisposable
         item.Score.ShouldBe(50);
     }
 
+    // issue #396: the student's own history lists every finished session — a test closed by the time limit included.
+    [Fact]
+    public async Task GetCompletedTests_lists_expired_sessions_too_but_not_running_ones()
+    {
+        var w = await SeedAsync();
+        await using (var ctx = _db.NewContext())
+        {
+            var other = new Worksheet { Name = "Other", Description = "", GradeId = w.GradeId };
+            ctx.Worksheets.Add(other);
+            await ctx.SaveChangesAsync();
+            ctx.TestInstances.AddRange(
+                new WorksheetInstance
+                {
+                    StudentId = w.StudentId, WorksheetId = w.WorksheetId, Status = WorksheetInstanceStatus.Expired,
+                    StartTime = DateTime.UtcNow.AddMinutes(-20), EndTime = DateTime.UtcNow.AddMinutes(-10),
+                },
+                new WorksheetInstance
+                {
+                    StudentId = w.StudentId, WorksheetId = other.Id, Status = WorksheetInstanceStatus.Started, StartTime = DateTime.UtcNow,
+                });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var page = await NewService(read).GetCompletedTestsAsync(Student(w), pageNumber: 1, pageSize: 10);
+        page.TotalCount.ShouldBe(1);
+        page.Items.ShouldHaveSingleItem().Name.ShouldBe("Test");
+    }
+
     public void Dispose() => _db.Dispose();
 }

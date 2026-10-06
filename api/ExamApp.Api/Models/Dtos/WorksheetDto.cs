@@ -76,6 +76,12 @@ public class WorksheetInstanceDto
     public string TestName { get; set; } = default!;
     public WorksheetInstanceStatus Status { get; set; }
     public int MaxDurationSeconds { get; set; }
+
+    /// <summary>
+    /// issue #396: sunucunun hesapladığı kalan süre (saniye; süre sınırı yoksa null, oturum bitmişse 0). İstemci sayacı
+    /// bundan başlar — yenileme/arka plan sekmesi süreyi sıfırlamaz.
+    /// </summary>
+    public int? RemainingSeconds { get; set; }
     public bool IsPracticeTest { get; set; }
 
     public List<WorksheetInstanceQuestionDto> TestInstanceQuestions { get; set; } = new();
@@ -99,6 +105,12 @@ public class WorksheetInstanceResultDto
     public string TestName { get; set; } = default!;
     public WorksheetInstanceStatus Status { get; set; }
     public int MaxDurationSeconds { get; set; }
+
+    /// <summary>
+    /// issue #396: sunucunun hesapladığı kalan süre (saniye; süre sınırı yoksa null, oturum bitmişse 0). İstemci sayacı
+    /// bundan başlar — yenileme/arka plan sekmesi süreyi sıfırlamaz.
+    /// </summary>
+    public int? RemainingSeconds { get; set; }
     public bool IsPracticeTest { get; set; }
     public List<WorksheetInstanceQuestionDto> TestInstanceQuestions { get; set; } = new();
 }

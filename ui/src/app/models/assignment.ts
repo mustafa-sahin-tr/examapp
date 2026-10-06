@@ -26,6 +26,8 @@ export interface AssignedWorksheet {
   assignmentStatus: string;
   hasStarted: boolean;
   isCompleted: boolean;
+  /** Issue #396: oturum bitti (tamamlandı ya da süresi doldu) — teslim uyarısı/"devam ediyor" gösterilmez. */
+  isFinished?: boolean;
   /** Issue #105: atama override'ı (null = worksheet varsayılanı). */
   commentsEnabledOverride?: boolean | null;
   /** Issue #105: öğrenci için etkin değer (`override ?? worksheet.commentsEnabled`). */

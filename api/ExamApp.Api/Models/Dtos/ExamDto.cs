@@ -15,6 +15,8 @@ public class ExamDto
 
     public required int GradeId { get; set; }
 
+    /// <summary>issue #396: sunucu süre sınırı bu değerden kopyalanır; 0 = süre sınırı yok, üst sınır 24 saat.</summary>
+    [Range(0, WorksheetDurationLimits.MaxSeconds)]
     public required int MaxDurationSeconds { get; set; }
 
     public bool IsPracticeTest { get; set; }
@@ -67,4 +69,10 @@ public class ExamAllStatisticsDto
 {
     public ExamStatisticsDto Total { get; set; } = new();
     public List<ExamStatisticsDto> Grouped { get; set; } = new();
+}
+
+/// <summary>issue #396: test süresi sınırları (saniye). 0 = süre sınırı yok.</summary>
+public static class WorksheetDurationLimits
+{
+    public const int MaxSeconds = 86_400;
 }

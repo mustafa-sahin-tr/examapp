@@ -304,8 +304,8 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
     const isPersonalAssignment = !this.assignment.isGradeAssignment;
     const prefix = isPersonalAssignment ? 'personal' : 'grade';
 
-    // Bitiş süresine 24 saatten az kalmışsa kırmızı göster (tamamlanmamışsa)
-    if (!this.assignment.isCompleted && this.assignment.endAt) {
+    // Bitiş süresine 24 saatten az kalmışsa kırmızı göster (bitmemişse)
+    if (!this.isFinished() && this.assignment.endAt) {
       const now = new Date();
       const endDate = new Date(this.assignment.endAt);
       const timeDifference = endDate.getTime() - now.getTime();
@@ -320,7 +320,7 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
       return `border-completed-${prefix}`;
     }
 
-    if (this.assignment.hasStarted && !this.assignment.isCompleted) {
+    if (this.assignment.hasStarted && !this.isFinished()) {
       return `border-in-progress-${prefix}`;
     }
 
@@ -336,7 +336,7 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
 
     if (this.isUrgent()) return `gradient-urgent-${prefix}`;
     if (this.assignment.isCompleted) return `gradient-completed-${prefix}`;
-    if (this.assignment.hasStarted && !this.assignment.isCompleted) return `gradient-in-progress-${prefix}`;
+    if (this.assignment.hasStarted && !this.isFinished()) return `gradient-in-progress-${prefix}`;
     return `gradient-not-started-${prefix}`;
   }
 
@@ -352,7 +352,7 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
 
     if (this.isUrgent()) return 'warning';
     if (this.assignment.isCompleted) return 'check_circle';
-    if (this.assignment.hasStarted && !this.assignment.isCompleted) return 'schedule';
+    if (this.assignment.hasStarted && !this.isFinished()) return 'schedule';
     return 'pause_circle';
   }
 
@@ -365,7 +365,7 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
 
     if (this.isUrgent()) return `ribbon-urgent-${prefix}`;
     if (this.assignment.isCompleted) return `ribbon-completed-${prefix}`;
-    if (this.assignment.hasStarted && !this.assignment.isCompleted) return `ribbon-in-progress-${prefix}`;
+    if (this.assignment.hasStarted && !this.isFinished()) return `ribbon-in-progress-${prefix}`;
     return `ribbon-not-started-${prefix}`;
   }
 
@@ -383,7 +383,7 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
 
     if (this.isUrgent()) return `glow-urgent-${prefix}`;
     if (this.assignment.isCompleted) return `glow-completed-${prefix}`;
-    if (this.assignment.hasStarted && !this.assignment.isCompleted) return `glow-in-progress-${prefix}`;
+    if (this.assignment.hasStarted && !this.isFinished()) return `glow-in-progress-${prefix}`;
     return `glow-not-started-${prefix}`;
   }
 
@@ -396,7 +396,7 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
 
     if (this.isUrgent()) return `transform-urgent-${prefix}`;
     if (this.assignment.isCompleted) return `transform-completed-${prefix}`;
-    if (this.assignment.hasStarted && !this.assignment.isCompleted) return `transform-in-progress-${prefix}`;
+    if (this.assignment.hasStarted && !this.isFinished()) return `transform-in-progress-${prefix}`;
     return `transform-not-started-${prefix}`;
   }
 
@@ -425,7 +425,7 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
 
     if (this.isUrgent()) return `progress-urgent-${prefix}`;
     if (this.assignment.isCompleted) return `progress-completed-${prefix}`;
-    if (this.assignment.hasStarted && !this.assignment.isCompleted) return `progress-in-progress-${prefix}`;
+    if (this.assignment.hasStarted && !this.isFinished()) return `progress-in-progress-${prefix}`;
     return `progress-not-started-${prefix}`;
   }
 
@@ -438,13 +438,22 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
 
     if (this.isUrgent()) return `typography-urgent-${prefix}`;
     if (this.assignment.isCompleted) return `typography-completed-${prefix}`;
-    if (this.assignment.hasStarted && !this.assignment.isCompleted) return `typography-in-progress-${prefix}`;
+    if (this.assignment.hasStarted && !this.isFinished()) return `typography-in-progress-${prefix}`;
     return `typography-not-started-${prefix}`;
   }
 
   // Helper method
+  /**
+   * Issue #396: oturum bitti mi (tamamlandı ya da süresi doldu). Süresi dolan test tekrar çözülemez — teslim uyarısı ve
+   * "devam ediyor" görünümü gösterilmez; "tamamlandı" görünümü yalnız `isCompleted` içindir. Eski yanıtta alan yoksa
+   * `isCompleted`'a düşer.
+   */
+  private isFinished(): boolean {
+    return !!this.assignment && (this.assignment.isFinished ?? this.assignment.isCompleted);
+  }
+
   private isUrgent(): boolean {
-    if (!this.assignment || this.assignment.isCompleted || !this.assignment.endAt) return false;
+    if (!this.assignment || this.isFinished() || !this.assignment.endAt) return false;
 
     const now = new Date();
     const endDate = new Date(this.assignment.endAt);

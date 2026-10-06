@@ -3779,6 +3779,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("MaxDurationSeconds")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("StartTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -3798,6 +3801,10 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("StartTime")
+                        .HasDatabaseName("IX_TestInstances_StartTime_Started")
+                        .HasFilter("\"Status\" = 0 AND NOT \"IsDeleted\" AND \"MaxDurationSeconds\" > 0");
 
                     b.HasIndex("WorksheetId");
 

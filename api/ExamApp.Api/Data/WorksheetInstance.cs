@@ -30,6 +30,13 @@ public class WorksheetInstance : BaseEntity
     public Worksheet Worksheet { get; set; }
 
     public DateTime StartTime { get; set; }
+
+    /// <summary>
+    /// issue #396: süre sınırının başlangıçtaki kopyası (<c>Worksheet.MaxDurationSeconds</c>); sunucu süre kontrolü buna
+    /// bakar, öğretmen test süresini sonradan değiştirse de açık oturumun süresi değişmez. null/&lt;=0 = süre sınırı yok
+    /// (mevcut satırlar migration ile worksheet değerinden doldurulur; yeni instance'ı start-test yazar).
+    /// </summary>
+    public int? MaxDurationSeconds { get; set; }
     public DateTime? EndTime { get; set; }
 
     public ICollection<WorksheetInstanceQuestion> WorksheetInstanceQuestions { get; set; }

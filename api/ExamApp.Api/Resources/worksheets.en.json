@@ -9,7 +9,9 @@
       "ended": "Test ended successfully.",
       "alreadyCompleted": "This test has already been completed.",
       "answerRejectedNotInProgress": "The test has ended, so answers can no longer be saved.",
-      "notInProgress": "This test is no longer in progress."
+      "notInProgress": "This test is no longer in progress.",
+      "answerRejectedTimeUp": "The time for this test is up, so answers can no longer be saved.",
+      "timeUp": "The time for this test is up."
     },
 
     "accessRequest": {

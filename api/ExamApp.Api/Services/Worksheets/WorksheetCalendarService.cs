@@ -243,8 +243,10 @@ public class WorksheetCalendarService : IWorksheetCalendarService
         var worksheetIds = deduped.Select(r => r.WorksheetId).ToList();
         var completedWorksheetIds = (await _context.TestInstances
             .AsNoTracking()
+            // issue #396: süresi dolan oturum da bitmiştir (tekrar çözülemez) — teslim tarihi etkinliği "yapıldı" görünür,
+            // öğrenciye artık yapamayacağı bir işi hatırlatmaz.
             .Where(ti => ti.StudentId == studentId
-                && ti.Status == WorksheetInstanceStatus.Completed
+                && (ti.Status == WorksheetInstanceStatus.Completed || ti.Status == WorksheetInstanceStatus.Expired)
                 && worksheetIds.Contains(ti.WorksheetId))
             .Select(ti => ti.WorksheetId)
             .Distinct()

@@ -17,6 +17,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { TestService } from '../../services/test.service';
 import {
   TEST_SESSION_ERROR_CODES,
+  TEST_SESSION_REJECT_REASONS,
   TestInstance,
   TestInstanceQuestion,
   TestSessionResult,
@@ -75,6 +76,13 @@ export function isTestCompletedRejection(source: unknown): boolean {
   return (body as Partial<TestSessionResult>).errorCode === TEST_SESSION_ERROR_CODES.testNotInProgress;
 }
 
+/** Issue #396: reddin süre dolduğu için olup olmadığı (`reason: 'TimeExpired'`, errorCode yine TestNotInProgress). */
+export function isTimeExpiredRejection(source: unknown): boolean {
+  const body = source instanceof HttpErrorResponse ? source.error : source;
+  if (!isTestCompletedRejection(body)) return false;
+  return (body as Partial<TestSessionResult>).reason === TEST_SESSION_REJECT_REASONS.timeExpired;
+}
+
 @Component({
   selector: 'app-test-solve-v2',
   standalone: true,
@@ -116,7 +124,15 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     { cacheKey: () => this.testInstanceId }
   );
   @Input() testInstance!: TestInstance; // Test bilgisi ve sorular
-  testDuration: number = 0; // Saniye cinsinden süre
+  testDuration: number = 0; // Saniye cinsinden geçen süre
+  /**
+   * Issue #396: sunucunun `remainingSeconds`'ından hesaplanan bitiş anı (istemci saatiyle, ms). Her tikte geçen süre bundan
+   * yeniden hesaplanır — arka plan sekmesinde kısılan `interval` sapma biriktirmez, yenileme süreyi sıfırlamaz. Sunucu
+   * değer vermediyse (eski yanıt) null: sayaç eskisi gibi tik başına artar.
+   */
+  private deadlineMs: number | null = null;
+  /** Issue #396: son "devam etmiyor" reddinin nedeni süre dolması mıydı (snackbar metni için). */
+  private timeExpiredRejection = false;
   questionDuration: number = 0; // Soruya ayrılan süre
   interval: any;
   showStopButton: boolean = false; // Eğer test durdurulabilirse
@@ -437,7 +453,8 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       await this.loadQuestions();
       await this.ensureQuestionAssetsLoaded(this.currentIndex());
 
-      // ⏳ Sayaçları başlat
+      // ⏳ Sayaçları başlat (issue #396: sunucunun kalan süresinden)
+      this.initTimerFromServer();
       this.startTimer();
       this.startQuestionTimer();
 
@@ -452,15 +469,44 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     return format.replace(/{(\d+)}/g, (match, index) => '' + args[index]);
   }
 
+  /**
+   * Issue #396: sayaç sunucunun kalan süresinden başlar. Kalan süre istemci saatine göre bir bitiş anına çevrilir (sunucu/
+   * istemci saat farkı etkilemez); geçen süre = toplam − kalan.
+   */
+  initTimerFromServer(nowMs: number = Date.now()): void {
+    const remaining = this.testInstance?.remainingSeconds;
+    if (remaining === null || remaining === undefined || !(this.testInstance.maxDurationSeconds > 0)) {
+      this.deadlineMs = null;
+      return;
+    }
+    this.deadlineMs = nowMs + Math.max(0, remaining) * 1000;
+    this.syncTestDuration(nowMs);
+  }
+
+  private syncTestDuration(nowMs: number): void {
+    if (this.deadlineMs === null) return;
+    const remaining = Math.max(0, Math.ceil((this.deadlineMs - nowMs) / 1000));
+    this.testDuration = Math.max(0, this.testInstance.maxDurationSeconds - remaining);
+  }
+
   // Zamanlayıcı başlat
   startTimer() {
+    this.testTimerSubscription?.unsubscribe();
     this.testTimerSubscription = interval(1000).subscribe(() => {
-      this.testDuration++;
-      if (this.testDuration >= this.testInstance.maxDurationSeconds) {
+      if (this.deadlineMs !== null) {
+        this.syncTestDuration(Date.now());
+      } else {
+        this.testDuration++;
+      }
+      if (this.isTimeUp()) {
         // Süre doldu: onay sormadan bitir (issue #383).
         void this.completeTest();
       }
     });
+    if (this.isTimeUp()) {
+      // Issue #396: sayfa süre bittikten sonra açıldı/yenilendi (sunucu kalan süreyi 0 verdi) — beklemeden bitir.
+      void this.completeTest();
+    }
   }
 
   private startQuestionTimer() {
@@ -972,6 +1018,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       response = await firstValueFrom(this.testService.completeTest(this.testInstance.id));
     } catch (error) {
       if (isTestCompletedRejection(error)) {
+        this.timeExpiredRejection ||= isTimeExpiredRejection(error);
         this.handleTestAlreadyCompleted();
       } else {
         console.error('Error completing test', error);
@@ -982,6 +1029,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
     if (response?.success === false) {
       if (isTestCompletedRejection(response)) {
+        this.timeExpiredRejection ||= isTimeExpiredRejection(response);
         this.handleTestAlreadyCompleted();
       } else {
         this.abortFinish('finish.completeFailed', response.message);
@@ -992,9 +1040,13 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     this.navigateToResult();
   }
 
-  /** Süre doldu mu (sayaç `maxDurationSeconds`'a ulaştı). */
+  /** Süre doldu mu (sayaç `maxDurationSeconds`'a ulaştı). Issue #396: süre sınırı yoksa (0) hiçbir zaman. */
   protected isTimeUp(): boolean {
-    return !!this.testInstance && this.testDuration >= this.testInstance.maxDurationSeconds;
+    return (
+      !!this.testInstance &&
+      this.testInstance.maxDurationSeconds > 0 &&
+      this.testDuration >= this.testInstance.maxDurationSeconds
+    );
   }
 
   /**
@@ -1081,12 +1133,17 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     const outcome = firstValueFrom(request$).then(
       (response): AnswerSaveOutcome => {
         if (response?.success === false) {
-          return isTestCompletedRejection(response) ? 'completed' : 'failed';
+          if (!isTestCompletedRejection(response)) return 'failed';
+          this.timeExpiredRejection ||= isTimeExpiredRejection(response);
+          return 'completed';
         }
         return 'saved';
       },
       (error: unknown): AnswerSaveOutcome => {
-        if (isTestCompletedRejection(error)) return 'completed';
+        if (isTestCompletedRejection(error)) {
+          this.timeExpiredRejection ||= isTimeExpiredRejection(error);
+          return 'completed';
+        }
         console.error('Error saving answer for question', questionIndex, error);
         return 'failed';
       }
@@ -1121,10 +1178,14 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     this.dirtyQuestionIndices.add(questionIndex);
   }
 
-  /** Test backend'de zaten tamamlanmış (#367 reddi): bilgi ver ve sonuç sayfasına geç. */
+  /**
+   * Test backend'de zaten bitmiş (#367 reddi): bilgi ver ve sonuç sayfasına geç. Issue #396: ret süre dolduğu için ise
+   * (`reason: 'TimeExpired'`) "süren doldu" mesajı gösterilir.
+   */
   private handleTestAlreadyCompleted(): void {
     if (this.redirectedToResult) return;
-    this.snackBar.open(this.tr('finish.alreadyCompleted'), this.tr('finish.dismiss'), { duration: 4000 });
+    const messageKey = this.timeExpiredRejection ? 'finish.timeUp' : 'finish.alreadyCompleted';
+    this.snackBar.open(this.tr(messageKey), this.tr('finish.dismiss'), { duration: 4000 });
     this.navigateToResult();
   }
 

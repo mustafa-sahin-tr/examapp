@@ -12,6 +12,7 @@ import { GradesService } from '../../../services/grades.service';
 import { ApiResult, TaxonomyFilter, TaxonomySubject, TaxonomyTree } from '../../../models/taxonomy';
 import { translocoTestingModule } from '../../../shared/testing/transloco-testing';
 import adminTr from '../../../../../public/i18n/admin/tr.json';
+import adminEn from '../../../../../public/i18n/admin/en.json';
 import { StudyLinkService } from '../../../services/study-link.service';
 import { AuthService } from '../../../services/auth.service';
 import { TopicStudyLinkManagerComponent } from '../../../shared/components/topic-study-link-manager/topic-study-link-manager.component';
@@ -538,6 +539,74 @@ describe('TaxonomyManagerComponent', () => {
     expect(component.otherGradeNamesBySubject().get(1)).toEqual(['5. Sınıf']);
     expect(component.otherGradeNamesBySubject().get(2)).toEqual([]);
     expect(subjectRowChips()).toEqual([['5. Sınıf'], []]);
+  });
+
+  // ── Issue #380: chip'ler adın altında ayrı satırda; 3'ten fazlası "+N" ile özetlenir ─────────
+
+  /** Seçili 5. sınıf + `others` adet başka sınıfa bağlı tek ders. */
+  function configureWithManyGrades(others: number): ComponentFixture<TaxonomyManagerComponent> {
+    const manyGrades = [{ id: 5, name: '5. Sınıf' }];
+    for (let i = 0; i < others; i++) {
+      manyGrades.push({ id: 6 + i, name: `${6 + i}. Sınıf` });
+    }
+    const subject: TaxonomySubject = { id: 1, name: 'Matematik', gradeIds: manyGrades.map((g) => g.id), topics: [] };
+    const f = configure();
+    gradesService.getGrades.and.returnValue(of(manyGrades));
+    adminService.getTaxonomy.and.returnValue(of({ subjects: [subject], grades: manyGrades }));
+    f.detectChanges();
+    f.componentInstance.setGradeFilter(5);
+    f.detectChanges();
+    return f;
+  }
+
+  const subjectRow = (): HTMLElement => fixture.nativeElement.querySelector('.column:nth-child(1) .item');
+
+  it('subjectRow_ManyOtherGrades_ShowsFirstThreeChipsAndPlusNSummary', () => {
+    fixture = configureWithManyGrades(5);
+
+    expect(subjectRowChips()).toEqual([['6. Sınıf', '7. Sınıf', '8. Sınıf', '+2']]);
+    const more = subjectRow().querySelector('.grade-chip--more') as HTMLElement;
+    // Görsel "+N" ekran okuyucudan gizli; tam metin satır içindeki görünmez span'de.
+    expect(more.getAttribute('aria-hidden')).toBe('true');
+    expect(more.hasAttribute('aria-label')).toBeFalse();
+    const hidden = subjectRow().querySelector('.grade-chips .cdk-visually-hidden') as HTMLElement;
+    expect(hidden.textContent?.trim()).toBe('2 sınıf daha: 9. Sınıf, 10. Sınıf');
+  });
+
+  it('subjectRow_ThreeOtherGrades_NoPlusNChip', () => {
+    fixture = configureWithManyGrades(3);
+
+    expect(subjectRowChips()).toEqual([['6. Sınıf', '7. Sınıf', '8. Sınıf']]);
+    expect(subjectRow().querySelector('.grade-chip--more')).toBeNull();
+    expect(subjectRow().querySelector('.cdk-visually-hidden')).toBeNull();
+  });
+
+  it('subjectRow_WithChips_ChipsAreOutsideNameAndRowWraps', () => {
+    fixture = configureWithManyGrades(2);
+    const row = subjectRow();
+    const name = row.querySelector('.name') as HTMLElement;
+
+    // Chip'ler ad bloğunun içinde değil, satırın doğrudan çocuğu (ayrı satıra kırılır); ad tam metni title'da.
+    expect(name.querySelector('.grade-chip')).toBeNull();
+    expect(row.querySelector(':scope > .grade-chips')).not.toBeNull();
+    expect(row.classList).toContain('with-grade-chips');
+    expect(getComputedStyle(row).flexWrap).toBe('wrap');
+    expect(name.title).toBe('Matematik');
+    // Konu sayısı ve aksiyonlar görünür kalır.
+    expect(row.querySelector('.meta')).not.toBeNull();
+    expect(row.querySelectorAll('.actions button').length).toBe(3);
+  });
+
+  it('subjectRow_WithoutOtherGrades_DoesNotWrap', () => {
+    fixture = configureWithGrade(11);
+    const rows = fixture.nativeElement.querySelectorAll('.column:nth-child(1) .item') as NodeListOf<HTMLElement>;
+
+    expect(rows[1].classList).not.toContain('with-grade-chips');
+  });
+
+  it('moreGradesAria_ExistsInTrAndEn', () => {
+    expect(adminTr.taxonomy.subjects.moreGradesAria).toContain('{{count}}');
+    expect(adminEn.taxonomy.subjects.moreGradesAria).toContain('{{names}}');
   });
 
   it('manageGrades_OpensDialogWithAllSubjectGradesIncludingSelected', async () => {

@@ -111,6 +111,7 @@ namespace ExamApp.Api.Controllers
                         FullName = profile.FullName,
                         SchoolName = teacher.SchoolName,
                         SchoolId = teacher.SchoolId,
+                        IsIndependentTutor = teacher.IsIndependentTutor, // issue #384
                         ThemePreset = teacher.ThemePreset,
                         ThemeCustomConfig = teacher.ThemeCustomConfig,
                         // issue #287: UI onaysız öğretmene öğretmen menülerini kapatıp "onay bekleniyor" gösterir.

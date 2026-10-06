@@ -58,7 +58,7 @@
     "studentTitle": "Student Details",
     "teacherTitle": "Teacher Details",
     "parentTitle": "Parent Registration",
-    "parentHint": "You are about to complete your account as a parent. You can add your children later from your profile.",
+    "parentHint": "You are about to complete your account as a parent.",
     "success": "Registration completed!",
     "error": "Registration failed. Please try again.",
     "teacherAccountPending": "Your teacher registration was received; your account is awaiting administrator approval.",
@@ -80,7 +80,7 @@
   },
   "parent": {
     "title": "Parent Registration",
-    "hint": "You are about to complete your account as a parent. You can add your children later from your profile.",
+    "hint": "You are about to complete your account as a parent.",
     "success": "Parent registration successful!",
     "error": "Parent registration failed. Please try again."
   }

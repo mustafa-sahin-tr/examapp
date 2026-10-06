@@ -32,16 +32,24 @@ public class TeacherSeedCommandTests
     }
 
     [Fact]
+    public void Removed_partial_import_mode_is_rejected_with_a_clear_message()
+    {
+        var ex = Should.Throw<ArgumentException>(() => Cmd("--keycloak-mode", "partial-import"));
+        ex.Message.ShouldContain("kaldırıldı");
+        ex.Message.ShouldContain("admin-api");
+    }
+
+    [Fact]
     public void All_options_parse()
     {
         var cmd = Cmd("--provinces", "Kars, Antalya", "--limit-schools-per-province", "2", "--dry-run", "--no-events",
-            "--keycloak-mode", "partial-import", "--batch-size", "250", "--reset-password", "--adopt-unmarked", "--no-migrate", "--connection", "Host=x;Password='a{b}c'");
+            "--keycloak-mode", "admin-api", "--batch-size", "250", "--reset-password", "--adopt-unmarked", "--no-migrate", "--connection", "Host=x;Password='a{b}c'");
 
         cmd.Options.Provinces.ShouldBe(["Kars", "Antalya"]);
         cmd.Options.LimitSchoolsPerProvince.ShouldBe(2);
         cmd.Options.DryRun.ShouldBeTrue();
         cmd.Options.EmitEvents.ShouldBeFalse();
-        cmd.Options.KeycloakMode.ShouldBe(TeacherSeedOptions.KeycloakModePartialImport);
+        cmd.Options.KeycloakMode.ShouldBe(TeacherSeedOptions.KeycloakModeAdminApi);
         cmd.Options.BatchSize.ShouldBe(250);
         cmd.Options.ResetPassword.ShouldBeTrue();
         cmd.Options.AdoptUnmarked.ShouldBeTrue();

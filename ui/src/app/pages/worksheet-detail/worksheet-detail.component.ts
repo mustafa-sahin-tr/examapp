@@ -152,6 +152,13 @@ export class WorksheetDetailComponent implements OnInit {
 
   /** queryParam `reminder=edit` ile gelindiğinde detay yüklenince hatırlatıcı formunu aç + karta odaklan. */
   private pendingReminderEdit = false;
+  /**
+   * Issue #377: Testlerim'deki "Ata"/"Öğrencilere Ata" `?assign=student|grade` ile gelir; detay ve sınav
+   * yüklenince mevcut atama diyaloğu bu kapsamla açılır (atama yetkisi yoksa açılmaz).
+   */
+  private pendingAssignScope: 'grade' | 'student' | null = null;
+  /** Sınıf listesi diyaloğa açılışta değer olarak verilir; `?assign=` diyaloğu ancak liste gelince açılır. */
+  private gradesLoaded = false;
   @Input() exam!: Test; // Test bilgisi ve sorular
   route = inject(ActivatedRoute);
   testService = inject(TestService);
@@ -988,6 +995,7 @@ export class WorksheetDetailComponent implements OnInit {
             this.focusReminderCard();
             this.clearReminderQueryParam();
           }
+          this.openPendingAssignmentDialog();
           const completedInstanceId = detail?.completedResult?.instanceId;
           if (!this.isTeacher && completedInstanceId) {
             this.loadResultsForInstance(completedInstanceId);
@@ -1044,6 +1052,40 @@ export class WorksheetDetailComponent implements OnInit {
             : { status: 'incorrect' };
         });
       });
+  }
+
+  /**
+   * Issue #377: `?assign=` bekliyorsa ve hem detay (yetki: `canAssign`) hem sınav (`exam.id`) hazırsa atama
+   * diyaloğunu açar; parametre URL'den düşer ki yenileme/geri dönüşte diyalog tekrar açılmasın.
+   */
+  private openPendingAssignmentDialog(): void {
+    const scope = this.pendingAssignScope;
+    // Komponent rotalar arasında yeniden kullanılınca önceki worksheet'in geç gelen detayı/sınavı ile açılmasın:
+    // parametre her zaman URL'deki güncel testId'ye aittir.
+    if (
+      !scope ||
+      !this.testId ||
+      this.detail()?.worksheet?.id !== this.testId ||
+      this.exam?.id !== this.testId ||
+      !this.gradesLoaded
+    ) {
+      return;
+    }
+    this.pendingAssignScope = null;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { assign: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+    if (!this.isTeacher) {
+      return;
+    }
+    if (!this.canAssignWorksheet()) {
+      this.snackBar.open(this.tr('snackbar.assignNotAllowed'), this.tr('snackbar.dismiss'), { duration: 4000 });
+      return;
+    }
+    this.openAssignmentDialog(scope);
   }
 
   /** `?reminder=edit` işlendikten sonra URL'den düşür — detay yenilenince form tekrar açılmasın. */
@@ -1109,6 +1151,11 @@ export class WorksheetDetailComponent implements OnInit {
   ngOnInit() {
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((query) => {
       this.commentLink.set(this.parseCommentLink(query));
+      const assign = query.get('assign');
+      if (assign === 'student' || assign === 'grade') {
+        this.pendingAssignScope = assign;
+        this.openPendingAssignmentDialog();
+      }
       if (query.get('reminder') === 'edit') {
         this.pendingReminderEdit = true;
         // Detay zaten yüklüyse (sayfa içi query değişimi) hemen uygula.
@@ -1128,6 +1175,7 @@ export class WorksheetDetailComponent implements OnInit {
       }
 
       this.detail.set(null);
+      this.gradesLoaded = false;
       this.regions.set([]);
       this.selectedChoices.set(new Map());
       this.correctChoices.set(new Map());
@@ -1144,10 +1192,21 @@ export class WorksheetDetailComponent implements OnInit {
         this.gradeService
           .getGrades()
           .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe((grades) => {
-            this.grades.set(grades);
-            const grade = grades.find((g) => g.id === this.exam.gradeId);
-            this.gradeName.set(grade ? grade.name : 'Bilinmiyor');
+          .subscribe({
+            next: (grades) => {
+              this.grades.set(grades);
+              const grade = grades.find((g) => g.id === this.exam.gradeId);
+              this.gradeName.set(grade ? grade.name : 'Bilinmiyor');
+              this.gradesLoaded = true;
+              this.openPendingAssignmentDialog();
+            },
+            // Sınıf listesi gelmezse `?assign=` sessizce beklemesin: diyalog boş sınıf listesiyle açılır
+            // (öğrenci kapsamı sınıf listesine ihtiyaç duymaz).
+            error: () => {
+              this.grades.set([]);
+              this.gradesLoaded = true;
+              this.openPendingAssignmentDialog();
+            },
           });
 
         if (this.isTeacher) {

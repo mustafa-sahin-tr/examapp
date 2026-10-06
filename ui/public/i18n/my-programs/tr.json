@@ -94,7 +94,8 @@
     "pagesAdded": "Çalışma sayfaları programa eklendi.",
     "updateFailed": "Program güncellenemedi.",
     "loadFailed": "Program bilgisi yüklenemedi.",
-    "typeAria": "Etkinlik tipi: {{type}}"
+    "typeAria": "Etkinlik tipi: {{type}}",
+    "dateRange": "{{start}} – {{end}}"
   },
   "addStudyPages": {
     "titleWithoutDate": "Programa Sayfa Ekle",

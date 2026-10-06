@@ -258,6 +258,25 @@ public class BookingSuspensionRaceTests : IDisposable
     }
 
     [Fact]
+    public async Task Sweep_rejects_a_left_over_pending_request_whose_slot_was_soft_deleted()
+    {
+        // issue #376: SelectPending slot filtresini gevşetir; aksi halde parti bu satırı hiç görmez, talep Pending kalırdı.
+        var left = await AddBookingAsync(TeacherId, StudentA, BookingStatus.Pending, 9);
+        await using (var ctx = _db.NewContext())
+        {
+            var slotId = await ctx.Bookings.Where(b => b.Id == left).Select(b => b.AvailabilitySlotId).SingleAsync();
+            await ctx.TeacherAvailabilitySlots.Where(s => s.Id == slotId)
+                .ExecuteUpdateAsync(set => set.SetProperty(s => s.IsDeleted, true));
+        }
+        await SuspendRowAsync(TeacherId);
+
+        (await SweepAsync()).ShouldBe(1);
+
+        (await BookingAsync(left)).Status.ShouldBe(BookingStatus.Rejected);
+        (await EventsAsync<BookingDecisionEvent>()).ShouldHaveSingleItem().BookingId.ShouldBe(left);
+    }
+
+    [Fact]
     public async Task Sweep_is_idempotent_and_a_second_run_writes_no_event()
     {
         await AddBookingAsync(TeacherId, StudentA, BookingStatus.Pending, 9);

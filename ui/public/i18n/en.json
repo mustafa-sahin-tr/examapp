@@ -262,11 +262,6 @@
         "extraLife": "Extra Life"
       }
     },
-    "studentTimeChart": {
-      "legend": "Legend",
-      "xAxis": "Subject",
-      "yAxis": "Study time (min)"
-    },
     "tutorCard": {
       "subjectsAria": "Subjects taught",
       "hourlyRate": "{{amount}} ₺ / hour",

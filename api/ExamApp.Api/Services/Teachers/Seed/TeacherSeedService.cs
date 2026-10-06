@@ -95,8 +95,8 @@ public sealed class TeacherSeedService : ITeacherSeedService
             throw new ArgumentException("İl başına okul limiti pozitif olmalı.", nameof(options));
         if (options.BatchSize is <= 0 or > TeacherSeedOptions.MaxBatchSize)
             throw new ArgumentException($"Parti boyutu 1..{TeacherSeedOptions.MaxBatchSize} olmalı.", nameof(options));
-        if (options.KeycloakMode != TeacherSeedOptions.KeycloakModeAdminApi && options.KeycloakMode != TeacherSeedOptions.KeycloakModePartialImport)
-            throw new ArgumentException($"Keycloak modu '{TeacherSeedOptions.KeycloakModeAdminApi}' ya da '{TeacherSeedOptions.KeycloakModePartialImport}' olmalı.", nameof(options));
+        if (options.KeycloakMode != TeacherSeedOptions.KeycloakModeAdminApi)
+            throw new ArgumentException($"Keycloak modu yalnızca '{TeacherSeedOptions.KeycloakModeAdminApi}' olabilir (partial-import #372 ile kaldırıldı).", nameof(options));
 
         // Parola: yazma koşusunda auth-api'ye gitmeden ÖNCE doğrulanır (dry-run'da gerekmez).
         var pwd = options.DryRun ? null : RequirePassword(_configuration);

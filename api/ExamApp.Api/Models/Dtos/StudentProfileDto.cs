@@ -93,6 +93,9 @@ public class TeacherDto
     public string AvatarUrl { get; set; } = string.Empty;
     public string? SchoolName { get; set; }
     public int? SchoolId { get; set; }
+
+    /// <summary>issue #384: bağımsız öğretmen mi — tutor profili kuralının (TeacherService) UI'daki karşılığı.</summary>
+    public bool IsIndependentTutor { get; set; }
     public string? ThemePreset { get; set; } = "standard"; // 🎨 Theme tercihi
     public string? ThemeCustomConfig { get; set; } // 🎨 Custom theme config (JSON)
 

@@ -9,7 +9,7 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { BehaviorSubject, NEVER, of, Subject, throwError } from 'rxjs';
 
 import { EnhancedLayoutComponent } from './enhanced-layout.component';
-import { AuthService } from '../../services/auth.service';
+import { AuthService, UserProfile } from '../../services/auth.service';
 import { SignalRService } from '../../services/signalr.service';
 import { WorksheetAccessRequestService } from '../../services/worksheet-access-request.service';
 import { NotificationService } from '../../services/notification.service';
@@ -19,6 +19,7 @@ import { ThemeConfigService } from '../../services/theme-config.service';
 import { routes } from '../../app.routes';
 import { adminGuard } from '../../shared/guards/admin.guard';
 import { studentGuard } from '../../shared/guards/student.guard';
+import { independentTeacherGuard } from '../../shared/guards/independent-teacher.guard';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 
 /** Issue #106: DM rozet servisi stub'ı (HttpClient gerektirmesin). */
@@ -47,6 +48,7 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
       hasRealmRole: (role: string) => roles.includes(role),
       isAuthenticated: () => of(true),
       isUnapprovedTeacher: signal(unapprovedTeacher),
+      user: signal(null),
     };
     TestBed.configureTestingModule({
       imports: [EnhancedLayoutComponent, translocoTestingModule()],
@@ -221,6 +223,7 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
       hasRealmRole: (role: string) => role === 'Teacher',
       isAuthenticated: () => of(true),
       isUnapprovedTeacher: unapproved,
+      user: signal(null),
     };
     TestBed.configureTestingModule({
       imports: [EnhancedLayoutComponent, translocoTestingModule()],
@@ -278,6 +281,7 @@ describe('EnhancedLayoutComponent notification badge (issue #146)', () => {
       hasRealmRole: () => false,
       isAuthenticated: () => authenticated$.asObservable(),
       isUnapprovedTeacher: signal(false),
+      user: signal(null),
       isCachedUserCurrent: () => true,
       refreshProfile: () => NEVER,
     };
@@ -446,6 +450,7 @@ describe('EnhancedLayoutComponent direct messages menu (issue #106)', () => {
       hasRealmRole: (role: string) => roles.includes(role),
       isAuthenticated: () => of(true),
       isUnapprovedTeacher: signal(false),
+      user: signal(null),
     };
     TestBed.configureTestingModule({
       imports: [EnhancedLayoutComponent, translocoTestingModule()],
@@ -519,6 +524,7 @@ describe('EnhancedLayoutComponent DM badge push (issue #106 b)', () => {
       hasRealmRole: (r: string) => r === role,
       isAuthenticated: () => of(true),
       isUnapprovedTeacher: signal(false),
+      user: signal(null),
       isCachedUserCurrent: () => true,
       refreshProfile: () => NEVER,
     };
@@ -591,11 +597,17 @@ function allRoutePaths(list: Routes, parent = ''): string[] {
   });
 }
 
-function layoutProviders(roles: string[], unapprovedTeacher = false, routeConfig: Routes = []) {
+function layoutProviders(
+  roles: string[],
+  unapprovedTeacher = false,
+  routeConfig: Routes = [],
+  user: UserProfile | null = null
+) {
   const authStub: Partial<AuthService> = {
     hasRealmRole: (role: string) => roles.includes(role),
     isAuthenticated: () => of(true),
     isUnapprovedTeacher: signal(unapprovedTeacher),
+    user: signal(user),
   };
   return [
     provideRouter(routeConfig),
@@ -667,6 +679,25 @@ describe('EnhancedLayoutComponent menu routes (issues #374, #373)', () => {
     const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
     const route = children.find((r) => r.path === 'student-profile');
     expect(route?.canActivate).toContain(studentGuard);
+  });
+
+  it('study_HiddenForStudentInSidenavAndBottomNav (issue #382)', () => {
+    const student = create(['Student']);
+
+    expect(student.visibleMenuItems().map((i) => i.route)).not.toContain('/study');
+    expect(student.visibleBottomNavItems().map((i) => i.route)).not.toContain('/study');
+    expect(student.visibleMenuItems().map((i) => i.id)).not.toContain('study');
+    expect(student.visibleBottomNavItems().map((i) => i.id)).not.toContain('study');
+  });
+
+  it('routes_Study_RedirectsToDashboardWithoutRenderingSamplePage (issue #382)', () => {
+    const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
+    const route = children.find((r) => r.path === 'study');
+
+    expect(route).toBeDefined();
+    expect(route?.redirectTo).toBe('/dashboard');
+    expect(route?.component).toBeUndefined();
+    expect(route?.loadComponent).toBeUndefined();
   });
 
   it('allRoutePaths_HelperResolvesNestedPaths', () => {
@@ -808,5 +839,61 @@ describe('EnhancedLayoutComponent profile menu (issue #375)', () => {
     for (const handler of ['onProfile', 'onAccountSettings', 'onSupport']) {
       expect(handler in component).withContext(handler).toBeFalse();
     }
+  });
+});
+
+/** Issue #384: özel ders profili yalnız bağımsız öğretmene; okula bağlı öğretmende menüde yok, rota guard'lı. */
+describe('EnhancedLayoutComponent tutor profile entry (issue #384)', () => {
+  /** Backend kuralı `teacher.isIndependentTutor`; okul kimliği karar vermez. */
+  function teacherProfile(isIndependentTutor: boolean | undefined, schoolId: number | null = null): UserProfile {
+    return {
+      email: '',
+      avatar: '',
+      fullName: '',
+      id: 1,
+      keycloakId: 'k',
+      profileId: 1,
+      role: 'Teacher',
+      teacher: { id: 1, userId: 1, schoolName: '', schoolId, isIndependentTutor },
+    } as UserProfile;
+  }
+
+  function create(roles: string[], user: UserProfile | null, unapproved = false): EnhancedLayoutComponent {
+    TestBed.configureTestingModule({
+      imports: [EnhancedLayoutComponent, translocoTestingModule()],
+      providers: layoutProviders(roles, unapproved, [], user),
+    });
+    return TestBed.createComponent(EnhancedLayoutComponent).componentInstance;
+  }
+
+  const routesOf = (c: EnhancedLayoutComponent) => c.visibleMenuItems().map((i) => i.route);
+
+  it('visibleMenuItems_NotIndependentTeacher_HidesTutorProfile', () => {
+    expect(routesOf(create(['Teacher'], teacherProfile(false, 7)))).not.toContain('/tutor-profile');
+  });
+
+  it('visibleMenuItems_NotIndependentUnapprovedTeacher_HidesTutorProfile', () => {
+    expect(routesOf(create(['Teacher'], teacherProfile(false), true))).not.toContain('/tutor-profile');
+  });
+
+  it('visibleMenuItems_IndependentTeacher_ShowsTutorProfile', () => {
+    expect(routesOf(create(['Teacher'], teacherProfile(true)))).toContain('/tutor-profile');
+  });
+
+  it('visibleMenuItems_IndependentFlagWins_OverSchoolId', () => {
+    // Okul kimliği olsa da backend bağımsız diyorsa öğe görünür (tek kural: isIndependentTutor).
+    expect(routesOf(create(['Teacher'], teacherProfile(true, 7)))).toContain('/tutor-profile');
+  });
+
+  it('visibleMenuItems_FlagUnknownOrProfileNotLoaded_ShowsTutorProfile', () => {
+    expect(routesOf(create(['Teacher'], teacherProfile(undefined, 7)))).toContain('/tutor-profile');
+    TestBed.resetTestingModule();
+    expect(routesOf(create(['Teacher'], null))).toContain('/tutor-profile');
+  });
+
+  it('routes_TutorProfile_UsesIndependentTeacherGuard', () => {
+    const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
+    const route = children.find((r) => r.path === 'tutor-profile');
+    expect(route?.canActivate).toContain(independentTeacherGuard);
   });
 });

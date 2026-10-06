@@ -1582,5 +1582,273 @@ public class BookingServiceTests : IDisposable
         range.EndUtc.ShouldBeGreaterThan(range.StartUtc);
     }
 
+    // ------ issue #376: slotu soft-delete edilmiş randevu ------
+
+    /// <summary>Slotu doğrudan soft-delete eder (eski veri / bilinmeyen yol simülasyonu; servis yolu artık izin vermez).</summary>
+    private async Task SoftDeleteSlotAsync(int slotId)
+    {
+        await using var ctx = _db.NewContext();
+        (await ctx.TeacherAvailabilitySlots.IgnoreQueryFilters()
+            .Where(s => s.Id == slotId)
+            .ExecuteUpdateAsync(set => set.SetProperty(s => s.IsDeleted, true))).ShouldBe(1);
+    }
+
+    private async Task SoftDeleteBookingAsync(int bookingId)
+    {
+        await using var ctx = _db.NewContext();
+        (await ctx.Bookings.IgnoreQueryFilters()
+            .Where(b => b.Id == bookingId)
+            .ExecuteUpdateAsync(set => set.SetProperty(b => b.IsDeleted, true))).ShouldBe(1);
+    }
+
+    private async Task<int> SlotIdOfAsync(int bookingId)
+    {
+        await using var ctx = _db.NewContext();
+        return await ctx.Bookings.IgnoreQueryFilters().Where(b => b.Id == bookingId).Select(b => b.AvailabilitySlotId).SingleAsync();
+    }
+
+    private async Task<int> SeedBookingOnSlotAsync(int slotId, BookingStatus status)
+    {
+        await using var ctx = _db.NewContext();
+        ctx.SetCurrentUser(StudentUserId);
+        var booking = new Booking
+        {
+            TeacherId = TeacherId, StudentId = StudentId, AvailabilitySlotId = slotId,
+            Status = status, CreatedAt = Now, DecisionAt = status == BookingStatus.Pending ? null : Now
+        };
+        ctx.Bookings.Add(booking);
+        await ctx.SaveChangesAsync();
+        return booking.Id;
+    }
+
+    [Fact]
+    public async Task GetLiveSessionAccessAsync_ApprovedBookingWithSoftDeletedSlot_IsAllowedForBothParties()
+    {
+        var start = Now.AddMinutes(5);
+        var bookingId = await SeedApprovedBookingAsync(DateOnly.FromDateTime(start), new TimeOnly(start.Hour, start.Minute),
+            new TimeOnly(start.Hour, start.Minute).AddHours(1));
+        await SoftDeleteSlotAsync(await SlotIdOfAsync(bookingId));
+
+        await using var ctx = _db.NewContext();
+        var service = NewService(ctx);
+        var teacher = await service.GetLiveSessionAccessAsync(TeacherUserId, bookingId);
+        var student = await service.GetLiveSessionAccessAsync(StudentUserId, bookingId);
+
+        teacher.Denial.ShouldBe(BookingLiveSessionDenial.None);
+        teacher.IsTeacher.ShouldBeTrue();
+        student.Denial.ShouldBe(BookingLiveSessionDenial.None);
+        // Pencere silinmiş slotun saatinden hesaplanır.
+        teacher.Window.StartUtc.ShouldBe(new DateTime(start.Year, start.Month, start.Day, start.Hour, start.Minute, 0, DateTimeKind.Utc));
+    }
+
+    [Fact]
+    public async Task GetVideoSessionAsync_ApprovedBookingWithSoftDeletedSlot_DoesNotReturnBookingNotFound()
+    {
+        var start = Now.AddMinutes(5);
+        var bookingId = await SeedApprovedBookingAsync(DateOnly.FromDateTime(start), new TimeOnly(start.Hour, start.Minute),
+            new TimeOnly(start.Hour, start.Minute).AddHours(1));
+        await SoftDeleteSlotAsync(await SlotIdOfAsync(bookingId));
+        _videoProvider.CreateOrJoinSessionAsync(Arg.Any<VideoSessionRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new VideoSessionDto { RoomName = "room" });
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
+
+        result.NotFound.ShouldBeFalse();
+        result.Success.ShouldBeTrue(result.Message);
+    }
+
+    [Fact]
+    public async Task GetLiveSessionAccessAsync_SoftDeletedBooking_IsStillNotFound_EvenWithSoftDeletedSlot()
+    {
+        // Yalnız slot filtresi gevşer; booking'in kendi soft-delete filtresi geçerli kalır.
+        var start = Now.AddMinutes(5);
+        var bookingId = await SeedApprovedBookingAsync(DateOnly.FromDateTime(start), new TimeOnly(start.Hour, start.Minute),
+            new TimeOnly(start.Hour, start.Minute).AddHours(1));
+        await SoftDeleteSlotAsync(await SlotIdOfAsync(bookingId));
+        await SoftDeleteBookingAsync(bookingId);
+
+        await using var ctx = _db.NewContext();
+        (await NewService(ctx).GetLiveSessionAccessAsync(TeacherUserId, bookingId)).Denial.ShouldBe(BookingLiveSessionDenial.NotFound);
+    }
+
+    [Fact]
+    public async Task GetLiveSessionAccessAsync_SoftDeletedStudent_IsStillNotFound_EvenWithSoftDeletedSlot()
+    {
+        var start = Now.AddMinutes(5);
+        var bookingId = await SeedApprovedBookingAsync(DateOnly.FromDateTime(start), new TimeOnly(start.Hour, start.Minute),
+            new TimeOnly(start.Hour, start.Minute).AddHours(1));
+        await SoftDeleteSlotAsync(await SlotIdOfAsync(bookingId));
+        await using (var ctx = _db.NewContext())
+            await ctx.Students.IgnoreQueryFilters().Where(s => s.Id == StudentId)
+                .ExecuteUpdateAsync(set => set.SetProperty(s => s.IsDeleted, true));
+
+        await using var ctxRead = _db.NewContext();
+        (await NewService(ctxRead).GetLiveSessionAccessAsync(TeacherUserId, bookingId)).Denial.ShouldBe(BookingLiveSessionDenial.NotFound);
+    }
+
+    [Fact]
+    public async Task BookingLists_IncludeBookingWithSoftDeletedSlot_WithTheSlotTimes()
+    {
+        var date = DateOnly.FromDateTime(Now.AddDays(3));
+        var bookingId = await SeedApprovedBookingAsync(date, new TimeOnly(9, 0), new TimeOnly(10, 0));
+        var liveSlotId = await SeedSlotAsync(TeacherId, date, new TimeOnly(11, 0), new TimeOnly(12, 0));
+        var pendingId = await SeedBookingOnSlotAsync(liveSlotId, BookingStatus.Pending);
+        await SoftDeleteSlotAsync(await SlotIdOfAsync(bookingId));
+
+        await using var ctx = _db.NewContext();
+        var service = NewService(ctx);
+        var teacherList = await service.GetTeacherBookingsAsync(TeacherUserId, 0, 50);
+        var studentList = await service.GetStudentBookingsAsync(StudentUserId, 0, 50);
+
+        teacherList.Items.Select(b => b.Id).ShouldBe(new[] { pendingId, bookingId }); // tarih/saat azalan
+        studentList.Items.Select(b => b.Id).ShouldBe(new[] { pendingId, bookingId });
+        var deletedSlotBooking = teacherList.Items.Single(b => b.Id == bookingId);
+        deletedSlotBooking.Status.ShouldBe("Approved");
+        deletedSlotBooking.Date.ShouldBe(date);
+        deletedSlotBooking.StartTime.ShouldBe(new TimeOnly(9, 0));
+        deletedSlotBooking.EndTime.ShouldBe(new TimeOnly(10, 0));
+    }
+
+    [Fact]
+    public async Task BookingLists_StillExcludeSoftDeletedBookings()
+    {
+        var date = DateOnly.FromDateTime(Now.AddDays(3));
+        var bookingId = await SeedApprovedBookingAsync(date, new TimeOnly(9, 0), new TimeOnly(10, 0));
+        await SoftDeleteSlotAsync(await SlotIdOfAsync(bookingId));
+        await SoftDeleteBookingAsync(bookingId);
+
+        await using var ctx = _db.NewContext();
+        (await NewService(ctx).GetTeacherBookingsAsync(TeacherUserId, 0, 50)).Items.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task SlotLists_StillHideSoftDeletedSlots()
+    {
+        // Gevşeme yalnız randevu sorgularında: öğretmenin takvimi ve öğrencinin açık slotları silinmiş slotu göstermez.
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        var date = DateOnly.FromDateTime(Now.AddDays(3));
+        var deletedId = await SeedSlotAsync(TeacherId, date, new TimeOnly(9, 0), new TimeOnly(10, 0));
+        var liveId = await SeedSlotAsync(TeacherId, date, new TimeOnly(11, 0), new TimeOnly(12, 0));
+        await SoftDeleteSlotAsync(deletedId);
+
+        await using var ctx = _db.NewContext();
+        var service = NewService(ctx);
+        (await service.GetMySlotsAsync(TeacherUserId, 0, 50)).Items.Select(s => s.Id).ShouldBe(new[] { liveId });
+        (await service.GetTeacherOpenSlotsAsync(TeacherId, ExamApp.Api.Services.Tenancy.SchoolScope.Unrestricted(StudentUserId), 0, 50))
+            .Items.Select(s => s.Id).ShouldBe(new[] { liveId });
+    }
+
+    [Fact]
+    public async Task RejectBookingAsync_PendingBookingWithSoftDeletedSlot_CanStillBeDecided()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(Now.AddDays(3)), new TimeOnly(9, 0), new TimeOnly(10, 0));
+        var bookingId = await SeedBookingOnSlotAsync(slotId, BookingStatus.Pending);
+        await SoftDeleteSlotAsync(slotId);
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).RejectBookingAsync(TeacherUserId, bookingId, null);
+
+        result.Success.ShouldBeTrue(result.Message);
+        result.Booking.ShouldNotBeNull();
+        result.Booking!.Status.ShouldBe("Rejected");
+    }
+
+    [Fact]
+    public async Task ApproveBookingAsync_PendingBookingWithSoftDeletedSlot_Returns409_AndStaysPending()
+    {
+        // Karar (#376 review): slotu silinmiş Pending talep yalnız reddedilebilir; onay silinmiş slota ders bağlamaz.
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(Now.AddDays(3)), new TimeOnly(9, 0), new TimeOnly(10, 0));
+        var bookingId = await SeedBookingOnSlotAsync(slotId, BookingStatus.Pending);
+        await SoftDeleteSlotAsync(slotId);
+
+        await using (var ctx = _db.NewContext())
+        {
+            var result = await NewService(ctx).ApproveBookingAsync(TeacherUserId, bookingId);
+
+            result.Success.ShouldBeFalse();
+            result.Conflict.ShouldBeTrue();
+            result.NotFound.ShouldBeFalse();
+            result.ShouldBeOfType<BookingDecisionResultDto>().ErrorCode.ShouldBe(BookingErrorCodes.RequestSlotDeleted);
+            result.Message.ShouldNotBeNullOrWhiteSpace();
+        }
+
+        await using var check = _db.NewContext();
+        (await check.Bookings.SingleAsync(b => b.Id == bookingId)).Status.ShouldBe(BookingStatus.Pending);
+        (await check.OutboxMessages.CountAsync()).ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData(BookingStatus.Pending)]
+    [InlineData(BookingStatus.Approved)]
+    public async Task DeleteSlotAsync_SlotWithActiveBooking_Returns409WithErrorCode_AndKeepsTheSlot(BookingStatus status)
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(Now.AddDays(5)), new TimeOnly(14, 0), new TimeOnly(15, 0));
+        await SeedBookingOnSlotAsync(slotId, status);
+
+        await using (var ctx = _db.NewContext())
+        {
+            var result = await NewService(ctx).DeleteSlotAsync(TeacherUserId, slotId);
+            result.Success.ShouldBeFalse();
+            result.Conflict.ShouldBeTrue();
+            result.ErrorCode.ShouldBe(BookingErrorCodes.SlotHasActiveBooking);
+            result.Message.ShouldNotBeNullOrWhiteSpace();
+        }
+
+        await using var check = _db.NewContext();
+        (await check.TeacherAvailabilitySlots.IgnoreQueryFilters().SingleAsync(s => s.Id == slotId)).IsDeleted.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task DeleteSlotAsync_SlotWithOnlyRejectedBooking_IsDeleted()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(Now.AddDays(5)), new TimeOnly(14, 0), new TimeOnly(15, 0));
+        await SeedBookingOnSlotAsync(slotId, BookingStatus.Rejected);
+
+        await using (var ctx = _db.NewContext())
+        {
+            var result = await NewService(ctx).DeleteSlotAsync(TeacherUserId, slotId);
+            result.Success.ShouldBeTrue(result.Message);
+            result.ErrorCode.ShouldBeNull();
+        }
+
+        await using var check = _db.NewContext();
+        (await check.TeacherAvailabilitySlots.IgnoreQueryFilters().SingleAsync(s => s.Id == slotId)).IsDeleted.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DeleteSlotAsync_AlreadyDeletedSlot_ReturnsNotFound()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(Now.AddDays(5)), new TimeOnly(14, 0), new TimeOnly(15, 0));
+        await SoftDeleteSlotAsync(slotId);
+
+        await using var ctx = _db.NewContext();
+        (await NewService(ctx).DeleteSlotAsync(TeacherUserId, slotId)).NotFound.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task CreateBookingAsync_SoftDeletedSlot_ReturnsNotFound_AndWritesNothing()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(Now.AddDays(5)), new TimeOnly(14, 0), new TimeOnly(15, 0));
+        await SoftDeleteSlotAsync(slotId);
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).CreateBookingAsync(StudentUserId, new CreateBookingDto { AvailabilitySlotId = slotId })).NotFound.ShouldBeTrue();
+
+        await using var check = _db.NewContext();
+        (await check.Bookings.IgnoreQueryFilters().CountAsync()).ShouldBe(0);
+    }
+
     public void Dispose() => _db.Dispose();
 }

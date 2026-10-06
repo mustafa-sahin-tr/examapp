@@ -140,6 +140,41 @@ public class RecurringAvailabilityRuleDeleteResultDto : ResponseBaseDto
     public int PreservedBookedCount { get; set; }
 }
 
+/// <summary>
+/// DELETE /api/booking/slots/{id} hata gövdesi (başarıda 204, gövde yok). issue #376: aktif randevulu slot reddinde
+/// makine okunur <see cref="ErrorCode"/> taşır; diğer hatalarda alan JSON'a çıkmaz.
+/// </summary>
+public class AvailabilitySlotDeleteResultDto : ResponseBaseDto
+{
+    /// <summary>Bkz. <see cref="BookingErrorCodes"/>. Yalnız 409 aktif-randevu reddinde dolu.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? ErrorCode { get; set; }
+}
+
+/// <summary>Randevu/müsaitlik uçlarının hata gövdelerindeki <c>errorCode</c> değerleri (UI özel davranış için okur).</summary>
+public static class BookingErrorCodes
+{
+    /// <summary>
+    /// issue #376: slotun aktif (Pending/Approved) randevusu var → slot silinemez (409). Tekil silmede döner; seri silme
+    /// (<c>DELETE recurring-rules/{id}</c>) bu slotları hata vermeden korur (<c>preservedSlotIds</c>).
+    /// </summary>
+    public const string SlotHasActiveBooking = "SlotHasActiveBooking";
+
+    /// <summary>
+    /// issue #376: Pending talebin slotu soft-delete edilmiş (eski veri) → talep onaylanamaz, yalnız reddedilebilir (409,
+    /// <c>POST requests/{id}/approve</c>).
+    /// </summary>
+    public const string RequestSlotDeleted = "BookingRequestSlotDeleted";
+}
+
+/// <summary>Randevu karar (onay/ret) sonucu; issue #376 ile makine okunur <see cref="ErrorCode"/> taşır.</summary>
+public class BookingDecisionResultDto : BookingResultDto
+{
+    /// <summary>Bkz. <see cref="BookingErrorCodes"/>. Yalnız belirli 409'larda dolu; diğer yanıtlarda JSON'a çıkmaz.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? ErrorCode { get; set; }
+}
+
 /// <summary>POST /api/booking/requests — öğrenci bir slot için randevu talebi oluşturur.</summary>
 public class CreateBookingDto
 {

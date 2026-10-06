@@ -360,12 +360,13 @@
       <div class="question-card__body" inert>
         @if (entry.region; as region) {
         <div class="canvas-zone">
-          <app-question-canvas-view-v5 class="canvas-stage" [questionRegion]="region"
+          <app-question-canvas-view-v5 class="canvas-stage" [questionRegion]="region" [imageRefresh]="reviewImageRefresh"
             [selectedChoice]="entry.selectedChoice" [correctChoice]="entry.correctChoice" [mode]="'result'" />
         </div>
         } @else {
         <div class="text-question">
           <app-question-lite-view [question]="entry.question" [selectedAnswerId]="entry.row.selectedAnswerId"
+            [imageRefresh]="reviewImageRefresh"
             [isPracticeTest]="false" [correctAnswerVisible]="entry.kind !== 'pending'" />
         </div>
         }
@@ -624,11 +625,12 @@
           <div class="passage-only__text">{{ q.passage?.text }}</div>
           }
           @if (q.passage?.imageUrl) {
-          <img class="passage-only__image" [src]="q.passage?.imageUrl" [alt]="t('stage.passageAlt')" />
+          <img class="passage-only__image" [src]="q.passage?.imageUrl" [alt]="t('stage.passageAlt')"
+            [appStorageImageRetry]="stageImageRefresh" />
           }
         </div>
         } @else {
-        <app-question-canvas-view-v5 class="canvas-stage" [questionRegion]="region"
+        <app-question-canvas-view-v5 class="canvas-stage" [questionRegion]="region" [imageRefresh]="stageImageRefresh"
           [hidePassage]="isPassageFirstActive()" [selectedChoice]="selectedChoice()" [mode]="canvasMode()"
           (choiceSelected)="selectChoice($event)" />
         }
@@ -636,6 +638,7 @@
       } @else {
       <div class="text-question">
         <app-question-lite-view [question]="q" [selectedAnswerId]="selectedAnswerId()" [isPracticeTest]="false"
+          [imageRefresh]="stageImageRefresh"
           [correctAnswerVisible]="phase() === 'feedback'" (answerSelected)="selectAnswer($event)" />
       </div>
       }

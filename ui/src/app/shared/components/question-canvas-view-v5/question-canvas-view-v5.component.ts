@@ -16,6 +16,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { questionCanvasImageUrl } from '../../utils/storage-image-url.util';
+import { StorageImageResolver } from '../../utils/storage-image-refresh.util';
+import { StorageImageRetryDirective } from '../../directives/storage-image-retry.directive';
 
 const EMPTY_REGION: QuestionRegion = {
   id: 0,
@@ -61,7 +63,7 @@ function clampVisualScale(value: number): number {
 @Component({
   selector: 'app-question-canvas-view-v5',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule, TranslocoDirective],
+  imports: [CommonModule, MatButtonModule, MatIconModule, TranslocoDirective, StorageImageRetryDirective],
   templateUrl: './question-canvas-view-v5.component.html',
   styleUrls: ['./question-canvas-view-v5.component.scss'],
 })
@@ -122,6 +124,11 @@ export class QuestionCanvasViewComponentv5 {
     this.passageImageSource.set(passageUrl && passageUrl.trim().length > 0 ? passageUrl : null);
     queueMicrotask(() => this.updateVisualScale());
   }
+  /**
+   * issue #365 (S3): soru/şık/paragraf görseli yüklenemezse (imza süresi doldu) taze imzalı URL'yi bulan fonksiyon.
+   * Sahibi olan sayfa verir (ör. test örneğini yeniden çeker); verilmezse görsel yeniden denenmez.
+   */
+  @Input() imageRefresh: StorageImageResolver | null = null;
   @Input() correctAnswerVisible: boolean = false;
   @Input() isPreviewMode: boolean = false;
   /**

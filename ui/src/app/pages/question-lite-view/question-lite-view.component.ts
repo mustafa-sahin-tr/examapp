@@ -5,11 +5,13 @@ import { MatCardModule } from '@angular/material/card';
 import { Question } from '../../models/question';
 import { SafeHtmlPipe } from '../../services/safehtml';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
+import { StorageImageResolver } from '../../shared/utils/storage-image-refresh.util';
+import { StorageImageRetryDirective } from '../../shared/directives/storage-image-retry.directive';
 
 @Component({
   selector: 'app-question-lite-view',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatButtonModule, SafeHtmlPipe, TranslocoDirective],
+  imports: [CommonModule, MatCardModule, MatButtonModule, SafeHtmlPipe, TranslocoDirective, StorageImageRetryDirective],
   // test-solve / practice-solve gibi baska scope'lu sayfalardan da kullanildigi icin scope'u kendisi saglar.
   providers: [provideTranslocoScope('question')],
   templateUrl: './question-lite-view.component.html',
@@ -21,6 +23,8 @@ export class QuestionLiteViewComponent implements OnInit {
   @Output() answerSelected = new EventEmitter<number>(); // 🆕 Event tanımlandı
   @Input() isPracticeTest: boolean = false; // 🆕 Practice test mi yoksa gerçek sınav mı olduğunu belirlemek için
   @Input() question: Question | null = null; // Soru
+  /** issue #365 (S3): görsel yüklenemezse taze imzalı URL'yi bulan fonksiyon (sahip sayfa verir). */
+  @Input() imageRefresh: StorageImageResolver | null = null;
   @Input() selectedAnswerId: number | null = null; // Kullanıcının seçtiği şık
   showFeedback: boolean = false; // Kullanıcının seçim yaptığı anı kontrol etme
   correctAnswerIndex: number | null = null; // Doğru şık (API'den dönecek)

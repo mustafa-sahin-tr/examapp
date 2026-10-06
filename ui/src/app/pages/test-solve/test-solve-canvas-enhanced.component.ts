@@ -49,6 +49,7 @@ import { Answer } from '../../models/answer';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { questionCanvasImageUrl, storageImageKey } from '../../shared/utils/storage-image-url.util';
+import { createStorageImageResolver } from '../../shared/utils/storage-image-refresh.util';
 
 /**
  * Sınav çözme ekranının metinleri kendi Transloco scope'unda: `public/i18n/test-solve/<lang>.json`
@@ -106,6 +107,14 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   @ViewChild('canvasView') canvasViewComponent?: QuestionCanvasViewComponentv5;
 
   testInstanceId!: number;
+  /**
+   * issue #365 (S3): soru/şık/paragraf görseli yüklenemezse (imzalı URL'nin süresi doldu) test örneği yeniden çekilir
+   * ve aynı görselin taze imzalı URL'si ile bir kez yeniden denenir (salt okuma; cevap durumu değişmez).
+   */
+  readonly imageRefresh = createStorageImageResolver(
+    () => this.testService.getCanvasTestWithAnswers(this.testInstanceId),
+    { cacheKey: () => this.testInstanceId }
+  );
   @Input() testInstance!: TestInstance; // Test bilgisi ve sorular
   testDuration: number = 0; // Saniye cinsinden süre
   questionDuration: number = 0; // Soruya ayrılan süre

@@ -67,7 +67,7 @@
                 <label for="passageImage">{{ t('form.passageImageLabel') }}</label>
                 <input type="file" id="passageImage" (change)="onImageUploadForPassage($event)" />
                 @if (questionForm.value.passageImage) {
-                  <img [src]="questionForm.value.passageImage" class="preview-image" alt="" />
+                  <img [src]="questionForm.value.passageImage" class="preview-image" alt="" [appStorageImageRetry]="imageRefresh" />
                 }
 
                 <label for="passageTitle">{{ t('form.passageTitleLabel') }}</label>
@@ -86,7 +86,7 @@
               <label for="questionImage">{{ t('form.questionImageLabel') }}</label>
               <input type="file" id="questionImage" (change)="onImageUploadForQuestion($event)" />
               @if (questionForm.value.image) {
-                <img [src]="questionForm.value.image" class="preview-image" alt="" />
+                <img [src]="questionForm.value.image" class="preview-image" alt="" [appStorageImageRetry]="imageRefresh" />
               }
 
               <label for="subText">{{ t('form.questionSubTextLabel') }}</label>
@@ -136,7 +136,7 @@
                       <div class="image-upload">
                         <input type="file" (change)="onImageUpload($event,'image', i)" />
                         @if (answer.value.image) {
-                          <img [src]="answer.value.image" class="preview-image" alt="" />
+                          <img [src]="answer.value.image" class="preview-image" alt="" [appStorageImageRetry]="imageRefresh" />
                         }
                       </div>
                     </div>

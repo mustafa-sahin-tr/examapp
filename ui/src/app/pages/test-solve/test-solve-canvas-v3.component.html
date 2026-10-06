@@ -341,12 +341,13 @@
           }
           @if (getPassageImage(questionData.index)) {
           <img class="passage-only__image" [src]="getPassageImage(questionData.index)"
-            [alt]="t('question.passageAlt')" />
+            [alt]="t('question.passageAlt')" [appStorageImageRetry]="imageRefresh" />
           }
         </div>
         } @else {
         @if ((questionData.question.question.interactionType || 'mcq') === 'dragDropLabeling') {
         <app-question-canvas-dragdrop-labeling class="canvas-stage" [questionRegion]="questionData.region"
+          [imageRefresh]="imageRefresh"
           [interactionPlanJson]="questionData.question.question.interactionPlan || null"
           [answerPayloadJson]="questionData.question.answerPayload || null"
           [practiceFeedback]="questionData.question.question.isExample"
@@ -355,6 +356,7 @@
           (answered)="focusOnQuestion(questionData.index)"></app-question-canvas-dragdrop-labeling>
         } @else {
         <app-question-canvas-view-v5 #canvasView class="canvas-stage" [questionRegion]="questionData.region"
+          [imageRefresh]="imageRefresh"
           [enableHeightFit]="true" [hidePassage]="isPassageFirstActive(questionData.index)"
           [selectedChoice]="selectedChoices().get(questionData.region.id)"
           (choiceSelected)="selectChoiceForQuestion($event, questionData.index)"
@@ -366,7 +368,7 @@
       } @else {
       <div class="text-question">
         <div class="text-question__content">
-          <app-question-lite-view [question]="questionData.question.question"
+          <app-question-lite-view [question]="questionData.question.question" [imageRefresh]="imageRefresh"
             [selectedAnswerId]="questionData.question.selectedAnswerId"
             [isPracticeTest]="testInstance.isPracticeTest"
             (answerSelected)="selectAnswerForQuestion($event, questionData.index)"

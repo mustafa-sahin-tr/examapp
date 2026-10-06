@@ -1,5 +1,6 @@
 using ExamApp.Api.Services.Teachers.Authorization;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
@@ -7,6 +8,8 @@ using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using ExamApp.Api.Helpers;
 using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Controllers;
@@ -123,6 +126,32 @@ public class StudyItemsController : BaseController
         }
 
         return Ok(result);
+    }
+
+    /// <summary>
+    /// issue #365 (S3): editörün JSON kılavuzundaki kitap sayfaları <c>study-pages</c> bucket'ında var mı? Bucket'lar özel
+    /// olduğu için tarayıcı nesneyi yoklayamaz; sunucu StatObject yapar ve var olanlar için saklama yolu + imzalı önizleme
+    /// URL'si döner. En fazla <see cref="StudyBookPageLookupRequestDto.MaxPages"/> sayfa; kitap adı sıkı allowlist.
+    /// POST: kitap adı (Türkçe/boşluk) yol parçası olarak gateway'den geçerken decode edilmesin diye gövdede taşınır.
+    /// Yalnız Teacher: kayıt uçları (Create/Update) da Teacher-only — en az yetki (#365 S3 review). Kullanıcı başına rate
+    /// limit (<see cref="StudyBookPageLookupRateLimiting"/>).
+    /// </summary>
+    [Authorize(Roles = "Teacher")]
+    [HttpPost("book-pages/lookup")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
+    [EnableRateLimiting(StudyBookPageLookupRateLimiting.Policy)]
+    public async Task<IActionResult> LookupBookPages([FromBody] StudyBookPageLookupRequestDto request, CancellationToken ct)
+    {
+        var result = await _studyItemService.LookupBookPagesAsync(request.Pages, ct);
+        if (result.StorageUnavailable)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = result.Error });
+        }
+        if (result.Error != null)
+        {
+            return BadRequest(new { message = result.Error });
+        }
+        return Ok(result.Items);
     }
 
     [Authorize(Roles = "Teacher")]

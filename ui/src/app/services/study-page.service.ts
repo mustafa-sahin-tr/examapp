@@ -3,12 +3,17 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Paged } from '../models/test-instance';
 import {
+  StudyBookPageLookupResult,
+  StudyBookPageRef,
   StudyPage,
   StudyPageContentType,
   StudyPageFilter,
   StudyPageUpdateRequest,
   StudyPageWriteRequest,
 } from '../models/study-page';
+
+/** Backend StudyBookPageLookupRequestDto.MaxPages ile aynı. */
+export const BOOK_PAGE_LOOKUP_MAX_PAGES = 200;
 
 @Injectable({
   providedIn: 'root',
@@ -52,6 +57,14 @@ export class StudyPageService {
 
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
+  /**
+   * issue #365 (S3): kitap sayfalarının depolamada olup olmadığı (sunucu tarafı kontrol; bucket'lar özel olduğu için
+   * tarayıcı `/img/...` adresini artık yoklayamaz). İstek başına en fazla {@link BOOK_PAGE_LOOKUP_MAX_PAGES} sayfa.
+   */
+  lookupBookPages(pages: StudyBookPageRef[]): Observable<StudyBookPageLookupResult[]> {
+    return this.http.post<StudyBookPageLookupResult[]>(`${this.baseUrl}/book-pages/lookup`, { pages });
   }
 
   /**

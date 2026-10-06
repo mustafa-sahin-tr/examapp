@@ -24,6 +24,7 @@ import { QuestionLiteViewComponent } from '../question-lite-view/question-lite-v
 import { CountdownComponent } from '../../shared/components/countdown/countdown.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 import { QuestionCanvasDragDropLabelingComponent } from '../../shared/components/question-canvas-dragdrop-labeling/question-canvas-dragdrop-labeling.component';
+import { StorageImageRetryDirective } from '../../shared/directives/storage-image-retry.directive';
 
 /**
  * Sınav çözme ekranı (issue #72 yeniden tasarımı).
@@ -54,6 +55,7 @@ import { QuestionCanvasDragDropLabelingComponent } from '../../shared/components
     QuestionCanvasViewComponentv5,
     QuestionCanvasDragDropLabelingComponent,
     TranslocoDirective,
+    StorageImageRetryDirective,
   ],
   providers: [provideTranslocoScope(TEST_SOLVE_SCOPE)],
 })

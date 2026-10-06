@@ -1,0 +1,33 @@
+{
+  "title": "Ayarlar",
+  "subtitle": "Hesap bilgilerin, dil tercihin ve hesap güvenliğin.",
+  "retry": "Tekrar dene",
+  "roles": {
+    "Teacher": "Öğretmen",
+    "Admin": "Yönetici"
+  },
+  "profile": {
+    "title": "Profil",
+    "loading": "Profilin yükleniyor...",
+    "loadError": "Profilin yüklenemedi.",
+    "stale": "Güncel profil alınamadı; kayıtlı bilgiler gösteriliyor.",
+    "empty": "Profil bilgisi bulunamadı.",
+    "name": "Ad soyad",
+    "email": "E-posta",
+    "role": "Rol",
+    "avatarAlt": "Profil fotoğrafı",
+    "readOnlyHint": "Ad, e-posta ve fotoğraf bu sayfada yalnızca görüntülenir."
+  },
+  "teacher": {
+    "title": "Öğretmen bilgileri",
+    "school": "Okul",
+    "noSchool": "Okula bağlı değil (bağımsız öğretmen)",
+    "schoolHint": "Okul bilgisi yönetici tarafından düzenlenir.",
+    "tutorProfile": "Özel ders profilimi düzenle"
+  },
+  "language": {
+    "title": "Dil",
+    "hint": "Seçtiğin dil hesabına kaydedilir ve tüm cihazlarında kullanılır.",
+    "saving": "Dil tercihin kaydediliyor..."
+  }
+}

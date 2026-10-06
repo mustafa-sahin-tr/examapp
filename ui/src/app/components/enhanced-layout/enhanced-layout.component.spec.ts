@@ -19,6 +19,7 @@ import { ThemeConfigService } from '../../services/theme-config.service';
 import { routes } from '../../app.routes';
 import { adminGuard } from '../../shared/guards/admin.guard';
 import { studentGuard } from '../../shared/guards/student.guard';
+import { settingsGuard } from '../../shared/guards/settings.guard';
 import { independentTeacherGuard } from '../../shared/guards/independent-teacher.guard';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 
@@ -176,8 +177,9 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
     expect(status[0].route).toBe('/teacher-approval-pending');
     // Rolsüz (herkese açık) öğeler kalır; baştaki/sondaki ayırıcılar temizlenir.
     expect(routesShown).toContain('/certificates');
-    // Issue #373: Ayarlar (/student-profile) yalnız öğrenciye.
+    // Issue #373: /student-profile yalnız öğrenciye; #417: onay bekleyen öğretmen de Ayarlar'a (/settings) ulaşır.
     expect(routesShown).not.toContain('/student-profile');
+    expect(routesShown).toContain('/settings');
     expect(items[0].type).toBe('menu');
     expect(items[items.length - 1].type).toBe('menu');
   });
@@ -662,17 +664,43 @@ describe('EnhancedLayoutComponent menu routes (issues #374, #373)', () => {
     });
   }
 
-  it('settings_OnlyVisibleToStudent_InSidenavAndBottomNav', () => {
-    const student = create(['Student']);
-    expect(student.visibleMenuItems().map((i) => i.id)).toContain('settings');
-    expect(student.visibleBottomNavItems().map((i) => i.id)).toContain('settings');
+  // Issue #417: Ayarlar her rolde görünür; öğrenci kendi sayfasına, öğretmen/admin /settings'e gider.
+  const SETTINGS_CASES: Array<{ name: string; roles: string[]; unapproved?: boolean; route: string }> = [
+    { name: 'Student', roles: ['Student'], route: '/student-profile' },
+    { name: 'Teacher', roles: ['Teacher'], route: '/settings' },
+    { name: 'UnapprovedTeacher', roles: ['Teacher'], unapproved: true, route: '/settings' },
+    { name: 'Admin', roles: ['Admin'], route: '/settings' },
+    { name: 'AdminTeacher', roles: ['Admin', 'Teacher'], route: '/settings' },
+    // Karma rol: guard ile aynı kural (settingsUrlFor) — öğretmenlik /settings'e götürür.
+    { name: 'StudentTeacher', roles: ['Student', 'Teacher'], route: '/settings' },
+  ];
 
+  for (const c of SETTINGS_CASES) {
+    it(`settings_${c.name}_VisibleInSidenavAndBottomNav_WithRoleRoute (issue #417)`, () => {
+      const component = create(c.roles, c.unapproved);
+      for (const items of [component.visibleMenuItems(), component.visibleBottomNavItems()]) {
+        const settings = items.filter((i) => i.id === 'settings');
+        expect(settings.length).withContext(c.name).toBe(1);
+        expect(settings[0].route).withContext(c.name).toBe(c.route);
+      }
+      expect(component.settingsRoute).toBe(c.route);
+    });
+  }
+
+  it('settings_NonStudent_NeverLinksStudentProfile', () => {
     for (const roles of [['Teacher'], ['Admin']]) {
       TestBed.resetTestingModule();
       const other = create(roles);
       expect(other.visibleMenuItems().map((i) => i.route)).withContext(roles[0]).not.toContain('/student-profile');
       expect(other.visibleBottomNavItems().map((i) => i.route)).withContext(roles[0]).not.toContain('/student-profile');
     }
+  });
+
+  it('routes_Settings_UsesSettingsGuardWithoutApprovalGate (issue #417)', () => {
+    const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
+    const route = children.find((r) => r.path === 'settings');
+    expect(route?.canActivate).toContain(settingsGuard);
+    expect(route?.loadComponent).toBeDefined();
   });
 
   it('routes_StudentProfile_UsesStudentGuard', () => {
@@ -748,6 +776,7 @@ describe('EnhancedLayoutComponent active menu item (issue #385)', () => {
       ['/test/12', 'exams'],
       ['/study-pages/new', 'study-pages'],
       ['/student-profile', null],
+      ['/settings', 'settings'],
     ]);
   });
 
@@ -757,7 +786,7 @@ describe('EnhancedLayoutComponent active menu item (issue #385)', () => {
   });
 });
 
-/** Issue #375: profil menüsünde yalnız çalışan öğeler (Ayarlar yalnız öğrenciye, Bildirimler, Çıkış). */
+/** Issue #375: profil menüsünde yalnız çalışan öğeler (Ayarlar, Bildirimler, Çıkış). #417: Ayarlar tüm rollerde. */
 describe('EnhancedLayoutComponent profile menu (issue #375)', () => {
   let fixture: ComponentFixture<EnhancedLayoutComponent>;
 
@@ -827,9 +856,14 @@ describe('EnhancedLayoutComponent profile menu (issue #375)', () => {
   });
 
   for (const roles of [['Teacher'], ['Admin']]) {
-    it(`${roles[0]}_SeesNotificationsAndLogoutOnly`, () => {
+    it(`${roles[0]}_SeesSettingsNotificationsAndLogout_SettingsOpensSettingsPage (issue #417)`, () => {
       setup(roles);
-      expect(titles(openProfileMenu())).toEqual(['Bildirimler', 'Çıkış Yap']);
+      const navigateSpy = spyOn(TestBed.inject(Router), 'navigate').and.returnValue(Promise.resolve(true));
+      const items = openProfileMenu();
+
+      expect(titles(items)).toEqual(['Ayarlar', 'Bildirimler', 'Çıkış Yap']);
+      items[0].click();
+      expect(navigateSpy).toHaveBeenCalledWith(['/settings'], {});
     });
   }
 

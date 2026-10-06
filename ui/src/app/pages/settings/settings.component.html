@@ -1,0 +1,105 @@
+<section class="stg" *transloco="let t; prefix: 'settings'">
+  <header class="stg__head">
+    <h1>{{ t('title') }}</h1>
+    <p>{{ t('subtitle') }}</p>
+  </header>
+
+  <!-- Profil (salt-okunur) + öğretmen bilgisi: güncel profile bağlı olduğu için yükleme/hata/boş burada ele alınır. -->
+  <article class="stg__card stg-profile" aria-labelledby="stg-profile-title">
+    <h2 id="stg-profile-title">{{ t('profile.title') }}</h2>
+
+    @if (loading() && !profile()) {
+      <div class="stg__state" aria-busy="true" aria-live="polite">
+        <mat-spinner diameter="32" />
+        <span>{{ t('profile.loading') }}</span>
+      </div>
+    } @else if (error() && !profile()) {
+      <div class="stg__state stg__state--error" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ t('profile.loadError') }}</span>
+        <button mat-stroked-button type="button" class="stg-retry" (click)="load()">{{ t('retry') }}</button>
+      </div>
+    } @else if (!profile()) {
+      <div class="stg__state stg__state--empty">
+        <mat-icon>person_off</mat-icon>
+        <span>{{ t('profile.empty') }}</span>
+      </div>
+    } @else {
+      @if (error()) {
+        <p class="stg__stale" role="status">
+          <mat-icon aria-hidden="true">sync_problem</mat-icon>
+          <span>{{ t('profile.stale') }}</span>
+          <button mat-button type="button" class="stg-retry" (click)="load()">{{ t('retry') }}</button>
+        </p>
+      }
+      <div class="stg-profile__row">
+        @if (profile()?.avatar && !avatarFailed()) {
+          <img
+            class="stg-profile__avatar"
+            [src]="profile()?.avatar"
+            [alt]="t('profile.avatarAlt')"
+            (error)="avatarFailed.set(true)"
+          />
+        } @else {
+          <span class="stg-profile__avatar stg-profile__avatar--initials" aria-hidden="true">{{ initials() }}</span>
+        }
+        <dl class="stg-profile__fields">
+          <div>
+            <dt>{{ t('profile.name') }}</dt>
+            <dd class="stg-profile__name">{{ profile()?.fullName || '—' }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('profile.email') }}</dt>
+            <dd class="stg-profile__email">{{ profile()?.email || '—' }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('profile.role') }}</dt>
+            <dd class="stg-profile__role">{{ t('roles.' + primaryRole) }}</dd>
+          </div>
+        </dl>
+      </div>
+      <p class="stg__hint">{{ t('profile.readOnlyHint') }}</p>
+
+      @if (isTeacher) {
+        <section class="stg-teacher" aria-labelledby="stg-teacher-title">
+          <h3 id="stg-teacher-title">{{ t('teacher.title') }}</h3>
+          <dl class="stg-profile__fields">
+            <div>
+              <dt>{{ t('teacher.school') }}</dt>
+              <dd class="stg-teacher__school">{{ schoolName() ?? t('teacher.noSchool') }}</dd>
+            </div>
+          </dl>
+          <p class="stg__hint">{{ t('teacher.schoolHint') }}</p>
+          @if (showTutorProfileLink()) {
+            <a mat-stroked-button class="stg-teacher__tutor-link" routerLink="/tutor-profile">
+              <mat-icon>cast_for_education</mat-icon>
+              {{ t('teacher.tutorProfile') }}
+            </a>
+          }
+        </section>
+      }
+    }
+  </article>
+
+  <article class="stg__card stg-language" aria-labelledby="stg-language-title">
+    <h2 id="stg-language-title">{{ t('language.title') }}</h2>
+    <p class="stg__hint">{{ t('language.hint') }}</p>
+    <mat-button-toggle-group
+      class="stg-language__toggle"
+      [value]="activeLocale()"
+      [disabled]="savingLocale()"
+      [attr.aria-label]="t('language.title')"
+      (change)="selectLocale($event.value)"
+    >
+      @for (locale of locales; track locale.code) {
+        <mat-button-toggle [value]="locale.code" [attr.lang]="locale.code">{{ locale.label }}</mat-button-toggle>
+      }
+    </mat-button-toggle-group>
+    @if (savingLocale()) {
+      <p class="stg__hint" aria-live="polite">{{ t('language.saving') }}</p>
+    }
+  </article>
+
+  <!-- Issue #417: tüm rollerde ortak hesap kartı (öğrencide /student-profile de kullanır). -->
+  <app-account-security-card class="stg-account" />
+</section>

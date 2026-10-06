@@ -125,15 +125,14 @@
             </div>
           </div>
 
-          <!-- Menü Öğeleri (issue #375: yalnız çalışan sayfaya giden öğeler; Ayarlar yalnız öğrenciye, #373) -->
-          @if (isStudent) {
-            <button mat-menu-item class="ms-menu-item profile-settings-item" (click)="navigateTo('/student-profile')">
-              <mat-icon>settings</mat-icon>
-              <div class="ms-item-content">
-                <span class="ms-item-title">{{ t('menu.settings') }}</span>
-              </div>
-            </button>
-          }
+          <!-- Menü Öğeleri (issue #375: yalnız çalışan sayfaya giden öğeler). Issue #417: Ayarlar tüm rollere;
+               öğrenci /student-profile, öğretmen/admin /settings. -->
+          <button mat-menu-item class="ms-menu-item profile-settings-item" (click)="navigateTo(settingsRoute)">
+            <mat-icon>settings</mat-icon>
+            <div class="ms-item-content">
+              <span class="ms-item-title">{{ t('menu.settings') }}</span>
+            </div>
+          </button>
 
           <button mat-menu-item class="ms-menu-item profile-notifications-item" (click)="onNotifications()">
             <mat-icon>notifications</mat-icon>

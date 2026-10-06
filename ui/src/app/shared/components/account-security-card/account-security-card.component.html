@@ -1,0 +1,8 @@
+<article class="acc-card" aria-labelledby="acc-card-title" *transloco="let t; prefix: 'account-security'">
+  <h2 id="acc-card-title">{{ t('title') }}</h2>
+  <p class="acc-card__hint">{{ t('hint') }}</p>
+  <a mat-flat-button class="acc-card__link" [href]="accountConsoleUrl" target="_blank" rel="noopener noreferrer">
+    <mat-icon>lock_reset</mat-icon>
+    {{ t('open') }}
+  </a>
+</article>

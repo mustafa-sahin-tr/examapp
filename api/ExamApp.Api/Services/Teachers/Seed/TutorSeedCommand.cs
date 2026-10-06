@@ -36,7 +36,7 @@ public sealed record TutorSeedCommand(TutorSeedOptions Options, string? Connecti
                                                (varsayılan: Development 0 = hepsi Approved, Staging 1 = hepsi Pending)
           --dry-run                            auth-api'yi çağırma, hiçbir şey yazma; planı raporla
           --no-events                          UserPreferredLocaleChangedEvent outbox satırlarını yazma
-          --keycloak-mode <admin-api|partial-import>
+          --keycloak-mode <admin-api>
           --batch-size <N>                     auth-api'ye istek başına hesap (varsayılan 100, en fazla 500)
           --reset-password                     Keycloak'ta zaten var olan seed hesaplarının parolasını bu koşununkiyle sıfırla
           --adopt-unmarked                     TEK SEFERLİK incident temizliği: seed_origin işaretsiz yetimleri de sahiplen
@@ -103,8 +103,8 @@ public sealed record TutorSeedCommand(TutorSeedOptions Options, string? Connecti
                     mode = raw switch
                     {
                         TeacherSeedOptions.KeycloakModeAdminApi => TeacherSeedOptions.KeycloakModeAdminApi,
-                        TeacherSeedOptions.KeycloakModePartialImport => TeacherSeedOptions.KeycloakModePartialImport,
-                        _ => throw new ArgumentException($"--keycloak-mode admin-api ya da partial-import olmalı: '{raw}'.")
+                        "partial-import" => throw new ArgumentException("--keycloak-mode partial-import kaldırıldı (#372: Keycloak partialImport manage-realm ister, servis hesaplarında yok). admin-api kullanın."),
+                        _ => throw new ArgumentException($"--keycloak-mode yalnızca admin-api olabilir: '{raw}'.")
                     };
                     break;
                 case "--dry-run": dryRun = true; break;

@@ -484,3 +484,79 @@ describe('EnhancedLayoutComponent direct messages menu (issue #106)', () => {
     expect(paths).toContain('student-messages');
   });
 });
+
+/** Issue #106 dilim b: SignalR `DirectMessageReceived` push'u sidenav DM rozetini gerçek zamanlı tazeler. */
+describe('EnhancedLayoutComponent DM badge push (issue #106 b)', () => {
+  let fixture: ComponentFixture<EnhancedLayoutComponent>;
+  let directMessageReceived$: Subject<{ conversationId: number; senderRole: 'Student' | 'Teacher' }>;
+  let dmRefresh: jasmine.Spy;
+
+  function setup(role: 'Student' | 'Teacher'): void {
+    directMessageReceived$ = new Subject();
+    dmRefresh = jasmine.createSpy('refreshUnreadCount').and.returnValue(of(1));
+    const authStub: Partial<AuthService> = {
+      hasRealmRole: (r: string) => r === role,
+      isAuthenticated: () => of(true),
+      isUnapprovedTeacher: signal(false),
+      isCachedUserCurrent: () => true,
+      refreshProfile: () => NEVER,
+    };
+    TestBed.configureTestingModule({
+      imports: [EnhancedLayoutComponent, NoopAnimationsModule, translocoTestingModule()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: AuthService, useValue: authStub },
+        {
+          provide: SignalRService,
+          useValue: {
+            startConnection: () => undefined,
+            accessRequestUpdates$: new Subject(),
+            notificationsChanged$: new Subject<void>().asObservable(),
+            directMessageReceived$: directMessageReceived$.asObservable(),
+          },
+        },
+        { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
+        {
+          provide: DirectMessageService,
+          useValue: { unreadCount: signal(0).asReadonly(), refreshUnreadCount: dmRefresh, resetUnreadCount: () => undefined },
+        },
+        {
+          provide: NotificationService,
+          useValue: { unreadCount: signal(0).asReadonly(), refreshUnreadCount: () => of(0), resetUnreadCount: () => undefined },
+        },
+        { provide: UserThemeService, useValue: { userTheme$: of(null) } },
+        { provide: ThemeConfigService, useValue: {} },
+      ],
+    });
+    fixture = TestBed.createComponent(EnhancedLayoutComponent);
+  }
+
+  afterEach(() => localStorage.removeItem('user'));
+
+  it('studentPush_RefreshesStudentUnreadCount_Debounced', fakeAsync(() => {
+    setup('Student');
+    fixture.detectChanges();
+    tick();
+    expect(dmRefresh).toHaveBeenCalledTimes(1);
+    expect(dmRefresh).toHaveBeenCalledWith('Student');
+
+    directMessageReceived$.next({ conversationId: 5, senderRole: 'Teacher' });
+    directMessageReceived$.next({ conversationId: 5, senderRole: 'Teacher' });
+    tick(EnhancedLayoutComponent.DM_PUSH_REFRESH_DEBOUNCE_MS);
+
+    expect(dmRefresh).toHaveBeenCalledTimes(2);
+    fixture.destroy();
+    flush();
+  }));
+
+  it('noPush_DoesNotRefreshAgain', fakeAsync(() => {
+    setup('Student');
+    fixture.detectChanges();
+    tick(EnhancedLayoutComponent.DM_PUSH_REFRESH_DEBOUNCE_MS * 2);
+    expect(dmRefresh).toHaveBeenCalledTimes(1);
+    fixture.destroy();
+    flush();
+  }));
+});

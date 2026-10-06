@@ -164,3 +164,54 @@ export type DirectMessageErrorCode = (typeof DIRECT_MESSAGE_ERROR_CODES)[number]
 export function isDirectMessageErrorCode(value: unknown): value is DirectMessageErrorCode {
   return typeof value === 'string' && (DIRECT_MESSAGE_ERROR_CODES as readonly string[]).includes(value);
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Bildirim (issue #106 dilim b). Kalıcı bildirim `type` değeri ve SignalR event adı aynıdır; `data` / push payload'ı
+// `{ conversationId, messageId, senderRole }` taşır (mesaj gövdesi yok). İkisi de güvenilmeyen veri sayılır.
+// ---------------------------------------------------------------------------------------------------------------
+
+/** BadgeService `DirectMessageSentConsumer.NotificationType` — kalıcı bildirim türü ve SignalR event adı. */
+export const DIRECT_MESSAGE_RECEIVED_TYPE = 'DirectMessageReceived';
+
+/** BadgeService `DirectMessageReportedConsumer.NotificationType` — admin grubuna giden şikayet bildirimi. */
+export const DIRECT_MESSAGE_REPORTED_TYPE = 'DirectMessageReported';
+
+export interface DirectMessageNotificationRef {
+  conversationId: number;
+  /** Mesajı GÖNDERENİN rolü; alıcı ve gidilecek sayfa buradan türetilir. */
+  senderRole: DirectMessageSenderRole;
+}
+
+/** `data` / push payload'ından doğrulanmış referans; konuşma Id'si pozitif güvenli tam sayı değilse ya da rol bilinmiyorsa null. */
+export function toDirectMessageNotificationRef(value: unknown): DirectMessageNotificationRef | null {
+  const record = value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+  if (!record) {
+    return null;
+  }
+  const id = record['conversationId'];
+  const role = record['senderRole'];
+  if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0 || (role !== 'Student' && role !== 'Teacher')) {
+    return null;
+  }
+  return { conversationId: id, senderRole: role };
+}
+
+/** `notification.data` JSON string'ini ayrıştırır; bozuksa null. */
+export function parseDirectMessageNotificationData(data: string | null): DirectMessageNotificationRef | null {
+  if (!data) {
+    return null;
+  }
+  try {
+    return toDirectMessageNotificationRef(JSON.parse(data));
+  } catch {
+    return null;
+  }
+}
+
+/** Derin link: öğrenci yazdıysa alıcı öğretmendir (`/student-messages`), öğretmen yazdıysa öğrencidir (`/teacher-messages`). */
+export function directMessageLink(ref: DirectMessageNotificationRef): { commands: string[]; queryParams: Record<string, number> } {
+  return {
+    commands: [ref.senderRole === 'Student' ? '/student-messages' : '/teacher-messages'],
+    queryParams: { conversation: ref.conversationId },
+  };
+}

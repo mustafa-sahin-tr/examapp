@@ -187,4 +187,35 @@ describe('describeNotification (issue #105)', () => {
 
     expect(result.route).toEqual({ commands: ['/my-bookings'] });
   });
+
+  // Issue #106 dilim b
+  it('DirectMessageReceived_StudentSender_LinksTeacherInbox', () => {
+    const result = describeNotification({
+      type: 'DirectMessageReceived',
+      data: JSON.stringify({ conversationId: 7, messageId: 3, senderRole: 'Student' }),
+    });
+
+    expect(result.route).toEqual({ commands: ['/student-messages'], queryParams: { conversation: 7 } });
+    expect(result.icon).toBe('chat');
+  });
+
+  it('DirectMessageReceived_TeacherSender_LinksStudentPage', () => {
+    const result = describeNotification({
+      type: 'DirectMessageReceived',
+      data: JSON.stringify({ conversationId: 9, senderRole: 'Teacher' }),
+    });
+
+    expect(result.route).toEqual({ commands: ['/teacher-messages'], queryParams: { conversation: 9 } });
+  });
+
+  it('DirectMessageReceived_BrokenOrHostileData_NoRoute', () => {
+    for (const data of [null, '{bad', JSON.stringify({ conversationId: 'x', senderRole: 'Student' }),
+      JSON.stringify({ conversationId: 5, senderRole: 'Admin' }), JSON.stringify({ conversationId: 0, senderRole: 'Teacher' })]) {
+      expect(describeNotification({ type: 'DirectMessageReceived', data }).route).withContext(String(data)).toBeNull();
+    }
+  });
+
+  it('DirectMessageReported_HasNoRouteYet', () => {
+    expect(describeNotification({ type: 'DirectMessageReported', data: '{}' }).route).toBeNull();
+  });
 });

@@ -45,6 +45,15 @@ public class OutboxEventRegistryTests
     }
 
     [Fact]
+    public void Resolve_knows_the_direct_message_events_issue_106()
+    {
+        OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<DirectMessageSentEvent>())
+            .ShouldBe(typeof(DirectMessageSentEvent));
+        OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<DirectMessageReportedEvent>())
+            .ShouldBe(typeof(DirectMessageReportedEvent));
+    }
+
+    [Fact]
     public void Resolve_knows_the_booking_teacher_unavailable_event_issue_298()
         => OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<BookingTeacherUnavailableEvent>())
             .ShouldBe(typeof(BookingTeacherUnavailableEvent));

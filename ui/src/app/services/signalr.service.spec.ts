@@ -345,4 +345,51 @@ describe('SignalRService — admin öğretmen bildirimleri', () => {
       expect((snackBar.open.calls.mostRecent().args[0] as string).length).toBe(200);
     });
   });
+
+  // Issue #106 dilim b: DM push'u zil + rozet akışı; payload güvenilmez, toast yok.
+  describe('doğrudan mesaj bildirimleri (issue #106 b)', () => {
+    it('DirectMessageReceived_ValidPayload_EmitsRefStreamAndBellTickWithoutToast', () => {
+      setup(false);
+      const refs: unknown[] = [];
+      let bell = 0;
+      service.directMessageReceived$.subscribe((r) => refs.push(r));
+      service.notificationsChanged$.subscribe(() => bell++);
+
+      handlers.get('DirectMessageReceived')!({
+        notificationId: 1, conversationId: 12, messageId: 99, senderRole: 'Student', title: 't', body: 'b', coalescedCount: 1,
+      });
+
+      expect(refs).toEqual([{ conversationId: 12, senderRole: 'Student' }]);
+      expect(bell).toBe(1);
+      expect(snackBar.open).not.toHaveBeenCalled();
+    });
+
+    it('DirectMessageReceived_HostilePayload_StillTicksBellButEmitsNoRef', () => {
+      setup(false);
+      const refs: unknown[] = [];
+      let bell = 0;
+      service.directMessageReceived$.subscribe((r) => refs.push(r));
+      service.notificationsChanged$.subscribe(() => bell++);
+
+      for (const bad of [null, 'x', { conversationId: '5', senderRole: 'Student' }, { conversationId: -1, senderRole: 'Student' },
+        { conversationId: 5, senderRole: 'Admin' }, { conversationId: 2.5, senderRole: 'Teacher' }]) {
+        expect(() => handlers.get('DirectMessageReceived')!(bad)).not.toThrow();
+      }
+
+      expect(refs).toEqual([]);
+      expect(bell).toBe(6);
+    });
+
+    it('DirectMessageReported_Admin_TicksBell_NonAdmin_Ignored', () => {
+      setup(true);
+      let bell = 0;
+      service.notificationsChanged$.subscribe(() => bell++);
+      handlers.get('DirectMessageReported')!({ reportId: 1, conversationId: 2 });
+      expect(bell).toBe(1);
+
+      authService.hasRole.and.returnValue(false);
+      handlers.get('DirectMessageReported')!({ reportId: 1, conversationId: 2 });
+      expect(bell).toBe(1);
+    });
+  });
 });

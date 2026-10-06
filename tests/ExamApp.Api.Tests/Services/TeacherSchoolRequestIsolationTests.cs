@@ -287,7 +287,7 @@ public class TeacherSchoolRequestIsolationTests : IDisposable
             ctx.Grades.Add(grade);
             await ctx.SaveChangesAsync();
             gradeId = grade.Id;
-            ctx.Students.Add(new Student { UserId = 9001, StudentNumber = "1", SchoolId = school, GradeId = gradeId });
+            ctx.Students.Add(new Student { UserId = 9001, StudentNumber = "1", SchoolId = school, SchoolVerifiedAt = DateTime.UtcNow, GradeId = gradeId });
             ctx.Teachers.Add(new Teacher { UserId = 721, SchoolId = school, AccountApprovedAt = DateTime.UtcNow });
             ctx.SetCurrentUser(721);
             var ws = new Worksheet { Name = "W", Description = "", GradeId = gradeId };

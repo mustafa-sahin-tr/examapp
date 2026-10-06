@@ -44,6 +44,7 @@ import {
   badgeStateText,
   deriveBadgeState,
 } from '../../shared/components/badge-medallion/badge-state.util';
+import { SchoolPendingBannerComponent } from '../../shared/components/school-pending-banner/school-pending-banner.component';
 
 interface AssignmentCardViewModel {
   assignment: AssignedWorksheet;
@@ -90,6 +91,7 @@ export interface EarnedBadgeViewModel {
     NgxChartsModule,
     TranslocoPipe,
     DailyQuestionsCardComponent,
+    SchoolPendingBannerComponent,
   ],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],

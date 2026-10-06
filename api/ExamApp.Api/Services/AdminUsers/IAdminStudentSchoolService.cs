@@ -15,9 +15,11 @@ public interface IAdminStudentSchoolService
     /// hesap yok/upstream) → Requested audit (fail-closed, yazımdan önce) → koşullu UPDATE (okundu anki okul hâlâ aynıysa;
     /// değilse <see cref="AdminStudentSchoolChangeStatus.Conflict"/>) → profil önbelleği + Keycloak <c>school_id</c> ipucu
     /// (best-effort) → sonuç audit'i. Atama/test/booking verisine DOKUNULMAZ (bkz. uygulama notları).
+    /// issue #361: admin ataması üyeliği hemen DOĞRULAR (<c>SchoolVerifiedAt</c> = şimdi, <c>SchoolVerifiedByUserId</c> =
+    /// <paramref name="actorUserId"/>); aynı okulda bekleyen üyelik de bu çağrıyla doğrulanır.
     /// </summary>
     Task<AdminStudentSchoolChangeResult> ChangeSchoolAsync(
-        int studentId, int schoolId, string actorKeycloakId, CancellationToken ct = default);
+        int studentId, int schoolId, string actorKeycloakId, int? actorUserId = null, CancellationToken ct = default);
 }
 
 public enum AdminStudentSchoolChangeStatus

@@ -387,6 +387,8 @@ public sealed class DirectMessagingOptions
     /// (B) "aynı okul" yolu açık mı. VARSAYILAN false: öğrencinin okul üyeliği şu an doğrulanmıyor (öğrenci kendi okulunu
     /// seçebiliyor — #361); doğrulanana kadar okul tek başına mesajlaşma hakkı vermez, CanMessage yalnız (A) atama yolunu
     /// uygular ve liste yalnız <c>relation = "assignment"</c> üretir. #361 kapanınca true yapılır (kural kodu değişmez).
+    /// issue #361 (uygulandı): öğrencinin okulu artık YALNIZ doğrulanmış üyelikten çözülür (<c>UserSchoolResolver</c>) — bayrak
+    /// açılsa da beklemedeki öğrenci B yolunu alamaz. Bayrağı açmak ayrı ürün kararı (appsettings, kod değişmez).
     /// </summary>
     public bool AllowSameSchoolMessaging { get; set; }
 }

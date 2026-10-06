@@ -611,7 +611,7 @@ public class TeacherService : ITeacherService
             // issue #235: sınıf genişletmesi de kapsamlı kaynaktan (TargetStudents) — sayaç okul dışı öğrenciyi saymaz.
             var gradeStudents = await TargetStudents(target)
                 .Where(s => s.GradeId.HasValue && gradeIds.Contains(s.GradeId.Value))
-                .Select(s => new { s.Id, GradeId = s.GradeId!.Value, s.SchoolId })
+                .Select(s => new { s.Id, GradeId = s.GradeId!.Value, SchoolId = s.SchoolVerifiedAt != null ? s.SchoolId : null }) // issue #361
                 .ToListAsync(ct);
 
             foreach (var student in gradeStudents)
@@ -690,7 +690,7 @@ public class TeacherService : ITeacherService
             : await TargetStudents(target)
                 .Where(s => directStudentIds.Contains(s.Id)
                             || (s.GradeId.HasValue && gradeIds.Contains(s.GradeId.Value)))
-                .Select(s => new StudentTarget(s.Id, s.GradeId, s.SchoolId))
+                .Select(s => new StudentTarget(s.Id, s.GradeId, s.SchoolVerifiedAt != null ? s.SchoolId : null)) // issue #361: doğrulanmış okul
                 .ToListAsync(ct);
 
         var studentsById = students.ToDictionary(s => s.Id);
@@ -1111,7 +1111,7 @@ public class TeacherService : ITeacherService
             : await TargetStudents(target)
                 .Where(s => directStudentIds.Contains(s.Id)
                             || (s.GradeId.HasValue && gradeIds.Contains(s.GradeId.Value)))
-                .Select(s => new AssignedStudentTarget(s.Id, s.UserId, s.StudentNumber, s.GradeId, s.SchoolId))
+                .Select(s => new AssignedStudentTarget(s.Id, s.UserId, s.StudentNumber, s.GradeId, s.SchoolVerifiedAt != null ? s.SchoolId : null)) // issue #361
                 .ToListAsync(ct);
 
         if (students.Count == 0)

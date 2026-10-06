@@ -33,6 +33,9 @@ public class AdminStudentListItemDto
     /// <summary>Okul adı (School.Name); okul bağlantısı yoksa legacy Student.SchoolName; o da yoksa null.</summary>
     public string? SchoolName { get; set; }
 
+    /// <summary>issue #361: okul üyeliği öğrencinin kendi seçimi ve henüz onaylanmadı (okul kapsamlı yetki vermez).</summary>
+    public bool SchoolPending { get; set; }
+
     /// <summary>Sınıf; atanmamışsa null.</summary>
     public int? GradeId { get; set; }
 

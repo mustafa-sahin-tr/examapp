@@ -446,9 +446,9 @@ public class WorksheetDetailServiceDetailTests : IDisposable
         ctx.Schools.AddRange(a, b);
         await ctx.SaveChangesAsync();
         await ctx.Students.Where(s => s.Id == w.St1 || s.Id == w.St3)
-            .ExecuteUpdateAsync(set => set.SetProperty(s => s.SchoolId, a.Id));
+            .ExecuteUpdateAsync(set => set.SetProperty(s => s.SchoolId, a.Id).SetProperty(s => s.SchoolVerifiedAt, DateTime.UtcNow));
         await ctx.Students.Where(s => s.Id == w.St2)
-            .ExecuteUpdateAsync(set => set.SetProperty(s => s.SchoolId, b.Id));
+            .ExecuteUpdateAsync(set => set.SetProperty(s => s.SchoolId, b.Id).SetProperty(s => s.SchoolVerifiedAt, DateTime.UtcNow));
         return (a.Id, b.Id);
     }
 
@@ -498,7 +498,7 @@ public class WorksheetDetailServiceDetailTests : IDisposable
         {
             await using var ctx0 = _db.NewContext();
             await ctx0.Students.Where(s => s.Id == w.St1)
-                .ExecuteUpdateAsync(set => set.SetProperty(s => s.SchoolId, (int?)null));
+                .ExecuteUpdateAsync(set => set.SetProperty(s => s.SchoolId, (int?)null).SetProperty(s => s.SchoolVerifiedAt, (DateTime?)null));
         }
         await AddAssignmentAsync(w.WorksheetId, studentId: w.St1, gradeId: null);
         await AddAssignmentAsync(w.WorksheetId, studentId: w.St2, gradeId: null);
@@ -520,7 +520,7 @@ public class WorksheetDetailServiceDetailTests : IDisposable
         await using (var ctx0 = _db.NewContext())
         {
             await ctx0.Students.Where(s => s.Id == w.St1)
-                .ExecuteUpdateAsync(set => set.SetProperty(s => s.SchoolId, (int?)null));
+                .ExecuteUpdateAsync(set => set.SetProperty(s => s.SchoolId, (int?)null).SetProperty(s => s.SchoolVerifiedAt, (DateTime?)null));
         }
         await AddAssignmentAsync(w.WorksheetId, studentId: null, gradeId: w.GradeId, isPlatformWide: true);
 

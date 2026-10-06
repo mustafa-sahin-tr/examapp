@@ -62,6 +62,13 @@ public sealed class SchoolAccessPolicy : ISchoolAccessPolicy
 
         // Parametre null ise EF Core "SchoolId IS NULL" üretir (okulsuz → yalnızca okulsuz kayıtlar).
         var schoolId = requester.SchoolId;
+
+        // issue #361: okullu istek sahibi için öğrenci kapsamı yalnız DOĞRULANMIŞ üyelikler — beklemedeki (kendi seçtiği okul,
+        // SchoolVerifiedAt null) öğrenci okulun öğretmen listelerine/atamalarına/ilerleme görünümlerine girmez. Bekleyen
+        // başvurular yalnız onay ucundan (IStudentSchoolMembershipService) görülür. (Student + null okul yukarıda booking dalı.)
+        if (query is IQueryable<Student> schoolStudents)
+            return (IQueryable<T>)(object)schoolStudents.Where(s => s.SchoolId == schoolId && s.SchoolVerifiedAt != null);
+
         return query.Where(x => x.SchoolId == schoolId);
     }
 

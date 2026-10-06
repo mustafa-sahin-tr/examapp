@@ -326,10 +326,18 @@ public class TestCompletionAnswerLockPostgresTests(IntegrationApiFactory factory
                 var grade = new Grade { Name = "5" };
                 ctx.Grades.Add(grade);
                 await ctx.SaveChangesAsync();
-                var student = new Student { UserId = 1, StudentNumber = "S1", SchoolName = "Okul" };
                 var worksheet = new Worksheet { Name = "W", Description = "", GradeId = grade.Id };
-                ctx.AddRange(student, worksheet);
+                ctx.Add(worksheet);
                 await ctx.SaveChangesAsync();
+                // Student via raw SQL too: the current model has Students columns the old schema lacks (issue #361
+                // SchoolVerifiedAt / LastRejectedSchoolId ...).
+                var student = new
+                {
+                    Id = (await ctx.Database.SqlQueryRaw<int>("""
+                        INSERT INTO "Students" ("UserId", "StudentNumber", "SchoolName", "CreateTime", "IsDeleted")
+                        VALUES (1, 'S1', 'Okul', now(), FALSE) RETURNING "Id" AS "Value"
+                        """).ToListAsync()).Single()
+                };
                 // Raw SQL, not the EF model: the current model has columns the old schema lacks (issue #396
                 // TestInstances.MaxDurationSeconds), so an entity insert would fail against this migration point.
                 const string insertInstance = """

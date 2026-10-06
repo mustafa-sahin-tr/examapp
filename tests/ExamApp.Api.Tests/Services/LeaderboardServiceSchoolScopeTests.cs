@@ -41,11 +41,11 @@ public class LeaderboardServiceSchoolScopeTests : IDisposable
         _schoolA = a.Id;
         _schoolB = b.Id;
 
-        var a1 = new Student { UserId = 1, StudentNumber = "A1", SchoolId = a.Id };
-        var a2 = new Student { UserId = 2, StudentNumber = "A2", SchoolId = a.Id };
-        var a3 = new Student { UserId = 3, StudentNumber = "A3", SchoolId = a.Id };
-        var b1 = new Student { UserId = 4, StudentNumber = "B1", SchoolId = b.Id };
-        var b2 = new Student { UserId = 5, StudentNumber = "B2", SchoolId = b.Id };
+        var a1 = new Student { UserId = 1, StudentNumber = "A1", SchoolId = a.Id, SchoolVerifiedAt = DateTime.UtcNow };
+        var a2 = new Student { UserId = 2, StudentNumber = "A2", SchoolId = a.Id, SchoolVerifiedAt = DateTime.UtcNow };
+        var a3 = new Student { UserId = 3, StudentNumber = "A3", SchoolId = a.Id, SchoolVerifiedAt = DateTime.UtcNow };
+        var b1 = new Student { UserId = 4, StudentNumber = "B1", SchoolId = b.Id, SchoolVerifiedAt = DateTime.UtcNow };
+        var b2 = new Student { UserId = 5, StudentNumber = "B2", SchoolId = b.Id, SchoolVerifiedAt = DateTime.UtcNow };
         var n1 = new Student { UserId = 6, StudentNumber = "N1", SchoolId = null };
         ctx.Students.AddRange(a1, a2, a3, b1, b2, n1);
         await ctx.SaveChangesAsync();

@@ -50,7 +50,7 @@ public class AdminStudentSchoolServiceTests : IDisposable
         var g = new Grade { Name = "7" };
         ctx.AddRange(a, b, g);
         await ctx.SaveChangesAsync();
-        var s = new Student { UserId = 50, StudentNumber = "n", GradeId = g.Id, SchoolId = studentHasSchool ? a.Id : null };
+        var s = new Student { UserId = 50, StudentNumber = "n", GradeId = g.Id, SchoolId = studentHasSchool ? a.Id : null, SchoolVerifiedAt = studentHasSchool ? DateTime.UtcNow : null };
         ctx.Students.Add(s);
         await ctx.SaveChangesAsync();
         return new Seed(a.Id, b.Id, g.Id, s.Id);
@@ -300,5 +300,60 @@ public class AdminStudentSchoolServiceTests : IDisposable
 
             return result;
         }
+    }
+    // ---- issue #361: admin ataması üyeliği doğrular ----
+
+    private async Task<(DateTime? VerifiedAt, int? VerifiedBy, int? SchoolId)> VerificationOfAsync(int studentId)
+    {
+        await using var ctx = _db.NewContext();
+        var row = await ctx.Students.AsNoTracking().SingleAsync(x => x.Id == studentId);
+        return (row.SchoolVerifiedAt, row.SchoolVerifiedByUserId, row.SchoolId);
+    }
+
+    [Fact]
+    public async Task Issue361_admin_assignment_marks_membership_verified_by_actor()
+    {
+        var s = await SeedAsync();
+        await using (var ctx = _db.NewContext())
+        {
+            var service = new AdminStudentSchoolService(ctx, _targets, new AdminUserActionAuditService(ctx), _keycloak);
+            (await service.ChangeSchoolAsync(s.StudentId, s.SchoolB, ActorSub, actorUserId: 77)).Status
+                .ShouldBe(AdminStudentSchoolChangeStatus.Success);
+        }
+
+        var (verifiedAt, verifiedBy, schoolId) = await VerificationOfAsync(s.StudentId);
+        schoolId.ShouldBe(s.SchoolB);
+        verifiedAt.ShouldNotBeNull();
+        verifiedBy.ShouldBe(77);
+    }
+
+    [Fact]
+    public async Task Issue361_pending_membership_in_same_school_is_verified_by_admin_assignment()
+    {
+        var s = await SeedAsync();
+        await using (var ctx = _db.NewContext())
+            await ctx.Students.Where(x => x.Id == s.StudentId)
+                .ExecuteUpdateAsync(set => set.SetProperty(x => x.SchoolVerifiedAt, (DateTime?)null));
+
+        var r = await RunAsync(s.StudentId, s.SchoolA);
+
+        r.Status.ShouldBe(AdminStudentSchoolChangeStatus.Success);
+        r.Changed.ShouldBeTrue();
+        var (verifiedAt, _, schoolId) = await VerificationOfAsync(s.StudentId);
+        schoolId.ShouldBe(s.SchoolA);
+        verifiedAt.ShouldNotBeNull();
+        await _keycloak.Received(1).SetSchoolIdAttributeAsync(TargetSub, s.SchoolA);
+    }
+
+    [Fact]
+    public async Task Issue361_verified_membership_in_same_school_is_a_no_op()
+    {
+        var s = await SeedAsync();
+        var before = await VerificationOfAsync(s.StudentId);
+
+        var r = await RunAsync(s.StudentId, s.SchoolA);
+
+        r.Changed.ShouldBeFalse();
+        (await VerificationOfAsync(s.StudentId)).ShouldBe(before);
     }
 }

@@ -79,9 +79,9 @@ public class WorksheetCommentEndpointsTests(IntegrationApiFactory factory) : Int
             await db.SaveChangesAsync();
 
             db.SetCurrentUser(0);
-            var a = new Student { UserId = StudentAUserId, StudentNumber = "A", GradeId = grade.Id, SchoolId = schoolId };
-            var b = new Student { UserId = StudentBUserId, StudentNumber = "B", GradeId = grade.Id, SchoolId = schoolId };
-            var outsider = new Student { UserId = OutsiderUserId, StudentNumber = "C", GradeId = otherGrade.Id, SchoolId = schoolId };
+            var a = new Student { UserId = StudentAUserId, StudentNumber = "A", GradeId = grade.Id, SchoolId = schoolId, SchoolVerifiedAt = (schoolId) == null ? null : DateTime.UtcNow };
+            var b = new Student { UserId = StudentBUserId, StudentNumber = "B", GradeId = grade.Id, SchoolId = schoolId, SchoolVerifiedAt = (schoolId) == null ? null : DateTime.UtcNow };
+            var outsider = new Student { UserId = OutsiderUserId, StudentNumber = "C", GradeId = otherGrade.Id, SchoolId = schoolId, SchoolVerifiedAt = (schoolId) == null ? null : DateTime.UtcNow };
             db.AddRange(a, b, outsider);
             await db.SaveChangesAsync();
 
@@ -572,7 +572,7 @@ public class WorksheetCommentEndpointsTests(IntegrationApiFactory factory) : Int
         await WithDbAsync(async db =>
         {
             var gradeId = await db.Students.Where(s => s.UserId == StudentAUserId).Select(s => s.GradeId).SingleAsync();
-            db.Students.Add(new Student { UserId = OtherSchoolStudentUserId, StudentNumber = "D", GradeId = gradeId, SchoolId = seed.OtherSchoolId });
+            db.Students.Add(new Student { UserId = OtherSchoolStudentUserId, StudentNumber = "D", GradeId = gradeId, SchoolId = seed.OtherSchoolId, SchoolVerifiedAt = DateTime.UtcNow });
             await db.SaveChangesAsync();
         });
         var a = await ClientAsAsync(StudentAUserId, "Student", Sub("a"), "Student");

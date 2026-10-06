@@ -31,7 +31,7 @@ public class WorksheetAssignmentServiceTests : IDisposable
         ctx.AddRange(grade, school);
         await ctx.SaveChangesAsync();
         var ws = new Worksheet { Name = "Atanacak", Description = "", GradeId = grade.Id, TeacherSharing = sharing };
-        var student = new Student { UserId = 1, StudentNumber = "n", SchoolName = "s", SchoolId = school.Id, GradeId = grade.Id };
+        var student = new Student { UserId = 1, StudentNumber = "n", SchoolName = "s", SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
         var owner = new Teacher { UserId = OwnerUserId, SchoolId = school.Id };
         ctx.AddRange(ws, student, owner);
         await ctx.SaveChangesAsync();
@@ -59,8 +59,8 @@ public class WorksheetAssignmentServiceTests : IDisposable
         await ctx.SaveChangesAsync();
 
         var ws = new Worksheet { Name = "Atanacak", Description = "", GradeId = grade.Id, TeacherSharing = sharing };
-        var studentA = new Student { UserId = 10, StudentNumber = "a", SchoolId = schoolA.Id, GradeId = grade.Id };
-        var studentB = new Student { UserId = 11, StudentNumber = "b", SchoolId = schoolB.Id, GradeId = grade.Id };
+        var studentA = new Student { UserId = 10, StudentNumber = "a", SchoolId = schoolA.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
+        var studentB = new Student { UserId = 11, StudentNumber = "b", SchoolId = schoolB.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
         const int nonOwnerTeacherUserId = 777;
         var nonOwnerTeacher = new Teacher { UserId = nonOwnerTeacherUserId, SchoolId = schoolA.Id };
         ctx.AddRange(ws, studentA, studentB, nonOwnerTeacher);
@@ -381,8 +381,8 @@ public class WorksheetAssignmentServiceTests : IDisposable
             await ctx.SaveChangesAsync();
 
             var ws = new Worksheet { Name = "Atanacak", Description = "", GradeId = grade.Id };
-            var studentA = new Student { UserId = 20, StudentNumber = "a", SchoolId = schoolA.Id, GradeId = grade.Id };
-            var studentB = new Student { UserId = 21, StudentNumber = "b", SchoolId = schoolB.Id, GradeId = grade.Id };
+            var studentA = new Student { UserId = 20, StudentNumber = "a", SchoolId = schoolA.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
+            var studentB = new Student { UserId = 21, StudentNumber = "b", SchoolId = schoolB.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
             ctx.AddRange(ws, studentA, studentB);
             await ctx.SaveChangesAsync();
 

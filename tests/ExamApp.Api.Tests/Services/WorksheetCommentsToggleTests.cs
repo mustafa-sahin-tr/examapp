@@ -131,7 +131,7 @@ public class WorksheetCommentsToggleTests : IDisposable
             ctx.AddRange(grade, school);
             await ctx.SaveChangesAsync();
             var ws = new Worksheet { Name = "Atanacak", Description = "", GradeId = grade.Id, CommentsEnabled = true };
-            var student = new Student { UserId = 77, StudentNumber = "n", SchoolId = school.Id, GradeId = grade.Id };
+            var student = new Student { UserId = 77, StudentNumber = "n", SchoolId = school.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
             ctx.AddRange(ws, student, new Teacher { UserId = Owner, SchoolId = school.Id });
             await ctx.SaveChangesAsync();
             (wsId, studentId, gradeId) = (ws.Id, student.Id, grade.Id);

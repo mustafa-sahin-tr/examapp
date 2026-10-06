@@ -40,8 +40,8 @@ public class TestSessionServiceSchoolBoundaryTests : IDisposable
         await ctx.SaveChangesAsync();
 
         var teacher = new Teacher { UserId = 1, SchoolId = schoolA.Id };
-        var studentA = new Student { UserId = 10, StudentNumber = "a", SchoolId = schoolA.Id, GradeId = grade.Id };
-        var studentB = new Student { UserId = 11, StudentNumber = "b", SchoolId = schoolB.Id, GradeId = grade.Id };
+        var studentA = new Student { UserId = 10, StudentNumber = "a", SchoolId = schoolA.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
+        var studentB = new Student { UserId = 11, StudentNumber = "b", SchoolId = schoolB.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
         ctx.AddRange(teacher, studentA, studentB);
         await ctx.SaveChangesAsync();
 
@@ -130,8 +130,8 @@ public class TestSessionServiceSchoolBoundaryTests : IDisposable
         setupCtx.AddRange(grade, schoolA, schoolB);
         await setupCtx.SaveChangesAsync();
 
-        var studentA = new Student { UserId = 10, StudentNumber = "a", SchoolId = schoolA.Id, GradeId = grade.Id };
-        var studentB = new Student { UserId = 11, StudentNumber = "b", SchoolId = schoolB.Id, GradeId = grade.Id };
+        var studentA = new Student { UserId = 10, StudentNumber = "a", SchoolId = schoolA.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
+        var studentB = new Student { UserId = 11, StudentNumber = "b", SchoolId = schoolB.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id };
         setupCtx.AddRange(studentA, studentB);
         await setupCtx.SaveChangesAsync();
 

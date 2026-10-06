@@ -221,7 +221,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
             var gradeId = await SeedGradeAsync(ctx);
             ctx.SetCurrentUser(TeacherId);
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
-            var student = new Student { UserId = 367, StudentNumber = "a", SchoolId = _teacherSchoolId };
+            var student = new Student { UserId = 367, StudentNumber = "a", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow };
             ctx.AddRange(ws, student);
             await ctx.SaveChangesAsync();
 
@@ -251,7 +251,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
             var gradeId = await SeedGradeAsync(ctx);
             ctx.SetCurrentUser(TeacherId);
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
-            var student = new Student { UserId = 368, StudentNumber = "a", SchoolId = _teacherSchoolId };
+            var student = new Student { UserId = 368, StudentNumber = "a", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow };
             ctx.AddRange(ws, student);
             await ctx.SaveChangesAsync();
 
@@ -284,7 +284,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
             var gradeId = await SeedGradeAsync(ctx);
             ctx.SetCurrentUser(TeacherId);
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
-            var student = new Student { UserId = 400, StudentNumber = "a", SchoolId = _teacherSchoolId };
+            var student = new Student { UserId = 400, StudentNumber = "a", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow };
             ctx.AddRange(ws, student);
             await ctx.SaveChangesAsync();
 
@@ -315,7 +315,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
             var gradeId = await SeedGradeAsync(ctx);
             ctx.SetCurrentUser(TeacherId);
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
-            var student = new Student { UserId = 500, StudentNumber = "a", SchoolId = _teacherSchoolId };
+            var student = new Student { UserId = 500, StudentNumber = "a", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow };
             ctx.AddRange(ws, student);
             await ctx.SaveChangesAsync();
 
@@ -347,7 +347,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
             var gradeId = await SeedGradeAsync(ctx);
             ctx.SetCurrentUser(TeacherId);
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
-            var student = new Student { UserId = 600, StudentNumber = "a", SchoolId = _teacherSchoolId };
+            var student = new Student { UserId = 600, StudentNumber = "a", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow };
             ctx.AddRange(ws, student);
             await ctx.SaveChangesAsync();
 
@@ -388,7 +388,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
             var gradeId = await SeedGradeAsync(ctx);
 
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
-            var student = new Student { UserId = 700, StudentNumber = "a", SchoolId = _teacherSchoolId, GradeId = gradeId };
+            var student = new Student { UserId = 700, StudentNumber = "a", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow, GradeId = gradeId };
             ctx.AddRange(ws, student);
             await ctx.SaveChangesAsync();
 
@@ -429,7 +429,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
             var gradeId = await SeedGradeAsync(ctx);
             ctx.SetCurrentUser(TeacherId);
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
-            var student = new Student { UserId = 800, StudentNumber = "S-42", SchoolId = _teacherSchoolId };
+            var student = new Student { UserId = 800, StudentNumber = "S-42", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow };
             ctx.AddRange(ws, student);
             await ctx.SaveChangesAsync();
 
@@ -456,7 +456,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
             var gradeId = await SeedGradeAsync(ctx);
             ctx.SetCurrentUser(TeacherId);
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
-            var student = new Student { UserId = 900, StudentNumber = "S-99", SchoolId = _teacherSchoolId };
+            var student = new Student { UserId = 900, StudentNumber = "S-99", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow };
             ctx.AddRange(ws, student);
             await ctx.SaveChangesAsync();
 
@@ -495,8 +495,8 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
 
             ctx.SetCurrentUser(TeacherId);
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
-            var studentInTeacherSchool = new Student { UserId = 1011, StudentNumber = "a", SchoolId = _teacherSchoolId, GradeId = gradeId };
-            var studentInOtherSchool = new Student { UserId = 1012, StudentNumber = "b", SchoolId = otherSchool.Id, GradeId = gradeId };
+            var studentInTeacherSchool = new Student { UserId = 1011, StudentNumber = "a", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow, GradeId = gradeId };
+            var studentInOtherSchool = new Student { UserId = 1012, StudentNumber = "b", SchoolId = otherSchool.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = gradeId };
             ctx.AddRange(ws, studentInTeacherSchool, studentInOtherSchool);
             await ctx.SaveChangesAsync();
 
@@ -530,8 +530,8 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
 
             ctx.SetCurrentUser(TeacherId);
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
-            var student1 = new Student { UserId = 4001, StudentNumber = "a", SchoolId = _teacherSchoolId, GradeId = gradeId };
-            var student2 = new Student { UserId = 4002, StudentNumber = "b", SchoolId = _teacherSchoolId, GradeId = gradeId };
+            var student1 = new Student { UserId = 4001, StudentNumber = "a", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow, GradeId = gradeId };
+            var student2 = new Student { UserId = 4002, StudentNumber = "b", SchoolId = _teacherSchoolId, SchoolVerifiedAt = (_teacherSchoolId) == null ? null : DateTime.UtcNow, GradeId = gradeId };
             ctx.AddRange(ws, student1, student2);
             await ctx.SaveChangesAsync();
 

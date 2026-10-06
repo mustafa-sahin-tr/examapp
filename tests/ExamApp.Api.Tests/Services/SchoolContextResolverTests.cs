@@ -103,7 +103,7 @@ public class SchoolContextResolverTests : IDisposable
             await ctx.SaveChangesAsync();
             gradeId = grade.Id;
 
-            ctx.Students.Add(new Student { UserId = 201, StudentNumber = "S201", SchoolId = schoolId, GradeId = gradeId });
+            ctx.Students.Add(new Student { UserId = 201, StudentNumber = "S201", SchoolId = schoolId, SchoolVerifiedAt = DateTime.UtcNow, GradeId = gradeId });
             await ctx.SaveChangesAsync();
         }
 
@@ -127,7 +127,7 @@ public class SchoolContextResolverTests : IDisposable
             var grade = new Grade { Name = "6" };
             ctx.Grades.Add(grade);
             await ctx.SaveChangesAsync();
-            ctx.Students.Add(new Student { UserId = 277, StudentNumber = "S277", SchoolId = schoolId, GradeId = grade.Id });
+            ctx.Students.Add(new Student { UserId = 277, StudentNumber = "S277", SchoolId = schoolId, SchoolVerifiedAt = DateTime.UtcNow, GradeId = grade.Id });
             await ctx.SaveChangesAsync();
         }
 
@@ -291,7 +291,7 @@ public class SchoolContextResolverTests : IDisposable
             // issue #234: Öğretmen satırı (SchoolId=null) ve Öğrenci satırı (SchoolId=X) varsa,
             // profil rolü "Student" olsa bile, çözülen okul Öğretmen satırından (null) gelir.
             ctx.Teachers.Add(new Teacher { UserId = 801, SchoolId = null, IsIndependentTutor = true });
-            ctx.Students.Add(new Student { UserId = 801, StudentNumber = "S801", SchoolId = studentSchoolId, GradeId = gradeId });
+            ctx.Students.Add(new Student { UserId = 801, StudentNumber = "S801", SchoolId = studentSchoolId, SchoolVerifiedAt = DateTime.UtcNow, GradeId = gradeId });
             await ctx.SaveChangesAsync();
         }
 
@@ -321,7 +321,7 @@ public class SchoolContextResolverTests : IDisposable
             // issue #234: Öğretmen satırı (SchoolId=Y) ve Öğrenci satırı (SchoolId=X) varsa,
             // profil rolü "Student" olsa bile, çözülen okul Öğretmen satırından (Y) gelir.
             ctx.Teachers.Add(new Teacher { UserId = 802, SchoolId = teacherSchoolId });
-            ctx.Students.Add(new Student { UserId = 802, StudentNumber = "S802", SchoolId = studentSchoolId, GradeId = gradeId });
+            ctx.Students.Add(new Student { UserId = 802, StudentNumber = "S802", SchoolId = studentSchoolId, SchoolVerifiedAt = DateTime.UtcNow, GradeId = gradeId });
             await ctx.SaveChangesAsync();
         }
 

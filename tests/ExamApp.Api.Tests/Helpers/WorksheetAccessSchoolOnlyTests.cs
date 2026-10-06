@@ -324,7 +324,7 @@ public class WorksheetAccessSchoolOnlyTests
                 new Teacher { UserId = Owner, SchoolId = schoolA },
                 new Teacher { UserId = Stranger, SchoolId = null, IsIndependentTutor = true });
             // #234: kendine öğrenci satırıyla okul yazan bağımsız öğretmen o okulun SchoolOnly worksheet'ini göremez.
-            seed.Students.Add(new Student { UserId = Stranger, StudentNumber = "x", GradeId = grade.Id, SchoolId = schoolA });
+            seed.Students.Add(new Student { UserId = Stranger, StudentNumber = "x", GradeId = grade.Id, SchoolId = schoolA, SchoolVerifiedAt = DateTime.UtcNow });
             await seed.SaveChangesAsync();
         }
 
@@ -352,7 +352,7 @@ public class WorksheetAccessSchoolOnlyTests
             var teacherUser = requesterIsStudentOnly ? Owner : Stranger;
             var studentOnlyUser = requesterIsStudentOnly ? Stranger : Owner;
             seed.Teachers.Add(new Teacher { UserId = teacherUser, SchoolId = schoolA });
-            seed.Students.Add(new Student { UserId = studentOnlyUser, StudentNumber = "x", GradeId = grade.Id, SchoolId = schoolA });
+            seed.Students.Add(new Student { UserId = studentOnlyUser, StudentNumber = "x", GradeId = grade.Id, SchoolId = schoolA, SchoolVerifiedAt = DateTime.UtcNow });
             await seed.SaveChangesAsync();
         }
 

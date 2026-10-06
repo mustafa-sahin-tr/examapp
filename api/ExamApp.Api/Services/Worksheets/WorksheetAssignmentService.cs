@@ -164,7 +164,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 
             // Savunma amaçlı: okullu non-owner için ApplyScope zaten SchoolId eşitliğini garanti eder (farklı okul
             // yukarıda "bulunamadı"), bu dal yalnızca kapsam ile assignmentSchoolId ayrışırsa devreye girer.
-            if (!isOwnerOrAdmin && student.SchoolId != assignmentSchoolId)
+            if (!isOwnerOrAdmin && student.VerifiedSchoolId != assignmentSchoolId) // issue #361: yalnız doğrulanmış üyelik
             {
                 return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.onlyOwnStudents"] };
             }
@@ -408,7 +408,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                 : requester.IsIndependent
                     ? new List<Student>()
                     : students.Where(s => s.GradeId.HasValue && assignment.GradeId.HasValue && s.GradeId.Value == assignment.GradeId.Value
-                        && (!assignment.SchoolId.HasValue || s.SchoolId == assignment.SchoolId)).ToList();
+                        && (!assignment.SchoolId.HasValue || s.VerifiedSchoolId == assignment.SchoolId)).ToList(); // issue #361
 
             var studentDtos = new List<TeacherAssignmentStudentDto>();
 

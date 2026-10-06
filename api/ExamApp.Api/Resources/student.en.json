@@ -8,6 +8,7 @@
     "schoolNotFound": "The selected school was not found.",
     "teacherRecordExists": "An account with a teacher record cannot register as a student.",
     "schoolLocked": "Your school cannot be changed after registration. Contact a system administrator to change it.",
+    "schoolRecentlyRejected": "Your membership request for this school was recently rejected. You can choose the same school again after {0} days, or choose another school.",
     "registrationConflict": "Your registration was updated by another request at the same time. Please refresh and try again.",
     "gradeUpdated": "Student grade updated successfully.",
     "invalidFile": "Invalid file.",
@@ -22,9 +23,17 @@
       "updateFailed": "An error occurred while updating the theme."
     },
     "leaderboard": {
-      "schoolScopeUnavailable": "School leaderboard is not applicable: your account is not linked to a school.",
+      "schoolScopeUnavailable": "School leaderboard is not applicable: your account is not linked to a school or your school membership is awaiting approval.",
       "invalidScope": "Invalid scope. Allowed values: global, school.",
       "invalidPaging": "Invalid paging: skip must be 0 or greater, take must be between 1 and {0}."
+    },
+    "schoolMembership": {
+      "unauthenticated": "User could not be resolved.",
+      "notFound": "Pending school request not found.",
+      "approved": "The student's school membership was approved.",
+      "rejected": "The student's school request was rejected.",
+      "alreadyDecided": "This request was just updated by another action. Refresh the list and try again.",
+      "rateLimited": "Too many requests in a short time. Please wait a moment and try again."
     }
   }
 }

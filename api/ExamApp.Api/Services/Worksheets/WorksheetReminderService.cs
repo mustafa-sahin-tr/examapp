@@ -189,7 +189,7 @@ public class WorksheetReminderService : IWorksheetReminderService
 
         var studentScope = await _context.Students.AsNoTracking()
             .Where(s => s.Id == studentId)
-            .Select(s => new { s.GradeId, s.SchoolId })
+            .Select(s => new { s.GradeId, SchoolId = s.SchoolVerifiedAt != null ? s.SchoolId : null }) // issue #361: yalnız doğrulanmış okul
             .FirstOrDefaultAsync(ct);
 
         var assigned = await _context.WorksheetAssignments.AsNoTracking()

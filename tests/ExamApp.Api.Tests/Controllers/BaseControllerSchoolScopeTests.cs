@@ -132,7 +132,7 @@ public class BaseControllerSchoolScopeTests : IDisposable
         var schoolId = await SeedSchoolAsync();
         await using (var ctx = _db.NewContext())
         {
-            ctx.Students.Add(new Student { UserId = 201, StudentNumber = "S201", SchoolId = schoolId });
+            ctx.Students.Add(new Student { UserId = 201, StudentNumber = "S201", SchoolId = schoolId, SchoolVerifiedAt = DateTime.UtcNow });
             await ctx.SaveChangesAsync();
         }
 

@@ -114,7 +114,7 @@ public class RegistrationSchoolLockTests : IDisposable
     {
         var (schoolA, schoolB, gradeId) = await SeedAsync();
         var interceptor = new ConcurrentDuplicateInterceptor(ctx =>
-            ctx.Add(new Student { UserId = 504, StudentNumber = "concurrent", SchoolId = schoolB, GradeId = gradeId }));
+            ctx.Add(new Student { UserId = 504, StudentNumber = "concurrent", SchoolId = schoolB, SchoolVerifiedAt = DateTime.UtcNow, GradeId = gradeId }));
 
         ResponseBaseDto r;
         await using (var ctx = _db.NewContext(interceptor))

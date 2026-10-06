@@ -152,6 +152,24 @@ export const routes: Routes = [
           ),
       },
       {
+        // Issue #361: okulun onaylı öğretmeni — kendi okulunu seçen öğrencilerin üyelik onayı (kapsam sunucuda).
+        path: 'student-school-requests',
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
+        loadComponent: () =>
+          import('./pages/student-school-requests/student-school-requests.component').then(
+            (m) => m.StudentSchoolRequestsComponent
+          ),
+      },
+      {
+        // Issue #361: platform admin — tüm okulların bekleyen öğrenci üyelikleri (öğretmen sayfasıyla aynı komponent).
+        path: 'admin/student-school-requests',
+        canActivate: [authGuard, adminGuard],
+        loadComponent: () =>
+          import('./pages/student-school-requests/student-school-requests.component').then(
+            (m) => m.StudentSchoolRequestsComponent
+          ),
+      },
+      {
         path: 'admin',
         canActivate: [authGuard, adminGuard],
         loadComponent: () => import('./pages/admin/admin-home/admin-home.component').then((m) => m.AdminHomeComponent),

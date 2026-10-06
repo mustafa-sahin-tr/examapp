@@ -182,10 +182,14 @@ public class ClassifierCacheService : IClassifierCacheService
             ttl = _options.Ttl,
         };
 
-        var url = $"{_options.BaseUrl.TrimEnd('/')}/cachedContents?key={_options.ApiKey}";
+        var url = $"{_options.BaseUrl.TrimEnd('/')}/cachedContents";
         using var content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
 
-        var response = await client.PostAsync(url, content, ct);
+        // API key goes in a header (not the URL) so it never lands in logs (#370).
+        using var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
+        request.Headers.Add("x-goog-api-key", _options.ApiKey.Trim());
+
+        using var response = await client.SendAsync(request, ct);
         var payload = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException($"{(int)response.StatusCode} {response.ReasonPhrase}. {Truncate(payload)}");

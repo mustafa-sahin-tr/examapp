@@ -10,6 +10,7 @@ namespace BadgeService.Tests;
 public class GeminiQuestionClassifierTests
 {
     private const string ExamApi = "https://exam.test";
+    private const string TestKey = "secret-key-123";
 
     private static string GeminiText(string json) =>
         $$"""
@@ -46,6 +47,34 @@ public class GeminiQuestionClassifierTests
         var http = HappyHttp("{}");
         await NewClassifier(http, new GeminiOptions { ApiKey = "" }).ClassifyAndPersistAsync(1, default);
         http.Requests.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Sends_the_api_key_in_the_header_not_the_url()
+    {
+        var http = HappyHttp("""{ "subTopicIds": [1], "difficultyLevel": 3, "reasoning": "r" }""");
+
+        await NewClassifier(http, new GeminiOptions { ApiKey = "secret-key-123", Model = "models/gemini-x" })
+            .ClassifyAndPersistAsync(1, default);
+
+        var gemini = http.Requests.Single(r => r.RequestUri!.ToString().Contains(":generateContent"));
+        gemini.RequestUri!.ToString().ShouldNotContain("key=");
+        gemini.RequestUri!.ToString().ShouldNotContain("secret-key-123");
+        gemini.Headers.GetValues("x-goog-api-key").ShouldBe(new[] { "secret-key-123" });
+        // the key must not leak to the exam API calls
+        http.Requests.Where(r => r != gemini).ShouldAllBe(r => !r.Headers.Contains("x-goog-api-key"));
+    }
+
+    [Fact]
+    public async Task Trims_the_api_key_before_putting_it_in_the_header()
+    {
+        var http = HappyHttp("""{ "subTopicIds": [1], "difficultyLevel": 3, "reasoning": "r" }""");
+
+        await NewClassifier(http, new GeminiOptions { ApiKey = TestKey + "\n", Model = "models/gemini-x" })
+            .ClassifyAndPersistAsync(1, default);
+
+        var gemini = http.Requests.Single(r => r.RequestUri!.ToString().Contains(":generateContent"));
+        gemini.Headers.GetValues("x-goog-api-key").ShouldBe(new[] { "secret-key-123" });
     }
 
     [Fact]

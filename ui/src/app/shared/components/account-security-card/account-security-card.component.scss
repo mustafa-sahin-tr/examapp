@@ -1,0 +1,28 @@
+:host {
+  display: block;
+}
+
+.acc-card {
+  background: var(--ms-surface-weak);
+  border: 1px solid var(--ms-border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+
+  h2 {
+    margin: 0 0 0.75rem;
+    font-family: var(--mainFontFamily);
+    font-size: 1.0625rem;
+  }
+}
+
+.acc-card__hint {
+  margin: 0.5rem 0 0.75rem;
+  opacity: 0.75;
+  font-size: 0.8125rem;
+}
+
+.acc-card__link mat-icon {
+  margin-right: 0.25rem;
+}

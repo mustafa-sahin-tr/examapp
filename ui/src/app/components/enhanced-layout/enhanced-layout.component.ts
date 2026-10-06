@@ -29,6 +29,7 @@ import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { ColorSchemeToggleComponent } from '../../shared/components/color-scheme-toggle/color-scheme-toggle.component';
 import { LanguageSwitcherComponent } from '../../shared/components/language-switcher/language-switcher.component';
 import { resolveActiveMenuItemId } from './active-menu-item';
+import { SETTINGS_URL, settingsUrlFor } from '../../shared/guards/settings.guard';
 
 interface MenuItem {
   id: string;
@@ -137,8 +138,13 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   private readonly document = inject(DOCUMENT);
   /** Issue #106: DM menü rozeti — okunmamış mesajı olan konuşma sayısı. */
   readonly directMessageUnreadCount = this.directMessageService.unreadCount;
-  /** Öğrenci mi — Ayarlar (/student-profile) yalnız öğrenciye ait (issue #373, #375). */
+  /** Öğrenci mi — öğrencinin Ayarlar'ı /student-profile (issue #373, #375). */
   readonly isStudent = this.authService.hasRealmRole('Student');
+  /**
+   * Issue #417: Ayarlar her role görünür; rota guard ile aynı kuraldan (`settingsUrlFor`): Teacher/Admin → /settings,
+   * yalnız öğrenci → /student-profile. Roller token'dan okunur ve oturum boyunca değişmez, bu yüzden sabit.
+   */
+  readonly settingsRoute = settingsUrlFor(this.authService) ?? SETTINGS_URL;
   /** Pencere odağında DM sayacı en sık bu aralıkla tazelenir (polling değil; yalnız odak olayı). */
   static readonly DM_FOCUS_REFRESH_THROTTLE_MS = 30_000;
   /** Issue #106 b: DM push'ları arka arkaya gelirse tek rozet isteği (ms). */
@@ -212,8 +218,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'study-links', labelKey: 'menu.studyLinks', icon: 'video_library', route: '/study-links', type: 'menu', roles: ['Teacher'] },
     { id: 'exam', labelKey: 'menu.examAuthoring', icon: 'app_registration', route: '/exam', type: 'menu', roles: ['Teacher'] },
     { id: 'reports', labelKey: 'menu.reports', icon: 'analytics', route: '/certificates', type: 'menu' },
-    // Issue #373: /student-profile yalnız öğrenci verisiyle çalışır — öğretmen/admin'de boş açılıyordu.
-    { id: 'settings', labelKey: 'menu.settings', icon: 'settings', route: '/student-profile', type: 'menu', roles: ['Student'] },
+    // Issue #417: tüm roller (onay bekleyen öğretmen dahil — dil/hesap ayarı); rota role göre (#373: öğrenci /student-profile).
+    { id: 'settings', labelKey: 'menu.settings', icon: 'settings', route: this.settingsRoute, type: 'menu' },
     { id: 'admin-dashboard', labelKey: 'menu.dashboard', icon: 'insights', route: '/admin/dashboard', type: 'menu', roles: ['Admin'] },
     { id: 'admin', labelKey: 'menu.admin', icon: 'admin_panel_settings', route: '/admin', type: 'menu', roles: ['Admin'] },
     { id: 'admin-teacher-approvals', labelKey: 'menu.teacherApprovals', icon: 'how_to_reg', route: '/admin/teacher-approvals', type: 'menu', roles: ['Admin'] },
@@ -232,8 +238,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'teacher-approval-status', labelKey: 'menu.teacherApprovalStatus', icon: 'hourglass_top', route: TEACHER_APPROVAL_PENDING_URL, type: 'menu', onlyUnapprovedTeacher: true },
     { id: 'dashboard', labelKey: 'bottomNav.home', icon: 'home', route: '/dashboard', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'exams', labelKey: 'menu.exams', icon: 'quiz', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
-    // Issue #373: /student-profile yalnız öğrenci verisiyle çalışır — öğretmen/admin'de boş açılıyordu.
-    { id: 'settings', labelKey: 'menu.settings', icon: 'settings', route: '/student-profile', type: 'menu', roles: ['Student'] },
+    // Issue #417: tüm roller (onay bekleyen öğretmen dahil — dil/hesap ayarı); rota role göre (#373: öğrenci /student-profile).
+    { id: 'settings', labelKey: 'menu.settings', icon: 'settings', route: this.settingsRoute, type: 'menu' },
   ];
 
   /**

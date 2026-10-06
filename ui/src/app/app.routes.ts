@@ -6,6 +6,7 @@ import { independentTeacherGuard } from './shared/guards/independent-teacher.gua
 import { studentGuard } from './shared/guards/student.guard';
 import { roleGuard } from './shared/guards/role.guard';
 import { approvedTeacherGuard } from './shared/guards/approved-teacher.guard';
+import { settingsGuard } from './shared/guards/settings.guard';
 import { TEACHER_APPROVAL_PENDING_PATH } from './models/teacher-approval.model';
 import { QuestionComponent } from './pages/question/question.component';
 import { QuestionViewComponent } from './pages/question-view/question-view.component';
@@ -212,6 +213,13 @@ export const routes: Routes = [
         canActivate: [authGuard, studentGuard],
         loadComponent: () =>
           import('./pages/practice-solve/practice-solve.component').then((m) => m.PracticeSolveComponent),
+      },
+      {
+        // Issue #417: öğretmen/admin Ayarlar sayfası (dil, hesap/şifre, öğretmen profili bağlantıları).
+        // Öğrenci /student-profile'a yönlenir; onay bekleyen öğretmene de açık (approvedTeacherGuard yok).
+        path: 'settings',
+        canActivate: [authGuard, settingsGuard],
+        loadComponent: () => import('./pages/settings/settings.component').then((m) => m.SettingsComponent),
       },
       {
         // Issue #95: bağımsız öğretmenin özel ders profili (dersler, ücret, online/yüz yüze).

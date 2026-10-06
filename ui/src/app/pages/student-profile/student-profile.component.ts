@@ -24,6 +24,7 @@ import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@js
 import { LocaleService } from '../../services/locale.service';
 import { isAppLocale, localeDefinitionOf } from '../../models/locale';
 import { currentUserId } from '../../shared/utils/current-user-id.util';
+import { AccountSecurityCardComponent } from '../../shared/components/account-security-card/account-security-card.component';
 
 /** Sayfanin Transloco scope'u: `public/i18n/student-profile/<lang>.json` (issue #183). */
 const SCOPE = 'student-profile';
@@ -56,6 +57,7 @@ export const STAT_LABEL_KEYS = [
     BadgeThropyComponent,
     UserThemeSwitcherComponent,
     TranslocoDirective,
+    AccountSecurityCardComponent,
   ],
   providers: [provideTranslocoScope(SCOPE)],
 })

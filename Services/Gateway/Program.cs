@@ -160,12 +160,15 @@ builder.Services.AddOcelot();
 var app = builder.Build();
 
 app.UseCors("SignalRCors");
+app.UseTrustedForwardedFor(app.Configuration); // #368: yalnız KnownProxies/KnownNetworks tanımlıysa XFF çözülür
+app.UseLoginRateLimit(app.Configuration); // #368: giriş POST uçları, IP başına
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRouteRoleAuth();
 
 app.Use(async (context, next) =>
 {
+    // RemoteIpAddress: güvenilir proxy tanımlıysa çözülmüş istemci IP, değilse TCP adresi; istemcinin XFF gönderdiği asla taşınmaz.
     context.Request.Headers["X-Forwarded-For"] = context.Connection.RemoteIpAddress?.ToString();
     context.Request.Headers["X-Forwarded-Proto"] = context.Request.Scheme;
     context.Request.Headers["X-Forwarded-Port"] = context.Request.Host.Port?.ToString() ?? "80";

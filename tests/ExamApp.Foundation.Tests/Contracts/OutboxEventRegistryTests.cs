@@ -58,6 +58,33 @@ public class OutboxEventRegistryTests
         => OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<BookingTeacherUnavailableEvent>())
             .ShouldBe(typeof(BookingTeacherUnavailableEvent));
 
+    [Fact]
+    public void Resolve_knows_the_parent_link_events_issue_419()
+    {
+        OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<ParentLinkedEvent>()).ShouldBe(typeof(ParentLinkedEvent));
+        OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<ParentUnlinkedEvent>()).ShouldBe(typeof(ParentUnlinkedEvent));
+    }
+
+    /// <summary>
+    /// issue #419: exam-outbox-publisher (exam_outbox_pub) yeni exchange'leri declare + publish edebilmeli — üç izin kaynağı
+    /// (rabbitmq/definitions.json, deploy/scripts/rabbitmq-init.sh, deploy/gcp/k8s/stateful-services.yaml) aynı listeyi taşır.
+    /// </summary>
+    [Theory]
+    [InlineData("rabbitmq/definitions.json")]
+    [InlineData("deploy/scripts/rabbitmq-init.sh")]
+    [InlineData("deploy/gcp/k8s/stateful-services.yaml")]
+    public void Exam_outbox_publisher_may_publish_the_parent_link_events_issue_419(string relativePath)
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "rabbitmq", "definitions.json")))
+            dir = dir.Parent;
+        dir.ShouldNotBeNull("repo kökü bulunamadı");
+
+        var text = File.ReadAllText(Path.Combine(dir!.FullName, relativePath));
+        foreach (var name in new[] { nameof(ParentLinkedEvent), nameof(ParentUnlinkedEvent) })
+            text.ShouldContain("|" + name, Case.Sensitive, $"{relativePath} exam_outbox_pub listesinde {name} yok");
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]

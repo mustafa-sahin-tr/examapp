@@ -39,4 +39,24 @@ public static class EmailMask
 
         return $"{local[..firstLength]}{Mask}@{domain}";
     }
+
+    /// <summary>
+    /// issue #419: alan adını da maskeler — <c>ayse@gmail.com</c> → <c>a***@g***.com</c>. Öğrenciye, kendisine bağlanmak
+    /// isteyen velinin e-postası tanıyabileceği kadar (ilk harfler + üst düzey alan) gösterilir; tam adres sızmaz.
+    /// Geçersiz biçimde <see cref="Apply"/> ile aynı güvenli sonuçlar.
+    /// </summary>
+    public static string ApplyWithDomain(string? email)
+    {
+        var masked = Apply(email);
+        var at = masked.LastIndexOf('@');
+        if (at < 0)
+            return masked;
+
+        var domain = masked[(at + 1)..];
+        var dot = domain.LastIndexOf('.');
+        var label = dot > 0 ? domain[..dot] : domain;
+        var suffix = dot > 0 ? domain[dot..] : string.Empty;
+        var firstLength = StringInfo.GetNextTextElementLength(label);
+        return $"{masked[..(at + 1)]}{label[..firstLength]}{Mask}{suffix}";
+    }
 }

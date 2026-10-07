@@ -309,6 +309,13 @@ export const routes: Routes = [
           import('./pages/student-messages/student-messages.component').then((m) => m.StudentMessagesComponent),
       },
       {
+        // Issue #419: velinin "Çocuklarım" sayfası — davet koduyla çocuk ekleme + bağlı çocuklar (tam panel #420).
+        path: 'my-children',
+        canActivate: [authGuard, roleGuard('Parent')],
+        loadComponent: () =>
+          import('./pages/parent-children/parent-children.component').then((m) => m.ParentChildrenComponent),
+      },
+      {
         // Issue #97: onaylı bir randevunun video görüşme odası (iki taraf da girer).
         path: 'lessons/:bookingId/video',
         canActivate: [authGuard, roleGuard('Student', 'Teacher'), approvedTeacherGuard],

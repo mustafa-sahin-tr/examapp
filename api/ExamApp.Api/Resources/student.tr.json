@@ -7,6 +7,7 @@
     "registered": "Öğrenci başarıyla kaydedildi.",
     "schoolNotFound": "Seçilen okul bulunamadı.",
     "teacherRecordExists": "Öğretmen kaydı olan bir hesap öğrenci olarak kaydolamaz.",
+    "parentRecordExists": "Veli hesabı öğrenci olarak kaydolamaz.",
     "schoolLocked": "Okul bilgisi kayıttan sonra değiştirilemez. Okul değişikliği için sistem yöneticisiyle iletişime geçin.",
     "schoolRecentlyRejected": "Bu okula üyelik başvurunuz kısa süre önce reddedildi. Aynı okulu {0} gün sonra yeniden seçebilir ya da başka bir okul seçebilirsiniz.",
     "registrationConflict": "Kaydınız aynı anda başka bir istekle güncellendi. Lütfen sayfayı yenileyip tekrar deneyin.",

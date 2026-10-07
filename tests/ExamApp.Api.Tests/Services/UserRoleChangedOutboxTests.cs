@@ -10,6 +10,7 @@ using ExamApp.Api.Services.Parents;
 using ExamApp.Api.Services.UserRoles;
 using ExamApp.Api.Tests.Support;
 using ExamApp.Foundation.Contracts;
+using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -146,6 +147,40 @@ public class UserRoleChangedOutboxTests : IDisposable
         (await RoleEventsAsync()).Count.ShouldBe(1);
     }
 
+    [Theory]
+    [InlineData(UserRole.Parent, 33, true)]   // öğrenci satırı → veli olamaz
+    [InlineData(UserRole.Parent, 34, true)]   // öğretmen satırı → veli olamaz
+    [InlineData(UserRole.Parent, 36, false)]
+    [InlineData(UserRole.Student, 35, true)]  // veli satırı → öğrenci olamaz
+    [InlineData(UserRole.Teacher, 35, true)]  // veli satırı → öğretmen olamaz
+    [InlineData(UserRole.Student, 34, false)] // öğrenci ↔ öğretmen dışlaması burada değil (kayıt servisleri)
+    public async Task Role_exclusivity_checks_rows_issue_419(UserRole target, int userId, bool expected)
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.Students.Add(new Student { UserId = 33, StudentNumber = "s33" });
+            ctx.Teachers.Add(new Teacher { UserId = 34 });
+            ctx.Parents.Add(new Parent { UserId = 35 });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var check = _db.NewContext();
+        (await new UserRoleExclusivity(check).ConflictsAsync(userId, target, [])).ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData(UserRole.Parent, "Student", true)]
+    [InlineData(UserRole.Parent, "teacher", true)]
+    [InlineData(UserRole.Parent, "Parent", false)]
+    [InlineData(UserRole.Student, "Parent", true)]
+    [InlineData(UserRole.Teacher, "Parent", true)]
+    [InlineData(UserRole.Teacher, "Student", false)]
+    public async Task Role_exclusivity_checks_claimed_roles_issue_419(UserRole target, string claimed, bool expected)
+    {
+        await using var check = _db.NewContext();
+        (await new UserRoleExclusivity(check).ConflictsAsync(99, target, [claimed])).ShouldBe(expected);
+    }
+
     [Fact]
     public async Task Parent_row_and_event_are_retry_safe_on_a_transient_commit_failure()
     {
@@ -174,7 +209,7 @@ public class UserRoleChangedOutboxTests : IDisposable
         return http;
     }
 
-    private static ServiceProvider Services(IUserRoleChangeRecorder recorder, string? profileRole)
+    private ServiceProvider Services(IUserRoleChangeRecorder recorder, string? profileRole)
     {
         var profiles = Substitute.For<IUserProfileProvider>();
         profiles.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -188,6 +223,8 @@ public class UserRoleChangedOutboxTests : IDisposable
             .AddSingleton(recorder)
             .AddSingleton<IDistributedCache>(new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())))
             .AddSingleton<UserProfileCacheService>()
+            .AddScoped(_ => _db.NewContext())
+            .AddScoped<IUserRoleExclusivity, UserRoleExclusivity>() // issue #419: gerçek kural, SQLite üzerinde
             .BuildServiceProvider();
     }
 
@@ -267,5 +304,66 @@ public class UserRoleChangedOutboxTests : IDisposable
             keycloak.SetRoleAsync(Sub, UserRole.Parent);
             parentService.RegisterAsync(40, Arg.Is<UserRoleChangeRequest>(r => r.KeycloakId == Sub), Arg.Any<CancellationToken>());
         });
+    }
+
+    // issue #419 review (D4): öğrenci/öğretmen hesabı kendini veliye çeviremez — Keycloak rolü atanmadan 409.
+    [Theory]
+    [InlineData("Student", null, false)]
+    [InlineData("Teacher", null, false)]
+    [InlineData(null, "Student", false)] // yalnız auth-api profil rolü (JWT henüz güncellenmemiş)
+    [InlineData(null, null, true)]
+    public async Task Parent_register_rejects_existing_student_or_teacher_before_touching_keycloak(
+        string? jwtRole, string? profileRole, bool hasRow)
+    {
+        if (hasRow)
+            await SeedRowAsync(new Student { UserId = 40, StudentNumber = "s40" });
+        var parentService = Substitute.For<IParentService>();
+        var keycloak = Substitute.For<IKeycloakService>();
+        var services = Services(Substitute.For<IUserRoleChangeRecorder>(), profileRole);
+        var controller = new ParentController(parentService, keycloak)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = jwtRole == null ? Http(services) : Http(services, jwtRole)
+            }
+        };
+
+        var conflict = (await controller.RegisterParent()).ShouldBeOfType<ConflictObjectResult>();
+
+        conflict.Value!.GetType().GetProperty("message")!.GetValue(conflict.Value)
+            .ShouldBe(FallbackMessageLocalizer.Instance["parent.otherRoleExists"].Value);
+        await keycloak.DidNotReceiveWithAnyArgs().SetRoleAsync(default!, default);
+        await parentService.DidNotReceiveWithAnyArgs().RegisterAsync(default, default!, default);
+    }
+
+    // issue #419 re-review: veli hesabı kendini öğrenciye/öğretmene çeviremez — Keycloak rolü atanmadan 409.
+    [Theory]
+    [InlineData("Parent", null, false)]
+    [InlineData(null, "Parent", false)]
+    [InlineData(null, null, true)]
+    public async Task Teacher_register_rejects_parent_accounts_before_touching_keycloak(string? jwtRole, string? profileRole, bool hasRow)
+    {
+        if (hasRow)
+            await SeedRowAsync(new Parent { UserId = 40 });
+        var keycloak = Substitute.For<IKeycloakService>();
+        var teacherService = Substitute.For<ITeacherService>();
+        var services = Services(Substitute.For<IUserRoleChangeRecorder>(), profileRole);
+        var controller = new TeacherController(teacherService, services.GetRequiredService<UserProfileCacheService>(), keycloak,
+            Substitute.For<ILogger<TeacherController>>())
+        { ControllerContext = new ControllerContext { HttpContext = jwtRole == null ? Http(services) : Http(services, jwtRole) } };
+
+        var conflict = (await controller.RegisterTeacher(new RegisterTeacherDto())).ShouldBeOfType<ConflictObjectResult>();
+
+        conflict.Value!.GetType().GetProperty("message")!.GetValue(conflict.Value)
+            .ShouldBe(FallbackMessageLocalizer.Instance["teacher.parentRecordExists"].Value);
+        await teacherService.DidNotReceiveWithAnyArgs().Save(default, default!);
+        await keycloak.DidNotReceiveWithAnyArgs().SetRoleAsync(default!, default);
+    }
+
+    private async Task SeedRowAsync(object entity)
+    {
+        await using var ctx = _db.NewContext();
+        ctx.Add(entity);
+        await ctx.SaveChangesAsync();
     }
 }

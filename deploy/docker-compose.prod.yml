@@ -225,6 +225,8 @@ services:
       Keycloak__ServiceClientSecret: ${KEYCLOAK_SERVICE_CLIENT_SECRET}
       Keycloak__TokenUrl: realms/exam-realm/protocol/openid-connect/token
       Keycloak__RealmRolesUrl: admin/realms/exam-realm/roles
+      # Issue #419: parent invite code HMAC pepper (>= 32 chars, not devOnly) — missing => startup fail-fast.
+      ParentLinks__InviteCodePepper: ${PARENT_INVITE_CODE_PEPPER:?PARENT_INVITE_CODE_PEPPER must be set}
       # Issue #225: exam API hosts a MassTransit consumer (queue "exam-api") for
       # BadgeService's StudentPointsChangedEvent. In Production a missing
       # RabbitMQ__Host fails startup.

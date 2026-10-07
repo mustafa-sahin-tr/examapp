@@ -36,4 +36,14 @@ public class EmailMaskTests
     [InlineData("@")]
     public void Malformed_email_leaks_nothing(string input)
         => EmailMask.Apply(input).ShouldBe("***");
+
+    // issue #419: veli isteğinde öğrenciye gösterilen e-posta alan adı da maskeli.
+    [Theory]
+    [InlineData("ayse@gmail.com", "a***@g***.com")]
+    [InlineData("a@hedefokul.com.tr", "***@h***.tr")]
+    [InlineData("veli@localhost", "v***@l***")]
+    [InlineData("no-at-sign", "***")]
+    [InlineData(null, "")]
+    public void ApplyWithDomain_masks_local_and_domain(string? input, string expected)
+        => EmailMask.ApplyWithDomain(input).ShouldBe(expected);
 }

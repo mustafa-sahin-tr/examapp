@@ -10,6 +10,9 @@ using Microsoft.AspNetCore.HttpOverrides;
 /// Neden Ocelot RateLimitOptions değil: istemciyi <c>ClientId</c> başlığıyla tanımlar (IP değil, sahtelenebilir),
 /// gövdeye (grant_type=refresh_token) bakıp muaf tutamaz ve wildcard route'ları path son ekine göre ayıramaz.
 ///
+/// Issue #419 review: veli davet kodu denemesi (POST /api/exam/parent-links/redeem) da aynı IP kovasından düşer — kod
+/// tahmini çok hesapla dağıtılsa bile tek IP'den gelen deneme hızı sınırlı kalır (hesap başına limitler exam API'de).
+///
 /// Eşleme TERS çevrilmiştir: /realms/** ve /auth/realms/** altındaki HER POST ile /api/auth/login ve /token sayılır;
 /// yalnız açık allowlist muaftır: token uçlarında grant_type=refresh_token ve login-actions/restart.
 /// Path önce kanonikleştirilir (segment başına ';...' matrix parametreleri atılır, %2F/%5C ayraç sayılır,
@@ -18,6 +21,9 @@ using Microsoft.AspNetCore.HttpOverrides;
 public static class LoginRateLimitExtensions
 {
     public const int DefaultPermitLimit = 100;
+
+    /// <summary>Issue #419: veli davet kodu redeem ucu (gateway yolu, kanonik biçim).</summary>
+    public const string ParentInviteRedeemPath = "/api/exam/parent-links/redeem";
     public const int DefaultWindowSeconds = 60;
     private const int MaxRefreshProbeBytes = 16 * 1024;
 
@@ -126,6 +132,24 @@ public static class LoginRateLimitExtensions
         return "/" + string.Join('/', stack);
     }
 
+    /// <summary>
+    /// Issue #419 re-review: redeem eşleşmesi kodlamaya dayanıklı — path, değişmeyene kadar (en fazla 5 tur) tekrar tekrar
+    /// percent-decode edilir, sonra kanonikleştirilir; <c>.../parent-links/redeem</c> ile BİTEN her yol sayılır (çift kodlanmış
+    /// <c>%252F</c>, <c>%2572edeem</c> ya da ön ekli varyantlar kovayı atlayamaz).
+    /// </summary>
+    public static bool IsParentInviteRedeem(string? rawPath)
+    {
+        var path = rawPath ?? string.Empty;
+        for (var i = 0; i < 5; i++)
+        {
+            var decoded = Uri.UnescapeDataString(path);
+            if (decoded == path) break;
+            path = decoded;
+        }
+        var canonical = Canonicalize(path);
+        return canonical.EndsWith("/parent-links/redeem", StringComparison.Ordinal);
+    }
+
     public static bool ContainsTraversal(string? rawPath)
     {
         var path = (rawPath ?? string.Empty)
@@ -150,6 +174,7 @@ public static class LoginRateLimitExtensions
         var path = Canonicalize(request.Path.Value);
 
         if (path == "/api/auth/login") return true;
+        if (IsParentInviteRedeem(request.Path.Value)) return true;
         if (path == "/token") return !await IsRefreshGrantAsync(request, ct);
 
         if (!path.StartsWith("/realms/", StringComparison.Ordinal) && !path.StartsWith("/auth/realms/", StringComparison.Ordinal))

@@ -315,6 +315,10 @@ builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentLinkService, Exam
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentChildAccess, ExamApp.Api.Services.Parents.ParentChildAccess>();
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentAccessAuditLog, ExamApp.Api.Services.Parents.ParentAccessAuditLog>();
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentDashboardService, ExamApp.Api.Services.Parents.ParentDashboardService>();
+// issue #421 (veli V3): ödev/test listesi + test sonuç özeti (salt okunur; kapı → audit → veri).
+builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentAssignmentService, ExamApp.Api.Services.Parents.ParentAssignmentService>();
+// issue #421 review: test sonucu 404 taraması uyarısı (süreç içi sayaç, veli başına 10 dk'da 20'yi aşınca Warning).
+builder.Services.AddSingleton<ExamApp.Api.Services.Parents.IParentTestResultProbeMonitor, ExamApp.Api.Services.Parents.ParentTestResultProbeMonitor>();
 builder.Services.AddScoped<ExamApp.Api.Services.UserRoles.IUserRoleChangeRecorder, ExamApp.Api.Services.UserRoles.UserRoleChangeRecorder>();
 // issue #419: veli ↔ öğrenci/öğretmen rol dışlaması (student/teacher/parent register).
 builder.Services.AddScoped<ExamApp.Api.Services.UserRoles.IUserRoleExclusivity, ExamApp.Api.Services.UserRoles.UserRoleExclusivity>();

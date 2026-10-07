@@ -25,6 +25,12 @@ public class ParentAccessAudit
     [MaxLength(64)]
     public string Endpoint { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Görülen kaynağın id'si (issue #421 review): test sonucu ucunda <c>WorksheetInstance.Id</c>; kaynak tekil olmayan uçlarda
+    /// (özet, liste) null. Tekilleştirme anahtarının parçasıdır — aynı kovada farklı testlerin her biri ayrı satır yazar.
+    /// </summary>
+    public int? ResourceId { get; set; }
+
     /// <summary>Erişim anı (UTC).</summary>
     public DateTime At { get; set; }
 }
@@ -34,4 +40,10 @@ public static class ParentAccessEndpoints
 {
     /// <summary><c>GET api/parent/children/{studentId}/summary</c> (issue #420).</summary>
     public const string ChildSummary = "children.summary";
+
+    /// <summary><c>GET api/parent/children/{studentId}/assignments</c> (issue #421).</summary>
+    public const string ChildAssignments = "children.assignments";
+
+    /// <summary><c>GET api/parent/children/{studentId}/test-results/{testInstanceId}</c> (issue #421).</summary>
+    public const string ChildTestResult = "children.test-result";
 }

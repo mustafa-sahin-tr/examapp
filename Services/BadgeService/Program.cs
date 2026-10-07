@@ -222,6 +222,9 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<WorksheetCommentHiddenConsumer, WorksheetCommentHiddenConsumerDefinition>(); // issue #326 D4
     x.AddConsumer<DirectMessageSentConsumer, DirectMessageSentConsumerDefinition>(); // issue #106 (dilim b)
     x.AddConsumer<DirectMessageReportedConsumer, DirectMessageReportedConsumerDefinition>(); // issue #106 (dilim b)
+    x.AddConsumer<ParentLinkChangedConsumer, ParentLinkChangedConsumerDefinition>(); // issue #423
+    x.AddConsumer<ParentHomeworkOverdueConsumer, ParentHomeworkOverdueConsumerDefinition>(); // issue #423
+    x.AddConsumer<ParentChildTestCompletedConsumer, ParentChildTestCompletedConsumerDefinition>(); // issue #423
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -261,6 +264,9 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<WorksheetCommentHiddenConsumer>(context);
             e.ConfigureConsumer<DirectMessageSentConsumer>(context);
             e.ConfigureConsumer<DirectMessageReportedConsumer>(context);
+            e.ConfigureConsumer<ParentLinkChangedConsumer>(context); // issue #423
+            e.ConfigureConsumer<ParentHomeworkOverdueConsumer>(context); // issue #423
+            e.ConfigureConsumer<ParentChildTestCompletedConsumer>(context); // issue #423
         });
     });
 });

@@ -3,9 +3,9 @@
     <!-- App Logo/Branding -->
     <div class="ms-brand-section">
       <div class="ms-logo">
-        <img src="assets/logo.png" alt="ExamApp" class="ms-logo-img" />
+        <img src="assets/logo.png" [alt]="brandName" class="ms-logo-img" />
       </div>
-      <h1 class="ms-app-title">ExamApp</h1>
+      <h1 class="ms-app-title">{{ brandName }}</h1>
     </div>
 
     <!-- User Info -->
@@ -69,7 +69,7 @@
       <div class="ms-thank-you-card">
         <mat-icon class="ms-heart-icon">favorite</mat-icon>
         <h3>Teşekkürler!</h3>
-        <p>ExamApp'i kullandığınız için teşekkür ederiz.</p>
+        <p>{{ brandName }}'u kullandığınız için teşekkür ederiz.</p>
         <p class="ms-comeback">Tekrar görüşmek üzere!</p>
       </div>
     </div>

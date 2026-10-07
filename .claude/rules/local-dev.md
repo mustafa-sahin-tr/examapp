@@ -288,6 +288,15 @@ HMAC-SHA256(pepper, code); the exam API reads `ParentLinks__InviteCodePepper`
   ```
 - **Aspire:** restart the AppHost to pick up the new parameter.
 
+**Issue #409 — brand name "Hedef Okul".** The dev realm export now sets
+`displayName` and `smtpServer.fromDisplayName` to `Hedef Okul` (Keycloak's own
+verification/reset emails use the realm display name). `--import-realm` does not
+re-import an existing realm, so on an **already-running Keycloak** set them by hand:
+admin console (http://localhost:8081, or `:8082/admin/` under Aspire) → `exam-realm` →
+Realm settings → **General** → *Display name* = `Hedef Okul`, and → **Email** →
+*From display name* = `Hedef Okul`. The login theme title comes from the theme's
+`brandName` message (refresh the page; restart Keycloak if theme caching is on).
+
 ## Port map (host → container)
 
 | Service | Host port | Notes |

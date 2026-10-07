@@ -4,7 +4,7 @@
             <div class="row justify-content-center g-5">
                 <div class="col-lg-4 col-md-6">
                     <div class="single-footer-widget"><a routerlink="/" class="widget-logo" href="/hedefokul/"><img
-                                src="images/logo.svg" alt="Hedef Okul"></a>
+                                src="images/logo.svg" [alt]="'brand.name' | transloco"></a>
                         <p>{{ t('footer.about') }}</p>
                     </div>
                 </div>
@@ -155,7 +155,7 @@
             </div>
         </div>
         <div class="copyright-area">
-            <p> © <span>Hedef Okul</span>. {{ t('footer.copyright') }}</p>
+            <p> © <span>{{ 'brand.name' | transloco }}</span>. {{ t('footer.copyright') }}</p>
         </div>
     </div>
 </footer>

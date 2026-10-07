@@ -27,7 +27,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>${msg("loginTitle",(realm.displayName!''))}</title>
+    <#-- Issue #409: brand comes from the theme's single "brandName" message, not the realm name. -->
+    <title>${msg("loginTitle",msg("brandName"))}</title>
     <link rel="stylesheet" href="${url.resourcesPath}/css/custom.css">
     <#-- Theme-level scripts (theme.properties "scripts=") and per-page
          scripts Keycloak injects (e.g. WebAuthn), as in base template.ftl. -->

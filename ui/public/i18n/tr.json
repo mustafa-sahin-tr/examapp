@@ -1,4 +1,7 @@
 {
+  "brand": {
+    "name": "Hedef Okul"
+  },
   "common": {
     "loading": "Yükleniyor...",
     "retry": "Tekrar dene",

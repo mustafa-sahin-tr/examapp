@@ -1,8 +1,8 @@
 {
   "meta": {
-    "title": "Hedef Okul | Online Exam and Worksheet Platform",
-    "description": "Hedef Okul is the learning platform offering curriculum-aligned worksheets, online exams and AI-powered question detection for students in grades 3-8.",
-    "ogTitle": "Hedef Okul | Online Exam and Worksheet Platform",
+    "title": "{{ brand.name }} | Online Exam and Worksheet Platform",
+    "description": "{{ brand.name }} is the learning platform offering curriculum-aligned worksheets, online exams and AI-powered question detection for students in grades 3-8.",
+    "ogTitle": "{{ brand.name }} | Online Exam and Worksheet Platform",
     "ogDescription": "We make learning easier for students in grades 3-8 with curriculum-aligned worksheets and exams."
   },
   "common": {
@@ -26,7 +26,7 @@
   "hero": {
     "titleLead": "Success in Every Exam — One",
     "titleHighlight": "Powerful Platform.",
-    "description": "Hedef Okul is a complete online exam and worksheet platform built for students, teachers and parents. Reach your goals with a smart question bank, real-time exams and progress tracking.",
+    "description": "{{ brand.name }} is a complete online exam and worksheet platform built for students, teachers and parents. Reach your goals with a smart question bank, real-time exams and progress tracking.",
     "cta": "Explore Worksheets",
     "reviewsLabel": "Student Reviews",
     "activeStudents": "10,000+ Active Students"
@@ -38,7 +38,7 @@
     "ratingHighlight": "50,000+ students rated our worksheets 5 stars"
   },
   "news": {
-    "title": "News from Hedef Okul",
+    "title": "News from {{ brand.name }}",
     "morePrompt": "Want to read more?",
     "allNews": "All news",
     "featureRelease": {
@@ -51,7 +51,7 @@
     "parentGuide": {
       "tag": "Parent Guide",
       "title": "5 Ways to Follow Your Child's Exam Journey",
-      "excerpt": "With the parent dashboard on Hedef Okul you can see exactly where your child struggles and focus on the topics that need work.",
+      "excerpt": "With the parent dashboard on {{ brand.name }} you can see exactly where your child struggles and focus on the topics that need work.",
       "author": "Editorial Team",
       "date": "5 hours ago"
     },
@@ -165,7 +165,7 @@
   },
   "howItWorks": {
     "sub": "How It Works",
-    "title": "How Does Hedef Okul Work?",
+    "title": "How Does {{ brand.name }} Work?",
     "register": {
       "title": "Sign Up",
       "description": "As a student, teacher or parent"
@@ -197,7 +197,7 @@
     "sub": "Our Blog",
     "titleLead": "Insight, Tips",
     "titleHighlight": "and Inspiration",
-    "titleTrail": "from Hedef Okul",
+    "titleTrail": "from {{ brand.name }}",
     "description": "Stay one step ahead with study tips, success stories and education guides written for students, teachers and parents.",
     "cta": "See All Posts",
     "motivation": {
@@ -209,18 +209,18 @@
     },
     "success": {
       "tag": "Success Stories",
-      "title": "Students Who Reached Exam Success with Hedef Okul",
+      "title": "Students Who Reached Exam Success with {{ brand.name }}",
       "date": "5 March 2026",
       "readTime": "7 min read",
       "excerpt": "Discover real stories of how our students turned worksheets into exam success."
     }
   },
   "about": {
-    "sub": "About Hedef Okul",
+    "sub": "About {{ brand.name }}",
     "titleLead": "One Platform. Unlimited",
     "titleHighlight": "Success",
     "titleTrail": "Opportunities.",
-    "description": "At Hedef Okul we believe quality education should be accessible, enjoyable and empowering for every student.",
+    "description": "At {{ brand.name }} we believe quality education should be accessible, enjoyable and empowering for every student.",
     "students": { "value": "50,000+", "label": "Active Students" },
     "teachers": { "value": "2,000+", "label": "Expert Teachers" },
     "anywhere": {
@@ -240,9 +240,9 @@
   "faq": {
     "sub": "Frequently Asked Questions",
     "titleLead": "What You Ask",
-    "titleHighlight": "About Hedef Okul",
+    "titleHighlight": "About {{ brand.name }}",
     "membership": {
-      "question": "How do I sign up for Hedef Okul?",
+      "question": "How do I sign up for {{ brand.name }}?",
       "answer": "Click the \"Sign Up\" button on the site and create a free account with your email address and a password in seconds. Right after signing up you get instant access to every worksheet and exam."
     },
     "pricing": {
@@ -307,7 +307,7 @@
   },
   "services": {
     "titleLead": "Why learn with",
-    "titleHighlight": "Hedef Okul",
+    "titleHighlight": "{{ brand.name }}",
     "titleTrail": "?",
     "description": "A platform designed for students, teachers and parents that answers every need.",
     "worksheets": {

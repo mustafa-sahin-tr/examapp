@@ -55,6 +55,7 @@ public class ParentLinkRateLimitingTests
                         e.MapPost("/redeem", () => Results.Ok("ok")).RequireRateLimiting(ParentLinkRateLimiting.RedeemPolicy);
                         e.MapPost("/invite", () => Results.Ok("ok")).RequireRateLimiting(ParentLinkRateLimiting.InvitePolicy);
                         e.MapPost("/summary", () => Results.Ok("ok")).RequireRateLimiting(ParentLinkRateLimiting.ChildSummaryPolicy);
+                        e.MapPost("/activity", () => Results.Ok("ok")).RequireRateLimiting(ParentLinkRateLimiting.ChildActivityPolicy);
                     });
                 });
             })
@@ -131,6 +132,47 @@ public class ParentLinkRateLimitingTests
         var method = typeof(ParentDashboardController).GetMethod(nameof(ParentDashboardController.GetChildSummary))!;
         method.GetCustomAttribute<EnableRateLimitingAttribute>()!.PolicyName.ShouldBe(ParentLinkRateLimiting.ChildSummaryPolicy);
         typeof(ParentDashboardController).GetCustomAttributes<AuthorizeAttribute>().Select(a => a.Roles).ShouldContain("Parent");
+    }
+
+    [Fact]
+    public async Task Child_activity_defaults_to_sixty_per_minute_per_parent_separate_from_summary()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        for (var i = 0; i < 60; i++)
+            (await PostAsync(client, "/activity", "p1")).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var rejected = await PostAsync(client, "/activity", "p1");
+        rejected.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        rejected.Headers.RetryAfter!.Delta!.Value.TotalSeconds.ShouldBeInRange(1, 60);
+        using var body = JsonDocument.Parse(await rejected.Content.ReadAsStringAsync());
+        body.RootElement.GetProperty("errorCode").GetString().ShouldBe("RateLimited");
+
+        body.RootElement.GetProperty("message").GetString()
+            .ShouldBe("Ödev ve test bilgileri için kısa sürede çok fazla istek yapıldı. Lütfen biraz sonra tekrar deneyin."); // kendi 429 metni
+        (await PostAsync(client, "/activity", "p2")).StatusCode.ShouldBe(HttpStatusCode.OK); // başka veli etkilenmez
+        (await PostAsync(client, "/summary", "p1")).StatusCode.ShouldBe(HttpStatusCode.OK);  // özet kovası ayrı
+        (await PostAsync(client, "/activity", null)).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Theory]
+    [InlineData(nameof(ParentDashboardController.GetChildAssignments))]
+    [InlineData(nameof(ParentDashboardController.GetChildTestResult))]
+    public void Child_activity_actions_carry_their_rate_limit_policy_and_are_get_only(string action)
+    {
+        var method = typeof(ParentDashboardController).GetMethod(action)!;
+        method.GetCustomAttribute<EnableRateLimitingAttribute>()!.PolicyName.ShouldBe(ParentLinkRateLimiting.ChildActivityPolicy);
+        method.GetCustomAttribute<Microsoft.AspNetCore.Mvc.HttpGetAttribute>().ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void Parent_dashboard_controller_has_no_write_actions()
+    {
+        var actions = typeof(ParentDashboardController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        actions.ShouldNotBeEmpty();
+        actions.ShouldAllBe(m => m.GetCustomAttributes<Microsoft.AspNetCore.Mvc.Routing.HttpMethodAttribute>()
+            .All(a => a.HttpMethods.All(h => h == "GET")));
     }
 
     [Fact]

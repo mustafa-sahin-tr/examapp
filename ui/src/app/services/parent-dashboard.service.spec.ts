@@ -35,4 +35,25 @@ describe('ParentDashboardService (issue #420)', () => {
     req.flush(body);
     expect(received).toEqual(body);
   });
+  it('getChildAssignments_SendsPageAndOptionalStatus', () => {
+    service.getChildAssignments(42, null).subscribe();
+    const all = http.expectOne((r) => r.url === '/api/exam/parent/children/42/assignments');
+    expect(all.request.method).toBe('GET');
+    expect(all.request.params.get('page')).toBe('1');
+    expect(all.request.params.has('status')).toBeFalse();
+    all.flush({});
+
+    service.getChildAssignments(42, 'overdue', 3).subscribe();
+    const filtered = http.expectOne((r) => r.url === '/api/exam/parent/children/42/assignments');
+    expect(filtered.request.params.get('status')).toBe('overdue');
+    expect(filtered.request.params.get('page')).toBe('3');
+    filtered.flush({});
+  });
+
+  it('getChildTestResult_GetsTheInstanceSummary', () => {
+    service.getChildTestResult(42, 501).subscribe();
+    const req = http.expectOne('/api/exam/parent/children/42/test-results/501');
+    expect(req.request.method).toBe('GET');
+    req.flush({});
+  });
 });

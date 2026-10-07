@@ -1056,6 +1056,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<int>("ParentId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("ResourceId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("StudentId")
                         .HasColumnType("integer");
 

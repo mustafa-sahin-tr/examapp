@@ -148,5 +148,9 @@
       </div>
       }
     }
+
+    @if (selectedId(); as studentId) {
+      <app-parent-child-assignments [studentId]="studentId" (notFound)="onChildNotFound()" />
+    }
   }
 </section>

@@ -9,13 +9,14 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
-import { EMPTY, Observable, Subject, catchError, defer, finalize, map, switchMap, tap } from 'rxjs';
+import { EMPTY, Observable, Subject, Subscription, catchError, defer, finalize, map, switchMap, tap } from 'rxjs';
 
 import { LinkedChild } from '../../models/parent-link.model';
 import { PARENT_CHILD_QUERY_PARAM, ParentChildSummary } from '../../models/parent-dashboard.model';
 import { ParentDashboardService } from '../../services/parent-dashboard.service';
 import { LocaleService } from '../../services/locale.service';
 import { ParentLinkService } from '../../services/parent-link.service';
+import { ParentChildAssignmentsComponent } from './child-assignments/parent-child-assignments.component';
 
 /** Veli paneli ekranlarının Transloco scope'u (`public/i18n/parent-dashboard/<lang>.json`). */
 export const PARENT_DASHBOARD_SCOPE = 'parent-dashboard';
@@ -46,6 +47,7 @@ export function parseChildParam(value: string | null): number | null {
  * seçim `?child=<studentId>` ile URL'de hatırlanır (yenileme/geri tuşu aynı çocuğu açar; geçersiz/başkasının id'si ilk
  * çocuğa düşer). Seçili çocuğun özet kartları: bu hafta çözülen soru, ödev durumları, toplam puan, son aktivite. Bağlı
  * çocuk yoksa "Çocuk ekle" ile Çocuklarım sayfasına yönlendirir. Sunucu yalnızca toplam döner (içerik/iletişim bilgisi yok).
+ * Issue #421 (V3): aynı seçili çocuk için "Ödevler ve testler" bölümü (`app-parent-child-assignments`).
  */
 @Component({
   selector: 'app-parent-dashboard',
@@ -57,6 +59,7 @@ export function parseChildParam(value: string | null): number | null {
     MatIconModule,
     MatProgressSpinnerModule,
     MatSelectModule,
+    ParentChildAssignmentsComponent,
     RouterLink,
     TranslocoDirective,
   ],
@@ -99,6 +102,8 @@ export class ParentDashboardComponent implements OnInit {
   /** URL'de istenen çocuk (son okunan `?child=`). */
   private requestedId: number | null = null;
   private childrenLoaded = false;
+  /** Süren çocuk listesi isteği (çift yenilemeyi önler). */
+  private childrenRequest?: Subscription;
   private readonly summaryRequests = new Subject<number>();
 
   ngOnInit(): void {
@@ -123,9 +128,11 @@ export class ParentDashboardComponent implements OnInit {
   }
 
   protected loadChildren(): void {
+    // m5: özet ve ödev listesi aynı anda 404 alırsa ikisi de yenileme ister — süren istek varken ikincisi açılmaz.
+    if (this.childrenRequest && !this.childrenRequest.closed) return;
     this.childrenLoading.set(true);
     this.childrenError.set(null);
-    this.linkService
+    this.childrenRequest = this.linkService
       .getMyChildren()
       .pipe(
         finalize(() => this.childrenLoading.set(false)),
@@ -155,6 +162,12 @@ export class ParentDashboardComponent implements OnInit {
       queryParams: { [PARENT_CHILD_QUERY_PARAM]: studentId },
       queryParamsHandling: 'merge',
     });
+  }
+
+  /** Ödev listesi 404 döndü: bağlantı kaldırılmış olabilir — özetteki 404 ile aynı davranış (not + listeyi yenile). */
+  protected onChildNotFound(): void {
+    this.notice.set(this.text('summaryNotFound'));
+    this.loadChildren();
   }
 
   protected retrySummary(): void {

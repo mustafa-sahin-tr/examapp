@@ -85,6 +85,16 @@ describe('ParentChildrenComponent (issue #419)', () => {
     expect(normalizeInviteCodeInput(' abcd-efgh-jkmn ')).toBe('ABCDEFGHJKMN');
   });
 
+  it('inviteCodeForm_IsASingleRow_FieldNotStretchedVertically (#421 review)', () => {
+    const el = setup([]);
+    document.body.appendChild(el); // hesaplanan stil için belgeye bağlı olmalı
+    const form = el.querySelector<HTMLElement>('.pch__form')!;
+    // Global `form { flex-direction: column }` alanın flex-basis'ini yüksekliğe çeviriyordu (~200px kutu).
+    expect(getComputedStyle(form).flexDirection).toBe('row');
+    expect(el.querySelector<HTMLElement>('.pch__field')!.getBoundingClientRect().height).toBeLessThan(120);
+    el.remove();
+  });
+
   it('emptyList_ShowsEmptyState', () => {
     const el = setup([]);
     expect(el.querySelector('[data-test="empty"]')?.textContent).toContain(parentLinksTr.children.empty);

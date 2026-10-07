@@ -198,6 +198,12 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     this.authService.hasRealmRole(r)
   );
 
+  /**
+   * #421 review: yalnızca veli rolü olan kullanıcı — worksheet keşfine ait üst çubuk öğeleri (Yeni / Popüler, worksheet araması)
+   * veliye anlamsız, gizlenir. Başka bir rolü de olan (ör. öğretmen + veli) kullanıcı bunları görmeye devam eder.
+   */
+  readonly isParentOnly = this.userRoles.length === 1 && this.userRoles[0] === 'Parent';
+
   // Menu items — single source of truth. `roles` omitted = visible to every role.
   // `labelKey` kök sözlükteki `layout.*` anahtarıdır; metin şablonda çevrilir (issue #183).
   menuItems: MenuItem[] = [

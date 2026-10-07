@@ -1,0 +1,92 @@
+<ng-container *transloco="let t; prefix: 'parent-dashboard'">
+  <h2 mat-dialog-title class="ptr__title">
+    <span>{{ result()?.title ?? data.title }}</span>
+    @if (result()?.subject; as subject) {
+      <span class="ptr__subject">{{ subject }}</span>
+    }
+  </h2>
+
+  <mat-dialog-content class="ptr">
+    @if (loading()) {
+      <div class="ptr__state" aria-busy="true" data-test="result-loading">
+        <mat-spinner diameter="28" />
+        <span>{{ t('testResult.loading') }}</span>
+      </div>
+    } @else if (error()) {
+      <div class="ptr__state" role="alert" data-test="result-error">
+        <span>{{ error() }}</span>
+        <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+      </div>
+    } @else {
+      @if (result(); as r) {
+        @if (r.outcome === 'timedOut') {
+          <p class="ptr__badge" data-test="result-timed-out">
+            <mat-icon aria-hidden="true">timer_off</mat-icon>
+            {{ t('testResult.timedOut') }}
+          </p>
+        }
+
+        <ul class="ptr__stats">
+          <li class="ptr__stat ptr__stat--score" data-test="result-score">
+            <span class="ptr__value">{{ t('testResult.percent', { value: r.score.scorePercent }) }}</span>
+            <span class="ptr__label">{{ t('testResult.score') }}</span>
+          </li>
+          <li class="ptr__stat ptr__stat--correct" data-test="result-correct">
+            <span class="ptr__value">{{ r.score.correctCount }}</span>
+            <span class="ptr__label">{{ t('testResult.correct') }}</span>
+          </li>
+          <li class="ptr__stat ptr__stat--wrong" data-test="result-wrong">
+            <span class="ptr__value">{{ r.score.wrongCount }}</span>
+            <span class="ptr__label">{{ t('testResult.wrong') }}</span>
+          </li>
+          <li class="ptr__stat ptr__stat--blank" data-test="result-blank">
+            <span class="ptr__value">{{ r.score.blankCount }}</span>
+            <span class="ptr__label">{{ t('testResult.blank') }}</span>
+          </li>
+        </ul>
+
+        <dl class="ptr__times">
+          <div>
+            <dt>{{ t('testResult.duration') }}</dt>
+            <dd data-test="result-duration">{{ formatDuration(r.score.durationSeconds) }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('testResult.started') }}</dt>
+            <dd data-test="result-started">{{ formatDate(r.startedAt) }}</dd>
+          </div>
+          @if (r.finishedAt) {
+            <div>
+              <dt>{{ t('testResult.finished') }}</dt>
+              <dd data-test="result-finished">{{ formatDate(r.finishedAt) }}</dd>
+            </div>
+          }
+        </dl>
+
+        <h3 class="ptr__section">{{ t('testResult.topics') }}</h3>
+        @if (r.topics.length === 0) {
+          <p class="ptr__muted" data-test="result-no-topics">{{ t('testResult.noTopics') }}</p>
+        } @else {
+          <ul class="ptr__topics" data-test="result-topics">
+            @for (topic of r.topics; track $index) {
+              <li class="ptr__topic" data-test="result-topic">
+                <span class="ptr__topic-name">{{ topic.name }}</span>
+                <span class="ptr__topic-counts">
+                  {{ t('testResult.topicCounts', { correct: topic.correctCount, wrong: topic.wrongCount, blank: topic.blankCount }) }}
+                </span>
+              </li>
+            }
+          </ul>
+        }
+
+        <p class="ptr__note">
+          <mat-icon aria-hidden="true">lock</mat-icon>
+          {{ t('testResult.privacyNote') }}
+        </p>
+      }
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" mat-dialog-close data-test="result-close">{{ t('testResult.close') }}</button>
+  </mat-dialog-actions>
+</ng-container>

@@ -96,7 +96,12 @@ public class ParentLinksController : BaseController
             return UserNotResolved(Unresolved());
 
         var result = await _service.GetParentChildrenAsync(user.Id, ct);
-        return result == null ? ProfileNotFound() : Ok(result);
+        if (result == null)
+            return ProfileNotFound();
+
+        // issue #420 review: çocuk adı/okulu/öğrenci id'si — paylaşılan önbelleklerde tutulmasın.
+        Response.Headers.CacheControl = "no-store";
+        return Ok(result);
     }
 
     /// <summary>Öğrenci: bekleyen veli isteğini onaylar → Active. Başkasınınki / süresi dolmuş 404.</summary>
@@ -137,9 +142,6 @@ public class ParentLinksController : BaseController
         var result = await _service.RevokeAsync(linkId, user.Id, ct);
         return result.Success ? NoContent() : MapFailure(result);
     }
-
-    /// <summary>Id &lt;= 0 sahte/çözülmemiş profil sayılır (StudyLinksController ile aynı karar).</summary>
-    internal static bool IsResolvedUser(UserProfileDto? user) => user != null && user.Id > 0;
 
     private object Unresolved() => new { message = _localizer["auth.userNotResolved"].Value };
 

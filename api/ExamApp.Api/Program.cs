@@ -311,6 +311,10 @@ builder.Services.AddOptions<ExamApp.Api.Services.Parents.ParentRedeemGuardOption
 builder.Services.AddSingleton<ExamApp.Api.Services.Parents.IParentRedeemAttemptGuard, ExamApp.Api.Services.Parents.ParentRedeemAttemptGuard>();
 builder.Services.AddSingleton<ExamApp.Api.Services.Parents.IParentInviteCodeHasher, ExamApp.Api.Services.Parents.ParentInviteCodeHasher>();
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentLinkService, ExamApp.Api.Services.Parents.ParentLinkService>();
+// issue #420: veli paneli — tek yetki kapısı (Active bağlantı, aksi 404) + erişim kaydı + özet okuma modeli.
+builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentChildAccess, ExamApp.Api.Services.Parents.ParentChildAccess>();
+builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentAccessAuditLog, ExamApp.Api.Services.Parents.ParentAccessAuditLog>();
+builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentDashboardService, ExamApp.Api.Services.Parents.ParentDashboardService>();
 builder.Services.AddScoped<ExamApp.Api.Services.UserRoles.IUserRoleChangeRecorder, ExamApp.Api.Services.UserRoles.UserRoleChangeRecorder>();
 // issue #419: veli ↔ öğrenci/öğretmen rol dışlaması (student/teacher/parent register).
 builder.Services.AddScoped<ExamApp.Api.Services.UserRoles.IUserRoleExclusivity, ExamApp.Api.Services.UserRoles.UserRoleExclusivity>();

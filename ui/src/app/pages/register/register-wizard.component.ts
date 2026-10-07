@@ -251,7 +251,7 @@ export class RegisterWizardComponent implements OnInit {
           this.schoolApprovalPending.set(true);
           return;
         }
-        this.router.navigate([role === 'parent' ? '/dashboard' : '/tests']);
+        this.router.navigate([role === 'parent' ? '/parent' : '/tests']); // issue #420: veli paneli
       },
       error: (err: unknown) => {
         this.isSubmitting.set(false);

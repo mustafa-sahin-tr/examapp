@@ -89,6 +89,12 @@ public class BaseController : ControllerBase
     }
 
     /// <summary>
+    /// Profil çözüldü mü: Id &lt;= 0 sahte/çözülmemiş profil sayılır (StudyLinks/ParentLinks/ParentDashboard ortak kuralı;
+    /// issue #420 review ile tek yere taşındı).
+    /// </summary>
+    protected internal static bool IsResolvedUser(UserProfileDto? user) => user != null && user.Id > 0;
+
+    /// <summary>
     /// issue #255: <see cref="GetAuthenticatedUserAsync()"/> kullanıcıyı çözemediğinde dönülecek yanıt.
     /// Token'da sub (NameIdentifier) yoksa gerçekten kimlik doğrulanamamıştır → 401. Token geçerli ama
     /// kullanıcı profili bulunamadıysa oturum geçersiz DEĞİLDİR → 404; 401 dönmek UI'ı (refresh → retry →

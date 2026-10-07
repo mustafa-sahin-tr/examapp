@@ -1,0 +1,42 @@
+{
+  "title": "Veli paneli",
+  "subtitle": "Çocuğunuzun bu haftaki çalışmasının özeti.",
+  "loading": "Yükleniyor…",
+  "retry": "Tekrar dene",
+  "manageChildren": "Çocuklarım",
+  "selectChild": "Çocuk",
+  "childrenLoadError": "Çocuklarınız yüklenemedi.",
+  "summaryLoadError": "Özet yüklenemedi.",
+  "summaryNotFound": "Bu çocuğun bilgilerine artık erişiminiz yok. Bağlantı kaldırılmış olabilir.",
+  "empty": {
+    "title": "Henüz bağlı çocuğunuz yok",
+    "message": "Çocuğunuzun çalışmalarını görmek için çocuğunuzdan bir davet kodu alıp hesabınıza ekleyin.",
+    "pendingNote": "Onay bekleyen bir isteğiniz var. Çocuğunuz onayladığında özeti burada görünecek.",
+    "cta": "Çocuk ekle"
+  },
+  "cards": {
+    "solved": {
+      "title": "Bu hafta çözülen soru",
+      "since": "{{date}} Pazartesi'den bu yana",
+      "unit": "soru"
+    },
+    "assignments": {
+      "title": "Ödevler",
+      "window": "Açık ödevler ve son {{days}} günde teslim tarihi geçenler",
+      "completed": "Tamamlandı",
+      "pending": "Bekliyor",
+      "overdue": "Gecikti / süresi doldu"
+    },
+    "points": {
+      "title": "Toplam puan",
+      "unit": "puan"
+    },
+    "lastActivity": {
+      "title": "Son aktivite",
+      "none": "Henüz aktivite yok",
+      "today": "Bugün, yaklaşık {{time}}",
+      "yesterday": "Dün, yaklaşık {{time}}",
+      "onDate": "{{date}}, yaklaşık {{time}}"
+    }
+  }
+}

@@ -237,7 +237,13 @@ export class LessonVideoComponent implements OnInit {
   /** "Dersten ayrıl" — odayı kapatıp rolün randevu listesine döner. */
   protected leave(): void {
     this.disposeApi();
-    const target = this.authService.getUserRole() === 'Teacher' ? '/booking-requests' : '/my-bookings';
+    // Issue #418: `/booking-requests` bağımsız öğretmen sayfası — okula bağlı olduğu bilinen öğretmen takvimine döner.
+    const target =
+      this.authService.getUserRole() !== 'Teacher'
+        ? '/my-bookings'
+        : AuthService.isIndependentTutorOf(this.authService.user()) !== false
+          ? '/booking-requests'
+          : '/my-calendar';
     void this.router.navigateByUrl(target);
   }
 

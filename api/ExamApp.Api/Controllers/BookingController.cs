@@ -149,9 +149,8 @@ public class BookingController : BaseController
     [Authorize]
     public async Task<IActionResult> GetTeacherSlots(int teacherId, [FromQuery] int skip, [FromQuery] int take, CancellationToken ct)
     {
-        // issue #190: okula bağlı öğretmenin slotları yalnızca aynı okuldan görünür; bağımsız tutor herkese açık.
-        var scope = await GetSchoolScopeAsync(ct);
-        var result = await _bookingService.GetTeacherOpenSlotsAsync(teacherId, scope, skip, take, ct);
+        // issue #418: yalnız bağımsız tutor'un takvimi açık (herkese); okula bağlı öğretmen → 404 (#190 aynı-okul istisnası kalktı).
+        var result = await _bookingService.GetTeacherOpenSlotsAsync(teacherId, skip, take, ct);
         return result.Success ? Ok(result) : MapFailure(result);
     }
 

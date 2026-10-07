@@ -12,7 +12,7 @@ using ExamApp.Api.Models.Dtos.Bookings;
 using ExamApp.Api.Models.Dtos.Teachers;
 using ExamApp.Api.Models.Dtos.Video;
 using ExamApp.Api.Services.Interfaces;
-using ExamApp.Api.Services.Tenancy;
+using ExamApp.Api.Services.Teachers;
 using ExamApp.Api.Services.Video;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Localization;
@@ -62,9 +62,6 @@ public class BookingService : IBookingService
     private readonly IOptions<VideoOptions> _videoOptions;
     private readonly IRecurringAvailabilityService _recurringAvailability;
 
-    // issue #190: okula bağlı öğretmenin takvimi yalnızca kendi okulundan görünür.
-    private readonly ISchoolAccessPolicy _schoolAccessPolicy;
-
     /// <summary>
     /// Servisteki tüm "şimdi" okumaları (geçmiş slot/randevu reddi, açık slot filtresi, zaman damgaları,
     /// görüşme katılım penceresi — issue #97) bu saat kaynağından gelir; testler sabit saat verebilsin (issue #294).
@@ -87,10 +84,8 @@ public class BookingService : IBookingService
         TimeProvider timeProvider,
         IRecurringAvailabilityService recurringAvailability,
         ILogger<BookingService> logger,
-        ISchoolAccessPolicy schoolAccessPolicy,
         IStringLocalizer<Messages>? localizer = null)
     {
-        _schoolAccessPolicy = schoolAccessPolicy;
         _context = context;
         _authApiClient = authApiClient;
         _videoSessionProvider = videoSessionProvider;
@@ -135,7 +130,7 @@ public class BookingService : IBookingService
         var teacher = await _context.Teachers
             .AsNoTracking()
             .Where(t => t.UserId == teacherUserId)
-            .Select(t => new { t.Id, t.ApprovalStatus })
+            .Select(t => new { t.Id, t.ApprovalStatus, t.IsIndependentTutor, t.SchoolId })
             .FirstOrDefaultAsync(ct);
 
         if (teacher == null)
@@ -149,6 +144,11 @@ public class BookingService : IBookingService
                 Forbidden = true,
                 Message = _localizer["booking.teacherNotApproved"]
             };
+
+        // issue #418: randevu bağımsız öğretmen özelliği — okula bağlı (hibrit dahil) öğretmen müsaitlik tanımlayamaz.
+        // Sıra CreateRuleAsync ile aynı: önce onay, sonra bağımsızlık.
+        if (!TeacherIndependence.IsIndependent(teacher.IsIndependentTutor, teacher.SchoolId))
+            return new AvailabilitySlotResultDto { Success = false, Forbidden = true, Message = _localizer[TeacherNotIndependentKey] };
 
         _context.SetCurrentUser(teacherUserId);
 
@@ -266,22 +266,23 @@ public class BookingService : IBookingService
     public async Task<AvailabilitySlotListResultDto> GetMySlotsAsync(
         int teacherUserId, int skip, int take, CancellationToken ct = default)
     {
-        var teacherId = await _context.Teachers
-            .AsNoTracking()
-            .Where(t => t.UserId == teacherUserId)
-            .Select(t => (int?)t.Id)
-            .FirstOrDefaultAsync(ct);
-
-        if (teacherId == null)
+        var teacher = await FindTeacherAsync(teacherUserId, ct);
+        if (teacher == null)
             return new AvailabilitySlotListResultDto { Success = false, NotFound = true, Message = _localizer["booking.teacherRecordNotFound"] };
+
+        // issue #418: okula bağlı öğretmen randevu/müsaitlik uçlarını kullanamaz (403, CreateSlotAsync ile aynı).
+        if (!teacher.IsIndependent)
+            return new AvailabilitySlotListResultDto { Success = false, Forbidden = true, Message = _localizer[TeacherNotIndependentKey] };
+
+        var teacherId = teacher.Id;
 
         // Tekrarlayan kuralların 90 günlük penceresi burada lazy ileri kaydırılır (issue #178):
         // arka plan job yok; kuralı olmayan öğretmen için maliyet tek indeksli sorgudur.
-        await _recurringAvailability.TopUpAsync(teacherId.Value, teacherUserId, ct);
+        await _recurringAvailability.TopUpAsync(teacherId, teacherUserId, ct);
 
         var rows = await _context.TeacherAvailabilitySlots
             .AsNoTracking()
-            .Where(s => s.TeacherId == teacherId.Value)
+            .Where(s => s.TeacherId == teacherId)
             .OrderByDescending(s => s.Date)
             .ThenByDescending(s => s.StartTime)
             .Skip(Normalize(skip))
@@ -326,14 +327,15 @@ public class BookingService : IBookingService
 
     public async Task<AvailabilitySlotDeleteResultDto> DeleteSlotAsync(int teacherUserId, int slotId, CancellationToken ct = default)
     {
-        var teacherId = await _context.Teachers
-            .AsNoTracking()
-            .Where(t => t.UserId == teacherUserId)
-            .Select(t => (int?)t.Id)
-            .FirstOrDefaultAsync(ct);
-
-        if (teacherId == null)
+        var teacher = await FindTeacherAsync(teacherUserId, ct);
+        if (teacher == null)
             return new AvailabilitySlotDeleteResultDto { Success = false, NotFound = true, Message = _localizer["booking.teacherRecordNotFound"] };
+
+        // issue #418: okula bağlı öğretmen randevu/müsaitlik uçlarını kullanamaz (403, CreateSlotAsync ile aynı).
+        if (!teacher.IsIndependent)
+            return new AvailabilitySlotDeleteResultDto { Success = false, Forbidden = true, Message = _localizer[TeacherNotIndependentKey] };
+
+        var teacherId = teacher.Id;
 
         // Hızlı yol (kilitsiz, salt okunur): 404/403 ayrımı. Karar kilit altında yeniden okunan satırla verilir.
         var owner = await _context.TeacherAvailabilitySlots
@@ -346,7 +348,7 @@ public class BookingService : IBookingService
             return new AvailabilitySlotDeleteResultDto { Success = false, NotFound = true, Message = _localizer["booking.slot.notFound"] };
 
         // Başkasının slotu: 403 (worksheet sahiplik deseniyle tutarlı).
-        if (owner.Value != teacherId.Value)
+        if (owner.Value != teacherId)
             return new AvailabilitySlotDeleteResultDto { Success = false, Forbidden = true, Message = _localizer["booking.slot.notOwned"] };
 
         _context.SetCurrentUser(teacherUserId);
@@ -364,10 +366,10 @@ public class BookingService : IBookingService
                 result = null;
 
                 await using var tx = await _context.Database.BeginTransactionAsync(ct);
-                await _context.Database.AcquireTeacherAvailabilityLockAsync(teacherId.Value, ct);
+                await _context.Database.AcquireTeacherAvailabilityLockAsync(teacherId, ct);
 
                 var slot = await _context.TeacherAvailabilitySlots
-                    .FirstOrDefaultAsync(s => s.Id == slotId && s.TeacherId == teacherId.Value, ct);
+                    .FirstOrDefaultAsync(s => s.Id == slotId && s.TeacherId == teacherId, ct);
                 if (slot == null)
                 {
                     // Kilidi beklerken eşzamanlı bir silme (tekil ya da seri) kazandı.
@@ -399,7 +401,7 @@ public class BookingService : IBookingService
         catch (TeacherAvailabilityLockTimeoutException ex)
         {
             _context.ChangeTracker.Clear();
-            _logger.LogWarning(ex, "Slot silme: müsaitlik kilidi zaman aşımı. TeacherId={TeacherId}", teacherId.Value);
+            _logger.LogWarning(ex, "Slot silme: müsaitlik kilidi zaman aşımı. TeacherId={TeacherId}", teacherId);
             return new AvailabilitySlotDeleteResultDto { Success = false, Conflict = true, Message = _localizer["booking.slot.busy"] };
         }
 
@@ -411,7 +413,7 @@ public class BookingService : IBookingService
     // ------------------------------------------------------------------
 
     public async Task<AvailabilitySlotListResultDto> GetTeacherOpenSlotsAsync(
-        int teacherId, SchoolScope requester, int skip, int take, CancellationToken ct = default)
+        int teacherId, int skip, int take, CancellationToken ct = default)
     {
         var teacher = await _context.Teachers
             .AsNoTracking()
@@ -421,9 +423,9 @@ public class BookingService : IBookingService
             .FirstOrDefaultAsync(ct);
 
         // Onaysız/olmayan öğretmen ayrımı sızdırılmaz (tutor public-profile ile aynı desen).
-        // issue #190: tutor pazar yeri istisnası yalnızca bağımsız tutor içindir; okula bağlı
-        // öğretmenin takvimi yalnızca aynı okuldan (veya admin/servis) görünür — aksi halde aynı 404.
-        if (teacher == null || (!teacher.IsIndependentTutor && !_schoolAccessPolicy.CanAccess(requester, teacher.SchoolId)))
+        // issue #418: randevu bağımsız öğretmen özelliğidir — okula bağlı öğretmenin takvimi kimseye (aynı okul ve admin
+        // dahil; #190'daki aynı-okul istisnası kaldırıldı) görünmez; aynı 404.
+        if (teacher == null || !TeacherIndependence.IsIndependent(teacher.IsIndependentTutor, teacher.SchoolId))
             return new AvailabilitySlotListResultDto { Success = false, NotFound = true, Message = _localizer["booking.teacherNotFound"] };
 
         var now = UtcNow();
@@ -492,13 +494,17 @@ public class BookingService : IBookingService
                 TeacherSuspended = s.Teacher.AccountSuspendedAt != null, // issue #289
                 // issue #331 (security D1): "onaylı" tanımı yetkiyle (IApprovedTeacherGuard, #287) hizalı — hesap onayı da şart.
                 TeacherAccountApproved = s.Teacher.AccountApprovedAt != null,
+                // issue #418: randevu yalnız bağımsız öğretmene alınır (GetTeacherOpenSlotsAsync ile aynı kural).
+                TeacherIndependentTutor = s.Teacher.IsIndependentTutor,
+                TeacherSchoolId = s.Teacher.SchoolId,
                 TeacherUserId = s.Teacher.UserId
             })
             .FirstOrDefaultAsync(ct);
 
-        // Onaysız öğretmenin slotu öğrenciye hiç görünmez → var/yok ayrımı da sızdırılmaz.
+        // Onaysız / okula bağlı öğretmenin slotu öğrenciye hiç görünmez → var/yok ayrımı da sızdırılmaz.
         if (slot == null || slot.TeacherApproval != TeacherApprovalStatus.Approved || slot.TeacherSuspended
-            || !slot.TeacherAccountApproved)
+            || !slot.TeacherAccountApproved
+            || !TeacherIndependence.IsIndependent(slot.TeacherIndependentTutor, slot.TeacherSchoolId))
             return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.slot.notFound"] };
 
         if (ToUtc(slot.Date, slot.StartTime) <= now)
@@ -673,12 +679,15 @@ public class BookingService : IBookingService
 
     /// <summary>
     /// <see cref="LockBookableTeacherAsync"/>'ın Postgres sorgusu. {0} = Teachers.Id, {1} = Approved. Koşul ön okumayla ve
-    /// öğretmen yetkisiyle (<c>IApprovedTeacherGuard</c>) aynı: başvuru onaylı, hesap onaylı, askıda değil, silinmemiş.
+    /// öğretmen yetkisiyle (<c>IApprovedTeacherGuard</c>) aynı: başvuru onaylı, hesap onaylı, askıda değil, silinmemiş;
+    /// issue #418: ve bağımsız (<see cref="TeacherIndependence.SqlCondition"/>) — admin aradaki okul atamasını commit ederse
+    /// talep oluşmaz.
     /// </summary>
-    internal const string BookableTeacherLockSql = """
+    internal const string BookableTeacherLockSql = $$"""
         SELECT "Id" AS "Value" FROM "Teachers"
         WHERE "Id" = {0} AND "ApprovalStatus" = {1}
           AND "AccountApprovedAt" IS NOT NULL AND "AccountSuspendedAt" IS NULL AND NOT "IsDeleted"
+          AND {{TeacherIndependence.SqlCondition}}
         FOR SHARE
         """;
 
@@ -703,6 +712,7 @@ public class BookingService : IBookingService
         {
             return await _context.Teachers
                 .AsNoTracking()
+                .Where(TeacherIndependence.Holds)
                 .AnyAsync(t => t.Id == teacherId
                     && t.ApprovalStatus == TeacherApprovalStatus.Approved
                     && t.AccountApprovedAt != null
@@ -728,16 +738,17 @@ public class BookingService : IBookingService
     public async Task<BookingListResultDto> GetTeacherBookingsAsync(
         int teacherUserId, int skip, int take, CancellationToken ct = default)
     {
-        var teacherId = await _context.Teachers
-            .AsNoTracking()
-            .Where(t => t.UserId == teacherUserId)
-            .Select(t => (int?)t.Id)
-            .FirstOrDefaultAsync(ct);
-
-        if (teacherId == null)
+        var teacher = await FindTeacherAsync(teacherUserId, ct);
+        if (teacher == null)
             return new BookingListResultDto { Success = false, NotFound = true, Message = _localizer["booking.teacherRecordNotFound"] };
 
-        return await QueryBookingsAsync(b => b.TeacherId == teacherId.Value, skip, take, ct);
+        // issue #418: okula bağlı öğretmen randevu/müsaitlik uçlarını kullanamaz (403, CreateSlotAsync ile aynı).
+        if (!teacher.IsIndependent)
+            return new BookingListResultDto { Success = false, Forbidden = true, Message = _localizer[TeacherNotIndependentKey] };
+
+        var teacherId = teacher.Id;
+
+        return await QueryBookingsAsync(b => b.TeacherId == teacherId, skip, take, ct);
     }
 
     public async Task<BookingListResultDto> GetStudentBookingsAsync(
@@ -765,14 +776,15 @@ public class BookingService : IBookingService
     private async Task<BookingResultDto> DecideAsync(
         int teacherUserId, int bookingId, BookingStatus newStatus, string? rejectionReason, CancellationToken ct)
     {
-        var teacherId = await _context.Teachers
-            .AsNoTracking()
-            .Where(t => t.UserId == teacherUserId)
-            .Select(t => (int?)t.Id)
-            .FirstOrDefaultAsync(ct);
-
-        if (teacherId == null)
+        var teacher = await FindTeacherAsync(teacherUserId, ct);
+        if (teacher == null)
             return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.teacherRecordNotFound"] };
+
+        // issue #418: okula bağlı öğretmen randevu/müsaitlik uçlarını kullanamaz (403, CreateSlotAsync ile aynı).
+        if (!teacher.IsIndependent)
+            return new BookingResultDto { Success = false, Forbidden = true, Message = _localizer[TeacherNotIndependentKey] };
+
+        var teacherId = teacher.Id;
 
         // issue #376: slotu soft-delete edilmiş (eski veri) talep de karara bağlanabilmeli → yalnız slot filtresi kapatılır.
         var booking = await _context.Bookings
@@ -785,7 +797,7 @@ public class BookingService : IBookingService
         if (booking == null)
             return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.request.notFound"] };
 
-        if (booking.TeacherId != teacherId.Value)
+        if (booking.TeacherId != teacherId)
             return new BookingResultDto { Success = false, Forbidden = true, Message = _localizer["booking.request.notOwned"] };
 
         if (booking.Status != BookingStatus.Pending)
@@ -1043,6 +1055,22 @@ public class BookingService : IBookingService
     // ------------------------------------------------------------------
     // Ortak yardımcılar
     // ------------------------------------------------------------------
+
+    /// <summary>issue #418: okula bağlı öğretmen randevu/müsaitlik uçlarında 403 mesajı (tekrarlayan kural servisiyle ortak).</summary>
+    internal const string TeacherNotIndependentKey = "booking.teacherNotIndependent";
+
+    private sealed record BookingTeacher(int Id, bool IsIndependent);
+
+    /// <summary>Öğretmen-tarafı uçların kayıt çözümü: kimlik + bağımsızlık (issue #418 kapısı, <see cref="TeacherIndependence"/>).</summary>
+    private async Task<BookingTeacher?> FindTeacherAsync(int teacherUserId, CancellationToken ct)
+    {
+        var row = await _context.Teachers
+            .AsNoTracking()
+            .Where(t => t.UserId == teacherUserId)
+            .Select(t => new { t.Id, t.IsIndependentTutor, t.SchoolId })
+            .FirstOrDefaultAsync(ct);
+        return row == null ? null : new BookingTeacher(row.Id, TeacherIndependence.IsIndependent(row.IsIndependentTutor, row.SchoolId));
+    }
 
     private async Task<BookingListResultDto> QueryBookingsAsync(
         System.Linq.Expressions.Expression<Func<Booking, bool>> predicate, int skip, int take, CancellationToken ct)

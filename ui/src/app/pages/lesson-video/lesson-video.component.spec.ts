@@ -1,12 +1,13 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { throwError } from 'rxjs';
 
 import { LessonVideoComponent } from './lesson-video.component';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES } from '../../models/locale';
-import { AuthService } from '../../services/auth.service';
+import { AuthService, UserProfile } from '../../services/auth.service';
 import { BookingService } from '../../services/booking.service';
 import { JitsiScriptLoaderService } from '../../services/jitsi-script-loader.service';
 import lessonVideoTr from '../../../../public/i18n/lesson-video/tr.json';
@@ -96,5 +97,59 @@ describe('LessonVideoComponent (issue #298 teacher unavailable)', () => {
     );
 
     expect(buttonLabels(host)).toEqual([lessonVideoTr.retry, lessonVideoTr.goBack]);
+  });
+});
+
+/** Issue #418: "Dersten ayrıl" — `/booking-requests` yalnız bağımsız (ya da bayrağı bilinmeyen) öğretmene. */
+describe('LessonVideoComponent leave target (issue #418)', () => {
+  function teacher(isIndependentTutor: boolean | undefined): UserProfile {
+    return {
+      email: '',
+      avatar: '',
+      fullName: '',
+      id: 1,
+      keycloakId: 'k',
+      profileId: 1,
+      role: 'Teacher',
+      teacher: { id: 1, userId: 1, schoolName: '', schoolId: 7, isIndependentTutor },
+    } as UserProfile;
+  }
+
+  async function leaveAs(role: string, user: UserProfile | null): Promise<string> {
+    const bookingService = jasmine.createSpyObj<BookingService>('BookingService', ['getVideoSession', 'extractError']);
+    bookingService.getVideoSession.and.returnValue(throwError(() => new HttpErrorResponse({ status: 404 })));
+    bookingService.extractError.and.returnValue('x');
+    await TestBed.configureTestingModule({
+      imports: [LessonVideoComponent, translocoTesting],
+      providers: [
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ bookingId: '42' }) } } },
+        { provide: BookingService, useValue: bookingService },
+        { provide: JitsiScriptLoaderService, useValue: { load: () => Promise.reject(new Error('unused')) } },
+        { provide: AuthService, useValue: { getUserRole: () => role, user: signal(user) } },
+      ],
+    }).compileComponents();
+    const navigate = spyOn(TestBed.inject(Router), 'navigateByUrl').and.returnValue(Promise.resolve(true));
+    const fixture = TestBed.createComponent(LessonVideoComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.componentInstance['leave']();
+    return navigate.calls.mostRecent().args[0] as string;
+  }
+
+  it('NotIndependentTeacher_LeavesToMyCalendar', async () => {
+    expect(await leaveAs('Teacher', teacher(false))).toBe('/my-calendar');
+  });
+
+  it('IndependentTeacher_LeavesToBookingRequests', async () => {
+    expect(await leaveAs('Teacher', teacher(true))).toBe('/booking-requests');
+  });
+
+  it('UnknownFlagTeacher_LeavesToBookingRequests', async () => {
+    expect(await leaveAs('Teacher', null)).toBe('/booking-requests');
+  });
+
+  it('Student_LeavesToMyBookings', async () => {
+    expect(await leaveAs('Student', null)).toBe('/my-bookings');
   });
 });

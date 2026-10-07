@@ -61,7 +61,18 @@ export class MyCalendarComponent {
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
   /** Takvim artık öğretmene de açık (issue #96) — boş durum/aksiyon metinleri role göre değişir. */
-  protected readonly isTeacher = inject(AuthService).hasRealmRole('Teacher');
+  private readonly authService = inject(AuthService);
+  protected readonly isTeacher = this.authService.hasRealmRole('Teacher');
+  /**
+   * Issue #418: müsaitlik bağımsız öğretmen özelliği — okula bağlı olduğu BİLİNEN öğretmene boş durumda `/availability`
+   * düğmesi gösterilmez (rota `independentTeacherGuard` ile kapalı). Bayrak bilinmiyorsa gösterilir; asıl kapı backend.
+   */
+  protected readonly showAvailabilityCta = computed(() => this.isTeacher && this.canOpenBookingRequests());
+
+  /** Issue #418: randevu sayfaları (`/availability`, `/booking-requests`) — bayrak bilinmiyorsa açık, asıl kapı backend. */
+  private canOpenBookingRequests(): boolean {
+    return AuthService.isIndependentTutorOf(this.authService.user()) !== false;
+  }
   private readonly localeService = inject(LocaleService);
 
   readonly viewMonth = signal<Date>(startOfMonth(new Date()));
@@ -177,7 +188,12 @@ export class MyCalendarComponent {
   private navigateToEvent(event: CalendarEvent): void {
     if (event.kind === 'booking') {
       // Randevunun worksheet'i yok (issue #96) — role göre randevu listesine gidilir.
-      void this.router.navigate([this.isTeacher ? '/booking-requests' : '/my-bookings']);
+      // Issue #418: `/booking-requests` bağımsız öğretmen sayfası; okula bağlı olduğu bilinen öğretmen gezinmez.
+      if (!this.isTeacher) {
+        void this.router.navigate(['/my-bookings']);
+      } else if (this.canOpenBookingRequests()) {
+        void this.router.navigate(['/booking-requests']);
+      }
       return;
     }
     if (event.kind === 'program-study-page') {

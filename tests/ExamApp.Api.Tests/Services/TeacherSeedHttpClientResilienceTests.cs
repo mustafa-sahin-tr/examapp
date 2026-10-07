@@ -50,16 +50,26 @@ public class TeacherSeedHttpClientResilienceTests
     }
 
     /// <summary>Üretimdeki kayıt sırasıyla aynı: önce ServiceDefaults benzeri varsayılan, sonra AddTeacherSeed.</summary>
-    private static ServiceProvider BuildProvider(HttpMessageHandler primaryForSeedClient, HttpMessageHandler? primaryForControl = null)
+    private static ServiceProvider BuildProvider(
+        HttpMessageHandler primaryForSeedClient,
+        HttpMessageHandler? primaryForControl = null,
+        TimeProvider? timeProvider = null)
     {
         var services = new ServiceCollection();
         services.AddLogging();
+        if (timeProvider is not null)
+        {
+            // Polly/Microsoft.Extensions.Resilience zamanlayıcıları (attempt/total timeout, retry gecikmesi) DI'daki TimeProvider'ı kullanır.
+            services.AddSingleton(timeProvider);
+        }
         services.ConfigureHttpClientDefaults(http => http.AddStandardResilienceHandler(o =>
         {
             o.AttemptTimeout.Timeout = TimeSpan.FromSeconds(1);
             o.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(3);
             o.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(2);
-            o.Retry.Delay = TimeSpan.FromMilliseconds(50); // varsayılan 2 sn backoff toplam süreyi aşardı; kontrol testinde retry görülsün
+            // Varsayılan 2 sn backoff yerine 0: kontrol testinde yeniden deneme, attempt timeout'u tetikleyen Advance'tan
+            // sonra ek zaman ilerletmeden gelir (yeniden deneyen tek test elle ilerletilen saatle koşar).
+            o.Retry.Delay = TimeSpan.Zero;
         }));
         services.AddTeacherSeed(DevEnv());
         services.AddHttpClient(AuthApiSeedClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => primaryForSeedClient);
@@ -117,14 +127,193 @@ public class TeacherSeedHttpClientResilienceTests
     [Fact]
     public async Task Control_client_with_standard_handler_cancels_the_same_slow_request_and_retries()
     {
-        // Kontrol: aynı gecikme, resilience'lı client → attempt iptal (handler iptali görür) ve yeniden deneme (>1 çağrı).
-        var control = new CountingDelayHandler(TimeSpan.FromSeconds(1.5));
-        using var provider = BuildProvider(new CountingDelayHandler(TimeSpan.Zero), control);
+        // Kontrol: yanıtı hiç gelmeyen istek, resilience'lı client → attempt timeout (1 sn) dolunca o deneme iptal edilir
+        // (handler iptali görür) ve aynı istek yeniden gönderilir. Issue #418: duvar saati yerine elle ilerletilen
+        // TimeProvider + kapısı açılmayan handler → yük altında zamanlama yarışı yok; iptalin sebebi yalnız attempt timeout.
+        var time = new ManualTimeProvider();
+        var control = new GatedHandler();
+        using var provider = BuildProvider(new CountingDelayHandler(TimeSpan.Zero), control, time);
         var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("control");
+        using var callerCts = new CancellationTokenSource();
 
-        await Should.ThrowAsync<Exception>(() => client.PostAsync("http://auth-api.test/x", new StringContent("{}")));
+        var send = client.PostAsync("http://auth-api.test/x", new StringContent("{}"), callerCts.Token);
 
-        control.ObservedCancellation.ShouldBeTrue();
-        control.Calls.ShouldBeGreaterThan(1);
+        (await control.WaitForAttemptAsync()).ShouldBeTrue("ilk deneme handler'a ulaşmadı");
+        var firstAttempt = control.Tokens[0];
+
+        // Attempt timeout'un hemen altı: deneme iptal edilmez, yeniden gönderilmez.
+        time.Advance(TimeSpan.FromMilliseconds(999));
+        firstAttempt.IsCancellationRequested.ShouldBeFalse();
+        control.Calls.ShouldBe(1);
+
+        // Attempt timeout doldu: ilk deneme iptal edilir ve (retry gecikmesi 0) aynı istek ikinci kez gönderilir.
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        firstAttempt.IsCancellationRequested.ShouldBeTrue();
+        (await control.WaitForAttemptAsync()).ShouldBeTrue("attempt timeout sonrası yeniden deneme gelmedi");
+
+        control.CancelledAttempts.ShouldBe(1);
+        control.Calls.ShouldBe(2);
+        send.IsCompleted.ShouldBeFalse();
+
+        // Temizlik: çağıranın iptali isteği sonlandırır (retry çağıran iptalini yeniden denemez).
+        callerCts.Cancel();
+        var ex = await Should.ThrowAsync<Exception>(() => send);
+        ex.ShouldBeAssignableTo<OperationCanceledException>();
+        control.Calls.ShouldBe(2);
+    }
+
+    /// <summary>Hiç tamamlanmayan primary handler: her deneme yalnız iptal ile biter; deneme başlangıçları sinyallenir.</summary>
+    private sealed class GatedHandler : HttpMessageHandler
+    {
+        private readonly SemaphoreSlim _attemptStarted = new(0);
+        private int _calls;
+        private int _cancelled;
+        public readonly List<CancellationToken> Tokens = new();
+
+        public int Calls => Volatile.Read(ref _calls);
+        public int CancelledAttempts => Volatile.Read(ref _cancelled);
+
+        /// <summary>Gerçek-zaman sınırı yalnız testin asılı kalmaması için emniyet; kanıt bu süreye bağlı değil.</summary>
+        public Task<bool> WaitForAttemptAsync() => _attemptStarted.WaitAsync(TimeSpan.FromSeconds(30));
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            lock (Tokens)
+            {
+                Tokens.Add(cancellationToken);
+            }
+            Interlocked.Increment(ref _calls);
+            _attemptStarted.Release();
+            try
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                Interlocked.Increment(ref _cancelled);
+                throw;
+            }
+            throw new InvalidOperationException("unreachable");
+        }
+    }
+
+    /// <summary>
+    /// Elle ilerletilen TimeProvider: zamanlayıcılar yalnız <see cref="Advance"/> içinde, vade sırasıyla ve senkron tetiklenir.
+    /// </summary>
+    private sealed class ManualTimeProvider : TimeProvider
+    {
+        private readonly object _gate = new();
+        private readonly List<ManualTimer> _timers = new();
+        private DateTimeOffset _now = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            lock (_gate)
+            {
+                return _now;
+            }
+        }
+
+        public override long GetTimestamp() => GetUtcNow().UtcTicks;
+
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = new ManualTimer(this, callback, state);
+            timer.Change(dueTime, period);
+            return timer;
+        }
+
+        public void Advance(TimeSpan by)
+        {
+            DateTimeOffset target;
+            lock (_gate)
+            {
+                target = _now + by;
+            }
+
+            while (true)
+            {
+                ManualTimer? next;
+                lock (_gate)
+                {
+                    next = _timers
+                        .Where(t => t.DueAt <= target)
+                        .OrderBy(t => t.DueAt)
+                        .FirstOrDefault();
+                    if (next is null)
+                    {
+                        _now = target;
+                        return;
+                    }
+
+                    _now = next.DueAt!.Value;
+                    if (next.Period > TimeSpan.Zero)
+                    {
+                        next.DueAt = _now + next.Period;
+                    }
+                    else
+                    {
+                        _timers.Remove(next);
+                        next.DueAt = null;
+                    }
+                }
+
+                next.Fire();
+            }
+        }
+
+        private sealed class ManualTimer : ITimer
+        {
+            private readonly ManualTimeProvider _owner;
+            private readonly TimerCallback _callback;
+            private readonly object? _state;
+
+            public ManualTimer(ManualTimeProvider owner, TimerCallback callback, object? state)
+            {
+                _owner = owner;
+                _callback = callback;
+                _state = state;
+            }
+
+            public DateTimeOffset? DueAt { get; set; }
+            public TimeSpan Period { get; private set; }
+
+            public void Fire() => _callback(_state);
+
+            public bool Change(TimeSpan dueTime, TimeSpan period)
+            {
+                lock (_owner._gate)
+                {
+                    _owner._timers.Remove(this);
+                    Period = period == Timeout.InfiniteTimeSpan ? TimeSpan.Zero : period;
+                    if (dueTime == Timeout.InfiniteTimeSpan)
+                    {
+                        DueAt = null;
+                        return true;
+                    }
+
+                    DueAt = _owner._now + dueTime;
+                    _owner._timers.Add(this);
+                    return true;
+                }
+            }
+
+            public void Dispose()
+            {
+                lock (_owner._gate)
+                {
+                    _owner._timers.Remove(this);
+                    DueAt = null;
+                }
+            }
+
+            public ValueTask DisposeAsync()
+            {
+                Dispose();
+                return ValueTask.CompletedTask;
+            }
+        }
     }
 }

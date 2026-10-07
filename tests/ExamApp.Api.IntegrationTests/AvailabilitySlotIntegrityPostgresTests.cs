@@ -32,6 +32,7 @@ public class AvailabilitySlotIntegrityPostgresTests(IntegrationApiFactory factor
         {
             UserId = userId,
             ApprovalStatus = TeacherApprovalStatus.Approved,
+            IsIndependentTutor = true, // issue #418: müsaitlik bağımsız öğretmen özelliği
             AccountApprovedAt = DateTime.UtcNow,
             Bio = "t"
         };

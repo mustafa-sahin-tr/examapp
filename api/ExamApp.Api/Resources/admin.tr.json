@@ -70,6 +70,10 @@
     "dashboard": {
       "invalidDays": "days 1 ile 365 arasında olmalı."
     },
+    "parentAccessAudits": {
+      "invalidRange": "from, to'dan önce olmalı.",
+      "rangeTooLong": "from/to aralığı en fazla {0} gün olabilir."
+    },
 
     "teacherApplication": {
       "invalidStatusFilter": "\"status\" yalnızca \"pending\" veya \"all\" olabilir.",

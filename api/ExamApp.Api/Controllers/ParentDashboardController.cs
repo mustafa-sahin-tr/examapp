@@ -20,6 +20,9 @@ namespace ExamApp.Api.Controllers;
 [ApiController]
 [Route("api/parent/children")]
 [Authorize(Roles = "Parent")]
+// issue #424: çocuğa ait veri — HER yanıt (200/400/404) önbelleğe alınmaz (Cache-Control: no-store, Pragma: no-cache). Sınıf
+// seviyesinde tanımlı; böylece eklenen yeni uç da otomatik kapsanır (ParentEndpointCatalogTests her veli GET ucunda doğrular).
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public class ParentDashboardController : BaseController
 {
     private readonly IParentDashboardService _service;
@@ -64,8 +67,6 @@ public class ParentDashboardController : BaseController
             });
         }
 
-        // Çocuğa ait veri: paylaşılan önbelleklerde tutulmasın.
-        Response.Headers.CacheControl = "no-store";
         return Ok(summary);
     }
 
@@ -95,7 +96,6 @@ public class ParentDashboardController : BaseController
         if (list == null)
             return ChildNotFound();
 
-        Response.Headers.CacheControl = "no-store";
         return Ok(list);
     }
 
@@ -124,7 +124,6 @@ public class ParentDashboardController : BaseController
             });
         }
 
-        Response.Headers.CacheControl = "no-store";
         return Ok(lookup.Result);
     }
 
@@ -145,7 +144,6 @@ public class ParentDashboardController : BaseController
         if (progress == null)
             return ChildNotFound();
 
-        Response.Headers.CacheControl = "no-store";
         return Ok(progress);
     }
 
@@ -172,7 +170,6 @@ public class ParentDashboardController : BaseController
         if (schedule == null)
             return ChildNotFound();
 
-        Response.Headers.CacheControl = "no-store";
         return Ok(schedule);
     }
 

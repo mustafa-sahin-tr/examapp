@@ -86,7 +86,10 @@ public enum AdminDataAccessResource
     TeacherApplicationDetail = 4,
 
     /// <summary>issue #106: <c>GET api/admin/direct-messages/reports</c> (Open doğrudan mesaj şikayetleri; mesaj gövdesi + taraf adları).</summary>
-    DirectMessageReports = 5
+    DirectMessageReports = 5,
+
+    /// <summary>issue #424: <c>GET api/admin/parent-access-audits</c> (veli erişim kayıtları; hangi velinin hangi çocuğa baktığı).</summary>
+    ParentAccessAudits = 6
 }
 
 /// <summary>

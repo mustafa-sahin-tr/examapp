@@ -1064,6 +1064,8 @@ namespace ExamApp.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("At");
+
                     b.HasIndex("ParentId", "At");
 
                     b.HasIndex("StudentId", "At");

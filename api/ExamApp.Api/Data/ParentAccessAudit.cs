@@ -8,8 +8,9 @@ namespace ExamApp.Api.Data;
 /// ucunu, ne zaman gördü". Yalnızca ekleme yapılır (append-only; <see cref="AdminDataAccessLog"/> deseni):
 /// <see cref="BaseEntity"/>'den türemez, soft delete / update alanı yoktur. Yalnızca erişim VERİLEN (Active bağlantı)
 /// istekler yazılır; 404'e düşen denemeler yazılmaz. PII yok: yalnızca exam DB id'leri.
-/// FK yok — kayıt, veli/öğrenci satırı ya da bağlantı sonradan silinse/koparılsa da kalmalı. Saklama süresi ve
-/// raporlama V6 (#424) kapsamında.
+/// FK yok — kayıt, veli/öğrenci satırı ya da bağlantı sonradan silinse/koparılsa da kalmalı. Issue #424 (V6): saklama süresi
+/// <c>ParentAccessAudit:RetentionDays</c> (varsayılan 180 gün, günlük <c>ParentAccessAuditRetentionJob</c>); okuma yüzeyi yalnızca
+/// Admin: <c>GET api/admin/parent-access-audits</c>.
 /// </summary>
 public class ParentAccessAudit
 {

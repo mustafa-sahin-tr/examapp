@@ -35,7 +35,14 @@ internal static class NotificationRecipientResolver
                 return fromNotification;
         }
 
-        throw new InvalidOperationException(
+        throw new RecipientSubUnresolvedException(
             $"{eventDescription}: bildirim alıcısının Keycloak sub'ı çözülemedi (RecipientUserId={userId}).");
     }
 }
+
+/// <summary>
+/// Alıcı sub'ı event'te de BadgeService verisinde de yok (issue #423 review): aynı mesajı hemen yeniden denemek sonucu değiştirmez
+/// (deterministik), bu yüzden veli bildirimi consumer'ları bunu retry'dan muaf tutar → doğrudan badge-service_error
+/// (sub gelince oradan yeniden oynatılır). <see cref="InvalidOperationException"/> türevidir; eski yakalayanlar etkilenmez.
+/// </summary>
+public sealed class RecipientSubUnresolvedException(string message) : InvalidOperationException(message);

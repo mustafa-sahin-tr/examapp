@@ -402,6 +402,12 @@ builder.Services.AddOptions<ExamApp.Api.Services.Worksheets.ExpiredTestInstanceS
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IExpiredTestInstanceSweepJob, ExamApp.Api.Services.Worksheets.ExpiredTestInstanceSweepJob>();
+// issue #423: veli bildirimi — süresi geçen, tamamlanmamış ödevler (Hangfire, varsayılan 15 dk).
+builder.Services.AddOptions<ExamApp.Api.Services.Parents.ParentHomeworkOverdueSweepOptions>()
+    .BindConfiguration(ExamApp.Api.Services.Parents.ParentHomeworkOverdueSweepOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentHomeworkOverdueSweepJob, ExamApp.Api.Services.Parents.ParentHomeworkOverdueSweepJob>();
 
 // Student activity reset
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();
@@ -673,6 +679,12 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.Worksheets.IExpiredTestInstanceSwe
     ExamApp.Api.Services.Worksheets.ExpiredTestInstanceSweepJob.RecurringJobId,
     j => j.SweepAsync(CancellationToken.None),
     app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Worksheets.ExpiredTestInstanceSweepOptions>>().Value.Cron);
+
+// issue #423: süresi geçen, tamamlanmamış ödevler için Active velilere bildirim event'i yazar (atama+öğrenci başına bir kez).
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.Parents.IParentHomeworkOverdueSweepJob>(
+    ExamApp.Api.Services.Parents.ParentHomeworkOverdueSweepJob.RecurringJobId,
+    j => j.SweepAsync(CancellationToken.None),
+    app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Parents.ParentHomeworkOverdueSweepOptions>>().Value.Cron);
 
 app.Run();
 return 0;

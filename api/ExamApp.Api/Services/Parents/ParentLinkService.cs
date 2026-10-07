@@ -232,6 +232,12 @@ public sealed class ParentLinkService : IParentLinkService
         if (target.Status == ParentStudentLinkStatus.Active)
             return Ok(target.Id, "parentLinks.approved");
 
+        // #423: bildirim hedefi (sub) + kısa adlar transaction DIŞINDA, fail-soft çözülür (auth-api yoksa boş; consumer yedeğe düşer).
+        var notifyUsers = await ParentNotificationSupport.LookupAsync(
+            _authApiClient, new[] { target.ParentUserId, studentUserId }, _logger, ct);
+        var parentNotify = ParentNotificationSupport.Of(notifyUsers, target.ParentUserId);
+        var studentNotify = ParentNotificationSupport.Of(notifyUsers, studentUserId);
+
         var approvedNow = false;
         try
         {
@@ -266,6 +272,10 @@ public sealed class ParentLinkService : IParentLinkService
                     ParentUserId = target.ParentUserId,
                     StudentId = target.StudentId,
                     StudentUserId = studentUserId,
+                    ParentKeycloakId = parentNotify.KeycloakId,
+                    StudentKeycloakId = studentNotify.KeycloakId,
+                    ParentDisplayName = parentNotify.DisplayName,
+                    StudentDisplayName = studentNotify.DisplayName,
                     LinkedAtUtc = now
                 }, now);
                 await _context.SaveChangesAsync(ct);
@@ -522,6 +532,12 @@ public sealed class ParentLinkService : IParentLinkService
                 return Fail<ParentLinkResponseDto>(ParentLinkErrorCodes.NotFound, notFound: true); // aktif bağlantı: revoke
 
             var wasActive = status == ParentStudentLinkStatus.Active;
+            // #423: yalnız aktif bağlantı koparılınca event yazılır; hedef/ad çözümü transaction dışında, fail-soft.
+            var notifyUsers = wasActive
+                ? await ParentNotificationSupport.LookupAsync(_authApiClient, new[] { target.ParentUserId, target.StudentUserId }, _logger, ct)
+                : new Dictionary<int, NotificationUser>();
+            var parentNotify = ParentNotificationSupport.Of(notifyUsers, target.ParentUserId);
+            var studentNotify = ParentNotificationSupport.Of(notifyUsers, target.StudentUserId);
             var expected = status;
             var revokedNow = false;
             try
@@ -559,6 +575,10 @@ public sealed class ParentLinkService : IParentLinkService
                             StudentUserId = target.StudentUserId,
                             RevokedByRole = revokedByRole,
                             RevokedByUserId = userId,
+                            ParentKeycloakId = parentNotify.KeycloakId,
+                            StudentKeycloakId = studentNotify.KeycloakId,
+                            ParentDisplayName = parentNotify.DisplayName,
+                            StudentDisplayName = studentNotify.DisplayName,
                             RevokedAtUtc = now
                         }, now);
                         await _context.SaveChangesAsync(ct);

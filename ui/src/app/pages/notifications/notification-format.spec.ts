@@ -218,4 +218,35 @@ describe('describeNotification (issue #105)', () => {
   it('DirectMessageReported_HasNoRouteYet', () => {
     expect(describeNotification({ type: 'DirectMessageReported', data: '{}' }).route).toBeNull();
   });
+
+  // Issue #423 (veli bildirimleri)
+  it('ParentNotifications_ToParent_LinkParentPageWithChild', () => {
+    for (const type of ['ParentLinkedToParent', 'ParentHomeworkOverdue', 'ParentChildTestCompleted']) {
+      const result = describeNotification({ type, data: JSON.stringify({ studentId: 21, linkId: 5 }) });
+      expect(result.route).withContext(type).toEqual({ commands: ['/parent'], queryParams: { child: 21 } });
+    }
+  });
+
+  it('ParentUnlinkedToParent_LinksParentPageWithoutChild', () => {
+    const result = describeNotification({ type: 'ParentUnlinkedToParent', data: JSON.stringify({ linkId: 5, studentId: null }) });
+
+    expect(result.route).toEqual({ commands: ['/parent'] });
+    expect(result.icon).toBe('link_off');
+  });
+
+  it('ParentNotifications_BrokenOrHostileData_FallBackToPlainParentPage', () => {
+    for (const data of [null, '{bad', JSON.stringify({ studentId: 'x' }), JSON.stringify({ studentId: -3 }),
+      JSON.stringify({ studentId: 1.5 }), JSON.stringify({ studentId: 7, route: '/admin', url: 'https://evil.test' })]) {
+      const route = describeNotification({ type: 'ParentHomeworkOverdue', data }).route;
+      // Hiçbir durumda başka bir hedefe gitmez: ya düz /parent ya geçerli ?child.
+      expect(route?.commands).withContext(String(data)).toEqual(['/parent']);
+      expect(Object.keys(route?.queryParams ?? {}).every((k) => k === 'child')).withContext(String(data)).toBeTrue();
+    }
+  });
+
+  it('ParentNotifications_ToStudent_HaveNoRoute', () => {
+    for (const type of ['ParentLinkedToStudent', 'ParentUnlinkedToStudent']) {
+      expect(describeNotification({ type, data: JSON.stringify({ linkId: 5 }) }).route).withContext(type).toBeNull();
+    }
+  });
 });

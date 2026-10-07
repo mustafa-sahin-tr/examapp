@@ -86,6 +86,86 @@ public class OutboxEventRegistryTests
     }
 
     [Fact]
+    public void Resolve_knows_the_parent_notification_events_issue_423()
+    {
+        OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<ParentHomeworkOverdueEvent>()).ShouldBe(typeof(ParentHomeworkOverdueEvent));
+        OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<ParentChildTestCompletedEvent>()).ShouldBe(typeof(ParentChildTestCompletedEvent));
+    }
+
+    private static string[] ParentNotificationEvents => new[]
+    {
+        nameof(ParentLinkedEvent), nameof(ParentUnlinkedEvent),
+        nameof(ParentHomeworkOverdueEvent), nameof(ParentChildTestCompletedEvent)
+    };
+
+    private static string RepoFile(string relativePath)
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "rabbitmq", "definitions.json")))
+            dir = dir.Parent;
+        dir.ShouldNotBeNull("repo kökü bulunamadı");
+        return File.ReadAllText(Path.Combine(dir!.FullName, relativePath));
+    }
+
+    /// <summary>
+    /// issue #423: dört izin kaynağından biri (definitions.json) gerçek regex olarak değerlendirilir — exam_outbox_pub dört
+    /// exchange'i declare + publish eder ve hiçbirini okuyamaz; badge_service dört exchange'i declare + bind/consume eder ama
+    /// onlara ASLA write (publish) hakkı almaz (sahte event riski, #279).
+    /// </summary>
+    [Fact]
+    public void Definitions_json_grants_parent_notification_events_to_the_right_users_issue_423()
+    {
+        using var doc = System.Text.Json.JsonDocument.Parse(RepoFile("rabbitmq/definitions.json"));
+        var perms = doc.RootElement.GetProperty("permissions").EnumerateArray()
+            .ToDictionary(p => p.GetProperty("user").GetString()!);
+        bool Match(string user, string field, string exchange)
+            => System.Text.RegularExpressions.Regex.IsMatch(
+                $"ExamApp.Foundation.Contracts:{exchange}", perms[user].GetProperty(field).GetString()!);
+
+        foreach (var name in ParentNotificationEvents)
+        {
+            Match("exam_outbox_pub", "configure", name).ShouldBeTrue($"exam_outbox_pub configure {name}");
+            Match("exam_outbox_pub", "write", name).ShouldBeTrue($"exam_outbox_pub write {name}");
+            Match("exam_outbox_pub", "read", name).ShouldBeFalse($"exam_outbox_pub read {name}");
+
+            Match("badge_service", "configure", name).ShouldBeTrue($"badge_service configure {name}");
+            Match("badge_service", "read", name).ShouldBeTrue($"badge_service read {name}");
+            Match("badge_service", "write", name).ShouldBeFalse($"badge_service write {name} (consumer publish edemez)");
+
+            // Başka yayıncılar/tüketiciler bu exchange'lere dokunamaz.
+            foreach (var other in new[] { "identity_outbox_pub", "badge_outbox_pub", "exam_api" })
+            {
+                Match(other, "write", name).ShouldBeFalse($"{other} write {name}");
+            }
+        }
+    }
+
+    /// <summary>issue #423: deploy betikleri (docker-compose dışı kurulumlar) aynı listeleri taşır: yayıncı listesi + BadgeService listesi.</summary>
+    [Theory]
+    [InlineData("deploy/scripts/rabbitmq-init.sh")]
+    [InlineData("deploy/gcp/k8s/stateful-services.yaml")]
+    public void Deploy_scripts_list_parent_notification_events_for_publisher_and_badge_service_issue_423(string relativePath)
+    {
+        var lines = RepoFile(relativePath).Split('\n');
+        var exam = lines.Single(l => l.Contains("EXAM_OUTBOX_EVENTS=\""));
+        var badge = lines.Single(l => l.Contains("BADGE_SERVICE_EVENTS=\""));
+        foreach (var name in ParentNotificationEvents)
+        {
+            exam.ShouldContain("|" + name, Case.Sensitive, $"{relativePath} EXAM_OUTBOX_EVENTS {name}");
+            badge.ShouldContain("|" + name, Case.Sensitive, $"{relativePath} BADGE_SERVICE_EVENTS {name}");
+        }
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    [InlineData("Not.A.Real.Type")]
+    [InlineData("Not.A.Real.Type, Some.Assembly, Version=1.0.0.0")]
+    public void Resolve_returns_null_for_an_unknown_or_empty_type(string? stored)
+        => OutboxEventRegistry.Resolve(stored!).ShouldBeNull();
+
+    [Fact]
     public void Resolve_knows_the_student_badge_earned_event_issue_422()
         => OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<StudentBadgeEarnedEvent>()).ShouldBe(typeof(StudentBadgeEarnedEvent));
 
@@ -99,25 +179,24 @@ public class OutboxEventRegistryTests
     [InlineData("deploy/gcp/k8s/stateful-services.yaml")]
     public void Badge_outbox_publishes_and_exam_api_consumes_the_badge_earned_event_issue_422(string relativePath)
     {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "rabbitmq", "definitions.json")))
-            dir = dir.Parent;
-        dir.ShouldNotBeNull("repo kökü bulunamadı");
-
-        var text = File.ReadAllText(Path.Combine(dir!.FullName, relativePath));
+        var text = RepoFile(relativePath);
         if (relativePath.EndsWith(".json", StringComparison.Ordinal))
         {
             using var doc = System.Text.Json.JsonDocument.Parse(text);
             var perms = doc.RootElement.GetProperty("permissions").EnumerateArray()
                 .ToDictionary(p => p.GetProperty("user").GetString()!);
-            var badge = perms["badge_outbox_pub"];
-            badge.GetProperty("configure").GetString()!.ShouldContain(nameof(StudentBadgeEarnedEvent));
-            badge.GetProperty("write").GetString()!.ShouldContain(nameof(StudentBadgeEarnedEvent));
-            var exam = perms["exam_api"];
-            exam.GetProperty("configure").GetString()!.ShouldContain(nameof(StudentBadgeEarnedEvent));
-            exam.GetProperty("read").GetString()!.ShouldContain(nameof(StudentBadgeEarnedEvent));
-            exam.GetProperty("write").GetString()!.ShouldNotContain(nameof(StudentBadgeEarnedEvent));
-            perms["badge_service"].GetProperty("write").GetString()!.ShouldNotContain(nameof(StudentBadgeEarnedEvent));
+            bool Match(string user, string field)
+                => System.Text.RegularExpressions.Regex.IsMatch(
+                    "ExamApp.Foundation.Contracts:" + nameof(StudentBadgeEarnedEvent), perms[user].GetProperty(field).GetString()!);
+
+            Match("badge_outbox_pub", "configure").ShouldBeTrue();
+            Match("badge_outbox_pub", "write").ShouldBeTrue();
+            Match("badge_outbox_pub", "read").ShouldBeFalse();
+            Match("exam_api", "configure").ShouldBeTrue();
+            Match("exam_api", "read").ShouldBeTrue();
+            Match("exam_api", "write").ShouldBeFalse();
+            Match("badge_service", "write").ShouldBeFalse();
+            Match("exam_outbox_pub", "write").ShouldBeFalse();
         }
         else
         {
@@ -125,13 +204,4 @@ public class OutboxEventRegistryTests
             text.ShouldContain("EXAM_API_EVENTS=\"StudentPointsChangedEvent|StudentBadgeEarnedEvent\"", Case.Sensitive);
         }
     }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    [InlineData(null)]
-    [InlineData("Not.A.Real.Type")]
-    [InlineData("Not.A.Real.Type, Some.Assembly, Version=1.0.0.0")]
-    public void Resolve_returns_null_for_an_unknown_or_empty_type(string? stored)
-        => OutboxEventRegistry.Resolve(stored!).ShouldBeNull();
 }

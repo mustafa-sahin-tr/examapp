@@ -3,6 +3,7 @@ using System;
 using ExamApp.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ExamApp.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261007050434_AddParentHomeworkOverdueMarkers")]
+    partial class AddParentHomeworkOverdueMarkers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2159,9 +2162,6 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("ParentId")
                         .HasColumnType("integer");
 
-                    b.Property<DateTime?>("ProgressResetAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<int?>("SchoolId")
                         .HasColumnType("integer");
 
@@ -2265,68 +2265,6 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("StudentId");
 
                     b.ToTable("StudentBadges");
-                });
-
-            modelBuilder.Entity("ExamApp.Api.Data.StudentBadgeProjection", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<Guid>("BadgeDefinitionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("EarnedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Icon")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<DateTime>("ReceivedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("StudentId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("StudentId", "BadgeDefinitionId")
-                        .IsUnique();
-
-                    b.ToTable("StudentBadgeProjections");
-                });
-
-            modelBuilder.Entity("ExamApp.Api.Data.StudentDailyXp", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<DateOnly>("Day")
-                        .HasColumnType("date");
-
-                    b.Property<int>("StudentId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Xp")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("StudentId", "Day")
-                        .IsUnique();
-
-                    b.ToTable("StudentDailyXps");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.StudentPointHistory", b =>
@@ -4591,28 +4529,6 @@ namespace ExamApp.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Badge");
-
-                    b.Navigation("Student");
-                });
-
-            modelBuilder.Entity("ExamApp.Api.Data.StudentBadgeProjection", b =>
-                {
-                    b.HasOne("ExamApp.Api.Data.Student", "Student")
-                        .WithMany()
-                        .HasForeignKey("StudentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Student");
-                });
-
-            modelBuilder.Entity("ExamApp.Api.Data.StudentDailyXp", b =>
-                {
-                    b.HasOne("ExamApp.Api.Data.Student", "Student")
-                        .WithMany()
-                        .HasForeignKey("StudentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
 
                     b.Navigation("Student");
                 });

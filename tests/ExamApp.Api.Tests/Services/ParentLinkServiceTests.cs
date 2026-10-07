@@ -40,6 +40,7 @@ public class ParentLinkServiceTests : IDisposable
             .Returns(ci => ci.Arg<IEnumerable<int>>().Select(id => new UserLookupResultDto
             {
                 Id = id,
+                KeycloakId = $"kc-{id}",
                 FullName = id switch
                 {
                     StudentUser => "Ayşe Kaya",
@@ -239,6 +240,12 @@ public class ParentLinkServiceTests : IDisposable
         evt.StudentUserId.ShouldBe(StudentUser);
         evt.StudentId.ShouldBe(studentId);
         evt.ParentId.ShouldBe(parentId);
+        // #423: bildirim hedefi (sub) + kısa adlar ("Ad S.") event'te taşınır; ham ad/e-posta taşınmaz.
+        evt.ParentKeycloakId.ShouldBe($"kc-{ParentUser}");
+        evt.StudentKeycloakId.ShouldBe($"kc-{StudentUser}");
+        evt.StudentDisplayName.ShouldBe("Ayşe K.");
+        evt.ParentDisplayName.ShouldBe("Veli 1.");
+        outbox[0].Content.ShouldNotContain("veli7101.com");
 
         await using var ctx = _db.NewContext();
         var child = (await Service(ctx).GetParentChildrenAsync(ParentUser))!.ShouldHaveSingleItem();
@@ -628,10 +635,36 @@ public class ParentLinkServiceTests : IDisposable
         evt.RevokedByUserId.ShouldBe(actorUserId);
         evt.ParentUserId.ShouldBe(ParentUser);
         evt.StudentUserId.ShouldBe(StudentUser);
+        evt.ParentKeycloakId.ShouldBe($"kc-{ParentUser}");
+        evt.StudentKeycloakId.ShouldBe($"kc-{StudentUser}");
+        evt.StudentDisplayName.ShouldBe("Ayşe K.");
 
         await using var read = _db.NewContext();
         (await Service(read).GetParentChildrenAsync(ParentUser))!.ShouldBeEmpty();
         (await Service(read).GetStudentParentsAsync(StudentUser))!.Items.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Approval_and_revoke_still_succeed_with_empty_targets_when_auth_api_is_unreachable()
+    {
+        await SeedAsync();
+        var linkId = await RequestAsync(ParentUser);
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<UserLookupResultDto>>(_ => throw new HttpRequestException("auth-api down"));
+
+        (await ApproveAsync(linkId)).Success.ShouldBeTrue();
+        await using (var ctx = _db.NewContext())
+            (await Service(ctx).RevokeAsync(linkId, StudentUser)).Success.ShouldBeTrue();
+
+        // #423: fail-soft — event yine yazılır (boş sub/ad); consumer BadgeService verisinden çözer ya da dead-letter'a düşürür.
+        var contents = await InDbAsync(async db => (await db.OutboxMessages.ToListAsync()).Select(o => o.Content).ToList());
+        contents.Count.ShouldBe(2);
+        var linked = JsonSerializer.Deserialize<ParentLinkedEvent>(contents.Single(c => c.Contains("LinkedAtUtc")))!;
+        linked.ParentKeycloakId.ShouldBeEmpty();
+        linked.StudentDisplayName.ShouldBeEmpty();
+        var unlinked = JsonSerializer.Deserialize<ParentUnlinkedEvent>(contents.Single(c => c.Contains("RevokedAtUtc")))!;
+        unlinked.StudentKeycloakId.ShouldBeEmpty();
+        unlinked.RevokedByRole.ShouldBe("Student");
     }
 
     [Fact]

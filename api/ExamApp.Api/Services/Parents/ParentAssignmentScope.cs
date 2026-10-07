@@ -88,6 +88,25 @@ internal static class ParentAssignmentScope
         return new LoadResult(Classify(assignments, instances, now).ToList(), assignments.Count >= MaxRows);
     }
 
+
+    /// <summary>
+    /// issue #423: bir TESTİN, öğrencinin görünür atama kapsamında olup olmadığı (<see cref="LoadAsync"/> ile AYNI görünürlük + 30 gün
+    /// penceresi, tek worksheet'e daraltılmış) ve verilen oturumun (<paramref name="instanceStart"/>/<paramref name="status"/>) bu atamaların
+    /// birinin penceresinde SAYILIP sayılmadığı (<see cref="AssignmentInstanceWindow.Counts"/>). Serbest/kendi başına çözümler kapsam dışıdır.
+    /// </summary>
+    internal static async Task<bool> IsWorksheetInScopeAsync(
+        AppDbContext context, int studentId, int? gradeId, int? verifiedSchoolId, int worksheetId,
+        DateTime instanceStart, WorksheetInstanceStatus status, DateTime now, CancellationToken ct)
+    {
+        var lookbackStart = now.AddDays(-WindowDays);
+        var windows = await context.WorksheetAssignments.AsNoTracking()
+            .Where(WorksheetStudentAccess.AssignmentVisibleTo(studentId, gradeId, verifiedSchoolId))
+            .Where(a => a.WorksheetId == worksheetId && a.StartAt <= now && (a.EndAt == null || a.EndAt >= lookbackStart))
+            .Where(a => !a.Worksheet.IsDeleted)
+            .Select(a => new { a.StartAt, a.EndAt })
+            .ToListAsync(ct);
+        return windows.Any(w => AssignmentInstanceWindow.Counts(instanceStart, status, w.StartAt, w.EndAt));
+    }
     /// <summary>
     /// Worksheet başına TEK sonuç: atamalardan biri tamamlandıysa Completed; değilse hâlâ yapılabilir bir atama varsa Pending;
     /// aksi halde Overdue. Temsilci atama en büyük kovayı veren; eşitlikte teslim tarihi en geç olan (açık uçlu en geç sayılır),

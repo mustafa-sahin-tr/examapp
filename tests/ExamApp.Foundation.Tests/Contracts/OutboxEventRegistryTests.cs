@@ -85,6 +85,77 @@ public class OutboxEventRegistryTests
             text.ShouldContain("|" + name, Case.Sensitive, $"{relativePath} exam_outbox_pub listesinde {name} yok");
     }
 
+    [Fact]
+    public void Resolve_knows_the_parent_notification_events_issue_423()
+    {
+        OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<ParentHomeworkOverdueEvent>()).ShouldBe(typeof(ParentHomeworkOverdueEvent));
+        OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<ParentChildTestCompletedEvent>()).ShouldBe(typeof(ParentChildTestCompletedEvent));
+    }
+
+    private static string[] ParentNotificationEvents => new[]
+    {
+        nameof(ParentLinkedEvent), nameof(ParentUnlinkedEvent),
+        nameof(ParentHomeworkOverdueEvent), nameof(ParentChildTestCompletedEvent)
+    };
+
+    private static string RepoFile(string relativePath)
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "rabbitmq", "definitions.json")))
+            dir = dir.Parent;
+        dir.ShouldNotBeNull("repo kökü bulunamadı");
+        return File.ReadAllText(Path.Combine(dir!.FullName, relativePath));
+    }
+
+    /// <summary>
+    /// issue #423: dört izin kaynağından biri (definitions.json) gerçek regex olarak değerlendirilir — exam_outbox_pub dört
+    /// exchange'i declare + publish eder ve hiçbirini okuyamaz; badge_service dört exchange'i declare + bind/consume eder ama
+    /// onlara ASLA write (publish) hakkı almaz (sahte event riski, #279).
+    /// </summary>
+    [Fact]
+    public void Definitions_json_grants_parent_notification_events_to_the_right_users_issue_423()
+    {
+        using var doc = System.Text.Json.JsonDocument.Parse(RepoFile("rabbitmq/definitions.json"));
+        var perms = doc.RootElement.GetProperty("permissions").EnumerateArray()
+            .ToDictionary(p => p.GetProperty("user").GetString()!);
+        bool Match(string user, string field, string exchange)
+            => System.Text.RegularExpressions.Regex.IsMatch(
+                $"ExamApp.Foundation.Contracts:{exchange}", perms[user].GetProperty(field).GetString()!);
+
+        foreach (var name in ParentNotificationEvents)
+        {
+            Match("exam_outbox_pub", "configure", name).ShouldBeTrue($"exam_outbox_pub configure {name}");
+            Match("exam_outbox_pub", "write", name).ShouldBeTrue($"exam_outbox_pub write {name}");
+            Match("exam_outbox_pub", "read", name).ShouldBeFalse($"exam_outbox_pub read {name}");
+
+            Match("badge_service", "configure", name).ShouldBeTrue($"badge_service configure {name}");
+            Match("badge_service", "read", name).ShouldBeTrue($"badge_service read {name}");
+            Match("badge_service", "write", name).ShouldBeFalse($"badge_service write {name} (consumer publish edemez)");
+
+            // Başka yayıncılar/tüketiciler bu exchange'lere dokunamaz.
+            foreach (var other in new[] { "identity_outbox_pub", "badge_outbox_pub", "exam_api" })
+            {
+                Match(other, "write", name).ShouldBeFalse($"{other} write {name}");
+            }
+        }
+    }
+
+    /// <summary>issue #423: deploy betikleri (docker-compose dışı kurulumlar) aynı listeleri taşır: yayıncı listesi + BadgeService listesi.</summary>
+    [Theory]
+    [InlineData("deploy/scripts/rabbitmq-init.sh")]
+    [InlineData("deploy/gcp/k8s/stateful-services.yaml")]
+    public void Deploy_scripts_list_parent_notification_events_for_publisher_and_badge_service_issue_423(string relativePath)
+    {
+        var lines = RepoFile(relativePath).Split('\n');
+        var exam = lines.Single(l => l.Contains("EXAM_OUTBOX_EVENTS=\""));
+        var badge = lines.Single(l => l.Contains("BADGE_SERVICE_EVENTS=\""));
+        foreach (var name in ParentNotificationEvents)
+        {
+            exam.ShouldContain("|" + name, Case.Sensitive, $"{relativePath} EXAM_OUTBOX_EVENTS {name}");
+            badge.ShouldContain("|" + name, Case.Sensitive, $"{relativePath} BADGE_SERVICE_EVENTS {name}");
+        }
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]

@@ -7,25 +7,31 @@
 import { activeIntlLocale } from './active-locale.util';
 
 /**
- * Biçimlendiriciler aktif dile bağlıdır (issue #183). Dil değişiminde sayfa yeniden yüklendiği
- * için ilk kullanımda üretilip önbelleğe alınır; SSR'da `DEFAULT_LOCALE` kullanılır.
+ * Biçimlendiriciler aktif dile bağlıdır (issue #183) ve dil başına önbelleğe alınır; SSR'da
+ * `DEFAULT_LOCALE` kullanılır. Uygulamada dil değişimi sayfayı yeniden yüklese de önbellek dile
+ * göre anahtarlanır: ilk çağrıdaki dil kalıcı olarak kilitlenmez (#394 — testlerde `<html lang>`
+ * spec'ler arasında değiştiğinde saatler yanlış dilde/12 saat biçiminde kalıyordu).
  */
-let dayFmt: Intl.DateTimeFormat | null = null;
-let timeFmt: Intl.DateTimeFormat | null = null;
+let dayFmt: { locale: string; fmt: Intl.DateTimeFormat } | null = null;
+let timeFmt: { locale: string; fmt: Intl.DateTimeFormat } | null = null;
 
 function dayFormatter(): Intl.DateTimeFormat {
-  dayFmt ??= new Intl.DateTimeFormat(activeIntlLocale(), {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    weekday: 'long',
-  });
-  return dayFmt;
+  const locale = activeIntlLocale();
+  if (dayFmt?.locale !== locale) {
+    dayFmt = {
+      locale,
+      fmt: new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' }),
+    };
+  }
+  return dayFmt.fmt;
 }
 
 function timeFormatter(): Intl.DateTimeFormat {
-  timeFmt ??= new Intl.DateTimeFormat(activeIntlLocale(), { hour: '2-digit', minute: '2-digit' });
-  return timeFmt;
+  const locale = activeIntlLocale();
+  if (timeFmt?.locale !== locale) {
+    timeFmt = { locale, fmt: new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }) };
+  }
+  return timeFmt.fmt;
 }
 
 /** "20 Eylül 2026 Pazar" */

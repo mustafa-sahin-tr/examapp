@@ -59,4 +59,28 @@ describe('booking-format.util', () => {
       expect(formatSlotFull(start, end, '(+1 day)')).toMatch(/ \(\+1 day\)$/);
     });
   });
+
+  /** Biçimlendirici önbelleği ilk çağrıdaki dile kilitlenmez (#394). */
+  describe('aktif dil', () => {
+    const s = new Date(2026, 8, 25, 14, 0).toISOString();
+    const e = new Date(2026, 8, 25, 15, 0).toISOString();
+    let originalLang: string | null;
+
+    beforeEach(() => (originalLang = document.documentElement.getAttribute('lang')));
+    afterEach(() =>
+      originalLang === null
+        ? document.documentElement.removeAttribute('lang')
+        : document.documentElement.setAttribute('lang', originalLang)
+    );
+
+    it('formatSlotRange_HtmlLangChangesBetweenCalls_FollowsCurrentLocale', () => {
+      document.documentElement.setAttribute('lang', 'en');
+      const en = formatSlotRange(s, e);
+      document.documentElement.setAttribute('lang', 'tr');
+      const tr = formatSlotRange(s, e);
+
+      expect(en).toBe('02:00 PM – 03:00 PM');
+      expect(tr).toBe('14:00 – 15:00');
+    });
+  });
 });

@@ -5,14 +5,14 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { TranslocoService } from '@jsverse/transloco';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 
 import { ParentDashboardComponent, parseChildParam, parseLocalDate } from './parent-dashboard.component';
 import { ParentDashboardService } from '../../services/parent-dashboard.service';
 import { ParentLinkService } from '../../services/parent-link.service';
 import { LocaleService } from '../../services/locale.service';
 import { LinkedChild } from '../../models/parent-link.model';
-import { ParentChildSummary } from '../../models/parent-dashboard.model';
+import { ParentChildAssignmentList, ParentChildSummary } from '../../models/parent-dashboard.model';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import parentDashboardTr from '../../../../public/i18n/parent-dashboard/tr.json';
 import parentDashboardEn from '../../../../public/i18n/parent-dashboard/en.json';
@@ -64,12 +64,29 @@ describe('ParentDashboardComponent (issue #420)', () => {
     };
   }
 
+  function emptyList(studentId: number): ParentChildAssignmentList {
+    return {
+      studentId,
+      status: null,
+      page: 1,
+      pageSize: 20,
+      totalCount: 0,
+      counts: { completed: 0, overdue: 0, pending: 0, windowDays: 30 },
+      items: [],
+    };
+  }
+
   async function setup(children: LinkedChild[], url = '/parent', lang = 'tr'): Promise<HTMLElement> {
     linkService = jasmine.createSpyObj<ParentLinkService>('ParentLinkService', ['getMyChildren', 'extractError']);
     linkService.getMyChildren.and.returnValue(of(children));
     linkService.extractError.and.callFake((_err: HttpErrorResponse, fallback: string) => fallback);
-    dashboardService = jasmine.createSpyObj<ParentDashboardService>('ParentDashboardService', ['getChildSummary']);
+    dashboardService = jasmine.createSpyObj<ParentDashboardService>('ParentDashboardService', [
+      'getChildSummary',
+      'getChildAssignments',
+      'getChildTestResult',
+    ]);
     dashboardService.getChildSummary.and.callFake((id: number) => of(summaryFor(id)));
+    dashboardService.getChildAssignments.and.callFake((id: number) => of(emptyList(id)));
 
     TestBed.configureTestingModule({
       imports: [
@@ -301,6 +318,57 @@ describe('ParentDashboardComponent (issue #420)', () => {
     expect(text(el, 'h1')).toBe(parentDashboardEn.title);
     expect(text(el, '[data-test="card-points"]')).toContain(parentDashboardEn.cards.points.title);
     expect(text(el, '[data-test="card-solved"]')).toContain('October 5');
+  });
+
+  it('assignmentsSection_FollowsTheSelectedChild', async () => {
+    const el = await setup([ayse, mert]);
+    expect(el.querySelector('[data-test="assignments-section"]')).not.toBeNull();
+    expect(dashboardService.getChildAssignments).toHaveBeenCalledOnceWith(11, null, 1);
+
+    dashboardService.getChildAssignments.calls.reset();
+    (harness.routeDebugElement!.componentInstance as unknown as { selectChild(id: number): void }).selectChild(12);
+    await settle();
+    expect(dashboardService.getChildAssignments).toHaveBeenCalledOnceWith(12, null, 1);
+  });
+
+  it('noChildren_HasNoAssignmentsSection', async () => {
+    const el = await setup([]);
+    expect(el.querySelector('[data-test="assignments-section"]')).toBeNull();
+    expect(dashboardService.getChildAssignments).not.toHaveBeenCalled();
+  });
+
+  it('assignments404_ShowsNoticeAndReloadsChildren', async () => {
+    const el = await setup([ayse]);
+    linkService.getMyChildren.and.returnValue(of([]));
+    dashboardService.getChildAssignments.and.returnValue(throwError(() => new HttpErrorResponse({ status: 404 })));
+    const section = harness.routeDebugElement!.query(
+      (d) => d.name === 'app-parent-child-assignments'
+    )!.componentInstance as unknown as { reload(): void };
+    section.reload();
+    await settle();
+
+    expect(linkService.getMyChildren).toHaveBeenCalledTimes(2);
+    expect(el.querySelector('[data-test="empty"]')).not.toBeNull();
+  });
+
+  it('loadChildren_WhileARefreshIsPending_DoesNotStartAnother', async () => {
+    await setup([ayse]);
+    const pendingChildren = new Subject<LinkedChild[]>();
+    linkService.getMyChildren.and.returnValue(pendingChildren);
+    const component = harness.routeDebugElement!.componentInstance as unknown as {
+      loadChildren(): void;
+      onChildNotFound(): void;
+    };
+
+    component.loadChildren();
+    component.onChildNotFound(); // özet + ödev 404'ü aynı anda: ikinci yenileme açılmaz
+    expect(linkService.getMyChildren).toHaveBeenCalledTimes(2);
+
+    pendingChildren.next([ayse]);
+    pendingChildren.complete();
+    await settle();
+    component.loadChildren();
+    expect(linkService.getMyChildren).toHaveBeenCalledTimes(3);
   });
 
   it('dictionaries_HaveSameKeys', () => {

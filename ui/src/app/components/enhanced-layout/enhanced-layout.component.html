@@ -72,16 +72,17 @@
 
       <mat-toolbar color="primary" *ngIf="!isMobile() && !isFullScreen() && !isSidenavCollapsed()">
         <div class="section-nav">
-          <button class="section-nav-btn" [class.active]="currentSection() === 'newest'"
+          <ng-container *ngIf="!isParentOnly">
+          <button class="section-nav-btn" data-test="toolbar-newest" [class.active]="currentSection() === 'newest'"
             (click)="showSection('newest')">
             <mat-icon>new_releases</mat-icon>
             {{ t('toolbar.newest') }}
           </button>
-          <button class="section-nav-btn" [class.active]="currentSection() === 'hot'" (click)="showSection('hot')">
+          <button class="section-nav-btn" data-test="toolbar-popular" [class.active]="currentSection() === 'hot'" (click)="showSection('hot')">
             <mat-icon>local_fire_department</mat-icon>
             {{ t('toolbar.popular') }}
           </button>
-          <div class="search-box" (focusin)="onFocus()" (focusout)="onBlur()">
+          <div class="search-box" data-test="toolbar-search" (focusin)="onFocus()" (focusout)="onBlur()">
             <mat-icon class="search-icon">search</mat-icon>
             <input matInput [formControl]="globalSearchControl" (keyup.enter)="onGlobalSearch()"
               [placeholder]="t('toolbar.searchPlaceholder')" [attr.aria-label]="t('toolbar.searchPlaceholder')" />
@@ -101,6 +102,7 @@
               </ul>
             </div>
           </div>
+          </ng-container>
         </div>
 
         <app-language-switcher class="toolbar-language-switcher"></app-language-switcher>

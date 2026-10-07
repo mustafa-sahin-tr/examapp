@@ -317,14 +317,14 @@ describe('EnhancedLayoutComponent notification badge (issue #146)', () => {
   let refreshUnreadCount: jasmine.Spy;
   let navigateSpy: jasmine.Spy;
 
-  function setup(isAuthenticated = true): void {
+  function setup(isAuthenticated = true, roles: string[] = [], desktop = false): void {
     notificationsChanged$ = new Subject<void>();
     authenticated$ = new BehaviorSubject<boolean>(isAuthenticated);
     unreadCount = signal(0);
     refreshUnreadCount = jasmine.createSpy('refreshUnreadCount').and.callFake(() => of(unreadCount()));
 
     const authStub: Partial<AuthService> = {
-      hasRealmRole: () => false,
+      hasRealmRole: (role: string) => roles.includes(role),
       isAuthenticated: () => authenticated$.asObservable(),
       isUnapprovedTeacher: signal(false),
       user: signal(null),
@@ -362,6 +362,10 @@ describe('EnhancedLayoutComponent notification badge (issue #146)', () => {
         { provide: ThemeConfigService, useValue: {} },
       ],
     });
+    if (desktop) {
+      // Headless pencere dar: masaüstü araç çubuğunu çizdirmek için mobil kırılım eşleşmesin.
+      TestBed.overrideProvider(BreakpointObserver, { useValue: { observe: () => of({ matches: false, breakpoints: {} }) } });
+    }
     navigateSpy = spyOn(TestBed.inject(Router), 'navigate').and.returnValue(Promise.resolve(true));
     fixture = TestBed.createComponent(EnhancedLayoutComponent);
   }
@@ -375,6 +379,27 @@ describe('EnhancedLayoutComponent notification badge (issue #146)', () => {
   }
 
   afterEach(() => localStorage.removeItem('user'));
+
+  it('toolbar_ParentOnly_HidesNewestPopularAndWorksheetSearch (#421)', () => {
+    setup(true, ['Parent'], true);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(fixture.componentInstance.isParentOnly).toBeTrue();
+    expect(el.querySelector('mat-toolbar .section-nav')).not.toBeNull(); // masaüstü araç çubuğu çizildi
+    expect(el.querySelector('[data-test="toolbar-newest"]')).toBeNull();
+    expect(el.querySelector('[data-test="toolbar-popular"]')).toBeNull();
+    expect(el.querySelector('[data-test="toolbar-search"]')).toBeNull();
+  });
+
+  it('toolbar_ParentWithAnotherRoleOrStudent_KeepsNewestPopularAndSearch (#421)', () => {
+    setup(true, ['Parent', 'Teacher'], true);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(fixture.componentInstance.isParentOnly).toBeFalse();
+    expect(el.querySelector('[data-test="toolbar-newest"]')).not.toBeNull();
+    expect(el.querySelector('[data-test="toolbar-popular"]')).not.toBeNull();
+    expect(el.querySelector('[data-test="toolbar-search"]')).not.toBeNull();
+  });
 
   it('init_Authenticated_LoadsUnreadCountOnceAndShowsBadge', () => {
     setup();

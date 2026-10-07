@@ -46,8 +46,11 @@
   opacity: 0.8;
 }
 
+// Global `form { flex-direction: column }` (styles.scss) burada satır düzenine çevrilir; aksi halde alanın `flex-basis`'i
+// YÜKSEKLİK olur ve kod alanı ~200px'lik kutuya dönüşür (#421 review). Masaüstünde alan + düğme aynı satırda.
 .pch__form {
   display: flex;
+  flex-direction: row;
   align-items: flex-start;
   gap: 0.75rem;
   flex-wrap: wrap;
@@ -58,7 +61,14 @@
 }
 
 .pch__field {
-  flex: 1 1 220px;
+  flex: 0 1 280px;
+  width: 280px;
+  max-width: 100%;
+
+  @media (max-width: 599px) {
+    flex: 1 1 100%;
+    width: 100%;
+  }
 
   input {
     letter-spacing: 0.15em;

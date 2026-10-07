@@ -38,5 +38,62 @@
       "yesterday": "Dün, yaklaşık {{time}}",
       "onDate": "{{date}}, yaklaşık {{time}}"
     }
+  },
+  "assignments": {
+    "title": "Ödevler ve testler",
+    "subtitle": "Açık ödevler ve son {{days}} günde teslim tarihi geçenler. Soru içerikleri ve cevaplar gösterilmez.",
+    "filterLabel": "Duruma göre filtrele",
+    "all": "Tümü",
+    "status": {
+      "pending": "Bekliyor",
+      "overdue": "Gecikti / süresi doldu",
+      "completed": "Tamamlandı"
+    },
+    "loadError": "Ödevler yüklenemedi.",
+    "empty": "Henüz atanmış ödev ya da test yok.",
+    "emptyFiltered": "Bu durumda ödev ya da test yok.",
+    "noSubject": "Ders belirtilmemiş",
+    "teacher": "Öğretmen: {{name}}",
+    "startedOn": "Başlangıç: {{date}}",
+    "deadline": "Son teslim: {{date}}",
+    "noDeadline": "Son teslim tarihi yok",
+    "score": "%{{score}} başarı",
+    "counts": "{{correct}} doğru · {{wrong}} yanlış · {{blank}} boş",
+    "viewResult": "Sonuç özeti",
+    "paginator": {
+      "itemsPerPage": "Sayfa başına",
+      "next": "Sonraki sayfa",
+      "previous": "Önceki sayfa",
+      "first": "İlk sayfa",
+      "last": "Son sayfa",
+      "range": "{{start}}–{{end}} / {{length}}",
+      "rangeEmpty": "0 / {{length}}"
+    }
+  },
+  "duration": {
+    "underMinute": "1 dk'dan kısa",
+    "minutes": "{{m}} dk",
+    "hoursMinutes": "{{h}} sa {{m}} dk"
+  },
+  "testResult": {
+    "title": "Test sonucu",
+    "loading": "Sonuç yükleniyor…",
+    "loadError": "Sonuç yüklenemedi.",
+    "notFound": "Bu test sonucu bulunamadı.",
+    "close": "Kapat",
+    "timedOut": "Süre doldu",
+    "score": "Başarı",
+    "correct": "Doğru",
+    "wrong": "Yanlış",
+    "blank": "Boş",
+    "duration": "Süre",
+    "started": "Başladı",
+    "finished": "Bitirdi",
+    "topics": "Konulara göre",
+    "topicCounts": "{{correct}} doğru · {{wrong}} yanlış · {{blank}} boş",
+    "noTopics": "Konu bilgisi yok.",
+    "privacyNote": "Sorular ve cevaplar velilere gösterilmez; yalnızca sonuç sayıları görünür.",
+    "percent": "%{{value}}",
+    "approxTime": "{{date}}, yaklaşık {{time}}"
   }
 }

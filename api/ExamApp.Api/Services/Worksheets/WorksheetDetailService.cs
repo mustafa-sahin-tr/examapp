@@ -53,7 +53,8 @@ public class WorksheetDetailService : IWorksheetDetailService
         }
     }
 
-    private static int ScorePercent(int correct, int total) => total > 0 ? correct * 100 / total : 0;
+    // issue #421 review (M1): puanlama kuralı WorksheetScoring'de tek kaynak (veli test özeti de aynısını kullanır).
+    private static int ScorePercent(int correct, int total) => WorksheetScoring.ScorePercent(correct, total);
 
     private sealed class InstanceData
     {
@@ -131,12 +132,10 @@ public class WorksheetDetailService : IWorksheetDetailService
         var correctMap = questions.ToDictionary(wq => wq.Id, wq => wq.Question.CorrectAnswerId);
         var topicMap = questions.ToDictionary(
             wq => wq.Id,
-            wq => (TopicId: wq.Question.TopicId, Name: wq.Question.Topic?.Name ?? UnclassifiedTopicName));
+            wq => WorksheetScoring.TopicKey(true, wq.Question.TopicId, wq.Question.Topic?.Name, UnclassifiedTopicName));
 
-        int CorrectOf(InstanceData i) => i.Answers.Count(a =>
-            a.SelectedAnswerId != null
-            && correctMap.TryGetValue(a.WorksheetQuestionId, out var ca)
-            && ca != null && ca == a.SelectedAnswerId);
+        int CorrectOf(InstanceData i) => WorksheetScoring.Tally(
+            i.Answers, a => a.SelectedAnswerId, a => correctMap.GetValueOrDefault(a.WorksheetQuestionId)).Correct;
 
         // Lightweight projection: only the two columns we score on, no full entity graph.
         var instances = (await _context.TestInstances
@@ -268,9 +267,7 @@ public class WorksheetDetailService : IWorksheetDetailService
                 {
                     InstanceId = i.InstanceId,
                     CompletedDate = i.EndTime,
-                    DurationSeconds = i.EndTime.HasValue
-                        ? (int)Math.Max(0, (i.EndTime.Value - i.StartTime).TotalSeconds)
-                        : 0,
+                    DurationSeconds = WorksheetScoring.DurationSeconds(i.StartTime, i.EndTime),
                     CorrectCount = correct,
                     TotalCount = total,
                     ScorePercent = ScorePercent(correct, total)
@@ -454,12 +451,8 @@ public class WorksheetDetailService : IWorksheetDetailService
         var answers = instance.Answers;
         var total = answers.Count;
 
-        var correct = answers.Count(a =>
-            a.SelectedAnswerId != null
-            && correctMap.TryGetValue(a.WorksheetQuestionId, out var ca)
-            && ca != null && ca == a.SelectedAnswerId);
-        var empty = answers.Count(a => a.SelectedAnswerId == null);
-        var wrong = total - correct - empty;
+        int? CorrectAnswerOf((int WorksheetQuestionId, int? SelectedAnswerId) a) => correctMap.GetValueOrDefault(a.WorksheetQuestionId);
+        var (correct, wrong, empty) = WorksheetScoring.Tally(answers, a => a.SelectedAnswerId, CorrectAnswerOf);
 
         var dto = new WorksheetCompletedResultDto
         {
@@ -468,18 +461,15 @@ public class WorksheetDetailService : IWorksheetDetailService
             CorrectCount = correct,
             WrongCount = wrong,
             EmptyCount = empty,
-            DurationSeconds = instance.EndTime.HasValue
-                ? (int)Math.Max(0, (instance.EndTime.Value - instance.StartTime).TotalSeconds)
-                : 0,
+            DurationSeconds = WorksheetScoring.DurationSeconds(instance.StartTime, instance.EndTime),
             TopicSuccess = answers
-                .GroupBy(a => topicMap.TryGetValue(a.WorksheetQuestionId, out var t) ? t : (TopicId: (int?)null, Name: UnclassifiedTopicName))
+                .GroupBy(a => topicMap.TryGetValue(a.WorksheetQuestionId, out var t)
+                    ? t
+                    : WorksheetScoring.TopicKey(false, null, null, UnclassifiedTopicName))
                 .Select(g =>
                 {
                     var gTotal = g.Count();
-                    var gCorrect = g.Count(a =>
-                        a.SelectedAnswerId != null
-                        && correctMap.TryGetValue(a.WorksheetQuestionId, out var ca)
-                        && ca != null && ca == a.SelectedAnswerId);
+                    var gCorrect = WorksheetScoring.Tally(g, a => a.SelectedAnswerId, CorrectAnswerOf).Correct;
                     return new WorksheetTopicSuccessDto
                     {
                         TopicId = g.Key.TopicId,

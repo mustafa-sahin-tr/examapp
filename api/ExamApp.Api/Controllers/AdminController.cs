@@ -46,11 +46,12 @@ public class AdminController : BaseController
     private readonly IAdminStudentSchoolService? _studentSchool;
     private readonly IAdminTeacherSuspensionService? _teacherSuspension;
     private readonly IAdminTeacherSchoolService? _teacherSchool;
+    private readonly IAdminParentAccessAuditService? _parentAccessAudits;
 
     // Client'a donen tum metinler mesaj sozlugunden gelir (issue #184).
     private readonly IStringLocalizer<Messages> _localizer;
 
-    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations, ITeacherApprovalService teacherApprovals, IAdminTeacherService adminTeachers, IAdminStudentService adminStudents, IAdminDataAccessAuditService dataAccessAudit, IAdminPasswordResetService passwordReset, IAdminAccountStatusService accountStatus, IStringLocalizer<Messages>? localizer = null, IAdminStudentSchoolService? studentSchool = null, IAdminTeacherSuspensionService? teacherSuspension = null, IAdminTeacherSchoolService? teacherSchool = null)
+    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations, ITeacherApprovalService teacherApprovals, IAdminTeacherService adminTeachers, IAdminStudentService adminStudents, IAdminDataAccessAuditService dataAccessAudit, IAdminPasswordResetService passwordReset, IAdminAccountStatusService accountStatus, IStringLocalizer<Messages>? localizer = null, IAdminStudentSchoolService? studentSchool = null, IAdminTeacherSuspensionService? teacherSuspension = null, IAdminTeacherSchoolService? teacherSchool = null, IAdminParentAccessAuditService? parentAccessAudits = null)
     {
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _taxonomy = taxonomy;
@@ -68,6 +69,7 @@ public class AdminController : BaseController
         _studentSchool = studentSchool;
         _teacherSuspension = teacherSuspension;
         _teacherSchool = teacherSchool;
+        _parentAccessAudits = parentAccessAudits;
     }
 
     private async Task<int> CurrentUserIdAsync()
@@ -322,6 +324,49 @@ public class AdminController : BaseController
         => _dataAccessAudit.RecordListAccessAsync(new AdminListAccessRecord(
             KeyCloakId ?? string.Empty, resource, schoolId, unassigned,
             result.PageNumber, result.PageSize, result.Items?.Count ?? 0, result.TotalCount), ct);
+
+    // ---- Veli erişim kayıtları (issue #424) ----
+
+    /// <summary>
+    /// GET api/admin/parent-access-audits?parentId=&amp;studentId=&amp;from=&amp;to=&amp;page=1&amp;pageSize=20 → veli erişim kayıtları
+    /// (<c>ParentAccessAudits</c>), en yeni önce. Filtreler opsiyonel: <c>parentId</c> = <c>Parent.Id</c>, <c>studentId</c> =
+    /// <c>Student.Id</c>, <c>from</c> (dahil) / <c>to</c> (hariç) ISO-8601 UTC; ikisi birlikte verilirse <c>from</c> &lt; <c>to</c>
+    /// ve aralık en fazla 180 gün (aksi 400). pageSize 1..100 aralığına kırpılır. Salt okunur, yalnızca exam DB id'leri; yanıt
+    /// önbelleğe alınmaz. Hangi velinin hangi çocuğa baktığı kişisel veri sayılır: her başarılı çağrı <c>AdminDataAccessLogs</c>'a
+    /// yazılır (<c>Resource=ParentAccessAudits</c>, fail-closed) ve admin kullanıcı listeleriyle aynı rate limit kovasını kullanır (429).
+    /// Kayıtlar <c>ParentAccessAudit:RetentionDays</c> (varsayılan 180) gün tutulur.
+    /// </summary>
+    [HttpGet("parent-access-audits")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [EnableRateLimiting(AdminUserListRateLimiting.Policy)]
+    [AdminDataAccess(AdminDataAccessResource.ParentAccessAudits)]
+    public async Task<ActionResult<Paged<AdminParentAccessAuditItemDto>>> GetParentAccessAudits(
+        [FromQuery, Range(1, int.MaxValue)] int? parentId,
+        [FromQuery, Range(1, int.MaxValue)] int? studentId,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = AdminListPaging.DefaultPageSize,
+        CancellationToken ct = default)
+    {
+        var service = _parentAccessAudits
+            ?? throw new InvalidOperationException("IAdminParentAccessAuditService is not registered.");
+        var result = await service.ListAsync(new AdminParentAccessAuditQuery(parentId, studentId, from, to), page, pageSize, ct);
+        switch (result.Status)
+        {
+            case AdminParentAccessAuditListStatus.InvalidRange:
+                return BadRequest(new { message = _localizer["admin.parentAccessAudits.invalidRange"].Value });
+            case AdminParentAccessAuditListStatus.RangeTooLong:
+                return BadRequest(new
+                {
+                    message = _localizer["admin.parentAccessAudits.rangeTooLong", AdminParentAccessAuditQuery.MaxRangeDays].Value
+                });
+        }
+
+        var paged = result.Page!;
+        await AuditListAccessAsync(AdminDataAccessResource.ParentAccessAudits, null, false, paged, ct);
+        return Ok(paged);
+    }
 
     // ---- Şifre sıfırlama (issue #156) ----
 

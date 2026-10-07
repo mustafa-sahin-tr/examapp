@@ -84,7 +84,7 @@ public class LeaderboardControllerTests
     {
         var method = typeof(LeaderboardController).GetMethod(nameof(LeaderboardController.GetLeaderboard))!;
 
-        method.GetCustomAttribute<AuthorizeAttribute>(inherit: false).ShouldNotBeNull();
+        method.GetCustomAttributes<AuthorizeAttribute>(inherit: false).ShouldNotBeEmpty();
         typeof(LeaderboardController).GetCustomAttribute<RouteAttribute>()!.Template.ShouldBe("api/[controller]");
 
         // Sözleşme: okul kimliği client'tan bağlanmaz.

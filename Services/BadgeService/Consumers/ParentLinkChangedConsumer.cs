@@ -4,6 +4,7 @@ using BadgeService.Hubs;
 using BadgeService.Services;
 using ExamApp.Foundation.Contracts;
 using MassTransit;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.SignalR;
 
 namespace BadgeService.Consumers;
@@ -18,6 +19,12 @@ namespace BadgeService.Consumers;
 /// (<see cref="UnlinkedToStudentType"/>); koparanın kendisine bildirim yok.</item>
 /// </list>
 /// Tek consumer iki event'i handle eder (WorksheetAccessDecisionConsumer deseni).
+///
+/// Issue #424 (V6, KVKK): Unlinked'te — kim koparırsa koparsın, RevokedByRole bilinmese de — velinin O ÇOCUĞA özgü bildirimleri
+/// silinir (<see cref="ChildSpecificParentTypes"/>: test tamamlandı, gecikmiş ödev, "sizi veli olarak onayladı"). Bağlantı kopunca veli
+/// çocuğun test adı/puanı/ödevini geçmiş bildirimlerden de göremesin. Çocuk <c>Data.studentId</c>'den eşlenir; aynı velinin başka
+/// çocuklarına ait ve diğer tipteki bildirimler (koparma bildiriminin kendisi dahil) kalır. Silme idempotent: tekrar teslimde
+/// silinecek satır kalmaz.
 ///
 /// Idempotency: bir event iki alıcıya gidebildiğinden her alıcı kendi Type'ıyla yazılır; <c>(Type, SourceEventId)</c> filtreli unique
 /// index'i + önceden <c>Any</c> kontrolü + eşzamanlı yarışta 23505 yakalama. Alıcılardan biri (sub çözülemedi) düşerse tekrar
@@ -76,6 +83,8 @@ public class ParentLinkChangedConsumer :
         var e = context.Message;
         var ct = context.CancellationToken;
 
+        await PurgeChildNotificationsAsync(e, ct);
+
         if (string.Equals(e.RevokedByRole, "Student", StringComparison.OrdinalIgnoreCase))
         {
             // Öğrenci kopardı → veliye haber (bağlantı artık yok: derin link çocuk seçmeden /parent'a gider).
@@ -93,6 +102,55 @@ public class ParentLinkChangedConsumer :
             _logger.LogWarning(
                 "ParentUnlinked bilinmeyen RevokedByRole='{Role}' (EventId={EventId}, LinkId={LinkId}); bildirim üretilmedi.",
                 e.RevokedByRole, e.EventId, e.LinkId);
+        }
+    }
+
+    /// <summary>Bağlantı kopunca velide kalmaması gereken, çocuğa özgü bildirim tipleri (issue #424).</summary>
+    public static readonly IReadOnlyList<string> ChildSpecificParentTypes =
+    [
+        ParentChildTestCompletedConsumer.NotificationType,
+        ParentHomeworkOverdueConsumer.NotificationType,
+        LinkedToParentType
+    ];
+
+    /// <summary>
+    /// Velinin (<c>ParentUserId</c>) bu çocuğa (<c>StudentId</c>) ait, <see cref="ChildSpecificParentTypes"/> tipindeki bildirimlerini
+    /// siler. Aday küme (veli + tip; <c>IX_Notifications_UserId_IsRead_CreatedAt</c>) küçük: <c>Data</c> serbest metin JSON olduğundan
+    /// çocuk eşlemesi bellekte yapılır (sağlayıcıdan bağımsız). <c>Data</c>'sı okunamayan satır silinmez (yanlış çocuğu silmemek için).
+    /// </summary>
+    private async Task PurgeChildNotificationsAsync(ParentUnlinkedEvent e, CancellationToken ct)
+    {
+        var candidates = await _db.Notifications
+            .Where(n => n.UserId == e.ParentUserId && ChildSpecificParentTypes.Contains(n.Type))
+            .ToListAsync(ct);
+        var toDelete = candidates.Where(n => DataStudentId(n.Data) == e.StudentId).ToList();
+        if (toDelete.Count == 0)
+            return;
+
+        _db.Notifications.RemoveRange(toDelete);
+        await _db.SaveChangesAsync(ct);
+        _logger.LogInformation(
+            "ParentUnlinked: velinin çocuğa özgü {Count} bildirimi silindi (EventId={EventId}, LinkId={LinkId}, ParentUserId={ParentUserId}).",
+            toDelete.Count, e.EventId, e.LinkId, e.ParentUserId);
+    }
+
+    private static int? DataStudentId(string? data)
+    {
+        if (string.IsNullOrWhiteSpace(data))
+            return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(data);
+            return doc.RootElement.ValueKind == JsonValueKind.Object
+                && doc.RootElement.TryGetProperty("studentId", out var id)
+                && id.ValueKind == JsonValueKind.Number
+                && id.TryGetInt32(out var value)
+                    ? value
+                    : null;
+        }
+        catch (JsonException)
+        {
+            return null;
         }
     }
 

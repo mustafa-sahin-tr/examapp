@@ -56,6 +56,7 @@ public class ParentLinksController : BaseController
     /// <summary>Öğrenci: bağlı velileri (yalnızca ad) + geçerli kodun bitişi.</summary>
     [HttpGet("my-parents")]
     [Authorize(Roles = "Student")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)] // issue #424: veli adları/maskeli e-posta; koparma anında yansısın
     public async Task<IActionResult> GetMyParents(CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync(ct);
@@ -89,6 +90,8 @@ public class ParentLinksController : BaseController
     /// <summary>Veli: çocukları — Active (ad, sınıf, okul adı) ve onay bekleyenler (öğrenci verisi yok).</summary>
     [HttpGet("my-children")]
     [Authorize(Roles = "Parent")]
+    // issue #420 review / #424: çocuk adı/okulu/öğrenci id'si — HER yanıt önbelleğe alınmaz (koparma bir sonraki istekte görünür).
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> GetMyChildren(CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync(ct);
@@ -99,8 +102,6 @@ public class ParentLinksController : BaseController
         if (result == null)
             return ProfileNotFound();
 
-        // issue #420 review: çocuk adı/okulu/öğrenci id'si — paylaşılan önbelleklerde tutulmasın.
-        Response.Headers.CacheControl = "no-store";
         return Ok(result);
     }
 

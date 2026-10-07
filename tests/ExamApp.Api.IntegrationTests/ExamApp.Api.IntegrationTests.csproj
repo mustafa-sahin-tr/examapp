@@ -21,6 +21,8 @@
   <ItemGroup>
     <!-- issue #365 (S2): SDK'dan bagimsiz SigV4 presign dogrulayicisi (ExamApp.Api.Tests ile paylasilir) -->
     <Compile Include="../ExamApp.Api.Tests/Support/SigV4PresignVerifier.cs" Link="Infrastructure/SigV4PresignVerifier.cs" />
+    <!-- issue #424: veli uç kataloğu (yansıma kilidi ExamApp.Api.Tests'te; matris + yasak içerik taraması burada) -->
+    <Compile Include="../ExamApp.Api.Tests/Support/ParentEndpointCatalog.cs" Link="Infrastructure/ParentEndpointCatalog.cs" />
   </ItemGroup>
 
 </Project>

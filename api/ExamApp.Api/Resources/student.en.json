@@ -13,6 +13,10 @@
     "registrationConflict": "Your registration was updated by another request at the same time. Please refresh and try again.",
     "gradeUpdated": "Student grade updated successfully.",
     "invalidFile": "Invalid file.",
+    "avatar": {
+      "tooLarge": "The avatar can be at most {0} MB.",
+      "unsupportedType": "The avatar must be a PNG, JPEG or WebP image."
+    },
     "reset": {
       "queued": "The reset request has been queued.",
       "alreadyPending": "You already have a pending reset request; your data will be reset once it completes.",

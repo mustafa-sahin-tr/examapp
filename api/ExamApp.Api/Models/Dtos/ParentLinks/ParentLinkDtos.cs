@@ -120,6 +120,12 @@ public class LinkedChildDto
 {
     public int LinkId { get; set; }
 
+    /// <summary>
+    /// Issue #420: öğrencinin exam DB id'si — veli paneli uçlarının (<c>api/parent/children/{studentId}/...</c>) anahtarı.
+    /// Yalnızca Active iken dolu; Pending'de null (onaydan önce öğrenciye ait hiçbir şey açılmaz).
+    /// </summary>
+    public int? StudentId { get; set; }
+
     /// <summary>"Active" | "Pending".</summary>
     public string Status { get; set; } = string.Empty;
 

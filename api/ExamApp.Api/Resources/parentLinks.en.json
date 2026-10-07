@@ -7,6 +7,7 @@
     "fallbackStudentName": "Student",
     "redeemRateLimited": "Too many code attempts. Please try again later.",
     "inviteRateLimited": "Too many invite codes were created in a short time. Please try again later.",
+    "summaryRateLimited": "Too many requests. Please try again in a moment.",
     "errors": {
       "invalidCode": "The code is invalid or has expired.",
       "studentLimitReached": "You can link at most 4 parents (pending requests included). Remove one to create a new code.",
@@ -14,6 +15,7 @@
       "alreadyLinked": "This student is already linked to your account or your request is awaiting approval.",
       "notFound": "Link not found.",
       "profileNotFound": "Your account profile was not found.",
+      "childNotFound": "Child not found or the link is not active.",
       "busy": "The operation could not be completed right now. Please try again.",
       "rateLimited": "Too many code attempts. Please try again later."
     },

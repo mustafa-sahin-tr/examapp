@@ -7,6 +7,7 @@ import { studentGuard } from './shared/guards/student.guard';
 import { roleGuard } from './shared/guards/role.guard';
 import { approvedTeacherGuard } from './shared/guards/approved-teacher.guard';
 import { settingsGuard } from './shared/guards/settings.guard';
+import { parentGuard, parentHomeRedirectGuard } from './shared/guards/parent.guard';
 import { TEACHER_APPROVAL_PENDING_PATH } from './models/teacher-approval.model';
 import { QuestionComponent } from './pages/question/question.component';
 import { QuestionViewComponent } from './pages/question-view/question-view.component';
@@ -58,7 +59,8 @@ export const routes: Routes = [
     children: [
       // Issue #53: Teacher rolü → TeacherDashboardComponent, diğerleri → mevcut DashboardComponent.
       // Issue #287: onaysız öğretmen teacher dashboard yerine başvuru durumu sayfasına gider (öğrenci etkilenmez).
-      { path: 'dashboard', component: DashboardSwitchComponent, canActivate: [authGuard, approvedTeacherGuard] },
+      // Issue #420: veli /dashboard yerine veli paneline (/parent) düşer.
+      { path: 'dashboard', component: DashboardSwitchComponent, canActivate: [authGuard, parentHomeRedirectGuard, approvedTeacherGuard] },
       {
         // Issue #287: öğretmen hesabı onay bekliyor / reddedildi — onaysız öğretmenin tek öğretmen ekranı.
         path: TEACHER_APPROVAL_PENDING_PATH,
@@ -307,6 +309,13 @@ export const routes: Routes = [
         canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
         loadComponent: () =>
           import('./pages/student-messages/student-messages.component').then((m) => m.StudentMessagesComponent),
+      },
+      {
+        // Issue #420: veli paneli — çocuk seçici (?child=<studentId>) + özet kartları. Login sonrası veli buraya düşer.
+        path: 'parent',
+        canActivate: [authGuard, parentGuard],
+        loadComponent: () =>
+          import('./pages/parent-dashboard/parent-dashboard.component').then((m) => m.ParentDashboardComponent),
       },
       {
         // Issue #419: velinin "Çocuklarım" sayfası — davet koduyla çocuk ekleme + bağlı çocuklar (tam panel #420).

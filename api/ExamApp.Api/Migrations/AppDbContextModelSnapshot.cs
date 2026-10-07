@@ -1037,6 +1037,37 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("Parents");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.ParentAccessAudit", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("ParentId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentId", "At");
+
+                    b.HasIndex("StudentId", "At");
+
+                    b.ToTable("ParentAccessAudits");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.ParentInviteCode", b =>
                 {
                     b.Property<int>("Id")

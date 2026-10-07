@@ -1,0 +1,152 @@
+<section class="pdb" *transloco="let t; prefix: 'parent-dashboard'">
+  <header class="pdb__head">
+    <div class="pdb__title">
+      <h1>{{ t('title') }}</h1>
+      <p>{{ t('subtitle') }}</p>
+    </div>
+    @if (children().length > 0) {
+      <a mat-stroked-button routerLink="/my-children" data-test="manage-children">
+        <mat-icon>family_restroom</mat-icon>
+        {{ t('manageChildren') }}
+      </a>
+    }
+  </header>
+
+  @if (childrenLoading()) {
+    <div class="pdb__state" aria-busy="true" data-test="children-loading">
+      <mat-spinner diameter="28" />
+      <span>{{ t('loading') }}</span>
+    </div>
+  } @else if (childrenError()) {
+    <div class="pdb__state" role="alert" data-test="children-error">
+      <span>{{ childrenError() }}</span>
+      <button mat-stroked-button type="button" (click)="loadChildren()">{{ t('retry') }}</button>
+    </div>
+  } @else if (isEmpty()) {
+    <mat-card appearance="outlined" class="pdb__empty" data-test="empty">
+      <mat-card-content>
+        <mat-icon class="pdb__empty-icon" aria-hidden="true">child_care</mat-icon>
+        <h2>{{ t('empty.title') }}</h2>
+        <p>{{ t('empty.message') }}</p>
+        @if (hasPending()) {
+          <p class="pdb__pending-note" data-test="pending-note">{{ t('empty.pendingNote') }}</p>
+        }
+        <a mat-flat-button routerLink="/my-children" data-test="add-child">
+          <mat-icon>person_add</mat-icon>
+          {{ t('empty.cta') }}
+        </a>
+      </mat-card-content>
+    </mat-card>
+  } @else {
+    @if (notice()) {
+      <p class="pdb__notice" role="status" data-test="notice">{{ notice() }}</p>
+    }
+    <div class="pdb__selector">
+      @if (children().length > 1) {
+        <mat-form-field appearance="outline" class="pdb__select" subscriptSizing="dynamic">
+          <mat-label>{{ t('selectChild') }}</mat-label>
+          <mat-select
+            data-test="child-select"
+            [value]="selectedId()"
+            (selectionChange)="selectChild($event.value)"
+          >
+            @for (child of children(); track child.studentId) {
+              <mat-option [value]="child.studentId">{{ child.studentName }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
+      @if (selectedChild(); as child) {
+        <div class="pdb__child" data-test="selected-child">
+          <mat-icon aria-hidden="true">child_care</mat-icon>
+          <div>
+            <span class="pdb__child-name">{{ child.studentName }}</span>
+            <span class="pdb__child-meta">
+              @if (child.gradeName) {
+                <span>{{ child.gradeName }}</span>
+              }
+              @if (child.schoolName) {
+                <span>{{ child.schoolName }}</span>
+              }
+            </span>
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (summaryLoading()) {
+      <div class="pdb__state" aria-busy="true" data-test="summary-loading">
+        <mat-spinner diameter="28" />
+        <span>{{ t('loading') }}</span>
+      </div>
+    } @else if (summaryError()) {
+      <div class="pdb__state" role="alert" data-test="summary-error">
+        <span>{{ summaryError() }}</span>
+        <button mat-stroked-button type="button" (click)="retrySummary()">{{ t('retry') }}</button>
+      </div>
+    } @else {
+      @if (summary(); as s) {
+      <div class="pdb__cards">
+        <mat-card appearance="outlined" class="pdb__card" data-test="card-solved">
+          <mat-card-header>
+            <mat-icon mat-card-avatar aria-hidden="true">task_alt</mat-icon>
+            <mat-card-title>{{ t('cards.solved.title') }}</mat-card-title>
+            <mat-card-subtitle>{{ t('cards.solved.since', { date: formatWeekStart(s.weekStart) }) }}</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <span class="pdb__value" data-test="solved-value">{{ s.questionsSolvedThisWeek }}</span>
+            <span class="pdb__unit">{{ t('cards.solved.unit') }}</span>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card appearance="outlined" class="pdb__card pdb__card--wide" data-test="card-assignments">
+          <mat-card-header>
+            <mat-icon mat-card-avatar aria-hidden="true">assignment</mat-icon>
+            <mat-card-title>{{ t('cards.assignments.title') }}</mat-card-title>
+            <mat-card-subtitle>{{ t('cards.assignments.window', { days: s.assignments.windowDays }) }}</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <ul class="pdb__breakdown">
+              <li class="pdb__stat pdb__stat--done" data-test="assignments-completed">
+                <span class="pdb__value">{{ s.assignments.completed }}</span>
+                <span class="pdb__unit">{{ t('cards.assignments.completed') }}</span>
+              </li>
+              <li class="pdb__stat pdb__stat--pending" data-test="assignments-pending">
+                <span class="pdb__value">{{ s.assignments.pending }}</span>
+                <span class="pdb__unit">{{ t('cards.assignments.pending') }}</span>
+              </li>
+              <li class="pdb__stat pdb__stat--overdue" data-test="assignments-overdue">
+                <span class="pdb__value">{{ s.assignments.overdue }}</span>
+                <span class="pdb__unit">{{ t('cards.assignments.overdue') }}</span>
+              </li>
+            </ul>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card appearance="outlined" class="pdb__card" data-test="card-points">
+          <mat-card-header>
+            <mat-icon mat-card-avatar aria-hidden="true">military_tech</mat-icon>
+            <mat-card-title>{{ t('cards.points.title') }}</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <span class="pdb__value" data-test="points-value">{{ s.totalPoints }}</span>
+            <span class="pdb__unit">{{ t('cards.points.unit') }}</span>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card appearance="outlined" class="pdb__card" data-test="card-last-activity">
+          <mat-card-header>
+            <mat-icon mat-card-avatar aria-hidden="true">schedule</mat-icon>
+            <mat-card-title>{{ t('cards.lastActivity.title') }}</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <span class="pdb__text" data-test="last-activity-value">
+              {{ formatLastActivity(s.lastActivityAt) }}
+            </span>
+          </mat-card-content>
+        </mat-card>
+      </div>
+      }
+    }
+  }
+</section>

@@ -54,6 +54,7 @@ public class ParentLinkRateLimitingTests
                     {
                         e.MapPost("/redeem", () => Results.Ok("ok")).RequireRateLimiting(ParentLinkRateLimiting.RedeemPolicy);
                         e.MapPost("/invite", () => Results.Ok("ok")).RequireRateLimiting(ParentLinkRateLimiting.InvitePolicy);
+                        e.MapPost("/summary", () => Results.Ok("ok")).RequireRateLimiting(ParentLinkRateLimiting.ChildSummaryPolicy);
                     });
                 });
             })
@@ -101,6 +102,35 @@ public class ParentLinkRateLimitingTests
         (await PostAsync(client, "/invite", "s1")).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await PostAsync(client, "/invite", "s1")).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
         (await PostAsync(client, "/redeem", "s1")).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Child_summary_defaults_to_thirty_per_minute_per_parent_with_retry_after()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        for (var i = 0; i < 30; i++)
+            (await PostAsync(client, "/summary", "p1")).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var rejected = await PostAsync(client, "/summary", "p1");
+        rejected.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        rejected.Headers.RetryAfter!.Delta!.Value.TotalSeconds.ShouldBeInRange(1, 60);
+        using var body = JsonDocument.Parse(await rejected.Content.ReadAsStringAsync());
+        body.RootElement.GetProperty("errorCode").GetString().ShouldBe("RateLimited");
+        body.RootElement.GetProperty("message").GetString()
+            .ShouldBe("Çok fazla istek yapıldı. Lütfen biraz sonra tekrar deneyin.");
+
+        (await PostAsync(client, "/summary", "p2")).StatusCode.ShouldBe(HttpStatusCode.OK); // başka veli etkilenmez
+        (await PostAsync(client, "/redeem", "p1")).StatusCode.ShouldBe(HttpStatusCode.OK);  // ayrı kova
+    }
+
+    [Fact]
+    public void Child_summary_action_carries_its_rate_limit_policy_and_parent_role()
+    {
+        var method = typeof(ParentDashboardController).GetMethod(nameof(ParentDashboardController.GetChildSummary))!;
+        method.GetCustomAttribute<EnableRateLimitingAttribute>()!.PolicyName.ShouldBe(ParentLinkRateLimiting.ChildSummaryPolicy);
+        typeof(ParentDashboardController).GetCustomAttributes<AuthorizeAttribute>().Select(a => a.Roles).ShouldContain("Parent");
     }
 
     [Fact]

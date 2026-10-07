@@ -545,31 +545,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         };
     }
 
+    // issue #420: kural veli özetiyle paylaşılır (AssignmentStudentStatusRules) — tek tanım.
     private static string ResolveStudentAssignmentStatus(WorksheetAssignment assignment, WorksheetInstance? instance, DateTime now)
-    {
-        if (instance == null)
-        {
-            if (assignment.StartAt > now)
-            {
-                return AssignmentStudentStatuses.Scheduled;
-            }
-
-            if (assignment.EndAt.HasValue && assignment.EndAt.Value < now)
-            {
-                return AssignmentStudentStatuses.Expired;
-            }
-
-            return AssignmentStudentStatuses.NotStarted;
-        }
-
-        return instance.Status switch
-        {
-            WorksheetInstanceStatus.Completed => AssignmentStudentStatuses.Completed,
-            WorksheetInstanceStatus.Expired => AssignmentStudentStatuses.Expired,
-            WorksheetInstanceStatus.Started => instance.EndTime.HasValue
-                ? AssignmentStudentStatuses.Completed
-                : AssignmentStudentStatuses.InProgress,
-            _ => AssignmentStudentStatuses.NotStarted
-        };
-    }
+        => AssignmentStudentStatusRules.Resolve(assignment.StartAt, assignment.EndAt, instance?.Status, instance?.EndTime, now);
 }

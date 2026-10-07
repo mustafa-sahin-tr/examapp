@@ -7,6 +7,7 @@
     "registered": "Student registered successfully.",
     "schoolNotFound": "The selected school was not found.",
     "teacherRecordExists": "An account with a teacher record cannot register as a student.",
+    "parentRecordExists": "A parent account cannot register as a student.",
     "schoolLocked": "Your school cannot be changed after registration. Contact a system administrator to change it.",
     "schoolRecentlyRejected": "Your membership request for this school was recently rejected. You can choose the same school again after {0} days, or choose another school.",
     "registrationConflict": "Your registration was updated by another request at the same time. Please refresh and try again.",

@@ -30,7 +30,16 @@ public interface IFixedWindowCounterStore
     /// Yeni değer <paramref name="limit"/>'i aşıyorsa reddedilir.
     /// </summary>
     ValueTask<FixedWindowDecision> TryAcquireAsync(string key, int permits, int limit, TimeSpan window, CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #419: sayacı DEĞİŞTİRMEDEN okur — anahtar yoksa/penceresi bittiyse <c>Count = 0</c> ve pencere BAŞLATILMAZ
+    /// (<c>TryAcquireAsync(..., permits: 0, ...)</c> anahtarı oluşturup pencereyi erken başlatırdı).
+    /// </summary>
+    ValueTask<FixedWindowPeek> PeekAsync(string key, CancellationToken ct = default);
 }
+
+/// <summary>Sayacın anlık değeri ve pencerenin kalan süresi (sayaç yoksa 0 / null).</summary>
+public readonly record struct FixedWindowPeek(long Count, TimeSpan? RemainingWindow);
 
 /// <summary>
 /// Redis sabit pencere: tek Lua betiğiyle atomik <c>INCRBY</c> + (TTL yoksa) <c>PEXPIRE</c>; tüm replica'lar ortak sayaç.
@@ -53,6 +62,15 @@ public sealed class RedisFixedWindowCounterStore : IFixedWindowCounterStore
           ttl = tonumber(ARGV[2])
         end
         return {current, ttl}
+        """;
+
+    // KEYS[1]=sayaç. Dönüş: {değer (yoksa 0), kalan ms (yoksa -1)} — GET + PTTL, yazma yok.
+    private const string PeekScript = """
+        local v = redis.call('GET', KEYS[1])
+        if not v then
+          return {0, -1}
+        end
+        return {tonumber(v), redis.call('PTTL', KEYS[1])}
         """;
 
     private readonly IRedisConnectionProvider _connection;
@@ -92,6 +110,27 @@ public sealed class RedisFixedWindowCounterStore : IFixedWindowCounterStore
         {
             WarnFailOpen(ex, key);
             return await _fallback.TryAcquireAsync(key, permits, limit, window, ct);
+        }
+    }
+
+    public async ValueTask<FixedWindowPeek> PeekAsync(string key, CancellationToken ct = default)
+    {
+        try
+        {
+            var multiplexer = await _connection.GetConnectionAsync().WaitAsync(_timeout, ct);
+            var result = await multiplexer.GetDatabase()
+                .ScriptEvaluateAsync(PeekScript, [key])
+                .WaitAsync(_timeout, ct);
+
+            var values = (RedisResult[])result!;
+            var count = (long)values[0];
+            var ttlMs = (long)values[1];
+            return new FixedWindowPeek(count, count > 0 && ttlMs > 0 ? TimeSpan.FromMilliseconds(ttlMs) : null);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            WarnFailOpen(ex, key);
+            return await _fallback.PeekAsync(key, ct);
         }
     }
 
@@ -154,6 +193,20 @@ public sealed class InMemoryFixedWindowCounterStore : IFixedWindowCounterStore
             return ValueTask.FromResult(entry.Count <= limit
                 ? new FixedWindowDecision(true, null, entry.Count)
                 : new FixedWindowDecision(false, entry.EndsAt - now, entry.Count));
+        }
+    }
+
+    public ValueTask<FixedWindowPeek> PeekAsync(string key, CancellationToken ct = default)
+    {
+        var now = _clock.GetUtcNow();
+        if (!_windows.TryGetValue(key, out var entry))
+            return ValueTask.FromResult(new FixedWindowPeek(0, null));
+
+        lock (entry)
+        {
+            return ValueTask.FromResult(entry.EndsAt <= now || entry.Count == 0
+                ? new FixedWindowPeek(0, null)
+                : new FixedWindowPeek(entry.Count, entry.EndsAt - now));
         }
     }
 }

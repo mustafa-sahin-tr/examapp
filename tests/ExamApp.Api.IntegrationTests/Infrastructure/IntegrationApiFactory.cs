@@ -78,6 +78,8 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
         Environment.SetEnvironmentVariable("Dashboard__TeacherActivityCacheSeconds", "0");
         // issue #98: whiteboard hub üretimde YALNIZCA WebSockets kabul eder; TestServer istemcisi LongPolling kullanır.
         Environment.SetEnvironmentVariable("Whiteboard__AllowedTransports", "WebSockets, LongPolling");
+        // issue #419: davet kodu HMAC pepper'ı — "Testing" Development değil, dev-only yedeğe düşülmez (yalnız test değeri).
+        Environment.SetEnvironmentVariable("ParentLinks__InviteCodePepper", "integration-test-parent-invite-pepper-0123456789");
     }
 
     public override async ValueTask DisposeAsync()

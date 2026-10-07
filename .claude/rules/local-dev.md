@@ -181,7 +181,7 @@ codebase).
 | User | Service | `configure` (declare) | `write` (publish / bind-destination) | `read` (bind-source / consume) |
 |---|---|---|---|---|
 | `rabbituser` | (admin — management UI, `:15672`) | `.*` | `.*` | `.*` |
-| `exam_outbox_pub` | exam-outbox-publisher (publisher only, no queue) | worksheet-DB outbox event exchanges (`AnswerSubmittedEvent`, `QuestionCreatedEvent`, `WorksheetReminderDueEvent`, `WorksheetAccessRequested/Approved/RejectedEvent`, `TeacherApplicationSubmitted/DecidedEvent`, `IndependentTeacherRegisteredEvent`, `BookingRequestCreated/DecisionEvent`, `BookingTeacherUnavailableEvent` (#298), `UserPreferredLocaleChangedEvent`, `WorksheetCommentCreated/Replied/HiddenEvent` (#105, #326 D4), `DirectMessageSentEvent`, `DirectMessageReportedEvent` (#106 dilim b)) | same as `configure` | nothing (`^$`) |
+| `exam_outbox_pub` | exam-outbox-publisher (publisher only, no queue) | worksheet-DB outbox event exchanges (`AnswerSubmittedEvent`, `QuestionCreatedEvent`, `WorksheetReminderDueEvent`, `WorksheetAccessRequested/Approved/RejectedEvent`, `TeacherApplicationSubmitted/DecidedEvent`, `IndependentTeacherRegisteredEvent`, `BookingRequestCreated/DecisionEvent`, `BookingTeacherUnavailableEvent` (#298), `UserPreferredLocaleChangedEvent`, `WorksheetCommentCreated/Replied/HiddenEvent` (#105, #326 D4), `DirectMessageSentEvent`, `DirectMessageReportedEvent` (#106 dilim b), `ParentLinkedEvent`, `ParentUnlinkedEvent` (#419; consumer #423)) | same as `configure` | nothing (`^$`) |
 | `identity_outbox_pub` | identity-outbox-publisher (publisher only) | `LoginAttemptedEvent`, `UserPreferredLocaleChangedEvent` | same | nothing (`^$`) |
 | `badge_outbox_pub` | badge-outbox-publisher (publisher only) | `StudentPointsChangedEvent` — the **only** user allowed to declare/publish it | same | nothing (`^$`) |
 | `badge_service` | exam-badge-api (BadgeService, consumer) | own `badge-service`(`_error`\|`_skipped`) queue/exchange **+** every event exchange except `StudentPointsChangedEvent` (to declare/bind them) | own `badge-service`(`_error`\|`_skipped`) **only** — no message exchange | own queue/exchange/error/skipped **+** every event exchange except `StudentPointsChangedEvent` (bind source + consume) |
@@ -275,6 +275,18 @@ created by the one-shot `minio-presign-init` container
   so the new `minio-presign-init` resource runs before the exam API starts.
 - Without the presign credentials (Development only) the API logs a warning and
   emits unsigned image URLs; outside Development it fails at startup.
+
+**Issue #419 — parent invite code pepper.** Parent invite codes are stored only as
+HMAC-SHA256(pepper, code); the exam API reads `ParentLinks__InviteCodePepper`
+(docker-compose: `PARENT_INVITE_CODE_PEPPER` in `.env`; Aspire: `AppHost/appsettings.json`
+`Parameters:parent-invite-code-pepper`; prod: `deploy/.env.prod.example` / k8s
+`examapp-secrets.PARENT_INVITE_CODE_PEPPER`). Outside Development a missing, < 32 char or
+`devOnly` value fails startup (`ValidateOnStart`). Rotating it only invalidates unused codes.
+- **Existing local `.env`:** add the line, otherwise `docker-compose up` refuses to start:
+  ```bash
+  echo 'PARENT_INVITE_CODE_PEPPER=devOnlyParentInviteCodePepperChangeMe0123456789' >> .env
+  ```
+- **Aspire:** restart the AppHost to pick up the new parameter.
 
 ## Port map (host → container)
 

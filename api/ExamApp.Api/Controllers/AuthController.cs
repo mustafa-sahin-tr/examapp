@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using ExamApp.Api.Data;
+using ExamApp.Api.Services.Teachers;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Teachers;
@@ -115,7 +116,8 @@ namespace ExamApp.Api.Controllers
                         FullName = profile.FullName,
                         SchoolName = teacher.SchoolName,
                         SchoolId = teacher.SchoolId,
-                        IsIndependentTutor = teacher.IsIndependentTutor, // issue #384
+                        // issue #384 / #418: UI menü/guard bayrağı — randevu servisleriyle aynı kural (hibrit bağımsız değil).
+                        IsIndependentTutor = TeacherIndependence.IsIndependent(teacher),
                         ThemePreset = teacher.ThemePreset,
                         ThemeCustomConfig = teacher.ThemeCustomConfig,
                         // issue #287: UI onaysız öğretmene öğretmen menülerini kapatıp "onay bekleniyor" gösterir.

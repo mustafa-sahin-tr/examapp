@@ -5,6 +5,7 @@ using ExamApp.Api.Models.Dtos.Bookings;
 using ExamApp.Api.Services.AdminUsers;
 using ExamApp.Api.Services.Bookings;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Teachers;
 using ExamApp.Api.Services.Video;
 using ExamApp.Api.Tests.Support;
 using ExamApp.Foundation.Contracts;
@@ -56,7 +57,7 @@ public class BookingSuspensionRaceTests : IDisposable
         foreach (var (id, userId) in new[] { (TeacherId, TeacherUserId), (OtherTeacherId, OtherTeacherUserId) })
             ctx.Teachers.Add(new Teacher
             {
-                Id = id, UserId = userId, ApprovalStatus = TeacherApprovalStatus.Approved, Bio = "t",
+                Id = id, UserId = userId, ApprovalStatus = TeacherApprovalStatus.Approved, IsIndependentTutor = true, Bio = "t", // #418
                 AccountApprovedAt = Now.UtcDateTime.AddDays(-30)
             });
         foreach (var (id, userId) in new[] { (StudentA, StudentAUser), (StudentB, StudentBUser) })
@@ -71,7 +72,7 @@ public class BookingSuspensionRaceTests : IDisposable
     private BookingService NewBookingService(AppDbContext ctx)
         => new(ctx, _authApi, Substitute.For<IVideoSessionProvider>(), Options.Create(new VideoOptions()), _clock,
             new RecurringAvailabilityService(ctx, _clock, NullLogger<RecurringAvailabilityService>.Instance),
-            NullLogger<BookingService>.Instance, new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy(ctx));
+            NullLogger<BookingService>.Instance);
 
     private sealed class Monitor(SuspendedTeacherBookingSweepOptions value) : IOptionsMonitor<SuspendedTeacherBookingSweepOptions>
     {
@@ -221,6 +222,74 @@ public class BookingSuspensionRaceTests : IDisposable
         interceptor.Failures.ShouldBe(1);
         (await BookingsOfAsync(TeacherId)).Count.ShouldBe(1);
         (await EventsAsync<BookingRequestCreatedEvent>()).Count.ShouldBe(1);
+    }
+
+    // ---------------- issue #418: bağımsız olmayan öğretmen ----------------
+
+    /// <summary>Öğretmeni okula bağlar: bağımsız başvurulu kalsa da (hibrit) bağımsız sayılmaz.</summary>
+    private static async Task AssignSchoolAsync(AppDbContext ctx, int teacherId)
+    {
+        var school = new School { Name = $"Okul {teacherId}-{Guid.NewGuid():N}" };
+        ctx.Schools.Add(school);
+        await ctx.SaveChangesAsync();
+        await ctx.Teachers.Where(t => t.Id == teacherId).ExecuteUpdateAsync(s => s.SetProperty(t => t.SchoolId, school.Id));
+    }
+
+    [Fact]
+    public async Task School_assignment_committed_after_the_pre_read_rejects_the_insert_under_the_teacher_lock()
+    {
+        var slotId = await SeedSlotAsync(TeacherId, 10);
+
+        // Kilitsiz ön okuma öğretmeni bağımsız gördü; talep transaction'ı başlarken admin öğretmeni bir okula bağlar.
+        var interceptor = new OnTransactionStartedInterceptor(async transaction =>
+        {
+            await using var other = _db.NewContext();
+            await other.Database.UseTransactionAsync(transaction);
+            await AssignSchoolAsync(other, TeacherId);
+        });
+
+        BookingResultDto result;
+        await using (var ctx = _db.NewContext(interceptor))
+            result = await NewBookingService(ctx).CreateBookingAsync(StudentAUser, new CreateBookingDto { AvailabilitySlotId = slotId });
+
+        interceptor.Fired.ShouldBeTrue();
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeTrue();
+        (await BookingsOfAsync(TeacherId)).ShouldBeEmpty();
+        (await OutboxCountAsync()).ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData(false)] // okula bağlı (bağımsız başvurusu yok)
+    [InlineData(true)]  // hibrit: bağımsız başvurulu ama okula bağlı
+    public async Task Sweep_rejects_pending_requests_of_a_not_independent_teacher_with_teacher_unavailable_event(bool hybrid)
+    {
+        var left = await AddBookingAsync(OtherTeacherId, StudentA, BookingStatus.Pending, 9);
+        var approved = await AddBookingAsync(OtherTeacherId, StudentB, BookingStatus.Approved, 11);
+        var independents = await AddBookingAsync(TeacherId, StudentB, BookingStatus.Pending, 9);
+        await using (var ctx = _db.NewContext())
+        {
+            if (hybrid)
+                await AssignSchoolAsync(ctx, OtherTeacherId);
+            else
+                await ctx.Teachers.Where(t => t.Id == OtherTeacherId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(t => t.IsIndependentTutor, false));
+        }
+
+        (await SweepAsync()).ShouldBe(1);
+
+        (await BookingAsync(left)).Status.ShouldBe(BookingStatus.Rejected);
+        (await BookingAsync(approved)).Status.ShouldBe(BookingStatus.Approved); // onaylı randevuya dokunulmaz
+        (await BookingAsync(independents)).Status.ShouldBe(BookingStatus.Pending);
+        var ev = (await EventsAsync<BookingDecisionEvent>()).ShouldHaveSingleItem();
+        ev.BookingId.ShouldBe(left);
+        ev.Approved.ShouldBeFalse();
+        ev.TeacherUnavailable.ShouldBeTrue();
+        ev.TeacherId.ShouldBe(OtherTeacherId);
+        ev.TargetKeycloakId.ShouldBe("kc-a");
+
+        (await SweepAsync()).ShouldBe(0); // idempotent: ikinci tur bildirim yazmaz
+        (await OutboxCountAsync()).ShouldBe(1);
     }
 
     // ---------------- süpürme (güvenlik ağı) ----------------
@@ -417,6 +486,7 @@ public class BookingSuspensionRaceTests : IDisposable
         sql.ShouldContain("\"AccountSuspendedAt\" IS NULL");
         sql.ShouldContain("NOT \"IsDeleted\"");
         sql.ShouldContain("\"ApprovalStatus\" = {1}");
+        sql.ShouldContain(TeacherIndependence.SqlCondition); // issue #418: bağımsızlık kilit altında yeniden doğrulanır
         ExamApp.Api.Helpers.TeacherAvailabilityLock.SetLockTimeoutSql.ShouldBe("SET LOCAL lock_timeout = '5s'");
     }
 

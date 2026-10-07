@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
+using ExamApp.Api.Services.Teachers;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos.Bookings;
 using ExamApp.Foundation.Localization;
@@ -114,7 +115,7 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
         var teacher = await _context.Teachers
             .AsNoTracking()
             .Where(t => t.UserId == teacherUserId)
-            .Select(t => new { t.Id, t.ApprovalStatus })
+            .Select(t => new { t.Id, t.ApprovalStatus, t.IsIndependentTutor, t.SchoolId })
             .FirstOrDefaultAsync(ct);
 
         if (teacher == null)
@@ -122,6 +123,11 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
 
         if (teacher.ApprovalStatus != TeacherApprovalStatus.Approved)
             return new RecurringAvailabilityRuleResultDto { Success = false, Forbidden = true, Message = _localizer["booking.teacherNotApproved"] };
+
+        // issue #418: randevu bağımsız öğretmen özelliği — okula bağlı (hibrit dahil) öğretmen tekrarlayan kural tanımlayamaz.
+        // Sıra BookingService.CreateSlotAsync ile aynı: önce onay, sonra bağımsızlık.
+        if (!TeacherIndependence.IsIndependent(teacher.IsIndependentTutor, teacher.SchoolId))
+            return new RecurringAvailabilityRuleResultDto { Success = false, Forbidden = true, Message = _localizer[BookingService.TeacherNotIndependentKey] };
 
         var rule = new RecurringAvailabilityRule
         {
@@ -245,13 +251,19 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
     public async Task<RecurringAvailabilityRuleListResultDto> GetMyRulesAsync(
         int teacherUserId, int skip, int take, CancellationToken ct = default)
     {
-        var teacherId = await ResolveTeacherIdAsync(teacherUserId, ct);
-        if (teacherId == null)
+        var teacher = await ResolveTeacherAsync(teacherUserId, ct);
+        if (teacher == null)
             return new RecurringAvailabilityRuleListResultDto { Success = false, NotFound = true, Message = _localizer["booking.teacherRecordNotFound"] };
+
+        // issue #418: okula bağlı öğretmen → 403 (BookingService öğretmen uçlarıyla aynı).
+        if (!teacher.Value.IsIndependent)
+            return new RecurringAvailabilityRuleListResultDto { Success = false, Forbidden = true, Message = _localizer[BookingService.TeacherNotIndependentKey] };
+
+        var teacherId = teacher.Value.Id;
 
         var rules = await _context.RecurringAvailabilityRules
             .AsNoTracking()
-            .Where(r => r.TeacherId == teacherId.Value && r.IsActive)
+            .Where(r => r.TeacherId == teacherId && r.IsActive)
             .OrderBy(r => r.DayOfWeek)
             .ThenBy(r => r.StartTime)
             .Skip(Normalize(skip))
@@ -272,9 +284,15 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
     public async Task<RecurringAvailabilityRuleDeleteResultDto> DeleteRuleAsync(
         int teacherUserId, int ruleId, CancellationToken ct = default)
     {
-        var teacherId = await ResolveTeacherIdAsync(teacherUserId, ct);
-        if (teacherId == null)
+        var teacher = await ResolveTeacherAsync(teacherUserId, ct);
+        if (teacher == null)
             return new RecurringAvailabilityRuleDeleteResultDto { Success = false, NotFound = true, Message = _localizer["booking.teacherRecordNotFound"] };
+
+        // issue #418: okula bağlı öğretmen → 403 (BookingService öğretmen uçlarıyla aynı).
+        if (!teacher.Value.IsIndependent)
+            return new RecurringAvailabilityRuleDeleteResultDto { Success = false, Forbidden = true, Message = _localizer[BookingService.TeacherNotIndependentKey] };
+
+        var teacherId = teacher.Value.Id;
 
         // Hızlı yol (kilitsiz, salt okunur): 404/403 ayrımı. Karar kilit altında yeniden okunan satırla verilir.
         var owner = await _context.RecurringAvailabilityRules
@@ -287,7 +305,7 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
             return new RecurringAvailabilityRuleDeleteResultDto { Success = false, NotFound = true, Message = _localizer["booking.recurringRule.notFound"] };
 
         // Başkasının kuralı: 403 (DeleteSlotAsync ile tutarlı; bkz. sınıf yorumu — bilinçli karar).
-        if (owner.Value != teacherId.Value)
+        if (owner.Value != teacherId)
             return new RecurringAvailabilityRuleDeleteResultDto { Success = false, Forbidden = true, Message = _localizer["booking.recurringRule.notOwned"] };
 
         var today = DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime);
@@ -308,10 +326,10 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
                 result = null;
 
                 await using var tx = await _context.Database.BeginTransactionAsync(ct);
-                await _context.Database.AcquireTeacherAvailabilityLockAsync(teacherId.Value, ct);
+                await _context.Database.AcquireTeacherAvailabilityLockAsync(teacherId, ct);
 
                 var rule = await _context.RecurringAvailabilityRules
-                    .FirstOrDefaultAsync(r => r.Id == ruleId && r.TeacherId == teacherId.Value, ct);
+                    .FirstOrDefaultAsync(r => r.Id == ruleId && r.TeacherId == teacherId, ct);
                 if (rule == null)
                 {
                     // Kilidi beklerken eşzamanlı bir silme kazandı.
@@ -367,7 +385,7 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
         catch (TeacherAvailabilityLockTimeoutException ex)
         {
             _context.ChangeTracker.Clear();
-            _logger.LogWarning(ex, "Tekrarlayan kural silme: müsaitlik kilidi zaman aşımı. TeacherId={TeacherId}", teacherId.Value);
+            _logger.LogWarning(ex, "Tekrarlayan kural silme: müsaitlik kilidi zaman aşımı. TeacherId={TeacherId}", teacherId);
             return new RecurringAvailabilityRuleDeleteResultDto { Success = false, Conflict = true, Message = _localizer["booking.slot.busy"] };
         }
 
@@ -653,12 +671,15 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
         return null;
     }
 
-    private async Task<int?> ResolveTeacherIdAsync(int teacherUserId, CancellationToken ct)
-        => await _context.Teachers
+    private async Task<(int Id, bool IsIndependent)?> ResolveTeacherAsync(int teacherUserId, CancellationToken ct)
+    {
+        var row = await _context.Teachers
             .AsNoTracking()
             .Where(t => t.UserId == teacherUserId)
-            .Select(t => (int?)t.Id)
+            .Select(t => new { t.Id, t.IsIndependentTutor, t.SchoolId })
             .FirstOrDefaultAsync(ct);
+        return row == null ? null : (row.Id, TeacherIndependence.IsIndependent(row.IsIndependentTutor, row.SchoolId));
+    }
 
     private static RecurringAvailabilityRuleDto MapRule(RecurringAvailabilityRule rule) => new()
     {

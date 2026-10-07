@@ -4,6 +4,7 @@
     "teacherRecordNotFound": "Öğretmen kaydı bulunamadı.",
     "teacherNotFound": "Öğretmen bulunamadı.",
     "teacherNotApproved": "Müsaitlik tanımlayabilmek için öğretmen hesabınızın onaylanmış olması gerekir.",
+    "teacherNotIndependent": "Randevu ve müsaitlik yalnız bağımsız öğretmenler içindir.",
     "studentRecordNotFound": "Öğrenci kaydı bulunamadı.",
 
     "slot": {

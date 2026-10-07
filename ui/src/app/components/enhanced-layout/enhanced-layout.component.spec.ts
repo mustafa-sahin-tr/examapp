@@ -979,4 +979,25 @@ describe('EnhancedLayoutComponent tutor profile entry (issue #384)', () => {
     const route = children.find((r) => r.path === 'tutor-profile');
     expect(route?.canActivate).toContain(independentTeacherGuard);
   });
+
+  // Issue #418: randevu (müsaitlik + gelen talepler) da bağımsız öğretmen özelliği — aynı kural.
+  for (const route of ['/availability', '/booking-requests']) {
+    it(`visibleMenuItems_NotIndependentTeacher_Hides_${route}`, () => {
+      expect(routesOf(create(['Teacher'], teacherProfile(false, 7)))).not.toContain(route);
+    });
+
+    it(`visibleMenuItems_IndependentTeacher_Shows_${route}`, () => {
+      expect(routesOf(create(['Teacher'], teacherProfile(true)))).toContain(route);
+    });
+
+    it(`visibleMenuItems_FlagUnknown_Shows_${route}`, () => {
+      expect(routesOf(create(['Teacher'], teacherProfile(undefined, 7)))).toContain(route);
+    });
+
+    it(`routes_${route}_UsesIndependentTeacherGuard`, () => {
+      const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
+      const config = children.find((r) => `/${r.path}` === route);
+      expect(config?.canActivate).toContain(independentTeacherGuard);
+    });
+  }
 });

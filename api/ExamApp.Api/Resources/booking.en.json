@@ -4,6 +4,7 @@
     "teacherRecordNotFound": "Teacher record not found.",
     "teacherNotFound": "Teacher not found.",
     "teacherNotApproved": "Your teacher account must be approved before you can define availability.",
+    "teacherNotIndependent": "Bookings and availability are only available to independent tutors.",
     "studentRecordNotFound": "Student record not found.",
 
     "slot": {

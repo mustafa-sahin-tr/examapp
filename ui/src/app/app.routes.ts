@@ -272,7 +272,8 @@ export const routes: Routes = [
       {
         // Issue #96: öğretmenin müsaitlik aralıkları.
         path: 'availability',
-        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
+        // Issue #418: randevu bağımsız öğretmen özelliği — okula bağlı öğretmen bu sayfayı görmez (menüde de gizli).
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard, independentTeacherGuard],
         loadComponent: () =>
           import('./pages/teacher-availability/teacher-availability.component').then(
             (m) => m.TeacherAvailabilityComponent
@@ -281,7 +282,8 @@ export const routes: Routes = [
       {
         // Issue #96: öğretmene gelen randevu talepleri.
         path: 'booking-requests',
-        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
+        // Issue #418: randevu bağımsız öğretmen özelliği — okula bağlı öğretmen bu sayfayı görmez (menüde de gizli).
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard, independentTeacherGuard],
         loadComponent: () =>
           import('./pages/teacher-booking-requests/teacher-booking-requests.component').then(
             (m) => m.TeacherBookingRequestsComponent

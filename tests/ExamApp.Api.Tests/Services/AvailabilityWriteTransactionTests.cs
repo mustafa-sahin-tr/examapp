@@ -36,7 +36,7 @@ public class AvailabilityWriteTransactionTests : IDisposable
     public AvailabilityWriteTransactionTests()
     {
         using var ctx = _db.NewContext();
-        ctx.Teachers.Add(new Teacher { Id = TeacherId, UserId = TeacherUserId, ApprovalStatus = TeacherApprovalStatus.Approved, Bio = "t" });
+        ctx.Teachers.Add(new Teacher { Id = TeacherId, UserId = TeacherUserId, ApprovalStatus = TeacherApprovalStatus.Approved, IsIndependentTutor = true, Bio = "t" }); // #418
         ctx.SaveChanges();
     }
 
@@ -45,7 +45,7 @@ public class AvailabilityWriteTransactionTests : IDisposable
 
     private BookingService NewBooking(AppDbContext ctx)
         => new(ctx, Substitute.For<IAuthApiClient>(), Substitute.For<IVideoSessionProvider>(), Options.Create(new VideoOptions()),
-            _clock, NewRecurring(ctx), NullLogger<BookingService>.Instance, new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy(ctx));
+            _clock, NewRecurring(ctx), NullLogger<BookingService>.Instance);
 
     private static CreateAvailabilitySlotDto Slot(DateOnly date, int startHour, int endHour) => new()
     {

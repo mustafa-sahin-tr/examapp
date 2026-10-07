@@ -8,7 +8,9 @@
       "defaultSchool": "bir okul",
       "unnamedWorksheet": "bir sınav",
       "worksheetFallback": "Sınavın",
-      "rejectionReasonSuffix": " Gerekçe: {0}"
+      "rejectionReasonSuffix": " Gerekçe: {0}",
+      "defaultChild": "Çocuğunuz",
+      "defaultParent": "Veliniz"
     },
     "BadgeEarned": {
       "title": "Yeni rozet kazandın!",
@@ -109,6 +111,34 @@
       "body": "Bir mesajlaşma şikayet edildi ve incelenmeyi bekliyor.",
       "bodyStudent": "Bir öğrenci bir mesajlaşmayı şikayet etti. Şikayet listesinden inceleyebilirsin.",
       "bodyTeacher": "Bir öğretmen bir mesajlaşmayı şikayet etti. Şikayet listesinden inceleyebilirsin."
+    },
+    "ParentLinkedToParent": {
+      "title": "Veli bağlantısı onaylandı",
+      "body": "{0} sizi veli olarak onayladı."
+    },
+    "ParentLinkedToStudent": {
+      "title": "Veli bağlantısı kuruldu",
+      "body": "Velinle bağlantın kuruldu."
+    },
+    "ParentUnlinkedToParent": {
+      "title": "Veli bağlantısı kaldırıldı",
+      "body": "{0} veli bağlantısını kaldırdı."
+    },
+    "ParentUnlinkedToStudent": {
+      "title": "Veli bağlantısı kaldırıldı",
+      "body": "{0} veli bağlantısını kaldırdı."
+    },
+    "ParentHomeworkOverdue": {
+      "title": "Gecikmiş ödev",
+      "body": "{0}, \"{1}\" ödevini süresi içinde tamamlamadı."
+    },
+    "ParentHomeworkOverdueExpired": {
+      "title": "Test süresi doldu",
+      "body": "{0}, \"{1}\" testini süresi içinde bitiremedi; test süresi doldu."
+    },
+    "ParentChildTestCompleted": {
+      "title": "Test tamamlandı",
+      "body": "{0}, \"{1}\" testini tamamladı, puan %{2}."
     }
   }
 }

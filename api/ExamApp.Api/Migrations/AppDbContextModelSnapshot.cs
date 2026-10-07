@@ -1071,6 +1071,36 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("ParentAccessAudits");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.ParentHomeworkOverdueMarker", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("NotifiedParentCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WorksheetId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProcessedAt");
+
+                    b.HasIndex("WorksheetId", "StudentId")
+                        .IsUnique();
+
+                    b.ToTable("ParentHomeworkOverdueMarkers");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.ParentInviteCode", b =>
                 {
                     b.Property<int>("Id")
@@ -3233,6 +3263,9 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("GradeId", "WorksheetId", "StartAt");
 
                     b.HasIndex("StudentId", "WorksheetId", "StartAt");
+
+                    b.HasIndex(new[] { "EndAt" }, "IX_WorksheetAssignments_EndAt_NotNull")
+                        .HasFilter("\"EndAt\" IS NOT NULL");
 
                     b.ToTable("WorksheetAssignments");
                 });

@@ -1,3 +1,5 @@
+import { PARENT_CHILD_QUERY_PARAM } from '../../models/parent-dashboard.model';
+import { PARENT_HOME_URL } from '../../shared/guards/parent.guard';
 import {
   AppNotification,
   BADGE_EARNED_NOTIFICATION_TYPE,
@@ -125,5 +127,57 @@ export function describeNotification(notification: Pick<AppNotification, 'type' 
       questionOrder: null,
     };
   }
+  const parentPresentation = describeParentNotification(notification);
+  if (parentPresentation) {
+    return parentPresentation;
+  }
   return { icon: 'notifications', badge: null, route: null, questionOrder: null };
+}
+
+
+
+
+/**
+ * Issue #423: veli bildirim türleri → ikon + link. Veliye giden türler `/parent` açar, `data.studentId` geçerli pozitif
+ * tamsayıysa `?child=<studentId>` eklenir (panel geçersiz/başkasının id'sini zaten yok sayar). Öğrenciye giden türler
+ * (`ParentLinkedToStudent`, `ParentUnlinkedToStudent`) yalnız okundu işaretler (hedef yok). Bozuk `data` → çocuk seçimsiz `/parent`.
+ */
+const PARENT_NOTIFICATION_PRESENTATION: Readonly<Record<string, { icon: string; toParentPage: boolean }>> = {
+  ParentLinkedToParent: { icon: 'family_restroom', toParentPage: true },
+  ParentLinkedToStudent: { icon: 'family_restroom', toParentPage: false },
+  ParentUnlinkedToParent: { icon: 'link_off', toParentPage: true },
+  ParentUnlinkedToStudent: { icon: 'link_off', toParentPage: false },
+  ParentHomeworkOverdue: { icon: 'assignment_late', toParentPage: true },
+  ParentChildTestCompleted: { icon: 'task_alt', toParentPage: true },
+};
+
+function parseParentNotificationStudentId(data: string | null): number | null {
+  if (!data) {
+    return null;
+  }
+  try {
+    const value = (JSON.parse(data) as { studentId?: unknown } | null)?.studentId;
+    return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function describeParentNotification(notification: Pick<AppNotification, 'type' | 'data'>): NotificationPresentation | null {
+  const entry = PARENT_NOTIFICATION_PRESENTATION[notification.type];
+  if (!entry) {
+    return null;
+  }
+  if (!entry.toParentPage) {
+    return { icon: entry.icon, badge: null, route: null, questionOrder: null };
+  }
+  const studentId = parseParentNotificationStudentId(notification.data);
+  return {
+    icon: entry.icon,
+    badge: null,
+    route: studentId === null
+      ? { commands: [PARENT_HOME_URL] }
+      : { commands: [PARENT_HOME_URL], queryParams: { [PARENT_CHILD_QUERY_PARAM]: studentId } },
+    questionOrder: null,
+  };
 }

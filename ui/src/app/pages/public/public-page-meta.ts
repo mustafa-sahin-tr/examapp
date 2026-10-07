@@ -26,6 +26,7 @@ export function usePublicPageMeta(section: string, extraTags: ReadonlyArray<Reco
   const metaService = inject(Meta);
   const destroyRef = inject(DestroyRef);
 
+  // `{{ brand.name }}` referansı kök sözlüğün önceden yüklenmesine dayanır (app.config preload, issue #409).
   transloco
     .selectTranslate<string>(`${section}.meta.title`, {}, PUBLIC_PAGES_SCOPE)
     .pipe(takeUntilDestroyed(destroyRef))

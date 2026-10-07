@@ -6,7 +6,7 @@
         <nav class="navbar navbar-expand-xl">
 
             <a class="navbar-brand" routerLink="/welcome">
-                <img src="assets/images/banner/logo.svg" alt="Hedef Okul" height="38">
+                <img src="assets/images/banner/logo.svg" [alt]="'brand.name' | transloco" height="38">
             </a>
 
             <button class="navbar-toggler" type="button" (click)="toggleMenu()" [attr.aria-expanded]="isMenuOpen"

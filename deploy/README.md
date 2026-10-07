@@ -190,6 +190,8 @@ Custom theme mount’ı prod compose’da aktiftir:
 
 Realm import dosyan `my-theme`’i referans ediyorsa, Keycloak recreate sonrası otomatik kullanılabilir.
 
+Marka adı (issue #409): prod realm’de de Realm settings → General → *Display name* = `Hedef Okul` ve Email → *From display name* = `Hedef Okul` ayarlanmalı (Keycloak e-postaları realm görünen adını kullanır).
+
 ## 6) Veri Kalıcılığı ve Backup
 
 Compose named volume’ler kullanır:

@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { httpErrorMessage } from '../../shared/utils/http-error-message';
 import { safeRedirectTarget } from '../../shared/utils/safe-redirect.util';
+import { BRAND_NAME } from '../../shared/brand';
 
 /** state doğrulaması başarısız olduğunda gösterilen mesaj (kod değişimi yapılmaz). */
 export const STATE_MISMATCH_MESSAGE = 'Oturum doğrulanamadı. Lütfen yeniden giriş yapın.';
@@ -66,6 +67,7 @@ export class CallbackComponent implements OnInit {
   private readonly oidcFlow = inject(OidcFlowService);
   private readonly snackBar = inject(MatSnackBar);
 
+  readonly brandName = BRAND_NAME;
   readonly currentStep = signal(1);
   readonly currentMessage = signal('Kimlik doğrulanıyor...');
   readonly userRole = signal<string | null>(null);

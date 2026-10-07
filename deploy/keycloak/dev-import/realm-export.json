@@ -1,7 +1,7 @@
 {
   "id": "63021bb7-8910-4a5a-be5e-3e552db8d557",
   "realm": "exam-realm",
-  "displayName": "",
+  "displayName": "Hedef Okul",
   "displayNameHtml": "",
   "notBefore": 0,
   "defaultSignatureAlgorithm": "RS256",
@@ -1940,7 +1940,7 @@
     "host": "smtp.gmail.com",
     "replyTo": "",
     "from": "mtafasahin@gmail.com",
-    "fromDisplayName": "",
+    "fromDisplayName": "Hedef Okul",
     "envelopeFrom": "",
     "ssl": "true",
     "user": "mtafasahin@gmail.com"

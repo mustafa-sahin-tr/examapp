@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { Title } from '@angular/platform-browser';
 import { AppComponent } from './app.component';
 
 describe('AppComponent', () => {
@@ -14,4 +15,8 @@ describe('AppComponent', () => {
     expect(app).toBeTruthy();
   });
 
+  it('sets the document title to the brand name (issue #409)', () => {
+    TestBed.createComponent(AppComponent);
+    expect(TestBed.inject(Title).getTitle()).toBe('Hedef Okul');
+  });
 });

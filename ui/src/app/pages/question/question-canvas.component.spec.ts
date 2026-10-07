@@ -4,6 +4,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { of, Subject } from 'rxjs';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { QuestionCanvasComponent } from './question-canvas.component';
 import { QuestionService } from '../../services/question.service';
@@ -626,6 +627,22 @@ describe('QuestionCanvasComponent', () => {
         localFixture.destroy();
         jasmine.clock().tick(2000);
 
+        expect(imageSelectorFake.nextImage).not.toHaveBeenCalled();
+      });
+    });
+
+    it('onSave_ResponseArrivesAfterDestroy_StillNotifiesButDoesNotAdvanceToNextImage', async () => {
+      const { fixture: localFixture, component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: false });
+      // MatSnackBarModule bileşenin kendi ortam enjektöründe ayrı bir örnek sağlar; onu izleriz.
+      const snackBarOpen = spyOn(localFixture.debugElement.injector.get(MatSnackBar), 'open');
+
+      await withMockClock(() => {
+        component.onSave();
+        localFixture.destroy();
+        saveBulk$.next({});
+        jasmine.clock().tick(2000);
+
+        expect(snackBarOpen).toHaveBeenCalled();
         expect(imageSelectorFake.nextImage).not.toHaveBeenCalled();
       });
     });

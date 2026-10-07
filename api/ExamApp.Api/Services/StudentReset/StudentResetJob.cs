@@ -65,6 +65,12 @@ public sealed class StudentResetJob
         var resetAtUtc = DateTime.UtcNow;
         await _badgeResetApiClient.ResetUserAsync(userId, resetAtUtc, cancellationToken);
 
+        // 0c) issue #422 (security review): sıfırlama çizgisi öğrenci kaydına yazılır — bundan önce kazanılıp geç teslim edilen
+        //     StudentBadgeEarnedEvent veli projeksiyonuna yazılmaz (StudentBadgeProjectionService).
+        await _db.Students.IgnoreQueryFilters()
+            .Where(s => s.Id == studentId)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.ProgressResetAtUtc, (DateTime?)resetAtUtc), cancellationToken);
+
         // 1) Reset Exam/Test progress (instances + answers)
         var instances = await _db.TestInstances
             .IgnoreQueryFilters()
@@ -136,6 +142,12 @@ public sealed class StudentResetJob
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+
+        // 5) issue #422: veli paneli projeksiyonları (rozet + günlük puan) — StudentPoints soft-delete'i commit edildikten SONRA
+        //    silinir: arada işlenen bir puan event'i, silinmeden önce deftere satır yazıp onu bırakamasın (review: reset yarışı).
+        //    BadgeService de rozetleri/puanı sıfırladığından yeniden kazanılan rozet ve yeni puanlar yeniden yazılabilir.
+        await _db.StudentBadgeProjections.Where(b => b.StudentId == studentId).ExecuteDeleteAsync(cancellationToken);
+        await _db.StudentDailyXps.Where(d => d.StudentId == studentId).ExecuteDeleteAsync(cancellationToken);
     }
 
     private static async Task SoftDeleteByStudentIdAsync<TEntity>(DbSet<TEntity> set, int studentId, CancellationToken ct)

@@ -40,6 +40,7 @@ public static class OutboxEventRegistry
         typeof(DirectMessageReportedEvent), // issue #106 (dilim b)
         typeof(ParentLinkedEvent), // issue #419
         typeof(ParentUnlinkedEvent), // issue #419
+        typeof(StudentBadgeEarnedEvent), // issue #422 (badge outbox → exam API projeksiyonu)
         typeof(ParentHomeworkOverdueEvent), // issue #423
         typeof(ParentChildTestCompletedEvent), // issue #423
     };

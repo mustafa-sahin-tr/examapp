@@ -150,7 +150,7 @@ public class ParentLinkRateLimitingTests
         body.RootElement.GetProperty("errorCode").GetString().ShouldBe("RateLimited");
 
         body.RootElement.GetProperty("message").GetString()
-            .ShouldBe("Ödev ve test bilgileri için kısa sürede çok fazla istek yapıldı. Lütfen biraz sonra tekrar deneyin."); // kendi 429 metni
+            .ShouldBe("Çocuğunuzun bilgileri için kısa sürede çok fazla istek yapıldı. Lütfen biraz sonra tekrar deneyin."); // kendi 429 metni
         (await PostAsync(client, "/activity", "p2")).StatusCode.ShouldBe(HttpStatusCode.OK); // başka veli etkilenmez
         (await PostAsync(client, "/summary", "p1")).StatusCode.ShouldBe(HttpStatusCode.OK);  // özet kovası ayrı
         (await PostAsync(client, "/activity", null)).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);

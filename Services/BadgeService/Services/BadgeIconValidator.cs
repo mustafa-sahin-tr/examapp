@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using ExamApp.Foundation.Badges;
 
 namespace BadgeService.Services;
 
@@ -15,13 +16,10 @@ namespace BadgeService.Services;
 public static partial class BadgeIconValidator
 {
     /// <summary>Column length (BadgeDbContext) — equals the regex upper bound (1 + 63).</summary>
-    public const int MaxIconLength = 64;
+    public const int MaxIconLength = BadgeIconAllowlist.MaxIconLength;
 
     [GeneratedRegex(@"^achievements/[A-Za-z0-9._-]+\.svg$")]
     private static partial Regex AllowedIconPattern();
-
-    [GeneratedRegex(@"^[a-z][a-z0-9_]{1,63}$")]
-    private static partial Regex IconNamePattern();
 
     /// <summary>Legacy <c>IconUrl</c> rule (issue #148). Null/empty is allowed.</summary>
     public static bool IsValid(string? iconUrl)
@@ -50,6 +48,5 @@ public static partial class BadgeIconValidator
     }
 
     /// <summary>True only for a non-empty, well-formed, allowlisted name — use before emitting an icon to clients.</summary>
-    public static bool IsAllowedIcon(string? icon) =>
-        !string.IsNullOrEmpty(icon) && IconNamePattern().IsMatch(icon) && BadgeIconCatalog.Contains(icon);
+    public static bool IsAllowedIcon(string? icon) => BadgeIconAllowlist.IsAllowed(icon); // issue #422: tek kural Foundation'da
 }

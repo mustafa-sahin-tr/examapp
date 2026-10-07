@@ -5,11 +5,13 @@ import { Observable } from 'rxjs';
 import {
   ParentAssignmentStatus,
   ParentChildAssignmentList,
+  ParentChildProgress,
+  ParentChildSchedule,
   ParentChildSummary,
   ParentChildTestResult,
 } from '../models/parent-dashboard.model';
 
-/** Veli paneli (issue #420, #421). Yetki sunucuda: yalnızca Active bağlantı; diğer her durum 404. */
+/** Veli paneli (issue #420, #421, #422). Yetki sunucuda: yalnızca Active bağlantı; diğer her durum 404. */
 @Injectable({ providedIn: 'root' })
 export class ParentDashboardService {
   // Gateway: /api/exam/{everything} -> backend /api/{everything}
@@ -34,5 +36,19 @@ export class ParentDashboardService {
   /** Issue #421: bitmiş bir testin özeti (yalnızca sayılar; soru/şık içeriği yok). */
   getChildTestResult(studentId: number, testInstanceId: number): Observable<ParentChildTestResult> {
     return this.http.get<ParentChildTestResult>(`${this.baseUrl}/${studentId}/test-results/${testInstanceId}`);
+  }
+
+  /** Issue #422: puan, seviye, haftalık puan, rozetler ve çocuğun kendi sırası. */
+  getChildProgress(studentId: number): Observable<ParentChildProgress> {
+    return this.http.get<ParentChildProgress>(`${this.baseUrl}/${studentId}/progress`);
+  }
+
+  /**
+   * Issue #422: planlar + ders randevuları. `from`/`to` "yyyy-MM-dd" (yerel günler, dahil, en fazla 31 gün); ikisi de
+   * verilmezse sunucu bu haftayı (Europe/Istanbul) döner.
+   */
+  getChildSchedule(studentId: number, range?: { from: string; to: string }): Observable<ParentChildSchedule> {
+    const params = range ? new HttpParams().set('from', range.from).set('to', range.to) : undefined;
+    return this.http.get<ParentChildSchedule>(`${this.baseUrl}/${studentId}/schedule`, { params });
   }
 }

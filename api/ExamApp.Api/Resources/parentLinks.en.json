@@ -8,7 +8,7 @@
     "redeemRateLimited": "Too many code attempts. Please try again later.",
     "inviteRateLimited": "Too many invite codes were created in a short time. Please try again later.",
     "summaryRateLimited": "Too many requests. Please try again in a moment.",
-    "activityRateLimited": "Too many homework and test requests in a short time. Please try again in a moment.",
+    "activityRateLimited": "Too many requests for your child's details in a short time. Please try again in a moment.",
     "errors": {
       "invalidCode": "The code is invalid or has expired.",
       "studentLimitReached": "You can link at most 4 parents (pending requests included). Remove one to create a new code.",
@@ -20,6 +20,7 @@
       "testResultNotFound": "Test result not found.",
       "invalidPage": "Invalid page number.",
       "invalidStatus": "Invalid status filter. Use completed, overdue or pending.",
+      "invalidRange": "Invalid date range. Provide from and to together, as yyyy-MM-dd, spanning at most 31 days.",
       "busy": "The operation could not be completed right now. Please try again.",
       "rateLimited": "Too many code attempts. Please try again later."
     },

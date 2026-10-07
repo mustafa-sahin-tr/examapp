@@ -159,4 +159,116 @@ public class LeaderboardPointsSyncTests(IntegrationApiFactory factory) : Integra
             .ShouldBeFalse();
         (await WithDbAsync(db => db.StudentPoints.IgnoreQueryFilters().CountAsync())).ShouldBe(0);
     }
+
+    /// <summary>Issue #422: BadgeService outbox'ının yazdığı rozet event'i, OutboxPublisher yolu ile publish edilir.</summary>
+    private async Task PublishBadgeLikeOutboxPublisherAsync(StudentBadgeEarnedEvent badge)
+    {
+        var harness = await StartedHarnessAsync();
+        var content = JsonSerializer.Serialize(badge);
+        var type = OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<StudentBadgeEarnedEvent>())!;
+        await harness.Bus.Publish(JsonSerializer.Deserialize(content, type)!, type);
+    }
+
+    private async Task WaitForBadgeConsumedAsync(int userId, int expectedCount)
+    {
+        var consumer = Factory.Services.GetRequiredService<ITestHarness>()
+            .GetConsumerHarness<ExamApp.Api.Consumers.StudentBadgeEarnedConsumer>();
+        var deadline = DateTime.UtcNow + SyncTimeout;
+        while (consumer.Consumed.Select<StudentBadgeEarnedEvent>(x => x.Context.Message.UserId == userId).Count() < expectedCount)
+        {
+            if (DateTime.UtcNow > deadline)
+                throw new TimeoutException($"UserId={userId} için {expectedCount} rozet tüketimi beklendi.");
+            await Task.Delay(100);
+        }
+    }
+
+    [Fact]
+    public async Task Badge_earned_events_are_projected_idempotently_issue_422()
+    {
+        var studentId = await SeedStudentAsync(9401);
+        var badgeA = Guid.NewGuid();
+        var badgeB = Guid.NewGuid();
+        var earned = new DateTime(2026, 9, 5, 22, 30, 0, DateTimeKind.Utc);
+
+        await PublishBadgeLikeOutboxPublisherAsync(new StudentBadgeEarnedEvent
+            { UserId = 9401, BadgeDefinitionId = badgeA, Name = "İlk Adım", Icon = "rocket_launch", EarnedAtUtc = earned });
+        await PublishBadgeLikeOutboxPublisherAsync(new StudentBadgeEarnedEvent
+            { UserId = 9401, BadgeDefinitionId = badgeA, Name = "İlk Adım", Icon = "rocket_launch", EarnedAtUtc = earned }); // tekrar teslim
+        await PublishBadgeLikeOutboxPublisherAsync(new StudentBadgeEarnedEvent
+            { UserId = 9401, BadgeDefinitionId = badgeB, Name = "Seri", Icon = null, EarnedAtUtc = earned.AddDays(1) });
+        await PublishBadgeLikeOutboxPublisherAsync(new StudentBadgeEarnedEvent
+            { UserId = 9499, BadgeDefinitionId = badgeA, Name = "Öğrencisiz", EarnedAtUtc = earned }); // öğrenci kaydı yok → ack
+        await WaitForBadgeConsumedAsync(9401, 3);
+        await WaitForBadgeConsumedAsync(9499, 1);
+
+        var rows = await WithDbAsync(db => db.StudentBadgeProjections.AsNoTracking().OrderBy(b => b.EarnedAtUtc).ToListAsync());
+        rows.Select(r => (r.StudentId, r.BadgeDefinitionId, r.Name, r.Icon)).ShouldBe(new[]
+        {
+            (studentId, badgeA, "İlk Adım", (string?)"rocket_launch"),
+            (studentId, badgeB, "Seri", (string?)null)
+        });
+        rows[0].EarnedAtUtc.ShouldBe(earned);
+        var harness = Factory.Services.GetRequiredService<ITestHarness>();
+        (await harness.Consumed.Any<StudentBadgeEarnedEvent>(x => x.Exception != null)).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Points_events_feed_the_istanbul_daily_ledger_issue_422()
+    {
+        var studentId = await SeedStudentAsync(9501);
+        await BackdateStudentAsync(studentId);
+        var t0 = new DateTime(2026, 9, 5, 8, 0, 0, DateTimeKind.Utc);
+
+        await PublishLikeOutboxPublisherAsync(9501, 100, t0);                          // taban çizgisi
+        await WaitForConsumedAsync(9501, 1);
+        await PublishLikeOutboxPublisherAsync(9501, 130, t0.AddHours(1));              // +30 → 5 Eylül
+        await WaitForConsumedAsync(9501, 2);
+        await PublishLikeOutboxPublisherAsync(9501, 145, new DateTime(2026, 9, 5, 21, 30, 0, DateTimeKind.Utc)); // +15 → yerel 6 Eylül
+        await WaitForConsumedAsync(9501, 3);
+        await PublishLikeOutboxPublisherAsync(9501, 130, t0.AddHours(1));              // tekrar teslim → değişmez
+        await WaitForConsumedAsync(9501, 4);
+
+        var ledger = await WithDbAsync(db => db.StudentDailyXps.AsNoTracking().Where(d => d.StudentId == studentId)
+            .OrderBy(d => d.Day).Select(d => new { d.Day, d.Xp }).ToListAsync());
+        ledger.Select(d => (d.Day, d.Xp)).ShouldBe(new[] { (new DateOnly(2026, 9, 5), 30), (new DateOnly(2026, 9, 6), 15) });
+        (await WithDbAsync(db => db.StudentPoints.AsNoTracking().SingleAsync(p => p.StudentId == studentId))).XP.ShouldBe(145);
+    }
+
+    /// <summary>Audit hook CreateTime'ı "şimdi" yazar; geçmiş event'ler için öğrenciyi eskiye al (ilk senkron = taban çizgisi).</summary>
+    private Task BackdateStudentAsync(int studentId) => WithDbAsync(db => db.Students.Where(s => s.Id == studentId)
+        .ExecuteUpdateAsync(set => set.SetProperty(s => s.CreateTime, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc))));
+
+    private async Task<ExamApp.Api.Services.StudentPoints.StudentPointsSyncResult> ApplyDirectAsync(int userId, int total, DateTime version)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var sync = scope.ServiceProvider.GetRequiredService<ExamApp.Api.Services.StudentPoints.IStudentPointsSyncService>();
+        return await sync.ApplyAsync(new StudentPointsChangedEvent { UserId = userId, TotalPoints = total, UpdatedAtUtc = version });
+    }
+
+    [Fact]
+    public async Task Parallel_points_events_end_at_the_newest_total_with_an_exact_ledger_issue_422()
+    {
+        // Review: aynı öğrenci için eşzamanlı iki teslim (100→110 ve 110→130) — sıra ne olursa olsun XP 130 ve defter +30
+        // (satır kilidi + koşullu UPDATE; kaybolan ya da çift sayılan fark yok). Gerçek Postgres, birkaç tur.
+        var studentId = await SeedStudentAsync(9601);
+        await BackdateStudentAsync(studentId);
+        var day = new DateTime(2026, 9, 10, 8, 0, 0, DateTimeKind.Utc);
+        await ApplyDirectAsync(9601, 100, day); // taban çizgisi
+
+        var total = 100;
+        for (var round = 0; round < 5; round++)
+        {
+            var v1 = day.AddMinutes(round * 10 + 1);
+            var v2 = day.AddMinutes(round * 10 + 2);
+            var first = ApplyDirectAsync(9601, total + 10, v1);
+            var second = ApplyDirectAsync(9601, total + 30, v2);
+            await Task.WhenAll(first, second);
+            total += 30;
+
+            var xp = await WithDbAsync(db => db.StudentPoints.AsNoTracking().Where(p => p.StudentId == studentId).Select(p => p.XP).SingleAsync());
+            xp.ShouldBe(total);
+            var ledger = await WithDbAsync(db => db.StudentDailyXps.AsNoTracking().Where(d => d.StudentId == studentId).SumAsync(d => d.Xp));
+            ledger.ShouldBe(total - 100, $"tur {round}");
+        }
+    }
 }

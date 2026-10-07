@@ -271,6 +271,7 @@ builder.Services.AddScoped<ExamApp.Api.Services.LoginEvents.ILoginEventService, 
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Leaderboards.ILeaderboardService, ExamApp.Api.Services.Leaderboards.LeaderboardService>(); // issue #193
 builder.Services.AddScoped<ExamApp.Api.Services.StudentPoints.IStudentPointsSyncService, ExamApp.Api.Services.StudentPoints.StudentPointsSyncService>(); // issue #225
+builder.Services.AddScoped<ExamApp.Api.Services.Badges.IStudentBadgeProjectionService, ExamApp.Api.Services.Badges.StudentBadgeProjectionService>(); // issue #422
 builder.Services.AddScoped<ISubjectService, SubjectService>();
 builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddScoped<IQuestionService, QuestionService>();
@@ -319,6 +320,10 @@ builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentDashboardService,
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentAssignmentService, ExamApp.Api.Services.Parents.ParentAssignmentService>();
 // issue #421 review: test sonucu 404 taraması uyarısı (süreç içi sayaç, veli başına 10 dk'da 20'yi aşınca Warning).
 builder.Services.AddSingleton<ExamApp.Api.Services.Parents.IParentTestResultProbeMonitor, ExamApp.Api.Services.Parents.ParentTestResultProbeMonitor>();
+// issue #422 (veli V4): puan/rozet/sıra + program (salt okunur; kapı → audit → veri). Rozetler ve haftalık puan exam DB
+// projeksiyonlarından (StudentBadgeProjections / StudentDailyXps; BadgeService event'leriyle beslenir) — servisler arası HTTP yok.
+builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentProgressService, ExamApp.Api.Services.Parents.ParentProgressService>();
+builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentScheduleService, ExamApp.Api.Services.Parents.ParentScheduleService>();
 builder.Services.AddScoped<ExamApp.Api.Services.UserRoles.IUserRoleChangeRecorder, ExamApp.Api.Services.UserRoles.UserRoleChangeRecorder>();
 // issue #419: veli ↔ öğrenci/öğretmen rol dışlaması (student/teacher/parent register).
 builder.Services.AddScoped<ExamApp.Api.Services.UserRoles.IUserRoleExclusivity, ExamApp.Api.Services.UserRoles.UserRoleExclusivity>();
@@ -453,7 +458,8 @@ builder.Services.AddHangfireServer(options =>
 });
 
 // RabbitMQ consumer'ları (issue #225): exam API'nin sahibi olduğu veriye yazan event'ler burada tüketilir.
-// İlk (ve şimdilik tek) consumer: BadgeService outbox'ından gelen StudentPointsChangedEvent → StudentPoints.
+// Consumer'lar: BadgeService outbox'ından gelen StudentPointsChangedEvent → StudentPoints (+ günlük puan defteri, #422)
+// ve StudentBadgeEarnedEvent → StudentBadgeProjections (#422).
 // Kendi kuyruğu "exam-api" (BadgeService'in "badge-service" kuyruğundan bağımsız; dead-letter: exam-api_error).
 // RabbitMQ:Host yoksa bus kurulmaz (entegrasyon testleri / RabbitMQ'suz lokal çalıştırma) — başlangıçta uyarı loglanır.
 // Production'da RabbitMQ:Host zorunlu (consumer'sız sessizce açılmak liderliği fark edilmeden dondurur);
@@ -480,6 +486,8 @@ if (rabbitMqEnabled)
     builder.Services.AddMassTransit(x =>
     {
         x.AddConsumer<ExamApp.Api.Consumers.StudentPointsChangedConsumer, ExamApp.Api.Consumers.StudentPointsChangedConsumerDefinition>();
+        // issue #422: BadgeService rozet event'i → StudentBadgeProjections (veli paneli).
+        x.AddConsumer<ExamApp.Api.Consumers.StudentBadgeEarnedConsumer, ExamApp.Api.Consumers.StudentBadgeEarnedConsumerDefinition>();
 
         x.UsingRabbitMq((context, cfg) =>
         {
@@ -496,6 +504,7 @@ if (rabbitMqEnabled)
                 e.PublishFaults = false;
 
                 e.ConfigureConsumer<ExamApp.Api.Consumers.StudentPointsChangedConsumer>(context);
+                e.ConfigureConsumer<ExamApp.Api.Consumers.StudentBadgeEarnedConsumer>(context);
             });
         });
     });

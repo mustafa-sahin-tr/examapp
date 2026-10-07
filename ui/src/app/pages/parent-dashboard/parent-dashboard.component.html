@@ -150,6 +150,8 @@
     }
 
     @if (selectedId(); as studentId) {
+      <app-parent-child-progress [studentId]="studentId" (notFound)="onChildNotFound()" />
+      <app-parent-child-schedule [studentId]="studentId" (notFound)="onChildNotFound()" />
       <app-parent-child-assignments [studentId]="studentId" (notFound)="onChildNotFound()" />
     }
   }

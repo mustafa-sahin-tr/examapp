@@ -1,0 +1,102 @@
+<section class="psc" *transloco="let t; prefix: 'parent-dashboard'" aria-labelledby="psc-title" data-test="schedule-section">
+  <header class="psc__head">
+    <div>
+      <h2 id="psc-title">{{ t('schedule.title') }}</h2>
+      <p>{{ t('schedule.subtitle') }}</p>
+    </div>
+    <div class="psc__nav">
+      <button
+        mat-icon-button
+        type="button"
+        [disabled]="!range() || loading()"
+        [attr.aria-label]="t('schedule.previousWeek')"
+        [matTooltip]="t('schedule.previousWeek')"
+        (click)="previousWeek()"
+        data-test="schedule-prev"
+      >
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <span class="psc__range" aria-live="polite" data-test="schedule-range">
+        @if (rangeParts(); as r) {
+          {{ t('schedule.range', r) }}
+        }
+      </span>
+      <button
+        mat-icon-button
+        type="button"
+        [disabled]="!range() || loading()"
+        [attr.aria-label]="t('schedule.nextWeek')"
+        [matTooltip]="t('schedule.nextWeek')"
+        (click)="nextWeek()"
+        data-test="schedule-next"
+      >
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+      @if (range() && !isCurrentWeek()) {
+        <button mat-stroked-button type="button" [disabled]="loading()" (click)="thisWeek()" data-test="schedule-this-week">
+          {{ t('schedule.thisWeek') }}
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="psc__state" aria-busy="true" data-test="schedule-loading">
+      <mat-spinner diameter="28" />
+      <span>{{ t('loading') }}</span>
+    </div>
+  } @else if (error()) {
+    <div class="psc__state" role="alert" data-test="schedule-error">
+      <span>{{ error() }}</span>
+      <button mat-stroked-button type="button" (click)="reload()">{{ t('retry') }}</button>
+    </div>
+  } @else if (isEmpty()) {
+    <p class="psc__empty">
+      <mat-icon aria-hidden="true">event_available</mat-icon>
+      <span data-test="schedule-empty">{{ t('schedule.empty') }}</span>
+    </p>
+  } @else {
+    <ol class="psc__days">
+      @for (day of days(); track day.date) {
+        <li class="psc__day" [class.psc__day--today]="day.isToday" data-test="schedule-day">
+          <div class="psc__day-label">
+            <span data-test="day-label">{{ day.label }}</span>
+            @if (day.isToday) {
+              <span class="psc__today">{{ t('schedule.today') }}</span>
+            }
+          </div>
+          @if (day.plans.length === 0 && day.lessons.length === 0) {
+            <span class="psc__none">{{ t('schedule.nothing') }}</span>
+          } @else {
+            <ul class="psc__items">
+              @for (lesson of day.lessons; track $index) {
+                <li class="psc__item" data-test="lesson-row">
+                  <mat-icon class="psc__icon" aria-hidden="true">co_present</mat-icon>
+                  <div class="psc__main">
+                    <span class="psc__title">
+                      {{ lesson.teacherName ? t('schedule.lessonWith', { name: lesson.teacherName }) : t('schedule.lesson') }}
+                    </span>
+                    <span class="psc__meta" data-test="lesson-time">{{ lesson.time }}</span>
+                  </div>
+                  <span class="psc__status psc__status--{{ lesson.status }}" data-test="lesson-status">
+                    {{ t('schedule.status.' + lesson.status) }}
+                  </span>
+                </li>
+              }
+              @for (plan of day.plans; track $index) {
+                <li class="psc__item" data-test="plan-row">
+                  <mat-icon class="psc__icon" aria-hidden="true">event_note</mat-icon>
+                  <div class="psc__main">
+                    <span class="psc__title" data-test="plan-title">{{ plan.title }}</span>
+                    <span class="psc__meta">{{ plan.subject ?? t('schedule.planned') }}</span>
+                  </div>
+                  <span class="psc__status psc__status--plan">{{ t('schedule.plan') }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </li>
+      }
+    </ol>
+  }
+</section>

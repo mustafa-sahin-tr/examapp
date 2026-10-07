@@ -82,6 +82,7 @@ export class LandingComponent implements OnInit {
   ngOnInit(): void {
     // `selectTranslate` scope'u yükler ve dil değişiminde yeniden yayınlar; sözlük hazır olduğunda
     // kalan anahtarlar senkron `translate()` ile okunabilir.
+    // `{{ brand.name }}` referansı kök sözlüğün önceden yüklenmesine dayanır (app.config preload, issue #409).
     this.transloco
       .selectTranslate<string>('meta.title', {}, LANDING_SCOPE)
       .pipe(takeUntilDestroyed(this.destroyRef))

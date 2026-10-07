@@ -26,7 +26,7 @@ import { WorksheetAccessRequestService } from '../../services/worksheet-access-r
 import { StudentSchoolRequestService } from '../../services/student-school-request.service';
 import { NotificationService } from '../../services/notification.service';
 import { DirectMessageService } from '../../services/direct-message.service';
-import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
+import { TranslocoDirective, TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { ColorSchemeToggleComponent } from '../../shared/components/color-scheme-toggle/color-scheme-toggle.component';
 import { LanguageSwitcherComponent } from '../../shared/components/language-switcher/language-switcher.component';
 import { resolveActiveMenuItemId } from './active-menu-item';
@@ -75,6 +75,7 @@ interface MenuItem {
     ColorSchemeToggleComponent,
     LanguageSwitcherComponent,
     TranslocoDirective,
+    TranslocoPipe,
   ],
   templateUrl: './enhanced-layout.component.html',
   styleUrls: ['./enhanced-layout.component.scss'],

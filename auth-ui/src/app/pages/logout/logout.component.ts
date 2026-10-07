@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { MatIconModule } from '@angular/material/icon';
+import { BRAND_NAME } from '../../shared/brand';
 
 @Component({
   selector: 'app-logout',
@@ -15,6 +16,8 @@ import { MatIconModule } from '@angular/material/icon';
 export class LogoutComponent implements OnInit {
   private authService = inject(AuthService);
   private router = inject(Router);
+
+  readonly brandName = BRAND_NAME;
 
   // Logout state management
   currentStep = 1;

@@ -1,21 +1,21 @@
 {
   "privacyPolicy": {
     "meta": {
-      "title": "Gizlilik Politikası | ExamApp",
-      "description": "ExamApp gizlilik politikası ve veri koruma taahhüdü."
+      "title": "Gizlilik Politikası | {{ brand.name }}",
+      "description": "{{ brand.name }} gizlilik politikası ve veri koruma taahhüdü."
     },
     "title": "Gizlilik Politikası",
-    "intro": "ExamApp olarak kullanıcılarımızın gizliliğine büyük önem veriyoruz. Kişisel verileriniz, yasal mevzuata uygun şekilde korunur ve asla üçüncü şahıslarla paylaşılmaz.",
+    "intro": "{{ brand.name }} olarak kullanıcılarımızın gizliliğine büyük önem veriyoruz. Kişisel verileriniz, yasal mevzuata uygun şekilde korunur ve asla üçüncü şahıslarla paylaşılmaz.",
     "contact": "Daha fazla bilgi için bizimle iletişime geçebilirsiniz."
   },
   "terms": {
     "meta": {
-      "title": "Kullanım Şartları | ExamApp",
-      "description": "ExamApp kullanım şartları: Hizmetlerimizin kullanımına ilişkin kurallar ve koşullar."
+      "title": "Kullanım Şartları | {{ brand.name }}",
+      "description": "{{ brand.name }} kullanım şartları: Hizmetlerimizin kullanımına ilişkin kurallar ve koşullar."
     },
     "title": "Kullanım Şartları",
-    "intro": "ExamApp hizmetlerini kullanarak aşağıdaki şartları kabul etmiş olursunuz. Lütfen tüm kuralları dikkatlice okuyunuz.",
-    "purpose": "ExamApp, kullanıcıların sınav deneyimini iyileştirmek için tasarlanmıştır.",
+    "intro": "{{ brand.name }} hizmetlerini kullanarak aşağıdaki şartları kabul etmiş olursunuz. Lütfen tüm kuralları dikkatlice okuyunuz.",
+    "purpose": "{{ brand.name }}, kullanıcıların sınav deneyimini iyileştirmek için tasarlanmıştır.",
     "misuse": "Hizmetlerimizin kötüye kullanımı yasaktır.",
     "updates": "Güncellenen şartlar ve koşullar için bu sayfayı düzenli olarak kontrol ediniz."
   }

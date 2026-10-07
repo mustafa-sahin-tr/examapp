@@ -204,7 +204,7 @@ export class StudyContentViewerComponent implements OnInit, OnChanges {
 
   shareContent(platform: string) {
     let shareUrl = window.location.href;
-    const text = `${this.content?.title || this.t('shared.study.content.fallbackTitle')} - ExamApp`;
+    const text = `${this.content?.title || this.t('shared.study.content.fallbackTitle')} - ${this.t('brand.name')}`;
 
     switch (platform) {
       case 'twitter':

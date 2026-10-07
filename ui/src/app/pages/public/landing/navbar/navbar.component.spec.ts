@@ -65,6 +65,11 @@ describe('NavbarComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('logoAlt_ComesFromBrandKey (issue #409)', () => {
+    expect(host().querySelector('.navbar-brand img')?.getAttribute('alt')).toBe(rootTr.brand.name);
+    expect(rootTr.brand.name).toBe('Hedef Okul');
+  });
+
   it('navLinks_DefaultLocale_RenderTurkishLabels', () => {
     expect(navLinkTexts()).toContain(landingTr.nav.home);
     expect(navLinkTexts()).toContain(landingTr.nav.howItWorks);

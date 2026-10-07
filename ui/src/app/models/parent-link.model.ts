@@ -44,6 +44,8 @@ export type LinkedChildStatus = 'Active' | 'Pending';
 export interface LinkedChild {
   linkId: number;
   status: LinkedChildStatus;
+  /** Issue #420: öğrencinin id'si — veli paneli anahtarı (`/parent?child=`). Yalnızca Active iken dolu. */
+  studentId?: number | null;
   studentName: string | null;
   gradeName: string | null;
   schoolName: string | null;

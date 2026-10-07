@@ -448,6 +448,7 @@ public sealed class ParentLinkService : IParentLinkService
             {
                 l.Id,
                 l.Status,
+                l.StudentId,
                 StudentUserId = l.Student.UserId,
                 GradeName = l.Student.Grade != null ? l.Student.Grade.Name : null,
                 // #361: yalnızca DOĞRULANMIŞ okul gösterilir — öğrencinin kendi seçtiği (bekleyen) okul ya da legacy serbest
@@ -466,6 +467,7 @@ public sealed class ParentLinkService : IParentLinkService
             {
                 LinkId = r.Id,
                 Status = nameof(ParentStudentLinkStatus.Active),
+                StudentId = r.StudentId, // issue #420: veli paneli anahtarı (yalnız Active)
                 StudentName = NameOf(users, r.StudentUserId, "parentLinks.fallbackStudentName"),
                 GradeName = r.GradeName,
                 SchoolName = r.SchoolName,

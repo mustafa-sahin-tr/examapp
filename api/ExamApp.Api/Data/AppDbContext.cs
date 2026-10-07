@@ -135,6 +135,7 @@ public class AppDbContext : DbContext
     // Veli–öğrenci bağlantısı ve davet kodları (issue #419)
     public DbSet<ParentStudentLink> ParentStudentLinks { get; set; }
     public DbSet<ParentInviteCode> ParentInviteCodes { get; set; }
+    public DbSet<ParentAccessAudit> ParentAccessAudits { get; set; } // issue #420
 
     // Ders planlama / randevu (issue #96)
     public DbSet<TeacherAvailabilitySlot> TeacherAvailabilitySlots { get; set; }
@@ -324,6 +325,14 @@ public class AppDbContext : DbContext
                 .IsUnique()
                 .HasFilter("\"UsedAt\" IS NULL");
             e.HasIndex(c => new { c.StudentId, c.ExpiresAt });
+        });
+
+        // issue #420: veli erişim kaydı (append-only, FK yok). Index'ler: "bu veli ne zaman neye baktı" ve "bu çocuğun
+        // verisine kim baktı" denetim sorguları (öğrenci tarafındaki V6 erişim geçmişi de ikincisini kullanır).
+        modelBuilder.Entity<ParentAccessAudit>(e =>
+        {
+            e.HasIndex(a => new { a.ParentId, a.At });
+            e.HasIndex(a => new { a.StudentId, a.At });
         });
 
         // Bağımsız öğretmen (issue #92): mevcut tüm öğretmen kayıtları okula bağlı sayılır → Approved.

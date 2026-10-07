@@ -260,7 +260,7 @@ public class BookingSuspensionRaceTests : IDisposable
     }
 
     [Theory]
-    [InlineData(false)] // okula bağlı (bağımsız başvurusu yok)
+    [InlineData(false)] // bağımsız değil (bağımsız başvurusu yok, okulsuz)
     [InlineData(true)]  // hibrit: bağımsız başvurulu ama okula bağlı
     public async Task Sweep_rejects_pending_requests_of_a_not_independent_teacher_with_teacher_unavailable_event(bool hybrid)
     {

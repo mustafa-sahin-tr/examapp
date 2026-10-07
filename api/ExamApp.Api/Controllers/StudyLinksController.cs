@@ -157,13 +157,6 @@ public class StudyLinksController : BaseController
         return new StudyLinkActor(user.Id, user.FullName ?? string.Empty, isAdmin ? "Admin" : "Teacher", isAdmin);
     }
 
-    /// <summary>
-    /// <see cref="BaseController.GetAuthenticatedUserAsync()"/> profil servisi hata verdiğinde exception yerine
-    /// Id=0 / Role="Service" sahte profil döner. O profille yazma yapılırsa (özellikle Admin rolüyle — onay/sahiplik
-    /// kontrolü atlanır) işlem kullanıcı 0'a atfedilirdi; bu yüzden Id &lt;= 0 "çözülemedi" sayılır.
-    /// </summary>
-    internal static bool IsResolvedUser(UserProfileDto? user) => user != null && user.Id > 0;
-
     /// <summary>ResponseBaseDto bayraklarını HTTP koduna çevirir (404 / 403 / 409 / 400).</summary>
     private IActionResult MapFailure(ResponseBaseDto result)
     {

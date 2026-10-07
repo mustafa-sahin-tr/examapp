@@ -54,6 +54,19 @@ public sealed class ParentLinkInviteRateLimitOptions : ParentLinkRateLimitOption
 }
 
 /// <summary>
+/// <c>RateLimiting:ParentChildSummary</c> — issue #420 review: velinin çocuk özeti okuması (her çağrı birkaç toplama sorgusu
+/// + audit kontrolü). Varsayılan: veli (sub) başına dakikada 30 — panel açılışı/çocuk değişimi için bol, otomatik çekmeyi keser.
+/// V3/V4 veli okuma uçları da bu kovayı paylaşabilir.
+/// </summary>
+public sealed class ParentChildSummaryRateLimitOptions : ParentLinkRateLimitOptionsBase
+{
+    public const string SectionName = "RateLimiting:ParentChildSummary";
+    public ParentChildSummaryRateLimitOptions() { PermitLimit = 30; WindowSeconds = 60; }
+    internal override string PolicyName => ParentLinkRateLimiting.ChildSummaryPolicy;
+    internal override string MessageKey => "parentLinks.summaryRateLimited";
+}
+
+/// <summary>
 /// issue #419: veli bağlantısı uçlarına KULLANICI (Keycloak <c>sub</c>) başına dağıtık sabit pencere rate limit —
 /// <see cref="DirectMessageRateLimiting"/> (#106) ile aynı altyapı: <see cref="IFixedWindowCounterStore"/> (Redis varsa dağıtık,
 /// kesintide fail-open; yoksa süreç içi) + <see cref="DistributedFixedWindowRateLimiter"/>; sub'sız istek koşulsuz 401;
@@ -64,6 +77,9 @@ public static class ParentLinkRateLimiting
     public const string RedeemPolicy = "parent-link-redeem";
     public const string InvitePolicy = "parent-link-invite";
 
+    /// <summary>issue #420: <c>GET api/parent/children/{studentId}/summary</c>.</summary>
+    public const string ChildSummaryPolicy = "parent-child-summary";
+
     /// <summary>429 gövdesindeki hata kodu (UI dallanması).</summary>
     public const string RateLimitedErrorCode = "RateLimited";
 
@@ -72,6 +88,7 @@ public static class ParentLinkRateLimiting
     {
         Add<ParentLinkRedeemRateLimitOptions>(services, ParentLinkRedeemRateLimitOptions.SectionName, RedeemPolicy);
         Add<ParentLinkInviteRateLimitOptions>(services, ParentLinkInviteRateLimitOptions.SectionName, InvitePolicy);
+        Add<ParentChildSummaryRateLimitOptions>(services, ParentChildSummaryRateLimitOptions.SectionName, ChildSummaryPolicy);
         return services;
     }
 
@@ -88,7 +105,7 @@ public static class ParentLinkRateLimiting
     }
 }
 
-/// <summary>Tek kovalı policy (redeem / davet kodu).</summary>
+/// <summary>Tek kovalı policy (redeem / davet kodu / çocuk özeti).</summary>
 public sealed class ParentLinkRateLimitPolicy<TOptions> : IRateLimiterPolicy<string>
     where TOptions : ParentLinkRateLimitOptionsBase, new()
 {

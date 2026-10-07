@@ -1,0 +1,42 @@
+{
+  "title": "Parent dashboard",
+  "subtitle": "A summary of your child's work this week.",
+  "loading": "Loading…",
+  "retry": "Try again",
+  "manageChildren": "My children",
+  "selectChild": "Child",
+  "childrenLoadError": "Your children could not be loaded.",
+  "summaryLoadError": "The summary could not be loaded.",
+  "summaryNotFound": "You no longer have access to this child's information. The link may have been removed.",
+  "empty": {
+    "title": "No linked children yet",
+    "message": "To follow your child's work, get an invite code from your child and add them to your account.",
+    "pendingNote": "You have a request awaiting approval. The summary will appear here once your child approves it.",
+    "cta": "Add child"
+  },
+  "cards": {
+    "solved": {
+      "title": "Questions solved this week",
+      "since": "Since Monday, {{date}}",
+      "unit": "questions"
+    },
+    "assignments": {
+      "title": "Assignments",
+      "window": "Open assignments and those due in the last {{days}} days",
+      "completed": "Completed",
+      "pending": "Pending",
+      "overdue": "Overdue / timed out"
+    },
+    "points": {
+      "title": "Total points",
+      "unit": "points"
+    },
+    "lastActivity": {
+      "title": "Last activity",
+      "none": "No activity yet",
+      "today": "Today, around {{time}}",
+      "yesterday": "Yesterday, around {{time}}",
+      "onDate": "{{date}}, around {{time}}"
+    }
+  }
+}

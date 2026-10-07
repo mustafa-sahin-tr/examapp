@@ -481,6 +481,21 @@ describe('CompleteProfileComponent', () => {
     expect(component.submitError()).toBeNull();
   });
 
+  // Issue #420: profili zaten tamamlanmış veli (409) veli paneline gider.
+  it('onSubmit_ParentAlreadyRegistered409_RedirectsToParentDashboard', () => {
+    const fixture = createComponent({ role: 'parent' });
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    const redirectSpy = spyOn(component, 'redirectTo');
+    authServiceSpy.registerParentProfile.and.returnValue(throwError(() => new HttpErrorResponse({ status: 409 })));
+    // Bilgi snackbar'ı bileşenin kendi ortam enjektöründen gelir; animasyonsuz test ortamında açılmasın.
+    spyOn(fixture.debugElement.injector.get(MatSnackBar), 'open');
+
+    component.onSubmit();
+
+    expect(redirectSpy).toHaveBeenCalledOnceWith('/parent');
+  });
+
   it('onSubmit_ParentRegistrationProfileNotResolved404_SetsSubmitErrorWithoutRedirect', () => {
     const fixture = createComponent({ role: 'parent' });
     fixture.detectChanges();

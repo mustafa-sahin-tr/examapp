@@ -73,7 +73,7 @@ export class ParentRegisterComponent {
           }
         }
         this.notify('parent.success');
-        this.router.navigate(['/dashboard']);
+        this.router.navigate(['/parent']); // issue #420: veli paneli
       },
       error: (err: unknown) => {
         this.isSubmitting.set(false);

@@ -194,7 +194,7 @@ export class CompleteProfileComponent implements OnInit {
           return;
         }
         this.snackBar.open('Profiliniz tamamlandı! Yönlendiriliyorsunuz...', 'Tamam', { duration: 3000 });
-        window.location.href = role === 'Parent' ? '/dashboard' : '/tests';
+        window.location.href = role === 'Parent' ? '/parent' : '/tests';
       },
       error: (err: HttpErrorResponse) => {
         this.isLoading.set(false);
@@ -220,7 +220,7 @@ export class CompleteProfileComponent implements OnInit {
         }
         if (err?.status === 409) {
           this.snackBar.open('Profiliniz zaten tamamlanmış.', 'Tamam', { duration: 3000 });
-          this.redirectTo(role === 'Parent' ? '/dashboard' : '/tests');
+          this.redirectTo(role === 'Parent' ? '/parent' : '/tests');
           return;
         }
         // Issue #255: token geçerli ama hesap profili sunucuda çözülemedi → 404. Oturum geçersiz

@@ -35,6 +35,7 @@ export function oidcErrorMessage(error: string): string {
  * login başlatılırken sessionStorage'a yazılan kayıttan gelir; yol yine de allowlist'ten geçirilir.
  *
  * - Admin → istenen yol, yoksa `/admin/dashboard`
+ * - Veli (öğrenci/öğretmen rolü yok) → istenen yol, yoksa `/parent` (veli paneli, issue #420)
  * - Uygulama rolü olan kullanıcı → istenen yol, yoksa `/dashboard`
  * - Rolü olmayan (yeni) kullanıcı → profil tamamlama (niyet varsa rol ön seçili)
  */
@@ -47,7 +48,8 @@ export function postLoginDestination(
   if (!hasAppRole) {
     return record.intent ? `/app/complete-profile?role=${record.intent}` : '/app/complete-profile';
   }
-  return safeRedirectTarget(record.returnPath) ?? (isAdmin ? '/admin/dashboard' : '/dashboard');
+  const isParentOnly = roles.includes('Parent') && !roles.includes('Student') && !roles.includes('Teacher');
+  return safeRedirectTarget(record.returnPath) ?? (isAdmin ? '/admin/dashboard' : isParentOnly ? '/parent' : '/dashboard');
 }
 
 @Component({

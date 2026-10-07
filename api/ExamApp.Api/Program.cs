@@ -296,7 +296,28 @@ builder.Services.AddSingleton<ExamApp.Api.Services.Teachers.ITeacherActivityCach
 builder.Services.AddScoped<ITeacherService, TeacherService>();
 // issue #277 (madde 3/4): veli kaydı servisi + register sonrası UserRoleChangedEvent yazıcısı.
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentService, ExamApp.Api.Services.Parents.ParentService>();
+// issue #419: veli–öğrenci bağlantısı + davet kodu (HMAC pepper: ParentLinks__InviteCodePepper; Development'ta dev-only yedek).
+// Development dışında eksik/kısa/devOnly pepper açılışta fail-fast (ParentLinkOptionsValidator).
+builder.Services.AddOptions<ExamApp.Api.Services.Parents.ParentLinkOptions>()
+    .BindConfiguration(ExamApp.Api.Services.Parents.ParentLinkOptions.SectionName)
+    .ValidateOnStart();
+builder.Services.AddSingleton<Microsoft.Extensions.Options.IValidateOptions<ExamApp.Api.Services.Parents.ParentLinkOptions>,
+    ExamApp.Api.Services.Parents.ParentLinkOptionsValidator>();
+// review: başarısız redeem — hesap başına günde 20 + platform devre kesicisi (IFixedWindowCounterStore; Redis varsa dağıtık).
+builder.Services.AddOptions<ExamApp.Api.Services.Parents.ParentRedeemGuardOptions>()
+    .BindConfiguration(ExamApp.Api.Services.Parents.ParentRedeemGuardOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddSingleton<ExamApp.Api.Services.Parents.IParentRedeemAttemptGuard, ExamApp.Api.Services.Parents.ParentRedeemAttemptGuard>();
+builder.Services.AddSingleton<ExamApp.Api.Services.Parents.IParentInviteCodeHasher, ExamApp.Api.Services.Parents.ParentInviteCodeHasher>();
+builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentLinkService, ExamApp.Api.Services.Parents.ParentLinkService>();
+// issue #420: veli paneli — tek yetki kapısı (Active bağlantı, aksi 404) + erişim kaydı + özet okuma modeli.
+builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentChildAccess, ExamApp.Api.Services.Parents.ParentChildAccess>();
+builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentAccessAuditLog, ExamApp.Api.Services.Parents.ParentAccessAuditLog>();
+builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentDashboardService, ExamApp.Api.Services.Parents.ParentDashboardService>();
 builder.Services.AddScoped<ExamApp.Api.Services.UserRoles.IUserRoleChangeRecorder, ExamApp.Api.Services.UserRoles.UserRoleChangeRecorder>();
+// issue #419: veli ↔ öğrenci/öğretmen rol dışlaması (student/teacher/parent register).
+builder.Services.AddScoped<ExamApp.Api.Services.UserRoles.IUserRoleExclusivity, ExamApp.Api.Services.UserRoles.UserRoleExclusivity>();
 builder.Services.AddSingleton<ImageHelper>();
 builder.Services.AddScoped<UserProfileCacheService>();
 builder.Services.AddScoped<ISchoolContextResolver, SchoolContextResolver>(); // issue #189
@@ -390,6 +411,7 @@ builder.Services.AddWorksheetCommentReadRateLimiting(); // okuma: dakikada 60 (r
 // issue #106: doğrudan mesaj — gönderme (dakikada 10), şikayet (saatte 20), okuma (dakikada 60); sub başına dağıtık.
 builder.Services.AddDirectMessageRateLimiting();
 builder.Services.AddDailyQuestionsRateLimiting(); // issue #99 security D4: günün soruları, öğrenci başına dakikada 30
+builder.Services.AddParentLinkRateLimiting(); // issue #419: veli kod denemesi dakikada 5, öğrenci kod üretimi saatte 10 (sub başına)
 
 // PostgreSQL & EF Core (Aspire client integration — reads ConnectionStrings:DefaultConnection,
 // same key as before, so standalone `dotnet run` against appsettings.json is unaffected).

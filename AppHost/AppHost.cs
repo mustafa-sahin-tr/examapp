@@ -165,6 +165,8 @@ var minioPresignInit = builder.AddContainer("minio-presign-init", "minio/minio")
 var jitsiJwtAppId = builder.AddParameter("jitsi-jwt-app-id");
 var jitsiJwtAppSecret = builder.AddParameter("jitsi-jwt-app-secret", secret: true);
 var jitsiRoomSecret = builder.AddParameter("jitsi-room-secret", secret: true);
+// Issue #419: HMAC pepper for parent invite codes (exam API ParentLinks:InviteCodePepper).
+var parentInviteCodePepper = builder.AddParameter("parent-invite-code-pepper", secret: true);
 var jicofoAuthPassword = builder.AddParameter("jicofo-auth-password", secret: true);
 var jvbAuthPassword = builder.AddParameter("jvb-auth-password", secret: true);
 var jicofoComponentSecret = builder.AddParameter("jicofo-component-secret", secret: true);
@@ -448,6 +450,8 @@ var examDotnetApi = builder.AddProject<Projects.ExamApp_Api>("exam-dotnet-api")
     .WithEnvironment("Video__Jitsi__AppId", jitsiJwtAppId)
     .WithEnvironment("Video__Jitsi__AppSecret", jitsiJwtAppSecret)
     .WithEnvironment("Video__Jitsi__RoomSecret", jitsiRoomSecret)
+    // Issue #419: parent invite code HMAC pepper (dev-only default in appsettings.json Parameters).
+    .WithEnvironment("ParentLinks__InviteCodePepper", parentInviteCodePepper)
     // Issue #225: exam API hosts a MassTransit consumer (queue "exam-api",
     // StudentPointsChangedEvent from BadgeService's outbox). Same RabbitMQ:*
     // keys/wiring as BadgeService below; without RabbitMQ__Host the bus is

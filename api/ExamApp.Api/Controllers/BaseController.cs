@@ -32,6 +32,29 @@ public class BaseController : ControllerBase
     /// </summary>
     protected bool IsAdmin => User.IsInRole("Admin");
 
+    /// <summary>
+    /// issue #419 re-review: kayıt (student/teacher/parent register) hedef rolü veli ↔ öğrenci/öğretmen dışlamasıyla
+    /// çakışıyor mu (<see cref="Services.UserRoles.IUserRoleExclusivity"/> — tek kural noktası). Bakılan roller: JWT realm
+    /// rolleri + auth-api'nin HAM profil rolü (etkin role çevrilmeden; JWT gecikmeli/eksik olsa da yakalansın) + DB satırları.
+    /// Keycloak rolü atanmadan ÖNCE çağrılır.
+    /// </summary>
+    protected async Task<bool> RegistrationRoleConflictsAsync(int userId, UserRole targetRole, CancellationToken ct = default)
+    {
+        var claimed = new List<string>();
+        foreach (var role in new[] { nameof(UserRole.Student), nameof(UserRole.Teacher), nameof(UserRole.Parent) })
+        {
+            if (User.IsInRole(role))
+                claimed.Add(role);
+        }
+
+        var rawProfile = await HttpContext.RequestServices.GetRequiredService<IUserProfileProvider>().GetAsync(KeyCloakId, ct);
+        if (!string.IsNullOrWhiteSpace(rawProfile?.Role))
+            claimed.Add(rawProfile.Role);
+
+        return await HttpContext.RequestServices.GetRequiredService<Services.UserRoles.IUserRoleExclusivity>()
+            .ConflictsAsync(userId, targetRole, claimed, ct);
+    }
+
     protected Task<UserProfileDto> GetAuthenticatedUserAsync() => GetAuthenticatedUserAsync(CancellationToken.None);
 
     protected async Task<UserProfileDto> GetAuthenticatedUserAsync(CancellationToken ct)
@@ -64,6 +87,12 @@ public class BaseController : ControllerBase
             throw new UserProfileUnavailableException(ex);
         }
     }
+
+    /// <summary>
+    /// Profil çözüldü mü: Id &lt;= 0 sahte/çözülmemiş profil sayılır (StudyLinks/ParentLinks/ParentDashboard ortak kuralı;
+    /// issue #420 review ile tek yere taşındı).
+    /// </summary>
+    protected internal static bool IsResolvedUser(UserProfileDto? user) => user != null && user.Id > 0;
 
     /// <summary>
     /// issue #255: <see cref="GetAuthenticatedUserAsync()"/> kullanıcıyı çözemediğinde dönülecek yanıt.

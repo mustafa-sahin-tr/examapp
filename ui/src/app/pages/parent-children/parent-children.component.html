@@ -1,0 +1,103 @@
+<section class="pch" *transloco="let t; prefix: 'parent-links'">
+  <header class="pch__head">
+    <h1>{{ t('children.title') }}</h1>
+    <p>{{ t('children.subtitle') }}</p>
+  </header>
+
+  <article class="pch__card" aria-labelledby="pch-add-title">
+    <h2 id="pch-add-title">{{ t('children.addTitle') }}</h2>
+    <p class="pch__hint">{{ t('children.addHint') }}</p>
+    <form class="pch__form" (ngSubmit)="submit()">
+      <mat-form-field appearance="outline" class="pch__field">
+        <mat-label>{{ t('children.codeLabel') }}</mat-label>
+        <input
+          matInput
+          name="inviteCode"
+          data-test="code-input"
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+          maxlength="20"
+          [placeholder]="t('children.codePlaceholder')"
+          [ngModel]="code()"
+          (ngModelChange)="onCodeInput($event)"
+        />
+        <mat-hint>{{ t('children.invalidLength') }}</mat-hint>
+      </mat-form-field>
+      <button mat-flat-button type="submit" data-test="submit" [disabled]="!canSubmit()">
+        <mat-icon>link</mat-icon>
+        {{ t('children.submit') }}
+      </button>
+    </form>
+    @if (redeemError()) {
+      <p class="pch__error" role="alert" data-test="redeem-error">{{ redeemError() }}</p>
+    }
+  </article>
+
+  <article class="pch__card" aria-labelledby="pch-list-title">
+    <h2 id="pch-list-title">{{ t('children.listTitle') }}</h2>
+    @if (loading()) {
+      <div class="pch__state" aria-busy="true">
+        <mat-spinner diameter="28" />
+        <span>{{ t('loading') }}</span>
+      </div>
+    } @else if (loadError()) {
+      <div class="pch__state" role="alert">
+        <span>{{ loadError() }}</span>
+        <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+      </div>
+    } @else if (isEmpty()) {
+      <p class="pch__empty" data-test="empty">{{ t('children.empty') }}</p>
+    } @else {
+      <ul class="pch__list">
+        @for (child of children(); track child.linkId) {
+          @if (child.status === 'Pending') {
+            <li class="pch__item pch__item--pending" data-test="pending-row">
+              <mat-icon aria-hidden="true">hourglass_top</mat-icon>
+              <div class="pch__info">
+                <span class="pch__name">{{ t('children.pendingStatus') }}</span>
+                <span class="pch__meta">
+                  <span>{{ t('children.pendingHint', { date: ui.formatDate(child.pendingExpiresAt) }) }}</span>
+                </span>
+              </div>
+              <button
+                mat-stroked-button
+                type="button"
+                data-test="revoke"
+                [disabled]="revokingId() === child.linkId"
+                (click)="revoke(child)"
+              >
+                {{ t('children.cancel') }}
+              </button>
+            </li>
+          } @else {
+            <li class="pch__item" data-test="child-row">
+              <mat-icon aria-hidden="true">child_care</mat-icon>
+              <div class="pch__info">
+                <span class="pch__name">{{ child.studentName }}</span>
+                <span class="pch__meta">
+                  @if (child.gradeName) {
+                    <span>{{ t('children.grade') }}: {{ child.gradeName }}</span>
+                  }
+                  @if (child.schoolName) {
+                    <span>{{ t('children.school') }}: {{ child.schoolName }}</span>
+                  }
+                  <span>{{ t('children.linkedAt', { date: ui.formatDate(child.linkedAt) }) }}</span>
+                </span>
+              </div>
+              <button
+                mat-stroked-button
+                type="button"
+                data-test="revoke"
+                [disabled]="revokingId() === child.linkId"
+                (click)="revoke(child)"
+              >
+                {{ t('children.revoke') }}
+              </button>
+            </li>
+          }
+        }
+      </ul>
+    }
+  </article>
+</section>

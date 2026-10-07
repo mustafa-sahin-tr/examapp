@@ -176,6 +176,11 @@ namespace ExamApp.Api.Controllers
             // 🔹 Öğrenci zaten var mı?
             // issue #277 (madde 4): rol değişikliği bağlamı, user.Role aşağıda üzerine yazılmadan ÖNCE alınır.
             var roleChange = new UserRoleChangeRequest(user.KeycloakId, user.Id, user.Role);
+
+            // issue #419 re-review: veli hesabı kendini öğrenciye çeviremez (kendi koduyla kendine bağlanma) → 409.
+            if (await RegistrationRoleConflictsAsync(user.Id, UserRole.Student, HttpContext.RequestAborted))
+                return Conflict(new { message = _localizer["student.parentRecordExists"].Value });
+
             var response = await _studentService.Save(user.Id, request);
 
             if (response == null)

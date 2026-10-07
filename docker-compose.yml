@@ -35,6 +35,8 @@ services:
       - Video__Jitsi__AppId=${JITSI_JWT_APP_ID}
       - Video__Jitsi__AppSecret=${JITSI_JWT_APP_SECRET:?JITSI_JWT_APP_SECRET .env icinde tanimli olmali}
       - Video__Jitsi__RoomSecret=${JITSI_ROOM_SECRET:?JITSI_ROOM_SECRET .env icinde tanimli olmali}
+      # Issue #419: veli davet kodu HMAC pepper'i (>= 32 karakter).
+      - ParentLinks__InviteCodePepper=${PARENT_INVITE_CODE_PEPPER:?PARENT_INVITE_CODE_PEPPER .env icinde tanimli olmali}
       # Issue #225: exam API artık RabbitMQ consumer'ı barındırıyor (kuyruk "exam-api":
       # BadgeService'in StudentPointsChangedEvent'i → StudentPoints). Host yoksa bus kurulmaz.
       # Issue #279: paylaşılan RABBITMQ_DEFAULT_USER/PASS admin hesabı yerine servise özel,

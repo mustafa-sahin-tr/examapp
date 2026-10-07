@@ -1,0 +1,120 @@
+:host {
+  display: block;
+}
+
+// Issue #419: ortak "Hesabım" kartıyla (#417) aynı görünüm.
+.pic {
+  background: var(--ms-surface-weak);
+  border: 1px solid var(--ms-border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+
+  h2 {
+    margin: 0 0 0.5rem;
+    font-family: var(--mainFontFamily);
+    font-size: 1.0625rem;
+  }
+}
+
+.pic__hint,
+.pic__code-expiry,
+.pic__code-once,
+.pic__active,
+.pic__limit,
+.pic__empty {
+  margin: 0.5rem 0;
+  font-size: 0.8125rem;
+  opacity: 0.8;
+}
+
+.pic__code {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px dashed var(--primaryColor);
+  border-radius: 10px;
+}
+
+.pic__code-label {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
+.pic__code-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pic__code-value {
+  font-family: var(--mainFontFamily);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--primaryColor);
+}
+
+.pic__code-once {
+  font-weight: 600;
+  opacity: 1;
+}
+
+.pic__generate mat-icon {
+  margin-right: 0.25rem;
+}
+
+.pic__subtitle {
+  margin: 1.25rem 0 0.5rem;
+  font-family: var(--mainFontFamily);
+  font-size: 0.9375rem;
+}
+
+.pic__state {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.pic__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pic__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--ms-border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.pic__name {
+  flex: 1;
+}
+
+.pic__pending {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--primaryColor);
+  border-radius: 10px;
+}
+
+.pic__meta {
+  display: block;
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
+.pic__warning {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ms-danger-background);
+}

@@ -20,6 +20,9 @@ import studentProfileTr from '../../../../public/i18n/student-profile/tr.json';
 import studentProfileEn from '../../../../public/i18n/student-profile/en.json';
 import accountSecurityTr from '../../../../public/i18n/account-security/tr.json';
 import accountSecurityEn from '../../../../public/i18n/account-security/en.json';
+import parentLinksTr from '../../../../public/i18n/parent-links/tr.json';
+import parentLinksEn from '../../../../public/i18n/parent-links/en.json';
+import { ParentLinkService } from '../../services/parent-link.service';
 
 /**
  * Sayfa cevirileri kendi Transloco scope'undadir (issue #183); testte gercek sozluk verilir,
@@ -31,6 +34,8 @@ const translocoTesting = translocoTestingModule({
     'student-profile/en': studentProfileEn,
     'account-security/tr': accountSecurityTr,
     'account-security/en': accountSecurityEn,
+    'parent-links/tr': parentLinksTr,
+    'parent-links/en': parentLinksEn,
   },
 });
 
@@ -99,6 +104,15 @@ describe('StudentProfileComponent', () => {
         { provide: StudentService, useValue: studentService },
         { provide: TestService, useValue: testService },
         { provide: BadgeService, useValue: badgeService },
+        // Issue #419: veli davet kartı kendi servisini çağırır; profil testlerinde boş liste.
+        {
+          provide: ParentLinkService,
+          useValue: {
+            getMyParents: () => of({ items: [], pendingRequests: [], activeInviteExpiresAt: null, maxActiveParents: 4 }),
+            extractError: (_: unknown, fallback: string) => fallback,
+            errorCode: () => null,
+          },
+        },
         { provide: Router, useValue: jasmine.createSpyObj<Router>('Router', ['navigate']) },
         { provide: MatSnackBar, useValue: jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']) },
         {
@@ -247,6 +261,16 @@ describe('StudentProfileComponent', () => {
     expect(link?.getAttribute('href')).toBe('/realms/exam-realm/account');
     expect(link?.getAttribute('target')).toBe('_blank');
     expect(link?.textContent).toContain(accountSecurityTr.open);
+  });
+
+  it('infoTab_ShowsParentInviteCard (issue #419)', () => {
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const card = el.querySelector('app-parent-invite-card');
+
+    expect(card).not.toBeNull();
+    expect(card?.textContent).toContain(parentLinksTr.invite.title);
+    expect(card?.querySelector('[data-test="generate"]')).not.toBeNull();
   });
 
   it('tabs_NoWhatsNewTab_InfoTabIsFirst', () => {

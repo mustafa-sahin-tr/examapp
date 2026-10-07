@@ -38,6 +38,8 @@ public static class OutboxEventRegistry
         typeof(WorksheetCommentHiddenEvent), // issue #326 D4
         typeof(DirectMessageSentEvent), // issue #106 (dilim b)
         typeof(DirectMessageReportedEvent), // issue #106 (dilim b)
+        typeof(ParentLinkedEvent), // issue #419
+        typeof(ParentUnlinkedEvent), // issue #419
     };
 
     private static readonly Dictionary<string, Type> ByFullName =

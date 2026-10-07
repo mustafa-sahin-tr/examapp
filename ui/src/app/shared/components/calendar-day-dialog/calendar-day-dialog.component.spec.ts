@@ -8,7 +8,8 @@ import { of, throwError } from 'rxjs';
 import { CalendarDayDialogComponent, CalendarDayDialogData } from './calendar-day-dialog.component';
 import { CalendarEvent } from '../../../models/calendar-event';
 import { ProgramService } from '../../../services/program.service';
-import { AuthService } from '../../../services/auth.service';
+import { AuthService, UserProfile } from '../../../services/auth.service';
+import { signal } from '@angular/core';
 import { UserProgram } from '../../../models/program.interfaces';
 import { translocoTestingModule } from '../../testing/transloco-testing';
 
@@ -85,7 +86,11 @@ function makeUserProgram(overrides: Partial<UserProgram> = {}): UserProgram {
 
 async function setup(
   data: CalendarDayDialogData,
-  options: { programServiceSpy?: jasmine.SpyObj<ProgramService> } = {},
+  options: {
+    programServiceSpy?: jasmine.SpyObj<ProgramService>;
+    roles?: string[];
+    user?: UserProfile | null;
+  } = {},
 ) {
   const router = jasmine.createSpyObj<Router>('Router', ['navigate']);
   const dialogRef = jasmine.createSpyObj<MatDialogRef<CalendarDayDialogComponent>>('MatDialogRef', ['close']);
@@ -96,8 +101,11 @@ async function setup(
     programService.getProgramById.and.returnValue(of(makeUserProgram()));
   }
 
-  const authService = jasmine.createSpyObj<AuthService>('AuthService', ['hasRealmRole']);
-  authService.hasRealmRole.and.returnValue(false);
+  const roles = options.roles ?? [];
+  const authService: Partial<AuthService> = {
+    hasRealmRole: (role: string) => roles.includes(role),
+    user: signal(options.user ?? null),
+  };
 
   await TestBed.configureTestingModule({
     imports: [translocoTestingModule(), CalendarDayDialogComponent],
@@ -402,5 +410,52 @@ describe('CalendarDayDialogComponent', () => {
 
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('EBA Resource');
+  });
+});
+
+/** Issue #418: `/booking-requests` bağımsız öğretmen sayfası — okula bağlı olduğu bilinen öğretmene "randevulara git" yok. */
+describe('CalendarDayDialogComponent booking action (issue #418)', () => {
+  const date = new Date(2026, 8, 15);
+  /** Randevu satırının tek aksiyonu "randevularıma git". */
+  function bookingActions(fixture: ComponentFixture<unknown>): HTMLButtonElement[] {
+    return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('button.day-dialog__action'));
+  }
+
+  function teacher(isIndependentTutor: boolean | undefined): UserProfile {
+    return {
+      email: '',
+      avatar: '',
+      fullName: '',
+      id: 1,
+      keycloakId: 'k',
+      profileId: 1,
+      role: 'Teacher',
+      teacher: { id: 1, userId: 1, schoolName: '', schoolId: 7, isIndependentTutor },
+    } as UserProfile;
+  }
+
+  const events = [booking(new Date(2026, 8, 15, 14, 0), new Date(2026, 8, 15, 15, 0))];
+
+  it('NotIndependentTeacher_HasNoGoToBookingsAction', async () => {
+    const { fixture } = await setup({ date, events }, { roles: ['Teacher'], user: teacher(false) });
+    expect(bookingActions(fixture).length).toBe(0);
+  });
+
+  it('IndependentTeacher_GoToBookings_NavigatesToBookingRequests', async () => {
+    const { fixture, router } = await setup({ date, events }, { roles: ['Teacher'], user: teacher(true) });
+    bookingActions(fixture)[0].click();
+    expect(router.navigate).toHaveBeenCalledWith(['/booking-requests']);
+  });
+
+  it('UnknownFlagTeacher_GoToBookings_NavigatesToBookingRequests', async () => {
+    const { fixture, router } = await setup({ date, events }, { roles: ['Teacher'], user: teacher(undefined) });
+    bookingActions(fixture)[0].click();
+    expect(router.navigate).toHaveBeenCalledWith(['/booking-requests']);
+  });
+
+  it('Student_GoToBookings_NavigatesToMyBookings', async () => {
+    const { fixture, router } = await setup({ date, events });
+    bookingActions(fixture)[0].click();
+    expect(router.navigate).toHaveBeenCalledWith(['/my-bookings']);
   });
 });

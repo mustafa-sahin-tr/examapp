@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Bookings;
 using ExamApp.Api.Models.Dtos.Video;
-using ExamApp.Api.Services.Tenancy;
 
 namespace ExamApp.Api.Services.Bookings;
 
@@ -26,7 +25,8 @@ public interface IBookingService
     Task<AvailabilitySlotDeleteResultDto> DeleteSlotAsync(int teacherUserId, int slotId, CancellationToken ct = default);
 
     /// <summary>Öğrenciye açık liste: onaylı öğretmenin gelecekteki, aktif booking'i olmayan slotları.</summary>
-    Task<AvailabilitySlotListResultDto> GetTeacherOpenSlotsAsync(int teacherId, SchoolScope requester, int skip, int take, CancellationToken ct = default);
+    /// <remarks>issue #418: yalnız bağımsız öğretmen; okula bağlı öğretmen (aynı okul/admin dahil) → NotFound.</remarks>
+    Task<AvailabilitySlotListResultDto> GetTeacherOpenSlotsAsync(int teacherId, int skip, int take, CancellationToken ct = default);
 
     /// <summary>Öğrenci bir slot için randevu talebi oluşturur (çakışma + geçmiş tarih kontrolü burada).</summary>
     Task<BookingResultDto> CreateBookingAsync(int studentUserId, CreateBookingDto dto, CancellationToken ct = default);

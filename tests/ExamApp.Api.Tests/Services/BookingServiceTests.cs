@@ -54,8 +54,7 @@ public class BookingServiceTests : IDisposable
         var recurring = new RecurringAvailabilityService(ctx, tp,
             new Microsoft.Extensions.Logging.Abstractions.NullLogger<RecurringAvailabilityService>());
         return new BookingService(ctx, _authApi, _videoProvider, Options.Create(new VideoOptions()), tp, recurring,
-            new Microsoft.Extensions.Logging.Abstractions.NullLogger<BookingService>(),
-            new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy(ctx));
+            new Microsoft.Extensions.Logging.Abstractions.NullLogger<BookingService>());
     }
 
     private async Task<(int id, int userId)> SeedTeacherAsync(
@@ -67,6 +66,8 @@ public class BookingServiceTests : IDisposable
             Id = teacherId,
             UserId = userId,
             ApprovalStatus = status,
+            // issue #418: randevu/müsaitlik bağımsız öğretmen özelliği.
+            IsIndependentTutor = true,
             // issue #298: canlı ders erişimi randevunun öğretmeninin HESAP onayına da bakar (#287 sonrası onaylı öğretmen).
             AccountApprovedAt = status == TeacherApprovalStatus.Approved ? DateTime.UtcNow.AddDays(-30) : null,
             Bio = "test"
@@ -1395,7 +1396,7 @@ public class BookingServiceTests : IDisposable
         mine.Items.ShouldAllBe(s => s.EndUtc > s.StartUtc);
         mine.Items.Single(s => s.Id == bookedSlotId).EndUtc.ShouldBe(new DateTime(2026, 6, 17, 0, 30, 0, DateTimeKind.Utc));
 
-        var open = await service.GetTeacherOpenSlotsAsync(TeacherId, ExamApp.Api.Services.Tenancy.SchoolScope.Unrestricted(StudentUserId), 0, 50);
+        var open = await service.GetTeacherOpenSlotsAsync(TeacherId, 0, 50);
         open.Items.Count.ShouldBe(1);
         open.Items[0].EndUtc.ShouldBe(new DateTime(2026, 6, 19, 1, 0, 0, DateTimeKind.Utc));
 
@@ -1735,7 +1736,7 @@ public class BookingServiceTests : IDisposable
         await using var ctx = _db.NewContext();
         var service = NewService(ctx);
         (await service.GetMySlotsAsync(TeacherUserId, 0, 50)).Items.Select(s => s.Id).ShouldBe(new[] { liveId });
-        (await service.GetTeacherOpenSlotsAsync(TeacherId, ExamApp.Api.Services.Tenancy.SchoolScope.Unrestricted(StudentUserId), 0, 50))
+        (await service.GetTeacherOpenSlotsAsync(TeacherId, 0, 50))
             .Items.Select(s => s.Id).ShouldBe(new[] { liveId });
     }
 

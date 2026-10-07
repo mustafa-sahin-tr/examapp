@@ -41,6 +41,7 @@ public class BookingDeletedSlotPostgresTests(IntegrationApiFactory factory) : In
             var teacher = new Teacher
             {
                 UserId = teacherUserId, ApprovalStatus = TeacherApprovalStatus.Approved, AccountApprovedAt = DateTime.UtcNow.AddDays(-3),
+                IsIndependentTutor = true, // issue #418: randevu bağımsız öğretmen özelliği
                 Bio = "t"
             };
             var student = new Student { UserId = studentUserId, StudentNumber = $"S{studentUserId}" };

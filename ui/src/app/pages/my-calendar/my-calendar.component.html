@@ -59,7 +59,9 @@
         <mat-icon>event_available</mat-icon>
         @if (isTeacher) {
           <p>{{ t('empty.teacher') }}</p>
-          <button mat-stroked-button type="button" routerLink="/availability">{{ t('empty.teacherCta') }}</button>
+          @if (showAvailabilityCta()) {
+            <button mat-stroked-button type="button" routerLink="/availability">{{ t('empty.teacherCta') }}</button>
+          }
         } @else {
           <p>{{ t('empty.student') }}</p>
           <button mat-stroked-button type="button" routerLink="/tests">{{ t('empty.studentCta') }}</button>

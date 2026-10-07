@@ -79,7 +79,8 @@ describe('booking-format.util', () => {
       document.documentElement.setAttribute('lang', 'tr');
       const tr = formatSlotRange(s, e);
 
-      expect(en).toBe('02:00 PM – 03:00 PM');
+      // ICU saat ile AM/PM arasına dar boşluk (U+202F) koyabilir; \s ikisini de kapsar.
+      expect(en).toMatch(/^02:00\sPM – 03:00\sPM$/);
       expect(tr).toBe('14:00 – 15:00');
     });
   });

@@ -6,6 +6,8 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
 import { LayoutComponent } from './layout.component';
 import { SignalRService } from '../../services/signalr.service';
+import { AuthService } from '../../services/auth.service';
+import { of } from 'rxjs';
 
 describe('LayoutComponent', () => {
   let component: LayoutComponent;
@@ -14,7 +16,6 @@ describe('LayoutComponent', () => {
 
   // Oturum durumu localStorage'tan okunur; başka spec'lerden sızan bir token oturum açık dalını
   // render ettirir. Bu duman testi oturum kapalı kabuğu doğrular, ön koşul burada sabitlenir (#394).
-  // Not: oturum açık dal şu an kırık (şablon `userName()` çağırıyor, sınıfta getter) — ayrıca raporlandı.
   beforeEach(() => {
     savedStorage = { ...localStorage };
     localStorage.clear();
@@ -46,5 +47,34 @@ describe('LayoutComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+});
+
+describe('LayoutComponent (oturum açık)', () => {
+  it('loggedIn_ShowsUserFullNameInToolbar', async () => {
+    const auth = jasmine.createSpyObj<AuthService>('AuthService', ['isAuthenticated', 'getUser', 'getUserAvatar']);
+    auth.isAuthenticated.and.returnValue(of(true));
+    auth.getUser.and.returnValue({ fullName: 'X' } as ReturnType<AuthService['getUser']>);
+    auth.getUserAvatar.and.returnValue(null as unknown as string);
+
+    await TestBed.configureTestingModule({
+      imports: [LayoutComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideNoopAnimations(),
+        { provide: AuthService, useValue: auth },
+        { provide: SignalRService, useValue: jasmine.createSpyObj<SignalRService>('SignalRService', ['startConnection']) },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(LayoutComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const username = (fixture.nativeElement as HTMLElement).querySelector('.username');
+    expect(username?.textContent?.trim()).toBe('X');
   });
 });

@@ -136,6 +136,7 @@ public class AppDbContext : DbContext
     public DbSet<ParentStudentLink> ParentStudentLinks { get; set; }
     public DbSet<ParentInviteCode> ParentInviteCodes { get; set; }
     public DbSet<ParentAccessAudit> ParentAccessAudits { get; set; } // issue #420
+    public DbSet<ParentHomeworkOverdueMarker> ParentHomeworkOverdueMarkers { get; set; } // issue #423
 
     // Ders planlama / randevu (issue #96)
     public DbSet<TeacherAvailabilitySlot> TeacherAvailabilitySlots { get; set; }
@@ -333,6 +334,18 @@ public class AppDbContext : DbContext
         {
             e.HasIndex(a => new { a.ParentId, a.At });
             e.HasIndex(a => new { a.StudentId, a.At });
+        });
+
+        // issue #423: gecikmiş ödev bildirimi (test, öğrenci) başına en fazla bir kez — job tekrarı/yarışı DB seviyesinde tekilleşir.
+        // issue #423: süpürücünün "EndAt geçti" taraması için filtreli index (çoğu atamada EndAt null).
+        modelBuilder.Entity<WorksheetAssignment>()
+            .HasIndex(a => a.EndAt, "IX_WorksheetAssignments_EndAt_NotNull")
+            .HasFilter("\"EndAt\" IS NOT NULL");
+
+        modelBuilder.Entity<ParentHomeworkOverdueMarker>(e =>
+        {
+            e.HasIndex(m => new { m.WorksheetId, m.StudentId }).IsUnique();
+            e.HasIndex(m => m.ProcessedAt);
         });
 
         // Bağımsız öğretmen (issue #92): mevcut tüm öğretmen kayıtları okula bağlı sayılır → Approved.

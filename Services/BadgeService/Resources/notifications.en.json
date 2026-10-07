@@ -8,7 +8,9 @@
       "defaultSchool": "a school",
       "unnamedWorksheet": "a worksheet",
       "worksheetFallback": "The worksheet",
-      "rejectionReasonSuffix": " Reason: {0}"
+      "rejectionReasonSuffix": " Reason: {0}",
+      "defaultChild": "Your child",
+      "defaultParent": "Your parent"
     },
     "BadgeEarned": {
       "title": "You earned a new badge!",
@@ -109,6 +111,34 @@
       "body": "A direct message conversation was reported and needs review.",
       "bodyStudent": "A student reported a direct message conversation. Review it in the reports list.",
       "bodyTeacher": "A teacher reported a direct message conversation. Review it in the reports list."
+    },
+    "ParentLinkedToParent": {
+      "title": "Parent link approved",
+      "body": "{0} approved you as their parent."
+    },
+    "ParentLinkedToStudent": {
+      "title": "Parent link established",
+      "body": "You are now linked with your parent."
+    },
+    "ParentUnlinkedToParent": {
+      "title": "Parent link removed",
+      "body": "{0} removed the parent link."
+    },
+    "ParentUnlinkedToStudent": {
+      "title": "Parent link removed",
+      "body": "{0} removed the parent link."
+    },
+    "ParentHomeworkOverdue": {
+      "title": "Overdue homework",
+      "body": "{0} did not complete \"{1}\" on time."
+    },
+    "ParentHomeworkOverdueExpired": {
+      "title": "Test time expired",
+      "body": "{0} did not finish \"{1}\" in time; the test time expired."
+    },
+    "ParentChildTestCompleted": {
+      "title": "Test completed",
+      "body": "{0} completed \"{1}\", score {2}%."
     }
   }
 }

@@ -145,6 +145,8 @@ describe('DmConversationComponent (issue #106)', () => {
     create({ unread: 0 });
     flushLoad();
     http.expectNone(`${BASE}/conversations/5/read`);
+    expect(qa('dm-message').length).toBe(2);
+    expect(q('dm-log')).not.toBeNull();
   });
 
   it('loadError_ShowsRetry_ThatReloads', () => {
@@ -199,7 +201,9 @@ describe('DmConversationComponent (issue #106)', () => {
     flushLoad();
     type('Kısa');
     q('dm-input')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true }));
-    http.expectOne(`${BASE}/conversations/5/messages`).flush({ success: true, conversationId: 5 });
+    const req = http.expectOne(`${BASE}/conversations/5/messages`);
+    expect(req.request.body).toEqual({ body: 'Kısa' });
+    req.flush({ success: true, conversationId: 5 });
   });
 
   it('student_Send403CannotMessageTeacher_ShowsNeutralInfo_DisablesInput_NoBlockWording', () => {

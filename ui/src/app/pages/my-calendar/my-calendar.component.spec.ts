@@ -6,6 +6,7 @@ import { of } from 'rxjs';
 
 import { MyCalendarComponent } from './my-calendar.component';
 import { TestService } from '../../services/test.service';
+import { AuthService } from '../../services/auth.service';
 import { CalendarDayDialogComponent } from '../../shared/components/calendar-day-dialog/calendar-day-dialog.component';
 import { CalendarEvent } from '../../models/calendar-event';
 
@@ -53,6 +54,8 @@ describe('MyCalendarComponent', () => {
         { provide: Router, useValue: router },
         { provide: MatDialog, useValue: dialog },
         { provide: MatBottomSheet, useValue: bottomSheet },
+        // Gerçek AuthService HttpClient ister; bu testler yalnız rolü okur.
+        { provide: AuthService, useValue: jasmine.createSpyObj<AuthService>('AuthService', { hasRealmRole: false }) },
       ],
     });
 

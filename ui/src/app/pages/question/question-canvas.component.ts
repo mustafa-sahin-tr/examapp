@@ -194,8 +194,19 @@ export class QuestionCanvasComponent implements OnInit {
     { initialValue: [] as BookTest[] }
   );
 
+  /** Kayıt sonrası bir sonraki görsele geçiş zamanlayıcıları. */
+  private readonly nextImageTimers = new Set<ReturnType<typeof setTimeout>>();
+  /** Yok edildikten sonra dönen kayıt yanıtı yeni geçiş zamanlayıcısı kurmasın. */
+  private destroyed = false;
+
   constructor() {
     this.setFullScreen(false);
+    // Komponent bu arada yok edilirse bekleyen geçiş iptal edilir; aksi halde yok edilmiş
+    // imageSelector'a dokunur (#394: testlerde sonraki spec'e sızıp tüm koşuyu düşürüyordu).
+    this.destroyRef.onDestroy(() => {
+      this.destroyed = true;
+      this.nextImageTimers.forEach((t) => clearTimeout(t));
+    });
   }
 
   setFullScreen(fullScreen: boolean) {
@@ -833,9 +844,14 @@ export class QuestionCanvasComponent implements OnInit {
           this.imageSelector.sendToFix();
         }
         this.testCreateEnhancedComponent.reloadComponent(formData.testValue);
-        setTimeout(() => {
+        if (this.destroyed) {
+          return;
+        }
+        const timer = setTimeout(() => {
+          this.nextImageTimers.delete(timer);
           this.nextImage();
         }, 2000);
+        this.nextImageTimers.add(timer);
       },
       error: (err) => {
         this.saving.set(false);

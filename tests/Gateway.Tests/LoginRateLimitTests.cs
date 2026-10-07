@@ -67,6 +67,13 @@ public class LoginRateLimitTests
     [InlineData("/token;x")]
     [InlineData("/API/Auth/Login")]
     [InlineData("/realms/exam-realm/foo/../login-actions/authenticate")]
+    [InlineData("/api/exam/parent-links/redeem")] // issue #419
+    [InlineData("/API/Exam/Parent-Links/Redeem/")]
+    [InlineData("/api/exam/parent-links;x=1/redeem")]
+    [InlineData("/api/exam/parent-links%2Fredeem")]
+    [InlineData("/api/exam/parent-links%252Fredeem")] // çift kodlanmış ayraç
+    [InlineData("/api/exam/parent-links/%2572edeem")] // çift kodlanmış harf
+    [InlineData("/api/v2/parent-links/redeem")]
     public async Task LoginEntry_101stRequestWithinWindow_Returns429WithRetryAfter(string path)
     {
         using var client = await CreateClientAsync();
@@ -86,6 +93,19 @@ public class LoginRateLimitTests
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(Post("/api/auth/login"))).StatusCode);
         Assert.Equal(HttpStatusCode.TooManyRequests,
             (await client.SendAsync(Post("/realms/exam-realm/login-actions/authenticate"))).StatusCode);
+    }
+
+    [Fact]
+    public async Task ParentInviteRedeem_SharesTheLoginBudget_OtherParentLinkEndpointsAreNotCounted()
+    {
+        using var client = await CreateClientAsync(permit: 2);
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(Post("/api/exam/parent-links/redeem"))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(Post("/api/auth/login"))).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await client.SendAsync(Post("/api/exam/parent-links/redeem"))).StatusCode);
+        // Kod üretme / onay / koparma ve okuma uçları sayılmaz.
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(Post("/api/exam/parent-links/invite-code"))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(Post("/api/exam/parent-links/5/approve"))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/exam/parent-links/redeem")).StatusCode);
     }
 
     [Theory]

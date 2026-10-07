@@ -37,6 +37,7 @@ public class TeacherControllerRegisterCooldownTests
         services.AddSingleton(_profiles);
         services.AddSingleton<IDistributedCache>(new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())));
         services.AddSingleton<UserProfileCacheService>();
+        services.AddSingleton(Substitute.For<ExamApp.Api.Services.UserRoles.IUserRoleExclusivity>()); // #419: çakışma yok
         var provider = services.BuildServiceProvider();
 
         var httpContext = new DefaultHttpContext

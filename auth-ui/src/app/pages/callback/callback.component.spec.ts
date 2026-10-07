@@ -281,6 +281,15 @@ describe('CallbackComponent', () => {
       expect(runSuccess(['Teacher'])).toBe('/dashboard');
     }));
 
+    // Issue #420: velinin varsayılan hedefi veli paneli; istenen güvenli yol yine önceliklidir.
+    it('Parent → /parent', fakeAsync(() => {
+      expect(runSuccess(['Parent'])).toBe('/parent');
+    }));
+
+    it('Parent + saklanan returnPath → returnPath', fakeAsync(() => {
+      expect(runSuccess(['Parent'], { returnPath: '/my-children' })).toBe('/my-children');
+    }));
+
     it('rol yok → /app/complete-profile', fakeAsync(() => {
       expect(runSuccess([])).toBe('/app/complete-profile');
     }));

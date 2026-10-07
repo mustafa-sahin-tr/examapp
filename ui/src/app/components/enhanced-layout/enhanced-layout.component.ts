@@ -224,8 +224,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     // Issue #419: velinin çocukları (davet koduyla ekleme + liste).
     { id: 'my-children', labelKey: 'menu.myChildren', icon: 'family_restroom', route: '/my-children', type: 'menu', roles: ['Parent'] },
     { id: 'tutor-profile', labelKey: 'menu.tutorProfile', icon: 'cast_for_education', route: '/tutor-profile', type: 'menu', roles: ['Teacher'], allowUnapprovedTeacher: true, onlyIndependentTeacher: true },
-    { id: 'availability', labelKey: 'menu.availability', icon: 'event_available', route: '/availability', type: 'menu', roles: ['Teacher'] },
-    { id: 'booking-requests', labelKey: 'menu.bookingRequests', icon: 'inbox', route: '/booking-requests', type: 'menu', roles: ['Teacher'] },
+    { id: 'availability', labelKey: 'menu.availability', icon: 'event_available', route: '/availability', type: 'menu', roles: ['Teacher'], onlyIndependentTeacher: true },
+    { id: 'booking-requests', labelKey: 'menu.bookingRequests', icon: 'inbox', route: '/booking-requests', type: 'menu', roles: ['Teacher'], onlyIndependentTeacher: true },
     { id: 'access-requests', labelKey: 'menu.accessRequests', icon: 'how_to_reg', route: '/assignment-permission-requests', type: 'menu', roles: ['Teacher'] },
     // Issue #361: okulunu seçen öğrencilerin üyelik onayı (bağımsız öğretmende liste boş döner).
     { id: 'student-school-requests', labelKey: 'menu.studentSchoolRequests', icon: 'person_add', route: '/student-school-requests', type: 'menu', roles: ['Teacher'] },

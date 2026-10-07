@@ -39,6 +39,7 @@ public class BookingSuspensionRacePostgresTests(IntegrationApiFactory factory) :
             var teacher = new Teacher
             {
                 UserId = teacherUserId, ApprovalStatus = TeacherApprovalStatus.Approved, AccountApprovedAt = DateTime.UtcNow.AddDays(-3),
+                IsIndependentTutor = true, // issue #418: randevu bağımsız öğretmen özelliği
                 Bio = "t"
             };
             db.Teachers.Add(teacher);

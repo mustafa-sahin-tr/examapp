@@ -1274,8 +1274,10 @@ public class TeacherService : ITeacherService
         // Sadece onaylı bağımsız öğretmenler (kabul kriteri: ApprovalStatus=Approved).
         var query = _context.Teachers
             .AsNoTracking()
+            // issue #418: bağımsızlık randevu kuralıyla aynı (TeacherIndependence) — okula bağlı/hibrit öğretmen listelenmez.
+            .Where(TeacherIndependence.Holds)
             // issue #289: askıdaki tutor pazar yerinde listelenmez.
-            .Where(t => t.IsIndependentTutor && t.ApprovalStatus == TeacherApprovalStatus.Approved && t.AccountSuspendedAt == null);
+            .Where(t => t.ApprovalStatus == TeacherApprovalStatus.Approved && t.AccountSuspendedAt == null);
 
         if (filter.SubjectId.HasValue)
             query = query.Where(t => t.TeacherSubjects.Any(ts => ts.SubjectId == filter.SubjectId.Value));
@@ -1338,8 +1340,9 @@ public class TeacherService : ITeacherService
         // Var/yok ayrımı sızdırılmaz: bağımsız değilse veya Approved değilse de null (controller 404).
         var row = await _context.Teachers
             .AsNoTracking()
+            // issue #418: okula bağlı/hibrit öğretmenin public profili de 404 (TeacherIndependence, randevu kuralıyla aynı).
+            .Where(TeacherIndependence.Holds)
             .Where(t => t.Id == teacherId
-                        && t.IsIndependentTutor
                         && t.ApprovalStatus == TeacherApprovalStatus.Approved
                         && t.AccountSuspendedAt == null) // issue #289: askıdaki tutor'un public profili 404
             .Select(t => new

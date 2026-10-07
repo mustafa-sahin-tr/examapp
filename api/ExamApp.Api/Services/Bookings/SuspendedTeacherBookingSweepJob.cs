@@ -51,7 +51,8 @@ public interface ISuspendedTeacherBookingSweepJob
 /// <summary>
 /// Asıl çözüm talep oluşturmada öğretmen satırı kilidiyle askının serileşmesidir (<c>BookingService.CreateBookingAsync</c>);
 /// bu iş onun atlandığı durumlar (kilit dışı yazıcı, ileride eklenecek yeni bir talep yolu) için ucuz bir güvenlik ağıdır.
-/// Askıdaki (<c>AccountSuspendedAt != null</c>) öğretmenin Pending talepleri, askıya alma anındakiyle AYNI yolla
+/// Askıdaki (<c>AccountSuspendedAt != null</c>) ya da issue #418 ile bağımsız olmayan (okula bağlı/hibrit — randevu bağımsız
+/// öğretmen özelliği) öğretmenin Pending talepleri, askıya alma anındakiyle AYNI yolla
 /// (<see cref="TeacherUnavailableBookingRejection"/>: koşullu UPDATE + <c>BookingDecisionEvent</c> <c>TeacherUnavailable=true</c>)
 /// kapatılır. İdempotent: koşullu UPDATE 0 satır dönen talep (zaten karara bağlanmış / askı kalkmış) için event yazılmaz;
 /// aynı talebe ikinci bildirim gitmez. Bir talep bulunursa yarış yaşanmış demektir → uyarı loglanır.
@@ -89,7 +90,9 @@ public sealed class SuspendedTeacherBookingSweepJob : ISuspendedTeacherBookingSw
 
         // Sıralama/parti projeksiyondan ÖNCE (constructor projeksiyonu üzerinden OrderBy çevrilemez).
         var batch = _context.Bookings
-            .Where(b => b.Status == BookingStatus.Pending && b.Teacher.AccountSuspendedAt != null)
+            .Where(b => b.Status == BookingStatus.Pending)
+            // issue #418: askıdaki VEYA bağımsız olmayan (okula bağlı/hibrit) öğretmenin Pending talepleri.
+            .Where(TeacherUnavailableBookingRejection.TeacherUnavailable)
             .OrderBy(b => b.Id)
             .Take(batchSize);
         var pending = await TeacherUnavailableBookingRejection
@@ -139,7 +142,7 @@ public sealed class SuspendedTeacherBookingSweepJob : ISuspendedTeacherBookingSw
         {
             // Review Ö2/D4: yalnız gerçekten reddedilen satırların öğretmenleri loglanır.
             _logger.LogWarning(
-                "[SuspendedTeacherBookingSweep] Askıdaki öğretmende kalmış {Count} Pending talep otomatik reddedildi (Teacher#{TeacherIds}).",
+                "[SuspendedTeacherBookingSweep] Askıdaki/bağımsız olmayan öğretmende kalmış {Count} Pending talep otomatik reddedildi (Teacher#{TeacherIds}).",
                 rejected, string.Join(",", rejectedTeacherIds));
         }
 

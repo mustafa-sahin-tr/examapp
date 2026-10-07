@@ -193,7 +193,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   currentSection = signal<'newest' | 'hot'>('newest');
 
   // Realm roles the current user holds (used to filter the menu).
-  private readonly userRoles = ['Student', 'Teacher', 'Admin'].filter((r) =>
+  // Issue #419: Parent rolü — veli menü öğeleri.
+  private readonly userRoles = ['Student', 'Teacher', 'Admin', 'Parent'].filter((r) =>
     this.authService.hasRealmRole(r)
   );
 
@@ -212,6 +213,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'my-bookings', labelKey: 'menu.myBookings', icon: 'event_available', route: '/my-bookings', type: 'menu', roles: ['Student'] },
     // Issue #106: öğrenci → öğretmen mesajlaşma (booking ile aynı "öğrenci → öğretmen" ailesi).
     { id: 'teacher-messages', labelKey: 'menu.teacherMessages', icon: 'forum', route: '/teacher-messages', type: 'menu', roles: ['Student'] },
+    // Issue #419: velinin çocukları (davet koduyla ekleme + liste).
+    { id: 'my-children', labelKey: 'menu.myChildren', icon: 'family_restroom', route: '/my-children', type: 'menu', roles: ['Parent'] },
     { id: 'tutor-profile', labelKey: 'menu.tutorProfile', icon: 'cast_for_education', route: '/tutor-profile', type: 'menu', roles: ['Teacher'], allowUnapprovedTeacher: true, onlyIndependentTeacher: true },
     { id: 'availability', labelKey: 'menu.availability', icon: 'event_available', route: '/availability', type: 'menu', roles: ['Teacher'] },
     { id: 'booking-requests', labelKey: 'menu.bookingRequests', icon: 'inbox', route: '/booking-requests', type: 'menu', roles: ['Teacher'] },
@@ -248,6 +251,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'teacher-approval-status', labelKey: 'menu.teacherApprovalStatus', icon: 'hourglass_top', route: TEACHER_APPROVAL_PENDING_URL, type: 'menu', onlyUnapprovedTeacher: true },
     { id: 'dashboard', labelKey: 'bottomNav.home', icon: 'home', route: '/dashboard', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'exams', labelKey: 'menu.exams', icon: 'quiz', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
+    { id: 'my-children', labelKey: 'menu.myChildren', icon: 'family_restroom', route: '/my-children', type: 'menu', roles: ['Parent'] },
     // Issue #417: tüm roller (onay bekleyen öğretmen dahil — dil/hesap ayarı); rota role göre (#373: öğrenci /student-profile).
     { id: 'settings', labelKey: 'menu.settings', icon: 'settings', route: this.settingsRoute, type: 'menu' },
   ];

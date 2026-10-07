@@ -121,6 +121,12 @@ spec:
                 secretKeyRef:
                   name: examapp-secrets
                   key: KEYCLOAK_CLIENT_SECRET
+            # Issue #419: parent invite code HMAC pepper — missing => startup fail-fast.
+            - name: ParentLinks__InviteCodePepper
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: PARENT_INVITE_CODE_PEPPER
             - name: Keycloak__AdminClientId
               valueFrom:
                 secretKeyRef:

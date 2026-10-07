@@ -40,6 +40,12 @@ namespace ExamApp.Api.Controllers
                 return UserNotResolved(new { message = _localizer["auth.userNotResolved"].Value });
             }
 
+            // issue #419 review (D4): öğrenci/öğretmen hesabı kendini veliye çeviremez — Keycloak rolü atanmadan ÖNCE 409.
+            if (await RegistrationRoleConflictsAsync(user.Id, UserRole.Parent, HttpContext.RequestAborted))
+            {
+                return Conflict(new { message = _localizer["parent.otherRoleExists"].Value });
+            }
+
             // issue #277 (madde 4): rol değişikliği bağlamı Keycloak çağrısından ÖNCE alınır (aşağıda user.Role üzerine yazılıyor).
             var roleChange = new UserRoleChangeRequest(user.KeycloakId, user.Id, user.Role);
 

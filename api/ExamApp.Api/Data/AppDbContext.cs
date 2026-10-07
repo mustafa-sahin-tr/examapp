@@ -132,6 +132,10 @@ public class AppDbContext : DbContext
     public DbSet<DirectMessageBlock> DirectMessageBlocks { get; set; }
     public DbSet<DirectMessageReport> DirectMessageReports { get; set; }
 
+    // Veli–öğrenci bağlantısı ve davet kodları (issue #419)
+    public DbSet<ParentStudentLink> ParentStudentLinks { get; set; }
+    public DbSet<ParentInviteCode> ParentInviteCodes { get; set; }
+
     // Ders planlama / randevu (issue #96)
     public DbSet<TeacherAvailabilitySlot> TeacherAvailabilitySlots { get; set; }
     public DbSet<Booking> Bookings { get; set; }
@@ -290,6 +294,36 @@ public class AppDbContext : DbContext
                 .IsUnique()
                 .HasFilter("\"MessageId\" IS NULL AND NOT \"IsDeleted\"");
             e.HasIndex(r => new { r.Status, r.CreateTime });
+        });
+
+        // issue #419: veli–öğrenci bağlantısı. Çift başına tek AÇIK (Active ya da Pending) satır (filtreli tekil index;
+        // eşzamanlı ikinci redeem unique ihlaline düşer; süresi dolmuş Pending redeem kilidi altında Revoked'a çekilir). Öğrenci başına aktif veli sayımı (StudentId, Status) ile; velinin çocuk listesi
+        // (ParentId, Status) ile. Status string (DirectMessageReport deseni). FK'lar ClientNoAction: Parent/Student
+        // soft-delete edilir (Remove aslında UPDATE) — Cascade/SetNull change tracker'daki bağlantıları sessizce
+        // silmiş/null'lamış olurdu.
+        modelBuilder.Entity<ParentStudentLink>(e =>
+        {
+            e.Property(l => l.Status).HasConversion<string>().HasMaxLength(16);
+            e.HasOne(l => l.Parent).WithMany().HasForeignKey(l => l.ParentId).OnDelete(DeleteBehavior.ClientNoAction);
+            e.HasOne(l => l.Student).WithMany().HasForeignKey(l => l.StudentId).OnDelete(DeleteBehavior.ClientNoAction);
+            e.HasIndex(l => new { l.ParentId, l.StudentId }, "IX_ParentStudentLinks_Open_Pair")
+                .IsUnique()
+                .HasFilter("\"Status\" IN ('Active', 'Pending')");
+            e.HasIndex(l => new { l.StudentId, l.Status });
+            e.HasIndex(l => new { l.ParentId, l.Status });
+        });
+
+        // issue #419: davet kodu — düz metin yok, yalnızca HMAC hash'i. Kullanılmamış kodlar arasında hash TEKİL (review D2:
+        // çakışma sessizce iki öğrenciye aynı kodu veremez); redeem bu kısmi index'le arar. Öğrencinin geçerli kodu
+        // (StudentId, ExpiresAt) ile bulunur/geçersizlenir. UsedByParentId FK'sı navigation'sız.
+        modelBuilder.Entity<ParentInviteCode>(e =>
+        {
+            e.HasOne(c => c.Student).WithMany().HasForeignKey(c => c.StudentId).OnDelete(DeleteBehavior.ClientNoAction);
+            e.HasOne<Parent>().WithMany().HasForeignKey(c => c.UsedByParentId).OnDelete(DeleteBehavior.ClientNoAction);
+            e.HasIndex(c => c.CodeHash, "IX_ParentInviteCodes_CodeHash_Unused")
+                .IsUnique()
+                .HasFilter("\"UsedAt\" IS NULL");
+            e.HasIndex(c => new { c.StudentId, c.ExpiresAt });
         });
 
         // Bağımsız öğretmen (issue #92): mevcut tüm öğretmen kayıtları okula bağlı sayılır → Approved.

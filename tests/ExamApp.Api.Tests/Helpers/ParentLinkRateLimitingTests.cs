@@ -1,0 +1,136 @@
+using System.Net;
+using System.Reflection;
+using System.Security.Claims;
+using System.Text.Json;
+using ExamApp.Api.Controllers;
+using ExamApp.Api.Helpers;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+namespace ExamApp.Api.Tests.Helpers;
+
+/// <summary>
+/// issue #419: veli kod denemesi (redeem) veli (sub) başına dakikada 5 — PO kararı; öğrenci kod üretimi ayrı kova.
+/// Controller rol + policy eşlemesi.
+/// </summary>
+public class ParentLinkRateLimitingTests
+{
+    private static async Task<IHost> StartHostAsync(Dictionary<string, string?>? overrides = null)
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(overrides ?? new Dictionary<string, string?>())
+            .Build();
+
+        return await new HostBuilder()
+            .ConfigureWebHost(web =>
+            {
+                web.UseTestServer();
+                web.ConfigureServices(services =>
+                {
+                    services.AddSingleton<IConfiguration>(config);
+                    services.AddRouting();
+                    services.AddLogging();
+                    services.AddAdminUserListRateLimiting();
+                    services.AddParentLinkRateLimiting();
+                });
+                web.Configure(app =>
+                {
+                    app.Use((ctx, next) =>
+                    {
+                        if (ctx.Request.Headers.TryGetValue("X-Sub", out var sub))
+                            ctx.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, sub.ToString())], "Test"));
+                        return next(ctx);
+                    });
+                    app.UseRouting();
+                    app.UseRateLimiter();
+                    app.UseEndpoints(e =>
+                    {
+                        e.MapPost("/redeem", () => Results.Ok("ok")).RequireRateLimiting(ParentLinkRateLimiting.RedeemPolicy);
+                        e.MapPost("/invite", () => Results.Ok("ok")).RequireRateLimiting(ParentLinkRateLimiting.InvitePolicy);
+                    });
+                });
+            })
+            .StartAsync();
+    }
+
+    private static Task<HttpResponseMessage> PostAsync(HttpClient client, string path, string? sub)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, path);
+        if (sub != null)
+            request.Headers.Add("X-Sub", sub);
+        return client.SendAsync(request);
+    }
+
+    [Fact]
+    public async Task Redeem_defaults_to_five_per_minute_per_parent_and_sixth_gets_429_json()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        for (var i = 0; i < 5; i++)
+            (await PostAsync(client, "/redeem", "p1")).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var rejected = await PostAsync(client, "/redeem", "p1");
+        rejected.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        rejected.Headers.RetryAfter!.Delta!.Value.TotalSeconds.ShouldBeInRange(1, 60);
+        using var body = JsonDocument.Parse(await rejected.Content.ReadAsStringAsync());
+        body.RootElement.GetProperty("errorCode").GetString().ShouldBe("RateLimited");
+        body.RootElement.GetProperty("message").GetString()
+            .ShouldBe("Çok fazla kod denemesi yapıldı. Lütfen daha sonra tekrar deneyin.");
+
+        (await PostAsync(client, "/redeem", "p2")).StatusCode.ShouldBe(HttpStatusCode.OK); // başka veli etkilenmez
+    }
+
+    [Fact]
+    public async Task Invite_bucket_is_separate_from_redeem()
+    {
+        using var host = await StartHostAsync(new Dictionary<string, string?>
+        {
+            ["RateLimiting:ParentLinkInvite:PermitLimit"] = "1",
+            ["RateLimiting:ParentLinkInvite:WindowSeconds"] = "3600",
+        });
+        using var client = host.GetTestClient();
+
+        (await PostAsync(client, "/invite", "s1")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await PostAsync(client, "/invite", "s1")).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        (await PostAsync(client, "/redeem", "s1")).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Request_without_sub_is_rejected_with_401()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+        (await PostAsync(client, "/redeem", null)).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Theory]
+    [InlineData(nameof(ParentLinksController.Redeem), ParentLinkRateLimiting.RedeemPolicy)]
+    [InlineData(nameof(ParentLinksController.CreateInviteCode), ParentLinkRateLimiting.InvitePolicy)]
+    public void Write_actions_carry_their_rate_limit_policy(string action, string policy)
+        => typeof(ParentLinksController).GetMethod(action)!
+            .GetCustomAttribute<EnableRateLimitingAttribute>()!.PolicyName.ShouldBe(policy);
+
+    [Theory]
+    [InlineData(nameof(ParentLinksController.CreateInviteCode), "Student")]
+    [InlineData(nameof(ParentLinksController.GetMyParents), "Student")]
+    [InlineData(nameof(ParentLinksController.Redeem), "Parent")]
+    [InlineData(nameof(ParentLinksController.GetMyChildren), "Parent")]
+    [InlineData(nameof(ParentLinksController.Revoke), "Student,Parent")]
+    [InlineData(nameof(ParentLinksController.Approve), "Student")]
+    [InlineData(nameof(ParentLinksController.Reject), "Student")]
+    public void Actions_are_role_gated(string action, string roles)
+    {
+        var attributes = typeof(ParentLinksController).GetMethod(action)!.GetCustomAttributes<AuthorizeAttribute>().ToList();
+        attributes.Select(a => a.Roles).ShouldContain(roles);
+        // Sınıf seviyesinde rol kısıtı yok (ASP.NET sınıf + metot rollerini AND'lerdi).
+        typeof(ParentLinksController).GetCustomAttributes<AuthorizeAttribute>().ShouldAllBe(a => string.IsNullOrEmpty(a.Roles));
+    }
+}

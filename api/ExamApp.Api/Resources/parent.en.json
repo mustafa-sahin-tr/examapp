@@ -1,0 +1,5 @@
+{
+  "parent": {
+    "otherRoleExists": "A student or teacher account cannot register as a parent."
+  }
+}

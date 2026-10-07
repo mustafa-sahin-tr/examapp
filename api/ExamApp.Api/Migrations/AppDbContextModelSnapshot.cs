@@ -1037,6 +1037,91 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("Parents");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.ParentInviteCode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UsedByParentId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsedByParentId");
+
+                    b.HasIndex("StudentId", "ExpiresAt");
+
+                    b.HasIndex(new[] { "CodeHash" }, "IX_ParentInviteCodes_CodeHash_Unused")
+                        .IsUnique()
+                        .HasFilter("\"UsedAt\" IS NULL");
+
+                    b.ToTable("ParentInviteCodes");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.ParentStudentLink", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ActivatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ParentId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("RevokedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentId", "Status");
+
+                    b.HasIndex("StudentId", "Status");
+
+                    b.HasIndex(new[] { "ParentId", "StudentId" }, "IX_ParentStudentLinks_Open_Pair")
+                        .IsUnique()
+                        .HasFilter("\"Status\" IN ('Active', 'Pending')");
+
+                    b.ToTable("ParentStudentLinks");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.Passage", b =>
                 {
                     b.Property<int>("Id")
@@ -4161,6 +4246,41 @@ namespace ExamApp.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("LearningOutcome");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.ParentInviteCode", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.ClientNoAction)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.Parent", null)
+                        .WithMany()
+                        .HasForeignKey("UsedByParentId")
+                        .OnDelete(DeleteBehavior.ClientNoAction);
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.ParentStudentLink", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Parent", "Parent")
+                        .WithMany()
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.ClientNoAction)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.ClientNoAction)
+                        .IsRequired();
+
+                    b.Navigation("Parent");
+
+                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.PracticeSession", b =>

@@ -71,6 +71,8 @@
     </mat-card>
     <!-- Issue #417: tüm rollerde ortak "Hesabım / Şifre değiştir" kartı (Keycloak hesap konsolu). -->
     <app-account-security-card class="profile-account-card" />
+    <!-- Issue #419: veli davet kodu + bağlı veliler. -->
+    <app-parent-invite-card class="profile-account-card" />
   </mat-tab>
   <mat-tab [label]="t('tabs.badges')">
     <!-- Issue #381: sabit (sahte) puan kartları kaldırıldı; gerçek puan/sıralama verisi ayrı iş. -->

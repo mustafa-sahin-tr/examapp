@@ -142,6 +142,46 @@ public class StudentResetJobTests : IDisposable
     }
 
     [Fact]
+    public async Task Parent_projections_are_deleted_after_the_reset_commits_and_the_reset_line_is_recorded_issue_422()
+    {
+        var seed = await SeedProgressAsync();
+        await using (var ctx = _db.NewContext())
+        {
+            var other = new Student { UserId = UserId + 1, StudentNumber = "71" };
+            ctx.Students.Add(other);
+            await ctx.SaveChangesAsync();
+            foreach (var studentId in new[] { seed.StudentId, other.Id })
+            {
+                ctx.StudentBadgeProjections.Add(new StudentBadgeProjection
+                {
+                    StudentId = studentId, BadgeDefinitionId = Guid.NewGuid(), Name = "B", EarnedAtUtc = DateTime.UtcNow, ReceivedAtUtc = DateTime.UtcNow
+                });
+                ctx.StudentDailyXps.Add(new StudentDailyXp { StudentId = studentId, Day = new DateOnly(2026, 10, 5), Xp = 10 });
+            }
+            await ctx.SaveChangesAsync();
+        }
+
+        DateTime? resetLine = null;
+        _badgeReset.ResetUserAsync(UserId, Arg.Do<DateTime>(d => resetLine = d), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+
+        await using (var ctx = _db.NewContext())
+            await NewJob(ctx).RunAsync(UserId, seed.StudentId, KeycloakId);
+
+        await using var check = _db.NewContext();
+        (await check.StudentBadgeProjections.CountAsync(b => b.StudentId == seed.StudentId)).ShouldBe(0);
+        (await check.StudentDailyXps.CountAsync(d => d.StudentId == seed.StudentId)).ShouldBe(0);
+        // Başka öğrencinin projeksiyonları dokunulmaz.
+        (await check.StudentBadgeProjections.CountAsync()).ShouldBe(1);
+        (await check.StudentDailyXps.CountAsync()).ShouldBe(1);
+        // Sıfırlama çizgisi BadgeService'e gönderilenle aynı (geç rozet event'i bu çizgiye göre atılır).
+        resetLine.ShouldNotBeNull();
+        (await check.Students.IgnoreQueryFilters().SingleAsync(s => s.Id == seed.StudentId)).ProgressResetAtUtc!.Value
+            .ShouldBe(resetLine!.Value, TimeSpan.FromMilliseconds(1));
+        // StudentPoints soft-delete commit edildi.
+        (await check.StudentPoints.CountAsync(p => p.StudentId == seed.StudentId)).ShouldBe(0);
+    }
+
+    [Fact]
     public async Task The_badge_reset_runs_before_the_exam_data_is_deleted()
     {
         var seed = await SeedProgressAsync();

@@ -8,7 +8,7 @@
     "redeemRateLimited": "Çok fazla kod denemesi yapıldı. Lütfen daha sonra tekrar deneyin.",
     "inviteRateLimited": "Kısa sürede çok fazla davet kodu oluşturuldu. Lütfen daha sonra tekrar deneyin.",
     "summaryRateLimited": "Çok fazla istek yapıldı. Lütfen biraz sonra tekrar deneyin.",
-    "activityRateLimited": "Ödev ve test bilgileri için kısa sürede çok fazla istek yapıldı. Lütfen biraz sonra tekrar deneyin.",
+    "activityRateLimited": "Çocuğunuzun bilgileri için kısa sürede çok fazla istek yapıldı. Lütfen biraz sonra tekrar deneyin.",
     "errors": {
       "invalidCode": "Kod geçersiz veya süresi dolmuş.",
       "studentLimitReached": "En fazla 4 veli bağlayabilirsin (bekleyen istekler dahil). Yeni kod için önce birini kaldır.",
@@ -20,6 +20,7 @@
       "testResultNotFound": "Test sonucu bulunamadı.",
       "invalidPage": "Geçersiz sayfa numarası.",
       "invalidStatus": "Geçersiz durum filtresi. completed, overdue ya da pending olmalıdır.",
+      "invalidRange": "Geçersiz tarih aralığı. from ve to birlikte, yyyy-MM-dd biçiminde ve en fazla 31 gün olmalıdır.",
       "busy": "İşlem şu anda tamamlanamadı. Lütfen tekrar deneyin.",
       "rateLimited": "Çok fazla kod denemesi yapıldı. Lütfen daha sonra tekrar deneyin."
     },

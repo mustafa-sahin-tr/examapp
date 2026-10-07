@@ -35,6 +35,13 @@ public class Student : BaseEntity, ISchoolScoped
     /// </summary>
     public DateTime? SchoolVerifiedAt { get; set; }
 
+    /// <summary>
+    /// issue #422 (security review): son ilerleme sıfırlamasının çizgisi (UTC, <c>StudentResetJob</c>'un BadgeService'e gönderdiği
+    /// <c>resetAtUtc</c>). Bu andan (5 dk tolerans) önce kazanılmış bir rozetin geç teslim edilen <c>StudentBadgeEarnedEvent</c>'i
+    /// projeksiyona yazılmaz. Hiç sıfırlanmamışsa null.
+    /// </summary>
+    public DateTime? ProgressResetAtUtc { get; set; }
+
     /// <summary>issue #361: üyeliği doğrulayan kullanıcının (admin/öğretmen) exam user id'si; migration geri doldurması için null.</summary>
     public int? SchoolVerifiedByUserId { get; set; }
 

@@ -67,8 +67,9 @@ public sealed class ParentChildSummaryRateLimitOptions : ParentLinkRateLimitOpti
 }
 
 /// <summary>
-/// <c>RateLimiting:ParentChildActivity</c> — issue #421: velinin ödev/test listesi ve test sonucu özeti okumaları (ortak kova;
-/// özetten ayrı, sayfalama + sonuç tıklamaları özet kovasını tüketmesin). Varsayılan: veli (sub) başına dakikada 60.
+/// <c>RateLimiting:ParentChildActivity</c> — velinin çocuk ayrıntı okumaları için ortak kova: issue #421 ödev/test listesi ve test
+/// sonucu özeti, issue #422 puan/rozetler (<c>progress</c>) ve program (<c>schedule</c>; hafta gezinmesi). Özetten ayrı ki
+/// sayfalama / hafta değiştirme özet kovasını tüketmesin. Varsayılan: veli (sub) başına dakikada 60.
 /// </summary>
 public sealed class ParentChildActivityRateLimitOptions : ParentLinkRateLimitOptionsBase
 {
@@ -92,7 +93,10 @@ public static class ParentLinkRateLimiting
     /// <summary>issue #420: <c>GET api/parent/children/{studentId}/summary</c>.</summary>
     public const string ChildSummaryPolicy = "parent-child-summary";
 
-    /// <summary>issue #421: <c>GET .../assignments</c> ve <c>GET .../test-results/{testInstanceId}</c> (ortak kova).</summary>
+    /// <summary>
+    /// issue #421: <c>GET .../assignments</c> ve <c>GET .../test-results/{testInstanceId}</c>; issue #422: <c>GET .../progress</c> ve
+    /// <c>GET .../schedule</c> (ortak kova).
+    /// </summary>
     public const string ChildActivityPolicy = "parent-child-activity";
 
     /// <summary>429 gövdesindeki hata kodu (UI dallanması).</summary>

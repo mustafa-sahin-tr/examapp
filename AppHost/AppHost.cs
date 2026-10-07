@@ -672,6 +672,12 @@ var authApiHttp = authApi.GetEndpoint("http");
 
 var badgeServiceHttp = badgeService.GetEndpoint("http");
 
+// BadgeResetApiClient (student reset → BadgeService api/reset, service token) reads BadgeApiBaseUrl;
+// appsettings.json's docker-compose default (http://exam-badge-api:8006) does not resolve under Aspire.
+// Declared after badgeService (which references examDotnetApi) — deliberately no WaitFor, that would
+// create a startup cycle; the reset job retries via Hangfire if BadgeService is not up yet.
+examDotnetApi.WithEnvironment("BadgeApiBaseUrl", badgeServiceHttp);
+
 var ocelotGateway = builder.AddProject<Projects.Gateway>("ocelot-gateway")
     .WithReference(examDotnetApi)
     .WithReference(badgeService)

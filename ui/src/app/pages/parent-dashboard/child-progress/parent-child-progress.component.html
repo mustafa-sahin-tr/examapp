@@ -1,0 +1,69 @@
+<section class="ppg" *transloco="let t; prefix: 'parent-dashboard'" aria-labelledby="ppg-title" data-test="progress-section">
+  <mat-card appearance="outlined" class="ppg__card">
+    <mat-card-header>
+      <mat-icon mat-card-avatar aria-hidden="true">emoji_events</mat-icon>
+      <mat-card-title id="ppg-title">{{ t('progress.title') }}</mat-card-title>
+      <mat-card-subtitle>{{ t('progress.subtitle') }}</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (loading()) {
+        <div class="ppg__state" aria-busy="true" data-test="progress-loading">
+          <mat-spinner diameter="28" />
+          <span>{{ t('loading') }}</span>
+        </div>
+      } @else if (error()) {
+        <div class="ppg__state" role="alert" data-test="progress-error">
+          <span>{{ error() }}</span>
+          <button mat-stroked-button type="button" (click)="reload()">{{ t('retry') }}</button>
+        </div>
+      } @else {
+        @if (view(); as v) {
+          <div class="ppg__stats">
+            <div class="ppg__stat ppg__stat--level" data-test="progress-level">
+              <span class="ppg__label">{{ t('progress.level') }}</span>
+              <span class="ppg__value">{{ v.level }}</span>
+            </div>
+            <div class="ppg__stat" data-test="progress-xp">
+              <span class="ppg__label">{{ t('progress.totalXp') }}</span>
+              <span class="ppg__value">{{ v.totalXp }}</span>
+            </div>
+            <div class="ppg__stat" data-test="progress-weekly">
+              <span class="ppg__label">{{ t('progress.weeklyXp') }}</span>
+              <span class="ppg__value">+{{ v.weeklyXp }}</span>
+            </div>
+          </div>
+
+          @if (v.ranks.length > 0) {
+            <ul class="ppg__ranks" [attr.aria-label]="t('progress.ranksLabel')">
+              @for (r of v.ranks; track r.scope) {
+                <li class="ppg__rank" [attr.data-test]="'rank-' + r.scope">
+                  <mat-icon aria-hidden="true">{{ r.scope === 'school' ? 'school' : 'public' }}</mat-icon>
+                  <span>{{ t('progress.rank.' + r.scope, { rank: r.rank, total: r.total }) }}</span>
+                </li>
+              }
+            </ul>
+          }
+
+          <h3 class="ppg__subhead">{{ t('progress.badges') }}</h3>
+          @if (v.badges.length === 0) {
+            <p class="ppg__empty" data-test="badges-empty">
+              <mat-icon aria-hidden="true">{{ defaultIcon }}</mat-icon>
+              <span>{{ t('progress.noBadges') }}</span>
+            </p>
+          } @else {
+            <ul class="ppg__badges">
+              @for (b of v.badges; track b.name) {
+                <li class="ppg__badge" data-test="badge">
+                  <mat-icon class="ppg__badge-icon" aria-hidden="true">{{ b.icon }}</mat-icon>
+                  <span class="ppg__badge-name" data-test="badge-name">{{ b.name }}</span>
+                  <span class="ppg__badge-date" data-test="badge-date">{{ b.earnedOn }}</span>
+                </li>
+              }
+            </ul>
+          }
+        }
+      }
+    </mat-card-content>
+  </mat-card>
+</section>

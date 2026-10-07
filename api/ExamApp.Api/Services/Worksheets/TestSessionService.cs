@@ -2,6 +2,8 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Parents;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -25,9 +27,13 @@ public class TestSessionService : ITestSessionService
     // verir; parametre yalnizca DI'siz kurulan (birim test) senaryolar icin opsiyonel.
     private readonly IStringLocalizer<Messages> _localizer;
 
-    public TestSessionService(AppDbContext context, IStringLocalizer<Messages>? localizer = null)
+    // issue #423: veli bildirimi için sub/ad çözümü (opsiyonel; DI verir, DI'siz birim testler null bırakır → ad boş, event yine yazılır).
+    private readonly IAuthApiClient? _authApi;
+
+    public TestSessionService(AppDbContext context, IStringLocalizer<Messages>? localizer = null, IAuthApiClient? authApi = null)
     {
         _context = context;
+        _authApi = authApi;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
@@ -712,21 +718,29 @@ public class TestSessionService : ITestSessionService
         var timing = await _context.TestInstances
             .AsNoTracking()
             .Where(ti => ti.Id == testInstanceId && ti.Student.UserId == userId)
-            .Select(ti => new { ti.Status, ti.StartTime, ti.MaxDurationSeconds })
+            .Select(ti => new { ti.Status, ti.StartTime, ti.MaxDurationSeconds, ti.StudentId, ti.WorksheetId })
             .FirstOrDefaultAsync(ct);
 
+        var currentStatus = timing?.Status;
         if (timing != null)
         {
             var current = await ExpireIfOverdueAsync(
                 testInstanceId, timing.Status, timing.StartTime, timing.MaxDurationSeconds, userId, ct);
             if (current == WorksheetInstanceStatus.Expired)
                 return NotInProgressEnd(timeExpired: IsTimeUp(current, timing.StartTime, timing.MaxDurationSeconds));
+            currentStatus = current;
         }
 
-        var now = DateTime.UtcNow;
+        // issue #423: öğrencinin Active velisi varsa tamamlanma, veli event'leriyle AYNI transaction'da yazılır. Veli yoksa
+        // (çoğunluk) yol değişmez: tek koşullu UPDATE, ekstra HTTP/outbox yok. Ad/sub çözümü transaction DIŞINDA, fail-soft.
+        var parentPlan = timing != null && currentStatus == WorksheetInstanceStatus.Started
+            ? await PlanParentNotificationsAsync(testInstanceId, userId, timing.StudentId, timing.WorksheetId, timing.StartTime, ct)
+            : null;
+        var now = DateTime.UtcNow; // issue #423 (m2): plandan SONRA alınır, EndTime/event zamanı gerçek tamamlanmaya yakın olur
+
         // ExecuteUpdate bypasses the SaveChanges audit hook, so UpdateTime/UpdateUserId are stamped here (the caller
         // is the instance's student — ownership is part of the WHERE).
-        var completed = await _context.TestInstances
+        Task<int> ConditionalComplete() => _context.TestInstances
             .Where(ti => ti.Id == testInstanceId
                 && ti.Student.UserId == userId
                 && ti.Status == WorksheetInstanceStatus.Started)
@@ -735,6 +749,31 @@ public class TestSessionService : ITestSessionService
                 .SetProperty(ti => ti.EndTime, (DateTime?)now)
                 .SetProperty(ti => ti.UpdateTime, (DateTime?)now)
                 .SetProperty(ti => ti.UpdateUserId, (int?)userId), ct);
+
+        var completed = 0;
+        if (parentPlan == null)
+        {
+            completed = await ConditionalComplete();
+        }
+        else
+        {
+            var strategy = _context.Database.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                _context.ChangeTracker.Clear();
+                await using var tx = await _context.Database.BeginTransactionAsync(ct);
+                completed = await ConditionalComplete();
+                if (completed == 1)
+                {
+                    // UPDATE satır kilidini tutuyor ve Completed sonrası cevap yazımı reddediliyor → sayılar kesin.
+                    // Security M1: Active veliler transaction İÇİNDE (FOR SHARE) yeniden okunur; plan ∩ şimdiki Active.
+                    var stillActive = await ParentNotificationSupport.ActiveParentIdsLockedAsync(_context, parentPlan.StudentId, ct);
+                    await AddParentCompletedEventsAsync(parentPlan, stillActive, testInstanceId, now, ct);
+                    await _context.SaveChangesAsync(ct);
+                }
+                await tx.CommitAsync(ct);
+            });
+        }
 
         if (completed == 1)
         {
@@ -765,6 +804,102 @@ public class TestSessionService : ITestSessionService
             },
             _ => NotInProgressEnd(timeExpired: IsTimeUp(final!.Status, final.StartTime, final.MaxDurationSeconds))
         };
+    }
+
+    private sealed record ParentCompletionPlan(
+        int StudentId,
+        int WorksheetId,
+        string WorksheetName,
+        string StudentDisplayName,
+        IReadOnlyList<ActiveParentRecipient> Parents,
+        IReadOnlyDictionary<int, NotificationUser> Users);
+
+    /// <summary>
+    /// issue #423: Started bir oturumun sahibi öğrencinin Active velileri varsa event planı; yoksa null (yol değişmez, ek HTTP/sorgu
+    /// yok). Kapsam (security m1, V3/#421 ile aynı): oturum, öğrenciye GÖRÜNÜR bir atamanın penceresine (30 gün + instance penceresi,
+    /// <see cref="AssignmentInstanceWindow"/>) girmelidir — serbest/kendi başına çözüm bildirilmez. Ad/sub çözümü fail-soft ve 1 sn
+    /// ile sınırlı (auth-api yoksa boş; consumer BadgeService verisinden çözer).
+    /// </summary>
+    private async Task<ParentCompletionPlan?> PlanParentNotificationsAsync(
+        int testInstanceId, int userId, int studentId, int worksheetId, DateTime instanceStartTime, CancellationToken ct)
+    {
+        var parents = await ParentNotificationSupport.ActiveParentsAsync(_context, studentId, ct);
+        if (parents.Count == 0)
+            return null;
+
+        var student = await _context.Students.AsNoTracking()
+            .Where(s => s.Id == studentId)
+            .Select(s => new { s.GradeId, VerifiedSchoolId = s.SchoolVerifiedAt != null ? s.SchoolId : null })
+            .FirstOrDefaultAsync(ct);
+        if (student == null)
+            return null;
+
+        var planNow = DateTime.UtcNow;
+        if (!await ParentAssignmentScope.IsWorksheetInScopeAsync(
+                _context, studentId, student.GradeId, student.VerifiedSchoolId, worksheetId,
+                instanceStartTime, WorksheetInstanceStatus.Started, planNow, ct))
+            return null;
+
+        var worksheetName = await _context.Worksheets.AsNoTracking()
+            .Where(w => w.Id == worksheetId).Select(w => w.Name).FirstOrDefaultAsync(ct) ?? string.Empty;
+        var users = await ParentNotificationSupport.LookupAsync(
+            _authApi, parents.Select(p => p.ParentUserId).Append(userId), logger: null, ct,
+            timeoutOverride: TimeSpan.FromSeconds(1));
+        return new ParentCompletionPlan(
+            studentId, worksheetId, worksheetName,
+            ParentNotificationSupport.Of(users, userId).DisplayName, parents, users);
+    }
+
+    /// <summary>
+    /// issue #423: her Active veli için bir <see cref="ParentChildTestCompletedEvent"/> (tek alıcı / event); çağıranın
+    /// transaction'ında, çağıranın SaveChanges'iyle yazılır. Puan, öğrencinin sonuç ekranıyla aynı formül.
+    /// </summary>
+    private async Task AddParentCompletedEventsAsync(
+        ParentCompletionPlan plan, IReadOnlySet<int> stillActiveParentIds, int testInstanceId, DateTime completedAtUtc, CancellationToken ct)
+    {
+        // Security M1: yalnız hem planda hem transaction içi okumada Active olan veliler.
+        var recipients = plan.Parents.Where(p => stillActiveParentIds.Contains(p.ParentId)).ToList();
+        if (recipients.Count == 0)
+            return;
+
+        // Tek sorgu: toplam + doğru (öğrencinin sonuç ekranıyla aynı formül).
+        var counts = await _context.TestInstanceQuestions.AsNoTracking()
+            .Where(q => q.WorksheetInstanceId == testInstanceId)
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                Total = g.Count(),
+                Correct = g.Count(q => q.SelectedAnswerId != null && q.WorksheetQuestion.Question.CorrectAnswerId == q.SelectedAnswerId)
+            })
+            .FirstOrDefaultAsync(ct);
+        var total = counts?.Total ?? 0;
+        var correct = counts?.Correct ?? 0;
+        var score = WorksheetScoring.ScorePercent(correct, total);
+
+        foreach (var parent in recipients)
+        {
+            _context.OutboxMessages.Add(new OutboxMessage
+            {
+                Type = OutboxEventRegistry.NameFor<ParentChildTestCompletedEvent>(),
+                Content = JsonSerializer.Serialize(new ParentChildTestCompletedEvent
+                {
+                    EventId = Guid.NewGuid(),
+                    TestInstanceId = testInstanceId,
+                    WorksheetId = plan.WorksheetId,
+                    WorksheetName = plan.WorksheetName,
+                    StudentId = plan.StudentId,
+                    StudentDisplayName = plan.StudentDisplayName,
+                    ParentId = parent.ParentId,
+                    ParentUserId = parent.ParentUserId,
+                    ParentKeycloakId = ParentNotificationSupport.Of(plan.Users, parent.ParentUserId).KeycloakId,
+                    CorrectAnswers = correct,
+                    TotalQuestions = total,
+                    Score = score,
+                    CompletedAtUtc = DateTime.SpecifyKind(completedAtUtc, DateTimeKind.Utc)
+                }),
+                CreatedAt = completedAtUtc
+            });
+        }
     }
 
     /// <summary>

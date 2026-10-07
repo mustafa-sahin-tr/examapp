@@ -229,6 +229,11 @@ export class SignalRService {
     this.hubConnection.on('BookingUpdate', () => {
       this.notificationsChangedSubject.next();
     });
+
+    // Issue #423: veli bildirimleri (bağlantı, gecikmiş ödev, test tamamlandı) kalıcı yazılır; yalnız zil sayacı tazelenir.
+    this.hubConnection.on('ParentNotification', () => {
+      this.notificationsChangedSubject.next();
+    });
   }
 
   /** Rozet push'u: payload güvenilmez — alanlar tek tek doğrulanır, metin kırpılır ve görünmez kontroller silinir. */

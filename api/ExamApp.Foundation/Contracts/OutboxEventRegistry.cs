@@ -40,6 +40,8 @@ public static class OutboxEventRegistry
         typeof(DirectMessageReportedEvent), // issue #106 (dilim b)
         typeof(ParentLinkedEvent), // issue #419
         typeof(ParentUnlinkedEvent), // issue #419
+        typeof(ParentHomeworkOverdueEvent), // issue #423
+        typeof(ParentChildTestCompletedEvent), // issue #423
     };
 
     private static readonly Dictionary<string, Type> ByFullName =

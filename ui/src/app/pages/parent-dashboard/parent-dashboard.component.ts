@@ -17,6 +17,8 @@ import { ParentDashboardService } from '../../services/parent-dashboard.service'
 import { LocaleService } from '../../services/locale.service';
 import { ParentLinkService } from '../../services/parent-link.service';
 import { ParentChildAssignmentsComponent } from './child-assignments/parent-child-assignments.component';
+import { ParentChildProgressComponent } from './child-progress/parent-child-progress.component';
+import { ParentChildScheduleComponent } from './child-schedule/parent-child-schedule.component';
 
 /** Veli paneli ekranlarının Transloco scope'u (`public/i18n/parent-dashboard/<lang>.json`). */
 export const PARENT_DASHBOARD_SCOPE = 'parent-dashboard';
@@ -48,6 +50,7 @@ export function parseChildParam(value: string | null): number | null {
  * çocuğa düşer). Seçili çocuğun özet kartları: bu hafta çözülen soru, ödev durumları, toplam puan, son aktivite. Bağlı
  * çocuk yoksa "Çocuk ekle" ile Çocuklarım sayfasına yönlendirir. Sunucu yalnızca toplam döner (içerik/iletişim bilgisi yok).
  * Issue #421 (V3): aynı seçili çocuk için "Ödevler ve testler" bölümü (`app-parent-child-assignments`).
+ * Issue #422 (V4): "Puan ve rozetler" kartı (`app-parent-child-progress`) ve haftalık "Program" (`app-parent-child-schedule`).
  */
 @Component({
   selector: 'app-parent-dashboard',
@@ -60,6 +63,8 @@ export function parseChildParam(value: string | null): number | null {
     MatProgressSpinnerModule,
     MatSelectModule,
     ParentChildAssignmentsComponent,
+    ParentChildProgressComponent,
+    ParentChildScheduleComponent,
     RouterLink,
     TranslocoDirective,
   ],
@@ -164,7 +169,7 @@ export class ParentDashboardComponent implements OnInit {
     });
   }
 
-  /** Ödev listesi 404 döndü: bağlantı kaldırılmış olabilir — özetteki 404 ile aynı davranış (not + listeyi yenile). */
+  /** Bir bölüm (ödevler, puan, program) 404 döndü: bağlantı kaldırılmış olabilir — özetteki 404 ile aynı davranış (not + listeyi yenile). */
   protected onChildNotFound(): void {
     this.notice.set(this.text('summaryNotFound'));
     this.loadChildren();

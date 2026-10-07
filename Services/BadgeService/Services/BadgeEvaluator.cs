@@ -125,6 +125,9 @@ public class BadgeEvaluator
                     EarnedDate = now
                 });
 
+                // Issue #422: exam API projeksiyonu (veli paneli) için aynı SaveChanges'te outbox satırı.
+                StudentBadgeOutbox.Enqueue(_context, userId, definition, now);
+
                 newlyEarned.Add(definition);
                 earnedBadgeIds.Add(definition.Id);
             }

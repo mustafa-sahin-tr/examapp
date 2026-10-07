@@ -13,4 +13,14 @@ public interface ILeaderboardService
     /// Success=false + <c>student.leaderboard.schoolScopeUnavailable</c> mesajı döner (controller → 400).
     /// </summary>
     Task<LeaderboardDto> GetLeaderboardAsync(LeaderboardRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #422: XP'si çağıran tarafından zaten okunmuş TEK bir öğrencinin (exam DB <c>Student.Id</c>) kapsamdaki sırası +
+    /// kapsamdaki öğrenci sayısı — liderlik tablosuyla AYNI kural (XP azalan, eşitlikte Id artan), ama başka öğrenciye ait hiçbir
+    /// satır dönmez (veli paneli). Öğrencinin kapsamda olduğunu çağıran garanti eder (School: doğrulanmış üyesi olduğu okul).
+    /// </summary>
+    Task<LeaderboardRank> GetRankForXpAsync(int studentId, int xp, LeaderboardScope scope, int? schoolId, CancellationToken ct = default);
 }
+
+/// <summary>issue #422: öğrencinin 1 tabanlı sırası ve kapsamdaki öğrenci sayısı.</summary>
+public sealed record LeaderboardRank(int Rank, int TotalCount);

@@ -85,6 +85,47 @@ public class OutboxEventRegistryTests
             text.ShouldContain("|" + name, Case.Sensitive, $"{relativePath} exam_outbox_pub listesinde {name} yok");
     }
 
+    [Fact]
+    public void Resolve_knows_the_student_badge_earned_event_issue_422()
+        => OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<StudentBadgeEarnedEvent>()).ShouldBe(typeof(StudentBadgeEarnedEvent));
+
+    /// <summary>
+    /// issue #422: badge_outbox_pub StudentBadgeEarnedEvent'i declare + publish edebilmeli, exam_api ise yalnız declare + okuyabilmeli
+    /// (write YOK). Üç izin kaynağı aynı listeyi taşır.
+    /// </summary>
+    [Theory]
+    [InlineData("rabbitmq/definitions.json")]
+    [InlineData("deploy/scripts/rabbitmq-init.sh")]
+    [InlineData("deploy/gcp/k8s/stateful-services.yaml")]
+    public void Badge_outbox_publishes_and_exam_api_consumes_the_badge_earned_event_issue_422(string relativePath)
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "rabbitmq", "definitions.json")))
+            dir = dir.Parent;
+        dir.ShouldNotBeNull("repo kökü bulunamadı");
+
+        var text = File.ReadAllText(Path.Combine(dir!.FullName, relativePath));
+        if (relativePath.EndsWith(".json", StringComparison.Ordinal))
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(text);
+            var perms = doc.RootElement.GetProperty("permissions").EnumerateArray()
+                .ToDictionary(p => p.GetProperty("user").GetString()!);
+            var badge = perms["badge_outbox_pub"];
+            badge.GetProperty("configure").GetString()!.ShouldContain(nameof(StudentBadgeEarnedEvent));
+            badge.GetProperty("write").GetString()!.ShouldContain(nameof(StudentBadgeEarnedEvent));
+            var exam = perms["exam_api"];
+            exam.GetProperty("configure").GetString()!.ShouldContain(nameof(StudentBadgeEarnedEvent));
+            exam.GetProperty("read").GetString()!.ShouldContain(nameof(StudentBadgeEarnedEvent));
+            exam.GetProperty("write").GetString()!.ShouldNotContain(nameof(StudentBadgeEarnedEvent));
+            perms["badge_service"].GetProperty("write").GetString()!.ShouldNotContain(nameof(StudentBadgeEarnedEvent));
+        }
+        else
+        {
+            text.ShouldContain("BADGE_OUTBOX_EVENTS=\"StudentPointsChangedEvent|StudentBadgeEarnedEvent\"", Case.Sensitive);
+            text.ShouldContain("EXAM_API_EVENTS=\"StudentPointsChangedEvent|StudentBadgeEarnedEvent\"", Case.Sensitive);
+        }
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]

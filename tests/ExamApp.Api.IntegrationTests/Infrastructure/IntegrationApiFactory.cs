@@ -140,6 +140,8 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
                 x.SetTestTimeouts(testTimeout: TimeSpan.FromMinutes(5));
                 x.AddConsumer<ExamApp.Api.Consumers.StudentPointsChangedConsumer,
                     ExamApp.Api.Consumers.StudentPointsChangedConsumerDefinition>();
+                x.AddConsumer<ExamApp.Api.Consumers.StudentBadgeEarnedConsumer,
+                    ExamApp.Api.Consumers.StudentBadgeEarnedConsumerDefinition>(); // issue #422
             });
 
             services.AddAuthentication(options =>

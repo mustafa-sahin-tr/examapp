@@ -24,15 +24,21 @@ public class ParentDashboardController : BaseController
 {
     private readonly IParentDashboardService _service;
     private readonly IParentAssignmentService _assignments;
+    private readonly IParentProgressService _progress;
+    private readonly IParentScheduleService _schedule;
     private readonly IStringLocalizer<Messages> _localizer;
 
     public ParentDashboardController(
         IParentDashboardService service,
         IParentAssignmentService assignments,
+        IParentProgressService progress,
+        IParentScheduleService schedule,
         IStringLocalizer<Messages>? localizer = null)
     {
         _service = service;
         _assignments = assignments;
+        _progress = progress;
+        _schedule = schedule;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
@@ -120,6 +126,54 @@ public class ParentDashboardController : BaseController
 
         Response.Headers.CacheControl = "no-store";
         return Ok(lookup.Result);
+    }
+
+    /// <summary>
+    /// Issue #422 (V4): çocuğun puanı, seviyesi, bu hafta kazandığı puan, kazanılmış rozetleri (ad, ikon, GÜN) ve KENDİ sırası
+    /// (platform geneli + doğrulanmış okulu varsa okul içi). Başka öğrencinin adı/avatarı/puanı dönmez. Tüm veri exam DB'den
+    /// (rozet ve günlük puan projeksiyonları BadgeService event'leriyle beslenir). Salt okunur.
+    /// </summary>
+    [HttpGet("{studentId:int}/progress")]
+    [EnableRateLimiting(ParentLinkRateLimiting.ChildActivityPolicy)]
+    public async Task<IActionResult> GetChildProgress(int studentId, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (!IsResolvedUser(user))
+            return UserNotResolved(new { message = _localizer["auth.userNotResolved"].Value });
+
+        var progress = await _progress.GetProgressAsync(user.Id, studentId, ct);
+        if (progress == null)
+            return ChildNotFound();
+
+        Response.Headers.CacheControl = "no-store";
+        return Ok(progress);
+    }
+
+    /// <summary>
+    /// Issue #422 (V4): çocuğun programı — "Planım" planları (worksheet adı + planlanan gün) ve bekleyen/onaylanan ders
+    /// randevuları (öğretmen adı, gün, başlangıç/bitiş, durum). Görüşme bağlantısı, ücret, not dönmez. Salt okunur.
+    /// </summary>
+    /// <param name="from">İlk gün "yyyy-MM-dd" (Europe/Istanbul). <paramref name="to"/> ile birlikte verilir; ikisi de boşsa bu hafta.</param>
+    /// <param name="to">Son gün (dahil) "yyyy-MM-dd"; aralık en fazla 31 gün, bugünden en fazla bir yıl geri/ileri.</param>
+    [HttpGet("{studentId:int}/schedule")]
+    [EnableRateLimiting(ParentLinkRateLimiting.ChildActivityPolicy)]
+    public async Task<IActionResult> GetChildSchedule(
+        int studentId, [FromQuery] string? from, [FromQuery] string? to, CancellationToken ct = default)
+    {
+        // Parametre doğrulaması veri okumaz (kapıdan önce yapılması bir şey sızdırmaz).
+        if (!_schedule.TryResolveRange(from, to, out var range))
+            return InvalidQuery("range", "parentLinks.errors.invalidRange");
+
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (!IsResolvedUser(user))
+            return UserNotResolved(new { message = _localizer["auth.userNotResolved"].Value });
+
+        var schedule = await _schedule.GetScheduleAsync(user.Id, studentId, range.From, range.To, ct);
+        if (schedule == null)
+            return ChildNotFound();
+
+        Response.Headers.CacheControl = "no-store";
+        return Ok(schedule);
     }
 
     /// <summary>Sayfa üst sınırı: satır tavanı / sayfa boyutu (500 / 20 = 25); daha büyük sayfa her zaman boş olurdu.</summary>

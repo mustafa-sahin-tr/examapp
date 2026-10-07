@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExamApp.Foundation.Badges;
 
 namespace BadgeService.Services;
 
@@ -17,76 +18,24 @@ namespace BadgeService.Services;
 /// </remarks>
 public static class BadgeIconCatalog
 {
-    public const string Achievement = "achievement";
-    public const string Learning = "learning";
-    public const string Time = "time";
-    public const string Streak = "streak";
-    public const string Other = "other";
+    // Issue #422: liste ExamApp.Foundation.Badges.BadgeIconAllowlist'e taşındı (exam API consumer'ı da aynı kuralı uygular);
+    // bu sınıf BadgeService içindeki mevcut çağıranlar için ince bir sarmalayıcıdır.
+    public const string Achievement = BadgeIconAllowlist.Achievement;
+    public const string Learning = BadgeIconAllowlist.Learning;
+    public const string Time = BadgeIconAllowlist.Time;
+    public const string Streak = BadgeIconAllowlist.Streak;
+    public const string Other = BadgeIconAllowlist.Other;
 
     /// <summary>Category keys in display order (for the admin picker's chips).</summary>
-    public static IReadOnlyList<string> Categories { get; } = new[] { Achievement, Learning, Time, Streak, Other };
+    public static IReadOnlyList<string> Categories => BadgeIconAllowlist.Categories;
 
     private static readonly BadgeIconEntry[] Entries =
-    {
-        // --- Seed icons (BadgeSeeder, issue #149 icon table) ---
-        new("flag", Achievement),
-        new("done_all", Achievement),
-        new("gps_fixed", Achievement),
-        new("task_alt", Achievement),
-        new("rocket_launch", Achievement),
-        new("theater_comedy", Other),
-        new("psychology", Learning),
-        new("schedule", Time),
-        new("visibility", Other),
-        new("travel_explore", Time),
-        new("school", Learning),
-        new("workspace_premium", Achievement),
-        new("menu_book", Learning),
-        new("verified", Achievement),
-        new("timer", Time),
-        new("calculate", Learning),
-        new("science", Learning),
-        new("public", Learning),
-        new("local_fire_department", Streak),
-        new("event_available", Streak),
-
-        // --- Additional badge-themed icons for admin-created badges ---
-        new("emoji_events", Achievement),
-        new("military_tech", Achievement),
-        new("star", Achievement),
-        new("diamond", Achievement),
-        new("celebration", Achievement),
-        new("trending_up", Achievement),
-        new("bolt", Achievement),
-        new("auto_stories", Learning),
-        new("edit_note", Learning),
-        new("lightbulb", Learning),
-        new("quiz", Learning),
-        new("functions", Learning),
-        new("translate", Learning),
-        new("history_edu", Learning),
-        new("palette", Learning),
-        new("hourglass_top", Time),
-        new("alarm", Time),
-        new("update", Time),
-        new("av_timer", Time),
-        new("whatshot", Streak),
-        new("event_repeat", Streak),
-        new("calendar_month", Streak),
-        new("today", Streak),
-        new("directions_run", Streak),
-        new("favorite", Other),
-        new("extension", Other),
-        new("explore", Other),
-        new("pets", Other),
-    };
-
-    private static readonly HashSet<string> Names = new(Entries.Select(e => e.Name), StringComparer.Ordinal);
+        BadgeIconAllowlist.Entries.Select(e => new BadgeIconEntry(e.Name, e.Category)).ToArray();
 
     public static IReadOnlyList<BadgeIconEntry> All => Entries;
 
     /// <summary>Exact (case-sensitive) membership — names are always lower-case snake_case.</summary>
-    public static bool Contains(string? name) => name is not null && Names.Contains(name);
+    public static bool Contains(string? name) => BadgeIconAllowlist.Contains(name);
 }
 
 /// <summary>One allowlisted icon. Serialized as <c>{ "name": "...", "category": "..." }</c>.</summary>

@@ -136,6 +136,8 @@ public class AppDbContext : DbContext
     public DbSet<ParentStudentLink> ParentStudentLinks { get; set; }
     public DbSet<ParentInviteCode> ParentInviteCodes { get; set; }
     public DbSet<ParentAccessAudit> ParentAccessAudits { get; set; } // issue #420
+    public DbSet<StudentBadgeProjection> StudentBadgeProjections { get; set; } // issue #422
+    public DbSet<StudentDailyXp> StudentDailyXps { get; set; } // issue #422
 
     // Ders planlama / randevu (issue #96)
     public DbSet<TeacherAvailabilitySlot> TeacherAvailabilitySlots { get; set; }
@@ -329,6 +331,18 @@ public class AppDbContext : DbContext
 
         // issue #420: veli erişim kaydı (append-only, FK yok). Index'ler: "bu veli ne zaman neye baktı" ve "bu çocuğun
         // verisine kim baktı" denetim sorguları (öğrenci tarafındaki V6 erişim geçmişi de ikincisini kullanır).
+        // issue #422: rozet projeksiyonu + günlük puan defteri (veli paneli). Tekrar teslim / eşzamanlı yazım UNIQUE ile no-op.
+        modelBuilder.Entity<StudentBadgeProjection>(e =>
+        {
+            e.HasIndex(b => new { b.StudentId, b.BadgeDefinitionId }).IsUnique();
+            e.HasOne(b => b.Student).WithMany().HasForeignKey(b => b.StudentId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<StudentDailyXp>(e =>
+        {
+            e.HasIndex(d => new { d.StudentId, d.Day }).IsUnique();
+            e.HasOne(d => d.Student).WithMany().HasForeignKey(d => d.StudentId).OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<ParentAccessAudit>(e =>
         {
             e.HasIndex(a => new { a.ParentId, a.At });

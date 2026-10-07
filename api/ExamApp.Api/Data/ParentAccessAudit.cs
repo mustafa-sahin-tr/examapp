@@ -46,4 +46,10 @@ public static class ParentAccessEndpoints
 
     /// <summary><c>GET api/parent/children/{studentId}/test-results/{testInstanceId}</c> (issue #421).</summary>
     public const string ChildTestResult = "children.test-result";
+
+    /// <summary><c>GET api/parent/children/{studentId}/progress</c> (issue #422).</summary>
+    public const string ChildProgress = "children.progress";
+
+    /// <summary><c>GET api/parent/children/{studentId}/schedule</c> (issue #422).</summary>
+    public const string ChildSchedule = "children.schedule";
 }

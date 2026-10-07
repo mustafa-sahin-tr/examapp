@@ -92,3 +92,77 @@ export interface ParentChildTestResult {
   score: ParentTestScore;
   topics: ParentTestTopicResult[];
 }
+
+/**
+ * Issue #422 (epic #407 V4): veli "Puan ve rozetler". Backend: `/api/exam/parent/children/{studentId}/progress`.
+ * Sıralamada yalnız çocuğun kendi sırası ve kapsamdaki öğrenci sayısı gelir — başka öğrencinin adı/puanı gelmez.
+ */
+export interface ParentBadge {
+  name: string;
+  /** Material Symbols adı; yoksa null (varsayılan ikon). */
+  icon: string | null;
+  /** Kazanıldığı gün (Europe/Istanbul), "yyyy-MM-dd" — saat bilgisi yok. */
+  earnedOn: string;
+}
+
+export type ParentRankScope = 'global' | 'school';
+
+export interface ParentChildRank {
+  scope: ParentRankScope;
+  /** 1 tabanlı sıra. */
+  rank: number;
+  /** Kapsamdaki öğrenci sayısı. */
+  totalCount: number;
+}
+
+export interface ParentChildProgress {
+  studentId: number;
+  totalXp: number;
+  level: number;
+  /** Haftanın Pazartesi'si (Europe/Istanbul), "yyyy-MM-dd". */
+  weekStart: string;
+  /** Bu hafta (yerel Pazartesi–bugün) kazanılan puan. */
+  weeklyXp: number;
+  /** Kazanılmış rozetler (en yeni önce); hiç yoksa boş dizi. */
+  badges: ParentBadge[];
+  /** Her zaman `global`; doğrulanmış okulu varsa `school` da. */
+  ranks: ParentChildRank[];
+}
+
+/**
+ * Issue #422: veli "Program". Backend: `/api/exam/parent/children/{studentId}/schedule?from=&to=` (yerel günler, iki uç dahil,
+ * en fazla 31 gün; boşsa bu hafta). Ders bağlantısı, ücret ya da not gelmez.
+ */
+export interface ParentPlanItem {
+  title: string;
+  subject: string | null;
+  /** Planlanan gün (Europe/Istanbul), "yyyy-MM-dd". */
+  plannedOn: string;
+}
+
+/** Reddedilen talepler veliye gelmez. */
+export type ParentLessonStatus = 'pending' | 'approved';
+
+export interface ParentLessonItem {
+  teacherName: string | null;
+  /**
+   * Listede gösterileceği gün (Europe/Istanbul), "yyyy-MM-dd" — aralığın başından önce başlayıp taşan derste aralığın ilk günü.
+   * Gruplama tarayıcının saat dilimine göre değil buna göre yapılır.
+   */
+  startsOn: string;
+  /** ISO-8601 UTC. */
+  startAt: string;
+  /** ISO-8601 UTC. */
+  endAt: string;
+  status: ParentLessonStatus;
+}
+
+export interface ParentChildSchedule {
+  studentId: number;
+  /** "yyyy-MM-dd". */
+  from: string;
+  /** "yyyy-MM-dd" (dahil). */
+  to: string;
+  plans: ParentPlanItem[];
+  lessons: ParentLessonItem[];
+}

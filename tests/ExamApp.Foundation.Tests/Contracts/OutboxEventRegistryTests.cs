@@ -164,4 +164,44 @@ public class OutboxEventRegistryTests
     [InlineData("Not.A.Real.Type, Some.Assembly, Version=1.0.0.0")]
     public void Resolve_returns_null_for_an_unknown_or_empty_type(string? stored)
         => OutboxEventRegistry.Resolve(stored!).ShouldBeNull();
+
+    [Fact]
+    public void Resolve_knows_the_student_badge_earned_event_issue_422()
+        => OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<StudentBadgeEarnedEvent>()).ShouldBe(typeof(StudentBadgeEarnedEvent));
+
+    /// <summary>
+    /// issue #422: badge_outbox_pub StudentBadgeEarnedEvent'i declare + publish edebilmeli, exam_api ise yalnız declare + okuyabilmeli
+    /// (write YOK). Üç izin kaynağı aynı listeyi taşır.
+    /// </summary>
+    [Theory]
+    [InlineData("rabbitmq/definitions.json")]
+    [InlineData("deploy/scripts/rabbitmq-init.sh")]
+    [InlineData("deploy/gcp/k8s/stateful-services.yaml")]
+    public void Badge_outbox_publishes_and_exam_api_consumes_the_badge_earned_event_issue_422(string relativePath)
+    {
+        var text = RepoFile(relativePath);
+        if (relativePath.EndsWith(".json", StringComparison.Ordinal))
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(text);
+            var perms = doc.RootElement.GetProperty("permissions").EnumerateArray()
+                .ToDictionary(p => p.GetProperty("user").GetString()!);
+            bool Match(string user, string field)
+                => System.Text.RegularExpressions.Regex.IsMatch(
+                    "ExamApp.Foundation.Contracts:" + nameof(StudentBadgeEarnedEvent), perms[user].GetProperty(field).GetString()!);
+
+            Match("badge_outbox_pub", "configure").ShouldBeTrue();
+            Match("badge_outbox_pub", "write").ShouldBeTrue();
+            Match("badge_outbox_pub", "read").ShouldBeFalse();
+            Match("exam_api", "configure").ShouldBeTrue();
+            Match("exam_api", "read").ShouldBeTrue();
+            Match("exam_api", "write").ShouldBeFalse();
+            Match("badge_service", "write").ShouldBeFalse();
+            Match("exam_outbox_pub", "write").ShouldBeFalse();
+        }
+        else
+        {
+            text.ShouldContain("BADGE_OUTBOX_EVENTS=\"StudentPointsChangedEvent|StudentBadgeEarnedEvent\"", Case.Sensitive);
+            text.ShouldContain("EXAM_API_EVENTS=\"StudentPointsChangedEvent|StudentBadgeEarnedEvent\"", Case.Sensitive);
+        }
+    }
 }

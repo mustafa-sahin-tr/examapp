@@ -83,11 +83,11 @@
       "read": "^$"
     },
     {
-      "_comment": "badge-outbox-publisher: relays BadgeService's badge-DB outbox rows. Only StudentPointsChangedEvent is written there (Services/BadgeService/Services/StudentPointsOutbox.cs) — this is the ONLY user allowed to configure/write that exchange, closing the fake-StudentPointsChangedEvent risk from issue #279. Publisher only — no read.",
+      "_comment": "badge-outbox-publisher: relays BadgeService's badge-DB outbox rows. Only StudentPointsChangedEvent (Services/BadgeService/Services/StudentPointsOutbox.cs) and StudentBadgeEarnedEvent (issue #422, Services/BadgeService/Services/StudentBadgeOutbox.cs) are written there — this is the ONLY user allowed to configure/write those exchanges, closing the fake-StudentPointsChangedEvent risk from issue #279. Publisher only — no read.",
       "user": "badge_outbox_pub",
       "vhost": "/",
-      "configure": "^ExamApp\\.Foundation\\.Contracts:StudentPointsChangedEvent$",
-      "write": "^ExamApp\\.Foundation\\.Contracts:StudentPointsChangedEvent$",
+      "configure": "^ExamApp\\.Foundation\\.Contracts:(StudentPointsChangedEvent|StudentBadgeEarnedEvent)$",
+      "write": "^ExamApp\\.Foundation\\.Contracts:(StudentPointsChangedEvent|StudentBadgeEarnedEvent)$",
       "read": "^$"
     },
     {
@@ -99,12 +99,12 @@
       "read": "^(badge-service(_error|_skipped)?|ExamApp\\.Foundation\\.Contracts:(AnswerSubmittedEvent|QuestionCreatedEvent|WorksheetReminderDueEvent|WorksheetAccessRequestedEvent|WorksheetAccessRequestApprovedEvent|WorksheetAccessRequestRejectedEvent|LoginAttemptedEvent|TeacherApplicationSubmittedEvent|TeacherApplicationDecidedEvent|TeacherSchoolRequestSubmittedEvent|IndependentTeacherRegisteredEvent|BookingRequestCreatedEvent|BookingDecisionEvent|BookingTeacherUnavailableEvent|UserPreferredLocaleChangedEvent|WorksheetCommentCreatedEvent|WorksheetCommentRepliedEvent|WorksheetCommentHiddenEvent|DirectMessageSentEvent|DirectMessageReportedEvent|ParentLinkedEvent|ParentUnlinkedEvent|ParentHomeworkOverdueEvent|ParentChildTestCompletedEvent))$"
     },
     {
-      "_comment": "exam-dotnet-api: consumes only StudentPointsChangedEvent on its own 'exam-api' queue (api/ExamApp.Api/Program.cs ReceiveEndpoint, issue #225). Same binding semantics as badge_service above: write is restricted to its own queue/exchange/error/skipped, never the message-type exchange — it can read (subscribe to) StudentPointsChangedEvent but can never publish/forge one, and it has zero permission on any other event exchange (AnswerSubmittedEvent, TeacherApplicationDecidedEvent, etc.).",
+      "_comment": "exam-dotnet-api: consumes only StudentPointsChangedEvent (issue #225) and StudentBadgeEarnedEvent (issue #422) on its own 'exam-api' queue (api/ExamApp.Api/Program.cs ReceiveEndpoint). Same binding semantics as badge_service above: write is restricted to its own queue/exchange/error/skipped, never the message-type exchange — it can read (subscribe to) StudentPointsChangedEvent/StudentBadgeEarnedEvent but can never publish/forge one, and it has zero permission on any other event exchange (AnswerSubmittedEvent, TeacherApplicationDecidedEvent, etc.).",
       "user": "exam_api",
       "vhost": "/",
-      "configure": "^(exam-api(_error|_skipped)?|ExamApp\\.Foundation\\.Contracts:StudentPointsChangedEvent)$",
+      "configure": "^(exam-api(_error|_skipped)?|ExamApp\\.Foundation\\.Contracts:(StudentPointsChangedEvent|StudentBadgeEarnedEvent))$",
       "write": "^exam-api(_error|_skipped)?$",
-      "read": "^(exam-api(_error|_skipped)?|ExamApp\\.Foundation\\.Contracts:StudentPointsChangedEvent)$"
+      "read": "^(exam-api(_error|_skipped)?|ExamApp\\.Foundation\\.Contracts:(StudentPointsChangedEvent|StudentBadgeEarnedEvent))$"
     },
     {
       "_comment": "auth-api: consumes only UserRoleChangedEvent on its own 'auth-api' queue (auth-api/Program.cs ReceiveEndpoint, issue #277 item 4 — exam API's Teacher/Student/ParentController write this to worksheet-DB outbox after SetRoleAsync so auth-api's own Users.Role stays in sync without waiting for the next login). Same binding semantics as exam_api/badge_service above: write is restricted to its own queue/exchange/error/skipped, never the message-type exchange.",

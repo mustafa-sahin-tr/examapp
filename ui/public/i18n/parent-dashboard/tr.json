@@ -70,6 +70,42 @@
       "rangeEmpty": "0 / {{length}}"
     }
   },
+  "progress": {
+    "title": "Puan ve rozetler",
+    "subtitle": "Seviye, puan ve kazanılan rozetler. Başka öğrencilerin bilgileri gösterilmez.",
+    "loadError": "Puan ve rozetler yüklenemedi.",
+    "level": "Seviye",
+    "totalXp": "Toplam puan",
+    "weeklyXp": "Bu hafta kazanılan",
+    "ranksLabel": "Sıralama",
+    "rank": {
+      "school": "Okulunda {{rank}}. sırada ({{total}} öğrenci)",
+      "global": "Genel sıralamada {{rank}}. ({{total}} öğrenci)"
+    },
+    "badges": "Rozetler",
+    "noBadges": "Henüz rozet görünmüyor. Yeni kazanılan rozetler burada listelenir."
+  },
+  "schedule": {
+    "title": "Program",
+    "subtitle": "Haftalık planlar ve ders randevuları. Ders bağlantıları velilere gösterilmez.",
+    "loadError": "Program yüklenemedi.",
+    "rangeError": "Bu tarih aralığı gösterilemiyor (bugünden en fazla bir yıl geri ya da ileri).",
+    "previousWeek": "Önceki hafta",
+    "nextWeek": "Sonraki hafta",
+    "thisWeek": "Bu hafta",
+    "range": "{{from}} – {{to}}",
+    "today": "Bugün",
+    "empty": "Bu aralıkta plan ya da ders yok.",
+    "nothing": "Plan yok",
+    "lesson": "Ders",
+    "lessonWith": "{{name}} ile ders",
+    "plan": "Plan",
+    "planned": "Planlanan çalışma",
+    "status": {
+      "pending": "Onay bekliyor",
+      "approved": "Onaylandı"
+    }
+  },
   "duration": {
     "underMinute": "1 dk'dan kısa",
     "minutes": "{{m}} dk",

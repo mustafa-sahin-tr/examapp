@@ -56,4 +56,25 @@ describe('ParentDashboardService (issue #420)', () => {
     expect(req.request.method).toBe('GET');
     req.flush({});
   });
+
+  it('getChildProgress_GetsProgressForStudent (issue #422)', () => {
+    service.getChildProgress(42).subscribe();
+    const req = http.expectOne('/api/exam/parent/children/42/progress');
+    expect(req.request.method).toBe('GET');
+    req.flush({});
+  });
+
+  it('getChildSchedule_SendsRangeOnlyWhenGiven (issue #422)', () => {
+    service.getChildSchedule(42).subscribe();
+    const current = http.expectOne((r) => r.url === '/api/exam/parent/children/42/schedule');
+    expect(current.request.method).toBe('GET');
+    expect(current.request.params.keys()).toEqual([]);
+    current.flush({});
+
+    service.getChildSchedule(42, { from: '2026-09-28', to: '2026-10-04' }).subscribe();
+    const shifted = http.expectOne((r) => r.url === '/api/exam/parent/children/42/schedule');
+    expect(shifted.request.params.get('from')).toBe('2026-09-28');
+    expect(shifted.request.params.get('to')).toBe('2026-10-04');
+    shifted.flush({});
+  });
 });

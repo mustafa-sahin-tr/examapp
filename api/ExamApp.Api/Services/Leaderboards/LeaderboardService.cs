@@ -67,21 +67,7 @@ public sealed class LeaderboardService : ILeaderboardService
 
         // İstek sahibinin kendi satırı + önündeki öğrenci sayısı tek sorguda. Kapsam içinde arandığından
         // farklı okuldaki öğrenci için null olur. Aynı sıralama kuralı: XP büyük olanlar + eşit XP'de Id küçük olanlar.
-        var me = await scoped
-            .Where(s => s.UserId == request.RequesterUserId)
-            .OrderBy(s => s.Id)
-            .Select(s => new
-            {
-                s.Id,
-                Xp = s.StudentPoints.Select(sp => (int?)sp.XP).FirstOrDefault() ?? 0,
-                Ahead = scoped.Count(o =>
-                    o.Id != s.Id
-                    && ((o.StudentPoints.Select(sp => (int?)sp.XP).FirstOrDefault() ?? 0)
-                            > (s.StudentPoints.Select(sp => (int?)sp.XP).FirstOrDefault() ?? 0)
-                        || ((o.StudentPoints.Select(sp => (int?)sp.XP).FirstOrDefault() ?? 0)
-                                == (s.StudentPoints.Select(sp => (int?)sp.XP).FirstOrDefault() ?? 0)
-                            && o.Id < s.Id)))
-            })
+        var me = await PositionOf(scoped, scoped.Where(s => s.UserId == request.RequesterUserId))
             .FirstOrDefaultAsync(ct);
 
         var entries = page.Select((row, i) => new LeaderboardEntryDto
@@ -107,6 +93,50 @@ public sealed class LeaderboardService : ILeaderboardService
             MyRank = me == null ? null : me.Ahead + 1,
             MyXp = me?.Xp
         };
+    }
+
+    public async Task<LeaderboardRank> GetRankForXpAsync(
+        int studentId, int xp, LeaderboardScope scope, int? schoolId, CancellationToken ct = default)
+    {
+        // Tek sorgu: kapsamdaki her öğrencinin XP'si (türetilmiş tablo) → toplam + koşullu sayım (önündekiler: daha çok XP ya da
+        // eşit XP + küçük Id). XP çağırandan geldiği için öğrencinin kendi satırı ayrıca okunmaz.
+        var counts = await BuildScopedQuery(scope, schoolId)
+            .Select(o => new { o.Id, Xp = o.StudentPoints.Select(sp => (int?)sp.XP).FirstOrDefault() ?? 0 })
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                Total = g.Count(),
+                Ahead = g.Count(o => o.Id != studentId && (o.Xp > xp || (o.Xp == xp && o.Id < studentId)))
+            })
+            .FirstOrDefaultAsync(ct);
+        return new LeaderboardRank((counts?.Ahead ?? 0) + 1, counts?.Total ?? 0);
+    }
+
+    /// <summary>
+    /// <paramref name="candidates"/> satır(lar)ının XP'si + kapsamda önündeki öğrenci sayısı (korelasyonlu COUNT, tek sorgu).
+    /// Sıralama kuralı <see cref="Rank"/> ile aynı: XP büyük olanlar + eşit XP'de Id küçük olanlar önde.
+    /// </summary>
+    private static IQueryable<RankPosition> PositionOf(IQueryable<Student> scoped, IQueryable<Student> candidates)
+        => candidates
+            .OrderBy(s => s.Id)
+            .Select(s => new RankPosition
+            {
+                Id = s.Id,
+                Xp = s.StudentPoints.Select(sp => (int?)sp.XP).FirstOrDefault() ?? 0,
+                Ahead = scoped.Count(o =>
+                    o.Id != s.Id
+                    && ((o.StudentPoints.Select(sp => (int?)sp.XP).FirstOrDefault() ?? 0)
+                            > (s.StudentPoints.Select(sp => (int?)sp.XP).FirstOrDefault() ?? 0)
+                        || ((o.StudentPoints.Select(sp => (int?)sp.XP).FirstOrDefault() ?? 0)
+                                == (s.StudentPoints.Select(sp => (int?)sp.XP).FirstOrDefault() ?? 0)
+                            && o.Id < s.Id)))
+            });
+
+    private sealed class RankPosition
+    {
+        public int Id { get; set; }
+        public int Xp { get; set; }
+        public int Ahead { get; set; }
     }
 
     /// <summary>

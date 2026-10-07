@@ -70,6 +70,42 @@
       "rangeEmpty": "0 of {{length}}"
     }
   },
+  "progress": {
+    "title": "Points and badges",
+    "subtitle": "Level, points and earned badges. Other students' details are never shown.",
+    "loadError": "Points and badges could not be loaded.",
+    "level": "Level",
+    "totalXp": "Total points",
+    "weeklyXp": "Earned this week",
+    "ranksLabel": "Ranking",
+    "rank": {
+      "school": "#{{rank}} in their school ({{total}} students)",
+      "global": "#{{rank}} overall ({{total}} students)"
+    },
+    "badges": "Badges",
+    "noBadges": "No badges to show yet. Newly earned badges appear here."
+  },
+  "schedule": {
+    "title": "Schedule",
+    "subtitle": "Weekly plans and lesson bookings. Lesson links are not shown to parents.",
+    "loadError": "The schedule could not be loaded.",
+    "rangeError": "This date range cannot be shown (at most one year before or after today).",
+    "previousWeek": "Previous week",
+    "nextWeek": "Next week",
+    "thisWeek": "This week",
+    "range": "{{from}} – {{to}}",
+    "today": "Today",
+    "empty": "No plans or lessons in this range.",
+    "nothing": "Nothing planned",
+    "lesson": "Lesson",
+    "lessonWith": "Lesson with {{name}}",
+    "plan": "Plan",
+    "planned": "Planned study",
+    "status": {
+      "pending": "Awaiting approval",
+      "approved": "Approved"
+    }
+  },
   "duration": {
     "underMinute": "under 1 min",
     "minutes": "{{m}} min",

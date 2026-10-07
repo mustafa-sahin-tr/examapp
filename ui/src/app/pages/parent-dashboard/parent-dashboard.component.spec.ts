@@ -84,9 +84,17 @@ describe('ParentDashboardComponent (issue #420)', () => {
       'getChildSummary',
       'getChildAssignments',
       'getChildTestResult',
+      'getChildProgress',
+      'getChildSchedule',
     ]);
     dashboardService.getChildSummary.and.callFake((id: number) => of(summaryFor(id)));
     dashboardService.getChildAssignments.and.callFake((id: number) => of(emptyList(id)));
+    dashboardService.getChildProgress.and.callFake((id: number) =>
+      of({ studentId: id, totalXp: 0, level: 1, weekStart: '2026-10-05', weeklyXp: 0, badges: [], ranks: [] })
+    );
+    dashboardService.getChildSchedule.and.callFake((id: number) =>
+      of({ studentId: id, from: '2026-10-05', to: '2026-10-11', plans: [], lessons: [] })
+    );
 
     TestBed.configureTestingModule({
       imports: [
@@ -331,10 +339,42 @@ describe('ParentDashboardComponent (issue #420)', () => {
     expect(dashboardService.getChildAssignments).toHaveBeenCalledOnceWith(12, null, 1);
   });
 
+  it('progressAndScheduleSections_FollowTheSelectedChild', async () => {
+    const el = await setup([ayse, mert]);
+    expect(el.querySelector('[data-test="progress-section"]')).not.toBeNull();
+    expect(el.querySelector('[data-test="schedule-section"]')).not.toBeNull();
+    expect(dashboardService.getChildProgress).toHaveBeenCalledOnceWith(11);
+    expect(dashboardService.getChildSchedule).toHaveBeenCalledOnceWith(11, undefined);
+
+    dashboardService.getChildProgress.calls.reset();
+    dashboardService.getChildSchedule.calls.reset();
+    (harness.routeDebugElement!.componentInstance as unknown as { selectChild(id: number): void }).selectChild(12);
+    await settle();
+    expect(dashboardService.getChildProgress).toHaveBeenCalledOnceWith(12);
+    // Çocuk değişince program bu haftaya döner (aralıksız istek).
+    expect(dashboardService.getChildSchedule).toHaveBeenCalledOnceWith(12, undefined);
+  });
+
+  it('progress404_ShowsNoticeAndReloadsChildren', async () => {
+    const el = await setup([ayse]);
+    linkService.getMyChildren.and.returnValue(of([]));
+    dashboardService.getChildProgress.and.returnValue(throwError(() => new HttpErrorResponse({ status: 404 })));
+    const section = harness.routeDebugElement!.query(
+      (d) => d.name === 'app-parent-child-progress'
+    )!.componentInstance as unknown as { reload(): void };
+    section.reload();
+    await settle();
+
+    expect(linkService.getMyChildren).toHaveBeenCalledTimes(2);
+    expect(el.querySelector('[data-test="empty"]')).not.toBeNull();
+  });
+
   it('noChildren_HasNoAssignmentsSection', async () => {
     const el = await setup([]);
     expect(el.querySelector('[data-test="assignments-section"]')).toBeNull();
     expect(dashboardService.getChildAssignments).not.toHaveBeenCalled();
+    expect(dashboardService.getChildProgress).not.toHaveBeenCalled();
+    expect(dashboardService.getChildSchedule).not.toHaveBeenCalled();
   });
 
   it('assignments404_ShowsNoticeAndReloadsChildren', async () => {

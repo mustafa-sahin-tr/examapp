@@ -6,7 +6,6 @@ using ExamApp.Api.Models.Dtos.Video;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.Bookings;
 using ExamApp.Api.Services.Interfaces;
-using ExamApp.Api.Services.Tenancy;
 using ExamApp.Api.Services.Video;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
@@ -82,7 +81,7 @@ public class SuspendedTutorVisibilityTests : IDisposable
         var tp = TimeProvider.System;
         var recurring = new RecurringAvailabilityService(ctx, tp, NullLogger<RecurringAvailabilityService>.Instance);
         return new BookingService(ctx, _authApi, Substitute.For<IVideoSessionProvider>(), Options.Create(new VideoOptions()),
-            tp, recurring, NullLogger<BookingService>.Instance, new SchoolAccessPolicy(ctx));
+            tp, recurring, NullLogger<BookingService>.Instance);
     }
 
     [Fact]
@@ -115,15 +114,14 @@ public class SuspendedTutorVisibilityTests : IDisposable
     public async Task Open_slots_of_a_suspended_tutor_are_not_found_like_an_unknown_teacher()
     {
         var (tutorId, _) = await SeedAsync();
-        var student = SchoolScope.For(StudentUserId, null);
         await using (var ctx = _db.NewContext())
-            (await Bookings(ctx).GetTeacherOpenSlotsAsync(tutorId, student, 0, 50)).Items.ShouldHaveSingleItem();
+            (await Bookings(ctx).GetTeacherOpenSlotsAsync(tutorId, 0, 50)).Items.ShouldHaveSingleItem();
 
         await SuspendAsync(tutorId);
 
         await using var after = _db.NewContext();
-        var result = await Bookings(after).GetTeacherOpenSlotsAsync(tutorId, student, 0, 50);
-        var unknown = await Bookings(after).GetTeacherOpenSlotsAsync(987654, student, 0, 50);
+        var result = await Bookings(after).GetTeacherOpenSlotsAsync(tutorId, 0, 50);
+        var unknown = await Bookings(after).GetTeacherOpenSlotsAsync(987654, 0, 50);
         result.Success.ShouldBeFalse();
         result.NotFound.ShouldBeTrue();
         result.Message.ShouldBe(unknown.Message); // var/yok ayrımı sızmaz

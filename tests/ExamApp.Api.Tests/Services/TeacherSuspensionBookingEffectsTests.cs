@@ -71,12 +71,12 @@ public class TeacherSuspensionBookingEffectsTests : IDisposable
         await using var ctx = _db.NewContext();
         ctx.Teachers.Add(new Teacher
         {
-            Id = TeacherId, UserId = TeacherUserId, ApprovalStatus = TeacherApprovalStatus.Approved, Bio = "t",
+            Id = TeacherId, UserId = TeacherUserId, ApprovalStatus = TeacherApprovalStatus.Approved, IsIndependentTutor = true, Bio = "t", // #418
             AccountApprovedAt = DateTime.UtcNow.AddDays(-30)
         });
         ctx.Teachers.Add(new Teacher
         {
-            Id = OtherTeacherId, UserId = OtherTeacherUserId, ApprovalStatus = TeacherApprovalStatus.Approved, Bio = "t",
+            Id = OtherTeacherId, UserId = OtherTeacherUserId, ApprovalStatus = TeacherApprovalStatus.Approved, IsIndependentTutor = true, Bio = "t", // #418
             AccountApprovedAt = DateTime.UtcNow.AddDays(-30)
         });
         foreach (var (id, userId) in new[] { (StudentA, StudentAUser), (StudentB, StudentBUser), (StudentC, StudentCUser), (StudentD, StudentDUser) })
@@ -563,7 +563,7 @@ public class TeacherSuspensionBookingEffectsTests : IDisposable
     private BookingService NewBookingService(AppDbContext ctx, IVideoSessionProvider? provider = null, IAuthApiClient? authApi = null)
         => new(ctx, authApi ?? _authApi, provider ?? Substitute.For<IVideoSessionProvider>(), Options.Create(new VideoOptions()), _clock,
             new RecurringAvailabilityService(ctx, _clock, NullLogger<RecurringAvailabilityService>.Instance),
-            NullLogger<BookingService>.Instance, new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy(ctx));
+            NullLogger<BookingService>.Instance);
 
     private async Task<VideoSessionResultDto> VideoAsync(int callerUserId, int bookingId)
     {

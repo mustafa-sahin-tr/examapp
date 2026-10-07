@@ -269,6 +269,11 @@ public class ExamController : BaseController
         }
 
         var student = await _studentService.GetStudentProfile(user.Id);
+        if (student == null)
+        {
+            // Issue #418 (#373 ile aynı savunma): Öğrenci rolü olup Student kaydı olmayan kullanıcı → 404, 500 değil.
+            return NotFound(_localizer["exam.studentProfileNotFound"].Value);
+        }
 
         var result = await _examService.GetWorksheetAndInstancesAsync(student, gradeId);
         return Ok(result);

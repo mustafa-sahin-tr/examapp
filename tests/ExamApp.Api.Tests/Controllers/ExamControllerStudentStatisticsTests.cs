@@ -113,4 +113,34 @@ public class ExamControllerStudentStatisticsTests
 
         result.ShouldBeOfType<OkObjectResult>().Value.ShouldBe(expected);
     }
+
+    /// <summary>Issue #418: <c>GET worksheet/student-worksheets</c> öğrenci kaydı yoksa 500 (null dereference) değil 404.</summary>
+    [Fact]
+    public async Task GetWorksheetAndInstances_UserWithoutStudentRecord_Returns404_WithoutCallingService()
+    {
+        var user = new UserProfileDto { Id = 42, KeycloakId = "kc-1", Role = "Student" };
+        _studentService.GetStudentProfile(42).Returns((StudentProfileDto)null!);
+
+        var controller = NewController(user);
+        var result = await controller.GetWorksheetAndInstancessAsync(gradeId: 5);
+
+        var notFound = result.ShouldBeOfType<NotFoundObjectResult>();
+        notFound.StatusCode.ShouldBe(StatusCodes.Status404NotFound);
+        await _examService.DidNotReceiveWithAnyArgs().GetWorksheetAndInstancesAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task GetWorksheetAndInstances_Student_ReturnsOkWithServiceResult()
+    {
+        var user = new UserProfileDto { Id = 42, KeycloakId = "kc-1", Role = "Student" };
+        var student = new StudentProfileDto { Id = 7, GradeId = 5 };
+        _studentService.GetStudentProfile(42).Returns(student);
+        var expected = new List<WorksheetWithInstanceDto>();
+        _examService.GetWorksheetAndInstancesAsync(student, 5).Returns(expected);
+
+        var controller = NewController(user);
+        var result = await controller.GetWorksheetAndInstancessAsync(gradeId: 5);
+
+        result.ShouldBeOfType<OkObjectResult>().Value.ShouldBe(expected);
+    }
 }

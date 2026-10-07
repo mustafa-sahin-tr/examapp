@@ -41,7 +41,7 @@ public class RecurringAvailabilityServiceTests : IDisposable
         var tp = new FakeTimeProvider(now ?? FixedNow);
         var recurring = new RecurringAvailabilityService(ctx, tp, NullLogger<RecurringAvailabilityService>.Instance);
         return new BookingService(ctx, _authApi, _videoProvider, Options.Create(new VideoOptions()), tp, recurring,
-            NullLogger<BookingService>.Instance, new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy(ctx));
+            NullLogger<BookingService>.Instance);
     }
 
     private static CreateRecurringAvailabilityRuleDto WednesdayRule(DateOnly? effectiveFrom = null, DateOnly? effectiveUntil = null) => new()
@@ -56,7 +56,7 @@ public class RecurringAvailabilityServiceTests : IDisposable
     private async Task SeedTeacherAsync(int teacherId, int userId, TeacherApprovalStatus status = TeacherApprovalStatus.Approved)
     {
         await using var ctx = _db.NewContext();
-        ctx.Teachers.Add(new Teacher { Id = teacherId, UserId = userId, ApprovalStatus = status, Bio = "test" });
+        ctx.Teachers.Add(new Teacher { Id = teacherId, UserId = userId, ApprovalStatus = status, IsIndependentTutor = true, Bio = "test" }); // #418
         await ctx.SaveChangesAsync();
     }
 
@@ -621,7 +621,7 @@ public class RecurringAvailabilityServiceTests : IDisposable
         }
 
         await using var ctx = _db.NewContext();
-        var result = await NewBookingService(ctx).GetTeacherOpenSlotsAsync(TeacherId, ExamApp.Api.Services.Tenancy.SchoolScope.For(StudentUserId, null), 0, 200);
+        var result = await NewBookingService(ctx).GetTeacherOpenSlotsAsync(TeacherId, 0, 200);
 
         result.Success.ShouldBeTrue();
         result.Items.Count.ShouldBeGreaterThan(0);

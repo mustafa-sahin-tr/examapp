@@ -67,7 +67,7 @@ public sealed class CheckTeacherTeacherDto
         UserId = teacher.UserId,
         SchoolName = teacher.SchoolName,
         SchoolId = teacher.SchoolId,
-        IsIndependentTutor = teacher.IsIndependentTutor,
+        IsIndependentTutor = ExamApp.Api.Services.Teachers.TeacherIndependence.IsIndependent(teacher),
         ThemePreset = teacher.ThemePreset,
         ThemeCustomConfig = teacher.ThemeCustomConfig
     };

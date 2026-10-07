@@ -37,7 +37,7 @@ public class WhiteboardAccessServiceTests : IDisposable
         var bookings = new BookingService(ctx, Substitute.For<IAuthApiClient>(), Substitute.For<IVideoSessionProvider>(),
             Options.Create(new VideoOptions()), _clock,
             new RecurringAvailabilityService(ctx, _clock, NullLogger<RecurringAvailabilityService>.Instance),
-            NullLogger<BookingService>.Instance, new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy(ctx));
+            NullLogger<BookingService>.Instance);
         return new WhiteboardAccessService(bookings, new ApprovedTeacherGuard(ctx), _profiles, ctx);
     }
 

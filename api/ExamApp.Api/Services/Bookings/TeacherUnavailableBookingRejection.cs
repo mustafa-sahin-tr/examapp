@@ -1,17 +1,20 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
+using ExamApp.Api.Services.Teachers;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Services.Bookings;
 
-/// <summary>Askıdaki öğretmenin otomatik reddedilecek Pending talebi (bildirim alanlarıyla).</summary>
+/// <summary>Askıdaki / bağımsız olmayan (#418) öğretmenin otomatik reddedilecek Pending talebi (bildirim alanlarıyla).</summary>
 internal sealed record PendingBookingRow(
     int Id,
     int TeacherId,
@@ -35,6 +38,24 @@ internal sealed record PendingBookingRow(
 /// </summary>
 internal static class TeacherUnavailableBookingRejection
 {
+    /// <summary>
+    /// Talebin öğretmeni talep alamaz: askıda (#298/#331) YA DA bağımsız değil (issue #418 — randevu bağımsız öğretmen
+    /// özelliği; okula bağlı/hibrit öğretmende kalmış Pending talepler de kapanır). Bağımsızlık tek kuraldan
+    /// (<see cref="TeacherIndependence.Holds"/>) gömülür; süpürme seçimi ve koşullu UPDATE aynı ifadeyi kullanır.
+    /// </summary>
+    public static readonly Expression<Func<Booking, bool>> TeacherUnavailable = BuildTeacherUnavailable();
+
+    private static Expression<Func<Booking, bool>> BuildTeacherUnavailable()
+    {
+        var booking = Expression.Parameter(typeof(Booking), "b");
+        var teacher = Expression.Property(booking, nameof(Booking.Teacher));
+        var suspended = Expression.NotEqual(
+            Expression.Property(teacher, nameof(Teacher.AccountSuspendedAt)),
+            Expression.Constant(null, typeof(DateTime?)));
+        var notIndependent = Expression.Not(PredicateComposer.Inline(TeacherIndependence.Holds, teacher));
+        return Expression.Lambda<Func<Booking, bool>>(Expression.OrElse(suspended, notIndependent), booking);
+    }
+
     /// <summary>Verilen sorgudaki Pending talepleri bildirim alanlarıyla projekte eder.</summary>
     public static IQueryable<PendingBookingRow> SelectPending(IQueryable<Booking> bookings)
         => bookings
@@ -70,7 +91,8 @@ internal static class TeacherUnavailableBookingRejection
         {
             var id = booking.Id;
             var updated = await context.Bookings
-                .Where(b => b.Id == id && b.Status == BookingStatus.Pending && b.Teacher.AccountSuspendedAt != null)
+                .Where(b => b.Id == id && b.Status == BookingStatus.Pending)
+                .Where(TeacherUnavailable)
                 .ExecuteUpdateAsync(set => set
                     .SetProperty(b => b.Status, BookingStatus.Rejected)
                     .SetProperty(b => b.DecisionAt, nowUtc)

@@ -107,7 +107,8 @@ export class CalendarDayDialogComponent {
   private readonly router = inject(Router);
   private readonly programService = inject(ProgramService);
   /** Randevu satırının hedefi role göre değişir (öğretmen gelen kutusu / öğrenci listesi). */
-  private readonly isTeacher = inject(AuthService).hasRealmRole('Teacher');
+  private readonly authService = inject(AuthService);
+  private readonly isTeacher = this.authService.hasRealmRole('Teacher');
   private readonly destroyRef = inject(DestroyRef);
   private readonly transloco = inject(TranslocoService);
   private readonly dialogRef = inject<MatDialogRef<CalendarDayDialogComponent>>(MatDialogRef, { optional: true });
@@ -198,7 +199,13 @@ export class CalendarDayDialogComponent {
       // Gün aşan ders (issue #300): bitiş `endDate` (= endUtc) ertesi yerel gündeyse "(+1 gün)".
       const nextDay = end && endsOnNextLocalDay(at, end) ? ` ${this.t(SLOT_NEXT_DAY_KEY)}` : '';
       const range = end ? `${TIME_FMT.format(at)} – ${TIME_FMT.format(end)}${nextDay}` : TIME_FMT.format(at);
-      const target = this.isTeacher ? '/booking-requests' : '/my-bookings';
+      // Issue #418: `/booking-requests` yalnız bağımsız öğretmene (bayrak bilinmiyorsa açık); okula bağlı olduğu bilinen
+      // öğretmene "randevulara git" aksiyonu gösterilmez.
+      const target = !this.isTeacher
+        ? '/my-bookings'
+        : AuthService.isIndependentTutorOf(this.authService.user()) !== false
+          ? '/booking-requests'
+          : null;
       return {
         time,
         variant: 'booking',
@@ -208,16 +215,19 @@ export class CalendarDayDialogComponent {
         sunk: time < Date.now(),
         sunkLabel: null,
         sunkIcon: null,
-        actions: [
-          {
-            label: this.t('shared.calendarDayDialog.goToBookings'),
-            icon: 'event_available',
-            run: () => {
-              this.close();
-              void this.router.navigate([target]);
-            },
-          },
-        ],
+        actions:
+          target === null
+            ? []
+            : [
+                {
+                  label: this.t('shared.calendarDayDialog.goToBookings'),
+                  icon: 'event_available',
+                  run: () => {
+                    this.close();
+                    void this.router.navigate([target]);
+                  },
+                },
+              ],
         detail: null,
         programId: null,
       };

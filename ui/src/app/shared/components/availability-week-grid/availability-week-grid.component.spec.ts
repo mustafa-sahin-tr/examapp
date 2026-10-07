@@ -79,6 +79,23 @@ function createSlotInWeek(
 describe('AvailabilityWeekGridComponent', () => {
   let component: AvailabilityWeekGridComponent;
   let fixture: ComponentFixture<AvailabilityWeekGridComponent>;
+  let originalHtmlLang: string | null;
+
+  // Etiket/saat beklentileri Türkçe (24 saat) biçimdir. Bileşen dili `<html lang>`'tan okur
+  // (activeAppLocale); gerçek LocaleService'i kuran diğer spec'ler bunu tarayıcı diline (en)
+  // çekebildiği için ön koşul burada açıkça sabitlenir ve sonra geri yüklenir (#394).
+  beforeEach(() => {
+    originalHtmlLang = document.documentElement.getAttribute('lang');
+    document.documentElement.setAttribute('lang', 'tr');
+  });
+
+  afterEach(() => {
+    if (originalHtmlLang === null) {
+      document.documentElement.removeAttribute('lang');
+    } else {
+      document.documentElement.setAttribute('lang', originalHtmlLang);
+    }
+  });
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({

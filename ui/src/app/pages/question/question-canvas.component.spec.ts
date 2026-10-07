@@ -579,6 +579,7 @@ describe('QuestionCanvasComponent', () => {
       const imageSelectorFake = {
         getRegions: jasmine.createSpy('getRegions').and.callFake((payload: any) => payload),
         sendToFix: jasmine.createSpy('sendToFix'),
+        nextImage: jasmine.createSpy('nextImage'),
       };
       localComponent.imageSelector = imageSelectorFake as any;
 
@@ -587,8 +588,47 @@ describe('QuestionCanvasComponent', () => {
       };
       localComponent.testCreateEnhancedComponent = tceFake as any;
 
-      return { component: localComponent, questionServiceLocal, imageSelectorFake, tceFake, saveBulk$ };
+      return { fixture: localFixture, component: localComponent, questionServiceLocal, imageSelectorFake, tceFake, saveBulk$ };
     }
+
+    /** Kayıt sonrası 2 sn'lik "sonraki görsel" geçişi sahte saatle sürülür (#394). */
+    async function withMockClock(body: () => void | Promise<void>): Promise<void> {
+      jasmine.clock().install();
+      try {
+        await body();
+      } finally {
+        jasmine.clock().uninstall();
+      }
+    }
+
+    it('onSave_Success_AdvancesToNextImageAfterDelay', async () => {
+      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: false });
+
+      await withMockClock(() => {
+        component.onSave();
+        saveBulk$.next({});
+
+        jasmine.clock().tick(1999);
+        expect(imageSelectorFake.nextImage).not.toHaveBeenCalled();
+
+        jasmine.clock().tick(1);
+        expect(imageSelectorFake.nextImage).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('onSave_ComponentDestroyedBeforeDelay_DoesNotAdvanceToNextImage', async () => {
+      const { fixture: localFixture, component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: false });
+
+      await withMockClock(() => {
+        component.onSave();
+        saveBulk$.next({});
+
+        localFixture.destroy();
+        jasmine.clock().tick(2000);
+
+        expect(imageSelectorFake.nextImage).not.toHaveBeenCalled();
+      });
+    });
 
     it('onSave_SavingAlreadyTrue_DoesNotCallSaveBulkAgain', async () => {
       const { component, questionServiceLocal } = await setup({ isAdmin: false });

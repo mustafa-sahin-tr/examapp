@@ -1,8 +1,8 @@
 {
   "meta": {
-    "title": "Hedef Okul | Online Sınav ve Çalışma Yaprağı Platformu",
-    "description": "Hedef Okul, 3-8. sınıf öğrencileri için müfredata uygun çalışma yaprakları, online sınavlar ve yapay zekâ destekli soru tespiti sunan Türkiye'nin eğitim platformu.",
-    "ogTitle": "Hedef Okul | Online Sınav ve Çalışma Yaprağı Platformu",
+    "title": "{{ brand.name }} | Online Sınav ve Çalışma Yaprağı Platformu",
+    "description": "{{ brand.name }}, 3-8. sınıf öğrencileri için müfredata uygun çalışma yaprakları, online sınavlar ve yapay zekâ destekli soru tespiti sunan Türkiye'nin eğitim platformu.",
+    "ogTitle": "{{ brand.name }} | Online Sınav ve Çalışma Yaprağı Platformu",
     "ogDescription": "3-8. sınıf öğrencileri için müfredata uygun çalışma yaprakları ve sınavlarla öğrenmeyi kolaylaştırıyoruz."
   },
   "common": {
@@ -26,7 +26,7 @@
   "hero": {
     "titleLead": "Her Sınavda Başarı — Tek",
     "titleHighlight": "Güçlü Platform.",
-    "description": "Hedef Okul, öğrenciler, öğretmenler ve ebeveynler için tasarlanmış kapsamlı bir online sınav ve çalışma yaprağı platformudur. Akıllı soru bankası, gerçek zamanlı sınavlar ve ilerleme takibi ile hedefine ulaş.",
+    "description": "{{ brand.name }}, öğrenciler, öğretmenler ve ebeveynler için tasarlanmış kapsamlı bir online sınav ve çalışma yaprağı platformudur. Akıllı soru bankası, gerçek zamanlı sınavlar ve ilerleme takibi ile hedefine ulaş.",
     "cta": "Çalışma Yapraklarını Keşfet",
     "reviewsLabel": "Öğrenci Yorumları",
     "activeStudents": "10.000+ Aktif Öğrenci"
@@ -38,7 +38,7 @@
     "ratingHighlight": "50.000+ öğrenci çalışma yapraklarına 5 yıldız verdi"
   },
   "news": {
-    "title": "Hedef Okul'dan Haberler",
+    "title": "{{ brand.name }}'dan Haberler",
     "morePrompt": "Daha fazlasını okumak ister misin?",
     "allNews": "Tüm haberler",
     "featureRelease": {
@@ -51,7 +51,7 @@
     "parentGuide": {
       "tag": "Ebeveyn Rehberi",
       "title": "Çocuğunuzun Sınav Sürecini Takip Etmenin 5 Yolu",
-      "excerpt": "Hedef Okul'daki ebeveyn paneli ile çocuğunuzun hangi konularda zorlandığını anlık olarak görün, eksik konulara odaklanın.",
+      "excerpt": "{{ brand.name }}'daki ebeveyn paneli ile çocuğunuzun hangi konularda zorlandığını anlık olarak görün, eksik konulara odaklanın.",
       "author": "Editör Ekibi",
       "date": "5 saat önce"
     },
@@ -165,7 +165,7 @@
   },
   "howItWorks": {
     "sub": "Nasıl Çalışır?",
-    "title": "Hedef Okul Nasıl Çalışır?",
+    "title": "{{ brand.name }} Nasıl Çalışır?",
     "register": {
       "title": "Kayıt Ol",
       "description": "Öğrenci, öğretmen veya ebeveyn olarak"
@@ -195,7 +195,7 @@
   },
   "blog": {
     "sub": "Blogumuz",
-    "titleLead": "Hedef Okul'dan",
+    "titleLead": "{{ brand.name }}'dan",
     "titleHighlight": "Bilgi, İpucu",
     "titleTrail": "ve İlham",
     "description": "Öğrenci, öğretmen ve ebeveynler için hazırlanmış çalışma tüyoları, başarı hikayeleri ve eğitim rehberleriyle her zaman bir adım önde ol.",
@@ -209,18 +209,18 @@
     },
     "success": {
       "tag": "Başarı Hikayeleri",
-      "title": "Hedef Okul ile Sınav Başarısına Ulaşan Öğrenciler",
+      "title": "{{ brand.name }} ile Sınav Başarısına Ulaşan Öğrenciler",
       "date": "5 Mart 2026",
       "readTime": "7 dk okuma",
       "excerpt": "Platforma üye olan öğrencilerin çalışma yapraklarıyla nasıl sınav başarısı yakaladıklarını gerçek hikayelerle keşfet."
     }
   },
   "about": {
-    "sub": "Hedef Okul Hakkında",
+    "sub": "{{ brand.name }} Hakkında",
     "titleLead": "Tek Platform. Sınırsız",
     "titleHighlight": "Başarı",
     "titleTrail": "Fırsatları.",
-    "description": "Hedef Okul'da kaliteli eğitimin tüm öğrenciler için ulaşılabilir, eğlenceli ve güçlendirici olması gerektiğine inanıyoruz.",
+    "description": "{{ brand.name }}'da kaliteli eğitimin tüm öğrenciler için ulaşılabilir, eğlenceli ve güçlendirici olması gerektiğine inanıyoruz.",
     "students": { "value": "50.000+", "label": "Aktif Öğrenci" },
     "teachers": { "value": "2.000+", "label": "Uzman Öğretmen" },
     "anywhere": {
@@ -239,10 +239,10 @@
   },
   "faq": {
     "sub": "Sıkça Sorulan Sorular",
-    "titleLead": "Hedef Okul Hakkında",
+    "titleLead": "{{ brand.name }} Hakkında",
     "titleHighlight": "Merak Ettikleriniz",
     "membership": {
-      "question": "Hedef Okul'a nasıl üye olabilirim?",
+      "question": "{{ brand.name }}'a nasıl üye olabilirim?",
       "answer": "Siteye girerek \"Kayıt Ol\" butonuna tıklayın, e-posta adresiniz ve şifrenizle birkaç saniyede ücretsiz hesap oluşturun. Kayıt sonrasında tüm çalışma yapraklarına ve sınavlara anında erişebilirsiniz."
     },
     "pricing": {
@@ -307,7 +307,7 @@
   },
   "services": {
     "titleLead": "Neden",
-    "titleHighlight": "Hedef Okul",
+    "titleHighlight": "{{ brand.name }}",
     "titleTrail": "ile öğrenmelisiniz?",
     "description": "Öğrenci, öğretmen ve ebeveynler için tasarlanmış, her ihtiyaca cevap veren bir platform.",
     "worksheets": {

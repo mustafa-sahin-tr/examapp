@@ -859,50 +859,90 @@ describe('EnhancedLayoutComponent active menu item (issue #385)', () => {
   });
 });
 
+/**
+ * Tam render edilen (ngOnInit + şablon) layout için sağlayıcılar. `mobile` BreakpointObserver'ı sabitler;
+ * Karma penceresi mobil sorgusuna düşebildiği için her iki düzen de açıkça seçilir.
+ */
+function renderedLayoutProviders(roles: string[], mobile: boolean) {
+  const authStub: Partial<AuthService> = {
+    hasRealmRole: (role: string) => roles.includes(role),
+    isAuthenticated: () => of(true),
+    isUnapprovedTeacher: signal(false),
+    isCachedUserCurrent: () => true,
+    refreshProfile: () => NEVER,
+    user: signal(null),
+  };
+  return [
+    { provide: BreakpointObserver, useValue: { observe: () => of({ matches: mobile, breakpoints: {} }) } },
+    provideHttpClient(),
+    provideHttpClientTesting(),
+    provideRouter([]),
+    { provide: AuthService, useValue: authStub },
+    {
+      provide: SignalRService,
+      useValue: {
+        startConnection: () => undefined,
+        accessRequestUpdates$: new Subject(),
+        notificationsChanged$: new Subject<void>().asObservable(),
+        directMessageReceived$: new Subject().asObservable(),
+      },
+    },
+    { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
+    { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
+    { provide: DirectMessageService, useValue: directMessageStub() },
+    {
+      provide: NotificationService,
+      useValue: { unreadCount: signal(0).asReadonly(), refreshUnreadCount: () => of(0), resetUnreadCount: () => undefined },
+    },
+    { provide: UserThemeService, useValue: { userTheme$: of(null) } },
+    { provide: ThemeConfigService, useValue: {} },
+  ];
+}
+
+function renderLayout(roles: string[], mobile: boolean): ComponentFixture<EnhancedLayoutComponent> {
+  TestBed.configureTestingModule({
+    imports: [EnhancedLayoutComponent, NoopAnimationsModule, translocoTestingModule()],
+    providers: renderedLayoutProviders(roles, mobile),
+  });
+  const fixture = TestBed.createComponent(EnhancedLayoutComponent);
+  fixture.detectChanges();
+  return fixture;
+}
+
+/** Issue #409: marka adı uygulama kabuğunda kök sözlükteki tek `brand.name` anahtarından gelir. */
+describe('EnhancedLayoutComponent brand name (issue #409)', () => {
+  afterEach(() => localStorage.removeItem('user'));
+
+  function text(fixture: ComponentFixture<EnhancedLayoutComponent>, selector: string): string | undefined {
+    return (fixture.nativeElement as HTMLElement).querySelector(selector)?.textContent?.trim();
+  }
+
+  it('desktopSidebarTitle_ShowsBrandNameFromI18n', () => {
+    const fixture = renderLayout(['Student'], false);
+    expect(text(fixture, '.app-title')).toBe('Hedef Okul');
+  });
+
+  it('mobileToolbarTitle_ShowsBrandNameFromI18n', () => {
+    const fixture = renderLayout(['Student'], true);
+    expect(text(fixture, '.mobile-toolbar-title')).toBe('Hedef Okul');
+  });
+
+  it('brandName_IsSameInEnglish_AndNeverTheOldName', () => {
+    const fixture = renderLayout(['Student'], false);
+    TestBed.inject(TranslocoService).setActiveLang('en');
+    fixture.detectChanges();
+    expect(text(fixture, '.app-title')).toBe('Hedef Okul');
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('ExamApp');
+  });
+});
+
 /** Issue #375: profil menüsünde yalnız çalışan öğeler (Ayarlar, Bildirimler, Çıkış). #417: Ayarlar tüm rollerde. */
 describe('EnhancedLayoutComponent profile menu (issue #375)', () => {
   let fixture: ComponentFixture<EnhancedLayoutComponent>;
 
   function setup(roles: string[]): void {
-    const authStub: Partial<AuthService> = {
-      hasRealmRole: (role: string) => roles.includes(role),
-      isAuthenticated: () => of(true),
-      isUnapprovedTeacher: signal(false),
-      isCachedUserCurrent: () => true,
-      refreshProfile: () => NEVER,
-      user: signal(null),
-    };
-    TestBed.configureTestingModule({
-      imports: [EnhancedLayoutComponent, NoopAnimationsModule, translocoTestingModule()],
-      providers: [
-        // Masaüstü düzeni: profil menüsü yalnız masaüstü toolbar'ında (Karma penceresi mobil sorgusuna düşebilir).
-        { provide: BreakpointObserver, useValue: { observe: () => of({ matches: false, breakpoints: {} }) } },
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        provideRouter([]),
-        { provide: AuthService, useValue: authStub },
-        {
-          provide: SignalRService,
-          useValue: {
-            startConnection: () => undefined,
-            accessRequestUpdates$: new Subject(),
-            notificationsChanged$: new Subject<void>().asObservable(),
-            directMessageReceived$: new Subject().asObservable(),
-          },
-        },
-        { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
-        { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
-        { provide: DirectMessageService, useValue: directMessageStub() },
-        {
-          provide: NotificationService,
-          useValue: { unreadCount: signal(0).asReadonly(), refreshUnreadCount: () => of(0), resetUnreadCount: () => undefined },
-        },
-        { provide: UserThemeService, useValue: { userTheme$: of(null) } },
-        { provide: ThemeConfigService, useValue: {} },
-      ],
-    });
-    fixture = TestBed.createComponent(EnhancedLayoutComponent);
-    fixture.detectChanges();
+    // Masaüstü düzeni: profil menüsü yalnız masaüstü toolbar'ında.
+    fixture = renderLayout(roles, false);
   }
 
   afterEach(() => localStorage.removeItem('user'));

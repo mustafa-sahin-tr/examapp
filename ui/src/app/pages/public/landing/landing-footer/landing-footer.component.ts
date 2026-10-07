@@ -1,9 +1,9 @@
 import { Component } from '@angular/core';
-import { TranslocoDirective } from '@jsverse/transloco';
+import { TranslocoDirective, TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-landing-footer',
-  imports: [TranslocoDirective],
+  imports: [TranslocoDirective, TranslocoPipe],
   templateUrl: './landing-footer.component.html',
   styleUrls: ['./landing-footer.component.scss'],
   standalone: true,

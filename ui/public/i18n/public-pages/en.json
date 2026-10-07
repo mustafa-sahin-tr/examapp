@@ -1,21 +1,21 @@
 {
   "privacyPolicy": {
     "meta": {
-      "title": "Privacy Policy | ExamApp",
-      "description": "ExamApp privacy policy and data protection commitment."
+      "title": "Privacy Policy | {{ brand.name }}",
+      "description": "{{ brand.name }} privacy policy and data protection commitment."
     },
     "title": "Privacy Policy",
-    "intro": "At ExamApp we take our users' privacy very seriously. Your personal data is protected in line with applicable regulations and is never shared with third parties.",
+    "intro": "At {{ brand.name }} we take our users' privacy very seriously. Your personal data is protected in line with applicable regulations and is never shared with third parties.",
     "contact": "Please contact us if you would like more information."
   },
   "terms": {
     "meta": {
-      "title": "Terms of Use | ExamApp",
-      "description": "ExamApp terms of use: the rules and conditions that apply to our services."
+      "title": "Terms of Use | {{ brand.name }}",
+      "description": "{{ brand.name }} terms of use: the rules and conditions that apply to our services."
     },
     "title": "Terms of Use",
-    "intro": "By using ExamApp services you agree to the terms below. Please read all of the rules carefully.",
-    "purpose": "ExamApp is designed to improve the exam experience of its users.",
+    "intro": "By using {{ brand.name }} services you agree to the terms below. Please read all of the rules carefully.",
+    "purpose": "{{ brand.name }} is designed to improve the exam experience of its users.",
     "misuse": "Misuse of our services is prohibited.",
     "updates": "Check this page regularly for updated terms and conditions."
   }

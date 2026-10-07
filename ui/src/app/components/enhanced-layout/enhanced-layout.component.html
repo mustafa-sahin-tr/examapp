@@ -14,7 +14,7 @@
             (keydown.enter)="isSidenavCollapsed() ? toggleSidenav() : null"
             (keydown.space)="isSidenavCollapsed() ? toggleSidenav() : null">
             <mat-icon class="logo-icon">school</mat-icon>
-            <span class="app-title" *ngIf="!isSidenavCollapsed()">ExamApp</span>
+            <span class="app-title" *ngIf="!isSidenavCollapsed()">{{ 'brand.name' | transloco }}</span>
           </div>
           <button mat-icon-button class="toggle-btn" *ngIf="!isSidenavCollapsed()" (click)="toggleSidenav()"
             [matTooltip]="isMobile() ? t('sidebar.close') : t('sidebar.collapse')">
@@ -60,7 +60,7 @@
         <button mat-icon-button (click)="toggleSidenav()" [attr.aria-label]="t('sidebar.open')">
           <mat-icon>menu</mat-icon>
         </button>
-        <span class="mobile-toolbar-title">ExamApp</span>
+        <span class="mobile-toolbar-title">{{ 'brand.name' | transloco }}</span>
         <app-language-switcher class="mobile-toolbar-actions"></app-language-switcher>
         <app-color-scheme-toggle class="mobile-toolbar-actions"></app-color-scheme-toggle>
         @if (isAuthenticated | async) {

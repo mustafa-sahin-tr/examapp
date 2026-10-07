@@ -12,6 +12,7 @@ import {
 import { AuthService, TokenResponse } from '../../services/auth.service';
 import { OIDC_FLOW_KEY_PREFIX, OidcLoginRecord } from '../../services/oidc-flow.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { BRAND_NAME } from '../../shared/brand';
 
 /**
  * Issue #347: callback yalnızca bu sekmede başlatılmış login'in `state`'ini kabul eder, code'u PKCE
@@ -72,6 +73,15 @@ describe('CallbackComponent', () => {
   it('should create', () => {
     const fixture = createComponent({});
     expect(fixture.componentInstance).toBeTruthy();
+  });
+
+  it('brandTitle_ShowsBrandName (issue #409)', () => {
+    const fixture = createComponent({});
+    fixture.detectChanges();
+
+    const title = (fixture.nativeElement as HTMLElement).querySelector('.ms-app-title')?.textContent?.trim();
+    expect(title).toBe(BRAND_NAME);
+    expect(BRAND_NAME).toBe('Hedef Okul');
   });
 
   it('ngOnInit_NoCodeParam_NavigatesToLoginWithoutCallingAuthService', () => {

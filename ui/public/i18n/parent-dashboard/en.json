@@ -38,5 +38,62 @@
       "yesterday": "Yesterday, around {{time}}",
       "onDate": "{{date}}, around {{time}}"
     }
+  },
+  "assignments": {
+    "title": "Homework and tests",
+    "subtitle": "Open homework and items whose deadline passed in the last {{days}} days. Questions and answers are not shown.",
+    "filterLabel": "Filter by status",
+    "all": "All",
+    "status": {
+      "pending": "Pending",
+      "overdue": "Overdue / timed out",
+      "completed": "Completed"
+    },
+    "loadError": "Homework could not be loaded.",
+    "empty": "No homework or tests assigned yet.",
+    "emptyFiltered": "No homework or tests with this status.",
+    "noSubject": "No subject",
+    "teacher": "Teacher: {{name}}",
+    "startedOn": "Start: {{date}}",
+    "deadline": "Due: {{date}}",
+    "noDeadline": "No deadline",
+    "score": "{{score}}% score",
+    "counts": "{{correct}} correct · {{wrong}} wrong · {{blank}} blank",
+    "viewResult": "Result summary",
+    "paginator": {
+      "itemsPerPage": "Per page",
+      "next": "Next page",
+      "previous": "Previous page",
+      "first": "First page",
+      "last": "Last page",
+      "range": "{{start}}–{{end}} of {{length}}",
+      "rangeEmpty": "0 of {{length}}"
+    }
+  },
+  "duration": {
+    "underMinute": "under 1 min",
+    "minutes": "{{m}} min",
+    "hoursMinutes": "{{h}} h {{m}} min"
+  },
+  "testResult": {
+    "title": "Test result",
+    "loading": "Loading result…",
+    "loadError": "The result could not be loaded.",
+    "notFound": "This test result was not found.",
+    "close": "Close",
+    "timedOut": "Timed out",
+    "score": "Score",
+    "correct": "Correct",
+    "wrong": "Wrong",
+    "blank": "Blank",
+    "duration": "Duration",
+    "started": "Started",
+    "finished": "Finished",
+    "topics": "By topic",
+    "topicCounts": "{{correct}} correct · {{wrong}} wrong · {{blank}} blank",
+    "noTopics": "No topic information.",
+    "privacyNote": "Questions and answers are not shown to parents; only result counts are visible.",
+    "percent": "{{value}}%",
+    "approxTime": "{{date}}, around {{time}}"
   }
 }

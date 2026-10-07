@@ -141,11 +141,29 @@
     background: var(--ms-surface-medium);
   }
 
+  // Global eski `mat-card-title` kuralı (styles.scss: ortalanmış, 1.4rem, sabit mavi) bu ekranda geçersiz kılınır —
+  // uygulamanın diğer kart başlıkları gibi sola hizalı, metin rengi token'ı (#421 review).
+  mat-card-title {
+    padding-bottom: 0;
+    font-family: var(--mainFontFamily);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.3;
+    text-align: left;
+    color: var(--ms-text-strong);
+  }
+
+  mat-card-subtitle {
+    font-size: 0.75rem;
+    text-align: left;
+    color: var(--ms-text-weak);
+  }
+
   mat-card-content {
     display: flex;
     align-items: baseline;
     gap: 0.5rem;
-    padding-top: 0.75rem;
+    padding-top: 0.5rem;
   }
 }
 

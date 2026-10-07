@@ -32,10 +32,10 @@ namespace ExamApp.Api.Services.Parents;
 public sealed class ParentDashboardService : IParentDashboardService
 {
     /// <summary>Teslim tarihi geçmiş atamalar bu kadar gün geriye bakılarak sayılır (eski gecikmeler sonsuza kadar birikmesin).</summary>
-    internal const int AssignmentWindowDays = 30;
+    internal const int AssignmentWindowDays = ParentAssignmentScope.WindowDays;
 
     /// <summary>Sayım için okunan en fazla atama satırı (güvenlik tavanı; gerçekçi bir öğrencide ulaşılmaz).</summary>
-    internal const int MaxAssignmentRows = 500;
+    internal const int MaxAssignmentRows = ParentAssignmentScope.MaxRows;
 
     private readonly AppDbContext _context;
     private readonly IParentChildAccess _access;
@@ -66,7 +66,7 @@ public sealed class ParentDashboardService : IParentDashboardService
         if (grant == null)
             return null;
 
-        await _audit.RecordAsync(grant.ParentId, grant.StudentId, ParentAccessEndpoints.ChildSummary, ct);
+        await _audit.RecordAsync(grant.ParentId, grant.StudentId, ParentAccessEndpoints.ChildSummary, ct: ct);
 
         var now = _time.GetUtcNow().UtcDateTime;
         var weekStart = StartOfWeek(_calendar.Today);
@@ -114,20 +114,9 @@ public sealed class ParentDashboardService : IParentDashboardService
 
     private async Task<ParentChildAssignmentCountsDto> CountAssignmentsAsync(ParentChildAccessGrant grant, DateTime now, CancellationToken ct)
     {
-        var lookbackStart = now.AddDays(-AssignmentWindowDays);
-
-        // Başlamış atamalar: açık olanlar + teslim tarihi pencere içinde geçmiş olanlar. Geri çekilen (soft-delete) atama ve
-        // emekliye ayrılan (soft-delete) worksheet global filtreyle düşer — öğrencinin kendi listesinde de görünmezler.
-        var assignments = await _context.WorksheetAssignments.AsNoTracking()
-            .Where(WorksheetStudentAccess.AssignmentVisibleTo(grant.StudentId, grant.GradeId, grant.VerifiedSchoolId))
-            .Where(a => a.StartAt <= now && (a.EndAt == null || a.EndAt >= lookbackStart))
-            .Where(a => !a.Worksheet.IsDeleted)
-            .OrderByDescending(a => a.StartAt).ThenByDescending(a => a.Id)
-            .Take(MaxAssignmentRows)
-            .Select(a => new AssignmentRow(a.WorksheetId, a.StartAt, a.EndAt))
-            .ToListAsync(ct);
-
-        if (assignments.Count >= MaxAssignmentRows)
+        // Kapsam + kova kuralı V3 listesiyle (#421) ortak: ParentAssignmentScope.
+        var scope = await ParentAssignmentScope.LoadAsync(_context, grant, now, ct);
+        if (scope.Capped)
         {
             // Sayımlar en yeni MaxAssignmentRows atamayla sınırlı — gerçekçi bir öğrencide beklenmez; görünür olsun.
             _logger?.LogWarning(
@@ -135,62 +124,12 @@ public sealed class ParentDashboardService : IParentDashboardService
                 MaxAssignmentRows, grant.StudentId);
         }
 
-        var counts = new ParentChildAssignmentCountsDto { WindowDays = AssignmentWindowDays };
-        if (assignments.Count == 0)
-            return counts;
-
-        var worksheetIds = assignments.Select(a => a.WorksheetId).Distinct().ToList();
-        var instances = await _context.TestInstances.AsNoTracking()
-            .Where(ti => ti.StudentId == grant.StudentId && worksheetIds.Contains(ti.WorksheetId))
-            .Select(ti => new InstanceRow(ti.WorksheetId, ti.StartTime, ti.Status, ti.EndTime))
-            .ToListAsync(ct);
-
-        foreach (var bucket in Classify(assignments, instances, now))
-        {
-            switch (bucket)
-            {
-                case ParentAssignmentBucket.Completed: counts.Completed++; break;
-                case ParentAssignmentBucket.Overdue: counts.Overdue++; break;
-                default: counts.Pending++; break;
-            }
-        }
-
-        return counts;
+        return ParentAssignmentScope.Count(scope.Items);
     }
 
-    /// <summary>
-    /// Worksheet başına TEK sonuç (aynı worksheet hem doğrudan hem sınıfa atanmış olabilir — takvimdeki tekilleştirme gibi):
-    /// atamalardan biri tamamlandıysa Completed; değilse hâlâ yapılabilir bir atama varsa Pending; aksi halde Overdue.
-    /// </summary>
-    internal static IEnumerable<ParentAssignmentBucket> Classify(
-        IReadOnlyList<AssignmentRow> assignments, IReadOnlyList<InstanceRow> instances, DateTime now)
-    {
-        var instancesByWorksheet = instances.ToLookup(i => i.WorksheetId);
-        return assignments
-            .GroupBy(a => a.WorksheetId)
-            .Select(g => g
-                .Select(a =>
-                {
-                    var relevant = AssignmentInstanceWindow.SelectRelevant(
-                        instancesByWorksheet[a.WorksheetId], a.StartAt, a.EndAt, i => i.StartTime, i => i.Status);
-                    var status = AssignmentStudentStatusRules.Resolve(a.StartAt, a.EndAt, relevant?.Status, relevant?.EndTime, now);
-                    return ToBucket(status, a.EndAt, now);
-                })
-                .Max());
-    }
-
-    /// <summary>
-    /// Öğretmen durumundan veli kovasına: Completed → Completed; Expired (teslim tarihi geçti ya da oturumun süresi doldu) →
-    /// Overdue; başlanmış ama teslim tarihi geçmiş (InProgress) → Overdue; diğerleri (NotStarted / InProgress, süre devam
-    /// ediyor) → Pending.
-    /// </summary>
-    internal static ParentAssignmentBucket ToBucket(string status, DateTime? endAt, DateTime now) => status switch
-    {
-        AssignmentStudentStatuses.Completed => ParentAssignmentBucket.Completed,
-        AssignmentStudentStatuses.Expired => ParentAssignmentBucket.Overdue,
-        _ when endAt.HasValue && endAt.Value < now => ParentAssignmentBucket.Overdue,
-        _ => ParentAssignmentBucket.Pending
-    };
+    /// <inheritdoc cref="ParentAssignmentScope.ToBucket"/>
+    internal static ParentAssignmentBucket ToBucket(string status, DateTime? endAt, DateTime now)
+        => ParentAssignmentScope.ToBucket(status, endAt, now);
 
     private async Task<DateTime?> LastActivityAsync(int studentId, CancellationToken ct)
     {
@@ -224,10 +163,6 @@ public sealed class ParentDashboardService : IParentDashboardService
     /// </summary>
     internal static DateTime TruncateToHour(DateTime value)
         => new(value.Year, value.Month, value.Day, value.Hour, 0, 0, DateTimeKind.Utc);
-
-    internal sealed record AssignmentRow(int WorksheetId, DateTime StartAt, DateTime? EndAt);
-
-    internal sealed record InstanceRow(int WorksheetId, DateTime StartTime, WorksheetInstanceStatus Status, DateTime? EndTime);
 }
 
 /// <summary>Veli özetindeki atama kovası; sıra öncelik verir (worksheet başına en büyüğü sayılır).</summary>

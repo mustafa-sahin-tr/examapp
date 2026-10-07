@@ -1,0 +1,104 @@
+<section class="pca" *transloco="let t; prefix: 'parent-dashboard'" aria-labelledby="pca-title" data-test="assignments-section">
+  <header class="pca__head">
+    <h2 id="pca-title">{{ t('assignments.title') }}</h2>
+    <p>{{ t('assignments.subtitle', { days: list()?.counts?.windowDays ?? 30 }) }}</p>
+  </header>
+
+  <mat-chip-listbox
+    class="pca__chips"
+    [attr.aria-label]="t('assignments.filterLabel')"
+    [value]="status() ?? 'all'"
+    [hideSingleSelectionIndicator]="true"
+    (change)="selectStatus($event)"
+    data-test="status-chips"
+  >
+    <mat-chip-option value="all" data-test="chip-all">
+      {{ t('assignments.all') }}
+      @if (list()) {
+        <span class="pca__chip-count">{{ totalAll() }}</span>
+      }
+    </mat-chip-option>
+    @for (s of statuses; track s) {
+      <mat-chip-option [value]="s" [attr.data-test]="'chip-' + s">
+        {{ t('assignments.status.' + s) }}
+        @if (list()) {
+          <span class="pca__chip-count">{{ count(s) }}</span>
+        }
+      </mat-chip-option>
+    }
+  </mat-chip-listbox>
+
+  @if (loading()) {
+    <div class="pca__state" aria-busy="true" data-test="assignments-loading">
+      <mat-spinner diameter="28" />
+      <span>{{ t('loading') }}</span>
+    </div>
+  } @else if (error()) {
+    <div class="pca__state" role="alert" data-test="assignments-error">
+      <span>{{ error() }}</span>
+      <button mat-stroked-button type="button" (click)="reload()">{{ t('retry') }}</button>
+    </div>
+  } @else {
+    @if (list(); as l) {
+      @if (l.items.length === 0) {
+        <p class="pca__empty">
+          <mat-icon aria-hidden="true">assignment_turned_in</mat-icon>
+          <span data-test="assignments-empty">{{ status() ? t('assignments.emptyFiltered') : t('assignments.empty') }}</span>
+        </p>
+      } @else {
+        <ul class="pca__list">
+          @for (item of l.items; track item.worksheetId) {
+            <li class="pca__item" data-test="assignment-row">
+              <div class="pca__main">
+                <span class="pca__title" data-test="row-title">{{ item.title }}</span>
+                <span class="pca__meta">
+                  <span>{{ item.subject ?? t('assignments.noSubject') }}</span>
+                  @if (item.teacherName) {
+                    <span data-test="row-teacher">{{ t('assignments.teacher', { name: item.teacherName }) }}</span>
+                  }
+                </span>
+                <span class="pca__meta">
+                  <span>{{ t('assignments.startedOn', { date: formatDate(item.startAt) }) }}</span>
+                  <span data-test="row-deadline">
+                    {{ item.deadline ? t('assignments.deadline', { date: formatDate(item.deadline) }) : t('assignments.noDeadline') }}
+                  </span>
+                </span>
+              </div>
+
+              <div class="pca__side">
+                <span class="pca__status pca__status--{{ item.status }}" data-test="row-status">
+                  {{ t('assignments.status.' + item.status) }}
+                </span>
+                @if (item.result; as r) {
+                  <span class="pca__score" data-test="row-score">{{ t('assignments.score', { score: r.scorePercent }) }}</span>
+                  <span class="pca__counts" data-test="row-counts">
+                    {{ t('assignments.counts', { correct: r.correctCount, wrong: r.wrongCount, blank: r.blankCount }) }}
+                    · {{ formatDuration(r.durationSeconds) }}
+                  </span>
+                }
+                @if (item.testInstanceId !== null) {
+                  <button mat-stroked-button type="button" (click)="openResult(item)" data-test="row-open-result">
+                    <mat-icon>insights</mat-icon>
+                    {{ t('assignments.viewResult') }}
+                  </button>
+                }
+              </div>
+            </li>
+          }
+        </ul>
+
+        @if (l.totalCount > l.pageSize) {
+          <mat-paginator
+            class="pca__paginator"
+            [length]="l.totalCount"
+            [pageSize]="l.pageSize"
+            [pageIndex]="l.page - 1"
+            [hidePageSize]="true"
+            (page)="changePage($event)"
+            data-test="assignments-paginator"
+          />
+        }
+      }
+    }
+  }
+</section>

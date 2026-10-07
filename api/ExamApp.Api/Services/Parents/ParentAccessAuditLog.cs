@@ -9,14 +9,15 @@ namespace ExamApp.Api.Services.Parents;
 
 /// <summary>
 /// Veli erişim kaydı yazıcısı (issue #420). Yalnızca erişim VERİLEN istekler için çağrılır. Review: aynı (veli, öğrenci, uç)
-/// için <see cref="ParentAccessAuditLog.DedupWindow"/>'luk sabit kova başına EN FAZLA bir satır — panelin yenilenmesi/çocuk
+/// (+ kaynak id'si, #421) için <see cref="ParentAccessAuditLog.DedupWindow"/>'luk sabit kova başına EN FAZLA bir satır — panelin yenilenmesi/çocuk
 /// değişimi tabloyu şişirmesin. Kontrol "kovada satır var mı → atla"; eşzamanlı iki ilk istek nadiren iki satır yazabilir
 /// (kabul edilen yarış, unique index yok).
 /// </summary>
 public interface IParentAccessAuditLog
 {
     /// <returns>Satır yazıldıysa true; aynı kovada zaten kayıt varsa false.</returns>
-    Task<bool> RecordAsync(int parentId, int studentId, string endpoint, CancellationToken ct = default);
+    /// <param name="resourceId">Görülen kaynağın id'si (test sonucu ucunda testInstanceId); yoksa null.</param>
+    Task<bool> RecordAsync(int parentId, int studentId, string endpoint, int? resourceId = null, CancellationToken ct = default);
 }
 
 /// <inheritdoc cref="IParentAccessAuditLog"/>
@@ -38,7 +39,7 @@ public sealed class ParentAccessAuditLog : IParentAccessAuditLog
     internal static DateTime BucketStart(DateTime at)
         => new(at.Ticks - at.Ticks % DedupWindow.Ticks, DateTimeKind.Utc);
 
-    public async Task<bool> RecordAsync(int parentId, int studentId, string endpoint, CancellationToken ct = default)
+    public async Task<bool> RecordAsync(int parentId, int studentId, string endpoint, int? resourceId = null, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(endpoint))
             throw new ArgumentException("Parent access audit requires the endpoint name.", nameof(endpoint));
@@ -50,7 +51,7 @@ public sealed class ParentAccessAuditLog : IParentAccessAuditLog
         // IX_ParentAccessAudits_ParentId_At ile daralır. İptal token'ı kullanılmaz (aşağıdaki yazımla aynı gerekçe).
         var alreadyRecorded = await _context.ParentAccessAudits.AsNoTracking()
             .AnyAsync(a => a.ParentId == parentId && a.At >= bucketStart && a.At < bucketEnd
-                && a.StudentId == studentId && a.Endpoint == endpoint, CancellationToken.None);
+                && a.StudentId == studentId && a.Endpoint == endpoint && a.ResourceId == resourceId, CancellationToken.None);
         if (alreadyRecorded)
             return false;
 
@@ -59,6 +60,7 @@ public sealed class ParentAccessAuditLog : IParentAccessAuditLog
             ParentId = parentId,
             StudentId = studentId,
             Endpoint = endpoint,
+            ResourceId = resourceId,
             At = now
         });
 

@@ -42,8 +42,8 @@ public sealed class ParentLinkRedeemRateLimitOptions : ParentLinkRateLimitOption
 }
 
 /// <summary>
-/// <c>RateLimiting:ParentLinkInvite</c> — öğrencinin kod üretmesi (her çağrı bir satır yazar). Varsayılan: öğrenci başına
-/// saatte 10.
+/// <c>RateLimiting:ParentLinkInvite</c> — kod üretimi (her çağrı bir satır yazar). Issue #436'dan beri birincil velinin "ikinci
+/// veli davet kodu" (öğrenci artık kod üretmez). Varsayılan: kullanıcı (sub) başına saatte 10.
 /// </summary>
 public sealed class ParentLinkInviteRateLimitOptions : ParentLinkRateLimitOptionsBase
 {
@@ -51,6 +51,18 @@ public sealed class ParentLinkInviteRateLimitOptions : ParentLinkRateLimitOption
     public ParentLinkInviteRateLimitOptions() { PermitLimit = 10; WindowSeconds = 3600; }
     internal override string PolicyName => ParentLinkRateLimiting.InvitePolicy;
     internal override string MessageKey => "parentLinks.inviteRateLimited";
+}
+
+/// <summary>
+/// <c>RateLimiting:ParentLinkManage</c> — issue #436 security MINOR-5: bağlantı yönetim uçları (onay / ret / koparma). Her çağrı
+/// kilit + yazım + auth-api ad çözümü yapar. Varsayılan: kullanıcı (sub) başına dakikada 30.
+/// </summary>
+public sealed class ParentLinkManageRateLimitOptions : ParentLinkRateLimitOptionsBase
+{
+    public const string SectionName = "RateLimiting:ParentLinkManage";
+    public ParentLinkManageRateLimitOptions() { PermitLimit = 30; WindowSeconds = 60; }
+    internal override string PolicyName => ParentLinkRateLimiting.ManagePolicy;
+    internal override string MessageKey => "parentLinks.manageRateLimited";
 }
 
 /// <summary>
@@ -90,6 +102,9 @@ public static class ParentLinkRateLimiting
     public const string RedeemPolicy = "parent-link-redeem";
     public const string InvitePolicy = "parent-link-invite";
 
+    /// <summary>issue #436: <c>POST {linkId}/approve|reject|revoke</c>.</summary>
+    public const string ManagePolicy = "parent-link-manage";
+
     /// <summary>issue #420: <c>GET api/parent/children/{studentId}/summary</c>.</summary>
     public const string ChildSummaryPolicy = "parent-child-summary";
 
@@ -107,6 +122,7 @@ public static class ParentLinkRateLimiting
     {
         Add<ParentLinkRedeemRateLimitOptions>(services, ParentLinkRedeemRateLimitOptions.SectionName, RedeemPolicy);
         Add<ParentLinkInviteRateLimitOptions>(services, ParentLinkInviteRateLimitOptions.SectionName, InvitePolicy);
+        Add<ParentLinkManageRateLimitOptions>(services, ParentLinkManageRateLimitOptions.SectionName, ManagePolicy);
         Add<ParentChildSummaryRateLimitOptions>(services, ParentChildSummaryRateLimitOptions.SectionName, ChildSummaryPolicy);
         Add<ParentChildActivityRateLimitOptions>(services, ParentChildActivityRateLimitOptions.SectionName, ChildActivityPolicy);
         return services;

@@ -11,7 +11,7 @@ import { ConfirmDialogComponent, ConfirmDialogData } from '../components/confirm
 export const PARENT_LINKS_SCOPE = 'parent-links';
 
 /**
- * Issue #419: öğrenci "Veli davet kodu" kartı ile velinin "Çocuklarım" sayfasının ortak UI yardımcıları — scope'lu metin,
+ * Issue #419/#436: öğrencinin "Velilerim" kartı ile velinin "Çocuklarım" sayfasının ortak UI yardımcıları — scope'lu metin,
  * dile bağlı tarih biçimi, snackbar ve koparma/iptal onay diyaloğu (iki ekranda tekrarlanmasın).
  */
 @Injectable({ providedIn: 'root' })
@@ -44,7 +44,7 @@ export class ParentLinkUi {
   }
 
   /**
-   * Onay diyaloğu: `<prefix>.title|message|confirm` anahtarları (ör. `invite.revokeConfirm`). Kullanıcı onaylarsa true.
+   * Onay diyaloğu: `<prefix>.title|message|confirm` anahtarları (ör. `family.removeConfirm`). Kullanıcı onaylarsa true.
    */
   confirm(prefix: string, params?: Record<string, unknown>): Observable<boolean> {
     const data: ConfirmDialogData = {

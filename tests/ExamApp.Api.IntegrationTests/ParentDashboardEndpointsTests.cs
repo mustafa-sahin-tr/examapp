@@ -50,21 +50,8 @@ public class ParentDashboardEndpointsTests(IntegrationApiFactory factory) : Inte
 
     private Task<HttpClient> ParentAsync(int userId) => ClientAsAsync(userId, "Parent", $"kc-{userId}", "Parent");
 
-    /// <summary>Kod → redeem (Pending) → öğrenci onayı (Active). Bağlantı id'sini döner.</summary>
-    private static async Task<int> LinkAsync(HttpClient student, HttpClient parent)
-    {
-        var codeResponse = await student.PostAsync("/api/parent-links/invite-code", null);
-        codeResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        using var codeDoc = JsonDocument.Parse(await codeResponse.Content.ReadAsStringAsync());
-        var code = codeDoc.RootElement.GetProperty("code").GetString()!;
-
-        var redeem = await parent.PostAsJsonAsync("/api/parent-links/redeem", new { code });
-        redeem.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var pending = (await redeem.Content.ReadFromJsonAsync<LinkedChildDto>(Json))!;
-        pending.StudentId.ShouldBeNull(); // onaydan önce öğrenci id'si de açılmaz
-        (await student.PostAsync($"/api/parent-links/{pending.LinkId}/approve", null)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
-        return pending.LinkId;
-    }
+    /// <summary>issue #436: veli-öncelikli bağlantı (doğrudan Active; ilk veli birincil). Bağlantı id'sini döner.</summary>
+    private Task<int> LinkAsync(int studentUser, int parentUser) => SeedParentLinkAsync(parentUser, studentUser);
 
     private static string SummaryUrl(int studentId) => $"/api/parent/children/{studentId}/summary";
 
@@ -77,7 +64,7 @@ public class ParentDashboardEndpointsTests(IntegrationApiFactory factory) : Inte
         var seeded = await SeedAsync(studentUser, parentUser);
         var student = await StudentAsync(studentUser);
         var parent = await ParentAsync(parentUser);
-        await LinkAsync(student, parent);
+        await LinkAsync(studentUser, parentUser);
 
         // Çocuk listesi artık panelin anahtarını (studentId) taşır.
         var childrenResponse = await parent.GetAsync("/api/parent-links/my-children");
@@ -179,14 +166,15 @@ public class ParentDashboardEndpointsTests(IntegrationApiFactory factory) : Inte
         var pendingParent = await ParentAsync(pendingParentUser);
         var teacher = await ClientAsAsync(42915, "Teacher", "kc-42915", "Teacher");
 
-        var linkId = await LinkAsync(student, parent);
+        var linkId = await LinkAsync(studentUser, parentUser);
 
-        // Bekleyen istek (öğrenci onaylamadı) erişim vermez.
-        var codeResponse = await student.PostAsync("/api/parent-links/invite-code", null);
-        using (var codeDoc = JsonDocument.Parse(await codeResponse.Content.ReadAsStringAsync()))
+        // Bekleyen ikinci veli isteği (birincil veli onaylamadı) erişim vermez — #436: istek birincil velinin kodu ile açılır.
+        using (var codeDoc = JsonDocument.Parse(await (await parent.PostAsync($"/api/parent-links/{linkId}/second-parent-code", null))
+                   .Content.ReadAsStringAsync()))
         {
-            (await pendingParent.PostAsJsonAsync("/api/parent-links/redeem", new { code = codeDoc.RootElement.GetProperty("code").GetString() }))
-                .StatusCode.ShouldBe(HttpStatusCode.OK);
+            var redeem = await pendingParent.PostAsJsonAsync("/api/parent-links/redeem", new { code = codeDoc.RootElement.GetProperty("code").GetString() });
+            redeem.StatusCode.ShouldBe(HttpStatusCode.OK);
+            (await redeem.Content.ReadFromJsonAsync<LinkedChildDto>(Json))!.StudentId.ShouldBeNull(); // onaydan önce öğrenci id'si açılmaz
         }
 
         (await pendingParent.GetAsync(SummaryUrl(seeded.StudentId))).StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -204,8 +192,11 @@ public class ParentDashboardEndpointsTests(IntegrationApiFactory factory) : Inte
         (await parent.GetAsync(SummaryUrl(seeded.StudentId))).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await AuditCountAsync()).ShouldBe(1);
 
-        // Öğrenci koparınca erişim anında biter.
-        (await student.PostAsync($"/api/parent-links/{linkId}/revoke", null)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        // #436: öğrenci bağlantı koparamaz; tek veli ayrılamaz (409); admin koparınca erişim anında biter.
+        (await student.PostAsync($"/api/parent-links/{linkId}/revoke", null)).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await parent.PostAsync($"/api/parent-links/{linkId}/revoke", null)).StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        var admin = await ClientAsAsync(42919, "Admin", "kc-admin-42919", "Admin");
+        (await admin.PostAsync($"/api/parent-links/{linkId}/revoke", null)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
         (await parent.GetAsync(SummaryUrl(seeded.StudentId))).StatusCode.ShouldBe(HttpStatusCode.NotFound);
         (await AuditCountAsync()).ShouldBe(1);
     }
@@ -216,7 +207,7 @@ public class ParentDashboardEndpointsTests(IntegrationApiFactory factory) : Inte
         const int studentUser = 42921, parentUser = 42922;
         var seeded = await SeedAsync(studentUser, parentUser);
         var parent = await ParentAsync(parentUser);
-        await LinkAsync(await StudentAsync(studentUser), parent);
+        await LinkAsync(studentUser, parentUser);
         (await parent.GetAsync(SummaryUrl(seeded.StudentId))).StatusCode.ShouldBe(HttpStatusCode.OK);
 
         await WithDbAsync(async db =>
@@ -228,5 +219,33 @@ public class ParentDashboardEndpointsTests(IntegrationApiFactory factory) : Inte
 
         (await parent.GetAsync(SummaryUrl(seeded.StudentId))).StatusCode.ShouldBe(HttpStatusCode.NotFound);
         (await AuditCountAsync()).ShouldBe(1);
+    }
+
+    /// <summary>
+    /// issue #436 (review M3): ikinci veli uçtan uca — birincil velinin kodu → redeem (Pending: özet 404) → birincil veli onayı →
+    /// ikinci veli çocuğun özetini görür (V2 yalnız <c>Status == Active</c>'e bakar; kuruluş yolu önemsiz).
+    /// </summary>
+    [Fact]
+    public async Task Second_parent_sees_the_summary_after_primary_parent_approval()
+    {
+        const int studentUser = 42931, primaryUser = 42932, secondUser = 42933;
+        var seeded = await SeedAsync(studentUser, primaryUser, secondUser);
+        var primary = await ParentAsync(primaryUser);
+        var second = await ParentAsync(secondUser);
+        var primaryLink = await LinkAsync(studentUser, primaryUser);
+
+        string code;
+        using (var codeDoc = JsonDocument.Parse(await (await primary.PostAsync($"/api/parent-links/{primaryLink}/second-parent-code", null))
+                   .Content.ReadAsStringAsync()))
+            code = codeDoc.RootElement.GetProperty("code").GetString()!;
+        var redeem = await second.PostAsJsonAsync("/api/parent-links/redeem", new { code });
+        redeem.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var pendingLink = (await redeem.Content.ReadFromJsonAsync<LinkedChildDto>(Json))!.LinkId;
+        (await second.GetAsync(SummaryUrl(seeded.StudentId))).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+
+        (await primary.PostAsync($"/api/parent-links/{pendingLink}/approve", null)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        (await second.GetAsync(SummaryUrl(seeded.StudentId))).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await primary.GetAsync(SummaryUrl(seeded.StudentId))).StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 }

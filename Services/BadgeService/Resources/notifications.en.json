@@ -113,8 +113,8 @@
       "bodyTeacher": "A teacher reported a direct message conversation. Review it in the reports list."
     },
     "ParentLinkedToParent": {
-      "title": "Parent link approved",
-      "body": "{0} approved you as their parent."
+      "title": "Parent link active",
+      "body": "Your parent link with {0} is now active."
     },
     "ParentLinkedToStudent": {
       "title": "Parent link established",
@@ -122,11 +122,15 @@
     },
     "ParentUnlinkedToParent": {
       "title": "Parent link removed",
-      "body": "{0} removed the parent link."
+      "body": "Your parent link with {0} was removed."
     },
     "ParentUnlinkedToStudent": {
       "title": "Parent link removed",
-      "body": "{0} removed the parent link."
+      "body": "{0} is no longer linked as your parent."
+    },
+    "ParentCoParentLeftToPrimary": {
+      "title": "A parent left",
+      "body": "{0} left the parent link with your child."
     },
     "ParentHomeworkOverdue": {
       "title": "Overdue homework",

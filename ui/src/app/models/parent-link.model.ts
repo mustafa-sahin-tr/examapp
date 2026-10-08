@@ -1,9 +1,10 @@
 /**
- * Issue #419 (epic #407 V1): veli–öğrenci bağlantısı. Backend: `/api/exam/parent-links/...`
- * (gateway `/api/exam/{everything}` → API `/api/parent-links/...`).
+ * Issue #419 (epic #407 V1) → issue #436 (epic #435, veli-öncelikli model): veli–öğrenci bağlantısı. Backend:
+ * `/api/exam/parent-links/...` (gateway `/api/exam/{everything}` → API `/api/parent-links/...`). Bağlantıyı veli kurar; öğrenci
+ * yalnızca bağlı velilerini görür. Birincil veli "ikinci veli davet kodu" üretir ve bekleyen isteği onaylar.
  */
 
-/** POST invite-code — düz kod yalnızca bu yanıtta bir kez döner. */
+/** POST {linkId}/second-parent-code — düz kod yalnızca bu yanıtta bir kez döner. */
 export interface ParentInviteCode {
   code: string;
   /** ISO-8601 UTC. */
@@ -14,9 +15,11 @@ export interface LinkedParent {
   linkId: number;
   parentName: string;
   linkedAt: string;
+  /** Issue #436: bağlantıları yöneten birincil veli. */
+  isPrimary: boolean;
 }
 
-/** Öğrencinin onayını bekleyen veli isteği (review: kod tek başına bağlamaz, öğrenci onaylar). */
+/** Geçiş dönemi (issue #436): #419'dan kalan, öğrencinin 30 gün daha onaylayabileceği eski veli isteği. */
 export interface PendingParentRequest {
   linkId: number;
   parentName: string;
@@ -26,20 +29,34 @@ export interface PendingParentRequest {
   expiresAt: string;
 }
 
-/** GET my-parents (öğrenci). */
+/** GET my-parents (öğrenci, salt okunur). */
 export interface StudentParentLinks {
   items: LinkedParent[];
+  /** Yalnız geçiş dönemindeki eski istekler; yeni istekler öğrenciye düşmez. */
   pendingRequests: PendingParentRequest[];
-  /** Geçerli (kullanılmamış) bir kod varsa bitişi; kodun kendisi tekrar gösterilmez. */
-  activeInviteExpiresAt: string | null;
   /** Aktif + bekleyen bağlantı tavanı. */
   maxActiveParents: number;
+  /** Issue #437: her öğrencinin velisi olmalı (istisna yok). */
+  requiresParent: boolean;
+}
+
+/** Issue #436: birincil velinin gördüğü diğer veli ya da bekleyen ikinci veli isteği. */
+export interface CoParent {
+  linkId: number;
+  status: LinkedChildStatus;
+  parentName: string;
+  /** Yalnız Pending: maskeli e-posta (a***@g***.com) — kimi onayladığını bilsin; çözülemezse boş. */
+  parentEmailMasked: string;
+  linkedAt: string | null;
+  requestedAt: string;
+  pendingExpiresAt: string | null;
 }
 
 export type LinkedChildStatus = 'Active' | 'Pending';
 
 /**
- * GET my-children / POST redeem (veli). `Pending` (öğrenci onayı bekleniyor) iken öğrenciye ait hiçbir alan dolu gelmez.
+ * GET my-children / POST redeem (veli). `Pending` (birincil velinin onayı bekleniyor) iken öğrenciye ait hiçbir alan dolu
+ * gelmez. Birincil veliye ayrıca diğer veliler/bekleyen istekler ve geçerli ikinci veli kodunun bitişi gelir.
  */
 export interface LinkedChild {
   linkId: number;
@@ -52,6 +69,16 @@ export interface LinkedChild {
   linkedAt: string | null;
   requestedAt: string;
   pendingExpiresAt: string | null;
+  /** Issue #436: çağıran bu çocuğun birincil velisi. */
+  isPrimary?: boolean;
+  /** Issue #436: yalnız birincil veliye dolu. */
+  coParents?: CoParent[];
+  /** Issue #436: yalnız birincil veliye — kullanılmamış ikinci veli kodunun bitişi (kod dönmez). */
+  secondParentCodeExpiresAt?: string | null;
+  /** Öğrenci başına açık veli tavanı. */
+  maxParents?: number;
+  /** Issue #436: yalnız birincil veliye — açık veli sayısı (sunucunun tavan sayımı; eski bekleyen istekler dahil). */
+  openParents?: number | null;
 }
 
 /** Hata gövdesi `{ message, errorCode }`. */
@@ -65,6 +92,8 @@ export const PARENT_LINK_ERROR_CODES = {
   studentLimitReached: 'StudentLimitReached',
   parentLimitReached: 'ParentLimitReached',
   alreadyLinked: 'AlreadyLinked',
+  notPrimaryParent: 'NotPrimaryParent',
+  lastParentCannotLeave: 'LastParentCannotLeave',
   rateLimited: 'RateLimited',
 } as const;
 

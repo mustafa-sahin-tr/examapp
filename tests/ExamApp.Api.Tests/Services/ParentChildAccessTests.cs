@@ -51,6 +51,7 @@ public class ParentChildAccessTests : IDisposable
         await using var ctx = _db.NewContext();
         var link = new ParentStudentLink
         {
+            Origin = ParentStudentLinkOrigin.ParentCreated,
             ParentId = parentId,
             StudentId = studentId,
             Status = status,

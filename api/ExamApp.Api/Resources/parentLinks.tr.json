@@ -1,6 +1,6 @@
 {
   "parentLinks": {
-    "codeCreated": "Davet kodu oluşturuldu. Kodu velinle paylaş; yalnızca bir kez gösterilir.",
+    "codeCreated": "İkinci veli davet kodu oluşturuldu. Kodu diğer veliyle paylaşın; yalnızca bir kez gösterilir.",
     "revoked": "Bağlantı kaldırıldı.",
     "codeRequired": "Davet kodu girilmelidir.",
     "fallbackParentName": "Veli",
@@ -11,7 +11,7 @@
     "activityRateLimited": "Çocuğunuzun bilgileri için kısa sürede çok fazla istek yapıldı. Lütfen biraz sonra tekrar deneyin.",
     "errors": {
       "invalidCode": "Kod geçersiz veya süresi dolmuş.",
-      "studentLimitReached": "En fazla 4 veli bağlayabilirsin (bekleyen istekler dahil). Yeni kod için önce birini kaldır.",
+      "studentLimitReached": "Bir öğrenciye en fazla 4 veli bağlanabilir (bekleyen istekler dahil). Yeni kod için önce birini kaldırın.",
       "parentLimitReached": "Bağlayabileceğiniz çocuk sayısı sınırına ulaştınız.",
       "alreadyLinked": "Bu öğrenci zaten hesabınıza bağlı ya da isteğiniz onay bekliyor.",
       "notFound": "Bağlantı bulunamadı.",
@@ -22,10 +22,13 @@
       "invalidStatus": "Geçersiz durum filtresi. completed, overdue ya da pending olmalıdır.",
       "invalidRange": "Geçersiz tarih aralığı. from ve to birlikte, yyyy-MM-dd biçiminde ve en fazla 31 gün olmalıdır.",
       "busy": "İşlem şu anda tamamlanamadı. Lütfen tekrar deneyin.",
-      "rateLimited": "Çok fazla kod denemesi yapıldı. Lütfen daha sonra tekrar deneyin."
+      "rateLimited": "Çok fazla kod denemesi yapıldı. Lütfen daha sonra tekrar deneyin.",
+      "notPrimaryParent": "Bu işlemi yalnızca çocuğun birincil velisi yapabilir.",
+      "lastParentCannotLeave": "Çocuğun tek velisi olduğunuz için bağlantıdan ayrılamazsınız. Önce başka bir veli ekleyin."
     },
-    "requested": "İstek gönderildi. Bağlantı, çocuğunuz onayladığında etkinleşir.",
+    "requested": "İstek gönderildi. Bağlantı, çocuğun birincil velisi onayladığında etkinleşir.",
     "approved": "Veli bağlantısı onaylandı.",
-    "rejected": "Veli isteği reddedildi."
+    "rejected": "Veli isteği reddedildi.",
+    "manageRateLimited": "Kısa sürede çok fazla bağlantı işlemi yapıldı. Lütfen biraz sonra tekrar deneyin."
   }
 }

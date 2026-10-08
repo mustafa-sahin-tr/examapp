@@ -10,8 +10,8 @@
   "summaryNotFound": "Bu çocuğun bilgilerine artık erişiminiz yok. Bağlantı kaldırılmış olabilir.",
   "empty": {
     "title": "Henüz bağlı çocuğunuz yok",
-    "message": "Çocuğunuzun çalışmalarını görmek için çocuğunuzdan bir davet kodu alıp hesabınıza ekleyin.",
-    "pendingNote": "Onay bekleyen bir isteğiniz var. Çocuğunuz onayladığında özeti burada görünecek.",
+    "message": "Çocuğunuzun hesabını Çocuklarım sayfasından açın ya da diğer velisinden ikinci veli kodu isteyin.",
+    "pendingNote": "Onay bekleyen bir isteğiniz var. Çocuğun birincil velisi onayladığında özet burada görünecek.",
     "cta": "Çocuk ekle"
   },
   "cards": {

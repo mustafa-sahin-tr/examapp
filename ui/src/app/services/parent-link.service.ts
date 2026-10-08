@@ -4,24 +4,24 @@ import { Observable } from 'rxjs';
 
 import { LinkedChild, ParentInviteCode, ParentLinkErrorBody, StudentParentLinks } from '../models/parent-link.model';
 
-/** Veli–öğrenci bağlantısı (issue #419). */
+/** Veli–öğrenci bağlantısı (issue #419; #436 veli-öncelikli model). */
 @Injectable({ providedIn: 'root' })
 export class ParentLinkService {
   // Gateway: /api/exam/{everything} -> backend /api/{everything}
   private readonly baseUrl = '/api/exam/parent-links';
   private readonly http = inject(HttpClient);
 
-  /** Öğrenci: yeni davet kodu (öncekini geçersizler). */
-  createInviteCode(): Observable<ParentInviteCode> {
-    return this.http.post<ParentInviteCode>(`${this.baseUrl}/invite-code`, {});
+  /** Birincil veli: kendi bağlantısındaki çocuk için ikinci veli davet kodu (öncekini geçersizler). */
+  createSecondParentCode(linkId: number): Observable<ParentInviteCode> {
+    return this.http.post<ParentInviteCode>(`${this.baseUrl}/${linkId}/second-parent-code`, {});
   }
 
-  /** Öğrenci: bağlı veliler. */
+  /** Öğrenci: bağlı veliler (salt okunur). */
   getMyParents(): Observable<StudentParentLinks> {
     return this.http.get<StudentParentLinks>(`${this.baseUrl}/my-parents`);
   }
 
-  /** Veli: kodu kullan → onay bekleyen bağlantı (öğrenci verisi yok). */
+  /** Veli: ikinci veli kodunu kullan → birincil velinin onayını bekleyen bağlantı (öğrenci verisi yok). */
   redeem(code: string): Observable<LinkedChild> {
     return this.http.post<LinkedChild>(`${this.baseUrl}/redeem`, { code });
   }
@@ -31,17 +31,17 @@ export class ParentLinkService {
     return this.http.get<LinkedChild[]>(`${this.baseUrl}/my-children`);
   }
 
-  /** Öğrenci: bekleyen veli isteğini onaylar. */
+  /** Birincil veli: bekleyen ikinci veli isteğini onaylar (öğrenci: yalnız geçiş dönemindeki eski istek). */
   approve(linkId: number): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/${linkId}/approve`, {});
   }
 
-  /** Öğrenci: bekleyen veli isteğini reddeder. */
+  /** Birincil veli: bekleyen ikinci veli isteğini reddeder (öğrenci: yalnız geçiş dönemindeki eski istek). */
   reject(linkId: number): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/${linkId}/reject`, {});
   }
 
-  /** Öğrenci ya da veli: kendi bağlantısını (aktif ya da bekleyen) koparır. */
+  /** Veli: birincil veli her bağlantıyı, her veli kendi bekleyen isteğini koparır (öğrenci koparamaz). */
   revoke(linkId: number): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/${linkId}/revoke`, {});
   }

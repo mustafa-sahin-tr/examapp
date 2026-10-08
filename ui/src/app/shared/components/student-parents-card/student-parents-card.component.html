@@ -1,0 +1,98 @@
+<article class="spc" aria-labelledby="spc-title" *transloco="let t; prefix: 'parent-links'">
+  <h2 id="spc-title">{{ t('parents.title') }}</h2>
+  <p class="spc__hint">{{ t('parents.hint') }}</p>
+
+  @if (loading()) {
+    <div class="spc__state" aria-busy="true">
+      <mat-spinner diameter="24" />
+      <span>{{ t('loading') }}</span>
+    </div>
+  } @else if (loadError()) {
+    <div class="spc__state" role="alert">
+      <span>{{ loadError() }}</span>
+      <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+    </div>
+  } @else {
+    @if (missingParent()) {
+      <p class="spc__notice" role="note" data-test="missing-parent">{{ t('parents.missing') }}</p>
+    } @else {
+      <ul class="spc__list">
+        @for (parent of parents(); track parent.linkId) {
+          <li class="spc__item" data-test="parent-row">
+            <mat-icon aria-hidden="true">family_restroom</mat-icon>
+            <span class="spc__name">
+              {{ parent.parentName }}
+              <small class="spc__meta">{{ t('parents.linkedAt', { date: ui.formatDate(parent.linkedAt) }) }}</small>
+            </span>
+            @if (parent.isPrimary) {
+              <span class="spc__badge" data-test="primary-badge">{{ t('parents.primary') }}</span>
+            }
+          </li>
+        }
+      </ul>
+    }
+
+    @if (legacyRequests().length > 0) {
+      <section class="spc__pending" aria-labelledby="spc-pending-title" data-test="legacy-section">
+        <h3 id="spc-pending-title" class="spc__subtitle">{{ t('parents.legacyTitle') }}</h3>
+        <p class="spc__hint">{{ t('parents.legacyHint') }}</p>
+        <ul class="spc__list">
+          @for (request of legacyRequests(); track request.linkId) {
+            <li class="spc__item" data-test="legacy-row">
+              <mat-icon aria-hidden="true">person_add</mat-icon>
+              <span class="spc__name">
+                {{ request.parentName }}
+                @if (request.parentEmailMasked) {
+                  <small class="spc__meta">{{ request.parentEmailMasked }}</small>
+                }
+                <small class="spc__meta" data-test="legacy-expires">{{
+                  t('parents.legacyExpiresAt', { date: ui.formatDate(request.expiresAt, true) })
+                }}</small>
+              </span>
+              <button
+                mat-flat-button
+                type="button"
+                data-test="approve"
+                [disabled]="decidingId() !== null"
+                (click)="approve(request)"
+              >
+                {{ t('parents.approve') }}
+              </button>
+              <button
+                mat-stroked-button
+                type="button"
+                data-test="reject"
+                [disabled]="decidingId() !== null"
+                (click)="reject(request)"
+              >
+                {{ t('parents.reject') }}
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  }
+
+  <section class="spc__visibility" aria-labelledby="spc-sees-title" data-test="what-parent-sees">
+    <h3 id="spc-sees-title" class="spc__subtitle">{{ t('parents.seesTitle') }}</h3>
+    <div class="spc__columns">
+      <div>
+        <p class="spc__column-title">{{ t('parents.seesLabel') }}</p>
+        <ul class="spc__bullets" data-test="sees-list">
+          @for (key of seesKeys; track key) {
+            <li><mat-icon aria-hidden="true">visibility</mat-icon>{{ t('parents.sees.' + key) }}</li>
+          }
+        </ul>
+      </div>
+      <div>
+        <p class="spc__column-title">{{ t('parents.hiddenLabel') }}</p>
+        <ul class="spc__bullets" data-test="hidden-list">
+          @for (key of hiddenKeys; track key) {
+            <li><mat-icon aria-hidden="true">visibility_off</mat-icon>{{ t('parents.hidden.' + key) }}</li>
+          }
+        </ul>
+      </div>
+    </div>
+  </section>
+</article>

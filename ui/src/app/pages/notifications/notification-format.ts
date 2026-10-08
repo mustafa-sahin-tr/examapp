@@ -147,6 +147,8 @@ const PARENT_NOTIFICATION_PRESENTATION: Readonly<Record<string, { icon: string; 
   ParentLinkedToStudent: { icon: 'family_restroom', toParentPage: false },
   ParentUnlinkedToParent: { icon: 'link_off', toParentPage: true },
   ParentUnlinkedToStudent: { icon: 'link_off', toParentPage: false },
+  // Issue #436: diğer veli ayrıldı → birincil velinin paneli o çocuğu açar.
+  ParentCoParentLeftToPrimary: { icon: 'link_off', toParentPage: true },
   ParentHomeworkOverdue: { icon: 'assignment_late', toParentPage: true },
   ParentChildTestCompleted: { icon: 'task_alt', toParentPage: true },
 };

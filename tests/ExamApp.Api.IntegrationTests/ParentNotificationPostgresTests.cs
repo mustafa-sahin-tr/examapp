@@ -66,17 +66,24 @@ public class ParentNotificationPostgresTests(IntegrationApiFactory factory) : In
 
     private Task<HttpClient> ParentAsync(int userId) => ClientAsAsync(userId, "Parent", $"kc-{userId}", "Parent");
 
-    private async Task<int> LinkAsync(int studentUser, int parentUser)
+    /// <summary>issue #436: veli-öncelikli bağlantı (doğrudan Active; ilk veli birincil — event'siz).</summary>
+    private Task<int> LinkAsync(int studentUser, int parentUser) => SeedParentLinkAsync(parentUser, studentUser);
+
+    /// <summary>
+    /// issue #436: ikinci veli akışı HTTP üzerinden — birincil velinin kodu → redeem (Pending) → birincil veli onayı (Active +
+    /// ParentLinkedEvent). İkinci velinin bağlantı id'sini döner.
+    /// </summary>
+    private async Task<int> LinkSecondParentAsync(int primaryLinkId, int primaryUser, int parentUser)
     {
-        var student = await StudentAsync(studentUser);
-        var parent = await ParentAsync(parentUser);
-        var codeResponse = await student.PostAsync("/api/parent-links/invite-code", null);
+        var primary = await ParentAsync(primaryUser);
+        var codeResponse = await primary.PostAsync($"/api/parent-links/{primaryLinkId}/second-parent-code", null);
         codeResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         using var doc = JsonDocument.Parse(await codeResponse.Content.ReadAsStringAsync());
-        var redeem = await parent.PostAsJsonAsync("/api/parent-links/redeem", new { code = doc.RootElement.GetProperty("code").GetString() });
+        var redeem = await (await ParentAsync(parentUser)).PostAsJsonAsync("/api/parent-links/redeem",
+            new { code = doc.RootElement.GetProperty("code").GetString() });
         redeem.StatusCode.ShouldBe(HttpStatusCode.OK);
         var linkId = (await redeem.Content.ReadFromJsonAsync<LinkedChildDto>(Json))!.LinkId;
-        (await student.PostAsync($"/api/parent-links/{linkId}/approve", null)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        (await primary.PostAsync($"/api/parent-links/{linkId}/approve", null)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
         return linkId;
     }
 
@@ -93,18 +100,20 @@ public class ParentNotificationPostgresTests(IntegrationApiFactory factory) : In
     [Fact]
     public async Task Link_and_unlink_events_carry_sub_and_short_names_but_no_email()
     {
-        const int studentUser = 42301, parentUser = 42302;
-        await SeedAsync(studentUser, parentUser);
+        const int studentUser = 42301, parentUser = 42302, primaryUser = 42303;
+        await SeedAsync(studentUser, parentUser, primaryUser);
 
-        var linkId = await LinkAsync(studentUser, parentUser);
-        (await (await ParentAsync(parentUser)).PostAsync($"/api/parent-links/{linkId}/revoke", null)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        // #436: ikinci veli birincil velinin onayıyla bağlanır (event Active'e geçişte); birincil veli bağlantıyı koparır.
+        var primaryLink = await LinkAsync(studentUser, primaryUser);
+        var linkId = await LinkSecondParentAsync(primaryLink, primaryUser, parentUser);
+        (await (await ParentAsync(primaryUser)).PostAsync($"/api/parent-links/{linkId}/revoke", null)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
         var linked = (await EventsAsync<ParentLinkedEvent>(e => e.LinkId == linkId)).ShouldHaveSingleItem();
         linked.ParentKeycloakId.ShouldBe($"kc-{parentUser}");
         linked.StudentKeycloakId.ShouldBe($"kc-{studentUser}");
         linked.StudentDisplayName.ShouldBe("Ayşe K.");
         var unlinked = (await EventsAsync<ParentUnlinkedEvent>(e => e.LinkId == linkId)).ShouldHaveSingleItem();
-        unlinked.RevokedByRole.ShouldBe("Parent");
+        unlinked.RevokedByRole.ShouldBe("PrimaryParent");
         unlinked.StudentKeycloakId.ShouldBe($"kc-{studentUser}");
         unlinked.ParentDisplayName.ShouldNotBeNullOrWhiteSpace();
     }
@@ -115,12 +124,8 @@ public class ParentNotificationPostgresTests(IntegrationApiFactory factory) : In
         const int studentUser = 42311, activeParent = 42312, pendingParent = 42313;
         var seeded = await SeedAsync(studentUser, activeParent, pendingParent);
         await LinkAsync(studentUser, activeParent);
-        // Pending: kod → redeem, öğrenci onaylamadı.
-        var student = await StudentAsync(studentUser);
-        var codeResponse = await student.PostAsync("/api/parent-links/invite-code", null);
-        using (var doc = JsonDocument.Parse(await codeResponse.Content.ReadAsStringAsync()))
-            (await (await ParentAsync(pendingParent)).PostAsJsonAsync("/api/parent-links/redeem",
-                new { code = doc.RootElement.GetProperty("code").GetString() })).StatusCode.ShouldBe(HttpStatusCode.OK);
+        // Pending: ikinci veli isteği, birincil veli onaylamadı.
+        await SeedParentLinkAsync(pendingParent, studentUser, active: false);
 
         // Test-tamamlandı bildirimi yalnız görünür bir atamanın penceresindeki oturum için gider (#423 m1).
         await WithDbAsync(async db =>

@@ -4,7 +4,8 @@ using System.ComponentModel.DataAnnotations;
 namespace ExamApp.Api.Data;
 
 /// <summary>
-/// Issue #419: öğrencinin veli bağlamak için ürettiği tek kullanımlık davet kodu. Kodun DÜZ METNİ hiçbir yerde saklanmaz
+/// Issue #419: tek kullanımlık veli davet kodu. Issue #436'dan beri yalnızca öğrencinin BİRİNCİL velisi üretir (ikinci veli
+/// daveti, <see cref="CreatedByParentId"/>); <see cref="StudentId"/> kodun bağlayacağı çocuk. Kodun DÜZ METNİ hiçbir yerde saklanmaz
 /// (yalnızca üretim yanıtında bir kez döner); <see cref="CodeHash"/> = HMAC-SHA256(sunucu pepper'ı, normalize kod), hex.
 /// Öğrenci başına aynı anda tek geçerli (kullanılmamış + süresi dolmamış) kod vardır: yeni kod üretmek öncekilerin
 /// <see cref="ExpiresAt"/>'ini "şimdi"ye çeker. Kullanılan kodda <see cref="UsedAt"/>/<see cref="UsedByParentId"/> dolar.
@@ -34,4 +35,9 @@ public class ParentInviteCode
     public int? UsedByParentId { get; set; }
 
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// Issue #436: kodu üreten BİRİNCİL veli (Parents.Id) — "ikinci veli davet kodu". Null = #419 öğrenci kodu (artık kullanılamaz).
+    /// </summary>
+    public int? CreatedByParentId { get; set; }
 }

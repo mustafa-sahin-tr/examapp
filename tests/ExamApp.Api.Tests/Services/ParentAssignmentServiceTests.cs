@@ -75,18 +75,21 @@ public class ParentAssignmentServiceTests : IDisposable
         ctx.ParentStudentLinks.AddRange(
             new ParentStudentLink
             {
+                Origin = ParentStudentLinkOrigin.ParentCreated,
                 ParentId = parent.Id, StudentId = student.Id, Status = ParentStudentLinkStatus.Active,
                 CreatedAt = Now.AddDays(-2), ActivatedAt = Now.AddDays(-2)
             },
             // Başka veli, BAŞKA çocuğa bağlı (IDOR: bu veli bizim öğrencimizi göremez).
             new ParentStudentLink
             {
+                Origin = ParentStudentLinkOrigin.ParentCreated,
                 ParentId = otherParent.Id, StudentId = other.Id, Status = ParentStudentLinkStatus.Active,
                 CreatedAt = Now.AddDays(-2), ActivatedAt = Now.AddDays(-2)
             },
             // Onay bekleyen istek erişim vermez.
             new ParentStudentLink
             {
+                Origin = ParentStudentLinkOrigin.ParentCreated,
                 ParentId = pendingParent.Id, StudentId = student.Id, Status = ParentStudentLinkStatus.Pending,
                 CreatedAt = Now.AddHours(-2)
             });

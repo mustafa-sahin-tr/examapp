@@ -70,6 +70,10 @@
     "dashboard": {
       "invalidDays": "days must be between 1 and 365."
     },
+    "parentAccessAudits": {
+      "invalidRange": "from must be earlier than to.",
+      "rangeTooLong": "The from/to range can be at most {0} days."
+    },
 
     "teacherApplication": {
       "invalidStatusFilter": "\"status\" must be \"pending\" or \"all\".",

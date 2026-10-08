@@ -348,6 +348,9 @@ public class AppDbContext : DbContext
         {
             e.HasIndex(a => new { a.ParentId, a.At });
             e.HasIndex(a => new { a.StudentId, a.At });
+            // issue #424: saklama süresi temizliği (ParentAccessAuditRetentionJob) ve admin listesinin veli/öğrenci filtresiz,
+            // tarih aralıklı sorgusu (AdminDataAccessLog deseni).
+            e.HasIndex(a => a.At);
         });
 
         // issue #423: gecikmiş ödev bildirimi (test, öğrenci) başına en fazla bir kez — job tekrarı/yarışı DB seviyesinde tekilleşir.

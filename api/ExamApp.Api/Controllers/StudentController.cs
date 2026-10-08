@@ -126,6 +126,8 @@ namespace ExamApp.Api.Controllers
             });
         }
 
+        // issue #424 (ters keşif): önceden yetki attribute'u yoktu (anonim istek user=null ile 500 veriyordu); yalnızca öğrenci.
+        [Authorize(Roles = "Student")]
         [HttpPost("update-grade")]
         public async Task<IActionResult> UpdateStudentGrade([FromBody] int newGradeId)
         {
@@ -142,18 +144,37 @@ namespace ExamApp.Api.Controllers
             return await GetStudentProfile();
         }
 
+        /// <summary>
+        /// Öğrenci avatarı yükler. Issue #424 (security review): yalnızca <c>Student</c> rolü (önceden sınıf/aksiyon seviyesinde
+        /// yetki yoktu — anonim istek de dosya yazabiliyordu); yalnızca PNG / JPEG / WebP (Content-Type + dosya imzası), en fazla
+        /// 2 MB (<see cref="AvatarUpload"/>). Depo anahtarının uzantısı tespit edilen türden gelir, istemcinin dosya adından değil.
+        /// BİLİNEN EKSİK: yüklenen nesne profile bağlanmıyor — avatar URL'i auth-api'deki kullanıcı kaydında
+        /// (<c>AvatarUrl</c>) ve exam API ile auth-api arasında bir yazma yolu yok (servisler arası doğrudan çağrı yasak;
+        /// outbox event'i gerekir, ayrı iş).
+        /// </summary>
+        [Authorize(Roles = "Student")]
         [HttpPost("update-avatar")]
-        public async Task<IActionResult> UpdateAvatar(IFormFile avatar)
+        [RequestSizeLimit(AvatarUpload.MaxRequestBytes)]
+        [RequestFormLimits(MultipartBodyLengthLimit = AvatarUpload.MaxRequestBytes)]
+        public async Task<IActionResult> UpdateAvatar(IFormFile? avatar)
         {
             var user = await GetAuthenticatedUserAsync();
+            if (!IsResolvedUser(user))
+                return UserNotResolved(new { message = _localizer["auth.userNotResolved"].Value });
 
-            if (avatar == null || avatar.Length == 0)
-                return BadRequest(new { message = _localizer["student.invalidFile"].Value });
+            var (error, extension) = await AvatarUpload.ValidateAsync(avatar, HttpContext.RequestAborted);
+            switch (error)
+            {
+                case AvatarUploadError.TooLarge:
+                    return BadRequest(new { message = _localizer["student.avatar.tooLarge", AvatarUpload.MaxBytes / (1024 * 1024)].Value });
+                case AvatarUploadError.UnsupportedType:
+                    return BadRequest(new { message = _localizer["student.avatar.unsupportedType"].Value });
+                case AvatarUploadError.Missing:
+                    return BadRequest(new { message = _localizer["student.invalidFile"].Value });
+            }
 
-            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(avatar.FileName)}";
-            var filePath = $"avatars/{fileName}";
-
-            using (var stream = avatar.OpenReadStream())
+            var filePath = $"avatars/{Guid.NewGuid()}{extension}";
+            using (var stream = avatar!.OpenReadStream())
             {
                 await _minioService.UploadFileAsync(stream, filePath, "student-avatars");
             }

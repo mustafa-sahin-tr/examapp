@@ -67,16 +67,21 @@ public static class ParentEndpointCatalog
     /// <summary>Veli kapsamında keşfedilen ama okuma matrisi dışında kalan aksiyonlar — her biri gerekçeli.</summary>
     public static readonly IReadOnlyDictionary<string, string> Exempt = new Dictionary<string, string>
     {
-        [$"{nameof(ParentLinksController)}.{nameof(ParentLinksController.CreateInviteCode)}"] =
-            "Student-only write (own invite code); ParentLinkEndpointsTests.",
+        [$"{nameof(ParentLinksController)}.{nameof(ParentLinksController.CreateSecondParentCode)}"] =
+            "Parent write (#436): primary parent issues a second-parent code for their own Active link (other link 404, " +
+            "non-primary 403); returns only the code + expiry; ParentLinkEndpointsTests, ParentForbiddenContentTests.",
         [$"{nameof(ParentLinksController)}.{nameof(ParentLinksController.GetMyParents)}"] =
             "Student-only read of the student's own parents; ParentLinkEndpointsTests.",
         [$"{nameof(ParentLinksController)}.{nameof(ParentLinksController.Redeem)}"] =
             "Parent write; returns only a Pending stub without student data; ParentLinkEndpointsTests.",
-        [$"{nameof(ParentLinksController)}.{nameof(ParentLinksController.Approve)}"] = "Student-only write.",
-        [$"{nameof(ParentLinksController)}.{nameof(ParentLinksController.Reject)}"] = "Student-only write.",
+        [$"{nameof(ParentLinksController)}.{nameof(ParentLinksController.Approve)}"] =
+            "Write (Student,Parent; #436): primary parent approves a pending second-parent request (unrelated 404, non-primary " +
+            "403); student only a LegacyV1 request in the 30-day transition. 204 without body; ParentLinkEndpointsTests.",
+        [$"{nameof(ParentLinksController)}.{nameof(ParentLinksController.Reject)}"] =
+            "Write (Student,Parent; #436): same authorization as Approve; 204 without body; ParentLinkEndpointsTests.",
         [$"{nameof(ParentLinksController)}.{nameof(ParentLinksController.Revoke)}"] =
-            "Write on the caller's own link (ownership 404); exercised by the revoke cases of the matrix.",
+            "Write (Parent,Admin; #436): primary parent removes any link of the child, a parent leaves / cancels their own " +
+            "(last Active parent 409), admin any (audited); unrelated 404. Exercised by the revoke step of the matrix.",
         [$"{nameof(ParentController)}.{nameof(ParentController.RegisterParent)}"] = "Role registration; no child data.",
         [$"{nameof(ParentController)}.{nameof(ParentController.CheckParent)}"] = "Own profile flag only; no child data.",
     };

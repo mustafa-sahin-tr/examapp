@@ -108,7 +108,7 @@ describe('StudentProfileComponent', () => {
         {
           provide: ParentLinkService,
           useValue: {
-            getMyParents: () => of({ items: [], pendingRequests: [], activeInviteExpiresAt: null, maxActiveParents: 4 }),
+            getMyParents: () => of({ items: [], pendingRequests: [], maxActiveParents: 4, requiresParent: true }),
             extractError: (_: unknown, fallback: string) => fallback,
             errorCode: () => null,
           },
@@ -263,14 +263,17 @@ describe('StudentProfileComponent', () => {
     expect(link?.textContent).toContain(accountSecurityTr.open);
   });
 
-  it('infoTab_ShowsParentInviteCard (issue #419)', () => {
+  it('infoTab_ShowsReadOnlyParentsCard_WithoutInviteCodeGeneration (issue #436)', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    const card = el.querySelector('app-parent-invite-card');
+    const card = el.querySelector('app-student-parents-card');
 
     expect(card).not.toBeNull();
-    expect(card?.textContent).toContain(parentLinksTr.invite.title);
-    expect(card?.querySelector('[data-test="generate"]')).not.toBeNull();
+    expect(card?.textContent).toContain(parentLinksTr.parents.title);
+    expect(card?.querySelector('[data-test="what-parent-sees"]')).not.toBeNull();
+    // Veli-öncelikli model: öğrenci kod üretmez (#419 kartı kaldırıldı).
+    expect(el.querySelector('app-parent-invite-card')).toBeNull();
+    expect(card?.querySelector('[data-test="generate"]')).toBeNull();
   });
 
   it('tabs_NoWhatsNewTab_InfoTabIsFirst', () => {

@@ -79,7 +79,9 @@ public enum AdminUserAction
     /// <summary>issue #361: öğrencinin bekleyen okul üyeliği onaylandı (Students.SchoolVerifiedAt). Aktör admin ya da aynı okulun onaylı öğretmeni; <see cref="AdminUserActionLog.ToSchoolId"/> = okul.</summary>
     StudentSchoolApproved = 14,
     /// <summary>issue #361: öğrencinin bekleyen okul üyeliği reddedildi (Students.SchoolId temizlendi). Aktör admin ya da aynı okulun onaylı öğretmeni.</summary>
-    StudentSchoolRejected = 15
+    StudentSchoolRejected = 15,
+    /// <summary>issue #436: admin bir veli–öğrenci bağlantısını kopardı (<see cref="AdminUserTargetType.ParentLink"/>).</summary>
+    ParentLinkRevoked = 16
 }
 
 /// <summary>Admin hesap aksiyonunun sonucu. Kalıcı değer string'dir.</summary>
@@ -106,7 +108,9 @@ public enum AdminUserActionOutcome
     /// issue #313 review (O1): okul değişikliği UYGULANDI (DB + Keycloak ipucu) ama profil önbelleği denemelere rağmen
     /// düşürülemedi — kullanıcı en geç önbellek süresi (1 saat) boyunca eski okulun kapsamında görünebilir. Başarılı sonuçtur.
     /// </summary>
-    SucceededCacheStale = 10
+    SucceededCacheStale = 10,
+    /// <summary>issue #436: hedef zaten istenen durumdaydı (ör. bağlantı zaten koparılmış) — yan etki yok.</summary>
+    NoChange = 11
 }
 
 /// <summary>Admin hesap aksiyonunun hedef türü. Kalıcı değer string'dir.</summary>
@@ -117,5 +121,7 @@ public enum AdminUserTargetType
     /// <summary>issue #305: hedef bir yorum; <see cref="AdminUserActionLog.TargetId"/> = WorksheetComments.Id.</summary>
     WorksheetComment = 3,
     /// <summary>issue #106: hedef bir doğrudan mesaj konuşması; <see cref="AdminUserActionLog.TargetId"/> = Conversations.Id (öğrenci/öğretmen çifti oradan).</summary>
-    Conversation = 4
+    Conversation = 4,
+    /// <summary>issue #436: hedef bir veli–öğrenci bağlantısı; <see cref="AdminUserActionLog.TargetId"/> = ParentStudentLinks.Id.</summary>
+    ParentLink = 5
 }

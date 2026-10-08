@@ -416,6 +416,13 @@ builder.Services.AddOptions<ExamApp.Api.Services.Parents.ParentAccessAuditOption
     .ValidateOnStart();
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentAccessAuditRetentionJob, ExamApp.Api.Services.Parents.ParentAccessAuditRetentionJob>();
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminParentAccessAuditService, ExamApp.Api.Services.AdminUsers.AdminParentAccessAuditService>();
+// issue #436: veli-öncelikli model geçişi — süresi dolan bekleyen istekleri (eski öğrenci onaylı 30 gün, ikinci veli 7 gün)
+// kapatır ve birincil velisi silinen öğrencide birincilliği devreder (Hangfire, varsayılan saatte bir).
+builder.Services.AddOptions<ExamApp.Api.Services.Parents.ParentLinkTransitionSweepOptions>()
+    .BindConfiguration(ExamApp.Api.Services.Parents.ParentLinkTransitionSweepOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentLinkTransitionSweepJob, ExamApp.Api.Services.Parents.ParentLinkTransitionSweepJob>();
 
 // Student activity reset
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();
@@ -434,7 +441,7 @@ builder.Services.AddWorksheetCommentReadRateLimiting(); // okuma: dakikada 60 (r
 // issue #106: doğrudan mesaj — gönderme (dakikada 10), şikayet (saatte 20), okuma (dakikada 60); sub başına dağıtık.
 builder.Services.AddDirectMessageRateLimiting();
 builder.Services.AddDailyQuestionsRateLimiting(); // issue #99 security D4: günün soruları, öğrenci başına dakikada 30
-builder.Services.AddParentLinkRateLimiting(); // issue #419: veli kod denemesi dakikada 5, öğrenci kod üretimi saatte 10 (sub başına)
+builder.Services.AddParentLinkRateLimiting(); // issue #419/#436: veli kod denemesi dakikada 5, birincil velinin ikinci veli kodu üretimi saatte 10 (sub başına)
 
 // PostgreSQL & EF Core (Aspire client integration — reads ConnectionStrings:DefaultConnection,
 // same key as before, so standalone `dotnet run` against appsettings.json is unaffected).
@@ -699,6 +706,12 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.Parents.IParentAccessAuditRetentio
     ExamApp.Api.Services.Parents.ParentAccessAuditRetentionJob.RecurringJobId,
     j => j.PurgeExpiredAsync(CancellationToken.None),
     app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Parents.ParentAccessAuditOptions>>().Value.Cron);
+
+// issue #436: geçiş dönemi biten eski (#419) ve süresi dolan ikinci veli isteklerini Revoked'a çeker; birincil veli devrini onarır.
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.Parents.IParentLinkTransitionSweepJob>(
+    ExamApp.Api.Services.Parents.ParentLinkTransitionSweepJob.RecurringJobId,
+    j => j.SweepAsync(CancellationToken.None),
+    app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Parents.ParentLinkTransitionSweepOptions>>().Value.Cron);
 
 app.Run();
 return 0;

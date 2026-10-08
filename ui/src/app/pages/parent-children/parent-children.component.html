@@ -71,29 +71,149 @@
               </button>
             </li>
           } @else {
-            <li class="pch__item" data-test="child-row">
-              <mat-icon aria-hidden="true">child_care</mat-icon>
-              <div class="pch__info">
-                <span class="pch__name">{{ child.studentName }}</span>
-                <span class="pch__meta">
-                  @if (child.gradeName) {
-                    <span>{{ t('children.grade') }}: {{ child.gradeName }}</span>
-                  }
-                  @if (child.schoolName) {
-                    <span>{{ t('children.school') }}: {{ child.schoolName }}</span>
-                  }
-                  <span>{{ t('children.linkedAt', { date: ui.formatDate(child.linkedAt) }) }}</span>
-                </span>
+            <li class="pch__child" data-test="child-row">
+              <div class="pch__item">
+                <mat-icon aria-hidden="true">child_care</mat-icon>
+                <div class="pch__info">
+                  <span class="pch__name">
+                    {{ child.studentName }}
+                    @if (child.isPrimary) {
+                      <span class="pch__badge" data-test="primary-badge">{{ t('family.primaryBadge') }}</span>
+                    }
+                  </span>
+                  <span class="pch__meta">
+                    @if (child.gradeName) {
+                      <span>{{ t('children.grade') }}: {{ child.gradeName }}</span>
+                    }
+                    @if (child.schoolName) {
+                      <span>{{ t('children.school') }}: {{ child.schoolName }}</span>
+                    }
+                    <span>{{ t('children.linkedAt', { date: ui.formatDate(child.linkedAt) }) }}</span>
+                  </span>
+                </div>
+                @if (canLeave(child)) {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    data-test="revoke"
+                    [disabled]="revokingId() === child.linkId"
+                    (click)="revoke(child)"
+                  >
+                    {{ child.isPrimary ? t('children.revoke') : t('children.leave') }}
+                  </button>
+                }
               </div>
-              <button
-                mat-stroked-button
-                type="button"
-                data-test="revoke"
-                [disabled]="revokingId() === child.linkId"
-                (click)="revoke(child)"
-              >
-                {{ t('children.revoke') }}
-              </button>
+
+              @if (child.isPrimary) {
+                <section class="pch__family" data-test="family" [attr.aria-label]="t('family.title')">
+                  <h3 class="pch__subtitle">{{ t('family.title') }}</h3>
+                  @if ((child.coParents ?? []).length === 0) {
+                    <p class="pch__hint" data-test="family-empty">{{ t('family.empty') }}</p>
+                  } @else {
+                    <ul class="pch__list">
+                      @for (co of child.coParents ?? []; track co.linkId) {
+                        @if (co.status === 'Pending') {
+                          <li class="pch__item pch__item--request" data-test="coparent-request">
+                            <mat-icon aria-hidden="true">person_add</mat-icon>
+                            <div class="pch__info">
+                              <span class="pch__name">{{ co.parentName }}</span>
+                              <span class="pch__meta">
+                                @if (co.parentEmailMasked) {
+                                  <span data-test="coparent-email">{{ co.parentEmailMasked }}</span>
+                                }
+                                <span>{{ t('family.requestExpires', { date: ui.formatDate(co.pendingExpiresAt) }) }}</span>
+                              </span>
+                            </div>
+                            <button
+                              mat-flat-button
+                              type="button"
+                              data-test="coparent-approve"
+                              [disabled]="decidingId() !== null"
+                              (click)="approveRequest(co)"
+                            >
+                              {{ t('family.approve') }}
+                            </button>
+                            <button
+                              mat-stroked-button
+                              type="button"
+                              data-test="coparent-reject"
+                              [disabled]="decidingId() !== null"
+                              (click)="rejectRequest(co)"
+                            >
+                              {{ t('family.reject') }}
+                            </button>
+                          </li>
+                        } @else {
+                          <li class="pch__item" data-test="coparent-row">
+                            <mat-icon aria-hidden="true">family_restroom</mat-icon>
+                            <div class="pch__info">
+                              <span class="pch__name">{{ co.parentName }}</span>
+                              <span class="pch__meta">
+                                <span>{{ t('children.linkedAt', { date: ui.formatDate(co.linkedAt) }) }}</span>
+                              </span>
+                            </div>
+                            <button
+                              mat-stroked-button
+                              type="button"
+                              data-test="coparent-remove"
+                              [disabled]="decidingId() !== null"
+                              (click)="removeCoParent(co)"
+                            >
+                              {{ t('family.remove') }}
+                            </button>
+                          </li>
+                        }
+                      }
+                    </ul>
+                  }
+
+                  @if (!canLeave(child)) {
+                    <p class="pch__hint" data-test="only-parent-note">{{ t('family.onlyParent') }}</p>
+                  }
+
+                  @if (displayCodes()[child.linkId]; as code) {
+                    <div class="pch__code" data-test="second-parent-code-box">
+                      <span class="pch__code-label">{{ t('family.codeLabel') }}</span>
+                      <div class="pch__code-row">
+                        <output class="pch__code-value" aria-live="polite">{{ code }}</output>
+                        <button
+                          mat-icon-button
+                          type="button"
+                          data-test="copy"
+                          (click)="copyCode(child)"
+                          [matTooltip]="t('family.copy')"
+                          [attr.aria-label]="t('family.copy')"
+                        >
+                          <mat-icon>content_copy</mat-icon>
+                        </button>
+                      </div>
+                      <p class="pch__hint">{{ t('family.expires', { date: ui.formatDate(newCodeExpiry(child), true) }) }}</p>
+                      <p class="pch__hint pch__hint--strong" role="note">{{ t('family.shownOnce') }}</p>
+                    </div>
+                  } @else if (child.secondParentCodeExpiresAt) {
+                    <p class="pch__hint" data-test="active-code">
+                      {{ t('family.activeCode', { date: ui.formatDate(child.secondParentCodeExpiresAt, true) }) }}
+                    </p>
+                  }
+
+                  @if (limitReached(child)) {
+                    <p class="pch__hint" data-test="family-limit">{{ t('family.limitReached', { max: child.maxParents || 4 }) }}</p>
+                  } @else {
+                    <button
+                      mat-stroked-button
+                      type="button"
+                      data-test="second-parent-code"
+                      [disabled]="generatingId() !== null"
+                      (click)="generateCode(child)"
+                    >
+                      <mat-icon>vpn_key</mat-icon>
+                      {{ displayCodes()[child.linkId] || child.secondParentCodeExpiresAt ? t('family.regenerate') : t('family.generate') }}
+                    </button>
+                  }
+                </section>
+              } @else {
+                <p class="pch__hint pch__note" data-test="not-primary-note">{{ t('family.notPrimary') }}</p>
+              }
             </li>
           }
         }

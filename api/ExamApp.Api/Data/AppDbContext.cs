@@ -308,6 +308,15 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ParentStudentLink>(e =>
         {
             e.Property(l => l.Status).HasConversion<string>().HasMaxLength(16);
+            // issue #436: kuruluş yolu (string, Unknown yasak) + öğrenci başına tek Active birincil veli. Migration mevcut satırları LegacyV1,
+            // öğrenci başına en eski Active satırı IsPrimary yapar.
+            e.Property(l => l.Origin).HasConversion<string>().HasMaxLength(24);
+            // DB varsayılanı YOK: Unknown (CLR 0) yazımı CHECK ile reddedilir; mevcut satırları migration'ın veri adımı LegacyV1 yapar.
+            e.ToTable(t => t.HasCheckConstraint("CK_ParentStudentLinks_Origin_Known",
+                "\"Origin\" IN ('LegacyV1', 'InviteCode', 'ParentCreated', 'StudentRegistered')"));
+            e.HasIndex(l => l.StudentId, "IX_ParentStudentLinks_Primary_Active")
+                .IsUnique()
+                .HasFilter("\"IsPrimary\" AND \"Status\" = 'Active'");
             e.HasOne(l => l.Parent).WithMany().HasForeignKey(l => l.ParentId).OnDelete(DeleteBehavior.ClientNoAction);
             e.HasOne(l => l.Student).WithMany().HasForeignKey(l => l.StudentId).OnDelete(DeleteBehavior.ClientNoAction);
             e.HasIndex(l => new { l.ParentId, l.StudentId }, "IX_ParentStudentLinks_Open_Pair")
@@ -324,6 +333,8 @@ public class AppDbContext : DbContext
         {
             e.HasOne(c => c.Student).WithMany().HasForeignKey(c => c.StudentId).OnDelete(DeleteBehavior.ClientNoAction);
             e.HasOne<Parent>().WithMany().HasForeignKey(c => c.UsedByParentId).OnDelete(DeleteBehavior.ClientNoAction);
+            // issue #436: kodu üreten birincil veli (navigation'sız; null = artık kullanılamayan #419 öğrenci kodu).
+            e.HasOne<Parent>().WithMany().HasForeignKey(c => c.CreatedByParentId).OnDelete(DeleteBehavior.ClientNoAction);
             e.HasIndex(c => c.CodeHash, "IX_ParentInviteCodes_CodeHash_Unused")
                 .IsUnique()
                 .HasFilter("\"UsedAt\" IS NULL");

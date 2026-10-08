@@ -1119,6 +1119,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("CreatedByParentId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1132,6 +1135,8 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedByParentId");
 
                     b.HasIndex("UsedByParentId");
 
@@ -1157,6 +1162,14 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
 
                     b.Property<int>("ParentId")
                         .HasColumnType("integer");
@@ -1185,7 +1198,14 @@ namespace ExamApp.Api.Migrations
                         .IsUnique()
                         .HasFilter("\"Status\" IN ('Active', 'Pending')");
 
-                    b.ToTable("ParentStudentLinks");
+                    b.HasIndex(new[] { "StudentId" }, "IX_ParentStudentLinks_Primary_Active")
+                        .IsUnique()
+                        .HasFilter("\"IsPrimary\" AND \"Status\" = 'Active'");
+
+                    b.ToTable("ParentStudentLinks", t =>
+                        {
+                            t.HasCheckConstraint("CK_ParentStudentLinks_Origin_Known", "\"Origin\" IN ('LegacyV1', 'InviteCode', 'ParentCreated', 'StudentRegistered')");
+                        });
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Passage", b =>
@@ -4384,6 +4404,11 @@ namespace ExamApp.Api.Migrations
 
             modelBuilder.Entity("ExamApp.Api.Data.ParentInviteCode", b =>
                 {
+                    b.HasOne("ExamApp.Api.Data.Parent", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByParentId")
+                        .OnDelete(DeleteBehavior.ClientNoAction);
+
                     b.HasOne("ExamApp.Api.Data.Student", "Student")
                         .WithMany()
                         .HasForeignKey("StudentId")

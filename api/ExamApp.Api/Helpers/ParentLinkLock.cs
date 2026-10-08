@@ -8,11 +8,12 @@ using Npgsql;
 namespace ExamApp.Api.Helpers;
 
 /// <summary>
-/// issue #419: veli bağlantısı yazımları (davet kodu üretme = "öğrenci başına tek geçerli kod", redeem = "kod tek
+/// issue #419/#436: veli bağlantısı yazımları (ikinci veli kodu üretme = "çocuk başına tek geçerli kod", redeem = "kod tek
 /// kullanımlık" + "öğrenci başına en fazla 4 açık (Active + Pending) veli" + "veli başına en fazla N çocuk"; onay = süresi
-/// dolmamış Pending → Active) kontrol ile yazmayı AYNI anahtarda transaction-kapsamlı advisory lock altında yapar
-/// (<see cref="TeacherAvailabilityLock"/> (#323) deseni). Filtreli tekil index yalnızca aynı çiftin iki AÇIK satırını
-/// engeller; sayı tavanlarını ve kodun tek kullanımını kilit korur. Koparma/ret kilit almaz — koşullu UPDATE ile yarışı çözer.
+/// dolmamış Pending → Active; koparma/ret = birincil veli kuralı + devir) kontrol ile yazmayı AYNI anahtarda transaction-kapsamlı
+/// advisory lock altında yapar (<see cref="TeacherAvailabilityLock"/> (#323) deseni; kalıp <c>ParentLinkPrimary.InStudentLockAsync</c>).
+/// Filtreli tekil index'ler aynı çiftin iki AÇIK satırını ve öğrenci başına ikinci Active birincili engeller; sayı tavanlarını,
+/// kodun tek kullanımını ve birincil kuralını kilit korur; durum yarışlarını koşullu UPDATE çözer.
 /// Sıra her zaman önce öğrenci, sonra veli (kilitlenme yok). Postgres dışı sağlayıcılarda (SQLite birim testleri) no-op.
 /// Bekleme üst sınırı 5 sn; aşılırsa <see cref="ParentLinkLockTimeoutException"/> (geçici sayılmaz → 409).
 /// </summary>

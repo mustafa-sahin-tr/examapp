@@ -130,3 +130,79 @@
   font-weight: 500;
   font-style: italic;
 }
+
+// Issue #436: çocuk satırı + birincil velinin "Diğer veliler" bölümü.
+.pch__child {
+  border-bottom: 1px solid var(--ms-border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  > .pch__item {
+    border-bottom: none;
+  }
+}
+
+.pch__badge {
+  margin-left: 0.5rem;
+  padding: 0.0625rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--primaryColor);
+  color: var(--primaryColor);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  font-style: normal;
+}
+
+.pch__family {
+  margin: 0 0 0.75rem 2.25rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--ms-border);
+  border-radius: 10px;
+}
+
+.pch__subtitle {
+  margin: 0 0 0.5rem;
+  font-family: var(--mainFontFamily);
+  font-size: 0.9375rem;
+}
+
+.pch__note {
+  margin: 0 0 0.75rem 2.25rem;
+}
+
+.pch__hint--strong {
+  font-weight: 600;
+  opacity: 1;
+}
+
+.pch__item--request .pch__name {
+  font-weight: 500;
+}
+
+.pch__code {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px dashed var(--primaryColor);
+  border-radius: 10px;
+}
+
+.pch__code-label {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
+.pch__code-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pch__code-value {
+  font-family: var(--mainFontFamily);
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--primaryColor);
+}

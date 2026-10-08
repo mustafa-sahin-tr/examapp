@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -61,6 +62,35 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         {
             db.Teachers.Add(new Teacher { UserId = userId, SchoolId = schoolId, AccountApprovedAt = DateTime.UtcNow });
             await db.SaveChangesAsync();
+        });
+
+    /// <summary>
+    /// issue #436: veli–öğrenci bağlantısını doğrudan yazar. Veli-öncelikli modelde bağlantıyı veli kurar (hesap açma #438 /
+    /// ikinci veli kodu); öğrencinin kod üretip onayladığı #419 akışı yok. Active satır öğrencinin ilk Active bağlantısıysa
+    /// birincil olur; <paramref name="active"/> false ise birincil velinin onayını bekleyen ikinci veli isteği (Pending, InviteCode).
+    /// Bağlantı id'sini döner.
+    /// </summary>
+    protected Task<int> SeedParentLinkAsync(int parentUserId, int studentUserId, bool active = true, DateTime? at = null) =>
+        WithDbAsync(async db =>
+        {
+            var parentId = await db.Parents.Where(p => p.UserId == parentUserId).Select(p => p.Id).SingleAsync();
+            var studentId = await db.Students.Where(s => s.UserId == studentUserId).Select(s => s.Id).SingleAsync();
+            var hasPrimary = await db.ParentStudentLinks.AnyAsync(l => l.StudentId == studentId && l.IsPrimary
+                && l.Status == ParentStudentLinkStatus.Active);
+            var when = at ?? DateTime.UtcNow;
+            var link = new ParentStudentLink
+            {
+                ParentId = parentId,
+                StudentId = studentId,
+                Status = active ? ParentStudentLinkStatus.Active : ParentStudentLinkStatus.Pending,
+                Origin = active && !hasPrimary ? ParentStudentLinkOrigin.ParentCreated : ParentStudentLinkOrigin.InviteCode,
+                IsPrimary = active && !hasPrimary,
+                CreatedAt = when,
+                ActivatedAt = active ? when : null
+            };
+            db.ParentStudentLinks.Add(link);
+            await db.SaveChangesAsync();
+            return link.Id;
         });
 
     // ---- HTTP clients ----

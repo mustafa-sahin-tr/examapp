@@ -5,8 +5,8 @@ import { TestBed } from '@angular/core/testing';
 import { ParentLinkService } from './parent-link.service';
 import { formatInviteCode } from '../models/parent-link.model';
 
-/** Issue #419: veli–öğrenci bağlantısı uçları gateway `/api/exam/parent-links/...` altında. */
-describe('ParentLinkService (issue #419)', () => {
+/** Issue #419/#436: veli–öğrenci bağlantısı uçları gateway `/api/exam/parent-links/...` altında. */
+describe('ParentLinkService (issue #419, #436)', () => {
   let service: ParentLinkService;
   let http: HttpTestingController;
 
@@ -18,9 +18,9 @@ describe('ParentLinkService (issue #419)', () => {
 
   afterEach(() => http.verify());
 
-  it('createInviteCode_PostsToInviteCode', () => {
-    service.createInviteCode().subscribe((r) => expect(r.code).toBe('ABCDEFGHJKMN'));
-    const req = http.expectOne('/api/exam/parent-links/invite-code');
+  it('createSecondParentCode_PostsToLinkSecondParentCode (issue #436)', () => {
+    service.createSecondParentCode(7).subscribe((r) => expect(r.code).toBe('ABCDEFGHJKMN'));
+    const req = http.expectOne('/api/exam/parent-links/7/second-parent-code');
     expect(req.request.method).toBe('POST');
     req.flush({ code: 'ABCDEFGHJKMN', expiresAt: '2026-10-09T09:00:00Z' });
   });

@@ -22,7 +22,8 @@ public class ParentForbiddenContentTests(IntegrationApiFactory factory) : Integr
 {
     private const int RivalXp = 98765;
 
-    private const int StudentUser = 49101, OtherStudentUser = 49102, ParentUser = 49103, TeacherUser = 49104, SecondParentUser = 49105;
+    private const int StudentUser = 49101, OtherStudentUser = 49102, ParentUser = 49103, TeacherUser = 49104, SecondParentUser = 49105,
+        ThirdParentUser = 49106;
 
     /// <summary>Hiçbir veli yanıtında geçmemesi gereken içerik (büyük/küçük harf duyarsız).</summary>
     private static readonly string[] ForbiddenContent =
@@ -61,7 +62,7 @@ public class ParentForbiddenContentTests(IntegrationApiFactory factory) : Integr
         "hangfireJobId", "studentKeycloakId", "remindBeforeMinutes",
     };
 
-    private sealed record Seeded(int StudentId, int OtherStudentId, int[] OwnInstanceIds);
+    private sealed record Seeded(int StudentId, int OtherStudentId, int[] OwnInstanceIds, int PrimaryLinkId);
 
     private static readonly TimeZoneInfo Istanbul = TimeZoneInfo.FindSystemTimeZoneById("Europe/Istanbul");
 
@@ -75,6 +76,7 @@ public class ParentForbiddenContentTests(IntegrationApiFactory factory) : Integr
         directory.Add(new() { Id = TeacherUser, KeycloakId = $"kc-{TeacherUser}", FullName = "Zeynep Hoca", Email = "teacher-secret@x.com", Avatar = "avatar-teacher.png" });
         directory.Add(new() { Id = ParentUser, KeycloakId = $"kc-{ParentUser}", FullName = "Veli Bey", Email = "parent-secret@x.com" });
         directory.Add(new() { Id = SecondParentUser, KeycloakId = $"kc-{SecondParentUser}", FullName = "İkinci Veli", Email = "parent2-secret@x.com" });
+        directory.Add(new() { Id = ThirdParentUser, KeycloakId = $"kc-{ThirdParentUser}", FullName = "Üçüncü Veli", Email = "parent3-secret@x.com" });
 
         var now = DateTime.UtcNow;
         return await WithDbAsync(async db =>
@@ -95,7 +97,8 @@ public class ParentForbiddenContentTests(IntegrationApiFactory factory) : Integr
             var other = NewStudent(OtherStudentUser);
             db.Students.AddRange(student, other);
             var parent = new Parent { UserId = ParentUser };
-            db.Parents.AddRange(parent, new Parent { UserId = SecondParentUser });
+            var secondParent = new Parent { UserId = SecondParentUser };
+            db.Parents.AddRange(parent, secondParent, new Parent { UserId = ThirdParentUser });
             var teacher = new Teacher
             {
                 UserId = TeacherUser, IsIndependentTutor = true, HourlyRate = 987.65m, Bio = "GIZLI-BIO", AccountApprovedAt = now
@@ -103,9 +106,17 @@ public class ParentForbiddenContentTests(IntegrationApiFactory factory) : Integr
             db.Teachers.Add(teacher);
             await db.SaveChangesAsync();
 
-            db.ParentStudentLinks.Add(new ParentStudentLink
+            // issue #436: birincil veli (çocuğun hesabını açan) + birincil velinin onayladığı ikinci veli (Active, birincil değil).
+            var primaryLink = new ParentStudentLink
             {
                 ParentId = parent.Id, StudentId = student.Id, Status = ParentStudentLinkStatus.Active,
+                Origin = ParentStudentLinkOrigin.ParentCreated, IsPrimary = true,
+                CreatedAt = now.AddDays(-2), ActivatedAt = now.AddDays(-2)
+            };
+            db.ParentStudentLinks.AddRange(primaryLink, new ParentStudentLink
+            {
+                ParentId = secondParent.Id, StudentId = student.Id, Status = ParentStudentLinkStatus.Active,
+                Origin = ParentStudentLinkOrigin.InviteCode, IsPrimary = false,
                 CreatedAt = now.AddDays(-2), ActivatedAt = now.AddDays(-1)
             });
 
@@ -243,7 +254,7 @@ public class ParentForbiddenContentTests(IntegrationApiFactory factory) : Integr
                 await db.SaveChangesAsync();
             }
 
-            return new Seeded(student.Id, other.Id, [ownInstance.Id]);
+            return new Seeded(student.Id, other.Id, [ownInstance.Id], primaryLink.Id);
         });
     }
 
@@ -268,8 +279,28 @@ public class ParentForbiddenContentTests(IntegrationApiFactory factory) : Integr
     {
         var seeded = await SeedAsync();
         var parent = await ClientAsAsync(ParentUser, "Parent", $"kc-{ParentUser}", "Parent");
+        var secondParent = await ClientAsAsync(SecondParentUser, "Parent", $"kc-{SecondParentUser}", "Parent");
+        var thirdParent = await ClientAsAsync(ThirdParentUser, "Parent", $"kc-{ThirdParentUser}", "Parent");
 
         var payloads = new List<(string Url, string Json)>();
+
+        // Veli için muaf tutulan YAZMA uçları da taranır (review). Issue #436: birincil veli ikinci veli kodu üretir, üçüncü veli
+        // kodu kullanır → Pending taslak (öğrenci verisi yok); istek aşağıdaki okuma taramasında birincil velinin listesinde görünür.
+        var codeResponse = await parent.PostAsync($"/api/parent-links/{seeded.PrimaryLinkId}/second-parent-code", null);
+        codeResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var codeJson = await codeResponse.Content.ReadAsStringAsync();
+        payloads.Add(("POST /api/parent-links/{id}/second-parent-code", codeJson));
+        string code;
+        using (var codeDoc = JsonDocument.Parse(codeJson))
+            code = codeDoc.RootElement.GetProperty("code").GetString()!;
+        var redeem = await thirdParent.PostAsJsonAsync("/api/parent-links/redeem", new { code });
+        redeem.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var redeemJson = await redeem.Content.ReadAsStringAsync();
+        redeemJson.ShouldNotContain(code, Case.Insensitive); // davet kodu geri yansımaz
+        payloads.Add(("POST /api/parent-links/redeem", redeemJson));
+        int pendingLinkId;
+        using (var redeemDoc = JsonDocument.Parse(redeemJson))
+            pendingLinkId = redeemDoc.RootElement.GetProperty("linkId").GetInt32();
         foreach (var endpoint in ParentEndpointCatalog.ReadEndpoints)
         {
             foreach (var url in UrlsFor(endpoint, seeded))
@@ -281,23 +312,13 @@ public class ParentForbiddenContentTests(IntegrationApiFactory factory) : Integr
             }
         }
 
-        // Veli için muaf tutulan YAZMA uçları da taranır (review): redeem → Pending taslak (öğrenci verisi yok), revoke → 204.
-        var student = await ClientAsAsync(StudentUser, "Student", $"kc-{StudentUser}", "Student");
-        var codeResponse = await student.PostAsync("/api/parent-links/invite-code", null);
-        codeResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        string code;
-        using (var codeDoc = JsonDocument.Parse(await codeResponse.Content.ReadAsStringAsync()))
-            code = codeDoc.RootElement.GetProperty("code").GetString()!;
-        var secondParent = await ClientAsAsync(SecondParentUser, "Parent", $"kc-{SecondParentUser}", "Parent");
-        var redeem = await secondParent.PostAsJsonAsync("/api/parent-links/redeem", new { code });
-        redeem.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var redeemJson = await redeem.Content.ReadAsStringAsync();
-        redeemJson.ShouldNotContain(code, Case.Insensitive); // davet kodu geri yansımaz
-        payloads.Add(("POST /api/parent-links/redeem", redeemJson));
-        int pendingLinkId;
-        using (var redeemDoc = JsonDocument.Parse(redeemJson))
-            pendingLinkId = redeemDoc.RootElement.GetProperty("linkId").GetInt32();
-        var revoke = await secondParent.PostAsync($"/api/parent-links/{pendingLinkId}/revoke", null);
+        // Birincil olmayan (ikinci) veli de listesini görür: diğer veliler / bekleyen istekler / maskeli e-posta YOK.
+        var secondChildren = await secondParent.GetAsync("/api/parent-links/my-children");
+        secondChildren.StatusCode.ShouldBe(HttpStatusCode.OK);
+        payloads.Add(("GET /api/parent-links/my-children (second parent)", await secondChildren.Content.ReadAsStringAsync()));
+
+        // Üçüncü veli kendi bekleyen isteğini iptal eder → 204, gövde yok.
+        var revoke = await thirdParent.PostAsync($"/api/parent-links/{pendingLinkId}/revoke", null);
         revoke.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         var revokeBody = await revoke.Content.ReadAsStringAsync();
         revokeBody.ShouldBeEmpty();
@@ -310,9 +331,16 @@ public class ParentForbiddenContentTests(IntegrationApiFactory factory) : Integr
         Payload("/progress").ShouldContain("İlk Adım");
         Payload("schedule?from=").ShouldContain("Zeynep Hoca");
         Payload("/my-children").ShouldContain("Ayşe Kaya");
+        Payload("/my-children").ShouldContain("İkinci Veli");
+        Payload("/my-children").ShouldContain("Üçüncü Veli");
+        Payload("my-children (second parent)").ShouldContain("Ayşe Kaya");
+        Payload("my-children (second parent)").ShouldNotContain("Üçüncü Veli");
 
-        foreach (var (url, json) in payloads)
+        foreach (var (url, raw) in payloads)
         {
+            // Issue #436 istisnası: YALNIZ birincil velinin çocuk listesinde, bekleyen ikinci veli isteğinin MASKELİ e-postası
+            // (birincil veli kimi onayladığını bilsin). Değer doğrulanıp taramadan önce çıkarılır.
+            var json = url == "/api/parent-links/my-children" ? StripPrimaryParentMaskedEmails(raw) : raw;
             foreach (var marker in ForbiddenContent)
                 json.ShouldNotContain(marker, Case.Insensitive, $"{url} yasak içerik taşıyor: '{marker}'");
 
@@ -331,6 +359,37 @@ public class ParentForbiddenContentTests(IntegrationApiFactory factory) : Integr
                     value.GetDecimal().ShouldNotBe(RivalXp, $"{url}: {path}");
             }
         }
+    }
+
+    /// <summary>
+    /// Birincil velinin <c>my-children</c> yanıtında <c>coParents[*].parentEmailMasked</c> yalnız Pending istekte ve maskeli
+    /// (<c>x***@y***.tld</c>) olabilir; doğrulanıp kaldırılır, kalan JSON genel taramaya girer.
+    /// </summary>
+    private static string StripPrimaryParentMaskedEmails(string json)
+    {
+        var root = System.Text.Json.Nodes.JsonNode.Parse(json)!.AsArray();
+        var stripped = 0;
+        foreach (var child in root)
+        {
+            if (child?["coParents"] is not System.Text.Json.Nodes.JsonArray coParents)
+                continue;
+            foreach (var coParent in coParents.OfType<System.Text.Json.Nodes.JsonObject>())
+            {
+                if (!coParent.TryGetPropertyValue("parentEmailMasked", out var masked))
+                    continue;
+                var value = masked?.GetValue<string>() ?? string.Empty;
+                if (value.Length > 0)
+                {
+                    coParent["status"]!.GetValue<string>().ShouldBe("Pending", "maskeli e-posta yalnız bekleyen istekte");
+                    value.ShouldContain("***");
+                    value.ShouldNotContain("secret", Case.Insensitive);
+                    stripped++;
+                }
+                coParent.Remove("parentEmailMasked");
+            }
+        }
+        stripped.ShouldBe(1, "bekleyen ikinci veli isteği birincil velinin listesinde maskeli e-postayla görünmeli");
+        return root.ToJsonString();
     }
 
     private static IEnumerable<(string Path, string Name, JsonElement Value)> Walk(JsonElement element, string path)

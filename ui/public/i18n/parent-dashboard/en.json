@@ -10,8 +10,8 @@
   "summaryNotFound": "You no longer have access to this child's information. The link may have been removed.",
   "empty": {
     "title": "No linked children yet",
-    "message": "To follow your child's work, get an invite code from your child and add them to your account.",
-    "pendingNote": "You have a request awaiting approval. The summary will appear here once your child approves it.",
+    "message": "Open your child's account from the My children page, or ask their other parent for a second-parent code.",
+    "pendingNote": "You have a request awaiting approval. The summary will appear here once the child's primary parent approves it.",
     "cta": "Add child"
   },
   "cards": {

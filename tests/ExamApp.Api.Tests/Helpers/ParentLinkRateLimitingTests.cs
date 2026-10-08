@@ -185,19 +185,22 @@ public class ParentLinkRateLimitingTests
 
     [Theory]
     [InlineData(nameof(ParentLinksController.Redeem), ParentLinkRateLimiting.RedeemPolicy)]
-    [InlineData(nameof(ParentLinksController.CreateInviteCode), ParentLinkRateLimiting.InvitePolicy)]
+    [InlineData(nameof(ParentLinksController.CreateSecondParentCode), ParentLinkRateLimiting.InvitePolicy)] // #436
+    [InlineData(nameof(ParentLinksController.Approve), ParentLinkRateLimiting.ManagePolicy)] // #436 security MINOR-5
+    [InlineData(nameof(ParentLinksController.Reject), ParentLinkRateLimiting.ManagePolicy)]
+    [InlineData(nameof(ParentLinksController.Revoke), ParentLinkRateLimiting.ManagePolicy)]
     public void Write_actions_carry_their_rate_limit_policy(string action, string policy)
         => typeof(ParentLinksController).GetMethod(action)!
             .GetCustomAttribute<EnableRateLimitingAttribute>()!.PolicyName.ShouldBe(policy);
 
     [Theory]
-    [InlineData(nameof(ParentLinksController.CreateInviteCode), "Student")]
+    [InlineData(nameof(ParentLinksController.CreateSecondParentCode), "Parent")] // #436: yalnız (birincil) veli kod üretir
     [InlineData(nameof(ParentLinksController.GetMyParents), "Student")]
     [InlineData(nameof(ParentLinksController.Redeem), "Parent")]
     [InlineData(nameof(ParentLinksController.GetMyChildren), "Parent")]
-    [InlineData(nameof(ParentLinksController.Revoke), "Student,Parent")]
-    [InlineData(nameof(ParentLinksController.Approve), "Student")]
-    [InlineData(nameof(ParentLinksController.Reject), "Student")]
+    [InlineData(nameof(ParentLinksController.Revoke), "Parent,Admin")] // #436: öğrenci koparamaz
+    [InlineData(nameof(ParentLinksController.Approve), "Student,Parent")] // öğrenci: yalnız geçiş dönemi (servis)
+    [InlineData(nameof(ParentLinksController.Reject), "Student,Parent")]
     public void Actions_are_role_gated(string action, string roles)
     {
         var attributes = typeof(ParentLinksController).GetMethod(action)!.GetCustomAttributes<AuthorizeAttribute>().ToList();

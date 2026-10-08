@@ -59,21 +59,12 @@ public class ParentProgressEndpointsTests(IntegrationApiFactory factory) : Integ
 
     private Task<HttpClient> ParentAsync(int userId) => ClientAsAsync(userId, "Parent", $"kc-{userId}", "Parent");
 
-    /// <summary>Kod → redeem (Pending) → öğrenci onayı (Active).</summary>
-    private static async Task<int> LinkAsync(HttpClient student, HttpClient parent, bool approve = true)
-    {
-        var codeResponse = await student.PostAsync("/api/parent-links/invite-code", null);
-        codeResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        using var codeDoc = JsonDocument.Parse(await codeResponse.Content.ReadAsStringAsync());
-        var code = codeDoc.RootElement.GetProperty("code").GetString()!;
-
-        var redeem = await parent.PostAsJsonAsync("/api/parent-links/redeem", new { code });
-        redeem.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var pending = (await redeem.Content.ReadFromJsonAsync<LinkedChildDto>(Json))!;
-        if (approve)
-            (await student.PostAsync($"/api/parent-links/{pending.LinkId}/approve", null)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
-        return pending.LinkId;
-    }
+    /// <summary>
+    /// issue #436: veli-öncelikli bağlantı (doğrudan Active; ilk veli birincil). <paramref name="approve"/> false → birincil
+    /// velinin onayını bekleyen ikinci veli isteği (erişim vermez).
+    /// </summary>
+    private Task<int> LinkAsync(int studentUser, int parentUser, bool approve = true)
+        => SeedParentLinkAsync(parentUser, studentUser, active: approve);
 
     private static string ProgressUrl(int studentId) => $"/api/parent/children/{studentId}/progress";
 
@@ -169,7 +160,7 @@ public class ParentProgressEndpointsTests(IntegrationApiFactory factory) : Integ
         var seeded = await SeedAsync(studentUser, otherStudentUser, parentUser);
         var student = await StudentAsync(studentUser);
         var parent = await ParentAsync(parentUser);
-        await LinkAsync(student, parent);
+        await LinkAsync(studentUser, parentUser);
         await SeedScheduleAsync(seeded);
         // Projeksiyonlar (BadgeService event'leriyle beslenir; consumer'lar LeaderboardPointsSyncTests'te uçtan uca).
         var today = LocalToday;
@@ -305,9 +296,9 @@ public class ParentProgressEndpointsTests(IntegrationApiFactory factory) : Integ
         var pendingParent = await ParentAsync(pendingParentUser);
         var teacher = await ClientAsAsync(47116, "Teacher", "kc-47116", "Teacher");
 
-        var linkId = await LinkAsync(student, parent);
-        await LinkAsync(student, pendingParent, approve: false);
-        await LinkAsync(await StudentAsync(otherStudentUser), otherParent);
+        var linkId = await LinkAsync(studentUser, parentUser);
+        await LinkAsync(studentUser, pendingParentUser, approve: false);
+        await LinkAsync(otherStudentUser, otherParentUser);
 
         // Başka velinin çocuğu / bekleyen bağlantı / olmayan öğrenci → 404, audit yok.
         foreach (var client in new[] { otherParent, pendingParent })
@@ -338,10 +329,13 @@ public class ParentProgressEndpointsTests(IntegrationApiFactory factory) : Integ
         (await parent.PutAsync(ScheduleUrl(seeded.StudentId), null)).StatusCode.ShouldBeOneOf(HttpStatusCode.MethodNotAllowed, HttpStatusCode.NotFound);
         (await parent.DeleteAsync(ScheduleUrl(seeded.StudentId))).StatusCode.ShouldBeOneOf(HttpStatusCode.MethodNotAllowed, HttpStatusCode.NotFound);
 
-        // Bağlı veli erişir; öğrenci koparınca erişim anında biter.
+        // Bağlı veli erişir; bağlantı koparılınca erişim anında biter.
         (await parent.GetAsync(ProgressUrl(seeded.StudentId))).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await parent.GetAsync(ScheduleUrl(seeded.StudentId))).StatusCode.ShouldBe(HttpStatusCode.OK);
-        (await student.PostAsync($"/api/parent-links/{linkId}/revoke", null)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        // #436: tek veli ayrılamaz (409); bağlantıyı admin koparınca erişim anında biter.
+        (await parent.PostAsync($"/api/parent-links/{linkId}/revoke", null)).StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        var admin = await ClientAsAsync(47199, "Admin", "kc-admin-47199", "Admin");
+        (await admin.PostAsync($"/api/parent-links/{linkId}/revoke", null)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
         (await parent.GetAsync(ProgressUrl(seeded.StudentId))).StatusCode.ShouldBe(HttpStatusCode.NotFound);
         (await parent.GetAsync(ScheduleUrl(seeded.StudentId))).StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }

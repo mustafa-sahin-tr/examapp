@@ -90,16 +90,19 @@ public class ParentProgressServiceTests : IDisposable
         ctx.ParentStudentLinks.AddRange(
             new ParentStudentLink
             {
+                Origin = ParentStudentLinkOrigin.ParentCreated,
                 ParentId = parent.Id, StudentId = student.Id, Status = ParentStudentLinkStatus.Active,
                 CreatedAt = Now.AddDays(-2), ActivatedAt = Now.AddDays(-2)
             },
             new ParentStudentLink
             {
+                Origin = ParentStudentLinkOrigin.ParentCreated,
                 ParentId = otherParent.Id, StudentId = rival.Id, Status = ParentStudentLinkStatus.Active,
                 CreatedAt = Now.AddDays(-2), ActivatedAt = Now.AddDays(-2)
             },
             new ParentStudentLink
             {
+                Origin = ParentStudentLinkOrigin.ParentCreated,
                 ParentId = pendingParent.Id, StudentId = student.Id, Status = ParentStudentLinkStatus.Pending, CreatedAt = Now.AddHours(-2)
             });
         await ctx.SaveChangesAsync();

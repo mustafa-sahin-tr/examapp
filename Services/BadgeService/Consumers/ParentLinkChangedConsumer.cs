@@ -13,15 +13,18 @@ namespace BadgeService.Consumers;
 /// Veli–öğrenci bağlantısı bildirimleri (issue #423, epic #407 V5). exam API'nin bağlantı değişikliğiyle AYNI transaction'da
 /// yazdığı <see cref="ParentLinkedEvent"/> / <see cref="ParentUnlinkedEvent"/>'i alır:
 /// <list type="bullet">
-/// <item>Linked: veliye "{öğrenci} sizi veli olarak onayladı" (<see cref="LinkedToParentType"/>), öğrenciye "Velinizle bağlantı kuruldu"
+/// <item>Linked: veliye "{öğrenci} ile veli bağlantınız etkinleşti" (#436: onaylayan öğrenci değil birincil veli olabilir) (<see cref="LinkedToParentType"/>), öğrenciye "Velinizle bağlantı kuruldu"
 /// (<see cref="LinkedToStudentType"/>).</item>
-/// <item>Unlinked: yalnız KARŞI TARAFA — öğrenci kopardıysa veliye (<see cref="UnlinkedToParentType"/>), veli kopardıysa öğrenciye
-/// (<see cref="UnlinkedToStudentType"/>); koparanın kendisine bildirim yok.</item>
+/// <item>Unlinked (#436 rolleri, koparanın kendisine bildirim yok):
+/// <c>"Parent"</c> (veli kendi bağlantısından ayrıldı) → öğrenciye (<see cref="UnlinkedToStudentType"/>) ve event'te kalan birincil
+/// veli varsa ona (<see cref="CoParentLeftToPrimaryType"/>, derin link o çocuk);
+/// <c>"PrimaryParent"</c> / <c>"Admin"</c> (başkası kopardı) → koparılan veliye (<see cref="UnlinkedToParentType"/>) ve öğrenciye.
+/// #419'un <c>"Student"</c> koparması artık üretilmiyor (öğrenci koparamaz) ve bilinmeyen rol gibi atlanır.</item>
 /// </list>
 /// Tek consumer iki event'i handle eder (WorksheetAccessDecisionConsumer deseni).
 ///
 /// Issue #424 (V6, KVKK): Unlinked'te — kim koparırsa koparsın, RevokedByRole bilinmese de — velinin O ÇOCUĞA özgü bildirimleri
-/// silinir (<see cref="ChildSpecificParentTypes"/>: test tamamlandı, gecikmiş ödev, "sizi veli olarak onayladı"). Bağlantı kopunca veli
+/// silinir (<see cref="ChildSpecificParentTypes"/>: test tamamlandı, gecikmiş ödev, "veli bağlantınız etkinleşti"). Bağlantı kopunca veli
 /// çocuğun test adı/puanı/ödevini geçmiş bildirimlerden de göremesin. Çocuk <c>Data.studentId</c>'den eşlenir; aynı velinin başka
 /// çocuklarına ait ve diğer tipteki bildirimler (koparma bildiriminin kendisi dahil) kalır. Silme idempotent: tekrar teslimde
 /// silinecek satır kalmaz.
@@ -44,6 +47,7 @@ public class ParentLinkChangedConsumer :
     public const string LinkedToStudentType = "ParentLinkedToStudent";
     public const string UnlinkedToParentType = "ParentUnlinkedToParent";
     public const string UnlinkedToStudentType = "ParentUnlinkedToStudent";
+    public const string CoParentLeftToPrimaryType = "ParentCoParentLeftToPrimary";
 
     private readonly BadgeDbContext _db;
     private readonly IHubContext<BadgeNotificationHub> _hub;
@@ -70,7 +74,7 @@ public class ParentLinkChangedConsumer :
         var e = context.Message;
         var ct = context.CancellationToken;
 
-        // Veliye: "{öğrenci} sizi veli olarak onayladı" — veli panelinde ilgili çocuk açılır.
+        // Veliye: "{öğrenci} ile veli bağlantınız etkinleşti" — veli panelinde ilgili çocuk açılır.
         await NotifyAsync(LinkedToParentType, e.EventId, e.LinkId, e.ParentUserId, e.ParentKeycloakId,
             e.StudentDisplayName, "notifications.common.defaultChild", studentId: e.StudentId, ct);
         // Öğrenciye: "Velinizle bağlantı kuruldu".
@@ -85,15 +89,21 @@ public class ParentLinkChangedConsumer :
 
         await PurgeChildNotificationsAsync(e, ct);
 
-        if (string.Equals(e.RevokedByRole, "Student", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(e.RevokedByRole, "Parent", StringComparison.OrdinalIgnoreCase))
         {
-            // Öğrenci kopardı → veliye haber (bağlantı artık yok: derin link çocuk seçmeden /parent'a gider).
+            // Veli kendi bağlantısından ayrıldı → öğrenciye ve (kalan) birincil veliye haber; ayrılanın kendisine değil.
+            await NotifyAsync(UnlinkedToStudentType, e.EventId, e.LinkId, e.StudentUserId, e.StudentKeycloakId,
+                e.ParentDisplayName, "notifications.common.defaultParent", studentId: null, ct);
+            if (e.PrimaryParentUserId > 0 && e.PrimaryParentUserId != e.ParentUserId)
+                await NotifyAsync(CoParentLeftToPrimaryType, e.EventId, e.LinkId, e.PrimaryParentUserId, e.PrimaryParentKeycloakId,
+                    e.ParentDisplayName, "notifications.common.defaultParent", studentId: e.StudentId, ct);
+        }
+        else if (string.Equals(e.RevokedByRole, "PrimaryParent", StringComparison.OrdinalIgnoreCase)
+                 || string.Equals(e.RevokedByRole, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            // Birincil veli ya da admin kopardı → koparılan veliye (bağlantı artık yok: derin link çocuk seçmez) ve öğrenciye.
             await NotifyAsync(UnlinkedToParentType, e.EventId, e.LinkId, e.ParentUserId, e.ParentKeycloakId,
                 e.StudentDisplayName, "notifications.common.defaultChild", studentId: null, ct);
-        }
-        else if (string.Equals(e.RevokedByRole, "Parent", StringComparison.OrdinalIgnoreCase))
-        {
-            // Veli kopardı → öğrenciye haber.
             await NotifyAsync(UnlinkedToStudentType, e.EventId, e.LinkId, e.StudentUserId, e.StudentKeycloakId,
                 e.ParentDisplayName, "notifications.common.defaultParent", studentId: null, ct);
         }

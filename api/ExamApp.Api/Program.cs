@@ -408,6 +408,14 @@ builder.Services.AddOptions<ExamApp.Api.Services.Parents.ParentHomeworkOverdueSw
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentHomeworkOverdueSweepJob, ExamApp.Api.Services.Parents.ParentHomeworkOverdueSweepJob>();
+// issue #424: veli erişim kaydı saklama süresi (KVKK) — ParentAccessAudit:RetentionDays (varsayılan 180), günlük Hangfire temizliği;
+// admin okuma yüzeyi GET api/admin/parent-access-audits.
+builder.Services.AddOptions<ExamApp.Api.Services.Parents.ParentAccessAuditOptions>()
+    .BindConfiguration(ExamApp.Api.Services.Parents.ParentAccessAuditOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentAccessAuditRetentionJob, ExamApp.Api.Services.Parents.ParentAccessAuditRetentionJob>();
+builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminParentAccessAuditService, ExamApp.Api.Services.AdminUsers.AdminParentAccessAuditService>();
 
 // Student activity reset
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();
@@ -685,6 +693,12 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.Parents.IParentHomeworkOverdueSwee
     ExamApp.Api.Services.Parents.ParentHomeworkOverdueSweepJob.RecurringJobId,
     j => j.SweepAsync(CancellationToken.None),
     app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Parents.ParentHomeworkOverdueSweepOptions>>().Value.Cron);
+
+// issue #424: ParentAccessAudits saklama süresi (KVKK) — süresi dolan satırları günlük, parti parti siler.
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.Parents.IParentAccessAuditRetentionJob>(
+    ExamApp.Api.Services.Parents.ParentAccessAuditRetentionJob.RecurringJobId,
+    j => j.PurgeExpiredAsync(CancellationToken.None),
+    app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Parents.ParentAccessAuditOptions>>().Value.Cron);
 
 app.Run();
 return 0;

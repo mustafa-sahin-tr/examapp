@@ -1,5 +1,6 @@
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Leaderboards;
+using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,7 +15,7 @@ namespace ExamApp.Api.Controllers;
 /// Okul kimliği client'tan ALINMAZ — <c>schoolId</c> query parametresi bilinçli olarak bağlanmaz ve yok sayılır;
 /// okul her zaman <see cref="BaseController.GetSchoolScopeAsync"/> ile sunucu tarafında (DB kazanır, fail-closed;
 /// <see cref="BaseController.GetCurrentSchoolIdAsync"/> ile aynı doğrulama, tek profil çözümü) çözülür. Admin/servis hesabı için bu değer null'dır → <c>scope=school</c> 400 döner (admin'in okulu yoktur);
-/// global her rol için çalışır.
+/// global Student/Teacher/Admin için çalışır; Parent rolü 403 (issue #424).
 /// </para>
 /// </summary>
 [Route("api/[controller]")]
@@ -35,7 +36,10 @@ public class LeaderboardController : BaseController
     /// <param name="scope">"global" (varsayılan) veya "school". Büyük/küçük harf duyarsız.</param>
     /// <param name="skip">Sayfalama başlangıcı (>= 0).</param>
     /// <param name="take">Sayfa boyutu (1..<see cref="LeaderboardService.MaxTake"/>).</param>
-    [Authorize]
+    // issue #424: veli (Parent) 403 — başka öğrencilerin ad/puanı veliye açılmaz; veli çocuğunun sırasını
+    // GET api/parent/children/{id}/progress (V4) ile görür.
+    [Authorize(Roles = "Student,Teacher,Admin")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // #287: Teacher rolü için hesap onayı (diğer roller geçer)
     [HttpGet]
     public async Task<IActionResult> GetLeaderboard(
         [FromQuery] string? scope,

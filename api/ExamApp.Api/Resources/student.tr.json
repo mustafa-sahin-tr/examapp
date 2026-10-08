@@ -13,6 +13,10 @@
     "registrationConflict": "Kaydınız aynı anda başka bir istekle güncellendi. Lütfen sayfayı yenileyip tekrar deneyin.",
     "gradeUpdated": "Öğrenci sınıfı başarıyla güncellendi.",
     "invalidFile": "Geçersiz dosya.",
+    "avatar": {
+      "tooLarge": "Avatar en fazla {0} MB olabilir.",
+      "unsupportedType": "Avatar yalnızca PNG, JPEG ya da WebP olabilir."
+    },
     "reset": {
       "queued": "Sıfırlama işlemi kuyruğa alındı.",
       "alreadyPending": "Bekleyen bir sıfırlama işleminiz zaten var; tamamlanınca verileriniz sıfırlanmış olacak.",

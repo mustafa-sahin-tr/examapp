@@ -275,6 +275,47 @@ public class ParentNotificationConsumersTests : IDisposable
         (await check.Notifications.CountAsync()).ShouldBe(0);
     }
 
+    [Theory]
+    [InlineData("Student")]
+    [InlineData("Parent")]
+    [InlineData("Admin")] // bilinmeyen koparan: bildirim yok ama silme yine yapılır
+    public async Task Unlinked_DeletesOnlyThatParentsNotificationsForThatChild_Idempotently(string revokedBy)
+    {
+        // issue #424 (KVKK): koparma sonrası veli çocuğun test/ödev bildirimlerini ve "onayladı" kaydını görmez.
+        var hub = NewHub();
+        await LinkConsumer(hub).Consume(Context(Linked()));           // veliye LinkedToParent (studentId 21) + öğrenciye LinkedToStudent
+        await CompletedConsumer(hub).Consume(Context(Completed()));   // velinin, çocuk 21
+        await OverdueConsumer(hub).Consume(Context(Overdue()));       // velinin, çocuk 21
+        var otherChild = Completed();
+        otherChild.StudentId = 22;
+        await CompletedConsumer(hub).Consume(Context(otherChild));   // velinin başka çocuğu → kalır
+        await CompletedConsumer(hub).Consume(Context(Completed(parentUser: 9102, parentSub: "kc-parent-2"))); // başka veli → kalır
+        await using (var seed = _db.NewContext())
+        {
+            // Data'sı bozuk eski satır: hangi çocuğa ait olduğu bilinmiyor → silinmez.
+            seed.Notifications.Add(new Notification
+            {
+                UserId = ParentUser, UserKeycloakId = ParentSub, Type = ParentHomeworkOverdueConsumer.NotificationType,
+                Title = "t", Body = "b", Data = "not-json", CreatedAt = DateTime.UtcNow
+            });
+            await seed.SaveChangesAsync();
+        }
+
+        var e = Unlinked(revokedBy);
+        await LinkConsumer(hub).Consume(Context(e));
+        await LinkConsumer(hub).Consume(Context(e)); // tekrar teslim
+
+        await using var check = _db.NewContext();
+        var remaining = await check.Notifications.AsNoTracking().ToListAsync();
+        remaining.ShouldNotContain(n => n.UserId == ParentUser && n.Data != null && n.Data.Contains("\"studentId\":21"));
+        remaining.Count(n => n.UserId == ParentUser && n.Type == ParentChildTestCompletedConsumer.NotificationType).ShouldBe(1); // çocuk 22
+        remaining.Count(n => n.UserId == 9102).ShouldBe(1);
+        remaining.Count(n => n.Data == "not-json").ShouldBe(1);
+        remaining.Count(n => n.Type == ParentLinkChangedConsumer.LinkedToStudentType).ShouldBe(1); // öğrencinin kaydı kalır
+        remaining.Count(n => n.Type == ParentLinkChangedConsumer.UnlinkedToParentType).ShouldBe(revokedBy == "Student" ? 1 : 0);
+        remaining.Count(n => n.Type == ParentLinkChangedConsumer.UnlinkedToStudentType).ShouldBe(revokedBy == "Parent" ? 1 : 0);
+    }
+
     // ---- ParentHomeworkOverdue ---------------------------------------------------------------------------------------
 
     [Fact]

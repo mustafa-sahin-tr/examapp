@@ -43,13 +43,12 @@ public class AuthControllerTests : IDisposable
         return controller;
     }
 
-    private static string BuildJwt(string sub, string email, params string[] roles)
+    private static string BuildJwt(string sub, string? email, params string[] roles)
     {
-        var claims = new List<Claim>
-        {
-            new("sub", sub),
-            new("email", email),
-        };
+        var claims = new List<Claim> { new("sub", sub) };
+        // Issue #438: veli tarafından açılan çocuk hesabının token'ında "email" claim'i yok.
+        if (email != null)
+            claims.Add(new Claim("email", email));
         if (roles.Length > 0)
         {
             var realmAccessJson = JsonSerializer.Serialize(new { roles });
@@ -60,7 +59,7 @@ public class AuthControllerTests : IDisposable
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private static TokenResponseDto SuccessfulTokenResponse(string sub, string email, params string[] roles)
+    private static TokenResponseDto SuccessfulTokenResponse(string sub, string? email, params string[] roles)
     {
         var exampleAccessToken = BuildJwt(sub, email, roles); // example unsigned jwt, test-only
         return new TokenResponseDto
@@ -231,6 +230,43 @@ public class AuthControllerTests : IDisposable
         user.Role.ShouldBe("Teacher");
         user.RoleUpdatedAtUtc.ShouldNotBeNull();
         user.RoleUpdatedAtUtc!.Value.ShouldBeGreaterThanOrEqualTo(before);
+    }
+
+    [Fact]
+    public async Task EchangeCode_emailLessChildAccount_succeedsAndKeepsTheProvisionedStudentRow()
+    {
+        // Issue #438: çocuk hesabı auth-api'de (child-accounts) Email="" + Role=Student olarak açılır; token'da email claim'i YOK.
+        await using (var seed = _db.NewContext())
+        {
+            seed.Users.Add(new User { KeycloakId = "kc-child", Email = string.Empty, FullName = "Ali Kaya", Role = "Student" });
+            await seed.SaveChangesAsync();
+        }
+        await using var context = _db.NewContext();
+        var keycloak = Substitute.For<IKeycloakService>();
+        keycloak.ExchangeTokenAsync("auth-code-child", TestCodeVerifier)
+            .Returns(SuccessfulTokenResponse("kc-child", null, "Student"));
+
+        var result = await NewController(keycloak, context).EchangeCode(new CodeDto { Code = "auth-code-child", CodeVerifier = TestCodeVerifier });
+
+        var ok = result.ShouldBeOfType<OkObjectResult>();
+        ok.Value.ShouldBeOfType<LoginResponseDto>().Roles.ShouldBe(new[] { "Student" });
+        await using var check = _db.NewContext();
+        var user = await check.Users.SingleAsync(u => u.KeycloakId == "kc-child");
+        user.Email.ShouldBeEmpty();
+        user.Role.ShouldBe("Student");
+    }
+
+    [Fact]
+    public async Task Login_emailLessChildAccount_succeeds()
+    {
+        await using var context = _db.NewContext();
+        var keycloak = Substitute.For<IKeycloakService>();
+        keycloak.LoginAsync("ali.kaya", TestPassword, Arg.Any<CancellationToken>())
+            .Returns(SuccessfulTokenResponse("kc-child-login", null, "Student"));
+
+        var result = await NewController(keycloak, context).Login(ExampleLogin("ali.kaya", TestPassword));
+
+        result.ShouldBeOfType<OkObjectResult>();
     }
 
     [Fact]

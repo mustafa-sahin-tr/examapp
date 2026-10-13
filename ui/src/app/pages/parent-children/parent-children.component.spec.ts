@@ -10,6 +10,9 @@ import { of, throwError } from 'rxjs';
 import { ParentChildrenComponent } from './parent-children.component';
 import { ParentLinkService } from '../../services/parent-link.service';
 import { LocaleService } from '../../services/locale.service';
+import { GradesService } from '../../services/grades.service';
+import { SchoolService } from '../../services/school.service';
+import { ParentChildAccountService } from '../../services/parent-child-account.service';
 import { CoParent, LinkedChild, normalizeInviteCodeInput } from '../../models/parent-link.model';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import parentLinksTr from '../../../../public/i18n/parent-links/tr.json';
@@ -24,6 +27,7 @@ describe('ParentChildrenComponent (issue #419, #436)', () => {
   let service: jasmine.SpyObj<ParentLinkService>;
   let snackBar: jasmine.SpyObj<MatSnackBar>;
   let clipboard: jasmine.SpyObj<Clipboard>;
+  let dialogOpen: jasmine.Spy;
 
   const ayse: LinkedChild = {
     linkId: 1,
@@ -99,10 +103,15 @@ describe('ParentChildrenComponent (issue #419, #436)', () => {
         { provide: ParentLinkService, useValue: service },
         { provide: Clipboard, useValue: clipboard },
         { provide: LocaleService, useValue: { localeDefinition: signal({ angularLocale: 'tr-TR' }) } },
+        // Issue #438: gömülü "Çocuk hesabı oluştur" formunun bağımlılıkları (HTTP yok).
+        { provide: GradesService, useValue: { getGrades: () => of([]) } },
+        { provide: SchoolService, useValue: { getSchools: () => of([]) } },
+        { provide: ParentChildAccountService, useValue: jasmine.createSpyObj('ParentChildAccountService', ['create', 'resetPassword']) },
       ],
     });
     TestBed.overrideProvider(MatSnackBar, { useValue: snackBar });
-    TestBed.overrideProvider(MatDialog, { useValue: { open: () => ({ afterClosed: () => of(true) }) } });
+    dialogOpen = jasmine.createSpy('open').and.returnValue({ afterClosed: () => of(true) });
+    TestBed.overrideProvider(MatDialog, { useValue: { open: dialogOpen } });
     fixture = TestBed.createComponent(ParentChildrenComponent);
     fixture.detectChanges();
     return fixture.nativeElement as HTMLElement;
@@ -352,5 +361,46 @@ describe('ParentChildrenComponent (issue #419, #436)', () => {
       jasmine.any(String),
       jasmine.any(Object)
     );
+  });
+
+  // ---- Issue #438: çocuk hesabı oluşturma + şifre sıfırlama ----------------------------------------------------------
+
+  it('rendersCreateChildAccountForm_AboveSecondParentCode (issue #438)', () => {
+    const el = setup([]);
+    const form = el.querySelector('app-create-child-account');
+    expect(form).not.toBeNull();
+    expect(form!.querySelector('#create-child')).not.toBeNull();
+    expect(form!.textContent).toContain(parentLinksTr.createChild.title);
+  });
+
+  it('resetPasswordButton_OnlyForParentManagedChildren (issue #438)', () => {
+    const managed: LinkedChild = { ...ayse, linkId: 5, studentId: 41, studentName: 'Ali Kaya', parentManaged: true };
+    const el = setup([ayse, managed]);
+    const rows = el.querySelectorAll('[data-test="child-row"]');
+    expect(rows.length).toBe(2);
+    expect(rows[0].querySelector('[data-test="reset-password"]')).toBeNull();
+    const button = rows[1].querySelector<HTMLButtonElement>('[data-test="reset-password"]');
+    expect(button).not.toBeNull();
+    expect(button!.textContent).toContain(parentLinksTr.resetPw.action);
+  });
+
+  it('resetPassword_OpensDialogForTheChild_AndToastsOnSuccess (issue #438)', () => {
+    const managed: LinkedChild = { ...ayse, linkId: 5, studentId: 41, studentName: 'Ali Kaya', parentManaged: true };
+    const el = setup([managed]);
+    el.querySelector<HTMLButtonElement>('[data-test="reset-password"]')!.click();
+
+    expect(dialogOpen).toHaveBeenCalledTimes(1);
+    expect(dialogOpen.calls.mostRecent().args[1].data).toEqual({ studentId: 41, studentName: 'Ali Kaya' });
+    expect(snackBar.open).toHaveBeenCalledWith(parentLinksTr.resetPw.done, jasmine.anything(), jasmine.anything());
+  });
+
+  it('childCreated_ReloadsTheList (issue #438)', () => {
+    setup([]);
+    service.getMyChildren.calls.reset();
+    service.getMyChildren.and.returnValue(of([{ ...ayse, studentId: 41, parentManaged: true }]));
+    (fixture.componentInstance as unknown as { onChildCreated(): void }).onChildCreated();
+    fixture.detectChanges();
+    expect(service.getMyChildren).toHaveBeenCalledTimes(1);
+    expect((fixture.nativeElement as HTMLElement).querySelector('[data-test="reset-password"]')).not.toBeNull();
   });
 });

@@ -1162,7 +1162,8 @@ public class KeycloakService : IKeycloakService
         var json = await getResponse.Content.ReadAsStringAsync(ct);
         if (!getResponse.IsSuccessStatusCode)
         {
-            throw new KeycloakException($"Failed to read Keycloak user '{keycloakUserId}' ({(int)getResponse.StatusCode}): {json}");
+            throw new KeycloakException($"Failed to read Keycloak user '{keycloakUserId}' ({(int)getResponse.StatusCode}): {json}",
+                (int)getResponse.StatusCode);
         }
 
         // Tam temsili sözlük olarak al: PUT'ta bilinmeyen alanlar olduğu gibi geri gider, yalnızca attributes değişir.
@@ -1243,7 +1244,54 @@ public class KeycloakService : IKeycloakService
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync(ct);
-            throw new KeycloakException($"Keycloak password reset failed for user '{keycloakUserId}' ({(int)response.StatusCode}): {error}");
+            // Issue #438: 400 = parola politikası reddi (gövde parolayı içermez), 404 = kullanıcı yok — çağıran ayırt edebilsin.
+            var kind = response.StatusCode == System.Net.HttpStatusCode.BadRequest ? KeycloakFailureKind.Validation : KeycloakFailureKind.Unexpected;
+            throw new KeycloakException($"Keycloak password reset failed for user '{keycloakUserId}' ({(int)response.StatusCode}): {error}",
+                (int)response.StatusCode, kind);
         }
+    }
+
+    // ---- Veli tarafından açılan çocuk hesabı (issue #438) — yalnızca ChildAccountService kullanır ----
+
+    public async Task<string> CreateParentManagedUserAsync(string username, string firstName, string lastName, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(username);
+
+        // E-posta YOK, required action YOK (realm VERIFY_PROFILE kapalı olmalı — bkz. dev realm export), kimlik bilgisi YOK:
+        // parola ayrı reset-password çağrısıyla set edilir ki politika reddi (400) kullanıcı oluşturma hatasından ayrılsın.
+        var representation = new Dictionary<string, object?>
+        {
+            ["username"] = username,
+            ["enabled"] = true,
+            ["emailVerified"] = false,
+            ["firstName"] = firstName,
+            ["lastName"] = lastName,
+            ["requiredActions"] = Array.Empty<string>(),
+            ["attributes"] = new Dictionary<string, string[]>
+            {
+                [ExamApp.Foundation.Security.ChildAccountRules.KeycloakParentManagedAttribute] =
+                    new[] { ExamApp.Foundation.Security.ChildAccountRules.KeycloakParentManagedValue }
+            }
+        };
+
+        var content = new StringContent(JsonSerializer.Serialize(representation, IgnoreNulls), Encoding.UTF8, "application/json");
+        await AuthorizeAdminAsync(ct);
+        var response = await _adminHttp.PostAsync(BuildKeycloakUri(_keycloakSettings.UserUrl), content, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync(ct);
+            var kind = response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.Conflict => KeycloakFailureKind.Conflict,
+                System.Net.HttpStatusCode.BadRequest => KeycloakFailureKind.Validation,
+                _ => KeycloakFailureKind.Unexpected,
+            };
+            throw new KeycloakException($"Keycloak child user creation failed ({(int)response.StatusCode}): {error}", (int)response.StatusCode, kind);
+        }
+
+        var id = response.Headers.Location?.ToString().Split('/').Last();
+        if (string.IsNullOrWhiteSpace(id))
+            throw new KeycloakException("Keycloak did not return a Location header for the created child user.");
+        return id;
     }
 }

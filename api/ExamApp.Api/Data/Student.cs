@@ -65,6 +65,12 @@ public class Student : BaseEntity, ISchoolScoped
     public int? VerifiedSchoolId => SchoolVerifiedAt.HasValue ? SchoolId : null;
 
 
+    /// <summary>
+    /// Issue #438: hesap veli tarafından açıldı ve yönetiliyor (kullanıcı adı + şifre; e-postasız). Çocuk kendi şifresini/e-postasını
+    /// değiştiremez (Hesabım kartı gizlenir); şifreyi yalnız Active bağlantılı veli sıfırlar. Mevcut satırlar false.
+    /// </summary>
+    public bool ParentManaged { get; set; }
+
     public int? GradeId { get; set; } // 🟢 Grade artık opsiyonel (nullable)
 
     [ForeignKey("GradeId")]

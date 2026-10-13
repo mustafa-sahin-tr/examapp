@@ -87,6 +87,30 @@
       "Priority": 2
     },
     {
+      "DownstreamPathTemplate": "/__blocked/api/auth/child-accounts",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth-api",
+          "Port": 5079
+        }
+      ],
+      "UpstreamPathTemplate": "/api/auth/child-accounts",
+      "Priority": 2
+    },
+    {
+      "DownstreamPathTemplate": "/__blocked/api/auth/child-accounts/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth-api",
+          "Port": 5079
+        }
+      ],
+      "UpstreamPathTemplate": "/api/auth/child-accounts/{everything}",
+      "Priority": 2
+    },
+    {
       "DownstreamPathTemplate": "/api/auth/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [

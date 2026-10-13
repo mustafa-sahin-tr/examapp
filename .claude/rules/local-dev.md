@@ -297,6 +297,17 @@ Realm settings → **General** → *Display name* = `Hedef Okul`, and → **Emai
 *From display name* = `Hedef Okul`. The login theme title comes from the theme's
 `brandName` message (refresh the page; restart Keycloak if theme caching is on).
 
+**Issue #438 — parent-created child accounts (username login).** A parent opens a child account from
+*Çocuklarım* (`POST /api/exam/parent/children` → auth-api `api/auth/child-accounts`, service token only,
+blocked at the gateway). The Keycloak user has **no email**, so the realm needs
+`registrationEmailAsUsername: false` (otherwise `error-user-attribute-required: email`) and the
+`VERIFY_PROFILE` required action **disabled** (email is required for the `user` role in the user profile;
+with it on, every child login fails with "Account is not fully set up"). The dev export carries both;
+on an **already-running Keycloak** set them by hand: admin console → `exam-realm` → Realm settings → Login →
+*Email as username* Off, and Authentication → Required actions → *Verify Profile* Off. With *Email as
+username* off, Keycloak's own registration form also asks for a username. The login page label comes from
+the theme (`usernameOrEmail` = "E-posta veya kullanıcı adı"); restart Keycloak if theme caching is on.
+
 ## Port map (host → container)
 
 | Service | Host port | Notes |

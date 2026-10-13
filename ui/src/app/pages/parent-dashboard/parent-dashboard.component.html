@@ -31,7 +31,7 @@
         @if (hasPending()) {
           <p class="pdb__pending-note" data-test="pending-note">{{ t('empty.pendingNote') }}</p>
         }
-        <a mat-flat-button routerLink="/my-children" data-test="add-child">
+        <a mat-flat-button routerLink="/my-children" fragment="create-child" data-test="add-child">
           <mat-icon>person_add</mat-icon>
           {{ t('empty.cta') }}
         </a>

@@ -99,4 +99,57 @@ public class KeycloakServiceCreateUserTests
 
         id.ShouldBe("kc-123");
     }
+
+    // ---- Issue #438: veli tarafından açılan çocuk hesabı ----
+
+    [Fact]
+    public async Task CreateParentManagedUser_sends_no_email_no_credentials_no_required_actions_and_the_marker()
+    {
+        string? body = null;
+        var service = Build(req =>
+        {
+            body = req.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            var response = new HttpResponseMessage(HttpStatusCode.Created);
+            response.Headers.Location = new Uri("http://keycloak.test/admin/realms/exam-realm/users/kc-child");
+            return response;
+        });
+
+        var id = await service.CreateParentManagedUserAsync("ali.kaya", "Ali", "Kaya");
+
+        id.ShouldBe("kc-child");
+        using var doc = System.Text.Json.JsonDocument.Parse(body!);
+        var root = doc.RootElement;
+        root.GetProperty("username").GetString().ShouldBe("ali.kaya");
+        root.TryGetProperty("email", out _).ShouldBeFalse();
+        root.TryGetProperty("credentials", out _).ShouldBeFalse();
+        root.GetProperty("requiredActions").GetArrayLength().ShouldBe(0);
+        root.GetProperty("enabled").GetBoolean().ShouldBeTrue();
+        root.GetProperty("attributes").GetProperty("parent_managed")[0].GetString().ShouldBe("true");
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Conflict, KeycloakFailureKind.Conflict)]
+    [InlineData(HttpStatusCode.BadRequest, KeycloakFailureKind.Validation)]
+    [InlineData(HttpStatusCode.InternalServerError, KeycloakFailureKind.Unexpected)]
+    public async Task CreateParentManagedUser_classifies_failures(HttpStatusCode status, KeycloakFailureKind kind)
+    {
+        var service = Build(_ => Json(status, """{"errorMessage":"x"}"""));
+
+        var ex = await Should.ThrowAsync<KeycloakException>(() => service.CreateParentManagedUserAsync("ali.kaya", "Ali", "Kaya"));
+
+        ex.Kind.ShouldBe(kind);
+        ex.StatusCode.ShouldBe((int)status);
+    }
+
+    [Fact]
+    public async Task ResetPassword_400_is_Validation_and_404_keeps_the_status()
+    {
+        var policy = Build(_ => Json(HttpStatusCode.BadRequest, """{"error":"invalidPasswordMinLengthMessage"}"""));
+        var ex = await Should.ThrowAsync<KeycloakException>(() => policy.ResetPasswordAsync("kc-1", ExamplePassword));
+        ex.Kind.ShouldBe(KeycloakFailureKind.Validation);
+        ex.Message.ShouldNotContain(ExamplePassword);
+
+        var missing = Build(_ => Json(HttpStatusCode.NotFound, """{"error":"User not found"}"""));
+        (await Should.ThrowAsync<KeycloakException>(() => missing.ResetPasswordAsync("kc-1", ExamplePassword))).StatusCode.ShouldBe(404);
+    }
 }

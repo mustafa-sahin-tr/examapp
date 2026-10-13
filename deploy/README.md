@@ -181,6 +181,21 @@ olmalı: `https://<DOMAIN>/app/callback` (birden çok domain varsa her biri içi
 `hedefokul.com`, `www.`, `staging.` ve `http://localhost:5678` için bunu taşır). Değer gateway/auth-api
 `Keycloak__RedirectUri` ile birebir aynı olmalıdır.
 
+### Kullanıcı adıyla giriş — veli tarafından açılan çocuk hesabı (issue #438)
+
+Veli panelinden açılan çocuk hesabı e-postasızdır ve kullanıcı adı + şifreyle girer. Prod realm'de:
+
+- Realm settings → **Login** → *Email as username* = **Off** (`registrationEmailAsUsername: false`). Açıkken Keycloak
+  e-postasız kullanıcıyı `error-user-attribute-required: email` ile reddeder. Kapalıyken Keycloak kayıt formu ayrıca
+  kullanıcı adı alanı gösterir. *Login with email* açık kalır (e-posta ya da kullanıcı adıyla giriş).
+- Authentication → **Required actions** → *Verify Profile* = **Off**. User profile'da `email` `user` rolü için zorunlu
+  olduğundan açıkken çocuk her girişte "Account is not fully set up" / e-posta isteyen profil sayfasına düşer.
+- Brute force detection açık kalmalı (kullanıcı adı tahmini; bkz. yukarı).
+- auth-api `exam-admin` servis hesabı `manage-users` ile kullanıcıyı açar (`parent_managed=true` attribute'u;
+  `unmanagedAttributePolicy=ADMIN_EDIT` olmalı ki attribute saklansın ve kullanıcı değiştiremesin).
+
+Dev export'u (`deploy/keycloak/dev-import/realm-export.json`) iki ayarı taşır; mevcut realm'lerde elle yapılmalıdır.
+
 ### Keycloak Theme (login)
 
 Custom theme mount’ı prod compose’da aktiftir:

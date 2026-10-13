@@ -571,6 +571,7 @@ public sealed class ParentLinkService : IParentLinkService
                 // #361: yalnızca DOĞRULANMIŞ okul gösterilir — öğrencinin kendi seçtiği (bekleyen) okul ya da legacy serbest
                 // metin SchoolName veliye "okulu" diye sunulmaz.
                 SchoolName = l.Student.SchoolVerifiedAt != null && l.Student.School != null ? l.Student.School.Name : null,
+                l.Student.ParentManaged, // issue #438
                 l.ActivatedAt,
                 l.CreatedAt
             })
@@ -639,6 +640,7 @@ public sealed class ParentLinkService : IParentLinkService
                 LinkedAt = AsUtc(r.ActivatedAt ?? r.CreatedAt),
                 RequestedAt = AsUtc(r.CreatedAt),
                 IsPrimary = isPrimary,
+                ParentManaged = r.ParentManaged,
                 MaxParents = ParentLinkRules.MaxActiveParentsPerStudent
             };
             if (!isPrimary)

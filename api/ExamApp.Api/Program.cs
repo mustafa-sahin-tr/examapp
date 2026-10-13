@@ -312,6 +312,8 @@ builder.Services.AddOptions<ExamApp.Api.Services.Parents.ParentRedeemGuardOption
 builder.Services.AddSingleton<ExamApp.Api.Services.Parents.IParentRedeemAttemptGuard, ExamApp.Api.Services.Parents.ParentRedeemAttemptGuard>();
 builder.Services.AddSingleton<ExamApp.Api.Services.Parents.IParentInviteCodeHasher, ExamApp.Api.Services.Parents.ParentInviteCodeHasher>();
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentLinkService, ExamApp.Api.Services.Parents.ParentLinkService>();
+// issue #438: veli panelinden çocuk hesabı (auth-api child-accounts, servis token'ı; yeniden denemesiz named client).
+ExamApp.Api.Services.Parents.ParentChildAccountServiceCollectionExtensions.AddParentChildAccounts(builder.Services);
 // issue #420: veli paneli — tek yetki kapısı (Active bağlantı, aksi 404) + erişim kaydı + özet okuma modeli.
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentChildAccess, ExamApp.Api.Services.Parents.ParentChildAccess>();
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentAccessAuditLog, ExamApp.Api.Services.Parents.ParentAccessAuditLog>();

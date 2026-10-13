@@ -1,15 +1,17 @@
 import { Clipboard } from '@angular/cdk/clipboard';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
+import { ActivatedRoute } from '@angular/router';
 import { Observable, filter, finalize, switchMap } from 'rxjs';
 
 import {
@@ -23,6 +25,11 @@ import {
 } from '../../models/parent-link.model';
 import { ParentLinkService } from '../../services/parent-link.service';
 import { PARENT_LINKS_SCOPE, ParentLinkUi } from '../../shared/utils/parent-link-ui';
+import {
+  ChildPasswordResetDialogComponent,
+  ChildPasswordResetDialogData,
+} from './child-password-reset-dialog/child-password-reset-dialog.component';
+import { CreateChildAccountComponent } from './create-child-account/create-child-account.component';
 
 /** Öğrenci başına açık veli tavanı (sunucu `maxParents` göndermezse). */
 const DEFAULT_MAX_PARENTS = 4;
@@ -34,11 +41,14 @@ const DEFAULT_MAX_PARENTS = 4;
  * onaylar/reddeder, diğer velileri kaldırır ve "ikinci veli davet kodu" üretir (düz kod yalnız bu oturumda bellekte). Birincil
  * olmayan veli başkalarının bağlantısını yönetemez (sunucu 403) ama kendi bağlantısından ayrılabilir; çocuğun tek velisi
  * ayrılamaz (düğme gösterilmez, sunucu 409 LastParentCannotLeave).
+ * Issue #438: "Çocuk hesabı oluştur" formu (kullanıcı adı + şifre, e-postasız) ve veli tarafından açılmış çocuklar için
+ * "Şifre sıfırla" (yeni şifreyi veli belirler; hiçbir yerde gösterilmez). `/my-children#create-child` forma kaydırır.
  */
 @Component({
   selector: 'app-parent-children',
   standalone: true,
   imports: [
+    CreateChildAccountComponent,
     FormsModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -52,10 +62,12 @@ const DEFAULT_MAX_PARENTS = 4;
   templateUrl: './parent-children.component.html',
   styleUrls: ['./parent-children.component.scss'],
 })
-export class ParentChildrenComponent implements OnInit {
+export class ParentChildrenComponent implements OnInit, AfterViewInit {
   private readonly service = inject(ParentLinkService);
   private readonly clipboard = inject(Clipboard);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
+  private readonly route = inject(ActivatedRoute, { optional: true });
   protected readonly ui = inject(ParentLinkUi);
 
   protected readonly codeLength = PARENT_INVITE_CODE_LENGTH;
@@ -86,6 +98,32 @@ export class ParentChildrenComponent implements OnInit {
 
   ngOnInit(): void {
     this.load();
+  }
+
+  /** Veli paneli boş durumu `/my-children#create-child` ile gelir: forma kaydır. */
+  ngAfterViewInit(): void {
+    if (this.route?.snapshot.fragment === 'create-child') {
+      setTimeout(() => document.getElementById('create-child')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    }
+  }
+
+  /** Issue #438: yeni çocuk hesabı açıldı — liste sunucudan tazelenir (birincil Active bağlantı). */
+  protected onChildCreated(): void {
+    this.load();
+  }
+
+  /** Issue #438: veli tarafından açılmış çocuğun şifresini veli belirler (diyalog; şifre yanıtta/ekranda yok). */
+  protected resetPassword(child: LinkedChild): void {
+    if (!child.studentId) return;
+    const data: ChildPasswordResetDialogData = { studentId: child.studentId, studentName: child.studentName ?? '' };
+    this.dialog
+      .open(ChildPasswordResetDialogComponent, { data, autoFocus: 'first-tabbable' })
+      .afterClosed()
+      .pipe(
+        filter((ok) => ok === true),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(() => this.ui.toast(this.ui.text('resetPw.done')));
   }
 
   protected load(): void {

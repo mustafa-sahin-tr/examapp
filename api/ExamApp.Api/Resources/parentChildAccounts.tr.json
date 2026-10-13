@@ -1,0 +1,21 @@
+{
+  "parentChildAccounts": {
+    "created": "Çocuk hesabı oluşturuldu. Çocuğunuz bu kullanıcı adıyla giriş yapar.",
+    "passwordReset": "Çocuğunuzun şifresi değiştirildi. Açık oturumları kapatıldı.",
+    "createRateLimited": "Kısa sürede çok fazla çocuk hesabı oluşturma denemesi yapıldı. Lütfen daha sonra tekrar deneyin.",
+    "passwordResetRateLimited": "Kısa sürede çok fazla şifre sıfırlama denemesi yapıldı. Lütfen daha sonra tekrar deneyin.",
+    "errors": {
+      "consentRequired": "Devam etmek için veli rızası onay kutusunu işaretleyin.",
+      "consentVersionMismatch": "Rıza metni güncellendi. Lütfen sayfayı yenileyip metni yeniden onaylayın.",
+      "invalidUsername": "Kullanıcı adı 4-30 karakter olmalı ve yalnızca küçük harf, rakam, nokta ve alt çizgi içermelidir.",
+      "usernameTaken": "Bu kullanıcı adı alınmış. Lütfen başka bir kullanıcı adı seçin.",
+      "passwordRejected": "Şifre en az 8 karakter olmalı, en az bir harf ve bir rakam içermeli ve kullanıcı adını içermemelidir.",
+      "invalidName": "Ad ve soyad boş olamaz (en fazla 100 karakter).",
+      "invalidGrade": "Geçersiz sınıf seçimi.",
+      "schoolNotFound": "Seçilen okul bulunamadı.",
+      "childAccountLimitReached": "En fazla {0} çocuk hesabı açabilirsiniz.",
+      "notParentManaged": "Bu hesap çocuğunuzun kendi hesabı; şifresini yalnızca kendisi değiştirebilir.",
+      "unavailable": "Hesap servisine şu anda ulaşılamıyor. Lütfen biraz sonra tekrar deneyin."
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "parentChildAccounts": {
+    "created": "Child account created. Your child signs in with this username.",
+    "passwordReset": "Your child's password was changed. Their open sessions were signed out.",
+    "createRateLimited": "Too many child account attempts in a short time. Please try again later.",
+    "passwordResetRateLimited": "Too many password reset attempts in a short time. Please try again later.",
+    "errors": {
+      "consentRequired": "Please tick the parental consent box to continue.",
+      "consentVersionMismatch": "The consent text was updated. Please reload the page and confirm it again.",
+      "invalidUsername": "The username must be 4-30 characters and contain only lowercase letters, digits, dots and underscores.",
+      "usernameTaken": "This username is already taken. Please choose another one.",
+      "passwordRejected": "The password must be at least 8 characters, contain at least one letter and one digit, and must not contain the username.",
+      "invalidName": "First and last name cannot be empty (max 100 characters).",
+      "invalidGrade": "Invalid grade.",
+      "schoolNotFound": "The selected school was not found.",
+      "childAccountLimitReached": "You can create at most {0} child accounts.",
+      "notParentManaged": "This is your child's own account; only they can change its password.",
+      "unavailable": "The account service is unavailable right now. Please try again shortly."
+    }
+  }
+}

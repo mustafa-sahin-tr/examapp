@@ -10,9 +10,9 @@
   "summaryNotFound": "You no longer have access to this child's information. The link may have been removed.",
   "empty": {
     "title": "No linked children yet",
-    "message": "Open your child's account from the My children page, or ask their other parent for a second-parent code.",
+    "message": "Create an account for your child that signs in with a username and password, or ask the child's other parent for a second-parent code.",
     "pendingNote": "You have a request awaiting approval. The summary will appear here once the child's primary parent approves it.",
-    "cta": "Add child"
+    "cta": "Create a child account"
   },
   "cards": {
     "solved": {

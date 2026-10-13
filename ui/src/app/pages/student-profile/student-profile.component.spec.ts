@@ -263,6 +263,17 @@ describe('StudentProfileComponent', () => {
     expect(link?.textContent).toContain(accountSecurityTr.open);
   });
 
+  it('infoTab_HidesAccountSecurityCard_ForParentManagedChildAccount (issue #438)', () => {
+    studentService.getProfile.and.returnValue(of({ fullName: 'Ali Kaya', parentManaged: true } as StudentProfile));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+
+    // Veli yönetimli hesap kendi şifresini/e-postasını değiştirmez: Keycloak hesap konsolu bağlantısı yok.
+    expect(el.querySelector('app-account-security-card')).toBeNull();
+    expect(el.querySelector('a[href="/realms/exam-realm/account"]')).toBeNull();
+    expect(el.querySelector('app-student-parents-card')).not.toBeNull();
+  });
+
   it('infoTab_ShowsReadOnlyParentsCard_WithoutInviteCodeGeneration (issue #436)', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;

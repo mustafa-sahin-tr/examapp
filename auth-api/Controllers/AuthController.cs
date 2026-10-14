@@ -439,8 +439,8 @@ namespace ExamApp.Api.Controllers
 
             var handler = new JwtSecurityTokenHandler();
             var jwt = handler.ReadJwtToken(tokenDto.AccessToken); // token string’i buraya
+            // Issue #438: veli tarafından açılan çocuk hesabında e-posta YOK — "email" claim'i zorunlu okunmaz.
             var sub = jwt.Claims.First(c => c.Type == "sub").Value;
-            var email = jwt.Claims.First(c => c.Type == "email").Value;
 
             var realm_access = jwt.Claims.FirstOrDefault(c => c.Type == "realm_access")?.Value;
             List<string> roles = new List<string>();
@@ -548,8 +548,8 @@ namespace ExamApp.Api.Controllers
 
             var handler = new JwtSecurityTokenHandler();
             var jwt = handler.ReadJwtToken(tokenDto.AccessToken); // token string’i buraya
+            // Issue #438: veli tarafından açılan çocuk hesabında e-posta YOK — "email" claim'i zorunlu okunmaz.
             var sub = jwt.Claims.First(c => c.Type == "sub").Value;
-            var email = jwt.Claims.First(c => c.Type == "email").Value;
 
             var realm_access = jwt.Claims.FirstOrDefault(c => c.Type == "realm_access")?.Value;
             List<string> roles = new List<string>();

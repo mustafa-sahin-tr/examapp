@@ -7,6 +7,11 @@
  */
 export interface AdminPasswordResetResponse {
   temporaryPassword: string;
+  /**
+   * Issue #438: true = veli tarafından açılmış çocuk hesabı; şifre KALICI (ilk girişte değiştirme zorunluluğu yok), admin
+   * şifreyi veliye iletir. Alan yoksa (eski yanıt) geçici şifre kabul edilir.
+   */
+  permanent?: boolean;
 }
 
 /** Şifresi sıfırlanacak hesabın türü; URL segmentini belirler. */

@@ -1,0 +1,201 @@
+<article class="cca" id="create-child" aria-labelledby="cca-title" *transloco="let t; prefix: 'parent-links'">
+  <h2 id="cca-title">{{ t('createChild.title') }}</h2>
+
+  @if (summary(); as done) {
+    <section class="cca__summary" role="status" data-test="create-summary">
+      <mat-icon class="cca__summary-icon" aria-hidden="true">check_circle</mat-icon>
+      <div>
+        <h3>{{ t('createChild.summaryTitle') }}</h3>
+        <p>{{ t('createChild.summaryText', { name: done.studentName }) }}</p>
+        <p class="cca__username" data-test="summary-username">{{ done.username }}</p>
+        <p class="cca__hint">{{ t('createChild.summaryLogin') }}</p>
+        <p class="cca__hint cca__hint--strong">{{ t('createChild.summaryPwNote') }}</p>
+        <button mat-stroked-button type="button" data-test="create-another" (click)="createAnother()">
+          <mat-icon>person_add</mat-icon>
+          {{ t('createChild.createAnother') }}
+        </button>
+      </div>
+    </section>
+  } @else if (limitReached()) {
+    <section class="cca__limit" role="status" data-test="create-limit">
+      <mat-icon class="cca__limit-icon" aria-hidden="true">info</mat-icon>
+      <p>{{ serverLimitMessage() ?? t('createChild.limitReached', { max: maxChildren }) }}</p>
+    </section>
+  } @else {
+    <p class="cca__hint">{{ t('createChild.hint') }}</p>
+    <form class="cca__form" [formGroup]="form" (ngSubmit)="submit()" novalidate data-test="create-form">
+      <div class="cca__row">
+        <mat-form-field appearance="outline" class="cca__field">
+          <mat-label>{{ t('createChild.firstName') }}</mat-label>
+          <input matInput formControlName="firstName" autocomplete="off" maxlength="100" data-test="first-name" />
+          @if (form.controls.firstName.hasError('required')) {
+            <mat-error>{{ t('createChild.required') }}</mat-error>
+          }
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="cca__field">
+          <mat-label>{{ t('createChild.lastName') }}</mat-label>
+          <input matInput formControlName="lastName" autocomplete="off" maxlength="100" data-test="last-name" />
+          @if (form.controls.lastName.hasError('required')) {
+            <mat-error>{{ t('createChild.required') }}</mat-error>
+          }
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline" class="cca__field cca__field--wide">
+        <mat-label>{{ t('createChild.username') }}</mat-label>
+        <input
+          matInput
+          formControlName="username"
+          autocomplete="off"
+          autocapitalize="none"
+          spellcheck="false"
+          maxlength="30"
+          data-test="username"
+        />
+        <mat-hint>{{ t('createChild.usernameHint') }}</mat-hint>
+        @if (form.controls.username.hasError('required')) {
+          <mat-error>{{ t('createChild.required') }}</mat-error>
+        } @else if (form.controls.username.hasError('usernameInvalid')) {
+          <mat-error data-test="username-invalid">{{ t('createChild.usernameInvalid') }}</mat-error>
+        } @else if (form.controls.username.hasError('server')) {
+          <mat-error data-test="username-server">{{ serverError() }}</mat-error>
+        }
+      </mat-form-field>
+
+      <div class="cca__row">
+        <mat-form-field appearance="outline" class="cca__field">
+          <mat-label>{{ t('createChild.pwLabel') }}</mat-label>
+          <input
+            matInput
+            formControlName="pw"
+            [type]="showPw() ? 'text' : 'password'"
+            autocomplete="new-password"
+            maxlength="128"
+            data-test="pw"
+          />
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            (click)="toggleShowPw()"
+            [attr.aria-label]="showPw() ? t('createChild.hidePw') : t('createChild.showPw')"
+          >
+            <mat-icon>{{ showPw() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+          <mat-hint>{{ t('createChild.pwHint') }}</mat-hint>
+          @if (form.controls.pw.hasError('required')) {
+            <mat-error>{{ t('createChild.required') }}</mat-error>
+          }
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="cca__field">
+          <mat-label>{{ t('createChild.pwRepeat') }}</mat-label>
+          <input
+            matInput
+            formControlName="pwRepeat"
+            [type]="showPw() ? 'text' : 'password'"
+            autocomplete="new-password"
+            maxlength="128"
+            data-test="pw-repeat"
+          />
+          @if (form.controls.pwRepeat.hasError('required')) {
+            <mat-error>{{ t('createChild.required') }}</mat-error>
+          }
+        </mat-form-field>
+      </div>
+      @if (hasGroupError('pwInvalid')) {
+        <p class="cca__error" role="alert" data-test="pw-invalid">{{ t('createChild.pwInvalid') }}</p>
+      }
+      @if (hasGroupError('pwContainsUsername')) {
+        <p class="cca__error" role="alert" data-test="pw-contains-username">{{ t('createChild.pwContainsUsername') }}</p>
+      }
+      @if (hasGroupError('pwMismatch')) {
+        <p class="cca__error" role="alert" data-test="pw-mismatch">{{ t('createChild.pwMismatch') }}</p>
+      }
+
+      @if (refsFailed()) {
+        <div class="cca__refs-error" role="alert" data-test="refs-error">
+          <span>{{ t(gradesFailed() ? 'createChild.refsError' : 'createChild.schoolsError') }}</span>
+          <button mat-stroked-button type="button" data-test="refs-retry" [disabled]="refsLoading()" (click)="loadReferenceData()">
+            {{ t('retry') }}
+          </button>
+        </div>
+      }
+
+      <div class="cca__row">
+        <mat-form-field appearance="outline" class="cca__field">
+          <mat-label>{{ t('createChild.grade') }}</mat-label>
+          <mat-select formControlName="gradeId" data-test="grade">
+            @for (grade of grades(); track grade.id) {
+              <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
+            }
+          </mat-select>
+          @if (refsLoading()) {
+            <mat-hint data-test="refs-loading">{{ t('loading') }}</mat-hint>
+          }
+          @if (form.controls.gradeId.invalid) {
+            <mat-error>{{ t('createChild.required') }}</mat-error>
+          }
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="cca__field">
+          <mat-label>{{ t('createChild.studentNumber') }}</mat-label>
+          <input matInput formControlName="studentNumber" autocomplete="off" maxlength="50" data-test="student-number" />
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline" class="cca__field cca__field--wide">
+        <mat-label>{{ t('createChild.school') }}</mat-label>
+        <input
+          matInput
+          formControlName="schoolQuery"
+          [matAutocomplete]="schoolAuto"
+          autocomplete="off"
+          (input)="onSchoolInput()"
+          data-test="school"
+        />
+        @if (selectedSchool()) {
+          <button mat-icon-button matSuffix type="button" (click)="clearSchool()" [attr.aria-label]="t('createChild.schoolNone')">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+        <mat-autocomplete #schoolAuto="matAutocomplete" [displayWith]="schoolLabel" (optionSelected)="onSchoolSelected($event)">
+          @for (school of schoolOptions(); track school.id) {
+            <mat-option [value]="school">{{ school.name }}</mat-option>
+          }
+        </mat-autocomplete>
+        <mat-hint>{{ t('createChild.schoolHint') }}</mat-hint>
+      </mat-form-field>
+
+      <div class="cca__consent">
+        <mat-checkbox formControlName="consent" data-test="consent">
+          {{ t('createChild.consent', { brand: ('brand.name' | transloco) }) }}
+        </mat-checkbox>
+        <span class="cca__hint">
+          <a class="cca__link" routerLink="/privacy-policy" target="_blank" rel="noopener" data-test="privacy-link">
+            {{ t('createChild.privacyLink') }}
+          </a>
+          · {{ t('createChild.consentVersion', { version: consentVersion }) }}
+        </span>
+        @if (form.controls.consent.touched && form.controls.consent.invalid) {
+          <p class="cca__error" role="alert" data-test="consent-required">{{ t('createChild.consentRequired') }}</p>
+        }
+      </div>
+
+      @if (serverError() && !form.controls.username.hasError('server')) {
+        <p class="cca__error" role="alert" data-test="server-error">{{ serverError() }}</p>
+      }
+
+      <div class="cca__actions">
+        <button mat-flat-button type="submit" data-test="create-submit" [disabled]="submitting()">
+          <!-- Tek düğümlü dallar: ikon MatButton'ın ikon yuvasına projekte olur (NG8011). -->
+          @if (submitting()) {
+            <mat-spinner diameter="18" />
+          } @else {
+            <mat-icon>person_add</mat-icon>
+          }
+          {{ submitting() ? t('createChild.submitting') : t('createChild.submit') }}
+        </button>
+        <span class="cca__hint">{{ t('createChild.limitNote', { max: maxChildren }) }}</span>
+      </div>
+    </form>
+  }
+</article>

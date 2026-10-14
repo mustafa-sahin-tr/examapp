@@ -36,6 +36,9 @@ public sealed class FakeKeycloakAccounts
     private readonly ConcurrentDictionary<string, Account> _accounts = new();
 
     public ConcurrentDictionary<string, int> ResetCalls { get; } = new();
+
+    /// <summary>Issue #438: kalıcı (temporary=false) sıfırlamalar — veli tarafından açılmış çocuk hesabında admin sıfırlaması.</summary>
+    public ConcurrentDictionary<string, int> PermanentResetCalls { get; } = new();
     public ConcurrentDictionary<string, int> LogoutCalls { get; } = new();
     public ConcurrentDictionary<string, int> SetEnabledCalls { get; } = new();
 
@@ -77,6 +80,19 @@ public sealed class FakeKeycloakAccountsService(IKeycloakService inner, FakeKeyc
         if (!accounts.TryGet(keycloakUserId, out var a))
             return inner.ResetPasswordAsync(keycloakUserId, ct);
         accounts.ResetCalls.AddOrUpdate(keycloakUserId, 1, (_, n) => n + 1);
+        return a.Failure switch
+        {
+            FakeKeycloakFailure.ResetFails => throw new KeycloakException("Keycloak password reset failed: 500", 500),
+            FakeKeycloakFailure.ResetNotFound => throw new KeycloakException("Keycloak password reset failed: 404", 404),
+            _ => Task.FromResult(TemporaryPasswordGenerator.Generate())
+        };
+    }
+
+    public Task<string> ResetPermanentPasswordAsync(string keycloakUserId, CancellationToken ct = default)
+    {
+        if (!accounts.TryGet(keycloakUserId, out var a))
+            return inner.ResetPermanentPasswordAsync(keycloakUserId, ct);
+        accounts.PermanentResetCalls.AddOrUpdate(keycloakUserId, 1, (_, n) => n + 1);
         return a.Failure switch
         {
             FakeKeycloakFailure.ResetFails => throw new KeycloakException("Keycloak password reset failed: 500", 500),

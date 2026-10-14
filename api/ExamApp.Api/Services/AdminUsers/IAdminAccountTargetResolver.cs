@@ -30,4 +30,8 @@ public enum AdminAccountTargetStatus
 }
 
 /// <param name="KeycloakId">Yalnızca <see cref="AdminAccountTargetStatus.Resolved"/> iken dolu.</param>
-public sealed record AdminAccountTargetResolution(AdminAccountTargetStatus Status, string? KeycloakId = null);
+/// <param name="ParentManaged">
+/// Issue #438: hedef öğrenci hesabı veli tarafından açıldı (<c>Student.ParentManaged</c>) — şifresini veli yönetir; admin sıfırlaması
+/// kalıcı şifre üretir (çocuk kendi şifresini koyamasın). Öğretmen hedefinde her zaman false.
+/// </param>
+public sealed record AdminAccountTargetResolution(AdminAccountTargetStatus Status, string? KeycloakId = null, bool ParentManaged = false);

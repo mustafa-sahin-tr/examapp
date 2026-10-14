@@ -136,6 +136,7 @@ public class AppDbContext : DbContext
     public DbSet<ParentStudentLink> ParentStudentLinks { get; set; }
     public DbSet<ParentInviteCode> ParentInviteCodes { get; set; }
     public DbSet<ParentAccessAudit> ParentAccessAudits { get; set; } // issue #420
+    public DbSet<ParentConsent> ParentConsents { get; set; } // issue #438
     public DbSet<StudentBadgeProjection> StudentBadgeProjections { get; set; } // issue #422
     public DbSet<StudentDailyXp> StudentDailyXps { get; set; } // issue #422
     public DbSet<ParentHomeworkOverdueMarker> ParentHomeworkOverdueMarkers { get; set; } // issue #423
@@ -324,6 +325,16 @@ public class AppDbContext : DbContext
                 .HasFilter("\"Status\" IN ('Active', 'Pending')");
             e.HasIndex(l => new { l.StudentId, l.Status });
             e.HasIndex(l => new { l.ParentId, l.Status });
+        });
+
+        // issue #438: velinin çocuk hesabı açarken verdiği rıza (append-only). Velinin açtığı hesap sayısı (tavan 10) ve "bu çocuğun
+        // rızası" sorguları için index'ler; FK'lar ClientNoAction (soft-delete edilen taraf rıza izini silmez).
+        modelBuilder.Entity<ParentConsent>(e =>
+        {
+            e.HasOne(c => c.Parent).WithMany().HasForeignKey(c => c.ParentId).OnDelete(DeleteBehavior.ClientNoAction);
+            e.HasOne(c => c.Student).WithMany().HasForeignKey(c => c.StudentId).OnDelete(DeleteBehavior.ClientNoAction);
+            e.HasIndex(c => c.ParentId);
+            e.HasIndex(c => c.StudentId);
         });
 
         // issue #419: davet kodu — düz metin yok, yalnızca HMAC hash'i. Kullanılmamış kodlar arasında hash TEKİL (review D2:

@@ -71,6 +71,13 @@ export interface LinkedChild {
   pendingExpiresAt: string | null;
   /** Issue #436: çağıran bu çocuğun birincil velisi. */
   isPrimary?: boolean;
+  /** Issue #438: hesap veli tarafından açıldı (kullanıcı adı + şifre) — bağlı veli şifresini sıfırlayabilir. */
+  parentManaged?: boolean;
+  /**
+   * Issue #438 (review): çağıran bu çocuğun şifresini sıfırlayabilir (veli yönetimli hesap + birincil veli). Sunucu kararı; alan
+   * yoksa (eski yanıt) düğme gösterilmez.
+   */
+  canResetPassword?: boolean;
   /** Issue #436: yalnız birincil veliye dolu. */
   coParents?: CoParent[];
   /** Issue #436: yalnız birincil veliye — kullanılmamış ikinci veli kodunun bitişi (kod dönmez). */

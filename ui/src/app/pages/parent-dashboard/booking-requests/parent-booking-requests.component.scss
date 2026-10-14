@@ -1,0 +1,115 @@
+:host {
+  display: block;
+  margin-top: 1.5rem;
+}
+
+.pbr__card {
+  border-color: var(--ms-border);
+}
+
+.pbr__state {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 0;
+  font-size: 0.875rem;
+}
+
+.pbr__empty {
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+  color: var(--ms-text-medium);
+}
+
+.pbr__notice {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  background: var(--ms-warning-surface-weak);
+  color: var(--ms-warning-text-medium);
+}
+
+.pbr__list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pbr__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: var(--ms-surface-weak);
+}
+
+.pbr__main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 12rem;
+  font-family: var(--paragraphFontFamily);
+}
+
+.pbr__child,
+.pbr__teacher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+
+  mat-icon {
+    font-size: 1.1rem;
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+}
+
+.pbr__child {
+  font-family: var(--mainFontFamily);
+  font-weight: 600;
+  color: var(--ms-text-strong);
+}
+
+.pbr__when {
+  font-size: 0.875rem;
+  text-transform: capitalize;
+}
+
+.pbr__expires {
+  font-size: 0.8125rem;
+  color: var(--ms-text-medium);
+}
+
+.pbr__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+
+  mat-spinner {
+    display: inline-block;
+    margin-right: 0.35rem;
+  }
+}
+
+.pbr__reject {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-basis: 100%;
+}
+
+.pbr__note {
+  width: 100%;
+}
+
+.pbr__danger {
+  background: var(--ms-danger-background);
+  color: var(--main-foreground-color);
+}

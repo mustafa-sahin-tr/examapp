@@ -98,7 +98,7 @@ public class BookingDeletedSlotPostgresTests(IntegrationApiFactory factory) : In
 
     private Task<BookingResultDto> CreateBookingAsync(Seed seed, SemaphoreSlim? gate = null)
         => InScopeAsync(sp => sp.GetRequiredService<IBookingService>()
-            .CreateBookingAsync(seed.StudentUserId, new CreateBookingDto { AvailabilitySlotId = seed.SlotId }), gate);
+            .CreateBookingAsync(seed.StudentUserId, new CreateBookingDto { AvailabilitySlotId = seed.SlotId }, requiresParent: false), gate);
 
     private sealed record SlotState(bool SlotDeleted, List<BookingStatus> Statuses)
     {

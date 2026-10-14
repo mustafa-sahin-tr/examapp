@@ -1,5 +1,6 @@
 import { PARENT_CHILD_QUERY_PARAM } from '../../models/parent-dashboard.model';
 import { PARENT_HOME_URL } from '../../shared/guards/parent.guard';
+import { PARENT_BOOKING_REQUESTS_FRAGMENT } from '../../models/booking.model';
 import {
   AppNotification,
   BADGE_EARNED_NOTIFICATION_TYPE,
@@ -127,6 +128,16 @@ export function describeNotification(notification: Pick<AppNotification, 'type' 
       questionOrder: null,
     };
   }
+  const bookingParentPresentation = STUDENT_BOOKING_PARENT_DECISION_ICONS[notification.type];
+  if (bookingParentPresentation) {
+    // Issue #439: velinin kararı / süre aşımı öğrenciye — randevu listesi; `data` ({ bookingId, decision }) linke taşınmaz.
+    return {
+      icon: bookingParentPresentation,
+      badge: null,
+      route: { commands: [STUDENT_BOOKINGS_ROUTE] },
+      questionOrder: null,
+    };
+  }
   const parentPresentation = describeParentNotification(notification);
   if (parentPresentation) {
     return parentPresentation;
@@ -142,7 +153,9 @@ export function describeNotification(notification: Pick<AppNotification, 'type' 
  * tamsayıysa `?child=<studentId>` eklenir (panel geçersiz/başkasının id'sini zaten yok sayar). Öğrenciye giden türler
  * (`ParentLinkedToStudent`, `ParentUnlinkedToStudent`) yalnız okundu işaretler (hedef yok). Bozuk `data` → çocuk seçimsiz `/parent`.
  */
-const PARENT_NOTIFICATION_PRESENTATION: Readonly<Record<string, { icon: string; toParentPage: boolean }>> = {
+const PARENT_NOTIFICATION_PRESENTATION: Readonly<
+  Record<string, { icon: string; toParentPage: boolean; fragment?: string }>
+> = {
   ParentLinkedToParent: { icon: 'family_restroom', toParentPage: true },
   ParentLinkedToStudent: { icon: 'family_restroom', toParentPage: false },
   ParentUnlinkedToParent: { icon: 'link_off', toParentPage: true },
@@ -151,6 +164,25 @@ const PARENT_NOTIFICATION_PRESENTATION: Readonly<Record<string, { icon: string; 
   ParentCoParentLeftToPrimary: { icon: 'link_off', toParentPage: true },
   ParentHomeworkOverdue: { icon: 'assignment_late', toParentPage: true },
   ParentChildTestCompleted: { icon: 'task_alt', toParentPage: true },
+  // Issue #439: özel ders veli onayı. Yeni talep → paneldeki "Onay bekleyen ders talepleri" kartı; diğerleri (süre doldu,
+  // başka veli karar verdi, kendi kararının onayı) o çocuğun paneli.
+  ParentBookingApprovalRequested: {
+    icon: 'event_available',
+    toParentPage: true,
+    fragment: PARENT_BOOKING_REQUESTS_FRAGMENT,
+  },
+  ParentBookingExpired: { icon: 'event_busy', toParentPage: true },
+  ParentBookingApprovedByOther: { icon: 'event_available', toParentPage: true },
+  ParentBookingRejectedByOther: { icon: 'event_busy', toParentPage: true },
+  ParentBookingApproved: { icon: 'event_available', toParentPage: true },
+  ParentBookingRejected: { icon: 'event_busy', toParentPage: true },
+};
+
+/** Issue #439: öğrenciye giden veli kararı bildirimleri → ikon (hepsi `/my-bookings`). */
+const STUDENT_BOOKING_PARENT_DECISION_ICONS: Readonly<Record<string, string>> = {
+  BookingParentApproved: 'event_available',
+  BookingParentRejected: 'event_busy',
+  BookingParentExpired: 'event_busy',
 };
 
 function parseParentNotificationStudentId(data: string | null): number | null {
@@ -174,12 +206,12 @@ function describeParentNotification(notification: Pick<AppNotification, 'type' |
     return { icon: entry.icon, badge: null, route: null, questionOrder: null };
   }
   const studentId = parseParentNotificationStudentId(notification.data);
-  return {
-    icon: entry.icon,
-    badge: null,
-    route: studentId === null
+  const route: AppRouteLink =
+    studentId === null
       ? { commands: [PARENT_HOME_URL] }
-      : { commands: [PARENT_HOME_URL], queryParams: { [PARENT_CHILD_QUERY_PARAM]: studentId } },
-    questionOrder: null,
-  };
+      : { commands: [PARENT_HOME_URL], queryParams: { [PARENT_CHILD_QUERY_PARAM]: studentId } };
+  if (entry.fragment) {
+    route.fragment = entry.fragment;
+  }
+  return { icon: entry.icon, badge: null, route, questionOrder: null };
 }

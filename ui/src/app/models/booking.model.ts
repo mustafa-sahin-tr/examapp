@@ -13,10 +13,20 @@ export interface BookingResponseBase {
   conflict?: boolean;
 }
 
-/** "Pending" | "Approved" (slot üzerindeki aktif randevunun durumu) */
-export type ActiveBookingStatus = 'Pending' | 'Approved';
+/**
+ * Slot üzerindeki aktif randevunun durumu. Issue #439: `AwaitingParent` (veli onayı bekleyen talep) slotu tutar; öğretmenin
+ * kendi listesinde `isBooked=true`, `bookingId=null` ve öğrenci adı olmadan gelir (talep henüz öğretmene düşmedi).
+ */
+export type ActiveBookingStatus = 'Pending' | 'Approved' | 'AwaitingParent';
 
-export type BookingStatus = ActiveBookingStatus | 'Rejected';
+/**
+ * Issue #439: `AwaitingParent` (veli onayı bekleniyor), `Expired` (veli 7 günde karar vermedi), `ParentRejected` (veli reddetti;
+ * `rejectionReason` velinin notu).
+ */
+export type BookingStatus = ActiveBookingStatus | 'Rejected' | 'Expired' | 'ParentRejected';
+
+/** Kapanmış (aktif olmayan) randevu durumları — öğrenci listesindeki "Aktif" filtresi bunları gizler. */
+export const CLOSED_BOOKING_STATUSES: readonly BookingStatus[] = ['Rejected', 'Expired', 'ParentRejected'];
 
 /** Öğretmenin müsaitlik aralığı. `bookingStatus`/`studentName` yalnızca öğretmenin kendi listesinde dolu. */
 export interface AvailabilitySlot {
@@ -111,7 +121,12 @@ export interface Booking {
   status: BookingStatus;
   createdAt: string;
   decisionAt?: string | null;
+  /** Öğretmenin ret gerekçesi; `ParentRejected` iken velinin notu. */
   rejectionReason?: string | null;
+  /** Issue #439: velinin onay anı (veli doğrudan talep açtıysa oluşturma anı); veliye tabi olmayan talepte null. */
+  parentApprovedAt?: string | null;
+  /** Issue #439: yalnız `AwaitingParent` iken dolu — bu andan sonra talep `Expired` olur. */
+  expiresAt?: string | null;
 }
 
 /** POST /booking/slots gövdesi. Saatler "HH:mm:ss" formatında gönderilir. */
@@ -140,11 +155,88 @@ export interface AvailabilitySlotListResult extends BookingResponseBase {
 }
 
 export interface BookingResult extends BookingResponseBase {
+  objectId?: number | null;
   booking?: Booking | null;
+  /** Issue #439: makine okunur kod (bkz. `BOOKING_ERROR_CODES`). */
+  errorCode?: string | null;
 }
 
 export interface BookingListResult extends BookingResponseBase {
   items: Booking[];
+}
+
+// ---------------- Veli onayı (issue #439) ----------------
+
+/**
+ * Velinin "Onay bekleyen ders talepleri" satırı (`ParentBookingRequestDto`). Velinin Active bağlı TÜM çocuklarının, hâlâ karar
+ * verilebilir `AwaitingParent` talepleri; ders zamanına göre artan.
+ */
+export interface ParentBookingRequest {
+  id: number;
+  studentId: number;
+  studentName: string | null;
+  teacherId: number;
+  teacherName: string | null;
+  availabilitySlotId: number;
+  date: string;
+  startTime: string;
+  endTime: string;
+  startUtc: string;
+  endUtc: string;
+  createdAt: string;
+  /** Bu andan sonra talep `Expired` olur (oluşturmadan 7 gün). */
+  expiresAt: string;
+}
+
+/** GET /parent/booking-requests yanıtı. */
+export interface ParentBookingRequestList {
+  items: ParentBookingRequest[];
+}
+
+/** POST /parent/booking-requests/{id}/reject gövdesi — not opsiyonel, en fazla 500 karakter (öğrenciye bildirilir). */
+export interface ParentRejectBookingRequest {
+  note?: string | null;
+}
+
+/** Veli uçlarının hata gövdesi: `{ message, errorCode }`. */
+export interface ParentBookingErrorBody {
+  message?: string | null;
+  errorCode?: string | null;
+}
+
+/** Veli panelindeki "Onay bekleyen ders talepleri" kartının fragment'ı (`/parent#booking-requests`, bildirim derin linki). */
+export const PARENT_BOOKING_REQUESTS_FRAGMENT = 'booking-requests';
+
+/** Velinin ret notu üst sınırı (backend `ParentRejectBookingDto.Note`). */
+export const PARENT_REJECT_NOTE_MAX_LENGTH = 500;
+
+/** Backend `BookingErrorCodes` (issue #439 ile gelenler + veli uçlarında kullanılanlar). */
+export const BOOKING_ERROR_CODES = {
+  /** 403 — veliye tabi öğrencinin Active velisi yok, talep açılamaz. */
+  parentRequired: 'ParentRequired',
+  /**
+   * 409 (öğrenci talebi) — veli onayı bekleyen açık talep sınırı (3) dolu ya da aynı öğretmene zaten bekleyen bir talep var.
+   */
+  tooManyAwaitingParent: 'TooManyAwaitingParent',
+  /** 409 — başka veli önce karar verdi / süre doldu / talep kapandı. */
+  alreadyDecided: 'AlreadyDecided',
+  /** 409 — talebin süresi doldu. */
+  requestExpired: 'BookingRequestExpired',
+  /** 409 (onay) — öğretmen askıda/onaysız. */
+  teacherUnavailable: 'TeacherUnavailable',
+  /** 409 (onay) — öğretmen müsaitlik aralığını sildi. */
+  requestSlotDeleted: 'BookingRequestSlotDeleted',
+  /** 404 — bağlı olmayan çocuk / talep yok. */
+  notFound: 'NotFound',
+} as const;
+
+/** Hata gövdesindeki `errorCode` (güvenilmeyen veri); yoksa null. */
+export function bookingErrorCode(body: unknown): string | null {
+  if (!body || typeof body !== 'object') {
+    return null;
+  }
+  const code = (body as Record<string, unknown>)['errorCode'];
+  return typeof code === 'string' && code ? code : null;
 }
 
 // ---------------- Video görüşme (issue #97) ----------------

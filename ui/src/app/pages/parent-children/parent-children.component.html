@@ -96,6 +96,16 @@
                     <span>{{ t('children.linkedAt', { date: ui.formatDate(child.linkedAt) }) }}</span>
                   </span>
                 </div>
+                @if (child.studentId) {
+                  <a
+                    mat-stroked-button
+                    data-test="book-lesson"
+                    [routerLink]="bookLessonLink(child.studentId)"
+                  >
+                    <mat-icon>event_available</mat-icon>
+                    {{ t('children.bookLesson') }}
+                  </a>
+                }
                 @if (child.canResetPassword) {
                   <button mat-stroked-button type="button" data-test="reset-password" (click)="resetPassword(child)">
                     <mat-icon>lock_reset</mat-icon>

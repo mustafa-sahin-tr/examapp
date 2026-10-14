@@ -59,3 +59,22 @@
   color: var(--ms-danger-background);
   font-size: 0.875rem;
 }
+
+// Issue #439: velinin çocuğu adına talep açtığı mod.
+.bsd__for-child {
+  margin: -0.5rem 1.5rem 0;
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+
+// Issue #439: 403 ParentRequired — açıklama + "Velilerim" bağlantısı.
+.bsd__error--parent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+
+  p {
+    margin: 0;
+  }
+}

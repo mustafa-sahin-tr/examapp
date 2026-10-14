@@ -28,10 +28,33 @@ public interface IBookingService
     /// <remarks>issue #418: yalnız bağımsız öğretmen; okula bağlı öğretmen (aynı okul/admin dahil) → NotFound.</remarks>
     Task<AvailabilitySlotListResultDto> GetTeacherOpenSlotsAsync(int teacherId, int skip, int take, CancellationToken ct = default);
 
-    /// <summary>Öğrenci bir slot için randevu talebi oluşturur (çakışma + geçmiş tarih kontrolü burada).</summary>
-    Task<BookingResultDto> CreateBookingAsync(int studentUserId, CreateBookingDto dto, CancellationToken ct = default);
+    /// <summary>
+    /// Öğrenci bir slot için randevu talebi oluşturur (çakışma + geçmiş tarih kontrolü burada). issue #439:
+    /// <paramref name="requiresParent"/> = <c>ParentRequirement.RequiresParent(User)</c>. true ise talep AwaitingParent açılır
+    /// (öğretmene gitmez, velilere bildirim); Active velisi yoksa Forbidden + <c>ParentRequired</c>. false ise eski akış (Pending).
+    /// </summary>
+    Task<BookingResultDto> CreateBookingAsync(int studentUserId, CreateBookingDto dto, bool requiresParent, CancellationToken ct = default);
 
-    /// <summary>Öğretmene gelen randevu talepleri.</summary>
+    /// <summary>
+    /// issue #439: veli, Active bağlantılı çocuğu adına doğrudan talep açar — AwaitingParent atlanır (Pending, ParentApprovedAt
+    /// dolu), öğretmene bildirim. Bağlı olmayan çocuk NotFound. Slot/öğretmen kuralları öğrenci talebiyle aynı.
+    /// </summary>
+    Task<BookingResultDto> CreateBookingForChildAsync(int parentUserId, int studentId, CreateBookingDto dto, CancellationToken ct = default);
+
+    /// <summary>issue #439: velinin Active bağlantılı çocuklarının, hâlâ karar verilebilir AwaitingParent talepleri.</summary>
+    Task<ParentBookingRequestListDto> GetParentBookingRequestsAsync(int parentUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #439: veli AwaitingParent talebi onaylar → Pending (öğretmene bildirim). Bağlı olmayan veli NotFound; başka karar önce
+    /// geldiyse Conflict + <c>AlreadyDecided</c>; süresi dolduysa <c>BookingRequestExpired</c>; öğretmen artık talep alamıyorsa
+    /// <c>TeacherUnavailable</c>.
+    /// </summary>
+    Task<BookingResultDto> ParentApproveBookingAsync(int parentUserId, int bookingId, CancellationToken ct = default);
+
+    /// <summary>issue #439: veli AwaitingParent talebi reddeder (opsiyonel not, en fazla 500) → ParentRejected.</summary>
+    Task<BookingResultDto> ParentRejectBookingAsync(int parentUserId, int bookingId, string? note, CancellationToken ct = default);
+
+    /// <summary>Öğretmene gelen randevu talepleri (issue #439: AwaitingParent / ParentRejected / Expired hariç).</summary>
     Task<BookingListResultDto> GetTeacherBookingsAsync(int teacherUserId, int skip, int take, CancellationToken ct = default);
 
     /// <summary>Öğrencinin kendi randevu talepleri.</summary>

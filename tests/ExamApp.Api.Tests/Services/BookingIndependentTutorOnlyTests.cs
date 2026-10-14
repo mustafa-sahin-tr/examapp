@@ -235,8 +235,8 @@ public class BookingIndependentTutorOnlyTests : IDisposable
         await using var ctx = _db.NewContext();
         var before = await ctx.Bookings.CountAsync();
 
-        var r = await NewService(ctx).CreateBookingAsync(StudentUserId, new CreateBookingDto { AvailabilitySlotId = s.SchoolSlotId });
-        var missing = await NewService(ctx).CreateBookingAsync(StudentUserId, new CreateBookingDto { AvailabilitySlotId = 99999 });
+        var r = await NewService(ctx).CreateBookingAsync(StudentUserId, new CreateBookingDto { AvailabilitySlotId = s.SchoolSlotId }, requiresParent: false);
+        var missing = await NewService(ctx).CreateBookingAsync(StudentUserId, new CreateBookingDto { AvailabilitySlotId = 99999 }, requiresParent: false);
 
         r.Success.ShouldBeFalse();
         r.NotFound.ShouldBeTrue();
@@ -306,8 +306,8 @@ public class BookingIndependentTutorOnlyTests : IDisposable
         slots.NotFound.ShouldBeTrue();
         slots.Message.ShouldBe((await service.GetTeacherOpenSlotsAsync(99999, 0, 50)).Message);
 
-        var booking = await service.CreateBookingAsync(StudentUserId, new CreateBookingDto { AvailabilitySlotId = slotId });
+        var booking = await service.CreateBookingAsync(StudentUserId, new CreateBookingDto { AvailabilitySlotId = slotId }, requiresParent: false);
         booking.NotFound.ShouldBeTrue();
-        booking.Message.ShouldBe((await service.CreateBookingAsync(StudentUserId, new CreateBookingDto { AvailabilitySlotId = 99999 })).Message);
+        booking.Message.ShouldBe((await service.CreateBookingAsync(StudentUserId, new CreateBookingDto { AvailabilitySlotId = 99999 }, requiresParent: false)).Message);
     }
 }

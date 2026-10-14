@@ -371,6 +371,15 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("ParentApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("ParentApprovedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ParentRejectedBy")
+                        .HasColumnType("integer");
+
                     b.Property<string>("RejectionReason")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -394,7 +403,11 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("AvailabilitySlotId")
                         .IsUnique()
-                        .HasFilter("\"Status\" IN (0, 1) AND NOT \"IsDeleted\"");
+                        .HasFilter("\"Status\" IN (0, 1, 3) AND NOT \"IsDeleted\"");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("IX_Bookings_CreatedAt_AwaitingParent")
+                        .HasFilter("\"Status\" = 3 AND NOT \"IsDeleted\"");
 
                     b.HasIndex("StudentId", "Status");
 

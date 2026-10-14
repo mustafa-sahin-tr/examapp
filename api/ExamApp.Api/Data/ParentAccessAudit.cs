@@ -59,4 +59,13 @@ public static class ParentAccessEndpoints
     /// işlemi; her başarılı sıfırlama ayrı satır (tekilleştirme yok).
     /// </summary>
     public const string ChildPasswordReset = "children.password-reset";
+
+    /// <summary><c>POST api/parent/booking-requests/{id}/approve</c> (issue #439) — yazma; ResourceId = Booking.Id, tekilleştirme yok.</summary>
+    public const string ChildBookingApprove = "children.booking-approve";
+
+    /// <summary><c>POST api/parent/booking-requests/{id}/reject</c> (issue #439) — yazma; ResourceId = Booking.Id, tekilleştirme yok.</summary>
+    public const string ChildBookingReject = "children.booking-reject";
+
+    /// <summary><c>POST api/parent/children/{studentId}/bookings</c> (issue #439) — yazma; ResourceId = Booking.Id, tekilleştirme yok.</summary>
+    public const string ChildBookingCreate = "children.booking-create";
 }

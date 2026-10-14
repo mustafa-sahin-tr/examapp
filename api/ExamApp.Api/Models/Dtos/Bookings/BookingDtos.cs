@@ -42,13 +42,16 @@ public class AvailabilitySlotDto
     /// </summary>
     public DateTime EndUtc { get; set; }
 
-    /// <summary>Aktif (Pending veya Approved) bir booking var mı — varsa slot yeni talebe kapalıdır.</summary>
+    /// <summary>
+    /// Aktif (Pending, Approved ya da issue #439 ile veli onayı bekleyen AwaitingParent) bir booking var mı — varsa slot yeni
+    /// talebe kapalıdır ve silinemez.
+    /// </summary>
     public bool IsBooked { get; set; }
 
-    /// <summary>Aktif booking varsa kimliği.</summary>
+    /// <summary>Aktif booking varsa kimliği. issue #439: AwaitingParent talepte öğretmene verilmez (null).</summary>
     public int? BookingId { get; set; }
 
-    /// <summary>"Pending" | "Approved" — aktif booking yoksa null.</summary>
+    /// <summary>"Pending" | "Approved" | "AwaitingParent" (issue #439: slot tutuluyor, talep henüz öğretmene ulaşmadı) — aktif booking yoksa null.</summary>
     public string? BookingStatus { get; set; }
 
     /// <summary>Aktif booking'i oluşturan öğrencinin adı (yalnızca öğretmenin kendi listesinde dolu).</summary>
@@ -165,14 +168,47 @@ public static class BookingErrorCodes
     /// <c>POST requests/{id}/approve</c>).
     /// </summary>
     public const string RequestSlotDeleted = "BookingRequestSlotDeleted";
+
+    /// <summary>
+    /// issue #439: veli gerektiren öğrencinin Active bağlantılı velisi yok → randevu talebi oluşturamaz (403,
+    /// <c>POST requests</c>). UI öğrenciyi veli bağlama akışına yönlendirir.
+    /// </summary>
+    public const string ParentRequired = "ParentRequired";
+
+    /// <summary>
+    /// issue #439: veli onayı bekleyen talep başka bir veli (ya da süre aşımı / öğretmen müsait değil) tarafından zaten
+    /// sonuçlandırıldı (409, <c>POST parent/booking-requests/{id}/approve|reject</c>). İlk karar kazanır.
+    /// </summary>
+    public const string AlreadyDecided = "AlreadyDecided";
+
+    /// <summary>
+    /// issue #439: veli onayı süresi doldu (oluşturmadan 7 gün geçti ya da ders saati geldi) → onay/ret yapılamaz (409). Talep
+    /// süpürme işiyle Expired'a çekilir.
+    /// </summary>
+    public const string RequestExpired = "BookingRequestExpired";
+
+    /// <summary>
+    /// issue #439: veli onayı sırasında öğretmen artık talep alamıyor (askıda, onayı kalkmış ya da bağımsız değil) → onaylanamaz
+    /// (409). Askı / bağımsızlık kaybı durumunda talep aynı istekte "öğretmen müsait değil" gerekçesiyle kapatılır.
+    /// </summary>
+    public const string TeacherUnavailable = "TeacherUnavailable";
+
+    /// <summary>issue #439: veli bağlantısı yok / talep bulunamadı (veli uçları; varlık sızdırılmaz).</summary>
+    public const string NotFound = "NotFound";
+
+    /// <summary>
+    /// issue #439 review: öğrencinin açık AwaitingParent talep tavanı aşıldı — toplam 3, aynı öğretmen için 1 (409,
+    /// <c>POST requests</c>). Veli karar verince / talep süresi dolunca yeni talep açılabilir.
+    /// </summary>
+    public const string TooManyAwaitingParent = "TooManyAwaitingParent";
+
+    /// <summary>issue #439 review: veli ret notunda izin verilmeyen karakter (NUL/kontrol karakteri) → 400.</summary>
+    public const string InvalidNote = "InvalidNote";
 }
 
-/// <summary>Randevu karar (onay/ret) sonucu; issue #376 ile makine okunur <see cref="ErrorCode"/> taşır.</summary>
+/// <summary>Randevu karar (onay/ret) sonucu; issue #376 ile makine okunur <see cref="BookingResultDto.ErrorCode"/> taşır.</summary>
 public class BookingDecisionResultDto : BookingResultDto
 {
-    /// <summary>Bkz. <see cref="BookingErrorCodes"/>. Yalnız belirli 409'larda dolu; diğer yanıtlarda JSON'a çıkmaz.</summary>
-    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    public string? ErrorCode { get; set; }
 }
 
 /// <summary>POST /api/booking/requests — öğrenci bir slot için randevu talebi oluşturur.</summary>
@@ -215,12 +251,65 @@ public class BookingDto
     /// <summary>Randevunun bitişi UTC olarak; gün aşan slotta ertesi gün (issue #300). Her zaman &gt; <see cref="StartUtc"/>.</summary>
     public DateTime EndUtc { get; set; }
 
-    /// <summary>"Pending" | "Approved" | "Rejected"</summary>
+    /// <summary>
+    /// "Pending" | "Approved" | "Rejected"; issue #439 ile öğrenci/veli görünümünde ayrıca "AwaitingParent" | "Expired" |
+    /// "ParentRejected" (öğretmen listesinde bu üçü hiç yer almaz).
+    /// </summary>
     public string Status { get; set; } = nameof(BookingStatus.Pending);
 
     public DateTime CreatedAt { get; set; }
     public DateTime? DecisionAt { get; set; }
+
+    /// <summary>Rejected'da öğretmenin, ParentRejected'da velinin notu.</summary>
     public string? RejectionReason { get; set; }
+
+    /// <summary>issue #439: veli onay anı (UTC); veli onayından geçmemiş talepte null.</summary>
+    public DateTime? ParentApprovedAt { get; set; }
+
+    /// <summary>
+    /// issue #439: yalnız Status=AwaitingParent iken dolu — bu andan sonra talep otomatik Expired olur (UTC; oluşturma + 7 gün
+    /// ya da ders başlangıcı, hangisi önceyse).
+    /// </summary>
+    public DateTime? ExpiresAt { get; set; }
+}
+
+/// <summary>
+/// issue #439: veli panelinde "Onay bekleyen ders talepleri" satırı (<c>GET /api/parent/booking-requests</c>). Velinin Active
+/// bağlantılı çocuklarının AwaitingParent talepleri. Ücret/not/görüşme bilgisi yok.
+/// </summary>
+public class ParentBookingRequestDto
+{
+    public int Id { get; set; }
+    public int StudentId { get; set; }
+
+    /// <summary>auth-api'den çözülür; erişilemezse null.</summary>
+    public string? StudentName { get; set; }
+
+    public int TeacherId { get; set; }
+    public string? TeacherName { get; set; }
+    public int AvailabilitySlotId { get; set; }
+    public DateOnly Date { get; set; }
+    public TimeOnly StartTime { get; set; }
+    public TimeOnly EndTime { get; set; }
+    public DateTime StartUtc { get; set; }
+    public DateTime EndUtc { get; set; }
+    public DateTime CreatedAt { get; set; }
+
+    /// <summary>Bu andan sonra talep otomatik Expired olur (UTC).</summary>
+    public DateTime ExpiresAt { get; set; }
+}
+
+/// <summary><c>GET /api/parent/booking-requests</c> gövdesi.</summary>
+public class ParentBookingRequestListDto
+{
+    public List<ParentBookingRequestDto> Items { get; set; } = new();
+}
+
+/// <summary><c>POST /api/parent/booking-requests/{id}/reject</c> gövdesi (opsiyonel). Not öğrenciye bildirilir.</summary>
+public class ParentRejectBookingDto
+{
+    [MaxLength(500, ErrorMessage = "booking.parent.noteTooLong")]
+    public string? Note { get; set; }
 }
 
 /// <summary>Servisten controller'a tekil slot sonucu; ResponseBaseDto bayrakları HTTP koduna eşlenir.</summary>
@@ -233,6 +322,10 @@ public class AvailabilitySlotResultDto : ResponseBaseDto
 public class BookingResultDto : ResponseBaseDto
 {
     public BookingDto? Booking { get; set; }
+
+    /// <summary>Bkz. <see cref="BookingErrorCodes"/>. Yalnız belirli hatalarda dolu; diğer yanıtlarda JSON'a çıkmaz.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? ErrorCode { get; set; }
 }
 
 /// <summary>Liste sonucu — çağıranın öğretmen/öğrenci kaydı yoksa NotFound bayrağı dolar.</summary>

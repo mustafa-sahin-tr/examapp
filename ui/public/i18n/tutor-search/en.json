@@ -38,6 +38,19 @@
     "bioTitle": "Introduction",
     "noBio": "This teacher has not added an introduction yet.",
     "bookingCreated": "Your booking request has been sent and is awaiting the teacher's approval.",
-    "bookingCreatedAction": "My bookings"
+    "bookingCreatedAction": "My bookings",
+    "bookForChild": "Request a Lesson",
+    "bookingAwaitingParent": "Your request was sent to your parent for approval.",
+    "bookingCreatedForChild": "The request was sent to the teacher.",
+    "bookingCreatedForChildAction": "Parent dashboard"
+  },
+  "child": {
+    "loading": "Loading child details...",
+    "loadError": "Child details could not be loaded.",
+    "retry": "Try again",
+    "banner": "You are requesting a lesson on behalf of {{child}}.",
+    "fallbackName": "Your child",
+    "missing": "You cannot request a lesson for this child: the link is not active.",
+    "back": "My children"
   }
 }

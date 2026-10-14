@@ -12,6 +12,7 @@ using ExamApp.Api.Models.Dtos.Bookings;
 using ExamApp.Api.Models.Dtos.Teachers;
 using ExamApp.Api.Models.Dtos.Video;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Parents;
 using ExamApp.Api.Services.Teachers;
 using ExamApp.Api.Services.Video;
 using ExamApp.Foundation.Contracts;
@@ -33,7 +34,7 @@ namespace ExamApp.Api.Services.Bookings;
 /// Kapsam dışı: iptal/erteleme, no-show, ödeme. Tekrarlayan kurallar
 /// <see cref="RecurringAvailabilityService"/>'te (issue #178).
 /// </summary>
-public class BookingService : IBookingService
+public partial class BookingService : IBookingService
 {
     /// <summary>Sayfalama üst sınırı — sınırsız liste dönülmez.</summary>
     private const int MaxTake = 200;
@@ -53,7 +54,22 @@ public class BookingService : IBookingService
     internal static readonly TimeSpan MaxSlotDuration = TimeSpan.FromHours(MaxSlotDurationHours);
 
     // Sabitler internal: tekrarlayan kural servisi (issue #178) aynı sınırları paylaşır.
+    /// <summary>
+    /// Slotu tutan (aktif) talepler. issue #439: veli onayı bekleyen AwaitingParent da slotu tutar (başka öğrenci alamaz, öğretmen
+    /// silemez). AppDbContext'teki filtreli unique index (<c>"Status" IN (0, 1, 3)</c>) ile aynı liste.
+    /// </summary>
     internal static readonly BookingStatus[] ActiveStatuses =
+        { BookingStatus.Pending, BookingStatus.Approved, BookingStatus.AwaitingParent };
+
+    /// <summary>
+    /// issue #439: öğretmenin görebildiği / karar verebildiği durumlar. AwaitingParent (henüz veliden geçmedi), ParentRejected ve
+    /// Expired (öğretmene hiç ulaşmadı) öğretmen listesine/kararına düşmez; bunlarla öğretmen çağrısı 404 alır.
+    /// </summary>
+    internal static readonly BookingStatus[] TeacherVisibleStatuses =
+        { BookingStatus.Pending, BookingStatus.Approved, BookingStatus.Rejected };
+
+    /// <summary>Öğretmene görünen aktif durumlar (slot listesinde talep kimliği/öğrenci adı yalnız bunlar için döner).</summary>
+    private static readonly BookingStatus[] TeacherVisibleActiveStatuses =
         { BookingStatus.Pending, BookingStatus.Approved };
 
     private readonly AppDbContext _context;
@@ -76,6 +92,9 @@ public class BookingService : IBookingService
     // olusturulan (birim test) ornekler varsayilan dile kilitli fallback'e duser.
     private readonly IStringLocalizer<Messages> _localizer;
 
+    /// <summary>issue #439 ödeme kancası (#408); DI'siz kurulan (birim test) örneklerde no-op.</summary>
+    private readonly IBookingParentApprovalGate _parentApprovalGate;
+
     public BookingService(
         AppDbContext context,
         IAuthApiClient authApiClient,
@@ -84,8 +103,10 @@ public class BookingService : IBookingService
         TimeProvider timeProvider,
         IRecurringAvailabilityService recurringAvailability,
         ILogger<BookingService> logger,
-        IStringLocalizer<Messages>? localizer = null)
+        IStringLocalizer<Messages>? localizer = null,
+        IBookingParentApprovalGate? parentApprovalGate = null)
     {
+        _parentApprovalGate = parentApprovalGate ?? NoOpBookingParentApprovalGate.Instance;
         _context = context;
         _authApiClient = authApiClient;
         _videoSessionProvider = videoSessionProvider;
@@ -259,7 +280,7 @@ public class BookingService : IBookingService
             Success = true,
             ObjectId = slot.Id,
             Message = _localizer["booking.slot.created"],
-            Slot = MapSlot(slot.Id, teacher.Id, slot.Date, slot.StartTime, slot.EndTime, slot.CreatedAt, null, null, null, null)
+            Slot = MapSlot(slot.Id, teacher.Id, slot.Date, slot.StartTime, slot.EndTime, slot.CreatedAt, null, null, false, null, null)
         };
     }
 
@@ -296,8 +317,10 @@ public class BookingService : IBookingService
                 EndTime = s.EndTime,
                 CreatedAt = s.CreatedAt,
                 RecurringAvailabilityRuleId = s.RecurringAvailabilityRuleId,
+                // issue #439: veli onayı bekleyen talep slotu tutar ama öğretmene görünmez — slot "dolu" + durum
+                // "AwaitingParent" döner; talep kimliği ve öğrenci adı yalnız öğretmene ulaşmış (Pending/Approved) talepte.
                 BookingId = s.Bookings
-                    .Where(b => ActiveStatuses.Contains(b.Status))
+                    .Where(b => TeacherVisibleActiveStatuses.Contains(b.Status))
                     .Select(b => (int?)b.Id)
                     .FirstOrDefault(),
                 BookingStatus = s.Bookings
@@ -305,7 +328,7 @@ public class BookingService : IBookingService
                     .Select(b => (BookingStatus?)b.Status)
                     .FirstOrDefault(),
                 StudentUserId = s.Bookings
-                    .Where(b => ActiveStatuses.Contains(b.Status))
+                    .Where(b => TeacherVisibleActiveStatuses.Contains(b.Status))
                     .Select(b => (int?)b.Student.UserId)
                     .FirstOrDefault()
             })
@@ -319,7 +342,7 @@ public class BookingService : IBookingService
             Success = true,
             Items = rows.Select(r => MapSlot(
                 r.Id, r.TeacherId, r.Date, r.StartTime, r.EndTime, r.CreatedAt,
-                r.BookingId, r.BookingStatus,
+                r.BookingId, r.BookingStatus, r.BookingStatus.HasValue,
                 r.StudentUserId.HasValue && names.TryGetValue(r.StudentUserId.Value, out var n) ? n : null,
                 r.RecurringAvailabilityRuleId)).ToList()
         };
@@ -353,6 +376,12 @@ public class BookingService : IBookingService
 
         _context.SetCurrentUser(teacherUserId);
 
+        // issue #439 review: slotu yalnız veli onayı bekleyen talep tutuyorsa silme serbest (talep Expired + bildirim). Bildirim
+        // alanları kilit/transaction öncesi best-effort çözülür.
+        var releaseUsers = await AwaitingParentSlotRelease.PrepareAsync(
+            _context, _authApiClient, _context.Bookings.Where(b => b.AvailabilitySlotId == slotId), _logger, ct);
+        var releaseNow = UtcNow();
+
         // issue #376: "aktif randevu yok" kontrolü + soft delete öğretmen müsaitlik kilidi (#323) altında, tek transaction'da.
         // Randevu talebi (CreateBookingAsync) aynı kilidi alıp slotun hâlâ silinmemiş olduğunu kilidin altında doğrular; böylece
         // eşzamanlı "talep + silme" ikilisinden biri diğerini görür ve aktif randevulu slot hiçbir sırada silinmez.
@@ -377,9 +406,10 @@ public class BookingService : IBookingService
                     return;
                 }
 
+                // issue #439 review: yalnız öğretmene ulaşmış (Pending/Approved) talep silmeyi engeller.
                 var hasActiveBooking = await _context.Bookings
                     .AsNoTracking()
-                    .AnyAsync(b => b.AvailabilitySlotId == slotId && ActiveStatuses.Contains(b.Status), ct);
+                    .AnyAsync(b => b.AvailabilitySlotId == slotId && AwaitingParentSlotRelease.BlockingStatuses.Contains(b.Status), ct);
                 if (hasActiveBooking)
                 {
                     result = new AvailabilitySlotDeleteResultDto
@@ -390,6 +420,21 @@ public class BookingService : IBookingService
                         Message = _localizer["booking.slot.hasActiveBooking"]
                     };
                     return; // commit yok → dispose'da rollback (kilit bırakılır)
+                }
+
+                // Veli onayı bekleyen talep slotu bırakır (Expired + öğrenci/veli bildirimi), aynı transaction'da. Hepsi kapatılamadıysa
+                // (araya giren yazıcı) silme iptal → 409 SlotHasActiveBooking (re-review savunması).
+                if (!await AwaitingParentSlotRelease.ReleaseAsync(_context, new[] { slotId }, releaseNow, teacherUserId, releaseUsers, ct))
+                {
+                    _context.ChangeTracker.Clear();
+                    result = new AvailabilitySlotDeleteResultDto
+                    {
+                        Success = false,
+                        Conflict = true,
+                        ErrorCode = BookingErrorCodes.SlotHasActiveBooking,
+                        Message = _localizer["booking.slot.hasActiveBooking"]
+                    };
+                    return; // commit yok → dispose'da rollback (ExecuteUpdate'ler de geri alınır)
                 }
 
                 _context.TeacherAvailabilitySlots.Remove(slot); // BaseEntity → soft delete
@@ -457,7 +502,7 @@ public class BookingService : IBookingService
         {
             Success = true,
             Items = rows
-                .Select(r => MapSlot(r.Id, r.TeacherId, r.Date, r.StartTime, r.EndTime, r.CreatedAt, null, null, null, null))
+                .Select(r => MapSlot(r.Id, r.TeacherId, r.Date, r.StartTime, r.EndTime, r.CreatedAt, null, null, false, null, null))
                 .ToList()
         };
     }
@@ -467,10 +512,8 @@ public class BookingService : IBookingService
     // ------------------------------------------------------------------
 
     public async Task<BookingResultDto> CreateBookingAsync(
-        int studentUserId, CreateBookingDto dto, CancellationToken ct = default)
+        int studentUserId, CreateBookingDto dto, bool requiresParent, CancellationToken ct = default)
     {
-        var now = UtcNow();
-
         var studentId = await _context.Students
             .AsNoTracking()
             .Where(s => s.UserId == studentUserId)
@@ -480,9 +523,50 @@ public class BookingService : IBookingService
         if (studentId == null)
             return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.studentRecordNotFound"] };
 
+        // issue #439: veli kuralı TEK yerde (BookingParentApproval.ResolveStudentModeAsync; #441 geçiş süresi oraya eklenir).
+        // Veliye tabi olmayan hesap (yetişkin rolü) eski akışı aynen kullanır.
+        var mode = await BookingParentApproval.ResolveStudentModeAsync(_context, studentId.Value, requiresParent, ct);
+        if (mode == StudentBookingParentMode.ParentMissing)
+            return ParentRequiredFailure();
+
+        return await CreateBookingCoreAsync(new BookingCreation(
+            studentId.Value,
+            studentUserId,
+            dto.AvailabilitySlotId,
+            mode == StudentBookingParentMode.AwaitingParent ? BookingCreationKind.StudentAwaitingParent : BookingCreationKind.Student,
+            ActorUserId: studentUserId,
+            ParentId: null), ct);
+    }
+
+    /// <summary>issue #439: talebin kim adına, hangi başlangıç durumuyla açılacağı.</summary>
+    private enum BookingCreationKind
+    {
+        /// <summary>Eski akış: öğrenci (veliye tabi değil) → Pending + öğretmene bildirim.</summary>
+        Student,
+
+        /// <summary>Veliye tabi öğrenci → AwaitingParent + velilere bildirim; öğretmene henüz gitmez.</summary>
+        StudentAwaitingParent,
+
+        /// <summary>Veli çocuk adına doğrudan → Pending (veli onayı otomatik) + öğretmene bildirim.</summary>
+        ParentDirect
+    }
+
+    private sealed record BookingCreation(
+        int StudentId, int StudentUserId, int AvailabilitySlotId, BookingCreationKind Kind, int ActorUserId, int? ParentId);
+
+    /// <summary>
+    /// Talep oluşturmanın ortak çekirdeği (öğrenci talebi ve issue #439 veli doğrudan talebi): slot/öğretmen ön doğrulaması,
+    /// öğretmen müsaitlik kilidi + öğretmen satırı kilidi altında yeniden doğrulama, booking + outbox tek transaction'da.
+    /// </summary>
+    private async Task<BookingResultDto> CreateBookingCoreAsync(BookingCreation request, CancellationToken ct)
+    {
+        var now = UtcNow();
+        var studentId = request.StudentId;
+        var studentUserId = request.StudentUserId;
+
         var slot = await _context.TeacherAvailabilitySlots
             .AsNoTracking()
-            .Where(s => s.Id == dto.AvailabilitySlotId)
+            .Where(s => s.Id == request.AvailabilitySlotId)
             .Select(s => new
             {
                 s.Id,
@@ -522,33 +606,45 @@ public class BookingService : IBookingService
                 Message = _localizer["booking.request.duplicate"]
             };
 
+        var awaitingParent = request.Kind == BookingCreationKind.StudentAwaitingParent;
+        var parentDirect = request.Kind == BookingCreationKind.ParentDirect;
+
+        // issue #439 ödeme kancası: veli onayı (burada doğrudan oluşturma) durum değişikliğinden ÖNCE tek kapıdan geçer.
+        if (parentDirect)
+        {
+            var gate = await _parentApprovalGate.AuthorizeAsync(new BookingParentApprovalContext(
+                BookingParentApprovalKind.DirectCreate, null, studentId, slot.TeacherId, slot.Id, request.ActorUserId), ct);
+            if (!gate.Allowed)
+                return GateFailure(gate);
+        }
+
+        // issue #439: veli onayı bekleyen talepte bildirim alıcıları — kilitsiz ön okuma; transaction içinde FOR SHARE ile
+        // yeniden doğrulanır (koparılan veliye bildirim gitmez, hiç Active veli kalmadıysa talep açılmaz).
+        var parents = awaitingParent
+            ? await ParentNotificationSupport.ActiveParentsAsync(_context, studentId, ct)
+            : new List<ActiveParentRecipient>();
+
         // auth-api lookup TEK yazım işleminden önce, best-effort (WorksheetAccessRequestService ile
         // aynı desen). Patlarsa event alanları boş geçer (consumer boş sub'ı LogWarning ile tolere
         // eder) — booking + outbox yine de atomik yazılır.
-        var studentName = string.Empty;
-        var teacherKeycloakId = string.Empty;
-        try
-        {
-            var lookup = await _authApiClient.GetUsersByIdsAsync(new[] { studentUserId, slot.TeacherUserId }, ct);
-            studentName = lookup.FirstOrDefault(u => u.Id == studentUserId)?.FullName ?? string.Empty;
-            teacherKeycloakId = lookup.FirstOrDefault(u => u.Id == slot.TeacherUserId)?.KeycloakId ?? string.Empty;
-        }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
-        {
-            _logger.LogWarning(ex,
-                "Randevu talebi için auth-api lookup başarısız; event alanları boş geçilecek. SlotId={SlotId}",
-                slot.Id);
-        }
+        var users = await TryLookupUsersAsync(
+            new[] { studentUserId, slot.TeacherUserId }.Concat(parents.Select(p => p.ParentUserId)),
+            "Randevu talebi", slot.Id, ct);
+        var studentName = FullNameOf(users, studentUserId);
+        var teacherKeycloakId = KeycloakIdOf(users, slot.TeacherUserId);
 
-        _context.SetCurrentUser(studentUserId);
+        _context.SetCurrentUser(request.ActorUserId);
 
         var booking = new Booking
         {
             TeacherId = slot.TeacherId,
-            StudentId = studentId.Value,
+            StudentId = studentId,
             AvailabilitySlotId = slot.Id,
-            Status = BookingStatus.Pending,
-            CreatedAt = now
+            Status = awaitingParent ? BookingStatus.AwaitingParent : BookingStatus.Pending,
+            CreatedAt = now,
+            // issue #439: veli doğrudan oluşturduysa veli onayı otomatik dolar.
+            ParentApprovedAt = parentDirect ? now : null,
+            ParentApprovedBy = parentDirect ? request.ActorUserId : null
         };
 
         // Booking satırı + outbox mesajı tek transaction'da (WorksheetAccessRequestService ile aynı
@@ -556,6 +652,8 @@ public class BookingService : IBookingService
         // için iki SaveChanges tek transaction ile atomik kılınır; conflict catch tüm bloğu sarar.
         var teacherUnavailable = false;
         var slotGone = false;
+        var parentMissing = false;
+        var tooManyAwaiting = false;
         var strategy = _context.Database.CreateExecutionStrategy();
         try
         {
@@ -566,6 +664,8 @@ public class BookingService : IBookingService
                 booking.Id = 0;
                 teacherUnavailable = false;
                 slotGone = false;
+                parentMissing = false;
+                tooManyAwaiting = false;
 
                 await using var tx = await _context.Database.BeginTransactionAsync(ct);
 
@@ -588,29 +688,101 @@ public class BookingService : IBookingService
                     return; // commit yok → dispose'da rollback
                 }
 
+                // issue #439 review: öğrenci başına açık AwaitingParent tavanı (toplam 3, aynı öğretmen 1) — slotları veli onayı
+                // bahanesiyle toplu tutmayı engeller. Kontrol + insert öğrenci kilidi altında (sıra: öğretmen → öğrenci; öğrenci
+                // kilidi veli bağlantısı yazımlarıyla ortak, onlar öğretmen kilidi almaz → kilitlenme yok).
+                if (awaitingParent)
+                {
+                    await _context.Database.AcquireStudentParentLinkLockAsync(studentId, ct);
+                    var open = await _context.Bookings
+                        .WithSoftDeletedSlots()
+                        .AsNoTracking()
+                        .Where(b => b.StudentId == studentId && b.Status == BookingStatus.AwaitingParent)
+                        .Where(BookingParentApproval.OpenAt(now))
+                        .Select(b => b.TeacherId)
+                        .ToListAsync(ct);
+                    if (open.Count >= BookingParentApproval.MaxOpenAwaitingParentPerStudent
+                        || open.Count(t => t == slot.TeacherId) >= BookingParentApproval.MaxOpenAwaitingParentPerTeacher)
+                    {
+                        tooManyAwaiting = true;
+                        return; // commit yok → dispose'da rollback
+                    }
+                }
+
+                // issue #439: veli bağlantıları FOR SHARE ile yeniden okunur — koparma (koşullu UPDATE) ile serileşir.
+                List<ActiveParentRecipient> recipients = new();
+                if (awaitingParent || parentDirect)
+                {
+                    var lockedParentIds = await ParentNotificationSupport.ActiveParentIdsLockedAsync(_context, studentId, ct);
+                    if (awaitingParent)
+                    {
+                        recipients = parents.Where(p => lockedParentIds.Contains(p.ParentId)).ToList();
+                        if (recipients.Count == 0)
+                        {
+                            parentMissing = true;
+                            return; // commit yok → dispose'da rollback
+                        }
+                    }
+                    else if (!lockedParentIds.Contains(request.ParentId!.Value))
+                    {
+                        parentMissing = true;
+                        return;
+                    }
+                }
+
                 _context.Bookings.Add(booking);
                 await _context.SaveChangesAsync(ct);
 
-                var @event = new BookingRequestCreatedEvent
+                if (parentDirect)
                 {
-                    BookingId = booking.Id,
-                    TeacherId = slot.TeacherId,
-                    TeacherUserId = slot.TeacherUserId,
-                    TargetKeycloakId = teacherKeycloakId,
-                    StudentId = studentId.Value,
-                    StudentName = studentName,
-                    AvailabilitySlotId = slot.Id,
-                    Date = slot.Date,
-                    StartTime = slot.StartTime,
-                    EndTime = slot.EndTime,
-                    RequestedAt = booking.CreatedAt
-                };
-                _context.OutboxMessages.Add(new OutboxMessage
+                    // issue #439 review: velinin çocuk adına talebi erişim kaydına (ResetChildPassword deseni; ayrı satır).
+                    _context.ParentAccessAudits.Add(new ParentAccessAudit
+                    {
+                        ParentId = request.ParentId!.Value,
+                        StudentId = studentId,
+                        Endpoint = ParentAccessEndpoints.ChildBookingCreate,
+                        ResourceId = booking.Id,
+                        At = now
+                    });
+                }
+
+                if (awaitingParent)
                 {
-                    Type = OutboxEventRegistry.NameFor<BookingRequestCreatedEvent>(),
-                    Content = JsonSerializer.Serialize(@event),
-                    CreatedAt = now
-                });
+                    // Öğretmene HENÜZ bildirim yok: BookingRequestCreatedEvent veli onayında yazılır.
+                    AddOutbox(new BookingParentApprovalRequestedEvent
+                    {
+                        EventId = Guid.NewGuid(),
+                        BookingId = booking.Id,
+                        StudentId = studentId,
+                        StudentUserId = studentUserId,
+                        StudentName = studentName,
+                        TeacherId = slot.TeacherId,
+                        TeacherName = FullNameOf(users, slot.TeacherUserId),
+                        Date = slot.Date,
+                        StartTime = slot.StartTime,
+                        EndTime = slot.EndTime,
+                        Parents = BookingParentApproval.Recipients(recipients.Select(p => p.ParentUserId), id => KeycloakIdOf(users, id)),
+                        RequestedAt = booking.CreatedAt,
+                        ExpiresAt = BookingParentApproval.ExpiresAt(booking.CreatedAt, slot.Date, slot.StartTime)
+                    }, now);
+                }
+                else
+                {
+                    AddOutbox(new BookingRequestCreatedEvent
+                    {
+                        BookingId = booking.Id,
+                        TeacherId = slot.TeacherId,
+                        TeacherUserId = slot.TeacherUserId,
+                        TargetKeycloakId = teacherKeycloakId,
+                        StudentId = studentId,
+                        StudentName = studentName,
+                        AvailabilitySlotId = slot.Id,
+                        Date = slot.Date,
+                        StartTime = slot.StartTime,
+                        EndTime = slot.EndTime,
+                        RequestedAt = booking.CreatedAt
+                    }, now);
+                }
                 await _context.SaveChangesAsync(ct);
 
                 await tx.CommitAsync(ct);
@@ -622,6 +794,12 @@ public class BookingService : IBookingService
             // lock_timeout içinde alınamadı → retry'sız 409 (#323 deseni).
             _logger.LogWarning(ex, "Randevu talebi: öğretmen kilidi (müsaitlik advisory / öğretmen satırı) zaman aşımı. TeacherId={TeacherId}",
                 slot.TeacherId);
+            return new BookingResultDto { Success = false, Conflict = true, Message = _localizer["booking.slot.busy"] };
+        }
+        catch (ParentLinkLockTimeoutException ex)
+        {
+            // issue #439 review: öğrenci kilidi (AwaitingParent tavanı) zamanında alınamadı → retry'sız 409.
+            _logger.LogWarning(ex, "Randevu talebi: öğrenci kilidi zaman aşımı. StudentId={StudentId}", studentId);
             return new BookingResultDto { Success = false, Conflict = true, Message = _localizer["booking.slot.busy"] };
         }
         catch (DbUpdateException ex)
@@ -650,6 +828,22 @@ public class BookingService : IBookingService
             return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.slot.notFound"] };
         }
 
+        if (tooManyAwaiting)
+            return new BookingResultDto
+            {
+                Success = false,
+                Conflict = true,
+                ErrorCode = BookingErrorCodes.TooManyAwaitingParent,
+                Message = _localizer["booking.request.tooManyAwaitingParent",
+                    BookingParentApproval.MaxOpenAwaitingParentPerStudent, BookingParentApproval.MaxOpenAwaitingParentPerTeacher]
+            };
+
+        if (parentMissing)
+        {
+            _logger.LogInformation("Randevu talebi reddedildi: veli bağlantısı talep sırasında koparıldı. StudentId={StudentId}", studentId);
+            return awaitingParent ? ParentRequiredFailure() : ParentChildNotFound();
+        }
+
         var names = await ResolveUserNamesAsync(new[] { slot.TeacherUserId, studentUserId }, ct);
         var slotRange = SlotTimeRange.From(slot.Date, slot.StartTime, slot.EndTime);
 
@@ -657,7 +851,9 @@ public class BookingService : IBookingService
         {
             Success = true,
             ObjectId = booking.Id,
-            Message = _localizer["booking.request.created"],
+            Message = _localizer[awaitingParent
+                ? "booking.request.createdAwaitingParent"
+                : parentDirect ? "booking.parent.created" : "booking.request.created"],
             Booking = new BookingDto
             {
                 Id = booking.Id,
@@ -672,10 +868,70 @@ public class BookingService : IBookingService
                 StartUtc = slotRange.StartUtc,
                 EndUtc = slotRange.EndUtc,
                 Status = booking.Status.ToString(),
-                CreatedAt = booking.CreatedAt
+                CreatedAt = booking.CreatedAt,
+                ParentApprovedAt = booking.ParentApprovedAt,
+                ExpiresAt = awaitingParent ? BookingParentApproval.ExpiresAt(booking.CreatedAt, slot.Date, slot.StartTime) : null
             }
         };
     }
+
+    /// <summary>Outbox satırını context'e ekler (SaveChanges/commit çağıranda).</summary>
+    private void AddOutbox<TEvent>(TEvent @event, DateTime createdAt)
+        => _context.OutboxMessages.Add(new OutboxMessage
+        {
+            Type = OutboxEventRegistry.NameFor<TEvent>(),
+            Content = JsonSerializer.Serialize(@event),
+            CreatedAt = createdAt
+        });
+
+    /// <summary>issue #439: veliye tabi öğrencinin Active velisi yok → 403 + <see cref="BookingErrorCodes.ParentRequired"/>.</summary>
+    private BookingResultDto ParentRequiredFailure() => new()
+    {
+        Success = false,
+        Forbidden = true,
+        ErrorCode = BookingErrorCodes.ParentRequired,
+        Message = _localizer["booking.request.parentRequired"]
+    };
+
+    /// <summary>issue #439: veli uçları — bağlı olmayan çocuk / talep (varlık sızdırılmaz) → 404.</summary>
+    private BookingResultDto ParentChildNotFound() => new()
+    {
+        Success = false,
+        NotFound = true,
+        ErrorCode = BookingErrorCodes.NotFound,
+        Message = _localizer["booking.parent.notFound"]
+    };
+
+    /// <summary>issue #439: ödeme kapısı reddetti → 409 + kapının kodu (durum değişmedi).</summary>
+    private BookingResultDto GateFailure(BookingParentApprovalGateResult gate) => new()
+    {
+        Success = false,
+        Conflict = true,
+        ErrorCode = gate.ErrorCode,
+        Message = _localizer[gate.MessageKey ?? "booking.parent.approvalNotAllowed"]
+    };
+
+    private sealed record LookupUser(string FullName, string KeycloakId);
+
+    /// <summary>
+    /// Bildirim alanları için auth-api lookup (best-effort, issue #439 review: ortak <see cref="ParentNotificationSupport.LookupAsync"/>
+    /// — zaman aşımı + kısa görünen ad "Ad S."): erişilemezse boş sözlük — event alanları boş geçer, consumer sub'ı kendi verisinden
+    /// çözer.
+    /// </summary>
+    private async Task<IReadOnlyDictionary<int, LookupUser>> TryLookupUsersAsync(
+        IEnumerable<int> userIds, string operation, int referenceId, CancellationToken ct)
+    {
+        var users = await ParentNotificationSupport.LookupAsync(_authApiClient, userIds, _logger, ct);
+        if (users.Count == 0)
+            _logger.LogDebug("{Operation}: kullanıcı adı/sub çözümü boş. Ref={ReferenceId}", operation, referenceId);
+        return users.ToDictionary(kv => kv.Key, kv => new LookupUser(kv.Value.DisplayName, kv.Value.KeycloakId));
+    }
+
+    private static string FullNameOf(IReadOnlyDictionary<int, LookupUser> users, int userId)
+        => users.TryGetValue(userId, out var u) ? u.FullName : string.Empty;
+
+    private static string KeycloakIdOf(IReadOnlyDictionary<int, LookupUser> users, int userId)
+        => users.TryGetValue(userId, out var u) ? u.KeycloakId : string.Empty;
 
     /// <summary>
     /// <see cref="LockBookableTeacherAsync"/>'ın Postgres sorgusu. {0} = Teachers.Id, {1} = Approved. Koşul ön okumayla ve
@@ -748,7 +1004,9 @@ public class BookingService : IBookingService
 
         var teacherId = teacher.Id;
 
-        return await QueryBookingsAsync(b => b.TeacherId == teacherId, skip, take, ct);
+        // issue #439: veliden geçmemiş (AwaitingParent) ve öğretmene hiç ulaşmamış (ParentRejected/Expired) talepler listede yok.
+        return await QueryBookingsAsync(
+            b => b.TeacherId == teacherId && TeacherVisibleStatuses.Contains(b.Status), skip, take, ct);
     }
 
     public async Task<BookingListResultDto> GetStudentBookingsAsync(
@@ -794,7 +1052,8 @@ public class BookingService : IBookingService
             .Include(b => b.Student)
             .FirstOrDefaultAsync(b => b.Id == bookingId, ct);
 
-        if (booking == null)
+        // issue #439: öğretmene ulaşmamış talep (AwaitingParent / ParentRejected / Expired) öğretmen için yoktur → 404.
+        if (booking == null || !TeacherVisibleStatuses.Contains(booking.Status))
             return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.request.notFound"] };
 
         if (booking.TeacherId != teacherId)
@@ -818,22 +1077,17 @@ public class BookingService : IBookingService
                 Message = _localizer["booking.request.slotDeleted"]
             };
 
+        // issue #439: karar velilere de bildirilir — öğrencinin Active velileri (kilitsiz ön okuma; transaction içinde
+        // FOR SHARE ile yeniden doğrulanır, koparılmış veliye bildirim gitmez).
+        var parents = await ParentNotificationSupport.ActiveParentsAsync(_context, booking.StudentId, ct);
+
         // auth-api lookup best-effort, karar yazılmadan önce (WorksheetAccessRequestService'in
         // AddDecisionOutboxAsync'i ile aynı desen). Patlarsa event alanları boş geçer.
-        var teacherName = string.Empty;
-        var studentKeycloakId = string.Empty;
-        try
-        {
-            var lookup = await _authApiClient.GetUsersByIdsAsync(new[] { teacherUserId, booking.Student.UserId }, ct);
-            teacherName = lookup.FirstOrDefault(u => u.Id == teacherUserId)?.FullName ?? string.Empty;
-            studentKeycloakId = lookup.FirstOrDefault(u => u.Id == booking.Student.UserId)?.KeycloakId ?? string.Empty;
-        }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
-        {
-            _logger.LogWarning(ex,
-                "Randevu kararı için auth-api lookup başarısız; event alanları boş geçilecek. BookingId={BookingId}",
-                bookingId);
-        }
+        var users = await TryLookupUsersAsync(
+            new[] { teacherUserId, booking.Student.UserId }.Concat(parents.Select(p => p.ParentUserId)),
+            "Randevu kararı", bookingId, ct);
+        var teacherName = FullNameOf(users, teacherUserId);
+        var studentKeycloakId = KeycloakIdOf(users, booking.Student.UserId);
 
         _context.SetCurrentUser(teacherUserId);
 
@@ -849,6 +1103,7 @@ public class BookingService : IBookingService
             TeacherName = teacherName,
             StudentId = booking.StudentId,
             StudentUserId = booking.Student.UserId,
+            StudentName = FullNameOf(users, booking.Student.UserId),
             TargetKeycloakId = studentKeycloakId,
             Approved = newStatus == BookingStatus.Approved,
             RejectionReason = storedReason,
@@ -884,12 +1139,13 @@ public class BookingService : IBookingService
                 return;
             }
 
-            _context.OutboxMessages.Add(new OutboxMessage
-            {
-                Type = OutboxEventRegistry.NameFor<BookingDecisionEvent>(),
-                Content = JsonSerializer.Serialize(decisionEvent),
-                CreatedAt = decidedAt
-            });
+            // issue #439: alıcı veliler kararla aynı transaction'da FOR SHARE ile doğrulanır (#423 security M1 deseni).
+            var lockedParentIds = await ParentNotificationSupport.ActiveParentIdsLockedAsync(_context, booking.StudentId, ct);
+            decisionEvent.Parents = BookingParentApproval.Recipients(
+                parents.Where(p => lockedParentIds.Contains(p.ParentId)).Select(p => p.ParentUserId),
+                id => KeycloakIdOf(users, id));
+
+            AddOutbox(decisionEvent, decidedAt);
             await _context.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
         });
@@ -957,6 +1213,10 @@ public class BookingService : IBookingService
         // Sadece randevunun iki tarafı katılabilir — rol attribute'u tek başına yetmez.
         if (!isTeacher && !isStudent)
             return BookingLiveSessionAccess.Denied(BookingLiveSessionDenial.NotParticipant, bookingId);
+
+        // issue #439: öğretmene ulaşmamış talep (AwaitingParent / ParentRejected / Expired) öğretmen için yoktur.
+        if (isTeacher && !isStudent && !TeacherVisibleStatuses.Contains(row.Status))
+            return BookingLiveSessionAccess.Denied(BookingLiveSessionDenial.NotFound, bookingId);
 
         var window = BookingSessionWindow.For(row.Date, row.StartTime, row.EndTime, _videoOptions.Value);
         // Sıra: taraf → randevu durumu → öğretmen hesabı (issue #298) → pencere.
@@ -1098,7 +1358,8 @@ public class BookingService : IBookingService
                 Status = b.Status,
                 CreatedAt = b.CreatedAt,
                 DecisionAt = b.DecisionAt,
-                RejectionReason = b.RejectionReason
+                RejectionReason = b.RejectionReason,
+                ParentApprovedAt = b.ParentApprovedAt
             })
             .ToListAsync(ct);
 
@@ -1127,7 +1388,11 @@ public class BookingService : IBookingService
                     Status = r.Status.ToString(),
                     CreatedAt = r.CreatedAt,
                     DecisionAt = r.DecisionAt,
-                    RejectionReason = r.RejectionReason
+                    RejectionReason = r.RejectionReason,
+                    ParentApprovedAt = r.ParentApprovedAt,
+                    ExpiresAt = r.Status == BookingStatus.AwaitingParent
+                        ? BookingParentApproval.ExpiresAt(r.CreatedAt, r.Date, r.StartTime)
+                        : null
                 };
             }).ToList()
         };
@@ -1149,7 +1414,7 @@ public class BookingService : IBookingService
 
     private static AvailabilitySlotDto MapSlot(
         int id, int teacherId, DateOnly date, TimeOnly start, TimeOnly end, DateTime createdAt,
-        int? bookingId, BookingStatus? bookingStatus, string? studentName, int? recurringRuleId)
+        int? bookingId, BookingStatus? bookingStatus, bool isBooked, string? studentName, int? recurringRuleId)
     {
         var range = SlotTimeRange.From(date, start, end);
         return new AvailabilitySlotDto
@@ -1162,7 +1427,7 @@ public class BookingService : IBookingService
             CreatedAt = createdAt,
             StartUtc = range.StartUtc,
             EndUtc = range.EndUtc,
-            IsBooked = bookingId.HasValue,
+            IsBooked = isBooked,
             BookingId = bookingId,
             BookingStatus = bookingStatus?.ToString(),
             StudentName = studentName,
@@ -1253,5 +1518,6 @@ public class BookingService : IBookingService
         public DateTime CreatedAt { get; init; }
         public DateTime? DecisionAt { get; init; }
         public string? RejectionReason { get; init; }
+        public DateTime? ParentApprovedAt { get; init; }
     }
 }

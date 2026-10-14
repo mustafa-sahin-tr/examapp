@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Bookings;
 using ExamApp.Api.Services.Bookings;
+using ExamApp.Api.Services.Parents;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -156,7 +157,11 @@ public class BookingController : BaseController
 
     // ---------------- Randevu talepleri ----------------
 
-    /// <summary>Öğrenci bir müsaitlik aralığı için randevu talebi oluşturur.</summary>
+    /// <summary>
+    /// Öğrenci bir müsaitlik aralığı için randevu talebi oluşturur. issue #439: veliye tabi öğrencinin talebi
+    /// <c>AwaitingParent</c> açılır (öğretmene gitmez, velilere bildirim); Active velisi yoksa 403 +
+    /// <c>errorCode: "ParentRequired"</c>. Yetişkin rolü olan hesap (Teacher/Admin/Parent ile birlikte Student) eski akışta kalır.
+    /// </summary>
     [HttpPost("requests")]
     [Authorize(Roles = "Student")]
     public async Task<IActionResult> CreateRequest([FromBody] CreateBookingDto request, CancellationToken ct)
@@ -165,14 +170,14 @@ public class BookingController : BaseController
         if (user == null)
             return UserNotResolved(_localizer["booking.unauthorized"].Value);
 
-        var result = await _bookingService.CreateBookingAsync(user.Id, request, ct);
+        var result = await _bookingService.CreateBookingAsync(user.Id, request, ParentRequirement.RequiresParent(User), ct);
         if (!result.Success)
             return MapFailure(result);
 
         return CreatedAtAction(nameof(GetStudentRequests), new { }, result);
     }
 
-    /// <summary>Öğretmene gelen randevu talepleri.</summary>
+    /// <summary>Öğretmene gelen randevu talepleri (issue #439: veli onayından geçmemiş / veliden dönmüş talepler hariç).</summary>
     [HttpGet("requests/teacher")]
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [Authorize(Roles = "Teacher")]

@@ -38,6 +38,19 @@
     "bioTitle": "Tanıtım",
     "noBio": "Öğretmen henüz bir tanıtım yazısı eklememiş.",
     "bookingCreated": "Randevu talebin gönderildi, öğretmenin onayı bekleniyor.",
-    "bookingCreatedAction": "Randevularım"
+    "bookingCreatedAction": "Randevularım",
+    "bookForChild": "Ders Talebi Oluştur",
+    "bookingAwaitingParent": "Talebin velinin onayına gönderildi.",
+    "bookingCreatedForChild": "Talep öğretmene gönderildi.",
+    "bookingCreatedForChildAction": "Veli paneli"
+  },
+  "child": {
+    "loading": "Çocuk bilgisi yükleniyor...",
+    "loadError": "Çocuk bilgisi yüklenemedi.",
+    "retry": "Tekrar dene",
+    "banner": "{{child}} adına ders talebi oluşturuyorsunuz.",
+    "fallbackName": "Çocuğunuz",
+    "missing": "Bu çocuk için ders talebi oluşturamazsınız: bağlantı aktif değil.",
+    "back": "Çocuklarım"
   }
 }

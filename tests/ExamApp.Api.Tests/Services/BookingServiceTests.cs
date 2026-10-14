@@ -361,7 +361,7 @@ public class BookingServiceTests : IDisposable
 
         await using var ctx = _db.NewContext();
         var req = new CreateBookingDto { AvailabilitySlotId = slotId };
-        var result = await NewService(ctx).CreateBookingAsync(StudentUserId, req, CancellationToken.None);
+        var result = await NewService(ctx).CreateBookingAsync(StudentUserId, req, requiresParent: false, CancellationToken.None);
 
         result.Success.ShouldBeTrue();
         result.Booking.ShouldNotBeNull();
@@ -375,7 +375,7 @@ public class BookingServiceTests : IDisposable
 
         await using var ctx = _db.NewContext();
         var req = new CreateBookingDto { AvailabilitySlotId = 999 };
-        var result = await NewService(ctx).CreateBookingAsync(StudentUserId, req, CancellationToken.None);
+        var result = await NewService(ctx).CreateBookingAsync(StudentUserId, req, requiresParent: false, CancellationToken.None);
 
         result.Success.ShouldBeFalse();
         result.NotFound.ShouldBeTrue();
@@ -408,7 +408,7 @@ public class BookingServiceTests : IDisposable
         // Second booking attempt
         await using var ctxSecond = _db.NewContext();
         var req = new CreateBookingDto { AvailabilitySlotId = slotId };
-        var result = await NewService(ctxSecond).CreateBookingAsync(StudentUserId, req, CancellationToken.None);
+        var result = await NewService(ctxSecond).CreateBookingAsync(StudentUserId, req, requiresParent: false, CancellationToken.None);
 
         result.Success.ShouldBeFalse();
         result.Conflict.ShouldBeTrue();
@@ -1358,7 +1358,7 @@ public class BookingServiceTests : IDisposable
 
         await using var ctx = _db.NewContext();
         var result = await NewService(ctx).CreateBookingAsync(
-            StudentUserId, new CreateBookingDto { AvailabilitySlotId = slotId }, CancellationToken.None);
+            StudentUserId, new CreateBookingDto { AvailabilitySlotId = slotId }, requiresParent: false, CancellationToken.None);
 
         result.Success.ShouldBeTrue();
         result.Booking!.StartUtc.ShouldBe(new DateTime(2026, 6, 16, 23, 30, 0, DateTimeKind.Utc));
@@ -1845,7 +1845,7 @@ public class BookingServiceTests : IDisposable
         await SoftDeleteSlotAsync(slotId);
 
         await using (var ctx = _db.NewContext())
-            (await NewService(ctx).CreateBookingAsync(StudentUserId, new CreateBookingDto { AvailabilitySlotId = slotId })).NotFound.ShouldBeTrue();
+            (await NewService(ctx).CreateBookingAsync(StudentUserId, new CreateBookingDto { AvailabilitySlotId = slotId }, requiresParent: false)).NotFound.ShouldBeTrue();
 
         await using var check = _db.NewContext();
         (await check.Bookings.IgnoreQueryFilters().CountAsync()).ShouldBe(0);

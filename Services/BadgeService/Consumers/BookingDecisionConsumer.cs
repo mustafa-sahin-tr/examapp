@@ -27,6 +27,11 @@ public class BookingDecisionConsumer : IConsumer<BookingDecisionEvent>
     /// <summary>issue #298: otomatik ret metninin sözlük anahtarı (<c>notifications.{key}.title/body</c>); Type değil.</summary>
     public const string TeacherUnavailableRejectedTextKey = "BookingRejectedTeacherUnavailable";
 
+    // issue #439: öğrencinin velilerine giden öğretmen kararı bildirimi (öğrenci Type'larından ayrı; alıcı başına deterministik SourceEventId).
+    public const string ParentApprovedType = "ParentBookingApproved";
+    public const string ParentRejectedType = "ParentBookingRejected";
+    public const string ParentTeacherUnavailableRejectedTextKey = "ParentBookingRejectedTeacherUnavailable";
+
     private readonly BadgeDbContext _db;
     private readonly IHubContext<BadgeNotificationHub> _hub;
     private readonly IUserLocaleResolver _localeResolver;
@@ -51,6 +56,51 @@ public class BookingDecisionConsumer : IConsumer<BookingDecisionEvent>
     {
         var e = context.Message;
         var ct = context.CancellationToken;
+
+        // Öğrenci sub'ı çözülemezse veli fan-out'u yine çalışır; hata sonda yeniden fırlatılır.
+        RecipientSubUnresolvedException? studentUnresolved = null;
+        try
+        {
+            await NotifyStudentAsync(e, ct);
+        }
+        catch (RecipientSubUnresolvedException ex)
+        {
+            studentUnresolved = ex;
+            _logger.LogError(ex, "BookingDecision öğrenci sub'ı çözülemedi (BookingId={BookingId}); veli bildirimleri yine de yazılacak.", e.BookingId);
+        }
+
+        // issue #439: öğrencinin velilerine de bildirim (öğrenci satırı zaten varsa — redelivery — fan-out yine de tamamlanır).
+        await NotifyParentsAsync(e, ct);
+
+        if (studentUnresolved != null)
+            throw studentUnresolved;
+    }
+
+    private async Task NotifyParentsAsync(BookingDecisionEvent e, CancellationToken ct)
+    {
+        if (e.Parents == null || e.Parents.Count == 0)
+            return;
+
+        var type = e.Approved ? ParentApprovedType : ParentRejectedType;
+        var textKey = !e.Approved && e.TeacherUnavailable ? ParentTeacherUnavailableRejectedTextKey : type;
+        var when = BookingWhenText.Format(e.Date, e.StartTime, e.EndTime);
+        var data = new { bookingId = e.BookingId, studentId = e.StudentId, approved = e.Approved, teacherUnavailable = e.TeacherUnavailable };
+
+        await BookingParentNotifier.NotifyAsync(
+            _db, _hub, _localeResolver, _logger, e.Parents, type, BookingParentNotifier.BookingScope(e.BookingId),
+            culture =>
+            {
+                var reasonSuffix = string.IsNullOrWhiteSpace(e.RejectionReason)
+                    ? string.Empty
+                    : _texts.Resolve("notifications.common.rejectionReasonSuffix", culture, e.RejectionReason);
+                return _texts.Build(textKey, culture, BookingParentNotifier.Teacher(_texts, culture, e.TeacherName), when, reasonSuffix,
+                    BookingParentNotifier.Child(_texts, culture, e.StudentName)); // {3}: çocuk adı (boşsa defaultChild)
+            },
+            data, $"BookingId={e.BookingId}", excludeParentUserId: null, ct);
+    }
+
+    private async Task NotifyStudentAsync(BookingDecisionEvent e, CancellationToken ct)
+    {
         var type = e.Approved ? ApprovedType : RejectedType;
 
         // Idempotency: bu karar için öğrenciye bildirim zaten üretildiyse çık.

@@ -19,6 +19,11 @@ public class StudentProfileDto
     public int? PendingSchoolId { get; set; }
     /// <summary>issue #361: <see cref="PendingSchoolId"/> okulunun adı (yalnız gösterim).</summary>
     public string? PendingSchoolName { get; set; }
+    /// <summary>
+    /// issue #438: hesap veli tarafından açıldı (kullanıcı adı + şifre). UI "Hesabım / şifre değiştir" kartını gizler; şifreyi veli
+    /// sıfırlar.
+    /// </summary>
+    public bool ParentManaged { get; set; }
     public int XP { get; set; }
     public int Level { get; set; } // 🟢 En son seviy
 

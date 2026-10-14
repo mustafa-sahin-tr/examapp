@@ -82,6 +82,13 @@ public static class ParentEndpointCatalog
         [$"{nameof(ParentLinksController)}.{nameof(ParentLinksController.Revoke)}"] =
             "Write (Parent,Admin; #436): primary parent removes any link of the child, a parent leaves / cancels their own " +
             "(last Active parent 409), admin any (audited); unrelated 404. Exercised by the revoke step of the matrix.",
+        [$"{nameof(ParentChildAccountsController)}.{nameof(ParentChildAccountsController.CreateChildAccount)}"] =
+            "Parent write (#438): creates the parent's OWN new child account (Keycloak user + Student + primary Active link + " +
+            "consent); no existing student id in the request; 201 returns only ids, username and the name the parent typed (no " +
+            "password); ParentChildAccountEndpointsTests.",
+        [$"{nameof(ParentChildAccountsController)}.{nameof(ParentChildAccountsController.ResetChildPassword)}"] =
+            "Parent write (#438): IParentChildAccess gate (unlinked child 404, IDOR), only ParentManaged accounts (else 403); " +
+            "204 without body, audited as children.password-reset; ParentChildAccountEndpointsTests.",
         [$"{nameof(ParentController)}.{nameof(ParentController.RegisterParent)}"] = "Role registration; no child data.",
         [$"{nameof(ParentController)}.{nameof(ParentController.CheckParent)}"] = "Own profile flag only; no child data.",
     };

@@ -1162,7 +1162,8 @@ public class KeycloakService : IKeycloakService
         var json = await getResponse.Content.ReadAsStringAsync(ct);
         if (!getResponse.IsSuccessStatusCode)
         {
-            throw new KeycloakException($"Failed to read Keycloak user '{keycloakUserId}' ({(int)getResponse.StatusCode}): {json}");
+            throw new KeycloakException($"Failed to read Keycloak user '{keycloakUserId}' ({(int)getResponse.StatusCode}): {json}",
+                (int)getResponse.StatusCode);
         }
 
         // Tam temsili sözlük olarak al: PUT'ta bilinmeyen alanlar olduğu gibi geri gider, yalnızca attributes değişir.
@@ -1243,7 +1244,176 @@ public class KeycloakService : IKeycloakService
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync(ct);
-            throw new KeycloakException($"Keycloak password reset failed for user '{keycloakUserId}' ({(int)response.StatusCode}): {error}");
+            // Issue #438: 400 = parola politikası reddi (gövde parolayı içermez), 404 = kullanıcı yok — çağıran ayırt edebilsin.
+            var kind = response.StatusCode == System.Net.HttpStatusCode.BadRequest ? KeycloakFailureKind.Validation : KeycloakFailureKind.Unexpected;
+            throw new KeycloakException($"Keycloak password reset failed for user '{keycloakUserId}' ({(int)response.StatusCode}): {error}",
+                (int)response.StatusCode, kind);
+        }
+    }
+
+    // ---- Veli tarafından açılan çocuk hesabı (issue #438) — yalnızca ChildAccountService kullanır ----
+
+    public async Task<string> CreateParentManagedUserAsync(
+        string username, string firstName, string lastName, Guid requestId, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(username);
+        if (requestId == Guid.Empty)
+            throw new ArgumentException("A child account request id is required.", nameof(requestId));
+
+        // E-posta YOK, required action YOK (realm VERIFY_PROFILE kapalı olmalı — bkz. dev realm export), kimlik bilgisi YOK:
+        // parola ayrı reset-password çağrısıyla set edilir ki politika reddi (400) kullanıcı oluşturma hatasından ayrılsın.
+        var representation = new Dictionary<string, object?>
+        {
+            ["username"] = username,
+            ["enabled"] = true,
+            ["emailVerified"] = false,
+            ["firstName"] = firstName,
+            ["lastName"] = lastName,
+            ["requiredActions"] = Array.Empty<string>(),
+            ["attributes"] = new Dictionary<string, string[]>
+            {
+                [ExamApp.Foundation.Security.ChildAccountRules.KeycloakParentManagedAttribute] =
+                    new[] { ExamApp.Foundation.Security.ChildAccountRules.KeycloakParentManagedValue },
+                [ExamApp.Foundation.Security.ChildAccountRules.KeycloakChildRequestIdAttribute] = new[] { requestId.ToString("D") }
+            }
+        };
+
+        var content = new StringContent(JsonSerializer.Serialize(representation, IgnoreNulls), Encoding.UTF8, "application/json");
+        await AuthorizeAdminAsync(ct);
+        var response = await _adminHttp.PostAsync(BuildKeycloakUri(_keycloakSettings.UserUrl), content, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync(ct);
+            var kind = response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.Conflict => KeycloakFailureKind.Conflict,
+                System.Net.HttpStatusCode.BadRequest => KeycloakFailureKind.Validation,
+                _ => KeycloakFailureKind.Unexpected,
+            };
+            throw new KeycloakException($"Keycloak child user creation failed ({(int)response.StatusCode}): {error}", (int)response.StatusCode, kind);
+        }
+
+        var id = response.Headers.Location?.ToString().Split('/').Last();
+        if (string.IsNullOrWhiteSpace(id))
+            throw new KeycloakException("Keycloak did not return a Location header for the created child user.");
+        return id;
+    }
+
+    public async Task<IReadOnlyList<string>> FindUserIdsByAttributeAsync(string name, string value, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(value);
+        await AuthorizeAdminAsync(ct);
+
+        // q=<ad>:<değer> attribute araması; briefRepresentation=false → attribute'lar yanıtta, eşleşme yerelde yeniden doğrulanır.
+        var query = Uri.EscapeDataString($"{name}:{value}");
+        var response = await _adminHttp.GetAsync(BuildKeycloakUri(
+            $"{_keycloakSettings.UserUrl}?q={query}&exact=true&briefRepresentation=false&max=5"), ct);
+        var json = await response.Content.ReadAsStringAsync(ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new KeycloakException($"Failed to search Keycloak users by attribute '{name}' ({(int)response.StatusCode}): {json}",
+                (int)response.StatusCode);
+        }
+
+        var ids = new List<string>();
+        using var doc = JsonDocument.Parse(json);
+        foreach (var element in doc.RootElement.EnumerateArray())
+        {
+            if (!element.TryGetProperty("id", out var id) || id.GetString() is not { Length: > 0 } userId)
+                continue;
+            if (!element.TryGetProperty("attributes", out var attributes) || attributes.ValueKind != JsonValueKind.Object ||
+                !attributes.TryGetProperty(name, out var values) || values.ValueKind != JsonValueKind.Array)
+                continue;
+            if (values.EnumerateArray().Any(v => string.Equals(v.GetString(), value, StringComparison.Ordinal)))
+                ids.Add(userId);
+        }
+        return ids;
+    }
+
+    /// <summary>Çocuk hesabında kalabilecek varsayılan-kompozit realm rolleri (yalnız kompozitte zaten varsa verilir).</summary>
+    public static readonly IReadOnlySet<string> ParentManagedRealmRoleAllowlist =
+        new HashSet<string>(StringComparer.Ordinal) { "offline_access", "uma_authorization" };
+
+    /// <summary><c>account</c> client'ının salt-okuma rolü (token'a <c>aud=account</c> getirir).</summary>
+    public const string AccountViewProfileRole = "view-profile";
+
+    /// <summary>
+    /// Veli tarafından açılan çocuk hesabının rol kümesi (issue #438 security review): <c>POST /users</c> kullanıcıya realm'in
+    /// varsayılan kompozitini (<c>default-roles-&lt;realm&gt;</c>) ekler; o kompozit <c>account</c> client'ının
+    /// <c>manage-account</c> rolünü taşır — çocuk Keycloak hesap konsolundan adını/e-postasını değiştirebilir, oturumlarını
+    /// yönetebilirdi. Kompozit kaldırılır, yerine yalnız: <see cref="ParentManagedRealmRoleAllowlist"/> (kompozitte varsa) +
+    /// <c>Student</c> realm rolü + <c>account</c> client'ının <c>view-profile</c> rolü (token'da <c>aud=account</c> kalsın diye —
+    /// exam API/BadgeService audience doğrulaması bunu bekler). <c>manage-account</c>, <c>manage-account-links</c>,
+    /// <c>delete-account</c> VERİLMEZ.
+    /// <para>
+    /// Kalan risk (bilinçli, bkz. <c>deploy/README.md</c> #438): Keycloak'ın uygulama başlatmalı eylemleri (<c>kc_action</c>, örn.
+    /// <c>kc_action=UPDATE_PASSWORD</c> / <c>UPDATE_PROFILE</c>) hesap konsolu rollerine bakmaz — giriş akışını kendisi başlatan çocuk
+    /// kendi şifresini değiştirebilir ve user profile izin verdiği alanları (ad/soyad/e-posta) düzenleyebilir. Uygulama bu eylemleri
+    /// başlatmaz; tamamen kapatmak realm ayarıdır (ilgili required action'ı kapatmak ya da user profile'da alanların düzenleme
+    /// iznini <c>admin</c>'e daraltmak — tüm kullanıcıları etkiler).
+    /// </para>
+    /// Yalnız <c>view-realm</c> (kompozit okuma) + <c>manage-users</c> (rol eşleme) gerekir — <c>view-clients</c> gerekmez:
+    /// <c>account</c> client'ının kimliği kompozitteki rolün <c>containerId</c>'sinden okunur. Sıra: önce izinli roller eklenir,
+    /// sonra varsayılan kompozit kaldırılır, en sonda realm rol eşlemesi yeniden okunur (fail-closed — kompozit hâlâ varsa hata).
+    /// </summary>
+    public async Task ApplyParentManagedRolesAsync(string keycloakUserId, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(keycloakUserId);
+
+        var defaultRoleName = await GetRealmDefaultRoleNameAsync(ct);
+        var defaultRole = await GetRealmRoleAsync(defaultRoleName, ct);
+        var composites = await GetRoleCompositesAsync(defaultRoleName, ct);
+
+        var realmRoles = composites
+            .Where(r => !r.clientRole && ParentManagedRealmRoleAllowlist.Contains(r.name))
+            .ToList();
+        realmRoles.Add(await GetRealmRoleAsync(ExamApp.Foundation.Security.ChildAccountRules.StudentRole, ct));
+
+        var viewProfile = composites.FirstOrDefault(r =>
+                              r.clientRole && r.name == AccountViewProfileRole && !string.IsNullOrEmpty(r.containerId))
+                          ?? throw new KeycloakException(
+                              $"Realm default role '{defaultRoleName}' does not contain the account client's '{AccountViewProfileRole}' " +
+                              "role; the child account would get no aud=account.");
+
+        await AuthorizeAdminAsync(ct);
+        var userPath = $"{_keycloakSettings.UserUrl}/{keycloakUserId}/role-mappings";
+        await SendRoleMappingAsync(HttpMethod.Post, $"{userPath}/realm", realmRoles, ct);
+        await SendRoleMappingAsync(HttpMethod.Post, $"{userPath}/clients/{Uri.EscapeDataString(viewProfile.containerId!)}",
+            new[] { viewProfile }, ct);
+        await SendRoleMappingAsync(HttpMethod.Delete, $"{userPath}/realm", new[] { defaultRole }, ct);
+
+        var assigned = await GetUserRealmRoleNamesAsync(keycloakUserId, ct);
+        if (assigned.Contains(defaultRoleName, StringComparer.Ordinal))
+            throw new KeycloakException($"Realm default role '{defaultRoleName}' is still mapped to the child account after removal.");
+    }
+
+    private async Task<List<KeycloakRoleDto>> GetRoleCompositesAsync(string roleName, CancellationToken ct)
+    {
+        await AuthorizeAdminAsync(ct);
+        var response = await _adminHttp.GetAsync(
+            BuildKeycloakUri($"{_keycloakSettings.RealmRolesUrl}/{Uri.EscapeDataString(roleName)}/composites"), ct);
+        var json = await response.Content.ReadAsStringAsync(ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new KeycloakException($"Failed to read composites of role '{roleName}' ({(int)response.StatusCode}): {json}",
+                (int)response.StatusCode);
+        }
+        return JsonSerializer.Deserialize<List<KeycloakRoleDto>>(json, CaseInsensitive) ?? new List<KeycloakRoleDto>();
+    }
+
+    private async Task SendRoleMappingAsync(HttpMethod method, string path, IEnumerable<KeycloakRoleDto> roles, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(method, BuildKeycloakUri(path))
+        {
+            Content = new StringContent(JsonSerializer.Serialize(roles), Encoding.UTF8, "application/json")
+        };
+        var response = await _adminHttp.SendAsync(request, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync(ct);
+            throw new KeycloakException($"Keycloak role mapping {method} failed ({(int)response.StatusCode}): {error}",
+                (int)response.StatusCode);
         }
     }
 }

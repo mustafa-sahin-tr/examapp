@@ -72,6 +72,33 @@ public class AdminPasswordResetServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Parent_managed_child_gets_a_permanent_password_without_required_action()
+    {
+        // #438 security review: geçici şifre + UPDATE_PASSWORD çocuğa kendi şifresini koydururdu (veli kontrolü delinir).
+        _targets.ResolveAsync(Arg.Any<AdminUserTargetType>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminAccountTargetResolution(AdminAccountTargetStatus.Resolved, TargetSub, ParentManaged: true));
+        _keycloak.ResetPermanentPasswordAsync(TargetSub, Arg.Any<CancellationToken>()).Returns(Issued);
+
+        var result = await RunAsync();
+
+        result.Status.ShouldBe(AdminPasswordResetStatus.Success);
+        result.Permanent.ShouldBeTrue();
+        result.TemporaryPassword.ShouldBe(Issued);
+        await _keycloak.Received(1).ResetPermanentPasswordAsync(TargetSub, CancellationToken.None);
+        await _keycloak.DidNotReceiveWithAnyArgs().ResetPasswordAsync(default!, default);
+        await _keycloak.Received(1).LogoutUserSessionsAsync(TargetSub, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task Regular_accounts_keep_the_temporary_password()
+    {
+        var result = await RunAsync();
+
+        result.Permanent.ShouldBeFalse();
+        await _keycloak.DidNotReceiveWithAnyArgs().ResetPermanentPasswordAsync(default!, default);
+    }
+
+    [Fact]
     public async Task Success_row_ends_as_Succeeded_and_logs_never_contain_password()
     {
         (await RunAsync()).Status.ShouldBe(AdminPasswordResetStatus.Success);

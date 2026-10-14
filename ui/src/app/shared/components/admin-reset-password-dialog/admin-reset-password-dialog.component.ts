@@ -53,6 +53,8 @@ export class AdminResetPasswordDialogComponent {
   /** Geçici şifre — tek sahibi bu sinyal; kapanışta temizlenir. */
   readonly password = signal<string | null>(null);
   readonly copyState = signal<'idle' | 'copied' | 'failed'>('idle');
+  /** Issue #438: veli yönetimli hesap — şifre kalıcı, veliye iletilir (sonuç metinleri buna göre). */
+  readonly permanent = signal(false);
 
   readonly submitting = computed(() => this.phase() === 'submitting');
 
@@ -83,6 +85,7 @@ export class AdminResetPasswordDialogComponent {
           return;
         }
         this.password.set(temporaryPassword);
+        this.permanent.set(res.permanent === true);
         this.phase.set('done');
       },
       error: (err: HttpErrorResponse) =>
@@ -117,6 +120,7 @@ export class AdminResetPasswordDialogComponent {
     this.request?.unsubscribe();
     this.request = undefined;
     this.password.set(null);
+    this.permanent.set(false);
     this.copyState.set('idle');
   }
 

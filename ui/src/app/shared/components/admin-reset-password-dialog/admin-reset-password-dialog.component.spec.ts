@@ -116,6 +116,47 @@ describe('AdminResetPasswordDialogComponent (issue #156)', () => {
     expect(el().textContent).toContain(adminTr.passwordReset.onceWarning);
     expect(button('confirm')).toBeNull();
     expect(dialogRef.close).not.toHaveBeenCalled();
+    // Geçici şifre (permanent yok/false): veli notu yok, geçici başlık/etiket.
+    expect(el().querySelector('[data-testid="permanent-note"]')).toBeNull();
+    expect(el().textContent).toContain(adminTr.passwordReset.resultTitle);
+    expect(el().textContent).toContain(adminTr.passwordReset.passwordLabel);
+  });
+
+  it('confirm_PermanentFalse_KeepsTemporaryTexts (issue #438)', () => {
+    configure({ target: 'student', id: 7 });
+    adminService.resetPassword.and.returnValue(of({ ...ok(), permanent: false }));
+
+    click('confirm');
+
+    expect(el().querySelector('[data-testid="permanent-note"]')).toBeNull();
+    expect(el().textContent).toContain(adminTr.passwordReset.onceWarning);
+  });
+
+  it('confirm_PermanentTrue_ShowsParentManagedNoteInsteadOfTemporaryTexts (issue #438)', () => {
+    configure({ target: 'student', id: 7 });
+    adminService.resetPassword.and.returnValue(of({ ...ok(), permanent: true }));
+
+    click('confirm');
+
+    expect(shownPassword()).toBe(PW);
+    const content = el().textContent ?? '';
+    expect(el().querySelector('[data-testid="permanent-note"]')?.textContent).toContain(adminTr.passwordReset.permanentNote);
+    expect(content).toContain(adminTr.passwordReset.resultTitlePermanent);
+    expect(content).toContain(adminTr.passwordReset.passwordLabelPermanent);
+    expect(content).toContain(adminTr.passwordReset.onceWarningPermanent);
+    expect(content).not.toContain(adminTr.passwordReset.resultTitle);
+    expect(content).not.toContain(adminTr.passwordReset.onceWarning);
+  });
+
+  it('close_AfterPermanentResult_ClearsPermanentFlag (issue #438)', () => {
+    configure({ target: 'student', id: 7 });
+    adminService.resetPassword.and.returnValue(of({ ...ok(), permanent: true }));
+    click('confirm');
+
+    click('close');
+
+    expect(component.permanent()).toBeFalse();
+    expect(component.password()).toBeNull();
   });
 
   it('copy_UsesClipboardAndShowsFeedback', () => {

@@ -383,7 +383,11 @@ public class AdminController : BaseController
     public Task<IActionResult> ResetTeacherPassword(int id, CancellationToken ct)
         => ResetPasswordAsync(AdminUserTargetType.Teacher, id, ct);
 
-    /// <summary>POST api/admin/students/{id}/reset-password → <see cref="ResetTeacherPassword"/> ile aynı sözleşme (Student.Id).</summary>
+    /// <summary>
+    /// POST api/admin/students/{id}/reset-password → <see cref="ResetTeacherPassword"/> ile aynı sözleşme (Student.Id). Issue #438:
+    /// veli tarafından açılmış (ParentManaged) öğrencide şifre KALICI set edilir (<c>permanent: true</c>, ilk girişte değiştirme
+    /// zorunluluğu yok) — admin şifreyi veliye iletir; çocuk kendi şifresini koyup veli kontrolünü delemez.
+    /// </summary>
     [HttpPost("students/{id:int}/reset-password")]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     [EnableRateLimiting(AdminPasswordResetRateLimiting.Policy)]
@@ -400,7 +404,7 @@ public class AdminController : BaseController
         return result.Status switch
         {
             AdminPasswordResetStatus.Success =>
-                Ok(new AdminPasswordResetResponseDto { TemporaryPassword = result.TemporaryPassword! }),
+                Ok(new AdminPasswordResetResponseDto(result.TemporaryPassword!, result.Permanent)),
             AdminPasswordResetStatus.TargetNotFound => NotFound(Message(targetType == AdminUserTargetType.Teacher
                 ? "admin.passwordReset.teacherNotFound"
                 : "admin.passwordReset.studentNotFound")),

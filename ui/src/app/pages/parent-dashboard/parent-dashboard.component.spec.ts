@@ -140,12 +140,14 @@ describe('ParentDashboardComponent (issue #420)', () => {
     expect(parseChildParam('99999999999999999999')).toBeNull();
   });
 
-  it('noChildren_ShowsEmptyStateWithAddChildCta_AndNoSummaryCall', async () => {
+  it('noChildren_ShowsEmptyStateWithCreateChildAccountCta_AndNoSummaryCall (issue #438)', async () => {
     const el = await setup([]);
     expect(el.querySelector('[data-test="empty"]')).not.toBeNull();
     const cta = el.querySelector<HTMLAnchorElement>('[data-test="add-child"]')!;
     expect(cta.textContent).toContain(parentDashboardTr.empty.cta);
-    expect(cta.getAttribute('href')).toBe('/my-children');
+    // Issue #438: boş durum "Çocuk hesabı oluştur" formuna götürür.
+    expect(cta.getAttribute('href')).toBe('/my-children#create-child');
+    expect(parentDashboardTr.empty.cta).toBe('Çocuk hesabı oluştur');
     expect(el.querySelector('[data-test="pending-note"]')).toBeNull();
     expect(dashboardService.getChildSummary).not.toHaveBeenCalled();
     expect(url()).toBe('/parent');
@@ -158,11 +160,11 @@ describe('ParentDashboardComponent (issue #420)', () => {
     expect(dashboardService.getChildSummary).not.toHaveBeenCalled();
   });
 
-  it('addChildCta_NavigatesToMyChildren', async () => {
+  it('addChildCta_NavigatesToTheCreateChildFormOnMyChildren', async () => {
     const el = await setup([]);
     el.querySelector<HTMLAnchorElement>('[data-test="add-child"]')!.click();
     await settle();
-    expect(url()).toBe('/my-children');
+    expect(url()).toBe('/my-children#create-child');
   });
 
   it('noQueryParam_SelectsFirstActiveChild_AndRemembersItInUrl', async () => {

@@ -108,6 +108,18 @@ public class LoginRateLimitTests
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/exam/parent-links/redeem")).StatusCode);
     }
 
+    [Fact]
+    public async Task ParentChildAccountCreate_SharesTheLoginBudget_ResetAndReadsAreNotCounted()
+    {
+        // Issue #438: çocuk hesabı açma Keycloak'ta kullanıcı açar ve 409 ile kullanıcı adı yoklamasına açıktır.
+        using var client = await CreateClientAsync(permit: 2);
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(Post("/api/exam/parent/children"))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(Post("/api/auth/login"))).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await client.SendAsync(Post("/api/exam/parent/children"))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(Post("/api/exam/parent/children/5/reset-password"))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/exam/parent/children/5/summary")).StatusCode);
+    }
+
     [Theory]
     [InlineData("/token")]
     [InlineData("/realms/exam-realm/protocol/openid-connect/token")]

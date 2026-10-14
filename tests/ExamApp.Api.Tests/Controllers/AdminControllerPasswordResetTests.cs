@@ -70,6 +70,19 @@ public class AdminControllerPasswordResetTests
         await _reset.Received(1).ResetAsync(AdminUserTargetType.Student, 9, "kc-admin-sub", Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task Parent_managed_student_response_is_marked_permanent()
+    {
+        // #438: kalıcı şifre — admin veliye iletir (UI bunu "ilk girişte değiştirilecek" diye göstermemeli).
+        _reset.ResetAsync(Arg.Any<AdminUserTargetType>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminPasswordResetResult(AdminPasswordResetStatus.Success, "x", Permanent: true));
+
+        var dto = (await NewController().ResetStudentPassword(9, default))
+            .ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<AdminPasswordResetResponseDto>();
+
+        dto.Permanent.ShouldBeTrue();
+    }
+
     [Theory]
     [InlineData(AdminPasswordResetStatus.ForbiddenSelf, 403, "admin.passwordReset.self")]
     [InlineData(AdminPasswordResetStatus.ForbiddenProtectedRole, 403, "admin.passwordReset.protectedRole")]

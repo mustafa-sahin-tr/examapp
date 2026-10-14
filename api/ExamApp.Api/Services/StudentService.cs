@@ -66,6 +66,7 @@ public class StudentService : IStudentService
                 SchoolId = s.SchoolVerifiedAt != null ? s.SchoolId : null,
                 PendingSchoolId = s.SchoolVerifiedAt == null ? s.SchoolId : null,
                 PendingSchoolName = s.SchoolVerifiedAt == null && s.SchoolId != null ? s.School!.Name : null,
+                ParentManaged = s.ParentManaged, // issue #438
                 XP = s.StudentPoints.Sum(sp => sp.XP),
                 TotalQuestionsSolved = _context.StudentPointHistories.Count(p => p.StudentId == s.Id),
                 CorrectAnswers = _context.StudentPointHistories.Count(p => p.StudentId == s.Id && p.Reason == "Doğru Cevap"),

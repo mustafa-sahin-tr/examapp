@@ -13,6 +13,10 @@ using Microsoft.AspNetCore.HttpOverrides;
 /// Issue #419 review: veli davet kodu denemesi (POST /api/exam/parent-links/redeem) da aynı IP kovasından düşer — kod
 /// tahmini çok hesapla dağıtılsa bile tek IP'den gelen deneme hızı sınırlı kalır (hesap başına limitler exam API'de).
 ///
+/// Issue #438: velinin çocuk hesabı açması (POST /api/exam/parent/children) da aynı IP kovasından düşer — her istek Keycloak'ta
+/// kullanıcı açar ve "kullanıcı adı alınmış" (409) yanıtı çok hesapla dağıtılmış kullanıcı adı yoklamasına açıktır (veli başına
+/// saatte 5 limiti exam API'de).
+///
 /// Eşleme TERS çevrilmiştir: /realms/** ve /auth/realms/** altındaki HER POST ile /api/auth/login ve /token sayılır;
 /// yalnız açık allowlist muaftır: token uçlarında grant_type=refresh_token ve login-actions/restart.
 /// Path önce kanonikleştirilir (segment başına ';...' matrix parametreleri atılır, %2F/%5C ayraç sayılır,
@@ -24,6 +28,8 @@ public static class LoginRateLimitExtensions
 
     /// <summary>Issue #419: veli davet kodu redeem ucu (gateway yolu, kanonik biçim).</summary>
     public const string ParentInviteRedeemPath = "/api/exam/parent-links/redeem";
+    /// <summary>Issue #438: veli çocuk hesabı açma ucu (gateway yolu, kanonik biçim).</summary>
+    public const string ParentChildAccountCreatePath = "/api/exam/parent/children";
     public const int DefaultWindowSeconds = 60;
     private const int MaxRefreshProbeBytes = 16 * 1024;
 
@@ -138,6 +144,17 @@ public static class LoginRateLimitExtensions
     /// <c>%252F</c>, <c>%2572edeem</c> ya da ön ekli varyantlar kovayı atlayamaz).
     /// </summary>
     public static bool IsParentInviteRedeem(string? rawPath)
+        => DecodedCanonical(rawPath).EndsWith("/parent-links/redeem", StringComparison.Ordinal);
+
+    /// <summary>
+    /// Issue #438: çocuk hesabı açma — redeem ile aynı kodlamaya dayanıklı eşleme; <c>.../parent/children</c> ile BİTEN her yol
+    /// (yalnız koleksiyonun kendisi; <c>.../children/{id}/...</c> alt uçları sayılmaz).
+    /// </summary>
+    public static bool IsParentChildAccountCreate(string? rawPath)
+        => DecodedCanonical(rawPath).EndsWith("/parent/children", StringComparison.Ordinal);
+
+    /// <summary>Path değişmeyene kadar (en fazla 5 tur) percent-decode edilir, sonra kanonikleştirilir.</summary>
+    private static string DecodedCanonical(string? rawPath)
     {
         var path = rawPath ?? string.Empty;
         for (var i = 0; i < 5; i++)
@@ -146,8 +163,7 @@ public static class LoginRateLimitExtensions
             if (decoded == path) break;
             path = decoded;
         }
-        var canonical = Canonicalize(path);
-        return canonical.EndsWith("/parent-links/redeem", StringComparison.Ordinal);
+        return Canonicalize(path);
     }
 
     public static bool ContainsTraversal(string? rawPath)
@@ -175,6 +191,7 @@ public static class LoginRateLimitExtensions
 
         if (path == "/api/auth/login") return true;
         if (IsParentInviteRedeem(request.Path.Value)) return true;
+        if (IsParentChildAccountCreate(request.Path.Value)) return true;
         if (path == "/token") return !await IsRefreshGrantAsync(request, ct);
 
         if (!path.StartsWith("/realms/", StringComparison.Ordinal) && !path.StartsWith("/auth/realms/", StringComparison.Ordinal))

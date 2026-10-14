@@ -113,8 +113,8 @@
       "bodyTeacher": "Bir öğretmen bir mesajlaşmayı şikayet etti. Şikayet listesinden inceleyebilirsin."
     },
     "ParentLinkedToParent": {
-      "title": "Veli bağlantısı onaylandı",
-      "body": "{0} sizi veli olarak onayladı."
+      "title": "Veli bağlantısı etkinleşti",
+      "body": "{0} ile veli bağlantınız etkinleşti."
     },
     "ParentLinkedToStudent": {
       "title": "Veli bağlantısı kuruldu",
@@ -122,11 +122,15 @@
     },
     "ParentUnlinkedToParent": {
       "title": "Veli bağlantısı kaldırıldı",
-      "body": "{0} veli bağlantısını kaldırdı."
+      "body": "{0} için veli bağlantınız kaldırıldı."
     },
     "ParentUnlinkedToStudent": {
       "title": "Veli bağlantısı kaldırıldı",
-      "body": "{0} veli bağlantısını kaldırdı."
+      "body": "{0} artık velin olarak bağlı değil."
+    },
+    "ParentCoParentLeftToPrimary": {
+      "title": "Bir veli ayrıldı",
+      "body": "{0} çocuğunuzla veli bağlantısından ayrıldı."
     },
     "ParentHomeworkOverdue": {
       "title": "Gecikmiş ödev",

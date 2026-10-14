@@ -227,6 +227,16 @@ describe('describeNotification (issue #105)', () => {
     }
   });
 
+  it('ParentCoParentLeftToPrimary_LinksParentPageForThatChild (issue #436)', () => {
+    const result = describeNotification({
+      type: 'ParentCoParentLeftToPrimary',
+      data: JSON.stringify({ linkId: 5, studentId: 21 }),
+    });
+
+    expect(result.route).toEqual({ commands: ['/parent'], queryParams: { child: 21 } });
+    expect(result.icon).toBe('link_off');
+  });
+
   it('ParentUnlinkedToParent_LinksParentPageWithoutChild', () => {
     const result = describeNotification({ type: 'ParentUnlinkedToParent', data: JSON.stringify({ linkId: 5, studentId: null }) });
 

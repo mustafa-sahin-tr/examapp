@@ -53,4 +53,10 @@ public static class ParentAccessEndpoints
 
     /// <summary><c>GET api/parent/children/{studentId}/schedule</c> (issue #422).</summary>
     public const string ChildSchedule = "children.schedule";
+
+    /// <summary>
+    /// <c>POST api/parent/children/{studentId}/reset-password</c> (issue #438) — veri okuma değil, velinin çocuk hesabındaki yazma
+    /// işlemi; her başarılı sıfırlama ayrı satır (tekilleştirme yok).
+    /// </summary>
+    public const string ChildPasswordReset = "children.password-reset";
 }

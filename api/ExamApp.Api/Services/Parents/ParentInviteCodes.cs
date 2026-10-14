@@ -1,4 +1,5 @@
 using System;
+using ExamApp.Api.Data;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Hosting;
@@ -13,14 +14,28 @@ public static class ParentLinkRules
     /// <summary>Davet kodu uzunluğu (ayraçsız). Görünüm: XXXX-XXXX-XXXX.</summary>
     public const int CodeLength = 12;
 
-    /// <summary>Davet kodu geçerlilik süresi (review: 7 günden 48 saate indirildi — tahmin penceresini daraltır).</summary>
-    public static readonly TimeSpan CodeValidity = TimeSpan.FromHours(48);
+    /// <summary>
+    /// "İkinci veli davet kodu" geçerlilik süresi (issue #436 / epic #435 kullanıcı kararı: davet 7 gün). #419'daki 48 saat
+    /// öğrenci kodu içindi; ikinci veli kodu ayrıca birincil velinin onayını gerektirir, tahmin hesap/platform sayaçlarıyla sınırlı.
+    /// </summary>
+    public static readonly TimeSpan CodeValidity = TimeSpan.FromDays(7);
 
     /// <summary>
-    /// Kodla açılan bağlantı öğrenci onaylayana kadar Pending kalır; bu süre içinde onaylanmazsa düşer (sorgularda yok
-    /// sayılır, bir sonraki yazımda Revoked'a çekilir).
+    /// Kodla açılan bağlantı (#436: <see cref="ParentStudentLinkOrigin.InviteCode"/>) birincil veli onaylayana kadar Pending
+    /// kalır; bu süre içinde onaylanmazsa düşer (sorgularda yok sayılır; süpürücü job / bir sonraki yazım Revoked'a çeker).
     /// </summary>
     public static readonly TimeSpan PendingValidity = TimeSpan.FromDays(7);
+
+    /// <summary>
+    /// Issue #436 geçiş dönemi: #419'dan kalan (<see cref="ParentStudentLinkOrigin.LegacyV1"/>) Pending istekleri öğrenci
+    /// oluşturulma anından itibaren 30 gün daha onaylayabilir; sonra süpürücü job Revoked'a çeker. Yeni Pending istekler
+    /// öğrenci onayına hiç düşmez.
+    /// </summary>
+    public static readonly TimeSpan LegacyPendingValidity = TimeSpan.FromDays(30);
+
+    /// <summary>Pending isteğin onay süresi (kuruluş yoluna göre).</summary>
+    public static TimeSpan PendingValidityFor(ParentStudentLinkOrigin origin)
+        => origin == ParentStudentLinkOrigin.LegacyV1 ? LegacyPendingValidity : PendingValidity;
 
     /// <summary>Öğrenci başına en fazla açık (Active + süresi dolmamış Pending) veli bağlantısı.</summary>
     public const int MaxActiveParentsPerStudent = 4;
@@ -33,8 +48,8 @@ public static class ParentLinkRules
 
     /// <summary>
     /// Karışmayan alfabe: 0/O, 1/I/L hariç büyük harf + rakam (31 sembol → 12 karakterde ~2^59.4 olasılık). Deneme hesap
-    /// başına dakikada 5 / günde 20 başarısız + platform devre kesicisiyle sınırlı, kod 48 saat geçerli, bağlantı ayrıca
-    /// öğrenci onayı ister; hash pepper'lı olduğundan DB sızıntısında offline da denenemez (bkz. <see cref="ParentInviteCodeHasher"/>).
+    /// başına dakikada 5 / günde 20 başarısız + platform devre kesicisiyle sınırlı, kod 7 gün geçerli, bağlantı ayrıca
+    /// birincil velinin onayını ister (#436); hash pepper'lı olduğundan DB sızıntısında offline da denenemez (bkz. <see cref="ParentInviteCodeHasher"/>).
     /// </summary>
     public const string Alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 }

@@ -22,7 +22,16 @@ public class ParentUnlinkedEvent
 
     public int StudentUserId { get; set; }
 
-    /// <summary>Koparan taraf: "Student" ya da "Parent".</summary>
+    /// <summary>
+    /// Koparan taraf:
+    /// <list type="bullet">
+    /// <item><c>"Parent"</c> — veli kendi bağlantısından ayrıldı (#436: birincil veli dahil; tek veli ayrılamaz).</item>
+    /// <item><c>"PrimaryParent"</c> — birincil veli BAŞKA bir velinin bağlantısını kopardı (#436).</item>
+    /// <item><c>"Admin"</c> — admin kopardı (#436).</item>
+    /// <item><c>"Student"</c> — #419 öğrenci koparması; #436'dan beri ÜRETİLMEZ. Kuyrukta kalmış eski mesajda consumer yalnız
+    /// velinin çocuğa özgü bildirimlerini siler (#424), bildirim yazmaz (bilinmeyen rol gibi uyarı loglar).</item>
+    /// </list>
+    /// </summary>
     public string RevokedByRole { get; set; } = string.Empty;
 
     /// <summary>Koparan kullanıcının exam/auth user id'si.</summary>
@@ -42,4 +51,13 @@ public class ParentUnlinkedEvent
 
     /// <summary>Koparma anı (UTC).</summary>
     public DateTime RevokedAtUtc { get; set; }
+
+    /// <summary>
+    /// Issue #436: koparmadan SONRA öğrencinin birincil velisi (exam/auth user id) — yalnız veli kendi bağlantısından ayrıldığında
+    /// (<c>"Parent"</c>) ve başka Active veli kaldıysa dolu; consumer ona "diğer veli ayrıldı" bildirimi yazar. Diğer durumlarda 0.
+    /// </summary>
+    public int PrimaryParentUserId { get; set; }
+
+    /// <summary>Issue #436: <see cref="PrimaryParentUserId"/>'nin Keycloak sub'ı; boş olabilir (consumer BadgeService verisinden çözer).</summary>
+    public string PrimaryParentKeycloakId { get; set; } = string.Empty;
 }

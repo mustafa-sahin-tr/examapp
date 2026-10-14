@@ -297,6 +297,47 @@ Realm settings → **General** → *Display name* = `Hedef Okul`, and → **Emai
 *From display name* = `Hedef Okul`. The login theme title comes from the theme's
 `brandName` message (refresh the page; restart Keycloak if theme caching is on).
 
+**Issue #438 — parent-created child accounts (username login).** A parent opens a child account from
+*Çocuklarım* (`POST /api/exam/parent/children` → auth-api `api/auth/child-accounts`, service token only,
+blocked at the gateway). The Keycloak user has **no email**, so the realm needs
+`registrationEmailAsUsername: false` (otherwise `error-user-attribute-required: email`) and the
+`VERIFY_PROFILE` required action **disabled** (email is required for the `user` role in the user profile;
+with it on, every child login fails with "Account is not fully set up"). The dev export carries both;
+on an **already-running Keycloak** set them by hand: admin console → `exam-realm` → Realm settings → Login →
+*Email as username* Off, and Authentication → Required actions → *Verify Profile* Off. With *Email as
+username* off, Keycloak's own registration form also asks for a username. The login page label comes from
+the theme (`usernameOrEmail` = "E-posta veya kullanıcı adı"); restart Keycloak if theme caching is on.
+
+*VERIFY_PROFILE off — trade-off.* Keycloak no longer forces **any** user to complete a profile that is
+missing a required attribute: a user created by an admin/IdP without email/name logs in as-is instead of
+landing on the "update your profile" page. Email-registered users are unaffected (registration and auth-ui
+`complete-profile` still collect email/name), and the exam API never relied on Keycloak's profile page —
+so the only loss is that backstop. `registrationAllowed` stays **true**: the "register as …" links go to
+Keycloak's own `registrations` endpoint (`OidcLoginRedirect`), so turning it off would break sign-up.
+
+*Child role set (review fix).* auth-api strips the realm default composite (`default-roles-exam-realm`,
+which carries `account`/`manage-account`) from child accounts and maps only `offline_access`,
+`uma_authorization`, `Student` and `account`/`view-profile` (keeps `aud=account`). It also writes a
+`child_request_id` attribute (idempotent create; compensation via the gateway-blocked
+`DELETE api/auth/child-accounts/by-request/{requestId}`) — needs `unmanagedAttributePolicy=ADMIN_EDIT`
+in the user profile (dev export has it; otherwise create fails with 502 and nothing is left behind).
+**Already-running Keycloak:** nothing to change for new children; children created **before** this fix
+still have `default-roles-exam-realm` — admin console → Users → *(child)* → Role mapping → unassign
+`default-roles-exam-realm`, assign `offline_access`, `uma_authorization`, `Student` and client role
+`account` → `view-profile` (or delete and recreate the local test child). Residual risk, by design:
+Keycloak's app-initiated actions (`kc_action=UPDATE_PASSWORD` / `UPDATE_PROFILE`) do not check account
+roles, so a child who crafts such a login URL can still change their own password/name/email. Worst
+case chain: the child adds an email via `kc_action=UPDATE_PROFILE`, then (realm `resetPasswordAllowed=true`)
+uses "Şifremi unuttum" to change the password without the parent knowing. Closing it (user-profile
+`email` edit = admin only) affects every user, so it is deferred to #449 (parent adds an email to the
+child); see `deploy/README.md` #438.
+
+*Create/compensation lock.* auth-api's identity DB has a new table `ChildAccountRequests`
+(migration `AddChildAccountRequests`, applied by auth-api on start): a compensation that arrives before or
+during a create marks the request `Cancelled`, and the create then deletes its own Keycloak user instead of
+finishing. *Admin reset:* `POST api/admin/students/{id}/reset-password` on a parent-created child sets a
+**permanent** password (`permanent: true` in the response, no forced change) — hand it to the parent.
+
 ## Port map (host → container)
 
 | Service | Host port | Notes |

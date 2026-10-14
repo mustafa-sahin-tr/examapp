@@ -42,8 +42,8 @@ public sealed class ParentLinkRedeemRateLimitOptions : ParentLinkRateLimitOption
 }
 
 /// <summary>
-/// <c>RateLimiting:ParentLinkInvite</c> — öğrencinin kod üretmesi (her çağrı bir satır yazar). Varsayılan: öğrenci başına
-/// saatte 10.
+/// <c>RateLimiting:ParentLinkInvite</c> — kod üretimi (her çağrı bir satır yazar). Issue #436'dan beri birincil velinin "ikinci
+/// veli davet kodu" (öğrenci artık kod üretmez). Varsayılan: kullanıcı (sub) başına saatte 10.
 /// </summary>
 public sealed class ParentLinkInviteRateLimitOptions : ParentLinkRateLimitOptionsBase
 {
@@ -51,6 +51,18 @@ public sealed class ParentLinkInviteRateLimitOptions : ParentLinkRateLimitOption
     public ParentLinkInviteRateLimitOptions() { PermitLimit = 10; WindowSeconds = 3600; }
     internal override string PolicyName => ParentLinkRateLimiting.InvitePolicy;
     internal override string MessageKey => "parentLinks.inviteRateLimited";
+}
+
+/// <summary>
+/// <c>RateLimiting:ParentLinkManage</c> — issue #436 security MINOR-5: bağlantı yönetim uçları (onay / ret / koparma). Her çağrı
+/// kilit + yazım + auth-api ad çözümü yapar. Varsayılan: kullanıcı (sub) başına dakikada 30.
+/// </summary>
+public sealed class ParentLinkManageRateLimitOptions : ParentLinkRateLimitOptionsBase
+{
+    public const string SectionName = "RateLimiting:ParentLinkManage";
+    public ParentLinkManageRateLimitOptions() { PermitLimit = 30; WindowSeconds = 60; }
+    internal override string PolicyName => ParentLinkRateLimiting.ManagePolicy;
+    internal override string MessageKey => "parentLinks.manageRateLimited";
 }
 
 /// <summary>
@@ -80,6 +92,30 @@ public sealed class ParentChildActivityRateLimitOptions : ParentLinkRateLimitOpt
 }
 
 /// <summary>
+/// <c>RateLimiting:ParentChildAccountCreate</c> — issue #438: velinin çocuk hesabı açması (her çağrı Keycloak'ta kullanıcı açar;
+/// kullanıcı adı çakışması 409 olduğundan kullanıcı adı yoklamasını da sınırlar). Varsayılan: veli (sub) başına saatte 5.
+/// </summary>
+public sealed class ParentChildAccountCreateRateLimitOptions : ParentLinkRateLimitOptionsBase
+{
+    public const string SectionName = "RateLimiting:ParentChildAccountCreate";
+    public ParentChildAccountCreateRateLimitOptions() { PermitLimit = 5; WindowSeconds = 3600; }
+    internal override string PolicyName => ParentLinkRateLimiting.ChildAccountCreatePolicy;
+    internal override string MessageKey => "parentChildAccounts.createRateLimited";
+}
+
+/// <summary>
+/// <c>RateLimiting:ParentChildPasswordReset</c> — issue #438: velinin çocuk şifresini sıfırlaması. Varsayılan: veli (sub) başına
+/// saatte 10.
+/// </summary>
+public sealed class ParentChildPasswordResetRateLimitOptions : ParentLinkRateLimitOptionsBase
+{
+    public const string SectionName = "RateLimiting:ParentChildPasswordReset";
+    public ParentChildPasswordResetRateLimitOptions() { PermitLimit = 10; WindowSeconds = 3600; }
+    internal override string PolicyName => ParentLinkRateLimiting.ChildPasswordResetPolicy;
+    internal override string MessageKey => "parentChildAccounts.passwordResetRateLimited";
+}
+
+/// <summary>
 /// issue #419: veli bağlantısı uçlarına KULLANICI (Keycloak <c>sub</c>) başına dağıtık sabit pencere rate limit —
 /// <see cref="DirectMessageRateLimiting"/> (#106) ile aynı altyapı: <see cref="IFixedWindowCounterStore"/> (Redis varsa dağıtık,
 /// kesintide fail-open; yoksa süreç içi) + <see cref="DistributedFixedWindowRateLimiter"/>; sub'sız istek koşulsuz 401;
@@ -90,6 +126,9 @@ public static class ParentLinkRateLimiting
     public const string RedeemPolicy = "parent-link-redeem";
     public const string InvitePolicy = "parent-link-invite";
 
+    /// <summary>issue #436: <c>POST {linkId}/approve|reject|revoke</c>.</summary>
+    public const string ManagePolicy = "parent-link-manage";
+
     /// <summary>issue #420: <c>GET api/parent/children/{studentId}/summary</c>.</summary>
     public const string ChildSummaryPolicy = "parent-child-summary";
 
@@ -99,6 +138,12 @@ public static class ParentLinkRateLimiting
     /// </summary>
     public const string ChildActivityPolicy = "parent-child-activity";
 
+    /// <summary>issue #438: <c>POST api/parent/children</c> (çocuk hesabı açma).</summary>
+    public const string ChildAccountCreatePolicy = "parent-child-account-create";
+
+    /// <summary>issue #438: <c>POST api/parent/children/{studentId}/reset-password</c>.</summary>
+    public const string ChildPasswordResetPolicy = "parent-child-password-reset";
+
     /// <summary>429 gövdesindeki hata kodu (UI dallanması).</summary>
     public const string RateLimitedErrorCode = "RateLimited";
 
@@ -107,8 +152,11 @@ public static class ParentLinkRateLimiting
     {
         Add<ParentLinkRedeemRateLimitOptions>(services, ParentLinkRedeemRateLimitOptions.SectionName, RedeemPolicy);
         Add<ParentLinkInviteRateLimitOptions>(services, ParentLinkInviteRateLimitOptions.SectionName, InvitePolicy);
+        Add<ParentLinkManageRateLimitOptions>(services, ParentLinkManageRateLimitOptions.SectionName, ManagePolicy);
         Add<ParentChildSummaryRateLimitOptions>(services, ParentChildSummaryRateLimitOptions.SectionName, ChildSummaryPolicy);
         Add<ParentChildActivityRateLimitOptions>(services, ParentChildActivityRateLimitOptions.SectionName, ChildActivityPolicy);
+        Add<ParentChildAccountCreateRateLimitOptions>(services, ParentChildAccountCreateRateLimitOptions.SectionName, ChildAccountCreatePolicy);
+        Add<ParentChildPasswordResetRateLimitOptions>(services, ParentChildPasswordResetRateLimitOptions.SectionName, ChildPasswordResetPolicy);
         return services;
     }
 

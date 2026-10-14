@@ -1073,6 +1073,41 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("ParentAccessAudits");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.ParentConsent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+
+                    b.Property<int>("ParentId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentId");
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("ParentConsents");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.ParentHomeworkOverdueMarker", b =>
                 {
                     b.Property<long>("Id")
@@ -1119,6 +1154,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("CreatedByParentId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1132,6 +1170,8 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedByParentId");
 
                     b.HasIndex("UsedByParentId");
 
@@ -1157,6 +1197,14 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
 
                     b.Property<int>("ParentId")
                         .HasColumnType("integer");
@@ -1185,7 +1233,14 @@ namespace ExamApp.Api.Migrations
                         .IsUnique()
                         .HasFilter("\"Status\" IN ('Active', 'Pending')");
 
-                    b.ToTable("ParentStudentLinks");
+                    b.HasIndex(new[] { "StudentId" }, "IX_ParentStudentLinks_Primary_Active")
+                        .IsUnique()
+                        .HasFilter("\"IsPrimary\" AND \"Status\" = 'Active'");
+
+                    b.ToTable("ParentStudentLinks", t =>
+                        {
+                            t.HasCheckConstraint("CK_ParentStudentLinks_Origin_Known", "\"Origin\" IN ('LegacyV1', 'InviteCode', 'ParentCreated', 'StudentRegistered')");
+                        });
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Passage", b =>
@@ -2160,6 +2215,9 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<int?>("ParentId")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("ParentManaged")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime?>("ProgressResetAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -4382,8 +4440,32 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("LearningOutcome");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.ParentConsent", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Parent", "Parent")
+                        .WithMany()
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.ClientNoAction)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.ClientNoAction)
+                        .IsRequired();
+
+                    b.Navigation("Parent");
+
+                    b.Navigation("Student");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.ParentInviteCode", b =>
                 {
+                    b.HasOne("ExamApp.Api.Data.Parent", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByParentId")
+                        .OnDelete(DeleteBehavior.ClientNoAction);
+
                     b.HasOne("ExamApp.Api.Data.Student", "Student")
                         .WithMany()
                         .HasForeignKey("StudentId")

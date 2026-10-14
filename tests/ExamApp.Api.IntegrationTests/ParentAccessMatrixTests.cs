@@ -127,11 +127,14 @@ public class ParentAccessMatrixTests(IntegrationApiFactory factory) : Integratio
         return data;
     }
 
-    /// <summary>A: P'nin (Active) çocuğu; B: Q'nun çocuğu; C: T'ye bağlı ama soft-delete; R A'da Pending, S A'da Revoked.</summary>
+    /// <summary>
+    /// A: P'nin (Active) çocuğu — A'nın birincil velisi U (#436; koparmayı o yapar); B: Q'nun çocuğu; C: T'ye bağlı ama
+    /// soft-delete; R A'da Pending (ikinci veli isteği), S A'da Revoked.
+    /// </summary>
     private sealed record World(
         int StudentA, int StudentB, int StudentC, int InstanceA, int InstanceB, int InstanceC, int LinkPA,
         int ParentP, int StudentUserA, int StudentUserB, int StudentUserC,
-        int UserP, int UserQ, int UserR, int UserS, int UserT, int UserTeacher, int UserAdmin);
+        int UserP, int UserQ, int UserR, int UserS, int UserT, int UserTeacher, int UserAdmin, int UserPrimaryU);
 
     private async Task<World> SeedWorldAsync(int baseUser)
     {
@@ -139,12 +142,12 @@ public class ParentAccessMatrixTests(IntegrationApiFactory factory) : Integratio
         {
             A = baseUser + 1, B = baseUser + 2, C = baseUser + 3,
             P = baseUser + 4, Q = baseUser + 5, R = baseUser + 6, S = baseUser + 7, T = baseUser + 8,
-            Teacher = baseUser + 9, Admin = baseUser + 10
+            Teacher = baseUser + 9, Admin = baseUser + 10, U = baseUser + 11
         };
         var directory = Factory.Services.GetRequiredService<FakeUserDirectory>();
         foreach (var (id, name) in new[] { (w.A, "Ayşe Kaya"), (w.B, "Rakip Öğrenci"), (w.C, "Silinmiş Öğrenci"), (w.Teacher, "Zeynep Hoca") })
             directory.Add(new() { Id = id, KeycloakId = $"kc-{id}", FullName = name, Email = $"secret-{id}@x.com" });
-        foreach (var p in new[] { w.P, w.Q, w.R, w.S, w.T })
+        foreach (var p in new[] { w.P, w.Q, w.R, w.S, w.T, w.U })
             directory.Add(new() { Id = p, KeycloakId = $"kc-{p}", FullName = $"Veli {p}" });
 
         return await WithDbAsync(async db =>
@@ -162,15 +165,17 @@ public class ParentAccessMatrixTests(IntegrationApiFactory factory) : Integratio
             var b = NewStudent(w.B);
             var c = NewStudent(w.C);
             db.Students.AddRange(a, b, c);
-            var parents = new[] { w.P, w.Q, w.R, w.S, w.T }.Select(u => new Parent { UserId = u }).ToArray();
+            var parents = new[] { w.P, w.Q, w.R, w.S, w.T, w.U }.Select(u => new Parent { UserId = u }).ToArray();
             db.Parents.AddRange(parents);
             await db.SaveChangesAsync();
-            var (p, q, r, s, t) = (parents[0], parents[1], parents[2], parents[3], parents[4]);
+            var (p, q, r, s, t, u) = (parents[0], parents[1], parents[2], parents[3], parents[4], parents[5]);
 
             var now = DateTime.UtcNow;
-            ParentStudentLink Link(Parent parent, Student student, ParentStudentLinkStatus status) => new()
+            // #436: her öğrencinin tek Active birincil velisi; diğerleri birincil velinin onayladığı / bekleyen ikinci veli istekleri.
+            ParentStudentLink Link(Parent parent, Student student, ParentStudentLinkStatus status, bool primary = false) => new()
             {
                 ParentId = parent.Id, StudentId = student.Id, Status = status, CreatedAt = now.AddDays(-2),
+                Origin = primary ? ParentStudentLinkOrigin.ParentCreated : ParentStudentLinkOrigin.InviteCode, IsPrimary = primary,
                 ActivatedAt = status == ParentStudentLinkStatus.Pending ? null : now.AddDays(-1),
                 RevokedAt = status == ParentStudentLinkStatus.Revoked ? now.AddHours(-1) : null,
                 RevokedByUserId = status == ParentStudentLinkStatus.Revoked ? w.A : null
@@ -178,10 +183,11 @@ public class ParentAccessMatrixTests(IntegrationApiFactory factory) : Integratio
             var linkPA = Link(p, a, ParentStudentLinkStatus.Active);
             db.ParentStudentLinks.AddRange(
                 linkPA,
-                Link(q, b, ParentStudentLinkStatus.Active),
+                Link(u, a, ParentStudentLinkStatus.Active, primary: true),
+                Link(q, b, ParentStudentLinkStatus.Active, primary: true),
                 Link(r, a, ParentStudentLinkStatus.Pending),
                 Link(s, a, ParentStudentLinkStatus.Revoked),
-                Link(t, c, ParentStudentLinkStatus.Active));
+                Link(t, c, ParentStudentLinkStatus.Active, primary: true));
 
             // Her öğrencinin bitmiş bir test oturumu (test sonucu ucu için).
             var worksheet = new Worksheet { Name = "Kesirler", Description = "", GradeId = grade.Id };
@@ -205,7 +211,7 @@ public class ParentAccessMatrixTests(IntegrationApiFactory factory) : Integratio
             await db.SaveChangesAsync();
 
             return new World(a.Id, b.Id, c.Id, ia.Id, ib.Id, ic.Id, linkPA.Id, p.Id, w.A, w.B, w.C,
-                w.P, w.Q, w.R, w.S, w.T, w.Teacher, w.Admin);
+                w.P, w.Q, w.R, w.S, w.T, w.Teacher, w.Admin, w.U);
         });
     }
 
@@ -276,7 +282,10 @@ public class ParentAccessMatrixTests(IntegrationApiFactory factory) : Integratio
         var auditsBeforeRevoke = await AuditCountAsync();
 
         // ---- koparma erişimi ANINDA kapatır: bir sonraki istek 404 (ya da listede yok); sunucu önbelleği yok
-        (await studentA.PostAsync($"/api/parent-links/{world.LinkPA}/revoke", null)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        // #436: öğrenci koparamaz; A'nın birincil velisi (U) P'nin bağlantısını koparır.
+        (await studentA.PostAsync($"/api/parent-links/{world.LinkPA}/revoke", null)).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        var primaryU = await ParentAsync(world.UserPrimaryU);
+        (await primaryU.PostAsync($"/api/parent-links/{world.LinkPA}/revoke", null)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
         var after = await p.GetAsync(urlA);
         if (endpoint.Scope == ParentEndpointScope.Child)
         {

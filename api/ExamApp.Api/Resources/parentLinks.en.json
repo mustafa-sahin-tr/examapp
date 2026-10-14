@@ -1,6 +1,6 @@
 {
   "parentLinks": {
-    "codeCreated": "Invite code created. Share it with your parent; it is shown only once.",
+    "codeCreated": "Second-parent invite code created. Share it with the other parent; it is shown only once.",
     "revoked": "The link has been removed.",
     "codeRequired": "An invite code is required.",
     "fallbackParentName": "Parent",
@@ -11,7 +11,7 @@
     "activityRateLimited": "Too many requests for your child's details in a short time. Please try again in a moment.",
     "errors": {
       "invalidCode": "The code is invalid or has expired.",
-      "studentLimitReached": "You can link at most 4 parents (pending requests included). Remove one to create a new code.",
+      "studentLimitReached": "A student can have at most 4 parents (pending requests included). Remove one before creating a new code.",
       "parentLimitReached": "You have reached the limit of linked children.",
       "alreadyLinked": "This student is already linked to your account or your request is awaiting approval.",
       "notFound": "Link not found.",
@@ -22,10 +22,13 @@
       "invalidStatus": "Invalid status filter. Use completed, overdue or pending.",
       "invalidRange": "Invalid date range. Provide from and to together, as yyyy-MM-dd, spanning at most 31 days.",
       "busy": "The operation could not be completed right now. Please try again.",
-      "rateLimited": "Too many code attempts. Please try again later."
+      "rateLimited": "Too many code attempts. Please try again later.",
+      "notPrimaryParent": "Only the child's primary parent can do this.",
+      "lastParentCannotLeave": "You are the child's only parent, so you can't leave the link. Add another parent first."
     },
-    "requested": "Request sent. The link becomes active once your child approves it.",
+    "requested": "Request sent. The link becomes active once the child's primary parent approves it.",
     "approved": "Parent link approved.",
-    "rejected": "Parent request rejected."
+    "rejected": "Parent request rejected.",
+    "manageRateLimited": "Too many link actions in a short time. Please try again in a moment."
   }
 }

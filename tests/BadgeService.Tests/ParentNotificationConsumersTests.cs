@@ -70,7 +70,10 @@ public class ParentNotificationConsumersTests : IDisposable
         LinkedAtUtc = DateTime.UtcNow
     };
 
-    private static ParentUnlinkedEvent Unlinked(string revokedBy) => new()
+    private const int PrimaryUser = 8103;
+    private const string PrimarySub = "kc-primary-8103";
+
+    private static ParentUnlinkedEvent Unlinked(string revokedBy, int primaryParentUserId = 0) => new()
     {
         EventId = Guid.NewGuid(),
         LinkId = 5,
@@ -83,8 +86,10 @@ public class ParentNotificationConsumersTests : IDisposable
         ParentDisplayName = "Fatma Y.",
         StudentDisplayName = "Ayşe K.",
         RevokedByRole = revokedBy,
-        RevokedByUserId = revokedBy == "Student" ? StudentUser : ParentUser,
-        RevokedAtUtc = DateTime.UtcNow
+        RevokedByUserId = revokedBy == "Parent" ? ParentUser : 1,
+        RevokedAtUtc = DateTime.UtcNow,
+        PrimaryParentUserId = primaryParentUserId,
+        PrimaryParentKeycloakId = primaryParentUserId > 0 ? PrimarySub : string.Empty
     };
 
     private static ParentHomeworkOverdueEvent Overdue(string parentSub = ParentSub, string studentName = "Ayşe K.") => new()
@@ -143,7 +148,7 @@ public class ParentNotificationConsumersTests : IDisposable
         toParent.UserId.ShouldBe(ParentUser);
         toParent.UserKeycloakId.ShouldBe(ParentSub);
         toParent.SourceEventId.ShouldBe(e.EventId);
-        toParent.Body.ShouldBe("Ayşe K. sizi veli olarak onayladı.");
+        toParent.Body.ShouldBe("Ayşe K. ile veli bağlantınız etkinleşti.");
         toParent.Data!.ShouldContain("\"studentId\":21");
 
         var toStudent = rows.Single(n => n.Type == ParentLinkChangedConsumer.LinkedToStudentType);
@@ -211,31 +216,58 @@ public class ParentNotificationConsumersTests : IDisposable
 
         await using var check = _db.NewContext();
         (await check.Notifications.SingleAsync(n => n.Type == ParentLinkChangedConsumer.LinkedToParentType))
-            .Body.ShouldBe("Çocuğunuz sizi veli olarak onayladı.");
+            .Body.ShouldBe("Çocuğunuz ile veli bağlantınız etkinleşti.");
     }
 
     // ---- ParentUnlinked ----------------------------------------------------------------------------------------------
 
-    [Fact]
-    public async Task Unlinked_ByStudent_NotifiesOnlyTheParent()
+    [Theory]
+    [InlineData("PrimaryParent")]
+    [InlineData("Admin")]
+    public async Task Unlinked_ByPrimaryParentOrAdmin_NotifiesTheRemovedParentAndTheStudent(string role)
     {
         var hub = NewHub();
 
-        await LinkConsumer(hub).Consume(Context(Unlinked("Student")));
+        await LinkConsumer(hub).Consume(Context(Unlinked(role)));
 
         await using var check = _db.NewContext();
-        var n = await check.Notifications.SingleAsync();
-        n.Type.ShouldBe(ParentLinkChangedConsumer.UnlinkedToParentType);
-        n.UserId.ShouldBe(ParentUser);
-        n.UserKeycloakId.ShouldBe(ParentSub);
-        n.Body.ShouldBe("Ayşe K. veli bağlantısını kaldırdı.");
-        n.Data!.ShouldContain("\"studentId\":null"); // bağlantı artık yok: derin link çocuk seçmez
+        var all = await check.Notifications.OrderBy(n => n.Id).ToListAsync();
+        all.Count.ShouldBe(2);
+        var toParent = all.Single(n => n.Type == ParentLinkChangedConsumer.UnlinkedToParentType);
+        toParent.UserId.ShouldBe(ParentUser);
+        toParent.UserKeycloakId.ShouldBe(ParentSub);
+        toParent.Body.ShouldBe("Ayşe K. için veli bağlantınız kaldırıldı.");
+        toParent.Data!.ShouldContain("\"studentId\":null"); // bağlantı artık yok: derin link çocuk seçmez
+        var toStudent = all.Single(n => n.Type == ParentLinkChangedConsumer.UnlinkedToStudentType);
+        toStudent.UserId.ShouldBe(StudentUser);
+        toStudent.Body.ShouldBe("Fatma Y. artık velin olarak bağlı değil.");
         await Sent(hub, ParentSub, 1);
-        await Sent(hub, StudentSub, 0);
+        await Sent(hub, StudentSub, 1);
     }
 
     [Fact]
-    public async Task Unlinked_ByParent_NotifiesOnlyTheStudent()
+    public async Task Unlinked_ParentLeaves_NotifiesTheStudentAndTheRemainingPrimaryParentButNotTheLeaver()
+    {
+        var hub = NewHub();
+
+        await LinkConsumer(hub).Consume(Context(Unlinked("Parent", primaryParentUserId: PrimaryUser)));
+
+        await using var check = _db.NewContext();
+        var all = await check.Notifications.OrderBy(n => n.Id).ToListAsync();
+        all.Select(n => n.UserId).OrderBy(id => id).ShouldBe(new[] { StudentUser, PrimaryUser }.OrderBy(id => id));
+        all.Single(n => n.UserId == StudentUser).Type.ShouldBe(ParentLinkChangedConsumer.UnlinkedToStudentType);
+        var toPrimary = all.Single(n => n.UserId == PrimaryUser);
+        toPrimary.Type.ShouldBe(ParentLinkChangedConsumer.CoParentLeftToPrimaryType);
+        toPrimary.UserKeycloakId.ShouldBe(PrimarySub);
+        toPrimary.Body.ShouldBe("Fatma Y. çocuğunuzla veli bağlantısından ayrıldı.");
+        toPrimary.Data!.ShouldContain("\"studentId\":21"); // birincil velinin paneli o çocuğu açar
+        await Sent(hub, ParentSub, 0);
+        await Sent(hub, StudentSub, 1);
+        await Sent(hub, PrimarySub, 1);
+    }
+
+    [Fact]
+    public async Task Unlinked_ParentLeavesWithoutRemainingPrimary_NotifiesOnlyTheStudent()
     {
         var hub = NewHub();
 
@@ -245,7 +277,6 @@ public class ParentNotificationConsumersTests : IDisposable
         var n = await check.Notifications.SingleAsync();
         n.Type.ShouldBe(ParentLinkChangedConsumer.UnlinkedToStudentType);
         n.UserId.ShouldBe(StudentUser);
-        n.Body.ShouldBe("Fatma Y. veli bağlantısını kaldırdı.");
         await Sent(hub, StudentSub, 1);
         await Sent(hub, ParentSub, 0);
     }
@@ -254,31 +285,34 @@ public class ParentNotificationConsumersTests : IDisposable
     public async Task Unlinked_RedeliveredEvent_IsIdempotent()
     {
         var hub = NewHub();
-        var e = Unlinked("Student");
+        var e = Unlinked("PrimaryParent");
 
         await LinkConsumer(hub).Consume(Context(e));
         await LinkConsumer(hub).Consume(Context(e));
 
         await using var check = _db.NewContext();
-        (await check.Notifications.CountAsync()).ShouldBe(1);
+        (await check.Notifications.CountAsync()).ShouldBe(2);
         await Sent(hub, ParentSub, 1);
+        await Sent(hub, StudentSub, 1);
     }
 
-    [Fact]
-    public async Task Unlinked_UnknownRole_WritesNothingAndDoesNotThrow()
+    [Theory]
+    [InlineData("Teacher")]
+    [InlineData("Student")] // #419 öğrenci koparması: #436'dan beri üretilmez
+    public async Task Unlinked_UnknownRole_WritesNothingAndDoesNotThrow(string role)
     {
         var hub = NewHub();
 
-        await LinkConsumer(hub).Consume(Context(Unlinked("Admin")));
+        await LinkConsumer(hub).Consume(Context(Unlinked(role)));
 
         await using var check = _db.NewContext();
         (await check.Notifications.CountAsync()).ShouldBe(0);
     }
 
     [Theory]
-    [InlineData("Student")]
+    [InlineData("Student")] // #419 rolü, #436'dan beri üretilmez: bildirim yok ama silme yine yapılır
     [InlineData("Parent")]
-    [InlineData("Admin")] // bilinmeyen koparan: bildirim yok ama silme yine yapılır
+    [InlineData("Admin")]
     public async Task Unlinked_DeletesOnlyThatParentsNotificationsForThatChild_Idempotently(string revokedBy)
     {
         // issue #424 (KVKK): koparma sonrası veli çocuğun test/ödev bildirimlerini ve "onayladı" kaydını görmez.
@@ -312,8 +346,8 @@ public class ParentNotificationConsumersTests : IDisposable
         remaining.Count(n => n.UserId == 9102).ShouldBe(1);
         remaining.Count(n => n.Data == "not-json").ShouldBe(1);
         remaining.Count(n => n.Type == ParentLinkChangedConsumer.LinkedToStudentType).ShouldBe(1); // öğrencinin kaydı kalır
-        remaining.Count(n => n.Type == ParentLinkChangedConsumer.UnlinkedToParentType).ShouldBe(revokedBy == "Student" ? 1 : 0);
-        remaining.Count(n => n.Type == ParentLinkChangedConsumer.UnlinkedToStudentType).ShouldBe(revokedBy == "Parent" ? 1 : 0);
+        remaining.Count(n => n.Type == ParentLinkChangedConsumer.UnlinkedToParentType).ShouldBe(revokedBy == "Admin" ? 1 : 0);
+        remaining.Count(n => n.Type == ParentLinkChangedConsumer.UnlinkedToStudentType).ShouldBe(revokedBy == "Student" ? 0 : 1);
     }
 
     // ---- ParentHomeworkOverdue ---------------------------------------------------------------------------------------

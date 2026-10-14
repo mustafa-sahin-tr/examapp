@@ -143,7 +143,13 @@
       "slotGroupAria": "Müsait saat seçimi",
       "submit": "Randevu Talebi Gönder",
       "loadError": "Müsait saatler yüklenemedi.",
-      "submitError": "Randevu talebi oluşturulamadı."
+      "submitError": "Randevu talebi oluşturulamadı.",
+      "forChild": "{{child}} adına talep — veli onayı gerekmez, talep doğrudan öğretmene gider.",
+      "childFallback": "Çocuğunuz",
+      "submitForChild": "Talebi Öğretmene Gönder",
+      "parentRequired": "Ders talebi için hesabına bağlı bir veli gerekli.",
+      "parentRequiredLink": "Velilerim",
+      "tooManyAwaitingParent": "Velinin onayını bekleyen çok fazla talebin var. Velin mevcut taleplerine karar verince yenisini oluşturabilirsin."
     },
     "calendar": {
       "today": "bugün",

@@ -8,6 +8,7 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Services.Teachers;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos.Bookings;
+using ExamApp.Api.Services.Interfaces;
 using ExamApp.Foundation.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
@@ -58,16 +59,21 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
     // Client'a ulasan mesajlar sozlukten gelir (issue #184); DI disinda fallback'e duser.
     private readonly IStringLocalizer<Messages> _localizer;
 
+    /// <summary>issue #439 review: seri silmede bırakılan AwaitingParent taleplerin bildirim alanları (best-effort; DI'siz null).</summary>
+    private readonly IAuthApiClient? _authApiClient;
+
     public RecurringAvailabilityService(
         AppDbContext context,
         TimeProvider timeProvider,
         ILogger<RecurringAvailabilityService> logger,
-        IStringLocalizer<Messages>? localizer = null)
+        IStringLocalizer<Messages>? localizer = null,
+        IAuthApiClient? authApiClient = null)
     {
         _context = context;
         _timeProvider = timeProvider;
         _logger = logger;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
+        _authApiClient = authApiClient;
     }
 
     // ------------------------------------------------------------------
@@ -308,8 +314,16 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
         if (owner.Value != teacherId)
             return new RecurringAvailabilityRuleDeleteResultDto { Success = false, Forbidden = true, Message = _localizer["booking.recurringRule.notOwned"] };
 
-        var today = DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime);
+        var releaseNow = _timeProvider.GetUtcNow().UtcDateTime;
+        var today = DateOnly.FromDateTime(releaseNow);
         _context.SetCurrentUser(teacherUserId);
+
+        // issue #439 review: yalnız veli onayı bekleyen talebin tuttuğu gelecek slotlar da silinir (talep Expired + bildirim);
+        // bildirim alanları kilit öncesi best-effort çözülür.
+        var releaseUsers = await AwaitingParentSlotRelease.PrepareAsync(
+            _context, _authApiClient,
+            _context.Bookings.Where(b => b.AvailabilitySlot.RecurringAvailabilityRuleId == ruleId && b.AvailabilitySlot.Date >= today),
+            _logger, ct);
 
         // issue #323 (code/security review): seri silme top-up ile AYNI öğretmen kilidi altında, tek transaction'da —
         // aksi halde kilitsiz okuyan bir top-up silinmekte olan kurala yeni occurrence üretebilirdi. Kural + gelecek slot
@@ -343,7 +357,8 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
                     .Select(s => new
                     {
                         Slot = s,
-                        HasActiveBooking = s.Bookings.Any(b => BookingService.ActiveStatuses.Contains(b.Status))
+                        // issue #439 review: yalnız öğretmene ulaşmış (Pending/Approved) talep slotu korur.
+                        HasActiveBooking = s.Bookings.Any(b => AwaitingParentSlotRelease.BlockingStatuses.Contains(b.Status))
                     })
                     .ToListAsync(ct);
 
@@ -376,6 +391,20 @@ public class RecurringAvailabilityService : IRecurringAvailabilityService
                 }
 
                 attemptResult.PreservedBookedCount = attemptResult.PreservedSlotIds.Count;
+
+                // Re-review savunması: bırakılamayan AwaitingParent (araya giren yazıcı) varsa seri silme iptal → 409 (rollback).
+                if (!await AwaitingParentSlotRelease.ReleaseAsync(
+                        _context, attemptResult.DeletedSlotIds, releaseNow, teacherUserId, releaseUsers, ct))
+                {
+                    _context.ChangeTracker.Clear();
+                    result = new RecurringAvailabilityRuleDeleteResultDto
+                    {
+                        Success = false,
+                        Conflict = true,
+                        Message = _localizer["booking.slot.hasActiveBooking"]
+                    };
+                    return; // commit yok → dispose'da rollback
+                }
 
                 await _context.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);

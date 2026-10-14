@@ -63,7 +63,7 @@ public class BookingSuspensionRacePostgresTests(IntegrationApiFactory factory) :
         var service = scope.ServiceProvider.GetRequiredService<IBookingService>();
         if (gate != null)
             await gate.WaitAsync();
-        return await service.CreateBookingAsync(seed.StudentUserId, new CreateBookingDto { AvailabilitySlotId = seed.SlotId });
+        return await service.CreateBookingAsync(seed.StudentUserId, new CreateBookingDto { AvailabilitySlotId = seed.SlotId }, requiresParent: false);
     }
 
     private async Task<AdminTeacherSuspensionResult> SuspendAsync(int teacherId, SemaphoreSlim? gate = null)

@@ -182,16 +182,22 @@ public class AdminTeacherSuspensionService : IAdminTeacherSuspensionService
     // issue #298 yan etkileri
     // ------------------------------------------------------------------
 
-    private sealed record UserLookup(string TeacherName, IReadOnlyDictionary<int, string> KeycloakIds)
+    private sealed record UserLookup(string TeacherName, IReadOnlyDictionary<int, string> KeycloakIds, IReadOnlyDictionary<int, string>? Names = null)
     {
+        public string NameOf(int userId) => Names != null && Names.TryGetValue(userId, out var n) ? n : string.Empty;
+
         public static readonly UserLookup Empty = new(string.Empty, new Dictionary<int, string>());
 
         public string KeycloakIdOf(int userId) => KeycloakIds.TryGetValue(userId, out var sub) ? sub : string.Empty;
     }
 
-    /// <summary>Öğretmenin tüm Pending talepleri (zamandan bağımsız — geçmiş Pending talep de takılı kalmasın).</summary>
+    /// <summary>
+    /// Öğretmenin tüm açık talepleri — Pending ve (issue #439) veli onayı bekleyen AwaitingParent (zamandan bağımsız — geçmiş
+    /// talep de takılı kalmasın).
+    /// </summary>
     private IQueryable<Booking> PendingBookings(int teacherId)
-        => _context.Bookings.Where(b => b.TeacherId == teacherId && b.Status == BookingStatus.Pending);
+        => _context.Bookings.Where(b => b.TeacherId == teacherId
+            && TeacherUnavailableBookingRejection.OpenStatuses.Contains(b.Status));
 
     /// <summary>
     /// Henüz BİTMEMİŞ (bitiş &gt; şimdi; devam eden ders dahil) Approved randevular. Rejected ve silinmiş (global filtre)
@@ -215,13 +221,19 @@ public class AdminTeacherSuspensionService : IAdminTeacherSuspensionService
                 .Where(t => t.Id == teacherId)
                 .Select(t => t.UserId)
                 .FirstOrDefaultAsync(ct);
-            var pendingStudents = await PendingBookings(teacherId).AsNoTracking()
-                .Select(b => b.Student.UserId)
+            var pendingRows = await PendingBookings(teacherId).AsNoTracking()
+                .Select(b => new { b.StudentId, StudentUserId = b.Student.UserId })
                 .ToListAsync(ct);
+            var pendingStudents = pendingRows.Select(r => r.StudentUserId).ToList();
+            // issue #439: reddedilen talebin velileri de bilgilendirilir (BookingDecisionEvent.Parents) → sub'ları da çözülür.
+            var parentsByStudent = await BookingParentApproval.ActiveParentUserIdsByStudentAsync(
+                _context, pendingRows.Select(r => r.StudentId), ct);
             var upcomingStudents = await UpcomingApprovedBookings(teacherId, nowUtc).AsNoTracking()
                 .Select(b => b.Student.UserId)
                 .ToListAsync(ct);
-            var studentUserIds = pendingStudents.Concat(upcomingStudents).Distinct().ToList();
+            var studentUserIds = pendingStudents.Concat(upcomingStudents)
+                .Concat(parentsByStudent.Values.SelectMany(v => v))
+                .Distinct().ToList();
 
             if (studentUserIds.Count == 0)
                 return UserLookup.Empty; // Etkilenen randevu yok → event yazılmayacak, lookup gereksiz.
@@ -232,7 +244,11 @@ public class AdminTeacherSuspensionService : IAdminTeacherSuspensionService
                 .Where(u => u.Id != teacherUserId && !string.IsNullOrWhiteSpace(u.KeycloakId))
                 .GroupBy(u => u.Id)
                 .ToDictionary(g => g.Key, g => g.First().KeycloakId);
-            return new UserLookup(teacherName, subs);
+            var names = users
+                .Where(u => u.Id != teacherUserId && !string.IsNullOrWhiteSpace(u.FullName))
+                .GroupBy(u => u.Id)
+                .ToDictionary(g => g.Key, g => g.First().FullName!);
+            return new UserLookup(teacherName, subs, names);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
@@ -262,8 +278,13 @@ public class AdminTeacherSuspensionService : IAdminTeacherSuspensionService
             .ToListAsync(CancellationToken.None);
 
         int? updateUserId = actorUserId > 0 ? actorUserId : null;
+        // issue #439: alıcı veliler auth-api lookup'ından bağımsız, askı transaction'ı içinde FOR SHARE ile kilitlenerek okunur
+        // (lookup düşse de veli listesi dolu; koparılan veliye bildirim gitmez).
+        var parentsByStudent = await BookingParentApproval.ActiveParentUserIdsLockedAsync(
+            _context, pending.Select(p => p.StudentId), CancellationToken.None);
         var rejected = await TeacherUnavailableBookingRejection.RejectAsync(
-            _context, pending, nowUtc, updateUserId, _ => lookup.TeacherName, lookup.KeycloakIdOf, CancellationToken.None);
+            _context, pending, nowUtc, updateUserId, _ => lookup.TeacherName, lookup.KeycloakIdOf,
+            parentsByStudent, CancellationToken.None, lookup.NameOf);
         return rejected.Count;
     }
 

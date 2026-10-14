@@ -51,14 +51,24 @@
               <mat-icon>schedule</mat-icon>
               {{ row.range }}
             </span>
+            @if (row.expiresAt) {
+              <span class="sbk__row-reason" data-test="awaiting-parent-hint">{{
+                t('awaitingParentHint', { date: row.expiresAt })
+              }}</span>
+            }
+            @if (row.booking.status === 'Expired') {
+              <span class="sbk__row-reason" data-test="expired-hint">{{ t('expiredHint') }}</span>
+            }
             @if (row.booking.rejectionReason) {
-              <span class="sbk__row-reason">{{
-                t('rejectionReason', { reason: row.booking.rejectionReason })
+              <span class="sbk__row-reason" data-test="rejection-reason">{{
+                row.booking.status === 'ParentRejected'
+                  ? t('parentNote', { note: row.booking.rejectionReason })
+                  : t('rejectionReason', { reason: row.booking.rejectionReason })
               }}</span>
             }
           </div>
 
-          <span class="sbk__chip" [class]="row.statusClass">{{ t(row.statusLabelKey) }}</span>
+          <span class="sbk__chip" data-test="status-chip" [class]="row.statusClass">{{ t(row.statusLabelKey) }}</span>
 
           @if (row.booking.status === 'Approved') {
             <span

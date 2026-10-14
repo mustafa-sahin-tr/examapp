@@ -16,6 +16,7 @@ import { PARENT_CHILD_QUERY_PARAM, ParentChildSummary } from '../../models/paren
 import { ParentDashboardService } from '../../services/parent-dashboard.service';
 import { LocaleService } from '../../services/locale.service';
 import { ParentLinkService } from '../../services/parent-link.service';
+import { ParentBookingRequestsComponent } from './booking-requests/parent-booking-requests.component';
 import { ParentChildAssignmentsComponent } from './child-assignments/parent-child-assignments.component';
 import { ParentChildProgressComponent } from './child-progress/parent-child-progress.component';
 import { ParentChildScheduleComponent } from './child-schedule/parent-child-schedule.component';
@@ -51,6 +52,7 @@ export function parseChildParam(value: string | null): number | null {
  * çocuk yoksa "Çocuk ekle" ile Çocuklarım sayfasına yönlendirir. Sunucu yalnızca toplam döner (içerik/iletişim bilgisi yok).
  * Issue #421 (V3): aynı seçili çocuk için "Ödevler ve testler" bölümü (`app-parent-child-assignments`).
  * Issue #422 (V4): "Puan ve rozetler" kartı (`app-parent-child-progress`) ve haftalık "Program" (`app-parent-child-schedule`).
+ * Issue #439: "Onay bekleyen ders talepleri" (`app-parent-booking-requests`) — seçili çocuktan bağımsız, tüm Active çocuklar.
  */
 @Component({
   selector: 'app-parent-dashboard',
@@ -62,6 +64,7 @@ export function parseChildParam(value: string | null): number | null {
     MatIconModule,
     MatProgressSpinnerModule,
     MatSelectModule,
+    ParentBookingRequestsComponent,
     ParentChildAssignmentsComponent,
     ParentChildProgressComponent,
     ParentChildScheduleComponent,

@@ -10,7 +10,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { finalize, interval, take } from 'rxjs';
-import { Booking } from '../../models/booking.model';
+import { Booking, BookingStatus, CLOSED_BOOKING_STATUSES } from '../../models/booking.model';
 import { BookingService } from '../../services/booking.service';
 import { LocaleService } from '../../services/locale.service';
 import { JOIN_WINDOW_TICK_MS, JoinWindowInfo, getJoinWindow } from '../../shared/utils/booking-join-window';
@@ -18,13 +18,33 @@ import { SLOT_NEXT_DAY_KEY, endsOnNextLocalDay } from '../../shared/utils/bookin
 
 type BookingFilter = 'active' | 'all';
 
+type BookingStatusClass = 'is-pending' | 'is-approved' | 'is-rejected' | 'is-awaiting-parent' | 'is-closed';
+
+/**
+ * Durum → `student-bookings` scope'una göreli etiket + chip sınıfı. `Record` her durumun eşlendiğini derleme anında garanti eder
+ * (issue #439: AwaitingParent / ParentRejected / Expired).
+ */
+export const STUDENT_BOOKING_STATUS_VIEW: Record<BookingStatus, { statusLabelKey: string; statusClass: BookingStatusClass }> = {
+  Pending: { statusLabelKey: 'status.pending', statusClass: 'is-pending' },
+  Approved: { statusLabelKey: 'status.approved', statusClass: 'is-approved' },
+  Rejected: { statusLabelKey: 'status.rejected', statusClass: 'is-rejected' },
+  AwaitingParent: { statusLabelKey: 'status.awaitingParent', statusClass: 'is-awaiting-parent' },
+  ParentRejected: { statusLabelKey: 'status.parentRejected', statusClass: 'is-rejected' },
+  Expired: { statusLabelKey: 'status.expired', statusClass: 'is-closed' },
+};
+
+/** Bilinmeyen (yeni) bir durum gelirse "bekliyor" yerine nötr kapalı görünüm. */
+const UNKNOWN_STATUS_VIEW = { statusLabelKey: 'status.unknown', statusClass: 'is-closed' as const };
+
 interface BookingRow {
   booking: Booking;
   day: string;
   range: string;
   /** `student-bookings` scope'una göreli durum anahtarı. */
   statusLabelKey: string;
-  statusClass: 'is-pending' | 'is-approved' | 'is-rejected';
+  statusClass: BookingStatusClass;
+  /** Issue #439: `AwaitingParent` iken "velin şu tarihe kadar onaylamazsa düşer" için yerel tarih+saat; diğerlerinde null. */
+  expiresAt: string | null;
   /** Issue #97: "Derse katıl" butonunun durumu; ipucu kök sözlükteki ortak anahtarlardan gelir. */
   join: JoinWindowInfo;
 }
@@ -34,7 +54,8 @@ const SCOPE = 'student-bookings';
 /**
  * Öğrencinin kendi ders randevusu talepleri (issue #96). Salt listeleme — talep
  * oluşturma öğretmen profilindeki "Randevu Al" akışından yapılır.
- * "Aktif" filtresi reddedilenleri gizler.
+ * "Aktif" filtresi kapanmış talepleri (reddedilen, velinin reddettiği, süresi dolan) gizler.
+ * Issue #439: `AwaitingParent` "Veli onayı bekleniyor" (+ bitiş), `ParentRejected` "Velin reddetti" (+ not), `Expired`.
  */
 @Component({
   selector: 'app-student-bookings',
@@ -94,7 +115,7 @@ export class StudentBookingsComponent implements OnInit {
     const onlyActive = this.filter() === 'active';
     const now = this.now();
     return this.bookings()
-      .filter((b) => !onlyActive || b.status !== 'Rejected')
+      .filter((b) => !onlyActive || !CLOSED_BOOKING_STATUSES.includes(b.status))
       .sort((a, b) => new Date(a.startUtc).getTime() - new Date(b.startUtc).getTime())
       .map((booking) => this.toRow(booking, now));
   });
@@ -144,11 +165,6 @@ export class StudentBookingsComponent implements OnInit {
   }
 
   private toRow(booking: Booking, now: number): BookingRow {
-    const map = {
-      Approved: { statusLabelKey: 'status.approved', statusClass: 'is-approved' as const },
-      Rejected: { statusLabelKey: 'status.rejected', statusClass: 'is-rejected' as const },
-      Pending: { statusLabelKey: 'status.pending', statusClass: 'is-pending' as const },
-    };
     // Ipucu metni ortak katilim penceresi anahtarlarindan gelir; kok sozluk bootstrap'te yuklenir.
     const join = getJoinWindow(
       booking.startUtc,
@@ -161,13 +177,22 @@ export class StudentBookingsComponent implements OnInit {
       day: this.formatDay(booking.startUtc),
       range: this.formatRange(booking.startUtc, booking.endUtc),
       join,
-      ...map[booking.status],
+      expiresAt:
+        booking.status === 'AwaitingParent' && booking.expiresAt ? this.formatDateTime(booking.expiresAt) : null,
+      ...(STUDENT_BOOKING_STATUS_VIEW[booking.status] ?? UNKNOWN_STATUS_VIEW),
     };
   }
 
   private formatDay(utcIso: string): string {
     const date = new Date(utcIso);
     return Number.isNaN(date.getTime()) ? '—' : this.dayFormat().format(date);
+  }
+
+  private formatDateTime(utcIso: string): string | null {
+    const date = new Date(utcIso);
+    return Number.isNaN(date.getTime())
+      ? null
+      : `${this.dayFormat().format(date)} ${this.timeFormat().format(date)}`;
   }
 
   private formatRange(startUtcIso: string, endUtcIso: string): string {

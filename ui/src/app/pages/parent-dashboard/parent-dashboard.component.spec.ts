@@ -10,6 +10,7 @@ import { Subject, of, throwError } from 'rxjs';
 import { ParentDashboardComponent, parseChildParam, parseLocalDate } from './parent-dashboard.component';
 import { ParentDashboardService } from '../../services/parent-dashboard.service';
 import { ParentLinkService } from '../../services/parent-link.service';
+import { BookingService } from '../../services/booking.service';
 import { LocaleService } from '../../services/locale.service';
 import { LinkedChild } from '../../models/parent-link.model';
 import { ParentChildAssignmentList, ParentChildSummary } from '../../models/parent-dashboard.model';
@@ -24,6 +25,7 @@ class MyChildrenStubComponent {}
 describe('ParentDashboardComponent (issue #420)', () => {
   let linkService: jasmine.SpyObj<ParentLinkService>;
   let dashboardService: jasmine.SpyObj<ParentDashboardService>;
+  let bookingService: jasmine.SpyObj<BookingService>;
   let harness: RouterTestingHarness;
 
   const ayse: LinkedChild = {
@@ -88,6 +90,8 @@ describe('ParentDashboardComponent (issue #420)', () => {
       'getChildSchedule',
     ]);
     dashboardService.getChildSummary.and.callFake((id: number) => of(summaryFor(id)));
+    bookingService = jasmine.createSpyObj<BookingService>('BookingService', ['getParentBookingRequests', 'extractError']);
+    bookingService.getParentBookingRequests.and.returnValue(of({ items: [] }));
     dashboardService.getChildAssignments.and.callFake((id: number) => of(emptyList(id)));
     dashboardService.getChildProgress.and.callFake((id: number) =>
       of({ studentId: id, totalXp: 0, level: 1, weekStart: '2026-10-05', weeklyXp: 0, badges: [], ranks: [] })
@@ -110,6 +114,8 @@ describe('ParentDashboardComponent (issue #420)', () => {
         ]),
         { provide: ParentLinkService, useValue: linkService },
         { provide: ParentDashboardService, useValue: dashboardService },
+        // Issue #439: "Onay bekleyen ders talepleri" kartı (kendi spec'inde ayrıntılı test edilir).
+        { provide: BookingService, useValue: bookingService },
         { provide: LocaleService, useValue: { localeDefinition: signal({ angularLocale: lang === 'tr' ? 'tr-TR' : 'en-US' }) } },
       ],
     });

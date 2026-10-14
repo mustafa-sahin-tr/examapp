@@ -339,8 +339,9 @@ namespace ExamApp.Api.Controllers
         /// <summary>
         /// Issue #95: öğrenci için branş/ders bazlı bağımsız öğretmen araması.
         /// Sadece IsIndependentTutor=true ve ApprovalStatus=Approved kayıtlar döner; boşsa [].
+        /// Issue #439: veli de çocuğu için öğretmen seçebilsin diye Parent rolüne açık (yalnız öğretmen verisi; öğrenci verisi yok).
         /// </summary>
-        [Authorize(Roles = "Student")]
+        [Authorize(Roles = "Student,Parent")]
         [HttpGet("search")]
         public async Task<ActionResult<List<TeacherSearchResultDto>>> SearchTutors([FromQuery] TeacherSearchFilterDto filter, CancellationToken ct)
         {
@@ -353,9 +354,9 @@ namespace ExamApp.Api.Controllers
 
         /// <summary>
         /// Issue #95: tekil öğretmen public profili. Kayıt yoksa / bağımsız değilse / onaylı değilse
-        /// hepsi 404 (var/yok ayrımı sızdırılmaz).
+        /// hepsi 404 (var/yok ayrımı sızdırılmaz). Issue #439: veliye de açık (çocuk adına öğretmen seçimi).
         /// </summary>
-        [Authorize(Roles = "Student")]
+        [Authorize(Roles = "Student,Parent")]
         [HttpGet("{id:int}/public-profile")]
         public async Task<ActionResult<TeacherPublicProfileDto>> GetPublicProfile(int id, CancellationToken ct)
         {

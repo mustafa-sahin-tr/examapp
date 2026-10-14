@@ -1120,4 +1120,46 @@ describe('BookingService', () => {
       httpReq2.flush({ success: true, items: [] });
     });
   });
+
+  // Issue #439: veli onayı uçları (gateway /api/exam/parent/...)
+  describe('parent booking approval (issue #439)', () => {
+    it('getParentBookingRequests_SendsGetToParentEndpoint', () => {
+      service.getParentBookingRequests().subscribe((res) => expect(res.items.length).toBe(0));
+
+      const req = httpMock.expectOne('/api/exam/parent/booking-requests');
+      expect(req.request.method).toBe('GET');
+      req.flush({ items: [] });
+    });
+
+    it('parentApproveBooking_SendsPostWithoutBody', () => {
+      service.parentApproveBooking(7).subscribe();
+
+      const req = httpMock.expectOne('/api/exam/parent/booking-requests/7/approve');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toBeNull();
+      req.flush({ success: true, message: '', objectId: 7 });
+    });
+
+    it('parentRejectBooking_TrimsNote_EmptyNoteSendsNull', () => {
+      service.parentRejectBooking(7, '  çok geç  ').subscribe();
+      const withNote = httpMock.expectOne('/api/exam/parent/booking-requests/7/reject');
+      expect(withNote.request.method).toBe('POST');
+      expect(withNote.request.body).toEqual({ note: 'çok geç' });
+      withNote.flush({ success: true });
+
+      service.parentRejectBooking(8, '   ').subscribe();
+      const empty = httpMock.expectOne('/api/exam/parent/booking-requests/8/reject');
+      expect(empty.request.body).toEqual({ note: null });
+      empty.flush({ success: true });
+    });
+
+    it('createBookingForChild_PostsSlotToChildEndpoint', () => {
+      service.createBookingForChild(21, { availabilitySlotId: 55 }).subscribe();
+
+      const req = httpMock.expectOne('/api/exam/parent/children/21/bookings');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ availabilitySlotId: 55 });
+      req.flush({ success: true, message: '', objectId: 3 }, { status: 201, statusText: 'Created' });
+    });
+  });
 });

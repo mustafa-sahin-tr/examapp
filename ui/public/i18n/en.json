@@ -143,7 +143,13 @@
       "slotGroupAria": "Available time selection",
       "submit": "Send Booking Request",
       "loadError": "Available times could not be loaded.",
-      "submitError": "The booking request could not be created."
+      "submitError": "The booking request could not be created.",
+      "forChild": "Request on behalf of {{child}} — no parent approval needed, it goes straight to the teacher.",
+      "childFallback": "Your child",
+      "submitForChild": "Send Request to Teacher",
+      "parentRequired": "A parent linked to your account is required to request a lesson.",
+      "parentRequiredLink": "My parents",
+      "tooManyAwaitingParent": "You have too many requests awaiting your parent's approval. Once your parent decides on them, you can create a new one."
     },
     "calendar": {
       "today": "today",

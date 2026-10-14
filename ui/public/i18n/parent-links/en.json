@@ -74,7 +74,8 @@
       "message": "You will no longer have access to {{name}}'s information. The primary parent and your child will be notified. Continue?",
       "confirm": "Leave"
     },
-    "left": "You left the link."
+    "left": "You left the link.",
+    "bookLesson": "Request a lesson"
   },
   "family": {
     "title": "Other parents",

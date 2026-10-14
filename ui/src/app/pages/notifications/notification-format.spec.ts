@@ -259,4 +259,43 @@ describe('describeNotification (issue #105)', () => {
       expect(describeNotification({ type, data: JSON.stringify({ linkId: 5 }) }).route).withContext(type).toBeNull();
     }
   });
+
+  // Issue #439 (özel ders veli onayı)
+  it('ParentBookingApprovalRequested_LinksParentPageBookingRequestsCard', () => {
+    const result = describeNotification({
+      type: 'ParentBookingApprovalRequested',
+      data: JSON.stringify({ bookingId: 9, studentId: 21 }),
+    });
+
+    expect(result.route).toEqual({ commands: ['/parent'], queryParams: { child: 21 }, fragment: 'booking-requests' });
+    expect(result.icon).toBe('event_available');
+  });
+
+  it('ParentBookingApprovalRequested_BrokenData_StillLinksCardWithoutChild', () => {
+    const result = describeNotification({ type: 'ParentBookingApprovalRequested', data: '{bad' });
+
+    expect(result.route).toEqual({ commands: ['/parent'], fragment: 'booking-requests' });
+  });
+
+  it('ParentBookingOutcomeNotifications_LinkParentPageForThatChild', () => {
+    for (const type of [
+      'ParentBookingExpired',
+      'ParentBookingApprovedByOther',
+      'ParentBookingRejectedByOther',
+      'ParentBookingApproved',
+      'ParentBookingRejected',
+    ]) {
+      const result = describeNotification({ type, data: JSON.stringify({ bookingId: 9, studentId: 21 }) });
+      expect(result.route).withContext(type).toEqual({ commands: ['/parent'], queryParams: { child: 21 } });
+      expect(result.icon).withContext(type).not.toBe('notifications');
+    }
+  });
+
+  it('BookingParentDecisionNotifications_ToStudent_LinkMyBookings', () => {
+    for (const type of ['BookingParentApproved', 'BookingParentRejected', 'BookingParentExpired']) {
+      const result = describeNotification({ type, data: JSON.stringify({ bookingId: 9, decision: 'Approved' }) });
+      expect(result.route).withContext(type).toEqual({ commands: [STUDENT_BOOKINGS_ROUTE] });
+      expect(result.icon).withContext(type).not.toBe('notifications');
+    }
+  });
 });

@@ -10,7 +10,8 @@
       "worksheetFallback": "The worksheet",
       "rejectionReasonSuffix": " Reason: {0}",
       "defaultChild": "Your child",
-      "defaultParent": "Your parent"
+      "defaultParent": "Your parent",
+      "defaultCoParent": "Another parent"
     },
     "BadgeEarned": {
       "title": "You earned a new badge!",
@@ -143,6 +144,46 @@
     "ParentChildTestCompleted": {
       "title": "Test completed",
       "body": "{0} completed \"{1}\", score {2}%."
+    },
+    "ParentBookingApprovalRequested": {
+      "title": "A lesson request awaits your approval",
+      "body": "Your child {0} requested a lesson with {1} for {2} — your approval is pending."
+    },
+    "BookingParentApproved": {
+      "title": "Your parent approved the lesson request",
+      "body": "Your parent approved your lesson request with {0} for {1}; now it awaits the teacher's approval."
+    },
+    "BookingParentRejected": {
+      "title": "Your parent rejected the lesson request",
+      "body": "Your parent rejected your lesson request with {0} for {1}.{2}"
+    },
+    "BookingParentExpired": {
+      "title": "Your lesson request expired",
+      "body": "Your lesson request with {0} for {1} was closed because parent approval did not arrive in time."
+    },
+    "ParentBookingExpired": {
+      "title": "Lesson request expired",
+      "body": "The lesson request of {0} with {1} for {2} was closed because your approval did not arrive in time."
+    },
+    "ParentBookingApprovedByOther": {
+      "title": "Lesson request approved",
+      "body": "{3} approved the lesson request of {0} with {1} for {2}."
+    },
+    "ParentBookingRejectedByOther": {
+      "title": "Lesson request rejected",
+      "body": "{3} rejected the lesson request of {0} with {1} for {2}."
+    },
+    "ParentBookingApproved": {
+      "title": "The teacher approved the lesson request",
+      "body": "{0} approved the lesson request of {3} for {1}."
+    },
+    "ParentBookingRejected": {
+      "title": "The teacher rejected the lesson request",
+      "body": "{0} rejected the lesson request of {3} for {1}.{2}"
+    },
+    "ParentBookingRejectedTeacherUnavailable": {
+      "title": "Lesson request could not be answered",
+      "body": "The lesson request of {3} for {1} was automatically rejected because {0} is temporarily unavailable.{2}"
     }
   }
 }

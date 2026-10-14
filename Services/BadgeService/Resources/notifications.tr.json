@@ -10,7 +10,8 @@
       "worksheetFallback": "Sınavın",
       "rejectionReasonSuffix": " Gerekçe: {0}",
       "defaultChild": "Çocuğunuz",
-      "defaultParent": "Veliniz"
+      "defaultParent": "Veliniz",
+      "defaultCoParent": "Diğer veliniz"
     },
     "BadgeEarned": {
       "title": "Yeni rozet kazandın!",
@@ -143,6 +144,46 @@
     "ParentChildTestCompleted": {
       "title": "Test tamamlandı",
       "body": "{0}, \"{1}\" testini tamamladı, puan %{2}."
+    },
+    "ParentBookingApprovalRequested": {
+      "title": "Ders talebi onayınızı bekliyor",
+      "body": "Çocuğunuz {0}, {1} ile {2} için ders talep etti — onayınız bekleniyor."
+    },
+    "BookingParentApproved": {
+      "title": "Velin ders talebini onayladı",
+      "body": "Velin, {0} ile {1} için ders talebini onayladı; şimdi öğretmenin onayı bekleniyor."
+    },
+    "BookingParentRejected": {
+      "title": "Velin ders talebini reddetti",
+      "body": "Velin, {0} ile {1} için ders talebini reddetti.{2}"
+    },
+    "BookingParentExpired": {
+      "title": "Ders talebin süresi doldu",
+      "body": "{0} ile {1} için ders talebin, veli onayı zamanında gelmediği için kapandı."
+    },
+    "ParentBookingExpired": {
+      "title": "Ders talebi süresi doldu",
+      "body": "{0} için {1} ile {2} ders talebi, onayınız zamanında gelmediği için kapandı."
+    },
+    "ParentBookingApprovedByOther": {
+      "title": "Ders talebi onaylandı",
+      "body": "{3}, {0} için {1} ile {2} ders talebini onayladı."
+    },
+    "ParentBookingRejectedByOther": {
+      "title": "Ders talebi reddedildi",
+      "body": "{3}, {0} için {1} ile {2} ders talebini reddetti."
+    },
+    "ParentBookingApproved": {
+      "title": "Öğretmen ders talebini onayladı",
+      "body": "{0}, {3} için {1} ders talebini onayladı."
+    },
+    "ParentBookingRejected": {
+      "title": "Öğretmen ders talebini reddetti",
+      "body": "{0}, {3} için {1} ders talebini reddetti.{2}"
+    },
+    "ParentBookingRejectedTeacherUnavailable": {
+      "title": "Ders talebi yanıtlanamadı",
+      "body": "{3} için {1} ders talebi, {0} geçici olarak müsait olmadığı için otomatik reddedildi.{2}"
     }
   }
 }

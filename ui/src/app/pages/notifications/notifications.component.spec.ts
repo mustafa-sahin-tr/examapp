@@ -393,4 +393,24 @@ describe('NotificationsComponent (issue #146)', () => {
     flushList([notification()]);
     expect(items().length).toBe(1);
   });
+
+  // Issue #439: yeni ders talebi bildirimi veli panelindeki "Onay bekleyen ders talepleri" kartına gider (fragment).
+  it('parentBookingApprovalRequested_Click_NavigatesToParentPanelCardWithFragment', () => {
+    flushList([
+      notification({
+        id: 31,
+        type: 'ParentBookingApprovalRequested',
+        title: 'Yeni ders talebi',
+        data: JSON.stringify({ bookingId: 9, studentId: 21 }),
+      }),
+    ]);
+
+    items()[0].click();
+    httpMock.expectOne('/api/badge/notifications/31/read').flush(null, { status: 204, statusText: 'No Content' });
+
+    expect(navigateSpy).toHaveBeenCalledWith(['/parent'], {
+      queryParams: { child: 21 },
+      fragment: 'booking-requests',
+    });
+  });
 });

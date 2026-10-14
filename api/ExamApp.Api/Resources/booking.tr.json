@@ -51,7 +51,23 @@
       "alreadyDecided": "Bu talep zaten sonuçlandırılmış ({0}).",
       "approved": "Randevu onaylandı.",
       "rejected": "Randevu reddedildi.",
-      "slotDeleted": "Bu talebin müsaitlik aralığı silinmiş; talep onaylanamaz, yalnızca reddedilebilir."
+      "slotDeleted": "Bu talebin müsaitlik aralığı silinmiş; talep onaylanamaz, yalnızca reddedilebilir.",
+      "parentRequired": "Ders talebi oluşturabilmek için hesabına bağlı bir velin olmalı. Velinden seni bağlamasını iste.",
+      "createdAwaitingParent": "Ders talebin velinin onayına gönderildi. Velin onaylayınca öğretmene iletilecek.",
+      "tooManyAwaitingParent": "Velinin onayını bekleyen en fazla {0} ders talebin olabilir (aynı öğretmen için {1}). Velin karar verince yeni talep oluşturabilirsin."
+    },
+
+    "parent": {
+      "notFound": "Ders talebi bulunamadı.",
+      "created": "Ders talebi oluşturuldu ve öğretmene iletildi.",
+      "approved": "Ders talebi onaylandı ve öğretmene iletildi.",
+      "rejected": "Ders talebi reddedildi.",
+      "alreadyDecided": "Bu ders talebi zaten sonuçlandırılmış.",
+      "requestExpired": "Bu ders talebinin onay süresi doldu.",
+      "teacherUnavailable": "Öğretmen şu anda ders talebi kabul etmiyor; talep onaylanamadı.",
+      "approvalNotAllowed": "Ders talebi şu anda onaylanamıyor.",
+      "noteTooLong": "Not en fazla 500 karakter olabilir.",
+      "noteInvalid": "Not geçersiz karakterler içeriyor."
     },
 
     "video": {

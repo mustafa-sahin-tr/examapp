@@ -2,7 +2,7 @@ import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angula
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -14,14 +14,24 @@ import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@js
 import { finalize, take } from 'rxjs';
 import { Subject } from '../../models/subject';
 import { TutorSearchResult } from '../../models/tutor.model';
+import { ParentLinkService } from '../../services/parent-link.service';
 import { SubjectService } from '../../services/subject.service';
 import { TeacherService } from '../../services/teacher.service';
+import { BookingSlotDialogChild } from '../../shared/components/booking-slot-dialog/booking-slot-dialog.component';
 import { TutorCardComponent } from '../../shared/components/tutor-card/tutor-card.component';
+import {
+  BOOKING_CHILD_ROUTE_PARAM,
+  childTutorProfileCommands,
+  parseBookingChildParam,
+  resolveBookingChild,
+} from '../../shared/utils/booking-child-context';
 import { TUTOR_SEARCH_SCOPE } from './tutor-search-scope';
 
 /**
  * Issue #95 — öğrencinin branş/ders bazlı bağımsız öğretmen araması.
  * Onay filtresi backend'de: burada ApprovalStatus'a bakılmaz, gelen liste olduğu gibi gösterilir.
+ * Issue #439: `/my-children/:studentId/tutors` altında veli modunda çalışır — çocuğun adı başlıkta gösterilir, profil linkleri
+ * aynı modda açılır ve talep orada çocuk adına (veli onayı atlanarak) oluşturulur.
  */
 @Component({
   selector: 'app-tutor-search',
@@ -35,6 +45,7 @@ import { TUTOR_SEARCH_SCOPE } from './tutor-search-scope';
     MatInputModule,
     MatProgressSpinnerModule,
     MatSelectModule,
+    RouterLink,
     TutorCardComponent,
     TranslocoDirective,
   ],
@@ -46,6 +57,8 @@ export class TutorSearchComponent implements OnInit {
   private readonly teacherService = inject(TeacherService);
   private readonly subjectService = inject(SubjectService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly parentLinkService = inject(ParentLinkService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
   private readonly transloco = inject(TranslocoService);
@@ -58,6 +71,13 @@ export class TutorSearchComponent implements OnInit {
   readonly subjectsFailed = signal(false);
   /** İlk arama tamamlanmadan "sonuç yok" gösterilmesin. */
   readonly searched = signal(false);
+
+  /** Issue #439: veli modu — rotadaki çocuk (`/my-children/:studentId/tutors`); öğrenci modunda null. */
+  readonly childStudentId = parseBookingChildParam(this.route.snapshot.paramMap.get(BOOKING_CHILD_ROUTE_PARAM));
+  readonly childLoading = signal(false);
+  readonly childLoadFailed = signal(false);
+  /** Velinin Active bağlı çocuğu; bulunamazsa (bağlantı yok/kaldırılmış) null. */
+  readonly child = signal<BookingSlotDialogChild | null>(null);
 
   readonly isEmpty = computed(
     () => this.searched() && !this.loading() && !this.error() && this.results().length === 0,
@@ -72,8 +92,31 @@ export class TutorSearchComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    if (this.childStudentId !== null) {
+      this.loadChild();
+    }
     this.loadSubjects();
     this.search();
+  }
+
+  /** Issue #439: veli modunda çocuğun adı/bağlantısı velinin çocuk listesinden doğrulanır. */
+  loadChild(): void {
+    const studentId = this.childStudentId;
+    if (studentId === null) return;
+    this.childLoading.set(true);
+    this.childLoadFailed.set(false);
+    resolveBookingChild(this.parentLinkService.getMyChildren(), studentId, '')
+      .pipe(
+        finalize(() => this.childLoading.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (child) => this.child.set(child),
+        error: () => {
+          this.child.set(null);
+          this.childLoadFailed.set(true);
+        },
+      });
   }
 
   loadSubjects(): void {
@@ -130,6 +173,7 @@ export class TutorSearchComponent implements OnInit {
   }
 
   openProfile(teacherId: number): void {
-    this.router.navigate(['/tutors', teacherId]);
+    const studentId = this.childStudentId;
+    void this.router.navigate(studentId !== null ? childTutorProfileCommands(studentId, teacherId) : ['/tutors', teacherId]);
   }
 }

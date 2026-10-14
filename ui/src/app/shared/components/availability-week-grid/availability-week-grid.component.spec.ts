@@ -872,6 +872,32 @@ describe('AvailabilityWeekGridComponent', () => {
       expect(selectedEvents().length).toBe(1);
     }));
 
+    // Issue #439: yalnız veli onayı bekleyen talebi tutan slot silinebilir; çubukta "talep kapatılacak" uyarısı.
+    it('AwaitingParent slot seçilir, uyarı gösterir ve Sil kimliğini yayar; Pending slot kilitli kalır', fakeAsync(() => {
+      const awaiting = createSlotInWeek(13, 4, H + 4, H + 5, true, 'AwaitingParent');
+      setup([free(), booked(), awaiting]);
+      const emitted: number[] = [];
+      component.deleteRequested.subscribe((id) => emitted.push(id));
+
+      expect(wrapperOf(13).getAttribute('aria-description')).toBe(taTr.grid.delete.hint);
+      clickEvent(13);
+
+      expect(component.selectedSlotId()).toBe(13);
+      expect(el('[data-test="awaiting-parent-warning"]')?.textContent?.trim()).toBe(
+        taTr.grid.delete.awaitingParentWarning
+      );
+      el<HTMLButtonElement>('.awg__delete-confirm')!.click();
+      render();
+      expect(emitted).toEqual([13]);
+
+      clickEvent(11);
+      expect(el('[data-test="awaiting-parent-warning"]')).toBeNull();
+
+      clickEvent(12);
+      expect(el('.awg__locked-hint')).not.toBeNull();
+      tick(4000);
+    }));
+
     it('Vazgeç seçimi ve vurguyu kaldırır; yönerge metnine dönülür', fakeAsync(() => {
       setup();
       clickEvent(11);

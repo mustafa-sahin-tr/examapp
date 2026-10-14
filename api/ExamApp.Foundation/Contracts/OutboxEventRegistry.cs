@@ -43,6 +43,8 @@ public static class OutboxEventRegistry
         typeof(StudentBadgeEarnedEvent), // issue #422 (badge outbox → exam API projeksiyonu)
         typeof(ParentHomeworkOverdueEvent), // issue #423
         typeof(ParentChildTestCompletedEvent), // issue #423
+        typeof(BookingParentApprovalRequestedEvent), // issue #439
+        typeof(BookingParentDecisionEvent), // issue #439
     };
 
     private static readonly Dictionary<string, Type> ByFullName =

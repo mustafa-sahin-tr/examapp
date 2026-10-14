@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace ExamApp.Foundation.Contracts;
 
@@ -31,6 +32,12 @@ public class BookingDecisionEvent
     public int StudentUserId { get; set; }
 
     /// <summary>
+    /// issue #439: öğrencinin görünen adı — veli bildirim metninde "çocuğunuz X" için. Best-effort (auth-api lookup'ı düşerse boş);
+    /// eklemeli alan, eski mesajlarda yok → boş (consumer <c>common.defaultChild</c>'e düşer).
+    /// </summary>
+    public string StudentName { get; set; } = string.Empty;
+
+    /// <summary>
     /// Öğrencinin Keycloak subject'i (NameIdentifier claim). BadgeService
     /// <c>Clients.User(...)</c> hedeflemesi ve Notification.UserKeycloakId bunu kullanır.
     /// </summary>
@@ -57,4 +64,10 @@ public class BookingDecisionEvent
     /// yok → false (geriye uyumlu).
     /// </summary>
     public bool TeacherUnavailable { get; set; }
+
+    /// <summary>
+    /// issue #439: karar anında öğrencinin Active bağlantılı velileri — öğretmenin kararı (ya da öğretmen müsait değil reddi)
+    /// velilere de bildirilir. Eklemeli alan: eski mesajlarda yok → boş liste (yalnız öğrenciye bildirim, eski davranış).
+    /// </summary>
+    public List<BookingParentRecipient> Parents { get; set; } = new();
 }

@@ -9,7 +9,8 @@
   "status": {
     "free": "Free",
     "approved": "Approved appointment",
-    "pending": "Pending request"
+    "pending": "Pending request",
+    "awaitingParent": "Awaiting parent approval"
   },
   "grid": {
     "ariaLabel": "Weekly availability calendar",
@@ -41,7 +42,8 @@
       "confirm": "Delete",
       "deleting": "Deleting...",
       "cancel": "Cancel",
-      "hint": "Click to delete"
+      "hint": "Click to delete",
+      "awaitingParentWarning": "This time has a request awaiting parent approval; deleting it will close the request."
     },
     "recurring": {
       "toggle": "Repeat every week",

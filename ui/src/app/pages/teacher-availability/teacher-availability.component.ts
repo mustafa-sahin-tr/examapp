@@ -17,6 +17,7 @@ import {
 import { BookingService } from '../../services/booking.service';
 import { AvailabilityWeekGridComponent } from '../../shared/components/availability-week-grid/availability-week-grid.component';
 import { DraftRange } from '../../shared/components/availability-week-grid/availability-draft.util';
+import { slotStatus } from '../../shared/components/availability-week-grid/availability-week-grid.util';
 import { isPastSlot, slotEndsNextDay } from '../../shared/utils/booking-format.util';
 
 /** Listede tek satır — slotun türetilmiş gösterim alanlarıyla. */
@@ -281,18 +282,8 @@ export class TeacherAvailabilityComponent implements OnInit {
 
   private toRow(slot: AvailabilitySlot): SlotRow {
     const studentSuffix = slot.studentName ? ` · ${slot.studentName}` : '';
-    let statusKey = 'status.free';
-    let statusClass: SlotRow['statusClass'] = 'is-free';
-
-    if (slot.isBooked) {
-      if (slot.bookingStatus === 'Approved') {
-        statusKey = 'status.approved';
-        statusClass = 'is-approved';
-      } else {
-        statusKey = 'status.pending';
-        statusClass = 'is-pending';
-      }
-    }
+    // Grid ile aynı kural (issue #439: AwaitingParent → "Veli onayı bekleniyor", dolu).
+    const { statusKey, statusClass } = slotStatus(slot);
 
     return {
       slot,

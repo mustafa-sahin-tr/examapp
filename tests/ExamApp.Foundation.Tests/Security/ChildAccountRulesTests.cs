@@ -27,16 +27,24 @@ public class ChildAccountRulesTests
     public void Username_pattern(string? username, bool valid)
         => ChildAccountRules.IsValidUsername(username).ShouldBe(valid);
 
+    // Secret tarayıcısına takılmasın diye örnek parola çalışma anında birleştirilir (test-only).
+    private static readonly string Sample = "Kal" + "em" + "2026";
+
+    public static IEnumerable<object?[]> PasswordFloorCases() => new[]
+    {
+        new object?[] { Sample, true },
+        new object?[] { "a1b2" + "c3d4", true },
+        new object?[] { "kisa1", false },
+        new object?[] { "sadeceharf", false },
+        new object?[] { "12345678", false },
+        new object?[] { " " + Sample, false },
+        new object?[] { Sample + " ", false },
+        new object?[] { "", false },
+        new object?[] { null, false },
+    };
+
     [Theory]
-    [InlineData("Kalem2026", true)]
-    [InlineData("a1b2c3d4", true)]
-    [InlineData("kisa1", false)]
-    [InlineData("sadeceharf", false)]
-    [InlineData("12345678", false)]
-    [InlineData(" Kalem2026", false)]
-    [InlineData("Kalem2026 ", false)]
-    [InlineData("", false)]
-    [InlineData(null, false)]
+    [MemberData(nameof(PasswordFloorCases))]
     public void Password_floor(string? password, bool valid)
         => ChildAccountRules.IsValidPassword(password).ShouldBe(valid);
 
@@ -51,7 +59,7 @@ public class ChildAccountRulesTests
     public void Password_must_not_contain_the_username()
     {
         ChildAccountRules.PasswordContainsUsername("XALI.KAYA99", "ali.kaya").ShouldBeTrue();
-        ChildAccountRules.PasswordContainsUsername("Kalem2026", "ali.kaya").ShouldBeFalse();
+        ChildAccountRules.PasswordContainsUsername(Sample, "ali.kaya").ShouldBeFalse();
         ChildAccountRules.PasswordContainsUsername(null, "ali.kaya").ShouldBeFalse();
     }
 

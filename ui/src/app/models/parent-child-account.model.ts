@@ -47,6 +47,8 @@ export const CHILD_ACCOUNT_ERROR_CODES = {
   schoolNotFound: 'SchoolNotFound',
   childAccountLimitReached: 'ChildAccountLimitReached',
   notParentManaged: 'NotParentManaged',
+  /** Şifre sıfırlama yalnız birincil veliye açık — 403. */
+  onlyPrimaryParent: 'OnlyPrimaryParent',
   unavailable: 'Unavailable',
 } as const;
 

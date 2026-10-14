@@ -35,8 +35,9 @@ public enum AdminPasswordResetStatus
     SessionRevokeFailed
 }
 
-public sealed record AdminPasswordResetResult(AdminPasswordResetStatus Status, string? TemporaryPassword = null)
+/// <param name="Permanent">Issue #438: veli tarafından açılmış çocuk hesabı — şifre kalıcı (ilk girişte değiştirme zorunluluğu yok).</param>
+public sealed record AdminPasswordResetResult(AdminPasswordResetStatus Status, string? TemporaryPassword = null, bool Permanent = false)
 {
     // Şifre yanlışlıkla ToString/log ile yazılmasın (record'un üretilen ToString'i tüm alanları basar).
-    public override string ToString() => $"{nameof(AdminPasswordResetResult)} {{ Status = {Status} }}";
+    public override string ToString() => $"{nameof(AdminPasswordResetResult)} {{ Status = {Status}, Permanent = {Permanent} }}";
 }

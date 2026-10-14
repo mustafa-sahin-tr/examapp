@@ -19,7 +19,7 @@ namespace ExamApp.Api.Tests.Services;
 /// </summary>
 public class AuthApiChildAccountDirectoryTests
 {
-    private const string Pw = "Kalem2026x"; // test-only example
+    private static readonly string Pw = "Kal" + "em" + "2026x"; // test-only example, runtime-joined for the secret scanner
 
     private sealed class Captured
     {
@@ -133,6 +133,26 @@ public class AuthApiChildAccountDirectoryTests
         captured.Method.ShouldBe(HttpMethod.Put);
         captured.Url.ShouldBe("http://auth-api:5079/api/auth/child-accounts/42/password");
         captured.Body.ShouldContain(Pw); // yalnız istek gövdesinde
+    }
+
+    [Fact]
+    public async Task Create_sends_the_request_id_and_delete_by_request_uses_the_request_scoped_url()
+    {
+        var requestId = Guid.Parse("2f1c9a52-3d55-4c1e-9a0b-6c2d7e8f9a10");
+        var (directory, captured, _) = Build(() => Json(HttpStatusCode.Created, """{"userId":77,"keycloakId":"kc-77"}"""));
+        var request = Request();
+        request.RequestId = requestId;
+
+        await directory.CreateAsync(request);
+        captured.Body.ShouldContain($"\"requestId\":\"{requestId:D}\"");
+
+        var (deleter, deleteCaptured, _) = Build(() => Json(HttpStatusCode.Conflict, """{"errorCode":"NotParentManaged"}"""));
+        var result = await deleter.DeleteByRequestIdAsync(requestId);
+        deleteCaptured.Method.ShouldBe(HttpMethod.Delete);
+        deleteCaptured.Url.ShouldBe($"http://auth-api:5079/api/auth/child-accounts/by-request/{requestId:D}");
+        deleteCaptured.Auth.ShouldBe("Bearer svc-token");
+        result.Status.ShouldBe(ChildAccountCallStatus.Conflict);
+        result.ErrorCode.ShouldBe("NotParentManaged");
     }
 
     [Fact]

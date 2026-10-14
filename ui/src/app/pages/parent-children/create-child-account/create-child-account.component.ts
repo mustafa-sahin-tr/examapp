@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, OnInit, computed, inject, output, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
@@ -10,8 +10,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
+import { RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
-import { finalize, map, startWith } from 'rxjs';
+import { Observable, catchError, finalize, forkJoin, map, of, startWith } from 'rxjs';
 
 import {
   CHILD_ACCOUNT_ERROR_CODES,
@@ -23,6 +24,7 @@ import {
   isAcceptableChildPassword,
   normalizeChildUsername,
 } from '../../../models/parent-child-account.model';
+import { PARENT_LINK_ERROR_CODES } from '../../../models/parent-link.model';
 import { Grade } from '../../../models/student';
 import { School } from '../../../models/taxonomy';
 import { GradesService } from '../../../services/grades.service';
@@ -68,6 +70,7 @@ const childPwGroupValidator: ValidatorFn = (group: AbstractControl): ValidationE
     MatInputModule,
     MatProgressSpinnerModule,
     MatSelectModule,
+    RouterLink,
     TranslocoDirective,
     TranslocoPipe,
   ],
@@ -84,6 +87,12 @@ export class CreateChildAccountComponent implements OnInit {
   private readonly transloco = inject(TranslocoService);
   private readonly destroyRef = inject(DestroyRef);
 
+  /**
+   * Velinin açık çocuk bağlantısı sayısı (üst sayfanın listesi); bilinmiyorsa null. Tavana (10) ulaşınca form gizlenir — sunucu
+   * tavanı yine uygular; "açılmış hesap" tavanı istemcide hesaplanamadığından sunucu yanıtıyla da gizlenir.
+   */
+  readonly openChildren = input<number | null>(null);
+
   /** Hesap açıldı — üst sayfa çocuk listesini tazeler. */
   readonly created = output<CreatedChildAccount>();
 
@@ -95,6 +104,17 @@ export class CreateChildAccountComponent implements OnInit {
   protected readonly serverError = signal<string | null>(null);
   protected readonly summary = signal<CreatedChildAccount | null>(null);
   protected readonly showPw = signal(false);
+  /** Sınıf / okul listeleri yükleniyor ya da yüklenemedi (sınıf zorunlu: liste gelmeden form tamamlanamaz). */
+  protected readonly refsLoading = signal(false);
+  protected readonly gradesFailed = signal(false);
+  protected readonly schoolsFailed = signal(false);
+  protected readonly refsFailed = computed(() => this.gradesFailed() || this.schoolsFailed());
+  /** Sunucu tavan hatası döndü (ChildAccountLimitReached / ParentLimitReached) — sayfa yenilenene kadar form gizli kalır. */
+  protected readonly serverLimitMessage = signal<string | null>(null);
+  protected readonly limitReached = computed(() => {
+    const open = this.openChildren();
+    return this.serverLimitMessage() !== null || (open !== null && open >= MAX_CHILD_ACCOUNTS);
+  });
 
   protected readonly form = this.fb.nonNullable.group(
     {
@@ -130,14 +150,43 @@ export class CreateChildAccountComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.gradesService
-      .getGrades()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({ next: (g) => this.grades.set(g ?? []), error: () => this.grades.set([]) });
-    this.schoolService
-      .getSchools()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({ next: (s) => this.schools.set(s ?? []), error: () => this.schools.set([]) });
+    this.loadReferenceData();
+  }
+
+  /** Sınıf ve okul listelerini yükler; "Tekrar dene" yalnız başarısız olanları yeniden ister. */
+  protected loadReferenceData(): void {
+    if (this.refsLoading()) return;
+    const needGrades = this.grades().length === 0;
+    const needSchools = this.schools().length === 0;
+    if (!needGrades && !needSchools) return;
+
+    this.refsLoading.set(true);
+    if (needGrades) this.gradesFailed.set(false);
+    if (needSchools) this.schoolsFailed.set(false);
+    forkJoin({
+      grades: needGrades
+        ? this.gradesService.getGrades().pipe(
+            map((g): Grade[] | null => g ?? []),
+            catchErrorAs<Grade[]>()
+          )
+        : of(this.grades()),
+      schools: needSchools
+        ? this.schoolService.getSchools().pipe(
+            map((list): School[] | null => list ?? []),
+            catchErrorAs<School[]>()
+          )
+        : of(this.schools()),
+    })
+      .pipe(
+        finalize(() => this.refsLoading.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(({ grades, schools }) => {
+        if (grades === null) this.gradesFailed.set(true);
+        else this.grades.set(grades);
+        if (schools === null) this.schoolsFailed.set(true);
+        else this.schools.set(schools);
+      });
   }
 
   protected schoolLabel(school: School | string | null): string {
@@ -219,6 +268,11 @@ export class CreateChildAccountComponent implements OnInit {
   private applyServerError(err: HttpErrorResponse): void {
     const code = this.linkService.errorCode(err);
     const message = this.linkService.extractError(err, this.transloco.translate<string>('parent-links.createChild.createError'));
+    if (code === CHILD_ACCOUNT_ERROR_CODES.childAccountLimitReached || code === PARENT_LINK_ERROR_CODES.parentLimitReached) {
+      // Tavan dolu: form gizlenir, sunucunun yerelleştirilmiş tavan mesajı bilgi kutusunda gösterilir.
+      this.serverLimitMessage.set(message);
+      return;
+    }
     // Alan hataları ilgili alanın altında da işaretlenir; mesaj sunucunun yerelleştirilmiş metni.
     if (code === CHILD_ACCOUNT_ERROR_CODES.usernameTaken || code === CHILD_ACCOUNT_ERROR_CODES.invalidUsername) {
       this.form.controls.username.setErrors({ server: true });
@@ -229,4 +283,9 @@ export class CreateChildAccountComponent implements OnInit {
     }
     this.serverError.set(message);
   }
+}
+
+/** Hata durumunda akışı `null` ile tamamlar (forkJoin diğer isteği beklesin, hangi listenin düştüğü ayırt edilsin). */
+function catchErrorAs<T>(): (source: Observable<T | null>) => Observable<T | null> {
+  return (source) => source.pipe(catchError(() => of(null)));
 }

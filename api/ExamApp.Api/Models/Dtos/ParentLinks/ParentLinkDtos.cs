@@ -174,10 +174,15 @@ public class LinkedChildDto
     public bool IsPrimary { get; set; }
 
     /// <summary>
-    /// Issue #438: hesap veli tarafından açıldı (kullanıcı adı + şifre) — bağlı her Active veli şifresini sıfırlayabilir. Pending
-    /// satırda false.
+    /// Issue #438: hesap veli tarafından açıldı (kullanıcı adı + şifre). Pending satırda false.
     /// </summary>
     public bool ParentManaged { get; set; }
+
+    /// <summary>
+    /// Issue #438 (review kararı): çağıran bu çocuğun şifresini sıfırlayabilir = <see cref="ParentManaged"/> ∧ <see cref="IsPrimary"/>.
+    /// İkincil veli false (uç 403 <c>OnlyPrimaryParent</c> döner); Pending satırda false.
+    /// </summary>
+    public bool CanResetPassword { get; set; }
 
     /// <summary>
     /// Issue #436: yalnız birincil veliye — çocuğun DİĞER Active velileri ve onay bekleyen ikinci veli istekleri; birincil

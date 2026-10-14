@@ -29,7 +29,10 @@ public class CreateChildAccountRequestDto
     /// <summary>Opsiyonel okul; seçilirse üyelik BEKLEMEDE başlar (#361 — veli seçimi doğrulama sayılmaz).</summary>
     public int? SchoolId { get; set; }
 
-    /// <summary>Opsiyonel öğrenci numarası (student/register ile aynı üst sınır).</summary>
+    /// <summary>
+    /// Opsiyonel öğrenci numarası (student/register ile aynı üst sınır). KARAR (#438 review): zorunlu değil — veli çoğu zaman
+    /// bilmez ve okul doğrulaması (#361) numaraya dayanmaz; boşsa öğrenci kaydında boş dize.
+    /// </summary>
     [MaxLength(50)]
     public string? StudentNumber { get; set; }
 
@@ -78,4 +81,7 @@ public static class ParentChildAccountErrorCodes
 
     /// <summary>Çocuk hesabı veli tarafından açılmamış (kendi e-postasıyla kayıtlı) — şifresi veliden sıfırlanamaz (403).</summary>
     public const string NotParentManaged = "NotParentManaged";
+
+    /// <summary>Çocuğun şifresini yalnız birincil veli sıfırlayabilir; çağıran ikincil veli — 403.</summary>
+    public const string OnlyPrimaryParent = "OnlyPrimaryParent";
 }

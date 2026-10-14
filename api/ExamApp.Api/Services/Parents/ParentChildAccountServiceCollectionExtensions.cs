@@ -6,9 +6,9 @@ public static class ParentChildAccountServiceCollectionExtensions
 {
     /// <summary>
     /// Issue #438: veli panelinden çocuk hesabı. auth-api'ye giden <see cref="AuthApiChildAccountDirectory.HttpClientName"/> client'ı
-    /// ServiceDefaults'un standart resilience handler'ından MUAF (RemoveAllResilienceHandlers): hesap oluşturma idempotent değil —
-    /// 10 sn attempt timeout + retry, Keycloak'ta tamamlanmış ilk POST'u yeniden gönderip 409 + yetim hesap üretirdi (2026-09-22 seed
-    /// olayı). Tek sınır <see cref="AuthApiChildAccountDirectory.Timeout"/>. AddServiceDefaults()'tan SONRA çağrılmalı.
+    /// ServiceDefaults'un standart resilience handler'ından MUAF (RemoveAllResilienceHandlers): 10 sn attempt timeout + retry,
+    /// Keycloak yavaşken hâlâ sürmekte olan ilk POST'un yanına ikincisini gönderirdi (2026-09-22 seed olayı). auth-api create'i
+    /// requestId ile idempotent; yanıt alınamazsa servis requestId ile geri alır (by-request DELETE). Tek sınır <see cref="AuthApiChildAccountDirectory.Timeout"/>. AddServiceDefaults()'tan SONRA çağrılmalı.
     /// </summary>
     public static IServiceCollection AddParentChildAccounts(this IServiceCollection services)
     {

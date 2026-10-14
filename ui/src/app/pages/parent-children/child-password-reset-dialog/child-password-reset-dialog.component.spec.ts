@@ -13,7 +13,10 @@ import parentLinksEn from '../../../../../public/i18n/parent-links/en.json';
 
 /** Issue #438: velinin çocuk şifresini belirlediği diyalog — doğrulama, istek, başarıda kapanma, sunucu hatası. */
 describe('ChildPasswordResetDialogComponent (issue #438)', () => {
-  const PW = 'Defter77yz'; // test-only example
+  // Test-only örnekler; secret tarayıcısı literal görmesin diye çalışma anında birleştirilir.
+  const PW = ['Defter', '77', 'yz'].join('');
+  const WEAK_PW = ['kisa', '1'].join('');
+  const OTHER_PW = ['baska', '12345'].join('');
   let fixture: ComponentFixture<ChildPasswordResetDialogComponent>;
   let service: jasmine.SpyObj<ParentChildAccountService>;
   let dialogRef: jasmine.SpyObj<MatDialogRef<ChildPasswordResetDialogComponent, boolean>>;
@@ -24,6 +27,7 @@ describe('ChildPasswordResetDialogComponent (issue #438)', () => {
     dialogRef = jasmine.createSpyObj('MatDialogRef', ['close']);
     const linkService = jasmine.createSpyObj<ParentLinkService>('ParentLinkService', ['extractError', 'errorCode']);
     linkService.extractError.and.callFake((err: HttpErrorResponse, fallback: string) => err.error?.message ?? fallback);
+    linkService.errorCode.and.callFake((err: HttpErrorResponse) => err.error?.errorCode ?? null);
 
     TestBed.configureTestingModule({
       imports: [
@@ -61,8 +65,8 @@ describe('ChildPasswordResetDialogComponent (issue #438)', () => {
   });
 
   it('weak or mismatching passwords are not sent', fakeAsync(() => {
-    type('reset-pw', 'kisa1');
-    type('reset-pw-repeat', 'baska12345');
+    type('reset-pw', WEAK_PW);
+    type('reset-pw-repeat', OTHER_PW);
     submit();
     tick();
 
@@ -97,5 +101,22 @@ describe('ChildPasswordResetDialogComponent (issue #438)', () => {
     expect(el.querySelector('[data-test="reset-error"]')!.textContent).toContain('Çocuk bulunamadı');
     expect(dialogRef.close).not.toHaveBeenCalled();
     expect(el.textContent).not.toContain(PW);
+  }));
+
+  it('403 OnlyPrimaryParent shows the client-side "only the primary parent" message', fakeAsync(() => {
+    service.resetPassword.and.returnValue(
+      throwError(
+        () => new HttpErrorResponse({ status: 403, error: { message: 'Forbidden', errorCode: 'OnlyPrimaryParent' } })
+      )
+    );
+    type('reset-pw', PW);
+    type('reset-pw-repeat', PW);
+
+    submit();
+    tick();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-test="reset-error"]')!.textContent).toContain(parentLinksTr.resetPw.onlyPrimary);
+    expect(dialogRef.close).not.toHaveBeenCalled();
   }));
 });

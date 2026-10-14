@@ -38,8 +38,17 @@ public interface IChildAccountDirectory
 {
     Task<ChildAccountCallResult> CreateAsync(CreateChildAccountRequest request, CancellationToken ct = default);
 
-    /// <summary>Kompanzasyon: yalnız <c>parent_managed</c> hesabı geri alır (idempotent; zaten yoksa NotFound).</summary>
+    /// <summary>
+    /// Kompanzasyon: yalnız <c>parent_managed</c> hesabı geri alır (zaten yoksa NotFound; var ama işaretsizse Conflict
+    /// <c>NotParentManaged</c> — dokunulmaz).
+    /// </summary>
     Task<ChildAccountCallResult> DeleteAsync(int userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Kompanzasyon, create yanıtı alınamadığında (zaman aşımı/5xx — userId bilinmiyor): <c>DELETE by-request/{requestId}</c>,
+    /// yalnız bu requestId ile açılmış <c>parent_managed</c> hesap. Sonuç eşlemesi <see cref="DeleteAsync"/> ile aynı.
+    /// </summary>
+    Task<ChildAccountCallResult> DeleteByRequestIdAsync(Guid requestId, CancellationToken ct = default);
 
     Task<ChildAccountCallResult> ResetPasswordAsync(int userId, string newPw, CancellationToken ct = default);
 }
@@ -48,9 +57,10 @@ public interface IChildAccountDirectory
 public sealed class AuthApiChildAccountDirectory : IChildAccountDirectory
 {
     /// <summary>
-    /// Yeniden denemesiz named client: hesap oluşturma idempotent DEĞİL — ServiceDefaults'un standart resilience handler'ı
-    /// (10 sn attempt timeout + retry) ilk istek Keycloak'ta tamamlanmışken ikinci POST'u gönderip 409 + yetim hesap üretirdi
-    /// (2026-09-22 seed olayı). Tek sınır <see cref="Timeout"/>.
+    /// Yeniden denemesiz named client: hesap oluşturma auth-api'de requestId ile idempotent olsa da (aynı requestId mevcut hesabı
+    /// döner) ServiceDefaults'un standart resilience handler'ı (10 sn attempt timeout + retry) Keycloak yavaşken aynı anda iki
+    /// yarışan POST üretirdi (2026-09-22 seed olayı). Tek sınır <see cref="Timeout"/>; yanıt alınamazsa çağıran requestId ile
+    /// geri alır.
     /// </summary>
     public const string HttpClientName = "AuthApiChildAccounts";
 
@@ -80,6 +90,9 @@ public sealed class AuthApiChildAccountDirectory : IChildAccountDirectory
 
     public Task<ChildAccountCallResult> DeleteAsync(int userId, CancellationToken ct = default)
         => SendAsync(HttpMethod.Delete, $"{BaseUrl}/{userId}", body: null, "delete", readCreated: false, ct);
+
+    public Task<ChildAccountCallResult> DeleteByRequestIdAsync(Guid requestId, CancellationToken ct = default)
+        => SendAsync(HttpMethod.Delete, $"{BaseUrl}/by-request/{requestId:D}", body: null, "delete-by-request", readCreated: false, ct);
 
     public Task<ChildAccountCallResult> ResetPasswordAsync(int userId, string newPw, CancellationToken ct = default)
     {

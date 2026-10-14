@@ -16,6 +16,11 @@
         </button>
       </div>
     </section>
+  } @else if (limitReached()) {
+    <section class="cca__limit" role="status" data-test="create-limit">
+      <mat-icon class="cca__limit-icon" aria-hidden="true">info</mat-icon>
+      <p>{{ serverLimitMessage() ?? t('createChild.limitReached', { max: maxChildren }) }}</p>
+    </section>
   } @else {
     <p class="cca__hint">{{ t('createChild.hint') }}</p>
     <form class="cca__form" [formGroup]="form" (ngSubmit)="submit()" novalidate data-test="create-form">
@@ -107,6 +112,15 @@
         <p class="cca__error" role="alert" data-test="pw-mismatch">{{ t('createChild.pwMismatch') }}</p>
       }
 
+      @if (refsFailed()) {
+        <div class="cca__refs-error" role="alert" data-test="refs-error">
+          <span>{{ t(gradesFailed() ? 'createChild.refsError' : 'createChild.schoolsError') }}</span>
+          <button mat-stroked-button type="button" data-test="refs-retry" [disabled]="refsLoading()" (click)="loadReferenceData()">
+            {{ t('retry') }}
+          </button>
+        </div>
+      }
+
       <div class="cca__row">
         <mat-form-field appearance="outline" class="cca__field">
           <mat-label>{{ t('createChild.grade') }}</mat-label>
@@ -115,6 +129,9 @@
               <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
             }
           </mat-select>
+          @if (refsLoading()) {
+            <mat-hint data-test="refs-loading">{{ t('loading') }}</mat-hint>
+          }
           @if (form.controls.gradeId.invalid) {
             <mat-error>{{ t('createChild.required') }}</mat-error>
           }
@@ -152,7 +169,12 @@
         <mat-checkbox formControlName="consent" data-test="consent">
           {{ t('createChild.consent', { brand: ('brand.name' | transloco) }) }}
         </mat-checkbox>
-        <span class="cca__hint">{{ t('createChild.consentVersion', { version: consentVersion }) }}</span>
+        <span class="cca__hint">
+          <a class="cca__link" routerLink="/privacy-policy" target="_blank" rel="noopener" data-test="privacy-link">
+            {{ t('createChild.privacyLink') }}
+          </a>
+          · {{ t('createChild.consentVersion', { version: consentVersion }) }}
+        </span>
         @if (form.controls.consent.touched && form.controls.consent.invalid) {
           <p class="cca__error" role="alert" data-test="consent-required">{{ t('createChild.consentRequired') }}</p>
         }
@@ -164,13 +186,13 @@
 
       <div class="cca__actions">
         <button mat-flat-button type="submit" data-test="create-submit" [disabled]="submitting()">
+          <!-- Tek düğümlü dallar: ikon MatButton'ın ikon yuvasına projekte olur (NG8011). -->
           @if (submitting()) {
             <mat-spinner diameter="18" />
-            {{ t('createChild.submitting') }}
           } @else {
             <mat-icon>person_add</mat-icon>
-            {{ t('createChild.submit') }}
           }
+          {{ submitting() ? t('createChild.submitting') : t('createChild.submit') }}
         </button>
         <span class="cca__hint">{{ t('createChild.limitNote', { max: maxChildren }) }}</span>
       </div>

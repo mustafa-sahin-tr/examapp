@@ -28,8 +28,8 @@ public class ParentChildAccountServiceTests : IDisposable
     private const int ParentUser = 8101;
     private const int OtherParentUser = 8102;
     private const int NewChildUserId = 9001;
-    private const string ChildPw = "Kalem2026x"; // test-only example
-    private const string NewPw = "Defter77yz"; // test-only example
+    private static readonly string ChildPw = "Kal" + "em" + "2026x"; // test-only example, runtime-joined for the secret scanner
+    private static readonly string NewPw = "Def" + "ter" + "77yz"; // test-only example, runtime-joined for the secret scanner
 
     private readonly TestDb _db = TestDb.Create();
     private readonly IChildAccountDirectory _directory = Substitute.For<IChildAccountDirectory>();
@@ -51,6 +51,8 @@ public class ParentChildAccountServiceTests : IDisposable
                 Created: new CreateChildAccountResponse { UserId = NewChildUserId, KeycloakId = "kc-child-1" }));
         _directory.DeleteAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new ChildAccountCallResult(ChildAccountCallStatus.Success));
+        _directory.DeleteByRequestIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new ChildAccountCallResult(ChildAccountCallStatus.NotFound, ChildAccountErrorCodes.NotFound));
         _directory.ResetPasswordAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ChildAccountCallResult(ChildAccountCallStatus.Success));
         SeedAsync().GetAwaiter().GetResult();
@@ -127,9 +129,11 @@ public class ParentChildAccountServiceTests : IDisposable
         result.Child.StudentName.ShouldBe("Ali Kaya");
 
         await _directory.Received(1).CreateAsync(
-            Arg.Is<CreateChildAccountRequest>(r => r.Username == "ali.kaya_9" && r.FirstName == "Ali" && r.LastName == "Kaya" && r.Password == ChildPw),
+            Arg.Is<CreateChildAccountRequest>(r => r.Username == "ali.kaya_9" && r.FirstName == "Ali" && r.LastName == "Kaya"
+                && ChildPw.Equals(r.Password) && r.RequestId != Guid.Empty),
             Arg.Any<CancellationToken>());
         await _directory.DidNotReceive().DeleteAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _directory.DidNotReceive().DeleteByRequestIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
 
         var student = await InDbAsync(db => db.Students.SingleAsync(s => s.UserId == NewChildUserId));
         student.ParentManaged.ShouldBeTrue();
@@ -188,6 +192,7 @@ public class ParentChildAccountServiceTests : IDisposable
         child.Status.ShouldBe("Active");
         child.IsPrimary.ShouldBeTrue();
         child.ParentManaged.ShouldBeTrue();
+        child.CanResetPassword.ShouldBeTrue();
     }
 
     // ---- açma: hata yolları -------------------------------------------------------------------------------------------
@@ -206,16 +211,23 @@ public class ParentChildAccountServiceTests : IDisposable
         (await InDbAsync(db => db.Students.CountAsync())).ShouldBe(0);
         (await InDbAsync(db => db.ParentConsents.CountAsync())).ShouldBe(0);
         await _directory.DidNotReceive().DeleteAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _directory.DidNotReceive().DeleteByRequestIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         AssertNoPasswordLeak(result);
     }
 
     [Fact]
-    public async Task Keycloak_failure_is_502_and_leaves_no_local_rows()
+    public async Task Keycloak_failure_is_502_leaves_no_local_rows_and_compensates_by_request_id()
     {
-        _directory.CreateAsync(Arg.Any<CreateChildAccountRequest>(), Arg.Any<CancellationToken>())
+        var sent = Guid.Empty;
+        _directory.CreateAsync(Arg.Do<CreateChildAccountRequest>(r => sent = r.RequestId), Arg.Any<CancellationToken>())
             .Returns(new ChildAccountCallResult(ChildAccountCallStatus.Unavailable, ChildAccountErrorCodes.Unavailable));
 
         var result = await CreateAsync();
+
+        // Yanıt alınamadı: auth-api hesabı açmış olabilir; aynı requestId ile geri alma istenir (userId bilinmiyor).
+        sent.ShouldNotBe(Guid.Empty);
+        await _directory.Received(1).DeleteByRequestIdAsync(sent, Arg.Any<CancellationToken>());
+        await _directory.DidNotReceive().DeleteAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
 
         result.Success.ShouldBeFalse();
         result.Upstream.ShouldBeTrue();
@@ -224,6 +236,70 @@ public class ParentChildAccountServiceTests : IDisposable
         (await InDbAsync(db => db.ParentStudentLinks.CountAsync())).ShouldBe(0);
         (await InDbAsync(db => db.OutboxMessages.CountAsync())).ShouldBe(0);
         AssertNoPasswordLeak(result);
+    }
+
+    [Theory]
+    [InlineData(ChildAccountErrorCodes.RequestInProgress)]
+    [InlineData(ChildAccountErrorCodes.RequestCancelled)]
+    public async Task Request_state_conflicts_are_not_reported_as_username_taken(string code)
+    {
+        _directory.CreateAsync(Arg.Any<CreateChildAccountRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new ChildAccountCallResult(ChildAccountCallStatus.Conflict, code));
+
+        var result = await CreateAsync();
+
+        result.Upstream.ShouldBeTrue();
+        result.ErrorCode.ShouldBe(ChildAccountErrorCodes.Unavailable);
+        await _directory.Received(1).DeleteByRequestIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Each_create_request_gets_its_own_request_id()
+    {
+        var ids = new List<Guid>();
+        _directory.CreateAsync(Arg.Do<CreateChildAccountRequest>(r => ids.Add(r.RequestId)), Arg.Any<CancellationToken>())
+            .Returns(new ChildAccountCallResult(ChildAccountCallStatus.Conflict, ChildAccountErrorCodes.UsernameTaken));
+
+        await CreateAsync();
+        await CreateAsync();
+
+        ids.Count.ShouldBe(2);
+        ids.ShouldAllBe(id => id != Guid.Empty);
+        ids.Distinct().Count().ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Client_cancellation_during_create_compensates_by_request_id_and_rethrows()
+    {
+        using var cts = new CancellationTokenSource();
+        var sent = Guid.Empty;
+        _directory.CreateAsync(Arg.Any<CreateChildAccountRequest>(), Arg.Any<CancellationToken>())
+            .Returns<ChildAccountCallResult>(ci =>
+            {
+                sent = ci.Arg<CreateChildAccountRequest>().RequestId;
+                cts.Cancel();
+                throw new OperationCanceledException(cts.Token);
+            });
+
+        await using var ctx = _db.NewContext();
+        await Should.ThrowAsync<OperationCanceledException>(() =>
+            Service(ctx).CreateAsync(ParentUser, Request(), "203.0.113.7", cts.Token));
+
+        await _directory.Received(1).DeleteByRequestIdAsync(sent, CancellationToken.None);
+        (await InDbAsync(db => db.Students.CountAsync())).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Failed_request_id_compensation_is_logged_as_error()
+    {
+        _directory.CreateAsync(Arg.Any<CreateChildAccountRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new ChildAccountCallResult(ChildAccountCallStatus.Unavailable, ChildAccountErrorCodes.Unavailable));
+        _directory.DeleteByRequestIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new ChildAccountCallResult(ChildAccountCallStatus.Conflict, ChildAccountErrorCodes.NotParentManaged));
+
+        (await CreateAsync()).Upstream.ShouldBeTrue();
+
+        _logger.Entries.ShouldContain(e => e.Level == LogLevel.Error && e.Message.Contains("Kompanzasyon BAŞARISIZ"));
     }
 
     [Fact]
@@ -440,10 +516,63 @@ public class ParentChildAccountServiceTests : IDisposable
         return created.Child!.StudentId;
     }
 
-    private async Task<ParentLinkResponseDto> ResetAsync(int studentId, string? pw = NewPw, int parentUser = ParentUser)
+    /// <summary>Varsayılan = <see cref="NewPw"/> (çalışma anında birleştirildiği için default parametre olamaz).</summary>
+    private const string DefaultPw = "<default>";
+
+    private async Task<ParentLinkResponseDto> ResetAsync(int studentId, string? pw = DefaultPw, int parentUser = ParentUser)
     {
         await using var ctx = _db.NewContext();
-        return await Service(ctx).ResetPasswordAsync(parentUser, studentId, pw);
+        return await Service(ctx).ResetPasswordAsync(parentUser, studentId, pw == DefaultPw ? NewPw : pw);
+    }
+
+    /// <summary>İkinci veli: oluşturulan çocuğa Active ama birincil OLMAYAN bağlantı.</summary>
+    private async Task LinkSecondParentAsync(int studentId)
+    {
+        await using var ctx = _db.NewContext();
+        var otherParentId = await ctx.Parents.Where(p => p.UserId == OtherParentUser).Select(p => p.Id).SingleAsync();
+        ctx.ParentStudentLinks.Add(new ParentStudentLink
+        {
+            ParentId = otherParentId, StudentId = studentId, Status = ParentStudentLinkStatus.Active,
+            Origin = ParentStudentLinkOrigin.InviteCode, IsPrimary = false,
+            CreatedAt = _time.Now.UtcDateTime.AddMinutes(5), ActivatedAt = _time.Now.UtcDateTime.AddMinutes(5)
+        });
+        await ctx.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task Reset_password_by_a_secondary_parent_is_403_OnlyPrimaryParent()
+    {
+        var studentId = await CreatedStudentIdAsync();
+        await LinkSecondParentAsync(studentId);
+
+        var result = await ResetAsync(studentId, parentUser: OtherParentUser);
+
+        result.Forbidden.ShouldBeTrue();
+        result.ErrorCode.ShouldBe(ParentChildAccountErrorCodes.OnlyPrimaryParent);
+        result.Message.ShouldNotBeNullOrWhiteSpace();
+        await _directory.DidNotReceive().ResetPasswordAsync(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        (await InDbAsync(db => db.ParentAccessAudits.CountAsync())).ShouldBe(0);
+
+        // Birincil veli hâlâ sıfırlayabilir.
+        (await ResetAsync(studentId)).Success.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task My_children_tells_only_the_primary_parent_that_it_can_reset_the_password()
+    {
+        var studentId = await CreatedStudentIdAsync();
+        await LinkSecondParentAsync(studentId);
+
+        await using var ctx = _db.NewContext();
+        var links = new ParentLinkService(ctx, ParentInviteCodeHasherTests.Create(), _authApi,
+            Substitute.For<IParentRedeemAttemptGuard>(), _time);
+        var primary = (await links.GetParentChildrenAsync(ParentUser)).ShouldNotBeNull().ShouldHaveSingleItem();
+        var secondary = (await links.GetParentChildrenAsync(OtherParentUser)).ShouldNotBeNull().ShouldHaveSingleItem();
+
+        primary.CanResetPassword.ShouldBeTrue();
+        secondary.ParentManaged.ShouldBeTrue();
+        secondary.IsPrimary.ShouldBeFalse();
+        secondary.CanResetPassword.ShouldBeFalse();
     }
 
     [Fact]

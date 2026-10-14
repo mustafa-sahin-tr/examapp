@@ -68,6 +68,23 @@ public class AdminAccountTargetResolverTests : IDisposable
     }
 
     [Fact]
+    public async Task Parent_managed_student_is_flagged_for_a_permanent_reset()
+    {
+        int studentId;
+        await using (var ctx = _db.NewContext())
+        {
+            var student = new Student { UserId = 44, StudentNumber = "S2", ParentManaged = true };
+            ctx.Students.Add(student);
+            await ctx.SaveChangesAsync();
+            studentId = student.Id;
+        }
+        ResolvesTo(44, TargetSub);
+
+        (await RunAsync(AdminUserTargetType.Student, studentId))
+            .ShouldBe(new(AdminAccountTargetStatus.Resolved, TargetSub, ParentManaged: true));
+    }
+
+    [Fact]
     public async Task Missing_or_deleted_record_is_TargetNotFound_without_upstream_calls()
     {
         var deletedId = await SeedTeacherAsync(deleted: true);

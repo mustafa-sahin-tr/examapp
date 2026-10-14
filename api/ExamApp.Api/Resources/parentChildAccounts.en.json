@@ -15,6 +15,7 @@
       "schoolNotFound": "The selected school was not found.",
       "childAccountLimitReached": "You can create at most {0} child accounts.",
       "notParentManaged": "This is your child's own account; only they can change its password.",
+      "onlyPrimaryParent": "Only the primary parent can change your child's password.",
       "unavailable": "The account service is unavailable right now. Please try again shortly."
     }
   }

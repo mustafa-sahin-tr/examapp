@@ -36,10 +36,22 @@ public class ChildAccountsController : ControllerBase
             : Map(result);
     }
 
+    /// <summary>Kompanzasyon (userId biliniyor): 204; hesap yok 404 <c>NotFound</c>; var ama işaretsiz 409 <c>NotParentManaged</c>.</summary>
     [HttpDelete("{userId:int}")]
     public async Task<IActionResult> Delete(int userId, CancellationToken ct)
     {
         var result = await _service.DeleteAsync(userId, ct);
+        return result.Outcome == ChildAccountOutcome.Success ? NoContent() : Map(result);
+    }
+
+    /// <summary>
+    /// Kompanzasyon (exam API create yanıtını alamadı — zaman aşımı/5xx, userId bilinmiyor): bu requestId ile açılmış
+    /// <c>parent_managed</c> hesap (Keycloak + identity satırı) silinir. 204; yok 404; işaretsiz 409 <c>NotParentManaged</c>.
+    /// </summary>
+    [HttpDelete("by-request/{requestId:guid}")]
+    public async Task<IActionResult> DeleteByRequest(Guid requestId, CancellationToken ct)
+    {
+        var result = await _service.DeleteByRequestIdAsync(requestId, ct);
         return result.Outcome == ChildAccountOutcome.Success ? NoContent() : Map(result);
     }
 

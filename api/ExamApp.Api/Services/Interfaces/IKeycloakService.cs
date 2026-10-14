@@ -44,6 +44,13 @@ public interface IKeycloakService
     Task<string> ResetPasswordAsync(string keycloakUserId, CancellationToken ct = default);
 
     /// <summary>
+    /// Issue #438: <see cref="ResetPasswordAsync"/> ile aynı üretim, ama KALICI şifre (<c>temporary:false</c>) — Keycloak açık
+    /// <c>UPDATE_PASSWORD</c> required action'ını da kaldırır. Veli tarafından açılmış çocuk hesabında admin sıfırlaması için:
+    /// çocuk ilk girişte kendi şifresini koyup veli kontrolünü delemesin; admin şifreyi veliye iletir.
+    /// </summary>
+    Task<string> ResetPermanentPasswordAsync(string keycloakUserId, CancellationToken ct = default);
+
+    /// <summary>
     /// issue #156: kullanıcının tüm Keycloak oturumlarını sonlandırır (<c>POST users/{id}/logout</c>).
     /// Hata → <see cref="Helpers.KeycloakException"/>.
     /// </summary>

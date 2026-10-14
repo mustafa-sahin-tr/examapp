@@ -5,6 +5,7 @@ import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testin
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { ParentChildrenComponent } from './parent-children.component';
@@ -100,6 +101,8 @@ describe('ParentChildrenComponent (issue #419, #436)', () => {
         translocoTestingModule({ langs: { 'parent-links/tr': parentLinksTr, 'parent-links/en': parentLinksEn } }),
       ],
       providers: [
+        // Issue #438: gömülü formun rıza metnindeki /privacy-policy bağlantısı (RouterLink).
+        provideRouter([]),
         { provide: ParentLinkService, useValue: service },
         { provide: Clipboard, useValue: clipboard },
         { provide: LocaleService, useValue: { localeDefinition: signal({ angularLocale: 'tr-TR' }) } },
@@ -373,19 +376,83 @@ describe('ParentChildrenComponent (issue #419, #436)', () => {
     expect(form!.textContent).toContain(parentLinksTr.createChild.title);
   });
 
-  it('resetPasswordButton_OnlyForParentManagedChildren (issue #438)', () => {
-    const managed: LinkedChild = { ...ayse, linkId: 5, studentId: 41, studentName: 'Ali Kaya', parentManaged: true };
-    const el = setup([ayse, managed]);
+  it('resetPasswordButton_FollowsServerCanResetPassword (issue #438)', () => {
+    const managed: LinkedChild = {
+      ...ayse,
+      linkId: 5,
+      studentId: 41,
+      studentName: 'Ali Kaya',
+      parentManaged: true,
+      canResetPassword: true,
+    };
+    // Veli yönetimli ama birincil olmayan veli: sunucu canResetPassword=false döner → düğme yok.
+    const managedNotPrimary: LinkedChild = { ...managed, linkId: 6, studentId: 42, studentName: 'Can Kaya', canResetPassword: false };
+    const el = setup([ayse, managed, managedNotPrimary]);
     const rows = el.querySelectorAll('[data-test="child-row"]');
-    expect(rows.length).toBe(2);
+    expect(rows.length).toBe(3);
     expect(rows[0].querySelector('[data-test="reset-password"]')).toBeNull();
     const button = rows[1].querySelector<HTMLButtonElement>('[data-test="reset-password"]');
     expect(button).not.toBeNull();
     expect(button!.textContent).toContain(parentLinksTr.resetPw.action);
+    expect(rows[2].querySelector('[data-test="reset-password"]')).toBeNull();
+  });
+
+  it('resetPasswordButton_HiddenWhenServerOmitsCanResetPassword (issue #438)', () => {
+    const el = setup([{ ...ayse, linkId: 5, studentId: 41, parentManaged: true }]);
+    expect(el.querySelector('[data-test="reset-password"]')).toBeNull();
+  });
+
+  it('createChildForm_HiddenWithInfo_WhenTenChildrenAreLinked (issue #438)', () => {
+    const ten: LinkedChild[] = Array.from({ length: 10 }, (_, i) => ({ ...ayse, linkId: 100 + i, studentId: 200 + i }));
+    const el = setup(ten);
+    const host = el.querySelector('app-create-child-account')!;
+    expect(host.querySelector('[data-test="create-form"]')).toBeNull();
+    expect(host.querySelector('[data-test="create-limit"]')).not.toBeNull();
+  });
+
+  /** Sunucu kuralı ParentLinkPrimary.IsOpen: Active ∨ süresi dolmamış Pending. */
+  function pendingRow(linkId: number, pendingExpiresAt: string | null): LinkedChild {
+    return {
+      ...ayse,
+      linkId,
+      status: 'Pending',
+      studentName: null,
+      gradeName: null,
+      schoolName: null,
+      linkedAt: null,
+      pendingExpiresAt,
+      isPrimary: false,
+    } as LinkedChild;
+  }
+
+  it('createChildForm_CountsLivePendingTowardsTheLimit (issue #438)', () => {
+    const future = new Date(Date.now() + 86_400_000).toISOString();
+    const nine: LinkedChild[] = Array.from({ length: 9 }, (_, i) => ({ ...ayse, linkId: 100 + i, studentId: 200 + i }));
+    const el = setup([...nine, pendingRow(300, future)]);
+    const host = el.querySelector('app-create-child-account')!;
+    expect(host.querySelector('[data-test="create-form"]')).toBeNull();
+    expect(host.querySelector('[data-test="create-limit"]')).not.toBeNull();
+  });
+
+  it('createChildForm_IgnoresExpiredPending_LikeTheServer (issue #438)', () => {
+    const past = new Date(Date.now() - 60_000).toISOString();
+    const nine: LinkedChild[] = Array.from({ length: 9 }, (_, i) => ({ ...ayse, linkId: 100 + i, studentId: 200 + i }));
+    const el = setup([...nine, pendingRow(300, past)]);
+    const host = el.querySelector('app-create-child-account')!;
+    // 9 Active + 1 süresi dolmuş Pending = 9 açık bağlantı: sunucu yeni hesaba izin verir, form açık kalır.
+    expect(host.querySelector('[data-test="create-form"]')).not.toBeNull();
+    expect(host.querySelector('[data-test="create-limit"]')).toBeNull();
   });
 
   it('resetPassword_OpensDialogForTheChild_AndToastsOnSuccess (issue #438)', () => {
-    const managed: LinkedChild = { ...ayse, linkId: 5, studentId: 41, studentName: 'Ali Kaya', parentManaged: true };
+    const managed: LinkedChild = {
+      ...ayse,
+      linkId: 5,
+      studentId: 41,
+      studentName: 'Ali Kaya',
+      parentManaged: true,
+      canResetPassword: true,
+    };
     const el = setup([managed]);
     el.querySelector<HTMLButtonElement>('[data-test="reset-password"]')!.click();
 
@@ -397,7 +464,7 @@ describe('ParentChildrenComponent (issue #419, #436)', () => {
   it('childCreated_ReloadsTheList (issue #438)', () => {
     setup([]);
     service.getMyChildren.calls.reset();
-    service.getMyChildren.and.returnValue(of([{ ...ayse, studentId: 41, parentManaged: true }]));
+    service.getMyChildren.and.returnValue(of([{ ...ayse, studentId: 41, parentManaged: true, canResetPassword: true }]));
     (fixture.componentInstance as unknown as { onChildCreated(): void }).onChildCreated();
     fixture.detectChanges();
     expect(service.getMyChildren).toHaveBeenCalledTimes(1);

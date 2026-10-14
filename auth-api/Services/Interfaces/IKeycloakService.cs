@@ -127,9 +127,23 @@ public interface IKeycloakService
     // ---- Veli tarafından açılan çocuk hesabı (issue #438) ----
 
     /// <summary>
-    /// E-postasız, required action'sız, <c>parent_managed=true</c> attribute'lu, etkin Keycloak kullanıcısı (kimlik bilgisi YOK —
-    /// parola ayrıca <see cref="ResetPasswordAsync"/> ile). Kullanıcı adı çakışması <see cref="KeycloakFailureKind.Conflict"/> (409),
-    /// doğrulama reddi <see cref="KeycloakFailureKind.Validation"/> (400). Yeni kullanıcının id'sini döner.
+    /// E-postasız, required action'sız, <c>parent_managed=true</c> ve <c>child_request_id=&lt;requestId&gt;</c> attribute'lu, etkin
+    /// Keycloak kullanıcısı (kimlik bilgisi YOK — parola ayrıca <see cref="ResetPasswordAsync"/> ile). Kullanıcı adı çakışması
+    /// <see cref="KeycloakFailureKind.Conflict"/> (409), doğrulama reddi <see cref="KeycloakFailureKind.Validation"/> (400). Yeni
+    /// kullanıcının id'sini döner. Rol kümesi ayrıca <see cref="ApplyParentManagedRolesAsync"/> ile daraltılır.
     /// </summary>
-    Task<string> CreateParentManagedUserAsync(string username, string firstName, string lastName, CancellationToken ct = default);
+    Task<string> CreateParentManagedUserAsync(string username, string firstName, string lastName, Guid requestId, CancellationToken ct = default);
+
+    /// <summary>
+    /// <c>GET /users?q=&lt;ad&gt;:&lt;değer&gt;</c> — attribute'u tam olarak bu değere eşit kullanıcıların id'leri (yanıttaki
+    /// attribute'la yerelde yeniden doğrulanır; en fazla 5). Hata <see cref="KeycloakException"/>.
+    /// </summary>
+    Task<IReadOnlyList<string>> FindUserIdsByAttributeAsync(string name, string value, CancellationToken ct = default);
+
+    /// <summary>
+    /// Veli tarafından açılan çocuk hesabının rol kümesi (#438): realm varsayılan kompoziti (<c>manage-account</c> taşır) kaldırılır;
+    /// yalnız <c>offline_access</c>, <c>uma_authorization</c>, <c>Student</c> ve <c>account</c>/<c>view-profile</c> kalır.
+    /// Fail-closed: herhangi bir adım ya da son doğrulama başarısızsa <see cref="KeycloakException"/>.
+    /// </summary>
+    Task ApplyParentManagedRolesAsync(string keycloakUserId, CancellationToken ct = default);
 }

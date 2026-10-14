@@ -67,10 +67,14 @@ public class AdminPasswordResetService : IAdminPasswordResetService
         var auditId = await _audit.RecordAsync(record, AdminUserActionOutcome.Requested, ct);
 
         // Bu noktadan sonra istemci iptali akışı yarıda bırakmasın (şifre değişip oturumlar açık kalmasın).
-        string temporaryPassword;
+        string issued;
         try
         {
-            temporaryPassword = await _keycloak.ResetPasswordAsync(sub, CancellationToken.None);
+            // #438 security review: veli tarafından açılmış çocuk hesabında geçici şifre + UPDATE_PASSWORD çocuğa kendi şifresini
+            // koydururdu (veli kontrolü delinir) — kalıcı şifre set edilir, admin veliye iletir.
+            issued = target.ParentManaged
+                ? await _keycloak.ResetPermanentPasswordAsync(sub, CancellationToken.None)
+                : await _keycloak.ResetPasswordAsync(sub, CancellationToken.None);
         }
         catch (KeycloakException ex) when (ex.StatusCode == 404)
         {
@@ -101,6 +105,6 @@ public class AdminPasswordResetService : IAdminPasswordResetService
         await _audit.TryUpdateOutcomeAsync(auditId, AdminUserActionOutcome.Succeeded);
         _logger.LogInformation("[AdminPasswordReset] Şifre sıfırlandı: {TargetType}#{TargetId} actor={Actor}",
             targetType, targetId, actorKeycloakId);
-        return new(AdminPasswordResetStatus.Success, temporaryPassword);
+        return new(AdminPasswordResetStatus.Success, issued, Permanent: target.ParentManaged);
     }
 }

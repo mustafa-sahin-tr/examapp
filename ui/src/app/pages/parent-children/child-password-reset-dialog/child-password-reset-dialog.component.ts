@@ -11,7 +11,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { finalize } from 'rxjs';
 
-import { isAcceptableChildPassword } from '../../../models/parent-child-account.model';
+import { CHILD_ACCOUNT_ERROR_CODES, isAcceptableChildPassword } from '../../../models/parent-child-account.model';
 import { ParentChildAccountService } from '../../../services/parent-child-account.service';
 import { ParentLinkService } from '../../../services/parent-link.service';
 import { PARENT_LINKS_SCOPE } from '../../../shared/utils/parent-link-ui';
@@ -154,8 +154,15 @@ export class ChildPasswordResetDialogComponent {
           this.form.reset();
           this.dialogRef.close(true);
         },
-        error: (err: HttpErrorResponse) =>
-          this.error.set(this.linkService.extractError(err, this.transloco.translate<string>('parent-links.resetPw.error'))),
+        error: (err: HttpErrorResponse) => this.error.set(this.errorMessage(err)),
       });
+  }
+
+  /** 403 OnlyPrimaryParent: birincil olmayan veli — istemci metni (sunucu metni yoksa da anlaşılır kalsın). */
+  private errorMessage(err: HttpErrorResponse): string {
+    if (this.linkService.errorCode(err) === CHILD_ACCOUNT_ERROR_CODES.onlyPrimaryParent) {
+      return this.transloco.translate<string>('parent-links.resetPw.onlyPrimary');
+    }
+    return this.linkService.extractError(err, this.transloco.translate<string>('parent-links.resetPw.error'));
   }
 }

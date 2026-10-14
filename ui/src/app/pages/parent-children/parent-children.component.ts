@@ -86,6 +86,17 @@ export class ParentChildrenComponent implements OnInit, AfterViewInit {
   protected readonly canSubmit = computed(
     () => !this.submitting() && normalizeInviteCodeInput(this.code()).length === PARENT_INVITE_CODE_LENGTH
   );
+  /**
+   * Issue #438: açık bağlantı sayısı — çocuk hesabı formu tavanı buna göre gizler. Sunucu kuralı `ParentLinkPrimary.IsOpen(now)`:
+   * Active ∨ süresi dolmamış Pending (taraflar silinmemiş). my-children listesi zaten bu kuralla süzülür; istemci yalnız liste
+   * alındıktan sonra süresi dolan Pending'leri düşer (`pendingExpiresAt` sunucuda kuruluş yoluna göre hesaplanır). Yenileme
+   * sırasında son bilinen liste geçerli kalır; liste yüklenemezse bilinmiyor (null): form açık kalır, tavanı sunucu yine uygular.
+   */
+  protected readonly openChildCount = computed(() => {
+    if (this.loadError()) return null;
+    const now = Date.now();
+    return this.children().filter((c) => isOpenLink(c, now)).length;
+  });
   protected readonly isEmpty = computed(() => !this.loading() && !this.loadError() && this.children().length === 0);
   /** Bu oturumda üretilen kodların görünen biçimi (bağlantı id'si → XXXX-XXXX-XXXX). */
   protected readonly displayCodes = computed(() => {
@@ -293,4 +304,13 @@ export class ParentChildrenComponent implements OnInit, AfterViewInit {
         },
       });
   }
+}
+
+/** Sunucunun `ParentLinkPrimary.IsOpen` kuralının istemci karşılığı: Active ya da bitişi gelmemiş Pending. */
+function isOpenLink(child: LinkedChild, now: number): boolean {
+  if (child.status === 'Active') return true;
+  if (child.status !== 'Pending') return false;
+  const expiresAt = child.pendingExpiresAt ? Date.parse(child.pendingExpiresAt) : NaN;
+  // Bitiş bilinmiyorsa (eski yanıt) sunucu açık saydığı için listelemiştir: açık say.
+  return Number.isNaN(expiresAt) || expiresAt > now;
 }

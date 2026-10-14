@@ -191,8 +191,33 @@ Veli panelinden açılan çocuk hesabı e-postasızdır ve kullanıcı adı + ş
 - Authentication → **Required actions** → *Verify Profile* = **Off**. User profile'da `email` `user` rolü için zorunlu
   olduğundan açıkken çocuk her girişte "Account is not fully set up" / e-posta isteyen profil sayfasına düşer.
 - Brute force detection açık kalmalı (kullanıcı adı tahmini; bkz. yukarı).
-- auth-api `exam-admin` servis hesabı `manage-users` ile kullanıcıyı açar (`parent_managed=true` attribute'u;
-  `unmanagedAttributePolicy=ADMIN_EDIT` olmalı ki attribute saklansın ve kullanıcı değiştiremesin).
+- auth-api `exam-admin` servis hesabı `manage-users` ile kullanıcıyı açar (`parent_managed=true` ve
+  `child_request_id=<GUID>` attribute'ları; `unmanagedAttributePolicy=ADMIN_EDIT` olmalı ki attribute'lar saklansın ve
+  kullanıcı değiştiremesin — saklanmazsa auth-api hesabı hemen siler ve 502 döner). Rol kümesi için ayrıca `view-realm`
+  gerekir (varsayılan rol kompozitini okumak; `view-clients` gerekmez).
+- **Rol kümesi:** auth-api çocuk hesabından `default-roles-<realm>` kompozitini kaldırır (o kompozit `account` →
+  `manage-account` taşır: hesap konsolunda ad/e-posta/oturum yönetimi). Kalanlar: `offline_access`, `uma_authorization`,
+  `Student` ve `account` → `view-profile` (token'da `aud=account` kalsın diye). Kompozitte `view-profile` yoksa çocuk
+  hesabı açılmaz (fail-closed).
+- **Kalan risk (bilinçli):** Keycloak'ın uygulama başlatmalı eylemleri (`kc_action=UPDATE_PASSWORD`,
+  `kc_action=UPDATE_PROFILE`) hesap rollerine bakmaz. Giriş URL'sini kendisi kuran çocuk kendi şifresini değiştirebilir ve
+  user profile'ın `user` rolüne açtığı alanları (ad/soyad/e-posta) düzenleyebilir. Uygulama bu eylemleri başlatmaz.
+  Tamamen kapatmak realm düzeyinde karardır ve herkesi etkiler: Required actions'ta *Update Password* / *Update Profile*'ı
+  kapatmak ya da user profile'da bu alanların `edit` iznini yalnız `admin`'e daraltmak.
+  **Zincir (security review MINOR-1):** çocuk `kc_action=UPDATE_PROFILE` ile hesabına kendi e-postasını ekler → realm'de
+  `resetPasswordAllowed=true` olduğu için giriş sayfasındaki "Şifremi unuttum" o e-postaya sıfırlama bağlantısı gönderir →
+  çocuk şifreyi **velinin haberi olmadan** değiştirir (veli kendi panelinden yeniden sıfırlayabilir ama fark etmeyebilir).
+  Kapatmak (user profile'da `email` düzenlemeyi yalnız `admin`'e daraltmak) tüm kullanıcıların e-posta değiştirmesini
+  etkilediği için şimdi yapılmıyor; veli kontrollü e-posta ekleme takip issue'su **#449** (veli çocuğa e-posta ekler) ile
+  birlikte ele alınacak.
+- **Admin şifre sıfırlaması:** `POST api/admin/students/{id}/reset-password` veli tarafından açılmış öğrencide **kalıcı**
+  şifre set eder (`temporary=false`, `UPDATE_PASSWORD` required action yok; yanıtta `permanent: true`). Admin şifreyi
+  **veliye** iletir — geçici şifre çocuğa ilk girişte kendi şifresini koydurur ve veli kontrolünü delerdi.
+- **requestId kilidi:** identity DB'deki `ChildAccountRequests` tablosu (`InProgress|Completed|Cancelled`) create ile
+  exam API kompanzasyonunu (`DELETE by-request`) sıralar. Eski Completed/Cancelled satırları için temizlik işi yok (satır
+  küçük, veli başına saatte 5 create) — büyürse 30 günden eski satırları silen bir job eklenebilir.
+- `registrationAllowed` **açık kalır**: kayıt bağlantıları Keycloak'ın `registrations` ucuna gider (gateway
+  `OidcLoginRedirect`).
 
 Dev export'u (`deploy/keycloak/dev-import/realm-export.json`) iki ayarı taşır; mevcut realm'lerde elle yapılmalıdır.
 

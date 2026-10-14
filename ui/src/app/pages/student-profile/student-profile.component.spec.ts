@@ -5,7 +5,7 @@ import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { TranslocoService } from '@jsverse/transloco';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 
 import { StudentProfileComponent } from './student-profile.component';
 import { StudentService } from '../../services/student.service';
@@ -272,6 +272,20 @@ describe('StudentProfileComponent', () => {
     expect(el.querySelector('app-account-security-card')).toBeNull();
     expect(el.querySelector('a[href="/realms/exam-realm/account"]')).toBeNull();
     expect(el.querySelector('app-student-parents-card')).not.toBeNull();
+  });
+
+  it('infoTab_HidesAccountSecurityCard_UntilProfileArrives (issue #438)', () => {
+    const profile$ = new Subject<StudentProfile>();
+    studentService.getProfile.and.returnValue(profile$);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+
+    // Profil gelmeden veli yönetimli olup olmadığı bilinmez: kart gösterilmez (fail-closed).
+    expect(el.querySelector('app-account-security-card')).toBeNull();
+
+    profile$.next({ fullName: 'Ada Lovelace' } as StudentProfile);
+    fixture.detectChanges();
+    expect(el.querySelector('app-account-security-card')).not.toBeNull();
   });
 
   it('infoTab_ShowsReadOnlyParentsCard_WithoutInviteCodeGeneration (issue #436)', () => {

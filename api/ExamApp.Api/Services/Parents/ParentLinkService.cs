@@ -629,6 +629,8 @@ public sealed class ParentLinkService : IParentLinkService
                 return PendingChild(r.Id, r.CreatedAt, r.Origin);
 
             var isPrimary = primaryStudentIds.Contains(r.StudentId);
+            // #438 review kararı: çocuğun şifresini yalnız birincil veli sıfırlar (ParentChildAccountService ile aynı kural).
+            var rp = r.ParentManaged && isPrimary;
             var dto = new LinkedChildDto
             {
                 LinkId = r.Id,
@@ -641,6 +643,7 @@ public sealed class ParentLinkService : IParentLinkService
                 RequestedAt = AsUtc(r.CreatedAt),
                 IsPrimary = isPrimary,
                 ParentManaged = r.ParentManaged,
+                CanResetPassword = rp,
                 MaxParents = ParentLinkRules.MaxActiveParentsPerStudent
             };
             if (!isPrimary)

@@ -30,6 +30,13 @@ public static partial class ChildAccountRules
     public const string KeycloakParentManagedAttribute = "parent_managed";
     public const string KeycloakParentManagedValue = "true";
 
+    /// <summary>
+    /// Keycloak kullanıcı attribute'u: hesabı açan isteğin exam API tarafından üretilen kimliği (GUID, "D" biçimi). auth-api aynı
+    /// requestId ile gelen ikinci isteği yeni hesap açmadan mevcut hesaba bağlar (idempotent create) ve exam API, auth-api yanıtını
+    /// alamadığında (zaman aşımı/5xx) yarım hesabı bu kimlikle siler (<c>DELETE api/auth/child-accounts/by-request/{requestId}</c>).
+    /// </summary>
+    public const string KeycloakChildRequestIdAttribute = "child_request_id";
+
     /// <summary>Çocuk hesabının realm rolü.</summary>
     public const string StudentRole = "Student";
 

@@ -6,7 +6,7 @@
 
   <!-- Issue #438: veli çocuk hesabını kendisi açar (kullanıcı adı + şifre). -->
   <section class="pch__card">
-    <app-create-child-account (created)="onChildCreated()" />
+    <app-create-child-account [openChildren]="openChildCount()" (created)="onChildCreated()" />
   </section>
 
   <article class="pch__card" aria-labelledby="pch-add-title">
@@ -96,7 +96,7 @@
                     <span>{{ t('children.linkedAt', { date: ui.formatDate(child.linkedAt) }) }}</span>
                   </span>
                 </div>
-                @if (child.parentManaged) {
+                @if (child.canResetPassword) {
                   <button mat-stroked-button type="button" data-test="reset-password" (click)="resetPassword(child)">
                     <mat-icon>lock_reset</mat-icon>
                     {{ t('resetPw.action') }}

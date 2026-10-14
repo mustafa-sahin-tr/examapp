@@ -44,7 +44,7 @@ public class AdminPasswordResetEndpointsTests(IntegrationApiFactory factory) : I
         return (teacherId, sub);
     }
 
-    private async Task<(int StudentId, string Sub)> SeedStudentAsync()
+    private async Task<(int StudentId, string Sub)> SeedStudentAsync(bool parentManaged = false)
     {
         var userId = NewUserId();
         var sub = NewSub("kc-target");
@@ -52,7 +52,7 @@ public class AdminPasswordResetEndpointsTests(IntegrationApiFactory factory) : I
         Accounts.Add(sub, ["Student"]);
         var studentId = await WithDbAsync(async db =>
         {
-            var student = new Student { UserId = userId, StudentNumber = "R1" };
+            var student = new Student { UserId = userId, StudentNumber = "R1", ParentManaged = parentManaged };
             db.Students.Add(student);
             await db.SaveChangesAsync();
             return student.Id;
@@ -106,7 +106,8 @@ public class AdminPasswordResetEndpointsTests(IntegrationApiFactory factory) : I
         response.Headers.Pragma.ToString().ShouldContain("no-cache");
 
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        doc.RootElement.EnumerateObject().Select(p => p.Name).ShouldBe(["temporaryPassword"]);
+        doc.RootElement.EnumerateObject().Select(p => p.Name).ShouldBe(["temporaryPassword", "permanent"]);
+        doc.RootElement.GetProperty("permanent").GetBoolean().ShouldBeFalse();
         var issued = doc.RootElement.GetProperty("temporaryPassword").GetString()!;
         issued.Length.ShouldBe(TemporaryPasswordGenerator.DefaultLength);
 
@@ -132,6 +133,24 @@ public class AdminPasswordResetEndpointsTests(IntegrationApiFactory factory) : I
         var logs = Factory.Services.GetRequiredService<CapturingLoggerProvider>().Entries.ToList();
         logs.ShouldContain(entry => entry.Contains("[AdminPasswordReset] Şifre sıfırlandı"));
         logs.ShouldAllBe(entry => !entry.Contains(issued));
+    }
+
+    [Fact]
+    public async Task Parent_managed_student_reset_sets_a_permanent_password()
+    {
+        // #438 security review: geçici şifre + UPDATE_PASSWORD çocuğa kendi şifresini koydururdu — kalıcı şifre, admin veliye iletir.
+        var (studentId, targetSub) = await SeedStudentAsync(parentManaged: true);
+        var admin = await AdminAsync();
+
+        var response = await admin.PostAsync(ResetUrl("students", studentId), null);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        doc.RootElement.GetProperty("permanent").GetBoolean().ShouldBeTrue();
+        doc.RootElement.GetProperty("temporaryPassword").GetString()!.Length.ShouldBe(TemporaryPasswordGenerator.DefaultLength);
+        Accounts.PermanentResetCalls[targetSub].ShouldBe(1);
+        Accounts.ResetCalls.ContainsKey(targetSub).ShouldBeFalse();
+        Accounts.LogoutCalls[targetSub].ShouldBe(1);
     }
 
     [Fact]

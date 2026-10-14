@@ -74,6 +74,22 @@ public class KeycloakServicePasswordResetTests
     }
 
     [Fact]
+    public async Task ResetPermanentPassword_puts_a_non_temporary_password()
+    {
+        // #438: veli tarafından açılmış çocuk hesabı — required action (UPDATE_PASSWORD) yok.
+        var http = Stub(_ => new HttpResponseMessage(HttpStatusCode.NoContent));
+
+        var issued = await Service(http).ResetPermanentPasswordAsync(Sub);
+
+        issued.Length.ShouldBe(16);
+        var put = http.Requests.Single(r => r.Method == HttpMethod.Put);
+        put.RequestUri!.ToString().ShouldBe($"{UsersUrl}/{Sub}/reset-password");
+        using var body = JsonDocument.Parse(_requestBodies[http.Requests.IndexOf(put)]);
+        body.RootElement.GetProperty("value").GetString().ShouldBe(issued);
+        body.RootElement.GetProperty("temporary").GetBoolean().ShouldBeFalse();
+    }
+
+    [Fact]
     public async Task ResetPassword_failure_throws_status_only_and_never_logs_body_or_password()
     {
         var http = Stub(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)

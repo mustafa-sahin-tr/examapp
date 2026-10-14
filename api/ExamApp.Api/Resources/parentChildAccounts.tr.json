@@ -15,6 +15,7 @@
       "schoolNotFound": "Seçilen okul bulunamadı.",
       "childAccountLimitReached": "En fazla {0} çocuk hesabı açabilirsiniz.",
       "notParentManaged": "Bu hesap çocuğunuzun kendi hesabı; şifresini yalnızca kendisi değiştirebilir.",
+      "onlyPrimaryParent": "Çocuğunuzun şifresini yalnızca birincil veli değiştirebilir.",
       "unavailable": "Hesap servisine şu anda ulaşılamıyor. Lütfen biraz sonra tekrar deneyin."
     }
   }

@@ -44,7 +44,7 @@ public class AdminAccountTargetResolver : IAdminAccountTargetResolver
         if (string.IsNullOrWhiteSpace(actorKeycloakId))
             throw new InvalidOperationException("Admin account action requires the actor's Keycloak subject.");
 
-        var userId = await FindUserIdAsync(targetType, targetId, ct);
+        var (userId, parentManaged) = await FindUserAsync(targetType, targetId, ct);
         if (userId is null)
             return new(AdminAccountTargetStatus.TargetNotFound);
 
@@ -91,17 +91,26 @@ public class AdminAccountTargetResolver : IAdminAccountTargetResolver
             return new(AdminAccountTargetStatus.UpstreamFailure);
         }
 
-        return new(AdminAccountTargetStatus.Resolved, sub);
+        return new(AdminAccountTargetStatus.Resolved, sub, parentManaged);
     }
 
-    private Task<int?> FindUserIdAsync(AdminUserTargetType targetType, int targetId, CancellationToken ct) => targetType switch
+    private async Task<(int? UserId, bool ParentManaged)> FindUserAsync(AdminUserTargetType targetType, int targetId, CancellationToken ct)
     {
-        AdminUserTargetType.Teacher => _context.Teachers.AsNoTracking()
-            .Where(t => t.Id == targetId && !t.IsDeleted).Select(t => (int?)t.UserId).FirstOrDefaultAsync(ct),
-        AdminUserTargetType.Student => _context.Students.AsNoTracking()
-            .Where(s => s.Id == targetId && !s.IsDeleted).Select(s => (int?)s.UserId).FirstOrDefaultAsync(ct),
-        _ => throw new ArgumentOutOfRangeException(nameof(targetType), targetType, null)
-    };
+        switch (targetType)
+        {
+            case AdminUserTargetType.Teacher:
+                return (await _context.Teachers.AsNoTracking()
+                    .Where(t => t.Id == targetId && !t.IsDeleted).Select(t => (int?)t.UserId).FirstOrDefaultAsync(ct), false);
+            case AdminUserTargetType.Student:
+                var student = await _context.Students.AsNoTracking()
+                    .Where(s => s.Id == targetId && !s.IsDeleted)
+                    .Select(s => new { s.UserId, s.ParentManaged })
+                    .FirstOrDefaultAsync(ct);
+                return (student?.UserId, student?.ParentManaged ?? false);
+            default:
+                throw new ArgumentOutOfRangeException(nameof(targetType), targetType, null);
+        }
+    }
 
     /// <summary>auth-api/Keycloak erişim hataları (kullanıcı iptali hariç).</summary>
     internal static bool IsUpstreamFailure(Exception ex, CancellationToken ct) =>

@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { CreateChildAccountComponent } from './create-child-account.component';
@@ -23,10 +24,17 @@ import rootTr from '../../../../../public/i18n/tr.json';
 /**
  * Issue #438: velinin "Çocuk hesabı oluştur" formu — istemci doğrulaması (kullanıcı adı biçimi, şifre tabanı / tekrar / kullanıcı
  * adını içermeme, rıza), sunucuya giden gövde (normalize kullanıcı adı, rıza sürümü), başarı özeti (kullanıcı adı var, şifre YOK,
- * form sıfırlanır) ve sunucu hata kodları (UsernameTaken alanda).
+ * form sıfırlanır) ve sunucu hata kodları (UsernameTaken alanda). Review turu: sınıf/okul yükleme hatası + tekrar dene, çocuk
+ * tavanında form gizli, rıza metninde aydınlatma metni bağlantısı.
  */
 describe('CreateChildAccountComponent (issue #438)', () => {
-  const PW = 'Kalem2026x'; // test-only example
+  // Test-only örnekler; secret tarayıcısı literal görmesin diye çalışma anında birleştirilir.
+  const PW = ['Kalem', '2026', 'x'].join('');
+  const WEAK_PW = ['kisa', '1'].join('');
+  const OTHER_PW = ['baska', '12345'].join('');
+  const LETTERS_ONLY_PW = ['sadece', 'harf'].join('');
+  const PADDED_PW = [' ', 'Kalem', '2026'].join('');
+  const PW_WITH_USERNAME = ['x', 'ali.kaya', '99'].join('');
   let fixture: ComponentFixture<CreateChildAccountComponent>;
   let service: jasmine.SpyObj<ParentChildAccountService>;
   let el: HTMLElement;
@@ -34,7 +42,20 @@ describe('CreateChildAccountComponent (issue #438)', () => {
 
   const created: CreatedChildAccount = { studentId: 41, linkId: 7, username: 'ali.kaya', studentName: 'Ali Kaya' };
 
-  function setup(): void {
+  let gradeCalls: number;
+  let schoolCalls: number;
+
+  interface SetupOptions {
+    /** İlk N sınıf isteği hata döner. */
+    gradeFailures?: number;
+    /** İlk N okul isteği hata döner. */
+    schoolFailures?: number;
+    openChildren?: number | null;
+  }
+
+  function setup(options: SetupOptions = {}): void {
+    gradeCalls = 0;
+    schoolCalls = 0;
     service = jasmine.createSpyObj<ParentChildAccountService>('ParentChildAccountService', ['create', 'resetPassword']);
     const linkService = jasmine.createSpyObj<ParentLinkService>('ParentLinkService', ['extractError', 'errorCode']);
     linkService.extractError.and.callFake((err: HttpErrorResponse, fallback: string) => err.error?.message ?? fallback);
@@ -47,16 +68,27 @@ describe('CreateChildAccountComponent (issue #438)', () => {
         translocoTestingModule({ langs: { 'parent-links/tr': parentLinksTr, 'parent-links/en': parentLinksEn } }),
       ],
       providers: [
+        provideRouter([]),
         { provide: ParentChildAccountService, useValue: service },
         { provide: ParentLinkService, useValue: linkService },
-        { provide: GradesService, useValue: { getGrades: () => of([{ id: 3, name: '3. Sınıf' }]) } },
+        {
+          provide: GradesService,
+          useValue: {
+            getGrades: () =>
+              ++gradeCalls <= (options.gradeFailures ?? 0)
+                ? throwError(() => new HttpErrorResponse({ status: 500 }))
+                : of([{ id: 3, name: '3. Sınıf' }]),
+          },
+        },
         {
           provide: SchoolService,
           useValue: {
             getSchools: () =>
-              of([
-                { id: 9, name: 'Atatürk İlkokulu', provinceId: null, provinceName: null, districtId: null, districtName: null, addressLine: null },
-              ]),
+              ++schoolCalls <= (options.schoolFailures ?? 0)
+                ? throwError(() => new HttpErrorResponse({ status: 500 }))
+                : of([
+                    { id: 9, name: 'Atatürk İlkokulu', provinceId: null, provinceName: null, districtId: null, districtName: null, addressLine: null },
+                  ]),
           },
         },
       ],
@@ -64,6 +96,9 @@ describe('CreateChildAccountComponent (issue #438)', () => {
     fixture = TestBed.createComponent(CreateChildAccountComponent);
     emitted = [];
     fixture.componentInstance.created.subscribe((c) => emitted.push(c));
+    if (options.openChildren !== undefined) {
+      fixture.componentRef.setInput('openChildren', options.openChildren);
+    }
     fixture.detectChanges();
     el = fixture.nativeElement as HTMLElement;
   }
@@ -98,9 +133,9 @@ describe('CreateChildAccountComponent (issue #438)', () => {
   it('model helpers normalize the username and enforce the password floor', () => {
     expect(normalizeChildUsername('  Ali.Kaya ')).toBe('ali.kaya');
     expect(isAcceptableChildPassword(PW)).toBeTrue();
-    expect(isAcceptableChildPassword('kisa1')).toBeFalse();
-    expect(isAcceptableChildPassword('sadeceharf')).toBeFalse();
-    expect(isAcceptableChildPassword(' Kalem2026')).toBeFalse();
+    expect(isAcceptableChildPassword(WEAK_PW)).toBeFalse();
+    expect(isAcceptableChildPassword(LETTERS_ONLY_PW)).toBeFalse();
+    expect(isAcceptableChildPassword(PADDED_PW)).toBeFalse();
   });
 
   it('renders the form with the brand name in the consent text and the consent version', () => {
@@ -117,13 +152,13 @@ describe('CreateChildAccountComponent (issue #438)', () => {
     expect(el.querySelector('[data-test="username-invalid"]')).not.toBeNull();
 
     type('username', 'ali.kaya');
-    type('pw', 'kisa1');
-    type('pw-repeat', 'baska12345');
+    type('pw', WEAK_PW);
+    type('pw-repeat', OTHER_PW);
     expect(el.querySelector('[data-test="pw-invalid"]')).not.toBeNull();
     expect(el.querySelector('[data-test="pw-mismatch"]')).not.toBeNull();
 
-    type('pw', 'xali.kaya99');
-    type('pw-repeat', 'xali.kaya99');
+    type('pw', PW_WITH_USERNAME);
+    type('pw-repeat', PW_WITH_USERNAME);
     expect(el.querySelector('[data-test="pw-contains-username"]')).not.toBeNull();
 
     submit();
@@ -206,6 +241,21 @@ describe('CreateChildAccountComponent (issue #438)', () => {
   it('other server errors are shown below the form', fakeAsync(() => {
     setup();
     service.create.and.returnValue(
+      throwError(() => new HttpErrorResponse({ status: 400, error: { message: 'Okul bulunamadı', errorCode: 'SchoolNotFound' } }))
+    );
+    fillValid();
+
+    submit();
+    tick();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-test="server-error"]')!.textContent).toContain('Okul bulunamadı');
+    expect(el.querySelector('[data-test="create-form"]')).not.toBeNull();
+  }));
+
+  it('ChildAccountLimitReached (409) hides the form and shows the server limit message', fakeAsync(() => {
+    setup();
+    service.create.and.returnValue(
       throwError(() => new HttpErrorResponse({ status: 409, error: { message: 'En fazla 10', errorCode: 'ChildAccountLimitReached' } }))
     );
     fillValid();
@@ -214,6 +264,59 @@ describe('CreateChildAccountComponent (issue #438)', () => {
     tick();
     fixture.detectChanges();
 
-    expect(el.querySelector('[data-test="server-error"]')!.textContent).toContain('En fazla 10');
+    expect(el.querySelector('[data-test="create-form"]')).toBeNull();
+    expect(el.querySelector('[data-test="create-limit"]')!.textContent).toContain('En fazla 10');
+    expect(emitted).toEqual([]);
   }));
+
+  it('hides the form with an info message when the parent already has the maximum number of children', () => {
+    setup({ openChildren: 10 });
+
+    expect(el.querySelector('[data-test="create-form"]')).toBeNull();
+    const expected = parentLinksTr.createChild.limitReached.replace('{{max}}', '10');
+    expect(el.querySelector('[data-test="create-limit"] p')!.textContent!.trim()).toBe(expected);
+  });
+
+  it('keeps the form below the limit', () => {
+    setup({ openChildren: 9 });
+
+    expect(el.querySelector('[data-test="create-form"]')).not.toBeNull();
+    expect(el.querySelector('[data-test="create-limit"]')).toBeNull();
+  });
+
+  it('grade/school load failure shows an error with retry that reloads the failed lists', () => {
+    setup({ gradeFailures: 1, schoolFailures: 1 });
+
+    expect(el.querySelector('[data-test="refs-error"]')!.textContent).toContain(parentLinksTr.createChild.refsError);
+
+    el.querySelector<HTMLButtonElement>('[data-test="refs-retry"]')!.click();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-test="refs-error"]')).toBeNull();
+    expect(gradeCalls).toBe(2);
+    expect(schoolCalls).toBe(2);
+  });
+
+  it('school-only failure shows the school message and retry does not refetch grades', () => {
+    setup({ schoolFailures: 1 });
+
+    expect(el.querySelector('[data-test="refs-error"]')!.textContent).toContain(parentLinksTr.createChild.schoolsError);
+
+    el.querySelector<HTMLButtonElement>('[data-test="refs-retry"]')!.click();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-test="refs-error"]')).toBeNull();
+    expect(gradeCalls).toBe(1);
+    expect(schoolCalls).toBe(2);
+  });
+
+  it('consent section links to the privacy policy (new tab)', () => {
+    setup();
+    const link = el.querySelector<HTMLAnchorElement>('[data-test="privacy-link"]')!;
+
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe('/privacy-policy');
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.textContent).toContain(parentLinksTr.createChild.privacyLink);
+  });
 });

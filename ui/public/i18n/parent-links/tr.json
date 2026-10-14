@@ -142,7 +142,11 @@
     "summaryText": "{{name}} için hesap açıldı. Çocuğunuz bu kullanıcı adıyla giriş yapar:",
     "summaryLogin": "Giriş sayfasında \"E-posta veya kullanıcı adı\" alanına bu kullanıcı adını, şifre alanına belirlediğiniz şifreyi yazar.",
     "summaryPwNote": "Şifre güvenlik nedeniyle tekrar gösterilmez. Unutulursa buradan sıfırlayabilirsiniz.",
-    "createAnother": "Başka bir çocuk hesabı oluştur"
+    "createAnother": "Başka bir çocuk hesabı oluştur",
+    "refsError": "Sınıf ve okul listesi yüklenemedi.",
+    "schoolsError": "Okul listesi yüklenemedi.",
+    "limitReached": "En fazla {{max}} çocuk hesabı açabilir ya da bağlayabilirsiniz; sınıra ulaştınız. Yeni hesap için önce bir bağlantıyı kaldırın.",
+    "privacyLink": "KVKK aydınlatma metnini oku"
   },
   "resetPw": {
     "action": "Şifre sıfırla",
@@ -153,6 +157,7 @@
     "submit": "Şifreyi değiştir",
     "cancel": "Vazgeç",
     "done": "Şifre değiştirildi. Çocuğunuz yeni şifreyle giriş yapabilir.",
-    "error": "Şifre değiştirilemedi."
+    "error": "Şifre değiştirilemedi.",
+    "onlyPrimary": "Şifreyi yalnızca çocuğun birincil velisi sıfırlayabilir."
   }
 }

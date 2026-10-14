@@ -40,8 +40,9 @@ public interface IParentChildAccountService
     Task<ParentChildAccountResultDto> CreateAsync(int parentUserId, CreateChildAccountRequestDto request, string? ipAddress, CancellationToken ct = default);
 
     /// <summary>
-    /// Velinin belirlediği yeni şifre. Yalnız çocuğa Active bağlı veli (aksi her durum 404 — IDOR) ve yalnız veli tarafından açılmış
-    /// (<see cref="Student.ParentManaged"/>) hesap (aksi 403). Başarı <c>ParentAccessAudits</c>'e (<c>children.password-reset</c>) yazılır.
+    /// Velinin belirlediği yeni şifre. Yalnız çocuğa Active bağlı veli (aksi her durum 404 — IDOR), yalnız veli tarafından açılmış
+    /// (<see cref="Student.ParentManaged"/>) hesap (aksi 403 <c>NotParentManaged</c>) ve yalnız BİRİNCİL veli (ikincil veli 403
+    /// <c>OnlyPrimaryParent</c>). Başarı <c>ParentAccessAudits</c>'e (<c>children.password-reset</c>) yazılır.
     /// </summary>
     Task<ParentLinkResponseDto> ResetPasswordAsync(int parentUserId, int studentId, string? newPassword, CancellationToken ct = default);
 }
@@ -133,16 +134,33 @@ public sealed class ParentChildAccountService : IParentChildAccountService
         var account = new CreateChildAccountRequest { Username = username, FirstName = firstName, LastName = lastName };
         var pw = request.Password;
         account.Password = pw;
-        var created = await _directory.CreateAsync(account, ct);
+        // İstek kimliği: auth-api bunu Keycloak kullanıcısına child_request_id olarak yazar — aynı requestId ikinci hesap açmaz ve
+        // yanıt alınamazsa (zaman aşımı/5xx/iptal) yarım hesap userId bilinmeden bu kimlikle geri alınır.
+        account.RequestId = Guid.NewGuid();
+        ChildAccountCallResult created;
+        try
+        {
+            created = await _directory.CreateAsync(account, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Veli bağlantıyı kesti: auth-api isteği tamamlamış olabilir — yetim hesap kalmasın.
+            await CompensateByRequestAsync(account.RequestId);
+            throw;
+        }
         switch (created.Status)
         {
             case ChildAccountCallStatus.Success:
                 break;
-            case ChildAccountCallStatus.Conflict:
+            case ChildAccountCallStatus.Conflict when created.ErrorCode is null or ChildAccountErrorCodes.UsernameTaken:
                 return Fail(ChildAccountErrorCodes.UsernameTaken, conflict: true);
             case ChildAccountCallStatus.Invalid:
                 return Fail(KnownInvalidCode(created.ErrorCode));
             default:
+                // Conflict RequestInProgress/RequestCancelled da buraya düşer (requestId her istekte yeni; beklenmez).
+                // Yanıt yok / 5xx: auth-api hesabı açmış (ve yanıtı kaybolmuş) olabilir. auth-api kendi hatalarını zaten geri alır;
+                // burada yalnız "açıldı ama haberimiz yok" durumu kapanır (bulunmazsa NotFound — sorun değil).
+                await CompensateByRequestAsync(account.RequestId);
                 return Upstream();
         }
 
@@ -174,6 +192,8 @@ public sealed class ParentChildAccountService : IParentChildAccountService
                 student = new Student
                 {
                     UserId = userId,
+                    // KARAR (#438 review): öğrenci numarası opsiyonel — veli bilmeyebilir; okul doğrulaması (#361) numaraya
+                    // dayanmaz. Boş bırakılırsa boş dize (kolon NOT NULL), sonra profil/okul akışında doldurulabilir.
                     StudentNumber = request.StudentNumber?.Trim() ?? string.Empty,
                     GradeId = request.GradeId,
                     // #361: velinin seçtiği okul BEKLEMEDE — doğrulama yalnız admin/okulun öğretmeni.
@@ -277,6 +297,13 @@ public sealed class ParentChildAccountService : IParentChildAccountService
         if (!managed)
             return FailBase(ParentChildAccountErrorCodes.NotParentManaged, forbidden: true);
 
+        // KARAR (#438 review): çocuğun şifresini yalnız BİRİNCİL veli sıfırlar (admin kendi ucundan:
+        // POST api/admin/students/{id}/reset-password). İkincil veli 403 OnlyPrimaryParent. Birincil, my-children ile aynı
+        // okuma kuralıyla (ParentLinkPrimary.PickPrimary) seçilir.
+        var family = await ParentLinkPrimary.ActiveRowsAsync(_context, new[] { grant.StudentId }, ct);
+        if (ParentLinkPrimary.PickPrimary(family)?.ParentId != grant.ParentId)
+            return FailBase(ParentChildAccountErrorCodes.OnlyPrimaryParent, forbidden: true);
+
         if (!ChildAccountRules.IsValidPassword(newPassword))
             return FailBase(ChildAccountErrorCodes.PasswordRejected);
 
@@ -330,6 +357,25 @@ public sealed class ParentChildAccountService : IParentChildAccountService
             .Where(ParentLinkPrimary.IsOpen(now))
             .CountAsync(ct);
         return open >= ParentLinkRules.MaxActiveChildrenPerParent ? ParentLinkErrorCodes.ParentLimitReached : null;
+    }
+
+    /// <summary>auth-api create yanıtı alınamadı: bu requestId ile açılmış hesap (varsa) geri alınır.</summary>
+    private async Task CompensateByRequestAsync(Guid requestId)
+    {
+        var result = await _directory.DeleteByRequestIdAsync(requestId, CancellationToken.None);
+        switch (result.Status)
+        {
+            case ChildAccountCallStatus.Success:
+                _logger?.LogWarning("[ParentChildAccounts] Kompanzasyon: yanıtı alınamayan çocuk hesabı requestId ile geri alındı ({RequestId}).", requestId);
+                return;
+            case ChildAccountCallStatus.NotFound:
+                return; // açılmamış ya da auth-api zaten geri almış
+            default:
+                _logger?.LogError(
+                    "[ParentChildAccounts] Kompanzasyon BAŞARISIZ: requestId ile çocuk hesabı geri alınamadı ({RequestId}, durum={Status}, kod={Code}).",
+                    requestId, result.Status, result.ErrorCode);
+                return;
+        }
     }
 
     private async Task CompensateAsync(int userId)

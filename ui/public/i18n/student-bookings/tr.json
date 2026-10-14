@@ -19,7 +19,11 @@
   "status": {
     "pending": "Onay bekliyor",
     "approved": "Onaylandı",
-    "rejected": "Reddedildi"
+    "rejected": "Reddedildi",
+    "awaitingParent": "Veli onayı bekleniyor",
+    "parentRejected": "Velin reddetti",
+    "expired": "Talep kapandı",
+    "unknown": "Bilinmeyen durum"
   },
   "join": {
     "button": "Derse katıl"
@@ -27,5 +31,8 @@
   "profile": {
     "link": "Profili gör",
     "ariaLabel": "Öğretmen profiline git"
-  }
+  },
+  "awaitingParentHint": "Velin {{date}} tarihine kadar onaylamazsa talebin süresi dolar.",
+  "parentNote": "Velinin notu: {{note}}",
+  "expiredHint": "Talebin süresi doldu ya da öğretmen bu saati artık sunmuyor. Başka bir saat için yeni talep oluşturabilirsin."
 }

@@ -7,6 +7,7 @@ import { firstValueFrom, of } from 'rxjs';
 
 import { TutorSearchComponent } from './tutor-search.component';
 import { TUTOR_SEARCH_SCOPE } from './tutor-search-scope';
+import { ParentLinkService } from '../../services/parent-link.service';
 import { SubjectService } from '../../services/subject.service';
 import { TeacherService } from '../../services/teacher.service';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
@@ -45,6 +46,8 @@ describe('TutorSearchComponent (issue #196 — kompakt filtre)', () => {
         provideNoopAnimations(),
         { provide: TeacherService, useValue: teacherService },
         { provide: SubjectService, useValue: subjectService },
+        // Issue #439: veli modu için enjekte edilir; öğrenci modunda çağrılmaz.
+        { provide: ParentLinkService, useValue: jasmine.createSpyObj<ParentLinkService>('ParentLinkService', ['getMyChildren']) },
       ],
     }).compileComponents();
 

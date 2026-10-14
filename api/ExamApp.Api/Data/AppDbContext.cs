@@ -796,12 +796,20 @@ public class AppDbContext : DbContext
             .HasForeignKey(b => b.StudentId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Çakışma kontrolünün DB dayanağı: bir slotta yalnızca tek aktif (Pending=0 / Approved=1)
-        // booking olabilir. Rejected (2) ve soft-delete edilmiş satırlar index dışıdır.
+        // Çakışma kontrolünün DB dayanağı: bir slotta yalnızca tek aktif (Pending=0 / Approved=1 / AwaitingParent=3, issue #439)
+        // booking olabilir. Rejected (2), Expired (4), ParentRejected (5) ve soft-delete edilmiş satırlar index dışıdır.
+        // Liste BookingService.ActiveStatuses ile aynı olmalı.
         modelBuilder.Entity<Booking>()
             .HasIndex(b => b.AvailabilitySlotId)
             .IsUnique()
-            .HasFilter("\"Status\" IN (0, 1) AND NOT \"IsDeleted\"");
+            .HasFilter("\"Status\" IN (0, 1, 3) AND NOT \"IsDeleted\"");
+
+        // issue #439: veli onayı süre aşımı süpürmesi (AwaitingParentBookingExpiryJob) yalnız AwaitingParent satırlarını
+        // CreatedAt'e göre tarar; küçük kısmi index.
+        modelBuilder.Entity<Booking>()
+            .HasIndex(b => b.CreatedAt)
+            .HasDatabaseName("IX_Bookings_CreatedAt_AwaitingParent")
+            .HasFilter("\"Status\" = 3 AND NOT \"IsDeleted\"");
 
         modelBuilder.Entity<Booking>()
             .HasIndex(b => new { b.TeacherId, b.Status });

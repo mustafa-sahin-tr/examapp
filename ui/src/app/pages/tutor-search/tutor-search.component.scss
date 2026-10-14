@@ -15,6 +15,24 @@
   padding: 1.5rem 1rem;
 }
 
+// Issue #439: veli modu bandı.
+.ts__child {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: var(--ms-info-surface-weak);
+  color: var(--ms-info-text-medium);
+  font-size: 0.875rem;
+}
+
+.ts__child-back {
+  margin-left: auto;
+}
+
 .ts__head {
   margin-bottom: 1.25rem;
 

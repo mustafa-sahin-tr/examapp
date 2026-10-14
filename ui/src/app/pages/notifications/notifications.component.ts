@@ -130,7 +130,9 @@ export class NotificationsComponent implements OnInit {
       if (!route) {
         return;
       }
-      if (route.queryParams) {
+      if (route.fragment) {
+        void this.router.navigate(route.commands, { queryParams: route.queryParams, fragment: route.fragment });
+      } else if (route.queryParams) {
         void this.router.navigate(route.commands, { queryParams: route.queryParams });
       } else {
         void this.router.navigate(route.commands);

@@ -90,7 +90,8 @@ public sealed class SuspendedTeacherBookingSweepJob : ISuspendedTeacherBookingSw
 
         // Sıralama/parti projeksiyondan ÖNCE (constructor projeksiyonu üzerinden OrderBy çevrilemez).
         var batch = _context.Bookings
-            .Where(b => b.Status == BookingStatus.Pending)
+            // issue #439: veli onayı bekleyen (AwaitingParent) talepler de slotu tutar → aynı yolla kapanır.
+            .Where(b => TeacherUnavailableBookingRejection.OpenStatuses.Contains(b.Status))
             // issue #418: askıdaki VEYA bağımsız olmayan (okula bağlı/hibrit) öğretmenin Pending talepleri.
             .Where(TeacherUnavailableBookingRejection.TeacherUnavailable)
             .OrderBy(b => b.Id)
@@ -104,7 +105,11 @@ public sealed class SuspendedTeacherBookingSweepJob : ISuspendedTeacherBookingSw
             return 0;
 
         var now = _clock.GetUtcNow().UtcDateTime;
-        var (teacherNames, studentSubs) = await TryLookupUsersAsync(pending, ct);
+        // issue #439: ret velilere de bildirilir (BookingDecisionEvent.Parents). Ön okuma yalnız sub/ad çözümü için; alıcı listesi
+        // transaction içinde kilitli okumadan gelir.
+        var parentsByStudent = await BookingParentApproval.ActiveParentUserIdsByStudentAsync(
+            _context, pending.Select(p => p.StudentId), ct);
+        var (teacherNames, userSubs) = await TryLookupUsersAsync(pending, parentsByStudent.Values.SelectMany(v => v), ct);
 
         // Okuma ile yazma arasında talep karara bağlanabilir ya da askı kalkabilir; koşullu UPDATE bunları atlar.
         // Security review D2: tek dev transaction yerine öğretmen bazında, en fazla CommitChunkSize'lık alt partiler halinde
@@ -122,11 +127,16 @@ public sealed class SuspendedTeacherBookingSweepJob : ISuspendedTeacherBookingSw
                     _context.ChangeTracker.Clear();
                     await using var tx = await _context.Database.BeginTransactionAsync(CancellationToken.None);
 
+                    // issue #439 review: alıcı veliler transaction içinde FOR SHARE ile yeniden okunur (koparılan veliye gitmez).
+                    var lockedParents = await BookingParentApproval.ActiveParentUserIdsLockedAsync(
+                        _context, chunk.Select(c => c.StudentId), CancellationToken.None);
                     chunkRejected = (await TeacherUnavailableBookingRejection.RejectAsync(
                         _context, chunk, now, updateUserId: null,
                         userId => teacherNames.TryGetValue(userId, out var name) ? name : string.Empty,
-                        userId => studentSubs.TryGetValue(userId, out var sub) ? sub : string.Empty,
-                        CancellationToken.None)).Count;
+                        userId => userSubs.TryGetValue(userId, out var sub) ? sub : string.Empty,
+                        lockedParents,
+                        CancellationToken.None,
+                        studentNameOf: userId => teacherNames.TryGetValue(userId, out var name) ? name : string.Empty)).Count;
 
                     await _context.SaveChangesAsync(CancellationToken.None);
                     await tx.CommitAsync(CancellationToken.None);
@@ -153,20 +163,20 @@ public sealed class SuspendedTeacherBookingSweepJob : ISuspendedTeacherBookingSw
     /// Bildirim alanları (öğretmen adı, öğrenci Keycloak sub'ı) best-effort; auth-api erişilemezse boş geçer — consumer
     /// sub'ı kendi verisinden çözer, çözemezse retry → dead-letter (#298, bildirim kaybolmaz).
     /// </summary>
-    private async Task<(IReadOnlyDictionary<int, string> TeacherNames, IReadOnlyDictionary<int, string> StudentSubs)> TryLookupUsersAsync(
-        IReadOnlyList<PendingBookingRow> pending, CancellationToken ct)
+    private async Task<(IReadOnlyDictionary<int, string> TeacherNames, IReadOnlyDictionary<int, string> UserSubs)> TryLookupUsersAsync(
+        IReadOnlyList<PendingBookingRow> pending, IEnumerable<int> parentUserIds, CancellationToken ct)
     {
         var empty = new Dictionary<int, string>();
         if (_authApiClient is null)
             return (empty, empty);
 
         var teacherUserIds = pending.Select(p => p.TeacherUserId).ToHashSet();
-        var studentUserIds = pending.Select(p => p.StudentUserId).ToHashSet();
+        // Öğrenci + (issue #439) velileri: sub sözlüğü kullanıcı id'si ile anahtarlanır.
+        var studentUserIds = pending.Select(p => p.StudentUserId).Concat(parentUserIds).ToHashSet();
         try
         {
             var users = await _authApiClient.GetUsersByIdsAsync(teacherUserIds.Concat(studentUserIds).Distinct(), ct);
             var names = users
-                .Where(u => teacherUserIds.Contains(u.Id))
                 .GroupBy(u => u.Id)
                 .ToDictionary(g => g.Key, g => g.First().FullName ?? string.Empty);
             var subs = users

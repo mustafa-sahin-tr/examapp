@@ -74,7 +74,8 @@
       "message": "{{name}} için bilgilere artık erişemeyeceksiniz. Birincil veli ve çocuğunuz haberdar edilir. Devam edilsin mi?",
       "confirm": "Ayrıl"
     },
-    "left": "Bağlantıdan ayrıldınız."
+    "left": "Bağlantıdan ayrıldınız.",
+    "bookLesson": "Ders talebi oluştur"
   },
   "family": {
     "title": "Diğer veliler",

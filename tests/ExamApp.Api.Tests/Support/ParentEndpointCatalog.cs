@@ -89,6 +89,23 @@ public static class ParentEndpointCatalog
         [$"{nameof(ParentChildAccountsController)}.{nameof(ParentChildAccountsController.ResetChildPassword)}"] =
             "Parent write (#438): IParentChildAccess gate (unlinked child 404, IDOR), only ParentManaged accounts (else 403); " +
             "204 without body, audited as children.password-reset; ParentChildAccountEndpointsTests.",
+        [$"{nameof(ParentBookingsController)}.{nameof(ParentBookingsController.GetBookingRequests)}"] =
+            "Parent-scoped list (#439): AwaitingParent lesson requests of the caller's OWN Active children only (no studentId in the " +
+            "URL, Pending/Revoked links and deleted students excluded); only teacher name + slot time, no price/note/meeting link; " +
+            "not audited (like my-children); ParentBookingApprovalEndpointsTests.",
+        [$"{nameof(ParentBookingsController)}.{nameof(ParentBookingsController.ApproveBookingRequest)}"] =
+            "Parent write (#439): any Active parent of the booking's student (not only primary) approves an AwaitingParent " +
+            "request; unrelated/Pending/Revoked 404, first decision wins (409 AlreadyDecided); ParentBookingApprovalEndpointsTests.",
+        [$"{nameof(ParentBookingsController)}.{nameof(ParentBookingsController.RejectBookingRequest)}"] =
+            "Parent write (#439): same authorization as ApproveBookingRequest; optional note; ParentBookingApprovalEndpointsTests.",
+        [$"{nameof(ParentBookingsController)}.{nameof(ParentBookingsController.CreateBookingForChild)}"] =
+            "Parent write (#439): Active-link gate on studentId (unlinked 404, IDOR), same slot/teacher rules as the student " +
+            "request; returns the created booking of the parent's own child; ParentBookingApprovalEndpointsTests.",
+        [$"{nameof(TeacherController)}.{nameof(TeacherController.SearchTutors)}"] =
+            "Tutor search opened to Parent (#439: parent picks a teacher for the child); approved independent tutors only, " +
+            "teacher data only (no student data).",
+        [$"{nameof(TeacherController)}.{nameof(TeacherController.GetPublicProfile)}"] =
+            "Tutor public profile opened to Parent (#439); 404 unless approved independent tutor; teacher data only.",
         [$"{nameof(ParentController)}.{nameof(ParentController.RegisterParent)}"] = "Role registration; no child data.",
         [$"{nameof(ParentController)}.{nameof(ParentController.CheckParent)}"] = "Own profile flag only; no child data.",
     };

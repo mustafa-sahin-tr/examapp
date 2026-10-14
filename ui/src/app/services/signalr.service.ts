@@ -225,12 +225,14 @@ export class SignalRService {
     });
 
     // Issue #146: randevu bildirimleri (BookingRequestCreated vb.) kalıcı yazılır; burada yalnızca zil sayacı tazelenir,
-    // toast gösterilmez (randevu ekranları kendi durumunu yükler).
+    // toast gösterilmez (randevu ekranları kendi durumunu yükler). Issue #439: veli kararı/süre aşımı da bu olayla gelir
+    // (kind: parentApproved | parentRejected | parentExpired); öğrenci randevu listesi canlı tazelenmez, aynı davranış.
     this.hubConnection.on('BookingUpdate', () => {
       this.notificationsChangedSubject.next();
     });
 
     // Issue #423: veli bildirimleri (bağlantı, gecikmiş ödev, test tamamlandı) kalıcı yazılır; yalnız zil sayacı tazelenir.
+    // Issue #439: özel ders veli onayı bildirimleri (ParentBooking*) de bu olayla gelir.
     this.hubConnection.on('ParentNotification', () => {
       this.notificationsChangedSubject.next();
     });

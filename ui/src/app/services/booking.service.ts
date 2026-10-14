@@ -12,6 +12,7 @@ import {
   CreateAvailabilitySlotRequest,
   CreateBookingRequest,
   CreateRecurringRuleRequest,
+  ParentBookingRequestList,
   RecurringRuleDeleteResult,
   RecurringRuleResult,
   VideoSessionResult,
@@ -35,6 +36,8 @@ export class BookingService {
   private readonly http = inject(HttpClient);
   private readonly transloco = inject(TranslocoService);
   private readonly baseUrl = '/api/exam/booking';
+  /** Issue #439: veli uçları (`ParentBookingsController`, yalnız Parent rolü). */
+  private readonly parentBaseUrl = '/api/exam/parent';
 
   // ---------------- Müsaitlik slotları (öğretmen) ----------------
 
@@ -145,6 +148,33 @@ export class BookingService {
     return this.http.post<BookingResult>(`${this.baseUrl}/requests/${id}/reject`, {
       rejectionReason: rejectionReason?.trim() || null,
     });
+  }
+
+  // ---------------- Veli onayı (issue #439) ----------------
+
+  /** Velinin Active bağlı tüm çocuklarının karar bekleyen (`AwaitingParent`) talepleri; süresi dolanlar gelmez. */
+  getParentBookingRequests(): Observable<ParentBookingRequestList> {
+    return this.http.get<ParentBookingRequestList>(`${this.parentBaseUrl}/booking-requests`);
+  }
+
+  /**
+   * Veli talebi onaylar → `Pending`, öğretmene düşer. 409: `AlreadyDecided`, `BookingRequestExpired`, `TeacherUnavailable`,
+   * `BookingRequestSlotDeleted`; 404: bağlı olmayan çocuk / talep yok.
+   */
+  parentApproveBooking(id: number): Observable<BookingResult> {
+    return this.http.post<BookingResult>(`${this.parentBaseUrl}/booking-requests/${id}/approve`, null);
+  }
+
+  /** Veli talebi reddeder → `ParentRejected` (öğretmene hiç gitmez). Not opsiyonel, en fazla 500 karakter. */
+  parentRejectBooking(id: number, note?: string | null): Observable<BookingResult> {
+    return this.http.post<BookingResult>(`${this.parentBaseUrl}/booking-requests/${id}/reject`, {
+      note: note?.trim() || null,
+    });
+  }
+
+  /** Veli çocuğu adına doğrudan talep açar; veli onayı atlanır (`Pending`, öğretmene bildirim). 201. */
+  createBookingForChild(studentId: number, body: CreateBookingRequest): Observable<BookingResult> {
+    return this.http.post<BookingResult>(`${this.parentBaseUrl}/children/${studentId}/bookings`, body);
   }
 
   // ---------------- Video görüşme (issue #97) ----------------

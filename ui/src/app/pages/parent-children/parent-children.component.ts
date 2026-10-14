@@ -11,7 +11,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Observable, filter, finalize, switchMap } from 'rxjs';
 
 import {
@@ -30,6 +30,7 @@ import {
   ChildPasswordResetDialogData,
 } from './child-password-reset-dialog/child-password-reset-dialog.component';
 import { CreateChildAccountComponent } from './create-child-account/create-child-account.component';
+import { childTutorSearchCommands } from '../../shared/utils/booking-child-context';
 
 /** Öğrenci başına açık veli tavanı (sunucu `maxParents` göndermezse). */
 const DEFAULT_MAX_PARENTS = 4;
@@ -43,6 +44,7 @@ const DEFAULT_MAX_PARENTS = 4;
  * ayrılamaz (düğme gösterilmez, sunucu 409 LastParentCannotLeave).
  * Issue #438: "Çocuk hesabı oluştur" formu (kullanıcı adı + şifre, e-postasız) ve veli tarafından açılmış çocuklar için
  * "Şifre sıfırla" (yeni şifreyi veli belirler; hiçbir yerde gösterilmez). `/my-children#create-child` forma kaydırır.
+ * Issue #439: Active çocuk için "Ders talebi oluştur" → `/my-children/<studentId>/tutors` (veli modunda öğretmen arama).
  */
 @Component({
   selector: 'app-parent-children',
@@ -56,6 +58,7 @@ const DEFAULT_MAX_PARENTS = 4;
     MatInputModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
+    RouterLink,
     TranslocoDirective,
   ],
   providers: [provideTranslocoScope(PARENT_LINKS_SCOPE)],
@@ -71,6 +74,8 @@ export class ParentChildrenComponent implements OnInit, AfterViewInit {
   protected readonly ui = inject(ParentLinkUi);
 
   protected readonly codeLength = PARENT_INVITE_CODE_LENGTH;
+  /** Issue #439: çocuk adına özel ders talebi akışının başlangıcı. */
+  protected readonly bookLessonLink = childTutorSearchCommands;
   protected readonly loading = signal(false);
   protected readonly loadError = signal<string | null>(null);
   protected readonly children = signal<LinkedChild[]>([]);

@@ -51,7 +51,13 @@ import {
   toRecurringRuleRequest,
   toSlotRequest,
 } from './availability-draft.util';
-import { AvailabilityGridEvent, AvailabilityGridEventProps, SlotStatusClass, toGridEvents } from './availability-week-grid.util';
+import {
+  AvailabilityGridEvent,
+  AvailabilityGridEventProps,
+  SlotStatusClass,
+  isDeletableSlot,
+  toGridEvents,
+} from './availability-week-grid.util';
 
 const TEACHER_AVAILABILITY_SCOPE = 'teacher-availability';
 
@@ -377,7 +383,7 @@ export class AvailabilityWeekGridComponent {
       return;
     }
     this.focusScrollRegionIfOutside();
-    if (ev.extendedProps.statusClass !== 'is-free') {
+    if (!isDeletableSlot(ev.extendedProps)) {
       // Bayat taslak ipucu ile "silinemez" ipucu aynı anda görünmesin.
       this.hint.set(null);
       this.showLockedHint();
@@ -548,9 +554,12 @@ export class AvailabilityWeekGridComponent {
     return start !== null && start.getTime() >= arg.view.activeStart.getTime();
   }
 
-  /** Düzenlenebilir grid'de boş slot silinebilir: tooltip ve `aria-description` eylem ipucunu alır. */
+  /**
+   * Düzenlenebilir grid'de boş slot (ve issue #439: yalnız veli onayı bekleyen talebi tutan slot) silinebilir: tooltip ve
+   * `aria-description` eylem ipucunu alır.
+   */
   protected deletable(p: AvailabilityGridEventProps): boolean {
-    return this.editable() && p.statusClass === 'is-free';
+    return this.editable() && isDeletableSlot(p);
   }
 
   /** `eventContent` şablonunda tipli erişim için `extendedProps` dönüşümü. */

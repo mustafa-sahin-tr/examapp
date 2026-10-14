@@ -131,5 +131,26 @@
     "privacyNote": "Questions and answers are not shown to parents; only result counts are visible.",
     "percent": "{{value}}%",
     "approxTime": "{{date}}, around {{time}}"
+  },
+  "bookingRequests": {
+    "title": "Lesson requests awaiting approval",
+    "subtitle": "Your children's private lesson requests go to the teacher after you approve them.",
+    "loadError": "Lesson requests could not be loaded.",
+    "empty": "No lesson requests awaiting approval.",
+    "childFallback": "Your child",
+    "teacherFallback": "Teacher",
+    "expires": "Decide by: {{date}}",
+    "approve": "Approve",
+    "reject": "Decline",
+    "cancel": "Cancel",
+    "noteLabel": "Note (optional)",
+    "noteHint": "The note is shared with your child.",
+    "approved": "Request approved and sent to the teacher.",
+    "rejected": "Request declined.",
+    "alreadyDecided": "This request no longer awaits a decision (another parent may have decided). The list was refreshed.",
+    "expired": "This request has expired. The list was refreshed.",
+    "notFound": "You no longer have access to this request. The list was refreshed.",
+    "actionError": "The action could not be completed.",
+    "ok": "OK"
   }
 }

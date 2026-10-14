@@ -51,7 +51,23 @@
       "alreadyDecided": "This request has already been resolved ({0}).",
       "approved": "Booking approved.",
       "rejected": "Booking rejected.",
-      "slotDeleted": "The availability slot of this request was deleted; it cannot be approved, only rejected."
+      "slotDeleted": "The availability slot of this request was deleted; it cannot be approved, only rejected.",
+      "parentRequired": "You need a parent linked to your account to request a lesson. Ask your parent to link you.",
+      "createdAwaitingParent": "Your lesson request was sent to your parent for approval. It will be forwarded to the teacher once approved.",
+      "tooManyAwaitingParent": "You can have at most {0} lesson requests awaiting your parent (at most {1} for the same teacher). You can request again once your parent decides."
+    },
+
+    "parent": {
+      "notFound": "Lesson request not found.",
+      "created": "Lesson request created and sent to the teacher.",
+      "approved": "Lesson request approved and sent to the teacher.",
+      "rejected": "Lesson request rejected.",
+      "alreadyDecided": "This lesson request has already been resolved.",
+      "requestExpired": "The approval period for this lesson request has expired.",
+      "teacherUnavailable": "The teacher is not accepting lesson requests at the moment; the request could not be approved.",
+      "approvalNotAllowed": "The lesson request cannot be approved at the moment.",
+      "noteTooLong": "The note can be at most 500 characters.",
+      "noteInvalid": "The note contains invalid characters."
     },
 
     "video": {

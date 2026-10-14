@@ -342,6 +342,8 @@ export function parseWorksheetCommentNotificationData(data: string | null): Work
 export interface AppRouteLink {
   commands: (string | number)[];
   queryParams?: Record<string, string | number>;
+  /** Issue #439: sayfadaki bir bölüme derin link (ör. veli panelinde `booking-requests`). */
+  fragment?: string;
 }
 
 /**

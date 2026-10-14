@@ -14,7 +14,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { finalize, interval, take } from 'rxjs';
-import { Booking } from '../../models/booking.model';
+import { Booking, BookingStatus } from '../../models/booking.model';
 import { BookingService } from '../../services/booking.service';
 import {
   JOIN_WINDOW_TICK_MS,
@@ -25,11 +25,27 @@ import { slotEndsNextDay } from '../../shared/utils/booking-format.util';
 
 type RequestFilter = 'pending' | 'all';
 
+type BookingStatusClass = 'is-pending' | 'is-approved' | 'is-rejected';
+
+/**
+ * Durum → `teacher-bookings` scope'una göreli etiket + chip sınıfı. Issue #439: sunucu öğretmene `AwaitingParent` /
+ * `ParentRejected` / talepleri göndermez (veli kararı öncesi öğretmene düşmez) ve `Expired` yalnız veli onayı bekleyen talepte
+ * oluşur; yine de birlik tipi genişlediği için hepsi eşlenir (`Record` derleme anında garanti eder).
+ */
+export const TEACHER_BOOKING_STATUS_VIEW: Record<BookingStatus, { statusKey: string; statusClass: BookingStatusClass }> = {
+  Pending: { statusKey: 'status.pending', statusClass: 'is-pending' },
+  Approved: { statusKey: 'status.approved', statusClass: 'is-approved' },
+  Rejected: { statusKey: 'status.rejected', statusClass: 'is-rejected' },
+  AwaitingParent: { statusKey: 'status.awaitingParent', statusClass: 'is-pending' },
+  ParentRejected: { statusKey: 'status.parentRejected', statusClass: 'is-rejected' },
+  Expired: { statusKey: 'status.expired', statusClass: 'is-rejected' },
+};
+
 interface BookingRow {
   booking: Booking;
   /** Scope'a göreli çeviri anahtarı; şablonda `t()` ile çözülür. */
   statusKey: string;
-  statusClass: 'is-pending' | 'is-approved' | 'is-rejected';
+  statusClass: BookingStatusClass;
   /** Issue #97: "Derse katıl" butonunun durumu (ipucu metni kök `shared.joinWindow.*` sözlüğünden). */
   join: JoinWindowInfo;
   /** Bitiş ertesi yerel günde (issue #300): aralığa "(+1 gün)" eklenir. */
@@ -203,11 +219,6 @@ export class TeacherBookingRequestsComponent implements OnInit {
   }
 
   private toRow(booking: Booking, now: number): BookingRow {
-    const map = {
-      Approved: { statusKey: 'status.approved', statusClass: 'is-approved' as const },
-      Rejected: { statusKey: 'status.rejected', statusClass: 'is-rejected' as const },
-      Pending: { statusKey: 'status.pending', statusClass: 'is-pending' as const },
-    };
     const join = getJoinWindow(booking.startUtc, booking.endUtc, now, (key, params) =>
       this.transloco.translate<string>(key, params) ?? ''
     );
@@ -215,7 +226,7 @@ export class TeacherBookingRequestsComponent implements OnInit {
       booking,
       join,
       endsNextDay: slotEndsNextDay(booking.startUtc, booking.endUtc),
-      ...map[booking.status],
+      ...(TEACHER_BOOKING_STATUS_VIEW[booking.status] ?? { statusKey: 'status.unknown', statusClass: 'is-rejected' }),
     };
   }
 

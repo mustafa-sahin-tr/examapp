@@ -23,6 +23,19 @@ export interface AvailabilityGridEventProps {
   endsNextDay: boolean;
   /** "20 Eylül 2026 Pazar" */
   dayLabel: string;
+  /**
+   * Issue #439: slotu yalnız veli onayı bekleyen talep tutuyor. Öğretmen böyle slotu silebilir (talep `Expired` olur); silme
+   * çubuğu uyarı gösterir.
+   */
+  awaitingParent: boolean;
+}
+
+/**
+ * Silinebilir slot: boş ya da yalnız veli onayı bekleyen talebi tutan (issue #439). Onaylı/bekleyen (öğretmene düşmüş)
+ * randevulu slot silinemez.
+ */
+export function isDeletableSlot(p: Pick<AvailabilityGridEventProps, 'statusClass' | 'awaitingParent'>): boolean {
+  return p.statusClass === 'is-free' || p.awaitingParent;
 }
 
 /** FullCalendar `EventInput` ile uyumlu, kütüphaneden bağımsız olay şekli. */
@@ -36,15 +49,21 @@ export interface AvailabilityGridEvent {
 
 /**
  * Slotun durumunu türetir: boş → `is-free`; onaylı randevu → `is-approved`; diğer dolu → `is-pending`.
+ * Issue #439: veli onayı bekleyen talep (`AwaitingParent`) slotu tutar ama öğretmene henüz düşmemiştir — dolu (`is-pending`)
+ * görünür, etiketi "Veli onayı bekleniyor"; öğrenci adı gelmez.
  * Kural, teacher-availability listesindeki chip mantığıyla birebir aynıdır.
  */
 export function slotStatus(slot: AvailabilitySlot): { statusClass: SlotStatusClass; statusKey: string } {
   if (!slot.isBooked) {
     return { statusClass: 'is-free', statusKey: 'status.free' };
   }
-  return slot.bookingStatus === 'Approved'
-    ? { statusClass: 'is-approved', statusKey: 'status.approved' }
-    : { statusClass: 'is-pending', statusKey: 'status.pending' };
+  if (slot.bookingStatus === 'Approved') {
+    return { statusClass: 'is-approved', statusKey: 'status.approved' };
+  }
+  if (slot.bookingStatus === 'AwaitingParent') {
+    return { statusClass: 'is-pending', statusKey: 'status.awaitingParent' };
+  }
+  return { statusClass: 'is-pending', statusKey: 'status.pending' };
 }
 
 /**
@@ -90,6 +109,7 @@ export function toGridEvents(slots: readonly AvailabilitySlot[]): AvailabilityGr
         timeRange: formatSlotRange(slot.startUtc, slot.endUtc),
         endsNextDay: endsOnNextLocalDay(start, end),
         dayLabel: formatSlotDay(slot.startUtc),
+        awaitingParent: slot.isBooked && slot.bookingStatus === 'AwaitingParent',
       },
     });
   }

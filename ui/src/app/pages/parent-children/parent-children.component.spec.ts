@@ -470,4 +470,23 @@ describe('ParentChildrenComponent (issue #419, #436)', () => {
     expect(service.getMyChildren).toHaveBeenCalledTimes(1);
     expect((fixture.nativeElement as HTMLElement).querySelector('[data-test="reset-password"]')).not.toBeNull();
   });
+
+  // Issue #439: Active çocuk için "Ders talebi oluştur" → veli modunda öğretmen arama.
+  it('activeChild_ShowsBookLessonLinkToChildTutorSearch; pendingRow_NoLink', () => {
+    const pendingRow: LinkedChild = {
+      ...ayse,
+      linkId: 9,
+      status: 'Pending',
+      studentId: null,
+      studentName: null,
+      linkedAt: null,
+      pendingExpiresAt: '2026-10-20T09:00:00Z',
+    };
+    const el = setup([{ ...ayse, studentId: 21 }, pendingRow]);
+
+    const links = el.querySelectorAll<HTMLAnchorElement>('[data-test="book-lesson"]');
+    expect(links.length).toBe(1);
+    expect(links[0].getAttribute('href')).toBe('/my-children/21/tutors');
+    expect(links[0].textContent).toContain('Ders talebi oluştur');
+  });
 });

@@ -69,10 +69,14 @@
             </mat-list> -->
       </mat-card-content>
     </mat-card>
-    <!-- Issue #417: tüm rollerde ortak "Hesabım / Şifre değiştir" kartı (Keycloak hesap konsolu). -->
-    <app-account-security-card class="profile-account-card" />
+    <!-- Issue #417: tüm rollerde ortak "Hesabım / Şifre değiştir" kartı (Keycloak hesap konsolu).
+         Issue #438: veli tarafından açılan çocuk hesabı kendi şifresini/e-postasını değiştirmez — kart gizli, şifreyi veli sıfırlar.
+         Profil gelene kadar da gizli: veli yönetimli hesapta bağlantı bir an bile görünmesin. -->
+    @if (student && !student.parentManaged) {
+      <app-account-security-card class="profile-account-card" />
+    }
     <!-- Issue #419: veli davet kodu + bağlı veliler. -->
-    <app-parent-invite-card class="profile-account-card" />
+    <app-student-parents-card class="profile-account-card" />
   </mat-tab>
   <mat-tab [label]="t('tabs.badges')">
     <!-- Issue #381: sabit (sahte) puan kartları kaldırıldı; gerçek puan/sıralama verisi ayrı iş. -->

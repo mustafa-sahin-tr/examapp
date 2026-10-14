@@ -53,6 +53,7 @@ public class ParentDashboardServiceTests : IDisposable
 
         ctx.ParentStudentLinks.Add(new ParentStudentLink
         {
+            Origin = ParentStudentLinkOrigin.ParentCreated,
             ParentId = parent.Id, StudentId = student.Id, Status = ParentStudentLinkStatus.Active,
             CreatedAt = Now.AddDays(-2), ActivatedAt = Now.AddDays(-2)
         });

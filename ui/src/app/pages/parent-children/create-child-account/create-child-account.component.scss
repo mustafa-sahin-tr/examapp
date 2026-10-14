@@ -1,0 +1,154 @@
+:host {
+  display: block;
+}
+
+.cca {
+  scroll-margin-top: 1rem; // `/my-children#create-child` bağlantısıyla gelindiğinde başlık görünür kalsın
+
+  h2 {
+    margin: 0 0 0.5rem;
+    font-family: var(--mainFontFamily);
+    font-size: 1.0625rem;
+  }
+}
+
+.cca__hint {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.8125rem;
+  opacity: 0.8;
+}
+
+.cca__hint--strong {
+  font-weight: 600;
+  opacity: 1;
+}
+
+// Global `form { flex-direction: column }` (styles.scss) korunur; satırlar kendi içinde yan yana.
+.cca__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.cca__row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.cca__field {
+  flex: 1 1 240px;
+  min-width: 0;
+
+  @media (max-width: 599px) {
+    flex-basis: 100%;
+  }
+}
+
+.cca__field--wide {
+  width: 100%;
+}
+
+.cca__consent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0.5rem 0;
+
+  .cca__hint {
+    margin: 0 0 0 2.5rem;
+  }
+}
+
+.cca__error {
+  margin: 0.25rem 0;
+  color: var(--ms-danger-background);
+  font-size: 0.8125rem;
+}
+
+.cca__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+
+  .cca__hint {
+    margin: 0;
+  }
+
+  button mat-spinner {
+    display: inline-block;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+  }
+}
+
+.cca__summary {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--primaryColor);
+  border-radius: 10px;
+
+  h3 {
+    margin: 0 0 0.25rem;
+    font-family: var(--mainFontFamily);
+    font-size: 0.9375rem;
+  }
+
+  p {
+    margin: 0 0 0.5rem;
+  }
+}
+
+.cca__summary-icon {
+  color: var(--primaryColor);
+  flex-shrink: 0;
+}
+
+.cca__username {
+  font-family: var(--mainFontFamily);
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--primaryColor);
+}
+
+.cca__link {
+  color: var(--primaryColor);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+// Sınıf / okul listesi yüklenemedi: mesaj + "Tekrar dene".
+.cca__refs-error {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0.25rem 0 0.75rem;
+  color: var(--ms-danger-background);
+  font-size: 0.8125rem;
+}
+
+// Çocuk hesabı tavanı dolu: form yerine bilgi kutusu.
+.cca__limit {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--primaryColor);
+  border-radius: 10px;
+  font-family: var(--paragraphFontFamily);
+
+  p {
+    margin: 0;
+  }
+}
+
+.cca__limit-icon {
+  color: var(--primaryColor);
+  flex-shrink: 0;
+}

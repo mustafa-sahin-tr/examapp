@@ -78,6 +78,7 @@ public class ParentNotificationProducersTests : IDisposable
         await using var ctx = _db.NewContext();
         ctx.ParentStudentLinks.Add(new ParentStudentLink
         {
+            Origin = ParentStudentLinkOrigin.ParentCreated,
             ParentId = parentId,
             StudentId = studentId,
             Status = status,

@@ -387,6 +387,10 @@
     "copyFailed": "Kopyalanamadı; şifreyi seçip elle kopyalayın.",
     "onceWarning": "Bu şifre bir daha gösterilmeyecek. Pencereyi kapatmadan önce kopyalayıp kullanıcıya güvenli bir kanaldan iletin.",
     "done": "Kopyaladım, kapat",
+    "resultTitlePermanent": "Yeni şifre oluşturuldu",
+    "passwordLabelPermanent": "Yeni şifre",
+    "permanentNote": "Bu hesap veli tarafından yönetiliyor: şifre kalıcıdır, ilk girişte değiştirilmeyecek. Şifreyi öğrenciye değil, velisine iletin.",
+    "onceWarningPermanent": "Bu şifre bir daha gösterilmeyecek. Pencereyi kapatmadan önce kopyalayıp veliye güvenli bir kanaldan iletin.",
     "errors": {
       "forbidden": "Bu işlem için yetkiniz yok.",
       "notFound": "Kullanıcı bulunamadı.",

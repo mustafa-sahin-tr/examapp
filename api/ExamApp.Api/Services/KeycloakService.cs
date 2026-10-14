@@ -425,10 +425,17 @@ public class KeycloakService : IKeycloakService
         return new KeycloakUserRolesDto(realmRoles, clientRoles);
     }
 
-    public async Task<string> ResetPasswordAsync(string keycloakUserId, CancellationToken ct = default)
+    public Task<string> ResetPasswordAsync(string keycloakUserId, CancellationToken ct = default)
+        => SetGeneratedPasswordAsync(keycloakUserId, temporary: true, ct);
+
+    public Task<string> ResetPermanentPasswordAsync(string keycloakUserId, CancellationToken ct = default)
+        => SetGeneratedPasswordAsync(keycloakUserId, temporary: false, ct);
+
+    private async Task<string> SetGeneratedPasswordAsync(string keycloakUserId, bool temporary, CancellationToken ct)
     {
         var generated = TemporaryPasswordGenerator.Generate();
-        var body = JsonSerializer.Serialize(new { type = "password", value = generated, temporary = true });
+        // temporary:false → Keycloak mevcut UPDATE_PASSWORD required action'ını da kaldırır (#438 veli yönetimli hesap).
+        var body = JsonSerializer.Serialize(new { type = "password", value = generated, temporary });
 
         using var content = new StringContent(body, Encoding.UTF8, "application/json");
         using var response = await SendAsAdminAsync(HttpMethod.Put, $"{AdminUserUrl(keycloakUserId)}/reset-password", content, ct);

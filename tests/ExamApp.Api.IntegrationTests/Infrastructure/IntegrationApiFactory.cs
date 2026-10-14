@@ -106,6 +106,11 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
                 sp.GetRequiredService<FakeUserDirectory>(),
                 sp.GetRequiredService<FakeKeycloakAccounts>()));
 
+            // issue #438: auth-api çocuk hesabı uçları (Keycloak) test ortamında yok — bellek içi sahte.
+            services.AddSingleton<FakeChildAccountDirectory>();
+            services.RemoveAll<ExamApp.Api.Services.Parents.IChildAccountDirectory>();
+            services.AddScoped<ExamApp.Api.Services.Parents.IChildAccountDirectory>(sp => sp.GetRequiredService<FakeChildAccountDirectory>());
+
             // auth-api user-profile: kayıtlı Bearer token'lar için sahte yanıt (gerçek AuthApiClient'ın ilettiği token
             // uçtan uca doğrulanır — SignalR ?access_token= dahil). Kayıtsız istekler olduğu gibi geçer.
             services.AddSingleton<FakeAuthApiProfiles>();

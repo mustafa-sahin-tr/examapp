@@ -82,6 +82,9 @@ public class AppDbContext : DbContext
 
     public DbSet<User> Users { get; set; } = null!;
     public DbSet<OutboxMessage> OutboxMessages { get; set; } = null!;
+
+    /// <summary>Issue #438: çocuk hesabı requestId kilidi (bkz. <see cref="ChildAccountRequest"/>).</summary>
+    public DbSet<ChildAccountRequest> ChildAccountRequests { get; set; } = null!;
     // BaseController'dan çağrılacak metod
     public void SetCurrentUser(int userId)
     {
@@ -151,6 +154,13 @@ public class AppDbContext : DbContext
             .HasMaxLength(8)
             .IsRequired()
             .HasDefaultValue(SupportedLocales.Default);
+
+        // Issue #438: requestId exam API'de üretilir (DB üretmez); durum okunaklı olsun diye metin.
+        modelBuilder.Entity<ChildAccountRequest>(e =>
+        {
+            e.Property(r => r.RequestId).ValueGeneratedNever();
+            e.Property(r => r.State).HasConversion<string>().HasMaxLength(16).IsRequired();
+        });
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {

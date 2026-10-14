@@ -68,7 +68,10 @@ public interface IKeycloakService
     /// </summary>
     Task<bool> EnsureUserAttributesAsync(string keycloakUserId, IReadOnlyDictionary<string, string> desired, CancellationToken ct = default);
 
-    /// <summary><c>PUT /users/{id}/reset-password</c> — kalıcı (temporary=false) parola. Yalnızca seed onarımı kullanır.</summary>
+    /// <summary>
+    /// <c>PUT /users/{id}/reset-password</c> — kalıcı (temporary=false) parola. Seed onarımı ve veli çocuk hesabı (#438) kullanır.
+    /// 400 (parola politikası) <see cref="KeycloakFailureKind.Validation"/>; <see cref="KeycloakException.StatusCode"/> HTTP durumu.
+    /// </summary>
     Task ResetPasswordAsync(string keycloakUserId, string password, CancellationToken ct = default);
 
     /// <summary>Realm'in varsayılan rol kompoziti (<c>default-roles-&lt;realm&gt;</c>) — account rolleri/aud bunun içindedir.</summary>
@@ -120,4 +123,27 @@ public interface IKeycloakService
 
     /// <summary>Kullanıcıyı siler; 404 (zaten yok) durumunda false döner, hata fırlatmaz. Diğer hatalar <see cref="KeycloakException"/>.</summary>
     Task<bool> TryDeleteUserAsync(string keycloakUserId, CancellationToken ct = default);
+
+    // ---- Veli tarafından açılan çocuk hesabı (issue #438) ----
+
+    /// <summary>
+    /// E-postasız, required action'sız, <c>parent_managed=true</c> ve <c>child_request_id=&lt;requestId&gt;</c> attribute'lu, etkin
+    /// Keycloak kullanıcısı (kimlik bilgisi YOK — parola ayrıca <see cref="ResetPasswordAsync"/> ile). Kullanıcı adı çakışması
+    /// <see cref="KeycloakFailureKind.Conflict"/> (409), doğrulama reddi <see cref="KeycloakFailureKind.Validation"/> (400). Yeni
+    /// kullanıcının id'sini döner. Rol kümesi ayrıca <see cref="ApplyParentManagedRolesAsync"/> ile daraltılır.
+    /// </summary>
+    Task<string> CreateParentManagedUserAsync(string username, string firstName, string lastName, Guid requestId, CancellationToken ct = default);
+
+    /// <summary>
+    /// <c>GET /users?q=&lt;ad&gt;:&lt;değer&gt;</c> — attribute'u tam olarak bu değere eşit kullanıcıların id'leri (yanıttaki
+    /// attribute'la yerelde yeniden doğrulanır; en fazla 5). Hata <see cref="KeycloakException"/>.
+    /// </summary>
+    Task<IReadOnlyList<string>> FindUserIdsByAttributeAsync(string name, string value, CancellationToken ct = default);
+
+    /// <summary>
+    /// Veli tarafından açılan çocuk hesabının rol kümesi (#438): realm varsayılan kompoziti (<c>manage-account</c> taşır) kaldırılır;
+    /// yalnız <c>offline_access</c>, <c>uma_authorization</c>, <c>Student</c> ve <c>account</c>/<c>view-profile</c> kalır.
+    /// Fail-closed: herhangi bir adım ya da son doğrulama başarısızsa <see cref="KeycloakException"/>.
+    /// </summary>
+    Task ApplyParentManagedRolesAsync(string keycloakUserId, CancellationToken ct = default);
 }

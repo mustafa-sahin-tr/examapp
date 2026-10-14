@@ -300,6 +300,14 @@ describe('CallbackComponent', () => {
       expect(runSuccess(['Parent'], { returnPath: '/my-children' })).toBe('/my-children');
     }));
 
+    // Issue #438: veli panelinden açılan çocuk hesabı kullanıcı adıyla girer (e-postasız); öğrenci kaydı ve Student rolü hazır
+    // olduğu için profil tamamlamaya DÜŞMEZ, öğrenci paneline gider.
+    it('veli tarafından açılan çocuk hesabı (yalnız Student) → /dashboard, complete-profile değil', fakeAsync(() => {
+      const target = runSuccess(['Student']);
+      expect(target).toBe('/dashboard');
+      expect(target).not.toContain('complete-profile');
+    }));
+
     it('rol yok → /app/complete-profile', fakeAsync(() => {
       expect(runSuccess([])).toBe('/app/complete-profile');
     }));

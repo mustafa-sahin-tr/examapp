@@ -158,7 +158,7 @@ public class BookingSuspensionRaceTests : IDisposable
         var slotId = await SeedSlotAsync(TeacherId, 10);
 
         await using (var ctx = _db.NewContextWithRetryingExecutionStrategy())
-            (await NewBookingService(ctx).CreateBookingAsync(StudentAUser, new CreateBookingDto { AvailabilitySlotId = slotId }))
+            (await NewBookingService(ctx).CreateBookingAsync(StudentAUser, new CreateBookingDto { AvailabilitySlotId = slotId }, requiresParent: false))
                 .Success.ShouldBeTrue();
 
         (await BookingsOfAsync(TeacherId)).Single().Status.ShouldBe(BookingStatus.Pending);
@@ -180,7 +180,7 @@ public class BookingSuspensionRaceTests : IDisposable
 
         BookingResultDto result;
         await using (var ctx = _db.NewContext(interceptor))
-            result = await NewBookingService(ctx).CreateBookingAsync(StudentAUser, new CreateBookingDto { AvailabilitySlotId = slotId });
+            result = await NewBookingService(ctx).CreateBookingAsync(StudentAUser, new CreateBookingDto { AvailabilitySlotId = slotId }, requiresParent: false);
 
         interceptor.Fired.ShouldBeTrue();
         result.Success.ShouldBeFalse();
@@ -203,7 +203,7 @@ public class BookingSuspensionRaceTests : IDisposable
         });
 
         await using (var ctx = _db.NewContext(interceptor))
-            (await NewBookingService(ctx).CreateBookingAsync(StudentAUser, new CreateBookingDto { AvailabilitySlotId = slotId }))
+            (await NewBookingService(ctx).CreateBookingAsync(StudentAUser, new CreateBookingDto { AvailabilitySlotId = slotId }, requiresParent: false))
                 .NotFound.ShouldBeTrue();
 
         (await BookingsOfAsync(TeacherId)).ShouldBeEmpty();
@@ -216,7 +216,7 @@ public class BookingSuspensionRaceTests : IDisposable
         var interceptor = new FailFirstCommitInterceptor();
 
         await using (var ctx = _db.NewContextWithTransientRetry(interceptor))
-            (await NewBookingService(ctx).CreateBookingAsync(StudentAUser, new CreateBookingDto { AvailabilitySlotId = slotId }))
+            (await NewBookingService(ctx).CreateBookingAsync(StudentAUser, new CreateBookingDto { AvailabilitySlotId = slotId }, requiresParent: false))
                 .Success.ShouldBeTrue();
 
         interceptor.Failures.ShouldBe(1);
@@ -250,7 +250,7 @@ public class BookingSuspensionRaceTests : IDisposable
 
         BookingResultDto result;
         await using (var ctx = _db.NewContext(interceptor))
-            result = await NewBookingService(ctx).CreateBookingAsync(StudentAUser, new CreateBookingDto { AvailabilitySlotId = slotId });
+            result = await NewBookingService(ctx).CreateBookingAsync(StudentAUser, new CreateBookingDto { AvailabilitySlotId = slotId }, requiresParent: false);
 
         interceptor.Fired.ShouldBeTrue();
         result.Success.ShouldBeFalse();
@@ -503,7 +503,7 @@ public class BookingSuspensionRaceTests : IDisposable
 
         BookingResultDto result;
         await using (var ctx = _db.NewContextWithTransientRetry(interceptor))
-            result = await NewBookingService(ctx).CreateBookingAsync(StudentAUser, new CreateBookingDto { AvailabilitySlotId = slotId });
+            result = await NewBookingService(ctx).CreateBookingAsync(StudentAUser, new CreateBookingDto { AvailabilitySlotId = slotId }, requiresParent: false);
 
         starts.ShouldBe(1); // kalıcı istisna: execution strategy yeniden denemez
         result.Success.ShouldBeFalse();
@@ -521,7 +521,7 @@ public class BookingSuspensionRaceTests : IDisposable
             await seed.Teachers.Where(t => t.Id == TeacherId).ExecuteUpdateAsync(s => s.SetProperty(t => t.AccountApprovedAt, (DateTime?)null));
 
         await using (var ctx = _db.NewContext())
-            (await NewBookingService(ctx).CreateBookingAsync(StudentAUser, new CreateBookingDto { AvailabilitySlotId = slotId }))
+            (await NewBookingService(ctx).CreateBookingAsync(StudentAUser, new CreateBookingDto { AvailabilitySlotId = slotId }, requiresParent: false))
                 .NotFound.ShouldBeTrue();
 
         (await BookingsOfAsync(TeacherId)).ShouldBeEmpty();
@@ -540,7 +540,7 @@ public class BookingSuspensionRaceTests : IDisposable
         });
 
         await using (var ctx = _db.NewContext(interceptor))
-            (await NewBookingService(ctx).CreateBookingAsync(StudentAUser, new CreateBookingDto { AvailabilitySlotId = slotId }))
+            (await NewBookingService(ctx).CreateBookingAsync(StudentAUser, new CreateBookingDto { AvailabilitySlotId = slotId }, requiresParent: false))
                 .NotFound.ShouldBeTrue();
 
         interceptor.Fired.ShouldBeTrue();

@@ -18,7 +18,11 @@
   "status": {
     "pending": "Bekliyor",
     "approved": "Onaylandı",
-    "rejected": "Reddedildi"
+    "rejected": "Reddedildi",
+    "awaitingParent": "Veli onayı bekleniyor",
+    "parentRejected": "Veli reddetti",
+    "expired": "Kapandı",
+    "unknown": "Bilinmeyen durum"
   },
   "join": {
     "button": "Derse katıl"

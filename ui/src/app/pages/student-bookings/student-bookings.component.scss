@@ -150,4 +150,16 @@
     background: color-mix(in srgb, var(--ms-danger-background) 15%, transparent);
     color: var(--ms-danger-background);
   }
+
+  // Issue #439: veli onayı bekleniyor.
+  &.is-awaiting-parent {
+    background: var(--ms-warning-surface-weak);
+    color: var(--ms-warning-text-medium);
+  }
+
+  // Issue #439: süresi doldu (nötr).
+  &.is-closed {
+    background: var(--ms-surface-weak);
+    color: var(--ms-text-medium);
+  }
 }

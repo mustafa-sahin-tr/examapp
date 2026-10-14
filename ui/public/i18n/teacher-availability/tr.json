@@ -9,7 +9,8 @@
   "status": {
     "free": "Boş",
     "approved": "Onaylı randevu",
-    "pending": "Bekleyen talep"
+    "pending": "Bekleyen talep",
+    "awaitingParent": "Veli onayı bekleniyor"
   },
   "grid": {
     "ariaLabel": "Haftalık müsaitlik takvimi",
@@ -41,7 +42,8 @@
       "confirm": "Sil",
       "deleting": "Siliniyor...",
       "cancel": "Vazgeç",
-      "hint": "Silmek için tıkla"
+      "hint": "Silmek için tıkla",
+      "awaitingParentWarning": "Bu aralıkta veli onayı bekleyen bir talep var; silersen talep kapatılacak."
     },
     "recurring": {
       "toggle": "Her hafta tekrarla",

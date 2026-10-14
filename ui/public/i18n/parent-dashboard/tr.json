@@ -131,5 +131,26 @@
     "privacyNote": "Sorular ve cevaplar velilere gösterilmez; yalnızca sonuç sayıları görünür.",
     "percent": "%{{value}}",
     "approxTime": "{{date}}, yaklaşık {{time}}"
+  },
+  "bookingRequests": {
+    "title": "Onay bekleyen ders talepleri",
+    "subtitle": "Çocuklarınızın özel ders talepleri onayınızdan sonra öğretmene gider.",
+    "loadError": "Ders talepleri yüklenemedi.",
+    "empty": "Onay bekleyen ders talebi yok.",
+    "childFallback": "Çocuğunuz",
+    "teacherFallback": "Öğretmen",
+    "expires": "Son karar: {{date}}",
+    "approve": "Onayla",
+    "reject": "Reddet",
+    "cancel": "Vazgeç",
+    "noteLabel": "Not (opsiyonel)",
+    "noteHint": "Not çocuğunuza iletilir.",
+    "approved": "Talep onaylandı ve öğretmene gönderildi.",
+    "rejected": "Talep reddedildi.",
+    "alreadyDecided": "Bu talep artık karar beklemiyor (başka bir veli karar vermiş olabilir). Liste yenilendi.",
+    "expired": "Bu talebin süresi doldu. Liste yenilendi.",
+    "notFound": "Bu talebe artık erişiminiz yok. Liste yenilendi.",
+    "actionError": "İşlem tamamlanamadı.",
+    "ok": "Tamam"
   }
 }

@@ -18,7 +18,11 @@
   "status": {
     "pending": "Pending",
     "approved": "Approved",
-    "rejected": "Rejected"
+    "rejected": "Rejected",
+    "awaitingParent": "Awaiting parent approval",
+    "parentRejected": "Declined by parent",
+    "expired": "Closed",
+    "unknown": "Unknown status"
   },
   "join": {
     "button": "Join lesson"

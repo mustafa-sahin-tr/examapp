@@ -1,0 +1,116 @@
+<section
+  id="booking-requests"
+  class="pbr"
+  *transloco="let t; prefix: 'parent-dashboard'"
+  aria-labelledby="pbr-title"
+  data-test="booking-requests-section"
+>
+  <mat-card appearance="outlined" class="pbr__card">
+    <mat-card-header>
+      <mat-icon mat-card-avatar aria-hidden="true">event_available</mat-icon>
+      <mat-card-title id="pbr-title">{{ t('bookingRequests.title') }}</mat-card-title>
+      <mat-card-subtitle>{{ t('bookingRequests.subtitle') }}</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (notice()) {
+        <p class="pbr__notice" role="status" data-test="booking-requests-notice">{{ notice() }}</p>
+      }
+
+      @if (loading()) {
+        <div class="pbr__state" aria-busy="true" data-test="booking-requests-loading">
+          <mat-spinner diameter="28" />
+          <span>{{ t('loading') }}</span>
+        </div>
+      } @else if (error()) {
+        <div class="pbr__state" role="alert" data-test="booking-requests-error">
+          <span>{{ error() }}</span>
+          <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+        </div>
+      } @else if (isEmpty()) {
+        <p class="pbr__empty" data-test="booking-requests-empty">{{ t('bookingRequests.empty') }}</p>
+      } @else {
+        <ul class="pbr__list">
+          @for (row of rows(); track row.request.id) {
+            <li class="pbr__row" data-test="booking-request-row">
+              <div class="pbr__main">
+                <span class="pbr__child">
+                  <mat-icon aria-hidden="true">child_care</mat-icon>
+                  {{ row.request.studentName || t('bookingRequests.childFallback') }}
+                </span>
+                <span class="pbr__teacher">
+                  <mat-icon aria-hidden="true">cast_for_education</mat-icon>
+                  {{ row.request.teacherName || t('bookingRequests.teacherFallback') }}
+                </span>
+                <span class="pbr__when">{{ row.day }} · {{ row.range }}</span>
+                @if (row.expires) {
+                  <span class="pbr__expires" data-test="booking-request-expires">
+                    {{ t('bookingRequests.expires', { date: row.expires }) }}
+                  </span>
+                }
+              </div>
+
+              @if (rejectingId() === row.request.id) {
+                <div class="pbr__reject">
+                  <mat-form-field appearance="outline" class="pbr__note" subscriptSizing="dynamic">
+                    <mat-label>{{ t('bookingRequests.noteLabel') }}</mat-label>
+                    <textarea
+                      matInput
+                      rows="2"
+                      data-test="booking-request-note"
+                      [maxlength]="noteMaxLength"
+                      [ngModel]="note()"
+                      (ngModelChange)="note.set($event)"
+                    ></textarea>
+                    <mat-hint>{{ t('bookingRequests.noteHint') }}</mat-hint>
+                    <mat-hint align="end">{{ note().length }} / {{ noteMaxLength }}</mat-hint>
+                  </mat-form-field>
+                  <div class="pbr__actions">
+                    <button
+                      mat-flat-button
+                      type="button"
+                      class="pbr__danger"
+                      data-test="booking-request-confirm-reject"
+                      [disabled]="actingId() !== null"
+                      (click)="confirmReject(row.request)"
+                    >
+                      {{ t('bookingRequests.reject') }}
+                    </button>
+                    <button mat-stroked-button type="button" [disabled]="actingId() !== null" (click)="cancelReject()">
+                      {{ t('bookingRequests.cancel') }}
+                    </button>
+                  </div>
+                </div>
+              } @else {
+                <div class="pbr__actions">
+                  <button
+                    mat-flat-button
+                    color="primary"
+                    type="button"
+                    data-test="booking-request-approve"
+                    [disabled]="actingId() !== null"
+                    (click)="approve(row.request)"
+                  >
+                    @if (actingId() === row.request.id) {
+                      <mat-spinner diameter="18" />
+                    }
+                    {{ t('bookingRequests.approve') }}
+                  </button>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    data-test="booking-request-reject"
+                    [disabled]="actingId() !== null"
+                    (click)="startReject(row.request)"
+                  >
+                    {{ t('bookingRequests.reject') }}
+                  </button>
+                </div>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </mat-card-content>
+  </mat-card>
+</section>

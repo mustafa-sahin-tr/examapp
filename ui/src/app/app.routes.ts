@@ -327,6 +327,20 @@ export const routes: Routes = [
           import('./pages/parent-children/parent-children.component').then((m) => m.ParentChildrenComponent),
       },
       {
+        // Issue #439: veli çocuğu adına öğretmen arar (öğrenci aramasıyla aynı komponent, veli modu).
+        path: 'my-children/:studentId/tutors',
+        canActivate: [authGuard, parentGuard],
+        loadComponent: () =>
+          import('./pages/tutor-search/tutor-search.component').then((m) => m.TutorSearchComponent),
+      },
+      {
+        // Issue #439: veli modunda öğretmen profili — slot seçip çocuk adına talep (veli onayı atlanır).
+        path: 'my-children/:studentId/tutors/:id',
+        canActivate: [authGuard, parentGuard],
+        loadComponent: () =>
+          import('./pages/tutor-search/tutor-public-profile.component').then((m) => m.TutorPublicProfileComponent),
+      },
+      {
         // Issue #97: onaylı bir randevunun video görüşme odası (iki taraf da girer).
         path: 'lessons/:bookingId/video',
         canActivate: [authGuard, roleGuard('Student', 'Teacher'), approvedTeacherGuard],

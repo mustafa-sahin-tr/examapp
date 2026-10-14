@@ -3,6 +3,26 @@
     <mat-icon>arrow_back</mat-icon> {{ t('back') }}
   </button>
 
+  <!-- Issue #439: veli çocuğu adına talep oluşturuyor. -->
+  @if (childStudentId !== null) {
+    <div class="tpp__child" data-test="child-banner" *transloco="let c; prefix: 'tutor-search.child'">
+      <mat-icon aria-hidden="true">child_care</mat-icon>
+      @if (childLoading()) {
+        <span>{{ c('loading') }}</span>
+      } @else if (childLoadFailed()) {
+        <span role="alert">{{ c('loadError') }}</span>
+        <button mat-stroked-button type="button" (click)="loadChild()">{{ c('retry') }}</button>
+      } @else {
+        <!-- `as` yalnız primary @if bloğunda geçerli (NG5002); çocuk null-check'i iç blokta. -->
+        @if (child(); as kid) {
+          <span>{{ c('banner', { child: kid.name || c('fallbackName') }) }}</span>
+        } @else {
+          <span role="alert" data-test="child-missing">{{ c('missing') }}</span>
+        }
+      }
+    </div>
+  }
+
   @if (loading()) {
     <div class="tpp__state" aria-busy="true" aria-live="polite">
       <mat-spinner diameter="36"></mat-spinner>
@@ -40,9 +60,17 @@
             </p>
           </div>
 
-          <button mat-flat-button color="primary" type="button" class="tpp__cta" (click)="openBookingDialog()">
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            class="tpp__cta"
+            data-test="book"
+            [disabled]="!canBook()"
+            (click)="openBookingDialog()"
+          >
             <mat-icon>event_available</mat-icon>
-            {{ t('book') }}
+            {{ childStudentId !== null ? t('bookForChild') : t('book') }}
           </button>
         </header>
 

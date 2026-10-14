@@ -1,6 +1,14 @@
 <h2 mat-dialog-title>
   {{ 'shared.bookingSlotDialog.title' | transloco: { teacher: data.teacherName } }}
 </h2>
+@if (data.child; as child) {
+  <p class="bsd__for-child" data-test="for-child">
+    {{
+      'shared.bookingSlotDialog.forChild'
+        | transloco: { child: child.name || ('shared.bookingSlotDialog.childFallback' | transloco) }
+    }}
+  </p>
+}
 
 <mat-dialog-content class="bsd__content" *transloco="let t; prefix: 'shared.bookingSlotDialog'">
   @if (loading()) {
@@ -35,7 +43,12 @@
       }
     </mat-radio-group>
 
-    @if (submitError()) {
+    @if (parentRequired()) {
+      <div class="bsd__error bsd__error--parent" role="alert" data-test="parent-required">
+        <p>{{ t('parentRequired') }}</p>
+        <a mat-stroked-button [routerLink]="parentsRoute" (click)="close()">{{ t('parentRequiredLink') }}</a>
+      </div>
+    } @else if (submitError()) {
       <p class="bsd__error" role="alert">{{ submitError() }}</p>
     }
   }
@@ -53,6 +66,6 @@
     @if (submitting()) {
       <mat-spinner diameter="18" />
     }
-    {{ t('submit') }}
+    {{ data.child ? t('submitForChild') : t('submit') }}
   </button>
 </mat-dialog-actions>

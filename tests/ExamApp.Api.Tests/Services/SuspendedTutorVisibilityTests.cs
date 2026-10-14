@@ -135,7 +135,7 @@ public class SuspendedTutorVisibilityTests : IDisposable
 
         await using (var ctx = _db.NewContext())
         {
-            var result = await Bookings(ctx).CreateBookingAsync(StudentUserId, new CreateBookingDto { AvailabilitySlotId = slotId });
+            var result = await Bookings(ctx).CreateBookingAsync(StudentUserId, new CreateBookingDto { AvailabilitySlotId = slotId }, requiresParent: false);
             result.Success.ShouldBeFalse();
             result.NotFound.ShouldBeTrue();
         }
@@ -150,7 +150,7 @@ public class SuspendedTutorVisibilityTests : IDisposable
         var (_, slotId) = await SeedAsync();
 
         await using var ctx = _db.NewContext();
-        (await Bookings(ctx).CreateBookingAsync(StudentUserId, new CreateBookingDto { AvailabilitySlotId = slotId }))
+        (await Bookings(ctx).CreateBookingAsync(StudentUserId, new CreateBookingDto { AvailabilitySlotId = slotId }, requiresParent: false))
             .Success.ShouldBeTrue();
     }
 }

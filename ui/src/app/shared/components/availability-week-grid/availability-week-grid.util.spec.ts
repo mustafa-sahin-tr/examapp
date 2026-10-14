@@ -1,5 +1,5 @@
 import { AvailabilitySlot } from '../../../models/booking.model';
-import { toGridEvents, slotStatus, AvailabilityGridEvent } from './availability-week-grid.util';
+import { toGridEvents, slotStatus, AvailabilityGridEvent, isDeletableSlot } from './availability-week-grid.util';
 
 describe('availability-week-grid.util', () => {
   describe('slotStatus', () => {
@@ -378,5 +378,34 @@ describe('availability-week-grid.util', () => {
         expect(event.extendedProps.endsNextDay).toBeFalse();
       });
     });
+  });
+
+  // Issue #439: veli onayı bekleyen talep slotu tutar — dolu görünür, öğretmene henüz düşmedi.
+  it('slotStatus_AwaitingParent_ReturnsPendingClassWithParentLabel', () => {
+    const slot: AvailabilitySlot = {
+      id: 3,
+      teacherId: 10,
+      date: '2026-09-20',
+      startTime: '14:00:00',
+      endTime: '15:00:00',
+      createdAt: '2026-09-15T10:00:00Z',
+      startUtc: '2026-09-20T12:00:00Z',
+      endUtc: '2026-09-20T13:00:00Z',
+      isBooked: true,
+      bookingId: null,
+      bookingStatus: 'AwaitingParent',
+      studentName: null,
+    };
+
+    expect(slotStatus(slot)).toEqual({ statusClass: 'is-pending', statusKey: 'status.awaitingParent' });
+    expect(toGridEvents([slot])[0].extendedProps.studentName).toBeNull();
+    expect(toGridEvents([slot])[0].extendedProps.awaitingParent).toBeTrue();
+  });
+
+  it('isDeletableSlot_FreeOrAwaitingParentOnly', () => {
+    expect(isDeletableSlot({ statusClass: 'is-free', awaitingParent: false })).toBeTrue();
+    expect(isDeletableSlot({ statusClass: 'is-pending', awaitingParent: true })).toBeTrue();
+    expect(isDeletableSlot({ statusClass: 'is-pending', awaitingParent: false })).toBeFalse();
+    expect(isDeletableSlot({ statusClass: 'is-approved', awaitingParent: false })).toBeFalse();
   });
 });

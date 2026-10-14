@@ -254,6 +254,8 @@ builder.Services.AddOptions<ExamApp.Api.Models.Dtos.DirectMessages.DirectMessagi
 builder.Services.AddScoped<ExamApp.Api.Services.DirectMessages.IDirectMessagePolicy, ExamApp.Api.Services.DirectMessages.DirectMessagePolicy>();
 builder.Services.AddScoped<ExamApp.Api.Services.DirectMessages.IDirectMessageService, ExamApp.Api.Services.DirectMessages.DirectMessageService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Bookings.IBookingService, ExamApp.Api.Services.Bookings.BookingService>();
+// issue #439: veli onayı ödeme kancası (#408 ödeme yetkilendirmesi buraya eklenecek; şimdilik no-op).
+builder.Services.AddSingleton<ExamApp.Api.Services.Bookings.IBookingParentApprovalGate, ExamApp.Api.Services.Bookings.NoOpBookingParentApprovalGate>();
 // Tekrarlayan haftalık müsaitlik kuralları (issue #178) — BookingService top-up için buna bağımlı.
 builder.Services.AddScoped<ExamApp.Api.Services.Bookings.IRecurringAvailabilityService, ExamApp.Api.Services.Bookings.RecurringAvailabilityService>();
 // Video görüşme (issue #97) — "Video" bölümünü bağlar, IVideoSessionProvider'ı kaydeder.
@@ -398,6 +400,12 @@ builder.Services.AddOptions<ExamApp.Api.Services.Bookings.SuspendedTeacherBookin
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services.AddScoped<ExamApp.Api.Services.Bookings.ISuspendedTeacherBookingSweepJob, ExamApp.Api.Services.Bookings.SuspendedTeacherBookingSweepJob>();
+// issue #439: veli onayı bekleyen (AwaitingParent) talepleri 7 gün / ders saati dolunca Expired'a çeker (Hangfire, varsayılan 15 dk).
+builder.Services.AddOptions<ExamApp.Api.Services.Bookings.AwaitingParentBookingExpiryOptions>()
+    .BindConfiguration(ExamApp.Api.Services.Bookings.AwaitingParentBookingExpiryOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<ExamApp.Api.Services.Bookings.IAwaitingParentBookingExpiryJob, ExamApp.Api.Services.Bookings.AwaitingParentBookingExpiryJob>();
 // issue #396: süresi dolmuş açık test oturumlarını Expired'a çeken güvenlik ağı (Hangfire, varsayılan 5 dk).
 builder.Services.AddOptions<ExamApp.Api.Services.Worksheets.ExpiredTestInstanceSweepOptions>()
     .BindConfiguration(ExamApp.Api.Services.Worksheets.ExpiredTestInstanceSweepOptions.SectionName)
@@ -690,6 +698,12 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.Bookings.ISuspendedTeacherBookingS
     ExamApp.Api.Services.Bookings.SuspendedTeacherBookingSweepJob.RecurringJobId,
     j => j.SweepAsync(CancellationToken.None),
     app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Bookings.SuspendedTeacherBookingSweepOptions>>().Value.Cron);
+
+// issue #439: veli onayı süresi dolan randevu taleplerini Expired'a çeker; öğrenci + velilere BookingParentDecisionEvent.
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.Bookings.IAwaitingParentBookingExpiryJob>(
+    ExamApp.Api.Services.Bookings.AwaitingParentBookingExpiryJob.RecurringJobId,
+    j => j.ExpireAsync(CancellationToken.None),
+    app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Bookings.AwaitingParentBookingExpiryOptions>>().Value.Cron);
 
 // issue #396: öğrenci dönmeyince istek anında kapanamayan, süresi dolmuş Started test oturumlarını Expired'a çeker.
 RecurringJob.AddOrUpdate<ExamApp.Api.Services.Worksheets.IExpiredTestInstanceSweepJob>(

@@ -43,6 +43,12 @@
             }
           </strong>
           <span class="awg__delete-prompt">{{ selectedRuleId !== null ? t('grid.recurring.deletePrompt') : t('grid.delete.prompt') }}</span>
+          @if (selected.extendedProps.awaitingParent) {
+            <!-- Issue #439: silme veli onayı bekleyen talebi kapatır (öğrenci "kapandı" görür). -->
+            <span class="awg__draft-hint awg__awaiting-parent-warning" role="note" data-test="awaiting-parent-warning">
+              {{ t('grid.delete.awaitingParentWarning') }}
+            </span>
+          }
         } @else if (draft()) {
           <strong class="awg__draft-range">
             {{ draftLabel() }}

@@ -41,6 +41,8 @@
     @if (notice()) {
       <p class="pdb__notice" role="status" data-test="notice">{{ notice() }}</p>
     }
+    <!-- Issue #439: tüm Active çocukların veli onayı bekleyen ders talepleri (seçili çocuktan bağımsız). -->
+    <app-parent-booking-requests />
     <div class="pdb__selector">
       @if (children().length > 1) {
         <mat-form-field appearance="outline" class="pdb__select" subscriptSizing="dynamic">

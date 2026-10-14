@@ -376,7 +376,7 @@ public class AvailabilityWriteTransactionTests : IDisposable
 
         await using (var ctx = _db.NewContextWithRetryingExecutionStrategy())
         {
-            var result = await NewBooking(ctx).CreateBookingAsync(200, new CreateBookingDto { AvailabilitySlotId = slotId });
+            var result = await NewBooking(ctx).CreateBookingAsync(200, new CreateBookingDto { AvailabilitySlotId = slotId }, requiresParent: false);
             result.Success.ShouldBeTrue(result.Message);
         }
     }

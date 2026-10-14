@@ -19,7 +19,11 @@
   "status": {
     "pending": "Awaiting approval",
     "approved": "Approved",
-    "rejected": "Rejected"
+    "rejected": "Rejected",
+    "awaitingParent": "Awaiting parent approval",
+    "parentRejected": "Declined by your parent",
+    "expired": "Closed",
+    "unknown": "Unknown status"
   },
   "join": {
     "button": "Join lesson"
@@ -27,5 +31,8 @@
   "profile": {
     "link": "View profile",
     "ariaLabel": "Go to teacher profile"
-  }
+  },
+  "awaitingParentHint": "If your parent does not approve by {{date}}, the request expires.",
+  "parentNote": "Parent's note: {{note}}",
+  "expiredHint": "The request expired or the teacher no longer offers this time. You can request another time."
 }

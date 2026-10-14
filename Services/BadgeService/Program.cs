@@ -225,6 +225,8 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<ParentLinkChangedConsumer, ParentLinkChangedConsumerDefinition>(); // issue #423
     x.AddConsumer<ParentHomeworkOverdueConsumer, ParentHomeworkOverdueConsumerDefinition>(); // issue #423
     x.AddConsumer<ParentChildTestCompletedConsumer, ParentChildTestCompletedConsumerDefinition>(); // issue #423
+    x.AddConsumer<BookingParentApprovalRequestedConsumer, BookingParentApprovalRequestedConsumerDefinition>(); // issue #439
+    x.AddConsumer<BookingParentDecisionConsumer, BookingParentDecisionConsumerDefinition>(); // issue #439
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -267,6 +269,8 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<ParentLinkChangedConsumer>(context); // issue #423
             e.ConfigureConsumer<ParentHomeworkOverdueConsumer>(context); // issue #423
             e.ConfigureConsumer<ParentChildTestCompletedConsumer>(context); // issue #423
+            e.ConfigureConsumer<BookingParentApprovalRequestedConsumer>(context); // issue #439
+            e.ConfigureConsumer<BookingParentDecisionConsumer>(context); // issue #439
         });
     });
 });

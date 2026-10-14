@@ -7,17 +7,36 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
+import { RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { finalize } from 'rxjs';
-import { AvailabilitySlot } from '../../../models/booking.model';
+import { Observable, finalize } from 'rxjs';
+import {
+  AvailabilitySlot,
+  BOOKING_ERROR_CODES,
+  BookingResult,
+  bookingErrorCode,
+} from '../../../models/booking.model';
 import { BookingService } from '../../../services/booking.service';
 import { SLOT_NEXT_DAY_KEY, formatSlotDay, formatSlotRange } from '../../utils/booking-format.util';
 
-/** Dialog girdisi — hangi öğretmenin slotları gösterilecek. */
+/** Issue #439: velinin çocuğu adına talep açtığı mod — talep veli onayını atlar. */
+export interface BookingSlotDialogChild {
+  studentId: number;
+  name: string;
+}
+
+/** Dialog girdisi — hangi öğretmenin slotları gösterilecek; `child` verilirse talep o çocuk adına açılır. */
 export interface BookingSlotDialogData {
   teacherId: number;
   teacherName: string;
+  child?: BookingSlotDialogChild | null;
 }
+
+/** Başarıda dialog sunucunun sonucuyla kapanır (durum `AwaitingParent` / `Pending`); vazgeçilirse `false`/`undefined`. */
+export type BookingSlotDialogResult = BookingResult | false;
+
+/** Issue #439: öğrencinin veli bağlantılarını gördüğü sayfa ("Velilerim" kartı). */
+export const STUDENT_PARENTS_ROUTE = '/student-profile';
 
 /** Aynı güne düşen slotlar tek başlık altında. */
 interface SlotGroup {
@@ -29,7 +48,10 @@ interface SlotGroup {
  * "Randevu Al" akışı (issue #96): öğretmenin gelecekteki boş müsaitlik aralıklarını
  * gün gün listeler, seçilen aralık için randevu talebi oluşturur.
  * 409 (aralık bu arada dolmuş) durumunda liste tazelenir ve kullanıcı bilgilendirilir;
- * başarıda dialog `true` ile kapanır.
+ * başarıda dialog sunucunun `BookingResult`'ı ile kapanır.
+ * Issue #439: `data.child` verilirse (veli) talep `POST parent/children/{studentId}/bookings` ile çocuk adına açılır. Öğrenci
+ * akışında 403 `ParentRequired` (velisi olmayan, veliye tabi öğrenci) açık bir mesaj + "Velilerim" bağlantısıyla gösterilir;
+ * 409 `TooManyAwaitingParent` (veli onayı bekleyen talep sınırı) sözlükteki açıklamayla gösterilir.
  */
 @Component({
   selector: 'app-booking-slot-dialog',
@@ -41,6 +63,7 @@ interface SlotGroup {
     MatIconModule,
     MatProgressSpinnerModule,
     MatRadioModule,
+    RouterLink,
     TranslocoDirective,
     TranslocoPipe,
   ],
@@ -50,7 +73,8 @@ interface SlotGroup {
 export class BookingSlotDialogComponent {
   private readonly bookingService = inject(BookingService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly dialogRef = inject<MatDialogRef<BookingSlotDialogComponent, boolean>>(MatDialogRef);
+  private readonly dialogRef =
+    inject<MatDialogRef<BookingSlotDialogComponent, BookingSlotDialogResult>>(MatDialogRef);
   private readonly transloco = inject(TranslocoService);
 
   protected readonly data = inject<BookingSlotDialogData>(MAT_DIALOG_DATA);
@@ -59,6 +83,9 @@ export class BookingSlotDialogComponent {
   protected readonly error = signal<string | null>(null);
   protected readonly submitting = signal(false);
   protected readonly submitError = signal<string | null>(null);
+  /** Issue #439: 403 `ParentRequired` — mesaj sözlükten, "Velilerim" bağlantısıyla. */
+  protected readonly parentRequired = signal(false);
+  protected readonly parentsRoute = STUDENT_PARENTS_ROUTE;
   protected readonly slots = signal<AvailabilitySlot[]>([]);
   protected selectedId: number | null = null;
 
@@ -111,9 +138,14 @@ export class BookingSlotDialogComponent {
       return;
     }
     this.submitError.set(null);
+    this.parentRequired.set(false);
     this.submitting.set(true);
-    this.bookingService
-      .createBooking({ availabilitySlotId: this.selectedId })
+    const body = { availabilitySlotId: this.selectedId };
+    const child = this.data.child;
+    const request$: Observable<BookingResult> = child
+      ? this.bookingService.createBookingForChild(child.studentId, body)
+      : this.bookingService.createBooking(body);
+    request$
       .pipe(
         finalize(() => this.submitting.set(false)),
         takeUntilDestroyed(this.destroyRef)
@@ -124,9 +156,26 @@ export class BookingSlotDialogComponent {
             this.submitError.set(res.message || this.t('shared.bookingSlotDialog.submitError'));
             return;
           }
-          this.dialogRef.close(true);
+          this.dialogRef.close(res);
         },
         error: (err: HttpErrorResponse) => {
+          if (
+            !child &&
+            err.status === 403 &&
+            bookingErrorCode(err.error) === BOOKING_ERROR_CODES.parentRequired
+          ) {
+            this.parentRequired.set(true);
+            return;
+          }
+          if (
+            !child &&
+            err.status === 409 &&
+            bookingErrorCode(err.error) === BOOKING_ERROR_CODES.tooManyAwaitingParent
+          ) {
+            // Slot dolmadı — liste tazelenmez; sınır velinin kararıyla açılır.
+            this.submitError.set(this.t('shared.bookingSlotDialog.tooManyAwaitingParent'));
+            return;
+          }
           this.submitError.set(
             this.bookingService.extractError(err, this.t('shared.bookingSlotDialog.submitError'))
           );

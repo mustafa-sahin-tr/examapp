@@ -59,6 +59,15 @@ public class OutboxEventRegistryTests
             .ShouldBe(typeof(BookingTeacherUnavailableEvent));
 
     [Fact]
+    public void Resolve_knows_the_booking_parent_approval_events_issue_439()
+    {
+        OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<BookingParentApprovalRequestedEvent>())
+            .ShouldBe(typeof(BookingParentApprovalRequestedEvent));
+        OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<BookingParentDecisionEvent>())
+            .ShouldBe(typeof(BookingParentDecisionEvent));
+    }
+
+    [Fact]
     public void Resolve_knows_the_parent_link_events_issue_419()
     {
         OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<ParentLinkedEvent>()).ShouldBe(typeof(ParentLinkedEvent));
@@ -95,7 +104,8 @@ public class OutboxEventRegistryTests
     private static string[] ParentNotificationEvents => new[]
     {
         nameof(ParentLinkedEvent), nameof(ParentUnlinkedEvent),
-        nameof(ParentHomeworkOverdueEvent), nameof(ParentChildTestCompletedEvent)
+        nameof(ParentHomeworkOverdueEvent), nameof(ParentChildTestCompletedEvent),
+        nameof(BookingParentApprovalRequestedEvent), nameof(BookingParentDecisionEvent) // issue #439
     };
 
     private static string RepoFile(string relativePath)

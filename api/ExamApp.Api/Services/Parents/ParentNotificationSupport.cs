@@ -92,10 +92,13 @@ public static class ParentNotificationSupport
     /// </summary>
     public static async Task<HashSet<int>> ActiveParentIdsLockedAsync(AppDbContext context, int studentId, CancellationToken ct)
     {
+        // issue #439 review: koşul ParentChildAccess.GrantsAccess ile hizalı — Active + RevokedAt boş + veli ve öğrenci silinmemiş
+        // (kilitli karar yolu soft-delete edilmiş veliyi de reddetsin).
         if (!context.Database.IsNpgsql())
         {
             var plain = await context.ParentStudentLinks.AsNoTracking()
-                .Where(l => l.StudentId == studentId && l.Status == ParentStudentLinkStatus.Active)
+                .Where(l => l.StudentId == studentId)
+                .Where(ParentChildAccess.GrantsAccess)
                 .Select(l => l.ParentId)
                 .ToListAsync(ct);
             return plain.ToHashSet();
@@ -103,7 +106,14 @@ public static class ParentNotificationSupport
 
         var active = nameof(ParentStudentLinkStatus.Active);
         var rows = await context.Database
-            .SqlQuery<int>($"SELECT l.\"ParentId\" AS \"Value\" FROM \"ParentStudentLinks\" l WHERE l.\"StudentId\" = {studentId} AND l.\"Status\" = {active} FOR SHARE OF l")
+            .SqlQuery<int>($"""
+                SELECT l."ParentId" AS "Value" FROM "ParentStudentLinks" l
+                JOIN "Parents" p ON p."Id" = l."ParentId"
+                JOIN "Students" s ON s."Id" = l."StudentId"
+                WHERE l."StudentId" = {studentId} AND l."Status" = {active} AND l."RevokedAt" IS NULL
+                  AND NOT p."IsDeleted" AND NOT s."IsDeleted"
+                FOR SHARE OF l
+                """)
             .ToListAsync(ct);
         return rows.ToHashSet();
     }

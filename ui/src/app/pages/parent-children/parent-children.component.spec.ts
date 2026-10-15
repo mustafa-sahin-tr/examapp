@@ -489,4 +489,87 @@ describe('ParentChildrenComponent (issue #419, #436)', () => {
     expect(links[0].getAttribute('href')).toBe('/my-children/21/tutors');
     expect(links[0].textContent).toContain('Ders talebi oluştur');
   });
+  // ── Issue #440: öğrencinin veli daveti (StudentRegistered) ───────────────────────────────────────────────────────────
+
+  const invite: LinkedChild = {
+    linkId: 30,
+    status: 'Pending',
+    origin: 'StudentRegistered',
+    requiresConsent: true,
+    consentVersion: '2026-10',
+    studentName: 'Ali K.',
+    gradeName: null,
+    schoolName: null,
+    linkedAt: null,
+    requestedAt: '2026-10-15T09:00:00Z',
+    pendingExpiresAt: '2026-10-22T09:00:00Z',
+    maxParents: 4,
+  };
+
+  it('studentInvite_RendersNameConsentTextAndActions_NotCountedInChildLimit', () => {
+    const el = setup([invite]);
+
+    expect(el.querySelector('[data-test="student-invite-title"]')?.textContent).toContain('Ali K. sizi veli olarak ekledi');
+    expect(el.querySelector('[data-test="student-invite-consent-text"]')?.textContent).toContain('KVKK');
+    expect(el.querySelector('.pch__consent-link')?.getAttribute('href')).toBe('/privacy-policy');
+    expect(el.querySelector('[data-test="pending-row"]')).toBeNull();
+    expect(el.querySelector('[data-test="student-invite-approve"]')).not.toBeNull();
+    expect(el.querySelector('[data-test="student-invite-reject"]')).not.toBeNull();
+  });
+
+  it('studentInvite_ApproveWithoutConsent_DoesNotCallServer', () => {
+    const el = setup([invite]);
+
+    el.querySelector<HTMLButtonElement>('[data-test="student-invite-approve"]')!.click();
+    fixture.detectChanges();
+
+    expect(service.approve).not.toHaveBeenCalled();
+    expect(el.querySelector('[data-test="student-invite-consent-missing"]')).not.toBeNull();
+  });
+
+  it('studentInvite_ApproveWithConsent_SendsConsentAndVersion_ThenReloads', () => {
+    const el = setup([invite]);
+    service.approve.and.returnValue(of(undefined));
+    service.getMyChildren.calls.reset();
+
+    el.querySelector<HTMLInputElement>('[data-test="student-invite-consent"] input')!.click();
+    fixture.detectChanges();
+    el.querySelector<HTMLButtonElement>('[data-test="student-invite-approve"]')!.click();
+    fixture.detectChanges();
+
+    expect(service.approve).toHaveBeenCalledWith(30, { consentAccepted: true, consentVersion: '2026-10' });
+    expect(snackBar.open).toHaveBeenCalledWith('Ali K. artık bağlı çocuklarınız arasında.', jasmine.any(String), jasmine.any(Object));
+    expect(service.getMyChildren).toHaveBeenCalled();
+  });
+
+  it('studentInvite_ApproveExpired409_ShowsInvitationExpired', () => {
+    const el = setup([invite]);
+    service.approve.and.returnValue(
+      throwError(() => new HttpErrorResponse({ status: 409, error: { errorCode: 'InvitationExpired', message: 'x' } }))
+    );
+
+    el.querySelector<HTMLInputElement>('[data-test="student-invite-consent"] input')!.click();
+    fixture.detectChanges();
+    el.querySelector<HTMLButtonElement>('[data-test="student-invite-approve"]')!.click();
+    fixture.detectChanges();
+
+    expect(snackBar.open).toHaveBeenCalledWith(
+      'Davetin süresi dolmuş; çocuğunuzdan yeni bir davet göndermesini isteyin.',
+      jasmine.any(String),
+      jasmine.any(Object)
+    );
+  });
+
+  it('studentInvite_Reject_ConfirmsThenRejectsAndRemovesRow', () => {
+    const el = setup([invite]);
+    service.reject.and.returnValue(of(undefined));
+
+    el.querySelector<HTMLButtonElement>('[data-test="student-invite-reject"]')!.click();
+    fixture.detectChanges();
+
+    expect(dialogOpen).toHaveBeenCalled();
+    expect(service.reject).toHaveBeenCalledWith(30);
+    expect(el.querySelector('[data-test="student-invite-row"]')).toBeNull();
+    expect(snackBar.open).toHaveBeenCalledWith('Davet reddedildi.', jasmine.any(String), jasmine.any(Object));
+  });
 });

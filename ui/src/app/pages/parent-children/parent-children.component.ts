@@ -4,13 +4,14 @@ import { AfterViewInit, Component, DestroyRef, OnInit, computed, inject, signal 
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
+import { TranslocoDirective, TranslocoPipe, provideTranslocoScope } from '@jsverse/transloco';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Observable, filter, finalize, switchMap } from 'rxjs';
 
@@ -21,6 +22,7 @@ import {
   PARENT_LINK_ERROR_CODES,
   ParentInviteCode,
   formatInviteCode,
+  isStudentInvitation,
   normalizeInviteCodeInput,
 } from '../../models/parent-link.model';
 import { ParentLinkService } from '../../services/parent-link.service';
@@ -53,6 +55,7 @@ const DEFAULT_MAX_PARENTS = 4;
     CreateChildAccountComponent,
     FormsModule,
     MatButtonModule,
+    MatCheckboxModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -60,6 +63,7 @@ const DEFAULT_MAX_PARENTS = 4;
     MatTooltipModule,
     RouterLink,
     TranslocoDirective,
+    TranslocoPipe,
   ],
   providers: [provideTranslocoScope(PARENT_LINKS_SCOPE)],
   templateUrl: './parent-children.component.html',
@@ -85,6 +89,11 @@ export class ParentChildrenComponent implements OnInit, AfterViewInit {
   protected readonly revokingId = signal<number | null>(null);
   protected readonly decidingId = signal<number | null>(null);
   protected readonly generatingId = signal<number | null>(null);
+  /** Issue #440: öğrenci davetlerinde rıza kutusunun durumu (bağlantı id'si → işaretli mi). */
+  protected readonly consents = signal<Record<number, boolean>>({});
+  /** Issue #440: rıza işaretlenmeden "Onayla"ya basılan davet (satır içi uyarı). */
+  protected readonly consentMissingId = signal<number | null>(null);
+  protected readonly isStudentInvite = isStudentInvitation;
   /** Bu oturumda üretilen ikinci veli kodları (çocuğun bağlantı id'si → kod) — yalnız bellekte. */
   protected readonly newCodes = signal<Record<number, ParentInviteCode>>({});
 
@@ -100,7 +109,8 @@ export class ParentChildrenComponent implements OnInit, AfterViewInit {
   protected readonly openChildCount = computed(() => {
     if (this.loadError()) return null;
     const now = Date.now();
-    return this.children().filter((c) => isOpenLink(c, now)).length;
+    // Issue #440: öğrencinin davet ettiği bekleyen bağlantılar sunucunun tavan sayımına girmez (ömrünü davet yönetir).
+    return this.children().filter((c) => !isStudentInvitation(c) && isOpenLink(c, now)).length;
   });
   protected readonly isEmpty = computed(() => !this.loading() && !this.loadError() && this.children().length === 0);
   /** Bu oturumda üretilen kodların görünen biçimi (bağlantı id'si → XXXX-XXXX-XXXX). */
@@ -216,6 +226,76 @@ export class ParentChildrenComponent implements OnInit, AfterViewInit {
           if (this.service.errorCode(err) === PARENT_LINK_ERROR_CODES.lastParentCannotLeave) {
             this.load();
           }
+        },
+      });
+  }
+
+  // ---- issue #440: öğrencinin veli daveti (rızalı onay / ret) ------------------------------------------------------------
+
+  protected setConsent(child: LinkedChild, checked: boolean): void {
+    this.consents.update((map) => ({ ...map, [child.linkId]: checked }));
+    if (checked && this.consentMissingId() === child.linkId) {
+      this.consentMissingId.set(null);
+    }
+  }
+
+  protected approveInvite(child: LinkedChild): void {
+    if (this.decidingId() !== null) return;
+    if (!this.consents()[child.linkId]) {
+      this.consentMissingId.set(child.linkId);
+      return;
+    }
+    this.decidingId.set(child.linkId);
+    this.service
+      .approve(child.linkId, { consentAccepted: true, consentVersion: child.consentVersion ?? '' })
+      .pipe(
+        finalize(() => this.decidingId.set(null)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: () => {
+          this.ui.toast(this.ui.text('children.studentInvite.approved', { name: child.studentName ?? '' }));
+          this.load();
+        },
+        error: (err: HttpErrorResponse) => {
+          const code = this.service.errorCode(err);
+          if (code === PARENT_LINK_ERROR_CODES.invitationExpired) {
+            this.ui.toast(this.ui.text('children.studentInvite.invitationExpired'));
+          } else if (
+            code === PARENT_LINK_ERROR_CODES.consentRequired ||
+            code === PARENT_LINK_ERROR_CODES.consentVersionMismatch
+          ) {
+            // Sürüm değişmiş olabilir: liste güncel sürümle yenilenir, kutu yeniden işaretlenir.
+            this.consents.update((map) => ({ ...map, [child.linkId]: false }));
+            this.ui.toast(this.ui.text('children.studentInvite.consentRequired'));
+          } else {
+            this.ui.toast(this.service.extractError(err, this.ui.text('children.studentInvite.approveError')));
+          }
+          this.load();
+        },
+      });
+  }
+
+  protected rejectInvite(child: LinkedChild): void {
+    if (this.decidingId() !== null) return;
+    this.ui
+      .confirm('children.studentInvite.rejectConfirm', { name: child.studentName ?? '' })
+      .pipe(
+        filter((ok) => ok),
+        switchMap(() => {
+          this.decidingId.set(child.linkId);
+          return this.service.reject(child.linkId).pipe(finalize(() => this.decidingId.set(null)));
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: () => {
+          this.children.update((list) => list.filter((c) => c.linkId !== child.linkId));
+          this.ui.toast(this.ui.text('children.studentInvite.rejected'));
+        },
+        error: (err: HttpErrorResponse) => {
+          this.ui.toast(this.service.extractError(err, this.ui.text('children.studentInvite.rejectError')));
+          this.load();
         },
       });
   }

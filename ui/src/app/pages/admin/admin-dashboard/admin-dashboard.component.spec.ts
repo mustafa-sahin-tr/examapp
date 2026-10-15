@@ -897,4 +897,37 @@ describe('AdminDashboardComponent', () => {
       expect(route?.canActivate).withContext(path).toEqual([authGuard, adminGuard]);
     }
   });
+
+  // Issue #440/#441: veli durumu sayaçları.
+  it('parentStatusCard_ServerSendsCounts_RendersFourCounts', () => {
+    fixture = configure();
+    adminService.getDashboardSummary.and.returnValue(
+      of({
+        ...summary,
+        studentsWithoutParent: 12,
+        studentsInParentGrace: 7,
+        studentsParentGraceExpired: 2,
+        studentsAwaitingParentActivation: 5,
+      })
+    );
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    const card: HTMLElement = fixture.nativeElement.querySelector('[data-key="parentStatus"]');
+    expect(card).not.toBeNull();
+    const value = (key: string) => card.querySelector(`[data-key="${key}"] .summary-value`)?.textContent?.trim();
+    expect(value('withoutParent')).toBe('12');
+    expect(value('inGrace')).toBe('7');
+    expect(value('graceExpired')).toBe('2');
+    expect(value('awaitingActivation')).toBe('5');
+    expect(card.textContent).toContain('Veli durumu');
+  });
+
+  it('parentStatusCard_OldServerWithoutCounts_Hidden', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-key="parentStatus"]')).toBeNull();
+  });
 });

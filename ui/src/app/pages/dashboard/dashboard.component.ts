@@ -45,6 +45,7 @@ import {
   deriveBadgeState,
 } from '../../shared/components/badge-medallion/badge-state.util';
 import { SchoolPendingBannerComponent } from '../../shared/components/school-pending-banner/school-pending-banner.component';
+import { ParentStatusCardComponent } from '../../shared/components/parent-status-card/parent-status-card.component';
 
 interface AssignmentCardViewModel {
   assignment: AssignedWorksheet;
@@ -92,6 +93,7 @@ export interface EarnedBadgeViewModel {
     TranslocoPipe,
     DailyQuestionsCardComponent,
     SchoolPendingBannerComponent,
+    ParentStatusCardComponent,
   ],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],

@@ -5,6 +5,7 @@ import { Router, provideRouter } from '@angular/router';
 import { AuthService, UserProfile } from './auth.service';
 import { Teacher } from '../models/teacher';
 import { teacherAccountSuspendedOf } from '../models/teacher-approval.model';
+import { ParentStatusStore } from './parent-status.store';
 
 /**
  * Helper: base64url encode (JWT format)
@@ -481,6 +482,28 @@ describe('AuthService — teacher account approval (issue #287)', () => {
     expect(results.length).toBe(2);
     expect(service.user()?.teacher?.rejectionReason).toBe('Eksik');
     expect(service.isUnapprovedTeacher()).toBeTrue();
+  });
+
+  it('refreshProfile_StudentParentStatus_GoesToStoreNotLocalStorage (issue #440/#441)', () => {
+    setup(['Student'], null);
+    const status = { mode: 'AwaitingActivation', requiresParent: true, graceDays: 30, isFinalWarning: false };
+
+    service.refreshProfile().subscribe();
+    httpMock.expectOne('/api/exam/auth/refresh').flush({
+      ...profile(undefined),
+      role: 'Student',
+      student: { id: 3, userId: 1, studentNumber: '1', schoolName: '', grade: { id: 1, name: '8' }, parentStatus: status },
+    });
+
+    const store = TestBed.inject(ParentStatusStore);
+    expect(store.activationRestricted()).toBeTrue();
+    expect(service.user()?.student?.parentStatus).toBeUndefined();
+    expect(JSON.parse(localStorage.getItem('user') ?? '{}').student?.parentStatus).toBeUndefined();
+
+    spyOn(service, 'goLogin');
+    service.logout();
+    expect(store.loaded()).toBeFalse();
+    httpMock.expectOne('/api/exam/auth/logout').flush({});
   });
 
   it('refreshProfile_SuspendedTeacher_PersistsFlagToSignalAndLocalStorage_AndCountsAsUnapproved (issue #289)', () => {

@@ -159,6 +159,8 @@ builder.Services.AddSingleton<KeycloakAdminTokenCache>(); // admin token istekle
 builder.Services.AddScoped<IKeycloakService, KeycloakService>();
 // Issue #438: velinin açtığı çocuk hesabı (yalnız exam API servis token'ı; gateway'de engelli).
 builder.Services.AddScoped<IChildAccountService, ChildAccountService>();
+// Issue #440: öğrencinin kayıtta davet ettiği veli hesabı (yalnız exam API servis token'ı; gateway'de engelli).
+builder.Services.AddScoped<IParentAccountService, ParentAccountService>();
 // Dev-only toplu kullanıcı oluşturma (issue #217). YALNIZCA Development/Staging'de kayıt olur;
 // Production'da DevSeedController servisi null çözümler ve 404 döner (ortam guard'ının ilk katmanı).
 if (DevUserSeedService.IsAllowedEnvironment(builder.Environment))

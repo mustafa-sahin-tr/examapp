@@ -197,6 +197,9 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:5079
+      # Issue #440 (security re-review r3 M1): anonim veli aktivasyonu rate limit'i X-Forwarded-For'a yalnız sabit IP'li gateway'den gelen
+      # istekte güvenir; Production'da boş/çözülemeyen değer açılışta durdurur. ocelot-gateway'in ipv4_address'i ve exam-net subnet'iyle eşli.
+      ForwardedHeaders__KnownProxies__0: 172.30.0.10
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=worksheet_v2;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       AuthApiBaseUrl: http://auth-api:5079
       Jwt__Key: ${JWT_KEY}
@@ -227,6 +230,8 @@ services:
       Keycloak__RealmRolesUrl: admin/realms/exam-realm/roles
       # Issue #419: parent invite code HMAC pepper (>= 32 chars, not devOnly) — missing => startup fail-fast.
       ParentLinks__InviteCodePepper: ${PARENT_INVITE_CODE_PEPPER:?PARENT_INVITE_CODE_PEPPER must be set}
+      # Issues #440/#441: shared activation-link encryption key (same as exam-badge-api).
+      ParentInvitations__LinkEncryptionKey: ${PARENT_INVITATION_LINK_KEY:?PARENT_INVITATION_LINK_KEY must be set}
       # Issue #225: exam API hosts a MassTransit consumer (queue "exam-api") for
       # BadgeService's StudentPointsChangedEvent. In Production a missing
       # RabbitMQ__Host fails startup.
@@ -320,6 +325,8 @@ services:
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=badge;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       Jwt__Key: ${JWT_KEY}
       Server__BaseUrl: ${PUBLIC_BASE_URL}
+      # Issues #440/#441: decrypts activation links produced by exam API.
+      ParentInvitations__LinkEncryptionKey: ${PARENT_INVITATION_LINK_KEY:?PARENT_INVITATION_LINK_KEY must be set}
       # Issue #279: dedicated least-privilege user — every outbox event
       # except StudentPointsChangedEvent, never write access to it.
       RabbitMQ__Host: rabbitmq
@@ -507,11 +514,20 @@ services:
       - redis
       - question-detector
     networks:
-      - exam-net
+      exam-net:
+        # Issue #440 r3 M1: sabit IP — exam-dotnet-api'nin ForwardedHeaders__KnownProxies__0 değeri.
+        ipv4_address: 172.30.0.10
 
 networks:
   exam-net:
     driver: bridge
+    # Issue #440 r3 M1: gateway'e sabit IP verilebilsin diye sabit subnet (yerel ağlarla çakışırsa ikisini birlikte değiştirin).
+    # Mevcut ağı değiştirmek `docker compose down` + yeniden yaratma gerektirir.
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+          # Dinamik IP'ler bu aralıktan — gateway'in sabit 172.30.0.10'u başka bir konteynere verilmez.
+          ip_range: 172.30.1.0/24
 
 volumes:
   postgres_data:

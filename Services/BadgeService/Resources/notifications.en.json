@@ -184,6 +184,14 @@
     "ParentBookingRejectedTeacherUnavailable": {
       "title": "Lesson request could not be answered",
       "body": "The lesson request of {3} for {1} was automatically rejected because {0} is temporarily unavailable.{2}"
+    },
+    "ParentInvitationReceived": {
+      "title": "Parent invitation",
+      "body": "Your child {0} added you as a parent. Confirm it from the My Children page."
+    },
+    "StudentParentGraceReminder": {
+      "title": "Add your parent",
+      "body": "Add your parent: {0} day(s) left before your account is restricted."
     }
   }
 }

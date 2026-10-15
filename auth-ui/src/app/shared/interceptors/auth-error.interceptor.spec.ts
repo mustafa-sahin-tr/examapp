@@ -52,6 +52,13 @@ describe('authErrorInterceptor', () => {
     expect(error?.status).toBe(401);
   });
 
+  it('/api/exam/parent-activation/accept 401 → yönlendirmez (sayfa returnUrl ile girişi kendisi başlatır, #440)', () => {
+    const error = postAndFail('/api/exam/parent-activation/accept', 401, null);
+
+    expect(navigateSpy).not.toHaveBeenCalled();
+    expect(error?.status).toBe(401);
+  });
+
   it('başka bir uçta 401 → /login e yönlendirir', () => {
     const error = postAndFail('/api/auth/complete-profile', 401, null);
 

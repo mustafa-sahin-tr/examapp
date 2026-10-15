@@ -74,7 +74,16 @@ describe('authInterceptor', () => {
     request.flush([]);
   });
 
-  for (const path of ['/api/auth/refresh-token', '/api/auth/login', '/api/auth/register', '/api/auth/exchange']) {
+  for (const path of [
+    '/api/auth/refresh-token',
+    '/api/auth/login',
+    '/api/auth/register',
+    '/api/auth/exchange',
+    // Issue #440: anonim veli aktivasyon uçları.
+    '/api/exam/parent-activation/lookup',
+    '/api/exam/parent-activation/activate',
+    '/api/exam/parent-activation/resend',
+  ]) {
     it(`intercept_ExcludedPath_${path}_SkipsBearerAndRefresh`, () => {
       localStorage.setItem('auth_token', 'stale-token');
       authServiceSpy.isExpiringSoon.and.returnValue(true);
@@ -88,6 +97,16 @@ describe('authInterceptor', () => {
       request.flush({});
     });
   }
+
+  it('intercept_ParentActivationAccept_AttachesBearer (#440: oturum açmış veli)', () => {
+    localStorage.setItem('auth_token', 'token-123');
+
+    http.post('/api/exam/parent-activation/accept', {}).subscribe();
+
+    const request = httpMock.expectOne('/api/exam/parent-activation/accept');
+    expect(request.request.headers.get('Authorization')).toBe('Bearer token-123');
+    request.flush({});
+  });
 
   it('intercept_CrossOriginRequest_DoesNotAttachBearerOrCredentials', () => {
     localStorage.setItem('auth_token', 'token-123');

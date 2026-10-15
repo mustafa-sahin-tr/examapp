@@ -50,6 +50,14 @@
       "today": "bugün",
       "yesterday": "dün",
       "daysAgo": "{{count}} gün önce"
+    },
+    "parentStatus": {
+      "title": "Veli durumu",
+      "withoutParent": "Velisi olmayan öğrenci",
+      "inGrace": "Hoşgörü süresinde",
+      "graceExpired": "Süresi dolmuş",
+      "awaitingActivation": "Veli aktivasyonu bekleyen",
+      "aria": "Veli durumu sayıları"
     }
   },
   "taxonomy": {

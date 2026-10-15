@@ -12,6 +12,14 @@ export interface AdminDashboardSummary {
   aiClassifiedQuestionCount: number;
   /** aiClassifiedQuestionCount / questionCount, 0..1 aralığında. Soru yoksa 0. */
   aiClassifiedRatio: number;
+  /** Issue #441 hedef kümesi: Active velisi ve aktivasyon bekleyen daveti olmayan öğrenciler. Eski yanıtta yok. */
+  studentsWithoutParent?: number;
+  /** Issue #441: hedef kümeden hoşgörü süresi içinde olanlar. */
+  studentsInParentGrace?: number;
+  /** Issue #441: hedef kümeden süresi dolmuş olanlar (yalnız "veli bilgisi ekle" ekranı). */
+  studentsParentGraceExpired?: number;
+  /** Issue #440: velisi henüz aktive etmemiş (açık davetli) öğrenciler — kısıtlı mod. */
+  studentsAwaitingParentActivation?: number;
 }
 
 /**

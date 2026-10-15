@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos.Admin;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using ExamApp.Api.Services.Parents;
 
 namespace ExamApp.Api.Services.Dashboard;
 
@@ -16,10 +18,17 @@ public class DashboardService : IDashboardService
     // issue #265: gün kovaları yerel takvim günüdür (Dashboard:TimeZone, varsayılan Europe/Istanbul). DI'siz kurulumda varsayılan.
     private readonly ILocalDayCalendar _dayCalendar;
 
-    public DashboardService(AppDbContext context, ILocalDayCalendar? dayCalendar = null)
+    // issue #441: hoşgörü süresi (admin "velisiz öğrenci" sayıları). DI'siz kurulumda varsayılan (30 gün).
+    private readonly IOptionsMonitor<ParentRequirementOptions>? _parentRequirement;
+    private readonly TimeProvider _time;
+
+    public DashboardService(AppDbContext context, ILocalDayCalendar? dayCalendar = null,
+        IOptionsMonitor<ParentRequirementOptions>? parentRequirement = null, TimeProvider? time = null)
     {
         _context = context;
         _dayCalendar = dayCalendar ?? LocalDayCalendar.Default;
+        _parentRequirement = parentRequirement;
+        _time = time ?? TimeProvider.System;
     }
 
     public async Task<DashboardSummaryDto> GetSummaryAsync(CancellationToken ct = default)
@@ -33,8 +42,22 @@ public class DashboardService : IDashboardService
         var aiClassifiedCount = await _context.Questions.AsNoTracking()
             .CountAsync(q => q.ClassificationSource == ClassificationSource.AI, ct);
 
+        // issue #441: kayıp riskini izlemek için velisiz öğrenci kırılımı — review R2: yaptırımla AYNI kural (StudentParentStatusService
+        // .QueryByMode = Evaluate'in SQL karşılığı). Hedef küme = Active velisi olmayan ve kısıtlı (aktivasyon bekleyen) modda olmayanlar
+        // (= Grace + Expired; sayacı başlamamışlar Grace'te). Rol bilgisi DB'de olmadığından öğrenci satırı olan her hesap sayılır.
+        var now = _time.GetUtcNow().UtcDateTime;
+        var modes = Parents.StudentParentStatusService.QueryByMode(_context, now, _parentRequirement?.CurrentValue ?? new ParentRequirementOptions());
+        var awaitingActivation = await modes.AwaitingActivation.CountAsync(ct);
+        var inGrace = await modes.Grace.CountAsync(ct);
+        var expired = await modes.Expired.CountAsync(ct);
+        var studentsWithoutParent = inGrace + expired;
+
         return new DashboardSummaryDto
         {
+            StudentsWithoutParent = studentsWithoutParent,
+            StudentsInParentGrace = inGrace,
+            StudentsParentGraceExpired = expired,
+            StudentsAwaitingParentActivation = awaitingActivation,
             TeacherCount = teacherCount,
             StudentCount = studentCount,
             WorksheetCount = worksheetCount,

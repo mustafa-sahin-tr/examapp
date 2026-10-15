@@ -17,6 +17,21 @@ public class DashboardSummaryDto
 
     /// <summary>AiClassifiedQuestionCount / QuestionCount, 0..1 aralığında. Soru yoksa 0.</summary>
     public double AiClassifiedRatio { get; set; }
+
+    /// <summary>
+    /// Issue #441 hedef kümesi: Active velisi ve aktivasyon bekleyen daveti olmayan öğrenciler (hoşgörü sayacı henüz başlamamış olanlar
+    /// dahil). Kayıp riskini izlemek için.
+    /// </summary>
+    public int StudentsWithoutParent { get; set; }
+
+    /// <summary>Issue #441: hedef kümeden hoşgörü süresi içinde olanlar (sayaç başlamış, süre dolmamış).</summary>
+    public int StudentsInParentGrace { get; set; }
+
+    /// <summary>Issue #441: hedef kümeden süresi dolmuş olanlar (yalnız "veli bilgisi ekle" ekranını görür).</summary>
+    public int StudentsParentGraceExpired { get; set; }
+
+    /// <summary>Issue #440: velisi henüz aktive etmemiş / onaylamamış (açık davetli) öğrenciler — kısıtlı mod.</summary>
+    public int StudentsAwaitingParentActivation { get; set; }
 }
 
 /// <summary>Günlük zaman serisinde tek bir nokta (UTC gün).</summary>

@@ -74,6 +74,9 @@ public sealed class ParentLinkTransitionSweepJob : IParentLinkTransitionSweepJob
         var now = _clock.GetUtcNow().UtcDateTime;
 
         // 1) Süresi dolmuş Pending → Revoked (koşullu UPDATE: arada onaylanan satıra dokunmaz).
+        //    issue #440/#441: öğrenci veli durumu önbelleği burada GEÇERSİZLENMEZ — bilinçli: durum yalnız Active bağlantılara ve
+        //    StudentRegistered davetlerine bakar; bu adım ikisine de dokunmaz (IsExpiredPending StudentRegistered'ı hariç tutar), 2. adım
+        //    yalnız birincil işaretini düzeltir (Active kalır).
         var revoked = await _context.ParentStudentLinks
             .Where(ParentLinkPrimary.IsExpiredPending(now))
             .ExecuteUpdateAsync(set => set

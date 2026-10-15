@@ -15,8 +15,41 @@ import {
   RegisterTeacherResponse,
   School,
 } from '../../models/registration.model';
+import {
+  PARENT_INVITATION_ERROR_CODES,
+  ParentInvitationErrorBody,
+  PRIVACY_POLICY_URL,
+  parentContactErrorMessage,
+} from '../../models/parent-activation.model';
+import {
+  PARENT_NAME_MAX_LENGTH,
+  PARENT_PHONE_INPUT_MAX_LENGTH,
+  PARENT_EMAIL_MAX_LENGTH,
+  parentEmailValidator,
+  parentNameValidator,
+  parentPhoneValidator,
+} from '../../shared/utils/parent-contact.util';
 
 type AppRole = 'Student' | 'Teacher' | 'Parent';
+
+/**
+ * Issue #440: bu rollerden biri olan hesap veli kuralına tabi değildir (sunucu `ParentRequirement.AdultRoles`); öğrenci adımında
+ * veli bilgisi istenmez.
+ */
+const ADULT_ROLES: readonly string[] = ['Teacher', 'Admin', 'SuperAdmin', 'Parent'];
+
+/** Issue #440: öğrenci kaydının veli bilgisi hatalarından (formda kalınır, mesaj gösterilir) biri mi. */
+const PARENT_CONTACT_ERROR_CODES: ReadonlySet<string> = new Set([
+  PARENT_INVITATION_ERROR_CODES.parentInfoRequired,
+  PARENT_INVITATION_ERROR_CODES.invalidParentName,
+  PARENT_INVITATION_ERROR_CODES.invalidParentEmail,
+  PARENT_INVITATION_ERROR_CODES.invalidParentPhone,
+  PARENT_INVITATION_ERROR_CODES.parentEmailNotUsable,
+  PARENT_INVITATION_ERROR_CODES.parentEmailChangeLocked,
+  PARENT_INVITATION_ERROR_CODES.resendLimited,
+  PARENT_INVITATION_ERROR_CODES.unavailable,
+  PARENT_INVITATION_ERROR_CODES.busy,
+]);
 
 /** Issue #287: ana uygulamadaki (ui) öğretmen başvuru durumu sayfası — `ui/src/app/models/teacher-approval.model.ts`. */
 export const TEACHER_APPROVAL_PENDING_URL = '/teacher-approval-pending';
@@ -73,10 +106,23 @@ export class CompleteProfileComponent implements OnInit {
     parent: 'Parent',
   };
 
+  /**
+   * Issue #440: veli kuralına tabi öğrenci (token'da yetişkin rolü yok) kayıtta veli adı, e-postası ve telefonu verir. Sunucu,
+   * Active velisi / açık daveti olan öğrencide alanları yok sayar; istemci bunu bilemediği için kurala tabi herkese sorar.
+   */
+  readonly parentInfoRequired = signal(true);
+  readonly privacyPolicyUrl = PRIVACY_POLICY_URL;
+  readonly parentNameMaxLength = PARENT_NAME_MAX_LENGTH;
+  readonly parentEmailMaxLength = PARENT_EMAIL_MAX_LENGTH;
+  readonly parentPhoneMaxLength = PARENT_PHONE_INPUT_MAX_LENGTH;
+
   readonly studentForm = this.fb.group({
     studentNumber: ['', [Validators.required, Validators.maxLength(50)]],
     schoolId: [null as number | null],
     gradeId: [null as number | null, [Validators.required]],
+    parentFullName: ['', [Validators.required, parentNameValidator]],
+    parentEmail: ['', [Validators.required, parentEmailValidator]],
+    parentPhone: ['', [Validators.required, parentPhoneValidator]],
   });
 
   readonly teacherForm = this.fb.group({
@@ -104,6 +150,7 @@ export class CompleteProfileComponent implements OnInit {
     }
 
     this.selectedRole.set(resolved);
+    this.applyParentRequirement();
     this.loadGrades();
     this.loadSchools();
   }
@@ -123,6 +170,31 @@ export class CompleteProfileComponent implements OnInit {
    */
   continueAfterPending(): void {
     this.redirectTo(this.accountApprovalPending() ? TEACHER_APPROVAL_PENDING_URL : '/tests');
+  }
+
+  /** Yetişkin rolü olan hesapta veli alanları formdan çıkarılır (devre dışı kontrol geçerlilikte sayılmaz). */
+  private applyParentRequirement(): void {
+    const roles = this.authService.getRealmRoles();
+    const required = !roles.some((role) => ADULT_ROLES.includes(role));
+    this.parentInfoRequired.set(required);
+    const controls = [
+      this.studentForm.controls.parentFullName,
+      this.studentForm.controls.parentEmail,
+      this.studentForm.controls.parentPhone,
+    ];
+    for (const control of controls) {
+      if (required) {
+        control.enable({ emitEvent: false });
+      } else {
+        control.disable({ emitEvent: false });
+      }
+    }
+  }
+
+  /** Şablon: kontrol dokunulmuş ve belirtilen hata var mı. */
+  hasError(controlName: 'parentFullName' | 'parentEmail' | 'parentPhone', error: string): boolean {
+    const control = this.studentForm.controls[controlName];
+    return control.touched && control.hasError(error);
   }
 
   private loadGrades(): void {
@@ -203,6 +275,13 @@ export class CompleteProfileComponent implements OnInit {
           this.submitError.set(cooldownMessage(err));
           return;
         }
+        // Issue #440: veli bilgisi hatası (400 biçim, 409 kullanılamayan e-posta, 429 kilit, 502 hesap servisi) — formda kal.
+        if (role === 'Student' && isParentContactError(err)) {
+          this.submitError.set(
+            parentContactErrorMessage(err.error as ParentInvitationErrorBody, 'Veli bilgileri kaydedilemedi. Lütfen tekrar dene.')
+          );
+          return;
+        }
         // Issue #234: öğretmen ucunda 409 = mevcut kaydın okulu/bağımsızlığı değiştirilemez; mesajı göster, yönlendirme.
         if (role === 'Teacher' && err?.status === 409) {
           const body = err.error as RegisterErrorBody | null;
@@ -250,11 +329,19 @@ export class CompleteProfileComponent implements OnInit {
 
   private buildRequest(role: AppRole): Observable<RegisterProfileResponse | RegisterTeacherResponse> {
     if (role === 'Student') {
-      const { studentNumber, schoolId, gradeId } = this.studentForm.getRawValue();
+      const { studentNumber, schoolId, gradeId, parentFullName, parentEmail, parentPhone } = this.studentForm.getRawValue();
       return this.authService.registerStudentProfile({
         studentNumber: studentNumber ?? '',
         schoolId: schoolId ?? null,
         gradeId: gradeId as number,
+        // Issue #440: sunucu ayrıca normalize eder (küçük harf e-posta, E.164 telefon).
+        ...(this.parentInfoRequired()
+          ? {
+              parentFullName: (parentFullName ?? '').trim(),
+              parentEmail: (parentEmail ?? '').trim(),
+              parentPhone: (parentPhone ?? '').trim(),
+            }
+          : {}),
       });
     }
     if (role === 'Teacher') {
@@ -295,6 +382,12 @@ export class CompleteProfileComponent implements OnInit {
       }
     }
   }
+}
+
+/** Issue #440: hata gövdesindeki `errorCode` veli bilgisi / davet hatalarından biri mi. */
+function isParentContactError(err: HttpErrorResponse): boolean {
+  const body = (err?.error && typeof err.error === 'object' ? err.error : null) as ParentInvitationErrorBody | null;
+  return typeof body?.errorCode === 'string' && PARENT_CONTACT_ERROR_CODES.has(body.errorCode);
 }
 
 /** 429 (okul talebi bekleme süresi) için kullanıcı metni: sunucu mesajı (yoksa varsayılan) + kalan süre. */

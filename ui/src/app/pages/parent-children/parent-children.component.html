@@ -56,7 +56,65 @@
     } @else {
       <ul class="pch__list">
         @for (child of children(); track child.linkId) {
-          @if (child.status === 'Pending') {
+          @if (isStudentInvite(child)) {
+            <!-- Issue #440: öğrenci bu veliyi kayıtta davet etti — rızayla onay ya da ret. -->
+            <li class="pch__child pch__invite" data-test="student-invite-row">
+              <div class="pch__item">
+                <mat-icon aria-hidden="true">family_restroom</mat-icon>
+                <div class="pch__info">
+                  <span class="pch__name" data-test="student-invite-title">
+                    {{
+                      child.studentName
+                        ? t('children.studentInvite.invitedBy', { name: child.studentName })
+                        : t('children.studentInvite.invitedByUnknown')
+                    }}
+                  </span>
+                  <span class="pch__meta">
+                    <span>{{ t('children.studentInvite.invitedHint', { date: ui.formatDate(child.pendingExpiresAt) }) }}</span>
+                  </span>
+                </div>
+              </div>
+              <div class="pch__consent">
+                <p class="pch__consent-text" data-test="student-invite-consent-text">{{ 'parentConsent.kvkk' | transloco }}</p>
+                <mat-checkbox
+                  data-test="student-invite-consent"
+                  [checked]="!!consents()[child.linkId]"
+                  (change)="setConsent(child, $event.checked)"
+                >
+                  {{ t('children.studentInvite.consentAgree') }}
+                </mat-checkbox>
+                <a class="pch__consent-link" href="/privacy-policy" target="_blank" rel="noopener">
+                  {{ t('children.studentInvite.privacyLink') }}
+                </a>
+                @if (consentMissingId() === child.linkId) {
+                  <p class="pch__error" role="alert" data-test="student-invite-consent-missing">
+                    {{ t('children.studentInvite.consentRequired') }}
+                  </p>
+                }
+              </div>
+              <div class="pch__actions">
+                <button
+                  mat-flat-button
+                  type="button"
+                  data-test="student-invite-approve"
+                  [disabled]="decidingId() === child.linkId"
+                  (click)="approveInvite(child)"
+                >
+                  <mat-icon>check</mat-icon>
+                  {{ t('children.studentInvite.approve') }}
+                </button>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  data-test="student-invite-reject"
+                  [disabled]="decidingId() === child.linkId"
+                  (click)="rejectInvite(child)"
+                >
+                  {{ t('children.studentInvite.reject') }}
+                </button>
+              </div>
+            </li>
+          } @else if (child.status === 'Pending') {
             <li class="pch__item pch__item--pending" data-test="pending-row">
               <mat-icon aria-hidden="true">hourglass_top</mat-icon>
               <div class="pch__info">

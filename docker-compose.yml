@@ -12,6 +12,10 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8005
+      # Issue #440 (security re-review): anonim veli aktivasyonu rate limit'i X-Forwarded-For'a yalnız güvenilir proxy'den (gateway)
+      # gelen istekte güvenir (TrustedClientIp; varsayılan yalnız loopback). mynetwork sabit subnet taşımadığından docker'ın varsayılan
+      # bridge havuzu (172.16.0.0/12) — ipam açılırsa (bkz. networks.mynetwork) o subnet'e daraltın.
+      - ForwardedHeaders__KnownNetworks__0=172.16.0.0/12
       # Issue #238: appsettings.json artık Postgres/MinIO/Keycloak secret'larını
       # düz metin tutmuyor — hepsi .env'den gelir.
       - ConnectionStrings__DefaultConnection=Host=exam_pg_container;Port=5432;Database=worksheet;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
@@ -37,6 +41,8 @@ services:
       - Video__Jitsi__RoomSecret=${JITSI_ROOM_SECRET:?JITSI_ROOM_SECRET .env icinde tanimli olmali}
       # Issue #419: veli davet kodu HMAC pepper'i (>= 32 karakter).
       - ParentLinks__InviteCodePepper=${PARENT_INVITE_CODE_PEPPER:?PARENT_INVITE_CODE_PEPPER .env icinde tanimli olmali}
+      # Issues #440/#441: veli aktivasyon baglantisi sifreleme anahtari (base64, 32 bayt; BadgeService ile AYNI).
+      - ParentInvitations__LinkEncryptionKey=${PARENT_INVITATION_LINK_KEY:?PARENT_INVITATION_LINK_KEY .env icinde tanimli olmali}
       # Issue #225: exam API artık RabbitMQ consumer'ı barındırıyor (kuyruk "exam-api":
       # BadgeService'in StudentPointsChangedEvent'i → StudentPoints). Host yoksa bus kurulmaz.
       # Issue #279: paylaşılan RABBITMQ_DEFAULT_USER/PASS admin hesabı yerine servise özel,
@@ -134,6 +140,8 @@ services:
       # HARİÇ tüm outbox event exchange'lerine configure/write yapabilir).
       - RabbitMQ__Host=rabbitmq
       - RabbitMQ__Username=badge_service
+      # Issues #440/#441: exam API ile ayni aktivasyon baglantisi anahtari.
+      - ParentInvitations__LinkEncryptionKey=${PARENT_INVITATION_LINK_KEY:?PARENT_INVITATION_LINK_KEY .env icinde tanimli olmali}
       - RabbitMQ__Password=${RABBITMQ_BADGE_SERVICE_PASSWORD:?RABBITMQ_BADGE_SERVICE_PASSWORD .env icinde tanimli olmali}
       - Keycloak__ServiceClientSecret=${KEYCLOAK_SERVICE_CLIENT_SECRET:?KEYCLOAK_SERVICE_CLIENT_SECRET .env icinde tanimli olmali}
     volumes:

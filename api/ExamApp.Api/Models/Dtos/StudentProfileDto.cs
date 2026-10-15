@@ -98,6 +98,11 @@ public class StudentDto
     public string StudentNumber { get; set; } = string.Empty;
     public string? ThemePreset { get; set; } = "standard"; // 🎨 Theme tercihi
     public string? ThemeCustomConfig { get; set; } // 🎨 Custom theme config (JSON)
+
+    /// <summary>
+    /// Issue #440 / #441: öğrencinin veli durumu (yalnız profil tazeleme <c>POST api/auth/refresh</c> yanıtında; UI banner/modal/route guard).
+    /// </summary>
+    public ExamApp.Api.Models.Dtos.ParentInvitations.ParentStatusDto? ParentStatus { get; set; }
 }
 
 public class TeacherDto

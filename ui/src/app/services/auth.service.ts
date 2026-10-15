@@ -9,6 +9,7 @@ import { Student } from '../models/student';
 import { Teacher } from '../models/teacher';
 import { LocaleService } from './locale.service';
 import { TEACHER_APPROVAL_PENDING_URL, teacherAccountApprovalOf } from '../models/teacher-approval.model';
+import { ParentStatusStore } from './parent-status.store';
 
 export interface UserProfile {
   email: string;
@@ -43,6 +44,8 @@ export class AuthService {
   private readonly router = inject(Router);
   // LocaleService AuthService'e bağımlı değildir → döngü yok.
   private readonly localeService = inject(LocaleService);
+  /** Issue #440/#441: refresh yanıtındaki `student.parentStatus` buraya yazılır (bağımlılıksız store; döngü yok). */
+  private readonly parentStatusStore = inject(ParentStatusStore);
   private tokenKey = 'auth_token';
   private roleKey = 'user_role';
   private avatarKey = 'user_avatar';
@@ -166,6 +169,7 @@ export class AuthService {
     localStorage.removeItem(this.avatarKey);
     localStorage.removeItem('student');
     this.setUser(null);
+    this.parentStatusStore.reset();
     this.isAuthenticatedSubject.next(false);
   }
 
@@ -331,7 +335,10 @@ export class AuthService {
       this.profileRefreshInFlight$ = this.refresh().pipe(
         tap((profile) => {
           if (profile) {
-            this.setUser(profile);
+            // Issue #440/#441: veli durumu yalnız bu yanıtla (ve `student-parent/status`) gelir; tek kaynak store'dur.
+            // localStorage'a yazılmaz (anlık durum; Development'ta aktivasyon bağlantısı da taşır).
+            this.parentStatusStore.set(profile.student?.parentStatus);
+            this.setUser(withoutParentStatus(profile));
           }
           // Güncel profil artık tek kaynak: 403 kaynaklı geçici işaret kaldırılır.
           this.teacherNotApprovedByServer.set(false);
@@ -404,6 +411,15 @@ export class AuthService {
     }
     return this.refreshInFlight$;
   }
+}
+
+/** Issue #440/#441: önbelleğe yazılacak profilden anlık veli durumunu çıkarır. */
+function withoutParentStatus(profile: UserProfile): UserProfile {
+  if (!profile.student || !('parentStatus' in profile.student)) {
+    return profile;
+  }
+  const { parentStatus: _parentStatus, ...student } = profile.student;
+  return { ...profile, student };
 }
 
 /**

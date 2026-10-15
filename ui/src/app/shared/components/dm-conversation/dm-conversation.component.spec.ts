@@ -9,6 +9,8 @@ import { of } from 'rxjs';
 import { DmConversationComponent, DmMessageSentEvent } from './dm-conversation.component';
 import { ConversationMessages, DirectMessage } from '../../../models/direct-message.model';
 import { translocoTestingModule } from '../../testing/transloco-testing';
+import { ParentStatusStore } from '../../../services/parent-status.store';
+import { awaitingStatusOf } from '../../testing/parent-status-testing';
 import rootTr from '../../../../../public/i18n/tr.json';
 import dmTr from '../../../../../public/i18n/direct-messages/tr.json';
 
@@ -415,5 +417,26 @@ describe('DmConversationComponent (issue #106)', () => {
     expect(section.getAttribute('aria-labelledby')).toBe('dm-conversation-title');
     expect(section.hasAttribute('aria-label')).toBeFalse();
     expect(q('dm-counterpart')?.id).toBe('dm-conversation-title');
+  });
+
+  // Issue #440: veli aktivasyonu beklenirken öğrenci mesaj gönderemez; öğretmen etkilenmez.
+  it('student_AwaitingParentActivation_ShowsNoticeAndDisablesComposer', () => {
+    create({ unread: 0 });
+    TestBed.inject(ParentStatusStore).set(awaitingStatusOf());
+    flushLoad();
+    type('Merhaba');
+
+    expect(el().querySelector('[data-test="parent-activation-notice"]')?.textContent).toContain('mesaj gönderemezsin');
+    expect(q<HTMLTextAreaElement>('dm-input')!.disabled).toBeTrue();
+    expect(q<HTMLButtonElement>('dm-send')!.disabled).toBeTrue();
+  });
+
+  it('teacher_IgnoresParentActivationRestriction', () => {
+    create({ role: 'Teacher', unread: 0 });
+    TestBed.inject(ParentStatusStore).set(awaitingStatusOf());
+    flushLoad();
+
+    expect(el().querySelector('[data-test="parent-activation-notice"]')).toBeNull();
+    expect(q<HTMLTextAreaElement>('dm-input')!.disabled).toBeFalse();
   });
 });

@@ -1,0 +1,170 @@
+<div class="auth-area">
+  <div class="auth-inner">
+
+    <div class="auth-image-col">
+      <img src="assets/images/register-illustration.svg" alt="" />
+    </div>
+
+    <div class="auth-form-col">
+      <div class="auth-form-header">
+        <h3>Veli Hesabı Aktivasyonu</h3>
+        <p>{{ brandName }}</p>
+      </div>
+
+      @switch (view()) {
+      @case ('loading') {
+      <p class="field-hint" role="status" aria-busy="true" data-testid="activate-loading">Bağlantı kontrol ediliyor...</p>
+      }
+
+      @case ('invalid') {
+      <div class="notice notice-error" role="alert" data-testid="activate-invalid">
+        <strong>Bağlantı geçersiz</strong>
+        <p>Bu aktivasyon bağlantısı geçersiz; yenilenmiş ya da iptal edilmiş olabilir. E-postadaki en son bağlantıyı kullandığından emin ol ya da öğrenciden daveti yeniden göndermesini iste.</p>
+      </div>
+      <div class="auth-submit">
+        <a class="default-btn" routerLink="/login">Giriş Yap</a>
+      </div>
+      }
+
+      @case ('error') {
+      <div class="notice notice-error" role="alert" data-testid="activate-error">
+        <p>Bağlantı şu anda doğrulanamadı. Lütfen tekrar dene.</p>
+      </div>
+      <div class="auth-submit">
+        <button type="button" class="default-btn" (click)="loadLookup()">Tekrar Dene</button>
+      </div>
+      }
+
+      @case ('used') {
+      <div class="notice" role="status" data-testid="activate-used">
+        <strong>Bu bağlantı zaten kullanıldı</strong>
+        <p>Hesabın aktive edildiyse e-posta adresin ve şifrenle giriş yapabilirsin.</p>
+      </div>
+      <div class="auth-submit">
+        <a class="default-btn" routerLink="/login">Giriş Yap</a>
+      </div>
+      }
+
+      @case ('expired') {
+      <div class="notice notice-error" role="status" data-testid="activate-expired">
+        <strong>Bağlantının süresi doldu</strong>
+        <p>Aktivasyon bağlantıları güvenlik nedeniyle 7 gün geçerlidir.</p>
+      </div>
+      @if (resendMessage(); as message) {
+      <div class="notice" role="status" data-testid="activate-resent">
+        <p>{{ message }}</p>
+      </div>
+      } @else if (lookup()?.canResend) {
+      @if (resendError(); as message) {
+      <p class="field-error" role="alert" data-testid="activate-resend-error">{{ message }}</p>
+      }
+      <div class="auth-submit">
+        <button type="button" class="default-btn" data-testid="activate-resend" [disabled]="resending()" (click)="resend()">
+          @if (resending()) { Gönderiliyor... } @else { Yeni Bağlantı Gönder }
+        </button>
+      </div>
+      } @else {
+      <p class="field-hint" data-testid="activate-no-resend">Öğrenciden yeni bir davet göndermesini isteyebilirsin.</p>
+      }
+      }
+
+      @case ('form') {
+      @if (lookup(); as info) {
+      <div class="activation-summary" data-testid="activate-summary">
+        @if (info.studentName) {
+        <p><strong>{{ info.studentName }}</strong> sizi veli olarak ekledi.</p>
+        } @else {
+        <p>Bir öğrenci sizi veli olarak ekledi.</p>
+        }
+        <p class="field-hint">Hesap: {{ info.maskedParentEmail }} · Bağlantı {{ expiresAtText() }} tarihine kadar geçerli.</p>
+      </div>
+
+      @if (submitError(); as message) {
+      <div class="notice notice-error" role="alert" data-testid="activate-submit-error">
+        <p>{{ message }}</p>
+      </div>
+      }
+
+      <form class="profile-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        @if (isNewAccount()) {
+        <div class="form-field">
+          <label for="parentPassword">Şifre</label>
+          <input id="parentPassword" type="password" formControlName="password" autocomplete="new-password"
+            [attr.maxlength]="maxLength" aria-describedby="parentPasswordHint" />
+          <span id="parentPasswordHint" class="field-hint">
+            En az {{ minLength }} karakter; harf ve rakam içermeli, boşlukla başlayıp bitmemeli.
+          </span>
+          @if (hasError('password', 'required')) {
+          <span class="field-error">Şifre gerekli.</span>
+          } @else if (hasError('password', 'minlength')) {
+          <span class="field-error">Şifre en az {{ minLength }} karakter olmalı.</span>
+          } @else if (hasError('password', 'passwordComposition')) {
+          <span class="field-error">Şifre en az bir harf ve bir rakam içermeli.</span>
+          } @else if (hasError('password', 'passwordWhitespace')) {
+          <span class="field-error">Şifre boşlukla başlayamaz veya bitemez.</span>
+          }
+        </div>
+
+        <div class="form-field">
+          <label for="parentPasswordConfirm">Şifre (tekrar)</label>
+          <input id="parentPasswordConfirm" type="password" formControlName="confirmPassword" autocomplete="new-password"
+            [attr.maxlength]="maxLength" />
+          @if (hasError('confirmPassword', 'required')) {
+          <span class="field-error">Şifreyi tekrar gir.</span>
+          } @else if (mismatch) {
+          <span class="field-error">Şifreler eşleşmiyor.</span>
+          }
+        </div>
+        } @else {
+        <div class="notice" role="status" data-testid="activate-account-exists">
+          <p>Bu e-posta ile zaten bir hesabınız var. Giriş yapıp daveti kabul edin.</p>
+        </div>
+        }
+
+        <div class="form-field consent-field">
+          <p class="consent-text" data-testid="activate-consent-text">{{ consentText() }}</p>
+          <label class="consent-option" for="parentConsent">
+            <input id="parentConsent" type="checkbox" formControlName="consent" />
+            <span>
+              Rıza metnini ve
+              <a [href]="privacyPolicyUrl" target="_blank" rel="noopener">Gizlilik Politikası</a>’nı okudum, onaylıyorum.
+            </span>
+          </label>
+          @if (hasError('consent', 'required')) {
+          <span class="field-error">Devam etmek için rıza metnini onaylamalısın.</span>
+          }
+        </div>
+
+        <div class="auth-submit">
+          <button type="submit" class="default-btn" data-testid="activate-submit" [disabled]="submitting()">
+            @if (submitting()) { Kaydediliyor... } @else if (isNewAccount()) { Hesabımı Aktive Et } @else if (loggedIn()) { Daveti Kabul Et } @else { Giriş Yap ve Kabul Et }
+          </button>
+        </div>
+      </form>
+      }
+      }
+
+      @case ('done') {
+      <div class="notice" role="status" data-testid="activate-done">
+        <strong>Hesabın aktive edildi</strong>
+        <p>Artık e-posta adresin ve belirlediğin şifreyle giriş yapabilirsin.</p>
+      </div>
+      <div class="auth-submit">
+        <a class="default-btn" routerLink="/login" data-testid="activate-login">Giriş Yap</a>
+      </div>
+      }
+
+      @case ('accepted') {
+      <div class="notice" role="status" data-testid="activate-accepted">
+        <strong>Davet kabul edildi</strong>
+        <p>Çocuğunuzun gelişimini veli panelinden takip edebilirsiniz.</p>
+      </div>
+      <div class="auth-submit">
+        <a class="default-btn" [href]="parentHomeUrl" data-testid="activate-parent-home">Veli Paneline Git</a>
+      </div>
+      }
+      }
+    </div>
+
+  </div>
+</div>

@@ -106,6 +106,19 @@ public static class ParentEndpointCatalog
             "teacher data only (no student data).",
         [$"{nameof(TeacherController)}.{nameof(TeacherController.GetPublicProfile)}"] =
             "Tutor public profile opened to Parent (#439); 404 unless approved independent tutor; teacher data only.",
+        [$"{nameof(ParentActivationController)}.{nameof(ParentActivationController.Lookup)}"] =
+            "Anonymous (#440): token-bound activation page header; returns only the student's short name (\"Ali K.\"), the masked " +
+            "parent email and expiry/used flags; unknown token 404; IP rate limited; ParentInvitationEndpointsTests.",
+        [$"{nameof(ParentActivationController)}.{nameof(ParentActivationController.Activate)}"] =
+            "Anonymous (#440): single-use hashed token + password + consent; returns only activated/passwordSet flags; " +
+            "ParentInvitationEndpointsTests.",
+        [$"{nameof(ParentActivationController)}.{nameof(ParentActivationController.Resend)}"] =
+            "Anonymous (#440): re-sends the activation link to the invited email only (no data returned); same send limits; " +
+            "ParentInvitationEndpointsTests.",
+        [$"{nameof(ParentInvitationAcceptController)}.{nameof(ParentInvitationAcceptController.Accept)}"] =
+            "Parent write (#440 security C1): logged-in parent accepts a student's token invitation; auth-api confirms the caller's " +
+            "server-side account email equals the invited email (mismatch 403) before consent + Active link; returns only flags; " +
+            "ParentInvitationEndpointsTests.",
         [$"{nameof(ParentController)}.{nameof(ParentController.RegisterParent)}"] = "Role registration; no child data.",
         [$"{nameof(ParentController)}.{nameof(ParentController.CheckParent)}"] = "Own profile flag only; no child data.",
     };

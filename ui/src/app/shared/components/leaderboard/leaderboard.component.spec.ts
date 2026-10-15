@@ -8,6 +8,8 @@ import { LeaderboardComponent } from './leaderboard.component';
 import { LeaderboardEntry, LeaderboardResult, LeaderboardScope } from '../../../models/leaderboard.model';
 import { AuthService } from '../../../services/auth.service';
 import { translocoTestingModule } from '../../testing/transloco-testing';
+import { ParentStatusStore } from '../../../services/parent-status.store';
+import { awaitingStatusOf, parentStatusOf } from '../../testing/parent-status-testing';
 import leaderboardTr from '../../../../../public/i18n/leaderboard/tr.json';
 
 /** Gerçek sözlük: bir anahtar bozulursa test kırılır (issue #183 deseni). */
@@ -376,6 +378,42 @@ describe('LeaderboardComponent', () => {
 
       expect(el().querySelector('.lb__more')).toBeNull();
       httpMock.expectNone((r) => r.url === LB_URL);
+    });
+  });
+
+  // Issue #440: veli aktivasyonu beklenirken liderlik tablosu kapalı; istek atılmaz, kısıt kalkınca yüklenir.
+  describe('parent activation restriction (issue #440)', () => {
+    async function setupRestricted(): Promise<ParentStatusStore> {
+      authUser.set(null);
+      await TestBed.configureTestingModule({
+        imports: [LeaderboardComponent, NoopAnimationsModule, translocoTesting],
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          { provide: AuthService, useValue: { user: authUser.asReadonly() } },
+        ],
+      }).compileComponents();
+      httpMock = TestBed.inject(HttpTestingController);
+      const store = TestBed.inject(ParentStatusStore);
+      store.set(awaitingStatusOf());
+      fixture = TestBed.createComponent(LeaderboardComponent);
+      component = fixture.componentInstance;
+      fixture.detectChanges();
+      return store;
+    }
+
+    it('restricted_ShowsNoticeWithoutRequest_ThenLoadsWhenLifted', async () => {
+      const store = await setupRestricted();
+
+      httpMock.expectNone((r) => r.url === LB_URL);
+      expect(el().querySelector('[data-test="parent-activation-notice"]')?.textContent).toContain('liderlik tablosu kapalı');
+
+      store.set(parentStatusOf({ mode: 'Ok' }));
+      fixture.detectChanges();
+
+      flushGlobalOnly([entry(1)]);
+      expect(el().querySelector('[data-test="parent-activation-notice"]')).toBeNull();
+      expect(el().querySelectorAll('.lb__row').length).toBe(1);
     });
   });
 });

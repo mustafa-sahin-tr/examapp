@@ -17,6 +17,8 @@ import {
   bookingErrorCode,
 } from '../../../models/booking.model';
 import { BookingService } from '../../../services/booking.service';
+import { ParentStatusStore } from '../../../services/parent-status.store';
+import { ParentActivationNoticeComponent } from '../parent-activation-notice/parent-activation-notice.component';
 import { SLOT_NEXT_DAY_KEY, formatSlotDay, formatSlotRange } from '../../utils/booking-format.util';
 
 /** Issue #439: velinin çocuğu adına talep açtığı mod — talep veli onayını atlar. */
@@ -63,6 +65,7 @@ interface SlotGroup {
     MatIconModule,
     MatProgressSpinnerModule,
     MatRadioModule,
+    ParentActivationNoticeComponent,
     RouterLink,
     TranslocoDirective,
     TranslocoPipe,
@@ -78,6 +81,9 @@ export class BookingSlotDialogComponent {
   private readonly transloco = inject(TranslocoService);
 
   protected readonly data = inject<BookingSlotDialogData>(MAT_DIALOG_DATA);
+  private readonly parentStatus = inject(ParentStatusStore);
+  /** Issue #440: öğrencinin veli daveti aktive edilmedi → talep gönderilemez (veli modunda geçerli değil). */
+  protected readonly activationRestricted = computed(() => !this.data.child && this.parentStatus.activationRestricted());
 
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
@@ -134,7 +140,7 @@ export class BookingSlotDialogComponent {
   }
 
   protected submit(): void {
-    if (this.selectedId === null || this.submitting()) {
+    if (this.selectedId === null || this.submitting() || this.activationRestricted()) {
       return;
     }
     this.submitError.set(null);

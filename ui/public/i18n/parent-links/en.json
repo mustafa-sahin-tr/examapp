@@ -75,7 +75,27 @@
       "confirm": "Leave"
     },
     "left": "You left the link.",
-    "bookLesson": "Request a lesson"
+    "bookLesson": "Request a lesson",
+    "studentInvite": {
+      "invitedBy": "{{name}} added you as a parent",
+      "invitedByUnknown": "A student added you as a parent",
+      "invitedHint": "If you approve, you can follow your child's progress. The invitation is valid until {{date}}.",
+      "consentAgree": "I have read and accept the consent text.",
+      "privacyLink": "Privacy Policy",
+      "approve": "Approve",
+      "reject": "Decline",
+      "approved": "{{name}} is now among your linked children.",
+      "rejected": "The invitation was declined.",
+      "approveError": "The invitation could not be approved.",
+      "rejectError": "The invitation could not be declined.",
+      "consentRequired": "You must accept the consent text to approve.",
+      "invitationExpired": "The invitation has expired; ask your child to send a new one.",
+      "rejectConfirm": {
+        "title": "Decline invitation",
+        "message": "Do you want to decline the parent invitation from {{name}}?",
+        "confirm": "Decline"
+      }
+    }
   },
   "family": {
     "title": "Other parents",

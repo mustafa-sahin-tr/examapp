@@ -2,6 +2,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Models.Dtos.ParentInvitations;
 using ExamApp.Api.Models.Dtos.ParentLinks;
 using ExamApp.Api.Services.Parents;
 using ExamApp.Foundation.Localization;
@@ -30,19 +31,22 @@ public class ParentLinksController : BaseController
     private const string AdminRole = "Admin";
 
     private readonly IParentLinkService _service;
+    private readonly IParentInvitationService _invitations;
 
     // Client'a dönen tüm metinler mesaj sözlüğünden gelir (issue #184).
     private readonly IStringLocalizer<Messages> _localizer;
 
-    public ParentLinksController(IParentLinkService service, IStringLocalizer<Messages>? localizer = null)
+    public ParentLinksController(IParentLinkService service, IParentInvitationService invitations, IStringLocalizer<Messages>? localizer = null)
     {
         _service = service;
+        _invitations = invitations;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
     /// <summary>Öğrenci: bağlı velileri (salt okunur; yalnızca ad + birincil işareti) + geçiş dönemindeki eski istekler.</summary>
     [HttpGet("my-parents")]
     [Authorize(Roles = "Student")]
+    [ExamApp.Api.Services.Parents.Enforcement.AllowWhenParentRequired] // issue #441: süre dolan öğrenci de velilerini görür
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)] // issue #424: veli adları/maskeli e-posta; koparma anında yansısın
     public async Task<IActionResult> GetMyParents(CancellationToken ct)
     {
@@ -115,27 +119,41 @@ public class ParentLinksController : BaseController
     }
 
     /// <summary>
-    /// Bekleyen isteği onaylar → Active. Veli: birincil veli, ikinci veli isteğini (bağlı ama birincil değilse 403). Öğrenci:
-    /// yalnız geçiş dönemindeki eski (#419) isteği — yeni istekler öğrenciye 404. Başkasınınki / süresi dolmuş 404.
+    /// Bekleyen isteği onaylar → Active. Veli: birincil veli, ikinci veli isteğini (bağlı ama birincil değilse 403); issue #440: davet
+    /// edilen veli KENDİ StudentRegistered isteğini rızayla (<c>{ consentAccepted:true, consentVersion }</c> gövdesi zorunlu — eksikse 400
+    /// <c>ConsentRequired</c>, davet süresi dolmuşsa 409 <c>InvitationExpired</c>). Öğrenci: yalnız geçiş dönemindeki eski (#419) isteği —
+    /// yeni istekler öğrenciye 404. Başkasınınki / süresi dolmuş 404.
     /// </summary>
     [HttpPost("{linkId:int}/approve")]
     [Authorize(Roles = "Student,Parent")]
+    [ExamApp.Api.Services.Parents.Enforcement.AllowWhenParentRequired] // issue #441 review: süre dolan öğrenci eski (#419) isteği yine onaylayıp/reddedebilir (veli kazanma yolu)
     [EnableRateLimiting(ParentLinkRateLimiting.ManagePolicy)]
-    public async Task<IActionResult> Approve(int linkId, CancellationToken ct)
+    public async Task<IActionResult> Approve(
+        int linkId,
+        [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] ParentLinkApproveRequestDto? consent,
+        CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync(ct);
         if (!IsResolvedUser(user))
             return UserNotResolved(Unresolved());
 
-        var result = User.IsInRole(ParentRole)
-            ? await _service.ApproveSecondParentAsync(linkId, user.Id, ct)
-            : await _service.ApproveLegacyAsync(linkId, user.Id, ct);
+        ParentLinkResponseDto result;
+        if (User.IsInRole(ParentRole))
+        {
+            result = await _invitations.ApproveAsInvitedParentAsync(linkId, user.Id, consent, ClientIpAddress.Resolve(HttpContext), ct)
+                     ?? await _service.ApproveSecondParentAsync(linkId, user.Id, ct);
+        }
+        else
+        {
+            result = await _service.ApproveLegacyAsync(linkId, user.Id, ct);
+        }
         return result.Success ? NoContent() : MapFailure(result);
     }
 
     /// <summary>Bekleyen isteği reddeder → Revoked. Yetki kuralları onayla aynı.</summary>
     [HttpPost("{linkId:int}/reject")]
     [Authorize(Roles = "Student,Parent")]
+    [ExamApp.Api.Services.Parents.Enforcement.AllowWhenParentRequired] // issue #441 review: süre dolan öğrenci eski (#419) isteği yine onaylayıp/reddedebilir (veli kazanma yolu)
     [EnableRateLimiting(ParentLinkRateLimiting.ManagePolicy)]
     public async Task<IActionResult> Reject(int linkId, CancellationToken ct)
     {
@@ -143,8 +161,9 @@ public class ParentLinksController : BaseController
         if (!IsResolvedUser(user))
             return UserNotResolved(Unresolved());
 
+        // issue #440: davet edilen velinin kendi StudentRegistered isteğini reddi (davet de kapanır); diğerleri eski yol.
         var result = User.IsInRole(ParentRole)
-            ? await _service.RejectSecondParentAsync(linkId, user.Id, ct)
+            ? await _invitations.RejectAsInvitedParentAsync(linkId, user.Id, ct) ?? await _service.RejectSecondParentAsync(linkId, user.Id, ct)
             : await _service.RejectLegacyAsync(linkId, user.Id, ct);
         return result.Success ? NoContent() : MapFailure(result);
     }

@@ -1,5 +1,6 @@
 import { PARENT_CHILD_QUERY_PARAM } from '../../models/parent-dashboard.model';
 import { PARENT_HOME_URL } from '../../shared/guards/parent.guard';
+import { PARENT_REQUIRED_URL } from '../../models/parent-status.model';
 import { PARENT_BOOKING_REQUESTS_FRAGMENT } from '../../models/booking.model';
 import {
   AppNotification,
@@ -93,6 +94,18 @@ export const BADGE_PROGRESS_ROUTE = '/certificates';
 /** Issue #298: öğrencinin randevu listesi (`StudentBookingsComponent`, route `my-bookings`). */
 export const STUDENT_BOOKINGS_ROUTE = '/my-bookings';
 
+/** Issue #440: velinin "Çocuklarım" sayfası (öğrencinin veli daveti orada rızayla onaylanır). */
+export const PARENT_CHILDREN_ROUTE = '/my-children';
+
+/**
+ * Issue #440 / #441: veli kuralı bildirimleri → sabit hedef (`data` linke taşınmaz). Veliye giden davet `/my-children`,
+ * öğrenciye giden hoşgörü hatırlatması "veli bilgisi ekle" ekranı.
+ */
+const PARENT_REQUIREMENT_NOTIFICATIONS: Readonly<Record<string, { icon: string; route: string }>> = {
+  ParentInvitationReceived: { icon: 'family_restroom', route: PARENT_CHILDREN_ROUTE },
+  StudentParentGraceReminder: { icon: 'schedule', route: PARENT_REQUIRED_URL },
+};
+
 export function describeNotification(notification: Pick<AppNotification, 'type' | 'data'>): NotificationPresentation {
   if (notification.type === BADGE_EARNED_NOTIFICATION_TYPE) {
     const data = parseBadgeEarnedData(notification.data);
@@ -137,6 +150,10 @@ export function describeNotification(notification: Pick<AppNotification, 'type' 
       route: { commands: [STUDENT_BOOKINGS_ROUTE] },
       questionOrder: null,
     };
+  }
+  const requirement = PARENT_REQUIREMENT_NOTIFICATIONS[notification.type];
+  if (requirement) {
+    return { icon: requirement.icon, badge: null, route: { commands: [requirement.route] }, questionOrder: null };
   }
   const parentPresentation = describeParentNotification(notification);
   if (parentPresentation) {

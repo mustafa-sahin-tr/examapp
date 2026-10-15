@@ -62,6 +62,13 @@ export interface RegisterStudentPayload {
   studentNumber: string;
   schoolId: number | null;
   gradeId: number;
+  /**
+   * Issue #440: veli bilgisi — veli kuralına tabi öğrencide (yetişkin rolü yok) zorunlu; sunucu eksik/geçersiz değerde kaydı
+   * tamamlamaz (400 `ParentInfoRequired` / `InvalidParent*`). Diğer hesaplarda gönderilmez.
+   */
+  parentFullName?: string;
+  parentEmail?: string;
+  parentPhone?: string;
 }
 
 /** POST /api/teacher/register — mirrors backend RegisterTeacherDto. */

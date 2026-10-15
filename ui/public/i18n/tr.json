@@ -578,5 +578,97 @@
     "addStudyPages": {
       "title": "{{date}} için Sayfa Ekle"
     }
+  },
+  "parentConsent": {
+    "kvkk": "Çocuğumun platformu kullanmasına veli olarak izin veriyorum. Çocuğuma ve bana ait kişisel verilerin, 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) kapsamında Gizlilik Politikası’nda açıklanan amaçlarla işlenmesini okudum ve açık rıza veriyorum."
+  },
+  "parentRequirement": {
+    "restricted": {
+      "snackbar": "Veliniz hesabını aktive edene kadar bu özellik kapalı.",
+      "title": "Velinin onayı bekleniyor",
+      "booking": "Veliniz hesabını aktive edene kadar özel ders talebi gönderemezsin.",
+      "messages": "Veliniz hesabını aktive edene kadar mesaj gönderemezsin.",
+      "comments": "Veliniz hesabını aktive edene kadar yorum yazamazsın.",
+      "leaderboard": "Veliniz hesabını aktive edene kadar liderlik tablosu kapalı."
+    },
+    "card": {
+      "title": "Velinize davet gönderildi",
+      "sentTo": "Davet {{email}} adresine gönderildi.",
+      "expiresAt": "Bağlantı {{date}} tarihine kadar geçerli.",
+      "expiredTitle": "Davet süresi doldu, yeniden gönder",
+      "expiredBody": "Velinin aktivasyon bağlantısının süresi doldu. Yeni bir bağlantı gönderebilir ya da e-postayı düzeltebilirsin.",
+      "restrictedInfo": "Velin hesabını aktive edene kadar ödev ve testlerini çözebilir, sonuçlarını görebilirsin; özel ders talebi, mesajlaşma, yorumlar ve liderlik tablosu kapalı.",
+      "resend": "Yeniden gönder",
+      "resending": "Gönderiliyor...",
+      "resent": "Davet yeniden gönderildi.",
+      "resendsLeft": "Kalan yeniden gönderim hakkı: {{count}}",
+      "nextResendAt": "Bir sonraki gönderim {{date}} sonrasında mümkün.",
+      "noResendsLeft": "Yeniden gönderim hakkın doldu. Velinin e-postasını kontrol edip düzeltebilirsin.",
+      "fixEmail": "E-postayı düzelt",
+      "emailLocked": "Çok sayıda farklı e-posta denedin; {{date}} sonrasında tekrar deneyebilirsin.",
+      "devLink": "dev: aktivasyon bağlantısı",
+      "graceDeadline": "{{days}} gün içinde veliniz aktive etmezse hesabınız kısıtlanır.",
+      "graceOver": "Velini ekleme süren doldu; veliniz hesabını aktive edene kadar hesabın kısıtlı."
+    },
+    "banner": {
+      "title": "Velini ekle, {{days}} gün kaldı",
+      "body": "Hesabını kullanmaya devam etmek için velinin bilgilerini ekle; velin bir aktivasyon bağlantısı alacak.",
+      "action": "Velini ekle",
+      "dismiss": "Kapat"
+    },
+    "finalWarning": {
+      "title": "Velini eklemen gerekiyor",
+      "body": "Velini eklemek için {{days}} gün kaldı. Süre dolunca hesabını yalnız veli bilgisi ekleyerek kullanabileceksin.",
+      "action": "Veli bilgisi ekle"
+    },
+    "page": {
+      "title": "Veli bilgisi ekle",
+      "editTitle": "Velinin e-postasını düzelt",
+      "intro": "Platform velinin bilgisi ve rızasıyla çalışır; velinize bir aktivasyon bağlantısı göndereceğiz.",
+      "expired": "Velini ekleme süren doldu. Devam etmek için velinin bilgilerini ekle; verilerin silinmedi.",
+      "grace": "Velini eklemek için {{days}} gün kaldı.",
+      "awaiting": "Davet şu anda {{email}} adresinde bekliyor. Farklı bir e-posta girersen eski bağlantı geçersiz olur.",
+      "ok": "Velin hesabına bağlı; ek bir işlem gerekmiyor.",
+      "goDashboard": "Ana sayfaya dön",
+      "loadError": "Veli durumu yüklenemedi.",
+      "name": "Veli adı soyadı",
+      "email": "Veli e-postası",
+      "phone": "Veli cep telefonu",
+      "phonePlaceholder": "05xx xxx xx xx",
+      "submit": "Daveti gönder",
+      "submitting": "Gönderiliyor...",
+      "success": "Velinize davet gönderildi.",
+      "privacy": "Kişisel verilerin nasıl işlendiğini okumak için:",
+      "privacyLink": "Gizlilik Politikası"
+    },
+    "validation": {
+      "nameRequired": "Veli adı gerekli.",
+      "nameInvalid": "Veli adı yalnız harf içerebilir (2-100 karakter).",
+      "emailRequired": "Veli e-postası gerekli.",
+      "emailInvalid": "Geçerli bir e-posta adresi gir.",
+      "phoneRequired": "Veli telefonu gerekli.",
+      "phoneInvalid": "Geçerli bir cep telefonu gir (ör. 0532 123 45 67)."
+    },
+    "errors": {
+      "parentInfoRequired": "Veli adı, e-postası ve telefonu zorunludur.",
+      "invalidParentName": "Veli adı yalnız harf içerebilir.",
+      "invalidParentEmail": "Geçerli bir veli e-posta adresi gir.",
+      "invalidParentPhone": "Geçerli bir cep telefonu gir (ör. 0532 123 45 67).",
+      "parentEmailNotUsable": "Bu e-posta veli hesabı olarak kullanılamaz.",
+      "parentEmailChangeLocked": "Çok sayıda farklı e-posta denendi. {{date}} sonrasında tekrar deneyebilirsin.",
+      "parentEmailChangeLockedNoDate": "Çok sayıda farklı e-posta denendi. Lütfen daha sonra tekrar dene.",
+      "resendLimited": "Bu e-postaya davet yakın zamanda gönderildi. {{date}} sonrasında tekrar gönderebilirsin.",
+      "resendLimitedNoDate": "Bu e-postaya yeniden gönderim hakkı doldu.",
+      "parentAlreadyLinked": "Zaten bağlı bir velin var.",
+      "parentNotRequired": "Hesabın için veli bilgisi gerekmiyor.",
+      "noOpenInvitation": "Açık bir davetin yok. Velinin bilgilerini yeniden gir.",
+      "unavailable": "Veli daveti şu anda gönderilemedi. Lütfen birkaç dakika sonra tekrar dene.",
+      "generic": "İşlem tamamlanamadı. Lütfen tekrar dene.",
+      "busy": "Veliniz şu anda hesabını etkinleştiriyor, biraz sonra tekrar deneyin."
+    },
+    "wizard": {
+      "title": "Veli Bilgileri",
+      "restricted": "Veliniz hesabını aktive edene kadar özel ders talebi, mesajlaşma, yorum ve liderlik tablosu kapalı kalır."
+    }
   }
 }

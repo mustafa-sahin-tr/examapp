@@ -29,6 +29,7 @@ import { DirectMessageService } from '../../services/direct-message.service';
 import { TranslocoDirective, TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { ColorSchemeToggleComponent } from '../../shared/components/color-scheme-toggle/color-scheme-toggle.component';
 import { LanguageSwitcherComponent } from '../../shared/components/language-switcher/language-switcher.component';
+import { ParentFinalWarningComponent } from '../../shared/components/parent-final-warning/parent-final-warning.component';
 import { resolveActiveMenuItemId } from './active-menu-item';
 import { SETTINGS_URL, settingsUrlFor } from '../../shared/guards/settings.guard';
 
@@ -74,6 +75,7 @@ interface MenuItem {
     ReactiveFormsModule,
     ColorSchemeToggleComponent,
     LanguageSwitcherComponent,
+    ParentFinalWarningComponent,
     TranslocoDirective,
     TranslocoPipe,
   ],

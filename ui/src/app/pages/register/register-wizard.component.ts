@@ -26,11 +26,44 @@ import {
   TeacherSchoolRequestCooldownError,
 } from '../../models/teacher-registration.model';
 import { RegisterStudentRequest } from '../../models/student-registration.model';
+import {
+  PARENT_INVITATION_ERROR_CODES,
+  PARENT_RULE_ADULT_ROLES,
+  ParentStatus,
+  parentErrorCode,
+} from '../../models/parent-status.model';
+import { LocaleService } from '../../services/locale.service';
+import { ParentStatusStore } from '../../services/parent-status.store';
+import {
+  PARENT_EMAIL_MAX_LENGTH,
+  PARENT_NAME_MAX_LENGTH,
+  PARENT_PHONE_INPUT_MAX_LENGTH,
+  parentEmailValidator,
+  parentNameValidator,
+  parentPhoneValidator,
+} from '../../shared/utils/parent-contact.util';
+import { describeParentInvitationError } from '../../shared/utils/parent-invitation-error';
 import { SchoolSelectComponent } from '../../shared/components/school-select/school-select.component';
 import { REGISTER_SCOPE } from './register-scope';
 import { TEACHER_APPROVAL_PENDING_URL } from '../../models/teacher-approval.model';
 
 type Role = 'student' | 'teacher' | 'parent';
+
+/**
+ * Issue #440: öğrenci kaydının veli bilgisi / davet hataları (400 biçim, 409 kullanılamayan e-posta / meşgul, 429 kilit / gönderim
+ * sınırı, 502 hesap servisi) — formda kalınır, eşlenmiş mesaj gösterilir.
+ */
+const PARENT_CONTACT_ERROR_CODES: ReadonlySet<string> = new Set([
+  PARENT_INVITATION_ERROR_CODES.parentInfoRequired,
+  PARENT_INVITATION_ERROR_CODES.invalidParentName,
+  PARENT_INVITATION_ERROR_CODES.invalidParentEmail,
+  PARENT_INVITATION_ERROR_CODES.invalidParentPhone,
+  PARENT_INVITATION_ERROR_CODES.parentEmailNotUsable,
+  PARENT_INVITATION_ERROR_CODES.parentEmailChangeLocked,
+  PARENT_INVITATION_ERROR_CODES.resendLimited,
+  PARENT_INVITATION_ERROR_CODES.unavailable,
+  PARENT_INVITATION_ERROR_CODES.busy,
+]);
 
 /** Rol tamamlama uçlarının ortak yanıtı (servisler henüz `any` döndürüyor). */
 interface RegistrationResult {
@@ -42,6 +75,8 @@ interface RegistrationResult {
   teacherAccountApproved?: boolean;
   /** Yalnız öğretmen ucu (issue #287): yerelleştirilmiş sunucu mesajı. */
   message?: string;
+  /** Yalnız öğrenci ucu (issue #440): davet açıldıysa veli durumu. */
+  parentStatus?: ParentStatus | null;
 }
 
 @Component({
@@ -77,6 +112,17 @@ export class RegisterWizardComponent implements OnInit {
   private gradesService = inject(GradesService);
   private readonly transloco = inject(TranslocoService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly parentStatusStore = inject(ParentStatusStore);
+  private readonly localeService = inject(LocaleService);
+
+  protected readonly parentNameMaxLength = PARENT_NAME_MAX_LENGTH;
+  protected readonly parentEmailMaxLength = PARENT_EMAIL_MAX_LENGTH;
+  protected readonly parentPhoneMaxLength = PARENT_PHONE_INPUT_MAX_LENGTH;
+  /**
+   * Issue #440: veli kuralına tabi öğrenci (token'da yetişkin rolü yok) kayıtta veli adı, e-postası ve telefonu verir; sunucu
+   * Active velisi / açık daveti olan öğrencide alanları yok sayar (istemci bunu bilemez).
+   */
+  readonly parentInfoRequired = signal(true);
 
   role = signal<Role | null>(null);
   step = computed(() => (this.role() ? 2 : 1));
@@ -106,6 +152,9 @@ export class RegisterWizardComponent implements OnInit {
     studentNumber: ['', [Validators.required, Validators.maxLength(50)]],
     schoolId: [null as number | null],
     gradeId: [null as number | null, [Validators.required]],
+    parentFullName: ['', [Validators.required, parentNameValidator]],
+    parentEmail: ['', [Validators.required, parentEmailValidator]],
+    parentPhone: ['', [Validators.required, parentPhoneValidator]],
   });
 
   /** Issue #277 (madde 6): RegisterTeacherDto `{ schoolId, isIndependentTutor }` — auth-ui complete-profile ile aynı. */
@@ -146,7 +195,23 @@ export class RegisterWizardComponent implements OnInit {
     }
 
     this.role.set(resolved);
+    this.applyParentRequirement();
     this.loadGrades();
+  }
+
+  /** Yetişkin rolü olan hesapta veli alanları formdan çıkarılır (devre dışı kontrol geçerlilikte sayılmaz). */
+  private applyParentRequirement(): void {
+    const roles = this.authService.getRealmRoles();
+    const required = !roles.some((r) => PARENT_RULE_ADULT_ROLES.includes(r));
+    this.parentInfoRequired.set(required);
+    const { parentFullName, parentEmail, parentPhone } = this.studentForm.controls;
+    for (const control of [parentFullName, parentEmail, parentPhone]) {
+      if (required) {
+        control.enable({ emitEvent: false });
+      } else {
+        control.disable({ emitEvent: false });
+      }
+    }
   }
 
   pickRole(role: Role) {
@@ -215,6 +280,10 @@ export class RegisterWizardComponent implements OnInit {
           // Onbellekteki kayit baska bir kullaniciya ait; merge etmek yerine at.
           this.authService.clearCachedUser();
         }
+        if (role === 'student') {
+          // Issue #440: davet açıldıysa kısıtlı mod / davet kartı refresh beklemeden bilinsin.
+          this.parentStatusStore.set(val?.parentStatus);
+        }
         const accountApprovalPending = role === 'teacher' && val?.teacherAccountApproved === false;
         const raw = localStorage.getItem('user');
         if (raw) {
@@ -255,6 +324,13 @@ export class RegisterWizardComponent implements OnInit {
       },
       error: (err: unknown) => {
         this.isSubmitting.set(false);
+        // Issue #440: veli bilgisi / davet hatası — eşlenmiş mesaj, formda kal (429 kilit/sınır öğretmen bekleme süresi değil).
+        const parentCode = role === 'student' ? parentErrorCode(err) : null;
+        if (parentCode && PARENT_CONTACT_ERROR_CODES.has(parentCode)) {
+          const text = describeParentInvitationError(err, this.localeService.localeDefinition().angularLocale);
+          this.submitError.set(this.transloco.translate<string>(text.key, text.params) ?? null);
+          return;
+        }
         // Issue #277 (madde 2): reddedilen okul talebinden sonra 24 saatlik bekleme → 429; mesaj + kalan süre gösterilir.
         if (err instanceof HttpErrorResponse && err.status === 429) {
           const body = (err.error && typeof err.error === 'object' ? err.error : null) as TeacherSchoolRequestCooldownError | null;
@@ -276,11 +352,19 @@ export class RegisterWizardComponent implements OnInit {
   }
 
   private buildStudentRequest(): RegisterStudentRequest {
-    const { studentNumber, schoolId, gradeId } = this.studentForm.getRawValue();
+    const { studentNumber, schoolId, gradeId, parentFullName, parentEmail, parentPhone } = this.studentForm.getRawValue();
     return {
       studentNumber: (studentNumber ?? '').trim(),
       schoolId: schoolId ?? null,
       gradeId: gradeId as number,
+      // Issue #440: sunucu ayrıca normalize eder (küçük harf e-posta, E.164 telefon).
+      ...(this.parentInfoRequired()
+        ? {
+            parentFullName: (parentFullName ?? '').trim(),
+            parentEmail: (parentEmail ?? '').trim(),
+            parentPhone: (parentPhone ?? '').trim(),
+          }
+        : {}),
     };
   }
 

@@ -11,6 +11,10 @@
 }
 
 <mat-dialog-content class="bsd__content" *transloco="let t; prefix: 'shared.bookingSlotDialog'">
+  @if (!data.child) {
+    <!-- Issue #440: veli aktivasyonu beklenirken özel ders talebi kapalı. -->
+    <app-parent-activation-notice feature="booking" />
+  }
   @if (loading()) {
     <div class="bsd__state" aria-busy="true" aria-live="polite">
       <mat-spinner diameter="32" />
@@ -60,7 +64,7 @@
     mat-flat-button
     color="primary"
     type="button"
-    [disabled]="selectedId === null || submitting()"
+    [disabled]="selectedId === null || submitting() || activationRestricted()"
     (click)="submit()"
   >
     @if (submitting()) {

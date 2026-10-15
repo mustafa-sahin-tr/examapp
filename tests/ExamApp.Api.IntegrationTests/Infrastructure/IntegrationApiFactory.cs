@@ -80,6 +80,15 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
         Environment.SetEnvironmentVariable("Whiteboard__AllowedTransports", "WebSockets, LongPolling");
         // issue #419: davet kodu HMAC pepper'ı — "Testing" Development değil, dev-only yedeğe düşülmez (yalnız test değeri).
         Environment.SetEnvironmentVariable("ParentLinks__InviteCodePepper", "integration-test-parent-invite-pepper-0123456789");
+        // issue #440/#441: veli durumu önbelleği kapalı — testler DB'yi doğrudan değiştirip hemen sonraki istekte görür.
+        Environment.SetEnvironmentVariable("ParentRequirement__StatusCacheSeconds", "0");
+        Environment.SetEnvironmentVariable("ParentRequirement__ActivationBaseUrl", "http://gateway.test");
+        // issue #440 r3 M1: Development dışında güvenilir proxy yapılandırması zorunlu (TestServer'da gateway = loopback).
+        Environment.SetEnvironmentVariable("ForwardedHeaders__KnownNetworks__0", "127.0.0.0/8");
+        // issue #440 review: aktivasyon bağlantısı şifreleme anahtarı ("Testing" Development değil → zorunlu). Literal commit edilmez
+        // (gitleaks): her koşuda rastgele 32 bayt.
+        Environment.SetEnvironmentVariable("ParentInvitations__LinkEncryptionKey",
+            Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)));
     }
 
     public override async ValueTask DisposeAsync()
@@ -110,6 +119,11 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
             services.AddSingleton<FakeChildAccountDirectory>();
             services.RemoveAll<ExamApp.Api.Services.Parents.IChildAccountDirectory>();
             services.AddScoped<ExamApp.Api.Services.Parents.IChildAccountDirectory>(sp => sp.GetRequiredService<FakeChildAccountDirectory>());
+
+            // issue #440: auth-api veli hesabı uçları (Keycloak) test ortamında yok — bellek içi sahte.
+            services.AddSingleton<FakeParentAccountDirectory>();
+            services.RemoveAll<ExamApp.Api.Services.Parents.IParentAccountDirectory>();
+            services.AddScoped<ExamApp.Api.Services.Parents.IParentAccountDirectory>(sp => sp.GetRequiredService<FakeParentAccountDirectory>());
 
             // auth-api user-profile: kayıtlı Bearer token'lar için sahte yanıt (gerçek AuthApiClient'ın ilettiği token
             // uçtan uca doğrulanır — SignalR ?access_token= dahil). Kayıtsız istekler olduğu gibi geçer.

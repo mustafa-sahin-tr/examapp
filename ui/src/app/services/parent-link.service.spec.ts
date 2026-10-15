@@ -67,6 +67,20 @@ describe('ParentLinkService (issue #419, #436)', () => {
     reject.flush(null, { status: 204, statusText: 'No Content' });
   });
 
+  it('approve_WithConsent_SendsConsentBody (issue #440)', () => {
+    service.approve(7, { consentAccepted: true, consentVersion: '2026-10' }).subscribe();
+    const approve = http.expectOne('/api/exam/parent-links/7/approve');
+    expect(approve.request.body).toEqual({ consentAccepted: true, consentVersion: '2026-10' });
+    approve.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it('approve_WithoutConsent_SendsEmptyBody', () => {
+    service.approve(8).subscribe();
+    const approve = http.expectOne('/api/exam/parent-links/8/approve');
+    expect(approve.request.body).toEqual({});
+    approve.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
   it('extractError_PrefersServerMessage_FallsBackOtherwise', () => {
     const withBody = new HttpErrorResponse({
       status: 400,

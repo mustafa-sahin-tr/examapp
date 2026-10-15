@@ -69,6 +69,7 @@ public class WorksheetCommentsController : BaseController
     /// <summary>Yeni kök yorum veya (tek seviye) reply. 201 + oluşturulan yorum.</summary>
     [HttpPost]
     [Authorize(Roles = "Student,Teacher")]
+    [Authorize(Policy = ExamApp.Api.Services.Parents.Enforcement.ParentRequirementPolicies.ParentActivated)] // issue #440: herkese açık yorum (öğrenci)
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
     [EnableRateLimiting(WorksheetCommentWriteRateLimiting.Policy)]
     public async Task<IActionResult> Create(int worksheetId, [FromBody] CreateWorksheetCommentDto dto, CancellationToken ct)

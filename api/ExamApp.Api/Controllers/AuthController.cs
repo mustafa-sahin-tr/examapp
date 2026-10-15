@@ -10,6 +10,8 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Teachers;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Parents;
+using ExamApp.Api.Services.Parents.Enforcement;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Localization;
@@ -38,13 +40,19 @@ namespace ExamApp.Api.Controllers
     // senaryolarda varsayılan dile düşebilmek için opsiyonel.
         private readonly IStringLocalizer<Messages> _localizer;
 
+        // issue #440/#441: öğrencinin veli durumu (refresh yanıtında student.parentStatus; ilk girişte hoşgörü sayacını başlatır).
+        // DI her zaman verir; null yalnız DI'siz kurulan birim testlerinde (alan dönmez).
+        private readonly IParentInvitationService? _parentInvitations;
+
         public AuthController(AppDbContext context,
              IOptions<KeycloakSettings> options, IHttpClientFactory factory, UserProfileCacheService userProfileCacheService,
              IUserProfileProvider userProfileProvider,
              IKeycloakService keycloakService,
-             IStringLocalizer<Messages>? localizer = null)
+             IStringLocalizer<Messages>? localizer = null,
+             IParentInvitationService? parentInvitations = null)
             : base()
         {
+            _parentInvitations = parentInvitations;
             _localizer = localizer ?? FallbackMessageLocalizer.Instance;
             _context = context;
             _keycloakSettings = options.Value;
@@ -54,6 +62,7 @@ namespace ExamApp.Api.Controllers
         }
 
         [Authorize]
+        [AllowWhenParentRequired] // issue #441: süre dolan öğrenci de profilini/veli durumunu alır
         [HttpPost("refresh")]
         public async Task<IActionResult> RefreshProfileInformation()
         {
@@ -99,6 +108,10 @@ namespace ExamApp.Api.Controllers
                         ThemePreset = student.ThemePreset,
                         ThemeCustomConfig = student.ThemeCustomConfig
                     };
+                    // issue #440/#441: veli durumu (banner/modal/guard). İlk girişte hoşgörü sayacı burada başlar.
+                    if (_parentInvitations != null)
+                        profile.Student.ParentStatus = await _parentInvitations.GetStatusAsync(
+                            profile.Id, ParentRequirement.RequiresParent(User), stamp: true, HttpContext.RequestAborted);
                 }
                 else if (profile.Role == "Teacher")
                 {
@@ -150,6 +163,7 @@ namespace ExamApp.Api.Controllers
         /// "default" (hiçbiri eşleşmedi → tr-TR).
         /// </summary>
         [Authorize]
+        [AllowWhenParentRequired]
         [HttpGet("culture")]
         public IActionResult GetCurrentCulture()
         {
@@ -176,6 +190,7 @@ namespace ExamApp.Api.Controllers
         };
 
         [Authorize]
+        [AllowWhenParentRequired]
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {

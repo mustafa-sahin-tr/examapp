@@ -57,6 +57,8 @@ public class StudentControllerRegisterSchoolLockTests : IDisposable
             .AddSingleton<ISchoolContextResolver>(new SchoolContextResolver(ctx))
             .AddSingleton<ExamApp.Api.Services.UserRoles.IUserRoleChangeRecorder>(new ExamApp.Api.Services.UserRoles.UserRoleChangeRecorder(ctx))
             .AddSingleton<ExamApp.Api.Services.UserRoles.IUserRoleExclusivity>(new ExamApp.Api.Services.UserRoles.UserRoleExclusivity(ctx)) // #419
+            // issue #440: bu testler okul kilidine odaklı — veli bilgisi istenmez (NeedsParentInfoAsync varsayılanı false).
+            .AddSingleton(Substitute.For<ExamApp.Api.Services.Parents.IParentInvitationService>())
             .BuildServiceProvider();
 
         var controller = new StudentController(

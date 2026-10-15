@@ -85,6 +85,47 @@
                 <mat-error>{{ t('fields.gradeRequired') }}</mat-error>
               }
             </mat-form-field>
+            @if (parentInfoRequired()) {
+              <!-- Issue #440: veli bilgisi — veliye aktivasyon bağlantısı gönderilir; eksik/geçersizse kayıt tamamlanmaz. -->
+              <fieldset class="parent-section" data-testid="parent-section" *transloco="let p; prefix: 'parentRequirement'">
+                <legend>{{ p('wizard.title') }}</legend>
+                <p class="hint parent-section__intro">{{ p('page.intro') }} {{ p('wizard.restricted') }}</p>
+                <mat-form-field appearance="outline">
+                  <mat-label>{{ p('page.name') }}</mat-label>
+                  <input matInput formControlName="parentFullName" autocomplete="off" [attr.maxlength]="parentNameMaxLength"
+                    data-testid="parent-name" />
+                  @if (studentForm.controls.parentFullName.hasError('required')) {
+                    <mat-error>{{ p('validation.nameRequired') }}</mat-error>
+                  } @else if (studentForm.controls.parentFullName.hasError('parentName')) {
+                    <mat-error data-testid="parent-name-invalid">{{ p('validation.nameInvalid') }}</mat-error>
+                  }
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>{{ p('page.email') }}</mat-label>
+                  <input matInput type="email" inputmode="email" formControlName="parentEmail" autocomplete="off"
+                    [attr.maxlength]="parentEmailMaxLength" data-testid="parent-email" />
+                  @if (studentForm.controls.parentEmail.hasError('required')) {
+                    <mat-error>{{ p('validation.emailRequired') }}</mat-error>
+                  } @else if (studentForm.controls.parentEmail.hasError('parentEmail')) {
+                    <mat-error data-testid="parent-email-invalid">{{ p('validation.emailInvalid') }}</mat-error>
+                  }
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>{{ p('page.phone') }}</mat-label>
+                  <input matInput type="tel" inputmode="tel" formControlName="parentPhone" autocomplete="off"
+                    [placeholder]="p('page.phonePlaceholder')" [attr.maxlength]="parentPhoneMaxLength" data-testid="parent-phone" />
+                  @if (studentForm.controls.parentPhone.hasError('required')) {
+                    <mat-error>{{ p('validation.phoneRequired') }}</mat-error>
+                  } @else if (studentForm.controls.parentPhone.hasError('parentPhone')) {
+                    <mat-error data-testid="parent-phone-invalid">{{ p('validation.phoneInvalid') }}</mat-error>
+                  }
+                </mat-form-field>
+                <p class="hint">
+                  {{ p('page.privacy') }}
+                  <a href="/privacy-policy" target="_blank" rel="noopener">{{ p('page.privacyLink') }}</a>
+                </p>
+              </fieldset>
+            }
             <div class="actions">
               <button mat-button type="button" (click)="back()">{{ t('actions.back') }}</button>
               <button

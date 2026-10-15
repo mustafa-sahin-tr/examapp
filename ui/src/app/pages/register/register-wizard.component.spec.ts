@@ -15,10 +15,17 @@ import { SchoolService } from '../../services/school.service';
 import { School } from '../../models/taxonomy';
 import { Grade } from '../../models/student';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
+import { ParentStatusStore } from '../../services/parent-status.store';
+import { LocaleService } from '../../services/locale.service';
+import { signal } from '@angular/core';
+import { awaitingStatusOf } from '../../shared/testing/parent-status-testing';
 import registerTr from '../../../../public/i18n/register/tr.json';
 import registerEn from '../../../../public/i18n/register/en.json';
 
 const GRADES: Grade[] = [{ id: 10, name: '10. Sınıf' }];
+
+/** Issue #440: veli kuralına tabi öğrencinin zorunlu veli bilgisi. */
+const PARENT_INPUT = { parentFullName: 'Ayşe Yılmaz', parentEmail: 'ayse@example.com', parentPhone: '0532 123 45 67' };
 const SCHOOLS: School[] = [
   { id: 7, name: 'Ankara Fen Lisesi', provinceId: 6, provinceName: 'Ankara', districtId: 1, districtName: 'Çankaya', addressLine: null },
 ];
@@ -67,6 +74,7 @@ describe('RegisterWizardComponent (Issue #234)', () => {
         { provide: GradesService, useValue: jasmine.createSpyObj('GradesService', ['getGrades'], { getGrades: () => of(GRADES) }) },
         { provide: MatSnackBar, useValue: jasmine.createSpyObj('MatSnackBar', ['open']) },
         { provide: SchoolService, useValue: { getSchools: () => of(SCHOOLS) } },
+        { provide: LocaleService, useValue: { localeDefinition: signal({ angularLocale: 'tr-TR' }) } },
         provideNoopAnimations(),
       ],
     });
@@ -142,7 +150,7 @@ describe('RegisterWizardComponent (Issue #234)', () => {
   it('submit_StudentRegistrationConflict409_SetSubmitErrorSignal', fakeAsync(() => {
     createComponent('student');
     fixture.detectChanges(); // ngOnInit
-    component.studentForm.setValue({ studentNumber: '123', schoolId: 7, gradeId: 10 });
+    component.studentForm.setValue({ studentNumber: '123', schoolId: 7, gradeId: 10 , ...PARENT_INPUT });
     const errorMsg = 'Profil zaten tamamlanmış.';
     studentService.register.and.returnValue(
       throwError(
@@ -306,18 +314,18 @@ describe('RegisterWizardComponent (Issue #234)', () => {
     it('submit_Student_SendsSchoolIdGradeIdAndNumber_WithoutSchoolName', () => {
       createComponent('student');
       fixture.detectChanges();
-      component.studentForm.setValue({ studentNumber: ' 123 ', schoolId: 7, gradeId: 10 });
+      component.studentForm.setValue({ studentNumber: ' 123 ', schoolId: 7, gradeId: 10 , ...PARENT_INPUT });
       studentService.register.and.returnValue(NEVER);
 
       component.submit();
 
-      expect(studentService.register).toHaveBeenCalledOnceWith({ studentNumber: '123', schoolId: 7, gradeId: 10 });
+      expect(studentService.register).toHaveBeenCalledOnceWith({ studentNumber: '123', schoolId: 7, gradeId: 10, ...PARENT_INPUT });
     });
 
     it('submit_StudentWithoutGrade_DoesNotSend', () => {
       createComponent('student');
       fixture.detectChanges();
-      component.studentForm.setValue({ studentNumber: '123', schoolId: null, gradeId: null });
+      component.studentForm.setValue({ studentNumber: '123', schoolId: null, gradeId: null , ...PARENT_INPUT });
 
       component.submit();
 
@@ -566,5 +574,109 @@ describe('RegisterWizardComponent (Issue #234)', () => {
       }
       expect(registerEn.wizard.parentTitle).toBeTruthy();
     });
+  });
+
+  // ── Issue #440: öğrenci adımında veli bilgisi (canlı E2E bulgusu: ilk girişte bu sihirbaz açılır) ──────────────
+
+  describe('student parent info (issue #440)', () => {
+    it('studentStep_RendersParentFields', () => {
+      createComponent('student');
+      fixture.detectChanges();
+      const el: HTMLElement = fixture.nativeElement;
+
+      expect(el.querySelector('[data-testid="parent-section"]')?.textContent).toContain('aktivasyon bağlantısı');
+      expect(el.querySelector('[data-testid="parent-name"]')).not.toBeNull();
+      expect(el.querySelector('[data-testid="parent-email"]')).not.toBeNull();
+      expect(el.querySelector('[data-testid="parent-phone"]')).not.toBeNull();
+      expect(el.querySelector('[data-testid="parent-section"] a')?.getAttribute('href')).toBe('/privacy-policy');
+    });
+
+    it('submit_MissingParentInfo_DoesNotSend', () => {
+      createComponent('student');
+      fixture.detectChanges();
+      component.studentForm.patchValue({ studentNumber: '123', gradeId: 10 });
+
+      component.submit();
+
+      expect(studentService.register).not.toHaveBeenCalled();
+    });
+
+    it('submit_InvalidPhoneOrLinkLikeName_DoesNotSend_ShowsErrors', () => {
+      createComponent('student');
+      fixture.detectChanges();
+      component.studentForm.setValue({
+        studentNumber: '123',
+        schoolId: null,
+        gradeId: 10,
+        parentFullName: 'www.ornek.com',
+        parentEmail: 'ayse@example.com',
+        parentPhone: '0212 123 45 67',
+      });
+
+      component.submit();
+      fixture.detectChanges();
+
+      expect(studentService.register).not.toHaveBeenCalled();
+      const el: HTMLElement = fixture.nativeElement;
+      expect(el.querySelector('[data-testid="parent-phone-invalid"]')).not.toBeNull();
+      expect(el.querySelector('[data-testid="parent-name-invalid"]')?.textContent).toContain('yalnız harf');
+    });
+
+    it('studentWithAdultRole_NoParentFields_PayloadWithoutParent', () => {
+      createComponent('student');
+      authService.getRealmRoles.and.returnValue(['Teacher']);
+      fixture.detectChanges();
+      studentService.register.and.returnValue(NEVER);
+
+      expect(fixture.nativeElement.querySelector('[data-testid="parent-section"]')).toBeNull();
+      component.studentForm.patchValue({ studentNumber: '123', gradeId: 10 });
+      component.submit();
+
+      expect(studentService.register).toHaveBeenCalledOnceWith({ studentNumber: '123', schoolId: null, gradeId: 10 });
+    });
+
+    it('submit_Success_FeedsParentStatusStore', fakeAsync(() => {
+      createComponent('student');
+      fixture.detectChanges();
+      component.studentForm.setValue({ studentNumber: '123', schoolId: null, gradeId: 10, ...PARENT_INPUT });
+      studentService.register.and.returnValue(
+        of({ accessToken: 'token', expiresIn: 3600, profileId: 5, parentStatus: awaitingStatusOf() })
+      );
+
+      component.submit();
+      flush();
+
+      expect(TestBed.inject(ParentStatusStore).activationRestricted()).toBeTrue();
+      expect(router.navigate).toHaveBeenCalledWith(['/tests']);
+    }));
+
+    const errors: { name: string; status: number; body: Record<string, unknown>; expected: string }[] = [
+      { name: 'EmailNotUsable409', status: 409, body: { errorCode: 'ParentEmailNotUsable', message: 'x' }, expected: 'Bu e-posta veli hesabı olarak kullanılamaz.' },
+      { name: 'InfoRequired400', status: 400, body: { errorCode: 'ParentInfoRequired' }, expected: 'Veli adı, e-postası ve telefonu zorunludur.' },
+      { name: 'InvalidName400', status: 400, body: { errorCode: 'InvalidParentName' }, expected: 'Veli adı yalnız harf içerebilir.' },
+      { name: 'Locked429', status: 429, body: { errorCode: 'ParentEmailChangeLocked', retryAt: '2026-10-15T12:00:00Z' }, expected: 'Çok sayıda farklı e-posta denendi.' },
+      { name: 'Busy409', status: 409, body: { errorCode: 'Busy', message: 'x' }, expected: 'Veliniz şu anda hesabını etkinleştiriyor' },
+      { name: 'Unavailable502', status: 502, body: { errorCode: 'ParentInvitationUnavailable' }, expected: 'Veli daveti şu anda gönderilemedi.' },
+    ];
+
+    for (const scenario of errors) {
+      it(`submit_Parent${scenario.name}_InlineMappedError_StaysOnForm`, fakeAsync(() => {
+        createComponent('student');
+        fixture.detectChanges();
+        component.studentForm.setValue({ studentNumber: '123', schoolId: null, gradeId: 10, ...PARENT_INPUT });
+        studentService.register.and.returnValue(
+          throwError(() => new HttpErrorResponse({ status: scenario.status, error: scenario.body }))
+        );
+
+        component.submit();
+        flush();
+        fixture.detectChanges();
+
+        expect(component.submitError()).toContain(scenario.expected);
+        expect(component.retryAfterSeconds()).toBeNull();
+        expect(router.navigate).not.toHaveBeenCalled();
+        expect(fixture.nativeElement.querySelector('[data-testid="submit-error"]')?.textContent).toContain(scenario.expected);
+      }));
+    }
   });
 });

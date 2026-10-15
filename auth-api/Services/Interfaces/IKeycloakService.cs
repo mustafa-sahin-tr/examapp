@@ -146,4 +146,28 @@ public interface IKeycloakService
     /// Fail-closed: herhangi bir adım ya da son doğrulama başarısızsa <see cref="KeycloakException"/>.
     /// </summary>
     Task ApplyParentManagedRolesAsync(string keycloakUserId, CancellationToken ct = default);
+
+    // ---- Öğrencinin davet ettiği veli hesabı (issue #440) ----
+
+    /// <summary>
+    /// <c>GET /users?email=&lt;e&gt;&amp;exact=true&amp;briefRepresentation=false</c> — e-postası tam olarak bu olan kullanıcılar (attribute'larıyla;
+    /// yanıt yerelde büyük/küçük harf duyarsız yeniden doğrulanır, en fazla 5). Hata <see cref="KeycloakException"/>.
+    /// </summary>
+    Task<IReadOnlyList<KeycloakUserSummary>> FindUsersByEmailAsync(string email, CancellationToken ct = default);
+
+    /// <summary>
+    /// Aktivasyonda yeni veli kullanıcısı: kullanıcı adı = e-posta, <c>emailVerified=true</c>, required action yok, kimlik bilgisi YOK
+    /// (parola ayrıca <see cref="ResetPasswordAsync"/>). Rol ayrıca <see cref="SetRoleAsync"/>. Kullanıcı adı/e-posta çakışması
+    /// <see cref="KeycloakFailureKind.Conflict"/>, doğrulama reddi <see cref="KeycloakFailureKind.Validation"/>.
+    /// </summary>
+    Task<string> CreateParentUserAsync(string email, string firstName, string lastName, CancellationToken ct = default);
+
+    /// <summary>Security C1: kullanıcının SUNUCUDAKİ e-postası ve doğrulama durumu (GET tam temsil). 404 → <see cref="KeycloakException"/>.</summary>
+    Task<(string? Email, bool EmailVerified)> GetUserEmailAsync(string keycloakUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Security C1: <c>emailVerified=true</c> (davet token'ı e-posta sahipliğini kanıtladı; GET + PUT tam temsil). Yeniden okunan kaydın
+    /// e-postası <paramref name="expectedEmail"/> değilse işaretlemez, <see cref="KeycloakFailureKind.Conflict"/> fırlatır.
+    /// </summary>
+    Task MarkEmailVerifiedAsync(string keycloakUserId, string expectedEmail, CancellationToken ct = default);
 }

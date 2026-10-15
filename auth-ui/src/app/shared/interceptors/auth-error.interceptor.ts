@@ -8,7 +8,13 @@ import { catchError, throwError } from 'rxjs';
  * anlamına gelir (issue #231). Hatayı çağıran bileşen kendi mesajıyla ele alır; interceptor
  * yönlendirme yapmaz.
  */
-const CREDENTIAL_ENDPOINTS = ['/api/auth/login', '/api/auth/exchange'];
+const CREDENTIAL_ENDPOINTS = [
+  '/api/auth/login',
+  '/api/auth/exchange',
+  // Issue #440: davet kabulünde 401 → sayfa bekleyen kabulü saklayıp girişi `returnUrl` ile kendisi başlatır
+  // (genel `/login` yönlendirmesi geri dönüş hedefini kaybederdi).
+  '/api/exam/parent-activation/accept',
+];
 
 function isCredentialEndpoint(url: string): boolean {
   const path = url.split('?')[0];

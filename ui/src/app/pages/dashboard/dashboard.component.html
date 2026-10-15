@@ -1,6 +1,9 @@
 <!-- Issue #361: okul üyeliği onay bekliyorsa bilgi bandı (bekleyen üyelik yoksa render edilmez). -->
 <app-school-pending-banner />
 
+<!-- Issue #440/#441: veli daveti kartı (kısıtlı mod) ya da hoşgörü banner'ı (durum yoksa render edilmez). -->
+<app-parent-status-card />
+
 <!-- Karşılama alanı: son giriş bilgisi (issue #126). İlk girişte lastLoginLabel null → chip hiç render edilmez. -->
 <div class="dashboard-welcome">
   <h2 class="dashboard-welcome-title">{{ 'dashboard.welcome.title' | transloco }}</h2>

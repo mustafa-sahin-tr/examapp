@@ -164,3 +164,29 @@
     }
   }
 }
+
+// Issue #440: öğrenci adımında veli bilgileri.
+.parent-section {
+  display: flex;
+  flex-direction: column;
+  margin: 0.5rem 0 0;
+  padding: 1rem 0 0;
+  border: none;
+  border-top: 1px solid var(--ms-border);
+  // Alanlar arası boşluk formdakiyle aynı; outlined alanın yüzen etiketi açıklamanın üstüne binmesin diye ek alt boşluk.
+  gap: 8px;
+
+  .parent-section__intro {
+    margin: 0 0 0.75rem;
+  }
+
+  legend {
+    padding: 0;
+    font-family: var(--mainFontFamily);
+    font-weight: 600;
+  }
+
+  a {
+    color: var(--ms-action-navigation);
+  }
+}

@@ -1,3 +1,5 @@
+import { ParentStatus } from './parent-status.model';
+
 export interface Grade {
   id: number;
   name: string;
@@ -18,6 +20,8 @@ export interface Student {
   pendingSchoolId?: number | null;
   /** Issue #361: bekleyen okulun adı ("Okul onayı bekleniyor" bandı). */
   pendingSchoolName?: string | null;
+  /** Issue #440/#441: veli durumu — yalnız `POST /api/exam/auth/refresh` yanıtında (banner/modal/guard). */
+  parentStatus?: ParentStatus | null;
 }
 
 export interface StudentLookup {

@@ -1,4 +1,6 @@
 <div class="cc" *transloco="let t; prefix: 'comments'">
+  <!-- Issue #440: veli aktivasyonu beklenirken yorum kapalı. -->
+  <app-parent-activation-notice feature="comments" />
   <mat-form-field appearance="outline" class="cc__field" subscriptSizing="dynamic">
     <textarea
       #textarea
@@ -8,6 +10,7 @@
       dir="auto"
       rows="2"
       [value]="draft()"
+      [disabled]="activationRestricted()"
       [placeholder]="placeholder()"
       [attr.aria-label]="ariaLabel()"
       [attr.aria-describedby]="describedBy()"

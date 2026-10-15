@@ -184,6 +184,14 @@
     "ParentBookingRejectedTeacherUnavailable": {
       "title": "Ders talebi yanıtlanamadı",
       "body": "{3} için {1} ders talebi, {0} geçici olarak müsait olmadığı için otomatik reddedildi.{2}"
+    },
+    "ParentInvitationReceived": {
+      "title": "Veli daveti",
+      "body": "Çocuğunuz {0} sizi veli olarak ekledi. Çocuklarım sayfasından onaylayın."
+    },
+    "StudentParentGraceReminder": {
+      "title": "Velini ekle",
+      "body": "Velini ekle: hesabının kısıtlanmasına {0} gün kaldı."
     }
   }
 }

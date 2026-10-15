@@ -206,6 +206,18 @@
   color: #6b7280;
 }
 
+/* Veli bilgileri (issue #440) */
+.parent-section {
+  padding: 16px 0 0;
+  border: none;
+  border-top: 1px solid var(--ms-border-weak);
+
+  legend {
+    padding: 0;
+    font-weight: 700;
+  }
+}
+
 /* ===========================
    Notice (issue #234: okul onayı bekliyor / 409 mesajı)
    =========================== */

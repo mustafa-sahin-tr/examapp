@@ -75,7 +75,27 @@
       "confirm": "Ayrıl"
     },
     "left": "Bağlantıdan ayrıldınız.",
-    "bookLesson": "Ders talebi oluştur"
+    "bookLesson": "Ders talebi oluştur",
+    "studentInvite": {
+      "invitedBy": "{{name}} sizi veli olarak ekledi",
+      "invitedByUnknown": "Bir öğrenci sizi veli olarak ekledi",
+      "invitedHint": "Onaylarsanız çocuğunuzun gelişimini takip edebilirsiniz. Davet {{date}} tarihine kadar geçerli.",
+      "consentAgree": "Rıza metnini okudum, onaylıyorum.",
+      "privacyLink": "Gizlilik Politikası",
+      "approve": "Onayla",
+      "reject": "Reddet",
+      "approved": "{{name}} artık bağlı çocuklarınız arasında.",
+      "rejected": "Davet reddedildi.",
+      "approveError": "Davet onaylanamadı.",
+      "rejectError": "Davet reddedilemedi.",
+      "consentRequired": "Onaylamak için rıza metnini kabul etmelisiniz.",
+      "invitationExpired": "Davetin süresi dolmuş; çocuğunuzdan yeni bir davet göndermesini isteyin.",
+      "rejectConfirm": {
+        "title": "Daveti reddet",
+        "message": "{{name}} tarafından gönderilen veli davetini reddetmek istiyor musunuz?",
+        "confirm": "Reddet"
+      }
+    }
   },
   "family": {
     "title": "Diğer veliler",

@@ -19,6 +19,8 @@ import { MatInputModule } from '@angular/material/input';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { WORKSHEET_COMMENT_MAX_LENGTH } from '../../../models/worksheet-comment.model';
 import { hasPersonalInfo } from '../../utils/pii-detect.util';
+import { ParentStatusStore } from '../../../services/parent-status.store';
+import { ParentActivationNoticeComponent } from '../parent-activation-notice/parent-activation-notice.component';
 
 let nextComposerId = 0;
 
@@ -33,12 +35,21 @@ let nextComposerId = 0;
 @Component({
   selector: 'app-comment-composer',
   standalone: true,
-  imports: [MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, TranslocoDirective],
+  imports: [
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    ParentActivationNoticeComponent,
+    TranslocoDirective,
+  ],
   templateUrl: './comment-composer.component.html',
   styleUrls: ['./comment-composer.component.scss'],
 })
 export class CommentComposerComponent {
   private readonly injector = inject(Injector);
+  /** Issue #440: veli daveti aktive edilmemiş öğrenci yorum yazamaz (sunucu 403 `ParentActivationRequired`). */
+  protected readonly activationRestricted = inject(ParentStatusStore).activationRestricted;
 
   readonly draft = model('');
   readonly placeholder = input.required<string>();
@@ -57,7 +68,9 @@ export class CommentComposerComponent {
   protected readonly piiId = `comment-composer-pii-${this.composerId}`;
   protected readonly length = computed(() => this.draft().length);
   protected readonly tooLong = computed(() => this.length() > this.max);
-  protected readonly canSend = computed(() => this.draft().trim().length > 0 && !this.tooLong());
+  protected readonly canSend = computed(
+    () => this.draft().trim().length > 0 && !this.tooLong() && !this.activationRestricted()
+  );
   /** Issue #305: gövdede telefon / e-posta var gibi mi (yalnız uyarı). */
   protected readonly piiDetected = computed(() => hasPersonalInfo(this.draft()));
   /** Onay istenen metin; taslak değişirse onay geçersizleşir. */

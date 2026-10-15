@@ -17,7 +17,9 @@ public sealed record KeycloakUserCreateResult(string Id, bool AlreadyExisted);
 /// Kullanıcı arama sonucu (issue #218 temizliği): id + kullanıcı adı + e-posta + tek değerli attribute'lar
 /// (tam temsil; <c>seed_origin</c> sahiplik kilidi yetim kararında okunur).
 /// </summary>
-public sealed record KeycloakUserSummary(string Id, string Username, string? Email, IReadOnlyDictionary<string, string>? Attributes = null)
+/// <para>Issue #440 security C1: <see cref="EmailVerified"/> — yalnız doğrulanmış e-posta veli kimliği sayılır.</para>
+public sealed record KeycloakUserSummary(
+    string Id, string Username, string? Email, IReadOnlyDictionary<string, string>? Attributes = null, bool EmailVerified = false)
 {
     public string? Attribute(string name)
         => Attributes is not null && Attributes.TryGetValue(name, out var v) ? v : null;

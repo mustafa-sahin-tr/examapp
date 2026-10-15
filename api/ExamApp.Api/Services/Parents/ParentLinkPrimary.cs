@@ -29,22 +29,31 @@ public static class ParentLinkPrimary
     private static readonly Expression<Func<ParentStudentLink, bool>> PartiesNotDeleted =
         l => !l.Parent.IsDeleted && !l.Student.IsDeleted;
 
-    /// <summary>Süresi dolmamış Pending (kuruluş yoluna göre).</summary>
+    /// <summary>
+    /// Süresi dolmamış Pending (kuruluş yoluna göre). Issue #440: öğrencinin davetiyle açılan (<see cref="ParentStudentLinkOrigin.StudentRegistered"/>)
+    /// Pending bağlantılar HARİÇ — onların ömrünü davet token'ı yönetir (<c>ParentInvitations</c>); veli/öğrenci tavanlarına sayılmazlar
+    /// (öğrenciler bir velinin açık kotasını davetlerle dolduramasın) ve veli listesine davet üzerinden ayrıca eklenirler.
+    /// </summary>
     public static Expression<Func<ParentStudentLink, bool>> IsLivePending(DateTime now)
     {
         var cutoff = now - ParentLinkRules.PendingValidity;
         var legacyCutoff = now - ParentLinkRules.LegacyPendingValidity;
         return l => l.Status == ParentStudentLinkStatus.Pending
+            && l.Origin != ParentStudentLinkOrigin.StudentRegistered
             && ((l.Origin == ParentStudentLinkOrigin.LegacyV1 && l.CreatedAt > legacyCutoff)
                 || (l.Origin != ParentStudentLinkOrigin.LegacyV1 && l.CreatedAt > cutoff));
     }
 
-    /// <summary>Süresi dolmuş Pending (süpürücü / redeem öncesi temizlik bunları Revoked'a çeker).</summary>
+    /// <summary>
+    /// Süresi dolmuş Pending (süpürücü / redeem öncesi temizlik bunları Revoked'a çeker). Issue #440: StudentRegistered Pending HARİÇ —
+    /// davet açık kaldıkça (süresi dolsa da öğrenci/veli yeniden gönderebilir) bağlantı Pending kalır; düzeltme/ret/aktivasyon kapatır.
+    /// </summary>
     public static Expression<Func<ParentStudentLink, bool>> IsExpiredPending(DateTime now)
     {
         var cutoff = now - ParentLinkRules.PendingValidity;
         var legacyCutoff = now - ParentLinkRules.LegacyPendingValidity;
         return l => l.Status == ParentStudentLinkStatus.Pending
+            && l.Origin != ParentStudentLinkOrigin.StudentRegistered
             && ((l.Origin == ParentStudentLinkOrigin.LegacyV1 && l.CreatedAt <= legacyCutoff)
                 || (l.Origin != ParentStudentLinkOrigin.LegacyV1 && l.CreatedAt <= cutoff));
     }

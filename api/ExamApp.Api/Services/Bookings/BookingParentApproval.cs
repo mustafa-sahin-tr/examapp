@@ -38,8 +38,10 @@ internal static class BookingParentApproval
     /// <summary>
     /// Öğrencinin talebi hangi yoldan açılır. <paramref name="requiresParent"/> = <see cref="ParentRequirement.RequiresParent(System.Security.Claims.ClaimsPrincipal)"/>.
     /// Veliye tabi öğrencinin en az bir Active (koparılmamış, silinmemiş) velisi yoksa talep açamaz.
-    /// <para>#441 (30 gün geçiş süresi) BU metoda eklenecek: süre içindeki velisiz öğrenci için <see cref="StudentBookingParentMode.NotRequired"/>
-    /// dönmek yeterlidir; çağıranlar başka yerde veli kontrolü yapmaz.</para>
+    /// <para>#441 KARARI: hoşgörü süresi booking'i AÇMAZ — süre içindeki velisiz öğrenci de <see cref="StudentBookingParentMode.ParentMissing"/>
+    /// (403 <c>ParentRequired</c>) alır; özel ders her zaman veli onayından geçer. #440: aktivasyon bekleyen öğrenci bu metoda gelmeden
+    /// <c>ParentActivated</c> policy'sinde 403 <c>ParentActivationRequired</c> alır; süresi dolmuş öğrenci <c>ParentRequiredMiddleware</c>'de
+    /// 403 <c>ParentRequired</c>.</para>
     /// </summary>
     public static async Task<StudentBookingParentMode> ResolveStudentModeAsync(
         AppDbContext context, int studentId, bool requiresParent, CancellationToken ct)

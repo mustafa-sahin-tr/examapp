@@ -15,6 +15,9 @@ const SCHOOLS: School[] = [
 
 const GRADES: Grade[] = [{ id: 10, name: '10. Sınıf' }];
 
+/** Issue #440: veli kuralına tabi öğrencinin zorunlu veli bilgisi. */
+const PARENT_INPUT = { parentFullName: 'Ayşe Yılmaz', parentEmail: 'ayse@example.com', parentPhone: '0532 123 45 67' };
+
 describe('CompleteProfileComponent', () => {
   let authServiceSpy: jasmine.SpyObj<AuthService>;
   let routerSpy: jasmine.SpyObj<Router>;
@@ -125,13 +128,14 @@ describe('CompleteProfileComponent', () => {
     fixture.detectChanges();
     const component = fixture.componentInstance;
 
-    component.studentForm.setValue({ studentNumber: '123', schoolId: 2, gradeId: 10 });
+    component.studentForm.setValue({ studentNumber: '123', schoolId: 2, gradeId: 10 , ...PARENT_INPUT });
     component.onSubmit();
 
     expect(authServiceSpy.registerStudentProfile).toHaveBeenCalledWith({
       studentNumber: '123',
       schoolId: 2,
       gradeId: 10,
+      ...PARENT_INPUT,
     });
   });
 
@@ -151,13 +155,14 @@ describe('CompleteProfileComponent', () => {
     fixture.detectChanges();
     const component = fixture.componentInstance;
 
-    component.studentForm.setValue({ studentNumber: '123', schoolId: null, gradeId: 10 });
+    component.studentForm.setValue({ studentNumber: '123', schoolId: null, gradeId: 10 , ...PARENT_INPUT });
     component.onSubmit();
 
     expect(authServiceSpy.registerStudentProfile).toHaveBeenCalledWith({
       studentNumber: '123',
       schoolId: null,
       gradeId: 10,
+      ...PARENT_INPUT,
     });
   });
 
@@ -252,13 +257,14 @@ describe('CompleteProfileComponent', () => {
     fixture.detectChanges();
     const component = fixture.componentInstance;
 
-    component.studentForm.setValue({ studentNumber: '123', schoolId: null, gradeId: 10 });
+    component.studentForm.setValue({ studentNumber: '123', schoolId: null, gradeId: 10 , ...PARENT_INPUT });
     component.onSubmit();
 
     expect(authServiceSpy.registerStudentProfile).toHaveBeenCalledWith({
       studentNumber: '123',
       schoolId: null,
       gradeId: 10,
+      ...PARENT_INPUT,
     });
   });
 
@@ -445,7 +451,7 @@ describe('CompleteProfileComponent', () => {
     const openSpy = spyOn(fixture.debugElement.injector.get(MatSnackBar), 'open');
     const redirectSpy = spyOn(component, 'redirectTo');
 
-    component.studentForm.setValue({ studentNumber: '123', schoolId: 2, gradeId: 10 });
+    component.studentForm.setValue({ studentNumber: '123', schoolId: 2, gradeId: 10 , ...PARENT_INPUT });
     component.onSubmit();
     fixture.detectChanges();
     return { fixture, component, openSpy, redirectSpy };
@@ -534,4 +540,130 @@ describe('CompleteProfileComponent', () => {
     expect(routerSpy.navigate).toHaveBeenCalledWith(['/login']);
     expect(component.submitError()).toBeNull();
   });
+  // ── Issue #440: öğrenci adımında veli bilgisi ──────────────────────────────
+
+  it('studentStep_RequiresParent_RendersParentFieldsWithExplanation', () => {
+    const fixture = createComponent({ role: 'student' });
+    fixture.detectChanges();
+
+    const section = fixture.nativeElement.querySelector('[data-testid="parent-section"]') as HTMLElement | null;
+    expect(section).not.toBeNull();
+    expect(section?.textContent).toContain('velinize bir aktivasyon bağlantısı göndereceğiz');
+    expect(fixture.nativeElement.querySelector('#parentFullName')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('#parentEmail')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('#parentPhone')).not.toBeNull();
+    const link = section?.querySelector('a') as HTMLAnchorElement | null;
+    expect(link?.getAttribute('href')).toBe('/privacy-policy');
+  });
+
+  it('onSubmit_StudentMissingParentInfo_DoesNotCallRegisterAndShowsFieldErrors', () => {
+    const fixture = createComponent({ role: 'student' });
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    component.studentForm.patchValue({ studentNumber: '123', gradeId: 10 });
+    component.onSubmit();
+    fixture.detectChanges();
+
+    expect(authServiceSpy.registerStudentProfile).not.toHaveBeenCalled();
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Veli adı gerekli.');
+    expect(text).toContain('Veli e-postası gerekli.');
+    expect(text).toContain('Veli telefonu gerekli.');
+  });
+
+  it('onSubmit_StudentInvalidParentEmailAndPhone_DoesNotCallRegister', () => {
+    const fixture = createComponent({ role: 'student' });
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    component.studentForm.setValue({
+      studentNumber: '123',
+      schoolId: null,
+      gradeId: 10,
+      parentFullName: 'Ayşe Yılmaz',
+      parentEmail: 'ayse@',
+      parentPhone: '0212 123 45 67',
+    });
+    component.onSubmit();
+    fixture.detectChanges();
+
+    expect(authServiceSpy.registerStudentProfile).not.toHaveBeenCalled();
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Geçerli bir e-posta adresi gir.');
+    expect(text).toContain('Geçerli bir cep telefonu gir');
+  });
+
+  for (const phone of ['05321234567', '5321234567', '905321234567', '+90 (532) 123-45-67']) {
+    it(`onSubmit_StudentAcceptedPhoneFormat_${phone}_CallsRegisterWithTrimmedParentInfo`, () => {
+      const fixture = createComponent({ role: 'student' });
+      fixture.detectChanges();
+      const component = fixture.componentInstance;
+
+      component.studentForm.setValue({
+        studentNumber: '123',
+        schoolId: null,
+        gradeId: 10,
+        parentFullName: '  Ayşe Yılmaz ',
+        parentEmail: ' ayse@example.com ',
+        parentPhone: phone,
+      });
+      component.onSubmit();
+
+      expect(authServiceSpy.registerStudentProfile).toHaveBeenCalledWith({
+        studentNumber: '123',
+        schoolId: null,
+        gradeId: 10,
+        parentFullName: 'Ayşe Yılmaz',
+        parentEmail: 'ayse@example.com',
+        parentPhone: phone,
+      });
+    });
+  }
+
+  it('studentStep_AccountWithAdultRole_HidesParentFieldsAndOmitsThemFromPayload', () => {
+    const fixture = createComponent({ role: 'student' });
+    authServiceSpy.getRealmRoles.and.returnValue(['Teacher']);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    expect(component.parentInfoRequired()).toBeFalse();
+    expect(fixture.nativeElement.querySelector('[data-testid="parent-section"]')).toBeNull();
+
+    component.studentForm.patchValue({ studentNumber: '123', gradeId: 10 });
+    component.onSubmit();
+
+    expect(authServiceSpy.registerStudentProfile).toHaveBeenCalledWith({ studentNumber: '123', schoolId: null, gradeId: 10 });
+  });
+
+  const parentErrorCases: { name: string; status: number; body: Record<string, unknown>; expected: string }[] = [
+    { name: 'EmailNotUsable409', status: 409, body: { errorCode: 'ParentEmailNotUsable', message: 'x' }, expected: 'Bu e-posta veli hesabı olarak kullanılamaz.' },
+    { name: 'InvalidPhone400', status: 400, body: { errorCode: 'InvalidParentPhone' }, expected: 'Geçerli bir cep telefonu gir' },
+    { name: 'InfoRequired400', status: 400, body: { errorCode: 'ParentInfoRequired' }, expected: 'Veli adı, e-postası ve telefonu zorunludur.' },
+    { name: 'EmailChangeLocked429', status: 429, body: { errorCode: 'ParentEmailChangeLocked', retryAt: '2026-10-15T12:00:00Z' }, expected: 'Çok sayıda farklı e-posta denendi.' },
+    { name: 'Unavailable502', status: 502, body: { errorCode: 'ParentInvitationUnavailable' }, expected: 'Veli daveti şu anda gönderilemedi.' },
+    { name: 'InvalidName400', status: 400, body: { errorCode: 'InvalidParentName' }, expected: 'Veli adı yalnız harf içerebilir.' },
+    { name: 'Busy409', status: 409, body: { errorCode: 'Busy', message: 'x' }, expected: 'Veliniz şu anda hesabını etkinleştiriyor' },
+  ];
+
+  for (const scenario of parentErrorCases) {
+    it(`onSubmit_StudentParent${scenario.name}_ShowsMappedMessageAndStaysOnForm`, () => {
+      const fixture = createComponent({ role: 'student' });
+      fixture.detectChanges();
+      const component = fixture.componentInstance;
+      authServiceSpy.registerStudentProfile.and.returnValue(
+        throwError(() => new HttpErrorResponse({ status: scenario.status, error: scenario.body })),
+      );
+      const redirectSpy = spyOn(component, 'redirectTo');
+
+      component.studentForm.setValue({ studentNumber: '123', schoolId: null, gradeId: 10, ...PARENT_INPUT });
+      component.onSubmit();
+      fixture.detectChanges();
+
+      expect(component.submitError()).toContain(scenario.expected);
+      expect(component.isLoading()).toBeFalse();
+      expect(redirectSpy).not.toHaveBeenCalled();
+      expect(snackBarSpy.open).not.toHaveBeenCalled();
+    });
+  }
 });

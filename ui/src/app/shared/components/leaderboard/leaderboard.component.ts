@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -11,6 +11,9 @@ import { Subscription, finalize } from 'rxjs';
 import { LeaderboardEntry, LeaderboardResult, LeaderboardScope } from '../../../models/leaderboard.model';
 import { AuthService } from '../../../services/auth.service';
 import { LEADERBOARD_PAGE_SIZE, LeaderboardService } from '../../../services/leaderboard.service';
+import { ParentStatusStore } from '../../../services/parent-status.store';
+import { PARENT_ACTIVATION_REQUIRED_ERROR_CODE, isParentRestrictionError } from '../../../models/parent-status.model';
+import { ParentActivationNoticeComponent } from '../parent-activation-notice/parent-activation-notice.component';
 
 /** Kendi sözlüğü: `public/i18n/leaderboard/<lang>.json` — sayfa scope'una bağımlı değil. */
 const SCOPE = 'leaderboard';
@@ -29,7 +32,14 @@ const SCOPE = 'leaderboard';
 @Component({
   selector: 'app-leaderboard',
   standalone: true,
-  imports: [MatButtonModule, MatButtonToggleModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective],
+  imports: [
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    ParentActivationNoticeComponent,
+    TranslocoDirective,
+  ],
   providers: [provideTranslocoScope(SCOPE)],
   templateUrl: './leaderboard.component.html',
   styleUrl: './leaderboard.component.scss',
@@ -39,6 +49,13 @@ export class LeaderboardComponent implements OnInit {
   private readonly leaderboardService = inject(LeaderboardService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+
+  /**
+   * Issue #440: veli daveti aktive edilmemiş öğrenciye liderlik tablosu kapalı (sunucu 403 `ParentActivationRequired`). Kısıtlıyken
+   * istek atılmaz; kısıt kalkınca (durum tazelenince) ilk yükleme yapılır.
+   */
+  readonly activationRestricted = inject(ParentStatusStore).activationRestricted;
+  private loadDeferred = false;
 
   /** Aktif kapsam; ilk yanıt gelene kadar başlangıç tahmini. */
   readonly scope = signal<LeaderboardScope>('global');
@@ -68,7 +85,22 @@ export class LeaderboardComponent implements OnInit {
 
   private inflight: Subscription | null = null;
 
+  constructor() {
+    effect(() => {
+      if (!this.activationRestricted() && this.loadDeferred) {
+        untracked(() => {
+          this.loadDeferred = false;
+          this.loadInitial();
+        });
+      }
+    });
+  }
+
   ngOnInit(): void {
+    if (this.activationRestricted()) {
+      this.loadDeferred = true;
+      return;
+    }
     this.loadInitial();
   }
 
@@ -170,6 +202,10 @@ export class LeaderboardComponent implements OnInit {
   }
 
   private failInitial(err: HttpErrorResponse): void {
+    if (isParentRestrictionError(err, PARENT_ACTIVATION_REQUIRED_ERROR_CODE)) {
+      // Durum bu oturumda henüz bilinmiyordu: interceptor store'u tazeler, şablon bilgi bandını gösterir.
+      this.loadDeferred = true;
+    }
     this.loading.set(false);
     this.failed.set(true);
     this.errorMessage.set(this.leaderboardService.extractError(err));

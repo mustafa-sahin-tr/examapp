@@ -16,7 +16,10 @@
     }
   </header>
 
-  @if (loading()) {
+  @if (activationRestricted()) {
+  <!-- Issue #440: veli aktivasyonu beklenirken liderlik tablosu kapalı. -->
+  <app-parent-activation-notice feature="leaderboard" />
+  } @else if (loading()) {
   <div class="lb__state lb__state--loading" role="status">
     <mat-spinner diameter="28"></mat-spinner>
     <span>{{ t('loading') }}</span>

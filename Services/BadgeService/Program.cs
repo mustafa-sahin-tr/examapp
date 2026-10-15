@@ -138,6 +138,13 @@ builder.Services.AddHostedService<NotificationEventLogRetentionService>();
 builder.Services.AddJsonLocalization(o => o.ResourcesPath = "Resources");
 builder.Services.AddScoped<IUserLocaleResolver, UserLocaleResolver>();
 builder.Services.AddSingleton<INotificationTextFactory, NotificationTextFactory>();
+// Issue #440: gercek e-posta saglayicisi gelene kadar loglayan varsayilan; saglayici bu kaydi degistirir.
+builder.Services.AddSingleton<IEmailSender, LoggingEmailSender>();
+// Issues #440/#441: aktivasyon bağlantısı şifre çözümü (ParentInvitations:LinkEncryptionKey; Development dışında boş/devOnly = fail-fast).
+// Eager: anahtar geçersizse açılışta patlar (backfill komut modu hariç, orada consumer yok).
+builder.Services.AddSingleton(isBackfillCommand
+    ? new ExamApp.Foundation.Security.ActivationLinkProtector(new byte[32])
+    : ExamApp.Foundation.Security.ActivationLinkProtector.FromConfiguration(builder.Configuration, builder.Environment));
 
 // Badge DbContext
 builder.Services.AddDbContext<BadgeDbContext>(options =>
@@ -227,6 +234,8 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<ParentChildTestCompletedConsumer, ParentChildTestCompletedConsumerDefinition>(); // issue #423
     x.AddConsumer<BookingParentApprovalRequestedConsumer, BookingParentApprovalRequestedConsumerDefinition>(); // issue #439
     x.AddConsumer<BookingParentDecisionConsumer, BookingParentDecisionConsumerDefinition>(); // issue #439
+    x.AddConsumer<ParentInvitationRequestedConsumer, ParentInvitationRequestedConsumerDefinition>(); // issue #440
+    x.AddConsumer<StudentParentGraceReminderConsumer, StudentParentGraceReminderConsumerDefinition>(); // issue #441
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -271,6 +280,8 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<ParentChildTestCompletedConsumer>(context); // issue #423
             e.ConfigureConsumer<BookingParentApprovalRequestedConsumer>(context); // issue #439
             e.ConfigureConsumer<BookingParentDecisionConsumer>(context); // issue #439
+            e.ConfigureConsumer<ParentInvitationRequestedConsumer>(context); // issue #440
+            e.ConfigureConsumer<StudentParentGraceReminderConsumer>(context); // issue #441
         });
     });
 });

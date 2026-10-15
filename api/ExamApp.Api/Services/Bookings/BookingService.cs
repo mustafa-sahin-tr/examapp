@@ -523,7 +523,7 @@ public partial class BookingService : IBookingService
         if (studentId == null)
             return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.studentRecordNotFound"] };
 
-        // issue #439: veli kuralı TEK yerde (BookingParentApproval.ResolveStudentModeAsync; #441 geçiş süresi oraya eklenir).
+        // issue #439: veli kuralı TEK yerde (BookingParentApproval.ResolveStudentModeAsync; #441 kararı: hoşgörü süresi booking açmaz).
         // Veliye tabi olmayan hesap (yetişkin rolü) eski akışı aynen kullanır.
         var mode = await BookingParentApproval.ResolveStudentModeAsync(_context, studentId.Value, requiresParent, ct);
         if (mode == StudentBookingParentMode.ParentMissing)

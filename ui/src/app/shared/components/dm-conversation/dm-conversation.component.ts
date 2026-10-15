@@ -37,6 +37,8 @@ import { activeIntlLocale } from '../../utils/active-locale.util';
 import { directMessageError } from '../../utils/direct-message-error.util';
 import { openDmBlockDialog } from '../dm-block-dialog/dm-block-dialog.component';
 import { openDmReportDialog } from '../dm-report-dialog/dm-report-dialog.component';
+import { ParentStatusStore } from '../../../services/parent-status.store';
+import { ParentActivationNoticeComponent } from '../parent-activation-notice/parent-activation-notice.component';
 
 interface ConversationHeader {
   name: string;
@@ -83,6 +85,7 @@ export interface DmBlockedChangeEvent {
     MatInputModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
+    ParentActivationNoticeComponent,
     TranslocoDirective,
   ],
   providers: [provideTranslocoScope(DIRECT_MESSAGES_SCOPE)],
@@ -95,6 +98,7 @@ export class DmConversationComponent {
   private readonly snackBar = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
   private readonly injector = inject(Injector);
+  private readonly parentStatus = inject(ParentStatusStore);
 
   /** Paneli görüntüleyenin rolü. */
   readonly viewerRole = input.required<DirectMessageSenderRole>();
@@ -139,7 +143,11 @@ export class DmConversationComponent {
   protected readonly isNew = computed(() => this.activeId() === null);
   protected readonly draftLength = computed(() => this.draft().length);
   protected readonly tooLong = computed(() => this.draftLength() > this.maxLength);
-  protected readonly canSend = computed(() => this.header().canSend && !this.loading() && !this.loadError());
+  /** Issue #440: veli daveti aktive edilmemiş öğrenci mesaj gönderemez (sunucu 403 `ParentActivationRequired`). */
+  protected readonly activationRestricted = computed(() => !this.isTeacher() && this.parentStatus.activationRestricted());
+  protected readonly canSend = computed(
+    () => this.header().canSend && !this.loading() && !this.loadError() && !this.activationRestricted(),
+  );
   protected readonly canSubmit = computed(
     () => this.canSend() && !this.sending() && !this.tooLong() && this.draft().trim().length > 0,
   );

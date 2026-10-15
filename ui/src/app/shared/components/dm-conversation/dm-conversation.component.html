@@ -132,6 +132,10 @@
   }
 
   <footer class="dmc__composer">
+    @if (activationRestricted()) {
+      <!-- Issue #440: veli aktivasyonu beklenirken mesaj gönderimi kapalı. -->
+      <app-parent-activation-notice feature="messages" />
+    }
     @if (cannotSendKey(); as key) {
       <p class="dmc__band dmc__band--muted" role="status" data-testid="dm-cannot-send">
         <mat-icon aria-hidden="true">info</mat-icon><span>{{ t(key) }}</span>

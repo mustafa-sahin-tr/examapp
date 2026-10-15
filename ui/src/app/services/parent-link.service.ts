@@ -2,7 +2,13 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { LinkedChild, ParentInviteCode, ParentLinkErrorBody, StudentParentLinks } from '../models/parent-link.model';
+import {
+  LinkedChild,
+  ParentInviteCode,
+  ParentLinkApproveConsent,
+  ParentLinkErrorBody,
+  StudentParentLinks,
+} from '../models/parent-link.model';
 
 /** Veli–öğrenci bağlantısı (issue #419; #436 veli-öncelikli model). */
 @Injectable({ providedIn: 'root' })
@@ -31,9 +37,12 @@ export class ParentLinkService {
     return this.http.get<LinkedChild[]>(`${this.baseUrl}/my-children`);
   }
 
-  /** Birincil veli: bekleyen ikinci veli isteğini onaylar (öğrenci: yalnız geçiş dönemindeki eski istek). */
-  approve(linkId: number): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/${linkId}/approve`, {});
+  /**
+   * Birincil veli: bekleyen ikinci veli isteğini onaylar (öğrenci: yalnız geçiş dönemindeki eski istek). Issue #440: öğrencinin
+   * davet ettiği veli kendi bağlantısını rızayla onaylar — `consent` zorunlu (`requiresConsent`).
+   */
+  approve(linkId: number, consent?: ParentLinkApproveConsent): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/${linkId}/approve`, consent ?? {});
   }
 
   /** Birincil veli: bekleyen ikinci veli isteğini reddeder (öğrenci: yalnız geçiş dönemindeki eski istek). */

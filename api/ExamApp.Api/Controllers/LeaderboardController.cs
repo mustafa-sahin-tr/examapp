@@ -40,6 +40,7 @@ public class LeaderboardController : BaseController
     // GET api/parent/children/{id}/progress (V4) ile görür.
     [Authorize(Roles = "Student,Teacher,Admin")]
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // #287: Teacher rolü için hesap onayı (diğer roller geçer)
+    [Authorize(Policy = ExamApp.Api.Services.Parents.Enforcement.ParentRequirementPolicies.ParentActivated)] // issue #440: yalnız öğrencinin okuması kapalı (başkalarının listesinden gizlenmez)
     [HttpGet]
     public async Task<IActionResult> GetLeaderboard(
         [FromQuery] string? scope,

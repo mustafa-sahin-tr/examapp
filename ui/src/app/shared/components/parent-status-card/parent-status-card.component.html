@@ -1,0 +1,101 @@
+<ng-container *transloco="let t; prefix: 'parentRequirement'">
+  @if (invitation(); as inv) {
+    <section
+      class="psc"
+      [class.psc--expired]="inv.expired || awaitingDeadline()?.warning"
+      aria-labelledby="psc-title"
+      data-test="parent-invitation-card"
+    >
+      <mat-icon class="psc__icon" aria-hidden="true">{{ inv.expired ? 'schedule' : 'mark_email_read' }}</mat-icon>
+      <div class="psc__body">
+        @if (inv.expired) {
+          <h3 id="psc-title" class="psc__title" data-test="invitation-expired">{{ t('card.expiredTitle') }}</h3>
+          <p>{{ t('card.expiredBody') }}</p>
+        } @else {
+          <h3 id="psc-title" class="psc__title">{{ t('card.title') }}</h3>
+          <p data-test="invitation-sent-to">{{ t('card.sentTo', { email: inv.maskedEmail }) }}</p>
+          @if (expiresAtText()) {
+            <p class="psc__meta">{{ t('card.expiresAt', { date: expiresAtText() }) }}</p>
+          }
+        }
+        <p class="psc__meta">{{ t('card.restrictedInfo') }}</p>
+        @if (awaitingDeadline(); as deadline) {
+          <p
+            class="psc__deadline"
+            [class.psc__deadline--warning]="deadline.warning"
+            [attr.role]="deadline.warning ? 'alert' : null"
+            data-test="invitation-deadline"
+          >
+            {{ deadline.daysLeft > 0 ? t('card.graceDeadline', { days: deadline.daysLeft }) : t('card.graceOver') }}
+          </p>
+        }
+
+        @if (resendDone()) {
+          <p class="psc__meta psc__meta--ok" role="status" data-test="invitation-resent">{{ t('card.resent') }}</p>
+        }
+        @if (resendError(); as message) {
+          <p class="psc__error" role="alert" data-test="invitation-resend-error">{{ message }}</p>
+        }
+        @if (!inv.canResend) {
+          @if (inv.resendsLeft <= 0) {
+            <p class="psc__meta" data-test="invitation-no-resends">{{ t('card.noResendsLeft') }}</p>
+          } @else if (nextResendText()) {
+            <p class="psc__meta" data-test="invitation-next-resend">{{ t('card.nextResendAt', { date: nextResendText() }) }}</p>
+          }
+        }
+        @if (inv.resendsLeft > 0) {
+          <p class="psc__meta" data-test="invitation-resends-left">{{ t('card.resendsLeft', { count: inv.resendsLeft }) }}</p>
+        }
+        @if (emailLockedText(); as until) {
+          <p class="psc__meta" data-test="invitation-email-locked">{{ t('card.emailLocked', { date: until }) }}</p>
+        }
+
+        <div class="psc__actions">
+          <button
+            mat-flat-button
+            type="button"
+            data-test="invitation-resend"
+            [disabled]="!inv.canResend || resending()"
+            (click)="resend()"
+          >
+            <mat-icon>forward_to_inbox</mat-icon>
+            {{ resending() ? t('card.resending') : t('card.resend') }}
+          </button>
+          @if (!emailLockedText()) {
+            <a mat-stroked-button data-test="invitation-fix-email" [routerLink]="parentRequiredUrl">
+              <mat-icon>edit</mat-icon>
+              {{ t('card.fixEmail') }}
+            </a>
+          }
+        </div>
+
+        @if (devActivationUrl(); as devUrl) {
+          <p class="psc__dev" data-test="invitation-dev-link">
+            <a [href]="devUrl" target="_blank" rel="noopener noreferrer">{{ t('card.devLink') }}</a>
+          </p>
+        }
+      </div>
+    </section>
+  } @else if (showBanner()) {
+    <section class="psc psc--banner" role="status" data-test="parent-grace-banner">
+      <mat-icon class="psc__icon" aria-hidden="true">family_restroom</mat-icon>
+      <div class="psc__body">
+        <h3 class="psc__title">{{ t('banner.title', { days: daysLeft() ?? 0 }) }}</h3>
+        <p>{{ t('banner.body') }}</p>
+        <div class="psc__actions">
+          <a mat-flat-button data-test="grace-banner-link" [routerLink]="parentRequiredUrl">{{ t('banner.action') }}</a>
+        </div>
+      </div>
+      <button
+        mat-icon-button
+        type="button"
+        class="psc__close"
+        data-test="grace-banner-dismiss"
+        [attr.aria-label]="t('banner.dismiss')"
+        (click)="dismissBanner()"
+      >
+        <mat-icon>close</mat-icon>
+      </button>
+    </section>
+  }
+</ng-container>

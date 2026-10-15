@@ -1,0 +1,141 @@
+<section class="prq" *transloco="let t; prefix: 'parentRequirement'">
+  <header class="prq__head">
+    <h1>{{ invitation() ? t('page.editTitle') : t('page.title') }}</h1>
+    <p>{{ t('page.intro') }}</p>
+  </header>
+
+  @if (loading() && !status()) {
+    <div class="prq__state" aria-busy="true" data-test="prq-loading">
+      <mat-spinner diameter="28" />
+      <span>{{ 'common.loading' | transloco }}</span>
+    </div>
+  } @else if (loadError() && !status()) {
+    <div class="prq__state" role="alert" data-test="prq-error">
+      <span>{{ t('page.loadError') }}</span>
+      <button mat-stroked-button type="button" (click)="load()">{{ 'common.retry' | transloco }}</button>
+    </div>
+  } @else {
+    @if (status(); as s) {
+    @if (s.mode === 'Ok') {
+      <div class="prq__notice" role="status" data-test="prq-ok">
+        <mat-icon aria-hidden="true">check_circle</mat-icon>
+        <span>{{ t('page.ok') }}</span>
+      </div>
+      <a mat-flat-button [routerLink]="dashboardUrl">{{ t('page.goDashboard') }}</a>
+    } @else {
+      @switch (s.mode) {
+        @case ('Expired') {
+          <div class="prq__notice prq__notice--danger" role="alert" data-test="prq-expired">
+            <mat-icon aria-hidden="true">lock</mat-icon>
+            <span>{{ t('page.expired') }}</span>
+          </div>
+          <!-- #440 review: süresi dolmuş davet Expired'da da gelir — yeniden gönder ya da e-postayı düzelt. -->
+          @if (invitation(); as inv) {
+            <div class="prq__notice" role="status" data-test="prq-expired-invitation">
+              <mat-icon aria-hidden="true">schedule</mat-icon>
+              <div class="prq__notice-body">
+                <strong>{{ t('card.expiredTitle') }}</strong>
+                <span>{{ t('card.sentTo', { email: inv.maskedEmail }) }}</span>
+                @if (resendError(); as message) {
+                  <span class="prq__error" role="alert" data-test="prq-resend-error">{{ message }}</span>
+                }
+                @if (inv.canResend) {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    data-test="prq-resend"
+                    [disabled]="resending()"
+                    (click)="resend()"
+                  >
+                    <mat-icon>forward_to_inbox</mat-icon>
+                    {{ resending() ? t('card.resending') : t('card.resend') }}
+                  </button>
+                } @else if (inv.resendsLeft <= 0) {
+                  <span data-test="prq-no-resends">{{ t('card.noResendsLeft') }}</span>
+                }
+              </div>
+            </div>
+          }
+        }
+        @case ('Grace') {
+          <div class="prq__notice" role="status" data-test="prq-grace">
+            <mat-icon aria-hidden="true">schedule</mat-icon>
+            <span>{{ t('page.grace', { days: s.daysLeft ?? 0 }) }}</span>
+          </div>
+        }
+        @case ('AwaitingActivation') {
+          @if (invitation(); as inv) {
+            <div class="prq__notice" role="status" data-test="prq-awaiting">
+              <mat-icon aria-hidden="true">mark_email_read</mat-icon>
+              <span>{{ t('page.awaiting', { email: inv.maskedEmail }) }}</span>
+            </div>
+          }
+        }
+      }
+      @if (emailLockedUntil(); as until) {
+        <div class="prq__notice prq__notice--danger" role="status" data-test="prq-locked">
+          <mat-icon aria-hidden="true">hourglass_top</mat-icon>
+          <span>{{ t('card.emailLocked', { date: until }) }}</span>
+        </div>
+      }
+
+      @if (showForm()) {
+        <article class="prq__card">
+          <form class="prq__form" [formGroup]="form" (ngSubmit)="submit()" novalidate data-test="prq-form">
+            <mat-form-field appearance="outline">
+              <mat-label>{{ t('page.name') }}</mat-label>
+              <input matInput formControlName="parentFullName" autocomplete="off" [attr.maxlength]="nameMaxLength"
+                data-test="prq-name" />
+              @if (hasError('parentFullName', 'required')) {
+                <mat-error>{{ t('validation.nameRequired') }}</mat-error>
+              } @else if (hasError('parentFullName', 'parentName')) {
+                <mat-error>{{ t('validation.nameInvalid') }}</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>{{ t('page.email') }}</mat-label>
+              <input matInput type="email" inputmode="email" formControlName="parentEmail" autocomplete="off"
+                [attr.maxlength]="emailMaxLength" data-test="prq-email" />
+              @if (hasError('parentEmail', 'required')) {
+                <mat-error>{{ t('validation.emailRequired') }}</mat-error>
+              } @else if (hasError('parentEmail', 'parentEmail')) {
+                <mat-error data-test="prq-email-invalid">{{ t('validation.emailInvalid') }}</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>{{ t('page.phone') }}</mat-label>
+              <input matInput type="tel" inputmode="tel" formControlName="parentPhone" autocomplete="off"
+                [placeholder]="t('page.phonePlaceholder')" [attr.maxlength]="phoneMaxLength" data-test="prq-phone" />
+              @if (hasError('parentPhone', 'required')) {
+                <mat-error>{{ t('validation.phoneRequired') }}</mat-error>
+              } @else if (hasError('parentPhone', 'parentPhone')) {
+                <mat-error data-test="prq-phone-invalid">{{ t('validation.phoneInvalid') }}</mat-error>
+              }
+            </mat-form-field>
+
+            <p class="prq__hint">
+              {{ t('page.privacy') }}
+              <a href="/privacy-policy" target="_blank" rel="noopener">{{ t('page.privacyLink') }}</a>
+            </p>
+
+            @if (submitError(); as message) {
+              <p class="prq__error" role="alert" data-test="prq-submit-error">{{ message }}</p>
+            }
+
+            <button mat-flat-button type="submit" data-test="prq-submit" [disabled]="submitting()">
+              @if (submitting()) {
+                <mat-spinner diameter="18" />
+              } @else {
+                <mat-icon>send</mat-icon>
+              }
+              {{ submitting() ? t('page.submitting') : t('page.submit') }}
+            </button>
+          </form>
+        </article>
+      }
+    }
+    }
+  }
+</section>

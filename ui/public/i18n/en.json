@@ -578,5 +578,97 @@
     "addStudyPages": {
       "title": "Add Pages for {{date}}"
     }
+  },
+  "parentConsent": {
+    "kvkk": "As the parent, I allow my child to use the platform. I have read and give my explicit consent to the processing of my child's and my personal data under the Turkish Personal Data Protection Law (KVKK No. 6698) for the purposes described in the Privacy Policy."
+  },
+  "parentRequirement": {
+    "restricted": {
+      "snackbar": "This feature is off until your parent activates their account.",
+      "title": "Waiting for your parent's approval",
+      "booking": "You can't request private lessons until your parent activates their account.",
+      "messages": "You can't send messages until your parent activates their account.",
+      "comments": "You can't post comments until your parent activates their account.",
+      "leaderboard": "The leaderboard is off until your parent activates their account."
+    },
+    "card": {
+      "title": "An invitation was sent to your parent",
+      "sentTo": "The invitation was sent to {{email}}.",
+      "expiresAt": "The link is valid until {{date}}.",
+      "expiredTitle": "The invitation expired, send it again",
+      "expiredBody": "Your parent's activation link has expired. You can send a new link or fix the email address.",
+      "restrictedInfo": "Until your parent activates their account you can solve homework and tests and see your results; private lesson requests, messaging, comments and the leaderboard are off.",
+      "resend": "Send again",
+      "resending": "Sending...",
+      "resent": "The invitation was sent again.",
+      "resendsLeft": "Resends left: {{count}}",
+      "nextResendAt": "You can send it again after {{date}}.",
+      "noResendsLeft": "You have no resends left. Check and fix your parent's email address.",
+      "fixEmail": "Fix email",
+      "emailLocked": "You tried too many different email addresses; try again after {{date}}.",
+      "devLink": "dev: activation link",
+      "graceDeadline": "If your parent doesn't activate within {{days}} days, your account will be restricted.",
+      "graceOver": "Your time to add a parent is over; your account is restricted until your parent activates their account."
+    },
+    "banner": {
+      "title": "Add your parent, {{days}} days left",
+      "body": "To keep using your account, add your parent's details; your parent will get an activation link.",
+      "action": "Add your parent",
+      "dismiss": "Dismiss"
+    },
+    "finalWarning": {
+      "title": "You need to add your parent",
+      "body": "{{days}} days left to add your parent. After that you can only use your account by adding your parent's details.",
+      "action": "Add parent details"
+    },
+    "page": {
+      "title": "Add parent details",
+      "editTitle": "Fix your parent's email",
+      "intro": "The platform works with your parent's knowledge and consent; we will send your parent an activation link.",
+      "expired": "Your time to add a parent is over. Add your parent's details to continue; your data was not deleted.",
+      "grace": "{{days}} days left to add your parent.",
+      "awaiting": "The invitation is waiting at {{email}}. If you enter a different email, the old link stops working.",
+      "ok": "Your parent is linked to your account; nothing else to do.",
+      "goDashboard": "Back to home",
+      "loadError": "Could not load your parent status.",
+      "name": "Parent's full name",
+      "email": "Parent's email",
+      "phone": "Parent's mobile phone",
+      "phonePlaceholder": "05xx xxx xx xx",
+      "submit": "Send invitation",
+      "submitting": "Sending...",
+      "success": "An invitation was sent to your parent.",
+      "privacy": "To read how personal data is processed:",
+      "privacyLink": "Privacy Policy"
+    },
+    "validation": {
+      "nameRequired": "Parent's name is required.",
+      "nameInvalid": "The parent's name may contain letters only (2-100 characters).",
+      "emailRequired": "Parent's email is required.",
+      "emailInvalid": "Enter a valid email address.",
+      "phoneRequired": "Parent's phone is required.",
+      "phoneInvalid": "Enter a valid Turkish mobile number (e.g. 0532 123 45 67)."
+    },
+    "errors": {
+      "parentInfoRequired": "Parent's name, email and phone are required.",
+      "invalidParentName": "The parent's name may contain letters only.",
+      "invalidParentEmail": "Enter a valid parent email address.",
+      "invalidParentPhone": "Enter a valid Turkish mobile number (e.g. 0532 123 45 67).",
+      "parentEmailNotUsable": "This email can't be used as a parent account.",
+      "parentEmailChangeLocked": "Too many different email addresses were tried. You can try again after {{date}}.",
+      "parentEmailChangeLockedNoDate": "Too many different email addresses were tried. Please try again later.",
+      "resendLimited": "An invitation was sent to this email recently. You can send it again after {{date}}.",
+      "resendLimitedNoDate": "No resends left for this email.",
+      "parentAlreadyLinked": "You already have a linked parent.",
+      "parentNotRequired": "Your account doesn't need parent details.",
+      "noOpenInvitation": "You have no open invitation. Enter your parent's details again.",
+      "unavailable": "The parent invitation could not be sent right now. Please try again in a few minutes.",
+      "generic": "The action could not be completed. Please try again.",
+      "busy": "Your parent is activating their account right now; please try again shortly."
+    },
+    "wizard": {
+      "title": "Parent details",
+      "restricted": "Until your parent activates their account, private lesson requests, messaging, comments and the leaderboard stay off."
+    }
   }
 }

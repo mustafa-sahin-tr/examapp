@@ -1,0 +1,36 @@
+{
+  "parentInvitations": {
+    "sent": "Velinize davet gönderildi. Veliniz onaylayana kadar bazı özellikler kapalı kalacak.",
+    "resent": "Davet velinize yeniden gönderildi.",
+    "resentToParent": "Yeni aktivasyon bağlantısı e-posta adresinize gönderildi.",
+    "activated": "Veli hesabınız etkinleştirildi. Artık giriş yapabilirsiniz.",
+    "writeRateLimited": "Kısa sürede çok fazla veli daveti işlemi yapıldı. Lütfen daha sonra tekrar deneyin.",
+    "activationRateLimited": "Kısa sürede çok fazla deneme yapıldı. Lütfen birkaç dakika sonra tekrar deneyin.",
+    "errors": {
+      "parentInfoRequired": "Kaydı tamamlamak için velinizin adını, e-postasını ve telefonunu girin.",
+      "invalidParentName": "Veli adı en az 2, en fazla 100 karakter olmalı ve harf içermelidir.",
+      "invalidParentEmail": "Geçerli bir veli e-posta adresi girin.",
+      "invalidParentPhone": "Geçerli bir cep telefonu numarası girin (örn. 05xx xxx xx xx).",
+      "parentEmailNotUsable": "Bu e-posta veli hesabı olarak kullanılamaz.",
+      "parentEmailChangeLocked": "Çok fazla farklı e-posta denendi. Lütfen bir saat sonra tekrar deneyin.",
+      "parentInvitationResendLimited": "Davet bu e-postaya kısa süre önce gönderildi ya da gönderim hakkı doldu. Lütfen daha sonra tekrar deneyin.",
+      "parentAlreadyLinked": "Hesabınız zaten bir veliye bağlı.",
+      "parentNotRequired": "Bu hesap için veli bilgisi gerekmiyor.",
+      "noOpenInvitation": "Bekleyen bir veli davetiniz yok.",
+      "parentInvitationUnavailable": "Hesap servisine şu anda ulaşılamıyor. Lütfen biraz sonra tekrar deneyin.",
+      "invalidActivationToken": "Aktivasyon bağlantısı geçersiz.",
+      "activationTokenExpired": "Aktivasyon bağlantısının süresi doldu. Yeni bağlantı isteyebilirsiniz.",
+      "activationTokenUsed": "Bu aktivasyon bağlantısı daha önce kullanılmış ya da artık geçerli değil.",
+      "loginRequired": "Bu e-posta adresine ait bir hesap zaten var. Lütfen o hesapla giriş yapıp daveti kabul edin.",
+      "invitationEmailMismatch": "Bu davet başka bir e-posta adresine gönderildi. Lütfen davet edilen e-postanın hesabıyla giriş yapın.",
+      "parentAccountRequired": "Daveti yalnızca veli hesabıyla kabul edebilirsiniz.",
+      "emailAlreadyRegistered": "Bu e-posta adresi artık başka bir hesaba bağlı. Lütfen öğrenciden veli bilgisini düzeltmesini isteyin.",
+      "consentRequired": "Devam etmek için veli rızası onay kutusunu işaretleyin.",
+      "consentVersionMismatch": "Rıza metni güncellendi. Lütfen sayfayı yenileyip metni yeniden onaylayın.",
+      "passwordRejected": "Şifre en az 8 karakter olmalı ve en az bir harf ile bir rakam içermelidir.",
+      "invitationExpired": "Bu davetin süresi doldu. Öğrenciden daveti yeniden göndermesini isteyin.",
+      "parentActivationRequired": "Bu özellik veliniz hesabını etkinleştirdikten sonra açılacak.",
+      "parentRequired": "Veli ekleme süreniz doldu. Devam etmek için veli bilgilerinizi ekleyin."
+    }
+  }
+}

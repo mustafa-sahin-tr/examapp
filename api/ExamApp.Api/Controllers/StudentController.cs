@@ -9,6 +9,9 @@ using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.LoginEvents;
+using ExamApp.Api.Services.Parents;
+using ExamApp.Api.Services.Parents.Enforcement;
+using ExamApp.Api.Models.Dtos.ParentInvitations;
 using ExamApp.Api.Services.StudentReset;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
@@ -202,6 +205,24 @@ namespace ExamApp.Api.Controllers
             if (await RegistrationRoleConflictsAsync(user.Id, UserRole.Student, HttpContext.RequestAborted))
                 return Conflict(new { message = _localizer["student.parentRecordExists"].Value });
 
+            // issue #440 (review M1): veli kuralına tabi (kaydolan hesap Student olacak; yetişkin rolü yok) ve Active velisi / açık daveti
+            // olmayan öğrenciden veli adı + e-posta + telefon zorunlu. Öğrenci satırından bağımsız TÜM kontroller (biçim, kilit, tavanlar,
+            // auth-api araması) kayıttan ÖNCE — reddedilen kayıt hiçbir öğrenci satırı bırakmaz (kullanıcı ör. öğretmen olarak kaydolabilir).
+            var parentInvitations = HttpContext.RequestServices.GetRequiredService<IParentInvitationService>();
+            var requiresParent = ParentRequirement.RequiresParent(
+                User.Identities.SelectMany(i => i.FindAll(i.RoleClaimType)).Select(c => c.Value).Append(UserRole.Student.ToString()));
+            var invitationStudent = new ParentInvitationStudent(user.Id, user.KeycloakId, user.FullName);
+            PreparedParentInvitation? preparedInvitation = null;
+            if (await parentInvitations.NeedsParentInfoAsync(user.Id, requiresParent, HttpContext.RequestAborted))
+            {
+                var precheck = await parentInvitations.PrecheckAsync(invitationStudent,
+                    new ParentContactRequestDto { ParentFullName = request.ParentFullName, ParentEmail = request.ParentEmail, ParentPhone = request.ParentPhone },
+                    requiresParent, HttpContext.RequestAborted);
+                if (!precheck.Success)
+                    return StudentParentController.MapFailure(this, precheck.Failure!);
+                preparedInvitation = precheck.Prepared;
+            }
+
             var response = await _studentService.Save(user.Id, request);
 
             if (response == null)
@@ -215,6 +236,21 @@ namespace ExamApp.Api.Controllers
                 return response.Conflict
                     ? Conflict(new { message = response.Message })
                     : BadRequest(new { message = response.Message });
+            }
+
+            // issue #440: davet yazımı öğrenci satırından SONRA, rol atamasından ÖNCE. Yine de başarısız olursa (hesap servisi / yarış) bu
+            // istekte açılan öğrenci satırı geri alınır ve rol verilmez — öğrenci tekrar dener.
+            ParentStatusDto? parentStatus = null;
+            if (preparedInvitation != null)
+            {
+                var started = await parentInvitations.CommitAsync(invitationStudent, preparedInvitation, HttpContext.RequestAborted);
+                if (!started.Success)
+                {
+                    if (!preparedInvitation.StudentExisted)
+                        await parentInvitations.DiscardNewStudentAsync(user.Id, CancellationToken.None);
+                    return StudentParentController.MapFailure(this, started);
+                }
+                parentStatus = started.Status;
             }
 
             // issue #234: Keycloak rolü yalnızca doğrulama/çakışma kontrolleri geçtikten SONRA verilir — reddedilen
@@ -273,7 +309,8 @@ namespace ExamApp.Api.Controllers
             {
                 accessToken = tokenData.AccessToken,
                 expiresIn = tokenData.ExpiresIn,
-                profileId = user.Id
+                profileId = user.Id,
+                parentStatus // issue #440: davet açıldıysa güncel veli durumu (Development'ta dev aktivasyon bağlantısı dahil)
             });
 
         }
@@ -298,6 +335,7 @@ namespace ExamApp.Api.Controllers
 
 
         [Authorize]
+        [AllowWhenParentRequired] // issue #441: süre bitince de (veli ekleme ekranı)
         [HttpGet("check-student")]
         public async Task<IActionResult> CheckStudent()
         {
@@ -326,6 +364,7 @@ namespace ExamApp.Api.Controllers
         }
 
         [Authorize]
+        [AllowWhenParentRequired] // issue #441: süre bitince de (öz profil, veri silinmez)
         [HttpGet("profile")]
         public async Task<IActionResult> GetStudentProfile()
         {

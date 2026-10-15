@@ -164,6 +164,7 @@ public class BookingController : BaseController
     /// </summary>
     [HttpPost("requests")]
     [Authorize(Roles = "Student")]
+    [Authorize(Policy = ExamApp.Api.Services.Parents.Enforcement.ParentRequirementPolicies.ParentActivated)] // issue #440: veli daveti aktive edilmemiş öğrenci 403 ParentActivationRequired
     public async Task<IActionResult> CreateRequest([FromBody] CreateBookingDto request, CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync();

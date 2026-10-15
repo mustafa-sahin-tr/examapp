@@ -16,6 +16,12 @@ export const routes: Routes = [
       { path: 'register', component: RegisterComponent },
       { path: 'login', component: LoginComponent },
       { path: 'complete-profile', component: CompleteProfileComponent },
+      // Issue #440: velinin e-postasındaki aktivasyon bağlantısı (anonim; `/app/parent-activate?token=...`).
+      {
+        path: 'parent-activate',
+        loadComponent: () =>
+          import('./pages/parent-activate/parent-activate.component').then((m) => m.ParentActivateComponent),
+      },
     ],
   },
   { path: '**', redirectTo: 'tests' },

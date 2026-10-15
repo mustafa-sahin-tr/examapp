@@ -78,6 +78,15 @@ export interface LinkedChild {
    * yoksa (eski yanıt) düğme gösterilmez.
    */
   canResetPassword?: boolean;
+  /**
+   * Issue #440: bağlantının kuruluş yolu (`LegacyV1` | `InviteCode` | `ParentCreated` | `StudentRegistered`). `StudentRegistered` +
+   * `Pending`: öğrenci bu veliyi kayıtta davet etti — veli rızayla onaylar ya da reddeder (yalnız kısa öğrenci adı gelir).
+   */
+  origin?: string | null;
+  /** Issue #440: onay rıza ister (`StudentRegistered` Pending) — `approve` gövdesi `{ consentAccepted, consentVersion }`. */
+  requiresConsent?: boolean;
+  /** Issue #440: onaylanacak rıza metni sürümü (yalnız `requiresConsent`). */
+  consentVersion?: string | null;
   /** Issue #436: yalnız birincil veliye dolu. */
   coParents?: CoParent[];
   /** Issue #436: yalnız birincil veliye — kullanılmamış ikinci veli kodunun bitişi (kod dönmez). */
@@ -86,6 +95,20 @@ export interface LinkedChild {
   maxParents?: number;
   /** Issue #436: yalnız birincil veliye — açık veli sayısı (sunucunun tavan sayımı; eski bekleyen istekler dahil). */
   openParents?: number | null;
+}
+
+/** Issue #440: öğrencinin kayıtta veliyi davet ettiği bağlantı kuruluş yolu. */
+export const STUDENT_REGISTERED_LINK_ORIGIN = 'StudentRegistered';
+
+/** Issue #440: `POST parent-links/{linkId}/approve` gövdesi — öğrenci davetinde zorunlu. */
+export interface ParentLinkApproveConsent {
+  consentAccepted: boolean;
+  consentVersion: string;
+}
+
+/** Issue #440: öğrencinin açtığı, velinin rızayla onaylayacağı bekleyen davet mi. */
+export function isStudentInvitation(child: Pick<LinkedChild, 'status' | 'origin'>): boolean {
+  return child.status === 'Pending' && child.origin === STUDENT_REGISTERED_LINK_ORIGIN;
 }
 
 /** Hata gövdesi `{ message, errorCode }`. */
@@ -102,6 +125,10 @@ export const PARENT_LINK_ERROR_CODES = {
   notPrimaryParent: 'NotPrimaryParent',
   lastParentCannotLeave: 'LastParentCannotLeave',
   rateLimited: 'RateLimited',
+  /** Issue #440: öğrenci davetinin süresi doldu. */
+  invitationExpired: 'InvitationExpired',
+  consentRequired: 'ConsentRequired',
+  consentVersionMismatch: 'ConsentVersionMismatch',
 } as const;
 
 /** Davet kodu uzunluğu (ayraçsız). */

@@ -1151,6 +1151,120 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("ParentHomeworkOverdueMarkers");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.ParentInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("IsNewAccount")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastSentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("LinkId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ParentId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ParentKeycloakId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int?>("ParentUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("SendCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LinkId");
+
+                    b.HasIndex("Email", "CreatedAt");
+
+                    b.HasIndex("ParentId", "Status");
+
+                    b.HasIndex("StudentId", "Email");
+
+                    b.HasIndex(new[] { "StudentId" }, "IX_ParentInvitations_Student_Pending")
+                        .IsUnique()
+                        .HasFilter("\"Status\" = 'Pending'");
+
+                    b.HasIndex(new[] { "TokenHash" }, "IX_ParentInvitations_TokenHash")
+                        .IsUnique()
+                        .HasFilter("\"TokenHash\" IS NOT NULL");
+
+                    b.ToTable("ParentInvitations");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.ParentInvitationAttempt", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("AttemptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EmailHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("StudentUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentUserId", "AttemptedAt");
+
+                    b.ToTable("ParentInvitationAttempts");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.ParentInviteCode", b =>
                 {
                     b.Property<int>("Id")
@@ -2232,6 +2346,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("ParentManaged")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("ParentRequirementStartedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime?>("ProgressResetAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -2286,6 +2403,9 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("UserId")
                         .IsUnique()
                         .HasFilter("NOT \"IsDeleted\"");
+
+                    b.HasIndex(new[] { "ParentRequirementStartedAt" }, "IX_Students_ParentRequirementStartedAt")
+                        .HasFilter("\"ParentRequirementStartedAt\" IS NOT NULL");
 
                     b.ToTable("Students", t =>
                         {
@@ -2400,6 +2520,34 @@ namespace ExamApp.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("StudentDailyXps");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.StudentParentGraceReminder", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("DaysLeft")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("GraceEndsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId", "GraceEndsAt", "DaysLeft")
+                        .IsUnique();
+
+                    b.ToTable("StudentParentGraceReminders");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.StudentPointHistory", b =>
@@ -4466,6 +4614,31 @@ namespace ExamApp.Api.Migrations
                         .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.ClientNoAction)
                         .IsRequired();
+
+                    b.Navigation("Parent");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.ParentInvitation", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.ParentStudentLink", "Link")
+                        .WithMany()
+                        .HasForeignKey("LinkId")
+                        .OnDelete(DeleteBehavior.ClientNoAction);
+
+                    b.HasOne("ExamApp.Api.Data.Parent", "Parent")
+                        .WithMany()
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.ClientNoAction);
+
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.ClientNoAction)
+                        .IsRequired();
+
+                    b.Navigation("Link");
 
                     b.Navigation("Parent");
 

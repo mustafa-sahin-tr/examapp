@@ -1,5 +1,6 @@
 import {
   BADGE_PROGRESS_ROUTE,
+  PARENT_CHILDREN_ROUTE,
   STUDENT_BOOKINGS_ROUTE,
   describeNotification,
   formatRelativeTime,
@@ -297,5 +298,24 @@ describe('describeNotification (issue #105)', () => {
       expect(result.route).withContext(type).toEqual({ commands: [STUDENT_BOOKINGS_ROUTE] });
       expect(result.icon).withContext(type).not.toBe('notifications');
     }
+  });
+
+  it('ParentRequirementNotifications_FixedRoutes (issue #440/#441)', () => {
+    const invitation = describeNotification({
+      type: 'ParentInvitationReceived',
+      data: JSON.stringify({ invitationId: 3, studentId: 21, expiresAt: '2026-10-22T10:00:00Z' }),
+    });
+    expect(invitation.route).toEqual({ commands: [PARENT_CHILDREN_ROUTE] });
+    expect(invitation.icon).not.toBe('notifications');
+
+    const reminder = describeNotification({
+      type: 'StudentParentGraceReminder',
+      data: JSON.stringify({ studentId: 21, daysLeft: 3, graceEndsAt: '2026-10-18T10:00:00Z', link: 'https://evil.example' }),
+    });
+    expect(reminder.route).toEqual({ commands: ['/parent-required'] });
+
+    expect(describeNotification({ type: 'StudentParentGraceReminder', data: 'not-json' }).route).toEqual({
+      commands: ['/parent-required'],
+    });
   });
 });

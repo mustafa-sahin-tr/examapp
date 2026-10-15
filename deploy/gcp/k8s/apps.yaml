@@ -26,6 +26,10 @@ spec:
                   key: ASPNETCORE_ENVIRONMENT
             - name: ASPNETCORE_URLS
               value: http://+:5079
+            # Issue #440 (security re-review): X-Forwarded-For yalnız gateway pod'larından gelen istekte güvenilir (TrustedClientIp).
+            # REPLACE_POD_CIDR = kümenin pod CIDR'ı (GKE: `gcloud container clusters describe <c> --format='value(clusterIpv4Cidr)'`).
+            - name: ForwardedHeaders__KnownNetworks__0
+              value: REPLACE_POD_CIDR
             - name: ConnectionStrings__DefaultConnection
               valueFrom:
                 secretKeyRef:
@@ -127,6 +131,12 @@ spec:
                 secretKeyRef:
                   name: examapp-secrets
                   key: PARENT_INVITE_CODE_PEPPER
+            # Issues #440/#441: shared activation-link encryption key — missing/devOnly => startup fail-fast.
+            - name: ParentInvitations__LinkEncryptionKey
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: PARENT_INVITATION_LINK_KEY
             - name: Keycloak__AdminClientId
               valueFrom:
                 secretKeyRef:
@@ -366,6 +376,12 @@ spec:
               value: rabbitmq.examapp.svc.cluster.local
             - name: RabbitMQ__Username
               value: badge_service
+            # Issues #440/#441: shared activation-link encryption key — missing/devOnly => startup fail-fast.
+            - name: ParentInvitations__LinkEncryptionKey
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: PARENT_INVITATION_LINK_KEY
             - name: RabbitMQ__Password
               valueFrom:
                 secretKeyRef:

@@ -68,6 +68,15 @@ public class OutboxEventRegistryTests
     }
 
     [Fact]
+    public void Resolve_knows_the_parent_invitation_and_grace_events_issue_440_441()
+    {
+        OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<ParentInvitationRequestedEvent>())
+            .ShouldBe(typeof(ParentInvitationRequestedEvent));
+        OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<StudentParentGraceReminderEvent>())
+            .ShouldBe(typeof(StudentParentGraceReminderEvent));
+    }
+
+    [Fact]
     public void Resolve_knows_the_parent_link_events_issue_419()
     {
         OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<ParentLinkedEvent>()).ShouldBe(typeof(ParentLinkedEvent));
@@ -105,7 +114,8 @@ public class OutboxEventRegistryTests
     {
         nameof(ParentLinkedEvent), nameof(ParentUnlinkedEvent),
         nameof(ParentHomeworkOverdueEvent), nameof(ParentChildTestCompletedEvent),
-        nameof(BookingParentApprovalRequestedEvent), nameof(BookingParentDecisionEvent) // issue #439
+        nameof(BookingParentApprovalRequestedEvent), nameof(BookingParentDecisionEvent), // issue #439
+        nameof(ParentInvitationRequestedEvent), nameof(StudentParentGraceReminderEvent) // issue #440, #441
     };
 
     private static string RepoFile(string relativePath)

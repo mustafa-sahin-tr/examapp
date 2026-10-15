@@ -1,0 +1,43 @@
+/* Issue #440 — ortak form görünümü complete-profile.component.scss'ten gelir; burada yalnız bu sayfaya özel parçalar. */
+
+a.default-btn {
+  text-decoration: none;
+}
+
+.activation-summary {
+  margin-bottom: 16px;
+
+  p {
+    margin: 0 0 4px;
+  }
+}
+
+.consent-field {
+  gap: 10px;
+}
+
+.consent-text {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--ms-border-weak);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.consent-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-weight: 400;
+  cursor: pointer;
+
+  input {
+    width: auto;
+    margin-top: 3px;
+  }
+
+  a {
+    color: var(--ms-action-navigation);
+  }
+}

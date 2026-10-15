@@ -80,6 +80,24 @@
             <span class="summary-hint">{{ t('ai.noQuestions') }}</span>
           }
         </div>
+
+        <!-- Issue #440/#441: veli kuralının hedef küme sayaçları. -->
+        @if (parentStatusRows(); as rows) {
+          <section class="summary-card summary-card--parent" data-key="parentStatus" [attr.aria-label]="t('parentStatus.aria')">
+            <div class="summary-card__header">
+              <span class="summary-label">{{ t('parentStatus.title') }}</span>
+              <mat-icon class="summary-icon" aria-hidden="true">family_restroom</mat-icon>
+            </div>
+            <dl class="parent-status-list">
+              @for (row of rows; track row.key) {
+                <div class="parent-status-list__item" [attr.data-key]="row.key">
+                  <dt class="summary-hint">{{ t(row.labelKey) }}</dt>
+                  <dd class="summary-value">{{ row.value | number }}</dd>
+                </div>
+              }
+            </dl>
+          </section>
+        }
       </div>
 
       @if (isEmpty()) {

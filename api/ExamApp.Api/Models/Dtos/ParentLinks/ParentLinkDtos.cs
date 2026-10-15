@@ -170,6 +170,19 @@ public class LinkedChildDto
     /// <summary>Pending iken onay süresinin sonu.</summary>
     public DateTime? PendingExpiresAt { get; set; }
 
+    /// <summary>
+    /// Issue #440: bağlantının kuruluş yolu (<c>LegacyV1</c> | <c>InviteCode</c> | <c>ParentCreated</c> | <c>StudentRegistered</c>).
+    /// <c>StudentRegistered</c> + Pending: öğrenci bu veliyi davet etti — veli rızayla onaylar (<c>POST parent-links/{linkId}/approve</c>
+    /// gövdesi <c>{ consentAccepted, consentVersion }</c>) ya da reddeder.
+    /// </summary>
+    public string? Origin { get; set; }
+
+    /// <summary>Issue #440: onay rıza onayı ister (StudentRegistered Pending).</summary>
+    public bool RequiresConsent { get; set; }
+
+    /// <summary>Issue #440: onaylanacak rıza metni sürümü (yalnız <see cref="RequiresConsent"/>).</summary>
+    public string? ConsentVersion { get; set; }
+
     /// <summary>Issue #436: çağıran bu çocuğun birincil velisi (yalnız Active iken true olabilir).</summary>
     public bool IsPrimary { get; set; }
 

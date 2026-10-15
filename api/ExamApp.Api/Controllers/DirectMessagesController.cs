@@ -57,6 +57,7 @@ public class DirectMessagesController : BaseController
     /// <summary>Öğrenci: öğretmene mesaj (ilk mesaj konuşmayı açar). 201 + <see cref="SendDirectMessageResultDto"/>; CanMessage değilse nötr 403.</summary>
     [HttpPost("teachers/{teacherId:int}/messages")]
     [Authorize(Roles = "Student")]
+    [Authorize(Policy = ExamApp.Api.Services.Parents.Enforcement.ParentRequirementPolicies.ParentActivated)] // issue #440
     [EnableRateLimiting(DirectMessageRateLimiting.SendPolicy)]
     public async Task<IActionResult> SendToTeacher(int teacherId, [FromBody] SendDirectMessageDto dto, CancellationToken ct)
     {
@@ -161,6 +162,7 @@ public class DirectMessagesController : BaseController
     /// <summary>Mevcut konuşmaya mesaj: öğrenci (CanMessage) ya da öğretmen cevabı (ilişki sürüyorsa; engel cevabı kapatmaz). 201.</summary>
     [HttpPost("conversations/{conversationId:int}/messages")]
     [Authorize(Roles = "Student,Teacher")]
+    [Authorize(Policy = ExamApp.Api.Services.Parents.Enforcement.ParentRequirementPolicies.ParentActivated)] // issue #440: yalnız veli kuralına tabi (öğrenci) çağıran; öğretmen etkilenmez
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)]
     [EnableRateLimiting(DirectMessageRateLimiting.SendPolicy)]
     public async Task<IActionResult> SendToConversation(int conversationId, [FromBody] SendDirectMessageDto dto, CancellationToken ct)

@@ -9,6 +9,8 @@ import { BookingSlotDialogComponent, BookingSlotDialogData, STUDENT_PARENTS_ROUT
 import { AvailabilitySlot, BookingResult } from '../../../models/booking.model';
 import { BookingService } from '../../../services/booking.service';
 import { translocoTestingModule } from '../../testing/transloco-testing';
+import { ParentStatusStore } from '../../../services/parent-status.store';
+import { awaitingStatusOf } from '../../testing/parent-status-testing';
 
 /** Issue #96 slot seçimi + issue #439: veli modu ve 403 ParentRequired. */
 describe('BookingSlotDialogComponent (issue #439)', () => {
@@ -148,5 +150,27 @@ describe('BookingSlotDialogComponent (issue #439)', () => {
 
     expect(service.getTeacherSlots).toHaveBeenCalledTimes(2);
     expect(dialogRef.close).not.toHaveBeenCalled();
+  });
+
+  // Issue #440: veli aktivasyonu beklenirken öğrenci talep gönderemez; veli modu etkilenmez.
+  it('Student_AwaitingParentActivation_ShowsNoticeAndBlocksSubmit', () => {
+    const el = setup({ teacherId: 4, teacherName: 'Elif Hoca' });
+    TestBed.inject(ParentStatusStore).set(awaitingStatusOf());
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-test="parent-activation-notice"]')?.textContent).toContain('özel ders talebi gönderemezsin');
+    selectAndSubmit(el);
+
+    const buttons = el.querySelectorAll('mat-dialog-actions button');
+    expect((buttons[buttons.length - 1] as HTMLButtonElement).disabled).toBeTrue();
+    expect(service.createBooking).not.toHaveBeenCalled();
+  });
+
+  it('ParentMode_IgnoresActivationRestriction', () => {
+    const el = setup({ teacherId: 4, teacherName: 'Elif Hoca', child: { studentId: 21, name: 'Ali' } });
+    TestBed.inject(ParentStatusStore).set(awaitingStatusOf());
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-test="parent-activation-notice"]')).toBeNull();
   });
 });

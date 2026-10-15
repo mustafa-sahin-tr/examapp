@@ -110,6 +110,55 @@
           }
         </div>
 
+        @if (parentInfoRequired()) {
+        <!-- Issue #440: veli bilgisi — veliye aktivasyon bağlantısı gönderilir; eksik/geçersizse kayıt tamamlanmaz. -->
+        <fieldset class="form-field parent-section" data-testid="parent-section">
+          <legend>Veli Bilgileri</legend>
+          <p class="field-hint">
+            Platform velinin bilgisi ve rızasıyla çalışır; velinize bir aktivasyon bağlantısı göndereceğiz.
+            Veliniz hesabını aktive edene kadar özel ders talebi, mesajlaşma, yorum ve liderlik tablosu kapalı kalır.
+          </p>
+
+          <div class="form-field">
+            <label for="parentFullName">Veli Adı Soyadı</label>
+            <input id="parentFullName" type="text" formControlName="parentFullName" autocomplete="off"
+              [attr.maxlength]="parentNameMaxLength" />
+            @if (hasError('parentFullName', 'required')) {
+            <span class="field-error">Veli adı gerekli.</span>
+            } @else if (hasError('parentFullName', 'parentName')) {
+            <span class="field-error">Veli adı yalnız harf içerebilir (2-100 karakter).</span>
+            }
+          </div>
+
+          <div class="form-field">
+            <label for="parentEmail">Veli E-postası</label>
+            <input id="parentEmail" type="email" formControlName="parentEmail" autocomplete="off" inputmode="email"
+              [attr.maxlength]="parentEmailMaxLength" />
+            @if (hasError('parentEmail', 'required')) {
+            <span class="field-error">Veli e-postası gerekli.</span>
+            } @else if (hasError('parentEmail', 'parentEmail')) {
+            <span class="field-error">Geçerli bir e-posta adresi gir.</span>
+            }
+          </div>
+
+          <div class="form-field">
+            <label for="parentPhone">Veli Cep Telefonu</label>
+            <input id="parentPhone" type="tel" formControlName="parentPhone" autocomplete="off" inputmode="tel"
+              placeholder="05xx xxx xx xx" [attr.maxlength]="parentPhoneMaxLength" />
+            @if (hasError('parentPhone', 'required')) {
+            <span class="field-error">Veli telefonu gerekli.</span>
+            } @else if (hasError('parentPhone', 'parentPhone')) {
+            <span class="field-error">Geçerli bir cep telefonu gir (ör. 0532 123 45 67).</span>
+            }
+          </div>
+
+          <p class="field-hint">
+            Kişisel verilerin nasıl işlendiğini
+            <a [href]="privacyPolicyUrl" target="_blank" rel="noopener">Gizlilik Politikası</a>’nda okuyabilirsin.
+          </p>
+        </fieldset>
+        }
+
         <div class="auth-submit">
           <button type="button" class="text-btn" [disabled]="isLoading()" (click)="back()">Geri</button>
           <button type="submit" class="default-btn" [disabled]="isLoading()">

@@ -19,6 +19,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { authInterceptor } from './shared/interceptors/auth.interceptor';
 import { authErrorInterceptor } from './shared/interceptors/auth-error.interceptor';
 import { teacherNotApprovedInterceptor } from './shared/interceptors/teacher-not-approved.interceptor';
+import { parentRequirementInterceptor } from './shared/interceptors/parent-requirement.interceptor';
 import { cacheInterceptor } from './shared/interceptors/cache.interceptor';
 import { localeInterceptor } from './shared/interceptors/locale.interceptor';
 import { CoreModule } from './core/core.module';
@@ -60,6 +61,8 @@ export const appConfig: ApplicationConfig = {
         authErrorInterceptor,
         // Issue #287: 403 TeacherNotApproved → başvuru durumu sayfası + profil yenileme.
         teacherNotApprovedInterceptor,
+        // Issue #440/#441: 403 ParentRequired → "veli bilgisi ekle" ekranı; ParentActivationRequired → kısıtlı mod bilgisi.
+        parentRequirementInterceptor,
       ])
     ),
     provideZoneChangeDetection({ eventCoalescing: true }),

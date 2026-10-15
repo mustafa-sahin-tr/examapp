@@ -1331,6 +1331,112 @@ public class KeycloakService : IKeycloakService
         return ids;
     }
 
+    // ---- Öğrencinin davet ettiği veli hesabı (issue #440) — yalnızca ParentAccountService kullanır ----
+
+    public async Task<IReadOnlyList<KeycloakUserSummary>> FindUsersByEmailAsync(string email, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(email);
+        await AuthorizeAdminAsync(ct);
+
+        // exact=true: tam eşleşme (Keycloak e-postayı küçük harfle saklar); yanıt yerelde ayrıca büyük/küçük harf duyarsız doğrulanır.
+        var response = await _adminHttp.GetAsync(BuildKeycloakUri(
+            $"{_keycloakSettings.UserUrl}?email={Uri.EscapeDataString(email)}&exact=true&briefRepresentation=false&max=5"), ct);
+        var json = await response.Content.ReadAsStringAsync(ct);
+        if (!response.IsSuccessStatusCode)
+            throw new KeycloakException($"Failed to search Keycloak users by email ({(int)response.StatusCode}).", (int)response.StatusCode);
+
+        var users = new List<KeycloakUserSummary>();
+        using var doc = JsonDocument.Parse(json);
+        foreach (var element in doc.RootElement.EnumerateArray())
+        {
+            if (!element.TryGetProperty("id", out var idEl) || idEl.GetString() is not { Length: > 0 } id)
+                continue;
+            var userEmail = element.TryGetProperty("email", out var e) ? e.GetString() : null;
+            if (!string.Equals(userEmail, email, StringComparison.OrdinalIgnoreCase))
+                continue;
+            var username = element.TryGetProperty("username", out var u) ? u.GetString() ?? string.Empty : string.Empty;
+            var verified = element.TryGetProperty("emailVerified", out var v) && v.ValueKind == JsonValueKind.True;
+            users.Add(new KeycloakUserSummary(id, username, userEmail, ReadSingleValuedAttributes(element), verified));
+        }
+        return users;
+    }
+
+    public async Task<(string? Email, bool EmailVerified)> GetUserEmailAsync(string keycloakUserId, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(keycloakUserId);
+        var (rep, _) = await GetUserRepresentationAsync(keycloakUserId, ct);
+        var email = rep.TryGetValue("email", out var e) && e.ValueKind == JsonValueKind.String ? e.GetString() : null;
+        var verified = rep.TryGetValue("emailVerified", out var v) && v.ValueKind == JsonValueKind.True;
+        return (email, verified);
+    }
+
+    public async Task MarkEmailVerifiedAsync(string keycloakUserId, string expectedEmail, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(keycloakUserId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(expectedEmail);
+        var (rep, attributes) = await GetUserRepresentationAsync(keycloakUserId, ct);
+        // Security MINOR2: doğrulama KONTROL EDİLEN e-postaya bağlı — kontrol ile PUT arasında e-posta değiştiyse işaretlenmez.
+        var current = rep.TryGetValue("email", out var e) && e.ValueKind == JsonValueKind.String ? e.GetString() : null;
+        if (!string.Equals(current?.Trim(), expectedEmail.Trim(), StringComparison.OrdinalIgnoreCase))
+            throw new KeycloakException($"Keycloak user '{keycloakUserId}' email changed before verification; not marked verified.",
+                StatusCodes.Status409Conflict, KeycloakFailureKind.Conflict);
+        rep.Remove("userProfileMetadata");
+        rep.Remove("access");
+        var body = new Dictionary<string, object?>();
+        foreach (var kv in rep) body[kv.Key] = kv.Value;
+        body["attributes"] = attributes;
+        body["emailVerified"] = true;
+
+        var userUri = BuildKeycloakUri($"{_keycloakSettings.UserUrl}/{Uri.EscapeDataString(keycloakUserId)}");
+        var content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+        var putResponse = await _adminHttp.PutAsync(userUri, content, ct);
+        if (!putResponse.IsSuccessStatusCode)
+        {
+            var error = await putResponse.Content.ReadAsStringAsync(ct);
+            throw new KeycloakException($"Failed to mark email verified on Keycloak user '{keycloakUserId}' ({(int)putResponse.StatusCode}): {error}",
+                (int)putResponse.StatusCode);
+        }
+    }
+
+    public async Task<string> CreateParentUserAsync(string email, string firstName, string lastName, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(email);
+
+        // Security review M2: hesap YALNIZ veli aktivasyon bağlantısıyla parolasını belirlerken açılır. Bağlantı e-postaya gittiği için
+        // adres doğrulanmış sayılır. Kimlik bilgisi ayrı reset-password çağrısıyla (politika reddi kullanıcı oluşturma hatasından ayrılsın);
+        // kullanıcı adı = e-posta (realm registrationEmailAsUsername=false, #438).
+        var representation = new Dictionary<string, object?>
+        {
+            ["username"] = email,
+            ["email"] = email,
+            ["enabled"] = true,
+            ["emailVerified"] = true,
+            ["firstName"] = firstName,
+            ["lastName"] = string.IsNullOrWhiteSpace(lastName) ? null : lastName,
+            ["requiredActions"] = Array.Empty<string>()
+        };
+
+        var content = new StringContent(JsonSerializer.Serialize(representation, IgnoreNulls), Encoding.UTF8, "application/json");
+        await AuthorizeAdminAsync(ct);
+        var response = await _adminHttp.PostAsync(BuildKeycloakUri(_keycloakSettings.UserUrl), content, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync(ct);
+            var kind = response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.Conflict => KeycloakFailureKind.Conflict,
+                System.Net.HttpStatusCode.BadRequest => KeycloakFailureKind.Validation,
+                _ => KeycloakFailureKind.Unexpected,
+            };
+            throw new KeycloakException($"Keycloak parent user creation failed ({(int)response.StatusCode}): {error}", (int)response.StatusCode, kind);
+        }
+
+        var id = response.Headers.Location?.ToString().Split('/').Last();
+        if (string.IsNullOrWhiteSpace(id))
+            throw new KeycloakException("Keycloak did not return a Location header for the created parent user.");
+        return id;
+    }
+
     /// <summary>Çocuk hesabında kalabilecek varsayılan-kompozit realm rolleri (yalnız kompozitte zaten varsa verilir).</summary>
     public static readonly IReadOnlySet<string> ParentManagedRealmRoleAllowlist =
         new HashSet<string>(StringComparer.Ordinal) { "offline_access", "uma_authorization" };

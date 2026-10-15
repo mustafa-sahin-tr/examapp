@@ -12,6 +12,7 @@ import { StudentService } from '../../services/student.service';
 import { LocaleService } from '../../services/locale.service';
 import { PracticeService } from '../../services/practice.service';
 import { AuthService } from '../../services/auth.service';
+import { StudentParentService } from '../../services/student-parent.service';
 import { DailySet } from '../../models/practice';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import trTranslations from '../../../../public/i18n/tr.json';
@@ -135,6 +136,8 @@ describe('DashboardComponent', () => {
         { provide: Router, useValue: jasmine.createSpyObj<Router>('Router', ['navigate']) },
         // Issue #361: okul onayı bandı reaktif profili okur (bekleyen üyelik yok → render edilmez).
         { provide: AuthService, useValue: { user: signal(null) } },
+        // Issue #440/#441: veli durumu kartı (durum yok → render edilmez; HTTP yok).
+        { provide: StudentParentService, useValue: jasmine.createSpyObj('StudentParentService', ['resend', 'reload']) },
       ],
     });
   });

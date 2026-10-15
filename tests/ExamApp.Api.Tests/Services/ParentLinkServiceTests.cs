@@ -1173,4 +1173,31 @@ public class ParentLinkServiceTests : IDisposable
         ParentRequirement.RequiresParent(principal).ShouldBe(expected);
         ParentRequirement.RequiresParentForStudentProfile().ShouldBeTrue(); // yaş/admin muafiyeti yok
     }
+
+    // ---- issue #440/#441 review (code M3): öğrenci veli durumu önbelleği bağlantı değişince geçersizlenir ----------------
+
+    [Fact]
+    public async Task Link_state_changes_invalidate_the_students_parent_status_cache()
+    {
+        await SeedAsync();
+        var primary = await SeedLinkAsync(ParentUser);
+        var pending = await SeedLinkAsync(ParentUser + 1, status: ParentStudentLinkStatus.Pending,
+            origin: ParentStudentLinkOrigin.InviteCode, isPrimary: false);
+        var cache = Substitute.For<IStudentParentStatusCache>();
+
+        await using (var ctx = _db.NewContext())
+        {
+            var service = new ParentLinkService(ctx, _hasher, _authApi, _guard, _time, statusCache: cache);
+            (await service.ApproveSecondParentAsync(pending, ParentUser)).Success.ShouldBeTrue();
+        }
+        cache.Received(1).Invalidate(StudentUser);
+
+        cache.ClearReceivedCalls();
+        await using (var ctx = _db.NewContext())
+        {
+            var service = new ParentLinkService(ctx, _hasher, _authApi, _guard, _time, statusCache: cache);
+            (await service.AdminRevokeAsync(primary, 1, "kc-admin")).Success.ShouldBeTrue();
+        }
+        cache.Received(1).Invalidate(StudentUser);
+    }
 }

@@ -140,6 +140,9 @@ public class AppDbContext : DbContext
     public DbSet<StudentBadgeProjection> StudentBadgeProjections { get; set; } // issue #422
     public DbSet<StudentDailyXp> StudentDailyXps { get; set; } // issue #422
     public DbSet<ParentHomeworkOverdueMarker> ParentHomeworkOverdueMarkers { get; set; } // issue #423
+    public DbSet<ParentInvitation> ParentInvitations { get; set; } // issue #440
+    public DbSet<ParentInvitationAttempt> ParentInvitationAttempts { get; set; } // issue #440
+    public DbSet<StudentParentGraceReminder> StudentParentGraceReminders { get; set; } // issue #441
 
     // Ders planlama / randevu (issue #96)
     public DbSet<TeacherAvailabilitySlot> TeacherAvailabilitySlots { get; set; }
@@ -380,6 +383,32 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<WorksheetAssignment>()
             .HasIndex(a => a.EndAt, "IX_WorksheetAssignments_EndAt_NotNull")
             .HasFilter("\"EndAt\" IS NOT NULL");
+
+        // issue #440: öğrencinin veli daveti. Öğrenci başına tek Pending davet (filtreli tekil index — eşzamanlı ikinci davet unique
+        // ihlaline düşer); token hash'i tekil (null = mevcut veli daveti, token yok). Status string. FK'lar ClientNoAction (soft-delete).
+        modelBuilder.Entity<ParentInvitation>(e =>
+        {
+            e.Property(i => i.Status).HasConversion<string>().HasMaxLength(16);
+            e.HasOne(i => i.Student).WithMany().HasForeignKey(i => i.StudentId).OnDelete(DeleteBehavior.ClientNoAction);
+            e.HasOne(i => i.Parent).WithMany().HasForeignKey(i => i.ParentId).OnDelete(DeleteBehavior.ClientNoAction);
+            e.HasOne(i => i.Link).WithMany().HasForeignKey(i => i.LinkId).OnDelete(DeleteBehavior.ClientNoAction);
+            e.HasIndex(i => i.StudentId, "IX_ParentInvitations_Student_Pending")
+                .IsUnique()
+                .HasFilter("\"Status\" = 'Pending'");
+            e.HasIndex(i => i.TokenHash, "IX_ParentInvitations_TokenHash")
+                .IsUnique()
+                .HasFilter("\"TokenHash\" IS NOT NULL");
+            e.HasIndex(i => new { i.StudentId, i.Email });
+            e.HasIndex(i => new { i.Email, i.CreatedAt }); // hedef e-posta başına 24 saat tavanı (anti-spam)
+            e.HasIndex(i => new { i.ParentId, i.Status });
+            e.HasIndex(i => i.LinkId);
+        });
+        modelBuilder.Entity<ParentInvitationAttempt>(e => e.HasIndex(a => new { a.StudentUserId, a.AttemptedAt }));
+
+        // issue #441: hoşgörü süresi hatırlatması (öğrenci, bitiş, kalan gün) başına bir kez; sayaç / admin sayımları için index.
+        modelBuilder.Entity<StudentParentGraceReminder>(e => e.HasIndex(r => new { r.StudentId, r.GraceEndsAt, r.DaysLeft }).IsUnique());
+        modelBuilder.Entity<Student>().HasIndex(st => st.ParentRequirementStartedAt, "IX_Students_ParentRequirementStartedAt")
+            .HasFilter("\"ParentRequirementStartedAt\" IS NOT NULL");
 
         modelBuilder.Entity<ParentHomeworkOverdueMarker>(e =>
         {

@@ -111,6 +111,63 @@
       "Priority": 2
     },
     {
+      "DownstreamPathTemplate": "/__blocked/api/auth/parent-accounts",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth-api",
+          "Port": 5079
+        }
+      ],
+      "UpstreamPathTemplate": "/api/auth/parent-accounts",
+      "Priority": 2
+    },
+    {
+      "DownstreamPathTemplate": "/__blocked/api/auth/parent-accounts/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth-api",
+          "Port": 5079
+        }
+      ],
+      "UpstreamPathTemplate": "/api/auth/parent-accounts/{everything}",
+      "Priority": 2
+    },
+    {
+      "DownstreamPathTemplate": "/api/parent-activation/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "exam-dotnet-api",
+          "Port": 5079
+        }
+      ],
+      "UpstreamPathTemplate": "/api/exam/parent-activation/{everything}",
+      "UpstreamHttpMethod": [
+        "POST"
+      ],
+      "Priority": 2
+    },
+    {
+      "DownstreamPathTemplate": "/api/parent-activation/accept",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "exam-dotnet-api",
+          "Port": 5079
+        }
+      ],
+      "UpstreamPathTemplate": "/api/exam/parent-activation/accept",
+      "UpstreamHttpMethod": [
+        "POST"
+      ],
+      "Priority": 3,
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
       "DownstreamPathTemplate": "/api/auth/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [

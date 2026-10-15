@@ -71,6 +71,13 @@ public class Student : BaseEntity, ISchoolScoped
     /// </summary>
     public bool ParentManaged { get; set; }
 
+    /// <summary>
+    /// Issue #441: velisiz öğrencinin "veli ekleme" hoşgörü süresinin başladığı an (UTC) — deploy anında değil, öğrencinin ilk girişinde
+    /// (profil tazeleme) yazılır; süre <c>ParentRequirement:GraceDays</c>. Active velisi olunca temizlenir (sonraki koparmada yeni süre).
+    /// Aktivasyon bekleyen daveti olan öğrencide damgalanmaz. null = sayaç başlamadı.
+    /// </summary>
+    public DateTime? ParentRequirementStartedAt { get; set; }
+
     public int? GradeId { get; set; } // 🟢 Grade artık opsiyonel (nullable)
 
     [ForeignKey("GradeId")]

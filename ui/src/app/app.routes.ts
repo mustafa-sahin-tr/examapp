@@ -8,6 +8,8 @@ import { roleGuard } from './shared/guards/role.guard';
 import { approvedTeacherGuard } from './shared/guards/approved-teacher.guard';
 import { settingsGuard } from './shared/guards/settings.guard';
 import { parentGuard, parentHomeRedirectGuard } from './shared/guards/parent.guard';
+import { parentRequirementGuard } from './shared/guards/parent-requirement.guard';
+import { PARENT_REQUIRED_PATH } from './models/parent-status.model';
 import { TEACHER_APPROVAL_PENDING_PATH } from './models/teacher-approval.model';
 import { QuestionComponent } from './pages/question/question.component';
 import { QuestionViewComponent } from './pages/question-view/question-view.component';
@@ -56,6 +58,8 @@ export const routes: Routes = [
   {
     path: '',
     component: EnhancedLayoutComponent,
+    // Issue #441: hoşgörü süresi dolmuş öğrenci yalnız "veli bilgisi ekle" ekranını görür.
+    canActivateChild: [parentRequirementGuard],
     children: [
       // Issue #53: Teacher rolü → TeacherDashboardComponent, diğerleri → mevcut DashboardComponent.
       // Issue #287: onaysız öğretmen teacher dashboard yerine başvuru durumu sayfasına gider (öğrenci etkilenmez).
@@ -108,6 +112,13 @@ export const routes: Routes = [
       { path: 'test/:testId', component: WorksheetDetailComponent, canActivate: [authGuard, approvedTeacherGuard] },
       // Issue #373: yalnız öğrenci verisiyle çalışır; öğretmen/admin boş sayfa + 500 görüyordu → /dashboard'a yönlendirilir.
       { path: 'student-profile', component: StudentProfileComponent, canActivate: [authGuard, studentGuard] },
+      {
+        // Issue #440/#441: veli bilgisi ekle / e-postayı düzelt (süre dolunca öğrencinin tek ekranı).
+        path: PARENT_REQUIRED_PATH,
+        canActivate: [authGuard, studentGuard],
+        loadComponent: () =>
+          import('./pages/parent-required/parent-required.component').then((m) => m.ParentRequiredComponent),
+      },
       { path: 'exam', component: TestCreateEnhancedComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },
       { path: 'exam/:id', component: TestCreateEnhancedComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },
       { path: 'programs', component: MyProgramsComponent, canActivate: [authGuard, roleGuard('Student')] },

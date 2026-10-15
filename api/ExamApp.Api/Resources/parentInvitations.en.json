@@ -1,0 +1,36 @@
+{
+  "parentInvitations": {
+    "sent": "An invitation was sent to your parent. Some features stay closed until your parent confirms.",
+    "resent": "The invitation was sent to your parent again.",
+    "resentToParent": "A new activation link was sent to your email address.",
+    "activated": "Your parent account is active. You can sign in now.",
+    "writeRateLimited": "Too many parent invitation requests in a short time. Please try again later.",
+    "activationRateLimited": "Too many attempts in a short time. Please try again in a few minutes.",
+    "errors": {
+      "parentInfoRequired": "Enter your parent's name, email and phone number to complete registration.",
+      "invalidParentName": "The parent's name must be 2 to 100 characters long and contain letters.",
+      "invalidParentEmail": "Enter a valid parent email address.",
+      "invalidParentPhone": "Enter a valid mobile phone number (e.g. 05xx xxx xx xx).",
+      "parentEmailNotUsable": "This email cannot be used as a parent account.",
+      "parentEmailChangeLocked": "Too many different email addresses were tried. Please try again in an hour.",
+      "parentInvitationResendLimited": "An invitation was sent to this email recently, or no resends are left. Please try again later.",
+      "parentAlreadyLinked": "Your account is already linked to a parent.",
+      "parentNotRequired": "Parent information is not required for this account.",
+      "noOpenInvitation": "You have no pending parent invitation.",
+      "parentInvitationUnavailable": "The account service is not reachable right now. Please try again shortly.",
+      "invalidActivationToken": "The activation link is invalid.",
+      "activationTokenExpired": "The activation link has expired. You can request a new one.",
+      "activationTokenUsed": "This activation link has already been used or is no longer valid.",
+      "loginRequired": "An account already exists for this email address. Please sign in with that account and accept the invitation.",
+      "invitationEmailMismatch": "This invitation was sent to a different email address. Please sign in with the invited email's account.",
+      "parentAccountRequired": "Only a parent account can accept the invitation.",
+      "emailAlreadyRegistered": "This email address is now linked to another account. Please ask the student to correct the parent details.",
+      "consentRequired": "Tick the parental consent box to continue.",
+      "consentVersionMismatch": "The consent text was updated. Please refresh the page and accept it again.",
+      "passwordRejected": "The password must be at least 8 characters long and contain at least one letter and one digit.",
+      "invitationExpired": "This invitation has expired. Ask the student to send it again.",
+      "parentActivationRequired": "This feature opens after your parent activates their account.",
+      "parentRequired": "Your time to add a parent is over. Add your parent's details to continue."
+    }
+  }
+}

@@ -461,6 +461,27 @@ export class AdminDashboardComponent implements OnInit {
   /** Hiç soru yoksa AI kartı oran yerine "Henüz soru yok" gösterir. */
   readonly hasQuestions = computed(() => (this.summary()?.questionCount ?? 0) > 0);
 
+  /**
+   * Issue #440/#441: "Veli durumu" kartının sayaçları (hedef küme, hoşgörüde, süresi dolmuş, aktivasyon bekleyen). Sunucu alanları
+   * göndermiyorsa (eski API) kart gösterilmez.
+   */
+  readonly parentStatusRows = computed<{ key: string; labelKey: string; value: number }[] | null>(() => {
+    const s = this.summary();
+    if (!s || typeof s.studentsWithoutParent !== 'number') {
+      return null;
+    }
+    return [
+      { key: 'withoutParent', labelKey: 'parentStatus.withoutParent', value: s.studentsWithoutParent },
+      { key: 'inGrace', labelKey: 'parentStatus.inGrace', value: s.studentsInParentGrace ?? 0 },
+      { key: 'graceExpired', labelKey: 'parentStatus.graceExpired', value: s.studentsParentGraceExpired ?? 0 },
+      {
+        key: 'awaitingActivation',
+        labelKey: 'parentStatus.awaitingActivation',
+        value: s.studentsAwaitingParentActivation ?? 0,
+      },
+    ];
+  });
+
   /** 0..100 arası, ilerleme çubuğu genişliği ve rozet için. Backend 0..1 döner. */
   readonly aiPercent = computed(() => {
     const ratio = this.summary()?.aiClassifiedRatio ?? 0;

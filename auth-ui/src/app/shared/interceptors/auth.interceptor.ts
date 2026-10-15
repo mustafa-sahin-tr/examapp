@@ -20,6 +20,11 @@ const AUTH_EXCLUDED_PATHS: ReadonlySet<string> = new Set([
   '/api/auth/exchange',
   // `logout()` token'ı önce temizler ve Authorization başlığını kendisi taşır.
   '/api/exam/auth/logout',
+  // Issue #440: anonim veli aktivasyon uçları — velinin tarayıcısında başka bir hesabın token'ı olabilir; gönderilmez,
+  // süresi dolmuş token için refresh/`/login` yönlendirmesi de tetiklenmez.
+  '/api/exam/parent-activation/lookup',
+  '/api/exam/parent-activation/activate',
+  '/api/exam/parent-activation/resend',
 ]);
 
 function isAuthExcluded(req: HttpRequest<unknown>): boolean {

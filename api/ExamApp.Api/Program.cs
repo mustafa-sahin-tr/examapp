@@ -452,6 +452,18 @@ builder.Services.AddWorksheetCommentReadRateLimiting(); // okuma: dakikada 60 (r
 builder.Services.AddDirectMessageRateLimiting();
 builder.Services.AddDailyQuestionsRateLimiting(); // issue #99 security D4: günün soruları, öğrenci başına dakikada 30
 builder.Services.AddParentLinkRateLimiting(); // issue #419/#436: veli kod denemesi dakikada 5, birincil velinin ikinci veli kodu üretimi saatte 10 (sub başına)
+// issue #440/#441: öğrencinin veli daveti + aktivasyon (auth-api parent-accounts), veli durumu, ParentActivated policy'si / ParentRequired
+// middleware'i, hatırlatma job'ı ve rate limit kovaları. AddParentChildAccounts, AddApprovedTeacherAuthorization ve sayaç deposundan SONRA.
+ExamApp.Api.Services.Parents.ParentInvitationServiceCollectionExtensions.AddParentInvitations(builder.Services);
+// issue #440 security re-review r3 M1: anonim aktivasyon rate limit'i gateway'in güvenilir adresine dayanır — Development dışında
+// ForwardedHeaders:KnownProxies/KnownNetworks zorunlu ve çözülebilir olmalı (yer tutucu sessizce geçmesin). Development/Aspire = loopback.
+if (!builder.Environment.IsDevelopment() && !EF.IsDesignTime && seedCommand is null)
+    ExamApp.Api.Helpers.TrustedClientIp.ValidateTrustedProxyConfiguration(builder.Configuration);
+// issue #440 review: aktivasyon bağlantısı outbox/RabbitMQ'da şifreli (ParentInvitations:LinkEncryptionKey, BadgeService ile aynı anahtar).
+// Eager: Development dışında boş/devOnly/32 bayt olmayan anahtar açılışta patlar. EF design-time ve seed komut modunda davet üretilmez.
+builder.Services.AddSingleton(EF.IsDesignTime || seedCommand is not null
+    ? new ExamApp.Foundation.Security.ActivationLinkProtector(new byte[32])
+    : ExamApp.Foundation.Security.ActivationLinkProtector.FromConfiguration(builder.Configuration, builder.Environment));
 
 // PostgreSQL & EF Core (Aspire client integration — reads ConnectionStrings:DefaultConnection,
 // same key as before, so standalone `dotnet run` against appsettings.json is unaffected).
@@ -657,6 +669,10 @@ app.UseAuthorization();
 // middleware'ler (exception handler, HTTPS redirect) kültüre bağımlı çıktı üretmiyor.
 app.UseRequestLocalization(); // Ayarlar yukarıdaki Configure<RequestLocalizationOptions>'tan gelir.
 
+// issue #441: hoşgörü süresi dolmuş öğrenciye [AllowWhenParentRequired] dışındaki yetkili uçlarda 403 ParentRequired. Auth + localization'dan
+// SONRA (kimlik ve mesaj dili hazır), rate limiter'dan ÖNCE (reddedilen istek kova tüketmez).
+ExamApp.Api.Services.Parents.Enforcement.ParentRequirementEnforcementServiceCollectionExtensions.UseParentRequirementEnforcement(app);
+
 // issue #246: yalnızca [EnableRateLimiting] taşıyan uçlar (admin kullanıcı listeleri). Auth'tan SONRA: partition
 // anahtarı kullanıcının sub'ıdır ve 401/403 alan istekler kovayı tüketmez; localization'dan sonra: 429 metni çevrilir.
 app.UseRateLimiter();
@@ -728,6 +744,12 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.Parents.IParentLinkTransitionSweep
     ExamApp.Api.Services.Parents.ParentLinkTransitionSweepJob.RecurringJobId,
     j => j.SweepAsync(CancellationToken.None),
     app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Parents.ParentLinkTransitionSweepOptions>>().Value.Cron);
+
+// issue #441: hoşgörü süresi bitişinden 7 ve 1 gün önce öğrenciye uygulama içi hatırlatma (StudentParentGraceReminderEvent).
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.Parents.IParentGraceReminderJob>(
+    ExamApp.Api.Services.Parents.ParentGraceReminderJob.RecurringJobId,
+    j => j.RunAsync(CancellationToken.None),
+    app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Parents.ParentRequirementOptions>>().Value.ReminderCron);
 
 app.Run();
 return 0;

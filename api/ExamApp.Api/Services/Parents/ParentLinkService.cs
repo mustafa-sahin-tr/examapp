@@ -60,6 +60,9 @@ public sealed class ParentLinkService : IParentLinkService
     private readonly ILogger<ParentLinkService>? _logger;
     private readonly IStringLocalizer<Messages> _localizer;
 
+    // issue #440/#441 review (code M3): bağlantı durumu değişince öğrencinin veli durumu önbelleği geçersizlenir (DI'siz testlerde null).
+    private readonly IStudentParentStatusCache? _statusCache;
+
     /// <summary>Ad çözümü (auth-api) üst süresi; aşılırsa yerelleştirilmiş yedek ad. Liste yine döner.</summary>
     internal TimeSpan NameLookupTimeout { get; init; } = TimeSpan.FromSeconds(3);
 
@@ -70,8 +73,10 @@ public sealed class ParentLinkService : IParentLinkService
         IParentRedeemAttemptGuard guard,
         TimeProvider? time = null,
         ILogger<ParentLinkService>? logger = null,
-        IStringLocalizer<Messages>? localizer = null)
+        IStringLocalizer<Messages>? localizer = null,
+        IStudentParentStatusCache? statusCache = null)
     {
+        _statusCache = statusCache;
         _context = context;
         _hasher = hasher;
         _authApiClient = authApiClient;
@@ -415,6 +420,7 @@ public sealed class ParentLinkService : IParentLinkService
                 : Fail<ParentLinkResponseDto>(ParentLinkErrorCodes.NotFound, notFound: true);
         }
 
+        _statusCache?.Invalidate(studentUserId);
         _logger?.LogInformation("[ParentLinks] Veli bağlantısı onaylandı: linkId={LinkId} origin={Origin}", linkId, origin);
         return Ok(linkId, "parentLinks.approved");
     }
@@ -618,10 +624,38 @@ public sealed class ParentLinkService : IParentLinkService
                 .ToListAsync(ct);
 
         var coParents = family.Where(f => primaryStudentIds.Contains(f.StudentId) && f.ParentId != parentId).ToList();
+
+        // issue #440: öğrencinin bu veliyi davet ettiği (StudentRegistered) bekleyen bağlantılar — IsOpen'a girmez (ömrünü davet yönetir);
+        // yalnız açık ve süresi dolmamış davetler, rızalı onay için. Öğrenci verisi: yalnız kısa ad ("Ali K.").
+        // Security MINOR5: en yeni önce ve Active/kendi isteği tavanından (Take) AYRI — kesilmez. Hacim sınırlı: davetler 7 gün açık ve
+        // hedef e-postaya tüm öğrencilerden 24 saatte en fazla ParentInvitationRules.MaxInvitationsPerTargetEmail yeni davet.
+        var invited = await _context.ParentInvitations.AsNoTracking()
+            .Where(i => i.ParentId == parentId && i.Status == ParentInvitationStatus.Pending && i.ExpiresAt > now
+                        && i.LinkId != null && i.Link!.Status == ParentStudentLinkStatus.Pending && !i.Student.IsDeleted)
+            .OrderByDescending(i => i.CreatedAt).ThenByDescending(i => i.LinkId)
+            .Select(i => new { LinkId = i.LinkId!.Value, i.CreatedAt, i.ExpiresAt, StudentUserId = i.Student.UserId })
+            .ToListAsync(ct);
+
         var users = await LookupUsersAsync(
             activeRows.Select(r => r.StudentUserId)
                 .Concat(coParents.Select(f => f.ParentUserId))
-                .Concat(requests.Select(r => r.ParentUserId)), ct);
+                .Concat(requests.Select(r => r.ParentUserId))
+                .Concat(invited.Select(i => i.StudentUserId)), ct);
+
+        var invitedChildren = invited.Select(i => new LinkedChildDto
+        {
+            LinkId = i.LinkId,
+            Status = nameof(ParentStudentLinkStatus.Pending),
+            Origin = nameof(ParentStudentLinkOrigin.StudentRegistered),
+            RequestedAt = AsUtc(i.CreatedAt),
+            PendingExpiresAt = AsUtc(i.ExpiresAt),
+            StudentName = users != null && users.TryGetValue(i.StudentUserId, out var su)
+                ? Worksheets.WorksheetCommentService.FormatStudentDisplayName(su.FullName)
+                : null,
+            RequiresConsent = true,
+            ConsentVersion = ParentConsentVersions.Current,
+            MaxParents = ParentLinkRules.MaxActiveParentsPerStudent
+        });
 
         return rows.Select(r =>
         {
@@ -641,6 +675,7 @@ public sealed class ParentLinkService : IParentLinkService
                 SchoolName = r.SchoolName,
                 LinkedAt = AsUtc(r.ActivatedAt ?? r.CreatedAt),
                 RequestedAt = AsUtc(r.CreatedAt),
+                Origin = r.Origin.ToString(), // issue #440
                 IsPrimary = isPrimary,
                 ParentManaged = r.ParentManaged,
                 CanResetPassword = rp,
@@ -674,7 +709,7 @@ public sealed class ParentLinkService : IParentLinkService
             var codeExpiry = codes.Where(c => c.StudentId == r.StudentId).Select(c => (DateTime?)c.ExpiresAt).Max();
             dto.SecondParentCodeExpiresAt = codeExpiry is DateTime e ? AsUtc(e) : null;
             return dto;
-        }).ToList();
+        }).Concat(invitedChildren).ToList();
     }
 
     private sealed record RequestRow(int Id, int StudentId, int ParentUserId, DateTime CreatedAt);
@@ -685,6 +720,7 @@ public sealed class ParentLinkService : IParentLinkService
     {
         LinkId = linkId,
         Status = nameof(ParentStudentLinkStatus.Pending),
+        Origin = origin.ToString(), // issue #440
         RequestedAt = AsUtc(createdAt),
         PendingExpiresAt = AsUtc(createdAt + ParentLinkRules.PendingValidityFor(origin)),
         MaxParents = ParentLinkRules.MaxActiveParentsPerStudent
@@ -731,9 +767,28 @@ public sealed class ParentLinkService : IParentLinkService
     /// ad çözümünden ÖNCE — yetkisiz istek dış çağrı tetiklemez); yetki öğrenci kilidi altında yeniden doğrulanır. Koşullu UPDATE
     /// (<c>Status == okunan durum</c>) başarısızsa durum yeniden okunur (#419 re-review A — eşzamanlı onay yarışı): Revoked →
     /// idempotent başarı; Pending iken Active olduysa karar Active kuralıyla yeniden verilir, ret ise "artık bekleyen istek yok" →
-    /// NotFound. Active bağlantı koparılınca birincillik kilit altında devredilir (kalan en eski Active veli).
+    /// NotFound. Active bağlantı koparılınca birincillik kilit altında devredilir (kalan en eski Active veli). Issue #440/#441 review: sonuçtan
+    /// bağımsız olarak öğrencinin veli durumu önbelleği geçersizlenir (son Active velinin koparılması öğrenciyi hemen Grace/Expired'a düşürür).
     /// </summary>
     private async Task<ParentLinkResponseDto> RevokeCoreAsync(RevokeRequest request, CancellationToken ct)
+    {
+        try
+        {
+            return await RevokeCoreInnerAsync(request, ct);
+        }
+        finally
+        {
+            if (_statusCache != null)
+            {
+                var studentUserId = await _context.ParentStudentLinks.AsNoTracking()
+                    .Where(l => l.Id == request.LinkId).Select(l => (int?)l.Student.UserId).FirstOrDefaultAsync(CancellationToken.None);
+                if (studentUserId is int uid)
+                    _statusCache.Invalidate(uid);
+            }
+        }
+    }
+
+    private async Task<ParentLinkResponseDto> RevokeCoreInnerAsync(RevokeRequest request, CancellationToken ct)
     {
         var target = await _context.ParentStudentLinks.AsNoTracking()
             .Where(l => l.Id == request.LinkId)

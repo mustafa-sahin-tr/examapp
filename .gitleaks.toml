@@ -47,6 +47,9 @@ regexes = [
   '''devOnlyBadgeServicePasswordChangeMe123''',
   '''devOnlyExamApiPasswordChangeMe123''',
   '''devOnlyAuthApiPasswordChangeMe123''',
+  # Issues #440/#441: dev-only parent invitation link key (ActivationLinkProtector.DevKeyBase64 = base64 of
+  # ASCII "devOnlyParentInvitationLinkKey!!"); rejected outside Development by ResolveKey. Never reuse.
+  '''ZGV2T25seVBhcmVudEludml0YXRpb25MaW5rS2V5ISE=''',
   '''\*{10}''',
   '''CHANGE_ME[A-Z_]*''',
 ]

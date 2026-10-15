@@ -159,6 +159,8 @@
       <!-- Main Content -->
       <main class="main-content" [class.no-bottom-nav]="isExamRoute()">
         <router-outlet></router-outlet>
+        <!-- Issue #441: hoşgörünün son günlerinde kapatılamaz "velini ekle" modalı (görünür bir şey çizmez). -->
+        <app-parent-final-warning />
       </main>
     </mat-sidenav-content>
   </mat-sidenav-container>

@@ -50,6 +50,14 @@
       "today": "today",
       "yesterday": "yesterday",
       "daysAgo": "{{count}} days ago"
+    },
+    "parentStatus": {
+      "title": "Parent status",
+      "withoutParent": "Students without a parent",
+      "inGrace": "In grace period",
+      "graceExpired": "Grace period expired",
+      "awaitingActivation": "Awaiting parent activation",
+      "aria": "Parent status counts"
     }
   },
   "taxonomy": {

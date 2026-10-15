@@ -4,6 +4,8 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
 import { CommentComposerComponent } from './comment-composer.component';
 import { translocoTestingModule } from '../../testing/transloco-testing';
+import { ParentStatusStore } from '../../../services/parent-status.store';
+import { awaitingStatusOf } from '../../testing/parent-status-testing';
 import rootTr from '../../../../../public/i18n/tr.json';
 import commentsTr from '../../../../../public/i18n/comments/tr.json';
 
@@ -192,5 +194,20 @@ describe('CommentComposerComponent (issue #105)', () => {
     expect(q('pii-send-anyway')).not.toBeNull();
     enter();
     expect(submitted).toEqual(['ara 05321234567']);
+  });
+
+  // Issue #440: veli aktivasyonu beklenirken yorum kapalı.
+  it('awaitingParentActivation_ShowsNoticeAndDisablesSend', () => {
+    create();
+    type('Merhaba');
+    expect(send().disabled).toBeFalse();
+
+    TestBed.inject(ParentStatusStore).set(awaitingStatusOf());
+    fixture.detectChanges();
+
+    expect(el().querySelector('[data-test="parent-activation-notice"]')?.textContent).toContain('yorum yazamazsın');
+    expect(send().disabled).toBeTrue();
+    send().click();
+    expect(submitted).toEqual([]);
   });
 });

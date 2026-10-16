@@ -60,5 +60,13 @@
     "questionRemoved": "Soru başarıyla testten çıkarıldı!",
     "previewClosedNoQuestions": "Testte soru kalmadığı için önizleme kapatıldı.",
     "questionRemoveError": "Soru silinirken hata oluştu!"
+  },
+  "coordinateJson": {
+    "activated": "Koordinat JSON'u bulundu: {{pages}} sayfada {{questions}} soru, soru tespiti yerine JSON kullanılıyor.",
+    "skippedEntries": "{{count}} hatalı kayıt atlandı.",
+    "missingImages": "JSON'daki {{count}} görsel klasörde yok: {{names}}",
+    "unusable": "question-coordinates.json okunamadı ya da geçerli kayıt içermiyor; klasör normal şekilde açıldı.",
+    "noMatchingImages": "question-coordinates.json içindeki görsellerin hiçbiri klasörde yok; klasör normal şekilde açıldı.",
+    "detectorDisabled": "Koordinat JSON modunda soru tespiti kapalı; bölgeler JSON'dan gelir."
   }
 }

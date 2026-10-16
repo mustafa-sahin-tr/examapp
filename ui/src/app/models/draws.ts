@@ -28,6 +28,18 @@ export enum ClassificationSource {
   AI = 1,
 }
 
+/**
+ * Issue #454: `POST /api/exam/questions/save` içindeki her `questions[]` öğesinin opsiyonel, soru bazında
+ * sınıflandırması (backend `BulkQuestionClassificationDto`). Yalnız koordinat JSON modunda kurulan
+ * bölgeler taşır; null/0/boş alanlar header'daki test sınıflandırmasına düşer.
+ */
+export interface QuestionClassificationPayload {
+  subjectId: number | null;
+  topicId: number | null;
+  subTopicIds: number[];
+  source: 'AI' | 'Human';
+}
+
 export interface QuestionRegion {
   id: number;
   name: string;
@@ -59,6 +71,8 @@ export interface QuestionRegion {
   isExample: boolean;
   order?: number;
   classificationSource?: ClassificationSource;
+  /** Issue #454: soru bazında kaydedilecek sınıflandırma (yalnız koordinat JSON modu). */
+  classification?: QuestionClassificationPayload;
 }
 
 export type RegionOrAnswerHit =

@@ -201,7 +201,8 @@
             <mat-icon style="vertical-align: middle; margin-right: 8px">help_outline</mat-icon>
             {{ t('menu.selectQuestion') }}
           </button>
-          <button (click)="handleMenuAction('predict', $event)">
+          <button (click)="handleMenuAction('predict', $event)" [disabled]="coordinateJsonMode()"
+            [attr.title]="coordinateJsonMode() ? t('coordinateJson.detectorDisabled') : null">
             <mat-icon style="vertical-align: middle; margin-right: 8px">smart_toy</mat-icon>
             {{ t('menu.askAi') }}
           </button>

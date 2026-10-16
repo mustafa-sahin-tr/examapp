@@ -61,6 +61,7 @@
     "import": "Import",
     "autoDetect": "Auto detect",
     "noPages": "No pages yet.",
+    "coordinateJsonMode": "Coordinate JSON mode",
     "dropzoneTitle": "Drag scanned pages here",
     "chooseFile": "Choose file",
     "dropzoneNote": "The book name is filled in automatically from the folder name.",
@@ -83,7 +84,8 @@
     "previousPage": "Previous page",
     "nextPage": "Next page",
     "bulkSaveSuccess": "Questions saved successfully",
-    "invalidFieldPath": "Invalid field path:"
+    "invalidFieldPath": "Invalid field path:",
+    "detectorDisabledInJsonMode": "Question detection is off in coordinate JSON mode; regions come from the JSON."
   },
   "inspector": {
     "quickCreateTitle": "Create new worksheet",

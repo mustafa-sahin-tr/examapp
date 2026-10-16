@@ -1624,6 +1624,8 @@ describe('AvailabilityWeekGridComponent', () => {
   }));
 
   it('should expose day, time, status and student name in aria-label of a booked slot', fakeAsync(() => {
+    // Saati sabitle: slot (Perşembe) bugüne göre geçmişte kalırsa etikete "geçmiş" parçası eklenir.
+    jasmine.clock().mockDate(createWeekTestDate(2, 12));
     const slot = createSlotInWeek(1, 3, 14, 15, true, 'Approved');
     slot.studentName = 'Ayşe';
 

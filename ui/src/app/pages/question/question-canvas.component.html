@@ -125,12 +125,18 @@
           <mat-icon>folder_open</mat-icon>{{ t('common.uploadFolder') }}
         </button>
         <input #folderInput type="file" (change)="handleFilesInput2($event)" multiple accept="image/*" webkitdirectory hidden />
-        <button type="button" class="qc-btn qc-btn--ghost qc-btn--block" (click)="triggerPredict()">
+        <button type="button" class="qc-btn qc-btn--ghost qc-btn--block" (click)="triggerPredict()"
+          [disabled]="coordinateJsonMode" [attr.title]="coordinateJsonMode ? t('canvas.detectorDisabledInJsonMode') : null">
           <mat-icon>smart_toy</mat-icon>{{ t('canvas.autoDetect') }}
         </button>
         <button type="button" class="qc-btn qc-btn--ghost qc-btn--block" (click)="triggerAlign()">
           <mat-icon>format_align_center</mat-icon>{{ t('common.align') }}
         </button>
+        @if (coordinateJsonMode) {
+        <div class="qc-rail__mode" role="status">
+          <mat-icon aria-hidden="true">data_object</mat-icon>{{ t('canvas.coordinateJsonMode') }}
+        </div>
+        }
       </div>
 
       <div class="qc-filmstrip">
@@ -188,7 +194,8 @@
             <mat-icon>skip_next</mat-icon>
           </button>
           <button type="button" class="qc-icon-btn" [class.is-active]="autoAlignOn"
-            (click)="setAutoAlign(!autoAlignOn)" [title]="t('canvas.autoAlign')" [attr.aria-label]="t('canvas.autoAlign')">
+            (click)="setAutoAlign(!autoAlignOn)" [disabled]="coordinateJsonMode"
+            [title]="coordinateJsonMode ? t('canvas.detectorDisabledInJsonMode') : t('canvas.autoAlign')" [attr.aria-label]="t('canvas.autoAlign')">
             <mat-icon>format_align_center</mat-icon>
           </button>
           }
@@ -400,7 +407,8 @@
               </select>
             </div>
 
-            <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm qc-btn--block" (click)="askAi()">
+            <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm qc-btn--block" (click)="askAi()"
+              [disabled]="coordinateJsonMode" [attr.title]="coordinateJsonMode ? t('canvas.detectorDisabledInJsonMode') : null">
               <mat-icon>smart_toy</mat-icon>{{ t('inspector.askAi') }}
             </button>
             @if (d.difficulty !== null) {

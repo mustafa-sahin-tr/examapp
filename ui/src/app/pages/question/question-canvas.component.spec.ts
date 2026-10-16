@@ -266,6 +266,101 @@ describe('QuestionCanvasComponent', () => {
       expect(component.questionForm.value.topicId).toBe(7);
       expect(component.questionForm.value.subtopicId).toBe(9);
     });
+
+    // Issue #454: JSON modunda panel değişikliği seçili sorunun soru bazındaki sınıflandırmasına yazılır.
+    function jsonSelectorFake(jsonMode: boolean) {
+      const updateRegionClassification = jasmine.createSpy('updateRegionClassification');
+      const fake = makeImageSelectorFake({
+        coordinateJsonMode: () => jsonMode,
+        activeRegionIndex: 0,
+        regions: () => [{ name: 'Soru 1', subjectId: 3, topicId: 7, subtopicIds: [9, 10] }],
+        updateRegionClassification,
+      });
+      return { ...fake, updateRegionClassification };
+    }
+
+    it('insSubtopicId_Set_JsonMode_UpdatesActiveRegionClassification', () => {
+      const tce = tceFake();
+      tce.testForm.value = { subjectId: 3, topicId: 7, subtopicId: 11 };
+      component.testCreateEnhancedComponent = tce as any;
+      const sel = jsonSelectorFake(true);
+      component.imageSelector = sel as any;
+
+      component.insSubtopicId = 11;
+
+      expect(sel.updateRegionClassification).toHaveBeenCalledWith(0, {
+        subjectId: 3,
+        topicId: 7,
+        subtopicIds: [11],
+      });
+    });
+
+    it('insSubjectId_Set_JsonModeNewSubject_ResetsTopicAndSubtopics', () => {
+      component.testCreateEnhancedComponent = tceFake() as any;
+      const sel = jsonSelectorFake(true);
+      component.imageSelector = sel as any;
+
+      component.insSubjectId = 5;
+
+      expect(sel.updateRegionClassification).toHaveBeenCalledWith(0, { subjectId: 5, topicId: null, subtopicIds: [] });
+    });
+
+    it('insSubjectId_Set_JsonModeSameSubject_KeepsRegionClassification', () => {
+      component.testCreateEnhancedComponent = tceFake() as any;
+      const sel = jsonSelectorFake(true);
+      component.imageSelector = sel as any;
+
+      component.insSubjectId = 3;
+
+      expect(sel.updateRegionClassification).not.toHaveBeenCalled();
+    });
+
+    it('detectorActions_JsonMode_NeverCallPredict', () => {
+      const predict = jasmine.createSpy('predict');
+      const alignAllAnswers = jasmine.createSpy('alignAllAnswers');
+      const autoAlignSet = jasmine.createSpy('autoAlign.set');
+      component.imageSelector = makeImageSelectorFake({
+        coordinateJsonMode: () => true,
+        predict,
+        alignAllAnswers,
+        autoAlign: Object.assign(() => false, { set: autoAlignSet }),
+      }) as any;
+
+      component.triggerPredict();
+      component.askAi();
+      component.setAutoAlign(true);
+      component.triggerAlign();
+
+      expect(predict).not.toHaveBeenCalled();
+      expect(autoAlignSet).not.toHaveBeenCalled();
+      expect(alignAllAnswers).toHaveBeenCalledTimes(1);
+    });
+
+    it('detectorActions_NormalMode_StillCallPredict', () => {
+      const predict = jasmine.createSpy('predict');
+      component.imageSelector = makeImageSelectorFake({
+        coordinateJsonMode: () => false,
+        predict,
+        autoAlign: Object.assign(() => false, { set: jasmine.createSpy('autoAlign.set') }),
+      }) as any;
+
+      component.triggerPredict();
+      component.askAi();
+      component.setAutoAlign(true);
+      component.triggerAlign();
+
+      expect(predict).toHaveBeenCalledTimes(4);
+    });
+
+    it('insSubtopicId_Set_NormalMode_DoesNotTouchRegion', () => {
+      component.testCreateEnhancedComponent = tceFake() as any;
+      const sel = jsonSelectorFake(false);
+      component.imageSelector = sel as any;
+
+      component.insSubtopicId = 11;
+
+      expect(sel.updateRegionClassification).not.toHaveBeenCalled();
+    });
   });
 
   describe('onPreviewQuestionChange (issue #76 — unclassified region must not wipe test selection)', () => {

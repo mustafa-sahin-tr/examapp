@@ -61,6 +61,7 @@
     "import": "İçe Aktar",
     "autoDetect": "Otomatik Algıla",
     "noPages": "Henüz sayfa yok.",
+    "coordinateJsonMode": "Koordinat JSON modu",
     "dropzoneTitle": "Taranmış sayfaları buraya sürükle",
     "chooseFile": "Dosya Seç",
     "dropzoneNote": "Klasör adından kitap adı otomatik doldurulur.",
@@ -83,7 +84,8 @@
     "previousPage": "Önceki sayfa",
     "nextPage": "Sonraki sayfa",
     "bulkSaveSuccess": "Sorular başarıyla kaydedildi",
-    "invalidFieldPath": "Hatalı alan yolu:"
+    "invalidFieldPath": "Hatalı alan yolu:",
+    "detectorDisabledInJsonMode": "Koordinat JSON modunda soru tespiti kapalı; bölgeler JSON'dan gelir."
   },
   "inspector": {
     "quickCreateTitle": "Yeni Test Oluştur",

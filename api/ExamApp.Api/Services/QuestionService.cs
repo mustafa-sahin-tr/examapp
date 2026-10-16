@@ -506,107 +506,47 @@ public class QuestionService : IQuestionService
 
                 }
 
-                // Validate classification consistency:
+                // Validate classification consistency (header + issue #454 per-question overrides):
                 // - All provided SubTopics must belong to the same Topic.
-                // - That Topic must match Header.TopicId (the Question.TopicId being set).
-                // - Header.TopicId's Topic.SubjectId must match Header.SubjectId (Question.SubjectId being set).
-                Topic? headerTopic = null;
-                Subject? headerSubject = null;
+                // - That Topic must match the TopicId being set on the Question.
+                // - The Topic's SubjectId must match the SubjectId being set on the Question.
+                // Lookups are cached per request so per-question validation does not cause N+1.
+                var classificationLookups = new ClassificationLookupCache();
+                await ValidateClassificationAsync(
+                    soruDto.Header.SubjectId, soruDto.Header.TopicId, soruDto.Header.Subtopics, classificationLookups);
 
-                if (soruDto.Header.SubjectId.HasValue && soruDto.Header.SubjectId.Value > 0)
+                var headerClassificationSource = ClassificationSource.Human;
+                if (!string.IsNullOrEmpty(soruDto.Header.ClassificationSource) &&
+                    Enum.TryParse<ClassificationSource>(soruDto.Header.ClassificationSource, ignoreCase: true, out var parsedHeaderSource) &&
+                    Enum.IsDefined(parsedHeaderSource))
                 {
-                    headerSubject = await _context.Subjects
-                        .FirstOrDefaultAsync(s => s.Id == soruDto.Header.SubjectId.Value);
+                    headerClassificationSource = parsedHeaderSource;
                 }
 
-                if (soruDto.Header.TopicId.HasValue && soruDto.Header.TopicId.Value > 0)
+                // Issue #454: questions with a Classification object get their own effective values
+                // (field-level fallback to the header); questions without one keep the header path below.
+                var questionClassifications = new Dictionary<BulkQuestionDto, EffectiveQuestionClassification>(ReferenceEqualityComparer.Instance);
+                var headerSubTopicIds = NormalizeSubTopicIds(soruDto.Header.Subtopics);
+                foreach (var questionDto in soruDto.Questions)
                 {
-                    headerTopic = await _context.Topics
-                        .Include(t => t.Subject)
-                        .FirstOrDefaultAsync(t => t.Id == soruDto.Header.TopicId.Value);
-
-                    if (headerTopic == null)
+                    if (questionDto.Classification == null)
                     {
-                        throw new InvalidOperationException(_localizer["questions.bulk.invalidTopicId", soruDto.Header.TopicId.Value]);
+                        continue;
                     }
 
-                    if (soruDto.Header.SubjectId.HasValue && soruDto.Header.SubjectId.Value > 0)
+                    var effective = ResolveQuestionClassification(
+                        questionDto.Classification, soruDto.Header, headerSubTopicIds, headerClassificationSource);
+
+                    var differsFromHeader = effective.SubjectId != soruDto.Header.SubjectId
+                        || effective.TopicId != soruDto.Header.TopicId
+                        || !effective.SubTopicIds.ToHashSet().SetEquals(headerSubTopicIds);
+                    if (differsFromHeader)
                     {
-                        var questionSubjectId = soruDto.Header.SubjectId.Value;
-                        if (headerTopic.SubjectId != questionSubjectId)
-                        {
-                            var unknownName = _localizer["questions.unknownName"].Value;
-                            var headerSubjectName = headerSubject?.Name ?? unknownName;
-                            var topicSubjectName = headerTopic.Subject?.Name ?? unknownName;
-                            throw new InvalidOperationException(_localizer[
-                                "questions.bulk.subjectTopicMismatch",
-                                questionSubjectId, headerSubjectName, headerTopic.Id, headerTopic.Name,
-                                headerTopic.SubjectId, topicSubjectName]);
-                        }
+                        await ValidateClassificationAsync(
+                            effective.SubjectId, effective.TopicId, effective.SubTopicIds, classificationLookups);
                     }
-                }
 
-                if (soruDto.Header.Subtopics != null && soruDto.Header.Subtopics.Any())
-                {
-                    var normalizedSubtopicIds = soruDto.Header.Subtopics
-                        .Where(id => id > 0)
-                        .Distinct()
-                        .ToList();
-
-                    if (normalizedSubtopicIds.Count > 0)
-                    {
-                        var subtopics = await _context.SubTopics
-                            .Include(st => st.Topic)
-                            .Where(st => normalizedSubtopicIds.Contains(st.Id))
-                            .ToListAsync();
-
-                        var missingSubtopics = normalizedSubtopicIds.Except(subtopics.Select(st => st.Id)).ToList();
-                        if (missingSubtopics.Count > 0)
-                        {
-                            throw new InvalidOperationException(_localizer[
-                                "questions.bulk.invalidSubTopicIds", string.Join(", ", missingSubtopics)]);
-                        }
-
-                        var distinctTopicIds = subtopics
-                            .Select(st => st.TopicId)
-                            .Distinct()
-                            .ToList();
-
-                        if (distinctTopicIds.Count > 1)
-                        {
-                            var details = string.Join(", ", subtopics.Select(st =>
-                                $"SubTopic(Id={st.Id}, Name='{st.Name}') -> TopicId={st.TopicId} ('{st.Topic?.Name ?? "?"}')"));
-
-                            throw new InvalidOperationException(_localizer[
-                                "questions.bulk.subTopicsFromMultipleTopics", details]);
-                        }
-
-                        var subtopicsTopicId = distinctTopicIds[0];
-
-                        // If TopicId is missing but subtopics are present, we cannot reliably set Question.TopicId.
-                        if (!soruDto.Header.TopicId.HasValue || soruDto.Header.TopicId.Value <= 0)
-                        {
-                            var details = string.Join(", ", subtopics.Select(st =>
-                                $"SubTopic(Id={st.Id}, Name='{st.Name}') TopicId={st.TopicId} ('{st.Topic?.Name ?? "?"}')"));
-
-                            throw new InvalidOperationException(_localizer[
-                                "questions.bulk.topicIdMissingWithSubTopics", subtopicsTopicId, details]);
-                        }
-
-                        var questionTopicId = soruDto.Header.TopicId.Value;
-                        if (subtopicsTopicId != questionTopicId)
-                        {
-                            var unknownName = _localizer["questions.unknownName"].Value;
-                            var questionTopicName = headerTopic?.Name ?? unknownName;
-                            var subTopicExample = subtopics.First();
-                            var subTopicTopicName = subTopicExample.Topic?.Name ?? unknownName;
-
-                            throw new InvalidOperationException(_localizer[
-                                "questions.bulk.subTopicTopicMismatch",
-                                questionTopicId, questionTopicName, subTopicExample.Id,
-                                subTopicExample.Name, subTopicExample.TopicId, subTopicTopicName]);
-                        }
-                    }
+                    questionClassifications[questionDto] = effective;
                 }
                 string imageUrl = string.Empty;
                 // 🔹 1. Resmi MinIO'ya kaydetmeden önce, her Question ve Passage için crop işlemi yapıp ayrı dosya olarak sakla
@@ -752,12 +692,9 @@ public class QuestionService : IQuestionService
                     }
 
 
-                    var classificationSource = ClassificationSource.Human;
-                    if (!string.IsNullOrEmpty(soruDto.Header.ClassificationSource) &&
-                        Enum.TryParse<ClassificationSource>(soruDto.Header.ClassificationSource, ignoreCase: true, out var parsedSource))
-                    {
-                        classificationSource = parsedSource;
-                    }
+                    // Issue #454: per-question classification (already validated above) or the header.
+                    questionClassifications.TryGetValue(questionDto, out var questionClassification);
+                    var classificationSource = questionClassification?.Source ?? headerClassificationSource;
 
                     var question = new Question
                     {
@@ -776,13 +713,23 @@ public class QuestionService : IQuestionService
                             ? null
                             : questionDto.InteractionPlan,
                         ShowPassageFirst = questionDto.ShowPassageFirst,
-                        SubjectId = soruDto.Header.SubjectId,
-                        TopicId = soruDto.Header.TopicId,
+                        SubjectId = questionClassification != null ? questionClassification.SubjectId : soruDto.Header.SubjectId,
+                        TopicId = questionClassification != null ? questionClassification.TopicId : soruDto.Header.TopicId,
                         PassageId = matchedPassage?.Id,
                         ClassificationSource = classificationSource
                     };
 
-                    if (soruDto.Header.Subtopics != null && soruDto.Header.Subtopics.Any())
+                    if (questionClassification != null)
+                    {
+                        if (questionClassification.SubTopicIds.Count > 0)
+                        {
+                            question.QuestionSubTopics = questionClassification.SubTopicIds.Select(subTopicId => new QuestionSubTopic
+                            {
+                                SubTopicId = subTopicId
+                            }).ToList();
+                        }
+                    }
+                    else if (soruDto.Header.Subtopics != null && soruDto.Header.Subtopics.Any())
                     {
                         question.QuestionSubTopics = soruDto.Header.Subtopics.Select(subTopicId => new QuestionSubTopic
                         {
@@ -1021,6 +968,211 @@ public class QuestionService : IQuestionService
         }
     }
 
+
+    /// <summary>
+    /// Issue #454: effective per-question classification. Field-level fallback to the header:
+    /// SubjectId/TopicId null or 0 → header value; SubTopicIds empty → header subtopics, but only when the
+    /// effective topic equals the header topic (header subtopics belong to the header topic, inheriting them
+    /// under a different topic would always fail validation); Source null/unparseable → header source.
+    /// </summary>
+    private static EffectiveQuestionClassification ResolveQuestionClassification(
+        BulkQuestionClassificationDto classification,
+        HeaderInfo header,
+        List<int> headerSubTopicIds,
+        ClassificationSource headerSource)
+    {
+        var subjectId = classification.SubjectId is > 0 ? classification.SubjectId : header.SubjectId;
+        var topicId = classification.TopicId is > 0 ? classification.TopicId : header.TopicId;
+
+        var ownSubTopicIds = NormalizeSubTopicIds(classification.SubTopicIds);
+        var subTopicIds = ownSubTopicIds.Count > 0
+            ? ownSubTopicIds
+            : topicId == header.TopicId ? headerSubTopicIds : new List<int>();
+
+        var source = headerSource;
+        if (!string.IsNullOrWhiteSpace(classification.Source) &&
+            Enum.TryParse<ClassificationSource>(classification.Source.Trim(), ignoreCase: true, out var parsed) &&
+            Enum.IsDefined(parsed))
+        {
+            source = parsed;
+        }
+
+        return new EffectiveQuestionClassification(subjectId, topicId, subTopicIds, source);
+    }
+
+    private static List<int> NormalizeSubTopicIds(IEnumerable<int>? ids) =>
+        ids?.Where(id => id > 0).Distinct().ToList() ?? new List<int>();
+
+    /// <summary>
+    /// Classification consistency check shared by the header and per-question overrides (#454):
+    /// the topic must exist and belong to the subject; all subtopics must exist, share one topic and that
+    /// topic must equal <paramref name="topicId"/>; subtopics without a topic are rejected.
+    /// Throws <see cref="InvalidOperationException"/> with the localized message (caller rolls back).
+    /// </summary>
+    private async Task ValidateClassificationAsync(
+        int? subjectId, int? topicId, IEnumerable<int>? subtopicIds, ClassificationLookupCache cache)
+    {
+        Topic? topic = null;
+        Subject? subject = null;
+
+        if (subjectId.HasValue && subjectId.Value > 0)
+        {
+            subject = await GetSubjectAsync(subjectId.Value, cache);
+
+            if (subject == null)
+            {
+                throw new InvalidOperationException(_localizer["questions.bulk.invalidSubjectId", subjectId.Value]);
+            }
+        }
+
+        if (topicId.HasValue && topicId.Value > 0)
+        {
+            topic = await GetTopicAsync(topicId.Value, cache);
+
+            if (topic == null)
+            {
+                throw new InvalidOperationException(_localizer["questions.bulk.invalidTopicId", topicId.Value]);
+            }
+
+            if (subjectId.HasValue && subjectId.Value > 0)
+            {
+                var questionSubjectId = subjectId.Value;
+                if (topic.SubjectId != questionSubjectId)
+                {
+                    var unknownName = _localizer["questions.unknownName"].Value;
+                    var subjectName = subject?.Name ?? unknownName;
+                    var topicSubjectName = topic.Subject?.Name ?? unknownName;
+                    throw new InvalidOperationException(_localizer[
+                        "questions.bulk.subjectTopicMismatch",
+                        questionSubjectId, subjectName, topic.Id, topic.Name,
+                        topic.SubjectId, topicSubjectName]);
+                }
+            }
+        }
+
+        var normalizedSubtopicIds = NormalizeSubTopicIds(subtopicIds);
+        if (normalizedSubtopicIds.Count == 0)
+        {
+            return;
+        }
+
+        var subtopics = await GetSubTopicsAsync(normalizedSubtopicIds, cache);
+
+        var missingSubtopics = normalizedSubtopicIds.Except(subtopics.Select(st => st.Id)).ToList();
+        if (missingSubtopics.Count > 0)
+        {
+            throw new InvalidOperationException(_localizer[
+                "questions.bulk.invalidSubTopicIds", string.Join(", ", missingSubtopics)]);
+        }
+
+        var distinctTopicIds = subtopics
+            .Select(st => st.TopicId)
+            .Distinct()
+            .ToList();
+
+        if (distinctTopicIds.Count > 1)
+        {
+            var details = string.Join(", ", subtopics.Select(st =>
+                $"SubTopic(Id={st.Id}, Name='{st.Name}') -> TopicId={st.TopicId} ('{st.Topic?.Name ?? "?"}')"));
+
+            throw new InvalidOperationException(_localizer[
+                "questions.bulk.subTopicsFromMultipleTopics", details]);
+        }
+
+        var subtopicsTopicId = distinctTopicIds[0];
+
+        // If TopicId is missing but subtopics are present, we cannot reliably set Question.TopicId.
+        if (!topicId.HasValue || topicId.Value <= 0)
+        {
+            var details = string.Join(", ", subtopics.Select(st =>
+                $"SubTopic(Id={st.Id}, Name='{st.Name}') TopicId={st.TopicId} ('{st.Topic?.Name ?? "?"}')"));
+
+            throw new InvalidOperationException(_localizer[
+                "questions.bulk.topicIdMissingWithSubTopics", subtopicsTopicId, details]);
+        }
+
+        var questionTopicId = topicId.Value;
+        if (subtopicsTopicId != questionTopicId)
+        {
+            var unknownName = _localizer["questions.unknownName"].Value;
+            var questionTopicName = topic?.Name ?? unknownName;
+            var subTopicExample = subtopics.First();
+            var subTopicTopicName = subTopicExample.Topic?.Name ?? unknownName;
+
+            throw new InvalidOperationException(_localizer[
+                "questions.bulk.subTopicTopicMismatch",
+                questionTopicId, questionTopicName, subTopicExample.Id,
+                subTopicExample.Name, subTopicExample.TopicId, subTopicTopicName]);
+        }
+    }
+
+    private async Task<Subject?> GetSubjectAsync(int id, ClassificationLookupCache cache)
+    {
+        if (!cache.Subjects.TryGetValue(id, out var subject))
+        {
+            subject = await _context.Subjects.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
+            cache.Subjects[id] = subject;
+        }
+
+        return subject;
+    }
+
+    private async Task<Topic?> GetTopicAsync(int id, ClassificationLookupCache cache)
+    {
+        if (!cache.Topics.TryGetValue(id, out var topic))
+        {
+            topic = await _context.Topics
+                .AsNoTracking()
+                .Include(t => t.Subject)
+                .FirstOrDefaultAsync(t => t.Id == id);
+            cache.Topics[id] = topic;
+        }
+
+        return topic;
+    }
+
+    /// <summary>Returns the existing subtopics among <paramref name="ids"/> (one query for the uncached ids).</summary>
+    private async Task<List<SubTopic>> GetSubTopicsAsync(List<int> ids, ClassificationLookupCache cache)
+    {
+        var unknownIds = ids
+            .Where(id => !cache.SubTopics.ContainsKey(id) && !cache.MissingSubTopicIds.Contains(id))
+            .ToList();
+
+        if (unknownIds.Count > 0)
+        {
+            var loaded = await _context.SubTopics
+                .AsNoTracking()
+                .Include(st => st.Topic)
+                .Where(st => unknownIds.Contains(st.Id))
+                .ToListAsync();
+
+            foreach (var st in loaded)
+            {
+                cache.SubTopics[st.Id] = st;
+            }
+
+            foreach (var id in unknownIds.Where(id => !cache.SubTopics.ContainsKey(id)))
+            {
+                cache.MissingSubTopicIds.Add(id);
+            }
+        }
+
+        return ids
+            .Where(cache.SubTopics.ContainsKey)
+            .Select(id => cache.SubTopics[id])
+            .ToList();
+    }
+
+    private sealed record EffectiveQuestionClassification(
+        int? SubjectId, int? TopicId, List<int> SubTopicIds, ClassificationSource Source);
+
+    private sealed class ClassificationLookupCache
+    {
+        public Dictionary<int, Subject?> Subjects { get; } = new();
+        public Dictionary<int, Topic?> Topics { get; } = new();
+        public Dictionary<int, SubTopic> SubTopics { get; } = new();
+        public HashSet<int> MissingSubTopicIds { get; } = new();
+    }
 
     private sealed class AnswerCropInfo
     {

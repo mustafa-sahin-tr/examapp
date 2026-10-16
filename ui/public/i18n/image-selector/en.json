@@ -60,5 +60,13 @@
     "questionRemoved": "The question was removed from the worksheet.",
     "previewClosedNoQuestions": "The preview was closed because no questions are left in the worksheet.",
     "questionRemoveError": "Something went wrong while deleting the question."
+  },
+  "coordinateJson": {
+    "activated": "Coordinate JSON found: {{questions}} questions on {{pages}} pages; using the JSON instead of question detection.",
+    "skippedEntries": "{{count}} invalid entries were skipped.",
+    "missingImages": "{{count}} images listed in the JSON are not in the folder: {{names}}",
+    "unusable": "question-coordinates.json could not be read or has no valid entries; the folder was opened normally.",
+    "noMatchingImages": "None of the images in question-coordinates.json are in the folder; the folder was opened normally.",
+    "detectorDisabled": "Question detection is off in coordinate JSON mode; regions come from the JSON."
   }
 }

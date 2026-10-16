@@ -345,6 +345,10 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   setAutoAlign(checked: boolean) {
+    // Issue #454: JSON modunda detector JSON bölgelerini ve sınıflandırmayı silerdi.
+    if (this.coordinateJsonMode) {
+      return;
+    }
     this.imageSelector.autoAlign.set(checked);
     this.imageSelector.predict();
   }
@@ -404,6 +408,11 @@ export class QuestionCanvasComponent implements OnInit {
     return this.imageSelector?.imageFiles ?? [];
   }
 
+  /** Issue #454: klasörde koordinat JSON'u bulunduysa ray'da mod göstergesi. */
+  get coordinateJsonMode(): boolean {
+    return this.imageSelector?.coordinateJsonMode() ?? false;
+  }
+
   get currentPageIndex(): number {
     return this.imageSelector?.currentImageIndex ?? 0;
   }
@@ -447,10 +456,18 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   triggerPredict() {
+    if (this.coordinateJsonMode) {
+      return;
+    }
     this.imageSelector.predict();
   }
 
   triggerAlign() {
+    // Issue #454: JSON modunda detector'a gitmeden mevcut şıkları yerinde hizala.
+    if (this.coordinateJsonMode) {
+      this.imageSelector.alignAllAnswers();
+      return;
+    }
     this.imageSelector.autoAlign.set(true);
     this.imageSelector.predict();
   }
@@ -464,6 +481,9 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   askAi() {
+    if (this.coordinateJsonMode) {
+      return;
+    }
     this.imageSelector.predict();
   }
 
@@ -646,6 +666,10 @@ export class QuestionCanvasComponent implements OnInit {
     this.tce?.testForm?.patchValue({ subjectId: v ?? '' }, { emitEvent: false });
     this.tce?.onSubjectChange(v);
     this.pushInsClassificationToForm();
+    // onSubjectChange konu/alt konuyu temizler; soru bazındaki sınıflandırma da aynı şekilde sıfırlanır.
+    this.pushInsClassificationToRegion((r) =>
+      r.subjectId === (v ?? undefined) ? null : { subjectId: v, topicId: null, subtopicIds: [] }
+    );
   }
 
   get insTopicId(): number | null {
@@ -658,6 +682,9 @@ export class QuestionCanvasComponent implements OnInit {
       this.tce?.onTopicChange(v);
     }
     this.pushInsClassificationToForm();
+    this.pushInsClassificationToRegion((r) =>
+      r.topicId === (v ?? undefined) ? null : { subjectId: this.insSubjectId, topicId: v, subtopicIds: [] }
+    );
   }
 
   get insSubtopicId(): number | null {
@@ -667,6 +694,34 @@ export class QuestionCanvasComponent implements OnInit {
     const v = value || null;
     this.tce?.testForm?.patchValue({ subtopicId: v ?? '' }, { emitEvent: false });
     this.pushInsClassificationToForm();
+    this.pushInsClassificationToRegion(() => ({
+      subjectId: this.insSubjectId,
+      topicId: this.insTopicId,
+      subtopicIds: v ? [v] : [],
+    }));
+  }
+
+  /**
+   * Issue #454: koordinat JSON modunda müfettiş panelindeki değişiklik seçili sorunun soru bazındaki
+   * sınıflandırmasına yazılır (kaynak AI kalır; JSON modu soruları Gemini'ye gitmez). `build` null dönerse (değer değişmedi) dokunulmaz; böylece
+   * JSON'dan gelen çoklu alt konular gereksiz yere tek alt konuya düşmez. JSON modu kapalıyken no-op.
+   */
+  private pushInsClassificationToRegion(
+    build: (region: QuestionRegion) => { subjectId: number | null; topicId: number | null; subtopicIds: number[] } | null
+  ) {
+    const selector = this.imageSelector;
+    if (!selector?.coordinateJsonMode?.()) {
+      return;
+    }
+    const index = selector.activeRegionIndex;
+    const region = index == null ? null : selector.regions()[index];
+    if (index == null || !region) {
+      return;
+    }
+    const next = build(region);
+    if (next) {
+      selector.updateRegionClassification(index, next);
+    }
   }
 
   private toNullableId(raw: unknown): number | null {

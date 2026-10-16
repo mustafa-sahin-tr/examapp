@@ -36,6 +36,15 @@ import {
   ClassificationSelection,
 } from '../../shared/components/classification-selector/classification-selector.component';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import {
+  COORDINATE_JSON_MAX_BYTES,
+  CoordinateQuestion,
+  buildRegionsFromCoordinates,
+  coordinateFileKey,
+  isCoordinateJsonFile,
+  parseCoordinateJson,
+  selectCoordinateImageFiles,
+} from './coordinate-json';
 
 /**
  * Soru kırpma/yükleme akışının metinleri kendi scope'unda: `public/i18n/image-selector/<lang>.json`
@@ -152,6 +161,15 @@ export class ImageSelectorComponent {
   public regions = signal<QuestionRegion[]>([]);
   public imageSrc = signal<string | null>(null);
   public imagName = signal<string | null>(null);
+  /**
+   * Issue #454: seçilen klasörde `question-coordinates.json` bulunduysa açık. Açıkken sayfalar JSON'da
+   * geçen görsellerdir ve bölgeler question-detector yerine JSON'dan kurulur.
+   */
+  public readonly coordinateJsonMode = signal(false);
+  /** JSON modunda sayfa kayıtları (anahtar: küçük harfli dosya adı). */
+  private coordinatePages = new Map<string, CoordinateQuestion[]>();
+  /** Üst üste dosya seçiminde geç biten JSON okumasının yeni seçimi ezmemesi için sayaç. */
+  private fileSelectionSeq = 0;
   questionDetectorService = inject(QuestionDetectorService);
   questionService = inject(QuestionService);
   testService = inject(TestService);
@@ -739,14 +757,153 @@ export class ImageSelectorComponent {
   handleFilesInput2(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
-      this.imageFiles = Array.from(input.files)
-        .filter((file) => file.type.startsWith('image/'))
-        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
-      const firstFolder = this.extractBookName(this.imageFiles[0]);
-      this.bookName.set(firstFolder);
-      this.currentImageIndex = 0;
-      this.loadCurrentImage();
+      const files = Array.from(input.files);
+      const seq = ++this.fileSelectionSeq;
+      const coordinateFile = files.find((file) => isCoordinateJsonFile(file));
+      if (coordinateFile) {
+        void this.startCoordinateJsonMode(coordinateFile, files, seq);
+        return;
+      }
+      this.startNormalMode(files);
     }
+  }
+
+  /** Bugünkü davranış: klasördeki tüm görseller, detector ile (issue #454 kriter 7). */
+  private startNormalMode(files: File[]) {
+    this.disableCoordinateJsonMode();
+    this.imageFiles = files
+      .filter((file) => file.type.startsWith('image/'))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+    this.openFirstPage();
+  }
+
+  private openFirstPage() {
+    const firstFolder = this.extractBookName(this.imageFiles[0]);
+    this.bookName.set(firstFolder);
+    this.currentImageIndex = 0;
+    this.loadCurrentImage();
+  }
+
+  private disableCoordinateJsonMode() {
+    this.coordinateJsonMode.set(false);
+    this.coordinatePages = new Map();
+  }
+
+  /**
+   * Issue #454: JSON'u okuyup doğrular; kullanılabilir kayıt yoksa normal moda düşer. Atlanan kayıtlar ve
+   * JSON'da olup klasörde bulunmayan görseller snackbar ile bildirilir.
+   */
+  private async startCoordinateJsonMode(jsonFile: File, files: File[], seq: number): Promise<void> {
+    let text: string | null = null;
+    if (jsonFile.size <= COORDINATE_JSON_MAX_BYTES) {
+      try {
+        text = await jsonFile.text();
+      } catch {
+        text = null;
+      }
+    }
+    if (seq !== this.fileSelectionSeq) {
+      return; // bu arada başka bir seçim yapıldı
+    }
+
+    const parsed = text === null ? null : parseCoordinateJson(text);
+    if (!parsed || parsed.invalidJson || parsed.validCount === 0) {
+      this.notify('coordinateJson.unusable');
+      this.startNormalMode(files);
+      return;
+    }
+
+    const selection = selectCoordinateImageFiles(files, parsed.pages);
+    if (selection.files.length === 0) {
+      this.notify('coordinateJson.noMatchingImages');
+      this.startNormalMode(files);
+      return;
+    }
+
+    this.coordinatePages = parsed.pages;
+    this.coordinateJsonMode.set(true);
+    this.imageFiles = selection.files;
+
+    const notes = [
+      this.tr('coordinateJson.activated', { questions: parsed.validCount, pages: selection.files.length }),
+    ];
+    if (parsed.skippedCount > 0) {
+      notes.push(this.tr('coordinateJson.skippedEntries', { count: parsed.skippedCount }));
+    }
+    if (selection.missing.length > 0) {
+      const shown = selection.missing.slice(0, 5).join(', ');
+      const more = selection.missing.length > 5 ? ` (+${selection.missing.length - 5})` : '';
+      notes.push(
+        this.tr('coordinateJson.missingImages', { count: selection.missing.length, names: `${shown}${more}` })
+      );
+    }
+    const hasProblems = parsed.skippedCount > 0 || selection.missing.length > 0;
+    this.snackBar.open(notes.join(' '), this.tr('common.close'), { duration: hasProblems ? 10000 : 4000 });
+
+    this.openFirstPage();
+  }
+
+  private notify(key: string) {
+    this.snackBar.open(this.tr(key), this.tr('common.close'), { duration: 5000 });
+  }
+
+  /** Issue #454: JSON modunda "Hizala" — detector'a gitmeden mevcut bölgelerin şıklarını hizalar. */
+  public alignAllAnswers() {
+    const count = this.regions().length;
+    for (let i = 0; i < count; i++) {
+      this.alignAnswers(i, true);
+    }
+    this.regions.set([...this.regions()]);
+    this.recomputeWarnings();
+    this.drawImage();
+  }
+
+  /** Issue #454: JSON modunda sayfanın bölgelerini detector'ı çağırmadan JSON'dan kurar. */
+  private applyCoordinateRegions(fileName: string) {
+    const questions = this.coordinatePages.get(coordinateFileKey(fileName)) ?? [];
+    this.regions.set(
+      buildRegionsFromCoordinates(questions, { width: this.img.naturalWidth, height: this.img.naturalHeight })
+    );
+    this.recomputeWarnings();
+  }
+
+  /**
+   * Issue #454: JSON modunda kullanıcı müfettiş panelinde bir sorunun sınıflandırmasını değiştirirse o
+   * sorunun soru bazında kaydedilecek sınıflandırmasını günceller (kaynak AI kalır). JSON modu kapalıyken
+   * hiçbir şey yapmaz (bugünkü davranış).
+   */
+  public updateRegionClassification(
+    index: number,
+    selection: { subjectId: number | null; topicId: number | null; subtopicIds: number[] }
+  ) {
+    if (!this.coordinateJsonMode()) {
+      return;
+    }
+    const regions = this.regions();
+    const region = regions[index];
+    if (!region) {
+      return;
+    }
+    const subtopicIds = selection.subtopicIds.filter((id) => Number.isInteger(id) && id > 0);
+    // Kullanıcı kararı: JSON modundaki sorular Gemini'ye hiç gitmesin (consumer yalnız "AI"yı atlar),
+    // bu yüzden elle düzeltmede de kaynak AI kalır.
+    const updated: QuestionRegion = {
+      ...region,
+      subjectId: selection.subjectId ?? undefined,
+      topicId: selection.topicId ?? undefined,
+      subtopicId: subtopicIds[0],
+      subtopicIds,
+      classificationSource: ClassificationSource.AI,
+      classification: {
+        subjectId: selection.subjectId,
+        topicId: selection.topicId,
+        subTopicIds: subtopicIds,
+        source: 'AI',
+      },
+    };
+    const next = [...regions];
+    next[index] = updated;
+    this.regions.set(next);
   }
 
   private extractBookName(file: File | undefined): string | null {
@@ -784,7 +941,11 @@ export class ImageSelectorComponent {
 
       this.img.onload = () => {
         if (this.selectionModeLocked() !== 'answer') {
-          this.predict();
+          if (this.coordinateJsonMode()) {
+            this.applyCoordinateRegions(file.name);
+          } else {
+            this.predict();
+          }
         } else {
           this.regions.set([]);
           const region = {
@@ -847,6 +1008,8 @@ export class ImageSelectorComponent {
     const file = (event.target as HTMLInputElement).files?.[0];
 
     if (file) {
+      this.fileSelectionSeq++;
+      this.disableCoordinateJsonMode();
       const reader = new FileReader();
       this.imagName.set(file.name);
       this.bookName.set(this.extractBookName(file));
@@ -1840,6 +2003,11 @@ export class ImageSelectorComponent {
   }
 
   public predict() {
+    // Issue #454: JSON modunda detector JSON bölgelerini ve sınıflandırmayı ezerdi; çağıranlar zaten
+    // devre dışı, bu da son emniyet.
+    if (this.coordinateJsonMode()) {
+      return;
+    }
     this.snackBar.open(this.tr('messages.analysisStarted'), this.tr('common.ok'), { duration: 2000 });
     this.inProgress.set(true);
     const imageData = { image_base64: this.imageData() };

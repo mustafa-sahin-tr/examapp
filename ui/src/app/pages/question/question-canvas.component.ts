@@ -61,6 +61,7 @@ export class QuestionCanvasComponent implements OnInit {
   isEditMode: boolean = false;
   resetTest: boolean = false;
   public showSidePanel = signal<boolean>(true);
+  public showPagesPanel = signal<boolean>(true);
   /** Üst breadcrumb'daki "Yeni test oluştur" ile açılan hızlı oluşturma paneli. */
   public showQuickCreate = signal<boolean>(false);
 
@@ -478,6 +479,10 @@ export class QuestionCanvasComponent implements OnInit {
 
   toggleInspector() {
     this.showSidePanel.set(!this.showSidePanel());
+  }
+
+  togglePagesPanel() {
+    this.showPagesPanel.set(!this.showPagesPanel());
   }
 
   askAi() {

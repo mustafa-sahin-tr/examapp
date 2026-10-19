@@ -57,6 +57,75 @@
     </nav>
 
     <div class="qc-topbar__actions">
+      <div class="qc-tools" role="toolbar" [attr.aria-label]="t('canvas.title')">
+        <button type="button" class="qc-icon-btn qc-icon-btn--flip" [class.is-active]="showPagesPanel()" [disabled]="previewOn"
+          (click)="togglePagesPanel()" [title]="showPagesPanel() ? t('canvas.hidePages') : t('canvas.showPages')"
+          [attr.aria-label]="t('canvas.togglePages')" [attr.aria-pressed]="showPagesPanel()">
+          <mat-icon>view_sidebar</mat-icon>
+        </button>
+
+        <span class="qc-tool-sep"></span>
+
+        <button type="button" class="qc-icon-btn" (click)="fileInput.click()"
+          [title]="t('canvas.import')" [attr.aria-label]="t('canvas.import')">
+          <mat-icon>file_upload</mat-icon>
+        </button>
+        <input #fileInput type="file" (change)="handleFilesInput2($event)" multiple accept="image/*" hidden />
+        <button type="button" class="qc-icon-btn" (click)="folderInput.click()"
+          [title]="t('common.uploadFolder')" [attr.aria-label]="t('common.uploadFolder')">
+          <mat-icon>folder_open</mat-icon>
+        </button>
+        <input #folderInput type="file" (change)="handleFilesInput2($event)" multiple accept="image/*" webkitdirectory hidden />
+        <button type="button" class="qc-icon-btn" (click)="triggerPredict()" [disabled]="coordinateJsonMode"
+          [title]="coordinateJsonMode ? t('canvas.detectorDisabledInJsonMode') : t('canvas.autoDetect')" [attr.aria-label]="t('canvas.autoDetect')">
+          <mat-icon>smart_toy</mat-icon>
+        </button>
+        <button type="button" class="qc-icon-btn" (click)="triggerAlign()"
+          [title]="t('common.align')" [attr.aria-label]="t('common.align')">
+          <mat-icon>align_horizontal_center</mat-icon>
+        </button>
+
+        @if (pageFiles.length > 0) {
+        <span class="qc-tool-sep"></span>
+
+        <button type="button" class="qc-icon-btn" [class.is-active]="autoModeOn"
+          (click)="setAutoMode(!autoModeOn)" [title]="t('canvas.autoAdvanceTitle')" [attr.aria-label]="t('canvas.autoAdvance')">
+          <mat-icon>skip_next</mat-icon>
+        </button>
+        <button type="button" class="qc-icon-btn" [class.is-active]="autoAlignOn"
+          (click)="setAutoAlign(!autoAlignOn)" [disabled]="coordinateJsonMode"
+          [title]="coordinateJsonMode ? t('canvas.detectorDisabledInJsonMode') : t('canvas.autoAlign')" [attr.aria-label]="t('canvas.autoAlign')">
+          <mat-icon>format_align_center</mat-icon>
+        </button>
+        <button type="button" class="qc-icon-btn" (click)="downloadRegionsLite()"
+          [title]="t('canvas.downloadRegionsTitle')" [attr.aria-label]="t('canvas.downloadRegions')">
+          <mat-icon>file_download</mat-icon>
+        </button>
+        }
+
+        <span class="qc-tool-sep"></span>
+
+        <button type="button" class="qc-icon-btn" [class.is-active]="previewOn" (click)="togglePreviewMode()" [disabled]="!canPreview"
+          [title]="t('common.previewTitle')" [attr.aria-label]="t('common.previewTitle')">
+          <mat-icon>visibility</mat-icon>
+        </button>
+        <button type="button" class="qc-icon-btn" (click)="setFullScreen(!fullScreen())"
+          [title]="fullScreen() ? t('canvas.exitFullscreen') : t('canvas.fullscreen')" [attr.aria-label]="t('canvas.fullscreen')">
+          <mat-icon>{{ fullScreen() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+        </button>
+        <button type="button" class="qc-icon-btn" [class.is-active]="showSidePanel()" [disabled]="previewOn"
+          (click)="toggleInspector()" [title]="showSidePanel() ? t('canvas.hideInspector') : t('canvas.showInspector')"
+          [attr.aria-label]="t('canvas.toggleInspector')" [attr.aria-pressed]="showSidePanel()">
+          <mat-icon>view_sidebar</mat-icon>
+        </button>
+      </div>
+
+      @if (coordinateJsonMode) {
+      <div class="qc-mode-chip" role="status">
+        <mat-icon aria-hidden="true">data_object</mat-icon>{{ t('canvas.coordinateJsonMode') }}
+      </div>
+      }
+
       @if (isAdmin) {
       <button type="button" class="qc-btn qc-btn--ghost" (click)="sendToFix()">{{ t('canvas.train') }}</button>
       }
@@ -111,32 +180,16 @@
   </div>
   }
 
-  <div class="qc-body" [class.qc-body--preview]="previewOn">
+  <div class="qc-body" [class.qc-body--preview]="previewOn"
+    [class.qc-body--no-rail]="!showPagesPanel() || previewOn" [class.qc-body--no-inspector]="!showSidePanel() || previewOn">
     <!-- 2. SOL RAY -->
-    <aside class="qc-rail">
-      <div class="qc-rail__head"><span class="qc-dot"></span>{{ t('canvas.pages') }}</div>
-
-      <div class="qc-rail__actions">
-        <button type="button" class="qc-btn qc-btn--ghost qc-btn--block" (click)="fileInput.click()">
-          <mat-icon>file_upload</mat-icon>{{ t('canvas.import') }}
+    <aside class="qc-rail" [class.qc-rail--hidden]="!showPagesPanel()">
+      <div class="qc-rail__head">
+        <span class="qc-rail__title"><span class="qc-dot"></span>{{ t('canvas.pages') }}</span>
+        <button type="button" class="qc-icon-btn qc-icon-btn--sm" (click)="showPagesPanel.set(false)"
+          [title]="t('canvas.hidePages')" [attr.aria-label]="t('canvas.hidePages')">
+          <mat-icon>close</mat-icon>
         </button>
-        <input #fileInput type="file" (change)="handleFilesInput2($event)" multiple accept="image/*" hidden />
-        <button type="button" class="qc-btn qc-btn--ghost qc-btn--block" (click)="folderInput.click()">
-          <mat-icon>folder_open</mat-icon>{{ t('common.uploadFolder') }}
-        </button>
-        <input #folderInput type="file" (change)="handleFilesInput2($event)" multiple accept="image/*" webkitdirectory hidden />
-        <button type="button" class="qc-btn qc-btn--ghost qc-btn--block" (click)="triggerPredict()"
-          [disabled]="coordinateJsonMode" [attr.title]="coordinateJsonMode ? t('canvas.detectorDisabledInJsonMode') : null">
-          <mat-icon>smart_toy</mat-icon>{{ t('canvas.autoDetect') }}
-        </button>
-        <button type="button" class="qc-btn qc-btn--ghost qc-btn--block" (click)="triggerAlign()">
-          <mat-icon>format_align_center</mat-icon>{{ t('common.align') }}
-        </button>
-        @if (coordinateJsonMode) {
-        <div class="qc-rail__mode" role="status">
-          <mat-icon aria-hidden="true">data_object</mat-icon>{{ t('canvas.coordinateJsonMode') }}
-        </div>
-        }
       </div>
 
       <div class="qc-filmstrip">
@@ -166,18 +219,15 @@
       </div>
       }
 
-      <div class="qc-canvas__toolbar" [class.qc-hidden]="(pageFiles.length === 0 && !canPreview) || previewOn"
-        [class.qc-canvas__toolbar--slim]="pageFiles.length === 0">
-        @if (pageFiles.length > 0) {
+      @if (pageFiles.length > 0 && !previewOn) {
+      <div class="qc-canvas__toolbar">
         <div class="qc-segmented">
           <button type="button" [class.is-active]="selectionMode === 'question'" (click)="setSelectionMode('question')">{{ t('canvas.modeQuestion') }}</button>
           <button type="button" [class.is-active]="selectionMode === 'answer'" (click)="setSelectionMode('answer')">{{ t('canvas.modeAnswer') }}</button>
           <button type="button" [class.is-active]="selectionMode === 'passage'" (click)="setSelectionMode('passage')">{{ t('canvas.modePassage') }}</button>
           <button type="button" [class.is-active]="selectionMode === 'dropzone'" (click)="setSelectionMode('dropzone')">{{ t('canvas.modeDropZone') }}</button>
         </div>
-        }
         <div class="qc-canvas__toolbar-right">
-          @if (pageFiles.length > 0) {
           <span class="qc-count" role="group" [attr.aria-label]="t('canvas.answerCountGroup')">
             <span class="qc-count__label">{{ t('canvas.answerCountLabel') }}</span>
             <span class="qc-count__seg">
@@ -186,43 +236,9 @@
               <button type="button" [class.is-active]="answerCount === 5" (click)="setAnswerCount(5)">5</button>
             </span>
           </span>
-
-          <span class="qc-tool-sep"></span>
-
-          <button type="button" class="qc-icon-btn" [class.is-active]="autoModeOn"
-            (click)="setAutoMode(!autoModeOn)" [title]="t('canvas.autoAdvanceTitle')" [attr.aria-label]="t('canvas.autoAdvance')">
-            <mat-icon>skip_next</mat-icon>
-          </button>
-          <button type="button" class="qc-icon-btn" [class.is-active]="autoAlignOn"
-            (click)="setAutoAlign(!autoAlignOn)" [disabled]="coordinateJsonMode"
-            [title]="coordinateJsonMode ? t('canvas.detectorDisabledInJsonMode') : t('canvas.autoAlign')" [attr.aria-label]="t('canvas.autoAlign')">
-            <mat-icon>format_align_center</mat-icon>
-          </button>
-          }
-          <button type="button" class="qc-icon-btn" [class.is-active]="showSidePanel()"
-            (click)="toggleInspector()" [title]="showSidePanel() ? t('canvas.hideInspector') : t('canvas.showInspector')"
-            [attr.aria-label]="t('canvas.toggleInspector')">
-            <mat-icon>view_sidebar</mat-icon>
-          </button>
-          @if (pageFiles.length > 0) {
-          <button type="button" class="qc-icon-btn" (click)="downloadRegionsLite()"
-            [title]="t('canvas.downloadRegionsTitle')" [attr.aria-label]="t('canvas.downloadRegions')">
-            <mat-icon>file_download</mat-icon>
-          </button>
-          }
-
-          <span class="qc-tool-sep"></span>
-
-          <button type="button" class="qc-icon-btn" (click)="togglePreviewMode()" [disabled]="!canPreview"
-            [title]="t('common.previewTitle')" [attr.aria-label]="t('common.previewTitle')">
-            <mat-icon>visibility</mat-icon>
-          </button>
-          <button type="button" class="qc-icon-btn" (click)="setFullScreen(!fullScreen())"
-            [title]="fullScreen() ? t('canvas.exitFullscreen') : t('canvas.fullscreen')" [attr.aria-label]="t('canvas.fullscreen')">
-            <mat-icon>{{ fullScreen() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
-          </button>
         </div>
       </div>
+      }
 
       <div class="qc-canvas__stage">
         <app-image-selector [previewMetaProvider]="previewMetaProvider"
@@ -267,6 +283,10 @@
           </button>
           <button type="button" class="qc-icon-btn" (click)="insSelectNext()" [attr.aria-label]="t('inspector.nextQuestion')">
             <mat-icon>chevron_right</mat-icon>
+          </button>
+          <button type="button" class="qc-icon-btn" (click)="showSidePanel.set(false)"
+            [title]="t('canvas.hideInspector')" [attr.aria-label]="t('canvas.hideInspector')">
+            <mat-icon>close</mat-icon>
           </button>
           }
         </span>

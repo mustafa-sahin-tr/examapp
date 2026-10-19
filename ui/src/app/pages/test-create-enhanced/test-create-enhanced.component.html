@@ -1,243 +1,229 @@
 <div *transloco="let t; prefix: 'test-create'" class="tce" [class.edit-mode]="isEditMode" [class.miniform]="isMiniform">
   <!-- MINIFORM: kompakt hızlı test oluştur -->
   <ng-container *ngIf="isMiniform">
-    <app-test-form
-      [form]="testForm"
-      [grades]="grades"
-      [compact]="true"
-      (onGradeChange)="onGradeChange($event)"
-    ></app-test-form>
-    <button class="btn btn-primary" type="button" [disabled]="testForm.invalid || creatingInline" (click)="createAndContinue()">
+    <app-test-form [form]="testForm" [grades]="grades" [compact]="true"
+      (onGradeChange)="onGradeChange($event)"></app-test-form>
+    <button class="btn btn-primary" type="button" [disabled]="testForm.invalid || creatingInline"
+      (click)="createAndContinue()">
       <mat-icon>{{ creatingInline ? 'hourglass_empty' : 'arrow_forward' }}</mat-icon>
       {{ t(creatingInline ? 'page.creating' : 'page.createAndContinue') }}
     </button>
   </ng-container>
 
   <ng-container *ngIf="!isMiniform">
-  <div class="readonly-banner readonly-banner--error" *ngIf="loadError()">
-    <mat-icon>error_outline</mat-icon>
-    <span>{{ loadError() }}</span>
-    <button type="button" class="rb-retry" (click)="loadTest()">{{ t('page.retry') }}</button>
-  </div>
-  <div class="readonly-banner" *ngIf="isEditMode && !canEdit()">
-    <mat-icon>lock</mat-icon>
-    <span>{{ t('page.readOnly') }}</span>
-  </div>
-  <div class="page-head">
-    <div class="ph-text">
-      <h1>{{ t(isEditMode ? 'page.titleEdit' : 'page.titleNew') }}</h1>
-      <p class="sub">
-        {{ t(isEditMode ? 'page.subtitleEdit' : 'page.subtitleNew') }}
-      </p>
+    <div class="readonly-banner readonly-banner--error" *ngIf="loadError()">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ loadError() }}</span>
+      <button type="button" class="rb-retry" (click)="loadTest()">{{ t('page.retry') }}</button>
     </div>
-  </div>
-
-  <div class="cols">
-    <!-- SOL: FORM -->
-    <div class="stack">
-      <app-test-form
-        [form]="testForm"
-        [books]="books"
-        [bookTests]="bookTests"
-        [grades]="grades"
-        [subjects]="subjects"
-        [topics]="topics"
-        [subtopics]="subtopics"
-        [showAddBookInput]="showAddBookInput"
-        [showAddBookTestInput]="showAddBookTestInput"
-        [isEditMode]="isEditMode"
-        [showApplyToAll]="hasBulkData"
-        (onBookChange)="onBookChange($event)"
-        (openNewBookAdd)="openNewBookAdd()"
-        (onNewBookBlur)="onNewBookBlur()"
-        (openNewBookTestAdd)="openNewBookTestAdd()"
-        (onSubjectChange)="onSubjectChange($event)"
-        (onTopicChange)="onTopicChange($event)"
-        (onGradeChange)="onGradeChange($event)"
-        (onSubmit)="onSubmit()"
-        (onCancel)="navigateToTestList()"
-        (applySubjectToAll)="applySubjectToAllBulk($event)"
-        (applyTopicToAll)="applyTopicToAllBulk($event)"
-        (applySubtopicToAll)="applySubtopicToAllBulk($event)"
-        (applyGradeToAll)="applyGradeToAllBulk($event)"
-      ></app-test-form>
-
-      <!-- KAPAK GÖRSELİ (yalnız düzenleme) -->
-      <section class="card" *ngIf="isEditMode && canEdit()">
-        <h3><span class="dot"></span>{{ t('page.coverTitle') }}</h3>
-        <p class="card-note">{{ t('page.coverNote') }}</p>
-        <div class="drop">
-          <div class="thumb">
-            <img *ngIf="previewImage; else thumbIcon" [src]="previewImage" [alt]="t('page.coverAlt')"
-              [appStorageImageRetry]="coverImageRefresh" />
-            <ng-template #thumbIcon><mat-icon>image</mat-icon></ng-template>
-          </div>
-          <div class="d-body">
-            <div class="d-title">{{ t('page.dropTitle') }}</div>
-            <div class="d-sub">{{ t('page.dropSubtitle') }}</div>
-            <button class="d-btn" type="button" (click)="coverInput.click()" [disabled]="isImageUploading">
-              <mat-icon>{{ isImageUploading ? 'hourglass_empty' : 'upload' }}</mat-icon>
-              {{ t(isImageUploading ? 'page.uploading' : 'page.pickFile') }}
-            </button>
-          </div>
-        </div>
-        <input #coverInput type="file" accept="image/*" hidden (change)="onImageSelected($event)" />
-      </section>
-
-      <!-- GÖRÜNÜRLÜK (yalnız düzenleme, sahibi/admin) -->
-      <section class="card" *ngIf="isEditMode && canEdit()">
-        <h3><span class="dot"></span>{{ t('page.visibilityTitle') }}</h3>
-        <p class="card-note">
-          {{ t('page.visibilityNote') }}
+    <div class="readonly-banner" *ngIf="isEditMode && !canEdit()">
+      <mat-icon>lock</mat-icon>
+      <span>{{ t('page.readOnly') }}</span>
+    </div>
+    <div class="page-head">
+      <div class="ph-text">
+        <h1>{{ t(isEditMode ? 'page.titleEdit' : 'page.titleNew') }}</h1>
+        <p class="sub">
+          {{ t(isEditMode ? 'page.subtitleEdit' : 'page.subtitleNew') }}
         </p>
-        <app-visibility-section
-          [teacherSharing]="teacherSharing()"
-          [studentVisibility]="studentVisibility()"
-          [disabled]="isSavingVisibility()"
-          (visibilityChange)="onVisibilityChange($event)"
-        ></app-visibility-section>
-      </section>
-    </div>
-
-    <!-- SAĞ: DÜZENLEME → ÖNİZLEME / CTA -->
-    <div class="side" *ngIf="isEditMode">
-      <div class="preview-card">
-        <div class="pc-head">{{ t('preview.title') }}</div>
-        <div class="wc">
-          <div class="wc-cover">
-            <span class="pract" *ngIf="previewIsPractice">{{ t('preview.practice') }}</span>
-            <img *ngIf="previewImage; else coverIcon" [src]="previewImage" alt="" [appStorageImageRetry]="coverImageRefresh" />
-            <ng-template #coverIcon><mat-icon>schedule</mat-icon></ng-template>
-          </div>
-          <div class="wc-body">
-            <div class="wc-title">{{ previewName }}</div>
-            <div class="wc-sub" *ngIf="previewSubtitle">{{ previewSubtitle }}</div>
-            <div class="wc-chips" *ngIf="previewChips.length">
-              <span *ngFor="let chip of previewChips">{{ chip }}</span>
-            </div>
-            <div class="wc-meta">
-              <div><mat-icon>menu_book</mat-icon>{{ t('preview.questionCount', { count: previewQuestionCount }) }}</div>
-              <div><mat-icon>schedule</mat-icon>{{ t('preview.duration', { minutes: previewDuration }) }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="cta" *ngIf="canEdit()">
-        <div class="meta-count">
-          <span>{{ t('preview.questionsLabel') }}</span>
-          <b>{{ t('preview.questionCount', { count: previewQuestionCount }) }}</b>
-        </div>
-        <button class="btn btn-primary" type="button" [disabled]="testForm.invalid" (click)="onSubmit()">
-          <mat-icon>check</mat-icon>{{ t('preview.saveChanges') }}
-        </button>
-        <button class="btn btn-ghost" type="button" [disabled]="testForm.invalid" (click)="navigateToQuestionCanvas()">
-          <mat-icon>add</mat-icon>{{ t('preview.addQuestion') }}
-        </button>
       </div>
     </div>
 
-    <!-- SAĞ: YENİ TEST → EXCEL TOPLU YÜKLE -->
-    <div class="stack" *ngIf="!isEditMode">
-      <section class="card">
-        <h3><span class="dot"></span>{{ t('bulk.title') }}<span class="tag">{{ t('bulk.tag') }}</span></h3>
-        <p class="card-note">
-          {{ t('bulk.note') }}
-        </p>
+    <div class="cols">
+      <!-- SOL: FORM -->
+      <div class="stack">
+        <app-test-form [form]="testForm" [books]="books" [bookTests]="bookTests" [grades]="grades" [subjects]="subjects"
+          [topics]="topics" [subtopics]="subtopics" [showAddBookInput]="showAddBookInput"
+          [showAddBookTestInput]="showAddBookTestInput" [isEditMode]="isEditMode" [showApplyToAll]="hasBulkData"
+          (onBookChange)="onBookChange($event)" (openNewBookAdd)="openNewBookAdd()" (onNewBookBlur)="onNewBookBlur()"
+          (openNewBookTestAdd)="openNewBookTestAdd()" (onSubjectChange)="onSubjectChange($event)"
+          (onTopicChange)="onTopicChange($event)" (onGradeChange)="onGradeChange($event)" (onSubmit)="onSubmit()"
+          (onCancel)="navigateToTestList()" (applySubjectToAll)="applySubjectToAllBulk($event)"
+          (applyTopicToAll)="applyTopicToAllBulk($event)" (applySubtopicToAll)="applySubtopicToAllBulk($event)"
+          (applyGradeToAll)="applyGradeToAllBulk($event)"></app-test-form>
 
-        <div class="dropzone" (click)="bulkFileInput.click()">
-          <span class="dz-ic"><mat-icon>upload</mat-icon></span>
-          <div class="dz-t">{{ t('bulk.dropTitle') }}</div>
-          <div class="dz-s">{{ t('bulk.dropSubtitle') }}</div>
-          <span class="dz-file" *ngIf="selectedBulkFile"><mat-icon>description</mat-icon>{{ selectedBulkFile.name }}</span>
+        <!-- KAPAK GÖRSELİ (yalnız düzenleme) -->
+        <section class="card" *ngIf="isEditMode && canEdit()">
+          <h3><span class="dot"></span>{{ t('page.coverTitle') }}</h3>
+          <p class="card-note">{{ t('page.coverNote') }}</p>
+          <div class="drop">
+            <div class="thumb">
+              <img *ngIf="previewImage; else thumbIcon" [src]="previewImage" [alt]="t('page.coverAlt')"
+                [appStorageImageRetry]="coverImageRefresh" />
+              <ng-template #thumbIcon><mat-icon>image</mat-icon></ng-template>
+            </div>
+            <div class="d-body">
+              <div class="d-title">{{ t('page.dropTitle') }}</div>
+              <div class="d-sub">{{ t('page.dropSubtitle') }}</div>
+              <button class="d-btn" type="button" (click)="coverInput.click()" [disabled]="isImageUploading">
+                <mat-icon>{{ isImageUploading ? 'hourglass_empty' : 'upload' }}</mat-icon>
+                {{ t(isImageUploading ? 'page.uploading' : 'page.pickFile') }}
+              </button>
+            </div>
+          </div>
+          <input #coverInput type="file" accept="image/*" hidden (change)="onImageSelected($event)" />
+        </section>
+
+        <!-- GÖRÜNÜRLÜK (yalnız düzenleme, sahibi/admin) -->
+        <section class="card" *ngIf="isEditMode && canEdit()">
+          <h3><span class="dot"></span>{{ t('page.visibilityTitle') }}</h3>
+          <p class="card-note">
+            {{ t('page.visibilityNote') }}
+          </p>
+          <app-visibility-section [teacherSharing]="teacherSharing()" [studentVisibility]="studentVisibility()"
+            [disabled]="isSavingVisibility()" (visibilityChange)="onVisibilityChange($event)"></app-visibility-section>
+        </section>
+      </div>
+
+      <!-- SAĞ: DÜZENLEME → ÖNİZLEME / CTA -->
+      <div class="side" *ngIf="isEditMode">
+        <div class="preview-card">
+          <div class="pc-head">{{ t('preview.title') }}</div>
+          <div class="wc">
+            <div class="wc-cover">
+              <span class="pract" *ngIf="previewIsPractice">{{ t('preview.practice') }}</span>
+              <img *ngIf="previewImage; else coverIcon" [src]="previewImage" alt=""
+                [appStorageImageRetry]="coverImageRefresh" />
+              <ng-template #coverIcon><mat-icon>schedule</mat-icon></ng-template>
+            </div>
+            <div class="wc-body">
+              <div class="wc-title">{{ previewName }}</div>
+              <div class="wc-sub" *ngIf="previewSubtitle">{{ previewSubtitle }}</div>
+              <div class="wc-chips" *ngIf="previewChips.length">
+                <span *ngFor="let chip of previewChips">{{ chip }}</span>
+              </div>
+              <div class="wc-meta">
+                <div><mat-icon>menu_book</mat-icon>{{ t('preview.questionCount', { count: previewQuestionCount }) }}
+                </div>
+                <div><mat-icon>schedule</mat-icon>{{ t('preview.duration', { minutes: previewDuration }) }}</div>
+              </div>
+            </div>
+          </div>
         </div>
-        <input #bulkFileInput type="file" accept=".xlsx,.xls" hidden (change)="onBulkFileSelected($event)" />
-        <div class="dz-actions">
-          <button class="btn btn-primary btn-sm" type="button" [disabled]="!selectedBulkFile || isUploading" (click)="onBulkImport()">
-            <mat-icon>cloud_upload</mat-icon>{{ t('bulk.import') }}
+
+        <div class="cta" *ngIf="canEdit()">
+          <div class="meta-count">
+            <span>{{ t('preview.questionsLabel') }}</span>
+            <b>{{ t('preview.questionCount', { count: previewQuestionCount }) }}</b>
+          </div>
+          <button class="btn btn-primary" type="button" [disabled]="testForm.invalid" (click)="onSubmit()">
+            <mat-icon>check</mat-icon>{{ t('preview.saveChanges') }}
+          </button>
+          <button class="btn btn-ghost" type="button" [disabled]="testForm.invalid"
+            (click)="navigateToQuestionCanvas()">
+            <mat-icon>add</mat-icon>{{ t('preview.addQuestion') }}
           </button>
         </div>
-        <mat-progress-bar *ngIf="isUploading" mode="indeterminate"></mat-progress-bar>
+      </div>
 
-        <ng-container *ngIf="bulkImportData.length; else bulkEmpty">
-          <div class="bulk-bar">
-            <span class="cnt">{{ t('bulk.rowsLoaded', { count: bulkImportData.length }) }}</span>
+      <!-- SAĞ: YENİ TEST → EXCEL TOPLU YÜKLE — şimdilik kapalı, ihtiyaç olunca geri açılacak.
+      <div class="stack" *ngIf="isBulkMode">
+        <section class="card">
+          <h3><span class="dot"></span>{{ t('bulk.title') }}<span class="tag">{{ t('bulk.tag') }}</span></h3>
+          <p class="card-note">
+            {{ t('bulk.note') }}
+          </p>
+
+          <div class="dropzone" (click)="bulkFileInput.click()">
+            <span class="dz-ic"><mat-icon>upload</mat-icon></span>
+            <div class="dz-t">{{ t('bulk.dropTitle') }}</div>
+            <div class="dz-s">{{ t('bulk.dropSubtitle') }}</div>
+            <span class="dz-file" *ngIf="selectedBulkFile"><mat-icon>description</mat-icon>{{ selectedBulkFile.name
+              }}</span>
           </div>
-
-          <div class="bulk-table-wrap">
-            <table mat-table [dataSource]="bulkImportData" class="bulk-table">
-              <ng-container matColumnDef="select">
-                <th mat-header-cell *matHeaderCellDef></th>
-                <td mat-cell *matCellDef="let element; let i = index">
-                  <mat-radio-button [checked]="selectedBulkIndex === i" (change)="onBulkItemSelect(i, element)"></mat-radio-button>
-                </td>
-              </ng-container>
-              <ng-container matColumnDef="bookName">
-                <th mat-header-cell *matHeaderCellDef>{{ t('bulk.colBook') }}</th>
-                <td mat-cell *matCellDef="let element; let i = index">
-                  <span [class.cell-changed]="isFieldChanged('bookName', i)">{{ element.bookName }}</span>
-                </td>
-              </ng-container>
-              <ng-container matColumnDef="name">
-                <th mat-header-cell *matHeaderCellDef>{{ t('bulk.colName') }}</th>
-                <td mat-cell *matCellDef="let element; let i = index">
-                  <span [class.cell-changed]="isFieldChanged('name', i)">{{ element.name }}</span>
-                </td>
-              </ng-container>
-              <ng-container matColumnDef="gradeId">
-                <th mat-header-cell *matHeaderCellDef>{{ t('bulk.colGrade') }}</th>
-                <td mat-cell *matCellDef="let element; let i = index">
-                  <span [class.cell-changed]="isFieldChanged('gradeId', i)">{{ element.gradeName }}</span>
-                </td>
-              </ng-container>
-              <ng-container matColumnDef="maxDurationMinutes">
-                <th mat-header-cell *matHeaderCellDef>{{ t('bulk.colDuration') }}</th>
-                <td mat-cell *matCellDef="let element; let i = index">
-                  <span [class.cell-changed]="isFieldChanged('maxDurationMinutes', i)">{{
-                    t('bulk.durationCell', { minutes: element.maxDurationMinutes })
-                  }}</span>
-                </td>
-              </ng-container>
-              <ng-container matColumnDef="status">
-                <th mat-header-cell *matHeaderCellDef>{{ t('bulk.colStatus') }}</th>
-                <td mat-cell *matCellDef="let element; let i = index">
-                  <span class="st" [class.upd]="getBulkItemStatus(i) === 'updated'" [class.wait]="getBulkItemStatus(i) !== 'updated'">
-                    {{ t(getBulkItemStatus(i) === 'updated' ? 'bulk.statusUpdated' : 'bulk.statusPending') }}
-                  </span>
-                </td>
-              </ng-container>
-
-              <tr mat-header-row *matHeaderRowDef="bulkColumns"></tr>
-              <tr mat-row *matRowDef="let row; columns: bulkColumns; let i = index" [class.sel]="selectedBulkIndex === i"></tr>
-            </table>
-          </div>
-
-          <div class="bulk-foot">
-            <button class="btn btn-ghost btn-sm" type="button"
-              [disabled]="selectedBulkIndex === null || !bulkImportData[selectedBulkIndex] || !bulkImportData[selectedBulkIndex].__original"
-              (click)="undoBulkItem(selectedBulkIndex!)">
-              <mat-icon>undo</mat-icon>{{ t('bulk.undoSelected') }}
-            </button>
-            <button class="btn btn-ghost btn-sm" type="button" [disabled]="!bulkImportData.length" (click)="undoAllBulkItems()">
-              {{ t('bulk.undoAll') }}
-            </button>
-            <button class="btn btn-danger btn-sm" type="button" (click)="clearBulkImport()">
-              <mat-icon>close</mat-icon>{{ t('bulk.clearList') }}
-            </button>
-            <button class="btn btn-primary btn-sm" type="button" (click)="processBulkImport()">
-              <mat-icon>check</mat-icon>{{ t('bulk.createAll', { count: bulkImportData.length }) }}
+          <input #bulkFileInput type="file" accept=".xlsx,.xls" hidden (change)="onBulkFileSelected($event)" />
+          <div class="dz-actions">
+            <button class="btn btn-primary btn-sm" type="button" [disabled]="!selectedBulkFile || isUploading"
+              (click)="onBulkImport()">
+              <mat-icon>cloud_upload</mat-icon>{{ t('bulk.import') }}
             </button>
           </div>
-        </ng-container>
-        <ng-template #bulkEmpty>
-          <p class="bulk-empty">{{ t('bulk.empty') }}</p>
-        </ng-template>
+          <mat-progress-bar *ngIf="isUploading" mode="indeterminate"></mat-progress-bar>
 
-        <div *ngIf="bulkImportResults && !bulkImportResults.success" class="status-line">
-          <mat-icon>warning</mat-icon>{{ bulkImportResults.message }}
-        </div>
-      </section>
+          <ng-container *ngIf="bulkImportData.length; else bulkEmpty">
+            <div class="bulk-bar">
+              <span class="cnt">{{ t('bulk.rowsLoaded', { count: bulkImportData.length }) }}</span>
+            </div>
+
+            <div class="bulk-table-wrap">
+              <table mat-table [dataSource]="bulkImportData" class="bulk-table">
+                <ng-container matColumnDef="select">
+                  <th mat-header-cell *matHeaderCellDef></th>
+                  <td mat-cell *matCellDef="let element; let i = index">
+                    <mat-radio-button [checked]="selectedBulkIndex === i"
+                      (change)="onBulkItemSelect(i, element)"></mat-radio-button>
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="bookName">
+                  <th mat-header-cell *matHeaderCellDef>{{ t('bulk.colBook') }}</th>
+                  <td mat-cell *matCellDef="let element; let i = index">
+                    <span [class.cell-changed]="isFieldChanged('bookName', i)">{{ element.bookName }}</span>
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="name">
+                  <th mat-header-cell *matHeaderCellDef>{{ t('bulk.colName') }}</th>
+                  <td mat-cell *matCellDef="let element; let i = index">
+                    <span [class.cell-changed]="isFieldChanged('name', i)">{{ element.name }}</span>
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="gradeId">
+                  <th mat-header-cell *matHeaderCellDef>{{ t('bulk.colGrade') }}</th>
+                  <td mat-cell *matCellDef="let element; let i = index">
+                    <span [class.cell-changed]="isFieldChanged('gradeId', i)">{{ element.gradeName }}</span>
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="maxDurationMinutes">
+                  <th mat-header-cell *matHeaderCellDef>{{ t('bulk.colDuration') }}</th>
+                  <td mat-cell *matCellDef="let element; let i = index">
+                    <span [class.cell-changed]="isFieldChanged('maxDurationMinutes', i)">{{
+                      t('bulk.durationCell', { minutes: element.maxDurationMinutes })
+                      }}</span>
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="status">
+                  <th mat-header-cell *matHeaderCellDef>{{ t('bulk.colStatus') }}</th>
+                  <td mat-cell *matCellDef="let element; let i = index">
+                    <span class="st" [class.upd]="getBulkItemStatus(i) === 'updated'"
+                      [class.wait]="getBulkItemStatus(i) !== 'updated'">
+                      {{ t(getBulkItemStatus(i) === 'updated' ? 'bulk.statusUpdated' : 'bulk.statusPending') }}
+                    </span>
+                  </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="bulkColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: bulkColumns; let i = index"
+                  [class.sel]="selectedBulkIndex === i"></tr>
+              </table>
+            </div>
+
+            <div class="bulk-foot">
+              <button class="btn btn-ghost btn-sm" type="button"
+                [disabled]="selectedBulkIndex === null || !bulkImportData[selectedBulkIndex] || !bulkImportData[selectedBulkIndex].__original"
+                (click)="undoBulkItem(selectedBulkIndex!)">
+                <mat-icon>undo</mat-icon>{{ t('bulk.undoSelected') }}
+              </button>
+              <button class="btn btn-ghost btn-sm" type="button" [disabled]="!bulkImportData.length"
+                (click)="undoAllBulkItems()">
+                {{ t('bulk.undoAll') }}
+              </button>
+              <button class="btn btn-danger btn-sm" type="button" (click)="clearBulkImport()">
+                <mat-icon>close</mat-icon>{{ t('bulk.clearList') }}
+              </button>
+              <button class="btn btn-primary btn-sm" type="button" (click)="processBulkImport()">
+                <mat-icon>check</mat-icon>{{ t('bulk.createAll', { count: bulkImportData.length }) }}
+              </button>
+            </div>
+          </ng-container>
+          <ng-template #bulkEmpty>
+            <p class="bulk-empty">{{ t('bulk.empty') }}</p>
+          </ng-template>
+
+          <div *ngIf="bulkImportResults && !bulkImportResults.success" class="status-line">
+            <mat-icon>warning</mat-icon>{{ bulkImportResults.message }}
+          </div>
+        </section>
+      </div>
+      -->
     </div>
-  </div>
   </ng-container>
 </div>

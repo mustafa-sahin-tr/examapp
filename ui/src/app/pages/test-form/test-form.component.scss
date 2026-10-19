@@ -1,5 +1,6 @@
 :host {
   display: block;
+  container-type: inline-size;
   font-family: var(--paragraphFontFamily);
   color: var(--ms-text);
 }
@@ -8,6 +9,27 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+.tf-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.tf-col {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+// Künye + Ayarlar solda, Sınıflandırma sağda — form yeterince genişse.
+@container (min-width: 720px) {
+  .tf-grid {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  }
 }
 
 .tf.compact {

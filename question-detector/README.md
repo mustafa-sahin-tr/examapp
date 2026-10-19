@@ -3,6 +3,8 @@
 YOLO ile sayfadaki soruları (`models/question-best.pt`) ve her sorunun şıklarını (`models/answer-best.pt`) bulan
 FastAPI servisi. Gateway üzerinden `/question-detector-dev/*` (`/predict`, `/read-qr`, `/send-to-fix`).
 
+**Eğitim akışının tam anlatımı: [EGITIM.md](EGITIM.md).**
+
 ## Eğitim veri seti — sürekli toplama
 
 QuestionCanvas'ta Admin olarak kaydettiğin (ya da "Eğit"e bastığın) her sayfa `dataset/` altına YOLO'ya hazır yazılır

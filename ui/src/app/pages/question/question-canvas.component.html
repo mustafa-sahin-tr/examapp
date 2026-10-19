@@ -156,6 +156,11 @@
       }
 
       @if (isAdmin) {
+      <mat-checkbox class="qc-train-opt-out" [checked]="excludeFromTraining()"
+        (change)="excludeFromTraining.set($event.checked)"
+        [matTooltip]="t('canvas.excludeFromTrainingHint')">
+        {{ t('canvas.excludeFromTraining') }}
+      </mat-checkbox>
       <button type="button" class="qc-btn qc-btn--ghost" (click)="sendToFix()">{{ t('canvas.train') }}</button>
       }
 
@@ -272,7 +277,8 @@
       <div class="qc-canvas__stage">
         <app-image-selector [previewMetaProvider]="previewMetaProvider"
           (previewQuestionChange)="onPreviewQuestionChange($event)"
-          (selectedQuestionChange)="onInspectorQuestionChange($event)"></app-image-selector>
+          (selectedQuestionChange)="onInspectorQuestionChange($event)"
+          (imageChange)="onImageChange()"></app-image-selector>
       </div>
 
       @if (pageFiles.length > 1 && !previewOn) {

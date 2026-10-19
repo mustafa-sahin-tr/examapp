@@ -25,6 +25,8 @@ import { debounceTime, of, switchMap } from 'rxjs';
 import { SidenavService } from '../../services/sidenav.service';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../services/auth.service';
 import { TestCreateEnhancedComponent } from '../test-create-enhanced/test-create-enhanced.component';
@@ -47,6 +49,8 @@ const QUESTION_SCOPE = 'question';
     MatDividerModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    MatCheckboxModule,
+    MatTooltipModule,
     ImageSelectorComponent,
     TestCreateEnhancedComponent,
     TranslocoDirective,
@@ -109,6 +113,11 @@ export class QuestionCanvasComponent implements OnInit {
   readonly isAdmin = this.authService.hasRole('Admin');
   /** saveBulk isteği sürerken kaydet butonlarını kilitler. */
   readonly saving = signal(false);
+  /**
+   * Admin: sayfadaki soruların hepsi işaretlenmediyse sayfa, soru tespit modelinin eğitimine
+   * alınmaz (`pageComplete: false`); şık kırpmaları yine kaydedilir. Her yeni sayfada false'a döner.
+   */
+  readonly excludeFromTraining = signal(false);
   questionForm: FormGroup = new FormGroup<QuestionCanvasForm>({
     subjectId: new FormControl(0, { nonNullable: true, validators: [Validators.required] }),
     topicId: new FormControl(0, { nonNullable: true, validators: [Validators.required] }),
@@ -384,7 +393,12 @@ export class QuestionCanvasComponent implements OnInit {
     if (!this.isAdmin) {
       return;
     }
-    this.imageSelector.sendToFix();
+    this.imageSelector.sendToFix(!this.excludeFromTraining());
+  }
+
+  /** image-selector yeni bir sayfa yüklemeye başladı: sayfaya özel seçimler sıfırlanır. */
+  onImageChange() {
+    this.excludeFromTraining.set(false);
   }
 
   // --- Yeni kabuk (redesign) yardımcıları ---
@@ -901,7 +915,8 @@ export class QuestionCanvasComponent implements OnInit {
         this.notify('canvas.bulkSaveSuccess', 2000);
         // Eğitim verisi üretimi (Python question-detector) yan etkidir; sadece Admin için çalışır.
         if (sendToFix && this.isAdmin) {
-          this.imageSelector.sendToFix();
+          // Sonraki sayfaya geçişi aşağıdaki 2 sn'lik zamanlayıcı yapar; sendToFix ayrıca ilerletmesin.
+          this.imageSelector.sendToFix(!this.excludeFromTraining(), false);
         }
         this.testCreateEnhancedComponent.reloadComponent(formData.testValue);
         if (this.destroyed) {

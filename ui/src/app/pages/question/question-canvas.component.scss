@@ -265,6 +265,15 @@
   color: var(--ms-text-weak);
 }
 
+/* Admin: sayfayı soru tespit eğitiminden çıkarma seçeneği (header aksiyonlarının yanında). */
+.qc-train-opt-out {
+  font-family: var(--mainFontFamily);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ms-text-strong);
+  white-space: nowrap;
+}
+
 /* ---------- BUTTONS ---------- */
 .qc-btn {
   display: inline-flex;

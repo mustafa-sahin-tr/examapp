@@ -114,13 +114,9 @@ api/ExamApp.Api/Data/SeedFixtures/*
 ### ML / detector artifacts (generated)
 runs/
 question-detector/runs/
-question-detector/data/crops/
-question-detector/data/images/
-question-detector/data/questions/
-question-detector/data/answers/
-question-detector/data/labels/
-question-detector/data/json/*.json
-question-detector/data/venv/
+question-detector/data/
+# Egitim veri seti (send-to-fix): Drive'a senkronlanir + Colab arsivi; git'e girmez.
+question-detector/dataset/
 question-detector/.tmp.driveupload
 question-detector/.tmp.drivedownload
 

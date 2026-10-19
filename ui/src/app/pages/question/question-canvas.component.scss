@@ -179,11 +179,25 @@
 }
 
 // mat-menu overlay'de render edilir; sınıflar global kapsamda olmalı.
-::ng-deep .qc-menu-check {
-  margin-left: auto;
-  margin-right: 0 !important;
-  padding-left: 16px;
-  color: var(--ms-action-border);
+// Açık/kapalı menü maddeleri: durum her zaman sağda toggle ikonu ile görünür.
+::ng-deep .qc-menu-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+::ng-deep .mat-mdc-menu-item .qc-menu-toggle {
+  margin: 0 0 0 auto !important;
+  font-size: 32px;
+  width: 32px;
+  height: 32px;
+  opacity: 0.5;
+
+  &.is-on {
+    color: var(--ms-action-border);
+    opacity: 1;
+  }
 }
 
 // view_sidebar ikonu sağ paneli çizer; sol panel (Sayfalar) için aynalanır.

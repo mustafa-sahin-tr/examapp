@@ -52,6 +52,8 @@
     "createTest": "Yeni test oluştur",
     "noResults": "Sonuç yok",
     "train": "Eğit",
+    "excludeFromTraining": "Bu sayfayı soru eğitimine alma",
+    "excludeFromTrainingHint": "Sayfadaki soruların hepsini işaretlemediysen seç; şık kırpmaları yine kaydedilir.",
     "saving": "Kaydediliyor…",
     "save": "Kaydet",
     "saveAndFix": "Kaydet ve Düzelt",

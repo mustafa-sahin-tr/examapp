@@ -348,4 +348,87 @@ describe('ImageSelectorComponent', () => {
       expect(component.regions()[0].classification).toBeUndefined();
     });
   });
+
+  describe('sendToFix pageComplete', () => {
+    function arrangeSendToFix() {
+      component.regions.set([region('Soru 1', [answer(10, 10), answer(10, 50)])] as any);
+      return spyOn(component.questionDetectorService, 'sendtoFix').and.returnValue(
+        of({ success: false, message: 'x' })
+      );
+    }
+
+    it('sendToFix_DefaultArg_PostsPageCompleteTrue', () => {
+      const sendtoFix = arrangeSendToFix();
+
+      component.sendToFix();
+
+      expect(sendtoFix).toHaveBeenCalledTimes(1);
+      expect(sendtoFix.calls.mostRecent().args[0].pageComplete).toBeTrue();
+    });
+
+    it('sendToFix_PageCompleteFalse_PostsPageCompleteFalse', () => {
+      const sendtoFix = arrangeSendToFix();
+
+      component.sendToFix(false);
+
+      expect(sendtoFix.calls.mostRecent().args[0].pageComplete).toBeFalse();
+    });
+
+    it('sendToFix_AdvanceFalse_SuccessDoesNotCallNextImage', () => {
+      arrangeSendToFix().and.returnValue(of({ success: true, added: 1, imageFile: 'p.png' }));
+      const nextImage = spyOn(component, 'nextImage');
+
+      component.sendToFix(true, false);
+
+      expect(nextImage).not.toHaveBeenCalled();
+    });
+
+    it('sendToFix_DefaultAdvance_SuccessCallsNextImage', () => {
+      arrangeSendToFix().and.returnValue(of({ success: true, added: 1, imageFile: 'p.png' }));
+      const nextImage = spyOn(component, 'nextImage');
+
+      component.sendToFix();
+
+      expect(nextImage).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('imageChange', () => {
+    function arrangeTwoPages() {
+      component.imageFiles = [
+        new File(['a'], 'p1.png', { type: 'image/png' }),
+        new File(['b'], 'p2.png', { type: 'image/png' }),
+      ];
+      component.currentImageIndex = 0;
+      const emitted: number[] = [];
+      component.imageChange.subscribe(() => emitted.push(component.currentImageIndex));
+      return emitted;
+    }
+
+    it('nextImage_EmitsImageChangeForNewPage', () => {
+      const emitted = arrangeTwoPages();
+
+      component.nextImage();
+
+      expect(emitted).toEqual([1]);
+    });
+
+    it('previousImageAndGoToPage_EmitImageChange', () => {
+      const emitted = arrangeTwoPages();
+
+      component.previousImage();
+      component.goToPage('1');
+
+      expect(emitted).toEqual([1, 0]);
+    });
+
+    it('nextImage_NoFiles_DoesNotEmit', () => {
+      const emitted: unknown[] = [];
+      component.imageChange.subscribe(() => emitted.push(1));
+
+      component.nextImage();
+
+      expect(emitted).toEqual([]);
+    });
+  });
 });

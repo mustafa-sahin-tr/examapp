@@ -1,6 +1,0 @@
-path: /content/drive/Othercomputers/PersonalMacBookPro/question-detector/data/answers
-train: images
-val: images
-
-nc: 2
-names: ['question', 'answers']

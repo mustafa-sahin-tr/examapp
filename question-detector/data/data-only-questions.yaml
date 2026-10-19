@@ -1,9 +1,0 @@
-train: /content/drive/Othercomputers/PersonalMacBookPro/app/data/images
-val: /app/data/images
-
-nc: 1
-names: ['question']
-
-path: /app/data  # opsiyonel ama bazı versiyonlarda önemli
-train_labels: /app/data/labels
-val_labels: /app/data/labels

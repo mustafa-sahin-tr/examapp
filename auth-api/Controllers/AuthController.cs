@@ -462,7 +462,7 @@ namespace ExamApp.Api.Controllers
 
             await TryWriteLoginAttemptedEventAsync(
                 keycloakUserId: sub,
-                role: roles.FirstOrDefault() ?? "Unknown",
+                role: PickAppRole(roles) ?? roles.FirstOrDefault() ?? "Unknown",
                 success: true);
 
             // return Content(content, "application/json");
@@ -576,7 +576,7 @@ namespace ExamApp.Api.Controllers
 
             await TryWriteLoginAttemptedEventAsync(
                 keycloakUserId: sub,
-                role: roles.FirstOrDefault() ?? "Unknown",
+                role: PickAppRole(roles) ?? roles.FirstOrDefault() ?? "Unknown",
                 success: true);
 
             Response.Cookies.Append("refresh_token", tokenDto.RefreshToken, new CookieOptions
@@ -610,10 +610,8 @@ namespace ExamApp.Api.Controllers
             if (string.IsNullOrWhiteSpace(fullName)) fullName = email;
 
             // The app role (Student/Teacher/Parent) — empty until profile completion assigns it.
-            var appRole = appRoles.FirstOrDefault(r =>
-                r.Equals("Student", StringComparison.OrdinalIgnoreCase) ||
-                r.Equals("Teacher", StringComparison.OrdinalIgnoreCase) ||
-                r.Equals("Parent", StringComparison.OrdinalIgnoreCase)) ?? string.Empty;
+            // Admin bilinçli olarak Users.Role'e yazılmaz (bkz. PickStoredAppRole).
+            var appRole = PickStoredAppRole(appRoles) ?? string.Empty;
 
             var user = await _context.Users.FirstOrDefaultAsync(u => u.KeycloakId == sub);
             if (user == null)
@@ -798,6 +796,30 @@ namespace ExamApp.Api.Controllers
         }
 
         private static readonly string[] AllowedAppRoles = { "Student", "Teacher", "Parent" };
+
+        // Uygulama rolü önceliği. Realm'de ek yetki rolleri (örn. QuestionTrainer) de bulunabilir ve
+        // Keycloak'un realm_access.roles sırası garanti değildir — "ilk rol" yerine bu liste kullanılır.
+        private static readonly string[] AppRolePriority = { "Admin", "Teacher", "Student", "Parent" };
+
+        /// <summary>
+        /// Rol listesinden uygulama rolünü öncelik sırasıyla (Admin &gt; Teacher &gt; Student &gt; Parent,
+        /// büyük/küçük harf duyarsız) seçer; kanonik yazımı döner. Uygulama rolü yoksa <c>null</c>.
+        /// Login audit (<c>LoginAttemptedEvent.Role</c>) için kullanılır.
+        /// </summary>
+        internal static string? PickAppRole(IEnumerable<string> roles) => PickByPriority(roles, AppRolePriority);
+
+        /// <summary>
+        /// <see cref="PickAppRole"/> ile aynı, ama Admin hariç — <c>Users.Role</c>'e yazılabilecek rol
+        /// (Teacher &gt; Student &gt; Parent). Admin bugün yerel Users satırına yazılmaz; bu davranış korunur.
+        /// </summary>
+        internal static string? PickStoredAppRole(IEnumerable<string> roles) =>
+            PickByPriority(roles, AppRolePriority.Where(r => r != "Admin"));
+
+        private static string? PickByPriority(IEnumerable<string> roles, IEnumerable<string> priority)
+        {
+            var set = new HashSet<string>(roles.Where(r => !string.IsNullOrEmpty(r)), StringComparer.OrdinalIgnoreCase);
+            return priority.FirstOrDefault(set.Contains);
+        }
 
         // Issue #240: realm rol kataloğu (Admin, exam-service dahil) anonim erişime kapalı. Kayıt formu
         // artık bu uca değil sabit uygulama rollerine (Student/Teacher/Parent) dayanıyor; başka çağıran yok.

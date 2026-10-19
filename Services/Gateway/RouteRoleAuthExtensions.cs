@@ -11,16 +11,29 @@ using Microsoft.AspNetCore.Authentication;
 /// </summary>
 public static class RouteRoleAuthExtensions
 {
-    /// <summary>PathPrefix altinda: AllowlistedSegments (tam tek segment) -> AllowlistedRoles; GERI KALAN HER SEY -> FallbackRoles.</summary>
-    public sealed record RoleRestrictedPrefix(
-        string PathPrefix, string[] FallbackRoles, string[] AllowlistedSegments, string[] AllowlistedRoles);
+    /// <summary>Bir segment grubu: <see cref="Segments"/> (tam tek segment, buyuk/kucuk harf duyarsiz) -> <see cref="Roles"/>.</summary>
+    public sealed record SegmentRoles(string[] Segments, string[] Roles);
 
-    // question-detector (allowlist): UI yalniz /predict, /headerlist, /read-qr (salt-okunur cikarim) kullanir ->
-    // Teacher+Admin. send-to-fix* (diske yazar), docs, bilinmeyen/kodlanmis ekler dahil GERI KALAN HER SEY yalniz Admin
-    // (Teacher realm rolu kayitta onaydan once verilir ve askiya almada kalir).
+    /// <summary>
+    /// PathPrefix altinda: kalan yol TAM TEK segment olarak <see cref="SegmentGroups"/> icinde ilk eslesen grubun
+    /// rollerine tabidir; hicbir gruba uymayan HER SEY (docs, bilinmeyen, cok segmentli yol) -> FallbackRoles.
+    /// </summary>
+    public sealed record RoleRestrictedPrefix(string PathPrefix, string[] FallbackRoles, SegmentRoles[] SegmentGroups);
+
+    // question-detector (allowlist):
+    // - /predict, /headerlist, /read-qr (UI'nin kullandigi salt-okunur cikarim) -> Teacher+Admin.
+    // - /send-to-fix (diske egitim verisi yazar) -> Admin + QuestionTrainer (soru girerken model egitim verisi
+    //   gonderebilen yetkili ogretmen; ayri realm rolu, cunku Teacher rolu kayitta onaydan once verilir ve askiya
+    //   almada kalir). QuestionTrainer okuma uclari icin eklenmez: yetkili ogretmen zaten Teacher rolunu de tasir.
+    // - docs, openapi.json, bilinmeyen/kodlanmis ekler, send-to-fix-* benzeri tureyenler dahil GERI KALAN HER SEY
+    //   yalniz Admin.
     public static readonly RoleRestrictedPrefix[] Default =
     [
-        new("/question-detector-dev", ["Admin"], ["predict", "headerlist", "read-qr"], ["Teacher", "Admin"]),
+        new("/question-detector-dev", ["Admin"],
+        [
+            new(["predict", "headerlist", "read-qr"], ["Teacher", "Admin"]),
+            new(["send-to-fix"], ["Admin", "QuestionTrainer"]),
+        ]),
     ];
 
     public static IApplicationBuilder UseRouteRoleAuth(
@@ -60,9 +73,9 @@ public static class RouteRoleAuthExtensions
 
             normalized.StartsWithSegments(rule.PathPrefix, out var remainder);
             var segment = remainder.Value?.Trim('/') ?? "";
-            var allowed = rule.AllowlistedSegments.Contains(segment, StringComparer.OrdinalIgnoreCase)
-                ? rule.AllowlistedRoles
-                : rule.FallbackRoles;
+            var allowed = rule.SegmentGroups
+                .FirstOrDefault(g => g.Segments.Contains(segment, StringComparer.OrdinalIgnoreCase))?.Roles
+                ?? rule.FallbackRoles;
             if (!allowed.Any(a => roles.Contains(a, StringComparer.OrdinalIgnoreCase)))
             {
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;

@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { take } from 'rxjs';
-import { AuthService } from '../../services/auth.service';
+import { AuthService, pickAppRole } from '../../services/auth.service';
 import { OidcFlowService, OidcLoginRecord } from '../../services/oidc-flow.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatIconModule } from '@angular/material/icon';
@@ -151,7 +151,7 @@ export class CallbackComponent implements OnInit {
         next: async (res) => {
           this.snackBar.open('Giriş başarılı! Yönlendiriliyorsunuz...', 'Tamam', { duration: 3000 });
           const roles: string[] = res?.roles ?? [];
-          this.userRole.set(roles.find((r) => ['Student', 'Teacher', 'Parent', 'Admin'].includes(r)) ?? null);
+          this.userRole.set(pickAppRole(roles));
           this.updateStep(3);
           await this.delay(100);
           this.redirect(postLoginDestination(roles, record));

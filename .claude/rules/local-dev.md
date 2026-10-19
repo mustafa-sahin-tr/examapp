@@ -388,6 +388,16 @@ with the same key `ParentInvitations__LinkEncryptionKey` (docker-compose: `PAREN
 - `ParentRequired` (student account restriction until a parent is linked) is enforced ONLY in exam API; BadgeService
   notifications and auth-api stay reachable for restricted students — deliberate, so the reminder notifications still arrive.
 
+**QuestionTrainer — soru tespit modeli eğitim verisi yetkisi.** Yeni realm rolü `QuestionTrainer`: soru
+tuvalinde "Kaydet ve Düzelt" / "Eğit" ile question-detector'a eğitim verisi (`send-to-fix`) gönderebilen yetkili
+öğretmen. Gateway (`Services/Gateway/RouteRoleAuthExtensions.cs`) `send-to-fix`'i yalnız `Admin` + `QuestionTrainer`'a,
+`predict`/`headerlist`/`read-qr`'ı `Teacher` + `Admin`'e açar; UI düğmeleri token'daki realm rolüne bakar
+(`hasRealmRole`). Düz "Kaydet" kimse için eğitime göndermez. Uygulama rolü değildir: auth-api `Users.Role`'e yazılmaz,
+auth-ui `user_role`'ü Admin/Teacher/Student/Parent içinden seçer. Dev export rolü taşır; **çalışan Keycloak'ta** elle
+oluştur: admin console → `exam-realm` → Realm roles → Create role `QuestionTrainer`; yetkili öğretmene Users →
+*(öğretmen)* → Role mapping → Assign role. Rol yeni token'da gelir (çıkış/giriş). Öğretmen askıya alınınca rol
+**otomatik kalkmaz** (gateway yalnız token rolüne bakar, onay/askı exam API'de) — elle Unassign et. Ayrıntı: `question-detector/EGITIM.md`.
+
 ## Port map (host → container)
 
 | Service | Host port | Notes |

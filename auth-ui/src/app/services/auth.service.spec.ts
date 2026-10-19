@@ -1,7 +1,7 @@
 import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { Router } from '@angular/router';
-import { AuthService, TokenResponse } from './auth.service';
+import { AuthService, TokenResponse, pickAppRole } from './auth.service';
 
 /**
  * Helper: base64url encode (JWT format)
@@ -35,6 +35,42 @@ function createToken(keycloakId: string): string {
   const signature = base64urlEncode('fake-signature');
   return `${headerB64}.${payloadB64}.${signature}`;
 }
+
+/** Helper: realm_access.roles taşıyan sahte JWT (applyRefreshedSession testleri için). */
+function createTokenWithRoles(keycloakId: string, roles: string[]): string {
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const now = Math.floor(Date.now() / 1000);
+  const payload = { sub: keycloakId, exp: now + 3600, iat: now, realm_access: { roles } };
+  return `${base64urlEncode(JSON.stringify(header))}.${base64urlEncode(JSON.stringify(payload))}.${base64urlEncode('fake-signature')}`;
+}
+
+describe('pickAppRole', () => {
+  it('ek yetki rolü önce gelse de uygulama rolünü seçer', () => {
+    expect(pickAppRole(['QuestionTrainer', 'Teacher'])).toBe('Teacher');
+  });
+
+  it('ek yetki rolü sonra gelse de uygulama rolünü seçer', () => {
+    expect(pickAppRole(['Teacher', 'QuestionTrainer'])).toBe('Teacher');
+  });
+
+  it('offline_access gibi Keycloak rollerini atlar', () => {
+    expect(pickAppRole(['offline_access', 'Student'])).toBe('Student');
+  });
+
+  it('birden fazla uygulama rolünde APP_ROLES önceliğini uygular', () => {
+    expect(pickAppRole(['Parent', 'Student', 'Admin'])).toBe('Admin');
+  });
+
+  it('yalnız ek yetki rolü varsa null döner', () => {
+    expect(pickAppRole(['QuestionTrainer'])).toBeNull();
+  });
+
+  it('boş/undefined/null listede null döner', () => {
+    expect(pickAppRole([])).toBeNull();
+    expect(pickAppRole(undefined)).toBeNull();
+    expect(pickAppRole(null)).toBeNull();
+  });
+});
 
 describe('AuthService (auth-ui)', () => {
   let service: AuthService;
@@ -279,7 +315,7 @@ describe('AuthService (auth-ui)', () => {
         service.exchangeCodeForToken('code-123', 'v'.repeat(43)).subscribe(() => {
           // Yeni token ve role yazılmış
           expect(localStorage.getItem('auth_token')).toBe(newToken);
-          expect(localStorage.getItem('user_role')).toBe('student');
+          expect(localStorage.getItem('user_role')).toBe('Student');
 
           // Eski user ve avatar silinmiş (clearCachedUser çağrılmış)
           // Yeni user verisi yazılmamış (auth-ui spec'inde exchange endpoint user bilgisi döndürmüyor)
@@ -291,7 +327,7 @@ describe('AuthService (auth-ui)', () => {
         const req = httpMock.expectOne('/api/auth/exchange');
         const response: TokenResponse = {
           token: newToken,
-          roles: ['student'],
+          roles: ['Student'],
           profile: {
             id: 1,
             profileId: 1,
@@ -312,7 +348,7 @@ describe('AuthService (auth-ui)', () => {
 
       service.exchangeCodeForToken('code-456', 'v'.repeat(43)).subscribe(() => {
         expect(localStorage.getItem('auth_token')).toBe(newToken);
-        expect(localStorage.getItem('user_role')).toBe('teacher');
+        expect(localStorage.getItem('user_role')).toBe('Teacher');
         done();
       });
 
@@ -321,7 +357,7 @@ describe('AuthService (auth-ui)', () => {
       expect(req.request.body).toEqual({ code: 'code-456', codeVerifier: 'v'.repeat(43) });
       const response: TokenResponse = {
         token: newToken,
-        roles: ['teacher'],
+        roles: ['Teacher'],
         profile: {
           id: 2,
           profileId: 2,
@@ -362,10 +398,61 @@ describe('AuthService (auth-ui)', () => {
       const req = httpMock.expectOne('/api/auth/exchange');
       const response: TokenResponse = {
         token,
-        roles: ['student'],
+        roles: ['Student'],
         profile,
       };
       req.flush(response);
+    });
+  });
+
+  describe('uygulama rolü seçimi (QuestionTrainer)', () => {
+    function flushExchange(roles: string[]): void {
+      const req = httpMock.expectOne('/api/auth/exchange');
+      req.flush({
+        token: createToken('trainer-1'),
+        roles,
+        profile: {
+          id: 3,
+          profileId: 3,
+          fullName: 'Trainer Teacher',
+          email: 'trainer@example.com',
+          avatar: '',
+          keycloakId: 'trainer-1',
+          role: 'Teacher',
+        },
+      } as TokenResponse);
+    }
+
+    it('exchangeCodeForToken_QuestionTrainerFirst_StoresTeacher', (done) => {
+      service.exchangeCodeForToken('code-qt', 'v'.repeat(43)).subscribe(() => {
+        expect(localStorage.getItem('user_role')).toBe('Teacher');
+        done();
+      });
+      flushExchange(['QuestionTrainer', 'Teacher']);
+    });
+
+    it('exchangeCodeForToken_NoAppRole_RemovesStaleRole', (done) => {
+      localStorage.setItem('user_role', 'Student');
+      service.exchangeCodeForToken('code-new', 'v'.repeat(43)).subscribe(() => {
+        expect(localStorage.getItem('user_role')).toBeNull();
+        done();
+      });
+      flushExchange([]);
+    });
+
+    it('applyRefreshedSession_QuestionTrainerFirst_StoresTeacherAndUpdatesUser', () => {
+      localStorage.setItem('user', JSON.stringify({ keycloakId: 'trainer-1', role: 'Student' }));
+      service.applyRefreshedSession(
+        createTokenWithRoles('trainer-1', ['offline_access', 'QuestionTrainer', 'Teacher', 'default-roles-exam-realm'])
+      );
+      expect(localStorage.getItem('user_role')).toBe('Teacher');
+      expect(service.getUser().role).toBe('Teacher');
+    });
+
+    it('applyRefreshedSession_NoAppRole_KeepsExistingRole', () => {
+      localStorage.setItem('user_role', 'Teacher');
+      service.applyRefreshedSession(createTokenWithRoles('trainer-1', ['QuestionTrainer', 'offline_access']));
+      expect(localStorage.getItem('user_role')).toBe('Teacher');
     });
   });
 });

@@ -35,6 +35,9 @@ import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@js
 
 /** Sayfa metinleri kendi Transloco scope'unda: `public/i18n/question/<lang>.json` (issue #183). */
 const QUESTION_SCOPE = 'question';
+/** Keycloak realm rolleri: eğitim verisi (sendToFix) gönderebilenler. Gateway send-to-fix route'u da bu ikisine açık. */
+const ADMIN_ROLE = 'Admin';
+const QUESTION_TRAINER_ROLE = 'QuestionTrainer';
 @Component({
   selector: 'app-question-canvas',
   standalone: true,
@@ -109,12 +112,17 @@ export class QuestionCanvasComponent implements OnInit {
   }
   private destroyRef = inject(DestroyRef);
   private authService = inject(AuthService);
-  /** Model eğitim verisi üretme (sendToFix) yalnızca Admin'e açık. */
-  readonly isAdmin = this.authService.hasRole('Admin');
+  /**
+   * Model eğitim verisi üretme (sendToFix) yalnızca Admin veya QuestionTrainer realm rolüne açık.
+   * Gateway send-to-fix yetkisini yalnız token realm rollerinden verir; aynı kaynağı kullanırız.
+   * Profil rolüne (`hasRole`, localStorage) bakılmaz: token'da olmayan rolle düğme görünür ama 403 alırdı.
+   */
+  readonly canTrain =
+    this.authService.hasRealmRole(ADMIN_ROLE) || this.authService.hasRealmRole(QUESTION_TRAINER_ROLE);
   /** saveBulk isteği sürerken kaydet butonlarını kilitler. */
   readonly saving = signal(false);
   /**
-   * Admin: sayfadaki soruların hepsi işaretlenmediyse sayfa, soru tespit modelinin eğitimine
+   * Admin / QuestionTrainer: sayfadaki soruların hepsi işaretlenmediyse sayfa, soru tespit modelinin eğitimine
    * alınmaz (`pageComplete: false`); şık kırpmaları yine kaydedilir. Her yeni sayfada false'a döner.
    */
   readonly excludeFromTraining = signal(false);
@@ -390,7 +398,7 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   sendToFix() {
-    if (!this.isAdmin) {
+    if (!this.canTrain) {
       return;
     }
     this.imageSelector.sendToFix(!this.excludeFromTraining());
@@ -815,7 +823,7 @@ export class QuestionCanvasComponent implements OnInit {
             //   bookTestId: testData.bookTestId,
             //   testValue: testData.id,
             // });
-            this.onSave();
+            this.onSave(false);
           },
         });
       },
@@ -873,7 +881,7 @@ export class QuestionCanvasComponent implements OnInit {
               bookTestId: testData.bookTestId,
               testValue: testData.id,
             });
-            this.onSave();
+            this.onSave(false);
           },
         });
       },
@@ -886,7 +894,8 @@ export class QuestionCanvasComponent implements OnInit {
     });
   }
 
-  onSave(sendToFix: boolean = true) {
+  /** `sendToFix` açıkça istenmedikçe kayıt eğitime gönderilmez ("Kaydet ve Düzelt" true geçer). */
+  onSave(sendToFix: boolean = false) {
     const formData = this.questionForm.value;
 
     if (formData.isExample) {
@@ -913,8 +922,8 @@ export class QuestionCanvasComponent implements OnInit {
         this.saving.set(false);
         console.log('Soru Kaydedildi:', data);
         this.notify('canvas.bulkSaveSuccess', 2000);
-        // Eğitim verisi üretimi (Python question-detector) yan etkidir; sadece Admin için çalışır.
-        if (sendToFix && this.isAdmin) {
+        // Eğitim verisi üretimi (Python question-detector) yan etkidir; yalnız Admin/QuestionTrainer için çalışır.
+        if (sendToFix && this.canTrain) {
           // Sonraki sayfaya geçişi aşağıdaki 2 sn'lik zamanlayıcı yapar; sendToFix ayrıca ilerletmesin.
           this.imageSelector.sendToFix(!this.excludeFromTraining(), false);
         }

@@ -90,6 +90,15 @@
         "attributes": {}
       },
       {
+        "id": "dfdc9b3e-82fc-4199-ab15-0e02a4ef6ca9",
+        "name": "QuestionTrainer",
+        "description": "Soru tespit modeli eğitim verisi gönderebilir (send-to-fix)",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "63021bb7-8910-4a5a-be5e-3e552db8d557",
+        "attributes": {}
+      },
+      {
         "id": "2c8a3d64-de66-42c2-a314-77b0de43e1dc",
         "name": "uma_authorization",
         "description": "${role_uma_authorization}",

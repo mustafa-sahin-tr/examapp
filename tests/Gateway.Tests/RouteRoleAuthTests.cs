@@ -12,7 +12,7 @@ using Microsoft.Extensions.Options;
 
 namespace Gateway.Tests;
 
-/// <summary>Issue #366: question-detector route'u Bearer ister; yalnız Teacher/Admin geçer.</summary>
+/// <summary>Issue #366: question-detector route'u Bearer ister; okuma uçları Teacher/Admin, send-to-fix Admin/QuestionTrainer, gerisi yalnız Admin.</summary>
 public class RouteRoleAuthTests
 {
     private static async Task<HttpClient> CreateClientAsync()
@@ -87,6 +87,52 @@ public class RouteRoleAuthTests
     {
         using var client = await CreateClientAsync();
         var res = await client.SendAsync(Post(path, roles));
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("/question-detector-dev/send-to-fix", "QuestionTrainer")]
+    [InlineData("/question-detector-dev/send-to-fix", "Teacher,QuestionTrainer")]
+    [InlineData("/question-detector-dev/SEND-TO-FIX", "Teacher,QuestionTrainer")]
+    [InlineData("/question-detector-dev//send-to-fix", "Teacher,QuestionTrainer")]
+    [InlineData("/question-detector-dev/send-to-fix/", "QuestionTrainer")]
+    public async Task SendToFix_QuestionTrainer_PassesThrough(string path, string roles)
+    {
+        using var client = await CreateClientAsync();
+        var res = await client.SendAsync(Post(path, roles));
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("/question-detector-dev/docs", "QuestionTrainer")]
+    [InlineData("/question-detector-dev/openapi.json", "Teacher,QuestionTrainer")]
+    [InlineData("/question-detector-dev/unknown", "QuestionTrainer")]
+    [InlineData("/question-detector-dev/send-to-fix-for-answers", "Teacher,QuestionTrainer")]
+    [InlineData("/question-detector-dev/send-to-fix/extra", "QuestionTrainer")]
+    [InlineData("/question-detector-dev/send-to-fixx", "QuestionTrainer")]
+    // QuestionTrainer okuma uçlarına tek başına yetki vermez (yetkili öğretmen Teacher'ı da taşır).
+    [InlineData("/question-detector-dev/predict", "QuestionTrainer")]
+    [InlineData("/question-detector-dev/headerlist", "QuestionTrainer")]
+    public async Task QuestionTrainer_OutsideSendToFix_Returns403(string path, string roles)
+    {
+        using var client = await CreateClientAsync();
+        var res = await client.SendAsync(Post(path, roles));
+        Assert.Equal(HttpStatusCode.Forbidden, res.StatusCode);
+    }
+
+    [Fact]
+    public async Task SuspiciousEncodedSuffix_AuthenticatedQuestionTrainer_IsDenied400()
+    {
+        using var client = await CreateClientAsync();
+        var res = await client.SendAsync(Post("/question-detector-dev/send-to-fix%3Fx", "QuestionTrainer"));
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+    }
+
+    [Fact]
+    public async Task Options_IsNotGated()
+    {
+        using var client = await CreateClientAsync();
+        var res = await client.SendAsync(new HttpRequestMessage(HttpMethod.Options, "/question-detector-dev/send-to-fix"));
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
     }
 

@@ -19,6 +19,8 @@ const schoolOnlyTexts = rootTr.shared.visibilitySection.teacherSharing.schoolOnl
 interface SetupOptions {
   schoolId?: number | null;
   role?: string;
+  /** Keycloak token realm rolleri (`hasRealmRole`). */
+  realmRoles?: string[];
   mobile?: boolean;
 }
 
@@ -33,17 +35,29 @@ describe('VisibilitySectionComponent', () => {
   let user: WritableSignal<UserProfile | null>;
 
   /**
-   * AuthService yalnızca `user` signal'ı ve `hasRole()` için stub'lanır; HttpClient/Router bağımlılığı gerekmez.
+   * AuthService yalnızca `user` signal'ı, `hasRole()` ve `hasRealmRole()` için stub'lanır; HttpClient/Router bağımlılığı gerekmez.
    * Headless Chrome penceresi (800x600 yatay) Handset breakpoint'ine girdiği için BreakpointObserver
    * masaüstü/mobil olarak açıkça sabitlenir.
    */
-  async function setup({ schoolId = null, role = 'Teacher', mobile = false }: SetupOptions = {}): Promise<void> {
+  async function setup({
+    schoolId = null,
+    role = 'Teacher',
+    realmRoles = [],
+    mobile = false,
+  }: SetupOptions = {}): Promise<void> {
     user = signal<UserProfile | null>(profileOf(schoolId));
     await TestBed.configureTestingModule({
       imports: [translocoTestingModule(), VisibilitySectionComponent],
       providers: [
         provideNoopAnimations(),
-        { provide: AuthService, useValue: { user, hasRole: (r: string) => r === role } },
+        {
+          provide: AuthService,
+          useValue: {
+            user,
+            hasRole: (r: string) => r === role,
+            hasRealmRole: (r: string) => realmRoles.includes(r),
+          },
+        },
         { provide: BreakpointObserver, useValue: { observe: () => of({ matches: mobile, breakpoints: {} }) } },
       ],
     }).compileComponents();
@@ -140,6 +154,16 @@ describe('VisibilitySectionComponent', () => {
     it('okulu olmasa da SchoolOnly seçeneğini görür ve seçebilir', () => {
       expect(component.visibleTeacherSharingOptions().length).toBe(4);
       expect(radioLabels()).toContain(schoolOnlyTexts.label);
+      expect(component.isOptionDisabled(WorksheetTeacherSharing.SchoolOnly)).toBeFalse();
+      expect(component.schoolOnlyUnavailable()).toBeFalse();
+    });
+  });
+
+  describe('admin (yalnız token realm rolü, profil rolü Teacher)', () => {
+    beforeEach(() => setup({ schoolId: null, role: 'Teacher', realmRoles: ['Admin'] }));
+
+    it('profil rolü Admin olmasa da realm Admin rolüyle SchoolOnly seçebilir', () => {
+      expect(component.isAdmin).toBeTrue();
       expect(component.isOptionDisabled(WorksheetTeacherSharing.SchoolOnly)).toBeFalse();
       expect(component.schoolOnlyUnavailable()).toBeFalse();
     });

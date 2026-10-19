@@ -33,6 +33,22 @@ export interface TokenResponse {
   roles: string[];
 }
 
+/**
+ * Uygulama rolleri, belirsizlik halinde öncelik sırasıyla (Admin > Teacher > Student > Parent).
+ * `QuestionTrainer` gibi ek yetki rolleri uygulama rolü DEĞİLDİR; `user_role`'e yazılırsa (ui/ dahil)
+ * `hasRole('Teacher')` kontrolleri bozulur. Keycloak/auth-api rol sırası da garanti değildir.
+ */
+export const APP_ROLES = ['Admin', 'Teacher', 'Student', 'Parent'] as const;
+export type AppRoleName = (typeof APP_ROLES)[number];
+
+/** Kullanıcının rollerinden, `APP_ROLES` önceliğine göre ilk uygulama rolünü seçer; yoksa `null`. */
+export function pickAppRole(roles: readonly string[] | null | undefined): AppRoleName | null {
+  if (!roles || roles.length === 0) {
+    return null;
+  }
+  return APP_ROLES.find((role) => roles.includes(role)) ?? null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
@@ -262,7 +278,15 @@ export class AuthService {
         // Yeni oturum yazılmadan önce önceki kullanıcıya ait önbellek kalıntılarını at.
         this.clearCachedUser();
         localStorage.setItem(this.tokenKey, res.token);
-        localStorage.setItem(this.roleKey, res.roles[0]);
+        // Ek yetki rolleri (QuestionTrainer vb.) atlanır. Uygulama rolü yoksa (profil tamamlanmamış kullanıcı)
+        // önceki oturumdan kalan değer ya da "undefined" string'i kalmasın diye anahtar silinir;
+        // complete-profile akışı rolü kendisi yazar.
+        const appRole = pickAppRole(res.roles);
+        if (appRole) {
+          localStorage.setItem(this.roleKey, appRole);
+        } else {
+          localStorage.removeItem(this.roleKey);
+        }
         this.isAuthenticatedSubject.next(true);
       })
     );
@@ -293,9 +317,8 @@ export class AuthService {
     try {
       const decoded: any = jwtDecode(token);
       const roles: string[] = decoded?.realm_access?.roles ?? [];
-      const relevantRole = roles.find(
-        (role: string) => !!role && !role.startsWith('default-roles') && !role.includes('uma_')
-      );
+      // Ek yetki rolleri (QuestionTrainer, offline_access vb.) uygulama rolü olarak seçilmez.
+      const relevantRole = pickAppRole(roles);
 
       if (relevantRole) {
         localStorage.setItem(this.roleKey, relevantRole);

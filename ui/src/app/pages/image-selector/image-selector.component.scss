@@ -7,6 +7,19 @@
 	color: var(--ms-text);
 }
 
+// Sayfa resmi genişlik olarak alana sığar (yatay scroll yok); tuval içi çizim gerçek pikselde kalır.
+.ms-canvas-wrapper {
+	display: block;
+	width: fit-content;
+	max-width: 100%;
+
+	canvas {
+		display: block;
+		max-width: 100%;
+		height: auto;
+	}
+}
+
 .ins-dot {
 	width: 7px;
 	height: 7px;

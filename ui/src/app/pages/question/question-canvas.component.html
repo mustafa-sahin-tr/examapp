@@ -58,66 +58,80 @@
 
     <div class="qc-topbar__actions">
       <div class="qc-tools" role="toolbar" [attr.aria-label]="t('canvas.title')">
-        <button type="button" class="qc-icon-btn qc-icon-btn--flip" [class.is-active]="showPagesPanel()" [disabled]="previewOn"
-          (click)="togglePagesPanel()" [title]="showPagesPanel() ? t('canvas.hidePages') : t('canvas.showPages')"
-          [attr.aria-label]="t('canvas.togglePages')" [attr.aria-pressed]="showPagesPanel()">
-          <mat-icon>view_sidebar</mat-icon>
+        <!-- 1. Sayfa: yükleme ve algılama -->
+        <button type="button" class="qc-tool-trigger" [matMenuTriggerFor]="pagesToolMenu"
+          [title]="t('canvas.groupPages')" [attr.aria-label]="t('canvas.groupPages')">
+          <mat-icon>file_upload</mat-icon><mat-icon class="qc-tool-trigger__caret">expand_more</mat-icon>
         </button>
-
-        <span class="qc-tool-sep"></span>
-
-        <button type="button" class="qc-icon-btn" (click)="fileInput.click()"
-          [title]="t('canvas.import')" [attr.aria-label]="t('canvas.import')">
-          <mat-icon>file_upload</mat-icon>
-        </button>
+        <mat-menu #pagesToolMenu="matMenu" xPosition="before">
+          <button mat-menu-item type="button" (click)="fileInput.click()">
+            <mat-icon>file_upload</mat-icon><span>{{ t('canvas.import') }}</span>
+          </button>
+          <button mat-menu-item type="button" (click)="folderInput.click()">
+            <mat-icon>folder_open</mat-icon><span>{{ t('common.uploadFolder') }}</span>
+          </button>
+          <mat-divider></mat-divider>
+          <button mat-menu-item type="button" (click)="triggerPredict()" [disabled]="coordinateJsonMode"
+            [attr.title]="coordinateJsonMode ? t('canvas.detectorDisabledInJsonMode') : null">
+            <mat-icon>smart_toy</mat-icon><span>{{ t('canvas.autoDetect') }}</span>
+          </button>
+          <button mat-menu-item type="button" (click)="triggerAlign()">
+            <mat-icon>align_horizontal_center</mat-icon><span>{{ t('common.align') }}</span>
+          </button>
+        </mat-menu>
         <input #fileInput type="file" (change)="handleFilesInput2($event)" multiple accept="image/*" hidden />
-        <button type="button" class="qc-icon-btn" (click)="folderInput.click()"
-          [title]="t('common.uploadFolder')" [attr.aria-label]="t('common.uploadFolder')">
-          <mat-icon>folder_open</mat-icon>
-        </button>
         <input #folderInput type="file" (change)="handleFilesInput2($event)" multiple accept="image/*" webkitdirectory hidden />
-        <button type="button" class="qc-icon-btn" (click)="triggerPredict()" [disabled]="coordinateJsonMode"
-          [title]="coordinateJsonMode ? t('canvas.detectorDisabledInJsonMode') : t('canvas.autoDetect')" [attr.aria-label]="t('canvas.autoDetect')">
-          <mat-icon>smart_toy</mat-icon>
-        </button>
-        <button type="button" class="qc-icon-btn" (click)="triggerAlign()"
-          [title]="t('common.align')" [attr.aria-label]="t('common.align')">
-          <mat-icon>align_horizontal_center</mat-icon>
-        </button>
 
-        @if (pageFiles.length > 0) {
-        <span class="qc-tool-sep"></span>
+        <!-- 2. Araçlar: soru işaretleme yardımcıları -->
+        <button type="button" class="qc-tool-trigger" [matMenuTriggerFor]="markToolMenu" [disabled]="pageFiles.length === 0"
+          [title]="t('canvas.groupTools')" [attr.aria-label]="t('canvas.groupTools')">
+          <mat-icon>tune</mat-icon><mat-icon class="qc-tool-trigger__caret">expand_more</mat-icon>
+        </button>
+        <mat-menu #markToolMenu="matMenu" xPosition="before">
+          <button mat-menu-item type="button" role="menuitemcheckbox" [attr.aria-checked]="autoModeOn"
+            (click)="setAutoMode(!autoModeOn)" [title]="t('canvas.autoAdvanceTitle')">
+            <mat-icon>skip_next</mat-icon><span>{{ t('canvas.autoAdvance') }}</span>
+            @if (autoModeOn) { <mat-icon class="qc-menu-check">check</mat-icon> }
+          </button>
+          <button mat-menu-item type="button" role="menuitemcheckbox" [attr.aria-checked]="autoAlignOn"
+            (click)="setAutoAlign(!autoAlignOn)" [disabled]="coordinateJsonMode"
+            [attr.title]="coordinateJsonMode ? t('canvas.detectorDisabledInJsonMode') : null">
+            <mat-icon>format_align_center</mat-icon><span>{{ t('canvas.autoAlign') }}</span>
+            @if (autoAlignOn) { <mat-icon class="qc-menu-check">check</mat-icon> }
+          </button>
+          <mat-divider></mat-divider>
+          <button mat-menu-item type="button" (click)="downloadRegionsLite()" [title]="t('canvas.downloadRegionsTitle')">
+            <mat-icon>file_download</mat-icon><span>{{ t('canvas.downloadRegions') }}</span>
+          </button>
+        </mat-menu>
 
-        <button type="button" class="qc-icon-btn" [class.is-active]="autoModeOn"
-          (click)="setAutoMode(!autoModeOn)" [title]="t('canvas.autoAdvanceTitle')" [attr.aria-label]="t('canvas.autoAdvance')">
-          <mat-icon>skip_next</mat-icon>
+        <!-- 3. Görünüm: paneller, ön izleme, tam ekran -->
+        <button type="button" class="qc-tool-trigger" [matMenuTriggerFor]="viewToolMenu"
+          [title]="t('canvas.groupView')" [attr.aria-label]="t('canvas.groupView')">
+          <mat-icon>dashboard</mat-icon><mat-icon class="qc-tool-trigger__caret">expand_more</mat-icon>
         </button>
-        <button type="button" class="qc-icon-btn" [class.is-active]="autoAlignOn"
-          (click)="setAutoAlign(!autoAlignOn)" [disabled]="coordinateJsonMode"
-          [title]="coordinateJsonMode ? t('canvas.detectorDisabledInJsonMode') : t('canvas.autoAlign')" [attr.aria-label]="t('canvas.autoAlign')">
-          <mat-icon>format_align_center</mat-icon>
-        </button>
-        <button type="button" class="qc-icon-btn" (click)="downloadRegionsLite()"
-          [title]="t('canvas.downloadRegionsTitle')" [attr.aria-label]="t('canvas.downloadRegions')">
-          <mat-icon>file_download</mat-icon>
-        </button>
-        }
-
-        <span class="qc-tool-sep"></span>
-
-        <button type="button" class="qc-icon-btn" [class.is-active]="previewOn" (click)="togglePreviewMode()" [disabled]="!canPreview"
-          [title]="t('common.previewTitle')" [attr.aria-label]="t('common.previewTitle')">
-          <mat-icon>visibility</mat-icon>
-        </button>
-        <button type="button" class="qc-icon-btn" (click)="setFullScreen(!fullScreen())"
-          [title]="fullScreen() ? t('canvas.exitFullscreen') : t('canvas.fullscreen')" [attr.aria-label]="t('canvas.fullscreen')">
-          <mat-icon>{{ fullScreen() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
-        </button>
-        <button type="button" class="qc-icon-btn" [class.is-active]="showSidePanel()" [disabled]="previewOn"
-          (click)="toggleInspector()" [title]="showSidePanel() ? t('canvas.hideInspector') : t('canvas.showInspector')"
-          [attr.aria-label]="t('canvas.toggleInspector')" [attr.aria-pressed]="showSidePanel()">
-          <mat-icon>view_sidebar</mat-icon>
-        </button>
+        <mat-menu #viewToolMenu="matMenu" xPosition="before">
+          <button mat-menu-item type="button" role="menuitemcheckbox" [attr.aria-checked]="showPagesPanel()"
+            [disabled]="previewOn" (click)="togglePagesPanel()">
+            <mat-icon class="qc-icon-flip">view_sidebar</mat-icon><span>{{ t('canvas.pages') }}</span>
+            @if (showPagesPanel()) { <mat-icon class="qc-menu-check">check</mat-icon> }
+          </button>
+          <button mat-menu-item type="button" role="menuitemcheckbox" [attr.aria-checked]="showSidePanel()"
+            [disabled]="previewOn" (click)="toggleInspector()">
+            <mat-icon>view_sidebar</mat-icon><span>{{ t('inspector.title') }}</span>
+            @if (showSidePanel()) { <mat-icon class="qc-menu-check">check</mat-icon> }
+          </button>
+          <mat-divider></mat-divider>
+          <button mat-menu-item type="button" role="menuitemcheckbox" [attr.aria-checked]="previewOn"
+            (click)="togglePreviewMode()" [disabled]="!canPreview">
+            <mat-icon>visibility</mat-icon><span>{{ t('common.previewTitle') }}</span>
+            @if (previewOn) { <mat-icon class="qc-menu-check">check</mat-icon> }
+          </button>
+          <button mat-menu-item type="button" (click)="setFullScreen(!fullScreen())">
+            <mat-icon>{{ fullScreen() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+            <span>{{ fullScreen() ? t('canvas.exitFullscreen') : t('canvas.fullscreen') }}</span>
+          </button>
+        </mat-menu>
       </div>
 
       @if (coordinateJsonMode) {

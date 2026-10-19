@@ -60,10 +60,10 @@
         <div class="ms-nav-area ms-nav-next" [class.ms-nav-disabled]="isDrawing" (click)="nextImage()"></div>
         <!-- Marker'lar -->
         <div *ngFor="let marker of warningMarkers" [class.cs-warning-marker]="marker.type === 'warning'"
-          [class.cs-error-marker]="marker.type === 'error'" [ngStyle]="{ top: marker.y + 'px', left: marker.x + 'px' }"
+          [class.cs-error-marker]="marker.type === 'error'" [ngStyle]="{ top: marker.y * canvasDisplayScale + 'px', left: marker.x * canvasDisplayScale + 'px' }"
           (click)="openWarningContextMenu(marker, $event)">
-          <mat-icon [style.width]="warningIconHeight + 'px !important'"
-            [style.height]="warningIconHeight + 'px !important'" [style.font-size]="warningIconHeight + 'px !important'"
+          <mat-icon [style.width]="warningIconHeight * canvasDisplayScale + 'px !important'"
+            [style.height]="warningIconHeight * canvasDisplayScale + 'px !important'" [style.font-size]="warningIconHeight * canvasDisplayScale + 'px !important'"
             color="warn">warning</mat-icon>
         </div>
         <!-- Marker context menü -->

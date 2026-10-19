@@ -794,6 +794,57 @@ describe('QuestionCanvasComponent', () => {
       expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
     });
 
+    it('onSave_AdminUser_PageNotExcluded_SendsPageCompleteTrue', async () => {
+      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true });
+
+      component.onSave();
+      saveBulk$.next({});
+
+      expect(imageSelectorFake.sendToFix).toHaveBeenCalledOnceWith(true, false);
+    });
+
+    it('onSave_AdminUser_ExcludeFromTrainingChecked_SendsPageCompleteFalse', async () => {
+      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true });
+      component.excludeFromTraining.set(true);
+
+      component.onSave();
+      saveBulk$.next({});
+
+      expect(imageSelectorFake.sendToFix).toHaveBeenCalledOnceWith(false, false);
+    });
+
+    it('sendToFix_AdminUser_ExcludeFromTrainingChecked_SendsPageCompleteFalse', async () => {
+      const { component, imageSelectorFake } = await setup({ isAdmin: true });
+      component.excludeFromTraining.set(true);
+
+      component.sendToFix();
+
+      expect(imageSelectorFake.sendToFix).toHaveBeenCalledOnceWith(false);
+    });
+
+    it('sendToFix_NonAdmin_DoesNotCallImageSelector', async () => {
+      const { component, imageSelectorFake } = await setup({ isAdmin: false });
+
+      component.sendToFix();
+
+      expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
+    });
+
+    it('onImageChange_ResetsExcludeFromTraining', async () => {
+      const { component } = await setup({ isAdmin: true });
+      component.excludeFromTraining.set(true);
+
+      component.onImageChange();
+
+      expect(component.excludeFromTraining()).toBeFalse();
+    });
+
+    it('excludeFromTraining_DefaultsToFalse', async () => {
+      const { component } = await setup({ isAdmin: true });
+
+      expect(component.excludeFromTraining()).toBeFalse();
+    });
+
     it('onSave_AdminUser_ExplicitSendToFixFalse_DoesNotCallImageSelectorSendToFix_OnSuccess', async () => {
       const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true });
 

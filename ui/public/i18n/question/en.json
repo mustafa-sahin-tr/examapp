@@ -52,6 +52,8 @@
     "createTest": "Create new worksheet",
     "noResults": "No results",
     "train": "Train",
+    "excludeFromTraining": "Exclude this page from question training",
+    "excludeFromTrainingHint": "Select this if you did not mark every question on the page; option crops are still saved.",
     "saving": "Saving…",
     "save": "Save",
     "saveAndFix": "Save and fix",

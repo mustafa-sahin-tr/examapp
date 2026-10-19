@@ -34,8 +34,4 @@ export class QuestionDetectorService {
       })
     );
   }
-
-  sendtoFixForAnswer(fixData: any): Observable<any> {
-    return this.http.post<any>(`/question-detector-dev/send-to-fix-for-answers`, fixData);
-  }
 }

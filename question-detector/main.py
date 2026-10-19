@@ -1,15 +1,12 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-import threading
 from typing import List
 from pathlib import Path
 from ultralytics import YOLO
 from PIL import Image
 import base64
 from io import BytesIO
-import uuid
-import json
 import os
 import logging
 from pyzbar.pyzbar import decode
@@ -18,9 +15,8 @@ from guards import (
     MAX_ANSWERS_PER_QUESTION,
     MAX_COORD,
     MAX_QUESTIONS_PER_REQUEST,
-    clamp_box,
-    safe_join,
 )
+from dataset_store import QuestionSample, save_page
 
 _enable_docs = os.getenv("ENABLE_API_DOCS", "").lower() in ("1", "true", "yes")
 app = FastAPI(
@@ -37,27 +33,6 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-
-IMAGES_DIR = "data/questions/images"
-ANSWERS_DIR = "data/answers/images"
-QUESTIONS_JSON_PATH = "data/json/questions.json"
-ANSWERS_JSON_PATH = "data/json/answers.json"
-QUESTION_IMAGE_URL_PREFIX = "../data/questions/images"
-ANSWER_IMAGE_URL_PREFIX = "../data/answers/images"
-CROPS_DIR = Path("data/crops")
-
-# Ensure dirs exist
-os.makedirs(IMAGES_DIR, exist_ok=True)
-os.makedirs(ANSWERS_DIR, exist_ok=True)
-CROPS_DIR.mkdir(parents=True, exist_ok=True)
-Path(QUESTIONS_JSON_PATH).parent.mkdir(parents=True, exist_ok=True)
-if not os.path.exists(QUESTIONS_JSON_PATH):
-    with open(QUESTIONS_JSON_PATH, "w") as f:
-        json.dump([], f)
-
-if not os.path.exists(ANSWERS_JSON_PATH):
-    with open(ANSWERS_JSON_PATH, "w") as f:
-        json.dump([], f)
 
 # Request body model
 class ImageData(BaseModel):
@@ -84,6 +59,8 @@ class UploadQuestionsRequest(BaseModel):
     answerCount: int
     imageData: ImageData
     questions: List[QuestionBox]
+    # False: sayfadaki sorularin hepsi isaretli degil -> tam sayfa soru modeline girmez (dataset_store).
+    pageComplete: bool = True
 
 
 # Issue #366: servis yalnız gateway arkasindan cagrilir (tarayici dogrudan gelmez); CORS varsayilan
@@ -101,44 +78,15 @@ if _cors_origins:
 # Govde boyut siniri (413) - tum uclar (predict/read-qr/send-to-fix*).
 app.add_middleware(BodySizeLimitMiddleware)
 
-# Modeli yükle (model yolunu değiştir)
-# model = YOLO("runs/detect/train-only-q-v5/weights/best.pt")
-# model = YOLO("runs/detect/train2/weights/best.pt")
-# model = YOLO("data/questions/runs/train32/weights/best.pt")
-# sub_model = YOLO("data/answers/runs/train-answers-v4/weights/best.pt")  # <--- Alt modelin yolu
-# model = YOLO("data/questions/runs/train5/weights/best.pt")
-# sub_model = YOLO("data/answers/runs/train-answers-v10/weights/best.pt")  # <--- Alt modelin yolu
-
-def resolve_model_path(env_var_name: str, deployed_path: str, legacy_path: str) -> str:
-    configured_path = os.getenv(env_var_name)
-    if configured_path:
-        return configured_path
-
-    deployed_model = Path(deployed_path)
-    if deployed_model.exists():
-        return str(deployed_model)
-
-    return legacy_path
-
-
-QUESTION_MODEL_PATH = resolve_model_path(
-    "QUESTION_MODEL_PATH",
-    "/app/models/question-best.pt",
-    "data/questions/runs/train5/weights/best.pt",
-    # "data/questions/runs/train-20260622-1/weights/best.pt"
-)
-ANSWER_MODEL_PATH = resolve_model_path(
-    "ANSWER_MODEL_PATH",
-    "/app/models/answer-best.pt",
-    "data/answers/runs/train-answers-v10/weights/best.pt",
-)
+# Modeller: models/question-best.pt (sayfa -> soru) ve models/answer-best.pt (soru kirpmasi -> sik).
+# Haftalik egitim (training/train.py) yeni modeli bu adlarla models/ altina yazar; ortam degiskeni ezer.
+MODELS_DIR = Path(os.getenv("MODELS_DIR", "models"))
+QUESTION_MODEL_PATH = os.getenv("QUESTION_MODEL_PATH") or str(MODELS_DIR / "question-best.pt")
+ANSWER_MODEL_PATH = os.getenv("ANSWER_MODEL_PATH") or str(MODELS_DIR / "answer-best.pt")
 
 model = YOLO(QUESTION_MODEL_PATH)
-sub_model = YOLO(ANSWER_MODEL_PATH)  # <--- Alt modelin yolu
-
-
-# questions.json / answers.json read-modify-write tek surecte seri olsun.
-_json_lock = threading.Lock()
+sub_model = YOLO(ANSWER_MODEL_PATH)
+logger.info(f"Models loaded: question={QUESTION_MODEL_PATH} answer={ANSWER_MODEL_PATH}")
 
 
 def validate_upload_limits(payload: UploadQuestionsRequest) -> None:
@@ -149,62 +97,6 @@ def validate_upload_limits(payload: UploadQuestionsRequest) -> None:
         raise HTTPException(status_code=422, detail=f"Too many answers per question (max {MAX_ANSWERS_PER_QUESTION}).")
 
 
-def upload_answers_logic(payload: UploadQuestionsRequest) -> dict:
-    validate_upload_limits(payload)
-    try:
-        # 👇 Base64 temizleme
-        base64_str = payload.imageData.image_base64
-        if "," in base64_str:
-            base64_str = base64_str.split(",")[1]
-
-        # Görseli decode et ve kaydet
-        image_bytes = base64.b64decode(base64_str)
-        image = Image.open(BytesIO(image_bytes)).convert("RGB")
-
-        filename = f"{uuid.uuid4()}.jpg"
-        image_path = safe_join(ANSWERS_DIR, filename)
-        image.save(image_path)
-
-        image_url = f"{ANSWER_IMAGE_URL_PREFIX}/{filename}"
-        logger.info(f"Image Added : {image_url}")
-        # Yeni question objelerini oluştur
-        new_entries = []
-        for idx, q in enumerate(payload.questions):
-            entry = {
-                "question": {
-                    "x": q.x,
-                    "y": q.y,
-                    "width": q.width,
-                    "height": q.height,
-                    "imageUrl": image_url
-                }
-            }
-
-            new_entries.append(entry)
-            logger.info(f"Added question: {entry['question']}")
-
-        # Mevcut questions.json dosyasına ekle
-        with _json_lock, open(ANSWERS_JSON_PATH, "r+", encoding="utf-8") as f:
-            current_data = json.load(f)
-            current_data.extend(new_entries)
-            f.seek(0)
-            json.dump(current_data, f, indent=2, ensure_ascii=False)
-            f.truncate()
-
-        logger.info(f"Successfully appended {len(new_entries)} answers to {ANSWERS_JSON_PATH}")
-
-
-        return {
-            "success": True,
-            "added": len(new_entries),
-            "imageFile": filename
-        }
-
-    except HTTPException:
-        raise
-    except Exception:
-        logger.exception("Error occurred")
-        raise HTTPException(status_code=500, detail="Internal error")
 @app.post("/predict")
 def predict(data: ImageData):
     try:
@@ -285,6 +177,7 @@ def predict(data: ImageData):
 
 @app.post("/send-to-fix")
 def upload_questions(payload: UploadQuestionsRequest):
+    """Elle dogrulanmis sayfayi egitim veri setine yazar (DATASET_DIR, bkz. dataset_store)."""
     validate_upload_limits(payload)
     # Ön kontrol: answerCount ile eşleşmeyen var mı? (try dışında: 400 olarak kalsın)
     invalid_questions = [q for q in payload.questions if len(q.answers) != payload.answerCount]
@@ -294,89 +187,32 @@ def upload_questions(payload: UploadQuestionsRequest):
             detail=f"{len(invalid_questions)} question(s) have answer count mismatch. Expected {payload.answerCount}."
         )
     try:
-        # 👇 Base64 temizleme
         base64_str = payload.imageData.image_base64
         if "," in base64_str:
             base64_str = base64_str.split(",")[1]
-
-        # Görseli decode et ve kaydet
         image_bytes = base64.b64decode(base64_str)
-        image = Image.open(BytesIO(image_bytes)).convert("RGB")
 
-        filename = f"{uuid.uuid4()}.jpg"
-        image_path = safe_join(IMAGES_DIR, filename)
-        image.save(image_path)
+        samples = [
+            QuestionSample(
+                box=(q.x, q.y, q.width, q.height),
+                answers=[(a.x, a.y, a.width, a.height) for a in q.answers],
+            )
+            for q in payload.questions
+        ]
+        try:
+            saved = save_page(image_bytes, samples, page_complete=payload.pageComplete)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Box is outside the image.")
 
-        image_url = f"{QUESTION_IMAGE_URL_PREFIX}/{filename}"
-        logger.info(f"Image Added : {image_url}")
-        crops = []
-        # Yeni question objelerini oluştur
-        new_entries = []
-        for idx, q in enumerate(payload.questions):
-            entry = {
-                "question": {
-                    "x": q.x,
-                    "y": q.y,
-                    "width": q.width,
-                    "height": q.height,
-                    "imageUrl": image_url
-                }
-            }
-
-            try:
-                box = clamp_box(q.x, q.y, q.width, q.height, image.width, image.height)
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Box is outside the image.")
-            crop = image.crop(box)
-
-            crop_filename = f"{filename}_q{idx + 1}.jpg"
-            crop_path = safe_join(CROPS_DIR, crop_filename)
-            crop.save(crop_path)
-
-            crops.append(str(CROPS_DIR / crop_filename))  # goreli yol (mutlak /app/... sizmasin)
-
-            # Eğer answer varsa: crop edilmiş görüntüyle birlikte yeni payload oluştur ve gönder
-            if q.answers:
-                # Crop image to base64
-                with BytesIO() as buffer:
-                    crop.save(buffer, format="JPEG")
-                    crop_base64 = base64.b64encode(buffer.getvalue()).decode()
-
-                # AnswerBox -> QuestionBox çevir
-                converted_questions = [
-                    QuestionBox(x=max(0.0, a.x - q.x), y=max(0.0, a.y - q.y), width=a.width, height=a.height, answers=[])
-                    for a in q.answers
-                ]                
-
-                base64_with_prefix = f"data:image/webp;base64,{crop_base64}"
-                new_payload = UploadQuestionsRequest(   
-                    imageData={"image_base64":base64_with_prefix},
-                    questions=converted_questions,
-                    answerCount=payload.answerCount
-                )
-
-                result = upload_answers_logic(new_payload)
-                logger.info(f"Sub-answers added: {result}")
-
-            new_entries.append(entry)
-            logger.info(f"Added question: {entry['question']}")
-
-        # Mevcut questions.json dosyasına ekle
-        with _json_lock, open(QUESTIONS_JSON_PATH, "r+", encoding="utf-8") as f:
-            current_data = json.load(f)
-            current_data.extend(new_entries)
-            f.seek(0)
-            json.dump(current_data, f, indent=2, ensure_ascii=False)
-            f.truncate()
-
-        logger.info(f"Successfully appended {len(new_entries)} questions to {QUESTIONS_JSON_PATH}")
-
-
+        logger.info(
+            f"Training sample saved: page={saved['page_id']} complete={payload.pageComplete} "
+            f"questions={len(samples)} crops={len(saved['crops'])} skipped_crops={saved['skipped_crops']}"
+        )
         return {
             "success": True,
-            "added": len(new_entries),
-            "imageFile": filename,
-            "crops": crops
+            "added": len(samples),
+            "imageFile": saved["page_id"],
+            "crops": saved["crops"],
         }
 
     except HTTPException:
@@ -384,9 +220,6 @@ def upload_questions(payload: UploadQuestionsRequest):
     except Exception:
         logger.exception("Error occurred")
         raise HTTPException(status_code=500, detail="Internal error")
-@app.post("/send-to-fix-for-answers")
-def upload_answers(payload: UploadQuestionsRequest):
-    return upload_answers_logic(payload)
 
 
 @app.post("/read-qr")

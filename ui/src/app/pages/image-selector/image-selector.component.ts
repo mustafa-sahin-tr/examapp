@@ -196,6 +196,8 @@ export class ImageSelectorComponent {
   private pendingHit: RegionOrAnswerHit = null;
   /** Sağ panel (Soru Müfettişi) senkronizasyonu için seçili soru bildirimi. */
   @Output() selectedQuestionChange = new EventEmitter<{ index: number; region: QuestionRegion | null }>();
+  /** Tuvale yeni bir sayfa/görsel yüklenmeye başladığında yayınlanır (sayfaya özel ebeveyn durumu sıfırlansın). */
+  @Output() imageChange = new EventEmitter<void>();
 
   contextMenuType: 'region' | 'answer' | 'worksheet' | 'dropzone' | 'passage' = 'region'; // ✅ Sağ tıklama menüsünün türü
   selectedRegion: number | null = null;
@@ -924,6 +926,7 @@ export class ImageSelectorComponent {
     this.resetRegions();
     const file = this.imageFiles[this.currentImageIndex];
     if (!file) return;
+    this.imageChange.emit();
     const reader = new FileReader();
     this.imagName.set(file.name);
     if (!this.bookName()) {
@@ -1008,6 +1011,7 @@ export class ImageSelectorComponent {
     if (file) {
       this.fileSelectionSeq++;
       this.disableCoordinateJsonMode();
+      this.imageChange.emit();
       const reader = new FileReader();
       this.imagName.set(file.name);
       this.bookName.set(this.extractBookName(file));
@@ -1948,7 +1952,14 @@ export class ImageSelectorComponent {
     });
   }
 
-  public sendToFix() {
+  /**
+   * Sayfayı eğitim verisi olarak question-detector'a gönderir.
+   * @param pageComplete false ise sayfadaki soruların hepsi işaretlenmemiştir: sayfa, soru tespit
+   *   modelinin eğitiminde kullanılmaz; yalnızca soru kırpmaları (şık modeli için) saklanır.
+   * @param advance false ise başarıda sonraki sayfaya geçilmez (çağıran kendi geçişini yapıyorsa;
+   *   aksi halde iki sayfa ilerleyip biri atlanır).
+   */
+  public sendToFix(pageComplete: boolean = true, advance: boolean = true) {
     const imageData = { image_base64: this.imageData() };
     const regionData = { question: this.regions() };
     const answerCount = this.answerCount();
@@ -1962,6 +1973,7 @@ export class ImageSelectorComponent {
 
     var data = {
       answerCount: answerCount,
+      pageComplete: pageComplete,
       imageData: imageData,
       questions: mcqQuestions.map((q: any) => ({
         x: q.x,
@@ -1982,39 +1994,13 @@ export class ImageSelectorComponent {
         this.snackBar.open(`Successfully appended ${data.added} questions with ${data.imageFile}`, 'Tamam', {
           duration: 3000,
         });
-        this.nextImage();
+        if (advance) {
+          this.nextImage();
+        }
       } else {
         this.snackBar.open(`${data.message}`, 'Tamam', {
           duration: 3000,
         });
-      }
-    });
-  }
-
-  public sendToFixForAnswer() {
-    const imageData = { image_base64: this.imageData() };
-    const regionData = { question: this.regions() };
-
-    const firstMcq = regionData.question.find((q: any) => this.getInteractionType(q.name) !== 'dragDropLabeling');
-    if (!firstMcq) {
-      return;
-    }
-    var data = {
-      imageData: imageData,
-      questions: firstMcq.answers.map((q: any) => ({
-        x: q.x,
-        y: q.y,
-        width: q.width,
-        height: q.height,
-      })),
-    };
-    console.log(data);
-    this.questionDetectorService.sendtoFixForAnswer(data).subscribe((data) => {
-      if (data.success) {
-        this.snackBar.open(`Successfully appended ${data.added} questions with ${data.imageFile}`, 'Tamam', {
-          duration: 3000,
-        });
-        this.nextImage();
       }
     });
   }

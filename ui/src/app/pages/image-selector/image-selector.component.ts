@@ -2184,12 +2184,26 @@ export class ImageSelectorComponent {
     document.body.removeChild(downloadAnchor);
   }
 
+  // Backend Width/Height int bekler; kesirli koordinat (ölçekli çizim) kaydı 400'e düşürür.
+  private roundBox<T extends { x: number; y: number; width: number; height: number }>(box: T): T {
+    const isNum = (v: unknown): v is number => typeof v === 'number' && !Number.isNaN(v);
+    return {
+      ...box,
+      x: isNum(box.x) ? Math.round(box.x) : box.x,
+      y: isNum(box.y) ? Math.round(box.y) : box.y,
+      width: isNum(box.width) ? Math.max(1, Math.round(box.width)) : box.width,
+      height: isNum(box.height) ? Math.max(1, Math.round(box.height)) : box.height,
+    };
+  }
+
   public getRegions(header: any) {
     return {
       imageData: this.imageData(),
-      passages: this.passages(),
+      passages: this.passages().map((p) => this.roundBox(p)),
       questions: this.regions().map((region) => ({
-        ...region,
+        ...this.roundBox(region),
+        answers: region.answers?.map((a) => this.roundBox(a)),
+        ...(region.passage ? { passage: this.roundBox(region.passage) } : {}),
         bookName: this.bookName(),
         isExample: this.isExample(region.name),
         exampleAnswer: this.isExample(region.name) ? this.getExampleAnswer(region.name) : null,

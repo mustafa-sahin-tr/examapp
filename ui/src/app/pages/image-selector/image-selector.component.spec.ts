@@ -431,4 +431,38 @@ describe('ImageSelectorComponent', () => {
       expect(emitted).toEqual([]);
     });
   });
+
+  describe('getRegions', () => {
+    // Backend BulkQuestionDto/BulkAnswerDto/BulkPassageDto Width/Height int: kesirli değer 400 döner.
+    it('getRegions_FractionalCoordinates_RoundsPayloadWithoutMutatingState', () => {
+      const fractionalAnswer = { ...answer(10.4, 20.6), width: 40.5, height: 0.2 };
+      const fractionalRegion = {
+        ...region('Soru 1', [fractionalAnswer]),
+        x: 1118.13123,
+        y: 55.5,
+        width: 300.49,
+        height: 299.51,
+        passage: { id: 1, title: 'P', x: 3.7, y: 4.2, width: 100.6, height: 50.4, imageUrl: '', imageId: '' },
+      };
+      component.regions.set([fractionalRegion] as any);
+      component.passages.set([{ id: '1', x: 3.7, y: 4.2, width: 100.6, height: 50.4 }]);
+
+      const payload = component.getRegions(null);
+
+      const q = payload.questions[0];
+      expect([q.x, q.y, q.width, q.height]).toEqual([1118, 56, 300, 300]);
+      const a = q.answers[0];
+      expect([a.x, a.y, a.width, a.height]).toEqual([10, 21, 41, 1]);
+      const qp = q.passage!;
+      expect([qp.x, qp.y, qp.width, qp.height]).toEqual([4, 4, 101, 50]);
+      const p = payload.passages[0];
+      expect([p.x, p.y, p.width, p.height]).toEqual([4, 4, 101, 50]);
+
+      const stateRegion = component.regions()[0];
+      expect(stateRegion.x).toBe(1118.13123);
+      expect(stateRegion.answers[0].width).toBe(40.5);
+      expect(stateRegion.passage!.x).toBe(3.7);
+      expect(component.passages()[0].width).toBe(100.6);
+    });
+  });
 });

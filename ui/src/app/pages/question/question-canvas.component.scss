@@ -130,6 +130,89 @@
   margin-left: auto;
 }
 
+.qc-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 11px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+
+}
+
+.qc-tool-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  height: 36px;
+  padding: 0 4px 0 8px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ms-text-medium);
+  cursor: pointer;
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+
+  &__caret {
+    font-size: 16px !important;
+    width: 16px !important;
+    height: 16px !important;
+    color: var(--ms-text-weak);
+  }
+
+  &:hover:not(:disabled),
+  &[aria-expanded='true'] {
+    background: var(--ms-surface-medium);
+    color: var(--ms-text-strong);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}
+
+// mat-menu overlay'de render edilir; sınıflar global kapsamda olmalı.
+::ng-deep .qc-menu-check {
+  margin-left: auto;
+  margin-right: 0 !important;
+  padding-left: 16px;
+  color: var(--ms-action-border);
+}
+
+// view_sidebar ikonu sağ paneli çizer; sol panel (Sayfalar) için aynalanır.
+::ng-deep .qc-icon-flip {
+  transform: scaleX(-1);
+}
+
+// Issue #454: koordinat JSON modu göstergesi.
+.qc-mode-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--ms-info-border);
+  border-radius: 8px;
+  background: var(--ms-info-surface-weak);
+  color: var(--ms-info-text);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
 .qc-test-search {
   display: flex;
   align-items: center;
@@ -266,6 +349,17 @@
     border-color: var(--ms-action-border);
     color: var(--ms-text-strong);
   }
+
+  &--sm {
+    width: 28px;
+    height: 28px;
+
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+  }
 }
 
 .qc-tool-sep {
@@ -336,13 +430,26 @@
 
 /* ---------- 2. BODY LAYOUT ---------- */
 .qc-body {
+  --qc-rail-w: 208px;
+  --qc-inspector-w: 340px;
   flex: 1;
   display: grid;
-  grid-template-columns: 208px 1fr 340px;
+  grid-template-columns: var(--qc-rail-w) minmax(0, 1fr) var(--qc-inspector-w);
   min-height: 0;
+
+  // Kapalı panelin kolonu da kalkar; tuval boşalan alanı doldurur.
+  &--no-rail {
+    --qc-rail-w: 0px;
+  }
+
+  &--no-inspector {
+    --qc-inspector-w: 0px;
+  }
 }
 
 .qc-rail {
+  // Kolonlar sabit: gizli panel diğerlerini otomatik yerleşimle kaydırmasın.
+  grid-column: 1;
   border-right: 1px solid var(--ms-border-weak);
   background: var(--ms-surface);
   padding: 16px 12px;
@@ -351,9 +458,14 @@
   gap: 14px;
   overflow-y: auto;
 
+  &--hidden {
+    display: none;
+  }
+
   &__head {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
     font-family: var(--mainFontFamily);
     font-weight: 800;
@@ -363,10 +475,10 @@
     color: var(--ms-text-weak);
   }
 
-  &__actions {
+  &__title {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
+    align-items: center;
+    gap: 8px;
   }
 
   &__empty {
@@ -374,26 +486,6 @@
     color: var(--ms-text-weak);
   }
 
-  // Issue #454: koordinat JSON modu göstergesi.
-  &__mode {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 8px;
-    border: 1px solid var(--ms-info-border);
-    border-radius: 6px;
-    background: var(--ms-info-surface-weak);
-    color: var(--ms-info-text);
-    font-family: var(--paragraphFontFamily);
-    font-size: 12px;
-    font-weight: 600;
-
-    mat-icon {
-      font-size: 16px;
-      width: 16px;
-      height: 16px;
-    }
-  }
 }
 
 .qc-filmstrip {
@@ -447,6 +539,7 @@
 
 /* ---------- 3. CANVAS ---------- */
 .qc-canvas {
+  grid-column: 2;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -469,13 +562,6 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 4px;
-  }
-
-  &--slim {
-    order: -1;
-    justify-content: flex-end;
-    padding: 6px 16px;
-    background: var(--ms-surface-weak);
   }
 }
 
@@ -579,6 +665,7 @@
 
 /* ---------- 4. INSPECTOR ---------- */
 .qc-inspector {
+  grid-column: 3;
   border-left: 1px solid var(--ms-border-weak);
   background: var(--ms-surface-weak);
   display: flex;
@@ -647,8 +734,6 @@
 }
 
 .qc-body--preview {
-  grid-template-columns: 1fr;
-
   .qc-rail,
   .qc-inspector {
     display: none;
@@ -933,23 +1018,22 @@
 /* ---------- RESPONSIVE ---------- */
 @media (max-width: 1200px) {
   .qc-body {
-    grid-template-columns: 64px 1fr;
+    grid-template-columns: var(--qc-rail-w) minmax(0, 1fr);
+
+    &:not(.qc-body--no-rail) {
+      --qc-rail-w: 64px;
+    }
   }
 
   .qc-rail {
     padding: 12px 8px;
 
-    .qc-rail__head span,
-    .qc-btn--block {
-      font-size: 0;
+    .qc-rail__title {
+      display: none;
     }
 
-    .qc-btn--block {
+    .qc-rail__head {
       justify-content: center;
-
-      mat-icon {
-        font-size: 18px;
-      }
     }
 
     .qc-thumb__label {
@@ -973,8 +1057,7 @@
     gap: 8px;
   }
 
-  .qc-canvas__toolbar-right .qc-icon-btn {
-    width: 32px;
+  .qc-tools .qc-tool-trigger {
     height: 32px;
 
     mat-icon {

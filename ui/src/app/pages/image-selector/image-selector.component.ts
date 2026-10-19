@@ -558,9 +558,7 @@ export class ImageSelectorComponent {
     console.log('Entered onRightClick. IsDrawing :', this.isDrawing);
     event.preventDefault();
 
-    const canvasRect = (event.target as HTMLCanvasElement).getBoundingClientRect();
-    const clickX = event.clientX - canvasRect.left;
-    const clickY = event.clientY - canvasRect.top;
+    const { x: clickX, y: clickY } = this.toCanvasPoint(event);
 
     const hit = this.getRegionOrAnswerAtPosition(clickX, clickY);
     const menuWidth = 260;
@@ -1082,8 +1080,7 @@ export class ImageSelectorComponent {
       return;
     }
 
-    const mouseX = event.offsetX;
-    const mouseY = event.offsetY;
+    const { x: mouseX, y: mouseY } = this.toCanvasPoint(event);
 
     for (const region of this.regions()) {
       for (const answer of region.answers) {
@@ -1117,8 +1114,7 @@ export class ImageSelectorComponent {
       // Tüm resmi yeniden çiz
       this.drawImage();
 
-      const mouseX = event.offsetX;
-      const mouseY = event.offsetY;
+      const { x: mouseX, y: mouseY } = this.toCanvasPoint(event);
 
       for (const question of this.regions()) {
         for (const answer of question.answers) {
@@ -1139,8 +1135,9 @@ export class ImageSelectorComponent {
       return;
     }
 
-    this.currentX = event.offsetX;
-    this.currentY = event.offsetY;
+    const current = this.toCanvasPoint(event);
+    this.currentX = current.x;
+    this.currentY = current.y;
     this.drawTemporaryRectangle();
   }
 
@@ -1262,6 +1259,28 @@ export class ImageSelectorComponent {
     if (top < scroller.scrollTop || bottom > scroller.scrollTop + scroller.clientHeight) {
       scroller.scrollTo({ top: Math.max(0, top - 48), behavior: 'smooth' });
     }
+  }
+
+  /**
+   * Tuval CSS ile alana sığdırılır (genişlik), çizim ise resmin gerçek pikselinde kalır.
+   * Ekran piksel / tuval piksel oranı; fare koordinatları ve işaretler bununla çevrilir.
+   */
+  get canvasDisplayScale(): number {
+    const canvasEl = this.canvas?.nativeElement;
+    if (!canvasEl || !canvasEl.width || !canvasEl.clientWidth) return 1;
+    return canvasEl.clientWidth / canvasEl.width;
+  }
+
+  /** Fare olayını tuvalin (resmin) piksel koordinatına çevirir. */
+  private toCanvasPoint(event: MouseEvent): { x: number; y: number } {
+    const canvasEl = this.canvas.nativeElement;
+    const rect = canvasEl.getBoundingClientRect();
+    const scaleX = rect.width ? canvasEl.width / rect.width : 1;
+    const scaleY = rect.height ? canvasEl.height / rect.height : 1;
+    return {
+      x: (event.clientX - rect.left) * scaleX,
+      y: (event.clientY - rect.top) * scaleY,
+    };
   }
 
   drawImage() {
@@ -1419,9 +1438,9 @@ export class ImageSelectorComponent {
       console.log('Exited startSelection event.button === 2 .IsDrawing :', this.isDrawing);
       return;
     }
-    const rect = this.canvas.nativeElement.getBoundingClientRect();
-    this.startX = event.clientX - rect.left;
-    this.startY = event.clientY - rect.top;
+    const start = this.toCanvasPoint(event);
+    this.startX = start.x;
+    this.startY = start.y;
     const hit = this.getRegionOrAnswerAtPosition(this.startX, this.startY);
     this.pendingHit = hit;
 
@@ -1472,9 +1491,7 @@ export class ImageSelectorComponent {
     const answerHeightThreshold = 20;
     const answerWidthThreshold = 20;
     if (!this.selectionMode() || !this.ctx || !this.isDrawing) return;
-    const rect = this.canvas.nativeElement.getBoundingClientRect();
-    const endX = event.clientX - rect.left;
-    const endY = event.clientY - rect.top;
+    const { x: endX, y: endY } = this.toCanvasPoint(event);
     const width = endX - this.startX;
     const height = endY - this.startY;
 

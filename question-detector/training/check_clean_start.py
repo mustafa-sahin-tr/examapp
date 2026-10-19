@@ -12,7 +12,7 @@ from pathlib import Path
 
 QD = Path(__file__).resolve().parent.parent  # question-detector/
 REPO = QD.parent
-LEGACY = ["data", "runs", "YOLOv8", "scripts", "commands.sh", "prediction.json", "predictions.json", "yolov8n.pt"]
+LEGACY = ["data", "runs", "YOLOv8", "scripts", "prediction.json", "predictions.json", "yolov8n.pt"]
 MODELS = ["question-best.pt", "answer-best.pt"]
 
 problems = 0

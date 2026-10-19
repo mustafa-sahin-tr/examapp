@@ -62,203 +62,210 @@
   </ng-container>
 
   <ng-template #fullForm>
-  <!-- KÜNYE -->
-  <section class="card">
-    <h3><span class="dot"></span>{{ t('form.identityTitle') }}</h3>
-    <p class="card-note">{{ t('form.identityNote') }}</p>
+  <!-- Geniş ekranda: solda Künye + Ayarlar, sağda Sınıflandırma; dar ekranda alt alta -->
+  <div class="tf-grid">
+    <div class="tf-col">
+      <!-- KÜNYE -->
+      <section class="card">
+        <h3><span class="dot"></span>{{ t('form.identityTitle') }}</h3>
+        <p class="card-note">{{ t('form.identityNote') }}</p>
 
-    <div class="field">
-      <label>{{ t('form.nameLabel') }}<span class="req">*</span></label>
-      <input class="control" type="text" formControlName="name" [placeholder]="t('form.namePlaceholder')" />
-    </div>
-
-    <div class="field">
-      <label>{{ t('form.subtitleLabel') }}<span class="req">*</span></label>
-      <input class="control" type="text" formControlName="subtitle" [placeholder]="t('form.subtitlePlaceholder')" />
-    </div>
-
-    <div class="field">
-      <label>{{ t('form.descriptionLabel') }}</label>
-      <textarea class="control area" rows="3" formControlName="description" [placeholder]="t('form.descriptionPlaceholder')"></textarea>
-    </div>
-  </section>
-
-  <!-- SINIFLANDIRMA -->
-  <section class="card">
-    <h3><span class="dot"></span>{{ t('form.classificationTitle') }}</h3>
-    <p class="card-note">{{ t('form.classificationNote') }}</p>
-
-    <div class="seg"><i></i><span>{{ t('form.segGrade') }}</span><span class="ln"></span></div>
-    <div class="grid3">
-      <div class="field">
-        <label>{{ t('form.gradeLabel') }}<span class="req">*</span></label>
-        <div class="control select">
-          <select formControlName="gradeId" (change)="gradeChange(value('gradeId'))">
-            <option [ngValue]="null">{{ t('form.select') }}</option>
-            <option *ngFor="let grade of grades" [ngValue]="grade.id">{{ grade.name }}</option>
-          </select>
-          <mat-icon class="chev">expand_more</mat-icon>
+        <div class="field">
+          <label>{{ t('form.nameLabel') }}<span class="req">*</span></label>
+          <input class="control" type="text" formControlName="name" [placeholder]="t('form.namePlaceholder')" />
         </div>
-        <button
-          type="button"
-          class="add-link"
-          *ngIf="showApplyToAll"
-          [disabled]="!value('gradeId')"
-          (click)="applyGradeToAll.emit(value('gradeId'))"
-        >
-          <mat-icon>done_all</mat-icon>{{ t('form.applyToAll') }}
-        </button>
-      </div>
-    </div>
 
-    <div class="seg"><i></i><span>{{ t('form.segSource') }}</span><span class="ln"></span></div>
-    <div class="grid2">
-      <div class="field" *ngIf="!showAddBookInput">
-        <label>{{ t('form.bookLabel') }}</label>
-        <div class="control select">
-          <select formControlName="bookId" (change)="bookChange(value('bookId'))">
-            <option [ngValue]="null">{{ t('form.select') }}</option>
-            <option *ngFor="let book of books" [ngValue]="book.id">{{ book.name }}</option>
-          </select>
-          <mat-icon class="chev">expand_more</mat-icon>
+        <div class="field">
+          <label>{{ t('form.subtitleLabel') }}<span class="req">*</span></label>
+          <input class="control" type="text" formControlName="subtitle" [placeholder]="t('form.subtitlePlaceholder')" />
         </div>
-        <button type="button" class="add-link" (click)="openNewBookAdd.emit()">
-          <mat-icon>add</mat-icon>{{ t('form.addBook') }}
-        </button>
-      </div>
-      <div class="field" *ngIf="showAddBookInput">
-        <label>{{ t('form.newBookLabel') }}</label>
-        <input class="control" type="text" formControlName="newBookName" (blur)="onNewBookBlur.emit()" />
-      </div>
 
-      <div class="field" *ngIf="!showAddBookTestInput">
-        <label>{{ t('form.bookTestLabel') }}</label>
-        <div class="control select">
-          <select formControlName="bookTestId">
-            <option [ngValue]="null">{{ t('form.select') }}</option>
-            <option *ngFor="let bt of bookTests" [ngValue]="bt.id">{{ bt.name }}</option>
-          </select>
-          <mat-icon class="chev">expand_more</mat-icon>
+        <div class="field">
+          <label>{{ t('form.descriptionLabel') }}</label>
+          <textarea class="control area" rows="3" formControlName="description" [placeholder]="t('form.descriptionPlaceholder')"></textarea>
         </div>
-        <button type="button" class="add-link" (click)="openNewBookTestAdd.emit()">
-          <mat-icon>add</mat-icon>{{ t('form.addBookTest') }}
-        </button>
-      </div>
-      <div class="field" *ngIf="showAddBookTestInput">
-        <label>{{ t('form.newBookTestLabel') }}</label>
-        <input class="control" type="text" formControlName="newBookTestName" />
-      </div>
-    </div>
+      </section>
 
-    <div class="seg"><i></i><span>{{ t('form.segTopic') }}</span><span class="ln"></span></div>
-    <div class="grid3">
-      <div class="field">
-        <label>{{ t('form.subjectLabel') }}</label>
-        <div class="control select">
-          <select formControlName="subjectId" (change)="subjectChange(value('subjectId'))">
-            <option [ngValue]="null">{{ t('form.select') }}</option>
-            <option *ngFor="let subject of subjects" [ngValue]="subject.id">{{ subject.name }}</option>
-          </select>
-          <mat-icon class="chev">expand_more</mat-icon>
+      <!-- AYARLAR -->
+      <section class="card">
+        <h3><span class="dot"></span>{{ t('form.settingsTitle') }}</h3>
+        <p class="card-note">{{ t('form.settingsNote') }}</p>
+
+        <div class="settings-row">
+          <div class="field dur">
+            <label>{{ t('form.durationLabel') }}<span class="req">*</span></label>
+            <input class="control" type="number" min="1" formControlName="maxDurationMinutes" />
+          </div>
         </div>
-        <button
-          type="button"
-          class="add-link"
-          *ngIf="showApplyToAll"
-          [disabled]="!value('subjectId')"
-          (click)="applySubjectToAll.emit(value('subjectId'))"
-        >
-          <mat-icon>done_all</mat-icon>{{ t('form.applyToAll') }}
-        </button>
-        <p class="card-note field-hint" *ngIf="!gradeSelected">{{ t('form.selectGradeFirst') }}</p>
-      </div>
 
-      <div class="field">
-        <label>{{ t('form.topicLabel') }}</label>
-        <div class="control select">
-          <select formControlName="topicId" (change)="topicChange(value('topicId'))">
-            <option [ngValue]="null">{{ t('form.select') }}</option>
-            <option *ngFor="let topic of topics" [ngValue]="topic.id">{{ topic.name }}</option>
-          </select>
-          <mat-icon class="chev">expand_more</mat-icon>
+        <div class="toggle-row">
+          <button
+            type="button"
+            class="switch"
+            [class.off]="!value('isPracticeTest')"
+            [attr.aria-pressed]="!!value('isPracticeTest')"
+            (click)="togglePractice()"
+          ></button>
+          <div>
+            <div class="t-label">{{ t('form.practiceLabel') }}</div>
+            <div class="t-sub">{{ t('form.practiceHint') }}</div>
+          </div>
         </div>
-        <button
-          type="button"
-          class="add-link"
-          *ngIf="showApplyToAll"
-          [disabled]="!value('topicId')"
-          (click)="applyTopicToAll.emit(value('topicId'))"
-        >
-          <mat-icon>done_all</mat-icon>{{ t('form.applyToAll') }}
-        </button>
-      </div>
 
-      <div class="field">
-        <label>{{ t('form.subtopicLabel') }}</label>
-        <div class="control select">
-          <select formControlName="subtopicId">
-            <option [ngValue]="null">{{ t('form.select') }}</option>
-            <option *ngFor="let subTopic of subtopics" [ngValue]="subTopic.id">{{ subTopic.name }}</option>
-          </select>
-          <mat-icon class="chev">expand_more</mat-icon>
+        <!-- Issue #105: öğrenci yorum/soru anahtarı (varsayılan açık) -->
+        <div class="toggle-row">
+          <button
+            type="button"
+            class="switch"
+            data-testid="comments-toggle"
+            [class.off]="!value('commentsEnabled')"
+            [attr.aria-pressed]="!!value('commentsEnabled')"
+            [attr.aria-label]="t('form.commentsLabel')"
+            [disabled]="form.disabled"
+            (click)="toggleComments()"
+          ></button>
+          <div>
+            <div class="t-label">{{ t('form.commentsLabel') }}</div>
+            <div class="t-sub">{{ t('form.commentsHint') }}</div>
+          </div>
         </div>
-        <button
-          type="button"
-          class="add-link"
-          *ngIf="showApplyToAll"
-          [disabled]="!value('subtopicId')"
-          (click)="applySubtopicToAll.emit(value('subtopicId'))"
-        >
-          <mat-icon>done_all</mat-icon>{{ t('form.applyToAll') }}
-        </button>
-      </div>
-    </div>
-  </section>
-
-  <!-- AYARLAR -->
-  <section class="card">
-    <h3><span class="dot"></span>{{ t('form.settingsTitle') }}</h3>
-    <p class="card-note">{{ t('form.settingsNote') }}</p>
-
-    <div class="settings-row">
-      <div class="field dur">
-        <label>{{ t('form.durationLabel') }}<span class="req">*</span></label>
-        <input class="control" type="number" min="1" formControlName="maxDurationMinutes" />
-      </div>
+      </section>
     </div>
 
-    <div class="toggle-row">
-      <button
-        type="button"
-        class="switch"
-        [class.off]="!value('isPracticeTest')"
-        [attr.aria-pressed]="!!value('isPracticeTest')"
-        (click)="togglePractice()"
-      ></button>
-      <div>
-        <div class="t-label">{{ t('form.practiceLabel') }}</div>
-        <div class="t-sub">{{ t('form.practiceHint') }}</div>
-      </div>
-    </div>
+    <div class="tf-col">
+      <!-- SINIFLANDIRMA -->
+      <section class="card">
+        <h3><span class="dot"></span>{{ t('form.classificationTitle') }}</h3>
+        <p class="card-note">{{ t('form.classificationNote') }}</p>
 
-    <!-- Issue #105: öğrenci yorum/soru anahtarı (varsayılan açık) -->
-    <div class="toggle-row">
-      <button
-        type="button"
-        class="switch"
-        data-testid="comments-toggle"
-        [class.off]="!value('commentsEnabled')"
-        [attr.aria-pressed]="!!value('commentsEnabled')"
-        [attr.aria-label]="t('form.commentsLabel')"
-        [disabled]="form.disabled"
-        (click)="toggleComments()"
-      ></button>
-      <div>
-        <div class="t-label">{{ t('form.commentsLabel') }}</div>
-        <div class="t-sub">{{ t('form.commentsHint') }}</div>
-      </div>
+        <div class="seg"><i></i><span>{{ t('form.segGrade') }}</span><span class="ln"></span></div>
+        <div class="grid3">
+          <div class="field">
+            <label>{{ t('form.gradeLabel') }}<span class="req">*</span></label>
+            <div class="control select">
+              <select formControlName="gradeId" (change)="gradeChange(value('gradeId'))">
+                <option [ngValue]="null">{{ t('form.select') }}</option>
+                <option *ngFor="let grade of grades" [ngValue]="grade.id">{{ grade.name }}</option>
+              </select>
+              <mat-icon class="chev">expand_more</mat-icon>
+            </div>
+            <button
+              type="button"
+              class="add-link"
+              *ngIf="showApplyToAll"
+              [disabled]="!value('gradeId')"
+              (click)="applyGradeToAll.emit(value('gradeId'))"
+            >
+              <mat-icon>done_all</mat-icon>{{ t('form.applyToAll') }}
+            </button>
+          </div>
+        </div>
+
+        <div class="seg"><i></i><span>{{ t('form.segSource') }}</span><span class="ln"></span></div>
+        <div class="grid2">
+          <div class="field" *ngIf="!showAddBookInput">
+            <label>{{ t('form.bookLabel') }}</label>
+            <div class="control select">
+              <select formControlName="bookId" (change)="bookChange(value('bookId'))">
+                <option [ngValue]="null">{{ t('form.select') }}</option>
+                <option *ngFor="let book of books" [ngValue]="book.id">{{ book.name }}</option>
+              </select>
+              <mat-icon class="chev">expand_more</mat-icon>
+            </div>
+            <button type="button" class="add-link" (click)="openNewBookAdd.emit()">
+              <mat-icon>add</mat-icon>{{ t('form.addBook') }}
+            </button>
+          </div>
+          <div class="field" *ngIf="showAddBookInput">
+            <label>{{ t('form.newBookLabel') }}</label>
+            <input class="control" type="text" formControlName="newBookName" (blur)="onNewBookBlur.emit()" />
+          </div>
+
+          <div class="field" *ngIf="!showAddBookTestInput">
+            <label>{{ t('form.bookTestLabel') }}</label>
+            <div class="control select">
+              <select formControlName="bookTestId">
+                <option [ngValue]="null">{{ t('form.select') }}</option>
+                <option *ngFor="let bt of bookTests" [ngValue]="bt.id">{{ bt.name }}</option>
+              </select>
+              <mat-icon class="chev">expand_more</mat-icon>
+            </div>
+            <button type="button" class="add-link" (click)="openNewBookTestAdd.emit()">
+              <mat-icon>add</mat-icon>{{ t('form.addBookTest') }}
+            </button>
+          </div>
+          <div class="field" *ngIf="showAddBookTestInput">
+            <label>{{ t('form.newBookTestLabel') }}</label>
+            <input class="control" type="text" formControlName="newBookTestName" />
+          </div>
+        </div>
+
+        <div class="seg"><i></i><span>{{ t('form.segTopic') }}</span><span class="ln"></span></div>
+        <div class="grid3">
+          <div class="field">
+            <label>{{ t('form.subjectLabel') }}</label>
+            <div class="control select">
+              <select formControlName="subjectId" (change)="subjectChange(value('subjectId'))">
+                <option [ngValue]="null">{{ t('form.select') }}</option>
+                <option *ngFor="let subject of subjects" [ngValue]="subject.id">{{ subject.name }}</option>
+              </select>
+              <mat-icon class="chev">expand_more</mat-icon>
+            </div>
+            <button
+              type="button"
+              class="add-link"
+              *ngIf="showApplyToAll"
+              [disabled]="!value('subjectId')"
+              (click)="applySubjectToAll.emit(value('subjectId'))"
+            >
+              <mat-icon>done_all</mat-icon>{{ t('form.applyToAll') }}
+            </button>
+            <p class="card-note field-hint" *ngIf="!gradeSelected">{{ t('form.selectGradeFirst') }}</p>
+          </div>
+
+          <div class="field">
+            <label>{{ t('form.topicLabel') }}</label>
+            <div class="control select">
+              <select formControlName="topicId" (change)="topicChange(value('topicId'))">
+                <option [ngValue]="null">{{ t('form.select') }}</option>
+                <option *ngFor="let topic of topics" [ngValue]="topic.id">{{ topic.name }}</option>
+              </select>
+              <mat-icon class="chev">expand_more</mat-icon>
+            </div>
+            <button
+              type="button"
+              class="add-link"
+              *ngIf="showApplyToAll"
+              [disabled]="!value('topicId')"
+              (click)="applyTopicToAll.emit(value('topicId'))"
+            >
+              <mat-icon>done_all</mat-icon>{{ t('form.applyToAll') }}
+            </button>
+          </div>
+
+          <div class="field">
+            <label>{{ t('form.subtopicLabel') }}</label>
+            <div class="control select">
+              <select formControlName="subtopicId">
+                <option [ngValue]="null">{{ t('form.select') }}</option>
+                <option *ngFor="let subTopic of subtopics" [ngValue]="subTopic.id">{{ subTopic.name }}</option>
+              </select>
+              <mat-icon class="chev">expand_more</mat-icon>
+            </div>
+            <button
+              type="button"
+              class="add-link"
+              *ngIf="showApplyToAll"
+              [disabled]="!value('subtopicId')"
+              (click)="applySubtopicToAll.emit(value('subtopicId'))"
+            >
+              <mat-icon>done_all</mat-icon>{{ t('form.applyToAll') }}
+            </button>
+          </div>
+        </div>
+      </section>
     </div>
-  </section>
+  </div>
 
   <div class="form-actions" *ngIf="!isEditMode">
     <button type="submit" class="btn btn-primary" [disabled]="form.invalid">

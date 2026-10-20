@@ -96,7 +96,11 @@ describe('TestCreateEnhancedComponent', () => {
         // Alt bileşen app-visibility-section okul bilgisini AuthService.user'dan okur (issue #191).
         {
           provide: AuthService,
-          useValue: { user: signal({ schoolId: 1 }), hasRole: (r: string) => r === 'Teacher' },
+          useValue: {
+            user: signal({ schoolId: 1 }),
+            hasRole: (r: string) => r === 'Teacher',
+            hasRealmRole: (r: string) => false,
+          },
         },
         // Headless Chrome (800x600 yatay) Handset'e girer; radio DOM'unu doğrulamak için masaüstü sabitlenir.
         { provide: BreakpointObserver, useValue: { observe: () => of({ matches: false, breakpoints: {} }) } },

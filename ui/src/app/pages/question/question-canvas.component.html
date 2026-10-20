@@ -155,13 +155,13 @@
       </div>
       }
 
-      @if (isAdmin) {
+      @if (canTrain) {
       <mat-checkbox class="qc-train-opt-out" [checked]="excludeFromTraining()"
         (change)="excludeFromTraining.set($event.checked)"
         [matTooltip]="t('canvas.excludeFromTrainingHint')">
         {{ t('canvas.excludeFromTraining') }}
       </mat-checkbox>
-      <button type="button" class="qc-btn qc-btn--ghost" (click)="sendToFix()">{{ t('canvas.train') }}</button>
+      <button type="button" class="qc-btn qc-btn--ghost" [disabled]="saving()" (click)="sendToFix()">{{ t('canvas.train') }}</button>
       }
 
       <div class="qc-split">
@@ -189,14 +189,16 @@
         </button>
       </div>
       <mat-menu #saveMenu="matMenu">
+        @if (canTrain) {
         <button mat-menu-item type="button" [disabled]="saving()" (click)="onSaveAndFix()">
           <mat-icon>build</mat-icon><span>{{ t('canvas.saveAndFix') }}</span>
         </button>
+        }
         <button mat-menu-item type="button" [disabled]="saving()" (click)="sendToWorkPages()">
           <mat-icon>send</mat-icon><span>{{ t('canvas.sendToStudyPage') }}</span>
         </button>
-        @if (isAdmin) {
-        <button mat-menu-item type="button" (click)="sendToFix()">
+        @if (canTrain) {
+        <button mat-menu-item type="button" [disabled]="saving()" (click)="sendToFix()">
           <mat-icon>model_training</mat-icon><span>{{ t('canvas.trainModelOnly') }}</span>
         </button>
         }

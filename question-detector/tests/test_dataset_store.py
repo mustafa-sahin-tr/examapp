@@ -90,3 +90,76 @@ def test_archive_sync_never_deletes_and_split_follows_page(tmp_path):
     val_pages = {p.stem for p in (tmp_path / "work/questions/val/images").iterdir()}
     val_crops = {train.page_of(p.stem) for p in (tmp_path / "work/answers/val/images").iterdir()}
     assert val_crops == val_pages
+
+
+def test_save_page_with_empty_questions_and_page_complete_true(tmp_path):
+    """Boş soru listesi + page_complete=True: sayfa resmi ve BOŞ etiket dosyası yazılır, kırpma yok."""
+    saved = save_page(_page(), [], page_complete=True, root=tmp_path)
+
+    pid = saved["page_id"]
+    assert saved["page_image"] == f"questions/images/{pid}.jpg"
+    assert saved["crops"] == []
+    assert saved["skipped_crops"] == 0
+
+    # Sayfa resmi var
+    assert (tmp_path / saved["page_image"]).is_file()
+
+    # Etiket dosyası var ve BOŞ
+    label_path = tmp_path / f"questions/labels/{pid}.txt"
+    assert label_path.is_file()
+    assert label_path.read_text() == ""
+
+    # Manifest kaydı var
+    record = json.loads((tmp_path / "manifest.jsonl").read_text().strip())
+    assert record["page_id"] == pid
+    assert record["questions"] == 0
+    assert record["answer_counts"] == []
+    assert record["page_complete"] is True
+
+
+def test_save_page_with_empty_questions_and_page_complete_false(tmp_path):
+    """Boş soru listesi + page_complete=False: sayfa dosyaları yazılmaz, kırpma yok."""
+    saved = save_page(_page(), [], page_complete=False, root=tmp_path)
+
+    assert saved["page_image"] is None
+    assert saved["crops"] == []
+    assert saved["skipped_crops"] == 0
+
+    # questions/ klasörü yok (page_complete=False olduğunda)
+    assert not (tmp_path / "questions").exists()
+    # answers/ klasörü de yok (sorular yoksa kırpma olmaz)
+    assert not (tmp_path / "answers").exists()
+
+    # Manifest kaydı her zaman yazılıyor (page_complete durumundan bağımsız)
+    record = json.loads((tmp_path / "manifest.jsonl").read_text().strip())
+    assert record["page_complete"] is False
+    assert record["questions"] == 0
+    assert record["answer_counts"] == []
+
+
+def test_build_split_includes_empty_label_pages(tmp_path):
+    """build_split: boş etiketli sayfayı train/val'e kopyalıyor."""
+    archive = tmp_path / "archive"
+
+    # Normal sayfa (soru + şık etiketi)
+    img1 = _page((255, 255, 255))
+    saved1 = save_page(img1, [_q((10, 10, 100, 50), [(20, 20, 30, 10)])], root=archive)
+
+    # Boş soru sayfası (etiket dosyası BOŞ)
+    img2 = _page((240, 240, 240))
+    saved2 = save_page(img2, [], page_complete=True, root=archive)
+
+    # build_split çalıştır
+    split = train.build_split(archive, "questions", tmp_path / "work")
+
+    # Her iki sayfa da ayrıma dahil edilmeli
+    assert split["train"] + split["val"] == 2
+
+    # Val sayfasını bul
+    val_images = list((tmp_path / "work/questions/val/images").glob("*.jpg"))
+    val_stems = {p.stem for p in val_images}
+
+    # Her val sayfasının etiket dosyası olmalı (boş da olsa)
+    for stem in val_stems:
+        label = (tmp_path / "work/questions/val/labels" / f"{stem}.txt")
+        assert label.is_file(), f"Label missing for {stem}"

@@ -81,6 +81,21 @@ interface DragDropLabelingAuthoringState {
   placements: Array<{ draggableId: string; dropZoneId: string }>;
 }
 
+/** Gönderim öncesi soru doğrulamasında tek bir sorunun sorunları (`validateQuestions`). */
+export interface QuestionValidationIssue {
+  /** `regions()` içindeki indeks. */
+  index: number;
+  /** Kullanıcıya gösterilen 1-tabanlı soru numarası (tuvaldeki `S{no}`, müfettişteki `no`). */
+  no: number;
+  name: string;
+  messages: string[];
+}
+
+export interface QuestionValidationOptions {
+  /** true: MCQ'da doğru cevap işaretli olmalı (Kaydet). false: yalnız şık sayısı (Eğit). */
+  requireCorrectAnswer: boolean;
+}
+
 export interface ActiveInspector {
   index: number;
   no: number;
@@ -1188,32 +1203,11 @@ export class ImageSelectorComponent {
       // remove warning
       this.warningMarkers = this.warningMarkers.filter((w) => w.id !== region.id);
     }
-    let messages: string[] = [];
-
-    const interactionType = this.getInteractionType(region.name);
-
-    if (interactionType === 'dragDropLabeling') {
-      const plan = this.buildInteractionPlan(region.name);
-      if (!plan || plan.dropZones.length === 0) {
-        messages.push(this.tr('warnings.noDropZone'));
-      }
-      if (!plan || plan.draggables.length === 0) {
-        messages.push(this.tr('warnings.noDraggables'));
-      }
-      if (region.isExample) {
-        const placements = plan?.solution?.placements ?? [];
-        if (placements.length === 0) {
-          messages.push(this.tr('warnings.noSolutionPlacements'));
-        }
-      }
-    } else {
-      if (region.answers.length != this.answerCount()) {
-        messages.push(this.tr('warnings.answerCountMismatch', { count: this.answerCount() }));
-      }
-      if (!region.answers.find((a) => a.isCorrect)) {
-        messages.push(this.tr('warnings.noCorrectAnswer'));
-      }
-    }
+    // Uyarı ikonu her zaman doğru cevap kontrolünü de gösterir; dragDrop uyarıları da yalnız görseldir.
+    const messages =
+      this.getInteractionType(region.name) === 'dragDropLabeling'
+        ? this.dragDropIssues(region)
+        : this.mcqIssues(region, { requireCorrectAnswer: true });
 
     if (messages.length > 0) {
       this.warningMarkers.push({
@@ -1224,6 +1218,78 @@ export class ImageSelectorComponent {
         type: 'error',
       });
     }
+  }
+
+  /** MCQ kuralları — uyarı ikonu ve gönderim öncesi doğrulamanın ortak kaynağı. */
+  private mcqIssues(region: QuestionRegion, opts: QuestionValidationOptions): string[] {
+    const messages: string[] = [];
+    const answerCount = this.answerCount();
+    if ((region.answers?.length ?? 0) !== answerCount) {
+      messages.push(this.tr('warnings.answerCountMismatch', { count: answerCount }));
+    }
+    if (opts.requireCorrectAnswer && !region.answers?.some((a) => a.isCorrect)) {
+      messages.push(this.tr('warnings.noCorrectAnswer'));
+    }
+    return messages;
+  }
+
+  /** dragDropLabeling uyarıları — yalnız ikon için; gönderimi engellemez. */
+  private dragDropIssues(region: QuestionRegion): string[] {
+    const messages: string[] = [];
+    const plan = this.buildInteractionPlan(region.name);
+    if (!plan || plan.dropZones.length === 0) {
+      messages.push(this.tr('warnings.noDropZone'));
+    }
+    if (!plan || plan.draggables.length === 0) {
+      messages.push(this.tr('warnings.noDraggables'));
+    }
+    if (region.isExample) {
+      const placements = plan?.solution?.placements ?? [];
+      if (placements.length === 0) {
+        messages.push(this.tr('warnings.noSolutionPlacements'));
+      }
+    }
+    return messages;
+  }
+
+  /**
+   * Gönderim (Eğit / Kaydet) öncesi soru bazında engelleyici sorunlar.
+   * Yalnız MCQ kuralları uygulanır: dragDropLabeling soruları Eğit'e hiç gönderilmez ve Kaydet'te
+   * dragDrop uyarıları kasıtlı olarak engelleyici değildir (yalnız ikonda görünür).
+   */
+  public validateQuestions(opts: QuestionValidationOptions): QuestionValidationIssue[] {
+    const issues: QuestionValidationIssue[] = [];
+    this.regions().forEach((region, index) => {
+      if (this.getInteractionType(region.name) === 'dragDropLabeling') {
+        return;
+      }
+      const messages = this.mcqIssues(region, opts);
+      if (messages.length > 0) {
+        issues.push({ index, no: index + 1, name: region.name, messages });
+      }
+    });
+    return issues;
+  }
+
+  /**
+   * `validateQuestions` sonucunu kullanıcıya bildirir: sorun varsa snackbar gösterir, ilk sorunlu
+   * soruyu seçer ve false döner. Sorun yoksa (ya da hiç soru yoksa) true.
+   */
+  public ensureQuestionsValid(opts: QuestionValidationOptions): boolean {
+    const issues = this.validateQuestions(opts);
+    if (issues.length === 0) {
+      return true;
+    }
+    const shownLimit = 3;
+    const lines = issues
+      .slice(0, shownLimit)
+      .map((i) => this.tr('warnings.questionIssue', { no: i.no, messages: i.messages.join(', ') }));
+    if (issues.length > shownLimit) {
+      lines.push(this.tr('warnings.moreQuestions', { count: issues.length - shownLimit }));
+    }
+    this.snackBar.open(lines.join(' · '), this.tr('common.close'), { duration: 6000 });
+    this.selectQuestion(issues[0].index);
+    return false;
   }
 
   private cssVar(name: string): string {
@@ -1960,27 +2026,52 @@ export class ImageSelectorComponent {
    *   aksi halde iki sayfa ilerleyip biri atlanır).
    */
   public sendToFix(pageComplete: boolean = true, advance: boolean = true) {
-    const imageData = { image_base64: this.imageData() };
-    const regionData = { question: this.regions() };
-    const answerCount = this.answerCount();
-
-    // dragDropLabeling questions are not MCQ and should not be sent to the
-    // fix/training endpoint that expects answers + correct answer.
-    const mcqQuestions = regionData.question.filter((q: any) => this.getInteractionType(q.name) !== 'dragDropLabeling');
-    if (mcqQuestions.length === 0) {
+    // Sayfa yüklenmemişse gönderilecek görsel yok (soru listesi boş diye "boş sayfa" sayılmamalı).
+    if (!this.imageData()) {
+      if (advance) {
+        this.snackBar.open(this.tr('training.noImage'), this.tr('common.ok'), { duration: 3000 });
+      }
+      return;
+    }
+    const regions = this.regions();
+    // Hiç soru yok: kullanıcı modelin bulduklarını silmiştir (Eğit = işaretleme doğru), sayfa tamamı
+    // arka plan olarak eğitime gider. Soru eğitimine alınmayacaksa gönderilecek bir şey kalmaz.
+    const emptyPage = regions.length === 0;
+    // advance=false: "Kaydet ve Düzelt"in kayıt sonrası çağrısı — "kaydedildi" mesajı ezilmesin, sessiz dön.
+    if (emptyPage && !pageComplete) {
+      if (advance) {
+        this.snackBar.open(this.tr('training.emptyPageExcluded'), this.tr('common.ok'), { duration: 4000 });
+      }
       return;
     }
 
-    var data = {
-      answerCount: answerCount,
+    // dragDropLabeling questions are not MCQ and should not be sent to the
+    // fix/training endpoint that expects answers + correct answer.
+    const mcqQuestions = regions.filter((q) => this.getInteractionType(q.name) !== 'dragDropLabeling');
+    if (!emptyPage && mcqQuestions.length === 0) {
+      // Gönderilseydi sayfa boş gibi gider, model dragDrop sorularını arka plan öğrenirdi.
+      if (advance) {
+        this.snackBar.open(this.tr('training.dragDropOnly'), this.tr('common.ok'), { duration: 5000 });
+      }
+      return;
+    }
+
+    // Şık sayısı uyumsuz soruyu question-detector 400 ile reddeder; istek gönderilmez, sayfa ilerlemez.
+    // Doğru cevap eğitim verisinde kullanılmadığı için burada aranmaz.
+    if (!this.ensureQuestionsValid({ requireCorrectAnswer: false })) {
+      return;
+    }
+
+    const data = {
+      answerCount: this.answerCount(),
       pageComplete: pageComplete,
-      imageData: imageData,
-      questions: mcqQuestions.map((q: any) => ({
+      imageData: { image_base64: this.imageData() },
+      questions: mcqQuestions.map((q) => ({
         x: q.x,
         y: q.y,
         width: q.width,
         height: q.height,
-        answers: q.answers.map((a: any) => ({
+        answers: q.answers.map((a) => ({
           x: a.x,
           y: a.y,
           width: a.width,
@@ -1988,10 +2079,12 @@ export class ImageSelectorComponent {
         })),
       })),
     };
-    console.log(data);
     this.questionDetectorService.sendtoFix(data).subscribe((data) => {
       if (data.success) {
-        this.snackBar.open(`Successfully appended ${data.added} questions with ${data.imageFile}`, 'Tamam', {
+        const message = emptyPage
+          ? this.tr('training.emptyPageAdded')
+          : this.tr('training.questionsAdded', { count: data.added, file: data.imageFile });
+        this.snackBar.open(message, this.tr('common.ok'), {
           duration: 3000,
         });
         if (advance) {
@@ -2184,12 +2277,26 @@ export class ImageSelectorComponent {
     document.body.removeChild(downloadAnchor);
   }
 
+  // Backend Width/Height int bekler; kesirli koordinat (ölçekli çizim) kaydı 400'e düşürür.
+  private roundBox<T extends { x: number; y: number; width: number; height: number }>(box: T): T {
+    const isNum = (v: unknown): v is number => typeof v === 'number' && !Number.isNaN(v);
+    return {
+      ...box,
+      x: isNum(box.x) ? Math.round(box.x) : box.x,
+      y: isNum(box.y) ? Math.round(box.y) : box.y,
+      width: isNum(box.width) ? Math.max(1, Math.round(box.width)) : box.width,
+      height: isNum(box.height) ? Math.max(1, Math.round(box.height)) : box.height,
+    };
+  }
+
   public getRegions(header: any) {
     return {
       imageData: this.imageData(),
-      passages: this.passages(),
+      passages: this.passages().map((p) => this.roundBox(p)),
       questions: this.regions().map((region) => ({
-        ...region,
+        ...this.roundBox(region),
+        answers: region.answers?.map((a) => this.roundBox(a)),
+        ...(region.passage ? { passage: this.roundBox(region.passage) } : {}),
         bookName: this.bookName(),
         isExample: this.isExample(region.name),
         exampleAnswer: this.isExample(region.name) ? this.getExampleAnswer(region.name) : null,

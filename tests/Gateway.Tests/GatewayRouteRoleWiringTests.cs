@@ -71,6 +71,24 @@ public sealed class GatewayRouteRoleWiringTests : IClassFixture<GatewayWebSocket
         status.ShouldNotBe(HttpStatusCode.Forbidden);
     }
 
+    [Theory]
+    [InlineData("QuestionTrainer")]
+    [InlineData("Teacher", "QuestionTrainer")]
+    public async Task QuestionTrainer_OnSendToFix_PassesRoleGate(params string[] roles)
+    {
+        var status = await PostAsync("/question-detector-dev/send-to-fix", _factory.CreateToken(roles));
+        status.ShouldNotBe(HttpStatusCode.Unauthorized);
+        status.ShouldNotBe(HttpStatusCode.Forbidden);
+        status.ShouldNotBe(HttpStatusCode.BadRequest);
+    }
+
+    [Theory]
+    [InlineData("/question-detector-dev/docs")]
+    [InlineData("/question-detector-dev/unknown")]
+    [InlineData("/question-detector-dev/send-to-fix-for-answers")]
+    public async Task QuestionTrainer_OnAdminOnly_Returns403(string path) =>
+        (await PostAsync(path, _factory.CreateToken("Teacher", "QuestionTrainer"))).ShouldBe(HttpStatusCode.Forbidden);
+
     [Fact]
     public async Task Admin_OnSendToFix_PassesRoleGate()
     {

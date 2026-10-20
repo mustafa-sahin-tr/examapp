@@ -208,6 +208,90 @@ public class AuthControllerTests : IDisposable
         await keycloak.Received(1).ExchangeTokenAsync("auth-code-pkce", TestCodeVerifier, Arg.Any<CancellationToken>());
     }
 
+    // ---- QuestionTrainer (Teacher'a ek realm rolü, uygulama rolü değil): login audit ve Users.Role
+    // Keycloak rol sırasına değil uygulama rolü önceliğine (Admin > Teacher > Student > Parent) bakar. ----
+
+    [Theory]
+    [InlineData(new[] { "QuestionTrainer", "Teacher" }, "Teacher")]
+    [InlineData(new[] { "Teacher", "QuestionTrainer" }, "Teacher")]
+    [InlineData(new[] { "QuestionTrainer" }, null)]
+    [InlineData(new string[0], null)]
+    [InlineData(new[] { "teacher" }, "Teacher")]
+    [InlineData(new[] { "Parent", "Student" }, "Student")]
+    [InlineData(new[] { "Student", "Teacher" }, "Teacher")]
+    [InlineData(new[] { "Teacher", "Admin" }, "Admin")]
+    public void PickAppRole_uses_priority_case_insensitive_and_returns_canonical_name(string[] roles, string? expected)
+    {
+        AuthController.PickAppRole(roles).ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData(new[] { "Admin" }, null)]
+    [InlineData(new[] { "Admin", "Teacher" }, "Teacher")]
+    [InlineData(new[] { "QuestionTrainer", "Teacher" }, "Teacher")]
+    [InlineData(new[] { "QuestionTrainer" }, null)]
+    public void PickStoredAppRole_never_returns_Admin(string[] roles, string? expected)
+    {
+        AuthController.PickStoredAppRole(roles).ShouldBe(expected);
+    }
+
+    [Fact]
+    public async Task EchangeCode_questionTrainerListedFirst_logsAndStoresTeacher()
+    {
+        await using var context = _db.NewContext();
+        var keycloak = Substitute.For<IKeycloakService>();
+        keycloak.ExchangeTokenAsync("auth-code-qt", TestCodeVerifier)
+            .Returns(SuccessfulTokenResponse("kc-sub-qt", "qt@test.local", "QuestionTrainer", "Teacher"));
+
+        var result = await NewController(keycloak, context)
+            .EchangeCode(new CodeDto { Code = "auth-code-qt", CodeVerifier = TestCodeVerifier });
+
+        // /exchange yanıtındaki roles filtresi değişmedi — QuestionTrainer istemciye gider.
+        var ok = result.ShouldBeOfType<OkObjectResult>();
+        ok.Value.ShouldBeOfType<LoginResponseDto>().Roles.ShouldBe(new[] { "QuestionTrainer", "Teacher" });
+
+        await using var check = _db.NewContext();
+        var evt = JsonSerializer.Deserialize<LoginAttemptedEvent>((await check.OutboxMessages.SingleAsync()).Content)!;
+        evt.Role.ShouldBe("Teacher");
+        (await check.Users.SingleAsync(u => u.KeycloakId == "kc-sub-qt")).Role.ShouldBe("Teacher");
+    }
+
+    [Fact]
+    public async Task EchangeCode_admin_logsAdminButDoesNotWriteAdminToUsersRole()
+    {
+        await using var context = _db.NewContext();
+        var keycloak = Substitute.For<IKeycloakService>();
+        keycloak.ExchangeTokenAsync("auth-code-admin", TestCodeVerifier)
+            .Returns(SuccessfulTokenResponse("kc-sub-admin", "admin@test.local", "Admin"));
+
+        await NewController(keycloak, context)
+            .EchangeCode(new CodeDto { Code = "auth-code-admin", CodeVerifier = TestCodeVerifier });
+
+        await using var check = _db.NewContext();
+        var evt = JsonSerializer.Deserialize<LoginAttemptedEvent>((await check.OutboxMessages.SingleAsync()).Content)!;
+        evt.Role.ShouldBe("Admin");
+        var user = await check.Users.SingleAsync(u => u.KeycloakId == "kc-sub-admin");
+        user.Role.ShouldBeEmpty();
+        user.RoleUpdatedAtUtc.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task EchangeCode_noAppRole_fallsBackToFirstRoleForLoginEvent()
+    {
+        await using var context = _db.NewContext();
+        var keycloak = Substitute.For<IKeycloakService>();
+        keycloak.ExchangeTokenAsync("auth-code-qt-only", TestCodeVerifier)
+            .Returns(SuccessfulTokenResponse("kc-sub-qt-only", "qtonly@test.local", "QuestionTrainer"));
+
+        await NewController(keycloak, context)
+            .EchangeCode(new CodeDto { Code = "auth-code-qt-only", CodeVerifier = TestCodeVerifier });
+
+        await using var check = _db.NewContext();
+        var evt = JsonSerializer.Deserialize<LoginAttemptedEvent>((await check.OutboxMessages.SingleAsync()).Content)!;
+        evt.Role.ShouldBe("QuestionTrainer");
+        (await check.Users.SingleAsync(u => u.KeycloakId == "kc-sub-qt-only")).Role.ShouldBeEmpty();
+    }
+
     // ---- Issue #277 review (item 3): EnsureLocalUserAsync (login/exchange sync) stamps
     // RoleUpdatedAtUtc so a late/replayed UserRoleChangedEvent can't overwrite a newer direct
     // sync from Keycloak. ----

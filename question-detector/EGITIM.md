@@ -6,7 +6,7 @@ Eğitim her seferinde **birikmiş verinin tamamıyla** ve mevcut modelden başla
 ## Genel resim
 
 ```
-QuestionCanvas (Admin, kaydet)
+QuestionCanvas (Admin / QuestionTrainer, "Kaydet ve Düzelt")
    └─ POST /send-to-fix ──> question-detector/dataset/        (Mac, Drive for desktop ile Drive'a aynalanır)
                                questions/images|labels        tam sayfa + soru kutuları  -> soru modeli
                                answers/images|labels          soru kırpması + şık kutuları -> şık modeli
@@ -54,14 +54,30 @@ olarak görünür. Bilgisayarın adı farklıysa notebook'taki `QD` değişkenin
 
 ## 2. Her gün: soru işaretle
 
+Eğitime veri yalnız **Admin** veya **`QuestionTrainer`** realm rolü olan hesaplar gönderebilir (gateway
+`send-to-fix`'i yalnız bu iki role açar). Yetkili öğretmene rolü Keycloak admin console'dan ver:
+`exam-realm` → Users → *(öğretmen)* → Role mapping → Assign role → realm role `QuestionTrainer`.
+Rol yeni giriş/token yenilemede geçerli olur (öğretmen çıkış yapıp tekrar girsin).
+**Öğretmeni askıya alır veya yetkisini geri alırsan `QuestionTrainer` rolünü de elle kaldır** (Role mapping → Unassign):
+gateway yalnız token'daki role bakar, öğretmen askıya alma bu rolü kaldırmaz.
+Çalışan (eski) bir Keycloak'ta rol yoksa önce Realm roles → Create role → `QuestionTrainer` ile oluştur;
+temiz import'ta `deploy/keycloak/dev-import/realm-export.json` ile gelir.
+
 1. Aspire'ı başlat.
-2. Admin hesabıyla gir, soru tuvalinde sayfayı yükle.
+2. Yetkili hesapla (Admin veya `QuestionTrainer` rolü olan öğretmen) gir, soru tuvalinde sayfayı yükle.
 3. Model tahmin edemediyse veya yanlış bulduysa soru ve şık kutularını elle düzelt ya da çiz.
-4. Kaydet. Admin kaydında sayfa otomatik olarak veri setine gider. Yalnız eğitime göndermek için "Eğit"
-   düğmesini de kullanabilirsin.
+4. Kaydet düğmesinin yanındaki menüden **"Kaydet ve Düzelt"**i seç: sorular kaydedilir ve sayfa veri setine gider.
+   Düz **"Kaydet"** eğitime göndermez. Kaydetmeden yalnız eğitime göndermek için "Eğit" düğmesini kullan.
+   Bu düğmeler ve aşağıdaki kutu yalnız yetkili hesaplarda görünür.
 5. **Sayfadaki soruların hepsini işaretlemediysen** "Eğit"in yanındaki **"Bu sayfayı soru eğitimine alma"**
    kutusunu seç. Aksi halde işaretsiz sorular "soru değil" diye öğrenilir ve soru modeli bozulur. Bu durumda sayfa
    soru modeline girmez, şık kırpmaları yine kaydedilir. Kutu her yeni sayfada boş başlar.
+
+6. **Model soru olmayan yerde soru bulduysa** (kapak, cevap anahtarı, içindekiler veya yanlış kutular) yanlış
+   kutuları sil ve "Eğit"e bas. Sayfada hiç soru kalmadıysa sayfa **boş sayfa** olarak gönderilir; model o sayfanın
+   tamamını "soru değil" diye öğrenir. Onay sorulmaz: içinde gerçek soru olan sayfayı boş gönderme.
+   Sayfada en az bir soru varsa her sorunun şık sayısı ayardaki şık sayısıyla aynı olmalı, yoksa Eğit göndermez.
+   Yalnız sürükle-bırak soruları olan sayfa gönderilmez (o sorular eğitime girmez, sayfa boş gibi öğrenilirdi).
 
 Kurallar:
 
@@ -138,7 +154,7 @@ ya da `git checkout <eski-commit> -- question-detector/models`.
 
 | Belirti | Ne yap |
 |---|---|
-| `status` kayıttan sonra artmıyor | Aspire'da question-detector logunda `Training sample saved` satırına bak; Admin ile mi kaydettin? |
+| `status` kayıttan sonra artmıyor | Aspire'da question-detector logunda `Training sample saved` satırına bak; "Kaydet ve Düzelt" ile mi kaydettin, hesapta Admin veya `QuestionTrainer` rolü var mı (yoksa düğme görünmez, gateway 403 döner)? |
 | Kayıtta "answer count mismatch" | Her sorudaki şık sayısı sayfanın şık sayısı ayarıyla aynı olmalı |
 | Kayıtta "Box is outside the image" | Bir soru kutusu resmin tamamen dışında; düzelt |
 | Colab'da `ls` boş | Mac'te Drive senkronu bitmemiş veya `QD` yolundaki bilgisayar adı farklı |

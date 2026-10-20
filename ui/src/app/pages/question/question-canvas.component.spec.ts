@@ -624,18 +624,21 @@ describe('QuestionCanvasComponent', () => {
   });
 
   /**
-   * `isAdmin` is resolved once at field-initialization time from `AuthService.hasRole('Admin')`,
+   * `canTrain` is resolved once at field-initialization time from `AuthService.hasRealmRole('Admin' |
+   * 'QuestionTrainer')` only (profile role `hasRole` is ignored, same source as the gateway),
    * so it can't be flipped after a component instance already exists — each scenario below spins
    * up its own TestBed module with a stubbed AuthService instead of reusing the outer beforeEach.
    * `saveBulk` is driven by a manually-controlled Subject so the saving() true/false transition
    * around the async emission can be asserted, rather than only the settled end-state.
    */
   describe('onSave', () => {
-    async function setup(opts: { isAdmin: boolean; saveBulk$?: Subject<any> }) {
+    /** `isAdmin` → profil rolü Admin (`hasRole`); `realmRoles` → token realm rolleri (`hasRealmRole`). */
+    async function setup(opts: { isAdmin: boolean; realmRoles?: string[]; saveBulk$?: Subject<any> }) {
       const saveBulk$ = opts.saveBulk$ ?? new Subject<any>();
 
       const testServiceLocal = jasmine.createSpyObj<TestService>('TestService', ['search', 'get']);
       testServiceLocal.search.and.returnValue(of({ items: [] }) as any);
+      testServiceLocal.get.and.returnValue(of({ subtitle: 'T-1', id: 7 }) as any);
 
       const questionServiceLocal = jasmine.createSpyObj<QuestionService>('QuestionService', ['getAll', 'saveBulk']);
       questionServiceLocal.saveBulk.and.returnValue(saveBulk$.asObservable() as any);
@@ -649,8 +652,10 @@ describe('QuestionCanvasComponent', () => {
       const routerLocal = jasmine.createSpyObj<Router>('Router', ['navigate', 'getCurrentNavigation']);
       routerLocal.getCurrentNavigation.and.returnValue(null as any);
 
-      const authServiceLocal = jasmine.createSpyObj<AuthService>('AuthService', ['hasRole']);
-      authServiceLocal.hasRole.and.returnValue(opts.isAdmin);
+      const authServiceLocal = jasmine.createSpyObj<AuthService>('AuthService', ['hasRole', 'hasRealmRole']);
+      authServiceLocal.hasRole.and.callFake((role: string) => opts.isAdmin && role === 'Admin');
+      const realmRoles = opts.realmRoles ?? [];
+      authServiceLocal.hasRealmRole.and.callFake((role: string) => realmRoles.includes(role));
 
       TestBed.resetTestingModule();
       await TestBed.configureTestingModule({
@@ -676,11 +681,13 @@ describe('QuestionCanvasComponent', () => {
         getRegions: jasmine.createSpy('getRegions').and.callFake((payload: any) => payload),
         sendToFix: jasmine.createSpy('sendToFix'),
         nextImage: jasmine.createSpy('nextImage'),
+        ensureQuestionsValid: jasmine.createSpy('ensureQuestionsValid').and.returnValue(true),
       };
       localComponent.imageSelector = imageSelectorFake as any;
 
       const tceFake = {
         reloadComponent: jasmine.createSpy('reloadComponent'),
+        onCreateAsync: jasmine.createSpy('onCreateAsync').and.returnValue(of({ examId: 7 })),
       };
       localComponent.testCreateEnhancedComponent = tceFake as any;
 
@@ -775,10 +782,19 @@ describe('QuestionCanvasComponent', () => {
       expect(component.saving()).toBeFalse();
     });
 
-    it('onSave_AdminUser_DefaultSendToFix_CallsImageSelectorSendToFix_OnSuccess', async () => {
-      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true });
+    it('onSave_AdminUser_DefaultSendToFix_DoesNotCallImageSelectorSendToFix_OnSuccess', async () => {
+      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
 
       component.onSave();
+      saveBulk$.next({});
+
+      expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
+    });
+
+    it('onSave_AdminUser_ExplicitSendToFixTrue_CallsImageSelectorSendToFix_OnSuccess', async () => {
+      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
+
+      component.onSave(true);
       saveBulk$.next({});
 
       expect(imageSelectorFake.sendToFix).toHaveBeenCalledTimes(1);
@@ -795,26 +811,26 @@ describe('QuestionCanvasComponent', () => {
     });
 
     it('onSave_AdminUser_PageNotExcluded_SendsPageCompleteTrue', async () => {
-      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true });
+      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
 
-      component.onSave();
+      component.onSave(true);
       saveBulk$.next({});
 
       expect(imageSelectorFake.sendToFix).toHaveBeenCalledOnceWith(true, false);
     });
 
     it('onSave_AdminUser_ExcludeFromTrainingChecked_SendsPageCompleteFalse', async () => {
-      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true });
+      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
       component.excludeFromTraining.set(true);
 
-      component.onSave();
+      component.onSave(true);
       saveBulk$.next({});
 
       expect(imageSelectorFake.sendToFix).toHaveBeenCalledOnceWith(false, false);
     });
 
     it('sendToFix_AdminUser_ExcludeFromTrainingChecked_SendsPageCompleteFalse', async () => {
-      const { component, imageSelectorFake } = await setup({ isAdmin: true });
+      const { component, imageSelectorFake } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
       component.excludeFromTraining.set(true);
 
       component.sendToFix();
@@ -831,7 +847,7 @@ describe('QuestionCanvasComponent', () => {
     });
 
     it('onImageChange_ResetsExcludeFromTraining', async () => {
-      const { component } = await setup({ isAdmin: true });
+      const { component } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
       component.excludeFromTraining.set(true);
 
       component.onImageChange();
@@ -840,18 +856,141 @@ describe('QuestionCanvasComponent', () => {
     });
 
     it('excludeFromTraining_DefaultsToFalse', async () => {
-      const { component } = await setup({ isAdmin: true });
+      const { component } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
 
       expect(component.excludeFromTraining()).toBeFalse();
     });
 
     it('onSave_AdminUser_ExplicitSendToFixFalse_DoesNotCallImageSelectorSendToFix_OnSuccess', async () => {
-      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true });
+      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
 
       component.onSave(false);
       saveBulk$.next({});
 
       expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
+    });
+
+    describe('canTrain (Admin / QuestionTrainer realm rolü)', () => {
+      it('canTrain_QuestionTrainerRealmRole_ReturnsTrue', async () => {
+        const { component } = await setup({ isAdmin: false, realmRoles: ['Teacher', 'QuestionTrainer'] });
+
+        expect(component.canTrain).toBeTrue();
+      });
+
+      it('canTrain_AdminRealmRole_ReturnsTrue', async () => {
+        const { component } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+
+        expect(component.canTrain).toBeTrue();
+      });
+
+      it('canTrain_ProfileAdminWithoutRealmRole_ReturnsFalse', async () => {
+        const { component } = await setup({ isAdmin: true, realmRoles: [] });
+
+        expect(component.canTrain).toBeFalse();
+      });
+
+      it('sendToFix_ProfileAdminWithoutRealmRole_DoesNotCallImageSelector', async () => {
+        const { component, imageSelectorFake } = await setup({ isAdmin: true, realmRoles: [] });
+
+        component.sendToFix();
+
+        expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
+      });
+
+      it('canTrain_TeacherOnly_ReturnsFalse', async () => {
+        const { component } = await setup({ isAdmin: false, realmRoles: ['Teacher'] });
+
+        expect(component.canTrain).toBeFalse();
+      });
+
+      it('onSaveAndNew_QuestionTrainer_Success_DoesNotCallImageSelectorSendToFix', async () => {
+        const { component, imageSelectorFake, questionServiceLocal, saveBulk$ } = await setup({
+          isAdmin: false,
+          realmRoles: ['Teacher', 'QuestionTrainer'],
+        });
+
+        component.onSaveAndNew();
+        saveBulk$.next({});
+
+        expect(questionServiceLocal.saveBulk).toHaveBeenCalledTimes(1);
+        expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
+      });
+
+      it('onSaveAndFix_QuestionTrainer_Success_CallsImageSelectorSendToFix', async () => {
+        const { component, imageSelectorFake, saveBulk$ } = await setup({
+          isAdmin: false,
+          realmRoles: ['Teacher', 'QuestionTrainer'],
+        });
+
+        component.onSaveAndFix();
+        saveBulk$.next({});
+
+        expect(imageSelectorFake.sendToFix).toHaveBeenCalledOnceWith(true, false);
+      });
+
+      it('onSaveAndFix_TeacherOnly_Success_SavesButDoesNotCallImageSelectorSendToFix', async () => {
+        const { component, imageSelectorFake, questionServiceLocal, saveBulk$ } = await setup({
+          isAdmin: false,
+          realmRoles: ['Teacher'],
+        });
+
+        component.onSaveAndFix();
+        saveBulk$.next({});
+
+        expect(questionServiceLocal.saveBulk).toHaveBeenCalledTimes(1);
+        expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
+      });
+
+      it('sendToFix_QuestionTrainer_CallsImageSelector', async () => {
+        const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['QuestionTrainer'] });
+
+        component.sendToFix();
+
+        expect(imageSelectorFake.sendToFix).toHaveBeenCalledOnceWith(true);
+      });
+    });
+
+    describe('kayıt öncesi soru doğrulaması', () => {
+      for (const action of ['onSaveAndNew', 'onSaveAndFix'] as const) {
+        it(`${action}_InvalidQuestions_DoesNotCreateTestOrSave`, async () => {
+          const { component, imageSelectorFake, tceFake, questionServiceLocal } = await setup({
+            isAdmin: false,
+            realmRoles: ['QuestionTrainer'],
+          });
+          imageSelectorFake.ensureQuestionsValid.and.returnValue(false);
+
+          component[action]();
+
+          expect(imageSelectorFake.ensureQuestionsValid).toHaveBeenCalledOnceWith({ requireCorrectAnswer: true });
+          expect(tceFake.onCreateAsync).not.toHaveBeenCalled();
+          expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
+          expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
+        });
+
+        it(`${action}_ValidQuestions_CreatesTestAndSaves`, async () => {
+          const { component, imageSelectorFake, tceFake, questionServiceLocal, saveBulk$ } = await setup({
+            isAdmin: false,
+            realmRoles: ['Teacher'],
+          });
+
+          component[action]();
+          saveBulk$.next({});
+
+          expect(imageSelectorFake.ensureQuestionsValid).toHaveBeenCalledWith({ requireCorrectAnswer: true });
+          expect(tceFake.onCreateAsync).toHaveBeenCalledTimes(1);
+          expect(questionServiceLocal.saveBulk).toHaveBeenCalledTimes(1);
+        });
+      }
+
+      it('onSave_InvalidQuestions_DoesNotSave', async () => {
+        const { component, imageSelectorFake, questionServiceLocal } = await setup({ isAdmin: false });
+        imageSelectorFake.ensureQuestionsValid.and.returnValue(false);
+
+        component.onSave(false);
+
+        expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
+        expect(component.saving()).toBeFalse();
+      });
     });
   });
 });

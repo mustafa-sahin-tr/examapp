@@ -36,8 +36,8 @@ case "${1:-}" in
     ;;
 
   status)
-    pages=$(ls dataset/questions/images/*.jpg 2>/dev/null | wc -l | tr -d ' ')
-    crops=$(ls dataset/answers/images/*.jpg 2>/dev/null | wc -l | tr -d ' ')
+    pages=$( (ls dataset/questions/images/*.jpg 2>/dev/null || true) | wc -l | tr -d ' ')
+    crops=$( (ls dataset/answers/images/*.jpg 2>/dev/null || true) | wc -l | tr -d ' ')
     echo "Sayfa (soru modeli): $pages   Soru kırpması (şık modeli): $crops"
     if [ -f dataset/manifest.jsonl ]; then
       echo "Son 5 kayıt:"

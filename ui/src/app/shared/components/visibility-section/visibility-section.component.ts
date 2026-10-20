@@ -91,7 +91,7 @@ export class VisibilitySectionComponent implements OnDestroy {
    * Admin muafiyeti: backend kararı SAHİBİN okuluna göre verir; admin (okulsuz) okullu bir öğretmenin
    * sınavını düzenlerken seçenek gizlenmez. Yetkiyi backend belirler, 400 gelirse snackbar gösterilir.
    */
-  readonly isAdmin = this.authService.hasRole('Admin');
+  readonly isAdmin = this.authService.hasRealmRole('Admin') || this.authService.hasRole('Admin');
   readonly canChooseSchoolOnly = computed(() => this.isAdmin || this.hasSchool());
 
   /** Etiket/açıklama metinleri `shared.visibilitySection.*` altından çözülür (issue #183). */

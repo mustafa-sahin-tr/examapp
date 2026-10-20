@@ -1,0 +1,8 @@
+# gitleaks sahte pozitifleri — yalnız tek tek fingerprint (commit:dosya:kural:satır), asla path/regex.
+# Gerçek secret buraya eklenmez: önce rotate et (bkz. .gitleaks.toml, issue #238).
+
+# PR #462: RouteRoleAuthExtensions.cs'teki bir yorum satırı generic-api-key kuralına takıldı (secret yok).
+# Yorum yeniden yazıldı; aşağıdakiler yalnız eski commit'ler için. İkincisi bu dosyanın ilk sürümündeki
+# açıklamanın o yorumu alıntılamasından.
+29c314f90d392ef35b3ae8020b02aafd9093f746:Services/Gateway/RouteRoleAuthExtensions.cs:generic-api-key:28
+ffe3796c8ec48fc37e3db42fdaab4d2b56a09ab3:.gitleaksignore:generic-api-key:4

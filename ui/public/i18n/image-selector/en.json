@@ -20,7 +20,9 @@
     "noDraggables": "Labels (draggables) have not been generated",
     "noSolutionPlacements": "The worked example has no solution placements",
     "answerCountMismatch": "There should be {{count}} choices",
-    "noCorrectAnswer": "No correct answer"
+    "noCorrectAnswer": "No correct answer",
+    "questionIssue": "Question {{no}}: {{messages}}",
+    "moreQuestions": "and {{count}} more questions"
   },
   "menu": {
     "removeQuestion": "Delete question",

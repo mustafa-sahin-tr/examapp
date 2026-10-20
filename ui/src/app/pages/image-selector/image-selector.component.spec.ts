@@ -351,6 +351,7 @@ describe('ImageSelectorComponent', () => {
 
   describe('sendToFix pageComplete', () => {
     function arrangeSendToFix() {
+      component.answerCount.set(2);
       component.regions.set([region('Soru 1', [answer(10, 10), answer(10, 50)])] as any);
       return spyOn(component.questionDetectorService, 'sendtoFix').and.returnValue(
         of({ success: false, message: 'x' })
@@ -390,6 +391,137 @@ describe('ImageSelectorComponent', () => {
       component.sendToFix();
 
       expect(nextImage).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('validateQuestions', () => {
+    function correct(x: number, y: number) {
+      return { ...answer(x, y), isCorrect: true };
+    }
+
+    it('validateQuestions_AnswerCountMismatch_ReportsIssueWithOneBasedNo', () => {
+      component.answerCount.set(4);
+      component.regions.set([
+        region('Soru 1', [correct(0, 0), answer(0, 30), answer(0, 60), answer(0, 90)]),
+        region('Soru 2', [correct(0, 0), answer(0, 30), answer(0, 60)]),
+      ] as any);
+
+      const issues = component.validateQuestions({ requireCorrectAnswer: false });
+
+      expect(issues.length).toBe(1);
+      expect(issues[0].index).toBe(1);
+      expect(issues[0].no).toBe(2);
+      expect(issues[0].name).toBe('Soru 2');
+      expect(issues[0].messages).toEqual(['Şık sayısı 4 olmalı']);
+    });
+
+    it('validateQuestions_NoCorrectAnswer_RequireTrue_ReportsIssue', () => {
+      component.answerCount.set(2);
+      component.regions.set([region('Soru 1', [answer(0, 0), answer(0, 30)])] as any);
+
+      const issues = component.validateQuestions({ requireCorrectAnswer: true });
+
+      expect(issues.length).toBe(1);
+      expect(issues[0].messages).toEqual(['Doğru cevap yok']);
+    });
+
+    it('validateQuestions_NoCorrectAnswer_RequireFalse_NoIssue', () => {
+      component.answerCount.set(2);
+      component.regions.set([region('Soru 1', [answer(0, 0), answer(0, 30)])] as any);
+
+      expect(component.validateQuestions({ requireCorrectAnswer: false })).toEqual([]);
+    });
+
+    it('validateQuestions_DragDropQuestion_IsSkipped', () => {
+      component.answerCount.set(4);
+      component.regions.set([region('Soru 1', [])] as any);
+      component.interactionTypes.set('Soru 1', 'dragDropLabeling');
+
+      expect(component.validateQuestions({ requireCorrectAnswer: false })).toEqual([]);
+      expect(component.validateQuestions({ requireCorrectAnswer: true })).toEqual([]);
+    });
+
+    it('validateQuestions_NoRegions_NoIssue', () => {
+      component.regions.set([]);
+
+      expect(component.validateQuestions({ requireCorrectAnswer: true })).toEqual([]);
+      expect(component.ensureQuestionsValid({ requireCorrectAnswer: true })).toBeTrue();
+    });
+
+    it('checkRegionWarning_StillFlagsMissingCorrectAnswer', () => {
+      component.answerCount.set(2);
+      const r = { ...region('Soru 1', [answer(0, 0), answer(0, 30)]), id: 11 };
+      component.regions.set([r] as any);
+
+      component.checkRegionWarning(r as any);
+
+      expect(component.warningMarkers.find((m) => m.id === 11)?.messages).toEqual(['Doğru cevap yok']);
+    });
+
+    it('ensureQuestionsValid_ManyIssues_ShowsFirstThreeAndRemainderAndSelectsFirst', () => {
+      component.answerCount.set(4);
+      component.regions.set(['Soru 1', 'Soru 2', 'Soru 3', 'Soru 4', 'Soru 5'].map((n) => region(n, [answer(0, 0)])) as any);
+      const open = spyOn((component as any).snackBar, 'open');
+      const select = spyOn(component, 'selectQuestion');
+
+      const ok = component.ensureQuestionsValid({ requireCorrectAnswer: false });
+
+      expect(ok).toBeFalse();
+      const msg = open.calls.mostRecent().args[0] as string;
+      expect(msg).toContain('1. soru: Şık sayısı 4 olmalı');
+      expect(msg).toContain('3. soru');
+      expect(msg).not.toContain('4. soru');
+      expect(msg).toContain('ve 2 soru daha');
+      expect(select).toHaveBeenCalledOnceWith(0);
+    });
+  });
+
+  describe('sendToFix validation', () => {
+    it('sendToFix_AnswerCountMismatch_DoesNotPostOrAdvance', () => {
+      component.answerCount.set(4);
+      component.regions.set([region('Soru 1', [answer(10, 10), answer(10, 50)])] as any);
+      const sendtoFix = spyOn(component.questionDetectorService, 'sendtoFix').and.returnValue(
+        of({ success: true, added: 1, imageFile: 'p.png' })
+      );
+      const nextImage = spyOn(component, 'nextImage');
+      const open = spyOn((component as any).snackBar, 'open');
+
+      component.sendToFix();
+
+      expect(sendtoFix).not.toHaveBeenCalled();
+      expect(nextImage).not.toHaveBeenCalled();
+      expect(open.calls.mostRecent().args[0]).toContain('1. soru: Şık sayısı 4 olmalı');
+    });
+
+    it('sendToFix_ValidWithoutCorrectAnswer_PostsAndAdvances', () => {
+      component.answerCount.set(2);
+      component.regions.set([region('Soru 1', [answer(10, 10), answer(10, 50)])] as any);
+      const sendtoFix = spyOn(component.questionDetectorService, 'sendtoFix').and.returnValue(
+        of({ success: true, added: 1, imageFile: 'p.png' })
+      );
+      const nextImage = spyOn(component, 'nextImage');
+
+      component.sendToFix();
+
+      expect(sendtoFix).toHaveBeenCalledTimes(1);
+      expect(nextImage).toHaveBeenCalledTimes(1);
+    });
+
+    it('sendToFix_DragDropQuestionWithoutZones_StillPostsMcqOnly', () => {
+      component.answerCount.set(2);
+      component.regions.set([
+        region('Soru 1', [answer(10, 10), answer(10, 50)]),
+        region('Soru 2', []),
+      ] as any);
+      component.interactionTypes.set('Soru 2', 'dragDropLabeling');
+      const sendtoFix = spyOn(component.questionDetectorService, 'sendtoFix').and.returnValue(
+        of({ success: false, message: 'x' })
+      );
+
+      component.sendToFix();
+
+      expect(sendtoFix).toHaveBeenCalledTimes(1);
+      expect(sendtoFix.calls.mostRecent().args[0].questions.length).toBe(1);
     });
   });
 

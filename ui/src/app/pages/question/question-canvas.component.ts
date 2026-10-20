@@ -806,6 +806,9 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   onSaveAndNew() {
+    if (!this.questionsReadyToSave()) {
+      return;
+    }
     this.testCreateEnhancedComponent.onCreateAsync().subscribe({
       next: (test) => {
         console.log('Test created:', test);
@@ -837,6 +840,9 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   onSaveAndFix() {
+    if (!this.questionsReadyToSave()) {
+      return;
+    }
     this.testCreateEnhancedComponent.onCreateAsync().subscribe({
       next: (test) => {
         console.log('Test created:', test);
@@ -864,6 +870,9 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   onSubmit() {
+    if (!this.questionsReadyToSave()) {
+      return;
+    }
     this.testCreateEnhancedComponent.onCreateAsync().subscribe({
       next: (test) => {
         console.log('Test created:', test);
@@ -894,9 +903,23 @@ export class QuestionCanvasComponent implements OnInit {
     });
   }
 
+  /**
+   * Kayıt öncesi MCQ doğrulaması (şık sayısı + doğru cevap). Test oluşturmadan önce çağrılır ki eksik
+   * soru yüzünden boş test oluşmasın; sorun varsa image-selector mesajı gösterip ilk sorunlu soruyu seçer.
+   */
+  private questionsReadyToSave(): boolean {
+    return this.imageSelector.ensureQuestionsValid({ requireCorrectAnswer: true });
+  }
+
   /** `sendToFix` açıkça istenmedikçe kayıt eğitime gönderilmez ("Kaydet ve Düzelt" true geçer). */
   onSave(sendToFix: boolean = false) {
     const formData = this.questionForm.value;
+
+    // Kaydet akışları bunu test oluşturmadan önce zaten yaptı; aynı durumda tekrar geçer (çift mesaj olmaz),
+    // yalnız arada soru bozulduysa ya da onSave başka yoldan çağrıldıysa burada durur.
+    if (!this.questionsReadyToSave()) {
+      return;
+    }
 
     if (formData.isExample) {
       if (!formData.practiceCorrectAnswer) {

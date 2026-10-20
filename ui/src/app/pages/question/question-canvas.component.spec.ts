@@ -681,6 +681,7 @@ describe('QuestionCanvasComponent', () => {
         getRegions: jasmine.createSpy('getRegions').and.callFake((payload: any) => payload),
         sendToFix: jasmine.createSpy('sendToFix'),
         nextImage: jasmine.createSpy('nextImage'),
+        ensureQuestionsValid: jasmine.createSpy('ensureQuestionsValid').and.returnValue(true),
       };
       localComponent.imageSelector = imageSelectorFake as any;
 
@@ -946,6 +947,49 @@ describe('QuestionCanvasComponent', () => {
         component.sendToFix();
 
         expect(imageSelectorFake.sendToFix).toHaveBeenCalledOnceWith(true);
+      });
+    });
+
+    describe('kayıt öncesi soru doğrulaması', () => {
+      for (const action of ['onSaveAndNew', 'onSaveAndFix'] as const) {
+        it(`${action}_InvalidQuestions_DoesNotCreateTestOrSave`, async () => {
+          const { component, imageSelectorFake, tceFake, questionServiceLocal } = await setup({
+            isAdmin: false,
+            realmRoles: ['QuestionTrainer'],
+          });
+          imageSelectorFake.ensureQuestionsValid.and.returnValue(false);
+
+          component[action]();
+
+          expect(imageSelectorFake.ensureQuestionsValid).toHaveBeenCalledOnceWith({ requireCorrectAnswer: true });
+          expect(tceFake.onCreateAsync).not.toHaveBeenCalled();
+          expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
+          expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
+        });
+
+        it(`${action}_ValidQuestions_CreatesTestAndSaves`, async () => {
+          const { component, imageSelectorFake, tceFake, questionServiceLocal, saveBulk$ } = await setup({
+            isAdmin: false,
+            realmRoles: ['Teacher'],
+          });
+
+          component[action]();
+          saveBulk$.next({});
+
+          expect(imageSelectorFake.ensureQuestionsValid).toHaveBeenCalledWith({ requireCorrectAnswer: true });
+          expect(tceFake.onCreateAsync).toHaveBeenCalledTimes(1);
+          expect(questionServiceLocal.saveBulk).toHaveBeenCalledTimes(1);
+        });
+      }
+
+      it('onSave_InvalidQuestions_DoesNotSave', async () => {
+        const { component, imageSelectorFake, questionServiceLocal } = await setup({ isAdmin: false });
+        imageSelectorFake.ensureQuestionsValid.and.returnValue(false);
+
+        component.onSave(false);
+
+        expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
+        expect(component.saving()).toBeFalse();
       });
     });
   });

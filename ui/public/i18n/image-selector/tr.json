@@ -20,7 +20,9 @@
     "noDraggables": "Etiketler (draggables) oluşturulmamış",
     "noSolutionPlacements": "Örnek soru için solution placements yok",
     "answerCountMismatch": "Şık sayısı {{count}} olmalı",
-    "noCorrectAnswer": "Doğru cevap yok"
+    "noCorrectAnswer": "Doğru cevap yok",
+    "questionIssue": "{{no}}. soru: {{messages}}",
+    "moreQuestions": "ve {{count}} soru daha"
   },
   "menu": {
     "removeQuestion": "Soru Sil",

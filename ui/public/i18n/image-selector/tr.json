@@ -70,5 +70,12 @@
     "unusable": "question-coordinates.json okunamadı ya da geçerli kayıt içermiyor; klasör normal şekilde açıldı.",
     "noMatchingImages": "question-coordinates.json içindeki görsellerin hiçbiri klasörde yok; klasör normal şekilde açıldı.",
     "detectorDisabled": "Koordinat JSON modunda soru tespiti kapalı; bölgeler JSON'dan gelir."
+  },
+  "training": {
+    "emptyPageAdded": "Boş sayfa eğitime eklendi.",
+    "emptyPageExcluded": "Sayfada soru yok ve sayfa soru eğitimine alınmıyor; gönderilecek bir şey yok.",
+    "dragDropOnly": "Sayfada yalnız sürükle-bırak sorular var; bunlar eğitime gönderilmediği için sayfa gönderilmedi (model bu soruları arka plan olarak öğrenirdi).",
+    "questionsAdded": "{{count}} soru eğitime eklendi ({{file}}).",
+    "noImage": "Önce bir sayfa yükleyin."
   }
 }

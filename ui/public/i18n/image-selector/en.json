@@ -70,5 +70,12 @@
     "unusable": "question-coordinates.json could not be read or has no valid entries; the folder was opened normally.",
     "noMatchingImages": "None of the images in question-coordinates.json are in the folder; the folder was opened normally.",
     "detectorDisabled": "Question detection is off in coordinate JSON mode; regions come from the JSON."
+  },
+  "training": {
+    "emptyPageAdded": "Empty page added to training.",
+    "emptyPageExcluded": "The page has no questions and is excluded from question training; there is nothing to send.",
+    "dragDropOnly": "The page only has drag-and-drop questions; they are not sent to training, so the page was not sent (the model would learn them as background).",
+    "questionsAdded": "Added {{count}} questions to training ({{file}}).",
+    "noImage": "Load a page first."
   }
 }

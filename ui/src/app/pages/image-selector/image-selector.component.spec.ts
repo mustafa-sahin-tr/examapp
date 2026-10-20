@@ -350,6 +350,8 @@ describe('ImageSelectorComponent', () => {
   });
 
   describe('sendToFix pageComplete', () => {
+    beforeEach(() => component.imageData.set('data:image/png;base64,AAAA'));
+
     function arrangeSendToFix() {
       component.answerCount.set(2);
       component.regions.set([region('Soru 1', [answer(10, 10), answer(10, 50)])] as any);
@@ -477,6 +479,8 @@ describe('ImageSelectorComponent', () => {
   });
 
   describe('sendToFix validation', () => {
+    beforeEach(() => component.imageData.set('data:image/png;base64,AAAA'));
+
     it('sendToFix_AnswerCountMismatch_DoesNotPostOrAdvance', () => {
       component.answerCount.set(4);
       component.regions.set([region('Soru 1', [answer(10, 10), answer(10, 50)])] as any);
@@ -522,6 +526,87 @@ describe('ImageSelectorComponent', () => {
 
       expect(sendtoFix).toHaveBeenCalledTimes(1);
       expect(sendtoFix.calls.mostRecent().args[0].questions.length).toBe(1);
+    });
+
+    it('sendToFix_NoRegions_PostsEmptyQuestionsAndAdvances', () => {
+      component.answerCount.set(4);
+      component.regions.set([]);
+      const sendtoFix = spyOn(component.questionDetectorService, 'sendtoFix').and.returnValue(
+        of({ success: true, added: 0, imageFile: 'p.png' })
+      );
+      const nextImage = spyOn(component, 'nextImage');
+      const open = spyOn((component as any).snackBar, 'open');
+
+      component.sendToFix();
+
+      expect(sendtoFix).toHaveBeenCalledTimes(1);
+      const payload = sendtoFix.calls.mostRecent().args[0];
+      expect(payload.questions).toEqual([]);
+      expect(payload.pageComplete).toBeTrue();
+      expect(payload.answerCount).toBe(4);
+      expect(nextImage).toHaveBeenCalledTimes(1);
+      expect(open.calls.mostRecent().args[0]).toBe('Boş sayfa eğitime eklendi.');
+    });
+
+    it('sendToFix_NoImageNoRegions_DoesNotPostOrAdvance', () => {
+      component.imageData.set(null);
+      component.regions.set([]);
+      const sendtoFix = spyOn(component.questionDetectorService, 'sendtoFix').and.returnValue(
+        of({ success: true, added: 0, imageFile: 'p.png' })
+      );
+      const nextImage = spyOn(component, 'nextImage');
+      const open = spyOn((component as any).snackBar, 'open');
+
+      component.sendToFix();
+
+      expect(sendtoFix).not.toHaveBeenCalled();
+      expect(nextImage).not.toHaveBeenCalled();
+      expect(open.calls.mostRecent().args[0]).toBe('Önce bir sayfa yükleyin.');
+    });
+
+    it('sendToFix_NoRegionsPageCompleteFalse_DoesNotPostOrAdvance', () => {
+      component.regions.set([]);
+      const sendtoFix = spyOn(component.questionDetectorService, 'sendtoFix').and.returnValue(
+        of({ success: true, added: 0, imageFile: 'p.png' })
+      );
+      const nextImage = spyOn(component, 'nextImage');
+      const open = spyOn((component as any).snackBar, 'open');
+
+      component.sendToFix(false);
+
+      expect(sendtoFix).not.toHaveBeenCalled();
+      expect(nextImage).not.toHaveBeenCalled();
+      expect(open).toHaveBeenCalledTimes(1);
+    });
+
+    it('sendToFix_OnlyDragDropQuestions_DoesNotPostAndShowsMessage', () => {
+      component.regions.set([region('Soru 1', [])] as any);
+      component.interactionTypes.set('Soru 1', 'dragDropLabeling');
+      const sendtoFix = spyOn(component.questionDetectorService, 'sendtoFix').and.returnValue(
+        of({ success: true, added: 0, imageFile: 'p.png' })
+      );
+      const nextImage = spyOn(component, 'nextImage');
+      const open = spyOn((component as any).snackBar, 'open');
+
+      component.sendToFix();
+
+      expect(sendtoFix).not.toHaveBeenCalled();
+      expect(nextImage).not.toHaveBeenCalled();
+      expect(open.calls.mostRecent().args[0]).toContain('sürükle-bırak');
+    });
+
+    it('sendToFix_OnlyDragDropQuestionsAdvanceFalse_DoesNotPostOrShowMessage', () => {
+      component.regions.set([region('Soru 1', [])] as any);
+      component.interactionTypes.set('Soru 1', 'dragDropLabeling');
+      const sendtoFix = spyOn(component.questionDetectorService, 'sendtoFix').and.returnValue(
+        of({ success: true, added: 0, imageFile: 'p.png' })
+      );
+      const open = spyOn((component as any).snackBar, 'open');
+
+      component.sendToFix(true, false);
+
+      expect(sendtoFix).not.toHaveBeenCalled();
+      expect(open).not.toHaveBeenCalled();
     });
   });
 

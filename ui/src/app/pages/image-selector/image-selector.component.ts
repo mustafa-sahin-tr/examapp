@@ -2026,32 +2026,52 @@ export class ImageSelectorComponent {
    *   aksi halde iki sayfa ilerleyip biri atlanır).
    */
   public sendToFix(pageComplete: boolean = true, advance: boolean = true) {
+    // Sayfa yüklenmemişse gönderilecek görsel yok (soru listesi boş diye "boş sayfa" sayılmamalı).
+    if (!this.imageData()) {
+      if (advance) {
+        this.snackBar.open(this.tr('training.noImage'), this.tr('common.ok'), { duration: 3000 });
+      }
+      return;
+    }
+    const regions = this.regions();
+    // Hiç soru yok: kullanıcı modelin bulduklarını silmiştir (Eğit = işaretleme doğru), sayfa tamamı
+    // arka plan olarak eğitime gider. Soru eğitimine alınmayacaksa gönderilecek bir şey kalmaz.
+    const emptyPage = regions.length === 0;
+    // advance=false: "Kaydet ve Düzelt"in kayıt sonrası çağrısı — "kaydedildi" mesajı ezilmesin, sessiz dön.
+    if (emptyPage && !pageComplete) {
+      if (advance) {
+        this.snackBar.open(this.tr('training.emptyPageExcluded'), this.tr('common.ok'), { duration: 4000 });
+      }
+      return;
+    }
+
+    // dragDropLabeling questions are not MCQ and should not be sent to the
+    // fix/training endpoint that expects answers + correct answer.
+    const mcqQuestions = regions.filter((q) => this.getInteractionType(q.name) !== 'dragDropLabeling');
+    if (!emptyPage && mcqQuestions.length === 0) {
+      // Gönderilseydi sayfa boş gibi gider, model dragDrop sorularını arka plan öğrenirdi.
+      if (advance) {
+        this.snackBar.open(this.tr('training.dragDropOnly'), this.tr('common.ok'), { duration: 5000 });
+      }
+      return;
+    }
+
     // Şık sayısı uyumsuz soruyu question-detector 400 ile reddeder; istek gönderilmez, sayfa ilerlemez.
     // Doğru cevap eğitim verisinde kullanılmadığı için burada aranmaz.
     if (!this.ensureQuestionsValid({ requireCorrectAnswer: false })) {
       return;
     }
-    const imageData = { image_base64: this.imageData() };
-    const regionData = { question: this.regions() };
-    const answerCount = this.answerCount();
 
-    // dragDropLabeling questions are not MCQ and should not be sent to the
-    // fix/training endpoint that expects answers + correct answer.
-    const mcqQuestions = regionData.question.filter((q: any) => this.getInteractionType(q.name) !== 'dragDropLabeling');
-    if (mcqQuestions.length === 0) {
-      return;
-    }
-
-    var data = {
-      answerCount: answerCount,
+    const data = {
+      answerCount: this.answerCount(),
       pageComplete: pageComplete,
-      imageData: imageData,
-      questions: mcqQuestions.map((q: any) => ({
+      imageData: { image_base64: this.imageData() },
+      questions: mcqQuestions.map((q) => ({
         x: q.x,
         y: q.y,
         width: q.width,
         height: q.height,
-        answers: q.answers.map((a: any) => ({
+        answers: q.answers.map((a) => ({
           x: a.x,
           y: a.y,
           width: a.width,
@@ -2059,10 +2079,12 @@ export class ImageSelectorComponent {
         })),
       })),
     };
-    console.log(data);
     this.questionDetectorService.sendtoFix(data).subscribe((data) => {
       if (data.success) {
-        this.snackBar.open(`Successfully appended ${data.added} questions with ${data.imageFile}`, 'Tamam', {
+        const message = emptyPage
+          ? this.tr('training.emptyPageAdded')
+          : this.tr('training.questionsAdded', { count: data.added, file: data.imageFile });
+        this.snackBar.open(message, this.tr('common.ok'), {
           duration: 3000,
         });
         if (advance) {

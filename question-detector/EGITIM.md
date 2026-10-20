@@ -73,6 +73,12 @@ temiz import'ta `deploy/keycloak/dev-import/realm-export.json` ile gelir.
    kutusunu seç. Aksi halde işaretsiz sorular "soru değil" diye öğrenilir ve soru modeli bozulur. Bu durumda sayfa
    soru modeline girmez, şık kırpmaları yine kaydedilir. Kutu her yeni sayfada boş başlar.
 
+6. **Model soru olmayan yerde soru bulduysa** (kapak, cevap anahtarı, içindekiler veya yanlış kutular) yanlış
+   kutuları sil ve "Eğit"e bas. Sayfada hiç soru kalmadıysa sayfa **boş sayfa** olarak gönderilir; model o sayfanın
+   tamamını "soru değil" diye öğrenir. Onay sorulmaz: içinde gerçek soru olan sayfayı boş gönderme.
+   Sayfada en az bir soru varsa her sorunun şık sayısı ayardaki şık sayısıyla aynı olmalı, yoksa Eğit göndermez.
+   Yalnız sürükle-bırak soruları olan sayfa gönderilmez (o sorular eğitime girmez, sayfa boş gibi öğrenilirdi).
+
 Kurallar:
 
 - Temiz arka planlı sayfaları da kareli/çizgili defter arka planlı sayfaları da kaydet. Eski bilgiyi korumak

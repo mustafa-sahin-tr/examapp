@@ -395,6 +395,56 @@ describe('ImageSelectorComponent', () => {
 
       expect(nextImage).toHaveBeenCalledTimes(1);
     });
+
+    it('sendToFix_Success_EmitsTrainedWithPageId', () => {
+      arrangeSendToFix().and.returnValue(of({ success: true, added: 1, imageFile: 'abcdef0123456789' }));
+      const emitted: unknown[] = [];
+      component.trained.subscribe((e) => emitted.push(e));
+
+      component.sendToFix();
+
+      expect(emitted).toEqual([{ pageId: 'abcdef0123456789', emptyPage: false, added: 1 }]);
+    });
+
+    it('sendToFix_Failure_DoesNotEmitTrained', () => {
+      arrangeSendToFix();
+      const emitted: unknown[] = [];
+      component.trained.subscribe((e) => emitted.push(e));
+
+      component.sendToFix();
+
+      expect(emitted).toEqual([]);
+    });
+
+    it('sendToFix_AdvanceOnTrainFalse_SuccessEmitsButDoesNotCallNextImage', () => {
+      arrangeSendToFix().and.returnValue(of({ success: true, added: 1, imageFile: 'abcdef0123456789' }));
+      fixture.componentRef.setInput('advanceOnTrain', false);
+      const nextImage = spyOn(component, 'nextImage');
+      const emitted: unknown[] = [];
+      component.trained.subscribe((e) => emitted.push(e));
+
+      component.sendToFix();
+
+      expect(nextImage).not.toHaveBeenCalled();
+      expect(emitted.length).toBe(1);
+    });
+  });
+
+  describe('loadFile', () => {
+    it('loadFile_ReplacesPagesWithSingleFileAndLoadsIt', () => {
+      component.imageFiles = [new File(['a'], 'old.png', { type: 'image/png' })];
+      component.currentImageIndex = 0;
+      component.coordinateJsonMode.set(true);
+      const loadCurrentImage = spyOn(component, 'loadCurrentImage');
+      const file = new File(['b'], 'p7.webp', { type: 'image/webp' });
+
+      component.loadFile(file);
+
+      expect(component.imageFiles).toEqual([file]);
+      expect(component.currentImageIndex).toBe(0);
+      expect(component.coordinateJsonMode()).toBeFalse();
+      expect(loadCurrentImage).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('validateQuestions', () => {
@@ -742,6 +792,32 @@ describe('ImageSelectorComponent', () => {
         expect(snackBarOpen).toHaveBeenCalledTimes(1);
       });
 
+      it('predict_ErrorThenSuccess_TogglesPredictFailed', () => {
+        component.predict();
+        predict$.error(new Error('timeout'));
+        expect(component.predictFailed()).toBeTrue();
+
+        predict$ = new Subject<any>();
+        component.predict();
+        expect(component.predictFailed()).toBeFalse();
+        predict$.next({ predictions: [] });
+        expect(component.predictFailed()).toBeFalse();
+      });
+
+      it('predict_SuccessFalseWithoutPredictions_MarksFailedWithoutThrowing', () => {
+        component.predict();
+
+        expect(() => predict$.next({ success: false, error: 'Prediction failed' })).not.toThrow();
+
+        expect(component.predictFailed()).toBeTrue();
+        expect(component.inProgress()).toBeFalse();
+        expect(snackBarOpen).toHaveBeenCalledWith(
+          imageSelectorTr.messages.analysisError,
+          jasmine.any(String),
+          jasmine.any(Object)
+        );
+      });
+
       it('predict_Error_ClearsInProgressAndShowsError', () => {
         component.predict();
 
@@ -985,6 +1061,38 @@ describe('ImageSelectorComponent', () => {
           jasmine.any(String),
           jasmine.any(Object)
         );
+      });
+
+      it('loadCurrentImage_UndecodableAfterTrainedPage_DoesNotResendPreviousImage', async () => {
+        // Önceki sayfa yüklenmiş ve eğitilmiş; sıradaki görsel çözülemiyor.
+        component.imageData.set('data:image/png;base64,PREVIOUS');
+        component.imageSrc.set('data:image/png;base64,PREVIOUS');
+        component.imageFiles = [new File(['not an image'], 'bad.png', { type: 'image/png' })];
+        component.currentImageIndex = 0;
+        const sendtoFix = spyOn(component.questionDetectorService, 'sendtoFix');
+
+        component.loadCurrentImage();
+        await waitFor(() => !component.pageLoading());
+
+        expect(component.pageLoadFailed()).toBeTrue();
+        expect(component.imageData()).toBeNull();
+        expect(component.imageSrc()).toBeNull();
+        component.sendToFix(true);
+        expect(sendtoFix).not.toHaveBeenCalled();
+      });
+
+      it('loadCurrentImage_NextLoadStarts_ClearsPageLoadFailed', async () => {
+        component.imageFiles = [new File(['not an image'], 'bad.png', { type: 'image/png' }), png('good.png')];
+        component.loadCurrentImage();
+        await waitFor(() => !component.pageLoading());
+        expect(component.pageLoadFailed()).toBeTrue();
+
+        component.nextImage();
+
+        expect(component.pageLoadFailed()).toBeFalse();
+        await waitFor(() => !component.pageLoading());
+        expect(component.pageLoadFailed()).toBeFalse();
+        expect(component.imageData()).not.toBeNull();
       });
 
       it('handleFileInput_UndecodableImage_ClearsPageLoadingAndNotifies', async () => {

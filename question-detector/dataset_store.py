@@ -81,6 +81,28 @@ def _append_manifest(root: Path, record: dict) -> None:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
+def labeled_page_ids(root: Path | None = None) -> List[str]:
+    """Daha önce kaydedilmiş sayfaların page_id'leri (manifest'ten, tekrarsız, kayıt sırasıyla).
+
+    İşaretleme modu bunlarla aynı görseli tekrar getirmez (page_id = içerik hash'i, dosya adından bağımsız).
+    page_complete=False ("Kaydet ve Düzelt" kısmi) kayıtlar da sayılır: kullanıcı kararı, kısmi sayfa tekrar gelmez.
+    Yazma kilidi alınmaz (send-to-fix beklemesin): ekleme satır satır, yarım/bozuk satır atlanır.
+    """
+    path = (root or dataset_dir()) / "manifest.jsonl"
+    if not path.is_file():
+        return []
+    ids: dict[str, None] = {}
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            try:
+                page_id = json.loads(line).get("page_id")
+            except (ValueError, AttributeError):
+                continue
+            if isinstance(page_id, str) and page_id:
+                ids[page_id] = None
+    return list(ids)
+
+
 def save_page(
     image_bytes: bytes,
     questions: Sequence[QuestionSample],

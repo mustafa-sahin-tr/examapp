@@ -52,3 +52,13 @@ def test_send_to_fix_with_empty_questions(tmp_path, monkeypatch):
     data = response.json()
     assert data["success"] is True
     assert data["added"] == 0
+
+
+def test_labeled_pages_lists_trained_page_ids(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATASET_DIR", str(tmp_path))
+    assert client.get("/labeled-pages").json() == {"pageIds": []}
+    page = _page_base64()
+    saved = client.post("/send-to-fix", json={
+        "answerCount": 4, "imageData": {"image_base64": page}, "questions": [], "pageComplete": True,
+    }).json()
+    assert client.get("/labeled-pages").json() == {"pageIds": [saved["imageFile"]]}

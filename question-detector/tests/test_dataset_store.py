@@ -9,7 +9,7 @@ from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), "training"))
-from dataset_store import QuestionSample, save_page, yolo_lines  # noqa: E402
+from dataset_store import QuestionSample, content_id, labeled_page_ids, save_page, yolo_lines  # noqa: E402
 import train  # noqa: E402
 
 
@@ -163,3 +163,14 @@ def test_build_split_includes_empty_label_pages(tmp_path):
     for stem in val_stems:
         label = (tmp_path / "work/questions/val/labels" / f"{stem}.txt")
         assert label.is_file(), f"Label missing for {stem}"
+
+
+def test_labeled_page_ids_reads_manifest_unique_and_skips_bad_lines(tmp_path):
+    assert labeled_page_ids(tmp_path) == []
+    first = save_page(_page(), [], page_complete=True, root=tmp_path)["page_id"]
+    save_page(_page(), [], page_complete=True, root=tmp_path)  # aynı sayfa: tekrar listelenmez
+    with open(tmp_path / "manifest.jsonl", "a", encoding="utf-8") as f:
+        f.write('{"page_id": "bozuk\n[]\n')
+    second = save_page(_page(color=(0, 0, 0)), [], page_complete=False, root=tmp_path)["page_id"]
+    assert labeled_page_ids(tmp_path) == [first, second]
+    assert first == content_id(_page())

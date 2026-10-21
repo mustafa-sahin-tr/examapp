@@ -197,7 +197,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
 
   // Realm roles the current user holds (used to filter the menu).
   // Issue #419: Parent rolü — veli menü öğeleri.
-  private readonly userRoles = ['Student', 'Teacher', 'Admin', 'Parent'].filter((r) =>
+  // QuestionTrainer: uygulama rolü değil, ek yetki (soru tespit modeline eğitim verisi) — yalnız İşaretleme öğesini açar.
+  private readonly userRoles = ['Student', 'Teacher', 'Admin', 'Parent', 'QuestionTrainer'].filter((r) =>
     this.authService.hasRealmRole(r)
   );
 
@@ -205,7 +206,10 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
    * #421 review: yalnızca veli rolü olan kullanıcı — worksheet keşfine ait üst çubuk öğeleri (Yeni / Popüler, worksheet araması)
    * veliye anlamsız, gizlenir. Başka bir rolü de olan (ör. öğretmen + veli) kullanıcı bunları görmeye devam eder.
    */
-  readonly isParentOnly = this.userRoles.length === 1 && this.userRoles[0] === 'Parent';
+  readonly isParentOnly = (() => {
+    const appRoles = this.userRoles.filter((r) => r !== 'QuestionTrainer');
+    return appRoles.length === 1 && appRoles[0] === 'Parent';
+  })();
 
   // Menu items — single source of truth. `roles` omitted = visible to every role.
   // `labelKey` kök sözlükteki `layout.*` anahtarıdır; metin şablonda çevrilir (issue #183).
@@ -256,6 +260,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'admin-comment-reports', labelKey: 'menu.adminCommentReports', icon: 'flag', route: '/admin/comment-reports', type: 'menu', roles: ['Admin'] },
     // Issue #365: soru aktarımı (export/import) yalnız Admin.
     { id: 'questiontransfer', labelKey: 'menu.questionTransfer', icon: 'swap_horiz', route: '/question-transfer', type: 'menu', roles: ['Admin'] },
+    // Soru tespit modeli için işaretleme modu (test/soru kaydı yok, yalnız eğitim verisi); send-to-fix ile aynı roller.
+    { id: 'labeling', labelKey: 'menu.labeling', icon: 'model_training', route: '/labeling', type: 'menu', roles: ['Admin', 'QuestionTrainer'] },
   ];
   // Bottom navigation items for mobile (max 4 primary items + menu trigger)
   bottomNavItems: MenuItem[] = [

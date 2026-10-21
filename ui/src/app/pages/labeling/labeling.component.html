@@ -1,0 +1,124 @@
+<div class="lb" *transloco="let t; prefix: 'labeling'">
+  <header class="lb-top">
+    <div class="lb-heading">
+      <h1 class="lb-title"><mat-icon aria-hidden="true">model_training</mat-icon>{{ t('title') }}</h1>
+      <p class="lb-subtitle">{{ t('subtitle') }}</p>
+    </div>
+
+    <div class="lb-top__actions">
+      <input #folderInput type="file" webkitdirectory multiple hidden (change)="onFolderSelected($event)" />
+      <button mat-flat-button type="button" (click)="folderInput.click()" [disabled]="labeledLoading()">
+        <mat-icon>folder_open</mat-icon>{{ folderPicked() ? t('changeFolder') : t('chooseFolder') }}
+      </button>
+    </div>
+  </header>
+
+  @if (folderPicked() && totalImages() > 0) {
+  <dl class="lb-stats" [attr.aria-label]="t('stats.label')">
+    <div class="lb-stat"><dt>{{ t('stats.total') }}</dt><dd>{{ totalImages() }}</dd></div>
+    <div class="lb-stat"><dt>{{ t('stats.skipped') }}</dt><dd>{{ skippedLabeled() }}</dd></div>
+    <div class="lb-stat lb-stat--accent"><dt>{{ t('stats.trained') }}</dt><dd>{{ trainedThisSession() }}</dd></div>
+    <div class="lb-stat"><dt>{{ t('stats.passed') }}</dt><dd>{{ passedThisSession() }}</dd></div>
+    <div class="lb-stat"><dt>{{ t('stats.remaining') }}</dt><dd>{{ remaining() }}</dd></div>
+    @if (unreadable() > 0) {
+    <div class="lb-stat lb-stat--danger"><dt>{{ t('stats.unreadable') }}</dt><dd>{{ unreadable() }}</dd></div>
+    }
+  </dl>
+  }
+
+  @if (labeledLoading()) {
+  <div class="lb-state" role="status">
+    <mat-spinner diameter="28" aria-hidden="true"></mat-spinner>
+    <span>{{ t('loadingLabeled') }}</span>
+  </div>
+  } @else if (labeledError()) {
+  <div class="lb-state lb-state--error" role="alert">
+    <mat-icon aria-hidden="true">error_outline</mat-icon>
+    <span>{{ t('labeledError') }}</span>
+    <button mat-stroked-button type="button" (click)="retryLabeledPages()">{{ t('retry') }}</button>
+  </div>
+  } @else if (!folderPicked()) {
+  <div class="lb-state lb-state--empty">
+    <mat-icon aria-hidden="true">folder_open</mat-icon>
+    <span class="lb-state__title">{{ t('emptyTitle') }}</span>
+    <span>{{ t('emptyHint') }}</span>
+  </div>
+  } @else if (totalImages() === 0) {
+  <div class="lb-state lb-state--empty" role="status">
+    <mat-icon aria-hidden="true">image_not_supported</mat-icon>
+    <span>{{ t('noImages') }}</span>
+  </div>
+  } @else if (finished()) {
+  <div class="lb-state lb-state--empty" role="status">
+    <mat-icon aria-hidden="true">task_alt</mat-icon>
+    <span class="lb-state__title">{{ t('allDone') }}</span>
+  </div>
+  } @else if (picking()) {
+  <div class="lb-state" role="status">
+    <mat-spinner diameter="28" aria-hidden="true"></mat-spinner>
+    <span>{{ t('picking') }}</span>
+  </div>
+  }
+
+  @if (current()) {
+  <div class="lb-toolbar" role="toolbar" [attr.aria-label]="t('toolbarLabel')">
+    <span class="lb-file" [title]="currentPath()">
+      <mat-icon aria-hidden="true">description</mat-icon>
+      <span class="lb-file__path">{{ currentPath() }}</span>
+    </span>
+
+    <span class="lb-group">
+      <span class="lb-group__label">{{ t('answerCount') }}</span>
+      <mat-button-toggle-group hideSingleSelectionIndicator [value]="answerCount()"
+        (change)="setAnswerCount($event.value)" [attr.aria-label]="t('answerCount')">
+        @for (count of answerCounts; track count) {
+        <mat-button-toggle [value]="count">{{ count }}</mat-button-toggle>
+        }
+      </mat-button-toggle-group>
+    </span>
+
+    <mat-button-toggle-group hideSingleSelectionIndicator [value]="selectionMode()" [attr.aria-label]="t('drawMode')">
+      <mat-button-toggle value="question" (click)="setDrawMode('question')">{{ t('modeQuestion') }}</mat-button-toggle>
+      <mat-button-toggle value="answer" (click)="setDrawMode('answer')">{{ t('modeAnswer') }}</mat-button-toggle>
+    </mat-button-toggle-group>
+
+    <button mat-stroked-button type="button" (click)="repredict()" [disabled]="analysing() || sendingToFix()">
+      <mat-icon>smart_toy</mat-icon>{{ t('predict') }}
+    </button>
+    <button mat-stroked-button type="button" (click)="align()" [disabled]="analysing() || sendingToFix()">
+      <mat-icon>align_horizontal_center</mat-icon>{{ t('align') }}
+    </button>
+
+    <span class="lb-toolbar__spacer"></span>
+
+    <button mat-stroked-button type="button" (click)="skip()" [disabled]="!canSkip()" [matTooltip]="t('skipHint')">
+      <mat-icon>skip_next</mat-icon>{{ t('skip') }}
+    </button>
+    <button mat-flat-button type="button" class="lb-train" (click)="train()" [disabled]="!canTrain()"
+      [attr.aria-busy]="sendingToFix()" [matTooltip]="t('trainHint')">
+      @if (sendingToFix()) {
+      <mat-spinner diameter="16" aria-hidden="true"></mat-spinner>
+      <span>{{ t('sending') }}</span>
+      } @else {
+      {{ t('train') }}
+      }
+    </button>
+  </div>
+  }
+
+  @if (pageLoadFailed()) {
+  <p class="lb-hint lb-hint--error" role="alert">
+    <mat-icon aria-hidden="true">broken_image</mat-icon>{{ t('pageLoadFailedHint') }}
+  </p>
+  } @else if (predictFailedEmpty()) {
+  <p class="lb-hint lb-hint--error" role="alert">
+    <mat-icon aria-hidden="true">error_outline</mat-icon>{{ t('predictFailedHint') }}
+  </p>
+  }
+
+  <!-- Tuval her zaman DOM'da: sayfa `loadFile` ile yüklenir; gezinmeyi bu sayfa yönettiği için kenar okları kapalı. -->
+  <div class="lb-stage" [class.lb-stage--hidden]="!current()">
+    <app-image-selector [navigationLocked]="true" [advanceOnTrain]="false"
+      (trained)="onTrained($event)"></app-image-selector>
+  </div>
+</div>

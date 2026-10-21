@@ -1,4 +1,5 @@
-<div class="lb" *transloco="let t; prefix: 'labeling'">
+<div class="lb">
+  <ng-container *transloco="let t; prefix: 'labeling'">
   <header class="lb-top">
     <div class="lb-heading">
       <h1 class="lb-title"><mat-icon aria-hidden="true">model_training</mat-icon>{{ t('title') }}</h1>
@@ -115,8 +116,11 @@
     <mat-icon aria-hidden="true">error_outline</mat-icon>{{ t('predictFailedHint') }}
   </p>
   }
+  </ng-container>
 
-  <!-- Tuval her zaman DOM'da: sayfa `loadFile` ile yüklenir; gezinmeyi bu sayfa yönettiği için kenar okları kapalı. -->
+  <!-- Tuval her zaman DOM'da: sayfa `loadFile` ile yüklenir; gezinmeyi bu sayfa yönettiği için kenar okları kapalı.
+       *transloco dışında: çeviri yüklenince/dil değişince transloco şablonu yeniden kurar, tuval yok edilip
+       yeniden yaratılırsa viewChild eski (yok edilmiş) örneği tutabiliyordu (NG0911, resim görünmüyordu). -->
   <div class="lb-stage" [class.lb-stage--hidden]="!current()">
     <app-image-selector [navigationLocked]="true" [advanceOnTrain]="false"
       (trained)="onTrained($event)"></app-image-selector>

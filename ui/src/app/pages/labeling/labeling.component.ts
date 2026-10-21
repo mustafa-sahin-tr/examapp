@@ -1,0 +1,395 @@
+import { Component, DestroyRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { ImageSelectorComponent, TrainedPage } from '../image-selector/image-selector.component';
+import { QuestionDetectorService } from '../../services/question-detector.service';
+import { LabelingCandidate, isLabelingImage, pageIdOf, pickNextUnlabeled } from './labeling-pool';
+
+/** Sayfa metinleri kendi Transloco scope'unda: `public/i18n/labeling/<lang>.json`. */
+const LABELING_SCOPE = 'labeling';
+/** Yalnız son seçilen şık sayısı saklanır (oturum sayaçları / havuz saklanmaz). */
+const ANSWER_COUNT_STORAGE_KEY = 'labeling.answerCount';
+const ANSWER_COUNTS = [3, 4, 5] as const;
+
+type DrawMode = 'question' | 'answer';
+
+/**
+ * İşaretleme modu: test / soru kaydı olmadan yalnız soru tespit modeline eğitim verisi üretir.
+ * Seçilen kök klasörün (alt klasörler dahil) görsellerinden rastgele, daha önce eğitime alınmamış bir sayfa
+ * açılır; tuval, tespit ve doğrulama `ImageSelectorComponent`'ten gelir. "Eğit" sayfayı tamamı işaretlenmiş
+ * (`pageComplete: true`) gönderir; "Atla" eğitmeden sonrakine geçer. Aynı oturumda bir dosya iki kez gelmez.
+ */
+@Component({
+  selector: 'app-labeling',
+  standalone: true,
+  imports: [
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    MatTooltipModule,
+    TranslocoDirective,
+    ImageSelectorComponent,
+  ],
+  providers: [provideTranslocoScope(LABELING_SCOPE)],
+  templateUrl: './labeling.component.html',
+  styleUrls: ['./labeling.component.scss'],
+  host: { '(document:keydown)': 'onKeydown($event)' },
+})
+export class LabelingComponent {
+  private readonly detector = inject(QuestionDetectorService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly snackBar = inject(MatSnackBar);
+  private readonly transloco = inject(TranslocoService);
+
+  private readonly selectorRef = viewChild(ImageSelectorComponent);
+
+  readonly answerCounts = ANSWER_COUNTS;
+  /** Sayfa id'si (sha256[:16]); testlerde gecikmeli hash için değiştirilir. */
+  hashFile: (file: File) => Promise<string> = (file) => pageIdOf(file);
+
+  // --- Daha önce işaretlenmiş sayfalar (question-detector) ---
+  readonly labeledLoading = signal(false);
+  readonly labeledError = signal(false);
+  private readonly labeled = new Set<string>();
+
+  // --- Havuz ve sayaçlar ---
+  /** Kalan, henüz gösterilmemiş dosyalar (seçilen her dosya çıkarılır). */
+  private pool: File[] = [];
+  readonly folderPicked = signal(false);
+  readonly totalImages = signal(0);
+  readonly skippedLabeled = signal(0);
+  readonly unreadable = signal(0);
+  readonly trainedThisSession = signal(0);
+  readonly passedThisSession = signal(0);
+  /** Gösterilen (tuvale açılan) sayfa sayısı; açık sayfa dahil. */
+  private readonly shownCount = signal(0);
+  /**
+   * Henüz gösterilmemiş ve atlanmamış görseller. Havuz boyundan değil sayaçlardan türetilir: arka planda hash'i
+   * alınan aday havuzdan çıkmış olsa da gösterilene kadar "kalan" sayılır.
+   */
+  readonly remaining = computed(() =>
+    Math.max(0, this.totalImages() - this.shownCount() - this.skippedLabeled() - this.unreadable())
+  );
+  /** Havuz tükendi: aranacak sayfa kalmadı. */
+  private readonly exhausted = signal(false);
+
+  readonly current = signal<LabelingCandidate<File> | null>(null);
+  readonly picking = signal(false);
+  readonly answerCount = signal<number>(readStoredAnswerCount());
+
+  /** Yeni klasör seçimi / yok edilme eski aramaları geçersiz kılar. */
+  private pickSeq = 0;
+  /** Kullanıcı sayfayı işaretlerken arka planda bulunan sonraki aday. */
+  private prefetch: Promise<LabelingCandidate<File> | null> | null = null;
+  /**
+   * "Eğit"e basıldığında açık olan sayfa ve klasör oturumu; yanıt geldiğinde aynı oturumda hâlâ o sayfa açıksa
+   * sayılır ve sonrakine geçilir.
+   */
+  private trainingFor: { candidate: LabelingCandidate<File>; seq: number } | null = null;
+
+  readonly sendingToFix = computed(() => this.selectorRef()?.sendingToFix() ?? false);
+  readonly analysing = computed(() => {
+    const selector = this.selectorRef();
+    return (selector?.pageLoading() ?? false) || (selector?.inProgress() ?? false);
+  });
+  /** Atla: yeni sayfa aranırken ya da eğitime gönderim sürerken kapalı (analiz sürerken geçilebilir). */
+  readonly canSkip = computed(() => !!this.current() && !this.picking() && !this.sendingToFix());
+  /** Açık adayın görseli okunamadı / çözülemedi. */
+  readonly pageLoadFailed = computed(() => !!this.current() && (this.selectorRef()?.pageLoadFailed() ?? false));
+  /**
+   * Tespit başarısız ve tuvalde hiç soru yok: bu "boş sayfa" değil, gönderilirse tam sayfa arka plan örneği
+   * olarak eğitime girerdi. Kullanıcı yeniden tespit eder ya da kutuları elle çizer.
+   */
+  readonly predictFailedEmpty = computed(() => {
+    const selector = this.selectorRef();
+    return !!this.current() && !!selector && selector.predictFailed() && selector.regions().length === 0;
+  });
+  /**
+   * Eğit: açık adayın görseli yüklenmiş (okuma bitti, hata yok), analiz / gönderim sürmüyor ve tespit hatası
+   * boş bir tuval bırakmamış olmalı.
+   */
+  readonly canTrain = computed(() => {
+    const selector = this.selectorRef();
+    return (
+      this.canSkip() &&
+      !this.analysing() &&
+      !!selector?.imageData() &&
+      !this.pageLoadFailed() &&
+      !this.predictFailedEmpty()
+    );
+  });
+  readonly selectionMode = computed(() => this.selectorRef()?.selectionMode() ?? null);
+  readonly finished = computed(
+    () => this.folderPicked() && this.totalImages() > 0 && !this.current() && !this.picking() && this.exhausted()
+  );
+  readonly currentPath = computed(() => {
+    const file = this.current()?.file;
+    return file ? file.webkitRelativePath || file.name : '';
+  });
+
+  constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.pickSeq++;
+      this.prefetch = null;
+    });
+    // Alt bileşen hazır olunca (ve şık sayısı değişince) tuvale aktarılır. Kalıcı otomatik hizalama bu modda kapalı:
+    // "Hizala" tek seferlik çalışır.
+    effect(() => {
+      const selector = this.selectorRef();
+      const count = this.answerCount();
+      if (!selector) {
+        return;
+      }
+      untracked(() => {
+        selector.autoAlign.set(false);
+        if (selector.answerCount() !== count) {
+          selector.answerCount.set(count);
+          selector.recomputeWarnings();
+        }
+      });
+    });
+    void this.loadLabeledPages();
+  }
+
+  /** Eğitim veri setindeki sayfa id'lerini kümeye ekler. Hata durumunda seçim yapılmaz (tekrar dene). */
+  async loadLabeledPages(): Promise<boolean> {
+    this.labeledLoading.set(true);
+    this.labeledError.set(false);
+    try {
+      const response = await firstValueFrom(this.detector.getLabeledPages());
+      for (const id of response?.pageIds ?? []) {
+        this.labeled.add(id);
+      }
+      return true;
+    } catch (error) {
+      console.error('labeled-pages failed', error);
+      this.labeledError.set(true);
+      return false;
+    } finally {
+      this.labeledLoading.set(false);
+    }
+  }
+
+  /** Hata sonrası "Tekrar dene": liste gelirse ve klasör seçilmişse aramaya başlanır. */
+  async retryLabeledPages(): Promise<void> {
+    const ok = await this.loadLabeledPages();
+    if (ok && this.folderPicked() && !this.current() && !this.picking()) {
+      void this.showNext();
+    }
+  }
+
+  async onFolderSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []).filter(isLabelingImage);
+    // Aynı klasör tekrar seçilebilsin.
+    input.value = '';
+
+    this.pickSeq++;
+    this.prefetch = null;
+    // Süren eğitim isteği (önceki klasör) yanıtı yalnız id kümesine yazılır; bu oturumun sayacına girmez.
+    this.pool = files;
+    this.current.set(null);
+    this.picking.set(false);
+    this.exhausted.set(false);
+    this.folderPicked.set(true);
+    this.totalImages.set(files.length);
+    this.shownCount.set(0);
+    this.skippedLabeled.set(0);
+    this.unreadable.set(0);
+    this.trainedThisSession.set(0);
+    this.passedThisSession.set(0);
+
+    if (files.length === 0) {
+      return;
+    }
+    // Başka bir oturumda bu arada eğitilenler de atlansın.
+    const seq = this.pickSeq;
+    const ok = await this.loadLabeledPages();
+    if (ok && seq === this.pickSeq) {
+      void this.showNext();
+    }
+  }
+
+  /** Eğitmeden rastgele başka bir sayfaya geç. */
+  skip(): void {
+    if (!this.canSkip()) {
+      return;
+    }
+    this.passedThisSession.update((n) => n + 1);
+    void this.showNext();
+  }
+
+  train(): void {
+    const selector = this.selectorRef();
+    if (!selector || !this.canTrain()) {
+      return;
+    }
+    this.trainingFor = { candidate: this.current()!, seq: this.pickSeq };
+    // pageComplete: işaretleme modunda sayfanın tüm soruları işaretlenir (boş sayfa = arka plan örneği).
+    selector.sendToFix(true);
+  }
+
+  onTrained(event: TrainedPage): void {
+    const training = this.trainingFor;
+    this.trainingFor = null;
+    // Sunucunun kaydettiği sayfa her durumda veri setinde: tekrar getirilmesin.
+    if (event.pageId) {
+      this.labeled.add(event.pageId);
+    }
+    if (!training || training.seq !== this.pickSeq) {
+      // Klasör bu arada değişti (ya da istek bu sayfadan değil): yeni oturumun sayacına / akışına dokunulmaz.
+      return;
+    }
+    const candidate = training.candidate;
+    if (event.pageId !== candidate.pageId) {
+      // Gönderilen görsel açık aday değil (ör. eski sayfa verisi). Aday işaretli sayılmaz, ilerlenmez.
+      console.error('labeling: page id mismatch', { candidate: candidate.pageId, server: event.pageId });
+      this.snackBar.open(this.tr('pageIdMismatch'), this.tr('ok'), { duration: 8000 });
+      return;
+    }
+    this.labeled.add(candidate.pageId);
+    this.trainedThisSession.update((n) => n + 1);
+    if (candidate === this.current()) {
+      void this.showNext();
+    }
+  }
+
+  /** Tuvale aktarım `answerCount` effect'inde. */
+  setAnswerCount(count: number): void {
+    this.answerCount.set(count);
+    try {
+      localStorage.setItem(ANSWER_COUNT_STORAGE_KEY, String(count));
+    } catch {
+      // depolama kapalı: yalnız bu oturumda geçerli
+    }
+  }
+
+  setDrawMode(mode: DrawMode): void {
+    const selector = this.selectorRef();
+    if (!selector) {
+      return;
+    }
+    selector.lockSelectionMode(this.selectionMode() === mode ? null : mode);
+  }
+
+  repredict(): void {
+    if (!this.current() || this.analysing() || this.sendingToFix()) {
+      return;
+    }
+    this.selectorRef()?.predict();
+  }
+
+  align(): void {
+    const selector = this.selectorRef();
+    if (!selector || !this.current() || this.analysing() || this.sendingToFix()) {
+      return;
+    }
+    // Tek seferlik: tuvaldeki şıkları yerinde hizalar (kalıcı autoAlign açılmaz, tespit yeniden çalışmaz).
+    selector.alignAllAnswers();
+  }
+
+  /** N: atla / sonraki (yazı alanındayken ya da kısayol tuşlarıyla birlikte değil). */
+  onKeydown(event: KeyboardEvent): void {
+    if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) {
+      return;
+    }
+    if (event.key !== 'n' && event.key !== 'N') {
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    if (target && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) {
+      return;
+    }
+    if (this.canSkip()) {
+      event.preventDefault();
+      this.skip();
+    }
+  }
+
+  /** Sıradaki işaretlenmemiş sayfayı açar (önceden bulunmuş aday varsa onu kullanır). */
+  private async showNext(): Promise<void> {
+    const seq = this.pickSeq;
+    this.picking.set(true);
+    this.current.set(null);
+
+    let candidate = await (this.prefetch ?? this.pick(seq));
+    if (seq !== this.pickSeq) {
+      return;
+    }
+    this.prefetch = null;
+    // Aday beklerken aynı içerikli başka bir dosya eğitilmiş olabilir.
+    while (candidate && this.labeled.has(candidate.pageId) && seq === this.pickSeq) {
+      this.skippedLabeled.update((n) => n + 1);
+      candidate = await this.pick(seq);
+    }
+    if (seq !== this.pickSeq) {
+      return;
+    }
+    this.picking.set(false);
+    this.current.set(candidate);
+    if (!candidate) {
+      this.exhausted.set(true);
+      return;
+    }
+    this.shownCount.update((n) => n + 1);
+    const selector = this.selectorRef();
+    if (selector) {
+      // Kilitli "şık çiz" modunda image-selector sayfayı tek tam-sayfa soru sayıp tespiti atlar; eğitim verisi
+      // için her sayfa tespitle açılmalı.
+      if (selector.selectionModeLocked() === 'answer') {
+        selector.lockSelectionMode(null);
+      }
+      selector.loadFile(candidate.file);
+      this.startPrefetch(seq);
+    }
+  }
+
+  private startPrefetch(seq: number): void {
+    if (this.pool.length === 0) {
+      return;
+    }
+    this.prefetch = this.pick(seq);
+  }
+
+  private pick(seq: number): Promise<LabelingCandidate<File> | null> {
+    return pickNextUnlabeled<File>({
+      pool: this.pool,
+      labeled: this.labeled,
+      hash: (file) => this.hashFile(file),
+      isCancelled: () => seq !== this.pickSeq,
+      onSkipLabeled: () => {
+        if (seq !== this.pickSeq) {
+          return;
+        }
+        this.skippedLabeled.update((n) => n + 1);
+      },
+      onUnreadable: (file, error) => {
+        if (seq !== this.pickSeq) {
+          return;
+        }
+        console.error('labeling: file could not be read', file.name, error);
+        this.unreadable.update((n) => n + 1);
+      },
+    });
+  }
+
+  private tr(key: string): string {
+    return this.transloco.translate<string>(`${LABELING_SCOPE}.${key}`) ?? '';
+  }
+}
+
+function readStoredAnswerCount(): number {
+  try {
+    const stored = Number(localStorage.getItem(ANSWER_COUNT_STORAGE_KEY));
+    return (ANSWER_COUNTS as readonly number[]).includes(stored) ? stored : 4;
+  } catch {
+    return 4;
+  }
+}

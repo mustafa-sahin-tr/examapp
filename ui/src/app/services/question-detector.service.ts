@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { catchError, Observable, of } from 'rxjs';
-import { PredictionList } from '../models/prediction';
+import { LabeledPagesResponse, PredictionList } from '../models/prediction';
 
 @Injectable({
   providedIn: 'root',
@@ -19,6 +19,11 @@ export class QuestionDetectorService {
 
   readQrData(imageData: any): Observable<PredictionList> {
     return this.http.post<PredictionList>(`/question-detector-dev/read-qr`, imageData);
+  }
+
+  /** Eğitim veri setinde zaten bulunan sayfaların id'leri (işaretleme modu bunları atlar). Admin + QuestionTrainer. */
+  getLabeledPages(): Observable<LabeledPagesResponse> {
+    return this.http.get<LabeledPagesResponse>(`/question-detector-dev/labeled-pages`);
   }
 
   sendtoFix(fixData: any): Observable<any> {

@@ -68,6 +68,7 @@ public class RouteRoleAuthTests
     [InlineData("/question-detector-dev/unknown", "Teacher")]
     [InlineData("/question-detector-dev/predict/extra", "Teacher")]
     [InlineData("/question-detector-dev/predictx", "Teacher")]
+    [InlineData("/question-detector-dev/labeled-pages", "Teacher")]
     public async Task SendToFix_Teacher_Returns403(string path, string roles)
     {
         using var client = await CreateClientAsync();
@@ -96,6 +97,8 @@ public class RouteRoleAuthTests
     [InlineData("/question-detector-dev/SEND-TO-FIX", "Teacher,QuestionTrainer")]
     [InlineData("/question-detector-dev//send-to-fix", "Teacher,QuestionTrainer")]
     [InlineData("/question-detector-dev/send-to-fix/", "QuestionTrainer")]
+    [InlineData("/question-detector-dev/labeled-pages", "QuestionTrainer")]
+    [InlineData("/question-detector-dev/labeled-pages", "Admin")]
     public async Task SendToFix_QuestionTrainer_PassesThrough(string path, string roles)
     {
         using var client = await CreateClientAsync();

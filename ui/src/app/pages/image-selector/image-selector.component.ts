@@ -100,6 +100,15 @@ export interface QuestionValidationOptions {
   requireCorrectAnswer: boolean;
 }
 
+/** `trained` olayı: eğitim veri setine yazılan sayfa (question-detector `page_id` = sha256(görsel)[:16]). */
+export interface TrainedPage {
+  pageId: string;
+  /** Hiç soru işaretlenmeden (boş sayfa / arka plan) gönderildi. */
+  emptyPage: boolean;
+  /** Gönderilen soru sayısı. */
+  added: number;
+}
+
 export interface ActiveInspector {
   index: number;
   no: number;
@@ -173,6 +182,16 @@ export class ImageSelectorComponent {
   public readonly sendingToFix = signal(false);
   /** Yeni sayfanın görseli okunuyor (FileReader + img.onload); analiz başlayana kadarki boşluğu kapatır. */
   public readonly pageLoading = signal(false);
+  /**
+   * Son sayfa okunamadı / çözülemedi. Açıkken `imageData` boştur: eğitime ya da kayda önceki sayfanın
+   * görseli gitmez. Yeni yükleme başlayınca kapanır.
+   */
+  public readonly pageLoadFailed = signal(false);
+  /**
+   * Bu sayfanın son analizi (predict) hata / zaman aşımı ile bitti. Tuvaldeki soru listesi boşsa bu "boş sayfa"
+   * değil "tespit yok" demektir; eğitime boş sayfa olarak gönderilmemeli. Yeni yüklemede ve başarılı analizde kapanır.
+   */
+  public readonly predictFailed = signal(false);
   /** Son başlatılan analiz; sayfa değiştikten sonra dönen eski yanıt yeni sayfanın bölgelerini ezmesin. */
   private predictSeq = 0;
   /** Son başlatılan sayfa yüklemesi; eski yüklemenin reader/img olayları yenisini ezmesin. */
@@ -182,6 +201,14 @@ export class ImageSelectorComponent {
    * tuvalin kenarındaki önceki/sonraki alanları da pasif olur.
    */
   @Input() navigationLocked = false;
+  /**
+   * Başarılı eğitime gönderimden (sendToFix) sonra bu bileşen kendi `nextImage()`'ı ile ilerlesin mi.
+   * Soru tuvali için true (bugünkü davranış); işaretleme modu false verir ve sonraki sayfayı `trained`
+   * olayında kendisi seçer.
+   */
+  @Input() advanceOnTrain = true;
+  /** Sayfa eğitim veri setine kaydedildi (send-to-fix başarılı). `pageId` yanıttaki `imageFile`'dır. */
+  @Output() trained = new EventEmitter<TrainedPage>();
   /** Yok edildi: eğitime gönderim yanıtı geç dönerse snackbar / sayfa geçişi yapılmaz. */
   private destroyed = false;
   public onlyQuestionMode = signal<boolean>(false);
@@ -1034,6 +1061,8 @@ export class ImageSelectorComponent {
   /** Yeni sayfa yüklemesini başlatır; dönen sıra numarası olay işleyicilerinde eski yüklemeyi ayırt eder. */
   private startPageLoad(): number {
     this.pageLoading.set(true);
+    this.pageLoadFailed.set(false);
+    this.predictFailed.set(false);
     return ++this.loadSeq;
   }
 
@@ -1043,7 +1072,24 @@ export class ImageSelectorComponent {
       return;
     }
     this.pageLoading.set(false);
+    this.pageLoadFailed.set(true);
+    // Görsel çözülemediyse reader'ın yazdığı veri de geçersiz; tuvalde eski sayfa kalmasın, gönderilecek görsel yok.
+    this.imageData.set(null);
+    this.imageSrc.set(null);
     this.snackBar.open(this.tr('messages.pageLoadError'), this.tr('common.ok'), { duration: 4000 });
+  }
+
+  /**
+   * Tek bir görseli (klasör listesi olmadan) tuvale yükler; işaretleme modu sayfaları kendisi seçtiği için
+   * bunu kullanır. Koordinat JSON modu kapanır, sayfa her zamanki gibi analiz edilir.
+   */
+  public loadFile(file: File) {
+    this.fileSelectionSeq++;
+    this.disableCoordinateJsonMode();
+    this.imageFiles = [file];
+    this.currentImageIndex = 0;
+    this.bookName.set(this.extractBookName(file));
+    this.loadCurrentImage();
   }
 
   goToPage(pageStr: string) {
@@ -2173,7 +2219,13 @@ export class ImageSelectorComponent {
           this.snackBar.open(message, this.tr('common.ok'), {
             duration: 3000,
           });
-          if (advance && this.currentImageIndex === sentIndex && this.imageData() === sentImage) {
+          this.trained.emit({ pageId: String(data.imageFile ?? ''), emptyPage, added: Number(data.added ?? 0) });
+          if (
+            advance &&
+            this.advanceOnTrain &&
+            this.currentImageIndex === sentIndex &&
+            this.imageData() === sentImage
+          ) {
             this.nextImage();
           }
         } else {
@@ -2208,6 +2260,7 @@ export class ImageSelectorComponent {
     // "Analiz başladı" bildirimi yerine tuvalin üstündeki örtü (inProgress) gösterilir.
     const seq = ++this.predictSeq;
     this.inProgress.set(true);
+    this.predictFailed.set(false);
 
     this.questionDetectorService
       .readQrData(imageData)
@@ -2237,6 +2290,7 @@ export class ImageSelectorComponent {
             return;
           }
           this.inProgress.set(false);
+          this.predictFailed.set(true);
           this.snackBar.open(this.tr('messages.analysisError'), this.tr('common.ok'), { duration: 4000 });
         },
       });
@@ -2255,6 +2309,12 @@ export class ImageSelectorComponent {
     }
     // Yanıt işlenirken hata olursa da örtü açık kalmasın.
     this.inProgress.set(false);
+    // Servis hatayı 200 + { success: false } olarak da döndürebilir (predictions yok).
+    if (!questions || !Array.isArray(questions.predictions)) {
+      this.predictFailed.set(true);
+      this.snackBar.open(this.tr('messages.analysisError'), this.tr('common.ok'), { duration: 4000 });
+      return;
+    }
 
     console.log(questions);
     const imageWidth = Math.max(...questions.predictions.map((q) => q.x + q.width));

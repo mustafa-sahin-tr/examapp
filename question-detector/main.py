@@ -16,7 +16,7 @@ from guards import (
     MAX_COORD,
     MAX_QUESTIONS_PER_REQUEST,
 )
-from dataset_store import QuestionSample, save_page
+from dataset_store import QuestionSample, labeled_page_ids, save_page
 
 _enable_docs = os.getenv("ENABLE_API_DOCS", "").lower() in ("1", "true", "yes")
 app = FastAPI(
@@ -219,6 +219,16 @@ def upload_questions(payload: UploadQuestionsRequest):
         raise
     except Exception:
         logger.exception("Error occurred")
+        raise HTTPException(status_code=500, detail="Internal error")
+
+
+@app.get("/labeled-pages")
+def labeled_pages():
+    """Egitim veri setine kaydedilmis sayfa id'leri (sha256(gorsel)[:16]); isaretleme modu bunlari atlar."""
+    try:
+        return {"pageIds": labeled_page_ids()}
+    except Exception:
+        logger.exception("labeled-pages failed")
         raise HTTPException(status_code=500, detail="Internal error")
 
 

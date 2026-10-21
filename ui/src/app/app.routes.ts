@@ -93,6 +93,13 @@ export const routes: Routes = [
         canActivate: [authGuard],
       },
       { path: 'questioncanvas/:id', component: QuestionCanvasComponent, canActivate: [authGuard] },
+      {
+        // Soru tespit modeli için işaretleme modu: yalnız eğitim verisi (send-to-fix), test/soru kaydı yok.
+        // Gateway send-to-fix'i de yalnız bu iki realm rolüne açar.
+        path: 'labeling',
+        canActivate: [authGuard, roleGuard('Admin', 'QuestionTrainer')],
+        loadComponent: () => import('./pages/labeling/labeling.component').then((m) => m.LabelingComponent),
+      },
       { path: 'question', component: QuestionComponent, canActivate: [authGuard] },
       { path: 'imageselect', component: ImageSelectorComponent, canActivate: [authGuard] },
       {

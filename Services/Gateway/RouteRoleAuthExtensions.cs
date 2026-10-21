@@ -25,6 +25,7 @@ public static class RouteRoleAuthExtensions
     // - /send-to-fix (diske egitim verisi yazar) -> Admin + QuestionTrainer (soru girerken model egitim verisi
     //   gonderebilen yetkili ogretmen; ayri realm rolu, cunku Teacher rolu kayitta onaydan once verilir ve askiya
     //   almada kalir). QuestionTrainer okuma uclari icin eklenmez: yetkili ogretmen zaten Teacher rolunu de tasir.
+    // - /labeled-pages (egitilmis sayfa id'leri; isaretleme modu tekrar getirmesin) -> send-to-fix ile ayni roller.
     // - bilinmeyen ya da kodlanmis yol ekleri, send-to-fix-* benzeri tureyenler, docs ve openapi.json dahil
     //   GERI KALAN HER SEY yalniz Admin.
     public static readonly RoleRestrictedPrefix[] Default =
@@ -32,7 +33,7 @@ public static class RouteRoleAuthExtensions
         new("/question-detector-dev", ["Admin"],
         [
             new(["predict", "headerlist", "read-qr"], ["Teacher", "Admin"]),
-            new(["send-to-fix"], ["Admin", "QuestionTrainer"]),
+            new(["send-to-fix", "labeled-pages"], ["Admin", "QuestionTrainer"]),
         ]),
     ];
 

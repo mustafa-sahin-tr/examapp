@@ -35,5 +35,20 @@
   "pageLoadFailedHint": "This page could not be read and cannot be sent for training. Continue with \"Skip / Next\".",
   "predictFailedHint": "Automatic detection failed. Press \"Detect again\" or draw the question boxes by hand; an empty canvas is not sent for training.",
   "pageIdMismatch": "The sent image did not match the open page; the page was not counted as labeled. Detect the page again and retry.",
-  "ok": "OK"
+  "ok": "OK",
+  "inspector": {
+    "title": "Question inspector",
+    "hide": "Hide inspector",
+    "previousQuestion": "Previous question",
+    "nextQuestion": "Next question",
+    "questionCount": "{{count}} questions on this page",
+    "answers": "Choices",
+    "noAnswers": "This question has no choices.",
+    "removeAnswerAria": "Remove choice {{label}}",
+    "answerCountMismatch": "Must have {{count}} choices; a mismatched question cannot be sent for training.",
+    "align": "Align",
+    "drawAnswer": "Draw choice",
+    "deleteQuestion": "Delete question",
+    "emptyHint": "No questions on this page. Draw a question box or re-detect; Train with no questions sends the page as an empty page."
+  }
 }

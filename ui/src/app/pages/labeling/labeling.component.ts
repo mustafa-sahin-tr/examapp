@@ -7,7 +7,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
-import { ImageSelectorComponent, TrainedPage } from '../image-selector/image-selector.component';
+import { ActiveInspector, ImageSelectorComponent, TrainedPage } from '../image-selector/image-selector.component';
 import { QuestionDetectorService } from '../../services/question-detector.service';
 import { LabelingCandidate, isLabelingImage, pageIdOf, pickNextUnlabeled } from './labeling-pool';
 
@@ -81,6 +81,8 @@ export class LabelingComponent {
   private readonly exhausted = signal(false);
 
   readonly current = signal<LabelingCandidate<File> | null>(null);
+  /** Sağ panel (Soru Müfettişi) açık mı. */
+  readonly showInspector = signal(true);
   readonly picking = signal(false);
   readonly answerCount = signal<number>(readStoredAnswerCount());
 
@@ -293,6 +295,75 @@ export class LabelingComponent {
     }
     // Tek seferlik: tuvaldeki şıkları yerinde hizalar (kalıcı autoAlign açılmaz, tespit yeniden çalışmaz).
     selector.alignAllAnswers();
+  }
+
+  // ---------------- Soru Müfettişi (sağ panel) ----------------
+  // Soru tuvalindeki müfettişin eğitim verisini etkileyen kısmı: soru gezinme, şıklar, hizalama, soru silme.
+  // Sınıflandırma / pasaj / doğru cevap send-to-fix'e gitmediği için burada yok.
+
+  /** Seçili sorunun müfettiş verisi; seçim image-selector'da sinyal dışı tutulduğu için getter. */
+  get inspector(): ActiveInspector | null {
+    return this.current() ? (this.selectorRef()?.getActiveInspector() ?? null) : null;
+  }
+
+  get questionCount(): number {
+    return this.selectorRef()?.regions().length ?? 0;
+  }
+
+  /** Gönderim / analiz sürerken tuval değişmesin. */
+  get inspectorLocked(): boolean {
+    return this.analysing() || this.sendingToFix();
+  }
+
+  toggleInspector(): void {
+    this.showInspector.update((v) => !v);
+  }
+
+  insSelectPrevious(): void {
+    this.selectorRef()?.selectPreviousQuestion();
+  }
+
+  insSelectNext(): void {
+    this.selectorRef()?.selectNextQuestion();
+  }
+
+  /**
+   * Şıkkı seçer: soru tuvalindeki gibi `isCorrect` ile işaretlenir, tuvalde yeşil görünür; tuvalde şıkka tıklamak da
+   * aynı alanı yazar. Doğru cevap eğitim verisine gitmediği için burada yalnız seçim göstergesidir.
+   */
+  insSelectAnswer(answerIndex: number): void {
+    const index = this.inspector?.index;
+    if (index != null && !this.inspectorLocked) {
+      this.selectorRef()?.setCorrectAnswer(index, answerIndex, 1);
+    }
+  }
+
+  insRemoveAnswer(answerIndex: number): void {
+    const index = this.inspector?.index;
+    if (index != null && !this.inspectorLocked) {
+      this.selectorRef()?.removeAnswer(index, answerIndex);
+    }
+  }
+
+  insAlignAnswers(): void {
+    const index = this.inspector?.index;
+    if (index != null && !this.inspectorLocked) {
+      this.selectorRef()?.alignAnswers(index, true);
+    }
+  }
+
+  insDrawAnswer(): void {
+    const index = this.inspector?.index;
+    if (index != null && !this.inspectorLocked) {
+      this.selectorRef()?.selectAnswerMode(index);
+    }
+  }
+
+  insRemoveQuestion(): void {
+    const index = this.inspector?.index;
+    if (index != null && !this.inspectorLocked) {
+      this.selectorRef()?.removeQuestion(index);
+    }
   }
 
   /** N: atla / sonraki (yazı alanındayken ya da kısayol tuşlarıyla birlikte değil). */

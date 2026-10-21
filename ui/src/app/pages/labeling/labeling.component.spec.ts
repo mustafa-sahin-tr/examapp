@@ -46,6 +46,15 @@ class ImageSelectorStub {
   sendToFix = jasmine.createSpy('sendToFix');
   predict = jasmine.createSpy('predict');
   recomputeWarnings = jasmine.createSpy('recomputeWarnings');
+  inspector: unknown = null;
+  getActiveInspector = jasmine.createSpy('getActiveInspector').and.callFake(() => this.inspector);
+  selectNextQuestion = jasmine.createSpy('selectNextQuestion');
+  selectPreviousQuestion = jasmine.createSpy('selectPreviousQuestion');
+  removeAnswer = jasmine.createSpy('removeAnswer');
+  setCorrectAnswer = jasmine.createSpy('setCorrectAnswer');
+  alignAnswers = jasmine.createSpy('alignAnswers');
+  selectAnswerMode = jasmine.createSpy('selectAnswerMode');
+  removeQuestion = jasmine.createSpy('removeQuestion');
   lockSelectionMode = jasmine.createSpy('lockSelectionMode').and.callFake((mode: string | null) => {
     this.selectionModeLocked.set(mode);
     this.selectionMode.set(mode);
@@ -351,5 +360,69 @@ describe('LabelingComponent', () => {
     expect(selector().alignAllAnswers).toHaveBeenCalledTimes(1);
     expect(selector().predict).not.toHaveBeenCalled();
     expect(selector().autoAlign()).toBeFalse();
+  });
+
+  describe('inspector', () => {
+    function inspectorEl(): HTMLElement | null {
+      return fixture.nativeElement.querySelector('.lb-inspector');
+    }
+
+    async function openPageWithQuestion(answerLabels: string[]): Promise<void> {
+      await setup();
+      await pickFolder([image('a.webp')]);
+      selector().regions.set([{ name: 'q1' }, { name: 'q2' }]);
+      selector().inspector = {
+        index: 1,
+        no: 2,
+        name: 'q2',
+        answers: answerLabels.map((label, i) => ({ id: i + 1, label, isCorrect: i === 1 })),
+      };
+      fixture.detectChanges();
+    }
+
+    it('showsSelectedQuestionAnswersAndCountMismatch', async () => {
+      await openPageWithQuestion(['A', 'B', 'C']);
+      const el = inspectorEl()!;
+      expect(el.querySelector('.lb-badge')?.textContent).toContain('S2');
+      expect(el.querySelectorAll('.lb-choice').length).toBe(3);
+      expect(el.querySelector('.lb-count--warn')?.textContent).toContain('3/4');
+      // Tuvalde seçilen şık (isCorrect) müfettişte seçili görünür.
+      const selected = el.querySelectorAll('.lb-choice.is-selected');
+      expect(selected.length).toBe(1);
+      expect(selected[0].textContent).toContain('B');
+    });
+
+    it('actionsTargetSelectedQuestion', async () => {
+      await openPageWithQuestion(['A', 'B', 'C', 'D']);
+      expect(inspectorEl()!.querySelector('.lb-count--warn')).toBeNull();
+      component.insSelectAnswer(3);
+      component.insRemoveAnswer(2);
+      component.insAlignAnswers();
+      component.insDrawAnswer();
+      component.insRemoveQuestion();
+      component.insSelectNext();
+      expect(selector().setCorrectAnswer).toHaveBeenCalledWith(1, 3, 1);
+      expect(selector().removeAnswer).toHaveBeenCalledWith(1, 2);
+      expect(selector().alignAnswers).toHaveBeenCalledWith(1, true);
+      expect(selector().selectAnswerMode).toHaveBeenCalledWith(1);
+      expect(selector().removeQuestion).toHaveBeenCalledWith(1);
+      expect(selector().selectNextQuestion).toHaveBeenCalled();
+    });
+
+    it('whileSending_EditsIgnored', async () => {
+      await openPageWithQuestion(['A', 'B', 'C', 'D']);
+      selector().sendingToFix.set(true);
+      component.insRemoveQuestion();
+      component.insRemoveAnswer(0);
+      expect(selector().removeQuestion).not.toHaveBeenCalled();
+      expect(selector().removeAnswer).not.toHaveBeenCalled();
+    });
+
+    it('toggleHidesPanel', async () => {
+      await openPageWithQuestion(['A']);
+      component.toggleInspector();
+      fixture.detectChanges();
+      expect(inspectorEl()).toBeNull();
+    });
   });
 });

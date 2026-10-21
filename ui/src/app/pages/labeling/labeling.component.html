@@ -92,6 +92,10 @@
 
     <span class="lb-toolbar__spacer"></span>
 
+    <button mat-stroked-button type="button" (click)="toggleInspector()" [attr.aria-pressed]="showInspector()">
+      <mat-icon>view_sidebar</mat-icon>{{ t('inspector.title') }}
+    </button>
+
     <button mat-stroked-button type="button" (click)="skip()" [disabled]="!canSkip()" [matTooltip]="t('skipHint')">
       <mat-icon>skip_next</mat-icon>{{ t('skip') }}
     </button>
@@ -121,8 +125,75 @@
   <!-- Tuval her zaman DOM'da: sayfa `loadFile` ile yüklenir; gezinmeyi bu sayfa yönettiği için kenar okları kapalı.
        *transloco dışında: çeviri yüklenince/dil değişince transloco şablonu yeniden kurar, tuval yok edilip
        yeniden yaratılırsa viewChild eski (yok edilmiş) örneği tutabiliyordu (NG0911, resim görünmüyordu). -->
-  <div class="lb-stage" [class.lb-stage--hidden]="!current()">
-    <app-image-selector [navigationLocked]="true" [advanceOnTrain]="false"
-      (trained)="onTrained($event)"></app-image-selector>
+  <div class="lb-work" [class.lb-work--hidden]="!current()" [class.lb-work--no-inspector]="!showInspector()">
+    <div class="lb-stage">
+      <app-image-selector [navigationLocked]="true" [advanceOnTrain]="false"
+        (trained)="onTrained($event)"></app-image-selector>
+    </div>
+
+    <!-- Soru Müfettişi: kendi *transloco bloğunda, tuvali sarmaz (yukarıdaki not). -->
+    @if (showInspector()) {
+    <aside class="lb-inspector" *transloco="let t; prefix: 'labeling.inspector'" [attr.aria-label]="t('title')">
+      <div class="lb-inspector__head">
+        <span class="lb-inspector__title">
+          @if (inspector; as d) { <span class="lb-badge">S{{ d.no }}</span> }
+          {{ t('title') }}
+        </span>
+        <span class="lb-inspector__nav">
+          <button mat-icon-button type="button" (click)="insSelectPrevious()" [disabled]="questionCount < 2"
+            [attr.aria-label]="t('previousQuestion')"><mat-icon>chevron_left</mat-icon></button>
+          <button mat-icon-button type="button" (click)="insSelectNext()" [disabled]="questionCount < 2"
+            [attr.aria-label]="t('nextQuestion')"><mat-icon>chevron_right</mat-icon></button>
+          <button mat-icon-button type="button" (click)="toggleInspector()" [attr.aria-label]="t('hide')">
+            <mat-icon>close</mat-icon></button>
+        </span>
+      </div>
+
+      <p class="lb-inspector__summary">{{ t('questionCount', { count: questionCount }) }}</p>
+
+      @if (inspector; as d) {
+      <section class="lb-insp-sec">
+        <div class="lb-insp-sec__head">
+          <span class="lb-lbl">{{ t('answers') }}</span>
+          <span class="lb-count" [class.lb-count--warn]="d.answers.length !== answerCount()">
+            {{ d.answers.length }}/{{ answerCount() }}
+          </span>
+        </div>
+        <div class="lb-choices">
+          @for (answer of d.answers; track answer.id; let j = $index) {
+          <span class="lb-choice" [class.is-selected]="answer.isCorrect">
+            <button type="button" class="lb-choice__set" (click)="insSelectAnswer(j)" [disabled]="inspectorLocked"
+              [attr.aria-pressed]="answer.isCorrect">{{ answer.label }}</button>
+            <button type="button" class="lb-choice__del" (click)="insRemoveAnswer(j)" [disabled]="inspectorLocked"
+              [attr.aria-label]="t('removeAnswerAria', { label: answer.label })"><mat-icon>close</mat-icon></button>
+          </span>
+          } @empty {
+          <span class="lb-hint-sm">{{ t('noAnswers') }}</span>
+          }
+        </div>
+        @if (d.answers.length !== answerCount()) {
+        <p class="lb-hint-sm lb-hint-sm--warn">{{ t('answerCountMismatch', { count: answerCount() }) }}</p>
+        }
+        <div class="lb-btn-row">
+          <button mat-stroked-button type="button" (click)="insAlignAnswers()"
+            [disabled]="inspectorLocked || d.answers.length < 2">
+            <mat-icon>format_align_center</mat-icon>{{ t('align') }}
+          </button>
+          <button mat-stroked-button type="button" (click)="insDrawAnswer()" [disabled]="inspectorLocked">
+            <mat-icon>crop_square</mat-icon>{{ t('drawAnswer') }}
+          </button>
+        </div>
+      </section>
+
+      <section class="lb-insp-sec">
+        <button mat-stroked-button type="button" class="lb-danger" (click)="insRemoveQuestion()" [disabled]="inspectorLocked">
+          <mat-icon>delete</mat-icon>{{ t('deleteQuestion') }}
+        </button>
+      </section>
+      } @else {
+      <p class="lb-hint-sm">{{ t('emptyHint') }}</p>
+      }
+    </aside>
+    }
   </div>
 </div>

@@ -150,6 +150,38 @@ Oradan indirip `question-detector/models/question-best.pt` / `answer-best.pt` ad
 **Geri alma:** `My Drive/hedefokul-ml/models/` altından istediğin sürümü `models/*-best.pt` üzerine kopyala
 ya da `git checkout <eski-commit> -- question-detector/models`.
 
+## Kitap PDF'lerini sayfa görseline çevir
+
+Soru bankası PDF'lerinin her sayfası ayrı bir WebP olur; her PDF için kendi adında bir klasör açılır
+(`<çıktı>/<pdf adı>/page_1.webp`, `page_2.webp` ...: çalışma sayfası editörünün toplu yüklemede beklediği düzen).
+Varsayılan en net çıktıdır: metni seçilebilen sayfa 600 dpi, taranmış sayfa kendi tarama çözünürlüğünde
+(300-600 dpi), kayıpsız WebP. Biten sayfalar atlanır; `Ctrl-C` ile durdurup aynı komutla devam edebilirsin.
+
+Mac'te (hızlı, 8 paralel işlem; ~1 sn/sayfa). Çıktıyı SSD'ye değil harici diske yaz:
+
+```bash
+cd ~/Documents/workspace/examapp/question-detector
+
+# bir kez: sanal ortam (.venv-pdf git'e girmez)
+python3 -m venv .venv-pdf && .venv-pdf/bin/pip install pymupdf pillow
+
+# önce yalnız say: kaç PDF/sayfa üretilecek, hangi PDF bozuk/şifreli
+.venv-pdf/bin/python training/pdf_to_webp_local.py "/Volumes/HariciDisk/Kitaplar/5-sinif" "/Volumes/HariciDisk/Sayfalar/5-sinif" --dry-run
+
+# çalıştır (caffeinate: Mac uyumasın, iş saatler sürebilir)
+caffeinate -i .venv-pdf/bin/python training/pdf_to_webp_local.py "/Volumes/HariciDisk/Kitaplar/5-sinif" "/Volumes/HariciDisk/Sayfalar/5-sinif"
+
+# klasör başına boyut
+du -sh "/Volumes/HariciDisk/Sayfalar/5-sinif/"*
+```
+
+Çıktı klasörü verilmezse sayfa klasörleri PDF'lerin yanına açılır. Seçenekler: `-j 4` (Mac'i kullanırken daha
+az işlem), `--vector-dpi 400` (iPad'de tuval yavaşsa), `--lossy 95` (kayıplı, daha küçük),
+`--name '{pdf}-{n:03d}'` (sıralı ad). Yalnız verilen klasördeki PDF'lere bakar, alt klasörlere inmez.
+
+PDF'ler Drive'daysa Colab sürümü: `training/pdf_to_webp.ipynb` (aynı çıktıyı Drive'daki klasöre yazar,
+3. hücrede `FOLDER`'a klasör linkini yaz; daha yavaş).
+
 ## Sorun giderme
 
 | Belirti | Ne yap |
@@ -169,5 +201,7 @@ ya da `git checkout <eski-commit> -- question-detector/models`.
 | `main.py` | FastAPI: `/predict`, `/read-qr`, `/send-to-fix`; modelleri `models/`'ten yükler |
 | `training/train.py` | Arşivleme, train/val ayrımı, fine-tune, karşılaştırma, terfi |
 | `training/weekly_training.ipynb` | Colab notebook'u |
+| `training/pdf_to_webp_local.py` | Kitap PDF'i -> sayfa başına WebP (Mac, paralel) |
+| `training/pdf_to_webp.ipynb` | Aynısı, Drive'daki PDF'ler için Colab'da |
 | `training/check_clean_start.py` | `./commands.sh check` |
 | `commands.sh` | `check` / `clean` / `status` / `test` |

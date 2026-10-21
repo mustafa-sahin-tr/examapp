@@ -35,5 +35,20 @@
   "pageLoadFailedHint": "Bu sayfa okunamadı; eğitime gönderilemez. \"Atla / Sonraki\" ile devam et.",
   "predictFailedHint": "Otomatik tespit başarısız oldu. \"Yeniden tespit\"e bas ya da soru kutularını elle çiz; boş tuval eğitime gönderilmez.",
   "pageIdMismatch": "Gönderilen görsel açık sayfayla eşleşmedi; sayfa işaretli sayılmadı. Sayfayı yeniden tespit edip tekrar dene.",
-  "ok": "Tamam"
+  "ok": "Tamam",
+  "inspector": {
+    "title": "Soru Müfettişi",
+    "hide": "Müfettişi gizle",
+    "previousQuestion": "Önceki soru",
+    "nextQuestion": "Sonraki soru",
+    "questionCount": "Sayfada {{count}} soru",
+    "answers": "Şıklar",
+    "noAnswers": "Bu soruda şık yok.",
+    "removeAnswerAria": "{{label}} şıkkını sil",
+    "answerCountMismatch": "Şık sayısı {{count}} olmalı; uyumsuz soru eğitime gönderilemez.",
+    "align": "Hizala",
+    "drawAnswer": "Şık çiz",
+    "deleteQuestion": "Soruyu sil",
+    "emptyHint": "Sayfada soru yok. Soru kutusu çiz ya da yeniden tespit et; hiç soru olmadan Eğit sayfayı boş sayfa olarak gönderir."
+  }
 }

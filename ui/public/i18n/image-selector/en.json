@@ -54,14 +54,16 @@
     "previewLoadError": "The preview could not be loaded.",
     "dropZoneOutsideQuestion": "The drop zone must be inside the question area.",
     "selectQuestionFirst": "Please select a question first, then add the choices.",
-    "analysisStarted": "Starting image analysis…",
     "analysisCompleted": "Image analysis completed.",
     "correctAnswerUpdated": "Correct answer updated successfully.",
     "correctAnswerUpdateError": "Something went wrong while updating the correct answer.",
     "removeQuestionConfirm": "Are you sure you want to remove this question from the worksheet?",
     "questionRemoved": "The question was removed from the worksheet.",
     "previewClosedNoQuestions": "The preview was closed because no questions are left in the worksheet.",
-    "questionRemoveError": "Something went wrong while deleting the question."
+    "questionRemoveError": "Something went wrong while deleting the question.",
+    "analysisInProgress": "Analyzing page…",
+    "analysisError": "The page could not be analyzed. Try again or mark the questions manually.",
+    "pageLoadError": "The page image could not be read. Check the file and try again."
   },
   "coordinateJson": {
     "activated": "Coordinate JSON found: {{questions}} questions on {{pages}} pages; using the JSON instead of question detection.",
@@ -76,6 +78,7 @@
     "emptyPageExcluded": "The page has no questions and is excluded from question training; there is nothing to send.",
     "dragDropOnly": "The page only has drag-and-drop questions; they are not sent to training, so the page was not sent (the model would learn them as background).",
     "questionsAdded": "Added {{count}} questions to training ({{file}}).",
-    "noImage": "Load a page first."
+    "noImage": "Load a page first.",
+    "sendError": "The page could not be sent to training. Try again."
   }
 }

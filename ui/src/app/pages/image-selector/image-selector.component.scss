@@ -20,6 +20,52 @@
 	}
 }
 
+// Görünmez ama ekran okuyucunun okuduğu canlı bölge (analiz durumu).
+.ms-sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+// Sayfa analiz edilirken tuvalin üstündeki örtü: tıklama/çizimi yakalar, yükleniyor durumunu gösterir.
+// İçerik sticky: uzun sayfada kaydırılmış olsa da spinner görünür alanda kalır.
+.ms-analysis-overlay {
+	position: absolute;
+	inset: 0;
+	z-index: 20;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	padding-top: 96px;
+	background: var(--ms-scrim);
+	cursor: progress;
+
+	mat-spinner {
+		--mat-progress-spinner-active-indicator-color: var(--primaryColor);
+		position: sticky;
+		top: 96px;
+	}
+}
+
+.ms-analysis-overlay__text {
+	position: sticky;
+	top: 148px;
+	padding: 6px 12px;
+	border-radius: 8px;
+	background: var(--ms-surface-medium);
+	color: var(--ms-text-strong);
+	font-family: var(--mainFontFamily);
+	font-size: 14px;
+	font-weight: 600;
+}
+
 .ins-dot {
 	width: 7px;
 	height: 7px;

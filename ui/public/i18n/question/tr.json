@@ -52,6 +52,8 @@
     "createTest": "Yeni test oluştur",
     "noResults": "Sonuç yok",
     "train": "Eğit",
+    "sendingToFix": "Gönderiliyor…",
+    "testFetchError": "Test oluşturuldu ama bilgileri alınamadı; sorular kaydedilmedi. Tekrar deneyin.",
     "excludeFromTraining": "Bu sayfayı soru eğitimine alma",
     "excludeFromTrainingHint": "Sayfadaki soruların hepsini işaretlemediysen seç; şık kırpmaları yine kaydedilir.",
     "saving": "Kaydediliyor…",

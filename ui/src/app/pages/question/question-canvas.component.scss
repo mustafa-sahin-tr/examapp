@@ -318,6 +318,12 @@
     cursor: default;
   }
 
+  /* Süren işlemi gösteren düğme (spinner + metin) pasif olsa da okunur kalsın. */
+  &[aria-busy='true']:disabled {
+    opacity: 0.85;
+    cursor: progress;
+  }
+
   /* Kaydet butonu içindeki küçük yükleniyor göstergesi; buton metniyle aynı rengi alır. */
   .qc-btn__spinner {
     --mat-progress-spinner-active-indicator-color: currentColor;
@@ -530,6 +536,12 @@
   cursor: pointer;
   text-align: left;
 
+  /* Kayıt / eğitime gönderim / geçiş sürerken sayfa değiştirilemez. */
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
   &__box {
     width: 34px;
     height: 44px;
@@ -646,6 +658,16 @@
     color: var(--ms-text-strong);
     text-align: center;
     font-family: var(--paragraphFontFamily);
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+
+  /* Kayıt / eğitime gönderim / geçiş sürerken sayfa değiştirilemez. */
+  .qc-icon-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
   }
 }
 

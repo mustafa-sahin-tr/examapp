@@ -1,5 +1,11 @@
 <div [ngClass]="{ 'container': !previewMode(), 'selection-mode': selectionMode() }"
   *transloco="let t; prefix: 'image-selector'">
+  <!-- Ekran okuyucu için kalıcı canlı bölge: yalnız metin değişir, kapsayıcı hep DOM'da (görsel örtü ayrı). -->
+  <div class="ms-sr-only" role="status" aria-live="polite">
+    @if (inProgress()) {
+    {{ t('messages.analysisInProgress') }}
+    }
+  </div>
   <div [ngClass]="{ 'form-container': !previewMode() }">
 
     <div class="form-column-4" style="border: var(--border-input)">
@@ -55,9 +61,9 @@
           (mousemove)="onMouseMove($event)" (mouseup)="endSelection($event)"
           (contextmenu)="onRightClick($event)"></canvas>
         <!-- Sol bölge – Previous -->
-        <div class="ms-nav-area ms-nav-prev" [class.ms-nav-disabled]="isDrawing" (click)="previousImage()"></div>
+        <div class="ms-nav-area ms-nav-prev" [class.ms-nav-disabled]="isDrawing || navigationLocked" (click)="previousImage()"></div>
         <!-- Sağ bölge – Next -->
-        <div class="ms-nav-area ms-nav-next" [class.ms-nav-disabled]="isDrawing" (click)="nextImage()"></div>
+        <div class="ms-nav-area ms-nav-next" [class.ms-nav-disabled]="isDrawing || navigationLocked" (click)="nextImage()"></div>
         <!-- Marker'lar -->
         <div *ngFor="let marker of warningMarkers" [class.cs-warning-marker]="marker.type === 'warning'"
           [class.cs-error-marker]="marker.type === 'error'" [ngStyle]="{ top: marker.y * canvasDisplayScale + 'px', left: marker.x * canvasDisplayScale + 'px' }"
@@ -80,6 +86,15 @@
           <mat-divider></mat-divider>
           <button (click)="dismissWarning($event)">{{ t('warnings.dismiss') }}</button>
         </div>
+        <!-- Analiz sürerken tuval kilitli: sonuç bölgeleri zaten değiştirir. -->
+        @if (inProgress()) {
+        <div class="ms-analysis-overlay" aria-hidden="true"
+          (mousedown)="$event.stopPropagation(); $event.preventDefault()" (click)="$event.stopPropagation()"
+          (contextmenu)="$event.stopPropagation(); $event.preventDefault()">
+          <mat-spinner diameter="40"></mat-spinner>
+          <span class="ms-analysis-overlay__text">{{ t('messages.analysisInProgress') }}</span>
+        </div>
+        }
       </div>
 
       <div *ngIf="contextMenuVisible" (click)="$event.stopPropagation()" class="ms-custom-context-menu"

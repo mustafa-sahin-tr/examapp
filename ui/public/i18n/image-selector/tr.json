@@ -54,14 +54,16 @@
     "previewLoadError": "Önizleme yüklenemedi.",
     "dropZoneOutsideQuestion": "Drop zone soru alanının içinde olmalı.",
     "selectQuestionFirst": "Lütfen önce bir soru seçin ve ardından şıkları ekleyin.",
-    "analysisStarted": "Resim analizi başlatılıyor...",
     "analysisCompleted": "Resim analizi tamamlandı.",
     "correctAnswerUpdated": "Doğru cevap başarıyla güncellendi!",
     "correctAnswerUpdateError": "Doğru cevap güncellenirken hata oluştu!",
     "removeQuestionConfirm": "Bu soruyu testten çıkarmak istediğinizden emin misiniz?",
     "questionRemoved": "Soru başarıyla testten çıkarıldı!",
     "previewClosedNoQuestions": "Testte soru kalmadığı için önizleme kapatıldı.",
-    "questionRemoveError": "Soru silinirken hata oluştu!"
+    "questionRemoveError": "Soru silinirken hata oluştu!",
+    "analysisInProgress": "Sayfa analiz ediliyor…",
+    "analysisError": "Sayfa analiz edilemedi. Tekrar deneyin ya da soruları elle işaretleyin.",
+    "pageLoadError": "Sayfa görseli okunamadı. Dosyayı kontrol edip tekrar deneyin."
   },
   "coordinateJson": {
     "activated": "Koordinat JSON'u bulundu: {{pages}} sayfada {{questions}} soru, soru tespiti yerine JSON kullanılıyor.",
@@ -76,6 +78,7 @@
     "emptyPageExcluded": "Sayfada soru yok ve sayfa soru eğitimine alınmıyor; gönderilecek bir şey yok.",
     "dragDropOnly": "Sayfada yalnız sürükle-bırak sorular var; bunlar eğitime gönderilmediği için sayfa gönderilmedi (model bu soruları arka plan olarak öğrenirdi).",
     "questionsAdded": "{{count}} soru eğitime eklendi ({{file}}).",
-    "noImage": "Önce bir sayfa yükleyin."
+    "noImage": "Önce bir sayfa yükleyin.",
+    "sendError": "Sayfa eğitime gönderilemedi. Tekrar deneyin."
   }
 }

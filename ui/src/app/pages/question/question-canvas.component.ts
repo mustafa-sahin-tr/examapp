@@ -61,7 +61,15 @@ const QUESTION_TRAINER_ROLE = 'QuestionTrainer';
   providers: [provideTranslocoScope(QUESTION_SCOPE)],
 })
 export class QuestionCanvasComponent implements OnInit {
-  @ViewChild(ImageSelectorComponent) imageSelector!: ImageSelectorComponent; // 🔥 Alt bileşene erişim
+  /** Alt bileşen; signal'de tutulur ki `busy` gibi computed'lar onun meşgul sinyallerini izleyebilsin. */
+  private readonly imageSelectorRef = signal<ImageSelectorComponent | undefined>(undefined);
+  @ViewChild(ImageSelectorComponent)
+  set imageSelector(selector: ImageSelectorComponent) {
+    this.imageSelectorRef.set(selector);
+  }
+  get imageSelector(): ImageSelectorComponent {
+    return this.imageSelectorRef()!;
+  }
   @ViewChild(TestCreateEnhancedComponent) testCreateEnhancedComponent!: TestCreateEnhancedComponent;
 
   id: number | null = null;
@@ -121,6 +129,31 @@ export class QuestionCanvasComponent implements OnInit {
     this.authService.hasRealmRole(ADMIN_ROLE) || this.authService.hasRealmRole(QUESTION_TRAINER_ROLE);
   /** saveBulk isteği sürerken kaydet butonlarını kilitler. */
   readonly saving = signal(false);
+  /** Kaydet akışında test oluşturuluyor / oluşturulan test okunuyor (onCreateAsync + testService.get). */
+  readonly creating = signal(false);
+  /** Kayıt sonrası 2 sn'lik "sonraki sayfaya geçiş" beklemesi sürüyor. */
+  readonly advancing = signal(false);
+  /** Sayfa eğitim verisi olarak gönderiliyor (Eğit / Sadece Modeli Eğit / Kaydet ve Düzelt'in eğitim adımı). */
+  readonly sendingToFix = computed(() => this.imageSelectorRef()?.sendingToFix?.() ?? false);
+  /**
+   * Sayfa değiştirmeyi kilitleyen işler: kayıt (test oluşturma dahil), eğitime gönderim ve geçiş beklemesi.
+   * Analiz (inProgress/pageLoading) gezinmeyi kilitlemez; eski analiz yanıtı image-selector'da atılır.
+   */
+  readonly navigationBusy = computed(
+    () => this.saving() || this.creating() || this.advancing() || this.sendingToFix()
+  );
+  /**
+   * Sonraki sayfa hazır olana kadar işlem düğmeleri (Eğit, Kaydet, menü oku ve öğeleri) pasif: kayıt, eğitime
+   * gönderim, geçiş beklemesi, yeni sayfanın okunması ve analizi süresince.
+   */
+  readonly busy = computed(() => {
+    const selector = this.imageSelectorRef();
+    return (
+      this.navigationBusy() ||
+      (selector?.pageLoading?.() ?? false) ||
+      (selector?.inProgress?.() ?? false)
+    );
+  });
   /**
    * Admin / QuestionTrainer: sayfadaki soruların hepsi işaretlenmediyse sayfa, soru tespit modelinin eğitimine
    * alınmaz (`pageComplete: false`); şık kırpmaları yine kaydedilir. Her yeni sayfada false'a döner.
@@ -224,6 +257,7 @@ export class QuestionCanvasComponent implements OnInit {
     this.destroyRef.onDestroy(() => {
       this.destroyed = true;
       this.nextImageTimers.forEach((t) => clearTimeout(t));
+      this.nextImageTimers.clear();
     });
   }
 
@@ -339,10 +373,16 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   previousImage() {
+    if (this.navigationBusy()) {
+      return;
+    }
     this.imageSelector.previousImage();
   }
 
   nextImage() {
+    if (this.navigationBusy()) {
+      return;
+    }
     this.imageSelector.nextImage();
   }
 
@@ -398,7 +438,8 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   sendToFix() {
-    if (!this.canTrain) {
+    // Meşgulken (çift tıklama, kayıt/geçiş/analiz sürerken) ikinci gönderim yapılmaz.
+    if (!this.canTrain || this.busy()) {
       return;
     }
     this.imageSelector.sendToFix(!this.excludeFromTraining());
@@ -496,6 +537,9 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   goToPage(pageStr: string) {
+    if (this.navigationBusy()) {
+      return;
+    }
     this.imageSelector.goToPage(pageStr);
   }
 
@@ -806,73 +850,45 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   onSaveAndNew() {
-    if (!this.questionsReadyToSave()) {
-      return;
-    }
-    this.testCreateEnhancedComponent.onCreateAsync().subscribe({
-      next: (test) => {
-        console.log('Test created:', test);
-        this.id = test.examId;
-        this.testService.get(test.examId).subscribe({
-          next: (testData) => {
-            console.log('Test fetched:', testData);
-            this.questionForm.get('testId')?.setValue(testData.subtitle, { emitEvent: false });
-            // this.resetFormWithDefaultValues({
-            //   subjectId: null,
-            //   topicId: null,
-            //   subtopicId: null,
-            //   testId: testData.subtitle,
-            //   bookId: testData.bookId,
-            //   bookTestId: testData.bookTestId,
-            //   testValue: testData.id,
-            // });
-            this.onSave(false);
-          },
-        });
-      },
-      error: (error) => {
-        console.error('Error creating test:', error);
-        this.snackBar.open(error?.message || this.tr('common.saveError'), this.tr('common.snackbarAction'), {
-          duration: 3000,
-        });
-      },
-    });
+    this.createTestThenSave(false);
   }
 
   onSaveAndFix() {
-    if (!this.questionsReadyToSave()) {
-      return;
-    }
-    this.testCreateEnhancedComponent.onCreateAsync().subscribe({
-      next: (test) => {
-        console.log('Test created:', test);
-        this.id = test.examId;
-        this.testService.get(test.examId).subscribe({
-          next: (testData) => {
-            console.log('Test fetched:', testData);
-            this.questionForm.get('testId')?.setValue(testData.subtitle, { emitEvent: false });
-            this.onSave(true);
-          },
-        });
-      },
-      error: (error) => {
-        console.error('Error creating test:', error);
-        this.snackBar.open(error?.message || this.tr('common.saveError'), this.tr('common.snackbarAction'), {
-          duration: 3000,
-        });
-      },
-    });
+    this.createTestThenSave(true);
   }
 
   sendToWorkPages() {
+    if (this.busy()) {
+      return;
+    }
     console.log('Çalışma sayfasına gönderiliyor...');
     this.imageSelector.sendToStudyPage();
   }
 
   onSubmit() {
-    if (!this.questionsReadyToSave()) {
+    this.createTestThenSave(false, (testData) =>
+      this.resetFormWithDefaultValues({
+        subjectId: null,
+        topicId: null,
+        subtopicId: null,
+        testId: testData.subtitle,
+        bookId: testData.bookId,
+        bookTestId: testData.bookTestId,
+        testValue: testData.id,
+      })
+    );
+  }
+
+  /**
+   * Kaydet akışlarının ortak gövdesi: test oluştur → test bilgisini al → `onSave`. Test oluşturma ve okuma
+   * sürerken `creating` meşgul sayılır (çift tıklama iki test oluşturmasın); hata dallarında kapanır,
+   * başarıda kayıt meşguliyeti `onSave`'in `saving`'ine devredilir.
+   */
+  private createTestThenSave(sendToFix: boolean, afterFetch?: (testData: Test) => void) {
+    if (this.busy() || !this.questionsReadyToSave()) {
       return;
     }
+    this.creating.set(true);
     this.testCreateEnhancedComponent.onCreateAsync().subscribe({
       next: (test) => {
         console.log('Test created:', test);
@@ -880,22 +896,21 @@ export class QuestionCanvasComponent implements OnInit {
         this.testService.get(test.examId).subscribe({
           next: (testData) => {
             console.log('Test fetched:', testData);
+            this.creating.set(false);
             this.questionForm.get('testId')?.setValue(testData.subtitle, { emitEvent: false });
-            this.resetFormWithDefaultValues({
-              subjectId: null,
-              topicId: null,
-              subtopicId: null,
-              testId: testData.subtitle,
-              bookId: testData.bookId,
-              bookTestId: testData.bookTestId,
-              testValue: testData.id,
-            });
-            this.onSave(false);
+            afterFetch?.(testData);
+            this.onSave(sendToFix);
+          },
+          error: (error) => {
+            console.error('Error fetching created test:', error);
+            this.creating.set(false);
+            this.notify('canvas.testFetchError', 5000);
           },
         });
       },
       error: (error) => {
         console.error('Error creating test:', error);
+        this.creating.set(false);
         this.snackBar.open(error?.message || this.tr('common.saveError'), this.tr('common.snackbarAction'), {
           duration: 3000,
         });
@@ -954,9 +969,13 @@ export class QuestionCanvasComponent implements OnInit {
         if (this.destroyed) {
           return;
         }
+        // Geçiş beklemesi de meşgul sayılır; sonra yeni sayfanın okunması/analizi devralır.
+        this.advancing.set(true);
         const timer = setTimeout(() => {
           this.nextImageTimers.delete(timer);
-          this.nextImage();
+          this.advancing.set(false);
+          // Doğrudan image-selector: "Kaydet ve Düzelt"in eğitim isteği sürüyorsa gezinme kilidi bu geçişi engellemesin.
+          this.imageSelector.nextImage();
         }, 2000);
         this.nextImageTimers.add(timer);
       },

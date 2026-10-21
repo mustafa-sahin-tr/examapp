@@ -1,7 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
 import { ImageSelectorComponent } from './image-selector.component';
@@ -680,6 +681,355 @@ describe('ImageSelectorComponent', () => {
       expect(stateRegion.answers[0].width).toBe(40.5);
       expect(stateRegion.passage!.x).toBe(3.7);
       expect(component.passages()[0].width).toBe(100.6);
+    });
+  });
+
+  // Bekleme anlarının görünürlüğü: analiz örtüsü, eğitime gönderim meşgul durumu ve hata yolları.
+  describe('busy states (predict / sendToFix)', () => {
+    let snackBarOpen: jasmine.Spy;
+
+    /** 1x1 PNG; FileReader + Image.onload gerçekten tetiklensin diye çözülebilir bir görsel. */
+    function png(name: string): File {
+      const b64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+      return new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], name, { type: 'image/png' });
+    }
+
+    async function waitFor(condition: () => boolean, timeoutMs = 3000): Promise<void> {
+      const start = Date.now();
+      while (!condition()) {
+        if (Date.now() - start > timeoutMs) {
+          throw new Error('waitFor timed out');
+        }
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+    }
+
+    beforeEach(() => {
+      snackBarOpen = spyOn(fixture.debugElement.injector.get(MatSnackBar), 'open');
+    });
+
+    describe('predict', () => {
+      let predict$: Subject<any>;
+      let readQr$: Subject<any>;
+      let predictSpy: jasmine.Spy;
+
+      beforeEach(() => {
+        predict$ = new Subject<any>();
+        readQr$ = new Subject<any>();
+        predictSpy = spyOn(component.questionDetectorService, 'predict').and.callFake(() => predict$.asObservable());
+        spyOn(component.questionDetectorService, 'readQrData').and.callFake(() => readQr$.asObservable());
+        component.imageData.set('data:image/png;base64,AAAA');
+      });
+
+      it('predict_NoImage_DoesNotCallDetectorOrSetInProgress', () => {
+        component.imageData.set(null);
+
+        component.predict();
+
+        expect(predictSpy).not.toHaveBeenCalled();
+        expect(component.inProgress()).toBeFalse();
+      });
+
+      it('predict_InProgressUntilResponse_AndNoStartToast', () => {
+        component.predict();
+
+        expect(component.inProgress()).toBeTrue();
+        expect(snackBarOpen).not.toHaveBeenCalled();
+
+        predict$.next({ predictions: [] });
+
+        expect(component.inProgress()).toBeFalse();
+        expect(snackBarOpen).toHaveBeenCalledTimes(1);
+      });
+
+      it('predict_Error_ClearsInProgressAndShowsError', () => {
+        component.predict();
+
+        predict$.error(new Error('boom'));
+
+        expect(component.inProgress()).toBeFalse();
+        expect(snackBarOpen).toHaveBeenCalledWith(
+          imageSelectorTr.messages.analysisError,
+          jasmine.any(String),
+          jasmine.any(Object)
+        );
+      });
+
+      // question-detector sayfada QR yoksa 404 döner (main.py read-qr): olağan durum, bildirim yok.
+      it('predict_ReadQrNotFound404_IsSilentAndDoesNotEndAnalysis', () => {
+        const consoleError = spyOn(console, 'error');
+        component.predict();
+
+        readQr$.error({ status: 404 });
+
+        expect(snackBarOpen).not.toHaveBeenCalled();
+        expect(consoleError).not.toHaveBeenCalled();
+        expect(component.inProgress()).toBeTrue();
+        predict$.next({ predictions: [] });
+        expect(component.inProgress()).toBeFalse();
+      });
+
+      it('predict_ReadQrOtherError_LogsWithoutNotifyingOrEndingAnalysis', () => {
+        const consoleError = spyOn(console, 'error');
+        component.predict();
+
+        readQr$.error({ status: 500 });
+
+        expect(consoleError).toHaveBeenCalled();
+        expect(snackBarOpen).not.toHaveBeenCalled();
+        expect(component.inProgress()).toBeTrue();
+      });
+
+      it('predict_NoResponseWithinTimeout_ClearsInProgressAndShowsError', () => {
+        jasmine.clock().install();
+        try {
+          component.predict();
+          jasmine.clock().tick(119_999);
+          expect(component.inProgress()).toBeTrue();
+
+          jasmine.clock().tick(1);
+
+          expect(component.inProgress()).toBeFalse();
+          expect(snackBarOpen).toHaveBeenCalledWith(
+            imageSelectorTr.messages.analysisError,
+            jasmine.any(String),
+            jasmine.any(Object)
+          );
+        } finally {
+          jasmine.clock().uninstall();
+        }
+      });
+
+      it('predict_PageChangedWhileAnalyzing_DropsStaleResponse', async () => {
+        const first$ = new Subject<any>();
+        const second$ = new Subject<any>();
+        predictSpy.and.returnValues(first$.asObservable(), second$.asObservable());
+        component.imageFiles = [png('p1.png'), png('p2.png')];
+        component.predict();
+
+        component.nextImage(); // loadCurrentImage → cancelPendingPredict
+        expect(component.inProgress()).toBeFalse();
+        expect(component.pageLoading()).toBeTrue();
+        first$.next({ predictions: [{ class_id: 0, x: 0, y: 0, width: 10, height: 10, subpredictions: [] }] });
+
+        expect(component.regions().length).toBe(0);
+        await waitFor(() => predictSpy.calls.count() === 2);
+        expect(component.pageLoading()).toBeFalse();
+        expect(component.inProgress()).toBeTrue();
+        second$.next({ predictions: [] });
+        expect(component.inProgress()).toBeFalse();
+      });
+
+      it('predict_StaleResponseAfterNewerAnalysis_IsIgnored', () => {
+        const first$ = new Subject<any>();
+        const second$ = new Subject<any>();
+        predictSpy.and.returnValues(first$.asObservable(), second$.asObservable());
+
+        component.predict();
+        component.predict();
+        first$.next({ predictions: [{ class_id: 0, x: 0, y: 0, width: 10, height: 10, subpredictions: [] }] });
+
+        expect(component.regions().length).toBe(0);
+        expect(component.inProgress()).toBeTrue();
+
+        second$.next({ predictions: [] });
+        expect(component.inProgress()).toBeFalse();
+      });
+
+      it('overlay_ShownOnlyWhileAnalyzing_LiveRegionAlwaysPresent', () => {
+        component.imageSrc.set('data:image/png;base64,AAAA');
+        fixture.detectChanges();
+        const el: HTMLElement = fixture.nativeElement;
+        const liveRegion = () => el.querySelector('[role="status"][aria-live="polite"]');
+        expect(el.querySelector('.ms-analysis-overlay')).toBeNull();
+        expect(liveRegion()).not.toBeNull();
+        expect(liveRegion()!.textContent!.trim()).toBe('');
+
+        component.predict();
+        fixture.detectChanges();
+        const overlay = el.querySelector('.ms-analysis-overlay');
+        expect(overlay).not.toBeNull();
+        expect(overlay!.getAttribute('aria-hidden')).toBe('true');
+        expect(overlay!.textContent).toContain(imageSelectorTr.messages.analysisInProgress);
+        expect(overlay!.querySelector('mat-spinner')).not.toBeNull();
+        expect(liveRegion()!.textContent).toContain(imageSelectorTr.messages.analysisInProgress);
+        expect(liveRegion()!.hasAttribute('aria-busy')).toBeFalse();
+
+        predict$.error(new Error('boom'));
+        fixture.detectChanges();
+        expect(el.querySelector('.ms-analysis-overlay')).toBeNull();
+        expect(liveRegion()).not.toBeNull();
+        expect(liveRegion()!.textContent!.trim()).toBe('');
+      });
+    });
+
+    describe('sendToFix', () => {
+      let send$: Subject<any>;
+      let sendtoFix: jasmine.Spy;
+
+      beforeEach(() => {
+        send$ = new Subject<any>();
+        sendtoFix = spyOn(component.questionDetectorService, 'sendtoFix').and.callFake(() => send$.asObservable());
+        component.imageData.set('data:image/png;base64,AAAA');
+        component.answerCount.set(2);
+        component.regions.set([region('Soru 1', [answer(10, 10), answer(10, 50)])] as any);
+      });
+
+      it('sendToFix_DoubleClick_PostsOnce', () => {
+        component.sendToFix();
+        component.sendToFix();
+
+        expect(sendtoFix).toHaveBeenCalledTimes(1);
+        expect(component.sendingToFix()).toBeTrue();
+      });
+
+      it('sendToFix_Success_ClearsBusyAndAllowsNextSend', () => {
+        const nextImage = spyOn(component, 'nextImage');
+        component.sendToFix();
+
+        send$.next({ success: true, added: 1, imageFile: 'p.png' });
+
+        expect(component.sendingToFix()).toBeFalse();
+        expect(nextImage).toHaveBeenCalledTimes(1);
+        component.sendToFix();
+        expect(sendtoFix).toHaveBeenCalledTimes(2);
+      });
+
+      it('sendToFix_HttpError_ClearsBusyAndShowsError', () => {
+        const nextImage = spyOn(component, 'nextImage');
+        component.sendToFix();
+
+        send$.error(new Error('boom'));
+
+        expect(component.sendingToFix()).toBeFalse();
+        expect(nextImage).not.toHaveBeenCalled();
+        expect(snackBarOpen).toHaveBeenCalledWith(
+          imageSelectorTr.training.sendError,
+          jasmine.any(String),
+          jasmine.any(Object)
+        );
+      });
+
+      it('sendToFix_FailureWithoutMessage_ClearsBusyAndShowsFallbackError', () => {
+        component.sendToFix();
+
+        send$.next({ success: false, status: 500 });
+
+        expect(component.sendingToFix()).toBeFalse();
+        expect(snackBarOpen).toHaveBeenCalledWith(
+          imageSelectorTr.training.sendError,
+          jasmine.any(String),
+          jasmine.any(Object)
+        );
+      });
+
+      it('sendToFix_EarlyReturnWithoutImage_DoesNotStayBusy', () => {
+        component.imageData.set(null);
+
+        component.sendToFix();
+
+        expect(sendtoFix).not.toHaveBeenCalled();
+        expect(component.sendingToFix()).toBeFalse();
+      });
+
+      it('sendToFix_PageChangedBeforeResponse_DoesNotAdvanceAgain', () => {
+        const nextImage = spyOn(component, 'nextImage');
+        component.sendToFix();
+
+        component.currentImageIndex = 3; // yanıt gelmeden başka sayfaya geçildi
+        send$.next({ success: true, added: 1, imageFile: 'p.png' });
+
+        expect(component.sendingToFix()).toBeFalse();
+        expect(nextImage).not.toHaveBeenCalled();
+      });
+
+      it('sendToFix_ComponentDestroyedBeforeResponse_RequestNotCancelledAndNoSideEffects', () => {
+        const nextImage = spyOn(component, 'nextImage');
+        component.sendToFix();
+
+        fixture.destroy();
+
+        // Eğitim isteği iptal edilmez (abonelik sürer) ...
+        expect(send$.observed).toBeTrue();
+        send$.next({ success: true, added: 1, imageFile: 'p.png' });
+        // ... ama yok edilmiş komponent snackbar açmaz, sayfa ilerletmez.
+        expect(snackBarOpen).not.toHaveBeenCalled();
+        expect(nextImage).not.toHaveBeenCalled();
+      });
+
+      it('sendToFix_EarlyReturnOnInvalidQuestions_DoesNotStayBusy', () => {
+        component.answerCount.set(4);
+
+        component.sendToFix();
+
+        expect(sendtoFix).not.toHaveBeenCalled();
+        expect(component.sendingToFix()).toBeFalse();
+      });
+    });
+
+    describe('page loading', () => {
+      beforeEach(() => {
+        spyOn(component.questionDetectorService, 'predict').and.returnValue(new Subject<any>().asObservable() as any);
+        spyOn(component.questionDetectorService, 'readQrData').and.returnValue(new Subject<any>().asObservable() as any);
+      });
+
+      it('loadCurrentImage_UndecodableImage_ClearsPageLoadingAndNotifies', async () => {
+        component.imageFiles = [new File(['not an image'], 'bad.png', { type: 'image/png' })];
+
+        component.loadCurrentImage();
+        expect(component.pageLoading()).toBeTrue();
+
+        await waitFor(() => !component.pageLoading());
+        expect(snackBarOpen).toHaveBeenCalledWith(
+          imageSelectorTr.messages.pageLoadError,
+          jasmine.any(String),
+          jasmine.any(Object)
+        );
+      });
+
+      it('handleFileInput_UndecodableImage_ClearsPageLoadingAndNotifies', async () => {
+        const bad = new File(['not an image'], 'bad.png', { type: 'image/png' });
+
+        component.handleFileInput({ target: { files: [bad] } } as unknown as Event);
+        expect(component.pageLoading()).toBeTrue();
+
+        await waitFor(() => !component.pageLoading());
+        expect(snackBarOpen).toHaveBeenCalledWith(
+          imageSelectorTr.messages.pageLoadError,
+          jasmine.any(String),
+          jasmine.any(Object)
+        );
+      });
+
+      it('loadCurrentImage_NewerLoadStarted_IgnoresOlderLoadEvents', async () => {
+        component.imageFiles = [new File(['not an image'], 'bad.png', { type: 'image/png' }), png('good.png')];
+
+        component.loadCurrentImage(); // eski (bozuk) yükleme
+        component.currentImageIndex = 1;
+        component.loadCurrentImage(); // yeni yükleme
+
+        await waitFor(() => !component.pageLoading());
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(component.imagName()).toBe('good.png');
+        expect(snackBarOpen).not.toHaveBeenCalledWith(
+          imageSelectorTr.messages.pageLoadError,
+          jasmine.any(String),
+          jasmine.any(Object)
+        );
+      });
+    });
+
+    it('navigationLocked_DisablesEdgeNavAreas', () => {
+      component.imageSrc.set('data:image/png;base64,AAAA');
+      fixture.detectChanges();
+      const el: HTMLElement = fixture.nativeElement;
+      expect(el.querySelector('.ms-nav-prev')!.classList).not.toContain('ms-nav-disabled');
+
+      fixture.componentRef.setInput('navigationLocked', true);
+      fixture.detectChanges();
+
+      expect(el.querySelector('.ms-nav-prev')!.classList).toContain('ms-nav-disabled');
+      expect(el.querySelector('.ms-nav-next')!.classList).toContain('ms-nav-disabled');
     });
   });
 });

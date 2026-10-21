@@ -1,9 +1,10 @@
+import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { of, Subject } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { QuestionCanvasComponent } from './question-canvas.component';
@@ -13,6 +14,14 @@ import { SubjectService } from '../../services/subject.service';
 import { BookService } from '../../services/book.service';
 import { AuthService } from '../../services/auth.service';
 import { ClassificationSource } from '../../models/draws';
+import { TestCreateEnhancedComponent } from '../test-create-enhanced/test-create-enhanced.component';
+
+/** Şablon testlerinde ağır test oluşturma formunun yerine geçen boş bileşen. */
+@Component({ selector: 'app-test-create-enhanced', standalone: true, template: '' })
+class TestCreateEnhancedStubComponent {
+  @Input() mode = '';
+  @Output() createdAndContinue = new EventEmitter<number>();
+}
 
 /**
  * These tests exercise the redesigned shell logic of QuestionCanvasComponent:
@@ -633,7 +642,13 @@ describe('QuestionCanvasComponent', () => {
    */
   describe('onSave', () => {
     /** `isAdmin` → profil rolü Admin (`hasRole`); `realmRoles` → token realm rolleri (`hasRealmRole`). */
-    async function setup(opts: { isAdmin: boolean; realmRoles?: string[]; saveBulk$?: Subject<any> }) {
+    async function setup(opts: {
+      isAdmin: boolean;
+      realmRoles?: string[];
+      saveBulk$?: Subject<any>;
+      /** Şablon render edilecekse test oluşturma formunu boş bileşenle değiştir. */
+      stubTestCreate?: boolean;
+    }) {
       const saveBulk$ = opts.saveBulk$ ?? new Subject<any>();
 
       const testServiceLocal = jasmine.createSpyObj<TestService>('TestService', ['search', 'get']);
@@ -658,7 +673,7 @@ describe('QuestionCanvasComponent', () => {
       authServiceLocal.hasRealmRole.and.callFake((role: string) => realmRoles.includes(role));
 
       TestBed.resetTestingModule();
-      await TestBed.configureTestingModule({
+      TestBed.configureTestingModule({
         imports: [QuestionCanvasComponent, translocoTesting],
         providers: [
           provideNoopAnimations(),
@@ -672,7 +687,14 @@ describe('QuestionCanvasComponent', () => {
           { provide: AuthService, useValue: authServiceLocal },
           { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({}) } } },
         ],
-      }).compileComponents();
+      });
+      if (opts.stubTestCreate) {
+        TestBed.overrideComponent(QuestionCanvasComponent, {
+          remove: { imports: [TestCreateEnhancedComponent] },
+          add: { imports: [TestCreateEnhancedStubComponent] },
+        });
+      }
+      await TestBed.compileComponents();
 
       const localFixture = TestBed.createComponent(QuestionCanvasComponent);
       const localComponent = localFixture.componentInstance;
@@ -947,6 +969,308 @@ describe('QuestionCanvasComponent', () => {
         component.sendToFix();
 
         expect(imageSelectorFake.sendToFix).toHaveBeenCalledOnceWith(true);
+      });
+    });
+
+    // Sonraki sayfa hazır olana kadar işlem düğmeleri pasif (kayıt, eğitime gönderim, geçiş, analiz).
+    describe('busy (meşgul durumu)', () => {
+      /** image-selector'ın meşgul sinyallerini taşıyan sahte; sendToFix çağrısı gönderimi başlatır. */
+      function withBusySignals(fake: any) {
+        fake.sendingToFix = signal(false);
+        fake.pageLoading = signal(false);
+        fake.inProgress = signal(false);
+        fake.sendToFix.and.callFake(() => fake.sendingToFix.set(true));
+        return fake;
+      }
+
+      it('busy_ReflectsSavingAndImageSelectorSignals', async () => {
+        const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+        const fake = withBusySignals(imageSelectorFake);
+        // Setter signal'i güncellesin diye yeniden atanır (setup sahteyi sinyaller eklenmeden atadı).
+        component.imageSelector = fake;
+
+        expect(component.busy()).toBeFalse();
+        component.saving.set(true);
+        expect(component.busy()).toBeTrue();
+        component.saving.set(false);
+
+        fake.inProgress.set(true);
+        expect(component.busy()).toBeTrue();
+        fake.inProgress.set(false);
+
+        fake.pageLoading.set(true);
+        expect(component.busy()).toBeTrue();
+        fake.pageLoading.set(false);
+
+        fake.sendingToFix.set(true);
+        expect(component.busy()).toBeTrue();
+        expect(component.sendingToFix()).toBeTrue();
+      });
+
+      it('sendToFix_DoubleClick_CallsImageSelectorOnce', async () => {
+        const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['QuestionTrainer'] });
+        component.imageSelector = withBusySignals(imageSelectorFake);
+
+        component.sendToFix();
+        component.sendToFix();
+
+        expect(imageSelectorFake.sendToFix).toHaveBeenCalledTimes(1);
+      });
+
+      it('sendToFix_AfterSendFails_CanSendAgain', async () => {
+        const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['QuestionTrainer'] });
+        const fake = withBusySignals(imageSelectorFake);
+        component.imageSelector = fake;
+
+        component.sendToFix();
+        fake.sendingToFix.set(false); // image-selector hata yolunda meşgul durumunu kapatır
+
+        component.sendToFix();
+
+        expect(imageSelectorFake.sendToFix).toHaveBeenCalledTimes(2);
+      });
+
+      it('onSave_Success_BusyThroughAdvanceWindowUntilNextImage', async () => {
+        const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: false });
+
+        await withMockClock(() => {
+          component.onSave();
+          saveBulk$.next({});
+
+          expect(component.saving()).toBeFalse();
+          expect(component.advancing()).toBeTrue();
+          expect(component.busy()).toBeTrue();
+
+          jasmine.clock().tick(2000);
+
+          expect(component.advancing()).toBeFalse();
+          expect(imageSelectorFake.nextImage).toHaveBeenCalledTimes(1);
+        });
+      });
+
+      it('onSave_Error_DoesNotStartAdvanceWindow', async () => {
+        const { component, saveBulk$ } = await setup({ isAdmin: false });
+
+        component.onSave();
+        saveBulk$.error({ status: 500 });
+
+        expect(component.advancing()).toBeFalse();
+        expect(component.busy()).toBeFalse();
+      });
+
+      it('saveEntryPoints_WhileBusy_DoNothing', async () => {
+        const { component, tceFake, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+        (imageSelectorFake as any).sendToStudyPage = jasmine.createSpy('sendToStudyPage');
+        component.advancing.set(true);
+
+        component.onSaveAndNew();
+        component.onSaveAndFix();
+        component.onSubmit();
+        component.sendToWorkPages();
+
+        expect(tceFake.onCreateAsync).not.toHaveBeenCalled();
+        expect((imageSelectorFake as any).sendToStudyPage).not.toHaveBeenCalled();
+      });
+
+      it('navigation_WhileSavingCreatingAdvancingOrSending_IsBlocked', async () => {
+        const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+        const fake = withBusySignals(imageSelectorFake);
+        fake.previousImage = jasmine.createSpy('previousImage');
+        fake.goToPage = jasmine.createSpy('goToPage');
+        component.imageSelector = fake;
+        const tryAll = () => {
+          component.previousImage();
+          component.nextImage();
+          component.goToPage('2');
+        };
+
+        for (const lock of [component.saving, component.creating, component.advancing, fake.sendingToFix]) {
+          lock.set(true);
+          tryAll();
+          lock.set(false);
+        }
+
+        expect(fake.previousImage).not.toHaveBeenCalled();
+        expect(fake.nextImage).not.toHaveBeenCalled();
+        expect(fake.goToPage).not.toHaveBeenCalled();
+      });
+
+      it('navigation_WhileAnalyzingOrPageLoading_IsAllowed', async () => {
+        const { component, imageSelectorFake } = await setup({ isAdmin: false });
+        const fake = withBusySignals(imageSelectorFake);
+        fake.previousImage = jasmine.createSpy('previousImage');
+        fake.goToPage = jasmine.createSpy('goToPage');
+        component.imageSelector = fake;
+        fake.inProgress.set(true);
+        fake.pageLoading.set(true);
+
+        component.previousImage();
+        component.nextImage();
+        component.goToPage('2');
+
+        expect(component.busy()).toBeTrue();
+        expect(component.navigationBusy()).toBeFalse();
+        expect(fake.previousImage).toHaveBeenCalledTimes(1);
+        expect(fake.nextImage).toHaveBeenCalledTimes(1);
+        expect(fake.goToPage).toHaveBeenCalledOnceWith('2');
+      });
+
+      for (const action of ['onSaveAndNew', 'onSaveAndFix', 'onSubmit'] as const) {
+        it(`${action}_DoubleClick_CreatesTestOnce`, async () => {
+          const { component, tceFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+          const create$ = new Subject<any>();
+          tceFake.onCreateAsync.and.returnValue(create$.asObservable());
+
+          component[action]();
+          component[action]();
+
+          expect(tceFake.onCreateAsync).toHaveBeenCalledTimes(1);
+          expect(component.creating()).toBeTrue();
+          expect(component.busy()).toBeTrue();
+        });
+      }
+
+      it('onSaveAndNew_CreateFails_ClearsCreating', async () => {
+        const { component, tceFake, questionServiceLocal } = await setup({ isAdmin: false });
+        const create$ = new Subject<any>();
+        tceFake.onCreateAsync.and.returnValue(create$.asObservable());
+
+        component.onSaveAndNew();
+        create$.error(new Error('boom'));
+
+        expect(component.creating()).toBeFalse();
+        expect(component.busy()).toBeFalse();
+        expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
+      });
+
+      it('onSaveAndNew_FetchCreatedTestFails_ClearsCreatingAndNotifies', async () => {
+        const { fixture: f, component, questionServiceLocal } = await setup({ isAdmin: false });
+        const snackBarOpen = spyOn(f.debugElement.injector.get(MatSnackBar), 'open');
+        const testServiceLocal = f.debugElement.injector.get(TestService) as jasmine.SpyObj<TestService>;
+        testServiceLocal.get.and.returnValue(throwError(() => new Error('fetch')));
+
+        component.onSaveAndNew();
+
+        expect(component.creating()).toBeFalse();
+        expect(component.busy()).toBeFalse();
+        expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
+        expect(snackBarOpen).toHaveBeenCalledWith(questionTr.canvas.testFetchError, jasmine.any(String), jasmine.any(Object));
+      });
+
+      it('onSaveAndFix_SaveSucceedsTrainingFails_StillAdvancesAndBusyClears', async () => {
+        const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: false, realmRoles: ['QuestionTrainer'] });
+        const fake = withBusySignals(imageSelectorFake);
+        component.imageSelector = fake;
+
+        await withMockClock(() => {
+          component.onSaveAndFix();
+          saveBulk$.next({});
+          expect(fake.sendToFix).toHaveBeenCalledOnceWith(true, false);
+          expect(component.busy()).toBeTrue();
+
+          fake.sendingToFix.set(false); // image-selector eğitim hatasında meşgul durumunu kapatır
+
+          jasmine.clock().tick(2000);
+          expect(fake.nextImage).toHaveBeenCalledTimes(1);
+          expect(component.busy()).toBeFalse();
+        });
+      });
+
+      it('onSaveAndFix_TrainingStillRunningAfterDelay_StillAdvances', async () => {
+        const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: false, realmRoles: ['QuestionTrainer'] });
+        const fake = withBusySignals(imageSelectorFake);
+        component.imageSelector = fake;
+
+        await withMockClock(() => {
+          component.onSaveAndFix();
+          saveBulk$.next({});
+
+          jasmine.clock().tick(2000);
+
+          // Geçişi kayıt zamanlayıcısı yapar; süren eğitim isteğinin gezinme kilidi onu engellemez.
+          expect(fake.nextImage).toHaveBeenCalledTimes(1);
+          expect(component.navigationBusy()).toBeTrue();
+        });
+      });
+
+      describe('şablon', () => {
+        async function render() {
+          const ctx = await setup({ isAdmin: false, realmRoles: ['Admin'], stubTestCreate: true });
+          // Gerçek alt bileşenler oluşur; ilk geçişte sahte kullanılmasın, ViewChild gerçek image-selector'ı atar.
+          ctx.component.imageSelector = undefined as any;
+          ctx.fixture.detectChanges();
+          await ctx.fixture.whenStable();
+          const el: HTMLElement = ctx.fixture.nativeElement;
+          const trainButton = () =>
+            Array.from(el.querySelectorAll<HTMLButtonElement>('button.qc-btn--ghost')).find(
+              (b) => b.textContent!.includes(questionTr.canvas.train) || b.textContent!.includes(questionTr.canvas.sendingToFix)
+            )!;
+          const saveButton = () => el.querySelector<HTMLButtonElement>('.qc-split__main')!;
+          const caretButton = () => el.querySelector<HTMLButtonElement>('.qc-split__caret')!;
+          return { ...ctx, el, trainButton, saveButton, caretButton };
+        }
+
+        it('buttons_Idle_AreEnabled', async () => {
+          const { trainButton, saveButton, caretButton } = await render();
+
+          expect(trainButton().disabled).toBeFalse();
+          expect(saveButton().disabled).toBeFalse();
+          expect(caretButton().disabled).toBeFalse();
+        });
+
+        it('buttons_WhileAnalyzing_AreDisabled', async () => {
+          const { fixture: f, component, trainButton, saveButton, caretButton } = await render();
+
+          component.imageSelector.inProgress.set(true);
+          f.detectChanges();
+
+          expect(trainButton().disabled).toBeTrue();
+          expect(saveButton().disabled).toBeTrue();
+          expect(caretButton().disabled).toBeTrue();
+        });
+
+        it('buttons_DuringAdvanceWindow_AreDisabled', async () => {
+          const { fixture: f, component, saveButton, caretButton } = await render();
+
+          component.advancing.set(true);
+          f.detectChanges();
+
+          expect(saveButton().disabled).toBeTrue();
+          expect(caretButton().disabled).toBeTrue();
+        });
+
+        it('trainButton_WhileSending_ShowsSpinnerTextAndAriaBusy', async () => {
+          const { fixture: f, component, trainButton } = await render();
+
+          component.imageSelector.sendingToFix.set(true);
+          f.detectChanges();
+
+          const button = trainButton();
+          expect(button.disabled).toBeTrue();
+          expect(button.getAttribute('aria-busy')).toBe('true');
+          expect(button.querySelector('mat-spinner')).not.toBeNull();
+          expect(button.textContent).toContain(questionTr.canvas.sendingToFix);
+        });
+
+        it('pageNavigation_DuringAdvanceWindow_IsDisabled_ButNotDuringAnalysis', async () => {
+          const { fixture: f, component, el } = await render();
+          component.imageSelector.imageFiles = [new File(['a'], 'p1.png'), new File(['b'], 'p2.png')];
+          f.detectChanges();
+          const navControls = () => [
+            ...Array.from(el.querySelectorAll<HTMLButtonElement>('.qc-thumb')),
+            ...Array.from(el.querySelectorAll<HTMLButtonElement | HTMLInputElement>('.qc-pagejump button, .qc-pagejump input')),
+          ];
+          expect(navControls().length).toBe(5);
+
+          component.imageSelector.inProgress.set(true);
+          f.detectChanges();
+          expect(navControls().every((c) => !c.disabled)).toBeTrue();
+
+          component.advancing.set(true);
+          f.detectChanges();
+          expect(navControls().every((c) => c.disabled)).toBeTrue();
+          expect(component.imageSelector.navigationLocked).toBeTrue();
+        });
       });
     });
 

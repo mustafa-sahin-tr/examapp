@@ -12,6 +12,7 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { timeout } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { QuestionRegion, AnswerChoice, RegionOrAnswerHit, ClassificationSource } from '../../models/draws';
 import { QuillModule } from 'ngx-quill';
@@ -19,8 +20,9 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { QuestionDetectorService } from '../../services/question-detector.service';
-import { Prediction } from '../../models/prediction';
+import { Prediction, PredictionList } from '../../models/prediction';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
@@ -53,6 +55,8 @@ import {
  * (question) da erişilebilir kalır.
  */
 const IMAGE_SELECTOR_SCOPE = 'image-selector';
+/** question-detector analizi için üst süre; aşılırsa hata dalı (analysisError) çalışır. */
+const PREDICT_TIMEOUT_MS = 120_000;
 
 interface WarningMarker {
   id: number;
@@ -127,6 +131,7 @@ export interface ActiveInspector {
     MatMenuModule,
     MatButtonModule,
     MatSlideToggleModule,
+    MatProgressSpinnerModule,
     QuestionNavigatorComponent,
     QuestionCanvasViewComponent,
     QuestionCanvasViewComponentv5,
@@ -162,7 +167,23 @@ export class ImageSelectorComponent {
 
   public autoAlign = signal<boolean>(false);
   public autoMode = signal<boolean>(false);
+  /** Sayfa question-detector'da analiz ediliyor (predict). Tuvalin üstünde örtü gösterilir, düzenleme kilitlenir. */
   public inProgress = signal<boolean>(false);
+  /** Sayfa eğitim verisi olarak gönderiliyor (sendToFix). Sürerken ikinci gönderim yapılmaz. */
+  public readonly sendingToFix = signal(false);
+  /** Yeni sayfanın görseli okunuyor (FileReader + img.onload); analiz başlayana kadarki boşluğu kapatır. */
+  public readonly pageLoading = signal(false);
+  /** Son başlatılan analiz; sayfa değiştikten sonra dönen eski yanıt yeni sayfanın bölgelerini ezmesin. */
+  private predictSeq = 0;
+  /** Son başlatılan sayfa yüklemesi; eski yüklemenin reader/img olayları yenisini ezmesin. */
+  private loadSeq = 0;
+  /**
+   * Üst komponent (question-canvas) kayıt / eğitime gönderim / geçiş sürerken sayfa değiştirmeyi kilitler;
+   * tuvalin kenarındaki önceki/sonraki alanları da pasif olur.
+   */
+  @Input() navigationLocked = false;
+  /** Yok edildi: eğitime gönderim yanıtı geç dönerse snackbar / sayfa geçişi yapılmaz. */
+  private destroyed = false;
   public onlyQuestionMode = signal<boolean>(false);
   public answerCount = signal<number>(4);
   public selectionMode = signal<'passage' | 'question' | 'answer' | 'dropzone' | null>(null);
@@ -198,6 +219,15 @@ export class ImageSelectorComponent {
   }
   private dialog = inject(MatDialog);
   private destroyRef = inject(DestroyRef);
+
+  constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.destroyed = true;
+      // Süren sayfa yüklemesi / analizi geçersiz: geç gelen olaylar yok edilmiş komponente dokunmasın.
+      this.loadSeq++;
+      this.predictSeq++;
+    });
+  }
 
   // Cache: topicId -> gradeId (topic carries gradeId)
   private topicGradeIdCache = new Map<number, number>();
@@ -942,6 +972,9 @@ export class ImageSelectorComponent {
     const file = this.imageFiles[this.currentImageIndex];
     if (!file) return;
     this.imageChange.emit();
+    // Önceki sayfanın süren analizi artık geçersiz: yanıtı yok sayılır, örtü kalkar.
+    this.cancelPendingPredict();
+    const load = this.startPageLoad();
     const reader = new FileReader();
     this.imagName.set(file.name);
     if (!this.bookName()) {
@@ -949,13 +982,24 @@ export class ImageSelectorComponent {
     }
     this.regions.set([]);
 
+    reader.onerror = () => this.failPageLoad(load);
     reader.onload = () => {
+      if (load !== this.loadSeq) {
+        return;
+      }
       //this.currentImageSrc = reader.result as string;
       this.imageSrc.set(reader.result as string);
       this.imageData.set(reader.result as string); // 📂 Resmi base64 olarak sakla
+      // Her yüklemeye ayrı Image: src değişince eskisinin olayları (iptal/error) yeni yüklemeye karışmasın.
+      this.img = new Image();
+      this.img.onerror = () => this.failPageLoad(load);
       this.img.src = this.imageSrc()!;
 
       this.img.onload = () => {
+        if (load !== this.loadSeq) {
+          return;
+        }
+        this.pageLoading.set(false);
         if (this.selectionModeLocked() !== 'answer') {
           if (this.coordinateJsonMode()) {
             this.applyCoordinateRegions(file.name);
@@ -985,6 +1029,21 @@ export class ImageSelectorComponent {
       };
     };
     reader.readAsDataURL(file); // 📦 Sadece o anki resmi belleğe yükle
+  }
+
+  /** Yeni sayfa yüklemesini başlatır; dönen sıra numarası olay işleyicilerinde eski yüklemeyi ayırt eder. */
+  private startPageLoad(): number {
+    this.pageLoading.set(true);
+    return ++this.loadSeq;
+  }
+
+  /** Görsel okunamadı / çözülemedi: meşgul durumu kapanır, kullanıcı bilgilendirilir (eski yüklemeyse yok sayılır). */
+  private failPageLoad(load: number) {
+    if (load !== this.loadSeq) {
+      return;
+    }
+    this.pageLoading.set(false);
+    this.snackBar.open(this.tr('messages.pageLoadError'), this.tr('common.ok'), { duration: 4000 });
   }
 
   goToPage(pageStr: string) {
@@ -1027,14 +1086,27 @@ export class ImageSelectorComponent {
       this.fileSelectionSeq++;
       this.disableCoordinateJsonMode();
       this.imageChange.emit();
+      this.cancelPendingPredict();
+      const load = this.startPageLoad();
       const reader = new FileReader();
       this.imagName.set(file.name);
       this.bookName.set(this.extractBookName(file));
+      reader.onerror = () => this.failPageLoad(load);
       reader.onload = (e: ProgressEvent<FileReader>) => {
+        if (load !== this.loadSeq) {
+          return;
+        }
         this.imageSrc.set(e.target?.result as string);
         this.imageData.set(e.target?.result as string); // 📂 Resmi base64 olarak sakla
+        // Her yüklemeye ayrı Image: src değişince eskisinin olayları (iptal/error) yeni yüklemeye karışmasın.
+        this.img = new Image();
+        this.img.onerror = () => this.failPageLoad(load);
         this.img.src = this.imageSrc()!;
         this.img.onload = () => {
+          if (load !== this.loadSeq) {
+            return;
+          }
+          this.pageLoading.set(false);
           if (this.selectionModeLocked() !== 'answer') {
             this.predict();
           } else {
@@ -2026,6 +2098,10 @@ export class ImageSelectorComponent {
    *   aksi halde iki sayfa ilerleyip biri atlanır).
    */
   public sendToFix(pageComplete: boolean = true, advance: boolean = true) {
+    // Önceki gönderim sürüyor (çift tıklama): aynı sayfa iki kez eğitime gitmesin.
+    if (this.sendingToFix()) {
+      return;
+    }
     // Sayfa yüklenmemişse gönderilecek görsel yok (soru listesi boş diye "boş sayfa" sayılmamalı).
     if (!this.imageData()) {
       if (advance) {
@@ -2079,22 +2155,42 @@ export class ImageSelectorComponent {
         })),
       })),
     };
-    this.questionDetectorService.sendtoFix(data).subscribe((data) => {
-      if (data.success) {
-        const message = emptyPage
-          ? this.tr('training.emptyPageAdded')
-          : this.tr('training.questionsAdded', { count: data.added, file: data.imageFile });
-        this.snackBar.open(message, this.tr('common.ok'), {
-          duration: 3000,
-        });
-        if (advance) {
-          this.nextImage();
+    // Yanıt gelene kadar sayfa değiştiyse (ör. başka yoldan gezinme) bir sayfa daha ilerlenmesin.
+    const sentIndex = this.currentImageIndex;
+    const sentImage = this.imageData();
+    this.sendingToFix.set(true);
+    // takeUntilDestroyed yok: komponent yok edilse de eğitim isteği iptal edilmesin (veri kaybolmasın).
+    this.questionDetectorService.sendtoFix(data).subscribe({
+      next: (data) => {
+        this.sendingToFix.set(false);
+        if (this.destroyed) {
+          return;
         }
-      } else {
-        this.snackBar.open(`${data.message}`, 'Tamam', {
-          duration: 3000,
-        });
-      }
+        if (data.success) {
+          const message = emptyPage
+            ? this.tr('training.emptyPageAdded')
+            : this.tr('training.questionsAdded', { count: data.added, file: data.imageFile });
+          this.snackBar.open(message, this.tr('common.ok'), {
+            duration: 3000,
+          });
+          if (advance && this.currentImageIndex === sentIndex && this.imageData() === sentImage) {
+            this.nextImage();
+          }
+        } else {
+          // Servis HTTP hatasını { success: false, message: detail } yapar; detail boş olabilir.
+          this.snackBar.open(data.message || this.tr('training.sendError'), this.tr('common.ok'), {
+            duration: 4000,
+          });
+        }
+      },
+      error: (err) => {
+        console.error('send-to-fix failed', err);
+        this.sendingToFix.set(false);
+        if (this.destroyed) {
+          return;
+        }
+        this.snackBar.open(this.tr('training.sendError'), this.tr('common.ok'), { duration: 4000 });
+      },
     });
   }
 
@@ -2104,110 +2200,153 @@ export class ImageSelectorComponent {
     if (this.coordinateJsonMode()) {
       return;
     }
-    this.snackBar.open(this.tr('messages.analysisStarted'), this.tr('common.ok'), { duration: 2000 });
-    this.inProgress.set(true);
+    // Sayfa yüklenmemişse analiz edilecek görsel yok; meşgul durumu açılmaz.
+    if (!this.imageData()) {
+      return;
+    }
     const imageData = { image_base64: this.imageData() };
-    if (!imageData) return;
+    // "Analiz başladı" bildirimi yerine tuvalin üstündeki örtü (inProgress) gösterilir.
+    const seq = ++this.predictSeq;
+    this.inProgress.set(true);
 
-    this.questionDetectorService.readQrData(imageData).subscribe((data) => {
-      console.log(data);
-    });
+    this.questionDetectorService
+      .readQrData(imageData)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data) => {
+          console.log(data);
+        },
+        error: (err) => {
+          // QR sonucu yalnız loglanır; kullanıcıya bildirim yok, analizi (inProgress) etkilemez.
+          // Sayfada QR yoksa question-detector 404 döner — olağan durum, sessiz geçilir.
+          if (err?.status !== 404) {
+            console.error('read-qr failed', err);
+          }
+        },
+      });
 
-    this.questionDetectorService.predict(imageData).subscribe((questions) => {
-      console.log(questions);
-      const imageWidth = Math.max(...questions.predictions.map((q) => q.x + q.width));
-      // soruları sırala
-      this.regions.set(
-        questions.predictions
-          .filter((q: any) => q.class_id === 0)
-          .sort((a, b) => {
-            // Sayfanın ortasını bulmak için tahmini bir sınır (örneğin width / 2)
-            const middleX = imageWidth / 2;
+    this.questionDetectorService
+      .predict(imageData)
+      // Büyük sayfalar uzun sürebilir; yanıt hiç gelmezse örtü sonsuza dek açık kalmasın.
+      .pipe(timeout(PREDICT_TIMEOUT_MS), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (questions) => this.applyPrediction(seq, questions),
+        error: (err) => {
+          console.error('predict failed', err);
+          if (seq !== this.predictSeq) {
+            return;
+          }
+          this.inProgress.set(false);
+          this.snackBar.open(this.tr('messages.analysisError'), this.tr('common.ok'), { duration: 4000 });
+        },
+      });
+  }
 
-            // Sol sütunları önce al (a ve b'nin sol sütun mu sağ sütun mu olduğunu kontrol et)
-            const aIsLeft = a.x < middleX;
-            const bIsLeft = b.x < middleX;
+  /** Sayfa değişince süren analizi geçersiz kılar: dönen yanıt yok sayılır, örtü kalkar. */
+  private cancelPendingPredict() {
+    this.predictSeq++;
+    this.inProgress.set(false);
+  }
 
-            if (aIsLeft !== bIsLeft) {
-              return aIsLeft ? -1 : 1; // Sol sütun önde gelir
-            }
+  private applyPrediction(seq: number, questions: PredictionList) {
+    // Bu arada sayfa değişti ya da yeni analiz başladı: eski yanıt yeni sayfanın bölgelerini ezmesin.
+    if (seq !== this.predictSeq) {
+      return;
+    }
+    // Yanıt işlenirken hata olursa da örtü açık kalmasın.
+    this.inProgress.set(false);
 
-            // Aynı sütundalarsa yukarıdan aşağıya (y koordinatına göre) sıralama yap
-            return a.y - b.y;
-          })
-          .map((q, index) => ({
-            ...q,
-            name: `Soru ${index + 1}`,
-            answers: q.subpredictions
-              .filter((a: any) => a.class_id === 0)
-              .map((a: any, index: number) => ({
-                label: this.tr('labels.answerNumbered', { number: index + 1 }),
-                ...a,
-                isCorrect: false,
-                id: index,
-              })),
-            // this.getAnswers(questions.predictions, q).map((a, index) => ({
-            //   label: `Şık ${index + 1}`,
-            //   ...a,
-            //   isCorrect: false,
-            //   id: index
-            // })),
-            isExample: false,
-            exampleAnswer: null,
-            id: index,
-            passageId: '',
-            imageId: '',
-            imageUrl: '',
-          }))
-      );
+    console.log(questions);
+    const imageWidth = Math.max(...questions.predictions.map((q) => q.x + q.width));
+    // soruları sırala
+    this.regions.set(
+      questions.predictions
+        .filter((q: any) => q.class_id === 0)
+        .sort((a, b) => {
+          // Sayfanın ortasını bulmak için tahmini bir sınır (örneğin width / 2)
+          const middleX = imageWidth / 2;
 
-      const questionCount = this.regions().length;
+          // Sol sütunları önce al (a ve b'nin sol sütun mu sağ sütun mu olduğunu kontrol et)
+          const aIsLeft = a.x < middleX;
+          const bIsLeft = b.x < middleX;
 
-      for (let i = 0; i < questionCount; i++) {
-        this.alignAnswers(i);
-      }
+          if (aIsLeft !== bIsLeft) {
+            return aIsLeft ? -1 : 1; // Sol sütun önde gelir
+          }
 
-      console.log(`${this.regions().length} Adet Soru bulundu`);
-      console.log(`Auto Mode: ${this.autoMode()}`);
-      console.log(`Q Mode:  ${this.onlyQuestionMode()}`);
+          // Aynı sütundalarsa yukarıdan aşağıya (y koordinatına göre) sıralama yap
+          return a.y - b.y;
+        })
+        .map((q, index) => ({
+          ...q,
+          name: `Soru ${index + 1}`,
+          answers: q.subpredictions
+            .filter((a: any) => a.class_id === 0)
+            .map((a: any, index: number) => ({
+              label: this.tr('labels.answerNumbered', { number: index + 1 }),
+              ...a,
+              isCorrect: false,
+              id: index,
+            })),
+          // this.getAnswers(questions.predictions, q).map((a, index) => ({
+          //   label: `Şık ${index + 1}`,
+          //   ...a,
+          //   isCorrect: false,
+          //   id: index
+          // })),
+          isExample: false,
+          exampleAnswer: null,
+          id: index,
+          passageId: '',
+          imageId: '',
+          imageUrl: '',
+        }))
+    );
 
-      if (
-        this.autoMode() &&
-        this.regions().length > 2 &&
-        (this.onlyQuestionMode() || this.regions().every((region) => region.answers && region.answers.length >= 3))
-      ) {
-        console.log(`Condition: true`);
-      } else {
-        console.log(`Condition: false`);
-      }
+    const questionCount = this.regions().length;
 
-      this.snackBar.open(this.tr('messages.analysisCompleted'), this.tr('common.ok'), { duration: 2000 });
-      if (!this.autoMode()) {
-        // resmi çiz ve dur
-        this.drawImage();
-      } else {
-        // auto mode ise question sayısını kontrol et
-        if (this.regions().length > 1) {
-          // ikiden çok fazla soru varsa durabiliriz.
-          if (this.onlyQuestionMode()) {
-            // ikiden fazla soru var ve sadece soru modundayız dur!
+    for (let i = 0; i < questionCount; i++) {
+      this.alignAnswers(i);
+    }
+
+    console.log(`${this.regions().length} Adet Soru bulundu`);
+    console.log(`Auto Mode: ${this.autoMode()}`);
+    console.log(`Q Mode:  ${this.onlyQuestionMode()}`);
+
+    if (
+      this.autoMode() &&
+      this.regions().length > 2 &&
+      (this.onlyQuestionMode() || this.regions().every((region) => region.answers && region.answers.length >= 3))
+    ) {
+      console.log(`Condition: true`);
+    } else {
+      console.log(`Condition: false`);
+    }
+
+    this.snackBar.open(this.tr('messages.analysisCompleted'), this.tr('common.ok'), { duration: 2000 });
+    if (!this.autoMode()) {
+      // resmi çiz ve dur
+      this.drawImage();
+    } else {
+      // auto mode ise question sayısını kontrol et
+      if (this.regions().length > 1) {
+        // ikiden çok fazla soru varsa durabiliriz.
+        if (this.onlyQuestionMode()) {
+          // ikiden fazla soru var ve sadece soru modundayız dur!
+          this.drawImage();
+        } else {
+          // ikiden fazla soru var ve soru cevap modundayız.
+          if (this.regions().every((region) => region.answers && region.answers.length >= 2)) {
+            // ikiden fazla soru var soru cevap modundayız ve her soruda en az 2 şık var.
             this.drawImage();
           } else {
-            // ikiden fazla soru var ve soru cevap modundayız.
-            if (this.regions().every((region) => region.answers && region.answers.length >= 2)) {
-              // ikiden fazla soru var soru cevap modundayız ve her soruda en az 2 şık var.
-              this.drawImage();
-            } else {
-              this.nextImage();
-            }
+            this.nextImage();
           }
-        } else {
-          this.nextImage();
         }
+      } else {
+        this.nextImage();
       }
-
-      this.inProgress.set(false);
-    });
+    }
   }
 
   public getAnswers(predictions: Prediction[], question: Prediction): Prediction[] {

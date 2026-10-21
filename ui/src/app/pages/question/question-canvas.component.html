@@ -161,14 +161,22 @@
         [matTooltip]="t('canvas.excludeFromTrainingHint')">
         {{ t('canvas.excludeFromTraining') }}
       </mat-checkbox>
-      <button type="button" class="qc-btn qc-btn--ghost" [disabled]="saving()" (click)="sendToFix()">{{ t('canvas.train') }}</button>
+      <button type="button" class="qc-btn qc-btn--ghost" [disabled]="busy()" [attr.aria-busy]="sendingToFix()"
+        (click)="sendToFix()">
+        @if (sendingToFix()) {
+        <mat-spinner class="qc-btn__spinner" diameter="16" aria-hidden="true"></mat-spinner>
+        <span>{{ t('canvas.sendingToFix') }}</span>
+        } @else {
+        {{ t('canvas.train') }}
+        }
+      </button>
       }
 
       <div class="qc-split">
         <button
           type="button"
           class="qc-split__main qc-btn qc-btn--primary"
-          [disabled]="saving()"
+          [disabled]="busy()"
           [attr.aria-busy]="saving()"
           (click)="onSaveAndNew()"
         >
@@ -182,7 +190,7 @@
         <button
           type="button"
           class="qc-split__caret qc-btn qc-btn--primary"
-          [disabled]="saving()"
+          [disabled]="busy()"
           [matMenuTriggerFor]="saveMenu"
         >
           <mat-icon>arrow_drop_down</mat-icon>
@@ -190,15 +198,15 @@
       </div>
       <mat-menu #saveMenu="matMenu">
         @if (canTrain) {
-        <button mat-menu-item type="button" [disabled]="saving()" (click)="onSaveAndFix()">
+        <button mat-menu-item type="button" [disabled]="busy()" (click)="onSaveAndFix()">
           <mat-icon>build</mat-icon><span>{{ t('canvas.saveAndFix') }}</span>
         </button>
         }
-        <button mat-menu-item type="button" [disabled]="saving()" (click)="sendToWorkPages()">
+        <button mat-menu-item type="button" [disabled]="busy()" (click)="sendToWorkPages()">
           <mat-icon>send</mat-icon><span>{{ t('canvas.sendToStudyPage') }}</span>
         </button>
         @if (canTrain) {
-        <button mat-menu-item type="button" [disabled]="saving()" (click)="sendToFix()">
+        <button mat-menu-item type="button" [disabled]="busy()" (click)="sendToFix()">
           <mat-icon>model_training</mat-icon><span>{{ t('canvas.trainModelOnly') }}</span>
         </button>
         }
@@ -231,7 +239,7 @@
       <div class="qc-filmstrip">
         @for (page of pageFiles; track $index) {
         <button type="button" class="qc-thumb" [class.qc-thumb--active]="$index === currentPageIndex"
-          (click)="goToPage(($index + 1) + '')">
+          [disabled]="navigationBusy()" (click)="goToPage(($index + 1) + '')">
           <span class="qc-thumb__box"><mat-icon>description</mat-icon></span>
           <span class="qc-thumb__label">{{ $index + 1 }}. {{ page.name }}</span>
         </button>
@@ -277,7 +285,7 @@
       }
 
       <div class="qc-canvas__stage">
-        <app-image-selector [previewMetaProvider]="previewMetaProvider"
+        <app-image-selector [previewMetaProvider]="previewMetaProvider" [navigationLocked]="navigationBusy()"
           (previewQuestionChange)="onPreviewQuestionChange($event)"
           (selectedQuestionChange)="onInspectorQuestionChange($event)"
           (imageChange)="onImageChange()"></app-image-selector>
@@ -285,13 +293,15 @@
 
       @if (pageFiles.length > 1 && !previewOn) {
       <div class="qc-pagejump">
-        <button type="button" class="qc-icon-btn" (click)="previousImage()" [attr.aria-label]="t('canvas.previousPage')">
+        <button type="button" class="qc-icon-btn" [disabled]="navigationBusy()" (click)="previousImage()"
+          [attr.aria-label]="t('canvas.previousPage')">
           <mat-icon>chevron_left</mat-icon>
         </button>
         <input #pageJump type="number" min="1" [max]="pageFiles.length"
-          [value]="currentPageIndex + 1" (keydown.enter)="goToPage(pageJump.value)" />
+          [value]="currentPageIndex + 1" [disabled]="navigationBusy()" (keydown.enter)="goToPage(pageJump.value)" />
         <span>/ {{ pageFiles.length }}</span>
-        <button type="button" class="qc-icon-btn" (click)="nextImage()" [attr.aria-label]="t('canvas.nextPage')">
+        <button type="button" class="qc-icon-btn" [disabled]="navigationBusy()" (click)="nextImage()"
+          [attr.aria-label]="t('canvas.nextPage')">
           <mat-icon>chevron_right</mat-icon>
         </button>
       </div>

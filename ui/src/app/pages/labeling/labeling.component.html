@@ -89,7 +89,7 @@
       </mat-button-toggle-group>
       @if (aiModels().length > 0 && (preferredSource() === 'Ai' || detectionSource()?.kind === 'Ai')) {
       <mat-form-field class="lb-model" appearance="outline" subscriptSizing="dynamic">
-        <mat-select [value]="aiModelId()" (selectionChange)="setAiModel($event.value)" [disabled]="sourceLocked()"
+        <mat-select [value]="aiModelId()" (selectionChange)="setAiModel($event)" [disabled]="sourceLocked()"
           [attr.aria-label]="t('source.aiModel')">
           @for (model of aiModels(); track model.id) {
           <mat-option [value]="model.id">

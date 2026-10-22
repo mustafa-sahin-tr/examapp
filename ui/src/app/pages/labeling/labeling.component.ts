@@ -1,11 +1,11 @@
 import { Component, DestroyRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { firstValueFrom } from 'rxjs';
+import { Subject, firstValueFrom, takeUntil } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleChange, MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
+import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -159,6 +159,8 @@ export class LabelingComponent {
   /** Açık sayfanın görseli (sayfa değişince eski Claude yanıtı uygulanmasın diye `pageToken` ile birlikte). */
   private pageImage: string | null = null;
   private pageToken = 0;
+  /** Sayfa değişti / bileşen kapandı: süren Claude isteği iptal edilir (sunucu da Claude çağrısını keser). */
+  private readonly pageChanged = new Subject<void>();
 
   readonly detectionSource = computed<DetectionSource | null>(() => this.selectorRef()?.detectionSource() ?? null);
   readonly manualRecord = computed(() => this.pageRecord()?.results.find((r) => r.source === 'Manual') ?? null);
@@ -185,6 +187,7 @@ export class LabelingComponent {
     this.destroyRef.onDestroy(() => {
       this.pickSeq++;
       this.prefetch = null;
+      this.resetPageState();
     });
     // Alt bileşen hazır olunca (ve şık sayısı değişince) tuvale aktarılır. Kalıcı otomatik hizalama bu modda kapalı:
     // "Hizala" tek seferlik çalışır.
@@ -234,11 +237,9 @@ export class LabelingComponent {
     if (!selector) {
       return;
     }
-    const token = ++this.pageToken;
+    this.resetPageState();
+    const token = this.pageToken;
     this.pageImage = imageData;
-    this.pageRecord.set(null);
-    this.aiOrigin.set(null);
-    this.aiBusy.set(false);
     const seq = selector.beginExternalDetection();
 
     let page: LabelingPage | null = null;
@@ -290,18 +291,30 @@ export class LabelingComponent {
     if (this.sourceLocked()) {
       return;
     }
-    if (kind !== 'Manual') {
-      this.setPreferredSource(kind);
-    }
-    this.confirmDiscard(() => this.applySource(kind));
+    this.confirmDiscard(() => {
+      if (kind !== 'Manual') {
+        this.setPreferredSource(kind);
+      }
+      this.applySource(kind);
+    });
   }
 
-  setAiModel(id: string): void {
-    this.aiModelId.set(id);
-    writeStored(AI_MODEL_STORAGE_KEY, id);
-    if (this.detectionSource()?.kind === 'Ai' && !this.sourceLocked()) {
-      this.confirmDiscard(() => void this.runClaude(false, false));
+  setAiModel(event: MatSelectChange): void {
+    const id = event.value as string;
+    const apply = () => {
+      this.aiModelId.set(id);
+      writeStored(AI_MODEL_STORAGE_KEY, id);
+      if (this.detectionSource()?.kind === 'Ai') {
+        void this.runClaude(false, false);
+      }
+    };
+    if (this.detectionSource()?.kind === 'Ai' && this.selectorRef()?.hasUnsavedEdits()) {
+      // Onaya kadar liste tuvaldeki modeli göstersin.
+      event.source.value = this.aiModelId();
+      this.confirmDiscard(apply);
+      return;
     }
+    apply();
   }
 
   /** Kayıtlı Claude sonucunu yok sayıp yeniden sorar (maliyetli): önce onay. */
@@ -312,10 +325,16 @@ export class LabelingComponent {
     const message = this.selectorRef()?.hasUnsavedEdits()
       ? this.tr('source.askAgainConfirmEdits')
       : this.tr('source.askAgainConfirm');
+    const token = this.pageToken;
     this.snackBar
       .open(message, this.tr('source.askAgainAction'), { duration: 8000 })
       .onAction()
-      .subscribe(() => void this.runClaude(true, false));
+      .subscribe(() => {
+        // Onay başka bir sayfada gelirse (snackbar açıkken geçildi) ücretli çağrı o sayfaya yapılmaz.
+        if (token === this.pageToken && !this.sourceLocked()) {
+          void this.runClaude(true, false);
+        }
+      });
   }
 
   private applySource(kind: 'Manual' | 'Model' | 'Ai'): void {
@@ -350,7 +369,9 @@ export class LabelingComponent {
     const seq = selector.beginExternalDetection();
     this.aiBusy.set(true);
     try {
-      const response = await firstValueFrom(this.labelingApi.aiDetect({ imageBase64: image, model, force }));
+      const response = await firstValueFrom(
+        this.labelingApi.aiDetect({ imageBase64: image, model, force }).pipe(takeUntil(this.pageChanged))
+      );
       if (token !== this.pageToken) {
         return;
       }
@@ -391,10 +412,29 @@ export class LabelingComponent {
       action();
       return;
     }
+    const token = this.pageToken;
     this.snackBar
       .open(this.tr('source.unsavedEdits'), this.tr('source.discardAction'), { duration: 8000 })
       .onAction()
-      .subscribe(() => action());
+      .subscribe(() => {
+        if (token === this.pageToken && !this.sourceLocked()) {
+          action();
+        }
+      });
+  }
+
+  /**
+   * Yeni sayfa (ya da kapanış): eski sayfanın kaydı, Claude isteği ve onay snackbar'ı geçersiz olur; geç gelen yanıt
+   * `pageToken` ile ayıklanır.
+   */
+  private resetPageState(): void {
+    this.pageToken++;
+    this.pageChanged.next();
+    this.pageImage = null;
+    this.pageRecord.set(null);
+    this.aiOrigin.set(null);
+    this.aiBusy.set(false);
+    this.snackBar.dismiss();
   }
 
   private setPreferredSource(kind: PreferredSource): void {
@@ -657,6 +697,7 @@ export class LabelingComponent {
   /** Sıradaki işaretlenmemiş sayfayı açar (önceden bulunmuş aday varsa onu kullanır). */
   private async showNext(): Promise<void> {
     const seq = this.pickSeq;
+    this.resetPageState();
     this.picking.set(true);
     this.current.set(null);
 

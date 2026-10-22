@@ -19,10 +19,13 @@ public sealed record LabelingActor(string? KeycloakId, string? Name);
 /// <summary>Anthropic API anahtarı yok → 503.</summary>
 public sealed class LabelingAiUnavailableException() : Exception("Claude labeling is not configured.");
 
-/// <summary>Kullanıcının saatlik gerçek Claude çağrısı kotası doldu → 429.</summary>
-public sealed class LabelingRateLimitException(TimeSpan? retryAfter) : Exception("Claude labeling rate limit exceeded.")
+/// <summary>Kullanıcının saatlik çağrı kotası (<c>Budget=false</c>) ya da günlük harcama sınırı doldu → 429.</summary>
+public sealed class LabelingRateLimitException(TimeSpan? retryAfter, bool budget = false)
+    : Exception("Claude labeling rate limit exceeded.")
 {
     public TimeSpan? RetryAfter { get; } = retryAfter;
+
+    public bool Budget { get; } = budget;
 }
 
 public interface ILabelingService
@@ -50,12 +53,17 @@ public sealed class LabelingService(
 {
     private const int MaxQuestions = 300;
     private const int MaxOptionsPerQuestion = 26;
+    private const string TotalBudgetKey = "labeling-ai-usd:all";
     private static readonly TimeSpan RateLimitWindow = TimeSpan.FromHours(1);
+    private static readonly TimeSpan BudgetWindow = TimeSpan.FromHours(24);
 
+    /// <summary>API anahtarı yoksa boş: UI Claude seçeneğini kapatır (her çağrı 503 olurdu).</summary>
     public IReadOnlyList<LabelingAiModelDto> GetAiModels() =>
-        options.Value.Models
-            .Select(m => new LabelingAiModelDto(m.Id, m.DisplayName, m.InputUsdPerMTok, m.OutputUsdPerMTok, m.IsDefault))
-            .ToList();
+        !detector.IsConfigured
+            ? []
+            : options.Value.Models
+                .Select(m => new LabelingAiModelDto(m.Id, m.DisplayName, m.InputUsdPerMTok, m.OutputUsdPerMTok, m.IsDefault))
+                .ToList();
 
     public async Task<LabelingPageDto?> GetPageAsync(string imageSha256, CancellationToken ct = default)
     {
@@ -88,6 +96,10 @@ public sealed class LabelingService(
         if (!detector.IsConfigured)
             throw new LabelingAiUnavailableException();
 
+        var userBudgetKey = $"labeling-ai-usd:{actor.KeycloakId}";
+        await EnsureBudgetAsync(userBudgetKey, options.Value.DailyBudgetUsdPerUser, ct);
+        await EnsureBudgetAsync(TotalBudgetKey, options.Value.DailyBudgetUsdTotal, ct);
+
         var decision = await rateLimitStore.TryAcquireAsync(
             $"labeling-ai:{actor.KeycloakId}", 1, options.Value.LiveCallsPerHour, RateLimitWindow, ct);
         if (!decision.Allowed)
@@ -95,19 +107,23 @@ public sealed class LabelingService(
 
         var detection = await detector.DetectAsync(image, model, ct);
         var cost = (detection.InputTokens * model.InputUsdPerMTok + detection.OutputTokens * model.OutputUsdPerMTok) / 1_000_000m;
+
+        // Ödenmiş sonuç: istemci bu arada vazgeçse de harcama sayılır ve sonuç kaydedilir (tekrar ödenmesin).
+        await ChargeBudgetAsync(userBudgetKey, cost);
+        await ChargeBudgetAsync(TotalBudgetKey, cost);
         logger.LogInformation(
             "[Labeling] Claude {Model} page {Hash}: {Questions} questions, {In}/{Out} tokens, ~${Cost:F4}",
             model.Id, image.Sha256[..16], detection.Predictions.Predictions.Count, detection.InputTokens,
             detection.OutputTokens, cost);
 
-        var page = await GetOrCreatePageAsync(image, ct);
+        var page = await GetOrCreatePageAsync(image.Sha256, image.Width, image.Height, CancellationToken.None);
         var saved = await UpsertResultAsync(page.Id, LabelingSource.Ai, model.Id, actor, result =>
         {
             result.BoxesJson = JsonSerializer.Serialize(detection.Predictions);
             result.InputTokens = detection.InputTokens;
             result.OutputTokens = detection.OutputTokens;
             result.EstimatedCostUsd = Math.Round(cost, 6);
-        }, ct);
+        }, CancellationToken.None);
 
         return new LabelingAiDetectResponseDto("live", image.Sha256, ToDto(saved));
     }
@@ -116,11 +132,11 @@ public sealed class LabelingService(
         LabelingSaveManualRequestDto request, LabelingActor actor, CancellationToken ct = default)
     {
         var baseSource = ParseBaseSource(request.BaseSource);
-        var predictions = Sanitize(request.Predictions);
-        var snapshot = request.ModelSnapshot is null ? null : Sanitize(request.ModelSnapshot);
-
-        using var image = LabelingImage.Decode(request.ImageBase64);
-        var page = await GetOrCreatePageAsync(image, ct);
+        // Görsel çözülmez: hash + boyut yeter (kutular sayfa sınırına kırpılır).
+        var header = LabelingImage.ReadHeader(request.ImageBase64);
+        var page = await GetOrCreatePageAsync(header.Sha256, header.Width, header.Height, ct);
+        var predictions = Sanitize(request.Predictions, page.Width, page.Height);
+        var snapshot = request.ModelSnapshot is null ? null : Sanitize(request.ModelSnapshot, page.Width, page.Height);
 
         await UpsertResultAsync(page.Id, LabelingSource.Manual, string.Empty, actor, result =>
         {
@@ -135,20 +151,37 @@ public sealed class LabelingService(
                 result => result.BoxesJson = JsonSerializer.Serialize(snapshot), ct);
         }
 
-        return (await GetPageAsync(image.Sha256, ct))!;
+        return (await GetPageAsync(header.Sha256, ct))!;
     }
 
-    private async Task<LabelingPage> GetOrCreatePageAsync(LabelingImage image, CancellationToken ct)
+    /// <summary>Kullanıcı / toplam günlük harcama sınırı (mikro-USD sayaç) dolduysa yeni canlı çağrı yapılmaz.</summary>
+    private async Task EnsureBudgetAsync(string key, decimal limitUsd, CancellationToken ct)
     {
-        var page = await db.LabelingPages.FirstOrDefaultAsync(p => p.ImageSha256 == image.Sha256, ct);
+        var spent = await rateLimitStore.PeekAsync(key, ct);
+        if (spent.Count >= ToMicroUsd(limitUsd))
+            throw new LabelingRateLimitException(spent.RemainingWindow, budget: true);
+    }
+
+    private async Task ChargeBudgetAsync(string key, decimal costUsd)
+    {
+        var micro = ToMicroUsd(costUsd);
+        if (micro > 0)
+            await rateLimitStore.TryAcquireAsync(key, micro, int.MaxValue, BudgetWindow, CancellationToken.None);
+    }
+
+    private static int ToMicroUsd(decimal usd) => (int)Math.Clamp(Math.Ceiling(usd * 1_000_000m), 0, int.MaxValue);
+
+    private async Task<LabelingPage> GetOrCreatePageAsync(string sha256, int width, int height, CancellationToken ct)
+    {
+        var page = await db.LabelingPages.FirstOrDefaultAsync(p => p.ImageSha256 == sha256, ct);
         if (page is not null)
             return page;
 
         page = new LabelingPage
         {
-            ImageSha256 = image.Sha256,
-            Width = image.Width,
-            Height = image.Height,
+            ImageSha256 = sha256,
+            Width = width,
+            Height = height,
             CreatedAt = timeProvider.GetUtcNow().UtcDateTime,
         };
         db.LabelingPages.Add(page);
@@ -161,7 +194,7 @@ public sealed class LabelingService(
         {
             // Aynı sayfa eşzamanlı başka istekte oluşturuldu.
             db.Entry(page).State = EntityState.Detached;
-            return await db.LabelingPages.FirstAsync(p => p.ImageSha256 == image.Sha256, ct);
+            return await db.LabelingPages.FirstAsync(p => p.ImageSha256 == sha256, ct);
         }
     }
 
@@ -207,37 +240,41 @@ public sealed class LabelingService(
         throw new LabelingValidationException("labeling.invalidBaseSource");
     }
 
-    /// <summary>İstemcinin gönderdiği kutuları sınırlar ve negatif değerleri reddeder; JSONB'ye yalnız bilinen alanlar yazılır.</summary>
-    private static PredictionListDto Sanitize(PredictionListDto input)
+    /// <summary>
+    /// İstemcinin gönderdiği kutuları sınırlar: adet, negatif değer ve yalnız <c>class_id = 0</c> (question-detector'ın tek
+    /// sınıfı); koordinatlar sayfa sınırına kırpılır. JSONB'ye yalnız bilinen alanlar yazılır.
+    /// </summary>
+    private static PredictionListDto Sanitize(PredictionListDto input, int pageWidth, int pageHeight)
     {
         var questions = input.Predictions ?? [];
         if (questions.Count > MaxQuestions || questions.Any(q => (q.Subpredictions?.Count ?? 0) > MaxOptionsPerQuestion))
             throw new LabelingValidationException("labeling.tooManyBoxes");
 
+        PredictionDto Box(PredictionDto b, List<PredictionDto> children)
+        {
+            if (b.ClassId != 0 || b.X < 0 || b.Y < 0 || b.Width < 0 || b.Height < 0)
+                throw new LabelingValidationException("labeling.invalidBox");
+            var x = Math.Min(b.X, pageWidth);
+            var y = Math.Min(b.Y, pageHeight);
+            return new PredictionDto
+            {
+                ClassId = 0,
+                X = x,
+                Y = y,
+                Width = Math.Min(b.Width, pageWidth - x),
+                Height = Math.Min(b.Height, pageHeight - y),
+                Subpredictions = children,
+            };
+        }
+
         return new PredictionListDto
         {
             Success = true,
-            Predictions = questions.Select(q => new PredictionDto
-            {
-                ClassId = q.ClassId,
-                X = NonNegative(q.X),
-                Y = NonNegative(q.Y),
-                Width = NonNegative(q.Width),
-                Height = NonNegative(q.Height),
-                Subpredictions = (q.Subpredictions ?? []).Select(a => new PredictionDto
-                {
-                    ClassId = a.ClassId,
-                    X = NonNegative(a.X),
-                    Y = NonNegative(a.Y),
-                    Width = NonNegative(a.Width),
-                    Height = NonNegative(a.Height),
-                }).ToList(),
-            }).ToList(),
+            Predictions = questions
+                .Select(q => Box(q, (q.Subpredictions ?? []).Select(a => Box(a, [])).ToList()))
+                .ToList(),
         };
     }
-
-    private static int NonNegative(int value) =>
-        value >= 0 ? value : throw new LabelingValidationException("labeling.invalidBox");
 
     private static string? Truncate(string? value, int max) =>
         value is null || value.Length <= max ? value : value[..max];

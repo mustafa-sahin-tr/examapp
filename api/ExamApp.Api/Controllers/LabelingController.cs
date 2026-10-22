@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos.Labeling;
 using ExamApp.Api.Services.Labeling;
+using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -15,11 +16,14 @@ namespace ExamApp.Api.Controllers;
 
 /// <summary>
 /// İşaretleme ekranının kaynakları (Model / Claude / Manuel). Gateway: <c>/api/exam/labeling/*</c>. Yalnız eğitim verisi
-/// üretebilen roller (Admin, QuestionTrainer) — gateway'deki <c>send-to-fix</c> kuralıyla aynı küme.
+/// üretebilen roller (Admin, QuestionTrainer) — gateway'deki <c>send-to-fix</c> kuralıyla aynı küme. QuestionTrainer realm
+/// rolü öğretmen askıya alınınca kalkmadığı için Teacher rolündeki çağıran ayrıca onaylı ve askıda olmayan öğretmen
+/// olmalı (<see cref="ApprovedTeacherPolicies.TeacherCapability"/>; Admin muaf) — bu uçlar şirket bütçesi harcar.
 /// </summary>
 [ApiController]
 [Route("api/labeling")]
 [Authorize(Roles = "Admin,QuestionTrainer")]
+[Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public class LabelingController : BaseController
 {
@@ -74,7 +78,9 @@ public class LabelingController : BaseController
                 Response.Headers.RetryAfter =
                     Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
             }
-            return StatusCode(StatusCodes.Status429TooManyRequests, Error("labeling.rateLimited", "LabelingRateLimited"));
+            return StatusCode(StatusCodes.Status429TooManyRequests, ex.Budget
+                ? Error("labeling.budgetExceeded", "LabelingBudgetExceeded")
+                : Error("labeling.rateLimited", "LabelingRateLimited"));
         }
         catch (LabelingAiUnavailableException)
         {

@@ -1048,6 +1048,8 @@ export class ImageSelectorComponent {
         if (this.selectionModeLocked() !== 'answer') {
           if (this.coordinateJsonMode()) {
             this.applyCoordinateRegions(file.name);
+          } else if (this.externalDetection) {
+            this.pageReady.emit(this.imageData()!);
           } else {
             this.predict();
           }
@@ -2245,6 +2247,7 @@ export class ImageSelectorComponent {
             duration: 3000,
           });
           this.trained.emit({ pageId: String(data.imageFile ?? ''), emptyPage, added: Number(data.added ?? 0) });
+          // Manuel kayıt = eğitime giden hal (sürükle-bırak sorular eğitime gitmediği için kayda da girmez).
           this.saveManualRecord(sentImage!, mcqQuestions);
           if (
             advance &&

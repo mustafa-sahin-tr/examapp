@@ -35,10 +35,18 @@ public sealed class LabelingAiException(string message, Exception? inner = null)
 /// </summary>
 public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
 {
-    private const int MaxOutputTokens = 16000;
+    // Düşünme token'ları da bu sınıra dahil; yanıt küçük bir JSON. Sınır istek başına maliyeti de sınırlar.
+    private const int PageMaxOutputTokens = 8000;
+    private const int CropMaxOutputTokens = 4000;
 
     // Soru kırpmasına eklenen kenar payı (orijinal piksel): kutu sınırdaki şık harfini kesmesin.
     private const int CropPadding = 12;
+
+    // Şık kutusuna eklenen pay (orijinal piksel): model kutuyu harfin hemen kenarından çiziyor, harfin solu kesiliyordu.
+    private const int OptionPadding = 4;
+
+    // Soru kutusuna eklenen pay: model kutuyu soru numarasının hemen kenarından çiziyor.
+    private const int QuestionPadding = 6;
 
     private const string SystemPrompt =
         "You locate regions on scanned pages of Turkish school test books for an object-detection training set. " +
@@ -75,7 +83,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
             throw new InvalidOperationException("Anthropic API key is not configured.");
 
         var page = image.Encode(_options.MaxImageEdge);
-        var (questions, pageUsage) = await AskAsync<QuestionBoxes>(model,
+        var (questions, pageUsage) = await AskAsync<QuestionBoxes>(model, PageMaxOutputTokens,
             page,
             $"This image is one test-book page ({page.Width}x{page.Height} px). Find every multiple-choice question. " +
             "For each question return ONE box that encloses the whole question: its number, the stem, any figure or " +
@@ -86,8 +94,10 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
         var questionRects = (questions.Questions ?? [])
             .Select(q => page.ToPage(q.X1, q.Y1, q.X2, q.Y2))
             .Where(r => r.Width > 4 && r.Height > 4)
+            .Take(_options.MaxQuestionsPerPage)
             .ToList();
 
+        var pageBounds = new Rectangle(0, 0, image.Width, image.Height);
         long inputTokens = pageUsage.Input;
         long outputTokens = pageUsage.Output;
         using var gate = new SemaphoreSlim(_options.MaxParallelCrops);
@@ -99,26 +109,47 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
             {
                 var padded = Rectangle.Inflate(rect, CropPadding, CropPadding);
                 var crop = image.Encode(_options.MaxImageEdge, padded);
-                var (options, usage) = await AskAsync<OptionBoxes>(model,
+                OptionBoxes options;
+                (long Input, long Output) usage;
+                try
+                {
+                    (options, usage) = await AskAsync<OptionBoxes>(model, CropMaxOutputTokens,
                     crop,
                     $"This image is a single multiple-choice question cropped from a test page ({crop.Width}x{crop.Height} px). " +
                     "Find each answer option (usually labeled A), B), C), D), E) or A. B. ...). For each option return one " +
-                    "box that encloses the option letter and its whole content (text, formula or picture). " +
+                    "box that encloses the option letter completely (including its left edge and parenthesis) and " +
+                    "its whole content (text, formula or picture), with a margin of a few pixels. " +
                     "Ignore the question number and the stem. Return the options in label order.",
                     ct);
+                }
+                catch (LabelingAiException ex)
+                {
+                    // Tek soru yüzünden ödenmiş sayfa çöpe gitmesin: soru şıksız kalır, kullanıcı şıkları elle çizer.
+                    _logger.LogWarning(ex, "[Labeling] option detection failed for one question (model {Model})", model.Id);
+                    options = new OptionBoxes([]);
+                    usage = (0, 0);
+                }
                 Interlocked.Add(ref inputTokens, usage.Input);
                 Interlocked.Add(ref outputTokens, usage.Output);
+
+                var optionRects = (options.Options ?? [])
+                    .Select(o => crop.ToPage(o.X1, o.Y1, o.X2, o.Y2))
+                    .Where(r => r.Width > 2 && r.Height > 2)
+                    .Select(r => Rectangle.Intersect(Rectangle.Inflate(r, OptionPadding, OptionPadding), pageBounds))
+                    .ToList();
+                // Eğitim verisinde şıklar sorunun içinde olmalı: soru kutusu pay + şıkların birleşimi kadar genişler.
+                var question = optionRects.Aggregate(
+                    Rectangle.Intersect(Rectangle.Inflate(rect, QuestionPadding, QuestionPadding), pageBounds),
+                    Rectangle.Union);
 
                 return new PredictionDto
                 {
                     ClassId = 0,
-                    X = rect.X,
-                    Y = rect.Y,
-                    Width = rect.Width,
-                    Height = rect.Height,
-                    Subpredictions = (options.Options ?? [])
-                        .Select(o => crop.ToPage(o.X1, o.Y1, o.X2, o.Y2))
-                        .Where(r => r.Width > 2 && r.Height > 2)
+                    X = question.X,
+                    Y = question.Y,
+                    Width = question.Width,
+                    Height = question.Height,
+                    Subpredictions = optionRects
                         .Select(r => new PredictionDto { ClassId = 0, X = r.X, Y = r.Y, Width = r.Width, Height = r.Height })
                         .ToList(),
                 };
@@ -136,12 +167,12 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
     }
 
     private async Task<(T Result, (long Input, long Output) Usage)> AskAsync<T>(
-        LabelingAiModelOption model, EncodedRegion region, string instruction, CancellationToken ct)
+        LabelingAiModelOption model, int maxOutputTokens, EncodedRegion region, string instruction, CancellationToken ct)
     {
         var chatOptions = new ChatOptions
         {
             ModelId = model.Id,
-            MaxOutputTokens = MaxOutputTokens,
+            MaxOutputTokens = maxOutputTokens,
             Reasoning = ParseEffort(_options.Effort) is { } effort ? new ReasoningOptions { Effort = effort } : null,
         };
 

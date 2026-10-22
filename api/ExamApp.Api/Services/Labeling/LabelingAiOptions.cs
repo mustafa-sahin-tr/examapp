@@ -25,6 +25,21 @@ public class LabelingAiOptions
     [Range(1, 16)]
     public int MaxParallelCrops { get; set; } = 4;
 
+    /// <summary>
+    /// Bir sayfada şık tespiti yapılacak en fazla soru (her soru ayrı bir Claude çağrısıdır); fazlası şıksız kalmaz,
+    /// hiç alınmaz. İstek başına maliyetin üst sınırı.
+    /// </summary>
+    [Range(1, 200)]
+    public int MaxQuestionsPerPage { get; set; } = 40;
+
+    /// <summary>Kullanıcı başına 24 saatlik tahmini Claude harcama sınırı (USD).</summary>
+    [Range(0.01, 10_000)]
+    public decimal DailyBudgetUsdPerUser { get; set; } = 5m;
+
+    /// <summary>Tüm kullanıcılar için 24 saatlik tahmini Claude harcama sınırı (USD).</summary>
+    [Range(0.01, 10_000)]
+    public decimal DailyBudgetUsdTotal { get; set; } = 25m;
+
     /// <summary>Kullanıcı başına saatte en fazla gerçek Claude çağrısı (kayıttan dönenler sayılmaz).</summary>
     [Range(1, 10_000)]
     public int LiveCallsPerHour { get; set; } = 60;

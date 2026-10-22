@@ -11,6 +11,7 @@
     "pageNotFound": "Bu sayfa için kayıt yok.",
     "aiUnavailable": "Claude ile işaretleme yapılandırılmamış (API anahtarı yok).",
     "aiFailed": "Claude bu sayfayı işaretleyemedi. Tekrar deneyin ya da başka bir model seçin.",
-    "rateLimited": "Saatlik Claude çağrı sınırına ulaştınız. Biraz sonra tekrar deneyin."
+    "rateLimited": "Saatlik Claude çağrı sınırına ulaştınız. Biraz sonra tekrar deneyin.",
+    "budgetExceeded": "Günlük Claude harcama sınırına ulaşıldı. Yarın tekrar deneyin ya da Model kaynağını kullanın."
   }
 }

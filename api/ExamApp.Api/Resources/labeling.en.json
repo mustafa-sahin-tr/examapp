@@ -11,6 +11,7 @@
     "pageNotFound": "No record for this page.",
     "aiUnavailable": "Claude labeling is not configured (no API key).",
     "aiFailed": "Claude could not label this page. Try again or pick another model.",
-    "rateLimited": "You reached the hourly Claude call limit. Try again later."
+    "rateLimited": "You reached the hourly Claude call limit. Try again later.",
+    "budgetExceeded": "The daily Claude spending limit was reached. Try again tomorrow or use the Model source."
   }
 }

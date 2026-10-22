@@ -373,6 +373,11 @@ builder.Services.AddAdminUserListRateLimiting();
 builder.Services.AddOptions<ExamApp.Api.Services.Labeling.LabelingAiOptions>()
     .BindConfiguration(ExamApp.Api.Services.Labeling.LabelingAiOptions.SectionName)
     .ValidateDataAnnotations()
+    .Validate(o => o.Models.All(m => !string.IsNullOrWhiteSpace(m.Id) && !string.IsNullOrWhiteSpace(m.DisplayName)
+                                     && m.InputUsdPerMTok >= 0 && m.OutputUsdPerMTok >= 0)
+                   && o.Models.Select(m => m.Id).Distinct().Count() == o.Models.Count
+                   && o.Models.Count(m => m.IsDefault) <= 1,
+        "Anthropic:Models: every model needs a unique Id, a DisplayName and non-negative prices; at most one IsDefault.")
     .ValidateOnStart();
 builder.Services.AddSingleton<ExamApp.Api.Services.Labeling.IClaudeLabelDetector, ExamApp.Api.Services.Labeling.ClaudeLabelDetector>();
 builder.Services.AddScoped<ExamApp.Api.Services.Labeling.ILabelingService, ExamApp.Api.Services.Labeling.LabelingService>();

@@ -2,7 +2,10 @@ using System;
 using System.IO;
 using System.Security.Cryptography;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Memory;
+using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
@@ -16,6 +19,17 @@ public sealed class LabelingImage : IDisposable
 {
     /// <summary>Çözülmüş görsel için üst sınır (base64 öncesi bayt).</summary>
     public const int MaxBytes = 20 * 1024 * 1024;
+
+    /// <summary>
+    /// Piksel sınırları — küçük bir dosya devasa boyut bildirip belleği tüketmesin (decompression bomb). Başlık
+    /// <see cref="Image.Identify(DecoderOptions, ReadOnlySpan{byte})"/> ile okunur, sınır aşılırsa görsel hiç çözülmez.
+    /// </summary>
+    public const long MaxPixels = 40_000_000;
+
+    public const int MaxEdge = 12_000;
+
+    // Çok kareli GIF/TIFF/WebP'nin yalnız ilk karesi.
+    private static readonly DecoderOptions DecoderOptions = new() { MaxFrames = 1 };
 
     private readonly Image<Rgb24> _image;
 
@@ -31,23 +45,36 @@ public sealed class LabelingImage : IDisposable
 
     public int Height => _image.Height;
 
-    /// <summary>Base64 (data URL öneki olabilir) → görsel. Geçersiz/çok büyükse <see cref="LabelingValidationException"/>.</summary>
+    /// <summary>
+    /// Base64 (data URL öneki olabilir) → görsel. EXIF yönü uygulanır (tarayıcı tuvali de öyle gösterir; kutular aynı
+    /// uzayda olsun); hash ham baytlardandır. Geçersiz/çok büyükse <see cref="LabelingValidationException"/>.
+    /// </summary>
     public static LabelingImage Decode(string base64)
     {
         var bytes = DecodeBase64(base64);
+        ReadHeader(bytes);
         try
         {
-            var image = Image.Load<Rgb24>(bytes);
+            var image = Image.Load<Rgb24>(DecoderOptions, bytes);
+            image.Mutate(ctx => ctx.AutoOrient());
             return new LabelingImage(image, ComputeSha256(bytes));
         }
-        catch (Exception ex) when (ex is UnknownImageFormatException or InvalidImageContentException)
+        catch (Exception ex) when (IsImageError(ex))
         {
             throw new LabelingValidationException("labeling.invalidImage");
         }
     }
 
-    /// <summary>Hash için görseli çözmeden yalnız baytları okur.</summary>
-    public static string HashOnly(string base64) => ComputeSha256(DecodeBase64(base64));
+    /// <summary>
+    /// Görseli çözmeden hash ve (EXIF yönü uygulanmış) boyut — manuel kayıt yalnız bunlara ihtiyaç duyar.
+    /// Sınırlar <see cref="Decode"/> ile aynı.
+    /// </summary>
+    public static LabelingImageHeader ReadHeader(string base64)
+    {
+        var bytes = DecodeBase64(base64);
+        var (width, height) = ReadHeader(bytes);
+        return new LabelingImageHeader(ComputeSha256(bytes), width, height);
+    }
 
     public static bool IsValidSha256(string? value) =>
         value is { Length: 64 } && value.AsSpan().IndexOfAnyExcept("0123456789abcdef") < 0;
@@ -81,6 +108,33 @@ public sealed class LabelingImage : IDisposable
 
     public void Dispose() => _image.Dispose();
 
+    private static (int Width, int Height) ReadHeader(byte[] bytes)
+    {
+        ImageInfo info;
+        try
+        {
+            info = Image.Identify(DecoderOptions, bytes);
+        }
+        catch (Exception ex) when (IsImageError(ex))
+        {
+            throw new LabelingValidationException("labeling.invalidImage");
+        }
+
+        if (info.Width <= 0 || info.Height <= 0)
+            throw new LabelingValidationException("labeling.invalidImage");
+        if ((long)info.Width * info.Height > MaxPixels || Math.Max(info.Width, info.Height) > MaxEdge)
+            throw new LabelingValidationException("labeling.imageTooLarge");
+
+        // EXIF 5-8: görsel 90° döndürülerek gösterilir, genişlik/yükseklik yer değiştirir.
+        var rotated = info.Metadata.ExifProfile is { } exif
+                      && exif.TryGetValue(ExifTag.Orientation, out var orientation)
+                      && orientation.Value is >= 5 and <= 8;
+        return rotated ? (info.Height, info.Width) : (info.Width, info.Height);
+    }
+
+    private static bool IsImageError(Exception ex) =>
+        ex is ImageFormatException or NotSupportedException or InvalidMemoryOperationException;
+
     private static byte[] DecodeBase64(string base64)
     {
         if (string.IsNullOrWhiteSpace(base64))
@@ -103,6 +157,9 @@ public sealed class LabelingImage : IDisposable
 
     private static string ComputeSha256(byte[] bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
 }
+
+/// <summary>Görselin hash'i ve (EXIF yönü uygulanmış) boyutu.</summary>
+public sealed record LabelingImageHeader(string Sha256, int Width, int Height);
 
 /// <summary>Claude'a gönderilen JPEG ve onu orijinal sayfa uzayına geri çeviren ofset/çarpan.</summary>
 public sealed record EncodedRegion(byte[] Jpeg, int Width, int Height, int OffsetX, int OffsetY, double ScaleX, double ScaleY)

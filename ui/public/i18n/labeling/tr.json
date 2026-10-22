@@ -24,18 +24,18 @@
   "trainHint": "Sayfayı, tüm soruları işaretlenmiş olarak eğitim verisine ekle",
   "sending": "Gönderiliyor…",
   "bank": {
-    "save": "Bankaya kaydet",
+    "save": "Havuza kaydet",
     "saving": "Kaydediliyor…",
-    "hint": "Sayfadaki soruları doğru şıklarıyla, teste bağlamadan soru bankasına kaydet (ders/konu sınıflandırması otomatik), ardından Eğit gibi eğitime gönderip sonraki sayfaya geç.",
-    "noMcq": "Bankaya kaydedilecek çoktan seçmeli soru yok.",
-    "saved": "{{count}} soru bankaya kaydedildi; sınıflandırma arka planda başladı.",
-    "alreadySaved": "Bu sayfanın soruları daha önce bankaya kaydedildi ({{count}} soru). Yeniden kaydedilirse sorular ikinci kez oluşur.",
+    "hint": "Sayfadaki soruları doğru şıklarıyla, teste bağlamadan soru havuzuna kaydet (ders/konu sınıflandırması otomatik), ardından Eğit gibi eğitime gönderip sonraki sayfaya geç.",
+    "noMcq": "Havuza kaydedilecek çoktan seçmeli soru yok.",
+    "saved": "{{count}} soru havuza kaydedildi; sınıflandırma arka planda başladı.",
+    "alreadySaved": "Bu sayfanın soruları daha önce havuza kaydedildi ({{count}} soru). Yeniden kaydedilirse sorular ikinci kez oluşur.",
     "saveAgain": "Yine de kaydet",
-    "failed": "Sorular bankaya kaydedilemedi.",
-    "cardTitle": "Soru bankası",
-    "cardSaved": "Bankaya kaydedildi ({{count}} soru)",
-    "forbidden": "Bankaya soru kaydetmek için öğretmen ya da yönetici olmalısınız.",
-    "savedAndTrained": "{{count}} soru bankaya kaydedildi ve eğitime gönderildi; sınıflandırma arka planda başladı."
+    "failed": "Sorular havuza kaydedilemedi.",
+    "cardTitle": "Soru havuzu",
+    "cardSaved": "Havuza kaydedildi ({{count}} soru)",
+    "forbidden": "Havuza soru kaydetmek için öğretmen ya da yönetici olmalısınız.",
+    "savedAndTrained": "{{count}} soru havuza kaydedildi ve eğitime gönderildi; sınıflandırma arka planda başladı."
   },
   "stats": {
     "label": "Oturum sayaçları",

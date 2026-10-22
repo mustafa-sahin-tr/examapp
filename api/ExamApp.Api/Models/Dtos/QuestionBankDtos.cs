@@ -108,7 +108,7 @@ public class QuestionBankItemDto
     public bool IsOwn { get; set; }
 
     /// <summary>
-    /// issue #472: "Bankadan ekle" ile teste bağlanabilir mi (UI ipucu — karar sunucuda): kendi sorusu ya da sahibi damgalı
+    /// issue #472: "Havuzdan ekle" ile teste bağlanabilir mi (UI ipucu — karar sunucuda): kendi sorusu ya da sahibi damgalı
     /// soru. Başkasının sahipsiz (legacy) sorusu bağlanamaz (bkz. <c>QuestionTestLinkService</c>).
     /// </summary>
     public bool CanLink { get; set; }

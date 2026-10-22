@@ -26,7 +26,7 @@ public sealed class QuestionBankLinkRateLimitOptions
 }
 
 /// <summary>
-/// "Bankadan ekle" (<c>POST api/questions/test/{testId}/bank-questions</c>) için KULLANICI (sub) başına sabit pencere
+/// "Havuzdan ekle" (<c>POST api/questions/test/{testId}/bank-questions</c>) için KULLANICI (sub) başına sabit pencere
 /// rate limit (issue #472 security review L2): her istek 60'a kadar soru için görünürlük alt sorgusu, bir advisory lock ve bir
 /// yazma yapar; döngüyle DB yükü üretilmesin. Normal kullanımda dialog başına tek istek atılır.
 /// <see cref="QuestionBankSearchRateLimiting"/> ile aynı desen.

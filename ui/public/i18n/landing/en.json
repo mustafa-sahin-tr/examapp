@@ -26,7 +26,7 @@
   "hero": {
     "titleLead": "Success in Every Exam — One",
     "titleHighlight": "Powerful Platform.",
-    "description": "{{ brand.name }} is a complete online exam and worksheet platform built for students, teachers and parents. Reach your goals with a smart question bank, real-time exams and progress tracking.",
+    "description": "{{ brand.name }} is a complete online exam and worksheet platform built for students, teachers and parents. Reach your goals with a smart question pool, real-time exams and progress tracking.",
     "cta": "Explore Worksheets",
     "reviewsLabel": "Student Reviews",
     "activeStudents": "10,000+ Active Students"

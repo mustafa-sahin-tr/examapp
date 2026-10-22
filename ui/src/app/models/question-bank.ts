@@ -36,7 +36,7 @@ export interface QuestionBankItem {
   hasCorrectAnswer: boolean;
   testCount: number;
   isOwn: boolean;
-  /** issue #472: "Bankadan ekle" ile teste bağlanabilir mi (kendi sorusu ya da sahibi belli soru). */
+  /** issue #472: "Havuzdan ekle" ile teste bağlanabilir mi (kendi sorusu ya da sahibi belli soru). */
   canLink: boolean;
   createTime: string;
 }

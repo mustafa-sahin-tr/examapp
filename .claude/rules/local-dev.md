@@ -423,7 +423,7 @@ QuestionTrainer (onaylı, askıda olmayan öğretmen; gateway'de de kural var).
 - Kaba ölçüm (2026-10-22, A4 test sayfası, effort low): Opus 5.5 ~7-13 sn, ~$0.04-0.05/sayfa; Haiku 5.5 ~11 sn,
   ~$0.001/sayfa — Ocelot'un varsayılan 90 sn zaman aşımının altında.
 
-**Issue #470 — işaretleme ekranından soru bankasına kayıt.** Araç çubuğunda **Bankaya kaydet** = bankaya kayıt + başarılıysa
+**Issue #470 — işaretleme ekranından soru bankasına kayıt.** Araç çubuğunda **Havuza kaydet** = bankaya kayıt + başarılıysa
 **Eğit** ile aynı akış (send-to-fix → manuel kayıt → sonraki sayfa; eğitim başarısızsa sayfa açık kalır, Eğit ile yeniden
 denenir; kayıt başarısızsa eğitime gönderilmez). Düz **Eğit** değişmedi (bankaya yazmaz). `POST /api/exam/labeling/pages/bank` sayfadaki MCQ soruları müfettişte
 seçilen doğru şıkla, teste bağlamadan (`WorksheetQuestion` yok) mevcut toplu kayıtla (`SaveBulkQuestion`, `TestId=null`)
@@ -433,7 +433,7 @@ ister (QuestionTrainer tek başına yetmez); kullanıcı başına saatte 30 kay�
 ikinci kez kaydedilmek istenirse 409 `LabelingPageAlreadyInBank` → UI "Yine de kaydet" (force; sorular ikinci kez oluşur;
 süren kayıt force ile de aşılmaz). Şık kutuları soru kutusuna kırpılır. Pasaj ve kitap adı (`BookName`) bu ekrandan kaydedilmez (açık soru).
 
-**Issue #472 — test ekranında "Bankadan ekle".** Test detayında (`/test/:id`, düzenleyebilen öğretmen/admin) **Bankadan Ekle**
+**Issue #472 — test ekranında "Havuzdan ekle".** Test detayında (`/test/:id`, düzenleyebilen öğretmen/admin) **Havuzdan Ekle**
 soru bankası panelini seçim modunda açar; seçilenler `POST /api/exam/questions/test/{testId}/bank-questions` `{questionIds}` (en çok 60)
 ile teste **bağlanır** (kopyalanmaz — test kopyalamayla aynı model; soruyu düzenlemek yine yalnız sahibine/admine açık, puan soruda kalır),
 testin sonuna istek sırasıyla; testte olanlar atlanır ve panelde pasif görünür. Bağlanabilir soru: kendi sorusu ya da görebildiği teste

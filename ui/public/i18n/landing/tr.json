@@ -26,7 +26,7 @@
   "hero": {
     "titleLead": "Her Sınavda Başarı — Tek",
     "titleHighlight": "Güçlü Platform.",
-    "description": "{{ brand.name }}, öğrenciler, öğretmenler ve ebeveynler için tasarlanmış kapsamlı bir online sınav ve çalışma yaprağı platformudur. Akıllı soru bankası, gerçek zamanlı sınavlar ve ilerleme takibi ile hedefine ulaş.",
+    "description": "{{ brand.name }}, öğrenciler, öğretmenler ve ebeveynler için tasarlanmış kapsamlı bir online sınav ve çalışma yaprağı platformudur. Akıllı soru havuzu, gerçek zamanlı sınavlar ve ilerleme takibi ile hedefine ulaş.",
     "cta": "Çalışma Yapraklarını Keşfet",
     "reviewsLabel": "Öğrenci Yorumları",
     "activeStudents": "10.000+ Aktif Öğrenci"

@@ -15,7 +15,7 @@ export interface BankQuestionDialogData {
 }
 
 /**
- * issue #472: test ekranında "Bankadan ekle" — soru bankası panelini seçim modunda açar; testte zaten olan sorular pasif.
+ * issue #472: test ekranında "Havuzdan ekle" — soru bankası panelini seçim modunda açar; testte zaten olan sorular pasif.
  * Seçilenler testin sonuna bağlanır; dialog sunucu yanıtıyla kapanır (vazgeçince `undefined`).
  */
 @Component({

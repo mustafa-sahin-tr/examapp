@@ -97,7 +97,7 @@
     "requestAssignPermission": "Atama izni iste",
     "unclassifiedChip": "{{count}} soru sınıflandırılmadı",
     "addQuestion": "Soru Ekle",
-    "addFromBank": "Bankadan Ekle",
+    "addFromBank": "Havuzdan Ekle",
     "edit": "Düzenle",
     "classProgressTitle": "Sınıf İlerlemesi",
     "assignmentsLoading": "Atamalar yükleniyor...",
@@ -225,7 +225,7 @@
     "placeholder": "Yorumlar yükleniyor…"
   },
   "bankDialog": {
-    "title": "Bankadan soru ekle",
+    "title": "Havuzdan soru ekle",
     "subtitle": "Hazır sorulardan seçin; seçilenler testin sonuna eklenir. Testte zaten olan sorular seçilemez.",
     "selectedCount": "{{count}} soru seçildi",
     "cancel": "Vazgeç",

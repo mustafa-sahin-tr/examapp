@@ -97,7 +97,7 @@
     "requestAssignPermission": "Request assign permission",
     "unclassifiedChip": "{{count}} questions unclassified",
     "addQuestion": "Add Question",
-    "addFromBank": "Add from Bank",
+    "addFromBank": "Add from Pool",
     "edit": "Edit",
     "classProgressTitle": "Class Progress",
     "assignmentsLoading": "Loading assignments...",
@@ -225,7 +225,7 @@
     "placeholder": "Loading comments…"
   },
   "bankDialog": {
-    "title": "Add questions from the bank",
+    "title": "Add questions from the pool",
     "subtitle": "Pick ready-made questions; they are appended to the end of the test. Questions already in the test cannot be selected.",
     "selectedCount": "{{count}} selected",
     "cancel": "Cancel",

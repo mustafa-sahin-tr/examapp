@@ -43,7 +43,7 @@ const EMPTY_PAGE: QuestionBankPage = { items: [], total: 0, skip: 0, take: 0 };
 
 /**
  * issue #471: soru bankası arama paneli — sınıf → ders → konu → alt konu kademeli seçim, durum filtreleri, sayfalı
- * sonuç ızgarası ve önizleme. Soru bankası sayfası kullanır; test ekranındaki "Bankadan ekle" (#472) aynı bileşeni
+ * sonuç ızgarası ve önizleme. Soru bankası sayfası kullanır; test ekranındaki "Havuzdan ekle" (#472) aynı bileşeni
  * `selectable` ile seçim modunda kullanır (zaten testte olanlar `disabledIds` ile pasif).
  */
 @Component({

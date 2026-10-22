@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ExamApp.Api.Services.Questions;
 
 /// <summary>
-/// issue #472: test ekranındaki "Bankadan ekle" — hazır soruları teste BAĞLAR (kopyalamaz; test kopyalamayla aynı model,
+/// issue #472: test ekranındaki "Havuzdan ekle" — hazır soruları teste BAĞLAR (kopyalamaz; test kopyalamayla aynı model,
 /// tek soru satırı birden çok testte). Soruyu düzenleme yetkisi değişmez: yalnız sahibi/admin (<see cref="IQuestionOwnershipGuard.CanModifyQuestionAsync"/>).
 /// Test yazma yetkisi (sahibi/admin) çağıranın (controller) sorumluluğundadır.
 /// </summary>

@@ -5,13 +5,15 @@ import { Subject, of, throwError } from 'rxjs';
 import { MatButtonToggleChange } from '@angular/material/button-toggle';
 import { MatSelectChange } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 
 import { LabelingComponent } from './labeling.component';
 import { pageIdOf } from './labeling-pool';
+import { LabelingPromptDialogComponent } from './labeling-prompt-dialog/labeling-prompt-dialog.component';
 import { ImageSelectorComponent, TrainedPage } from '../image-selector/image-selector.component';
 import { QuestionDetectorService } from '../../services/question-detector.service';
 import { LabelingService } from '../../services/labeling.service';
-import { DetectionSource, LabelingAiModel, LabelingPage, LabelingResult } from '../../models/labeling';
+import { DetectionSource, LabelingAiModel, LabelingPage, LabelingPromptState, LabelingResult } from '../../models/labeling';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import labelingTr from '../../../../public/i18n/labeling/tr.json';
 
@@ -485,6 +487,7 @@ describe('LabelingComponent', () => {
         inputTokens: null,
         outputTokens: null,
         estimatedCostUsd: null,
+        promptVersion: null,
         createdByName: 'Eğitmen',
         createdAt: '2026-10-22T00:00:00Z',
         updatedAt: '2026-10-22T00:00:00Z',
@@ -524,7 +527,7 @@ describe('LabelingComponent', () => {
       expect(selector().applyExternalPrediction).toHaveBeenCalledWith(
         jasmine.any(Number),
         prediction(1),
-        { kind: 'Manual', base: { source: 'Model', modelName: null } }
+        { kind: 'Manual', base: { source: 'Model', modelName: null, promptVersion: null } }
       );
       expect(selector().predict).not.toHaveBeenCalled();
       expect(labelingApi.aiDetect).not.toHaveBeenCalled();
@@ -553,7 +556,7 @@ describe('LabelingComponent', () => {
       expect(selector().applyExternalPrediction).toHaveBeenCalledWith(
         jasmine.any(Number),
         prediction(7),
-        { kind: 'Ai', modelName: 'claude-a' }
+        { kind: 'Ai', modelName: 'claude-a', promptVersion: null }
       );
       expect(selector().predict).not.toHaveBeenCalled();
     });
@@ -739,6 +742,128 @@ describe('LabelingComponent', () => {
         prediction(2),
         jasmine.anything()
       );
+    });
+
+    it('claudeResult_CarriesPromptVersionIntoDetectionSource', async () => {
+      await setup([], false, [model]);
+      await pickFolder([image('a.webp')]);
+      labelingApi.aiDetect.and.returnValue(of({ ...aiResponse('claude-a'), result: { ...aiResult('claude-a'), promptVersion: 3 } }));
+
+      // Özel yöntem: onay diyaloğu olmadan doğrudan Claude çağrısı (sayfa + model zaten seçili).
+      await component['runClaude'](false, false);
+      await settle(fixture);
+
+      expect(selector().applyExternalPrediction).toHaveBeenCalledWith(
+        jasmine.any(Number),
+        prediction(7),
+        jasmine.objectContaining({ kind: 'Ai', modelName: 'claude-a', promptVersion: 3 })
+      );
+    });
+
+    describe('Claude prompt diyaloğu (openPromptDialog)', () => {
+      const promptState: LabelingPromptState = {
+        active: {
+          version: 2,
+          questionInstruction: 'q {width}x{height}',
+          optionInstruction: 'o {width}x{height}',
+          questionPadding: 6,
+          optionPadding: 4,
+          expandQuestionToOptions: true,
+          createdByName: 'Eğitmen',
+          createdAt: '2026-10-22T00:00:00Z',
+        },
+        defaults: {
+          version: 0,
+          questionInstruction: 'dq',
+          optionInstruction: 'do',
+          questionPadding: 6,
+          optionPadding: 4,
+          expandQuestionToOptions: true,
+          createdByName: null,
+          createdAt: null,
+        },
+        history: [],
+      };
+
+      /** MatDialog.open → afterClosed(result); dönen değer çağrı sayısı için spy olarak tutulur. */
+      function dialogClosesWith(result: LabelingPromptState | undefined) {
+        const dialog = TestBed.inject(MatDialog);
+        return spyOn(dialog, 'open').and.returnValue({ afterClosed: () => of(result) } as never);
+      }
+
+      it('openPromptDialog_OpensDialogWithoutAutoFocus', async () => {
+        await setup([], false, [model]);
+        const open = dialogClosesWith(undefined);
+
+        component.openPromptDialog();
+
+        expect(open).toHaveBeenCalledOnceWith(LabelingPromptDialogComponent, jasmine.objectContaining({ autoFocus: false }));
+      });
+
+      it('openPromptDialog_Cancelled_NoSnackbarAndNoClaudeCall', async () => {
+        await setup([], false, [model]);
+        await pickFolder([image('a.webp')]);
+        selector().detectionSource.set({ kind: 'Ai', modelName: 'claude-a' });
+        dialogClosesWith(undefined);
+        const snackBar = spyOn(TestBed.inject(MatSnackBar), 'open');
+
+        component.openPromptDialog();
+        await settle(fixture);
+
+        expect(snackBar).not.toHaveBeenCalled();
+        expect(labelingApi.aiDetect).not.toHaveBeenCalled();
+      });
+
+      it('openPromptDialog_SavedWithoutClaudeResult_ShowsSnackbarWithoutAction', async () => {
+        await setup([], false, [model]);
+        await pickFolder([image('a.webp')]);
+        selector().detectionSource.set({ kind: 'Manual' });
+        dialogClosesWith(promptState);
+        const snackBar = spyOn(TestBed.inject(MatSnackBar), 'open').and.returnValue({
+          onAction: () => new Subject<void>().asObservable(),
+        } as never);
+
+        component.openPromptDialog();
+        await settle(fixture);
+
+        expect(snackBar).toHaveBeenCalledTimes(1);
+        expect(labelingApi.aiDetect).not.toHaveBeenCalled();
+      });
+
+      it('openPromptDialog_SavedWhileClaudeShown_ActionReAsksClaudeWithoutForce', async () => {
+        await setup([], false, [model]);
+        await pickFolder([image('a.webp')]);
+        selector().detectionSource.set({ kind: 'Ai', modelName: 'claude-a', promptVersion: 1 });
+        labelingApi.aiDetect.and.returnValue(of(aiResponse('claude-a')));
+        dialogClosesWith(promptState);
+        const action = controllableSnackBar();
+
+        component.openPromptDialog();
+        expect(labelingApi.aiDetect).not.toHaveBeenCalled();
+
+        action.next();
+        await settle(fixture);
+
+        // Yeni sürüm ile yeniden soruş: önbellek yok sayılmaz (force=false), yalnız mevcut sayfa için çağrılır.
+        expect(labelingApi.aiDetect).toHaveBeenCalledOnceWith(jasmine.objectContaining({ model: 'claude-a', force: false }));
+      });
+
+      it('openPromptDialog_SavedWhileClaudeShown_PageChangedBeforeAction_NoClaudeCall', async () => {
+        await setup([], false, [model]);
+        await pickFolder([image('a.webp'), image('b.webp')]);
+        selector().detectionSource.set({ kind: 'Ai', modelName: 'claude-a' });
+        labelingApi.aiDetect.and.returnValue(of(aiResponse('claude-a')));
+        dialogClosesWith(promptState);
+        const action = controllableSnackBar();
+
+        component.openPromptDialog();
+        component.skip();
+        await settle(fixture);
+        action.next();
+        await settle(fixture);
+
+        expect(labelingApi.aiDetect).not.toHaveBeenCalled();
+      });
     });
   });
 });

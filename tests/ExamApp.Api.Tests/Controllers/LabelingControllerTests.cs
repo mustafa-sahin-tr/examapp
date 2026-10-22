@@ -70,7 +70,7 @@ public class LabelingControllerTests
             .ToList();
 
         actions.Select(m => m.Name).OrderBy(n => n)
-            .ShouldBe(new[] { "DetectWithAi", "GetAiModels", "GetPage", "SaveManual" });
+            .ShouldBe(new[] { "DetectWithAi", "GetAiModels", "GetPage", "GetPrompt", "SaveManual", "SavePrompt" });
 
         foreach (var m in actions)
         {
@@ -86,7 +86,7 @@ public class LabelingControllerTests
     public async Task DetectWithAi_Success_Returns200WithServiceResponse()
     {
         var response = new LabelingAiDetectResponseDto("live", new string('a', 64),
-            new LabelingResultDto("Ai", "claude-test", new PredictionListDto(), null, null, 1, 2, 0.1m, null,
+            new LabelingResultDto("Ai", "claude-test", new PredictionListDto(), null, null, 1, 2, 0.1m, 1, null,
                 DateTime.UtcNow, DateTime.UtcNow));
         _service.DetectWithAiAsync(Arg.Any<LabelingAiDetectRequestDto>(), Arg.Any<LabelingActor>(), Arg.Any<CancellationToken>())
             .Returns(response);
@@ -269,5 +269,85 @@ public class LabelingControllerTests
 
         var obj = result.ShouldBeOfType<ObjectResult>();
         obj.Value!.GetType().GetProperty("errorCode")!.GetValue(obj.Value).ShouldBe("LabelingRateLimited");
+    }
+
+    // ---------- Prompt uçları (GET/PUT api/labeling/prompt) ----------
+
+    private static LabelingPromptStateDto PromptState() => new(
+        new LabelingPromptDto(2, "q {width}", "o {width}", 6, 4, true, "Eğitmen", DateTime.UtcNow),
+        new LabelingPromptDto(0, "dq", "do", 6, 4, true, null, null),
+        [new LabelingPromptDto(2, "q {width}", "o {width}", 6, 4, true, "Eğitmen", DateTime.UtcNow)]);
+
+    private static LabelingSavePromptRequestDto SavePromptRequest() => new()
+    {
+        QuestionInstruction = "q {width}",
+        OptionInstruction = "o {width}",
+        QuestionPadding = 6,
+        OptionPadding = 4,
+        ExpandQuestionToOptions = true,
+    };
+
+    [Fact]
+    public async Task GetPrompt_ReturnsServiceStateWithOk()
+    {
+        var state = PromptState();
+        _service.GetPromptStateAsync(Arg.Any<CancellationToken>()).Returns(state);
+
+        var result = await NewController().GetPrompt(CancellationToken.None);
+
+        ((OkObjectResult)result).Value.ShouldBe(state);
+    }
+
+    [Fact]
+    public async Task SavePrompt_Success_ReturnsOkWithStateAndPassesActor()
+    {
+        var state = PromptState();
+        var request = SavePromptRequest();
+        _service.SavePromptAsync(Arg.Any<LabelingSavePromptRequestDto>(), Arg.Any<LabelingActor>(), Arg.Any<CancellationToken>())
+            .Returns(state);
+
+        var result = await NewController().SavePrompt(request, CancellationToken.None);
+
+        ((OkObjectResult)result).Value.ShouldBe(state);
+        await _service.Received(1).SavePromptAsync(
+            request,
+            Arg.Is<LabelingActor>(a => a.KeycloakId == TrainerKeycloakId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SavePrompt_ValidationException_Returns400()
+    {
+        _service.SavePromptAsync(default!, default!, default)
+            .ThrowsAsyncForAnyArgs(new LabelingValidationException("labeling.promptTooLong"));
+
+        var result = await NewController().SavePrompt(SavePromptRequest(), CancellationToken.None);
+
+        ((ObjectResult)result).StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+    }
+
+    [Fact]
+    public async Task SavePrompt_InvalidPadding_Returns400AndDoesNotReturnState()
+    {
+        _service.SavePromptAsync(default!, default!, default)
+            .ThrowsAsyncForAnyArgs(new LabelingValidationException("labeling.invalidPadding"));
+
+        var result = await NewController().SavePrompt(SavePromptRequest(), CancellationToken.None);
+
+        var obj = (ObjectResult)result;
+        obj.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+        obj.Value!.GetType().GetProperty("errorCode")!.GetValue(obj.Value).ShouldBeNull();
+    }
+
+    [Fact]
+    public void GetPrompt_And_SavePrompt_CarryRoleScopedAuthorizationFromController()
+    {
+        // Uçlar ayrıca [Authorize] almaz; sınıf düzeyindeki Admin/QuestionTrainer + onaylı öğretmen kapısını devralır.
+        foreach (var name in new[] { "GetPrompt", "SavePrompt" })
+        {
+            var method = typeof(LabelingController).GetMethod(name)!;
+            method.GetCustomAttributes<AllowAnonymousAttribute>().ShouldBeEmpty(name);
+            method.GetCustomAttributes<AuthorizeAttribute>().ShouldBeEmpty(name);
+        }
     }
 }

@@ -1289,8 +1289,64 @@ describe('ImageSelectorComponent', () => {
         expect(request.predictions.predictions.length).toBe(1);
         expect(request.predictions.predictions[0].class_id).toBe(0);
         expect(request.predictions.predictions[0].subpredictions.length).toBe(2);
-        expect(component.detectionSource()).toEqual({ kind: 'Manual', base: { source: 'Ai', modelName: 'claude-a' } });
+        expect(component.detectionSource()).toEqual({ kind: 'Manual', base: { source: 'Ai', modelName: 'claude-a', promptVersion: null } });
         expect(saved).toEqual(['data:image/png;base64,AAAA']);
+      });
+
+      function saveManualSpy() {
+        return spyOn(component['labelingService'], 'saveManual').and.returnValue(
+          of({ imageSha256: 'f'.repeat(64), width: 1, height: 1, results: [] })
+        );
+      }
+
+      it('sendToFix_AiSourceWithPromptVersion_SendsBasePromptVersion', () => {
+        arrangeSend({ kind: 'Ai', modelName: 'claude-a', promptVersion: 4 });
+        const saveManual = saveManualSpy();
+
+        component.sendToFix();
+
+        expect(saveManual.calls.mostRecent().args[0].basePromptVersion).toBe(4);
+      });
+
+      it('sendToFix_ManualFromAiBase_KeepsBasePromptVersionOfOriginalResult', () => {
+        arrangeSend({ kind: 'Manual', base: { source: 'Ai', modelName: 'claude-a', promptVersion: 2 } });
+        const saveManual = saveManualSpy();
+
+        component.sendToFix();
+
+        const request = saveManual.calls.mostRecent().args[0];
+        expect(request.baseSource).toBe('Ai');
+        expect(request.basePromptVersion).toBe(2);
+      });
+
+      it('sendToFix_ModelSourceWithPromptVersion_SendsNullBasePromptVersion', () => {
+        // Sürüm yalnız Claude kaynağına aittir; YOLO kaynağında bir sürüm bilgisi taşınmamalı.
+        arrangeSend({ kind: 'Model', modelName: 'yolo', promptVersion: 9 });
+        const saveManual = saveManualSpy();
+
+        component.sendToFix();
+
+        const request = saveManual.calls.mostRecent().args[0];
+        expect(request.baseSource).toBe('Model');
+        expect(request.basePromptVersion).toBeNull();
+      });
+
+      it('sendToFix_AiSourceWithoutPromptVersion_SendsNullBasePromptVersion', () => {
+        arrangeSend({ kind: 'Ai', modelName: 'claude-a' });
+        const saveManual = saveManualSpy();
+
+        component.sendToFix();
+
+        expect(saveManual.calls.mostRecent().args[0].basePromptVersion).toBeNull();
+      });
+
+      it('sendToFix_ManualFromModelBase_SendsNullBasePromptVersion', () => {
+        arrangeSend({ kind: 'Manual', base: { source: 'Model', modelName: null } });
+        const saveManual = saveManualSpy();
+
+        component.sendToFix();
+
+        expect(saveManual.calls.mostRecent().args[0].basePromptVersion).toBeNull();
       });
 
       it('sendToFix_ManualSaveFails_OnlyWarnsAndStillEmitsTrained', () => {

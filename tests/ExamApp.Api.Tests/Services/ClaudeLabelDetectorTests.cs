@@ -43,7 +43,7 @@ public class ClaudeLabelDetectorTests
         using var image = LabelingImage.Decode(Convert.ToBase64String(Png(10, 10)));
         var model = new LabelingAiModelOption { Id = "claude-test", DisplayName = "Test" };
 
-        await Should.ThrowAsync<InvalidOperationException>(() => detector.DetectAsync(image, model));
+        await Should.ThrowAsync<InvalidOperationException>(() => detector.DetectAsync(image, model, LabelingPromptSettings.Default));
     }
 
     private static byte[] Png(int width, int height)

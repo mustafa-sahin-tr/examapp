@@ -107,6 +107,7 @@
   "daily": {
     "title": "Daily questions",
     "setBadge": "Daily set",
+    "filledNote": "Not enough questions on this topic; the rest come from the general pool.",
     "step": "Question {{current}} / {{total}}",
     "stepAria": "Question {{n}}: {{status}}",
     "stepsAria": "Daily set progress",

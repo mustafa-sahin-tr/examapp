@@ -92,6 +92,15 @@
         <mat-icon matChipAvatar aria-hidden="true">check_circle</mat-icon>
         {{ t('completed') }}
       </mat-chip>
+      } @else if (scopeLabel()) {
+      <mat-chip class="daily-card__chip" data-chip="scope" disableRipple>
+        <mat-icon matChipAvatar aria-hidden="true">filter_alt</mat-icon>
+        {{ scopeLabel() }}
+      </mat-chip>
+      <mat-chip class="daily-card__chip" disableRipple>
+        <mat-icon matChipAvatar aria-hidden="true">timer</mat-icon>
+        {{ t('duration', { minutes: minutes() }) }}
+      </mat-chip>
       } @else {
       <mat-chip class="daily-card__chip" disableRipple>
         <mat-icon matChipAvatar aria-hidden="true">shuffle</mat-icon>
@@ -122,14 +131,14 @@
     }
     @case ('inProgress') {
     <button mat-flat-button color="primary" type="button" class="daily-card__cta" data-cta="start"
-      (click)="start.emit()">
+      (click)="onStart()">
       <mat-icon>play_arrow</mat-icon>
       {{ t('continue') }}
     </button>
     }
     @default {
     <button mat-flat-button color="primary" type="button" class="daily-card__cta" data-cta="start"
-      (click)="start.emit()">
+      (click)="onStart()">
       <mat-icon>play_arrow</mat-icon>
       {{ t('start') }}
     </button>
@@ -137,10 +146,32 @@
     }
   </div>
 
-  @if (state() === 'lowPool') {
-  <div class="daily-card__message daily-card__message--info daily-card__note">
-    <mat-icon aria-hidden="true">info</mat-icon>
-    <p>{{ t('lowPoolNote', { max: targetCount() }) }}</p>
+  @if (canChooseScope() || state() === 'lowPool' || filledFromGeneral()) {
+  <div class="daily-card__notes">
+    @if (canChooseScope()) {
+    <div class="daily-card__scope">
+      <button mat-button type="button" class="daily-card__scope-toggle" data-cta="scopeToggle"
+        [attr.aria-expanded]="scopeOpen()" aria-controls="daily-card-scope-picker" (click)="toggleScope()">
+        <mat-icon>{{ scopeOpen() ? 'close' : 'tune' }}</mat-icon>
+        {{ scopeOpen() ? t('scope.close') : t('scope.open') }}
+      </button>
+      @if (scopeOpen()) {
+      <app-daily-scope-picker id="daily-card-scope-picker" (scopeChange)="selectedScope.set($event)" />
+      }
+    </div>
+    }
+    @if (filledFromGeneral()) {
+    <div class="daily-card__message daily-card__message--info daily-card__note" data-note="filled">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <p>{{ t('scope.filledNote') }}</p>
+    </div>
+    }
+    @if (state() === 'lowPool') {
+    <div class="daily-card__message daily-card__message--info daily-card__note">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <p>{{ t('lowPoolNote', { max: targetCount() }) }}</p>
+    </div>
+    }
   </div>
   }
   }

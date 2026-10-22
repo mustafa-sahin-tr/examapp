@@ -7,6 +7,7 @@ import { Paged } from '../models/test-instance';
 import {
   DailySet,
   DailySetStartResult,
+  DailyStartScope,
   PracticeAnswerResult,
   PracticeAnswerSubmitRequest,
   PracticeNextQuestion,
@@ -68,9 +69,11 @@ export class PracticeService {
   /**
    * Günlük setin oturumunu açar ya da var olanı döner (idempotent). Tamamlanmış sette 200 +
    * `status: 'Completed'` + mevcut oturum; 409 yalnız set boşken.
+   * #66: `scope` verilirse ve set henüz başlamadıysa set o ders/konudan üretilir; başlamış sette sunucu yok sayar.
+   * Geçersiz kapsam 400.
    */
-  startDailySet(): Observable<DailySetStartResult> {
-    return this.http.post<DailySetStartResult>(`${this.baseUrl}/daily/start`, null);
+  startDailySet(scope: DailyStartScope | null = null): Observable<DailySetStartResult> {
+    return this.http.post<DailySetStartResult>(`${this.baseUrl}/daily/start`, scope);
   }
 
   /**

@@ -2,10 +2,16 @@ import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { MatSelectChange } from '@angular/material/select';
+import { of } from 'rxjs';
 
 import { DailyQuestionsCardComponent } from './daily-questions-card.component';
-import { DailySet } from '../../../models/practice';
+import { DailySet, DailyStartScope } from '../../../models/practice';
 import { translocoTestingModule } from '../../testing/transloco-testing';
+import { DailyScopePickerComponent } from '../daily-scope-picker/daily-scope-picker.component';
+import { StudentProfile } from '../../../models/student-profile';
+import { StudentService } from '../../../services/student.service';
+import { SubjectService } from '../../../services/subject.service';
 
 function dailySet(overrides: Partial<DailySet> = {}): DailySet {
   return {
@@ -27,7 +33,7 @@ function dailySet(overrides: Partial<DailySet> = {}): DailySet {
   standalone: true,
   imports: [DailyQuestionsCardComponent],
   template: `<app-daily-questions-card [dailySet]="set()" [loading]="loading()" [error]="error()"
-    [streak]="streak()" (start)="events.push('start')" (retry)="events.push('retry')"
+    [streak]="streak()" (start)="events.push('start'); scopes.push($event)" (retry)="events.push('retry')"
     (freePractice)="events.push('freePractice')" (goToProfile)="events.push('goToProfile')" />`,
 })
 class HostComponent {
@@ -36,6 +42,7 @@ class HostComponent {
   readonly error = signal(false);
   readonly streak = signal<number | null>(null);
   readonly events: string[] = [];
+  readonly scopes: Array<DailyStartScope | null> = [];
 }
 
 describe('DailyQuestionsCardComponent', () => {
@@ -57,9 +64,25 @@ describe('DailyQuestionsCardComponent', () => {
   }
 
   beforeEach(() => {
+    // Kapsam seçici (#66) açıldığında sınıf dersleri ve konular yüklenir.
+    const studentService = jasmine.createSpyObj<StudentService>('StudentService', ['getProfile']);
+    studentService.getProfile.and.returnValue(of({ gradeId: 7 } as Partial<StudentProfile> as StudentProfile));
+    const subjectService = jasmine.createSpyObj<SubjectService>('SubjectService', [
+      'getSubjectsByGrade',
+      'getTopicsBySubjectAndGrade',
+      'getSubTopicsByTopic',
+    ]);
+    subjectService.getSubjectsByGrade.and.returnValue(of([{ id: 3, name: 'Matematik' }]));
+    subjectService.getTopicsBySubjectAndGrade.and.returnValue(of([{ id: 30, name: 'Kesirler', subjectId: 3, gradeId: 7 }]));
+    subjectService.getSubTopicsByTopic.and.returnValue(of([]));
+
     TestBed.configureTestingModule({
       imports: [HostComponent, translocoTestingModule()],
-      providers: [provideNoopAnimations()],
+      providers: [
+        provideNoopAnimations(),
+        { provide: StudentService, useValue: studentService },
+        { provide: SubjectService, useValue: subjectService },
+      ],
     });
     fixture = TestBed.createComponent(HostComponent);
     host = fixture.componentInstance;
@@ -188,6 +211,110 @@ describe('DailyQuestionsCardComponent', () => {
 
     expect(q('.daily-card__chip--streak')).toBeTruthy();
     expect(text('.daily-card__chip--streak')).toContain('Seri: 4 gün');
+  });
+
+  describe('scope (issue #66)', () => {
+    const picker = () =>
+      fixture.debugElement.query(By.directive(DailyScopePickerComponent))?.componentInstance as
+        | DailyScopePickerComponent
+        | undefined;
+    const select = (value: number | null) => ({ value }) as MatSelectChange;
+
+    it('notStarted_WithoutSession_ShowsCollapsedToggle_StartEmitsNull', () => {
+      render({ set: dailySet() });
+
+      const toggle = q('[data-cta="scopeToggle"]');
+      expect(toggle).toBeTruthy();
+      expect(toggle.attributes['aria-expanded']).toBe('false');
+      expect(text('[data-cta="scopeToggle"]')).toContain('Ders/konu seç (isteğe bağlı)');
+      expect(picker()).toBeUndefined();
+
+      q('[data-cta="start"]').nativeElement.click();
+      expect(host.scopes).toEqual([null]);
+    });
+
+    it('toggleOpen_SelectSubjectAndTopic_StartEmitsScope', () => {
+      render({ set: dailySet() });
+      q('[data-cta="scopeToggle"]').nativeElement.click();
+      fixture.detectChanges();
+
+      expect(q('[data-cta="scopeToggle"]').attributes['aria-expanded']).toBe('true');
+      picker()!.onSubjectChange(select(3));
+      picker()!.onTopicChange(select(30));
+      fixture.detectChanges();
+
+      q('[data-cta="start"]').nativeElement.click();
+      expect(host.scopes).toEqual([{ subjectId: 3, topicId: 30, subTopicId: null }]);
+    });
+
+    it('toggleClosedAfterSelection_StartEmitsNull', () => {
+      render({ set: dailySet() });
+      q('[data-cta="scopeToggle"]').nativeElement.click();
+      fixture.detectChanges();
+      picker()!.onSubjectChange(select(3));
+
+      q('[data-cta="scopeToggle"]').nativeElement.click();
+      fixture.detectChanges();
+      expect(picker()).toBeUndefined();
+
+      q('[data-cta="start"]').nativeElement.click();
+      expect(host.scopes).toEqual([null]);
+    });
+
+    it('startedOrInProgressSet_HidesToggle', () => {
+      render({ set: dailySet({ sessionId: 9 }) });
+      expect(q('[data-cta="scopeToggle"]')).toBeNull();
+
+      render({ set: dailySet({ status: 'InProgress', answered: 1, sessionId: 9 }) });
+      expect(q('[data-cta="scopeToggle"]')).toBeNull();
+      q('[data-cta="start"]').nativeElement.click();
+      expect(host.scopes).toEqual([null]);
+    });
+
+    it('savedScope_ShowsScopeChipInsteadOfRandom_AndFilledNote', () => {
+      render({
+        set: dailySet({
+          status: 'InProgress',
+          answered: 1,
+          sessionId: 9,
+          scope: {
+            subjectId: 3,
+            subjectName: 'Matematik',
+            topicId: 30,
+            topicName: 'Kesirler',
+            subTopicId: null,
+            subTopicName: null,
+            scopedCount: 2,
+            filledFromGeneral: true,
+          },
+        }),
+      });
+
+      expect(text('[data-chip="scope"]')).toContain('Matematik · Kesirler');
+      expect(text('.daily-card__chips')).not.toContain('Sınıfından rastgele');
+      expect(text('[data-note="filled"]')).toContain('Bu konuda yeterli soru yok, kalanı genel havuzdan.');
+    });
+
+    it('savedScopeWithoutFill_HidesFilledNote', () => {
+      render({
+        set: dailySet({
+          sessionId: 9,
+          scope: {
+            subjectId: 3,
+            subjectName: 'Matematik',
+            topicId: null,
+            topicName: null,
+            subTopicId: null,
+            subTopicName: null,
+            scopedCount: 5,
+            filledFromGeneral: false,
+          },
+        }),
+      });
+
+      expect(text('[data-chip="scope"]')).toContain('Matematik');
+      expect(q('[data-note="filled"]')).toBeNull();
+    });
   });
 
   it('streak_NullOrZero_HidesChip', () => {

@@ -574,11 +574,23 @@
           <mat-icon matChipAvatar aria-hidden="true">bolt</mat-icon>
           {{ t('daily.setBadge') }}
         </mat-chip>
+        @if (dailyScopeLabel(); as scopeLabel) {
+        <mat-chip class="daily-bar__chip" data-chip="scope" disableRipple>
+          <mat-icon matChipAvatar aria-hidden="true">filter_alt</mat-icon>
+          {{ scopeLabel }}
+        </mat-chip>
+        }
       </mat-chip-set>
       <span class="daily-bar__step">{{ t('daily.step', { current: dailyStepNumber(), total: dailyTotal() }) }}</span>
     </div>
     <app-daily-progress-steps variant="steps" [total]="dailyTotal()" [results]="dailyResults()"
       [currentIndex]="dailyCurrentIndex()" [stepAriaLabel]="dailyStepAriaLabel" [ariaLabel]="t('daily.stepsAria')" />
+    @if (dailyFilledFromGeneral()) {
+    <div class="state-box state-box--info daily-bar__resume" role="status" data-note="filled">
+      <mat-icon>info</mat-icon>
+      <p class="state-text">{{ t('daily.filledNote') }}</p>
+    </div>
+    }
     @if (dailyResumed()) {
     <div class="state-box state-box--info daily-bar__resume" role="status">
       <mat-icon>history</mat-icon>

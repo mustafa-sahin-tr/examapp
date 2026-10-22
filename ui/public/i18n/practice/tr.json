@@ -107,6 +107,7 @@
   "daily": {
     "title": "Günün soruları",
     "setBadge": "Günlük set",
+    "filledNote": "Bu konuda yeterli soru yok, kalanı genel havuzdan.",
     "step": "Soru {{current}} / {{total}}",
     "stepAria": "{{n}}. soru: {{status}}",
     "stepsAria": "Günlük set ilerlemesi",

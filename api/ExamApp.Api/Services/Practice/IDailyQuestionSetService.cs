@@ -18,5 +18,7 @@ public interface IDailyQuestionSetService
     /// Kullanıcı oturumu set bitmeden sonlandırdıysa oturum yeniden açılır. Tamamlanmış sette yeni oturum açılmaz.
     /// </summary>
     /// <returns>null: set boş (havuzda soru yok / sınıf yok) — başlatılacak bir şey yok.</returns>
-    Task<DailyStartResultDto?> StartTodayAsync(StudentProfileDto student, CancellationToken ct = default);
+    /// <param name="scopeRequest">#66: isteğe bağlı ders/konu/alt konu; yalnız oturum açılmamış sette uygulanır, geçersizse
+    /// <see cref="DailyScopeInvalidException"/>.</param>
+    Task<DailyStartResultDto?> StartTodayAsync(StudentProfileDto student, DailyStartRequestDto? scopeRequest = null, CancellationToken ct = default);
 }

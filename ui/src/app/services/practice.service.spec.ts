@@ -125,6 +125,23 @@ describe('PracticeService', () => {
       req.flush({ sessionId: 12 });
       expect(sessionId).toBe(12);
     });
+
+    it('startDailySet_WithScope_PostsScopeBody (#66)', () => {
+      service.startDailySet({ subjectId: 3, topicId: 30, subTopicId: null }).subscribe();
+
+      const req = httpMock.expectOne('/api/exam/practice/daily/start');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ subjectId: 3, topicId: 30, subTopicId: null });
+      req.flush({ sessionId: 12, status: 'NotStarted', total: 5, scope: null });
+    });
+
+    it('startDailySet_WithoutScope_PostsNullBody', () => {
+      service.startDailySet().subscribe();
+
+      const req = httpMock.expectOne('/api/exam/practice/daily/start');
+      expect(req.request.body).toBeNull();
+      req.flush({ sessionId: 12, status: 'NotStarted' });
+    });
   });
 
   describe('toQuestionRegion', () => {

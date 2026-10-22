@@ -1,0 +1,36 @@
+:host {
+  display: block;
+}
+
+.scope-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-family: var(--paragraphFontFamily);
+
+  &__field {
+    flex: 1 1 180px;
+    min-width: 0;
+  }
+
+  &__state {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 13px;
+    color: var(--ms-text-weak);
+
+    &--error {
+      color: var(--ms-danger-text-weak);
+    }
+  }
+
+  &__hint {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 12px;
+    color: var(--ms-text-weak);
+  }
+}

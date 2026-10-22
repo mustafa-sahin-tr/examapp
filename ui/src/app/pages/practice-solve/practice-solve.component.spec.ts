@@ -707,6 +707,71 @@ describe('PracticeSolveComponent', () => {
       expect(fixture.debugElement.query(By.css('.daily-bar__resume'))).toBeNull();
     });
 
+    it('ngOnInit_DailyWithScopeQuery_SendsScope_ShowsScopeChipFilledNoteAndNewTotal (#66)', () => {
+      setup({ daily: '1', subjectId: '3', topicId: '30', subTopicId: 'abc' });
+      practiceService.getDailySet.and.returnValue(of(dailySet()));
+      practiceService.startDailySet.and.returnValue(
+        of({
+          sessionId: session.id,
+          status: 'NotStarted' as const,
+          total: 4,
+          scope: {
+            subjectId: 3,
+            subjectName: 'Matematik',
+            topicId: 30,
+            topicName: 'Kesirler',
+            subTopicId: null,
+            subTopicName: null,
+            scopedCount: 2,
+            filledFromGeneral: true,
+          },
+        })
+      );
+      practiceService.getSession.and.returnValue(of(session));
+      practiceService.getNextQuestion.and.returnValue(
+        of({ sessionId: session.id, question: buildQuestion(), poolExhausted: false, answeredCount: 0, correctCount: 0 })
+      );
+
+      fixture.detectChanges();
+
+      expect(practiceService.startDailySet).toHaveBeenCalledOnceWith({ subjectId: 3, topicId: 30, subTopicId: null });
+      expect(component.phase()).toBe('question');
+      expect(text('.daily-bar__step')).toBe('Soru 1 / 4');
+      expect(text('[data-chip="scope"]')).toContain('Matematik · Kesirler');
+      expect(text('[data-note="filled"]')).toContain('Bu konuda yeterli soru yok, kalanı genel havuzdan.');
+    });
+
+    it('ngOnInit_DailyWithoutScopeQuery_StartsWithNullScope_NoFilledNote (#66)', () => {
+      setup({ daily: '1', topicId: '30' }); // ders olmadan konu yok sayılır
+      practiceService.getDailySet.and.returnValue(of(dailySet()));
+      practiceService.startDailySet.and.returnValue(of({ sessionId: session.id, status: 'NotStarted' as const }));
+      practiceService.getSession.and.returnValue(of(session));
+      practiceService.getNextQuestion.and.returnValue(
+        of({ sessionId: session.id, question: buildQuestion(), poolExhausted: false, answeredCount: 0, correctCount: 0 })
+      );
+
+      fixture.detectChanges();
+
+      expect(practiceService.startDailySet).toHaveBeenCalledOnceWith(null);
+      expect(text('.daily-bar__step')).toBe('Soru 1 / 5');
+      expect(fixture.debugElement.query(By.css('[data-chip="scope"]'))).toBeNull();
+      expect(fixture.debugElement.query(By.css('[data-note="filled"]'))).toBeNull();
+    });
+
+    it('ngOnInit_DailyStartedSetWithScopeQuery_DoesNotSendScope (#66)', () => {
+      setup({ daily: '1', subjectId: '3' });
+      practiceService.getDailySet.and.returnValue(of(dailySet({ sessionId: session.id })));
+      practiceService.startDailySet.and.returnValue(of({ sessionId: session.id, status: 'NotStarted' as const }));
+      practiceService.getSession.and.returnValue(of(session));
+      practiceService.getNextQuestion.and.returnValue(
+        of({ sessionId: session.id, question: buildQuestion(), poolExhausted: false, answeredCount: 0, correctCount: 0 })
+      );
+
+      fixture.detectChanges();
+
+      expect(practiceService.startDailySet).toHaveBeenCalledOnceWith(null);
+    });
+
     it('ngOnInit_DailyInProgress_ResumesSameSetWithResumeNoteAndAnsweredSteps', () => {
       setup({ daily: '1' });
       practiceService.getDailySet.and.returnValue(

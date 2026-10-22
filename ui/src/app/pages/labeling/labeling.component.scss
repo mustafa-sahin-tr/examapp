@@ -370,3 +370,42 @@
     color: var(--ms-danger-text);
   }
 }
+
+// Claude model seçimi: araç çubuğuna sığan kompakt alan.
+.lb-model {
+  width: 250px;
+  font-size: 13px;
+
+  --mat-form-field-container-height: 36px;
+  --mat-form-field-container-vertical-padding: 6px;
+}
+
+.lb-source {
+  &__main {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-weight: 500;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: var(--primaryColor);
+    }
+  }
+
+  button {
+    align-self: flex-start;
+  }
+}
+
+.lb-pill {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--ms-border);
+  color: var(--ms-text-weak);
+  font-size: 11px;
+  font-weight: 400;
+}

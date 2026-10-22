@@ -50,5 +50,32 @@
     "drawAnswer": "Draw choice",
     "deleteQuestion": "Delete question",
     "emptyHint": "No questions on this page. Draw a question box or re-detect; Train with no questions sends the page as an empty page."
+  },
+  "source": {
+    "label": "Source",
+    "manual": "Manual",
+    "model": "Model",
+    "claude": "Claude",
+    "manualHint": "The version sent to training (only when saved)",
+    "aiModel": "Claude model",
+    "cardTitle": "Source",
+    "modelLive": "YOLO model (live prediction)",
+    "live": "live",
+    "cached": "saved",
+    "tokens": "{{input}} / {{output}} tokens",
+    "askAgain": "Ask AI again",
+    "askAgainConfirm": "Claude will be asked again and billed; the saved result will be overwritten.",
+    "askAgainConfirmEdits": "Claude will be asked again (billed) and your unsaved corrections will be lost.",
+    "askAgainAction": "Ask",
+    "manualSaved": "Manual record",
+    "base": "Started from",
+    "baseNone": "drawn by hand",
+    "manualIsTraining": "This is the version used for training.",
+    "manualExists": "This page has a saved manual labeling; choose Manual to see it.",
+    "none": "No detection yet.",
+    "unsavedEdits": "You have unsaved corrections; they will be lost if the source changes.",
+    "discardAction": "Change anyway",
+    "liveDone": "Claude labeled the page (~${{cost}}).",
+    "aiFailed": "Claude could not label this page."
   }
 }

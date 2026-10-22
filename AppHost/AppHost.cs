@@ -169,6 +169,9 @@ var jitsiRoomSecret = builder.AddParameter("jitsi-room-secret", secret: true);
 var parentInviteCodePepper = builder.AddParameter("parent-invite-code-pepper", secret: true);
 // Issues #440/#441: AES-256-GCM key (base64, 32 bytes) shared by exam API (encrypts activation links) and BadgeService (decrypts) - ParentInvitations:LinkEncryptionKey.
 var parentInvitationLinkKey = builder.AddParameter("parent-invitation-link-key", secret: true);
+// İşaretleme ekranı Claude ön-etiketleyicisi. Gerçek anahtar yalnız user-secrets'ta
+// (Parameters:anthropic-api-key); appsettings'teki boş değer anahtarsız geliştiricide AI ucunu 503'e düşürür.
+var anthropicApiKey = builder.AddParameter("anthropic-api-key", secret: true);
 var jicofoAuthPassword = builder.AddParameter("jicofo-auth-password", secret: true);
 var jvbAuthPassword = builder.AddParameter("jvb-auth-password", secret: true);
 var jicofoComponentSecret = builder.AddParameter("jicofo-component-secret", secret: true);
@@ -456,6 +459,7 @@ var examDotnetApi = builder.AddProject<Projects.ExamApp_Api>("exam-dotnet-api")
     .WithEnvironment("ParentLinks__InviteCodePepper", parentInviteCodePepper)
     // Issues #440/#441: shared activation-link encryption key (same value as BadgeService).
     .WithEnvironment("ParentInvitations__LinkEncryptionKey", parentInvitationLinkKey)
+    .WithEnvironment("Anthropic__ApiKey", anthropicApiKey)
     // Issue #225: exam API hosts a MassTransit consumer (queue "exam-api",
     // StudentPointsChangedEvent from BadgeService's outbox). Same RabbitMQ:*
     // keys/wiring as BadgeService below; without RabbitMQ__Host the bus is

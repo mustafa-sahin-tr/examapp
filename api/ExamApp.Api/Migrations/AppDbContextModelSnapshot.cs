@@ -811,6 +811,101 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("Districts");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.LabelingPage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Height")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ImageSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("Width")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ImageSha256")
+                        .IsUnique();
+
+                    b.ToTable("LabelingPages");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.LabelingResult", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BaseModelName")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("BaseSource")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("BoxesJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByKeycloakId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("CreatedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal?>("EstimatedCostUsd")
+                        .HasPrecision(12, 6)
+                        .HasColumnType("numeric(12,6)");
+
+                    b.Property<int?>("InputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ModelName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int?>("OutputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PageId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PageId", "Source", "ModelName")
+                        .IsUnique();
+
+                    b.ToTable("LabelingResults");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.Leaderboard", b =>
                 {
                     b.Property<int>("Id")
@@ -4568,6 +4663,17 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Province");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.LabelingResult", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.LabelingPage", "Page")
+                        .WithMany("Results")
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Page");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.Leaderboard", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.Student", "Student")
@@ -5399,6 +5505,11 @@ namespace ExamApp.Api.Migrations
             modelBuilder.Entity("ExamApp.Api.Data.DailyQuestionSet", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.LabelingPage", b =>
+                {
+                    b.Navigation("Results");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.LearningOutcome", b =>

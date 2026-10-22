@@ -1,7 +1,11 @@
 import { Component, DestroyRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { firstValueFrom } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatButtonToggleChange, MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -10,12 +14,19 @@ import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@js
 import { ActiveInspector, ImageSelectorComponent, TrainedPage } from '../image-selector/image-selector.component';
 import { QuestionDetectorService } from '../../services/question-detector.service';
 import { LabelingCandidate, isLabelingImage, pageIdOf, pickNextUnlabeled } from './labeling-pool';
+import { DetectionSource, LabelingAiModel, LabelingPage, LabelingResult } from '../../models/labeling';
+import { LabelingService, sha256OfDataUrl } from '../../services/labeling.service';
 
 /** Sayfa metinleri kendi Transloco scope'unda: `public/i18n/labeling/<lang>.json`. */
 const LABELING_SCOPE = 'labeling';
 /** Yalnız son seçilen şık sayısı saklanır (oturum sayaçları / havuz saklanmaz). */
 const ANSWER_COUNT_STORAGE_KEY = 'labeling.answerCount';
 const ANSWER_COUNTS = [3, 4, 5] as const;
+/** Kayıtlı manuel yoksa sayfa hangi kaynakla açılsın (Model = YOLO, Ai = Claude) ve seçili Claude modeli. */
+const SOURCE_STORAGE_KEY = 'labeling.source';
+const AI_MODEL_STORAGE_KEY = 'labeling.aiModel';
+
+type PreferredSource = 'Model' | 'Ai';
 
 type DrawMode = 'question' | 'answer';
 
@@ -31,6 +42,10 @@ type DrawMode = 'question' | 'answer';
   imports: [
     MatButtonModule,
     MatButtonToggleModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    DatePipe,
+    DecimalPipe,
     MatIconModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
@@ -47,6 +62,7 @@ export class LabelingComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly snackBar = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
+  private readonly labelingApi = inject(LabelingService);
 
   private readonly selectorRef = viewChild(ImageSelectorComponent);
 
@@ -128,6 +144,35 @@ export class LabelingComponent {
     );
   });
   readonly selectionMode = computed(() => this.selectorRef()?.selectionMode() ?? null);
+
+  // --- Kaynak: Manuel kayıt / Model (YOLO) / Claude ---
+  /** İzinli Claude modelleri; boşsa (yetki / yapılandırma yok) Claude seçeneği kapalı. */
+  readonly aiModels = signal<LabelingAiModel[]>([]);
+  readonly aiModelId = signal<string>(readStored(AI_MODEL_STORAGE_KEY) ?? '');
+  /** Manuel kayıt yoksa sayfanın açıldığı kaynak. */
+  readonly preferredSource = signal<PreferredSource>(readStored(SOURCE_STORAGE_KEY) === 'Ai' ? 'Ai' : 'Model');
+  /** Açık sayfanın exam API'deki kaydı (yoksa null). */
+  readonly pageRecord = signal<LabelingPage | null>(null);
+  /** Son Claude yanıtı kayıttan mı geldi (maliyetsiz) yoksa canlı mı. */
+  readonly aiOrigin = signal<'live' | 'cached' | null>(null);
+  readonly aiBusy = signal(false);
+  /** Açık sayfanın görseli (sayfa değişince eski Claude yanıtı uygulanmasın diye `pageToken` ile birlikte). */
+  private pageImage: string | null = null;
+  private pageToken = 0;
+
+  readonly detectionSource = computed<DetectionSource | null>(() => this.selectorRef()?.detectionSource() ?? null);
+  readonly manualRecord = computed(() => this.pageRecord()?.results.find((r) => r.source === 'Manual') ?? null);
+  /** Tuvalde gösterilen Claude sonucunun kaydı (tarih, maliyet). */
+  readonly aiRecord = computed(() => {
+    const source = this.detectionSource();
+    if (source?.kind !== 'Ai') {
+      return null;
+    }
+    return this.pageRecord()?.results.find((r) => r.source === 'Ai' && r.modelName === source.modelName) ?? null;
+  });
+  readonly selectedAiModel = computed(() => this.aiModels().find((m) => m.id === this.aiModelId()) ?? null);
+  /** Analiz / gönderim sürerken kaynak değiştirilmez. */
+  readonly sourceLocked = computed(() => !this.current() || this.analysing() || this.sendingToFix());
   readonly finished = computed(
     () => this.folderPicked() && this.totalImages() > 0 && !this.current() && !this.picking() && this.exhausted()
   );
@@ -158,6 +203,231 @@ export class LabelingComponent {
       });
     });
     void this.loadLabeledPages();
+    this.loadAiModels();
+  }
+
+  private loadAiModels(): void {
+    this.labelingApi
+      .getAiModels()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (models) => {
+          this.aiModels.set(models ?? []);
+          if (!models?.some((m) => m.id === this.aiModelId())) {
+            this.aiModelId.set(models?.find((m) => m.isDefault)?.id ?? models?.[0]?.id ?? '');
+          }
+        },
+        error: (error) => {
+          // Yetki yok (403) ya da servis kapalı: Claude seçeneği gizlenir, YOLO ile devam.
+          console.error('labeling ai-models failed', error);
+          this.aiModels.set([]);
+        },
+      });
+  }
+
+  /**
+   * Sayfa görseli hazır (`externalDetection`): kayıtlı manuel varsa o, yoksa tercih edilen kaynak (YOLO taze /
+   * Claude kayıtlıysa kayıttan) gösterilir. Kayıt sorgusu başarısızsa tercih edilen kaynakla devam edilir.
+   */
+  async onPageReady(imageData: string): Promise<void> {
+    const selector = this.selectorRef();
+    if (!selector) {
+      return;
+    }
+    const token = ++this.pageToken;
+    this.pageImage = imageData;
+    this.pageRecord.set(null);
+    this.aiOrigin.set(null);
+    this.aiBusy.set(false);
+    const seq = selector.beginExternalDetection();
+
+    let page: LabelingPage | null = null;
+    try {
+      const sha = await sha256OfDataUrl(imageData);
+      if (token !== this.pageToken) {
+        return;
+      }
+      page = await this.fetchPage(sha);
+    } catch (error) {
+      console.error('labeling page lookup failed', error);
+    }
+    if (token !== this.pageToken) {
+      return;
+    }
+    this.pageRecord.set(page);
+    const manual = page?.results.find((r) => r.source === 'Manual');
+    if (manual) {
+      selector.applyExternalPrediction(seq, manual.predictions, manualSource(manual));
+      return;
+    }
+    if (this.preferredSource() === 'Ai' && this.aiModels().length > 0) {
+      void this.runClaude(false, true);
+    } else {
+      selector.predict();
+    }
+  }
+
+  /** Eğitime gönderilen hal kaydedildi: kart güncellensin (sayfa hâlâ açıksa). */
+  async onManualSaved(imageData: string): Promise<void> {
+    if (imageData !== this.pageImage) {
+      return;
+    }
+    const token = this.pageToken;
+    try {
+      const page = await this.fetchPage(await sha256OfDataUrl(imageData));
+      if (token === this.pageToken) {
+        this.pageRecord.set(page);
+      }
+    } catch (error) {
+      console.error('labeling page refresh failed', error);
+    }
+  }
+
+  onSourceToggle(event: MatButtonToggleChange): void {
+    const kind = event.value as 'Manual' | 'Model' | 'Ai';
+    // Seçim onaya bağlı: grup gösterilen kaynağı göstermeye devam etsin, değişim uygulanınca güncellenir.
+    event.source.buttonToggleGroup.value = this.detectionSource()?.kind ?? null;
+    if (this.sourceLocked()) {
+      return;
+    }
+    if (kind !== 'Manual') {
+      this.setPreferredSource(kind);
+    }
+    this.confirmDiscard(() => this.applySource(kind));
+  }
+
+  setAiModel(id: string): void {
+    this.aiModelId.set(id);
+    writeStored(AI_MODEL_STORAGE_KEY, id);
+    if (this.detectionSource()?.kind === 'Ai' && !this.sourceLocked()) {
+      this.confirmDiscard(() => void this.runClaude(false, false));
+    }
+  }
+
+  /** Kayıtlı Claude sonucunu yok sayıp yeniden sorar (maliyetli): önce onay. */
+  askClaudeAgain(): void {
+    if (this.sourceLocked() || !this.selectedAiModel()) {
+      return;
+    }
+    const message = this.selectorRef()?.hasUnsavedEdits()
+      ? this.tr('source.askAgainConfirmEdits')
+      : this.tr('source.askAgainConfirm');
+    this.snackBar
+      .open(message, this.tr('source.askAgainAction'), { duration: 8000 })
+      .onAction()
+      .subscribe(() => void this.runClaude(true, false));
+  }
+
+  private applySource(kind: 'Manual' | 'Model' | 'Ai'): void {
+    const selector = this.selectorRef();
+    if (!selector || this.sourceLocked()) {
+      return;
+    }
+    if (kind === 'Model') {
+      selector.predict();
+    } else if (kind === 'Ai') {
+      void this.runClaude(false, false);
+    } else {
+      const manual = this.manualRecord();
+      if (manual) {
+        selector.applyExternalPrediction(selector.beginExternalDetection(), manual.predictions, manualSource(manual));
+      }
+    }
+  }
+
+  /**
+   * Claude ile tespit (kayıtlı sonuç varsa ve `force` değilse sunucu API'ye gitmez). Sayfa açılışında hata olursa
+   * (`fallbackToModel`) YOLO ile devam edilir; elle seçimde tuval boş kalır, kullanıcı kaynağı değiştirir.
+   */
+  private async runClaude(force: boolean, fallbackToModel: boolean): Promise<void> {
+    const selector = this.selectorRef();
+    const model = this.aiModelId();
+    const image = this.pageImage;
+    if (!selector || !model || !image) {
+      return;
+    }
+    const token = this.pageToken;
+    const seq = selector.beginExternalDetection();
+    this.aiBusy.set(true);
+    try {
+      const response = await firstValueFrom(this.labelingApi.aiDetect({ imageBase64: image, model, force }));
+      if (token !== this.pageToken) {
+        return;
+      }
+      this.mergeResult(response.imageSha256, response.result);
+      this.aiOrigin.set(response.origin);
+      selector.applyExternalPrediction(seq, response.result.predictions, {
+        kind: 'Ai',
+        modelName: response.result.modelName,
+      });
+      if (response.origin === 'live' && response.result.estimatedCostUsd != null) {
+        this.snackBar.open(
+          this.tr('source.liveDone', { cost: response.result.estimatedCostUsd.toFixed(4) }),
+          this.tr('ok'),
+          { duration: 4000 }
+        );
+      }
+    } catch (error) {
+      if (token !== this.pageToken) {
+        return;
+      }
+      console.error('labeling ai-detect failed', error);
+      selector.failExternalDetection(seq);
+      const serverMessage = (error as { error?: { message?: string } })?.error?.message;
+      this.snackBar.open(serverMessage || this.tr('source.aiFailed'), this.tr('ok'), { duration: 6000 });
+      if (fallbackToModel) {
+        selector.predict();
+      }
+    } finally {
+      if (token === this.pageToken) {
+        this.aiBusy.set(false);
+      }
+    }
+  }
+
+  /** Kaydedilmemiş elle düzeltme varsa önce sorulur (snackbar eylemi), yoksa hemen uygulanır. */
+  private confirmDiscard(action: () => void): void {
+    if (!this.selectorRef()?.hasUnsavedEdits()) {
+      action();
+      return;
+    }
+    this.snackBar
+      .open(this.tr('source.unsavedEdits'), this.tr('source.discardAction'), { duration: 8000 })
+      .onAction()
+      .subscribe(() => action());
+  }
+
+  private setPreferredSource(kind: PreferredSource): void {
+    this.preferredSource.set(kind);
+    writeStored(SOURCE_STORAGE_KEY, kind);
+  }
+
+  private async fetchPage(sha: string): Promise<LabelingPage | null> {
+    try {
+      return await firstValueFrom(this.labelingApi.getPage(sha));
+    } catch (error) {
+      if ((error as { status?: number })?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  private mergeResult(sha: string, result: LabelingResult): void {
+    const page = this.pageRecord();
+    const others = (page?.results ?? []).filter(
+      (r) => !(r.source === result.source && r.modelName === result.modelName)
+    );
+    this.pageRecord.set({
+      imageSha256: sha,
+      width: page?.width ?? 0,
+      height: page?.height ?? 0,
+      results: [...others, result],
+    });
+  }
+
+  aiModelName(id: string | null | undefined): string {
+    return this.aiModels().find((m) => m.id === id)?.displayName ?? id ?? '';
   }
 
   /** Eğitim veri setindeki sayfa id'lerini kümeye ekler. Hata durumunda seçim yapılmaz (tekrar dene). */
@@ -451,8 +721,33 @@ export class LabelingComponent {
     });
   }
 
-  private tr(key: string): string {
-    return this.transloco.translate<string>(`${LABELING_SCOPE}.${key}`) ?? '';
+  private tr(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(`${LABELING_SCOPE}.${key}`, params) ?? '';
+  }
+}
+
+/** Manuel kayıttan açılan tuvalin kaynağı; yeniden eğitimde kaydın başlangıç kaynağı korunur. */
+function manualSource(manual: LabelingResult): DetectionSource {
+  const base =
+    manual.baseSource === 'Model' || manual.baseSource === 'Ai'
+      ? { source: manual.baseSource, modelName: manual.baseModelName }
+      : null;
+  return { kind: 'Manual', base };
+}
+
+function readStored(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStored(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // depolama kapalı: yalnız bu oturumda geçerli
   }
 }
 

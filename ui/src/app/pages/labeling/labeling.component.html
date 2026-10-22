@@ -78,6 +78,29 @@
       </mat-button-toggle-group>
     </span>
 
+    <span class="lb-group">
+      <span class="lb-group__label">{{ t('source.label') }}</span>
+      <mat-button-toggle-group hideSingleSelectionIndicator [value]="detectionSource()?.kind ?? null"
+        (change)="onSourceToggle($event)" [disabled]="sourceLocked()" [attr.aria-label]="t('source.label')">
+        <mat-button-toggle value="Manual" [disabled]="!manualRecord()" [matTooltip]="t('source.manualHint')">
+          {{ t('source.manual') }}</mat-button-toggle>
+        <mat-button-toggle value="Model">{{ t('source.model') }}</mat-button-toggle>
+        <mat-button-toggle value="Ai" [disabled]="aiModels().length === 0">{{ t('source.claude') }}</mat-button-toggle>
+      </mat-button-toggle-group>
+      @if (aiModels().length > 0 && (preferredSource() === 'Ai' || detectionSource()?.kind === 'Ai')) {
+      <mat-form-field class="lb-model" appearance="outline" subscriptSizing="dynamic">
+        <mat-select [value]="aiModelId()" (selectionChange)="setAiModel($event.value)" [disabled]="sourceLocked()"
+          [attr.aria-label]="t('source.aiModel')">
+          @for (model of aiModels(); track model.id) {
+          <mat-option [value]="model.id">
+            {{ model.displayName }} · ${{ model.inputUsdPerMTok | number: '1.2-2' }} / ${{ model.outputUsdPerMTok | number: '1.2-2' }}
+          </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      }
+    </span>
+
     <mat-button-toggle-group hideSingleSelectionIndicator [value]="selectionMode()" [attr.aria-label]="t('drawMode')">
       <mat-button-toggle value="question" (click)="setDrawMode('question')">{{ t('modeQuestion') }}</mat-button-toggle>
       <mat-button-toggle value="answer" (click)="setDrawMode('answer')">{{ t('modeAnswer') }}</mat-button-toggle>
@@ -127,8 +150,9 @@
        yeniden yaratılırsa viewChild eski (yok edilmiş) örneği tutabiliyordu (NG0911, resim görünmüyordu). -->
   <div class="lb-work" [class.lb-work--hidden]="!current()" [class.lb-work--no-inspector]="!showInspector()">
     <div class="lb-stage">
-      <app-image-selector [navigationLocked]="true" [advanceOnTrain]="false"
-        (trained)="onTrained($event)"></app-image-selector>
+      <app-image-selector [navigationLocked]="true" [advanceOnTrain]="false" [externalDetection]="true"
+        (trained)="onTrained($event)" (pageReady)="onPageReady($event)"
+        (manualSaved)="onManualSaved($event)"></app-image-selector>
     </div>
 
     <!-- Soru Müfettişi: kendi *transloco bloğunda, tuvali sarmaz (yukarıdaki not). -->
@@ -148,6 +172,58 @@
             <mat-icon>close</mat-icon></button>
         </span>
       </div>
+
+      <!-- Kaynak kartı: tuvaldeki kutuların nereden geldiği (eğitime giden manuel kayıt dahil). -->
+      <ng-container *transloco="let s; prefix: 'labeling.source'">
+      <section class="lb-insp-sec lb-source" [attr.aria-label]="s('cardTitle')">
+        <div class="lb-insp-sec__head">
+          <span class="lb-lbl">{{ s('cardTitle') }}</span>
+          @if (aiBusy()) { <mat-spinner diameter="14" aria-hidden="true"></mat-spinner> }
+        </div>
+        @switch (detectionSource()?.kind) {
+        @case ('Model') {
+        <p class="lb-source__main"><mat-icon aria-hidden="true">smart_toy</mat-icon>{{ s('modelLive') }}</p>
+        }
+        @case ('Ai') {
+        <p class="lb-source__main">
+          <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ aiModelName(detectionSource()?.modelName) }}
+          <span class="lb-pill">{{ aiOrigin() === 'cached' ? s('cached') : s('live') }}</span>
+        </p>
+        @if (aiRecord(); as r) {
+        <p class="lb-hint-sm">
+          {{ r.updatedAt | date: 'short' }}
+          @if (r.estimatedCostUsd != null) { · ~${{ r.estimatedCostUsd | number: '1.4-4' }} }
+          @if (r.inputTokens != null) { · {{ s('tokens', { input: r.inputTokens, output: r.outputTokens }) }} }
+        </p>
+        }
+        <button mat-stroked-button type="button" (click)="askClaudeAgain()" [disabled]="sourceLocked()">
+          <mat-icon>refresh</mat-icon>{{ s('askAgain') }}
+        </button>
+        }
+        @case ('Manual') {
+        <p class="lb-source__main"><mat-icon aria-hidden="true">verified</mat-icon>{{ s('manualSaved') }}</p>
+        @if (manualRecord(); as r) {
+        <p class="lb-hint-sm">
+          {{ s('base') }}:
+          @switch (r.baseSource) {
+          @case ('Model') { {{ s('model') }} }
+          @case ('Ai') { {{ aiModelName(r.baseModelName) }} }
+          @default { {{ s('baseNone') }} }
+          }
+        </p>
+        <p class="lb-hint-sm">{{ r.updatedAt | date: 'short' }}@if (r.createdByName) { · {{ r.createdByName }} }</p>
+        }
+        <p class="lb-hint-sm">{{ s('manualIsTraining') }}</p>
+        }
+        @default {
+        <p class="lb-hint-sm">{{ s('none') }}</p>
+        }
+        }
+        @if (manualRecord() && detectionSource()?.kind !== 'Manual') {
+        <p class="lb-hint-sm lb-hint-sm--warn">{{ s('manualExists') }}</p>
+        }
+      </section>
+      </ng-container>
 
       <p class="lb-inspector__summary">{{ t('questionCount', { count: questionCount }) }}</p>
 

@@ -423,6 +423,17 @@ QuestionTrainer (onaylı, askıda olmayan öğretmen; gateway'de de kural var).
 - Kaba ölçüm (2026-10-22, A4 test sayfası, effort low): Opus 5.5 ~7-13 sn, ~$0.04-0.05/sayfa; Haiku 5.5 ~11 sn,
   ~$0.001/sayfa — Ocelot'un varsayılan 90 sn zaman aşımının altında.
 
+**Issue #469 — Claude soru sınıflandırıcısı.** BadgeService'te `QuestionAnalyzer:Provider` = `Gemini` (varsayılan) |
+`Claude`; geçersiz değer açılışta patlar. Claude seçiliyken (`QuestionAnalyzer__Provider=Claude`) BadgeService
+taksonomiyi exam API `GET /api/questions/classifier-taxonomy`'den (Admin/servis) alır (`Anthropic:TaxonomyCacheSeconds`,
+varsayılan 300 sn bellek önbelleği) ve sistem mesajının sonuna prompt-cache breakpoint'iyle koyar (`Anthropic:CacheTtl`
+`1h`|`5m`); yanıt JSON şemalı (structured output). Taksonomi dışı id dönerse sonuç yazılmaz, loglanır ve mesaj
+`badge-service_error` kuyruğuna düşer (Gemini/exam API reddiyle aynı). Her çağrıda input / cacheWrite / cacheRead /
+output token'ı ve tahmini USD loglanır (`Anthropic:InputUsdPerMTok`/`OutputUsdPerMTok`, varsayılan model Haiku 5.5).
+- **Anahtar:** Aspire'da işaretleme ekranıyla aynı `anthropic-api-key` parametresi BadgeService'e de `Anthropic__ApiKey`
+  olarak gider (AppHost'u yeniden başlat). Anahtar yoksa sınıflandırma uyarıyla atlanır. docker-compose'da tanımlı değil.
+- `QuestionAnalyzer:AIActive=false` iken sağlayıcıdan bağımsız hiçbir sınıflandırma yapılmaz.
+
 ## Port map (host → container)
 
 | Service | Host port | Notes |

@@ -3,6 +3,7 @@ using ExamApp.Api.Controllers;
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.Classifier;
 using ExamApp.Api.Services.Questions;
@@ -24,7 +25,7 @@ using System.Threading.Tasks;
 // issue #287: tüm uçlar öğretmen (soru bankası) yeteneği — Teacher rolündeki çağıranın hesabı onaylı olmalı.
 // Bu policy TEK BAŞINA rol kısıtı DEĞİLDİR (Teacher olmayanı geçirir); her uçta ayrıca rol/rol-policy'si var
 // (security review H1): yazma + okuma uçları Teacher/Admin, BadgeService'in çağırdığı uçlar Teacher/Admin/servis,
-// classifier-cache yalnızca Admin/servis. Öğrenci/veli hiçbir uca erişemez (UI'da öğrencinin kullandığı soru ucu yok;
+// classifier-cache/classifier-taxonomy yalnızca Admin/servis. Öğrenci/veli hiçbir uca erişemez (UI'da öğrencinin kullandığı soru ucu yok;
 // test çözme akışı api/worksheet/test-instance üzerinden).
 // issue #402: OKUMA uçları da kaynak kapsamlı — soru/test okuma WorksheetAccess.CanView kuralıyla (görünmeyen → 404,
 // varlık sızdırılmaz), paragraf listesi yalnız çağıranın paragrafları, var olan paragrafa bağlama yalnız sahibine.
@@ -76,6 +77,13 @@ public class QuestionsController : BaseController
         var (cachedContentName, model) = await _classifierCache.GetActivePointerAsync(ct);
         return Ok(new { cachedContentName, model });
     }
+
+    // GET /api/questions/classifier-taxonomy — the live subject/topic/subtopic taxonomy the Claude
+    // classifier (BadgeService, issue #469) puts into its prompt-cached system message. Service-to-service.
+    [HttpGet("classifier-taxonomy")]
+    [Authorize(Policy = QuestionAccessPolicies.AdminOrService)]
+    public async Task<ActionResult<ClassifierTaxonomyDto>> GetClassifierTaxonomy(CancellationToken ct)
+        => Ok(await _classifierCache.GetTaxonomyAsync(ct));
 
     // 🟢 GET /api/questions/{id} - ID ile Soru Çekme
     [HttpGet("{id}")]

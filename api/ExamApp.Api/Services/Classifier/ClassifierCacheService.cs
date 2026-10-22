@@ -71,6 +71,12 @@ public class ClassifierCacheService : IClassifierCacheService
         return (config?.CachedContentName, config?.Model ?? _options.Model);
     }
 
+    public async Task<ClassifierTaxonomyDto> GetTaxonomyAsync(CancellationToken ct = default)
+    {
+        var (payload, subTopicCount) = await BuildTaxonomyPayloadAsync(ct);
+        return new ClassifierTaxonomyDto { Taxonomy = payload, Hash = Sha256(payload), SubTopicCount = subTopicCount };
+    }
+
     public async Task<ClassifierCacheRefreshResultDto> RefreshAsync(int userId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(_options.ApiKey))

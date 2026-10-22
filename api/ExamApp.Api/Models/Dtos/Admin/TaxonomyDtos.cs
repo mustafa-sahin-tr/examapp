@@ -122,3 +122,15 @@ public class ClassifierCacheRefreshResultDto : ResponseBaseDto
     public int SubTopicCount { get; set; }
     public DateTime RefreshedAt { get; set; }
 }
+
+/// <summary>
+/// Issue #469: the live taxonomy the Claude classifier (BadgeService) puts into its cached system prompt.
+/// <see cref="Taxonomy"/> is the same compact JSON the Gemini cache is built from, sent as a string so the
+/// prompt bytes stay stable (prompt-cache prefix match); <see cref="Hash"/> is its SHA-256.
+/// </summary>
+public class ClassifierTaxonomyDto
+{
+    public string Taxonomy { get; set; } = string.Empty;
+    public string Hash { get; set; } = string.Empty;
+    public int SubTopicCount { get; set; }
+}

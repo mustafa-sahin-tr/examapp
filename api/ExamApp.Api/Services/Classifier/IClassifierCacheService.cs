@@ -12,6 +12,12 @@ public interface IClassifierCacheService
     /// <summary>What BadgeService reads: the cached-content name + model to use right now.</summary>
     Task<(string? CachedContentName, string Model)> GetActivePointerAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// The live taxonomy JSON (same payload the Gemini cache is built from) + its hash. Read by the Claude
+    /// classifier in BadgeService (issue #469), which caches it with Anthropic prompt caching instead.
+    /// </summary>
+    Task<ClassifierTaxonomyDto> GetTaxonomyAsync(CancellationToken ct = default);
+
     /// <summary>Rebuild the Gemini cached content from the live taxonomy and persist the new pointer.</summary>
     Task<ClassifierCacheRefreshResultDto> RefreshAsync(int userId, CancellationToken ct = default);
 

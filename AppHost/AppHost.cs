@@ -169,7 +169,7 @@ var jitsiRoomSecret = builder.AddParameter("jitsi-room-secret", secret: true);
 var parentInviteCodePepper = builder.AddParameter("parent-invite-code-pepper", secret: true);
 // Issues #440/#441: AES-256-GCM key (base64, 32 bytes) shared by exam API (encrypts activation links) and BadgeService (decrypts) - ParentInvitations:LinkEncryptionKey.
 var parentInvitationLinkKey = builder.AddParameter("parent-invitation-link-key", secret: true);
-// İşaretleme ekranı Claude ön-etiketleyicisi. Gerçek anahtar yalnız user-secrets'ta
+// İşaretleme ekranı Claude ön-etiketleyicisi + BadgeService Claude soru sınıflandırıcısı (#469). Gerçek anahtar yalnız user-secrets'ta
 // (Parameters:anthropic-api-key); appsettings'teki boş değer anahtarsız geliştiricide AI ucunu 503'e düşürür.
 var anthropicApiKey = builder.AddParameter("anthropic-api-key", secret: true);
 var jicofoAuthPassword = builder.AddParameter("jicofo-auth-password", secret: true);
@@ -499,6 +499,8 @@ var badgeService = builder.AddProject<Projects.BadgeService>("exam-badge-api")
     .WithReference(rabbitmq)
     // Issues #440/#441: decrypts activation links produced by exam API.
     .WithEnvironment("ParentInvitations__LinkEncryptionKey", parentInvitationLinkKey)
+    // Issue #469: Claude soru sınıflandırıcısı (QuestionAnalyzer:Provider=Claude) — exam API ile aynı anahtar.
+    .WithEnvironment("Anthropic__ApiKey", anthropicApiKey)
     .WithEnvironment(context =>
     {
         context.EnvironmentVariables["RabbitMQ__Host"] = rabbitmqEndpoint.Property(EndpointProperty.Host);

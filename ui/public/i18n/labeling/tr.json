@@ -1,6 +1,6 @@
 {
   "title": "İşaretleme modu",
-  "subtitle": "Soru tespit modelini eğitmek için klasördeki sayfaları rastgele işaretle. Test veya soru kaydedilmez.",
+  "subtitle": "Soru tespit modelini eğitmek için klasördeki sayfaları rastgele işaretle. \"Bankaya kaydet\" soruları ayrıca soru bankasına ekler (teste bağlamadan).",
   "chooseFolder": "Klasör seç",
   "changeFolder": "Klasörü değiştir",
   "loadingLabeled": "Daha önce işaretlenen sayfalar yükleniyor…",
@@ -23,6 +23,20 @@
   "train": "Eğit",
   "trainHint": "Sayfayı, tüm soruları işaretlenmiş olarak eğitim verisine ekle",
   "sending": "Gönderiliyor…",
+  "bank": {
+    "save": "Bankaya kaydet",
+    "saving": "Kaydediliyor…",
+    "hint": "Sayfadaki soruları doğru şıklarıyla, teste bağlamadan soru bankasına kaydet (ders/konu sınıflandırması otomatik), ardından Eğit gibi eğitime gönderip sonraki sayfaya geç.",
+    "noMcq": "Bankaya kaydedilecek çoktan seçmeli soru yok.",
+    "saved": "{{count}} soru bankaya kaydedildi; sınıflandırma arka planda başladı.",
+    "alreadySaved": "Bu sayfanın soruları daha önce bankaya kaydedildi ({{count}} soru). Yeniden kaydedilirse sorular ikinci kez oluşur.",
+    "saveAgain": "Yine de kaydet",
+    "failed": "Sorular bankaya kaydedilemedi.",
+    "cardTitle": "Soru bankası",
+    "cardSaved": "Bankaya kaydedildi ({{count}} soru)",
+    "forbidden": "Bankaya soru kaydetmek için öğretmen ya da yönetici olmalısınız.",
+    "savedAndTrained": "{{count}} soru bankaya kaydedildi ve eğitime gönderildi; sınıflandırma arka planda başladı."
+  },
   "stats": {
     "label": "Oturum sayaçları",
     "total": "Toplam görsel",

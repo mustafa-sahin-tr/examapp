@@ -379,7 +379,8 @@ public sealed class LabelingService(
 
     private static LabelingPageDto ToDto(LabelingPage page) =>
         new(page.ImageSha256, page.Width, page.Height,
-            page.Results.OrderBy(r => r.Source).ThenBy(r => r.ModelName).Select(ToDto).ToList());
+            page.Results.OrderBy(r => r.Source).ThenBy(r => r.ModelName).Select(ToDto).ToList(),
+            LabelingBankService.ToBankInfo(page));
 
     private static LabelingResultDto ToDto(LabelingResult r) =>
         new(r.Source.ToString(),

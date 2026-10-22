@@ -6,6 +6,8 @@ import {
   LabelingAiDetectRequest,
   LabelingAiDetectResponse,
   LabelingAiModel,
+  LabelingBankSaveRequest,
+  LabelingBankSaveResponse,
   LabelingPage,
   LabelingPromptState,
   LabelingSaveManualRequest,
@@ -34,6 +36,11 @@ export class LabelingService {
 
   saveManual(request: LabelingSaveManualRequest): Observable<LabelingPage> {
     return this.http.put<LabelingPage>(`${this.baseUrl}/pages/manual`, request);
+  }
+
+  /** Soruları teste bağlamadan soru bankasına kaydeder; sayfa daha önce kaydedildiyse (ve `force` değilse) 409. */
+  saveToBank(request: LabelingBankSaveRequest): Observable<LabelingBankSaveResponse> {
+    return this.http.post<LabelingBankSaveResponse>(`${this.baseUrl}/pages/bank`, request);
   }
 
   getPrompt(): Observable<LabelingPromptState> {

@@ -30,12 +30,21 @@ export interface LabelingResult {
   basePromptVersion?: number | null;
 }
 
+/** Sayfanın soru bankasına son kaydı (issue #470). */
+export interface LabelingBankInfo {
+  savedAt: string;
+  savedByName: string | null;
+  questionCount: number;
+}
+
 /** `GET /api/exam/labeling/pages/{sha256}`: sayfanın kayıtlı tüm kaynakları (kayıt yoksa 404). */
 export interface LabelingPage {
   imageSha256: string;
   width: number;
   height: number;
   results: LabelingResult[];
+  /** Sayfa soru bankasına kaydedildiyse son kaydın özeti. */
+  bank?: LabelingBankInfo | null;
 }
 
 export interface LabelingAiDetectRequest {
@@ -97,4 +106,37 @@ export interface DetectionSource {
   /** `Ai` kaynağında sonucu üreten prompt sürümü. */
   promptVersion?: number | null;
   base?: { source: 'Model' | 'Ai'; modelName: string | null; promptVersion?: number | null } | null;
+}
+
+export interface LabelingBankBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface LabelingBankQuestion extends LabelingBankBox {
+  /** Şıklar okunma sırasıyla (A, B, C, ...); orijinal sayfa pikseli. */
+  options: LabelingBankBox[];
+  correctOptionIndex: number;
+}
+
+/** `POST /api/exam/labeling/pages/bank`: soruları teste bağlamadan soru bankasına kaydeder. */
+export interface LabelingBankSaveRequest {
+  imageBase64: string;
+  questions: LabelingBankQuestion[];
+  /** Sayfa daha önce kaydedildiyse de yeniden kaydet (sorular ikinci kez oluşur). */
+  force: boolean;
+}
+
+export interface LabelingBankSaveResponse {
+  imageSha256: string;
+  bank: LabelingBankInfo;
+}
+
+/** 409 gövdesi: sayfa daha önce kaydedildi (`existing`) ya da şu an kaydediliyor. */
+export interface LabelingBankConflict {
+  message: string;
+  errorCode: 'LabelingPageAlreadyInBank';
+  existing: LabelingBankInfo | null;
 }

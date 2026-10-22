@@ -1,6 +1,6 @@
 {
   "title": "Labeling mode",
-  "subtitle": "Label random pages from a folder to train the question detection model. No test or question is saved.",
+  "subtitle": "Label random pages from a folder to train the question detection model. \"Save to bank\" also adds the questions to the question bank (no test).",
   "chooseFolder": "Choose folder",
   "changeFolder": "Change folder",
   "loadingLabeled": "Loading previously labeled pages…",
@@ -23,6 +23,20 @@
   "train": "Train",
   "trainHint": "Add the page to the training data with all its questions marked",
   "sending": "Sending…",
+  "bank": {
+    "save": "Save to bank",
+    "saving": "Saving…",
+    "hint": "Save the page's questions with their correct options to the question bank without a test (subject/topic classification is automatic), then send the page for training like Train and go to the next page.",
+    "noMcq": "There are no multiple-choice questions to save to the bank.",
+    "saved": "{{count}} questions saved to the bank; classification started in the background.",
+    "alreadySaved": "This page's questions were already saved to the bank ({{count}} questions). Saving again creates them a second time.",
+    "saveAgain": "Save anyway",
+    "failed": "The questions could not be saved to the bank.",
+    "cardTitle": "Question bank",
+    "cardSaved": "Saved to the bank ({{count}} questions)",
+    "forbidden": "Only teachers and admins can save questions to the bank.",
+    "savedAndTrained": "{{count}} questions saved to the bank and sent for training; classification started in the background."
+  },
   "stats": {
     "label": "Session counters",
     "total": "Total images",

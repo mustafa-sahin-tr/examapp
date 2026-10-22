@@ -15,6 +15,16 @@
     "budgetExceeded": "Günlük Claude harcama sınırına ulaşıldı. Yarın tekrar deneyin ya da Model kaynağını kullanın.",
     "promptRequired": "Talimatlar boş olamaz.",
     "promptTooLong": "Talimat en fazla 4000 karakter olabilir.",
-    "invalidPadding": "Pay 0-50 piksel arasında olmalı."
+    "invalidPadding": "Pay 0-50 piksel arasında olmalı.",
+    "bank": {
+      "noQuestions": "Kaydedilecek soru yok.",
+      "invalidOptions": "Her sorunun 2-10 şıkkı olmalı.",
+      "correctAnswerMissing": "Her soru için doğru şık seçilmeli.",
+      "alreadySaved": "Bu sayfanın soruları daha önce bankaya kaydedildi.",
+      "saveFailed": "Sorular bankaya kaydedilemedi. Tekrar deneyin.",
+      "userNotResolved": "Kullanıcı bilgisi bulunamadı.",
+      "optionOutsideQuestion": "Şık kutusu soru kutusunun içinde olmalı.",
+      "rateLimited": "Saatlik bankaya kayıt sınırına ulaştınız. Biraz sonra tekrar deneyin."
+    }
   }
 }

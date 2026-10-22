@@ -57,8 +57,59 @@ public record LabelingResultDto(
     DateTime UpdatedAt,
     int? BasePromptVersion = null);
 
-/// <summary><c>GET api/labeling/pages/{sha256}</c> — sayfanın kayıtlı tüm kaynakları. Kayıt yoksa 404.</summary>
-public record LabelingPageDto(string ImageSha256, int Width, int Height, IReadOnlyList<LabelingResultDto> Results);
+/// <summary>
+/// <c>GET api/labeling/pages/{sha256}</c> — sayfanın kayıtlı tüm kaynakları. Kayıt yoksa 404. <c>Bank</c>: sayfa soru
+/// bankasına kaydedildiyse son kaydın özeti.
+/// </summary>
+public record LabelingPageDto(
+    string ImageSha256,
+    int Width,
+    int Height,
+    IReadOnlyList<LabelingResultDto> Results,
+    LabelingBankInfoDto? Bank = null);
+
+/// <summary>Sayfanın soru bankasına son kaydı (issue #470).</summary>
+public record LabelingBankInfoDto(DateTime SavedAt, string? SavedByName, int QuestionCount);
+
+/// <summary>Bankaya kaydedilecek kutu (orijinal sayfa pikseli, şıklar da sayfaya göre mutlak).</summary>
+public class LabelingBankBoxDto
+{
+    public int X { get; set; }
+
+    public int Y { get; set; }
+
+    public int Width { get; set; }
+
+    public int Height { get; set; }
+}
+
+public class LabelingBankQuestionDto : LabelingBankBoxDto
+{
+    /// <summary>Şıklar okunma sırasıyla (A, B, C, ...).</summary>
+    [Required, MaxLength(10)]
+    public List<LabelingBankBoxDto> Options { get; set; } = new();
+
+    /// <summary><see cref="Options"/> içindeki doğru şıkkın sırası.</summary>
+    public int CorrectOptionIndex { get; set; } = -1;
+}
+
+/// <summary>
+/// <c>POST api/labeling/pages/bank</c> — sayfadaki soruları teste bağlamadan soru bankasına kaydeder (issue #470).
+/// </summary>
+public class LabelingBankSaveRequestDto
+{
+    /// <summary>Ham görsel, base64 (data URL öneki kabul edilir).</summary>
+    [Required]
+    public string ImageBase64 { get; set; } = string.Empty;
+
+    [Required, MaxLength(100)]
+    public List<LabelingBankQuestionDto> Questions { get; set; } = new();
+
+    /// <summary>true: sayfa daha önce bankaya kaydedildiyse de yeniden kaydet (sorular ikinci kez oluşur).</summary>
+    public bool Force { get; set; }
+}
+
+public record LabelingBankSaveResponseDto(string ImageSha256, LabelingBankInfoDto Bank);
 
 public class LabelingAiDetectRequestDto
 {

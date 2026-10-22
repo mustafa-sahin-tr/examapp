@@ -136,6 +136,15 @@
       {{ t('train') }}
       }
     </button>
+    <button mat-flat-button type="button" class="lb-bank" (click)="saveToBank()" [disabled]="!canSaveToBank()"
+      [attr.aria-busy]="bankSaving()" [matTooltip]="t('bank.hint')">
+      @if (bankSaving()) {
+      <mat-spinner diameter="16" aria-hidden="true"></mat-spinner>
+      <span>{{ t('bank.saving') }}</span>
+      } @else {
+      <mat-icon>library_add</mat-icon>{{ t('bank.save') }}
+      }
+    </button>
   </div>
   }
 
@@ -230,6 +239,16 @@
         }
       </section>
       </ng-container>
+
+      <!-- Soru bankası: sayfa (aynı görsel SHA-256) daha önce kaydedildiyse son kayıt. -->
+      @if (bankRecord(); as b) {
+      <ng-container *transloco="let k; prefix: 'labeling.bank'">
+      <section class="lb-insp-sec" [attr.aria-label]="k('cardTitle')">
+        <p class="lb-source__main"><mat-icon aria-hidden="true">inventory_2</mat-icon>{{ k('cardSaved', { count: b.questionCount }) }}</p>
+        <p class="lb-hint-sm">{{ b.savedAt | date: 'short' }}@if (b.savedByName) { · {{ b.savedByName }} }</p>
+      </section>
+      </ng-container>
+      }
 
       <p class="lb-inspector__summary">{{ t('questionCount', { count: questionCount }) }}</p>
 

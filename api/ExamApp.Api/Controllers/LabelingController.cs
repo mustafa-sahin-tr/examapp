@@ -125,6 +125,55 @@ public class LabelingController : BaseController
         }
     }
 
+    /// <summary>
+    /// Sayfadaki soruları teste bağlamadan soru bankasına kaydeder (issue #470); sahibi çağıran, sınıflandırma
+    /// <c>QuestionCreatedEvent</c> ile başlar. Soru yazmak öğretmen yeteneği olduğundan sınıf düzeyindeki rollere ek olarak
+    /// Teacher veya Admin gerekir (QuestionTrainer tek başına yetmez). 400 geçersiz kutu / doğru şık eksik; 409 sayfa daha
+    /// önce kaydedildi (<c>force</c> ile yeniden kaydedilir) ya da şu an kaydediliyor; 429 saatlik kayıt sınırı; 500 kayıt
+    /// başarısız.
+    /// </summary>
+    [HttpPost("pages/bank")]
+    [Authorize(Roles = "Teacher,Admin")]
+    [RequestSizeLimit(32 * 1024 * 1024)]
+    public async Task<IActionResult> SaveToBank(
+        [FromBody] LabelingBankSaveRequestDto request, [FromServices] ILabelingBankService bank, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (!IsResolvedUser(user))
+            return UserNotResolved(Error("labeling.bank.userNotResolved"));
+
+        try
+        {
+            return Ok(await bank.SaveToBankAsync(request, CurrentActor(), user.Id, ct));
+        }
+        catch (LabelingValidationException ex)
+        {
+            return BadRequest(Error(ex.Message));
+        }
+        catch (LabelingBankDuplicateException ex)
+        {
+            return Conflict(new
+            {
+                message = _localizer["labeling.bank.alreadySaved"].Value,
+                errorCode = "LabelingPageAlreadyInBank",
+                existing = ex.Existing,
+            });
+        }
+        catch (LabelingRateLimitException ex)
+        {
+            if (ex.RetryAfter is { } retryAfter)
+            {
+                Response.Headers.RetryAfter =
+                    Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+            }
+            return StatusCode(StatusCodes.Status429TooManyRequests, Error("labeling.bank.rateLimited", "LabelingBankRateLimited"));
+        }
+        catch (LabelingBankSaveException)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, Error("labeling.bank.saveFailed", "LabelingBankSaveFailed"));
+        }
+    }
+
     private LabelingActor CurrentActor() =>
         new(KeyCloakId, User.FindFirstValue("name") ?? User.FindFirstValue("preferred_username"));
 

@@ -20,11 +20,11 @@
       "noQuestions": "Kaydedilecek soru yok.",
       "invalidOptions": "Her sorunun 2-10 şıkkı olmalı.",
       "correctAnswerMissing": "Her soru için doğru şık seçilmeli.",
-      "alreadySaved": "Bu sayfanın soruları daha önce bankaya kaydedildi.",
-      "saveFailed": "Sorular bankaya kaydedilemedi. Tekrar deneyin.",
+      "alreadySaved": "Bu sayfanın soruları daha önce havuza kaydedildi.",
+      "saveFailed": "Sorular havuza kaydedilemedi. Tekrar deneyin.",
       "userNotResolved": "Kullanıcı bilgisi bulunamadı.",
       "optionOutsideQuestion": "Şık kutusu soru kutusunun içinde olmalı.",
-      "rateLimited": "Saatlik bankaya kayıt sınırına ulaştınız. Biraz sonra tekrar deneyin."
+      "rateLimited": "Saatlik havuza kayıt sınırına ulaştınız. Biraz sonra tekrar deneyin."
     }
   }
 }

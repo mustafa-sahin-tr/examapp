@@ -20,11 +20,11 @@
       "noQuestions": "There are no questions to save.",
       "invalidOptions": "Each question must have 2-10 options.",
       "correctAnswerMissing": "Choose the correct option for every question.",
-      "alreadySaved": "This page's questions were already saved to the question bank.",
-      "saveFailed": "The questions could not be saved to the bank. Please try again.",
+      "alreadySaved": "This page's questions were already saved to the question pool.",
+      "saveFailed": "The questions could not be saved to the pool. Please try again.",
       "userNotResolved": "User profile could not be found.",
       "optionOutsideQuestion": "Each option box must be inside its question box.",
-      "rateLimited": "You reached the hourly limit for saving to the bank. Please try again later."
+      "rateLimited": "You reached the hourly limit for saving to the pool. Please try again later."
     }
   }
 }

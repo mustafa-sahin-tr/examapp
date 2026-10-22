@@ -44,6 +44,7 @@ function makeItem(id: number, overrides: Partial<QuestionBankItem> = {}): Questi
     hasCorrectAnswer: true,
     testCount: 0,
     isOwn: true,
+    canLink: true,
     createTime: '2026-10-01T00:00:00Z',
     ...overrides,
   };
@@ -497,6 +498,44 @@ describe('QuestionBankPanelComponent (issue #471)', () => {
       const input = fixture.nativeElement.querySelector('.qb-card__actions input[type="checkbox"]') as HTMLInputElement;
       expect(input.checked).toBeTrue();
       expect(input.disabled).toBeTrue();
+      fixture.destroy();
+    }));
+
+    it('toggleSelection_NotLinkableItem_IsIgnored (issue #472)', fakeAsync(() => {
+      fixture.componentRef.setInput('selectable', true);
+      settle();
+      const emit = spyOn(component.selectionChange, 'emit');
+      const legacy = makeItem(3, { canLink: false, isOwn: false });
+
+      component.toggleSelection(legacy);
+
+      expect(emit).not.toHaveBeenCalled();
+      expect(component.isLinkBlocked(legacy)).toBeTrue();
+      fixture.destroy();
+    }));
+
+    it('isLinkBlocked_NotSelectableOrAlreadyInTest_IsFalse (issue #472)', fakeAsync(() => {
+      settle();
+      expect(component.isLinkBlocked(makeItem(3, { canLink: false }))).toBeFalse();
+
+      fixture.componentRef.setInput('selectable', true);
+      fixture.componentRef.setInput('disabledIds', [3]);
+      expect(component.isLinkBlocked(makeItem(3, { canLink: false }))).toBeFalse();
+      fixture.destroy();
+    }));
+
+    it('template_NotLinkableItem_CheckboxUncheckedDisabledWithLabel (issue #472)', fakeAsync(() => {
+      search.and.returnValue(of(makePage([makeItem(1, { canLink: false, isOwn: false })])));
+      fixture.componentRef.setInput('selectable', true);
+      settle();
+
+      const input = fixture.nativeElement.querySelector('.qb-card__actions input[type="checkbox"]') as HTMLInputElement;
+      expect(input.checked).toBeFalse();
+      expect(input.disabled).toBeTrue();
+      expect((fixture.nativeElement.querySelector('.qb-card__actions') as HTMLElement).textContent).toContain(
+        qbTr.card.cannotLink,
+      );
+      expect(fixture.nativeElement.querySelector('.qb-card--disabled')).not.toBeNull();
       fixture.destroy();
     }));
 

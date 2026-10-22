@@ -15,6 +15,11 @@
       "rateLimited": "Kısa sürede çok fazla arama yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     },
 
+    "bankLink": {
+      "invalidRequest": "Geçersiz istek: 1 ile {0} arasında soru seçin.",
+      "rateLimited": "Kısa sürede çok fazla soru ekleme isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin."
+    },
+
     "bulk": {
       "saveFailed": "Soru seti kaydedilemedi.",
       "saved": "Sorular başarıyla kaydedildi!",

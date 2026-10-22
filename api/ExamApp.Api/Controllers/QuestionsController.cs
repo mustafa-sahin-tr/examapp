@@ -41,6 +41,7 @@ public class QuestionsController : BaseController
     private readonly IQuestionClassificationService _questionClassification;
     private readonly IClassifierCacheService _classifierCache;
     private readonly IQuestionOwnershipGuard _ownership;
+    private readonly IQuestionTestLinkService _testLinks;
 
     private const string AuthoringRoles = "Teacher,Admin";
 
@@ -56,10 +57,12 @@ public class QuestionsController : BaseController
         IQuestionClassificationService questionClassification,
         IClassifierCacheService classifierCache,
         IStringLocalizer<Messages> localizer,
-        IQuestionOwnershipGuard ownership)
+        IQuestionOwnershipGuard ownership,
+        IQuestionTestLinkService testLinks)
         : base()
     {
         _ownership = ownership;
+        _testLinks = testLinks;
         _localizer = localizer;
         _minioService = minioService;
         _imageHelper = imageHelper;
@@ -324,6 +327,28 @@ public class QuestionsController : BaseController
         }
 
         return Ok(response);
+    }
+
+    // POST /api/questions/test/{testId}/bank-questions — issue #472: bankadan seçilen hazır soruları teste bağlar (kopyalamaz),
+    // testin sonuna istek sırasıyla; testte zaten olanlar atlanır. Test sahibi/admin; sorular çağıranın kendi soruları ya da
+    // görebildiği (sahibi damgalı) sorular olmalı — biri bile değilse hiçbir şey yazılmaz, 404.
+    [HttpPost("test/{testId}/bank-questions")]
+    [Authorize(Roles = AuthoringRoles)]
+    [EnableRateLimiting(QuestionBankLinkRateLimiting.Policy)]
+    public async Task<IActionResult> LinkBankQuestions(int testId, [FromBody] LinkBankQuestionsRequest request)
+    {
+        if (request == null || !request.IsValid())
+            return BadRequest(new { message = _localizer["questions.bankLink.invalidRequest", LinkBankQuestionsRequest.MaxQuestions].Value });
+
+        var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
+        if (await DenyUnlessWorksheetOwnerAsync(testId, user.Id) is { } denied)
+            return denied;
+
+        var result = await _testLinks.LinkAsync(testId, request.QuestionIds!, user.Id, IsAdmin, HttpContext.RequestAborted);
+        if (result == null)
+            return NotFound(new { success = false, message = _localizer["questions.notFound"].Value });
+
+        return Ok(result);
     }
 
     // ---------------- issue #287 H1: kaynak sahipliği ----------------

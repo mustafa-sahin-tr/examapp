@@ -43,7 +43,7 @@ const EMPTY_PAGE: QuestionBankPage = { items: [], total: 0, skip: 0, take: 0 };
 
 /**
  * issue #471: soru bankası arama paneli — sınıf → ders → konu → alt konu kademeli seçim, durum filtreleri, sayfalı
- * sonuç ızgarası ve önizleme. Soru bankası sayfası kullanır; test ekranındaki "Bankadan ekle" (#472) aynı bileşeni
+ * sonuç ızgarası ve önizleme. Soru bankası sayfası kullanır; test ekranındaki "Havuzdan ekle" (#472) aynı bileşeni
  * `selectable` ile seçim modunda kullanır (zaten testte olanlar `disabledIds` ile pasif).
  */
 @Component({
@@ -191,12 +191,17 @@ export class QuestionBankPanelComponent {
     return this.disabledSet().has(item.id);
   }
 
+  /** issue #472: seçim modunda teste bağlanamayan soru (başkasının sahipsiz/legacy sorusu; karar sunucuda). */
+  isLinkBlocked(item: QuestionBankItem): boolean {
+    return this.selectable() && !this.isDisabled(item) && item.canLink === false;
+  }
+
   isSelected(item: QuestionBankItem): boolean {
     return this.selectedIds().has(item.id);
   }
 
   toggleSelection(item: QuestionBankItem): void {
-    if (!this.selectable() || this.isDisabled(item)) return;
+    if (!this.selectable() || this.isDisabled(item) || this.isLinkBlocked(item)) return;
     const next = new Set(this.selectedIds());
     if (next.has(item.id)) next.delete(item.id);
     else next.add(item.id);

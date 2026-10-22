@@ -256,6 +256,21 @@ public class QuestionBankSearchTests : IDisposable
     }
 
     [Fact]
+    public async Task SearchBankAsync_CanLink_OwnOrStampedQuestions_NotForeignLegacy()
+    {
+        // issue #472: "Bankadan ekle" ipucu — QuestionTestLinkService'in öğretmen kuralıyla aynı.
+        var page = await SearchAsync(TeacherA, isAdmin: false, new QuestionBankQuery { Scope = "all" });
+        var byId = page.Items.ToDictionary(i => i.Id);
+
+        byId[_qLegacyA].CanLink.ShouldBeTrue();       // kendi legacy sorusu
+        byId[_qA1].CanLink.ShouldBeTrue();
+        byId[_qB1].CanLink.ShouldBeTrue();            // başkasının damgalı, görünür sorusu
+        byId[_qC1].CanLink.ShouldBeTrue();
+        byId[_qLegacyPublic].CanLink.ShouldBeFalse(); // başkasının sahipsiz sorusu
+        byId[_qCopyLegacy].CanLink.ShouldBeFalse();   // yalnız kopyada → sahip değil
+    }
+
+    [Fact]
     public async Task SearchBankAsync_TestCountForTeacherA_CountsOnlyViewableNonDeletedMemberships()
     {
         var page = await SearchAsync(TeacherA, isAdmin: false, new QuestionBankQuery { Scope = "all" });

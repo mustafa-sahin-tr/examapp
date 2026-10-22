@@ -279,6 +279,7 @@ builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddScoped<IQuestionService, QuestionService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionClassificationService, ExamApp.Api.Services.Questions.QuestionClassificationService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionQueryService, ExamApp.Api.Services.Questions.QuestionQueryService>();
+builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionTestLinkService, ExamApp.Api.Services.Questions.QuestionTestLinkService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionOwnershipGuard, ExamApp.Api.Services.Questions.QuestionOwnershipGuard>(); // issue #287 H1
 builder.Services.AddScoped<IAuthApiClient, AuthApiClient>();
 // issue #265: dashboard gün sınırı yerel takvim (Dashboard:TimeZone, varsayılan Europe/Istanbul; geçersiz kimlik başlangıçta
@@ -396,6 +397,7 @@ builder.Services.AddAdminPasswordResetRateLimiting();
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminAccountStatusService, ExamApp.Api.Services.AdminUsers.AdminAccountStatusService>();
 builder.Services.AddAdminAccountStatusRateLimiting();
 builder.Services.AddQuestionBankSearchRateLimiting();
+builder.Services.AddQuestionBankLinkRateLimiting();
 // issue #365 (S3): kitap sayfası sorgusu (POST study-items/book-pages/lookup) kullanıcı başına rate limit.
 builder.Services.AddStudyBookPageLookupRateLimiting();
 // issue #277 (madde 8): admin öğrenci okul değişikliği — audit AdminUserActionLogs'a, ayrı rate limit kovası.

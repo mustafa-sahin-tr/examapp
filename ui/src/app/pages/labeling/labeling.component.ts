@@ -42,7 +42,7 @@ type PreferredSource = 'Model' | 'Ai';
 type DrawMode = 'question' | 'answer';
 
 /**
- * İşaretleme modu: soru tespit modeline eğitim verisi üretir; "Bankaya kaydet" ayrıca sayfadaki soruları teste
+ * İşaretleme modu: soru tespit modeline eğitim verisi üretir; "Havuza kaydet" ayrıca sayfadaki soruları teste
  * bağlamadan soru bankasına yazar (issue #470 — doğru şık dahil, sınıflandırma sunucuda otomatik başlar).
  * Seçilen kök klasörün (alt klasörler dahil) görsellerinden rastgele, daha önce eğitime alınmamış bir sayfa
  * açılır; tuval, tespit ve doğrulama `ImageSelectorComponent`'ten gelir. "Eğit" sayfayı tamamı işaretlenmiş
@@ -594,7 +594,7 @@ export class LabelingComponent {
     void this.showNext();
   }
 
-  /** `bankCount`: sayfa az önce bankaya kaydedildi (Bankaya kaydet akışı); eğitim bitince birleşik mesaj gösterilir. */
+  /** `bankCount`: sayfa az önce bankaya kaydedildi (Havuza kaydet akışı); eğitim bitince birleşik mesaj gösterilir. */
   train(bankCount?: number): void {
     const selector = this.selectorRef();
     if (!selector || !this.canTrain()) {
@@ -803,7 +803,7 @@ export class LabelingComponent {
 
   /**
    * Şıkkı seçer: soru tuvalindeki gibi `isCorrect` ile işaretlenir, tuvalde yeşil görünür; tuvalde şıkka tıklamak da
-   * aynı alanı yazar. Doğru cevap eğitim verisine gitmez; "Bankaya kaydet" ile sorunun doğru cevabı olarak yazılır.
+   * aynı alanı yazar. Doğru cevap eğitim verisine gitmez; "Havuza kaydet" ile sorunun doğru cevabı olarak yazılır.
    */
   insSelectAnswer(answerIndex: number): void {
     const index = this.inspector?.index;

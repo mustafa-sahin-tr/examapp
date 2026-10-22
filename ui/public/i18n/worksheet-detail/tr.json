@@ -97,6 +97,7 @@
     "requestAssignPermission": "Atama izni iste",
     "unclassifiedChip": "{{count}} soru sınıflandırılmadı",
     "addQuestion": "Soru Ekle",
+    "addFromBank": "Havuzdan Ekle",
     "edit": "Düzenle",
     "classProgressTitle": "Sınıf İlerlemesi",
     "assignmentsLoading": "Atamalar yükleniyor...",
@@ -166,7 +167,9 @@
     "assignmentFailed": "Atama oluşturulamadı.",
     "assignmentError": "Atama oluşturulurken bir hata oluştu.",
     "noAccess": "Bu teste erişiminiz yok veya test bulunamadı.",
-    "detailFailed": "Sınav detayları getirilemedi."
+    "detailFailed": "Sınav detayları getirilemedi.",
+    "bankAdded": "{{count}} soru teste eklendi.",
+    "bankAlreadyInTest": "Seçilen sorular zaten testte."
   },
   "assignDialog": {
     "title": "Yeni Atama Oluştur",
@@ -220,5 +223,15 @@
     "linkedQuestionTitle": "Soru hakkındaki yorumlar",
     "linkedQuestionTitleNumbered": "Soru {{order}} hakkındaki yorumlar",
     "placeholder": "Yorumlar yükleniyor…"
+  },
+  "bankDialog": {
+    "title": "Havuzdan soru ekle",
+    "subtitle": "Hazır sorulardan seçin; seçilenler testin sonuna eklenir. Testte zaten olan sorular seçilemez.",
+    "selectedCount": "{{count}} soru seçildi",
+    "cancel": "Vazgeç",
+    "submit": "Teste ekle",
+    "loadFailed": "Testin soruları yüklenemedi.",
+    "submitFailed": "Sorular teste eklenemedi. Lütfen tekrar deneyin.",
+    "notFound": "Seçilen sorulardan biri bu teste eklenemiyor (silinmiş ya da artık erişiminiz olmayabilir). Seçiminizi değiştirip tekrar deneyin."
   }
 }

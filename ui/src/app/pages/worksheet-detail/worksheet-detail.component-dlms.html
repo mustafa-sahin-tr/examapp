@@ -483,6 +483,9 @@
                 <button class="btn btn-primary" (click)="navigateToQuestionCanvas()">
                   <mat-icon>add_circle</mat-icon>{{ t('teacher.addQuestion') }}
                 </button>
+                <button class="btn btn-ghost" data-testid="add-from-bank-btn" (click)="openBankQuestionDialog()">
+                  <mat-icon>library_add</mat-icon>{{ t('teacher.addFromBank') }}
+                </button>
                 <button class="btn btn-ghost" (click)="editWorksheet(exam.id)">
                   <mat-icon>edit</mat-icon>{{ t('teacher.edit') }}
                 </button>

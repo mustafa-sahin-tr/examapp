@@ -87,7 +87,7 @@
         class="qb-card"
         appearance="outlined"
         [class.qb-card--selected]="isSelected(item)"
-        [class.qb-card--disabled]="selectable() && isDisabled(item)"
+        [class.qb-card--disabled]="selectable() && (isDisabled(item) || isLinkBlocked(item))"
       >
         <button type="button" class="qb-card__image" (click)="preview(item)" [attr.aria-label]="t('card.preview', { id: item.id })">
           @if (item.imageUrl) {
@@ -133,13 +133,19 @@
 
         @if (selectable()) {
           <mat-card-actions class="qb-card__actions">
-            <mat-checkbox
-              [checked]="isSelected(item) || isDisabled(item)"
-              [disabled]="isDisabled(item)"
-              (change)="toggleSelection(item)"
-            >
-              {{ isDisabled(item) ? t('card.alreadyAdded') : t('card.select') }}
-            </mat-checkbox>
+            @if (isLinkBlocked(item)) {
+              <mat-checkbox [checked]="false" [disabled]="true" [matTooltip]="t('card.cannotLinkTooltip')">
+                {{ t('card.cannotLink') }}
+              </mat-checkbox>
+            } @else {
+              <mat-checkbox
+                [checked]="isSelected(item) || isDisabled(item)"
+                [disabled]="isDisabled(item)"
+                (change)="toggleSelection(item)"
+              >
+                {{ isDisabled(item) ? t('card.alreadyAdded') : t('card.select') }}
+              </mat-checkbox>
+            }
           </mat-card-actions>
         }
       </mat-card>

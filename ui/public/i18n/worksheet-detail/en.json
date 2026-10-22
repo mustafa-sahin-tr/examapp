@@ -97,6 +97,7 @@
     "requestAssignPermission": "Request assign permission",
     "unclassifiedChip": "{{count}} questions unclassified",
     "addQuestion": "Add Question",
+    "addFromBank": "Add from Pool",
     "edit": "Edit",
     "classProgressTitle": "Class Progress",
     "assignmentsLoading": "Loading assignments...",
@@ -166,7 +167,9 @@
     "assignmentFailed": "The assignment could not be created.",
     "assignmentError": "Something went wrong while creating the assignment.",
     "noAccess": "You do not have access to this test, or it was not found.",
-    "detailFailed": "The test details could not be loaded."
+    "detailFailed": "The test details could not be loaded.",
+    "bankAdded": "{{count}} question(s) added to the test.",
+    "bankAlreadyInTest": "The selected questions are already in the test."
   },
   "assignDialog": {
     "title": "Create New Assignment",
@@ -220,5 +223,15 @@
     "linkedQuestionTitle": "Comments on the question",
     "linkedQuestionTitleNumbered": "Comments on question {{order}}",
     "placeholder": "Loading comments…"
+  },
+  "bankDialog": {
+    "title": "Add questions from the pool",
+    "subtitle": "Pick ready-made questions; they are appended to the end of the test. Questions already in the test cannot be selected.",
+    "selectedCount": "{{count}} selected",
+    "cancel": "Cancel",
+    "submit": "Add to test",
+    "loadFailed": "The test's questions could not be loaded.",
+    "submitFailed": "The questions could not be added. Please try again.",
+    "notFound": "One of the selected questions can't be added to this test (it may have been deleted or is no longer available to you). Change your selection and try again."
   }
 }

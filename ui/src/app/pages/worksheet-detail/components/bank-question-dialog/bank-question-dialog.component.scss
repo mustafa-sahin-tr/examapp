@@ -1,0 +1,42 @@
+:host {
+  display: block;
+  font-family: var(--paragraphFontFamily);
+}
+
+.bqd-desc {
+  margin: 0 0 1rem;
+  color: var(--ms-text);
+  line-height: 1.5;
+}
+
+.bqd-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ms-danger-background) 15%, transparent);
+  color: var(--ms-text);
+  font-size: 0.875rem;
+
+  mat-icon {
+    flex-shrink: 0;
+  }
+}
+
+.bqd-loading {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0;
+}
+
+.bqd-count {
+  margin-right: auto;
+  color: var(--ms-text);
+  font-size: 0.875rem;
+}
+
+mat-spinner {
+  display: inline-block;
+}

@@ -15,6 +15,8 @@ export interface QuestionBankFilter {
   /** true: ders + konusu belirli; false: sınıflandırması bitmemiş. */
   classified?: boolean | null;
   hasCorrectAnswer?: boolean | null;
+  /** true: en az bir teste bağlı; false: hiçbir teste bağlı değil; null: farketmez. */
+  inTest?: boolean | null;
   skip?: number;
   take?: number;
 }

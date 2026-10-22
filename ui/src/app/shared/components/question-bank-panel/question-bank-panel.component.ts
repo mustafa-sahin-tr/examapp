@@ -29,6 +29,7 @@ export type QuestionBankScope = 'mine' | 'all';
 export type QuestionBankSourceFilter = 'any' | 'AI' | 'Human';
 export type QuestionBankStatusFilter = 'any' | 'classified' | 'unclassified';
 export type QuestionBankAnswerFilter = 'any' | 'yes' | 'no';
+export type QuestionBankInTestFilter = 'any' | 'yes' | 'no';
 export type QuestionBankDifficultyFilter = 'any' | 'easy' | 'medium' | 'hard';
 
 /** Zorluk grupları (1-10 ölçeği, iki uç dahil). */
@@ -85,6 +86,7 @@ export class QuestionBankPanelComponent {
   readonly source = signal<QuestionBankSourceFilter>('any');
   readonly status = signal<QuestionBankStatusFilter>('any');
   readonly answer = signal<QuestionBankAnswerFilter>('any');
+  readonly inTest = signal<QuestionBankInTestFilter>('any');
   readonly difficulty = signal<QuestionBankDifficultyFilter>('any');
   readonly pageIndex = signal(0);
   readonly pageSize = signal(24);
@@ -104,6 +106,7 @@ export class QuestionBankPanelComponent {
     const source = this.source();
     const status = this.status();
     const answer = this.answer();
+    const inTest = this.inTest();
     return {
       scope: this.scope(),
       gradeId: c?.gradeId ?? null,
@@ -115,6 +118,7 @@ export class QuestionBankPanelComponent {
       source: source === 'any' ? null : source,
       classified: status === 'any' ? null : status === 'classified',
       hasCorrectAnswer: answer === 'any' ? null : answer === 'yes',
+      inTest: inTest === 'any' ? null : inTest === 'yes',
       skip: this.pageIndex() * this.pageSize(),
       take: this.pageSize(),
     };
@@ -165,6 +169,11 @@ export class QuestionBankPanelComponent {
 
   setAnswer(value: QuestionBankAnswerFilter): void {
     this.answer.set(value);
+    this.pageIndex.set(0);
+  }
+
+  setInTest(value: QuestionBankInTestFilter): void {
+    this.inTest.set(value);
     this.pageIndex.set(0);
   }
 

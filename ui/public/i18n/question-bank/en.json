@@ -19,7 +19,10 @@
     "sourceHuman": "Manual",
     "answer": "Correct answer",
     "answerYes": "Set",
-    "answerNo": "Not set"
+    "answerNo": "Not set",
+    "inTest": "Linked test",
+    "inTestYes": "Yes",
+    "inTestNo": "No"
   },
   "results": {
     "total": "{{count}} questions",

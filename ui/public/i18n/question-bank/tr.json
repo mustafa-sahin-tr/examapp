@@ -19,7 +19,10 @@
     "sourceHuman": "Manuel",
     "answer": "Doğru cevap",
     "answerYes": "Belirlenmiş",
-    "answerNo": "Belirlenmemiş"
+    "answerNo": "Belirlenmemiş",
+    "inTest": "Bağlı test",
+    "inTestYes": "Var",
+    "inTestNo": "Yok"
   },
   "results": {
     "total": "{{count}} soru",

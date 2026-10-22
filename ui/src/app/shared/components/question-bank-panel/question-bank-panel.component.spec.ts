@@ -105,6 +105,7 @@ describe('QuestionBankPanelComponent (issue #471)', () => {
         source: null,
         classified: null,
         hasCorrectAnswer: null,
+        inTest: null,
         skip: 0,
         take: 24,
       });
@@ -169,6 +170,22 @@ describe('QuestionBankPanelComponent (issue #471)', () => {
       expect(component.filter().hasCorrectAnswer).toBeFalse();
       component.setAnswer('any');
       expect(component.filter().hasCorrectAnswer).toBeNull();
+    });
+
+    it('filter_InTestYesNoAny_MapToThreeStates', () => {
+      component.setInTest('yes');
+      expect(component.filter().inTest).toBeTrue();
+      component.setInTest('no');
+      expect(component.filter().inTest).toBeFalse();
+      component.setInTest('any');
+      expect(component.filter().inTest).toBeNull();
+    });
+
+    it('setInTest_ResetsToFirstPage', () => {
+      component.onPage({ pageIndex: 2, pageSize: 24, length: 100, previousPageIndex: 0 });
+      component.setInTest('no');
+      expect(component.pageIndex()).toBe(0);
+      expect(component.filter().skip).toBe(0);
     });
 
     it('filter_ScopeAll_SendsAll', () => {

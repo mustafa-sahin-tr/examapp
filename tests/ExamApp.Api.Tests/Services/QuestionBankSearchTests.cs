@@ -396,6 +396,66 @@ public class QuestionBankSearchTests : IDisposable
         IdsOf(page).ShouldBe(Sorted(_live.Where(id => id != _qA1)));
     }
 
+    /// <summary>A'nın hiçbir teste bağlı olmayan (yalnız bankada) sorusu + yalnız silinmiş teste bağlı sorusu.</summary>
+    private (int BankOnly, int OnlyInDeletedTest) AddUnlinkedQuestionsForTeacherA()
+    {
+        using var ctx = _db.NewContext();
+        var bankOnly = Add(ctx, TeacherA, new Question { Text = "banka", DifficultyLevel = 2 });
+        var inDeleted = Add(ctx, TeacherA, new Question { Text = "silinen-testte", DifficultyLevel = 2 });
+        var deletedWs = Add(ctx, TeacherA, new Worksheet { Name = "silinen", Description = "", GradeId = _g5, IsDeleted = true });
+        ctx.TestQuestions.Add(new WorksheetQuestion { TestId = deletedWs.Id, QuestionId = inDeleted.Id, Order = 1 });
+        ctx.SaveChanges();
+        return (bankOnly.Id, inDeleted.Id);
+    }
+
+    [Fact]
+    public async Task SearchBankAsync_FilterByInTestFalse_ReturnsQuestionsWithoutLiveTest()
+    {
+        var (bankOnly, onlyInDeletedTest) = AddUnlinkedQuestionsForTeacherA();
+
+        var teacher = await SearchAsync(TeacherA, isAdmin: false, new QuestionBankQuery { InTest = false });
+        var admin = await SearchAsync(Admin, isAdmin: true, new QuestionBankQuery { Scope = "all", InTest = false });
+
+        IdsOf(teacher).ShouldBe(Expect(bankOnly, onlyInDeletedTest));
+        teacher.Items.ShouldAllBe(i => i.TestCount == 0);
+        IdsOf(admin).ShouldBe(Expect(bankOnly, onlyInDeletedTest));
+    }
+
+    [Fact]
+    public async Task SearchBankAsync_FilterByInTestTrue_ReturnsQuestionsLinkedToAVisibleTest()
+    {
+        var (bankOnly, onlyInDeletedTest) = AddUnlinkedQuestionsForTeacherA();
+
+        var teacherAll = await SearchAsync(TeacherA, isAdmin: false);
+        var teacherInTest = await SearchAsync(TeacherA, isAdmin: false, new QuestionBankQuery { InTest = true });
+
+        IdsOf(teacherInTest).ShouldBe(Sorted(IdsOf(teacherAll).Where(id => id != bankOnly && id != onlyInDeletedTest)));
+        teacherInTest.Items.ShouldAllBe(i => i.TestCount > 0);
+    }
+
+    [Fact]
+    public async Task SearchBankAsync_FilterByInTest_ForTeacherCountsOnlyVisibleTests()
+    {
+        // A'nın sorusu yalnız C'nin özel testinde: A için bağlı test yok (TestCount 0), admin için bağlı.
+        int qAInCPrivate;
+        using (var ctx = _db.NewContext())
+        {
+            var q = Add(ctx, TeacherA, new Question { Text = "a-c-özelde", DifficultyLevel = 2 });
+            var wsCPrivateId = ctx.Worksheets.Single(w => w.Name == "C özel").Id;
+            ctx.TestQuestions.Add(new WorksheetQuestion { TestId = wsCPrivateId, QuestionId = q.Id, Order = 2 });
+            ctx.SaveChanges();
+            qAInCPrivate = q.Id;
+        }
+
+        var teacherNotInTest = await SearchAsync(TeacherA, isAdmin: false, new QuestionBankQuery { InTest = false });
+        var teacherInTest = await SearchAsync(TeacherA, isAdmin: false, new QuestionBankQuery { InTest = true });
+        var adminInTest = await SearchAsync(Admin, isAdmin: true, new QuestionBankQuery { Scope = "all", InTest = true });
+
+        teacherNotInTest.Items.Single(i => i.Id == qAInCPrivate).TestCount.ShouldBe(0);
+        IdsOf(teacherInTest).ShouldNotContain(qAInCPrivate);
+        IdsOf(adminInTest).ShouldContain(qAInCPrivate);
+    }
+
     [Fact]
     public async Task SearchBankAsync_CombinedFilters_AreAppliedTogether()
     {

@@ -36,6 +36,12 @@ public class QuestionBankQuery
     /// <summary>true → doğru cevabı belirlenmiş sorular; false → doğru cevabı boş sorular.</summary>
     public bool? HasCorrectAnswer { get; set; }
 
+    /// <summary>
+    /// true → en az bir teste bağlı; false → çağıranın görebildiği hiçbir teste bağlı değil; null → farketmez. Sayım
+    /// <see cref="QuestionBankItemDto.TestCount"/> ile aynıdır (öğretmen için görebildiği silinmemiş testler).
+    /// </summary>
+    public bool? InTest { get; set; }
+
     public int Skip { get; set; }
     public int Take { get; set; } = DefaultTake;
 

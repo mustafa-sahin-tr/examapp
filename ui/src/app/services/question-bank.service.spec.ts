@@ -47,11 +47,12 @@ describe('QuestionBankService (issue #471)', () => {
   });
 
   it('search_FalseAndZeroValues_AreKept', () => {
-    service.search({ classified: false, hasCorrectAnswer: false, skip: 0, take: 24 }).subscribe();
+    service.search({ classified: false, hasCorrectAnswer: false, inTest: false, skip: 0, take: 24 }).subscribe();
 
     const req = http.expectOne((r) => r.url === URL);
     expect(req.request.params.get('classified')).toBe('false');
     expect(req.request.params.get('hasCorrectAnswer')).toBe('false');
+    expect(req.request.params.get('inTest')).toBe('false');
     expect(req.request.params.get('skip')).toBe('0');
     expect(req.request.params.get('take')).toBe('24');
     req.flush(EMPTY_PAGE);

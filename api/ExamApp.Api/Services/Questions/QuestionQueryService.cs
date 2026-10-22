@@ -256,6 +256,10 @@ public class QuestionQueryService : IQuestionQueryService
             query = classified
                 ? query.Where(q => q.SubjectId != null && q.TopicId != null)
                 : query.Where(q => q.SubjectId == null || q.TopicId == null);
+        if (filter.InTest is { } inTest)
+            query = inTest
+                ? query.Where(q => visibleMemberships.Any(tq => tq.QuestionId == q.Id))
+                : query.Where(q => !visibleMemberships.Any(tq => tq.QuestionId == q.Id));
         if (filter.HasCorrectAnswer is { } hasCorrectAnswer)
             query = hasCorrectAnswer
                 ? query.Where(q => q.CorrectAnswerId != null)

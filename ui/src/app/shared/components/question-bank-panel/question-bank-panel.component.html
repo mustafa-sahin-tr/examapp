@@ -49,6 +49,15 @@
           <mat-option value="no">{{ t('filters.answerNo') }}</mat-option>
         </mat-select>
       </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ t('filters.inTest') }}</mat-label>
+        <mat-select [value]="inTest()" (selectionChange)="setInTest($event.value)">
+          <mat-option value="any">{{ t('filters.any') }}</mat-option>
+          <mat-option value="yes">{{ t('filters.inTestYes') }}</mat-option>
+          <mat-option value="no">{{ t('filters.inTestNo') }}</mat-option>
+        </mat-select>
+      </mat-form-field>
     </div>
   </section>
 

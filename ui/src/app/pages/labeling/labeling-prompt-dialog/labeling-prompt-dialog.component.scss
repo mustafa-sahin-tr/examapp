@@ -33,6 +33,8 @@
   width: 100%;
 
   textarea {
+    // Dış çizgili alanda etiket ilk satırın üstüne binmesin.
+    margin-top: 8px;
     font-family: var(--paragraphFontFamily);
     font-size: 13px;
   }

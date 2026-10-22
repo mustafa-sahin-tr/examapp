@@ -819,6 +819,23 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("BankQuestionCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("BankSaveStartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("BankSavedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("BankSavedByKeycloakId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("BankSavedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 

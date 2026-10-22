@@ -2,13 +2,17 @@ using NSubstitute.ExceptionExtensions;
 using System.Reflection;
 using System.Security.Claims;
 using ExamApp.Api.Controllers;
+using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Labeling;
+using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Labeling;
 using ExamApp.Api.Services.Teachers.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ExamApp.Api.Tests.Controllers;
 
@@ -70,13 +74,15 @@ public class LabelingControllerTests
             .ToList();
 
         actions.Select(m => m.Name).OrderBy(n => n)
-            .ShouldBe(new[] { "DetectWithAi", "GetAiModels", "GetPage", "GetPrompt", "SaveManual", "SavePrompt" });
+            .ShouldBe(new[] { "DetectWithAi", "GetAiModels", "GetPage", "GetPrompt", "SaveManual", "SavePrompt", "SaveToBank" });
 
         foreach (var m in actions)
         {
             m.GetCustomAttributes<AllowAnonymousAttribute>().ShouldBeEmpty(m.Name);
+            // SaveToBank (#470) ek olarak Teacher/Admin ister; diğerleri sınıf düzeyindeki kümeyi daraltmaz.
+            var expected = m.Name == "SaveToBank" ? "Teacher,Admin" : "Admin,QuestionTrainer";
             m.GetCustomAttributes<AuthorizeAttribute>().Where(a => a.Roles is not null)
-                .ShouldAllBe(a => a.Roles == "Admin,QuestionTrainer", m.Name);
+                .ShouldAllBe(a => a.Roles == expected, m.Name);
         }
     }
 
@@ -269,6 +275,156 @@ public class LabelingControllerTests
 
         var obj = result.ShouldBeOfType<ObjectResult>();
         obj.Value!.GetType().GetProperty("errorCode")!.GetValue(obj.Value).ShouldBe("LabelingRateLimited");
+    }
+
+    // ---------- Soru bankası (POST api/labeling/pages/bank, issue #470) ----------
+
+    private readonly ILabelingBankService _bank = Substitute.For<ILabelingBankService>();
+
+    /// <summary>Çözülen profil (Id &gt; 0) ya da null (profil yok) ile; <c>GetAuthenticatedUserAsync</c> RequestServices'ten okur.</summary>
+    private LabelingController NewBankController(UserProfileDto? profile)
+    {
+        var profiles = Substitute.For<IUserProfileProvider>();
+        profiles.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(profile);
+        var services = new ServiceCollection()
+            .AddLogging()
+            .AddSingleton<IConfiguration>(new ConfigurationBuilder().Build())
+            .AddSingleton(profiles)
+            .BuildServiceProvider();
+
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, TrainerKeycloakId), new Claim("preferred_username", "trainer")],
+                authenticationType: "TestAuth")),
+            RequestServices = services,
+        };
+        return new LabelingController(_service)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+        };
+    }
+
+    private static UserProfileDto TeacherProfile(int id = 42) => new()
+    {
+        Id = id,
+        KeycloakId = TrainerKeycloakId,
+        FullName = "Eğitmen",
+        Email = string.Empty,
+        Role = "Teacher",
+    };
+
+    private static LabelingBankSaveRequestDto BankRequest() => new()
+    {
+        ImageBase64 = "iVBORw0KGgo=",
+        Questions = [new LabelingBankQuestionDto { Options = [new(), new()], CorrectOptionIndex = 0 }],
+    };
+
+    [Fact]
+    public void SaveToBank_IsPostOnPagesBankRouteWithTeacherOrAdminRoles()
+    {
+        var method = typeof(LabelingController).GetMethod(nameof(LabelingController.SaveToBank))!;
+
+        method.GetCustomAttributes<HttpPostAttribute>().Single().Template.ShouldBe("pages/bank");
+        method.GetCustomAttributes<AuthorizeAttribute>().Where(a => a.Roles is not null)
+            .Select(a => a.Roles!).ShouldBe(["Teacher,Admin"]);
+    }
+
+    [Fact]
+    public async Task SaveToBank_Success_Returns200WithBankResponseAndPassesUserIdAndActor()
+    {
+        var response = new LabelingBankSaveResponseDto(new string('c', 64),
+            new LabelingBankInfoDto(DateTime.UtcNow, "Eğitmen", 1));
+        var request = BankRequest();
+        _bank.SaveToBankAsync(Arg.Any<LabelingBankSaveRequestDto>(), Arg.Any<LabelingActor>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        var result = await NewBankController(TeacherProfile(id: 42)).SaveToBank(request, _bank, CancellationToken.None);
+
+        ((OkObjectResult)result).Value.ShouldBe(response);
+        await _bank.Received(1).SaveToBankAsync(
+            request,
+            Arg.Is<LabelingActor>(a => a.KeycloakId == TrainerKeycloakId),
+            42,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SaveToBank_RateLimited_Returns429WithBankErrorCodeAndRetryAfter()
+    {
+        _bank.SaveToBankAsync(default!, default!, default, default)
+            .ThrowsAsyncForAnyArgs(new LabelingRateLimitException(TimeSpan.FromMinutes(5)));
+        var controller = NewBankController(TeacherProfile());
+
+        var result = await controller.SaveToBank(BankRequest(), _bank, CancellationToken.None);
+
+        var obj = result.ShouldBeOfType<ObjectResult>();
+        obj.StatusCode.ShouldBe(StatusCodes.Status429TooManyRequests);
+        obj.Value!.GetType().GetProperty("errorCode")!.GetValue(obj.Value).ShouldBe("LabelingBankRateLimited");
+        controller.Response.Headers.RetryAfter.ToString().ShouldBe("300");
+    }
+
+    [Fact]
+    public async Task SaveToBank_UserProfileNotResolved_Returns404AndDoesNotSave()
+    {
+        var result = await NewBankController(profile: null).SaveToBank(BankRequest(), _bank, CancellationToken.None);
+
+        ((ObjectResult)result).StatusCode.ShouldBe(StatusCodes.Status404NotFound);
+        await _bank.DidNotReceiveWithAnyArgs().SaveToBankAsync(default!, default!, default, default);
+    }
+
+    [Fact]
+    public async Task SaveToBank_ValidationException_Returns400WithMessageKey()
+    {
+        _bank.SaveToBankAsync(default!, default!, default, default)
+            .ThrowsAsyncForAnyArgs(new LabelingValidationException("labeling.bank.correctAnswerMissing"));
+
+        var result = await NewBankController(TeacherProfile()).SaveToBank(BankRequest(), _bank, CancellationToken.None);
+
+        var obj = result.ShouldBeOfType<BadRequestObjectResult>();
+        obj.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+    }
+
+    [Fact]
+    public async Task SaveToBank_DuplicateWithExistingInfo_Returns409WithExistingRecord()
+    {
+        var existing = new LabelingBankInfoDto(DateTime.UtcNow, "Önceki Eğitmen", 4);
+        _bank.SaveToBankAsync(default!, default!, default, default)
+            .ThrowsAsyncForAnyArgs(new LabelingBankDuplicateException(existing));
+
+        var result = await NewBankController(TeacherProfile()).SaveToBank(BankRequest(), _bank, CancellationToken.None);
+
+        var obj = result.ShouldBeOfType<ConflictObjectResult>();
+        obj.StatusCode.ShouldBe(StatusCodes.Status409Conflict);
+        obj.Value!.GetType().GetProperty("errorCode")!.GetValue(obj.Value).ShouldBe("LabelingPageAlreadyInBank");
+        obj.Value.GetType().GetProperty("existing")!.GetValue(obj.Value).ShouldBe(existing);
+    }
+
+    [Fact]
+    public async Task SaveToBank_DuplicateWhileClaimInProgress_Returns409WithNullExisting()
+    {
+        _bank.SaveToBankAsync(default!, default!, default, default)
+            .ThrowsAsyncForAnyArgs(new LabelingBankDuplicateException(null));
+
+        var result = await NewBankController(TeacherProfile()).SaveToBank(BankRequest(), _bank, CancellationToken.None);
+
+        var obj = result.ShouldBeOfType<ConflictObjectResult>();
+        obj.Value!.GetType().GetProperty("existing")!.GetValue(obj.Value).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task SaveToBank_BulkSaveFailure_Returns500WithErrorCodeAndNoDetail()
+    {
+        _bank.SaveToBankAsync(default!, default!, default, default)
+            .ThrowsAsyncForAnyArgs(new LabelingBankSaveException());
+
+        var result = await NewBankController(TeacherProfile()).SaveToBank(BankRequest(), _bank, CancellationToken.None);
+
+        var obj = result.ShouldBeOfType<ObjectResult>();
+        obj.StatusCode.ShouldBe(StatusCodes.Status500InternalServerError);
+        var body = obj.Value!.ToString()!;
+        body.ShouldContain("LabelingBankSaveFailed");
+        body.ShouldNotContain("Saving labeling questions");
     }
 
     // ---------- Prompt uçları (GET/PUT api/labeling/prompt) ----------

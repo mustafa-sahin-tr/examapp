@@ -23,5 +23,26 @@ public class LabelingPage
 
     public DateTime CreatedAt { get; set; }
 
+    /// <summary>
+    /// Sayfanın soruları soru bankasına (teste bağlanmadan) en son ne zaman başarıyla kaydedildi; null = hiç. Aynı sayfanın
+    /// ikinci kaydı bu alanla uyarılır (issue #470).
+    /// </summary>
+    public DateTime? BankSavedAt { get; set; }
+
+    /// <summary>
+    /// Bankaya kayıt sürüyor (başlangıç anı); bitince null. Doluyken eşzamanlı ikinci kayıt (<c>Force</c> dahil) reddedilir;
+    /// süreç kayıt ortasında öldüyse işaret bir süre sonra bayat sayılır.
+    /// </summary>
+    public DateTime? BankSaveStartedAt { get; set; }
+
+    [MaxLength(64)]
+    public string? BankSavedByKeycloakId { get; set; }
+
+    [MaxLength(200)]
+    public string? BankSavedByName { get; set; }
+
+    /// <summary>Son bankaya kayıtta oluşturulan soru sayısı.</summary>
+    public int? BankQuestionCount { get; set; }
+
     public List<LabelingResult> Results { get; set; } = new();
 }

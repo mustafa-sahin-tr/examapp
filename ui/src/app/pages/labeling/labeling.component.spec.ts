@@ -17,6 +17,9 @@ import { DetectionSource, LabelingAiModel, LabelingPage, LabelingPromptState, La
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import labelingTr from '../../../../public/i18n/labeling/tr.json';
 
+interface StubAnswer { label: string; isCorrect: boolean; x: number; y: number; width: number; height: number; }
+interface StubRegion { name: string; x?: number; y?: number; width?: number; height?: number; answers?: StubAnswer[]; }
+
 /** Gerçek tuval yerine; `@ViewChild(ImageSelectorComponent)` bu stub'ı DI token'ı üzerinden bulur. */
 @Component({
   selector: 'app-image-selector',
@@ -44,7 +47,13 @@ class ImageSelectorStub {
   readonly imageData = signal<string | null>(null);
   readonly pageLoadFailed = signal(false);
   readonly predictFailed = signal(false);
-  readonly regions = signal<unknown[]>([]);
+  readonly regions = signal<StubRegion[]>([]);
+  /** Soru tipi (ad → tip); tanımsız = mcq. */
+  interactionTypes: Record<string, string> = {};
+  getInteractionType = jasmine
+    .createSpy('getInteractionType')
+    .and.callFake((name: string) => this.interactionTypes[name] ?? 'mcq');
+  ensureQuestionsValid = jasmine.createSpy('ensureQuestionsValid').and.returnValue(true);
   loaded: File[] = [];
   /** Gerçek bileşen gibi: yükleme anında eski sayfa durumu silinir, görsel okunmuş sayılır. */
   loadFile = jasmine.createSpy('loadFile').and.callFake((file: File) => {
@@ -130,7 +139,7 @@ describe('LabelingComponent', () => {
     detector.getLabeledPages.and.returnValue(
       fail ? throwError(() => new Error('down')) : of({ pageIds: labeledIds })
     );
-    labelingApi = jasmine.createSpyObj<LabelingService>('LabelingService', ['getAiModels', 'getPage', 'aiDetect', 'saveManual']);
+    labelingApi = jasmine.createSpyObj<LabelingService>('LabelingService', ['getAiModels', 'getPage', 'aiDetect', 'saveManual', 'saveToBank']);
     labelingApi.getAiModels.and.returnValue(of(aiModels));
     // Varsayılan: sayfanın kaydı yok (404 → null).
     labelingApi.getPage.and.returnValue(throwError(() => ({ status: 404 })));
@@ -866,4 +875,170 @@ describe('LabelingComponent', () => {
       });
     });
   });
+  describe('soru bankası (#470)', () => {
+    const savedBank = { savedAt: '2026-10-22T09:00:00Z', savedByName: 'Eğitmen', questionCount: 1 };
+    const pageWithBank: LabelingPage = {
+      imageSha256: 'abc', width: 320, height: 200, results: [],
+      bank: { savedAt: '2026-10-22T08:00:00Z', savedByName: 'Önceki', questionCount: 2 },
+    };
+
+    function region(name: string, correct: number, x = 10.4, y = 9.6): StubRegion {
+      return {
+        name, x, y, width: 100, height: 80,
+        answers: [0, 1, 2].map((i) => ({
+          label: String.fromCharCode(65 + i), isCorrect: i === correct, x: 12 + i * 25, y: 12, width: 20, height: 20,
+        })),
+      };
+    }
+
+    /** Sayfayı açar (isteğe bağlı mevcut bank kaydıyla) ve tuvalde verilen soruları hazır bırakır. */
+    async function openPageWith(regions: StubRegion[], page: LabelingPage | null = null): Promise<void> {
+      await setup();
+      if (page) {
+        labelingApi.getPage.and.returnValue(of(page));
+      }
+      await pickFolder([image('p1.webp')]);
+      selector().regions.set(regions);
+      fixture.detectChanges();
+    }
+
+    /** Snackbar'daki "Yine de kaydet" eylemi; `next()` ile tetiklenir. */
+    function snackbarWithAction(): Subject<void> {
+      const action = new Subject<void>();
+      spyOn(TestBed.inject(MatSnackBar), 'open').and.returnValue({ onAction: () => action.asObservable() } as never);
+      return action;
+    }
+
+    it('saveToBank_McqRegions_PostsRoundedBoxesWithCorrectIndexAndForceFalse', async () => {
+      await openPageWith([region('S1', 1)]);
+      labelingApi.saveToBank.and.returnValue(of({ imageSha256: 'abc', bank: savedBank }));
+
+      component.saveToBank();
+
+      expect(labelingApi.saveToBank).toHaveBeenCalledTimes(1);
+      const request = labelingApi.saveToBank.calls.mostRecent().args[0];
+      expect(request.force).toBeFalse();
+      expect(request.imageBase64).toMatch(/^data:image\/webp;base64,/);
+      expect(request.questions).toEqual([
+        {
+          x: 10, y: 10, width: 100, height: 80, correctOptionIndex: 1,
+          options: [
+            { x: 12, y: 12, width: 20, height: 20 },
+            { x: 37, y: 12, width: 20, height: 20 },
+            { x: 62, y: 12, width: 20, height: 20 },
+          ],
+        },
+      ]);
+      expect(selector().ensureQuestionsValid).toHaveBeenCalledWith({ requireCorrectAnswer: true });
+      expect(component.bankRecord()?.questionCount).toBe(1);
+      expect(component.bankSaving()).toBeFalse();
+    });
+
+    it('saveToBank_Success_ShowsSavedSnackbar', async () => {
+      await openPageWith([region('S1', 0)]);
+      labelingApi.saveToBank.and.returnValue(of({ imageSha256: 'abc', bank: savedBank }));
+      const snack = spyOn(TestBed.inject(MatSnackBar), 'open');
+
+      component.saveToBank();
+
+      expect(snack).toHaveBeenCalledWith(jasmine.any(String), labelingTr.ok, jasmine.any(Object));
+    });
+
+    it('saveToBank_DragDropOnly_ShowsNoMcqAndSendsNothing', async () => {
+      await openPageWith([region('S1', 0)]);
+      selector().interactionTypes['S1'] = 'dragDropLabeling';
+      const snack = spyOn(TestBed.inject(MatSnackBar), 'open');
+
+      component.saveToBank();
+
+      expect(labelingApi.saveToBank).not.toHaveBeenCalled();
+      expect(snack).toHaveBeenCalledWith(labelingTr.bank.noMcq, labelingTr.ok, jasmine.any(Object));
+    });
+
+    it('saveToBank_InvalidQuestions_SendsNothing', async () => {
+      await openPageWith([region('S1', 0)]);
+      selector().ensureQuestionsValid.and.returnValue(false);
+
+      component.saveToBank();
+
+      expect(selector().ensureQuestionsValid).toHaveBeenCalledWith({ requireCorrectAnswer: true });
+      expect(labelingApi.saveToBank).not.toHaveBeenCalled();
+    });
+
+    it('canSaveToBank_NoQuestionsOnCanvas_IsFalseAndSendsNothing', async () => {
+      await openPageWith([]);
+
+      expect(component.canSaveToBank()).toBeFalse();
+      component.saveToBank();
+      expect(labelingApi.saveToBank).not.toHaveBeenCalled();
+    });
+
+    it('saveToBank_ExistingRecord_AsksConfirmThenSendsForceTrue', async () => {
+      await openPageWith([region('S1', 0)], pageWithBank);
+      expect(component.bankRecord()?.questionCount).toBe(2);
+      const action = snackbarWithAction();
+      labelingApi.saveToBank.and.returnValue(of({ imageSha256: 'abc', bank: savedBank }));
+
+      component.saveToBank();
+      expect(labelingApi.saveToBank).not.toHaveBeenCalled();
+
+      action.next();
+      expect(labelingApi.saveToBank).toHaveBeenCalledTimes(1);
+      expect(labelingApi.saveToBank.calls.mostRecent().args[0].force).toBeTrue();
+    });
+
+    it('saveToBank_409WithExisting_ShowsRecordAndAsksAgainBeforeForce', async () => {
+      await openPageWith([region('S1', 0)]);
+      const existing = { savedAt: '2026-10-22T07:00:00Z', savedByName: 'Diğer', questionCount: 3 };
+      labelingApi.saveToBank.and.returnValue(
+        throwError(() => ({ status: 409, error: { message: 'x', errorCode: 'LabelingPageAlreadyInBank', existing } }))
+      );
+      const action = snackbarWithAction();
+
+      component.saveToBank();
+
+      expect(labelingApi.saveToBank).toHaveBeenCalledTimes(1);
+      expect(component.bankRecord()?.questionCount).toBe(3);
+      expect(component.bankSaving()).toBeFalse();
+
+      labelingApi.saveToBank.and.returnValue(of({ imageSha256: 'abc', bank: savedBank }));
+      action.next();
+      expect(labelingApi.saveToBank).toHaveBeenCalledTimes(2);
+      expect(labelingApi.saveToBank.calls.mostRecent().args[0].force).toBeTrue();
+    });
+
+    it('saveToBank_Forbidden_ShowsForbiddenMessageAndKeepsNoRecord', async () => {
+      await openPageWith([region('S1', 0)]);
+      labelingApi.saveToBank.and.returnValue(throwError(() => ({ status: 403, error: {} })));
+      const snack = spyOn(TestBed.inject(MatSnackBar), 'open');
+
+      component.saveToBank();
+
+      expect(snack).toHaveBeenCalledWith(labelingTr.bank.forbidden, labelingTr.ok, jasmine.any(Object));
+      expect(component.bankRecord()).toBeNull();
+      expect(component.bankSaving()).toBeFalse();
+    });
+
+    it('saveToBank_ServerErrorWithMessage_ShowsServerMessage', async () => {
+      await openPageWith([region('S1', 0)]);
+      labelingApi.saveToBank.and.returnValue(throwError(() => ({ status: 500, error: { message: 'sunucu metni' } })));
+      const snack = spyOn(TestBed.inject(MatSnackBar), 'open');
+
+      component.saveToBank();
+
+      expect(snack).toHaveBeenCalledWith('sunucu metni', labelingTr.ok, jasmine.any(Object));
+      expect(component.bankRecord()).toBeNull();
+    });
+
+    it('saveToBank_ServerErrorWithoutBody_ShowsGenericFailure', async () => {
+      await openPageWith([region('S1', 0)]);
+      labelingApi.saveToBank.and.returnValue(throwError(() => ({ status: 500 })));
+      const snack = spyOn(TestBed.inject(MatSnackBar), 'open');
+
+      component.saveToBank();
+
+      expect(snack).toHaveBeenCalledWith(labelingTr.bank.failed, labelingTr.ok, jasmine.any(Object));
+    });
+  });
+
 });

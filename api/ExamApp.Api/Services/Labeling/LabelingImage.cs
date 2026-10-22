@@ -100,6 +100,10 @@ public sealed class LabelingImage : IDisposable
             if (scale > 1d)
                 ctx.Resize(targetWidth, targetHeight, KnownResamplers.Lanczos3);
         });
+        // EXIF/XMP/IPTC (GPS, cihaz) dışarı taşınmaz: JPEG Claude'a ve bankaya kayıtta MinIO'ya gider.
+        clone.Metadata.ExifProfile = null;
+        clone.Metadata.XmpProfile = null;
+        clone.Metadata.IptcProfile = null;
         using var ms = new MemoryStream();
         clone.SaveAsJpeg(ms, new JpegEncoder { Quality = 90 });
         return new EncodedRegion(ms.ToArray(), clone.Width, clone.Height, rect.X, rect.Y, rect.Width / (double)clone.Width,

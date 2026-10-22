@@ -15,7 +15,16 @@ import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@js
 import { ActiveInspector, ImageSelectorComponent, TrainedPage } from '../image-selector/image-selector.component';
 import { QuestionDetectorService } from '../../services/question-detector.service';
 import { LabelingCandidate, isLabelingImage, pageIdOf, pickNextUnlabeled } from './labeling-pool';
-import { DetectionSource, LabelingAiModel, LabelingPage, LabelingResult } from '../../models/labeling';
+import {
+  DetectionSource,
+  LabelingAiModel,
+  LabelingBankBox,
+  LabelingBankConflict,
+  LabelingBankInfo,
+  LabelingBankQuestion,
+  LabelingPage,
+  LabelingResult,
+} from '../../models/labeling';
 import { LabelingService, sha256OfDataUrl } from '../../services/labeling.service';
 import { LabelingPromptDialogComponent } from './labeling-prompt-dialog/labeling-prompt-dialog.component';
 
@@ -33,7 +42,8 @@ type PreferredSource = 'Model' | 'Ai';
 type DrawMode = 'question' | 'answer';
 
 /**
- * İşaretleme modu: test / soru kaydı olmadan yalnız soru tespit modeline eğitim verisi üretir.
+ * İşaretleme modu: soru tespit modeline eğitim verisi üretir; "Bankaya kaydet" ayrıca sayfadaki soruları teste
+ * bağlamadan soru bankasına yazar (issue #470 — doğru şık dahil, sınıflandırma sunucuda otomatik başlar).
  * Seçilen kök klasörün (alt klasörler dahil) görsellerinden rastgele, daha önce eğitime alınmamış bir sayfa
  * açılır; tuval, tespit ve doğrulama `ImageSelectorComponent`'ten gelir. "Eğit" sayfayı tamamı işaretlenmiş
  * (`pageComplete: true`) gönderir; "Atla" eğitmeden sonrakine geçer. Aynı oturumda bir dosya iki kez gelmez.
@@ -147,6 +157,15 @@ export class LabelingComponent {
     );
   });
   readonly selectionMode = computed(() => this.selectorRef()?.selectionMode() ?? null);
+
+  // --- Soru bankasına kayıt (issue #470; eğitime gönderimden bağımsız) ---
+  readonly bankSaving = signal(false);
+  /** Açık sayfanın bankaya son kaydı (yoksa null). */
+  readonly bankRecord = computed(() => this.pageRecord()?.bank ?? null);
+  /** Eğit ile aynı ön koşullar + en az bir soru; kayıt sürerken kapalı. */
+  readonly canSaveToBank = computed(
+    () => this.canTrain() && !this.bankSaving() && (this.selectorRef()?.regions().length ?? 0) > 0
+  );
 
   // --- Kaynak: Manuel kayıt / Model (YOLO) / Claude ---
   /** İzinli Claude modelleri; boşsa (yetki / yapılandırma yok) Claude seçeneği kapalı. */
@@ -468,6 +487,7 @@ export class LabelingComponent {
     this.pageRecord.set(null);
     this.aiOrigin.set(null);
     this.aiBusy.set(false);
+    this.bankSaving.set(false);
     this.snackBar.dismiss();
   }
 
@@ -497,6 +517,7 @@ export class LabelingComponent {
       width: page?.width ?? 0,
       height: page?.height ?? 0,
       results: [...others, result],
+      bank: page?.bank ?? null,
     });
   }
 
@@ -607,6 +628,99 @@ export class LabelingComponent {
     }
   }
 
+  /**
+   * Sayfadaki çoktan seçmeli soruları (doğru şık zorunlu) bankaya kaydeder. Sayfa daha önce kaydedildiyse önce sorulur
+   * (yeniden kayıt soruları ikinci kez oluşturur). Sürükle-bırak soruları bu ekrandan kaydedilmez.
+   */
+  saveToBank(): void {
+    const selector = this.selectorRef();
+    const image = this.pageImage;
+    if (!selector || !image || !this.canSaveToBank()) {
+      return;
+    }
+    const regions = selector.regions().filter((r) => selector.getInteractionType(r.name) !== 'dragDropLabeling');
+    if (regions.length === 0) {
+      this.snackBar.open(this.tr('bank.noMcq'), this.tr('ok'), { duration: 5000 });
+      return;
+    }
+    // Şık sayısı + doğru şık; sorunlu ilk soru seçilir ve snackbar ile bildirilir.
+    if (!selector.ensureQuestionsValid({ requireCorrectAnswer: true })) {
+      return;
+    }
+    const questions: LabelingBankQuestion[] = regions.map((q) => ({
+      ...roundBox(q),
+      options: q.answers.map(roundBox),
+      correctOptionIndex: q.answers.findIndex((a) => a.isCorrect),
+    }));
+    const existing = this.bankRecord();
+    if (existing) {
+      this.confirmBankAgain(existing, image, questions);
+      return;
+    }
+    this.submitBank(image, questions, false);
+  }
+
+  private confirmBankAgain(existing: LabelingBankInfo, image: string, questions: LabelingBankQuestion[]): void {
+    const token = this.pageToken;
+    this.snackBar
+      .open(this.tr('bank.alreadySaved', { count: existing.questionCount }), this.tr('bank.saveAgain'), {
+        duration: 10000,
+      })
+      .onAction()
+      .subscribe(() => {
+        if (token === this.pageToken && this.canSaveToBank()) {
+          this.submitBank(image, questions, true);
+        }
+      });
+  }
+
+  /** İstek sayfa değişse de iptal edilmez (yarım kalmasın); yanıt yalnız aynı sayfa açıksa ekrana yansır. */
+  private submitBank(image: string, questions: LabelingBankQuestion[], force: boolean): void {
+    const token = this.pageToken;
+    this.bankSaving.set(true);
+    this.labelingApi.saveToBank({ imageBase64: image, questions, force }).subscribe({
+      next: (response) => {
+        if (token !== this.pageToken) {
+          return;
+        }
+        this.bankSaving.set(false);
+        this.setBankRecord(response.imageSha256, response.bank);
+        this.snackBar.open(this.tr('bank.saved', { count: response.bank.questionCount }), this.tr('ok'), {
+          duration: 5000,
+        });
+      },
+      error: (error) => {
+        if (token !== this.pageToken) {
+          return;
+        }
+        this.bankSaving.set(false);
+        console.error('labeling bank save failed', error);
+        const status = (error as { status?: number })?.status;
+        const body = (error as { error?: Partial<LabelingBankConflict> })?.error;
+        if (status === 409 && body?.existing) {
+          // Kayıt bilgisi bu sayfada yoktu (ya da başka bir sekmede kaydedildi): bilgiyi göster, yeniden kaydı sor.
+          this.setBankRecord(null, body.existing);
+          this.confirmBankAgain(body.existing, image, questions);
+          return;
+        }
+        // 403: işaretleme rolü (QuestionTrainer) var ama soru yazma rolü (Teacher/Admin) yok.
+        const message = status === 403 ? this.tr('bank.forbidden') : body?.message || this.tr('bank.failed');
+        this.snackBar.open(message, this.tr('ok'), { duration: 6000 });
+      },
+    });
+  }
+
+  private setBankRecord(sha: string | null, bank: LabelingBankInfo): void {
+    const page = this.pageRecord();
+    this.pageRecord.set({
+      imageSha256: page?.imageSha256 ?? sha ?? '',
+      width: page?.width ?? 0,
+      height: page?.height ?? 0,
+      results: page?.results ?? [],
+      bank,
+    });
+  }
+
   /** Tuvale aktarım `answerCount` effect'inde. */
   setAnswerCount(count: number): void {
     this.answerCount.set(count);
@@ -642,8 +756,8 @@ export class LabelingComponent {
   }
 
   // ---------------- Soru Müfettişi (sağ panel) ----------------
-  // Soru tuvalindeki müfettişin eğitim verisini etkileyen kısmı: soru gezinme, şıklar, hizalama, soru silme.
-  // Sınıflandırma / pasaj / doğru cevap send-to-fix'e gitmediği için burada yok.
+  // Soru tuvalindeki müfettişin eğitim verisini etkileyen kısmı: soru gezinme, şıklar, hizalama, soru silme; doğru
+  // şık yalnız bankaya kayıtta kullanılır. Sınıflandırma (sunucuda otomatik) / pasaj burada yok.
 
   /** Seçili sorunun müfettiş verisi; seçim image-selector'da sinyal dışı tutulduğu için getter. */
   get inspector(): ActiveInspector | null {
@@ -673,7 +787,7 @@ export class LabelingComponent {
 
   /**
    * Şıkkı seçer: soru tuvalindeki gibi `isCorrect` ile işaretlenir, tuvalde yeşil görünür; tuvalde şıkka tıklamak da
-   * aynı alanı yazar. Doğru cevap eğitim verisine gitmediği için burada yalnız seçim göstergesidir.
+   * aynı alanı yazar. Doğru cevap eğitim verisine gitmez; "Bankaya kaydet" ile sorunun doğru cevabı olarak yazılır.
    */
   insSelectAnswer(answerIndex: number): void {
     const index = this.inspector?.index;
@@ -808,6 +922,10 @@ function manualSource(manual: LabelingResult): DetectionSource {
       ? { source: manual.baseSource, modelName: manual.baseModelName, promptVersion: manual.basePromptVersion ?? null }
       : null;
   return { kind: 'Manual', base };
+}
+
+function roundBox(box: LabelingBankBox): LabelingBankBox {
+  return { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) };
 }
 
 function readStored(key: string): string | null {

@@ -6,6 +6,7 @@ using System.Text.Encodings.Web;
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.Classifier;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Questions;
@@ -149,6 +150,8 @@ public class QuestionsControllerAuthorizationTests : IDisposable
 
         var classifierCache = Substitute.For<IClassifierCacheService>();
         classifierCache.GetActivePointerAsync(Arg.Any<CancellationToken>()).Returns((null, "m"));
+        classifierCache.GetTaxonomyAsync(Arg.Any<CancellationToken>())
+            .Returns(new ClassifierTaxonomyDto { Taxonomy = "{}", Hash = "h", SubTopicCount = 0 });
 
         return await new HostBuilder()
             .ConfigureWebHost(web =>
@@ -231,6 +234,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         (HttpMethod.Get, $"/api/questions/bytest/{_worksheet}", null),
         (HttpMethod.Get, $"/api/questions/{_legacyQuestion}/image", null),
         (HttpMethod.Get, "/api/questions/classifier-cache", null),
+        (HttpMethod.Get, "/api/questions/classifier-taxonomy", null),
         (HttpMethod.Post, "/api/questions", new { id = _legacyQuestion, text = "t", categoryName = "c", answers = Array.Empty<object>() }),
         (HttpMethod.Post, "/api/questions", new { id = 0, testId = _worksheet, text = "t", categoryName = "c", answers = Array.Empty<object>() }),
         (HttpMethod.Post, "/api/questions/save", new { imageData = "x", passages = Array.Empty<object>(), header = new { testId = _worksheet }, questions = Array.Empty<object>() }),
@@ -269,7 +273,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         using var host = await StartHostAsync();
         using var client = host.GetTestClient();
 
-        foreach (var (method, path, body) in AllEndpoints().Where(e => !e.Path.EndsWith("classifier-cache")))
+        foreach (var (method, path, body) in AllEndpoints().Where(e => !e.Path.Contains("/classifier-")))
             (await SendAsync(client, Owner, method, path, body)).StatusCode
                 .ShouldBe(HttpStatusCode.OK, $"{method} {path}");
     }
@@ -282,6 +286,19 @@ public class QuestionsControllerAuthorizationTests : IDisposable
 
         (await SendAsync(client, Owner, HttpMethod.Get, "/api/questions/classifier-cache")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         (await SendAsync(client, Service, HttpMethod.Get, "/api/questions/classifier-cache")).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    // issue #469: Claude sınıflandırıcısının okuduğu taksonomi de yalnız Admin/servis.
+    public async Task Classifier_taxonomy_is_admin_or_service_only()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        (await SendAsync(client, Owner, HttpMethod.Get, "/api/questions/classifier-taxonomy")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        var response = await SendAsync(client, Service, HttpMethod.Get, "/api/questions/classifier-taxonomy");
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await response.Content.ReadAsStringAsync()).ShouldContain("\"hash\":\"h\"");
     }
 
     [Fact]

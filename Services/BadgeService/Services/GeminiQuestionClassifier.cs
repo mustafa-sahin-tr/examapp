@@ -12,12 +12,11 @@ namespace BadgeService.Services;
 /// Pulls the question image from the exam API, sends it to Gemini together with the cached
 /// taxonomy (subject/topic/subtopic list), and writes the returned classification back via
 /// <c>PUT /api/questions/{id}/classification</c>. This is the in-process replacement for the
-/// old n8n "analyze-question" workflow.
+/// old n8n "analyze-question" workflow. Selected with <c>QuestionAnalyzer:Provider=Gemini</c> (issue #469;
+/// <see cref="ClaudeQuestionClassifier"/> is the alternative).
 /// </summary>
 public class GeminiQuestionClassifier : IQuestionClassifier
 {
-    private const int MaxSubTopics = 3;
-
     private const string Prompt =
         """
         Sen bir eğitim içeriği sınıflandırma asistanısın. Önbellekte (cached content) ders → konu → alt konu
@@ -97,21 +96,22 @@ public class GeminiQuestionClassifier : IQuestionClassifier
             return;
         }
 
-        var imageBytes = await FetchQuestionImageAsync(questionId, token, cancellationToken);
-        var result = await CallGeminiAsync(imageBytes, cachedContent, model, cancellationToken);
+        var examApi = new ExamApiClassificationClient(_httpClientFactory, _examApiBaseUrl);
+        var image = await examApi.FetchQuestionImageAsync(questionId, token, cancellationToken);
+        var result = await CallGeminiAsync(image.Bytes, cachedContent, model, cancellationToken);
 
         if (result == null)
         {
             throw new InvalidOperationException($"Gemini returned no usable classification for question {questionId}.");
         }
 
-        Normalize(result);
+        ExamApiClassificationClient.Normalize(result);
 
         _logger.LogInformation(
             "🔎 Question {QuestionId} — Gemini result: subTopics=[{SubTopics}], subjectId={SubjectId}, topicId={TopicId}, difficulty={Difficulty}",
             questionId, string.Join(",", result.SubTopicIds), result.SubjectId, result.TopicId, result.DifficultyLevel);
 
-        await PersistAsync(questionId, result, token, cancellationToken);
+        await examApi.PersistAsync(questionId, result, token, cancellationToken);
 
         _logger.LogInformation("✅ Question {QuestionId} classification persisted", questionId);
     }
@@ -143,23 +143,6 @@ public class GeminiQuestionClassifier : IQuestionClassifier
         }
 
         return (string.IsNullOrWhiteSpace(_gemini.CachedContent) ? null : _gemini.CachedContent, _gemini.Model);
-    }
-
-    private async Task<byte[]> FetchQuestionImageAsync(int questionId, string token, CancellationToken ct)
-    {
-        var client = _httpClientFactory.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-        var url = $"{_examApiBaseUrl}/api/questions/{questionId}/image?variant=v1";
-        var response = await client.GetAsync(url, ct);
-        if (!response.IsSuccessStatusCode)
-        {
-            var body = await response.Content.ReadAsStringAsync(ct);
-            throw new InvalidOperationException(
-                $"Failed to fetch image for question {questionId}: {(int)response.StatusCode} {response.ReasonPhrase}. {body}");
-        }
-
-        return await response.Content.ReadAsByteArrayAsync(ct);
     }
 
     private async Task<QuestionClassificationResult?> CallGeminiAsync(byte[] imageBytes, string cachedContent, string model, CancellationToken ct)
@@ -231,47 +214,5 @@ public class GeminiQuestionClassifier : IQuestionClassifier
         return JsonSerializer.Deserialize<QuestionClassificationResult>(text);
     }
 
-    private static void Normalize(QuestionClassificationResult result)
-    {
-        result.SubTopicIds = result.SubTopicIds
-            .Where(id => id > 0)
-            .Distinct()
-            .Take(MaxSubTopics)
-            .ToList();
-
-        if (result.SubjectId is <= 0) result.SubjectId = null;
-        if (result.TopicId is <= 0) result.TopicId = null;
-
-        result.DifficultyLevel = Math.Clamp(result.DifficultyLevel, 1, 10);
-    }
-
-    private async Task PersistAsync(int questionId, QuestionClassificationResult result, string token, CancellationToken ct)
-    {
-        var client = _httpClientFactory.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-        var body = new
-        {
-            subjectId = result.SubjectId,
-            topicId = result.TopicId,
-            subTopicIds = result.SubTopicIds.ToArray(),
-            classificationSource = "AI",
-            difficulty = result.DifficultyLevel,
-        };
-
-        var url = $"{_examApiBaseUrl}/api/questions/{questionId}/classification";
-        var bodyJson = JsonSerializer.Serialize(body);
-        using var content = new StringContent(bodyJson, Encoding.UTF8, "application/json");
-
-        var response = await client.PutAsync(url, content, ct);
-        if (!response.IsSuccessStatusCode)
-        {
-            var payload = await response.Content.ReadAsStringAsync(ct);
-            throw new InvalidOperationException(
-                $"Failed to persist classification for question {questionId}: {(int)response.StatusCode} {response.ReasonPhrase}. " +
-                $"Request: {bodyJson}. Response: {Truncate(payload)}");
-        }
-    }
-
-    private static string Truncate(string value) => value.Length <= 2000 ? value : value[..2000];
+    private static string Truncate(string value) => ExamApiClassificationClient.Truncate(value);
 }

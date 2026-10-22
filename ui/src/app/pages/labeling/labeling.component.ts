@@ -25,7 +25,7 @@ import {
   LabelingPage,
   LabelingResult,
 } from '../../models/labeling';
-import { LabelingService, sha256OfDataUrl } from '../../services/labeling.service';
+import { LabelingService, manualDetectionSource, sha256OfDataUrl } from '../../services/labeling.service';
 import { LabelingPromptDialogComponent } from './labeling-prompt-dialog/labeling-prompt-dialog.component';
 
 /** Sayfa metinleri kendi Transloco scope'unda: `public/i18n/labeling/<lang>.json`. */
@@ -281,7 +281,7 @@ export class LabelingComponent {
     this.pageRecord.set(page);
     const manual = page?.results.find((r) => r.source === 'Manual');
     if (manual) {
-      selector.applyExternalPrediction(seq, manual.predictions, manualSource(manual));
+      selector.applyExternalPrediction(seq, manual.predictions, manualDetectionSource(manual));
       return;
     }
     if (this.preferredSource() === 'Ai' && this.aiModels().length > 0) {
@@ -402,7 +402,11 @@ export class LabelingComponent {
     } else {
       const manual = this.manualRecord();
       if (manual) {
-        selector.applyExternalPrediction(selector.beginExternalDetection(), manual.predictions, manualSource(manual));
+        selector.applyExternalPrediction(
+          selector.beginExternalDetection(),
+          manual.predictions,
+          manualDetectionSource(manual)
+        );
       }
     }
   }
@@ -929,15 +933,6 @@ export class LabelingComponent {
   private tr(key: string, params?: Record<string, unknown>): string {
     return this.transloco.translate<string>(`${LABELING_SCOPE}.${key}`, params) ?? '';
   }
-}
-
-/** Manuel kayıttan açılan tuvalin kaynağı; yeniden eğitimde kaydın başlangıç kaynağı korunur. */
-function manualSource(manual: LabelingResult): DetectionSource {
-  const base =
-    manual.baseSource === 'Model' || manual.baseSource === 'Ai'
-      ? { source: manual.baseSource, modelName: manual.baseModelName, promptVersion: manual.basePromptVersion ?? null }
-      : null;
-  return { kind: 'Manual', base };
 }
 
 function roundBox(box: LabelingBankBox): LabelingBankBox {

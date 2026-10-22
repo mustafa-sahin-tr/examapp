@@ -442,6 +442,15 @@ içeren kopya olmayan testin sahibi" kuralıyla türetildiği için bağlamak d�
 eklerken de). Bir soru bile bağlanamazsa hiçbir şey yazılmaz (404). Test başına advisory lock; kullanıcı başına dakikada 30 istek
 (`RateLimiting:QuestionBankLink`, 429 `questions.bankLink.rateLimited`). Migration yok.
 
+**Issue #473 — soru tuvalinde Claude ile tespit.** Soru tuvalinin (`/questioncanvas`) araç çubuğunda **Kaynak: Manuel | Model | Claude**
+(işaretleme ekranındakiyle aynı uçlar: `ai-models`, `pages/{sha256}`, `ai-detect` force=false — kayıtlı sonuç ücretsiz döner). Yalnız
+Admin + QuestionTrainer ve `ai-models` boş değilse görünür; diğerlerinde tuval eskisi gibi YOLO ile açılır. Varsayılan Model (YOLO);
+seçim localStorage `questionCanvas.source` / `questionCanvas.aiModel` (işaretleme ekranından ayrı). Claude seçiliyken bir sonraki sayfa
+arka planda Claude'a sorulur (önceden getirme; otomatik ilerle açıkken yok; tek seferde bir istek). Sayfa değişince açık sayfanın
+isteği iptal edilir, önceden getirme edilmez. Claude hatasında sunucu mesajı araç çubuğunda kalır ve sayfa YOLO ile açılır; 403/429/503'te
+(bütçe/kota) Claude o oturumda askıya alınır (sayfalar YOLO ile açılır), Claude yeniden seçilince bir kez daha denenir. Manuel kayıt otomatik
+uygulanmaz, yalnız seçilince. Yetki / bütçe değişmedi (`Anthropic:LiveCallsPerHour`, `DailyBudgetUsd*`).
+
 **Issue #469 — Claude soru sınıflandırıcısı.** BadgeService'te `QuestionAnalyzer:Provider` = `Gemini` (varsayılan) |
 `Claude`; geçersiz değer açılışta patlar. Claude seçiliyken (`QuestionAnalyzer__Provider=Claude`) BadgeService
 taksonomiyi exam API `GET /api/questions/classifier-taxonomy`'den (Admin/servis) alır (`Anthropic:TaxonomyCacheSeconds`,

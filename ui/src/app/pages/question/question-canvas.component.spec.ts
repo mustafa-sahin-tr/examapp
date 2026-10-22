@@ -46,6 +46,9 @@ const translocoTesting = TranslocoTestingModule.forRoot({
   preloadLangs: true,
 });
 
+/** Claude model kimliği (tespit kaynağı testleri, issue #473). */
+const HAIKU_ID = 'claude-haiku-5-5';
+
 describe('QuestionCanvasComponent', () => {
   let fixture: ComponentFixture<QuestionCanvasComponent>;
   let component: QuestionCanvasComponent;
@@ -1270,6 +1273,101 @@ describe('QuestionCanvasComponent', () => {
           f.detectChanges();
           expect(navControls().every((c) => c.disabled)).toBeTrue();
           expect(component.imageSelector.navigationLocked).toBeTrue();
+        });
+      });
+    });
+
+    describe('tespit kaynağı (issue #473)', () => {
+      /** image-selector'ın meşgul / JSON sinyallerini taşıyan sahte; varsayılan: boşta, normal mod. */
+      function withIdleSignals(fake: any) {
+        fake.sendingToFix = signal(false);
+        fake.pageLoading = signal(false);
+        fake.inProgress = signal(false);
+        fake.coordinateJsonMode = () => false;
+        return fake;
+      }
+
+      it('selectDetectionSource_IdleNormalMode_DelegatesToDetection', async () => {
+        const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+        component.imageSelector = withIdleSignals(imageSelectorFake);
+        const selectSource = spyOn(component.detection, 'selectSource');
+
+        component.selectDetectionSource('Model');
+
+        expect(selectSource).toHaveBeenCalledOnceWith('Model');
+      });
+
+      it('selectDetectionSource_WhileBusy_DoesNothing', async () => {
+        const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+        const fake = withIdleSignals(imageSelectorFake);
+        component.imageSelector = fake;
+        fake.inProgress.set(true);
+        const selectSource = spyOn(component.detection, 'selectSource');
+
+        component.selectDetectionSource('Ai');
+
+        expect(component.busy()).toBeTrue();
+        expect(selectSource).not.toHaveBeenCalled();
+      });
+
+      it('selectDetectionSource_CoordinateJsonMode_DoesNothing', async () => {
+        const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+        const fake = withIdleSignals(imageSelectorFake);
+        fake.coordinateJsonMode = () => true;
+        component.imageSelector = fake;
+        const selectSource = spyOn(component.detection, 'selectSource');
+
+        component.selectDetectionSource('Model');
+
+        expect(selectSource).not.toHaveBeenCalled();
+      });
+
+      it('selectAiModel_WhileBusy_DoesNothing', async () => {
+        const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+        const fake = withIdleSignals(imageSelectorFake);
+        component.imageSelector = fake;
+        fake.pageLoading.set(true);
+        const setAiModel = spyOn(component.detection, 'setAiModel');
+
+        component.selectAiModel(HAIKU_ID);
+
+        expect(setAiModel).not.toHaveBeenCalled();
+      });
+
+      it('onImageChange_CallsDetectionResetPage', async () => {
+        const { component } = await setup({ isAdmin: false, realmRoles: ['Teacher'] });
+        const resetPage = spyOn(component.detection, 'resetPage');
+
+        component.onImageChange();
+
+        expect(resetPage).toHaveBeenCalledTimes(1);
+      });
+
+      describe('şablon', () => {
+        it('sourceGroup_UserWithoutClaudeModels_IsNotRendered', async () => {
+          const ctx = await setup({ isAdmin: false, realmRoles: ['Teacher'], stubTestCreate: true });
+          ctx.component.imageSelector = undefined as any;
+          // Kaynak grubu sayfa araç çubuğunda: yalnız sayfa yüklüyken render edilir.
+          Object.defineProperty(ctx.component, 'pageFiles', { get: () => [new File([''], 'p1.png')] });
+          ctx.fixture.detectChanges();
+          await ctx.fixture.whenStable();
+
+          expect(ctx.fixture.nativeElement.querySelector('.qc-source')).toBeNull();
+        });
+
+        it('sourceGroup_ModelsAvailable_IsRendered', async () => {
+          // Kontrol (positive control): model listesi varken grup görünmeli; yoksa negatif test anlamsız olur.
+          const ctx = await setup({ isAdmin: false, realmRoles: ['QuestionTrainer'], stubTestCreate: true });
+          ctx.component.detection.aiModels.set([
+            { id: HAIKU_ID, displayName: 'Haiku 5.5', inputUsdPerMTok: 1, outputUsdPerMTok: 5, isDefault: true },
+          ]);
+          ctx.component.imageSelector = undefined as any;
+          // Kaynak grubu sayfa araç çubuğunda: yalnız sayfa yüklüyken render edilir.
+          Object.defineProperty(ctx.component, 'pageFiles', { get: () => [new File([''], 'p1.png')] });
+          ctx.fixture.detectChanges();
+          await ctx.fixture.whenStable();
+
+          expect(ctx.fixture.nativeElement.querySelector('.qc-source')).not.toBeNull();
         });
       });
     });

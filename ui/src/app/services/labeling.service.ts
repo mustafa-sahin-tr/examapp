@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
+  DetectionSource,
   LabelingAiDetectRequest,
   LabelingAiDetectResponse,
   LabelingAiModel,
@@ -10,6 +11,7 @@ import {
   LabelingBankSaveResponse,
   LabelingPage,
   LabelingPromptState,
+  LabelingResult,
   LabelingSaveManualRequest,
   LabelingSavePromptRequest,
 } from '../models/labeling';
@@ -66,4 +68,13 @@ export async function sha256OfDataUrl(dataUrl: string): Promise<string> {
   }
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** Manuel kayıttan açılan tuvalin kaynağı; yeniden eğitimde kaydın başlangıç kaynağı korunur. */
+export function manualDetectionSource(manual: LabelingResult): DetectionSource {
+  const base =
+    manual.baseSource === 'Model' || manual.baseSource === 'Ai'
+      ? { source: manual.baseSource, modelName: manual.baseModelName, promptVersion: manual.basePromptVersion ?? null }
+      : null;
+  return { kind: 'Manual', base };
 }

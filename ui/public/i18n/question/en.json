@@ -137,5 +137,27 @@
     "summary": "{{questions}} questions · {{examples}} examples · {{passages}} passages",
     "exit": "Exit preview",
     "noTestSelected": "No worksheet selected for preview."
+  },
+  "detection": {
+    "group": "Detection source",
+    "label": "Source",
+    "manual": "Manual",
+    "manualHint": "Last version sent to training (if saved)",
+    "model": "Model",
+    "modelHint": "YOLO model (fast)",
+    "claude": "Claude",
+    "claudeHint": "Detect with Claude (~10–15 s per page; saved results are free). The next page is prepared in the background.",
+    "aiModel": "Claude model",
+    "price": "${{input}} / ${{output}} (1M tokens)",
+    "aiBusy": "Claude is marking…",
+    "cached": "saved",
+    "live": "live",
+    "originHint": "A saved result is not charged again.",
+    "aiLiveDone": "Claude marked the page (~${{cost}}).",
+    "aiFailed": "Claude could not mark this page.",
+    "aiFallback": "{{message}} Continuing with YOLO.",
+    "aiOk": "OK",
+    "unsavedEdits": "You have unsaved corrections; they will be lost if the source changes.",
+    "discardAction": "Change anyway"
   }
 }

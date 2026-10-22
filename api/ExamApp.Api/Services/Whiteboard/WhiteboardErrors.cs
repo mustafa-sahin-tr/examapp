@@ -63,6 +63,15 @@ public static class WhiteboardErrorCodes
 
     public const string InvalidPointer = "InvalidPointer";
     public const string RateLimited = "RateLimited";
+
+    /// <summary>
+    /// issue #311 (L2): kullanıcının hub'a açık bağlantı sayısı <see cref="WhiteboardOptions.MaxConnectionsPerUser"/>'ı
+    /// aştı. <c>HubException</c> değil, bağlantı kurulurken <c>ConnectionRejected</c> istemci mesajıyla gelir.
+    /// </summary>
+    public const string TooManyConnections = "TooManyConnections";
+
+    /// <summary>issue #311 (L5): süreçteki açık tahta sayısı <see cref="WhiteboardOptions.MaxOpenBoards"/>'a ulaştı.</summary>
+    public const string TooManyOpenBoards = "TooManyOpenBoards";
 }
 
 /// <summary><c>BoardClosed(reason)</c> istemci mesajının <c>reason</c> değerleri.</summary>

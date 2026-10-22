@@ -279,6 +279,50 @@ public class WhiteboardHubEndpointsTests(IntegrationApiFactory factory) : Integr
     }
 
     [Fact]
+    public async Task Fourth_connection_of_the_same_user_is_rejected_and_closed()
+    {
+        // issue #311 (L2): varsayılan MaxConnectionsPerUser = 3.
+        const string sub = "kc-wb-multi";
+        await SeedProfileAsync(980_010, sub, "Student");
+
+        await using var c1 = Connect(sub, "Student");
+        await using var c2 = Connect(sub, "Student");
+        await using var c3 = Connect(sub, "Student");
+        await c1.StartAsync();
+        await c2.StartAsync();
+        await c3.StartAsync();
+
+        await using var c4 = Connect(sub, "Student");
+        var rejected = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        c4.On<string>("ConnectionRejected", code => rejected.TrySetResult(code));
+        c4.Closed += _ =>
+        {
+            closed.TrySetResult();
+            return Task.CompletedTask;
+        };
+        await c4.StartAsync();
+
+        (await rejected.Task.WaitAsync(Timeout)).ShouldBe(WhiteboardErrorCodes.TooManyConnections);
+        await closed.Task.WaitAsync(Timeout);
+
+        // Bir bağlantı kapanınca yer açılır.
+        await c1.StopAsync();
+        // Sunucu OnDisconnectedAsync'i istemcinin StopAsync dönüşünden sonra bitirebilir — kaydın düşmesini bekle.
+        var store = (WhiteboardStore)Factory.Services.GetRequiredService<IWhiteboardStore>();
+        var deadline = DateTime.UtcNow + Timeout;
+        while (store.ConnectionCount(sub) > 2 && DateTime.UtcNow < deadline)
+            await Task.Delay(50);
+        store.ConnectionCount(sub).ShouldBe(2);
+        await using var c5 = Connect(sub, "Student");
+        var c5Rejected = false;
+        c5.On<string>("ConnectionRejected", _ => c5Rejected = true);
+        await c5.StartAsync();
+        await c5.InvokeAsync("LeaveBoard", 0); // bağlantı açık ve çağrı kabul ediyor
+        c5Rejected.ShouldBeFalse();
+    }
+
+    [Fact]
     public void Hub_endpoint_closes_on_token_expiry()
     {
         // HttpConnectionDispatcherOptions, MapHub'ın negotiate endpoint'inin metadata'sında taşınır.

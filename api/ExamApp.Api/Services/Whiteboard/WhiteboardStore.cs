@@ -97,6 +97,16 @@ public interface IWhiteboardStore
 
     /// <summary>Uzun süredir kullanılmayan hız sınırı kovalarını siler.</summary>
     void PruneRateBuckets(DateTime nowUtc, TimeSpan idle);
+
+    /// <summary>
+    /// issue #311 (L2): hub bağlantısını kullanıcıya kaydeder. Kullanıcının açık bağlantısı
+    /// <see cref="WhiteboardOptions.MaxConnectionsPerUser"/>'a ulaştıysa kaydetmez ve false döner. Aynı bağlantı id'si
+    /// ikinci kez kaydedilirse true (etkisiz).
+    /// </summary>
+    bool TryRegisterConnection(string userKey, string connectionId);
+
+    /// <summary>Bağlantı kaydını siler; kayıtlı değilse etkisizdir (reddedilen bağlantının kopuşu dahil).</summary>
+    void UnregisterConnection(string connectionId);
 }
 
 /// <summary>
@@ -135,13 +145,21 @@ public sealed class WhiteboardStore : IWhiteboardStore
     private readonly ConcurrentDictionary<string, TokenBucket> _pointerBuckets = new();
     private readonly IOptionsMonitor<WhiteboardOptions> _options;
 
+    /// <summary>Yeni tahta açılışını <see cref="WhiteboardOptions.MaxOpenBoards"/> kontrolüyle tekilleştirir.</summary>
+    private readonly object _boardCreateSync = new();
+
+    /// <summary>issue #311 (L2): kullanıcı → açık hub bağlantıları; <see cref="_connectionOwners"/> ters eşleme.</summary>
+    private readonly Dictionary<string, HashSet<string>> _userConnections = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _connectionOwners = new(StringComparer.Ordinal);
+    private readonly object _connectionSync = new();
+
     public WhiteboardStore(IOptionsMonitor<WhiteboardOptions> options) => _options = options;
 
     private WhiteboardOptions Options => _options.CurrentValue;
 
     public WhiteboardJoinOutcome Join(string connectionId, WhiteboardAccessResult access, ClaimsPrincipal user, DateTime nowUtc)
     {
-        var board = _boards.GetOrAdd(access.BookingId, _ => new Board(access.WindowClosesAtUtc));
+        var board = GetOrOpenBoard(access);
 
         lock (board.Sync)
         {
@@ -165,6 +183,82 @@ public sealed class WhiteboardStore : IWhiteboardStore
             return new WhiteboardJoinOutcome(board.Elements.Values.Select(e => e.Element).ToList(), board.ServerVersion,
                 previous, firstForUser, peerOnline);
         }
+    }
+
+    /// <summary>
+    /// Açık tahtayı döner ya da yenisini açar. issue #311 (L5): açık tahta sayısı <see cref="WhiteboardOptions.MaxOpenBoards"/>'a
+    /// ulaştıysa önce üyesiz bir tahta boşaltılır, o da yoksa YENİ tahta açılmaz (<see cref="WhiteboardErrorCodes.TooManyOpenBoards"/>); sayım ile ekleme aynı kilit
+    /// altında yapıldığından eşzamanlı katılımlar sınırı aşamaz (CloseBoard kilitsiz çıkarır; sayı yalnız azalabilir).
+    /// </summary>
+    private Board GetOrOpenBoard(WhiteboardAccessResult access)
+    {
+        if (_boards.TryGetValue(access.BookingId, out var board))
+            return board;
+
+        lock (_boardCreateSync)
+        {
+            if (_boards.TryGetValue(access.BookingId, out board))
+                return board;
+            if (_boards.Count >= Options.MaxOpenBoards && !TryEvictEmptyBoard())
+                throw new WhiteboardException(WhiteboardErrorCodes.TooManyOpenBoards);
+
+            board = new Board(access.WindowClosesAtUtc);
+            _boards[access.BookingId] = board;
+            return board;
+        }
+    }
+
+    /// <summary>
+    /// Sınır doluyken (security review #311) katılımcısı kalmamış bir tahtayı — pencere kapanışı en yakın olanı — boşaltır;
+    /// pencere boyunca "dolu" sayılan terk edilmiş tahtalar canlı oturumu engellemesin. Boşaltılan tahtanın sahnesi
+    /// kaybolur (geri dönen katılımcı boş tahtayla başlar); üyesi olmadığı için kimseye bildirim gerekmez.
+    /// </summary>
+    private bool TryEvictEmptyBoard()
+    {
+        var occupied = _members.Values.Select(m => m.BookingId).ToHashSet();
+        foreach (var (bookingId, _) in _boards.OrderBy(kv => kv.Value.WindowClosesAtUtc))
+        {
+            if (!occupied.Contains(bookingId) && CloseBoard(bookingId) is not null)
+                return true;
+        }
+        return false;
+    }
+
+    public bool TryRegisterConnection(string userKey, string connectionId)
+    {
+        lock (_connectionSync)
+        {
+            if (_connectionOwners.ContainsKey(connectionId))
+                return true;
+
+            if (!_userConnections.TryGetValue(userKey, out var connections))
+                _userConnections[userKey] = connections = new HashSet<string>(StringComparer.Ordinal);
+            else if (connections.Count >= Options.MaxConnectionsPerUser)
+                return false;
+
+            connections.Add(connectionId);
+            _connectionOwners[connectionId] = userKey;
+            return true;
+        }
+    }
+
+    public void UnregisterConnection(string connectionId)
+    {
+        lock (_connectionSync)
+        {
+            if (!_connectionOwners.Remove(connectionId, out var userKey))
+                return;
+            if (_userConnections.TryGetValue(userKey, out var connections) && connections.Remove(connectionId) &&
+                connections.Count == 0)
+                _userConnections.Remove(userKey);
+        }
+    }
+
+    /// <summary>Test/teşhis: kullanıcının kayıtlı hub bağlantısı sayısı.</summary>
+    public int ConnectionCount(string userKey)
+    {
+        lock (_connectionSync)
+            return _userConnections.TryGetValue(userKey, out var connections) ? connections.Count : 0;
     }
 
     public WhiteboardMember? GetMember(string connectionId)

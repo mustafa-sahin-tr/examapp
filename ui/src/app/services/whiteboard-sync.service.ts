@@ -46,6 +46,13 @@ export const WHITEBOARD_FLUSH_THROTTLE_MS = 80;
 export const WHITEBOARD_POINTER_THROTTLE_MS = 50;
 /** `RateLimited` sonrası sessiz yeniden deneme gecikmesi (ms). */
 export const WHITEBOARD_RATE_LIMIT_RETRY_MS = 600;
+/**
+ * Issue #311: kapasite hatalarında (`TooManyConnections`, `TooManyOpenBoards`) hata gösterilirken arka planda yeniden
+ * deneme gecikmesi (ms). Sunucunun kopmuş bağlantıyı düşürmesi `ClientTimeoutInterval` (30 sn) sürer.
+ */
+export const WHITEBOARD_CAPACITY_RETRY_MS = 35_000;
+/** Kapasite hatasında art arda en fazla bu kadar otomatik deneme; sonrası yalnız "Tekrar dene". */
+export const WHITEBOARD_CAPACITY_MAX_AUTO_RETRIES = 3;
 /** Otomatik yeniden bağlanma tükendikten sonraki deneme gecikmeleri (ms); son değer tekrarlanır. */
 export const WHITEBOARD_RECONNECT_DELAYS_MS = [2000, 5000, 10000, 30000];
 /**
@@ -147,6 +154,8 @@ export class WhiteboardSyncService {
   private readonly repairStreak = new Map<string, number>();
   /** Uzak güncelleme uygulanamadı ve tam senkron (yeniden JoinBoard) istendi; döngüyü önler. */
   private resyncRequested = false;
+  /** Art arda yapılan kapasite yeniden denemesi sayısı; başarılı katılımda sıfırlanır (issue #311). */
+  private capacityRetries = 0;
   /** `retry()` bağlantıyı durdururken gelen onclose yeniden bağlanma planlamasın. */
   private restarting = false;
   /** Sınırı aşan uzak sahne uyarısı gösterildi; bir sonraki başarılı uygulamaya kadar tekrarlanmaz (issue #332). */
@@ -180,6 +189,7 @@ export class WhiteboardSyncService {
     connection.on('PointerUpdated', (role, pointer) => this.onPeerPointer(role, pointer));
     connection.on('BoardClosed', (reason) => this.closeBoard(isCloseReason(reason) ? reason : null));
     connection.on('PeerPresenceChanged', (role, online) => this.onPresence(role, online));
+    connection.on('ConnectionRejected', (code) => this.onConnectionRejected(code));
     connection.onreconnecting(() => {
       this.joined = false;
       if (!this.isTerminal()) {
@@ -337,6 +347,7 @@ export class WhiteboardSyncService {
     this.joined = true;
     this.everJoined = true;
     this.reconnectAttempt = 0;
+    this.capacityRetries = 0;
     this.statusState.set('connected');
     void this.flush();
   }
@@ -364,12 +375,48 @@ export class WhiteboardSyncService {
       case null:
         // Taşıma hatası (bağlantı düşüyor): onreconnecting/onclose akışı yeniden katılır.
         return;
+      case 'TooManyOpenBoards':
+        // Issue #311: geçici kapasite — hata gösterilir, arka planda sınırlı sayıda yeniden denenir.
+        this.errorState.set(code);
+        this.statusState.set('disconnected');
+        this.connection?.stop().catch(() => undefined);
+        this.scheduleCapacityRetry();
+        return;
       default:
         // WindowNotOpen, NotParticipant, BookingNotApproved ...: kullanıcıya gösterilir, otomatik denenmez.
         this.errorState.set(code);
         this.statusState.set('disconnected');
         this.connection?.stop().catch(() => undefined);
     }
+  }
+
+  /**
+   * Issue #311: sunucu bağlantıyı kabul etmedi (kullanıcı başına bağlantı sınırı — başka sekmelerde tahta açık) ve hemen
+   * kapatacak. Engelleyici hata olarak gösterilir (onclose yeniden bağlanmaz); arka planda sınırlı sayıda gecikmeli
+   * yeniden deneme yapılır, kullanıcı "Tekrar dene" ile de deneyebilir.
+   */
+  private onConnectionRejected(code: unknown): void {
+    if (this.destroyed || this.statusState() === 'closed') {
+      return;
+    }
+    this.joined = false;
+    this.clearTimer('retryTimer');
+    this.errorState.set(parseHubErrorCode(code) ?? 'TooManyConnections');
+    this.statusState.set('disconnected');
+    // Kopmuş eski bağlantı sunucuda ~30 sn yer tutabilir: arka planda sınırlı sayıda yeniden dene.
+    this.scheduleCapacityRetry();
+  }
+
+  private scheduleCapacityRetry(): void {
+    if (this.capacityRetries >= WHITEBOARD_CAPACITY_MAX_AUTO_RETRIES) {
+      return;
+    }
+    this.capacityRetries++;
+    this.clearTimer('retryTimer');
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null;
+      void this.retry();
+    }, WHITEBOARD_CAPACITY_RETRY_MS);
   }
 
   private closeBoard(reason: WhiteboardCloseReason | null): void {

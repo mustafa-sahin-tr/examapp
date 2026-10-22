@@ -455,4 +455,108 @@ public class WhiteboardStoreTests
             store.TryAcquirePointer("sub-1", Now).ShouldBeTrue();
         store.TryAcquirePointer("sub-1", Now).ShouldBeFalse();
     }
+
+    // ---- issue #311: bağlantı ve açık tahta sınırları ----
+
+    [Fact]
+    public void Connection_limit_is_per_user_and_frees_on_unregister()
+    {
+        var store = new WhiteboardStore(Options(o => o.MaxConnectionsPerUser = 3));
+
+        store.TryRegisterConnection("sub-1", "c1").ShouldBeTrue();
+        store.TryRegisterConnection("sub-1", "c2").ShouldBeTrue();
+        store.TryRegisterConnection("sub-1", "c3").ShouldBeTrue();
+        store.TryRegisterConnection("sub-1", "c4").ShouldBeFalse();
+        store.TryRegisterConnection("sub-2", "c5").ShouldBeTrue(); // başka kullanıcı etkilenmez
+        store.ConnectionCount("sub-1").ShouldBe(3);
+
+        store.UnregisterConnection("c4"); // reddedilen bağlantının kopuşu: etkisiz
+        store.ConnectionCount("sub-1").ShouldBe(3);
+
+        store.UnregisterConnection("c2");
+        store.UnregisterConnection("c2"); // idempotent
+        store.ConnectionCount("sub-1").ShouldBe(2);
+        store.TryRegisterConnection("sub-1", "c6").ShouldBeTrue();
+        store.TryRegisterConnection("sub-1", "c7").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Registering_the_same_connection_twice_does_not_consume_a_slot()
+    {
+        var store = new WhiteboardStore(Options(o => o.MaxConnectionsPerUser = 1));
+
+        store.TryRegisterConnection("sub-1", "c1").ShouldBeTrue();
+        store.TryRegisterConnection("sub-1", "c1").ShouldBeTrue();
+        store.ConnectionCount("sub-1").ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Concurrent_registrations_never_exceed_the_per_user_limit()
+    {
+        var store = new WhiteboardStore(Options(o => o.MaxConnectionsPerUser = 3));
+
+        var results = await Task.WhenAll(Enumerable.Range(0, 64)
+            .Select(i => Task.Run(() => store.TryRegisterConnection("sub-1", $"c{i}"))));
+
+        results.Count(r => r).ShouldBe(3);
+        store.ConnectionCount("sub-1").ShouldBe(3);
+    }
+
+    [Fact]
+    public void Open_board_limit_rejects_new_boards_but_not_joins_to_open_ones()
+    {
+        var store = new WhiteboardStore(Options(o => o.MaxOpenBoards = 2));
+        store.Join("c1", Access(1));
+        store.Join("c2", Access(2));
+
+        Should.Throw<WhiteboardException>(() => store.Join("c3", Access(3)))
+            .Code.ShouldBe(WhiteboardErrorCodes.TooManyOpenBoards);
+        store.IsOpen(3).ShouldBeFalse();
+        store.GetMember("c3").ShouldBeNull();
+
+        store.Join("c4", Access(1, userId: 200)).ShouldNotBeNull(); // açık tahtaya katılım serbest
+
+        store.CloseBoard(2);
+        store.Join("c3", Access(3));
+        store.IsOpen(3).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Open_board_limit_evicts_an_empty_board_first()
+    {
+        var store = new WhiteboardStore(Options(o => o.MaxOpenBoards = 2));
+        store.Join("c1", Access(1, closesAt: Now.AddHours(2)));
+        store.Join("c2", Access(2, closesAt: Now.AddHours(1)));
+        store.Merge(2, [Element("a", 1)]);
+        store.Leave("c2"); // tahta 2 terk edildi (sahne pencere boyunca duruyordu)
+
+        store.Join("c3", Access(3));
+
+        store.IsOpen(2).ShouldBeFalse();
+        store.IsOpen(1).ShouldBeTrue();
+        store.IsOpen(3).ShouldBeTrue();
+        store.ListBoards().Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Concurrent_joins_never_open_more_boards_than_the_limit()
+    {
+        var store = new WhiteboardStore(Options(o => o.MaxOpenBoards = 5));
+
+        var opened = await Task.WhenAll(Enumerable.Range(1, 50).Select(id => Task.Run(() =>
+        {
+            try
+            {
+                store.Join($"c{id}", Access(id));
+                return true;
+            }
+            catch (WhiteboardException ex) when (ex.Code == WhiteboardErrorCodes.TooManyOpenBoards)
+            {
+                return false;
+            }
+        })));
+
+        opened.Count(o => o).ShouldBe(5);
+        store.ListBoards().Count.ShouldBe(5);
+    }
 }

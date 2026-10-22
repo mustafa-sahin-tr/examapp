@@ -48,6 +48,22 @@ public sealed class WhiteboardOptions
     public int JoinBurst { get; set; } = 4;
 
     /// <summary>
+    /// issue #311 (L2): bir kullanıcının (Keycloak sub) hub'a aynı anda açabileceği azami bağlantı sayısı (sekme/cihaz).
+    /// Aşan bağlantıya <c>ConnectionRejected("TooManyConnections")</c> gönderilip bağlantı kapatılır.
+    /// </summary>
+    [Range(1, 50)]
+    public int MaxConnectionsPerUser { get; set; } = 3;
+
+    /// <summary>
+    /// issue #311 (L5): süreçte aynı anda açık tutulabilecek azami tahta sayısı. Bellek üst sınırı kabaca
+    /// <c>MaxOpenBoards × MaxSceneBytes</c> × (JsonDocument yükü ~2-3). Katılımcısı kalmamış ama penceresi süren
+    /// tahtalar da sayılır; sınır dolunca önce bunlardan biri boşaltılır, yoksa YENİ tahta açan <c>JoinBoard</c>
+    /// <c>TooManyOpenBoards</c> ile reddedilir. Açık tahtalara katılım etkilenmez.
+    /// </summary>
+    [Range(1, 100_000)]
+    public int MaxOpenBoards { get; set; } = 100;
+
+    /// <summary>
     /// Bir elemanın <c>version</c>'ı tek adımda sunucudaki mevcut değer + bu kadarı aşamaz; yeni elemanlarda bu değer
     /// mutlak üst sınırdır. Dev version ile elemanı karşı tarafa karşı "kilitleme" engellenir.
     /// </summary>

@@ -74,6 +74,10 @@ export const WHITEBOARD_ERROR_CODES = [
   'ImagesNotSupported',
   'InvalidPointer',
   'RateLimited',
+  /** Issue #311: kullanıcının hub bağlantı sınırı doldu — `ConnectionRejected` mesajıyla gelir (HubException değil). */
+  'TooManyConnections',
+  /** Issue #311: sunucudaki açık tahta sınırı doldu (yeni tahta açılamadı). */
+  'TooManyOpenBoards',
 ] as const;
 
 export type WhiteboardErrorCode = (typeof WHITEBOARD_ERROR_CODES)[number];

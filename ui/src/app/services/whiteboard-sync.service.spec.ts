@@ -19,6 +19,8 @@ import {
   WHITEBOARD_FLUSH_THROTTLE_MS,
   WHITEBOARD_POINTER_THROTTLE_MS,
   WHITEBOARD_RATE_LIMIT_RETRY_MS,
+  WHITEBOARD_CAPACITY_MAX_AUTO_RETRIES,
+  WHITEBOARD_CAPACITY_RETRY_MS,
   WhiteboardSyncService,
 } from './whiteboard-sync.service';
 
@@ -155,6 +157,80 @@ describe('WhiteboardSyncService', () => {
       expect(service.status()).toBe('closed');
       expect(service.readOnly()).toBeTrue();
       expect(service.closedReason()).toBe('WindowClosed');
+      finish();
+    }));
+
+    // Issue #311: kullanıcı başına bağlantı sınırı — sunucu ConnectionRejected gönderip bağlantıyı kapatır.
+    it('ConnectionRejected_TooManyConnections_ShowsErrorWithoutAutoReconnect', fakeAsync(() => {
+      hub.respond = (method) => {
+        if (method === 'JoinBoard') {
+          hub.emit('ConnectionRejected', 'TooManyConnections');
+          return Promise.reject(new Error('Invocation canceled due to the underlying connection being closed.'));
+        }
+        return Promise.resolve(undefined);
+      };
+      startJoined();
+
+      expect(service.error()).toBe('TooManyConnections');
+      expect(service.status()).toBe('disconnected');
+      expect(service.readOnly()).toBeFalse();
+
+      hub.simulateClose();
+      // onclose hatayı ezmez ve hemen yeniden bağlanmaz.
+      expect(service.error()).toBe('TooManyConnections');
+      tick(WHITEBOARD_CAPACITY_RETRY_MS - 1);
+      expect(hub.startCalls).toBe(1);
+
+      // Arka plandaki gecikmeli deneme: başka sekme kapanmış → bağlanır.
+      hub.respond = () => Promise.resolve(joinResult());
+      tick(1);
+      flushMicrotasks();
+      expect(hub.startCalls).toBe(2);
+      expect(service.error()).toBeNull();
+      expect(service.status()).toBe('connected');
+      finish();
+    }));
+
+    it('ConnectionRejected_AutoRetriesAreBounded_ThenManualRetryOnly', fakeAsync(() => {
+      hub.respond = (method) => {
+        if (method === 'JoinBoard') {
+          hub.emit('ConnectionRejected', 'TooManyConnections');
+          return Promise.reject(new Error('connection closed'));
+        }
+        return Promise.resolve(undefined);
+      };
+      startJoined();
+      for (let i = 0; i < WHITEBOARD_CAPACITY_MAX_AUTO_RETRIES; i++) {
+        tick(WHITEBOARD_CAPACITY_RETRY_MS);
+        flushMicrotasks();
+      }
+      expect(hub.startCalls).toBe(1 + WHITEBOARD_CAPACITY_MAX_AUTO_RETRIES);
+      tick(10 * WHITEBOARD_CAPACITY_RETRY_MS);
+      expect(hub.startCalls).toBe(1 + WHITEBOARD_CAPACITY_MAX_AUTO_RETRIES);
+      expect(service.error()).toBe('TooManyConnections');
+
+      hub.respond = () => Promise.resolve(joinResult());
+      service.retry();
+      flushMicrotasks();
+      expect(service.status()).toBe('connected');
+      finish();
+    }));
+
+    it('JoinError_TooManyOpenBoards_ShowsErrorAndRetriesLater', fakeAsync(() => {
+      hub.respond = () => Promise.reject(hubError('TooManyOpenBoards'));
+      startJoined();
+
+      expect(service.error()).toBe('TooManyOpenBoards');
+      expect(service.status()).toBe('disconnected');
+      hub.simulateClose();
+      tick(WHITEBOARD_CAPACITY_RETRY_MS - 1);
+      expect(hub.startCalls).toBe(1);
+
+      hub.respond = () => Promise.resolve(joinResult());
+      tick(1);
+      flushMicrotasks();
+      expect(hub.startCalls).toBe(2);
+      expect(service.status()).toBe('connected');
       finish();
     }));
 

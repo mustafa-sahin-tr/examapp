@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.IO;
@@ -128,6 +129,7 @@ public class QuestionsController : BaseController
     // Görünürlük sorgu katmanında: scope=mine (varsayılan) kendi soruları, scope=all görebildiği tüm sorular (GET {id} kuralı).
     [HttpGet("bank")]
     [Authorize(Roles = AuthoringRoles)]
+    [EnableRateLimiting(QuestionBankSearchRateLimiting.Policy)]
     public async Task<ActionResult<QuestionBankPageDto>> SearchBank([FromQuery] QuestionBankQuery filter)
     {
         if (!filter.IsValid())

@@ -197,9 +197,15 @@ public class QuestionQueryService : IQuestionQueryService
         if (!isAdmin && userId <= 0)
             return page;
 
-        // Sayılan / görünürlük veren test üyelikleri: admin için tümü, öğretmen için görebildiği testlerinkiler
-        // (CanViewQuestionAsync ile aynı predicate). Silinmiş üyelik ve test global soft-delete filtresiyle elenir.
-        IQueryable<WorksheetQuestion> visibleMemberships = _context.TestQuestions;
+        // Kendi soruları kimliği çözülmüş kullanıcıya göre; kimliksiz admin "mine" kapsamında hiçbir şeye sahip değildir.
+        if (!filter.IsAllScope && userId <= 0)
+            return page;
+
+        // Sayılan / görünürlük veren test üyelikleri: admin için silinmemiş tüm testlerinki, öğretmen için görebildiği
+        // testlerinki (CanViewQuestionAsync ile aynı predicate). Test silinince üyelik satırları silinmediği için admin
+        // dalında da testin varlığı (global soft-delete filtresi) aranır.
+        IQueryable<WorksheetQuestion> visibleMemberships = _context.TestQuestions
+            .Where(tq => _context.Worksheets.Any(w => w.Id == tq.TestId));
         if (!isAdmin)
         {
             var schoolId = await _context.ResolveTeacherSchoolIdAsync(userId, ct);
@@ -208,22 +214,27 @@ public class QuestionQueryService : IQuestionQueryService
         }
 
         // Eski (CreateUserId 0/null) sorularda sahip, soruyu içeren kopya olmayan testin sahibidir (CanModifyQuestionAsync).
+        // Bu dal yalnız kullanıcının gerçekten böyle sorusu varsa sorguya eklenir: yoksa "kendi sorularım" koşulu tek başına
+        // CreateUserId eşitliğidir ve IX_Questions_CreateUserId'yi kullanabilir (OR'lu alt sorgu index'i engeller).
         var legacyOwnedIds = _context.TestQuestions
-            .Where(tq => tq.Worksheet.SourceWorksheetId == null && tq.Worksheet.CreateUserId == userId)
+            .Where(tq => tq.Worksheet.SourceWorksheetId == null && tq.Worksheet.CreateUserId == userId
+                && (tq.Question.CreateUserId == null || tq.Question.CreateUserId == 0))
             .Select(tq => tq.QuestionId);
+        var hasLegacyOwned = userId > 0 && await legacyOwnedIds.AnyAsync(ct);
 
         var query = _context.Questions.AsNoTracking();
         if (!filter.IsAllScope)
         {
-            query = query.Where(q => (q.CreateUserId > 0 && q.CreateUserId == userId)
-                || ((q.CreateUserId == null || q.CreateUserId == 0) && legacyOwnedIds.Contains(q.Id)));
+            query = hasLegacyOwned
+                ? query.Where(q => q.CreateUserId == userId || legacyOwnedIds.Contains(q.Id))
+                : query.Where(q => q.CreateUserId == userId);
         }
         else if (!isAdmin)
         {
             var visibleQuestionIds = visibleMemberships.Select(tq => tq.QuestionId);
-            query = query.Where(q => (q.CreateUserId > 0 && q.CreateUserId == userId)
-                || ((q.CreateUserId == null || q.CreateUserId == 0) && legacyOwnedIds.Contains(q.Id))
-                || visibleQuestionIds.Contains(q.Id));
+            query = hasLegacyOwned
+                ? query.Where(q => q.CreateUserId == userId || legacyOwnedIds.Contains(q.Id) || visibleQuestionIds.Contains(q.Id))
+                : query.Where(q => q.CreateUserId == userId || visibleQuestionIds.Contains(q.Id));
         }
 
         if (filter.GradeId is { } gradeId)
@@ -281,8 +292,7 @@ public class QuestionQueryService : IQuestionQueryService
                 IsClassified = q.SubjectId != null && q.TopicId != null,
                 HasCorrectAnswer = q.CorrectAnswerId != null,
                 TestCount = visibleMemberships.Count(tq => tq.QuestionId == q.Id),
-                IsOwn = (q.CreateUserId > 0 && q.CreateUserId == userId)
-                    || ((q.CreateUserId == null || q.CreateUserId == 0) && legacyOwnedIds.Contains(q.Id)),
+                IsOwn = (userId > 0 && q.CreateUserId == userId) || (hasLegacyOwned && legacyOwnedIds.Contains(q.Id)),
                 CreateTime = q.CreateTime
             })
             .ToListAsync(ct);

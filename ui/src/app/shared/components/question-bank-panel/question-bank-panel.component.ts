@@ -89,7 +89,8 @@ export class QuestionBankPanelComponent {
   readonly pageIndex = signal(0);
   readonly pageSize = signal(24);
 
-  readonly loading = signal(false);
+  // İlk arama debounce'tan önce de "yükleniyor" sayılır (boş sonuç mesajı bir an görünmesin).
+  readonly loading = signal(true);
   readonly error = signal(false);
   readonly page = signal<QuestionBankPage>(EMPTY_PAGE);
   readonly selectedIds = signal<ReadonlySet<number>>(new Set());
@@ -122,11 +123,9 @@ export class QuestionBankPanelComponent {
   constructor() {
     toObservable(this.filter)
       .pipe(
+        tap(() => this.loading.set(true)),
         debounceTime(250),
-        tap(() => {
-          this.loading.set(true);
-          this.error.set(false);
-        }),
+        tap(() => this.error.set(false)),
         switchMap((f) =>
           this.bank.search(f).pipe(
             catchError(() => {

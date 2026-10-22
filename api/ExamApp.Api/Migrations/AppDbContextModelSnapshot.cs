@@ -1996,6 +1996,8 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("CorrectAnswerId");
 
+                    b.HasIndex("CreateUserId");
+
                     b.HasIndex("PassageId");
 
                     b.HasIndex("SubjectId");

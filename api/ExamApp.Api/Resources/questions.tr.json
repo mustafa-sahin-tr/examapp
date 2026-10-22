@@ -11,7 +11,8 @@
     "unknownName": "(bulunamadı)",
 
     "bank": {
-      "invalidQuery": "Geçersiz arama filtresi."
+      "invalidQuery": "Geçersiz arama filtresi.",
+      "rateLimited": "Kısa sürede çok fazla arama yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     },
 
     "bulk": {

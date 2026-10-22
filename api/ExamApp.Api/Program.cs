@@ -395,6 +395,7 @@ builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminPasswordResetSe
 builder.Services.AddAdminPasswordResetRateLimiting();
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminAccountStatusService, ExamApp.Api.Services.AdminUsers.AdminAccountStatusService>();
 builder.Services.AddAdminAccountStatusRateLimiting();
+builder.Services.AddQuestionBankSearchRateLimiting();
 // issue #365 (S3): kitap sayfası sorgusu (POST study-items/book-pages/lookup) kullanıcı başına rate limit.
 builder.Services.AddStudyBookPageLookupRateLimiting();
 // issue #277 (madde 8): admin öğrenci okul değişikliği — audit AdminUserActionLogs'a, ayrı rate limit kovası.

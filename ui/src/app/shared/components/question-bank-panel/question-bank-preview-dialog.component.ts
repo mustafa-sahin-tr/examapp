@@ -1,14 +1,21 @@
 import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
-import { TranslocoDirective } from '@jsverse/transloco';
+import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { QuestionBankItem } from '../../../models/question-bank';
 
-/** issue #471: soru bankası kartının büyük önizlemesi. */
+/** Panelle aynı scope adı (panel dosyasından import döngüsel olurdu). */
+const QUESTION_BANK_SCOPE = 'question-bank';
+
+/**
+ * issue #471: soru bankası kartının büyük önizlemesi. MatDialog kök injector'la açtığı için panelin scope'u burada
+ * görünmez; scope dialog'da ayrıca sağlanır.
+ */
 @Component({
   selector: 'app-question-bank-preview-dialog',
   standalone: true,
   imports: [MatButtonModule, MatDialogModule, TranslocoDirective],
+  providers: [provideTranslocoScope(QUESTION_BANK_SCOPE)],
   template: `
     <ng-container *transloco="let t; prefix: 'question-bank'">
       <h2 mat-dialog-title>{{ t('preview.title', { id: item.id }) }}</h2>

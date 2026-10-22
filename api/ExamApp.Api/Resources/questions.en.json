@@ -11,7 +11,8 @@
     "unknownName": "(not found)",
 
     "bank": {
-      "invalidQuery": "Invalid search filter."
+      "invalidQuery": "Invalid search filter.",
+      "rateLimited": "Too many searches in a short time. Please wait a moment and try again."
     },
 
     "bulk": {

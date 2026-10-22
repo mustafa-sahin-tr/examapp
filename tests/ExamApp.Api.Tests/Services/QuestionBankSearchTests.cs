@@ -286,6 +286,22 @@ public class QuestionBankSearchTests : IDisposable
         byId[_qCopyLegacy].TestCount.ShouldBe(1);
     }
 
+    [Fact]
+    public async Task SearchBankAsync_TestCountForAdmin_IgnoresSoftDeletedWorksheetWithLiveMembership()
+    {
+        // Test silme yalnız Worksheet'i soft-delete eder; WorksheetQuestion satırı canlı kalır (review bulgusu).
+        await using (var ctx = _db.NewContext())
+        {
+            var deletedWs = Add(ctx, TeacherA, new Worksheet { Name = "silinen", Description = "", GradeId = _g5, IsDeleted = true });
+            ctx.TestQuestions.Add(new WorksheetQuestion { TestId = deletedWs.Id, QuestionId = _qA1, Order = 1 });
+            await ctx.SaveChangesAsync();
+        }
+
+        var page = await SearchAsync(Admin, isAdmin: true, new QuestionBankQuery { Scope = "all" });
+
+        page.Items.Single(i => i.Id == _qA1).TestCount.ShouldBe(1);
+    }
+
     // ---------------- filtreler ----------------
 
     [Fact]

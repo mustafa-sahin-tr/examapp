@@ -14,7 +14,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { ActiveInspector, ImageSelectorComponent, TrainedPage } from '../image-selector/image-selector.component';
 import { QuestionDetectorService } from '../../services/question-detector.service';
-import { LabelingCandidate, isLabelingImage, pageIdOf, pickNextUnlabeled } from './labeling-pool';
+import { LabelingCandidate, isLabelingImage, pageIdOf, pickNextUnlabeled, sortLabelingFiles } from './labeling-pool';
 import {
   DetectionSource,
   LabelingAiModel,
@@ -44,8 +44,8 @@ type DrawMode = 'question' | 'answer';
 /**
  * İşaretleme modu: soru tespit modeline eğitim verisi üretir; "Havuza kaydet" ayrıca sayfadaki soruları teste
  * bağlamadan soru bankasına yazar (issue #470 — doğru şık dahil, sınıflandırma sunucuda otomatik başlar).
- * Seçilen kök klasörün (alt klasörler dahil) görsellerinden rastgele, daha önce eğitime alınmamış bir sayfa
- * açılır; tuval, tespit ve doğrulama `ImageSelectorComponent`'ten gelir. "Eğit" sayfayı tamamı işaretlenmiş
+ * Seçilen kök klasörün (alt klasörler dahil) görselleri klasör ve dosya adı sırasıyla gezilir; daha önce eğitime
+ * alınmamış ilk sayfa açılır; tuval, tespit ve doğrulama `ImageSelectorComponent`'ten gelir. "Eğit" sayfayı tamamı işaretlenmiş
  * (`pageComplete: true`) gönderir; "Atla" eğitmeden sonrakine geçer. Aynı oturumda bir dosya iki kez gelmez.
  */
 @Component({
@@ -559,7 +559,7 @@ export class LabelingComponent {
 
   async onFolderSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
-    const files = Array.from(input.files ?? []).filter(isLabelingImage);
+    const files = sortLabelingFiles(Array.from(input.files ?? []).filter(isLabelingImage));
     // Aynı klasör tekrar seçilebilsin.
     input.value = '';
 
@@ -589,7 +589,7 @@ export class LabelingComponent {
     }
   }
 
-  /** Eğitmeden rastgele başka bir sayfaya geç. */
+  /** Eğitmeden sıradaki sayfaya geç. */
   skip(): void {
     if (!this.canSkip()) {
       return;

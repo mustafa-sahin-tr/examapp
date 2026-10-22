@@ -412,7 +412,9 @@ QuestionTrainer (onaylı, askıda olmayan öğretmen; gateway'de de kural var).
 - **Prompt ekrandan düzenlenir:** işaretleme araç çubuğunda **Prompt** → iki aşamanın talimatı (`{width}`/`{height}`
   yer tutucuları), soru/şık kutusu payı (px) ve "soru kutusu şıkları kapsasın". Her kayıt yeni sürüm
   (`LabelingPromptVersions`, geçmiş silinmez; tablo boşsa koddaki varsayılanlar = sürüm 0). Koordinat kuralı ve JSON şeması
-  kodda sabit. AI sonuçları `PromptVersion` taşır; prompt değişince eski sonuç kayıttan dönmez, Claude yeniden çağrılır.
+  kodda sabit. AI sonuçları `PromptVersion` (gösterim) ve `PromptHash` (önbellek anahtarı: talimatlar + paylar +
+  `LabelingPromptSettings.SchemaRevision`) taşır; içerik değişince eski sonuç kayıttan dönmez, Claude yeniden çağrılır.
+  Aynı içerikle Kaydet yeni sürüm açmaz. Koddaki sabit kısım (sistem mesajı, şema, kırpma) değişirse `SchemaRevision`'ı artır.
   Düzenleme: Admin + QuestionTrainer (`GET/PUT /api/exam/labeling/prompt`).
 - Ayarlar `api/ExamApp.Api/appsettings.json` → `Anthropic`: `Models` (izinli id + 1M token fiyatı, maliyet tahmini
   için; varsayılan seçili model Haiku 5.5 — tarayıcıda daha önce başka model seçildiyse localStorage `labeling.aiModel` onu tutar), `Effort` (varsayılan `low`), `MaxImageEdge` (1568), `MaxParallelCrops` (4), `MaxQuestionsPerPage` (40),

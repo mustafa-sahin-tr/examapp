@@ -189,6 +189,10 @@ public class AppDbContext : DbContext
             .WithMany(c => c.Questions)
             .HasForeignKey(q => q.SubjectId);
 
+        // issue #471: soru bankası "kendi sorularım" (varsayılan kapsam) CreateUserId ile süzer.
+        modelBuilder.Entity<Question>()
+            .HasIndex(q => q.CreateUserId);
+
         modelBuilder.Entity<Answer>()
             .HasOne(a => a.Question)
             .WithMany(q => q.Answers)

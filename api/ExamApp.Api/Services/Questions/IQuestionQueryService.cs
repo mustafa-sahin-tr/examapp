@@ -12,4 +12,13 @@ public interface IQuestionQueryService
     /// </summary>
     Task<List<PassageDto>> GetLastTenPassages(int userId, bool isAdmin, CancellationToken ct = default);
     Task<List<QuestionDto>> GetQuestionByTestId(int testid);
+
+    /// <summary>
+    /// issue #471: soru bankası araması (sayfalı, en yeni önce). Kapsam <c>mine</c>: çağıranın soruları
+    /// (<see cref="IQuestionOwnershipGuard.CanModifyQuestionAsync"/> sahiplik kuralı). Kapsam <c>all</c>: admin için tüm
+    /// sorular, öğretmen için <see cref="IQuestionOwnershipGuard.CanViewQuestionAsync"/> ile görebildiği sorular (kendi
+    /// soruları + görebildiği bir teste bağlı olanlar). <paramref name="filter"/> önceden <see cref="QuestionBankQuery.IsValid"/>
+    /// ile doğrulanmış olmalı. Admin olmayan <paramref name="userId"/> &lt;= 0 → boş sayfa.
+    /// </summary>
+    Task<QuestionBankPageDto> SearchBankAsync(QuestionBankQuery filter, int userId, bool isAdmin, CancellationToken ct = default);
 }

@@ -10,6 +10,11 @@
     "testNotFound": "Test not found!",
     "unknownName": "(not found)",
 
+    "bank": {
+      "invalidQuery": "Invalid search filter.",
+      "rateLimited": "Too many searches in a short time. Please wait a moment and try again."
+    },
+
     "bulk": {
       "saveFailed": "The question set could not be saved.",
       "saved": "Questions saved successfully!",

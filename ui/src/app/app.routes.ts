@@ -101,6 +101,12 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/labeling/labeling.component').then((m) => m.LabelingComponent),
       },
       { path: 'question', component: QuestionComponent, canActivate: [authGuard] },
+      {
+        // Issue #471: soru bankası araması — backend Teacher/Admin + onaylı öğretmen.
+        path: 'question-bank',
+        canActivate: [authGuard, roleGuard('Teacher', 'Admin'), approvedTeacherGuard],
+        loadComponent: () => import('./pages/question-bank/question-bank.component').then((m) => m.QuestionBankComponent),
+      },
       { path: 'imageselect', component: ImageSelectorComponent, canActivate: [authGuard] },
       {
         path: 'tests-enhanced',

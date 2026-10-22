@@ -1,4 +1,5 @@
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using Microsoft.EntityFrameworkCore;
 
@@ -188,5 +189,118 @@ public class QuestionQueryService : IQuestionQueryService
 
 
         return questionList;
+    }
+
+    public async Task<QuestionBankPageDto> SearchBankAsync(QuestionBankQuery filter, int userId, bool isAdmin, CancellationToken ct = default)
+    {
+        var page = new QuestionBankPageDto { Skip = Math.Max(0, filter.Skip), Take = filter.EffectiveTake };
+        if (!isAdmin && userId <= 0)
+            return page;
+
+        // Kendi soruları kimliği çözülmüş kullanıcıya göre; kimliksiz admin "mine" kapsamında hiçbir şeye sahip değildir.
+        if (!filter.IsAllScope && userId <= 0)
+            return page;
+
+        // Sayılan / görünürlük veren test üyelikleri: admin için silinmemiş tüm testlerinki, öğretmen için görebildiği
+        // testlerinki (CanViewQuestionAsync ile aynı predicate). Test silinince üyelik satırları silinmediği için admin
+        // dalında da testin varlığı (global soft-delete filtresi) aranır.
+        IQueryable<WorksheetQuestion> visibleMemberships = _context.TestQuestions
+            .Where(tq => _context.Worksheets.Any(w => w.Id == tq.TestId));
+        if (!isAdmin)
+        {
+            var schoolId = await _context.ResolveTeacherSchoolIdAsync(userId, ct);
+            var visibleWorksheets = _context.Worksheets.Where(WorksheetAccess.VisibleToTeacherPredicate(_context, userId, schoolId));
+            visibleMemberships = visibleMemberships.Where(tq => visibleWorksheets.Any(w => w.Id == tq.TestId));
+        }
+
+        // Eski (CreateUserId 0/null) sorularda sahip, soruyu içeren kopya olmayan testin sahibidir (CanModifyQuestionAsync).
+        // Bu dal yalnız kullanıcının gerçekten böyle sorusu varsa sorguya eklenir: yoksa "kendi sorularım" koşulu tek başına
+        // CreateUserId eşitliğidir ve IX_Questions_CreateUserId'yi kullanabilir (OR'lu alt sorgu index'i engeller).
+        var legacyOwnedIds = _context.TestQuestions
+            .Where(tq => tq.Worksheet.SourceWorksheetId == null && tq.Worksheet.CreateUserId == userId
+                && (tq.Question.CreateUserId == null || tq.Question.CreateUserId == 0))
+            .Select(tq => tq.QuestionId);
+        var hasLegacyOwned = userId > 0 && await legacyOwnedIds.AnyAsync(ct);
+
+        var query = _context.Questions.AsNoTracking();
+        if (!filter.IsAllScope)
+        {
+            query = hasLegacyOwned
+                ? query.Where(q => q.CreateUserId == userId || legacyOwnedIds.Contains(q.Id))
+                : query.Where(q => q.CreateUserId == userId);
+        }
+        else if (!isAdmin)
+        {
+            var visibleQuestionIds = visibleMemberships.Select(tq => tq.QuestionId);
+            query = hasLegacyOwned
+                ? query.Where(q => q.CreateUserId == userId || legacyOwnedIds.Contains(q.Id) || visibleQuestionIds.Contains(q.Id))
+                : query.Where(q => q.CreateUserId == userId || visibleQuestionIds.Contains(q.Id));
+        }
+
+        if (filter.GradeId is { } gradeId)
+            query = query.Where(q => q.TopicId != null && q.Topic.GradeId == gradeId);
+        if (filter.SubjectId is { } subjectId)
+            query = query.Where(q => q.SubjectId == subjectId);
+        if (filter.TopicId is { } topicId)
+            query = query.Where(q => q.TopicId == topicId);
+        var subTopicIds = filter.SubTopicIds?.Where(id => id > 0).Distinct().ToArray() ?? [];
+        if (subTopicIds.Length > 0)
+            query = query.Where(q => q.QuestionSubTopics.Any(qst => subTopicIds.Contains(qst.SubTopicId)));
+        if (filter.MinDifficulty is { } minDifficulty)
+            query = query.Where(q => q.DifficultyLevel >= minDifficulty);
+        if (filter.MaxDifficulty is { } maxDifficulty)
+            query = query.Where(q => q.DifficultyLevel <= maxDifficulty);
+        if (filter.ParsedSource is { } source)
+            query = query.Where(q => q.ClassificationSource == source);
+        if (filter.Classified is { } classified)
+            query = classified
+                ? query.Where(q => q.SubjectId != null && q.TopicId != null)
+                : query.Where(q => q.SubjectId == null || q.TopicId == null);
+        if (filter.InTest is { } inTest)
+            query = inTest
+                ? query.Where(q => visibleMemberships.Any(tq => tq.QuestionId == q.Id))
+                : query.Where(q => !visibleMemberships.Any(tq => tq.QuestionId == q.Id));
+        if (filter.HasCorrectAnswer is { } hasCorrectAnswer)
+            query = hasCorrectAnswer
+                ? query.Where(q => q.CorrectAnswerId != null)
+                : query.Where(q => q.CorrectAnswerId == null);
+
+        page.Total = await query.CountAsync(ct);
+        if (page.Total == 0 || page.Skip >= page.Total)
+            return page;
+
+        page.Items = await query
+            .OrderByDescending(q => q.Id)
+            .Skip(page.Skip)
+            .Take(page.Take)
+            .Select(q => new QuestionBankItemDto
+            {
+                Id = q.Id,
+                ImageUrl = q.ImageUrl,
+                SubjectId = q.SubjectId,
+                SubjectName = q.SubjectId != null ? q.Subject.Name : null,
+                TopicId = q.TopicId,
+                TopicName = q.TopicId != null ? q.Topic.Name : null,
+                GradeId = q.TopicId != null ? (int?)q.Topic.GradeId : null,
+                SubTopics = q.QuestionSubTopics
+                    .Where(qst => qst.SubTopic != null)
+                    .Select(qst => new SubTopicDto
+                    {
+                        Id = qst.SubTopic.Id,
+                        Name = qst.SubTopic.Name,
+                        TopicId = qst.SubTopic.TopicId
+                    })
+                    .ToList(),
+                DifficultyLevel = q.DifficultyLevel,
+                ClassificationSource = q.ClassificationSource,
+                IsClassified = q.SubjectId != null && q.TopicId != null,
+                HasCorrectAnswer = q.CorrectAnswerId != null,
+                TestCount = visibleMemberships.Count(tq => tq.QuestionId == q.Id),
+                IsOwn = (userId > 0 && q.CreateUserId == userId) || (hasLegacyOwned && legacyOwnedIds.Contains(q.Id)),
+                CreateTime = q.CreateTime
+            })
+            .ToListAsync(ct);
+
+        return page;
     }
 }

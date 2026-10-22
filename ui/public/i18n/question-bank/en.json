@@ -1,0 +1,53 @@
+{
+  "title": "Question Bank",
+  "subtitle": "Search ready questions by grade, subject, topic and subtopic.",
+  "filters": {
+    "title": "Filters",
+    "scope": "Scope",
+    "scopeMine": "My questions",
+    "scopeAll": "All questions I can see",
+    "any": "All",
+    "difficulty": "Difficulty",
+    "difficultyEasy": "Easy (1-3)",
+    "difficultyMedium": "Medium (4-7)",
+    "difficultyHard": "Hard (8-10)",
+    "status": "Classification",
+    "statusClassified": "Complete",
+    "statusUnclassified": "Incomplete",
+    "source": "Source",
+    "sourceAi": "AI",
+    "sourceHuman": "Manual",
+    "answer": "Correct answer",
+    "answerYes": "Set",
+    "answerNo": "Not set",
+    "inTest": "Linked test",
+    "inTestYes": "Yes",
+    "inTestNo": "No"
+  },
+  "results": {
+    "total": "{{count}} questions",
+    "selected": "{{count}} questions selected",
+    "clearSelection": "Clear selection",
+    "empty": "No questions match these filters.",
+    "error": "Questions could not be loaded. Please try again.",
+    "paginator": "Pages"
+  },
+  "card": {
+    "preview": "Enlarge question {{id}}",
+    "noImage": "No image",
+    "noSubject": "No subject",
+    "aiTooltip": "Classified by AI",
+    "difficulty": "Difficulty {{level}}",
+    "testCount": "In {{count}} tests",
+    "unclassified": "Classification incomplete",
+    "noAnswer": "No correct answer",
+    "shared": "Shared",
+    "select": "Select",
+    "alreadyAdded": "Already in test"
+  },
+  "preview": {
+    "title": "Question #{{id}}",
+    "imageAlt": "Image of question {{id}}",
+    "close": "Close"
+  }
+}

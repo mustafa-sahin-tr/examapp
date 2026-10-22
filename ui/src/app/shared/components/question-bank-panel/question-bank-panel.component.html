@@ -1,0 +1,159 @@
+<div class="qb-panel" *transloco="let t; prefix: 'question-bank'">
+  <section class="qb-filters" [attr.aria-label]="t('filters.title')">
+    <app-classification-selector (selectionChange)="onClassificationChange($event)" />
+
+    <div class="qb-filters__row">
+      <mat-button-toggle-group
+        class="qb-scope"
+        [value]="scope()"
+        (change)="setScope($event.value)"
+        [attr.aria-label]="t('filters.scope')"
+      >
+        <mat-button-toggle value="mine">{{ t('filters.scopeMine') }}</mat-button-toggle>
+        <mat-button-toggle value="all">{{ t('filters.scopeAll') }}</mat-button-toggle>
+      </mat-button-toggle-group>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ t('filters.difficulty') }}</mat-label>
+        <mat-select [value]="difficulty()" (selectionChange)="setDifficulty($event.value)">
+          <mat-option value="any">{{ t('filters.any') }}</mat-option>
+          <mat-option value="easy">{{ t('filters.difficultyEasy') }}</mat-option>
+          <mat-option value="medium">{{ t('filters.difficultyMedium') }}</mat-option>
+          <mat-option value="hard">{{ t('filters.difficultyHard') }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ t('filters.status') }}</mat-label>
+        <mat-select [value]="status()" (selectionChange)="setStatus($event.value)">
+          <mat-option value="any">{{ t('filters.any') }}</mat-option>
+          <mat-option value="classified">{{ t('filters.statusClassified') }}</mat-option>
+          <mat-option value="unclassified">{{ t('filters.statusUnclassified') }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ t('filters.source') }}</mat-label>
+        <mat-select [value]="source()" (selectionChange)="setSource($event.value)">
+          <mat-option value="any">{{ t('filters.any') }}</mat-option>
+          <mat-option value="AI">{{ t('filters.sourceAi') }}</mat-option>
+          <mat-option value="Human">{{ t('filters.sourceHuman') }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ t('filters.answer') }}</mat-label>
+        <mat-select [value]="answer()" (selectionChange)="setAnswer($event.value)">
+          <mat-option value="any">{{ t('filters.any') }}</mat-option>
+          <mat-option value="yes">{{ t('filters.answerYes') }}</mat-option>
+          <mat-option value="no">{{ t('filters.answerNo') }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ t('filters.inTest') }}</mat-label>
+        <mat-select [value]="inTest()" (selectionChange)="setInTest($event.value)">
+          <mat-option value="any">{{ t('filters.any') }}</mat-option>
+          <mat-option value="yes">{{ t('filters.inTestYes') }}</mat-option>
+          <mat-option value="no">{{ t('filters.inTestNo') }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </section>
+
+  <div class="qb-summary" aria-live="polite">
+    <span>{{ t('results.total', { count: page().total }) }}</span>
+    @if (selectable() && selectedIds().size > 0) {
+      <span class="qb-summary__selection">
+        {{ t('results.selected', { count: selectedIds().size }) }}
+        <button mat-button type="button" (click)="clearSelection()">{{ t('results.clearSelection') }}</button>
+      </span>
+    }
+  </div>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  @if (error()) {
+    <p class="qb-message qb-message--error" role="alert">{{ t('results.error') }}</p>
+  } @else if (!loading() && page().items.length === 0) {
+    <p class="qb-message">{{ t('results.empty') }}</p>
+  }
+
+  <div class="qb-grid">
+    @for (item of page().items; track item.id) {
+      <mat-card
+        class="qb-card"
+        appearance="outlined"
+        [class.qb-card--selected]="isSelected(item)"
+        [class.qb-card--disabled]="selectable() && isDisabled(item)"
+      >
+        <button type="button" class="qb-card__image" (click)="preview(item)" [attr.aria-label]="t('card.preview', { id: item.id })">
+          @if (item.imageUrl) {
+            <img [src]="item.imageUrl" [alt]="t('preview.imageAlt', { id: item.id })" loading="lazy" />
+          } @else {
+            <span class="qb-card__no-image">{{ t('card.noImage') }}</span>
+          }
+        </button>
+
+        <mat-card-content class="qb-card__body">
+          <div class="qb-card__title">
+            <span>{{ item.subjectName || t('card.noSubject') }}</span>
+            @if (item.classificationSource === AI) {
+              <mat-icon class="qb-card__ai" [matTooltip]="t('card.aiTooltip')">auto_awesome</mat-icon>
+            }
+          </div>
+          @if (item.topicName) {
+            <div class="qb-card__topic">{{ item.topicName }}</div>
+          }
+          @if (item.subTopics.length > 0) {
+            <div class="qb-card__subtopics">
+              @for (st of item.subTopics; track st.id) {
+                <span class="qb-tag">{{ st.name }}</span>
+              }
+            </div>
+          }
+          <div class="qb-card__meta">
+            <span>{{ t('card.difficulty', { level: item.difficultyLevel }) }}</span>
+            <span>{{ t('card.testCount', { count: item.testCount }) }}</span>
+          </div>
+          <div class="qb-card__flags">
+            @if (!item.isClassified) {
+              <span class="qb-tag qb-tag--warning">{{ t('card.unclassified') }}</span>
+            }
+            @if (!item.hasCorrectAnswer) {
+              <span class="qb-tag qb-tag--warning">{{ t('card.noAnswer') }}</span>
+            }
+            @if (!item.isOwn) {
+              <span class="qb-tag">{{ t('card.shared') }}</span>
+            }
+          </div>
+        </mat-card-content>
+
+        @if (selectable()) {
+          <mat-card-actions class="qb-card__actions">
+            <mat-checkbox
+              [checked]="isSelected(item) || isDisabled(item)"
+              [disabled]="isDisabled(item)"
+              (change)="toggleSelection(item)"
+            >
+              {{ isDisabled(item) ? t('card.alreadyAdded') : t('card.select') }}
+            </mat-checkbox>
+          </mat-card-actions>
+        }
+      </mat-card>
+    }
+  </div>
+
+  @if (page().total > 0) {
+    <mat-paginator
+      [length]="page().total"
+      [pageIndex]="pageIndex()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="pageSizeOptions"
+      (page)="onPage($event)"
+      [attr.aria-label]="t('results.paginator')"
+    />
+  }
+</div>

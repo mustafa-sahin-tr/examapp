@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.IO;
@@ -122,6 +123,20 @@ public class QuestionsController : BaseController
 
         var questionList = await _questionQuery.GetQuestionByTestId(testid);
         return Ok(questionList);
+    }
+
+    // GET /api/questions/bank — issue #471: soru bankası araması (ders/konu/alt konu/zorluk/kaynak filtreleri, sayfalı).
+    // Görünürlük sorgu katmanında: scope=mine (varsayılan) kendi soruları, scope=all görebildiği tüm sorular (GET {id} kuralı).
+    [HttpGet("bank")]
+    [Authorize(Roles = AuthoringRoles)]
+    [EnableRateLimiting(QuestionBankSearchRateLimiting.Policy)]
+    public async Task<ActionResult<QuestionBankPageDto>> SearchBank([FromQuery] QuestionBankQuery filter)
+    {
+        if (!filter.IsValid())
+            return BadRequest(new { message = _localizer["questions.bank.invalidQuery"].Value });
+
+        var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
+        return Ok(await _questionQuery.SearchBankAsync(filter, user.Id, IsAdmin, HttpContext.RequestAborted));
     }
 
     [HttpPost]

@@ -243,6 +243,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     // Issue #61: öğretmen konu/alt konu çalışma linkleri yönetimi.
     { id: 'study-links', labelKey: 'menu.studyLinks', icon: 'video_library', route: '/study-links', type: 'menu', roles: ['Teacher'] },
     { id: 'exam', labelKey: 'menu.examAuthoring', icon: 'app_registration', route: '/exam', type: 'menu', roles: ['Teacher'] },
+    // Issue #471: hazır soruları ders/konu/alt konuya göre arama.
+    { id: 'question-bank', labelKey: 'menu.questionBank', icon: 'inventory_2', route: '/question-bank', type: 'menu', roles: ['Teacher', 'Admin'] },
     { id: 'reports', labelKey: 'menu.reports', icon: 'analytics', route: '/certificates', type: 'menu' },
     // Issue #417: tüm roller (onay bekleyen öğretmen dahil — dil/hesap ayarı); rota role göre (#373: öğrenci /student-profile).
     { id: 'settings', labelKey: 'menu.settings', icon: 'settings', route: this.settingsRoute, type: 'menu' },

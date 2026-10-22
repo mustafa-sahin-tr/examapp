@@ -20,8 +20,10 @@ public sealed record LabelingPromptSettings(
     public const string DefaultQuestionInstruction =
         "This image is one test-book page ({width}x{height} px). Find every multiple-choice question. " +
         "For each question return ONE box that encloses the question stem, any figure or table that belongs to it, " +
-        "and all of its answer options. Do not include the question number. Exclude page headers, footers, section " +
-        "titles and reading passages shared by several questions. Return an empty list if the page has no questions.";
+        "and all of its answer options. The question number (for example \"5.\") must stay OUTSIDE the box: the left " +
+        "edge of the box starts at the first letter of the stem text, to the right of the number, and the top edge at " +
+        "the top of the stem's first line. Exclude page headers, footers, section titles and reading passages shared " +
+        "by several questions. Return an empty list if the page has no questions.";
 
     public const string DefaultOptionInstruction =
         "This image is a single multiple-choice question cropped from a test page ({width}x{height} px). " +

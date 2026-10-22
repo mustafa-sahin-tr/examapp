@@ -124,6 +124,19 @@ public class QuestionsController : BaseController
         return Ok(questionList);
     }
 
+    // GET /api/questions/bank — issue #471: soru bankası araması (ders/konu/alt konu/zorluk/kaynak filtreleri, sayfalı).
+    // Görünürlük sorgu katmanında: scope=mine (varsayılan) kendi soruları, scope=all görebildiği tüm sorular (GET {id} kuralı).
+    [HttpGet("bank")]
+    [Authorize(Roles = AuthoringRoles)]
+    public async Task<ActionResult<QuestionBankPageDto>> SearchBank([FromQuery] QuestionBankQuery filter)
+    {
+        if (!filter.IsValid())
+            return BadRequest(new { message = _localizer["questions.bank.invalidQuery"].Value });
+
+        var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
+        return Ok(await _questionQuery.SearchBankAsync(filter, user.Id, IsAdmin, HttpContext.RequestAborted));
+    }
+
     [HttpPost]
     [Authorize(Roles = AuthoringRoles)]
     public async Task<IActionResult> CreateOrUpdateQuestion([FromBody] QuestionDto questionDto)

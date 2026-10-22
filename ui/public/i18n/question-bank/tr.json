@@ -1,0 +1,50 @@
+{
+  "title": "Soru Bankası",
+  "subtitle": "Hazır soruları sınıf, ders, konu ve alt konuya göre arayın.",
+  "filters": {
+    "title": "Filtreler",
+    "scope": "Kapsam",
+    "scopeMine": "Sorularım",
+    "scopeAll": "Görebildiğim tüm sorular",
+    "any": "Tümü",
+    "difficulty": "Zorluk",
+    "difficultyEasy": "Kolay (1-3)",
+    "difficultyMedium": "Orta (4-7)",
+    "difficultyHard": "Zor (8-10)",
+    "status": "Sınıflandırma",
+    "statusClassified": "Tamamlanmış",
+    "statusUnclassified": "Bitmemiş",
+    "source": "Kaynak",
+    "sourceAi": "Yapay zekâ",
+    "sourceHuman": "Manuel",
+    "answer": "Doğru cevap",
+    "answerYes": "Belirlenmiş",
+    "answerNo": "Belirlenmemiş"
+  },
+  "results": {
+    "total": "{{count}} soru",
+    "selected": "{{count}} soru seçildi",
+    "clearSelection": "Seçimi temizle",
+    "empty": "Bu filtrelere uyan soru yok.",
+    "error": "Sorular yüklenemedi. Lütfen tekrar deneyin.",
+    "paginator": "Sayfalar"
+  },
+  "card": {
+    "preview": "{{id}} numaralı soruyu büyüt",
+    "noImage": "Görsel yok",
+    "noSubject": "Ders belirlenmemiş",
+    "aiTooltip": "Yapay zekâ ile sınıflandırıldı",
+    "difficulty": "Zorluk {{level}}",
+    "testCount": "{{count}} testte",
+    "unclassified": "Sınıflandırma bitmemiş",
+    "noAnswer": "Doğru cevap yok",
+    "shared": "Paylaşılan",
+    "select": "Seç",
+    "alreadyAdded": "Testte var"
+  },
+  "preview": {
+    "title": "Soru #{{id}}",
+    "imageAlt": "{{id}} numaralı sorunun görseli",
+    "close": "Kapat"
+  }
+}

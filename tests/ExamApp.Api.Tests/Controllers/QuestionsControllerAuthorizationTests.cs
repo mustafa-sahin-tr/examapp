@@ -43,6 +43,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
     private const int AdminUser = 9;
 
     private readonly TestDb _db = TestDb.Create();
+    private IQuestionQueryService _questionQuery = null!; // StartHostAsync'te atanır (çağrı doğrulaması için)
     private readonly int _worksheet;
     private readonly int _copyWorksheet;
     private readonly int _legacyQuestion;   // CreateUserId=0, W + W2'de
@@ -144,6 +145,9 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         query.GetQuestionById(Arg.Any<int>()).Returns(new QuestionDto { Id = 1, ImageUrl = "q/question.jpg" });
         query.GetQuestionByTestId(Arg.Any<int>()).Returns(new List<QuestionDto>());
         query.GetLastTenPassages(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(new List<PassageDto>());
+        query.SearchBankAsync(Arg.Any<QuestionBankQuery>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(new QuestionBankPageDto { Total = 0 });
+        _questionQuery = query;
 
         var minio = Substitute.For<IMinIoService>();
         minio.GetFileStreamAsync(Arg.Any<string>()).Returns(_ => Task.FromResult<Stream?>(new MemoryStream(new byte[] { 1 })));
@@ -231,6 +235,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
     {
         (HttpMethod.Get, $"/api/questions/{_legacyQuestion}", null),
         (HttpMethod.Get, "/api/questions/passages", null),
+        (HttpMethod.Get, "/api/questions/bank", null),
         (HttpMethod.Get, $"/api/questions/bytest/{_worksheet}", null),
         (HttpMethod.Get, $"/api/questions/{_legacyQuestion}/image", null),
         (HttpMethod.Get, "/api/questions/classifier-cache", null),
@@ -403,5 +408,89 @@ public class QuestionsControllerAuthorizationTests : IDisposable
 
         (await SendAsync(client, Owner, HttpMethod.Put, $"/api/questions/{_legacyQuestion}/correct-answer",
             new { correctAnswerId = 1, scale = 1 })).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    // ---------------- issue #471: GET api/questions/bank ----------------
+
+    [Fact]
+    public async Task SearchBank_Teacher_Returns200AndCallsServiceWithoutAdminFlag()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        var response = await SendAsync(client, Owner, HttpMethod.Get, "/api/questions/bank?scope=mine&gradeId=5");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        await _questionQuery.Received(1).SearchBankAsync(
+            Arg.Is<QuestionBankQuery>(f => f.GradeId == 5 && !f.IsAllScope),
+            OwnerTeacher, false, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SearchBank_Admin_Returns200AndCallsServiceWithAdminFlag()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        var response = await SendAsync(client, Admin, HttpMethod.Get, "/api/questions/bank?scope=all");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        await _questionQuery.Received(1).SearchBankAsync(
+            Arg.Is<QuestionBankQuery>(f => f.IsAllScope),
+            AdminUser, true, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SearchBank_StudentAndParent_Returns403AndNeverCallsService()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        (await SendAsync(client, Student, HttpMethod.Get, "/api/questions/bank?scope=all")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await SendAsync(client, Parent, HttpMethod.Get, "/api/questions/bank")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+
+        await _questionQuery.DidNotReceive().SearchBankAsync(
+            Arg.Any<QuestionBankQuery>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SearchBank_InvalidFilter_Returns400AndNeverCallsService()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        string[] invalid =
+        {
+            "?scope=everyone",
+            "?source=Bogus",
+            "?minDifficulty=0",
+            "?maxDifficulty=11",
+            "?minDifficulty=7&maxDifficulty=3",
+            "?skip=-1",
+        };
+        foreach (var query in invalid)
+        {
+            var response = await SendAsync(client, Owner, HttpMethod.Get, "/api/questions/bank" + query);
+            response.StatusCode.ShouldBe(HttpStatusCode.BadRequest, query);
+        }
+
+        await _questionQuery.DidNotReceive().SearchBankAsync(
+            Arg.Any<QuestionBankQuery>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SearchBank_PendingTeacher_Returns403()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            await ctx.Teachers.Where(t => t.UserId == OwnerTeacher)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.AccountApprovedAt, (DateTime?)null));
+        }
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        (await SendAsync(client, Owner, HttpMethod.Get, "/api/questions/bank")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        await _questionQuery.DidNotReceive().SearchBankAsync(
+            Arg.Any<QuestionBankQuery>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 }

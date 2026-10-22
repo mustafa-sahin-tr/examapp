@@ -10,6 +10,10 @@
     "testNotFound": "Test bulunamadı!",
     "unknownName": "(bulunamadı)",
 
+    "bank": {
+      "invalidQuery": "Geçersiz arama filtresi."
+    },
+
     "bulk": {
       "saveFailed": "Soru seti kaydedilemedi.",
       "saved": "Sorular başarıyla kaydedildi!",

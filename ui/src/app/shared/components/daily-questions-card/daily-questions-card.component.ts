@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoDirective } from '@jsverse/transloco';
-import { DailySet } from '../../../models/practice';
+import { DailySet, DailyStartScope } from '../../../models/practice';
 import { DailyProgressStepsComponent } from '../daily-progress-steps/daily-progress-steps.component';
+import { DailyScopePickerComponent } from '../daily-scope-picker/daily-scope-picker.component';
 
 /** Kartın görsel durumu (issue #99 tasarım notu, durum tablosu). */
 export type DailyQuestionsCardState =
@@ -27,7 +28,14 @@ const MINUTES_PER_QUESTION = 1.5;
 @Component({
   selector: 'app-daily-questions-card',
   standalone: true,
-  imports: [MatButtonModule, MatChipsModule, MatIconModule, TranslocoDirective, DailyProgressStepsComponent],
+  imports: [
+    MatButtonModule,
+    MatChipsModule,
+    MatIconModule,
+    TranslocoDirective,
+    DailyProgressStepsComponent,
+    DailyScopePickerComponent,
+  ],
   templateUrl: './daily-questions-card.component.html',
   styleUrls: ['./daily-questions-card.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -39,8 +47,11 @@ export class DailyQuestionsCardComponent {
   /** Günlük seri (gün); null/0 ise chip render edilmez. */
   readonly streak = input<number | null>(null);
 
-  /** Başla / Devam et. */
-  readonly start = output<void>();
+  /**
+   * Başla / Devam et. #66: set henüz başlamadıysa öğrencinin seçtiği kapsam (ders/konu/alt konu) taşınır;
+   * seçim yoksa ya da set başlamışsa null.
+   */
+  readonly start = output<DailyStartScope | null>();
   readonly retry = output<void>();
   readonly freePractice = output<void>();
   readonly goToProfile = output<void>();
@@ -75,4 +86,31 @@ export class DailyQuestionsCardComponent {
     this.state() === 'inProgress' && this.answered() < this.total() ? this.answered() : null
   );
   readonly showStreak = computed(() => (this.streak() ?? 0) > 0);
+
+  // ── Kapsam (#66) ──────────────────────────────────────────────────────────
+  /** Kapsam yalnız oturumu açılmamış sette seçilebilir; başladıktan sonra gün içinde değişmez. */
+  readonly canChooseScope = computed(
+    () => (this.state() === 'notStarted' || this.state() === 'lowPool') && this.dailySet()?.sessionId == null
+  );
+  readonly scopeOpen = signal(false);
+  readonly selectedScope = signal<DailyStartScope | null>(null);
+  readonly scope = computed(() => this.dailySet()?.scope ?? null);
+  /** Kaydedilmiş kapsamın etiketi: "Matematik · Kesirler · Sadeleştirme"; rastgele sette null. */
+  readonly scopeLabel = computed(() => {
+    const scope = this.scope();
+    if (!scope) return null;
+    return [scope.subjectName, scope.topicName, scope.subTopicName].filter((n): n is string => !!n).join(' · ') || null;
+  });
+  readonly filledFromGeneral = computed(() => this.state() !== 'completed' && !!this.scope()?.filledFromGeneral);
+
+  toggleScope(): void {
+    const open = !this.scopeOpen();
+    this.scopeOpen.set(open);
+    // Kapatınca seçim de bırakılır: kart "rastgele" ile başlar.
+    if (!open) this.selectedScope.set(null);
+  }
+
+  onStart(): void {
+    this.start.emit(this.canChooseScope() && this.scopeOpen() ? this.selectedScope() : null);
+  }
 }

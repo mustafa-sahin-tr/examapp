@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 namespace ExamApp.Api.Models.Dtos;
 
@@ -50,15 +49,44 @@ public class DailySetDto
     /// <summary>Setin pratik oturumu; "Başla" denmeden null. Completed'da da döner (review için).</summary>
     public int? SessionId { get; set; }
 
-    /// <summary>#66 kullanıcı seçimli kapsam; #99'da her zaman null (sınıftan rastgele).</summary>
+    /// <summary>#66: öğrencinin başlatırken seçtiği kapsam; seçim yapılmadıysa null (sınıftan rastgele, #99).</summary>
     public DailySetScopeDto? Scope { get; set; }
 }
 
-/// <summary>#66 için ayrılmış kapsam şekli (ders/konu id'leri). #99 doldurmaz.</summary>
+/// <summary>
+/// #66: günlük setin kaydedilmiş kapsamı (ders, isteğe bağlı konu/alt konu). Gün içinde değişmez; adlar okuma anında çözülür
+/// (silinmiş taksonomi kaydında null).
+/// </summary>
 public class DailySetScopeDto
 {
-    public List<int> SubjectIds { get; set; } = new();
-    public List<int> TopicIds { get; set; } = new();
+    public int SubjectId { get; set; }
+    public string? SubjectName { get; set; }
+    public int? TopicId { get; set; }
+    public string? TopicName { get; set; }
+    public int? SubTopicId { get; set; }
+    public string? SubTopicName { get; set; }
+
+    /// <summary>Üretimde kapsamdan gelen soru sayısı.</summary>
+    public int ScopedCount { get; set; }
+
+    /// <summary>Kapsam yetmedi, eksik kısım sınıf havuzundan tamamlandı ("kalanı genel havuzdan" bilgisi).</summary>
+    public bool FilledFromGeneral { get; set; }
+}
+
+/// <summary>
+/// POST api/practice/daily/start gövdesi (#66, isteğe bağlı). Boş/null: #99 davranışı (rastgele set). Kapsam yalnız setin
+/// oturumu henüz açılmamışken doğrulanır ve uygulanır; açılmış sette yok sayılır (gün içinde değişmez). Geçersiz id
+/// (≤ 0 dahil) servis doğrulamasında yerelleştirilmiş 400 ile reddedilir.
+/// </summary>
+public class DailyStartRequestDto
+{
+    public int? SubjectId { get; set; }
+
+    /// <summary>Doluysa <see cref="SubjectId"/> da dolu olmalı; konu o derse ve öğrencinin sınıfına ait olmalı.</summary>
+    public int? TopicId { get; set; }
+
+    /// <summary>Doluysa <see cref="TopicId"/> da dolu olmalı; alt konu o konuya ait olmalı.</summary>
+    public int? SubTopicId { get; set; }
 }
 
 /// <summary>
@@ -71,4 +99,10 @@ public class DailyStartResultDto
 
     /// <summary><see cref="DailySetStatus"/>: NotStarted | InProgress | Completed (Empty bu uçta 409 döner).</summary>
     public string Status { get; set; } = DailySetStatus.NotStarted;
+
+    /// <summary>Setteki (canlı) soru sayısı; kapsamla yeniden üretilen sette GET'teki değerden farklı olabilir (#66).</summary>
+    public int Total { get; set; }
+
+    /// <summary>Setin kaydedilmiş kapsamı (#66); rastgele sette null.</summary>
+    public DailySetScopeDto? Scope { get; set; }
 }

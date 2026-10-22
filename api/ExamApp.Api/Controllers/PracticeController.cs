@@ -81,16 +81,27 @@ public class PracticeController : BaseController
     /// <summary>
     /// Bugünün setinin pratik oturumunu açar ya da mevcut oturumu döner (idempotent). Tamamlanmış sette yeni oturum
     /// açılmaz: 200 + mevcut <c>sessionId</c> + <c>status: "Completed"</c>. Set boşsa 409.
+    /// #66: gövde isteğe bağlı ders/konu/alt konu taşır; oturum açılmamış sette set bu kapsamdan üretilir, açılmış sette
+    /// yok sayılır. Geçersiz kapsam 400.
     /// </summary>
     [HttpPost("daily/start")]
     [EnableRateLimiting(DailyQuestionsRateLimiting.Policy)]
-    public async Task<IActionResult> StartDaily(CancellationToken ct)
+    public async Task<IActionResult> StartDaily([FromBody] DailyStartRequestDto? request, CancellationToken ct)
     {
         var (student, error) = await ResolveStudentAsync();
         if (error != null)
             return error;
 
-        var result = await _daily.StartTodayAsync(student!, ct);
+        DailyStartResultDto? result;
+        try
+        {
+            result = await _daily.StartTodayAsync(student!, request, ct);
+        }
+        catch (DailyScopeInvalidException)
+        {
+            return BadRequest(new { message = _localizer["practice.dailyScopeInvalid"].Value });
+        }
+
         if (result == null)
             return Conflict(new { message = _localizer["practice.dailyEmpty"].Value });
 

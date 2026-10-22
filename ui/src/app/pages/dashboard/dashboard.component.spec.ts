@@ -782,6 +782,19 @@ describe('DashboardComponent', () => {
       ]);
     });
 
+    it('onDailyStart_WithScope_CarriesScopeAsQueryParams (#66)', () => {
+      component = createComponent();
+      const router = TestBed.inject(Router) as jasmine.SpyObj<Router>;
+
+      component.onDailyStart({ subjectId: 3, topicId: 30, subTopicId: 300 });
+      component.onDailyStart({ subjectId: 3, topicId: null, subTopicId: 300 });
+
+      expect(router.navigate.calls.allArgs()).toEqual([
+        [['/practice'], { queryParams: { daily: 1, subjectId: 3, topicId: 30, subTopicId: 300 } }],
+        [['/practice'], { queryParams: { daily: 1, subjectId: 3 } }],
+      ]);
+    });
+
     it('template_RendersCardBetweenWelcomeAndActivitySection', () => {
       const fixture = TestBed.createComponent(DashboardComponent);
       fixture.detectChanges();

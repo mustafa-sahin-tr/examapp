@@ -1,0 +1,46 @@
+<div class="scope-picker" *transloco="let t; prefix: 'dashboard.dailyQuestions.scope'" role="group"
+  [attr.aria-label]="t('groupLabel')">
+  @if (loading()) {
+  <p class="scope-picker__state" role="status">{{ t('loading') }}</p>
+  } @else if (error()) {
+  <p class="scope-picker__state scope-picker__state--error" role="alert">
+    <mat-icon aria-hidden="true">error_outline</mat-icon>
+    {{ t('loadError') }}
+  </p>
+  } @else {
+  <mat-form-field class="scope-picker__field" appearance="outline" subscriptSizing="dynamic">
+    <mat-label>{{ t('subject') }}</mat-label>
+    <mat-select data-field="subject" [value]="subjectId()" (selectionChange)="onSubjectChange($event)">
+      <mat-option [value]="null">{{ t('anySubject') }}</mat-option>
+      @for (subject of subjects(); track subject.id) {
+      <mat-option [value]="subject.id">{{ subject.name }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  @if (subjectId() != null && topics().length > 0) {
+  <mat-form-field class="scope-picker__field" appearance="outline" subscriptSizing="dynamic">
+    <mat-label>{{ t('topic') }}</mat-label>
+    <mat-select data-field="topic" [value]="topicId()" (selectionChange)="onTopicChange($event)">
+      <mat-option [value]="null">{{ t('anyTopic') }}</mat-option>
+      @for (topic of topics(); track topic.id) {
+      <mat-option [value]="topic.id">{{ topic.name }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  }
+
+  @if (topicId() != null && subTopics().length > 0) {
+  <mat-form-field class="scope-picker__field" appearance="outline" subscriptSizing="dynamic">
+    <mat-label>{{ t('subTopic') }}</mat-label>
+    <mat-select data-field="subTopic" [value]="subTopicId()" (selectionChange)="onSubTopicChange($event)">
+      <mat-option [value]="null">{{ t('anySubTopic') }}</mat-option>
+      @for (subTopic of subTopics(); track subTopic.id) {
+      <mat-option [value]="subTopic.id">{{ subTopic.name }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  }
+  }
+  <p class="scope-picker__hint">{{ t('hint') }}</p>
+</div>

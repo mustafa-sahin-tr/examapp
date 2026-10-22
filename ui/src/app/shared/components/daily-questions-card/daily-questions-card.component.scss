@@ -149,6 +149,26 @@
     grid-area: note;
   }
 
+  // Kapsam seçici (#66) + bilgi notları: tek satırda alt alta.
+  &__notes {
+    grid-area: note;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  // #66 kapsam seçici satırı: aç/kapa düğmesi + (açıkken) ders/konu/alt konu seçimleri.
+  &__scope {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+
+    app-daily-scope-picker {
+      align-self: stretch;
+    }
+  }
+
   &__message {
     display: flex;
     align-items: flex-start;

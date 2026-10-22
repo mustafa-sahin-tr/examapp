@@ -9,6 +9,7 @@
     "answerNotBelongToQuestion": "The selected answer does not belong to this question",
     "sessionAlreadyEnded": "This practice session has already ended",
     "dailyEmpty": "No questions are available for today",
+    "dailyScopeInvalid": "The selected subject/topic is invalid",
     "dailyRateLimited": "Daily questions were requested too many times in a short period. Please wait a moment and try again."
   }
 }

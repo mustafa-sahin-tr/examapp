@@ -108,8 +108,29 @@ export interface DailySet {
   skipped: number;
   /** Günlük setin practice oturumu; başlamadıysa null. Tamamlanmış sette de dolu (review için). */
   sessionId: number | null;
-  /** #66 kapsam seçimi için ayrılmış; #99'da kullanılmaz. */
-  scope: unknown | null;
+  /** #66: öğrencinin başlatırken seçtiği kapsam; seçim yoksa null (sınıftan rastgele). */
+  scope: DailySetScope | null;
+}
+
+/** #66: günlük setin kaydedilmiş kapsamı. Gün içinde değişmez; adlar silinmiş kayıtta null olabilir. */
+export interface DailySetScope {
+  subjectId: number;
+  subjectName: string | null;
+  topicId: number | null;
+  topicName: string | null;
+  subTopicId: number | null;
+  subTopicName: string | null;
+  /** Kapsamdan gelen soru sayısı. */
+  scopedCount: number;
+  /** Kapsam yetmedi, kalanı sınıf havuzundan tamamlandı. */
+  filledFromGeneral: boolean;
+}
+
+/** #66: POST daily/start gövdesi. Ders seçilmeden konu, konu seçilmeden alt konu gönderilmez. */
+export interface DailyStartScope {
+  subjectId: number;
+  topicId?: number | null;
+  subTopicId?: number | null;
 }
 
 /**
@@ -119,4 +140,8 @@ export interface DailySet {
 export interface DailySetStartResult {
   sessionId: number;
   status: Exclude<DailySetStatus, 'Empty'>;
+  /** Setteki soru sayısı; kapsamla yeniden üretilen sette GET'tekinden farklı olabilir (#66). */
+  total?: number;
+  /** Setin kaydedilmiş kapsamı (#66); rastgele sette null. */
+  scope?: DailySetScope | null;
 }

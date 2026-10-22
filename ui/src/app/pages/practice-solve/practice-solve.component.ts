@@ -44,6 +44,7 @@ import { SubjectService } from '../../services/subject.service';
 import { AnswerChoice, QuestionRegion } from '../../models/draws';
 import {
   DailySet,
+  DailyStartScope,
   PracticeAnswerResult,
   PracticeSession,
   PracticeSessionReview,
@@ -309,6 +310,13 @@ export class PracticeSolveComponent implements OnInit {
   });
   /** Bitiş ekranındaki "Cevapları incele" için oturum id'si (tamamlanmış sette GET daily'den gelir). */
   readonly dailySessionId = computed(() => this.session()?.id ?? this.daily()?.sessionId ?? null);
+  /** Kaydedilmiş kapsamın etiketi (#66, daily şeridindeki chip); rastgele sette null. */
+  readonly dailyScopeLabel = computed(() => {
+    const scope = this.daily()?.scope;
+    if (!scope) return null;
+    return [scope.subjectName, scope.topicName, scope.subTopicName].filter((n): n is string => !!n).join(' · ') || null;
+  });
+  readonly dailyFilledFromGeneral = computed(() => !!this.daily()?.scope?.filledFromGeneral);
   readonly dailyStepAriaLabel: DailyStepAriaLabelFn = (n, state) =>
     this.text('daily.stepAria', { n, status: this.text(`daily.status.${state}`) });
 
@@ -837,7 +845,8 @@ export class PracticeSolveComponent implements OnInit {
             return;
           }
           // NotStarted'da `sessionId` dolu olabilir; start idempotent olduğu için yine çağrılır.
-          this.startDaily(set);
+          // #66: kapsam yalnız oturumu açılmamış sette gönderilir (başlamış sette sunucu zaten yok sayar).
+          this.startDaily(set, set.sessionId == null ? this.dailyScopeFromQuery() : null);
         },
         error: (err: unknown) => {
           this.dailyLoading.set(false);
@@ -850,11 +859,18 @@ export class PracticeSolveComponent implements OnInit {
    * Oturumu açar (idempotent; devam eden sette aynı oturum döner). `status: 'Completed'` gelirse
    * çözme ekranı açılmaz, `next` çağrılmaz (Ended oturumda 400). 409 yalnız set boşken döner: Empty.
    */
-  private startDaily(set: DailySet): void {
+  private startDaily(set: DailySet, scope: DailyStartScope | null = null): void {
     this.practiceService
-      .startDailySet()
+      .startDailySet(scope)
       .pipe(
         switchMap((start) => {
+          // #66: kapsamla yeniden üretilen sette toplam ve kaydedilen kapsam start cevabından gelir.
+          set = {
+            ...set,
+            total: start.total ?? set.total,
+            scope: start.scope !== undefined ? start.scope : set.scope,
+          };
+          this.daily.set(set);
           if (start.status === 'Completed') {
             return of({ completedSessionId: start.sessionId, session: null, results: [] as DailyStepResult[] });
           }
@@ -895,6 +911,22 @@ export class PracticeSolveComponent implements OnInit {
           this.dailyLoadError.set(this.messageOf(err, this.text('daily.loadError')));
         },
       });
+  }
+
+  /**
+   * #66: dashboard kartının taşıdığı kapsam (`?daily=1&subjectId=..&topicId=..&subTopicId=..`). Konu ders olmadan,
+   * alt konu konu olmadan dikkate alınmaz; geçersiz sayılar yok sayılır (sunucu da doğrular).
+   */
+  private dailyScopeFromQuery(): DailyStartScope | null {
+    const params = this.route.snapshot.queryParamMap;
+    const positive = (name: string): number | null => {
+      const value = Number(params.get(name));
+      return Number.isInteger(value) && value > 0 ? value : null;
+    };
+    const subjectId = positive('subjectId');
+    if (subjectId == null) return null;
+    const topicId = positive('topicId');
+    return { subjectId, topicId, subTopicId: topicId == null ? null : positive('subTopicId') };
   }
 
   /** Aktif günlük oturum + önceden cevaplanmış adımlar (review'dan sırayla; olmazsa sayılardan). */

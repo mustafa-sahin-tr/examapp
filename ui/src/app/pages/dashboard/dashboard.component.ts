@@ -32,7 +32,7 @@ import { StudentService } from '../../services/student.service';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { LocaleService } from '../../services/locale.service';
 import { PracticeService } from '../../services/practice.service';
-import { DailySet } from '../../models/practice';
+import { DailySet, DailyStartScope } from '../../models/practice';
 import { DailyQuestionsCardComponent } from '../../shared/components/daily-questions-card/daily-questions-card.component';
 import { dailyStreakFrom } from '../../shared/utils/daily-streak.util';
 import { currentUserId } from '../../shared/utils/current-user-id.util';
@@ -363,8 +363,15 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  onDailyStart(): void {
-    void this.router.navigate(['/practice'], { queryParams: { daily: 1 } });
+  /** #66: karttan gelen kapsam (ders/konu/alt konu) practice sayfasına query param olarak taşınır; null = rastgele. */
+  onDailyStart(scope: DailyStartScope | null = null): void {
+    const queryParams: Record<string, number> = { daily: 1 };
+    if (scope) {
+      queryParams['subjectId'] = scope.subjectId;
+      if (scope.topicId != null) queryParams['topicId'] = scope.topicId;
+      if (scope.topicId != null && scope.subTopicId != null) queryParams['subTopicId'] = scope.subTopicId;
+    }
+    void this.router.navigate(['/practice'], { queryParams });
   }
 
   onDailyFreePractice(): void {

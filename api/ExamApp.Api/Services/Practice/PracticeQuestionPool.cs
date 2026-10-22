@@ -13,7 +13,12 @@ namespace ExamApp.Api.Services.Practice;
 /// </summary>
 internal static class PracticeQuestionPool
 {
-    public static IQueryable<Question> Build(AppDbContext context, int gradeId, IReadOnlyCollection<int> subjectIds, IReadOnlyCollection<int> topicIds)
+    public static IQueryable<Question> Build(
+        AppDbContext context,
+        int gradeId,
+        IReadOnlyCollection<int> subjectIds,
+        IReadOnlyCollection<int> topicIds,
+        IReadOnlyCollection<int>? subTopicIds = null)
     {
         var pool = context.Questions
             .AsNoTracking()
@@ -32,6 +37,10 @@ internal static class PracticeQuestionPool
 
         if (topicIds.Count > 0)
             pool = pool.Where(q => q.TopicId != null && topicIds.Contains(q.TopicId.Value));
+
+        // Alt konu soruya çoktan-çoğa bağlıdır (#66 günlük set kapsamı).
+        if (subTopicIds is { Count: > 0 })
+            pool = pool.Where(q => q.QuestionSubTopics.Any(qs => subTopicIds.Contains(qs.SubTopicId)));
 
         return pool;
     }

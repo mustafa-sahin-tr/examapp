@@ -9,6 +9,7 @@
     "answerNotBelongToQuestion": "Seçilen şık bu soruya ait değil",
     "sessionAlreadyEnded": "Bu pratik oturumu sonlandırılmış",
     "dailyEmpty": "Bugün için soru bulunamadı",
+    "dailyScopeInvalid": "Seçilen ders/konu geçersiz",
     "dailyRateLimited": "Günün soruları kısa sürede çok fazla istendi. Lütfen biraz bekleyip tekrar deneyin."
   }
 }

@@ -121,6 +121,8 @@ export class LabelingPromptDialogComponent {
     }
     this.saving.set(true);
     this.saveError.set(null);
+    // Kayıt sürerken Esc / arka plan tıklaması kapatmasın: yeni sürüm etkin olur ama sonuç kaybolurdu.
+    this.dialogRef.disableClose = true;
     this.api.savePrompt(this.form.getRawValue()).subscribe({
       next: (state) => {
         this.saving.set(false);
@@ -128,12 +130,20 @@ export class LabelingPromptDialogComponent {
       },
       error: (error: HttpErrorResponse) => {
         this.saving.set(false);
+        this.dialogRef.disableClose = false;
         this.saveError.set((error.error as { message?: string } | null)?.message ?? '');
       },
     });
   }
 
   cancel(): void {
-    this.dialogRef.close();
+    if (!this.saving()) {
+      this.dialogRef.close();
+    }
+  }
+
+  /** Talimatta `{width}`/`{height}` yoksa Claude piksel uzayını bilmez; kutular kayabilir (uyarı, engel değil). */
+  missingPlaceholders(value: string): boolean {
+    return !value.includes('{width}') || !value.includes('{height}');
   }
 }

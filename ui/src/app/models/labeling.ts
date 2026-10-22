@@ -26,6 +26,8 @@ export interface LabelingResult {
   createdByName: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Manuel kayıt Claude sonucundan başladıysa o sonucun prompt sürümü. */
+  basePromptVersion?: number | null;
 }
 
 /** `GET /api/exam/labeling/pages/{sha256}`: sayfanın kayıtlı tüm kaynakları (kayıt yoksa 404). */
@@ -81,6 +83,7 @@ export interface LabelingSaveManualRequest {
   predictions: PredictionList;
   baseSource: 'Model' | 'Ai' | null;
   baseModelName: string | null;
+  basePromptVersion: number | null;
   modelSnapshot: PredictionList | null;
 }
 
@@ -91,5 +94,7 @@ export interface LabelingSaveManualRequest {
 export interface DetectionSource {
   kind: LabelingSourceName;
   modelName?: string | null;
-  base?: { source: 'Model' | 'Ai'; modelName: string | null } | null;
+  /** `Ai` kaynağında sonucu üreten prompt sürümü. */
+  promptVersion?: number | null;
+  base?: { source: 'Model' | 'Ai'; modelName: string | null; promptVersion?: number | null } | null;
 }

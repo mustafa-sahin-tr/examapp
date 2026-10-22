@@ -213,7 +213,7 @@
           {{ s('base') }}:
           @switch (r.baseSource) {
           @case ('Model') { {{ s('model') }} }
-          @case ('Ai') { {{ aiModelName(r.baseModelName) }} }
+          @case ('Ai') { {{ aiModelName(r.baseModelName) }}@if (r.basePromptVersion != null) { · {{ s('promptVersion', { version: r.basePromptVersion }) }} } }
           @default { {{ s('baseNone') }} }
           }
         </p>

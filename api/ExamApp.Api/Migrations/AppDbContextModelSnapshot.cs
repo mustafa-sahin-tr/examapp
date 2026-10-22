@@ -900,6 +900,9 @@ namespace ExamApp.Api.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<int?>("BasePromptVersion")
+                        .HasColumnType("integer");
+
                     b.Property<string>("BaseSource")
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
@@ -936,6 +939,10 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<int>("PageId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("PromptHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<int?>("PromptVersion")
                         .HasColumnType("integer");

@@ -92,10 +92,12 @@ public sealed class LabelingService(
 
         if (!request.Force)
         {
-            // Kayıt yalnız aynı prompt sürümüyle üretildiyse geçerli; prompt değiştiyse Claude'a yeniden sorulur.
+            // Kayıt yalnız aynı prompt içeriğiyle üretildiyse geçerli (parmak izi; sürüm numarası değil): prompt ya da koddaki
+            // sabit kısım değiştiyse Claude'a yeniden sorulur.
+            var fingerprint = prompt.Fingerprint;
             var cached = await db.LabelingResults.AsNoTracking()
                 .FirstOrDefaultAsync(r => r.Page.ImageSha256 == image.Sha256 && r.Source == LabelingSource.Ai &&
-                                          r.ModelName == model.Id && r.PromptVersion == prompt.Version, ct);
+                                          r.ModelName == model.Id && r.PromptHash == fingerprint, ct);
             if (cached is not null)
                 return new LabelingAiDetectResponseDto("cached", image.Sha256, ToDto(cached));
         }
@@ -131,6 +133,7 @@ public sealed class LabelingService(
             result.OutputTokens = detection.OutputTokens;
             result.EstimatedCostUsd = Math.Round(cost, 6);
             result.PromptVersion = prompt.Version;
+            result.PromptHash = prompt.Fingerprint;
         }, CancellationToken.None);
 
         return new LabelingAiDetectResponseDto("live", image.Sha256, ToDto(saved));
@@ -151,6 +154,9 @@ public sealed class LabelingService(
             result.BoxesJson = JsonSerializer.Serialize(predictions);
             result.BaseSource = baseSource;
             result.BaseModelName = baseSource == LabelingSource.Ai ? Truncate(request.BaseModelName, 64) : null;
+            result.BasePromptVersion = baseSource == LabelingSource.Ai && request.BasePromptVersion is >= 0
+                ? request.BasePromptVersion
+                : null;
         }, ct);
 
         if (snapshot is not null)
@@ -173,7 +179,10 @@ public sealed class LabelingService(
         return new LabelingPromptStateDto(active, defaults, history.Select(ToDto).ToList());
     }
 
-    /// <summary>Yeni sürüm ekler (eskiler kalır; sonuçlar hangi sürümle üretildiğini taşır). Eşzamanlı kayıtta bir kez yeniden dener.</summary>
+    /// <summary>
+    /// Yeni sürüm ekler (eskiler kalır; sonuçlar hangi sürümle üretildiğini taşır). İçerik etkin sürümle aynıysa yeni sürüm
+    /// açılmaz (boşuna yeniden ücretlendirme olmasın). Eşzamanlı kayıtta birkaç kez yeniden dener.
+    /// </summary>
     public async Task<LabelingPromptStateDto> SavePromptAsync(
         LabelingSavePromptRequestDto request, LabelingActor actor, CancellationToken ct = default)
     {
@@ -187,6 +196,12 @@ public sealed class LabelingService(
         if (request.QuestionPadding is < 0 or > LabelingPromptSettings.MaxPadding ||
             request.OptionPadding is < 0 or > LabelingPromptSettings.MaxPadding)
             throw new LabelingValidationException("labeling.invalidPadding");
+
+        var active = await GetActivePromptAsync(ct);
+        var requested = new LabelingPromptSettings(0, question, option, request.QuestionPadding, request.OptionPadding,
+            request.ExpandQuestionToOptions);
+        if (requested.HasSameContent(active))
+            return await GetPromptStateAsync(ct);
 
         for (var attempt = 0; ; attempt++)
         {
@@ -210,8 +225,9 @@ public sealed class LabelingService(
                 logger.LogInformation("[Labeling] prompt v{Version} saved by {User}", entity.Version, actor.KeycloakId);
                 return await GetPromptStateAsync(ct);
             }
-            catch (DbUpdateException ex) when (attempt == 0 && DbUpdateExceptionClassifier.IsUniqueViolation(ex))
+            catch (DbUpdateException ex) when (attempt < 4 && DbUpdateExceptionClassifier.IsUniqueViolation(ex))
             {
+                // Aynı sürüm numarasını başka bir kayıt aldı: sonraki numarayla tekrar dene.
                 db.Entry(entity).State = EntityState.Detached;
             }
         }
@@ -377,5 +393,6 @@ public sealed class LabelingService(
             r.PromptVersion,
             r.CreatedByName,
             r.CreatedAt,
-            r.UpdatedAt);
+            r.UpdatedAt,
+            r.BasePromptVersion);
 }

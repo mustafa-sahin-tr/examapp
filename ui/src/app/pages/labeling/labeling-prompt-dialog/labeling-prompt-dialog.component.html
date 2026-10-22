@@ -26,6 +26,9 @@
         <mat-hint align="end">{{ form.controls.questionInstruction.value.length }}/{{ maxInstruction }}</mat-hint>
         @if (form.controls.questionInstruction.hasError('required')) { <mat-error>{{ t('required') }}</mat-error> }
       </mat-form-field>
+      @if (missingPlaceholders(form.controls.questionInstruction.value)) {
+      <p class="lp-warn">{{ t('placeholderMissing') }}</p>
+      }
 
       <mat-form-field appearance="outline" class="lp-wide">
         <mat-label>{{ t('optionInstruction') }}</mat-label>
@@ -34,6 +37,9 @@
         <mat-hint align="end">{{ form.controls.optionInstruction.value.length }}/{{ maxInstruction }}</mat-hint>
         @if (form.controls.optionInstruction.hasError('required')) { <mat-error>{{ t('required') }}</mat-error> }
       </mat-form-field>
+      @if (missingPlaceholders(form.controls.optionInstruction.value)) {
+      <p class="lp-warn">{{ t('placeholderMissing') }}</p>
+      }
 
       <div class="lp-row">
         <mat-form-field appearance="outline">
@@ -77,7 +83,7 @@
   </mat-dialog-content>
 
   <mat-dialog-actions align="end">
-    <button mat-button type="button" (click)="cancel()">{{ t('cancel') }}</button>
+    <button mat-button type="button" (click)="cancel()" [disabled]="saving()">{{ t('cancel') }}</button>
     <button mat-flat-button type="button" (click)="save()" [disabled]="loading() || loadFailed() || saving() || form.invalid">
       @if (saving()) { <mat-spinner diameter="16" aria-hidden="true"></mat-spinner> }
       {{ t('save') }}

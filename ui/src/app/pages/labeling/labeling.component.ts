@@ -413,6 +413,7 @@ export class LabelingComponent {
       selector.applyExternalPrediction(seq, response.result.predictions, {
         kind: 'Ai',
         modelName: response.result.modelName,
+        promptVersion: response.result.promptVersion,
       });
       if (response.origin === 'live' && response.result.estimatedCostUsd != null) {
         this.snackBar.open(
@@ -804,7 +805,7 @@ export class LabelingComponent {
 function manualSource(manual: LabelingResult): DetectionSource {
   const base =
     manual.baseSource === 'Model' || manual.baseSource === 'Ai'
-      ? { source: manual.baseSource, modelName: manual.baseModelName }
+      ? { source: manual.baseSource, modelName: manual.baseModelName, promptVersion: manual.basePromptVersion ?? null }
       : null;
   return { kind: 'Manual', base };
 }

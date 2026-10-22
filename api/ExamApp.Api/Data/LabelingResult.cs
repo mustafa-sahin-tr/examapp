@@ -54,6 +54,16 @@ public class LabelingResult
     /// </summary>
     public int? PromptVersion { get; set; }
 
+    /// <summary>
+    /// AI sonucunu üreten prompt içeriğinin parmak izi (<see cref="Services.Labeling.LabelingPromptSettings.Fingerprint"/>);
+    /// önbellek yalnız etkin prompt'un parmak iziyle eşleşen satırı döndürür. Diğer kaynaklarda boş.
+    /// </summary>
+    [MaxLength(64)]
+    public string? PromptHash { get; set; }
+
+    /// <summary>Manuel kayıt Claude sonucundan başladıysa o sonucun prompt sürümü.</summary>
+    public int? BasePromptVersion { get; set; }
+
     /// <summary>Keycloak <c>sub</c>. Admin'in Teacher satırı olmayabilir, bu yüzden FK yok.</summary>
     [MaxLength(64)]
     public string? CreatedByKeycloakId { get; set; }

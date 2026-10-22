@@ -44,6 +44,8 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
     // Soru kırpmasına eklenen kenar payı (orijinal piksel): kutu sınırdaki şık harfini kesmesin.
     private const int CropPadding = 12;
 
+    // Bu sınıftaki sabitler (sistem mesajı, şemalar, CropPadding, MaxImageEdge kullanımı) değişirse
+    // LabelingPromptSettings.SchemaRevision'ı artırın; yoksa eski Claude sonuçları kayıttan dönmeye devam eder.
     private const string SystemPrompt =
         "You locate regions on scanned pages of Turkish school test books for an object-detection training set. " +
         "Coordinates are integer pixels of the image you are given, origin at the top-left corner; " +

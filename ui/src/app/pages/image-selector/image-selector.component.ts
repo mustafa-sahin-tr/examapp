@@ -2375,11 +2375,11 @@ export class ImageSelectorComponent {
    */
   private saveManualRecord(imageData: string, questions: QuestionRegion[]) {
     const source = this.detectionSource();
-    let base: { source: 'Model' | 'Ai'; modelName: string | null } | null = null;
+    let base: { source: 'Model' | 'Ai'; modelName: string | null; promptVersion?: number | null } | null = null;
     if (source?.kind === 'Manual') {
       base = source.base ?? null;
     } else if (source) {
-      base = { source: source.kind, modelName: source.modelName ?? null };
+      base = { source: source.kind, modelName: source.modelName ?? null, promptVersion: source.promptVersion ?? null };
     }
     const toPrediction = (box: { x: number; y: number; width: number; height: number }) => ({
       class_id: 0,
@@ -2402,6 +2402,7 @@ export class ImageSelectorComponent {
         predictions,
         baseSource: base?.source ?? null,
         baseModelName: base?.source === 'Ai' ? base.modelName : null,
+        basePromptVersion: base?.source === 'Ai' ? (base.promptVersion ?? null) : null,
         modelSnapshot: snapshot,
       })
       .subscribe({

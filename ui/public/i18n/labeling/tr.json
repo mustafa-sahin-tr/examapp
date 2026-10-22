@@ -102,6 +102,7 @@
     "retry": "Tekrar dene",
     "saveFailed": "Kaydedilemedi.",
     "cancel": "Vazgeç",
-    "save": "Kaydet"
+    "save": "Kaydet",
+    "placeholderMissing": "Uyarı: {width} veya {height} yok — Claude piksel boyutunu bilmezse kutular kayabilir."
   }
 }

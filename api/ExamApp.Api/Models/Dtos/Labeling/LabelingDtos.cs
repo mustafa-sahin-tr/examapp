@@ -54,7 +54,8 @@ public record LabelingResultDto(
     int? PromptVersion,
     string? CreatedByName,
     DateTime CreatedAt,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt,
+    int? BasePromptVersion = null);
 
 /// <summary><c>GET api/labeling/pages/{sha256}</c> — sayfanın kayıtlı tüm kaynakları. Kayıt yoksa 404.</summary>
 public record LabelingPageDto(string ImageSha256, int Width, int Height, IReadOnlyList<LabelingResultDto> Results);
@@ -125,6 +126,9 @@ public class LabelingSaveManualRequestDto
 
     [MaxLength(64)]
     public string? BaseModelName { get; set; }
+
+    /// <summary>Başlangıç kaynağı <c>Ai</c> ise o Claude sonucunun prompt sürümü.</summary>
+    public int? BasePromptVersion { get; set; }
 
     /// <summary>Gönderim anındaki YOLO tahmini; verilirse Model kaydı olarak saklanır.</summary>
     public PredictionListDto? ModelSnapshot { get; set; }

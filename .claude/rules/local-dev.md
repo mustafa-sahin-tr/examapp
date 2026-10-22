@@ -398,6 +398,24 @@ oluştur: admin console → `exam-realm` → Realm roles → Create role `Questi
 *(öğretmen)* → Role mapping → Assign role. Rol yeni token'da gelir (çıkış/giriş). Öğretmen askıya alınınca rol
 **otomatik kalkmaz** (gateway yalnız token rolüne bakar, onay/askı exam API'de) — elle Unassign et. Ayrıntı: `question-detector/EGITIM.md`.
 
+**İşaretleme ekranı — Claude ön-etiketleme (feat/claude-labeling).** İşaretleme modunda (`/labeling`) araç çubuğunda
+**Kaynak: Manuel | Model | Claude** seçimi var. Model = question-detector YOLO (her açılışta taze), Claude = exam API
+`POST /api/exam/labeling/ai-detect` (Microsoft.Extensions.AI `IChatClient` + Anthropic C# SDK; sayfa → soru kutuları,
+her soru kırpması → şık kutuları), Manuel = eğitime gönderilen son hal (send-to-fix başarılı olunca
+`PUT /api/exam/labeling/pages/manual`; soru tuvalindeki "Kaydet ve Düzelt" de yazar). Sonuçlar exam DB'de
+`LabelingPages`/`LabelingResults` (sayfa = ham görsel SHA-256; question-detector `content_id` = ilk 16 hane); aynı sayfa +
+model için kayıtlı Claude sonucu varsa API'ye gidilmez ("Tekrar AI'a sor" zorlar, ücretli). Uçlar yalnız Admin +
+QuestionTrainer (onaylı, askıda olmayan öğretmen; gateway'de de kural var).
+- **API anahtarı repoya girmez.** Aspire: `dotnet user-secrets set "Parameters:anthropic-api-key" "<anahtar>" --project AppHost`
+  (AppHost `anthropic-api-key` secret parametresi → exam API `Anthropic__ApiKey`); AppHost'u yeniden başlat. Anahtar
+  yoksa model listesi boş döner, UI Claude seçeneğini kapatır, `ai-detect` 503. docker-compose'da tanımlı değil.
+- Ayarlar `api/ExamApp.Api/appsettings.json` → `Anthropic`: `Models` (izinli id + 1M token fiyatı, maliyet tahmini
+  için), `Effort` (varsayılan `low`), `MaxImageEdge` (1568), `MaxParallelCrops` (4), `MaxQuestionsPerPage` (40),
+  `LiveCallsPerHour` (kullanıcı başına, 60), `DailyBudgetUsdPerUser` (5) / `DailyBudgetUsdTotal` (25) — 24 saatlik
+  tahmini harcama tavanı (Redis sayaç; dolunca 429 `LabelingBudgetExceeded`). Yalnız canlı Claude çağrıları sayılır.
+- Kaba ölçüm (2026-10-22, A4 test sayfası, effort low): Opus 5.5 ~7-13 sn, ~$0.04-0.05/sayfa; Haiku 5.5 ~11 sn,
+  ~$0.001/sayfa — Ocelot'un varsayılan 90 sn zaman aşımının altında.
+
 ## Port map (host → container)
 
 | Service | Host port | Notes |

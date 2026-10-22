@@ -26,7 +26,7 @@
   "bank": {
     "save": "Save to bank",
     "saving": "Saving…",
-    "hint": "Save the page's questions with their correct options to the question bank without a test; subject/topic classification starts automatically. Independent of training.",
+    "hint": "Save the page's questions with their correct options to the question bank without a test (subject/topic classification is automatic), then send the page for training like Train and go to the next page.",
     "noMcq": "There are no multiple-choice questions to save to the bank.",
     "saved": "{{count}} questions saved to the bank; classification started in the background.",
     "alreadySaved": "This page's questions were already saved to the bank ({{count}} questions). Saving again creates them a second time.",
@@ -34,7 +34,8 @@
     "failed": "The questions could not be saved to the bank.",
     "cardTitle": "Question bank",
     "cardSaved": "Saved to the bank ({{count}} questions)",
-    "forbidden": "Only teachers and admins can save questions to the bank."
+    "forbidden": "Only teachers and admins can save questions to the bank.",
+    "savedAndTrained": "{{count}} questions saved to the bank and sent for training; classification started in the background."
   },
   "stats": {
     "label": "Session counters",

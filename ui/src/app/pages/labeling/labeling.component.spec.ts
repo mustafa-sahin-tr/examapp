@@ -934,14 +934,75 @@ describe('LabelingComponent', () => {
       expect(component.bankSaving()).toBeFalse();
     });
 
-    it('saveToBank_Success_ShowsSavedSnackbar', async () => {
+    it('saveToBank_Success_SendsPageToTraining', async () => {
       await openPageWith([region('S1', 0)]);
       labelingApi.saveToBank.and.returnValue(of({ imageSha256: 'abc', bank: savedBank }));
       const snack = spyOn(TestBed.inject(MatSnackBar), 'open');
 
       component.saveToBank();
 
-      expect(snack).toHaveBeenCalledWith(jasmine.any(String), labelingTr.ok, jasmine.any(Object));
+      expect(selector().sendToFix).toHaveBeenCalledOnceWith(true);
+      // Birleşik mesaj eğitim bitince gösterilir.
+      expect(snack).not.toHaveBeenCalledWith(jasmine.stringMatching(/./), labelingTr.ok, jasmine.any(Object));
+    });
+
+    it('saveToBank_ThenTrained_ShowsCombinedMessageAndAdvances', async () => {
+      await setup();
+      await pickFolder([image('p1.webp'), image('p2.webp')]);
+      const first = component.current()!;
+      selector().regions.set([region('S1', 0)]);
+      fixture.detectChanges();
+      labelingApi.saveToBank.and.returnValue(of({ imageSha256: 'abc', bank: { ...savedBank, questionCount: 2 } }));
+      const snack = spyOn(TestBed.inject(MatSnackBar), 'open');
+
+      component.saveToBank();
+      selector().trained.emit({ pageId: first.pageId, emptyPage: false, added: 2 });
+      await settle(fixture);
+
+      expect(snack).toHaveBeenCalledWith(
+        labelingTr.bank.savedAndTrained.replace('{{count}}', '2'), labelingTr.ok, jasmine.any(Object)
+      );
+      expect(component.trainedThisSession()).toBe(1);
+      expect(component.current()).not.toBe(first);
+      expect(selector().loaded.length).toBe(2);
+    });
+
+    it('train_WithoutBankSave_DoesNotShowBankMessage', async () => {
+      await setup();
+      await pickFolder([image('p1.webp'), image('p2.webp')]);
+      const first = component.current()!;
+      const snack = spyOn(TestBed.inject(MatSnackBar), 'open');
+
+      component.train();
+      selector().trained.emit({ pageId: first.pageId, emptyPage: false, added: 1 });
+      await settle(fixture);
+
+      expect(snack).not.toHaveBeenCalledWith(
+        jasmine.stringMatching(/bank|banka/i), jasmine.anything(), jasmine.anything()
+      );
+    });
+
+    it('saveToBank_Failure_DoesNotSendToTraining', async () => {
+      await openPageWith([region('S1', 0)]);
+      labelingApi.saveToBank.and.returnValue(throwError(() => ({ status: 500 })));
+      spyOn(TestBed.inject(MatSnackBar), 'open');
+
+      component.saveToBank();
+
+      expect(selector().sendToFix).not.toHaveBeenCalled();
+    });
+
+    it('saveToBank_InProgress_DisablesTrain', async () => {
+      await openPageWith([region('S1', 0)]);
+      const pending = new Subject<never>();
+      labelingApi.saveToBank.and.returnValue(pending.asObservable());
+
+      component.saveToBank();
+
+      expect(component.bankSaving()).toBeTrue();
+      expect(component.canTrain()).toBeFalse();
+      component.train();
+      expect(selector().sendToFix).not.toHaveBeenCalled();
     });
 
     it('saveToBank_DragDropOnly_ShowsNoMcqAndSendsNothing', async () => {
@@ -985,6 +1046,7 @@ describe('LabelingComponent', () => {
       action.next();
       expect(labelingApi.saveToBank).toHaveBeenCalledTimes(1);
       expect(labelingApi.saveToBank.calls.mostRecent().args[0].force).toBeTrue();
+      expect(selector().sendToFix).toHaveBeenCalledOnceWith(true);
     });
 
     it('saveToBank_409WithExisting_ShowsRecordAndAsksAgainBeforeForce', async () => {

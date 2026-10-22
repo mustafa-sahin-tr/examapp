@@ -123,7 +123,7 @@ export class LabelingComponent {
    * "Eğit"e basıldığında açık olan sayfa ve klasör oturumu; yanıt geldiğinde aynı oturumda hâlâ o sayfa açıksa
    * sayılır ve sonrakine geçilir.
    */
-  private trainingFor: { candidate: LabelingCandidate<File>; seq: number } | null = null;
+  private trainingFor: { candidate: LabelingCandidate<File>; seq: number; bankCount?: number } | null = null;
 
   readonly sendingToFix = computed(() => this.selectorRef()?.sendingToFix() ?? false);
   readonly analysing = computed(() => {
@@ -150,6 +150,7 @@ export class LabelingComponent {
     const selector = this.selectorRef();
     return (
       this.canSkip() &&
+      !this.bankSaving() &&
       !this.analysing() &&
       !!selector?.imageData() &&
       !this.pageLoadFailed() &&
@@ -593,12 +594,13 @@ export class LabelingComponent {
     void this.showNext();
   }
 
-  train(): void {
+  /** `bankCount`: sayfa az önce bankaya kaydedildi (Bankaya kaydet akışı); eğitim bitince birleşik mesaj gösterilir. */
+  train(bankCount?: number): void {
     const selector = this.selectorRef();
     if (!selector || !this.canTrain()) {
       return;
     }
-    this.trainingFor = { candidate: this.current()!, seq: this.pickSeq };
+    this.trainingFor = { candidate: this.current()!, seq: this.pickSeq, bankCount };
     // pageComplete: işaretleme modunda sayfanın tüm soruları işaretlenir (boş sayfa = arka plan örneği).
     selector.sendToFix(true);
   }
@@ -623,14 +625,20 @@ export class LabelingComponent {
     }
     this.labeled.add(candidate.pageId);
     this.trainedThisSession.update((n) => n + 1);
+    if (training.bankCount != null) {
+      this.snackBar.open(this.tr('bank.savedAndTrained', { count: training.bankCount }), this.tr('ok'), {
+        duration: 5000,
+      });
+    }
     if (candidate === this.current()) {
       void this.showNext();
     }
   }
 
   /**
-   * Sayfadaki çoktan seçmeli soruları (doğru şık zorunlu) bankaya kaydeder. Sayfa daha önce kaydedildiyse önce sorulur
-   * (yeniden kayıt soruları ikinci kez oluşturur). Sürükle-bırak soruları bu ekrandan kaydedilmez.
+   * Sayfadaki çoktan seçmeli soruları (doğru şık zorunlu) bankaya kaydeder, başarılıysa "Eğit" gibi eğitime gönderip
+   * sonraki sayfaya geçer. Sayfa daha önce kaydedildiyse önce sorulur (yeniden kayıt soruları ikinci kez oluşturur).
+   * Sürükle-bırak soruları bu ekrandan kaydedilmez.
    */
   saveToBank(): void {
     const selector = this.selectorRef();
@@ -674,7 +682,11 @@ export class LabelingComponent {
       });
   }
 
-  /** İstek sayfa değişse de iptal edilmez (yarım kalmasın); yanıt yalnız aynı sayfa açıksa ekrana yansır. */
+  /**
+   * İstek sayfa değişse de iptal edilmez (yarım kalmasın); yanıt yalnız aynı sayfa açıksa ekrana yansır. Kayıt başarılıysa
+   * eğitime gönderilir (send-to-fix → manuel kayıt → sonraki sayfa); eğitim başarısız olursa sayfa açık kalır, "Eğit" ile
+   * yeniden denenebilir (kayıt kartı bankada olduğunu gösterir). Kayıt başarısızsa eğitime gönderilmez.
+   */
   private submitBank(image: string, questions: LabelingBankQuestion[], force: boolean): void {
     const token = this.pageToken;
     this.bankSaving.set(true);
@@ -685,6 +697,10 @@ export class LabelingComponent {
         }
         this.bankSaving.set(false);
         this.setBankRecord(response.imageSha256, response.bank);
+        if (this.canTrain()) {
+          this.train(response.bank.questionCount);
+          return;
+        }
         this.snackBar.open(this.tr('bank.saved', { count: response.bank.questionCount }), this.tr('ok'), {
           duration: 5000,
         });

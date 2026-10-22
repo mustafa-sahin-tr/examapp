@@ -423,8 +423,9 @@ QuestionTrainer (onaylı, askıda olmayan öğretmen; gateway'de de kural var).
 - Kaba ölçüm (2026-10-22, A4 test sayfası, effort low): Opus 5.5 ~7-13 sn, ~$0.04-0.05/sayfa; Haiku 5.5 ~11 sn,
   ~$0.001/sayfa — Ocelot'un varsayılan 90 sn zaman aşımının altında.
 
-**Issue #470 — işaretleme ekranından soru bankasına kayıt.** Araç çubuğunda **Bankaya kaydet** (Eğit'ten ayrı; ikisi
-birlikte de yapılabilir, eğitim akışı değişmedi): `POST /api/exam/labeling/pages/bank` sayfadaki MCQ soruları müfettişte
+**Issue #470 — işaretleme ekranından soru bankasına kayıt.** Araç çubuğunda **Bankaya kaydet** = bankaya kayıt + başarılıysa
+**Eğit** ile aynı akış (send-to-fix → manuel kayıt → sonraki sayfa; eğitim başarısızsa sayfa açık kalır, Eğit ile yeniden
+denenir; kayıt başarısızsa eğitime gönderilmez). Düz **Eğit** değişmedi (bankaya yazmaz). `POST /api/exam/labeling/pages/bank` sayfadaki MCQ soruları müfettişte
 seçilen doğru şıkla, teste bağlamadan (`WorksheetQuestion` yok) mevcut toplu kayıtla (`SaveBulkQuestion`, `TestId=null`)
 oluşturur — kırpma + MinIO + `QuestionCreatedEvent` (sınıflandırma otomatik), sahibi çağıran. Uç ek olarak Teacher|Admin
 ister (QuestionTrainer tek başına yetmez); kullanıcı başına saatte 30 kayıt (429). Aynı sayfa (`LabelingPages` SHA-256;

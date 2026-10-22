@@ -26,7 +26,7 @@
   "bank": {
     "save": "Bankaya kaydet",
     "saving": "Kaydediliyor…",
-    "hint": "Sayfadaki soruları doğru şıklarıyla, teste bağlamadan soru bankasına kaydet; ders/konu sınıflandırması otomatik başlar. Eğitime gönderimden bağımsızdır.",
+    "hint": "Sayfadaki soruları doğru şıklarıyla, teste bağlamadan soru bankasına kaydet (ders/konu sınıflandırması otomatik), ardından Eğit gibi eğitime gönderip sonraki sayfaya geç.",
     "noMcq": "Bankaya kaydedilecek çoktan seçmeli soru yok.",
     "saved": "{{count}} soru bankaya kaydedildi; sınıflandırma arka planda başladı.",
     "alreadySaved": "Bu sayfanın soruları daha önce bankaya kaydedildi ({{count}} soru). Yeniden kaydedilirse sorular ikinci kez oluşur.",
@@ -34,7 +34,8 @@
     "failed": "Sorular bankaya kaydedilemedi.",
     "cardTitle": "Soru bankası",
     "cardSaved": "Bankaya kaydedildi ({{count}} soru)",
-    "forbidden": "Bankaya soru kaydetmek için öğretmen ya da yönetici olmalısınız."
+    "forbidden": "Bankaya soru kaydetmek için öğretmen ya da yönetici olmalısınız.",
+    "savedAndTrained": "{{count}} soru bankaya kaydedildi ve eğitime gönderildi; sınıflandırma arka planda başladı."
   },
   "stats": {
     "label": "Oturum sayaçları",

@@ -137,5 +137,27 @@
     "summary": "{{questions}} soru · {{examples}} örnek · {{passages}} pasaj",
     "exit": "Önizlemeden Çık",
     "noTestSelected": "Ön izleme için test seçilmedi."
+  },
+  "detection": {
+    "group": "Tespit kaynağı",
+    "label": "Kaynak",
+    "manual": "Manuel",
+    "manualHint": "Eğitime gönderilmiş son hal (kayıt varsa)",
+    "model": "Model",
+    "modelHint": "YOLO modeli (hızlı)",
+    "claude": "Claude",
+    "claudeHint": "Claude ile tespit (sayfa başına ~10–15 sn; kayıtlı sonuç ücretsiz). Sonraki sayfa arka planda hazırlanır.",
+    "aiModel": "Claude modeli",
+    "price": "${{input}} / ${{output}} (1M token)",
+    "aiBusy": "Claude işaretliyor…",
+    "cached": "kayıttan",
+    "live": "canlı",
+    "originHint": "Kayıttan gelen sonuç yeniden ücretlendirilmez.",
+    "aiLiveDone": "Claude işaretledi (~${{cost}}).",
+    "aiFailed": "Claude bu sayfayı işaretleyemedi.",
+    "aiFallback": "{{message}} YOLO ile devam ediliyor.",
+    "aiOk": "Tamam",
+    "unsavedEdits": "Kaydedilmemiş düzeltmeleriniz var; kaynak değişirse kaybolacak.",
+    "discardAction": "Yine de değiştir"
   }
 }

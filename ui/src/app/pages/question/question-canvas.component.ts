@@ -32,6 +32,7 @@ import { AuthService } from '../../services/auth.service';
 import { TestCreateEnhancedComponent } from '../test-create-enhanced/test-create-enhanced.component';
 import { ClassificationSource, QuestionRegion } from '../../models/draws';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { CanvasDetectionSource, CanvasSourceKind } from './canvas-detection-source';
 
 /** Sayfa metinleri kendi Transloco scope'unda: `public/i18n/question/<lang>.json` (issue #183). */
 const QUESTION_SCOPE = 'question';
@@ -58,7 +59,7 @@ const QUESTION_TRAINER_ROLE = 'QuestionTrainer';
     TestCreateEnhancedComponent,
     TranslocoDirective,
   ],
-  providers: [provideTranslocoScope(QUESTION_SCOPE)],
+  providers: [provideTranslocoScope(QUESTION_SCOPE), CanvasDetectionSource],
 })
 export class QuestionCanvasComponent implements OnInit {
   /** Alt bileşen; signal'de tutulur ki `busy` gibi computed'lar onun meşgul sinyallerini izleyebilsin. */
@@ -127,6 +128,11 @@ export class QuestionCanvasComponent implements OnInit {
    */
   readonly canTrain =
     this.authService.hasRealmRole(ADMIN_ROLE) || this.authService.hasRealmRole(QUESTION_TRAINER_ROLE);
+  /**
+   * Tespit kaynağı (Manuel | Model | Claude, issue #473). Claude uçları da Admin + QuestionTrainer'a açık; diğer
+   * kullanıcılarda image-selector kendi YOLO tespitiyle açılır (`externalDetection` kapalı).
+   */
+  readonly detection = inject(CanvasDetectionSource);
   /** saveBulk isteği sürerken kaydet butonlarını kilitler. */
   readonly saving = signal(false);
   /** Kaydet akışında test oluşturuluyor / oluşturulan test okunuyor (onCreateAsync + testService.get). */
@@ -252,6 +258,7 @@ export class QuestionCanvasComponent implements OnInit {
 
   constructor() {
     this.setFullScreen(false);
+    this.detection.attach(() => this.imageSelectorRef(), this.canTrain, QUESTION_SCOPE);
     // Komponent bu arada yok edilirse bekleyen geçiş iptal edilir; aksi halde yok edilmiş
     // imageSelector'a dokunur (#394: testlerde sonraki spec'e sızıp tüm koşuyu düşürüyordu).
     this.destroyRef.onDestroy(() => {
@@ -448,6 +455,22 @@ export class QuestionCanvasComponent implements OnInit {
   /** image-selector yeni bir sayfa yüklemeye başladı: sayfaya özel seçimler sıfırlanır. */
   onImageChange() {
     this.excludeFromTraining.set(false);
+    this.detection.resetPage();
+  }
+
+  /** Kaynak düğmesi: kayıt / geçiş / analiz sürerken ya da koordinat JSON modunda kapalı. */
+  selectDetectionSource(kind: CanvasSourceKind) {
+    if (this.busy() || this.coordinateJsonMode) {
+      return;
+    }
+    this.detection.selectSource(kind);
+  }
+
+  selectAiModel(id: string) {
+    if (this.busy() || this.coordinateJsonMode) {
+      return;
+    }
+    this.detection.setAiModel(id);
   }
 
   // --- Yeni kabuk (redesign) yardımcıları ---

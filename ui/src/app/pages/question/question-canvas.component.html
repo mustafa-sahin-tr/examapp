@@ -272,6 +272,52 @@
           <button type="button" [class.is-active]="selectionMode === 'dropzone'" (click)="setSelectionMode('dropzone')">{{ t('canvas.modeDropZone') }}</button>
         </div>
         <div class="qc-canvas__toolbar-right">
+          @if (detection.available() && !coordinateJsonMode) {
+          <span class="qc-count qc-source" role="group" [attr.aria-label]="t('detection.group')">
+            <span class="qc-count__label">{{ t('detection.label') }}</span>
+            <span class="qc-count__seg">
+              @if (detection.manualRecord()) {
+              <button type="button" [class.is-active]="detection.activeKind() === 'Manual'" [disabled]="busy() || !detection.hasPage()"
+                [attr.aria-pressed]="detection.activeKind() === 'Manual'" [title]="t('detection.manualHint')"
+                (click)="selectDetectionSource('Manual')">{{ t('detection.manual') }}</button>
+              }
+              <button type="button" [class.is-active]="detection.activeKind() === 'Model'" [disabled]="busy() || !detection.hasPage()"
+                [attr.aria-pressed]="detection.activeKind() === 'Model'" [title]="t('detection.modelHint')"
+                (click)="selectDetectionSource('Model')">{{ t('detection.model') }}</button>
+              <button type="button" [class.is-active]="detection.activeKind() === 'Ai'" [disabled]="busy() || !detection.hasPage()"
+                [attr.aria-pressed]="detection.activeKind() === 'Ai'" [title]="t('detection.claudeHint')"
+                (click)="selectDetectionSource('Ai')">{{ t('detection.claude') }}</button>
+            </span>
+            @if (detection.showModelPicker()) {
+            <button type="button" class="qc-source__model" [matMenuTriggerFor]="aiModelMenu" [disabled]="busy()"
+              [attr.aria-label]="t('detection.aiModel')" [title]="t('detection.aiModel')">
+              <span>{{ detection.selectedAiModel()?.displayName }}</span><mat-icon>expand_more</mat-icon>
+            </button>
+            <mat-menu #aiModelMenu="matMenu" xPosition="before">
+              @for (model of detection.aiModels(); track model.id) {
+              <button mat-menu-item type="button" role="menuitemradio"
+                [attr.aria-checked]="model.id === detection.aiModelId()" (click)="selectAiModel(model.id)">
+                <span>{{ model.displayName }}</span>
+                <span class="qc-source__price">{{ t('detection.price', { input: (model.inputUsdPerMTok | number: '1.2-2'), output: (model.outputUsdPerMTok | number: '1.2-2') }) }}</span>
+              </button>
+              }
+            </mat-menu>
+            }
+            @if (detection.aiBusy()) {
+            <span class="qc-source__status" role="status">
+              <mat-spinner diameter="14" aria-hidden="true"></mat-spinner>{{ t('detection.aiBusy') }}
+            </span>
+            } @else if (detection.aiNotice()) {
+            <span class="qc-source__status qc-source__status--warn" role="alert" [title]="detection.aiNotice()">
+              <mat-icon aria-hidden="true">warning_amber</mat-icon><span class="qc-source__text">{{ detection.aiNotice() }}</span>
+            </span>
+            } @else if (detection.activeKind() === 'Ai' && detection.aiOrigin()) {
+            <span class="qc-source__status" role="status" [title]="t('detection.originHint')">
+              {{ detection.aiOrigin() === 'cached' ? t('detection.cached') : t('detection.live') }}
+            </span>
+            }
+          </span>
+          }
           <span class="qc-count" role="group" [attr.aria-label]="t('canvas.answerCountGroup')">
             <span class="qc-count__label">{{ t('canvas.answerCountLabel') }}</span>
             <span class="qc-count__seg">
@@ -288,7 +334,8 @@
         <app-image-selector [previewMetaProvider]="previewMetaProvider" [navigationLocked]="navigationBusy()"
           (previewQuestionChange)="onPreviewQuestionChange($event)"
           (selectedQuestionChange)="onInspectorQuestionChange($event)"
-          (imageChange)="onImageChange()"></app-image-selector>
+          (imageChange)="onImageChange()" [externalDetection]="canTrain"
+          (pageReady)="detection.onPageReady($event)" (manualSaved)="detection.onManualSaved($event)"></app-image-selector>
       </div>
 
       @if (pageFiles.length > 1 && !previewOn) {

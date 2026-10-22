@@ -96,4 +96,33 @@ public sealed class GatewayRouteRoleWiringTests : IClassFixture<GatewayWebSocket
         status.ShouldNotBe(HttpStatusCode.Unauthorized);
         status.ShouldNotBe(HttpStatusCode.Forbidden);
     }
+
+    // İşaretleme (Claude ön-etiketleme dahil) uçları: yalnız Admin + QuestionTrainer.
+    [Theory]
+    [InlineData("/api/exam/labeling/ai-detect")]
+    [InlineData("/api/exam/labeling/pages/manual")]
+    public async Task Labeling_Anonymous_Returns401(string path) =>
+        (await PostAsync(path, null)).ShouldBe(HttpStatusCode.Unauthorized);
+
+    [Theory]
+    [InlineData("/api/exam/labeling/ai-detect")]
+    [InlineData("/api/exam/labeling/pages/manual")]
+    public async Task Labeling_Student_Returns403(string path) =>
+        (await PostAsync(path, _factory.CreateToken("Student"))).ShouldBe(HttpStatusCode.Forbidden);
+
+    [Theory]
+    [InlineData("/api/exam/labeling/ai-detect")]
+    [InlineData("/api/exam/labeling/pages/manual")]
+    public async Task Labeling_Teacher_Returns403(string path) =>
+        (await PostAsync(path, _factory.CreateToken("Teacher"))).ShouldBe(HttpStatusCode.Forbidden);
+
+    [Theory]
+    [InlineData("/api/exam/labeling/ai-detect")]
+    [InlineData("/api/exam/labeling/pages/manual")]
+    public async Task Labeling_QuestionTrainer_PassesRoleGate(string path)
+    {
+        var status = await PostAsync(path, _factory.CreateToken("QuestionTrainer"));
+        status.ShouldNotBe(HttpStatusCode.Unauthorized);
+        status.ShouldNotBe(HttpStatusCode.Forbidden);
+    }
 }

@@ -24,7 +24,7 @@ public class LabelingServiceTests : IDisposable
     public LabelingServiceTests()
     {
         _detector.IsConfigured.Returns(true);
-        _detector.DetectAsync(default!, default!, default).ReturnsForAnyArgs(Detection());
+        _detector.DetectAsync(default!, default!, default!).ReturnsForAnyArgs(Detection());
         _counters = new InMemoryFixedWindowCounterStore(_clock);
     }
 
@@ -156,7 +156,7 @@ public class LabelingServiceTests : IDisposable
             NewService(ctx).DetectWithAiAsync(request, Actor));
 
         ex.Message.ShouldBe("labeling.unknownModel");
-        await _detector.DidNotReceiveWithAnyArgs().DetectAsync(default!, default!, default);
+        await _detector.DidNotReceiveWithAnyArgs().DetectAsync(default!, default!, default!);
     }
 
     [Fact]
@@ -183,8 +183,8 @@ public class LabelingServiceTests : IDisposable
 
         // Anahtar sonradan eklendiğinde kota hâlâ boş olmalı: 503 çağrı sayılmaz.
         _detector.IsConfigured.Returns(true);
-        _detector.DetectAsync(default!, default!, default).ReturnsForAnyArgs(Detection());
-        _detector.DetectAsync(default!, default!, default).ReturnsForAnyArgs(Detection());
+        _detector.DetectAsync(default!, default!, default!).ReturnsForAnyArgs(Detection());
+        _detector.DetectAsync(default!, default!, default!).ReturnsForAnyArgs(Detection());
         var result = await service.DetectWithAiAsync(request, Actor);
         result.Origin.ShouldBe("live");
     }
@@ -209,7 +209,7 @@ public class LabelingServiceTests : IDisposable
     [Fact]
     public async Task DetectWithAiAsync_LiveCall_PersistsAiResultWithTokensAndCost()
     {
-        _detector.DetectAsync(default!, default!, default).ReturnsForAnyArgs(Detection(input: 1000, output: 2000));
+        _detector.DetectAsync(default!, default!, default!).ReturnsForAnyArgs(Detection(input: 1000, output: 2000));
         var png = Png(64, 64);
         var request = new LabelingAiDetectRequestDto { ImageBase64 = Base64(png), Model = "claude-test" };
 
@@ -231,7 +231,7 @@ public class LabelingServiceTests : IDisposable
     [Fact]
     public async Task DetectWithAiAsync_SameImageTwice_SecondCallIsCachedAndDoesNotCallClaudeAgain()
     {
-        _detector.DetectAsync(default!, default!, default).ReturnsForAnyArgs(Detection());
+        _detector.DetectAsync(default!, default!, default!).ReturnsForAnyArgs(Detection());
         var request = new LabelingAiDetectRequestDto { ImageBase64 = Base64(Png(16, 16)), Model = "claude-test" };
 
         await using var ctx = _db.NewContext();
@@ -242,13 +242,13 @@ public class LabelingServiceTests : IDisposable
         first.Origin.ShouldBe("live");
         second.Origin.ShouldBe("cached");
         second.Result.Predictions.Predictions.Count.ShouldBe(first.Result.Predictions.Predictions.Count);
-        await _detector.ReceivedWithAnyArgs(1).DetectAsync(default!, default!, default);
+        await _detector.ReceivedWithAnyArgs(1).DetectAsync(default!, default!, default!);
     }
 
     [Fact]
     public async Task DetectWithAiAsync_CachedResultForSameImageAndModel_DoesNotConsumeRateLimit()
     {
-        _detector.DetectAsync(default!, default!, default).ReturnsForAnyArgs(Detection());
+        _detector.DetectAsync(default!, default!, default!).ReturnsForAnyArgs(Detection());
         var request = new LabelingAiDetectRequestDto { ImageBase64 = Base64(Png(16, 16)), Model = "claude-test" };
 
         await using var ctx = _db.NewContext();
@@ -263,19 +263,19 @@ public class LabelingServiceTests : IDisposable
     [Fact]
     public async Task DetectWithAiAsync_ForceTrue_CallsClaudeEvenWhenCachedAndOverwritesSingleRow()
     {
-        _detector.DetectAsync(default!, default!, default).ReturnsForAnyArgs(Detection(input: 10, output: 10));
+        _detector.DetectAsync(default!, default!, default!).ReturnsForAnyArgs(Detection(input: 10, output: 10));
         var png = Png(16, 16);
         await using var ctx = _db.NewContext();
         var service = NewService(ctx, liveCallsPerHour: 10);
         await service.DetectWithAiAsync(new LabelingAiDetectRequestDto { ImageBase64 = Base64(png), Model = "claude-test" }, Actor);
 
-        _detector.DetectAsync(default!, default!, default).ReturnsForAnyArgs(Detection(input: 77, output: 88));
+        _detector.DetectAsync(default!, default!, default!).ReturnsForAnyArgs(Detection(input: 77, output: 88));
         var forced = await service.DetectWithAiAsync(
             new LabelingAiDetectRequestDto { ImageBase64 = Base64(png), Model = "claude-test", Force = true }, Actor);
 
         forced.Origin.ShouldBe("live");
         forced.Result.InputTokens.ShouldBe(77);
-        await _detector.ReceivedWithAnyArgs(2).DetectAsync(default!, default!, default);
+        await _detector.ReceivedWithAnyArgs(2).DetectAsync(default!, default!, default!);
 
         await using var read = _db.NewContext();
         var page = await NewService(read).GetPageAsync(Sha256Hex(png));
@@ -287,7 +287,7 @@ public class LabelingServiceTests : IDisposable
     public async Task DetectWithAiAsync_SameImageDifferentModels_KeepsOneAiRowPerModel()
     {
         var png = Png(16, 16);
-        _detector.DetectAsync(default!, default!, default).ReturnsForAnyArgs(Detection());
+        _detector.DetectAsync(default!, default!, default!).ReturnsForAnyArgs(Detection());
         var models = new[] { Model("claude-a"), Model("claude-b") };
 
         await using var ctx = _db.NewContext();
@@ -304,7 +304,7 @@ public class LabelingServiceTests : IDisposable
     [Fact]
     public async Task DetectWithAiAsync_RateLimitExceeded_ThrowsWithRetryAfterAndSkipsClaude()
     {
-        _detector.DetectAsync(default!, default!, default).ReturnsForAnyArgs(Detection());
+        _detector.DetectAsync(default!, default!, default!).ReturnsForAnyArgs(Detection());
         await using var ctx = _db.NewContext();
         var service = NewService(ctx, liveCallsPerHour: 1);
 
@@ -315,13 +315,13 @@ public class LabelingServiceTests : IDisposable
             new LabelingAiDetectRequestDto { ImageBase64 = Base64(Png(17, 17)), Model = "claude-test" }, Actor));
 
         ex.RetryAfter.ShouldBe(TimeSpan.FromHours(1));
-        await _detector.ReceivedWithAnyArgs(1).DetectAsync(default!, default!, default);
+        await _detector.ReceivedWithAnyArgs(1).DetectAsync(default!, default!, default!);
     }
 
     [Fact]
     public async Task DetectWithAiAsync_RateLimitIsPerUser_OtherUserIsNotBlocked()
     {
-        _detector.DetectAsync(default!, default!, default).ReturnsForAnyArgs(Detection());
+        _detector.DetectAsync(default!, default!, default!).ReturnsForAnyArgs(Detection());
         await using var ctx = _db.NewContext();
         var service = NewService(ctx, liveCallsPerHour: 1);
 
@@ -338,7 +338,7 @@ public class LabelingServiceTests : IDisposable
     [Fact]
     public async Task DetectWithAiAsync_ClaudeFails_PropagatesAndSavesNothing()
     {
-        _detector.DetectAsync(default!, default!, default)
+        _detector.DetectAsync(default!, default!, default!)
             .ThrowsAsyncForAnyArgs(new LabelingAiException("Claude response was truncated."));
         var png = Png(16, 16);
 
@@ -533,7 +533,7 @@ public class LabelingServiceTests : IDisposable
 
         // Manuel kayıt Ai önbelleği değildir: bu sayfa için Claude'a gerçekten sorulmalı.
         response.Origin.ShouldBe("live");
-        await _detector.ReceivedWithAnyArgs(1).DetectAsync(default!, default!, default);
+        await _detector.ReceivedWithAnyArgs(1).DetectAsync(default!, default!, default!);
     }
 
     [Fact]
@@ -558,7 +558,7 @@ public class LabelingServiceTests : IDisposable
     [Fact]
     public async Task DetectWithAiAsync_UserDailyBudgetExhausted_ThrowsBudgetAndSkipsClaude()
     {
-        _detector.DetectAsync(default!, default!, default).ReturnsForAnyArgs(Detection(input: 1000, output: 2000)); // 0.033 USD
+        _detector.DetectAsync(default!, default!, default!).ReturnsForAnyArgs(Detection(input: 1000, output: 2000)); // 0.033 USD
         await using var ctx = _db.NewContext();
         var service = NewService(ctx, liveCallsPerHour: 100, dailyBudgetUsdPerUser: 0.01m);
         await service.DetectWithAiAsync(new LabelingAiDetectRequestDto { ImageBase64 = Base64(Png(16, 16)), Model = "claude-test" }, Actor);
@@ -567,13 +567,13 @@ public class LabelingServiceTests : IDisposable
             new LabelingAiDetectRequestDto { ImageBase64 = Base64(Png(17, 17)), Model = "claude-test" }, Actor));
 
         ex.Budget.ShouldBeTrue();
-        await _detector.ReceivedWithAnyArgs(1).DetectAsync(default!, default!, default);
+        await _detector.ReceivedWithAnyArgs(1).DetectAsync(default!, default!, default!);
     }
 
     [Fact]
     public async Task DetectWithAiAsync_CachedResultWhileBudgetExhausted_StillReturnsCached()
     {
-        _detector.DetectAsync(default!, default!, default).ReturnsForAnyArgs(Detection(input: 1000, output: 2000));
+        _detector.DetectAsync(default!, default!, default!).ReturnsForAnyArgs(Detection(input: 1000, output: 2000));
         var png = Png(16, 16);
         var request = new LabelingAiDetectRequestDto { ImageBase64 = Base64(png), Model = "claude-test" };
         await using var ctx = _db.NewContext();
@@ -588,7 +588,7 @@ public class LabelingServiceTests : IDisposable
     [Fact]
     public async Task DetectWithAiAsync_TotalDailyBudgetExhaustedByAnotherUser_BlocksOtherUsers()
     {
-        _detector.DetectAsync(default!, default!, default).ReturnsForAnyArgs(Detection(input: 1000, output: 2000));
+        _detector.DetectAsync(default!, default!, default!).ReturnsForAnyArgs(Detection(input: 1000, output: 2000));
         await using var ctx = _db.NewContext();
         var service = NewService(ctx, liveCallsPerHour: 100, dailyBudgetUsdTotal: 0.01m);
         await service.DetectWithAiAsync(new LabelingAiDetectRequestDto { ImageBase64 = Base64(Png(16, 16)), Model = "claude-test" }, Actor);
@@ -603,7 +603,7 @@ public class LabelingServiceTests : IDisposable
     [Fact]
     public async Task DetectWithAiAsync_ZeroCostCall_DoesNotChargeBudget()
     {
-        _detector.DetectAsync(default!, default!, default).ReturnsForAnyArgs(Detection(input: 0, output: 0));
+        _detector.DetectAsync(default!, default!, default!).ReturnsForAnyArgs(Detection(input: 0, output: 0));
         await using var ctx = _db.NewContext();
         var service = NewService(ctx, liveCallsPerHour: 100, dailyBudgetUsdPerUser: 0.000001m);
 

@@ -92,6 +92,24 @@ public class LabelingController : BaseController
         }
     }
 
+    /// <summary>Claude prompt'u: etkin sürüm, koddaki varsayılanlar ve son sürümler.</summary>
+    [HttpGet("prompt")]
+    public async Task<IActionResult> GetPrompt(CancellationToken ct) => Ok(await _service.GetPromptStateAsync(ct));
+
+    /// <summary>Prompt'u yeni sürüm olarak kaydeder; sonraki Claude çağrıları bunu kullanır (eski sonuçlar kayıttan dönmez).</summary>
+    [HttpPut("prompt")]
+    public async Task<IActionResult> SavePrompt([FromBody] LabelingSavePromptRequestDto request, CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await _service.SavePromptAsync(request, CurrentActor(), ct));
+        }
+        catch (LabelingValidationException ex)
+        {
+            return BadRequest(Error(ex.Message));
+        }
+    }
+
     /// <summary>Eğitime gönderilen son hal (Manuel) + o anki YOLO tahmini (Model). Güncel sayfa kaydını döner.</summary>
     [HttpPut("pages/manual")]
     [RequestSizeLimit(32 * 1024 * 1024)]

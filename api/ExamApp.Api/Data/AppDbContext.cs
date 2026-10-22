@@ -171,6 +171,7 @@ public class AppDbContext : DbContext
     public DbSet<AdminUserActionLog> AdminUserActionLogs { get; set; } // issue #156
     public DbSet<LabelingPage> LabelingPages { get; set; }
     public DbSet<LabelingResult> LabelingResults { get; set; }
+    public DbSet<LabelingPromptVersion> LabelingPromptVersions { get; set; }
 
 
 
@@ -987,6 +988,11 @@ public class AppDbContext : DbContext
             e.Property(r => r.EstimatedCostUsd).HasPrecision(12, 6);
             e.HasOne(r => r.Page).WithMany(p => p.Results).HasForeignKey(r => r.PageId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(r => new { r.PageId, r.Source, r.ModelName }).IsUnique();
+        });
+
+        modelBuilder.Entity<LabelingPromptVersion>(e =>
+        {
+            e.HasIndex(p => p.Version).IsUnique();
         });
 
         // Login event'leri (issue #84). Index'ler ileride admin dashboard'un (issue #6)

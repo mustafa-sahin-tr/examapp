@@ -76,6 +76,32 @@
     "unsavedEdits": "Kaydedilmemiş düzeltmeleriniz var; kaynak değişirse kaybolacak.",
     "discardAction": "Yine de değiştir",
     "liveDone": "Claude işaretledi (~${{cost}}).",
-    "aiFailed": "Claude bu sayfayı işaretleyemedi."
+    "aiFailed": "Claude bu sayfayı işaretleyemedi.",
+    "prompt": "Prompt",
+    "promptHint": "Claude talimatları ve kutu payları",
+    "promptSaved": "Prompt v{{version}} kaydedildi; sonraki Claude çağrıları bunu kullanır.",
+    "promptAskPage": "Bu sayfayı yeniden sor",
+    "promptVersion": "prompt v{{version}}"
+  },
+  "prompt": {
+    "title": "Claude prompt ayarları",
+    "activeDefault": "Etkin: varsayılan (kayıtlı sürüm yok)",
+    "activeVersion": "Etkin: v{{version}}",
+    "hint": "Kaydetmek yeni bir sürüm oluşturur; eski sürümler silinmez. Koordinat kuralı ve yanıt biçimi (JSON) sabittir, burada düzenlenmez. Prompt değişince sayfalar Claude'a yeni prompt ile yeniden sorulur (ücretli).",
+    "questionInstruction": "Soru talimatı (tüm sayfa → soru kutuları)",
+    "optionInstruction": "Şık talimatı (soru kırpması → şık kutuları)",
+    "placeholders": "{width} ve {height}: Claude'a gönderilen görselin piksel boyutu",
+    "required": "Boş olamaz.",
+    "questionPadding": "Soru kutusu payı",
+    "optionPadding": "Şık kutusu payı",
+    "paddingRange": "0–50 px",
+    "expandQuestionToOptions": "Soru kutusu şıkların tamamını kapsasın",
+    "loadVersion": "Eski sürümü yükle",
+    "loadDefaults": "Varsayılanı yükle",
+    "loadFailed": "Prompt ayarları yüklenemedi.",
+    "retry": "Tekrar dene",
+    "saveFailed": "Kaydedilemedi.",
+    "cancel": "Vazgeç",
+    "save": "Kaydet"
   }
 }

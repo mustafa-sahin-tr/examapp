@@ -112,6 +112,11 @@
     <button mat-stroked-button type="button" (click)="align()" [disabled]="analysing() || sendingToFix()">
       <mat-icon>align_horizontal_center</mat-icon>{{ t('align') }}
     </button>
+    @if (aiModels().length > 0) {
+    <button mat-stroked-button type="button" (click)="openPromptDialog()" [matTooltip]="t('source.promptHint')">
+      <mat-icon>tune</mat-icon>{{ t('source.prompt') }}
+    </button>
+    }
 
     <span class="lb-toolbar__spacer"></span>
 
@@ -194,6 +199,7 @@
           {{ r.updatedAt | date: 'short' }}
           @if (r.estimatedCostUsd != null) { · ~${{ r.estimatedCostUsd | number: '1.4-4' }} }
           @if (r.inputTokens != null) { · {{ s('tokens', { input: r.inputTokens, output: r.outputTokens }) }} }
+          @if (r.promptVersion != null) { · {{ s('promptVersion', { version: r.promptVersion }) }} }
         </p>
         }
         <button mat-stroked-button type="button" (click)="askClaudeAgain()" [disabled]="sourceLocked()">

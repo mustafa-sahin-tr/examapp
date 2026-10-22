@@ -76,6 +76,32 @@
     "unsavedEdits": "You have unsaved corrections; they will be lost if the source changes.",
     "discardAction": "Change anyway",
     "liveDone": "Claude labeled the page (~${{cost}}).",
-    "aiFailed": "Claude could not label this page."
+    "aiFailed": "Claude could not label this page.",
+    "prompt": "Prompt",
+    "promptHint": "Claude instructions and box padding",
+    "promptSaved": "Prompt v{{version}} saved; the next Claude calls use it.",
+    "promptAskPage": "Ask this page again",
+    "promptVersion": "prompt v{{version}}"
+  },
+  "prompt": {
+    "title": "Claude prompt settings",
+    "activeDefault": "Active: default (no saved version)",
+    "activeVersion": "Active: v{{version}}",
+    "hint": "Saving creates a new version; old versions are kept. The coordinate rules and the response format (JSON) are fixed and not edited here. When the prompt changes, pages are sent to Claude again with the new prompt (billed).",
+    "questionInstruction": "Question instruction (whole page → question boxes)",
+    "optionInstruction": "Choice instruction (question crop → choice boxes)",
+    "placeholders": "{width} and {height}: pixel size of the image sent to Claude",
+    "required": "Cannot be empty.",
+    "questionPadding": "Question box padding",
+    "optionPadding": "Choice box padding",
+    "paddingRange": "0–50 px",
+    "expandQuestionToOptions": "Question box covers all of its choices",
+    "loadVersion": "Load an older version",
+    "loadDefaults": "Load defaults",
+    "loadFailed": "Prompt settings could not be loaded.",
+    "retry": "Retry",
+    "saveFailed": "Could not save.",
+    "cancel": "Cancel",
+    "save": "Save"
   }
 }

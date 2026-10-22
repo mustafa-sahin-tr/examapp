@@ -51,6 +51,7 @@ public record LabelingResultDto(
     int? InputTokens,
     int? OutputTokens,
     decimal? EstimatedCostUsd,
+    int? PromptVersion,
     string? CreatedByName,
     DateTime CreatedAt,
     DateTime UpdatedAt);
@@ -74,6 +75,40 @@ public class LabelingAiDetectRequestDto
 
 /// <summary><c>Origin</c>: <c>live</c> (Claude'a gerçekten soruldu) veya <c>cached</c> (kayıtlı sonuç, maliyet yok).</summary>
 public record LabelingAiDetectResponseDto(string Origin, string ImageSha256, LabelingResultDto Result);
+
+/// <summary>Claude ön-etiketleme prompt'unun bir sürümü. <c>Version</c> 0 = koddaki varsayılanlar.</summary>
+public record LabelingPromptDto(
+    int Version,
+    string QuestionInstruction,
+    string OptionInstruction,
+    int QuestionPadding,
+    int OptionPadding,
+    bool ExpandQuestionToOptions,
+    string? CreatedByName,
+    DateTime? CreatedAt);
+
+/// <summary><c>GET/PUT api/labeling/prompt</c>: etkin sürüm, varsayılanlar ve son sürümler (yeniden eskiye).</summary>
+public record LabelingPromptStateDto(LabelingPromptDto Active, LabelingPromptDto Defaults, IReadOnlyList<LabelingPromptDto> History);
+
+/// <summary><c>PUT api/labeling/prompt</c> — yeni sürüm olarak kaydedilir (eskiler silinmez).</summary>
+public class LabelingSavePromptRequestDto
+{
+    /// <summary>Soru aşaması talimatı; <c>{width}</c>/<c>{height}</c> yer tutucuları desteklenir.</summary>
+    [Required, MaxLength(4000)]
+    public string QuestionInstruction { get; set; } = string.Empty;
+
+    /// <summary>Şık aşaması talimatı; aynı yer tutucular.</summary>
+    [Required, MaxLength(4000)]
+    public string OptionInstruction { get; set; } = string.Empty;
+
+    [Range(0, 50)]
+    public int QuestionPadding { get; set; }
+
+    [Range(0, 50)]
+    public int OptionPadding { get; set; }
+
+    public bool ExpandQuestionToOptions { get; set; }
+}
 
 /// <summary><c>PUT api/labeling/pages/manual</c> — eğitime gönderilen son hal (+ o anki YOLO tahmini).</summary>
 public class LabelingSaveManualRequestDto

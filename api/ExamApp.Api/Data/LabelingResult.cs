@@ -48,6 +48,12 @@ public class LabelingResult
 
     public decimal? EstimatedCostUsd { get; set; }
 
+    /// <summary>
+    /// AI sonucunu üreten prompt sürümü (<see cref="LabelingPromptVersion.Version"/>, varsayılanlar 0). Etkin sürümden farklıysa
+    /// sonuç kayıttan dönmez, Claude yeni prompt ile tekrar çağrılır. Diğer kaynaklarda boş.
+    /// </summary>
+    public int? PromptVersion { get; set; }
+
     /// <summary>Keycloak <c>sub</c>. Admin'in Teacher satırı olmayabilir, bu yüzden FK yok.</summary>
     [MaxLength(64)]
     public string? CreatedByKeycloakId { get; set; }

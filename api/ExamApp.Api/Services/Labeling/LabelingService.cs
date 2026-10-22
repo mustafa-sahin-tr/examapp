@@ -37,6 +37,10 @@ public interface ILabelingService
     Task<LabelingAiDetectResponseDto> DetectWithAiAsync(LabelingAiDetectRequestDto request, LabelingActor actor, CancellationToken ct = default);
 
     Task<LabelingPageDto> SaveManualAsync(LabelingSaveManualRequestDto request, LabelingActor actor, CancellationToken ct = default);
+
+    Task<LabelingPromptStateDto> GetPromptStateAsync(CancellationToken ct = default);
+
+    Task<LabelingPromptStateDto> SavePromptAsync(LabelingSavePromptRequestDto request, LabelingActor actor, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -52,6 +56,7 @@ public sealed class LabelingService(
     ILogger<LabelingService> logger) : ILabelingService
 {
     private const int MaxQuestions = 300;
+    private const int PromptHistoryLimit = 20;
     private const int MaxOptionsPerQuestion = 26;
     private const string TotalBudgetKey = "labeling-ai-usd:all";
     private static readonly TimeSpan RateLimitWindow = TimeSpan.FromHours(1);
@@ -83,12 +88,14 @@ public sealed class LabelingService(
                     ?? throw new LabelingValidationException("labeling.unknownModel");
 
         using var image = LabelingImage.Decode(request.ImageBase64);
+        var prompt = await GetActivePromptAsync(ct);
 
         if (!request.Force)
         {
+            // Kayıt yalnız aynı prompt sürümüyle üretildiyse geçerli; prompt değiştiyse Claude'a yeniden sorulur.
             var cached = await db.LabelingResults.AsNoTracking()
                 .FirstOrDefaultAsync(r => r.Page.ImageSha256 == image.Sha256 && r.Source == LabelingSource.Ai &&
-                                          r.ModelName == model.Id, ct);
+                                          r.ModelName == model.Id && r.PromptVersion == prompt.Version, ct);
             if (cached is not null)
                 return new LabelingAiDetectResponseDto("cached", image.Sha256, ToDto(cached));
         }
@@ -105,15 +112,15 @@ public sealed class LabelingService(
         if (!decision.Allowed)
             throw new LabelingRateLimitException(decision.RetryAfter);
 
-        var detection = await detector.DetectAsync(image, model, ct);
+        var detection = await detector.DetectAsync(image, model, prompt, ct);
         var cost = (detection.InputTokens * model.InputUsdPerMTok + detection.OutputTokens * model.OutputUsdPerMTok) / 1_000_000m;
 
         // Ödenmiş sonuç: istemci bu arada vazgeçse de harcama sayılır ve sonuç kaydedilir (tekrar ödenmesin).
         await ChargeBudgetAsync(userBudgetKey, cost);
         await ChargeBudgetAsync(TotalBudgetKey, cost);
         logger.LogInformation(
-            "[Labeling] Claude {Model} page {Hash}: {Questions} questions, {In}/{Out} tokens, ~${Cost:F4}",
-            model.Id, image.Sha256[..16], detection.Predictions.Predictions.Count, detection.InputTokens,
+            "[Labeling] Claude {Model} prompt v{Prompt} page {Hash}: {Questions} questions, {In}/{Out} tokens, ~${Cost:F4}",
+            model.Id, prompt.Version, image.Sha256[..16], detection.Predictions.Predictions.Count, detection.InputTokens,
             detection.OutputTokens, cost);
 
         var page = await GetOrCreatePageAsync(image.Sha256, image.Width, image.Height, CancellationToken.None);
@@ -123,6 +130,7 @@ public sealed class LabelingService(
             result.InputTokens = detection.InputTokens;
             result.OutputTokens = detection.OutputTokens;
             result.EstimatedCostUsd = Math.Round(cost, 6);
+            result.PromptVersion = prompt.Version;
         }, CancellationToken.None);
 
         return new LabelingAiDetectResponseDto("live", image.Sha256, ToDto(saved));
@@ -153,6 +161,80 @@ public sealed class LabelingService(
 
         return (await GetPageAsync(header.Sha256, ct))!;
     }
+
+    public async Task<LabelingPromptStateDto> GetPromptStateAsync(CancellationToken ct = default)
+    {
+        var history = await db.LabelingPromptVersions.AsNoTracking()
+            .OrderByDescending(p => p.Version)
+            .Take(PromptHistoryLimit)
+            .ToListAsync(ct);
+        var defaults = ToDto(LabelingPromptSettings.Default, null, null);
+        var active = history.Count > 0 ? ToDto(history[0]) : defaults;
+        return new LabelingPromptStateDto(active, defaults, history.Select(ToDto).ToList());
+    }
+
+    /// <summary>Yeni sürüm ekler (eskiler kalır; sonuçlar hangi sürümle üretildiğini taşır). Eşzamanlı kayıtta bir kez yeniden dener.</summary>
+    public async Task<LabelingPromptStateDto> SavePromptAsync(
+        LabelingSavePromptRequestDto request, LabelingActor actor, CancellationToken ct = default)
+    {
+        var question = request.QuestionInstruction?.Trim() ?? string.Empty;
+        var option = request.OptionInstruction?.Trim() ?? string.Empty;
+        if (question.Length == 0 || option.Length == 0)
+            throw new LabelingValidationException("labeling.promptRequired");
+        if (question.Length > LabelingPromptSettings.MaxInstructionLength ||
+            option.Length > LabelingPromptSettings.MaxInstructionLength)
+            throw new LabelingValidationException("labeling.promptTooLong");
+        if (request.QuestionPadding is < 0 or > LabelingPromptSettings.MaxPadding ||
+            request.OptionPadding is < 0 or > LabelingPromptSettings.MaxPadding)
+            throw new LabelingValidationException("labeling.invalidPadding");
+
+        for (var attempt = 0; ; attempt++)
+        {
+            var latest = await db.LabelingPromptVersions.MaxAsync(p => (int?)p.Version, ct) ?? 0;
+            var entity = new LabelingPromptVersion
+            {
+                Version = latest + 1,
+                QuestionInstruction = question,
+                OptionInstruction = option,
+                QuestionPadding = request.QuestionPadding,
+                OptionPadding = request.OptionPadding,
+                ExpandQuestionToOptions = request.ExpandQuestionToOptions,
+                CreatedByKeycloakId = actor.KeycloakId,
+                CreatedByName = Truncate(actor.Name, 200),
+                CreatedAt = timeProvider.GetUtcNow().UtcDateTime,
+            };
+            db.LabelingPromptVersions.Add(entity);
+            try
+            {
+                await db.SaveChangesAsync(ct);
+                logger.LogInformation("[Labeling] prompt v{Version} saved by {User}", entity.Version, actor.KeycloakId);
+                return await GetPromptStateAsync(ct);
+            }
+            catch (DbUpdateException ex) when (attempt == 0 && DbUpdateExceptionClassifier.IsUniqueViolation(ex))
+            {
+                db.Entry(entity).State = EntityState.Detached;
+            }
+        }
+    }
+
+    private async Task<LabelingPromptSettings> GetActivePromptAsync(CancellationToken ct)
+    {
+        var latest = await db.LabelingPromptVersions.AsNoTracking()
+            .OrderByDescending(p => p.Version)
+            .FirstOrDefaultAsync(ct);
+        return latest is null
+            ? LabelingPromptSettings.Default
+            : new LabelingPromptSettings(latest.Version, latest.QuestionInstruction, latest.OptionInstruction,
+                latest.QuestionPadding, latest.OptionPadding, latest.ExpandQuestionToOptions);
+    }
+
+    private static LabelingPromptDto ToDto(LabelingPromptVersion p) =>
+        new(p.Version, p.QuestionInstruction, p.OptionInstruction, p.QuestionPadding, p.OptionPadding,
+            p.ExpandQuestionToOptions, p.CreatedByName, p.CreatedAt);
+
+    private static LabelingPromptDto ToDto(LabelingPromptSettings p, string? createdByName, DateTime? createdAt) =>
+        new(p.Version, p.QuestionInstruction, p.OptionInstruction, p.QuestionPadding, p.OptionPadding,
+            p.ExpandQuestionToOptions, createdByName, createdAt);
 
     /// <summary>Kullanıcı / toplam günlük harcama sınırı (mikro-USD sayaç) dolduysa yeni canlı çağrı yapılmaz.</summary>
     private async Task EnsureBudgetAsync(string key, decimal limitUsd, CancellationToken ct)
@@ -292,6 +374,7 @@ public sealed class LabelingService(
             r.InputTokens,
             r.OutputTokens,
             r.EstimatedCostUsd,
+            r.PromptVersion,
             r.CreatedByName,
             r.CreatedAt,
             r.UpdatedAt);

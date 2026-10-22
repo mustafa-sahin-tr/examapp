@@ -409,8 +409,13 @@ QuestionTrainer (onaylı, askıda olmayan öğretmen; gateway'de de kural var).
 - **API anahtarı repoya girmez.** Aspire: `dotnet user-secrets set "Parameters:anthropic-api-key" "<anahtar>" --project AppHost`
   (AppHost `anthropic-api-key` secret parametresi → exam API `Anthropic__ApiKey`); AppHost'u yeniden başlat. Anahtar
   yoksa model listesi boş döner, UI Claude seçeneğini kapatır, `ai-detect` 503. docker-compose'da tanımlı değil.
+- **Prompt ekrandan düzenlenir:** işaretleme araç çubuğunda **Prompt** → iki aşamanın talimatı (`{width}`/`{height}`
+  yer tutucuları), soru/şık kutusu payı (px) ve "soru kutusu şıkları kapsasın". Her kayıt yeni sürüm
+  (`LabelingPromptVersions`, geçmiş silinmez; tablo boşsa koddaki varsayılanlar = sürüm 0). Koordinat kuralı ve JSON şeması
+  kodda sabit. AI sonuçları `PromptVersion` taşır; prompt değişince eski sonuç kayıttan dönmez, Claude yeniden çağrılır.
+  Düzenleme: Admin + QuestionTrainer (`GET/PUT /api/exam/labeling/prompt`).
 - Ayarlar `api/ExamApp.Api/appsettings.json` → `Anthropic`: `Models` (izinli id + 1M token fiyatı, maliyet tahmini
-  için), `Effort` (varsayılan `low`), `MaxImageEdge` (1568), `MaxParallelCrops` (4), `MaxQuestionsPerPage` (40),
+  için; varsayılan seçili model Haiku 5.5 — tarayıcıda daha önce başka model seçildiyse localStorage `labeling.aiModel` onu tutar), `Effort` (varsayılan `low`), `MaxImageEdge` (1568), `MaxParallelCrops` (4), `MaxQuestionsPerPage` (40),
   `LiveCallsPerHour` (kullanıcı başına, 60), `DailyBudgetUsdPerUser` (5) / `DailyBudgetUsdTotal` (25) — 24 saatlik
   tahmini harcama tavanı (Redis sayaç; dolunca 429 `LabelingBudgetExceeded`). Yalnız canlı Claude çağrıları sayılır.
 - Kaba ölçüm (2026-10-22, A4 test sayfası, effort low): Opus 5.5 ~7-13 sn, ~$0.04-0.05/sayfa; Haiku 5.5 ~11 sn,

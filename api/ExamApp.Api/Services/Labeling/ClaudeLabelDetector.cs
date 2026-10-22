@@ -17,7 +17,8 @@ public interface IClaudeLabelDetector
     /// <summary>API anahtarı yapılandırılmış mı; değilse AI ucu 503 döner.</summary>
     bool IsConfigured { get; }
 
-    Task<ClaudeDetection> DetectAsync(LabelingImage image, LabelingAiModelOption model, CancellationToken ct = default);
+    Task<ClaudeDetection> DetectAsync(
+        LabelingImage image, LabelingAiModelOption model, LabelingPromptSettings prompt, CancellationToken ct = default);
 }
 
 /// <summary>Claude'un bulduğu kutular (orijinal piksel, question-detector şekli) ve iki aşamanın toplam token'ı.</summary>
@@ -31,7 +32,8 @@ public sealed class LabelingAiException(string message, Exception? inner = null)
 /// (1) tüm sayfa → soru kutuları, (2) her soru kırpması → şık kutuları (en fazla <c>MaxParallelCrops</c> eşzamanlı).
 /// Görseller küçültülmüş uzayda gider; dönen koordinatlar <see cref="EncodedRegion.ToPage"/> ile orijinale çevrilir.
 /// Model istek başına <see cref="ChatOptions.ModelId"/> ile seçilir; yanıt şeması <c>GetResponseAsync&lt;T&gt;</c> ile
-/// JSON schema olarak gönderilir.
+/// JSON schema olarak gönderilir. Aşama talimatları ve kutu payları kullanıcı tarafından düzenlenir
+/// (<see cref="LabelingPromptSettings"/>); sistem mesajı (koordinat kuralı) ve şema burada sabittir.
 /// </summary>
 public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
 {
@@ -41,12 +43,6 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
 
     // Soru kırpmasına eklenen kenar payı (orijinal piksel): kutu sınırdaki şık harfini kesmesin.
     private const int CropPadding = 12;
-
-    // Şık kutusuna eklenen pay (orijinal piksel): model kutuyu harfin hemen kenarından çiziyor, harfin solu kesiliyordu.
-    private const int OptionPadding = 4;
-
-    // Soru kutusuna eklenen pay: model kutuyu soru numarasının hemen kenarından çiziyor.
-    private const int QuestionPadding = 6;
 
     private const string SystemPrompt =
         "You locate regions on scanned pages of Turkish school test books for an object-detection training set. " +
@@ -77,7 +73,8 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
 
     public bool IsConfigured => _chat is not null;
 
-    public async Task<ClaudeDetection> DetectAsync(LabelingImage image, LabelingAiModelOption model, CancellationToken ct = default)
+    public async Task<ClaudeDetection> DetectAsync(
+        LabelingImage image, LabelingAiModelOption model, LabelingPromptSettings prompt, CancellationToken ct = default)
     {
         if (_chat is null)
             throw new InvalidOperationException("Anthropic API key is not configured.");
@@ -85,10 +82,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
         var page = image.Encode(_options.MaxImageEdge);
         var (questions, pageUsage) = await AskAsync<QuestionBoxes>(model, PageMaxOutputTokens,
             page,
-            $"This image is one test-book page ({page.Width}x{page.Height} px). Find every multiple-choice question. " +
-            "For each question return ONE box that encloses the whole question: its number, the stem, any figure or " +
-            "table that belongs to it, and all of its answer options. Exclude page headers, footers, section titles and " +
-            "reading passages shared by several questions. Return an empty list if the page has no questions.",
+            LabelingPromptSettings.Render(prompt.QuestionInstruction, page.Width, page.Height),
             ct);
 
         var questionRects = (questions.Questions ?? [])
@@ -115,11 +109,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
                 {
                     (options, usage) = await AskAsync<OptionBoxes>(model, CropMaxOutputTokens,
                     crop,
-                    $"This image is a single multiple-choice question cropped from a test page ({crop.Width}x{crop.Height} px). " +
-                    "Find each answer option (usually labeled A), B), C), D), E) or A. B. ...). For each option return one " +
-                    "box that encloses the option letter completely (including its left edge and parenthesis) and " +
-                    "its whole content (text, formula or picture), with a margin of a few pixels. " +
-                    "Ignore the question number and the stem. Return the options in label order.",
+                    LabelingPromptSettings.Render(prompt.OptionInstruction, crop.Width, crop.Height),
                     ct);
                 }
                 catch (LabelingAiException ex)
@@ -135,12 +125,13 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
                 var optionRects = (options.Options ?? [])
                     .Select(o => crop.ToPage(o.X1, o.Y1, o.X2, o.Y2))
                     .Where(r => r.Width > 2 && r.Height > 2)
-                    .Select(r => Rectangle.Intersect(Rectangle.Inflate(r, OptionPadding, OptionPadding), pageBounds))
+                    .Select(r => Rectangle.Intersect(Rectangle.Inflate(r, prompt.OptionPadding, prompt.OptionPadding), pageBounds))
                     .ToList();
-                // Eğitim verisinde şıklar sorunun içinde olmalı: soru kutusu pay + şıkların birleşimi kadar genişler.
-                var question = optionRects.Aggregate(
-                    Rectangle.Intersect(Rectangle.Inflate(rect, QuestionPadding, QuestionPadding), pageBounds),
-                    Rectangle.Union);
+                var question = Rectangle.Intersect(
+                    Rectangle.Inflate(rect, prompt.QuestionPadding, prompt.QuestionPadding), pageBounds);
+                // Eğitim verisinde şıklar sorunun içinde olmalı: istenirse soru kutusu şıkların birleşimi kadar genişler.
+                if (prompt.ExpandQuestionToOptions)
+                    question = optionRects.Aggregate(question, Rectangle.Union);
 
                 return new PredictionDto
                 {

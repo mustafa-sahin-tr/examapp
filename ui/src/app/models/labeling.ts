@@ -21,6 +21,8 @@ export interface LabelingResult {
   inputTokens: number | null;
   outputTokens: number | null;
   estimatedCostUsd: number | null;
+  /** AI sonucunu üreten prompt sürümü (0 = varsayılan); diğer kaynaklarda null. */
+  promptVersion: number | null;
   createdByName: string | null;
   createdAt: string;
   updatedAt: string;
@@ -45,6 +47,33 @@ export interface LabelingAiDetectResponse {
   origin: 'live' | 'cached';
   imageSha256: string;
   result: LabelingResult;
+}
+
+/** Claude prompt'unun bir sürümü; `version` 0 = koddaki varsayılanlar. */
+export interface LabelingPrompt {
+  version: number;
+  questionInstruction: string;
+  optionInstruction: string;
+  questionPadding: number;
+  optionPadding: number;
+  expandQuestionToOptions: boolean;
+  createdByName: string | null;
+  createdAt: string | null;
+}
+
+/** `GET/PUT /api/exam/labeling/prompt`: etkin sürüm, varsayılanlar ve son sürümler (yeniden eskiye). */
+export interface LabelingPromptState {
+  active: LabelingPrompt;
+  defaults: LabelingPrompt;
+  history: LabelingPrompt[];
+}
+
+export interface LabelingSavePromptRequest {
+  questionInstruction: string;
+  optionInstruction: string;
+  questionPadding: number;
+  optionPadding: number;
+  expandQuestionToOptions: boolean;
 }
 
 export interface LabelingSaveManualRequest {

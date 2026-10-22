@@ -7,7 +7,9 @@ import {
   LabelingAiDetectResponse,
   LabelingAiModel,
   LabelingPage,
+  LabelingPromptState,
   LabelingSaveManualRequest,
+  LabelingSavePromptRequest,
 } from '../models/labeling';
 
 /** İşaretleme kaynakları (Model / Claude / Manuel). Yalnız Admin + QuestionTrainer. */
@@ -32,6 +34,15 @@ export class LabelingService {
 
   saveManual(request: LabelingSaveManualRequest): Observable<LabelingPage> {
     return this.http.put<LabelingPage>(`${this.baseUrl}/pages/manual`, request);
+  }
+
+  getPrompt(): Observable<LabelingPromptState> {
+    return this.http.get<LabelingPromptState>(`${this.baseUrl}/prompt`);
+  }
+
+  /** Yeni sürüm olarak kaydeder; sonraki Claude çağrıları bunu kullanır. */
+  savePrompt(request: LabelingSavePromptRequest): Observable<LabelingPromptState> {
+    return this.http.put<LabelingPromptState>(`${this.baseUrl}/prompt`, request);
   }
 }
 

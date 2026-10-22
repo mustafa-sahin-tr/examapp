@@ -841,6 +841,53 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("LabelingPages");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.LabelingPromptVersion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByKeycloakId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("CreatedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("ExpandQuestionToOptions")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("OptionInstruction")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("OptionPadding")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("QuestionInstruction")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("QuestionPadding")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Version")
+                        .IsUnique();
+
+                    b.ToTable("LabelingPromptVersions");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.LabelingResult", b =>
                 {
                     b.Property<int>("Id")
@@ -888,6 +935,9 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("PageId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PromptVersion")
                         .HasColumnType("integer");
 
                     b.Property<string>("Source")

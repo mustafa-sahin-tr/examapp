@@ -4,6 +4,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { Subject, firstValueFrom, takeUntil } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleChange, MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
@@ -16,6 +17,7 @@ import { QuestionDetectorService } from '../../services/question-detector.servic
 import { LabelingCandidate, isLabelingImage, pageIdOf, pickNextUnlabeled } from './labeling-pool';
 import { DetectionSource, LabelingAiModel, LabelingPage, LabelingResult } from '../../models/labeling';
 import { LabelingService, sha256OfDataUrl } from '../../services/labeling.service';
+import { LabelingPromptDialogComponent } from './labeling-prompt-dialog/labeling-prompt-dialog.component';
 
 /** Sayfa metinleri kendi Transloco scope'unda: `public/i18n/labeling/<lang>.json`. */
 const LABELING_SCOPE = 'labeling';
@@ -63,6 +65,7 @@ export class LabelingComponent {
   private readonly snackBar = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
   private readonly labelingApi = inject(LabelingService);
+  private readonly dialog = inject(MatDialog);
 
   private readonly selectorRef = viewChild(ImageSelectorComponent);
 
@@ -315,6 +318,36 @@ export class LabelingComponent {
       return;
     }
     apply();
+  }
+
+  /**
+   * Claude prompt ayarları. Kaydedilince sonraki çağrılar yeni sürümü kullanır (eski sonuçlar kayıttan dönmez); tuvalde
+   * Claude sonucu varsa bu sayfayı yeni prompt ile sormak snackbar eylemiyle önerilir.
+   */
+  openPromptDialog(): void {
+    const token = this.pageToken;
+    this.dialog
+      .open(LabelingPromptDialogComponent, { width: '820px', maxWidth: '95vw', autoFocus: false })
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((state) => {
+        if (!state) {
+          return;
+        }
+        const message = this.tr('source.promptSaved', { version: state.active.version });
+        if (this.detectionSource()?.kind !== 'Ai' || token !== this.pageToken) {
+          this.snackBar.open(message, this.tr('ok'), { duration: 4000 });
+          return;
+        }
+        this.snackBar
+          .open(message, this.tr('source.promptAskPage'), { duration: 8000 })
+          .onAction()
+          .subscribe(() => {
+            if (token === this.pageToken && !this.sourceLocked()) {
+              this.confirmDiscard(() => void this.runClaude(false, false));
+            }
+          });
+      });
   }
 
   /** Kayıtlı Claude sonucunu yok sayıp yeniden sorar (maliyetli): önce onay. */

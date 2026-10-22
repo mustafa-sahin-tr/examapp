@@ -1,0 +1,86 @@
+<ng-container *transloco="let t; prefix: 'labeling.prompt'">
+  <h2 mat-dialog-title>{{ t('title') }}</h2>
+
+  <mat-dialog-content class="lp">
+    @if (loading()) {
+    <div class="lp-state" role="status"><mat-spinner diameter="28" aria-hidden="true"></mat-spinner></div>
+    } @else if (loadFailed()) {
+    <div class="lp-state" role="alert">
+      <span>{{ t('loadFailed') }}</span>
+      <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+    </div>
+    }
+    @if (!loading() && !loadFailed() && state(); as s) {
+    <p class="lp-meta">
+      {{ s.active.version === 0 ? t('activeDefault') : t('activeVersion', { version: s.active.version }) }}
+      @if (s.active.createdAt) { · {{ s.active.createdAt | date: 'short' }} }
+      @if (s.active.createdByName) { · {{ s.active.createdByName }} }
+    </p>
+    <p class="lp-hint">{{ t('hint') }}</p>
+
+    <form [formGroup]="form" class="lp-form" (ngSubmit)="save()">
+      <mat-form-field appearance="outline" class="lp-wide">
+        <mat-label>{{ t('questionInstruction') }}</mat-label>
+        <textarea matInput formControlName="questionInstruction" rows="6" [maxlength]="maxInstruction"></textarea>
+        <mat-hint>{{ t('placeholders') }}</mat-hint>
+        <mat-hint align="end">{{ form.controls.questionInstruction.value.length }}/{{ maxInstruction }}</mat-hint>
+        @if (form.controls.questionInstruction.hasError('required')) { <mat-error>{{ t('required') }}</mat-error> }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="lp-wide">
+        <mat-label>{{ t('optionInstruction') }}</mat-label>
+        <textarea matInput formControlName="optionInstruction" rows="6" [maxlength]="maxInstruction"></textarea>
+        <mat-hint>{{ t('placeholders') }}</mat-hint>
+        <mat-hint align="end">{{ form.controls.optionInstruction.value.length }}/{{ maxInstruction }}</mat-hint>
+        @if (form.controls.optionInstruction.hasError('required')) { <mat-error>{{ t('required') }}</mat-error> }
+      </mat-form-field>
+
+      <div class="lp-row">
+        <mat-form-field appearance="outline">
+          <mat-label>{{ t('questionPadding') }}</mat-label>
+          <input matInput type="number" min="0" max="50" formControlName="questionPadding" />
+          <span matTextSuffix>px</span>
+          @if (form.controls.questionPadding.invalid) { <mat-error>{{ t('paddingRange') }}</mat-error> }
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>{{ t('optionPadding') }}</mat-label>
+          <input matInput type="number" min="0" max="50" formControlName="optionPadding" />
+          <span matTextSuffix>px</span>
+          @if (form.controls.optionPadding.invalid) { <mat-error>{{ t('paddingRange') }}</mat-error> }
+        </mat-form-field>
+      </div>
+      <mat-checkbox formControlName="expandQuestionToOptions">{{ t('expandQuestionToOptions') }}</mat-checkbox>
+    </form>
+
+    <div class="lp-row lp-tools">
+      @if (s.history.length > 0) {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>{{ t('loadVersion') }}</mat-label>
+        <mat-select (selectionChange)="loadVersion($event.value)">
+          @for (p of s.history; track p.version) {
+          <mat-option [value]="p.version">
+            v{{ p.version }} · {{ p.createdAt | date: 'short' }}@if (p.createdByName) { · {{ p.createdByName }} }
+          </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      }
+      <button mat-stroked-button type="button" (click)="resetToDefaults()">
+        <mat-icon>restart_alt</mat-icon>{{ t('loadDefaults') }}
+      </button>
+    </div>
+
+    @if (saveError() !== null) {
+    <p class="lp-error" role="alert">{{ saveError() || t('saveFailed') }}</p>
+    }
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">{{ t('cancel') }}</button>
+    <button mat-flat-button type="button" (click)="save()" [disabled]="loading() || loadFailed() || saving() || form.invalid">
+      @if (saving()) { <mat-spinner diameter="16" aria-hidden="true"></mat-spinner> }
+      {{ t('save') }}
+    </button>
+  </mat-dialog-actions>
+</ng-container>

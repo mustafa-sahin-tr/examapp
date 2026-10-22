@@ -79,6 +79,7 @@
     "dragDropOnly": "The page only has drag-and-drop questions; they are not sent to training, so the page was not sent (the model would learn them as background).",
     "questionsAdded": "Added {{count}} questions to training ({{file}}).",
     "noImage": "Load a page first.",
-    "sendError": "The page could not be sent to training. Try again."
+    "sendError": "The page could not be sent to training. Try again.",
+    "manualSaveFailed": "The page was sent to training, but the labeling record (Manual) could not be saved."
   }
 }

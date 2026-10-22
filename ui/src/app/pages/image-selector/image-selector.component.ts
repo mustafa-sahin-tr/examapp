@@ -21,6 +21,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { QuestionDetectorService } from '../../services/question-detector.service';
 import { Prediction, PredictionList } from '../../models/prediction';
+import { DetectionSource } from '../../models/labeling';
+import { LabelingService } from '../../services/labeling.service';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
@@ -209,6 +211,21 @@ export class ImageSelectorComponent {
   @Input() advanceOnTrain = true;
   /** Sayfa eğitim veri setine kaydedildi (send-to-fix başarılı). `pageId` yanıttaki `imageFile`'dır. */
   @Output() trained = new EventEmitter<TrainedPage>();
+  /**
+   * İşaretleme modu: sayfa yüklenince tespit (predict) kendiliğinden başlamaz, `pageReady` yayılır; üst komponent
+   * kaynağı (manuel kayıt / YOLO / Claude) seçip `predict()` ya da `applyExternalPrediction()` çağırır.
+   */
+  @Input() externalDetection = false;
+  /** `externalDetection` açıkken sayfa görseli hazır (değer: `imageData`, FileReader data URL'i). */
+  @Output() pageReady = new EventEmitter<string>();
+  /** Manuel kayıt exam API'ye yazıldı (değer: kaydedilen sayfanın `imageData`'sı). */
+  @Output() manualSaved = new EventEmitter<string>();
+  /** Tuvaldeki kutuların kaynağı; eğitime gönderilince manuel kayda başlangıç kaynağı olarak yazılır. */
+  public readonly detectionSource = signal<DetectionSource | null>(null);
+  /** Bu sayfanın son YOLO tahmini (eğitime gönderimde Model anlık görüntüsü olarak saklanır). */
+  private lastModelPrediction: { imageData: string; list: PredictionList } | null = null;
+  /** Son uygulanan tespitin kutuları; `hasUnsavedEdits` bununla karşılaştırır. */
+  private appliedSnapshot: string | null = null;
   /** Yok edildi: eğitime gönderim yanıtı geç dönerse snackbar / sayfa geçişi yapılmaz. */
   private destroyed = false;
   public onlyQuestionMode = signal<boolean>(false);
@@ -234,6 +251,7 @@ export class ImageSelectorComponent {
   /** Üst üste dosya seçiminde geç biten JSON okumasının yeni seçimi ezmemesi için sayaç. */
   private fileSelectionSeq = 0;
   questionDetectorService = inject(QuestionDetectorService);
+  private readonly labelingService = inject(LabelingService);
   questionService = inject(QuestionService);
   testService = inject(TestService);
   private subjectService = inject(SubjectService);
@@ -1030,6 +1048,8 @@ export class ImageSelectorComponent {
         if (this.selectionModeLocked() !== 'answer') {
           if (this.coordinateJsonMode()) {
             this.applyCoordinateRegions(file.name);
+          } else if (this.externalDetection) {
+            this.pageReady.emit(this.imageData()!);
           } else {
             this.predict();
           }
@@ -1063,6 +1083,9 @@ export class ImageSelectorComponent {
     this.pageLoading.set(true);
     this.pageLoadFailed.set(false);
     this.predictFailed.set(false);
+    this.detectionSource.set(null);
+    this.lastModelPrediction = null;
+    this.appliedSnapshot = null;
     return ++this.loadSeq;
   }
 
@@ -1154,7 +1177,11 @@ export class ImageSelectorComponent {
           }
           this.pageLoading.set(false);
           if (this.selectionModeLocked() !== 'answer') {
-            this.predict();
+            if (this.externalDetection) {
+              this.pageReady.emit(this.imageData()!);
+            } else {
+              this.predict();
+            }
           } else {
             this.regions.set([]);
             const region = {
@@ -2220,6 +2247,8 @@ export class ImageSelectorComponent {
             duration: 3000,
           });
           this.trained.emit({ pageId: String(data.imageFile ?? ''), emptyPage, added: Number(data.added ?? 0) });
+          // Manuel kayıt = eğitime giden hal (sürükle-bırak sorular eğitime gitmediği için kayda da girmez).
+          this.saveManualRecord(sentImage!, mcqQuestions);
           if (
             advance &&
             this.advanceOnTrain &&
@@ -2283,7 +2312,13 @@ export class ImageSelectorComponent {
       // Büyük sayfalar uzun sürebilir; yanıt hiç gelmezse örtü sonsuza dek açık kalmasın.
       .pipe(timeout(PREDICT_TIMEOUT_MS), takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (questions) => this.applyPrediction(seq, questions),
+        next: (questions) => {
+          if (seq === this.predictSeq && Array.isArray(questions?.predictions)) {
+            this.lastModelPrediction = { imageData: imageData.image_base64!, list: questions };
+            this.detectionSource.set({ kind: 'Model' });
+          }
+          this.applyPrediction(seq, questions);
+        },
         error: (err) => {
           console.error('predict failed', err);
           if (seq !== this.predictSeq) {
@@ -2292,6 +2327,97 @@ export class ImageSelectorComponent {
           this.inProgress.set(false);
           this.predictFailed.set(true);
           this.snackBar.open(this.tr('messages.analysisError'), this.tr('common.ok'), { duration: 4000 });
+        },
+      });
+  }
+
+  /** Dış kaynaklı tespit (Claude / kayıt) başlar: örtü açılır; dönen sıra numarası `apply`/`fail`'e verilir. */
+  public beginExternalDetection(): number {
+    const seq = ++this.predictSeq;
+    this.inProgress.set(true);
+    this.predictFailed.set(false);
+    return seq;
+  }
+
+  /**
+   * Dış kaynaklı kutuları tuvale uygular (`/predict` ile aynı şekil). Bu arada sayfa değiştiyse ya da yeni analiz
+   * başladıysa yok sayılır.
+   */
+  public applyExternalPrediction(seq: number, predictions: PredictionList, source: DetectionSource) {
+    if (seq === this.predictSeq) {
+      this.detectionSource.set(source);
+    }
+    this.applyPrediction(seq, predictions);
+  }
+
+  public failExternalDetection(seq: number) {
+    if (seq !== this.predictSeq) {
+      return;
+    }
+    this.inProgress.set(false);
+    this.predictFailed.set(true);
+  }
+
+  /** Son uygulanan tespitten sonra kutular elle değiştirildi mi (kaynak değiştirmeden önce sorulur). */
+  public hasUnsavedEdits(): boolean {
+    return this.appliedSnapshot !== null && this.serializeBoxes() !== this.appliedSnapshot;
+  }
+
+  private serializeBoxes(): string {
+    return JSON.stringify(
+      this.regions().map((q) => [q.x, q.y, q.width, q.height, (q.answers ?? []).map((a) => [a.x, a.y, a.width, a.height])])
+    );
+  }
+
+  /**
+   * Eğitime giden son hali exam API'ye manuel kayıt olarak yazar (+ bu sayfanın YOLO tahmini). Eğitim zaten başarılı;
+   * kayıt başarısızsa yalnız uyarılır.
+   */
+  private saveManualRecord(imageData: string, questions: QuestionRegion[]) {
+    const source = this.detectionSource();
+    let base: { source: 'Model' | 'Ai'; modelName: string | null; promptVersion?: number | null } | null = null;
+    if (source?.kind === 'Manual') {
+      base = source.base ?? null;
+    } else if (source) {
+      base = { source: source.kind, modelName: source.modelName ?? null, promptVersion: source.promptVersion ?? null };
+    }
+    const toPrediction = (box: { x: number; y: number; width: number; height: number }) => ({
+      class_id: 0,
+      x: Math.round(box.x),
+      y: Math.round(box.y),
+      width: Math.round(box.width),
+      height: Math.round(box.height),
+    });
+    const predictions: PredictionList = {
+      success: true,
+      predictions: questions.map((q) => ({
+        ...toPrediction(q),
+        subpredictions: (q.answers ?? []).map((a) => ({ ...toPrediction(a), subpredictions: [] })),
+      })),
+    };
+    const snapshot = this.lastModelPrediction?.imageData === imageData ? this.lastModelPrediction.list : null;
+    this.labelingService
+      .saveManual({
+        imageBase64: imageData,
+        predictions,
+        baseSource: base?.source ?? null,
+        baseModelName: base?.source === 'Ai' ? base.modelName : null,
+        basePromptVersion: base?.source === 'Ai' ? (base.promptVersion ?? null) : null,
+        modelSnapshot: snapshot,
+      })
+      .subscribe({
+        next: () => {
+          if (!this.destroyed && this.imageData() === imageData) {
+            this.detectionSource.set({ kind: 'Manual', base });
+            this.appliedSnapshot = this.serializeBoxes();
+          }
+          this.manualSaved.emit(imageData);
+        },
+        error: (err) => {
+          console.error('labeling manual save failed', err);
+          if (!this.destroyed) {
+            this.snackBar.open(this.tr('training.manualSaveFailed'), this.tr('common.ok'), { duration: 5000 });
+          }
         },
       });
   }
@@ -2368,6 +2494,7 @@ export class ImageSelectorComponent {
     for (let i = 0; i < questionCount; i++) {
       this.alignAnswers(i);
     }
+    this.appliedSnapshot = this.serializeBoxes();
 
     console.log(`${this.regions().length} Adet Soru bulundu`);
     console.log(`Auto Mode: ${this.autoMode()}`);

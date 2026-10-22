@@ -1,0 +1,20 @@
+{
+  "labeling": {
+    "invalidImage": "The image could not be read.",
+    "imageTooLarge": "The image is too large (20 MB max).",
+    "invalidRegion": "Invalid region.",
+    "invalidHash": "Invalid page id.",
+    "unknownModel": "This AI model is not available.",
+    "invalidBaseSource": "Invalid base source.",
+    "tooManyBoxes": "Too many boxes were sent.",
+    "invalidBox": "Invalid box coordinates.",
+    "pageNotFound": "No record for this page.",
+    "aiUnavailable": "Claude labeling is not configured (no API key).",
+    "aiFailed": "Claude could not label this page. Try again or pick another model.",
+    "rateLimited": "You reached the hourly Claude call limit. Try again later.",
+    "budgetExceeded": "The daily Claude spending limit was reached. Try again tomorrow or use the Model source.",
+    "promptRequired": "Instructions cannot be empty.",
+    "promptTooLong": "An instruction can be at most 4000 characters.",
+    "invalidPadding": "Padding must be between 0 and 50 pixels."
+  }
+}

@@ -369,6 +369,18 @@ builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminStudentService,
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminDataAccessAuditService, ExamApp.Api.Services.AdminUsers.AdminDataAccessAuditService>();
 // issue #262: rate limit sayacı Redis'te (dağıtık, fail-open); 429'lar da audit tablosuna yazılır.
 builder.Services.AddAdminUserListRateLimiting();
+// İşaretleme ekranı Claude ön-etiketleyicisi (Anthropic:*). Anahtar boşsa uygulama açılır, yalnız AI ucu 503 döner.
+builder.Services.AddOptions<ExamApp.Api.Services.Labeling.LabelingAiOptions>()
+    .BindConfiguration(ExamApp.Api.Services.Labeling.LabelingAiOptions.SectionName)
+    .ValidateDataAnnotations()
+    .Validate(o => o.Models.All(m => !string.IsNullOrWhiteSpace(m.Id) && !string.IsNullOrWhiteSpace(m.DisplayName)
+                                     && m.InputUsdPerMTok >= 0 && m.OutputUsdPerMTok >= 0)
+                   && o.Models.Select(m => m.Id).Distinct().Count() == o.Models.Count
+                   && o.Models.Count(m => m.IsDefault) <= 1,
+        "Anthropic:Models: every model needs a unique Id, a DisplayName and non-negative prices; at most one IsDefault.")
+    .ValidateOnStart();
+builder.Services.AddSingleton<ExamApp.Api.Services.Labeling.IClaudeLabelDetector, ExamApp.Api.Services.Labeling.ClaudeLabelDetector>();
+builder.Services.AddScoped<ExamApp.Api.Services.Labeling.ILabelingService, ExamApp.Api.Services.Labeling.LabelingService>();
 // issue #262: audit saklama süresi (KVKK) — AdminDataAccessLog:RetentionDays (varsayılan 180), günlük Hangfire temizliği.
 builder.Services.AddOptions<ExamApp.Api.Services.AdminUsers.AdminDataAccessLogOptions>()
     .BindConfiguration(ExamApp.Api.Services.AdminUsers.AdminDataAccessLogOptions.SectionName)

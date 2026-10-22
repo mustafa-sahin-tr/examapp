@@ -1,0 +1,72 @@
+using System;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+
+namespace ExamApp.Api.Services.Labeling;
+
+/// <summary>
+/// Claude ön-etiketleyicisinin düzenlenebilir kısmı: iki aşamanın talimatı ve kutu sonrası işleme. Koordinat kuralı ve JSON
+/// şeması <see cref="ClaudeLabelDetector"/>'da sabittir. <see cref="Version"/> 0 = koddaki varsayılanlar (DB'de kayıt yok).
+/// Önbellek anahtarı sürüm numarası değil <see cref="Fingerprint"/>'tir: v0'ın içeriği kod değiştikçe değişir, aynı içerik
+/// farklı sürümlerde tekrar kaydedilebilir.
+/// </summary>
+public sealed record LabelingPromptSettings(
+    int Version,
+    string QuestionInstruction,
+    string OptionInstruction,
+    int QuestionPadding,
+    int OptionPadding,
+    bool ExpandQuestionToOptions)
+{
+    public const int MaxInstructionLength = 4000;
+    public const int MaxPadding = 50;
+
+    /// <summary>
+    /// Kodda sabit kalan ve sonucu etkileyen her şeyin (sistem mesajı, yanıt şeması, kırpma payı, görsel boyutu kuralları)
+    /// revizyonu. Bunlardan biri değişince artırın: eski Claude sonuçları kayıttan dönmez.
+    /// </summary>
+    public const int SchemaRevision = 1;
+
+    /// <summary>Talimatlar + paylar + <see cref="SchemaRevision"/> SHA-256'sı (hex); AI sonuçlarının önbellek anahtarı.</summary>
+    /// Önbelleğe alınmaz: record'un <c>with</c> kopyası alanı da kopyalar ve eski izi taşırdı.
+    public string Fingerprint => ComputeFingerprint();
+
+    public const string DefaultQuestionInstruction =
+        "This image is one test-book page ({width}x{height} px). Find every multiple-choice question. " +
+        "For each question return ONE box that encloses the question stem, any figure or table that belongs to it, " +
+        "and all of its answer options. The question number (for example \"5.\") must stay OUTSIDE the box: the left " +
+        "edge of the box starts at the first letter of the stem text, to the right of the number, and the top edge at " +
+        "the top of the stem's first line. Exclude page headers, footers, section titles and reading passages shared " +
+        "by several questions. Return an empty list if the page has no questions.";
+
+    public const string DefaultOptionInstruction =
+        "This image is a single multiple-choice question cropped from a test page ({width}x{height} px). " +
+        "Find each answer option (usually labeled A), B), C), D), E) or A. B. ...). For each option return one box " +
+        "that encloses the option letter completely (including its left edge and parenthesis) and its whole content " +
+        "(text, formula or picture), with a margin of a few pixels. Ignore the question number and the stem. " +
+        "Return the options in label order.";
+
+    public static LabelingPromptSettings Default { get; } =
+        new(0, DefaultQuestionInstruction, DefaultOptionInstruction, QuestionPadding: 6, OptionPadding: 4,
+            ExpandQuestionToOptions: true);
+
+    /// <summary>İki ayar aynı sonucu üretir mi (sürüm numarası ve kim kaydettiği hariç).</summary>
+    public bool HasSameContent(LabelingPromptSettings other) => Fingerprint == other.Fingerprint;
+
+    private string ComputeFingerprint()
+    {
+        var payload = JsonSerializer.Serialize(new object[]
+        {
+            SchemaRevision, QuestionInstruction, OptionInstruction, QuestionPadding, OptionPadding, ExpandQuestionToOptions,
+        });
+        return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(payload)));
+    }
+
+    /// <summary><c>{width}</c>/<c>{height}</c> → Claude'a gönderilen görselin boyutu (piksel).</summary>
+    public static string Render(string instruction, int width, int height) =>
+        instruction
+            .Replace("{width}", width.ToString(CultureInfo.InvariantCulture))
+            .Replace("{height}", height.ToString(CultureInfo.InvariantCulture));
+}

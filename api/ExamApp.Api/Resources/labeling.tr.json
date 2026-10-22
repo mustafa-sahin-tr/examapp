@@ -1,0 +1,20 @@
+{
+  "labeling": {
+    "invalidImage": "Görsel okunamadı.",
+    "imageTooLarge": "Görsel çok büyük (en fazla 20 MB).",
+    "invalidRegion": "Geçersiz bölge.",
+    "invalidHash": "Geçersiz sayfa kimliği.",
+    "unknownModel": "Bu AI modeli kullanılamıyor.",
+    "invalidBaseSource": "Geçersiz başlangıç kaynağı.",
+    "tooManyBoxes": "Çok fazla kutu gönderildi.",
+    "invalidBox": "Kutu koordinatları geçersiz.",
+    "pageNotFound": "Bu sayfa için kayıt yok.",
+    "aiUnavailable": "Claude ile işaretleme yapılandırılmamış (API anahtarı yok).",
+    "aiFailed": "Claude bu sayfayı işaretleyemedi. Tekrar deneyin ya da başka bir model seçin.",
+    "rateLimited": "Saatlik Claude çağrı sınırına ulaştınız. Biraz sonra tekrar deneyin.",
+    "budgetExceeded": "Günlük Claude harcama sınırına ulaşıldı. Yarın tekrar deneyin ya da Model kaynağını kullanın.",
+    "promptRequired": "Talimatlar boş olamaz.",
+    "promptTooLong": "Talimat en fazla 4000 karakter olabilir.",
+    "invalidPadding": "Pay 0-50 piksel arasında olmalı."
+  }
+}

@@ -169,6 +169,9 @@ public class AppDbContext : DbContext
     public DbSet<LoginEvent> LoginEvents { get; set; }
     public DbSet<AdminDataAccessLog> AdminDataAccessLogs { get; set; } // issue #246
     public DbSet<AdminUserActionLog> AdminUserActionLogs { get; set; } // issue #156
+    public DbSet<LabelingPage> LabelingPages { get; set; }
+    public DbSet<LabelingResult> LabelingResults { get; set; }
+    public DbSet<LabelingPromptVersion> LabelingPromptVersions { get; set; }
 
 
 
@@ -968,6 +971,28 @@ public class AppDbContext : DbContext
             // Set içinde soru tekrarı yok + sıra tekil (DB seviyesinde garanti).
             e.HasIndex(i => new { i.DailyQuestionSetId, i.QuestionId }).IsUnique();
             e.HasIndex(i => new { i.DailyQuestionSetId, i.Order }).IsUnique();
+        });
+
+        // İşaretleme ekranı kaynakları (Model / Claude / Manuel). Sayfa kimliği görsel hash'i; kaynak başına tek satır.
+        // Enum string saklanır: ham SQL'de okunur kalsın, üye sırası değişse de anlam kaymasın.
+        modelBuilder.Entity<LabelingPage>(e =>
+        {
+            e.HasIndex(p => p.ImageSha256).IsUnique();
+        });
+
+        modelBuilder.Entity<LabelingResult>(e =>
+        {
+            e.Property(r => r.Source).HasConversion<string>().HasMaxLength(16);
+            e.Property(r => r.BaseSource).HasConversion<string>().HasMaxLength(16);
+            e.Property(r => r.BoxesJson).HasColumnType("jsonb");
+            e.Property(r => r.EstimatedCostUsd).HasPrecision(12, 6);
+            e.HasOne(r => r.Page).WithMany(p => p.Results).HasForeignKey(r => r.PageId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(r => new { r.PageId, r.Source, r.ModelName }).IsUnique();
+        });
+
+        modelBuilder.Entity<LabelingPromptVersion>(e =>
+        {
+            e.HasIndex(p => p.Version).IsUnique();
         });
 
         // Login event'leri (issue #84). Index'ler ileride admin dashboard'un (issue #6)

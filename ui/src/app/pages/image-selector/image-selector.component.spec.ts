@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { of, Subject } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
@@ -1138,6 +1138,231 @@ describe('ImageSelectorComponent', () => {
 
       expect(el.querySelector('.ms-nav-prev')!.classList).toContain('ms-nav-disabled');
       expect(el.querySelector('.ms-nav-next')!.classList).toContain('ms-nav-disabled');
+    });
+  });
+
+  describe('labeling mode (externalDetection)', () => {
+    const PNG_1X1 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+    function pngFile(): File {
+      const bytes = Uint8Array.from(atob(PNG_1X1), (c) => c.charCodeAt(0));
+      return new File([bytes], 'p.png', { type: 'image/png' });
+    }
+
+    async function waitFor(condition: () => boolean, timeoutMs = 3000): Promise<void> {
+      const start = Date.now();
+      while (!condition()) {
+        if (Date.now() - start > timeoutMs) {
+          throw new Error('waitFor timeout');
+        }
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+    }
+
+    function prediction(x = 10) {
+      return {
+        success: true,
+        predictions: [
+          {
+            class_id: 0,
+            x,
+            y: 10,
+            width: 200,
+            height: 100,
+            subpredictions: [
+              { class_id: 0, x: x + 2, y: 12, width: 20, height: 20, subpredictions: [] },
+              { class_id: 0, x: x + 2, y: 50, width: 20, height: 20, subpredictions: [] },
+            ],
+          },
+        ],
+      };
+    }
+
+    it('loadFile_ExternalDetection_EmitsPageReadyAndDoesNotPredict', async () => {
+      fixture.componentRef.setInput('externalDetection', true);
+      fixture.detectChanges();
+      const predict = spyOn(component, 'predict');
+      const ready: string[] = [];
+      component.pageReady.subscribe((data) => ready.push(data));
+
+      component.loadFile(pngFile());
+      await waitFor(() => ready.length > 0);
+
+      expect(ready[0]).toMatch(/^data:image\/png;base64,/);
+      expect(predict).not.toHaveBeenCalled();
+    });
+
+    it('loadFile_DefaultMode_PredictsAndDoesNotEmitPageReady', async () => {
+      const predict = spyOn(component, 'predict');
+      const ready = spyOn(component.pageReady, 'emit');
+
+      component.loadFile(pngFile());
+      await waitFor(() => predict.calls.count() > 0);
+
+      expect(ready).not.toHaveBeenCalled();
+    });
+
+    it('beginExternalDetection_OpensOverlayAndIssuesIncreasingSequence', () => {
+      component.predictFailed.set(true);
+
+      const first = component.beginExternalDetection();
+      const second = component.beginExternalDetection();
+
+      expect(second).toBeGreaterThan(first);
+      expect(component.inProgress()).toBeTrue();
+      expect(component.predictFailed()).toBeFalse();
+    });
+
+    it('applyExternalPrediction_CurrentSequence_SetsRegionsAndDetectionSource', () => {
+      const seq = component.beginExternalDetection();
+
+      component.applyExternalPrediction(seq, prediction() as any, { kind: 'Ai', modelName: 'claude-a' });
+
+      expect(component.regions().length).toBe(1);
+      expect(component.regions()[0].answers.length).toBe(2);
+      expect(component.detectionSource()).toEqual({ kind: 'Ai', modelName: 'claude-a' });
+      expect(component.inProgress()).toBeFalse();
+    });
+
+    it('applyExternalPrediction_StaleSequence_IgnoredForBoxesAndSource', () => {
+      const stale = component.beginExternalDetection();
+      component.beginExternalDetection();
+
+      component.applyExternalPrediction(stale, prediction() as any, { kind: 'Ai', modelName: 'claude-a' });
+
+      expect(component.regions().length).toBe(0);
+      expect(component.detectionSource()).toBeNull();
+    });
+
+    it('failExternalDetection_CurrentSequence_MarksFailedAndStaleIsIgnored', () => {
+      const stale = component.beginExternalDetection();
+      const current = component.beginExternalDetection();
+
+      component.failExternalDetection(stale);
+      expect(component.inProgress()).toBeTrue();
+      expect(component.predictFailed()).toBeFalse();
+
+      component.failExternalDetection(current);
+      expect(component.inProgress()).toBeFalse();
+      expect(component.predictFailed()).toBeTrue();
+    });
+
+    it('hasUnsavedEdits_FalseAfterApply_TrueOnceBoxesChange', () => {
+      const seq = component.beginExternalDetection();
+      component.applyExternalPrediction(seq, prediction() as any, { kind: 'Model' });
+      expect(component.hasUnsavedEdits()).toBeFalse();
+
+      component.regions.update((rs) => rs.map((r) => ({ ...r, x: r.x + 5 })));
+
+      expect(component.hasUnsavedEdits()).toBeTrue();
+    });
+
+    describe('sendToFix → manual record', () => {
+      beforeEach(() => component.imageData.set('data:image/png;base64,AAAA'));
+
+      function arrangeSend(source: unknown) {
+        component.answerCount.set(2);
+        component.regions.set([region('Soru 1', [answer(10, 10), answer(10, 50)])] as any);
+        component.detectionSource.set(source as any);
+        spyOn(component, 'nextImage');
+        return spyOn(component.questionDetectorService, 'sendtoFix').and.returnValue(
+          of({ success: true, added: 1, imageFile: 'abcdef0123456789' })
+        );
+      }
+
+      it('sendToFix_Success_SavesManualRecordWithAiBaseAndEmitsManualSaved', () => {
+        arrangeSend({ kind: 'Ai', modelName: 'claude-a' });
+        const saveManual = spyOn(component['labelingService'], 'saveManual').and.returnValue(
+          of({ imageSha256: 'f'.repeat(64), width: 1, height: 1, results: [] })
+        );
+        const saved: string[] = [];
+        component.manualSaved.subscribe((data) => saved.push(data));
+
+        component.sendToFix();
+
+        expect(saveManual).toHaveBeenCalledTimes(1);
+        const request = saveManual.calls.mostRecent().args[0];
+        expect(request.imageBase64).toBe('data:image/png;base64,AAAA');
+        expect(request.baseSource).toBe('Ai');
+        expect(request.baseModelName).toBe('claude-a');
+        expect(request.modelSnapshot).toBeNull();
+        expect(request.predictions.predictions.length).toBe(1);
+        expect(request.predictions.predictions[0].class_id).toBe(0);
+        expect(request.predictions.predictions[0].subpredictions.length).toBe(2);
+        expect(component.detectionSource()).toEqual({ kind: 'Manual', base: { source: 'Ai', modelName: 'claude-a', promptVersion: null } });
+        expect(saved).toEqual(['data:image/png;base64,AAAA']);
+      });
+
+      function saveManualSpy() {
+        return spyOn(component['labelingService'], 'saveManual').and.returnValue(
+          of({ imageSha256: 'f'.repeat(64), width: 1, height: 1, results: [] })
+        );
+      }
+
+      it('sendToFix_AiSourceWithPromptVersion_SendsBasePromptVersion', () => {
+        arrangeSend({ kind: 'Ai', modelName: 'claude-a', promptVersion: 4 });
+        const saveManual = saveManualSpy();
+
+        component.sendToFix();
+
+        expect(saveManual.calls.mostRecent().args[0].basePromptVersion).toBe(4);
+      });
+
+      it('sendToFix_ManualFromAiBase_KeepsBasePromptVersionOfOriginalResult', () => {
+        arrangeSend({ kind: 'Manual', base: { source: 'Ai', modelName: 'claude-a', promptVersion: 2 } });
+        const saveManual = saveManualSpy();
+
+        component.sendToFix();
+
+        const request = saveManual.calls.mostRecent().args[0];
+        expect(request.baseSource).toBe('Ai');
+        expect(request.basePromptVersion).toBe(2);
+      });
+
+      it('sendToFix_ModelSourceWithPromptVersion_SendsNullBasePromptVersion', () => {
+        // Sürüm yalnız Claude kaynağına aittir; YOLO kaynağında bir sürüm bilgisi taşınmamalı.
+        arrangeSend({ kind: 'Model', modelName: 'yolo', promptVersion: 9 });
+        const saveManual = saveManualSpy();
+
+        component.sendToFix();
+
+        const request = saveManual.calls.mostRecent().args[0];
+        expect(request.baseSource).toBe('Model');
+        expect(request.basePromptVersion).toBeNull();
+      });
+
+      it('sendToFix_AiSourceWithoutPromptVersion_SendsNullBasePromptVersion', () => {
+        arrangeSend({ kind: 'Ai', modelName: 'claude-a' });
+        const saveManual = saveManualSpy();
+
+        component.sendToFix();
+
+        expect(saveManual.calls.mostRecent().args[0].basePromptVersion).toBeNull();
+      });
+
+      it('sendToFix_ManualFromModelBase_SendsNullBasePromptVersion', () => {
+        arrangeSend({ kind: 'Manual', base: { source: 'Model', modelName: null } });
+        const saveManual = saveManualSpy();
+
+        component.sendToFix();
+
+        expect(saveManual.calls.mostRecent().args[0].basePromptVersion).toBeNull();
+      });
+
+      it('sendToFix_ManualSaveFails_OnlyWarnsAndStillEmitsTrained', () => {
+        arrangeSend({ kind: 'Model' });
+        spyOn(component['labelingService'], 'saveManual').and.returnValue(throwError(() => new Error('down')));
+        const snackBar = spyOn(TestBed.inject(MatSnackBar), 'open');
+        spyOn(console, 'error');
+        const trained: unknown[] = [];
+        component.trained.subscribe((e) => trained.push(e));
+
+        component.sendToFix();
+
+        expect(trained.length).toBe(1);
+        expect(snackBar).toHaveBeenCalled();
+        expect(component.detectionSource()).toEqual({ kind: 'Model' });
+      });
     });
   });
 });

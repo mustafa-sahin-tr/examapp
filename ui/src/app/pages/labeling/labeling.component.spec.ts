@@ -1,13 +1,19 @@
 import { Component, EventEmitter, Input, Output, forwardRef, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
+import { MatButtonToggleChange } from '@angular/material/button-toggle';
+import { MatSelectChange } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 
 import { LabelingComponent } from './labeling.component';
 import { pageIdOf } from './labeling-pool';
+import { LabelingPromptDialogComponent } from './labeling-prompt-dialog/labeling-prompt-dialog.component';
 import { ImageSelectorComponent, TrainedPage } from '../image-selector/image-selector.component';
 import { QuestionDetectorService } from '../../services/question-detector.service';
+import { LabelingService } from '../../services/labeling.service';
+import { DetectionSource, LabelingAiModel, LabelingPage, LabelingPromptState, LabelingResult } from '../../models/labeling';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import labelingTr from '../../../../public/i18n/labeling/tr.json';
 
@@ -21,7 +27,13 @@ import labelingTr from '../../../../public/i18n/labeling/tr.json';
 class ImageSelectorStub {
   @Input() navigationLocked = false;
   @Input() advanceOnTrain = true;
+  @Input() externalDetection = false;
   @Output() trained = new EventEmitter<TrainedPage>();
+  @Output() pageReady = new EventEmitter<string>();
+  @Output() manualSaved = new EventEmitter<string>();
+  readonly detectionSource = signal<DetectionSource | null>(null);
+  /** Kaydedilmemiş elle düzeltme var mı (gerçek bileşende kutular ile son uygulanan tespit farkı). */
+  unsaved = false;
   readonly sendingToFix = signal(false);
   readonly pageLoading = signal(false);
   readonly inProgress = signal(false);
@@ -40,8 +52,18 @@ class ImageSelectorStub {
     this.pageLoadFailed.set(false);
     this.predictFailed.set(false);
     this.regions.set([]);
-    this.imageData.set(`data:image/webp;base64,${file.name}`);
+    const data = `data:image/webp;base64,${btoa(file.name)}`;
+    this.imageData.set(data);
+    if (this.externalDetection) {
+      // Gerçek bileşen: görsel okununca `pageReady` yayılır (tespit üst komponentin kararına kalır).
+      queueMicrotask(() => this.pageReady.emit(data));
+    }
   });
+  private seq = 0;
+  beginExternalDetection = jasmine.createSpy('beginExternalDetection').and.callFake(() => ++this.seq);
+  applyExternalPrediction = jasmine.createSpy('applyExternalPrediction');
+  failExternalDetection = jasmine.createSpy('failExternalDetection');
+  hasUnsavedEdits = jasmine.createSpy('hasUnsavedEdits').and.callFake(() => this.unsaved);
   alignAllAnswers = jasmine.createSpy('alignAllAnswers');
   sendToFix = jasmine.createSpy('sendToFix');
   predict = jasmine.createSpy('predict');
@@ -89,6 +111,7 @@ describe('LabelingComponent', () => {
   let fixture: ComponentFixture<LabelingComponent>;
   let component: LabelingComponent;
   let detector: jasmine.SpyObj<QuestionDetectorService>;
+  let labelingApi: jasmine.SpyObj<LabelingService>;
 
   function selector(): ImageSelectorStub {
     return fixture.debugElement.query((de) => de.componentInstance instanceof ImageSelectorStub)
@@ -102,14 +125,22 @@ describe('LabelingComponent', () => {
     await settle(fixture);
   }
 
-  async function setup(labeledIds: string[] = [], fail = false): Promise<void> {
+  async function setup(labeledIds: string[] = [], fail = false, aiModels: LabelingAiModel[] = []): Promise<void> {
     detector = jasmine.createSpyObj<QuestionDetectorService>('QuestionDetectorService', ['getLabeledPages']);
     detector.getLabeledPages.and.returnValue(
       fail ? throwError(() => new Error('down')) : of({ pageIds: labeledIds })
     );
+    labelingApi = jasmine.createSpyObj<LabelingService>('LabelingService', ['getAiModels', 'getPage', 'aiDetect', 'saveManual']);
+    labelingApi.getAiModels.and.returnValue(of(aiModels));
+    // Varsayılan: sayfanın kaydı yok (404 → null).
+    labelingApi.getPage.and.returnValue(throwError(() => ({ status: 404 })));
     TestBed.configureTestingModule({
       imports: [LabelingComponent, translocoTestingModule({ langs: { 'labeling/tr': labelingTr } })],
-      providers: [provideNoopAnimations(), { provide: QuestionDetectorService, useValue: detector }],
+      providers: [
+        provideNoopAnimations(),
+        { provide: QuestionDetectorService, useValue: detector },
+        { provide: LabelingService, useValue: labelingApi },
+      ],
     });
     TestBed.overrideComponent(LabelingComponent, {
       remove: { imports: [ImageSelectorComponent] },
@@ -121,7 +152,11 @@ describe('LabelingComponent', () => {
     await settle(fixture);
   }
 
-  beforeEach(() => localStorage.removeItem('labeling.answerCount'));
+  beforeEach(() => {
+    localStorage.removeItem('labeling.answerCount');
+    localStorage.removeItem('labeling.source');
+    localStorage.removeItem('labeling.aiModel');
+  });
 
   it('init_LoadsLabeledPagesAndPassesTrainingInputsToSelector', async () => {
     await setup();
@@ -354,6 +389,8 @@ describe('LabelingComponent', () => {
     selector().autoAlign.set(true);
     component.setAnswerCount(3); // effect yeniden çalışır
     fixture.detectChanges();
+    // Sayfa açılışındaki varsayılan YOLO tespiti (predict) sayılmaz; yalnız hizalama sırasında çağrı aranır.
+    selector().predict.calls.reset();
 
     component.align();
 
@@ -423,6 +460,410 @@ describe('LabelingComponent', () => {
       component.toggleInspector();
       fixture.detectChanges();
       expect(inspectorEl()).toBeNull();
+    });
+  });
+
+  describe('kaynak akışı (Manuel / Model / Claude)', () => {
+    const model: LabelingAiModel = {
+      id: 'claude-a',
+      displayName: 'Claude A',
+      inputUsdPerMTok: 3,
+      outputUsdPerMTok: 15,
+      isDefault: true,
+    };
+    const other: LabelingAiModel = { ...model, id: 'claude-b', displayName: 'Claude B', isDefault: false };
+
+    function prediction(x: number) {
+      return { success: true, predictions: [{ class_id: 0, x, y: 2, width: 3, height: 4, subpredictions: [] }] };
+    }
+
+    function manualResult(x: number): LabelingResult {
+      return {
+        source: 'Manual',
+        modelName: '',
+        predictions: prediction(x),
+        baseSource: 'Model',
+        baseModelName: null,
+        inputTokens: null,
+        outputTokens: null,
+        estimatedCostUsd: null,
+        promptVersion: null,
+        createdByName: 'Eğitmen',
+        createdAt: '2026-10-22T00:00:00Z',
+        updatedAt: '2026-10-22T00:00:00Z',
+      };
+    }
+
+    function aiResult(modelName: string): LabelingResult {
+      return { ...manualResult(7), source: 'Ai', modelName, baseSource: null };
+    }
+
+    function pageWith(results: LabelingResult[]): LabelingPage {
+      return { imageSha256: 'f'.repeat(64), width: 100, height: 100, results };
+    }
+
+    function aiResponse(modelName: string, origin: 'live' | 'cached' = 'live') {
+      return { origin, imageSha256: 'f'.repeat(64), result: aiResult(modelName) };
+    }
+
+    /** Snackbar eylemi test tarafından tetiklenir. */
+    function controllableSnackBar(): Subject<void> {
+      const action = new Subject<void>();
+      spyOn(TestBed.inject(MatSnackBar), 'open').and.returnValue({ onAction: () => action.asObservable() } as never);
+      return action;
+    }
+
+    function toggle(value: string, groupValue: string | null): MatButtonToggleChange {
+      return { value, source: { buttonToggleGroup: { value: groupValue } } } as unknown as MatButtonToggleChange;
+    }
+
+    it('onPageReady_ManualRecordExists_AppliesManualAndSkipsYoloAndClaude', async () => {
+      await setup([], false, [model]);
+      labelingApi.getPage.and.returnValue(of(pageWith([manualResult(1)])));
+      labelingApi.aiDetect.and.returnValue(of(aiResponse('claude-a')));
+
+      await pickFolder([image('a.webp')]);
+
+      expect(selector().applyExternalPrediction).toHaveBeenCalledWith(
+        jasmine.any(Number),
+        prediction(1),
+        { kind: 'Manual', base: { source: 'Model', modelName: null, promptVersion: null } }
+      );
+      expect(selector().predict).not.toHaveBeenCalled();
+      expect(labelingApi.aiDetect).not.toHaveBeenCalled();
+    });
+
+    it('onPageReady_NoRecord_PreferredModel_RunsYoloPredict', async () => {
+      await setup([], false, [model]);
+
+      await pickFolder([image('a.webp')]);
+
+      expect(selector().predict).toHaveBeenCalledTimes(1);
+      expect(labelingApi.aiDetect).not.toHaveBeenCalled();
+      expect(selector().applyExternalPrediction).not.toHaveBeenCalled();
+    });
+
+    it('onPageReady_NoRecord_PreferredAi_RunsClaudeWithoutForce', async () => {
+      localStorage.setItem('labeling.source', 'Ai');
+      await setup([], false, [model]);
+      labelingApi.aiDetect.and.returnValue(of(aiResponse('claude-a')));
+
+      await pickFolder([image('a.webp')]);
+
+      expect(labelingApi.aiDetect).toHaveBeenCalledOnceWith(
+        jasmine.objectContaining({ model: 'claude-a', force: false })
+      );
+      expect(selector().applyExternalPrediction).toHaveBeenCalledWith(
+        jasmine.any(Number),
+        prediction(7),
+        { kind: 'Ai', modelName: 'claude-a', promptVersion: null }
+      );
+      expect(selector().predict).not.toHaveBeenCalled();
+    });
+
+    it('onPageReady_PreferredAiFails_ShowsServerMessageAndFallsBackToYolo', async () => {
+      localStorage.setItem('labeling.source', 'Ai');
+      await setup([], false, [model]);
+      labelingApi.aiDetect.and.returnValue(throwError(() => ({ error: { message: 'Claude kullanılamıyor' } })));
+      const snackBar = spyOn(TestBed.inject(MatSnackBar), 'open');
+      spyOn(console, 'error');
+
+      await pickFolder([image('a.webp')]);
+
+      expect(selector().failExternalDetection).toHaveBeenCalled();
+      expect(selector().predict).toHaveBeenCalledTimes(1);
+      expect(snackBar).toHaveBeenCalledWith('Claude kullanılamıyor', jasmine.any(String), jasmine.any(Object));
+    });
+
+    it('onSourceToggle_NoUnsavedEdits_AppliesImmediatelyAndRestoresGroupValue', async () => {
+      await setup([], false, [model]);
+      await pickFolder([image('a.webp')]);
+      selector().detectionSource.set({ kind: 'Manual', base: null });
+      selector().predict.calls.reset();
+
+      const change = toggle('Model', 'Manual');
+      component.onSourceToggle(change);
+
+      expect(selector().predict).toHaveBeenCalledTimes(1);
+      expect(localStorage.getItem('labeling.source')).toBe('Model');
+      // Grup, gösterilen kaynağı yansıtır (seçim onaya bağlı değil).
+      expect(change.source.buttonToggleGroup.value).toBe('Manual');
+    });
+
+    it('onSourceToggle_UnsavedEdits_WaitsForConfirmThenAppliesAndSavesPreference', async () => {
+      await setup([], false, [model]);
+      await pickFolder([image('a.webp')]);
+      selector().detectionSource.set({ kind: 'Model' });
+      selector().unsaved = true;
+      labelingApi.aiDetect.and.returnValue(of(aiResponse('claude-a')));
+      const action = controllableSnackBar();
+
+      component.onSourceToggle(toggle('Ai', 'Model'));
+
+      expect(labelingApi.aiDetect).not.toHaveBeenCalled();
+      expect(localStorage.getItem('labeling.source')).toBeNull();
+
+      action.next();
+      await settle(fixture);
+
+      expect(labelingApi.aiDetect).toHaveBeenCalledTimes(1);
+      expect(localStorage.getItem('labeling.source')).toBe('Ai');
+    });
+
+    it('confirmDiscard_PageChangedBeforeConfirm_ActionIgnored', async () => {
+      await setup([], false, [model]);
+      await pickFolder([image('a.webp'), image('b.webp')]);
+      selector().detectionSource.set({ kind: 'Model' });
+      selector().unsaved = true;
+      labelingApi.aiDetect.and.returnValue(of(aiResponse('claude-a')));
+      const action = controllableSnackBar();
+      const dismiss = spyOn(TestBed.inject(MatSnackBar), 'dismiss');
+      component.onSourceToggle(toggle('Ai', 'Model'));
+
+      component.skip();
+      await settle(fixture);
+      expect(dismiss).toHaveBeenCalled();
+
+      action.next();
+      await settle(fixture);
+
+      expect(labelingApi.aiDetect).not.toHaveBeenCalled();
+      expect(localStorage.getItem('labeling.source')).toBeNull();
+    });
+
+    it('setAiModel_UnsavedEdits_RevertsSelectAndAppliesOnConfirm', async () => {
+      await setup([], false, [model, other]);
+      await pickFolder([image('a.webp')]);
+      selector().detectionSource.set({ kind: 'Ai', modelName: 'claude-a' });
+      selector().unsaved = true;
+      labelingApi.aiDetect.and.returnValue(of(aiResponse('claude-b')));
+      const action = controllableSnackBar();
+      const event = { value: 'claude-b', source: { value: 'claude-a' } } as unknown as MatSelectChange;
+
+      component.setAiModel(event);
+
+      expect(event.source.value).toBe('claude-a');
+      expect(component.aiModelId()).toBe('claude-a');
+      expect(labelingApi.aiDetect).not.toHaveBeenCalled();
+
+      action.next();
+      await settle(fixture);
+
+      expect(component.aiModelId()).toBe('claude-b');
+      expect(labelingApi.aiDetect).toHaveBeenCalledOnceWith(jasmine.objectContaining({ model: 'claude-b', force: false }));
+      expect(localStorage.getItem('labeling.aiModel')).toBe('claude-b');
+    });
+
+    it('setAiModel_NoUnsavedEdits_ReRunsClaudeWhenClaudeShown', async () => {
+      await setup([], false, [model, other]);
+      await pickFolder([image('a.webp')]);
+      selector().detectionSource.set({ kind: 'Ai', modelName: 'claude-a' });
+      labelingApi.aiDetect.and.returnValue(of(aiResponse('claude-b')));
+
+      component.setAiModel({ value: 'claude-b', source: { value: 'claude-a' } } as unknown as MatSelectChange);
+      await settle(fixture);
+
+      expect(component.aiModelId()).toBe('claude-b');
+      expect(labelingApi.aiDetect).toHaveBeenCalledOnceWith(jasmine.objectContaining({ model: 'claude-b', force: false }));
+    });
+
+    it('askClaudeAgain_Confirmed_RunsForcedClaudeCall', async () => {
+      await setup([], false, [model]);
+      await pickFolder([image('a.webp')]);
+      labelingApi.aiDetect.and.returnValue(of(aiResponse('claude-a')));
+      const action = controllableSnackBar();
+
+      component.askClaudeAgain();
+      expect(labelingApi.aiDetect).not.toHaveBeenCalled();
+
+      action.next();
+      await settle(fixture);
+
+      expect(labelingApi.aiDetect).toHaveBeenCalledOnceWith(jasmine.objectContaining({ model: 'claude-a', force: true }));
+    });
+
+    it('askClaudeAgain_PageChangedBeforeConfirm_NoPaidCall', async () => {
+      await setup([], false, [model]);
+      await pickFolder([image('a.webp'), image('b.webp')]);
+      labelingApi.aiDetect.and.returnValue(of(aiResponse('claude-a')));
+      const action = controllableSnackBar();
+
+      component.askClaudeAgain();
+      component.skip();
+      await settle(fixture);
+      action.next();
+      await settle(fixture);
+
+      expect(labelingApi.aiDetect).not.toHaveBeenCalled();
+    });
+
+    it('staleClaudeResponse_AfterPageChange_IsIgnored', async () => {
+      await setup([], false, [model]);
+      await pickFolder([image('a.webp'), image('b.webp')]);
+      const late = new Subject<ReturnType<typeof aiResponse>>();
+      labelingApi.aiDetect.and.returnValue(late.asObservable());
+      const action = controllableSnackBar();
+      component.askClaudeAgain();
+      action.next();
+      await settle(fixture);
+      expect(component.aiBusy()).toBeTrue();
+
+      component.skip();
+      await settle(fixture);
+      late.next(aiResponse('claude-a'));
+      late.complete();
+      await settle(fixture);
+
+      expect(selector().applyExternalPrediction).not.toHaveBeenCalledWith(
+        jasmine.anything(),
+        jasmine.anything(),
+        jasmine.objectContaining({ kind: 'Ai' })
+      );
+      expect(component.aiBusy()).toBeFalse();
+    });
+
+    it('onPageReady_LateRecordAfterPageChange_IsIgnored', async () => {
+      await setup([], false, [model]);
+      const lateA = new Subject<LabelingPage>();
+      const pageB = pageWith([manualResult(2)]);
+      labelingApi.getPage.and.returnValues(lateA.asObservable(), of(pageB));
+
+      await pickFolder([image('a.webp'), image('b.webp')]);
+      component.skip();
+      await settle(fixture);
+      // A'nın kaydı B açıkken geç gelir: uygulanmamalı.
+      lateA.next(pageWith([manualResult(1)]));
+      lateA.complete();
+      await settle(fixture);
+
+      expect(selector().applyExternalPrediction).toHaveBeenCalledTimes(1);
+      expect(selector().applyExternalPrediction).toHaveBeenCalledWith(
+        jasmine.any(Number),
+        prediction(2),
+        jasmine.anything()
+      );
+    });
+
+    it('claudeResult_CarriesPromptVersionIntoDetectionSource', async () => {
+      await setup([], false, [model]);
+      await pickFolder([image('a.webp')]);
+      labelingApi.aiDetect.and.returnValue(of({ ...aiResponse('claude-a'), result: { ...aiResult('claude-a'), promptVersion: 3 } }));
+
+      // Özel yöntem: onay diyaloğu olmadan doğrudan Claude çağrısı (sayfa + model zaten seçili).
+      await component['runClaude'](false, false);
+      await settle(fixture);
+
+      expect(selector().applyExternalPrediction).toHaveBeenCalledWith(
+        jasmine.any(Number),
+        prediction(7),
+        jasmine.objectContaining({ kind: 'Ai', modelName: 'claude-a', promptVersion: 3 })
+      );
+    });
+
+    describe('Claude prompt diyaloğu (openPromptDialog)', () => {
+      const promptState: LabelingPromptState = {
+        active: {
+          version: 2,
+          questionInstruction: 'q {width}x{height}',
+          optionInstruction: 'o {width}x{height}',
+          questionPadding: 6,
+          optionPadding: 4,
+          expandQuestionToOptions: true,
+          createdByName: 'Eğitmen',
+          createdAt: '2026-10-22T00:00:00Z',
+        },
+        defaults: {
+          version: 0,
+          questionInstruction: 'dq',
+          optionInstruction: 'do',
+          questionPadding: 6,
+          optionPadding: 4,
+          expandQuestionToOptions: true,
+          createdByName: null,
+          createdAt: null,
+        },
+        history: [],
+      };
+
+      /** MatDialog.open → afterClosed(result); dönen değer çağrı sayısı için spy olarak tutulur. */
+      function dialogClosesWith(result: LabelingPromptState | undefined) {
+        const dialog = TestBed.inject(MatDialog);
+        return spyOn(dialog, 'open').and.returnValue({ afterClosed: () => of(result) } as never);
+      }
+
+      it('openPromptDialog_OpensDialogWithoutAutoFocus', async () => {
+        await setup([], false, [model]);
+        const open = dialogClosesWith(undefined);
+
+        component.openPromptDialog();
+
+        expect(open).toHaveBeenCalledOnceWith(LabelingPromptDialogComponent, jasmine.objectContaining({ autoFocus: false }));
+      });
+
+      it('openPromptDialog_Cancelled_NoSnackbarAndNoClaudeCall', async () => {
+        await setup([], false, [model]);
+        await pickFolder([image('a.webp')]);
+        selector().detectionSource.set({ kind: 'Ai', modelName: 'claude-a' });
+        dialogClosesWith(undefined);
+        const snackBar = spyOn(TestBed.inject(MatSnackBar), 'open');
+
+        component.openPromptDialog();
+        await settle(fixture);
+
+        expect(snackBar).not.toHaveBeenCalled();
+        expect(labelingApi.aiDetect).not.toHaveBeenCalled();
+      });
+
+      it('openPromptDialog_SavedWithoutClaudeResult_ShowsSnackbarWithoutAction', async () => {
+        await setup([], false, [model]);
+        await pickFolder([image('a.webp')]);
+        selector().detectionSource.set({ kind: 'Manual' });
+        dialogClosesWith(promptState);
+        const snackBar = spyOn(TestBed.inject(MatSnackBar), 'open').and.returnValue({
+          onAction: () => new Subject<void>().asObservable(),
+        } as never);
+
+        component.openPromptDialog();
+        await settle(fixture);
+
+        expect(snackBar).toHaveBeenCalledTimes(1);
+        expect(labelingApi.aiDetect).not.toHaveBeenCalled();
+      });
+
+      it('openPromptDialog_SavedWhileClaudeShown_ActionReAsksClaudeWithoutForce', async () => {
+        await setup([], false, [model]);
+        await pickFolder([image('a.webp')]);
+        selector().detectionSource.set({ kind: 'Ai', modelName: 'claude-a', promptVersion: 1 });
+        labelingApi.aiDetect.and.returnValue(of(aiResponse('claude-a')));
+        dialogClosesWith(promptState);
+        const action = controllableSnackBar();
+
+        component.openPromptDialog();
+        expect(labelingApi.aiDetect).not.toHaveBeenCalled();
+
+        action.next();
+        await settle(fixture);
+
+        // Yeni sürüm ile yeniden soruş: önbellek yok sayılmaz (force=false), yalnız mevcut sayfa için çağrılır.
+        expect(labelingApi.aiDetect).toHaveBeenCalledOnceWith(jasmine.objectContaining({ model: 'claude-a', force: false }));
+      });
+
+      it('openPromptDialog_SavedWhileClaudeShown_PageChangedBeforeAction_NoClaudeCall', async () => {
+        await setup([], false, [model]);
+        await pickFolder([image('a.webp'), image('b.webp')]);
+        selector().detectionSource.set({ kind: 'Ai', modelName: 'claude-a' });
+        labelingApi.aiDetect.and.returnValue(of(aiResponse('claude-a')));
+        dialogClosesWith(promptState);
+        const action = controllableSnackBar();
+
+        component.openPromptDialog();
+        component.skip();
+        await settle(fixture);
+        action.next();
+        await settle(fixture);
+
+        expect(labelingApi.aiDetect).not.toHaveBeenCalled();
+      });
     });
   });
 });

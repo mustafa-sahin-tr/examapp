@@ -33,7 +33,9 @@ public class ParentInvitationServiceTests : IDisposable
     private readonly TestDb _db = TestDb.Create();
     private readonly IParentAccountDirectory _directory = Substitute.For<IParentAccountDirectory>();
     private readonly FixedTimeProvider _time = new(new DateTimeOffset(2026, 10, 15, 9, 0, 0, TimeSpan.Zero));
-    private readonly MemoryCache _cache = new(new MemoryCacheOptions());
+    // Önbellek de sahte saati kullanır: dev aktivasyon linki davetin ExpiresAt'ine (sahte saat + 7 gün) kadar tutulur;
+    // gerçek saatle bu tarih 2026-10-22'den sonra geçmişte kalıyor ve kayıt yazılır yazılmaz düşüyordu.
+    private readonly MemoryCache _cache;
     private readonly ParentRequirementOptions _options = new() { StatusCacheSeconds = 0, ActivationBaseUrl = "http://gw.test" };
     private readonly IHostEnvironment _env = Substitute.For<IHostEnvironment>();
     private readonly ActivationLinkProtector _protector = new(RandomNumberGenerator.GetBytes(32));
@@ -42,6 +44,7 @@ public class ParentInvitationServiceTests : IDisposable
 
     public ParentInvitationServiceTests()
     {
+        _cache = new MemoryCache(new MemoryCacheOptions { Clock = new TimeProviderClock(_time) });
         _env.EnvironmentName.Returns(Environments.Production);
         _directory.LookupAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Lookup(ParentAccountOutcomes.None));
         _directory.CreateAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -782,5 +785,11 @@ public class ParentInvitationServiceTests : IDisposable
         (await StartAsync()).Success.ShouldBeTrue();
         await using (var ctx = _db.NewContext())
             (await Service(ctx).NeedsParentInfoAsync(StudentUser, requiresParent: true)).ShouldBeFalse();
+    }
+
+    /// <summary><see cref="MemoryCache"/> süre hesabını testin sahte saatine bağlar.</summary>
+    private sealed class TimeProviderClock(TimeProvider time) : Microsoft.Extensions.Internal.ISystemClock
+    {
+        public DateTimeOffset UtcNow => time.GetUtcNow();
     }
 }

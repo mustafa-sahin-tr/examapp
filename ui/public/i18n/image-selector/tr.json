@@ -79,6 +79,7 @@
     "dragDropOnly": "Sayfada yalnız sürükle-bırak sorular var; bunlar eğitime gönderilmediği için sayfa gönderilmedi (model bu soruları arka plan olarak öğrenirdi).",
     "questionsAdded": "{{count}} soru eğitime eklendi ({{file}}).",
     "noImage": "Önce bir sayfa yükleyin.",
-    "sendError": "Sayfa eğitime gönderilemedi. Tekrar deneyin."
+    "sendError": "Sayfa eğitime gönderilemedi. Tekrar deneyin.",
+    "manualSaveFailed": "Sayfa eğitime gönderildi ama işaretleme kaydı (Manuel) yazılamadı."
   }
 }

@@ -1,10 +1,11 @@
-import { isLabelingImage, pageIdOf, pickNextUnlabeled, takeRandom, toHex } from './labeling-pool';
-
-/** Sıradaki değerleri sırayla döndüren deterministik rng. */
-function sequenceRng(values: number[]): () => number {
-  let i = 0;
-  return () => values[i++ % values.length];
-}
+import {
+  compareLabelingPaths,
+  isLabelingImage,
+  pageIdOf,
+  pickNextUnlabeled,
+  sortLabelingFiles,
+  toHex,
+} from './labeling-pool';
 
 describe('labeling-pool', () => {
   describe('isLabelingImage', () => {
@@ -27,37 +28,69 @@ describe('labeling-pool', () => {
     });
   });
 
-  describe('takeRandom', () => {
-    it('takeRandom_EmptyPool_Undefined', () => {
-      expect(takeRandom([], () => 0.5)).toBeUndefined();
+  describe('sortLabelingFiles', () => {
+    const file = (path: string) => ({ name: path.split('/').pop()!, webkitRelativePath: path });
+
+    it('sortLabelingFiles_FoldersByNameThenFilesByName', () => {
+      const files = [
+        file('kitap/b/2.webp'),
+        file('kitap/a/2.webp'),
+        file('kitap/b/1.webp'),
+        file('kitap/a/1.webp'),
+      ];
+
+      expect(sortLabelingFiles(files).map((f) => f.webkitRelativePath)).toEqual([
+        'kitap/a/1.webp',
+        'kitap/a/2.webp',
+        'kitap/b/1.webp',
+        'kitap/b/2.webp',
+      ]);
     });
 
-    it('takeRandom_RemovesPickedItemAndKeepsOthers', () => {
-      const pool = ['a', 'b', 'c', 'd'];
+    it('sortLabelingFiles_NumbersInNaturalOrder', () => {
+      const files = [file('k/s10.webp'), file('k/s2.webp'), file('k/s1.webp')];
 
-      const picked = takeRandom(pool, () => 0.3); // floor(0.3 * 4) = 1
-
-      expect(picked).toBe('b');
-      expect(pool.length).toBe(3);
-      expect([...pool].sort()).toEqual(['a', 'c', 'd']);
+      expect(sortLabelingFiles(files).map((f) => f.name)).toEqual(['s1.webp', 's2.webp', 's10.webp']);
     });
 
-    it('takeRandom_DrainsPoolWithoutRepeats', () => {
-      const pool = [1, 2, 3, 4, 5];
-      const seen: number[] = [];
-      const rng = sequenceRng([0.99, 0, 0.5, 0.2, 0.7]);
+    it('sortLabelingFiles_FolderOwnFilesBeforeSubfolders', () => {
+      const files = [file('k/a/x.webp'), file('k/z.webp'), file('k/a/b/y.webp'), file('k/a/c.webp')];
 
-      while (pool.length) {
-        seen.push(takeRandom(pool, rng)!);
-      }
-
-      expect([...seen].sort()).toEqual([1, 2, 3, 4, 5]);
+      expect(sortLabelingFiles(files).map((f) => f.webkitRelativePath)).toEqual([
+        'k/z.webp',
+        'k/a/c.webp',
+        'k/a/x.webp',
+        'k/a/b/y.webp',
+      ]);
     });
 
-    it('takeRandom_RngReturnsOne_ClampsToLastIndex', () => {
-      const pool = ['a', 'b'];
+    it('sortLabelingFiles_EmptyRelativePath_FallsBackToName', () => {
+      const files = [{ name: 'b.webp', webkitRelativePath: '' }, { name: 'a.webp', webkitRelativePath: '' }];
 
-      expect(takeRandom(pool, () => 1)).toBe('b');
+      expect(sortLabelingFiles(files).map((f) => f.name)).toEqual(['a.webp', 'b.webp']);
+    });
+
+    it('sortLabelingFiles_TurkishLettersAndNumericFolders', () => {
+      expect(sortLabelingFiles([file('k/t.webp'), file('k/ş.webp'), file('k/s.webp')]).map((f) => f.name)).toEqual([
+        's.webp',
+        'ş.webp',
+        't.webp',
+      ]);
+      expect(
+        sortLabelingFiles([file('k/10/a.webp'), file('k/2/a.webp')]).map((f) => f.webkitRelativePath)
+      ).toEqual(['k/2/a.webp', 'k/10/a.webp']);
+    });
+
+    it('sortLabelingFiles_CaseOnlyDifference_StableRegardlessOfInputOrder', () => {
+      const upperFirst = sortLabelingFiles([file('k/A.webp'), file('k/a.webp')]).map((f) => f.name);
+      const lowerFirst = sortLabelingFiles([file('k/a.webp'), file('k/A.webp')]).map((f) => f.name);
+
+      expect(upperFirst).toEqual(lowerFirst);
+    });
+
+    it('compareLabelingPaths_CaseInsensitive', () => {
+      expect(compareLabelingPaths('k/A.webp', 'k/a.webp')).toBe(0);
+      expect(compareLabelingPaths('k/b.webp', 'k/A.webp')).toBeGreaterThan(0);
     });
   });
 
@@ -83,13 +116,12 @@ describe('labeling-pool', () => {
         pool,
         labeled: new Set(['id-a', 'id-c']),
         hash: hashByName,
-        rng: () => 0, // ilk indeks: a, sonra (sonuncuyla yer değiştiren) c, sonra b
         onSkipLabeled: (file) => skipped.push(file.name),
       });
 
       expect(result).toEqual({ file: { name: 'b' }, pageId: 'id-b' });
-      expect(skipped).toEqual(['a', 'c']);
-      expect(pool).toEqual([]);
+      expect(skipped).toEqual(['a']);
+      expect(pool).toEqual([{ name: 'c' }]);
     });
 
     it('pickNextUnlabeled_AllLabeled_ReturnsNullAndEmptiesPool', async () => {
@@ -113,7 +145,6 @@ describe('labeling-pool', () => {
         pool,
         labeled: new Set(),
         hash: (file) => (file.name === 'bad' ? Promise.reject(new Error('io')) : hashByName(file)),
-        rng: () => 0,
         onUnreadable: (file) => unreadable.push(file.name),
       });
 

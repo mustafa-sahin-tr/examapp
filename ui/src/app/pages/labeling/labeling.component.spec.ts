@@ -176,15 +176,15 @@ describe('LabelingComponent', () => {
     expect(stub.advanceOnTrain).toBeFalse();
   });
 
-  it('folderPick_KeepsOnlyImagesAndLoadsOneRandomPage', async () => {
+  it('folderPick_KeepsOnlyImagesAndLoadsFirstPageByName', async () => {
     await setup();
     const json = new File(['{}'], 'question-coordinates.json', { type: 'application/json' });
 
-    await pickFolder([image('p1.webp'), image('p2.webp'), json]);
+    await pickFolder([image('p2.webp'), json, image('p1.webp')]);
 
     expect(component.totalImages()).toBe(2);
     expect(selector().loaded.length).toBe(1);
-    expect(component.currentPath()).toMatch(/^kitap\/p[12]\.webp$/);
+    expect(component.currentPath()).toBe('kitap/p1.webp');
     // açık sayfa + arka planda bulunan aday: biri havuzda değil, biri önceden seçilmiş
     expect(component.remaining()).toBe(1);
   });
@@ -300,7 +300,6 @@ describe('LabelingComponent', () => {
     await setup();
     const control = controllableHash(['a2.webp']);
     component.hashFile = control.hash;
-    spyOn(Math, 'random').and.returnValue(0);
     await pickFolder([image('a1.webp'), image('a2.webp')]); // a1 açık, a2'nin hash'i bekliyor
 
     await pickFolder([image('b1.webp')]);
@@ -318,7 +317,6 @@ describe('LabelingComponent', () => {
     await setup();
     const control = controllableHash(['a2.webp', 'a3.webp']);
     component.hashFile = control.hash;
-    spyOn(Math, 'random').and.returnValue(0);
 
     await pickFolder([image('a1.webp'), image('a2.webp'), image('a3.webp')]);
 

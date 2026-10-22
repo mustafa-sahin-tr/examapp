@@ -1,5 +1,5 @@
 /**
- * İşaretleme modu: klasör havuzundan rastgele, daha önce eğitime alınmamış sayfa seçimi.
+ * İşaretleme modu: klasör havuzundan ad sırasıyla, daha önce eğitime alınmamış sayfa seçimi.
  * Saf fonksiyonlar (DOM / Angular yok) — birim testleri doğrudan bunları sınar.
  */
 
@@ -20,20 +20,35 @@ export function isLabelingImage(file: Pick<File, 'name' | 'type'>): boolean {
   return LABELING_IMAGE_EXTENSIONS.includes(file.name.slice(dot + 1).toLowerCase());
 }
 
+const PATH_COLLATOR = new Intl.Collator('tr', { numeric: true, sensitivity: 'base' });
+
 /**
- * Havuzdan rastgele bir öğe çıkarır (yerinde, O(1): seçilen son öğeyle yer değiştirip atılır — sıra önemsiz).
- * Havuz boşsa `undefined`. `rng` [0, 1) döndürmeli.
+ * Klasör seçiminden gelen göreli yolları ad sırasıyla karşılaştırır: önce klasör yolu (parça parça; bir klasörün
+ * kendi görselleri alt klasörlerinden önce), sonra dosya adı. Sayılar doğal sırada (`p2` < `p10`).
  */
-export function takeRandom<T>(pool: T[], rng: () => number = Math.random): T | undefined {
-  if (pool.length === 0) {
-    return undefined;
+export function compareLabelingPaths(a: string, b: string): number {
+  const segA = a.split('/');
+  const segB = b.split('/');
+  const dirA = segA.slice(0, -1);
+  const dirB = segB.slice(0, -1);
+  for (let i = 0; i < Math.min(dirA.length, dirB.length); i++) {
+    const diff = PATH_COLLATOR.compare(dirA[i], dirB[i]);
+    if (diff !== 0) {
+      return diff;
+    }
   }
-  const raw = Math.floor(rng() * pool.length);
-  const index = Math.min(Math.max(raw, 0), pool.length - 1);
-  const picked = pool[index];
-  pool[index] = pool[pool.length - 1];
-  pool.pop();
-  return picked;
+  if (dirA.length !== dirB.length) {
+    return dirA.length - dirB.length;
+  }
+  return PATH_COLLATOR.compare(segA[segA.length - 1], segB[segB.length - 1]);
+}
+
+/** Klasör seçimindeki dosyaları gösterim sırasına dizer (yeni dizi). */
+export function sortLabelingFiles<F extends Pick<File, 'name' | 'webkitRelativePath'>>(files: readonly F[]): F[] {
+  const pathOf = (file: F) => file.webkitRelativePath || file.name;
+  // Yalnız büyük/küçük harf ya da aksanla ayrışan adlarda da sıra sabit kalsın (FileList sırasına bağlı olmasın).
+  const ordinal = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+  return [...files].sort((a, b) => compareLabelingPaths(pathOf(a), pathOf(b)) || ordinal(pathOf(a), pathOf(b)));
 }
 
 export function toHex(buffer: ArrayBuffer): string {
@@ -55,12 +70,11 @@ export interface LabelingCandidate<F> {
 }
 
 export interface PickOptions<F> {
-  /** Kalan (henüz gösterilmemiş) dosyalar; seçilen/atlanan her dosya buradan çıkarılır. */
+  /** Kalan (henüz gösterilmemiş) dosyalar, gösterim sırasıyla; seçilen/atlanan her dosya baştan çıkarılır. */
   pool: F[];
   /** Eğitim veri setinde zaten bulunan sayfa id'leri. */
   labeled: ReadonlySet<string>;
   hash: (file: F) => Promise<string>;
-  rng?: () => number;
   /** Daha önce işaretlenmiş olduğu için atlandı. */
   onSkipLabeled?: (file: F, pageId: string) => void;
   /** Dosya okunamadı (hash alınamadı); havuzdan çıkarılır ve atlanır. */
@@ -70,16 +84,16 @@ export interface PickOptions<F> {
 }
 
 /**
- * Havuzdan, `labeled` kümesinde olmayan rastgele bir sayfa bulana dek çeker. Her deneme havuzu bir
+ * Havuzun başından, `labeled` kümesinde olmayan ilk sayfayı bulana dek çeker. Her deneme havuzu bir
  * küçülttüğü için döngü sınırlıdır (en çok havuz boyu kadar). Havuz biterse ya da iptal edilirse `null`.
  */
 export async function pickNextUnlabeled<F>(options: PickOptions<F>): Promise<LabelingCandidate<F> | null> {
-  const { pool, labeled, hash, rng = Math.random } = options;
+  const { pool, labeled, hash } = options;
   while (pool.length > 0) {
     if (options.isCancelled?.()) {
       return null;
     }
-    const file = takeRandom(pool, rng)!;
+    const file = pool.shift()!;
     let pageId: string;
     try {
       pageId = await hash(file);

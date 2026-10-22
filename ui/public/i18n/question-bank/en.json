@@ -43,7 +43,9 @@
     "noAnswer": "No correct answer",
     "shared": "Shared",
     "select": "Select",
-    "alreadyAdded": "Already in test"
+    "alreadyAdded": "Already in test",
+    "cannotLink": "Can't add",
+    "cannotLinkTooltip": "An older question without a recorded owner; it can't be added to a test. Copy its test to use it."
   },
   "preview": {
     "title": "Question #{{id}}",

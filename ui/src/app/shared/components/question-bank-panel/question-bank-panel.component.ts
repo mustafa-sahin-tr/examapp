@@ -191,12 +191,17 @@ export class QuestionBankPanelComponent {
     return this.disabledSet().has(item.id);
   }
 
+  /** issue #472: seçim modunda teste bağlanamayan soru (başkasının sahipsiz/legacy sorusu; karar sunucuda). */
+  isLinkBlocked(item: QuestionBankItem): boolean {
+    return this.selectable() && !this.isDisabled(item) && item.canLink === false;
+  }
+
   isSelected(item: QuestionBankItem): boolean {
     return this.selectedIds().has(item.id);
   }
 
   toggleSelection(item: QuestionBankItem): void {
-    if (!this.selectable() || this.isDisabled(item)) return;
+    if (!this.selectable() || this.isDisabled(item) || this.isLinkBlocked(item)) return;
     const next = new Set(this.selectedIds());
     if (next.has(item.id)) next.delete(item.id);
     else next.add(item.id);

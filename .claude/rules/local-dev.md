@@ -433,6 +433,15 @@ ister (QuestionTrainer tek başına yetmez); kullanıcı başına saatte 30 kay�
 ikinci kez kaydedilmek istenirse 409 `LabelingPageAlreadyInBank` → UI "Yine de kaydet" (force; sorular ikinci kez oluşur;
 süren kayıt force ile de aşılmaz). Şık kutuları soru kutusuna kırpılır. Pasaj ve kitap adı (`BookName`) bu ekrandan kaydedilmez (açık soru).
 
+**Issue #472 — test ekranında "Bankadan ekle".** Test detayında (`/test/:id`, düzenleyebilen öğretmen/admin) **Bankadan Ekle**
+soru bankası panelini seçim modunda açar; seçilenler `POST /api/exam/questions/test/{testId}/bank-questions` `{questionIds}` (en çok 60)
+ile teste **bağlanır** (kopyalanmaz — test kopyalamayla aynı model; soruyu düzenlemek yine yalnız sahibine/admine açık, puan soruda kalır),
+testin sonuna istek sırasıyla; testte olanlar atlanır ve panelde pasif görünür. Bağlanabilir soru: kendi sorusu ya da görebildiği teste
+bağlı, sahibi damgalı soru (`CanLink`). Başkasının sahipsiz (legacy, `CreateUserId` 0/null) sorusu bağlanamaz — legacy sahiplik "soruyu
+içeren kopya olmayan testin sahibi" kuralıyla türetildiği için bağlamak düzenleme yetkisi verirdi (admin başkasının orijinal testine
+eklerken de). Bir soru bile bağlanamazsa hiçbir şey yazılmaz (404). Test başına advisory lock; kullanıcı başına dakikada 30 istek
+(`RateLimiting:QuestionBankLink`, 429 `questions.bankLink.rateLimited`). Migration yok.
+
 **Issue #469 — Claude soru sınıflandırıcısı.** BadgeService'te `QuestionAnalyzer:Provider` = `Gemini` (varsayılan) |
 `Claude`; geçersiz değer açılışta patlar. Claude seçiliyken (`QuestionAnalyzer__Provider=Claude`) BadgeService
 taksonomiyi exam API `GET /api/questions/classifier-taxonomy`'den (Admin/servis) alır (`Anthropic:TaxonomyCacheSeconds`,

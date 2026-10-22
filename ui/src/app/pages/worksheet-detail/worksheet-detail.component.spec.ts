@@ -23,6 +23,8 @@ import { CommentThreadComponent } from '../../shared/components/comment-thread/c
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 import { StudyLinkSuggestionsComponent } from '../../shared/components/study-link-suggestions/study-link-suggestions.component';
 import { QuestionRegion } from '../../models/draws';
+import { BankQuestionDialogComponent } from './components/bank-question-dialog/bank-question-dialog.component';
+import { LinkBankQuestionsResult } from '../../models/question-bank';
 
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES } from '../../models/locale';
@@ -911,5 +913,137 @@ describe('WorksheetDetailComponent comment threads', () => {
     const { component } = await setup({ role: 'Student', query: { commentId: 'abc', questionId: '34' } });
 
     expect(component['commentLink']()).toBeNull();
+  });
+});
+
+describe('WorksheetDetailComponent add from bank (issue #472)', () => {
+  function setup(options: { canEdit?: boolean; result?: LinkBankQuestionsResult } = {}) {
+    const testService = jasmine.createSpyObj<TestService>('TestService', [
+      'getWorksheetDetail',
+      'get',
+      'getWorksheetAssignmentsForTeacher',
+    ]);
+    testService.getWorksheetDetail.and.callFake((id: number) =>
+      of({
+        worksheet: { id, name: 'Deneme', canEdit: options.canEdit ?? true, canAssign: true, isOwner: true },
+        attempts: [],
+        similarWorksheets: [],
+      } as unknown as WorksheetDetail),
+    );
+    testService.get.and.callFake((id: number) => of({ id, gradeId: 5 } as Test));
+    testService.getWorksheetAssignmentsForTeacher.and.returnValue(NEVER);
+
+    const dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
+    dialog.open.and.returnValue({ afterClosed: () => of(options.result) } as MatDialogRef<unknown>);
+    const snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
+    const router = jasmine.createSpyObj<Router>('Router', ['navigate']);
+    router.navigate.and.returnValue(Promise.resolve(true));
+
+    TestBed.configureTestingModule({
+      imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: TestService, useValue: testService },
+        { provide: Router, useValue: router },
+        { provide: MatSnackBar, useValue: snackBar },
+        {
+          provide: AuthService,
+          useValue: { hasRole: (r: string) => r === 'Teacher', hasRealmRole: () => false, user: signal(null) },
+        },
+        { provide: StudentService, useValue: { getLookup: () => of([]) } },
+        { provide: GradesService, useValue: { getGrades: () => of([]) } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: convertToParamMap({}), data: {} },
+            params: of({}),
+            queryParams: of({}),
+            paramMap: of(convertToParamMap({ testId: '12' })),
+            queryParamMap: of(convertToParamMap({})),
+          },
+        },
+      ],
+    });
+    TestBed.overrideComponent(WorksheetDetailComponent, {
+      add: { providers: [{ provide: MatDialog, useValue: dialog }, { provide: MatSnackBar, useValue: snackBar }] },
+    });
+
+    const fixture = TestBed.createComponent(WorksheetDetailComponent);
+    return { fixture, component: fixture.componentInstance, dialog, snackBar, testService };
+  }
+
+  const settle = () => new Promise<void>((resolve) => setTimeout(resolve));
+
+  it('openBankQuestionDialog_OpensBankDialogWithTestId', async () => {
+    const { component, dialog } = setup();
+    component.ngOnInit();
+    await settle();
+
+    component['openBankQuestionDialog']();
+
+    expect(dialog.open).toHaveBeenCalledTimes(1);
+    expect(dialog.open.calls.mostRecent().args[0]).toBe(BankQuestionDialogComponent);
+    expect((dialog.open.calls.mostRecent().args[1] as { data: { testId: number } }).data).toEqual({ testId: 12 });
+  });
+
+  it('openBankQuestionDialog_AddedQuestions_ShowsCountAndReloadsDetail', async () => {
+    const { component, snackBar, testService } = setup({
+      result: { addedQuestionIds: [4, 5], alreadyInTestQuestionIds: [7] },
+    });
+    component.ngOnInit();
+    await settle();
+    const detailCalls = testService.getWorksheetDetail.calls.count();
+
+    component['openBankQuestionDialog']();
+
+    expect(snackBar.open).toHaveBeenCalledWith('2 soru teste eklendi.', jasmine.any(String), jasmine.any(Object));
+    expect(testService.getWorksheetDetail.calls.count()).toBe(detailCalls + 1);
+  });
+
+  it('openBankQuestionDialog_NothingAdded_ShowsAlreadyInTestAndDoesNotReload', async () => {
+    const { component, snackBar, testService } = setup({
+      result: { addedQuestionIds: [], alreadyInTestQuestionIds: [7] },
+    });
+    component.ngOnInit();
+    await settle();
+    const detailCalls = testService.getWorksheetDetail.calls.count();
+
+    component['openBankQuestionDialog']();
+
+    expect(snackBar.open).toHaveBeenCalledWith(
+      worksheetDetailTr.snackbar.bankAlreadyInTest,
+      jasmine.any(String),
+      jasmine.any(Object),
+    );
+    expect(testService.getWorksheetDetail.calls.count()).toBe(detailCalls);
+  });
+
+  it('openBankQuestionDialog_Cancelled_DoesNothing', async () => {
+    const { component, snackBar, testService } = setup();
+    component.ngOnInit();
+    await settle();
+    const detailCalls = testService.getWorksheetDetail.calls.count();
+
+    component['openBankQuestionDialog']();
+
+    expect(snackBar.open).not.toHaveBeenCalled();
+    expect(testService.getWorksheetDetail.calls.count()).toBe(detailCalls);
+  });
+
+  it('addFromBankButton_RenderedOnlyWhenTeacherCanEdit', async () => {
+    const editable = setup();
+    editable.component.ngOnInit();
+    await settle();
+    editable.fixture.detectChanges();
+    expect(editable.fixture.debugElement.query(By.css('[data-testid="add-from-bank-btn"]'))).not.toBeNull();
+  });
+
+  it('addFromBankButton_HiddenWhenWorksheetIsNotEditable', async () => {
+    const readOnly = setup({ canEdit: false });
+    readOnly.component.ngOnInit();
+    await settle();
+    readOnly.fixture.detectChanges();
+    expect(readOnly.fixture.debugElement.query(By.css('[data-testid="add-from-bank-btn"]'))).toBeNull();
   });
 });

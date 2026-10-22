@@ -44,6 +44,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
 
     private readonly TestDb _db = TestDb.Create();
     private IQuestionQueryService _questionQuery = null!; // StartHostAsync'te atanır (çağrı doğrulaması için)
+    private IQuestionTestLinkService _testLinks = null!;  // issue #472
     private readonly int _worksheet;
     private readonly int _copyWorksheet;
     private readonly int _legacyQuestion;   // CreateUserId=0, W + W2'de
@@ -149,6 +150,11 @@ public class QuestionsControllerAuthorizationTests : IDisposable
             .Returns(new QuestionBankPageDto { Total = 0 });
         _questionQuery = query;
 
+        var testLinks = Substitute.For<IQuestionTestLinkService>();
+        testLinks.LinkAsync(Arg.Any<int>(), Arg.Any<IReadOnlyList<int>>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(new LinkBankQuestionsResultDto());
+        _testLinks = testLinks;
+
         var minio = Substitute.For<IMinIoService>();
         minio.GetFileStreamAsync(Arg.Any<string>()).Returns(_ => Task.FromResult<Stream?>(new MemoryStream(new byte[] { 1 })));
 
@@ -194,6 +200,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
                     services.AddSingleton(questionService);
                     services.AddSingleton(classification);
                     services.AddSingleton(query);
+                    services.AddSingleton(testLinks);
                     services.AddSingleton(minio);
                     services.AddSingleton(classifierCache);
                     services.AddSingleton<ImageHelper>();
@@ -247,6 +254,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         (HttpMethod.Put, $"/api/questions/{_legacyQuestion}/correct-answer", new { correctAnswerId = 1, scale = 1 }),
         (HttpMethod.Put, $"/api/questions/{_legacyQuestion}/classification", new { subjectId = 1 }),
         (HttpMethod.Delete, $"/api/questions/test/{_worksheet}/question/{_legacyQuestion}", null),
+        (HttpMethod.Post, $"/api/questions/test/{_worksheet}/bank-questions", new { questionIds = new[] { _legacyQuestion } }),
     };
 
     [Fact]
@@ -321,6 +329,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
             (HttpMethod.Put, $"/api/questions/{_legacyQuestion}/correct-answer", new { correctAnswerId = 1, scale = 1 }),
             (HttpMethod.Put, $"/api/questions/{_legacyQuestion}/classification", new { subjectId = 1 }),
             (HttpMethod.Delete, $"/api/questions/test/{_worksheet}/question/{_legacyQuestion}", null),
+            (HttpMethod.Post, $"/api/questions/test/{_worksheet}/bank-questions", new { questionIds = new[] { _copierQuestion } }),
             // Owner, Copier'ın kendi sorusunu da değiştiremez.
         };
         foreach (var (method, path, body) in writes)
@@ -492,5 +501,88 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         (await SendAsync(client, Owner, HttpMethod.Get, "/api/questions/bank")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         await _questionQuery.DidNotReceive().SearchBankAsync(
             Arg.Any<QuestionBankQuery>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    // ---------------- issue #472: POST api/questions/test/{testId}/bank-questions ----------------
+
+    [Fact]
+    public async Task LinkBankQuestions_OwnerTeacher_CallsServiceWithTestAndIdsWithoutAdminFlag()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        var response = await SendAsync(client, Owner, HttpMethod.Post, $"/api/questions/test/{_worksheet}/bank-questions",
+            new { questionIds = new[] { _legacyQuestion, 77 } });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        await _testLinks.Received(1).LinkAsync(_worksheet,
+            Arg.Is<IReadOnlyList<int>>(ids => ids.SequenceEqual(new[] { _legacyQuestion, 77 })),
+            OwnerTeacher, false, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task LinkBankQuestions_NonOwnerOfTest_Returns404AndNeverCallsService()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        (await SendAsync(client, Copier, HttpMethod.Post, $"/api/questions/test/{_worksheet}/bank-questions",
+            new { questionIds = new[] { _copierQuestion } })).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await SendAsync(client, Owner, HttpMethod.Post, "/api/questions/test/987654/bank-questions",
+            new { questionIds = new[] { _legacyQuestion } })).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+
+        await _testLinks.DidNotReceive().LinkAsync(Arg.Any<int>(), Arg.Any<IReadOnlyList<int>>(), Arg.Any<int>(),
+            Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task LinkBankQuestions_UnlinkableQuestion_Returns404WithSameBodyAsMissingQuestion()
+    {
+        using var host = await StartHostAsync();
+        _testLinks.LinkAsync(Arg.Any<int>(), Arg.Any<IReadOnlyList<int>>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns((LinkBankQuestionsResultDto?)null);
+        using var client = host.GetTestClient();
+
+        var linkResponse = await SendAsync(client, Owner, HttpMethod.Post, $"/api/questions/test/{_worksheet}/bank-questions",
+            new { questionIds = new[] { _copierQuestion } });
+        var missing = await SendAsync(client, Owner, HttpMethod.Put, "/api/questions/987654/correct-answer",
+            new { correctAnswerId = 1, scale = 1 });
+
+        linkResponse.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await linkResponse.Content.ReadAsStringAsync()).ShouldBe(await missing.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public void LinkBankQuestions_HasPerUserRateLimitPolicy()
+    {
+        // Security review (#472, L2): uç kullanıcı başına sabit pencereyle sınırlanır.
+        var method = typeof(QuestionsController).GetMethod(nameof(QuestionsController.LinkBankQuestions))!;
+        var attribute = method.GetCustomAttributes(typeof(Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute), false)
+            .Cast<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()
+            .ShouldHaveSingleItem();
+        attribute.PolicyName.ShouldBe(QuestionBankLinkRateLimiting.Policy);
+        new QuestionBankLinkRateLimitOptions().PermitLimit.ShouldBe(30);
+    }
+
+    [Fact]
+    public async Task LinkBankQuestions_InvalidBody_Returns400AndNeverCallsService()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        object[] invalid =
+        {
+            new { questionIds = Array.Empty<int>() },
+            new { questionIds = new[] { 0 } },
+            new { questionIds = new[] { 5, -1 } },
+            new { questionIds = Enumerable.Range(1, LinkBankQuestionsRequest.MaxQuestions + 1).ToArray() },
+            new { },
+        };
+        foreach (var body in invalid)
+            (await SendAsync(client, Owner, HttpMethod.Post, $"/api/questions/test/{_worksheet}/bank-questions", body))
+                .StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+
+        await _testLinks.DidNotReceive().LinkAsync(Arg.Any<int>(), Arg.Any<IReadOnlyList<int>>(), Arg.Any<int>(),
+            Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 }

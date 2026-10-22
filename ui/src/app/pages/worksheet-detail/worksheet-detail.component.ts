@@ -51,6 +51,11 @@ import {
   AssignmentPermissionDialogComponent,
   AssignmentPermissionDialogResult,
 } from './components/assignment-permission-dialog/assignment-permission-dialog.component';
+import {
+  BankQuestionDialogComponent,
+  BankQuestionDialogData,
+} from './components/bank-question-dialog/bank-question-dialog.component';
+import { LinkBankQuestionsResult } from '../../models/question-bank';
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 import { QuestionNavigatorComponent } from '../../shared/components/question-navigator/question-navigator.component';
 import { StudyLinkSuggestionsComponent } from '../../shared/components/study-link-suggestions/study-link-suggestions.component';
@@ -490,6 +495,33 @@ export class WorksheetDetailComponent implements OnInit {
             duration: 3000,
           });
         },
+      });
+  }
+
+  /** issue #472: bankadan hazır soru seçip teste bağlar; eklenen varsa detay yeniden yüklenir. */
+  protected openBankQuestionDialog(): void {
+    const testId = this.detail()?.worksheet?.id ?? this.testId;
+    if (!testId) {
+      return;
+    }
+
+    this.dialog
+      .open<BankQuestionDialogComponent, BankQuestionDialogData, LinkBankQuestionsResult | undefined>(
+        BankQuestionDialogComponent,
+        { data: { testId }, width: '1100px', maxWidth: '95vw', autoFocus: false }
+      )
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        if (!result) {
+          return;
+        }
+        const added = result.addedQuestionIds.length;
+        const message = added > 0 ? this.tr('snackbar.bankAdded', { count: added }) : this.tr('snackbar.bankAlreadyInTest');
+        this.snackBar.open(message, this.tr('snackbar.dismiss'), { duration: 3000 });
+        if (added > 0) {
+          this.reloadWorksheet();
+        }
       });
   }
 

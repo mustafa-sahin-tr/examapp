@@ -297,6 +297,7 @@ public class QuestionQueryService : IQuestionQueryService
                 HasCorrectAnswer = q.CorrectAnswerId != null,
                 TestCount = visibleMemberships.Count(tq => tq.QuestionId == q.Id),
                 IsOwn = (userId > 0 && q.CreateUserId == userId) || (hasLegacyOwned && legacyOwnedIds.Contains(q.Id)),
+                CanLink = q.CreateUserId > 0 || (hasLegacyOwned && legacyOwnedIds.Contains(q.Id)),
                 CreateTime = q.CreateTime
             })
             .ToListAsync(ct);

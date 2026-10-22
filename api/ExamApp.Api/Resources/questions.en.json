@@ -15,6 +15,11 @@
       "rateLimited": "Too many searches in a short time. Please wait a moment and try again."
     },
 
+    "bankLink": {
+      "invalidRequest": "Invalid request: select between 1 and {0} questions.",
+      "rateLimited": "Too many add-question requests in a short time. Please wait a moment and try again."
+    },
+
     "bulk": {
       "saveFailed": "The question set could not be saved.",
       "saved": "Questions saved successfully!",

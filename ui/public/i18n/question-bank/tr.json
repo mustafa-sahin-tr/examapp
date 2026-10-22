@@ -43,7 +43,9 @@
     "noAnswer": "Doğru cevap yok",
     "shared": "Paylaşılan",
     "select": "Seç",
-    "alreadyAdded": "Testte var"
+    "alreadyAdded": "Testte var",
+    "cannotLink": "Eklenemez",
+    "cannotLinkTooltip": "Sahibi belli olmayan eski bir soru; teste eklenemez. Testi kopyalayarak kullanabilirsiniz."
   },
   "preview": {
     "title": "Soru #{{id}}",

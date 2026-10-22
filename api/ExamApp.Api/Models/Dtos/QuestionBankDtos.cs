@@ -107,6 +107,12 @@ public class QuestionBankItemDto
     /// <summary>Soru çağıranın mı (UI ipucu — yetki kararı sunucuda).</summary>
     public bool IsOwn { get; set; }
 
+    /// <summary>
+    /// issue #472: "Bankadan ekle" ile teste bağlanabilir mi (UI ipucu — karar sunucuda): kendi sorusu ya da sahibi damgalı
+    /// soru. Başkasının sahipsiz (legacy) sorusu bağlanamaz (bkz. <c>QuestionTestLinkService</c>).
+    /// </summary>
+    public bool CanLink { get; set; }
+
     public DateTime CreateTime { get; set; }
 }
 
@@ -117,4 +123,25 @@ public class QuestionBankPageDto
     public int Total { get; set; }
     public int Skip { get; set; }
     public int Take { get; set; }
+}
+
+/// <summary>issue #472: <c>POST api/questions/test/{testId}/bank-questions</c> — bankadan seçilen soruları teste bağlar.</summary>
+public class LinkBankQuestionsRequest
+{
+    public const int MaxQuestions = 60;
+
+    /// <summary>Bağlanacak soru id'leri; istek sırasıyla testin sonuna eklenir (tekrarlar yok sayılır).</summary>
+    public int[]? QuestionIds { get; set; }
+
+    public bool IsValid() =>
+        QuestionIds is { Length: > 0 and <= MaxQuestions } && QuestionIds.All(id => id > 0);
+}
+
+public class LinkBankQuestionsResultDto
+{
+    /// <summary>Teste yeni bağlanan soru id'leri (eklenme sırasıyla).</summary>
+    public List<int> AddedQuestionIds { get; set; } = new();
+
+    /// <summary>Zaten testte olduğu için atlanan soru id'leri.</summary>
+    public List<int> AlreadyInTestQuestionIds { get; set; } = new();
 }

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Passage, Question } from '../models/question';
+import { LinkBankQuestionsResult } from '../models/question-bank';
 
 @Injectable({
   providedIn: 'root',
@@ -59,6 +60,11 @@ export class QuestionService {
       subTopicId,
       subTopicIds,
     });
+  }
+
+  /** issue #472: bankadan seçilen hazır soruları teste bağlar (testin sonuna; testte olanlar atlanır). */
+  linkBankQuestions(testId: number, questionIds: number[]): Observable<LinkBankQuestionsResult> {
+    return this.http.post<LinkBankQuestionsResult>(`${this.apiUrl}/test/${testId}/bank-questions`, { questionIds });
   }
 
   removeQuestionFromTest(testId: number, questionId: number): Observable<any> {

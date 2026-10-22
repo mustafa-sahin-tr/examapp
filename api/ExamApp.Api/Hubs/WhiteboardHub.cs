@@ -33,6 +33,12 @@ public interface IWhiteboardClient
     /// bağlantısı katılınca <c>true</c>, SON bağlantısı ayrılınca/kopunca/yetkisi düşünce <c>false</c> gönderilir.
     /// </summary>
     Task PeerPresenceChanged(string role, bool online);
+
+    /// <summary>
+    /// issue #311 (L2): bağlantı kabul edilmedi (<see cref="WhiteboardErrorCodes.TooManyConnections"/>) — hemen ardından
+    /// sunucu bağlantıyı kapatır. İstemci otomatik yeniden bağlanmamalı, kodu kullanıcıya göstermeli.
+    /// </summary>
+    Task ConnectionRejected(string code);
 }
 
 /// <summary>
@@ -99,6 +105,9 @@ public sealed partial class WhiteboardHub : Hub<IWhiteboardClient>
         }
         catch (WhiteboardException ex)
         {
+            if (ex.Code == WhiteboardErrorCodes.TooManyOpenBoards)
+                _logger.LogWarning("Whiteboard open board limit reached. BookingId={BookingId}, Limit={Limit}",
+                    bookingId, _options.CurrentValue.MaxOpenBoards);
             throw new HubException(ex.Code);
         }
 
@@ -188,8 +197,37 @@ public sealed partial class WhiteboardHub : Hub<IWhiteboardClient>
         await _closer.NotifyLeftAsync(member);
     }
 
+    /// <summary>
+    /// issue #311 (L2): kullanıcı başına eşzamanlı bağlantı sınırı (<see cref="WhiteboardOptions.MaxConnectionsPerUser"/>).
+    /// Aşan bağlantıya önce <c>ConnectionRejected</c> gönderilir, sonra istisna bağlantıyı kapatır (SignalR mesajı Close
+    /// çerçevesinden önce yazar; bu yolda <see cref="OnDisconnectedAsync"/> çağrılmaz, kayıt da yapılmamıştır).
+    /// Bilinçli tercih: <c>Context.Abort()</c> mesajın gitmesini garanti etmediği için istisna kullanılır; bedeli SignalR'ın
+    /// her ret için yazdığı Error logudur (istemci retten sonra kendiliğinden yeniden bağlanmaz, yalnız betik tekrarlar).
+    /// </summary>
+    public override async Task OnConnectedAsync()
+    {
+        // Sınır kullanıcı (sub) başınadır; sub'sız token'da RateKey bağlantı id'sine düşer ve sınır işlemez → reddet.
+        if (string.IsNullOrEmpty(Context.UserIdentifier))
+        {
+            _logger.LogWarning("Whiteboard connection rejected: token has no subject.");
+            throw new HubException(WhiteboardErrorCodes.UserNotResolved);
+        }
+
+        if (!_store.TryRegisterConnection(Context.UserIdentifier, Context.ConnectionId))
+        {
+            _logger.LogInformation("Whiteboard connection rejected: per-user connection limit {Limit} reached.",
+                _options.CurrentValue.MaxConnectionsPerUser);
+            await Clients.Caller.ConnectionRejected(WhiteboardErrorCodes.TooManyConnections);
+            throw new HubException(WhiteboardErrorCodes.TooManyConnections);
+        }
+
+        await base.OnConnectedAsync();
+    }
+
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
+        _store.UnregisterConnection(Context.ConnectionId);
+
         // SignalR bağlantı kopunca grup üyeliğini kendisi temizler; sahne korunur.
         if (_store.Leave(Context.ConnectionId) is { } member)
             await _closer.NotifyLeftAsync(member);

@@ -47,6 +47,8 @@
     "ImagesNotSupported": "Images are not supported on the whiteboard.",
     "InvalidPointer": "The pointer position could not be sent.",
     "RateLimited": "Too many requests; retrying.",
+    "TooManyConnections": "The whiteboard is open in too many tabs or devices. Close one and try again.",
+    "TooManyOpenBoards": "Too many whiteboards are open right now; please try again shortly.",
     "generic": "Could not connect to the whiteboard."
   },
   "warnings": {

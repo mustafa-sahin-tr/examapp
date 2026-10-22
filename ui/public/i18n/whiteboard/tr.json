@@ -47,6 +47,8 @@
     "ImagesNotSupported": "Tahtada görsel desteklenmiyor.",
     "InvalidPointer": "İmleç konumu gönderilemedi.",
     "RateLimited": "Çok hızlı istek gönderildi; tekrar deneniyor.",
+    "TooManyConnections": "Tahta başka sekme veya cihazlarda çok fazla açık. Birini kapatıp tekrar deneyin.",
+    "TooManyOpenBoards": "Şu anda çok fazla açık tahta var; biraz sonra tekrar deneyin.",
     "generic": "Tahtaya bağlanılamadı."
   },
   "warnings": {

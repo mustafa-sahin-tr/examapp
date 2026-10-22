@@ -33,7 +33,8 @@ public class WhiteboardHubTests
             .Returns(Access(BookingId, closesAt: Now.AddHours(1)));
     }
 
-    private WhiteboardHub NewHub(string connectionId = "conn-1", string sub = "kc-teacher")
+    private WhiteboardHub NewHub(string connectionId = "conn-1", string sub = "kc-teacher", WhiteboardStore? store = null,
+        Action<WhiteboardOptions>? configure = null)
     {
         var context = Substitute.For<HubCallerContext>();
         context.ConnectionId.Returns(connectionId);
@@ -41,7 +42,7 @@ public class WhiteboardHubTests
         context.User.Returns(new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, sub)], "test")));
         context.ConnectionAborted.Returns(CancellationToken.None);
 
-        return new WhiteboardHub(_store, _access, _closer, Options(), _clock, NullLogger<WhiteboardHub>.Instance)
+        return new WhiteboardHub(store ?? _store, _access, _closer, Options(configure), _clock, NullLogger<WhiteboardHub>.Instance)
         {
             Context = context,
             Clients = _clients,
@@ -345,5 +346,53 @@ public class WhiteboardHubTests
         ex.Message.ShouldBe(WhiteboardErrorCodes.UserNotResolved);
         await _closer.Received(1).RevokeConnectionAsync(Arg.Is<WhiteboardMember>(m => m.ConnectionId == "conn-1"), Arg.Any<CancellationToken>());
         await _closer.DidNotReceiveWithAnyArgs().CloseAsync(default, default!, default);
+    }
+
+    // ---- issue #311: kullanıcı başına bağlantı sınırı ----
+
+    [Fact]
+    public async Task OnConnected_over_the_per_user_limit_sends_ConnectionRejected_and_throws()
+    {
+        var caller = Substitute.For<IWhiteboardClient>();
+        _clients.Caller.Returns(caller);
+        for (var i = 1; i <= 3; i++)
+            await NewHub($"conn-{i}").OnConnectedAsync();
+
+        var ex = await Should.ThrowAsync<HubException>(() => NewHub("conn-4").OnConnectedAsync());
+
+        ex.Message.ShouldBe(WhiteboardErrorCodes.TooManyConnections);
+        await caller.Received(1).ConnectionRejected(WhiteboardErrorCodes.TooManyConnections);
+        _store.ConnectionCount("kc-teacher").ShouldBe(3);
+
+        // Başka kullanıcı etkilenmez; bir bağlantı kopunca yer açılır.
+        await NewHub("conn-s", "kc-student").OnConnectedAsync();
+        await NewHub("conn-2").OnDisconnectedAsync(null);
+        await NewHub("conn-5").OnConnectedAsync();
+        await caller.Received(1).ConnectionRejected(Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task JoinBoard_when_open_board_limit_is_reached_throws_TooManyOpenBoards()
+    {
+        var store = new WhiteboardStore(Options(o => o.MaxOpenBoards = 1));
+        store.Join("other", Access(99)); // üyeli tahta: boşaltılamaz
+
+        var ex = await Should.ThrowAsync<HubException>(
+            () => NewHub(store: store, configure: o => o.MaxOpenBoards = 1).JoinBoard(BookingId));
+
+        ex.Message.ShouldBe(WhiteboardErrorCodes.TooManyOpenBoards);
+        await _groups.DidNotReceiveWithAnyArgs().AddToGroupAsync(default!, default!);
+    }
+
+    [Fact]
+    public async Task OnConnected_without_subject_is_rejected_and_not_registered()
+    {
+        var hub = NewHub("conn-x");
+        hub.Context.UserIdentifier.Returns((string?)null);
+
+        var ex = await Should.ThrowAsync<HubException>(() => hub.OnConnectedAsync());
+
+        ex.Message.ShouldBe(WhiteboardErrorCodes.UserNotResolved);
+        _store.ConnectionCount("conn-x").ShouldBe(0);
     }
 }

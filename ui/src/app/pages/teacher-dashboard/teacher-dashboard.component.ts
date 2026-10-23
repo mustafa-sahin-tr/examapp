@@ -2,14 +2,17 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { finalize, take } from 'rxjs';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 import { TeacherService } from '../../services/teacher.service';
 import {
+  LaggingGradeOption,
   TeacherDashboardSummary,
   TeacherActiveStudent,
   TeacherLaggingStudent,
@@ -52,7 +55,7 @@ const COMPLETION_SUCCESS_THRESHOLD = 50;
  * Öğretmen dashboard'u.
  * - Issue #53: özet kartları.
  * - Issue #54: "Sınavlarım" tablosu (mobilde kart listesi).
- * - Issue #55: "Geride Kalan Öğrenciler" tablosu (etiketli).
+ * - Issue #55: "Geride Kalan Öğrenciler" tablosu (etiketli); #57: sınıf filtresi.
  * - Issue #56: "Benim Aktivitem" / "Öğrenci Aktivitesi" kartları + "En Aktif Öğrenciler" tablosu.
  *
  * Çeviriler kendi Transloco scope'unda: `public/i18n/teacher-dashboard/<lang>.json` (issue #183).
@@ -65,8 +68,10 @@ const TEACHER_DASHBOARD_SCOPE = 'teacher-dashboard';
   imports: [
     DecimalPipe,
     MatButtonModule,
+    MatFormFieldModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    MatSelectModule,
     MatTableModule,
     SectionHeaderComponent,
     TranslocoDirective,
@@ -117,6 +122,34 @@ export class TeacherDashboardComponent implements OnInit {
   readonly laggingStudentsError = signal<string | null>(null);
   readonly laggingStudents = signal<TeacherLaggingStudent[]>([]);
   readonly laggingStudentsEmpty = computed(() => this.laggingStudents().length === 0);
+
+  /**
+   * Issue #57: sınıf filtresi (öğrencinin sınıfı). Liste zaten öğretmenin tüm kapsamını taşıdığı için
+   * filtre istemcide uygulanır; seçenekler yalnız listede gerçekten bulunan sınıflardan türetilir.
+   * null = "Tüm sınıflar".
+   */
+  readonly selectedLaggingGradeId = signal<number | null>(null);
+
+  readonly laggingGradeOptions = computed<LaggingGradeOption[]>(() => {
+    const byId = new Map<number, string>();
+    for (const row of this.laggingStudents()) {
+      if (row.gradeId != null && !byId.has(row.gradeId)) {
+        byId.set(row.gradeId, row.gradeName ?? String(row.gradeId));
+      }
+    }
+    return [...byId]
+      .map(([gradeId, gradeName]) => ({ gradeId, gradeName }))
+      .sort((a, b) => a.gradeName.localeCompare(b.gradeName, this.localeService.locale(), { numeric: true }));
+  });
+
+  /** Tek sınıf (ya da hiç sınıf) varsa filtre anlamsız; gizlenir. */
+  readonly showLaggingGradeFilter = computed(() => this.laggingGradeOptions().length > 1);
+
+  readonly filteredLaggingStudents = computed(() => {
+    const gradeId = this.selectedLaggingGradeId();
+    const rows = this.laggingStudents();
+    return gradeId == null ? rows : rows.filter((row) => row.gradeId === gradeId);
+  });
 
   readonly laggingDisplayedColumns: readonly string[] = ['studentName', 'worksheetName', 'flags'];
 
@@ -253,9 +286,17 @@ export class TeacherDashboardComponent implements OnInit {
       .getLaggingStudents()
       .pipe(finalize(() => this.laggingStudentsLoading.set(false)))
       .subscribe({
-        next: (rows) => this.laggingStudents.set(rows),
+        next: (rows) => {
+          this.laggingStudents.set(rows);
+          // Yeniden yüklemede seçili sınıf listeden çıktıysa "Tüm sınıflar"a dön.
+          const selected = this.selectedLaggingGradeId();
+          if (selected != null && !rows.some((row) => row.gradeId === selected)) {
+            this.selectedLaggingGradeId.set(null);
+          }
+        },
         error: () => {
           this.laggingStudents.set([]);
+          this.selectedLaggingGradeId.set(null);
           this.laggingStudentsError.set(this.text('lagging.error'));
         },
       });

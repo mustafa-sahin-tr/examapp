@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter, Router } from '@angular/router';
 import { NEVER, of, throwError } from 'rxjs';
 
@@ -45,6 +46,8 @@ describe('TeacherDashboardComponent', () => {
       completionPercentage: 0,
       isLowCompletion: true,
       isExpired: false,
+      gradeId: null,
+      gradeName: null,
     },
     {
       studentId: 2,
@@ -54,6 +57,8 @@ describe('TeacherDashboardComponent', () => {
       completionPercentage: 0,
       isLowCompletion: true,
       isExpired: true,
+      gradeId: null,
+      gradeName: null,
     },
   ];
 
@@ -96,6 +101,7 @@ describe('TeacherDashboardComponent', () => {
         { provide: TeacherService, useValue: teacherService },
         { provide: LocaleService, useValue: localeServiceStub },
         provideRouter([]),
+        provideNoopAnimations(), // #57: mat-form-field/mat-select
       ],
     });
 
@@ -230,6 +236,114 @@ describe('TeacherDashboardComponent', () => {
     expect(chips.length).toBe(1);
     expect(chips[0].classList.contains('is-warning')).toBeTrue();
     expect(chips[0].classList.contains('is-danger')).toBeFalse();
+  });
+
+  // ── Issue #57: Geride Kalan Öğrenciler — sınıf filtresi ─────────────────
+
+  const row = (studentId: number, gradeId: number | null, gradeName: string | null): TeacherLaggingStudent => ({
+    studentId,
+    studentName: `Öğrenci ${studentId}`,
+    worksheetId: 1,
+    worksheetName: 'WS 1',
+    completionPercentage: 0,
+    isLowCompletion: true,
+    isExpired: false,
+    gradeId,
+    gradeName,
+  });
+
+  const multiGradeRows: TeacherLaggingStudent[] = [
+    row(1, 10, '8. Sınıf'),
+    row(2, 9, '7. Sınıf'),
+    row(3, 10, '8. Sınıf'),
+    row(4, null, null),
+  ];
+
+  function gradeFilter(): HTMLElement | null {
+    return fixture.nativeElement.querySelector('[data-testid="lagging-grade-filter"]');
+  }
+
+  function renderedStudentNames(): string[] {
+    return Array.from(fixture.nativeElement.querySelectorAll('.lagging-table__student') as NodeListOf<HTMLElement>).map(
+      (el) => el.textContent?.trim() ?? '',
+    );
+  }
+
+  it('laggingGradeFilter_MultipleGrades_ShowsFilterWithDistinctSortedGradesFromList', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    teacherService.getLaggingStudents.and.returnValue(of(multiGradeRows));
+
+    fixture.detectChanges();
+
+    expect(component.showLaggingGradeFilter()).toBeTrue();
+    expect(gradeFilter()).not.toBeNull();
+    expect(component.laggingGradeOptions()).toEqual([
+      { gradeId: 9, gradeName: '7. Sınıf' },
+      { gradeId: 10, gradeName: '8. Sınıf' },
+    ]);
+  });
+
+  it('laggingGradeFilter_NoSelection_ShowsAllRows', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    teacherService.getLaggingStudents.and.returnValue(of(multiGradeRows));
+
+    fixture.detectChanges();
+
+    expect(component.selectedLaggingGradeId()).toBeNull();
+    expect(renderedStudentNames().length).toBe(4);
+  });
+
+  it('laggingGradeFilter_GradeSelected_ShowsOnlyThatGradesRows', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    teacherService.getLaggingStudents.and.returnValue(of(multiGradeRows));
+    fixture.detectChanges();
+
+    component.selectedLaggingGradeId.set(10);
+    fixture.detectChanges();
+
+    expect(renderedStudentNames()).toEqual(['Öğrenci 1', 'Öğrenci 3']);
+    expect(teacherService.getLaggingStudents).toHaveBeenCalledTimes(1); // istemci tarafı filtre, yeni istek yok
+  });
+
+  it('laggingGradeFilter_SingleGrade_IsHidden', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    teacherService.getLaggingStudents.and.returnValue(of([row(1, 10, '8. Sınıf'), row(2, 10, '8. Sınıf'), row(3, null, null)]));
+
+    fixture.detectChanges();
+
+    expect(component.showLaggingGradeFilter()).toBeFalse();
+    expect(gradeFilter()).toBeNull();
+    expect(renderedStudentNames().length).toBe(3);
+  });
+
+  it('laggingGradeFilter_SelectedGradeHasNoRows_ShowsGradeEmptyState', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    teacherService.getLaggingStudents.and.returnValue(of(multiGradeRows));
+    fixture.detectChanges();
+
+    component.selectedLaggingGradeId.set(999);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.lagging-table')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain(teacherDashboardTr.lagging.gradeFilter.empty);
+  });
+
+  it('loadLaggingStudents_SelectedGradeNoLongerInList_ResetsToAllGrades', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    teacherService.getLaggingStudents.and.returnValue(of(multiGradeRows));
+    fixture.detectChanges();
+    component.selectedLaggingGradeId.set(9);
+
+    teacherService.getLaggingStudents.and.returnValue(of([row(1, 10, '8. Sınıf')]));
+    component.loadLaggingStudents();
+
+    expect(component.selectedLaggingGradeId()).toBeNull();
   });
 
   // ── Issue #56: aktivite kartları + En Aktif Öğrenciler ────────────────────

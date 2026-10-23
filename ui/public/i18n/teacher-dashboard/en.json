@@ -35,6 +35,11 @@
     "flags": {
       "lowCompletion": "Low Completion",
       "expired": "Overdue"
+    },
+    "gradeFilter": {
+      "label": "Class",
+      "all": "All classes",
+      "empty": "No students are falling behind in this class."
     }
   },
   "activity": {

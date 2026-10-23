@@ -277,6 +277,17 @@
 }
 
 // ── Issue #55: Geride Kalan Öğrenciler — tablo (dar ekranda yatay kaydırma) ─
+// Issue #57: sınıf filtresi
+.lagging-filter {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+
+  &__field {
+    min-width: 200px;
+  }
+}
+
 .lagging-table-wrapper {
   overflow-x: auto;
   border: 1px solid var(--ms-border);

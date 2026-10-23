@@ -35,6 +35,11 @@
     "flags": {
       "lowCompletion": "Düşük Tamamlama",
       "expired": "Süresi Geçti"
+    },
+    "gradeFilter": {
+      "label": "Sınıf",
+      "all": "Tüm sınıflar",
+      "empty": "Bu sınıfta geride kalan öğrenci yok."
     }
   },
   "activity": {

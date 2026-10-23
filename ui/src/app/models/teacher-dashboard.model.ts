@@ -44,6 +44,16 @@ export interface TeacherLaggingStudent {
   isLowCompletion: boolean;
   /** Atamanın bitiş tarihi geçmiş ve tamamlanmamış. */
   isExpired: boolean;
+  /** Issue #57: öğrencinin sınıfı (Student.GradeId); sınıfı yoksa null. */
+  gradeId: number | null;
+  /** Issue #57: öğrencinin sınıf adı; sınıfı yoksa null. */
+  gradeName: string | null;
+}
+
+/** Issue #57: "Geride Kalan Öğrenciler" sınıf filtresinin bir seçeneği (listede bulunan sınıflardan türetilir). */
+export interface LaggingGradeOption {
+  gradeId: number;
+  gradeName: string;
 }
 
 /**

@@ -241,14 +241,16 @@ namespace ExamApp.Api.Controllers
         /// Issue #55: öğretmen dashboard "Geride Kalan Öğrenciler" listesi.
         /// Sadece authenticated öğretmenin sahip olduğu worksheet'lerdeki, en az bir bayrağı
         /// (IsLowCompletion / IsExpired) true olan öğrenci-worksheet çiftleri döner; boşsa [].
+        /// Issue #57: opsiyonel <paramref name="gradeId"/> öğrencinin sınıfına göre filtreler; yoksa tüm sınıflar.
         /// </summary>
         [Authorize(Roles = "Teacher")]
         [HttpGet("lagging-students")]
         [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
-        public async Task<ActionResult<List<TeacherLaggingStudentDto>>> GetLaggingStudents(CancellationToken ct)
+        public async Task<ActionResult<List<TeacherLaggingStudentDto>>> GetLaggingStudents(
+            [FromQuery] int? gradeId, CancellationToken ct)
         {
             var scope = await GetSchoolScopeAsync(ct);
-            var lagging = await _teacherService.GetLaggingStudentsAsync(scope, ct);
+            var lagging = await _teacherService.GetLaggingStudentsAsync(scope, gradeId, ct);
             return Ok(lagging);
         }
 

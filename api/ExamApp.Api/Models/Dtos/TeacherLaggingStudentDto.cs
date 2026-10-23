@@ -35,4 +35,10 @@ public class TeacherLaggingStudentDto
     /// İlgili atamanın EndAt'i dolu ve geçmiş VE öğrenci o atamada tamamlamamış.
     /// </summary>
     public bool IsExpired { get; set; }
+
+    /// <summary>Issue #57: öğrencinin sınıfı (<c>Student.GradeId</c>); sınıfı yoksa null.</summary>
+    public int? GradeId { get; set; }
+
+    /// <summary>Issue #57: öğrencinin sınıf adı; sınıfı yoksa null.</summary>
+    public string? GradeName { get; set; }
 }

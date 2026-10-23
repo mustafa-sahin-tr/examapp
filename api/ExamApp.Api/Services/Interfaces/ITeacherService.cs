@@ -31,8 +31,10 @@ public interface ITeacherService
     /// <summary>
     /// Issue #55: öğretmenin sahip olduğu worksheet'lerde geride kalan (düşük tamamlama ve/veya
     /// süresi geçmiş) öğrenci-worksheet çiftleri. Sadece en az bir bayrağı true olan satırlar döner; boşsa [].
+    /// Issue #57: <paramref name="gradeId"/> verilirse yalnız o sınıftaki (<c>Student.GradeId</c>) öğrenciler döner;
+    /// null ise filtre yok (önceki davranış).
     /// </summary>
-    Task<List<TeacherLaggingStudentDto>> GetLaggingStudentsAsync(SchoolScope requester, CancellationToken ct = default);
+    Task<List<TeacherLaggingStudentDto>> GetLaggingStudentsAsync(SchoolScope requester, int? gradeId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Issue #56: "Benim Aktivitem" — son <paramref name="days"/> günde oluşturulan worksheet/atama sayısı ve

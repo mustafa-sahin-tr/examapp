@@ -197,6 +197,8 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:5079
+      # Issue #333: görüşme sunucusu — UI CSP'si (angular-app CSP_JITSI_ORIGIN) ile aynı değişkenden.
+      Video__Jitsi__PublicBaseUrl: ${JITSI_PUBLIC_URL:-}
       # Issue #440 (security re-review r3 M1): anonim veli aktivasyonu rate limit'i X-Forwarded-For'a yalnız sabit IP'li gateway'den gelen
       # istekte güvenir; Production'da boş/çözülemeyen değer açılışta durdurur. ocelot-gateway'in ipv4_address'i ve exam-net subnet'iyle eşli.
       ForwardedHeaders__KnownProxies__0: 172.30.0.10
@@ -469,6 +471,9 @@ services:
         APP_DIR: ui
     container_name: angular-app
     restart: unless-stopped
+    environment:
+      # Issue #333: CSP script-src/frame-src'e eklenen görüşme sunucusu origin'i (Jitsi external_api.js + iframe).
+      CSP_JITSI_ORIGIN: ${JITSI_PUBLIC_URL:-}
     networks:
       - exam-net
 

@@ -32,8 +32,16 @@ RUN set -eu; \
 
 FROM nginx:1.27-alpine AS runtime
 
-# Serve on port 4200 to match existing Ocelot routes
-COPY deploy/nginx/angular-spa.conf /etc/nginx/conf.d/default.conf
+# Serve on port 4200 to match existing Ocelot routes.
+# Issue #333: şablon — nginx imajının giriş betiği /etc/nginx/templates/*.template dosyalarını envsubst ile (yalnız tanımlı
+# ortam değişkenleri) /etc/nginx/conf.d/'ye yazar. CSP_JITSI_ORIGIN: ui için görüşme sunucusu origin'i (ör.
+# https://meet.hedefokul.com), auth-ui için boş.
+# Not: /etc/nginx/conf.d yazılabilir olmalı (readOnlyRootFilesystem/non-root sertleştirmesinde emptyDir bağlayın);
+# aksi halde envsubst adımı atlanır ve stok default.conf silindiği için server bloğu olmadan açılır.
+ENV CSP_JITSI_ORIGIN=""
+RUN rm -f /etc/nginx/conf.d/default.conf
+COPY deploy/nginx/angular-spa.conf.template /etc/nginx/templates/default.conf.template
+COPY --chmod=755 deploy/nginx/15-validate-csp-env.sh /docker-entrypoint.d/15-validate-csp-env.sh
 
 # Copy normalized build output (overwrites default nginx index.html)
 COPY --from=build /app/out/ /usr/share/nginx/html/

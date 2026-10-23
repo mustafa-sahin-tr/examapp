@@ -90,7 +90,15 @@
                   "maximumError": "6MB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "optimization": {
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": false
+                },
+                "fonts": true
+              }
             },
             "development": {
               "optimization": false,
@@ -102,6 +110,14 @@
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "headers": {
+              "Content-Security-Policy": "frame-ancestors 'self'",
+              "X-Frame-Options": "SAMEORIGIN",
+              "X-Content-Type-Options": "nosniff",
+              "Content-Security-Policy-Report-Only": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' http://localhost:8000; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' ws://localhost:*; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com http://localhost:8000; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+            }
+          },
           "configurations": {
             "production": {
               "buildTarget": "exam-app:build:production"

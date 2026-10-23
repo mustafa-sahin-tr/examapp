@@ -1,0 +1,42 @@
+# PR açılınca (veya draft'tan çıkınca) GitHub auto-merge'ü açar: master ruleset'teki
+# zorunlu check'ler (dotnet-unit, integration, ui-tests, auth-ui-tests, scan) yeşil olunca
+# ve açık review thread'i kalmayınca GitHub PR'ı merge commit ile kendisi birleştirir.
+# Check kırmızıysa merge olmaz; düzeltme push'u yeşile dönerse yine otomatik birleşir.
+# İstisna: `no-auto-merge` etiketi (sonradan eklenirse auto-merge kapatılır) ve fork PR'ları.
+name: auto-merge
+
+on:
+  pull_request:
+    branches: [master]
+    types: [opened, reopened, ready_for_review, labeled, unlabeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  enable:
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable auto-merge
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-auto-merge') }}
+        run: gh pr merge "$PR" --auto --merge --repo "$REPO"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+
+      - name: Disable auto-merge (no-auto-merge label)
+        if: ${{ contains(github.event.pull_request.labels.*.name, 'no-auto-merge') }}
+        run: gh pr merge "$PR" --disable-auto --repo "$REPO" || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}

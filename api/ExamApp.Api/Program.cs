@@ -254,6 +254,11 @@ builder.Services.AddOptions<ExamApp.Api.Models.Dtos.DirectMessages.DirectMessagi
 builder.Services.AddScoped<ExamApp.Api.Services.DirectMessages.IDirectMessagePolicy, ExamApp.Api.Services.DirectMessages.DirectMessagePolicy>();
 builder.Services.AddScoped<ExamApp.Api.Services.DirectMessages.IDirectMessageService, ExamApp.Api.Services.DirectMessages.DirectMessageService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Bookings.IBookingService, ExamApp.Api.Services.Bookings.BookingService>();
+// issue #315: iptal / erteleme / no-show kuralları ("BookingPolicy" bölümü, varsayılanlı).
+builder.Services.AddOptions<ExamApp.Api.Services.Bookings.BookingPolicyOptions>()
+    .BindConfiguration(ExamApp.Api.Services.Bookings.BookingPolicyOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 // issue #439: veli onayı ödeme kancası (#408 ödeme yetkilendirmesi buraya eklenecek; şimdilik no-op).
 builder.Services.AddSingleton<ExamApp.Api.Services.Bookings.IBookingParentApprovalGate, ExamApp.Api.Services.Bookings.NoOpBookingParentApprovalGate>();
 // Tekrarlayan haftalık müsaitlik kuralları (issue #178) — BookingService top-up için buna bağımlı.
@@ -398,6 +403,7 @@ builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminAccountStatusSe
 builder.Services.AddAdminAccountStatusRateLimiting();
 builder.Services.AddQuestionBankSearchRateLimiting();
 builder.Services.AddQuestionBankLinkRateLimiting();
+builder.Services.AddBookingLifecycleRateLimiting(); // issue #315
 // issue #365 (S3): kitap sayfası sorgusu (POST study-items/book-pages/lookup) kullanıcı başına rate limit.
 builder.Services.AddStudyBookPageLookupRateLimiting();
 // issue #277 (madde 8): admin öğrenci okul değişikliği — audit AdminUserActionLogs'a, ayrı rate limit kovası.

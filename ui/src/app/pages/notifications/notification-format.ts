@@ -94,6 +94,28 @@ export const BADGE_PROGRESS_ROUTE = '/certificates';
 /** Issue #298: öğrencinin randevu listesi (`StudentBookingsComponent`, route `my-bookings`). */
 export const STUDENT_BOOKINGS_ROUTE = '/my-bookings';
 
+/** Issue #315: öğretmenin randevu talepleri sayfası (`TeacherBookingRequestsComponent`, route `booking-requests`). */
+export const TEACHER_BOOKINGS_ROUTE = '/booking-requests';
+
+/**
+ * Issue #315: randevu iptal / erteleme / no-show bildirimleri karşı tarafa (öğretmen ya da öğrenci) gider; tür alıcının rolünü
+ * taşımaz → hedef görüntüleyenin rolüyle seçilir (öğretmen `/booking-requests`, diğerleri `/my-bookings`). `data` linke taşınmaz.
+ */
+const BOOKING_LIFECYCLE_ICONS: Readonly<Record<string, string>> = {
+  BookingCancelled: 'event_busy',
+  BookingRescheduleProposed: 'update',
+  BookingRescheduleAccepted: 'event_available',
+  BookingRescheduleDeclined: 'event_busy',
+  BookingRescheduleWithdrawn: 'undo',
+  BookingNoShowReported: 'person_off',
+};
+
+/** `describeNotification` bağlamı — yalnız rol bağımlı hedefler için. */
+export interface NotificationViewer {
+  /** `localStorage['user_role']` ("Teacher" | "Student" | "Parent" | "Admin"); bilinmiyorsa null. */
+  role?: string | null;
+}
+
 /** Issue #440: velinin "Çocuklarım" sayfası (öğrencinin veli daveti orada rızayla onaylanır). */
 export const PARENT_CHILDREN_ROUTE = '/my-children';
 
@@ -106,7 +128,10 @@ const PARENT_REQUIREMENT_NOTIFICATIONS: Readonly<Record<string, { icon: string; 
   StudentParentGraceReminder: { icon: 'schedule', route: PARENT_REQUIRED_URL },
 };
 
-export function describeNotification(notification: Pick<AppNotification, 'type' | 'data'>): NotificationPresentation {
+export function describeNotification(
+  notification: Pick<AppNotification, 'type' | 'data'>,
+  viewer: NotificationViewer = {}
+): NotificationPresentation {
   if (notification.type === BADGE_EARNED_NOTIFICATION_TYPE) {
     const data = parseBadgeEarnedData(notification.data);
     return {
@@ -138,6 +163,15 @@ export function describeNotification(notification: Pick<AppNotification, 'type' 
       icon: 'event_busy',
       badge: null,
       route: data ? { commands: [STUDENT_BOOKINGS_ROUTE] } : null,
+      questionOrder: null,
+    };
+  }
+  const lifecycleIcon = BOOKING_LIFECYCLE_ICONS[notification.type];
+  if (lifecycleIcon) {
+    return {
+      icon: lifecycleIcon,
+      badge: null,
+      route: { commands: [viewer.role === 'Teacher' ? TEACHER_BOOKINGS_ROUTE : STUDENT_BOOKINGS_ROUTE] },
       questionOrder: null,
     };
   }
@@ -193,6 +227,11 @@ const PARENT_NOTIFICATION_PRESENTATION: Readonly<
   ParentBookingRejectedByOther: { icon: 'event_busy', toParentPage: true },
   ParentBookingApproved: { icon: 'event_available', toParentPage: true },
   ParentBookingRejected: { icon: 'event_busy', toParentPage: true },
+  // Issue #315: çocuğun özel dersi iptal edildi / erteleme önerildi / ertelendi / katılmama bildirildi → o çocuğun paneli.
+  ParentBookingCancelled: { icon: 'event_busy', toParentPage: true },
+  ParentBookingRescheduleProposed: { icon: 'update', toParentPage: true },
+  ParentBookingRescheduleAccepted: { icon: 'event_available', toParentPage: true },
+  ParentBookingNoShowReported: { icon: 'person_off', toParentPage: true },
 };
 
 /** Issue #439: öğrenciye giden veli kararı bildirimleri → ikon (hepsi `/my-bookings`). */

@@ -80,6 +80,39 @@
       "providerUnavailable": "The meeting service is not configured at the moment. Please try again later.",
       "participantTeacher": "Teacher",
       "participantStudent": "Student"
+    },
+
+    "cancel": {
+      "invalidState": "This booking cannot be cancelled (its status may have changed).",
+      "windowClosed": "An approved lesson cannot be cancelled less than {0} hours before it starts.",
+      "reasonInvalid": "The cancellation reason contains invalid characters.",
+      "reasonTooLong": "The cancellation reason can be at most 500 characters.",
+      "done": "The booking was cancelled."
+    },
+    "reschedule": {
+      "invalidState": "Only an approved lesson can be rescheduled.",
+      "alreadyProposed": "There is already a pending reschedule proposal for this lesson.",
+      "limitReached": "A lesson can be rescheduled at most {0} times.",
+      "windowClosed": "A lesson cannot be rescheduled less than {0} hours before it starts.",
+      "slotUnavailable": "The selected time slot is not available.",
+      "noPending": "There is no reschedule proposal to respond to.",
+      "ownProposal": "You cannot accept your own proposal; you can only withdraw it.",
+      "proposed": "Reschedule proposal sent.",
+      "accepted": "Reschedule accepted; the lesson was moved to the new time.",
+      "declined": "Reschedule proposal declined.",
+      "withdrawn": "Reschedule proposal withdrawn.",
+      "proposalLimitReached": "At most {0} reschedule proposals can be made for this lesson.",
+      "durationMismatch": "The proposed time slot must have the same length as the current lesson.",
+      "teacherUnavailable": "The teacher cannot take bookings right now; the reschedule could not be accepted."
+    },
+    "noShow": {
+      "invalidState": "A no-show can only be reported for an approved lesson.",
+      "alreadyReported": "A no-show was already reported for this lesson.",
+      "windowClosed": "A no-show can be reported after the lesson ends, within {0} days.",
+      "reported": "No-show reported."
+    },
+    "lifecycle": {
+      "rateLimited": "Too many booking actions in a short time. Please wait a moment and try again."
     }
   }
 }

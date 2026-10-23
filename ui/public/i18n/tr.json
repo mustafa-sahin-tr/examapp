@@ -153,6 +153,31 @@
       "parentRequiredLink": "Velilerim",
       "tooManyAwaitingParent": "Velinin onayını bekleyen çok fazla talebin var. Velin mevcut taleplerine karar verince yenisini oluşturabilirsin."
     },
+    "bookingCancelDialog": {
+      "titleCancel": "Dersi iptal et",
+      "titleWithdraw": "Talebi geri çek",
+      "introCancel": "{{counterpart}} ile {{when}} dersi iptal edilecek. Karşı taraf bilgilendirilir ve saat yeniden müsait olur.",
+      "introWithdraw": "{{counterpart}} öğretmenine {{when}} için gönderdiğin talep geri çekilecek.",
+      "reasonLabel": "Gerekçe (opsiyonel)",
+      "tooLong": "Gerekçe en fazla {{max}} karakter olabilir.",
+      "keep": "Vazgeç",
+      "submitCancel": "Dersi iptal et",
+      "submitWithdraw": "Talebi geri çek",
+      "error": "İşlem tamamlanamadı."
+    },
+    "bookingRescheduleDialog": {
+      "title": "Erteleme öner",
+      "intro": "{{counterpart}} ile {{when}} dersi için yeni bir saat seç. Karşı taraf kabul edene kadar ders mevcut saatinde kalır.",
+      "loading": "Müsait saatler yükleniyor...",
+      "retry": "Tekrar dene",
+      "empty": "Öğretmenin şu anda önerilebilecek başka müsait saati yok.",
+      "emptyMine": "Önerilebilecek boş bir müsait saatin yok. Önce Müsait Saatlerim sayfasından yeni saat ekle.",
+      "slotGroupAria": "Yeni saat seçimi",
+      "submit": "Öneriyi gönder",
+      "cancel": "Vazgeç",
+      "loadError": "Müsait saatler yüklenemedi.",
+      "submitError": "Erteleme önerisi gönderilemedi."
+    },
     "calendar": {
       "today": "bugün",
       "variant": {

@@ -66,6 +66,69 @@
                   : t('rejectionReason', { reason: row.booking.rejectionReason })
               }}</span>
             }
+            @if (row.booking.status === 'Cancelled') {
+              <span class="sbk__row-reason" data-test="cancelled-by">{{
+                row.booking.cancelledByRole === 'Teacher' ? t('cancelled.byTeacher') : t('cancelled.byMe')
+              }}</span>
+              @if (row.booking.cancellationReason) {
+                <span class="sbk__row-reason" data-test="cancellation-reason">{{
+                  t('cancelled.reason', { reason: row.booking.cancellationReason })
+                }}</span>
+              }
+            }
+            @if (row.booking.noShowParty) {
+              <span class="sbk__row-noshow" data-test="no-show-info">
+                <mat-icon>person_off</mat-icon>
+                {{ row.booking.noShowParty === 'Teacher' ? t('noShow.reportedTeacher') : t('noShow.reportedMe') }}
+              </span>
+            }
+            @if (row.lifecycle.proposal) {
+              <div class="sbk__proposal" data-test="reschedule-proposal">
+                <span class="sbk__proposal-text">
+                  <mat-icon>update</mat-icon>
+                  {{
+                    row.lifecycle.proposal.mine
+                      ? t('reschedule.proposalMine', { when: row.proposalWhen })
+                      : t('reschedule.proposalTheirs', { when: row.proposalWhen })
+                  }}
+                </span>
+                <div class="sbk__actions">
+                  @if (row.lifecycle.proposal.mine) {
+                    <button
+                      mat-stroked-button
+                      type="button"
+                      data-test="reschedule-withdraw"
+                      [disabled]="actingId() !== null"
+                      (click)="respond(row, false)"
+                    >
+                      {{ t('reschedule.withdraw') }}
+                    </button>
+                  } @else {
+                    @if (row.lifecycle.proposal.canAccept) {
+                      <button
+                        mat-flat-button
+                        color="primary"
+                        type="button"
+                        data-test="reschedule-accept"
+                        [disabled]="actingId() !== null"
+                        (click)="respond(row, true)"
+                      >
+                        {{ t('reschedule.accept') }}
+                      </button>
+                    }
+                    <button
+                      mat-stroked-button
+                      type="button"
+                      data-test="reschedule-decline"
+                      [disabled]="actingId() !== null"
+                      (click)="respond(row, false)"
+                    >
+                      {{ t('reschedule.decline') }}
+                    </button>
+                  }
+                </div>
+              </div>
+            }
           </div>
 
           <span class="sbk__chip" data-test="status-chip" [class]="row.statusClass">{{ t(row.statusLabelKey) }}</span>
@@ -87,6 +150,65 @@
                 {{ t('join.button') }}
               </button>
             </span>
+          }
+
+          @if (row.lifecycle.showPropose || row.lifecycle.showCancel || row.lifecycle.showWithdrawRequest || row.lifecycle.showNoShow) {
+            <div class="sbk__actions">
+              @if (row.lifecycle.showPropose) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  data-test="reschedule-propose"
+                  [disabled]="actingId() !== null"
+                  (click)="propose(row)"
+                >
+                  <mat-icon>update</mat-icon>
+                  {{ t('reschedule.propose') }}
+                </button>
+              }
+              @if (row.lifecycle.showCancel) {
+                <span
+                  class="sbk__tooltip-host"
+                  [matTooltip]="t('cancel.windowClosed')"
+                  [matTooltipDisabled]="!row.lifecycle.cancelWindowClosed"
+                >
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    class="sbk__danger-outline"
+                    data-test="cancel-booking"
+                    [disabled]="row.lifecycle.cancelWindowClosed || actingId() !== null"
+                    (click)="cancel(row, 'cancel')"
+                  >
+                    {{ t('cancel.button') }}
+                  </button>
+                </span>
+              }
+              @if (row.lifecycle.showWithdrawRequest) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="sbk__danger-outline"
+                  data-test="withdraw-request"
+                  [disabled]="actingId() !== null"
+                  (click)="cancel(row, 'withdraw')"
+                >
+                  {{ t('cancel.withdraw') }}
+                </button>
+              }
+              @if (row.lifecycle.showNoShow) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  data-test="report-no-show"
+                  [disabled]="actingId() !== null"
+                  (click)="reportNoShow(row)"
+                >
+                  <mat-icon>person_off</mat-icon>
+                  {{ t('noShow.button') }}
+                </button>
+              }
+            </div>
           }
 
           <a

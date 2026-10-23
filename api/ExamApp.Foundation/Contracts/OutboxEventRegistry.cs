@@ -47,6 +47,7 @@ public static class OutboxEventRegistry
         typeof(BookingParentDecisionEvent), // issue #439
         typeof(ParentInvitationRequestedEvent), // issue #440
         typeof(StudentParentGraceReminderEvent), // issue #441
+        typeof(BookingLifecycleEvent), // issue #315
     };
 
     private static readonly Dictionary<string, Type> ByFullName =

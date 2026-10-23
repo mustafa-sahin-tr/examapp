@@ -2,6 +2,7 @@ import {
   BADGE_PROGRESS_ROUTE,
   PARENT_CHILDREN_ROUTE,
   STUDENT_BOOKINGS_ROUTE,
+  TEACHER_BOOKINGS_ROUTE,
   describeNotification,
   formatRelativeTime,
   parseUtcDate,
@@ -296,6 +297,50 @@ describe('describeNotification (issue #105)', () => {
     for (const type of ['BookingParentApproved', 'BookingParentRejected', 'BookingParentExpired']) {
       const result = describeNotification({ type, data: JSON.stringify({ bookingId: 9, decision: 'Approved' }) });
       expect(result.route).withContext(type).toEqual({ commands: [STUDENT_BOOKINGS_ROUTE] });
+      expect(result.icon).withContext(type).not.toBe('notifications');
+    }
+  });
+
+  // Issue #315 (iptal / erteleme / no-show)
+  const lifecycleTypes = [
+    'BookingCancelled',
+    'BookingRescheduleProposed',
+    'BookingRescheduleAccepted',
+    'BookingRescheduleDeclined',
+    'BookingRescheduleWithdrawn',
+    'BookingNoShowReported',
+  ];
+  const lifecycleData = JSON.stringify({ bookingId: 9, studentId: 21, kind: 'Cancelled' });
+
+  it('BookingLifecycleNotifications_TeacherViewer_LinkBookingRequests', () => {
+    for (const type of lifecycleTypes) {
+      const result = describeNotification({ type, data: lifecycleData }, { role: 'Teacher' });
+      expect(result.route).withContext(type).toEqual({ commands: [TEACHER_BOOKINGS_ROUTE] });
+      expect(result.icon).withContext(type).not.toBe('notifications');
+    }
+  });
+
+  it('BookingLifecycleNotifications_StudentOrUnknownViewer_LinkMyBookings', () => {
+    for (const type of lifecycleTypes) {
+      expect(describeNotification({ type, data: lifecycleData }, { role: 'Student' }).route)
+        .withContext(type)
+        .toEqual({ commands: [STUDENT_BOOKINGS_ROUTE] });
+      // Rol bilinmiyor / bozuk data: yine öğrenci sayfası (data linke taşınmaz).
+      expect(describeNotification({ type, data: '{bad' }).route)
+        .withContext(type)
+        .toEqual({ commands: [STUDENT_BOOKINGS_ROUTE] });
+    }
+  });
+
+  it('ParentBookingLifecycleNotifications_LinkParentPageForThatChild', () => {
+    for (const type of [
+      'ParentBookingCancelled',
+      'ParentBookingRescheduleProposed',
+      'ParentBookingRescheduleAccepted',
+      'ParentBookingNoShowReported',
+    ]) {
+      const result = describeNotification({ type, data: lifecycleData }, { role: 'Parent' });
+      expect(result.route).withContext(type).toEqual({ commands: ['/parent'], queryParams: { child: 21 } });
       expect(result.icon).withContext(type).not.toBe('notifications');
     }
   });

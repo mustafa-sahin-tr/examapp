@@ -23,7 +23,8 @@
     "awaitingParent": "Veli onayı bekleniyor",
     "parentRejected": "Velin reddetti",
     "expired": "Talep kapandı",
-    "unknown": "Bilinmeyen durum"
+    "unknown": "Bilinmeyen durum",
+    "cancelled": "İptal edildi"
   },
   "join": {
     "button": "Derse katıl"
@@ -34,5 +35,36 @@
   },
   "awaitingParentHint": "Velin {{date}} tarihine kadar onaylamazsa talebin süresi dolar.",
   "parentNote": "Velinin notu: {{note}}",
-  "expiredHint": "Talebin süresi doldu ya da öğretmen bu saati artık sunmuyor. Başka bir saat için yeni talep oluşturabilirsin."
+  "expiredHint": "Talebin süresi doldu ya da öğretmen bu saati artık sunmuyor. Başka bir saat için yeni talep oluşturabilirsin.",
+  "cancelled": {
+    "byMe": "Bu randevuyu sen iptal ettin.",
+    "byTeacher": "Öğretmen bu randevuyu iptal etti.",
+    "reason": "İptal gerekçesi: {{reason}}"
+  },
+  "cancel": {
+    "button": "İptal et",
+    "withdraw": "Talebi geri çek",
+    "windowClosed": "İptal süresi doldu: derse çok az zaman kaldı."
+  },
+  "reschedule": {
+    "propose": "Ertele",
+    "proposalTheirs": "Öğretmenin erteleme önerisi: {{when}}",
+    "proposalMine": "Erteleme önerin: {{when}} (öğretmenin yanıtı bekleniyor)",
+    "accept": "Kabul et",
+    "decline": "Reddet",
+    "withdraw": "Öneriyi geri çek"
+  },
+  "noShow": {
+    "button": "Öğretmen katılmadı",
+    "confirmTitle": "Öğretmen derse katılmadı mı?",
+    "confirmMessage": "{{teacher}} öğretmeninin bu derse katılmadığını bildireceksin. Bu bildirim geri alınamaz.",
+    "confirm": "Bildir",
+    "reportedTeacher": "Öğretmenin derse katılmadığı bildirildi.",
+    "reportedMe": "Derse katılmadığın bildirildi."
+  },
+  "actions": {
+    "done": "İşlem tamamlandı.",
+    "failed": "İşlem tamamlanamadı.",
+    "ok": "Tamam"
+  }
 }

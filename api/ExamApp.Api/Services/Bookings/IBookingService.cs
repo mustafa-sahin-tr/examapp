@@ -79,4 +79,22 @@ public interface IBookingService
     /// Öğretmen hesabının onay/askı durumu (#287/#289) çağıranın sorumluluğundadır.
     /// </summary>
     Task<BookingLiveSessionAccess> GetLiveSessionAccessAsync(int callerUserId, int bookingId, CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #315: randevuyu iptal eder. Öğrenci Pending/AwaitingParent/Approved, öğretmen Approved iptal edebilir; onaylı randevu
+    /// başlangıca <c>BookingPolicy:CancellationMinNoticeHours</c> kalana kadar. Taraf değilse NotFound.
+    /// </summary>
+    Task<BookingResultDto> CancelBookingAsync(int callerUserId, int bookingId, string? reason, CancellationToken ct = default);
+
+    /// <summary>issue #315: onaylı randevu için aynı öğretmenin boş bir slotunu erteleme olarak önerir.</summary>
+    Task<BookingResultDto> ProposeRescheduleAsync(int callerUserId, int bookingId, int newSlotId, CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #315: bekleyen erteleme önerisine yanıt. Karşı taraf kabul (<paramref name="accept"/>=true → randevu yeni slota
+    /// taşınır) ya da ret eder; öneren taraf yalnız geri çekebilir (false).
+    /// </summary>
+    Task<BookingResultDto> RespondRescheduleAsync(int callerUserId, int bookingId, bool accept, CancellationToken ct = default);
+
+    /// <summary>issue #315: ders bitişinden sonra karşı tarafın derse katılmadığını bildirir (ilk bildirim kalıcı).</summary>
+    Task<BookingResultDto> ReportNoShowAsync(int callerUserId, int bookingId, CancellationToken ct = default);
 }

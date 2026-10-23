@@ -150,6 +150,34 @@ export class BookingService {
     });
   }
 
+  // ---------------- İptal / erteleme / no-show (issue #315) ----------------
+
+  /**
+   * Öğrenci: `Pending`/`AwaitingParent` talebi geri çeker ya da onaylı randevuyu iptal eder; öğretmen: yalnız onaylı randevu.
+   * Onaylı randevu `cancellationDeadlineUtc`'den sonra iptal edilemez (409 `CancellationWindowClosed`). Gerekçe opsiyonel,
+   * en fazla 500 karakter; karşı tarafa bildirilir.
+   */
+  cancelBooking(id: number, reason?: string | null): Observable<BookingResult> {
+    return this.http.post<BookingResult>(`${this.baseUrl}/requests/${id}/cancel`, {
+      reason: reason?.trim() || null,
+    });
+  }
+
+  /** Onaylı randevu için aynı öğretmenin boş, gelecekteki bir slotunu erteleme olarak önerir (karşı taraf onaylar). */
+  proposeReschedule(id: number, availabilitySlotId: number): Observable<BookingResult> {
+    return this.http.post<BookingResult>(`${this.baseUrl}/requests/${id}/reschedule`, { availabilitySlotId });
+  }
+
+  /** Karşı taraf öneriyi kabul/ret eder; öneren taraf yalnız `accept=false` ile geri çeker (kabul 403). */
+  respondReschedule(id: number, accept: boolean): Observable<BookingResult> {
+    return this.http.post<BookingResult>(`${this.baseUrl}/requests/${id}/reschedule/respond`, { accept });
+  }
+
+  /** Ders bitişinden sonra (`noShowReportableUntilUtc`'ye kadar) karşı tarafın derse katılmadığını bildirir. */
+  reportNoShow(id: number): Observable<BookingResult> {
+    return this.http.post<BookingResult>(`${this.baseUrl}/requests/${id}/no-show`, null);
+  }
+
   // ---------------- Veli onayı (issue #439) ----------------
 
   /** Velinin Active bağlı tüm çocuklarının karar bekleyen (`AwaitingParent`) talepleri; süresi dolanlar gelmez. */

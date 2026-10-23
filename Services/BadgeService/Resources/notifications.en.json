@@ -29,6 +29,50 @@
       "title": "Your lesson request was rejected",
       "body": "{0} rejected your lesson request for {1}.{2}"
     },
+    "BookingCancelled": {
+      "title": "Lesson cancelled",
+      "body": "{0} cancelled the lesson on {1}.{3}"
+    },
+    "BookingRescheduleProposed": {
+      "title": "Reschedule proposal",
+      "body": "{0} proposed moving the lesson on {1} to {2}."
+    },
+    "BookingRescheduleAccepted": {
+      "title": "Reschedule accepted",
+      "body": "{0} accepted moving the lesson on {1} to {2}."
+    },
+    "BookingRescheduleDeclined": {
+      "title": "Reschedule declined",
+      "body": "{0} declined your proposal to move the lesson on {1} to {2}."
+    },
+    "BookingRescheduleWithdrawn": {
+      "title": "Reschedule proposal withdrawn",
+      "body": "{0} withdrew their reschedule proposal for the lesson on {1}."
+    },
+    "BookingNoShowReported": {
+      "title": "No-show reported",
+      "body": "{0} reported that you did not attend the lesson on {1}."
+    },
+    "ParentBookingCancelled": {
+      "title": "Private lesson cancelled",
+      "body": "The lesson between {4} and {0} on {1} was cancelled.{3}"
+    },
+    "ParentBookingRescheduleProposed": {
+      "title": "Reschedule proposed for a private lesson",
+      "body": "Moving the lesson between {4} and {0} on {1} to {2} was proposed."
+    },
+    "ParentBookingRescheduleAccepted": {
+      "title": "Private lesson rescheduled",
+      "body": "The lesson between {4} and {0} on {1} was moved to {2}."
+    },
+    "ParentBookingNoShowReportedStudent": {
+      "title": "No-show reported",
+      "body": "{4} was reported as not attending the lesson with {0} on {1}."
+    },
+    "ParentBookingNoShowReportedTeacher": {
+      "title": "No-show reported",
+      "body": "{0} was reported as not attending the lesson with {4} on {1}."
+    },
     "BookingRejectedTeacherUnavailable": {
       "title": "Your lesson request could not be answered",
       "body": "Your lesson request for {1} was automatically rejected because {0} is temporarily unavailable.{2}"

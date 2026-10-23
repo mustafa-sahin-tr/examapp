@@ -153,6 +153,31 @@
       "parentRequiredLink": "My parents",
       "tooManyAwaitingParent": "You have too many requests awaiting your parent's approval. Once your parent decides on them, you can create a new one."
     },
+    "bookingCancelDialog": {
+      "titleCancel": "Cancel lesson",
+      "titleWithdraw": "Withdraw request",
+      "introCancel": "The lesson with {{counterpart}} on {{when}} will be cancelled. The other party will be notified and the time slot becomes available again.",
+      "introWithdraw": "Your request to {{counterpart}} for {{when}} will be withdrawn.",
+      "reasonLabel": "Reason (optional)",
+      "tooLong": "The reason can be at most {{max}} characters.",
+      "keep": "Keep",
+      "submitCancel": "Cancel lesson",
+      "submitWithdraw": "Withdraw request",
+      "error": "The action could not be completed."
+    },
+    "bookingRescheduleDialog": {
+      "title": "Propose reschedule",
+      "intro": "Pick a new time for the lesson with {{counterpart}} on {{when}}. The lesson stays at its current time until the other party accepts.",
+      "loading": "Loading available times...",
+      "retry": "Try again",
+      "empty": "The teacher has no other available time to propose right now.",
+      "emptyMine": "You have no free available time to propose. Add a new time on the My Available Hours page first.",
+      "slotGroupAria": "New time selection",
+      "submit": "Send proposal",
+      "cancel": "Cancel",
+      "loadError": "Available times could not be loaded.",
+      "submitError": "The reschedule proposal could not be sent."
+    },
     "calendar": {
       "today": "today",
       "variant": {

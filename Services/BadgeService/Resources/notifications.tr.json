@@ -29,6 +29,50 @@
       "title": "Ders talebiniz reddedildi",
       "body": "{0}, {1} için ders talebinizi reddetti.{2}"
     },
+    "BookingCancelled": {
+      "title": "Ders iptal edildi",
+      "body": "{0}, {1} tarihli dersi iptal etti.{3}"
+    },
+    "BookingRescheduleProposed": {
+      "title": "Erteleme önerisi",
+      "body": "{0}, {1} tarihli dersin {2} tarihine ertelenmesini önerdi."
+    },
+    "BookingRescheduleAccepted": {
+      "title": "Erteleme kabul edildi",
+      "body": "{0}, {1} tarihli dersin {2} tarihine ertelenmesini kabul etti."
+    },
+    "BookingRescheduleDeclined": {
+      "title": "Erteleme reddedildi",
+      "body": "{0}, {1} tarihli dersin {2} tarihine ertelenmesi önerinizi reddetti."
+    },
+    "BookingRescheduleWithdrawn": {
+      "title": "Erteleme önerisi geri çekildi",
+      "body": "{0}, {1} tarihli ders için yaptığı erteleme önerisini geri çekti."
+    },
+    "BookingNoShowReported": {
+      "title": "Katılmama bildirimi",
+      "body": "{0}, {1} tarihli derse katılmadığınızı bildirdi."
+    },
+    "ParentBookingCancelled": {
+      "title": "Özel ders iptal edildi",
+      "body": "{4} ile {0} arasındaki {1} tarihli ders iptal edildi.{3}"
+    },
+    "ParentBookingRescheduleProposed": {
+      "title": "Özel ders için erteleme önerisi",
+      "body": "{4} ile {0} arasındaki {1} tarihli dersin {2} tarihine ertelenmesi önerildi."
+    },
+    "ParentBookingRescheduleAccepted": {
+      "title": "Özel ders ertelendi",
+      "body": "{4} ile {0} arasındaki {1} tarihli ders {2} tarihine taşındı."
+    },
+    "ParentBookingNoShowReportedStudent": {
+      "title": "Derse katılmama bildirildi",
+      "body": "{4}, {0} ile {1} tarihli derse katılmadı olarak bildirildi."
+    },
+    "ParentBookingNoShowReportedTeacher": {
+      "title": "Derse katılmama bildirildi",
+      "body": "{0}, {4} ile {1} tarihli derse katılmadı olarak bildirildi."
+    },
     "BookingRejectedTeacherUnavailable": {
       "title": "Ders talebiniz yanıtlanamadı",
       "body": "{1} tarihli ders talebiniz, {0} geçici olarak müsait olmadığı için otomatik olarak reddedildi.{2}"

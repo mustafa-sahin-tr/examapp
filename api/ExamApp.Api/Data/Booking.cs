@@ -4,7 +4,10 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ExamApp.Api.Data;
 
-/// <summary>Randevu talebinin yaşam döngüsü (issue #96). İptal/erteleme MVP kapsamı dışında.</summary>
+/// <summary>
+/// Randevu talebinin yaşam döngüsü (issue #96). issue #315: taraflardan biri iptal edebilir (<see cref="Cancelled"/>);
+/// erteleme durum değiştirmez (onaylı randevunun slotu karşı taraf kabul edince değişir), no-show ayrı alanlarda tutulur.
+/// </summary>
 /// <remarks>
 /// issue #439: veli onayı. Veli gerektiren öğrencinin talebi <see cref="AwaitingParent"/> ile başlar (slotu tutar, öğretmene
 /// görünmez); veli onaylarsa <see cref="Pending"/> olur ve eski öğretmen akışına girer, reddederse <see cref="ParentRejected"/>,
@@ -23,7 +26,21 @@ public enum BookingStatus
     Expired = 4,
 
     /// <summary>issue #439: veli reddetti (öğretmene hiç ulaşmadı).</summary>
-    ParentRejected = 5
+    ParentRejected = 5,
+
+    /// <summary>
+    /// issue #315: öğrenci (Pending/Approved/AwaitingParent) ya da öğretmen (Approved) iptal etti; slot müsaitliğe döner.
+    /// Kim/ne zaman/neden: <see cref="Booking.CancelledByRole"/>, <see cref="Booking.CancelledAt"/>,
+    /// <see cref="Booking.CancellationReason"/>.
+    /// </summary>
+    Cancelled = 6
+}
+
+/// <summary>issue #315: iptal / erteleme / no-show alanlarında tarafın rolü (DB'de string).</summary>
+public static class BookingParty
+{
+    public const string Teacher = "Teacher";
+    public const string Student = "Student";
 }
 
 /// <summary>
@@ -80,4 +97,60 @@ public class Booking : BaseEntity
 
     /// <summary>issue #439: talebi reddeden velinin exam/auth user id'si (<c>Parent.UserId</c>); karar anı <see cref="DecisionAt"/>.</summary>
     public int? ParentRejectedBy { get; set; }
+
+    // ---------------- issue #315: iptal ----------------
+
+    /// <summary>İptal anı (UTC); Status=Cancelled iken dolu.</summary>
+    public DateTime? CancelledAt { get; set; }
+
+    /// <summary>İptal eden kullanıcının exam/auth user id'si.</summary>
+    public int? CancelledByUserId { get; set; }
+
+    /// <summary><see cref="BookingParty"/> değeri.</summary>
+    [MaxLength(16)]
+    public string? CancelledByRole { get; set; }
+
+    /// <summary>Opsiyonel iptal gerekçesi (karşı tarafa bildirilir).</summary>
+    [MaxLength(500)]
+    public string? CancellationReason { get; set; }
+
+    /// <summary>
+    /// İptal edilmeden önceki durum. Öğretmene hiç ulaşmamış (AwaitingParent) talebin iptali öğretmen listesinde görünmez.
+    /// </summary>
+    public BookingStatus? CancelledFromStatus { get; set; }
+
+    // ---------------- issue #315: erteleme önerisi ----------------
+
+    /// <summary>
+    /// Bekleyen erteleme önerisinin yeni slotu (aynı öğretmenin boş slotu). Karşı taraf kabul edene kadar randevu eski slotta
+    /// kalır; öneri slotu TUTMAZ (kabulde boş olduğu yeniden doğrulanır).
+    /// </summary>
+    public int? ProposedSlotId { get; set; }
+
+    [ForeignKey(nameof(ProposedSlotId))]
+    public TeacherAvailabilitySlot? ProposedSlot { get; set; }
+
+    /// <summary>Öneriyi yapan tarafın <see cref="BookingParty"/> değeri.</summary>
+    [MaxLength(16)]
+    public string? ProposedByRole { get; set; }
+
+    public int? ProposedByUserId { get; set; }
+
+    public DateTime? ProposedAt { get; set; }
+
+    /// <summary>Kabul edilmiş erteleme sayısı (<c>BookingPolicy:MaxReschedulesPerBooking</c> sınırı).</summary>
+    public int RescheduleCount { get; set; }
+
+    /// <summary>Yapılan erteleme önerisi sayısı — kabul/ret/geri çekme fark etmez (<c>BookingPolicy:MaxProposalsPerBooking</c>).</summary>
+    public int RescheduleProposalCount { get; set; }
+
+    // ---------------- issue #315: no-show ----------------
+
+    /// <summary>Derse katılmadığı bildirilen taraf (<see cref="BookingParty"/>); bildirilmediyse null.</summary>
+    [MaxLength(16)]
+    public string? NoShowParty { get; set; }
+
+    public int? NoShowReportedByUserId { get; set; }
+
+    public DateTime? NoShowReportedAt { get; set; }
 }

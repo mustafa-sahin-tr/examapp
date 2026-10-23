@@ -350,6 +350,23 @@ namespace ExamApp.Api.Migrations
                     b.Property<int>("AvailabilitySlotId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CancelledByRole")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int?>("CancelledByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("CancelledFromStatus")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -371,6 +388,16 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("NoShowParty")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTime?>("NoShowReportedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("NoShowReportedByUserId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime?>("ParentApprovedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -380,9 +407,28 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("ParentRejectedBy")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("ProposedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProposedByRole")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int?>("ProposedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ProposedSlotId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("RejectionReason")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<int>("RescheduleCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RescheduleProposalCount")
+                        .HasColumnType("integer");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -408,6 +454,8 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("IX_Bookings_CreatedAt_AwaitingParent")
                         .HasFilter("\"Status\" = 3 AND NOT \"IsDeleted\"");
+
+                    b.HasIndex("ProposedSlotId");
 
                     b.HasIndex("StudentId", "Status");
 
@@ -4635,6 +4683,11 @@ namespace ExamApp.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("ExamApp.Api.Data.TeacherAvailabilitySlot", "ProposedSlot")
+                        .WithMany()
+                        .HasForeignKey("ProposedSlotId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ExamApp.Api.Data.Student", "Student")
                         .WithMany()
                         .HasForeignKey("StudentId")
@@ -4648,6 +4701,8 @@ namespace ExamApp.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("AvailabilitySlot");
+
+                    b.Navigation("ProposedSlot");
 
                     b.Navigation("Student");
 

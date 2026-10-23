@@ -5,6 +5,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -13,19 +14,26 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
-import { finalize, interval, take } from 'rxjs';
-import { Booking, BookingStatus } from '../../models/booking.model';
+import { Observable, filter as rxFilter, finalize, interval, take } from 'rxjs';
+import { Booking, BookingResult, BookingStatus } from '../../models/booking.model';
 import { BookingService } from '../../services/booking.service';
+import { openBookingCancelDialog } from '../../shared/components/booking-cancel-dialog/booking-cancel-dialog.component';
+import { openBookingRescheduleDialog } from '../../shared/components/booking-reschedule-dialog/booking-reschedule-dialog.component';
+import {
+  ConfirmDialogComponent,
+  ConfirmDialogData,
+} from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import {
   JOIN_WINDOW_TICK_MS,
   JoinWindowInfo,
   getJoinWindow,
 } from '../../shared/utils/booking-join-window';
-import { slotEndsNextDay } from '../../shared/utils/booking-format.util';
+import { SLOT_NEXT_DAY_KEY, formatSlotDay, formatSlotRange, slotEndsNextDay } from '../../shared/utils/booking-format.util';
+import { BookingLifecycleView, bookingLifecycleView } from '../../shared/utils/booking-lifecycle.util';
 
 type RequestFilter = 'pending' | 'all';
 
-type BookingStatusClass = 'is-pending' | 'is-approved' | 'is-rejected';
+type BookingStatusClass = 'is-pending' | 'is-approved' | 'is-rejected' | 'is-cancelled';
 
 /**
  * Durum → `teacher-bookings` scope'una göreli etiket + chip sınıfı. Issue #439: sunucu öğretmene `AwaitingParent` /
@@ -39,6 +47,8 @@ export const TEACHER_BOOKING_STATUS_VIEW: Record<BookingStatus, { statusKey: str
   AwaitingParent: { statusKey: 'status.awaitingParent', statusClass: 'is-pending' },
   ParentRejected: { statusKey: 'status.parentRejected', statusClass: 'is-rejected' },
   Expired: { statusKey: 'status.expired', statusClass: 'is-rejected' },
+  // Issue #315: öğrenci ya da öğretmen iptal etti (öğretmene ulaşmış talebin geri çekilmesi de).
+  Cancelled: { statusKey: 'status.cancelled', statusClass: 'is-cancelled' },
 };
 
 interface BookingRow {
@@ -50,6 +60,10 @@ interface BookingRow {
   join: JoinWindowInfo;
   /** Bitiş ertesi yerel günde (issue #300): aralığa "(+1 gün)" eklenir. */
   endsNextDay: boolean;
+  /** Issue #315: iptal / erteleme / no-show aksiyonlarının görünürlüğü. */
+  lifecycle: BookingLifecycleView;
+  /** Issue #315: bekleyen erteleme önerisinin biçimlenmiş zamanı; öneri yoksa null. */
+  proposalWhen: string | null;
 }
 
 /** Ret gerekçesi için backend sınırı. */
@@ -59,6 +73,9 @@ const REJECTION_REASON_MAX = 500;
  * Öğretmenin randevu talepleri gelen kutusu (issue #96). Bekleyen talepler onaylanır
  * veya (opsiyonel gerekçeyle) reddedilir; karar sonrası liste tazelenir.
  * Filtreleme client-side — backend tüm talepleri tek uçtan döner.
+ * Issue #315: onaylı randevu iptal / erteleme önerisi (kendi boş, gelecekteki slotlarından) / "öğrenci katılmadı"; öğrencinin
+ * erteleme önerisi kabul/ret, kendi önerisini geri çekme. "Bekleyenler" filtresi öğretmenin yanıtını bekleyen erteleme
+ * önerilerini de gösterir. Her aksiyondan sonra liste yeniden yüklenir.
  *
  * Çeviriler kendi Transloco scope'unda: `public/i18n/teacher-bookings/<lang>.json` (issue #183).
  * Katılım penceresi ipucu paylaşılan yardımcıya verilen çevirmenden (kök `shared.joinWindow.*`)
@@ -93,6 +110,7 @@ export class TeacherBookingRequestsComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly transloco = inject(TranslocoService);
+  private readonly dialog = inject(MatDialog);
 
   protected readonly reasonMaxLength = REJECTION_REASON_MAX;
 
@@ -113,7 +131,7 @@ export class TeacherBookingRequestsComponent implements OnInit {
     const onlyPending = this.filter() === 'pending';
     const now = this.now();
     return this.bookings()
-      .filter((b) => !onlyPending || b.status === 'Pending')
+      .filter((b) => !onlyPending || b.status === 'Pending' || awaitsTeacherReply(b))
       .sort((a, b) => new Date(a.startUtc).getTime() - new Date(b.startUtc).getTime())
       .map((booking) => this.toRow(booking, now));
   });
@@ -181,7 +199,80 @@ export class TeacherBookingRequestsComponent implements OnInit {
     void this.router.navigate(['/lessons', row.booking.id, 'video']);
   }
 
-  private act(call: ReturnType<BookingService['approveBooking']>, id: number, successMsg: string): void {
+  // ---------------- Issue #315: iptal / erteleme / no-show ----------------
+
+  /** Onaylı randevuyu iptal eder (gerekçe opsiyonel, öğrenciye bildirilir). */
+  protected cancelBooking(row: BookingRow): void {
+    if (this.actingId() !== null) {
+      return;
+    }
+    openBookingCancelDialog(this.dialog, {
+      bookingId: row.booking.id,
+      mode: 'cancel',
+      counterpart: row.booking.studentName || this.text('row.studentFallback'),
+      when: this.formatFull(row.booking.startUtc, row.booking.endUtc),
+    })
+      .afterClosed()
+      // Dialog içinde hata gösterilip kapatıldıysa (undefined) da durum değişmiş olabilir → tazele.
+      .subscribe((res) => (res ? this.afterLifecycleAction(res) : this.load()));
+  }
+
+  /** Kendi boş, gelecekteki slotlarından erteleme önerir. */
+  protected propose(row: BookingRow): void {
+    if (this.actingId() !== null) {
+      return;
+    }
+    openBookingRescheduleDialog(this.dialog, {
+      booking: row.booking,
+      source: 'mySlots',
+      counterpart: row.booking.studentName || this.text('row.studentFallback'),
+    })
+      .afterClosed()
+      .pipe(rxFilter((res): res is BookingResult => !!res))
+      .subscribe((res) => this.afterLifecycleAction(res));
+  }
+
+  /** Öğrencinin önerisini kabul/ret eder; kendi önerisinde yalnız `false` (geri çekme). */
+  protected respond(row: BookingRow, accept: boolean): void {
+    this.act(this.bookingService.respondReschedule(row.booking.id, accept), row.booking.id, null);
+  }
+
+  /** Ders bitişinden sonra öğrencinin katılmadığını bildirir. */
+  protected reportNoShow(row: BookingRow): void {
+    if (this.actingId() !== null) {
+      return;
+    }
+    const data: ConfirmDialogData = {
+      title: this.text('noShow.confirmTitle'),
+      message: this.text('noShow.confirmMessage', {
+        student: row.booking.studentName || this.text('row.studentFallback'),
+      }),
+      confirmText: this.text('noShow.confirm'),
+      icon: 'person_off',
+      confirmColor: 'warn',
+    };
+    this.dialog
+      .open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, { data })
+      .afterClosed()
+      .pipe(rxFilter((ok) => ok === true))
+      .subscribe(() => this.act(this.bookingService.reportNoShow(row.booking.id), row.booking.id, null));
+  }
+
+  private afterLifecycleAction(res: BookingResult): void {
+    this.snackBar.open(res.message || this.text('messages.actionDone'), this.text('messages.ok'), { duration: 3000 });
+    this.load();
+  }
+
+  private formatFull(startUtc: string, endUtc: string): string {
+    const nextDay = this.transloco.translate<string>(SLOT_NEXT_DAY_KEY);
+    return `${formatSlotDay(startUtc)} · ${formatSlotRange(startUtc, endUtc, nextDay)}`;
+  }
+
+  /**
+   * `successMsg` null ise sunucunun yerelleştirilmiş mesajı gösterilir (issue #315). Hata sonrası liste tazelenir: durum karşı
+   * taraftan değişmiş olabilir (409).
+   */
+  private act(call: Observable<BookingResult>, id: number, successMsg: string | null): void {
     if (this.actingId() !== null) {
       return;
     }
@@ -199,7 +290,9 @@ export class TeacherBookingRequestsComponent implements OnInit {
             });
             return;
           }
-          this.snackBar.open(successMsg, this.text('messages.ok'), { duration: 3000 });
+          this.snackBar.open(successMsg ?? (res?.message || this.text('messages.actionDone')), this.text('messages.ok'), {
+            duration: 3000,
+          });
           this.cancelReject();
           this.load();
         },
@@ -209,13 +302,17 @@ export class TeacherBookingRequestsComponent implements OnInit {
             this.text('messages.ok'),
             { duration: 4000 }
           );
+          // Durum karşı taraftan değişmiş olabilir (409; geri çekilmiş talep 404) — listeyi tazele.
+          if (err.status === 409 || err.status === 404) {
+            this.load();
+          }
         },
       });
   }
 
   /** Scope'a göreli anahtarı senkron çözer; sözlük şablon render edilirken yüklenmiş olur. */
-  private text(key: string): string {
-    return this.transloco.translate<string>(`${TEACHER_BOOKINGS_SCOPE}.${key}`) ?? '';
+  private text(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(`${TEACHER_BOOKINGS_SCOPE}.${key}`, params) ?? '';
   }
 
   private toRow(booking: Booking, now: number): BookingRow {
@@ -227,7 +324,14 @@ export class TeacherBookingRequestsComponent implements OnInit {
       join,
       endsNextDay: slotEndsNextDay(booking.startUtc, booking.endUtc),
       ...(TEACHER_BOOKING_STATUS_VIEW[booking.status] ?? { statusKey: 'status.unknown', statusClass: 'is-rejected' }),
+      ...this.lifecycleOf(booking, now),
     };
+  }
+
+  private lifecycleOf(booking: Booking, now: number): Pick<BookingRow, 'lifecycle' | 'proposalWhen'> {
+    const lifecycle = bookingLifecycleView(booking, 'Teacher', now);
+    const proposal = lifecycle.proposal;
+    return { lifecycle, proposalWhen: proposal ? this.formatFull(proposal.startUtc, proposal.endUtc) : null };
   }
 
   /**
@@ -241,4 +345,14 @@ export class TeacherBookingRequestsComponent implements OnInit {
       .subscribe();
   }
 
+}
+
+/** Issue #315: öğrencinin önerdiği, öğretmenin yanıtını bekleyen erteleme ("Bekleyenler" filtresinde görünür). */
+export function awaitsTeacherReply(booking: Booking): boolean {
+  return (
+    booking.status === 'Approved' &&
+    booking.proposedSlotId != null &&
+    booking.proposedByRole === 'Student' &&
+    booking.canRespondReschedule === true
+  );
 }

@@ -1,0 +1,104 @@
+// Issue #315 — randevu iptali / talebi geri çekme dialog'u.
+
+.bcd {
+  padding: 20px 24px 16px;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.bcd__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.bcd__title {
+  margin: 0;
+  padding: 0;
+  font-family: var(--mainFontFamily);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ms-text-strong);
+}
+
+.bcd__icon {
+  flex-shrink: 0;
+  font-size: 26px;
+  width: 26px;
+  height: 26px;
+  color: var(--ms-danger-background);
+}
+
+.bcd__content {
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bcd__intro {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ms-text-medium);
+}
+
+.bcd__field {
+  width: 100%;
+  margin-top: 6px;
+}
+
+.bcd__hint--error {
+  color: var(--ms-danger-background);
+}
+
+.bcd__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--ms-danger-border);
+  background: var(--ms-danger-surface-weak);
+  color: var(--ms-danger-text);
+  font-size: 13px;
+  line-height: 1.5;
+
+  .mat-icon {
+    flex-shrink: 0;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.bcd__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 0 0;
+  margin: 0;
+  border-top: 1px solid var(--ms-border-weak);
+
+  button {
+    min-height: 44px;
+  }
+}
+
+.bcd__danger {
+  background: var(--ms-danger-background);
+  color: var(--ms-danger-text-inverse);
+
+  &:disabled {
+    background: var(--ms-surface-strong);
+    color: var(--ms-text-weak);
+  }
+}
+
+.bcd__spinner {
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: middle;
+}

@@ -90,7 +90,7 @@ public class ControllerAuthStatusMappingTests
         ProfileResolvesTo(null);
         var controller = new BookingController(
             Substitute.For<IBookingService>(), Substitute.For<IRecurringAvailabilityService>(),
-            FallbackMessageLocalizer.Instance)
+            FallbackMessageLocalizer.Instance, Substitute.For<Microsoft.AspNetCore.Authorization.IAuthorizationService>())
         {
             ControllerContext = Context("kc-1")
         };

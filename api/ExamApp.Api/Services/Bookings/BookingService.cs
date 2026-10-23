@@ -31,7 +31,7 @@ namespace ExamApp.Api.Services.Bookings;
 /// Slot tarih-saatleri saat dilimsiz duvar saatidir; geçmiş kontrolü ve takvim dönüşümü bunları
 /// UTC kabul eder (<see cref="TeacherAvailabilitySlot"/> notuna bakın).
 /// </para>
-/// Kapsam dışı: iptal/erteleme, no-show, ödeme. Tekrarlayan kurallar
+/// İptal/erteleme/no-show <c>BookingService.Lifecycle.cs</c>'te (issue #315). Kapsam dışı: ödeme. Tekrarlayan kurallar
 /// <see cref="RecurringAvailabilityService"/>'te (issue #178).
 /// </summary>
 public partial class BookingService : IBookingService
@@ -95,6 +95,12 @@ public partial class BookingService : IBookingService
     /// <summary>issue #439 ödeme kancası (#408); DI'siz kurulan (birim test) örneklerde no-op.</summary>
     private readonly IBookingParentApprovalGate _parentApprovalGate;
 
+    /// <summary>issue #315: iptal / erteleme / no-show kuralları; DI'siz kurulan örneklerde varsayılanlar.</summary>
+    private readonly IOptions<BookingPolicyOptions> _policyOptions;
+
+    /// <summary>issue #315: iptalde açık tahtayı hemen kapatır; DI'siz kurulan örneklerde null (temizlik turu kapatır).</summary>
+    private readonly Whiteboard.IWhiteboardSessionCloser? _whiteboardCloser;
+
     public BookingService(
         AppDbContext context,
         IAuthApiClient authApiClient,
@@ -104,8 +110,12 @@ public partial class BookingService : IBookingService
         IRecurringAvailabilityService recurringAvailability,
         ILogger<BookingService> logger,
         IStringLocalizer<Messages>? localizer = null,
-        IBookingParentApprovalGate? parentApprovalGate = null)
+        IBookingParentApprovalGate? parentApprovalGate = null,
+        IOptions<BookingPolicyOptions>? policyOptions = null,
+        Whiteboard.IWhiteboardSessionCloser? whiteboardCloser = null)
     {
+        _policyOptions = policyOptions ?? Options.Create(new BookingPolicyOptions());
+        _whiteboardCloser = whiteboardCloser;
         _parentApprovalGate = parentApprovalGate ?? NoOpBookingParentApprovalGate.Instance;
         _context = context;
         _authApiClient = authApiClient;
@@ -1005,8 +1015,12 @@ public partial class BookingService : IBookingService
         var teacherId = teacher.Id;
 
         // issue #439: veliden geçmemiş (AwaitingParent) ve öğretmene hiç ulaşmamış (ParentRejected/Expired) talepler listede yok.
+        // issue #315: öğretmene ulaşmış talebin iptali de listede (AwaitingParent'tan geri çekilen hariç).
         return await QueryBookingsAsync(
-            b => b.TeacherId == teacherId && TeacherVisibleStatuses.Contains(b.Status), skip, take, ct);
+            b => b.TeacherId == teacherId
+                 && (TeacherVisibleStatuses.Contains(b.Status)
+                     || (b.Status == BookingStatus.Cancelled && b.CancelledFromStatus != BookingStatus.AwaitingParent)),
+            skip, take, ct);
     }
 
     public async Task<BookingListResultDto> GetStudentBookingsAsync(
@@ -1053,7 +1067,8 @@ public partial class BookingService : IBookingService
             .FirstOrDefaultAsync(b => b.Id == bookingId, ct);
 
         // issue #439: öğretmene ulaşmamış talep (AwaitingParent / ParentRejected / Expired) öğretmen için yoktur → 404.
-        if (booking == null || !TeacherVisibleStatuses.Contains(booking.Status))
+        // issue #315: öğretmene ulaşmış talebin iptali görünür → aşağıdaki "zaten karara bağlandı" yoluna düşer (code review U3).
+        if (booking == null || !IsTeacherVisible(booking.Status, booking.CancelledFromStatus))
             return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.request.notFound"] };
 
         if (booking.TeacherId != teacherId)
@@ -1359,9 +1374,25 @@ public partial class BookingService : IBookingService
                 CreatedAt = b.CreatedAt,
                 DecisionAt = b.DecisionAt,
                 RejectionReason = b.RejectionReason,
-                ParentApprovedAt = b.ParentApprovedAt
+                ParentApprovedAt = b.ParentApprovedAt,
+                CancelledAt = b.CancelledAt,
+                CancelledByRole = b.CancelledByRole,
+                CancellationReason = b.CancellationReason,
+                ProposedSlotId = b.ProposedSlotId,
+                ProposedDate = b.ProposedSlot != null ? b.ProposedSlot.Date : null,
+                ProposedStartTime = b.ProposedSlot != null ? b.ProposedSlot.StartTime : null,
+                ProposedEndTime = b.ProposedSlot != null ? b.ProposedSlot.EndTime : null,
+                ProposedSlotDeleted = b.ProposedSlot != null && b.ProposedSlot.IsDeleted,
+                ProposedByRole = b.ProposedByRole,
+                RescheduleCount = b.RescheduleCount,
+                RescheduleProposalCount = b.RescheduleProposalCount,
+                NoShowParty = b.NoShowParty,
+                NoShowReportedAt = b.NoShowReportedAt
             })
             .ToListAsync(ct);
+
+        var policy = _policyOptions.Value;
+        var now = UtcNow();
 
         var names = await ResolveUserNamesAsync(
             rows.SelectMany(r => new[] { r.TeacherUserId, r.StudentUserId }), ct);
@@ -1372,6 +1403,11 @@ public partial class BookingService : IBookingService
             Items = rows.Select(r =>
             {
                 var range = SlotTimeRange.From(r.Date, r.StartTime, r.EndTime);
+                var approved = r.Status == BookingStatus.Approved;
+                var proposed = r.ProposedSlotId is int proposedId && r.ProposedDate is DateOnly pd
+                               && r.ProposedStartTime is TimeOnly ps && r.ProposedEndTime is TimeOnly pe
+                    ? new { Id = proposedId, Range = SlotTimeRange.From(pd, ps, pe) }
+                    : null;
                 return new BookingDto
                 {
                     Id = r.Id,
@@ -1392,7 +1428,30 @@ public partial class BookingService : IBookingService
                     ParentApprovedAt = r.ParentApprovedAt,
                     ExpiresAt = r.Status == BookingStatus.AwaitingParent
                         ? BookingParentApproval.ExpiresAt(r.CreatedAt, r.Date, r.StartTime)
-                        : null
+                        : null,
+                    // issue #315
+                    CancelledAt = r.CancelledAt,
+                    CancelledByRole = r.CancelledByRole,
+                    CancellationReason = r.CancellationReason,
+                    CancellationDeadlineUtc = approved ? range.StartUtc.AddHours(-policy.CancellationMinNoticeHours) : null,
+                    ProposedSlotId = proposed?.Id,
+                    ProposedStartUtc = proposed?.Range.StartUtc,
+                    ProposedEndUtc = proposed?.Range.EndUtc,
+                    ProposedByRole = proposed == null ? null : r.ProposedByRole,
+                    RescheduleCount = r.RescheduleCount,
+                    // Öneri hâlâ kabul edilebilir mi (code review U2): slot silinmemiş, yeterince ileride ve mevcut ders
+                    // bildirim penceresinin dışında. Değilse UI yalnız ret / geri çekmeyi sunar.
+                    CanRespondReschedule = approved && proposed != null && !r.ProposedSlotDeleted
+                        && proposed.Range.StartUtc >= now.AddHours(policy.RescheduleMinNoticeHours)
+                        && now <= range.StartUtc.AddHours(-policy.RescheduleMinNoticeHours),
+                    RescheduleEarliestStartUtc = approved ? now.AddHours(policy.RescheduleMinNoticeHours) : null,
+                    CanProposeReschedule = approved && r.ProposedSlotId == null
+                        && r.RescheduleCount < policy.MaxReschedulesPerBooking
+                        && r.RescheduleProposalCount < policy.MaxProposalsPerBooking
+                        && now <= range.StartUtc.AddHours(-policy.RescheduleMinNoticeHours),
+                    NoShowParty = r.NoShowParty,
+                    NoShowReportedAt = r.NoShowReportedAt,
+                    NoShowReportableUntilUtc = approved ? range.EndUtc.AddDays(policy.NoShowReportWindowDays) : null
                 };
             }).ToList()
         };
@@ -1519,5 +1578,18 @@ public partial class BookingService : IBookingService
         public DateTime? DecisionAt { get; init; }
         public string? RejectionReason { get; init; }
         public DateTime? ParentApprovedAt { get; init; }
+        public DateTime? CancelledAt { get; init; }
+        public string? CancelledByRole { get; init; }
+        public string? CancellationReason { get; init; }
+        public int? ProposedSlotId { get; init; }
+        public DateOnly? ProposedDate { get; init; }
+        public TimeOnly? ProposedStartTime { get; init; }
+        public TimeOnly? ProposedEndTime { get; init; }
+        public bool ProposedSlotDeleted { get; init; }
+        public string? ProposedByRole { get; init; }
+        public int RescheduleCount { get; init; }
+        public int RescheduleProposalCount { get; init; }
+        public string? NoShowParty { get; init; }
+        public DateTime? NoShowReportedAt { get; init; }
     }
 }

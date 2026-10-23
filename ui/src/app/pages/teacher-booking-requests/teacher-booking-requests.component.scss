@@ -172,3 +172,57 @@
     color: var(--ms-danger-background);
   }
 }
+
+// Issue #315: iptal / erteleme / no-show.
+.breq__actions {
+  flex-wrap: wrap;
+  align-items: center;
+
+  mat-icon {
+    margin-right: 0.25rem;
+  }
+}
+
+// Tooltip pasif butonda da görünsün diye buton bir span'a sarılır.
+.breq__tooltip-host {
+  display: inline-flex;
+}
+
+.breq__danger-outline:not(:disabled) {
+  color: var(--ms-danger-background);
+  border-color: var(--ms-danger-background);
+}
+
+.breq__proposal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--ms-info-surface-weak);
+  color: var(--ms-info-text);
+}
+
+.breq__proposal-text,
+.breq__row-noshow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+
+  mat-icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+.breq__row-noshow {
+  color: var(--ms-warning-text-medium);
+}
+
+.breq__chip.is-cancelled {
+  background: var(--ms-surface-weak);
+  color: var(--ms-danger-background);
+}

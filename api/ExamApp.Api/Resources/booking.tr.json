@@ -80,6 +80,39 @@
       "providerUnavailable": "Görüşme servisi şu anda yapılandırılmamış. Lütfen daha sonra tekrar deneyin.",
       "participantTeacher": "Öğretmen",
       "participantStudent": "Öğrenci"
+    },
+
+    "cancel": {
+      "invalidState": "Bu randevu iptal edilemez (durumu değişmiş olabilir).",
+      "windowClosed": "Onaylı ders, başlangıcına {0} saatten az kaldığında iptal edilemez.",
+      "reasonInvalid": "İptal gerekçesi geçersiz karakter içeriyor.",
+      "reasonTooLong": "İptal gerekçesi en fazla 500 karakter olabilir.",
+      "done": "Randevu iptal edildi."
+    },
+    "reschedule": {
+      "invalidState": "Yalnız onaylı bir ders ertelenebilir.",
+      "alreadyProposed": "Bu ders için bekleyen bir erteleme önerisi zaten var.",
+      "limitReached": "Bir ders en fazla {0} kez ertelenebilir.",
+      "windowClosed": "Ders başlangıcına {0} saatten az kaldığında erteleme yapılamaz.",
+      "slotUnavailable": "Seçilen zaman aralığı uygun değil ya da dolu.",
+      "noPending": "Yanıtlanacak bir erteleme önerisi yok.",
+      "ownProposal": "Kendi erteleme önerinizi kabul edemezsiniz; yalnız geri çekebilirsiniz.",
+      "proposed": "Erteleme önerisi gönderildi.",
+      "accepted": "Erteleme kabul edildi; ders yeni saate taşındı.",
+      "declined": "Erteleme önerisi reddedildi.",
+      "withdrawn": "Erteleme önerisi geri çekildi.",
+      "proposalLimitReached": "Bu ders için en fazla {0} erteleme önerisi yapılabilir.",
+      "durationMismatch": "Önerilen zaman aralığı mevcut dersle aynı sürede olmalı.",
+      "teacherUnavailable": "Öğretmen şu anda randevu alamıyor; erteleme kabul edilemedi."
+    },
+    "noShow": {
+      "invalidState": "Yalnız onaylı bir ders için katılmama bildirilebilir.",
+      "alreadyReported": "Bu ders için katılmama zaten bildirildi.",
+      "windowClosed": "Katılmama ders bittikten sonra, en geç {0} gün içinde bildirilebilir.",
+      "reported": "Katılmama bildirildi."
+    },
+    "lifecycle": {
+      "rateLimited": "Kısa sürede çok fazla randevu işlemi yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     }
   }
 }

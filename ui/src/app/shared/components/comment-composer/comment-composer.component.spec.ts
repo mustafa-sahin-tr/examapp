@@ -1,6 +1,7 @@
 import { ApplicationRef } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import type { MockInstance } from 'vitest';
 
 import { CommentComposerComponent } from './comment-composer.component';
 import { translocoTestingModule } from '../../testing/transloco-testing';
@@ -43,18 +44,29 @@ describe('CommentComposerComponent (issue #105)', () => {
 
     /**
      * Odak `effect` → `afterNextRender` ile veriliyor; hook'un hangi tick'te çalışacağı tek bir `tick()`'e
-     * bağlanamıyor (CI'da arada kaçıp flaky düşüyordu). Koşul sağlanana dek render + zamanlayıcı turu at.
+     * bağlanamıyor. Sabit sayıda render + zamanlayıcı turu atılır: eskiden `vi.waitFor` (1 sn duvar saati)
+     * kullanılıyordu, yavaş CI'da zaman aşımına düşüp flaky oluyordu (PR #550). Tur sayısı saatten bağımsız.
      * Prototype spy'ı `HTMLElement.prototype.focus`'u sarar: aynı tarayıcı bağlamında önceki dosyalardan gelen
      * başka eleman odakları (ör. `body`) da görünür, bu yüzden "son çağrı" değil "hedef odaklandı mı" denetlenir.
      */
-    async function renderUntil(assertion: () => void): Promise<void> {
+    /** Hook genelde 1-2 turda çalışır; her tur CD + app tick + tüm zamanlayıcı/mikrogörevleri boşaltır. */
+    const MAX_RENDER_ROUNDS = 10;
+
+    async function renderUntilFocused(focusSpy: MockInstance, target: () => HTMLElement | null): Promise<void> {
         const appRef = TestBed.inject(ApplicationRef);
-        await vi.waitFor(async () => {
+        for (let round = 0; round < MAX_RENDER_ROUNDS && !focusSpy.mock.contexts.includes(target()); round++) {
             fixture.detectChanges();
             appRef.tick();
             await vi.runAllTimersAsync();
-            assertion();
-        });
+        }
+        // Düşerse nerede takıldığını göster: hedef yok mu, odak hiç çağrılmadı mı, başka elemana mı gitti?
+        const element = target();
+        const focused = focusSpy.mock.contexts.map((c) => (c as Element)?.outerHTML?.slice(0, 80));
+        expect(
+            focusSpy.mock.contexts.includes(element),
+            `hedef=${element?.outerHTML.slice(0, 80) ?? 'yok'} odaklananlar=${JSON.stringify(focused)} ` +
+                `aktif=${document.activeElement?.tagName}`
+        ).toBe(true);
     }
 
     function type(value: string): void {
@@ -115,7 +127,7 @@ describe('CommentComposerComponent (issue #105)', () => {
         const focusSpy = vi.spyOn(HTMLTextAreaElement.prototype, 'focus');
         create({ autofocus: true });
 
-        await renderUntil(() => expect(focusSpy.mock.contexts).toContain(textarea()));
+        await renderUntilFocused(focusSpy, textarea);
     });
 
     it('noAutofocus_DoesNotSteal', async () => {
@@ -174,7 +186,7 @@ describe('CommentComposerComponent (issue #105)', () => {
         expect(q('pii-confirm-hint')?.textContent).toContain(commentsTr.composer.piiConfirmHint);
         const anyway = q('pii-send-anyway') as HTMLButtonElement;
         expect(anyway.textContent).toContain(commentsTr.composer.sendAnyway);
-        await renderUntil(() => expect(focusSpy.mock.contexts).toContain(anyway));
+        await renderUntilFocused(focusSpy, () => anyway);
 
         anyway.click();
         fixture.detectChanges();

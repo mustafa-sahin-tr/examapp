@@ -67,48 +67,22 @@
     "@excalidraw/mermaid-to-excalidraw yerel boş pakettir (issue #98, stubs/mermaid-to-excalidraw): kök bağımlılık + resolutions (yarn) + overrides '$' referansı (npm; overrides içindeki file: yolu npm'de alt paketin dizinine göre çözülür). Üçü birlikte güncellenmeli.",
     "İki paket yöneticisi, iki lockfile (issue #488): yarn → yarn.lock (CI `yarn install --frozen-lockfile`, docker-compose dev `yarn install && yarn start`); npm → package-lock.json (Aspire `WithNpm(install: false)`, elle `npm install`/`npm ci`; prod imajı deploy/dockerfiles/angular-spa.Dockerfile). Bağımlılık değişince İKİ lockfile birlikte güncellenir: `yarn install`, ardından `npm install --package-lock-only`; kritik paketlerde iki lock aynı sürümü çözmeli.",
     "Excalidraw'ın CommonJS bağımlılıkları angular.json > build.options.allowedCommonJsDependencies listesindedir; Excalidraw yükseltilince oradaki liste de gözden geçirilmeli.",
-    "Güvenlik yamaları (issue #488): resolutions (yarn) + overrides (npm) ikilisi aynı paketleri aynı major içinde yamalar; ikisi birlikte güncellenmeli. Tarayıcı paketine girenler: lodash-es (quill), nanoid (Excalidraw 3.3.3'ü sabitliyor; ağaçtaki tüm nanoid 3.x). Node/SSR/araç: express + qs + body-parser (server.ts, karma, webpack-dev-server), proxy-addr, cosmiconfig > js-yaml, @microsoft/signalr > ws 7.x (yalnız Node yolu). Build/dev: picomatch 2.x (anymatch/readdirp/micromatch) ve 4.x (vite/fdir), shell-quote, websocket-driver (webpack-dev-server). Paket yükseltilip sabit sürüm audit'te temiz çıkınca ilgili satır kaldırılabilir."
+    "Güvenlik override'ları (issue #545; #488'in geçici yamaları Angular 22 + Vitest geçişiyle gereksizleşti ve kaldırıldı): resolutions (yarn) + overrides (npm) ikilisi aynı paketleri sabitler, ikisi ve iki lockfile birlikte güncellenmeli. nanoid ^3.3.20: Excalidraw 3.3.3'ü sabitliyor (tarayıcı paketi). @excalidraw/excalidraw > sass: Excalidraw eski sass'ı (chokidar 3 / braces) runtime bağımlılığı olarak listeliyor, tarayıcı paketine girmiyor; Angular build'in sass sürümüne eşitlendi. @angular/build > vite ~8.3.5: @angular/build 22.2.4 vite 8.3.0'ı tam sürümle sabitliyor (yalnız dev-server; GHSA-9jrq/-rq7h/-vfpm, launch-editor). Paket yükseltilip sabit sürüm audit'te temiz çıkınca ilgili satır kaldırılabilir."
   ],
   "resolutions": {
     "@excalidraw/mermaid-to-excalidraw": "file:./stubs/mermaid-to-excalidraw",
-    "lodash-es": "^4.18.1",
-    "**/cosmiconfig/js-yaml": "^4.3.2",
-    "proxy-addr": "^2.0.8",
-    "**/anymatch/picomatch": "^2.3.2",
-    "**/readdirp/picomatch": "^2.3.2",
-    "**/micromatch/picomatch": "^2.3.2",
-    "shell-quote": "^1.12.0",
-    "websocket-driver": "^0.7.5",
-    "@microsoft/signalr/ws": "^7.5.13",
     "nanoid": "^3.3.20",
-    "**/vite/picomatch": "^4.0.4",
-    "**/fdir/picomatch": "^4.0.4",
-    "qs": "^6.16.1",
-    "body-parser": "^1.20.9",
-    "express": "^4.22.3"
+    "@excalidraw/excalidraw/sass": "^1.104.1",
+    "@angular/build/vite": "~8.3.5"
   },
   "overrides": {
     "@excalidraw/mermaid-to-excalidraw": "$@excalidraw/mermaid-to-excalidraw",
-    "lodash-es": "^4.18.1",
-    "cosmiconfig": {
-      "js-yaml": "^4.3.2"
-    },
-    "proxy-addr": "^2.0.8",
-    "picomatch@^2": "^2.3.2",
-    "shell-quote": "^1.12.0",
-    "websocket-driver": "^0.7.5",
-    "@microsoft/signalr": {
-      "ws": "^7.5.13"
-    },
     "nanoid": "^3.3.20",
-    "vite": {
-      "picomatch": "^4.0.4"
+    "@excalidraw/excalidraw": {
+      "sass": "^1.104.1"
     },
-    "fdir": {
-      "picomatch": "^4.0.4"
-    },
-    "qs": "^6.16.1",
-    "body-parser": "^1.20.9",
-    "express": "$express"
+    "@angular/build": {
+      "vite": "~8.3.5"
+    }
   }
 }

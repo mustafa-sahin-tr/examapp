@@ -7,9 +7,15 @@
 .qc {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 64px);
+  // Masaüstünde genel toolbar bu ekranda gizli (EnhancedLayout.isQuestionCanvasRoute); mobilde
+  // mobil toolbar kalır. Kırılım EnhancedLayout'un isMobile sorgusuyla aynı.
+  height: 100vh;
   background: var(--ms-surface);
   overflow: hidden;
+
+  @media (max-width: 768px), ((max-height: 500px) and (orientation: landscape)) {
+    height: calc(100vh - 64px);
+  }
 
   &--fullscreen {
     height: 100vh;
@@ -26,12 +32,14 @@
 }
 
 /* ---------- 1. TOP BAR ---------- */
+// Dar ekranda aksiyonlar alt satıra iner; breadcrumb daralır (üst üste binmez).
 .qc-topbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
+  gap: 10px 16px;
   min-height: 60px;
-  padding: 0 18px;
+  padding: 10px 18px;
   background: var(--ms-surface-weak);
   border-bottom: 1px solid var(--ms-border-weak);
   flex: none;
@@ -41,6 +49,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: none;
+  white-space: nowrap;
 
   &__chip {
     width: 32px;
@@ -70,6 +80,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  flex: 1 1 auto;
   min-width: 0;
 
   &__sep {
@@ -94,6 +105,8 @@
   font-size: 13px;
   cursor: pointer;
   max-width: 220px;
+  min-width: 0;
+  flex: 0 1 auto;
 
   span {
     overflow: hidden;
@@ -128,6 +141,7 @@
   align-items: center;
   gap: 8px;
   margin-left: auto;
+  flex: none;
 }
 
 .qc-tools {

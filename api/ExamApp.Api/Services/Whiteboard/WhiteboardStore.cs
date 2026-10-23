@@ -176,6 +176,7 @@ public sealed class WhiteboardStore : IWhiteboardStore
             var firstForUser = !bookingMembers.Any(m => m.UserId == access.UserId);
             var peerOnline = bookingMembers.Any(m => m.UserId != access.UserId);
 
+            board.EverJoined = true;
             _members[connectionId] = new WhiteboardMember(connectionId, access.BookingId, access.UserId, access.Role,
                 access.WindowClosesAtUtc, nowUtc, user);
 
@@ -209,17 +210,22 @@ public sealed class WhiteboardStore : IWhiteboardStore
     }
 
     /// <summary>
-    /// Sınır doluyken (security review #311) katılımcısı kalmamış bir tahtayı — pencere kapanışı en yakın olanı — boşaltır;
+    /// Sınır doluyken (security review #311) terk edilmiş (üyesi olmuş, şimdi katılımcısı kalmamış) bir tahtayı — pencere kapanışı en yakın olanı — boşaltır;
     /// pencere boyunca "dolu" sayılan terk edilmiş tahtalar canlı oturumu engellemesin. Boşaltılan tahtanın sahnesi
     /// kaybolur (geri dönen katılımcı boş tahtayla başlar); üyesi olmadığı için kimseye bildirim gerekmez.
     /// </summary>
     private bool TryEvictEmptyBoard()
     {
-        var occupied = _members.Values.Select(m => m.BookingId).ToHashSet();
-        foreach (var (bookingId, _) in _boards.OrderBy(kv => kv.Value.WindowClosesAtUtc))
+        foreach (var (bookingId, board) in _boards.OrderBy(kv => kv.Value.WindowClosesAtUtc))
         {
-            if (!occupied.Contains(bookingId) && CloseBoard(bookingId) is not null)
-                return true;
+            // Üyelik kontrolü tahtanın kilidi altında: Join üyeyi aynı kilitle kaydeder, arada katılan tahta boşaltılmaz.
+            lock (board.Sync)
+            {
+                if (!board.EverJoined || board.Closed || _members.Values.Any(m => m.BookingId == bookingId))
+                    continue;
+                if (CloseBoard(bookingId) is not null)
+                    return true;
+            }
         }
         return false;
     }
@@ -499,6 +505,12 @@ public sealed class WhiteboardStore : IWhiteboardStore
         public long ServerVersion { get; set; }
         public bool Closed { get; set; }
         public DateTime WindowClosesAtUtc { get; set; } = windowClosesAtUtc;
+
+        /// <summary>
+        /// En az bir üye kaydoldu mu. Yeni açılan tahta ilk üyesi kaydolana kadar "boş" görünür; boşaltma yalnız terk edilmiş
+        /// (üyesi olmuş, şimdi boş) tahtalara uygulanır — aksi halde açılmakta olan tahta boşaltılır, katılan BoardClosed alır.
+        /// </summary>
+        public bool EverJoined { get; set; }
     }
 
     /// <summary>Basit token bucket: <c>capacity</c> kadar patlama, saniyede <c>rate</c> jeton sürekli dolum.</summary>

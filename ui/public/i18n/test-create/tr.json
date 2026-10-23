@@ -19,7 +19,6 @@
     "segGrade": "Sınıf",
     "segSource": "Kaynak",
     "segTopic": "Konu",
-    "applyToAll": "Hepsine uygula",
     "bookLabel": "Kitap",
     "addBook": "Yeni kitap ekle",
     "newBookLabel": "Yeni Kitap Adı",
@@ -46,7 +45,7 @@
     "titleEdit": "Testi Düzenle",
     "titleNew": "Yeni Test Oluştur",
     "subtitleEdit": "Künye ve sınıflandırma bilgilerini güncelle. Değişiklikler kaydedilene kadar uygulanmaz.",
-    "subtitleNew": "Tek tek doldur ya da sağdan Excel ile birden çok testi aynı anda yükle.",
+    "subtitleNew": "Testin bilgilerini doldur; oluşturduktan sonra soruları ekleyebilirsin.",
     "coverTitle": "Kapak Görseli",
     "coverNote": "Öğrenci ekranında ve kartlarda görünür. Önerilen 1200×675, en fazla 2 MB.",
     "coverAlt": "Kapak görseli",
@@ -68,28 +67,6 @@
     "defaultName": "Test Adı",
     "gradePlaceholder": "Sınıf Seçin"
   },
-  "bulk": {
-    "title": "Excel ile Toplu Yükle",
-    "tag": "HIZLI",
-    "note": "Bir Excel dosyasındaki tüm testleri içe aktar, satırları düzenle, sonra hepsini bir kerede oluştur.",
-    "dropTitle": "Excel dosyasını buraya bırak",
-    "dropSubtitle": ".xlsx veya .xls · ilk sayfa okunur",
-    "import": "İçe Aktar",
-    "rowsLoaded": "{{count}} satır yüklendi",
-    "colBook": "Kitap",
-    "colName": "Test Adı",
-    "colGrade": "Sınıf",
-    "colDuration": "Süre",
-    "colStatus": "Durum",
-    "durationCell": "{{minutes}} dk",
-    "statusUpdated": "Güncellendi",
-    "statusPending": "Bekliyor",
-    "undoSelected": "Seçili satırı geri al",
-    "undoAll": "Tümünü geri al",
-    "clearList": "Listeyi temizle",
-    "createAll": "{{count}} Testi Oluştur",
-    "empty": "Henüz dosya yüklenmedi. Bir Excel seçtiğinde satırlar burada listelenir."
-  },
   "snackbar": {
     "close": "Kapat",
     "testCreated": "Test oluşturuldu.",
@@ -109,10 +86,6 @@
     "changesSaved": "Değişiklikler kaydedildi.",
     "subtopicRequired": "Alt konu seçilmedi",
     "navigatingToList": "Test listesine yönlendiriliyorsunuz...",
-    "excelReadFailed": "Excel dosyası okunamadı.",
-    "bulkPartial": "Bazı testler oluşturulamadı. Başarılı: {{success}}, Hatalı: {{failed}}",
-    "bulkAllCreated": "Tüm testler oluşturuldu.",
-    "bulkError": "Toplu yükleme sırasında bir hata oluştu.",
     "navigatingToQuestions": "Soru ekleme adımına geçiliyor..."
   }
 }

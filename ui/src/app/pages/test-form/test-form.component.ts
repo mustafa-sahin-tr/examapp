@@ -34,9 +34,7 @@ export class TestFormComponent {
   @Input() showAddBookTestInput = false;
   /** Edit modda alt aksiyonlar (Kaydet/İptal) sidebar'a taşındığı için gizlenir. */
   @Input() isEditMode = false;
-  /** "Hepsine uygula" yalnızca yeni test + toplu veri varken görünür. */
-  @Input() showApplyToAll = false;
-  /** Kompakt varyant: bölüm kartları/notları ve "hepsine uygula" düğmeleri gizlenir. */
+  /** Kompakt varyant: bölüm kartları/notları gizlenir. */
   @Input() compact = false;
 
   @Output() onBookChange = new EventEmitter<any>();
@@ -48,10 +46,6 @@ export class TestFormComponent {
   @Output() onSubmit = new EventEmitter<void>();
   @Output() onCancel = new EventEmitter<void>();
   @Output() onGradeChange = new EventEmitter<any>();
-  @Output() applySubjectToAll = new EventEmitter<any>();
-  @Output() applyTopicToAll = new EventEmitter<any>();
-  @Output() applySubtopicToAll = new EventEmitter<any>();
-  @Output() applyGradeToAll = new EventEmitter<any>();
 
   value(name: string): any {
     return this.form?.get(name)?.value;

@@ -135,32 +135,6 @@ public class ExamServiceCreateAndStatsTests : IDisposable
         (await NewAuthoring(ctx2).CreateOrUpdateAsync(d, 1, isAdmin: true)).Message.ShouldContain("Test bulunamadı");
     }
 
-    // ---- CreateBulkExamsAsync ----
-
-    [Fact]
-    public async Task Bulk_create_reports_per_row_success_and_failure()
-    {
-        var gradeId = await AddGradeAsync();
-        await using var ctx = _db.NewContext();
-
-        var bulk = new BulkExamCreateDto
-        {
-            Exams =
-            {
-                new BulkExamItemDto { Name = "OK", Description = "d", GradeId = gradeId, MaxDurationSeconds = 300, NewBookName = "K", NewBookTestName = "T1" },
-                new BulkExamItemDto { Name = "BAD", Description = "d", GradeId = gradeId, MaxDurationSeconds = 300 }, // no book -> fails
-            },
-        };
-
-        var result = await NewAuthoring(ctx).CreateBulkExamsAsync(bulk, 1, isAdmin: true);
-
-        result.TotalProcessed.ShouldBe(2);
-        result.SuccessCount.ShouldBe(1, customMessage: string.Join(" | ", result.FailedExams.Select(f => $"{f.ExamName}: {f.ErrorMessage}")));
-        result.FailureCount.ShouldBe(1);
-        result.Success.ShouldBeFalse();
-        result.FailedExams.ShouldContain(f => f.ExamName == "BAD" && f.RowNumber == 2);
-    }
-
     // ---- GetGroupedStudentStatistics ----
 
     [Fact]

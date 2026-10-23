@@ -684,36 +684,6 @@ public class ExamController : BaseController
         return Ok(response);
     }
 
-    [HttpPost("bulk-import")]
-    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
-    [Authorize(Roles = "Teacher")]
-    public async Task<IActionResult> BulkImportExams([FromBody] BulkExamCreateDto bulkExamDto)
-    {
-        var user = await GetAuthenticatedUserAsync();
-        if (user == null)
-        {
-            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
-        }
-
-        try
-        {
-            var response = await _authoring.CreateBulkExamsAsync(bulkExamDto, user.Id, User.IsInRole("Admin"));
-            return Ok(response);
-        }
-        catch (Exception)
-        {
-            return BadRequest(new BulkExamResultDto
-            {
-                Success = false,
-                Message = _localizer["exam.bulkImport.failed"],
-                TotalProcessed = bulkExamDto.Exams.Count,
-                SuccessCount = 0,
-                FailureCount = bulkExamDto.Exams.Count
-            });
-        }
-    }
-
-
     [HttpGet("student/statistics")]
     // Issue #373: yalnız öğrencinin kendi istatistiği — tek tüketici /student-profile (studentGuard). Teacher/Admin 403.
     [Authorize(Roles = "Student")]

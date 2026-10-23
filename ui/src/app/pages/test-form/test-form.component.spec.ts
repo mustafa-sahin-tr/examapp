@@ -52,29 +52,19 @@ describe('TestFormComponent', () => {
     });
   });
 
-  function applyToAllButtons() {
-    return fixture.debugElement
-      .queryAll(By.css('button'))
-      .filter((b) => (b.nativeElement.textContent || '').includes('Hepsine uygula'));
-  }
-
   it('builds', () => {
     fixture.detectChanges();
     expect(component).toBeTruthy();
   });
 
-  it('does not render the "hepsine uygula" triggers when showApplyToAll is false', () => {
-    component.showApplyToAll = false;
+  // Issue #544: Excel toplu yükleme kalktı; ona ait "Hepsine uygula" düğmeleri formda yok.
+  it('renders_NoApplyToAllTriggers', () => {
     fixture.detectChanges();
 
-    expect(applyToAllButtons().length).toBe(0);
-  });
-
-  it('renders the "hepsine uygula" triggers when showApplyToAll is true', () => {
-    component.showApplyToAll = true;
-    fixture.detectChanges();
-
-    expect(applyToAllButtons().length).toBeGreaterThan(0);
+    const icons = fixture.debugElement
+      .queryAll(By.css('button mat-icon'))
+      .map((i) => (i.nativeElement.textContent || '').trim());
+    expect(icons).not.toContain('done_all');
   });
 
   describe('compact input', () => {
@@ -91,18 +81,6 @@ describe('TestFormComponent', () => {
       const form = fixture.debugElement.query(By.css('form.tf'));
       expect(form.nativeElement.classList.contains('compact')).toBeTrue();
     });
-  });
-
-  it('cannot emit applySubjectToAll while the trigger is hidden', () => {
-    component.showApplyToAll = false;
-    fixture.detectChanges();
-
-    const emitted = jasmine.createSpy('applySubjectToAll');
-    component.applySubjectToAll.subscribe(emitted);
-
-    // nothing to click — the *ngIf removed the button entirely
-    expect(applyToAllButtons().length).toBe(0);
-    expect(emitted).not.toHaveBeenCalled();
   });
 
   /** Issue #105: öğrenci yorum/soru anahtarı (varsayılan açık, togglePractice() deseni). */

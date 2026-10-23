@@ -225,10 +225,6 @@ export class TestService {
     return this.http.delete<any>(`${this.baseUrl}/${id}`);
   }
 
-  bulkImport(bulkData: any): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/bulk-import`, bulkData);
-  }
-
   updateWorksheetBackgroundImage(
     worksheetId: number,
     file: File

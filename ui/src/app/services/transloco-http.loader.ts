@@ -2,8 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, PendingTasks, inject } from '@angular/core';
 import { Translation, TranslocoLoader } from '@jsverse/transloco';
-import { Observable, from, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { Observable, defer, from, of } from 'rxjs';
+import { catchError, finalize, map } from 'rxjs/operators';
 
 import { AppLocale, isAppLocale, localeDefinitionOf } from '../models/locale';
 
@@ -47,10 +47,16 @@ export class TranslocoHttpLoader implements TranslocoLoader {
     if (!this.isBrowser) {
       // `import()` yerel bir Promise döndürür; zone.js onu görmediği için `PendingTasks` olmadan
       // uygulama sözlük gelmeden "stable" sayılır ve prerender boş şablonu yazar.
-      return from(this.pendingTasks.run(() => loadServerDictionary(parsed))).pipe(
-        map((module) => module.default),
-        catchError(() => of({}))
-      );
+      // Angular 20'den beri `PendingTasks.run()` sonucu döndürmüyor (void); görev `add()` ile açılıp
+      // sözlük gelince ya da yükleme düşünce `finalize` ile kapanır (issue #545).
+      return defer(() => {
+        const removeTask = this.pendingTasks.add();
+        return from(loadServerDictionary(parsed)).pipe(
+          map((module) => module.default),
+          catchError(() => of({})),
+          finalize(removeTask)
+        );
+      });
     }
 
     return this.http.get<Translation>(`/i18n/${path}.json`);
@@ -80,7 +86,9 @@ function parseTranslationPath(path: string): TranslationPath | null {
   return SCOPE_PATTERN.test(scope) ? { scope, lang } : null;
 }
 
-function loadServerDictionary({ scope, lang }: TranslationPath): Promise<{ default: Translation }> {
+// `async`: esbuild'in glob'lanmış `import()`'u bundle'da olmayan bir scope için senkron fırlatır; async gövde
+// bunu reddedilen Promise'e çevirir, böylece hata `catchError`'a düşer ve pending task kapanır.
+async function loadServerDictionary({ scope, lang }: TranslationPath): Promise<{ default: Translation }> {
   return scope === null
     ? localeDefinitionOf(lang).serverDictionary()
     : import(`../../../public/i18n/${scope}/${lang}.json`);

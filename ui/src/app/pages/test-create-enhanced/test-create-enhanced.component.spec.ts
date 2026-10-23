@@ -79,8 +79,8 @@ describe('TestCreateEnhancedComponent', () => {
     subjectService.getTopicsBySubjectAndGrade.and.returnValue(of([]));
     subjectService.getSubTopicsByTopic.and.returnValue(of([]));
 
-    router = jasmine.createSpyObj<Router>('Router', ['navigate', 'getCurrentNavigation']);
-    router.getCurrentNavigation.and.returnValue(null as any);
+    router = jasmine.createSpyObj<Router>('Router', ['navigate', 'currentNavigation']);
+    router.currentNavigation.and.returnValue(null as any);
 
     TestBed.configureTestingModule({
       imports: [TestCreateEnhancedComponent, translocoTesting],

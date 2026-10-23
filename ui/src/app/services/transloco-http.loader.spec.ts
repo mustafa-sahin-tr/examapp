@@ -1,4 +1,4 @@
-import { PLATFORM_ID } from '@angular/core';
+import { ApplicationRef, PLATFORM_ID, PendingTasks } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
@@ -95,6 +95,47 @@ describe('TranslocoHttpLoader', () => {
       const loader = createLoader('server');
 
       await expectAsync(firstValueFrom(loader.getTranslation('landing/de'))).toBeResolvedTo({});
+    });
+
+    // Issue #545 (Angular 20): PendingTasks.run() artık sonucu döndürmüyor; loader görevi add() ile açıp
+    // sözlük gelince kapatmalı — aksi halde prerender sözlüğü beklemeden boş şablonu yazar.
+    it('getTranslation_Server_HoldsPendingTaskUntilDictionaryLoaded', async () => {
+      const loader = createLoader('server');
+      const pendingTasks = TestBed.inject(PendingTasks);
+      const removeTask = jasmine.createSpy('removeTask');
+      spyOn(pendingTasks, 'add').and.returnValue(removeTask);
+
+      const translation$ = loader.getTranslation('landing/tr');
+      expect(pendingTasks.add).not.toHaveBeenCalled();
+
+      const result = firstValueFrom(translation$);
+      expect(pendingTasks.add).toHaveBeenCalledTimes(1);
+      expect(removeTask).not.toHaveBeenCalled();
+
+      expect(await result).toEqual(landingTr);
+      expect(removeTask).toHaveBeenCalledTimes(1);
+    });
+
+    it('getTranslation_ServerImportFails_ReleasesPendingTask', async () => {
+      const loader = createLoader('server');
+      const pendingTasks = TestBed.inject(PendingTasks);
+      const removeTask = jasmine.createSpy('removeTask');
+      spyOn(pendingTasks, 'add').and.returnValue(removeTask);
+
+      await expectAsync(firstValueFrom(loader.getTranslation('no-such-scope/tr'))).toBeResolvedTo({});
+
+      expect(removeTask).toHaveBeenCalledTimes(1);
+    });
+
+    it('getTranslation_Server_DoesNotBlockStabilityAfterLoad', async () => {
+      const loader = createLoader('server');
+      const pendingTasks = TestBed.inject(PendingTasks);
+      const addSpy = spyOn(pendingTasks, 'add').and.callThrough();
+
+      await firstValueFrom(loader.getTranslation('tr'));
+
+      expect(addSpy).toHaveBeenCalledTimes(1);
+      await expectAsync(TestBed.inject(ApplicationRef).whenStable()).toBeResolved();
     });
   });
 });

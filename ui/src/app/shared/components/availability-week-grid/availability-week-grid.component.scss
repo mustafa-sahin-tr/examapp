@@ -131,9 +131,9 @@
 
   // Sil butonu: Material filled button token'ları tehlike rengine bağlanır.
   &__delete-confirm {
-    --mdc-filled-button-container-color: var(--ms-danger-background);
-    --mdc-filled-button-label-text-color: var(--ms-danger-text-inverse);
-    --mat-filled-button-state-layer-color: var(--ms-danger-text-inverse);
+    --mat-button-filled-container-color: var(--ms-danger-background);
+    --mat-button-filled-label-text-color: var(--ms-danger-text-inverse);
+    --mat-button-filled-state-layer-color: var(--ms-danger-text-inverse);
   }
 
   &__draft-text {
@@ -167,9 +167,9 @@
 
   // "Tüm seri" (issue #179): çerçeveli buton tehlike tonunda; "Sadece bu hafta" dolgulu tehlike butonu olarak kalır.
   &__delete-series {
-    --mdc-outlined-button-label-text-color: var(--ms-danger-background);
-    --mdc-outlined-button-outline-color: var(--ms-danger-background);
-    --mat-outlined-button-state-layer-color: var(--ms-danger-background);
+    --mat-button-outlined-label-text-color: var(--ms-danger-background);
+    --mat-button-outlined-outline-color: var(--ms-danger-background);
+    --mat-button-outlined-state-layer-color: var(--ms-danger-background);
   }
 
   // ---------------- Tekrar seçeneği (issue #179) ----------------

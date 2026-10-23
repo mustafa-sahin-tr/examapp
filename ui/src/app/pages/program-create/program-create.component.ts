@@ -9,12 +9,13 @@ import {
   signal,
   untracked,
   viewChild,
+  DOCUMENT
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, take } from 'rxjs';
 import { AbstractControl, FormsModule } from '@angular/forms';
 import { ErrorStateMatcher } from '@angular/material/core';
-import { DOCUMENT } from '@angular/common';
+
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';

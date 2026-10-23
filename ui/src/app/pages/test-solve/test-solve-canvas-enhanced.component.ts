@@ -1205,7 +1205,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   private readNavigationWorksheetId(): number | null {
-    const fromNavigation = this.router.getCurrentNavigation()?.extras.state?.['worksheetId'];
+    const fromNavigation = this.router.currentNavigation()?.extras.state?.['worksheetId'];
     const historyState = typeof history !== 'undefined' ? (history.state as Record<string, unknown> | null) : null;
     const value = Number(fromNavigation ?? historyState?.['worksheetId']);
     return Number.isFinite(value) && value > 0 ? value : null;

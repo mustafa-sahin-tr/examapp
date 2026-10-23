@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { of, throwError } from 'rxjs';
 
@@ -74,7 +74,8 @@ describe('WorksheetListComponent', () => {
         { provide: GradesService, useValue: gradesService },
         { provide: AuthService, useValue: authService },
         { provide: LocaleService, useValue: localeServiceStub },
-        { provide: Router, useValue: jasmine.createSpyObj<Router>('Router', ['navigate']) },
+        // Gerçek router: kartlardaki routerLink'ler Angular 20'den beri ngOnChanges'ta createUrlTree çağırıyor (#545).
+        provideRouter([]),
         {
           provide: ActivatedRoute,
           useValue: {
@@ -85,6 +86,7 @@ describe('WorksheetListComponent', () => {
       ],
     });
 
+    spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
     const created = TestBed.createComponent(WorksheetListComponent);
     created.detectChanges();
     return created;

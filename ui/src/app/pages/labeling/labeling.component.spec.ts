@@ -1024,6 +1024,36 @@ describe('LabelingComponent', () => {
       expect(labelingApi.saveToBank).not.toHaveBeenCalled();
     });
 
+    // Issue #545 (Material 20): MatButton ikonu ayrı slota alıyor; @else kökünde ikon + metin birlikte durunca
+    // ikon slota düşmüyordu (NG8011). İkon tek başına @else'te, etiket dışarıda.
+    function bankButton(): HTMLButtonElement {
+      return fixture.nativeElement.querySelector('button.lb-bank') as HTMLButtonElement;
+    }
+
+    it('bankButton_Idle_ProjectsIconIntoMaterialIconSlot', async () => {
+      await openPageWith([region('S1', 0)]);
+
+      const button = bankButton();
+      expect(button.querySelector('mat-icon')?.textContent?.trim()).toBe('library_add');
+      expect(button.querySelector('.mdc-button__label mat-icon')).toBeNull();
+      expect(button.querySelector('.mdc-button__label')?.textContent?.trim()).toBe(labelingTr.bank.save);
+      expect(button.querySelector('mat-spinner')).toBeNull();
+    });
+
+    it('bankButton_Saving_ShowsSpinnerAndSavingLabel', async () => {
+      await openPageWith([region('S1', 0)]);
+      labelingApi.saveToBank.and.returnValue(new Subject<never>().asObservable());
+
+      component.saveToBank();
+      fixture.detectChanges();
+
+      const button = bankButton();
+      expect(button.querySelector('mat-spinner')).not.toBeNull();
+      expect(button.querySelector('mat-icon')).toBeNull();
+      expect(button.textContent).toContain(labelingTr.bank.saving);
+      expect(button.getAttribute('aria-busy')).toBe('true');
+    });
+
     it('canSaveToBank_NoQuestionsOnCanvas_IsFalseAndSendsNothing', async () => {
       await openPageWith([]);
 

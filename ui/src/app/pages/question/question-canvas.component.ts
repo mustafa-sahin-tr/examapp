@@ -429,7 +429,7 @@ export class QuestionCanvasComponent implements OnInit {
 
   ngOnInit() {
     this.loadBooks();
-    const navigation = this.router.getCurrentNavigation();
+    const navigation = this.router.currentNavigation();
     const state = navigation?.extras.state as {
       subjectId?: number;
       topicId?: number;

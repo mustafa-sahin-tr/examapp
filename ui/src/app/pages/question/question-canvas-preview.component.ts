@@ -77,7 +77,7 @@ export class QuestionCanvasPreviewComponent implements AfterViewInit {
 
   ngOnInit(): void {
     // Prefer navigation extras state (works when coming from inside the app)
-    const navState = (this.router.getCurrentNavigation()?.extras?.state as any) ?? null;
+    const navState = (this.router.currentNavigation()?.extras?.state as any) ?? null;
     const historyState = (this.location.getState?.() as any) ?? (globalThis as any)?.history?.state ?? null;
     const state = navState ?? historyState ?? {};
 

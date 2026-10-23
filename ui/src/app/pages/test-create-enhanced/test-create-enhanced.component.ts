@@ -166,7 +166,7 @@ export class TestCreateEnhancedComponent implements OnInit {
   ngOnInit(): void {
     this.id = this.route.snapshot.paramMap.get('id') ? Number(this.route.snapshot.paramMap.get('id')) : null;
     if (!this.id) {
-      const navigation = this.router.getCurrentNavigation();
+      const navigation = this.router.currentNavigation();
       this.id = history.state.testValue;
     }
     this.reloadComponent(this.id!);

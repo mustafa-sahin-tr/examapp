@@ -140,10 +140,10 @@
       [attr.aria-busy]="bankSaving()" [matTooltip]="t('bank.hint')">
       @if (bankSaving()) {
       <mat-spinner diameter="16" aria-hidden="true"></mat-spinner>
-      <span>{{ t('bank.saving') }}</span>
       } @else {
-      <mat-icon>library_add</mat-icon>{{ t('bank.save') }}
+      <mat-icon>library_add</mat-icon>
       }
+      <span>{{ bankSaving() ? t('bank.saving') : t('bank.save') }}</span>
     </button>
   </div>
   }

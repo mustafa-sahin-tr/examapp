@@ -83,8 +83,8 @@ describe('QuestionCanvasComponent', () => {
 
     const subjectService = jasmine.createSpyObj<SubjectService>('SubjectService', ['loadCategories']);
 
-    const router = jasmine.createSpyObj<Router>('Router', ['navigate', 'getCurrentNavigation']);
-    router.getCurrentNavigation.and.returnValue(null as any);
+    const router = jasmine.createSpyObj<Router>('Router', ['navigate', 'currentNavigation']);
+    router.currentNavigation.and.returnValue(null as any);
 
     await TestBed.configureTestingModule({
       imports: [QuestionCanvasComponent, translocoTesting],
@@ -667,8 +667,8 @@ describe('QuestionCanvasComponent', () => {
 
       const subjectServiceLocal = jasmine.createSpyObj<SubjectService>('SubjectService', ['loadCategories']);
 
-      const routerLocal = jasmine.createSpyObj<Router>('Router', ['navigate', 'getCurrentNavigation']);
-      routerLocal.getCurrentNavigation.and.returnValue(null as any);
+      const routerLocal = jasmine.createSpyObj<Router>('Router', ['navigate', 'currentNavigation']);
+      routerLocal.currentNavigation.and.returnValue(null as any);
 
       const authServiceLocal = jasmine.createSpyObj<AuthService>('AuthService', ['hasRole', 'hasRealmRole']);
       authServiceLocal.hasRole.and.callFake((role: string) => opts.isAdmin && role === 'Admin');

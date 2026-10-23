@@ -24,7 +24,7 @@
     "@angular/platform-browser-dynamic": "22.2.3",
     "@angular/platform-server": "22.2.3",
     "@angular/router": "22.2.3",
-    "@angular/ssr": "^22.2.4",
+    "@angular/ssr": "22.2.4",
     "@excalidraw/excalidraw": "0.18.1",
     "@excalidraw/mermaid-to-excalidraw": "file:./stubs/mermaid-to-excalidraw",
     "@fullcalendar/angular": "~6.1.21",
@@ -66,20 +66,20 @@
   "//": [
     "@excalidraw/mermaid-to-excalidraw yerel boş pakettir (issue #98, stubs/mermaid-to-excalidraw): kök bağımlılık + resolutions (yarn) + overrides '$' referansı (npm; overrides içindeki file: yolu npm'de alt paketin dizinine göre çözülür). Üçü birlikte güncellenmeli.",
     "İki paket yöneticisi, iki lockfile (issue #488): yarn → yarn.lock (CI `yarn install --frozen-lockfile`, docker-compose dev `yarn install && yarn start`); npm → package-lock.json (Aspire `WithNpm(install: false)`, elle `npm install`/`npm ci`; prod imajı deploy/dockerfiles/angular-spa.Dockerfile). Bağımlılık değişince İKİ lockfile birlikte güncellenir: `yarn install`, ardından `npm install --package-lock-only`; kritik paketlerde iki lock aynı sürümü çözmeli.",
-    "Excalidraw'ın CommonJS bağımlılıkları angular.json > build.options.allowedCommonJsDependencies listesindedir; Excalidraw yükseltilince oradaki liste de gözden geçirilmeli.",
-    "Güvenlik override'ları (issue #545; #488'in geçici yamaları Angular 22 + Vitest geçişiyle gereksizleşti ve kaldırıldı): resolutions (yarn) + overrides (npm) ikilisi aynı paketleri sabitler, ikisi ve iki lockfile birlikte güncellenmeli. nanoid ^3.3.20: Excalidraw 3.3.3'ü sabitliyor (tarayıcı paketi). @excalidraw/excalidraw > sass: Excalidraw eski sass'ı (chokidar 3 / braces) runtime bağımlılığı olarak listeliyor, tarayıcı paketine girmiyor; Angular build'in sass sürümüne eşitlendi. @angular/build > vite ~8.3.5: @angular/build 22.2.4 vite 8.3.0'ı tam sürümle sabitliyor (yalnız dev-server; GHSA-9jrq/-rq7h/-vfpm, launch-editor). Paket yükseltilip sabit sürüm audit'te temiz çıkınca ilgili satır kaldırılabilir."
+    "Excalidraw'ın (ve quill-delta, jszip'in) CommonJS bağımlılıkları angular.json > build.options.allowedCommonJsDependencies listesindedir; Excalidraw yükseltilince oradaki liste de gözden geçirilmeli.",
+    "Güvenlik override'ları (issue #545; #488'in geçici yamaları Angular 22 + Vitest geçişiyle gereksizleşti ve kaldırıldı): resolutions (yarn) + overrides (npm) ikilisi aynı paketleri sabitler, ikisi ve iki lockfile birlikte güncellenmeli. nanoid ^3.3.20: Excalidraw 3.3.3'ü sabitliyor (tarayıcı paketi). @excalidraw/excalidraw > sass: Excalidraw eski sass'ı (chokidar 3 / braces) runtime bağımlılığı olarak listeliyor, tarayıcı paketine girmiyor; Angular build'in sabitlediği sass sürümüne (1.104.1) tam eşitlendi, tek kopya kalsın. @angular/build > vite ~8.3.5: @angular/build 22.2.4 vite 8.3.0'ı tam sürümle sabitliyor (yalnız dev-server; GHSA-9jrq/-rq7h/-vfpm, launch-editor). Paket yükseltilip sabit sürüm audit'te temiz çıkınca ilgili satır kaldırılabilir."
   ],
   "resolutions": {
     "@excalidraw/mermaid-to-excalidraw": "file:./stubs/mermaid-to-excalidraw",
     "nanoid": "^3.3.20",
-    "@excalidraw/excalidraw/sass": "^1.104.1",
+    "@excalidraw/excalidraw/sass": "1.104.1",
     "@angular/build/vite": "~8.3.5"
   },
   "overrides": {
     "@excalidraw/mermaid-to-excalidraw": "$@excalidraw/mermaid-to-excalidraw",
     "nanoid": "^3.3.20",
     "@excalidraw/excalidraw": {
-      "sass": "^1.104.1"
+      "sass": "1.104.1"
     },
     "@angular/build": {
       "vite": "~8.3.5"

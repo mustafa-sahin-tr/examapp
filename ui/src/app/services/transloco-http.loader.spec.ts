@@ -135,7 +135,7 @@ describe('TranslocoHttpLoader', () => {
             await firstValueFrom(loader.getTranslation('tr'));
 
             expect(addSpy).toHaveBeenCalledTimes(1);
-            await expect(TestBed.inject(ApplicationRef).whenStable()).resolves.not.toThrow();
+            await TestBed.inject(ApplicationRef).whenStable();
         });
     });
 });

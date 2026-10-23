@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, take } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -17,6 +17,7 @@ interface ParentRegistrationResult {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-parent-register',
   standalone: true,
   imports: [CommonModule, MatButtonModule, MatCardModule, MatSnackBarModule, TranslocoDirective],

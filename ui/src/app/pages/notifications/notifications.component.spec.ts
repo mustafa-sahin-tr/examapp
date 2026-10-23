@@ -316,7 +316,7 @@ describe('NotificationsComponent (issue #146)', () => {
     });
 
     it('relativeTime_RefreshesEveryMinuteWhilePageOpen', async () => {
-        // beforeEach'teki örnek gerçek zamanlayıcıyla kuruldu; tick testi için sahte zamanlayıcıyla (vi.useFakeTimers) yenisi oluşturulur.
+        // Ortak örnek kapatılır; kendi bildirim listesiyle yeni bir örnek açılıp dakikalık yenileme sahte zamanla ilerletilir.
         flushList([]);
         fixture.destroy();
         const local = TestBed.createComponent(NotificationsComponent);

@@ -252,7 +252,7 @@
               {{
               t('enhanced.resultsTitle', {
               term: searchForm.get('searchTerm')?.value
-              ? '"' + (searchForm.get('searchTerm')?.value ?? null) + '"'
+              ? '"' + (searchForm.get('searchTerm')?.value ?? '') + '"'
               : t('enhanced.resultsFallbackTerm')
               })
               }}

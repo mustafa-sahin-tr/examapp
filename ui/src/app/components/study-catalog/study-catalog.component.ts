@@ -1,4 +1,4 @@
-import { Component, OnInit, Output, EventEmitter, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,6 +9,7 @@ import { StudyService } from '../../services/study.service';
 import { Subject } from '../../models/subject';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-study-catalog',
   standalone: true,
   imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatRippleModule, TranslocoDirective],

@@ -198,7 +198,7 @@
   dependencies:
     tslib "^2.3.0"
 
-"@angular/ssr@^22.2.4":
+"@angular/ssr@^22.2.4", "@angular/ssr@22.2.4":
   version "22.2.4"
   resolved "https://registry.npmjs.org/@angular/ssr/-/ssr-22.2.4.tgz"
   integrity sha512-bOOYPvUtSiaQEap0WgLPBuRk7Qu9dymgdIcwt4E1yfBzQhbZGAGl+NdYbXHoPhTaMDe0uOKb75fN3/MuJtsjwA==
@@ -3412,17 +3412,6 @@ sass-embedded@^1.70.0, sass-embedded@1.104.1:
     sass-embedded-unknown-all "1.104.1"
     sass-embedded-win32-arm64 "1.104.1"
     sass-embedded-win32-x64 "1.104.1"
-
-sass@^1.104.1:
-  version "1.106.1"
-  resolved "https://registry.npmjs.org/sass/-/sass-1.106.1.tgz"
-  integrity sha512-kD+Gi66vycZcbJt+42NC4z4PXNMcCajVrJPhqoKKXy5cOBMmJQt052CxIBcRjwYXeImHYOpu/ydWWGZQIenl7A==
-  dependencies:
-    chokidar "^5.0.0"
-    immutable "^5.1.5"
-    source-map-js ">=0.6.2 <2.0.0"
-  optionalDependencies:
-    "@parcel/watcher" "^2.4.1"
 
 sass@^1.70.0, sass@1.104.1:
   version "1.104.1"

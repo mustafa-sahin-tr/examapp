@@ -1,5 +1,5 @@
 import { ApplicationConfig, ChangeDetectionStrategy, Component, DOCUMENT as CORE_DOCUMENT, EnvironmentInjector, NgZone, VERSION, createEnvironmentInjector, inject, input, signal, } from '@angular/core';
-import { HttpBackend, HttpXhrBackend } from '@angular/common/http';
+import { HttpBackend, HttpXhrBackend, provideHttpClient } from '@angular/common/http';
 import { By } from '@angular/platform-browser';
 import { DOCUMENT as COMMON_DOCUMENT } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
@@ -108,7 +108,7 @@ describe('Angular yükseltmesi (#545)', () => {
         });
     });
     describe('Angular 21', () => {
-        it('frameworkMaterialAndCdk_AreAtLeast21', () => {
+        it('framework_IsAtLeast21', () => {
             expect(Number(VERSION.major)).toBeGreaterThanOrEqual(21);
         });
 
@@ -126,8 +126,10 @@ describe('Angular yükseltmesi (#545)', () => {
                 TestBed.inject(EnvironmentInjector),
             );
             try {
-                const zone = env.get(NgZone);
-                return zone.run(() => NgZone.isInAngularZone());
+                // self: TestBed zaten zone tabanlı (zone.js polyfill); yalnız config'in kendi sağlayıcısına bakılmalı,
+                // yoksa ebeveynin NgZone'una düşer ve test hiç kırmızı olamaz.
+                const zone = env.get(NgZone, null, { self: true });
+                return zone !== null && zone.run(() => NgZone.isInAngularZone());
             }
             finally {
                 env.destroy();
@@ -169,6 +171,11 @@ describe('Angular yükseltmesi (#545)', () => {
 
         it('serverAppConfig_KeepsZoneChangeDetection', async () => {
             expect(await isZoneBased(serverConfig)).toBe(true);
+        });
+
+        // Yardımcının kendisi: zone sağlayıcısı olmayan config false dönmeli (TestBed'in zone'una düşmemeli).
+        it('configWithoutZoneProvider_IsNotZoneBased', async () => {
+            expect(await isZoneBased({ providers: [provideHttpClient()] })).toBe(false);
         });
     });
     describe('Angular 22', () => {

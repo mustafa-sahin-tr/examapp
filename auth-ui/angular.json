@@ -113,7 +113,8 @@
             "buildTarget": ":build:testing",
             "runner": "vitest",
             "browsers": ["chromiumHeadless"],
-            "browserViewport": "800x600"
+            "browserViewport": "800x600",
+            "setupFiles": ["src/test-setup.ts"]
           }
         }
       }

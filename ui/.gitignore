@@ -35,9 +35,8 @@ lerna-debug.log*
 # Environment files
 src/environments/environment*.ts
 
-# Package lock files
-package-lock.json
-yarn.lock
+# Package lock files — package-lock.json (npm: Aspire/prod imajı) ve yarn.lock (yarn: CI, docker-compose dev)
+# ikisi de izlenir ve birlikte güncellenir (issue #488).
 pnpm-lock.yaml
 
 # Cypress

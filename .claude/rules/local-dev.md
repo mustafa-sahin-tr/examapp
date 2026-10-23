@@ -472,6 +472,19 @@ dev-server'ı yeniden başlat (`aspire resource angular-app restart` / `auth-ui`
 Warning olarak düşer; URL'ler sorgu ve fragment atılarak yazılır. `report-to` bilerek kullanılmıyor: varsa Chrome `report-uri`'yi
 yok sayıyor, Reporting API ise yerel http'de raporu teslim etmedi.
 
+**Issue #488 — Angular 19.2: dev-server host doğruluyor.** `ui` ve `auth-ui` `start` script'lerinden
+`--disable-host-check` kalktı. Dev-server yalnız `angular.json` → `serve.options.allowedHosts` listesindeki host'lara cevap
+veriyor: ui `localhost`, `127.0.0.1`, `angular-app`; auth-ui `localhost`, `127.0.0.1`, `auth-ui`. ui'da aynı liste ayrıca
+`build.options.security.allowedHosts`'ta duruyor (`server.ts` / `serve:ssr` manifest'i için; dev-server onu değil serve listesini
+kullanıyor). Liste dışı Host 403 alır (Vite), liste dışı `X-Forwarded-Host` 400 alır (Angular SSR). LAN IP'leri Vite'ta her zaman
+serbest; özel bir hostname'den (tünel, `/etc/hosts` adı) açacaksan listeye ekle ya da gateway'i (`:5678`) kullan. `*` ekleme.
+Gateway arkasında ui dev-server SSR'dan CSR'a düşer: host/proto dışındaki `X-Forwarded-*` başlıklarına güvenilmiyor
+(`trustProxyHeaders` varsayılan) ve log'da `Received "X-Forwarded-..." header but "trustProxyHeaders" was not set up` uyarısı
+çıkar. Bu beklenen davranış, sayfa normal açılır.
+- **Merge sonrası:** ui'da `yarn install` (ya da `npm ci`), auth-ui'da `npm ci`, sonra Aspire'da
+  `aspire resource angular-app restart` ve `aspire resource auth-ui restart`. ui'nın `package-lock.json`'u artık izleniyor;
+  bağımlılık değişince `yarn.lock` ile birlikte güncelle (`ui/package.json` `//` notu).
+
 ## Port map (host → container)
 
 | Service | Host port | Notes |

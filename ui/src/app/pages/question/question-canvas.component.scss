@@ -7,9 +7,15 @@
 .qc {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 64px);
+  // Masaüstünde genel toolbar bu ekranda gizli (EnhancedLayout.isQuestionCanvasRoute); mobilde
+  // mobil toolbar kalır. Kırılım EnhancedLayout'un isMobile sorgusuyla aynı.
+  height: 100vh;
   background: var(--ms-surface);
   overflow: hidden;
+
+  @media (max-width: 768px), ((max-height: 500px) and (orientation: landscape)) {
+    height: calc(100vh - 64px);
+  }
 
   &--fullscreen {
     height: 100vh;

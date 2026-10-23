@@ -83,7 +83,7 @@
 
       <!-- Enhanced Toolbar -->
 
-      @if (!isMobile() && !isFullScreen() && !isSidenavCollapsed()) {
+      @if (!isMobile() && !isFullScreen() && !isSidenavCollapsed() && !isQuestionCanvasRoute()) {
         <mat-toolbar color="primary">
           <div class="section-nav">
             @if (!isParentOnly) {

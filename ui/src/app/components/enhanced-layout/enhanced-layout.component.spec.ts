@@ -878,6 +878,24 @@ describe('EnhancedLayoutComponent active menu item (issue #385)', () => {
         ]);
     });
 
+    it('isQuestionCanvasRoute_TrueOnlyForCanvasEditor', async () => {
+        const component = create(['Teacher']);
+        const router = TestBed.inject(Router);
+        const cases: Array<[string, boolean]> = [
+            ['/questioncanvas', true],
+            ['/questioncanvas?testId=4', true],
+            ['/questioncanvas/12', true],
+            ['/questioncanvas/preview', false],
+            ['/questioncanvas/preview/4', false],
+            ['/questioncanvasx', false],
+            ['/exam', false],
+        ];
+        for (const [url, expected] of cases) {
+            await router.navigateByUrl(url);
+            expect(component.isQuestionCanvasRoute(), url).toBe(expected);
+        }
+    });
+
     it('beforeAnyNavigation_DoesNotDefaultToDashboard', () => {
         const component = create(['Student']);
         expect(component.activeMenuItem()).toBeNull();

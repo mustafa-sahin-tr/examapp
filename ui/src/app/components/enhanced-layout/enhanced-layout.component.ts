@@ -110,6 +110,16 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
    * genel mobil alt nav aynı alanı paylaşıp dock'u kapatıyordu (issue #72), bu yüzden gizlenir.
    */
   readonly isExamRoute = computed(() => this.currentUrl().startsWith('/testsolve'));
+  /**
+   * Soru tuvali (/questioncanvas, /questioncanvas/:id) aktif mi. Tuvalin kendi üst çubuğu var;
+   * masaüstünde genel toolbar (Yeni/Popüler/Ara...) bu ekranda gereksiz yer kaplar, gizlenir.
+   * Önizleme (/questioncanvas/preview...) normal sayfa gibi kalır.
+   */
+  readonly isQuestionCanvasRoute = computed(() => {
+    const path = this.currentUrl().split(/[?#]/)[0];
+    return path === '/questioncanvas' ||
+      (path.startsWith('/questioncanvas/') && !path.startsWith('/questioncanvas/preview'));
+  });
   isMobile = signal(false);
   isMobileSidenavOpen = signal(false);
   isSidenavCollapsed = computed(() => !this.isMobile() && this.sidenavService.isSidenavCollapsed());

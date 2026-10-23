@@ -672,6 +672,10 @@ spec:
           image: REPLACE_IMAGE/ui:latest
           ports:
             - containerPort: 80
+          env:
+            # Issue #333: CSP script-src/frame-src için görüşme sunucusu origin'i (ör. https://meet.hedefokul.com).
+            - name: CSP_JITSI_ORIGIN
+              value: REPLACE_JITSI_ORIGIN
 ---
 apiVersion: v1
 kind: Service

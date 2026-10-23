@@ -1,0 +1,51 @@
+server {
+    listen 4200;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html index.csr.html;
+
+    # Issue #333 — güvenlik başlıkları. DİKKAT: nginx'te bir location kendi add_header'ını tanımlarsa server seviyesindeki
+    # add_header'lar o location'a GEÇMEZ; bu yüzden aynı blok her location'da tekrarlanır (test eşitliği denetler).
+    # - Content-Security-Policy "frame-ancestors 'self'" + X-Frame-Options: clickjacking koruması ŞİMDİDEN zorlanır.
+    # - Content-Security-Policy-Report-Only: tam politika önce raporlanır (tarayıcı konsolu); doğrulanınca başlık adı
+    #   Content-Security-Policy yapılır. CSP_JITSI_ORIGIN: görüşme sunucusu origin'i (Jitsi external_api.js + iframe), nginx
+    #   imajının envsubst adımı doldurur; boş olabilir (auth-ui). 15-validate-csp-env.sh biçimini doğrular.
+    # Aynı politika ui/ ve auth-ui/ angular.json dev-server başlığında; tests/ExamApp.Foundation.Tests/Repo/
+    # UiContentSecurityPolicyTests.cs eşitliği denetler.
+
+    # SPA fallback
+    # $uri/index.html  → SSR prerender rotaları için (welcome/index.html, privacy-policy/index.html)
+    # $uri             → static dosyalar
+    # /index.csr.html  → SSR (ui) SPA shell
+    # /index.html      → plain SPA (auth-ui) shell
+    # =404 ile sonsuz döngü engellenir
+    location / {
+        add_header Content-Security-Policy "frame-ancestors 'self'" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' ${CSP_JITSI_ORIGIN}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com ${CSP_JITSI_ORIGIN}; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'" always;
+        try_files $uri $uri/index.html /index.csr.html /index.html =404;
+    }
+
+    # Parmak izi (hash) taşımayan senkron tema betiği: uzun süre önbelleğe alınmasın.
+    location = /theme-init.js {
+        add_header Content-Security-Policy "frame-ancestors 'self'" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' ${CSP_JITSI_ORIGIN}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com ${CSP_JITSI_ORIGIN}; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'" always;
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+
+    # Basic caching for assets (worker betikleri CSP'yi kendi yanıtlarından alır → başlıklar burada da gerekli)
+    location ~* \.(?:js|css|png|jpg|jpeg|gif|svg|ico|woff2?)$ {
+        add_header Content-Security-Policy "frame-ancestors 'self'" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' ${CSP_JITSI_ORIGIN}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com ${CSP_JITSI_ORIGIN}; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'" always;
+        expires 7d;
+        add_header Cache-Control "public";
+        try_files $uri =404;
+    }
+}

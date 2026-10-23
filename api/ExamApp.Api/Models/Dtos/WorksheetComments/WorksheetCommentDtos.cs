@@ -358,6 +358,57 @@ public class WorksheetCommentReportsResultDto : WorksheetCommentResponseDto
     public WorksheetCommentReportsPageDto? Page { get; set; }
 }
 
+// ---- issue #335: moderasyon geçmişi ---------------------------------------------------------------------------
+
+/// <summary>GET .../comments/{commentId}/moderation-history sorgusu (sayfa numaralı).</summary>
+public class WorksheetCommentModerationHistoryQueryDto
+{
+    /// <summary>1 tabanlı sayfa; &lt; 1 ise 1.</summary>
+    public int Page { get; set; } = 1;
+
+    /// <summary>1..50'ye sıkıştırılır, varsayılan 20.</summary>
+    public int PageSize { get; set; } = WorksheetCommentLimits.DefaultPageSize;
+}
+
+/// <summary>Tek moderasyon olayı. Aktörün yalnız id'si ve o anki rolü döner (ad / Keycloak id yok).</summary>
+public class WorksheetCommentModerationHistoryItemDto
+{
+    /// <summary><c>"Hide" | "Unhide" | "DeniedNotModerator"</c> (sonuncusu yalnız admin'e).</summary>
+    public string Action { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Aktörün user id'si. Admin olmayan moderatöre yalnız kendi olaylarında dolu, diğerlerinde null (#335 security O2).
+    /// </summary>
+    public int? ActorUserId { get; set; }
+
+    /// <summary>Olay anındaki rol: <c>Student | Teacher | AdminTeacher | Admin | Other</c> (her zaman dolu).</summary>
+    public string ActorRole { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Hide: gizleme nedeni; Unhide: kaldırılan neden. Reddedilen denemede null. Admin olmayan moderatöre yalnız kendi
+    /// olaylarında dolu (neden kişisel veri taşıyabilir).
+    /// </summary>
+    public string? Reason { get; set; }
+
+    /// <summary>Olay anı (UTC).</summary>
+    public DateTime CreatedAt { get; set; }
+}
+
+public class WorksheetCommentModerationHistoryPageDto
+{
+    /// <summary>Yeniden eskiye.</summary>
+    public List<WorksheetCommentModerationHistoryItemDto> Items { get; set; } = new();
+
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalCount { get; set; }
+}
+
+public class WorksheetCommentModerationHistoryResultDto : WorksheetCommentResponseDto
+{
+    public WorksheetCommentModerationHistoryPageDto? Page { get; set; }
+}
+
 /// <summary>Şikayet nedeni JSON değerleri (camelCase) ↔ enum.</summary>
 public static class WorksheetCommentReportReasons
 {

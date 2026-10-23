@@ -35,6 +35,35 @@ public class WorksheetCommentService : IWorksheetCommentService
     private readonly IApprovedTeacherGuard _teacherGuard;
     private readonly IKeycloakService? _keycloak;
     private readonly ILogger<WorksheetCommentService>? _logger;
+    private readonly TimeProvider _clock;
+
+    /// <summary>
+    /// issue #335: aynı (aktör, yorum — doğrulanmamış/yorum bazlı olmayan çağrıda null) için kayan <see cref="DeniedEventWindow"/>
+    /// içinde yazılan en fazla <c>DeniedNotModerator</c> olayı. Sınırlar DB'deki sayımla uygulanır (çok replica'da da ortak;
+    /// eşzamanlı isteklerde birkaç satır aşabilir — kabul edilen tolerans). Sınırı aşan denemeler yine 403 döner, yalnız olay
+    /// yazılmaz.
+    /// </summary>
+    internal const int DeniedEventsPerWindow = 10;
+
+    /// <summary>issue #335 (security O1): aktör başına, yorumdan bağımsız kayan 1 dakikalık üst sınır.</summary>
+    internal const int DeniedEventsPerActorPerMinute = 20;
+
+    /// <summary>issue #335 (security O1): aktör başına, yorumdan bağımsız kayan 24 saatlik üst sınır.</summary>
+    internal const int DeniedEventsPerActorPerDay = 200;
+
+    internal static readonly TimeSpan DeniedEventWindow = TimeSpan.FromMinutes(1);
+    internal static readonly TimeSpan DeniedEventDayWindow = TimeSpan.FromHours(24);
+
+    /// <summary>Sayfa numarası üst sınırı — <c>(page - 1) * pageSize</c> int taşmasını önler.</summary>
+    internal const int MaxPageNumber = 100_000;
+
+    /// <summary>
+    /// Sınıra takılan aktör için uyarı logu kısıcısı: (aktör, sınır) başına pencere içinde en fazla bir Warning, gerisi Debug.
+    /// SÜREÇ İÇİ (process-local, static) — her replica kendi başına bir uyarı yazabilir; yalnız log hacmini sınırlar, güvenlik
+    /// kararı değildir. Sözlük büyürse (çok sayıda aktör) temizlenir.
+    /// </summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<(int ActorUserId, string Cap), DateTime> DeniedCapWarnings = new();
+    private const int DeniedCapWarningsMaxEntries = 10_000;
 
     // Client'a dönen metinler mesaj sözlüğünden (issue #184). DI her zaman gerçek localizer'ı verir.
     private readonly IStringLocalizer<Messages> _localizer;
@@ -52,9 +81,11 @@ public class WorksheetCommentService : IWorksheetCommentService
         ILogger<WorksheetCommentService>? logger = null,
         IStringLocalizer<Messages>? localizer = null,
         IApprovedTeacherGuard? teacherGuard = null,
-        IKeycloakService? keycloak = null)
+        IKeycloakService? keycloak = null,
+        TimeProvider? clock = null)
     {
         _context = context;
+        _clock = clock ?? TimeProvider.System;
         _responsibleTeacher = responsibleTeacher;
         _authApiClient = authApiClient;
         _logger = logger;
@@ -442,7 +473,8 @@ public class WorksheetCommentService : IWorksheetCommentService
         ArgumentNullException.ThrowIfNull(dto);
         ArgumentNullException.ThrowIfNull(actor);
 
-        // Şikayet okuyuculara (öğrenci/öğretmen) açık; öğretmen olmayan admin doğrudan gizler.
+        // Şikayet okuyuculara (öğrenci/öğretmen) açık; öğretmen olmayan admin doğrudan gizler. issue #335 (review): admin
+        // moderatördür — bu ret reddedilen moderasyon denemesi DEĞİL, DeniedNotModerator olayı yazılmaz (yanıltıcı olurdu).
         if (actor.Kind == WorksheetCommentActorKind.AdminReader)
             return Fail<WorksheetCommentReportResultDto>(WorksheetCommentErrorCodes.NotModerator, forbidden: true);
 
@@ -533,8 +565,9 @@ public class WorksheetCommentService : IWorksheetCommentService
     {
         ArgumentNullException.ThrowIfNull(actor);
 
+        // issue #335 (review D1): erken ret — worksheet/yorum henüz doğrulanmadı, id'ler yazılmaz (null).
         if (actor.Kind == WorksheetCommentActorKind.Student)
-            return Fail<WorksheetCommentResultDto>(WorksheetCommentErrorCodes.NotModerator, forbidden: true);
+            return await DenyNotModeratorAsync<WorksheetCommentResultDto>(actor, worksheetId: null, commentId: null, access: null, null, ct);
 
         var worksheet = await LoadWorksheetAsync(worksheetId, ct);
         if (worksheet == null)
@@ -566,20 +599,31 @@ public class WorksheetCommentService : IWorksheetCommentService
             return Fail<WorksheetCommentResultDto>(WorksheetCommentErrorCodes.CommentNotFound, notFound: true);
 
         if (!CanModerate(target.Root, actor, access))
-            return Fail<WorksheetCommentResultDto>(WorksheetCommentErrorCodes.NotModerator, forbidden: true);
+            return await DenyNotModeratorAsync<WorksheetCommentResultDto>(actor, worksheetId, commentId, access,
+                target.Comment.AuthorSchoolId, ct);
 
-        var now = DateTime.UtcNow;
+        var now = _clock.GetUtcNow().UtcDateTime;
         DateTime? hiddenAt = hidden ? now : null;
         int? hiddenBy = hidden ? actor.UserId : null;
         var actorUserId = actor.UserId;
+        // issue #335: geçmiş satırının kapsam kanıtı — aktörün o anki okulu (transaction dışında, salt okuma).
+        var actorSchoolId = await ResolveActorSchoolIdAsync(actor, access, ct);
 
         // Yorum güncellemesi + audit satırı tek transaction'da. Durum zaten istenen gibiyse (tekrar gizle / gizli olmayanı
-        // aç) idempotent: değişiklik ve audit yok. Neden audit'e YAZILMAZ (PII taşıyabilir) — yalnız yorumda durur.
+        // aç) idempotent: değişiklik ve audit yok. Neden AdminUserActionLog'a YAZILMAZ (PII taşıyabilir) — yorumda ve
+        // (issue #335) moderasyon geçmişinde (WorksheetCommentModerationEvents) durur.
         var strategy = _context.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
         {
             _context.ChangeTracker.Clear();
             await using var tx = await _context.Database.BeginTransactionAsync(ct);
+
+            // issue #335: açmada temizlenecek neden, güncellemeden ÖNCE aynı transaction'da okunur (Unhide olayına yazılır).
+            // Postgres'te satır kilidiyle (FOR UPDATE): araya başka moderatörün aç+gizle döngüsü giremez, okunan neden UPDATE'in
+            // temizlediği nedendir.
+            string? previousReason = null;
+            if (!hidden)
+                previousReason = await ReadHiddenReasonForUpdateAsync(commentId, ct);
 
             var changed = await _context.WorksheetComments
                 .Where(c => c.Id == commentId && (hidden ? c.HiddenAt == null : c.HiddenAt != null))
@@ -618,6 +662,12 @@ public class WorksheetCommentService : IWorksheetCommentService
                     Outcome = AdminUserActionOutcome.Succeeded,
                     OccurredAtUtc = now
                 });
+
+                // issue #335: moderasyon geçmişi (AdminUserActionLog'u ikame etmez) — aynı transaction.
+                _context.WorksheetCommentModerationEvents.Add(NewModerationEvent(
+                    hidden ? WorksheetCommentModerationAction.Hide : WorksheetCommentModerationAction.Unhide,
+                    actor, worksheetId, commentId, actorSchoolId, target.Comment.AuthorSchoolId,
+                    hidden ? reason : previousReason, now));
                 await _context.SaveChangesAsync(ct);
             }
 
@@ -650,7 +700,7 @@ public class WorksheetCommentService : IWorksheetCommentService
         ArgumentNullException.ThrowIfNull(actor);
 
         if (actor.Kind == WorksheetCommentActorKind.Student)
-            return Fail<WorksheetCommentReportsResultDto>(WorksheetCommentErrorCodes.NotModerator, forbidden: true);
+            return await DenyNotModeratorAsync<WorksheetCommentReportsResultDto>(actor, worksheetId: null, commentId: null, access: null, null, ct); // #335: erken ret, id yok
 
         AccessContext access;
         IQueryable<WorksheetComment> comments = _context.WorksheetComments.AsNoTracking();
@@ -674,11 +724,11 @@ public class WorksheetCommentService : IWorksheetCommentService
         {
             // Global liste yalnız admin'e.
             if (!actor.IsAdmin)
-                return Fail<WorksheetCommentReportsResultDto>(WorksheetCommentErrorCodes.NotModerator, forbidden: true);
+                return await DenyNotModeratorAsync<WorksheetCommentReportsResultDto>(actor, worksheetId: null, commentId: null, access: null, null, ct);
             access = new AccessContext { IsAdmin = true };
         }
 
-        var page = Math.Max(1, query.Page);
+        var page = Math.Clamp(query.Page, 1, MaxPageNumber); // #335 review: (page - 1) * pageSize taşmasın
         var pageSize = Math.Clamp(query.PageSize, 1, WorksheetCommentLimits.MaxPageSize);
         var reports = _context.WorksheetCommentReports.AsNoTracking();
 
@@ -769,6 +819,244 @@ public class WorksheetCommentService : IWorksheetCommentService
             Page = new WorksheetCommentReportsPageDto { Items = items, Page = page, PageSize = pageSize, TotalCount = total }
         };
     }
+
+    // ---- Moderasyon geçmişi (issue #335) --------------------------------------------------------------------
+
+    public async Task<WorksheetCommentModerationHistoryResultDto> GetModerationHistoryAsync(
+        int worksheetId, int commentId, WorksheetCommentModerationHistoryQueryDto query, WorksheetCommentActor actor,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(actor);
+
+        if (actor.Kind == WorksheetCommentActorKind.Student)
+            return await DenyNotModeratorAsync<WorksheetCommentModerationHistoryResultDto>(actor, worksheetId: null, commentId: null, access: null, null, ct); // erken ret, id yok
+
+        var worksheet = await LoadWorksheetAsync(worksheetId, ct);
+        if (worksheet == null)
+            return Fail<WorksheetCommentModerationHistoryResultDto>(WorksheetCommentErrorCodes.WorksheetNotFound, notFound: true);
+
+        var access = await ResolveAccessAsync(worksheet, actor, ct);
+        if (access.Denied is { } denied)
+            return Fail<WorksheetCommentModerationHistoryResultDto>(denied.Code, notFound: denied.NotFound, forbidden: !denied.NotFound);
+
+        // Gizleme ile aynı kapı: yorum okul kapsamında görünmeli (göremediği yorum "yok"), sonra moderatörlük.
+        var target = await FindVisibleCommentAsync(worksheetId, commentId, actor, access, ct);
+        if (target == null)
+            return Fail<WorksheetCommentModerationHistoryResultDto>(WorksheetCommentErrorCodes.CommentNotFound, notFound: true);
+
+        if (!CanModerate(target.Root, actor, access))
+            return await DenyNotModeratorAsync<WorksheetCommentModerationHistoryResultDto>(actor, worksheetId, commentId, access,
+                target.Comment.AuthorSchoolId, ct);
+
+        var page = Math.Clamp(query.Page, 1, MaxPageNumber); // #335 review: (page - 1) * pageSize taşmasın
+        var pageSize = Math.Clamp(query.PageSize, 1, WorksheetCommentLimits.MaxPageSize);
+
+        // Reddedilen denemeler (güvenlik izi) yalnız admin'e; moderatör öğretmen yalnız gizle/aç geçmişini görür.
+        var events = _context.WorksheetCommentModerationEvents.AsNoTracking().Where(m => m.WorksheetCommentId == commentId);
+        if (!access.IsAdmin)
+            events = events.Where(m => m.Action != WorksheetCommentModerationAction.DeniedNotModerator);
+
+        var total = await events.CountAsync(ct);
+        var rows = await events
+            .OrderByDescending(m => m.CreatedAt)
+            .ThenByDescending(m => m.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(m => new { m.Action, m.ActorUserId, m.ActorRole, m.Reason, m.CreatedAt })
+            .ToListAsync(ct);
+
+        // issue #335 (security O2): admin olmayan moderatör başka moderatörün kimliğini ve nedenini görmez — gizleme nedeni
+        // kişisel veri taşıyabilir (#305 bu yüzden AdminUserActionLog'a yazmadı); yalnız kendi olaylarında ikisi de dolu.
+        var callerId = actor.UserId;
+        bool Visible(int actorUserId) => access.IsAdmin || actorUserId == callerId;
+
+        return new WorksheetCommentModerationHistoryResultDto
+        {
+            Success = true,
+            Page = new WorksheetCommentModerationHistoryPageDto
+            {
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = total,
+                Items = rows.Select(r => new WorksheetCommentModerationHistoryItemDto
+                {
+                    Action = r.Action.ToString(),
+                    ActorUserId = Visible(r.ActorUserId) ? r.ActorUserId : null,
+                    ActorRole = r.ActorRole,
+                    Reason = r.Action == WorksheetCommentModerationAction.DeniedNotModerator || !Visible(r.ActorUserId)
+                        ? null
+                        : r.Reason,
+                    CreatedAt = DateTime.SpecifyKind(r.CreatedAt, DateTimeKind.Utc)
+                }).ToList()
+            }
+        };
+    }
+
+    /// <summary>
+    /// issue #335: 403 <see cref="WorksheetCommentErrorCodes.NotModerator"/> — önce best-effort <c>DeniedNotModerator</c> olayı
+    /// (<see cref="RecordDeniedAttemptAsync"/>); olay yazılamasa da yanıt aynıdır.
+    /// </summary>
+    private async Task<T> DenyNotModeratorAsync<T>(WorksheetCommentActor actor, int? worksheetId, int? commentId,
+        AccessContext? access, int? commentAuthorSchoolId, CancellationToken ct) where T : WorksheetCommentResponseDto, new()
+    {
+        await RecordDeniedAttemptAsync(actor, worksheetId, commentId, access, commentAuthorSchoolId, ct);
+        return Fail<T>(WorksheetCommentErrorCodes.NotModerator, forbidden: true);
+    }
+
+    /// <summary>
+    /// Reddedilen moderasyon denemesini kendi <c>SaveChanges</c>'ıyla yazar (best-effort): hata loglanır, yutulur — 403 yanıtı
+    /// değişmez (istemci iptali Warning olarak loglanmaz). Yalnız id'ler (yorum içeriği, ad, neden yok).
+    /// <para>Hız sınırları (security O1, hepsi IX (ActorUserId, CreatedAt) üzerinden DB sayımı): aynı (aktör, yorum/null) için
+    /// dakikada <see cref="DeniedEventsPerWindow"/>; aktör başına yorumdan bağımsız dakikada <see cref="DeniedEventsPerActorPerMinute"/>
+    /// ve 24 saatte <see cref="DeniedEventsPerActorPerDay"/>. Sınıra takılınca (aktör, sınır) başına pencerede bir Warning
+    /// (<see cref="DeniedCapWarnings"/>, süreç içi), gerisi Debug.</para>
+    /// <para>Context'te bekleyen başka değişiklik varsa (bu metot ret yolunda çağrılır, normalde yoktur) olay YAZILMAZ: kendi
+    /// <c>SaveChanges</c>'ı ilgisiz değişiklikleri de commit ederdi (review 6).</para>
+    /// </summary>
+    private async Task RecordDeniedAttemptAsync(WorksheetCommentActor actor, int? worksheetId, int? commentId,
+        AccessContext? access, int? commentAuthorSchoolId, CancellationToken ct)
+    {
+        WorksheetCommentModerationEvent? row = null;
+        try
+        {
+            if (_context.ChangeTracker.HasChanges())
+            {
+                _logger?.LogDebug(
+                    "[WorksheetComments] Context'te bekleyen değişiklik var; reddedilen moderasyon denemesi yazılmadı. ActorUserId={ActorUserId}",
+                    actor.UserId);
+                return;
+            }
+
+            var now = _clock.GetUtcNow().UtcDateTime;
+            var cap = await DeniedCapReachedAsync(actor.UserId, commentId, now, ct);
+            if (cap != null)
+            {
+                LogDeniedCap(actor.UserId, commentId, cap.Value.Name, cap.Value.Window, now);
+                return;
+            }
+
+            var actorSchoolId = await ResolveActorSchoolIdAsync(actor, access, ct);
+            row = NewModerationEvent(WorksheetCommentModerationAction.DeniedNotModerator, actor, worksheetId, commentId,
+                actorSchoolId, commentAuthorSchoolId, reason: null, now);
+            _context.WorksheetCommentModerationEvents.Add(row);
+            await _context.SaveChangesAsync(ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            _logger?.LogWarning(ex,
+                "[WorksheetComments] Reddedilen moderasyon denemesi kaydedilemedi. ActorUserId={ActorUserId}, WorksheetId={WorksheetId}, CommentId={CommentId}",
+                actor.UserId, worksheetId, commentId);
+        }
+        finally
+        {
+            // Başarısız kayıt tracker'da Added kalırsa aynı scope'taki sonraki SaveChanges'ı da bozar.
+            if (row != null)
+                _context.Entry(row).State = EntityState.Detached;
+        }
+    }
+
+    /// <summary>İlk dolan sınırın adı ve penceresi; hiçbiri dolmadıysa null. En dar sorgu önce (çoğu ret ilk sorguda biter).</summary>
+    private async Task<(string Name, TimeSpan Window)?> DeniedCapReachedAsync(int uid, int? commentId, DateTime now, CancellationToken ct)
+    {
+        var minuteAgo = now - DeniedEventWindow;
+        var dayAgo = now - DeniedEventDayWindow;
+        var denied = _context.WorksheetCommentModerationEvents.AsNoTracking()
+            .Where(m => m.ActorUserId == uid && m.Action == WorksheetCommentModerationAction.DeniedNotModerator);
+
+        if (await denied.CountAsync(m => m.CreatedAt > minuteAgo && m.WorksheetCommentId == commentId, ct) >= DeniedEventsPerWindow)
+            return ("comment", DeniedEventWindow);
+        if (await denied.CountAsync(m => m.CreatedAt > minuteAgo, ct) >= DeniedEventsPerActorPerMinute)
+            return ("actor-minute", DeniedEventWindow);
+        if (await denied.CountAsync(m => m.CreatedAt > dayAgo, ct) >= DeniedEventsPerActorPerDay)
+            return ("actor-day", DeniedEventDayWindow);
+        return null;
+    }
+
+    private void LogDeniedCap(int uid, int? commentId, string cap, TimeSpan window, DateTime now)
+    {
+        if (DeniedCapWarnings.Count > DeniedCapWarningsMaxEntries)
+            DeniedCapWarnings.Clear();
+
+        var key = (uid, cap);
+        var warn = !DeniedCapWarnings.TryGetValue(key, out var last) || now - last >= window || now < last;
+        if (warn)
+        {
+            DeniedCapWarnings[key] = now;
+            _logger?.LogWarning(
+                "[WorksheetComments] Reddedilen moderasyon denemesi hız sınırına ({Cap}) takıldı; bu pencerede olay yazılmayacak. ActorUserId={ActorUserId}, CommentId={CommentId}",
+                cap, uid, commentId);
+        }
+        else
+        {
+            _logger?.LogDebug(
+                "[WorksheetComments] Reddedilen moderasyon denemesi hız sınırında ({Cap}), olay yazılmadı. ActorUserId={ActorUserId}, CommentId={CommentId}",
+                cap, uid, commentId);
+        }
+    }
+
+    /// <summary>
+    /// issue #335 (review): açılacak yorumun gizleme nedeni, açık transaction içinde. Postgres'te <c>FOR UPDATE</c> satır kilidi
+    /// (eşzamanlı aç/gizle commit'e kadar bekler; <c>BookingService.LockBookableTeacherAsync</c>'teki sağlayıcı kontrolü deseni);
+    /// diğer sağlayıcılarda (SQLite testleri) düz okuma. Yorum gizli değilse null (UPDATE de değişiklik yapmaz).
+    /// </summary>
+    private async Task<string?> ReadHiddenReasonForUpdateAsync(int commentId, CancellationToken ct)
+    {
+        if (!_context.Database.IsNpgsql())
+        {
+            return await _context.WorksheetComments.AsNoTracking()
+                .Where(c => c.Id == commentId && c.HiddenAt != null)
+                .Select(c => c.HiddenReason)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        var rows = await _context.Database
+            .SqlQuery<HiddenReasonRow>($"""
+                SELECT "HiddenAt", "HiddenReason" FROM "WorksheetComments"
+                WHERE "Id" = {commentId} AND NOT "IsDeleted"
+                FOR UPDATE
+                """)
+            .ToListAsync(ct);
+        return rows is [{ HiddenAt: not null } row] ? row.HiddenReason : null;
+    }
+
+    private sealed class HiddenReasonRow
+    {
+        public DateTime? HiddenAt { get; set; }
+        public string? HiddenReason { get; set; }
+    }
+
+    private WorksheetCommentModerationEvent NewModerationEvent(WorksheetCommentModerationAction action, WorksheetCommentActor actor,
+        int? worksheetId, int? commentId, int? actorSchoolId, int? commentAuthorSchoolId, string? reason, DateTime now) => new()
+    {
+        Action = action,
+        WorksheetCommentId = commentId,
+        WorksheetId = worksheetId,
+        ActorUserId = actor.UserId,
+        ActorRole = ModerationActorRole(actor),
+        ActorSchoolId = actorSchoolId,
+        CommentAuthorSchoolId = commentAuthorSchoolId,
+        Reason = reason,
+        CreatedAt = now
+    };
+
+    private static string ModerationActorRole(WorksheetCommentActor actor) => actor.Kind switch
+    {
+        WorksheetCommentActorKind.Student => WorksheetCommentModerationActorRoles.Student,
+        WorksheetCommentActorKind.Teacher => actor.IsAdmin
+            ? WorksheetCommentModerationActorRoles.AdminTeacher
+            : WorksheetCommentModerationActorRoles.Teacher,
+        _ => actor.IsAdmin ? WorksheetCommentModerationActorRoles.Admin : WorksheetCommentModerationActorRoles.Other
+    };
+
+    /// <summary>
+    /// Aktörün olay anındaki okulu: öğrenci/öğretmen erişim bağlamı çözüldüyse oradaki okuyucu okulu (aynı kaynak,
+    /// <see cref="UserSchoolResolver"/>), değilse (erken ret, admin okuyucu) doğrudan resolver.
+    /// </summary>
+    private async Task<int?> ResolveActorSchoolIdAsync(WorksheetCommentActor actor, AccessContext? access, CancellationToken ct) =>
+        access != null && actor.Kind != WorksheetCommentActorKind.AdminReader
+            ? access.ReaderSchoolId
+            : await UserSchoolResolver.ResolveAsync(_context, actor.UserId, ct);
 
     private sealed record CommentWithRoot(WorksheetComment Comment, WorksheetComment Root);
 

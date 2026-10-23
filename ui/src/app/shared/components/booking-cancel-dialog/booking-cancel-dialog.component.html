@@ -1,0 +1,65 @@
+<div class="bcd" *transloco="let t; prefix: 'shared.bookingCancelDialog'">
+  <header class="bcd__header">
+    <mat-icon class="bcd__icon" aria-hidden="true">event_busy</mat-icon>
+    <h2 mat-dialog-title class="bcd__title">
+      {{ data.mode === 'withdraw' ? t('titleWithdraw') : t('titleCancel') }}
+    </h2>
+  </header>
+
+  <mat-dialog-content class="bcd__content">
+    <p class="bcd__intro" data-testid="cancel-intro">
+      {{
+        data.mode === 'withdraw'
+          ? t('introWithdraw', { counterpart: data.counterpart, when: data.when })
+          : t('introCancel', { counterpart: data.counterpart, when: data.when })
+      }}
+    </p>
+
+    <mat-form-field appearance="outline" class="bcd__field" subscriptSizing="dynamic">
+      <mat-label>{{ t('reasonLabel') }}</mat-label>
+      <textarea
+        matInput
+        rows="3"
+        dir="auto"
+        data-testid="cancel-reason"
+        [value]="reason()"
+        [readonly]="submitting()"
+        [attr.aria-invalid]="tooLong()"
+        (input)="onInput($event)"
+      ></textarea>
+      @if (tooLong()) {
+        <mat-hint class="bcd__hint--error" data-testid="cancel-reason-too-long">{{ t('tooLong', { max: max }) }}</mat-hint>
+      }
+      <mat-hint align="end" data-testid="cancel-reason-counter" [class.bcd__hint--error]="tooLong()"
+        >{{ length() }}/{{ max }}</mat-hint
+      >
+    </mat-form-field>
+
+    @if (error()) {
+      <div class="bcd__error" role="alert" data-testid="cancel-error">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>{{ error() }}</span>
+      </div>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="bcd__actions">
+    <button mat-stroked-button type="button" data-testid="cancel-keep" [disabled]="submitting()" (click)="close()">
+      {{ t('keep') }}
+    </button>
+    <button
+      mat-flat-button
+      type="button"
+      class="bcd__danger"
+      data-testid="cancel-submit"
+      [disabled]="!canSubmit()"
+      [attr.aria-busy]="submitting()"
+      (click)="submit()"
+    >
+      @if (submitting()) {
+        <mat-spinner diameter="18" class="bcd__spinner" />
+      }
+      {{ data.mode === 'withdraw' ? t('submitWithdraw') : t('submitCancel') }}
+    </button>
+  </mat-dialog-actions>
+</div>

@@ -23,10 +23,16 @@ export type ActiveBookingStatus = 'Pending' | 'Approved' | 'AwaitingParent';
  * Issue #439: `AwaitingParent` (veli onayı bekleniyor), `Expired` (veli 7 günde karar vermedi), `ParentRejected` (veli reddetti;
  * `rejectionReason` velinin notu).
  */
-export type BookingStatus = ActiveBookingStatus | 'Rejected' | 'Expired' | 'ParentRejected';
+export type BookingStatus = ActiveBookingStatus | 'Rejected' | 'Expired' | 'ParentRejected' | 'Cancelled';
 
-/** Kapanmış (aktif olmayan) randevu durumları — öğrenci listesindeki "Aktif" filtresi bunları gizler. */
-export const CLOSED_BOOKING_STATUSES: readonly BookingStatus[] = ['Rejected', 'Expired', 'ParentRejected'];
+/**
+ * Kapanmış (aktif olmayan) randevu durumları — öğrenci listesindeki "Aktif" filtresi bunları gizler. Issue #315: `Cancelled`
+ * (öğrenci ya da öğretmen iptal etti / öğrenci talebi geri çekti).
+ */
+export const CLOSED_BOOKING_STATUSES: readonly BookingStatus[] = ['Rejected', 'Expired', 'ParentRejected', 'Cancelled'];
+
+/** Issue #315: randevunun tarafı (`BookingParty`) — iptal eden, erteleme öneren ya da katılmadığı bildirilen. */
+export type BookingParty = 'Teacher' | 'Student';
 
 /** Öğretmenin müsaitlik aralığı. `bookingStatus`/`studentName` yalnızca öğretmenin kendi listesinde dolu. */
 export interface AvailabilitySlot {
@@ -127,6 +133,53 @@ export interface Booking {
   parentApprovedAt?: string | null;
   /** Issue #439: yalnız `AwaitingParent` iken dolu — bu andan sonra talep `Expired` olur. */
   expiresAt?: string | null;
+
+  // ---------------- Issue #315: iptal / erteleme / no-show ----------------
+
+  /** `Cancelled` iken iptal anı (UTC). */
+  cancelledAt?: string | null;
+  /** İptal eden taraf. */
+  cancelledByRole?: BookingParty | null;
+  cancellationReason?: string | null;
+  /** Onaylı randevunun iptal edilebileceği son an (UTC); `Approved` değilse null. */
+  cancellationDeadlineUtc?: string | null;
+  /** Bekleyen erteleme önerisinin slotu; öneri yoksa null. */
+  proposedSlotId?: number | null;
+  proposedStartUtc?: string | null;
+  proposedEndUtc?: string | null;
+  /** Öneriyi yapan taraf. */
+  proposedByRole?: BookingParty | null;
+  /** Kabul edilmiş erteleme sayısı. */
+  rescheduleCount?: number;
+  /** Yeni erteleme önerisi yapılabilir mi (sunucu: durum, bekleyen öneri yok, sınır dolmadı, başlangıca yeterli süre var). */
+  canProposeReschedule?: boolean;
+  /** Bekleyen öneri şu an kabul edilebilir mi; false iken öneri bayat (yalnız ret / geri çekme). */
+  canRespondReschedule?: boolean;
+  /** Erteleme için seçilebilecek en erken slot başlangıcı (UTC, şimdi + bildirim süresi). */
+  rescheduleEarliestStartUtc?: string | null;
+  /** Derse katılmadığı bildirilen taraf; bildirilmediyse null. */
+  noShowParty?: BookingParty | null;
+  noShowReportedAt?: string | null;
+  /** Onaylı randevuda no-show'un bildirilebileceği son an (UTC, bitiş + pencere). */
+  noShowReportableUntilUtc?: string | null;
+}
+
+/** Issue #315: POST /booking/requests/{id}/cancel gövdesi — gerekçe opsiyonel, en fazla 500 karakter (karşı tarafa bildirilir). */
+export interface CancelBookingRequest {
+  reason?: string | null;
+}
+
+/** Issue #315: iptal gerekçesi üst sınırı (backend `CancelBookingDto.Reason`). */
+export const BOOKING_CANCEL_REASON_MAX_LENGTH = 500;
+
+/** Issue #315: POST /booking/requests/{id}/reschedule gövdesi — aynı öğretmenin boş, gelecekteki bir slotu. */
+export interface ProposeRescheduleRequest {
+  availabilitySlotId: number;
+}
+
+/** Issue #315: POST /booking/requests/{id}/reschedule/respond — karşı taraf kabul/ret; öneren yalnız geri çeker (`false`). */
+export interface RespondRescheduleRequest {
+  accept: boolean;
 }
 
 /** POST /booking/slots gövdesi. Saatler "HH:mm:ss" formatında gönderilir. */
@@ -228,6 +281,31 @@ export const BOOKING_ERROR_CODES = {
   requestSlotDeleted: 'BookingRequestSlotDeleted',
   /** 404 — bağlı olmayan çocuk / talep yok. */
   notFound: 'NotFound',
+  // Issue #315: iptal / erteleme / no-show.
+  /** 409 — randevu bu işlem için uygun durumda değil. */
+  invalidState: 'BookingInvalidState',
+  /** 409 — iptal penceresi kapandı (başlangıca çok az kaldı). */
+  cancellationWindowClosed: 'CancellationWindowClosed',
+  /** 409 — erteleme penceresi kapandı. */
+  rescheduleWindowClosed: 'RescheduleWindowClosed',
+  /** 409 — erteleme sınırı doldu. */
+  rescheduleLimitReached: 'RescheduleLimitReached',
+  /** 409 — zaten bekleyen bir öneri var. */
+  rescheduleAlreadyProposed: 'RescheduleAlreadyProposed',
+  /** 409 — yanıtlanacak öneri yok. */
+  noPendingReschedule: 'NoPendingReschedule',
+  /** 403 — öneren taraf kendi önerisini kabul edemez. */
+  cannotRespondOwnProposal: 'CannotRespondOwnProposal',
+  /** 400/409 — önerilen slot uygun değil (dolu, geçmiş, başka öğretmenin). */
+  proposedSlotUnavailable: 'ProposedSlotUnavailable',
+  /** 409 — no-show bildirimi penceresi dışında. */
+  noShowWindowClosed: 'NoShowWindowClosed',
+  /** 409 — no-show zaten bildirildi. */
+  noShowAlreadyReported: 'NoShowAlreadyReported',
+  /** 400 — önerilen slotun süresi mevcut dersle aynı değil. */
+  proposedSlotDurationMismatch: 'ProposedSlotDurationMismatch',
+  /** 409 — randevu başına erteleme önerisi sınırı (geri çekilen/reddedilenler dahil) doldu. */
+  rescheduleProposalLimitReached: 'RescheduleProposalLimitReached',
 } as const;
 
 /** Hata gövdesindeki `errorCode` (güvenilmeyen veri); yoksa null. */

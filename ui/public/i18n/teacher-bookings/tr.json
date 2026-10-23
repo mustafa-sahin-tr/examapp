@@ -22,7 +22,8 @@
     "awaitingParent": "Veli onayı bekleniyor",
     "parentRejected": "Veli reddetti",
     "expired": "Kapandı",
-    "unknown": "Bilinmeyen durum"
+    "unknown": "Bilinmeyen durum",
+    "cancelled": "İptal edildi"
   },
   "join": {
     "button": "Derse katıl"
@@ -38,6 +39,32 @@
     "approved": "Randevu onaylandı.",
     "rejected": "Randevu reddedildi.",
     "actionFailed": "İşlem tamamlanamadı.",
+    "actionDone": "İşlem tamamlandı.",
     "ok": "Tamam"
+  },
+  "cancelled": {
+    "byMe": "Bu randevuyu sen iptal ettin.",
+    "byStudent": "Öğrenci bu randevuyu iptal etti.",
+    "reason": "İptal gerekçesi: {{reason}}"
+  },
+  "cancel": {
+    "button": "İptal et",
+    "windowClosed": "İptal süresi doldu: derse çok az zaman kaldı."
+  },
+  "reschedule": {
+    "propose": "Ertele",
+    "proposalTheirs": "Öğrencinin erteleme önerisi: {{when}}",
+    "proposalMine": "Erteleme önerin: {{when}} (öğrencinin yanıtı bekleniyor)",
+    "accept": "Kabul et",
+    "decline": "Reddet",
+    "withdraw": "Öneriyi geri çek"
+  },
+  "noShow": {
+    "button": "Öğrenci katılmadı",
+    "confirmTitle": "Öğrenci derse katılmadı mı?",
+    "confirmMessage": "{{student}} adlı öğrencinin bu derse katılmadığını bildireceksin. Bu bildirim geri alınamaz.",
+    "confirm": "Bildir",
+    "reportedStudent": "Öğrencinin derse katılmadığı bildirildi.",
+    "reportedMe": "Derse katılmadığın bildirildi."
   }
 }

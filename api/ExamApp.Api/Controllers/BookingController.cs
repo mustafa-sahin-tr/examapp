@@ -26,11 +26,15 @@ public class BookingController : BaseController
     // Client'a donen tum metinler mesaj sozlugunden gelir (issue #184).
     private readonly IStringLocalizer<Messages> _localizer;
 
+    private readonly IAuthorizationService _authorization;
+
     public BookingController(
         IBookingService bookingService,
         IRecurringAvailabilityService recurringAvailability,
-        IStringLocalizer<Messages> localizer) : base()
+        IStringLocalizer<Messages> localizer,
+        IAuthorizationService authorization) : base()
     {
+        _authorization = authorization;
         _bookingService = bookingService;
         _recurringAvailability = recurringAvailability;
         _localizer = localizer;
@@ -233,6 +237,89 @@ public class BookingController : BaseController
             return UserNotResolved(_localizer["booking.unauthorized"].Value);
 
         var result = await _bookingService.RejectBookingAsync(user.Id, id, request?.RejectionReason, ct);
+        return result.Success ? Ok(result) : MapFailure(result);
+    }
+
+    // ---------------- İptal / erteleme / no-show (issue #315) ----------------
+
+    /// <summary>
+    /// Randevuyu iptal eder (öğrenci: Pending/AwaitingParent/Approved; öğretmen: Approved). Onaylı randevu başlangıca
+    /// <c>BookingPolicy:CancellationMinNoticeHours</c> kalana kadar iptal edilebilir → aksi halde 409 +
+    /// <c>CancellationWindowClosed</c>. Gerekçe opsiyonel, karşı tarafa bildirilir.
+    /// </summary>
+    [HttpPost("requests/{id:int}/cancel")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)]
+    [Authorize(Roles = "Teacher,Student")]
+    [ExamApp.Api.Services.Parents.Enforcement.AllowWhenParentRequired] // velisi gelmeyen öğrenci de dersini iptal edip slotu bırakabilir
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting(ExamApp.Api.Helpers.BookingLifecycleRateLimiting.Policy)]
+    public async Task<IActionResult> CancelRequest(int id, [FromBody] CancelBookingDto? request, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return UserNotResolved(_localizer["booking.unauthorized"].Value);
+
+        var result = await _bookingService.CancelBookingAsync(user.Id, id, request?.Reason, ct);
+        return result.Success ? Ok(result) : MapFailure(result);
+    }
+
+    /// <summary>Onaylı randevu için aynı öğretmenin boş bir slotunu erteleme olarak önerir (karşı taraf onaylar).</summary>
+    [HttpPost("requests/{id:int}/reschedule")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)]
+    [Authorize(Roles = "Teacher,Student")]
+    [Authorize(Policy = ExamApp.Api.Services.Parents.Enforcement.ParentRequirementPolicies.ParentActivated)] // #440
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting(ExamApp.Api.Helpers.BookingLifecycleRateLimiting.Policy)]
+    public async Task<IActionResult> ProposeReschedule(int id, [FromBody] ProposeRescheduleDto request, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return UserNotResolved(_localizer["booking.unauthorized"].Value);
+
+        var result = await _bookingService.ProposeRescheduleAsync(user.Id, id, request.AvailabilitySlotId, ct);
+        return result.Success ? Ok(result) : MapFailure(result);
+    }
+
+    /// <summary>Bekleyen erteleme önerisini kabul/ret eder; öneren taraf <c>accept=false</c> ile geri çeker.</summary>
+    [HttpPost("requests/{id:int}/reschedule/respond")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)]
+    [Authorize(Roles = "Teacher,Student")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting(ExamApp.Api.Helpers.BookingLifecycleRateLimiting.Policy)]
+    public async Task<IActionResult> RespondReschedule(int id, [FromBody] RespondRescheduleDto request, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return UserNotResolved(_localizer["booking.unauthorized"].Value);
+
+        // Kabul yeni bir ders saati bağlar → veli daveti aktive edilmemiş öğrenciye kapalı (#440, propose ile aynı). Ret / geri
+        // çekme açık kalır: kısıtlı öğrenci kendi önerisini geri çekebilsin (code review U5).
+        if (request.Accept)
+        {
+            var parentGate = await _authorization.AuthorizeAsync(
+                User, ExamApp.Api.Services.Parents.Enforcement.ParentRequirementPolicies.ParentActivated);
+            if (!parentGate.Succeeded)
+            {
+                // Bildirimsel policy'lerle aynı 403 gövdesi ({ errorCode: "ParentActivationRequired" }).
+                await ExamApp.Api.Services.Parents.Enforcement.ParentRequirementResponses.WriteAsync(
+                    HttpContext, ExamApp.Api.Models.Dtos.ParentInvitations.ParentRequirementErrorCodes.ParentActivationRequired);
+                return new EmptyResult();
+            }
+        }
+
+        var result = await _bookingService.RespondRescheduleAsync(user.Id, id, request.Accept, ct);
+        return result.Success ? Ok(result) : MapFailure(result);
+    }
+
+    /// <summary>Ders bitişinden sonra karşı tarafın derse katılmadığını bildirir.</summary>
+    [HttpPost("requests/{id:int}/no-show")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)]
+    [Authorize(Roles = "Teacher,Student")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting(ExamApp.Api.Helpers.BookingLifecycleRateLimiting.Policy)]
+    public async Task<IActionResult> ReportNoShow(int id, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return UserNotResolved(_localizer["booking.unauthorized"].Value);
+
+        var result = await _bookingService.ReportNoShowAsync(user.Id, id, ct);
         return result.Success ? Ok(result) : MapFailure(result);
     }
 

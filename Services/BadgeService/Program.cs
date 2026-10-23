@@ -223,6 +223,7 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<BookingRequestCreatedConsumer, BookingRequestCreatedConsumerDefinition>();
     x.AddConsumer<BookingDecisionConsumer, BookingDecisionConsumerDefinition>();
     x.AddConsumer<BookingTeacherUnavailableConsumer, BookingTeacherUnavailableConsumerDefinition>(); // issue #298
+    x.AddConsumer<BookingLifecycleConsumer, BookingLifecycleConsumerDefinition>(); // issue #315
     x.AddConsumer<UserPreferredLocaleChangedConsumer, UserPreferredLocaleChangedConsumerDefinition>();
     x.AddConsumer<WorksheetCommentCreatedConsumer, WorksheetCommentCreatedConsumerDefinition>();
     x.AddConsumer<WorksheetCommentRepliedConsumer, WorksheetCommentRepliedConsumerDefinition>();
@@ -269,6 +270,7 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<BookingRequestCreatedConsumer>(context);
             e.ConfigureConsumer<BookingDecisionConsumer>(context);
             e.ConfigureConsumer<BookingTeacherUnavailableConsumer>(context);
+            e.ConfigureConsumer<BookingLifecycleConsumer>(context); // issue #315
             e.ConfigureConsumer<UserPreferredLocaleChangedConsumer>(context);
             e.ConfigureConsumer<WorksheetCommentCreatedConsumer>(context);
             e.ConfigureConsumer<WorksheetCommentRepliedConsumer>(context);

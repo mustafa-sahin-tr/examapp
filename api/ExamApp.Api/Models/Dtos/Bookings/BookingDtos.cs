@@ -204,6 +204,68 @@ public static class BookingErrorCodes
 
     /// <summary>issue #439 review: veli ret notunda izin verilmeyen karakter (NUL/kontrol karakteri) → 400.</summary>
     public const string InvalidNote = "InvalidNote";
+
+    /// <summary>issue #315: randevu bu işlem için uygun durumda değil (ör. iptal edilmiş, onaylı değil) → 409.</summary>
+    public const string InvalidState = "BookingInvalidState";
+
+    /// <summary>issue #315: ders başlangıcına <c>BookingPolicy:CancellationMinNoticeHours</c>'tan az kaldı → iptal edilemez (409).</summary>
+    public const string CancellationWindowClosed = "CancellationWindowClosed";
+
+    /// <summary>issue #315: ders başlangıcına <c>BookingPolicy:RescheduleMinNoticeHours</c>'tan az kaldı → ertelenemez (409).</summary>
+    public const string RescheduleWindowClosed = "RescheduleWindowClosed";
+
+    /// <summary>issue #315: randevu <c>BookingPolicy:MaxReschedulesPerBooking</c> kez ertelendi (409).</summary>
+    public const string RescheduleLimitReached = "RescheduleLimitReached";
+
+    /// <summary>issue #315: randevuda <c>BookingPolicy:MaxProposalsPerBooking</c> erteleme önerisi yapıldı (409).</summary>
+    public const string RescheduleProposalLimitReached = "RescheduleProposalLimitReached";
+
+    /// <summary>
+    /// issue #315: önerilen slotun süresi mevcut dersle aynı değil (400). Veli onayladığı dersin süresi (ve #408 ile ücreti)
+    /// erteleme ile değişmez.
+    /// </summary>
+    public const string ProposedSlotDurationMismatch = "ProposedSlotDurationMismatch";
+
+    /// <summary>issue #315: randevuda zaten bekleyen bir erteleme önerisi var (409).</summary>
+    public const string RescheduleAlreadyProposed = "RescheduleAlreadyProposed";
+
+    /// <summary>issue #315: yanıtlanacak erteleme önerisi yok (409).</summary>
+    public const string NoPendingReschedule = "NoPendingReschedule";
+
+    /// <summary>issue #315: öneriyi yapan taraf kendi önerisini kabul edemez (yalnız geri çekebilir) → 403.</summary>
+    public const string CannotRespondOwnProposal = "CannotRespondOwnProposal";
+
+    /// <summary>
+    /// issue #315: önerilen slot uygun değil — aynı öğretmenin değil, geçmişte, mevcut slotla aynı ya da başka bir randevuyla
+    /// dolu (öneride 400/409; kabulde dolmuşsa 409).
+    /// </summary>
+    public const string ProposedSlotUnavailable = "ProposedSlotUnavailable";
+
+    /// <summary>issue #315: no-show yalnız ders bitişinden sonra ve <c>NoShowReportWindowDays</c> içinde bildirilebilir (409).</summary>
+    public const string NoShowWindowClosed = "NoShowWindowClosed";
+
+    /// <summary>issue #315: bu randevu için no-show zaten bildirildi (409).</summary>
+    public const string NoShowAlreadyReported = "NoShowAlreadyReported";
+}
+
+/// <summary>POST /api/booking/requests/{id}/cancel gövdesi (opsiyonel). Gerekçe karşı tarafa bildirilir.</summary>
+public class CancelBookingDto
+{
+    [MaxLength(500, ErrorMessage = "booking.cancel.reasonTooLong")]
+    public string? Reason { get; set; }
+}
+
+/// <summary>POST /api/booking/requests/{id}/reschedule — aynı öğretmenin boş bir slotunu erteleme olarak önerir.</summary>
+public class ProposeRescheduleDto
+{
+    [Range(1, int.MaxValue, ErrorMessage = "booking.request.slotIdRequired")]
+    public int AvailabilitySlotId { get; set; }
+}
+
+/// <summary>POST /api/booking/requests/{id}/reschedule/respond — karşı taraf kabul/ret; öneren taraf yalnız geri çeker (false).</summary>
+public class RespondRescheduleDto
+{
+    public bool Accept { get; set; }
 }
 
 /// <summary>Randevu karar (onay/ret) sonucu; issue #376 ile makine okunur <see cref="BookingResultDto.ErrorCode"/> taşır.</summary>
@@ -252,8 +314,8 @@ public class BookingDto
     public DateTime EndUtc { get; set; }
 
     /// <summary>
-    /// "Pending" | "Approved" | "Rejected"; issue #439 ile öğrenci/veli görünümünde ayrıca "AwaitingParent" | "Expired" |
-    /// "ParentRejected" (öğretmen listesinde bu üçü hiç yer almaz).
+    /// "Pending" | "Approved" | "Rejected" | "Cancelled" (issue #315); issue #439 ile öğrenci/veli görünümünde ayrıca
+    /// "AwaitingParent" | "Expired" | "ParentRejected" (öğretmen listesinde bu üçü hiç yer almaz).
     /// </summary>
     public string Status { get; set; } = nameof(BookingStatus.Pending);
 
@@ -271,6 +333,59 @@ public class BookingDto
     /// ya da ders başlangıcı, hangisi önceyse).
     /// </summary>
     public DateTime? ExpiresAt { get; set; }
+
+    // ---------------- issue #315 ----------------
+
+    /// <summary>Status=Cancelled iken iptal anı (UTC).</summary>
+    public DateTime? CancelledAt { get; set; }
+
+    /// <summary>"Teacher" | "Student" — iptal eden taraf.</summary>
+    public string? CancelledByRole { get; set; }
+
+    public string? CancellationReason { get; set; }
+
+    /// <summary>
+    /// Onaylı randevunun bu andan önce iptal edilebileceği son an (UTC, başlangıç − <c>CancellationMinNoticeHours</c>);
+    /// Approved değilse null.
+    /// </summary>
+    public DateTime? CancellationDeadlineUtc { get; set; }
+
+    /// <summary>Bekleyen erteleme önerisinin slotu; öneri yoksa null.</summary>
+    public int? ProposedSlotId { get; set; }
+
+    public DateTime? ProposedStartUtc { get; set; }
+    public DateTime? ProposedEndUtc { get; set; }
+
+    /// <summary>"Teacher" | "Student" — öneriyi yapan taraf.</summary>
+    public string? ProposedByRole { get; set; }
+
+    /// <summary>Kabul edilmiş erteleme sayısı.</summary>
+    public int RescheduleCount { get; set; }
+
+    /// <summary>
+    /// Bekleyen öneri şu an kabul edilebilir mi (önerilen slot silinmemiş, en az bildirim süresi kadar ileride; mevcut ders bildirim
+    /// penceresinin dışında). false iken öneri bayattır: yalnız ret / geri çekme anlamlıdır.
+    /// </summary>
+    public bool CanRespondReschedule { get; set; }
+
+    /// <summary>
+    /// Erteleme için önerilebilecek/kabul edilebilecek en erken slot başlangıcı (UTC, şimdi + <c>RescheduleMinNoticeHours</c>);
+    /// Approved değilse null. UI slot seçicisi bundan erken slotları göstermez.
+    /// </summary>
+    public DateTime? RescheduleEarliestStartUtc { get; set; }
+
+    /// <summary>
+    /// Onaylı randevu için yeni erteleme önerisi yapılabilir mi (durum, öneri yok, sınır dolmadı, başlangıca yeterli süre var).
+    /// </summary>
+    public bool CanProposeReschedule { get; set; }
+
+    /// <summary>"Teacher" | "Student" — derse katılmadığı bildirilen taraf; bildirilmediyse null.</summary>
+    public string? NoShowParty { get; set; }
+
+    public DateTime? NoShowReportedAt { get; set; }
+
+    /// <summary>Onaylı randevuda no-show'un bildirilebileceği son an (UTC, bitiş + <c>NoShowReportWindowDays</c>).</summary>
+    public DateTime? NoShowReportableUntilUtc { get; set; }
 }
 
 /// <summary>

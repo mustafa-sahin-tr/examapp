@@ -23,7 +23,8 @@
     "awaitingParent": "Awaiting parent approval",
     "parentRejected": "Declined by your parent",
     "expired": "Closed",
-    "unknown": "Unknown status"
+    "unknown": "Unknown status",
+    "cancelled": "Cancelled"
   },
   "join": {
     "button": "Join lesson"
@@ -34,5 +35,36 @@
   },
   "awaitingParentHint": "If your parent does not approve by {{date}}, the request expires.",
   "parentNote": "Parent's note: {{note}}",
-  "expiredHint": "The request expired or the teacher no longer offers this time. You can request another time."
+  "expiredHint": "The request expired or the teacher no longer offers this time. You can request another time.",
+  "cancelled": {
+    "byMe": "You cancelled this appointment.",
+    "byTeacher": "The teacher cancelled this appointment.",
+    "reason": "Cancellation reason: {{reason}}"
+  },
+  "cancel": {
+    "button": "Cancel",
+    "withdraw": "Withdraw request",
+    "windowClosed": "The cancellation period has passed: the lesson starts too soon."
+  },
+  "reschedule": {
+    "propose": "Reschedule",
+    "proposalTheirs": "Teacher's reschedule proposal: {{when}}",
+    "proposalMine": "Your reschedule proposal: {{when}} (awaiting the teacher's reply)",
+    "accept": "Accept",
+    "decline": "Decline",
+    "withdraw": "Withdraw proposal"
+  },
+  "noShow": {
+    "button": "Teacher didn't show up",
+    "confirmTitle": "Did the teacher miss the lesson?",
+    "confirmMessage": "You are about to report that {{teacher}} did not attend this lesson. This cannot be undone.",
+    "confirm": "Report",
+    "reportedTeacher": "The teacher was reported as absent from the lesson.",
+    "reportedMe": "You were reported as absent from the lesson."
+  },
+  "actions": {
+    "done": "Done.",
+    "failed": "The action could not be completed.",
+    "ok": "OK"
+  }
 }

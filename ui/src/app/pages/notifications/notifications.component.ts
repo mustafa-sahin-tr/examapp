@@ -10,6 +10,7 @@ import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { finalize, interval } from 'rxjs';
 import { AppNotification, COALESCED_COUNT_DISPLAY_MAX, toCoalescedCount } from '../../models/notification.model';
 import { AppRouteLink } from '../../models/worksheet-comment.model';
+import { AuthService } from '../../services/auth.service';
 import { NotificationService } from '../../services/notification.service';
 import { LocaleService } from '../../services/locale.service';
 import { NotificationBadgeIcon, describeNotification, formatRelativeTime } from './notification-format';
@@ -64,6 +65,8 @@ export class NotificationsComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly localeService = inject(LocaleService);
+  /** Issue #315: randevu bildirimlerinin hedefi görüntüleyenin rolüne bağlı (öğretmen / öğrenci sayfası). */
+  private readonly viewerRole = inject(AuthService).getUserRole();
 
   protected readonly loading = signal(false);
   protected readonly error = signal(false);
@@ -155,7 +158,7 @@ export class NotificationsComponent implements OnInit {
   }
 
   private toRow(notification: AppNotification, now: number, locale: string): NotificationRow {
-    const { icon, badge, route, questionOrder } = describeNotification(notification);
+    const { icon, badge, route, questionOrder } = describeNotification(notification, { role: this.viewerRole });
     return {
       notification,
       badge,

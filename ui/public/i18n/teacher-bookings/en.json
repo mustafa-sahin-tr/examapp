@@ -22,7 +22,8 @@
     "awaitingParent": "Awaiting parent approval",
     "parentRejected": "Declined by parent",
     "expired": "Closed",
-    "unknown": "Unknown status"
+    "unknown": "Unknown status",
+    "cancelled": "Cancelled"
   },
   "join": {
     "button": "Join lesson"
@@ -38,6 +39,32 @@
     "approved": "The appointment has been approved.",
     "rejected": "The appointment has been rejected.",
     "actionFailed": "The action could not be completed.",
+    "actionDone": "Done.",
     "ok": "OK"
+  },
+  "cancelled": {
+    "byMe": "You cancelled this appointment.",
+    "byStudent": "The student cancelled this appointment.",
+    "reason": "Cancellation reason: {{reason}}"
+  },
+  "cancel": {
+    "button": "Cancel",
+    "windowClosed": "The cancellation period has passed: the lesson starts too soon."
+  },
+  "reschedule": {
+    "propose": "Reschedule",
+    "proposalTheirs": "Student's reschedule proposal: {{when}}",
+    "proposalMine": "Your reschedule proposal: {{when}} (awaiting the student's reply)",
+    "accept": "Accept",
+    "decline": "Decline",
+    "withdraw": "Withdraw proposal"
+  },
+  "noShow": {
+    "button": "Student didn't show up",
+    "confirmTitle": "Did the student miss the lesson?",
+    "confirmMessage": "You are about to report that {{student}} did not attend this lesson. This cannot be undone.",
+    "confirm": "Report",
+    "reportedStudent": "The student was reported as absent from the lesson.",
+    "reportedMe": "You were reported as absent from the lesson."
   }
 }

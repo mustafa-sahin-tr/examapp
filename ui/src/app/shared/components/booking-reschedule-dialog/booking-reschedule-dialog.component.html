@@ -1,0 +1,63 @@
+<ng-container *transloco="let t; prefix: 'shared.bookingRescheduleDialog'">
+  <h2 mat-dialog-title>{{ t('title') }}</h2>
+
+  <mat-dialog-content class="brd__content">
+    <p class="brd__intro" data-testid="reschedule-intro">
+      {{ t('intro', { counterpart: data.counterpart, when: currentWhen }) }}
+    </p>
+
+    @if (loading()) {
+      <div class="brd__state" aria-busy="true" aria-live="polite">
+        <mat-spinner diameter="32" />
+        <span>{{ t('loading') }}</span>
+      </div>
+    } @else if (error()) {
+      <div class="brd__state brd__state--error" role="alert" data-testid="reschedule-load-error">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ error() }}</span>
+        <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+      </div>
+    } @else if (isEmpty()) {
+      <div class="brd__state" data-testid="reschedule-empty">
+        <mat-icon class="brd__empty-icon">event_busy</mat-icon>
+        <span>{{ data.source === 'mySlots' ? t('emptyMine') : t('empty') }}</span>
+      </div>
+    } @else {
+      <mat-radio-group class="brd__groups" [value]="selectedId()" (change)="select($event)" [attr.aria-label]="t('slotGroupAria')">
+        @for (group of groups(); track group.day) {
+          <div class="brd__group">
+            <h3 class="brd__group-day">{{ group.day }}</h3>
+            <div class="brd__slots">
+              @for (item of group.slots; track item.slot.id) {
+                <mat-radio-button class="brd__slot" [value]="item.slot.id" [attr.data-slot-id]="item.slot.id">
+                  {{ item.range }}
+                </mat-radio-button>
+              }
+            </div>
+          </div>
+        }
+      </mat-radio-group>
+    }
+
+    @if (submitError()) {
+      <p class="brd__error" role="alert" data-testid="reschedule-submit-error">{{ submitError() }}</p>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-stroked-button type="button" [disabled]="submitting()" (click)="close()">{{ t('cancel') }}</button>
+    <button
+      mat-flat-button
+      color="primary"
+      type="button"
+      data-testid="reschedule-submit"
+      [disabled]="selectedId() === null || submitting()"
+      (click)="submit()"
+    >
+      @if (submitting()) {
+        <mat-spinner diameter="18" />
+      }
+      {{ t('submit') }}
+    </button>
+  </mat-dialog-actions>
+</ng-container>

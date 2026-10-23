@@ -832,8 +832,16 @@ public class AppDbContext : DbContext
             .HasForeignKey(b => b.StudentId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // issue #315: erteleme önerisinin slotu. Slot silinirse (hard delete yolu varsa) öneri düşer.
+        modelBuilder.Entity<Booking>()
+            .HasOne(b => b.ProposedSlot)
+            .WithMany()
+            .HasForeignKey(b => b.ProposedSlotId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // Çakışma kontrolünün DB dayanağı: bir slotta yalnızca tek aktif (Pending=0 / Approved=1 / AwaitingParent=3, issue #439)
-        // booking olabilir. Rejected (2), Expired (4), ParentRejected (5) ve soft-delete edilmiş satırlar index dışıdır.
+        // booking olabilir. Rejected (2), Expired (4), ParentRejected (5), Cancelled (6, issue #315) ve soft-delete edilmiş satırlar
+        // index dışıdır.
         // Liste BookingService.ActiveStatuses ile aynı olmalı.
         modelBuilder.Entity<Booking>()
             .HasIndex(b => b.AvailabilitySlotId)

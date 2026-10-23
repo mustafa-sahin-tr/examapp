@@ -554,5 +554,115 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
         result.Count.ShouldBe(0); // No direct assignments, grade expansion disabled for unscoped
     }
 
+    // ---------------------------------------------------------------------
+    // Issue #57: sınıf (Student.GradeId) bazlı filtre + GradeId/GradeName alanları
+
+    private async Task<(int GradeA, int GradeB)> SeedThreeLaggingStudentsInDifferentGradesAsync()
+    {
+        await using var ctx = _db.NewContext();
+        SchoolTeacher(TeacherId);
+        var gradeA = await SeedGradeAsync(ctx, "7. Sınıf");
+        var gradeB = await SeedGradeAsync(ctx, "8. Sınıf");
+        ctx.SetCurrentUser(TeacherId);
+        var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeA };
+        var inA = new Student { UserId = 5701, StudentNumber = "a", SchoolId = _teacherSchoolId, SchoolVerifiedAt = DateTime.UtcNow, GradeId = gradeA };
+        var inB = new Student { UserId = 5702, StudentNumber = "b", SchoolId = _teacherSchoolId, SchoolVerifiedAt = DateTime.UtcNow, GradeId = gradeB };
+        var noGrade = new Student { UserId = 5703, StudentNumber = "c", SchoolId = _teacherSchoolId, SchoolVerifiedAt = DateTime.UtcNow };
+        ctx.AddRange(ws, inA, inB, noGrade);
+        await ctx.SaveChangesAsync();
+
+        var startAt = DateTime.UtcNow.AddDays(-1);
+        ctx.WorksheetAssignments.AddRange(
+            new WorksheetAssignment { WorksheetId = ws.Id, StudentId = inA.Id, StartAt = startAt, EndAt = startAt.AddDays(10) },
+            new WorksheetAssignment { WorksheetId = ws.Id, StudentId = inB.Id, StartAt = startAt, EndAt = startAt.AddDays(10) },
+            new WorksheetAssignment { WorksheetId = ws.Id, StudentId = noGrade.Id, StartAt = startAt, EndAt = startAt.AddDays(10) });
+        await ctx.SaveChangesAsync();
+        return (gradeA, gradeB);
+    }
+
+    [Fact]
+    public async Task GetLaggingStudentsAsync_NoGradeFilter_ReturnsAllGradesWithGradeFields()
+    {
+        var (gradeA, gradeB) = await SeedThreeLaggingStudentsInDifferentGradesAsync();
+
+        await using var check = _db.NewContext();
+        var withoutArg = await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId));
+        var withNull = await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId), gradeId: null);
+
+        withoutArg.Count.ShouldBe(3);
+        withNull.Select(r => r.StudentId).ShouldBe(withoutArg.Select(r => r.StudentId));
+
+        withoutArg.Single(r => r.GradeId == gradeA).GradeName.ShouldBe("7. Sınıf");
+        withoutArg.Single(r => r.GradeId == gradeB).GradeName.ShouldBe("8. Sınıf");
+        var unassigned = withoutArg.Single(r => r.GradeId == null);
+        unassigned.GradeName.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetLaggingStudentsAsync_GradeFilter_ReturnsOnlyStudentsInThatGrade()
+    {
+        var (gradeA, _) = await SeedThreeLaggingStudentsInDifferentGradesAsync();
+
+        await using var check = _db.NewContext();
+        var result = await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId), gradeA);
+
+        result.Count.ShouldBe(1);
+        result[0].GradeId.ShouldBe(gradeA);
+        result[0].GradeName.ShouldBe("7. Sınıf");
+    }
+
+    [Fact]
+    public async Task GetLaggingStudentsAsync_GradeFilterWithNoMatchingStudents_ReturnsEmpty()
+    {
+        await SeedThreeLaggingStudentsInDifferentGradesAsync();
+        int emptyGrade;
+        await using (var ctx = _db.NewContext())
+        {
+            emptyGrade = await SeedGradeAsync(ctx, "9. Sınıf");
+        }
+
+        await using var check = _db.NewContext();
+        (await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId), emptyGrade)).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task GetLaggingStudentsAsync_GradeFilter_DoesNotLeakOtherSchoolsOrOtherTeachersWorksheets()
+    {
+        int gradeId;
+        await using (var ctx = _db.NewContext())
+        {
+            SchoolTeacher(TeacherId);
+            gradeId = await SeedGradeAsync(ctx);
+            var otherSchool = new School { Name = "Diğer Okul" };
+            ctx.Schools.Add(otherSchool);
+            await ctx.SaveChangesAsync();
+
+            ctx.SetCurrentUser(TeacherId);
+            var ownWs = new Worksheet { Name = "Own", Description = "", GradeId = gradeId };
+            var own = new Student { UserId = 5711, StudentNumber = "a", SchoolId = _teacherSchoolId, SchoolVerifiedAt = DateTime.UtcNow, GradeId = gradeId };
+            var otherSchoolStudent = new Student { UserId = 5712, StudentNumber = "b", SchoolId = otherSchool.Id, SchoolVerifiedAt = DateTime.UtcNow, GradeId = gradeId };
+            ctx.AddRange(ownWs, own, otherSchoolStudent);
+            await ctx.SaveChangesAsync();
+
+            ctx.SetCurrentUser(OtherTeacherId);
+            var otherWs = new Worksheet { Name = "Other", Description = "", GradeId = gradeId };
+            ctx.Worksheets.Add(otherWs);
+            await ctx.SaveChangesAsync();
+
+            var startAt = DateTime.UtcNow.AddDays(-1);
+            ctx.WorksheetAssignments.AddRange(
+                new WorksheetAssignment { WorksheetId = ownWs.Id, GradeId = gradeId, StartAt = startAt, EndAt = startAt.AddDays(10) },
+                new WorksheetAssignment { WorksheetId = otherWs.Id, StudentId = own.Id, StartAt = startAt, EndAt = startAt.AddDays(10) });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var check = _db.NewContext();
+        var result = await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId), gradeId);
+
+        result.Count.ShouldBe(1);
+        result[0].WorksheetName.ShouldBe("Own");
+        result[0].GradeId.ShouldBe(gradeId);
+    }
+
     public void Dispose() => _db.Dispose();
 }

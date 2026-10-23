@@ -789,7 +789,7 @@ public class TeacherService : ITeacherService
         return result;
     }
 
-    public async Task<List<TeacherLaggingStudentDto>> GetLaggingStudentsAsync(SchoolScope requester, CancellationToken ct = default)
+    public async Task<List<TeacherLaggingStudentDto>> GetLaggingStudentsAsync(SchoolScope requester, int? gradeId = null, CancellationToken ct = default)
     {
         var teacherId = requester.UserId;
         var now = DateTime.UtcNow;
@@ -814,13 +814,19 @@ public class TeacherService : ITeacherService
         var target = await ResolveStudentTargetScopeAsync(requester, ct);
         var (studentsById, windowsByPair) = await ResolveAssignedPairsAsync(worksheetIds, target, ct);
 
-        if (windowsByPair.Count == 0)
+        // Issue #57: sınıf filtresi öğrencinin sınıfına göre; kapsam (sahiplik + SchoolScope) yukarıda zaten uygulandı.
+        //           Instance sorgusundan önce uygulanır ki filtre dışı öğrencilerin satırları çekilmesin.
+        var pairs = gradeId.HasValue
+            ? windowsByPair.Where(p => studentsById[p.Key.StudentId].GradeId == gradeId.Value).ToList()
+            : windowsByPair.ToList();
+
+        if (pairs.Count == 0)
         {
             return new List<TeacherLaggingStudentDto>();
         }
 
         // 5) İlgili test instance'ları tek sorguda.
-        var targetStudentIds = windowsByPair.Keys.Select(k => k.StudentId).Distinct().ToList();
+        var targetStudentIds = pairs.Select(p => p.Key.StudentId).Distinct().ToList();
 
         var instances = await _context.TestInstances
             .AsNoTracking()
@@ -836,7 +842,7 @@ public class TeacherService : ITeacherService
         //    Henüz başlamamış (Scheduled) atamalar geride kalma sayılmaz.
         var laggingRows = new List<(int WorksheetId, AssignedStudentTarget Student, bool IsCompleted, bool IsExpired)>();
 
-        foreach (var ((worksheetId, studentId), windows) in windowsByPair)
+        foreach (var ((worksheetId, studentId), windows) in pairs)
         {
             var relevantWindow = windows
                 .Where(w => w.StartAt <= now)
@@ -873,6 +879,19 @@ public class TeacherService : ITeacherService
         var userIds = laggingRows.Select(r => r.Student.UserId).Distinct().ToList();
         var nameByUserId = await ResolveStudentNamesAsync(userIds, ct);
 
+        // Issue #57: satırlardaki sınıfların adları tek sorguda.
+        var gradeIds = laggingRows
+            .Where(r => r.Student.GradeId.HasValue)
+            .Select(r => r.Student.GradeId!.Value)
+            .Distinct()
+            .ToList();
+        var gradeNameById = gradeIds.Count == 0
+            ? new Dictionary<int, string>()
+            : await _context.Grades
+                .AsNoTracking()
+                .Where(g => gradeIds.Contains(g.Id))
+                .ToDictionaryAsync(g => g.Id, g => g.Name, ct);
+
         return laggingRows
             .Select(r =>
             {
@@ -888,7 +907,11 @@ public class TeacherService : ITeacherService
                     WorksheetName = worksheetNameById[r.WorksheetId],
                     CompletionPercentage = completionPercentage,
                     IsLowCompletion = completionPercentage < 50,
-                    IsExpired = r.IsExpired
+                    IsExpired = r.IsExpired,
+                    GradeId = r.Student.GradeId,
+                    GradeName = r.Student.GradeId is int gid && gradeNameById.TryGetValue(gid, out var gradeName)
+                        ? gradeName
+                        : null
                 };
             })
             .OrderBy(dto => dto.StudentName)

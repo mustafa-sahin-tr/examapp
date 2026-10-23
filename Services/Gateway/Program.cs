@@ -161,6 +161,7 @@ var app = builder.Build();
 
 app.UseCors("SignalRCors");
 app.UseTrustedForwardedFor(app.Configuration); // #368: yalnız KnownProxies/KnownNetworks tanımlıysa XFF çözülür
+app.UseCspReportCollector(app.Configuration); // #316/#333: UI CSP ihlal raporları (/csp-report), Ocelot'a gitmez
 app.UseLoginRateLimit(app.Configuration); // #368: giriş POST uçları, IP başına
 app.UseAuthentication();
 app.UseAuthorization();

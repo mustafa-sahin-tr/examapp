@@ -462,6 +462,16 @@ output token'ı ve tahmini USD loglanır (`Anthropic:InputUsdPerMTok`/`OutputUsd
   olarak gider (AppHost'u yeniden başlat). Anahtar yoksa sınıflandırma uyarıyla atlanır. docker-compose'da tanımlı değil.
 - `QuestionAnalyzer:AIActive=false` iken sağlayıcıdan bağımsız hiçbir sınıflandırma yapılmaz.
 
+**Issue #316 / #333 — UI Content-Security-Policy zorlanıyor.** `ui` ve `auth-ui` (dev-server: `angular.json` `serve.options.headers`;
+prod: `deploy/nginx/angular-spa.conf.template`) artık `Content-Security-Policy` gönderiyor (Report-Only değil). Satır içi betik,
+`on*` öznitelikleri, dış origin'den betik, görsel veya bağlantı tarayıcıda **engellenir**. Yeni bir dış kaynak gerekirse (CDN, embed)
+üç yerdeki politikayı birlikte güncelle; `UiContentSecurityPolicyTests` eşitliği denetler. `angular.json` başlığı değişince
+dev-server'ı yeniden başlat (`aspire resource angular-app restart` / `auth-ui`). İhlaller `report-uri /csp-report` ile gateway'e gelir
+(`Services/Gateway/CspReportExtensions.cs`). Bu uç anonim, IP başına `RateLimiting:CspReport:PermitLimit`/`WindowSeconds`
+(varsayılan 60/dk) ve ortak `GlobalPermitLimit` (600/pencere) ile sınırlı ve Ocelot'a gitmez. Raporlar gateway log'una `CSP violation: directive=... blocked=...` biçiminde
+Warning olarak düşer; URL'ler sorgu ve fragment atılarak yazılır. `report-to` bilerek kullanılmıyor: varsa Chrome `report-uri`'yi
+yok sayıyor, Reporting API ise yerel http'de raporu teslim etmedi.
+
 ## Port map (host → container)
 
 | Service | Host port | Notes |

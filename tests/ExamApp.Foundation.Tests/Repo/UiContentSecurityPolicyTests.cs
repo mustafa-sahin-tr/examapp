@@ -7,10 +7,12 @@ namespace ExamApp.Foundation.Tests.Repo;
 /// issue #333 — UI Content-Security-Policy'si üç yerde tanımlı: <c>ui/angular.json</c> ve <c>auth-ui/angular.json</c> dev-server
 /// başlığı (yerel / Aspire, gateway üzerinden) ve prod nginx şablonu (<c>deploy/nginx/angular-spa.conf.template</c>). Bu testler
 /// üçünün aynı direktifleri taşıdığını ve politikayı kıracak satır içi betik eklenmediğini denetler.
+/// issue #316: politika artık ZORLANIR (Report-Only değil) ve ihlaller gateway'in <c>/csp-report</c> toplayıcısına raporlanır.
 /// </summary>
 public class UiContentSecurityPolicyTests
 {
-    private const string HeaderName = "Content-Security-Policy-Report-Only";
+    private const string HeaderName = "Content-Security-Policy";
+    private const string ReportOnlyHeaderName = "Content-Security-Policy-Report-Only";
     private const string DevJitsiOrigin = "http://localhost:8000";
 
     /// <summary>
@@ -124,12 +126,14 @@ public class UiContentSecurityPolicyTests
     }
 
     [Fact]
-    public void Nginx_sends_enforced_anti_framing_headers_in_every_location()
+    public void Nginx_sends_enforced_policy_and_anti_framing_headers_in_every_location()
     {
         var template = NginxTemplate();
         var locations = LocationCount();
         locations.ShouldBe(3);
-        Regex.Matches(template, @"add_header Content-Security-Policy ""frame-ancestors 'self'"" always;").Count.ShouldBe(locations);
+        // NginxPolicy() her location'da tek bir zorlanan CSP başlığı olduğunu denetler; Report-Only kopyası kalmamalı.
+        Parse(NginxPolicy())["frame-ancestors"].ShouldBe(["'self'"]);
+        template.ShouldNotContain(ReportOnlyHeaderName);
         Regex.Matches(template, @"add_header X-Frame-Options ""SAMEORIGIN"" always;").Count.ShouldBe(locations);
         Regex.Matches(template, @"add_header X-Content-Type-Options ""nosniff"" always;").Count.ShouldBe(locations);
     }
@@ -137,13 +141,26 @@ public class UiContentSecurityPolicyTests
     [Theory]
     [InlineData("ui/angular.json")]
     [InlineData("auth-ui/angular.json")]
-    public void Dev_server_sends_enforced_anti_framing_headers(string angularJsonPath)
+    public void Dev_server_sends_enforced_policy_and_anti_framing_headers(string angularJsonPath)
     {
         using var doc = JsonDocument.Parse(RepoFile(angularJsonPath));
         var headers = doc.RootElement.GetProperty("projects").EnumerateObject().First().Value
             .GetProperty("architect").GetProperty("serve").GetProperty("options").GetProperty("headers");
-        headers.GetProperty("Content-Security-Policy").GetString().ShouldBe("frame-ancestors 'self'");
+        Parse(headers.GetProperty(HeaderName).GetString()!)["frame-ancestors"].ShouldBe(["'self'"]);
+        headers.TryGetProperty(ReportOnlyHeaderName, out _).ShouldBeFalse("politika zorlanıyor; Report-Only kopyası kalmamalı");
         headers.GetProperty("X-Frame-Options").GetString().ShouldBe("SAMEORIGIN");
+    }
+
+    [Theory]
+    [InlineData("ui/angular.json")]
+    [InlineData("auth-ui/angular.json")]
+    public void Policy_reports_violations_to_the_gateway_collector(string angularJsonPath)
+    {
+        // Gateway toplayıcısının yolu: Services/Gateway/CspReportExtensions.Path. report-to bilerek yok: varsa Chrome report-uri'yi
+        // yok sayıp Reporting API'ye geçer (toplu/gecikmeli; yerel http'de teslim etmedi).
+        var policy = Parse(DevServerPolicy(angularJsonPath));
+        policy["report-uri"].ShouldBe(["/csp-report"]);
+        policy.ContainsKey("report-to").ShouldBeFalse();
     }
 
     [Fact]

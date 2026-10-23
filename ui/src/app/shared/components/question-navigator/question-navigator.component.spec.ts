@@ -4,21 +4,21 @@ import { QuestionNavigatorComponent } from './question-navigator.component';
 import { translocoTestingModule } from '../../testing/transloco-testing';
 
 describe('QuestionNavigatorComponent', () => {
-  let component: QuestionNavigatorComponent;
-  let fixture: ComponentFixture<QuestionNavigatorComponent>;
+    let component: QuestionNavigatorComponent;
+    let fixture: ComponentFixture<QuestionNavigatorComponent>;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [translocoTestingModule(), QuestionNavigatorComponent]
-    })
-    .compileComponents();
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            imports: [translocoTestingModule(), QuestionNavigatorComponent]
+        })
+            .compileComponents();
 
-    fixture = TestBed.createComponent(QuestionNavigatorComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
+        fixture = TestBed.createComponent(QuestionNavigatorComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
+    it('should create', () => {
+        expect(component).toBeTruthy();
+    });
 });

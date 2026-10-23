@@ -140,10 +140,10 @@
       [attr.aria-busy]="bankSaving()" [matTooltip]="t('bank.hint')">
       @if (bankSaving()) {
       <mat-spinner diameter="16" aria-hidden="true"></mat-spinner>
-      <span>{{ t('bank.saving') }}</span>
       } @else {
-      <mat-icon>library_add</mat-icon>{{ t('bank.save') }}
+      <mat-icon>library_add</mat-icon>
       }
+      <span>{{ bankSaving() ? t('bank.saving') : t('bank.save') }}</span>
     </button>
   </div>
   }
@@ -200,7 +200,7 @@
         }
         @case ('Ai') {
         <p class="lb-source__main">
-          <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ aiModelName(detectionSource()?.modelName) }}
+          <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ aiModelName(detectionSource()?.modelName ?? null) }}
           <span class="lb-pill">{{ aiOrigin() === 'cached' ? s('cached') : s('live') }}</span>
         </p>
         @if (aiRecord(); as r) {

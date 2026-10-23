@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, input, model, output, signal } from '@angular/core';
+import { Component, computed, input, model, output, signal, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -29,6 +29,7 @@ import { CommentView, ThreadView, canLoadOlderReplies, hiddenReplyCount } from '
     CommentComposerComponent,
   ],
   templateUrl: './comment-item.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./comment-item.component.scss'],
 })
 export class CommentItemComponent {

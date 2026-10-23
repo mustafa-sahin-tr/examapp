@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { ConversationSummary, DIRECT_MESSAGES_SCOPE } from '../../../models/direct-message.model';
@@ -21,6 +21,7 @@ export interface DmConversationSelectEvent {
   imports: [MatIconModule, TranslocoDirective],
   providers: [provideTranslocoScope(DIRECT_MESSAGES_SCOPE)],
   templateUrl: './dm-conversation-list.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./dm-conversation-list.component.scss'],
 })
 export class DmConversationListComponent {

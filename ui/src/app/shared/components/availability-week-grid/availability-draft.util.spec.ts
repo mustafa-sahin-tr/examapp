@@ -1,12 +1,4 @@
-import {
-  DRAFT_MAX_ADVANCE_DAYS,
-  DraftRange,
-  RECURRING_UNTIL_MIN_DAYS,
-  applyCellClick,
-  recurringUntilBounds,
-  toRecurringRuleRequest,
-  toSlotRequest,
-} from './availability-draft.util';
+import { DRAFT_MAX_ADVANCE_DAYS, DraftRange, RECURRING_UNTIL_MIN_DAYS, applyCellClick, recurringUntilBounds, toRecurringRuleRequest, toSlotRequest, } from './availability-draft.util';
 
 /**
  * Testler Karma'nın koştuğu makinenin saat diliminden BAĞIMSIZDIR.
@@ -15,19 +7,19 @@ import {
  * gün sınırından uzak bir pencerede koşar. UTC gece yarısı dilime göre yerel günün farklı saatine düşer; bu yüzden `BASE`, 25 Eylül 2026 yerel gününün UTC gece yarısıyla bölünen iki parçasından BÜYÜK olanının
  * (≥ 12 saat) başlangıcıdır. `at(dakika)` o parçanın içinde, yarım saate hizalı anlar üretir.
  */
-const HALF_HOUR_MS = 30 * 60_000;
-const DAY_MS = 24 * 60 * 60_000;
+const HALF_HOUR_MS = 30 * 60000;
+const DAY_MS = 24 * 60 * 60000;
 
 function safeBase(year: number, monthIndex: number, day: number): Date {
-  const localStart = new Date(year, monthIndex, day).getTime();
-  const localEnd = new Date(year, monthIndex, day + 1).getTime();
-  // Yerel günün içine düşen UTC gece yarısı (yoksa ya da tam kenardaysa parça tüm gündür).
-  const utcMidnight = Math.ceil(localStart / DAY_MS) * DAY_MS;
-  const splitsDay = utcMidnight > localStart && utcMidnight < localEnd;
-  const pieceStart = splitsDay && localEnd - utcMidnight >= utcMidnight - localStart ? utcMidnight : localStart;
-  // Yerel :00/:30'a yukarı hizala (ör. +05:45 diliminde UTC gece yarısı hücre ortasına düşer).
-  const misalign = (pieceStart - localStart) % HALF_HOUR_MS;
-  return new Date(misalign === 0 ? pieceStart : pieceStart + HALF_HOUR_MS - misalign);
+    const localStart = new Date(year, monthIndex, day).getTime();
+    const localEnd = new Date(year, monthIndex, day + 1).getTime();
+    // Yerel günün içine düşen UTC gece yarısı (yoksa ya da tam kenardaysa parça tüm gündür).
+    const utcMidnight = Math.ceil(localStart / DAY_MS) * DAY_MS;
+    const splitsDay = utcMidnight > localStart && utcMidnight < localEnd;
+    const pieceStart = splitsDay && localEnd - utcMidnight >= utcMidnight - localStart ? utcMidnight : localStart;
+    // Yerel :00/:30'a yukarı hizala (ör. +05:45 diliminde UTC gece yarısı hücre ortasına düşer).
+    const misalign = (pieceStart - localStart) % HALF_HOUR_MS;
+    return new Date(misalign === 0 ? pieceStart : pieceStart + HALF_HOUR_MS - misalign);
 }
 
 const BASE = safeBase(2026, 8, 25);
@@ -35,423 +27,414 @@ const BASE = safeBase(2026, 8, 25);
 const NOW = new Date(BASE.getTime() - 4 * DAY_MS);
 
 function at(minutes: number): Date {
-  return new Date(BASE.getTime() + minutes * 60_000);
+    return new Date(BASE.getTime() + minutes * 60000);
 }
 
 function range(start: Date, end: Date): DraftRange {
-  return { start, end };
+    return { start, end };
 }
 
 function utc(day: number, hour: number, minute = 0): Date {
-  return new Date(Date.UTC(2026, 8, day, hour, minute));
+    return new Date(Date.UTC(2026, 8, day, hour, minute));
 }
 
 describe('availability-draft.util', () => {
-  it('test penceresi (6 saat) tek yerel günde ve tek UTC gününde kalır', () => {
-    expect(at(0).getDate()).toBe(25);
-    expect(at(359).getDate()).toBe(25);
-    expect(at(0).toISOString().slice(0, 10)).toBe(at(359).toISOString().slice(0, 10));
-  });
-
-  describe('applyCellClick', () => {
-    it('ilk tıklama tıklanan hücrede 30 dakikalık taslak kurar', () => {
-      const result = applyCellClick(null, at(60), [], NOW);
-
-      expect(result.rejection).toBeNull();
-      expect(result.draft).toEqual(range(at(60), at(90)));
+    it('test penceresi (6 saat) tek yerel günde ve tek UTC gününde kalır', () => {
+        expect(at(0).getDate()).toBe(25);
+        expect(at(359).getDate()).toBe(25);
+        expect(at(0).toISOString().slice(0, 10)).toBe(at(359).toISOString().slice(0, 10));
     });
 
-    it('aynı günde daha geç bir hücreye tıklama taslağı o hücrenin sonuna kadar genişletir', () => {
-      const result = applyCellClick(range(at(60), at(90)), at(120), [], NOW);
-
-      expect(result.rejection).toBeNull();
-      expect(result.draft).toEqual(range(at(60), at(150)));
-    });
-
-    it('aynı günde daha erken bir hücreye tıklama taslağı geriye doğru genişletir', () => {
-      const result = applyCellClick(range(at(60), at(120)), at(0), [], NOW);
-
-      expect(result.draft).toEqual(range(at(0), at(120)));
-    });
-
-    it('ilk hücreye tıklama taslağı baştan daraltır', () => {
-      const result = applyCellClick(range(at(60), at(150)), at(60), [], NOW);
-
-      expect(result.rejection).toBeNull();
-      expect(result.draft).toEqual(range(at(90), at(150)));
-    });
-
-    it('son hücreye tıklama taslağı sondan daraltır', () => {
-      const result = applyCellClick(range(at(60), at(150)), at(120), [], NOW);
-
-      expect(result.draft).toEqual(range(at(60), at(120)));
-    });
-
-    it('ortadaki hücreye tıklama taslağı o hücrede bitirir', () => {
-      const result = applyCellClick(range(at(60), at(180)), at(90), [], NOW);
-
-      expect(result.draft).toEqual(range(at(60), at(120)));
-    });
-
-    it('tek hücrelik taslağa tıklama taslağı kaldırır', () => {
-      const result = applyCellClick(range(at(60), at(90)), at(60), [], NOW);
-
-      expect(result).toEqual({ draft: null, rejection: null });
-    });
-
-    it('süre sınırına sığmayan farklı yerel güne tıklama taslağı o güne taşır (yeni 30 dk)', () => {
-      const draft = range(at(60), at(180));
-      const nextDay = safeBase(2026, 8, 26);
-
-      const result = applyCellClick(draft, nextDay, [], NOW);
-
-      expect(result.rejection).toBeNull();
-      expect(result.draft).toEqual(range(nextDay, new Date(nextDay.getTime() + HALF_HOUR_MS)));
-    });
-
-    it('geçmişteki hücre reddedilir ve mevcut taslak korunur', () => {
-      const draft = range(at(60), at(120));
-
-      const result = applyCellClick(draft, new Date(NOW.getTime() - 60 * 60_000), [], NOW);
-
-      expect(result.rejection).toBe('past');
-      expect(result.draft).toBe(draft);
-    });
-
-    it('başlangıcı geçmiş olan içinde bulunulan hücre de reddedilir (backend: start <= now)', () => {
-      const now = new Date(at(60).getTime() + 10 * 60_000); // hücre başlayalı 10 dk olmuş
-
-      expect(applyCellClick(null, at(60), [], now)).toEqual({ draft: null, rejection: 'past' });
-      expect(applyCellClick(null, at(90), [], now).rejection).toBeNull();
-    });
-
-    it('sınır eşitlikte de geçmiştir: hücre tam "şimdi" başlıyorsa reddedilir, 1 ms sonrası kabul edilir', () => {
-      expect(applyCellClick(null, at(60), [], at(60))).toEqual({ draft: null, rejection: 'past' });
-      expect(applyCellClick(null, at(60), [], new Date(at(60).getTime() - 1)).rejection).toBeNull();
-    });
-
-    it('beklerken ilk hücresi geçmişe düşen taslak baştan daraltılabilir (doğru düzeltme reddedilmez)', () => {
-      const draft = range(at(60), at(150));
-      const now = new Date(at(60).getTime() + 5 * 60_000); // ilk hücre artık geçmişte
-
-      const result = applyCellClick(draft, at(60), [], now);
-
-      expect(result.rejection).toBeNull();
-      expect(result.draft).toEqual(range(at(90), at(150)));
-    });
-
-    it('ilk hücresi geçmişe düşen taslağı genişletmek reddedilir (başlangıç hâlâ geçmişte)', () => {
-      const draft = range(at(60), at(150));
-      const now = new Date(at(60).getTime() + 5 * 60_000);
-
-      const result = applyCellClick(draft, at(180), [], now);
-
-      expect(result.rejection).toBe('past');
-      expect(result.draft).toBe(draft);
-    });
-
-    it('geçmişe düşmüş tek hücrelik taslak tıklanarak kaldırılabilir', () => {
-      const draft = range(at(60), at(90));
-      const now = new Date(at(60).getTime() + 5 * 60_000);
-
-      expect(applyCellClick(draft, at(60), [], now)).toEqual({ draft: null, rejection: null });
-    });
-
-    it('mevcut slotla kesişen hücre reddedilir', () => {
-      const busy = [range(at(75), at(120))];
-
-      expect(applyCellClick(null, at(60), busy, NOW)).toEqual({ draft: null, rejection: 'occupied' });
-    });
-
-    it('slota bitişik (kesişmeyen) hücre kabul edilir', () => {
-      const busy = [range(at(90), at(120))];
-
-      expect(applyCellClick(null, at(60), busy, NOW).draft).toEqual(range(at(60), at(90)));
-      expect(applyCellClick(null, at(120), busy, NOW).draft).toEqual(range(at(120), at(150)));
-    });
-
-    it('genişletme aradaki bir slotun üzerinden geçiyorsa reddedilir ve taslak değişmez', () => {
-      const draft = range(at(0), at(30));
-      const busy = [range(at(60), at(120))];
-
-      const result = applyCellClick(draft, at(180), busy, NOW);
-
-      expect(result.rejection).toBe('occupied');
-      expect(result.draft).toBe(draft);
-    });
-
-    it('tam 4 saatlik taslak kabul edilir, 4 saati aşan genişletme reddedilir', () => {
-      const draft = range(at(0), at(30));
-
-      const exact = applyCellClick(draft, at(210), [], NOW);
-      expect(exact.rejection).toBeNull();
-      expect(exact.draft).toEqual(range(at(0), at(240)));
-
-      const over = applyCellClick(draft, at(240), [], NOW);
-      expect(over.rejection).toBe('tooLong');
-      expect(over.draft).toBe(draft);
-    });
-
-    it('girdi taslağını yerinde değiştirmez', () => {
-      const draft = range(at(60), at(120));
-
-      applyCellClick(draft, at(180), [], NOW);
-
-      expect(draft).toEqual(range(at(60), at(120)));
-    });
-
-    describe('gece yarısını aşan aralık (issue #300: backend endTime <= startTime ise ertesi gün bitirir)', () => {
-      const now = utc(21, 9, 10);
-
-      it('23:30Z–00:00Z hücresi kabul edilir (bitiş tam UTC gece yarısı)', () => {
-        const result = applyCellClick(null, utc(24, 23, 30), [], now);
-
-        expect(result).toEqual({ draft: range(utc(24, 23, 30), utc(25, 0, 0)), rejection: null });
-      });
-
-      it('UTC gece yarısının iki yanındaki hücreler tek taslakta birleşir (yerel dilimden bağımsız)', () => {
-        const draft = range(utc(24, 23, 0), utc(24, 23, 30));
-
-        // Aynı yerel gündeyse normal genişletme; farklı yerel gündeyse birleşik aralık 4 saate sığdığı için yine genişler.
-        const result = applyCellClick(draft, utc(25, 0, 0), [], now);
-
-        expect(result).toEqual({ draft: range(utc(24, 23, 0), utc(25, 0, 30)), rejection: null });
-      });
-
-      it('yerel gece yarısını aşan genişletme kabul edilir (ertesi günün ilk hücrelerine tıklama)', () => {
-        const draft = range(new Date(2026, 8, 25, 23, 0), new Date(2026, 8, 25, 23, 30));
-
-        const result = applyCellClick(draft, new Date(2026, 8, 26, 0, 30), [], NOW);
-
-        expect(result).toEqual({ draft: range(new Date(2026, 8, 25, 23, 0), new Date(2026, 8, 26, 1, 0)), rejection: null });
-      });
-
-      it('ertesi günden geriye (önceki günün son hücresine) genişletme de kabul edilir', () => {
-        const draft = range(new Date(2026, 8, 26, 0, 0), new Date(2026, 8, 26, 0, 30));
-
-        const result = applyCellClick(draft, new Date(2026, 8, 25, 23, 30), [], NOW);
-
-        expect(result.draft).toEqual(range(new Date(2026, 8, 25, 23, 30), new Date(2026, 8, 26, 0, 30)));
-      });
-
-      it('gün aşan taslak ertesi gün tarafından daraltılabilir (içeri tıklama gün sütunundan bağımsız)', () => {
-        const draft = range(new Date(2026, 8, 25, 23, 0), new Date(2026, 8, 26, 1, 0));
-
-        const result = applyCellClick(draft, new Date(2026, 8, 26, 0, 30), [], NOW);
-
-        expect(result.draft).toEqual(range(new Date(2026, 8, 25, 23, 0), new Date(2026, 8, 26, 0, 30)));
-      });
-
-      it('birleşik aralık 4 saate sığmıyorsa başka güne tıklama taslağı o hücreye taşır', () => {
-        const draft = range(new Date(2026, 8, 25, 21, 0), new Date(2026, 8, 25, 23, 30));
-        const cell = new Date(2026, 8, 26, 1, 0);
-
-        const result = applyCellClick(draft, cell, [], NOW);
-
-        expect(result).toEqual({ draft: range(cell, new Date(cell.getTime() + HALF_HOUR_MS)), rejection: null });
-      });
-
-      it('ertesi gündeki mevcut slotun üzerinden geçen gün aşan genişletme reddedilir', () => {
-        const draft = range(new Date(2026, 8, 25, 23, 0), new Date(2026, 8, 25, 23, 30));
-        const busy = [range(new Date(2026, 8, 26, 0, 0), new Date(2026, 8, 26, 0, 30))];
-
-        const result = applyCellClick(draft, new Date(2026, 8, 26, 1, 0), busy, NOW);
-
-        expect(result).toEqual({ draft, rejection: 'occupied' });
-      });
-    });
-
-    describe('İstanbul senaryosu: yerel 02:30–03:30 (UTC+3) = UTC 23:30–00:30, önceki UTC günü', () => {
-      // Anlar ofsetle sabitlenir; sonuç Karma'nın koştuğu makinenin diliminden bağımsızdır.
-      const start = new Date('2026-09-25T02:30:00+03:00');
-      const end = new Date('2026-09-25T03:30:00+03:00');
-      const now = utc(21, 9, 10);
-
-      it('iki tıklamayla kurulan taslak kabul edilir (UTC gece yarısı artık sınır değil)', () => {
-        const first = applyCellClick(null, start, [], now);
-        const second = applyCellClick(first.draft, new Date(end.getTime() - HALF_HOUR_MS), [], now);
-
-        expect(first.rejection).toBeNull();
-        expect(second).toEqual({ draft: range(start, end), rejection: null });
-      });
-
-      it('slot isteği: date başlangıcın UTC günü (24), endTime < startTime', () => {
-        expect(toSlotRequest(range(start, end))).toEqual({
-          date: '2026-09-24',
-          startTime: '23:30:00',
-          endTime: '00:30:00',
+    describe('applyCellClick', () => {
+        it('ilk tıklama tıklanan hücrede 30 dakikalık taslak kurar', () => {
+            const result = applyCellClick(null, at(60), [], NOW);
+
+            expect(result.rejection).toBeNull();
+            expect(result.draft).toEqual(range(at(60), at(90)));
         });
-      });
 
-      it('kural isteği: dayOfWeek ve effectiveFrom UTC gününe (Perşembe 24) göre, endTime < startTime', () => {
-        const request = toRecurringRuleRequest(range(start, end), null);
+        it('aynı günde daha geç bir hücreye tıklama taslağı o hücrenin sonuna kadar genişletir', () => {
+            const result = applyCellClick(range(at(60), at(90)), at(120), [], NOW);
 
-        expect(request).toEqual({
-          dayOfWeek: 4,
-          startTime: '23:30:00',
-          endTime: '00:30:00',
-          effectiveFrom: '2026-09-24',
-          effectiveUntil: null,
+            expect(result.rejection).toBeNull();
+            expect(result.draft).toEqual(range(at(60), at(150)));
         });
-      });
+
+        it('aynı günde daha erken bir hücreye tıklama taslağı geriye doğru genişletir', () => {
+            const result = applyCellClick(range(at(60), at(120)), at(0), [], NOW);
+
+            expect(result.draft).toEqual(range(at(0), at(120)));
+        });
+
+        it('ilk hücreye tıklama taslağı baştan daraltır', () => {
+            const result = applyCellClick(range(at(60), at(150)), at(60), [], NOW);
+
+            expect(result.rejection).toBeNull();
+            expect(result.draft).toEqual(range(at(90), at(150)));
+        });
+
+        it('son hücreye tıklama taslağı sondan daraltır', () => {
+            const result = applyCellClick(range(at(60), at(150)), at(120), [], NOW);
+
+            expect(result.draft).toEqual(range(at(60), at(120)));
+        });
+
+        it('ortadaki hücreye tıklama taslağı o hücrede bitirir', () => {
+            const result = applyCellClick(range(at(60), at(180)), at(90), [], NOW);
+
+            expect(result.draft).toEqual(range(at(60), at(120)));
+        });
+
+        it('tek hücrelik taslağa tıklama taslağı kaldırır', () => {
+            const result = applyCellClick(range(at(60), at(90)), at(60), [], NOW);
+
+            expect(result).toEqual({ draft: null, rejection: null });
+        });
+
+        it('süre sınırına sığmayan farklı yerel güne tıklama taslağı o güne taşır (yeni 30 dk)', () => {
+            const draft = range(at(60), at(180));
+            const nextDay = safeBase(2026, 8, 26);
+
+            const result = applyCellClick(draft, nextDay, [], NOW);
+
+            expect(result.rejection).toBeNull();
+            expect(result.draft).toEqual(range(nextDay, new Date(nextDay.getTime() + HALF_HOUR_MS)));
+        });
+
+        it('geçmişteki hücre reddedilir ve mevcut taslak korunur', () => {
+            const draft = range(at(60), at(120));
+
+            const result = applyCellClick(draft, new Date(NOW.getTime() - 60 * 60000), [], NOW);
+
+            expect(result.rejection).toBe('past');
+            expect(result.draft).toBe(draft);
+        });
+
+        it('başlangıcı geçmiş olan içinde bulunulan hücre de reddedilir (backend: start <= now)', () => {
+            const now = new Date(at(60).getTime() + 10 * 60000); // hücre başlayalı 10 dk olmuş
+
+            expect(applyCellClick(null, at(60), [], now)).toEqual({ draft: null, rejection: 'past' });
+            expect(applyCellClick(null, at(90), [], now).rejection).toBeNull();
+        });
+
+        it('sınır eşitlikte de geçmiştir: hücre tam "şimdi" başlıyorsa reddedilir, 1 ms sonrası kabul edilir', () => {
+            expect(applyCellClick(null, at(60), [], at(60))).toEqual({ draft: null, rejection: 'past' });
+            expect(applyCellClick(null, at(60), [], new Date(at(60).getTime() - 1)).rejection).toBeNull();
+        });
+
+        it('beklerken ilk hücresi geçmişe düşen taslak baştan daraltılabilir (doğru düzeltme reddedilmez)', () => {
+            const draft = range(at(60), at(150));
+            const now = new Date(at(60).getTime() + 5 * 60000); // ilk hücre artık geçmişte
+
+            const result = applyCellClick(draft, at(60), [], now);
+
+            expect(result.rejection).toBeNull();
+            expect(result.draft).toEqual(range(at(90), at(150)));
+        });
+
+        it('ilk hücresi geçmişe düşen taslağı genişletmek reddedilir (başlangıç hâlâ geçmişte)', () => {
+            const draft = range(at(60), at(150));
+            const now = new Date(at(60).getTime() + 5 * 60000);
+
+            const result = applyCellClick(draft, at(180), [], now);
+
+            expect(result.rejection).toBe('past');
+            expect(result.draft).toBe(draft);
+        });
+
+        it('geçmişe düşmüş tek hücrelik taslak tıklanarak kaldırılabilir', () => {
+            const draft = range(at(60), at(90));
+            const now = new Date(at(60).getTime() + 5 * 60000);
+
+            expect(applyCellClick(draft, at(60), [], now)).toEqual({ draft: null, rejection: null });
+        });
+
+        it('mevcut slotla kesişen hücre reddedilir', () => {
+            const busy = [range(at(75), at(120))];
+
+            expect(applyCellClick(null, at(60), busy, NOW)).toEqual({ draft: null, rejection: 'occupied' });
+        });
+
+        it('slota bitişik (kesişmeyen) hücre kabul edilir', () => {
+            const busy = [range(at(90), at(120))];
+
+            expect(applyCellClick(null, at(60), busy, NOW).draft).toEqual(range(at(60), at(90)));
+            expect(applyCellClick(null, at(120), busy, NOW).draft).toEqual(range(at(120), at(150)));
+        });
+
+        it('genişletme aradaki bir slotun üzerinden geçiyorsa reddedilir ve taslak değişmez', () => {
+            const draft = range(at(0), at(30));
+            const busy = [range(at(60), at(120))];
+
+            const result = applyCellClick(draft, at(180), busy, NOW);
+
+            expect(result.rejection).toBe('occupied');
+            expect(result.draft).toBe(draft);
+        });
+
+        it('tam 4 saatlik taslak kabul edilir, 4 saati aşan genişletme reddedilir', () => {
+            const draft = range(at(0), at(30));
+
+            const exact = applyCellClick(draft, at(210), [], NOW);
+            expect(exact.rejection).toBeNull();
+            expect(exact.draft).toEqual(range(at(0), at(240)));
+
+            const over = applyCellClick(draft, at(240), [], NOW);
+            expect(over.rejection).toBe('tooLong');
+            expect(over.draft).toBe(draft);
+        });
+
+        it('girdi taslağını yerinde değiştirmez', () => {
+            const draft = range(at(60), at(120));
+
+            applyCellClick(draft, at(180), [], NOW);
+
+            expect(draft).toEqual(range(at(60), at(120)));
+        });
+
+        describe('gece yarısını aşan aralık (issue #300: backend endTime <= startTime ise ertesi gün bitirir)', () => {
+            const now = utc(21, 9, 10);
+
+            it('23:30Z–00:00Z hücresi kabul edilir (bitiş tam UTC gece yarısı)', () => {
+                const result = applyCellClick(null, utc(24, 23, 30), [], now);
+
+                expect(result).toEqual({ draft: range(utc(24, 23, 30), utc(25, 0, 0)), rejection: null });
+            });
+
+            it('UTC gece yarısının iki yanındaki hücreler tek taslakta birleşir (yerel dilimden bağımsız)', () => {
+                const draft = range(utc(24, 23, 0), utc(24, 23, 30));
+
+                // Aynı yerel gündeyse normal genişletme; farklı yerel gündeyse birleşik aralık 4 saate sığdığı için yine genişler.
+                const result = applyCellClick(draft, utc(25, 0, 0), [], now);
+
+                expect(result).toEqual({ draft: range(utc(24, 23, 0), utc(25, 0, 30)), rejection: null });
+            });
+
+            it('yerel gece yarısını aşan genişletme kabul edilir (ertesi günün ilk hücrelerine tıklama)', () => {
+                const draft = range(new Date(2026, 8, 25, 23, 0), new Date(2026, 8, 25, 23, 30));
+
+                const result = applyCellClick(draft, new Date(2026, 8, 26, 0, 30), [], NOW);
+
+                expect(result).toEqual({ draft: range(new Date(2026, 8, 25, 23, 0), new Date(2026, 8, 26, 1, 0)), rejection: null });
+            });
+
+            it('ertesi günden geriye (önceki günün son hücresine) genişletme de kabul edilir', () => {
+                const draft = range(new Date(2026, 8, 26, 0, 0), new Date(2026, 8, 26, 0, 30));
+
+                const result = applyCellClick(draft, new Date(2026, 8, 25, 23, 30), [], NOW);
+
+                expect(result.draft).toEqual(range(new Date(2026, 8, 25, 23, 30), new Date(2026, 8, 26, 0, 30)));
+            });
+
+            it('gün aşan taslak ertesi gün tarafından daraltılabilir (içeri tıklama gün sütunundan bağımsız)', () => {
+                const draft = range(new Date(2026, 8, 25, 23, 0), new Date(2026, 8, 26, 1, 0));
+
+                const result = applyCellClick(draft, new Date(2026, 8, 26, 0, 30), [], NOW);
+
+                expect(result.draft).toEqual(range(new Date(2026, 8, 25, 23, 0), new Date(2026, 8, 26, 0, 30)));
+            });
+
+            it('birleşik aralık 4 saate sığmıyorsa başka güne tıklama taslağı o hücreye taşır', () => {
+                const draft = range(new Date(2026, 8, 25, 21, 0), new Date(2026, 8, 25, 23, 30));
+                const cell = new Date(2026, 8, 26, 1, 0);
+
+                const result = applyCellClick(draft, cell, [], NOW);
+
+                expect(result).toEqual({ draft: range(cell, new Date(cell.getTime() + HALF_HOUR_MS)), rejection: null });
+            });
+
+            it('ertesi gündeki mevcut slotun üzerinden geçen gün aşan genişletme reddedilir', () => {
+                const draft = range(new Date(2026, 8, 25, 23, 0), new Date(2026, 8, 25, 23, 30));
+                const busy = [range(new Date(2026, 8, 26, 0, 0), new Date(2026, 8, 26, 0, 30))];
+
+                const result = applyCellClick(draft, new Date(2026, 8, 26, 1, 0), busy, NOW);
+
+                expect(result).toEqual({ draft, rejection: 'occupied' });
+            });
+        });
+
+        describe('İstanbul senaryosu: yerel 02:30–03:30 (UTC+3) = UTC 23:30–00:30, önceki UTC günü', () => {
+            // Anlar ofsetle sabitlenir; sonuç Karma'nın koştuğu makinenin diliminden bağımsızdır.
+            const start = new Date('2026-09-25T02:30:00+03:00');
+            const end = new Date('2026-09-25T03:30:00+03:00');
+            const now = utc(21, 9, 10);
+
+            it('iki tıklamayla kurulan taslak kabul edilir (UTC gece yarısı artık sınır değil)', () => {
+                const first = applyCellClick(null, start, [], now);
+                const second = applyCellClick(first.draft, new Date(end.getTime() - HALF_HOUR_MS), [], now);
+
+                expect(first.rejection).toBeNull();
+                expect(second).toEqual({ draft: range(start, end), rejection: null });
+            });
+
+            it('slot isteği: date başlangıcın UTC günü (24), endTime < startTime', () => {
+                expect(toSlotRequest(range(start, end))).toEqual({
+                    date: '2026-09-24',
+                    startTime: '23:30:00',
+                    endTime: '00:30:00',
+                });
+            });
+
+            it('kural isteği: dayOfWeek ve effectiveFrom UTC gününe (Perşembe 24) göre, endTime < startTime', () => {
+                const request = toRecurringRuleRequest(range(start, end), null);
+
+                expect(request).toEqual({
+                    dayOfWeek: 4,
+                    startTime: '23:30:00',
+                    endTime: '00:30:00',
+                    effectiveFrom: '2026-09-24',
+                    effectiveUntil: null,
+                });
+            });
+        });
+        describe('90 gün ufku (backend: UTC bugün + 90)', () => {
+            const now = utc(21, 9, 10);
+
+            it('ufkun son UTC günü kabul edilir (günün son geçerli hücresi dahil)', () => {
+                const lastDayMorning = new Date(Date.UTC(2026, 8, 21 + DRAFT_MAX_ADVANCE_DAYS, 10, 0));
+                const lastDayLate = new Date(Date.UTC(2026, 8, 21 + DRAFT_MAX_ADVANCE_DAYS, 23, 0));
+
+                expect(applyCellClick(null, lastDayMorning, [], now).rejection).toBeNull();
+                expect(applyCellClick(null, lastDayLate, [], now).rejection).toBeNull();
+            });
+
+            it('ertesi UTC gününün ilk hücresi reddedilir', () => {
+                const dayAfter = new Date(Date.UTC(2026, 8, 22 + DRAFT_MAX_ADVANCE_DAYS, 0, 0));
+
+                expect(applyCellClick(null, dayAfter, [], now)).toEqual({ draft: null, rejection: 'tooFarAhead' });
+            });
+
+            it('ufuk "şimdi"nin UTC gününe göre hesaplanır (UTC günü sonunda bile +90 gün)', () => {
+                const lateNow = utc(21, 23, 50);
+                const lastDay = new Date(Date.UTC(2026, 8, 21 + DRAFT_MAX_ADVANCE_DAYS, 12, 0));
+
+                expect(applyCellClick(null, lastDay, [], lateNow).rejection).toBeNull();
+            });
+        });
     });
-    describe('90 gün ufku (backend: UTC bugün + 90)', () => {
-      const now = utc(21, 9, 10);
 
-      it('ufkun son UTC günü kabul edilir (günün son geçerli hücresi dahil)', () => {
-        const lastDayMorning = new Date(Date.UTC(2026, 8, 21 + DRAFT_MAX_ADVANCE_DAYS, 10, 0));
-        const lastDayLate = new Date(Date.UTC(2026, 8, 21 + DRAFT_MAX_ADVANCE_DAYS, 23, 0));
+    describe('toSlotRequest', () => {
+        it('taslak anlarının UTC günü ve UTC duvar saatini üretir', () => {
+            expect(toSlotRequest(range(utc(24, 11, 0), utc(24, 12, 30)))).toEqual({
+                date: '2026-09-24',
+                startTime: '11:00:00',
+                endTime: '12:30:00',
+            });
+        });
 
-        expect(applyCellClick(null, lastDayMorning, [], now).rejection).toBeNull();
-        expect(applyCellClick(null, lastDayLate, [], now).rejection).toBeNull();
-      });
+        it('tek haneli ay/gün/saatleri sıfırla doldurur', () => {
+            const start = new Date(Date.UTC(2027, 0, 5, 8, 0));
+            const end = new Date(Date.UTC(2027, 0, 5, 9, 30));
 
-      it('ertesi UTC gününün ilk hücresi reddedilir', () => {
-        const dayAfter = new Date(Date.UTC(2026, 8, 22 + DRAFT_MAX_ADVANCE_DAYS, 0, 0));
+            expect(toSlotRequest(range(start, end))).toEqual({
+                date: '2027-01-05',
+                startTime: '08:00:00',
+                endTime: '09:30:00',
+            });
+        });
 
-        expect(applyCellClick(null, dayAfter, [], now)).toEqual({ draft: null, rejection: 'tooFarAhead' });
-      });
+        it('UTC günü yerel günden farklı olan anda date UTC gününü taşır', () => {
+            // 23:00Z ve 00:30Z: UTC dışındaki her dilimde ikisinden en az biri yerelde başka takvim gününe düşer.
+            const lateUtc = toSlotRequest(range(utc(24, 23, 0), utc(24, 23, 30)));
+            const earlyUtc = toSlotRequest(range(utc(25, 0, 30), utc(25, 1, 0)));
 
-      it('ufuk "şimdi"nin UTC gününe göre hesaplanır (UTC günü sonunda bile +90 gün)', () => {
-        const lateNow = utc(21, 23, 50);
-        const lastDay = new Date(Date.UTC(2026, 8, 21 + DRAFT_MAX_ADVANCE_DAYS, 12, 0));
+            expect(lateUtc).toEqual({ date: '2026-09-24', startTime: '23:00:00', endTime: '23:30:00' });
+            expect(earlyUtc).toEqual({ date: '2026-09-25', startTime: '00:30:00', endTime: '01:00:00' });
+        });
 
-        expect(applyCellClick(null, lastDay, [], lateNow).rejection).toBeNull();
-      });
-    });
-  });
+        it('hizasız girdi (ön koşul ihlali) hata vermez: saniye/milisaniye atılır, dakika aynen gönderilir', () => {
+            const start = new Date(Date.UTC(2026, 8, 24, 11, 7, 45, 500));
+            const end = new Date(Date.UTC(2026, 8, 24, 12, 22, 10));
 
-  describe('toSlotRequest', () => {
-    it('taslak anlarının UTC günü ve UTC duvar saatini üretir', () => {
-      expect(toSlotRequest(range(utc(24, 11, 0), utc(24, 12, 30)))).toEqual({
-        date: '2026-09-24',
-        startTime: '11:00:00',
-        endTime: '12:30:00',
-      });
-    });
+            expect(toSlotRequest(range(start, end))).toEqual({
+                date: '2026-09-24',
+                startTime: '11:07:00',
+                endTime: '12:22:00',
+            });
+        });
 
-    it('tek haneli ay/gün/saatleri sıfırla doldurur', () => {
-      const start = new Date(Date.UTC(2027, 0, 5, 8, 0));
-      const end = new Date(Date.UTC(2027, 0, 5, 9, 30));
+        it('yerel saat bileşenlerini KULLANMAZ: istek toISOString ile birebir örtüşür', () => {
+            const start = new Date(2026, 8, 25, 0, 30); // yerel an; dilime göre UTC günü değişebilir
+            const end = new Date(start.getTime() + HALF_HOUR_MS);
 
-      expect(toSlotRequest(range(start, end))).toEqual({
-        date: '2027-01-05',
-        startTime: '08:00:00',
-        endTime: '09:30:00',
-      });
-    });
-
-    it('UTC günü yerel günden farklı olan anda date UTC gününü taşır', () => {
-      // 23:00Z ve 00:30Z: UTC dışındaki her dilimde ikisinden en az biri yerelde başka takvim gününe düşer.
-      const lateUtc = toSlotRequest(range(utc(24, 23, 0), utc(24, 23, 30)));
-      const earlyUtc = toSlotRequest(range(utc(25, 0, 30), utc(25, 1, 0)));
-
-      expect(lateUtc).toEqual({ date: '2026-09-24', startTime: '23:00:00', endTime: '23:30:00' });
-      expect(earlyUtc).toEqual({ date: '2026-09-25', startTime: '00:30:00', endTime: '01:00:00' });
+            expect(toSlotRequest(range(start, end))).toEqual({
+                date: start.toISOString().slice(0, 10),
+                startTime: start.toISOString().slice(11, 19),
+                endTime: end.toISOString().slice(11, 19),
+            });
+        });
     });
 
-    it('hizasız girdi (ön koşul ihlali) hata vermez: saniye/milisaniye atılır, dakika aynen gönderilir', () => {
-      const start = new Date(Date.UTC(2026, 8, 24, 11, 7, 45, 500));
-      const end = new Date(Date.UTC(2026, 8, 24, 12, 22, 10));
+    describe('toRecurringRuleRequest (issue #179)', () => {
+        it('gün, saat ve effectiveFrom taslak anının UTC bileşenleridir; bitiş yoksa effectiveUntil null', () => {
+            // 24 Eylül 2026 Perşembe (UTC) → dayOfWeek 4.
+            expect(toRecurringRuleRequest(range(utc(24, 11, 0), utc(24, 12, 30)), null)).toEqual({
+                dayOfWeek: 4,
+                startTime: '11:00:00',
+                endTime: '12:30:00',
+                effectiveFrom: '2026-09-24',
+                effectiveUntil: null,
+            });
+        });
 
-      expect(toSlotRequest(range(start, end))).toEqual({
-        date: '2026-09-24',
-        startTime: '11:07:00',
-        endTime: '12:22:00',
-      });
+        it('dayOfWeek UTC günüdür, yerel gün değil (0=Pazar); UTC gece yarısı civarında yerel günden ayrışabilir', () => {
+            // 27 Eylül 2026 Pazar 00:30Z: UTC'nin batısındaki dilimlerde yerel gün hâlâ Cumartesi'dir.
+            const early = toRecurringRuleRequest(range(utc(27, 0, 30), utc(27, 1, 0)), null);
+            expect(early.dayOfWeek).toBe(0);
+            expect(early.effectiveFrom).toBe('2026-09-27');
+            // 26 Eylül Cumartesi 23:00Z: doğudaki dilimlerde yerel gün Pazar'dır; yine UTC günü (6) gönderilir.
+            const late = toRecurringRuleRequest(range(utc(26, 23, 0), utc(26, 23, 30)), null);
+            expect(late.dayOfWeek).toBe(6);
+            expect(late.effectiveFrom).toBe('2026-09-26');
+        });
+
+        it('saatler dakika hassasiyetinde "HH:mm:00" gönderilir (backend saniyeli saati reddeder)', () => {
+            const req = toRecurringRuleRequest(range(new Date(Date.UTC(2026, 8, 24, 8, 7, 45, 500)), new Date(Date.UTC(2026, 8, 24, 9, 22, 10))), null);
+            expect(req.startTime).toBe('08:07:00');
+            expect(req.endTime).toBe('09:22:00');
+        });
+
+        it('effectiveUntil: seçilen YEREL günde taslağın kendi saatindeki tekrarın UTC günüdür (seçilen gün seriye dahil)', () => {
+            // Taslak yerel 25 Eyl 2026 BASE+2sa (yaz saati geçişi UTC gününü kaydırmasın diye sınırdan uzak); bitiş 4 hafta sonraki yerel gün (datepicker yerel gece yarısı verir).
+            const start = at(120);
+            const end = at(180);
+            const untilLocal = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 28);
+            const untilAtDraftTime = new Date(untilLocal.getFullYear(), untilLocal.getMonth(), untilLocal.getDate(), start.getHours(), start.getMinutes());
+
+            const req = toRecurringRuleRequest(range(start, end), untilLocal);
+
+            expect(req.effectiveFrom).toBe(start.toISOString().slice(0, 10));
+            expect(req.effectiveUntil).toBe(untilAtDraftTime.toISOString().slice(0, 10));
+            // Seçilen günün gece yarısı DEĞİL: batı dilimlerinde gece yarısının UTC günü bir gün önce kalırdı.
+            expect(req.effectiveUntil).not.toBeNull();
+        });
+
+        it('effectiveUntil, effectiveFrom ile aynı UTC-gün kaymasını taşır: fark tam 7 gün katıdır', () => {
+            const start = at(120);
+            const untilLocal = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 14);
+            const req = toRecurringRuleRequest(range(start, at(150)), untilLocal);
+
+            const from = new Date(`${req.effectiveFrom}T00:00:00Z`).getTime();
+            const until = new Date(`${req.effectiveUntil}T00:00:00Z`).getTime();
+            expect((until - from) / DAY_MS).toBe(14);
+        });
     });
 
-    it('yerel saat bileşenlerini KULLANMAZ: istek toISOString ile birebir örtüşür', () => {
-      const start = new Date(2026, 8, 25, 0, 30); // yerel an; dilime göre UTC günü değişebilir
-      const end = new Date(start.getTime() + HALF_HOUR_MS);
+    describe('recurringUntilBounds (issue #179)', () => {
+        it('min taslak gününden 7 gün sonra, max bir yıl sonrasının bir gün öncesidir (yerel gece yarısı)', () => {
+            const start = at(120);
+            const { min, max } = recurringUntilBounds(range(start, at(150)));
 
-      expect(toSlotRequest(range(start, end))).toEqual({
-        date: start.toISOString().slice(0, 10),
-        startTime: start.toISOString().slice(11, 19),
-        endTime: end.toISOString().slice(11, 19),
-      });
+            expect(min).toEqual(new Date(start.getFullYear(), start.getMonth(), start.getDate() + RECURRING_UNTIL_MIN_DAYS));
+            expect(max).toEqual(new Date(start.getFullYear() + 1, start.getMonth(), start.getDate() - 1));
+            expect(min.getHours()).toBe(0);
+            expect(max.getHours()).toBe(0);
+        });
+
+        it('ay sonu taşması doğru güne yuvarlanır (28 Şubat + 7 → 7 Mart)', () => {
+            const start = new Date(2027, 1, 28, 10, 0);
+            const { min } = recurringUntilBounds(range(start, new Date(2027, 1, 28, 11, 0)));
+            expect(min).toEqual(new Date(2027, 2, 7));
+        });
     });
-  });
-
-  describe('toRecurringRuleRequest (issue #179)', () => {
-    it('gün, saat ve effectiveFrom taslak anının UTC bileşenleridir; bitiş yoksa effectiveUntil null', () => {
-      // 24 Eylül 2026 Perşembe (UTC) → dayOfWeek 4.
-      expect(toRecurringRuleRequest(range(utc(24, 11, 0), utc(24, 12, 30)), null)).toEqual({
-        dayOfWeek: 4,
-        startTime: '11:00:00',
-        endTime: '12:30:00',
-        effectiveFrom: '2026-09-24',
-        effectiveUntil: null,
-      });
-    });
-
-    it('dayOfWeek UTC günüdür, yerel gün değil (0=Pazar); UTC gece yarısı civarında yerel günden ayrışabilir', () => {
-      // 27 Eylül 2026 Pazar 00:30Z: UTC'nin batısındaki dilimlerde yerel gün hâlâ Cumartesi'dir.
-      const early = toRecurringRuleRequest(range(utc(27, 0, 30), utc(27, 1, 0)), null);
-      expect(early.dayOfWeek).toBe(0);
-      expect(early.effectiveFrom).toBe('2026-09-27');
-      // 26 Eylül Cumartesi 23:00Z: doğudaki dilimlerde yerel gün Pazar'dır; yine UTC günü (6) gönderilir.
-      const late = toRecurringRuleRequest(range(utc(26, 23, 0), utc(26, 23, 30)), null);
-      expect(late.dayOfWeek).toBe(6);
-      expect(late.effectiveFrom).toBe('2026-09-26');
-    });
-
-    it('saatler dakika hassasiyetinde "HH:mm:00" gönderilir (backend saniyeli saati reddeder)', () => {
-      const req = toRecurringRuleRequest(
-        range(new Date(Date.UTC(2026, 8, 24, 8, 7, 45, 500)), new Date(Date.UTC(2026, 8, 24, 9, 22, 10))),
-        null
-      );
-      expect(req.startTime).toBe('08:07:00');
-      expect(req.endTime).toBe('09:22:00');
-    });
-
-    it('effectiveUntil: seçilen YEREL günde taslağın kendi saatindeki tekrarın UTC günüdür (seçilen gün seriye dahil)', () => {
-      // Taslak yerel 25 Eyl 2026 BASE+2sa (yaz saati geçişi UTC gününü kaydırmasın diye sınırdan uzak); bitiş 4 hafta sonraki yerel gün (datepicker yerel gece yarısı verir).
-      const start = at(120);
-      const end = at(180);
-      const untilLocal = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 28);
-      const untilAtDraftTime = new Date(
-        untilLocal.getFullYear(),
-        untilLocal.getMonth(),
-        untilLocal.getDate(),
-        start.getHours(),
-        start.getMinutes()
-      );
-
-      const req = toRecurringRuleRequest(range(start, end), untilLocal);
-
-      expect(req.effectiveFrom).toBe(start.toISOString().slice(0, 10));
-      expect(req.effectiveUntil).toBe(untilAtDraftTime.toISOString().slice(0, 10));
-      // Seçilen günün gece yarısı DEĞİL: batı dilimlerinde gece yarısının UTC günü bir gün önce kalırdı.
-      expect(req.effectiveUntil).not.toBeNull();
-    });
-
-    it('effectiveUntil, effectiveFrom ile aynı UTC-gün kaymasını taşır: fark tam 7 gün katıdır', () => {
-      const start = at(120);
-      const untilLocal = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 14);
-      const req = toRecurringRuleRequest(range(start, at(150)), untilLocal);
-
-      const from = new Date(`${req.effectiveFrom}T00:00:00Z`).getTime();
-      const until = new Date(`${req.effectiveUntil}T00:00:00Z`).getTime();
-      expect((until - from) / DAY_MS).toBe(14);
-    });
-  });
-
-  describe('recurringUntilBounds (issue #179)', () => {
-    it('min taslak gününden 7 gün sonra, max bir yıl sonrasının bir gün öncesidir (yerel gece yarısı)', () => {
-      const start = at(120);
-      const { min, max } = recurringUntilBounds(range(start, at(150)));
-
-      expect(min).toEqual(new Date(start.getFullYear(), start.getMonth(), start.getDate() + RECURRING_UNTIL_MIN_DAYS));
-      expect(max).toEqual(new Date(start.getFullYear() + 1, start.getMonth(), start.getDate() - 1));
-      expect(min.getHours()).toBe(0);
-      expect(max.getHours()).toBe(0);
-    });
-
-    it('ay sonu taşması doğru güne yuvarlanır (28 Şubat + 7 → 7 Mart)', () => {
-      const start = new Date(2027, 1, 28, 10, 0);
-      const { min } = recurringUntilBounds(range(start, new Date(2027, 1, 28, 11, 0)));
-      expect(min).toEqual(new Date(2027, 2, 7));
-    });
-  });
 });

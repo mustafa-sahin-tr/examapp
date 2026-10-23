@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -50,6 +50,7 @@ interface SlotGroup {
   standalone: true,
   imports: [MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, MatRadioModule, TranslocoDirective],
   templateUrl: './booking-reschedule-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./booking-reschedule-dialog.component.scss'],
 })
 export class BookingRescheduleDialogComponent {

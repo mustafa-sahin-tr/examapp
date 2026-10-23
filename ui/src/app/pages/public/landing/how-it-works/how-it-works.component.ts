@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 
 @Component({
@@ -6,6 +6,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
   imports: [TranslocoDirective],
   templateUrl: './how-it-works.component.html',
   styleUrl: './how-it-works.component.scss',
+  changeDetection: ChangeDetectionStrategy.Eager,
   standalone: true,
 })
 export class HowItWorksComponent {

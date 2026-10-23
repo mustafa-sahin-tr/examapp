@@ -22,9 +22,11 @@
           <mat-label>{{ t('list.subjectFilterLabel') }}</mat-label>
           <mat-select [value]="selectedSubjectId()" (selectionChange)="onSubjectChange($event.value)">
             <mat-option [value]="null">{{ t('list.allSubjects') }}</mat-option>
-            <mat-option *ngFor="let subject of subjectsSignal()" [value]="subject.id">
-              {{ subject.name }}
-            </mat-option>
+            @for (subject of subjectsSignal(); track subject) {
+              <mat-option [value]="subject.id">
+                {{ subject.name }}
+              </mat-option>
+            }
           </mat-select>
         </mat-form-field>
       </div>
@@ -40,45 +42,45 @@
   <!-- Cards Section -->
   <section class="cards-section">
     <div class="cards-grid">
-      <div *ngFor="let page of pagedStudyPagesSignal().items; trackBy: trackByPage" class="course-card">
-        <div class="sp-card-image" [ngClass]="contentTypeClass(page)">
-          @if (isImage(page) && page.coverImageUrl) {
-          <img [src]="page.coverImageUrl" [alt]="page.title" class="cover-image" [appStorageImageRetry]="coverImageRefresh">
-          } @else if (isLink(page)) {
-          <div class="image-placeholder">
-            <mat-icon>{{ platformIcon(page) }}</mat-icon>
-            <span>{{ t(platformLabelKey(page)) }}</span>
-          </div>
-          } @else if (isBookPageRange(page)) {
-          <div class="image-placeholder">
-            <mat-icon>menu_book</mat-icon>
-            <span>{{ page.bookName || t('list.bookFallback') }}</span>
-          </div>
-          } @else {
-          <div class="image-placeholder">
-            <mat-icon>auto_stories</mat-icon>
-            <span>{{ t('list.coverFallback') }}</span>
-          </div>
-          }
-
-          <!-- Tip rozeti -->
-          <div class="type-badge" [ngClass]="contentTypeClass(page)" [title]="t(contentTypeLabelKey(page))">
-            <mat-icon>{{ contentTypeIcon(page) }}</mat-icon>
-            <span>{{ t(contentTypeLabelKey(page)) }}</span>
-          </div>
-
-          <!-- Badge System -->
-          <div class="badge newly-launched" *ngIf="isRecentlyCreated(page.createTime)">{{ t('list.newBadge') }}</div>
-          
-          <!-- Action Menu -->
-          <!-- <div class="card-actions">
+      @for (page of pagedStudyPagesSignal().items; track trackByPage($index, page)) {
+        <div class="course-card">
+          <div class="sp-card-image" [ngClass]="contentTypeClass(page)">
+            @if (isImage(page) && page.coverImageUrl) {
+              <img [src]="page.coverImageUrl" [alt]="page.title" class="cover-image" [appStorageImageRetry]="coverImageRefresh">
+            } @else if (isLink(page)) {
+              <div class="image-placeholder">
+                <mat-icon>{{ platformIcon(page) }}</mat-icon>
+                <span>{{ t(platformLabelKey(page)) }}</span>
+              </div>
+            } @else if (isBookPageRange(page)) {
+              <div class="image-placeholder">
+                <mat-icon>menu_book</mat-icon>
+                <span>{{ page.bookName || t('list.bookFallback') }}</span>
+              </div>
+            } @else {
+              <div class="image-placeholder">
+                <mat-icon>auto_stories</mat-icon>
+                <span>{{ t('list.coverFallback') }}</span>
+              </div>
+            }
+            <!-- Tip rozeti -->
+            <div class="type-badge" [ngClass]="contentTypeClass(page)" [title]="t(contentTypeLabelKey(page))">
+              <mat-icon>{{ contentTypeIcon(page) }}</mat-icon>
+              <span>{{ t(contentTypeLabelKey(page)) }}</span>
+            </div>
+            <!-- Badge System -->
+            @if (isRecentlyCreated(page.createTime)) {
+              <div class="badge newly-launched">{{ t('list.newBadge') }}</div>
+            }
+            <!-- Action Menu -->
+            <!-- <div class="card-actions">
             <button
               mat-icon-button
               [matMenuTriggerFor]="pageMenu"
               (click)="$event.stopPropagation()"
               [disabled]="deletingId() === page.id"
               class="action-button"
-            >
+              >
               <mat-icon *ngIf="deletingId() !== page.id">more_vert</mat-icon>
               <mat-icon *ngIf="deletingId() === page.id" class="loading-icon">hourglass_empty</mat-icon>
             </button>
@@ -94,83 +96,86 @@
             </mat-menu>
           </div> -->
         </div>
-        
         <div class="card-content">
           <h3 class="card-title">{{ page.title }}</h3>
-          
           <!-- Rating/Status Display -->
           <div class="card-rating">
             <div class="stars">
-              <mat-icon *ngFor="let star of [1,2,3,4,5]; let i = index" 
-                       [class.filled]="i < getStarRating(page)"
-                       class="star">star</mat-icon>
+              @for (star of [1,2,3,4,5]; track star; let i = $index) {
+                <mat-icon
+                  [class.filled]="i < getStarRating(page)"
+                class="star">star</mat-icon>
+              }
             </div>
             <!-- <span class="rating-score">{{ getRatingScore(page) }}</span>
             <span class="review-count">({{ page.imageCount }} sayfa)</span> -->
           </div>
-          
           <!-- Price/Status -->
           <!-- <div class="card-price">
-            <span class="current-price">{{ page.isPublished ? 'Aktif' : 'Taslak' }}</span>
-          </div> -->
-          
-          <!-- Meta Information -->
-          <div class="card-meta">
-            @if (isLink(page)) {
+          <span class="current-price">{{ page.isPublished ? 'Aktif' : 'Taslak' }}</span>
+        </div> -->
+        <!-- Meta Information -->
+        <div class="card-meta">
+          @if (isLink(page)) {
             <div class="meta-item meta-link" [class.known-platform]="isKnownPlatform(page)">
               <mat-icon>{{ platformIcon(page) }}</mat-icon>
               <span>{{ t(platformLabelKey(page)) }}</span>
             </div>
-            } @else if (isBookPageRange(page)) {
+          } @else if (isBookPageRange(page)) {
             <div class="meta-item">
               <mat-icon>menu_book</mat-icon>
               <span>
                 {{
-                  t('list.bookRange', {
-                    book: page.bookTestName || page.bookName || t('list.bookFallback'),
-                    start: page.startPage,
-                    end: page.endPage
-                  })
+                t('list.bookRange', {
+                book: page.bookTestName || page.bookName || t('list.bookFallback'),
+                start: page.startPage,
+                end: page.endPage
+                })
                 }}
               </span>
             </div>
-            } @else {
+          } @else {
             <div class="meta-item">
               <mat-icon>photo_library</mat-icon>
               <span>{{ t('list.pageCount', { count: page.imageCount }) }}</span>
             </div>
+          }
+          <div class="meta-item">
+            <mat-icon>person</mat-icon>
+            <span>{{ page.createdByName }}</span>
+          </div>
+        </div>
+        <!-- Description -->
+        @if (page.description) {
+          <p class="card-description">{{ page.description }}</p>
+        }
+        <!-- Action Buttons -->
+        <div class="card-buttons">
+          <button mat-stroked-button color="primary" (click)="onEdit(page)" class="edit-btn">
+            <mat-icon>edit</mat-icon>
+            {{ t('list.edit') }}
+          </button>
+          <button mat-icon-button color="warn" (click)="onDelete(page)" [disabled]="deletingId() === page.id" class="delete-btn">
+            @if (deletingId() !== page.id) {
+              <mat-icon>delete</mat-icon>
             }
-            <div class="meta-item">
-              <mat-icon>person</mat-icon>
-              <span>{{ page.createdByName }}</span>
-            </div>
-          </div>
-          
-          <!-- Description -->
-          <p class="card-description" *ngIf="page.description">{{ page.description }}</p>
-          
-          <!-- Action Buttons -->
-          <div class="card-buttons">
-            <button mat-stroked-button color="primary" (click)="onEdit(page)" class="edit-btn">
-              <mat-icon>edit</mat-icon>
-              {{ t('list.edit') }}
-            </button>
-            <button mat-icon-button color="warn" (click)="onDelete(page)" [disabled]="deletingId() === page.id" class="delete-btn">
-              <mat-icon *ngIf="deletingId() !== page.id">delete</mat-icon>
-              <mat-icon *ngIf="deletingId() === page.id" class="loading-icon">hourglass_empty</mat-icon>
-            </button>
-          </div>
+            @if (deletingId() === page.id) {
+              <mat-icon class="loading-icon">hourglass_empty</mat-icon>
+            }
+          </button>
         </div>
       </div>
     </div>
-  </section>
+  }
+</div>
+</section>
 
-  <!-- Pagination Section -->
-  <section class="pagination-section">
-    <app-pagination
-      [currentPage]="pageNumber"
-      [totalItems]="pagedStudyPagesSignal().totalCount"
-      (pageChanged)="changePage($event)"
-    ></app-pagination>
-  </section>
+<!-- Pagination Section -->
+<section class="pagination-section">
+  <app-pagination
+    [currentPage]="pageNumber"
+    [totalItems]="pagedStudyPagesSignal().totalCount"
+    (pageChanged)="changePage($event)"
+  ></app-pagination>
+</section>
 </div>

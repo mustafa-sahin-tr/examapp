@@ -1,5 +1,5 @@
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
-import { DOCUMENT, Location } from '@angular/common';
+import { Component, OnDestroy, OnInit, computed, inject, signal, DOCUMENT, ChangeDetectionStrategy } from '@angular/core';
+import { Location } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Meta } from '@angular/platform-browser';
 import {
@@ -86,6 +86,7 @@ const matchingPasswordsValidator: ValidatorFn = (group: AbstractControl): Valida
   standalone: true,
   imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './parent-activate.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['../complete-profile/complete-profile.component.scss', './parent-activate.component.scss'],
 })
 export class ParentActivateComponent implements OnInit, OnDestroy {

@@ -1,3 +1,4 @@
+import type { MockedObject } from "vitest";
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -14,163 +15,163 @@ import { awaitingStatusOf } from '../../testing/parent-status-testing';
 
 /** Issue #96 slot seçimi + issue #439: veli modu ve 403 ParentRequired. */
 describe('BookingSlotDialogComponent (issue #439)', () => {
-  let service: jasmine.SpyObj<BookingService>;
-  let dialogRef: jasmine.SpyObj<MatDialogRef<BookingSlotDialogComponent>>;
-  let fixture: ComponentFixture<BookingSlotDialogComponent>;
+    let service: MockedObject<BookingService>;
+    let dialogRef: MockedObject<MatDialogRef<BookingSlotDialogComponent>>;
+    let fixture: ComponentFixture<BookingSlotDialogComponent>;
 
-  const slot: AvailabilitySlot = {
-    id: 55,
-    teacherId: 4,
-    date: '2026-10-20',
-    startTime: '11:00:00',
-    endTime: '12:00:00',
-    createdAt: '2026-10-10T08:00:00Z',
-    startUtc: '2026-10-20T11:00:00Z',
-    endUtc: '2026-10-20T12:00:00Z',
-    isBooked: false,
-  };
-
-  function setup(data: BookingSlotDialogData): HTMLElement {
-    service = jasmine.createSpyObj<BookingService>('BookingService', [
-      'getTeacherSlots',
-      'createBooking',
-      'createBookingForChild',
-      'extractError',
-    ]);
-    service.getTeacherSlots.and.returnValue(of({ success: true, items: [slot] }));
-    service.extractError.and.callFake((_err: HttpErrorResponse, fallback: string) => fallback);
-    dialogRef = jasmine.createSpyObj<MatDialogRef<BookingSlotDialogComponent>>('MatDialogRef', ['close']);
-
-    TestBed.configureTestingModule({
-      imports: [BookingSlotDialogComponent, NoopAnimationsModule, translocoTestingModule()],
-      providers: [
-        provideRouter([]),
-        { provide: BookingService, useValue: service },
-        { provide: MatDialogRef, useValue: dialogRef },
-        { provide: MAT_DIALOG_DATA, useValue: data },
-      ],
-    });
-    fixture = TestBed.createComponent(BookingSlotDialogComponent);
-    fixture.detectChanges();
-    return fixture.nativeElement as HTMLElement;
-  }
-
-  function selectAndSubmit(el: HTMLElement): void {
-    (el.querySelector('mat-radio-button input') as HTMLInputElement).click();
-    fixture.detectChanges();
-    const buttons = el.querySelectorAll('mat-dialog-actions button');
-    (buttons[buttons.length - 1] as HTMLButtonElement).click();
-    fixture.detectChanges();
-  }
-
-  const text = (el: HTMLElement, sel: string) => el.querySelector(sel)?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
-
-  it('Student_AwaitingParent_ClosesWithServerResult', () => {
-    const el = setup({ teacherId: 4, teacherName: 'Elif Hoca' });
-    const result: BookingResult = {
-      success: true,
-      message: '',
-      booking: { status: 'AwaitingParent' } as BookingResult['booking'],
+    const slot: AvailabilitySlot = {
+        id: 55,
+        teacherId: 4,
+        date: '2026-10-20',
+        startTime: '11:00:00',
+        endTime: '12:00:00',
+        createdAt: '2026-10-10T08:00:00Z',
+        startUtc: '2026-10-20T11:00:00Z',
+        endUtc: '2026-10-20T12:00:00Z',
+        isBooked: false,
     };
-    service.createBooking.and.returnValue(of(result));
 
-    selectAndSubmit(el);
+    function setup(data: BookingSlotDialogData): HTMLElement {
+        service = {
+            getTeacherSlots: vi.fn().mockName("BookingService.getTeacherSlots"),
+            createBooking: vi.fn().mockName("BookingService.createBooking"),
+            createBookingForChild: vi.fn().mockName("BookingService.createBookingForChild"),
+            extractError: vi.fn().mockName("BookingService.extractError")
+        } as unknown as MockedObject<BookingService>;
+        service.getTeacherSlots.mockReturnValue(of({ success: true, items: [slot] }));
+        service.extractError.mockImplementation((_err: HttpErrorResponse, fallback: string) => fallback);
+        dialogRef = {
+            close: vi.fn().mockName("MatDialogRef.close")
+        } as unknown as MockedObject<MatDialogRef<BookingSlotDialogComponent, any>>;
 
-    expect(service.createBooking).toHaveBeenCalledOnceWith({ availabilitySlotId: 55 });
-    expect(service.createBookingForChild).not.toHaveBeenCalled();
-    expect(dialogRef.close).toHaveBeenCalledOnceWith(result);
-    expect(el.querySelector('[data-test="for-child"]')).toBeNull();
-  });
+        TestBed.configureTestingModule({
+            imports: [BookingSlotDialogComponent, NoopAnimationsModule, translocoTestingModule()],
+            providers: [
+                provideRouter([]),
+                { provide: BookingService, useValue: service },
+                { provide: MatDialogRef, useValue: dialogRef },
+                { provide: MAT_DIALOG_DATA, useValue: data },
+            ],
+        });
+        fixture = TestBed.createComponent(BookingSlotDialogComponent);
+        fixture.detectChanges();
+        return fixture.nativeElement as HTMLElement;
+    }
 
-  it('Student_ParentRequired_ShowsMessageWithLinkToParentsPage', () => {
-    const el = setup({ teacherId: 4, teacherName: 'Elif Hoca' });
-    service.createBooking.and.returnValue(
-      throwError(() => new HttpErrorResponse({ status: 403, error: { success: false, message: 'x', errorCode: 'ParentRequired' } }))
-    );
+    function selectAndSubmit(el: HTMLElement): void {
+        (el.querySelector('mat-radio-button input') as HTMLInputElement).click();
+        fixture.detectChanges();
+        const buttons = el.querySelectorAll('mat-dialog-actions button');
+        (buttons[buttons.length - 1] as HTMLButtonElement).click();
+        fixture.detectChanges();
+    }
 
-    selectAndSubmit(el);
+    const text = (el: HTMLElement, sel: string) => el.querySelector(sel)?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 
-    const box = el.querySelector('[data-test="parent-required"]') as HTMLElement;
-    expect(box).not.toBeNull();
-    expect(box.textContent).toContain('Ders talebi için hesabına bağlı bir veli gerekli.');
-    expect(box.querySelector('a')?.getAttribute('href')).toBe(STUDENT_PARENTS_ROUTE);
-    expect(dialogRef.close).not.toHaveBeenCalled();
-    // Slot listesi tazelenmez (yalnız 409/404'te).
-    expect(service.getTeacherSlots).toHaveBeenCalledTimes(1);
-  });
+    it('Student_AwaitingParent_ClosesWithServerResult', () => {
+        const el = setup({ teacherId: 4, teacherName: 'Elif Hoca' });
+        const result: BookingResult = {
+            success: true,
+            message: '',
+            booking: { status: 'AwaitingParent' } as BookingResult['booking'],
+        };
+        service.createBooking.mockReturnValue(of(result));
 
-  it('Student_TooManyAwaitingParent_ShowsExplanation_NoSlotReload', () => {
-    const el = setup({ teacherId: 4, teacherName: 'Elif Hoca' });
-    service.createBooking.and.returnValue(
-      throwError(
-        () => new HttpErrorResponse({ status: 409, error: { success: false, message: 'x', errorCode: 'TooManyAwaitingParent' } })
-      )
-    );
+        selectAndSubmit(el);
 
-    selectAndSubmit(el);
+        expect(service.createBooking).toHaveBeenCalledTimes(1);
 
-    expect(text(el, '.bsd__error')).toBe(
-      'Velinin onayını bekleyen çok fazla talebin var. Velin mevcut taleplerine karar verince yenisini oluşturabilirsin.'
-    );
-    expect(service.getTeacherSlots).toHaveBeenCalledTimes(1);
-    expect(dialogRef.close).not.toHaveBeenCalled();
-  });
+        expect(service.createBooking).toHaveBeenCalledWith({ availabilitySlotId: 55 });
+        expect(service.createBookingForChild).not.toHaveBeenCalled();
+        expect(dialogRef.close).toHaveBeenCalledTimes(1);
+        expect(dialogRef.close).toHaveBeenCalledWith(result);
+        expect(el.querySelector('[data-test="for-child"]')).toBeNull();
+    });
 
-  it('Student_Other403_ShowsGenericError', () => {
-    const el = setup({ teacherId: 4, teacherName: 'Elif Hoca' });
-    service.createBooking.and.returnValue(throwError(() => new HttpErrorResponse({ status: 403, error: null })));
+    it('Student_ParentRequired_ShowsMessageWithLinkToParentsPage', () => {
+        const el = setup({ teacherId: 4, teacherName: 'Elif Hoca' });
+        service.createBooking.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 403, error: { success: false, message: 'x', errorCode: 'ParentRequired' } })));
 
-    selectAndSubmit(el);
+        selectAndSubmit(el);
 
-    expect(el.querySelector('[data-test="parent-required"]')).toBeNull();
-    expect(text(el, '.bsd__error')).toBe('Randevu talebi oluşturulamadı.');
-  });
+        const box = el.querySelector('[data-test="parent-required"]') as HTMLElement;
+        expect(box).not.toBeNull();
+        expect(box.textContent).toContain('Ders talebi için hesabına bağlı bir veli gerekli.');
+        expect(box.querySelector('a')?.getAttribute('href')).toBe(STUDENT_PARENTS_ROUTE);
+        expect(dialogRef.close).not.toHaveBeenCalled();
+        // Slot listesi tazelenmez (yalnız 409/404'te).
+        expect(service.getTeacherSlots).toHaveBeenCalledTimes(1);
+    });
 
-  it('ChildMode_PostsForChild_ShowsChildAndChildSubmitLabel', () => {
-    const el = setup({ teacherId: 4, teacherName: 'Elif Hoca', child: { studentId: 21, name: 'Ayşe' } });
-    const result: BookingResult = { success: true, message: '', booking: { status: 'Pending' } as BookingResult['booking'] };
-    service.createBookingForChild.and.returnValue(of(result));
+    it('Student_TooManyAwaitingParent_ShowsExplanation_NoSlotReload', () => {
+        const el = setup({ teacherId: 4, teacherName: 'Elif Hoca' });
+        service.createBooking.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409, error: { success: false, message: 'x', errorCode: 'TooManyAwaitingParent' } })));
 
-    expect(text(el, '[data-test="for-child"]')).toContain('Ayşe adına talep');
-    const buttons = el.querySelectorAll('mat-dialog-actions button');
-    expect(buttons[buttons.length - 1].textContent?.trim()).toBe('Talebi Öğretmene Gönder');
+        selectAndSubmit(el);
 
-    selectAndSubmit(el);
+        expect(text(el, '.bsd__error')).toBe('Velinin onayını bekleyen çok fazla talebin var. Velin mevcut taleplerine karar verince yenisini oluşturabilirsin.');
+        expect(service.getTeacherSlots).toHaveBeenCalledTimes(1);
+        expect(dialogRef.close).not.toHaveBeenCalled();
+    });
 
-    expect(service.createBookingForChild).toHaveBeenCalledOnceWith(21, { availabilitySlotId: 55 });
-    expect(service.createBooking).not.toHaveBeenCalled();
-    expect(dialogRef.close).toHaveBeenCalledOnceWith(result);
-  });
+    it('Student_Other403_ShowsGenericError', () => {
+        const el = setup({ teacherId: 4, teacherName: 'Elif Hoca' });
+        service.createBooking.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 403, error: null })));
 
-  it('ChildMode_Conflict_ReloadsSlots', () => {
-    const el = setup({ teacherId: 4, teacherName: 'Elif Hoca', child: { studentId: 21, name: 'Ayşe' } });
-    service.createBookingForChild.and.returnValue(throwError(() => new HttpErrorResponse({ status: 409, error: {} })));
+        selectAndSubmit(el);
 
-    selectAndSubmit(el);
+        expect(el.querySelector('[data-test="parent-required"]')).toBeNull();
+        expect(text(el, '.bsd__error')).toBe('Randevu talebi oluşturulamadı.');
+    });
 
-    expect(service.getTeacherSlots).toHaveBeenCalledTimes(2);
-    expect(dialogRef.close).not.toHaveBeenCalled();
-  });
+    it('ChildMode_PostsForChild_ShowsChildAndChildSubmitLabel', () => {
+        const el = setup({ teacherId: 4, teacherName: 'Elif Hoca', child: { studentId: 21, name: 'Ayşe' } });
+        const result: BookingResult = { success: true, message: '', booking: { status: 'Pending' } as BookingResult['booking'] };
+        service.createBookingForChild.mockReturnValue(of(result));
 
-  // Issue #440: veli aktivasyonu beklenirken öğrenci talep gönderemez; veli modu etkilenmez.
-  it('Student_AwaitingParentActivation_ShowsNoticeAndBlocksSubmit', () => {
-    const el = setup({ teacherId: 4, teacherName: 'Elif Hoca' });
-    TestBed.inject(ParentStatusStore).set(awaitingStatusOf());
-    fixture.detectChanges();
+        expect(text(el, '[data-test="for-child"]')).toContain('Ayşe adına talep');
+        const buttons = el.querySelectorAll('mat-dialog-actions button');
+        expect(buttons[buttons.length - 1].textContent?.trim()).toBe('Talebi Öğretmene Gönder');
 
-    expect(el.querySelector('[data-test="parent-activation-notice"]')?.textContent).toContain('özel ders talebi gönderemezsin');
-    selectAndSubmit(el);
+        selectAndSubmit(el);
 
-    const buttons = el.querySelectorAll('mat-dialog-actions button');
-    expect((buttons[buttons.length - 1] as HTMLButtonElement).disabled).toBeTrue();
-    expect(service.createBooking).not.toHaveBeenCalled();
-  });
+        expect(service.createBookingForChild).toHaveBeenCalledTimes(1);
 
-  it('ParentMode_IgnoresActivationRestriction', () => {
-    const el = setup({ teacherId: 4, teacherName: 'Elif Hoca', child: { studentId: 21, name: 'Ali' } });
-    TestBed.inject(ParentStatusStore).set(awaitingStatusOf());
-    fixture.detectChanges();
+        expect(service.createBookingForChild).toHaveBeenCalledWith(21, { availabilitySlotId: 55 });
+        expect(service.createBooking).not.toHaveBeenCalled();
+        expect(dialogRef.close).toHaveBeenCalledTimes(1);
+        expect(dialogRef.close).toHaveBeenCalledWith(result);
+    });
 
-    expect(el.querySelector('[data-test="parent-activation-notice"]')).toBeNull();
-  });
+    it('ChildMode_Conflict_ReloadsSlots', () => {
+        const el = setup({ teacherId: 4, teacherName: 'Elif Hoca', child: { studentId: 21, name: 'Ayşe' } });
+        service.createBookingForChild.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409, error: {} })));
+
+        selectAndSubmit(el);
+
+        expect(service.getTeacherSlots).toHaveBeenCalledTimes(2);
+        expect(dialogRef.close).not.toHaveBeenCalled();
+    });
+
+    // Issue #440: veli aktivasyonu beklenirken öğrenci talep gönderemez; veli modu etkilenmez.
+    it('Student_AwaitingParentActivation_ShowsNoticeAndBlocksSubmit', () => {
+        const el = setup({ teacherId: 4, teacherName: 'Elif Hoca' });
+        TestBed.inject(ParentStatusStore).set(awaitingStatusOf());
+        fixture.detectChanges();
+
+        expect(el.querySelector('[data-test="parent-activation-notice"]')?.textContent).toContain('özel ders talebi gönderemezsin');
+        selectAndSubmit(el);
+
+        const buttons = el.querySelectorAll('mat-dialog-actions button');
+        expect((buttons[buttons.length - 1] as HTMLButtonElement).disabled).toBe(true);
+        expect(service.createBooking).not.toHaveBeenCalled();
+    });
+
+    it('ParentMode_IgnoresActivationRestriction', () => {
+        const el = setup({ teacherId: 4, teacherName: 'Elif Hoca', child: { studentId: 21, name: 'Ali' } });
+        TestBed.inject(ParentStatusStore).set(awaitingStatusOf());
+        fixture.detectChanges();
+
+        expect(el.querySelector('[data-test="parent-activation-notice"]')).toBeNull();
+    });
 });

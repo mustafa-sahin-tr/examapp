@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { By } from '@angular/platform-browser';
@@ -15,79 +15,79 @@ import worksheetCardTr from '../../../../public/i18n/worksheet-card/tr.json';
 
 /** Gercek scope sozlugu yuklenir; anahtar bozulursa test kirilir (issue #183). */
 const translocoTesting = TranslocoTestingModule.forRoot({
-  // Scope sozlugu hem scope yolu (provideTranslocoScope yukleyicisi) hem de kok 'tr' icine
-  // gomulu olarak verilir; sablondaki 'prefix' bicimi ikincisinden cozulur.
-  langs: { tr: { ...rootTr, 'worksheet-card': worksheetCardTr }, 'worksheet-card/tr': worksheetCardTr },
-  translocoConfig: {
-    availableLangs: [...SUPPORTED_LOCALE_CODES],
-    defaultLang: DEFAULT_LOCALE,
-    // TranslocoTestingModule uygulamanin config'ini almaz; scope oneki kebab kalsin (issue #183).
-    scopes: { keepCasing: true },
-  },
-  preloadLangs: true,
+    // Scope sozlugu hem scope yolu (provideTranslocoScope yukleyicisi) hem de kok 'tr' icine
+    // gomulu olarak verilir; sablondaki 'prefix' bicimi ikincisinden cozulur.
+    langs: { tr: { ...rootTr, 'worksheet-card': worksheetCardTr }, 'worksheet-card/tr': worksheetCardTr },
+    translocoConfig: {
+        availableLangs: [...SUPPORTED_LOCALE_CODES],
+        defaultLang: DEFAULT_LOCALE,
+        // TranslocoTestingModule uygulamanin config'ini almaz; scope oneki kebab kalsin (issue #183).
+        scopes: { keepCasing: true },
+    },
+    preloadLangs: true,
 });
 
 describe('WorksheetCardComponent', () => {
-  let component: WorksheetCardComponent;
-  let fixture: ComponentFixture<WorksheetCardComponent>;
+    let component: WorksheetCardComponent;
+    let fixture: ComponentFixture<WorksheetCardComponent>;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [WorksheetCardComponent, translocoTesting],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
-    }).compileComponents();
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            imports: [WorksheetCardComponent, translocoTesting],
+            providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter([])],
+        }).compileComponents();
 
-    fixture = TestBed.createComponent(WorksheetCardComponent);
-    component = fixture.componentInstance;
-    component.test = {
-      id: 1,
-      name: 'Zamanı Ölçme',
-      description: 'Deneme',
-      gradeId: 5,
-      maxDurationSeconds: 1800,
-      isPracticeTest: false,
-      questionCount: 12,
-      instanceCount: 3,
-    } as Test;
-    fixture.detectChanges();
-  });
+        fixture = TestBed.createComponent(WorksheetCardComponent);
+        component = fixture.componentInstance;
+        component.test = {
+            id: 1,
+            name: 'Zamanı Ölçme',
+            description: 'Deneme',
+            gradeId: 5,
+            maxDurationSeconds: 1800,
+            isPracticeTest: false,
+            questionCount: 12,
+            instanceCount: 3,
+        } as Test;
+        fixture.detectChanges();
+    });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
+    it('should create', () => {
+        expect(component).toBeTruthy();
+    });
 
-  it('kart aksiyonlarını scope sözlüğünden çevirir', () => {
-    component.type = 'badge';
-    fixture.detectChanges();
+    it('kart aksiyonlarını scope sözlüğünden çevirir', () => {
+        component.type = 'badge';
+        fixture.detectChanges();
 
-    const labels = fixture.debugElement
-      .queryAll(By.css('.button-container .action-button'))
-      .map((el) => (el.nativeElement.textContent || '').trim());
+        const labels = fixture.debugElement
+            .queryAll(By.css('.button-container .action-button'))
+            .map((el) => (el.nativeElement.textContent || '').trim());
 
-    expect(labels).toContain('Başlat');
-  });
+        expect(labels).toContain('Başlat');
+    });
 
-  it('süre etiketini scope sözlüğünden biçimlendirir', () => {
-    expect(component.getMaxDurationText()).toBe('30dk');
-  });
+    it('süre etiketini scope sözlüğünden biçimlendirir', () => {
+        expect(component.getMaxDurationText()).toBe('30dk');
+    });
 
-  // issue #396: süresi dolmuş (Expired) oturum bitmiştir — teslim uyarısı ve "devam ediyor" kenarlığı gösterilmez.
-  it('an expired (finished) assignment shows neither the deadline warning nor in-progress', () => {
-    component.themeConfig = { ...component.themeConfig, borders: true };
-    const endSoon = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
-    const base = {
-      isGradeAssignment: false,
-      endAt: endSoon,
-      hasStarted: true,
-      isCompleted: false,
-    } as unknown as AssignedWorksheet;
+    // issue #396: süresi dolmuş (Expired) oturum bitmiştir — teslim uyarısı ve "devam ediyor" kenarlığı gösterilmez.
+    it('an expired (finished) assignment shows neither the deadline warning nor in-progress', () => {
+        component.themeConfig = { ...component.themeConfig, borders: true };
+        const endSoon = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+        const base = {
+            isGradeAssignment: false,
+            endAt: endSoon,
+            hasStarted: true,
+            isCompleted: false,
+        } as unknown as AssignedWorksheet;
 
-    component.assignment = { ...base, isFinished: false };
-    expect(component.getStatusBorderClass()).toBe('border-urgent-personal');
+        component.assignment = { ...base, isFinished: false };
+        expect(component.getStatusBorderClass()).toBe('border-urgent-personal');
 
-    component.assignment = { ...base, isFinished: true };
-    const expiredClass = component.getStatusBorderClass();
-    expect(expiredClass).not.toBe('border-urgent-personal');
-    expect(expiredClass).not.toBe('border-in-progress-personal');
-  });
+        component.assignment = { ...base, isFinished: true };
+        const expiredClass = component.getStatusBorderClass();
+        expect(expiredClass).not.toBe('border-urgent-personal');
+        expect(expiredClass).not.toBe('border-in-progress-personal');
+    });
 });

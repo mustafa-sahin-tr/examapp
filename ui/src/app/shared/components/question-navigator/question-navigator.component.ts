@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   Component,
   EventEmitter,
@@ -10,14 +10,16 @@ import {
   OnChanges,
   SimpleChanges,
   OnInit,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-question-navigator',
-  imports: [CommonModule, TranslocoDirective],
+  imports: [TranslocoDirective],
   standalone: true,
   templateUrl: './question-navigator.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './question-navigator.component.scss',
 })
 export class QuestionNavigatorComponent implements OnInit {

@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, NonNullableFormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -91,6 +91,7 @@ export function detectSourceType(value: string): StudyLinkSourceType {
   ],
   providers: [provideTranslocoScope(STUDY_LINKS_SCOPE)],
   templateUrl: './study-link-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./study-link-dialog.component.scss'],
 })
 export class StudyLinkDialogComponent {

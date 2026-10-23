@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, output } from '@angular/core';
+import { Component, computed, inject, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoDirective } from '@jsverse/transloco';
@@ -15,6 +15,7 @@ import { TutorSearchResult } from '../../../models/tutor.model';
   standalone: true,
   imports: [MatChipsModule, MatIconModule, TranslocoDirective],
   templateUrl: './tutor-card.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./tutor-card.component.scss'],
 })
 export class TutorCardComponent {

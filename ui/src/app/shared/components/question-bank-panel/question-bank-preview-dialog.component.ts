@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
@@ -40,6 +40,7 @@ const QUESTION_BANK_SCOPE = 'question-bank';
       </mat-dialog-actions>
     </ng-container>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
     .qb-preview img {
       display: block;

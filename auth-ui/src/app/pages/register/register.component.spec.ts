@@ -1,5 +1,5 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -8,6 +8,12 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { RegisterComponent } from './register.component';
 
 describe('RegisterComponent', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ advanceTimeDelta: 1, shouldAdvanceTime: true });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
   let component: RegisterComponent;
   let fixture: ComponentFixture<RegisterComponent>;
   let httpMock: HttpTestingController;
@@ -16,9 +22,8 @@ describe('RegisterComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [RegisterComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideNoopAnimations()],
-    })
-    .compileComponents();
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideNoopAnimations()],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(RegisterComponent);
     component = fixture.componentInstance;
@@ -37,12 +42,12 @@ describe('RegisterComponent', () => {
   it('offers only the fixed app roles without calling /api/auth/roles', () => {
     httpMock.expectNone('/api/auth/roles');
     expect(component.roles.map((r) => r.value)).toEqual(['Student', 'Teacher', 'Parent']);
-    expect(component.registerForm.get('role')?.enabled).toBeTrue();
+    expect(component.registerForm.get('role')?.enabled).toBe(true);
   });
 
   // Issue #240: register yanıtı id içermez (kayıtlı/yeni e-posta aynı gövde) — her 200'de login'e yönlendirilir.
-  it('navigates to login on the generic accepted response without a user id', fakeAsync(() => {
-    const navigate = spyOn(router, 'navigate').and.resolveTo(true);
+  it('navigates to login on the generic accepted response without a user id', async () => {
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     component.registerForm.setValue({
       firstName: 'Ayşe',
       lastName: 'Yılmaz',
@@ -57,15 +62,15 @@ describe('RegisterComponent', () => {
     expect(req.request.method).toBe('POST');
     expect(req.request.body.role).toBe('Student');
     req.flush({ message: 'Kayıt talebiniz alındı.' });
-    tick(1000);
+    await vi.advanceTimersByTimeAsync(1000);
 
     // Parola navigation state'e (history) konmaz — yalnızca e-posta.
     expect(navigate).toHaveBeenCalledWith(['/login'], { state: { email: 'ayse@test.local' } });
-  }));
+  });
 
   it('shows the server-localized message on a 400 without navigating', () => {
-    const navigate = spyOn(router, 'navigate').and.resolveTo(true);
-    const open = spyOn(fixture.debugElement.injector.get(MatSnackBar), 'open').and.callThrough();
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const open = vi.spyOn(fixture.debugElement.injector.get(MatSnackBar), 'open');
     component.registerForm.patchValue({
       firstName: 'Ayşe',
       lastName: 'Yılmaz',
@@ -80,8 +85,8 @@ describe('RegisterComponent', () => {
       .expectOne('/api/auth/register')
       .flush({ message: 'Geçerli bir e-posta adresi girin.' }, { status: 400, statusText: 'Bad Request' });
 
-    expect(open).toHaveBeenCalledWith('Geçerli bir e-posta adresi girin.', 'Kapat', jasmine.any(Object));
-    expect(component.isLoading).toBeFalse();
+    expect(open).toHaveBeenCalledWith('Geçerli bir e-posta adresi girin.', 'Kapat', expect.any(Object));
+    expect(component.isLoading).toBe(false);
     expect(navigate).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,4 @@
-import { Component, OnInit, Input, Output, EventEmitter, inject, OnChanges, SimpleChanges } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, Input, Output, EventEmitter, inject, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -19,6 +19,7 @@ import { Comment } from '../../models/comment';
 import { Note } from '../../models/note';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-study-content-viewer',
   standalone: true,
   imports: [

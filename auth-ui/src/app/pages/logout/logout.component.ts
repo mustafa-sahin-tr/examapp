@@ -1,6 +1,6 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { CommonModule } from '@angular/common';
+
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,8 +9,9 @@ import { BRAND_NAME } from '../../shared/brand';
 @Component({
   selector: 'app-logout',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [MatIconModule],
   templateUrl: './logout.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './logout.component.scss',
 })
 export class LogoutComponent implements OnInit {

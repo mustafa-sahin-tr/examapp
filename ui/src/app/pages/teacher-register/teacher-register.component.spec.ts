@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -13,22 +13,22 @@ import registerTr from '../../../../public/i18n/register/tr.json';
 const translocoTesting = translocoTestingModule({ langs: { 'register/tr': registerTr } });
 
 describe('TeacherRegisterComponent', () => {
-  let component: TeacherRegisterComponent;
-  let fixture: ComponentFixture<TeacherRegisterComponent>;
+    let component: TeacherRegisterComponent;
+    let fixture: ComponentFixture<TeacherRegisterComponent>;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [TeacherRegisterComponent, translocoTesting],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), provideNoopAnimations()],
-    })
-    .compileComponents();
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            imports: [TeacherRegisterComponent, translocoTesting],
+            providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter([]), provideNoopAnimations()],
+        })
+            .compileComponents();
 
-    fixture = TestBed.createComponent(TeacherRegisterComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
+        fixture = TestBed.createComponent(TeacherRegisterComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
+    it('should create', () => {
+        expect(component).toBeTruthy();
+    });
 });

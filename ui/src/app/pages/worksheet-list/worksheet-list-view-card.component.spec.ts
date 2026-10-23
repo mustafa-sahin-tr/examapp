@@ -11,108 +11,112 @@ import worksheetListTr from '../../../../public/i18n/worksheet-list/tr.json';
 
 /** Gercek scope sozlugu yuklenir; anahtar bozulursa test kirilir (issue #183). */
 const translocoTesting = TranslocoTestingModule.forRoot({
-  // Scope sozlugu hem scope yolu (provideTranslocoScope yukleyicisi) hem de kok 'tr' icine
-  // gomulu olarak verilir; sablondaki 'prefix' bicimi ikincisinden cozulur.
-  langs: { tr: { ...rootTr, 'worksheet-list': worksheetListTr }, 'worksheet-list/tr': worksheetListTr },
-  translocoConfig: {
-    availableLangs: [...SUPPORTED_LOCALE_CODES],
-    defaultLang: DEFAULT_LOCALE,
-    // TranslocoTestingModule uygulamanin config'ini almaz; scope oneki kebab kalsin (issue #183).
-    scopes: { keepCasing: true },
-  },
-  preloadLangs: true,
+    // Scope sozlugu hem scope yolu (provideTranslocoScope yukleyicisi) hem de kok 'tr' icine
+    // gomulu olarak verilir; sablondaki 'prefix' bicimi ikincisinden cozulur.
+    langs: { tr: { ...rootTr, 'worksheet-list': worksheetListTr }, 'worksheet-list/tr': worksheetListTr },
+    translocoConfig: {
+        availableLangs: [...SUPPORTED_LOCALE_CODES],
+        defaultLang: DEFAULT_LOCALE,
+        // TranslocoTestingModule uygulamanin config'ini almaz; scope oneki kebab kalsin (issue #183).
+        scopes: { keepCasing: true },
+    },
+    preloadLangs: true,
 });
 
 describe('WorksheetListViewCardComponent', () => {
-  let component: WorksheetListViewCardComponent;
+    let component: WorksheetListViewCardComponent;
 
-  beforeEach(() => {
-    TestBed.configureTestingModule({
-      imports: [WorksheetListViewCardComponent, translocoTesting],
-      providers: [provideRouter([])],
+    beforeEach(() => {
+        TestBed.configureTestingModule({
+            imports: [WorksheetListViewCardComponent, translocoTesting],
+            providers: [provideRouter([])],
+        });
+
+        component = TestBed.createComponent(WorksheetListViewCardComponent).componentInstance;
     });
 
-    component = TestBed.createComponent(WorksheetListViewCardComponent).componentInstance;
-  });
+    function setCourse(partial: Partial<Test>): void {
+        component.course = { id: 1, name: 'W', ...partial } as Test;
+    }
 
-  function setCourse(partial: Partial<Test>): void {
-    component.course = { id: 1, name: 'W', ...partial } as Test;
-  }
+    describe('canCopy', () => {
+        it('canCopy_TeacherOnForeignPublicViewWorksheet_ReturnsTrue', () => {
+            component.isTeacher = true;
+            setCourse({ canEdit: false, isOwner: false, teacherSharing: WorksheetTeacherSharing.PublicView });
 
-  describe('canCopy', () => {
-    it('canCopy_TeacherOnForeignPublicViewWorksheet_ReturnsTrue', () => {
-      component.isTeacher = true;
-      setCourse({ canEdit: false, isOwner: false, teacherSharing: WorksheetTeacherSharing.PublicView });
+            expect(component.canCopy).toBe(true);
+        });
 
-      expect(component.canCopy).toBeTrue();
+        it('canCopy_TeacherOnForeignPublicAssignableWorksheet_ReturnsTrue', () => {
+            component.isTeacher = true;
+            setCourse({ canEdit: false, isOwner: false, teacherSharing: WorksheetTeacherSharing.PublicAssignable });
+
+            expect(component.canCopy).toBe(true);
+        });
+
+        it('canCopy_TeacherOnForeignSchoolOnlyWorksheet_ReturnsTrue', () => {
+            component.isTeacher = true;
+            setCourse({ canEdit: false, isOwner: false, teacherSharing: WorksheetTeacherSharing.SchoolOnly });
+
+            expect(component.canCopy).toBe(true);
+        });
+
+        it('canCopy_NotTeacher_ReturnsFalse', () => {
+            component.isTeacher = false;
+            setCourse({ canEdit: false, isOwner: false, teacherSharing: WorksheetTeacherSharing.PublicView });
+
+            expect(component.canCopy).toBe(false);
+        });
+
+        it('canCopy_OwnWorksheet_ReturnsFalse', () => {
+            component.isTeacher = true;
+            setCourse({ canEdit: false, isOwner: true, teacherSharing: WorksheetTeacherSharing.PublicView });
+
+            expect(component.canCopy).toBe(false);
+        });
+
+        it('canCopy_EditableWorksheet_ReturnsFalse', () => {
+            component.isTeacher = true;
+            setCourse({ canEdit: true, isOwner: false, teacherSharing: WorksheetTeacherSharing.PublicView });
+
+            expect(component.canCopy).toBe(false);
+        });
+
+        it('canCopy_PrivateForeignWorksheet_ReturnsFalse', () => {
+            component.isTeacher = true;
+            setCourse({ canEdit: false, isOwner: false, teacherSharing: WorksheetTeacherSharing.Private });
+
+            expect(component.canCopy).toBe(false);
+        });
     });
 
-    it('canCopy_TeacherOnForeignPublicAssignableWorksheet_ReturnsTrue', () => {
-      component.isTeacher = true;
-      setCourse({ canEdit: false, isOwner: false, teacherSharing: WorksheetTeacherSharing.PublicAssignable });
+    describe('emitCopy', () => {
+        it('emitCopy_Called_StopsPropagationAndEmitsCourseId', () => {
+            setCourse({ id: 55 });
+            const emitted: number[] = [];
+            component.copy.subscribe((id) => emitted.push(id));
+            const event = {
+                stopPropagation: vi.fn().mockName("Event.stopPropagation")
+            };
 
-      expect(component.canCopy).toBeTrue();
+            component.emitCopy(event as unknown as Event);
+
+            expect(event.stopPropagation).toHaveBeenCalled();
+            expect(emitted).toEqual([55]);
+        });
+
+        it('emitCopy_NoCourseId_DoesNotEmit', () => {
+            component.course = { name: 'W' } as Test;
+            const emitSpy = vi.fn().mockName('emit');
+            component.copy.subscribe(emitSpy);
+            const event = {
+                stopPropagation: vi.fn().mockName("Event.stopPropagation")
+            };
+
+            component.emitCopy(event as unknown as Event);
+
+            expect(event.stopPropagation).toHaveBeenCalled();
+            expect(emitSpy).not.toHaveBeenCalled();
+        });
     });
-
-    it('canCopy_TeacherOnForeignSchoolOnlyWorksheet_ReturnsTrue', () => {
-      component.isTeacher = true;
-      setCourse({ canEdit: false, isOwner: false, teacherSharing: WorksheetTeacherSharing.SchoolOnly });
-
-      expect(component.canCopy).toBeTrue();
-    });
-
-    it('canCopy_NotTeacher_ReturnsFalse', () => {
-      component.isTeacher = false;
-      setCourse({ canEdit: false, isOwner: false, teacherSharing: WorksheetTeacherSharing.PublicView });
-
-      expect(component.canCopy).toBeFalse();
-    });
-
-    it('canCopy_OwnWorksheet_ReturnsFalse', () => {
-      component.isTeacher = true;
-      setCourse({ canEdit: false, isOwner: true, teacherSharing: WorksheetTeacherSharing.PublicView });
-
-      expect(component.canCopy).toBeFalse();
-    });
-
-    it('canCopy_EditableWorksheet_ReturnsFalse', () => {
-      component.isTeacher = true;
-      setCourse({ canEdit: true, isOwner: false, teacherSharing: WorksheetTeacherSharing.PublicView });
-
-      expect(component.canCopy).toBeFalse();
-    });
-
-    it('canCopy_PrivateForeignWorksheet_ReturnsFalse', () => {
-      component.isTeacher = true;
-      setCourse({ canEdit: false, isOwner: false, teacherSharing: WorksheetTeacherSharing.Private });
-
-      expect(component.canCopy).toBeFalse();
-    });
-  });
-
-  describe('emitCopy', () => {
-    it('emitCopy_Called_StopsPropagationAndEmitsCourseId', () => {
-      setCourse({ id: 55 });
-      const emitted: number[] = [];
-      component.copy.subscribe((id) => emitted.push(id));
-      const event = jasmine.createSpyObj<Event>('Event', ['stopPropagation']);
-
-      component.emitCopy(event);
-
-      expect(event.stopPropagation).toHaveBeenCalled();
-      expect(emitted).toEqual([55]);
-    });
-
-    it('emitCopy_NoCourseId_DoesNotEmit', () => {
-      component.course = { name: 'W' } as Test;
-      const emitSpy = jasmine.createSpy('emit');
-      component.copy.subscribe(emitSpy);
-      const event = jasmine.createSpyObj<Event>('Event', ['stopPropagation']);
-
-      component.emitCopy(event);
-
-      expect(event.stopPropagation).toHaveBeenCalled();
-      expect(emitSpy).not.toHaveBeenCalled();
-    });
-  });
 });

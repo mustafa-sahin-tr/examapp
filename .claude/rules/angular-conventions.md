@@ -37,6 +37,18 @@ globs:
 - New services → `ui/src/app/services/`
 - New TypeScript models/interfaces → `ui/src/app/models/`
 
+## Unit test (Vitest, #545)
+
+- `ui` ve `auth-ui` testleri **Vitest browser mode**'da (Playwright + Chromium) koşar; Karma/Jasmine kaldırıldı.
+  Gerçek tarayıcı: canvas, `getComputedStyle` + global `styles.scss`, native popover testleri jsdom'da çalışmaz.
+- Çalıştırma (uygulama dizininden): `CHROME_BIN` sistem Chrome'unu göstermeli (Playwright tarayıcı indirmesi yok) —
+  Windows'ta `export CHROME_BIN="C:/Program Files/Google/Chrome/Application/chrome.exe"`, sonra
+  `npx ng test --watch=false` ya da tek dosya için `--include src/app/.../x.spec.ts`. CI aynı komutu
+  `CHROME_BIN=/usr/bin/google-chrome` ile koşar.
+- API: `vi.fn()`, `vi.spyOn()`, `vi.useFakeTimers()` + `await vi.advanceTimersByTimeAsync(ms)`. Zone `fakeAsync`/`tick`
+  Vitest'te çalışmaz. **`vi.spyOn` çağrıyı gerçek metoda geçirir** (Jasmine `spyOn` yutardı) — stub istiyorsan
+  `.mockReturnValue(...)`/`.mockImplementation(...)` ekle. Kısmi mock: `{ m: vi.fn() } as unknown as MockedObject<T>`.
+
 ## Daha derin bilgi
 
 Bu dosya bizim proje-özel kararlarımızı listeler (Material, CSS token, dizin yerleşimi). Angular'ın

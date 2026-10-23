@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter, finalize, take } from 'rxjs';
@@ -40,6 +40,7 @@ export const STUDENT_SCHOOL_REQUESTS_SCOPE = 'student-school-requests';
   ],
   providers: [provideTranslocoScope(STUDENT_SCHOOL_REQUESTS_SCOPE)],
   templateUrl: './student-school-requests.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './student-school-requests.component.scss',
 })
 export class StudentSchoolRequestsComponent implements OnInit {

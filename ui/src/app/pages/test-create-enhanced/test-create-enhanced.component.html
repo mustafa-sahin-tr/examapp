@@ -1,25 +1,29 @@
 <div *transloco="let t; prefix: 'test-create'" class="tce" [class.edit-mode]="isEditMode" [class.miniform]="isMiniform">
   <!-- MINIFORM: kompakt hızlı test oluştur -->
-  <ng-container *ngIf="isMiniform">
+  @if (isMiniform) {
     <app-test-form [form]="testForm" [grades]="grades" [compact]="true"
-      (onGradeChange)="onGradeChange($event)"></app-test-form>
+    (onGradeChange)="onGradeChange($event)"></app-test-form>
     <button class="btn btn-primary" type="button" [disabled]="testForm.invalid || creatingInline"
       (click)="createAndContinue()">
       <mat-icon>{{ creatingInline ? 'hourglass_empty' : 'arrow_forward' }}</mat-icon>
       {{ t(creatingInline ? 'page.creating' : 'page.createAndContinue') }}
     </button>
-  </ng-container>
+  }
 
-  <ng-container *ngIf="!isMiniform">
-    <div class="readonly-banner readonly-banner--error" *ngIf="loadError()">
-      <mat-icon>error_outline</mat-icon>
-      <span>{{ loadError() }}</span>
-      <button type="button" class="rb-retry" (click)="loadTest()">{{ t('page.retry') }}</button>
-    </div>
-    <div class="readonly-banner" *ngIf="isEditMode && !canEdit()">
-      <mat-icon>lock</mat-icon>
-      <span>{{ t('page.readOnly') }}</span>
-    </div>
+  @if (!isMiniform) {
+    @if (loadError()) {
+      <div class="readonly-banner readonly-banner--error">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ loadError() }}</span>
+        <button type="button" class="rb-retry" (click)="loadTest()">{{ t('page.retry') }}</button>
+      </div>
+    }
+    @if (isEditMode && !canEdit()) {
+      <div class="readonly-banner">
+        <mat-icon>lock</mat-icon>
+        <span>{{ t('page.readOnly') }}</span>
+      </div>
+    }
     <div class="page-head">
       <div class="ph-text">
         <h1>{{ t(isEditMode ? 'page.titleEdit' : 'page.titleNew') }}</h1>
@@ -28,7 +32,6 @@
         </p>
       </div>
     </div>
-
     <div class="cols">
       <!-- SOL: FORM -->
       <div class="stack">
@@ -38,81 +41,99 @@
           (onBookChange)="onBookChange($event)" (openNewBookAdd)="openNewBookAdd()" (onNewBookBlur)="onNewBookBlur()"
           (openNewBookTestAdd)="openNewBookTestAdd()" (onSubjectChange)="onSubjectChange($event)"
           (onTopicChange)="onTopicChange($event)" (onGradeChange)="onGradeChange($event)" (onSubmit)="onSubmit()"
-          (onCancel)="navigateToTestList()"></app-test-form>
-
+        (onCancel)="navigateToTestList()"></app-test-form>
         <!-- KAPAK GÖRSELİ (yalnız düzenleme) -->
-        <section class="card" *ngIf="isEditMode && canEdit()">
-          <h3><span class="dot"></span>{{ t('page.coverTitle') }}</h3>
-          <p class="card-note">{{ t('page.coverNote') }}</p>
-          <div class="drop">
-            <div class="thumb">
-              <img *ngIf="previewImage; else thumbIcon" [src]="previewImage" [alt]="t('page.coverAlt')"
-                [appStorageImageRetry]="coverImageRefresh" />
-              <ng-template #thumbIcon><mat-icon>image</mat-icon></ng-template>
-            </div>
-            <div class="d-body">
-              <div class="d-title">{{ t('page.dropTitle') }}</div>
-              <div class="d-sub">{{ t('page.dropSubtitle') }}</div>
-              <button class="d-btn" type="button" (click)="coverInput.click()" [disabled]="isImageUploading">
-                <mat-icon>{{ isImageUploading ? 'hourglass_empty' : 'upload' }}</mat-icon>
-                {{ t(isImageUploading ? 'page.uploading' : 'page.pickFile') }}
-              </button>
-            </div>
-          </div>
-          <input #coverInput type="file" accept="image/*" hidden (change)="onImageSelected($event)" />
-        </section>
-
-        <!-- GÖRÜNÜRLÜK (yalnız düzenleme, sahibi/admin) -->
-        <section class="card" *ngIf="isEditMode && canEdit()">
-          <h3><span class="dot"></span>{{ t('page.visibilityTitle') }}</h3>
-          <p class="card-note">
-            {{ t('page.visibilityNote') }}
-          </p>
-          <app-visibility-section [teacherSharing]="teacherSharing()" [studentVisibility]="studentVisibility()"
-            [disabled]="isSavingVisibility()" (visibilityChange)="onVisibilityChange($event)"></app-visibility-section>
-        </section>
-      </div>
-
-      <!-- SAĞ: DÜZENLEME → ÖNİZLEME / CTA -->
-      <div class="side" *ngIf="isEditMode">
-        <div class="preview-card">
-          <div class="pc-head">{{ t('preview.title') }}</div>
-          <div class="wc">
-            <div class="wc-cover">
-              <span class="pract" *ngIf="previewIsPractice">{{ t('preview.practice') }}</span>
-              <img *ngIf="previewImage; else coverIcon" [src]="previewImage" alt=""
-                [appStorageImageRetry]="coverImageRefresh" />
-              <ng-template #coverIcon><mat-icon>schedule</mat-icon></ng-template>
-            </div>
-            <div class="wc-body">
-              <div class="wc-title">{{ previewName }}</div>
-              <div class="wc-sub" *ngIf="previewSubtitle">{{ previewSubtitle }}</div>
-              <div class="wc-chips" *ngIf="previewChips.length">
-                <span *ngFor="let chip of previewChips">{{ chip }}</span>
+        @if (isEditMode && canEdit()) {
+          <section class="card">
+            <h3><span class="dot"></span>{{ t('page.coverTitle') }}</h3>
+            <p class="card-note">{{ t('page.coverNote') }}</p>
+            <div class="drop">
+              <div class="thumb">
+                @if (previewImage) {
+                  <img [src]="previewImage" [alt]="t('page.coverAlt')"
+                    [appStorageImageRetry]="coverImageRefresh" />
+                } @else {
+                  <mat-icon>image</mat-icon>
+                }
               </div>
-              <div class="wc-meta">
-                <div><mat-icon>menu_book</mat-icon>{{ t('preview.questionCount', { count: previewQuestionCount }) }}
+              <div class="d-body">
+                <div class="d-title">{{ t('page.dropTitle') }}</div>
+                <div class="d-sub">{{ t('page.dropSubtitle') }}</div>
+                <button class="d-btn" type="button" (click)="coverInput.click()" [disabled]="isImageUploading">
+                  <mat-icon>{{ isImageUploading ? 'hourglass_empty' : 'upload' }}</mat-icon>
+                  {{ t(isImageUploading ? 'page.uploading' : 'page.pickFile') }}
+                </button>
+              </div>
+            </div>
+            <input #coverInput type="file" accept="image/*" hidden (change)="onImageSelected($event)" />
+          </section>
+        }
+        <!-- GÖRÜNÜRLÜK (yalnız düzenleme, sahibi/admin) -->
+        @if (isEditMode && canEdit()) {
+          <section class="card">
+            <h3><span class="dot"></span>{{ t('page.visibilityTitle') }}</h3>
+            <p class="card-note">
+              {{ t('page.visibilityNote') }}
+            </p>
+            <app-visibility-section [teacherSharing]="teacherSharing()" [studentVisibility]="studentVisibility()"
+            [disabled]="isSavingVisibility()" (visibilityChange)="onVisibilityChange($event)"></app-visibility-section>
+          </section>
+        }
+      </div>
+      <!-- SAĞ: DÜZENLEME → ÖNİZLEME / CTA -->
+      @if (isEditMode) {
+        <div class="side">
+          <div class="preview-card">
+            <div class="pc-head">{{ t('preview.title') }}</div>
+            <div class="wc">
+              <div class="wc-cover">
+                @if (previewIsPractice) {
+                  <span class="pract">{{ t('preview.practice') }}</span>
+                }
+                @if (previewImage) {
+                  <img [src]="previewImage" alt=""
+                    [appStorageImageRetry]="coverImageRefresh" />
+                } @else {
+                  <mat-icon>schedule</mat-icon>
+                }
+              </div>
+              <div class="wc-body">
+                <div class="wc-title">{{ previewName }}</div>
+                @if (previewSubtitle) {
+                  <div class="wc-sub">{{ previewSubtitle }}</div>
+                }
+                @if (previewChips.length) {
+                  <div class="wc-chips">
+                    @for (chip of previewChips; track chip) {
+                      <span>{{ chip }}</span>
+                    }
+                  </div>
+                }
+                <div class="wc-meta">
+                  <div><mat-icon>menu_book</mat-icon>{{ t('preview.questionCount', { count: previewQuestionCount }) }}
                 </div>
                 <div><mat-icon>schedule</mat-icon>{{ t('preview.duration', { minutes: previewDuration }) }}</div>
               </div>
             </div>
           </div>
         </div>
-
-        <div class="cta" *ngIf="canEdit()">
-          <div class="meta-count">
-            <span>{{ t('preview.questionsLabel') }}</span>
-            <b>{{ t('preview.questionCount', { count: previewQuestionCount }) }}</b>
+        @if (canEdit()) {
+          <div class="cta">
+            <div class="meta-count">
+              <span>{{ t('preview.questionsLabel') }}</span>
+              <b>{{ t('preview.questionCount', { count: previewQuestionCount }) }}</b>
+            </div>
+            <button class="btn btn-primary" type="button" [disabled]="testForm.invalid" (click)="onSubmit()">
+              <mat-icon>check</mat-icon>{{ t('preview.saveChanges') }}
+            </button>
+            <button class="btn btn-ghost" type="button" [disabled]="testForm.invalid"
+              (click)="navigateToQuestionCanvas()">
+              <mat-icon>add</mat-icon>{{ t('preview.addQuestion') }}
+            </button>
           </div>
-          <button class="btn btn-primary" type="button" [disabled]="testForm.invalid" (click)="onSubmit()">
-            <mat-icon>check</mat-icon>{{ t('preview.saveChanges') }}
-          </button>
-          <button class="btn btn-ghost" type="button" [disabled]="testForm.invalid"
-            (click)="navigateToQuestionCanvas()">
-            <mat-icon>add</mat-icon>{{ t('preview.addQuestion') }}
-          </button>
-        </div>
+        }
       </div>
-    </div>
-  </ng-container>
+    }
+  </div>
+}
 </div>

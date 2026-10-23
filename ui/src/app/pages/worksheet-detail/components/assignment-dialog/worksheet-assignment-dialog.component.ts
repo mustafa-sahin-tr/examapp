@@ -1,5 +1,5 @@
-import { CommonModule } from '@angular/common';
-import { Component, Signal, computed, effect, inject, signal } from '@angular/core';
+
+import { Component, Signal, computed, effect, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -58,7 +58,6 @@ export interface WorksheetAssignmentDialogResult {
   selector: 'app-worksheet-assignment-dialog',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatDialogModule,
     MatButtonModule,
@@ -70,11 +69,12 @@ export interface WorksheetAssignmentDialogResult {
     MatChipsModule,
     MatCheckboxModule,
     MatButtonToggleModule,
-    TranslocoDirective,
-  ],
+    TranslocoDirective
+],
   // MatDialog ile açılan komponent element injector'dan scope devralmaz; kendi provider'ını verir.
   providers: [provideTranslocoScope('worksheet-detail')],
   templateUrl: './worksheet-assignment-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './worksheet-assignment-dialog.component.scss',
 })
 export class WorksheetAssignmentDialogComponent {

@@ -1,4 +1,4 @@
-import { Component, DestroyRef, Injector, OnInit, afterNextRender, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, Injector, OnInit, afterNextRender, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -60,6 +60,7 @@ const PREVIEW_LENGTH = 120;
     provideTranslatedPaginatorIntl(DIRECT_MESSAGES_SCOPE, `${DIRECT_MESSAGES_SCOPE}.paginator`),
   ],
   templateUrl: './student-messages.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./student-messages.component.scss'],
 })
 export class StudentMessagesComponent implements OnInit {

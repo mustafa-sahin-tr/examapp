@@ -1,10 +1,10 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { CommonModule } from '@angular/common';
+
 import { NavigationExtras } from '@angular/router';
 import { RegisterRequest, RegisterResponse } from '../../models/registration.model';
 
@@ -13,7 +13,8 @@ import { RegisterRequest, RegisterResponse } from '../../models/registration.mod
   standalone: true,
   templateUrl: './register.component.html',
   styleUrls: ['./register.component.scss'],
-  imports: [ReactiveFormsModule, MatSnackBarModule, CommonModule],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  imports: [ReactiveFormsModule, MatSnackBarModule],
 })
 export class RegisterComponent {
   private readonly fb = inject(FormBuilder);

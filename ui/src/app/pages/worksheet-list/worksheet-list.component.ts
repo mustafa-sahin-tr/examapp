@@ -1,5 +1,5 @@
-import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+
+import { Component, DestroyRef, OnInit, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   Subject as RxSubject,
@@ -61,7 +61,6 @@ interface GradeOption {
   styleUrls: ['./worksheet-list.component.scss'],
   standalone: true,
   imports: [
-    CommonModule,
     RouterModule,
     MatIconModule,
     MatMenuModule,
@@ -70,8 +69,9 @@ interface GradeOption {
     PaginationComponent,
     WorksheetListViewCardComponent,
     CompactTestCardComponent,
-    TranslocoDirective,
-  ],
+    TranslocoDirective
+],
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope(WORKSHEET_LIST_SCOPE)],
 })
 export class WorksheetListComponent implements OnInit {

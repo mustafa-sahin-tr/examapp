@@ -9,6 +9,7 @@ import {
   Output,
   signal,
   ViewChild,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { AnswerChoice, QuestionRegion } from '../../../models/draws';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,6 +19,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
   selector: 'app-question-canvas-view',
   imports: [MatIconModule, TranslocoDirective],
   templateUrl: './question-canvas-view.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './question-canvas-view.component.scss',
 })
 export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChecked {

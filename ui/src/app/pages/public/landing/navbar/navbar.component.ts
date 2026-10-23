@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, inject } from '@angular/core';
+import { Component, ElementRef, HostListener, inject, ChangeDetectionStrategy } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoPipe } from '@jsverse/transloco';
 
@@ -8,6 +8,7 @@ import { LanguageSwitcherComponent } from '../../../../shared/components/languag
   selector: 'app-navbar',
   imports: [RouterLink, TranslocoDirective, TranslocoPipe, LanguageSwitcherComponent],
   templateUrl: './navbar.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './navbar.component.scss',
 })
 export class NavbarComponent {

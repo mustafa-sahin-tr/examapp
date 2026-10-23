@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
@@ -17,6 +17,7 @@ const SCOPE = 'account-security';
   imports: [MatButtonModule, MatIconModule, TranslocoDirective],
   providers: [provideTranslocoScope(SCOPE)],
   templateUrl: './account-security-card.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './account-security-card.component.scss',
 })
 export class AccountSecurityCardComponent {

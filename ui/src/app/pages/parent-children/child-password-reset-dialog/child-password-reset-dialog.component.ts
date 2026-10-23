@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -85,6 +85,7 @@ const newPwValidator: ValidatorFn = (group: AbstractControl): ValidationErrors |
       </form>
     </ng-container>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       .cpr__content {

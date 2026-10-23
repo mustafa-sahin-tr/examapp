@@ -9,6 +9,7 @@ import {
   AfterViewInit,
   OnDestroy,
   inject,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AnswerChoice, QuestionRegion } from '../../../models/draws';
@@ -65,6 +66,7 @@ function clampVisualScale(value: number): number {
   standalone: true,
   imports: [CommonModule, MatButtonModule, MatIconModule, TranslocoDirective, StorageImageRetryDirective],
   templateUrl: './question-canvas-view-v5.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./question-canvas-view-v5.component.scss'],
 })
 export class QuestionCanvasViewComponentv5 {

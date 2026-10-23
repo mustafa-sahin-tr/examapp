@@ -36,7 +36,7 @@
         @if (profile()?.avatar && !avatarFailed()) {
           <img
             class="stg-profile__avatar"
-            [src]="profile()?.avatar"
+            [src]="profile()?.avatar ?? null"
             [alt]="t('profile.avatarAlt')"
             (error)="avatarFailed.set(true)"
           />

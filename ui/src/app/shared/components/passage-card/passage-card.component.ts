@@ -1,13 +1,14 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { Passage } from '../../../models/question';
-import { CommonModule } from '@angular/common';
+
 import { SafeHtmlPipe } from '../../../services/safehtml';
 
 @Component({
   selector: 'app-passage-card',
-  imports: [CommonModule, SafeHtmlPipe],
+  imports: [SafeHtmlPipe],
   templateUrl: './passage-card.component.html',
   styleUrl: './passage-card.component.scss',
+  changeDetection: ChangeDetectionStrategy.Eager,
   standalone: true
 })
 export class PassageCardComponent {

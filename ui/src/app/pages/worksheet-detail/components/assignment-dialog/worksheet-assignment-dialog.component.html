@@ -1,124 +1,134 @@
 <ng-container *transloco="let t; prefix: 'worksheet-detail'">
-<h2 mat-dialog-title>{{ t('assignDialog.title') }}</h2>
-<section mat-dialog-content>
-  <form [formGroup]="form" class="assignment-form">
-    @if (isIndependentTutor) {
-      <p class="independent-note" data-testid="independent-tutor-note">{{ t('assignDialog.independentTutorNote') }}</p>
-    } @else {
-      <mat-radio-group formControlName="scope" class="scope-selector">
-        <mat-radio-button value="grade" data-testid="scope-grade">{{ t('assignDialog.scopeGrade') }}</mat-radio-button>
-        <mat-radio-button value="student" data-testid="scope-student">{{ t('assignDialog.scopeStudent') }}</mat-radio-button>
-      </mat-radio-group>
-    }
-
-    <div class="field-pair" *ngIf="isGradeScope(); else studentScope">
-      <mat-form-field appearance="outline" class="wide">
-        <mat-label>{{ t('assignDialog.gradeLabel') }}</mat-label>
-        <mat-select formControlName="gradeId">
-          <mat-option *ngFor="let grade of grades" [value]="grade.id">{{ grade.name }}</mat-option>
-        </mat-select>
-        <mat-error>{{ t('assignDialog.gradeRequired') }}</mat-error>
-      </mat-form-field>
-      <div class="helper-text">{{ t('assignDialog.gradeHelper') }}</div>
-    </div>
-
-    <ng-template #studentScope>
-      <mat-form-field appearance="outline" class="wide">
-        <mat-label>{{ t('assignDialog.studentLabel') }}</mat-label>
-        <mat-select formControlName="studentId">
-          <mat-option *ngFor="let student of filteredStudents()" [value]="student.id">
-            <div class="student-option">
-              <div class="student-option-primary">
-                <span class="student-name">{{ student.fullName || student.studentNumber }}</span>
-                <span class="student-number" *ngIf="student.studentNumber">{{ student.studentNumber }}</span>
-              </div>
-              <mat-chip *ngIf="gradeLabel(student.gradeId)" color="primary" selected>
-                {{ gradeLabel(student.gradeId) }}
-              </mat-chip>
-            </div>
-          </mat-option>
-        </mat-select>
-        <mat-error>{{ t('assignDialog.studentRequired') }}</mat-error>
-      </mat-form-field>
-      @if (studentsStatus() === 'loading') {
-        <div class="helper-text" data-testid="students-loading">{{ t('assignDialog.studentsLoading') }}</div>
-      } @else if (studentsStatus() === 'error') {
-        <div class="helper-text empty" data-testid="students-error">{{ t('assignDialog.studentsLoadError') }}</div>
-      } @else if (filteredStudents().length === 0) {
-        @if (isIndependentTutor) {
-          <!-- Issue #223: #192 sonrası lookup yalnızca onaylı randevusu olan öğrencileri döner; boş liste hata değildir. -->
-          <div class="helper-text" data-testid="no-students-independent">{{ t('assignDialog.noStudentsIndependent') }}</div>
-        } @else {
-          <div class="helper-text empty" data-testid="no-students">{{ t('assignDialog.noStudents') }}</div>
-        }
+  <h2 mat-dialog-title>{{ t('assignDialog.title') }}</h2>
+  <section mat-dialog-content>
+    <form [formGroup]="form" class="assignment-form">
+      @if (isIndependentTutor) {
+        <p class="independent-note" data-testid="independent-tutor-note">{{ t('assignDialog.independentTutorNote') }}</p>
       } @else {
-        <div class="helper-text">
-          {{ isIndependentTutor ? t('assignDialog.independentStudentHelper') : t('assignDialog.studentHelper') }}
+        <mat-radio-group formControlName="scope" class="scope-selector">
+          <mat-radio-button value="grade" data-testid="scope-grade">{{ t('assignDialog.scopeGrade') }}</mat-radio-button>
+          <mat-radio-button value="student" data-testid="scope-student">{{ t('assignDialog.scopeStudent') }}</mat-radio-button>
+        </mat-radio-group>
+      }
+
+      @if (isGradeScope()) {
+        <div class="field-pair">
+          <mat-form-field appearance="outline" class="wide">
+            <mat-label>{{ t('assignDialog.gradeLabel') }}</mat-label>
+            <mat-select formControlName="gradeId">
+              @for (grade of grades; track grade) {
+                <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
+              }
+            </mat-select>
+            <mat-error>{{ t('assignDialog.gradeRequired') }}</mat-error>
+          </mat-form-field>
+          <div class="helper-text">{{ t('assignDialog.gradeHelper') }}</div>
+        </div>
+      } @else {
+        <mat-form-field appearance="outline" class="wide">
+          <mat-label>{{ t('assignDialog.studentLabel') }}</mat-label>
+          <mat-select formControlName="studentId">
+            @for (student of filteredStudents(); track student) {
+              <mat-option [value]="student.id">
+                <div class="student-option">
+                  <div class="student-option-primary">
+                    <span class="student-name">{{ student.fullName || student.studentNumber }}</span>
+                    @if (student.studentNumber) {
+                      <span class="student-number">{{ student.studentNumber }}</span>
+                    }
+                  </div>
+                  @if (gradeLabel(student.gradeId)) {
+                    <mat-chip color="primary" selected>
+                      {{ gradeLabel(student.gradeId) }}
+                    </mat-chip>
+                  }
+                </div>
+              </mat-option>
+            }
+          </mat-select>
+          <mat-error>{{ t('assignDialog.studentRequired') }}</mat-error>
+        </mat-form-field>
+        @if (studentsStatus() === 'loading') {
+          <div class="helper-text" data-testid="students-loading">{{ t('assignDialog.studentsLoading') }}</div>
+        } @else if (studentsStatus() === 'error') {
+          <div class="helper-text empty" data-testid="students-error">{{ t('assignDialog.studentsLoadError') }}</div>
+        } @else if (filteredStudents().length === 0) {
+          @if (isIndependentTutor) {
+            <!-- Issue #223: #192 sonrası lookup yalnızca onaylı randevusu olan öğrencileri döner; boş liste hata değildir. -->
+            <div class="helper-text" data-testid="no-students-independent">{{ t('assignDialog.noStudentsIndependent') }}</div>
+          } @else {
+            <div class="helper-text empty" data-testid="no-students">{{ t('assignDialog.noStudents') }}</div>
+          }
+        } @else {
+          <div class="helper-text">
+            {{ isIndependentTutor ? t('assignDialog.independentStudentHelper') : t('assignDialog.studentHelper') }}
+          </div>
+        }
+      }
+
+
+      <div class="datetime-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>{{ t('assignDialog.startDateLabel') }}</mat-label>
+          <input matInput [matDatepicker]="startPicker" formControlName="startDate" />
+          <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
+          <mat-datepicker #startPicker></mat-datepicker>
+          <mat-error>{{ t('assignDialog.dateRequired') }}</mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ t('assignDialog.startTimeLabel') }}</mat-label>
+          <input matInput placeholder="09:00" formControlName="startTime" />
+          <mat-error>{{ t('assignDialog.timeInvalid') }}</mat-error>
+        </mat-form-field>
+      </div>
+
+      <mat-checkbox formControlName="hasEndDate">{{ t('assignDialog.hasEndDate') }}</mat-checkbox>
+
+      @if (form.controls.hasEndDate.value) {
+        <div class="datetime-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>{{ t('assignDialog.endDateLabel') }}</mat-label>
+            <input matInput [matDatepicker]="endPicker" formControlName="endDate" />
+            <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
+            <mat-datepicker #endPicker></mat-datepicker>
+            <mat-error>{{ t('assignDialog.dateRequired') }}</mat-error>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ t('assignDialog.endTimeLabel') }}</mat-label>
+            <input matInput placeholder="23:59" formControlName="endTime" />
+            <mat-error>{{ t('assignDialog.timeInvalid') }}</mat-error>
+          </mat-form-field>
         </div>
       }
-    </ng-template>
 
-    <div class="datetime-grid">
-      <mat-form-field appearance="outline">
-        <mat-label>{{ t('assignDialog.startDateLabel') }}</mat-label>
-        <input matInput [matDatepicker]="startPicker" formControlName="startDate" />
-        <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
-        <mat-datepicker #startPicker></mat-datepicker>
-        <mat-error>{{ t('assignDialog.dateRequired') }}</mat-error>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>{{ t('assignDialog.startTimeLabel') }}</mat-label>
-        <input matInput placeholder="09:00" formControlName="startTime" />
-        <mat-error>{{ t('assignDialog.timeInvalid') }}</mat-error>
-      </mat-form-field>
-    </div>
-
-    <mat-checkbox formControlName="hasEndDate">{{ t('assignDialog.hasEndDate') }}</mat-checkbox>
-
-    <div class="datetime-grid" *ngIf="form.controls.hasEndDate.value">
-      <mat-form-field appearance="outline">
-        <mat-label>{{ t('assignDialog.endDateLabel') }}</mat-label>
-        <input matInput [matDatepicker]="endPicker" formControlName="endDate" />
-        <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
-        <mat-datepicker #endPicker></mat-datepicker>
-        <mat-error>{{ t('assignDialog.dateRequired') }}</mat-error>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>{{ t('assignDialog.endTimeLabel') }}</mat-label>
-        <input matInput placeholder="23:59" formControlName="endTime" />
-        <mat-error>{{ t('assignDialog.timeInvalid') }}</mat-error>
-      </mat-form-field>
-    </div>
-
-    <!-- Issue #105: atamaya özel yorum-soru override'ı (null = worksheet varsayılanı) -->
-    <div class="comments-override">
-      <span class="comments-override__label">{{ t('assignDialog.commentsLabel') }}</span>
-      <mat-button-toggle-group
-        formControlName="commentsOverride"
-        class="comments-override__group"
-        data-testid="comments-override"
-        [attr.aria-label]="t('assignDialog.commentsGroupAria')"
-        [hideSingleSelectionIndicator]="true"
-      >
-        <mat-button-toggle value="default" data-testid="comments-override-default">{{ t('assignDialog.commentsDefault') }}</mat-button-toggle>
-        <mat-button-toggle value="on" data-testid="comments-override-on">{{ t('assignDialog.commentsOn') }}</mat-button-toggle>
-        <mat-button-toggle value="off" data-testid="comments-override-off">{{ t('assignDialog.commentsOff') }}</mat-button-toggle>
-      </mat-button-toggle-group>
-      <div class="helper-text" data-testid="comments-override-helper">
-        {{
+      <!-- Issue #105: atamaya özel yorum-soru override'ı (null = worksheet varsayılanı) -->
+      <div class="comments-override">
+        <span class="comments-override__label">{{ t('assignDialog.commentsLabel') }}</span>
+        <mat-button-toggle-group
+          formControlName="commentsOverride"
+          class="comments-override__group"
+          data-testid="comments-override"
+          [attr.aria-label]="t('assignDialog.commentsGroupAria')"
+          [hideSingleSelectionIndicator]="true"
+          >
+          <mat-button-toggle value="default" data-testid="comments-override-default">{{ t('assignDialog.commentsDefault') }}</mat-button-toggle>
+          <mat-button-toggle value="on" data-testid="comments-override-on">{{ t('assignDialog.commentsOn') }}</mat-button-toggle>
+          <mat-button-toggle value="off" data-testid="comments-override-off">{{ t('assignDialog.commentsOff') }}</mat-button-toggle>
+        </mat-button-toggle-group>
+        <div class="helper-text" data-testid="comments-override-helper">
+          {{
           t('assignDialog.commentsHelper', {
-            state: t(worksheetCommentsEnabled ? 'assignDialog.commentsStateOn' : 'assignDialog.commentsStateOff')
+          state: t(worksheetCommentsEnabled ? 'assignDialog.commentsStateOn' : 'assignDialog.commentsStateOff')
           })
-        }}
+          }}
+        </div>
       </div>
-    </div>
-  </form>
-</section>
+    </form>
+  </section>
 
-<section mat-dialog-actions align="end">
-  <button mat-button type="button" (click)="cancel()">{{ t('assignDialog.cancel') }}</button>
-  <button mat-flat-button color="primary" type="button" (click)="submit()">{{ t('assignDialog.save') }}</button>
-</section>
+  <section mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">{{ t('assignDialog.cancel') }}</button>
+    <button mat-flat-button color="primary" type="button" (click)="submit()">{{ t('assignDialog.save') }}</button>
+  </section>
 </ng-container>

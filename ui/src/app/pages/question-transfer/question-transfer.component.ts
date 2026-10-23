@@ -1,5 +1,5 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, signal } from '@angular/core';
+
+import { Component, OnDestroy, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -27,7 +27,6 @@ const QUESTION_TRANSFER_SCOPE = 'question-transfer';
   selector: 'app-question-transfer',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     ReactiveFormsModule,
     MatCardModule,
@@ -40,10 +39,11 @@ const QUESTION_TRANSFER_SCOPE = 'question-transfer';
     MatChipsModule,
     MatDividerModule,
     MatAutocompleteModule,
-    TranslocoDirective,
-  ],
+    TranslocoDirective
+],
   providers: [provideTranslocoScope(QUESTION_TRANSFER_SCOPE)],
   templateUrl: './question-transfer.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./question-transfer.component.scss'],
 })
 export class QuestionTransferComponent implements OnDestroy {

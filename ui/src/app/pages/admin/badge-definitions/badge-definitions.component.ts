@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -95,6 +95,7 @@ export interface BadgeDefinitionRow {
     provideTranslatedPaginatorIntl(ADMIN_SCOPE, `${ADMIN_SCOPE}.paginator`),
   ],
   templateUrl: './badge-definitions.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./badge-definitions.component.scss'],
 })
 export class BadgeDefinitionsComponent {

@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 
@@ -7,6 +7,7 @@ import { AuthService } from '../../../services/auth.service';
   imports: [RouterModule],
   standalone: true,
   templateUrl: './public-layout.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './public-layout.component.scss'
 })
 export class PublicLayoutComponent {

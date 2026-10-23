@@ -1,10 +1,11 @@
 import { NgStyle, UpperCasePipe } from '@angular/common';
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
   selector: 'app-worksheet-badge',
   imports: [NgStyle, UpperCasePipe],
   templateUrl: './worksheet-badge.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './worksheet-badge.component.scss'
 })
 export class WorksheetBadgeComponent {

@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, input, linkedSignal, output, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -91,6 +91,7 @@ function toRow(item: WorksheetCommentReportItem): CommentReportRow {
     provideTranslatedPaginatorIntl(COMMENTS_SCOPE, `${COMMENTS_SCOPE}.reports.paginator`),
   ],
   templateUrl: './comment-report-list.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./comment-report-list.component.scss'],
 })
 export class CommentReportListComponent {

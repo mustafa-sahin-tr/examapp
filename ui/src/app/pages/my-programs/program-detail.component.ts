@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, take } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
@@ -83,6 +83,7 @@ interface ScheduleBar {
   ],
   providers: [provideTranslocoScope(MY_PROGRAMS_SCOPE)],
   templateUrl: './program-detail.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./program-detail.component.scss'],
 })
 export class ProgramDetailComponent implements OnInit {

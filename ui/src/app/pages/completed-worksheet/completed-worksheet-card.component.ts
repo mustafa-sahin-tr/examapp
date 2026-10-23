@@ -1,5 +1,5 @@
 // completed-worksheet-card.component.ts
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { InstanceSummary } from '../../models/test-instance';
 
@@ -13,6 +13,7 @@ import { InstanceSummary } from '../../models/test-instance';
   imports: [TranslocoDirective],
   providers: [provideTranslocoScope('completed-worksheet')],
   templateUrl: './completed-worksheet-card.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./completed-worksheet-card.component.scss'],
 })
 export class CompletedWorksheetCardComponent {

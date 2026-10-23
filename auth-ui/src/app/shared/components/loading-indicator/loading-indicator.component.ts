@@ -1,8 +1,9 @@
-import { Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-loading-indicator',
   standalone: true,
   imports: [CommonModule, MatProgressSpinnerModule],

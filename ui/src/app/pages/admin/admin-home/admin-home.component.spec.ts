@@ -15,71 +15,71 @@ import adminTr from '../../../../../public/i18n/admin/tr.json';
 
 // Issue #281: URL'de okul filtresi varsa admin-home Okullar sekmesiyle açılır.
 describe('AdminHomeComponent', () => {
-  function create(queryParams: Params = {}) {
-    TestBed.configureTestingModule({
-      imports: [
-        AdminHomeComponent,
-        translocoTestingModule({
-          langs: { 'admin/tr': adminTr },
-          translocoConfig: { scopes: { keepCasing: true } },
-        }),
-      ],
-      providers: [
-        provideNoopAnimations(),
-        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } } },
-      ],
+    function create(queryParams: Params = {}) {
+        TestBed.configureTestingModule({
+            imports: [
+                AdminHomeComponent,
+                translocoTestingModule({
+                    langs: { 'admin/tr': adminTr },
+                    translocoConfig: { scopes: { keepCasing: true } },
+                }),
+            ],
+            providers: [
+                provideNoopAnimations(),
+                { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } } },
+            ],
+        });
+        // Sekme içerikleri bu testin konusu değil; ağır bağımlılıklarıyla birlikte çıkarılır.
+        TestBed.overrideComponent(AdminHomeComponent, {
+            remove: {
+                imports: [TaxonomyManagerComponent, SchoolManagerComponent, ClassifierCacheComponent, TeacherApprovalsComponent],
+            },
+            add: { schemas: [CUSTOM_ELEMENTS_SCHEMA] },
+        });
+        const fixture = TestBed.createComponent(AdminHomeComponent);
+        fixture.detectChanges();
+        const group = fixture.debugElement.query(By.directive(MatTabGroup)).componentInstance as MatTabGroup;
+        return { fixture, group };
+    }
+
+    const schoolsIndex = ADMIN_HOME_TABS.indexOf('schools');
+
+    it('noQueryParams_SelectsDefaultFirstTab', () => {
+        const { group } = create();
+
+        expect(group.selectedIndex).toBe(0);
     });
-    // Sekme içerikleri bu testin konusu değil; ağır bağımlılıklarıyla birlikte çıkarılır.
-    TestBed.overrideComponent(AdminHomeComponent, {
-      remove: {
-        imports: [TaxonomyManagerComponent, SchoolManagerComponent, ClassifierCacheComponent, TeacherApprovalsComponent],
-      },
-      add: { schemas: [CUSTOM_ELEMENTS_SCHEMA] },
+
+    it('schoolSearchParam_SelectsSchoolsTab', () => {
+        const { group, fixture } = create({ q: 'x' });
+
+        expect(group.selectedIndex).toBe(schoolsIndex);
+        const labels = fixture.debugElement.queryAll(By.css('[role="tab"]')).map((d) => d.nativeElement.textContent.trim());
+        expect(labels[schoolsIndex]).toBe(adminTr.home.tabs.schools);
     });
-    const fixture = TestBed.createComponent(AdminHomeComponent);
-    fixture.detectChanges();
-    const group = fixture.debugElement.query(By.directive(MatTabGroup)).componentInstance as MatTabGroup;
-    return { fixture, group };
-  }
 
-  const schoolsIndex = ADMIN_HOME_TABS.indexOf('schools');
+    it('provinceParam_SelectsSchoolsTab', () => {
+        const { group } = create({ provinceId: '6' });
 
-  it('noQueryParams_SelectsDefaultFirstTab', () => {
-    const { group } = create();
+        expect(group.selectedIndex).toBe(schoolsIndex);
+    });
 
-    expect(group.selectedIndex).toBe(0);
-  });
+    it('invalidOrUnrelatedParams_KeepDefaultTab', () => {
+        expect(create({ provinceId: 'abc', page: '2' }).group.selectedIndex).toBe(0);
+    });
 
-  it('schoolSearchParam_SelectsSchoolsTab', () => {
-    const { group, fixture } = create({ q: 'x' });
+    it('userChangesTab_IsNotForcedBackToSchools', () => {
+        const { group, fixture } = create({ q: 'x' });
 
-    expect(group.selectedIndex).toBe(schoolsIndex);
-    const labels = fixture.debugElement.queryAll(By.css('[role="tab"]')).map((d) => d.nativeElement.textContent.trim());
-    expect(labels[schoolsIndex]).toBe(adminTr.home.tabs.schools);
-  });
+        group.selectedIndex = 0;
+        fixture.detectChanges();
 
-  it('provinceParam_SelectsSchoolsTab', () => {
-    const { group } = create({ provinceId: '6' });
+        expect(group.selectedIndex).toBe(0);
+    });
 
-    expect(group.selectedIndex).toBe(schoolsIndex);
-  });
+    it('tabs_RenderOneTabPerDeclaredEntry', () => {
+        const { fixture } = create();
 
-  it('invalidOrUnrelatedParams_KeepDefaultTab', () => {
-    expect(create({ provinceId: 'abc', page: '2' }).group.selectedIndex).toBe(0);
-  });
-
-  it('userChangesTab_IsNotForcedBackToSchools', () => {
-    const { group, fixture } = create({ q: 'x' });
-
-    group.selectedIndex = 0;
-    fixture.detectChanges();
-
-    expect(group.selectedIndex).toBe(0);
-  });
-
-  it('tabs_RenderOneTabPerDeclaredEntry', () => {
-    const { fixture } = create();
-
-    expect(fixture.debugElement.queryAll(By.css('[role="tab"]')).length).toBe(ADMIN_HOME_TABS.length);
-  });
+        expect(fixture.debugElement.queryAll(By.css('[role="tab"]')).length).toBe(ADMIN_HOME_TABS.length);
+    });
 });

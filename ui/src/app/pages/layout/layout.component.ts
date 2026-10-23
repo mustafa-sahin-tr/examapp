@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, WritableSignal } from '@angular/core';
+import { Component, inject, OnInit, signal, WritableSignal, ChangeDetectionStrategy } from '@angular/core';
 import { NavigationEnd, Router, RouterModule, RouterOutlet } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { CommonModule } from '@angular/common';
@@ -34,6 +34,7 @@ import { SignalRService } from '../../services/signalr.service';
     MatInputModule,
   ],
   templateUrl: './layout.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './layout.component.scss',
 })
 export class LayoutComponent implements OnInit {

@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, effect, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, OnInit, signal, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { FormGroup, Validators, FormControl, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
@@ -59,6 +59,7 @@ const QUESTION_TRAINER_ROLE = 'QuestionTrainer';
     TestCreateEnhancedComponent,
     TranslocoDirective,
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope(QUESTION_SCOPE), CanvasDetectionSource],
 })
 export class QuestionCanvasComponent implements OnInit {
@@ -429,7 +430,7 @@ export class QuestionCanvasComponent implements OnInit {
 
   ngOnInit() {
     this.loadBooks();
-    const navigation = this.router.getCurrentNavigation();
+    const navigation = this.router.currentNavigation();
     const state = navigation?.extras.state as {
       subjectId?: number;
       topicId?: number;

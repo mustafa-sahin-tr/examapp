@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { take } from 'rxjs';
 import { AuthService, pickAppRole } from '../../services/auth.service';
@@ -58,6 +58,7 @@ export function postLoginDestination(
   selector: 'app-callback',
   imports: [MatIconModule, MatButtonModule],
   templateUrl: './callback.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './callback.component.scss',
 })
 export class CallbackComponent implements OnInit {

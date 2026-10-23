@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, inject, Input, OnDestroy, OnInit, QueryList, signal, TemplateRef, ViewChild, ViewChildren } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, inject, Input, OnDestroy, OnInit, QueryList, signal, TemplateRef, ViewChild, ViewChildren } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TestService } from '../../services/test.service';
 import { TestInstance, TestInstanceQuestion, TestStatus } from '../../models/test-instance';
@@ -22,6 +22,7 @@ import { CountdownComponent } from '../../shared/components/countdown/countdown.
 import { Answer } from '../../models/answer';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-test-solve',
   standalone: true,
   templateUrl: './test-solve-canvas.component.html',

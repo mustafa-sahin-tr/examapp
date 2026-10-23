@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { WritableSignal, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
@@ -14,219 +15,215 @@ import teacherApprovalEn from '../../../../public/i18n/teacher-approval/en.json'
 
 /** Issue #287: öğretmen hesabı başvuru durumu sayfası. */
 describe('TeacherApprovalPendingComponent (issue #287)', () => {
-  let fixture: ComponentFixture<TeacherApprovalPendingComponent>;
-  let user: WritableSignal<UserProfile | null>;
-  let unapproved: WritableSignal<boolean>;
-  let refreshProfile: jasmine.Spy;
-  let decided$: Subject<TeacherApplicationDecidedPayload>;
+    let fixture: ComponentFixture<TeacherApprovalPendingComponent>;
+    let user: WritableSignal<UserProfile | null>;
+    let unapproved: WritableSignal<boolean>;
+    let refreshProfile: Mock;
+    let decided$: Subject<TeacherApplicationDecidedPayload>;
 
-  function profile(teacher: Partial<Teacher> | null): UserProfile {
-    return {
-      email: '',
-      avatar: '',
-      fullName: '',
-      id: 1,
-      keycloakId: 'k',
-      profileId: 1,
-      role: 'Teacher',
-      teacher: teacher ? ({ id: 3, userId: 1, schoolName: '', ...teacher } as Teacher) : undefined,
-    };
-  }
+    function profile(teacher: Partial<Teacher> | null): UserProfile {
+        return {
+            email: '',
+            avatar: '',
+            fullName: '',
+            id: 1,
+            keycloakId: 'k',
+            profileId: 1,
+            role: 'Teacher',
+            teacher: teacher ? ({ id: 3, userId: 1, schoolName: '', ...teacher } as Teacher) : undefined,
+        };
+    }
 
-  /** `refreshProfile` gerçek servisteki gibi dönen profili `user` signal'ına yazar. */
-  function respondWith(next: UserProfile | null): void {
-    refreshProfile.and.callFake(() => {
-      if (next) user.set(next);
-      unapproved.set(next?.teacher?.teacherAccountApproved === false);
-      return of(next);
+    /** `refreshProfile` gerçek servisteki gibi dönen profili `user` signal'ına yazar. */
+    function respondWith(next: UserProfile | null): void {
+        refreshProfile.mockImplementation(() => {
+            if (next)
+                user.set(next);
+            unapproved.set(next?.teacher?.teacherAccountApproved === false);
+            return of(next);
+        });
+    }
+
+    function create(initial: UserProfile | null, response: UserProfile | null): void {
+        user = signal(initial);
+        unapproved = signal(initial?.teacher?.teacherAccountApproved === false);
+        refreshProfile = vi.fn().mockName('refreshProfile');
+        respondWith(response);
+        decided$ = new Subject();
+        const authStub: Partial<AuthService> = { user, isUnapprovedTeacher: unapproved, refreshProfile };
+
+        TestBed.configureTestingModule({
+            imports: [
+                TeacherApprovalPendingComponent,
+                translocoTestingModule({
+                    langs: { 'teacher-approval/tr': teacherApprovalTr, 'teacher-approval/en': teacherApprovalEn },
+                }),
+            ],
+            providers: [
+                provideRouter([]),
+                { provide: AuthService, useValue: authStub },
+                { provide: SignalRService, useValue: { teacherApplicationDecided$: decided$.asObservable() } },
+            ],
+        });
+        fixture = TestBed.createComponent(TeacherApprovalPendingComponent);
+        fixture.detectChanges();
+    }
+
+    const el = (): HTMLElement => fixture.nativeElement as HTMLElement;
+    const text = (): string => el().textContent ?? '';
+
+    it('init_Pending_ShowsUnderReviewStateAndRefreshButton', () => {
+        const pending = profile({ teacherAccountApproved: false, teacherApplicationStatus: 'Pending' });
+        create(pending, pending);
+
+        expect(refreshProfile).toHaveBeenCalledTimes(1);
+        expect(el().querySelector('[data-view="pending"]')).not.toBeNull();
+        expect(text()).toContain('Başvurunuz inceleniyor');
+        expect(el().querySelector('[data-testid="refresh"]')).not.toBeNull();
+        // Bağımsız öğretmen başvurusunun formu onay beklerken de açık.
+        expect(el().querySelector('[data-testid="tutor-profile-link"]')?.getAttribute('href')).toBe('/tutor-profile');
     });
-  }
 
-  function create(initial: UserProfile | null, response: UserProfile | null): void {
-    user = signal(initial);
-    unapproved = signal(initial?.teacher?.teacherAccountApproved === false);
-    refreshProfile = jasmine.createSpy('refreshProfile');
-    respondWith(response);
-    decided$ = new Subject();
-    const authStub: Partial<AuthService> = { user, isUnapprovedTeacher: unapproved, refreshProfile };
+    it('init_Rejected_ShowsReasonAndNextSteps', () => {
+        const rejected = profile({
+            teacherAccountApproved: false,
+            teacherApplicationStatus: 'Rejected',
+            rejectionReason: 'Belge eksik',
+        });
+        create(rejected, rejected);
 
-    TestBed.configureTestingModule({
-      imports: [
-        TeacherApprovalPendingComponent,
-        translocoTestingModule({
-          langs: { 'teacher-approval/tr': teacherApprovalTr, 'teacher-approval/en': teacherApprovalEn },
-        }),
-      ],
-      providers: [
-        provideRouter([]),
-        { provide: AuthService, useValue: authStub },
-        { provide: SignalRService, useValue: { teacherApplicationDecided$: decided$.asObservable() } },
-      ],
+        expect(el().querySelector('[data-view="rejected"]')).not.toBeNull();
+        expect(el().querySelector('[data-testid="rejection-reason"]')?.textContent).toContain('Belge eksik');
+        expect(text()).toContain('Ne yapabilirsiniz?');
     });
-    fixture = TestBed.createComponent(TeacherApprovalPendingComponent);
-    fixture.detectChanges();
-  }
 
-  const el = (): HTMLElement => fixture.nativeElement as HTMLElement;
-  const text = (): string => el().textContent ?? '';
+    it('init_RejectedWithoutReason_ShowsNoReasonText', () => {
+        const rejected = profile({ teacherAccountApproved: false, teacherApplicationStatus: 'Rejected', rejectionReason: null });
+        create(rejected, rejected);
 
-  it('init_Pending_ShowsUnderReviewStateAndRefreshButton', () => {
-    const pending = profile({ teacherAccountApproved: false, teacherApplicationStatus: 'Pending' });
-    create(pending, pending);
-
-    expect(refreshProfile).toHaveBeenCalledTimes(1);
-    expect(el().querySelector('[data-view="pending"]')).not.toBeNull();
-    expect(text()).toContain('Başvurunuz inceleniyor');
-    expect(el().querySelector('[data-testid="refresh"]')).not.toBeNull();
-    // Bağımsız öğretmen başvurusunun formu onay beklerken de açık.
-    expect(el().querySelector('[data-testid="tutor-profile-link"]')?.getAttribute('href')).toBe('/tutor-profile');
-  });
-
-  it('init_Rejected_ShowsReasonAndNextSteps', () => {
-    const rejected = profile({
-      teacherAccountApproved: false,
-      teacherApplicationStatus: 'Rejected',
-      rejectionReason: 'Belge eksik',
+        expect(el().querySelector('[data-testid="rejection-reason"]')).toBeNull();
+        expect(text()).toContain('Gerekçe belirtilmedi.');
     });
-    create(rejected, rejected);
 
-    expect(el().querySelector('[data-view="rejected"]')).not.toBeNull();
-    expect(el().querySelector('[data-testid="rejection-reason"]')?.textContent).toContain('Belge eksik');
-    expect(text()).toContain('Ne yapabilirsiniz?');
-  });
+    it('init_Suspended_ShowsSuspendedStateNotPending (issue #289)', () => {
+        // Askıdaki öğretmenin başvurusu `Approved` kalır; sunucu nedeni dönmez.
+        const suspended = profile({
+            teacherAccountApproved: false,
+            teacherAccountSuspended: true,
+            teacherApplicationStatus: 'Approved',
+        });
+        create(suspended, suspended);
 
-  it('init_RejectedWithoutReason_ShowsNoReasonText', () => {
-    const rejected = profile({ teacherAccountApproved: false, teacherApplicationStatus: 'Rejected', rejectionReason: null });
-    create(rejected, rejected);
-
-    expect(el().querySelector('[data-testid="rejection-reason"]')).toBeNull();
-    expect(text()).toContain('Gerekçe belirtilmedi.');
-  });
-
-  it('init_Suspended_ShowsSuspendedStateNotPending (issue #289)', () => {
-    // Askıdaki öğretmenin başvurusu `Approved` kalır; sunucu nedeni dönmez.
-    const suspended = profile({
-      teacherAccountApproved: false,
-      teacherAccountSuspended: true,
-      teacherApplicationStatus: 'Approved',
+        expect(el().querySelector('[data-view="suspended"]')).not.toBeNull();
+        expect(el().querySelector('[data-view="pending"]')).toBeNull();
+        expect(text()).toContain(teacherApprovalTr.suspended.title);
+        expect(text()).toContain(teacherApprovalTr.suspended.contact);
+        expect(text()).not.toContain(teacherApprovalTr.pending.title);
+        expect(el().querySelector('[data-testid="tutor-profile-link"]')).toBeNull();
+        expect(el().querySelector('[data-testid="refresh"]')).not.toBeNull();
+        expect(el().querySelector('[data-testid="go-dashboard"]')).toBeNull();
     });
-    create(suspended, suspended);
 
-    expect(el().querySelector('[data-view="suspended"]')).not.toBeNull();
-    expect(el().querySelector('[data-view="pending"]')).toBeNull();
-    expect(text()).toContain(teacherApprovalTr.suspended.title);
-    expect(text()).toContain(teacherApprovalTr.suspended.contact);
-    expect(text()).not.toContain(teacherApprovalTr.pending.title);
-    expect(el().querySelector('[data-testid="tutor-profile-link"]')).toBeNull();
-    expect(el().querySelector('[data-testid="refresh"]')).not.toBeNull();
-    expect(el().querySelector('[data-testid="go-dashboard"]')).toBeNull();
-  });
+    it('init_SuspendedEvenIfApplicationPending_ShowsSuspended (issue #289)', () => {
+        const suspended = profile({
+            teacherAccountApproved: false,
+            teacherAccountSuspended: true,
+            teacherApplicationStatus: 'Pending',
+        });
+        create(suspended, suspended);
 
-  it('init_SuspendedEvenIfApplicationPending_ShowsSuspended (issue #289)', () => {
-    const suspended = profile({
-      teacherAccountApproved: false,
-      teacherAccountSuspended: true,
-      teacherApplicationStatus: 'Pending',
+        expect(el().querySelector('[data-view="suspended"]')).not.toBeNull();
     });
-    create(suspended, suspended);
 
-    expect(el().querySelector('[data-view="suspended"]')).not.toBeNull();
-  });
+    it('refreshButton_SuspensionLifted_ShowsApproved (issue #289)', () => {
+        const suspended = profile({
+            teacherAccountApproved: false,
+            teacherAccountSuspended: true,
+            teacherApplicationStatus: 'Approved',
+        });
+        create(suspended, suspended);
+        respondWith(profile({ teacherAccountApproved: true, teacherAccountSuspended: false, teacherApplicationStatus: 'Approved' }));
 
-  it('refreshButton_SuspensionLifted_ShowsApproved (issue #289)', () => {
-    const suspended = profile({
-      teacherAccountApproved: false,
-      teacherAccountSuspended: true,
-      teacherApplicationStatus: 'Approved',
+        (el().querySelector('[data-testid="refresh"]') as HTMLButtonElement).click();
+        fixture.detectChanges();
+
+        expect(el().querySelector('[data-view="approved"]')).not.toBeNull();
     });
-    create(suspended, suspended);
-    respondWith(
-      profile({ teacherAccountApproved: true, teacherAccountSuspended: false, teacherApplicationStatus: 'Approved' })
-    );
 
-    (el().querySelector('[data-testid="refresh"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
+    it('refreshButton_ApprovedMeanwhile_ShowsApprovedStateAndDashboardLink', () => {
+        const pending = profile({ teacherAccountApproved: false, teacherApplicationStatus: 'Pending' });
+        create(pending, pending);
+        respondWith(profile({ teacherAccountApproved: true, teacherApplicationStatus: 'Approved' }));
 
-    expect(el().querySelector('[data-view="approved"]')).not.toBeNull();
-  });
+        (el().querySelector('[data-testid="refresh"]') as HTMLButtonElement).click();
+        fixture.detectChanges();
 
-  it('refreshButton_ApprovedMeanwhile_ShowsApprovedStateAndDashboardLink', () => {
-    const pending = profile({ teacherAccountApproved: false, teacherApplicationStatus: 'Pending' });
-    create(pending, pending);
-    respondWith(profile({ teacherAccountApproved: true, teacherApplicationStatus: 'Approved' }));
-
-    (el().querySelector('[data-testid="refresh"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-
-    expect(refreshProfile).toHaveBeenCalledTimes(2);
-    expect(el().querySelector('[data-view="approved"]')).not.toBeNull();
-    const navigate = spyOn(TestBed.inject(Router), 'navigate').and.returnValue(Promise.resolve(true));
-    (el().querySelector('[data-testid="go-dashboard"]') as HTMLButtonElement).click();
-    expect(navigate).toHaveBeenCalledWith(['/dashboard']);
-  });
-
-  it('approvedAccountWithPendingLaterApplication_ShowsApproved (school → independent switch)', () => {
-    const switched = profile({ teacherAccountApproved: true, teacherApplicationStatus: 'Pending' });
-    create(switched, switched);
-
-    expect(el().querySelector('[data-view="approved"]')).not.toBeNull();
-  });
-
-  it('refreshReturnsNull_ShowsNoRecordWithRegisterLink', () => {
-    create(profile({ teacherAccountApproved: false }), null);
-
-    expect(el().querySelector('[data-view="noRecord"]')).not.toBeNull();
-    const link = el().querySelector('a[href^="/register"]') as HTMLAnchorElement | null;
-    expect(link?.getAttribute('href')).toBe('/register?role=teacher');
-  });
-
-  it('initialLoadFails_ShowsErrorWithRetry', () => {
-    user = signal(null);
-    unapproved = signal(false);
-    refreshProfile = jasmine.createSpy('refreshProfile').and.returnValue(throwError(() => new Error('x')));
-    TestBed.configureTestingModule({
-      imports: [
-        TeacherApprovalPendingComponent,
-        translocoTestingModule({ langs: { 'teacher-approval/tr': teacherApprovalTr } }),
-      ],
-      providers: [
-        provideRouter([]),
-        { provide: AuthService, useValue: { user, isUnapprovedTeacher: unapproved, refreshProfile } },
-        { provide: SignalRService, useValue: { teacherApplicationDecided$: new Subject() } },
-      ],
+        expect(refreshProfile).toHaveBeenCalledTimes(2);
+        expect(el().querySelector('[data-view="approved"]')).not.toBeNull();
+        const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+        (el().querySelector('[data-testid="go-dashboard"]') as HTMLButtonElement).click();
+        expect(navigate).toHaveBeenCalledWith(['/dashboard']);
     });
-    fixture = TestBed.createComponent(TeacherApprovalPendingComponent);
-    fixture.detectChanges();
 
-    expect(el().querySelector('[data-testid="error"]')).not.toBeNull();
-    expect(text()).toContain('Başvuru durumunuz alınamadı.');
+    it('approvedAccountWithPendingLaterApplication_ShowsApproved (school → independent switch)', () => {
+        const switched = profile({ teacherAccountApproved: true, teacherApplicationStatus: 'Pending' });
+        create(switched, switched);
 
-    refreshProfile.and.returnValue(of(profile({ teacherAccountApproved: false, teacherApplicationStatus: 'Pending' })));
-    user.set(profile({ teacherAccountApproved: false, teacherApplicationStatus: 'Pending' }));
-    (el().querySelector('[data-testid="error"] button') as HTMLButtonElement).click();
-    fixture.detectChanges();
+        expect(el().querySelector('[data-view="approved"]')).not.toBeNull();
+    });
 
-    expect(el().querySelector('[data-testid="error"]')).toBeNull();
-    expect(el().querySelector('[data-view="pending"]')).not.toBeNull();
-  });
+    it('refreshReturnsNull_ShowsNoRecordWithRegisterLink', () => {
+        create(profile({ teacherAccountApproved: false }), null);
 
-  it('decisionPush_RefreshesStatus', () => {
-    const pending = profile({ teacherAccountApproved: false, teacherApplicationStatus: 'Pending' });
-    create(pending, pending);
-    respondWith(profile({ teacherAccountApproved: true, teacherApplicationStatus: 'Approved' }));
+        expect(el().querySelector('[data-view="noRecord"]')).not.toBeNull();
+        const link = el().querySelector('a[href^="/register"]') as HTMLAnchorElement | null;
+        expect(link?.getAttribute('href')).toBe('/register?role=teacher');
+    });
 
-    decided$.next({ notificationId: 1, teacherId: 3, approved: true, isIndependentTutor: false, title: '', body: '' });
-    fixture.detectChanges();
+    it('initialLoadFails_ShowsErrorWithRetry', () => {
+        user = signal(null);
+        unapproved = signal(false);
+        refreshProfile = vi.fn().mockName('refreshProfile').mockReturnValue(throwError(() => new Error('x')));
+        TestBed.configureTestingModule({
+            imports: [
+                TeacherApprovalPendingComponent,
+                translocoTestingModule({ langs: { 'teacher-approval/tr': teacherApprovalTr } }),
+            ],
+            providers: [
+                provideRouter([]),
+                { provide: AuthService, useValue: { user, isUnapprovedTeacher: unapproved, refreshProfile } },
+                { provide: SignalRService, useValue: { teacherApplicationDecided$: new Subject() } },
+            ],
+        });
+        fixture = TestBed.createComponent(TeacherApprovalPendingComponent);
+        fixture.detectChanges();
 
-    expect(refreshProfile).toHaveBeenCalledTimes(2);
-    expect(el().querySelector('[data-view="approved"]')).not.toBeNull();
-  });
+        expect(el().querySelector('[data-testid="error"]')).not.toBeNull();
+        expect(text()).toContain('Başvuru durumunuz alınamadı.');
 
-  it('i18n_TrAndEnHaveSameKeys', () => {
-    const keys = (o: object, prefix = ''): string[] =>
-      Object.entries(o).flatMap(([k, v]) =>
-        v && typeof v === 'object' ? keys(v as object, `${prefix}${k}.`) : [`${prefix}${k}`]
-      );
-    expect(keys(teacherApprovalEn).sort()).toEqual(keys(teacherApprovalTr).sort());
-  });
+        refreshProfile.mockReturnValue(of(profile({ teacherAccountApproved: false, teacherApplicationStatus: 'Pending' })));
+        user.set(profile({ teacherAccountApproved: false, teacherApplicationStatus: 'Pending' }));
+        (el().querySelector('[data-testid="error"] button') as HTMLButtonElement).click();
+        fixture.detectChanges();
+
+        expect(el().querySelector('[data-testid="error"]')).toBeNull();
+        expect(el().querySelector('[data-view="pending"]')).not.toBeNull();
+    });
+
+    it('decisionPush_RefreshesStatus', () => {
+        const pending = profile({ teacherAccountApproved: false, teacherApplicationStatus: 'Pending' });
+        create(pending, pending);
+        respondWith(profile({ teacherAccountApproved: true, teacherApplicationStatus: 'Approved' }));
+
+        decided$.next({ notificationId: 1, teacherId: 3, approved: true, isIndependentTutor: false, title: '', body: '' });
+        fixture.detectChanges();
+
+        expect(refreshProfile).toHaveBeenCalledTimes(2);
+        expect(el().querySelector('[data-view="approved"]')).not.toBeNull();
+    });
+
+    it('i18n_TrAndEnHaveSameKeys', () => {
+        const keys = (o: object, prefix = ''): string[] => Object.entries(o).flatMap(([k, v]) => v && typeof v === 'object' ? keys(v as object, `${prefix}${k}.`) : [`${prefix}${k}`]);
+        expect(keys(teacherApprovalEn).sort()).toEqual(keys(teacherApprovalTr).sort());
+    });
 });

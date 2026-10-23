@@ -3,230 +3,232 @@
   <!-- Ekran okuyucu için kalıcı canlı bölge: yalnız metin değişir, kapsayıcı hep DOM'da (görsel örtü ayrı). -->
   <div class="ms-sr-only" role="status" aria-live="polite">
     @if (inProgress()) {
-    {{ t('messages.analysisInProgress') }}
+      {{ t('messages.analysisInProgress') }}
     }
   </div>
   <div [ngClass]="{ 'form-container': !previewMode() }">
 
     <div class="form-column-4" style="border: var(--border-input)">
-      <ng-container *ngIf="previewMode()">
+      @if (previewMode()) {
         <div class="ms-preview">
           <aside class="ms-preview__nav">
             <div class="ms-preview__card-head"><span class="ins-dot"></span>{{ t('preview.questions') }}</div>
             <app-question-navigator [questions]="previewQuestions"
-              (questionSelected)="questionSelected($event)"></app-question-navigator>
+            (questionSelected)="questionSelected($event)"></app-question-navigator>
           </aside>
-
           <main class="ms-preview__stage">
             <section class="ms-preview__view">
               <div class="ms-preview__card-head"><span class="ins-dot"></span>{{ t('preview.combinedView') }}</div>
               <app-question-canvas-view [questionRegion]="regions()[previewCurrentIndex()]"
                 [currentClassification]="currentClassification()" [isPreviewMode]="true"
                 (choiceSelected)="onPreviewChoiceSelected($event)" (questionRemove)="onQuestionRemove($event)"
-                (applyClassification)="onApplyClassification($event)"></app-question-canvas-view>
+              (applyClassification)="onApplyClassification($event)"></app-question-canvas-view>
             </section>
-
             <section class="ms-preview__view">
               <div class="ms-preview__card-head"><span class="ins-dot"></span>{{ t('preview.splitView') }}</div>
               <app-question-canvas-view-v5 [questionRegion]="regions()[previewCurrentIndex()]" [isPreviewMode]="true"
-                (questionRemove)="onQuestionRemove($event)"></app-question-canvas-view-v5>
+              (questionRemove)="onQuestionRemove($event)"></app-question-canvas-view-v5>
             </section>
           </main>
-
           <aside class="ms-preview__side">
-            <div class="ms-preview__card" *ngIf="previewDifficultyLevel() as level"
-              [ngClass]="previewDifficultyTone()">
-              <div class="ms-preview__card-head"><span class="ins-dot"></span>{{ t('preview.difficulty') }}</div>
-              <div class="preview-difficulty-chip__top">
-                <span class="preview-difficulty-chip__label">{{ t('preview.level') }}</span>
-                <span class="preview-difficulty-chip__value">{{ level }}/10</span>
+            @if (previewDifficultyLevel(); as level) {
+              <div class="ms-preview__card"
+                [ngClass]="previewDifficultyTone()">
+                <div class="ms-preview__card-head"><span class="ins-dot"></span>{{ t('preview.difficulty') }}</div>
+                <div class="preview-difficulty-chip__top">
+                  <span class="preview-difficulty-chip__label">{{ t('preview.level') }}</span>
+                  <span class="preview-difficulty-chip__value">{{ level }}/10</span>
+                </div>
+                <div class="preview-difficulty-chip__bar">
+                  <span class="preview-difficulty-chip__fill" [style.width.%]="level * 10"></span>
+                </div>
               </div>
-              <div class="preview-difficulty-chip__bar">
-                <span class="preview-difficulty-chip__fill" [style.width.%]="level * 10"></span>
-              </div>
-            </div>
-
+            }
             <div class="ms-preview__card">
               <div class="ms-preview__card-head"><span class="ins-dot"></span>{{ t('preview.classification') }}</div>
               <app-classification-selector [initialSelection]="currentClassification()"
-                (selectionChange)="onClassificationChange($event)"></app-classification-selector>
+              (selectionChange)="onClassificationChange($event)"></app-classification-selector>
             </div>
           </aside>
         </div>
-      </ng-container>
+      }
 
 
-      <div *ngIf="!previewMode() && imageSrc()" class="ms-canvas-wrapper">
-        <canvas #canvas (mousedown)="startSelection($event)" (click)="tapCorrectAnswer($event)"
-          (mousemove)="onMouseMove($event)" (mouseup)="endSelection($event)"
+      @if (!previewMode() && imageSrc()) {
+        <div class="ms-canvas-wrapper">
+          <canvas #canvas (mousedown)="startSelection($event)" (click)="tapCorrectAnswer($event)"
+            (mousemove)="onMouseMove($event)" (mouseup)="endSelection($event)"
           (contextmenu)="onRightClick($event)"></canvas>
-        <!-- Sol bölge – Previous -->
-        <div class="ms-nav-area ms-nav-prev" [class.ms-nav-disabled]="isDrawing || navigationLocked" (click)="previousImage()"></div>
-        <!-- Sağ bölge – Next -->
-        <div class="ms-nav-area ms-nav-next" [class.ms-nav-disabled]="isDrawing || navigationLocked" (click)="nextImage()"></div>
-        <!-- Marker'lar -->
-        <div *ngFor="let marker of warningMarkers" [class.cs-warning-marker]="marker.type === 'warning'"
-          [class.cs-error-marker]="marker.type === 'error'" [ngStyle]="{ top: marker.y * canvasDisplayScale + 'px', left: marker.x * canvasDisplayScale + 'px' }"
-          (click)="openWarningContextMenu(marker, $event)">
-          <mat-icon [style.width]="warningIconHeight * canvasDisplayScale + 'px !important'"
-            [style.height]="warningIconHeight * canvasDisplayScale + 'px !important'" [style.font-size]="warningIconHeight * canvasDisplayScale + 'px !important'"
-            color="warn">warning</mat-icon>
+          <!-- Sol bölge – Previous -->
+          <div class="ms-nav-area ms-nav-prev" [class.ms-nav-disabled]="isDrawing || navigationLocked" (click)="previousImage()"></div>
+          <!-- Sağ bölge – Next -->
+          <div class="ms-nav-area ms-nav-next" [class.ms-nav-disabled]="isDrawing || navigationLocked" (click)="nextImage()"></div>
+          <!-- Marker'lar -->
+          @for (marker of warningMarkers; track marker) {
+            <div [class.cs-warning-marker]="marker.type === 'warning'"
+              [class.cs-error-marker]="marker.type === 'error'" [ngStyle]="{ top: marker.y * canvasDisplayScale + 'px', left: marker.x * canvasDisplayScale + 'px' }"
+              (click)="openWarningContextMenu(marker, $event)">
+              <mat-icon [style.width]="warningIconHeight * canvasDisplayScale + 'px !important'"
+                [style.height]="warningIconHeight * canvasDisplayScale + 'px !important'" [style.font-size]="warningIconHeight * canvasDisplayScale + 'px !important'"
+              color="warn">warning</mat-icon>
+            </div>
+          }
+          <!-- Marker context menü -->
+          @if (warningMenuVisible) {
+            <div class="wr-custom-context-menu"
+              [ngStyle]="{ top: warningMenuY + 'px', left: warningMenuX + 'px' }" (click)="$event.stopPropagation()">
+              <div style="padding: 8px; max-width: 220px">
+                <!-- <strong>Uyarı:</strong> -->
+                <ul>
+                  @for (warningMessage of selectedWarning?.messages; track warningMessage) {
+                    <li>
+                      <div>{{ warningMessage }}</div>
+                    </li>
+                  }
+                </ul>
+              </div>
+              <mat-divider></mat-divider>
+              <button (click)="dismissWarning($event)">{{ t('warnings.dismiss') }}</button>
+            </div>
+          }
+          <!-- Analiz sürerken tuval kilitli: sonuç bölgeleri zaten değiştirir. -->
+          @if (inProgress()) {
+            <div class="ms-analysis-overlay" aria-hidden="true"
+              (mousedown)="$event.stopPropagation(); $event.preventDefault()" (click)="$event.stopPropagation()"
+              (contextmenu)="$event.stopPropagation(); $event.preventDefault()">
+              <mat-spinner diameter="40"></mat-spinner>
+              <span class="ms-analysis-overlay__text">{{ t('messages.analysisInProgress') }}</span>
+            </div>
+          }
         </div>
-        <!-- Marker context menü -->
-        <div *ngIf="warningMenuVisible" class="wr-custom-context-menu"
-          [ngStyle]="{ top: warningMenuY + 'px', left: warningMenuX + 'px' }" (click)="$event.stopPropagation()">
-          <div style="padding: 8px; max-width: 220px">
-            <!-- <strong>Uyarı:</strong> -->
-            <ul>
-              <li *ngFor="let warningMessage of selectedWarning?.messages">
-                <div>{{ warningMessage }}</div>
-              </li>
-            </ul>
-          </div>
-          <mat-divider></mat-divider>
-          <button (click)="dismissWarning($event)">{{ t('warnings.dismiss') }}</button>
-        </div>
-        <!-- Analiz sürerken tuval kilitli: sonuç bölgeleri zaten değiştirir. -->
-        @if (inProgress()) {
-        <div class="ms-analysis-overlay" aria-hidden="true"
-          (mousedown)="$event.stopPropagation(); $event.preventDefault()" (click)="$event.stopPropagation()"
-          (contextmenu)="$event.stopPropagation(); $event.preventDefault()">
-          <mat-spinner diameter="40"></mat-spinner>
-          <span class="ms-analysis-overlay__text">{{ t('messages.analysisInProgress') }}</span>
-        </div>
-        }
-      </div>
+      }
 
-      <div *ngIf="contextMenuVisible" (click)="$event.stopPropagation()" class="ms-custom-context-menu"
-        [ngStyle]="{ top: contextMenuY + 'px', left: contextMenuX + 'px' }">
-        <!-- Region için menü -->
-        <ng-container *ngIf="contextMenuType === 'region'">
-          <button (click)="handleMenuAction('removeQuestion', $event)">
-            <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>
-            {{ t('menu.removeQuestion') }}
-          </button>
-          <button (click)="handleMenuAction('selectAnswerMode', $event)">
-            <mat-icon style="vertical-align: middle; margin-right: 8px">crop_square</mat-icon>
-            {{ t('menu.drawAnswer') }}
-          </button>
-          <button (click)="handleMenuAction('selectDropZoneMode', $event)">
-            <mat-icon style="vertical-align: middle; margin-right: 8px">radio_button_unchecked</mat-icon>
-            {{ t('menu.drawDropZone') }}
-          </button>
-
-          <!-- dragDropLabeling hızlı ayarları (sağ panel olmadan) -->
-          <ng-container *ngIf="
-              selectedRegion! >= 0 && getInteractionType(regions()[selectedRegion || 0].name) === 'dragDropLabeling'
-            ">
-            <mat-divider></mat-divider>
-            <div style="padding: 6px 8px; font-size: 12px; opacity: 0.8">dragDropLabeling</div>
-
-            <label style="display: block; padding: 6px 8px 2px; font-size: 12px; opacity: 0.8">{{ t('menu.labelCount') }}</label>
-            <input type="number" min="1" max="30" style="margin: 0 8px 6px; width: calc(100% - 16px)"
-              [value]="getLabelCount(regions()[selectedRegion || 0].name)" (click)="$event.stopPropagation()"
-              (change)="setLabelCount(regions()[selectedRegion || 0].name, $any($event.target).value)" />
-
-            <button (click)="ensureDraggables(regions()[selectedRegion || 0].name)">
-              <mat-icon style="vertical-align: middle; margin-right: 8px">format_list_numbered</mat-icon>
-              {{ t('menu.generateLabels') }}
-            </button>
-            <button (click)="autoAssignSolutionSequential(regions()[selectedRegion || 0].name)">
-              <mat-icon style="vertical-align: middle; margin-right: 8px">auto_fix_high</mat-icon>
-              {{ t('menu.autoSolution') }}
-            </button>
-          </ng-container>
-
-          <button (click)="handleMenuAction('removeAll', $event)">
-            <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>
-            {{ t('menu.removeAll') }}
-          </button>
-          <button (click)="handleMenuAction('alignAnswers', $event)">
-            <mat-icon style="vertical-align: middle; margin-right: 8px">format_align_center</mat-icon>
-            {{ t('menu.alignAnswers') }}
-          </button>
-          <select *ngIf="selectedRegion! >= 0 && passages().length > 0" id="passageSelect"
-            (change)="onPassageChange($event, regions()[selectedRegion || 0].name)" (click)="$event.stopPropagation()">
-            <option value="0" [selected]="!selectedPassageMap.has(regions()[selectedRegion || 0].name)">
-              {{ t('menu.selectPassage') }}
-            </option>
-            <option *ngFor="let passage of passages()" [value]="passage.id"
-              [selected]="selectedPassageMap.get(regions()[selectedRegion || 0].name) === passage.id">
-              {{ t('menu.passageOption', { id: passage.id }) }}
-            </option>
-          </select>
-        </ng-container>
-
-        <!-- Answer için menü -->
-        <ng-container *ngIf="contextMenuType === 'answer'">
-          <button (click)="handleMenuAction('removeAnswer', $event)">
-            <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>{{ t('menu.removeAnswer') }}
-          </button>
-        </ng-container>
-
-        <!-- DropZone için menü -->
-        <ng-container *ngIf="contextMenuType === 'dropzone'">
-          <ng-container *ngIf="selectedRegion! >= 0 && selectedDropZoneId as zoneId">
-            <div style="padding: 6px 8px; font-size: 12px; opacity: 0.8">{{ t('menu.zoneLabel', { id: zoneId }) }}</div>
-
-            <label style="display: block; padding: 6px 8px 2px; font-size: 12px; opacity: 0.8">{{ t('menu.labelCount') }}</label>
-            <input type="number" min="1" max="30" style="margin: 0 8px 6px; width: calc(100% - 16px)"
-              [value]="getLabelCount(regions()[selectedRegion || 0].name)" (click)="$event.stopPropagation()"
-              (change)="setLabelCount(regions()[selectedRegion || 0].name, $any($event.target).value)" />
-
-            <button (click)="ensureDraggables(regions()[selectedRegion || 0].name)">
-              <mat-icon style="vertical-align: middle; margin-right: 8px">format_list_numbered</mat-icon>
-              {{ t('menu.generateLabels') }}
-            </button>
-
-            <label style="display: block; padding: 6px 8px 2px; font-size: 12px; opacity: 0.8">{{ t('menu.correctLabel') }}</label>
-            <select (click)="$event.stopPropagation()"
-              [value]="getZoneAssignedDraggable(regions()[selectedRegion || 0].name, zoneId)"
-              (change)="setZoneSolutionFromMenu(regions()[selectedRegion || 0].name, zoneId, $any($event.target).value)">
-              <option value="0">{{ t('menu.emptyOption') }}</option>
-              <option *ngFor="let d of getDraggables(regions()[selectedRegion || 0].name)" [value]="d.id">
-                {{ d.label }}
-              </option>
-            </select>
-
-            <button (click)="handleMenuAction('removeDropZone', $event)">
+      @if (contextMenuVisible) {
+        <div (click)="$event.stopPropagation()" class="ms-custom-context-menu"
+          [ngStyle]="{ top: contextMenuY + 'px', left: contextMenuX + 'px' }">
+          <!-- Region için menü -->
+          @if (contextMenuType === 'region') {
+            <button (click)="handleMenuAction('removeQuestion', $event)">
               <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>
-              {{ t('menu.removeDropZone') }}
+              {{ t('menu.removeQuestion') }}
             </button>
-          </ng-container>
-        </ng-container>
+            <button (click)="handleMenuAction('selectAnswerMode', $event)">
+              <mat-icon style="vertical-align: middle; margin-right: 8px">crop_square</mat-icon>
+              {{ t('menu.drawAnswer') }}
+            </button>
+            <button (click)="handleMenuAction('selectDropZoneMode', $event)">
+              <mat-icon style="vertical-align: middle; margin-right: 8px">radio_button_unchecked</mat-icon>
+              {{ t('menu.drawDropZone') }}
+            </button>
+            <!-- dragDropLabeling hızlı ayarları (sağ panel olmadan) -->
+            @if (
+              selectedRegion! >= 0 && getInteractionType(regions()[selectedRegion || 0].name) === 'dragDropLabeling'
+              ) {
+              <mat-divider></mat-divider>
+              <div style="padding: 6px 8px; font-size: 12px; opacity: 0.8">dragDropLabeling</div>
+              <label style="display: block; padding: 6px 8px 2px; font-size: 12px; opacity: 0.8">{{ t('menu.labelCount') }}</label>
+              <input type="number" min="1" max="30" style="margin: 0 8px 6px; width: calc(100% - 16px)"
+                [value]="getLabelCount(regions()[selectedRegion || 0].name)" (click)="$event.stopPropagation()"
+                (change)="setLabelCount(regions()[selectedRegion || 0].name, $any($event.target).value)" />
+                <button (click)="ensureDraggables(regions()[selectedRegion || 0].name)">
+                  <mat-icon style="vertical-align: middle; margin-right: 8px">format_list_numbered</mat-icon>
+                  {{ t('menu.generateLabels') }}
+                </button>
+                <button (click)="autoAssignSolutionSequential(regions()[selectedRegion || 0].name)">
+                  <mat-icon style="vertical-align: middle; margin-right: 8px">auto_fix_high</mat-icon>
+                  {{ t('menu.autoSolution') }}
+                </button>
+              }
+              <button (click)="handleMenuAction('removeAll', $event)">
+                <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>
+                {{ t('menu.removeAll') }}
+              </button>
+              <button (click)="handleMenuAction('alignAnswers', $event)">
+                <mat-icon style="vertical-align: middle; margin-right: 8px">format_align_center</mat-icon>
+                {{ t('menu.alignAnswers') }}
+              </button>
+              @if (selectedRegion! >= 0 && passages().length > 0) {
+                <select id="passageSelect"
+                  (change)="onPassageChange($event, regions()[selectedRegion || 0].name)" (click)="$event.stopPropagation()">
+                  <option value="0" [selected]="!selectedPassageMap.has(regions()[selectedRegion || 0].name)">
+                    {{ t('menu.selectPassage') }}
+                  </option>
+                  @for (passage of passages(); track passage) {
+                    <option [value]="passage.id"
+                      [selected]="selectedPassageMap.get(regions()[selectedRegion || 0].name) === passage.id">
+                      {{ t('menu.passageOption', { id: passage.id }) }}
+                    </option>
+                  }
+                </select>
+              }
+            }
+            <!-- Answer için menü -->
+            @if (contextMenuType === 'answer') {
+              <button (click)="handleMenuAction('removeAnswer', $event)">
+                <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>{{ t('menu.removeAnswer') }}
+              </button>
+            }
+            <!-- DropZone için menü -->
+            @if (contextMenuType === 'dropzone') {
+              @if (selectedRegion! >= 0 && selectedDropZoneId; as zoneId) {
+                <div style="padding: 6px 8px; font-size: 12px; opacity: 0.8">{{ t('menu.zoneLabel', { id: zoneId }) }}</div>
+                <label style="display: block; padding: 6px 8px 2px; font-size: 12px; opacity: 0.8">{{ t('menu.labelCount') }}</label>
+                <input type="number" min="1" max="30" style="margin: 0 8px 6px; width: calc(100% - 16px)"
+                  [value]="getLabelCount(regions()[selectedRegion || 0].name)" (click)="$event.stopPropagation()"
+                  (change)="setLabelCount(regions()[selectedRegion || 0].name, $any($event.target).value)" />
+                  <button (click)="ensureDraggables(regions()[selectedRegion || 0].name)">
+                    <mat-icon style="vertical-align: middle; margin-right: 8px">format_list_numbered</mat-icon>
+                    {{ t('menu.generateLabels') }}
+                  </button>
+                  <label style="display: block; padding: 6px 8px 2px; font-size: 12px; opacity: 0.8">{{ t('menu.correctLabel') }}</label>
+                  <select (click)="$event.stopPropagation()"
+                    [value]="getZoneAssignedDraggable(regions()[selectedRegion || 0].name, zoneId)"
+                    (change)="setZoneSolutionFromMenu(regions()[selectedRegion || 0].name, zoneId, $any($event.target).value)">
+                    <option value="0">{{ t('menu.emptyOption') }}</option>
+                    @for (d of getDraggables(regions()[selectedRegion || 0].name); track d) {
+                      <option [value]="d.id">
+                        {{ d.label }}
+                      </option>
+                    }
+                  </select>
+                  <button (click)="handleMenuAction('removeDropZone', $event)">
+                    <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>
+                    {{ t('menu.removeDropZone') }}
+                  </button>
+                }
+              }
+              <!-- Passage için menü -->
+              @if (contextMenuType === 'passage') {
+                <div style="padding: 6px 8px; font-size: 12px; opacity: 0.8">{{ t('menu.passageLabel', { id: selectedPassageId }) }}</div>
+                <button (click)="handleMenuAction('toggleShowPassageFirst', $event)">
+                  <mat-icon style="vertical-align: middle; margin-right: 8px">
+                    {{ isPassageFirstEnabledForPassage(selectedPassageId) ? 'visibility_off' : 'view_agenda' }}
+                  </mat-icon>
+                  {{ isPassageFirstEnabledForPassage(selectedPassageId) ? t('menu.passageFirstOff') : t('menu.passageFirstOn') }}
+                </button>
+                <button (click)="handleMenuAction('removePassage', $event)">
+                  <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>
+                  {{ t('menu.removePassage') }}
+                </button>
+              }
+              <!-- Answer için menü -->
+              @if (contextMenuType === 'worksheet') {
+                <button (click)="handleMenuAction('selectQuestion', $event)">
+                  <mat-icon style="vertical-align: middle; margin-right: 8px">help_outline</mat-icon>
+                  {{ t('menu.selectQuestion') }}
+                </button>
+                <button (click)="handleMenuAction('predict', $event)" [disabled]="coordinateJsonMode()"
+                  [attr.title]="coordinateJsonMode() ? t('coordinateJson.detectorDisabled') : null">
+                  <mat-icon style="vertical-align: middle; margin-right: 8px">smart_toy</mat-icon>
+                  {{ t('menu.askAi') }}
+                </button>
+                <button (click)="handleMenuAction('selectPassage', $event)">
+                  <mat-icon style="vertical-align: middle; margin-right: 8px">assignment</mat-icon>{{ t('menu.selectPassageMode') }}
+                </button>
+              }
+            </div>
+          }
+        </div>
 
-        <!-- Passage için menü -->
-        <ng-container *ngIf="contextMenuType === 'passage'">
-          <div style="padding: 6px 8px; font-size: 12px; opacity: 0.8">{{ t('menu.passageLabel', { id: selectedPassageId }) }}</div>
-          <button (click)="handleMenuAction('toggleShowPassageFirst', $event)">
-            <mat-icon style="vertical-align: middle; margin-right: 8px">
-              {{ isPassageFirstEnabledForPassage(selectedPassageId) ? 'visibility_off' : 'view_agenda' }}
-            </mat-icon>
-            {{ isPassageFirstEnabledForPassage(selectedPassageId) ? t('menu.passageFirstOff') : t('menu.passageFirstOn') }}
-          </button>
-          <button (click)="handleMenuAction('removePassage', $event)">
-            <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>
-            {{ t('menu.removePassage') }}
-          </button>
-        </ng-container>
-
-        <!-- Answer için menü -->
-        <ng-container *ngIf="contextMenuType === 'worksheet'">
-          <button (click)="handleMenuAction('selectQuestion', $event)">
-            <mat-icon style="vertical-align: middle; margin-right: 8px">help_outline</mat-icon>
-            {{ t('menu.selectQuestion') }}
-          </button>
-          <button (click)="handleMenuAction('predict', $event)" [disabled]="coordinateJsonMode()"
-            [attr.title]="coordinateJsonMode() ? t('coordinateJson.detectorDisabled') : null">
-            <mat-icon style="vertical-align: middle; margin-right: 8px">smart_toy</mat-icon>
-            {{ t('menu.askAi') }}
-          </button>
-          <button (click)="handleMenuAction('selectPassage', $event)">
-            <mat-icon style="vertical-align: middle; margin-right: 8px">assignment</mat-icon>{{ t('menu.selectPassageMode') }}
-          </button>
-        </ng-container>
       </div>
     </div>
-
-  </div>
-</div>

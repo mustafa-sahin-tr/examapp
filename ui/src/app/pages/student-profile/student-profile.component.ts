@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, finalize, map, switchMap, take } from 'rxjs';
 import { StudentProfile } from '../../models/student-profile';
@@ -61,6 +61,7 @@ export const STAT_LABEL_KEYS = [
     AccountSecurityCardComponent,
     StudentParentsCardComponent,
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope(SCOPE)],
 })
 export class StudentProfileComponent implements OnInit {

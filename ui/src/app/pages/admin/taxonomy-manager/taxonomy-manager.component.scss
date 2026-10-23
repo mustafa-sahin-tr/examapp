@@ -49,14 +49,14 @@
     gap: 6px;
     font-family: var(--paragraphFontFamily);
 
-    --mat-standard-button-toggle-height: 32px;
-    --mat-standard-button-toggle-shape: 16px;
-    --mat-standard-button-toggle-background-color: var(--ms-surface);
-    --mat-standard-button-toggle-text-color: var(--ms-text);
-    --mat-standard-button-toggle-selected-state-background-color: var(--ms-action-background);
-    --mat-standard-button-toggle-selected-state-text-color: var(--ms-action-text);
-    --mat-standard-button-toggle-divider-color: transparent;
-    --mat-standard-button-toggle-label-text-size: 12px;
+    --mat-button-toggle-height: 32px;
+    --mat-button-toggle-shape: 16px;
+    --mat-button-toggle-background-color: var(--ms-surface);
+    --mat-button-toggle-text-color: var(--ms-text);
+    --mat-button-toggle-selected-state-background-color: var(--ms-action-background);
+    --mat-button-toggle-selected-state-text-color: var(--ms-action-text);
+    --mat-button-toggle-divider-color: transparent;
+    --mat-button-toggle-label-text-size: 12px;
   }
 
   mat-button-toggle {

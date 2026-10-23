@@ -1,3 +1,4 @@
+import type { Mock, MockedObject } from "vitest";
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { MatDialogRef } from '@angular/material/dialog';
@@ -10,289 +11,300 @@ import { translocoTestingModule } from '../../../shared/testing/transloco-testin
 import labelingTr from '../../../../../public/i18n/labeling/tr.json';
 
 function prompt(overrides: Partial<LabelingPrompt> = {}): LabelingPrompt {
-  return {
-    version: 2,
-    questionInstruction: 'Soru {width}x{height}',
-    optionInstruction: 'Şık {width}x{height}',
-    questionPadding: 6,
-    optionPadding: 4,
-    expandQuestionToOptions: true,
-    createdByName: 'Eğitmen',
-    createdAt: '2026-10-22T00:00:00Z',
-    ...overrides,
-  };
+    return {
+        version: 2,
+        questionInstruction: 'Soru {width}x{height}',
+        optionInstruction: 'Şık {width}x{height}',
+        questionPadding: 6,
+        optionPadding: 4,
+        expandQuestionToOptions: true,
+        createdByName: 'Eğitmen',
+        createdAt: '2026-10-22T00:00:00Z',
+        ...overrides,
+    };
 }
 
 function state(overrides: Partial<LabelingPromptState> = {}): LabelingPromptState {
-  return {
-    active: prompt(),
-    defaults: prompt({ version: 0, createdByName: null, createdAt: null, questionInstruction: 'DQ {width}x{height}' }),
-    history: [prompt(), prompt({ version: 1, questionInstruction: 'Eski {width}x{height}', createdByName: null })],
-    ...overrides,
-  };
+    return {
+        active: prompt(),
+        defaults: prompt({ version: 0, createdByName: null, createdAt: null, questionInstruction: 'DQ {width}x{height}' }),
+        history: [prompt(), prompt({ version: 1, questionInstruction: 'Eski {width}x{height}', createdByName: null })],
+        ...overrides,
+    };
 }
 
 describe('LabelingPromptDialogComponent', () => {
-  let fixture: ComponentFixture<LabelingPromptDialogComponent>;
-  let component: LabelingPromptDialogComponent;
-  let api: jasmine.SpyObj<LabelingService>;
-  let dialogRef: { close: jasmine.Spy; disableClose: boolean };
+    let fixture: ComponentFixture<LabelingPromptDialogComponent>;
+    let component: LabelingPromptDialogComponent;
+    let api: MockedObject<LabelingService>;
+    let dialogRef: {
+        close: Mock;
+        disableClose: boolean;
+    };
 
-  function create(getPrompt = of(state())): void {
-    api = jasmine.createSpyObj<LabelingService>('LabelingService', ['getPrompt', 'savePrompt']);
-    api.getPrompt.and.returnValue(getPrompt);
-    dialogRef = { close: jasmine.createSpy('close'), disableClose: false };
-    TestBed.configureTestingModule({
-      imports: [LabelingPromptDialogComponent, translocoTestingModule({ langs: { 'labeling/tr': labelingTr } })],
-      providers: [
-        provideNoopAnimations(),
-        { provide: LabelingService, useValue: api },
-        { provide: MatDialogRef, useValue: dialogRef },
-      ],
-    });
-    fixture = TestBed.createComponent(LabelingPromptDialogComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  }
+    function create(getPrompt = of(state())): void {
+        api = {
+            getPrompt: vi.fn().mockName("LabelingService.getPrompt"),
+            savePrompt: vi.fn().mockName("LabelingService.savePrompt")
+        } as unknown as MockedObject<LabelingService>;
+        api.getPrompt.mockReturnValue(getPrompt);
+        dialogRef = { close: vi.fn().mockName('close'), disableClose: false };
+        TestBed.configureTestingModule({
+            imports: [LabelingPromptDialogComponent, translocoTestingModule({ langs: { 'labeling/tr': labelingTr } })],
+            providers: [
+                provideNoopAnimations(),
+                { provide: LabelingService, useValue: api },
+                { provide: MatDialogRef, useValue: dialogRef },
+            ],
+        });
+        fixture = TestBed.createComponent(LabelingPromptDialogComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    }
 
-  describe('yükleme', () => {
-    it('init_LoadsPromptAndFillsFormFromActiveVersion', () => {
-      create();
+    describe('yükleme', () => {
+        it('init_LoadsPromptAndFillsFormFromActiveVersion', () => {
+            create();
 
-      expect(api.getPrompt).toHaveBeenCalledTimes(1);
-      expect(component.loading()).toBeFalse();
-      expect(component.loadFailed()).toBeFalse();
-      expect(component.state()?.active.version).toBe(2);
-      expect(component.form.getRawValue()).toEqual({
-        questionInstruction: 'Soru {width}x{height}',
-        optionInstruction: 'Şık {width}x{height}',
-        questionPadding: 6,
-        optionPadding: 4,
-        expandQuestionToOptions: true,
-      });
-    });
+            expect(api.getPrompt).toHaveBeenCalledTimes(1);
+            expect(component.loading()).toBe(false);
+            expect(component.loadFailed()).toBe(false);
+            expect(component.state()?.active.version).toBe(2);
+            expect(component.form.getRawValue()).toEqual({
+                questionInstruction: 'Soru {width}x{height}',
+                optionInstruction: 'Şık {width}x{height}',
+                questionPadding: 6,
+                optionPadding: 4,
+                expandQuestionToOptions: true,
+            });
+        });
 
-    it('load_ServerFails_ShowsLoadFailedAndRetryRecovers', () => {
-      spyOn(console, 'error');
-      create(throwError(() => new Error('down')));
+        it('load_ServerFails_ShowsLoadFailedAndRetryRecovers', () => {
+            vi.spyOn(console, 'error').mockReturnValue(undefined);
+            create(throwError(() => new Error('down')));
 
-      expect(component.loadFailed()).toBeTrue();
-      expect(component.loading()).toBeFalse();
-      expect(component.state()).toBeNull();
+            expect(component.loadFailed()).toBe(true);
+            expect(component.loading()).toBe(false);
+            expect(component.state()).toBeNull();
 
-      api.getPrompt.and.returnValue(of(state()));
-      component.load();
+            api.getPrompt.mockReturnValue(of(state()));
+            component.load();
 
-      expect(component.loadFailed()).toBeFalse();
-      expect(component.state()?.active.version).toBe(2);
-    });
+            expect(component.loadFailed()).toBe(false);
+            expect(component.state()?.active.version).toBe(2);
+        });
 
-    it('load_PendingRequest_ShowsLoadingUntilResponse', () => {
-      const pending = new Subject<LabelingPromptState>();
-      create(pending.asObservable());
+        it('load_PendingRequest_ShowsLoadingUntilResponse', () => {
+            const pending = new Subject<LabelingPromptState>();
+            create(pending.asObservable());
 
-      expect(component.loading()).toBeTrue();
-      pending.next(state());
-      pending.complete();
+            expect(component.loading()).toBe(true);
+            pending.next(state());
+            pending.complete();
 
-      expect(component.loading()).toBeFalse();
-    });
-  });
-
-  describe('forma doldurma', () => {
-    beforeEach(() => create());
-
-    it('loadVersion_KnownHistoryVersion_FillsFormFromThatVersion', () => {
-      component.loadVersion(1);
-
-      expect(component.form.controls.questionInstruction.value).toBe('Eski {width}x{height}');
+            expect(component.loading()).toBe(false);
+        });
     });
 
-    it('loadVersion_UnknownVersion_LeavesFormUnchanged', () => {
-      const before = component.form.getRawValue();
+    describe('forma doldurma', () => {
+        beforeEach(() => create());
 
-      component.loadVersion(99);
+        it('loadVersion_KnownHistoryVersion_FillsFormFromThatVersion', () => {
+            component.loadVersion(1);
 
-      expect(component.form.getRawValue()).toEqual(before);
+            expect(component.form.controls.questionInstruction.value).toBe('Eski {width}x{height}');
+        });
+
+        it('loadVersion_UnknownVersion_LeavesFormUnchanged', () => {
+            const before = component.form.getRawValue();
+
+            component.loadVersion(99);
+
+            expect(component.form.getRawValue()).toEqual(before);
+        });
+
+        it('resetToDefaults_FillsFormFromCodeDefaults', () => {
+            component.resetToDefaults();
+
+            expect(component.form.controls.questionInstruction.value).toBe('DQ {width}x{height}');
+        });
+
+        it('fill_MarksFormDirty', () => {
+            component.form.markAsPristine();
+
+            component.fill(prompt({ version: 5 }));
+
+            expect(component.form.dirty).toBe(true);
+        });
     });
 
-    it('resetToDefaults_FillsFormFromCodeDefaults', () => {
-      component.resetToDefaults();
+    describe('doğrulama', () => {
+        beforeEach(() => create());
 
-      expect(component.form.controls.questionInstruction.value).toBe('DQ {width}x{height}');
+        it('form_EmptyQuestionInstruction_IsInvalid', () => {
+            component.form.controls.questionInstruction.setValue('');
+
+            expect(component.form.controls.questionInstruction.hasError('required')).toBe(true);
+            expect(component.form.valid).toBe(false);
+        });
+
+        it('form_InstructionOver4000Characters_IsInvalid', () => {
+            component.form.controls.optionInstruction.setValue('x'.repeat(4001));
+
+            expect(component.form.controls.optionInstruction.hasError('maxlength')).toBe(true);
+        });
+
+        it('form_InstructionExactly4000Characters_IsValid', () => {
+            component.form.controls.optionInstruction.setValue('x'.repeat(4000));
+
+            expect(component.form.controls.optionInstruction.valid).toBe(true);
+        });
+
+        it('form_PaddingOutsideZeroToFifty_IsInvalid', () => {
+            component.form.controls.questionPadding.setValue(-1);
+            expect(component.form.controls.questionPadding.invalid).toBe(true);
+
+            component.form.controls.questionPadding.setValue(51);
+            expect(component.form.controls.questionPadding.invalid).toBe(true);
+        });
+
+        it('form_PaddingAtBoundaries_IsValid', () => {
+            component.form.controls.optionPadding.setValue(0);
+            expect(component.form.controls.optionPadding.valid).toBe(true);
+
+            component.form.controls.optionPadding.setValue(50);
+            expect(component.form.controls.optionPadding.valid).toBe(true);
+        });
+
+        it('missingPlaceholders_BothPlaceholdersPresent_IsFalse', () => {
+            expect(component.missingPlaceholders('a {width} b {height}')).toBe(false);
+        });
+
+        it('missingPlaceholders_HeightMissing_IsTrue', () => {
+            expect(component.missingPlaceholders('only {width}')).toBe(true);
+        });
+
+        it('missingPlaceholders_EmptyText_IsTrue', () => {
+            expect(component.missingPlaceholders('')).toBe(true);
+        });
+
+        it('template_PlaceholderMissing_ShowsWarningWithoutBlockingSave', () => {
+            component.form.controls.questionInstruction.setValue('no placeholders');
+            fixture.detectChanges();
+
+            expect(fixture.nativeElement.querySelector('.lp-warn')).not.toBeNull();
+            expect(component.form.valid).toBe(true);
+        });
     });
 
-    it('fill_MarksFormDirty', () => {
-      component.form.markAsPristine();
+    describe('kaydetme', () => {
+        beforeEach(() => create());
 
-      component.fill(prompt({ version: 5 }));
+        it('save_InvalidForm_DoesNotCallApi', () => {
+            component.form.controls.questionInstruction.setValue('');
 
-      expect(component.form.dirty).toBeTrue();
-    });
-  });
+            component.save();
 
-  describe('doğrulama', () => {
-    beforeEach(() => create());
+            expect(api.savePrompt).not.toHaveBeenCalled();
+            expect(dialogRef.close).not.toHaveBeenCalled();
+        });
 
-    it('form_EmptyQuestionInstruction_IsInvalid', () => {
-      component.form.controls.questionInstruction.setValue('');
+        it('save_Success_SendsRawFormAndClosesWithNewState', () => {
+            const saved = state({ active: prompt({ version: 3 }) });
+            api.savePrompt.mockReturnValue(of(saved));
 
-      expect(component.form.controls.questionInstruction.hasError('required')).toBeTrue();
-      expect(component.form.valid).toBeFalse();
-    });
+            component.save();
 
-    it('form_InstructionOver4000Characters_IsInvalid', () => {
-      component.form.controls.optionInstruction.setValue('x'.repeat(4001));
+            expect(api.savePrompt).toHaveBeenCalledTimes(1);
 
-      expect(component.form.controls.optionInstruction.hasError('maxlength')).toBeTrue();
-    });
+            expect(api.savePrompt).toHaveBeenCalledWith({
+                questionInstruction: 'Soru {width}x{height}',
+                optionInstruction: 'Şık {width}x{height}',
+                questionPadding: 6,
+                optionPadding: 4,
+                expandQuestionToOptions: true,
+            });
+            expect(dialogRef.close).toHaveBeenCalledTimes(1);
+            expect(dialogRef.close).toHaveBeenCalledWith(saved);
+            expect(component.saving()).toBe(false);
+        });
 
-    it('form_InstructionExactly4000Characters_IsValid', () => {
-      component.form.controls.optionInstruction.setValue('x'.repeat(4000));
+        it('save_InFlight_DisablesDialogCloseUntilResponse', () => {
+            const pending = new Subject<LabelingPromptState>();
+            api.savePrompt.mockReturnValue(pending.asObservable());
 
-      expect(component.form.controls.optionInstruction.valid).toBeTrue();
-    });
+            component.save();
 
-    it('form_PaddingOutsideZeroToFifty_IsInvalid', () => {
-      component.form.controls.questionPadding.setValue(-1);
-      expect(component.form.controls.questionPadding.invalid).toBeTrue();
+            expect(component.saving()).toBe(true);
+            expect(dialogRef.disableClose).toBe(true);
+            expect(dialogRef.close).not.toHaveBeenCalled();
 
-      component.form.controls.questionPadding.setValue(51);
-      expect(component.form.controls.questionPadding.invalid).toBeTrue();
-    });
+            pending.next(state());
+            pending.complete();
 
-    it('form_PaddingAtBoundaries_IsValid', () => {
-      component.form.controls.optionPadding.setValue(0);
-      expect(component.form.controls.optionPadding.valid).toBeTrue();
+            expect(dialogRef.close).toHaveBeenCalledTimes(1);
+        });
 
-      component.form.controls.optionPadding.setValue(50);
-      expect(component.form.controls.optionPadding.valid).toBeTrue();
-    });
+        it('save_DoubleClickWhileSaving_SendsOnlyOnce', () => {
+            const pending = new Subject<LabelingPromptState>();
+            api.savePrompt.mockReturnValue(pending.asObservable());
 
-    it('missingPlaceholders_BothPlaceholdersPresent_IsFalse', () => {
-      expect(component.missingPlaceholders('a {width} b {height}')).toBeFalse();
-    });
+            component.save();
+            component.save();
 
-    it('missingPlaceholders_HeightMissing_IsTrue', () => {
-      expect(component.missingPlaceholders('only {width}')).toBeTrue();
-    });
+            expect(api.savePrompt).toHaveBeenCalledTimes(1);
+        });
 
-    it('missingPlaceholders_EmptyText_IsTrue', () => {
-      expect(component.missingPlaceholders('')).toBeTrue();
-    });
+        it('save_ServerErrorWithMessage_ShowsMessageStaysOpenAndReEnablesClose', () => {
+            api.savePrompt.mockReturnValue(throwError(() => ({ error: { message: 'Sunucu mesajı' } })));
 
-    it('template_PlaceholderMissing_ShowsWarningWithoutBlockingSave', () => {
-      component.form.controls.questionInstruction.setValue('no placeholders');
-      fixture.detectChanges();
+            component.save();
 
-      expect(fixture.nativeElement.querySelector('.lp-warn')).not.toBeNull();
-      expect(component.form.valid).toBeTrue();
-    });
-  });
+            expect(component.saveError()).toBe('Sunucu mesajı');
+            expect(component.saving()).toBe(false);
+            expect(dialogRef.close).not.toHaveBeenCalled();
+            expect(dialogRef.disableClose).toBe(false);
+        });
 
-  describe('kaydetme', () => {
-    beforeEach(() => create());
+        it('save_ServerErrorWithoutBody_ShowsEmptyErrorSoTemplateUsesFallback', () => {
+            api.savePrompt.mockReturnValue(throwError(() => ({ status: 500 })));
 
-    it('save_InvalidForm_DoesNotCallApi', () => {
-      component.form.controls.questionInstruction.setValue('');
+            component.save();
 
-      component.save();
+            expect(component.saveError()).toBe('');
+            expect(dialogRef.close).not.toHaveBeenCalled();
+        });
 
-      expect(api.savePrompt).not.toHaveBeenCalled();
-      expect(dialogRef.close).not.toHaveBeenCalled();
-    });
+        it('save_RetryAfterError_ClearsPreviousError', () => {
+            api.savePrompt.mockReturnValue(throwError(() => ({ error: { message: 'x' } })));
+            component.save();
+            api.savePrompt.mockReturnValue(of(state()));
 
-    it('save_Success_SendsRawFormAndClosesWithNewState', () => {
-      const saved = state({ active: prompt({ version: 3 }) });
-      api.savePrompt.and.returnValue(of(saved));
+            component.save();
 
-      component.save();
-
-      expect(api.savePrompt).toHaveBeenCalledOnceWith({
-        questionInstruction: 'Soru {width}x{height}',
-        optionInstruction: 'Şık {width}x{height}',
-        questionPadding: 6,
-        optionPadding: 4,
-        expandQuestionToOptions: true,
-      });
-      expect(dialogRef.close).toHaveBeenCalledOnceWith(saved);
-      expect(component.saving()).toBeFalse();
+            expect(component.saveError()).toBeNull();
+            expect(dialogRef.close).toHaveBeenCalledTimes(1);
+        });
     });
 
-    it('save_InFlight_DisablesDialogCloseUntilResponse', () => {
-      const pending = new Subject<LabelingPromptState>();
-      api.savePrompt.and.returnValue(pending.asObservable());
+    describe('kapatma', () => {
+        beforeEach(() => create());
 
-      component.save();
+        it('cancel_Idle_ClosesWithoutResult', () => {
+            component.cancel();
 
-      expect(component.saving()).toBeTrue();
-      expect(dialogRef.disableClose).toBeTrue();
-      expect(dialogRef.close).not.toHaveBeenCalled();
+            expect(dialogRef.close).toHaveBeenCalledTimes(1);
 
-      pending.next(state());
-      pending.complete();
+            expect(dialogRef.close).toHaveBeenCalledWith();
+        });
 
-      expect(dialogRef.close).toHaveBeenCalledTimes(1);
+        it('cancel_WhileSaving_IsIgnored', () => {
+            api.savePrompt.mockReturnValue(new Subject<LabelingPromptState>().asObservable());
+            component.save();
+
+            component.cancel();
+
+            expect(dialogRef.close).not.toHaveBeenCalled();
+        });
     });
-
-    it('save_DoubleClickWhileSaving_SendsOnlyOnce', () => {
-      const pending = new Subject<LabelingPromptState>();
-      api.savePrompt.and.returnValue(pending.asObservable());
-
-      component.save();
-      component.save();
-
-      expect(api.savePrompt).toHaveBeenCalledTimes(1);
-    });
-
-    it('save_ServerErrorWithMessage_ShowsMessageStaysOpenAndReEnablesClose', () => {
-      api.savePrompt.and.returnValue(throwError(() => ({ error: { message: 'Sunucu mesajı' } })));
-
-      component.save();
-
-      expect(component.saveError()).toBe('Sunucu mesajı');
-      expect(component.saving()).toBeFalse();
-      expect(dialogRef.close).not.toHaveBeenCalled();
-      expect(dialogRef.disableClose).toBeFalse();
-    });
-
-    it('save_ServerErrorWithoutBody_ShowsEmptyErrorSoTemplateUsesFallback', () => {
-      api.savePrompt.and.returnValue(throwError(() => ({ status: 500 })));
-
-      component.save();
-
-      expect(component.saveError()).toBe('');
-      expect(dialogRef.close).not.toHaveBeenCalled();
-    });
-
-    it('save_RetryAfterError_ClearsPreviousError', () => {
-      api.savePrompt.and.returnValue(throwError(() => ({ error: { message: 'x' } })));
-      component.save();
-      api.savePrompt.and.returnValue(of(state()));
-
-      component.save();
-
-      expect(component.saveError()).toBeNull();
-      expect(dialogRef.close).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('kapatma', () => {
-    beforeEach(() => create());
-
-    it('cancel_Idle_ClosesWithoutResult', () => {
-      component.cancel();
-
-      expect(dialogRef.close).toHaveBeenCalledOnceWith();
-    });
-
-    it('cancel_WhileSaving_IsIgnored', () => {
-      api.savePrompt.and.returnValue(new Subject<LabelingPromptState>().asObservable());
-      component.save();
-
-      component.cancel();
-
-      expect(dialogRef.close).not.toHaveBeenCalled();
-    });
-  });
 });

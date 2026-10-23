@@ -37,6 +37,8 @@ Thumbs.db
 **/dist/
 **/out-tsc/
 **/.angular/cache/
+# Vitest browser mode artefacts (screenshots/attachments, #545)
+**/.vitest/
 npm-debug.log*
 yarn-error.log*
 pnpm-debug.log*

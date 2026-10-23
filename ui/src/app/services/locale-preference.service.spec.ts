@@ -1,6 +1,7 @@
+import type { MockedObject } from "vitest";
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 
 import { AuthService, UserProfile } from './auth.service';
@@ -8,138 +9,149 @@ import { LocalePreferenceService } from './locale-preference.service';
 import { LocaleService } from './locale.service';
 
 function profileFixture(preferredLocale: string): UserProfile {
-  return {
-    email: 'ogrenci@example.com',
-    avatar: '',
-    fullName: 'Test Kullanıcı',
-    id: 1,
-    keycloakId: 'sub-1',
-    profileId: 2,
-    role: 'Student',
-    preferredLocale,
-  };
+    return {
+        email: 'ogrenci@example.com',
+        avatar: '',
+        fullName: 'Test Kullanıcı',
+        id: 1,
+        keycloakId: 'sub-1',
+        profileId: 2,
+        role: 'Student',
+        preferredLocale,
+    };
 }
 
 describe('LocalePreferenceService', () => {
-  let service: LocalePreferenceService;
-  let httpMock: HttpTestingController;
-  let authServiceSpy: jasmine.SpyObj<AuthService>;
-  let localeServiceSpy: jasmine.SpyObj<LocaleService>;
-  /** Çağrı sırasını (PUT → refresh → setLocale) doğrulamak için ortak kayıt. */
-  let calls: string[];
+    let service: LocalePreferenceService;
+    let httpMock: HttpTestingController;
+    let authServiceSpy: MockedObject<AuthService>;
+    let localeServiceSpy: MockedObject<LocaleService>;
+    /** Çağrı sırasını (PUT → refresh → setLocale) doğrulamak için ortak kayıt. */
+    let calls: string[];
 
-  beforeEach(() => {
-    calls = [];
-    localStorage.removeItem('user');
-
-    authServiceSpy = jasmine.createSpyObj<AuthService>('AuthService', ['hasToken', 'refresh', 'setUser']);
-    localeServiceSpy = jasmine.createSpyObj<LocaleService>('LocaleService', ['setLocale']);
-
-    // Gerçek setUser gibi localStorage'a yazar; aşağıdaki testler depolanan profili okur (issue #191).
-    authServiceSpy.setUser.and.callFake((profile: UserProfile | null) => {
-      if (profile) {
-        localStorage.setItem('user', JSON.stringify(profile));
-      } else {
+    beforeEach(() => {
+        calls = [];
         localStorage.removeItem('user');
-      }
+
+        authServiceSpy = {
+            hasToken: vi.fn().mockName("AuthService.hasToken"),
+            refresh: vi.fn().mockName("AuthService.refresh"),
+            setUser: vi.fn().mockName("AuthService.setUser")
+        } as unknown as MockedObject<AuthService>;
+        localeServiceSpy = {
+            setLocale: vi.fn().mockName("LocaleService.setLocale")
+        } as unknown as MockedObject<LocaleService>;
+
+        // Gerçek setUser gibi localStorage'a yazar; aşağıdaki testler depolanan profili okur (issue #191).
+        authServiceSpy.setUser.mockImplementation((profile: UserProfile | null) => {
+            if (profile) {
+                localStorage.setItem('user', JSON.stringify(profile));
+            }
+            else {
+                localStorage.removeItem('user');
+            }
+        });
+
+        authServiceSpy.refresh.mockImplementation(() => {
+            calls.push('refresh');
+            return of(profileFixture('en'));
+        });
+        localeServiceSpy.setLocale.mockImplementation(() => {
+            calls.push('setLocale');
+        });
+
+        TestBed.configureTestingModule({
+            providers: [
+                provideHttpClient(withXhr()),
+                provideHttpClientTesting(),
+                { provide: AuthService, useValue: authServiceSpy },
+                { provide: LocaleService, useValue: localeServiceSpy },
+            ],
+        });
+
+        service = TestBed.inject(LocalePreferenceService);
+        httpMock = TestBed.inject(HttpTestingController);
     });
 
-    authServiceSpy.refresh.and.callFake(() => {
-      calls.push('refresh');
-      return of(profileFixture('en'));
-    });
-    localeServiceSpy.setLocale.and.callFake(() => {
-      calls.push('setLocale');
+    afterEach(() => {
+        httpMock.verify();
+        localStorage.removeItem('user');
     });
 
-    TestBed.configureTestingModule({
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        { provide: AuthService, useValue: authServiceSpy },
-        { provide: LocaleService, useValue: localeServiceSpy },
-      ],
+    it('persistPreference_AnonymousVisitor_AppliesLocaleWithoutServerCall', () => {
+        authServiceSpy.hasToken.mockReturnValue(false);
+
+        let completed = false;
+        service.persistPreference('en').subscribe({ complete: () => (completed = true) });
+
+        expect(completed).toBe(true);
+        expect(localeServiceSpy.setLocale).toHaveBeenCalledTimes(1);
+        expect(localeServiceSpy.setLocale).toHaveBeenCalledWith('en');
+        expect(authServiceSpy.refresh).not.toHaveBeenCalled();
+        httpMock.expectNone('/api/auth/me/locale');
     });
 
-    service = TestBed.inject(LocalePreferenceService);
-    httpMock = TestBed.inject(HttpTestingController);
-  });
+    it('persistPreference_AuthenticatedUser_PutsThenRefreshesThenAppliesLocale', () => {
+        authServiceSpy.hasToken.mockReturnValue(true);
 
-  afterEach(() => {
-    httpMock.verify();
-    localStorage.removeItem('user');
-  });
+        service.persistPreference('en').subscribe();
 
-  it('persistPreference_AnonymousVisitor_AppliesLocaleWithoutServerCall', () => {
-    authServiceSpy.hasToken.and.returnValue(false);
+        const request = httpMock.expectOne('/api/auth/me/locale');
+        expect(request.request.method).toBe('PUT');
+        expect(request.request.body).toEqual({ preferredLocale: 'en' });
 
-    let completed = false;
-    service.persistPreference('en').subscribe({ complete: () => (completed = true) });
+        calls.push('put');
+        request.flush(profileFixture('en'));
 
-    expect(completed).toBeTrue();
-    expect(localeServiceSpy.setLocale).toHaveBeenCalledOnceWith('en');
-    expect(authServiceSpy.refresh).not.toHaveBeenCalled();
-    httpMock.expectNone('/api/auth/me/locale');
-  });
+        expect(calls).toEqual(['put', 'refresh', 'setLocale']);
+        expect(localeServiceSpy.setLocale).toHaveBeenCalledTimes(1);
+        expect(localeServiceSpy.setLocale).toHaveBeenCalledWith('en');
+    });
 
-  it('persistPreference_AuthenticatedUser_PutsThenRefreshesThenAppliesLocale', () => {
-    authServiceSpy.hasToken.and.returnValue(true);
+    it('persistPreference_AuthenticatedUser_StoresRefreshedProfileInLocalStorage', () => {
+        authServiceSpy.hasToken.mockReturnValue(true);
 
-    service.persistPreference('en').subscribe();
+        service.persistPreference('en').subscribe();
+        httpMock.expectOne('/api/auth/me/locale').flush(profileFixture('tr'));
 
-    const request = httpMock.expectOne('/api/auth/me/locale');
-    expect(request.request.method).toBe('PUT');
-    expect(request.request.body).toEqual({ preferredLocale: 'en' });
+        // refresh() yanıtı PUT yanıtının önüne geçer (exam API'nin tazelenmiş profili).
+        expect(JSON.parse(localStorage.getItem('user') ?? '{}').preferredLocale).toBe('en');
+    });
 
-    calls.push('put');
-    request.flush(profileFixture('en'));
+    it('persistPreference_PutFails_StillAppliesLocaleLocally', () => {
+        authServiceSpy.hasToken.mockReturnValue(true);
+        vi.spyOn(console, 'warn').mockReturnValue(undefined);
 
-    expect(calls).toEqual(['put', 'refresh', 'setLocale']);
-    expect(localeServiceSpy.setLocale).toHaveBeenCalledOnceWith('en');
-  });
+        let completed = false;
+        service.persistPreference('en').subscribe({ complete: () => (completed = true) });
+        httpMock.expectOne('/api/auth/me/locale').flush('nope', { status: 400, statusText: 'Bad Request' });
 
-  it('persistPreference_AuthenticatedUser_StoresRefreshedProfileInLocalStorage', () => {
-    authServiceSpy.hasToken.and.returnValue(true);
+        expect(completed).toBe(true);
+        expect(localeServiceSpy.setLocale).toHaveBeenCalledTimes(1);
+        expect(localeServiceSpy.setLocale).toHaveBeenCalledWith('en');
+        expect(console.warn).toHaveBeenCalled();
+        expect(localStorage.getItem('user')).toBeNull();
+    });
 
-    service.persistPreference('en').subscribe();
-    httpMock.expectOne('/api/auth/me/locale').flush(profileFixture('tr'));
+    it('persistPreference_RefreshFails_KeepsPutResultAndAppliesLocale', () => {
+        authServiceSpy.hasToken.mockReturnValue(true);
+        authServiceSpy.refresh.mockReturnValue(throwError(() => new Error('refresh down')));
+        vi.spyOn(console, 'warn').mockReturnValue(undefined);
 
-    // refresh() yanıtı PUT yanıtının önüne geçer (exam API'nin tazelenmiş profili).
-    expect(JSON.parse(localStorage.getItem('user') ?? '{}').preferredLocale).toBe('en');
-  });
+        service.persistPreference('en').subscribe();
+        httpMock.expectOne('/api/auth/me/locale').flush(profileFixture('en'));
 
-  it('persistPreference_PutFails_StillAppliesLocaleLocally', () => {
-    authServiceSpy.hasToken.and.returnValue(true);
-    spyOn(console, 'warn');
+        expect(JSON.parse(localStorage.getItem('user') ?? '{}').preferredLocale).toBe('en');
+        expect(localeServiceSpy.setLocale).toHaveBeenCalledTimes(1);
+        expect(localeServiceSpy.setLocale).toHaveBeenCalledWith('en');
+    });
 
-    let completed = false;
-    service.persistPreference('en').subscribe({ complete: () => (completed = true) });
-    httpMock.expectOne('/api/auth/me/locale').flush('nope', { status: 400, statusText: 'Bad Request' });
+    it('persistPreference_NotSubscribed_DoesNothing', () => {
+        authServiceSpy.hasToken.mockReturnValue(true);
 
-    expect(completed).toBeTrue();
-    expect(localeServiceSpy.setLocale).toHaveBeenCalledOnceWith('en');
-    expect(console.warn).toHaveBeenCalled();
-    expect(localStorage.getItem('user')).toBeNull();
-  });
+        service.persistPreference('en');
 
-  it('persistPreference_RefreshFails_KeepsPutResultAndAppliesLocale', () => {
-    authServiceSpy.hasToken.and.returnValue(true);
-    authServiceSpy.refresh.and.returnValue(throwError(() => new Error('refresh down')));
-    spyOn(console, 'warn');
-
-    service.persistPreference('en').subscribe();
-    httpMock.expectOne('/api/auth/me/locale').flush(profileFixture('en'));
-
-    expect(JSON.parse(localStorage.getItem('user') ?? '{}').preferredLocale).toBe('en');
-    expect(localeServiceSpy.setLocale).toHaveBeenCalledOnceWith('en');
-  });
-
-  it('persistPreference_NotSubscribed_DoesNothing', () => {
-    authServiceSpy.hasToken.and.returnValue(true);
-
-    service.persistPreference('en');
-
-    httpMock.expectNone('/api/auth/me/locale');
-    expect(localeServiceSpy.setLocale).not.toHaveBeenCalled();
-  });
+        httpMock.expectNone('/api/auth/me/locale');
+        expect(localeServiceSpy.setLocale).not.toHaveBeenCalled();
+    });
 });

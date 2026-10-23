@@ -4086,8 +4086,8 @@ input:-webkit-autofill:focus {
 
 /* Custom Snackbar Styles */
 .success-snackbar {
-  --mdc-snackbar-container-color: #4caf50 !important;
-  --mdc-snackbar-supporting-text-color: white !important;
+  --mat-snack-bar-container-color: #4caf50 !important;
+  --mat-snack-bar-supporting-text-color: white !important;
   --mat-snack-bar-button-color: white !important;
 
   .mat-mdc-snack-bar-container {
@@ -4109,8 +4109,8 @@ input:-webkit-autofill:focus {
 }
 
 .error-snackbar {
-  --mdc-snackbar-container-color: #f44336 !important;
-  --mdc-snackbar-supporting-text-color: white !important;
+  --mat-snack-bar-container-color: #f44336 !important;
+  --mat-snack-bar-supporting-text-color: white !important;
   --mat-snack-bar-button-color: white !important;
 
   .mat-mdc-snack-bar-container {
@@ -4134,8 +4134,8 @@ input:-webkit-autofill:focus {
 /* Issue #149 — rozet kazanım toast'u (BadgeEarnedToastComponent). Varsayılan inverse-surface zemini medalyon
    token'larıyla kontrast vermediği için --ms-surface-strong zemin + --ms-warning-text-weak çerçeve. */
 .mat-mdc-snack-bar-container.badge-toast {
-  --mdc-snackbar-container-color: var(--ms-surface-strong);
-  --mdc-snackbar-supporting-text-color: var(--ms-text-strong);
+  --mat-snack-bar-container-color: var(--ms-surface-strong);
+  --mat-snack-bar-supporting-text-color: var(--ms-text-strong);
   --mat-snack-bar-button-color: var(--ms-action-text);
 
   .mdc-snackbar__surface {

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 
 import { PUBLIC_PAGES_SCOPE, usePublicPageMeta } from '../public-page-meta';
@@ -9,6 +9,7 @@ import { PUBLIC_PAGES_SCOPE, usePublicPageMeta } from '../public-page-meta';
   imports: [TranslocoDirective],
   providers: [provideTranslocoScope(PUBLIC_PAGES_SCOPE)],
   templateUrl: './terms.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./terms.component.scss'],
 })
 export class TermsComponent {

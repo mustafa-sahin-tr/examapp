@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject } from '@angular/core';
+import { Component, DestroyRef, inject, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, take } from 'rxjs';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -11,7 +11,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
-import { CommonModule } from '@angular/common';
+
 import { NavigationExtras } from '@angular/router';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 
@@ -29,6 +29,7 @@ interface RoleOption {
   templateUrl: './register.component.html',
   styleUrls: ['./register.component.scss'],
   providers: [provideTranslocoScope(REGISTER_SCOPE)],
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
     ReactiveFormsModule,
     MatFormFieldModule,
@@ -38,9 +39,8 @@ interface RoleOption {
     MatSnackBarModule,
     MatIconModule,
     MatSelectModule,
-    CommonModule,
-    TranslocoDirective,
-  ],
+    TranslocoDirective
+],
 })
 export class RegisterComponent {
   private readonly transloco = inject(TranslocoService);

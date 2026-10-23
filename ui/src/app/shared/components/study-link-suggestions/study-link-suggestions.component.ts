@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
@@ -20,6 +20,7 @@ const STUDY_LINKS_SCOPE = 'study-links';
   imports: [MatIconModule, TranslocoDirective],
   providers: [provideTranslocoScope(STUDY_LINKS_SCOPE)],
   templateUrl: './study-link-suggestions.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./study-link-suggestions.component.scss'],
 })
 export class StudyLinkSuggestionsComponent {

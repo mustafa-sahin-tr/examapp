@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatSelectModule } from '@angular/material/select';
@@ -9,6 +9,7 @@ import { FormsModule } from '@angular/forms';
 import { ThemeConfigService, ThemePreset, WorksheetCardThemeConfig } from '../../services/theme-config.service';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-theme-switcher',
   standalone: true,
   imports: [

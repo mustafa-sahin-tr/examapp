@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, take } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -43,6 +43,7 @@ type ProgramFilter = 'all' | 'active' | 'completed';
   ],
   providers: [provideTranslocoScope(MY_PROGRAMS_SCOPE)],
   templateUrl: './my-programs.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./my-programs.component.scss'],
 })
 export class MyProgramsComponent implements OnInit {

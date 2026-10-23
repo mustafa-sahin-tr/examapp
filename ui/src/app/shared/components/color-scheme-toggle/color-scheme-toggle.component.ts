@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -15,6 +15,7 @@ import { ColorSchemeService } from '../../../services/color-scheme.service';
   standalone: true,
   imports: [MatIconModule, MatSlideToggleModule, MatTooltipModule],
   templateUrl: './color-scheme-toggle.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './color-scheme-toggle.component.scss',
 })
 export class ColorSchemeToggleComponent {

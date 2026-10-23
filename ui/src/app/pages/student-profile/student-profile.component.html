@@ -1,176 +1,173 @@
 @if (student) {
-<ng-container *transloco="let t; prefix: 'student-profile'">
-<mat-tab-group [(selectedIndex)]="activeTab">
-  <mat-tab [label]="t('tabs.info')">
-    <mat-card class="profile-card">
-      <mat-card-header>
-        <div class="profile-header stats-container">
-          <div class="avatar-container">
-            <img [src]="student.avatarUrl || 'default-avatar.png'" class="avatar" [alt]="t('profile.avatarAlt')" />
-            <div class="avatar-overlay" (click)="avatarInput.click()">
-              <span>{{ t('profile.changeAvatar') }}</span>
+  <ng-container *transloco="let t; prefix: 'student-profile'">
+    <mat-tab-group [(selectedIndex)]="activeTab">
+      <mat-tab [label]="t('tabs.info')">
+        <mat-card class="profile-card">
+          <mat-card-header>
+            <div class="profile-header stats-container">
+              <div class="avatar-container">
+                <img [src]="student.avatarUrl || 'default-avatar.png'" class="avatar" [alt]="t('profile.avatarAlt')" />
+                <div class="avatar-overlay" (click)="avatarInput.click()">
+                  <span>{{ t('profile.changeAvatar') }}</span>
+                </div>
+                <input type="file" #avatarInput (change)="onAvatarChange($event)" hidden />
+              </div>
+              <div class="stat">
+                <h2>{{ student.fullName }}</h2>
+              </div>
+
+              <div class="stat">
+                <mat-select [(value)]="student.gradeId" (selectionChange)="changeGrade()">
+                  @for ( grade of grades ; track grade.id ) {
+                    <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
+                  }
+                </mat-select>
+              </div>
+              <div class="stat">
+                <p>{{ t('profile.level', { level: student.level, xp: student.xp }) }}</p>
+              </div>
             </div>
-            <input type="file" #avatarInput (change)="onAvatarChange($event)" hidden />
-          </div>
-          <div class="stat">
-            <h2>{{ student.fullName }}</h2>
-          </div>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="stats-container">
+              <div class="stat">
+                <mat-icon>question_answer</mat-icon>
+                <span>{{ t('profile.questionsSolved', { count: student.totalQuestionsSolved }) }}</span>
+              </div>
+              <div class="stat">
+                <mat-icon>check_circle</mat-icon>
+                <span>{{ t('profile.correctAnswers', { count: student.correctAnswers }) }}</span>
+              </div>
+              <div class="stat">
+                <mat-icon>highlight_off</mat-icon>
+                <span>{{ t('profile.wrongAnswers', { count: student.wrongAnswers }) }}</span>
+              </div>
+              <div class="stat">
+                <mat-icon>assignment_turned_in</mat-icon>
+                <span>{{ t('profile.testsCompleted', { count: student.testsCompleted }) }}</span>
+              </div>
+              <div class="stat">
+                <mat-icon>emoji_events</mat-icon>
+                <span>{{ t('profile.rewards', { count: student.totalRewards }) }}</span>
+              </div>
+              <div class="stat">
+                <mat-icon>leaderboard</mat-icon>
+                <span>{{ t('profile.leaderboardRank', { rank: student.leaderboardRank || '-' }) }}</span>
+              </div>
+            </div>
 
-          <div class="stat">
-            <mat-select [(value)]="student.gradeId" (selectionChange)="changeGrade()">
-              @for ( grade of grades ; track grade.id ) {
-              <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
-              }
-            </mat-select>
-          </div>
-          <div class="stat">
-            <p>{{ t('profile.level', { level: student.level, xp: student.xp }) }}</p>
-          </div>
-        </div>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="stats-container">
-          <div class="stat">
-            <mat-icon>question_answer</mat-icon>
-            <span>{{ t('profile.questionsSolved', { count: student.totalQuestionsSolved }) }}</span>
-          </div>
-          <div class="stat">
-            <mat-icon>check_circle</mat-icon>
-            <span>{{ t('profile.correctAnswers', { count: student.correctAnswers }) }}</span>
-          </div>
-          <div class="stat">
-            <mat-icon>highlight_off</mat-icon>
-            <span>{{ t('profile.wrongAnswers', { count: student.wrongAnswers }) }}</span>
-          </div>
-          <div class="stat">
-            <mat-icon>assignment_turned_in</mat-icon>
-            <span>{{ t('profile.testsCompleted', { count: student.testsCompleted }) }}</span>
-          </div>
-          <div class="stat">
-            <mat-icon>emoji_events</mat-icon>
-            <span>{{ t('profile.rewards', { count: student.totalRewards }) }}</span>
-          </div>
-          <div class="stat">
-            <mat-icon>leaderboard</mat-icon>
-            <span>{{ t('profile.leaderboardRank', { rank: student.leaderboardRank || '-' }) }}</span>
-          </div>
-        </div>
-
-        <!-- <h3>📌 Son Çözülen Testler</h3>
+            <!-- <h3>📌 Son Çözülen Testler</h3>
             <mat-list>
-              @for (test of student.recentTests ; track test.name) 
-              {
+              @for (test of student.recentTests ; track test.name)
+                {
                 <mat-list-item>
                   <span>{{ test.name }}</span>
                   <span class="test-score">{{ test.score }}/{{ test.totalQuestions * 10 }} Puan</span>
                 </mat-list-item>
               }
-             
+
             </mat-list> -->
-      </mat-card-content>
-    </mat-card>
-    <!-- Issue #417: tüm rollerde ortak "Hesabım / Şifre değiştir" kartı (Keycloak hesap konsolu).
-         Issue #438: veli tarafından açılan çocuk hesabı kendi şifresini/e-postasını değiştirmez — kart gizli, şifreyi veli sıfırlar.
-         Profil gelene kadar da gizli: veli yönetimli hesapta bağlantı bir an bile görünmesin. -->
-    @if (student && !student.parentManaged) {
-      <app-account-security-card class="profile-account-card" />
-    }
-    <!-- Issue #419: veli davet kodu + bağlı veliler. -->
-    <app-student-parents-card class="profile-account-card" />
-  </mat-tab>
-  <mat-tab [label]="t('tabs.badges')">
-    <!-- Issue #381: sabit (sahte) puan kartları kaldırıldı; gerçek puan/sıralama verisi ayrı iş. -->
-    <app-section-header [title]="t('points.myBadges')" iconName="military_tech"></app-section-header>
+          </mat-card-content>
+        </mat-card>
+        <!-- Issue #417: tüm rollerde ortak "Hesabım / Şifre değiştir" kartı (Keycloak hesap konsolu).
+        Issue #438: veli tarafından açılan çocuk hesabı kendi şifresini/e-postasını değiştirmez — kart gizli, şifreyi veli sıfırlar.
+        Profil gelene kadar da gizli: veli yönetimli hesapta bağlantı bir an bile görünmesin. -->
+        @if (student && !student.parentManaged) {
+          <app-account-security-card class="profile-account-card" />
+        }
+        <!-- Issue #419: veli davet kodu + bağlı veliler. -->
+        <app-student-parents-card class="profile-account-card" />
+      </mat-tab>
+      <mat-tab [label]="t('tabs.badges')">
+        <!-- Issue #381: sabit (sahte) puan kartları kaldırıldı; gerçek puan/sıralama verisi ayrı iş. -->
+        <app-section-header [title]="t('points.myBadges')" iconName="military_tech"></app-section-header>
 
-    <!-- Bölüm başlığı yukarıdaki section-header'da; rozet bileşeni kendi başlığını tekrar etmez (#149 CR Ö1) -->
-    <app-badge-thropy [userId]="reportUserId ?? 0" [showHeading]="false"></app-badge-thropy>
+        <!-- Bölüm başlığı yukarıdaki section-header'da; rozet bileşeni kendi başlığını tekrar etmez (#149 CR Ö1) -->
+        <app-badge-thropy [userId]="reportUserId ?? 0" [showHeading]="false"></app-badge-thropy>
 
-    <app-section-header [title]="t('points.leaderboards')" iconName="leaderboard"></app-section-header>
+        <app-section-header [title]="t('points.leaderboards')" iconName="leaderboard"></app-section-header>
 
-    <div class="leaderboards-container">
-      <app-leaderboard></app-leaderboard>
-    </div>
-  </mat-tab>
-  <!-- Info Tab (Gelecekte Kullanılabilir) -->
+        <div class="leaderboards-container">
+          <app-leaderboard></app-leaderboard>
+        </div>
+      </mat-tab>
+      <!-- Info Tab (Gelecekte Kullanılabilir) -->
 
-  <!-- Assignments and Exams Tab -->
-  <mat-tab [label]="t('tabs.assignments')">
+      <!-- Assignments and Exams Tab -->
+      <mat-tab [label]="t('tabs.assignments')">
 
-    <div class="number-card-container">
-      <ngx-charts-number-card
-        [view]="[700, 200]"
-        [scheme]="colorScheme2"
-        [results]="single"
-        [cardColor]="cardColor"
-        (select)="onSelect($event)"
-      >
-      </ngx-charts-number-card>
-    </div>
-
-    <div class="goal-container">
-      <div class="goal-header">
-        <h2>{{ t('goal.title') }}</h2>
-        <mat-icon>visibility</mat-icon>
-      </div>
-      <mat-tab-group [(selectedIndex)]="activeTab2">
-        <mat-tab [label]="t('goal.monthly')">
-          <div class="goal-stats">{{ t('goal.streak', { count: 0 }) }}</div>
-          <p class="goal-subtext">{{ t('goal.streakLabel') }}</p>
-          <div class="goal-divider"></div>
-          <h4>{{ goalMonth | date: 'LLLL y' }}</h4>
-          <p class="goal-subtext">{{ t('goal.noActivity') }}</p>
-        </mat-tab>
-        <mat-tab [label]="t('goal.current')"> </mat-tab>
-      </mat-tab-group>
-    </div>
-  </mat-tab>
-
-  <!-- Weekly Calendar Tab -->
-  <mat-tab [label]="t('tabs.weeklyCalendar')">
-    <div class="heatmap-container">
-      <h2>{{ t('heatmap.title') }}</h2>
-
-      <ng-container *ngIf="!activityApiLoading; else activityHeatmapLoading">
-        <ng-container *ngIf="!activityApiError; else activityHeatmapError">
-          <ng-container *ngIf="activityDataFromApi.length > 0; else activityHeatmapEmpty">
-            <ngx-charts-heat-map
-              [view]="[1200, 210]"
-              [scheme]="sunsetScheme"
-              [results]="activityDataFromApi"
-              [xAxis]="true"
-              [yAxis]="true"
-              [legend]="false"
-              [showXAxisLabel]="true"
-              [showYAxisLabel]="true"
-              [gradient]="true"
-              [xAxisTickFormatting]="xAxisTickFormatting"
-              [tooltipText]="activityHeatmapTooltip"
+        <div class="number-card-container">
+          <ngx-charts-number-card
+            [view]="[700, 200]"
+            [scheme]="colorScheme2"
+            [results]="single"
+            [cardColor]="cardColor"
+            (select)="onSelect($event)"
             >
-            </ngx-charts-heat-map>
-          </ng-container>
-        </ng-container>
-      </ng-container>
+          </ngx-charts-number-card>
+        </div>
 
-      <ng-template #activityHeatmapLoading>
-        <p>{{ t('heatmap.loading') }}</p>
-      </ng-template>
+        <div class="goal-container">
+          <div class="goal-header">
+            <h2>{{ t('goal.title') }}</h2>
+            <mat-icon>visibility</mat-icon>
+          </div>
+          <mat-tab-group [(selectedIndex)]="activeTab2">
+            <mat-tab [label]="t('goal.monthly')">
+              <div class="goal-stats">{{ t('goal.streak', { count: 0 }) }}</div>
+              <p class="goal-subtext">{{ t('goal.streakLabel') }}</p>
+              <div class="goal-divider"></div>
+              <h4>{{ goalMonth | date: 'LLLL y' }}</h4>
+              <p class="goal-subtext">{{ t('goal.noActivity') }}</p>
+            </mat-tab>
+            <mat-tab [label]="t('goal.current')"> </mat-tab>
+          </mat-tab-group>
+        </div>
+      </mat-tab>
 
-      <ng-template #activityHeatmapError>
-        <p>{{ t('heatmap.error') }}</p>
-      </ng-template>
+      <!-- Weekly Calendar Tab -->
+      <mat-tab [label]="t('tabs.weeklyCalendar')">
+        <div class="heatmap-container">
+          <h2>{{ t('heatmap.title') }}</h2>
 
-      <ng-template #activityHeatmapEmpty>
-        <p>{{ t('heatmap.empty') }}</p>
-      </ng-template>
-    </div>
-  </mat-tab>
+          @if (!activityApiLoading) {
+            @if (!activityApiError) {
+              @if (activityDataFromApi.length > 0) {
+                <ngx-charts-heat-map
+                  [view]="[1200, 210]"
+                  [scheme]="sunsetScheme"
+                  [results]="activityDataFromApi"
+                  [xAxis]="true"
+                  [yAxis]="true"
+                  [legend]="false"
+                  [showXAxisLabel]="true"
+                  [showYAxisLabel]="true"
+                  [gradient]="true"
+                  [xAxisTickFormatting]="xAxisTickFormatting"
+                  [tooltipText]="activityHeatmapTooltip"
+                  >
+                </ngx-charts-heat-map>
+              } @else {
+                <p>{{ t('heatmap.empty') }}</p>
+              }
+            } @else {
+              <p>{{ t('heatmap.error') }}</p>
+            }
+          } @else {
+            <p>{{ t('heatmap.loading') }}</p>
+          }
 
-  <!-- User Theme Settings Tab -->
-  <mat-tab [label]="t('tabs.theme')">
-    <div class="theme-settings-container">
-      <app-user-theme-switcher></app-user-theme-switcher>
-    </div>
-  </mat-tab>
-</mat-tab-group>
-</ng-container>
+
+
+        </div>
+      </mat-tab>
+
+      <!-- User Theme Settings Tab -->
+      <mat-tab [label]="t('tabs.theme')">
+        <div class="theme-settings-container">
+          <app-user-theme-switcher></app-user-theme-switcher>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </ng-container>
 }

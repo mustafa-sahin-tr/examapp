@@ -1,6 +1,6 @@
-import { AfterViewInit, Component, DestroyRef, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, OnInit, ViewChild, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { CommonModule, Location } from '@angular/common';
+import { Location } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -16,15 +16,15 @@ const QUESTION_SCOPE = 'question';
   selector: 'app-question-canvas-preview',
   standalone: true,
   imports: [
-    CommonModule,
     MatButtonModule,
     MatIconModule,
     MatSnackBarModule,
     ImageSelectorComponent,
-    TranslocoDirective,
-  ],
+    TranslocoDirective
+],
   providers: [provideTranslocoScope(QUESTION_SCOPE)],
   templateUrl: './question-canvas-preview.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./question-canvas-preview.component.scss'],
 })
 export class QuestionCanvasPreviewComponent implements AfterViewInit {
@@ -77,7 +77,7 @@ export class QuestionCanvasPreviewComponent implements AfterViewInit {
 
   ngOnInit(): void {
     // Prefer navigation extras state (works when coming from inside the app)
-    const navState = (this.router.getCurrentNavigation()?.extras?.state as any) ?? null;
+    const navState = (this.router.currentNavigation()?.extras?.state as any) ?? null;
     const historyState = (this.location.getState?.() as any) ?? (globalThis as any)?.history?.state ?? null;
     const state = navState ?? historyState ?? {};
 

@@ -1,5 +1,5 @@
-import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit, OnDestroy } from '@angular/core';
+
+import { Component, inject, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatSelectModule } from '@angular/material/select';
@@ -18,7 +18,6 @@ import { UserThemeService } from '../../services/user-theme.service';
   selector: 'app-user-theme-switcher',
   standalone: true,
   imports: [
-    CommonModule,
     MatButtonModule,
     MatCardModule,
     MatSelectModule,
@@ -27,125 +26,125 @@ import { UserThemeService } from '../../services/user-theme.service';
     MatProgressSpinnerModule,
     MatSnackBarModule,
     FormsModule,
-    TranslocoDirective,
-  ],
+    TranslocoDirective
+],
   template: `
     <mat-card class="user-theme-card" *transloco="let t; prefix: 'shared.userTheme'">
       <mat-card-header>
         <mat-card-title>🎨 {{ t('title') }}</mat-card-title>
         <mat-card-subtitle>{{ t('subtitle') }}</mat-card-subtitle>
       </mat-card-header>
-
+    
       <mat-card-content>
-        <div *ngIf="loading" class="loading-container">
-          <mat-spinner diameter="40"></mat-spinner>
-          <p>{{ t('loading') }}</p>
-        </div>
-
-        <div *ngIf="!loading">
-          <!-- Mevcut Durum -->
-          <div class="current-theme-info" *ngIf="currentUserTheme">
-            <h4>📌 {{ t('savedStateTitle') }}</h4>
-            <p>
-              <strong>{{ t('presetLabel') }}</strong> {{ getPresetDisplayName(currentUserTheme.themePreset) }}
-              <span *ngIf="currentUserTheme.themeCustomConfig" class="custom-badge">+ {{ t('customSettings') }}</span>
-            </p>
-            <p class="hint">💡 {{ t('editHint') }}</p>
-            <div class="divider"></div>
+        @if (loading) {
+          <div class="loading-container">
+            <mat-spinner diameter="40"></mat-spinner>
+            <p>{{ t('loading') }}</p>
           </div>
-
-          <!-- Preset Seçimi -->
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>{{ t('presetSelectLabel') }}</mat-label>
-            <mat-select [(value)]="selectedPreset" (selectionChange)="onPresetChange($event.value)">
-              <mat-option value="current" *ngIf="currentUserTheme">
-                <div class="current-option">
-                  <strong>👤 {{ t('presets.current') }}</strong>
-                  <small>{{ getCurrentThemeDescription() }}</small>
+        }
+    
+        @if (!loading) {
+          <div>
+            <!-- Mevcut Durum -->
+            @if (currentUserTheme) {
+              <div class="current-theme-info">
+                <h4>📌 {{ t('savedStateTitle') }}</h4>
+                <p>
+                  <strong>{{ t('presetLabel') }}</strong> {{ getPresetDisplayName(currentUserTheme.themePreset) }}
+                  @if (currentUserTheme.themeCustomConfig) {
+                    <span class="custom-badge">+ {{ t('customSettings') }}</span>
+                  }
+                </p>
+                <p class="hint">💡 {{ t('editHint') }}</p>
+                <div class="divider"></div>
+              </div>
+            }
+            <!-- Preset Seçimi -->
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>{{ t('presetSelectLabel') }}</mat-label>
+              <mat-select [(value)]="selectedPreset" (selectionChange)="onPresetChange($event.value)">
+                @if (currentUserTheme) {
+                  <mat-option value="current">
+                    <div class="current-option">
+                      <strong>👤 {{ t('presets.current') }}</strong>
+                      <small>{{ getCurrentThemeDescription() }}</small>
+                    </div>
+                  </mat-option>
+                }
+                <mat-option value="divider-1" disabled>──────────────────</mat-option>
+                <mat-option value="minimal">🔳 {{ t('presets.minimal') }}</mat-option>
+                <mat-option value="standard">⭐ {{ t('presets.standard') }}</mat-option>
+                <mat-option value="enhanced">✨ {{ t('presets.enhanced') }}</mat-option>
+                <mat-option value="full">🚀 {{ t('presets.full') }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <!-- Özel Ayarlar -->
+            <div class="custom-settings">
+              <h4>🔧 {{ t('customSettings') }}</h4>
+              <p class="settings-note">{{ t('customSettingsNote') }}</p>
+              <div class="settings-grid">
+                <div class="setting-item">
+                  <mat-slide-toggle [(ngModel)]="currentTheme.borders" (change)="onCustomChange()" color="primary">
+                    🖼️ {{ t('settings.borders.label') }}
+                  </mat-slide-toggle>
+                  <span class="setting-description">{{ t('settings.borders.description') }}</span>
                 </div>
-              </mat-option>
-              <mat-option value="divider-1" disabled>──────────────────</mat-option>
-              <mat-option value="minimal">🔳 {{ t('presets.minimal') }}</mat-option>
-              <mat-option value="standard">⭐ {{ t('presets.standard') }}</mat-option>
-              <mat-option value="enhanced">✨ {{ t('presets.enhanced') }}</mat-option>
-              <mat-option value="full">🚀 {{ t('presets.full') }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <!-- Özel Ayarlar -->
-          <div class="custom-settings">
-            <h4>🔧 {{ t('customSettings') }}</h4>
-            <p class="settings-note">{{ t('customSettingsNote') }}</p>
-
-            <div class="settings-grid">
-              <div class="setting-item">
-                <mat-slide-toggle [(ngModel)]="currentTheme.borders" (change)="onCustomChange()" color="primary">
-                  🖼️ {{ t('settings.borders.label') }}
-                </mat-slide-toggle>
-                <span class="setting-description">{{ t('settings.borders.description') }}</span>
-              </div>
-
-              <div class="setting-item">
-                <mat-slide-toggle [(ngModel)]="currentTheme.gradient" (change)="onCustomChange()" color="primary">
-                  🌈 {{ t('settings.gradient.label') }}
-                </mat-slide-toggle>
-                <span class="setting-description">{{ t('settings.gradient.description') }}</span>
-              </div>
-
-              <div class="setting-item">
-                <mat-slide-toggle [(ngModel)]="currentTheme.iconBadges" (change)="onCustomChange()" color="primary">
-                  🏷️ {{ t('settings.iconBadges.label') }}
-                </mat-slide-toggle>
-                <span class="setting-description">{{ t('settings.iconBadges.description') }}</span>
-              </div>
-
-              <div class="setting-item">
-                <mat-slide-toggle [(ngModel)]="currentTheme.ribbons" (change)="onCustomChange()" color="primary">
-                  🎗️ {{ t('settings.ribbons.label') }}
-                </mat-slide-toggle>
-                <span class="setting-description">{{ t('settings.ribbons.description') }}</span>
-              </div>
-
-              <div class="setting-item">
-                <mat-slide-toggle [(ngModel)]="currentTheme.glowEffects" (change)="onCustomChange()" color="primary">
-                  ✨ {{ t('settings.glow.label') }}
-                </mat-slide-toggle>
-                <span class="setting-description">{{ t('settings.glow.description') }}</span>
-              </div>
-
-              <div class="setting-item">
-                <mat-slide-toggle [(ngModel)]="currentTheme.progressBar" (change)="onCustomChange()" color="primary">
-                  📊 {{ t('settings.progressBar.label') }}
-                </mat-slide-toggle>
-                <span class="setting-description">{{ t('settings.progressBar.description') }}</span>
-              </div>
-
-              <div class="setting-item">
-                <mat-slide-toggle
-                  [(ngModel)]="currentTheme.transformEffects"
-                  (change)="onCustomChange()"
-                  color="primary"
-                >
-                  🔄 {{ t('settings.transform.label') }}
-                </mat-slide-toggle>
-                <span class="setting-description">{{ t('settings.transform.description') }}</span>
-              </div>
-
-              <div class="setting-item">
-                <mat-slide-toggle
-                  [(ngModel)]="currentTheme.typographyEffects"
-                  (change)="onCustomChange()"
-                  color="primary"
-                >
-                  📝 {{ t('settings.typography.label') }}
-                </mat-slide-toggle>
-                <span class="setting-description">{{ t('settings.typography.description') }}</span>
+                <div class="setting-item">
+                  <mat-slide-toggle [(ngModel)]="currentTheme.gradient" (change)="onCustomChange()" color="primary">
+                    🌈 {{ t('settings.gradient.label') }}
+                  </mat-slide-toggle>
+                  <span class="setting-description">{{ t('settings.gradient.description') }}</span>
+                </div>
+                <div class="setting-item">
+                  <mat-slide-toggle [(ngModel)]="currentTheme.iconBadges" (change)="onCustomChange()" color="primary">
+                    🏷️ {{ t('settings.iconBadges.label') }}
+                  </mat-slide-toggle>
+                  <span class="setting-description">{{ t('settings.iconBadges.description') }}</span>
+                </div>
+                <div class="setting-item">
+                  <mat-slide-toggle [(ngModel)]="currentTheme.ribbons" (change)="onCustomChange()" color="primary">
+                    🎗️ {{ t('settings.ribbons.label') }}
+                  </mat-slide-toggle>
+                  <span class="setting-description">{{ t('settings.ribbons.description') }}</span>
+                </div>
+                <div class="setting-item">
+                  <mat-slide-toggle [(ngModel)]="currentTheme.glowEffects" (change)="onCustomChange()" color="primary">
+                    ✨ {{ t('settings.glow.label') }}
+                  </mat-slide-toggle>
+                  <span class="setting-description">{{ t('settings.glow.description') }}</span>
+                </div>
+                <div class="setting-item">
+                  <mat-slide-toggle [(ngModel)]="currentTheme.progressBar" (change)="onCustomChange()" color="primary">
+                    📊 {{ t('settings.progressBar.label') }}
+                  </mat-slide-toggle>
+                  <span class="setting-description">{{ t('settings.progressBar.description') }}</span>
+                </div>
+                <div class="setting-item">
+                  <mat-slide-toggle
+                    [(ngModel)]="currentTheme.transformEffects"
+                    (change)="onCustomChange()"
+                    color="primary"
+                    >
+                    🔄 {{ t('settings.transform.label') }}
+                  </mat-slide-toggle>
+                  <span class="setting-description">{{ t('settings.transform.description') }}</span>
+                </div>
+                <div class="setting-item">
+                  <mat-slide-toggle
+                    [(ngModel)]="currentTheme.typographyEffects"
+                    (change)="onCustomChange()"
+                    color="primary"
+                    >
+                    📝 {{ t('settings.typography.label') }}
+                  </mat-slide-toggle>
+                  <span class="setting-description">{{ t('settings.typography.description') }}</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        }
       </mat-card-content>
-
+    
       <mat-card-actions>
         <button mat-raised-button color="warn" (click)="resetToDefault()" [disabled]="loading">
           🔄 {{ t('resetButton') }}
@@ -156,7 +155,8 @@ import { UserThemeService } from '../../services/user-theme.service';
         </button>
       </mat-card-actions>
     </mat-card>
-  `,
+    `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       .user-theme-card {

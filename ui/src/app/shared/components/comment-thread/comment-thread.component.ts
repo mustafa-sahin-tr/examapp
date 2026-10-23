@@ -14,6 +14,7 @@ import {
   signal,
   untracked,
   viewChild,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -192,6 +193,7 @@ function toThreadView(root: WorksheetCommentRoot): ThreadView {
   ],
   providers: [provideTranslocoScope(COMMENTS_SCOPE)],
   templateUrl: './comment-thread.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./comment-thread.component.scss'],
 })
 export class CommentThreadComponent {

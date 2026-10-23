@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -48,6 +48,7 @@ export interface DmReportDialogResult {
   ],
   providers: [provideTranslocoScope(DIRECT_MESSAGES_SCOPE)],
   templateUrl: './dm-report-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./dm-report-dialog.component.scss'],
 })
 export class DmReportDialogComponent {

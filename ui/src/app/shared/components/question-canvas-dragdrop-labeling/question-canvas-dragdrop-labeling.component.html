@@ -1,34 +1,44 @@
 <div class="dd-root" *transloco="let t; prefix: 'shared.questionCanvas'">
   <div class="dd-canvas">
-    <div class="dd-passage" *ngIf="!hidePassage && passageImageUrl() as pUrl">
-      <div class="dd-passage__title" *ngIf="passageTitle() as title">{{ title }}</div>
-      <img class="dd-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
-    </div>
-
-    <div class="dd-image-wrap" *ngIf="imageUrl() as url">
-      <img class="dd-image" [src]="url" [alt]="t('questionAlt')" [appStorageImageRetry]="imageRefresh" />
-
-      <div class="dd-overlay" *ngIf="plan() as p">
-        <ng-container *ngFor="let z of zones()">
-          <div
-            class="dd-zone"
-            [ngClass]="zoneClass()(z.id)"
-            [ngStyle]="zoneStyle()(z)"
-            cdkDropList
-            [id]="'zone-' + z.id"
-            [cdkDropListData]="zoneState()[z.id]"
-            [cdkDropListConnectedTo]="allDropListIds()"
-            (cdkDropListDropped)="dropToZone(z.id, $event)"
-          >
-            <div class="dd-zone__slot" *ngIf="(zoneState()[z.id] || []).length === 0"></div>
-
-            <div class="dd-chip" *ngFor="let item of zoneState()[z.id] || []" cdkDrag [cdkDragData]="item">
-              {{ draggableLabel()(item) }}
-            </div>
-          </div>
-        </ng-container>
+    @if (!hidePassage && passageImageUrl(); as pUrl) {
+      <div class="dd-passage">
+        @if (passageTitle(); as title) {
+          <div class="dd-passage__title">{{ title }}</div>
+        }
+        <img class="dd-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
       </div>
-    </div>
+    }
+
+    @if (imageUrl(); as url) {
+      <div class="dd-image-wrap">
+        <img class="dd-image" [src]="url" [alt]="t('questionAlt')" [appStorageImageRetry]="imageRefresh" />
+        @if (plan(); as p) {
+          <div class="dd-overlay">
+            @for (z of zones(); track z) {
+              <div
+                class="dd-zone"
+                [ngClass]="zoneClass()(z.id)"
+                [ngStyle]="zoneStyle()(z)"
+                cdkDropList
+                [id]="'zone-' + z.id"
+                [cdkDropListData]="zoneState()[z.id]"
+                [cdkDropListConnectedTo]="allDropListIds()"
+                (cdkDropListDropped)="dropToZone(z.id, $event)"
+                >
+                @if ((zoneState()[z.id] || []).length === 0) {
+                  <div class="dd-zone__slot"></div>
+                }
+                @for (item of zoneState()[z.id] || []; track item) {
+                  <div class="dd-chip" cdkDrag [cdkDragData]="item">
+                    {{ draggableLabel()(item) }}
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
   </div>
 
   <div class="dd-pool">
@@ -47,10 +57,12 @@
       [cdkDropListData]="pool()"
       [cdkDropListConnectedTo]="zoneDropListIds()"
       (cdkDropListDropped)="dropToPool($event)"
-    >
-      <div class="dd-chip" *ngFor="let item of pool()" cdkDrag [cdkDragData]="item">
-        {{ draggableLabel()(item) }}
-      </div>
+      >
+      @for (item of pool(); track item) {
+        <div class="dd-chip" cdkDrag [cdkDragData]="item">
+          {{ draggableLabel()(item) }}
+        </div>
+      }
     </div>
   </div>
 </div>

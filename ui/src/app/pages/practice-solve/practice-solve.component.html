@@ -637,7 +637,7 @@
           <div class="passage-only__text">{{ q.passage?.text }}</div>
           }
           @if (q.passage?.imageUrl) {
-          <img class="passage-only__image" [src]="q.passage?.imageUrl" [alt]="t('stage.passageAlt')"
+          <img class="passage-only__image" [src]="q.passage?.imageUrl ?? null" [alt]="t('stage.passageAlt')"
             [appStorageImageRetry]="stageImageRefresh" />
           }
         </div>

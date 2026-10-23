@@ -1,7 +1,8 @@
-import { provideHttpClient } from '@angular/common/http';
+import type { Mock } from "vitest";
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { Router, provideRouter } from '@angular/router';
 
@@ -19,398 +20,398 @@ const LIST_URL = '/api/badge/notifications/me';
 const BADGE_ICON = 'achievements/first-step.svg';
 
 function notification(overrides: Partial<AppNotification> = {}): AppNotification {
-  return {
-    id: 1,
-    type: 'WorksheetReminderDue',
-    title: 'Hatırlatma',
-    body: 'Sınavın yaklaşıyor',
-    data: null,
-    isRead: false,
-    createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-    ...overrides,
-  };
+    return {
+        id: 1,
+        type: 'WorksheetReminderDue',
+        title: 'Hatırlatma',
+        body: 'Sınavın yaklaşıyor',
+        data: null,
+        isRead: false,
+        createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+        ...overrides,
+    };
 }
 
-function badgeEarned(
-  overrides: Partial<AppNotification> = {},
-  iconUrl: string | null = BADGE_ICON,
-  icon: string | null = null
-): AppNotification {
-  return notification({
-    id: 10,
-    type: 'BadgeEarned',
-    title: 'Yeni rozet kazandın!',
-    body: 'İlk Adım rozetini kazandın.',
-    data: JSON.stringify({ badgeDefinitionId: 'badge-definition-1', badgeCode: 'FIRST_STEP', iconUrl, icon }),
-    ...overrides,
-  });
+function badgeEarned(overrides: Partial<AppNotification> = {}, iconUrl: string | null = BADGE_ICON, icon: string | null = null): AppNotification {
+    return notification({
+        id: 10,
+        type: 'BadgeEarned',
+        title: 'Yeni rozet kazandın!',
+        body: 'İlk Adım rozetini kazandın.',
+        data: JSON.stringify({ badgeDefinitionId: 'badge-definition-1', badgeCode: 'FIRST_STEP', iconUrl, icon }),
+        ...overrides,
+    });
 }
 
 describe('NotificationsComponent (issue #146)', () => {
-  let fixture: ComponentFixture<NotificationsComponent>;
-  let httpMock: HttpTestingController;
-  let navigateSpy: jasmine.Spy;
-
-  function el(): HTMLElement {
-    return fixture.nativeElement as HTMLElement;
-  }
-
-  function items(): HTMLButtonElement[] {
-    return Array.from(el().querySelectorAll<HTMLButtonElement>('.ntf__item'));
-  }
-
-  function flushList(list: AppNotification[], unreadOnly = false): void {
-    const req = httpMock.expectOne((r) => r.url === LIST_URL && r.params.get('unreadOnly') === String(unreadOnly));
-    expect(req.request.method).toBe('GET');
-    req.flush(list);
-    fixture.detectChanges();
-  }
-
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [
-        NotificationsComponent,
-        NoopAnimationsModule,
-        translocoTestingModule({ langs: { 'notifications/tr': notificationsTr } }),
-      ],
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        provideRouter([]),
-        {
-          provide: LocaleService,
-          useValue: {
-            locale: signal('tr').asReadonly(),
-            localeDefinition: signal(localeDefinitionOf('tr')).asReadonly(),
-          },
-        },
-      ],
-    }).compileComponents();
-
-    httpMock = TestBed.inject(HttpTestingController);
-    navigateSpy = spyOn(TestBed.inject(Router), 'navigate').and.returnValue(Promise.resolve(true));
-    fixture = TestBed.createComponent(NotificationsComponent);
-    fixture.detectChanges();
-  });
-
-  afterEach(() => httpMock.verify());
-
-  it('init_ListsAllNotificationsWithTitleBodyAndRelativeTime', () => {
-    flushList([notification({ id: 1 }), notification({ id: 2, title: 'Randevu', body: 'Yeni talep', isRead: true })]);
-
-    const rows = items();
-    expect(rows.length).toBe(2);
-    expect(rows[0].querySelector('.ntf__title')?.textContent).toContain('Hatırlatma');
-    expect(rows[0].querySelector('.ntf__body')?.textContent).toContain('Sınavın yaklaşıyor');
-    expect(rows[0].querySelector('.ntf__time')?.textContent?.trim()).toBe('5 dakika önce');
-    expect(rows[0].classList).toContain('is-unread');
-    expect(rows[1].classList).not.toContain('is-unread');
-  });
-
-  // Issue #149: rozet satırı 40px "Kazanıldı" medalyonu — icon → iconUrl → military_tech.
-  function medallion(row: HTMLElement): HTMLElement | null {
-    return row.querySelector<HTMLElement>('app-badge-medallion');
-  }
-
-  it('badgeEarned_WithIconUrl_ShowsEarnedMedallionWithRootRelativeImage', () => {
-    flushList([badgeEarned()]);
-
-    const m = medallion(items()[0]);
-    expect(m).not.toBeNull();
-    expect(m?.getAttribute('data-state')).toBe('earned');
-    expect(m?.getAttribute('aria-hidden')).toBe('true');
-    expect(m?.style.getPropertyValue('--bm-size')).toBe('40px');
-    expect(m?.querySelector('img')?.getAttribute('src')).toBe(`/${BADGE_ICON}`);
-    expect(items()[0].querySelector('.ntf__badge-img')).toBeNull();
-    expect(items()[0].querySelector('.ntf__icon')).toBeNull();
-  });
-
-  it('badgeEarned_WithMaterialIcon_ShowsSymbolGlyphOverIconUrl', () => {
-    flushList([badgeEarned({}, BADGE_ICON, 'gps_fixed')]);
-
-    const m = medallion(items()[0]);
-    expect(m?.querySelector('img')).toBeNull();
-    expect(m?.querySelector('.bm__icon')?.textContent?.trim()).toBe('gps_fixed');
-  });
-
-  it('badgeEarned_WithoutIcons_FallsBackToMilitaryTechMedallion', () => {
-    flushList([badgeEarned({}, null)]);
-
-    const m = medallion(items()[0]);
-    expect(m?.querySelector('img')).toBeNull();
-    expect(m?.querySelector('.bm__icon')?.textContent?.trim()).toBe('military_tech');
-  });
-
-  for (const [label, iconUrl] of [
-    ['externalUrl', 'https://example.org/achievements/x.svg'],
-    ['protocolRelative', '//example.org/achievements/x.svg'],
-    ['pathTraversal', 'achievements/../secret.svg'],
-    ['nonSvg', 'achievements/first-step.png'],
-    ['otherFolder', 'assets/first-step.svg'],
-  ] as const) {
-    it(`badgeEarned_IconUrlOutsideAchievements_${label}_FallsBackToMilitaryTech`, () => {
-      flushList([badgeEarned({}, iconUrl)]);
-
-      const m = medallion(items()[0]);
-      expect(m?.querySelector('img')).toBeNull();
-      expect(m?.querySelector('.bm__icon')?.textContent?.trim()).toBe('military_tech');
+    beforeEach(() => {
+        vi.useFakeTimers();
     });
-  }
-
-  it('badgeEarned_InvalidIconName_FallsBackToIconUrl', () => {
-    flushList([badgeEarned({}, BADGE_ICON, 'Not A Glyph<script>')]);
-
-    expect(medallion(items()[0])?.querySelector('img')?.getAttribute('src')).toBe(`/${BADGE_ICON}`);
-  });
-
-  it('badgeEarned_Click_MarksReadAndNavigatesToBadgeProgressPage', () => {
-    flushList([badgeEarned()]);
-
-    items()[0].click();
-    const req = httpMock.expectOne('/api/badge/notifications/10/read');
-    expect(req.request.method).toBe('POST');
-    // Navigasyon isteğin sonucuna bağlı: yanıt gelmeden gidilmez.
-    expect(navigateSpy).not.toHaveBeenCalled();
-    req.flush(null, { status: 204, statusText: 'No Content' });
-    fixture.detectChanges();
-
-    expect(navigateSpy).toHaveBeenCalledWith([BADGE_PROGRESS_ROUTE]);
-    expect(items()[0].classList).not.toContain('is-unread');
-  });
-
-  it('badgeProgressRoute_ExistsInAppRoutes', () => {
-    flushList([]);
-    const layoutRoute = routes.find((r) => Array.isArray(r.children));
-    const childPaths = layoutRoute?.children?.map((r) => `/${r.path}`) ?? [];
-    expect(childPaths).toContain(BADGE_PROGRESS_ROUTE);
-    expect(childPaths).toContain('/notifications');
-  });
-
-  it('unknownType_ShowsGenericIconAndDoesNotInterpretDataOrNavigate', () => {
-    flushList([notification({ id: 5, type: 'SomethingNew', data: JSON.stringify({ iconUrl: BADGE_ICON }) })]);
-
-    const row = items()[0];
-    expect(row.querySelector('app-badge-medallion')).toBeNull();
-    expect(row.querySelector('.ntf__icon mat-icon')?.textContent?.trim()).toBe('notifications');
-
-    row.click();
-    httpMock.expectOne('/api/badge/notifications/5/read').flush(null, { status: 204, statusText: 'No Content' });
-    expect(navigateSpy).not.toHaveBeenCalled();
-  });
-
-  it('badgeEarned_MalformedData_FallsBackToMilitaryTechMedallion', () => {
-    flushList([badgeEarned({ data: '{not json' })]);
-
-    const m = items()[0].querySelector('app-badge-medallion');
-    expect(m?.querySelector('img')).toBeNull();
-    expect(m?.querySelector('.bm__icon')?.textContent?.trim()).toBe('military_tech');
-  });
-
-  it('badgeEarned_ClickThenDestroy_MarkReadStillCompletesAndCountDrops', () => {
-    const service = TestBed.inject(NotificationService);
-    service.refreshUnreadCount().subscribe();
-    httpMock.expectOne('/api/badge/notifications/me/unread-count').flush(2);
-    flushList([badgeEarned()]);
-
-    items()[0].click();
-    expect(service.unreadCount()).toBe(1);
-    fixture.destroy();
-
-    // Abonelik komponent ömrüne bağlı olsaydı istek iptal edilir, flush hata verirdi.
-    const req = httpMock.expectOne('/api/badge/notifications/10/read');
-    expect(req.cancelled).toBeFalse();
-    req.flush(null, { status: 204, statusText: 'No Content' });
-
-    expect(service.unreadCount()).toBe(1);
-    expect(navigateSpy).toHaveBeenCalledWith([BADGE_PROGRESS_ROUTE]);
-  });
-
-  it('badgeEarned_MarkReadFails_StillNavigatesAndRestoresCount', () => {
-    const service = TestBed.inject(NotificationService);
-    service.refreshUnreadCount().subscribe();
-    httpMock.expectOne('/api/badge/notifications/me/unread-count').flush(1);
-    flushList([badgeEarned()]);
-
-    items()[0].click();
-    httpMock.expectOne('/api/badge/notifications/10/read').flush(null, { status: 500, statusText: 'Error' });
-
-    expect(service.unreadCount()).toBe(1);
-    expect(navigateSpy).toHaveBeenCalledWith([BADGE_PROGRESS_ROUTE]);
-  });
-
-  it('worksheetComment_Click_MarksReadAndNavigatesToWorksheetDetailDeepLink', () => {
-    flushList([
-      notification({
-        id: 21,
-        type: 'WorksheetCommentReplied',
-        title: 'Yeni cevap',
-        data: JSON.stringify({ worksheetId: 12, questionId: 34, commentId: 57, rootCommentId: 56 }),
-      }),
-    ]);
-
-    expect(items()[0].querySelector('.ntf__icon mat-icon')?.textContent?.trim()).toBe('forum');
-    // Sunucu metni bidi-izole gösterilir (security D1).
-    expect(items()[0].querySelector('.ntf__title bdi')?.getAttribute('dir')).toBe('auto');
-    expect(items()[0].querySelector('.ntf__body bdi')?.getAttribute('dir')).toBe('auto');
-    expect(items()[0].querySelector('.ntf__chevron')).not.toBeNull();
-    items()[0].click();
-    httpMock.expectOne('/api/badge/notifications/21/read').flush(null, { status: 204, statusText: 'No Content' });
-
-    expect(navigateSpy).toHaveBeenCalledWith(['/test', 12], {
-      queryParams: { commentId: 57, questionId: 34, rootCommentId: 56 },
+    afterEach(() => {
+        vi.useRealTimers();
     });
-  });
+    let fixture: ComponentFixture<NotificationsComponent>;
+    let httpMock: HttpTestingController;
+    let navigateSpy: Mock;
 
-  // Issue #309: soru yorumunda "Soru {n}" etiketi; worksheet seviyesinde ya da sıra yoksa etiket yok.
-  it('questionComment_ShowsQuestionOrderTag; worksheetLevel_NoTag', () => {
-    flushList([
-      notification({
-        id: 22,
-        type: 'WorksheetCommentCreated',
-        title: 'Yeni soru',
-        data: JSON.stringify({ worksheetId: 12, questionId: 34, commentId: 58, rootCommentId: 58, questionOrder: 4 }),
-      }),
-      notification({
-        id: 23,
-        type: 'WorksheetCommentCreated',
-        title: 'Yeni yorum',
-        data: JSON.stringify({ worksheetId: 12, questionId: null, commentId: 59, rootCommentId: 59, questionOrder: null }),
-      }),
-    ]);
+    function el(): HTMLElement {
+        return fixture.nativeElement as HTMLElement;
+    }
 
-    const tag = items()[0].querySelector('[data-testid="notification-question-tag"]');
-    expect(tag?.textContent?.trim()).toBe('Soru 4');
-    expect(items()[0].getAttribute('aria-label')).toContain('Soru 4');
-    expect(items()[1].querySelector('[data-testid="notification-question-tag"]')).toBeNull();
-  });
+    function items(): HTMLButtonElement[] {
+        return Array.from(el().querySelectorAll<HTMLButtonElement>('.ntf__item'));
+    }
 
-  it('coalescedComment_ShowsCountBadge; singleOrMissingOrInvalid_NoBadge; capped at 99+', () => {
-    const data = JSON.stringify({ worksheetId: 12, questionId: null, commentId: 59, rootCommentId: 59, questionOrder: null });
-    flushList([
-      notification({ id: 30, type: 'WorksheetCommentCreated', title: '3 yeni yorum: Kesirler', data, coalescedCount: 3 }),
-      notification({ id: 31, type: 'WorksheetCommentCreated', title: 'Yeni yorum', data, coalescedCount: 1 }),
-      notification({ id: 32, type: 'WorksheetCommentCreated', title: 'Yeni yorum', data }),
-      notification({ id: 33, type: 'WorksheetCommentCreated', title: 'x', data, coalescedCount: '7' as unknown as number }),
-      notification({ id: 34, type: 'WorksheetCommentReplied', title: 'Çok', data, coalescedCount: 250 }),
-    ]);
+    function flushList(list: AppNotification[], unreadOnly = false): void {
+        const req = httpMock.expectOne((r) => r.url === LIST_URL && r.params.get('unreadOnly') === String(unreadOnly));
+        expect(req.request.method).toBe('GET');
+        req.flush(list);
+        fixture.detectChanges();
+    }
 
-    const badge = (i: number) => items()[i].querySelector('[data-testid="notification-coalesced-count"]');
-    expect(badge(0)?.textContent?.trim()).toBe('3');
-    expect(badge(0)?.getAttribute('aria-label')).toBe('3 bildirim birleştirildi');
-    expect(badge(1)).toBeNull();
-    expect(badge(2)).toBeNull();
-    expect(badge(3)).toBeNull();
-    expect(badge(4)?.textContent?.trim()).toBe('99+');
-  });
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            imports: [
+                NotificationsComponent,
+                NoopAnimationsModule,
+                translocoTestingModule({ langs: { 'notifications/tr': notificationsTr } }),
+            ],
+            providers: [
+                provideHttpClient(withXhr()),
+                provideHttpClientTesting(),
+                provideRouter([]),
+                {
+                    provide: LocaleService,
+                    useValue: {
+                        locale: signal('tr').asReadonly(),
+                        localeDefinition: signal(localeDefinitionOf('tr')).asReadonly(),
+                    },
+                },
+            ],
+        }).compileComponents();
 
-  it('readBadgeItem_Click_NavigatesWithoutMarkRead', () => {
-    flushList([badgeEarned({ isRead: true })]);
-
-    items()[0].click();
-
-    httpMock.expectNone('/api/badge/notifications/10/read');
-    expect(navigateSpy).toHaveBeenCalledWith([BADGE_PROGRESS_ROUTE]);
-  });
-
-  it('relativeTime_RefreshesEveryMinuteWhilePageOpen', fakeAsync(() => {
-    // beforeEach'teki örnek gerçek zamanlayıcıyla kuruldu; tick testi için fakeAsync içinde yenisi oluşturulur.
-    flushList([]);
-    fixture.destroy();
-    const local = TestBed.createComponent(NotificationsComponent);
-    local.detectChanges();
-    httpMock
-      .expectOne((r) => r.url === LIST_URL)
-      .flush([notification({ createdAt: new Date(Date.now() - 30 * 1000).toISOString() })]);
-    local.detectChanges();
-    const time = () => (local.nativeElement as HTMLElement).querySelector('.ntf__time')?.textContent?.trim();
-    expect(time()).toBe('şimdi');
-
-    tick(RELATIVE_TIME_TICK_MS);
-    local.detectChanges();
-
-    expect(time()).toBe('1 dakika önce');
-    local.destroy();
-  }));
-
-  it('readItem_Click_DoesNotCallMarkRead', () => {
-    flushList([notification({ id: 3, isRead: true })]);
-
-    items()[0].click();
-    httpMock.expectNone('/api/badge/notifications/3/read');
-  });
-
-  it('markRead_Fails_RestoresUnreadHighlight', () => {
-    flushList([notification({ id: 4 })]);
-
-    items()[0].click();
-    httpMock.expectOne('/api/badge/notifications/4/read').flush(null, { status: 500, statusText: 'Error' });
-    fixture.detectChanges();
-
-    expect(items()[0].classList).toContain('is-unread');
-  });
-
-  it('markRead_Success_DecrementsUnreadCount', () => {
-    const service = TestBed.inject(NotificationService);
-    service.refreshUnreadCount().subscribe();
-    httpMock.expectOne('/api/badge/notifications/me/unread-count').flush(3);
-    flushList([notification({ id: 8 })]);
-
-    items()[0].click();
-    httpMock.expectOne('/api/badge/notifications/8/read').flush(null, { status: 204, statusText: 'No Content' });
-
-    expect(service.unreadCount()).toBe(2);
-  });
-
-  it('emptyList_ShowsEmptyState', () => {
-    flushList([]);
-
-    expect(items().length).toBe(0);
-    expect(el().querySelector('.ntf__state--empty')?.textContent).toContain(notificationsTr.empty.all);
-  });
-
-  it('unreadFilter_RequestsUnreadOnlyAndShowsUnreadEmptyText', () => {
-    flushList([notification()]);
-
-    const unreadToggle = Array.from(el().querySelectorAll<HTMLButtonElement>('mat-button-toggle button')).find((b) =>
-      b.textContent?.includes(notificationsTr.filter.unread)
-    );
-    unreadToggle?.click();
-    fixture.detectChanges();
-    flushList([], true);
-
-    expect(el().querySelector('.ntf__state--empty')?.textContent).toContain(notificationsTr.empty.unread);
-  });
-
-  it('loadError_ShowsErrorAndRetryReloads', () => {
-    httpMock.expectOne((r) => r.url === LIST_URL).flush(null, { status: 500, statusText: 'Error' });
-    fixture.detectChanges();
-
-    const alert = el().querySelector('[role="alert"]');
-    expect(alert?.textContent).toContain(notificationsTr.loadError);
-
-    alert?.querySelector('button')?.click();
-    fixture.detectChanges();
-    flushList([notification()]);
-    expect(items().length).toBe(1);
-  });
-
-  // Issue #439: yeni ders talebi bildirimi veli panelindeki "Onay bekleyen ders talepleri" kartına gider (fragment).
-  it('parentBookingApprovalRequested_Click_NavigatesToParentPanelCardWithFragment', () => {
-    flushList([
-      notification({
-        id: 31,
-        type: 'ParentBookingApprovalRequested',
-        title: 'Yeni ders talebi',
-        data: JSON.stringify({ bookingId: 9, studentId: 21 }),
-      }),
-    ]);
-
-    items()[0].click();
-    httpMock.expectOne('/api/badge/notifications/31/read').flush(null, { status: 204, statusText: 'No Content' });
-
-    expect(navigateSpy).toHaveBeenCalledWith(['/parent'], {
-      queryParams: { child: 21 },
-      fragment: 'booking-requests',
+        httpMock = TestBed.inject(HttpTestingController);
+        navigateSpy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+        fixture = TestBed.createComponent(NotificationsComponent);
+        fixture.detectChanges();
     });
-  });
+
+    afterEach(() => httpMock.verify());
+
+    it('init_ListsAllNotificationsWithTitleBodyAndRelativeTime', () => {
+        flushList([notification({ id: 1 }), notification({ id: 2, title: 'Randevu', body: 'Yeni talep', isRead: true })]);
+
+        const rows = items();
+        expect(rows.length).toBe(2);
+        expect(rows[0].querySelector('.ntf__title')?.textContent).toContain('Hatırlatma');
+        expect(rows[0].querySelector('.ntf__body')?.textContent).toContain('Sınavın yaklaşıyor');
+        expect(rows[0].querySelector('.ntf__time')?.textContent?.trim()).toBe('5 dakika önce');
+        expect(rows[0].classList).toContain('is-unread');
+        expect(rows[1].classList).not.toContain('is-unread');
+    });
+
+    // Issue #149: rozet satırı 40px "Kazanıldı" medalyonu — icon → iconUrl → military_tech.
+    function medallion(row: HTMLElement): HTMLElement | null {
+        return row.querySelector<HTMLElement>('app-badge-medallion');
+    }
+
+    it('badgeEarned_WithIconUrl_ShowsEarnedMedallionWithRootRelativeImage', () => {
+        flushList([badgeEarned()]);
+
+        const m = medallion(items()[0]);
+        expect(m).not.toBeNull();
+        expect(m?.getAttribute('data-state')).toBe('earned');
+        expect(m?.getAttribute('aria-hidden')).toBe('true');
+        expect(m?.style.getPropertyValue('--bm-size')).toBe('40px');
+        expect(m?.querySelector('img')?.getAttribute('src')).toBe(`/${BADGE_ICON}`);
+        expect(items()[0].querySelector('.ntf__badge-img')).toBeNull();
+        expect(items()[0].querySelector('.ntf__icon')).toBeNull();
+    });
+
+    it('badgeEarned_WithMaterialIcon_ShowsSymbolGlyphOverIconUrl', () => {
+        flushList([badgeEarned({}, BADGE_ICON, 'gps_fixed')]);
+
+        const m = medallion(items()[0]);
+        expect(m?.querySelector('img')).toBeNull();
+        expect(m?.querySelector('.bm__icon')?.textContent?.trim()).toBe('gps_fixed');
+    });
+
+    it('badgeEarned_WithoutIcons_FallsBackToMilitaryTechMedallion', () => {
+        flushList([badgeEarned({}, null)]);
+
+        const m = medallion(items()[0]);
+        expect(m?.querySelector('img')).toBeNull();
+        expect(m?.querySelector('.bm__icon')?.textContent?.trim()).toBe('military_tech');
+    });
+
+    for (const [label, iconUrl] of [
+        ['externalUrl', 'https://example.org/achievements/x.svg'],
+        ['protocolRelative', '//example.org/achievements/x.svg'],
+        ['pathTraversal', 'achievements/../secret.svg'],
+        ['nonSvg', 'achievements/first-step.png'],
+        ['otherFolder', 'assets/first-step.svg'],
+    ] as const) {
+        it(`badgeEarned_IconUrlOutsideAchievements_${label}_FallsBackToMilitaryTech`, () => {
+            flushList([badgeEarned({}, iconUrl)]);
+
+            const m = medallion(items()[0]);
+            expect(m?.querySelector('img')).toBeNull();
+            expect(m?.querySelector('.bm__icon')?.textContent?.trim()).toBe('military_tech');
+        });
+    }
+
+    it('badgeEarned_InvalidIconName_FallsBackToIconUrl', () => {
+        flushList([badgeEarned({}, BADGE_ICON, 'Not A Glyph<script>')]);
+
+        expect(medallion(items()[0])?.querySelector('img')?.getAttribute('src')).toBe(`/${BADGE_ICON}`);
+    });
+
+    it('badgeEarned_Click_MarksReadAndNavigatesToBadgeProgressPage', () => {
+        flushList([badgeEarned()]);
+
+        items()[0].click();
+        const req = httpMock.expectOne('/api/badge/notifications/10/read');
+        expect(req.request.method).toBe('POST');
+        // Navigasyon isteğin sonucuna bağlı: yanıt gelmeden gidilmez.
+        expect(navigateSpy).not.toHaveBeenCalled();
+        req.flush(null, { status: 204, statusText: 'No Content' });
+        fixture.detectChanges();
+
+        expect(navigateSpy).toHaveBeenCalledWith([BADGE_PROGRESS_ROUTE]);
+        expect(items()[0].classList).not.toContain('is-unread');
+    });
+
+    it('badgeProgressRoute_ExistsInAppRoutes', () => {
+        flushList([]);
+        const layoutRoute = routes.find((r) => Array.isArray(r.children));
+        const childPaths = layoutRoute?.children?.map((r) => `/${r.path}`) ?? [];
+        expect(childPaths).toContain(BADGE_PROGRESS_ROUTE);
+        expect(childPaths).toContain('/notifications');
+    });
+
+    it('unknownType_ShowsGenericIconAndDoesNotInterpretDataOrNavigate', () => {
+        flushList([notification({ id: 5, type: 'SomethingNew', data: JSON.stringify({ iconUrl: BADGE_ICON }) })]);
+
+        const row = items()[0];
+        expect(row.querySelector('app-badge-medallion')).toBeNull();
+        expect(row.querySelector('.ntf__icon mat-icon')?.textContent?.trim()).toBe('notifications');
+
+        row.click();
+        httpMock.expectOne('/api/badge/notifications/5/read').flush(null, { status: 204, statusText: 'No Content' });
+        expect(navigateSpy).not.toHaveBeenCalled();
+    });
+
+    it('badgeEarned_MalformedData_FallsBackToMilitaryTechMedallion', () => {
+        flushList([badgeEarned({ data: '{not json' })]);
+
+        const m = items()[0].querySelector('app-badge-medallion');
+        expect(m?.querySelector('img')).toBeNull();
+        expect(m?.querySelector('.bm__icon')?.textContent?.trim()).toBe('military_tech');
+    });
+
+    it('badgeEarned_ClickThenDestroy_MarkReadStillCompletesAndCountDrops', () => {
+        const service = TestBed.inject(NotificationService);
+        service.refreshUnreadCount().subscribe();
+        httpMock.expectOne('/api/badge/notifications/me/unread-count').flush(2);
+        flushList([badgeEarned()]);
+
+        items()[0].click();
+        expect(service.unreadCount()).toBe(1);
+        fixture.destroy();
+
+        // Abonelik komponent ömrüne bağlı olsaydı istek iptal edilir, flush hata verirdi.
+        const req = httpMock.expectOne('/api/badge/notifications/10/read');
+        expect(req.cancelled).toBe(false);
+        req.flush(null, { status: 204, statusText: 'No Content' });
+
+        expect(service.unreadCount()).toBe(1);
+        expect(navigateSpy).toHaveBeenCalledWith([BADGE_PROGRESS_ROUTE]);
+    });
+
+    it('badgeEarned_MarkReadFails_StillNavigatesAndRestoresCount', () => {
+        const service = TestBed.inject(NotificationService);
+        service.refreshUnreadCount().subscribe();
+        httpMock.expectOne('/api/badge/notifications/me/unread-count').flush(1);
+        flushList([badgeEarned()]);
+
+        items()[0].click();
+        httpMock.expectOne('/api/badge/notifications/10/read').flush(null, { status: 500, statusText: 'Error' });
+
+        expect(service.unreadCount()).toBe(1);
+        expect(navigateSpy).toHaveBeenCalledWith([BADGE_PROGRESS_ROUTE]);
+    });
+
+    it('worksheetComment_Click_MarksReadAndNavigatesToWorksheetDetailDeepLink', () => {
+        flushList([
+            notification({
+                id: 21,
+                type: 'WorksheetCommentReplied',
+                title: 'Yeni cevap',
+                data: JSON.stringify({ worksheetId: 12, questionId: 34, commentId: 57, rootCommentId: 56 }),
+            }),
+        ]);
+
+        expect(items()[0].querySelector('.ntf__icon mat-icon')?.textContent?.trim()).toBe('forum');
+        // Sunucu metni bidi-izole gösterilir (security D1).
+        expect(items()[0].querySelector('.ntf__title bdi')?.getAttribute('dir')).toBe('auto');
+        expect(items()[0].querySelector('.ntf__body bdi')?.getAttribute('dir')).toBe('auto');
+        expect(items()[0].querySelector('.ntf__chevron')).not.toBeNull();
+        items()[0].click();
+        httpMock.expectOne('/api/badge/notifications/21/read').flush(null, { status: 204, statusText: 'No Content' });
+
+        expect(navigateSpy).toHaveBeenCalledWith(['/test', 12], {
+            queryParams: { commentId: 57, questionId: 34, rootCommentId: 56 },
+        });
+    });
+
+    // Issue #309: soru yorumunda "Soru {n}" etiketi; worksheet seviyesinde ya da sıra yoksa etiket yok.
+    it('questionComment_ShowsQuestionOrderTag; worksheetLevel_NoTag', () => {
+        flushList([
+            notification({
+                id: 22,
+                type: 'WorksheetCommentCreated',
+                title: 'Yeni soru',
+                data: JSON.stringify({ worksheetId: 12, questionId: 34, commentId: 58, rootCommentId: 58, questionOrder: 4 }),
+            }),
+            notification({
+                id: 23,
+                type: 'WorksheetCommentCreated',
+                title: 'Yeni yorum',
+                data: JSON.stringify({ worksheetId: 12, questionId: null, commentId: 59, rootCommentId: 59, questionOrder: null }),
+            }),
+        ]);
+
+        const tag = items()[0].querySelector('[data-testid="notification-question-tag"]');
+        expect(tag?.textContent?.trim()).toBe('Soru 4');
+        expect(items()[0].getAttribute('aria-label')).toContain('Soru 4');
+        expect(items()[1].querySelector('[data-testid="notification-question-tag"]')).toBeNull();
+    });
+
+    it('coalescedComment_ShowsCountBadge; singleOrMissingOrInvalid_NoBadge; capped at 99+', () => {
+        const data = JSON.stringify({ worksheetId: 12, questionId: null, commentId: 59, rootCommentId: 59, questionOrder: null });
+        flushList([
+            notification({ id: 30, type: 'WorksheetCommentCreated', title: '3 yeni yorum: Kesirler', data, coalescedCount: 3 }),
+            notification({ id: 31, type: 'WorksheetCommentCreated', title: 'Yeni yorum', data, coalescedCount: 1 }),
+            notification({ id: 32, type: 'WorksheetCommentCreated', title: 'Yeni yorum', data }),
+            notification({ id: 33, type: 'WorksheetCommentCreated', title: 'x', data, coalescedCount: '7' as unknown as number }),
+            notification({ id: 34, type: 'WorksheetCommentReplied', title: 'Çok', data, coalescedCount: 250 }),
+        ]);
+
+        const badge = (i: number) => items()[i].querySelector('[data-testid="notification-coalesced-count"]');
+        expect(badge(0)?.textContent?.trim()).toBe('3');
+        expect(badge(0)?.getAttribute('aria-label')).toBe('3 bildirim birleştirildi');
+        expect(badge(1)).toBeNull();
+        expect(badge(2)).toBeNull();
+        expect(badge(3)).toBeNull();
+        expect(badge(4)?.textContent?.trim()).toBe('99+');
+    });
+
+    it('readBadgeItem_Click_NavigatesWithoutMarkRead', () => {
+        flushList([badgeEarned({ isRead: true })]);
+
+        items()[0].click();
+
+        httpMock.expectNone('/api/badge/notifications/10/read');
+        expect(navigateSpy).toHaveBeenCalledWith([BADGE_PROGRESS_ROUTE]);
+    });
+
+    it('relativeTime_RefreshesEveryMinuteWhilePageOpen', async () => {
+        // Ortak örnek kapatılır; kendi bildirim listesiyle yeni bir örnek açılıp dakikalık yenileme sahte zamanla ilerletilir.
+        flushList([]);
+        fixture.destroy();
+        const local = TestBed.createComponent(NotificationsComponent);
+        local.detectChanges();
+        httpMock
+            .expectOne((r) => r.url === LIST_URL)
+            .flush([notification({ createdAt: new Date(Date.now() - 30 * 1000).toISOString() })]);
+        local.detectChanges();
+        const time = () => (local.nativeElement as HTMLElement).querySelector('.ntf__time')?.textContent?.trim();
+        expect(time()).toBe('şimdi');
+
+        await vi.advanceTimersByTimeAsync(RELATIVE_TIME_TICK_MS);
+        local.detectChanges();
+
+        expect(time()).toBe('1 dakika önce');
+        local.destroy();
+    });
+
+    it('readItem_Click_DoesNotCallMarkRead', () => {
+        flushList([notification({ id: 3, isRead: true })]);
+
+        items()[0].click();
+        httpMock.expectNone('/api/badge/notifications/3/read');
+    });
+
+    it('markRead_Fails_RestoresUnreadHighlight', () => {
+        flushList([notification({ id: 4 })]);
+
+        items()[0].click();
+        httpMock.expectOne('/api/badge/notifications/4/read').flush(null, { status: 500, statusText: 'Error' });
+        fixture.detectChanges();
+
+        expect(items()[0].classList).toContain('is-unread');
+    });
+
+    it('markRead_Success_DecrementsUnreadCount', () => {
+        const service = TestBed.inject(NotificationService);
+        service.refreshUnreadCount().subscribe();
+        httpMock.expectOne('/api/badge/notifications/me/unread-count').flush(3);
+        flushList([notification({ id: 8 })]);
+
+        items()[0].click();
+        httpMock.expectOne('/api/badge/notifications/8/read').flush(null, { status: 204, statusText: 'No Content' });
+
+        expect(service.unreadCount()).toBe(2);
+    });
+
+    it('emptyList_ShowsEmptyState', () => {
+        flushList([]);
+
+        expect(items().length).toBe(0);
+        expect(el().querySelector('.ntf__state--empty')?.textContent).toContain(notificationsTr.empty.all);
+    });
+
+    it('unreadFilter_RequestsUnreadOnlyAndShowsUnreadEmptyText', () => {
+        flushList([notification()]);
+
+        const unreadToggle = Array.from(el().querySelectorAll<HTMLButtonElement>('mat-button-toggle button')).find((b) => b.textContent?.includes(notificationsTr.filter.unread));
+        unreadToggle?.click();
+        fixture.detectChanges();
+        flushList([], true);
+
+        expect(el().querySelector('.ntf__state--empty')?.textContent).toContain(notificationsTr.empty.unread);
+    });
+
+    it('loadError_ShowsErrorAndRetryReloads', () => {
+        httpMock.expectOne((r) => r.url === LIST_URL).flush(null, { status: 500, statusText: 'Error' });
+        fixture.detectChanges();
+
+        const alert = el().querySelector('[role="alert"]');
+        expect(alert?.textContent).toContain(notificationsTr.loadError);
+
+        alert?.querySelector('button')?.click();
+        fixture.detectChanges();
+        flushList([notification()]);
+        expect(items().length).toBe(1);
+    });
+
+    // Issue #439: yeni ders talebi bildirimi veli panelindeki "Onay bekleyen ders talepleri" kartına gider (fragment).
+    it('parentBookingApprovalRequested_Click_NavigatesToParentPanelCardWithFragment', () => {
+        flushList([
+            notification({
+                id: 31,
+                type: 'ParentBookingApprovalRequested',
+                title: 'Yeni ders talebi',
+                data: JSON.stringify({ bookingId: 9, studentId: 21 }),
+            }),
+        ]);
+
+        items()[0].click();
+        httpMock.expectOne('/api/badge/notifications/31/read').flush(null, { status: 204, statusText: 'No Content' });
+
+        expect(navigateSpy).toHaveBeenCalledWith(['/parent'], {
+            queryParams: { child: 21 },
+            fragment: 'booking-requests',
+        });
+    });
 });

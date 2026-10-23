@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, ChangeDetectionStrategy } from '@angular/core';
 import { QuestionService } from '../../services/question.service';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,6 +12,7 @@ import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
   templateUrl: './question-view.component.html',
   styleUrls: ['./question-view.component.scss'],
   imports: [MatCardModule, MatButtonModule, CommonModule, TranslocoDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope('question')],
 })
 export class QuestionViewComponent implements OnInit {

@@ -12,6 +12,7 @@ import {
   ViewChild,
   ViewChildren,
   computed,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TestService } from '../../services/test.service';
@@ -101,6 +102,7 @@ export function isTimeExpiredRejection(source: unknown): boolean {
     QuestionCanvasViewComponentv5,
     TranslocoDirective,
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope(TEST_SOLVE_SCOPE)],
 })
 export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDestroy {
@@ -1205,7 +1207,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   private readNavigationWorksheetId(): number | null {
-    const fromNavigation = this.router.getCurrentNavigation()?.extras.state?.['worksheetId'];
+    const fromNavigation = this.router.currentNavigation()?.extras.state?.['worksheetId'];
     const historyState = typeof history !== 'undefined' ? (history.state as Record<string, unknown> | null) : null;
     const value = Number(fromNavigation ?? historyState?.['worksheetId']);
     return Number.isFinite(value) && value > 0 ? value : null;

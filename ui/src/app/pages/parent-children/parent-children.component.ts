@@ -1,6 +1,6 @@
 import { Clipboard } from '@angular/cdk/clipboard';
 import { HttpErrorResponse } from '@angular/common/http';
-import { AfterViewInit, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, OnInit, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -67,6 +67,7 @@ const DEFAULT_MAX_PARENTS = 4;
   ],
   providers: [provideTranslocoScope(PARENT_LINKS_SCOPE)],
   templateUrl: './parent-children.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./parent-children.component.scss'],
 })
 export class ParentChildrenComponent implements OnInit, AfterViewInit {

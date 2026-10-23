@@ -1,4 +1,4 @@
-import { Component, DestroyRef, effect, inject, untracked } from '@angular/core';
+import { Component, DestroyRef, effect, inject, untracked, ChangeDetectionStrategy } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { NavigationEnd, Router } from '@angular/router';
@@ -19,6 +19,7 @@ import {
 @Component({
   selector: 'app-parent-final-warning',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: '',
 })
 export class ParentFinalWarningComponent {

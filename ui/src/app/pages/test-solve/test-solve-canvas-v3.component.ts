@@ -7,6 +7,7 @@ import {
   computed,
   inject,
   signal,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -57,6 +58,7 @@ import { StorageImageRetryDirective } from '../../shared/directives/storage-imag
     TranslocoDirective,
     StorageImageRetryDirective,
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope(TEST_SOLVE_SCOPE)],
 })
 export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {

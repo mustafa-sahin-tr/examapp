@@ -1,5 +1,5 @@
-import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { Injectable, Injector, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Injectable, Injector, PLATFORM_ID, computed, inject, signal, DOCUMENT } from '@angular/core';
 import { TranslocoService } from '@jsverse/transloco';
 
 import {

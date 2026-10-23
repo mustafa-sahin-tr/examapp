@@ -1,5 +1,5 @@
-import { Component, signal, OnInit, OnDestroy, computed, inject } from '@angular/core';
-import { CommonModule, DOCUMENT } from '@angular/common';
+import { Component, signal, OnInit, OnDestroy, computed, inject, DOCUMENT, ChangeDetectionStrategy } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
@@ -80,6 +80,7 @@ interface MenuItem {
     TranslocoPipe,
   ],
   templateUrl: './enhanced-layout.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./enhanced-layout.component.scss'],
 })
 export class EnhancedLayoutComponent implements OnInit, OnDestroy {

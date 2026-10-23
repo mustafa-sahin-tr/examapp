@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { Question } from '../../models/question';
@@ -15,6 +15,7 @@ import { StorageImageRetryDirective } from '../../shared/directives/storage-imag
   // test-solve / practice-solve gibi baska scope'lu sayfalardan da kullanildigi icin scope'u kendisi saglar.
   providers: [provideTranslocoScope('question')],
   templateUrl: './question-lite-view.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './question-lite-view.component.scss',
 })
 export class QuestionLiteViewComponent implements OnInit {

@@ -1,3 +1,4 @@
+import type { MockedObject } from "vitest";
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
@@ -21,137 +22,141 @@ import tutorSearchEn from '../../../../public/i18n/tutor-search/en.json';
 
 /** Issue #439: öğrenci "veli onayına gönderildi" bildirimi ve veli modunda (çocuk adına) talep. */
 describe('TutorPublicProfileComponent (issue #439)', () => {
-  let fixture: ComponentFixture<TutorPublicProfileComponent>;
-  let dialog: jasmine.SpyObj<MatDialog>;
-  let snackBar: jasmine.SpyObj<MatSnackBar>;
-  let linkService: jasmine.SpyObj<ParentLinkService>;
-  let snackAction: Subject<void>;
+    let fixture: ComponentFixture<TutorPublicProfileComponent>;
+    let dialog: MockedObject<MatDialog>;
+    let snackBar: MockedObject<MatSnackBar>;
+    let linkService: MockedObject<ParentLinkService>;
+    let snackAction: Subject<void>;
 
-  const profile = { teacherId: 4, fullName: 'Elif Hoca', subjects: [], teachesOnline: true, teachesInPerson: false,
-    hourlyRate: null, bio: null, avatar: null } as unknown as TutorPublicProfile;
+    const profile = { teacherId: 4, fullName: 'Elif Hoca', subjects: [], teachesOnline: true, teachesInPerson: false,
+        hourlyRate: null, bio: null, avatar: null } as unknown as TutorPublicProfile;
 
-  const child: LinkedChild = {
-    linkId: 1,
-    studentId: 21,
-    status: 'Active',
-    studentName: 'Ayşe Kaya',
-    gradeName: null,
-    schoolName: null,
-    linkedAt: '2026-10-01T09:00:00Z',
-    requestedAt: '2026-10-01T08:00:00Z',
-    pendingExpiresAt: null,
-  };
+    const child: LinkedChild = {
+        linkId: 1,
+        studentId: 21,
+        status: 'Active',
+        studentName: 'Ayşe Kaya',
+        gradeName: null,
+        schoolName: null,
+        linkedAt: '2026-10-01T09:00:00Z',
+        requestedAt: '2026-10-01T08:00:00Z',
+        pendingExpiresAt: null,
+    };
 
-  async function setup(params: Record<string, string>, dialogResult: BookingResult | false, children: LinkedChild[] = [child]) {
-    const teacherService = jasmine.createSpyObj<TeacherService>('TeacherService', ['getTutorPublicProfile']);
-    teacherService.getTutorPublicProfile.and.returnValue(of(profile));
-    linkService = jasmine.createSpyObj<ParentLinkService>('ParentLinkService', ['getMyChildren']);
-    linkService.getMyChildren.and.returnValue(of(children));
-    dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
-    dialog.open.and.returnValue({ afterClosed: () => of(dialogResult) } as ReturnType<MatDialog['open']>);
-    snackAction = new Subject<void>();
-    snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
-    snackBar.open.and.returnValue({ onAction: () => snackAction } as unknown as MatSnackBarRef<TextOnlySnackBar>);
+    async function setup(params: Record<string, string>, dialogResult: BookingResult | false, children: LinkedChild[] = [child]) {
+        const teacherService = {
+            getTutorPublicProfile: vi.fn().mockName("TeacherService.getTutorPublicProfile")
+        };
+        teacherService.getTutorPublicProfile.mockReturnValue(of(profile));
+        linkService = {
+            getMyChildren: vi.fn().mockName("ParentLinkService.getMyChildren")
+        } as unknown as MockedObject<ParentLinkService>;
+        linkService.getMyChildren.mockReturnValue(of(children));
+        dialog = {
+            open: vi.fn().mockName("MatDialog.open")
+        } as unknown as MockedObject<MatDialog>;
+        dialog.open.mockReturnValue({ afterClosed: () => of(dialogResult) } as ReturnType<MatDialog['open']>);
+        snackAction = new Subject<void>();
+        snackBar = {
+            open: vi.fn().mockName("MatSnackBar.open")
+        } as unknown as MockedObject<MatSnackBar>;
+        snackBar.open.mockReturnValue({ onAction: () => snackAction } as unknown as MatSnackBarRef<TextOnlySnackBar>);
 
-    TestBed.configureTestingModule({
-      imports: [
-        TutorPublicProfileComponent,
-        NoopAnimationsModule,
-        translocoTestingModule({
-          langs: { [`${TUTOR_SEARCH_SCOPE}/tr`]: tutorSearchTr, [`${TUTOR_SEARCH_SCOPE}/en`]: tutorSearchEn },
-        }),
-      ],
-      providers: [
-        provideRouter([]),
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap(params) } } },
-        { provide: TeacherService, useValue: teacherService },
-        { provide: ParentLinkService, useValue: linkService },
-        { provide: LocaleService, useValue: { localeDefinition: signal({ angularLocale: 'tr-TR' }) } },
-      ],
+        TestBed.configureTestingModule({
+            imports: [
+                TutorPublicProfileComponent,
+                NoopAnimationsModule,
+                translocoTestingModule({
+                    langs: { [`${TUTOR_SEARCH_SCOPE}/tr`]: tutorSearchTr, [`${TUTOR_SEARCH_SCOPE}/en`]: tutorSearchEn },
+                }),
+            ],
+            providers: [
+                provideRouter([]),
+                { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap(params) } } },
+                { provide: TeacherService, useValue: teacherService },
+                { provide: ParentLinkService, useValue: linkService },
+                { provide: LocaleService, useValue: { localeDefinition: signal({ angularLocale: 'tr-TR' }) } },
+            ],
+        });
+        TestBed.overrideProvider(MatDialog, { useValue: dialog });
+        TestBed.overrideProvider(MatSnackBar, { useValue: snackBar });
+        fixture = TestBed.createComponent(TutorPublicProfileComponent);
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+        return fixture.nativeElement as HTMLElement;
+    }
+
+    const bookButton = (el: HTMLElement) => el.querySelector('[data-test="book"]') as HTMLButtonElement;
+
+    it('Student_AwaitingParentResult_ToastsSentToParent', async () => {
+        const el = await setup({ id: '4' }, {
+            success: true,
+            message: '',
+            booking: { status: 'AwaitingParent' } as BookingResult['booking'],
+        });
+        const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+        expect(linkService.getMyChildren).not.toHaveBeenCalled();
+        expect(el.querySelector('[data-test="child-banner"]')).toBeNull();
+        bookButton(el).click();
+
+        const data = vi.mocked(dialog.open).mock.lastCall![1]?.data as BookingSlotDialogData;
+        expect(data.child).toBeNull();
+        expect(snackBar.open).toHaveBeenCalledWith('Talebin velinin onayına gönderildi.', 'Randevularım', expect.any(Object));
+        snackAction.next();
+        expect(navigate).toHaveBeenCalledWith(['/my-bookings'], undefined);
     });
-    TestBed.overrideProvider(MatDialog, { useValue: dialog });
-    TestBed.overrideProvider(MatSnackBar, { useValue: snackBar });
-    fixture = TestBed.createComponent(TutorPublicProfileComponent);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    return fixture.nativeElement as HTMLElement;
-  }
 
-  const bookButton = (el: HTMLElement) => el.querySelector('[data-test="book"]') as HTMLButtonElement;
+    it('Student_PendingResult_KeepsOriginalToast', async () => {
+        const el = await setup({ id: '4' }, { success: true, message: '', booking: { status: 'Pending' } as BookingResult['booking'] });
 
-  it('Student_AwaitingParentResult_ToastsSentToParent', async () => {
-    const el = await setup({ id: '4' }, {
-      success: true,
-      message: '',
-      booking: { status: 'AwaitingParent' } as BookingResult['booking'],
+        bookButton(el).click();
+
+        expect(snackBar.open).toHaveBeenCalledWith('Randevu talebin gönderildi, öğretmenin onayı bekleniyor.', 'Randevularım', expect.any(Object));
     });
-    const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
 
-    expect(linkService.getMyChildren).not.toHaveBeenCalled();
-    expect(el.querySelector('[data-test="child-banner"]')).toBeNull();
-    bookButton(el).click();
+    it('ChildMode_PassesChildToDialog_ToastsSentToTeacher_ActionOpensParentPanel', async () => {
+        const el = await setup({ id: '4', studentId: '21' }, {
+            success: true,
+            message: '',
+            booking: { status: 'Pending' } as BookingResult['booking'],
+        });
+        const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 
-    const data = dialog.open.calls.mostRecent().args[1]?.data as BookingSlotDialogData;
-    expect(data.child).toBeNull();
-    expect(snackBar.open).toHaveBeenCalledWith('Talebin velinin onayına gönderildi.', 'Randevularım', jasmine.any(Object));
-    snackAction.next();
-    expect(navigate).toHaveBeenCalledWith(['/my-bookings'], undefined);
-  });
+        expect(el.querySelector('[data-test="child-banner"]')?.textContent).toContain('Ayşe Kaya adına ders talebi');
+        expect(bookButton(el).textContent).toContain('Ders Talebi Oluştur');
+        bookButton(el).click();
 
-  it('Student_PendingResult_KeepsOriginalToast', async () => {
-    const el = await setup({ id: '4' }, { success: true, message: '', booking: { status: 'Pending' } as BookingResult['booking'] });
-
-    bookButton(el).click();
-
-    expect(snackBar.open).toHaveBeenCalledWith(
-      'Randevu talebin gönderildi, öğretmenin onayı bekleniyor.',
-      'Randevularım',
-      jasmine.any(Object)
-    );
-  });
-
-  it('ChildMode_PassesChildToDialog_ToastsSentToTeacher_ActionOpensParentPanel', async () => {
-    const el = await setup({ id: '4', studentId: '21' }, {
-      success: true,
-      message: '',
-      booking: { status: 'Pending' } as BookingResult['booking'],
+        const data = vi.mocked(dialog.open).mock.lastCall![1]?.data as BookingSlotDialogData;
+        expect(data.child).toEqual({ studentId: 21, name: 'Ayşe Kaya' });
+        expect(snackBar.open).toHaveBeenCalledWith('Talep öğretmene gönderildi.', 'Veli paneli', expect.any(Object));
+        snackAction.next();
+        expect(navigate).toHaveBeenCalledWith(['/parent'], { queryParams: { child: 21 } });
     });
-    const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
 
-    expect(el.querySelector('[data-test="child-banner"]')?.textContent).toContain('Ayşe Kaya adına ders talebi');
-    expect(bookButton(el).textContent).toContain('Ders Talebi Oluştur');
-    bookButton(el).click();
+    it('ChildMode_ChildNotLinked_DisablesBooking', async () => {
+        const el = await setup({ id: '4', studentId: '99' }, false);
 
-    const data = dialog.open.calls.mostRecent().args[1]?.data as BookingSlotDialogData;
-    expect(data.child).toEqual({ studentId: 21, name: 'Ayşe Kaya' });
-    expect(snackBar.open).toHaveBeenCalledWith('Talep öğretmene gönderildi.', 'Veli paneli', jasmine.any(Object));
-    snackAction.next();
-    expect(navigate).toHaveBeenCalledWith(['/parent'], { queryParams: { child: 21 } });
-  });
+        expect(el.querySelector('[data-test="child-missing"]')).not.toBeNull();
+        expect(bookButton(el).disabled).toBe(true);
+    });
 
-  it('ChildMode_ChildNotLinked_DisablesBooking', async () => {
-    const el = await setup({ id: '4', studentId: '99' }, false);
+    it('ChildMode_ChildrenLoadFails_ShowsRetryAndDisablesBooking', async () => {
+        const el = await setup({ id: '4', studentId: '21' }, false);
+        linkService.getMyChildren.mockReturnValue(throwError(() => ({ status: 500 })));
+        fixture.componentInstance.loadChild();
+        fixture.detectChanges();
 
-    expect(el.querySelector('[data-test="child-missing"]')).not.toBeNull();
-    expect(bookButton(el).disabled).toBeTrue();
-  });
+        expect(el.querySelector('[data-test="child-banner"] [role="alert"]')?.textContent).toContain('yüklenemedi');
+        expect(bookButton(el).disabled).toBe(true);
+    });
 
-  it('ChildMode_ChildrenLoadFails_ShowsRetryAndDisablesBooking', async () => {
-    const el = await setup({ id: '4', studentId: '21' }, false);
-    linkService.getMyChildren.and.returnValue(throwError(() => ({ status: 500 })));
-    fixture.componentInstance.loadChild();
-    fixture.detectChanges();
+    it('Cancelled_NoToast', async () => {
+        const el = await setup({ id: '4' }, false);
 
-    expect(el.querySelector('[data-test="child-banner"] [role="alert"]')?.textContent).toContain('yüklenemedi');
-    expect(bookButton(el).disabled).toBeTrue();
-  });
+        bookButton(el).click();
 
-  it('Cancelled_NoToast', async () => {
-    const el = await setup({ id: '4' }, false);
-
-    bookButton(el).click();
-
-    expect(snackBar.open).not.toHaveBeenCalled();
-  });
+        expect(snackBar.open).not.toHaveBeenCalled();
+    });
 });

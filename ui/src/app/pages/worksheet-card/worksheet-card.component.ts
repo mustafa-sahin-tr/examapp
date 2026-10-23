@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, inject, Input, OnDestroy, OnInit, Output, signal } from '@angular/core';
+import { Component, EventEmitter, inject, Input, OnDestroy, OnInit, Output, signal, ChangeDetectionStrategy } from '@angular/core';
 import { Subject, takeUntil } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Test } from '../../models/test-instance';
@@ -29,6 +29,7 @@ const WORKSHEET_CARD_SCOPE = 'worksheet-card';
   styleUrls: ['./worksheet-card.component.scss'],
   standalone: true,
   imports: [CommonModule, IsStudentDirective, MatCardModule, MatIconModule, TranslocoDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope(WORKSHEET_CARD_SCOPE)],
 })
 export class WorksheetCardComponent implements OnInit, OnDestroy {

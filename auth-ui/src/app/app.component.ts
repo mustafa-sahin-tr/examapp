@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { RouterModule } from '@angular/router';
 import { BRAND_NAME } from './shared/brand';
@@ -7,6 +7,7 @@ import { BRAND_NAME } from './shared/brand';
   selector: 'app-root',
   imports: [RouterModule],
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<router-outlet></router-outlet>`, // Standalone modda Router çalıştırılıyor
 })
 export class AppComponent {

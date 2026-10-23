@@ -1,5 +1,5 @@
-import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
-import { CommonModule, NgFor } from '@angular/common';
+import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
+
 import { TranslocoDirective } from '@jsverse/transloco';
 
 @Component({
@@ -7,7 +7,8 @@ import { TranslocoDirective } from '@jsverse/transloco';
   templateUrl: './pagination.component.html',
   styleUrls: ['./pagination.component.scss'],
   standalone: true,
-  imports: [NgFor, CommonModule, TranslocoDirective]
+  changeDetection: ChangeDetectionStrategy.Eager,
+  imports: [TranslocoDirective]
 })
 export class PaginationComponent implements OnInit, OnChanges {
   @Input() currentPage = 1;         // Mevcut sayfa

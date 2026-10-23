@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -54,6 +54,7 @@ export type AdminTeacherSchoolDialogResult =
   imports: [MatDialogModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective, SchoolSelectComponent],
   providers: [provideTranslocoScope(ADMIN_SCOPE)],
   templateUrl: './admin-teacher-school-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./admin-teacher-school-dialog.component.scss'],
 })
 export class AdminTeacherSchoolDialogComponent {

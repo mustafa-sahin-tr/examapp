@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -21,6 +21,7 @@ import { LocalePreferenceService } from '../../../services/locale-preference.ser
   standalone: true,
   imports: [MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, TranslocoDirective],
   templateUrl: './language-switcher.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './language-switcher.component.scss',
 })
 export class LanguageSwitcherComponent {

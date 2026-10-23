@@ -6,153 +6,160 @@
       <span
         ><mat-icon>calendar_today</mat-icon>
         {{ range.start && range.end ? t('detail.dateRange', range) : range.start || range.end }}</span
-      >
-    }
-    <span
-      ><mat-icon>assignment</mat-icon>
-      {{ t('detail.dailyTarget', { questions: program.questionsPerDay, subjects: program.subjectsPerDay }) }}</span
-    >
-    <span><mat-icon>timeline</mat-icon> {{ t('detail.type', { type: studyTypeLabel }) }}</span>
-  </div>
+        >
+      }
+      <span
+        ><mat-icon>assignment</mat-icon>
+        {{ t('detail.dailyTarget', { questions: program.questionsPerDay, subjects: program.subjectsPerDay }) }}</span
+        >
+        <span><mat-icon>timeline</mat-icon> {{ t('detail.type', { type: studyTypeLabel }) }}</span>
+      </div>
 
-  <div class="study-page-schedule-section">
-    <div class="study-page-schedule-header">
-      <h3>{{ t('detail.pagesTitle') }}</h3>
-      <button
-        mat-raised-button
-        color="primary"
-        type="button"
-        class="add-study-pages-btn"
-        (click)="toggleAddStudyPages()"
-        [attr.aria-label]="t('detail.addPages')"
-      >
-        <mat-icon>playlist_add</mat-icon>
-        {{ t('detail.addPages') }}
-      </button>
-    </div>
-
-    <div class="calendar-container">
-      <!-- Main Monthly Calendar -->
-      <div class="main-calendar" [ngClass]="'cal-size-' + calendarSize">
-        <div class="calendar-header">
-          <button mat-icon-button (click)="previousMonth()">
-            <mat-icon>chevron_left</mat-icon>
+      <div class="study-page-schedule-section">
+        <div class="study-page-schedule-header">
+          <h3>{{ t('detail.pagesTitle') }}</h3>
+          <button
+            mat-raised-button
+            color="primary"
+            type="button"
+            class="add-study-pages-btn"
+            (click)="toggleAddStudyPages()"
+            [attr.aria-label]="t('detail.addPages')"
+            >
+            <mat-icon>playlist_add</mat-icon>
+            {{ t('detail.addPages') }}
           </button>
-          <h3>{{ currentMonthLabel }}</h3>
-          <button mat-icon-button (click)="nextMonth()">
-            <mat-icon>chevron_right</mat-icon>
-          </button>
-          <mat-button-toggle-group
-            [(ngModel)]="calendarSize"
-            class="calendar-size-toggle"
-            [attr.aria-label]="t('detail.calendarSize.label')"
-          >
-            <mat-button-toggle value="small" [matTooltip]="t('detail.calendarSize.small')">
-              <mat-icon>view_module</mat-icon>
-            </mat-button-toggle>
-            <mat-button-toggle value="medium" [matTooltip]="t('detail.calendarSize.medium')">
-              <mat-icon>grid_view</mat-icon>
-            </mat-button-toggle>
-            <mat-button-toggle value="large" [matTooltip]="t('detail.calendarSize.large')">
-              <mat-icon>calendar_view_month</mat-icon>
-            </mat-button-toggle>
-          </mat-button-toggle-group>
         </div>
 
-        <div class="calendar-body">
-          <div class="calendar-weekdays">
-            @for (weekday of weekdayNames; track weekday) {
-              <div class="weekday">{{ weekday }}</div>
-            }
-          </div>
-
-          <div class="calendar-grid-container">
-            <!-- Schedule Bars (overlay on top of grid) -->
-            <div class="schedule-bars-layer" [style.grid-template-rows]="'repeat(' + monthCalendarWeeks + ', 1fr)'">
-              <div
-                *ngFor="let bar of monthScheduleBars"
-                class="schedule-bar"
-                [style.grid-column]="bar.startCol + ' / ' + bar.endCol"
-                [style.grid-row]="bar.weekRow + 1"
-                [style.transform]="'translateY(calc(var(--bar-top-offset) + ' + bar.offsetY + 'px))'"
-                [style.background]="bar.color"
-                [title]="bar.schedule.studyItemTitle + ' · ' + bar.typeLabel"
-                [attr.data-kind]="bar.schedule.contentType"
-                (click)="onScheduleClick(bar, $event)"
-              >
-                <mat-icon class="schedule-bar-icon" [attr.aria-label]="t('detail.typeAria', { type: bar.typeLabel })">{{ bar.typeIcon }}</mat-icon>
-                <span class="schedule-bar-title">{{ bar.schedule.studyItemTitle }}</span>
-              </div>
+        <div class="calendar-container">
+          <!-- Main Monthly Calendar -->
+          <div class="main-calendar" [ngClass]="'cal-size-' + calendarSize">
+            <div class="calendar-header">
+              <button mat-icon-button (click)="previousMonth()">
+                <mat-icon>chevron_left</mat-icon>
+              </button>
+              <h3>{{ currentMonthLabel }}</h3>
+              <button mat-icon-button (click)="nextMonth()">
+                <mat-icon>chevron_right</mat-icon>
+              </button>
+              <mat-button-toggle-group
+                [(ngModel)]="calendarSize"
+                class="calendar-size-toggle"
+                [attr.aria-label]="t('detail.calendarSize.label')"
+                >
+                <mat-button-toggle value="small" [matTooltip]="t('detail.calendarSize.small')">
+                  <mat-icon>view_module</mat-icon>
+                </mat-button-toggle>
+                <mat-button-toggle value="medium" [matTooltip]="t('detail.calendarSize.medium')">
+                  <mat-icon>grid_view</mat-icon>
+                </mat-button-toggle>
+                <mat-button-toggle value="large" [matTooltip]="t('detail.calendarSize.large')">
+                  <mat-icon>calendar_view_month</mat-icon>
+                </mat-button-toggle>
+              </mat-button-toggle-group>
             </div>
 
-            <!-- Calendar Days Grid -->
-            <div class="calendar-grid">
-              <div
-                *ngFor="let day of monthCalendarDays"
-                class="calendar-day"
-                [class.empty]="!day"
-                [class.clickable]="day"
-                (click)="onDayClick(day, $event)"
-              >
-                <span class="day-number" *ngIf="day">{{ day.getDate() }}</span>
+            <div class="calendar-body">
+              <div class="calendar-weekdays">
+                @for (weekday of weekdayNames; track weekday) {
+                  <div class="weekday">{{ weekday }}</div>
+                }
               </div>
+
+              <div class="calendar-grid-container">
+                <!-- Schedule Bars (overlay on top of grid) -->
+                <div class="schedule-bars-layer" [style.grid-template-rows]="'repeat(' + monthCalendarWeeks + ', 1fr)'">
+                  @for (bar of monthScheduleBars; track $index) {
+                    <div
+                      class="schedule-bar"
+                      [style.grid-column]="bar.startCol + ' / ' + bar.endCol"
+                      [style.grid-row]="bar.weekRow + 1"
+                      [style.transform]="'translateY(calc(var(--bar-top-offset) + ' + bar.offsetY + 'px))'"
+                      [style.background]="bar.color"
+                      [title]="bar.schedule.studyItemTitle + ' · ' + bar.typeLabel"
+                      [attr.data-kind]="bar.schedule.contentType"
+                      (click)="onScheduleClick(bar, $event)"
+                      >
+                      <mat-icon class="schedule-bar-icon" [attr.aria-label]="t('detail.typeAria', { type: bar.typeLabel })">{{ bar.typeIcon }}</mat-icon>
+                      <span class="schedule-bar-title">{{ bar.schedule.studyItemTitle }}</span>
+                    </div>
+                  }
+                </div>
+
+                <!-- Calendar Days Grid -->
+                <div class="calendar-grid">
+                  @for (day of monthCalendarDays; track $index) {
+                    <div
+                      class="calendar-day"
+                      [class.empty]="!day"
+                      [class.clickable]="day"
+                      (click)="onDayClick(day, $event)"
+                      >
+                      @if (day) {
+                        <span class="day-number">{{ day.getDate() }}</span>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+            <!-- /.calendar-body -->
+          </div>
+
+          <!-- Next Month Mini Calendar -->
+          <div class="mini-calendar">
+            <h4>{{ nextMonthLabel }}</h4>
+            <div class="mini-weekdays">
+              @for (weekday of weekdayInitials; track $index) {
+                <div>{{ weekday }}</div>
+              }
+            </div>
+            <div class="mini-grid">
+              @for (day of nextMonthCalendarDays; track $index) {
+                <div
+                  class="mini-day"
+                  [class.empty]="!day"
+                  [class.clickable]="day"
+                  [style.background]="getDayGradient(day)"
+                  (click)="onDayClick(day, $event)"
+                  >
+                  @if (day) {
+                    <span>{{ day.getDate() }}</span>
+                  }
+                </div>
+              }
             </div>
           </div>
         </div>
-        <!-- /.calendar-body -->
       </div>
 
-      <!-- Next Month Mini Calendar -->
-      <div class="mini-calendar">
-        <h4>{{ nextMonthLabel }}</h4>
-        <div class="mini-weekdays">
-          @for (weekday of weekdayInitials; track $index) {
-            <div>{{ weekday }}</div>
-          }
+      <!-- Özet Kartlar -->
+      <!-- <div class="summary-cards">
+      <mat-card class="summary-card">
+        <mat-icon>assignment</mat-icon>
+        <div>
+          <div class="summary-value">{{ totalSolved }}</div>
+          <div class="summary-label">Toplam Soru</div>
         </div>
-        <div class="mini-grid">
-          <div
-            *ngFor="let day of nextMonthCalendarDays"
-            class="mini-day"
-            [class.empty]="!day"
-            [class.clickable]="day"
-            [style.background]="getDayGradient(day)"
-            (click)="onDayClick(day, $event)"
-          >
-            <span *ngIf="day">{{ day.getDate() }}</span>
-          </div>
+      </mat-card>
+      <mat-card class="summary-card">
+        <mat-icon>timer</mat-icon>
+        <div>
+          <div class="summary-value">{{ totalMinutes }}</div>
+          <div class="summary-label">Toplam Süre (dk)</div>
         </div>
-      </div>
-    </div>
-  </div>
+      </mat-card>
+      <mat-card class="summary-card">
+        <mat-icon>percent</mat-icon>
+        <div>
+          <div class="summary-value">{{ successRate }}%</div>
+          <div class="summary-label">Başarı Oranı</div>
+        </div>
+      </mat-card>
+    </div> -->
 
-  <!-- Özet Kartlar -->
-  <!-- <div class="summary-cards">
-    <mat-card class="summary-card">
-      <mat-icon>assignment</mat-icon>
-      <div>
-        <div class="summary-value">{{ totalSolved }}</div>
-        <div class="summary-label">Toplam Soru</div>
-      </div>
-    </mat-card>
-    <mat-card class="summary-card">
-      <mat-icon>timer</mat-icon>
-      <div>
-        <div class="summary-value">{{ totalMinutes }}</div>
-        <div class="summary-label">Toplam Süre (dk)</div>
-      </div>
-    </mat-card>
-    <mat-card class="summary-card">
-      <mat-icon>percent</mat-icon>
-      <div>
-        <div class="summary-value">{{ successRate }}%</div>
-        <div class="summary-label">Başarı Oranı</div>
-      </div>
-    </mat-card>
-  </div> -->
-
-  <!-- Performans Radar Grafiği (Radar Chart) -->
-  <!-- <div class="dashboard-section">
+    <!-- Performans Radar Grafiği (Radar Chart) -->
+    <!-- <div class="dashboard-section">
     <h3>Performans Radar Grafiği</h3>
     <ngx-charts-polar-chart
       [view]="[350, 250]"
@@ -176,176 +183,176 @@
 
   <!-- Trafik Işıkları Sistemi -->
   <!-- <div class="dashboard-section">
-    <h3>Trafik Işıkları Sistemi</h3>
-    <div class="traffic-row">
-      <span class="traffic-green">🟢 Matematik hedefi: Çok iyi!</span><br />
-      <span class="traffic-yellow">🟡 Fen hedefi: Orta düzey.</span><br />
-      <span class="traffic-red">🔴 İngilizce hedefi: Dikkat, zayıf ilerleme!</span>
-    </div>
-  </div> -->
+  <h3>Trafik Işıkları Sistemi</h3>
+  <div class="traffic-row">
+    <span class="traffic-green">🟢 Matematik hedefi: Çok iyi!</span><br />
+    <span class="traffic-yellow">🟡 Fen hedefi: Orta düzey.</span><br />
+    <span class="traffic-red">🔴 İngilizce hedefi: Dikkat, zayıf ilerleme!</span>
+  </div>
+</div> -->
 
-  <!-- Dairesel İlerleme Yüzdeleri (Circular Progress) -->
-  <!-- <div class="dashboard-section">
-    <h3>Dairesel İlerleme Yüzdeleri</h3>
-    <div class="circular-progress-row">
-      <div class="circular-progress">
-        <mat-progress-spinner mode="determinate" [value]="75" diameter="60" color="primary"></mat-progress-spinner>
-        <div>Matematik %75</div>
-      </div>
-      <div class="circular-progress">
-        <mat-progress-spinner mode="determinate" [value]="45" diameter="60" color="accent"></mat-progress-spinner>
-        <div>Fen %45</div>
-      </div>
-    </div>
-  </div> -->
+<!-- Dairesel İlerleme Yüzdeleri (Circular Progress) -->
+<!-- <div class="dashboard-section">
+<h3>Dairesel İlerleme Yüzdeleri</h3>
+<div class="circular-progress-row">
+  <div class="circular-progress">
+    <mat-progress-spinner mode="determinate" [value]="75" diameter="60" color="primary"></mat-progress-spinner>
+    <div>Matematik %75</div>
+  </div>
+  <div class="circular-progress">
+    <mat-progress-spinner mode="determinate" [value]="45" diameter="60" color="accent"></mat-progress-spinner>
+    <div>Fen %45</div>
+  </div>
+</div>
+</div> -->
 
-  <!-- Kişisel SWOT Analizi -->
-  <!-- <div class="dashboard-section">
-    <h3>Kişisel SWOT Analizi</h3>
-    <div class="swot-grid">
-      <div class="swot-block strength">
-        <div class="swot-title"><mat-icon>trending_up</mat-icon> Güçlü Yönler</div>
-        <ul>
-          <li>Matematik</li>
-          <li>Düzenlilik</li>
-        </ul>
-      </div>
-      <div class="swot-block weakness">
-        <div class="swot-title"><mat-icon>trending_down</mat-icon> Gelişmesi Gerekenler</div>
-        <ul>
-          <li>İngilizce</li>
-          <li>Fen Bilimleri</li>
-        </ul>
-      </div>
-      <div class="swot-block opportunity">
-        <div class="swot-title"><mat-icon>lightbulb</mat-icon> Fırsatlar</div>
-        <ul>
-          <li>Günlük çalışma süreni artırabilirsin</li>
-        </ul>
-      </div>
-      <div class="swot-block threat">
-        <div class="swot-title"><mat-icon>warning</mat-icon> Riskler</div>
-        <ul>
-          <li>İngilizce hedeflerini sürekli erteliyorsun</li>
-        </ul>
-      </div>
-    </div> -->
+<!-- Kişisel SWOT Analizi -->
+<!-- <div class="dashboard-section">
+<h3>Kişisel SWOT Analizi</h3>
+<div class="swot-grid">
+  <div class="swot-block strength">
+    <div class="swot-title"><mat-icon>trending_up</mat-icon> Güçlü Yönler</div>
+    <ul>
+      <li>Matematik</li>
+      <li>Düzenlilik</li>
+    </ul>
+  </div>
+  <div class="swot-block weakness">
+    <div class="swot-title"><mat-icon>trending_down</mat-icon> Gelişmesi Gerekenler</div>
+    <ul>
+      <li>İngilizce</li>
+      <li>Fen Bilimleri</li>
+    </ul>
+  </div>
+  <div class="swot-block opportunity">
+    <div class="swot-title"><mat-icon>lightbulb</mat-icon> Fırsatlar</div>
+    <ul>
+      <li>Günlük çalışma süreni artırabilirsin</li>
+    </ul>
+  </div>
+  <div class="swot-block threat">
+    <div class="swot-title"><mat-icon>warning</mat-icon> Riskler</div>
+    <ul>
+      <li>İngilizce hedeflerini sürekli erteliyorsun</li>
+    </ul>
+  </div>
+</div> -->
 
-  <!-- SWOT Analizi Daire Görselleştirme -->
-  <!-- <div class="swot-circle">
-      <div class="swot-quadrant strength">
-        <ul>
-          <li>Matematik</li>
-          <li>Düzenlilik</li>
-        </ul>
-      </div>
-      <div class="swot-quadrant weakness">
-        <ul>
-          <li>İngilizce</li>
-          <li>Fen Bilimleri</li>
-        </ul>
-      </div>
-      <div class="swot-quadrant opportunity">
-        <span>Günlük çalışma süreni artırabilirsin</span>
-      </div>
-      <div class="swot-quadrant threat">
-        <span>İngilizce hedeflerini sürekli erteliyorsun</span>
-      </div>
-      <div class="swot-center">SWOT</div>
-    </div>
-  </div> -->
+<!-- SWOT Analizi Daire Görselleştirme -->
+<!-- <div class="swot-circle">
+<div class="swot-quadrant strength">
+  <ul>
+    <li>Matematik</li>
+    <li>Düzenlilik</li>
+  </ul>
+</div>
+<div class="swot-quadrant weakness">
+  <ul>
+    <li>İngilizce</li>
+    <li>Fen Bilimleri</li>
+  </ul>
+</div>
+<div class="swot-quadrant opportunity">
+  <span>Günlük çalışma süreni artırabilirsin</span>
+</div>
+<div class="swot-quadrant threat">
+  <span>İngilizce hedeflerini sürekli erteliyorsun</span>
+</div>
+<div class="swot-center">SWOT</div>
+</div>
+</div> -->
 
-  <!-- Kadranlı Hedef Metreleri (Gauge Chart) -->
-  <!-- <div class="dashboard-section">
-    <h3>Kadranlı Hedef Metreleri</h3>
-    <div class="gauge-row">
-      <div class="gauge-item">
-        <span class="gauge-label">Matematik 📗</span>
-        <div class="gauge-bar">
-          <div class="gauge-bar-fill" style="width: 80%"></div>
-          <span class="gauge-bar-text">80%</span>
-        </div>
-      </div>
-      <div class="gauge-item">
-        <span class="gauge-label">Fen Bil. 📘</span>
-        <div class="gauge-bar">
-          <div class="gauge-bar-fill" style="width: 40%"></div>
-          <span class="gauge-bar-text">40%</span>
-        </div>
-      </div>
-      <div class="gauge-item">
-        <span class="gauge-label">Türkçe 📕</span>
-        <div class="gauge-bar">
-          <div class="gauge-bar-fill" style="width: 70%"></div>
-          <span class="gauge-bar-text">70%</span>
-        </div>
-      </div>
+<!-- Kadranlı Hedef Metreleri (Gauge Chart) -->
+<!-- <div class="dashboard-section">
+<h3>Kadranlı Hedef Metreleri</h3>
+<div class="gauge-row">
+  <div class="gauge-item">
+    <span class="gauge-label">Matematik 📗</span>
+    <div class="gauge-bar">
+      <div class="gauge-bar-fill" style="width: 80%"></div>
+      <span class="gauge-bar-text">80%</span>
     </div>
-  </div> -->
+  </div>
+  <div class="gauge-item">
+    <span class="gauge-label">Fen Bil. 📘</span>
+    <div class="gauge-bar">
+      <div class="gauge-bar-fill" style="width: 40%"></div>
+      <span class="gauge-bar-text">40%</span>
+    </div>
+  </div>
+  <div class="gauge-item">
+    <span class="gauge-label">Türkçe 📕</span>
+    <div class="gauge-bar">
+      <div class="gauge-bar-fill" style="width: 70%"></div>
+      <span class="gauge-bar-text">70%</span>
+    </div>
+  </div>
+</div>
+</div> -->
 
-  <!-- Kişisel Başarı Haritası (Achievement Map) -->
-  <!-- <div class="dashboard-section">
-    <h3>Kişisel Başarı Haritası</h3>
-    <div class="achievement-map">🏁 Başlangıç → ✅ İstasyon 1 → ✅ İstasyon 2 → ❌ İstasyon 3 → 🎯 Hedef</div>
-  </div> -->
+<!-- Kişisel Başarı Haritası (Achievement Map) -->
+<!-- <div class="dashboard-section">
+<h3>Kişisel Başarı Haritası</h3>
+<div class="achievement-map">🏁 Başlangıç → ✅ İstasyon 1 → ✅ İstasyon 2 → ❌ İstasyon 3 → 🎯 Hedef</div>
+</div> -->
 
-  <!-- Günlük Detay Carousel -->
-  <!-- <div class="day-carousel-modern">
-    <button (click)="scrollDays(-1)" [disabled]="carouselIndex === 0"><mat-icon>chevron_left</mat-icon></button>
-    <div class="carousel-days-list">
-      <div
-        *ngFor="let day of visibleDays; let i = index"
-        [class.selected]="selectedDay === day"
-        (click)="selectDay(day)"
-      >
-        <div class="day-number">{{ getRealIndex(i) + 1 }}. Gün</div>
-        <div class="day-status" [class.done]="day.done" [class.missed]="!day.done">
-          <mat-icon>{{ day.done ? 'check_circle' : 'cancel' }}</mat-icon>
-        </div>
-        <div class="day-solved">{{ day.solved }} / {{ program.questionsPerDay }} soru</div>
-      </div>
+<!-- Günlük Detay Carousel -->
+<!-- <div class="day-carousel-modern">
+<button (click)="scrollDays(-1)" [disabled]="carouselIndex === 0"><mat-icon>chevron_left</mat-icon></button>
+<div class="carousel-days-list">
+  <div
+    *ngFor="let day of visibleDays; let i = index"
+    [class.selected]="selectedDay === day"
+    (click)="selectDay(day)"
+    >
+    <div class="day-number">{{ getRealIndex(i) + 1 }}. Gün</div>
+    <div class="day-status" [class.done]="day.done" [class.missed]="!day.done">
+      <mat-icon>{{ day.done ? 'check_circle' : 'cancel' }}</mat-icon>
     </div>
-    <button (click)="scrollDays(1)" [disabled]="carouselIndex >= maxCarouselIndex">
-      <mat-icon>chevron_right</mat-icon>
-    </button>
-  </div> -->
+    <div class="day-solved">{{ day.solved }} / {{ program.questionsPerDay }} soru</div>
+  </div>
+</div>
+<button (click)="scrollDays(1)" [disabled]="carouselIndex >= maxCarouselIndex">
+  <mat-icon>chevron_right</mat-icon>
+</button>
+</div> -->
 
-  <!-- Günlük Detayda: Motivasyon, Emoji, Not, ProgressBar -->
-  <!-- <div class="selected-day-detail" *ngIf="selectedDay">
-    <h4>
-      {{ selectedDay.date }} |
-      <span [class.done]="selectedDay.done" [class.missed]="!selectedDay.done">{{
-        selectedDay.done ? 'Hedefe UYULDU' : 'UYULMADI'
-      }}</span>
-    </h4>
-    <div class="detail-row">
-      <mat-icon>assignment</mat-icon> <b>{{ selectedDay.solved }}</b> soru
-    </div>
-    <div class="detail-row">
-      <mat-icon>timer</mat-icon> <b>{{ selectedDay.minutes }}</b> dakika
-    </div>
-    <div class="detail-row">
-      <mat-icon>mood</mat-icon> <span class="emoji">{{ selectedDay.mood }}</span>
-    </div>
-    <div class="detail-row">
-      <mat-progress-bar
-        mode="determinate"
-        [value]="(selectedDay.solved / program.questionsPerDay) * 100"
-      ></mat-progress-bar>
-      <span class="progress-label"
-        >Hedef Tamamlanma: {{ (selectedDay.solved / program.questionsPerDay) * 100 | number: '1.0-0' }}%</span
-      >
-    </div>
-    <div class="detail-row feedback-row">
-      <mat-icon>emoji_objects</mat-icon>
-      <span class="motivation">{{ getMotivation(selectedDay) }}</span>
-    </div>
-    <div class="detail-row" *ngIf="selectedDay.subjects.length">
-      <mat-icon>menu_book</mat-icon>
-      <span>Dersler:</span>
-      <ul>
-        <li *ngFor="let s of selectedDay.subjects">
-          <b>{{ s.name }}</b
+<!-- Günlük Detayda: Motivasyon, Emoji, Not, ProgressBar -->
+<!-- <div class="selected-day-detail" *ngIf="selectedDay">
+<h4>
+  {{ selectedDay.date }} |
+  <span [class.done]="selectedDay.done" [class.missed]="!selectedDay.done">{{
+    selectedDay.done ? 'Hedefe UYULDU' : 'UYULMADI'
+  }}</span>
+</h4>
+<div class="detail-row">
+  <mat-icon>assignment</mat-icon> <b>{{ selectedDay.solved }}</b> soru
+</div>
+<div class="detail-row">
+  <mat-icon>timer</mat-icon> <b>{{ selectedDay.minutes }}</b> dakika
+</div>
+<div class="detail-row">
+  <mat-icon>mood</mat-icon> <span class="emoji">{{ selectedDay.mood }}</span>
+</div>
+<div class="detail-row">
+  <mat-progress-bar
+    mode="determinate"
+    [value]="(selectedDay.solved / program.questionsPerDay) * 100"
+  ></mat-progress-bar>
+  <span class="progress-label"
+    >Hedef Tamamlanma: {{ (selectedDay.solved / program.questionsPerDay) * 100 | number: '1.0-0' }}%</span
+    >
+  </div>
+  <div class="detail-row feedback-row">
+    <mat-icon>emoji_objects</mat-icon>
+    <span class="motivation">{{ getMotivation(selectedDay) }}</span>
+  </div>
+  <div class="detail-row" *ngIf="selectedDay.subjects.length">
+    <mat-icon>menu_book</mat-icon>
+    <span>Dersler:</span>
+    <ul>
+      <li *ngFor="let s of selectedDay.subjects">
+        <b>{{ s.name }}</b
           >: {{ s.solved }} soru, {{ s.minutes }} dk
         </li>
       </ul>
@@ -364,210 +371,210 @@
 
   <!-- Ekstra: Streak, En İyi Gün, En Kötü Gün, Pie Chart, Not/Emoji, ProgressBar -->
   <!-- <div class="extra-stats-row">
-    <mat-card class="extra-card streak">
-      <mat-icon>whatshot</mat-icon>
-      <div>
-        <div class="extra-value">{{ currentStreak }}</div>
-        <div class="extra-label">Günlük Streak</div>
-      </div>
-    </mat-card>
-    <mat-card class="extra-card streak-max">
-      <mat-icon>local_fire_department</mat-icon>
-      <div>
-        <div class="extra-value">{{ maxStreak }}</div>
-        <div class="extra-label">En Uzun Streak</div>
-      </div>
-    </mat-card>
-    <mat-card class="extra-card best" *ngIf="bestDay">
-      <mat-icon>star</mat-icon>
-      <div>
-        <div class="extra-value">{{ bestDay.solved }}</div>
-        <div class="extra-label">En İyi Gün ({{ bestDay.date }})</div>
-      </div>
-    </mat-card>
-    <mat-card class="extra-card worst" *ngIf="worstDay">
-      <mat-icon>sentiment_dissatisfied</mat-icon>
-      <div>
-        <div class="extra-value">{{ worstDay.solved }}</div>
-        <div class="extra-label">En Kötü Gün ({{ worstDay.date }})</div>
-      </div>
-    </mat-card>
-  </div> -->
-
-  <!-- Yeni Dashboard Bölümü -->
-  <!-- <div class="dashboard-section">
-    <h3>📊 Günlük Uyum Oranı (Son 7 Gün)</h3>
-    <div class="course-progress-row">
-      <div *ngFor="let day of program.days.slice(-7)" class="subject-progress">
-        <span>{{ day.date | date: 'd MMM' }}</span>
-        <mat-progress-bar mode="determinate" [value]="(day.solved / program.questionsPerDay) * 100"></mat-progress-bar>
-        <span>{{ (day.solved / program.questionsPerDay) * 100 | number: '1.0-0' }}%</span>
-      </div>
+  <mat-card class="extra-card streak">
+    <mat-icon>whatshot</mat-icon>
+    <div>
+      <div class="extra-value">{{ currentStreak }}</div>
+      <div class="extra-label">Günlük Streak</div>
     </div>
+  </mat-card>
+  <mat-card class="extra-card streak-max">
+    <mat-icon>local_fire_department</mat-icon>
+    <div>
+      <div class="extra-value">{{ maxStreak }}</div>
+      <div class="extra-label">En Uzun Streak</div>
+    </div>
+  </mat-card>
+  <mat-card class="extra-card best" *ngIf="bestDay">
+    <mat-icon>star</mat-icon>
+    <div>
+      <div class="extra-value">{{ bestDay.solved }}</div>
+      <div class="extra-label">En İyi Gün ({{ bestDay.date }})</div>
+    </div>
+  </mat-card>
+  <mat-card class="extra-card worst" *ngIf="worstDay">
+    <mat-icon>sentiment_dissatisfied</mat-icon>
+    <div>
+      <div class="extra-value">{{ worstDay.solved }}</div>
+      <div class="extra-label">En Kötü Gün ({{ worstDay.date }})</div>
+    </div>
+  </mat-card>
+</div> -->
 
-    <h3>📈 Soru Hedefi Tamamlama Grafiği (Son 7 Gün)</h3> -->
-  <!-- <ngx-charts-bar-vertical
-      [view]="[420, 160]"
-      [scheme]="heatmapScheme"
-      [results]="barChartData.slice(-7)"
-      [xAxis]="true"
-      [yAxis]="true"
-      [legend]="false"
-      [showXAxisLabel]="false"
-      [showYAxisLabel]="false"
-      [roundEdges]="true"
-      [animations]="true"
-    ></ngx-charts-bar-vertical> -->
+<!-- Yeni Dashboard Bölümü -->
+<!-- <div class="dashboard-section">
+<h3>📊 Günlük Uyum Oranı (Son 7 Gün)</h3>
+<div class="course-progress-row">
+  <div *ngFor="let day of program.days.slice(-7)" class="subject-progress">
+    <span>{{ day.date | date: 'd MMM' }}</span>
+    <mat-progress-bar mode="determinate" [value]="(day.solved / program.questionsPerDay) * 100"></mat-progress-bar>
+    <span>{{ (day.solved / program.questionsPerDay) * 100 | number: '1.0-0' }}%</span>
+  </div>
+</div>
 
-  <!-- <h3>📅 Çalışılan/Çalışılmayan Gün Takvimi (Son 14 Gün)</h3>
-    <div class="course-progress-row">
-      <div
-        *ngFor="let day of program.days.slice(-14)"
+<h3>📈 Soru Hedefi Tamamlama Grafiği (Son 7 Gün)</h3> -->
+<!-- <ngx-charts-bar-vertical
+[view]="[420, 160]"
+[scheme]="heatmapScheme"
+[results]="barChartData.slice(-7)"
+[xAxis]="true"
+[yAxis]="true"
+[legend]="false"
+[showXAxisLabel]="false"
+[showYAxisLabel]="false"
+[roundEdges]="true"
+[animations]="true"
+></ngx-charts-bar-vertical> -->
+
+<!-- <h3>📅 Çalışılan/Çalışılmayan Gün Takvimi (Son 14 Gün)</h3>
+<div class="course-progress-row">
+  <div
+    *ngFor="let day of program.days.slice(-14)"
         [ngClass]="{
           'subject-progress': true,
           done: day.done,
           missed: !day.done && day.solved === 0,
           partial: !day.done && day.solved > 0,
         }"
-      >
-        <mat-icon *ngIf="day.done">check_circle</mat-icon>
-        <mat-icon *ngIf="!day.done && day.solved === 0">cancel</mat-icon>
-        <mat-icon *ngIf="!day.done && day.solved > 0">hourglass_bottom</mat-icon>
-        <span>{{ day.date | date: 'd MMM' }}</span>
-      </div>
-    </div>
+    >
+    <mat-icon *ngIf="day.done">check_circle</mat-icon>
+    <mat-icon *ngIf="!day.done && day.solved === 0">cancel</mat-icon>
+    <mat-icon *ngIf="!day.done && day.solved > 0">hourglass_bottom</mat-icon>
+    <span>{{ day.date | date: 'd MMM' }}</span>
+  </div>
+</div>
 
-    <div class="streak-badge">
-      <mat-icon>local_fire_department</mat-icon>
-      🔥 {{ currentStreak }} Günlük Seri!
-    </div>
+<div class="streak-badge">
+  <mat-icon>local_fire_department</mat-icon>
+  🔥 {{ currentStreak }} Günlük Seri!
+</div>
 
-    <div class="record-badges">
-      <div class="record-badge">
-        <mat-icon>star</mat-icon> En fazla soru: {{ bestDay?.solved }} ({{ bestDay?.date }})
-      </div>
-      <div class="record-badge">
-        <mat-icon>timer</mat-icon> En uzun süre: {{ maxMinutesDay?.minutes }} dk ({{ maxMinutesDay?.date }})
-      </div>
-      <div class="record-badge">
-        <mat-icon>percent</mat-icon> En yüksek uyum: {{ maxRateDay?.rate }}% ({{ maxRateDay?.date }})
-      </div>
-    </div>
+<div class="record-badges">
+  <div class="record-badge">
+    <mat-icon>star</mat-icon> En fazla soru: {{ bestDay?.solved }} ({{ bestDay?.date }})
+  </div>
+  <div class="record-badge">
+    <mat-icon>timer</mat-icon> En uzun süre: {{ maxMinutesDay?.minutes }} dk ({{ maxMinutesDay?.date }})
+  </div>
+  <div class="record-badge">
+    <mat-icon>percent</mat-icon> En yüksek uyum: {{ maxRateDay?.rate }}% ({{ maxRateDay?.date }})
+  </div>
+</div>
 
-    <div class="achievement-badges">
-      <div class="achievement-badge"><mat-icon>emoji_events</mat-icon> İlk 100 Soru Çözüldü!</div>
-      <div class="achievement-badge"><mat-icon>emoji_events</mat-icon> İlk 5 Gün Üst Üste Tamamlandı</div>
-      <div class="achievement-badge"><mat-icon>emoji_events</mat-icon> Toplam 1000 Soru!</div>
-    </div>
+<div class="achievement-badges">
+  <div class="achievement-badge"><mat-icon>emoji_events</mat-icon> İlk 100 Soru Çözüldü!</div>
+  <div class="achievement-badge"><mat-icon>emoji_events</mat-icon> İlk 5 Gün Üst Üste Tamamlandı</div>
+  <div class="achievement-badge"><mat-icon>emoji_events</mat-icon> Toplam 1000 Soru!</div>
+</div>
 
-    <div class="weekly-summary">
-      Haftalık toplam soru: {{ weeklyTotalSolved }} | Haftalık toplam süre: {{ weeklyTotalMinutes }} dk
-    </div> -->
+<div class="weekly-summary">
+  Haftalık toplam soru: {{ weeklyTotalSolved }} | Haftalık toplam süre: {{ weeklyTotalMinutes }} dk
+</div> -->
 
-  <!-- <div class="subject-progress-row">
-      <div *ngFor="let s of subjectStats" class="subject-progress">
-        <mat-icon>menu_book</mat-icon> {{ s.name }}: {{ s.solved }} soru, {{ s.minutes }} dk
-      </div>
-    </div>
+<!-- <div class="subject-progress-row">
+<div *ngFor="let s of subjectStats" class="subject-progress">
+  <mat-icon>menu_book</mat-icon> {{ s.name }}: {{ s.solved }} soru, {{ s.minutes }} dk
+</div>
+</div>
 
-    <div class="comparison-section">
-      Senin gibi 8. sınıf öğrencileri haftada ortalama 150 soru çözüyor. Sen {{ weeklyTotalSolved }} soru çözdün,
-      harikasın!
-    </div> -->
+<div class="comparison-section">
+  Senin gibi 8. sınıf öğrencileri haftada ortalama 150 soru çözüyor. Sen {{ weeklyTotalSolved }} soru çözdün,
+  harikasın!
+</div> -->
 
-  <!-- <div class="suggestion-section">
-      Son 3 gündür Matematik hedefini kaçırıyorsun, bugün hedefe ulaşmak için önerilen süre 45 dk.
-    </div> -->
+<!-- <div class="suggestion-section">
+Son 3 gündür Matematik hedefini kaçırıyorsun, bugün hedefe ulaşmak için önerilen süre 45 dk.
+</div> -->
 
-  <!-- Duolingo Stili Seri Uyarısı -->
-  <!-- <div class="streak-warning" *ngIf="currentStreak > 0 && currentStreak < maxStreak">
-      <mat-icon>local_fire_department</mat-icon>
-      🔥 {{ currentStreak }} gün seri! Seri kırılmaması için bugün {{ program.questionsPerDay }} soru çözmelisin!
-    </div> -->
+<!-- Duolingo Stili Seri Uyarısı -->
+<!-- <div class="streak-warning" *ngIf="currentStreak > 0 && currentStreak < maxStreak">
+<mat-icon>local_fire_department</mat-icon>
+🔥 {{ currentStreak }} gün seri! Seri kırılmaması için bugün {{ program.questionsPerDay }} soru çözmelisin!
+</div> -->
 
-  <!-- Google Classroom Stili Görev Takvimi -->
-  <!-- <div class="task-calendar">
-      <div class="task-row completed">Matematik: Tamamlandı ✅ (4/5 görev), Geç teslim ❗ (1 görev)</div>
-      <div class="task-row missing">Fen Bilimleri: Eksik ❌ (0/3 görev)</div>
-    </div> -->
+<!-- Google Classroom Stili Görev Takvimi -->
+<!-- <div class="task-calendar">
+<div class="task-row completed">Matematik: Tamamlandı ✅ (4/5 görev), Geç teslim ❗ (1 görev)</div>
+<div class="task-row missing">Fen Bilimleri: Eksik ❌ (0/3 görev)</div>
+</div> -->
 
-  <!-- Khan Academy Tarzı Beceri Ağacı -->
-  <!-- <div class="skill-tree">
-      <div class="skill-branch">
-        Matematik → Kesirler
-        <mat-progress-bar class="skill-progress" mode="determinate" [value]="80"></mat-progress-bar>
-        %80 tamamlandı
-      </div>
-      <div class="skill-branch locked">
-        Matematik → Kesirler → İleri Seviye Sorular
-        <mat-icon>lock</mat-icon> (Kilidi açmak için %90 tamamlanmalı!)
-      </div>
-    </div> -->
+<!-- Khan Academy Tarzı Beceri Ağacı -->
+<!-- <div class="skill-tree">
+<div class="skill-branch">
+  Matematik → Kesirler
+  <mat-progress-bar class="skill-progress" mode="determinate" [value]="80"></mat-progress-bar>
+  %80 tamamlandı
+</div>
+<div class="skill-branch locked">
+  Matematik → Kesirler → İleri Seviye Sorular
+  <mat-icon>lock</mat-icon> (Kilidi açmak için %90 tamamlanmalı!)
+</div>
+</div> -->
 
-  <!-- Quizlet Tarzı Etkileşimli İstatistikler -->
-  <!-- <div class="study-stats-row">
-      <div class="study-stat"><mat-icon>schedule</mat-icon> En verimli saat: 18:00 - 19:00</div>
-      <div class="study-stat"><mat-icon>check_circle</mat-icon> Doğru cevap oranı: %92</div>
-    </div> -->
+<!-- Quizlet Tarzı Etkileşimli İstatistikler -->
+<!-- <div class="study-stats-row">
+<div class="study-stat"><mat-icon>schedule</mat-icon> En verimli saat: 18:00 - 19:00</div>
+<div class="study-stat"><mat-icon>check_circle</mat-icon> Doğru cevap oranı: %92</div>
+</div> -->
 
-  <!-- Notion Akademik Dashboard Odak Konular -->
-  <!-- <div class="focus-topics">
-      Bu hafta odaklandığın konular:<br />
-      Matematik – Trigonometri (%60 tamamlandı)<br />
-      Tarih – I. Dünya Savaşı (%100 tamamlandı)
-    </div> -->
+<!-- Notion Akademik Dashboard Odak Konular -->
+<!-- <div class="focus-topics">
+Bu hafta odaklandığın konular:<br />
+Matematik – Trigonometri (%60 tamamlandı)<br />
+Tarih – I. Dünya Savaşı (%100 tamamlandı)
+</div> -->
 
-  <!-- Forest Uygulaması Tarzı Zaman Yönetimi -->
-  <!-- <div class="forest-row">
-      <span>Bu hafta 5 kez 45 dakika kesintisiz çalıştın ve 5 ağaç diktin</span>
-      <span class="forest-tree">🌳🌳🌳🌳🌳</span>
-    </div> -->
+<!-- Forest Uygulaması Tarzı Zaman Yönetimi -->
+<!-- <div class="forest-row">
+<span>Bu hafta 5 kez 45 dakika kesintisiz çalıştın ve 5 ağaç diktin</span>
+<span class="forest-tree">🌳🌳🌳🌳🌳</span>
+</div> -->
 
-  <!-- Udemy Tarzı İlerleme Barları -->
-  <!-- <div class="course-progress-row">
-      <div class="course-progress">
-        Biyoloji: %45 tamamlandı, hedef %60 📌 (geride kalıyorsun, hızlanmalısın!)
-        <mat-progress-bar class="skill-progress" mode="determinate" [value]="45"></mat-progress-bar>
-      </div>
-    </div> -->
+<!-- Udemy Tarzı İlerleme Barları -->
+<!-- <div class="course-progress-row">
+<div class="course-progress">
+  Biyoloji: %45 tamamlandı, hedef %60 📌 (geride kalıyorsun, hızlanmalısın!)
+  <mat-progress-bar class="skill-progress" mode="determinate" [value]="45"></mat-progress-bar>
+</div>
+</div> -->
 
-  <!-- Trello Tarzı Kart Yapıları -->
-  <!-- <div class="trello-board">
-      <div class="trello-list">
-        <div class="trello-list-title">✅ Tamamlanan</div>
-        <div class="trello-card completed">Matematik (Çarpanlara ayırma)</div>
-      </div>
-      <div class="trello-list">
-        <div class="trello-list-title">⏳ Devam eden</div>
-        <div class="trello-card inprogress">Türkçe (Dil Bilgisi – Sıfatlar)</div>
-      </div>
-      <div class="trello-list">
-        <div class="trello-list-title">📅 Planlanan</div>
-        <div class="trello-card planned">Fizik (Optik) – yarın başlanacak</div>
-      </div>
-      <div class="trello-list">
-        <div class="trello-list-title">🚩 Ertelenen</div>
-        <div class="trello-card delayed">Kimya (Asitler ve Bazlar)</div>
-      </div>
-    </div>
-  </div> -->
+<!-- Trello Tarzı Kart Yapıları -->
+<!-- <div class="trello-board">
+<div class="trello-list">
+  <div class="trello-list-title">✅ Tamamlanan</div>
+  <div class="trello-card completed">Matematik (Çarpanlara ayırma)</div>
+</div>
+<div class="trello-list">
+  <div class="trello-list-title">⏳ Devam eden</div>
+  <div class="trello-card inprogress">Türkçe (Dil Bilgisi – Sıfatlar)</div>
+</div>
+<div class="trello-list">
+  <div class="trello-list-title">📅 Planlanan</div>
+  <div class="trello-card planned">Fizik (Optik) – yarın başlanacak</div>
+</div>
+<div class="trello-list">
+  <div class="trello-list-title">🚩 Ertelenen</div>
+  <div class="trello-card delayed">Kimya (Asitler ve Bazlar)</div>
+</div>
+</div>
+</div> -->
 
-  <!-- Günlük Performans Isı Haritası (Modern) -->
-  <!-- <div class="dashboard-section">
-    <h3>Günlük Performans Isı Haritası 2</h3>
+<!-- Günlük Performans Isı Haritası (Modern) -->
+<!-- <div class="dashboard-section">
+<h3>Günlük Performans Isı Haritası 2</h3>
 
-    <div class="heatmap-grid">
-      <div
-        *ngFor="let day of program.days; let i = index"
-        class="heatmap-cell"
+<div class="heatmap-grid">
+  <div
+    *ngFor="let day of program.days; let i = index"
+    class="heatmap-cell"
         [ngClass]="{
           'heatmap-green': day.done,
           'heatmap-yellow': !day.done && day.solved > 0,
           'heatmap-red': !day.done && day.solved === 0,
         }"
-        [matTooltip]="day.date + ': ' + (day.done ? 'Tamamlandı' : day.solved > 0 ? 'Kısmen' : 'Çalışılmadı')"
-      ></div>
-    </div>
-  </div> 
-  </div>-->
+    [matTooltip]="day.date + ': ' + (day.done ? 'Tamamlandı' : day.solved > 0 ? 'Kısmen' : 'Çalışılmadı')"
+  ></div>
+</div>
+</div>
+</div>-->
 </div>

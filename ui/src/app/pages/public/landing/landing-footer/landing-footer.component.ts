@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { TranslocoDirective, TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
@@ -6,6 +6,7 @@ import { TranslocoDirective, TranslocoPipe } from '@jsverse/transloco';
   imports: [TranslocoDirective, TranslocoPipe],
   templateUrl: './landing-footer.component.html',
   styleUrls: ['./landing-footer.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
   standalone: true,
 })
 export class LandingFooterComponent {

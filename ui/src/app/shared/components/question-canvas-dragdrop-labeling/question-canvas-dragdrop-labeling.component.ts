@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, computed, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, computed, signal, ChangeDetectionStrategy } from '@angular/core';
 import { DragDropModule, CdkDragDrop, transferArrayItem } from '@angular/cdk/drag-drop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -36,6 +36,7 @@ export interface DragDropLabelingPlacement {
     StorageImageRetryDirective,
   ],
   templateUrl: './question-canvas-dragdrop-labeling.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./question-canvas-dragdrop-labeling.component.scss'],
 })
 export class QuestionCanvasDragDropLabelingComponent {
@@ -156,7 +157,8 @@ export class QuestionCanvasDragDropLabelingComponent {
   }
 
   clearAll() {
-    this.resetStateFromPlan();
+    // Girdi olarak gelen eski cevap yeniden uygulanmaz; "Temizle" tüm yerleştirmeleri havuza döndürür.
+    this.resetStateFromPlan({ restoreAnswer: false });
     this.emitAnswerPayload();
   }
 
@@ -178,7 +180,7 @@ export class QuestionCanvasDragDropLabelingComponent {
     }
   }
 
-  private resetStateFromPlan() {
+  private resetStateFromPlan({ restoreAnswer = true }: { restoreAnswer?: boolean } = {}) {
     const plan = this._plan();
     if (!plan) {
       this.pool.set([]);
@@ -192,7 +194,9 @@ export class QuestionCanvasDragDropLabelingComponent {
     this.zoneState.set(zones);
 
     // If an answer payload is already provided, restore after initializing.
-    this.restoreFromAnswerPayload();
+    if (restoreAnswer) {
+      this.restoreFromAnswerPayload();
+    }
   }
 
   private restoreFromAnswerPayload() {

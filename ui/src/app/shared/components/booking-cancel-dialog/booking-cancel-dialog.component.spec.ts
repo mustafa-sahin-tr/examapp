@@ -1,4 +1,5 @@
-import { provideHttpClient } from '@angular/common/http';
+import type { MockedObject } from "vitest";
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -11,90 +12,89 @@ import rootTr from '../../../../../public/i18n/tr.json';
 const URL = '/api/exam/booking/requests/9/cancel';
 
 describe('BookingCancelDialogComponent (issue #315)', () => {
-  let fixture: ComponentFixture<BookingCancelDialogComponent>;
-  let http: HttpTestingController;
-  let dialogRef: jasmine.SpyObj<MatDialogRef<BookingCancelDialogComponent>>;
-  const el = () => fixture.nativeElement as HTMLElement;
-  const q = <T extends HTMLElement = HTMLElement>(id: string) => el().querySelector<T>(`[data-testid="${id}"]`);
+    let fixture: ComponentFixture<BookingCancelDialogComponent>;
+    let http: HttpTestingController;
+    let dialogRef: MockedObject<MatDialogRef<BookingCancelDialogComponent>>;
+    const el = () => fixture.nativeElement as HTMLElement;
+    const q = <T extends HTMLElement = HTMLElement>(id: string) => el().querySelector<T>(`[data-testid="${id}"]`);
 
-  function create(data: Partial<BookingCancelDialogData> = {}): void {
-    dialogRef = jasmine.createSpyObj('MatDialogRef', ['close']);
-    TestBed.configureTestingModule({
-      imports: [BookingCancelDialogComponent, NoopAnimationsModule, translocoTestingModule()],
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        {
-          provide: MAT_DIALOG_DATA,
-          useValue: { bookingId: 9, mode: 'cancel', counterpart: 'Ayşe Hoca', when: '20 Ekim · 11:00 – 12:00', ...data },
-        },
-        { provide: MatDialogRef, useValue: dialogRef },
-      ],
+    function create(data: Partial<BookingCancelDialogData> = {}): void {
+        dialogRef = {
+            close: vi.fn().mockName("MatDialogRef.close")
+        } as unknown as MockedObject<MatDialogRef<BookingCancelDialogComponent, any>>;
+        TestBed.configureTestingModule({
+            imports: [BookingCancelDialogComponent, NoopAnimationsModule, translocoTestingModule()],
+            providers: [
+                provideHttpClient(withXhr()),
+                provideHttpClientTesting(),
+                {
+                    provide: MAT_DIALOG_DATA,
+                    useValue: { bookingId: 9, mode: 'cancel', counterpart: 'Ayşe Hoca', when: '20 Ekim · 11:00 – 12:00', ...data },
+                },
+                { provide: MatDialogRef, useValue: dialogRef },
+            ],
+        });
+        http = TestBed.inject(HttpTestingController);
+        fixture = TestBed.createComponent(BookingCancelDialogComponent);
+        fixture.detectChanges();
+    }
+
+    function type(value: string): void {
+        const textarea = q<HTMLTextAreaElement>('cancel-reason')!;
+        textarea.value = value;
+        textarea.dispatchEvent(new Event('input'));
+        fixture.detectChanges();
+    }
+
+    afterEach(() => http.verify());
+
+    it('cancelMode_ShowsIntroAndSendsTrimmedReason_ClosesWithResult', () => {
+        create();
+        expect(q('cancel-intro')?.textContent).toContain('Ayşe Hoca');
+        expect(el().textContent).toContain(rootTr.shared.bookingCancelDialog.titleCancel);
+
+        type('  Hastayım  ');
+        q<HTMLButtonElement>('cancel-submit')!.click();
+
+        const req = http.expectOne(URL);
+        expect(req.request.method).toBe('POST');
+        expect(req.request.body).toEqual({ reason: 'Hastayım' });
+        const result = { success: true, message: 'Randevu iptal edildi.' };
+        req.flush(result);
+
+        expect(dialogRef.close).toHaveBeenCalledWith(expect.objectContaining(result));
     });
-    http = TestBed.inject(HttpTestingController);
-    fixture = TestBed.createComponent(BookingCancelDialogComponent);
-    fixture.detectChanges();
-  }
 
-  function type(value: string): void {
-    const textarea = q<HTMLTextAreaElement>('cancel-reason')!;
-    textarea.value = value;
-    textarea.dispatchEvent(new Event('input'));
-    fixture.detectChanges();
-  }
+    it('emptyReason_SendsNull', () => {
+        create({ mode: 'withdraw' });
+        expect(el().textContent).toContain(rootTr.shared.bookingCancelDialog.submitWithdraw);
 
-  afterEach(() => http.verify());
+        q<HTMLButtonElement>('cancel-submit')!.click();
 
-  it('cancelMode_ShowsIntroAndSendsTrimmedReason_ClosesWithResult', () => {
-    create();
-    expect(q('cancel-intro')?.textContent).toContain('Ayşe Hoca');
-    expect(el().textContent).toContain(rootTr.shared.bookingCancelDialog.titleCancel);
+        http.expectOne(URL).flush({ success: true });
+        expect(dialogRef.close).toHaveBeenCalled();
+    });
 
-    type('  Hastayım  ');
-    q<HTMLButtonElement>('cancel-submit')!.click();
+    it('tooLong_DisablesSubmit', () => {
+        create();
+        type('x'.repeat(501));
 
-    const req = http.expectOne(URL);
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ reason: 'Hastayım' });
-    const result = { success: true, message: 'Randevu iptal edildi.' };
-    req.flush(result);
+        expect(q<HTMLButtonElement>('cancel-submit')!.disabled).toBe(true);
+        expect(q('cancel-reason-too-long')).not.toBeNull();
+        expect(q('cancel-reason-counter')?.textContent?.trim()).toBe('501/500');
+    });
 
-    expect(dialogRef.close).toHaveBeenCalledWith(jasmine.objectContaining(result));
-  });
+    it('serverError_ShowsServerMessage_StaysOpen', () => {
+        create();
+        q<HTMLButtonElement>('cancel-submit')!.click();
 
-  it('emptyReason_SendsNull', () => {
-    create({ mode: 'withdraw' });
-    expect(el().textContent).toContain(rootTr.shared.bookingCancelDialog.submitWithdraw);
+        http
+            .expectOne(URL)
+            .flush({ success: false, message: 'İptal süresi doldu.', errorCode: 'CancellationWindowClosed' }, { status: 409, statusText: 'Conflict' });
+        fixture.detectChanges();
 
-    q<HTMLButtonElement>('cancel-submit')!.click();
-
-    http.expectOne(URL).flush({ success: true });
-    expect(dialogRef.close).toHaveBeenCalled();
-  });
-
-  it('tooLong_DisablesSubmit', () => {
-    create();
-    type('x'.repeat(501));
-
-    expect(q<HTMLButtonElement>('cancel-submit')!.disabled).toBeTrue();
-    expect(q('cancel-reason-too-long')).not.toBeNull();
-    expect(q('cancel-reason-counter')?.textContent?.trim()).toBe('501/500');
-  });
-
-  it('serverError_ShowsServerMessage_StaysOpen', () => {
-    create();
-    q<HTMLButtonElement>('cancel-submit')!.click();
-
-    http
-      .expectOne(URL)
-      .flush(
-        { success: false, message: 'İptal süresi doldu.', errorCode: 'CancellationWindowClosed' },
-        { status: 409, statusText: 'Conflict' }
-      );
-    fixture.detectChanges();
-
-    expect(q('cancel-error')?.textContent).toContain('İptal süresi doldu.');
-    expect(dialogRef.close).not.toHaveBeenCalled();
-    expect(q<HTMLButtonElement>('cancel-submit')!.disabled).toBeFalse();
-  });
+        expect(q('cancel-error')?.textContent).toContain('İptal süresi doldu.');
+        expect(dialogRef.close).not.toHaveBeenCalled();
+        expect(q<HTMLButtonElement>('cancel-submit')!.disabled).toBe(false);
+    });
 });

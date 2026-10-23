@@ -1,4 +1,4 @@
-import { Component, OnInit, Input, Output, EventEmitter, inject, OnChanges, SimpleChanges } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, Input, Output, EventEmitter, inject, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,6 +11,7 @@ import { Topic } from '../../models/topic';
 import { Subject } from '../../models/subject';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-study-topic',
   standalone: true,
   imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatRippleModule, MatProgressBarModule, TranslocoDirective],

@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { FormGroup, Validators, FormArray, FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatInputModule } from '@angular/material/input';
@@ -9,7 +9,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
-import { CommonModule } from '@angular/common';
+
 import { MatCardModule } from '@angular/material/card';
 import { SubjectService } from '../../services/subject.service';
 import { Subject } from '../../models/subject';
@@ -49,15 +49,15 @@ const QUESTION_SCOPE = 'question';
     MatSnackBarModule,
     FormsModule,
     ReactiveFormsModule,
-    CommonModule,
     MatCardModule,
     MatIconModule,
     QuestionListComponent,
     QuillModule,
     PassageCardComponent,
     TranslocoDirective,
-    StorageImageRetryDirective,
-  ],
+    StorageImageRetryDirective
+],
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope(QUESTION_SCOPE)],
 })
 export class QuestionComponent implements OnInit {
@@ -139,7 +139,7 @@ export class QuestionComponent implements OnInit {
   }
 
   ngOnInit() {
-    const navigation = this.router.getCurrentNavigation();
+    const navigation = this.router.currentNavigation();
     const state = navigation?.extras.state as {
       subjectId?: number;
       topicId?: number;

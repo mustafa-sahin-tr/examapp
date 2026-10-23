@@ -10,6 +10,7 @@ import {
   computed,
   inject,
   signal,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { timeout } from 'rxjs';
@@ -151,6 +152,7 @@ export interface ActiveInspector {
   ],
   providers: [provideTranslocoScope(IMAGE_SELECTOR_SCOPE)],
   templateUrl: './image-selector.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./image-selector.component.scss'],
 })
 export class ImageSelectorComponent {

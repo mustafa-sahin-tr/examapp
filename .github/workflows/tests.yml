@@ -80,12 +80,15 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20 # dockerfiles/ui ile aynı (node:20)
+          node-version: 24 # dockerfiles/ui ile aynı (node:24); Angular 22: ^22.22.3 || ^24.15
           cache: yarn
           cache-dependency-path: ui/yarn.lock
-      # ui/ için yalnız yarn.lock commit'li (package-lock.json yok) -> npm ci kullanılamaz.
+      # ui keeps two lockfiles (#488): CI verifies yarn.lock, the prod image uses package-lock.json (npm ci).
       - run: yarn install --frozen-lockfile
-      - run: npx ng test --watch=false --browsers=ChromeHeadlessCI --karma-config=karma.ci.conf.js
+      # Vitest browser mode (#545): Playwright drives the runner's system Chrome; no Playwright browser download.
+      - run: npx ng test --watch=false
+        env:
+          CHROME_BIN: /usr/bin/google-chrome
 
   auth-ui-tests:
     name: auth-ui-tests
@@ -100,8 +103,10 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: auth-ui/package-lock.json
       - run: npm ci --no-audit --no-fund
-      - run: npx ng test --watch=false --browsers=ChromeHeadlessCI --karma-config=karma.ci.conf.js
+      - run: npx ng test --watch=false
+        env:
+          CHROME_BIN: /usr/bin/google-chrome

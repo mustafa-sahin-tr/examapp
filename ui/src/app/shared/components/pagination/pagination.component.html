@@ -5,20 +5,26 @@
   </button>
 
   <!-- Sayfa Numaraları -->
-  <button 
-    *ngFor="let page of visiblePages"
-    class="pagination-button"
-    [class.active]="page === currentPage"
-    [disabled]="page < 0"
+  @for (page of visiblePages; track page) {
+    <button
+      class="pagination-button"
+      [class.active]="page === currentPage"
+      [disabled]="page < 0"
     (click)="
       page > 0 ? changePage(page) :
       page === -1 ? skipLeft() :
       page === -2 ? skipRight() : null">
-    
-    <ng-container *ngIf="page > 0">{{ page }}</ng-container>
-    <ng-container *ngIf="page === -1">...</ng-container>
-    <ng-container *ngIf="page === -2">...</ng-container>
-  </button>
+      @if (page > 0) {
+        {{ page }}
+      }
+      @if (page === -1) {
+        ...
+      }
+      @if (page === -2) {
+        ...
+      }
+    </button>
+  }
 
   <!-- Next -->
   <button class="pagination-button next" [disabled]="currentPage >= totalPages" (click)="changePage(currentPage + 1)">

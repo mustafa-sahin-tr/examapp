@@ -15,7 +15,7 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { provideStore } from '@ngrx/store';
 import { reducers } from './state/app.state';
 import { ReactiveFormsModule } from '@angular/forms';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideHttpClient, withInterceptors, withXhr } from '@angular/common/http';
 import { authInterceptor } from './shared/interceptors/auth.interceptor';
 import { authErrorInterceptor } from './shared/interceptors/auth-error.interceptor';
 import { teacherNotApprovedInterceptor } from './shared/interceptors/teacher-not-approved.interceptor';
@@ -23,7 +23,7 @@ import { parentRequirementInterceptor } from './shared/interceptors/parent-requi
 import { cacheInterceptor } from './shared/interceptors/cache.interceptor';
 import { localeInterceptor } from './shared/interceptors/locale.interceptor';
 import { CoreModule } from './core/core.module';
-import { provideClientHydration } from '@angular/platform-browser';
+import { provideClientHydration, withNoIncrementalHydration } from '@angular/platform-browser';
 import { MAT_DATE_LOCALE, MatDateFormats } from '@angular/material/core';
 import { provideDateFnsAdapter } from '@angular/material-date-fns-adapter';
 import { registerLocaleData } from '@angular/common';
@@ -54,6 +54,8 @@ export const TR_DATE_FORMATS: MatDateFormats = {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideHttpClient(
+      // Angular 22'nin varsayılan backend'i fetch; http-xhr-backend migration'ı mevcut XHR davranışını korur (#545).
+      withXhr(),
       withInterceptors([
         cacheInterceptor,
         localeInterceptor,
@@ -70,7 +72,7 @@ export const appConfig: ApplicationConfig = {
     provideAnimationsAsync(),
     provideStore(reducers),
     importProvidersFrom(ReactiveFormsModule, CoreModule),
-    provideClientHydration(),
+    provideClientHydration(withNoIncrementalHydration()),
     provideTransloco({
       config: {
         availableLangs: [...SUPPORTED_LOCALE_CODES],

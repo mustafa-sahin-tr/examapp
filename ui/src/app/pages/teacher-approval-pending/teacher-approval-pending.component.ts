@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -33,6 +33,7 @@ export type TeacherApprovalView = 'approved' | 'pending' | 'rejected' | 'suspend
   imports: [MatButtonModule, MatCardModule, MatIconModule, MatProgressSpinnerModule, RouterLink, TranslocoDirective],
   providers: [provideTranslocoScope(TEACHER_APPROVAL_SCOPE)],
   templateUrl: './teacher-approval-pending.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './teacher-approval-pending.component.scss',
 })
 export class TeacherApprovalPendingComponent implements OnInit {

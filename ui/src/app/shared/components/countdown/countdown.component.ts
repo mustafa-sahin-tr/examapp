@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, inject, signal } from '@angular/core';
+import { Component, Input, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { TranslocoService } from '@jsverse/transloco';
 
 @Component({
@@ -7,6 +7,7 @@ import { TranslocoService } from '@jsverse/transloco';
   standalone: true,
   templateUrl: './countdown.component.html',
   styleUrls: ['./countdown.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [CommonModule]
 })
 export class CountdownComponent {

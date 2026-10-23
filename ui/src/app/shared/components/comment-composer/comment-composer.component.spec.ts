@@ -41,6 +41,20 @@ describe('CommentComposerComponent (issue #105)', () => {
         fixture.detectChanges();
     }
 
+    /**
+     * Odak `effect` → `afterNextRender` ile veriliyor; hook'un hangi tick'te çalışacağı tek bir `tick()`'e
+     * bağlanamıyor (CI'da arada kaçıp flaky düşüyordu). Koşul sağlanana dek render + zamanlayıcı turu at.
+     */
+    async function renderUntil(assertion: () => void): Promise<void> {
+        const appRef = TestBed.inject(ApplicationRef);
+        await vi.waitFor(async () => {
+            fixture.detectChanges();
+            appRef.tick();
+            await vi.runAllTimersAsync();
+            assertion();
+        });
+    }
+
     function type(value: string): void {
         textarea().value = value;
         textarea().dispatchEvent(new Event('input'));
@@ -98,11 +112,8 @@ describe('CommentComposerComponent (issue #105)', () => {
     it('autofocus_FocusesTextareaAfterRender', async () => {
         const focusSpy = vi.spyOn(HTMLTextAreaElement.prototype, 'focus');
         create({ autofocus: true });
-        fixture.detectChanges();
-        TestBed.inject(ApplicationRef).tick();
-        await vi.runAllTimersAsync();
 
-        expect(focusSpy).toHaveBeenCalled();
+        await renderUntil(() => expect(focusSpy).toHaveBeenCalled());
         expect(focusSpy.mock.contexts.at(-1)).toBe(textarea());
     });
 
@@ -162,8 +173,7 @@ describe('CommentComposerComponent (issue #105)', () => {
         expect(q('pii-confirm-hint')?.textContent).toContain(commentsTr.composer.piiConfirmHint);
         const anyway = q('pii-send-anyway') as HTMLButtonElement;
         expect(anyway.textContent).toContain(commentsTr.composer.sendAnyway);
-        TestBed.inject(ApplicationRef).tick();
-        expect(focusSpy).toHaveBeenCalled();
+        await renderUntil(() => expect(focusSpy).toHaveBeenCalled());
         expect(focusSpy.mock.contexts.at(-1)).toBe(anyway);
 
         anyway.click();

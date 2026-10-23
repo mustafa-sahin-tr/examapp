@@ -149,15 +149,6 @@
               </select>
               <mat-icon class="chev">expand_more</mat-icon>
             </div>
-            <button
-              type="button"
-              class="add-link"
-              *ngIf="showApplyToAll"
-              [disabled]="!value('gradeId')"
-              (click)="applyGradeToAll.emit(value('gradeId'))"
-            >
-              <mat-icon>done_all</mat-icon>{{ t('form.applyToAll') }}
-            </button>
           </div>
         </div>
 
@@ -211,15 +202,6 @@
               </select>
               <mat-icon class="chev">expand_more</mat-icon>
             </div>
-            <button
-              type="button"
-              class="add-link"
-              *ngIf="showApplyToAll"
-              [disabled]="!value('subjectId')"
-              (click)="applySubjectToAll.emit(value('subjectId'))"
-            >
-              <mat-icon>done_all</mat-icon>{{ t('form.applyToAll') }}
-            </button>
             <p class="card-note field-hint" *ngIf="!gradeSelected">{{ t('form.selectGradeFirst') }}</p>
           </div>
 
@@ -232,15 +214,6 @@
               </select>
               <mat-icon class="chev">expand_more</mat-icon>
             </div>
-            <button
-              type="button"
-              class="add-link"
-              *ngIf="showApplyToAll"
-              [disabled]="!value('topicId')"
-              (click)="applyTopicToAll.emit(value('topicId'))"
-            >
-              <mat-icon>done_all</mat-icon>{{ t('form.applyToAll') }}
-            </button>
           </div>
 
           <div class="field">
@@ -252,15 +225,6 @@
               </select>
               <mat-icon class="chev">expand_more</mat-icon>
             </div>
-            <button
-              type="button"
-              class="add-link"
-              *ngIf="showApplyToAll"
-              [disabled]="!value('subtopicId')"
-              (click)="applySubtopicToAll.emit(value('subtopicId'))"
-            >
-              <mat-icon>done_all</mat-icon>{{ t('form.applyToAll') }}
-            </button>
           </div>
         </div>
       </section>

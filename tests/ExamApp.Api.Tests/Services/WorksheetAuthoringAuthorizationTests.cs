@@ -436,53 +436,5 @@ public class WorksheetAuthoringAuthorizationTests : IDisposable
         (await _db.NewContext().Worksheets.FindAsync(wsId))!.Description.ShouldBe("EZILDI");
     }
 
-    // ---- CreateBulkExamsAsync (isAdmin) ----
-
-    private BulkExamCreateDto BulkWithCollision(int gradeId, int bookId, int bookTestId) => new()
-    {
-        Exams =
-        {
-            new BulkExamItemDto
-            {
-                Name = "Orijinal", Description = "BULK-EZILDI", GradeId = gradeId,
-                MaxDurationSeconds = 600, BookId = bookId, BookTestId = bookTestId,
-            },
-        },
-    };
-
-    [Fact]
-    public async Task CreateBulkExamsAsync_NonAdminHittingForeignWorksheet_ReportsFailureAndDoesNotOverwrite()
-    {
-        // issue #11: worksheet Private (varsayılan) → CreateOrUpdateAsync artık NotFound döner (bkz.
-        // CreateOrUpdateAsync_CreateHittingForeignExistingWorksheet_NonOwnerNonAdmin_PrivateWorksheet_*);
-        // bulk akışı bu mesajı olduğu gibi taşır.
-        var (wsId, bookId, bookTestId) = await SeedWorksheetWithBookAsync(Owner);
-        var gradeId = (await _db.NewContext().Worksheets.FindAsync(wsId))!.GradeId;
-
-        BulkExamResultDto result;
-        await using (var ctx = _db.NewContext())
-            result = await NewAuthoring(ctx).CreateBulkExamsAsync(
-                BulkWithCollision(gradeId, bookId, bookTestId), Stranger, isAdmin: false);
-
-        result.FailureCount.ShouldBe(1);
-        result.FailedExams.ShouldContain(f => f.ExamName == "Orijinal" && f.ErrorMessage == "Test bulunamadı!");
-        (await _db.NewContext().Worksheets.FindAsync(wsId))!.Description.ShouldBe("d");
-    }
-
-    [Fact]
-    public async Task CreateBulkExamsAsync_AdminHittingForeignWorksheet_Overwrites()
-    {
-        var (wsId, bookId, bookTestId) = await SeedWorksheetWithBookAsync(Owner);
-        var gradeId = (await _db.NewContext().Worksheets.FindAsync(wsId))!.GradeId;
-
-        BulkExamResultDto result;
-        await using (var ctx = _db.NewContext())
-            result = await NewAuthoring(ctx).CreateBulkExamsAsync(
-                BulkWithCollision(gradeId, bookId, bookTestId), Stranger, isAdmin: true);
-
-        result.SuccessCount.ShouldBe(1);
-        (await _db.NewContext().Worksheets.FindAsync(wsId))!.Description.ShouldBe("BULK-EZILDI");
-    }
-
     public void Dispose() => _db.Dispose();
 }

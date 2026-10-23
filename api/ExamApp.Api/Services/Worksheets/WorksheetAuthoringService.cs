@@ -11,7 +11,7 @@ using Microsoft.Extensions.Localization;
 namespace ExamApp.Api.Services.Worksheets;
 
 /// <summary>
-/// Creating, updating and deleting worksheets (single + bulk) and their background image.
+/// Creating, updating and deleting worksheets and their background image.
 /// Extracted from ExamService.
 /// </summary>
 public class WorksheetAuthoringService : IWorksheetAuthoringService
@@ -467,86 +467,6 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             };
             // return BadRequest(new { error = ex.Message });
         }
-    }
-
-    public async Task<BulkExamResultDto> CreateBulkExamsAsync(BulkExamCreateDto bulkExamDto, int userId, bool isAdmin)
-    {
-        var result = new BulkExamResultDto
-        {
-            Success = true,
-            Message = _localizer["worksheets.authoring.bulkCompleted"]
-        };
-
-        var successfulExams = new List<ExamSavedDto>();
-        var failedExams = new List<BulkExamErrorDto>();
-        int rowNumber = 1;
-
-        foreach (var examItem in bulkExamDto.Exams)
-        {
-            try
-            {
-                // Convert BulkExamItemDto to ExamDto
-                var examDto = new ExamDto
-                {
-                    Name = examItem.Name,
-                    Description = examItem.Description,
-                    GradeId = examItem.GradeId,
-                    MaxDurationSeconds = examItem.MaxDurationSeconds,
-                    IsPracticeTest = examItem.IsPracticeTest,
-                    Subtitle = examItem.Subtitle,
-                    BadgeText = examItem.BadgeText,
-                    BookTestId = examItem.BookTestId,
-                    BookId = examItem.BookId,
-                    NewBookName = examItem.NewBookName,
-                    NewBookTestName = examItem.NewBookTestName,
-                    SubjectId = examItem.SubjectId,
-                    TopicId = examItem.TopicId,
-                    SubTopicId = examItem.SubTopicId
-                };
-
-                // Use existing CreateOrUpdateAsync method
-                var savedExam = await CreateOrUpdateAsync(examDto, userId, isAdmin);
-
-                if (savedExam.Success)
-                {
-                    successfulExams.Add(savedExam);
-                }
-                else
-                {
-                    failedExams.Add(new BulkExamErrorDto
-                    {
-                        ExamName = examItem.Name,
-                        ErrorMessage = savedExam.Message,
-                        RowNumber = rowNumber
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                failedExams.Add(new BulkExamErrorDto
-                {
-                    ExamName = examItem.Name,
-                    ErrorMessage = ex.Message,
-                    RowNumber = rowNumber
-                });
-            }
-
-            rowNumber++;
-        }
-
-        result.SuccessfulExams = successfulExams;
-        result.FailedExams = failedExams;
-        result.TotalProcessed = bulkExamDto.Exams.Count;
-        result.SuccessCount = successfulExams.Count;
-        result.FailureCount = failedExams.Count;
-
-        if (failedExams.Any())
-        {
-            result.Success = false;
-            result.Message = $"Processed {result.TotalProcessed} exams: {result.SuccessCount} successful, {result.FailureCount} failed";
-        }
-
-        return result;
     }
 
     public async Task<ResponseBaseDto> DeleteWorksheetAsync(int worksheetId, int userId, bool isAdmin)

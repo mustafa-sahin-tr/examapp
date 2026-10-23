@@ -114,18 +114,6 @@
       background: var(--ms-action-border);
       flex: none;
     }
-
-    .tag {
-      margin-left: auto;
-      font-family: var(--paragraphFontFamily);
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      color: var(--ms-action-border-focus);
-      border: 1px solid var(--ms-action-border);
-      padding: 3px 7px;
-      border-radius: 6px;
-    }
   }
 }
 
@@ -354,173 +342,6 @@
   }
 }
 
-.status-line {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 12.5px;
-  color: var(--ms-warning-text-weak);
-  background: var(--ms-warning-surface-weak);
-  border: 1px solid var(--ms-warning-surface-weak);
-  border-radius: 10px;
-  padding: 10px 12px;
-  margin-top: 12px;
-
-  mat-icon {
-    font-size: 16px;
-    width: 16px;
-    height: 16px;
-  }
-}
-
-/* toplu yükleme */
-.dropzone {
-  border: 1.5px dashed var(--ms-border-strong);
-  border-radius: 12px;
-  background: var(--ms-surface-medium);
-  padding: 26px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  text-align: center;
-  cursor: pointer;
-
-  .dz-ic {
-    width: 46px;
-    height: 46px;
-    border-radius: 12px;
-    background: var(--ms-action-background-weak);
-    color: var(--ms-action-border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .dz-t {
-    font-size: 13.5px;
-    font-weight: 700;
-    color: var(--ms-text-strong);
-  }
-
-  .dz-s {
-    font-size: 12px;
-    color: var(--ms-text-weak);
-  }
-
-  .dz-file {
-    margin-top: 10px;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    color: var(--ms-text);
-    background: var(--ms-surface-strong);
-    border: 1px solid var(--ms-border-weak);
-    padding: 6px 11px;
-    border-radius: 8px;
-
-    mat-icon {
-      font-size: 14px;
-      width: 14px;
-      height: 14px;
-    }
-  }
-}
-
-.dz-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
-}
-
-.bulk-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 16px 0 12px;
-
-  .cnt {
-    font-size: 12.5px;
-    color: var(--ms-text-weak);
-
-    b {
-      font-family: var(--mainFontFamily);
-      color: var(--ms-text-strong);
-    }
-  }
-}
-
-.bulk-table-wrap {
-  border: 1px solid var(--ms-border-weak);
-  border-radius: 12px;
-  overflow: auto;
-  max-height: 420px;
-}
-
-.bulk-table {
-  width: 100%;
-  background: transparent;
-
-  th.mat-mdc-header-cell {
-    font-size: 10.5px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--ms-text-weak);
-    font-weight: 700;
-    background: var(--ms-surface-weak);
-    border-bottom-color: var(--ms-border-weak);
-  }
-
-  td.mat-mdc-cell {
-    font-size: 12.5px;
-    color: var(--ms-text-strong);
-    border-bottom-color: var(--ms-border-weak);
-  }
-
-  tr.sel td.mat-mdc-cell {
-    background: var(--ms-action-background-weak);
-  }
-}
-
-.cell-changed {
-  color: var(--ms-warning-text-weak);
-  font-weight: 600;
-}
-
-.st {
-  display: inline-flex;
-  align-items: center;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 9px;
-  border-radius: 7px;
-
-  &.wait {
-    background: var(--ms-surface-strong);
-    color: var(--ms-text-weak);
-  }
-
-  &.upd {
-    background: var(--ms-warning-surface-weak);
-    color: var(--ms-warning-text-weak);
-  }
-}
-
-.bulk-empty {
-  font-size: 12.5px;
-  color: var(--ms-text-weak);
-  margin: 16px 0 0;
-}
-
-.bulk-foot {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  margin-top: 16px;
-  flex-wrap: wrap;
-}
-
 /* butonlar */
 .btn {
   height: 46px;
@@ -547,13 +368,6 @@
   }
 }
 
-.btn-sm {
-  height: 38px;
-  font-size: 12.5px;
-  padding: 0 14px;
-  border-radius: 9px;
-}
-
 .btn-primary {
   background: var(--ms-action-background);
   color: var(--ms-text-strong);
@@ -564,16 +378,6 @@
   background: transparent;
   color: var(--ms-text-strong);
   border-color: var(--ms-border-strong);
-}
-
-.btn-danger {
-  background: transparent;
-  color: var(--ms-warning-text-weak);
-  border-color: var(--ms-warning-surface-weak);
-}
-
-mat-progress-bar {
-  margin-top: 10px;
 }
 
 @media (max-width: 1080px) {

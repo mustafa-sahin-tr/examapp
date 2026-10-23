@@ -34,13 +34,11 @@
       <div class="stack">
         <app-test-form [form]="testForm" [books]="books" [bookTests]="bookTests" [grades]="grades" [subjects]="subjects"
           [topics]="topics" [subtopics]="subtopics" [showAddBookInput]="showAddBookInput"
-          [showAddBookTestInput]="showAddBookTestInput" [isEditMode]="isEditMode" [showApplyToAll]="hasBulkData"
+          [showAddBookTestInput]="showAddBookTestInput" [isEditMode]="isEditMode"
           (onBookChange)="onBookChange($event)" (openNewBookAdd)="openNewBookAdd()" (onNewBookBlur)="onNewBookBlur()"
           (openNewBookTestAdd)="openNewBookTestAdd()" (onSubjectChange)="onSubjectChange($event)"
           (onTopicChange)="onTopicChange($event)" (onGradeChange)="onGradeChange($event)" (onSubmit)="onSubmit()"
-          (onCancel)="navigateToTestList()" (applySubjectToAll)="applySubjectToAllBulk($event)"
-          (applyTopicToAll)="applyTopicToAllBulk($event)" (applySubtopicToAll)="applySubtopicToAllBulk($event)"
-          (applyGradeToAll)="applyGradeToAllBulk($event)"></app-test-form>
+          (onCancel)="navigateToTestList()"></app-test-form>
 
         <!-- KAPAK GÖRSELİ (yalnız düzenleme) -->
         <section class="card" *ngIf="isEditMode && canEdit()">
@@ -115,115 +113,6 @@
           </button>
         </div>
       </div>
-
-      <!-- SAĞ: YENİ TEST → EXCEL TOPLU YÜKLE — şimdilik kapalı, ihtiyaç olunca geri açılacak.
-      <div class="stack" *ngIf="isBulkMode">
-        <section class="card">
-          <h3><span class="dot"></span>{{ t('bulk.title') }}<span class="tag">{{ t('bulk.tag') }}</span></h3>
-          <p class="card-note">
-            {{ t('bulk.note') }}
-          </p>
-
-          <div class="dropzone" (click)="bulkFileInput.click()">
-            <span class="dz-ic"><mat-icon>upload</mat-icon></span>
-            <div class="dz-t">{{ t('bulk.dropTitle') }}</div>
-            <div class="dz-s">{{ t('bulk.dropSubtitle') }}</div>
-            <span class="dz-file" *ngIf="selectedBulkFile"><mat-icon>description</mat-icon>{{ selectedBulkFile.name
-              }}</span>
-          </div>
-          <input #bulkFileInput type="file" accept=".xlsx,.xls" hidden (change)="onBulkFileSelected($event)" />
-          <div class="dz-actions">
-            <button class="btn btn-primary btn-sm" type="button" [disabled]="!selectedBulkFile || isUploading"
-              (click)="onBulkImport()">
-              <mat-icon>cloud_upload</mat-icon>{{ t('bulk.import') }}
-            </button>
-          </div>
-          <mat-progress-bar *ngIf="isUploading" mode="indeterminate"></mat-progress-bar>
-
-          <ng-container *ngIf="bulkImportData.length; else bulkEmpty">
-            <div class="bulk-bar">
-              <span class="cnt">{{ t('bulk.rowsLoaded', { count: bulkImportData.length }) }}</span>
-            </div>
-
-            <div class="bulk-table-wrap">
-              <table mat-table [dataSource]="bulkImportData" class="bulk-table">
-                <ng-container matColumnDef="select">
-                  <th mat-header-cell *matHeaderCellDef></th>
-                  <td mat-cell *matCellDef="let element; let i = index">
-                    <mat-radio-button [checked]="selectedBulkIndex === i"
-                      (change)="onBulkItemSelect(i, element)"></mat-radio-button>
-                  </td>
-                </ng-container>
-                <ng-container matColumnDef="bookName">
-                  <th mat-header-cell *matHeaderCellDef>{{ t('bulk.colBook') }}</th>
-                  <td mat-cell *matCellDef="let element; let i = index">
-                    <span [class.cell-changed]="isFieldChanged('bookName', i)">{{ element.bookName }}</span>
-                  </td>
-                </ng-container>
-                <ng-container matColumnDef="name">
-                  <th mat-header-cell *matHeaderCellDef>{{ t('bulk.colName') }}</th>
-                  <td mat-cell *matCellDef="let element; let i = index">
-                    <span [class.cell-changed]="isFieldChanged('name', i)">{{ element.name }}</span>
-                  </td>
-                </ng-container>
-                <ng-container matColumnDef="gradeId">
-                  <th mat-header-cell *matHeaderCellDef>{{ t('bulk.colGrade') }}</th>
-                  <td mat-cell *matCellDef="let element; let i = index">
-                    <span [class.cell-changed]="isFieldChanged('gradeId', i)">{{ element.gradeName }}</span>
-                  </td>
-                </ng-container>
-                <ng-container matColumnDef="maxDurationMinutes">
-                  <th mat-header-cell *matHeaderCellDef>{{ t('bulk.colDuration') }}</th>
-                  <td mat-cell *matCellDef="let element; let i = index">
-                    <span [class.cell-changed]="isFieldChanged('maxDurationMinutes', i)">{{
-                      t('bulk.durationCell', { minutes: element.maxDurationMinutes })
-                      }}</span>
-                  </td>
-                </ng-container>
-                <ng-container matColumnDef="status">
-                  <th mat-header-cell *matHeaderCellDef>{{ t('bulk.colStatus') }}</th>
-                  <td mat-cell *matCellDef="let element; let i = index">
-                    <span class="st" [class.upd]="getBulkItemStatus(i) === 'updated'"
-                      [class.wait]="getBulkItemStatus(i) !== 'updated'">
-                      {{ t(getBulkItemStatus(i) === 'updated' ? 'bulk.statusUpdated' : 'bulk.statusPending') }}
-                    </span>
-                  </td>
-                </ng-container>
-
-                <tr mat-header-row *matHeaderRowDef="bulkColumns"></tr>
-                <tr mat-row *matRowDef="let row; columns: bulkColumns; let i = index"
-                  [class.sel]="selectedBulkIndex === i"></tr>
-              </table>
-            </div>
-
-            <div class="bulk-foot">
-              <button class="btn btn-ghost btn-sm" type="button"
-                [disabled]="selectedBulkIndex === null || !bulkImportData[selectedBulkIndex] || !bulkImportData[selectedBulkIndex].__original"
-                (click)="undoBulkItem(selectedBulkIndex!)">
-                <mat-icon>undo</mat-icon>{{ t('bulk.undoSelected') }}
-              </button>
-              <button class="btn btn-ghost btn-sm" type="button" [disabled]="!bulkImportData.length"
-                (click)="undoAllBulkItems()">
-                {{ t('bulk.undoAll') }}
-              </button>
-              <button class="btn btn-danger btn-sm" type="button" (click)="clearBulkImport()">
-                <mat-icon>close</mat-icon>{{ t('bulk.clearList') }}
-              </button>
-              <button class="btn btn-primary btn-sm" type="button" (click)="processBulkImport()">
-                <mat-icon>check</mat-icon>{{ t('bulk.createAll', { count: bulkImportData.length }) }}
-              </button>
-            </div>
-          </ng-container>
-          <ng-template #bulkEmpty>
-            <p class="bulk-empty">{{ t('bulk.empty') }}</p>
-          </ng-template>
-
-          <div *ngIf="bulkImportResults && !bulkImportResults.success" class="status-line">
-            <mat-icon>warning</mat-icon>{{ bulkImportResults.message }}
-          </div>
-        </section>
-      </div>
-      -->
     </div>
   </ng-container>
 </div>

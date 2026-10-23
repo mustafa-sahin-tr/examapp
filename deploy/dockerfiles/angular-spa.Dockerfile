@@ -8,7 +8,7 @@ RUN test -n "$APP_DIR"
 
 # Issue #488 (Y1): bagimliliklar YALNIZ package-lock.json'dan, `npm ci` ile kurulur. Bilerek `|| npm install` fallback'i
 # YOK: lock kaymasi sessizce kilitsiz kuruluma donerse registry'deki yeni (zararli) yama surumleri ve degismis tarball'lar
-# (ornegin cdn.sheetjs.com xlsx) butunluk (integrity) kontrolu olmadan imaja girer. Lock yoksa/uyumsuzsa build bilerek duser.
+# (registry disi URL bagimliliklari dahil) butunluk (integrity) kontrolu olmadan imaja girer. Lock yoksa/uyumsuzsa build bilerek duser.
 # Once yalniz manifest+lock kopyalanir (kaynak degisince npm ci katmani cache'ten gelir).
 COPY ${APP_DIR}/package.json ${APP_DIR}/package-lock.json* ./
 RUN test -f package-lock.json || { echo "ERROR: ${APP_DIR}/package-lock.json yok; kilitsiz kurulum yapilmaz (#488 Y1). 'npm install --package-lock-only' ile uretip commit'leyin." >&2; exit 1; }

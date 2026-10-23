@@ -10,7 +10,6 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { of, switchMap, throwError, timer } from 'rxjs';
 
 import { TestCreateEnhancedComponent } from './test-create-enhanced.component';
-import { buildXlsxFile } from '../../shared/testing/xlsx-testing';
 import { TestService } from '../../services/test.service';
 import { AuthService } from '../../services/auth.service';
 import { WorksheetStudentVisibility, WorksheetTeacherSharing } from '../../models/test-instance';
@@ -53,7 +52,6 @@ describe('TestCreateEnhancedComponent', () => {
     testService = jasmine.createSpyObj<TestService>('TestService', [
       'create',
       'get',
-      'bulkImport',
       'updateWorksheetBackgroundImage',
       'updateVisibility',
     ]);
@@ -61,7 +59,6 @@ describe('TestCreateEnhancedComponent', () => {
       of({ id: 1, name: 'X', gradeId: 1, maxDurationSeconds: 600, isPracticeTest: false, ...exam } as any)
     );
     testService.create.and.returnValue(of({ message: 'ok', examId: 42 }));
-    testService.bulkImport.and.returnValue(of({}));
     testService.updateWorksheetBackgroundImage.and.returnValue(of({ imageUrl: 'http://img/x.png' } as any));
 
     const bookService = jasmine.createSpyObj<BookService>('BookService', ['getAll', 'getTestsByBook']);
@@ -411,80 +408,15 @@ describe('TestCreateEnhancedComponent', () => {
     });
   });
 
-  describe('Excel okuma (readExcelFile, SheetJS 0.20.3)', () => {
-    // Özel erişim: readExcelFile private; ham JSON sözleşmesini doğrudan denetliyoruz.
-    const readExcel = (c: TestCreateEnhancedComponent, file: File): Promise<Record<string, unknown>[]> =>
-      c['readExcelFile'](file);
+  // Issue #544: Excel ile toplu test yükleme kaldırıldı; yeni test sayfasında yalnız tekil form kalır.
+  describe('Excel toplu yükleme yok (#544)', () => {
+    it('createMode_TestFormHasNoApplyToAllTriggers', () => {
+      const fixture = configure(null);
+      const icons: string[] = Array.from(fixture.nativeElement.querySelectorAll('app-test-form button mat-icon')).map(
+        (i) => ((i as HTMLElement).textContent || '').trim()
+      );
 
-    it('readExcelFile_HeaderAndRows_MapsRowsByHeaderNames', async () => {
-      const c = configure(null).componentInstance;
-      const file = buildXlsxFile([
-        ['Ad', 'Sınıf', 'Süre', 'Açıklama'],
-        ['Matematik', '5', 30, 'Konu tekrarı'],
-        ['Fen', '6', 45, 'Deney'],
-      ]);
-
-      const rows = await readExcel(c, file);
-
-      expect(rows.length).toBe(2);
-      expect(rows[0]['Ad']).toBe('Matematik');
-      expect(rows[0]['Sınıf']).toBe('5');
-      expect(rows[0]['Süre']).toBe(30);
-      expect(rows[1]['Ad']).toBe('Fen');
-      expect(rows[1]['Açıklama']).toBe('Deney');
-    });
-
-    it('readExcelFile_EmptyCell_UsesEmptyStringDefault', async () => {
-      const c = configure(null).componentInstance;
-      const file = buildXlsxFile([
-        ['Ad', 'Sınıf', 'Açıklama'],
-        ['Matematik', '5', null],
-        ['Fen', '6', 'Deney'],
-      ]);
-
-      const rows = await readExcel(c, file);
-
-      expect(rows[0]).toEqual({ Ad: 'Matematik', Sınıf: '5', Açıklama: '' });
-      expect(rows[1]).toEqual({ Ad: 'Fen', Sınıf: '6', Açıklama: 'Deney' });
-    });
-
-    it('onBulkImport_ValidWorkbook_FillsBulkImportDataWithMappedRows', async () => {
-      const c = configure(null).componentInstance;
-      const file = buildXlsxFile([
-        ['Ad', 'Sınıf', 'Süre', 'Açıklama'],
-        ['Matematik', '5', 30, null],
-      ]);
-      c.onBulkFileSelected({ target: { files: [file] } });
-
-      await c.onBulkImport();
-
-      expect(c.bulkImportData.length).toBe(1);
-      const item = c.bulkImportData[0];
-      expect(item.name).toBe('Matematik');
-      expect(item.gradeId).toBe('5');
-      expect(item.maxDurationMinutes).toBe(30);
-      expect(item.description).toBe('');
-      expect(item.__original).toEqual(jasmine.objectContaining({ name: 'Matematik' }));
-    });
-
-    // Regresyon ağı: __proto__ başlıklı bir sütun içeren dosyanın diğer sütunlarını okur ve
-    // Object.prototype'u değiştirmediğini doğrular. CVE-2023-30533 kötü niyetli dosya yapısının
-    // XLSX.read sırasındaki tetiklenmesini bu test SINAMAZ; yalnız bu girdiyle okumanın güvenli kaldığını gösterir.
-    it('readExcelFile_ProtoHeader_ReadsOtherColumnsAndDoesNotPollutePrototype', async () => {
-      const c = configure(null).componentInstance;
-      const file = buildXlsxFile([
-        ['Ad', '__proto__'],
-        ['Matematik', 'polluted-value'],
-      ]);
-
-      const rows = await readExcel(c, file);
-
-      expect(rows.length).toBe(1);
-      expect(rows[0]['Ad']).toBe('Matematik');
-      const probe: Record<string, unknown> = {};
-      expect(probe['polluted']).toBeUndefined();
-      expect(probe['polluted-value']).toBeUndefined();
-      expect(Object.keys(Object.prototype)).toEqual([]);
+      expect(icons).not.toContain('done_all');
     });
   });
 });

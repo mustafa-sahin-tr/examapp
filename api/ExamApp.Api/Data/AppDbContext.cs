@@ -125,6 +125,7 @@ public class AppDbContext : DbContext
     // Worksheet / soru yorum-soru thread'leri (issue #105)
     public DbSet<WorksheetComment> WorksheetComments { get; set; }
     public DbSet<WorksheetCommentReport> WorksheetCommentReports { get; set; } // issue #305
+    public DbSet<WorksheetCommentModerationEvent> WorksheetCommentModerationEvents { get; set; } // issue #335
 
     // Öğrenci ↔ öğretmen doğrudan mesajlaşma (issue #106)
     public DbSet<Conversation> Conversations { get; set; }
@@ -264,6 +265,17 @@ public class AppDbContext : DbContext
             e.HasIndex(r => new { r.CommentId, r.ReporterUserId })
                 .IsUnique()
                 .HasFilter("NOT \"IsDeleted\"");
+        });
+
+        // issue #335: yorum moderasyon geçmişi (append-only, FK yok — yorum silinse de olay kalır). Yorum bazlı geçmiş
+        // (WorksheetCommentId, CreatedAt desc), aktör bazlı denetim + reddedilen deneme hız sınırı (ActorUserId, CreatedAt),
+        // saklama işi (Action, CreatedAt) — tür başına ayrı kesim.
+        modelBuilder.Entity<WorksheetCommentModerationEvent>(e =>
+        {
+            e.Property(m => m.Action).HasConversion<string>().HasMaxLength(32);
+            e.HasIndex(m => new { m.WorksheetCommentId, m.CreatedAt }).IsDescending(false, true);
+            e.HasIndex(m => new { m.ActorUserId, m.CreatedAt });
+            e.HasIndex(m => new { m.Action, m.CreatedAt });
         });
 
         // issue #106: doğrudan mesajlaşma. Çift başına tek konuşma (tekil index; eşzamanlı ilk mesaj yarışı unique ihlaline

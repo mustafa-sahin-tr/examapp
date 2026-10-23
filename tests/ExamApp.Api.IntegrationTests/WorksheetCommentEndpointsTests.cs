@@ -566,6 +566,126 @@ public class WorksheetCommentEndpointsTests(IntegrationApiFactory factory) : Int
     }
 
     [Fact]
+    public async Task Hide_unhide_and_moderation_history_end_to_end()
+    {
+        // issue #335: gerçek PostgreSQL'de gizle → aç → geçmiş (migration, string enum kolonu, timestamptz, desc index).
+        var seed = await SeedAsync();
+        var a = await ClientAsAsync(StudentAUserId, "Student", Sub("a"), "Student");
+        var b = await ClientAsAsync(StudentBUserId, "Student", Sub("b"), "Student");
+        var assigner = await ClientAsAsync(AssignerId, "Teacher", Sub("t"), "Teacher");
+        var owner = await ClientAsAsync(OwnerId, "Teacher", Sub("owner"), "Teacher");
+        var admin = await ClientAsAsync(AdminUserId, "Admin", Sub("admin"), "Admin");
+
+        var rootId = (await JsonOf(await a.PostAsJsonAsync(Url(seed.WorksheetId), new { body = "numaram 0555 555 55 55" })))
+            .GetProperty("id").GetInt32();
+        var historyUrl = $"{Url(seed.WorksheetId)}/{rootId}/moderation-history";
+
+        (await assigner.PostAsJsonAsync($"{Url(seed.WorksheetId)}/{rootId}/hide", new { reason = "telefon numarası" }))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+        // Unhide, nedeni Postgres'te FOR UPDATE ile okur (SqlQuery satır eşlemesi gerçek DB'de).
+        (await owner.PostAsync($"{Url(seed.WorksheetId)}/{rootId}/unhide", null)).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        // Neden yorumdan silindi, geçmişte kaldı.
+        (await WithDbAsync(db => db.WorksheetComments.SingleAsync(c => c.Id == rootId))).HiddenReason.ShouldBeNull();
+
+        // Reddedilen deneme: worksheet'i görebilen (PublicView), okul içi ama moderatör olmayan öğretmen.
+        await WithDbAsync(db => db.Worksheets.Where(x => x.Id == seed.WorksheetId)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.TeacherSharing, WorksheetTeacherSharing.PublicView)));
+        await SeedApprovedTeacherAsync(NonModeratorTeacherId, seed.SchoolId);
+        var nonModerator = await ClientAsAsync(NonModeratorTeacherId, "Teacher", Sub("nm"), "Teacher");
+        var deniedHide = await nonModerator.PostAsJsonAsync($"{Url(seed.WorksheetId)}/{rootId}/hide", new { reason = "x" });
+        deniedHide.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await JsonOf(deniedHide)).GetProperty("errorCode").GetString().ShouldBe("NotModerator");
+
+        var asAdmin = await admin.GetAsync($"{historyUrl}?page=1&pageSize=10");
+        asAdmin.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var page = await JsonOf(asAdmin);
+        page.GetProperty("totalCount").GetInt32().ShouldBe(3);
+        page.GetProperty("page").GetInt32().ShouldBe(1);
+        page.GetProperty("pageSize").GetInt32().ShouldBe(10);
+        var items = page.GetProperty("items").EnumerateArray().ToList();
+        items.Select(i => i.GetProperty("action").GetString()).ShouldBe(new[] { "DeniedNotModerator", "Unhide", "Hide" });
+        items[0].GetProperty("actorUserId").GetInt32().ShouldBe(NonModeratorTeacherId);
+        items[0].GetProperty("reason").ValueKind.ShouldBe(JsonValueKind.Null);
+        items.Skip(1).ShouldAllBe(i => i.GetProperty("reason").GetString() == "telefon numarası");
+        items[1].GetProperty("actorUserId").GetInt32().ShouldBe(OwnerId);
+        items[1].GetProperty("actorRole").GetString().ShouldBe("Teacher");
+        items[2].GetProperty("actorUserId").GetInt32().ShouldBe(AssignerId);
+        items[1].GetProperty("createdAt").GetDateTime().ShouldBeGreaterThanOrEqualTo(items[2].GetProperty("createdAt").GetDateTime());
+        page.GetRawText().ShouldNotContain("0555");
+        page.GetRawText().ShouldNotContain("kc-305");
+
+        // Moderatör öğretmen (thread'in sorumlusu): yalnız gizle/aç; başkasının olayında kimlik ve neden yok. Öğrenci rol kapısında 403.
+        var asAssigner = await assigner.GetAsync(historyUrl);
+        asAssigner.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var assignerPage = await JsonOf(asAssigner);
+        assignerPage.GetProperty("totalCount").GetInt32().ShouldBe(2);
+        var unhideItem = assignerPage.GetProperty("items")[0];
+        unhideItem.GetProperty("action").GetString().ShouldBe("Unhide");
+        unhideItem.GetProperty("actorUserId").ValueKind.ShouldBe(JsonValueKind.Null);
+        unhideItem.GetProperty("reason").ValueKind.ShouldBe(JsonValueKind.Null);
+        assignerPage.GetProperty("items")[1].GetProperty("reason").GetString().ShouldBe("telefon numarası");
+        (await b.GetAsync(historyUrl)).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+
+        var stored = await WithDbAsync(db => db.WorksheetCommentModerationEvents
+            .Where(m => m.WorksheetCommentId == rootId).OrderBy(m => m.Id).ToListAsync());
+        stored.Select(m => m.Action).ShouldBe(new[]
+        {
+            WorksheetCommentModerationAction.Hide, WorksheetCommentModerationAction.Unhide, WorksheetCommentModerationAction.DeniedNotModerator
+        });
+        stored.ShouldAllBe(m => m.WorksheetId == seed.WorksheetId && m.CommentAuthorSchoolId == seed.SchoolId
+            && m.ActorSchoolId == seed.SchoolId && m.CreatedAt.Kind == DateTimeKind.Utc);
+
+        // Yorum id'si null olan reddedilen deneme (global rapor listesi) — hız sınırı sayımındaki nullable karşılaştırma
+        // Postgres'te doğru çevrilmeli (`= NULL` olsaydı sayım hep 0, 11 satır yazılırdı).
+        var nonModeratorActor = new ExamApp.Api.Services.Worksheets.WorksheetCommentActor(
+            NonModeratorTeacherId, "kc-nm", null, ExamApp.Api.Services.Worksheets.WorksheetCommentActorKind.Teacher, false);
+        for (var i = 0; i < 11; i++)
+        {
+            using var scope = Factory.Services.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<ExamApp.Api.Services.Worksheets.IWorksheetCommentService>();
+            var r = await service.GetReportsAsync(null, new ExamApp.Api.Models.Dtos.WorksheetComments.WorksheetCommentReportsQueryDto(),
+                nonModeratorActor);
+            r.Forbidden.ShouldBeTrue();
+        }
+        (await WithDbAsync(db => db.WorksheetCommentModerationEvents.CountAsync(m =>
+            m.ActorUserId == NonModeratorTeacherId && m.WorksheetCommentId == null && m.WorksheetId == null))).ShouldBe(10);
+
+        // Saklama işi (ExecuteDelete çevirisi, tür başına kesim): eski satırlar silinir, yeniler kalır.
+        await WithDbAsync(async db =>
+        {
+            var now = DateTime.UtcNow;
+            db.WorksheetCommentModerationEvents.AddRange(
+                RetentionRow(WorksheetCommentModerationAction.Hide, now.AddDays(-731)),
+                RetentionRow(WorksheetCommentModerationAction.Hide, now.AddDays(-100)),
+                RetentionRow(WorksheetCommentModerationAction.DeniedNotModerator, now.AddDays(-91)),
+                RetentionRow(WorksheetCommentModerationAction.DeniedNotModerator, now.AddDays(-1)));
+            await db.SaveChangesAsync();
+        });
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var job = scope.ServiceProvider
+                .GetRequiredService<ExamApp.Api.Services.Worksheets.IWorksheetCommentModerationHistoryRetentionJob>();
+            (await job.PurgeExpiredAsync()).ShouldBe(2);
+        }
+        var kept = await WithDbAsync(db => db.WorksheetCommentModerationEvents
+            .Where(m => m.ActorUserId == RetentionActorId).Select(m => m.Action).ToListAsync());
+        kept.OrderBy(x => x).ShouldBe(new[] { WorksheetCommentModerationAction.Hide, WorksheetCommentModerationAction.DeniedNotModerator });
+        (await WithDbAsync(db => db.WorksheetCommentModerationEvents.CountAsync(m => m.WorksheetCommentId == rootId))).ShouldBe(3);
+    }
+
+    private const int NonModeratorTeacherId = 105_005;
+    private const int RetentionActorId = 105_777;
+
+    private static WorksheetCommentModerationEvent RetentionRow(WorksheetCommentModerationAction action, DateTime at) => new()
+    {
+        Action = action,
+        ActorUserId = RetentionActorId,
+        ActorRole = WorksheetCommentModerationActorRoles.Teacher,
+        CreatedAt = at
+    };
+
+    [Fact]
     public async Task Student_comments_are_limited_to_the_authors_school()
     {
         var seed = await SeedAsync();

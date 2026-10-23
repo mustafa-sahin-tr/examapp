@@ -55,7 +55,8 @@ public interface IWorksheetCommentService
     /// <summary>
     /// issue #305: yorumu gizle (<paramref name="hidden"/> true, neden zorunlu) ya da aç. Yetki: admin, worksheet sahibi, thread'in
     /// sorumlu öğretmeni — ve yorum istek sahibinin okul kapsamında olmalı. İdempotent; değişiklik olduysa AdminUserActionLogs'a
-    /// (TargetType=WorksheetComment) aynı transaction'da yazılır. Yanıt moderatör görünümündeki yorumdur.
+    /// (TargetType=WorksheetComment) ve (issue #335) WorksheetCommentModerationEvents'e (Hide: yeni neden, Unhide: kaldırılan
+    /// neden) aynı transaction'da yazılır. Yanıt moderatör görünümündeki yorumdur.
     /// </summary>
     Task<WorksheetCommentResultDto> SetHiddenAsync(int worksheetId, int commentId, bool hidden, HideWorksheetCommentDto? dto, WorksheetCommentActor actor, CancellationToken ct = default);
 
@@ -64,4 +65,12 @@ public interface IWorksheetCommentService
     /// istek sahibinin moderatörü olduğu (kapsamındaki) yorumlar; null ise global liste — yalnız admin.
     /// </summary>
     Task<WorksheetCommentReportsResultDto> GetReportsAsync(int? worksheetId, WorksheetCommentReportsQueryDto query, WorksheetCommentActor actor, CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #335: bir yorumun moderasyon geçmişi (salt okunur, yeniden eskiye, sayfalı). Yetki gizleme ile aynı: yorum istek
+    /// sahibinin kapsamında olmalı (değilse 404) ve istek sahibi moderatör olmalı (değilse 403 NotModerator + reddedilen deneme
+    /// olayı). Admin tüm olayları (<c>DeniedNotModerator</c> dahil), moderatör öğretmen yalnız <c>Hide/Unhide</c>'ı görür.
+    /// Geçmiş, tablonun eklendiği sürümden sonraki işlemlerle başlar (backfill yok).
+    /// </summary>
+    Task<WorksheetCommentModerationHistoryResultDto> GetModerationHistoryAsync(int worksheetId, int commentId, WorksheetCommentModerationHistoryQueryDto query, WorksheetCommentActor actor, CancellationToken ct = default);
 }

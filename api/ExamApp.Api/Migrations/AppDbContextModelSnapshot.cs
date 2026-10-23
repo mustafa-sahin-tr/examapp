@@ -3865,6 +3865,58 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("WorksheetComments");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.WorksheetCommentModerationEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("ActorRole")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int?>("ActorSchoolId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ActorUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("CommentAuthorSchoolId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int?>("WorksheetCommentId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("WorksheetId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Action", "CreatedAt");
+
+                    b.HasIndex("ActorUserId", "CreatedAt");
+
+                    b.HasIndex("WorksheetCommentId", "CreatedAt")
+                        .IsDescending(false, true);
+
+                    b.ToTable("WorksheetCommentModerationEvents");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.WorksheetCommentReport", b =>
                 {
                     b.Property<int>("Id")

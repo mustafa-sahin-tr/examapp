@@ -448,6 +448,13 @@ builder.Services.AddOptions<ExamApp.Api.Services.Parents.ParentAccessAuditOption
     .ValidateOnStart();
 builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentAccessAuditRetentionJob, ExamApp.Api.Services.Parents.ParentAccessAuditRetentionJob>();
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminParentAccessAuditService, ExamApp.Api.Services.AdminUsers.AdminParentAccessAuditService>();
+// issue #335: yorum moderasyon geçmişi saklama süresi — CommentModerationHistory:RetentionDays (gizle/aç, varsayılan 730) ve
+// DeniedRetentionDays (reddedilen deneme, varsayılan 90); günlük Hangfire temizliği.
+builder.Services.AddOptions<ExamApp.Api.Services.Worksheets.CommentModerationHistoryOptions>()
+    .BindConfiguration(ExamApp.Api.Services.Worksheets.CommentModerationHistoryOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetCommentModerationHistoryRetentionJob, ExamApp.Api.Services.Worksheets.WorksheetCommentModerationHistoryRetentionJob>();
 // issue #436: veli-öncelikli model geçişi — süresi dolan bekleyen istekleri (eski öğrenci onaylı 30 gün, ikinci veli 7 gün)
 // kapatır ve birincil velisi silinen öğrencide birincilliği devreder (Hangfire, varsayılan saatte bir).
 builder.Services.AddOptions<ExamApp.Api.Services.Parents.ParentLinkTransitionSweepOptions>()
@@ -760,6 +767,12 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.Parents.IParentAccessAuditRetentio
     ExamApp.Api.Services.Parents.ParentAccessAuditRetentionJob.RecurringJobId,
     j => j.PurgeExpiredAsync(CancellationToken.None),
     app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Parents.ParentAccessAuditOptions>>().Value.Cron);
+
+// issue #335: WorksheetCommentModerationEvents saklama süresi — tür başına kesimle (gizle/aç, reddedilen deneme) parti parti siler.
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.Worksheets.IWorksheetCommentModerationHistoryRetentionJob>(
+    ExamApp.Api.Services.Worksheets.WorksheetCommentModerationHistoryRetentionJob.RecurringJobId,
+    j => j.PurgeExpiredAsync(CancellationToken.None),
+    app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.Worksheets.CommentModerationHistoryOptions>>().Value.Cron);
 
 // issue #436: geçiş dönemi biten eski (#419) ve süresi dolan ikinci veli isteklerini Revoked'a çeker; birincil veli devrini onarır.
 RecurringJob.AddOrUpdate<ExamApp.Api.Services.Parents.IParentLinkTransitionSweepJob>(

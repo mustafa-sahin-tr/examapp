@@ -138,6 +138,26 @@ public class WorksheetCommentsController : BaseController
         return result.Success ? Ok(result.Comment) : MapFailure(result);
     }
 
+    /// <summary>
+    /// issue #335: yorumun moderasyon geçmişi (salt okunur, yeniden eskiye, page/pageSize ≤ 50). Admin tüm olayları
+    /// (reddedilen denemeler dahil), moderatör öğretmen yalnız gizle/aç olaylarını görür; moderatör olmayan 403 NotModerator,
+    /// kapsam dışı/yok 404. Gateway: /api/exam/worksheet/{worksheetId}/comments/{commentId}/moderation-history.
+    /// </summary>
+    [HttpGet("{commentId:int}/moderation-history")]
+    [Authorize(Roles = "Teacher,Admin")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)]
+    [EnableRateLimiting(WorksheetCommentReadRateLimiting.Policy)]
+    public async Task<IActionResult> GetModerationHistory(int worksheetId, int commentId,
+        [FromQuery] WorksheetCommentModerationHistoryQueryDto query, CancellationToken ct)
+    {
+        var actor = await ResolveActorAsync(ct);
+        if (actor == null)
+            return ActorNotResolved();
+
+        var result = await _comments.GetModerationHistoryAsync(worksheetId, commentId, query, actor, ct);
+        return result.Success ? Ok(result.Page) : MapFailure(result);
+    }
+
     /// <summary>Bu worksheet'te istek sahibinin moderatörü olduğu şikayet edilmiş yorumlar (son şikayet önce, page/pageSize).</summary>
     [HttpGet("reports")]
     [Authorize(Roles = "Teacher,Admin")]

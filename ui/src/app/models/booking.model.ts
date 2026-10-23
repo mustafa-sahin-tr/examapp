@@ -368,3 +368,21 @@ export function isTeacherUnavailableError(status: number, body: unknown): boolea
     (body as Record<string, unknown>)['errorCode'] === TEACHER_UNAVAILABLE_ERROR_CODE
   );
 }
+
+/**
+ * Issue #320 — `GET requests/{id}/live-status` (`LiveSessionStatusDto`): açık görüşmenin hâlâ geçerli olup olmadığı. Token
+ * üretmez. `active=false` → görüşme kapatılır.
+ */
+export interface LiveSessionStatus extends BookingResponseBase {
+  active?: boolean;
+  /** `TeacherUnavailable` | `BookingNotApproved` | `WindowNotOpen` | `WindowClosed` (`LiveSessionStatusCodes`). */
+  errorCode?: string | null;
+}
+
+/** `LiveSessionStatusCodes` değerleri. */
+export const LIVE_SESSION_STATUS_CODES = {
+  teacherUnavailable: 'TeacherUnavailable',
+  bookingNotApproved: 'BookingNotApproved',
+  windowNotOpen: 'WindowNotOpen',
+  windowClosed: 'WindowClosed',
+} as const;

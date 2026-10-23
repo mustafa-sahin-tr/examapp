@@ -97,4 +97,10 @@ public interface IBookingService
 
     /// <summary>issue #315: ders bitişinden sonra karşı tarafın derse katılmadığını bildirir (ilk bildirim kalıcı).</summary>
     Task<BookingResultDto> ReportNoShowAsync(int callerUserId, int bookingId, CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #320: açık görüşmenin hâlâ geçerli olup olmadığı (token üretmez). Askı / iptal / pencere kapanışında
+    /// <c>Active=false</c> + kod; istemci görüşmeyi kapatır. Taraf olmayan / bulunamayan 404.
+    /// </summary>
+    Task<LiveSessionStatusDto> GetLiveSessionStatusAsync(int callerUserId, int bookingId, CancellationToken ct = default);
 }

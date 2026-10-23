@@ -278,6 +278,14 @@ public class WhiteboardHubEndpointsTests(IntegrationApiFactory factory) : Integr
         ex.StatusCode.ShouldBe(System.Net.HttpStatusCode.Unauthorized);
     }
 
+    private static async Task WaitForConnectionCountAsync(WhiteboardStore store, string sub, int expected)
+    {
+        var deadline = DateTime.UtcNow + Timeout;
+        while (store.ConnectionCount(sub) != expected && DateTime.UtcNow < deadline)
+            await Task.Delay(50);
+        store.ConnectionCount(sub).ShouldBe(expected);
+    }
+
     [Fact]
     public async Task Fourth_connection_of_the_same_user_is_rejected_and_closed()
     {
@@ -291,6 +299,11 @@ public class WhiteboardHubEndpointsTests(IntegrationApiFactory factory) : Integr
         await c1.StartAsync();
         await c2.StartAsync();
         await c3.StartAsync();
+
+        // StartAsync el sıkışmayla döner; sunucu OnConnectedAsync'i (kayıt) ondan SONRA çalıştırır. Üç kayıt yerleşmeden 4.
+        // bağlantı açılırsa sırası yarışa girer ve reddedilen c3 olabilir (CI'da görüldü) — önce kayıtları bekle.
+        var store = (WhiteboardStore)Factory.Services.GetRequiredService<IWhiteboardStore>();
+        await WaitForConnectionCountAsync(store, sub, 3);
 
         await using var c4 = Connect(sub, "Student");
         var rejected = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -309,11 +322,7 @@ public class WhiteboardHubEndpointsTests(IntegrationApiFactory factory) : Integr
         // Bir bağlantı kapanınca yer açılır.
         await c1.StopAsync();
         // Sunucu OnDisconnectedAsync'i istemcinin StopAsync dönüşünden sonra bitirebilir — kaydın düşmesini bekle.
-        var store = (WhiteboardStore)Factory.Services.GetRequiredService<IWhiteboardStore>();
-        var deadline = DateTime.UtcNow + Timeout;
-        while (store.ConnectionCount(sub) > 2 && DateTime.UtcNow < deadline)
-            await Task.Delay(50);
-        store.ConnectionCount(sub).ShouldBe(2);
+        await WaitForConnectionCountAsync(store, sub, 2);
         await using var c5 = Connect(sub, "Student");
         var c5Rejected = false;
         c5.On<string>("ConnectionRejected", _ => c5Rejected = true);

@@ -23,7 +23,7 @@
       <span>{{ error() }}</span>
       <div class="lvid__state-actions">
         <!-- Issue #298: öğretmen askıdayken tekrar denemek sonucu değiştirmez. -->
-        @if (bookingId() !== null && !teacherUnavailable()) {
+        @if (bookingId() !== null && !sessionEnded()) {
           <button mat-flat-button color="primary" type="button" (click)="load()">{{ t('retry') }}</button>
         }
         <button mat-stroked-button type="button" (click)="leave()">{{ t('goBack') }}</button>

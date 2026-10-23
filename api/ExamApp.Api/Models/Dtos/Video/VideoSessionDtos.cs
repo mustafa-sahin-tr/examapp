@@ -53,3 +53,31 @@ public class VideoSessionResultDto : ResponseBaseDto
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ErrorCode { get; set; }
 }
+
+/// <summary>
+/// issue #320: <c>GET /api/booking/requests/{id}/live-status</c> — açık görüşme sayfasının periyodik yoklaması (token ÜRETMEZ).
+/// <see cref="Active"/> false ise istemci görüşmeyi kapatır: öğretmen askıya alındı (<c>TeacherUnavailable</c>), randevu
+/// artık onaylı değil / iptal edildi (<c>BookingNotApproved</c>) ya da katılım penceresi kapandı (<c>WindowClosed</c>).
+/// Taraf olmayan ya da bulunamayan randevu 404 döner (varlık sızdırılmaz).
+/// </summary>
+public class LiveSessionStatusDto : ResponseBaseDto
+{
+    public bool Active { get; set; }
+
+    /// <summary>Active=false iken neden: <see cref="LiveSessionStatusCodes"/>.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ErrorCode { get; set; }
+}
+
+/// <summary><see cref="LiveSessionStatusDto.ErrorCode"/> değerleri (issue #320).</summary>
+public static class LiveSessionStatusCodes
+{
+    /// <summary>Randevunun öğretmeni askıda / onaysız (#298 ile aynı nötr kod).</summary>
+    public const string TeacherUnavailable = Teachers.TeacherAccessErrorCodes.TeacherUnavailable;
+
+    /// <summary>Randevu artık Approved değil (iptal edildi, #315).</summary>
+    public const string BookingNotApproved = "BookingNotApproved";
+
+    public const string WindowNotOpen = "WindowNotOpen";
+    public const string WindowClosed = "WindowClosed";
+}

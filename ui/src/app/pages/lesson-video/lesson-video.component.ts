@@ -1,13 +1,16 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { isPlatformBrowser } from '@angular/common';
 import {
   Component,
   DestroyRef,
   ElementRef,
   OnInit,
+  PLATFORM_ID,
   computed,
   effect,
   inject,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
@@ -18,8 +21,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
-import { finalize, map, take } from 'rxjs';
+import { EMPTY, Subscription, catchError, exhaustMap, finalize, map, take, timer } from 'rxjs';
 import {
+  LIVE_SESSION_STATUS_CODES,
+  LiveSessionStatus,
   TEACHER_UNAVAILABLE_ERROR_CODE,
   VideoSession,
   isTeacherUnavailableError,
@@ -32,6 +37,18 @@ import {
 } from '../../services/jitsi-script-loader.service';
 import { WhiteboardComponent } from '../../shared/components/whiteboard/whiteboard.component';
 import { provideExcalidrawCanvas } from '../../shared/components/whiteboard/excalidraw-canvas.provider';
+
+/**
+ * Issue #320: görüşme açıkken randevunun hâlâ geçerli olup olmadığı bu aralıkla yoklanır (öğretmen askıya alındı, randevu
+ * iptal edildi, pencere kapandı → Jitsi kapatılır). Jitsi JWT'si yalnız katılımda doğrulandığından süren görüşmeyi istemci bitirir.
+ */
+export const LIVE_STATUS_POLL_MS = 30_000;
+
+/**
+ * Issue #320 (security review): durum bu kadar ardışık yoklamada doğrulanamazsa (ağ/5xx/429) görüşme kapatılır — reşit
+ * olmayan katılımcıyı korumak için muhafazakâr varsayılan. "Tekrar dene" ile yeniden açılabilir (sunucu yeniden doğrular).
+ */
+export const LIVE_STATUS_MAX_FAILURES = 4;
 
 /** Sayfanın Transloco scope'u: `public/i18n/lesson-video/<lang>.json` (issue #183). */
 const SCOPE = 'lesson-video';
@@ -81,6 +98,9 @@ export class LessonVideoComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly transloco = inject(TranslocoService);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private liveStatusPoll: Subscription | null = null;
+  private liveStatusFailures = 0;
 
   private readonly container = viewChild<ElementRef<HTMLDivElement>>('jitsiContainer');
   private api: JitsiMeetExternalApi | null = null;
@@ -97,6 +117,12 @@ export class LessonVideoComponent implements OnInit {
    * "Tekrar dene" gizlenir, yalnızca geri dönüş sunulur.
    */
   protected readonly teacherUnavailable = signal(false);
+
+  /**
+   * Issue #320: görüşme sunucu tarafında sona erdi (askı, iptal, pencere kapandı) — kalıcı; "Tekrar dene" gizlenir.
+   * `teacherUnavailable` da bunu ima eder.
+   */
+  protected readonly sessionEnded = signal(false);
 
   /**
    * Scope sözlüğü yüklendiğinde `true` olur. Başlık şablon dışında (iframe `title` özniteliği ve
@@ -142,8 +168,17 @@ export class LessonVideoComponent implements OnInit {
       void this.embedWithIframeApi(session, host);
     });
 
+    // Issue #320: oturum açıkken geçerliliği periyodik yokla; oturum kapanınca yoklama da durur.
+    effect(() => {
+      const active = this.session() !== null;
+      untracked(() => (active ? this.startLiveStatusPoll() : this.stopLiveStatusPoll()));
+    });
+
     // Oda kaynağı sayfa yıkılırken bırakılır (ayrı bir ngOnDestroy tutmaya gerek yok).
-    this.destroyRef.onDestroy(() => this.disposeApi());
+    this.destroyRef.onDestroy(() => {
+      this.stopLiveStatusPoll();
+      this.disposeApi();
+    });
   }
 
   ngOnInit(): void {
@@ -167,6 +202,7 @@ export class LessonVideoComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
     this.teacherUnavailable.set(false);
+    this.sessionEnded.set(false);
 
     this.bookingService
       .getVideoSession(id)
@@ -215,6 +251,7 @@ export class LessonVideoComponent implements OnInit {
    */
   private showTeacherUnavailable(serverMessage: unknown): void {
     this.teacherUnavailable.set(true);
+    this.sessionEnded.set(true);
     const message = typeof serverMessage === 'string' ? serverMessage.trim() : '';
     this.setError('error.teacherUnavailable', message || null);
   }
@@ -284,6 +321,82 @@ export class LessonVideoComponent implements OnInit {
       // Betik yüklenemediyse düz iframe'e düş — oda yine de açılabilsin.
       this.mode.set('direct');
     }
+  }
+
+  private startLiveStatusPoll(): void {
+    const id = this.bookingId();
+    if (!this.isBrowser || this.liveStatusPoll || id === null) {
+      return;
+    }
+    this.liveStatusFailures = 0;
+    // exhaustMap: yavaş bir istek sürerken gelen tur onu iptal etmez; hata iç istekte yakalanır, zamanlayıcı yaşar.
+    this.liveStatusPoll = timer(LIVE_STATUS_POLL_MS, LIVE_STATUS_POLL_MS)
+      .pipe(
+        exhaustMap(() =>
+          this.bookingService.getLiveSessionStatus(id).pipe(
+            catchError((err: HttpErrorResponse) => {
+              this.onLiveStatusError(err);
+              return EMPTY;
+            })
+          )
+        )
+      )
+      .subscribe((status) => this.onLiveStatus(status));
+  }
+
+  private stopLiveStatusPoll(): void {
+    this.liveStatusPoll?.unsubscribe();
+    this.liveStatusPoll = null;
+  }
+
+  private onLiveStatus(status: LiveSessionStatus): void {
+    this.liveStatusFailures = 0;
+    if (status?.active !== false) {
+      return;
+    }
+    switch (status.errorCode) {
+      case LIVE_SESSION_STATUS_CODES.teacherUnavailable:
+        this.endSession();
+        this.showTeacherUnavailable(null);
+        return;
+      case LIVE_SESSION_STATUS_CODES.bookingNotApproved:
+        this.endSession();
+        this.setError('error.bookingCancelled');
+        return;
+      case LIVE_SESSION_STATUS_CODES.windowClosed:
+        this.endSession();
+        this.setError('error.windowClosed');
+        return;
+      default:
+        // WindowNotOpen (randevu taşındı) ya da bilinmeyen kod: nötr mesaj.
+        this.endSession();
+        this.setError('error.sessionEnded');
+    }
+  }
+
+  /**
+   * 403/404: çağıran artık bu randevunun tarafı değil ya da (öğretmenin kendi hesabı askıya alındı →
+   * ApprovedTeacher policy 403 `TeacherNotApproved`) yetkisi düştü — görüşme kalıcı olarak kapatılır. 401 (oturum bitti) ya da
+   * {@link LIVE_STATUS_MAX_FAILURES} ardışık geçici hata: görüşme kapatılır ama "Tekrar dene" açık kalır.
+   */
+  private onLiveStatusError(err: HttpErrorResponse): void {
+    if (err.status === 403 || err.status === 404) {
+      this.endSession();
+      this.setError('error.sessionEnded');
+      return;
+    }
+    if (err.status === 401 || ++this.liveStatusFailures >= LIVE_STATUS_MAX_FAILURES) {
+      this.endSession(false);
+      this.setError('error.statusUnverified');
+    }
+  }
+
+  /** `final`=false: doğrulanamadı (tekrar denenebilir); true: sunucu görüşmeyi sonlandırdı ("Tekrar dene" gizli). */
+  private endSession(final = true): void {
+    this.stopLiveStatusPoll();
+    this.disposeApi();
+    this.session.set(null);
+    this.sessionEnded.set(final);
   }
 
   private disposeApi(): void {

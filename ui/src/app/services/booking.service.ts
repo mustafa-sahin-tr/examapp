@@ -12,6 +12,7 @@ import {
   CreateAvailabilitySlotRequest,
   CreateBookingRequest,
   CreateRecurringRuleRequest,
+  LiveSessionStatus,
   ParentBookingRequestList,
   RecurringRuleDeleteResult,
   RecurringRuleResult,
@@ -214,6 +215,11 @@ export class BookingService {
    */
   getVideoSession(bookingId: number): Observable<VideoSessionResult> {
     return this.http.post<VideoSessionResult>(`${this.baseUrl}/requests/${bookingId}/video-session`, null);
+  }
+
+  /** Issue #320: açık görüşmenin geçerliliği (token üretmez) — ders sayfası periyodik yoklar. */
+  getLiveSessionStatus(bookingId: number): Observable<LiveSessionStatus> {
+    return this.http.get<LiveSessionStatus>(`${this.baseUrl}/requests/${bookingId}/live-status`);
   }
 
   /**

@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -41,6 +41,7 @@ import { TUTOR_SEARCH_SCOPE } from './tutor-search-scope';
   imports: [MatButtonModule, MatChipsModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective],
   providers: [provideTranslocoScope(TUTOR_SEARCH_SCOPE)],
   templateUrl: './tutor-public-profile.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./tutor-public-profile.component.scss'],
 })
 export class TutorPublicProfileComponent implements OnInit {

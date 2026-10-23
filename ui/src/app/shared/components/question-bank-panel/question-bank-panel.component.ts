@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, input, output, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -65,6 +65,7 @@ const EMPTY_PAGE: QuestionBankPage = { items: [], total: 0, skip: 0, take: 0 };
   ],
   providers: [provideTranslocoScope(QUESTION_BANK_SCOPE)],
   templateUrl: './question-bank-panel.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./question-bank-panel.component.scss'],
 })
 export class QuestionBankPanelComponent {

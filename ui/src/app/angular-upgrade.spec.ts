@@ -1,4 +1,15 @@
-import { ApplicationConfig, Component, DOCUMENT as CORE_DOCUMENT, NgZone, VERSION, inject } from '@angular/core';
+import {
+  ApplicationConfig,
+  ChangeDetectionStrategy,
+  Component,
+  DOCUMENT as CORE_DOCUMENT,
+  NgZone,
+  VERSION,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
+import { HttpBackend, HttpXhrBackend } from '@angular/common/http';
 import { By, createApplication } from '@angular/platform-browser';
 import { DOCUMENT as COMMON_DOCUMENT } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
@@ -14,6 +25,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { TRANSLOCO_LOADER } from '@jsverse/transloco';
 import { of } from 'rxjs';
 
+import { AppComponent } from './app.component';
 import { appConfig } from './app.config';
 import { config as serverConfig } from './app.config.server';
 
@@ -161,6 +173,95 @@ describe('Angular yükseltmesi (#545)', () => {
 
     it('serverAppConfig_KeepsZoneChangeDetection', async () => {
       expect(await isZoneBased(serverConfig)).toBeTrue();
+    });
+  });
+  describe('Angular 22', () => {
+    it('framework_IsAtLeast22', () => {
+      expect(Number(VERSION.major)).toBeGreaterThanOrEqual(22);
+    });
+
+    // Angular 22'de provideHttpClient() varsayılan olarak fetch backend'i kullanıyor; http-xhr-backend migration'ı
+    // mevcut davranış için withXhr() ekledi. Fetch'e geçiş ayrı karar (yükleme ilerlemesi, interceptor davranışı).
+    it('browserAppConfig_UsesXhrBackend', async () => {
+      spyOn(console, 'warn');
+      const appRef = await createApplication({
+        providers: [...appConfig.providers, { provide: TRANSLOCO_LOADER, useValue: { getTranslation: () => of({}) } }],
+      });
+      try {
+        expect(appRef.injector.get(HttpBackend)).toBeInstanceOf(HttpXhrBackend);
+      } finally {
+        appRef.destroy();
+      }
+    });
+
+    // Angular 22'nin varsayılan change detection stratejisi OnPush; change-detection-eager migration'ı mevcut
+    // bileşenlere eski varsayılanı (Eager) açıkça yazdı. Yeni bileşen strateji belirtmezse OnPush olur.
+    describe('change detection varsayılanı', () => {
+      @Component({ selector: 'app-default-cd', template: '{{ label }}' })
+      class DefaultCdComponent {
+        label = 'ilk';
+      }
+
+      @Component({ selector: 'app-eager-cd', template: '{{ label }}', changeDetection: ChangeDetectionStrategy.Eager })
+      class EagerCdComponent {
+        label = 'ilk';
+      }
+
+      function rendersPlainFieldMutation(type: typeof DefaultCdComponent | typeof EagerCdComponent): string {
+        const fixture = TestBed.createComponent(type);
+        fixture.detectChanges();
+        fixture.componentInstance.label = 'güncel';
+        fixture.detectChanges();
+        return (fixture.nativeElement as HTMLElement).textContent!.trim();
+      }
+
+      it('componentWithoutStrategy_IsOnPushAndIgnoresPlainFieldMutation', () => {
+        expect(rendersPlainFieldMutation(DefaultCdComponent)).toBe('ilk');
+      });
+
+      it('eagerComponent_RefreshesPlainFieldMutation', () => {
+        expect(rendersPlainFieldMutation(EagerCdComponent)).toBe('güncel');
+      });
+
+      it('appComponent_KeepsEagerStrategyFromMigration', () => {
+        expect((AppComponent as unknown as { ɵcmp: { onPush: boolean } }).ɵcmp.onPush).toBeFalse();
+      });
+    });
+
+    // Angular 22'de şablondaki `a?.b`, `a` null iken null değil undefined üretir. safe-optional-chaining migration'ı
+    // bunu `$safeNavigationMigration(...)` ile sarmıştı; biz kalıcı `?? null` yazdık (labeling, practice-solve,
+    // settings, worksheet-list(-enhanced)). Bu iki test farkı ve düzeltmenin eski davranışı koruduğunu gösterir.
+    describe('şablonda ?. semantiği', () => {
+      @Component({ selector: 'app-probe', template: '' })
+      class ProbeComponent {
+        readonly value = input<unknown>('başlangıç');
+      }
+
+      @Component({
+        selector: 'app-safe-nav-host',
+        imports: [ProbeComponent],
+        template: `<app-probe class="raw" [value]="item()?.endAt" /><app-probe class="fixed" [value]="item()?.endAt ?? null" />`,
+      })
+      class SafeNavHostComponent {
+        readonly item = signal<{ endAt: string } | null>(null);
+      }
+
+      function probeValues(): { raw: unknown; fixed: unknown } {
+        const fixture = TestBed.createComponent(SafeNavHostComponent);
+        fixture.detectChanges();
+        const [raw, fixed] = fixture.debugElement
+          .queryAll(By.directive(ProbeComponent))
+          .map((de) => (de.componentInstance as ProbeComponent).value());
+        return { raw, fixed };
+      }
+
+      it('optionalChainOnNull_YieldsUndefined', () => {
+        expect(probeValues().raw).toBeUndefined();
+      });
+
+      it('optionalChainWithNullFallback_KeepsPreV22Null', () => {
+        expect(probeValues().fixed).toBeNull();
+      });
     });
   });
 });

@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -27,6 +27,7 @@ export const PARENT_HIDDEN_KEYS = ['messages', 'comments', 'answers', 'contact']
   imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective],
   providers: [provideTranslocoScope(PARENT_LINKS_SCOPE)],
   templateUrl: './student-parents-card.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './student-parents-card.component.scss',
 })
 export class StudentParentsCardComponent implements OnInit {

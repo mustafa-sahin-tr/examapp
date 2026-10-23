@@ -10,6 +10,7 @@ import {
   OnChanges,
   SimpleChanges,
   OnInit,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { TranslocoDirective } from '@jsverse/transloco';
 
@@ -18,6 +19,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
   imports: [TranslocoDirective],
   standalone: true,
   templateUrl: './question-navigator.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './question-navigator.component.scss',
 })
 export class QuestionNavigatorComponent implements OnInit {

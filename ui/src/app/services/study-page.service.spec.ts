@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 
 import { StudyPageService } from './study-page.service';
@@ -16,7 +16,7 @@ describe('StudyPageService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [StudyPageService, provideHttpClient(), provideHttpClientTesting()],
+      providers: [StudyPageService, provideHttpClient(withXhr()), provideHttpClientTesting()],
     });
 
     service = TestBed.inject(StudyPageService);

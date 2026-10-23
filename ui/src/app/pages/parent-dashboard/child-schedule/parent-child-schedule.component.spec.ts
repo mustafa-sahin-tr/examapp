@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, signal } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { TranslocoService } from '@jsverse/transloco';
@@ -17,6 +17,7 @@ import parentDashboardEn from '../../../../../public/i18n/parent-dashboard/en.js
 @Component({
   standalone: true,
   imports: [ParentChildScheduleComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<app-parent-child-schedule [studentId]="studentId()" (notFound)="notFoundCount = notFoundCount + 1" />`,
 })
 class HostComponent {

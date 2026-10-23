@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { catchError, debounceTime, distinctUntilChanged, map, of, switchMap, tap } from 'rxjs';
@@ -71,6 +71,7 @@ const SEARCH_DEBOUNCE_MS = 300;
   // Dialog `MatDialog` ile açıldığı için sayfanın scope'unu devralmaz; kendi provider'ını verir.
   providers: [provideTranslocoScope(MY_PROGRAMS_SCOPE)],
   templateUrl: './add-study-pages-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./add-study-pages-dialog.component.scss'],
 })
 export class AddStudyPagesDialogComponent {

@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { FormGroup, Validators, FormArray, FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatInputModule } from '@angular/material/input';
@@ -57,6 +57,7 @@ const QUESTION_SCOPE = 'question';
     TranslocoDirective,
     StorageImageRetryDirective
 ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope(QUESTION_SCOPE)],
 })
 export class QuestionComponent implements OnInit {

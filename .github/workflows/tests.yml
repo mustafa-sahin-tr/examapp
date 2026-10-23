@@ -80,7 +80,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20 # dockerfiles/ui ile aynı (node:20)
+          node-version: 24 # dockerfiles/ui ile aynı (node:24); Angular 22: ^22.22.3 || ^24.15
           cache: yarn
           cache-dependency-path: ui/yarn.lock
       # ui/ için yalnız yarn.lock commit'li (package-lock.json yok) -> npm ci kullanılamaz.
@@ -100,7 +100,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: auth-ui/package-lock.json
       - run: npm ci --no-audit --no-fund

@@ -12,6 +12,7 @@ import {
   signal,
   untracked,
   viewChild,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -87,6 +88,7 @@ function sameOrigin(a: string, b: string): boolean {
   // Issue #98: ortak tahta tuvali (Excalidraw) `@defer` bloğunda ve kendi dinamik chunk'ında yüklenir.
   providers: [provideTranslocoScope(SCOPE), provideExcalidrawCanvas()],
   templateUrl: './lesson-video.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./lesson-video.component.scss'],
 })
 export class LessonVideoComponent implements OnInit {

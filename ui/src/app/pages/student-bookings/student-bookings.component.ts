@@ -1,6 +1,6 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, OnInit, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, PLATFORM_ID, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -88,6 +88,7 @@ const SCOPE = 'student-bookings';
   ],
   providers: [provideTranslocoScope(SCOPE)],
   templateUrl: './student-bookings.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./student-bookings.component.scss'],
 })
 export class StudentBookingsComponent implements OnInit {

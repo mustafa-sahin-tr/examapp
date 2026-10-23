@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 
 import { TranslocoDirective } from '@jsverse/transloco';
 
@@ -7,6 +7,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
   templateUrl: './pagination.component.html',
   styleUrls: ['./pagination.component.scss'],
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [TranslocoDirective]
 })
 export class PaginationComponent implements OnInit, OnChanges {

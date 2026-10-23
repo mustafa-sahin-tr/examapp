@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, take } from 'rxjs';
 
@@ -33,6 +33,7 @@ interface TeacherRegistrationResult {
     TranslocoDirective
 ],
   providers: [provideTranslocoScope(REGISTER_SCOPE)],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './teacher-register.component.html',
 })
 export class TeacherRegisterComponent {

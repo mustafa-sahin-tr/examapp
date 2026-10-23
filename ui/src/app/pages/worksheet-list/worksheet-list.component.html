@@ -277,7 +277,7 @@
                 <app-compact-test-card
                   [title]="test.name"
                   [thumbUrl]="test.imageUrl"
-                  [dueDate]="assignmentFor(test.id)?.endAt"
+                  [dueDate]="assignmentFor(test.id)?.endAt ?? null"
                   (activated)="goToWorksheet(test.id || 0)"
                 ></app-compact-test-card>
               }

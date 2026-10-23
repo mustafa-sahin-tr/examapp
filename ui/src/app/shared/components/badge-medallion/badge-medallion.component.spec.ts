@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { BadgeMedallionComponent, snapMedallionSize } from './badge-medallion.component';
@@ -7,6 +7,7 @@ import { BadgeMedallionState } from './badge-state.util';
 @Component({
   standalone: true,
   imports: [BadgeMedallionComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<app-badge-medallion
     [icon]="icon()"
     [iconUrl]="iconUrl()"

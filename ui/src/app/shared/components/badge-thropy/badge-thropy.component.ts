@@ -10,6 +10,7 @@ import {
   computed,
   inject,
   signal,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -50,6 +51,7 @@ export const BADGE_LEGEND: ReadonlyArray<{ state: BadgeMedallionState; labelKey:
     TranslocoDirective,
   ],
   templateUrl: './badge-thropy.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./badge-thropy.component.scss'],
 })
 export class BadgeThropyComponent implements OnInit, OnChanges {

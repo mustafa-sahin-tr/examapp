@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoDirective } from '@jsverse/transloco';
 
@@ -7,6 +7,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
   imports: [MatButtonModule, TranslocoDirective],
   templateUrl: './education-banner.component.html',
   styleUrls: ['./education-banner.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
   standalone: true,
 })
 export class EducationBannerComponent {

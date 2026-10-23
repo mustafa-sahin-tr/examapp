@@ -1,5 +1,5 @@
 
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -39,6 +39,7 @@ export interface AssignmentPermissionDialogResult {
   // MatDialog ile açılan komponent element injector'dan scope devralmaz; kendi provider'ını verir.
   providers: [provideTranslocoScope('worksheet-detail')],
   templateUrl: './assignment-permission-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './assignment-permission-dialog.component.scss',
 })
 export class AssignmentPermissionDialogComponent {

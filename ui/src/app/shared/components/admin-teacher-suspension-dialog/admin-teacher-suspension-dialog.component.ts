@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AbstractControl, FormControl, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
@@ -61,6 +61,7 @@ export type AdminTeacherSuspensionDialogResult =
   ],
   providers: [provideTranslocoScope(ADMIN_SCOPE)],
   templateUrl: './admin-teacher-suspension-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./admin-teacher-suspension-dialog.component.scss'],
 })
 export class AdminTeacherSuspensionDialogComponent {

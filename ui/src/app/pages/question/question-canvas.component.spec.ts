@@ -1,8 +1,8 @@
-import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { of, Subject, throwError } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -17,7 +17,8 @@ import { ClassificationSource } from '../../models/draws';
 import { TestCreateEnhancedComponent } from '../test-create-enhanced/test-create-enhanced.component';
 
 /** Şablon testlerinde ağır test oluşturma formunun yerine geçen boş bileşen. */
-@Component({ selector: 'app-test-create-enhanced', standalone: true, template: '' })
+@Component({ selector: 'app-test-create-enhanced', standalone: true, changeDetection: ChangeDetectionStrategy.Eager,
+ template: '' })
 class TestCreateEnhancedStubComponent {
   @Input() mode = '';
   @Output() createdAndContinue = new EventEmitter<number>();
@@ -90,7 +91,7 @@ describe('QuestionCanvasComponent', () => {
       imports: [QuestionCanvasComponent, translocoTesting],
       providers: [
         provideNoopAnimations(),
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         { provide: TestService, useValue: testService },
         { provide: QuestionService, useValue: questionService },
@@ -680,7 +681,7 @@ describe('QuestionCanvasComponent', () => {
         imports: [QuestionCanvasComponent, translocoTesting],
         providers: [
           provideNoopAnimations(),
-          provideHttpClient(),
+          provideHttpClient(withXhr()),
           provideHttpClientTesting(),
           { provide: TestService, useValue: testServiceLocal },
           { provide: QuestionService, useValue: questionServiceLocal },

@@ -1,4 +1,4 @@
-import { ApplicationRef, Component } from '@angular/core';
+import { ApplicationRef, Component, ChangeDetectionStrategy } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
@@ -9,7 +9,8 @@ import { ParentStatusStore } from '../../../services/parent-status.store';
 import { parentStatusOf, awaitingStatusOf } from '../../testing/parent-status-testing';
 import { translocoTestingModule } from '../../testing/transloco-testing';
 
-@Component({ standalone: true, template: '' })
+@Component({ standalone: true, changeDetection: ChangeDetectionStrategy.Eager,
+ template: '' })
 class BlankPageComponent {}
 
 /** Issue #441: hoşgörünün son günlerinde kapatılamaz modal. */

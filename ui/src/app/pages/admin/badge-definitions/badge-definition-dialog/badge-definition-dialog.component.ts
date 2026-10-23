@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, ElementRef, computed, inject, signal, viewChildren } from '@angular/core';
+import { Component, ElementRef, computed, inject, signal, viewChildren, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
@@ -127,6 +127,7 @@ type MainControlName =
   ],
   providers: [provideTranslocoScope(ADMIN_SCOPE)],
   templateUrl: './badge-definition-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./badge-definition-dialog.component.scss'],
 })
 export class BadgeDefinitionDialogComponent {

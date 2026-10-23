@@ -1,4 +1,4 @@
-import { Component, WritableSignal, computed, inject, signal } from '@angular/core';
+import { Component, WritableSignal, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -44,6 +44,7 @@ const IDLE: ListState<never> = { items: null, loading: false, failed: false };
   ],
   providers: [provideTranslocoScope(STUDY_LINKS_SCOPE)],
   templateUrl: './study-links.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./study-links.component.scss'],
 })
 export class StudyLinksComponent {

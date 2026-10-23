@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -32,6 +32,7 @@ export interface BankQuestionDialogData {
   // MatDialog ile açılan komponent element injector'dan scope devralmaz; kendi provider'ını verir.
   providers: [provideTranslocoScope('worksheet-detail')],
   templateUrl: './bank-question-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './bank-question-dialog.component.scss',
 })
 export class BankQuestionDialogComponent {

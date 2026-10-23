@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 
 import { AuthService, UserProfile } from './auth.service';
@@ -54,7 +54,7 @@ describe('LocalePreferenceService', () => {
 
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         { provide: AuthService, useValue: authServiceSpy },
         { provide: LocaleService, useValue: localeServiceSpy },

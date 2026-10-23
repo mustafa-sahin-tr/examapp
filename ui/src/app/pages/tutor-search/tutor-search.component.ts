@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
@@ -51,6 +51,7 @@ import { TUTOR_SEARCH_SCOPE } from './tutor-search-scope';
   ],
   providers: [provideTranslocoScope(TUTOR_SEARCH_SCOPE)],
   templateUrl: './tutor-search.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./tutor-search.component.scss'],
 })
 export class TutorSearchComponent implements OnInit {

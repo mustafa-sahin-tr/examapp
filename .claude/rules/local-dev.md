@@ -485,6 +485,23 @@ Gateway arkasında ui dev-server SSR'dan CSR'a düşer: host/proto dışındaki 
   `aspire resource angular-app restart` ve `aspire resource auth-ui restart`. ui'nın `package-lock.json`'u artık izleniyor;
   bağımlılık değişince `yarn.lock` ile birlikte güncelle (`ui/package.json` `//` notu).
 
+**Issue #545 — Angular 22.** `ui` ve `auth-ui` Angular 22.2'de (19 → 20 → 21 → 22, her major ayrı commit).
+- **Node:** Angular 22 CLI `^22.22.3 || ^24.15.0` ister; CI, `deploy/dockerfiles/angular-spa.Dockerfile` ve
+  `dockerfiles/{ui,auth-ui}` `node:24`. Yerelde eski Node varsa `ng` açılmaz — Node 24 kur.
+- **Merge sonrası:** ui'da `yarn install` (ya da `npm ci`), auth-ui'da `npm ci`; Aspire'da
+  `aspire resource angular-app restart` ve `aspire resource auth-ui restart`.
+- **Proxy başlıkları:** Angular 22'de `AngularNodeAppEngine` varsayılan olarak hiçbir `X-Forwarded-*` başlığına güvenmiyor
+  (#488'deki "host/proto'ya güvenilir" davranışı bitti). `trust-proxy-headers` migration'ı `src/server.ts`'e opt-in
+  eklemedi (yalnız `main.server.ts`'e bakıyor) ve bilerek eklenmedi: prod statik nginx, dev-server'da SSR gateway
+  arkasında zaten CSR'a düşüyor.
+- **Davranış korumaları (migration'lar):** bileşenlerde `ChangeDetectionStrategy.Eager` (22'nin varsayılanı OnPush;
+  yeni bileşen yazarken stratejiyi bilinçli seç), `provideHttpClient(withXhr(), …)` (22'nin varsayılanı fetch),
+  `provideClientHydration(withNoIncrementalHydration())`, uygulama config'inde `provideZoneChangeDetection` (21'den beri
+  sağlayıcısız uygulama zoneless). Şablonda `a?.b` artık `null` yerine `undefined` döndürüyor; `null` bekleyen yerde
+  `a?.b ?? null` yaz. Hepsi `src/app/angular-upgrade.spec.ts`'te testli.
+- **CDK 21+ overlay:** bağlı paneller (mat-select, autocomplete) `OverlayContainer` yerine tetikleyicinin yanında native
+  popover olarak açılır; testte paneli `document` üzerinden ara.
+
 ## Port map (host → container)
 
 | Service | Host port | Notes |

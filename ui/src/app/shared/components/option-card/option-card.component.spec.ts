@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { OptionCardComponent } from './option-card.component';
@@ -13,6 +13,7 @@ interface Opt {
 @Component({
   standalone: true,
   imports: [OptionCardComponent, OptionGroupComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <app-option-group [multi]="multi()" labelledBy="q">
       @for (o of options(); track o.value) {

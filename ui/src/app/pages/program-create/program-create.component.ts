@@ -9,7 +9,8 @@ import {
   signal,
   untracked,
   viewChild,
-  DOCUMENT
+  DOCUMENT,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, take } from 'rxjs';
@@ -99,6 +100,7 @@ export interface PathChangeNotice {
   ],
   providers: [provideTranslocoScope(SCOPE)],
   templateUrl: './program-create.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './program-create.component.scss',
 })
 export class ProgramCreateComponent implements OnInit {

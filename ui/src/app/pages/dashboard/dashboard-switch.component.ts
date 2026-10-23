@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { AuthService } from '../../services/auth.service';
 import { DashboardComponent } from './dashboard.component';
 import { TeacherDashboardComponent } from '../teacher-dashboard/teacher-dashboard.component';
@@ -12,6 +12,7 @@ import { TeacherDashboardComponent } from '../teacher-dashboard/teacher-dashboar
   selector: 'app-dashboard-switch',
   standalone: true,
   imports: [DashboardComponent, TeacherDashboardComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     @if (isTeacher) {
       <app-teacher-dashboard />

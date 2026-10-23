@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, computed, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, computed, signal, ChangeDetectionStrategy } from '@angular/core';
 import { DragDropModule, CdkDragDrop, transferArrayItem } from '@angular/cdk/drag-drop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -36,6 +36,7 @@ export interface DragDropLabelingPlacement {
     StorageImageRetryDirective,
   ],
   templateUrl: './question-canvas-dragdrop-labeling.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./question-canvas-dragdrop-labeling.component.scss'],
 })
 export class QuestionCanvasDragDropLabelingComponent {

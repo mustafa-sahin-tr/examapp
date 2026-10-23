@@ -12,6 +12,7 @@ import {
   signal,
   untracked,
   viewChild,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
@@ -107,6 +108,7 @@ const WORKSHEET_DETAIL_SCOPE = 'worksheet-detail';
   ],
   providers: [provideTranslocoScope(WORKSHEET_DETAIL_SCOPE)],
   templateUrl: './worksheet-detail.component-dlms.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./worksheet-detail.component-dlms.scss'],
 })
 export class WorksheetDetailComponent implements OnInit {

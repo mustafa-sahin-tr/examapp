@@ -1,4 +1,4 @@
-import { Component, viewChild } from '@angular/core';
+import { Component, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
@@ -18,6 +18,7 @@ const ADMIN_SCOPE = 'admin';
   imports: [MatButtonModule, MatIconModule, TranslocoDirective, CommentReportListComponent],
   providers: [provideTranslocoScope(ADMIN_SCOPE)],
   templateUrl: './admin-comment-reports.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./admin-comment-reports.component.scss'],
 })
 export class AdminCommentReportsComponent {

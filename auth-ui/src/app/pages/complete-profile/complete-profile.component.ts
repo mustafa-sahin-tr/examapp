@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -65,6 +65,7 @@ interface RoleOption {
   standalone: true,
   imports: [ReactiveFormsModule, MatSnackBarModule],
   templateUrl: './complete-profile.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './complete-profile.component.scss',
 })
 export class CompleteProfileComponent implements OnInit {

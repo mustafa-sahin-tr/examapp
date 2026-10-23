@@ -1,6 +1,6 @@
 import { DatePipe, isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, OnInit, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, PLATFORM_ID, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -102,6 +102,7 @@ const TEACHER_BOOKINGS_SCOPE = 'teacher-bookings';
   ],
   providers: [provideTranslocoScope(TEACHER_BOOKINGS_SCOPE)],
   templateUrl: './teacher-booking-requests.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./teacher-booking-requests.component.scss'],
 })
 export class TeacherBookingRequestsComponent implements OnInit {

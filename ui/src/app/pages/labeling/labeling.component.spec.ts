@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, forwardRef, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, forwardRef, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { Subject, of, throwError } from 'rxjs';
@@ -25,6 +25,7 @@ interface StubRegion { name: string; x?: number; y?: number; width?: number; hei
   selector: 'app-image-selector',
   standalone: true,
   template: '',
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [{ provide: ImageSelectorComponent, useExisting: forwardRef(() => ImageSelectorStub) }],
 })
 class ImageSelectorStub {

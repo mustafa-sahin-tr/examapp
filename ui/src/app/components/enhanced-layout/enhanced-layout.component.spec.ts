@@ -1,7 +1,7 @@
-import { Component, WritableSignal, signal } from '@angular/core';
+import { Component, WritableSignal, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed, fakeAsync, flush, tick } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter, Router, Routes } from '@angular/router';
 import { TranslocoService } from '@jsverse/transloco';
@@ -335,7 +335,7 @@ describe('EnhancedLayoutComponent notification badge (issue #146)', () => {
       imports: [EnhancedLayoutComponent, NoopAnimationsModule, translocoTestingModule()],
       providers: [
         // Dil seçici (LocalePreferenceService) HttpClient ister; bu testte istek beklenmez.
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
         { provide: AuthService, useValue: authStub },
@@ -604,7 +604,7 @@ describe('EnhancedLayoutComponent DM badge push (issue #106 b)', () => {
     TestBed.configureTestingModule({
       imports: [EnhancedLayoutComponent, NoopAnimationsModule, translocoTestingModule()],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideRouter([]),
         { provide: AuthService, useValue: authStub },
@@ -809,7 +809,8 @@ describe('EnhancedLayoutComponent menu routes (issues #374, #373)', () => {
   });
 });
 
-@Component({ standalone: true, template: '' })
+@Component({ standalone: true, changeDetection: ChangeDetectionStrategy.Eager,
+ template: '' })
 class ActiveItemStubPageComponent {}
 
 /** Issue #385: seçili menü öğesi gezinmeden (NavigationEnd) türetilir. */
@@ -874,7 +875,7 @@ function renderedLayoutProviders(roles: string[], mobile: boolean) {
   };
   return [
     { provide: BreakpointObserver, useValue: { observe: () => of({ matches: mobile, breakpoints: {} }) } },
-    provideHttpClient(),
+    provideHttpClient(withXhr()),
     provideHttpClientTesting(),
     provideRouter([]),
     { provide: AuthService, useValue: authStub },

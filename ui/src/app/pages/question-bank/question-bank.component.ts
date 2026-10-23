@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import {
   QUESTION_BANK_SCOPE,
@@ -20,6 +20,7 @@ import {
       <app-question-bank-panel />
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./question-bank.component.scss'],
 })
 export class QuestionBankComponent {}

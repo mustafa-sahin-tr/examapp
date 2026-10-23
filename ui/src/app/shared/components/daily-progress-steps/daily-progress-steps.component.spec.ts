@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 
@@ -11,6 +11,7 @@ import {
 @Component({
   standalone: true,
   imports: [DailyProgressStepsComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<app-daily-progress-steps [variant]="variant()" [total]="total()" [results]="results()"
     [done]="done()" [currentIndex]="currentIndex()" [ariaLabel]="ariaLabel()" [valueText]="valueText()"
     [stepAriaLabel]="label" />`,

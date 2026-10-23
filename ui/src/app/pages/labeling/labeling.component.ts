@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal, untracked, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Subject, firstValueFrom, takeUntil } from 'rxjs';
@@ -67,6 +67,7 @@ type DrawMode = 'question' | 'answer';
   providers: [provideTranslocoScope(LABELING_SCOPE)],
   templateUrl: './labeling.component.html',
   styleUrls: ['./labeling.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
   host: { '(document:keydown)': 'onKeydown($event)' },
 })
 export class LabelingComponent {

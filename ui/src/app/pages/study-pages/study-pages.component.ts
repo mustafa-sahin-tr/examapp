@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -75,6 +75,7 @@ const PLATFORM_LABEL_KEYS: Record<StudyPageLinkPlatform, string> = {
     TranslocoPipe,
     StorageImageRetryDirective,
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope(STUDY_PAGES_SCOPE)],
 })
 export class StudyPagesComponent {

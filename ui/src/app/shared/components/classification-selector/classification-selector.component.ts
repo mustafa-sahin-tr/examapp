@@ -1,4 +1,4 @@
-import { Component, EventEmitter, inject, Input, Output, signal, effect, computed } from '@angular/core';
+import { Component, EventEmitter, inject, Input, Output, signal, effect, computed, ChangeDetectionStrategy } from '@angular/core';
 
 import { MatChipsModule } from '@angular/material/chips';
 import { MatButtonModule } from '@angular/material/button';
@@ -26,6 +26,7 @@ export interface ClassificationSelection {
   standalone: true,
   imports: [MatChipsModule, MatButtonModule, MatIconModule, TranslocoDirective],
   templateUrl: './classification-selector.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./classification-selector.component.scss'],
 })
 export class ClassificationSelectorComponent {

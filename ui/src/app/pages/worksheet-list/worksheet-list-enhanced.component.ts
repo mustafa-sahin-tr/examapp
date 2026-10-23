@@ -1,5 +1,5 @@
 
-import { Component, ElementRef, inject, signal, ViewChild, computed } from '@angular/core';
+import { Component, ElementRef, inject, signal, ViewChild, computed, ChangeDetectionStrategy } from '@angular/core';
 import { WorksheetCardComponent } from '../worksheet-card/worksheet-card.component';
 import { FormControl, FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
@@ -43,6 +43,7 @@ import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
     IsStudentDirective,
     TranslocoDirective
 ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope('worksheet-list')],
 })
 export class WorksheetListEnhancedComponent {

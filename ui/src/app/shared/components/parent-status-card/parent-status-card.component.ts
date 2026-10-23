@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -37,6 +37,7 @@ export const PARENT_GRACE_BANNER_DISMISS_KEY = 'parentGraceBannerDismissed';
   standalone: true,
   imports: [MatButtonModule, MatIconModule, RouterLink, TranslocoDirective],
   templateUrl: './parent-status-card.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './parent-status-card.component.scss',
 })
 export class ParentStatusCardComponent {

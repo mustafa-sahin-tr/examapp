@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, signal } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { Router, provideRouter } from '@angular/router';
@@ -18,7 +18,8 @@ import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import parentDashboardTr from '../../../../public/i18n/parent-dashboard/tr.json';
 import parentDashboardEn from '../../../../public/i18n/parent-dashboard/en.json';
 
-@Component({ standalone: true, template: '' })
+@Component({ standalone: true, changeDetection: ChangeDetectionStrategy.Eager,
+ template: '' })
 class MyChildrenStubComponent {}
 
 /** Issue #420: veli paneli — çocuk seçici (?child=), özet kartları, boş durum CTA'sı. */

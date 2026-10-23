@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 
 import { AdminService } from './admin.service';
@@ -42,7 +42,7 @@ describe('AdminService.getTeachers (issue #152)', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting()],
     });
     service = TestBed.inject(AdminService);
     httpMock = TestBed.inject(HttpTestingController);
@@ -121,7 +121,7 @@ describe('AdminService.getStudents (issue #153)', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting()],
     });
     service = TestBed.inject(AdminService);
     httpMock = TestBed.inject(HttpTestingController);
@@ -180,7 +180,7 @@ describe('AdminService.resetPassword (issue #156)', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting()],
     });
     service = TestBed.inject(AdminService);
     httpMock = TestBed.inject(HttpTestingController);
@@ -236,7 +236,7 @@ describe('AdminService.setAccountStatus (issue #155)', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting()],
     });
     service = TestBed.inject(AdminService);
     httpMock = TestBed.inject(HttpTestingController);
@@ -272,7 +272,7 @@ describe('AdminService.suspendTeacher / unsuspendTeacher (issue #289)', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting()],
     });
     service = TestBed.inject(AdminService);
     httpMock = TestBed.inject(HttpTestingController);
@@ -321,7 +321,7 @@ describe('AdminService.getTeacherApplication (issue #262)', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting()],
     });
     service = TestBed.inject(AdminService);
     httpMock = TestBed.inject(HttpTestingController);
@@ -401,7 +401,7 @@ describe('AdminService.getTeacherApplications (issue #187)', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting()],
     });
     service = TestBed.inject(AdminService);
     httpMock = TestBed.inject(HttpTestingController);
@@ -441,7 +441,7 @@ describe('AdminService.changeTeacherSchool (issue #313)', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting()],
     });
     service = TestBed.inject(AdminService);
     httpMock = TestBed.inject(HttpTestingController);

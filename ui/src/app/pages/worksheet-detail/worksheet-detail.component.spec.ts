@@ -1,7 +1,7 @@
-import { Component, Input, signal } from '@angular/core';
+import { Component, Input, signal, ChangeDetectionStrategy } from '@angular/core';
 import { By } from '@angular/platform-browser';
 import { ComponentFixture, DeferBlockBehavior, DeferBlockState, TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -66,7 +66,7 @@ describe('WorksheetDetailComponent', () => {
     TestBed.configureTestingModule({
       imports: [WorksheetDetailComponent, translocoTesting],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         { provide: TestService, useValue: testService },
         { provide: Router, useValue: router },
@@ -240,7 +240,7 @@ describe('WorksheetDetailComponent reminder=edit deep link', () => {
     TestBed.configureTestingModule({
       imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         { provide: TestService, useValue: testService },
         { provide: Router, useValue: router },
@@ -323,7 +323,7 @@ describe('WorksheetDetailComponent assign deep link', () => {
     TestBed.configureTestingModule({
       imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         { provide: TestService, useValue: testService },
         { provide: Router, useValue: router },
@@ -500,7 +500,7 @@ describe('WorksheetDetailComponent independent tutor assignment', () => {
     TestBed.configureTestingModule({
       imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         { provide: TestService, useValue: jasmine.createSpyObj<TestService>('TestService', ['getWorksheetDetail']) },
         { provide: Router, useValue: jasmine.createSpyObj<Router>('Router', ['navigate']) },
@@ -627,7 +627,8 @@ describe('WorksheetDetailComponent independent tutor assignment', () => {
 });
 
 /** Soru görüntüleyici stub'ı — thread yerleşimi testinde canvas render'ı gereksiz. */
-@Component({ selector: 'app-question-canvas-view', standalone: true, template: '' })
+@Component({ selector: 'app-question-canvas-view', standalone: true, changeDetection: ChangeDetectionStrategy.Eager,
+ template: '' })
 class QuestionCanvasViewStubComponent {
   @Input() questionRegion: unknown;
   @Input() selectedChoice: unknown;
@@ -635,7 +636,8 @@ class QuestionCanvasViewStubComponent {
   @Input() mode: unknown;
 }
 
-@Component({ selector: 'app-study-link-suggestions', standalone: true, template: '' })
+@Component({ selector: 'app-study-link-suggestions', standalone: true, changeDetection: ChangeDetectionStrategy.Eager,
+ template: '' })
 class StudyLinkSuggestionsStubComponent {
   @Input() testInstanceId: unknown;
   @Input() questionId: unknown;
@@ -658,7 +660,7 @@ describe('WorksheetDetailComponent comment threads', () => {
       deferBlockBehavior: DeferBlockBehavior.Manual,
       imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         provideNativeDateAdapter(),
         { provide: TestService, useValue: jasmine.createSpyObj<TestService>('TestService', ['getWorksheetDetail']) },
@@ -942,7 +944,7 @@ describe('WorksheetDetailComponent add from bank (issue #472)', () => {
     TestBed.configureTestingModule({
       imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         { provide: TestService, useValue: testService },
         { provide: Router, useValue: router },

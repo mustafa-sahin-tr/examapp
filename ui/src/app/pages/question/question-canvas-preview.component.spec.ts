@@ -1,5 +1,5 @@
 // #545 — Angular 21 control-flow migrasyonu (@if / @else başlık) ve preview yaşam döngüsü sözleşmesi.
-import { Component, EventEmitter, Input, forwardRef, signal } from '@angular/core';
+import { Component, EventEmitter, Input, forwardRef, signal, ChangeDetectionStrategy } from '@angular/core';
 import { Location } from '@angular/common';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
@@ -19,6 +19,7 @@ import questionTr from '../../../../public/i18n/question/tr.json';
   selector: 'app-image-selector',
   standalone: true,
   template: '',
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [{ provide: ImageSelectorComponent, useExisting: forwardRef(() => ImageSelectorStub) }],
 })
 class ImageSelectorStub {

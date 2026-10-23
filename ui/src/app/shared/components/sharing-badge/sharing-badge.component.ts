@@ -1,4 +1,4 @@
-import { Component, Input, computed, inject, signal } from '@angular/core';
+import { Component, Input, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslocoService } from '@jsverse/transloco';
@@ -15,6 +15,7 @@ import { WorksheetTeacherSharing } from '../../../models/test-instance';
   standalone: true,
   imports: [MatIconModule, MatTooltipModule],
   templateUrl: './sharing-badge.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './sharing-badge.component.scss',
 })
 export class SharingBadgeComponent {

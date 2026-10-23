@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { MatMenuModule } from '@angular/material/menu';
@@ -13,6 +13,7 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   templateUrl: './app-header.component.html',
   styleUrls: ['./app-header.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
     MatToolbarModule,
     MatIconModule,

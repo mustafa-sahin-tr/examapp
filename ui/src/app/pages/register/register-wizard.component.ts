@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { combineLatest, take } from 'rxjs';
 
@@ -97,6 +97,7 @@ interface RegistrationResult {
 ],
   providers: [provideTranslocoScope(REGISTER_SCOPE)],
   templateUrl: './register-wizard.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './register-wizard.component.scss',
 })
 export class RegisterWizardComponent implements OnInit {

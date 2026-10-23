@@ -1,11 +1,12 @@
 
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
   selector: 'app-custom-checkbox',
   standalone: true,
   templateUrl: './ms-checkbox.component.html',
   styleUrls: ['./ms-checkbox.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: []
 })
 export class CustomCheckboxComponent {

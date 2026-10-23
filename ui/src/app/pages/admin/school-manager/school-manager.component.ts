@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, input, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, input, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -68,6 +68,7 @@ export const SCHOOL_SEARCH_DEBOUNCE_MS = 300;
     TranslocoDirective,
     TranslocoPipe,
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope(ADMIN_SCOPE)],
 })
 export class SchoolManagerComponent implements OnInit {

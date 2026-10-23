@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
 import { FormGroup, ReactiveFormsModule, FormsModule } from '@angular/forms';
 
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -12,6 +12,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
   templateUrl: './test-form.component.html',
   styleUrls: ['./test-form.component.scss'],
   // Scope provider'ı `test-create-enhanced` verir; bu komponent yalnızca onun altında kullanılıyor.
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
     ReactiveFormsModule,
     FormsModule,

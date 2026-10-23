@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -159,6 +159,7 @@ const PLATFORM_LABEL_KEYS: Record<StudyPageLinkPlatform, string> = {
     TranslocoPipe,
     StorageImageRetryDirective,
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope(STUDY_PAGES_SCOPE)],
 })
 export class StudyPageEditorComponent implements OnDestroy {

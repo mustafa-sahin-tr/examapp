@@ -67,7 +67,9 @@
               "png-chunk-text",
               "png-chunks-encode",
               "png-chunks-extract",
-              "use-sync-external-store/shim/with-selector.js"
+              "use-sync-external-store/shim/with-selector.js",
+              "quill-delta",
+              "jszip"
             ],
             "server": "src/main.server.ts",
             "outputMode": "static",

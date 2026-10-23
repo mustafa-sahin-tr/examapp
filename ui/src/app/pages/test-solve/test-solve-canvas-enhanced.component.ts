@@ -12,6 +12,7 @@ import {
   ViewChild,
   ViewChildren,
   computed,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TestService } from '../../services/test.service';
@@ -101,6 +102,7 @@ export function isTimeExpiredRejection(source: unknown): boolean {
     QuestionCanvasViewComponentv5,
     TranslocoDirective,
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope(TEST_SOLVE_SCOPE)],
 })
 export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDestroy {

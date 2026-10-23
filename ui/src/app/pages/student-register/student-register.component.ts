@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, take } from 'rxjs';
 
@@ -35,6 +35,7 @@ interface StudentRegistrationResult {
     TranslocoDirective
 ],
   providers: [provideTranslocoScope(REGISTER_SCOPE)],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './student-register.component.html',
 })
 export class StudentRegisterComponent implements OnInit {

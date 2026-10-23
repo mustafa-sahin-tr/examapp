@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -73,6 +73,7 @@ export function parseChildParam(value: string | null): number | null {
   ],
   providers: [provideTranslocoScope(PARENT_DASHBOARD_SCOPE)],
   templateUrl: './parent-dashboard.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./parent-dashboard.component.scss'],
 })
 export class ParentDashboardComponent implements OnInit {

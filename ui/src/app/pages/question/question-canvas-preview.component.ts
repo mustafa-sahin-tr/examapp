@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, DestroyRef, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, OnInit, ViewChild, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Location } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -24,6 +24,7 @@ const QUESTION_SCOPE = 'question';
 ],
   providers: [provideTranslocoScope(QUESTION_SCOPE)],
   templateUrl: './question-canvas-preview.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./question-canvas-preview.component.scss'],
 })
 export class QuestionCanvasPreviewComponent implements AfterViewInit {

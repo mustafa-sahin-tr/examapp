@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
@@ -58,6 +58,7 @@ const PAGE_SIZE = 50;
   ],
   providers: [provideTranslocoScope(STUDY_LINKS_SCOPE)],
   templateUrl: './topic-study-link-manager.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./topic-study-link-manager.component.scss'],
 })
 export class TopicStudyLinkManagerComponent {

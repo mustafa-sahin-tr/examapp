@@ -11,6 +11,7 @@ import {
   output,
   signal,
   viewChild,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -44,6 +45,7 @@ let nextComposerId = 0;
     TranslocoDirective,
   ],
   templateUrl: './comment-composer.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./comment-composer.component.scss'],
 })
 export class CommentComposerComponent {

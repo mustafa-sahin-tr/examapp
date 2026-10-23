@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 import { QuestionListComponent } from './question-list.component';
@@ -27,7 +27,7 @@ describe('QuestionListComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [QuestionListComponent, translocoTesting],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting()],
     })
     .compileComponents();
 

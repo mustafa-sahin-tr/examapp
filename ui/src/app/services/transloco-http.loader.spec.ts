@@ -1,7 +1,7 @@
 import { ApplicationRef, PLATFORM_ID, PendingTasks } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 import { TranslocoHttpLoader } from './transloco-http.loader';
@@ -16,7 +16,7 @@ describe('TranslocoHttpLoader', () => {
   function createLoader(platform: 'browser' | 'server'): TranslocoHttpLoader {
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         { provide: PLATFORM_ID, useValue: platform },
         TranslocoHttpLoader,

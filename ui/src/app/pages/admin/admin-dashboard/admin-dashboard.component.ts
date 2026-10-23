@@ -11,6 +11,7 @@ import {
   effect,
   inject,
   signal,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -408,6 +409,7 @@ function findPeak(points: AdminDashboardTrendPoint[]): AdminDashboardTrendPoint 
   ],
   providers: [provideTranslocoScope(ADMIN_SCOPE)],
   templateUrl: './admin-dashboard.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./admin-dashboard.component.scss'],
 })
 export class AdminDashboardComponent implements OnInit {

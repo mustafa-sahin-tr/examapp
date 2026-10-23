@@ -1,5 +1,5 @@
 
-import { Component, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatSelectModule } from '@angular/material/select';
@@ -156,6 +156,7 @@ import { UserThemeService } from '../../services/user-theme.service';
       </mat-card-actions>
     </mat-card>
     `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
       .user-theme-card {

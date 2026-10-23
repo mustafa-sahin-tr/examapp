@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -65,6 +65,7 @@ const TEACHER_AVAILABILITY_SCOPE = 'teacher-availability';
   ],
   providers: [provideTranslocoScope(TEACHER_AVAILABILITY_SCOPE)],
   templateUrl: './teacher-availability.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./teacher-availability.component.scss'],
 })
 export class TeacherAvailabilityComponent implements OnInit {

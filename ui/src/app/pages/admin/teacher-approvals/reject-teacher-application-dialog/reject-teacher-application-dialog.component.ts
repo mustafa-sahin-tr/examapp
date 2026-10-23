@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { AbstractControl, FormControl, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -38,6 +38,7 @@ const ADMIN_SCOPE = 'admin';
   ],
   providers: [provideTranslocoScope(ADMIN_SCOPE)],
   templateUrl: './reject-teacher-application-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./reject-teacher-application-dialog.component.scss'],
 })
 export class RejectTeacherApplicationDialogComponent {

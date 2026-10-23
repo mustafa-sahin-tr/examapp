@@ -1,10 +1,12 @@
 import { DOCUMENT as CORE_DOCUMENT, NgZone, VERSION } from '@angular/core';
+import { HttpBackend, HttpXhrBackend } from '@angular/common/http';
 import { createApplication } from '@angular/platform-browser';
 import { DOCUMENT as COMMON_DOCUMENT } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { VERSION as CDK_VERSION } from '@angular/cdk';
 import { VERSION as MATERIAL_VERSION } from '@angular/material/core';
 
+import { AppComponent } from './app.component';
 import { appConfig } from './app.config';
 
 /**
@@ -42,6 +44,26 @@ describe('Angular yükseltmesi (#545)', () => {
       } finally {
         appRef.destroy();
       }
+    });
+  });
+  describe('Angular 22', () => {
+    it('framework_IsAtLeast22', () => {
+      expect(Number(VERSION.major)).toBeGreaterThanOrEqual(22);
+    });
+
+    // Angular 22 varsayılanı fetch; http-xhr-backend migration'ı withXhr() ekledi (mevcut davranış korunur).
+    it('appConfig_UsesXhrBackend', async () => {
+      const appRef = await createApplication(appConfig);
+      try {
+        expect(appRef.injector.get(HttpBackend)).toBeInstanceOf(HttpXhrBackend);
+      } finally {
+        appRef.destroy();
+      }
+    });
+
+    // Angular 22 varsayılanı OnPush; change-detection-eager migration'ı mevcut bileşenlere Eager yazdı.
+    it('appComponent_KeepsEagerStrategyFromMigration', () => {
+      expect((AppComponent as unknown as { ɵcmp: { onPush: boolean } }).ɵcmp.onPush).toBeFalse();
     });
   });
 });

@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Observable, Subject, of } from 'rxjs';
 import { StorageImageRetryDirective } from './storage-image-retry.directive';
@@ -11,6 +11,7 @@ const OTHER = '/img/exam-questions/questions/q2/question.jpg?X-Amz-Signature=oth
 @Component({
   standalone: true,
   imports: [StorageImageRetryDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<img [src]="src()" [appStorageImageRetry]="resolver()" alt="" />`,
 })
 class HostComponent {

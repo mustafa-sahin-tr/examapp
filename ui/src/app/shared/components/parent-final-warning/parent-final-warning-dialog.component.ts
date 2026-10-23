@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -35,6 +35,7 @@ export interface ParentFinalWarningDialogData {
       </mat-dialog-actions>
     </ng-container>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './parent-final-warning-dialog.component.scss',
 })
 export class ParentFinalWarningDialogComponent {

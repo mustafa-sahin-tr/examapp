@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { By } from '@angular/platform-browser';
@@ -16,7 +16,8 @@ import rootTr from '../../../../../../public/i18n/tr.json';
 import worksheetDetailTr from '../../../../../../public/i18n/worksheet-detail/tr.json';
 
 /** Gerçek panel kendi HTTP aramasını yapar; dialog testinde yalnız girdileri ve seçim çıktısı taklit edilir. */
-@Component({ selector: 'app-question-bank-panel', standalone: true, template: '' })
+@Component({ selector: 'app-question-bank-panel', standalone: true, changeDetection: ChangeDetectionStrategy.Eager,
+ template: '' })
 class QuestionBankPanelStub {
   @Input() selectable = false;
   @Input() disabledIds: number[] = [];

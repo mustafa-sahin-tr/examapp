@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
@@ -8,7 +8,8 @@ import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import qbTr from '../../../../public/i18n/question-bank/tr.json';
 
 /** Panelin kendi HTTP/dialog bağımlılıkları yok sayılır; sayfa yalnız panel'i yerleştirir. */
-@Component({ selector: 'app-question-bank-panel', standalone: true, template: '<div class="panel-stub"></div>' })
+@Component({ selector: 'app-question-bank-panel', standalone: true, changeDetection: ChangeDetectionStrategy.Eager,
+ template: '<div class="panel-stub"></div>' })
 class QuestionBankPanelStub {}
 
 describe('QuestionBankComponent (issue #471)', () => {

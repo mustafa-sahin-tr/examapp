@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -79,6 +79,7 @@ const TEACHER_DASHBOARD_SCOPE = 'teacher-dashboard';
   ],
   providers: [provideTranslocoScope(TEACHER_DASHBOARD_SCOPE)],
   templateUrl: './teacher-dashboard.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./teacher-dashboard.component.scss'],
 })
 export class TeacherDashboardComponent implements OnInit {

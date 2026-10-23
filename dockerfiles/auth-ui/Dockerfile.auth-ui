@@ -1,5 +1,5 @@
 # Use the Node.js image for building Angular
-FROM node:20 AS build
+FROM node:24 AS build
 
 # Set the working directory in the container
 WORKDIR /app

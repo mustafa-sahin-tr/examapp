@@ -184,7 +184,9 @@ describe('MonthCalendarGridComponent', () => {
     // Ağustos'un son günlerinden Eylül ortasına kadar, grid'in ilk hücresinden önce başlıyor.
     const ev = programEvent({ date: localIso(2026, 8, 20), endDate: localIso(2026, 9, 5) });
 
-    expect(async () => {
+    // async gövde beklenmeli; `expect(async () => …).not.toThrow()` setup'ı test bittikten sonra, sonraki testin
+    // ortasında çalıştırıp TestBed'i sıfırlıyordu (sıra bağımlı NG0201 / "already instantiated", #545).
+    await expectAsync((async () => {
       const { component } = await setup(septemberRef, [ev]);
       const bars = allBars(component);
       expect(bars.length).toBeGreaterThan(0);
@@ -192,7 +194,7 @@ describe('MonthCalendarGridComponent', () => {
       const gridStart = component.cells()[0].date;
       expect(bars.every((b) => b.weekRow >= 0)).toBeTrue();
       expect(gridStart.getDate()).toBeGreaterThanOrEqual(1);
-    }).not.toThrow();
+    })()).toBeResolved();
   });
 
   // AC #7: Planım takvimi — yeni tipteki etkinlikler (Link, BookPageRange) tip ayrımı yapılmadan genel görünüyor.

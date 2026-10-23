@@ -1,6 +1,6 @@
 import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { Router, provideRouter } from '@angular/router';
 import { AuthService, UserProfile } from './auth.service';
 import { Teacher } from '../models/teacher';
@@ -424,7 +424,7 @@ describe('AuthService — teacher account approval (issue #287)', () => {
     localStorage.setItem('auth_token', tokenWithRoles(roles));
     if (cached) localStorage.setItem('user', JSON.stringify(cached));
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter([])],
     });
     service = TestBed.inject(AuthService);
     httpMock = TestBed.inject(HttpTestingController);

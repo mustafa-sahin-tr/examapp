@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, effect, inject, input, output, signal, untracked, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipListboxChange, MatChipsModule } from '@angular/material/chips';
@@ -53,6 +53,7 @@ interface ListRequest {
   ],
   providers: [provideTranslocoScope(SCOPE), provideTranslatedPaginatorIntl(SCOPE, `${SCOPE}.assignments.paginator`)],
   templateUrl: './parent-child-assignments.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./parent-child-assignments.component.scss'],
 })
 export class ParentChildAssignmentsComponent {

@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -32,6 +32,7 @@ function dailySet(overrides: Partial<DailySet> = {}): DailySet {
 @Component({
   standalone: true,
   imports: [DailyQuestionsCardComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<app-daily-questions-card [dailySet]="set()" [loading]="loading()" [error]="error()"
     [streak]="streak()" (start)="events.push('start'); scopes.push($event)" (retry)="events.push('retry')"
     (freePractice)="events.push('freePractice')" (goToProfile)="events.push('goToProfile')" />`,

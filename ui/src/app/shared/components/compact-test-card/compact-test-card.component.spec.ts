@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { CompactTestCardComponent } from './compact-test-card.component';
@@ -16,6 +16,7 @@ const localeServiceStub = {
 @Component({
   standalone: true,
   imports: [CompactTestCardComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <app-compact-test-card
       [title]="title()"

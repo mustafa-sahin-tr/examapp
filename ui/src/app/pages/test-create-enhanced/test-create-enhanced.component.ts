@@ -7,6 +7,7 @@ import {
   EventEmitter,
   DestroyRef,
   signal,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -50,6 +51,7 @@ const TEST_CREATE_SCOPE = 'test-create';
     TranslocoDirective,
     StorageImageRetryDirective
 ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope(TEST_CREATE_SCOPE)],
 })
 export class TestCreateEnhancedComponent implements OnInit {

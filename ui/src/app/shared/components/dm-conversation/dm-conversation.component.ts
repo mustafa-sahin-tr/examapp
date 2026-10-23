@@ -12,6 +12,7 @@ import {
   signal,
   untracked,
   viewChild,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -90,6 +91,7 @@ export interface DmBlockedChangeEvent {
   ],
   providers: [provideTranslocoScope(DIRECT_MESSAGES_SCOPE)],
   templateUrl: './dm-conversation.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./dm-conversation.component.scss'],
 })
 export class DmConversationComponent {

@@ -1,5 +1,5 @@
 
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   Subject as RxSubject,
@@ -71,6 +71,7 @@ interface GradeOption {
     CompactTestCardComponent,
     TranslocoDirective
 ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope(WORKSHEET_LIST_SCOPE)],
 })
 export class WorksheetListComponent implements OnInit {

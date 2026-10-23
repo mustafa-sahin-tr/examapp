@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, input, output, signal, untracked, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -40,6 +40,7 @@ interface ProgressView {
   imports: [MatButtonModule, MatCardModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective],
   providers: [provideTranslocoScope(SCOPE)],
   templateUrl: './parent-child-progress.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./parent-child-progress.component.scss'],
 })
 export class ParentChildProgressComponent {

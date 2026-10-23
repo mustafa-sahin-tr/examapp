@@ -1,4 +1,4 @@
-import { Component, AfterViewInit, inject } from '@angular/core';
+import { Component, AfterViewInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import gsap from 'gsap';
 
@@ -7,6 +7,7 @@ import gsap from 'gsap';
   standalone: true,
   templateUrl: './spin-wheel.component.html',
   styleUrls: ['./spin-wheel.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [TranslocoDirective],
 })
 export class SpinWheelComponent implements AfterViewInit {

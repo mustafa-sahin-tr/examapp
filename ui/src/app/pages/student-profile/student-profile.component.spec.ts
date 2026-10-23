@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -99,7 +99,7 @@ describe('StudentProfileComponent', () => {
     await TestBed.configureTestingModule({
       imports: [StudentProfileComponent, NoopAnimationsModule, translocoTesting],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         { provide: StudentService, useValue: studentService },
         { provide: TestService, useValue: testService },

@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -58,6 +58,7 @@ export const MAX_VISIBLE_GRADE_CHIPS = 3;
     TranslocoPipe,
     TopicStudyLinkManagerComponent,
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [provideTranslocoScope(ADMIN_SCOPE)],
 })
 export class TaxonomyManagerComponent implements OnInit {

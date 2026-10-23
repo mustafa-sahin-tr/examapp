@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, input, output, signal, untracked, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -90,6 +90,7 @@ export function buildDays(schedule: ParentChildSchedule, todayKey: string): Sche
   imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatTooltipModule, TranslocoDirective],
   providers: [provideTranslocoScope(SCOPE)],
   templateUrl: './parent-child-schedule.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./parent-child-schedule.component.scss'],
 })
 export class ParentChildScheduleComponent {

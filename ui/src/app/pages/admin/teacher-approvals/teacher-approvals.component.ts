@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, WritableSignal, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, WritableSignal, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -105,6 +105,7 @@ type LoadResult =
     provideTranslatedPaginatorIntl(ADMIN_SCOPE, `${ADMIN_SCOPE}.paginator`),
   ],
   templateUrl: './teacher-approvals.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./teacher-approvals.component.scss'],
 })
 export class TeacherApprovalsComponent implements OnInit {

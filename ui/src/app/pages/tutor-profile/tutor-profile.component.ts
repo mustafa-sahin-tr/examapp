@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -52,6 +52,7 @@ const TUTOR_PROFILE_SCOPE = 'tutor-profile';
   ],
   providers: [provideTranslocoScope(TUTOR_PROFILE_SCOPE)],
   templateUrl: './tutor-profile.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./tutor-profile.component.scss'],
 })
 export class TutorProfileComponent implements OnInit {

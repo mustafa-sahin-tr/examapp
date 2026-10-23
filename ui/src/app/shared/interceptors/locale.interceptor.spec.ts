@@ -1,4 +1,4 @@
-import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, provideHttpClient, withInterceptors, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
@@ -18,7 +18,7 @@ describe('localeInterceptor', () => {
 
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(withInterceptors([localeInterceptor])),
+        provideHttpClient(withXhr(), withInterceptors([localeInterceptor])),
         provideHttpClientTesting(),
         { provide: LocaleService, useValue: localeServiceStub },
       ],

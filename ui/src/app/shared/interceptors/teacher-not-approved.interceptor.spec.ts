@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, provideHttpClient, withInterceptors, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
@@ -15,7 +15,7 @@ describe('teacherNotApprovedInterceptor (issue #287)', () => {
     auth = jasmine.createSpyObj<AuthService>('AuthService', ['handleTeacherNotApproved']);
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(withInterceptors([teacherNotApprovedInterceptor])),
+        provideHttpClient(withXhr(), withInterceptors([teacherNotApprovedInterceptor])),
         provideHttpClientTesting(),
         { provide: AuthService, useValue: auth },
       ],

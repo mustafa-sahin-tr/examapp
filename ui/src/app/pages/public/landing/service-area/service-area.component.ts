@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoDirective } from '@jsverse/transloco';
 
@@ -7,6 +7,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
   imports: [TranslocoDirective, MatIconModule],
   templateUrl: './service-area.component.html',
   styleUrls: ['./service-area.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
   standalone: true,
 })
 export class ServiceAreaComponent {}

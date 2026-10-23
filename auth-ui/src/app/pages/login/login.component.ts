@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { LocaleHintService } from '../../services/locale-hint.service';
 import { OidcFlowService } from '../../services/oidc-flow.service';
@@ -10,6 +10,7 @@ import { OidcFlowService } from '../../services/oidc-flow.service';
 @Component({
   selector: 'app-login',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     @if (startError(); as message) {
       <p role="alert">{{ message }}</p>

@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, ElementRef, inject, signal, ViewChild, computed } from '@angular/core';
 import { WorksheetCardComponent } from '../worksheet-card/worksheet-card.component';
 import { FormControl, FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
@@ -27,7 +27,6 @@ import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
   templateUrl: './worksheet-list-enhanced.component.html',
   standalone: true,
   imports: [
-    CommonModule,
     WorksheetCardComponent,
     MatAutocompleteModule,
     MatInputModule,
@@ -42,8 +41,8 @@ import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
     FormsModule,
     PaginationComponent,
     IsStudentDirective,
-    TranslocoDirective,
-  ],
+    TranslocoDirective
+],
   providers: [provideTranslocoScope('worksheet-list')],
 })
 export class WorksheetListEnhancedComponent {

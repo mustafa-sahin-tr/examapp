@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,14 +15,13 @@ type CardStatus = 'none' | 'inprogress' | 'completed';
   selector: 'app-worksheet-list-view-card',
   standalone: true,
   imports: [
-    CommonModule,
     RouterModule,
     MatIconModule,
     MatMenuModule,
     MatButtonModule,
     SharingBadgeComponent,
-    TranslocoDirective,
-  ],
+    TranslocoDirective
+],
   templateUrl: './worksheet-list-view-card.component.html',
   styleUrl: './worksheet-list-view-card.component.scss',
 })

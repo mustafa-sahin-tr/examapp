@@ -9,7 +9,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -39,14 +39,13 @@ interface TeacherSharingOption {
   // Tüm durum signal/input üzerinden; OnPush güvenli.
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
     MatRadioModule,
     MatSlideToggleModule,
     MatSelectModule,
     MatFormFieldModule,
     MatIconModule,
-    TranslocoDirective,
-  ],
+    TranslocoDirective
+],
 })
 export class VisibilitySectionComponent implements OnDestroy {
   readonly WorksheetTeacherSharing = WorksheetTeacherSharing;

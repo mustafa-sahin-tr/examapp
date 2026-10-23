@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { OverlayContainer } from '@angular/cdk/overlay';
 import { Observable, Subject, of, throwError } from 'rxjs';
 
 import { SchoolSelectComponent, normalizeSchoolQuery } from './school-select.component';
@@ -108,7 +107,8 @@ describe('SchoolSelectComponent (issue #277)', () => {
 
     input().dispatchEvent(new Event('focusin'));
     type('fen');
-    const options = TestBed.inject(OverlayContainer).getContainerElement().querySelectorAll('mat-option');
+    // CDK 21: autocomplete paneli tetikleyicinin yanına native popover olarak eklenir (#545).
+    const options = document.querySelectorAll('mat-option');
     expect(options.length).toBe(1);
     (options[0] as HTMLElement).click();
     fixture.detectChanges();

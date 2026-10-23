@@ -1,7 +1,7 @@
 import { Component, DestroyRef, computed, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { combineLatest, take } from 'rxjs';
-import { CommonModule } from '@angular/common';
+
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -83,7 +83,6 @@ interface RegistrationResult {
   selector: 'app-register-wizard',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatButtonModule,
     MatCardModule,
@@ -94,8 +93,8 @@ interface RegistrationResult {
     MatSelectModule,
     MatSnackBarModule,
     TranslocoDirective,
-    SchoolSelectComponent,
-  ],
+    SchoolSelectComponent
+],
   providers: [provideTranslocoScope(REGISTER_SCOPE)],
   templateUrl: './register-wizard.component.html',
   styleUrl: './register-wizard.component.scss',

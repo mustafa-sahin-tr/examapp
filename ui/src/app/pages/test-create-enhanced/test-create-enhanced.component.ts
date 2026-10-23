@@ -14,7 +14,7 @@ import { BookService } from '../../services/book.service';
 import { GradesService } from '../../services/grades.service';
 import { SubjectService } from '../../services/subject.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CommonModule } from '@angular/common';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { TestFormComponent } from '../test-form/test-form.component';
@@ -43,14 +43,13 @@ const TEST_CREATE_SCOPE = 'test-create';
   templateUrl: './test-create-enhanced.component.html',
   styleUrls: ['./test-create-enhanced.component.scss'],
   imports: [
-    CommonModule,
     MatIconModule,
     MatSnackBarModule,
     TestFormComponent,
     VisibilitySectionComponent,
     TranslocoDirective,
-    StorageImageRetryDirective,
-  ],
+    StorageImageRetryDirective
+],
   providers: [provideTranslocoScope(TEST_CREATE_SCOPE)],
 })
 export class TestCreateEnhancedComponent implements OnInit {

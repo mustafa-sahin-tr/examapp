@@ -1,169 +1,179 @@
 <div class="worksheet-list-enhanced" *transloco="let t; prefix: 'worksheet-list'">
   <!-- Header Section -->
   <!-- <div class="page-header">
-    <h1 class="page-title">Test Merkezi</h1>
-    <p class="page-subtitle">Öğrenme yolculuğunuza devam edin</p>
-  </div> -->
+  <h1 class="page-title">Test Merkezi</h1>
+  <p class="page-subtitle">Öğrenme yolculuğunuza devam edin</p>
+</div> -->
 
-  <!-- Search Panel -->
-  <!-- <div class="search-panel">
-    <div class="search-container">
-      <form [formGroup]="searchForm" class="search-form">
-        <div class="search-input-wrapper">
-          <mat-icon class="search-icon">search</mat-icon>
-          <input matInput formControlName="searchTerm" placeholder="Test ara..." class="search-input" />
-          <button
-            *ngIf="searchForm.get('searchTerm')?.value"
-            type="button"
-            class="clear-search-btn"
-            (click)="searchForm.patchValue({ searchTerm: '' })"
-          >
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </form>
+<!-- Search Panel -->
+<!-- <div class="search-panel">
+<div class="search-container">
+  <form [formGroup]="searchForm" class="search-form">
+    <div class="search-input-wrapper">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input matInput formControlName="searchTerm" placeholder="Test ara..." class="search-input" />
+      <button
+        *ngIf="searchForm.get('searchTerm')?.value"
+        type="button"
+        class="clear-search-btn"
+        (click)="searchForm.patchValue({ searchTerm: '' })"
+        >
+        <mat-icon>close</mat-icon>
+      </button>
     </div>
-  </div> -->
+  </form>
+</div>
+</div> -->
 
-  <!-- Section Navigation -->
-  <div class="section-nav">
-    <button class="section-nav-btn" [class.active]="currentSection() === 'newest'" (click)="showSection('newest')">
-      <mat-icon>new_releases</mat-icon>
-      {{ t('enhanced.navNewest') }}
-    </button>
-    <button class="section-nav-btn" [class.active]="currentSection() === 'hot'" (click)="showSection('hot')">
-      <mat-icon>local_fire_department</mat-icon>
-      {{ t('enhanced.navHot') }}
-    </button>
-    <button
-      class="section-nav-btn"
-      [class.active]="currentSection() === 'completed'"
-      (click)="showSection('completed')"
+<!-- Section Navigation -->
+<div class="section-nav">
+  <button class="section-nav-btn" [class.active]="currentSection() === 'newest'" (click)="showSection('newest')">
+    <mat-icon>new_releases</mat-icon>
+    {{ t('enhanced.navNewest') }}
+  </button>
+  <button class="section-nav-btn" [class.active]="currentSection() === 'hot'" (click)="showSection('hot')">
+    <mat-icon>local_fire_department</mat-icon>
+    {{ t('enhanced.navHot') }}
+  </button>
+  <button
+    class="section-nav-btn"
+    [class.active]="currentSection() === 'completed'"
+    (click)="showSection('completed')"
     >
-      <mat-icon>check_circle</mat-icon>
-      {{ t('enhanced.navCompleted') }}
-    </button>
+    <mat-icon>check_circle</mat-icon>
+    {{ t('enhanced.navCompleted') }}
+  </button>
+  @if (searchForm.get('searchTerm')?.value) {
     <button
       class="section-nav-btn"
       [class.active]="currentSection() === 'search'"
       (click)="showSection('search')"
-      *ngIf="searchForm.get('searchTerm')?.value"
-    >
+      >
       <mat-icon>search</mat-icon>
       {{ t('enhanced.navSearch') }}
     </button>
-  </div>
+  }
+</div>
 
-  <!-- Newest Tests Section -->
-  <div class="content-section" *ngIf="currentSection() === 'newest'">
+<!-- Newest Tests Section -->
+@if (currentSection() === 'newest') {
+  <div class="content-section">
     <div class="section-header">
       <h2 class="section-title">{{ t('enhanced.newestTitle') }}</h2>
       <p class="section-subtitle">{{ t('enhanced.newestSubtitle') }}</p>
     </div>
-
     <div class="carousel-container">
       <button class="carousel-nav-btn prev" (click)="scrollCarousel(newestContainer, 'left')">
         <mat-icon>chevron_left</mat-icon>
       </button>
-
       <div class="carousel-track" #newestContainer>
-        <div class="test-card-wrapper" *ngFor="let worksheet of newestWorksheetsSignal(); trackBy: trackWorksheet">
-          <app-worksheet-card [test]="worksheet" (cardClick)="onCardClick(worksheet.id || 0)"></app-worksheet-card>
-        </div>
-        <div class="empty-state" *ngIf="!newestWorksheetsSignal()?.length">
-          <mat-icon class="empty-icon">quiz</mat-icon>
-          <p>{{ t('enhanced.newestEmpty') }}</p>
-        </div>
+        @for (worksheet of newestWorksheetsSignal(); track trackWorksheet($index, worksheet)) {
+          <div class="test-card-wrapper">
+            <app-worksheet-card [test]="worksheet" (cardClick)="onCardClick(worksheet.id || 0)"></app-worksheet-card>
+          </div>
+        }
+        @if (!newestWorksheetsSignal()?.length) {
+          <div class="empty-state">
+            <mat-icon class="empty-icon">quiz</mat-icon>
+            <p>{{ t('enhanced.newestEmpty') }}</p>
+          </div>
+        }
       </div>
-
       <button class="carousel-nav-btn next" (click)="scrollCarousel(newestContainer, 'right')">
         <mat-icon>chevron_right</mat-icon>
       </button>
     </div>
   </div>
+}
 
-  <!-- Hot Tests Section -->
-  <div class="content-section" *ngIf="currentSection() === 'hot'">
+<!-- Hot Tests Section -->
+@if (currentSection() === 'hot') {
+  <div class="content-section">
     <div class="section-header">
       <h2 class="section-title">{{ t('enhanced.hotTitle') }}</h2>
       <p class="section-subtitle">{{ t('enhanced.hotSubtitle') }}</p>
     </div>
-
     <div class="carousel-container">
       <button class="carousel-nav-btn prev" (click)="scrollCarousel(hotContainer, 'left')">
         <mat-icon>chevron_left</mat-icon>
       </button>
-
       <div class="carousel-track" #hotContainer>
-        <div class="test-card-wrapper" *ngFor="let worksheet of hotTestsSignal(); trackBy: trackWorksheet">
-          <app-worksheet-card [test]="worksheet" (cardClick)="onCardClick(worksheet.id || 0)"></app-worksheet-card>
-        </div>
-        <div class="empty-state" *ngIf="!hotTestsSignal().length">
-          <mat-icon class="empty-icon">quiz</mat-icon>
-          <p>{{ t('enhanced.hotEmpty') }}</p>
-        </div>
+        @for (worksheet of hotTestsSignal(); track trackWorksheet($index, worksheet)) {
+          <div class="test-card-wrapper">
+            <app-worksheet-card [test]="worksheet" (cardClick)="onCardClick(worksheet.id || 0)"></app-worksheet-card>
+          </div>
+        }
+        @if (!hotTestsSignal().length) {
+          <div class="empty-state">
+            <mat-icon class="empty-icon">quiz</mat-icon>
+            <p>{{ t('enhanced.hotEmpty') }}</p>
+          </div>
+        }
       </div>
-
       <button class="carousel-nav-btn next" (click)="scrollCarousel(hotContainer, 'right')">
         <mat-icon>chevron_right</mat-icon>
       </button>
     </div>
   </div>
+}
 
-  <!-- Relevant Tests Section -->
-  <div class="content-section" *ngIf="currentSection() === 'relevant'">
+<!-- Relevant Tests Section -->
+@if (currentSection() === 'relevant') {
+  <div class="content-section">
     <div class="section-header">
       <h2 class="section-title">{{ t('enhanced.relevantTitle') }}</h2>
       <p class="section-subtitle">{{ t('enhanced.relevantSubtitle') }}</p>
     </div>
-
     <div class="carousel-container">
       <button class="carousel-nav-btn prev" (click)="scrollCarousel(relevantContainer, 'left')">
         <mat-icon>chevron_left</mat-icon>
       </button>
-
       <div class="carousel-track" #relevantContainer>
-        <div class="test-card-wrapper" *ngFor="let worksheet of relevantTestsSignal(); trackBy: trackWorksheet">
-          <app-worksheet-card [test]="worksheet" (cardClick)="onCardClick(worksheet.id || 0)"></app-worksheet-card>
-        </div>
+        @for (worksheet of relevantTestsSignal(); track trackWorksheet($index, worksheet)) {
+          <div class="test-card-wrapper">
+            <app-worksheet-card [test]="worksheet" (cardClick)="onCardClick(worksheet.id || 0)"></app-worksheet-card>
+          </div>
+        }
       </div>
-
       <button class="carousel-nav-btn next" (click)="scrollCarousel(relevantContainer, 'right')">
         <mat-icon>chevron_right</mat-icon>
       </button>
     </div>
   </div>
+}
 
-  <!-- Completed Tests Section -->
-  <div class="content-section" *ngIf="currentSection() === 'completed'">
+<!-- Completed Tests Section -->
+@if (currentSection() === 'completed') {
+  <div class="content-section">
     <ng-container *appIsStudent>
       <div class="section-header">
         <h2 class="section-title">{{ t('enhanced.completedTitle') }}</h2>
         <p class="section-subtitle">{{ t('enhanced.completedSubtitle') }}</p>
       </div>
-
-      <ng-container *ngIf="completedTestSignal() as tests">
-        <ng-container *ngIf="tests.items.length > 0; else noCompletedTests">
+      @if (completedTestSignal(); as tests) {
+        @if (tests.items.length > 0) {
           <div class="completed-tests-grid">
-            <app-completed-worksheet-card
-              *ngFor="let completedTest of tests.items; trackBy: trackCompletedTests"
-              [completedTest]="completedTest"
-            ></app-completed-worksheet-card>
+            @for (completedTest of tests.items; track trackCompletedTests($index, completedTest)) {
+              <app-completed-worksheet-card
+                [completedTest]="completedTest"
+              ></app-completed-worksheet-card>
+            }
           </div>
-        </ng-container>
-        <ng-template #noCompletedTests>
+        } @else {
           <div class="empty-state">
             <mat-icon class="empty-icon">quiz</mat-icon>
             <h3>{{ t('enhanced.completedEmptyTitle') }}</h3>
             <p>{{ t('enhanced.completedEmptyText') }}</p>
           </div>
-        </ng-template>
-      </ng-container>
+        }
+      }
     </ng-container>
   </div>
+}
 
-  <!-- Search Results Section -->
-  <div class="content-section" *ngIf="currentSection() === 'search'">
+<!-- Search Results Section -->
+@if (currentSection() === 'search') {
+  <div class="content-section">
     <div class="search-results-layout">
       <!-- Filters Sidebar -->
       <div class="filters-sidebar">
@@ -174,33 +184,35 @@
             {{ t('enhanced.filtersClear') }}
           </button>
         </div>
-
         <!-- Subject Filters -->
         <div class="filter-group">
           <h4 class="filter-title">{{ t('enhanced.filtersSubjects') }}</h4>
           <div class="filter-options">
-            <div class="filter-checkbox" *ngFor="let subject of subjectsSignal(); trackBy: trackSubject">
-              <app-custom-checkbox
-                [label]="subject.name"
-                [checked]="selectedSubjectIds().includes(subject.id)"
-                [value]="subject.id"
-                (checkedChange)="toggleSubjectFilter(subject.id)"
-              ></app-custom-checkbox>
-            </div>
+            @for (subject of subjectsSignal(); track trackSubject($index, subject)) {
+              <div class="filter-checkbox">
+                <app-custom-checkbox
+                  [label]="subject.name"
+                  [checked]="selectedSubjectIds().includes(subject.id)"
+                  [value]="subject.id"
+                  (checkedChange)="toggleSubjectFilter(subject.id)"
+                ></app-custom-checkbox>
+              </div>
+            }
           </div>
           <h4 class="filter-title">{{ t('enhanced.filtersGrades') }}</h4>
           <div class="filter-options">
-            <div class="filter-checkbox" *ngFor="let grade of gradesSignal(); trackBy: trackGrades">
-              <app-custom-checkbox
-                [label]="grade.name"
-                [checked]="selectedGradeIds().includes(grade.id)"
-                [value]="grade.id"
-                (checkedChange)="toggleGradeFilter(grade.id)"
-              ></app-custom-checkbox>
-            </div>
+            @for (grade of gradesSignal(); track trackGrades($index, grade)) {
+              <div class="filter-checkbox">
+                <app-custom-checkbox
+                  [label]="grade.name"
+                  [checked]="selectedGradeIds().includes(grade.id)"
+                  [value]="grade.id"
+                  (checkedChange)="toggleGradeFilter(grade.id)"
+                ></app-custom-checkbox>
+              </div>
+            }
           </div>
         </div>
-
         <!-- Sort Options -->
         <div class="filter-group">
           <h4 class="filter-title">{{ t('enhanced.filtersSort') }}</h4>
@@ -211,7 +223,6 @@
             <mat-option value="duration">{{ t('enhanced.sortDuration') }}</mat-option>
           </mat-select>
         </div>
-
         <!-- Difficulty Filter -->
         <div class="filter-group">
           <h4 class="filter-title">{{ t('enhanced.filtersDifficulty') }}</h4>
@@ -222,7 +233,6 @@
             <mat-option value="hard">{{ t('enhanced.difficultyHard') }}</mat-option>
           </mat-select>
         </div>
-
         <!-- Duration Filter -->
         <div class="filter-group">
           <h4 class="filter-title">{{ t('enhanced.filtersDuration') }}</h4>
@@ -234,18 +244,17 @@
           </mat-select>
         </div>
       </div>
-
       <!-- Results Area -->
       <div class="results-area">
         <div class="results-header">
           <div class="results-info">
             <h2 class="results-title">
               {{
-                t('enhanced.resultsTitle', {
-                  term: searchForm.get('searchTerm')?.value
-                    ? '"' + searchForm.get('searchTerm')?.value + '"'
-                    : t('enhanced.resultsFallbackTerm')
-                })
+              t('enhanced.resultsTitle', {
+              term: searchForm.get('searchTerm')?.value
+              ? '"' + searchForm.get('searchTerm')?.value + '"'
+              : t('enhanced.resultsFallbackTerm')
+              })
               }}
             </h2>
             <p class="results-count">
@@ -253,66 +262,73 @@
             </p>
           </div>
         </div>
-
         <!-- Loading State -->
-        <div class="loading-state" *ngIf="isLoading()">
-          <div class="loading-spinner"></div>
-          <p>{{ t('enhanced.loading') }}</p>
-        </div>
-
-        <!-- Results Grid -->
-        <div class="results-grid" *ngIf="!isLoading()">
-          <div
-            class="result-card"
-            *ngFor="let test of pagedWorksheetsSignal().items; trackBy: trackWorksheet"
-            (click)="onCardClick(test.id || 0)"
-          >
-            <div class="result-card-image">
-              <img [src]="getBackgroundImage(test.id || 0)" [alt]="test.name" loading="lazy" />
-            </div>
-            <div class="result-card-content">
-              <h3 class="result-card-title">{{ test.name }}</h3>
-              <p class="result-card-subtitle">{{ test.subtitle }}</p>
-              <p class="result-card-description">{{ test.description }}</p>
-
-              <div class="result-card-meta">
-                <span class="meta-item">
-                  <mat-icon>quiz</mat-icon>
-                  {{ t('enhanced.cardQuestionCount', { count: test.questionCount }) }}
-                </span>
-                <span class="meta-item">
-                  <mat-icon>school</mat-icon>
-                  {{ t('enhanced.cardGrade', { grade: test.gradeId }) }}
-                </span>
-                <span class="meta-item">
-                  <mat-icon>schedule</mat-icon>
-                  {{ t('enhanced.cardMinutes', { minutes: test.maxDurationSeconds / 60 }) }}
-                </span>
-                <span class="meta-item" *ngIf="test.instance?.status === 1">
-                  <mat-icon class="completed-icon">check_circle</mat-icon>
-                  {{ t('enhanced.cardCompleted') }}
-                </span>
-              </div>
-            </div>
+        @if (isLoading()) {
+          <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>{{ t('enhanced.loading') }}</p>
           </div>
-        </div>
-
+        }
+        <!-- Results Grid -->
+        @if (!isLoading()) {
+          <div class="results-grid">
+            @for (test of pagedWorksheetsSignal().items; track trackWorksheet($index, test)) {
+              <div
+                class="result-card"
+                (click)="onCardClick(test.id || 0)"
+                >
+                <div class="result-card-image">
+                  <img [src]="getBackgroundImage(test.id || 0)" [alt]="test.name" loading="lazy" />
+                </div>
+                <div class="result-card-content">
+                  <h3 class="result-card-title">{{ test.name }}</h3>
+                  <p class="result-card-subtitle">{{ test.subtitle }}</p>
+                  <p class="result-card-description">{{ test.description }}</p>
+                  <div class="result-card-meta">
+                    <span class="meta-item">
+                      <mat-icon>quiz</mat-icon>
+                      {{ t('enhanced.cardQuestionCount', { count: test.questionCount }) }}
+                    </span>
+                    <span class="meta-item">
+                      <mat-icon>school</mat-icon>
+                      {{ t('enhanced.cardGrade', { grade: test.gradeId }) }}
+                    </span>
+                    <span class="meta-item">
+                      <mat-icon>schedule</mat-icon>
+                      {{ t('enhanced.cardMinutes', { minutes: test.maxDurationSeconds / 60 }) }}
+                    </span>
+                    @if (test.instance?.status === 1) {
+                      <span class="meta-item">
+                        <mat-icon class="completed-icon">check_circle</mat-icon>
+                        {{ t('enhanced.cardCompleted') }}
+                      </span>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
         <!-- Empty State -->
-        <div class="empty-state" *ngIf="!isLoading() && pagedWorksheetsSignal().items.length === 0">
-          <mat-icon class="empty-icon">search_off</mat-icon>
-          <h3>{{ t('enhanced.emptyTitle') }}</h3>
-          <p>{{ t('enhanced.emptyText') }}</p>
-        </div>
-
+        @if (!isLoading() && pagedWorksheetsSignal().items.length === 0) {
+          <div class="empty-state">
+            <mat-icon class="empty-icon">search_off</mat-icon>
+            <h3>{{ t('enhanced.emptyTitle') }}</h3>
+            <p>{{ t('enhanced.emptyText') }}</p>
+          </div>
+        }
         <!-- Pagination -->
-        <div class="pagination-container" *ngIf="pagedWorksheetsSignal().items.length > 0">
-          <app-pagination
-            [currentPage]="pageNumber()"
-            [totalItems]="pagedWorksheetsSignal().totalCount"
-            (pageChanged)="changePage($event)"
-          ></app-pagination>
-        </div>
+        @if (pagedWorksheetsSignal().items.length > 0) {
+          <div class="pagination-container">
+            <app-pagination
+              [currentPage]="pageNumber()"
+              [totalItems]="pagedWorksheetsSignal().totalCount"
+              (pageChanged)="changePage($event)"
+            ></app-pagination>
+          </div>
+        }
       </div>
     </div>
   </div>
+}
 </div>

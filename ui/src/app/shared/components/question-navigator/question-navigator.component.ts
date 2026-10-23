@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   Component,
   EventEmitter,
@@ -15,7 +15,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-question-navigator',
-  imports: [CommonModule, TranslocoDirective],
+  imports: [TranslocoDirective],
   standalone: true,
   templateUrl: './question-navigator.component.html',
   styleUrl: './question-navigator.component.scss',

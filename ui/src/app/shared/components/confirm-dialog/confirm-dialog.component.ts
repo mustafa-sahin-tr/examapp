@@ -19,20 +19,22 @@ export interface ConfirmDialogData {
   template: `
     <div class="confirm-dialog">
       <div class="dialog-header">
-        <div class="icon-container" *ngIf="data.icon">
-          <mat-icon class="dialog-icon" [ngClass]="'icon-' + data.confirmColor">
-            {{ data.icon }}
-          </mat-icon>
-        </div>
+        @if (data.icon) {
+          <div class="icon-container">
+            <mat-icon class="dialog-icon" [ngClass]="'icon-' + data.confirmColor">
+              {{ data.icon }}
+            </mat-icon>
+          </div>
+        }
         <div class="header-text">
           <h2 mat-dialog-title>{{ data.title }}</h2>
         </div>
       </div>
-
+    
       <mat-dialog-content class="dialog-content">
         <p>{{ data.message }}</p>
       </mat-dialog-content>
-
+    
       <mat-dialog-actions class="dialog-actions">
         <button mat-stroked-button (click)="onCancel()" class="cancel-btn">
           {{ data.cancelText || ('common.cancel' | transloco) }}
@@ -42,7 +44,7 @@ export interface ConfirmDialogData {
         </button>
       </mat-dialog-actions>
     </div>
-  `,
+    `,
   styles: [
     `
       .confirm-dialog {

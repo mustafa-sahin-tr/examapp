@@ -7,9 +7,11 @@
 <!-- Karşılama alanı: son giriş bilgisi (issue #126). İlk girişte lastLoginLabel null → chip hiç render edilmez. -->
 <div class="dashboard-welcome">
   <h2 class="dashboard-welcome-title">{{ 'dashboard.welcome.title' | transloco }}</h2>
-  <span class="last-login-chip" *ngIf="lastLoginLabel() as lastLogin">{{
-    'dashboard.welcome.lastLogin' | transloco: { value: lastLogin }
-  }}</span>
+  @if (lastLoginLabel(); as lastLogin) {
+    <span class="last-login-chip">{{
+      'dashboard.welcome.lastLogin' | transloco: { value: lastLogin }
+    }}</span>
+  }
 </div>
 
 <!-- Günün soruları (issue #99): karşılamanın hemen altı; kendi yükleniyor/hata durumu diğer bölümleri etkilemez -->
@@ -17,172 +19,180 @@
   [error]="dailyError()" [streak]="dailyStreak()" (start)="onDailyStart($event)" (retry)="loadDailySet()"
   (freePractice)="onDailyFreePractice()" (goToProfile)="onDailyGoToProfile()" />
 
-<!-- 1. Aktivite (heat map) + rozet ilerleme — öncelikli bölüm -->
-<div class="dashboard-section">
-  <p class="reset-message" *ngIf="resetMessage() as msg">{{ msg }}</p>
+  <!-- 1. Aktivite (heat map) + rozet ilerleme — öncelikli bölüm -->
+  <div class="dashboard-section">
+    @if (resetMessage(); as msg) {
+      <p class="reset-message">{{ msg }}</p>
+    }
 
-  <div class="activity-grid">
-    <div class="heatmap-container">
-      <ng-container *ngIf="!activityApiLoading(); else heatmapLoading">
-        <ng-container *ngIf="!activityApiError(); else heatmapError">
-          <ng-container *ngIf="activityDataFromApi().length > 0; else heatmapEmpty">
-            <ng-container *ngIf="showActivitySummary()">
-              <!-- Issue #197: sabit boyutlu ngx-charts number-card yerine genişliğe göre sütun değiştiren kart grid'i -->
-              <ul class="activity-stats" *ngIf="activityNumberCardData().length > 0">
-                <li class="stat-card" *ngFor="let card of activityNumberCardData(); trackBy: trackStatCard"
-                  [attr.data-key]="card.key">
-                  <div class="stat-card__header">
-                    <span class="stat-card__label">{{ card.name }}</span>
-                    <mat-icon class="stat-card__icon" aria-hidden="true">{{ card.icon }}</mat-icon>
-                  </div>
-                  <span class="stat-card__value">{{ card.value | number }}</span>
-                </li>
-              </ul>
-            </ng-container>
-            <div class="heatmap-scroll" #heatmapScroll>
-              <!-- #197: kapsayıcı genişliği ölçülmeden çizilmez; aksi halde önce tahmini sonra gerçek genişlikle iki kez çizilir -->
-              <ngx-charts-heat-map *ngIf="heatmapContainerWidth() > 0" [view]="activityHeatmapView()" [scheme]="activityColorScheme"
-                [results]="activityHeatmapData()" [xAxis]="true" [yAxis]="showHeatmapYAxis()" [legend]="false"
-                [showXAxisLabel]="showHeatmapAxisLabels()" [showYAxisLabel]="showHeatmapAxisLabels()" [gradient]="true"
-                [xAxisTickFormatting]="activityXAxisTickFormatting" [tooltipText]="activityHeatmapTooltip">
-              </ngx-charts-heat-map>
-            </div>
-          </ng-container>
-        </ng-container>
-      </ng-container>
-
-      <ng-template #heatmapLoading>
-        <p class="heatmap-state">{{ 'dashboard.activity.loading' | transloco }}</p>
-      </ng-template>
-
-      <ng-template #heatmapError>
-        <p class="heatmap-state error">{{ 'dashboard.activity.error' | transloco }}</p>
-      </ng-template>
-
-      <ng-template #heatmapEmpty>
-        <p class="heatmap-state">{{ 'dashboard.activity.empty' | transloco }}</p>
-      </ng-template>
-    </div>
-
-    <!-- Rozet kartı: kendi yükleniyor/hata/boş durumlarına sahip, heat map durumundan bağımsız -->
-    <div class="earned-badges-container">
-      <ng-container *ngIf="badgeProgressLoading(); else badgesResolved">
-        <h3 class="earned-badges-heading">{{ 'dashboard.badges.title' | transloco }}</h3>
-        <p class="badges-state">{{ 'dashboard.badges.loading' | transloco }}</p>
-      </ng-container>
-
-      <ng-template #badgesResolved>
-        <ng-container *ngIf="badgeProgressError(); else badgesContent">
-          <h3 class="earned-badges-heading">{{ 'dashboard.badges.title' | transloco }}</h3>
-          <p class="badges-state error">{{ 'dashboard.badges.error' | transloco }}</p>
-        </ng-container>
-      </ng-template>
-
-      <ng-template #badgesContent>
-        <!-- Kazanılan Rozetler -->
-        <div class="badge-group">
-          <h3 class="earned-badges-heading">{{ 'dashboard.badges.earnedTitle' | transloco }}</h3>
-          <ng-container *ngIf="earnedBadges().length > 0; else badgesEmpty">
-            <div class="earned-badges-grid">
-              <!-- Issue #149: 56px medalyon; tooltip hover VE klavye odağında açılır (MatTooltip) -->
-              <div
-                class="badge-icon"
-                *ngFor="let view of earnedBadgeViews(); trackBy: trackBadge"
-                tabindex="0"
-                role="img"
-                [attr.aria-label]="view.ariaLabel"
-                [matTooltip]="view.tooltip"
-                matTooltipClass="badge-tooltip-panel"
-              >
-                <app-badge-medallion
-                  [icon]="view.badge.icon"
-                  [iconUrl]="view.badge.iconUrl"
-                  [state]="view.state"
-                  [size]="56"
-                />
+    <div class="activity-grid">
+      <div class="heatmap-container">
+        @if (!activityApiLoading()) {
+          @if (!activityApiError()) {
+            @if (activityDataFromApi().length > 0) {
+              @if (showActivitySummary()) {
+                <!-- Issue #197: sabit boyutlu ngx-charts number-card yerine genişliğe göre sütun değiştiren kart grid'i -->
+                @if (activityNumberCardData().length > 0) {
+                  <ul class="activity-stats">
+                    @for (card of activityNumberCardData(); track trackStatCard($index, card)) {
+                      <li class="stat-card"
+                        [attr.data-key]="card.key">
+                        <div class="stat-card__header">
+                          <span class="stat-card__label">{{ card.name }}</span>
+                          <mat-icon class="stat-card__icon" aria-hidden="true">{{ card.icon }}</mat-icon>
+                        </div>
+                        <span class="stat-card__value">{{ card.value | number }}</span>
+                      </li>
+                    }
+                  </ul>
+                }
+              }
+              <div class="heatmap-scroll" #heatmapScroll>
+                <!-- #197: kapsayıcı genişliği ölçülmeden çizilmez; aksi halde önce tahmini sonra gerçek genişlikle iki kez çizilir -->
+                @if (heatmapContainerWidth() > 0) {
+                  <ngx-charts-heat-map [view]="activityHeatmapView()" [scheme]="activityColorScheme"
+                    [results]="activityHeatmapData()" [xAxis]="true" [yAxis]="showHeatmapYAxis()" [legend]="false"
+                    [showXAxisLabel]="showHeatmapAxisLabels()" [showYAxisLabel]="showHeatmapAxisLabels()" [gradient]="true"
+                    [xAxisTickFormatting]="activityXAxisTickFormatting" [tooltipText]="activityHeatmapTooltip">
+                  </ngx-charts-heat-map>
+                }
               </div>
-            </div>
-          </ng-container>
-          <ng-template #badgesEmpty>
-            <p class="badges-state">{{ 'dashboard.badges.earnedEmpty' | transloco }}</p>
-          </ng-template>
-        </div>
+            } @else {
+              <p class="heatmap-state">{{ 'dashboard.activity.empty' | transloco }}</p>
+            }
+          } @else {
+            <p class="heatmap-state error">{{ 'dashboard.activity.error' | transloco }}</p>
+          }
+        } @else {
+          <p class="heatmap-state">{{ 'dashboard.activity.loading' | transloco }}</p>
+        }
 
-        <!-- Sıradaki Rozetler: !isCompleted, targetValue - currentValue farkına göre artan, ilk 3 -->
-        <div class="badge-group">
-          <h3 class="earned-badges-heading">{{ 'dashboard.badges.upcomingTitle' | transloco }}</h3>
-          <ng-container *ngIf="upcomingBadges().length > 0; else upcomingEmpty">
-            <ul class="upcoming-badges">
-              <li class="upcoming-badge" *ngFor="let item of upcomingBadges(); trackBy: trackUpcomingBadge">
-                <app-badge-medallion
-                  [icon]="item.badge.icon"
-                  [iconUrl]="item.badge.iconUrl"
-                  [state]="item.state"
-                  [size]="44"
-                  [progressPercent]="item.percent"
-                />
-                <div class="upcoming-badge-body">
-                  <div class="upcoming-badge-row">
-                    <bdi class="upcoming-badge-name" dir="auto">{{ item.badge.name }}</bdi>
-                    <span class="upcoming-badge-count" [attr.data-state]="item.state">{{ item.stateText }}</span>
-                  </div>
-                  <div class="upcoming-badge-track" role="progressbar" [attr.aria-valuenow]="item.badge.currentValue"
-                    [attr.aria-valuemin]="0" [attr.aria-valuemax]="item.badge.targetValue" [attr.aria-label]="item.badge.name">
-                    <div class="upcoming-badge-fill" [style.width.%]="item.percent"></div>
-                  </div>
-                </div>
-              </li>
-            </ul>
-          </ng-container>
-          <ng-template #upcomingEmpty>
-            <p class="badges-state badges-state-complete" *ngIf="allBadgesCompleted(); else upcomingNone">
-              {{ 'dashboard.badges.allCompleted' | transloco }}
-            </p>
-            <ng-template #upcomingNone>
-              <p class="badges-state">{{ 'dashboard.badges.upcomingEmpty' | transloco }}</p>
-            </ng-template>
-          </ng-template>
-        </div>
-      </ng-template>
-    </div>
-  </div>
-</div>
 
-<!-- 2. Atanmış testler — kompakt kartlar -->
-<div class="dashboard-section">
-  <app-section-header [title]="'dashboard.assignments.title' | transloco" icon="/icons/18.svg"></app-section-header>
-  <ng-container *ngIf="loading(); else assignmentsContent">
-    <p class="info">{{ 'dashboard.assignments.loading' | transloco }}</p>
-  </ng-container>
 
-  <ng-template #assignmentsContent>
-    <ng-container *ngIf="assignmentCards().length > 0; else noAssignments">
-      <div class="list-container compact-tests">
-        <button *ngIf="canScrollLeft()" class="nav-btn left" type="button" (click)="handleLeftNavigation()">❮</button>
-        <div class="cards hidden-scrollable" #assignmentContainer (scroll)="onAssignmentScroll()">
-          <!-- Kompakt kart ortak komponent (issue #188): thumb + başlık + bitiş, tek satır; zengin worksheet-card kullanılmaz -->
-          <ul class="psds-carousel__track">
-            <li class="mini-test-item" *ngFor="let vm of assignmentCards(); trackBy: trackAssignment">
-              <app-compact-test-card
-                [title]="vm.test.name"
-                [thumbUrl]="vm.test.imageUrl"
-                [dueDate]="vm.assignment.endAt"
-                (activated)="onCardClick(vm)"
-              ></app-compact-test-card>
-            </li>
-          </ul>
-        </div>
-        <button *ngIf="canScrollRight()" class="nav-btn right" type="button" (click)="handleRightNavigation()">
-          ❯
-        </button>
       </div>
-    </ng-container>
-    <ng-template #noAssignments>
-      <p class="info">{{ 'dashboard.assignments.empty' | transloco }}</p>
-    </ng-template>
-  </ng-template>
 
-  <ng-container *ngIf="error() as errorMessage">
-    <p class="error">{{ errorMessage }}</p>
-  </ng-container>
-</div>
+      <!-- Rozet kartı: kendi yükleniyor/hata/boş durumlarına sahip, heat map durumundan bağımsız -->
+      <div class="earned-badges-container">
+        @if (badgeProgressLoading()) {
+          <h3 class="earned-badges-heading">{{ 'dashboard.badges.title' | transloco }}</h3>
+          <p class="badges-state">{{ 'dashboard.badges.loading' | transloco }}</p>
+        } @else {
+          @if (badgeProgressError()) {
+            <h3 class="earned-badges-heading">{{ 'dashboard.badges.title' | transloco }}</h3>
+            <p class="badges-state error">{{ 'dashboard.badges.error' | transloco }}</p>
+          } @else {
+            <!-- Kazanılan Rozetler -->
+            <div class="badge-group">
+              <h3 class="earned-badges-heading">{{ 'dashboard.badges.earnedTitle' | transloco }}</h3>
+              @if (earnedBadges().length > 0) {
+                <div class="earned-badges-grid">
+                  <!-- Issue #149: 56px medalyon; tooltip hover VE klavye odağında açılır (MatTooltip) -->
+                  @for (view of earnedBadgeViews(); track trackBadge($index, view)) {
+                    <div
+                      class="badge-icon"
+                      tabindex="0"
+                      role="img"
+                      [attr.aria-label]="view.ariaLabel"
+                      [matTooltip]="view.tooltip"
+                      matTooltipClass="badge-tooltip-panel"
+                      >
+                      <app-badge-medallion
+                        [icon]="view.badge.icon"
+                        [iconUrl]="view.badge.iconUrl"
+                        [state]="view.state"
+                        [size]="56"
+                        />
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <p class="badges-state">{{ 'dashboard.badges.earnedEmpty' | transloco }}</p>
+                }
+              </div>
+              <!-- Sıradaki Rozetler: !isCompleted, targetValue - currentValue farkına göre artan, ilk 3 -->
+              <div class="badge-group">
+                <h3 class="earned-badges-heading">{{ 'dashboard.badges.upcomingTitle' | transloco }}</h3>
+                @if (upcomingBadges().length > 0) {
+                  <ul class="upcoming-badges">
+                    @for (item of upcomingBadges(); track trackUpcomingBadge($index, item)) {
+                      <li class="upcoming-badge">
+                        <app-badge-medallion
+                          [icon]="item.badge.icon"
+                          [iconUrl]="item.badge.iconUrl"
+                          [state]="item.state"
+                          [size]="44"
+                          [progressPercent]="item.percent"
+                          />
+                          <div class="upcoming-badge-body">
+                            <div class="upcoming-badge-row">
+                              <bdi class="upcoming-badge-name" dir="auto">{{ item.badge.name }}</bdi>
+                              <span class="upcoming-badge-count" [attr.data-state]="item.state">{{ item.stateText }}</span>
+                            </div>
+                            <div class="upcoming-badge-track" role="progressbar" [attr.aria-valuenow]="item.badge.currentValue"
+                              [attr.aria-valuemin]="0" [attr.aria-valuemax]="item.badge.targetValue" [attr.aria-label]="item.badge.name">
+                              <div class="upcoming-badge-fill" [style.width.%]="item.percent"></div>
+                            </div>
+                          </div>
+                        </li>
+                      }
+                    </ul>
+                  } @else {
+                    @if (allBadgesCompleted()) {
+                      <p class="badges-state badges-state-complete">
+                        {{ 'dashboard.badges.allCompleted' | transloco }}
+                      </p>
+                    } @else {
+                      <p class="badges-state">{{ 'dashboard.badges.upcomingEmpty' | transloco }}</p>
+                    }
+                  }
+                </div>
+              }
+            }
+
+
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Atanmış testler — kompakt kartlar -->
+      <div class="dashboard-section">
+        <app-section-header [title]="'dashboard.assignments.title' | transloco" icon="/icons/18.svg"></app-section-header>
+        @if (loading()) {
+          <p class="info">{{ 'dashboard.assignments.loading' | transloco }}</p>
+        } @else {
+          @if (assignmentCards().length > 0) {
+            <div class="list-container compact-tests">
+              @if (canScrollLeft()) {
+                <button class="nav-btn left" type="button" (click)="handleLeftNavigation()">❮</button>
+              }
+              <div class="cards hidden-scrollable" #assignmentContainer (scroll)="onAssignmentScroll()">
+                <!-- Kompakt kart ortak komponent (issue #188): thumb + başlık + bitiş, tek satır; zengin worksheet-card kullanılmaz -->
+                <ul class="psds-carousel__track">
+                  @for (vm of assignmentCards(); track trackAssignment($index, vm)) {
+                    <li class="mini-test-item">
+                      <app-compact-test-card
+                        [title]="vm.test.name"
+                        [thumbUrl]="vm.test.imageUrl"
+                        [dueDate]="vm.assignment.endAt"
+                        (activated)="onCardClick(vm)"
+                      ></app-compact-test-card>
+                    </li>
+                  }
+                </ul>
+              </div>
+              @if (canScrollRight()) {
+                <button class="nav-btn right" type="button" (click)="handleRightNavigation()">
+                  ❯
+                </button>
+              }
+            </div>
+          } @else {
+            <p class="info">{{ 'dashboard.assignments.empty' | transloco }}</p>
+          }
+        }
+
+
+        @if (error(); as errorMessage) {
+          <p class="error">{{ errorMessage }}</p>
+        }
+      </div>

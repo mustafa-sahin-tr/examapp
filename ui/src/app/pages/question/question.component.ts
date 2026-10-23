@@ -9,7 +9,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
-import { CommonModule } from '@angular/common';
+
 import { MatCardModule } from '@angular/material/card';
 import { SubjectService } from '../../services/subject.service';
 import { Subject } from '../../models/subject';
@@ -49,15 +49,14 @@ const QUESTION_SCOPE = 'question';
     MatSnackBarModule,
     FormsModule,
     ReactiveFormsModule,
-    CommonModule,
     MatCardModule,
     MatIconModule,
     QuestionListComponent,
     QuillModule,
     PassageCardComponent,
     TranslocoDirective,
-    StorageImageRetryDirective,
-  ],
+    StorageImageRetryDirective
+],
   providers: [provideTranslocoScope(QUESTION_SCOPE)],
 })
 export class QuestionComponent implements OnInit {

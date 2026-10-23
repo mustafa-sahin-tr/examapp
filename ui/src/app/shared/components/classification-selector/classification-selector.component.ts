@@ -1,5 +1,5 @@
 import { Component, EventEmitter, inject, Input, Output, signal, effect, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatChipsModule } from '@angular/material/chips';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -24,7 +24,7 @@ export interface ClassificationSelection {
 @Component({
   selector: 'app-classification-selector',
   standalone: true,
-  imports: [CommonModule, MatChipsModule, MatButtonModule, MatIconModule, TranslocoDirective],
+  imports: [MatChipsModule, MatButtonModule, MatIconModule, TranslocoDirective],
   templateUrl: './classification-selector.component.html',
   styleUrls: ['./classification-selector.component.scss'],
 })

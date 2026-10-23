@@ -2,7 +2,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { MatSelect } from '@angular/material/select';
-import { OverlayContainer } from '@angular/cdk/overlay';
 import { Observable, Subject, of } from 'rxjs';
 
 import { SchoolFilterComponent } from './school-filter.component';
@@ -87,8 +86,8 @@ describe('SchoolFilterComponent', () => {
   function optionTexts(): string[] {
     (fixture.debugElement.query(By.directive(MatSelect)).componentInstance as MatSelect).open();
     fixture.detectChanges();
-    const container = TestBed.inject(OverlayContainer).getContainerElement();
-    return Array.from(container.querySelectorAll('mat-option')).map((o) => (o.textContent ?? '').trim());
+    // CDK 21: bağlı paneller OverlayContainer'a değil, tetikleyicinin yanına native popover olarak eklenir (#545).
+    return Array.from(document.querySelectorAll('mat-option')).map((o) => (o.textContent ?? '').trim());
   }
 
   it('unassignedLabel_Default_ShowsIndependentOrNoSchool', () => {

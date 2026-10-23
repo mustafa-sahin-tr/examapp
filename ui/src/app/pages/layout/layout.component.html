@@ -1,44 +1,50 @@
 <mat-sidenav-container class="container">
   <!-- Sol Menü -->
-  <mat-sidenav *ngIf="!isLoginPage()" #sidenav mode="side" [opened]="isSidenavOpen()" class="sidenav hidden-scrollable">
-    <mat-nav-list>
-      <!-- <a mat-list-item class="navbar-viewitem svelte" routerLink="/home">Home</a>
-        <a mat-list-item routerLink="/tests">Testler</a>       
+  @if (!isLoginPage()) {
+    <mat-sidenav #sidenav mode="side" [opened]="isSidenavOpen()" class="sidenav hidden-scrollable">
+      <mat-nav-list>
+        <!-- <a mat-list-item class="navbar-viewitem svelte" routerLink="/home">Home</a>
+        <a mat-list-item routerLink="/tests">Testler</a>
         <a mat-list-item routerLink="/help">Help & Support</a>
         <a mat-list-item routerLink="/feedback">Send Feedback</a> -->
-      <div class="sidenav">
-        <ng-container *ngFor="let menuItem of menuItems">
-          <div
-            *ngIf="menuItem.type == 'menu'"
-            class="sidenav-item"
-            [class.active]="menuItem.route === activeMenuItem()"
-            (click)="navigateTo(menuItem.route)"
-          >
-            <mat-icon>{{ menuItem.icon }}</mat-icon>
-            <span>{{ menuItem.name }}</span>
-          </div>
-          <div *ngIf="menuItem.type == 'divider'" class="sidenav-divider"></div>
-        </ng-container>
-        <!-- <div class="sidenav-divider"></div> -->
-        <!-- <div class="sidenav-item">
-              <mat-icon>stars</mat-icon>
-              <span>Iris</span>
-            </div>
-            <div class="sidenav-item">
-              <mat-icon>work</mat-icon>
-              <span>Hands-on</span>
-            </div>
-            <div class="sidenav-item">
-              <mat-icon>rss_feed</mat-icon>
-              <span>Channels</span>
-            </div>-->
+        <div class="sidenav">
+          @for (menuItem of menuItems; track menuItem) {
+            @if (menuItem.type == 'menu') {
+              <div
+                class="sidenav-item"
+                [class.active]="menuItem.route === activeMenuItem()"
+                (click)="navigateTo(menuItem.route)"
+                >
+                <mat-icon>{{ menuItem.icon }}</mat-icon>
+                <span>{{ menuItem.name }}</span>
+              </div>
+            }
+            @if (menuItem.type == 'divider') {
+              <div class="sidenav-divider"></div>
+            }
+          }
+          <!-- <div class="sidenav-divider"></div> -->
+          <!-- <div class="sidenav-item">
+          <mat-icon>stars</mat-icon>
+          <span>Iris</span>
+        </div>
+        <div class="sidenav-item">
+          <mat-icon>work</mat-icon>
+          <span>Hands-on</span>
+        </div>
+        <div class="sidenav-item">
+          <mat-icon>rss_feed</mat-icon>
+          <span>Channels</span>
+        </div>-->
       </div>
     </mat-nav-list>
   </mat-sidenav>
+}
 
-  <!-- İçerik Alanı -->
-  <mat-sidenav-content class="content hidden-scrollable">
-    <mat-toolbar color="primary" *ngIf="!isFullScreen()">
+<!-- İçerik Alanı -->
+<mat-sidenav-content class="content hidden-scrollable">
+  @if (!isFullScreen()) {
+    <mat-toolbar color="primary">
       <button class="section-nav-btn" [class.active]="currentSection() === 'newest'" (click)="showSection('newest')">
         <mat-icon>new_releases</mat-icon>
         Yeni Testler
@@ -50,105 +56,101 @@
       <div class="search-box" (focusin)="onFocus()" (focusout)="onBlur()">
         <mat-icon class="search-icon">search</mat-icon>
         <input matInput [formControl]="globalSearchControl" (keyup.enter)="onGlobalSearch()" placeholder="Ara ..." />
-
-        <div class="ms-search-dropdown" *ngIf="isInputFocused && filteredSuggestions.length">
-          <p class="ms-recent-title" *ngIf="!globalSearchControl.value">Recent Searches</p>
-          <ul class="ms-dropdown-list">
-            <li *ngFor="let item of filteredSuggestions" (click)="onSelectSuggestion(item)" class="ms-dropdown-item">
-              <div class="ms-item-content">
-                <mat-icon class="ms-history-icon" *ngIf="!globalSearchControl.value">history</mat-icon>
-                <span class="ms-item-text">{{ item }}</span>
-              </div>
-              <button class="ms-delete-btn" (click)="onDelete(item)">
-                <mat-icon>close</mat-icon>
-              </button>
-            </li>
-          </ul>
-        </div>
+        @if (isInputFocused && filteredSuggestions.length) {
+          <div class="ms-search-dropdown">
+            @if (!globalSearchControl.value) {
+              <p class="ms-recent-title">Recent Searches</p>
+            }
+            <ul class="ms-dropdown-list">
+              @for (item of filteredSuggestions; track item) {
+                <li (click)="onSelectSuggestion(item)" class="ms-dropdown-item">
+                  <div class="ms-item-content">
+                    @if (!globalSearchControl.value) {
+                      <mat-icon class="ms-history-icon">history</mat-icon>
+                    }
+                    <span class="ms-item-text">{{ item }}</span>
+                  </div>
+                  <button class="ms-delete-btn" (click)="onDelete(item)">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </li>
+              }
+            </ul>
+          </div>
+        }
       </div>
-
       @if( $isAuthenticated | async) {
-
-      <div class="profile-menu" mat-button [matMenuTriggerFor]="profileMenu">
-        <img [src]="'default-avatar.png'" ngSrcset="100w, 200w" class="preview-image" alt="Profile" />
-        <span class="username">{{ userName }}</span>
-      </div>
-
-      <mat-menu #profileMenu="matMenu" class="ms-menu-panel">
-        <!-- Başlık Bölümü -->
-        <div class="ms-menu-header">
-          <div class="ms-header-bg"></div>
-          <img [src]="userAvatarUrl || 'default-avatar.png'" alt="Profile" class="ms-header-avatar" />
-          <div class="ms-header-info">
-            <div class="ms-user-name">{{ userName }}</div>
-            <div class="ms-user-email">{{ 'test@test.com' }}</div>
-          </div>
+        <div class="profile-menu" mat-button [matMenuTriggerFor]="profileMenu">
+          <img [src]="'default-avatar.png'" ngSrcset="100w, 200w" class="preview-image" alt="Profile" />
+          <span class="username">{{ userName }}</span>
         </div>
-
-        <!-- Menü Öğeleri -->
-        <button mat-menu-item class="ms-menu-item">
-          <mat-icon>person</mat-icon>
-          <div class="ms-item-content">
-            <span class="ms-item-title">Profil Bilgileri</span>
+        <mat-menu #profileMenu="matMenu" class="ms-menu-panel">
+          <!-- Başlık Bölümü -->
+          <div class="ms-menu-header">
+            <div class="ms-header-bg"></div>
+            <img [src]="userAvatarUrl || 'default-avatar.png'" alt="Profile" class="ms-header-avatar" />
+            <div class="ms-header-info">
+              <div class="ms-user-name">{{ userName }}</div>
+              <div class="ms-user-email">{{ 'test@test.com' }}</div>
+            </div>
           </div>
-        </button>
-
-        <button mat-menu-item class="ms-menu-item">
-          <mat-icon>settings</mat-icon>
-          <div class="ms-item-content">
-            <!-- <span class="ms-item-title">Ayarlar</span> -->
-            <span class="ms-item-subtitle">Ayarlar, Hesap, Güvenlik</span>
-          </div>
-        </button>
-
-        <mat-divider class="ms-menu-divider"></mat-divider>
-        <button mat-menu-item class="ms-menu-item">
-          <mat-icon>assignment</mat-icon>
-          <div class="ms-item-content">
-            <span class="ms-item-title">Görevler</span>
-            <!-- <span class="ms-item-subtitle">Aktif görevler, Takvim</span> -->
-          </div>
-        </button>
-
-        <button mat-menu-item class="ms-menu-item">
-          <mat-icon>emoji_events</mat-icon>
-          <div class="ms-item-content">
-            <span class="ms-item-title">Başarılar</span>
-            <!-- <span class="ms-item-subtitle">Ödüller, Sertifikalar</span> -->
-          </div>
-        </button>
-
-        <button mat-menu-item class="ms-menu-item">
-          <mat-icon>notifications</mat-icon>
-          <div class="ms-item-content">
-            <span class="ms-item-title">Bildirimler</span>
-            <!-- <span class="ms-item-subtitle">Bildirim Ayarları</span> -->
-          </div>
-        </button>
-
-        <button mat-menu-item class="ms-menu-item">
-          <mat-icon>support</mat-icon>
-          <div class="ms-item-content">
-            <span class="ms-item-title">Destek</span>
-            <!-- <span class="ms-item-subtitle">SSS, Canlı Destek</span> -->
-          </div>
-        </button>
-
-        <mat-divider class="ms-menu-divider"></mat-divider>
-
-        <button mat-menu-item class="ms-menu-item" (click)="logout()">
-          <mat-icon>logout</mat-icon>
-          <div class="ms-item-content">
-            <span class="ms-item-title">Çıkış Yap </span>
-          </div>
-        </button>
-      </mat-menu>
-
+          <!-- Menü Öğeleri -->
+          <button mat-menu-item class="ms-menu-item">
+            <mat-icon>person</mat-icon>
+            <div class="ms-item-content">
+              <span class="ms-item-title">Profil Bilgileri</span>
+            </div>
+          </button>
+          <button mat-menu-item class="ms-menu-item">
+            <mat-icon>settings</mat-icon>
+            <div class="ms-item-content">
+              <!-- <span class="ms-item-title">Ayarlar</span> -->
+              <span class="ms-item-subtitle">Ayarlar, Hesap, Güvenlik</span>
+            </div>
+          </button>
+          <mat-divider class="ms-menu-divider"></mat-divider>
+          <button mat-menu-item class="ms-menu-item">
+            <mat-icon>assignment</mat-icon>
+            <div class="ms-item-content">
+              <span class="ms-item-title">Görevler</span>
+              <!-- <span class="ms-item-subtitle">Aktif görevler, Takvim</span> -->
+            </div>
+          </button>
+          <button mat-menu-item class="ms-menu-item">
+            <mat-icon>emoji_events</mat-icon>
+            <div class="ms-item-content">
+              <span class="ms-item-title">Başarılar</span>
+              <!-- <span class="ms-item-subtitle">Ödüller, Sertifikalar</span> -->
+            </div>
+          </button>
+          <button mat-menu-item class="ms-menu-item">
+            <mat-icon>notifications</mat-icon>
+            <div class="ms-item-content">
+              <span class="ms-item-title">Bildirimler</span>
+              <!-- <span class="ms-item-subtitle">Bildirim Ayarları</span> -->
+            </div>
+          </button>
+          <button mat-menu-item class="ms-menu-item">
+            <mat-icon>support</mat-icon>
+            <div class="ms-item-content">
+              <span class="ms-item-title">Destek</span>
+              <!-- <span class="ms-item-subtitle">SSS, Canlı Destek</span> -->
+            </div>
+          </button>
+          <mat-divider class="ms-menu-divider"></mat-divider>
+          <button mat-menu-item class="ms-menu-item" (click)="logout()">
+            <mat-icon>logout</mat-icon>
+            <div class="ms-item-content">
+              <span class="ms-item-title">Çıkış Yap </span>
+            </div>
+          </button>
+        </mat-menu>
       }
     </mat-toolbar>
+  }
 
-    <div class="main-content">
-      <router-outlet></router-outlet>
-    </div>
-  </mat-sidenav-content>
+  <div class="main-content">
+    <router-outlet></router-outlet>
+  </div>
+</mat-sidenav-content>
 </mat-sidenav-container>

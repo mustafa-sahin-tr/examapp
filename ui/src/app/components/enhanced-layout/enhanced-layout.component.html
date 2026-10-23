@@ -14,183 +14,200 @@
             (keydown.enter)="isSidenavCollapsed() ? toggleSidenav() : null"
             (keydown.space)="isSidenavCollapsed() ? toggleSidenav() : null">
             <mat-icon class="logo-icon">school</mat-icon>
-            <span class="app-title" *ngIf="!isSidenavCollapsed()">{{ 'brand.name' | transloco }}</span>
+            @if (!isSidenavCollapsed()) {
+              <span class="app-title">{{ 'brand.name' | transloco }}</span>
+            }
           </div>
-          <button mat-icon-button class="toggle-btn" *ngIf="!isSidenavCollapsed()" (click)="toggleSidenav()"
-            [matTooltip]="isMobile() ? t('sidebar.close') : t('sidebar.collapse')">
-            <mat-icon>{{ isMobile() ? 'close' : 'chevron_left' }}</mat-icon>
-          </button>
+          @if (!isSidenavCollapsed()) {
+            <button mat-icon-button class="toggle-btn" (click)="toggleSidenav()"
+              [matTooltip]="isMobile() ? t('sidebar.close') : t('sidebar.collapse')">
+              <mat-icon>{{ isMobile() ? 'close' : 'chevron_left' }}</mat-icon>
+            </button>
+          }
         </div>
       </div>
 
       <!-- Navigation Menu -->
       <nav class="nav-menu">
-        <ng-container *ngFor="let item of visibleMenuItems(); trackBy: trackByItemId">
-          <div *ngIf="item.type === 'menu'" class="menu-item" role="button" tabindex="0"
-            [class.active]="item.id === activeMenuItem()"
-            (click)="navigateTo(item.route)" (keydown.enter)="navigateTo(item.route)"
-            (keydown.space)="navigateTo(item.route)" [title]="isSidenavCollapsed() ? t(item.labelKey) : ''"
-            [matTooltip]="isSidenavCollapsed() ? t(item.labelKey) : ''" matTooltipPosition="right">
-            <mat-icon class="menu-icon"
-              [matBadge]="menuBadgeCount(item.id) > 99 ? '99+' : menuBadgeCount(item.id)"
-              [matBadgeHidden]="menuBadgeCount(item.id) === 0"
-              [matBadgeDescription]="isDirectMessageItem(item.id) ? t('dmUnreadBadge', { count: menuBadgeCount(item.id) }) : ''"
+        @for (item of visibleMenuItems(); track trackByItemId($index, item)) {
+          @if (item.type === 'menu') {
+            <div class="menu-item" role="button" tabindex="0"
+              [class.active]="item.id === activeMenuItem()"
+              (click)="navigateTo(item.route)" (keydown.enter)="navigateTo(item.route)"
+              (keydown.space)="navigateTo(item.route)" [title]="isSidenavCollapsed() ? t(item.labelKey) : ''"
+              [matTooltip]="isSidenavCollapsed() ? t(item.labelKey) : ''" matTooltipPosition="right">
+              <mat-icon class="menu-icon"
+                [matBadge]="menuBadgeCount(item.id) > 99 ? '99+' : menuBadgeCount(item.id)"
+                [matBadgeHidden]="menuBadgeCount(item.id) === 0"
+                [matBadgeDescription]="isDirectMessageItem(item.id) ? t('dmUnreadBadge', { count: menuBadgeCount(item.id) }) : ''"
               matBadgeColor="warn" matBadgeSize="small">{{ item.icon }}</mat-icon>
-            <span class="menu-text" *ngIf="!isSidenavCollapsed()">{{ t(item.labelKey) }}</span>
-            <div class="ripple-effect"></div>
-          </div>
-
-          <div *ngIf="item.type === 'divider'" class="menu-divider" [class.collapsed]="isSidenavCollapsed()"></div>
-        </ng-container>
+              @if (!isSidenavCollapsed()) {
+                <span class="menu-text">{{ t(item.labelKey) }}</span>
+              }
+              <div class="ripple-effect"></div>
+            </div>
+          }
+          @if (item.type === 'divider') {
+            <div class="menu-divider" [class.collapsed]="isSidenavCollapsed()"></div>
+          }
+        }
       </nav>
 
       <!-- Sidebar Footer -->
-      <div class="sidebar-footer" *ngIf="!isSidenavCollapsed()">
-        <div class="footer-content">
-          <span class="app-version">v2.0.1</span>
+      @if (!isSidenavCollapsed()) {
+        <div class="sidebar-footer">
+          <div class="footer-content">
+            <span class="app-version">v2.0.1</span>
+          </div>
         </div>
-      </div>
+      }
     </mat-sidenav>
 
     <!-- Main Content Area -->
     <!-- margin-left tek kaynaktan (sidenavContentOffsetPx) gelir; SCSS'te durum bazlı override yoktur -->
     <mat-sidenav-content class="main-content-wrapper" [class.no-bottom-nav]="isExamRoute()"
       [style.margin-left.px]="sidenavContentOffsetPx()">
-      <mat-toolbar color="primary" class="mobile-toolbar" *ngIf="isMobile() && !isFullScreen() && !isExamRoute()">
-        <button mat-icon-button (click)="toggleSidenav()" [attr.aria-label]="t('sidebar.open')">
-          <mat-icon>menu</mat-icon>
-        </button>
-        <span class="mobile-toolbar-title">{{ 'brand.name' | transloco }}</span>
-        <app-language-switcher class="mobile-toolbar-actions"></app-language-switcher>
-        <app-color-scheme-toggle class="mobile-toolbar-actions"></app-color-scheme-toggle>
-        @if (isAuthenticated | async) {
-          <ng-container *ngTemplateOutlet="notificationBell; context: { $implicit: 'mobile-toolbar-actions' }" />
-        }
-      </mat-toolbar>
+      @if (isMobile() && !isFullScreen() && !isExamRoute()) {
+        <mat-toolbar color="primary" class="mobile-toolbar">
+          <button mat-icon-button (click)="toggleSidenav()" [attr.aria-label]="t('sidebar.open')">
+            <mat-icon>menu</mat-icon>
+          </button>
+          <span class="mobile-toolbar-title">{{ 'brand.name' | transloco }}</span>
+          <app-language-switcher class="mobile-toolbar-actions"></app-language-switcher>
+          <app-color-scheme-toggle class="mobile-toolbar-actions"></app-color-scheme-toggle>
+          @if (isAuthenticated | async) {
+            <ng-container *ngTemplateOutlet="notificationBell; context: { $implicit: 'mobile-toolbar-actions' }" />
+          }
+        </mat-toolbar>
+      }
 
       <!-- Enhanced Toolbar -->
 
-      <mat-toolbar color="primary" *ngIf="!isMobile() && !isFullScreen() && !isSidenavCollapsed()">
-        <div class="section-nav">
-          <ng-container *ngIf="!isParentOnly">
-          <button class="section-nav-btn" data-test="toolbar-newest" [class.active]="currentSection() === 'newest'"
-            (click)="showSection('newest')">
-            <mat-icon>new_releases</mat-icon>
-            {{ t('toolbar.newest') }}
-          </button>
-          <button class="section-nav-btn" data-test="toolbar-popular" [class.active]="currentSection() === 'hot'" (click)="showSection('hot')">
-            <mat-icon>local_fire_department</mat-icon>
-            {{ t('toolbar.popular') }}
-          </button>
-          <div class="search-box" data-test="toolbar-search" (focusin)="onFocus()" (focusout)="onBlur()">
-            <mat-icon class="search-icon">search</mat-icon>
-            <input matInput [formControl]="globalSearchControl" (keyup.enter)="onGlobalSearch()"
-              [placeholder]="t('toolbar.searchPlaceholder')" [attr.aria-label]="t('toolbar.searchPlaceholder')" />
-            <div class="ms-search-dropdown" *ngIf="isInputFocused">
-              <p class="ms-recent-title" *ngIf="!globalSearchControl.value">{{ t('search.recentTitle') }}</p>
-              <ul class="ms-dropdown-list">
-                <li *ngFor="let item of filteredSuggestions" (click)="onSelectSuggestion(item)"
-                  class="ms-dropdown-item">
-                  <div class="ms-item-content">
-                    <mat-icon class="ms-history-icon" *ngIf="!globalSearchControl.value">history</mat-icon>
-                    <span class="ms-item-text">{{ item }}</span>
+      @if (!isMobile() && !isFullScreen() && !isSidenavCollapsed()) {
+        <mat-toolbar color="primary">
+          <div class="section-nav">
+            @if (!isParentOnly) {
+              <button class="section-nav-btn" data-test="toolbar-newest" [class.active]="currentSection() === 'newest'"
+                (click)="showSection('newest')">
+                <mat-icon>new_releases</mat-icon>
+                {{ t('toolbar.newest') }}
+              </button>
+              <button class="section-nav-btn" data-test="toolbar-popular" [class.active]="currentSection() === 'hot'" (click)="showSection('hot')">
+                <mat-icon>local_fire_department</mat-icon>
+                {{ t('toolbar.popular') }}
+              </button>
+              <div class="search-box" data-test="toolbar-search" (focusin)="onFocus()" (focusout)="onBlur()">
+                <mat-icon class="search-icon">search</mat-icon>
+                <input matInput [formControl]="globalSearchControl" (keyup.enter)="onGlobalSearch()"
+                  [placeholder]="t('toolbar.searchPlaceholder')" [attr.aria-label]="t('toolbar.searchPlaceholder')" />
+                  @if (isInputFocused) {
+                    <div class="ms-search-dropdown">
+                      @if (!globalSearchControl.value) {
+                        <p class="ms-recent-title">{{ t('search.recentTitle') }}</p>
+                      }
+                      <ul class="ms-dropdown-list">
+                        @for (item of filteredSuggestions; track item) {
+                          <li (click)="onSelectSuggestion(item)"
+                            class="ms-dropdown-item">
+                            <div class="ms-item-content">
+                              @if (!globalSearchControl.value) {
+                                <mat-icon class="ms-history-icon">history</mat-icon>
+                              }
+                              <span class="ms-item-text">{{ item }}</span>
+                            </div>
+                            <button class="ms-delete-btn" (click)="onDelete(item)" [attr.aria-label]="t('search.remove')">
+                              <mat-icon>close</mat-icon>
+                            </button>
+                          </li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+            <app-language-switcher class="toolbar-language-switcher"></app-language-switcher>
+            <app-color-scheme-toggle class="toolbar-scheme-toggle"></app-color-scheme-toggle>
+            @if( isAuthenticated | async) {
+              <ng-container *ngTemplateOutlet="notificationBell; context: { $implicit: 'toolbar-notifications' }" />
+              <div class="profile-menu" mat-button [matMenuTriggerFor]="profileMenu">
+                <img [src]="'default-avatar.png'" ngSrcset="100w, 200w" class="preview-image"
+                  [alt]="t('profile.avatarAlt')" />
+                  <span class="username">{{ userName() }}</span>
+                </div>
+                <mat-menu #profileMenu="matMenu" class="ms-menu-panel">
+                  <!-- Başlık Bölümü -->
+                  <div class="ms-menu-header">
+                    <div class="ms-header-info">
+                      <div class="ms-user-name">{{ userName() }}</div>
+                      <div class="ms-user-email">{{ userEmail() }}</div>
+                    </div>
                   </div>
-                  <button class="ms-delete-btn" (click)="onDelete(item)" [attr.aria-label]="t('search.remove')">
-                    <mat-icon>close</mat-icon>
+                  <!-- Menü Öğeleri (issue #375: yalnız çalışan sayfaya giden öğeler). Issue #417: Ayarlar tüm rollere;
+                  öğrenci /student-profile, öğretmen/admin /settings. -->
+                  <button mat-menu-item class="ms-menu-item profile-settings-item" (click)="navigateTo(settingsRoute)">
+                    <mat-icon>settings</mat-icon>
+                    <div class="ms-item-content">
+                      <span class="ms-item-title">{{ t('menu.settings') }}</span>
+                    </div>
                   </button>
-                </li>
-              </ul>
-            </div>
-          </div>
-          </ng-container>
-        </div>
+                  <button mat-menu-item class="ms-menu-item profile-notifications-item" (click)="onNotifications()">
+                    <mat-icon>notifications</mat-icon>
+                    <div class="ms-item-content">
+                      <span class="ms-item-title">{{ t('profile.notifications') }}</span>
+                    </div>
+                  </button>
+                  <mat-divider class="ms-menu-divider"></mat-divider>
+                  <button mat-menu-item class="ms-menu-item profile-logout-item" (click)="logout()">
+                    <mat-icon>logout</mat-icon>
+                    <div class="ms-item-content">
+                      <span class="ms-item-title">{{ t('profile.logout') }}</span>
+                    </div>
+                  </button>
+                </mat-menu>
+              }
+            </mat-toolbar>
+          }
 
-        <app-language-switcher class="toolbar-language-switcher"></app-language-switcher>
-        <app-color-scheme-toggle class="toolbar-scheme-toggle"></app-color-scheme-toggle>
+          <!-- Main Content -->
+          <main class="main-content" [class.no-bottom-nav]="isExamRoute()">
+            <router-outlet></router-outlet>
+            <!-- Issue #441: hoşgörünün son günlerinde kapatılamaz "velini ekle" modalı (görünür bir şey çizmez). -->
+            <app-parent-final-warning />
+          </main>
+        </mat-sidenav-content>
+      </mat-sidenav-container>
 
-        @if( isAuthenticated | async) {
-
-        <ng-container *ngTemplateOutlet="notificationBell; context: { $implicit: 'toolbar-notifications' }" />
-
-        <div class="profile-menu" mat-button [matMenuTriggerFor]="profileMenu">
-          <img [src]="'default-avatar.png'" ngSrcset="100w, 200w" class="preview-image"
-            [alt]="t('profile.avatarAlt')" />
-          <span class="username">{{ userName() }}</span>
-        </div>
-
-        <mat-menu #profileMenu="matMenu" class="ms-menu-panel">
-          <!-- Başlık Bölümü -->
-          <div class="ms-menu-header">
-            <div class="ms-header-info">
-              <div class="ms-user-name">{{ userName() }}</div>
-              <div class="ms-user-email">{{ userEmail() }}</div>
-            </div>
-          </div>
-
-          <!-- Menü Öğeleri (issue #375: yalnız çalışan sayfaya giden öğeler). Issue #417: Ayarlar tüm rollere;
-               öğrenci /student-profile, öğretmen/admin /settings. -->
-          <button mat-menu-item class="ms-menu-item profile-settings-item" (click)="navigateTo(settingsRoute)">
-            <mat-icon>settings</mat-icon>
-            <div class="ms-item-content">
-              <span class="ms-item-title">{{ t('menu.settings') }}</span>
-            </div>
-          </button>
-
-          <button mat-menu-item class="ms-menu-item profile-notifications-item" (click)="onNotifications()">
-            <mat-icon>notifications</mat-icon>
-            <div class="ms-item-content">
-              <span class="ms-item-title">{{ t('profile.notifications') }}</span>
-            </div>
-          </button>
-
-          <mat-divider class="ms-menu-divider"></mat-divider>
-
-          <button mat-menu-item class="ms-menu-item profile-logout-item" (click)="logout()">
-            <mat-icon>logout</mat-icon>
-            <div class="ms-item-content">
-              <span class="ms-item-title">{{ t('profile.logout') }}</span>
-            </div>
-          </button>
-        </mat-menu>
-
-        }
-      </mat-toolbar>
-
-      <!-- Main Content -->
-      <main class="main-content" [class.no-bottom-nav]="isExamRoute()">
-        <router-outlet></router-outlet>
-        <!-- Issue #441: hoşgörünün son günlerinde kapatılamaz "velini ekle" modalı (görünür bir şey çizmez). -->
-        <app-parent-final-warning />
-      </main>
-    </mat-sidenav-content>
-  </mat-sidenav-container>
-
-  <!-- Issue #146: bildirim zili + okunmamış sayacı (masaüstü ve mobil toolbar ortak) -->
-  <ng-template #notificationBell let-hostClass>
-    <button mat-icon-button type="button" class="notification-bell" [ngClass]="hostClass" (click)="onNotifications()"
+      <!-- Issue #146: bildirim zili + okunmamış sayacı (masaüstü ve mobil toolbar ortak) -->
+      <ng-template #notificationBell let-hostClass>
+        <button mat-icon-button type="button" class="notification-bell" [ngClass]="hostClass" (click)="onNotifications()"
       [attr.aria-label]="unreadNotificationCount() > 0
         ? t('toolbar.notificationsUnread', { count: unreadNotificationCount() })
         : t('toolbar.notifications')"
-      [matTooltip]="t('toolbar.notifications')">
-      <mat-icon class="notification-bell-icon"
-        [matBadge]="unreadNotificationCount() > 99 ? '99+' : unreadNotificationCount()"
-        [matBadgeHidden]="unreadNotificationCount() === 0"
-        matBadgeColor="warn" matBadgeSize="small">notifications</mat-icon>
-    </button>
-  </ng-template>
+          [matTooltip]="t('toolbar.notifications')">
+          <mat-icon class="notification-bell-icon"
+            [matBadge]="unreadNotificationCount() > 99 ? '99+' : unreadNotificationCount()"
+            [matBadgeHidden]="unreadNotificationCount() === 0"
+          matBadgeColor="warn" matBadgeSize="small">notifications</mat-icon>
+        </button>
+      </ng-template>
 
-  <!-- Mobile Bottom Navigation Bar (sınav çözme ekranında gizli: ekranın kendi dock'u var) -->
-  <nav class="mobile-bottom-nav" *ngIf="isMobile() && !isExamRoute()">
-    <div class="bottom-nav-item" *ngFor="let item of visibleBottomNavItems()" [class.active]="item.id === activeMenuItem()"
-      role="button" tabindex="0"
-      (click)="navigateTo(item.route)" (keydown.enter)="navigateTo(item.route)" (keydown.space)="navigateTo(item.route)">
-      <mat-icon>{{ item.icon }}</mat-icon>
-      <span class="bottom-nav-label">{{ t(item.labelKey) }}</span>
+      <!-- Mobile Bottom Navigation Bar (sınav çözme ekranında gizli: ekranın kendi dock'u var) -->
+      @if (isMobile() && !isExamRoute()) {
+        <nav class="mobile-bottom-nav">
+          @for (item of visibleBottomNavItems(); track item) {
+            <div class="bottom-nav-item" [class.active]="item.id === activeMenuItem()"
+              role="button" tabindex="0"
+              (click)="navigateTo(item.route)" (keydown.enter)="navigateTo(item.route)" (keydown.space)="navigateTo(item.route)">
+              <mat-icon>{{ item.icon }}</mat-icon>
+              <span class="bottom-nav-label">{{ t(item.labelKey) }}</span>
+            </div>
+          }
+          <div class="bottom-nav-item menu-trigger" role="button" tabindex="0"
+            (click)="toggleSidenav()" (keydown.enter)="toggleSidenav()" (keydown.space)="toggleSidenav()">
+            <mat-icon>{{ isMobileSidenavOpen() ? 'close' : 'menu' }}</mat-icon>
+            <span class="bottom-nav-label">{{ t('bottomNav.menu') }}</span>
+          </div>
+        </nav>
+      }
     </div>
-    <div class="bottom-nav-item menu-trigger" role="button" tabindex="0"
-      (click)="toggleSidenav()" (keydown.enter)="toggleSidenav()" (keydown.space)="toggleSidenav()">
-      <mat-icon>{{ isMobileSidenavOpen() ? 'close' : 'menu' }}</mat-icon>
-      <span class="bottom-nav-label">{{ t('bottomNav.menu') }}</span>
-    </div>
-  </nav>
-</div>

@@ -37,8 +37,12 @@
     <div class="ms-progress-steps">
       <div class="ms-step" [class.ms-step-active]="currentStep >= 1" [class.ms-step-completed]="currentStep > 1">
         <div class="ms-step-circle">
-          <mat-icon *ngIf="currentStep > 1">check</mat-icon>
-          <mat-icon *ngIf="currentStep <= 1">logout</mat-icon>
+          @if (currentStep > 1) {
+            <mat-icon>check</mat-icon>
+          }
+          @if (currentStep <= 1) {
+            <mat-icon>logout</mat-icon>
+          }
         </div>
         <span class="ms-step-label">Oturum Sonlandırma</span>
       </div>
@@ -47,8 +51,12 @@
 
       <div class="ms-step" [class.ms-step-active]="currentStep >= 2" [class.ms-step-completed]="currentStep > 2">
         <div class="ms-step-circle">
-          <mat-icon *ngIf="currentStep > 2">check</mat-icon>
-          <mat-icon *ngIf="currentStep <= 2">cleaning_services</mat-icon>
+          @if (currentStep > 2) {
+            <mat-icon>check</mat-icon>
+          }
+          @if (currentStep <= 2) {
+            <mat-icon>cleaning_services</mat-icon>
+          }
         </div>
         <span class="ms-step-label">Veri Temizleme</span>
       </div>
@@ -57,8 +65,12 @@
 
       <div class="ms-step" [class.ms-step-active]="currentStep >= 3" [class.ms-step-completed]="currentStep > 3">
         <div class="ms-step-circle">
-          <mat-icon *ngIf="currentStep > 3">check</mat-icon>
-          <mat-icon *ngIf="currentStep <= 3">exit_to_app</mat-icon>
+          @if (currentStep > 3) {
+            <mat-icon>check</mat-icon>
+          }
+          @if (currentStep <= 3) {
+            <mat-icon>exit_to_app</mat-icon>
+          }
         </div>
         <span class="ms-step-label">Çıkış</span>
       </div>

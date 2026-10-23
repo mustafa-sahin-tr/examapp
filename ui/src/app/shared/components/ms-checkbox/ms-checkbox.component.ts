@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 
 @Component({
@@ -6,7 +6,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
   standalone: true,
   templateUrl: './ms-checkbox.component.html',
   styleUrls: ['./ms-checkbox.component.scss'],
-  imports: [CommonModule]
+  imports: []
 })
 export class CustomCheckboxComponent {
   @Input() label: string = ''; // Checkbox etiketi

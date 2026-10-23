@@ -156,7 +156,8 @@ export class QuestionCanvasDragDropLabelingComponent {
   }
 
   clearAll() {
-    this.resetStateFromPlan();
+    // Girdi olarak gelen eski cevap yeniden uygulanmaz; "Temizle" tüm yerleştirmeleri havuza döndürür.
+    this.resetStateFromPlan({ restoreAnswer: false });
     this.emitAnswerPayload();
   }
 
@@ -178,7 +179,7 @@ export class QuestionCanvasDragDropLabelingComponent {
     }
   }
 
-  private resetStateFromPlan() {
+  private resetStateFromPlan({ restoreAnswer = true }: { restoreAnswer?: boolean } = {}) {
     const plan = this._plan();
     if (!plan) {
       this.pool.set([]);
@@ -192,7 +193,9 @@ export class QuestionCanvasDragDropLabelingComponent {
     this.zoneState.set(zones);
 
     // If an answer payload is already provided, restore after initializing.
-    this.restoreFromAnswerPayload();
+    if (restoreAnswer) {
+      this.restoreFromAnswerPayload();
+    }
   }
 
   private restoreFromAnswerPayload() {

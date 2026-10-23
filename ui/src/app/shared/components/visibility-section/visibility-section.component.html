@@ -6,56 +6,67 @@
     </div>
 
     <!-- Masaüstü: radio group -->
-    <mat-radio-group
-      *ngIf="!isMobile()"
-      class="vs-radio-group"
-      [value]="teacherSharing"
-      [disabled]="disabled"
-      (change)="onTeacherSharingChange($event.value)"
-    >
-      <div class="vs-radio-option" *ngFor="let option of visibleTeacherSharingOptions()">
-        <mat-radio-button
-          [value]="option.value"
-          [disabled]="isOptionDisabled(option.value)"
+    @if (!isMobile()) {
+      <mat-radio-group
+        class="vs-radio-group"
+        [value]="teacherSharing"
+        [disabled]="disabled"
+        (change)="onTeacherSharingChange($event.value)"
+        >
+        @for (option of visibleTeacherSharingOptions(); track option) {
+          <div class="vs-radio-option">
+            <mat-radio-button
+              [value]="option.value"
+              [disabled]="isOptionDisabled(option.value)"
           [aria-describedby]="
             option.value === WorksheetTeacherSharing.SchoolOnly && schoolOnlyUnavailable() ? schoolOnlyNoteId : ''
           "
-        >
-          {{ optionLabel(option.key) }}
-        </mat-radio-button>
-        <p class="vs-option-desc">{{ optionDescription(option.key) }}</p>
-        <p
-          class="vs-option-note"
-          [id]="schoolOnlyNoteId"
-          *ngIf="option.value === WorksheetTeacherSharing.SchoolOnly && schoolOnlyUnavailable()"
-        >
-          {{ t('teacherSharing.schoolOnly.unavailable') }}
-        </p>
-      </div>
-    </mat-radio-group>
+              >
+              {{ optionLabel(option.key) }}
+            </mat-radio-button>
+            <p class="vs-option-desc">{{ optionDescription(option.key) }}</p>
+            @if (option.value === WorksheetTeacherSharing.SchoolOnly && schoolOnlyUnavailable()) {
+              <p
+                class="vs-option-note"
+                [id]="schoolOnlyNoteId"
+                >
+                {{ t('teacherSharing.schoolOnly.unavailable') }}
+              </p>
+            }
+          </div>
+        }
+      </mat-radio-group>
+    }
 
     <!-- Mobil: select -->
-    <mat-form-field *ngIf="isMobile()" appearance="outline" class="vs-select">
-      <mat-select
-        [value]="teacherSharing"
-        [disabled]="disabled"
-        (selectionChange)="onTeacherSharingChange($event.value)"
-      >
-        <mat-option
-          *ngFor="let option of visibleTeacherSharingOptions()"
-          [value]="option.value"
-          [disabled]="isOptionDisabled(option.value)"
-        >
-          {{ optionLabel(option.key) }}
-        </mat-option>
-      </mat-select>
-    </mat-form-field>
-    <p class="vs-option-desc" *ngIf="isMobile()">
-      {{ optionDescription(selectedTeacherSharingOption()?.key ?? 'private') }}
-    </p>
-    <p class="vs-option-note" [id]="schoolOnlyNoteId" *ngIf="isMobile() && schoolOnlyUnavailable()">
-      {{ t('teacherSharing.schoolOnly.unavailable') }}
-    </p>
+    @if (isMobile()) {
+      <mat-form-field appearance="outline" class="vs-select">
+        <mat-select
+          [value]="teacherSharing"
+          [disabled]="disabled"
+          (selectionChange)="onTeacherSharingChange($event.value)"
+          >
+          @for (option of visibleTeacherSharingOptions(); track option) {
+            <mat-option
+              [value]="option.value"
+              [disabled]="isOptionDisabled(option.value)"
+              >
+              {{ optionLabel(option.key) }}
+            </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+    @if (isMobile()) {
+      <p class="vs-option-desc">
+        {{ optionDescription(selectedTeacherSharingOption()?.key ?? 'private') }}
+      </p>
+    }
+    @if (isMobile() && schoolOnlyUnavailable()) {
+      <p class="vs-option-note" [id]="schoolOnlyNoteId">
+        {{ t('teacherSharing.schoolOnly.unavailable') }}
+      </p>
+    }
   </div>
 
   <div class="vs-group">

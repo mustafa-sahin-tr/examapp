@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, DestroyRef, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { CommonModule, Location } from '@angular/common';
+import { Location } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -16,13 +16,12 @@ const QUESTION_SCOPE = 'question';
   selector: 'app-question-canvas-preview',
   standalone: true,
   imports: [
-    CommonModule,
     MatButtonModule,
     MatIconModule,
     MatSnackBarModule,
     ImageSelectorComponent,
-    TranslocoDirective,
-  ],
+    TranslocoDirective
+],
   providers: [provideTranslocoScope(QUESTION_SCOPE)],
   templateUrl: './question-canvas-preview.component.html',
   styleUrls: ['./question-canvas-preview.component.scss'],

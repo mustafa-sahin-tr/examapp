@@ -1,7 +1,7 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, take } from 'rxjs';
-import { CommonModule } from '@angular/common';
+
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { Router } from '@angular/router';
@@ -24,15 +24,14 @@ interface TeacherRegistrationResult {
   selector: 'app-teacher-register',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatInputModule,
     MatFormFieldModule,
     MatButtonModule,
     MatSelectModule,
     MatSnackBarModule,
-    TranslocoDirective,
-  ],
+    TranslocoDirective
+],
   providers: [provideTranslocoScope(REGISTER_SCOPE)],
   templateUrl: './teacher-register.component.html',
 })

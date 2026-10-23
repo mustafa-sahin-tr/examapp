@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { FormGroup, ReactiveFormsModule, FormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common';
+
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,14 +13,13 @@ import { TranslocoDirective } from '@jsverse/transloco';
   styleUrls: ['./test-form.component.scss'],
   // Scope provider'ı `test-create-enhanced` verir; bu komponent yalnızca onun altında kullanılıyor.
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     FormsModule,
     MatCheckboxModule,
     MatButtonModule,
     MatIconModule,
-    TranslocoDirective,
-  ],
+    TranslocoDirective
+],
 })
 export class TestFormComponent {
   @Input() form!: FormGroup;

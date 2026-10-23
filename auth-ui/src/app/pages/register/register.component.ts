@@ -4,7 +4,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { CommonModule } from '@angular/common';
+
 import { NavigationExtras } from '@angular/router';
 import { RegisterRequest, RegisterResponse } from '../../models/registration.model';
 
@@ -13,7 +13,7 @@ import { RegisterRequest, RegisterResponse } from '../../models/registration.mod
   standalone: true,
   templateUrl: './register.component.html',
   styleUrls: ['./register.component.scss'],
-  imports: [ReactiveFormsModule, MatSnackBarModule, CommonModule],
+  imports: [ReactiveFormsModule, MatSnackBarModule],
 })
 export class RegisterComponent {
   private readonly fb = inject(FormBuilder);

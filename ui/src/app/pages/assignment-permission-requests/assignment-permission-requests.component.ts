@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -28,7 +28,6 @@ const ASSIGNMENT_REQUESTS_SCOPE = 'assignment-requests';
   selector: 'app-assignment-permission-requests',
   standalone: true,
   imports: [
-    CommonModule,
     MatButtonModule,
     MatButtonToggleModule,
     MatChipsModule,
@@ -36,8 +35,8 @@ const ASSIGNMENT_REQUESTS_SCOPE = 'assignment-requests';
     MatProgressSpinnerModule,
     MatTableModule,
     TranslocoDirective,
-    TranslocoPipe,
-  ],
+    TranslocoPipe
+],
   providers: [provideTranslocoScope(ASSIGNMENT_REQUESTS_SCOPE)],
   templateUrl: './assignment-permission-requests.component.html',
   styleUrl: './assignment-permission-requests.component.scss',

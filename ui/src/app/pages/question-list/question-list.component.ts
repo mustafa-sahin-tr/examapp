@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, effect, inject, input, Input, OnInit, signal } from '@angular/core';
 import { TestInstanceQuestion } from '../../models/test-instance';
 import { QuestionLiteViewComponent } from '../question-lite-view/question-lite-view.component';
@@ -9,7 +9,7 @@ import { Question } from '../../models/question';
 
 @Component({
   selector: 'app-question-list',
-  imports: [CommonModule, QuestionLiteViewComponent,PassageCardComponent],
+  imports: [QuestionLiteViewComponent, PassageCardComponent],
   standalone: true,
   templateUrl: './question-list.component.html',
   styleUrl: './question-list.component.scss'

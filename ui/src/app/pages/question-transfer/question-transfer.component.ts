@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, OnDestroy, signal } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -27,7 +27,6 @@ const QUESTION_TRANSFER_SCOPE = 'question-transfer';
   selector: 'app-question-transfer',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     ReactiveFormsModule,
     MatCardModule,
@@ -40,8 +39,8 @@ const QUESTION_TRANSFER_SCOPE = 'question-transfer';
     MatChipsModule,
     MatDividerModule,
     MatAutocompleteModule,
-    TranslocoDirective,
-  ],
+    TranslocoDirective
+],
   providers: [provideTranslocoScope(QUESTION_TRANSFER_SCOPE)],
   templateUrl: './question-transfer.component.html',
   styleUrls: ['./question-transfer.component.scss'],

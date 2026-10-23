@@ -9,31 +9,32 @@ import qbTr from '../../../../public/i18n/question-bank/tr.json';
 
 /** Panelin kendi HTTP/dialog bağımlılıkları yok sayılır; sayfa yalnız panel'i yerleştirir. */
 @Component({ selector: 'app-question-bank-panel', standalone: true, changeDetection: ChangeDetectionStrategy.Eager,
- template: '<div class="panel-stub"></div>' })
-class QuestionBankPanelStub {}
+    template: '<div class="panel-stub"></div>' })
+class QuestionBankPanelStub {
+}
 
 describe('QuestionBankComponent (issue #471)', () => {
-  let fixture: ComponentFixture<QuestionBankComponent>;
+    let fixture: ComponentFixture<QuestionBankComponent>;
 
-  beforeEach(() => {
-    TestBed.overrideComponent(QuestionBankComponent, {
-      remove: { imports: [QuestionBankPanelComponent] },
-      add: { imports: [QuestionBankPanelStub] },
+    beforeEach(() => {
+        TestBed.overrideComponent(QuestionBankComponent, {
+            remove: { imports: [QuestionBankPanelComponent] },
+            add: { imports: [QuestionBankPanelStub] },
+        });
+        TestBed.configureTestingModule({
+            imports: [QuestionBankComponent, translocoTestingModule({ langs: { 'question-bank/tr': qbTr } })],
+            providers: [provideNoopAnimations()],
+        });
+        fixture = TestBed.createComponent(QuestionBankComponent);
+        fixture.detectChanges();
     });
-    TestBed.configureTestingModule({
-      imports: [QuestionBankComponent, translocoTestingModule({ langs: { 'question-bank/tr': qbTr } })],
-      providers: [provideNoopAnimations()],
+
+    it('template_Rendered_ShowsTranslatedTitle', () => {
+        const heading = fixture.nativeElement.querySelector('h1') as HTMLElement;
+        expect(heading.textContent?.trim()).toBe(qbTr.title);
     });
-    fixture = TestBed.createComponent(QuestionBankComponent);
-    fixture.detectChanges();
-  });
 
-  it('template_Rendered_ShowsTranslatedTitle', () => {
-    const heading = fixture.nativeElement.querySelector('h1') as HTMLElement;
-    expect(heading.textContent?.trim()).toBe(qbTr.title);
-  });
-
-  it('template_Rendered_EmbedsSearchPanel', () => {
-    expect(fixture.nativeElement.querySelector('app-question-bank-panel')).not.toBeNull();
-  });
+    it('template_Rendered_EmbedsSearchPanel', () => {
+        expect(fixture.nativeElement.querySelector('app-question-bank-panel')).not.toBeNull();
+    });
 });

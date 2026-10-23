@@ -1,3 +1,4 @@
+import type { MockedObject } from "vitest";
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
@@ -17,290 +18,295 @@ import { translocoTestingModule } from '../../../shared/testing/transloco-testin
 import adminTr from '../../../../../public/i18n/admin/tr.json';
 
 function dto(overrides: Partial<BadgeDefinitionAdmin> = {}): BadgeDefinitionAdmin {
-  return {
-    id: 'b1',
-    code: 'question-hunter-1',
-    name: 'Soru Avcısı 1',
-    description: '',
-    iconUrl: 'achievements/q.svg',
-    icon: null,
-    category: 'Çözüm',
-    ruleType: 'AnswerCount',
-    ruleConfigJson: '{"target":10}',
-    pathKey: null,
-    pathName: null,
-    pathOrder: null,
-    isActive: true,
-    createdBy: 'sub-1',
-    createdByName: 'admin1',
-    createdAtUtc: '2026-09-01T10:00:00Z',
-    updatedBy: null,
-    updatedByName: null,
-    updatedAtUtc: null,
-    ...overrides,
-  };
+    return {
+        id: 'b1',
+        code: 'question-hunter-1',
+        name: 'Soru Avcısı 1',
+        description: '',
+        iconUrl: 'achievements/q.svg',
+        icon: null,
+        category: 'Çözüm',
+        ruleType: 'AnswerCount',
+        ruleConfigJson: '{"target":10}',
+        pathKey: null,
+        pathName: null,
+        pathOrder: null,
+        isActive: true,
+        createdBy: 'sub-1',
+        createdByName: 'admin1',
+        createdAtUtc: '2026-09-01T10:00:00Z',
+        updatedBy: null,
+        updatedByName: null,
+        updatedAtUtc: null,
+        ...overrides,
+    };
 }
 
 describe('BadgeDefinitionsComponent', () => {
-  let fixture: ComponentFixture<BadgeDefinitionsComponent>;
-  let component: BadgeDefinitionsComponent;
-  let service: jasmine.SpyObj<BadgeDefinitionAdminService>;
-  let dialog: jasmine.SpyObj<MatDialog>;
-  let snack: jasmine.SpyObj<MatSnackBar>;
+    let fixture: ComponentFixture<BadgeDefinitionsComponent>;
+    let component: BadgeDefinitionsComponent;
+    let service: MockedObject<BadgeDefinitionAdminService>;
+    let dialog: MockedObject<MatDialog>;
+    let snack: MockedObject<MatSnackBar>;
 
-  function dialogRef<T>(result: T): MatDialogRef<unknown, T> {
-    return { afterClosed: () => of(result) } as MatDialogRef<unknown, T>;
-  }
-
-  function init(items: BadgeDefinitionAdmin[] = [dto()]): void {
-    service = jasmine.createSpyObj<BadgeDefinitionAdminService>('BadgeDefinitionAdminService', [
-      'list',
-      'activate',
-      'deactivate',
-    ]);
-    service.list.and.returnValue(of({ items, totalCount: items.length }));
-    dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
-    snack = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
-
-    TestBed.configureTestingModule({
-      imports: [BadgeDefinitionsComponent, translocoTestingModule({ langs: { 'admin/tr': adminTr } })],
-      providers: [{ provide: BadgeDefinitionAdminService, useValue: service }, provideNoopAnimations()],
-    });
-    // MatDialogModule/MatSnackBarModule komponentte import edildiği için mock'lar komponent seviyesinde verilir.
-    TestBed.overrideComponent(BadgeDefinitionsComponent, {
-      add: {
-        providers: [
-          { provide: MatDialog, useValue: dialog },
-          { provide: MatSnackBar, useValue: snack },
-        ],
-      },
-    });
-    fixture = TestBed.createComponent(BadgeDefinitionsComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  }
-
-  function el(testId: string): HTMLElement | null {
-    return fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
-  }
-
-  // ── route ───────────────────────────────────────────────────────────────
-
-  it('route_IsGuardedLikeOtherAdminPages_AndLazyLoads', async () => {
-    const layout = routes.find((r) => Array.isArray(r.children));
-    const route = layout?.children?.find((r) => r.path === 'admin/badge-definitions');
-    expect(route?.canActivate).toEqual([authGuard, adminGuard]);
-    expect(await route!.loadComponent!()).toBe(BadgeDefinitionsComponent);
-  });
-
-  // ── liste / filtre ──────────────────────────────────────────────────────
-
-  it('init_LoadsActiveOnlyFirstPage_RendersRuleSummaryAndStatus', () => {
-    init([dto(), dto({ id: 'b2', ruleType: 'SubjectAnswerCount', ruleConfigJson: '{"subjectName":"Matematik","target":100}' })]);
-
-    expect(service.list).toHaveBeenCalledOnceWith(false, 0, 50);
-    const summaries = [...fixture.nativeElement.querySelectorAll('[data-testid="rule-summary"]')].map((e: Element) =>
-      e.textContent?.trim()
-    );
-    expect(summaries).toEqual(['10 soru çöz', 'Matematik dersinde 100 soru çöz']);
-    expect(el('status-chip')?.textContent?.trim()).toBe('Aktif');
-    expect(fixture.nativeElement.textContent).toContain('admin1');
-  });
-
-  // ── ikon sütunu / geçiş (issue #149) ───────────────────────────────────
-
-  it('badgeIconStatus_ValidName_New_LegacyPathOnly_Legacy_Neither_None', () => {
-    expect(badgeIconStatus({ icon: 'flag', iconUrl: 'achievements/q.svg' })).toBe('new');
-    expect(badgeIconStatus({ icon: null, iconUrl: 'achievements/q.svg' })).toBe('legacy');
-    expect(badgeIconStatus({ icon: 'Bad Name', iconUrl: 'achievements/q.svg' })).withContext('geçersiz ad yok sayılır').toBe('legacy');
-    expect(badgeIconStatus({ icon: null, iconUrl: '  ' })).toBe('none');
-    expect(badgeIconStatus({ icon: null, iconUrl: 'https://evil.example/x.svg' })).withContext('desene uymayan yol').toBe('none');
-    expect(badgeIconStatus({ icon: null, iconUrl: 'achievements/../x.png' })).toBe('none');
-    expect(badgeIconStatus({ icon: null, iconUrl: '/achievements/q.svg' })).toBe('legacy');
-    expect(badgeIconStatus({ icon: null, iconUrl: null })).toBe('none');
-  });
-
-  it('iconColumn_Renders40pxEarnedMedallion_AndStatusChipPerRow', () => {
-    init([
-      dto({ id: 'n', icon: 'flag' }),
-      dto({ id: 'l', icon: null, iconUrl: 'achievements/q.svg' }),
-      dto({ id: 'x', icon: null, iconUrl: null }),
-    ]);
-
-    const cells = [...fixture.nativeElement.querySelectorAll('[data-testid="icon-cell"]')] as HTMLElement[];
-    expect(cells.length).toBe(3);
-    for (const cell of cells) {
-      const medallion = cell.querySelector('app-badge-medallion') as HTMLElement;
-      expect(medallion).withContext('her satırda medalyon').toBeTruthy();
-      expect(medallion.getAttribute('data-state')).toBe('earned');
-      expect(medallion.style.getPropertyValue('--bm-size')).toBe('40px');
+    function dialogRef<T>(result: T): MatDialogRef<unknown, T> {
+        return { afterClosed: () => of(result) } as MatDialogRef<unknown, T>;
     }
-    expect(cells[0].querySelector('mat-icon')?.textContent?.trim()).toBe('flag');
-    expect(cells[1].querySelector('img')?.getAttribute('src')).withContext('eski SVG yedeği').toBe('/achievements/q.svg');
-    expect(cells[2].querySelector('mat-icon')?.textContent?.trim()).toBe('military_tech');
 
-    const chips = [...fixture.nativeElement.querySelectorAll('[data-testid="icon-status"]')].map((e: Element) =>
-      e.textContent?.trim()
-    );
-    expect(chips).toEqual([
-      adminTr.badgeDefinitions.iconStatus.new,
-      adminTr.badgeDefinitions.iconStatus.legacy,
-      adminTr.badgeDefinitions.iconStatus.none,
-    ]);
-    expect(el('icon-status')?.classList).toContain('bd-icon-chip--new');
-  });
+    function init(items: BadgeDefinitionAdmin[] = [dto()]): void {
+        service = {
+            list: vi.fn().mockName("BadgeDefinitionAdminService.list"),
+            activate: vi.fn().mockName("BadgeDefinitionAdminService.activate"),
+            deactivate: vi.fn().mockName("BadgeDefinitionAdminService.deactivate")
+        } as unknown as MockedObject<BadgeDefinitionAdminService>;
+        service.list.mockReturnValue(of({ items, totalCount: items.length }));
+        dialog = {
+            open: vi.fn().mockName("MatDialog.open")
+        } as unknown as MockedObject<MatDialog>;
+        snack = {
+            open: vi.fn().mockName("MatSnackBar.open")
+        } as unknown as MockedObject<MatSnackBar>;
 
-  it('legacyBanner_ShownWithCount_WhenAnyRowUsesLegacySvg', () => {
-    init([dto({ id: 'a', icon: null }), dto({ id: 'b', icon: null }), dto({ id: 'c', icon: 'star' })]);
+        TestBed.configureTestingModule({
+            imports: [BadgeDefinitionsComponent, translocoTestingModule({ langs: { 'admin/tr': adminTr } })],
+            providers: [{ provide: BadgeDefinitionAdminService, useValue: service }, provideNoopAnimations()],
+        });
+        // MatDialogModule/MatSnackBarModule komponentte import edildiği için mock'lar komponent seviyesinde verilir.
+        TestBed.overrideComponent(BadgeDefinitionsComponent, {
+            add: {
+                providers: [
+                    { provide: MatDialog, useValue: dialog },
+                    { provide: MatSnackBar, useValue: snack },
+                ],
+            },
+        });
+        fixture = TestBed.createComponent(BadgeDefinitionsComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    }
 
-    expect(component.legacyIconCount()).toBe(2);
-    const banner = el('legacy-icon-banner');
-    expect(banner).toBeTruthy();
-    expect(banner?.getAttribute('role')).toBe('status');
-    expect(banner?.textContent).toContain('2 rozet');
-  });
+    function el(testId: string): HTMLElement | null {
+        return fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
+    }
 
-  it('legacyBanner_Hidden_WhenNoLegacyRows_OrOnLoadError', () => {
-    init([dto({ icon: 'flag' }), dto({ id: 'b2', icon: null, iconUrl: null })]);
-    expect(el('legacy-icon-banner')).toBeNull();
+    // ── route ───────────────────────────────────────────────────────────────
 
-    service.list.and.returnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
-    component.load();
-    fixture.detectChanges();
-    expect(el('legacy-icon-banner')).toBeNull();
-  });
+    it('route_IsGuardedLikeOtherAdminPages_AndLazyLoads', async () => {
+        const layout = routes.find((r) => Array.isArray(r.children));
+        const route = layout?.children?.find((r) => r.path === 'admin/badge-definitions');
+        expect(route?.canActivate).toEqual([authGuard, adminGuard]);
+        expect(await route!.loadComponent!()).toBe(BadgeDefinitionsComponent);
+    });
 
-  it('filterAll_ReloadsWithIncludeInactive_FromFirstPage', () => {
-    init();
-    component.onPage({ pageIndex: 1, pageSize: 50, length: 120 });
-    service.list.calls.reset();
+    // ── liste / filtre ──────────────────────────────────────────────────────
 
-    component.onFilterChange('all');
+    it('init_LoadsActiveOnlyFirstPage_RendersRuleSummaryAndStatus', () => {
+        init([dto(), dto({ id: 'b2', ruleType: 'SubjectAnswerCount', ruleConfigJson: '{"subjectName":"Matematik","target":100}' })]);
 
-    expect(service.list).toHaveBeenCalledOnceWith(true, 0, 50);
-  });
+        expect(service.list).toHaveBeenCalledTimes(1);
 
-  it('onPage_SendsSkipTake', () => {
-    init();
-    component.onPage({ pageIndex: 2, pageSize: 25, length: 100 });
-    expect(service.list.calls.mostRecent().args).toEqual([false, 50, 25]);
-  });
+        expect(service.list).toHaveBeenCalledWith(false, 0, 50);
+        const summaries = [...fixture.nativeElement.querySelectorAll('[data-testid="rule-summary"]')].map((e: Element) => e.textContent?.trim());
+        expect(summaries).toEqual(['10 soru çöz', 'Matematik dersinde 100 soru çöz']);
+        expect(el('status-chip')?.textContent?.trim()).toBe('Aktif');
+        expect(fixture.nativeElement.textContent).toContain('admin1');
+    });
 
-  it('empty_ShowsEmptyState', () => {
-    init([]);
-    expect(el('empty')?.textContent).toContain(adminTr.badgeDefinitions.empty);
-  });
+    // ── ikon sütunu / geçiş (issue #149) ───────────────────────────────────
 
-  it('loadError_ShowsErrorWithRetry', () => {
-    init();
-    service.list.and.returnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
-    component.load();
-    fixture.detectChanges();
+    it('badgeIconStatus_ValidName_New_LegacyPathOnly_Legacy_Neither_None', () => {
+        expect(badgeIconStatus({ icon: 'flag', iconUrl: 'achievements/q.svg' })).toBe('new');
+        expect(badgeIconStatus({ icon: null, iconUrl: 'achievements/q.svg' })).toBe('legacy');
+        expect(badgeIconStatus({ icon: 'Bad Name', iconUrl: 'achievements/q.svg' }), 'geçersiz ad yok sayılır').toBe('legacy');
+        expect(badgeIconStatus({ icon: null, iconUrl: '  ' })).toBe('none');
+        expect(badgeIconStatus({ icon: null, iconUrl: 'https://evil.example/x.svg' }), 'desene uymayan yol').toBe('none');
+        expect(badgeIconStatus({ icon: null, iconUrl: 'achievements/../x.png' })).toBe('none');
+        expect(badgeIconStatus({ icon: null, iconUrl: '/achievements/q.svg' })).toBe('legacy');
+        expect(badgeIconStatus({ icon: null, iconUrl: null })).toBe('none');
+    });
 
-    expect(el('error')?.textContent).toContain(adminTr.badgeDefinitions.errors.loadFailed);
-  });
+    it('iconColumn_Renders40pxEarnedMedallion_AndStatusChipPerRow', () => {
+        init([
+            dto({ id: 'n', icon: 'flag' }),
+            dto({ id: 'l', icon: null, iconUrl: 'achievements/q.svg' }),
+            dto({ id: 'x', icon: null, iconUrl: null }),
+        ]);
 
-  // ── aktiflik ────────────────────────────────────────────────────────────
+        const cells = [...fixture.nativeElement.querySelectorAll('[data-testid="icon-cell"]')] as HTMLElement[];
+        expect(cells.length).toBe(3);
+        for (const cell of cells) {
+            const medallion = cell.querySelector('app-badge-medallion') as HTMLElement;
+            expect(medallion, 'her satırda medalyon').toBeTruthy();
+            expect(medallion.getAttribute('data-state')).toBe('earned');
+            expect(medallion.style.getPropertyValue('--bm-size')).toBe('40px');
+        }
+        expect(cells[0].querySelector('mat-icon')?.textContent?.trim()).toBe('flag');
+        expect(cells[1].querySelector('img')?.getAttribute('src'), 'eski SVG yedeği').toBe('/achievements/q.svg');
+        expect(cells[2].querySelector('mat-icon')?.textContent?.trim()).toBe('military_tech');
 
-  it('deactivate_AsksConfirmationWithKeptBadgesMessage_ThenRemovesFromActiveList', () => {
-    init();
-    dialog.open.and.returnValue(dialogRef(true));
-    service.deactivate.and.returnValue(of(dto({ isActive: false })));
+        const chips = [...fixture.nativeElement.querySelectorAll('[data-testid="icon-status"]')].map((e: Element) => e.textContent?.trim());
+        expect(chips).toEqual([
+            adminTr.badgeDefinitions.iconStatus.new,
+            adminTr.badgeDefinitions.iconStatus.legacy,
+            adminTr.badgeDefinitions.iconStatus.none,
+        ]);
+        expect(el('icon-status')?.classList).toContain('bd-icon-chip--new');
+    });
 
-    component.toggleActive(component.rows()[0]);
+    it('legacyBanner_ShownWithCount_WhenAnyRowUsesLegacySvg', () => {
+        init([dto({ id: 'a', icon: null }), dto({ id: 'b', icon: null }), dto({ id: 'c', icon: 'star' })]);
 
-    const [cmp, config] = dialog.open.calls.mostRecent().args;
-    expect(cmp).toBe(ConfirmDialogComponent);
-    expect((config?.data as ConfirmDialogData).message).toContain('kazanılmış rozetler kalır');
-    expect(service.deactivate).toHaveBeenCalledOnceWith('b1');
-    expect(component.rows().length).toBe(0);
-    expect(component.totalCount()).toBe(0);
-  });
+        expect(component.legacyIconCount()).toBe(2);
+        const banner = el('legacy-icon-banner');
+        expect(banner).toBeTruthy();
+        expect(banner?.getAttribute('role')).toBe('status');
+        expect(banner?.textContent).toContain('2 rozet');
+    });
 
-  it('deactivate_Cancelled_DoesNotCallApi', () => {
-    init();
-    dialog.open.and.returnValue(dialogRef(false));
+    it('legacyBanner_Hidden_WhenNoLegacyRows_OrOnLoadError', () => {
+        init([dto({ icon: 'flag' }), dto({ id: 'b2', icon: null, iconUrl: null })]);
+        expect(el('legacy-icon-banner')).toBeNull();
 
-    component.toggleActive(component.rows()[0]);
+        service.list.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+        component.load();
+        fixture.detectChanges();
+        expect(el('legacy-icon-banner')).toBeNull();
+    });
 
-    expect(service.deactivate).not.toHaveBeenCalled();
-  });
+    it('filterAll_ReloadsWithIncludeInactive_FromFirstPage', () => {
+        init();
+        component.onPage({ pageIndex: 1, pageSize: 50, length: 120 });
+        service.list.mockClear();
 
-  it('deactivate_InAllFilter_KeepsRowAsInactive', () => {
-    init();
-    component.onFilterChange('all');
-    dialog.open.and.returnValue(dialogRef(true));
-    service.deactivate.and.returnValue(of(dto({ isActive: false })));
+        component.onFilterChange('all');
 
-    component.toggleActive(component.rows()[0]);
-    fixture.detectChanges();
+        expect(service.list).toHaveBeenCalledTimes(1);
 
-    expect(component.rows()[0].isActive).toBeFalse();
-    expect(el('status-chip')?.textContent?.trim()).toBe('Devre dışı');
-  });
+        expect(service.list).toHaveBeenCalledWith(true, 0, 50);
+    });
 
-  it('activate_NoConfirm_UpdatesRow', () => {
-    init([dto({ isActive: false })]);
-    component.onFilterChange('all');
-    service.activate.and.returnValue(of(dto({ isActive: true })));
+    it('onPage_SendsSkipTake', () => {
+        init();
+        component.onPage({ pageIndex: 2, pageSize: 25, length: 100 });
+        expect(vi.mocked(service.list).mock.lastCall!).toEqual([false, 50, 25]);
+    });
 
-    component.toggleActive(component.rows()[0]);
+    it('empty_ShowsEmptyState', () => {
+        init([]);
+        expect(el('empty')?.textContent).toContain(adminTr.badgeDefinitions.empty);
+    });
 
-    expect(dialog.open).not.toHaveBeenCalled();
-    expect(service.activate).toHaveBeenCalledOnceWith('b1');
-    expect(component.rows()[0].isActive).toBeTrue();
-  });
+    it('loadError_ShowsErrorWithRetry', () => {
+        init();
+        service.list.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+        component.load();
+        fixture.detectChanges();
 
-  it('activate_409ActiveCap_ShowsServerMessage', () => {
-    init([dto({ isActive: false })]);
-    component.onFilterChange('all');
-    service.activate.and.returnValue(
-      throwError(() => new HttpErrorResponse({ status: 409, error: { errors: { isActive: ['Üst sınır doldu.'] } } }))
-    );
+        expect(el('error')?.textContent).toContain(adminTr.badgeDefinitions.errors.loadFailed);
+    });
 
-    component.toggleActive(component.rows()[0]);
+    // ── aktiflik ────────────────────────────────────────────────────────────
 
-    expect(snack.open.calls.mostRecent().args[0]).toBe('Üst sınır doldu.');
-    expect(component.rows()[0].isActive).toBeFalse();
-    expect(component.busyId()).toBeNull();
-  });
+    it('deactivate_AsksConfirmationWithKeptBadgesMessage_ThenRemovesFromActiveList', () => {
+        init();
+        dialog.open.mockReturnValue(dialogRef(true));
+        service.deactivate.mockReturnValue(of(dto({ isActive: false })));
 
-  // ── oluştur / düzenle ───────────────────────────────────────────────────
+        component.toggleActive(component.rows()[0]);
 
-  it('create_OpensDialog_ReloadsCurrentPage', () => {
-    init();
-    component.onPage({ pageIndex: 1, pageSize: 25, length: 60 });
-    service.list.calls.reset();
-    const created = dto({ id: 'b9', name: 'Yeni' });
-    dialog.open.and.returnValue(dialogRef(created));
+        const [cmp, config] = vi.mocked(dialog.open).mock.lastCall!;
+        expect(cmp).toBe(ConfirmDialogComponent);
+        expect((config?.data as ConfirmDialogData).message).toContain('kazanılmış rozetler kalır');
+        expect(service.deactivate).toHaveBeenCalledTimes(1);
+        expect(service.deactivate).toHaveBeenCalledWith('b1');
+        expect(component.rows().length).toBe(0);
+        expect(component.totalCount()).toBe(0);
+    });
 
-    component.openCreate();
+    it('deactivate_Cancelled_DoesNotCallApi', () => {
+        init();
+        dialog.open.mockReturnValue(dialogRef(false));
 
-    const [cmp, config] = dialog.open.calls.mostRecent().args;
-    expect(cmp).toBe(BadgeDefinitionDialogComponent);
-    expect(config?.data).toEqual({ categories: ['Çözüm'] });
-    expect(service.list).toHaveBeenCalledOnceWith(false, 25, 25);
-    expect(snack.open).toHaveBeenCalled();
-  });
+        component.toggleActive(component.rows()[0]);
 
-  it('create_Cancelled_DoesNotReload', () => {
-    init();
-    service.list.calls.reset();
-    dialog.open.and.returnValue(dialogRef(undefined));
+        expect(service.deactivate).not.toHaveBeenCalled();
+    });
 
-    component.openCreate();
+    it('deactivate_InAllFilter_KeepsRowAsInactive', () => {
+        init();
+        component.onFilterChange('all');
+        dialog.open.mockReturnValue(dialogRef(true));
+        service.deactivate.mockReturnValue(of(dto({ isActive: false })));
 
-    expect(service.list).not.toHaveBeenCalled();
-  });
+        component.toggleActive(component.rows()[0]);
+        fixture.detectChanges();
 
-  it('edit_PassesDefinition_ReplacesRow', () => {
-    init();
-    dialog.open.and.returnValue(dialogRef(dto({ name: 'Değişti' })));
+        expect(component.rows()[0].isActive).toBe(false);
+        expect(el('status-chip')?.textContent?.trim()).toBe('Devre dışı');
+    });
 
-    component.openEdit(component.rows()[0]);
+    it('activate_NoConfirm_UpdatesRow', () => {
+        init([dto({ isActive: false })]);
+        component.onFilterChange('all');
+        service.activate.mockReturnValue(of(dto({ isActive: true })));
 
-    expect(dialog.open.calls.mostRecent().args[1]?.data).toEqual(jasmine.objectContaining({ definition: dto() }));
-    expect(component.rows()[0].name).toBe('Değişti');
-    expect(service.list).toHaveBeenCalledTimes(1); // yalnız ilk yükleme; düzenlemede yeniden yükleme yok
-  });
+        component.toggleActive(component.rows()[0]);
+
+        expect(dialog.open).not.toHaveBeenCalled();
+        expect(service.activate).toHaveBeenCalledTimes(1);
+        expect(service.activate).toHaveBeenCalledWith('b1');
+        expect(component.rows()[0].isActive).toBe(true);
+    });
+
+    it('activate_409ActiveCap_ShowsServerMessage', () => {
+        init([dto({ isActive: false })]);
+        component.onFilterChange('all');
+        service.activate.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409, error: { errors: { isActive: ['Üst sınır doldu.'] } } })));
+
+        component.toggleActive(component.rows()[0]);
+
+        expect(vi.mocked(snack.open).mock.lastCall![0]).toBe('Üst sınır doldu.');
+        expect(component.rows()[0].isActive).toBe(false);
+        expect(component.busyId()).toBeNull();
+    });
+
+    // ── oluştur / düzenle ───────────────────────────────────────────────────
+
+    it('create_OpensDialog_ReloadsCurrentPage', () => {
+        init();
+        component.onPage({ pageIndex: 1, pageSize: 25, length: 60 });
+        service.list.mockClear();
+        const created = dto({ id: 'b9', name: 'Yeni' });
+        dialog.open.mockReturnValue(dialogRef(created));
+
+        component.openCreate();
+
+        const [cmp, config] = vi.mocked(dialog.open).mock.lastCall!;
+        expect(cmp).toBe(BadgeDefinitionDialogComponent);
+        expect(config?.data).toEqual({ categories: ['Çözüm'] });
+        expect(service.list).toHaveBeenCalledTimes(1);
+        expect(service.list).toHaveBeenCalledWith(false, 25, 25);
+        expect(snack.open).toHaveBeenCalled();
+    });
+
+    it('create_Cancelled_DoesNotReload', () => {
+        init();
+        service.list.mockClear();
+        dialog.open.mockReturnValue(dialogRef(undefined));
+
+        component.openCreate();
+
+        expect(service.list).not.toHaveBeenCalled();
+    });
+
+    it('edit_PassesDefinition_ReplacesRow', () => {
+        init();
+        dialog.open.mockReturnValue(dialogRef(dto({ name: 'Değişti' })));
+
+        component.openEdit(component.rows()[0]);
+
+        expect(vi.mocked(dialog.open).mock.lastCall![1]?.data).toEqual(expect.objectContaining({ definition: dto() }));
+        expect(component.rows()[0].name).toBe('Değişti');
+        expect(service.list).toHaveBeenCalledTimes(1); // yalnız ilk yükleme; düzenlemede yeniden yükleme yok
+    });
 });

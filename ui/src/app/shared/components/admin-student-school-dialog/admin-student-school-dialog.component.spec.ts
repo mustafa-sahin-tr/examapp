@@ -1,14 +1,11 @@
+import type { MockedObject } from "vitest";
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { Subject, of, throwError } from 'rxjs';
 
-import {
-  AdminStudentSchoolDialogComponent,
-  AdminStudentSchoolDialogData,
-  AdminStudentSchoolDialogResult,
-} from './admin-student-school-dialog.component';
+import { AdminStudentSchoolDialogComponent, AdminStudentSchoolDialogData, AdminStudentSchoolDialogResult, } from './admin-student-school-dialog.component';
 import { AdminService } from '../../../services/admin.service';
 import { SchoolService } from '../../../services/school.service';
 import { School } from '../../../models/taxonomy';
@@ -18,135 +15,147 @@ import adminTr from '../../../../../public/i18n/admin/tr.json';
 import adminEn from '../../../../../public/i18n/admin/en.json';
 
 const school = (id: number, name: string): School => ({
-  id,
-  name,
-  provinceId: null,
-  provinceName: null,
-  districtId: null,
-  districtName: null,
-  addressLine: null,
+    id,
+    name,
+    provinceId: null,
+    provinceName: null,
+    districtId: null,
+    districtName: null,
+    addressLine: null,
 });
 
 describe('AdminStudentSchoolDialogComponent (issue #277)', () => {
-  const texts = adminTr.studentSchool;
-  let fixture: ComponentFixture<AdminStudentSchoolDialogComponent>;
-  let component: AdminStudentSchoolDialogComponent;
-  let adminService: jasmine.SpyObj<AdminService>;
-  let dialogRef: jasmine.SpyObj<MatDialogRef<AdminStudentSchoolDialogComponent, AdminStudentSchoolDialogResult | undefined>>;
+    const texts = adminTr.studentSchool;
+    let fixture: ComponentFixture<AdminStudentSchoolDialogComponent>;
+    let component: AdminStudentSchoolDialogComponent;
+    let adminService: MockedObject<AdminService>;
+    let dialogRef: MockedObject<MatDialogRef<AdminStudentSchoolDialogComponent, AdminStudentSchoolDialogResult | undefined>>;
 
-  function configure(data: Partial<AdminStudentSchoolDialogData> = {}): void {
-    adminService = jasmine.createSpyObj<AdminService>('AdminService', ['changeStudentSchool']);
-    dialogRef = jasmine.createSpyObj('MatDialogRef', ['close']);
-    TestBed.configureTestingModule({
-      imports: [AdminStudentSchoolDialogComponent, translocoTestingModule({ langs: { 'admin/tr': adminTr } })],
-      providers: [
-        provideNoopAnimations(),
-        { provide: AdminService, useValue: adminService },
-        { provide: SchoolService, useValue: { getSchools: () => of([school(5, 'Ankara Lisesi'), school(8, 'İzmir Lisesi')]) } },
-        { provide: MatDialogRef, useValue: dialogRef },
-        {
-          provide: MAT_DIALOG_DATA,
-          useValue: { id: 7, displayName: 'Ali Veli', currentSchoolId: 5, currentSchoolName: 'Ankara Lisesi', ...data },
-        },
-      ],
+    function configure(data: Partial<AdminStudentSchoolDialogData> = {}): void {
+        adminService = {
+            changeStudentSchool: vi.fn().mockName("AdminService.changeStudentSchool")
+        } as unknown as MockedObject<AdminService>;
+        dialogRef = {
+            close: vi.fn().mockName("MatDialogRef.close")
+        } as unknown as MockedObject<MatDialogRef<AdminStudentSchoolDialogComponent, AdminStudentSchoolDialogResult | undefined>>;
+        TestBed.configureTestingModule({
+            imports: [AdminStudentSchoolDialogComponent, translocoTestingModule({ langs: { 'admin/tr': adminTr } })],
+            providers: [
+                provideNoopAnimations(),
+                { provide: AdminService, useValue: adminService },
+                { provide: SchoolService, useValue: { getSchools: () => of([school(5, 'Ankara Lisesi'), school(8, 'İzmir Lisesi')]) } },
+                { provide: MatDialogRef, useValue: dialogRef },
+                {
+                    provide: MAT_DIALOG_DATA,
+                    useValue: { id: 7, displayName: 'Ali Veli', currentSchoolId: 5, currentSchoolName: 'Ankara Lisesi', ...data },
+                },
+            ],
+        });
+        fixture = TestBed.createComponent(AdminStudentSchoolDialogComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    }
+
+    const el = (): HTMLElement => fixture.nativeElement;
+    const button = (id: string): HTMLButtonElement | null => el().querySelector(`button[data-testid="${id}"]`);
+
+    function pick(id = 8): void {
+        component.selectedSchoolId.set(id);
+        component.onSchoolSelected(school(id, id === 8 ? 'İzmir Lisesi' : 'Başka'));
+        fixture.detectChanges();
+    }
+
+    function confirmWithError(status: number, error: unknown = null): void {
+        adminService.changeStudentSchool.mockReturnValue(throwError(() => new HttpErrorResponse({ status, error })));
+        pick();
+        button('confirm')!.click();
+        fixture.detectChanges();
+    }
+
+    it('render_ShowsCurrentSchoolEffectsAndExcludesCurrentSchool', () => {
+        configure();
+        expect(el().querySelector('[data-testid="current-school"]')?.textContent).toContain('Ankara Lisesi');
+        expect(el().querySelector('[data-testid="school-effects"]')?.textContent).toContain(texts.effectOldTeachers);
+        expect(button('confirm')!.disabled).toBe(true);
     });
-    fixture = TestBed.createComponent(AdminStudentSchoolDialogComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  }
 
-  const el = (): HTMLElement => fixture.nativeElement;
-  const button = (id: string): HTMLButtonElement | null => el().querySelector(`button[data-testid="${id}"]`);
+    it('render_NoCurrentSchool_ShowsNoSchoolLabel', () => {
+        configure({ currentSchoolId: null, currentSchoolName: null });
+        expect(el().querySelector('[data-testid="current-school"]')?.textContent).toContain(texts.noSchool);
+    });
 
-  function pick(id = 8): void {
-    component.selectedSchoolId.set(id);
-    component.onSchoolSelected(school(id, id === 8 ? 'İzmir Lisesi' : 'Başka'));
-    fixture.detectChanges();
-  }
+    it('confirm_WhileSubmitting_SendsSingleRequest', () => {
+        configure();
+        adminService.changeStudentSchool.mockReturnValue(new Subject<AdminStudentSchoolResponse>());
+        pick();
 
-  function confirmWithError(status: number, error: unknown = null): void {
-    adminService.changeStudentSchool.and.returnValue(throwError(() => new HttpErrorResponse({ status, error })));
-    pick();
-    button('confirm')!.click();
-    fixture.detectChanges();
-  }
+        component.confirm();
+        component.confirm();
 
-  it('render_ShowsCurrentSchoolEffectsAndExcludesCurrentSchool', () => {
-    configure();
-    expect(el().querySelector('[data-testid="current-school"]')?.textContent).toContain('Ankara Lisesi');
-    expect(el().querySelector('[data-testid="school-effects"]')?.textContent).toContain(texts.effectOldTeachers);
-    expect(button('confirm')!.disabled).toBeTrue();
-  });
+        expect(adminService.changeStudentSchool).toHaveBeenCalledTimes(1);
 
-  it('render_NoCurrentSchool_ShowsNoSchoolLabel', () => {
-    configure({ currentSchoolId: null, currentSchoolName: null });
-    expect(el().querySelector('[data-testid="current-school"]')?.textContent).toContain(texts.noSchool);
-  });
+        expect(adminService.changeStudentSchool).toHaveBeenCalledWith(7, 8);
+        expect(component.submitting()).toBe(true);
+    });
 
-  it('confirm_WhileSubmitting_SendsSingleRequest', () => {
-    configure();
-    adminService.changeStudentSchool.and.returnValue(new Subject<AdminStudentSchoolResponse>());
-    pick();
+    it('confirm_Success_ClosesWithServerSchoolAndSelectedName', () => {
+        configure();
+        adminService.changeStudentSchool.mockReturnValue(of({ studentId: 7, schoolId: 8, previousSchoolId: 5, changed: true }));
+        pick();
 
-    component.confirm();
-    component.confirm();
+        button('confirm')!.click();
 
-    expect(adminService.changeStudentSchool).toHaveBeenCalledOnceWith(7, 8);
-    expect(component.submitting()).toBeTrue();
-  });
+        expect(dialogRef.close).toHaveBeenCalledTimes(1);
 
-  it('confirm_Success_ClosesWithServerSchoolAndSelectedName', () => {
-    configure();
-    adminService.changeStudentSchool.and.returnValue(of({ studentId: 7, schoolId: 8, previousSchoolId: 5, changed: true }));
-    pick();
+        expect(dialogRef.close).toHaveBeenCalledWith({ schoolId: 8, schoolName: 'İzmir Lisesi' });
+    });
 
-    button('confirm')!.click();
+    it('error400WithoutBody_ShowsInvalidSchoolText', () => {
+        configure();
+        confirmWithError(400);
+        expect(el().querySelector('[data-testid="school-error"]')?.textContent).toContain(texts.errors.invalidSchool);
+    });
 
-    expect(dialogRef.close).toHaveBeenCalledOnceWith({ schoolId: 8, schoolName: 'İzmir Lisesi' });
-  });
+    it('error403_ShowsServerMessage', () => {
+        configure();
+        confirmWithError(403, { message: 'Korumalı hesap.' });
+        expect(el().querySelector('[data-testid="school-error"]')?.textContent).toContain('Korumalı hesap.');
+    });
 
-  it('error400WithoutBody_ShowsInvalidSchoolText', () => {
-    configure();
-    confirmWithError(400);
-    expect(el().querySelector('[data-testid="school-error"]')?.textContent).toContain(texts.errors.invalidSchool);
-  });
+    it('error502_ThenCancel_ClosesWithRefresh', () => {
+        configure();
+        confirmWithError(502);
+        expect(el().querySelector('[data-testid="school-error"]')?.textContent).toContain(texts.errors.upstream);
 
-  it('error403_ShowsServerMessage', () => {
-    configure();
-    confirmWithError(403, { message: 'Korumalı hesap.' });
-    expect(el().querySelector('[data-testid="school-error"]')?.textContent).toContain('Korumalı hesap.');
-  });
+        button('cancel')!.click();
 
-  it('error502_ThenCancel_ClosesWithRefresh', () => {
-    configure();
-    confirmWithError(502);
-    expect(el().querySelector('[data-testid="school-error"]')?.textContent).toContain(texts.errors.upstream);
+        expect(dialogRef.close).toHaveBeenCalledTimes(1);
 
-    button('cancel')!.click();
+        expect(dialogRef.close).toHaveBeenCalledWith({ refresh: true });
+    });
 
-    expect(dialogRef.close).toHaveBeenCalledOnceWith({ refresh: true });
-  });
+    it('error409WithoutBody_ShowsConflictTextAndReloadClosesWithRefresh', () => {
+        configure();
+        confirmWithError(409);
+        expect(el().querySelector('[data-testid="school-error"]')?.textContent).toContain(texts.errors.conflict);
+        expect(button('confirm')).toBeNull();
 
-  it('error409WithoutBody_ShowsConflictTextAndReloadClosesWithRefresh', () => {
-    configure();
-    confirmWithError(409);
-    expect(el().querySelector('[data-testid="school-error"]')?.textContent).toContain(texts.errors.conflict);
-    expect(button('confirm')).toBeNull();
+        button('reload')!.click();
 
-    button('reload')!.click();
+        expect(dialogRef.close).toHaveBeenCalledTimes(1);
 
-    expect(dialogRef.close).toHaveBeenCalledOnceWith({ refresh: true });
-  });
+        expect(dialogRef.close).toHaveBeenCalledWith({ refresh: true });
+    });
 
-  it('cancelWithoutError_ClosesWithUndefined', () => {
-    configure();
-    button('cancel')!.click();
-    expect(dialogRef.close).toHaveBeenCalledOnceWith(undefined);
-  });
+    it('cancelWithoutError_ClosesWithUndefined', () => {
+        configure();
+        button('cancel')!.click();
+        expect(dialogRef.close).toHaveBeenCalledTimes(1);
+        expect(dialogRef.close).toHaveBeenCalledWith(undefined);
+    });
 
-  it('i18n_TrAndEnHaveSameKeys', () => {
-    const keys = (o: object): string[] =>
-      Object.entries(o).flatMap(([k, v]) => (v && typeof v === 'object' ? keys(v).map((c) => `${k}.${c}`) : [k]));
-    expect(keys(adminEn.studentSchool).sort()).toEqual(keys(adminTr.studentSchool).sort());
-  });
+    it('i18n_TrAndEnHaveSameKeys', () => {
+        const keys = (o: object): string[] => Object.entries(o).flatMap(([k, v]) => (v && typeof v === 'object' ? keys(v).map((c) => `${k}.${c}`) : [k]));
+        expect(keys(adminEn.studentSchool).sort()).toEqual(keys(adminTr.studentSchool).sort());
+    });
 });

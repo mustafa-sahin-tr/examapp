@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 
@@ -16,7 +17,7 @@ import { computeCodeChallenge } from '../../shared/utils/pkce.util';
 describe('LoginComponent', () => {
   let fixture: ComponentFixture<LoginComponent>;
   let component: LoginComponent;
-  let redirectSpy: jasmine.Spy<(url: string) => void>;
+  let redirectSpy: Mock;
   let redirected: Promise<string>;
   const routeStub = { snapshot: { queryParamMap: convertToParamMap({}) } };
 
@@ -42,8 +43,15 @@ describe('LoginComponent', () => {
     fixture = TestBed.createComponent(LoginComponent);
     component = fixture.componentInstance;
     // ngOnInit'ten (detectChanges) önce kur, aksi halde tarayıcı gerçekten yönlenir.
-    redirectSpy = spyOn(component as unknown as { redirect: (url: string) => void }, 'redirect');
-    redirected = new Promise<string>((resolve) => redirectSpy.and.callFake(resolve));
+    redirectSpy = vi
+      .spyOn(
+        component as unknown as {
+          redirect: (url: string) => void;
+        },
+        'redirect'
+      )
+      .mockReturnValue(undefined);
+    redirected = new Promise<string>((resolve) => redirectSpy.mockImplementation(resolve));
   });
 
   afterEach(() => {
@@ -108,9 +116,11 @@ describe('LoginComponent', () => {
     localStorage.setItem(LOCALE_STORAGE_KEY, 'tr');
 
     const url = new URL(
-      (component as unknown as { withLoginLocale: (u: string) => string }).withLoginLocale(
-        '/oidc-login?redirect_uri=%2Fdashboard'
-      ),
+      (
+        component as unknown as {
+          withLoginLocale: (u: string) => string;
+        }
+      ).withLoginLocale('/oidc-login?redirect_uri=%2Fdashboard'),
       'http://localhost'
     );
 

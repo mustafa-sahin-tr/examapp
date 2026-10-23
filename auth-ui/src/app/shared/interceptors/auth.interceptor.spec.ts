@@ -1,3 +1,4 @@
+import type { MockedObject } from 'vitest';
 import { HttpClient, provideHttpClient, withInterceptors, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -10,12 +11,15 @@ import { authInterceptor } from './auth.interceptor';
 describe('authInterceptor', () => {
   let http: HttpClient;
   let httpMock: HttpTestingController;
-  let authServiceSpy: jasmine.SpyObj<AuthService>;
+  let authServiceSpy: MockedObject<AuthService>;
 
   beforeEach(() => {
     localStorage.removeItem('auth_token');
-    authServiceSpy = jasmine.createSpyObj<AuthService>('AuthService', ['isExpiringSoon', 'refreshToken']);
-    authServiceSpy.isExpiringSoon.and.returnValue(false);
+    authServiceSpy = {
+      isExpiringSoon: vi.fn().mockName('AuthService.isExpiringSoon'),
+      refreshToken: vi.fn().mockName('AuthService.refreshToken'),
+    } as unknown as MockedObject<AuthService>;
+    authServiceSpy.isExpiringSoon.mockReturnValue(false);
 
     TestBed.configureTestingModule({
       providers: [
@@ -41,7 +45,7 @@ describe('authInterceptor', () => {
 
     const request = httpMock.expectOne('/api/school');
     expect(request.request.headers.get('Authorization')).toBe('Bearer token-123');
-    expect(request.request.withCredentials).toBeTrue();
+    expect(request.request.withCredentials).toBe(true);
     request.flush([]);
   });
 
@@ -70,7 +74,7 @@ describe('authInterceptor', () => {
     http.get('/api/grades').subscribe();
 
     const request = httpMock.expectOne('/api/grades');
-    expect(request.request.headers.has('Authorization')).toBeFalse();
+    expect(request.request.headers.has('Authorization')).toBe(false);
     request.flush([]);
   });
 
@@ -86,13 +90,13 @@ describe('authInterceptor', () => {
   ]) {
     it(`intercept_ExcludedPath_${path}_SkipsBearerAndRefresh`, () => {
       localStorage.setItem('auth_token', 'stale-token');
-      authServiceSpy.isExpiringSoon.and.returnValue(true);
+      authServiceSpy.isExpiringSoon.mockReturnValue(true);
 
       http.post(`${path}/?x=1`, {}).subscribe();
 
       const request = httpMock.expectOne(`${path}/?x=1`);
-      expect(request.request.headers.has('Authorization')).toBeFalse();
-      expect(request.request.withCredentials).toBeTrue();
+      expect(request.request.headers.has('Authorization')).toBe(false);
+      expect(request.request.withCredentials).toBe(true);
       expect(authServiceSpy.refreshToken).not.toHaveBeenCalled();
       request.flush({});
     });
@@ -115,16 +119,16 @@ describe('authInterceptor', () => {
     http.get(url).subscribe();
 
     const request = httpMock.expectOne(url);
-    expect(request.request.headers.has('Authorization')).toBeFalse();
-    expect(request.request.withCredentials).toBeFalse();
+    expect(request.request.headers.has('Authorization')).toBe(false);
+    expect(request.request.withCredentials).toBe(false);
     expect(authServiceSpy.isExpiringSoon).not.toHaveBeenCalled();
     request.flush({});
   });
 
   it('intercept_TokenExpiringSoon_AttachesRefreshedToken', () => {
     localStorage.setItem('auth_token', 'old-token');
-    authServiceSpy.isExpiringSoon.and.returnValue(true);
-    authServiceSpy.refreshToken.and.returnValue(of('new-token'));
+    authServiceSpy.isExpiringSoon.mockReturnValue(true);
+    authServiceSpy.refreshToken.mockReturnValue(of('new-token'));
 
     http.get('/api/school').subscribe();
 

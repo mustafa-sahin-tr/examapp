@@ -1,4 +1,5 @@
-import { ComponentFixture, TestBed, fakeAsync, flush } from '@angular/core/testing';
+import type { MockedObject } from "vitest";
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -27,656 +28,674 @@ const GRADES: Grade[] = [{ id: 10, name: '10. Sınıf' }];
 /** Issue #440: veli kuralına tabi öğrencinin zorunlu veli bilgisi. */
 const PARENT_INPUT = { parentFullName: 'Ayşe Yılmaz', parentEmail: 'ayse@example.com', parentPhone: '0532 123 45 67' };
 const SCHOOLS: School[] = [
-  { id: 7, name: 'Ankara Fen Lisesi', provinceId: 6, provinceName: 'Ankara', districtId: 1, districtName: 'Çankaya', addressLine: null },
+    { id: 7, name: 'Ankara Fen Lisesi', provinceId: 6, provinceName: 'Ankara', districtId: 1, districtName: 'Çankaya', addressLine: null },
 ];
 
 describe('RegisterWizardComponent (Issue #234)', () => {
-  let fixture: ComponentFixture<RegisterWizardComponent>;
-  let component: RegisterWizardComponent;
-  let authService: jasmine.SpyObj<AuthService>;
-  let teacherService: jasmine.SpyObj<TeacherService>;
-  let studentService: jasmine.SpyObj<StudentService>;
-  let router: jasmine.SpyObj<Router>;
-
-  function createComponent(role?: string): void {
-    authService = jasmine.createSpyObj('AuthService', [
-      'getRealmRoles',
-      'isCachedUserCurrent',
-      'clearCachedUser',
-      'setUser',
-    ]);
-    studentService = jasmine.createSpyObj('StudentService', ['register']);
-    teacherService = jasmine.createSpyObj('TeacherService', ['register']);
-    jasmine.createSpyObj('ParentService', ['register']);
-    jasmine.createSpyObj('GradesService', ['getGrades']);
-    router = jasmine.createSpyObj('Router', ['navigate']);
-    jasmine.createSpyObj('MatSnackBar', ['open']);
-
-    authService.getRealmRoles.and.returnValue([]);
-    authService.isCachedUserCurrent.and.returnValue(true);
-
-    TestBed.configureTestingModule({
-      imports: [RegisterWizardComponent, translocoTestingModule({ langs: { 'register/tr': registerTr } })],
-      providers: [
-        {
-          provide: ActivatedRoute,
-          useValue: {
-            snapshot: {
-              queryParamMap: { get: (key: string) => (key === 'role' ? role ?? null : null) },
-            },
-          },
-        },
-        { provide: Router, useValue: router },
-        { provide: AuthService, useValue: authService },
-        { provide: StudentService, useValue: studentService },
-        { provide: TeacherService, useValue: teacherService },
-        { provide: ParentService, useValue: jasmine.createSpyObj('ParentService', ['register']) },
-        { provide: GradesService, useValue: jasmine.createSpyObj('GradesService', ['getGrades'], { getGrades: () => of(GRADES) }) },
-        { provide: MatSnackBar, useValue: jasmine.createSpyObj('MatSnackBar', ['open']) },
-        { provide: SchoolService, useValue: { getSchools: () => of(SCHOOLS) } },
-        { provide: LocaleService, useValue: { localeDefinition: signal({ angularLocale: 'tr-TR' }) } },
-        provideNoopAnimations(),
-      ],
-    });
-
-    fixture = TestBed.createComponent(RegisterWizardComponent);
-    component = fixture.componentInstance;
-  }
-
-  it('should create', () => {
-    createComponent('teacher');
-    expect(component).toBeTruthy();
-  });
-
-  // ── Issue #234: öğretmen okul onayı beklemesi ──────────────────────────────
-
-  it('submit_TeacherRegistrationSuccessWithSchoolApprovalPending_SetsPendingSignalTrue', fakeAsync(() => {
-    createComponent('teacher');
-    fixture.detectChanges(); // ngOnInit
-    expect(component.role()).toBe('teacher');
-    component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 7 });
-    teacherService.register.and.returnValue(
-      of({
-        accessToken: 'token',
-        expiresIn: 3600,
-        profileId: 42,
-        approvalStatus: 0,
-        requestedSchoolId: 1,
-        schoolApprovalPending: true,
-        teacherAccountApproved: true,
-      }),
-    );
-
-    component.submit();
-    flush();
-
-    expect(component.schoolApprovalPending()).toBeTrue();
-  }));
-
-  it('continueAfterPending_NavigatesToTests', () => {
-    createComponent('teacher');
-    component.schoolApprovalPending.set(true);
-
-    component.continueAfterPending();
-
-    expect(router.navigate).toHaveBeenCalledWith(['/tests']);
-  });
-
-  // ── Issue #234: 409 hata mesajı (okul değişikliğine izin yok) ──────────────
-
-  it('submit_TeacherRegistrationConflict409_SetSubmitErrorSignal', fakeAsync(() => {
-    createComponent('teacher');
-    fixture.detectChanges(); // ngOnInit
-    component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 7 });
-    const errorMsg = 'Okul bilgisi bu adımla değiştirilemez.';
-    teacherService.register.and.returnValue(
-      throwError(
-        () =>
-          new HttpErrorResponse({
-            status: 409,
-            error: { message: errorMsg },
-            url: 'http://test',
-          }),
-      ),
-    );
-
-    component.submit();
-    flush();
-
-    expect(teacherService.register).toHaveBeenCalled();
-    expect(component.isSubmitting()).toBeFalse();
-  }));
-
-  it('submit_StudentRegistrationConflict409_SetSubmitErrorSignal', fakeAsync(() => {
-    createComponent('student');
-    fixture.detectChanges(); // ngOnInit
-    component.studentForm.setValue({ studentNumber: '123', schoolId: 7, gradeId: 10 , ...PARENT_INPUT });
-    const errorMsg = 'Profil zaten tamamlanmış.';
-    studentService.register.and.returnValue(
-      throwError(
-        () =>
-          new HttpErrorResponse({
-            status: 409,
-            error: { message: errorMsg },
-            url: 'http://test',
-          }),
-      ),
-    );
-
-    component.submit();
-    flush();
-
-    expect(studentService.register).toHaveBeenCalled();
-    expect(component.isSubmitting()).toBeFalse();
-  }));
-
-  it('back_ClearsErrorAndResetRole', () => {
-    createComponent('teacher');
-    component.submitError.set('Error message');
-    component.role.set('teacher');
-
-    component.back();
-
-    expect(component.submitError()).toBeNull();
-    expect(component.role()).toBeNull();
-  });
-
-  // ── Issue #287: yeni öğretmen hesabı yönetici onayı bekler ─────────────────
-
-  describe('teacher account approval pending (issue #287)', () => {
-    afterEach(() => {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user_role');
-      localStorage.removeItem('user');
-    });
-
-    function registerTeacher(schoolApprovalPending: boolean, message?: string): void {
-      teacherService.register.and.returnValue(
-        of({
-          accessToken: 'token',
-          expiresIn: 3600,
-          profileId: 42,
-          approvalStatus: 0,
-          requestedSchoolId: schoolApprovalPending ? 1 : null,
-          schoolApprovalPending,
-          teacherAccountApproved: false,
-          message,
-        }),
-      );
-    }
-
-    it('submit_TeacherAccountNotApprovedWithServerMessage_ShowsServerMessage', fakeAsync(() => {
-      createComponent('teacher');
-      fixture.detectChanges();
-      component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 7 });
-      registerTeacher(false, 'Sunucu: hesabınız onay bekliyor.');
-      const internals = component as unknown as { notify: (k: string) => void; notifyText: (m: string) => void };
-      const notify = spyOn(internals, 'notify');
-      const notifyText = spyOn(internals, 'notifyText');
-
-      component.submit();
-      flush();
-
-      expect(notifyText).toHaveBeenCalledOnceWith('Sunucu: hesabınız onay bekliyor.');
-      expect(notify).not.toHaveBeenCalled();
-      expect(router.navigate).toHaveBeenCalledOnceWith(['/teacher-approval-pending']);
-    }));
-
-    for (const schoolApprovalPending of [false, true]) {
-      it(`submit_TeacherAccountNotApproved_schoolPending=${schoolApprovalPending}_NavigatesToPendingPageWithMessage`, fakeAsync(() => {
-        createComponent('teacher');
-        fixture.detectChanges();
-        component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 7 });
-        registerTeacher(schoolApprovalPending);
-        // MatSnackBarModule komponentin kendi injector'ına gerçek MatSnackBar verir; bildirim anahtarı doğrulanır.
-        const notify = spyOn(component as unknown as { notify: (key: string) => void }, 'notify');
-
-        component.submit();
-        flush();
-
-        expect(router.navigate).toHaveBeenCalledOnceWith(['/teacher-approval-pending']);
-        expect(router.navigate).not.toHaveBeenCalledWith(['/tests']);
-        expect(component.schoolApprovalPending()).toBeFalse();
-        expect(notify).toHaveBeenCalledOnceWith('wizard.teacherAccountPending');
-      }));
-    }
-
-    it('i18n_TeacherAccountPendingMessage_TrAndEn', () => {
-      expect(registerTr.wizard.teacherAccountPending).toBe('Öğretmen kaydınız alındı; hesabınız yönetici onayı bekliyor.');
-      expect(registerEn.wizard.teacherAccountPending).toContain('awaiting administrator approval');
-    });
-
-    it('submit_TeacherAccountNotApproved_WritesApprovalStateToUserSignal', fakeAsync(() => {
-      localStorage.setItem('user', JSON.stringify({ id: 1, keycloakId: 'k', role: '' }));
-      createComponent('teacher');
-      fixture.detectChanges();
-      component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 7 });
-      registerTeacher(false);
-
-      component.submit();
-      flush();
-
-      expect(authService.setUser).toHaveBeenCalledTimes(1);
-      const written = authService.setUser.calls.mostRecent().args[0];
-      expect(written?.role).toBe('Teacher');
-      expect(written?.teacher?.id).toBe(42);
-      expect(written?.teacher?.teacherAccountApproved).toBeFalse();
-      expect(written?.teacher?.teacherApplicationStatus).toBe('Pending');
-    }));
-
-    it('submit_TeacherAccountApproved_KeepsExistingTestsRedirect', fakeAsync(() => {
-      createComponent('teacher');
-      fixture.detectChanges();
-      component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 7 });
-      teacherService.register.and.returnValue(
-        of({
-          accessToken: 'token',
-          expiresIn: 3600,
-          profileId: 42,
-          approvalStatus: 1,
-          requestedSchoolId: null,
-          schoolApprovalPending: false,
-          teacherAccountApproved: true,
-        }),
-      );
-
-      component.submit();
-      flush();
-
-      expect(router.navigate).toHaveBeenCalledOnceWith(['/tests']);
-    }));
-  });
-  // ── Issue #277 (madde 6): okul serbest metin değil, listeden seçilir; backend `schoolId` okur ─────────────
-
-  describe('school selection payload (issue #277)', () => {
-    it('submit_Teacher_SendsSchoolIdAndIsIndependentTutor_WithoutSchoolName', () => {
-      createComponent('teacher');
-      fixture.detectChanges();
-      component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 7 });
-      teacherService.register.and.returnValue(NEVER);
-
-      component.submit();
-
-      expect(teacherService.register).toHaveBeenCalledOnceWith({ schoolId: 7, isIndependentTutor: false });
-    });
-
-    it('submit_IndependentTeacher_DropsPreviouslySelectedSchool', () => {
-      createComponent('teacher');
-      fixture.detectChanges();
-      component.teacherForm.setValue({ isIndependentTutor: true, schoolId: 7 });
-      teacherService.register.and.returnValue(NEVER);
-
-      component.submit();
-
-      expect(teacherService.register).toHaveBeenCalledOnceWith({ schoolId: null, isIndependentTutor: true });
-    });
-
-    it('submit_Student_SendsSchoolIdGradeIdAndNumber_WithoutSchoolName', () => {
-      createComponent('student');
-      fixture.detectChanges();
-      component.studentForm.setValue({ studentNumber: ' 123 ', schoolId: 7, gradeId: 10 , ...PARENT_INPUT });
-      studentService.register.and.returnValue(NEVER);
-
-      component.submit();
-
-      expect(studentService.register).toHaveBeenCalledOnceWith({ studentNumber: '123', schoolId: 7, gradeId: 10, ...PARENT_INPUT });
-    });
-
-    it('submit_StudentWithoutGrade_DoesNotSend', () => {
-      createComponent('student');
-      fixture.detectChanges();
-      component.studentForm.setValue({ studentNumber: '123', schoolId: null, gradeId: null , ...PARENT_INPUT });
-
-      component.submit();
-
-      expect(studentService.register).not.toHaveBeenCalled();
-    });
-
-    it('template_StudentAndTeacherForms_RenderSchoolSelectInsteadOfFreeText', () => {
-      createComponent('student');
-      fixture.detectChanges();
-      const el: HTMLElement = fixture.nativeElement;
-      expect(el.querySelector('app-school-select')).not.toBeNull();
-      expect(el.querySelector('input[formcontrolname="schoolName"]')).toBeNull();
-
-      component.pickRole('teacher');
-      fixture.detectChanges();
-      expect(el.querySelector('app-school-select')).not.toBeNull();
-    });
-
-    it('template_IndependentTeacher_HidesSchoolSelect', () => {
-      createComponent('teacher');
-      fixture.detectChanges();
-      component.teacherForm.controls.isIndependentTutor.setValue(true);
-      fixture.detectChanges();
-
-      expect((fixture.nativeElement as HTMLElement).querySelector('app-school-select')).toBeNull();
-    });
-  });
-
-  // ── Issue #277 (madde 2): reddedilen okul talebinden sonra 24 saat bekleme → 429 ──────────────────────
-
-  describe('school request cooldown 429 (issue #277)', () => {
-    function cooldown429(body: object | null, headers?: Record<string, string>): HttpErrorResponse {
-      return new HttpErrorResponse({
-        status: 429,
-        error: body,
-        headers: new HttpHeaders(headers ?? {}),
-        url: 'http://test',
-      });
-    }
-
-    it('submit_Teacher429_ShowsServerMessageAndRemainingTime', fakeAsync(() => {
-      createComponent('teacher');
-      fixture.detectChanges();
-      component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 7 });
-      const message = 'Okul talebiniz reddedildi; yeni talep için beklemeniz gerekiyor.';
-      teacherService.register.and.returnValue(
-        throwError(() =>
-          cooldown429(
-            { message, retryAfterSeconds: 5 * 3600 + 30 * 60, retryAfterUtc: '2030-01-01T00:00:00Z' },
-            { 'Retry-After': '19800' },
-          ),
-        ),
-      );
-
-      component.submit();
-      flush();
-      fixture.detectChanges();
-
-      expect(component.isSubmitting()).toBeFalse();
-      expect(component.submitError()).toBe(message);
-      expect(component.retryAfter()).toEqual({ hours: 5, minutes: 30 });
-      expect(router.navigate).not.toHaveBeenCalled();
-      const el: HTMLElement = fixture.nativeElement;
-      expect(el.querySelector('[data-testid="submit-error"]')?.textContent).toContain(message);
-      expect(el.querySelector('[data-testid="retry-after"]')?.textContent?.trim()).toBe(
-        'Yeni bir okul talebini yaklaşık 5 saat 30 dakika sonra gönderebilirsiniz.',
-      );
-    }));
-
-    it('submit_Teacher429WithoutBody_UsesRetryAfterHeaderAndFallbackText', fakeAsync(() => {
-      createComponent('teacher');
-      fixture.detectChanges();
-      component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 7 });
-      teacherService.register.and.returnValue(throwError(() => cooldown429(null, { 'Retry-After': '90' })));
-
-      component.submit();
-      flush();
-      fixture.detectChanges();
-
-      expect(component.submitError()).toBeNull();
-      expect(component.retryAfter()).toEqual({ hours: 0, minutes: 2 });
-      const el: HTMLElement = fixture.nativeElement;
-      expect(el.querySelector('[data-testid="submit-error"]')?.textContent).toContain(registerTr.wizard.schoolRequestCooldown);
-      expect(el.querySelector('[data-testid="retry-after"]')?.textContent?.trim()).toBe(
-        'Yeni bir okul talebini yaklaşık 2 dakika sonra gönderebilirsiniz.',
-      );
-    }));
-
-    it('back_After429_ClearsCooldown', () => {
-      createComponent('teacher');
-      component.submitError.set('x');
-      component.retryAfterSeconds.set(60);
-
-      component.back();
-
-      expect(component.retryAfter()).toBeNull();
-      expect(component.submitError()).toBeNull();
-    });
-
-    it('retryAfterSecondsOf_FallsBackToRetryAfterUtc', () => {
-      const now = Date.parse('2030-01-01T00:00:00Z');
-      const err = cooldown429(null);
-      expect(retryAfterSecondsOf(err, { retryAfterUtc: '2030-01-01T01:00:00Z' }, now)).toBe(3600);
-      expect(retryAfterSecondsOf(err, { retryAfterUtc: '2029-12-31T23:00:00Z' }, now)).toBeNull();
-      expect(retryAfterSecondsOf(err, null, now)).toBeNull();
-    });
-
-    it('i18n_CooldownTexts_TrAndEn', () => {
-      expect(registerEn.wizard.retryAfterHours).toContain('{{hours}}');
-      expect(registerEn.wizard.retryAfterMinutes).toContain('{{minutes}}');
-      expect(registerEn.wizard.schoolRequestCooldown).toBeTruthy();
-      expect(registerTr.fields.studentSchoolHint).toContain('yönetici');
-    });
-  });
-  // ── Issue #277 (review): okul metni yazılıp listeden seçilmediyse sessizce null gönderilmez ────────────
-
-  describe('unmatched school text (issue #277 review)', () => {
-    it('submit_AffiliatedTeacherWithUnmatchedText_BlocksAndShowsError', () => {
-      createComponent('teacher');
-      fixture.detectChanges();
-      component.teacherForm.setValue({ isIndependentTutor: false, schoolId: null });
-      component.teacherSchoolUnmatched.set(true);
-
-      component.submit();
-      fixture.detectChanges();
-
-      expect(teacherService.register).not.toHaveBeenCalled();
-      expect(component.teacherSchoolError()).toBeTrue();
-      expect(
-        (fixture.nativeElement as HTMLElement).querySelector('[data-testid="teacher-school-error"]')?.textContent?.trim(),
-      ).toBe(registerTr.fields.schoolNotPicked);
-    });
-
-    it('submit_AfterPickingSchool_ErrorClearsAndSends', () => {
-      createComponent('teacher');
-      fixture.detectChanges();
-      component.teacherSchoolUnmatched.set(true);
-      component.submit();
-      teacherService.register.and.returnValue(NEVER);
-
-      // Seçici seçim yapınca `unmatchedChange(false)` yayınlar.
-      component.teacherSchoolUnmatched.set(false);
-      component.teacherForm.controls.schoolId.setValue(7);
-      fixture.detectChanges();
-      expect(component.teacherSchoolError()).toBeFalse();
-      expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="teacher-school-error"]')).toBeNull();
-
-      component.submit();
-      expect(teacherService.register).toHaveBeenCalledOnceWith({ schoolId: 7, isIndependentTutor: false });
-    });
-
-    it('submit_IndependentTeacherWithStaleUnmatchedText_IsNotBlocked', () => {
-      createComponent('teacher');
-      fixture.detectChanges();
-      component.teacherSchoolUnmatched.set(true);
-      component.teacherForm.controls.isIndependentTutor.setValue(true);
-      teacherService.register.and.returnValue(NEVER);
-
-      component.submit();
-
-      expect(teacherService.register).toHaveBeenCalledOnceWith({ schoolId: null, isIndependentTutor: true });
-    });
-
-    it('onTeacherModeChange_ResetsUnmatchedState', () => {
-      createComponent('teacher');
-      component.teacherSchoolUnmatched.set(true);
-      component.teacherSchoolErrorRequested.set(true);
-
-      component.onTeacherModeChange();
-
-      expect(component.teacherSchoolUnmatched()).toBeFalse();
-      expect(component.teacherSchoolError()).toBeFalse();
-    });
-
-    it('template_TypingUnmatchedTextInSchoolSelect_BlocksTeacherSubmit', () => {
-      createComponent('teacher');
-      fixture.detectChanges();
-      const input = (fixture.nativeElement as HTMLElement).querySelector(
-        '[data-testid="school-select-input"]',
-      ) as HTMLInputElement;
-      input.value = 'Olmayan Okul';
-      input.dispatchEvent(new Event('input'));
-      fixture.detectChanges();
-
-      component.submit();
-      fixture.detectChanges();
-
-      expect(component.teacherSchoolUnmatched()).toBeTrue();
-      expect(teacherService.register).not.toHaveBeenCalled();
-      expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="teacher-school-error"]')).not.toBeNull();
-    });
-
-    it('i18n_SchoolNotPicked_TrAndEn', () => {
-      expect(registerTr.fields.schoolNotPicked).toBeTruthy();
-      expect(registerEn.fields.schoolNotPicked).toBeTruthy();
-    });
-  });
-
-  // ── Issue #378: veli adımı başlık/açıklama görünür; olmayan "çocuk ekleme" özelliği vaat edilmez ────────
-
-  describe('parent step (issue #378)', () => {
-    const tokens = {
-      '--main-foreground-color': 'rgb(1, 2, 3)',
-      '--ms-text-strong': 'rgb(10, 20, 30)',
-      '--ms-text-medium': 'rgb(40, 50, 60)',
-    };
-
     beforeEach(() => {
-      // Karma'da tema class'ı yok, token'lar boş; kart zemini token'ı ile metin token'ları ayrı sabitlenir.
-      Object.entries(tokens).forEach(([name, value]) => document.documentElement.style.setProperty(name, value));
+        vi.useFakeTimers();
     });
-
     afterEach(() => {
-      Object.keys(tokens).forEach((name) => document.documentElement.style.removeProperty(name));
+        vi.useRealTimers();
+    });
+    let fixture: ComponentFixture<RegisterWizardComponent>;
+    let component: RegisterWizardComponent;
+    let authService: MockedObject<AuthService>;
+    let teacherService: MockedObject<TeacherService>;
+    let studentService: MockedObject<StudentService>;
+    let router: MockedObject<Router>;
+
+    function createComponent(role?: string): void {
+        authService = {
+            getRealmRoles: vi.fn().mockName("AuthService.getRealmRoles"),
+            isCachedUserCurrent: vi.fn().mockName("AuthService.isCachedUserCurrent"),
+            clearCachedUser: vi.fn().mockName("AuthService.clearCachedUser"),
+            setUser: vi.fn().mockName("AuthService.setUser")
+        } as unknown as MockedObject<AuthService>;
+        studentService = {
+            register: vi.fn().mockName("StudentService.register")
+        } as unknown as MockedObject<StudentService>;
+        teacherService = {
+            register: vi.fn().mockName("TeacherService.register")
+        } as unknown as MockedObject<TeacherService>;
+        ({
+            register: vi.fn().mockName("ParentService.register")
+        });
+        ({
+            getGrades: vi.fn().mockName("GradesService.getGrades")
+        });
+        router = {
+            navigate: vi.fn().mockName("Router.navigate")
+        } as unknown as MockedObject<Router>;
+        ({
+            open: vi.fn().mockName("MatSnackBar.open")
+        });
+
+        authService.getRealmRoles.mockReturnValue([]);
+        authService.isCachedUserCurrent.mockReturnValue(true);
+
+        TestBed.configureTestingModule({
+            imports: [RegisterWizardComponent, translocoTestingModule({ langs: { 'register/tr': registerTr } })],
+            providers: [
+                {
+                    provide: ActivatedRoute,
+                    useValue: {
+                        snapshot: {
+                            queryParamMap: { get: (key: string) => (key === 'role' ? role ?? null : null) },
+                        },
+                    },
+                },
+                { provide: Router, useValue: router },
+                { provide: AuthService, useValue: authService },
+                { provide: StudentService, useValue: studentService },
+                { provide: TeacherService, useValue: teacherService },
+                { provide: ParentService, useValue: {
+                        register: vi.fn().mockName("ParentService.register")
+                    } },
+                { provide: GradesService, useValue: {
+                        getGrades: () => of(GRADES)
+                    } },
+                { provide: MatSnackBar, useValue: {
+                        open: vi.fn().mockName("MatSnackBar.open")
+                    } },
+                { provide: SchoolService, useValue: { getSchools: () => of(SCHOOLS) } },
+                { provide: LocaleService, useValue: { localeDefinition: signal({ angularLocale: 'tr-TR' }) } },
+                provideNoopAnimations(),
+            ],
+        });
+
+        fixture = TestBed.createComponent(RegisterWizardComponent);
+        component = fixture.componentInstance;
+    }
+
+    it('should create', () => {
+        createComponent('teacher');
+        expect(component).toBeTruthy();
     });
 
-    it('template_ParentRole_RendersTitleAndHint', () => {
-      createComponent('parent');
-      fixture.detectChanges();
-      const el: HTMLElement = fixture.nativeElement;
+    // ── Issue #234: öğretmen okul onayı beklemesi ──────────────────────────────
 
-      expect(el.querySelector('h2')?.textContent?.trim()).toBe(registerTr.wizard.parentTitle);
-      expect(el.querySelector('.hint')?.textContent?.trim()).toBe(registerTr.wizard.parentHint);
-    });
-
-    it('style_ParentTitleAndHint_UseTextTokensNotCardBackgroundToken', () => {
-      createComponent('parent');
-      fixture.detectChanges();
-      const el: HTMLElement = fixture.nativeElement;
-      const h2Color = getComputedStyle(el.querySelector('h2')!).color;
-      const hintColor = getComputedStyle(el.querySelector('.hint')!).color;
-
-      expect(h2Color).toBe(tokens['--ms-text-strong']);
-      expect(hintColor).toBe(tokens['--ms-text-medium']);
-      expect(hintColor).not.toBe(tokens['--main-foreground-color']);
-    });
-
-    it('i18n_ParentHint_DoesNotPromiseChildLinking_TrAndEn', () => {
-      for (const hint of [registerTr.wizard.parentHint, registerTr.parent.hint]) {
-        expect(hint).toBeTruthy();
-        expect(hint).not.toMatch(/çocuk|profil/i);
-      }
-      for (const hint of [registerEn.wizard.parentHint, registerEn.parent.hint]) {
-        expect(hint).toBeTruthy();
-        expect(hint).not.toMatch(/child|profile/i);
-      }
-      expect(registerEn.wizard.parentTitle).toBeTruthy();
-    });
-  });
-
-  // ── Issue #440: öğrenci adımında veli bilgisi (canlı E2E bulgusu: ilk girişte bu sihirbaz açılır) ──────────────
-
-  describe('student parent info (issue #440)', () => {
-    it('studentStep_RendersParentFields', () => {
-      createComponent('student');
-      fixture.detectChanges();
-      const el: HTMLElement = fixture.nativeElement;
-
-      expect(el.querySelector('[data-testid="parent-section"]')?.textContent).toContain('aktivasyon bağlantısı');
-      expect(el.querySelector('[data-testid="parent-name"]')).not.toBeNull();
-      expect(el.querySelector('[data-testid="parent-email"]')).not.toBeNull();
-      expect(el.querySelector('[data-testid="parent-phone"]')).not.toBeNull();
-      expect(el.querySelector('[data-testid="parent-section"] a')?.getAttribute('href')).toBe('/privacy-policy');
-    });
-
-    it('submit_MissingParentInfo_DoesNotSend', () => {
-      createComponent('student');
-      fixture.detectChanges();
-      component.studentForm.patchValue({ studentNumber: '123', gradeId: 10 });
-
-      component.submit();
-
-      expect(studentService.register).not.toHaveBeenCalled();
-    });
-
-    it('submit_InvalidPhoneOrLinkLikeName_DoesNotSend_ShowsErrors', () => {
-      createComponent('student');
-      fixture.detectChanges();
-      component.studentForm.setValue({
-        studentNumber: '123',
-        schoolId: null,
-        gradeId: 10,
-        parentFullName: 'www.ornek.com',
-        parentEmail: 'ayse@example.com',
-        parentPhone: '0212 123 45 67',
-      });
-
-      component.submit();
-      fixture.detectChanges();
-
-      expect(studentService.register).not.toHaveBeenCalled();
-      const el: HTMLElement = fixture.nativeElement;
-      expect(el.querySelector('[data-testid="parent-phone-invalid"]')).not.toBeNull();
-      expect(el.querySelector('[data-testid="parent-name-invalid"]')?.textContent).toContain('yalnız harf');
-    });
-
-    it('studentWithAdultRole_NoParentFields_PayloadWithoutParent', () => {
-      createComponent('student');
-      authService.getRealmRoles.and.returnValue(['Teacher']);
-      fixture.detectChanges();
-      studentService.register.and.returnValue(NEVER);
-
-      expect(fixture.nativeElement.querySelector('[data-testid="parent-section"]')).toBeNull();
-      component.studentForm.patchValue({ studentNumber: '123', gradeId: 10 });
-      component.submit();
-
-      expect(studentService.register).toHaveBeenCalledOnceWith({ studentNumber: '123', schoolId: null, gradeId: 10 });
-    });
-
-    it('submit_Success_FeedsParentStatusStore', fakeAsync(() => {
-      createComponent('student');
-      fixture.detectChanges();
-      component.studentForm.setValue({ studentNumber: '123', schoolId: null, gradeId: 10, ...PARENT_INPUT });
-      studentService.register.and.returnValue(
-        of({ accessToken: 'token', expiresIn: 3600, profileId: 5, parentStatus: awaitingStatusOf() })
-      );
-
-      component.submit();
-      flush();
-
-      expect(TestBed.inject(ParentStatusStore).activationRestricted()).toBeTrue();
-      expect(router.navigate).toHaveBeenCalledWith(['/tests']);
-    }));
-
-    const errors: { name: string; status: number; body: Record<string, unknown>; expected: string }[] = [
-      { name: 'EmailNotUsable409', status: 409, body: { errorCode: 'ParentEmailNotUsable', message: 'x' }, expected: 'Bu e-posta veli hesabı olarak kullanılamaz.' },
-      { name: 'InfoRequired400', status: 400, body: { errorCode: 'ParentInfoRequired' }, expected: 'Veli adı, e-postası ve telefonu zorunludur.' },
-      { name: 'InvalidName400', status: 400, body: { errorCode: 'InvalidParentName' }, expected: 'Veli adı yalnız harf içerebilir.' },
-      { name: 'Locked429', status: 429, body: { errorCode: 'ParentEmailChangeLocked', retryAt: '2026-10-15T12:00:00Z' }, expected: 'Çok sayıda farklı e-posta denendi.' },
-      { name: 'Busy409', status: 409, body: { errorCode: 'Busy', message: 'x' }, expected: 'Veliniz şu anda hesabını etkinleştiriyor' },
-      { name: 'Unavailable502', status: 502, body: { errorCode: 'ParentInvitationUnavailable' }, expected: 'Veli daveti şu anda gönderilemedi.' },
-    ];
-
-    for (const scenario of errors) {
-      it(`submit_Parent${scenario.name}_InlineMappedError_StaysOnForm`, fakeAsync(() => {
-        createComponent('student');
-        fixture.detectChanges();
-        component.studentForm.setValue({ studentNumber: '123', schoolId: null, gradeId: 10, ...PARENT_INPUT });
-        studentService.register.and.returnValue(
-          throwError(() => new HttpErrorResponse({ status: scenario.status, error: scenario.body }))
-        );
+    it('submit_TeacherRegistrationSuccessWithSchoolApprovalPending_SetsPendingSignalTrue', async () => {
+        createComponent('teacher');
+        fixture.detectChanges(); // ngOnInit
+        expect(component.role()).toBe('teacher');
+        component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 7 });
+        teacherService.register.mockReturnValue(of({
+            accessToken: 'token',
+            expiresIn: 3600,
+            profileId: 42,
+            approvalStatus: 0,
+            requestedSchoolId: 1,
+            schoolApprovalPending: true,
+            teacherAccountApproved: true,
+        }));
 
         component.submit();
-        flush();
-        fixture.detectChanges();
+        await vi.runAllTimersAsync();
 
-        expect(component.submitError()).toContain(scenario.expected);
-        expect(component.retryAfterSeconds()).toBeNull();
-        expect(router.navigate).not.toHaveBeenCalled();
-        expect(fixture.nativeElement.querySelector('[data-testid="submit-error"]')?.textContent).toContain(scenario.expected);
-      }));
-    }
-  });
+        expect(component.schoolApprovalPending()).toBe(true);
+    });
+
+    it('continueAfterPending_NavigatesToTests', () => {
+        createComponent('teacher');
+        component.schoolApprovalPending.set(true);
+
+        component.continueAfterPending();
+
+        expect(router.navigate).toHaveBeenCalledWith(['/tests']);
+    });
+
+    // ── Issue #234: 409 hata mesajı (okul değişikliğine izin yok) ──────────────
+
+    it('submit_TeacherRegistrationConflict409_SetSubmitErrorSignal', async () => {
+        createComponent('teacher');
+        fixture.detectChanges(); // ngOnInit
+        component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 7 });
+        const errorMsg = 'Okul bilgisi bu adımla değiştirilemez.';
+        teacherService.register.mockReturnValue(throwError(() => new HttpErrorResponse({
+            status: 409,
+            error: { message: errorMsg },
+            url: 'http://test',
+        })));
+
+        component.submit();
+        await vi.runAllTimersAsync();
+
+        expect(teacherService.register).toHaveBeenCalled();
+        expect(component.isSubmitting()).toBe(false);
+    });
+
+    it('submit_StudentRegistrationConflict409_SetSubmitErrorSignal', async () => {
+        createComponent('student');
+        fixture.detectChanges(); // ngOnInit
+        component.studentForm.setValue({ studentNumber: '123', schoolId: 7, gradeId: 10, ...PARENT_INPUT });
+        const errorMsg = 'Profil zaten tamamlanmış.';
+        studentService.register.mockReturnValue(throwError(() => new HttpErrorResponse({
+            status: 409,
+            error: { message: errorMsg },
+            url: 'http://test',
+        })));
+
+        component.submit();
+        await vi.runAllTimersAsync();
+
+        expect(studentService.register).toHaveBeenCalled();
+        expect(component.isSubmitting()).toBe(false);
+    });
+
+    it('back_ClearsErrorAndResetRole', () => {
+        createComponent('teacher');
+        component.submitError.set('Error message');
+        component.role.set('teacher');
+
+        component.back();
+
+        expect(component.submitError()).toBeNull();
+        expect(component.role()).toBeNull();
+    });
+
+    // ── Issue #287: yeni öğretmen hesabı yönetici onayı bekler ─────────────────
+
+    describe('teacher account approval pending (issue #287)', () => {
+        afterEach(() => {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user_role');
+            localStorage.removeItem('user');
+        });
+
+        function registerTeacher(schoolApprovalPending: boolean, message?: string): void {
+            teacherService.register.mockReturnValue(of({
+                accessToken: 'token',
+                expiresIn: 3600,
+                profileId: 42,
+                approvalStatus: 0,
+                requestedSchoolId: schoolApprovalPending ? 1 : null,
+                schoolApprovalPending,
+                teacherAccountApproved: false,
+                message,
+            }));
+        }
+
+        it('submit_TeacherAccountNotApprovedWithServerMessage_ShowsServerMessage', async () => {
+            createComponent('teacher');
+            fixture.detectChanges();
+            component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 7 });
+            registerTeacher(false, 'Sunucu: hesabınız onay bekliyor.');
+            const internals = component as unknown as {
+                notify: (k: string) => void;
+                notifyText: (m: string) => void;
+            };
+            const notify = vi.spyOn(internals, 'notify').mockReturnValue(undefined);
+            const notifyText = vi.spyOn(internals, 'notifyText').mockReturnValue(undefined);
+
+            component.submit();
+            await vi.runAllTimersAsync();
+
+            expect(notifyText).toHaveBeenCalledTimes(1);
+
+            expect(notifyText).toHaveBeenCalledWith('Sunucu: hesabınız onay bekliyor.');
+            expect(notify).not.toHaveBeenCalled();
+            expect(router.navigate).toHaveBeenCalledTimes(1);
+            expect(router.navigate).toHaveBeenCalledWith(['/teacher-approval-pending']);
+        });
+
+        for (const schoolApprovalPending of [false, true]) {
+            it(`submit_TeacherAccountNotApproved_schoolPending=${schoolApprovalPending}_NavigatesToPendingPageWithMessage`, async () => {
+                createComponent('teacher');
+                fixture.detectChanges();
+                component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 7 });
+                registerTeacher(schoolApprovalPending);
+                // MatSnackBarModule komponentin kendi injector'ına gerçek MatSnackBar verir; bildirim anahtarı doğrulanır.
+                const notify = vi.spyOn(component as unknown as {
+                    notify: (key: string) => void;
+                }, 'notify').mockReturnValue(undefined);
+
+                component.submit();
+                await vi.runAllTimersAsync();
+
+                expect(router.navigate).toHaveBeenCalledTimes(1);
+
+                expect(router.navigate).toHaveBeenCalledWith(['/teacher-approval-pending']);
+                expect(router.navigate).not.toHaveBeenCalledWith(['/tests']);
+                expect(component.schoolApprovalPending()).toBe(false);
+                expect(notify).toHaveBeenCalledTimes(1);
+                expect(notify).toHaveBeenCalledWith('wizard.teacherAccountPending');
+            });
+        }
+
+        it('i18n_TeacherAccountPendingMessage_TrAndEn', () => {
+            expect(registerTr.wizard.teacherAccountPending).toBe('Öğretmen kaydınız alındı; hesabınız yönetici onayı bekliyor.');
+            expect(registerEn.wizard.teacherAccountPending).toContain('awaiting administrator approval');
+        });
+
+        it('submit_TeacherAccountNotApproved_WritesApprovalStateToUserSignal', async () => {
+            localStorage.setItem('user', JSON.stringify({ id: 1, keycloakId: 'k', role: '' }));
+            createComponent('teacher');
+            fixture.detectChanges();
+            component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 7 });
+            registerTeacher(false);
+
+            component.submit();
+            await vi.runAllTimersAsync();
+
+            expect(authService.setUser).toHaveBeenCalledTimes(1);
+            const written = vi.mocked(authService.setUser).mock.lastCall![0];
+            expect(written?.role).toBe('Teacher');
+            expect(written?.teacher?.id).toBe(42);
+            expect(written?.teacher?.teacherAccountApproved).toBe(false);
+            expect(written?.teacher?.teacherApplicationStatus).toBe('Pending');
+        });
+
+        it('submit_TeacherAccountApproved_KeepsExistingTestsRedirect', async () => {
+            createComponent('teacher');
+            fixture.detectChanges();
+            component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 7 });
+            teacherService.register.mockReturnValue(of({
+                accessToken: 'token',
+                expiresIn: 3600,
+                profileId: 42,
+                approvalStatus: 1,
+                requestedSchoolId: null,
+                schoolApprovalPending: false,
+                teacherAccountApproved: true,
+            }));
+
+            component.submit();
+            await vi.runAllTimersAsync();
+
+            expect(router.navigate).toHaveBeenCalledTimes(1);
+
+            expect(router.navigate).toHaveBeenCalledWith(['/tests']);
+        });
+    });
+    // ── Issue #277 (madde 6): okul serbest metin değil, listeden seçilir; backend `schoolId` okur ─────────────
+
+    describe('school selection payload (issue #277)', () => {
+        it('submit_Teacher_SendsSchoolIdAndIsIndependentTutor_WithoutSchoolName', () => {
+            createComponent('teacher');
+            fixture.detectChanges();
+            component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 7 });
+            teacherService.register.mockReturnValue(NEVER);
+
+            component.submit();
+
+            expect(teacherService.register).toHaveBeenCalledTimes(1);
+
+            expect(teacherService.register).toHaveBeenCalledWith({ schoolId: 7, isIndependentTutor: false });
+        });
+
+        it('submit_IndependentTeacher_DropsPreviouslySelectedSchool', () => {
+            createComponent('teacher');
+            fixture.detectChanges();
+            component.teacherForm.setValue({ isIndependentTutor: true, schoolId: 7 });
+            teacherService.register.mockReturnValue(NEVER);
+
+            component.submit();
+
+            expect(teacherService.register).toHaveBeenCalledTimes(1);
+
+            expect(teacherService.register).toHaveBeenCalledWith({ schoolId: null, isIndependentTutor: true });
+        });
+
+        it('submit_Student_SendsSchoolIdGradeIdAndNumber_WithoutSchoolName', () => {
+            createComponent('student');
+            fixture.detectChanges();
+            component.studentForm.setValue({ studentNumber: ' 123 ', schoolId: 7, gradeId: 10, ...PARENT_INPUT });
+            studentService.register.mockReturnValue(NEVER);
+
+            component.submit();
+
+            expect(studentService.register).toHaveBeenCalledTimes(1);
+
+            expect(studentService.register).toHaveBeenCalledWith({ studentNumber: '123', schoolId: 7, gradeId: 10, ...PARENT_INPUT });
+        });
+
+        it('submit_StudentWithoutGrade_DoesNotSend', () => {
+            createComponent('student');
+            fixture.detectChanges();
+            component.studentForm.setValue({ studentNumber: '123', schoolId: null, gradeId: null, ...PARENT_INPUT });
+
+            component.submit();
+
+            expect(studentService.register).not.toHaveBeenCalled();
+        });
+
+        it('template_StudentAndTeacherForms_RenderSchoolSelectInsteadOfFreeText', () => {
+            createComponent('student');
+            fixture.detectChanges();
+            const el: HTMLElement = fixture.nativeElement;
+            expect(el.querySelector('app-school-select')).not.toBeNull();
+            expect(el.querySelector('input[formcontrolname="schoolName"]')).toBeNull();
+
+            component.pickRole('teacher');
+            fixture.detectChanges();
+            expect(el.querySelector('app-school-select')).not.toBeNull();
+        });
+
+        it('template_IndependentTeacher_HidesSchoolSelect', () => {
+            createComponent('teacher');
+            fixture.detectChanges();
+            component.teacherForm.controls.isIndependentTutor.setValue(true);
+            fixture.detectChanges();
+
+            expect((fixture.nativeElement as HTMLElement).querySelector('app-school-select')).toBeNull();
+        });
+    });
+
+    // ── Issue #277 (madde 2): reddedilen okul talebinden sonra 24 saat bekleme → 429 ──────────────────────
+
+    describe('school request cooldown 429 (issue #277)', () => {
+        function cooldown429(body: object | null, headers?: Record<string, string>): HttpErrorResponse {
+            return new HttpErrorResponse({
+                status: 429,
+                error: body,
+                headers: new HttpHeaders(headers ?? {}),
+                url: 'http://test',
+            });
+        }
+
+        it('submit_Teacher429_ShowsServerMessageAndRemainingTime', async () => {
+            createComponent('teacher');
+            fixture.detectChanges();
+            component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 7 });
+            const message = 'Okul talebiniz reddedildi; yeni talep için beklemeniz gerekiyor.';
+            teacherService.register.mockReturnValue(throwError(() => cooldown429({ message, retryAfterSeconds: 5 * 3600 + 30 * 60, retryAfterUtc: '2030-01-01T00:00:00Z' }, { 'Retry-After': '19800' })));
+
+            component.submit();
+            await vi.runAllTimersAsync();
+            fixture.detectChanges();
+
+            expect(component.isSubmitting()).toBe(false);
+            expect(component.submitError()).toBe(message);
+            expect(component.retryAfter()).toEqual({ hours: 5, minutes: 30 });
+            expect(router.navigate).not.toHaveBeenCalled();
+            const el: HTMLElement = fixture.nativeElement;
+            expect(el.querySelector('[data-testid="submit-error"]')?.textContent).toContain(message);
+            expect(el.querySelector('[data-testid="retry-after"]')?.textContent?.trim()).toBe('Yeni bir okul talebini yaklaşık 5 saat 30 dakika sonra gönderebilirsiniz.');
+        });
+
+        it('submit_Teacher429WithoutBody_UsesRetryAfterHeaderAndFallbackText', async () => {
+            createComponent('teacher');
+            fixture.detectChanges();
+            component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 7 });
+            teacherService.register.mockReturnValue(throwError(() => cooldown429(null, { 'Retry-After': '90' })));
+
+            component.submit();
+            await vi.runAllTimersAsync();
+            fixture.detectChanges();
+
+            expect(component.submitError()).toBeNull();
+            expect(component.retryAfter()).toEqual({ hours: 0, minutes: 2 });
+            const el: HTMLElement = fixture.nativeElement;
+            expect(el.querySelector('[data-testid="submit-error"]')?.textContent).toContain(registerTr.wizard.schoolRequestCooldown);
+            expect(el.querySelector('[data-testid="retry-after"]')?.textContent?.trim()).toBe('Yeni bir okul talebini yaklaşık 2 dakika sonra gönderebilirsiniz.');
+        });
+
+        it('back_After429_ClearsCooldown', () => {
+            createComponent('teacher');
+            component.submitError.set('x');
+            component.retryAfterSeconds.set(60);
+
+            component.back();
+
+            expect(component.retryAfter()).toBeNull();
+            expect(component.submitError()).toBeNull();
+        });
+
+        it('retryAfterSecondsOf_FallsBackToRetryAfterUtc', () => {
+            const now = Date.parse('2030-01-01T00:00:00Z');
+            const err = cooldown429(null);
+            expect(retryAfterSecondsOf(err, { retryAfterUtc: '2030-01-01T01:00:00Z' }, now)).toBe(3600);
+            expect(retryAfterSecondsOf(err, { retryAfterUtc: '2029-12-31T23:00:00Z' }, now)).toBeNull();
+            expect(retryAfterSecondsOf(err, null, now)).toBeNull();
+        });
+
+        it('i18n_CooldownTexts_TrAndEn', () => {
+            expect(registerEn.wizard.retryAfterHours).toContain('{{hours}}');
+            expect(registerEn.wizard.retryAfterMinutes).toContain('{{minutes}}');
+            expect(registerEn.wizard.schoolRequestCooldown).toBeTruthy();
+            expect(registerTr.fields.studentSchoolHint).toContain('yönetici');
+        });
+    });
+    // ── Issue #277 (review): okul metni yazılıp listeden seçilmediyse sessizce null gönderilmez ────────────
+
+    describe('unmatched school text (issue #277 review)', () => {
+        it('submit_AffiliatedTeacherWithUnmatchedText_BlocksAndShowsError', () => {
+            createComponent('teacher');
+            fixture.detectChanges();
+            component.teacherForm.setValue({ isIndependentTutor: false, schoolId: null });
+            component.teacherSchoolUnmatched.set(true);
+
+            component.submit();
+            fixture.detectChanges();
+
+            expect(teacherService.register).not.toHaveBeenCalled();
+            expect(component.teacherSchoolError()).toBe(true);
+            expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="teacher-school-error"]')?.textContent?.trim()).toBe(registerTr.fields.schoolNotPicked);
+        });
+
+        it('submit_AfterPickingSchool_ErrorClearsAndSends', () => {
+            createComponent('teacher');
+            fixture.detectChanges();
+            component.teacherSchoolUnmatched.set(true);
+            component.submit();
+            teacherService.register.mockReturnValue(NEVER);
+
+            // Seçici seçim yapınca `unmatchedChange(false)` yayınlar.
+            component.teacherSchoolUnmatched.set(false);
+            component.teacherForm.controls.schoolId.setValue(7);
+            fixture.detectChanges();
+            expect(component.teacherSchoolError()).toBe(false);
+            expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="teacher-school-error"]')).toBeNull();
+
+            component.submit();
+            expect(teacherService.register).toHaveBeenCalledTimes(1);
+            expect(teacherService.register).toHaveBeenCalledWith({ schoolId: 7, isIndependentTutor: false });
+        });
+
+        it('submit_IndependentTeacherWithStaleUnmatchedText_IsNotBlocked', () => {
+            createComponent('teacher');
+            fixture.detectChanges();
+            component.teacherSchoolUnmatched.set(true);
+            component.teacherForm.controls.isIndependentTutor.setValue(true);
+            teacherService.register.mockReturnValue(NEVER);
+
+            component.submit();
+
+            expect(teacherService.register).toHaveBeenCalledTimes(1);
+
+            expect(teacherService.register).toHaveBeenCalledWith({ schoolId: null, isIndependentTutor: true });
+        });
+
+        it('onTeacherModeChange_ResetsUnmatchedState', () => {
+            createComponent('teacher');
+            component.teacherSchoolUnmatched.set(true);
+            component.teacherSchoolErrorRequested.set(true);
+
+            component.onTeacherModeChange();
+
+            expect(component.teacherSchoolUnmatched()).toBe(false);
+            expect(component.teacherSchoolError()).toBe(false);
+        });
+
+        it('template_TypingUnmatchedTextInSchoolSelect_BlocksTeacherSubmit', () => {
+            createComponent('teacher');
+            fixture.detectChanges();
+            const input = (fixture.nativeElement as HTMLElement).querySelector('[data-testid="school-select-input"]') as HTMLInputElement;
+            input.value = 'Olmayan Okul';
+            input.dispatchEvent(new Event('input'));
+            fixture.detectChanges();
+
+            component.submit();
+            fixture.detectChanges();
+
+            expect(component.teacherSchoolUnmatched()).toBe(true);
+            expect(teacherService.register).not.toHaveBeenCalled();
+            expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="teacher-school-error"]')).not.toBeNull();
+        });
+
+        it('i18n_SchoolNotPicked_TrAndEn', () => {
+            expect(registerTr.fields.schoolNotPicked).toBeTruthy();
+            expect(registerEn.fields.schoolNotPicked).toBeTruthy();
+        });
+    });
+
+    // ── Issue #378: veli adımı başlık/açıklama görünür; olmayan "çocuk ekleme" özelliği vaat edilmez ────────
+
+    describe('parent step (issue #378)', () => {
+        const tokens = {
+            '--main-foreground-color': 'rgb(1, 2, 3)',
+            '--ms-text-strong': 'rgb(10, 20, 30)',
+            '--ms-text-medium': 'rgb(40, 50, 60)',
+        };
+
+        beforeEach(() => {
+            // Karma'da tema class'ı yok, token'lar boş; kart zemini token'ı ile metin token'ları ayrı sabitlenir.
+            Object.entries(tokens).forEach(([name, value]) => document.documentElement.style.setProperty(name, value));
+        });
+
+        afterEach(() => {
+            Object.keys(tokens).forEach((name) => document.documentElement.style.removeProperty(name));
+        });
+
+        it('template_ParentRole_RendersTitleAndHint', () => {
+            createComponent('parent');
+            fixture.detectChanges();
+            const el: HTMLElement = fixture.nativeElement;
+
+            expect(el.querySelector('h2')?.textContent?.trim()).toBe(registerTr.wizard.parentTitle);
+            expect(el.querySelector('.hint')?.textContent?.trim()).toBe(registerTr.wizard.parentHint);
+        });
+
+        it('style_ParentTitleAndHint_UseTextTokensNotCardBackgroundToken', () => {
+            createComponent('parent');
+            fixture.detectChanges();
+            const el: HTMLElement = fixture.nativeElement;
+            const h2Color = getComputedStyle(el.querySelector('h2')!).color;
+            const hintColor = getComputedStyle(el.querySelector('.hint')!).color;
+
+            expect(h2Color).toBe(tokens['--ms-text-strong']);
+            expect(hintColor).toBe(tokens['--ms-text-medium']);
+            expect(hintColor).not.toBe(tokens['--main-foreground-color']);
+        });
+
+        it('i18n_ParentHint_DoesNotPromiseChildLinking_TrAndEn', () => {
+            for (const hint of [registerTr.wizard.parentHint, registerTr.parent.hint]) {
+                expect(hint).toBeTruthy();
+                expect(hint).not.toMatch(/çocuk|profil/i);
+            }
+            for (const hint of [registerEn.wizard.parentHint, registerEn.parent.hint]) {
+                expect(hint).toBeTruthy();
+                expect(hint).not.toMatch(/child|profile/i);
+            }
+            expect(registerEn.wizard.parentTitle).toBeTruthy();
+        });
+    });
+
+    // ── Issue #440: öğrenci adımında veli bilgisi (canlı E2E bulgusu: ilk girişte bu sihirbaz açılır) ──────────────
+
+    describe('student parent info (issue #440)', () => {
+        it('studentStep_RendersParentFields', () => {
+            createComponent('student');
+            fixture.detectChanges();
+            const el: HTMLElement = fixture.nativeElement;
+
+            expect(el.querySelector('[data-testid="parent-section"]')?.textContent).toContain('aktivasyon bağlantısı');
+            expect(el.querySelector('[data-testid="parent-name"]')).not.toBeNull();
+            expect(el.querySelector('[data-testid="parent-email"]')).not.toBeNull();
+            expect(el.querySelector('[data-testid="parent-phone"]')).not.toBeNull();
+            expect(el.querySelector('[data-testid="parent-section"] a')?.getAttribute('href')).toBe('/privacy-policy');
+        });
+
+        it('submit_MissingParentInfo_DoesNotSend', () => {
+            createComponent('student');
+            fixture.detectChanges();
+            component.studentForm.patchValue({ studentNumber: '123', gradeId: 10 });
+
+            component.submit();
+
+            expect(studentService.register).not.toHaveBeenCalled();
+        });
+
+        it('submit_InvalidPhoneOrLinkLikeName_DoesNotSend_ShowsErrors', () => {
+            createComponent('student');
+            fixture.detectChanges();
+            component.studentForm.setValue({
+                studentNumber: '123',
+                schoolId: null,
+                gradeId: 10,
+                parentFullName: 'www.ornek.com',
+                parentEmail: 'ayse@example.com',
+                parentPhone: '0212 123 45 67',
+            });
+
+            component.submit();
+            fixture.detectChanges();
+
+            expect(studentService.register).not.toHaveBeenCalled();
+            const el: HTMLElement = fixture.nativeElement;
+            expect(el.querySelector('[data-testid="parent-phone-invalid"]')).not.toBeNull();
+            expect(el.querySelector('[data-testid="parent-name-invalid"]')?.textContent).toContain('yalnız harf');
+        });
+
+        it('studentWithAdultRole_NoParentFields_PayloadWithoutParent', () => {
+            createComponent('student');
+            authService.getRealmRoles.mockReturnValue(['Teacher']);
+            fixture.detectChanges();
+            studentService.register.mockReturnValue(NEVER);
+
+            expect(fixture.nativeElement.querySelector('[data-testid="parent-section"]')).toBeNull();
+            component.studentForm.patchValue({ studentNumber: '123', gradeId: 10 });
+            component.submit();
+
+            expect(studentService.register).toHaveBeenCalledTimes(1);
+
+            expect(studentService.register).toHaveBeenCalledWith({ studentNumber: '123', schoolId: null, gradeId: 10 });
+        });
+
+        it('submit_Success_FeedsParentStatusStore', async () => {
+            createComponent('student');
+            fixture.detectChanges();
+            component.studentForm.setValue({ studentNumber: '123', schoolId: null, gradeId: 10, ...PARENT_INPUT });
+            studentService.register.mockReturnValue(of({ accessToken: 'token', expiresIn: 3600, profileId: 5, parentStatus: awaitingStatusOf() }));
+
+            component.submit();
+            await vi.runAllTimersAsync();
+
+            expect(TestBed.inject(ParentStatusStore).activationRestricted()).toBe(true);
+            expect(router.navigate).toHaveBeenCalledWith(['/tests']);
+        });
+
+        const errors: {
+            name: string;
+            status: number;
+            body: Record<string, unknown>;
+            expected: string;
+        }[] = [
+            { name: 'EmailNotUsable409', status: 409, body: { errorCode: 'ParentEmailNotUsable', message: 'x' }, expected: 'Bu e-posta veli hesabı olarak kullanılamaz.' },
+            { name: 'InfoRequired400', status: 400, body: { errorCode: 'ParentInfoRequired' }, expected: 'Veli adı, e-postası ve telefonu zorunludur.' },
+            { name: 'InvalidName400', status: 400, body: { errorCode: 'InvalidParentName' }, expected: 'Veli adı yalnız harf içerebilir.' },
+            { name: 'Locked429', status: 429, body: { errorCode: 'ParentEmailChangeLocked', retryAt: '2026-10-15T12:00:00Z' }, expected: 'Çok sayıda farklı e-posta denendi.' },
+            { name: 'Busy409', status: 409, body: { errorCode: 'Busy', message: 'x' }, expected: 'Veliniz şu anda hesabını etkinleştiriyor' },
+            { name: 'Unavailable502', status: 502, body: { errorCode: 'ParentInvitationUnavailable' }, expected: 'Veli daveti şu anda gönderilemedi.' },
+        ];
+
+        for (const scenario of errors) {
+            it(`submit_Parent${scenario.name}_InlineMappedError_StaysOnForm`, async () => {
+                createComponent('student');
+                fixture.detectChanges();
+                component.studentForm.setValue({ studentNumber: '123', schoolId: null, gradeId: 10, ...PARENT_INPUT });
+                studentService.register.mockReturnValue(throwError(() => new HttpErrorResponse({ status: scenario.status, error: scenario.body })));
+
+                component.submit();
+                await vi.runAllTimersAsync();
+                fixture.detectChanges();
+
+                expect(component.submitError()).toContain(scenario.expected);
+                expect(component.retryAfterSeconds()).toBeNull();
+                expect(router.navigate).not.toHaveBeenCalled();
+                expect(fixture.nativeElement.querySelector('[data-testid="submit-error"]')?.textContent).toContain(scenario.expected);
+            });
+        }
+    });
 });

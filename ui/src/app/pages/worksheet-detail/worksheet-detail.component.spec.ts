@@ -1,3 +1,4 @@
+import type { MockedObject } from "vitest";
 import { Component, Input, signal, ChangeDetectionStrategy } from '@angular/core';
 import { By } from '@angular/platform-browser';
 import { ComponentFixture, DeferBlockBehavior, DeferBlockState, TestBed } from '@angular/core/testing';
@@ -33,1019 +34,1069 @@ import worksheetDetailTr from '../../../../public/i18n/worksheet-detail/tr.json'
 
 /** Gercek scope sozlugu yuklenir; anahtar bozulursa test kirilir (issue #183). */
 const translocoTesting = TranslocoTestingModule.forRoot({
-  // Scope sozlugu hem scope yolu (provideTranslocoScope yukleyicisi) hem de kok 'tr' icine
-  // gomulu olarak verilir; sablondaki 'prefix' bicimi ikincisinden cozulur.
-  langs: { tr: { ...rootTr, 'worksheet-detail': worksheetDetailTr }, 'worksheet-detail/tr': worksheetDetailTr },
-  translocoConfig: {
-    availableLangs: [...SUPPORTED_LOCALE_CODES],
-    defaultLang: DEFAULT_LOCALE,
-    // TranslocoTestingModule uygulamanin config'ini almaz; scope oneki kebab kalsin (issue #183).
-    scopes: { keepCasing: true },
-  },
-  preloadLangs: true,
+    // Scope sozlugu hem scope yolu (provideTranslocoScope yukleyicisi) hem de kok 'tr' icine
+    // gomulu olarak verilir; sablondaki 'prefix' bicimi ikincisinden cozulur.
+    langs: { tr: { ...rootTr, 'worksheet-detail': worksheetDetailTr }, 'worksheet-detail/tr': worksheetDetailTr },
+    translocoConfig: {
+        availableLangs: [...SUPPORTED_LOCALE_CODES],
+        defaultLang: DEFAULT_LOCALE,
+        // TranslocoTestingModule uygulamanin config'ini almaz; scope oneki kebab kalsin (issue #183).
+        scopes: { keepCasing: true },
+    },
+    preloadLangs: true,
 });
 
 describe('WorksheetDetailComponent', () => {
-  let component: WorksheetDetailComponent;
-  let testService: jasmine.SpyObj<TestService>;
-  let router: jasmine.SpyObj<Router>;
-  let snackBar: jasmine.SpyObj<MatSnackBar>;
-
-  beforeEach(() => {
-    testService = jasmine.createSpyObj<TestService>('TestService', [
-      'getWorksheetDetail',
-      'copyWorksheet',
-      'startTest',
-      'get',
-    ]);
-    testService.getWorksheetDetail.and.returnValue(of({} as any));
-
-    router = jasmine.createSpyObj<Router>('Router', ['navigate']);
-    snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
-
-    TestBed.configureTestingModule({
-      imports: [WorksheetDetailComponent, translocoTesting],
-      providers: [
-        provideHttpClient(withXhr()),
-        provideHttpClientTesting(),
-        { provide: TestService, useValue: testService },
-        { provide: Router, useValue: router },
-        { provide: MatSnackBar, useValue: snackBar },
-        { provide: MatDialog, useValue: jasmine.createSpyObj<MatDialog>('MatDialog', ['open']) },
-        { provide: AuthService, useValue: { hasRole: () => false, hasRealmRole: () => false, user: signal(null) } },
-        { provide: StudentService, useValue: {} },
-        { provide: GradesService, useValue: { getGrades: () => of([]) } },
-        {
-          provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: convertToParamMap({}), data: {} }, params: of({}), queryParams: of({}) },
-        },
-      ],
-    });
-
-    component = TestBed.createComponent(WorksheetDetailComponent).componentInstance;
-    // ngOnInit'i tetiklemeden — sadece kopyalama akışını izole test ediyoruz.
-    (component as any)['detail'].set({ worksheet: { id: 5 } } as any);
-  });
-
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-
-  describe('study link suggestions (issue #61)', () => {
-    it('currentQuestionHelpers_FollowCurrentIndex', () => {
-      component.results = { testInstanceQuestions: [{ id: 501 }, { id: 502 }] } as unknown as TestInstance;
-      component.questions = [{ status: 'correct' }, { status: 'incorrect' }];
-
-      expect(component['currentTestInstanceQuestionId']()).toBe(501);
-      expect(component['isCurrentQuestionWrong']()).toBeFalse();
-
-      component.questionSelected(1);
-      expect(component['currentTestInstanceQuestionId']()).toBe(502);
-      expect(component['isCurrentQuestionWrong']()).toBeTrue();
-    });
-
-    it('currentQuestionHelpers_NoResults_ReturnNullAndFalse', () => {
-      expect(component['currentTestInstanceQuestionId']()).toBeNull();
-      expect(component['isCurrentQuestionWrong']()).toBeFalse();
-    });
-  });
-
-  describe('StartTest (issue #383)', () => {
-    const startResult = (overrides: Partial<TestStartResult>): TestStartResult => ({
-      success: true,
-      message: '',
-      objectId: 0,
-      notFound: false,
-      forbidden: false,
-      conflict: false,
-      instanceId: 0,
-      startTime: '2026-10-06T10:00:00Z',
-      ...overrides,
-    });
+    let component: WorksheetDetailComponent;
+    let testService: MockedObject<TestService>;
+    let router: MockedObject<Router>;
+    let snackBar: MockedObject<MatSnackBar>;
 
     beforeEach(() => {
-      component.testId = 5;
+        testService = {
+            getWorksheetDetail: vi.fn().mockName("TestService.getWorksheetDetail"),
+            copyWorksheet: vi.fn().mockName("TestService.copyWorksheet"),
+            startTest: vi.fn().mockName("TestService.startTest"),
+            get: vi.fn().mockName("TestService.get")
+        } as unknown as MockedObject<TestService>;
+        testService.getWorksheetDetail.mockReturnValue(of({} as any));
+
+        router = {
+            navigate: vi.fn().mockName("Router.navigate")
+        } as unknown as MockedObject<Router>;
+        snackBar = {
+            open: vi.fn().mockName("MatSnackBar.open")
+        } as unknown as MockedObject<MatSnackBar>;
+
+        TestBed.configureTestingModule({
+            imports: [WorksheetDetailComponent, translocoTesting],
+            providers: [
+                provideHttpClient(withXhr()),
+                provideHttpClientTesting(),
+                { provide: TestService, useValue: testService },
+                { provide: Router, useValue: router },
+                { provide: MatSnackBar, useValue: snackBar },
+                { provide: MatDialog, useValue: {
+                        open: vi.fn().mockName("MatDialog.open")
+                    } },
+                { provide: AuthService, useValue: { hasRole: () => false, hasRealmRole: () => false, user: signal(null) } },
+                { provide: StudentService, useValue: {} },
+                { provide: GradesService, useValue: { getGrades: () => of([]) } },
+                {
+                    provide: ActivatedRoute,
+                    useValue: { snapshot: { paramMap: convertToParamMap({}), data: {} }, params: of({}), queryParams: of({}) },
+                },
+            ],
+        });
+
+        component = TestBed.createComponent(WorksheetDetailComponent).componentInstance;
+        // ngOnInit'i tetiklemeden — sadece kopyalama akışını izole test ediyoruz.
+        (component as any)['detail'].set({ worksheet: { id: 5 } } as any);
     });
 
-    it('StartTest_Success_NavigatesToTestsolveWithWorksheetIdState', () => {
-      testService.startTest.and.returnValue(of(startResult({ instanceId: 91 })));
-
-      component.StartTest(5);
-
-      expect(router.navigate).toHaveBeenCalledWith(['/testsolve', 91], { state: { worksheetId: 5 } });
-      expect(testService.getWorksheetDetail).not.toHaveBeenCalled();
+    it('should create', () => {
+        expect(component).toBeTruthy();
     });
 
-    it('StartTest_AlreadyCompleted_ShowsLocalizedSnackAndReloadsDetailAndWorksheet', () => {
-      const reloaded = { id: 5, instance: { status: 1 } } as unknown as Test;
-      testService.startTest.and.returnValue(
-        of(startResult({ success: false, instanceId: 91, message: 'Bu test zaten tamamlanmış.' }))
-      );
-      testService.get.and.returnValue(of(reloaded));
+    describe('study link suggestions (issue #61)', () => {
+        it('currentQuestionHelpers_FollowCurrentIndex', () => {
+            component.results = { testInstanceQuestions: [{ id: 501 }, { id: 502 }] } as unknown as TestInstance;
+            component.questions = [{ status: 'correct' }, { status: 'incorrect' }];
 
-      component.StartTest(5);
+            expect(component['currentTestInstanceQuestionId']()).toBe(501);
+            expect(component['isCurrentQuestionWrong']()).toBe(false);
 
-      expect(router.navigate).not.toHaveBeenCalled();
-      expect(snackBar.open).toHaveBeenCalledWith('Bu test zaten tamamlanmış.', 'Tamam', jasmine.any(Object));
-      expect(testService.getWorksheetDetail).toHaveBeenCalledWith(5);
-      expect(testService.get).toHaveBeenCalledWith(5);
-      expect(component.exam).toBe(reloaded);
+            component.questionSelected(1);
+            expect(component['currentTestInstanceQuestionId']()).toBe(502);
+            expect(component['isCurrentQuestionWrong']()).toBe(true);
+        });
+
+        it('currentQuestionHelpers_NoResults_ReturnNullAndFalse', () => {
+            expect(component['currentTestInstanceQuestionId']()).toBeNull();
+            expect(component['isCurrentQuestionWrong']()).toBe(false);
+        });
     });
 
-    it('StartTest_FailureWithoutInstance_OnlyShowsSnack', () => {
-      testService.startTest.and.returnValue(of(startResult({ success: false, message: 'Hata' })));
+    describe('StartTest (issue #383)', () => {
+        const startResult = (overrides: Partial<TestStartResult>): TestStartResult => ({
+            success: true,
+            message: '',
+            objectId: 0,
+            notFound: false,
+            forbidden: false,
+            conflict: false,
+            instanceId: 0,
+            startTime: '2026-10-06T10:00:00Z',
+            ...overrides,
+        });
 
-      component.StartTest(5);
+        beforeEach(() => {
+            component.testId = 5;
+        });
 
-      expect(snackBar.open).toHaveBeenCalledWith('Hata', 'Tamam', jasmine.any(Object));
-      expect(testService.getWorksheetDetail).not.toHaveBeenCalled();
-      expect(router.navigate).not.toHaveBeenCalled();
-    });
-  });
+        it('StartTest_Success_NavigatesToTestsolveWithWorksheetIdState', () => {
+            testService.startTest.mockReturnValue(of(startResult({ instanceId: 91 })));
 
-  describe('copyWorksheet', () => {
-    it('copyWorksheet_Success_SnackBarThenNavigateToNewWorksheetAndResetLoading', () => {
-      testService.copyWorksheet.and.returnValue(of({ worksheetId: 777 } as any));
+            component.StartTest(5);
 
-      (component as any)['copyWorksheet']();
+            expect(router.navigate).toHaveBeenCalledWith(['/testsolve', 91], { state: { worksheetId: 5 } });
+            expect(testService.getWorksheetDetail).not.toHaveBeenCalled();
+        });
 
-      expect(testService.copyWorksheet).toHaveBeenCalledWith(5);
-      expect(snackBar.open).toHaveBeenCalled();
-      expect(router.navigate).toHaveBeenCalledWith(['/exam', 777]);
-      expect((component as any)['copyLoading']()).toBeFalse();
-    });
+        it('StartTest_AlreadyCompleted_ShowsLocalizedSnackAndReloadsDetailAndWorksheet', () => {
+            const reloaded = { id: 5, instance: { status: 1 } } as unknown as Test;
+            testService.startTest.mockReturnValue(of(startResult({ success: false, instanceId: 91, message: 'Bu test zaten tamamlanmış.' })));
+            testService.get.mockReturnValue(of(reloaded));
 
-    it('copyWorksheet_WhilePending_SetsCopyLoadingTrueThenFalseOnComplete', () => {
-      const gate = new Subject<any>();
-      testService.copyWorksheet.and.returnValue(gate.asObservable());
+            component.StartTest(5);
 
-      (component as any)['copyWorksheet']();
-      expect((component as any)['copyLoading']()).toBeTrue();
+            expect(router.navigate).not.toHaveBeenCalled();
+            expect(snackBar.open).toHaveBeenCalledWith('Bu test zaten tamamlanmış.', 'Tamam', expect.any(Object));
+            expect(testService.getWorksheetDetail).toHaveBeenCalledWith(5);
+            expect(testService.get).toHaveBeenCalledWith(5);
+            expect(component.exam).toBe(reloaded);
+        });
 
-      gate.next({ worksheetId: 1 });
-      gate.complete();
-      expect((component as any)['copyLoading']()).toBeFalse();
-    });
+        it('StartTest_FailureWithoutInstance_OnlyShowsSnack', () => {
+            testService.startTest.mockReturnValue(of(startResult({ success: false, message: 'Hata' })));
 
-    it('copyWorksheet_Error_ShowsSnackBarAndResetsLoadingWithoutNavigation', () => {
-      testService.copyWorksheet.and.returnValue(throwError(() => ({ error: { message: 'Kopyalama başarısız' } })));
+            component.StartTest(5);
 
-      (component as any)['copyWorksheet']();
-
-      expect(snackBar.open).toHaveBeenCalledWith('Kopyalama başarısız', 'Tamam', jasmine.any(Object));
-      expect(router.navigate).not.toHaveBeenCalled();
-      expect((component as any)['copyLoading']()).toBeFalse();
-    });
-
-    it('copyWorksheet_NoWorksheetId_DoesNothing', () => {
-      (component as any)['detail'].set(null);
-
-      (component as any)['copyWorksheet']();
-
-      expect(testService.copyWorksheet).not.toHaveBeenCalled();
+            expect(snackBar.open).toHaveBeenCalledWith('Hata', 'Tamam', expect.any(Object));
+            expect(testService.getWorksheetDetail).not.toHaveBeenCalled();
+            expect(router.navigate).not.toHaveBeenCalled();
+        });
     });
 
-    it('copyWorksheet_AlreadyLoading_DoesNotCallServiceAgain', () => {
-      (component as any)['copyLoading'].set(true);
+    describe('copyWorksheet', () => {
+        it('copyWorksheet_Success_SnackBarThenNavigateToNewWorksheetAndResetLoading', () => {
+            testService.copyWorksheet.mockReturnValue(of({ worksheetId: 777 } as any));
 
-      (component as any)['copyWorksheet']();
+            (component as any)['copyWorksheet']();
 
-      expect(testService.copyWorksheet).not.toHaveBeenCalled();
+            expect(testService.copyWorksheet).toHaveBeenCalledWith(5);
+            expect(snackBar.open).toHaveBeenCalled();
+            expect(router.navigate).toHaveBeenCalledWith(['/exam', 777]);
+            expect((component as any)['copyLoading']()).toBe(false);
+        });
+
+        it('copyWorksheet_WhilePending_SetsCopyLoadingTrueThenFalseOnComplete', () => {
+            const gate = new Subject<any>();
+            testService.copyWorksheet.mockReturnValue(gate.asObservable());
+
+            (component as any)['copyWorksheet']();
+            expect((component as any)['copyLoading']()).toBe(true);
+
+            gate.next({ worksheetId: 1 });
+            gate.complete();
+            expect((component as any)['copyLoading']()).toBe(false);
+        });
+
+        it('copyWorksheet_Error_ShowsSnackBarAndResetsLoadingWithoutNavigation', () => {
+            testService.copyWorksheet.mockReturnValue(throwError(() => ({ error: { message: 'Kopyalama başarısız' } })));
+
+            (component as any)['copyWorksheet']();
+
+            expect(snackBar.open).toHaveBeenCalledWith('Kopyalama başarısız', 'Tamam', expect.any(Object));
+            expect(router.navigate).not.toHaveBeenCalled();
+            expect((component as any)['copyLoading']()).toBe(false);
+        });
+
+        it('copyWorksheet_NoWorksheetId_DoesNothing', () => {
+            (component as any)['detail'].set(null);
+
+            (component as any)['copyWorksheet']();
+
+            expect(testService.copyWorksheet).not.toHaveBeenCalled();
+        });
+
+        it('copyWorksheet_AlreadyLoading_DoesNotCallServiceAgain', () => {
+            (component as any)['copyLoading'].set(true);
+
+            (component as any)['copyWorksheet']();
+
+            expect(testService.copyWorksheet).not.toHaveBeenCalled();
+        });
     });
-  });
 });
 
 describe('WorksheetDetailComponent reminder=edit deep link', () => {
-  it('ngOnInit_QueryParamReminderEditWithLoadedStudentDetail_StartsReminderEditing', () => {
-    const testService = jasmine.createSpyObj<TestService>('TestService', [
-      'getWorksheetDetail',
-      'copyWorksheet',
-      'get',
-    ]);
-    testService.getWorksheetDetail.and.returnValue(
-      of({
-        worksheet: { id: 12, canEdit: true, canAssign: true },
-        plannedReminder: {
-          scheduledFor: new Date(2026, 9, 1, 9, 0).toISOString(),
-          remindBeforeMinutes: 60,
-          status: 'Pending',
-        },
-        attempts: [],
-      } as any),
-    );
-    testService.get.and.returnValue(of(null as any));
+    it('ngOnInit_QueryParamReminderEditWithLoadedStudentDetail_StartsReminderEditing', () => {
+        const testService = {
+            getWorksheetDetail: vi.fn().mockName("TestService.getWorksheetDetail"),
+            copyWorksheet: vi.fn().mockName("TestService.copyWorksheet"),
+            get: vi.fn().mockName("TestService.get")
+        };
+        testService.getWorksheetDetail.mockReturnValue(of({
+            worksheet: { id: 12, canEdit: true, canAssign: true },
+            plannedReminder: {
+                scheduledFor: new Date(2026, 9, 1, 9, 0).toISOString(),
+                remindBeforeMinutes: 60,
+                status: 'Pending',
+            },
+            attempts: [],
+        } as any));
+        testService.get.mockReturnValue(of(null as any));
 
-    const router = jasmine.createSpyObj<Router>('Router', ['navigate']);
+        const router = {
+            navigate: vi.fn().mockName("Router.navigate")
+        };
 
-    TestBed.configureTestingModule({
-      imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
-      providers: [
-        provideHttpClient(withXhr()),
-        provideHttpClientTesting(),
-        { provide: TestService, useValue: testService },
-        { provide: Router, useValue: router },
-        { provide: MatSnackBar, useValue: jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']) },
-        { provide: MatDialog, useValue: jasmine.createSpyObj<MatDialog>('MatDialog', ['open']) },
-        { provide: AuthService, useValue: { hasRole: () => false, hasRealmRole: () => false, user: signal(null) } },
-        { provide: StudentService, useValue: {} },
-        { provide: GradesService, useValue: { getGrades: () => of([]) } },
-        {
-          provide: ActivatedRoute,
-          useValue: {
-            snapshot: { paramMap: convertToParamMap({}), data: {} },
-            params: of({ testId: '12' }),
-            queryParams: of({ reminder: 'edit' }),
-            paramMap: of(convertToParamMap({ testId: '12' })),
-            queryParamMap: of(convertToParamMap({ reminder: 'edit' })),
-          },
-        },
-      ],
+        TestBed.configureTestingModule({
+            imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
+            providers: [
+                provideHttpClient(withXhr()),
+                provideHttpClientTesting(),
+                { provide: TestService, useValue: testService },
+                { provide: Router, useValue: router },
+                { provide: MatSnackBar, useValue: {
+                        open: vi.fn().mockName("MatSnackBar.open")
+                    } },
+                { provide: MatDialog, useValue: {
+                        open: vi.fn().mockName("MatDialog.open")
+                    } },
+                { provide: AuthService, useValue: { hasRole: () => false, hasRealmRole: () => false, user: signal(null) } },
+                { provide: StudentService, useValue: {} },
+                { provide: GradesService, useValue: { getGrades: () => of([]) } },
+                {
+                    provide: ActivatedRoute,
+                    useValue: {
+                        snapshot: { paramMap: convertToParamMap({}), data: {} },
+                        params: of({ testId: '12' }),
+                        queryParams: of({ reminder: 'edit' }),
+                        paramMap: of(convertToParamMap({ testId: '12' })),
+                        queryParamMap: of(convertToParamMap({ reminder: 'edit' })),
+                    },
+                },
+            ],
+        });
+
+        const component = TestBed.createComponent(WorksheetDetailComponent).componentInstance;
+        component.ngOnInit();
+
+        expect(testService.getWorksheetDetail).toHaveBeenCalledWith(12);
+        expect((component as any)['reminderEditing']()).toBe(true);
+        expect((component as any)['showReminderForm']()).toBe(true);
     });
-
-    const component = TestBed.createComponent(WorksheetDetailComponent).componentInstance;
-    component.ngOnInit();
-
-    expect(testService.getWorksheetDetail).toHaveBeenCalledWith(12);
-    expect((component as any)['reminderEditing']()).toBeTrue();
-    expect((component as any)['showReminderForm']()).toBeTrue();
-  });
 });
 
 /** Issue #377: Testlerim'deki "Ata" `?assign=student` ile gelir; detay hazır olunca atama diyaloğu açılır. */
 describe('WorksheetDetailComponent assign deep link', () => {
-  type Query = Record<string, string>;
+    type Query = Record<string, string>;
 
-  function setup(options: {
-    role: 'Teacher' | 'Student';
-    canAssign?: boolean;
-    query?: Query;
-    gradesError?: boolean;
-    /** Verilirse paramMap/queryParamMap bu subject'lerden gelir (komponentin rotalar arası yeniden kullanımı). */
-    params$?: BehaviorSubject<string>;
-    query$?: BehaviorSubject<Query>;
-    /** testId → `get` yanıtı; verilmezse `{ id }` hemen döner. */
-    examFor?: (id: number) => Observable<Test>;
-  }) {
-    const testService = jasmine.createSpyObj<TestService>('TestService', [
-      'getWorksheetDetail',
-      'get',
-      'getWorksheetAssignmentsForTeacher',
-    ]);
-    testService.getWorksheetDetail.and.callFake((id: number) =>
-      of({
-        worksheet: { id, name: 'Deneme', canEdit: true, canAssign: options.canAssign ?? true },
-        attempts: [],
-        similarWorksheets: [],
-      } as unknown as WorksheetDetail),
-    );
-    testService.get.and.callFake((id: number) => options.examFor?.(id) ?? of({ id, gradeId: 5 } as Test));
-    testService.getWorksheetAssignmentsForTeacher.and.returnValue(NEVER);
+    function setup(options: {
+        role: 'Teacher' | 'Student';
+        canAssign?: boolean;
+        query?: Query;
+        gradesError?: boolean;
+        /** Verilirse paramMap/queryParamMap bu subject'lerden gelir (komponentin rotalar arası yeniden kullanımı). */
+        params$?: BehaviorSubject<string>;
+        query$?: BehaviorSubject<Query>;
+        /** testId → `get` yanıtı; verilmezse `{ id }` hemen döner. */
+        examFor?: (id: number) => Observable<Test>;
+    }) {
+        const testService = {
+            getWorksheetDetail: vi.fn().mockName("TestService.getWorksheetDetail"),
+            get: vi.fn().mockName("TestService.get"),
+            getWorksheetAssignmentsForTeacher: vi.fn().mockName("TestService.getWorksheetAssignmentsForTeacher")
+        };
+        testService.getWorksheetDetail.mockImplementation((id: number) => of({
+            worksheet: { id, name: 'Deneme', canEdit: true, canAssign: options.canAssign ?? true },
+            attempts: [],
+            similarWorksheets: [],
+        } as unknown as WorksheetDetail));
+        testService.get.mockImplementation((id: number) => options.examFor?.(id) ?? of({ id, gradeId: 5 } as Test));
+        testService.getWorksheetAssignmentsForTeacher.mockReturnValue(NEVER);
 
-    const router = jasmine.createSpyObj<Router>('Router', ['navigate']);
-    router.navigate.and.returnValue(Promise.resolve(true));
-    const dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
-    dialog.open.and.returnValue({ afterClosed: () => of(undefined) } as MatDialogRef<unknown>);
-    const snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
-    const grades = [{ id: 5, name: '5. Sınıf' }];
-    const query = options.query ?? {};
-    const route = {
-      snapshot: { paramMap: convertToParamMap({}), data: {} },
-      params: of({}),
-      queryParams: of(query),
-      paramMap: options.params$
-        ? options.params$.pipe(map((testId) => convertToParamMap({ testId })))
-        : of(convertToParamMap({ testId: '12' })),
-      queryParamMap: options.query$
-        ? options.query$.pipe(map((q) => convertToParamMap(q)))
-        : of(convertToParamMap(query)),
-    };
+        const router = {
+            navigate: vi.fn().mockName("Router.navigate")
+        };
+        router.navigate.mockResolvedValue(true);
+        const dialog = {
+            open: vi.fn().mockName("MatDialog.open")
+        } as unknown as MockedObject<MatDialog>;
+        dialog.open.mockReturnValue({ afterClosed: () => of(undefined) } as MatDialogRef<unknown>);
+        const snackBar = {
+            open: vi.fn().mockName("MatSnackBar.open")
+        };
+        const grades = [{ id: 5, name: '5. Sınıf' }];
+        const query = options.query ?? {};
+        const route = {
+            snapshot: { paramMap: convertToParamMap({}), data: {} },
+            params: of({}),
+            queryParams: of(query),
+            paramMap: options.params$
+                ? options.params$.pipe(map((testId) => convertToParamMap({ testId })))
+                : of(convertToParamMap({ testId: '12' })),
+            queryParamMap: options.query$
+                ? options.query$.pipe(map((q) => convertToParamMap(q)))
+                : of(convertToParamMap(query)),
+        };
 
-    TestBed.configureTestingModule({
-      imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
-      providers: [
-        provideHttpClient(withXhr()),
-        provideHttpClientTesting(),
-        { provide: TestService, useValue: testService },
-        { provide: Router, useValue: router },
-        { provide: MatSnackBar, useValue: snackBar },
-        {
-          provide: AuthService,
-          useValue: { hasRole: (r: string) => r === options.role, hasRealmRole: () => false, user: signal(null) },
-        },
-        { provide: StudentService, useValue: { getLookup: () => of([]) } },
-        {
-          provide: GradesService,
-          useValue: { getGrades: () => (options.gradesError ? throwError(() => new Error('boom')) : of(grades)) },
-        },
-        { provide: ActivatedRoute, useValue: route },
-      ],
-    });
-    TestBed.overrideComponent(WorksheetDetailComponent, {
-      add: { providers: [{ provide: MatDialog, useValue: dialog }, { provide: MatSnackBar, useValue: snackBar }] },
-    });
+        TestBed.configureTestingModule({
+            imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
+            providers: [
+                provideHttpClient(withXhr()),
+                provideHttpClientTesting(),
+                { provide: TestService, useValue: testService },
+                { provide: Router, useValue: router },
+                { provide: MatSnackBar, useValue: snackBar },
+                {
+                    provide: AuthService,
+                    useValue: { hasRole: (r: string) => r === options.role, hasRealmRole: () => false, user: signal(null) },
+                },
+                { provide: StudentService, useValue: { getLookup: () => of([]) } },
+                {
+                    provide: GradesService,
+                    useValue: { getGrades: () => (options.gradesError ? throwError(() => new Error('boom')) : of(grades)) },
+                },
+                { provide: ActivatedRoute, useValue: route },
+            ],
+        });
+        TestBed.overrideComponent(WorksheetDetailComponent, {
+            add: { providers: [{ provide: MatDialog, useValue: dialog }, { provide: MatSnackBar, useValue: snackBar }] },
+        });
 
-    const component = TestBed.createComponent(WorksheetDetailComponent).componentInstance;
-    return { component, dialog, router, grades, snackBar, route };
-  }
+        const component = TestBed.createComponent(WorksheetDetailComponent).componentInstance;
+        return { component, dialog, router, grades, snackBar, route };
+    }
 
-  /** paramMap aboneliği `await lastValueFrom(get)` içerir; mikro görevler boşalsın. */
-  const settle = () => new Promise<void>((resolve) => setTimeout(resolve));
-  const dialogData = (dialog: jasmine.SpyObj<MatDialog>) =>
-    (dialog.open.calls.mostRecent().args[1] as { data: WorksheetAssignmentDialogData }).data;
+    /** paramMap aboneliği `await lastValueFrom(get)` içerir; mikro görevler boşalsın. */
+    const settle = () => new Promise<void>((resolve) => setTimeout(resolve));
+    const dialogData = (dialog: MockedObject<MatDialog>) => (vi.mocked(dialog.open).mock.lastCall![1] as {
+        data: WorksheetAssignmentDialogData;
+    }).data;
 
-  it('ngOnInit_AssignStudentQueryAndCanAssign_OpensAssignmentDialogWithStudentScopeAndClearsParam', async () => {
-    const { component, dialog, router, grades, route } = setup({ role: 'Teacher', query: { assign: 'student' } });
+    it('ngOnInit_AssignStudentQueryAndCanAssign_OpensAssignmentDialogWithStudentScopeAndClearsParam', async () => {
+        const { component, dialog, router, grades, route } = setup({ role: 'Teacher', query: { assign: 'student' } });
 
-    component.ngOnInit();
-    await settle();
+        component.ngOnInit();
+        await settle();
 
-    expect(dialog.open).toHaveBeenCalledTimes(1);
-    const data = dialogData(dialog);
-    expect(data.worksheetId).toBe(12);
-    expect(data.scope).toBe('student');
-    expect(data.grades).toEqual(grades as never);
-    expect(router.navigate).toHaveBeenCalledWith([], {
-      relativeTo: route as unknown as ActivatedRoute,
-      queryParams: { assign: null },
-      queryParamsHandling: 'merge',
-      replaceUrl: true,
-    });
-  });
-
-  it('ngOnInit_AssignWithOtherQueryParams_ClearsOnlyAssignAndMergesTheRest', async () => {
-    const { component, router } = setup({
-      role: 'Teacher',
-      query: { assign: 'student', commentId: '7', tab: 'x' },
-    });
-
-    component.ngOnInit();
-    await settle();
-
-    const clearCalls = router.navigate.calls.all().filter((c) => {
-      const extras = c.args[1] as { queryParams?: Record<string, unknown> } | undefined;
-      return extras?.queryParams !== undefined && 'assign' in extras.queryParams;
-    });
-    expect(clearCalls.length).toBe(1);
-    const extras = clearCalls[0].args[1] as { queryParams: Record<string, unknown>; queryParamsHandling: string };
-    // Yalnız `assign` düşürülür; 'merge' sayesinde commentId/tab URL'de kalır.
-    expect(extras.queryParams).toEqual({ assign: null });
-    expect(extras.queryParamsHandling).toBe('merge');
-  });
-
-  it('ngOnInit_AssignQueryButCannotAssign_DoesNotOpenDialogAndShowsInfoSnackbar', async () => {
-    const { component, dialog, snackBar } = setup({ role: 'Teacher', query: { assign: 'student' }, canAssign: false });
-
-    component.ngOnInit();
-    await settle();
-
-    expect(dialog.open).not.toHaveBeenCalled();
-    expect(snackBar.open).toHaveBeenCalledWith(
-      worksheetDetailTr.snackbar.assignNotAllowed,
-      worksheetDetailTr.snackbar.dismiss,
-      jasmine.any(Object),
-    );
-  });
-
-  it('ngOnInit_GradesRequestFails_StillOpensDialogWithEmptyGrades', async () => {
-    const { component, dialog } = setup({ role: 'Teacher', query: { assign: 'student' }, gradesError: true });
-
-    component.ngOnInit();
-    await settle();
-
-    expect(dialog.open).toHaveBeenCalledTimes(1);
-    expect(dialogData(dialog).grades).toEqual([]);
-    expect(dialogData(dialog).scope).toBe('student');
-  });
-
-  it('ngOnInit_ReusedForAnotherWorksheet_OpensDialogOnlyForCurrentWorksheetOnceItsExamLoads', async () => {
-    const params$ = new BehaviorSubject<string>('12');
-    const query$ = new BehaviorSubject<Query>({});
-    const exam34 = new Subject<Test>();
-    const { component, dialog } = setup({
-      role: 'Teacher',
-      params$,
-      query$,
-      examFor: (id) => (id === 34 ? exam34.asObservable() : of({ id, gradeId: 5 } as Test)),
+        expect(dialog.open).toHaveBeenCalledTimes(1);
+        const data = dialogData(dialog);
+        expect(data.worksheetId).toBe(12);
+        expect(data.scope).toBe('student');
+        expect(data.grades).toEqual(grades as never);
+        expect(router.navigate).toHaveBeenCalledWith([], {
+            relativeTo: route as unknown as ActivatedRoute,
+            queryParams: { assign: null },
+            queryParamsHandling: 'merge',
+            replaceUrl: true,
+        });
     });
 
-    component.ngOnInit();
-    await settle();
-    expect(dialog.open).not.toHaveBeenCalled();
+    it('ngOnInit_AssignWithOtherQueryParams_ClearsOnlyAssignAndMergesTheRest', async () => {
+        const { component, router } = setup({
+            role: 'Teacher',
+            query: { assign: 'student', commentId: '7', tab: 'x' },
+        });
 
-    // /test/12 → /test/34?assign=student: 34'ün sınavı henüz gelmedi; önceki (12) sınavla açılmamalı.
-    params$.next('34');
-    query$.next({ assign: 'student' });
-    await settle();
-    expect(dialog.open).not.toHaveBeenCalled();
+        component.ngOnInit();
+        await settle();
 
-    exam34.next({ id: 34, gradeId: 5 } as Test);
-    exam34.complete();
-    await settle();
+        const clearCalls = vi.mocked(router.navigate).mock.calls.filter((c) => {
+            const extras = c[1] as {
+                queryParams?: Record<string, unknown>;
+            } | undefined;
+            return extras?.queryParams !== undefined && 'assign' in extras.queryParams;
+        });
+        expect(clearCalls.length).toBe(1);
+        const extras = clearCalls[0][1] as {
+            queryParams: Record<string, unknown>;
+            queryParamsHandling: string;
+        };
+        // Yalnız `assign` düşürülür; 'merge' sayesinde commentId/tab URL'de kalır.
+        expect(extras.queryParams).toEqual({ assign: null });
+        expect(extras.queryParamsHandling).toBe('merge');
+    });
 
-    expect(dialog.open).toHaveBeenCalledTimes(1);
-    expect(dialogData(dialog).worksheetId).toBe(34);
-  });
+    it('ngOnInit_AssignQueryButCannotAssign_DoesNotOpenDialogAndShowsInfoSnackbar', async () => {
+        const { component, dialog, snackBar } = setup({ role: 'Teacher', query: { assign: 'student' }, canAssign: false });
 
-  it('ngOnInit_AssignQueryForStudent_DoesNotOpenDialog', async () => {
-    const { component, dialog, snackBar } = setup({ role: 'Student', query: { assign: 'student' } });
+        component.ngOnInit();
+        await settle();
 
-    component.ngOnInit();
-    await settle();
+        expect(dialog.open).not.toHaveBeenCalled();
+        expect(snackBar.open).toHaveBeenCalledWith(worksheetDetailTr.snackbar.assignNotAllowed, worksheetDetailTr.snackbar.dismiss, expect.any(Object));
+    });
 
-    expect(dialog.open).not.toHaveBeenCalled();
-    expect(snackBar.open).not.toHaveBeenCalled();
-  });
+    it('ngOnInit_GradesRequestFails_StillOpensDialogWithEmptyGrades', async () => {
+        const { component, dialog } = setup({ role: 'Teacher', query: { assign: 'student' }, gradesError: true });
 
-  it('ngOnInit_NoAssignQuery_DoesNotOpenDialog', async () => {
-    const { component, dialog } = setup({ role: 'Teacher' });
+        component.ngOnInit();
+        await settle();
 
-    component.ngOnInit();
-    await settle();
+        expect(dialog.open).toHaveBeenCalledTimes(1);
+        expect(dialogData(dialog).grades).toEqual([]);
+        expect(dialogData(dialog).scope).toBe('student');
+    });
 
-    expect(dialog.open).not.toHaveBeenCalled();
-  });
+    it('ngOnInit_ReusedForAnotherWorksheet_OpensDialogOnlyForCurrentWorksheetOnceItsExamLoads', async () => {
+        const params$ = new BehaviorSubject<string>('12');
+        const query$ = new BehaviorSubject<Query>({});
+        const exam34 = new Subject<Test>();
+        const { component, dialog } = setup({
+            role: 'Teacher',
+            params$,
+            query$,
+            examFor: (id) => (id === 34 ? exam34.asObservable() : of({ id, gradeId: 5 } as Test)),
+        });
 
-  it('ngOnInit_UnknownAssignValue_IsIgnored', async () => {
-    const { component, dialog } = setup({ role: 'Teacher', query: { assign: 'everyone' } });
+        component.ngOnInit();
+        await settle();
+        expect(dialog.open).not.toHaveBeenCalled();
 
-    component.ngOnInit();
-    await settle();
+        // /test/12 → /test/34?assign=student: 34'ün sınavı henüz gelmedi; önceki (12) sınavla açılmamalı.
+        params$.next('34');
+        query$.next({ assign: 'student' });
+        await settle();
+        expect(dialog.open).not.toHaveBeenCalled();
 
-    expect(dialog.open).not.toHaveBeenCalled();
-  });
+        exam34.next({ id: 34, gradeId: 5 } as Test);
+        exam34.complete();
+        await settle();
+
+        expect(dialog.open).toHaveBeenCalledTimes(1);
+        expect(dialogData(dialog).worksheetId).toBe(34);
+    });
+
+    it('ngOnInit_AssignQueryForStudent_DoesNotOpenDialog', async () => {
+        const { component, dialog, snackBar } = setup({ role: 'Student', query: { assign: 'student' } });
+
+        component.ngOnInit();
+        await settle();
+
+        expect(dialog.open).not.toHaveBeenCalled();
+        expect(snackBar.open).not.toHaveBeenCalled();
+    });
+
+    it('ngOnInit_NoAssignQuery_DoesNotOpenDialog', async () => {
+        const { component, dialog } = setup({ role: 'Teacher' });
+
+        component.ngOnInit();
+        await settle();
+
+        expect(dialog.open).not.toHaveBeenCalled();
+    });
+
+    it('ngOnInit_UnknownAssignValue_IsIgnored', async () => {
+        const { component, dialog } = setup({ role: 'Teacher', query: { assign: 'everyone' } });
+
+        component.ngOnInit();
+        await settle();
+
+        expect(dialog.open).not.toHaveBeenCalled();
+    });
 });
 
 /** Issue #222: bağımsız (okulsuz) öğretmen sınıf bazlı atama yapamaz. */
 describe('WorksheetDetailComponent independent tutor assignment', () => {
-  const teacherProfile = (schoolId: number | null): UserProfile => ({
-    email: 't@x.com',
-    avatar: '',
-    fullName: 'Öğretmen',
-    id: 1,
-    keycloakId: 'kc-1',
-    profileId: 1,
-    role: 'Teacher',
-    schoolId,
-  });
-
-  function setup(options: {
-    role: 'Teacher' | 'Admin';
-    user: UserProfile | null;
-    realmAdmin?: boolean;
-    studentService?: Partial<StudentService>;
-  }) {
-    const dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
-    dialog.open.and.returnValue({ afterClosed: () => of(undefined) } as MatDialogRef<unknown>);
-
-    TestBed.configureTestingModule({
-      imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
-      providers: [
-        provideHttpClient(withXhr()),
-        provideHttpClientTesting(),
-        { provide: TestService, useValue: jasmine.createSpyObj<TestService>('TestService', ['getWorksheetDetail']) },
-        { provide: Router, useValue: jasmine.createSpyObj<Router>('Router', ['navigate']) },
-        { provide: MatSnackBar, useValue: jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']) },
-        { provide: AuthService, useValue: { hasRole: (r: string) => r === options.role, hasRealmRole: (r: string) => options.realmAdmin === true && r === 'Admin', user: signal(options.user) } },
-        { provide: StudentService, useValue: options.studentService ?? {} },
-        { provide: GradesService, useValue: { getGrades: () => of([]) } },
-        {
-          provide: ActivatedRoute,
-          useValue: {
-            snapshot: { paramMap: convertToParamMap({}), data: {} },
-            params: of({}),
-            queryParams: of({}),
-            paramMap: of(convertToParamMap({})),
-            queryParamMap: of(convertToParamMap({})),
-          },
-        },
-      ],
+    const teacherProfile = (schoolId: number | null): UserProfile => ({
+        email: 't@x.com',
+        avatar: '',
+        fullName: 'Öğretmen',
+        id: 1,
+        keycloakId: 'kc-1',
+        profileId: 1,
+        role: 'Teacher',
+        schoolId,
     });
-    // Komponent MatDialogModule import ettiği için spy, komponent seviyesinde de verilir.
-    TestBed.overrideComponent(WorksheetDetailComponent, { add: { providers: [{ provide: MatDialog, useValue: dialog }] } });
 
-    const fixture = TestBed.createComponent(WorksheetDetailComponent);
-    const component = fixture.componentInstance;
-    component.exam = { id: 12 } as Test;
-    component['detail'].set({
-      worksheet: { id: 12, name: 'Deneme', canEdit: true, canAssign: true },
-      attempts: [],
-      similarWorksheets: [],
-    } as unknown as WorksheetDetail);
-    // Uygulama rolü Admin iken sayfa öğretmen görünümünü (ve atama butonlarını) hiç render etmez;
-    // o durumda yalnızca computed doğrulanır.
-    if (options.role === 'Teacher') {
-      fixture.detectChanges();
+    function setup(options: {
+        role: 'Teacher' | 'Admin';
+        user: UserProfile | null;
+        realmAdmin?: boolean;
+        studentService?: Partial<StudentService>;
+    }) {
+        const dialog = {
+            open: vi.fn().mockName("MatDialog.open")
+        } as unknown as MockedObject<MatDialog>;
+        dialog.open.mockReturnValue({ afterClosed: () => of(undefined) } as MatDialogRef<unknown>);
+
+        TestBed.configureTestingModule({
+            imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
+            providers: [
+                provideHttpClient(withXhr()),
+                provideHttpClientTesting(),
+                { provide: TestService, useValue: {
+                        getWorksheetDetail: vi.fn().mockName("TestService.getWorksheetDetail")
+                    } },
+                { provide: Router, useValue: {
+                        navigate: vi.fn().mockName("Router.navigate")
+                    } },
+                { provide: MatSnackBar, useValue: {
+                        open: vi.fn().mockName("MatSnackBar.open")
+                    } },
+                { provide: AuthService, useValue: { hasRole: (r: string) => r === options.role, hasRealmRole: (r: string) => options.realmAdmin === true && r === 'Admin', user: signal(options.user) } },
+                { provide: StudentService, useValue: options.studentService ?? {} },
+                { provide: GradesService, useValue: { getGrades: () => of([]) } },
+                {
+                    provide: ActivatedRoute,
+                    useValue: {
+                        snapshot: { paramMap: convertToParamMap({}), data: {} },
+                        params: of({}),
+                        queryParams: of({}),
+                        paramMap: of(convertToParamMap({})),
+                        queryParamMap: of(convertToParamMap({})),
+                    },
+                },
+            ],
+        });
+        // Komponent MatDialogModule import ettiği için spy, komponent seviyesinde de verilir.
+        TestBed.overrideComponent(WorksheetDetailComponent, { add: { providers: [{ provide: MatDialog, useValue: dialog }] } });
+
+        const fixture = TestBed.createComponent(WorksheetDetailComponent);
+        const component = fixture.componentInstance;
+        component.exam = { id: 12 } as Test;
+        component['detail'].set({
+            worksheet: { id: 12, name: 'Deneme', canEdit: true, canAssign: true },
+            attempts: [],
+            similarWorksheets: [],
+        } as unknown as WorksheetDetail);
+        // Uygulama rolü Admin iken sayfa öğretmen görünümünü (ve atama butonlarını) hiç render etmez;
+        // o durumda yalnızca computed doğrulanır.
+        if (options.role === 'Teacher') {
+            fixture.detectChanges();
+        }
+        return { fixture, component, dialog };
     }
-    return { fixture, component, dialog };
-  }
 
-  const buttons = (fixture: { nativeElement: HTMLElement }, id: string) =>
-    fixture.nativeElement.querySelectorAll(`[data-testid="${id}"]`);
+    const buttons = (fixture: {
+        nativeElement: HTMLElement;
+    }, id: string) => fixture.nativeElement.querySelectorAll(`[data-testid="${id}"]`);
 
-  it('bağımsız öğretmende "Sınıfa ata" butonları render edilmez ve dialog isIndependentTutor=true alır', () => {
-    const { fixture, dialog } = setup({ role: 'Teacher', user: teacherProfile(null) });
+    it('bağımsız öğretmende "Sınıfa ata" butonları render edilmez ve dialog isIndependentTutor=true alır', () => {
+        const { fixture, dialog } = setup({ role: 'Teacher', user: teacherProfile(null) });
 
-    expect(buttons(fixture, 'assign-grade-btn').length).toBe(0);
-    const studentButtons = buttons(fixture, 'assign-student-btn');
-    expect(studentButtons.length).toBeGreaterThan(0);
+        expect(buttons(fixture, 'assign-grade-btn').length).toBe(0);
+        const studentButtons = buttons(fixture, 'assign-student-btn');
+        expect(studentButtons.length).toBeGreaterThan(0);
 
-    (studentButtons[0] as HTMLButtonElement).click();
+        (studentButtons[0] as HTMLButtonElement).click();
 
-    expect(dialog.open).toHaveBeenCalled();
-    const config = dialog.open.calls.mostRecent().args[1] as { data: WorksheetAssignmentDialogData };
-    expect(config.data.isIndependentTutor).toBeTrue();
-  });
-
-  it('okullu öğretmende "Sınıfa ata" butonları görünür', () => {
-    const { fixture, component } = setup({ role: 'Teacher', user: teacherProfile(3) });
-
-    expect(component['isIndependentTutor']()).toBeFalse();
-    expect(buttons(fixture, 'assign-grade-btn').length).toBeGreaterThan(0);
-  });
-
-  it('uygulama rolü Admin olan okulsuz kullanıcı bağımsız sayılmaz', () => {
-    const { component } = setup({ role: 'Admin', user: { ...teacherProfile(null), role: 'Admin' } });
-
-    expect(component['isIndependentTutor']()).toBeFalse();
-  });
-
-  it('realm rolü Admin olan okulsuz öğretmen hesabında "Sınıfa ata" butonları görünür', () => {
-    const { fixture, component } = setup({ role: 'Teacher', user: teacherProfile(null), realmAdmin: true });
-
-    expect(component['isIndependentTutor']()).toBeFalse();
-    expect(buttons(fixture, 'assign-grade-btn').length).toBeGreaterThan(0);
-  });
-
-  /** Issue #223: lookup durumu dialog'a canlı sinyal olarak geçer. */
-  it('lookup başarılıysa durum loaded olur ve dialog canlı sinyalleri alır', () => {
-    const lookup = new Subject<StudentLookup[]>();
-    const { fixture, component, dialog } = setup({
-      role: 'Teacher',
-      user: teacherProfile(null),
-      studentService: { getLookup: () => lookup.asObservable() },
+        expect(dialog.open).toHaveBeenCalled();
+        const config = vi.mocked(dialog.open).mock.lastCall![1] as {
+            data: WorksheetAssignmentDialogData;
+        };
+        expect(config.data.isIndependentTutor).toBe(true);
     });
 
-    component['loadStudentLookup']();
-    (buttons(fixture, 'assign-student-btn')[0] as HTMLButtonElement).click();
-    const data = (dialog.open.calls.mostRecent().args[1] as { data: WorksheetAssignmentDialogData }).data;
-    expect(data.studentsStatus!()).toBe('loading');
-    expect(data.students()).toEqual([]);
+    it('okullu öğretmende "Sınıfa ata" butonları görünür', () => {
+        const { fixture, component } = setup({ role: 'Teacher', user: teacherProfile(3) });
 
-    const ada: StudentLookup = { id: 11, userId: 21, studentNumber: '101', fullName: 'Ada', schoolName: 'Okul', gradeId: 1 };
-    lookup.next([ada]);
-
-    expect(component['studentLookupStatus']()).toBe('loaded');
-    expect(data.studentsStatus!()).toBe('loaded');
-    expect(data.students()).toEqual([ada]);
-  });
-
-  it('lookup hata verirse durum error olur ve dialog bunu görür', () => {
-    const lookup = new Subject<StudentLookup[]>();
-    const { fixture, component, dialog } = setup({
-      role: 'Teacher',
-      user: teacherProfile(3),
-      studentService: { getLookup: () => lookup.asObservable() },
+        expect(component['isIndependentTutor']()).toBe(false);
+        expect(buttons(fixture, 'assign-grade-btn').length).toBeGreaterThan(0);
     });
 
-    component['loadStudentLookup']();
-    (buttons(fixture, 'assign-student-btn')[0] as HTMLButtonElement).click();
-    const data = (dialog.open.calls.mostRecent().args[1] as { data: WorksheetAssignmentDialogData }).data;
+    it('uygulama rolü Admin olan okulsuz kullanıcı bağımsız sayılmaz', () => {
+        const { component } = setup({ role: 'Admin', user: { ...teacherProfile(null), role: 'Admin' } });
 
-    lookup.error(new Error('boom'));
+        expect(component['isIndependentTutor']()).toBe(false);
+    });
 
-    expect(component['studentLookupStatus']()).toBe('error');
-    expect(data.studentsStatus!()).toBe('error');
-    expect(data.students()).toEqual([]);
-  });
+    it('realm rolü Admin olan okulsuz öğretmen hesabında "Sınıfa ata" butonları görünür', () => {
+        const { fixture, component } = setup({ role: 'Teacher', user: teacherProfile(null), realmAdmin: true });
 
-  it('profil henüz yokken (user null) "Sınıfa ata" butonları görünür', () => {
-    const { fixture, component } = setup({ role: 'Teacher', user: null });
+        expect(component['isIndependentTutor']()).toBe(false);
+        expect(buttons(fixture, 'assign-grade-btn').length).toBeGreaterThan(0);
+    });
 
-    expect(component['isIndependentTutor']()).toBeFalse();
-    expect(buttons(fixture, 'assign-grade-btn').length).toBeGreaterThan(0);
-  });
+    /** Issue #223: lookup durumu dialog'a canlı sinyal olarak geçer. */
+    it('lookup başarılıysa durum loaded olur ve dialog canlı sinyalleri alır', () => {
+        const lookup = new Subject<StudentLookup[]>();
+        const { fixture, component, dialog } = setup({
+            role: 'Teacher',
+            user: teacherProfile(null),
+            studentService: { getLookup: () => lookup.asObservable() },
+        });
+
+        component['loadStudentLookup']();
+        (buttons(fixture, 'assign-student-btn')[0] as HTMLButtonElement).click();
+        const data = (vi.mocked(dialog.open).mock.lastCall![1] as {
+            data: WorksheetAssignmentDialogData;
+        }).data;
+        expect(data.studentsStatus!()).toBe('loading');
+        expect(data.students()).toEqual([]);
+
+        const ada: StudentLookup = { id: 11, userId: 21, studentNumber: '101', fullName: 'Ada', schoolName: 'Okul', gradeId: 1 };
+        lookup.next([ada]);
+
+        expect(component['studentLookupStatus']()).toBe('loaded');
+        expect(data.studentsStatus!()).toBe('loaded');
+        expect(data.students()).toEqual([ada]);
+    });
+
+    it('lookup hata verirse durum error olur ve dialog bunu görür', () => {
+        const lookup = new Subject<StudentLookup[]>();
+        const { fixture, component, dialog } = setup({
+            role: 'Teacher',
+            user: teacherProfile(3),
+            studentService: { getLookup: () => lookup.asObservable() },
+        });
+
+        component['loadStudentLookup']();
+        (buttons(fixture, 'assign-student-btn')[0] as HTMLButtonElement).click();
+        const data = (vi.mocked(dialog.open).mock.lastCall![1] as {
+            data: WorksheetAssignmentDialogData;
+        }).data;
+
+        lookup.error(new Error('boom'));
+
+        expect(component['studentLookupStatus']()).toBe('error');
+        expect(data.studentsStatus!()).toBe('error');
+        expect(data.students()).toEqual([]);
+    });
+
+    it('profil henüz yokken (user null) "Sınıfa ata" butonları görünür', () => {
+        const { fixture, component } = setup({ role: 'Teacher', user: null });
+
+        expect(component['isIndependentTutor']()).toBe(false);
+        expect(buttons(fixture, 'assign-grade-btn').length).toBeGreaterThan(0);
+    });
 });
 
 /** Soru görüntüleyici stub'ı — thread yerleşimi testinde canvas render'ı gereksiz. */
 @Component({ selector: 'app-question-canvas-view', standalone: true, changeDetection: ChangeDetectionStrategy.Eager,
- template: '' })
+    template: '' })
 class QuestionCanvasViewStubComponent {
-  @Input() questionRegion: unknown;
-  @Input() selectedChoice: unknown;
-  @Input() correctChoice: unknown;
-  @Input() mode: unknown;
+    @Input()
+    questionRegion: unknown;
+    @Input()
+    selectedChoice: unknown;
+    @Input()
+    correctChoice: unknown;
+    @Input()
+    mode: unknown;
 }
 
 @Component({ selector: 'app-study-link-suggestions', standalone: true, changeDetection: ChangeDetectionStrategy.Eager,
- template: '' })
+    template: '' })
 class StudyLinkSuggestionsStubComponent {
-  @Input() testInstanceId: unknown;
-  @Input() questionId: unknown;
-  @Input() testInstanceQuestionId: unknown;
-  @Input() answeredWrong: unknown;
+    @Input()
+    testInstanceId: unknown;
+    @Input()
+    questionId: unknown;
+    @Input()
+    testInstanceQuestionId: unknown;
+    @Input()
+    answeredWrong: unknown;
 }
 
 /** Issue #105: yorum/soru thread'lerinin yerleşimi ve bildirim derin linki (commentId vurgusu). */
 describe('WorksheetDetailComponent comment threads', () => {
-  interface SetupOptions {
-    role: 'Student' | 'Teacher';
-    query?: Record<string, string>;
-    completed?: boolean;
-    commentsEnabled?: boolean;
-  }
-
-  async function setup(options: SetupOptions & { renderDeferred?: boolean }) {
-    TestBed.configureTestingModule({
-      // Thread'ler @defer içinde: testte açıkça tetiklenir.
-      deferBlockBehavior: DeferBlockBehavior.Manual,
-      imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
-      providers: [
-        provideHttpClient(withXhr()),
-        provideHttpClientTesting(),
-        provideNativeDateAdapter(),
-        { provide: TestService, useValue: jasmine.createSpyObj<TestService>('TestService', ['getWorksheetDetail']) },
-        { provide: Router, useValue: jasmine.createSpyObj<Router>('Router', ['navigate']) },
-        { provide: MatSnackBar, useValue: jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']) },
-        { provide: MatDialog, useValue: jasmine.createSpyObj<MatDialog>('MatDialog', ['open']) },
-        {
-          provide: AuthService,
-          useValue: { hasRole: (r: string) => r === options.role, hasRealmRole: () => false, user: signal(null) },
-        },
-        { provide: StudentService, useValue: { getLookup: () => of([]) } },
-        { provide: GradesService, useValue: { getGrades: () => of([]) } },
-        {
-          provide: ActivatedRoute,
-          useValue: {
-            snapshot: { paramMap: convertToParamMap({}), data: {} },
-            params: of({}),
-            queryParams: of(options.query ?? {}),
-            paramMap: of(convertToParamMap({})),
-            queryParamMap: of(convertToParamMap(options.query ?? {})),
-          },
-        },
-      ],
-    });
-    TestBed.overrideComponent(WorksheetDetailComponent, {
-      remove: { imports: [QuestionCanvasViewComponent, StudyLinkSuggestionsComponent] },
-      add: { imports: [QuestionCanvasViewStubComponent, StudyLinkSuggestionsStubComponent] },
-    });
-
-    const fixture = TestBed.createComponent(WorksheetDetailComponent);
-    const component = fixture.componentInstance;
-    component.exam = { id: 12 } as Test;
-    component.ngOnInit();
-    component['detail'].set({
-      worksheet: {
-        id: 12,
-        name: 'Kesirler',
-        canEdit: true,
-        canAssign: true,
-        commentsEnabled: options.commentsEnabled ?? true,
-      },
-      attempts: [],
-      similarWorksheets: [],
-      topicBreakdown: [],
-      outcomes: [],
-      stats: { solverCount: 0, averageScorePercent: null },
-      completedResult: options.completed
-        ? {
-            instanceId: 900,
-            scorePercent: 50,
-            correctCount: 1,
-            wrongCount: 1,
-            emptyCount: 0,
-            durationSeconds: 60,
-            topicSuccess: [],
-            rank: null,
-          }
-        : null,
-    } as unknown as WorksheetDetail);
-    if (options.completed) {
-      component.regions.set([
-        { id: 33, answers: [] },
-        { id: 34, answers: [] },
-      ] as unknown as QuestionRegion[]);
-      component.questions = [{ status: 'correct' }, { status: 'incorrect' }];
+    interface SetupOptions {
+        role: 'Student' | 'Teacher';
+        query?: Record<string, string>;
+        completed?: boolean;
+        commentsEnabled?: boolean;
     }
-    fixture.detectChanges();
-    fixture.detectChanges();
-    if (options.renderDeferred !== false) {
-      await renderDeferred(fixture);
+
+    async function setup(options: SetupOptions & {
+        renderDeferred?: boolean;
+    }) {
+        TestBed.configureTestingModule({
+            // Thread'ler @defer içinde: testte açıkça tetiklenir.
+            deferBlockBehavior: DeferBlockBehavior.Manual,
+            imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
+            providers: [
+                provideHttpClient(withXhr()),
+                provideHttpClientTesting(),
+                provideNativeDateAdapter(),
+                { provide: TestService, useValue: {
+                        getWorksheetDetail: vi.fn().mockName("TestService.getWorksheetDetail")
+                    } },
+                { provide: Router, useValue: {
+                        navigate: vi.fn().mockName("Router.navigate")
+                    } },
+                { provide: MatSnackBar, useValue: {
+                        open: vi.fn().mockName("MatSnackBar.open")
+                    } },
+                { provide: MatDialog, useValue: {
+                        open: vi.fn().mockName("MatDialog.open")
+                    } },
+                {
+                    provide: AuthService,
+                    useValue: { hasRole: (r: string) => r === options.role, hasRealmRole: () => false, user: signal(null) },
+                },
+                { provide: StudentService, useValue: { getLookup: () => of([]) } },
+                { provide: GradesService, useValue: { getGrades: () => of([]) } },
+                {
+                    provide: ActivatedRoute,
+                    useValue: {
+                        snapshot: { paramMap: convertToParamMap({}), data: {} },
+                        params: of({}),
+                        queryParams: of(options.query ?? {}),
+                        paramMap: of(convertToParamMap({})),
+                        queryParamMap: of(convertToParamMap(options.query ?? {})),
+                    },
+                },
+            ],
+        });
+        TestBed.overrideComponent(WorksheetDetailComponent, {
+            remove: { imports: [QuestionCanvasViewComponent, StudyLinkSuggestionsComponent] },
+            add: { imports: [QuestionCanvasViewStubComponent, StudyLinkSuggestionsStubComponent] },
+        });
+
+        const fixture = TestBed.createComponent(WorksheetDetailComponent);
+        const component = fixture.componentInstance;
+        component.exam = { id: 12 } as Test;
+        component.ngOnInit();
+        component['detail'].set({
+            worksheet: {
+                id: 12,
+                name: 'Kesirler',
+                canEdit: true,
+                canAssign: true,
+                commentsEnabled: options.commentsEnabled ?? true,
+            },
+            attempts: [],
+            similarWorksheets: [],
+            topicBreakdown: [],
+            outcomes: [],
+            stats: { solverCount: 0, averageScorePercent: null },
+            completedResult: options.completed
+                ? {
+                    instanceId: 900,
+                    scorePercent: 50,
+                    correctCount: 1,
+                    wrongCount: 1,
+                    emptyCount: 0,
+                    durationSeconds: 60,
+                    topicSuccess: [],
+                    rank: null,
+                }
+                : null,
+        } as unknown as WorksheetDetail);
+        if (options.completed) {
+            component.regions.set([
+                { id: 33, answers: [] },
+                { id: 34, answers: [] },
+            ] as unknown as QuestionRegion[]);
+            component.questions = [{ status: 'correct' }, { status: 'incorrect' }];
+        }
+        fixture.detectChanges();
+        fixture.detectChanges();
+        if (options.renderDeferred !== false) {
+            await renderDeferred(fixture);
+        }
+        return { fixture, component };
     }
-    return { fixture, component };
-  }
 
-  /** Tüm @defer bloklarını tamamlanmış duruma getirir. */
-  async function renderDeferred(fixture: ComponentFixture<WorksheetDetailComponent>): Promise<void> {
-    for (const block of await fixture.getDeferBlocks()) {
-      await block.render(DeferBlockState.Complete);
+    /** Tüm @defer bloklarını tamamlanmış duruma getirir. */
+    async function renderDeferred(fixture: ComponentFixture<WorksheetDetailComponent>): Promise<void> {
+        for (const block of await fixture.getDeferBlocks()) {
+            await block.render(DeferBlockState.Complete);
+        }
+        fixture.detectChanges();
     }
-    fixture.detectChanges();
-  }
 
-  const threads = (fixture: ComponentFixture<WorksheetDetailComponent>) =>
-    fixture.debugElement
-      .queryAll(By.directive(CommentThreadComponent))
-      .map((d) => d.componentInstance as CommentThreadComponent);
-  const byTestId = (fixture: ComponentFixture<WorksheetDetailComponent>, id: string) =>
-    (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(`[data-testid="${id}"]`);
+    const threads = (fixture: ComponentFixture<WorksheetDetailComponent>) => fixture.debugElement
+        .queryAll(By.directive(CommentThreadComponent))
+        .map((d) => d.componentInstance as CommentThreadComponent);
+    const byTestId = (fixture: ComponentFixture<WorksheetDetailComponent>, id: string) => (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(`[data-testid="${id}"]`);
 
-  it('completedStudent_RendersWorksheetThreadAndSelectedQuestionThread', async () => {
-    const { fixture, component } = await setup({ role: 'Student', completed: true });
+    it('completedStudent_RendersWorksheetThreadAndSelectedQuestionThread', async () => {
+        const { fixture, component } = await setup({ role: 'Student', completed: true });
 
-    expect(byTestId(fixture, 'worksheet-comments')).not.toBeNull();
-    expect(byTestId(fixture, 'question-comments')).not.toBeNull();
-    const all = threads(fixture);
-    expect(all.length).toBe(2);
-    const questionThread = all.find((t) => t.questionId() !== null)!;
-    expect(questionThread.worksheetId()).toBe(12);
-    expect(questionThread.questionId()).toBe(33);
-    const worksheetThread = all.find((t) => t.questionId() === null)!;
-    expect(worksheetThread.viewerIsTeacher()).toBeFalse();
-    expect(worksheetThread.studentsLockedNotice()).toBeFalse();
+        expect(byTestId(fixture, 'worksheet-comments')).not.toBeNull();
+        expect(byTestId(fixture, 'question-comments')).not.toBeNull();
+        const all = threads(fixture);
+        expect(all.length).toBe(2);
+        const questionThread = all.find((t) => t.questionId() !== null)!;
+        expect(questionThread.worksheetId()).toBe(12);
+        expect(questionThread.questionId()).toBe(33);
+        const worksheetThread = all.find((t) => t.questionId() === null)!;
+        expect(worksheetThread.viewerIsTeacher()).toBe(false);
+        expect(worksheetThread.studentsLockedNotice()).toBe(false);
 
-    // Soru değişince aynı thread yeni soruya geçer (yeniden yükler).
-    component.questionSelected(1);
-    fixture.detectChanges();
-    expect(threads(fixture).find((t) => t.questionId() !== null)!.questionId()).toBe(34);
-  });
-
-  it('teacher_WorksheetThreadOnlyWithTeacherFlags', async () => {
-    const { fixture } = await setup({ role: 'Teacher', commentsEnabled: false });
-
-    expect(byTestId(fixture, 'question-comments')).toBeNull();
-    const all = threads(fixture);
-    expect(all.length).toBe(1);
-    expect(all[0].viewerIsTeacher()).toBeTrue();
-    expect(all[0].studentsLockedNotice()).toBeTrue();
-    expect(all[0].showEditSettings()).toBeTrue();
-  });
-
-  it('startView_StudentStillGetsWorksheetThread', async () => {
-    const { fixture } = await setup({ role: 'Student' });
-
-    expect(byTestId(fixture, 'worksheet-comments')).not.toBeNull();
-    expect(threads(fixture).length).toBe(1);
-  });
-
-  it('deepLink_WorksheetLevelComment_HighlightsInWorksheetThread', async () => {
-    const { fixture, component } = await setup({ role: 'Teacher', query: { commentId: '57', rootCommentId: '56' } });
-
-    expect(component['commentLink']()).toEqual({ worksheetId: 0, commentId: 57, questionId: null, rootCommentId: 56 });
-    const [worksheetThread] = threads(fixture);
-    expect(worksheetThread.highlightCommentId()).toBe(57);
-    expect(worksheetThread.highlightRootId()).toBe(56);
-    expect(byTestId(fixture, 'linked-question-comments')).toBeNull();
-  });
-
-  it('deepLink_QuestionCommentForTeacher_RendersSeparateQuestionThreadCard', async () => {
-    const { fixture } = await setup({ role: 'Teacher', query: { commentId: '57', questionId: '34' } });
-
-    expect(byTestId(fixture, 'linked-question-comments')).not.toBeNull();
-    const questionThread = threads(fixture).find((t) => t.questionId() === 34)!;
-    expect(questionThread.highlightCommentId()).toBe(57);
-    expect(questionThread.viewerIsTeacher()).toBeTrue();
-    const worksheetThread = threads(fixture).find((t) => t.questionId() === null)!;
-    expect(worksheetThread.highlightCommentId()).toBeNull();
-  });
-
-  // Issue #309: kart başlığındaki soru sırası thread yanıtından gelir (URL'den değil).
-  it('linkedQuestionCard_TitleUsesQuestionOrderFromThreadThenFallsBack', async () => {
-    const { fixture } = await setup({ role: 'Teacher', query: { commentId: '57', questionId: '34', questionOrder: '9' } });
-    const title = () => byTestId(fixture, 'linked-question-title')!.textContent!.replace(/\s+/g, ' ').trim();
-
-    // Thread yanıtı gelmeden: genel başlık (URL'deki questionOrder yok sayılır).
-    expect(title()).toBe(worksheetDetailTr.comments.linkedQuestionTitle);
-
-    const questionThread = threads(fixture).find((t) => t.questionId() === 34)!;
-    questionThread.questionOrderChange.emit(3);
-    fixture.detectChanges();
-    expect(title()).toBe('Soru 3 hakkındaki yorumlar');
-
-    questionThread.questionOrderChange.emit(null);
-    fixture.detectChanges();
-    expect(title()).toBe(worksheetDetailTr.comments.linkedQuestionTitle);
-  });
-
-  it('linkedQuestionCard_LinkMovesToAnotherQuestion_OldOrderNotShown', async () => {
-    const { fixture, component } = await setup({ role: 'Teacher', query: { commentId: '57', questionId: '34' } });
-    const title = () => byTestId(fixture, 'linked-question-title')!.textContent!.replace(/\s+/g, ' ').trim();
-
-    threads(fixture).find((t) => t.questionId() === 34)!.questionOrderChange.emit(3);
-    fixture.detectChanges();
-    expect(title()).toBe('Soru 3 hakkındaki yorumlar');
-
-    // Code review D4: derin link başka soruya geçince eski sıra başlıkta kalmaz.
-    component['commentLink'].set({ worksheetId: 0, commentId: 60, questionId: 35, rootCommentId: null });
-    fixture.detectChanges();
-    expect(title()).toBe(worksheetDetailTr.comments.linkedQuestionTitle);
-
-    // Aynı soruya geri dönülünce (thread o soru için yeniden yayınlamadan) önceki doğru sıra geçerlidir.
-    component['commentLink'].set({ worksheetId: 0, commentId: 61, questionId: 34, rootCommentId: null });
-    fixture.detectChanges();
-    expect(title()).toBe('Soru 3 hakkındaki yorumlar');
-  });
-
-  it('teacherInsights_HardestQuestionsUseDisplayNumberWithOrderFallback', async () => {
-    const { fixture, component } = await setup({ role: 'Teacher' });
-    component['detail'].update((d) => ({
-      ...d!,
-      teacherInsights: {
-        hardestQuestions: [
-          { questionId: 1, order: 0, number: 1, text: null, subtopicName: 'Kesir', answeredCount: 4, correctPercent: 25 },
-          { questionId: 2, order: 7, text: null, subtopicName: null, answeredCount: 2, correctPercent: 50 },
-        ],
-        difficultyDistribution: { easy: 0, medium: 0, hard: 0 },
-        classifiedCount: 0,
-        totalQuestionCount: 2,
-        unclassifiedCount: 2,
-      },
-    }));
-    fixture.detectChanges();
-
-    const rows = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('[data-testid="hardest-question"]')
-    );
-    expect(rows.length).toBe(2);
-    expect(rows[0].querySelector('[data-testid="hardest-question-number"]')!.textContent!.trim()).toBe('1');
-    expect(rows[0].textContent).toContain('Soru 1');
-    // Eski sunucu (number yok): ham order'a düşülür.
-    expect(rows[1].querySelector('[data-testid="hardest-question-number"]')!.textContent!.trim()).toBe('7');
-  });
-
-  it('teacher_WorksheetThreadShowsStudentsSummaryAndEditSettingsEvenWhenCommentsEnabled', async () => {
-    const { fixture } = await setup({ role: 'Teacher', commentsEnabled: true });
-
-    const [worksheetThread] = threads(fixture);
-    expect(worksheetThread.showStudentsSummary()).toBeTrue();
-    expect(worksheetThread.studentsLockedNotice()).toBeFalse();
-    expect(worksheetThread.showEditSettings()).toBeTrue();
-  });
-
-  it('student_WorksheetThreadHasNoStudentsSummary', async () => {
-    const { fixture } = await setup({ role: 'Student' });
-
-    expect(threads(fixture)[0].showStudentsSummary()).toBeFalse();
-    expect(threads(fixture)[0].showEditSettings()).toBeFalse();
-  });
-
-  it('deepLink_QuestionCommentForCompletedStudent_SelectsQuestionInReview', async () => {
-    const { fixture, component } = await setup({
-      role: 'Student',
-      completed: true,
-      query: { commentId: '70', questionId: '34' },
+        // Soru değişince aynı thread yeni soruya geçer (yeniden yükler).
+        component.questionSelected(1);
+        fixture.detectChanges();
+        expect(threads(fixture).find((t) => t.questionId() !== null)!.questionId()).toBe(34);
     });
-    fixture.detectChanges();
 
-    expect(component.currentIndex()).toBe(1);
-    expect(byTestId(fixture, 'linked-question-comments')).toBeNull();
-    const questionThread = threads(fixture).find((t) => t.questionId() !== null)!;
-    expect(questionThread.questionId()).toBe(34);
-    expect(questionThread.highlightCommentId()).toBe(70);
-  });
+    it('teacher_WorksheetThreadOnlyWithTeacherFlags', async () => {
+        const { fixture } = await setup({ role: 'Teacher', commentsEnabled: false });
 
-  it('beforeDeferTrigger_ShowsPlaceholderNotThread', async () => {
-    const { fixture } = await setup({ role: 'Student', completed: true, renderDeferred: false });
+        expect(byTestId(fixture, 'question-comments')).toBeNull();
+        const all = threads(fixture);
+        expect(all.length).toBe(1);
+        expect(all[0].viewerIsTeacher()).toBe(true);
+        expect(all[0].studentsLockedNotice()).toBe(true);
+        expect(all[0].showEditSettings()).toBe(true);
+    });
 
-    expect(threads(fixture).length).toBe(0);
-    expect(fixture.nativeElement.querySelectorAll('[data-testid="comments-placeholder"]').length).toBe(2);
-  });
+    it('startView_StudentStillGetsWorksheetThread', async () => {
+        const { fixture } = await setup({ role: 'Student' });
 
-  it('deepLink_InvalidCommentId_Ignored', async () => {
-    const { component } = await setup({ role: 'Student', query: { commentId: 'abc', questionId: '34' } });
+        expect(byTestId(fixture, 'worksheet-comments')).not.toBeNull();
+        expect(threads(fixture).length).toBe(1);
+    });
 
-    expect(component['commentLink']()).toBeNull();
-  });
+    it('deepLink_WorksheetLevelComment_HighlightsInWorksheetThread', async () => {
+        const { fixture, component } = await setup({ role: 'Teacher', query: { commentId: '57', rootCommentId: '56' } });
+
+        expect(component['commentLink']()).toEqual({ worksheetId: 0, commentId: 57, questionId: null, rootCommentId: 56 });
+        const [worksheetThread] = threads(fixture);
+        expect(worksheetThread.highlightCommentId()).toBe(57);
+        expect(worksheetThread.highlightRootId()).toBe(56);
+        expect(byTestId(fixture, 'linked-question-comments')).toBeNull();
+    });
+
+    it('deepLink_QuestionCommentForTeacher_RendersSeparateQuestionThreadCard', async () => {
+        const { fixture } = await setup({ role: 'Teacher', query: { commentId: '57', questionId: '34' } });
+
+        expect(byTestId(fixture, 'linked-question-comments')).not.toBeNull();
+        const questionThread = threads(fixture).find((t) => t.questionId() === 34)!;
+        expect(questionThread.highlightCommentId()).toBe(57);
+        expect(questionThread.viewerIsTeacher()).toBe(true);
+        const worksheetThread = threads(fixture).find((t) => t.questionId() === null)!;
+        expect(worksheetThread.highlightCommentId()).toBeNull();
+    });
+
+    // Issue #309: kart başlığındaki soru sırası thread yanıtından gelir (URL'den değil).
+    it('linkedQuestionCard_TitleUsesQuestionOrderFromThreadThenFallsBack', async () => {
+        const { fixture } = await setup({ role: 'Teacher', query: { commentId: '57', questionId: '34', questionOrder: '9' } });
+        const title = () => byTestId(fixture, 'linked-question-title')!.textContent!.replace(/\s+/g, ' ').trim();
+
+        // Thread yanıtı gelmeden: genel başlık (URL'deki questionOrder yok sayılır).
+        expect(title()).toBe(worksheetDetailTr.comments.linkedQuestionTitle);
+
+        const questionThread = threads(fixture).find((t) => t.questionId() === 34)!;
+        questionThread.questionOrderChange.emit(3);
+        fixture.detectChanges();
+        expect(title()).toBe('Soru 3 hakkındaki yorumlar');
+
+        questionThread.questionOrderChange.emit(null);
+        fixture.detectChanges();
+        expect(title()).toBe(worksheetDetailTr.comments.linkedQuestionTitle);
+    });
+
+    it('linkedQuestionCard_LinkMovesToAnotherQuestion_OldOrderNotShown', async () => {
+        const { fixture, component } = await setup({ role: 'Teacher', query: { commentId: '57', questionId: '34' } });
+        const title = () => byTestId(fixture, 'linked-question-title')!.textContent!.replace(/\s+/g, ' ').trim();
+
+        threads(fixture).find((t) => t.questionId() === 34)!.questionOrderChange.emit(3);
+        fixture.detectChanges();
+        expect(title()).toBe('Soru 3 hakkındaki yorumlar');
+
+        // Code review D4: derin link başka soruya geçince eski sıra başlıkta kalmaz.
+        component['commentLink'].set({ worksheetId: 0, commentId: 60, questionId: 35, rootCommentId: null });
+        fixture.detectChanges();
+        expect(title()).toBe(worksheetDetailTr.comments.linkedQuestionTitle);
+
+        // Aynı soruya geri dönülünce (thread o soru için yeniden yayınlamadan) önceki doğru sıra geçerlidir.
+        component['commentLink'].set({ worksheetId: 0, commentId: 61, questionId: 34, rootCommentId: null });
+        fixture.detectChanges();
+        expect(title()).toBe('Soru 3 hakkındaki yorumlar');
+    });
+
+    it('teacherInsights_HardestQuestionsUseDisplayNumberWithOrderFallback', async () => {
+        const { fixture, component } = await setup({ role: 'Teacher' });
+        component['detail'].update((d) => ({
+            ...d!,
+            teacherInsights: {
+                hardestQuestions: [
+                    { questionId: 1, order: 0, number: 1, text: null, subtopicName: 'Kesir', answeredCount: 4, correctPercent: 25 },
+                    { questionId: 2, order: 7, text: null, subtopicName: null, answeredCount: 2, correctPercent: 50 },
+                ],
+                difficultyDistribution: { easy: 0, medium: 0, hard: 0 },
+                classifiedCount: 0,
+                totalQuestionCount: 2,
+                unclassifiedCount: 2,
+            },
+        }));
+        fixture.detectChanges();
+
+        const rows = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('[data-testid="hardest-question"]'));
+        expect(rows.length).toBe(2);
+        expect(rows[0].querySelector('[data-testid="hardest-question-number"]')!.textContent!.trim()).toBe('1');
+        expect(rows[0].textContent).toContain('Soru 1');
+        // Eski sunucu (number yok): ham order'a düşülür.
+        expect(rows[1].querySelector('[data-testid="hardest-question-number"]')!.textContent!.trim()).toBe('7');
+    });
+
+    it('teacher_WorksheetThreadShowsStudentsSummaryAndEditSettingsEvenWhenCommentsEnabled', async () => {
+        const { fixture } = await setup({ role: 'Teacher', commentsEnabled: true });
+
+        const [worksheetThread] = threads(fixture);
+        expect(worksheetThread.showStudentsSummary()).toBe(true);
+        expect(worksheetThread.studentsLockedNotice()).toBe(false);
+        expect(worksheetThread.showEditSettings()).toBe(true);
+    });
+
+    it('student_WorksheetThreadHasNoStudentsSummary', async () => {
+        const { fixture } = await setup({ role: 'Student' });
+
+        expect(threads(fixture)[0].showStudentsSummary()).toBe(false);
+        expect(threads(fixture)[0].showEditSettings()).toBe(false);
+    });
+
+    it('deepLink_QuestionCommentForCompletedStudent_SelectsQuestionInReview', async () => {
+        const { fixture, component } = await setup({
+            role: 'Student',
+            completed: true,
+            query: { commentId: '70', questionId: '34' },
+        });
+        fixture.detectChanges();
+
+        expect(component.currentIndex()).toBe(1);
+        expect(byTestId(fixture, 'linked-question-comments')).toBeNull();
+        const questionThread = threads(fixture).find((t) => t.questionId() !== null)!;
+        expect(questionThread.questionId()).toBe(34);
+        expect(questionThread.highlightCommentId()).toBe(70);
+    });
+
+    it('beforeDeferTrigger_ShowsPlaceholderNotThread', async () => {
+        const { fixture } = await setup({ role: 'Student', completed: true, renderDeferred: false });
+
+        expect(threads(fixture).length).toBe(0);
+        expect(fixture.nativeElement.querySelectorAll('[data-testid="comments-placeholder"]').length).toBe(2);
+    });
+
+    it('deepLink_InvalidCommentId_Ignored', async () => {
+        const { component } = await setup({ role: 'Student', query: { commentId: 'abc', questionId: '34' } });
+
+        expect(component['commentLink']()).toBeNull();
+    });
 });
 
 describe('WorksheetDetailComponent add from bank (issue #472)', () => {
-  function setup(options: { canEdit?: boolean; result?: LinkBankQuestionsResult } = {}) {
-    const testService = jasmine.createSpyObj<TestService>('TestService', [
-      'getWorksheetDetail',
-      'get',
-      'getWorksheetAssignmentsForTeacher',
-    ]);
-    testService.getWorksheetDetail.and.callFake((id: number) =>
-      of({
-        worksheet: { id, name: 'Deneme', canEdit: options.canEdit ?? true, canAssign: true, isOwner: true },
-        attempts: [],
-        similarWorksheets: [],
-      } as unknown as WorksheetDetail),
-    );
-    testService.get.and.callFake((id: number) => of({ id, gradeId: 5 } as Test));
-    testService.getWorksheetAssignmentsForTeacher.and.returnValue(NEVER);
+    function setup(options: {
+        canEdit?: boolean;
+        result?: LinkBankQuestionsResult;
+    } = {}) {
+        const testService = {
+            getWorksheetDetail: vi.fn().mockName("TestService.getWorksheetDetail"),
+            get: vi.fn().mockName("TestService.get"),
+            getWorksheetAssignmentsForTeacher: vi.fn().mockName("TestService.getWorksheetAssignmentsForTeacher")
+        };
+        testService.getWorksheetDetail.mockImplementation((id: number) => of({
+            worksheet: { id, name: 'Deneme', canEdit: options.canEdit ?? true, canAssign: true, isOwner: true },
+            attempts: [],
+            similarWorksheets: [],
+        } as unknown as WorksheetDetail));
+        testService.get.mockImplementation((id: number) => of({ id, gradeId: 5 } as Test));
+        testService.getWorksheetAssignmentsForTeacher.mockReturnValue(NEVER);
 
-    const dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
-    dialog.open.and.returnValue({ afterClosed: () => of(options.result) } as MatDialogRef<unknown>);
-    const snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
-    const router = jasmine.createSpyObj<Router>('Router', ['navigate']);
-    router.navigate.and.returnValue(Promise.resolve(true));
+        const dialog = {
+            open: vi.fn().mockName("MatDialog.open")
+        } as unknown as MockedObject<MatDialog>;
+        dialog.open.mockReturnValue({ afterClosed: () => of(options.result) } as MatDialogRef<unknown>);
+        const snackBar = {
+            open: vi.fn().mockName("MatSnackBar.open")
+        };
+        const router = {
+            navigate: vi.fn().mockName("Router.navigate")
+        };
+        router.navigate.mockResolvedValue(true);
 
-    TestBed.configureTestingModule({
-      imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
-      providers: [
-        provideHttpClient(withXhr()),
-        provideHttpClientTesting(),
-        { provide: TestService, useValue: testService },
-        { provide: Router, useValue: router },
-        { provide: MatSnackBar, useValue: snackBar },
-        {
-          provide: AuthService,
-          useValue: { hasRole: (r: string) => r === 'Teacher', hasRealmRole: () => false, user: signal(null) },
-        },
-        { provide: StudentService, useValue: { getLookup: () => of([]) } },
-        { provide: GradesService, useValue: { getGrades: () => of([]) } },
-        {
-          provide: ActivatedRoute,
-          useValue: {
-            snapshot: { paramMap: convertToParamMap({}), data: {} },
-            params: of({}),
-            queryParams: of({}),
-            paramMap: of(convertToParamMap({ testId: '12' })),
-            queryParamMap: of(convertToParamMap({})),
-          },
-        },
-      ],
+        TestBed.configureTestingModule({
+            imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
+            providers: [
+                provideHttpClient(withXhr()),
+                provideHttpClientTesting(),
+                { provide: TestService, useValue: testService },
+                { provide: Router, useValue: router },
+                { provide: MatSnackBar, useValue: snackBar },
+                {
+                    provide: AuthService,
+                    useValue: { hasRole: (r: string) => r === 'Teacher', hasRealmRole: () => false, user: signal(null) },
+                },
+                { provide: StudentService, useValue: { getLookup: () => of([]) } },
+                { provide: GradesService, useValue: { getGrades: () => of([]) } },
+                {
+                    provide: ActivatedRoute,
+                    useValue: {
+                        snapshot: { paramMap: convertToParamMap({}), data: {} },
+                        params: of({}),
+                        queryParams: of({}),
+                        paramMap: of(convertToParamMap({ testId: '12' })),
+                        queryParamMap: of(convertToParamMap({})),
+                    },
+                },
+            ],
+        });
+        TestBed.overrideComponent(WorksheetDetailComponent, {
+            add: { providers: [{ provide: MatDialog, useValue: dialog }, { provide: MatSnackBar, useValue: snackBar }] },
+        });
+
+        const fixture = TestBed.createComponent(WorksheetDetailComponent);
+        return { fixture, component: fixture.componentInstance, dialog, snackBar, testService };
+    }
+
+    const settle = () => new Promise<void>((resolve) => setTimeout(resolve));
+
+    it('openBankQuestionDialog_OpensBankDialogWithTestId', async () => {
+        const { component, dialog } = setup();
+        component.ngOnInit();
+        await settle();
+
+        component['openBankQuestionDialog']();
+
+        expect(dialog.open).toHaveBeenCalledTimes(1);
+        expect(vi.mocked(dialog.open).mock.lastCall![0]).toBe(BankQuestionDialogComponent);
+        expect((vi.mocked(dialog.open).mock.lastCall![1] as {
+            data: {
+                testId: number;
+            };
+        }).data).toEqual({ testId: 12 });
     });
-    TestBed.overrideComponent(WorksheetDetailComponent, {
-      add: { providers: [{ provide: MatDialog, useValue: dialog }, { provide: MatSnackBar, useValue: snackBar }] },
+
+    it('openBankQuestionDialog_AddedQuestions_ShowsCountAndReloadsDetail', async () => {
+        const { component, snackBar, testService } = setup({
+            result: { addedQuestionIds: [4, 5], alreadyInTestQuestionIds: [7] },
+        });
+        component.ngOnInit();
+        await settle();
+        const detailCalls = vi.mocked(testService.getWorksheetDetail).mock.calls.length;
+
+        component['openBankQuestionDialog']();
+
+        expect(snackBar.open).toHaveBeenCalledWith('2 soru teste eklendi.', expect.any(String), expect.any(Object));
+        expect(vi.mocked(testService.getWorksheetDetail).mock.calls.length).toBe(detailCalls + 1);
     });
 
-    const fixture = TestBed.createComponent(WorksheetDetailComponent);
-    return { fixture, component: fixture.componentInstance, dialog, snackBar, testService };
-  }
+    it('openBankQuestionDialog_NothingAdded_ShowsAlreadyInTestAndDoesNotReload', async () => {
+        const { component, snackBar, testService } = setup({
+            result: { addedQuestionIds: [], alreadyInTestQuestionIds: [7] },
+        });
+        component.ngOnInit();
+        await settle();
+        const detailCalls = vi.mocked(testService.getWorksheetDetail).mock.calls.length;
 
-  const settle = () => new Promise<void>((resolve) => setTimeout(resolve));
+        component['openBankQuestionDialog']();
 
-  it('openBankQuestionDialog_OpensBankDialogWithTestId', async () => {
-    const { component, dialog } = setup();
-    component.ngOnInit();
-    await settle();
-
-    component['openBankQuestionDialog']();
-
-    expect(dialog.open).toHaveBeenCalledTimes(1);
-    expect(dialog.open.calls.mostRecent().args[0]).toBe(BankQuestionDialogComponent);
-    expect((dialog.open.calls.mostRecent().args[1] as { data: { testId: number } }).data).toEqual({ testId: 12 });
-  });
-
-  it('openBankQuestionDialog_AddedQuestions_ShowsCountAndReloadsDetail', async () => {
-    const { component, snackBar, testService } = setup({
-      result: { addedQuestionIds: [4, 5], alreadyInTestQuestionIds: [7] },
+        expect(snackBar.open).toHaveBeenCalledWith(worksheetDetailTr.snackbar.bankAlreadyInTest, expect.any(String), expect.any(Object));
+        expect(vi.mocked(testService.getWorksheetDetail).mock.calls.length).toBe(detailCalls);
     });
-    component.ngOnInit();
-    await settle();
-    const detailCalls = testService.getWorksheetDetail.calls.count();
 
-    component['openBankQuestionDialog']();
+    it('openBankQuestionDialog_Cancelled_DoesNothing', async () => {
+        const { component, snackBar, testService } = setup();
+        component.ngOnInit();
+        await settle();
+        const detailCalls = vi.mocked(testService.getWorksheetDetail).mock.calls.length;
 
-    expect(snackBar.open).toHaveBeenCalledWith('2 soru teste eklendi.', jasmine.any(String), jasmine.any(Object));
-    expect(testService.getWorksheetDetail.calls.count()).toBe(detailCalls + 1);
-  });
+        component['openBankQuestionDialog']();
 
-  it('openBankQuestionDialog_NothingAdded_ShowsAlreadyInTestAndDoesNotReload', async () => {
-    const { component, snackBar, testService } = setup({
-      result: { addedQuestionIds: [], alreadyInTestQuestionIds: [7] },
+        expect(snackBar.open).not.toHaveBeenCalled();
+        expect(vi.mocked(testService.getWorksheetDetail).mock.calls.length).toBe(detailCalls);
     });
-    component.ngOnInit();
-    await settle();
-    const detailCalls = testService.getWorksheetDetail.calls.count();
 
-    component['openBankQuestionDialog']();
+    it('addFromBankButton_RenderedOnlyWhenTeacherCanEdit', async () => {
+        const editable = setup();
+        editable.component.ngOnInit();
+        await settle();
+        editable.fixture.detectChanges();
+        expect(editable.fixture.debugElement.query(By.css('[data-testid="add-from-bank-btn"]'))).not.toBeNull();
+    });
 
-    expect(snackBar.open).toHaveBeenCalledWith(
-      worksheetDetailTr.snackbar.bankAlreadyInTest,
-      jasmine.any(String),
-      jasmine.any(Object),
-    );
-    expect(testService.getWorksheetDetail.calls.count()).toBe(detailCalls);
-  });
-
-  it('openBankQuestionDialog_Cancelled_DoesNothing', async () => {
-    const { component, snackBar, testService } = setup();
-    component.ngOnInit();
-    await settle();
-    const detailCalls = testService.getWorksheetDetail.calls.count();
-
-    component['openBankQuestionDialog']();
-
-    expect(snackBar.open).not.toHaveBeenCalled();
-    expect(testService.getWorksheetDetail.calls.count()).toBe(detailCalls);
-  });
-
-  it('addFromBankButton_RenderedOnlyWhenTeacherCanEdit', async () => {
-    const editable = setup();
-    editable.component.ngOnInit();
-    await settle();
-    editable.fixture.detectChanges();
-    expect(editable.fixture.debugElement.query(By.css('[data-testid="add-from-bank-btn"]'))).not.toBeNull();
-  });
-
-  it('addFromBankButton_HiddenWhenWorksheetIsNotEditable', async () => {
-    const readOnly = setup({ canEdit: false });
-    readOnly.component.ngOnInit();
-    await settle();
-    readOnly.fixture.detectChanges();
-    expect(readOnly.fixture.debugElement.query(By.css('[data-testid="add-from-bank-btn"]'))).toBeNull();
-  });
+    it('addFromBankButton_HiddenWhenWorksheetIsNotEditable', async () => {
+        const readOnly = setup({ canEdit: false });
+        readOnly.component.ngOnInit();
+        await settle();
+        readOnly.fixture.detectChanges();
+        expect(readOnly.fixture.debugElement.query(By.css('[data-testid="add-from-bank-btn"]'))).toBeNull();
+    });
 });

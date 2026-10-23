@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { HttpClient, HttpErrorResponse, provideHttpClient, withInterceptors, withXhr } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -13,7 +14,7 @@ import { authErrorInterceptor } from './auth-error.interceptor';
 describe('authErrorInterceptor', () => {
   let http: HttpClient;
   let httpMock: HttpTestingController;
-  let navigateSpy: jasmine.Spy;
+  let navigateSpy: Mock;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -25,12 +26,18 @@ describe('authErrorInterceptor', () => {
     });
     http = TestBed.inject(HttpClient);
     httpMock = TestBed.inject(HttpTestingController);
-    navigateSpy = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+    navigateSpy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
   });
 
   afterEach(() => httpMock.verify());
 
-  function postAndFail(url: string, status: number, body: { message: string } | null): HttpErrorResponse | undefined {
+  function postAndFail(
+    url: string,
+    status: number,
+    body: {
+      message: string;
+    } | null
+  ): HttpErrorResponse | undefined {
     let received: HttpErrorResponse | undefined;
     http.post(url, {}).subscribe({ error: (e: HttpErrorResponse) => (received = e) });
     httpMock.expectOne(url).flush(body, { status, statusText: 'Error' });
@@ -62,14 +69,18 @@ describe('authErrorInterceptor', () => {
   it('başka bir uçta 401 → /login e yönlendirir', () => {
     const error = postAndFail('/api/auth/complete-profile', 401, null);
 
-    expect(navigateSpy).toHaveBeenCalledOnceWith(['/login']);
+    expect(navigateSpy).toHaveBeenCalledTimes(1);
+
+    expect(navigateSpy).toHaveBeenCalledWith(['/login']);
     expect(error?.status).toBe(401);
   });
 
   it('/api/auth/logout 401 → yönlendirir (login ile ön ek eşleşmesi yok)', () => {
     postAndFail('/api/auth/logout', 401, null);
 
-    expect(navigateSpy).toHaveBeenCalledOnceWith(['/login']);
+    expect(navigateSpy).toHaveBeenCalledTimes(1);
+
+    expect(navigateSpy).toHaveBeenCalledWith(['/login']);
   });
 
   it('/api/auth/login 503 → yönlendirmez, hatayı iletir', () => {

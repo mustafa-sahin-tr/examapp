@@ -1,5 +1,6 @@
+import type { MockedObject } from "vitest";
 import { signal } from '@angular/core';
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { By } from '@angular/platform-browser';
 import { BreakpointObserver } from '@angular/cdk/layout';
@@ -25,398 +26,397 @@ import testCreateTr from '../../../../public/i18n/test-create/tr.json';
 
 /** Gercek scope sozlugu yuklenir; anahtar bozulursa test kirilir (issue #183). */
 const translocoTesting = TranslocoTestingModule.forRoot({
-  // Scope sozlugu hem scope yolu (provideTranslocoScope yukleyicisi) hem de kok 'tr' icine
-  // gomulu olarak verilir; sablondaki 'prefix' bicimi ikincisinden cozulur.
-  langs: { tr: { ...rootTr, 'test-create': testCreateTr }, 'test-create/tr': testCreateTr },
-  translocoConfig: {
-    availableLangs: [...SUPPORTED_LOCALE_CODES],
-    defaultLang: DEFAULT_LOCALE,
-    // TranslocoTestingModule uygulamanin config'ini almaz; scope oneki kebab kalsin (issue #183).
-    scopes: { keepCasing: true },
-  },
-  preloadLangs: true,
+    // Scope sozlugu hem scope yolu (provideTranslocoScope yukleyicisi) hem de kok 'tr' icine
+    // gomulu olarak verilir; sablondaki 'prefix' bicimi ikincisinden cozulur.
+    langs: { tr: { ...rootTr, 'test-create': testCreateTr }, 'test-create/tr': testCreateTr },
+    translocoConfig: {
+        availableLangs: [...SUPPORTED_LOCALE_CODES],
+        defaultLang: DEFAULT_LOCALE,
+        // TranslocoTestingModule uygulamanin config'ini almaz; scope oneki kebab kalsin (issue #183).
+        scopes: { keepCasing: true },
+    },
+    preloadLangs: true,
 });
 
 describe('TestCreateEnhancedComponent', () => {
-  let testService: jasmine.SpyObj<TestService>;
-  let router: jasmine.SpyObj<Router>;
-  let snackBar: jasmine.SpyObj<MatSnackBar>;
-
-  function configure(
-    idParam: string | null,
-    exam: Record<string, unknown> = {}
-  ): ComponentFixture<TestCreateEnhancedComponent> {
-    // Guard: component reads history.state.testValue when there is no :id param.
-    window.history.replaceState({}, '');
-
-    testService = jasmine.createSpyObj<TestService>('TestService', [
-      'create',
-      'get',
-      'updateWorksheetBackgroundImage',
-      'updateVisibility',
-    ]);
-    testService.get.and.returnValue(
-      of({ id: 1, name: 'X', gradeId: 1, maxDurationSeconds: 600, isPracticeTest: false, ...exam } as any)
-    );
-    testService.create.and.returnValue(of({ message: 'ok', examId: 42 }));
-    testService.updateWorksheetBackgroundImage.and.returnValue(of({ imageUrl: 'http://img/x.png' } as any));
-
-    const bookService = jasmine.createSpyObj<BookService>('BookService', ['getAll', 'getTestsByBook']);
-    bookService.getAll.and.returnValue(of([]));
-    bookService.getTestsByBook.and.returnValue(of([]));
-
-    const gradesService = jasmine.createSpyObj<GradesService>('GradesService', ['getGrades']);
-    gradesService.getGrades.and.returnValue(of([{ id: 1, name: '5' }]));
-
-    const subjectService = jasmine.createSpyObj<SubjectService>('SubjectService', [
-      'loadCategories',
-      'getSubjectsByGrade',
-      'getTopicsBySubjectAndGrade',
-      'getSubTopicsByTopic',
-    ]);
-    subjectService.loadCategories.and.returnValue(of([]));
-    subjectService.getSubjectsByGrade.and.returnValue(of([]));
-    subjectService.getTopicsBySubjectAndGrade.and.returnValue(of([]));
-    subjectService.getSubTopicsByTopic.and.returnValue(of([]));
-
-    router = jasmine.createSpyObj<Router>('Router', ['navigate', 'currentNavigation']);
-    router.currentNavigation.and.returnValue(null as any);
-
-    TestBed.configureTestingModule({
-      imports: [TestCreateEnhancedComponent, translocoTesting],
-      providers: [
-        provideNoopAnimations(),
-        { provide: TestService, useValue: testService },
-        { provide: BookService, useValue: bookService },
-        { provide: GradesService, useValue: gradesService },
-        { provide: SubjectService, useValue: subjectService },
-        { provide: Router, useValue: router },
-        // Alt bileşen app-visibility-section okul bilgisini AuthService.user'dan okur (issue #191).
-        {
-          provide: AuthService,
-          useValue: {
-            user: signal({ schoolId: 1 }),
-            hasRole: (r: string) => r === 'Teacher',
-            hasRealmRole: (r: string) => false,
-          },
-        },
-        // Headless Chrome (800x600 yatay) Handset'e girer; radio DOM'unu doğrulamak için masaüstü sabitlenir.
-        { provide: BreakpointObserver, useValue: { observe: () => of({ matches: false, breakpoints: {} }) } },
-        {
-          provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: convertToParamMap(idParam ? { id: idParam } : {}) } },
-        },
-      ],
+    beforeEach(() => {
+        vi.useFakeTimers();
     });
-
-    const fixture = TestBed.createComponent(TestCreateEnhancedComponent);
-    // MatSnackBar is provided by MatSnackBarModule (not root); stub it on the instance.
-    snackBar = fixture.componentInstance.snackBar as jasmine.SpyObj<MatSnackBar>;
-    spyOn(snackBar, 'open');
-    fixture.detectChanges();
-    return fixture;
-  }
-
-  afterEach(() => TestBed.resetTestingModule());
-
-  function fileEvent(file: File): Event {
-    return { target: { files: [file], value: 'C:\\fakepath\\x' } } as unknown as Event;
-  }
-
-  it('builds', () => {
-    const fixture = configure(null);
-    expect(fixture.componentInstance).toBeTruthy();
-  });
-
-  describe('isEditMode', () => {
-    it('is true when the route carries a positive id (exam/5)', () => {
-      const c = configure('5').componentInstance;
-      expect(c.isEditMode).toBeTrue();
-      expect(c.id).toBe(5);
+    afterEach(() => {
+        vi.useRealTimers();
     });
+    let testService: MockedObject<TestService>;
+    let router: MockedObject<Router>;
+    let snackBar: MockedObject<MatSnackBar>;
 
-    it('is false when there is no id param (exam)', () => {
-      expect(configure(null).componentInstance.isEditMode).toBeFalse();
-    });
-  });
+    function configure(idParam: string | null, exam: Record<string, unknown> = {}): ComponentFixture<TestCreateEnhancedComponent> {
+        // Guard: component reads history.state.testValue when there is no :id param.
+        window.history.replaceState({}, '');
 
-  /** Issue #105: öğrenci yorum/soru anahtarı. */
-  describe('commentsEnabled', () => {
-    it('new form defaults to on and sends true', () => {
-      const c = configure(null).componentInstance;
-      expect(c.testForm.get('commentsEnabled')!.value).toBeTrue();
-      c.testForm.patchValue({ name: 'Yeni', gradeId: 1 });
+        testService = {
+            create: vi.fn().mockName("TestService.create"),
+            get: vi.fn().mockName("TestService.get"),
+            updateWorksheetBackgroundImage: vi.fn().mockName("TestService.updateWorksheetBackgroundImage"),
+            updateVisibility: vi.fn().mockName("TestService.updateVisibility")
+        } as unknown as MockedObject<TestService>;
+        testService.get.mockReturnValue(of({ id: 1, name: 'X', gradeId: 1, maxDurationSeconds: 600, isPracticeTest: false, ...exam } as any));
+        testService.create.mockReturnValue(of({ message: 'ok', examId: 42 }));
+        testService.updateWorksheetBackgroundImage.mockReturnValue(of({ imageUrl: 'http://img/x.png' } as any));
 
-      c.onSubmit();
+        const bookService = {
+            getAll: vi.fn().mockName("BookService.getAll"),
+            getTestsByBook: vi.fn().mockName("BookService.getTestsByBook")
+        };
+        bookService.getAll.mockReturnValue(of([]));
+        bookService.getTestsByBook.mockReturnValue(of([]));
 
-      expect(testService.create.calls.mostRecent().args[0].commentsEnabled).toBeTrue();
-    });
+        const gradesService = {
+            getGrades: vi.fn().mockName("GradesService.getGrades")
+        };
+        gradesService.getGrades.mockReturnValue(of([{ id: 1, name: '5' }]));
 
-    it('edit mode patches commentsEnabled=false from the worksheet and sends it back', () => {
-      const c = configure('5', { commentsEnabled: false }).componentInstance;
-      expect(c.testForm.get('commentsEnabled')!.value).toBeFalse();
+        const subjectService = {
+            loadCategories: vi.fn().mockName("SubjectService.loadCategories"),
+            getSubjectsByGrade: vi.fn().mockName("SubjectService.getSubjectsByGrade"),
+            getTopicsBySubjectAndGrade: vi.fn().mockName("SubjectService.getTopicsBySubjectAndGrade"),
+            getSubTopicsByTopic: vi.fn().mockName("SubjectService.getSubTopicsByTopic")
+        };
+        subjectService.loadCategories.mockReturnValue(of([]));
+        subjectService.getSubjectsByGrade.mockReturnValue(of([]));
+        subjectService.getTopicsBySubjectAndGrade.mockReturnValue(of([]));
+        subjectService.getSubTopicsByTopic.mockReturnValue(of([]));
 
-      c.onSubmit();
+        router = {
+            navigate: vi.fn().mockName("Router.navigate"),
+            currentNavigation: vi.fn().mockName("Router.currentNavigation") as never
+        } as unknown as MockedObject<Router>;
+        router.currentNavigation.mockReturnValue(null as any);
 
-      expect(testService.create.calls.mostRecent().args[0].commentsEnabled).toBeFalse();
-    });
+        TestBed.configureTestingModule({
+            imports: [TestCreateEnhancedComponent, translocoTesting],
+            providers: [
+                provideNoopAnimations(),
+                { provide: TestService, useValue: testService },
+                { provide: BookService, useValue: bookService },
+                { provide: GradesService, useValue: gradesService },
+                { provide: SubjectService, useValue: subjectService },
+                { provide: Router, useValue: router },
+                // Alt bileşen app-visibility-section okul bilgisini AuthService.user'dan okur (issue #191).
+                {
+                    provide: AuthService,
+                    useValue: {
+                        user: signal({ schoolId: 1 }),
+                        hasRole: (r: string) => r === 'Teacher',
+                        hasRealmRole: (r: string) => false,
+                    },
+                },
+                // Headless Chrome (800x600 yatay) Handset'e girer; radio DOM'unu doğrulamak için masaüstü sabitlenir.
+                { provide: BreakpointObserver, useValue: { observe: () => of({ matches: false, breakpoints: {} }) } },
+                {
+                    provide: ActivatedRoute,
+                    useValue: { snapshot: { paramMap: convertToParamMap(idParam ? { id: idParam } : {}) } },
+                },
+            ],
+        });
 
-    it('edit mode without the field (older API) keeps it on', () => {
-      const c = configure('5').componentInstance;
-      expect(c.testForm.get('commentsEnabled')!.value).toBeTrue();
-    });
-  });
-
-  describe('onSubmit', () => {
-    it('calls testService.create exactly once for a valid form (no double-save)', () => {
-      const c = configure(null).componentInstance;
-      c.testForm.patchValue({ name: 'Yeni Test', gradeId: 1 });
-
-      c.onSubmit();
-
-      expect(testService.create).toHaveBeenCalledTimes(1);
-    });
-
-    it('does not call testService.create for an invalid form', () => {
-      const c = configure(null).componentInstance;
-      c.testForm.patchValue({ name: '', gradeId: '' });
-
-      c.onSubmit();
-
-      expect(testService.create).not.toHaveBeenCalled();
-      expect(snackBar.open).toHaveBeenCalled();
-    });
-
-    it('reloads the component instead of navigating in edit mode', () => {
-      const c = configure('5').componentInstance;
-      spyOn(c, 'reloadComponent').and.callFake(() => {});
-      c.testForm.patchValue({ name: 'Düzenlenen', gradeId: 1 });
-
-      c.onSubmit();
-
-      expect(c.reloadComponent).toHaveBeenCalledWith(42);
-      expect(router.navigate).not.toHaveBeenCalled();
-    });
-
-    it('navigates to /exam/:examId after creating a new test', () => {
-      const c = configure(null).componentInstance;
-      c.testForm.patchValue({ name: 'Yeni Test', gradeId: 1 });
-
-      c.onSubmit();
-
-      expect(router.navigate).toHaveBeenCalledWith(['/exam', 42]);
-    });
-  });
-
-  describe('isMiniform', () => {
-    it('isMiniform_ModeIsMiniform_ReturnsTrue', () => {
-      const c = configure(null).componentInstance;
-      c.mode = 'miniform';
-      expect(c.isMiniform).toBeTrue();
-    });
-
-    it('isMiniform_DefaultMode_ReturnsFalse', () => {
-      expect(configure(null).componentInstance.isMiniform).toBeFalse();
-    });
-  });
-
-  describe('createAndContinue', () => {
-    it('createAndContinue_ValidForm_CallsOnCreateAsyncWithoutSubtopicRequirement', () => {
-      const c = configure(null).componentInstance;
-      const spy = spyOn(c, 'onCreateAsync').and.returnValue(of({ message: 'ok', examId: 42 }));
-      spyOn(c, 'reloadComponent').and.stub();
-
-      c.createAndContinue();
-
-      expect(spy).toHaveBeenCalledOnceWith(false);
-    });
-
-    it('createAndContinue_EmitsCreatedAndContinueWithExamId', () => {
-      const c = configure(null).componentInstance;
-      spyOn(c, 'onCreateAsync').and.returnValue(of({ message: 'ok', examId: 42 }));
-      spyOn(c, 'reloadComponent').and.stub();
-      const emitted = jasmine.createSpy('createdAndContinue');
-      c.createdAndContinue.subscribe(emitted);
-
-      c.createAndContinue();
-
-      expect(emitted).toHaveBeenCalledWith(42);
-    });
-
-    it('createAndContinue_AlreadyCreatingInline_DoesNotCallOnCreateAsyncAgain', () => {
-      const c = configure(null).componentInstance;
-      const spy = spyOn(c, 'onCreateAsync').and.returnValue(of({ message: 'ok', examId: 42 }));
-      c.creatingInline = true;
-
-      c.createAndContinue();
-
-      expect(spy).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('onCreateAsync', () => {
-    it('onCreateAsync_RequireSubtopicDefaultAndMissingSubtopic_ErrorsWithoutCallingCreate', () => {
-      const c = configure(null).componentInstance;
-      c.testForm.patchValue({ name: 'Yeni Test', gradeId: 1, subtopicId: null });
-
-      let errored = false;
-      c.onCreateAsync().subscribe({ error: () => (errored = true) });
-
-      expect(errored).toBeTrue();
-      expect(testService.create).not.toHaveBeenCalled();
-    });
-
-    it('onCreateAsync_RequireSubtopicFalse_CallsCreateEvenWithoutSubtopic', () => {
-      const c = configure(null).componentInstance;
-      c.testForm.patchValue({ name: 'Yeni Test', gradeId: 1, subtopicId: null });
-
-      c.onCreateAsync(false).subscribe();
-
-      expect(testService.create).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('onVisibilityChange', () => {
-    /** Gerçek HTTP gibi asenkron hata: iyimser değer bir kez render edilir, sonra geri alınır. */
-    function failAsync(status: number, error: unknown): void {
-      testService.updateVisibility.and.returnValue(
-        timer(0).pipe(switchMap(() => throwError(() => new HttpErrorResponse({ status, error }))))
-      );
+        const fixture = TestBed.createComponent(TestCreateEnhancedComponent);
+        // MatSnackBar is provided by MatSnackBarModule (not root); stub it on the instance.
+        snackBar = fixture.componentInstance.snackBar as MockedObject<MatSnackBar>;
+        vi.spyOn(snackBar, 'open').mockReturnValue(undefined as never);
+        fixture.detectChanges();
+        return fixture;
     }
 
-    function child(fixture: ComponentFixture<TestCreateEnhancedComponent>): VisibilitySectionComponent {
-      return fixture.debugElement.query(By.directive(VisibilitySectionComponent)).componentInstance;
+    afterEach(() => TestBed.resetTestingModule());
+
+    function fileEvent(file: File): Event {
+        return { target: { files: [file], value: 'C:\\fakepath\\x' } } as unknown as Event;
     }
 
-    function checkedRadioValue(fixture: ComponentFixture<TestCreateEnhancedComponent>): unknown {
-      const radios = fixture.debugElement.queryAll(By.directive(MatRadioButton));
-      return radios.find((r) => (r.componentInstance as MatRadioButton).checked)?.componentInstance.value;
-    }
-
-    /** Kullanıcı alt bileşende SchoolOnly'yi seçer → emit → parent PUT'u başlatır. */
-    function selectSchoolOnlyViaChild(fixture: ComponentFixture<TestCreateEnhancedComponent>): void {
-      child(fixture).onTeacherSharingChange(WorksheetTeacherSharing.SchoolOnly);
-      fixture.detectChanges();
-      tick(0);
-      fixture.detectChanges();
-    }
-
-    it('shows the backend message on 400 and rolls the child selection back to Private (issue #191)', fakeAsync(() => {
-      const fixture = configure('5');
-      const c = fixture.componentInstance;
-      snackBar.open.calls.reset();
-      const message = 'Okulsuz kullanıcı "Sadece okulum" seçemez.';
-      failAsync(400, { success: false, message });
-
-      selectSchoolOnlyViaChild(fixture);
-
-      expect(snackBar.open).toHaveBeenCalledWith(message, jasmine.any(String), jasmine.any(Object));
-      expect(c.teacherSharing()).toBe(WorksheetTeacherSharing.Private);
-      expect(c.isSavingVisibility()).toBeFalse();
-      // Geri alma alt bileşene input üzerinden akmalı: hem input hem seçili radio Private.
-      expect(child(fixture).teacherSharing).toBe(WorksheetTeacherSharing.Private);
-      expect(checkedRadioValue(fixture)).toBe(WorksheetTeacherSharing.Private);
-    }));
-
-    it('falls back to the generic message when 400 carries no message', fakeAsync(() => {
-      const fixture = configure('5');
-      snackBar.open.calls.reset();
-      failAsync(400, { success: false });
-
-      selectSchoolOnlyViaChild(fixture);
-
-      expect(snackBar.open).toHaveBeenCalledWith(
-        testCreateTr.snackbar.visibilityFailed,
-        jasmine.any(String),
-        jasmine.any(Object)
-      );
-      expect(child(fixture).teacherSharing).toBe(WorksheetTeacherSharing.Private);
-    }));
-
-    it('shows the forbidden message on 403 and rolls back', fakeAsync(() => {
-      const fixture = configure('5');
-      snackBar.open.calls.reset();
-      failAsync(403, null);
-
-      selectSchoolOnlyViaChild(fixture);
-
-      expect(snackBar.open).toHaveBeenCalledWith(
-        testCreateTr.snackbar.visibilityForbidden,
-        jasmine.any(String),
-        jasmine.any(Object)
-      );
-      expect(child(fixture).teacherSharing).toBe(WorksheetTeacherSharing.Private);
-      expect(checkedRadioValue(fixture)).toBe(WorksheetTeacherSharing.Private);
-    }));
-
-    it('keeps the new value when the PUT succeeds', () => {
-      const fixture = configure('5');
-      testService.updateVisibility.and.returnValue(
-        of({ teacherSharing: WorksheetTeacherSharing.SchoolOnly, studentVisibility: WorksheetStudentVisibility.Normal } as any)
-      );
-
-      fixture.componentInstance.onVisibilityChange({
-        teacherSharing: WorksheetTeacherSharing.SchoolOnly,
-        studentVisibility: WorksheetStudentVisibility.Normal,
-      });
-
-      expect(testService.updateVisibility).toHaveBeenCalledWith(5, jasmine.objectContaining({ teacherSharing: 3 }));
-      expect(fixture.componentInstance.teacherSharing()).toBe(WorksheetTeacherSharing.SchoolOnly);
-    });
-  });
-
-  describe('onImageSelected', () => {
-    it('rejects files larger than 2MB and does not upload', () => {
-      const c = configure('5').componentInstance;
-      snackBar.open.calls.reset();
-      const big = new File([new Uint8Array(2 * 1024 * 1024 + 16)], 'big.png', { type: 'image/png' });
-
-      c.onImageSelected(fileEvent(big));
-
-      expect(testService.updateWorksheetBackgroundImage).not.toHaveBeenCalled();
-      expect(snackBar.open).toHaveBeenCalled();
+    it('builds', () => {
+        const fixture = configure(null);
+        expect(fixture.componentInstance).toBeTruthy();
     });
 
-    it('rejects non-image files and does not upload', () => {
-      const c = configure('5').componentInstance;
-      snackBar.open.calls.reset();
-      const txt = new File(['hello'], 'a.txt', { type: 'text/plain' });
+    describe('isEditMode', () => {
+        it('is true when the route carries a positive id (exam/5)', () => {
+            const c = configure('5').componentInstance;
+            expect(c.isEditMode).toBe(true);
+            expect(c.id).toBe(5);
+        });
 
-      c.onImageSelected(fileEvent(txt));
-
-      expect(testService.updateWorksheetBackgroundImage).not.toHaveBeenCalled();
-      expect(snackBar.open).toHaveBeenCalled();
+        it('is false when there is no id param (exam)', () => {
+            expect(configure(null).componentInstance.isEditMode).toBe(false);
+        });
     });
 
-    it('uploads a valid image in edit mode', () => {
-      const c = configure('5').componentInstance;
-      const png = new File(['x'], 'a.png', { type: 'image/png' });
+    /** Issue #105: öğrenci yorum/soru anahtarı. */
+    describe('commentsEnabled', () => {
+        it('new form defaults to on and sends true', () => {
+            const c = configure(null).componentInstance;
+            expect(c.testForm.get('commentsEnabled')!.value).toBe(true);
+            c.testForm.patchValue({ name: 'Yeni', gradeId: 1 });
 
-      c.onImageSelected(fileEvent(png));
+            c.onSubmit();
 
-      expect(testService.updateWorksheetBackgroundImage).toHaveBeenCalledTimes(1);
-      expect(testService.updateWorksheetBackgroundImage).toHaveBeenCalledWith(5, jasmine.any(File));
+            expect(vi.mocked(testService.create).mock.lastCall![0].commentsEnabled).toBe(true);
+        });
+
+        it('edit mode patches commentsEnabled=false from the worksheet and sends it back', () => {
+            const c = configure('5', { commentsEnabled: false }).componentInstance;
+            expect(c.testForm.get('commentsEnabled')!.value).toBe(false);
+
+            c.onSubmit();
+
+            expect(vi.mocked(testService.create).mock.lastCall![0].commentsEnabled).toBe(false);
+        });
+
+        it('edit mode without the field (older API) keeps it on', () => {
+            const c = configure('5').componentInstance;
+            expect(c.testForm.get('commentsEnabled')!.value).toBe(true);
+        });
     });
 
-    it('does not upload in create mode (no worksheet id yet)', () => {
-      const c = configure(null).componentInstance;
-      const png = new File(['x'], 'a.png', { type: 'image/png' });
+    describe('onSubmit', () => {
+        it('calls testService.create exactly once for a valid form (no double-save)', () => {
+            const c = configure(null).componentInstance;
+            c.testForm.patchValue({ name: 'Yeni Test', gradeId: 1 });
 
-      c.onImageSelected(fileEvent(png));
+            c.onSubmit();
 
-      expect(testService.updateWorksheetBackgroundImage).not.toHaveBeenCalled();
+            expect(testService.create).toHaveBeenCalledTimes(1);
+        });
+
+        it('does not call testService.create for an invalid form', () => {
+            const c = configure(null).componentInstance;
+            c.testForm.patchValue({ name: '', gradeId: '' });
+
+            c.onSubmit();
+
+            expect(testService.create).not.toHaveBeenCalled();
+            expect(snackBar.open).toHaveBeenCalled();
+        });
+
+        it('reloads the component instead of navigating in edit mode', () => {
+            const c = configure('5').componentInstance;
+            vi.spyOn(c, 'reloadComponent').mockImplementation(() => { });
+            c.testForm.patchValue({ name: 'Düzenlenen', gradeId: 1 });
+
+            c.onSubmit();
+
+            expect(c.reloadComponent).toHaveBeenCalledWith(42);
+            expect(router.navigate).not.toHaveBeenCalled();
+        });
+
+        it('navigates to /exam/:examId after creating a new test', () => {
+            const c = configure(null).componentInstance;
+            c.testForm.patchValue({ name: 'Yeni Test', gradeId: 1 });
+
+            c.onSubmit();
+
+            expect(router.navigate).toHaveBeenCalledWith(['/exam', 42]);
+        });
     });
-  });
 
-  // Issue #544: Excel ile toplu test yükleme kaldırıldı; yeni test sayfasında yalnız tekil form kalır.
-  describe('Excel toplu yükleme yok (#544)', () => {
-    it('createMode_TestFormHasNoApplyToAllTriggers', () => {
-      const fixture = configure(null);
-      const icons: string[] = Array.from(fixture.nativeElement.querySelectorAll('app-test-form button mat-icon')).map(
-        (i) => ((i as HTMLElement).textContent || '').trim()
-      );
+    describe('isMiniform', () => {
+        it('isMiniform_ModeIsMiniform_ReturnsTrue', () => {
+            const c = configure(null).componentInstance;
+            c.mode = 'miniform';
+            expect(c.isMiniform).toBe(true);
+        });
 
-      expect(icons).not.toContain('done_all');
+        it('isMiniform_DefaultMode_ReturnsFalse', () => {
+            expect(configure(null).componentInstance.isMiniform).toBe(false);
+        });
     });
-  });
+
+    describe('createAndContinue', () => {
+        it('createAndContinue_ValidForm_CallsOnCreateAsyncWithoutSubtopicRequirement', () => {
+            const c = configure(null).componentInstance;
+            const spy = vi.spyOn(c, 'onCreateAsync').mockReturnValue(of({ message: 'ok', examId: 42 }));
+            vi.spyOn(c, 'reloadComponent').mockImplementation(() => {
+            });
+
+            c.createAndContinue();
+
+            expect(spy).toHaveBeenCalledTimes(1);
+
+            expect(spy).toHaveBeenCalledWith(false);
+        });
+
+        it('createAndContinue_EmitsCreatedAndContinueWithExamId', () => {
+            const c = configure(null).componentInstance;
+            vi.spyOn(c, 'onCreateAsync').mockReturnValue(of({ message: 'ok', examId: 42 }));
+            vi.spyOn(c, 'reloadComponent').mockImplementation(() => {
+            });
+            const emitted = vi.fn().mockName('createdAndContinue');
+            c.createdAndContinue.subscribe(emitted);
+
+            c.createAndContinue();
+
+            expect(emitted).toHaveBeenCalledWith(42);
+        });
+
+        it('createAndContinue_AlreadyCreatingInline_DoesNotCallOnCreateAsyncAgain', () => {
+            const c = configure(null).componentInstance;
+            const spy = vi.spyOn(c, 'onCreateAsync').mockReturnValue(of({ message: 'ok', examId: 42 }));
+            c.creatingInline = true;
+
+            c.createAndContinue();
+
+            expect(spy).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('onCreateAsync', () => {
+        it('onCreateAsync_RequireSubtopicDefaultAndMissingSubtopic_ErrorsWithoutCallingCreate', () => {
+            const c = configure(null).componentInstance;
+            c.testForm.patchValue({ name: 'Yeni Test', gradeId: 1, subtopicId: null });
+
+            let errored = false;
+            c.onCreateAsync().subscribe({ error: () => (errored = true) });
+
+            expect(errored).toBe(true);
+            expect(testService.create).not.toHaveBeenCalled();
+        });
+
+        it('onCreateAsync_RequireSubtopicFalse_CallsCreateEvenWithoutSubtopic', () => {
+            const c = configure(null).componentInstance;
+            c.testForm.patchValue({ name: 'Yeni Test', gradeId: 1, subtopicId: null });
+
+            c.onCreateAsync(false).subscribe();
+
+            expect(testService.create).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('onVisibilityChange', () => {
+        /** Gerçek HTTP gibi asenkron hata: iyimser değer bir kez render edilir, sonra geri alınır. */
+        function failAsync(status: number, error: unknown): void {
+            testService.updateVisibility.mockReturnValue(timer(0).pipe(switchMap(() => throwError(() => new HttpErrorResponse({ status, error })))));
+        }
+
+        function child(fixture: ComponentFixture<TestCreateEnhancedComponent>): VisibilitySectionComponent {
+            return fixture.debugElement.query(By.directive(VisibilitySectionComponent)).componentInstance;
+        }
+
+        function checkedRadioValue(fixture: ComponentFixture<TestCreateEnhancedComponent>): unknown {
+            const radios = fixture.debugElement.queryAll(By.directive(MatRadioButton));
+            return radios.find((r) => (r.componentInstance as MatRadioButton).checked)?.componentInstance.value;
+        }
+
+        /** Kullanıcı alt bileşende SchoolOnly'yi seçer → emit → parent PUT'u başlatır. */
+        async function selectSchoolOnlyViaChild(fixture: ComponentFixture<TestCreateEnhancedComponent>): Promise<void> {
+            child(fixture).onTeacherSharingChange(WorksheetTeacherSharing.SchoolOnly);
+            fixture.detectChanges();
+            await vi.advanceTimersByTimeAsync(0);
+            fixture.detectChanges();
+        }
+
+        it('shows the backend message on 400 and rolls the child selection back to Private (issue #191)', async () => {
+            const fixture = configure('5');
+            const c = fixture.componentInstance;
+            snackBar.open.mockClear();
+            const message = 'Okulsuz kullanıcı "Sadece okulum" seçemez.';
+            failAsync(400, { success: false, message });
+
+            await selectSchoolOnlyViaChild(fixture);
+
+            expect(snackBar.open).toHaveBeenCalledWith(message, expect.any(String), expect.any(Object));
+            expect(c.teacherSharing()).toBe(WorksheetTeacherSharing.Private);
+            expect(c.isSavingVisibility()).toBe(false);
+            // Geri alma alt bileşene input üzerinden akmalı: hem input hem seçili radio Private.
+            expect(child(fixture).teacherSharing).toBe(WorksheetTeacherSharing.Private);
+            expect(checkedRadioValue(fixture)).toBe(WorksheetTeacherSharing.Private);
+        });
+
+        it('falls back to the generic message when 400 carries no message', async () => {
+            const fixture = configure('5');
+            snackBar.open.mockClear();
+            failAsync(400, { success: false });
+
+            await selectSchoolOnlyViaChild(fixture);
+
+            expect(snackBar.open).toHaveBeenCalledWith(testCreateTr.snackbar.visibilityFailed, expect.any(String), expect.any(Object));
+            expect(child(fixture).teacherSharing).toBe(WorksheetTeacherSharing.Private);
+        });
+
+        it('shows the forbidden message on 403 and rolls back', async () => {
+            const fixture = configure('5');
+            snackBar.open.mockClear();
+            failAsync(403, null);
+
+            await selectSchoolOnlyViaChild(fixture);
+
+            expect(snackBar.open).toHaveBeenCalledWith(testCreateTr.snackbar.visibilityForbidden, expect.any(String), expect.any(Object));
+            expect(child(fixture).teacherSharing).toBe(WorksheetTeacherSharing.Private);
+            expect(checkedRadioValue(fixture)).toBe(WorksheetTeacherSharing.Private);
+        });
+
+        it('keeps the new value when the PUT succeeds', () => {
+            const fixture = configure('5');
+            testService.updateVisibility.mockReturnValue(of({ teacherSharing: WorksheetTeacherSharing.SchoolOnly, studentVisibility: WorksheetStudentVisibility.Normal } as any));
+
+            fixture.componentInstance.onVisibilityChange({
+                teacherSharing: WorksheetTeacherSharing.SchoolOnly,
+                studentVisibility: WorksheetStudentVisibility.Normal,
+            });
+
+            expect(testService.updateVisibility).toHaveBeenCalledWith(5, expect.objectContaining({ teacherSharing: 3 }));
+            expect(fixture.componentInstance.teacherSharing()).toBe(WorksheetTeacherSharing.SchoolOnly);
+        });
+    });
+
+    describe('onImageSelected', () => {
+        it('rejects files larger than 2MB and does not upload', () => {
+            const c = configure('5').componentInstance;
+            snackBar.open.mockClear();
+            const big = new File([new Uint8Array(2 * 1024 * 1024 + 16)], 'big.png', { type: 'image/png' });
+
+            c.onImageSelected(fileEvent(big));
+
+            expect(testService.updateWorksheetBackgroundImage).not.toHaveBeenCalled();
+            expect(snackBar.open).toHaveBeenCalled();
+        });
+
+        it('rejects non-image files and does not upload', () => {
+            const c = configure('5').componentInstance;
+            snackBar.open.mockClear();
+            const txt = new File(['hello'], 'a.txt', { type: 'text/plain' });
+
+            c.onImageSelected(fileEvent(txt));
+
+            expect(testService.updateWorksheetBackgroundImage).not.toHaveBeenCalled();
+            expect(snackBar.open).toHaveBeenCalled();
+        });
+
+        it('uploads a valid image in edit mode', () => {
+            const c = configure('5').componentInstance;
+            const png = new File(['x'], 'a.png', { type: 'image/png' });
+
+            c.onImageSelected(fileEvent(png));
+
+            expect(testService.updateWorksheetBackgroundImage).toHaveBeenCalledTimes(1);
+            expect(testService.updateWorksheetBackgroundImage).toHaveBeenCalledWith(5, expect.any(File));
+        });
+
+        it('does not upload in create mode (no worksheet id yet)', () => {
+            const c = configure(null).componentInstance;
+            const png = new File(['x'], 'a.png', { type: 'image/png' });
+
+            c.onImageSelected(fileEvent(png));
+
+            expect(testService.updateWorksheetBackgroundImage).not.toHaveBeenCalled();
+        });
+    });
+
+    // Issue #544: Excel ile toplu test yükleme kaldırıldı; yeni test sayfasında yalnız tekil form kalır.
+    describe('Excel toplu yükleme yok (#544)', () => {
+        it('createMode_TestFormHasNoApplyToAllTriggers', () => {
+            const fixture = configure(null);
+            const icons: string[] = Array.from(fixture.nativeElement.querySelectorAll('app-test-form button mat-icon')).map((i) => ((i as HTMLElement).textContent || '').trim());
+
+            expect(icons).not.toContain('done_all');
+        });
+    });
 });

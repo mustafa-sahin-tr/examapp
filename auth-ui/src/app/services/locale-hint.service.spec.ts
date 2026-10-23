@@ -10,8 +10,8 @@ describe('LocaleHintService', () => {
   let service: LocaleHintService;
 
   function withBrowserLanguages(languages: string[]): void {
-    spyOnProperty(navigator, 'languages', 'get').and.returnValue(languages);
-    spyOnProperty(navigator, 'language', 'get').and.returnValue(languages[0] ?? '');
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(languages);
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue(languages[0] ?? '');
   }
 
   beforeEach(() => {

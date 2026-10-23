@@ -10,71 +10,79 @@ import { AuthService } from '../../services/auth.service';
 import { of } from 'rxjs';
 
 describe('LayoutComponent', () => {
-  let component: LayoutComponent;
-  let fixture: ComponentFixture<LayoutComponent>;
-  let savedStorage: Record<string, string>;
+    let component: LayoutComponent;
+    let fixture: ComponentFixture<LayoutComponent>;
+    let savedStorage: Record<string, string>;
 
-  // Oturum durumu localStorage'tan okunur; başka spec'lerden sızan bir token oturum açık dalını
-  // render ettirir. Bu duman testi oturum kapalı kabuğu doğrular, ön koşul burada sabitlenir (#394).
-  beforeEach(() => {
-    savedStorage = { ...localStorage };
-    localStorage.clear();
-  });
+    // Oturum durumu localStorage'tan okunur; başka spec'lerden sızan bir token oturum açık dalını
+    // render ettirir. Bu duman testi oturum kapalı kabuğu doğrular, ön koşul burada sabitlenir (#394).
+    beforeEach(() => {
+        savedStorage = { ...localStorage };
+        localStorage.clear();
+    });
 
-  afterEach(() => {
-    localStorage.clear();
-    Object.entries(savedStorage).forEach(([key, value]) => localStorage.setItem(key, value));
-  });
+    afterEach(() => {
+        localStorage.clear();
+        Object.entries(savedStorage).forEach(([key, value]) => localStorage.setItem(key, value));
+    });
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [LayoutComponent],
-      providers: [
-        provideHttpClient(withXhr()),
-        provideHttpClientTesting(),
-        provideRouter([]),
-        provideNoopAnimations(),
-        // Gercek hub baglantisi (WebSocket) testte acilmaz.
-        { provide: SignalRService, useValue: jasmine.createSpyObj<SignalRService>('SignalRService', ['startConnection']) },
-      ],
-    })
-    .compileComponents();
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            imports: [LayoutComponent],
+            providers: [
+                provideHttpClient(withXhr()),
+                provideHttpClientTesting(),
+                provideRouter([]),
+                provideNoopAnimations(),
+                // Gercek hub baglantisi (WebSocket) testte acilmaz.
+                { provide: SignalRService, useValue: {
+                        startConnection: vi.fn().mockName("SignalRService.startConnection")
+                    } },
+            ],
+        })
+            .compileComponents();
 
-    fixture = TestBed.createComponent(LayoutComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
+        fixture = TestBed.createComponent(LayoutComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
+    it('should create', () => {
+        expect(component).toBeTruthy();
+    });
 });
 
 describe('LayoutComponent (oturum açık)', () => {
-  it('loggedIn_ShowsUserFullNameInToolbar', async () => {
-    const auth = jasmine.createSpyObj<AuthService>('AuthService', ['isAuthenticated', 'getUser', 'getUserAvatar']);
-    auth.isAuthenticated.and.returnValue(of(true));
-    auth.getUser.and.returnValue({ fullName: 'X' } as ReturnType<AuthService['getUser']>);
-    auth.getUserAvatar.and.returnValue(null as unknown as string);
+    it('loggedIn_ShowsUserFullNameInToolbar', async () => {
+        const auth = {
+            isAuthenticated: vi.fn().mockName("AuthService.isAuthenticated"),
+            getUser: vi.fn().mockName("AuthService.getUser"),
+            getUserAvatar: vi.fn().mockName("AuthService.getUserAvatar")
+        };
+        auth.isAuthenticated.mockReturnValue(of(true));
+        auth.getUser.mockReturnValue({ fullName: 'X' } as ReturnType<AuthService['getUser']>);
+        auth.getUserAvatar.mockReturnValue(null as unknown as string);
 
-    await TestBed.configureTestingModule({
-      imports: [LayoutComponent],
-      providers: [
-        provideHttpClient(withXhr()),
-        provideHttpClientTesting(),
-        provideRouter([]),
-        provideNoopAnimations(),
-        { provide: AuthService, useValue: auth },
-        { provide: SignalRService, useValue: jasmine.createSpyObj<SignalRService>('SignalRService', ['startConnection']) },
-      ],
-    }).compileComponents();
+        await TestBed.configureTestingModule({
+            imports: [LayoutComponent],
+            providers: [
+                provideHttpClient(withXhr()),
+                provideHttpClientTesting(),
+                provideRouter([]),
+                provideNoopAnimations(),
+                { provide: AuthService, useValue: auth },
+                { provide: SignalRService, useValue: {
+                        startConnection: vi.fn().mockName("SignalRService.startConnection")
+                    } },
+            ],
+        }).compileComponents();
 
-    const fixture = TestBed.createComponent(LayoutComponent);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
+        const fixture = TestBed.createComponent(LayoutComponent);
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
 
-    const username = (fixture.nativeElement as HTMLElement).querySelector('.username');
-    expect(username?.textContent?.trim()).toBe('X');
-  });
+        const username = (fixture.nativeElement as HTMLElement).querySelector('.username');
+        expect(username?.textContent?.trim()).toBe('X');
+    });
 });

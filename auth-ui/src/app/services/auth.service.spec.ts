@@ -1,4 +1,4 @@
-import { TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { Router } from '@angular/router';
 import { AuthService, TokenResponse, pickAppRole } from './auth.service';
@@ -73,6 +73,12 @@ describe('pickAppRole', () => {
 });
 
 describe('AuthService (auth-ui)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ advanceTimeDelta: 1, shouldAdvanceTime: true });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
   let service: AuthService;
   let httpMock: HttpTestingController;
   let router: Router;
@@ -86,7 +92,7 @@ describe('AuthService (auth-ui)', () => {
     service = TestBed.inject(AuthService);
     httpMock = TestBed.inject(HttpTestingController);
     router = TestBed.inject(Router);
-    spyOn(router, 'navigate');
+    vi.spyOn(router, 'navigate').mockReturnValue(undefined as never);
 
     // Clear localStorage before each test
     localStorage.clear();
@@ -102,7 +108,15 @@ describe('AuthService (auth-ui)', () => {
       it('isCachedUserCurrent_TokenAndUserMatch_ReturnsTrue', () => {
         const keycloakId = 'user-123';
         const token = createToken(keycloakId);
-        const user = { keycloakId, fullName: 'Alice', email: 'alice@example.com', id: 1, profileId: 1, avatar: '', role: 'student' };
+        const user = {
+          keycloakId,
+          fullName: 'Alice',
+          email: 'alice@example.com',
+          id: 1,
+          profileId: 1,
+          avatar: '',
+          role: 'student',
+        };
 
         localStorage.setItem('auth_token', token);
         localStorage.setItem('user', JSON.stringify(user));
@@ -112,7 +126,15 @@ describe('AuthService (auth-ui)', () => {
 
       it('isCachedUserCurrent_TokenSubDoesNotMatchUserKeycloakId_ReturnsFalse', () => {
         const token = createToken('user-123');
-        const user = { keycloakId: 'user-456', fullName: 'Bob', email: 'bob@example.com', id: 2, profileId: 2, avatar: '', role: 'teacher' };
+        const user = {
+          keycloakId: 'user-456',
+          fullName: 'Bob',
+          email: 'bob@example.com',
+          id: 2,
+          profileId: 2,
+          avatar: '',
+          role: 'teacher',
+        };
 
         localStorage.setItem('auth_token', token);
         localStorage.setItem('user', JSON.stringify(user));
@@ -122,7 +144,15 @@ describe('AuthService (auth-ui)', () => {
     });
 
     it('isCachedUserCurrent_NoToken_ReturnsFalse', () => {
-      const user = { keycloakId: 'user-123', fullName: 'Alice', email: 'alice@example.com', id: 1, profileId: 1, avatar: '', role: 'student' };
+      const user = {
+        keycloakId: 'user-123',
+        fullName: 'Alice',
+        email: 'alice@example.com',
+        id: 1,
+        profileId: 1,
+        avatar: '',
+        role: 'student',
+      };
       localStorage.setItem('user', JSON.stringify(user));
 
       expect(service.isCachedUserCurrent()).toBe(false);
@@ -154,11 +184,7 @@ describe('AuthService (auth-ui)', () => {
       const header = { alg: 'RS256', typ: 'JWT' };
       const now = Math.floor(Date.now() / 1000);
       const payload = { sub: '', exp: now + 3600 };
-      const token =
-        base64urlEncode(JSON.stringify(header)) +
-        '.' +
-        base64urlEncode(JSON.stringify(payload)) +
-        '.sig';
+      const token = base64urlEncode(JSON.stringify(header)) + '.' + base64urlEncode(JSON.stringify(payload)) + '.sig';
 
       localStorage.setItem('auth_token', token);
       localStorage.setItem('user', JSON.stringify({ keycloakId: 'user-123' }));
@@ -168,7 +194,15 @@ describe('AuthService (auth-ui)', () => {
 
     it('isCachedUserCurrent_KeycloakIdIsEmpty_ReturnsFalse', () => {
       const token = createToken('user-123');
-      const user = { keycloakId: '', fullName: 'Alice', email: 'alice@example.com', id: 1, profileId: 1, avatar: '', role: 'student' };
+      const user = {
+        keycloakId: '',
+        fullName: 'Alice',
+        email: 'alice@example.com',
+        id: 1,
+        profileId: 1,
+        avatar: '',
+        role: 'student',
+      };
 
       localStorage.setItem('auth_token', token);
       localStorage.setItem('user', JSON.stringify(user));
@@ -206,7 +240,7 @@ describe('AuthService (auth-ui)', () => {
 
   describe('logout', () => {
     describe('Kriter 2: Logout HTTP hatasında bile temizlenmeli', () => {
-      it('logout_HttpErrorResponse_ClearsLocalStorageSynchronouslyAndReturnsObservable', (done) => {
+      it('logout_HttpErrorResponse_ClearsLocalStorageSynchronouslyAndReturnsObservable', async () => {
         localStorage.setItem('auth_token', 'token-123');
         localStorage.setItem('user_role', 'student');
         localStorage.setItem('user_avatar', 'avatar-url');
@@ -216,7 +250,6 @@ describe('AuthService (auth-ui)', () => {
         service.logout().subscribe(() => {
           // Observable tamamlanmalı (hata fırlatmamalı)
           expect(true).toBe(true);
-          done();
         });
 
         // Senkron olarak silinmiş olmalı
@@ -233,7 +266,7 @@ describe('AuthService (auth-ui)', () => {
       });
     });
 
-    it('logout_HttpSuccess_ClearsLocalStorageAndReturnsObservable', (done) => {
+    it('logout_HttpSuccess_ClearsLocalStorageAndReturnsObservable', async () => {
       localStorage.setItem('auth_token', 'token-123');
       localStorage.setItem('user_role', 'student');
       localStorage.setItem('user_avatar', 'avatar-url');
@@ -242,7 +275,6 @@ describe('AuthService (auth-ui)', () => {
 
       service.logout().subscribe(() => {
         expect(true).toBe(true);
-        done();
       });
 
       expect(localStorage.getItem('auth_token')).toBeNull();
@@ -256,7 +288,7 @@ describe('AuthService (auth-ui)', () => {
       req.flush(null);
     });
 
-    it('logout_HttpTimeout_ClearsLocalStorageAndReturnsObservable', fakeAsync(() => {
+    it('logout_HttpTimeout_ClearsLocalStorageAndReturnsObservable', async () => {
       localStorage.setItem('auth_token', 'token-123');
       localStorage.setItem('user', JSON.stringify({ keycloakId: 'user-123' }));
 
@@ -271,21 +303,21 @@ describe('AuthService (auth-ui)', () => {
       expect(req.request.headers.get('Authorization')).toBe('Bearer token-123');
 
       // Timeout işlemini tetikle (2000ms)
-      tick(2000);
+      await vi.advanceTimersByTimeAsync(2000);
 
       // Observable tamamlanması beklenir
       expect(completed).toBe(true);
-    }));
+    });
   });
 
   describe('hasValidSessionToken (issue #347)', () => {
     it('token yoksa false', () => {
-      expect(service.hasValidSessionToken()).toBeFalse();
+      expect(service.hasValidSessionToken()).toBe(false);
     });
 
     it('süresi dolmamış token → true', () => {
       localStorage.setItem('auth_token', createToken('u-1'));
-      expect(service.hasValidSessionToken()).toBeTrue();
+      expect(service.hasValidSessionToken()).toBe(true);
     });
 
     it('süresi dolmuş veya bozuk token → false', () => {
@@ -295,16 +327,16 @@ describe('AuthService (auth-ui)', () => {
         base64urlEncode(JSON.stringify({ sub: 'u', exp: Math.floor(Date.now() / 1000) - 10 })) +
         '.x';
       localStorage.setItem('auth_token', expired);
-      expect(service.hasValidSessionToken()).toBeFalse();
+      expect(service.hasValidSessionToken()).toBe(false);
 
       localStorage.setItem('auth_token', 'not-a-jwt');
-      expect(service.hasValidSessionToken()).toBeFalse();
+      expect(service.hasValidSessionToken()).toBe(false);
     });
   });
 
   describe('exchangeCodeForToken', () => {
     describe('Kriter 1: Kullanıcı değişince profil bilgisi güncellenmeli', () => {
-      it('exchangeCodeForToken_ClearsCachedUserBeforeSettingNewToken', (done) => {
+      it('exchangeCodeForToken_ClearsCachedUserBeforeSettingNewToken', async () => {
         // Eski kullanıcı verisi
         localStorage.setItem('user', JSON.stringify({ keycloakId: 'old-user', fullName: 'Old User' }));
         localStorage.setItem('user_avatar', 'old-avatar-url');
@@ -321,7 +353,6 @@ describe('AuthService (auth-ui)', () => {
           // Yeni user verisi yazılmamış (auth-ui spec'inde exchange endpoint user bilgisi döndürmüyor)
           // Bu, isCachedUserCurrent() false döndürmesi demek
           expect(service.isCachedUserCurrent()).toBe(false);
-          done();
         });
 
         const req = httpMock.expectOne('/api/auth/exchange');
@@ -342,14 +373,13 @@ describe('AuthService (auth-ui)', () => {
       });
     });
 
-    it('exchangeCodeForToken_SetsTokenAndRole_StoresUserProfile', (done) => {
+    it('exchangeCodeForToken_SetsTokenAndRole_StoresUserProfile', async () => {
       const newToken = createToken('user-xyz');
       const newKeycloakId = 'user-xyz';
 
       service.exchangeCodeForToken('code-456', 'v'.repeat(43)).subscribe(() => {
         expect(localStorage.getItem('auth_token')).toBe(newToken);
         expect(localStorage.getItem('user_role')).toBe('Teacher');
-        done();
       });
 
       const req = httpMock.expectOne('/api/auth/exchange');
@@ -373,7 +403,7 @@ describe('AuthService (auth-ui)', () => {
   });
 
   describe('Kriter 3: Yeni kayıt sonrası kendi adını görür', () => {
-    it('isCachedUserCurrent_AfterExchangeCodeSetup_ReturnsTrueWhenValidTokenAndUserAreSet', (done) => {
+    it('isCachedUserCurrent_AfterExchangeCodeSetup_ReturnsTrueWhenValidTokenAndUserAreSet', async () => {
       const keycloakId = 'new-student-user-999';
       const token = createToken(keycloakId);
       const profile = {
@@ -392,7 +422,6 @@ describe('AuthService (auth-ui)', () => {
 
         expect(service.isCachedUserCurrent()).toBe(true);
         expect(service.getUser()).toEqual(profile);
-        done();
       });
 
       const req = httpMock.expectOne('/api/auth/exchange');
@@ -423,19 +452,17 @@ describe('AuthService (auth-ui)', () => {
       } as TokenResponse);
     }
 
-    it('exchangeCodeForToken_QuestionTrainerFirst_StoresTeacher', (done) => {
+    it('exchangeCodeForToken_QuestionTrainerFirst_StoresTeacher', async () => {
       service.exchangeCodeForToken('code-qt', 'v'.repeat(43)).subscribe(() => {
         expect(localStorage.getItem('user_role')).toBe('Teacher');
-        done();
       });
       flushExchange(['QuestionTrainer', 'Teacher']);
     });
 
-    it('exchangeCodeForToken_NoAppRole_RemovesStaleRole', (done) => {
+    it('exchangeCodeForToken_NoAppRole_RemovesStaleRole', async () => {
       localStorage.setItem('user_role', 'Student');
       service.exchangeCodeForToken('code-new', 'v'.repeat(43)).subscribe(() => {
         expect(localStorage.getItem('user_role')).toBeNull();
-        done();
       });
       flushExchange([]);
     });

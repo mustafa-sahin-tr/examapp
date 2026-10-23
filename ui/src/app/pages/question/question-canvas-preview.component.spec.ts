@@ -1,3 +1,4 @@
+import type { Mock, MockedObject } from "vitest";
 // #545 — Angular 21 control-flow migrasyonu (@if / @else başlık) ve preview yaşam döngüsü sözleşmesi.
 import { Component, EventEmitter, Input, forwardRef, signal, ChangeDetectionStrategy } from '@angular/core';
 import { Location } from '@angular/common';
@@ -16,135 +17,143 @@ import questionTr from '../../../../public/i18n/question/tr.json';
 
 /** Gerçek tuval yerine; `@ViewChild(ImageSelectorComponent)` bu stub'ı DI token'ı üzerinden bulur. */
 @Component({
-  selector: 'app-image-selector',
-  standalone: true,
-  template: '',
-  changeDetection: ChangeDetectionStrategy.Eager,
-  providers: [{ provide: ImageSelectorComponent, useExisting: forwardRef(() => ImageSelectorStub) }],
+    selector: 'app-image-selector',
+    standalone: true,
+    template: '',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    providers: [{ provide: ImageSelectorComponent, useExisting: forwardRef(() => ImageSelectorStub) }],
 })
 class ImageSelectorStub {
-  @Input() previewMetaProvider: unknown;
-  readonly previewMode = signal(false);
-  readonly regions = signal<{ isExample?: boolean }[]>([]);
-  readonly passages = signal<unknown[]>([]);
-  currentClassification = () => null;
-  togglePreviewMode = jasmine.createSpy('togglePreviewMode').and.callFake(() => this.previewMode.set(true));
-  readonly loaded = new EventEmitter<void>();
+    @Input()
+    previewMetaProvider: unknown;
+    readonly previewMode = signal(false);
+    readonly regions = signal<{
+        isExample?: boolean;
+    }[]>([]);
+    readonly passages = signal<unknown[]>([]);
+    currentClassification = () => null;
+    togglePreviewMode = vi.fn().mockName('togglePreviewMode').mockImplementation(() => this.previewMode.set(true));
+    readonly loaded = new EventEmitter<void>();
 }
 
 const P = questionTr.preview;
 const C = questionTr.common;
 
 describe('QuestionCanvasPreviewComponent (#545)', () => {
-  let fixture: ComponentFixture<QuestionCanvasPreviewComponent>;
-  let router: Router;
-  let location: { getState: jasmine.Spy; back: jasmine.Spy };
-  let testService: jasmine.SpyObj<TestService>;
-  let snack: jasmine.Spy;
-  let selector: ImageSelectorStub;
-
-  const el = () => fixture.nativeElement as HTMLElement;
-
-  function setup(opts: {
-    paramTestId?: string | null;
-    queryTestId?: string | null;
-    returnUrl?: string | null;
-    testResult?: () => Observable<Test>;
-  } = {}): void {
-    testService = jasmine.createSpyObj<TestService>('TestService', ['get']);
-    testService.get.and.callFake(opts.testResult ?? (() => of({ id: 5, name: 'Matematik Testi' } as Test)));
-    location = { getState: jasmine.createSpy('getState').and.returnValue(null), back: jasmine.createSpy('back') };
-
-    const route = {
-      snapshot: {
-        paramMap: convertToParamMap(opts.paramTestId == null ? {} : { testId: opts.paramTestId }),
-        queryParamMap: convertToParamMap({
-          ...(opts.queryTestId == null ? {} : { testId: opts.queryTestId }),
-          ...(opts.returnUrl == null ? {} : { returnUrl: opts.returnUrl }),
-        }),
-      },
+    let fixture: ComponentFixture<QuestionCanvasPreviewComponent>;
+    let router: Router;
+    let location: {
+        getState: Mock;
+        back: Mock;
     };
+    let testService: MockedObject<TestService>;
+    let snack: Mock;
+    let selector: ImageSelectorStub;
 
-    TestBed.configureTestingModule({
-      imports: [QuestionCanvasPreviewComponent, NoopAnimationsModule, translocoTestingModule({ langs: { 'question/tr': questionTr } })],
-      providers: [
-        provideRouter([]),
-        { provide: ActivatedRoute, useValue: route },
-        { provide: Location, useValue: location },
-        { provide: TestService, useValue: testService },
-      ],
+    const el = () => fixture.nativeElement as HTMLElement;
+
+    function setup(opts: {
+        paramTestId?: string | null;
+        queryTestId?: string | null;
+        returnUrl?: string | null;
+        testResult?: () => Observable<Test>;
+    } = {}): void {
+        testService = {
+            get: vi.fn().mockName("TestService.get")
+        } as unknown as MockedObject<TestService>;
+        testService.get.mockImplementation(opts.testResult ?? (() => of({ id: 5, name: 'Matematik Testi' } as Test)));
+        location = { getState: vi.fn().mockName('getState').mockReturnValue(null), back: vi.fn().mockName('back') };
+
+        const route = {
+            snapshot: {
+                paramMap: convertToParamMap(opts.paramTestId == null ? {} : { testId: opts.paramTestId }),
+                queryParamMap: convertToParamMap({
+                    ...(opts.queryTestId == null ? {} : { testId: opts.queryTestId }),
+                    ...(opts.returnUrl == null ? {} : { returnUrl: opts.returnUrl }),
+                }),
+            },
+        };
+
+        TestBed.configureTestingModule({
+            imports: [QuestionCanvasPreviewComponent, NoopAnimationsModule, translocoTestingModule({ langs: { 'question/tr': questionTr } })],
+            providers: [
+                provideRouter([]),
+                { provide: ActivatedRoute, useValue: route },
+                { provide: Location, useValue: location },
+                { provide: TestService, useValue: testService },
+            ],
+        });
+        // Gerçek tuval yerine stub (ImageSelectorComponent doğrudan import ediliyor).
+        TestBed.overrideComponent(QuestionCanvasPreviewComponent, {
+            remove: { imports: [ImageSelectorComponent] },
+            add: { imports: [ImageSelectorStub] },
+        });
+        router = TestBed.inject(Router);
+        vi.spyOn(router, 'navigate').mockResolvedValue(true);
+        vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+        fixture = TestBed.createComponent(QuestionCanvasPreviewComponent);
+        snack = vi.spyOn(fixture.debugElement.injector.get(MatSnackBar), 'open').mockReturnValue(undefined as never);
+        fixture.detectChanges();
+        selector = fixture.debugElement.query((de) => de.componentInstance instanceof ImageSelectorStub)
+            .componentInstance as ImageSelectorStub;
+    }
+
+    it('template_TestNameLoaded_ShowsHeadingWithTestName', () => {
+        setup({ paramTestId: '5' });
+
+        expect(el().querySelector('.pv-heading')?.textContent).toContain(P.headingWithTest.replace('{{testName}}', 'Matematik Testi'));
     });
-    // Gerçek tuval yerine stub (ImageSelectorComponent doğrudan import ediliyor).
-    TestBed.overrideComponent(QuestionCanvasPreviewComponent, {
-      remove: { imports: [ImageSelectorComponent] },
-      add: { imports: [ImageSelectorStub] },
+
+    it('template_TestNameMissing_ShowsGenericPreviewTitle', () => {
+        setup({ paramTestId: '5', testResult: () => throwError(() => new Error('not found')) });
+
+        expect(el().querySelector('.pv-heading')?.textContent).toContain(C.previewTitle);
+        expect(el().querySelector('.pv-heading')?.textContent).not.toContain('Matematik Testi');
     });
-    router = TestBed.inject(Router);
-    spyOn(router, 'navigate').and.resolveTo(true);
-    spyOn(router, 'navigateByUrl').and.resolveTo(true);
-    fixture = TestBed.createComponent(QuestionCanvasPreviewComponent);
-    snack = spyOn(fixture.debugElement.injector.get(MatSnackBar), 'open');
-    fixture.detectChanges();
-    selector = fixture.debugElement.query((de) => de.componentInstance instanceof ImageSelectorStub)
-      .componentInstance as ImageSelectorStub;
-  }
 
-  it('template_TestNameLoaded_ShowsHeadingWithTestName', () => {
-    setup({ paramTestId: '5' });
+    it('ngAfterViewInit_RouteTestIdValid_EntersPreviewModeForThatTest', () => {
+        setup({ paramTestId: '5' });
 
-    expect(el().querySelector('.pv-heading')?.textContent).toContain(P.headingWithTest.replace('{{testName}}', 'Matematik Testi'));
-  });
+        expect(testService.get).toHaveBeenCalledWith(5);
+        expect(selector.togglePreviewMode).toHaveBeenCalledWith(5);
+        expect(fixture.componentInstance.testId()).toBe(5);
+    });
 
-  it('template_TestNameMissing_ShowsGenericPreviewTitle', () => {
-    setup({ paramTestId: '5', testResult: () => throwError(() => new Error('not found')) });
+    it('ngAfterViewInit_NoTestIdAnywhere_ShowsSnackAndLeavesPreview', () => {
+        setup({});
 
-    expect(el().querySelector('.pv-heading')?.textContent).toContain(C.previewTitle);
-    expect(el().querySelector('.pv-heading')?.textContent).not.toContain('Matematik Testi');
-  });
+        expect(snack).toHaveBeenCalledWith(P.noTestSelected, C.snackbarAction, expect.any(Object));
+        expect(testService.get).not.toHaveBeenCalled();
+        expect(selector.togglePreviewMode).not.toHaveBeenCalled();
+    });
 
-  it('ngAfterViewInit_RouteTestIdValid_EntersPreviewModeForThatTest', () => {
-    setup({ paramTestId: '5' });
+    it('ngAfterViewInit_TestIdOnlyInQuery_UsesQueryParam', () => {
+        setup({ queryTestId: '9' });
 
-    expect(testService.get).toHaveBeenCalledWith(5);
-    expect(selector.togglePreviewMode).toHaveBeenCalledWith(5);
-    expect(fixture.componentInstance.testId()).toBe(5);
-  });
+        expect(testService.get).toHaveBeenCalledWith(9);
+    });
 
-  it('ngAfterViewInit_NoTestIdAnywhere_ShowsSnackAndLeavesPreview', () => {
-    setup({});
+    it('closePreview_SameOriginReturnUrl_NavigatesToReturnUrl', () => {
+        setup({ paramTestId: '5', returnUrl: '/worksheets/1' });
 
-    expect(snack).toHaveBeenCalledWith(P.noTestSelected, C.snackbarAction, jasmine.any(Object));
-    expect(testService.get).not.toHaveBeenCalled();
-    expect(selector.togglePreviewMode).not.toHaveBeenCalled();
-  });
+        fixture.componentInstance.closePreview();
 
-  it('ngAfterViewInit_TestIdOnlyInQuery_UsesQueryParam', () => {
-    setup({ queryTestId: '9' });
+        expect(router.navigateByUrl).toHaveBeenCalledWith('/worksheets/1', undefined);
+    });
 
-    expect(testService.get).toHaveBeenCalledWith(9);
-  });
+    it('closePreview_ProtocolRelativeReturnUrl_DoesNotRedirectOffApp', () => {
+        setup({ paramTestId: '5', returnUrl: '//evil.example.com' });
 
-  it('closePreview_SameOriginReturnUrl_NavigatesToReturnUrl', () => {
-    setup({ paramTestId: '5', returnUrl: '/worksheets/1' });
+        fixture.componentInstance.closePreview();
 
-    fixture.componentInstance.closePreview();
+        expect(router.navigateByUrl).not.toHaveBeenCalled();
+    });
 
-    expect(router.navigateByUrl).toHaveBeenCalledWith('/worksheets/1', undefined);
-  });
+    it('exitPreview_Clicked_ClosesPreview', () => {
+        setup({ paramTestId: '5', returnUrl: '/worksheets/1' });
 
-  it('closePreview_ProtocolRelativeReturnUrl_DoesNotRedirectOffApp', () => {
-    setup({ paramTestId: '5', returnUrl: '//evil.example.com' });
+        (el().querySelector('.pv-btn--primary') as HTMLButtonElement).click();
 
-    fixture.componentInstance.closePreview();
-
-    expect(router.navigateByUrl).not.toHaveBeenCalled();
-  });
-
-  it('exitPreview_Clicked_ClosesPreview', () => {
-    setup({ paramTestId: '5', returnUrl: '/worksheets/1' });
-
-    (el().querySelector('.pv-btn--primary') as HTMLButtonElement).click();
-
-    expect(router.navigateByUrl).toHaveBeenCalledWith('/worksheets/1', undefined);
-  });
+        expect(router.navigateByUrl).toHaveBeenCalledWith('/worksheets/1', undefined);
+    });
 });

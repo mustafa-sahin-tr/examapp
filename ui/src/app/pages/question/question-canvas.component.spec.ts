@@ -1,3 +1,4 @@
+import type { MockedObject } from "vitest";
 import { Component, EventEmitter, Input, Output, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
@@ -18,10 +19,12 @@ import { TestCreateEnhancedComponent } from '../test-create-enhanced/test-create
 
 /** Şablon testlerinde ağır test oluşturma formunun yerine geçen boş bileşen. */
 @Component({ selector: 'app-test-create-enhanced', standalone: true, changeDetection: ChangeDetectionStrategy.Eager,
- template: '' })
+    template: '' })
 class TestCreateEnhancedStubComponent {
-  @Input() mode = '';
-  @Output() createdAndContinue = new EventEmitter<number>();
+    @Input()
+    mode = '';
+    @Output()
+    createdAndContinue = new EventEmitter<number>();
 }
 
 /**
@@ -37,1383 +40,1438 @@ import questionTr from '../../../../public/i18n/question/tr.json';
 
 /** Gercek sozluk yuklenir; anahtar bozulursa test kirilir (issue #183). */
 const translocoTesting = TranslocoTestingModule.forRoot({
-  langs: { 'question/tr': questionTr },
-  translocoConfig: {
-    availableLangs: [...SUPPORTED_LOCALE_CODES],
-    defaultLang: DEFAULT_LOCALE,
-    // Uygulama config'i ile ayni: scope oneki klasor adiyla birebir ayni kalsin (issue #183).
-    scopes: { keepCasing: true },
-  },
-  preloadLangs: true,
+    langs: { 'question/tr': questionTr },
+    translocoConfig: {
+        availableLangs: [...SUPPORTED_LOCALE_CODES],
+        defaultLang: DEFAULT_LOCALE,
+        // Uygulama config'i ile ayni: scope oneki klasor adiyla birebir ayni kalsin (issue #183).
+        scopes: { keepCasing: true },
+    },
+    preloadLangs: true,
 });
 
 /** Claude model kimliği (tespit kaynağı testleri, issue #473). */
 const HAIKU_ID = 'claude-haiku-5-5';
 
 describe('QuestionCanvasComponent', () => {
-  let fixture: ComponentFixture<QuestionCanvasComponent>;
-  let component: QuestionCanvasComponent;
-  let testService: jasmine.SpyObj<TestService>;
+    let fixture: ComponentFixture<QuestionCanvasComponent>;
+    let component: QuestionCanvasComponent;
+    let testService: MockedObject<TestService>;
 
-  function makeImageSelectorFake(overrides: Partial<any> = {}) {
-    return {
-      previewMode: jasmine.createSpy('previewMode').and.returnValue(false),
-      togglePreviewMode: jasmine.createSpy('togglePreviewMode'),
-      answerCount: Object.assign(jasmine.createSpy('answerCount').and.returnValue(4), {
-        set: jasmine.createSpy('answerCount.set'),
-      }),
-      recomputeWarnings: jasmine.createSpy('recomputeWarnings'),
-      ...overrides,
-    };
-  }
-
-  beforeEach(async () => {
-    window.history.replaceState({}, '');
-
-    testService = jasmine.createSpyObj<TestService>('TestService', ['search', 'get']);
-    testService.search.and.returnValue(of({ items: [] }) as any);
-    testService.get.and.returnValue(of({ subtitle: 'T-1', id: 99 }) as any);
-
-    const questionService = jasmine.createSpyObj<QuestionService>('QuestionService', ['getAll', 'saveBulk']);
-    questionService.getAll.and.returnValue(of([]) as any);
-    questionService.saveBulk.and.returnValue(of({}) as any);
-
-    const bookService = jasmine.createSpyObj<BookService>('BookService', ['getAll', 'getTestsByBook']);
-    bookService.getAll.and.returnValue(of([]));
-    bookService.getTestsByBook.and.returnValue(of([]));
-
-    const subjectService = jasmine.createSpyObj<SubjectService>('SubjectService', ['loadCategories']);
-
-    const router = jasmine.createSpyObj<Router>('Router', ['navigate', 'currentNavigation']);
-    router.currentNavigation.and.returnValue(null as any);
-
-    await TestBed.configureTestingModule({
-      imports: [QuestionCanvasComponent, translocoTesting],
-      providers: [
-        provideNoopAnimations(),
-        provideHttpClient(withXhr()),
-        provideHttpClientTesting(),
-        { provide: TestService, useValue: testService },
-        { provide: QuestionService, useValue: questionService },
-        { provide: BookService, useValue: bookService },
-        { provide: SubjectService, useValue: subjectService },
-        { provide: Router, useValue: router },
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({}) } } },
-      ],
-    }).compileComponents();
-
-    fixture = TestBed.createComponent(QuestionCanvasComponent);
-    component = fixture.componentInstance;
-  });
-
-  it('builds', () => {
-    expect(component).toBeTruthy();
-  });
-
-  describe('canPreview', () => {
-    it('canPreview_NoIdAndNoTestValue_ReturnsFalse', () => {
-      component.id = null;
-      component.questionForm.patchValue({ testValue: 0 });
-      expect(component.canPreview).toBeFalse();
-    });
-
-    it('canPreview_HasRouteId_ReturnsTrue', () => {
-      component.id = 5;
-      expect(component.canPreview).toBeTrue();
-    });
-
-    it('canPreview_HasPositiveTestValue_ReturnsTrue', () => {
-      component.id = null;
-      component.questionForm.patchValue({ testValue: 12 });
-      expect(component.canPreview).toBeTrue();
-    });
-  });
-
-  describe('previewOn', () => {
-    it('previewOn_NoImageSelector_ReturnsFalse', () => {
-      expect(component.previewOn).toBeFalse();
-    });
-
-    it('previewOn_ReflectsImageSelectorPreviewMode', () => {
-      component.imageSelector = makeImageSelectorFake({
-        previewMode: jasmine.createSpy().and.returnValue(true),
-      }) as any;
-      expect(component.previewOn).toBeTrue();
-    });
-  });
-
-  describe('togglePreviewMode', () => {
-    it('togglePreviewMode_PreviewOff_UsesRouteId_WhenIdPresent', () => {
-      const sel = makeImageSelectorFake();
-      component.imageSelector = sel as any;
-      component.id = 5;
-      component.questionForm.patchValue({ testValue: 12 });
-
-      component.togglePreviewMode();
-
-      expect(sel.togglePreviewMode).toHaveBeenCalledOnceWith(5);
-    });
-
-    it('togglePreviewMode_PreviewOff_FallsBackToTestValue_WhenNoId', () => {
-      const sel = makeImageSelectorFake();
-      component.imageSelector = sel as any;
-      component.id = null;
-      component.questionForm.patchValue({ testValue: 12 });
-
-      component.togglePreviewMode();
-
-      expect(sel.togglePreviewMode).toHaveBeenCalledOnceWith(12);
-    });
-
-    it('togglePreviewMode_CannotPreview_DoesNothing', () => {
-      const sel = makeImageSelectorFake();
-      component.imageSelector = sel as any;
-      component.id = null;
-      component.questionForm.patchValue({ testValue: 0 });
-
-      component.togglePreviewMode();
-
-      expect(sel.togglePreviewMode).not.toHaveBeenCalled();
-    });
-
-    it('togglePreviewMode_PreviewOn_ExitsWithZero', () => {
-      const sel = makeImageSelectorFake({ previewMode: jasmine.createSpy().and.returnValue(true) });
-      component.imageSelector = sel as any;
-      component.id = 5;
-
-      component.togglePreviewMode();
-
-      expect(sel.togglePreviewMode).toHaveBeenCalledOnceWith(0);
-    });
-  });
-
-  describe('answerCount / setAnswerCount', () => {
-    it('answerCount_NoImageSelector_DefaultsToFour', () => {
-      expect(component.answerCount).toBe(4);
-    });
-
-    it('answerCount_DelegatesToImageSelectorSignal', () => {
-      component.imageSelector = makeImageSelectorFake({
-        answerCount: jasmine.createSpy().and.returnValue(5),
-      }) as any;
-      expect(component.answerCount).toBe(5);
-    });
-
-    it('setAnswerCount_SetsSignalAndRecomputesWarnings', () => {
-      const sel = makeImageSelectorFake();
-      component.imageSelector = sel as any;
-
-      component.setAnswerCount(5);
-
-      expect(sel.answerCount.set).toHaveBeenCalledWith(5);
-      expect(sel.recomputeWarnings).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('breadcrumb labels', () => {
-    it('selectedBookLabel_NoSelection_ShowsPlaceholder', () => {
-      expect(component.selectedBookLabel()).toBe('Kitap seç');
-    });
-
-    it('selectedBookTestLabel_NoSelection_ShowsPlaceholder', () => {
-      expect(component.selectedBookTestLabel()).toBe('Kitap testi');
-    });
-
-    it('selectedTestLabel_NoSelection_ShowsPlaceholder', () => {
-      expect(component.selectedTestLabel).toBe('Test seç');
-    });
-
-    it('selectedTestLabel_ReflectsFormTestIdText', () => {
-      component.questionForm.get('testId')?.setValue('2024 TYT Deneme 1');
-      expect(component.selectedTestLabel).toBe('2024 TYT Deneme 1');
-    });
-  });
-
-  describe('inspector classification proxies', () => {
-    function tceFake() {
-      return {
-        testForm: {
-          value: { subjectId: 3, topicId: 0, subtopicId: 0 },
-          patchValue: jasmine.createSpy('patchValue'),
-        },
-        onSubjectChange: jasmine.createSpy('onSubjectChange'),
-        onTopicChange: jasmine.createSpy('onTopicChange'),
-        subjects: [],
-        topics: [],
-        subtopics: [],
-      };
+    function makeImageSelectorFake(overrides: Partial<any> = {}) {
+        return {
+            previewMode: vi.fn().mockName('previewMode').mockReturnValue(false),
+            togglePreviewMode: vi.fn().mockName('togglePreviewMode'),
+            answerCount: Object.assign(vi.fn().mockName('answerCount').mockReturnValue(4), {
+                set: vi.fn().mockName('answerCount.set'),
+            }),
+            recomputeWarnings: vi.fn().mockName('recomputeWarnings'),
+            ...overrides,
+        };
     }
 
-    it('insSubjectId_Get_ReadsTceForm', () => {
-      component.testCreateEnhancedComponent = tceFake() as any;
-      expect(component.insSubjectId).toBe(3);
-    });
-
-    it('insSubjectId_Set_PatchesTceAndTriggersSubjectChange', () => {
-      const tce = tceFake();
-      component.testCreateEnhancedComponent = tce as any;
-
-      component.insSubjectId = 5;
-
-      expect(tce.testForm.patchValue).toHaveBeenCalledWith({ subjectId: 5 }, { emitEvent: false });
-      expect(tce.onSubjectChange).toHaveBeenCalledWith(5);
-    });
-
-    it('insTopicId_Set_EmptyValue_DoesNotCallOnTopicChange', () => {
-      const tce = tceFake();
-      component.testCreateEnhancedComponent = tce as any;
-
-      component.insTopicId = null;
-
-      expect(tce.onTopicChange).not.toHaveBeenCalled();
-    });
-
-    it('insSubtopicId_Set_PushesClassificationIntoQuestionForm', () => {
-      const tce = tceFake();
-      tce.testForm.value = { subjectId: 3, topicId: 7, subtopicId: 9 };
-      component.testCreateEnhancedComponent = tce as any;
-
-      component.insSubtopicId = 9;
-
-      expect(component.questionForm.value.subjectId).toBe(3);
-      expect(component.questionForm.value.topicId).toBe(7);
-      expect(component.questionForm.value.subtopicId).toBe(9);
-    });
-
-    // Issue #454: JSON modunda panel değişikliği seçili sorunun soru bazındaki sınıflandırmasına yazılır.
-    function jsonSelectorFake(jsonMode: boolean) {
-      const updateRegionClassification = jasmine.createSpy('updateRegionClassification');
-      const fake = makeImageSelectorFake({
-        coordinateJsonMode: () => jsonMode,
-        activeRegionIndex: 0,
-        regions: () => [{ name: 'Soru 1', subjectId: 3, topicId: 7, subtopicIds: [9, 10] }],
-        updateRegionClassification,
-      });
-      return { ...fake, updateRegionClassification };
-    }
-
-    it('insSubtopicId_Set_JsonMode_UpdatesActiveRegionClassification', () => {
-      const tce = tceFake();
-      tce.testForm.value = { subjectId: 3, topicId: 7, subtopicId: 11 };
-      component.testCreateEnhancedComponent = tce as any;
-      const sel = jsonSelectorFake(true);
-      component.imageSelector = sel as any;
-
-      component.insSubtopicId = 11;
-
-      expect(sel.updateRegionClassification).toHaveBeenCalledWith(0, {
-        subjectId: 3,
-        topicId: 7,
-        subtopicIds: [11],
-      });
-    });
-
-    it('insSubjectId_Set_JsonModeNewSubject_ResetsTopicAndSubtopics', () => {
-      component.testCreateEnhancedComponent = tceFake() as any;
-      const sel = jsonSelectorFake(true);
-      component.imageSelector = sel as any;
-
-      component.insSubjectId = 5;
-
-      expect(sel.updateRegionClassification).toHaveBeenCalledWith(0, { subjectId: 5, topicId: null, subtopicIds: [] });
-    });
-
-    it('insSubjectId_Set_JsonModeSameSubject_KeepsRegionClassification', () => {
-      component.testCreateEnhancedComponent = tceFake() as any;
-      const sel = jsonSelectorFake(true);
-      component.imageSelector = sel as any;
-
-      component.insSubjectId = 3;
-
-      expect(sel.updateRegionClassification).not.toHaveBeenCalled();
-    });
-
-    it('detectorActions_JsonMode_NeverCallPredict', () => {
-      const predict = jasmine.createSpy('predict');
-      const alignAllAnswers = jasmine.createSpy('alignAllAnswers');
-      const autoAlignSet = jasmine.createSpy('autoAlign.set');
-      component.imageSelector = makeImageSelectorFake({
-        coordinateJsonMode: () => true,
-        predict,
-        alignAllAnswers,
-        autoAlign: Object.assign(() => false, { set: autoAlignSet }),
-      }) as any;
-
-      component.triggerPredict();
-      component.askAi();
-      component.setAutoAlign(true);
-      component.triggerAlign();
-
-      expect(predict).not.toHaveBeenCalled();
-      expect(autoAlignSet).not.toHaveBeenCalled();
-      expect(alignAllAnswers).toHaveBeenCalledTimes(1);
-    });
-
-    it('detectorActions_NormalMode_StillCallPredict', () => {
-      const predict = jasmine.createSpy('predict');
-      component.imageSelector = makeImageSelectorFake({
-        coordinateJsonMode: () => false,
-        predict,
-        autoAlign: Object.assign(() => false, { set: jasmine.createSpy('autoAlign.set') }),
-      }) as any;
-
-      component.triggerPredict();
-      component.askAi();
-      component.setAutoAlign(true);
-      component.triggerAlign();
-
-      expect(predict).toHaveBeenCalledTimes(4);
-    });
-
-    it('insSubtopicId_Set_NormalMode_DoesNotTouchRegion', () => {
-      component.testCreateEnhancedComponent = tceFake() as any;
-      const sel = jsonSelectorFake(false);
-      component.imageSelector = sel as any;
-
-      component.insSubtopicId = 11;
-
-      expect(sel.updateRegionClassification).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('onPreviewQuestionChange (issue #76 — unclassified region must not wipe test selection)', () => {
-    function tceSyncFake() {
-      return {
-        syncClassification: jasmine.createSpy('syncClassification'),
-      };
-    }
-
-    it('onPreviewQuestionChange_NullSubjectId_DoesNotPatchFormOrSyncClassification', () => {
-      const tce = tceSyncFake();
-      component.testCreateEnhancedComponent = tce as any;
-      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
-
-      component.onPreviewQuestionChange({
-        index: 0,
-        questionId: 1,
-        subjectId: null,
-        topicId: null,
-        subtopicId: null,
-      });
-
-      expect(component.questionForm.value.subjectId).toBe(3);
-      expect(component.questionForm.value.topicId).toBe(7);
-      expect(component.questionForm.value.subtopicId).toBe(9);
-      expect(tce.syncClassification).not.toHaveBeenCalled();
-    });
-
-    it('onPreviewQuestionChange_ZeroSubjectId_DoesNotPatchFormOrSyncClassification', () => {
-      const tce = tceSyncFake();
-      component.testCreateEnhancedComponent = tce as any;
-      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
-
-      component.onPreviewQuestionChange({
-        index: 0,
-        questionId: 1,
-        subjectId: 0 as any,
-        topicId: 0 as any,
-        subtopicId: 0 as any,
-      });
-
-      expect(component.questionForm.value.subjectId).toBe(3);
-      expect(component.questionForm.value.topicId).toBe(7);
-      expect(component.questionForm.value.subtopicId).toBe(9);
-      expect(tce.syncClassification).not.toHaveBeenCalled();
-    });
-
-    it('onPreviewQuestionChange_UndefinedSubjectId_DoesNotPatchFormOrSyncClassification', () => {
-      const tce = tceSyncFake();
-      component.testCreateEnhancedComponent = tce as any;
-      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
-
-      component.onPreviewQuestionChange({
-        index: 0,
-        questionId: 1,
-        subjectId: undefined as any,
-        topicId: undefined as any,
-        subtopicId: undefined as any,
-      });
-
-      expect(component.questionForm.value.subjectId).toBe(3);
-      expect(component.questionForm.value.topicId).toBe(7);
-      expect(component.questionForm.value.subtopicId).toBe(9);
-      expect(tce.syncClassification).not.toHaveBeenCalled();
-    });
-
-    it('onPreviewQuestionChange_RealSubjectId_PatchesFormAndSyncsClassification', () => {
-      const tce = tceSyncFake();
-      component.testCreateEnhancedComponent = tce as any;
-
-      component.onPreviewQuestionChange({
-        index: 0,
-        questionId: 1,
-        subjectId: 11,
-        topicId: 22,
-        subtopicId: 33,
-      });
-
-      expect(component.questionForm.value.subjectId).toBe(11);
-      expect(component.questionForm.value.topicId).toBe(22);
-      expect(component.questionForm.value.subtopicId).toBe(33);
-      expect(tce.syncClassification).toHaveBeenCalledOnceWith(11, 22, 33);
-    });
-
-    it('onPreviewQuestionChange_NullSubjectId_HumanSource_PatchesFormAndSyncsClassification', () => {
-      // User picked a new Grade in classification-selector -> subjectId is
-      // intentionally null with Human source. Guard must NOT swallow it.
-      const tce = tceSyncFake();
-      component.testCreateEnhancedComponent = tce as any;
-      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
-
-      component.onPreviewQuestionChange({
-        index: 0,
-        questionId: 1,
-        subjectId: null,
-        topicId: null,
-        subtopicId: null,
-        classificationSource: ClassificationSource.Human,
-      });
-
-      expect(component.questionForm.value.subjectId).toBe(0);
-      expect(component.questionForm.value.topicId).toBe(0);
-      expect(component.questionForm.value.subtopicId).toBe(0);
-      expect(tce.syncClassification).toHaveBeenCalledOnceWith(null, null, null);
-    });
-
-    it('onPreviewQuestionChange_NullSubjectId_AISource_DoesNotPatchFormOrSyncClassification', () => {
-      const tce = tceSyncFake();
-      component.testCreateEnhancedComponent = tce as any;
-      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
-
-      component.onPreviewQuestionChange({
-        index: 0,
-        questionId: 1,
-        subjectId: null,
-        topicId: null,
-        subtopicId: null,
-        classificationSource: ClassificationSource.AI,
-      });
-
-      expect(component.questionForm.value.subjectId).toBe(3);
-      expect(component.questionForm.value.topicId).toBe(7);
-      expect(component.questionForm.value.subtopicId).toBe(9);
-      expect(tce.syncClassification).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('onInspectorQuestionChange (issue #76 — unclassified region must not wipe test selection)', () => {
-    function tceSyncFake() {
-      return {
-        syncClassification: jasmine.createSpy('syncClassification'),
-      };
-    }
-
-    it('onInspectorQuestionChange_NullRegion_DoesNothing', () => {
-      const tce = tceSyncFake();
-      component.testCreateEnhancedComponent = tce as any;
-      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
-
-      component.onInspectorQuestionChange({ index: 0, region: null });
-
-      expect(component.questionForm.value.subjectId).toBe(3);
-      expect(component.questionForm.value.topicId).toBe(7);
-      expect(component.questionForm.value.subtopicId).toBe(9);
-      expect(tce.syncClassification).not.toHaveBeenCalled();
-    });
-
-    it('onInspectorQuestionChange_NullSubjectIdOnRegion_DoesNotPatchFormOrSyncClassification', () => {
-      const tce = tceSyncFake();
-      component.testCreateEnhancedComponent = tce as any;
-      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
-
-      component.onInspectorQuestionChange({
-        index: 0,
-        region: { subjectId: null, topicId: null, subtopicId: null } as any,
-      });
-
-      expect(component.questionForm.value.subjectId).toBe(3);
-      expect(component.questionForm.value.topicId).toBe(7);
-      expect(component.questionForm.value.subtopicId).toBe(9);
-      expect(tce.syncClassification).not.toHaveBeenCalled();
-    });
-
-    it('onInspectorQuestionChange_ZeroOrUndefinedSubjectIdOnRegion_DoesNotPatchFormOrSyncClassification', () => {
-      const tce = tceSyncFake();
-      component.testCreateEnhancedComponent = tce as any;
-      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
-
-      component.onInspectorQuestionChange({
-        index: 0,
-        region: { subjectId: 0, topicId: undefined, subtopicId: undefined } as any,
-      });
-
-      expect(component.questionForm.value.subjectId).toBe(3);
-      expect(component.questionForm.value.topicId).toBe(7);
-      expect(component.questionForm.value.subtopicId).toBe(9);
-      expect(tce.syncClassification).not.toHaveBeenCalled();
-    });
-
-    it('onInspectorQuestionChange_RealSubjectIdOnRegion_PatchesFormAndSyncsClassification', () => {
-      const tce = tceSyncFake();
-      component.testCreateEnhancedComponent = tce as any;
-
-      component.onInspectorQuestionChange({
-        index: 0,
-        region: { subjectId: 11, topicId: 22, subtopicId: 33 } as any,
-      });
-
-      expect(component.questionForm.value.subjectId).toBe(11);
-      expect(component.questionForm.value.topicId).toBe(22);
-      expect(component.questionForm.value.subtopicId).toBe(33);
-      expect(tce.syncClassification).toHaveBeenCalledOnceWith(11, 22, 33);
-    });
-
-    it('onInspectorQuestionChange_NullSubjectId_HumanSource_PatchesFormAndSyncsClassification', () => {
-      // Deliberate human reset (e.g. Grade changed) -> guard must NOT apply.
-      const tce = tceSyncFake();
-      component.testCreateEnhancedComponent = tce as any;
-      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
-
-      component.onInspectorQuestionChange({
-        index: 0,
-        region: {
-          subjectId: null,
-          topicId: null,
-          subtopicId: null,
-          classificationSource: ClassificationSource.Human,
-        } as any,
-      });
-
-      expect(component.questionForm.value.subjectId).toBe(0);
-      expect(component.questionForm.value.topicId).toBe(0);
-      expect(component.questionForm.value.subtopicId).toBe(0);
-      expect(tce.syncClassification).toHaveBeenCalledOnceWith(null, null, null);
-    });
-
-    it('onInspectorQuestionChange_NullSubjectId_AISource_DoesNotPatchFormOrSyncClassification', () => {
-      const tce = tceSyncFake();
-      component.testCreateEnhancedComponent = tce as any;
-      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
-
-      component.onInspectorQuestionChange({
-        index: 0,
-        region: {
-          subjectId: null,
-          topicId: null,
-          subtopicId: null,
-          classificationSource: ClassificationSource.AI,
-        } as any,
-      });
-
-      expect(component.questionForm.value.subjectId).toBe(3);
-      expect(component.questionForm.value.topicId).toBe(7);
-      expect(component.questionForm.value.subtopicId).toBe(9);
-      expect(tce.syncClassification).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('quick create flow', () => {
-    it('openQuickCreate_OpensPanelAndSidePanel', () => {
-      component.showQuickCreate.set(false);
-      component.showSidePanel.set(false);
-
-      component.openQuickCreate();
-
-      expect(component.showQuickCreate()).toBeTrue();
-      expect(component.showSidePanel()).toBeTrue();
-    });
-
-    it('onQuickCreated_ClosesPanel_SetsId_AndSyncsFormFromTest', () => {
-      component.showQuickCreate.set(true);
-
-      component.onQuickCreated(42);
-
-      expect(component.showQuickCreate()).toBeFalse();
-      expect(component.id).toBe(42);
-      expect(testService.get).toHaveBeenCalledWith(42);
-      expect(component.questionForm.get('testId')?.value).toBe('T-1');
-      expect(component.questionForm.get('testValue')?.value).toBe(99);
-    });
-  });
-
-  /**
-   * `canTrain` is resolved once at field-initialization time from `AuthService.hasRealmRole('Admin' |
-   * 'QuestionTrainer')` only (profile role `hasRole` is ignored, same source as the gateway),
-   * so it can't be flipped after a component instance already exists — each scenario below spins
-   * up its own TestBed module with a stubbed AuthService instead of reusing the outer beforeEach.
-   * `saveBulk` is driven by a manually-controlled Subject so the saving() true/false transition
-   * around the async emission can be asserted, rather than only the settled end-state.
-   */
-  describe('onSave', () => {
-    /** `isAdmin` → profil rolü Admin (`hasRole`); `realmRoles` → token realm rolleri (`hasRealmRole`). */
-    async function setup(opts: {
-      isAdmin: boolean;
-      realmRoles?: string[];
-      saveBulk$?: Subject<any>;
-      /** Şablon render edilecekse test oluşturma formunu boş bileşenle değiştir. */
-      stubTestCreate?: boolean;
-    }) {
-      const saveBulk$ = opts.saveBulk$ ?? new Subject<any>();
-
-      const testServiceLocal = jasmine.createSpyObj<TestService>('TestService', ['search', 'get']);
-      testServiceLocal.search.and.returnValue(of({ items: [] }) as any);
-      testServiceLocal.get.and.returnValue(of({ subtitle: 'T-1', id: 7 }) as any);
-
-      const questionServiceLocal = jasmine.createSpyObj<QuestionService>('QuestionService', ['getAll', 'saveBulk']);
-      questionServiceLocal.saveBulk.and.returnValue(saveBulk$.asObservable() as any);
-
-      const bookServiceLocal = jasmine.createSpyObj<BookService>('BookService', ['getAll', 'getTestsByBook']);
-      bookServiceLocal.getAll.and.returnValue(of([]));
-      bookServiceLocal.getTestsByBook.and.returnValue(of([]));
-
-      const subjectServiceLocal = jasmine.createSpyObj<SubjectService>('SubjectService', ['loadCategories']);
-
-      const routerLocal = jasmine.createSpyObj<Router>('Router', ['navigate', 'currentNavigation']);
-      routerLocal.currentNavigation.and.returnValue(null as any);
-
-      const authServiceLocal = jasmine.createSpyObj<AuthService>('AuthService', ['hasRole', 'hasRealmRole']);
-      authServiceLocal.hasRole.and.callFake((role: string) => opts.isAdmin && role === 'Admin');
-      const realmRoles = opts.realmRoles ?? [];
-      authServiceLocal.hasRealmRole.and.callFake((role: string) => realmRoles.includes(role));
-
-      TestBed.resetTestingModule();
-      TestBed.configureTestingModule({
-        imports: [QuestionCanvasComponent, translocoTesting],
-        providers: [
-          provideNoopAnimations(),
-          provideHttpClient(withXhr()),
-          provideHttpClientTesting(),
-          { provide: TestService, useValue: testServiceLocal },
-          { provide: QuestionService, useValue: questionServiceLocal },
-          { provide: BookService, useValue: bookServiceLocal },
-          { provide: SubjectService, useValue: subjectServiceLocal },
-          { provide: Router, useValue: routerLocal },
-          { provide: AuthService, useValue: authServiceLocal },
-          { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({}) } } },
-        ],
-      });
-      if (opts.stubTestCreate) {
-        TestBed.overrideComponent(QuestionCanvasComponent, {
-          remove: { imports: [TestCreateEnhancedComponent] },
-          add: { imports: [TestCreateEnhancedStubComponent] },
-        });
-      }
-      await TestBed.compileComponents();
-
-      const localFixture = TestBed.createComponent(QuestionCanvasComponent);
-      const localComponent = localFixture.componentInstance;
-
-      const imageSelectorFake = {
-        getRegions: jasmine.createSpy('getRegions').and.callFake((payload: any) => payload),
-        sendToFix: jasmine.createSpy('sendToFix'),
-        nextImage: jasmine.createSpy('nextImage'),
-        ensureQuestionsValid: jasmine.createSpy('ensureQuestionsValid').and.returnValue(true),
-      };
-      localComponent.imageSelector = imageSelectorFake as any;
-
-      const tceFake = {
-        reloadComponent: jasmine.createSpy('reloadComponent'),
-        onCreateAsync: jasmine.createSpy('onCreateAsync').and.returnValue(of({ examId: 7 })),
-      };
-      localComponent.testCreateEnhancedComponent = tceFake as any;
-
-      return { fixture: localFixture, component: localComponent, questionServiceLocal, imageSelectorFake, tceFake, saveBulk$ };
-    }
-
-    /** Kayıt sonrası 2 sn'lik "sonraki görsel" geçişi sahte saatle sürülür (#394). */
-    async function withMockClock(body: () => void | Promise<void>): Promise<void> {
-      jasmine.clock().install();
-      try {
-        await body();
-      } finally {
-        jasmine.clock().uninstall();
-      }
-    }
-
-    it('onSave_Success_AdvancesToNextImageAfterDelay', async () => {
-      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: false });
-
-      await withMockClock(() => {
-        component.onSave();
-        saveBulk$.next({});
-
-        jasmine.clock().tick(1999);
-        expect(imageSelectorFake.nextImage).not.toHaveBeenCalled();
-
-        jasmine.clock().tick(1);
-        expect(imageSelectorFake.nextImage).toHaveBeenCalledTimes(1);
-      });
-    });
-
-    it('onSave_ComponentDestroyedBeforeDelay_DoesNotAdvanceToNextImage', async () => {
-      const { fixture: localFixture, component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: false });
-
-      await withMockClock(() => {
-        component.onSave();
-        saveBulk$.next({});
-
-        localFixture.destroy();
-        jasmine.clock().tick(2000);
-
-        expect(imageSelectorFake.nextImage).not.toHaveBeenCalled();
-      });
-    });
-
-    it('onSave_ResponseArrivesAfterDestroy_StillNotifiesButDoesNotAdvanceToNextImage', async () => {
-      const { fixture: localFixture, component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: false });
-      // MatSnackBarModule bileşenin kendi ortam enjektöründe ayrı bir örnek sağlar; onu izleriz.
-      const snackBarOpen = spyOn(localFixture.debugElement.injector.get(MatSnackBar), 'open');
-
-      await withMockClock(() => {
-        component.onSave();
-        localFixture.destroy();
-        saveBulk$.next({});
-        jasmine.clock().tick(2000);
-
-        expect(snackBarOpen).toHaveBeenCalled();
-        expect(imageSelectorFake.nextImage).not.toHaveBeenCalled();
-      });
-    });
-
-    it('onSave_SavingAlreadyTrue_DoesNotCallSaveBulkAgain', async () => {
-      const { component, questionServiceLocal } = await setup({ isAdmin: false });
-      component.saving.set(true);
-
-      component.onSave();
-
-      expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
-    });
-
-    it('onSave_TogglesSavingTrueThenFalse_AroundSuccessfulSaveBulkEmission', async () => {
-      const { component, saveBulk$ } = await setup({ isAdmin: false });
-
-      component.onSave();
-
-      expect(component.saving()).toBeTrue();
-
-      saveBulk$.next({});
-
-      expect(component.saving()).toBeFalse();
-    });
-
-    it('onSave_SavingReturnsFalse_WhenSaveBulkErrors', async () => {
-      const { component, saveBulk$ } = await setup({ isAdmin: false });
-
-      component.onSave();
-
-      expect(component.saving()).toBeTrue();
-
-      saveBulk$.error(new Error('boom'));
-
-      expect(component.saving()).toBeFalse();
-    });
-
-    it('onSave_AdminUser_DefaultSendToFix_DoesNotCallImageSelectorSendToFix_OnSuccess', async () => {
-      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
-
-      component.onSave();
-      saveBulk$.next({});
-
-      expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
-    });
-
-    it('onSave_AdminUser_ExplicitSendToFixTrue_CallsImageSelectorSendToFix_OnSuccess', async () => {
-      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
-
-      component.onSave(true);
-      saveBulk$.next({});
-
-      expect(imageSelectorFake.sendToFix).toHaveBeenCalledTimes(1);
-    });
-
-    it('onSave_NonAdminUser_NeverCallsImageSelectorSendToFix_OnSuccess_RegardlessOfSendToFixArg', async () => {
-      const subjectTrue = new Subject<any>();
-      const { component, imageSelectorFake } = await setup({ isAdmin: false, saveBulk$: subjectTrue });
-
-      component.onSave(true);
-      subjectTrue.next({});
-
-      expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
-    });
-
-    it('onSave_AdminUser_PageNotExcluded_SendsPageCompleteTrue', async () => {
-      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
-
-      component.onSave(true);
-      saveBulk$.next({});
-
-      expect(imageSelectorFake.sendToFix).toHaveBeenCalledOnceWith(true, false);
-    });
-
-    it('onSave_AdminUser_ExcludeFromTrainingChecked_SendsPageCompleteFalse', async () => {
-      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
-      component.excludeFromTraining.set(true);
-
-      component.onSave(true);
-      saveBulk$.next({});
-
-      expect(imageSelectorFake.sendToFix).toHaveBeenCalledOnceWith(false, false);
-    });
-
-    it('sendToFix_AdminUser_ExcludeFromTrainingChecked_SendsPageCompleteFalse', async () => {
-      const { component, imageSelectorFake } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
-      component.excludeFromTraining.set(true);
-
-      component.sendToFix();
-
-      expect(imageSelectorFake.sendToFix).toHaveBeenCalledOnceWith(false);
-    });
-
-    it('sendToFix_NonAdmin_DoesNotCallImageSelector', async () => {
-      const { component, imageSelectorFake } = await setup({ isAdmin: false });
-
-      component.sendToFix();
-
-      expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
-    });
-
-    it('onImageChange_ResetsExcludeFromTraining', async () => {
-      const { component } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
-      component.excludeFromTraining.set(true);
-
-      component.onImageChange();
-
-      expect(component.excludeFromTraining()).toBeFalse();
-    });
-
-    it('excludeFromTraining_DefaultsToFalse', async () => {
-      const { component } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
-
-      expect(component.excludeFromTraining()).toBeFalse();
-    });
-
-    it('onSave_AdminUser_ExplicitSendToFixFalse_DoesNotCallImageSelectorSendToFix_OnSuccess', async () => {
-      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
-
-      component.onSave(false);
-      saveBulk$.next({});
-
-      expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
-    });
-
-    describe('canTrain (Admin / QuestionTrainer realm rolü)', () => {
-      it('canTrain_QuestionTrainerRealmRole_ReturnsTrue', async () => {
-        const { component } = await setup({ isAdmin: false, realmRoles: ['Teacher', 'QuestionTrainer'] });
-
-        expect(component.canTrain).toBeTrue();
-      });
-
-      it('canTrain_AdminRealmRole_ReturnsTrue', async () => {
-        const { component } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
-
-        expect(component.canTrain).toBeTrue();
-      });
-
-      it('canTrain_ProfileAdminWithoutRealmRole_ReturnsFalse', async () => {
-        const { component } = await setup({ isAdmin: true, realmRoles: [] });
-
-        expect(component.canTrain).toBeFalse();
-      });
-
-      it('sendToFix_ProfileAdminWithoutRealmRole_DoesNotCallImageSelector', async () => {
-        const { component, imageSelectorFake } = await setup({ isAdmin: true, realmRoles: [] });
-
-        component.sendToFix();
-
-        expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
-      });
-
-      it('canTrain_TeacherOnly_ReturnsFalse', async () => {
-        const { component } = await setup({ isAdmin: false, realmRoles: ['Teacher'] });
-
-        expect(component.canTrain).toBeFalse();
-      });
-
-      it('onSaveAndNew_QuestionTrainer_Success_DoesNotCallImageSelectorSendToFix', async () => {
-        const { component, imageSelectorFake, questionServiceLocal, saveBulk$ } = await setup({
-          isAdmin: false,
-          realmRoles: ['Teacher', 'QuestionTrainer'],
-        });
-
-        component.onSaveAndNew();
-        saveBulk$.next({});
-
-        expect(questionServiceLocal.saveBulk).toHaveBeenCalledTimes(1);
-        expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
-      });
-
-      it('onSaveAndFix_QuestionTrainer_Success_CallsImageSelectorSendToFix', async () => {
-        const { component, imageSelectorFake, saveBulk$ } = await setup({
-          isAdmin: false,
-          realmRoles: ['Teacher', 'QuestionTrainer'],
-        });
-
-        component.onSaveAndFix();
-        saveBulk$.next({});
-
-        expect(imageSelectorFake.sendToFix).toHaveBeenCalledOnceWith(true, false);
-      });
-
-      it('onSaveAndFix_TeacherOnly_Success_SavesButDoesNotCallImageSelectorSendToFix', async () => {
-        const { component, imageSelectorFake, questionServiceLocal, saveBulk$ } = await setup({
-          isAdmin: false,
-          realmRoles: ['Teacher'],
-        });
-
-        component.onSaveAndFix();
-        saveBulk$.next({});
-
-        expect(questionServiceLocal.saveBulk).toHaveBeenCalledTimes(1);
-        expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
-      });
-
-      it('sendToFix_QuestionTrainer_CallsImageSelector', async () => {
-        const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['QuestionTrainer'] });
-
-        component.sendToFix();
-
-        expect(imageSelectorFake.sendToFix).toHaveBeenCalledOnceWith(true);
-      });
-    });
-
-    // Sonraki sayfa hazır olana kadar işlem düğmeleri pasif (kayıt, eğitime gönderim, geçiş, analiz).
-    describe('busy (meşgul durumu)', () => {
-      /** image-selector'ın meşgul sinyallerini taşıyan sahte; sendToFix çağrısı gönderimi başlatır. */
-      function withBusySignals(fake: any) {
-        fake.sendingToFix = signal(false);
-        fake.pageLoading = signal(false);
-        fake.inProgress = signal(false);
-        fake.sendToFix.and.callFake(() => fake.sendingToFix.set(true));
-        return fake;
-      }
-
-      it('busy_ReflectsSavingAndImageSelectorSignals', async () => {
-        const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
-        const fake = withBusySignals(imageSelectorFake);
-        // Setter signal'i güncellesin diye yeniden atanır (setup sahteyi sinyaller eklenmeden atadı).
-        component.imageSelector = fake;
-
-        expect(component.busy()).toBeFalse();
-        component.saving.set(true);
-        expect(component.busy()).toBeTrue();
-        component.saving.set(false);
-
-        fake.inProgress.set(true);
-        expect(component.busy()).toBeTrue();
-        fake.inProgress.set(false);
-
-        fake.pageLoading.set(true);
-        expect(component.busy()).toBeTrue();
-        fake.pageLoading.set(false);
-
-        fake.sendingToFix.set(true);
-        expect(component.busy()).toBeTrue();
-        expect(component.sendingToFix()).toBeTrue();
-      });
-
-      it('sendToFix_DoubleClick_CallsImageSelectorOnce', async () => {
-        const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['QuestionTrainer'] });
-        component.imageSelector = withBusySignals(imageSelectorFake);
-
-        component.sendToFix();
-        component.sendToFix();
-
-        expect(imageSelectorFake.sendToFix).toHaveBeenCalledTimes(1);
-      });
-
-      it('sendToFix_AfterSendFails_CanSendAgain', async () => {
-        const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['QuestionTrainer'] });
-        const fake = withBusySignals(imageSelectorFake);
-        component.imageSelector = fake;
-
-        component.sendToFix();
-        fake.sendingToFix.set(false); // image-selector hata yolunda meşgul durumunu kapatır
-
-        component.sendToFix();
-
-        expect(imageSelectorFake.sendToFix).toHaveBeenCalledTimes(2);
-      });
-
-      it('onSave_Success_BusyThroughAdvanceWindowUntilNextImage', async () => {
-        const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: false });
-
-        await withMockClock(() => {
-          component.onSave();
-          saveBulk$.next({});
-
-          expect(component.saving()).toBeFalse();
-          expect(component.advancing()).toBeTrue();
-          expect(component.busy()).toBeTrue();
-
-          jasmine.clock().tick(2000);
-
-          expect(component.advancing()).toBeFalse();
-          expect(imageSelectorFake.nextImage).toHaveBeenCalledTimes(1);
-        });
-      });
-
-      it('onSave_Error_DoesNotStartAdvanceWindow', async () => {
-        const { component, saveBulk$ } = await setup({ isAdmin: false });
-
-        component.onSave();
-        saveBulk$.error({ status: 500 });
-
-        expect(component.advancing()).toBeFalse();
-        expect(component.busy()).toBeFalse();
-      });
-
-      it('saveEntryPoints_WhileBusy_DoNothing', async () => {
-        const { component, tceFake, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
-        (imageSelectorFake as any).sendToStudyPage = jasmine.createSpy('sendToStudyPage');
-        component.advancing.set(true);
-
-        component.onSaveAndNew();
-        component.onSaveAndFix();
-        component.onSubmit();
-        component.sendToWorkPages();
-
-        expect(tceFake.onCreateAsync).not.toHaveBeenCalled();
-        expect((imageSelectorFake as any).sendToStudyPage).not.toHaveBeenCalled();
-      });
-
-      it('navigation_WhileSavingCreatingAdvancingOrSending_IsBlocked', async () => {
-        const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
-        const fake = withBusySignals(imageSelectorFake);
-        fake.previousImage = jasmine.createSpy('previousImage');
-        fake.goToPage = jasmine.createSpy('goToPage');
-        component.imageSelector = fake;
-        const tryAll = () => {
-          component.previousImage();
-          component.nextImage();
-          component.goToPage('2');
+    beforeEach(async () => {
+        window.history.replaceState({}, '');
+
+        testService = {
+            search: vi.fn().mockName("TestService.search"),
+            get: vi.fn().mockName("TestService.get")
+        } as unknown as MockedObject<TestService>;
+        testService.search.mockReturnValue(of({ items: [] }) as any);
+        testService.get.mockReturnValue(of({ subtitle: 'T-1', id: 99 }) as any);
+
+        const questionService = {
+            getAll: vi.fn().mockName("QuestionService.getAll"),
+            saveBulk: vi.fn().mockName("QuestionService.saveBulk")
+        };
+        questionService.getAll.mockReturnValue(of([]) as any);
+        questionService.saveBulk.mockReturnValue(of({}) as any);
+
+        const bookService = {
+            getAll: vi.fn().mockName("BookService.getAll"),
+            getTestsByBook: vi.fn().mockName("BookService.getTestsByBook")
+        };
+        bookService.getAll.mockReturnValue(of([]));
+        bookService.getTestsByBook.mockReturnValue(of([]));
+
+        const subjectService = {
+            loadCategories: vi.fn().mockName("SubjectService.loadCategories")
         };
 
-        for (const lock of [component.saving, component.creating, component.advancing, fake.sendingToFix]) {
-          lock.set(true);
-          tryAll();
-          lock.set(false);
+        const router = {
+            navigate: vi.fn().mockName("Router.navigate"),
+            currentNavigation: vi.fn().mockName("Router.currentNavigation")
+        };
+        router.currentNavigation.mockReturnValue(null as any);
+
+        await TestBed.configureTestingModule({
+            imports: [QuestionCanvasComponent, translocoTesting],
+            providers: [
+                provideNoopAnimations(),
+                provideHttpClient(withXhr()),
+                provideHttpClientTesting(),
+                { provide: TestService, useValue: testService },
+                { provide: QuestionService, useValue: questionService },
+                { provide: BookService, useValue: bookService },
+                { provide: SubjectService, useValue: subjectService },
+                { provide: Router, useValue: router },
+                { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({}) } } },
+            ],
+        }).compileComponents();
+
+        fixture = TestBed.createComponent(QuestionCanvasComponent);
+        component = fixture.componentInstance;
+    });
+
+    it('builds', () => {
+        expect(component).toBeTruthy();
+    });
+
+    describe('canPreview', () => {
+        it('canPreview_NoIdAndNoTestValue_ReturnsFalse', () => {
+            component.id = null;
+            component.questionForm.patchValue({ testValue: 0 });
+            expect(component.canPreview).toBe(false);
+        });
+
+        it('canPreview_HasRouteId_ReturnsTrue', () => {
+            component.id = 5;
+            expect(component.canPreview).toBe(true);
+        });
+
+        it('canPreview_HasPositiveTestValue_ReturnsTrue', () => {
+            component.id = null;
+            component.questionForm.patchValue({ testValue: 12 });
+            expect(component.canPreview).toBe(true);
+        });
+    });
+
+    describe('previewOn', () => {
+        it('previewOn_NoImageSelector_ReturnsFalse', () => {
+            expect(component.previewOn).toBe(false);
+        });
+
+        it('previewOn_ReflectsImageSelectorPreviewMode', () => {
+            component.imageSelector = makeImageSelectorFake({
+                previewMode: vi.fn().mockReturnValue(true),
+            }) as any;
+            expect(component.previewOn).toBe(true);
+        });
+    });
+
+    describe('togglePreviewMode', () => {
+        it('togglePreviewMode_PreviewOff_UsesRouteId_WhenIdPresent', () => {
+            const sel = makeImageSelectorFake();
+            component.imageSelector = sel as any;
+            component.id = 5;
+            component.questionForm.patchValue({ testValue: 12 });
+
+            component.togglePreviewMode();
+
+            expect(sel.togglePreviewMode).toHaveBeenCalledTimes(1);
+
+            expect(sel.togglePreviewMode).toHaveBeenCalledWith(5);
+        });
+
+        it('togglePreviewMode_PreviewOff_FallsBackToTestValue_WhenNoId', () => {
+            const sel = makeImageSelectorFake();
+            component.imageSelector = sel as any;
+            component.id = null;
+            component.questionForm.patchValue({ testValue: 12 });
+
+            component.togglePreviewMode();
+
+            expect(sel.togglePreviewMode).toHaveBeenCalledTimes(1);
+
+            expect(sel.togglePreviewMode).toHaveBeenCalledWith(12);
+        });
+
+        it('togglePreviewMode_CannotPreview_DoesNothing', () => {
+            const sel = makeImageSelectorFake();
+            component.imageSelector = sel as any;
+            component.id = null;
+            component.questionForm.patchValue({ testValue: 0 });
+
+            component.togglePreviewMode();
+
+            expect(sel.togglePreviewMode).not.toHaveBeenCalled();
+        });
+
+        it('togglePreviewMode_PreviewOn_ExitsWithZero', () => {
+            const sel = makeImageSelectorFake({ previewMode: vi.fn().mockReturnValue(true) });
+            component.imageSelector = sel as any;
+            component.id = 5;
+
+            component.togglePreviewMode();
+
+            expect(sel.togglePreviewMode).toHaveBeenCalledTimes(1);
+
+            expect(sel.togglePreviewMode).toHaveBeenCalledWith(0);
+        });
+    });
+
+    describe('answerCount / setAnswerCount', () => {
+        it('answerCount_NoImageSelector_DefaultsToFour', () => {
+            expect(component.answerCount).toBe(4);
+        });
+
+        it('answerCount_DelegatesToImageSelectorSignal', () => {
+            component.imageSelector = makeImageSelectorFake({
+                answerCount: vi.fn().mockReturnValue(5),
+            }) as any;
+            expect(component.answerCount).toBe(5);
+        });
+
+        it('setAnswerCount_SetsSignalAndRecomputesWarnings', () => {
+            const sel = makeImageSelectorFake();
+            component.imageSelector = sel as any;
+
+            component.setAnswerCount(5);
+
+            expect(sel.answerCount.set).toHaveBeenCalledWith(5);
+            expect(sel.recomputeWarnings).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('breadcrumb labels', () => {
+        it('selectedBookLabel_NoSelection_ShowsPlaceholder', () => {
+            expect(component.selectedBookLabel()).toBe('Kitap seç');
+        });
+
+        it('selectedBookTestLabel_NoSelection_ShowsPlaceholder', () => {
+            expect(component.selectedBookTestLabel()).toBe('Kitap testi');
+        });
+
+        it('selectedTestLabel_NoSelection_ShowsPlaceholder', () => {
+            expect(component.selectedTestLabel).toBe('Test seç');
+        });
+
+        it('selectedTestLabel_ReflectsFormTestIdText', () => {
+            component.questionForm.get('testId')?.setValue('2024 TYT Deneme 1');
+            expect(component.selectedTestLabel).toBe('2024 TYT Deneme 1');
+        });
+    });
+
+    describe('inspector classification proxies', () => {
+        function tceFake() {
+            return {
+                testForm: {
+                    value: { subjectId: 3, topicId: 0, subtopicId: 0 },
+                    patchValue: vi.fn().mockName('patchValue'),
+                },
+                onSubjectChange: vi.fn().mockName('onSubjectChange'),
+                onTopicChange: vi.fn().mockName('onTopicChange'),
+                subjects: [],
+                topics: [],
+                subtopics: [],
+            };
         }
 
-        expect(fake.previousImage).not.toHaveBeenCalled();
-        expect(fake.nextImage).not.toHaveBeenCalled();
-        expect(fake.goToPage).not.toHaveBeenCalled();
-      });
-
-      it('navigation_WhileAnalyzingOrPageLoading_IsAllowed', async () => {
-        const { component, imageSelectorFake } = await setup({ isAdmin: false });
-        const fake = withBusySignals(imageSelectorFake);
-        fake.previousImage = jasmine.createSpy('previousImage');
-        fake.goToPage = jasmine.createSpy('goToPage');
-        component.imageSelector = fake;
-        fake.inProgress.set(true);
-        fake.pageLoading.set(true);
-
-        component.previousImage();
-        component.nextImage();
-        component.goToPage('2');
-
-        expect(component.busy()).toBeTrue();
-        expect(component.navigationBusy()).toBeFalse();
-        expect(fake.previousImage).toHaveBeenCalledTimes(1);
-        expect(fake.nextImage).toHaveBeenCalledTimes(1);
-        expect(fake.goToPage).toHaveBeenCalledOnceWith('2');
-      });
-
-      for (const action of ['onSaveAndNew', 'onSaveAndFix', 'onSubmit'] as const) {
-        it(`${action}_DoubleClick_CreatesTestOnce`, async () => {
-          const { component, tceFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
-          const create$ = new Subject<any>();
-          tceFake.onCreateAsync.and.returnValue(create$.asObservable());
-
-          component[action]();
-          component[action]();
-
-          expect(tceFake.onCreateAsync).toHaveBeenCalledTimes(1);
-          expect(component.creating()).toBeTrue();
-          expect(component.busy()).toBeTrue();
+        it('insSubjectId_Get_ReadsTceForm', () => {
+            component.testCreateEnhancedComponent = tceFake() as any;
+            expect(component.insSubjectId).toBe(3);
         });
-      }
 
-      it('onSaveAndNew_CreateFails_ClearsCreating', async () => {
-        const { component, tceFake, questionServiceLocal } = await setup({ isAdmin: false });
-        const create$ = new Subject<any>();
-        tceFake.onCreateAsync.and.returnValue(create$.asObservable());
+        it('insSubjectId_Set_PatchesTceAndTriggersSubjectChange', () => {
+            const tce = tceFake();
+            component.testCreateEnhancedComponent = tce as any;
 
-        component.onSaveAndNew();
-        create$.error(new Error('boom'));
+            component.insSubjectId = 5;
 
-        expect(component.creating()).toBeFalse();
-        expect(component.busy()).toBeFalse();
-        expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
-      });
-
-      it('onSaveAndNew_FetchCreatedTestFails_ClearsCreatingAndNotifies', async () => {
-        const { fixture: f, component, questionServiceLocal } = await setup({ isAdmin: false });
-        const snackBarOpen = spyOn(f.debugElement.injector.get(MatSnackBar), 'open');
-        const testServiceLocal = f.debugElement.injector.get(TestService) as jasmine.SpyObj<TestService>;
-        testServiceLocal.get.and.returnValue(throwError(() => new Error('fetch')));
-
-        component.onSaveAndNew();
-
-        expect(component.creating()).toBeFalse();
-        expect(component.busy()).toBeFalse();
-        expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
-        expect(snackBarOpen).toHaveBeenCalledWith(questionTr.canvas.testFetchError, jasmine.any(String), jasmine.any(Object));
-      });
-
-      it('onSaveAndFix_SaveSucceedsTrainingFails_StillAdvancesAndBusyClears', async () => {
-        const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: false, realmRoles: ['QuestionTrainer'] });
-        const fake = withBusySignals(imageSelectorFake);
-        component.imageSelector = fake;
-
-        await withMockClock(() => {
-          component.onSaveAndFix();
-          saveBulk$.next({});
-          expect(fake.sendToFix).toHaveBeenCalledOnceWith(true, false);
-          expect(component.busy()).toBeTrue();
-
-          fake.sendingToFix.set(false); // image-selector eğitim hatasında meşgul durumunu kapatır
-
-          jasmine.clock().tick(2000);
-          expect(fake.nextImage).toHaveBeenCalledTimes(1);
-          expect(component.busy()).toBeFalse();
+            expect(tce.testForm.patchValue).toHaveBeenCalledWith({ subjectId: 5 }, { emitEvent: false });
+            expect(tce.onSubjectChange).toHaveBeenCalledWith(5);
         });
-      });
 
-      it('onSaveAndFix_TrainingStillRunningAfterDelay_StillAdvances', async () => {
-        const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: false, realmRoles: ['QuestionTrainer'] });
-        const fake = withBusySignals(imageSelectorFake);
-        component.imageSelector = fake;
+        it('insTopicId_Set_EmptyValue_DoesNotCallOnTopicChange', () => {
+            const tce = tceFake();
+            component.testCreateEnhancedComponent = tce as any;
 
-        await withMockClock(() => {
-          component.onSaveAndFix();
-          saveBulk$.next({});
+            component.insTopicId = null;
 
-          jasmine.clock().tick(2000);
-
-          // Geçişi kayıt zamanlayıcısı yapar; süren eğitim isteğinin gezinme kilidi onu engellemez.
-          expect(fake.nextImage).toHaveBeenCalledTimes(1);
-          expect(component.navigationBusy()).toBeTrue();
+            expect(tce.onTopicChange).not.toHaveBeenCalled();
         });
-      });
 
-      describe('şablon', () => {
-        async function render() {
-          const ctx = await setup({ isAdmin: false, realmRoles: ['Admin'], stubTestCreate: true });
-          // Gerçek alt bileşenler oluşur; ilk geçişte sahte kullanılmasın, ViewChild gerçek image-selector'ı atar.
-          ctx.component.imageSelector = undefined as any;
-          ctx.fixture.detectChanges();
-          await ctx.fixture.whenStable();
-          const el: HTMLElement = ctx.fixture.nativeElement;
-          const trainButton = () =>
-            Array.from(el.querySelectorAll<HTMLButtonElement>('button.qc-btn--ghost')).find(
-              (b) => b.textContent!.includes(questionTr.canvas.train) || b.textContent!.includes(questionTr.canvas.sendingToFix)
-            )!;
-          const saveButton = () => el.querySelector<HTMLButtonElement>('.qc-split__main')!;
-          const caretButton = () => el.querySelector<HTMLButtonElement>('.qc-split__caret')!;
-          return { ...ctx, el, trainButton, saveButton, caretButton };
+        it('insSubtopicId_Set_PushesClassificationIntoQuestionForm', () => {
+            const tce = tceFake();
+            tce.testForm.value = { subjectId: 3, topicId: 7, subtopicId: 9 };
+            component.testCreateEnhancedComponent = tce as any;
+
+            component.insSubtopicId = 9;
+
+            expect(component.questionForm.value.subjectId).toBe(3);
+            expect(component.questionForm.value.topicId).toBe(7);
+            expect(component.questionForm.value.subtopicId).toBe(9);
+        });
+
+        // Issue #454: JSON modunda panel değişikliği seçili sorunun soru bazındaki sınıflandırmasına yazılır.
+        function jsonSelectorFake(jsonMode: boolean) {
+            const updateRegionClassification = vi.fn().mockName('updateRegionClassification');
+            const fake = makeImageSelectorFake({
+                coordinateJsonMode: () => jsonMode,
+                activeRegionIndex: 0,
+                regions: () => [{ name: 'Soru 1', subjectId: 3, topicId: 7, subtopicIds: [9, 10] }],
+                updateRegionClassification,
+            });
+            return { ...fake, updateRegionClassification };
         }
 
-        it('buttons_Idle_AreEnabled', async () => {
-          const { trainButton, saveButton, caretButton } = await render();
+        it('insSubtopicId_Set_JsonMode_UpdatesActiveRegionClassification', () => {
+            const tce = tceFake();
+            tce.testForm.value = { subjectId: 3, topicId: 7, subtopicId: 11 };
+            component.testCreateEnhancedComponent = tce as any;
+            const sel = jsonSelectorFake(true);
+            component.imageSelector = sel as any;
 
-          expect(trainButton().disabled).toBeFalse();
-          expect(saveButton().disabled).toBeFalse();
-          expect(caretButton().disabled).toBeFalse();
+            component.insSubtopicId = 11;
+
+            expect(sel.updateRegionClassification).toHaveBeenCalledWith(0, {
+                subjectId: 3,
+                topicId: 7,
+                subtopicIds: [11],
+            });
         });
 
-        it('buttons_WhileAnalyzing_AreDisabled', async () => {
-          const { fixture: f, component, trainButton, saveButton, caretButton } = await render();
+        it('insSubjectId_Set_JsonModeNewSubject_ResetsTopicAndSubtopics', () => {
+            component.testCreateEnhancedComponent = tceFake() as any;
+            const sel = jsonSelectorFake(true);
+            component.imageSelector = sel as any;
 
-          component.imageSelector.inProgress.set(true);
-          f.detectChanges();
+            component.insSubjectId = 5;
 
-          expect(trainButton().disabled).toBeTrue();
-          expect(saveButton().disabled).toBeTrue();
-          expect(caretButton().disabled).toBeTrue();
+            expect(sel.updateRegionClassification).toHaveBeenCalledWith(0, { subjectId: 5, topicId: null, subtopicIds: [] });
         });
 
-        it('buttons_DuringAdvanceWindow_AreDisabled', async () => {
-          const { fixture: f, component, saveButton, caretButton } = await render();
+        it('insSubjectId_Set_JsonModeSameSubject_KeepsRegionClassification', () => {
+            component.testCreateEnhancedComponent = tceFake() as any;
+            const sel = jsonSelectorFake(true);
+            component.imageSelector = sel as any;
 
-          component.advancing.set(true);
-          f.detectChanges();
+            component.insSubjectId = 3;
 
-          expect(saveButton().disabled).toBeTrue();
-          expect(caretButton().disabled).toBeTrue();
+            expect(sel.updateRegionClassification).not.toHaveBeenCalled();
         });
 
-        it('trainButton_WhileSending_ShowsSpinnerTextAndAriaBusy', async () => {
-          const { fixture: f, component, trainButton } = await render();
+        it('detectorActions_JsonMode_NeverCallPredict', () => {
+            const predict = vi.fn().mockName('predict');
+            const alignAllAnswers = vi.fn().mockName('alignAllAnswers');
+            const autoAlignSet = vi.fn().mockName('autoAlign.set');
+            component.imageSelector = makeImageSelectorFake({
+                coordinateJsonMode: () => true,
+                predict,
+                alignAllAnswers,
+                autoAlign: Object.assign(() => false, { set: autoAlignSet }),
+            }) as any;
 
-          component.imageSelector.sendingToFix.set(true);
-          f.detectChanges();
+            component.triggerPredict();
+            component.askAi();
+            component.setAutoAlign(true);
+            component.triggerAlign();
 
-          const button = trainButton();
-          expect(button.disabled).toBeTrue();
-          expect(button.getAttribute('aria-busy')).toBe('true');
-          expect(button.querySelector('mat-spinner')).not.toBeNull();
-          expect(button.textContent).toContain(questionTr.canvas.sendingToFix);
+            expect(predict).not.toHaveBeenCalled();
+            expect(autoAlignSet).not.toHaveBeenCalled();
+            expect(alignAllAnswers).toHaveBeenCalledTimes(1);
         });
 
-        it('pageNavigation_DuringAdvanceWindow_IsDisabled_ButNotDuringAnalysis', async () => {
-          const { fixture: f, component, el } = await render();
-          component.imageSelector.imageFiles = [new File(['a'], 'p1.png'), new File(['b'], 'p2.png')];
-          f.detectChanges();
-          const navControls = () => [
-            ...Array.from(el.querySelectorAll<HTMLButtonElement>('.qc-thumb')),
-            ...Array.from(el.querySelectorAll<HTMLButtonElement | HTMLInputElement>('.qc-pagejump button, .qc-pagejump input')),
-          ];
-          expect(navControls().length).toBe(5);
+        it('detectorActions_NormalMode_StillCallPredict', () => {
+            const predict = vi.fn().mockName('predict');
+            component.imageSelector = makeImageSelectorFake({
+                coordinateJsonMode: () => false,
+                predict,
+                autoAlign: Object.assign(() => false, { set: vi.fn().mockName('autoAlign.set') }),
+            }) as any;
 
-          component.imageSelector.inProgress.set(true);
-          f.detectChanges();
-          expect(navControls().every((c) => !c.disabled)).toBeTrue();
+            component.triggerPredict();
+            component.askAi();
+            component.setAutoAlign(true);
+            component.triggerAlign();
 
-          component.advancing.set(true);
-          f.detectChanges();
-          expect(navControls().every((c) => c.disabled)).toBeTrue();
-          expect(component.imageSelector.navigationLocked).toBeTrue();
+            expect(predict).toHaveBeenCalledTimes(4);
         });
-      });
+
+        it('insSubtopicId_Set_NormalMode_DoesNotTouchRegion', () => {
+            component.testCreateEnhancedComponent = tceFake() as any;
+            const sel = jsonSelectorFake(false);
+            component.imageSelector = sel as any;
+
+            component.insSubtopicId = 11;
+
+            expect(sel.updateRegionClassification).not.toHaveBeenCalled();
+        });
     });
 
-    describe('tespit kaynağı (issue #473)', () => {
-      /** image-selector'ın meşgul / JSON sinyallerini taşıyan sahte; varsayılan: boşta, normal mod. */
-      function withIdleSignals(fake: any) {
-        fake.sendingToFix = signal(false);
-        fake.pageLoading = signal(false);
-        fake.inProgress = signal(false);
-        fake.coordinateJsonMode = () => false;
-        return fake;
-      }
+    describe('onPreviewQuestionChange (issue #76 — unclassified region must not wipe test selection)', () => {
+        function tceSyncFake() {
+            return {
+                syncClassification: vi.fn().mockName('syncClassification'),
+            };
+        }
 
-      it('selectDetectionSource_IdleNormalMode_DelegatesToDetection', async () => {
-        const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
-        component.imageSelector = withIdleSignals(imageSelectorFake);
-        const selectSource = spyOn(component.detection, 'selectSource');
+        it('onPreviewQuestionChange_NullSubjectId_DoesNotPatchFormOrSyncClassification', () => {
+            const tce = tceSyncFake();
+            component.testCreateEnhancedComponent = tce as any;
+            component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
 
-        component.selectDetectionSource('Model');
+            component.onPreviewQuestionChange({
+                index: 0,
+                questionId: 1,
+                subjectId: null,
+                topicId: null,
+                subtopicId: null,
+            });
 
-        expect(selectSource).toHaveBeenCalledOnceWith('Model');
-      });
-
-      it('selectDetectionSource_WhileBusy_DoesNothing', async () => {
-        const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
-        const fake = withIdleSignals(imageSelectorFake);
-        component.imageSelector = fake;
-        fake.inProgress.set(true);
-        const selectSource = spyOn(component.detection, 'selectSource');
-
-        component.selectDetectionSource('Ai');
-
-        expect(component.busy()).toBeTrue();
-        expect(selectSource).not.toHaveBeenCalled();
-      });
-
-      it('selectDetectionSource_CoordinateJsonMode_DoesNothing', async () => {
-        const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
-        const fake = withIdleSignals(imageSelectorFake);
-        fake.coordinateJsonMode = () => true;
-        component.imageSelector = fake;
-        const selectSource = spyOn(component.detection, 'selectSource');
-
-        component.selectDetectionSource('Model');
-
-        expect(selectSource).not.toHaveBeenCalled();
-      });
-
-      it('selectAiModel_WhileBusy_DoesNothing', async () => {
-        const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
-        const fake = withIdleSignals(imageSelectorFake);
-        component.imageSelector = fake;
-        fake.pageLoading.set(true);
-        const setAiModel = spyOn(component.detection, 'setAiModel');
-
-        component.selectAiModel(HAIKU_ID);
-
-        expect(setAiModel).not.toHaveBeenCalled();
-      });
-
-      it('onImageChange_CallsDetectionResetPage', async () => {
-        const { component } = await setup({ isAdmin: false, realmRoles: ['Teacher'] });
-        const resetPage = spyOn(component.detection, 'resetPage');
-
-        component.onImageChange();
-
-        expect(resetPage).toHaveBeenCalledTimes(1);
-      });
-
-      describe('şablon', () => {
-        it('sourceGroup_UserWithoutClaudeModels_IsNotRendered', async () => {
-          const ctx = await setup({ isAdmin: false, realmRoles: ['Teacher'], stubTestCreate: true });
-          ctx.component.imageSelector = undefined as any;
-          // Kaynak grubu sayfa araç çubuğunda: yalnız sayfa yüklüyken render edilir.
-          Object.defineProperty(ctx.component, 'pageFiles', { get: () => [new File([''], 'p1.png')] });
-          ctx.fixture.detectChanges();
-          await ctx.fixture.whenStable();
-
-          expect(ctx.fixture.nativeElement.querySelector('.qc-source')).toBeNull();
+            expect(component.questionForm.value.subjectId).toBe(3);
+            expect(component.questionForm.value.topicId).toBe(7);
+            expect(component.questionForm.value.subtopicId).toBe(9);
+            expect(tce.syncClassification).not.toHaveBeenCalled();
         });
 
-        it('sourceGroup_ModelsAvailable_IsRendered', async () => {
-          // Kontrol (positive control): model listesi varken grup görünmeli; yoksa negatif test anlamsız olur.
-          const ctx = await setup({ isAdmin: false, realmRoles: ['QuestionTrainer'], stubTestCreate: true });
-          ctx.component.detection.aiModels.set([
-            { id: HAIKU_ID, displayName: 'Haiku 5.5', inputUsdPerMTok: 1, outputUsdPerMTok: 5, isDefault: true },
-          ]);
-          ctx.component.imageSelector = undefined as any;
-          // Kaynak grubu sayfa araç çubuğunda: yalnız sayfa yüklüyken render edilir.
-          Object.defineProperty(ctx.component, 'pageFiles', { get: () => [new File([''], 'p1.png')] });
-          ctx.fixture.detectChanges();
-          await ctx.fixture.whenStable();
+        it('onPreviewQuestionChange_ZeroSubjectId_DoesNotPatchFormOrSyncClassification', () => {
+            const tce = tceSyncFake();
+            component.testCreateEnhancedComponent = tce as any;
+            component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
 
-          expect(ctx.fixture.nativeElement.querySelector('.qc-source')).not.toBeNull();
+            component.onPreviewQuestionChange({
+                index: 0,
+                questionId: 1,
+                subjectId: 0 as any,
+                topicId: 0 as any,
+                subtopicId: 0 as any,
+            });
+
+            expect(component.questionForm.value.subjectId).toBe(3);
+            expect(component.questionForm.value.topicId).toBe(7);
+            expect(component.questionForm.value.subtopicId).toBe(9);
+            expect(tce.syncClassification).not.toHaveBeenCalled();
         });
-      });
+
+        it('onPreviewQuestionChange_UndefinedSubjectId_DoesNotPatchFormOrSyncClassification', () => {
+            const tce = tceSyncFake();
+            component.testCreateEnhancedComponent = tce as any;
+            component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
+
+            component.onPreviewQuestionChange({
+                index: 0,
+                questionId: 1,
+                subjectId: undefined as any,
+                topicId: undefined as any,
+                subtopicId: undefined as any,
+            });
+
+            expect(component.questionForm.value.subjectId).toBe(3);
+            expect(component.questionForm.value.topicId).toBe(7);
+            expect(component.questionForm.value.subtopicId).toBe(9);
+            expect(tce.syncClassification).not.toHaveBeenCalled();
+        });
+
+        it('onPreviewQuestionChange_RealSubjectId_PatchesFormAndSyncsClassification', () => {
+            const tce = tceSyncFake();
+            component.testCreateEnhancedComponent = tce as any;
+
+            component.onPreviewQuestionChange({
+                index: 0,
+                questionId: 1,
+                subjectId: 11,
+                topicId: 22,
+                subtopicId: 33,
+            });
+
+            expect(component.questionForm.value.subjectId).toBe(11);
+            expect(component.questionForm.value.topicId).toBe(22);
+            expect(component.questionForm.value.subtopicId).toBe(33);
+            expect(tce.syncClassification).toHaveBeenCalledTimes(1);
+            expect(tce.syncClassification).toHaveBeenCalledWith(11, 22, 33);
+        });
+
+        it('onPreviewQuestionChange_NullSubjectId_HumanSource_PatchesFormAndSyncsClassification', () => {
+            // User picked a new Grade in classification-selector -> subjectId is
+            // intentionally null with Human source. Guard must NOT swallow it.
+            const tce = tceSyncFake();
+            component.testCreateEnhancedComponent = tce as any;
+            component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
+
+            component.onPreviewQuestionChange({
+                index: 0,
+                questionId: 1,
+                subjectId: null,
+                topicId: null,
+                subtopicId: null,
+                classificationSource: ClassificationSource.Human,
+            });
+
+            expect(component.questionForm.value.subjectId).toBe(0);
+            expect(component.questionForm.value.topicId).toBe(0);
+            expect(component.questionForm.value.subtopicId).toBe(0);
+            expect(tce.syncClassification).toHaveBeenCalledTimes(1);
+            expect(tce.syncClassification).toHaveBeenCalledWith(null, null, null);
+        });
+
+        it('onPreviewQuestionChange_NullSubjectId_AISource_DoesNotPatchFormOrSyncClassification', () => {
+            const tce = tceSyncFake();
+            component.testCreateEnhancedComponent = tce as any;
+            component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
+
+            component.onPreviewQuestionChange({
+                index: 0,
+                questionId: 1,
+                subjectId: null,
+                topicId: null,
+                subtopicId: null,
+                classificationSource: ClassificationSource.AI,
+            });
+
+            expect(component.questionForm.value.subjectId).toBe(3);
+            expect(component.questionForm.value.topicId).toBe(7);
+            expect(component.questionForm.value.subtopicId).toBe(9);
+            expect(tce.syncClassification).not.toHaveBeenCalled();
+        });
     });
 
-    describe('kayıt öncesi soru doğrulaması', () => {
-      for (const action of ['onSaveAndNew', 'onSaveAndFix'] as const) {
-        it(`${action}_InvalidQuestions_DoesNotCreateTestOrSave`, async () => {
-          const { component, imageSelectorFake, tceFake, questionServiceLocal } = await setup({
-            isAdmin: false,
-            realmRoles: ['QuestionTrainer'],
-          });
-          imageSelectorFake.ensureQuestionsValid.and.returnValue(false);
+    describe('onInspectorQuestionChange (issue #76 — unclassified region must not wipe test selection)', () => {
+        function tceSyncFake() {
+            return {
+                syncClassification: vi.fn().mockName('syncClassification'),
+            };
+        }
 
-          component[action]();
+        it('onInspectorQuestionChange_NullRegion_DoesNothing', () => {
+            const tce = tceSyncFake();
+            component.testCreateEnhancedComponent = tce as any;
+            component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
 
-          expect(imageSelectorFake.ensureQuestionsValid).toHaveBeenCalledOnceWith({ requireCorrectAnswer: true });
-          expect(tceFake.onCreateAsync).not.toHaveBeenCalled();
-          expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
-          expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
+            component.onInspectorQuestionChange({ index: 0, region: null });
+
+            expect(component.questionForm.value.subjectId).toBe(3);
+            expect(component.questionForm.value.topicId).toBe(7);
+            expect(component.questionForm.value.subtopicId).toBe(9);
+            expect(tce.syncClassification).not.toHaveBeenCalled();
         });
 
-        it(`${action}_ValidQuestions_CreatesTestAndSaves`, async () => {
-          const { component, imageSelectorFake, tceFake, questionServiceLocal, saveBulk$ } = await setup({
-            isAdmin: false,
-            realmRoles: ['Teacher'],
-          });
+        it('onInspectorQuestionChange_NullSubjectIdOnRegion_DoesNotPatchFormOrSyncClassification', () => {
+            const tce = tceSyncFake();
+            component.testCreateEnhancedComponent = tce as any;
+            component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
 
-          component[action]();
-          saveBulk$.next({});
+            component.onInspectorQuestionChange({
+                index: 0,
+                region: { subjectId: null, topicId: null, subtopicId: null } as any,
+            });
 
-          expect(imageSelectorFake.ensureQuestionsValid).toHaveBeenCalledWith({ requireCorrectAnswer: true });
-          expect(tceFake.onCreateAsync).toHaveBeenCalledTimes(1);
-          expect(questionServiceLocal.saveBulk).toHaveBeenCalledTimes(1);
+            expect(component.questionForm.value.subjectId).toBe(3);
+            expect(component.questionForm.value.topicId).toBe(7);
+            expect(component.questionForm.value.subtopicId).toBe(9);
+            expect(tce.syncClassification).not.toHaveBeenCalled();
         });
-      }
 
-      it('onSave_InvalidQuestions_DoesNotSave', async () => {
-        const { component, imageSelectorFake, questionServiceLocal } = await setup({ isAdmin: false });
-        imageSelectorFake.ensureQuestionsValid.and.returnValue(false);
+        it('onInspectorQuestionChange_ZeroOrUndefinedSubjectIdOnRegion_DoesNotPatchFormOrSyncClassification', () => {
+            const tce = tceSyncFake();
+            component.testCreateEnhancedComponent = tce as any;
+            component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
 
-        component.onSave(false);
+            component.onInspectorQuestionChange({
+                index: 0,
+                region: { subjectId: 0, topicId: undefined, subtopicId: undefined } as any,
+            });
 
-        expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
-        expect(component.saving()).toBeFalse();
-      });
+            expect(component.questionForm.value.subjectId).toBe(3);
+            expect(component.questionForm.value.topicId).toBe(7);
+            expect(component.questionForm.value.subtopicId).toBe(9);
+            expect(tce.syncClassification).not.toHaveBeenCalled();
+        });
+
+        it('onInspectorQuestionChange_RealSubjectIdOnRegion_PatchesFormAndSyncsClassification', () => {
+            const tce = tceSyncFake();
+            component.testCreateEnhancedComponent = tce as any;
+
+            component.onInspectorQuestionChange({
+                index: 0,
+                region: { subjectId: 11, topicId: 22, subtopicId: 33 } as any,
+            });
+
+            expect(component.questionForm.value.subjectId).toBe(11);
+            expect(component.questionForm.value.topicId).toBe(22);
+            expect(component.questionForm.value.subtopicId).toBe(33);
+            expect(tce.syncClassification).toHaveBeenCalledTimes(1);
+            expect(tce.syncClassification).toHaveBeenCalledWith(11, 22, 33);
+        });
+
+        it('onInspectorQuestionChange_NullSubjectId_HumanSource_PatchesFormAndSyncsClassification', () => {
+            // Deliberate human reset (e.g. Grade changed) -> guard must NOT apply.
+            const tce = tceSyncFake();
+            component.testCreateEnhancedComponent = tce as any;
+            component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
+
+            component.onInspectorQuestionChange({
+                index: 0,
+                region: {
+                    subjectId: null,
+                    topicId: null,
+                    subtopicId: null,
+                    classificationSource: ClassificationSource.Human,
+                } as any,
+            });
+
+            expect(component.questionForm.value.subjectId).toBe(0);
+            expect(component.questionForm.value.topicId).toBe(0);
+            expect(component.questionForm.value.subtopicId).toBe(0);
+            expect(tce.syncClassification).toHaveBeenCalledTimes(1);
+            expect(tce.syncClassification).toHaveBeenCalledWith(null, null, null);
+        });
+
+        it('onInspectorQuestionChange_NullSubjectId_AISource_DoesNotPatchFormOrSyncClassification', () => {
+            const tce = tceSyncFake();
+            component.testCreateEnhancedComponent = tce as any;
+            component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
+
+            component.onInspectorQuestionChange({
+                index: 0,
+                region: {
+                    subjectId: null,
+                    topicId: null,
+                    subtopicId: null,
+                    classificationSource: ClassificationSource.AI,
+                } as any,
+            });
+
+            expect(component.questionForm.value.subjectId).toBe(3);
+            expect(component.questionForm.value.topicId).toBe(7);
+            expect(component.questionForm.value.subtopicId).toBe(9);
+            expect(tce.syncClassification).not.toHaveBeenCalled();
+        });
     });
-  });
+
+    describe('quick create flow', () => {
+        it('openQuickCreate_OpensPanelAndSidePanel', () => {
+            component.showQuickCreate.set(false);
+            component.showSidePanel.set(false);
+
+            component.openQuickCreate();
+
+            expect(component.showQuickCreate()).toBe(true);
+            expect(component.showSidePanel()).toBe(true);
+        });
+
+        it('onQuickCreated_ClosesPanel_SetsId_AndSyncsFormFromTest', () => {
+            component.showQuickCreate.set(true);
+
+            component.onQuickCreated(42);
+
+            expect(component.showQuickCreate()).toBe(false);
+            expect(component.id).toBe(42);
+            expect(testService.get).toHaveBeenCalledWith(42);
+            expect(component.questionForm.get('testId')?.value).toBe('T-1');
+            expect(component.questionForm.get('testValue')?.value).toBe(99);
+        });
+    });
+
+    /**
+     * `canTrain` is resolved once at field-initialization time from `AuthService.hasRealmRole('Admin' |
+     * 'QuestionTrainer')` only (profile role `hasRole` is ignored, same source as the gateway),
+     * so it can't be flipped after a component instance already exists — each scenario below spins
+     * up its own TestBed module with a stubbed AuthService instead of reusing the outer beforeEach.
+     * `saveBulk` is driven by a manually-controlled Subject so the saving() true/false transition
+     * around the async emission can be asserted, rather than only the settled end-state.
+     */
+    describe('onSave', () => {
+        /** `isAdmin` → profil rolü Admin (`hasRole`); `realmRoles` → token realm rolleri (`hasRealmRole`). */
+        async function setup(opts: {
+            isAdmin: boolean;
+            realmRoles?: string[];
+            saveBulk$?: Subject<any>;
+            /** Şablon render edilecekse test oluşturma formunu boş bileşenle değiştir. */
+            stubTestCreate?: boolean;
+        }) {
+            const saveBulk$ = opts.saveBulk$ ?? new Subject<any>();
+
+            const testServiceLocal = {
+                search: vi.fn().mockName("TestService.search"),
+                get: vi.fn().mockName("TestService.get")
+            };
+            testServiceLocal.search.mockReturnValue(of({ items: [] }) as any);
+            testServiceLocal.get.mockReturnValue(of({ subtitle: 'T-1', id: 7 }) as any);
+
+            const questionServiceLocal = {
+                getAll: vi.fn().mockName("QuestionService.getAll"),
+                saveBulk: vi.fn().mockName("QuestionService.saveBulk")
+            };
+            questionServiceLocal.saveBulk.mockReturnValue(saveBulk$.asObservable() as any);
+
+            const bookServiceLocal = {
+                getAll: vi.fn().mockName("BookService.getAll"),
+                getTestsByBook: vi.fn().mockName("BookService.getTestsByBook")
+            };
+            bookServiceLocal.getAll.mockReturnValue(of([]));
+            bookServiceLocal.getTestsByBook.mockReturnValue(of([]));
+
+            const subjectServiceLocal = {
+                loadCategories: vi.fn().mockName("SubjectService.loadCategories")
+            };
+
+            const routerLocal = {
+                navigate: vi.fn().mockName("Router.navigate"),
+                currentNavigation: vi.fn().mockName("Router.currentNavigation")
+            };
+            routerLocal.currentNavigation.mockReturnValue(null as any);
+
+            const authServiceLocal = {
+                hasRole: vi.fn().mockName("AuthService.hasRole"),
+                hasRealmRole: vi.fn().mockName("AuthService.hasRealmRole")
+            };
+            authServiceLocal.hasRole.mockImplementation((role: string) => opts.isAdmin && role === 'Admin');
+            const realmRoles = opts.realmRoles ?? [];
+            authServiceLocal.hasRealmRole.mockImplementation((role: string) => realmRoles.includes(role));
+
+            TestBed.resetTestingModule();
+            TestBed.configureTestingModule({
+                imports: [QuestionCanvasComponent, translocoTesting],
+                providers: [
+                    provideNoopAnimations(),
+                    provideHttpClient(withXhr()),
+                    provideHttpClientTesting(),
+                    { provide: TestService, useValue: testServiceLocal },
+                    { provide: QuestionService, useValue: questionServiceLocal },
+                    { provide: BookService, useValue: bookServiceLocal },
+                    { provide: SubjectService, useValue: subjectServiceLocal },
+                    { provide: Router, useValue: routerLocal },
+                    { provide: AuthService, useValue: authServiceLocal },
+                    { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({}) } } },
+                ],
+            });
+            if (opts.stubTestCreate) {
+                TestBed.overrideComponent(QuestionCanvasComponent, {
+                    remove: { imports: [TestCreateEnhancedComponent] },
+                    add: { imports: [TestCreateEnhancedStubComponent] },
+                });
+            }
+            await TestBed.compileComponents();
+
+            const localFixture = TestBed.createComponent(QuestionCanvasComponent);
+            const localComponent = localFixture.componentInstance;
+
+            const imageSelectorFake = {
+                getRegions: vi.fn().mockName('getRegions').mockImplementation((payload: any) => payload),
+                sendToFix: vi.fn().mockName('sendToFix'),
+                nextImage: vi.fn().mockName('nextImage'),
+                ensureQuestionsValid: vi.fn().mockName('ensureQuestionsValid').mockReturnValue(true),
+            };
+            localComponent.imageSelector = imageSelectorFake as any;
+
+            const tceFake = {
+                reloadComponent: vi.fn().mockName('reloadComponent'),
+                onCreateAsync: vi.fn().mockName('onCreateAsync').mockReturnValue(of({ examId: 7 })),
+            };
+            localComponent.testCreateEnhancedComponent = tceFake as any;
+
+            return { fixture: localFixture, component: localComponent, questionServiceLocal, imageSelectorFake, tceFake, saveBulk$ };
+        }
+
+        /** Kayıt sonrası 2 sn'lik "sonraki görsel" geçişi sahte saatle sürülür (#394). */
+        async function withMockClock(body: () => void | Promise<void>): Promise<void> {
+            vi.useFakeTimers();
+            try {
+                await body();
+            }
+            finally {
+                vi.useRealTimers();
+            }
+        }
+
+        it('onSave_Success_AdvancesToNextImageAfterDelay', async () => {
+            const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: false });
+
+            await withMockClock(() => {
+                component.onSave();
+                saveBulk$.next({});
+
+                vi.advanceTimersByTime(1999);
+                expect(imageSelectorFake.nextImage).not.toHaveBeenCalled();
+
+                vi.advanceTimersByTime(1);
+                expect(imageSelectorFake.nextImage).toHaveBeenCalledTimes(1);
+            });
+        });
+
+        it('onSave_ComponentDestroyedBeforeDelay_DoesNotAdvanceToNextImage', async () => {
+            const { fixture: localFixture, component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: false });
+
+            await withMockClock(() => {
+                component.onSave();
+                saveBulk$.next({});
+
+                localFixture.destroy();
+                vi.advanceTimersByTime(2000);
+
+                expect(imageSelectorFake.nextImage).not.toHaveBeenCalled();
+            });
+        });
+
+        it('onSave_ResponseArrivesAfterDestroy_StillNotifiesButDoesNotAdvanceToNextImage', async () => {
+            const { fixture: localFixture, component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: false });
+            // MatSnackBarModule bileşenin kendi ortam enjektöründe ayrı bir örnek sağlar; onu izleriz.
+            const snackBarOpen = vi.spyOn(localFixture.debugElement.injector.get(MatSnackBar), 'open').mockReturnValue(undefined as never);
+
+            await withMockClock(() => {
+                component.onSave();
+                localFixture.destroy();
+                saveBulk$.next({});
+                vi.advanceTimersByTime(2000);
+
+                expect(snackBarOpen).toHaveBeenCalled();
+                expect(imageSelectorFake.nextImage).not.toHaveBeenCalled();
+            });
+        });
+
+        it('onSave_SavingAlreadyTrue_DoesNotCallSaveBulkAgain', async () => {
+            const { component, questionServiceLocal } = await setup({ isAdmin: false });
+            component.saving.set(true);
+
+            component.onSave();
+
+            expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
+        });
+
+        it('onSave_TogglesSavingTrueThenFalse_AroundSuccessfulSaveBulkEmission', async () => {
+            const { component, saveBulk$ } = await setup({ isAdmin: false });
+
+            component.onSave();
+
+            expect(component.saving()).toBe(true);
+
+            saveBulk$.next({});
+
+            expect(component.saving()).toBe(false);
+        });
+
+        it('onSave_SavingReturnsFalse_WhenSaveBulkErrors', async () => {
+            const { component, saveBulk$ } = await setup({ isAdmin: false });
+
+            component.onSave();
+
+            expect(component.saving()).toBe(true);
+
+            saveBulk$.error(new Error('boom'));
+
+            expect(component.saving()).toBe(false);
+        });
+
+        it('onSave_AdminUser_DefaultSendToFix_DoesNotCallImageSelectorSendToFix_OnSuccess', async () => {
+            const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
+
+            component.onSave();
+            saveBulk$.next({});
+
+            expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
+        });
+
+        it('onSave_AdminUser_ExplicitSendToFixTrue_CallsImageSelectorSendToFix_OnSuccess', async () => {
+            const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
+
+            component.onSave(true);
+            saveBulk$.next({});
+
+            expect(imageSelectorFake.sendToFix).toHaveBeenCalledTimes(1);
+        });
+
+        it('onSave_NonAdminUser_NeverCallsImageSelectorSendToFix_OnSuccess_RegardlessOfSendToFixArg', async () => {
+            const subjectTrue = new Subject<any>();
+            const { component, imageSelectorFake } = await setup({ isAdmin: false, saveBulk$: subjectTrue });
+
+            component.onSave(true);
+            subjectTrue.next({});
+
+            expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
+        });
+
+        it('onSave_AdminUser_PageNotExcluded_SendsPageCompleteTrue', async () => {
+            const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
+
+            component.onSave(true);
+            saveBulk$.next({});
+
+            expect(imageSelectorFake.sendToFix).toHaveBeenCalledTimes(1);
+
+            expect(imageSelectorFake.sendToFix).toHaveBeenCalledWith(true, false);
+        });
+
+        it('onSave_AdminUser_ExcludeFromTrainingChecked_SendsPageCompleteFalse', async () => {
+            const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
+            component.excludeFromTraining.set(true);
+
+            component.onSave(true);
+            saveBulk$.next({});
+
+            expect(imageSelectorFake.sendToFix).toHaveBeenCalledTimes(1);
+
+            expect(imageSelectorFake.sendToFix).toHaveBeenCalledWith(false, false);
+        });
+
+        it('sendToFix_AdminUser_ExcludeFromTrainingChecked_SendsPageCompleteFalse', async () => {
+            const { component, imageSelectorFake } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
+            component.excludeFromTraining.set(true);
+
+            component.sendToFix();
+
+            expect(imageSelectorFake.sendToFix).toHaveBeenCalledTimes(1);
+
+            expect(imageSelectorFake.sendToFix).toHaveBeenCalledWith(false);
+        });
+
+        it('sendToFix_NonAdmin_DoesNotCallImageSelector', async () => {
+            const { component, imageSelectorFake } = await setup({ isAdmin: false });
+
+            component.sendToFix();
+
+            expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
+        });
+
+        it('onImageChange_ResetsExcludeFromTraining', async () => {
+            const { component } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
+            component.excludeFromTraining.set(true);
+
+            component.onImageChange();
+
+            expect(component.excludeFromTraining()).toBe(false);
+        });
+
+        it('excludeFromTraining_DefaultsToFalse', async () => {
+            const { component } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
+
+            expect(component.excludeFromTraining()).toBe(false);
+        });
+
+        it('onSave_AdminUser_ExplicitSendToFixFalse_DoesNotCallImageSelectorSendToFix_OnSuccess', async () => {
+            const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true, realmRoles: ['Admin'] });
+
+            component.onSave(false);
+            saveBulk$.next({});
+
+            expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
+        });
+
+        describe('canTrain (Admin / QuestionTrainer realm rolü)', () => {
+            it('canTrain_QuestionTrainerRealmRole_ReturnsTrue', async () => {
+                const { component } = await setup({ isAdmin: false, realmRoles: ['Teacher', 'QuestionTrainer'] });
+
+                expect(component.canTrain).toBe(true);
+            });
+
+            it('canTrain_AdminRealmRole_ReturnsTrue', async () => {
+                const { component } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+
+                expect(component.canTrain).toBe(true);
+            });
+
+            it('canTrain_ProfileAdminWithoutRealmRole_ReturnsFalse', async () => {
+                const { component } = await setup({ isAdmin: true, realmRoles: [] });
+
+                expect(component.canTrain).toBe(false);
+            });
+
+            it('sendToFix_ProfileAdminWithoutRealmRole_DoesNotCallImageSelector', async () => {
+                const { component, imageSelectorFake } = await setup({ isAdmin: true, realmRoles: [] });
+
+                component.sendToFix();
+
+                expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
+            });
+
+            it('canTrain_TeacherOnly_ReturnsFalse', async () => {
+                const { component } = await setup({ isAdmin: false, realmRoles: ['Teacher'] });
+
+                expect(component.canTrain).toBe(false);
+            });
+
+            it('onSaveAndNew_QuestionTrainer_Success_DoesNotCallImageSelectorSendToFix', async () => {
+                const { component, imageSelectorFake, questionServiceLocal, saveBulk$ } = await setup({
+                    isAdmin: false,
+                    realmRoles: ['Teacher', 'QuestionTrainer'],
+                });
+
+                component.onSaveAndNew();
+                saveBulk$.next({});
+
+                expect(questionServiceLocal.saveBulk).toHaveBeenCalledTimes(1);
+                expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
+            });
+
+            it('onSaveAndFix_QuestionTrainer_Success_CallsImageSelectorSendToFix', async () => {
+                const { component, imageSelectorFake, saveBulk$ } = await setup({
+                    isAdmin: false,
+                    realmRoles: ['Teacher', 'QuestionTrainer'],
+                });
+
+                component.onSaveAndFix();
+                saveBulk$.next({});
+
+                expect(imageSelectorFake.sendToFix).toHaveBeenCalledTimes(1);
+
+                expect(imageSelectorFake.sendToFix).toHaveBeenCalledWith(true, false);
+            });
+
+            it('onSaveAndFix_TeacherOnly_Success_SavesButDoesNotCallImageSelectorSendToFix', async () => {
+                const { component, imageSelectorFake, questionServiceLocal, saveBulk$ } = await setup({
+                    isAdmin: false,
+                    realmRoles: ['Teacher'],
+                });
+
+                component.onSaveAndFix();
+                saveBulk$.next({});
+
+                expect(questionServiceLocal.saveBulk).toHaveBeenCalledTimes(1);
+                expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
+            });
+
+            it('sendToFix_QuestionTrainer_CallsImageSelector', async () => {
+                const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['QuestionTrainer'] });
+
+                component.sendToFix();
+
+                expect(imageSelectorFake.sendToFix).toHaveBeenCalledTimes(1);
+
+                expect(imageSelectorFake.sendToFix).toHaveBeenCalledWith(true);
+            });
+        });
+
+        // Sonraki sayfa hazır olana kadar işlem düğmeleri pasif (kayıt, eğitime gönderim, geçiş, analiz).
+        describe('busy (meşgul durumu)', () => {
+            /** image-selector'ın meşgul sinyallerini taşıyan sahte; sendToFix çağrısı gönderimi başlatır. */
+            function withBusySignals(fake: any) {
+                fake.sendingToFix = signal(false);
+                fake.pageLoading = signal(false);
+                fake.inProgress = signal(false);
+                fake.sendToFix.mockImplementation(() => fake.sendingToFix.set(true));
+                return fake;
+            }
+
+            it('busy_ReflectsSavingAndImageSelectorSignals', async () => {
+                const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+                const fake = withBusySignals(imageSelectorFake);
+                // Setter signal'i güncellesin diye yeniden atanır (setup sahteyi sinyaller eklenmeden atadı).
+                component.imageSelector = fake;
+
+                expect(component.busy()).toBe(false);
+                component.saving.set(true);
+                expect(component.busy()).toBe(true);
+                component.saving.set(false);
+
+                fake.inProgress.set(true);
+                expect(component.busy()).toBe(true);
+                fake.inProgress.set(false);
+
+                fake.pageLoading.set(true);
+                expect(component.busy()).toBe(true);
+                fake.pageLoading.set(false);
+
+                fake.sendingToFix.set(true);
+                expect(component.busy()).toBe(true);
+                expect(component.sendingToFix()).toBe(true);
+            });
+
+            it('sendToFix_DoubleClick_CallsImageSelectorOnce', async () => {
+                const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['QuestionTrainer'] });
+                component.imageSelector = withBusySignals(imageSelectorFake);
+
+                component.sendToFix();
+                component.sendToFix();
+
+                expect(imageSelectorFake.sendToFix).toHaveBeenCalledTimes(1);
+            });
+
+            it('sendToFix_AfterSendFails_CanSendAgain', async () => {
+                const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['QuestionTrainer'] });
+                const fake = withBusySignals(imageSelectorFake);
+                component.imageSelector = fake;
+
+                component.sendToFix();
+                fake.sendingToFix.set(false); // image-selector hata yolunda meşgul durumunu kapatır
+
+                component.sendToFix();
+
+                expect(imageSelectorFake.sendToFix).toHaveBeenCalledTimes(2);
+            });
+
+            it('onSave_Success_BusyThroughAdvanceWindowUntilNextImage', async () => {
+                const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: false });
+
+                await withMockClock(() => {
+                    component.onSave();
+                    saveBulk$.next({});
+
+                    expect(component.saving()).toBe(false);
+                    expect(component.advancing()).toBe(true);
+                    expect(component.busy()).toBe(true);
+
+                    vi.advanceTimersByTime(2000);
+
+                    expect(component.advancing()).toBe(false);
+                    expect(imageSelectorFake.nextImage).toHaveBeenCalledTimes(1);
+                });
+            });
+
+            it('onSave_Error_DoesNotStartAdvanceWindow', async () => {
+                const { component, saveBulk$ } = await setup({ isAdmin: false });
+
+                component.onSave();
+                saveBulk$.error({ status: 500 });
+
+                expect(component.advancing()).toBe(false);
+                expect(component.busy()).toBe(false);
+            });
+
+            it('saveEntryPoints_WhileBusy_DoNothing', async () => {
+                const { component, tceFake, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+                (imageSelectorFake as any).sendToStudyPage = vi.fn().mockName('sendToStudyPage');
+                component.advancing.set(true);
+
+                component.onSaveAndNew();
+                component.onSaveAndFix();
+                component.onSubmit();
+                component.sendToWorkPages();
+
+                expect(tceFake.onCreateAsync).not.toHaveBeenCalled();
+                expect((imageSelectorFake as any).sendToStudyPage).not.toHaveBeenCalled();
+            });
+
+            it('navigation_WhileSavingCreatingAdvancingOrSending_IsBlocked', async () => {
+                const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+                const fake = withBusySignals(imageSelectorFake);
+                fake.previousImage = vi.fn().mockName('previousImage');
+                fake.goToPage = vi.fn().mockName('goToPage');
+                component.imageSelector = fake;
+                const tryAll = () => {
+                    component.previousImage();
+                    component.nextImage();
+                    component.goToPage('2');
+                };
+
+                for (const lock of [component.saving, component.creating, component.advancing, fake.sendingToFix]) {
+                    lock.set(true);
+                    tryAll();
+                    lock.set(false);
+                }
+
+                expect(fake.previousImage).not.toHaveBeenCalled();
+                expect(fake.nextImage).not.toHaveBeenCalled();
+                expect(fake.goToPage).not.toHaveBeenCalled();
+            });
+
+            it('navigation_WhileAnalyzingOrPageLoading_IsAllowed', async () => {
+                const { component, imageSelectorFake } = await setup({ isAdmin: false });
+                const fake = withBusySignals(imageSelectorFake);
+                fake.previousImage = vi.fn().mockName('previousImage');
+                fake.goToPage = vi.fn().mockName('goToPage');
+                component.imageSelector = fake;
+                fake.inProgress.set(true);
+                fake.pageLoading.set(true);
+
+                component.previousImage();
+                component.nextImage();
+                component.goToPage('2');
+
+                expect(component.busy()).toBe(true);
+                expect(component.navigationBusy()).toBe(false);
+                expect(fake.previousImage).toHaveBeenCalledTimes(1);
+                expect(fake.nextImage).toHaveBeenCalledTimes(1);
+                expect(fake.goToPage).toHaveBeenCalledTimes(1);
+                expect(fake.goToPage).toHaveBeenCalledWith('2');
+            });
+
+            for (const action of ['onSaveAndNew', 'onSaveAndFix', 'onSubmit'] as const) {
+                it(`${action}_DoubleClick_CreatesTestOnce`, async () => {
+                    const { component, tceFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+                    const create$ = new Subject<any>();
+                    tceFake.onCreateAsync.mockReturnValue(create$.asObservable());
+
+                    component[action]();
+                    component[action]();
+
+                    expect(tceFake.onCreateAsync).toHaveBeenCalledTimes(1);
+                    expect(component.creating()).toBe(true);
+                    expect(component.busy()).toBe(true);
+                });
+            }
+
+            it('onSaveAndNew_CreateFails_ClearsCreating', async () => {
+                const { component, tceFake, questionServiceLocal } = await setup({ isAdmin: false });
+                const create$ = new Subject<any>();
+                tceFake.onCreateAsync.mockReturnValue(create$.asObservable());
+
+                component.onSaveAndNew();
+                create$.error(new Error('boom'));
+
+                expect(component.creating()).toBe(false);
+                expect(component.busy()).toBe(false);
+                expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
+            });
+
+            it('onSaveAndNew_FetchCreatedTestFails_ClearsCreatingAndNotifies', async () => {
+                const { fixture: f, component, questionServiceLocal } = await setup({ isAdmin: false });
+                const snackBarOpen = vi.spyOn(f.debugElement.injector.get(MatSnackBar), 'open').mockReturnValue(undefined as never);
+                const testServiceLocal = f.debugElement.injector.get(TestService) as MockedObject<TestService>;
+                testServiceLocal.get.mockReturnValue(throwError(() => new Error('fetch')));
+
+                component.onSaveAndNew();
+
+                expect(component.creating()).toBe(false);
+                expect(component.busy()).toBe(false);
+                expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
+                expect(snackBarOpen).toHaveBeenCalledWith(questionTr.canvas.testFetchError, expect.any(String), expect.any(Object));
+            });
+
+            it('onSaveAndFix_SaveSucceedsTrainingFails_StillAdvancesAndBusyClears', async () => {
+                const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: false, realmRoles: ['QuestionTrainer'] });
+                const fake = withBusySignals(imageSelectorFake);
+                component.imageSelector = fake;
+
+                await withMockClock(() => {
+                    component.onSaveAndFix();
+                    saveBulk$.next({});
+                    expect(fake.sendToFix).toHaveBeenCalledTimes(1);
+                    expect(fake.sendToFix).toHaveBeenCalledWith(true, false);
+                    expect(component.busy()).toBe(true);
+
+                    fake.sendingToFix.set(false); // image-selector eğitim hatasında meşgul durumunu kapatır
+
+                    vi.advanceTimersByTime(2000);
+                    expect(fake.nextImage).toHaveBeenCalledTimes(1);
+                    expect(component.busy()).toBe(false);
+                });
+            });
+
+            it('onSaveAndFix_TrainingStillRunningAfterDelay_StillAdvances', async () => {
+                const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: false, realmRoles: ['QuestionTrainer'] });
+                const fake = withBusySignals(imageSelectorFake);
+                component.imageSelector = fake;
+
+                await withMockClock(() => {
+                    component.onSaveAndFix();
+                    saveBulk$.next({});
+
+                    vi.advanceTimersByTime(2000);
+
+                    // Geçişi kayıt zamanlayıcısı yapar; süren eğitim isteğinin gezinme kilidi onu engellemez.
+                    expect(fake.nextImage).toHaveBeenCalledTimes(1);
+                    expect(component.navigationBusy()).toBe(true);
+                });
+            });
+
+            describe('şablon', () => {
+                async function render() {
+                    const ctx = await setup({ isAdmin: false, realmRoles: ['Admin'], stubTestCreate: true });
+                    // Gerçek alt bileşenler oluşur; ilk geçişte sahte kullanılmasın, ViewChild gerçek image-selector'ı atar.
+                    ctx.component.imageSelector = undefined as any;
+                    ctx.fixture.detectChanges();
+                    await ctx.fixture.whenStable();
+                    const el: HTMLElement = ctx.fixture.nativeElement;
+                    const trainButton = () => Array.from(el.querySelectorAll<HTMLButtonElement>('button.qc-btn--ghost')).find((b) => b.textContent!.includes(questionTr.canvas.train) || b.textContent!.includes(questionTr.canvas.sendingToFix))!;
+                    const saveButton = () => el.querySelector<HTMLButtonElement>('.qc-split__main')!;
+                    const caretButton = () => el.querySelector<HTMLButtonElement>('.qc-split__caret')!;
+                    return { ...ctx, el, trainButton, saveButton, caretButton };
+                }
+
+                it('buttons_Idle_AreEnabled', async () => {
+                    const { trainButton, saveButton, caretButton } = await render();
+
+                    expect(trainButton().disabled).toBe(false);
+                    expect(saveButton().disabled).toBe(false);
+                    expect(caretButton().disabled).toBe(false);
+                });
+
+                it('buttons_WhileAnalyzing_AreDisabled', async () => {
+                    const { fixture: f, component, trainButton, saveButton, caretButton } = await render();
+
+                    component.imageSelector.inProgress.set(true);
+                    f.detectChanges();
+
+                    expect(trainButton().disabled).toBe(true);
+                    expect(saveButton().disabled).toBe(true);
+                    expect(caretButton().disabled).toBe(true);
+                });
+
+                it('buttons_DuringAdvanceWindow_AreDisabled', async () => {
+                    const { fixture: f, component, saveButton, caretButton } = await render();
+
+                    component.advancing.set(true);
+                    f.detectChanges();
+
+                    expect(saveButton().disabled).toBe(true);
+                    expect(caretButton().disabled).toBe(true);
+                });
+
+                it('trainButton_WhileSending_ShowsSpinnerTextAndAriaBusy', async () => {
+                    const { fixture: f, component, trainButton } = await render();
+
+                    component.imageSelector.sendingToFix.set(true);
+                    f.detectChanges();
+
+                    const button = trainButton();
+                    expect(button.disabled).toBe(true);
+                    expect(button.getAttribute('aria-busy')).toBe('true');
+                    expect(button.querySelector('mat-spinner')).not.toBeNull();
+                    expect(button.textContent).toContain(questionTr.canvas.sendingToFix);
+                });
+
+                it('pageNavigation_DuringAdvanceWindow_IsDisabled_ButNotDuringAnalysis', async () => {
+                    const { fixture: f, component, el } = await render();
+                    component.imageSelector.imageFiles = [new File(['a'], 'p1.png'), new File(['b'], 'p2.png')];
+                    f.detectChanges();
+                    const navControls = () => [
+                        ...Array.from(el.querySelectorAll<HTMLButtonElement>('.qc-thumb')),
+                        ...Array.from(el.querySelectorAll<HTMLButtonElement | HTMLInputElement>('.qc-pagejump button, .qc-pagejump input')),
+                    ];
+                    expect(navControls().length).toBe(5);
+
+                    component.imageSelector.inProgress.set(true);
+                    f.detectChanges();
+                    expect(navControls().every((c) => !c.disabled)).toBe(true);
+
+                    component.advancing.set(true);
+                    f.detectChanges();
+                    expect(navControls().every((c) => c.disabled)).toBe(true);
+                    expect(component.imageSelector.navigationLocked).toBe(true);
+                });
+            });
+        });
+
+        describe('tespit kaynağı (issue #473)', () => {
+            /** image-selector'ın meşgul / JSON sinyallerini taşıyan sahte; varsayılan: boşta, normal mod. */
+            function withIdleSignals(fake: any) {
+                fake.sendingToFix = signal(false);
+                fake.pageLoading = signal(false);
+                fake.inProgress = signal(false);
+                fake.coordinateJsonMode = () => false;
+                return fake;
+            }
+
+            it('selectDetectionSource_IdleNormalMode_DelegatesToDetection', async () => {
+                const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+                component.imageSelector = withIdleSignals(imageSelectorFake);
+                const selectSource = vi.spyOn(component.detection, 'selectSource').mockReturnValue(undefined);
+
+                component.selectDetectionSource('Model');
+
+                expect(selectSource).toHaveBeenCalledTimes(1);
+
+                expect(selectSource).toHaveBeenCalledWith('Model');
+            });
+
+            it('selectDetectionSource_WhileBusy_DoesNothing', async () => {
+                const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+                const fake = withIdleSignals(imageSelectorFake);
+                component.imageSelector = fake;
+                fake.inProgress.set(true);
+                const selectSource = vi.spyOn(component.detection, 'selectSource').mockReturnValue(undefined);
+
+                component.selectDetectionSource('Ai');
+
+                expect(component.busy()).toBe(true);
+                expect(selectSource).not.toHaveBeenCalled();
+            });
+
+            it('selectDetectionSource_CoordinateJsonMode_DoesNothing', async () => {
+                const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+                const fake = withIdleSignals(imageSelectorFake);
+                fake.coordinateJsonMode = () => true;
+                component.imageSelector = fake;
+                const selectSource = vi.spyOn(component.detection, 'selectSource').mockReturnValue(undefined);
+
+                component.selectDetectionSource('Model');
+
+                expect(selectSource).not.toHaveBeenCalled();
+            });
+
+            it('selectAiModel_WhileBusy_DoesNothing', async () => {
+                const { component, imageSelectorFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+                const fake = withIdleSignals(imageSelectorFake);
+                component.imageSelector = fake;
+                fake.pageLoading.set(true);
+                const setAiModel = vi.spyOn(component.detection, 'setAiModel').mockReturnValue(undefined);
+
+                component.selectAiModel(HAIKU_ID);
+
+                expect(setAiModel).not.toHaveBeenCalled();
+            });
+
+            it('onImageChange_CallsDetectionResetPage', async () => {
+                const { component } = await setup({ isAdmin: false, realmRoles: ['Teacher'] });
+                const resetPage = vi.spyOn(component.detection, 'resetPage').mockReturnValue(undefined);
+
+                component.onImageChange();
+
+                expect(resetPage).toHaveBeenCalledTimes(1);
+            });
+
+            describe('şablon', () => {
+                it('sourceGroup_UserWithoutClaudeModels_IsNotRendered', async () => {
+                    const ctx = await setup({ isAdmin: false, realmRoles: ['Teacher'], stubTestCreate: true });
+                    ctx.component.imageSelector = undefined as any;
+                    // Kaynak grubu sayfa araç çubuğunda: yalnız sayfa yüklüyken render edilir.
+                    Object.defineProperty(ctx.component, 'pageFiles', { get: () => [new File([''], 'p1.png')] });
+                    ctx.fixture.detectChanges();
+                    await ctx.fixture.whenStable();
+
+                    expect(ctx.fixture.nativeElement.querySelector('.qc-source')).toBeNull();
+                });
+
+                it('sourceGroup_ModelsAvailable_IsRendered', async () => {
+                    // Kontrol (positive control): model listesi varken grup görünmeli; yoksa negatif test anlamsız olur.
+                    const ctx = await setup({ isAdmin: false, realmRoles: ['QuestionTrainer'], stubTestCreate: true });
+                    ctx.component.detection.aiModels.set([
+                        { id: HAIKU_ID, displayName: 'Haiku 5.5', inputUsdPerMTok: 1, outputUsdPerMTok: 5, isDefault: true },
+                    ]);
+                    ctx.component.imageSelector = undefined as any;
+                    // Kaynak grubu sayfa araç çubuğunda: yalnız sayfa yüklüyken render edilir.
+                    Object.defineProperty(ctx.component, 'pageFiles', { get: () => [new File([''], 'p1.png')] });
+                    ctx.fixture.detectChanges();
+                    await ctx.fixture.whenStable();
+
+                    expect(ctx.fixture.nativeElement.querySelector('.qc-source')).not.toBeNull();
+                });
+            });
+        });
+
+        describe('kayıt öncesi soru doğrulaması', () => {
+            for (const action of ['onSaveAndNew', 'onSaveAndFix'] as const) {
+                it(`${action}_InvalidQuestions_DoesNotCreateTestOrSave`, async () => {
+                    const { component, imageSelectorFake, tceFake, questionServiceLocal } = await setup({
+                        isAdmin: false,
+                        realmRoles: ['QuestionTrainer'],
+                    });
+                    imageSelectorFake.ensureQuestionsValid.mockReturnValue(false);
+
+                    component[action]();
+
+                    expect(imageSelectorFake.ensureQuestionsValid).toHaveBeenCalledTimes(1);
+
+                    expect(imageSelectorFake.ensureQuestionsValid).toHaveBeenCalledWith({ requireCorrectAnswer: true });
+                    expect(tceFake.onCreateAsync).not.toHaveBeenCalled();
+                    expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
+                    expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
+                });
+
+                it(`${action}_ValidQuestions_CreatesTestAndSaves`, async () => {
+                    const { component, imageSelectorFake, tceFake, questionServiceLocal, saveBulk$ } = await setup({
+                        isAdmin: false,
+                        realmRoles: ['Teacher'],
+                    });
+
+                    component[action]();
+                    saveBulk$.next({});
+
+                    expect(imageSelectorFake.ensureQuestionsValid).toHaveBeenCalledWith({ requireCorrectAnswer: true });
+                    expect(tceFake.onCreateAsync).toHaveBeenCalledTimes(1);
+                    expect(questionServiceLocal.saveBulk).toHaveBeenCalledTimes(1);
+                });
+            }
+
+            it('onSave_InvalidQuestions_DoesNotSave', async () => {
+                const { component, imageSelectorFake, questionServiceLocal } = await setup({ isAdmin: false });
+                imageSelectorFake.ensureQuestionsValid.mockReturnValue(false);
+
+                component.onSave(false);
+
+                expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
+                expect(component.saving()).toBe(false);
+            });
+        });
+    });
 });

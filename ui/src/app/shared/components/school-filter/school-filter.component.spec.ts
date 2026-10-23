@@ -1,3 +1,4 @@
+import type { MockedObject } from "vitest";
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -12,91 +13,90 @@ import { translocoTestingModule } from '../../testing/transloco-testing';
 import adminTr from '../../../../../public/i18n/admin/tr.json';
 
 describe('SchoolFilterComponent', () => {
-  let fixture: ComponentFixture<SchoolFilterComponent>;
-  let adminService: jasmine.SpyObj<AdminService>;
-  let emitted: SchoolFilterValue[];
+    let fixture: ComponentFixture<SchoolFilterComponent>;
+    let adminService: MockedObject<AdminService>;
+    let emitted: SchoolFilterValue[];
 
-  const school = (id: number, name: string): School => ({
-    id,
-    name,
-    provinceId: null,
-    provinceName: null,
-    districtId: null,
-    districtName: null,
-    addressLine: null,
-  });
-
-  function create(
-    value: SchoolFilterValue,
-    schools$: Observable<School[]> = of([school(5, 'Ankara Lisesi')]),
-    unassignedLabel?: 'unassigned' | 'unassignedStudent',
-  ): void {
-    adminService = jasmine.createSpyObj<AdminService>('AdminService', ['getSchools']);
-    adminService.getSchools.and.returnValue(schools$);
-    TestBed.configureTestingModule({
-      imports: [
-        SchoolFilterComponent,
-        translocoTestingModule({ langs: { 'admin/tr': adminTr }, translocoConfig: { scopes: { keepCasing: true } } }),
-      ],
-      providers: [{ provide: AdminService, useValue: adminService }, provideNoopAnimations()],
+    const school = (id: number, name: string): School => ({
+        id,
+        name,
+        provinceId: null,
+        provinceName: null,
+        districtId: null,
+        districtName: null,
+        addressLine: null,
     });
-    fixture = TestBed.createComponent(SchoolFilterComponent);
-    fixture.componentRef.setInput('value', value);
-    if (unassignedLabel) fixture.componentRef.setInput('unassignedLabel', unassignedLabel);
-    emitted = [];
-    fixture.componentInstance.value.subscribe((v) => emitted.push(v));
-    fixture.detectChanges();
-  }
 
-  it('unknownSchoolId_AfterSchoolsLoaded_ResetsToAllAndEmits', () => {
-    create(999);
+    function create(value: SchoolFilterValue, schools$: Observable<School[]> = of([school(5, 'Ankara Lisesi')]), unassignedLabel?: 'unassigned' | 'unassignedStudent'): void {
+        adminService = {
+            getSchools: vi.fn().mockName("AdminService.getSchools")
+        } as unknown as MockedObject<AdminService>;
+        adminService.getSchools.mockReturnValue(schools$);
+        TestBed.configureTestingModule({
+            imports: [
+                SchoolFilterComponent,
+                translocoTestingModule({ langs: { 'admin/tr': adminTr }, translocoConfig: { scopes: { keepCasing: true } } }),
+            ],
+            providers: [{ provide: AdminService, useValue: adminService }, provideNoopAnimations()],
+        });
+        fixture = TestBed.createComponent(SchoolFilterComponent);
+        fixture.componentRef.setInput('value', value);
+        if (unassignedLabel)
+            fixture.componentRef.setInput('unassignedLabel', unassignedLabel);
+        emitted = [];
+        fixture.componentInstance.value.subscribe((v) => emitted.push(v));
+        fixture.detectChanges();
+    }
 
-    expect(fixture.componentInstance.value()).toBe('all');
-    expect(emitted).toEqual(['all']);
-  });
+    it('unknownSchoolId_AfterSchoolsLoaded_ResetsToAllAndEmits', () => {
+        create(999);
 
-  it('knownSchoolId_AfterSchoolsLoaded_KeepsValueWithoutEmitting', () => {
-    create(5);
+        expect(fixture.componentInstance.value()).toBe('all');
+        expect(emitted).toEqual(['all']);
+    });
 
-    expect(fixture.componentInstance.value()).toBe(5);
-    expect(emitted).toEqual([]);
-  });
+    it('knownSchoolId_AfterSchoolsLoaded_KeepsValueWithoutEmitting', () => {
+        create(5);
 
-  it('unknownSchoolId_WhileSchoolsLoading_KeepsValue', () => {
-    create(999, new Subject<School[]>());
+        expect(fixture.componentInstance.value()).toBe(5);
+        expect(emitted).toEqual([]);
+    });
 
-    expect(fixture.componentInstance.value()).toBe(999);
-    expect(emitted).toEqual([]);
-  });
+    it('unknownSchoolId_WhileSchoolsLoading_KeepsValue', () => {
+        create(999, new Subject<School[]>());
 
-  it('schoolFilterToQuery_MapsEachValue', () => {
-    expect(schoolFilterToQuery('all')).toEqual({ schoolId: null, unassigned: false });
-    expect(schoolFilterToQuery('unassigned')).toEqual({ schoolId: null, unassigned: true });
-    expect(schoolFilterToQuery(5)).toEqual({ schoolId: 5, unassigned: false });
-  });
+        expect(fixture.componentInstance.value()).toBe(999);
+        expect(emitted).toEqual([]);
+    });
 
-  it('schoolFilterFromParams_InvalidValues_FallBackToAll', () => {
-    expect(schoolFilterFromParams(null, null)).toBe('all');
-    expect(schoolFilterFromParams('abc', null)).toBe('all');
-    expect(schoolFilterFromParams('-3', null)).toBe('all');
-    expect(schoolFilterFromParams('5', null)).toBe(5);
-    expect(schoolFilterFromParams('5', 'true')).toBe('unassigned');
-  });
+    it('schoolFilterToQuery_MapsEachValue', () => {
+        expect(schoolFilterToQuery('all')).toEqual({ schoolId: null, unassigned: false });
+        expect(schoolFilterToQuery('unassigned')).toEqual({ schoolId: null, unassigned: true });
+        expect(schoolFilterToQuery(5)).toEqual({ schoolId: 5, unassigned: false });
+    });
 
-  function optionTexts(): string[] {
-    (fixture.debugElement.query(By.directive(MatSelect)).componentInstance as MatSelect).open();
-    fixture.detectChanges();
-    // CDK 21: bağlı paneller OverlayContainer'a değil, tetikleyicinin yanına native popover olarak eklenir (#545).
-    return Array.from(document.querySelectorAll('mat-option')).map((o) => (o.textContent ?? '').trim());
-  }
+    it('schoolFilterFromParams_InvalidValues_FallBackToAll', () => {
+        expect(schoolFilterFromParams(null, null)).toBe('all');
+        expect(schoolFilterFromParams('abc', null)).toBe('all');
+        expect(schoolFilterFromParams('-3', null)).toBe('all');
+        expect(schoolFilterFromParams('5', null)).toBe(5);
+        expect(schoolFilterFromParams('5', 'true')).toBe('unassigned');
+    });
 
-  it('unassignedLabel_Default_ShowsIndependentOrNoSchool', () => {
-    create('all');
-    expect(optionTexts()).toEqual([adminTr.schoolFilter.all, adminTr.schoolFilter.unassigned, 'Ankara Lisesi']);
-  });
+    function optionTexts(): string[] {
+        (fixture.debugElement.query(By.directive(MatSelect)).componentInstance as MatSelect).open();
+        fixture.detectChanges();
+        // CDK 21: bağlı paneller OverlayContainer'a değil, tetikleyicinin yanına native popover olarak eklenir (#545).
+        return Array.from(document.querySelectorAll('mat-option')).map((o) => (o.textContent ?? '').trim());
+    }
 
-  it('unassignedLabel_Student_ShowsNoSchool', () => {
-    create('all', undefined, 'unassignedStudent');
-    expect(optionTexts()).toEqual([adminTr.schoolFilter.all, adminTr.schoolFilter.unassignedStudent, 'Ankara Lisesi']);
-  });
+    it('unassignedLabel_Default_ShowsIndependentOrNoSchool', () => {
+        create('all');
+        expect(optionTexts()).toEqual([adminTr.schoolFilter.all, adminTr.schoolFilter.unassigned, 'Ankara Lisesi']);
+    });
+
+    it('unassignedLabel_Student_ShowsNoSchool', () => {
+        create('all', undefined, 'unassignedStudent');
+        expect(optionTexts()).toEqual([adminTr.schoolFilter.all, adminTr.schoolFilter.unassignedStudent, 'Ankara Lisesi']);
+    });
 });

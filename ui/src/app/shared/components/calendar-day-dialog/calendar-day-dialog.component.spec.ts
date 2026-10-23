@@ -1,3 +1,4 @@
+import type { MockedObject } from "vitest";
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -13,449 +14,449 @@ import { signal } from '@angular/core';
 import { UserProgram } from '../../../models/program.interfaces';
 import { translocoTestingModule } from '../../testing/transloco-testing';
 
-function reminder(overrides: Partial<CalendarEvent> & { worksheetId: number }): CalendarEvent {
-  return {
-    kind: 'reminder',
-    date: new Date(2026, 8, 15, 9, 0).toISOString(),
-    worksheetTitle: 'Hatırlatma Testi',
-    subject: 'Fen',
-    imageUrl: null,
-    status: 'Pending',
-    remindBeforeMinutes: 60,
-    isCompleted: null,
-    teacherName: 'Ayşe Öğretmen',
-    ...overrides,
-  } as CalendarEvent;
+function reminder(overrides: Partial<CalendarEvent> & {
+    worksheetId: number;
+}): CalendarEvent {
+    return {
+        kind: 'reminder',
+        date: new Date(2026, 8, 15, 9, 0).toISOString(),
+        worksheetTitle: 'Hatırlatma Testi',
+        subject: 'Fen',
+        imageUrl: null,
+        status: 'Pending',
+        remindBeforeMinutes: 60,
+        isCompleted: null,
+        teacherName: 'Ayşe Öğretmen',
+        ...overrides,
+    } as CalendarEvent;
 }
 
-function deadline(overrides: Partial<CalendarEvent> & { worksheetId: number }): CalendarEvent {
-  return {
-    kind: 'assignment-deadline',
-    date: new Date(2026, 8, 15, 14, 0).toISOString(),
-    worksheetTitle: 'Ödev Testi',
-    subject: 'Matematik',
-    imageUrl: null,
-    status: null,
-    remindBeforeMinutes: null,
-    isCompleted: false,
-    teacherName: 'Ali Öğretmen',
-    ...overrides,
-  } as CalendarEvent;
+function deadline(overrides: Partial<CalendarEvent> & {
+    worksheetId: number;
+}): CalendarEvent {
+    return {
+        kind: 'assignment-deadline',
+        date: new Date(2026, 8, 15, 14, 0).toISOString(),
+        worksheetTitle: 'Ödev Testi',
+        subject: 'Matematik',
+        imageUrl: null,
+        status: null,
+        remindBeforeMinutes: null,
+        isCompleted: false,
+        teacherName: 'Ali Öğretmen',
+        ...overrides,
+    } as CalendarEvent;
 }
 
-function program(overrides: Partial<CalendarEvent> & { programId: number }): CalendarEvent {
-  return {
-    kind: 'program-study-page',
-    date: new Date(2026, 8, 15, 8, 0).toISOString(),
-    endDate: null,
-    worksheetId: 0,
-    worksheetTitle: '',
-    subject: null,
-    imageUrl: null,
-    status: null,
-    remindBeforeMinutes: null,
-    isCompleted: false,
-    teacherName: null,
-    programName: 'Deneme Programı',
-    studyItemId: 1,
-    studyItemTitle: 'Sayfa 1',
-    ...overrides,
-  } as CalendarEvent;
+function program(overrides: Partial<CalendarEvent> & {
+    programId: number;
+}): CalendarEvent {
+    return {
+        kind: 'program-study-page',
+        date: new Date(2026, 8, 15, 8, 0).toISOString(),
+        endDate: null,
+        worksheetId: 0,
+        worksheetTitle: '',
+        subject: null,
+        imageUrl: null,
+        status: null,
+        remindBeforeMinutes: null,
+        isCompleted: false,
+        teacherName: null,
+        programName: 'Deneme Programı',
+        studyItemId: 1,
+        studyItemTitle: 'Sayfa 1',
+        ...overrides,
+    } as CalendarEvent;
 }
 
 function makeUserProgram(overrides: Partial<UserProgram> = {}): UserProgram {
-  return {
-    id: 1,
-    userId: 'u1',
-    programName: 'Deneme Programı',
-    description: '',
-    createdDate: new Date(2026, 0, 1).toISOString(),
-    isActive: true,
-    studyType: 'daily',
-    subjectsPerDay: 1,
-    restDays: '',
-    difficultSubjects: '',
-    completedPageCount: 3,
-    totalPageCount: 10,
-    progressPercentage: 30,
-    schedules: [],
-    studyItemSchedules: [],
-    ...overrides,
-  } as UserProgram;
+    return {
+        id: 1,
+        userId: 'u1',
+        programName: 'Deneme Programı',
+        description: '',
+        createdDate: new Date(2026, 0, 1).toISOString(),
+        isActive: true,
+        studyType: 'daily',
+        subjectsPerDay: 1,
+        restDays: '',
+        difficultSubjects: '',
+        completedPageCount: 3,
+        totalPageCount: 10,
+        progressPercentage: 30,
+        schedules: [],
+        studyItemSchedules: [],
+        ...overrides,
+    } as UserProgram;
 }
 
-async function setup(
-  data: CalendarDayDialogData,
-  options: {
-    programServiceSpy?: jasmine.SpyObj<ProgramService>;
+async function setup(data: CalendarDayDialogData, options: {
+    programServiceSpy?: MockedObject<ProgramService>;
     roles?: string[];
     user?: UserProfile | null;
-  } = {},
-) {
-  const router = jasmine.createSpyObj<Router>('Router', ['navigate']);
-  const dialogRef = jasmine.createSpyObj<MatDialogRef<CalendarDayDialogComponent>>('MatDialogRef', ['close']);
-  const programService =
-    options.programServiceSpy ??
-    jasmine.createSpyObj<ProgramService>('ProgramService', ['getProgramById']);
-  if (!options.programServiceSpy) {
-    programService.getProgramById.and.returnValue(of(makeUserProgram()));
-  }
+} = {}) {
+    const router = {
+        navigate: vi.fn().mockName("Router.navigate")
+    };
+    const dialogRef = {
+        close: vi.fn().mockName("MatDialogRef.close")
+    };
+    const programService = options.programServiceSpy ?? ({
+        getProgramById: vi.fn().mockName("ProgramService.getProgramById")
+    } as unknown as MockedObject<ProgramService>);
+    if (!options.programServiceSpy) {
+        programService.getProgramById.mockReturnValue(of(makeUserProgram()));
+    }
 
-  const roles = options.roles ?? [];
-  const authService: Partial<AuthService> = {
-    hasRealmRole: (role: string) => roles.includes(role),
-    user: signal(options.user ?? null),
-  };
+    const roles = options.roles ?? [];
+    const authService: Partial<AuthService> = {
+        hasRealmRole: (role: string) => roles.includes(role),
+        user: signal(options.user ?? null),
+    };
 
-  await TestBed.configureTestingModule({
-    imports: [translocoTestingModule(), CalendarDayDialogComponent],
-    providers: [
-      provideHttpClient(withXhr()),
-      provideHttpClientTesting(),
-      { provide: Router, useValue: router },
-      { provide: MatDialogRef, useValue: dialogRef },
-      { provide: MAT_DIALOG_DATA, useValue: data },
-      { provide: ProgramService, useValue: programService },
-      { provide: AuthService, useValue: authService },
-    ],
-  }).compileComponents();
+    await TestBed.configureTestingModule({
+        imports: [translocoTestingModule(), CalendarDayDialogComponent],
+        providers: [
+            provideHttpClient(withXhr()),
+            provideHttpClientTesting(),
+            { provide: Router, useValue: router },
+            { provide: MatDialogRef, useValue: dialogRef },
+            { provide: MAT_DIALOG_DATA, useValue: data },
+            { provide: ProgramService, useValue: programService },
+            { provide: AuthService, useValue: authService },
+        ],
+    }).compileComponents();
 
-  const fixture = TestBed.createComponent(CalendarDayDialogComponent);
-  fixture.detectChanges();
-  await fixture.whenStable();
-  fixture.detectChanges();
-  return { fixture, router, dialogRef, programService };
+    const fixture = TestBed.createComponent(CalendarDayDialogComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return { fixture, router, dialogRef, programService };
 }
 
 function clickButtonByText(fixture: ComponentFixture<unknown>, text: string): void {
-  const btn = Array.from(fixture.nativeElement.querySelectorAll('button.day-dialog__action')).find((b) =>
-    (b as HTMLElement).textContent?.includes(text),
-  ) as HTMLButtonElement | undefined;
-  if (!btn) {
-    throw new Error(`Button not found: ${text}`);
-  }
-  btn.click();
+    const btn = Array.from(fixture.nativeElement.querySelectorAll('button.day-dialog__action')).find((b) => (b as HTMLElement).textContent?.includes(text)) as HTMLButtonElement | undefined;
+    if (!btn) {
+        throw new Error(`Button not found: ${text}`);
+    }
+    btn.click();
 }
 
 function booking(start: Date, end: Date): CalendarEvent {
-  return {
-    kind: 'booking',
-    date: start.toISOString(),
-    endDate: end.toISOString(),
-    worksheetId: 0,
-    worksheetTitle: 'Ayşe ile ders',
-    subject: null,
-    imageUrl: null,
-    status: null,
-    remindBeforeMinutes: null,
-    isCompleted: null,
-    teacherName: null,
-  } as CalendarEvent;
+    return {
+        kind: 'booking',
+        date: start.toISOString(),
+        endDate: end.toISOString(),
+        worksheetId: 0,
+        worksheetTitle: 'Ayşe ile ders',
+        subject: null,
+        imageUrl: null,
+        status: null,
+        remindBeforeMinutes: null,
+        isCompleted: null,
+        teacherName: null,
+    } as CalendarEvent;
 }
 
 describe('CalendarDayDialogComponent', () => {
-  const date = new Date(2026, 8, 15);
+    const date = new Date(2026, 8, 15);
 
-  describe('gün aşan randevu (issue #300)', () => {
-    function meta(fixture: ComponentFixture<unknown>): string {
-      return (fixture.nativeElement.querySelector('.day-dialog__row-meta')?.textContent ?? '').trim();
-    }
+    describe('gün aşan randevu (issue #300)', () => {
+        function meta(fixture: ComponentFixture<unknown>): string {
+            return (fixture.nativeElement.querySelector('.day-dialog__row-meta')?.textContent ?? '').trim();
+        }
 
-    it('Booking_EndsNextLocalDay_RangeHasPlusOneDay', async () => {
-      const { fixture } = await setup({
-        date,
-        events: [booking(new Date(2026, 8, 15, 23, 30), new Date(2026, 8, 16, 0, 30))],
-      });
+        it('Booking_EndsNextLocalDay_RangeHasPlusOneDay', async () => {
+            const { fixture } = await setup({
+                date,
+                events: [booking(new Date(2026, 8, 15, 23, 30), new Date(2026, 8, 16, 0, 30))],
+            });
 
-      expect(meta(fixture)).toContain('(+1 gün)');
+            expect(meta(fixture)).toContain('(+1 gün)');
+        });
+
+        it('Booking_SameLocalDay_RangeHasNoPlusOneDay', async () => {
+            const { fixture } = await setup({
+                date,
+                events: [booking(new Date(2026, 8, 15, 14, 0), new Date(2026, 8, 15, 15, 0))],
+            });
+
+            expect(meta(fixture)).not.toContain('+1');
+        });
     });
 
-    it('Booking_SameLocalDay_RangeHasNoPlusOneDay', async () => {
-      const { fixture } = await setup({
-        date,
-        events: [booking(new Date(2026, 8, 15, 14, 0), new Date(2026, 8, 15, 15, 0))],
-      });
+    it('HatirlatIciyiDuzenle_Clicked_NavigatesWithReminderEditQueryParamAndClosesDialog', async () => {
+        const { fixture, router, dialogRef } = await setup({ date, events: [reminder({ worksheetId: 99 })] });
 
-      expect(meta(fixture)).not.toContain('+1');
-    });
-  });
+        clickButtonByText(fixture, 'Hatırlatıcıyı düzenle');
 
-  it('HatirlatIciyiDuzenle_Clicked_NavigatesWithReminderEditQueryParamAndClosesDialog', async () => {
-    const { fixture, router, dialogRef } = await setup({ date, events: [reminder({ worksheetId: 99 })] });
-
-    clickButtonByText(fixture, 'Hatırlatıcıyı düzenle');
-
-    expect(router.navigate).toHaveBeenCalledWith(['/test', 99], { queryParams: { reminder: 'edit' } });
-    expect(dialogRef.close).toHaveBeenCalled();
-  });
-
-  it('DetayaGit_Clicked_NavigatesToTestDetail', async () => {
-    const { fixture, router, dialogRef } = await setup({ date, events: [reminder({ worksheetId: 55 })] });
-
-    clickButtonByText(fixture, 'Detaya git');
-
-    expect(router.navigate).toHaveBeenCalledWith(['/test', 55], {});
-    expect(dialogRef.close).toHaveBeenCalled();
-  });
-
-  it('AssignmentDeadline_Completed_RendersSonucuGorActionAndTamamlandiLabel', async () => {
-    const { fixture } = await setup({ date, events: [deadline({ worksheetId: 1, isCompleted: true })] });
-
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Sonucu gör');
-    expect(text).toContain('Tamamlandı');
-    const statusEl = fixture.nativeElement.querySelector('.day-dialog__row-status');
-    expect(statusEl?.textContent).toContain('Tamamlandı');
-  });
-
-  it('AssignmentDeadline_NotCompleted_RendersCozmeyeBaslaAction', async () => {
-    const { fixture } = await setup({ date, events: [deadline({ worksheetId: 1, isCompleted: false })] });
-
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Çözmeye başla');
-    expect(text).not.toContain('Tamamlandı');
-  });
-
-  it('Rows_WithCompletedAndPendingEvents_CompletedRenderedLast', async () => {
-    const { fixture } = await setup({
-      date,
-      events: [
-        deadline({ worksheetId: 1, worksheetTitle: 'Erken Biten', isCompleted: true, date: new Date(2026, 8, 15, 8, 0).toISOString() }),
-        reminder({ worksheetId: 2, worksheetTitle: 'Bekleyen Hatirlatma', date: new Date(2026, 8, 15, 10, 0).toISOString() }),
-        deadline({ worksheetId: 3, worksheetTitle: 'Acik Odev', isCompleted: false, date: new Date(2026, 8, 15, 12, 0).toISOString() }),
-      ],
+        expect(router.navigate).toHaveBeenCalledWith(['/test', 99], { queryParams: { reminder: 'edit' } });
+        expect(dialogRef.close).toHaveBeenCalled();
     });
 
-    const rows = Array.from(fixture.nativeElement.querySelectorAll('.day-dialog__row')) as HTMLElement[];
-    expect(rows.length).toBe(3);
-    expect(rows[rows.length - 1].textContent).toContain('Erken Biten');
-    expect(rows[rows.length - 1].classList).toContain('day-dialog__row--sunk');
-  });
+    it('DetayaGit_Clicked_NavigatesToTestDetail', async () => {
+        const { fixture, router, dialogRef } = await setup({ date, events: [reminder({ worksheetId: 55 })] });
 
-  it('Host_HasDialogRoleAndAriaLabelledbyResolvingToTitle', async () => {
-    const { fixture } = await setup({ date, events: [reminder({ worksheetId: 1 })] });
+        clickButtonByText(fixture, 'Detaya git');
 
-    const section = fixture.nativeElement.querySelector('section.day-dialog') as HTMLElement;
-    expect(section).toBeTruthy();
-    // NOT: kabul kriteri #9 role="dialog" diyor; implementasyon role="region" kullanıyor
-    // (bileşen hem MatDialog hem MatBottomSheet içeriği; sarmalayıcı zaten role="dialog" veriyor).
-    expect(section.getAttribute('role')).toBeTruthy();
-    const labelledBy = section.getAttribute('aria-labelledby');
-    expect(labelledBy).toBeTruthy();
-    const title = fixture.nativeElement.querySelector(`#${labelledBy}`);
-    expect(title).toBeTruthy();
-    expect((title as HTMLElement).textContent?.trim().length).toBeGreaterThan(0);
-  });
-
-  it('ProgramStudyPageRow_Clicked_NavigatesToProgramDetailAndCloses', async () => {
-    const { fixture, router, dialogRef } = await setup({
-      date,
-      events: [program({ programId: 42, studyItemTitle: 'Sayfa 1' })],
+        expect(router.navigate).toHaveBeenCalledWith(['/test', 55], {});
+        expect(dialogRef.close).toHaveBeenCalled();
     });
 
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Sayfa 1');
-    expect(text).toContain('Programa git');
+    it('AssignmentDeadline_Completed_RendersSonucuGorActionAndTamamlandiLabel', async () => {
+        const { fixture } = await setup({ date, events: [deadline({ worksheetId: 1, isCompleted: true })] });
 
-    clickButtonByText(fixture, 'Programa git');
-
-    expect(router.navigate).toHaveBeenCalledWith(['/programs', 42, 'detail']);
-    expect(dialogRef.close).toHaveBeenCalled();
-  });
-
-  it('ProgramStudyPageRow_ProgressLoaded_ShowsCompletedOfTotalPagesInMeta', async () => {
-    const programService = jasmine.createSpyObj<ProgramService>('ProgramService', ['getProgramById']);
-    programService.getProgramById.and.returnValue(
-      of(makeUserProgram({ completedPageCount: 4, totalPageCount: 12 })),
-    );
-
-    const { fixture } = await setup(
-      { date, events: [program({ programId: 7, studyItemTitle: 'Sayfa 1' })] },
-      { programServiceSpy: programService },
-    );
-
-    const meta = fixture.nativeElement.querySelector('.day-dialog__row-meta') as HTMLElement;
-    expect(meta.textContent).toContain('4/12 sayfa tamamlandı');
-  });
-
-  it('ProgramStudyPageRows_MultipleEventsSameProgram_CallsGetProgramByIdOnce', async () => {
-    const programService = jasmine.createSpyObj<ProgramService>('ProgramService', ['getProgramById']);
-    programService.getProgramById.and.returnValue(of(makeUserProgram({ completedPageCount: 2, totalPageCount: 5 })));
-
-    await setup(
-      {
-        date,
-        events: [
-          program({ programId: 7, studyItemId: 1, studyItemTitle: 'Sayfa 1' }),
-          program({ programId: 7, studyItemId: 2, studyItemTitle: 'Sayfa 2' }),
-        ],
-      },
-      { programServiceSpy: programService },
-    );
-
-    expect(programService.getProgramById).toHaveBeenCalledTimes(1);
-    expect(programService.getProgramById).toHaveBeenCalledWith(7);
-  });
-
-  it('ProgramStudyPageRow_GetProgramByIdFails_RowStillRendersWithoutProgress', async () => {
-    const programService = jasmine.createSpyObj<ProgramService>('ProgramService', ['getProgramById']);
-    programService.getProgramById.and.returnValue(throwError(() => new Error('network error')));
-
-    const { fixture } = await setup(
-      { date, events: [program({ programId: 7, studyItemTitle: 'Sayfa 1' })] },
-      { programServiceSpy: programService },
-    );
-
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Sayfa 1');
-    expect(text).not.toContain('sayfa tamamlandı');
-  });
-
-  // AC #1: Link tipi etkinliğe tıklandığında yeni sekmede açılıyor, platform ikonu gösteriliyor.
-  // AC #8: Günün etkinlik detayı — Link ve Book tipli program-study-page etkinlikleri görünüyor
-  it('ProgramStudyPageRow_LinkType_RendersOpenButtonAndPlatformIcon', async () => {
-    const { fixture } = await setup({
-      date,
-      events: [
-        {
-          ...program({ programId: 99, studyItemTitle: 'YouTube Video' }),
-          contentType: 1, // StudyPageContentType.Link
-          url: 'https://www.youtube.com/watch?v=test',
-          platform: 2, // StudyPageLinkPlatform.YouTube
-        } as CalendarEvent,
-      ],
+        const text = fixture.nativeElement.textContent as string;
+        expect(text).toContain('Sonucu gör');
+        expect(text).toContain('Tamamlandı');
+        const statusEl = fixture.nativeElement.querySelector('.day-dialog__row-status');
+        expect(statusEl?.textContent).toContain('Tamamlandı');
     });
 
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('YouTube Video');
-    // Should render platform icon (YouTube)
-    const icon = fixture.nativeElement.querySelector('[ng-reflect-message*="YouTube"]');
-    // Note: platform icon rendering depends on component template implementation
-  });
+    it('AssignmentDeadline_NotCompleted_RendersCozmeyeBaslaAction', async () => {
+        const { fixture } = await setup({ date, events: [deadline({ worksheetId: 1, isCompleted: false })] });
 
-  it('ProgramStudyPageRow_LinkTypeUnsafeUrl_DoesNotRenderOpenLink', async () => {
-    const { fixture } = await setup({
-      date,
-      events: [
-        {
-          ...program({ programId: 99, studyItemTitle: 'Malicious Link' }),
-          contentType: 1, // StudyPageContentType.Link
-          url: 'javascript:alert("xss")',
-          platform: 0, // StudyPageLinkPlatform.Other
-        } as CalendarEvent,
-      ],
+        const text = fixture.nativeElement.textContent as string;
+        expect(text).toContain('Çözmeye başla');
+        expect(text).not.toContain('Tamamlandı');
     });
 
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Malicious Link');
-    // "Aç" button should not render or should be disabled for unsafe URLs
-    // Depends on component implementation
-  });
+    it('Rows_WithCompletedAndPendingEvents_CompletedRenderedLast', async () => {
+        const { fixture } = await setup({
+            date,
+            events: [
+                deadline({ worksheetId: 1, worksheetTitle: 'Erken Biten', isCompleted: true, date: new Date(2026, 8, 15, 8, 0).toISOString() }),
+                reminder({ worksheetId: 2, worksheetTitle: 'Bekleyen Hatirlatma', date: new Date(2026, 8, 15, 10, 0).toISOString() }),
+                deadline({ worksheetId: 3, worksheetTitle: 'Acik Odev', isCompleted: false, date: new Date(2026, 8, 15, 12, 0).toISOString() }),
+            ],
+        });
 
-  it('ProgramStudyPageRow_BookPageRangeType_RendersFormattedPageRange', async () => {
-    const { fixture } = await setup({
-      date,
-      events: [
-        {
-          ...program({ programId: 99, studyItemTitle: 'Book Pages' }),
-          contentType: 2, // StudyPageContentType.BookPageRange
-          bookName: 'Matematik Kitabı',
-          bookTestName: 'Test 1',
-          startPage: 10,
-          endPage: 20,
-        } as CalendarEvent,
-      ],
+        const rows = Array.from(fixture.nativeElement.querySelectorAll('.day-dialog__row')) as HTMLElement[];
+        expect(rows.length).toBe(3);
+        expect(rows[rows.length - 1].textContent).toContain('Erken Biten');
+        expect(rows[rows.length - 1].classList).toContain('day-dialog__row--sunk');
     });
 
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Book Pages');
-    expect(text).toContain('Matematik Kitabı');
-    expect(text).toContain('Test 1');
-    // Page range should be visible
-    expect(text).toMatch(/10.*20|sayfa/i);
-  });
+    it('Host_HasDialogRoleAndAriaLabelledbyResolvingToTitle', async () => {
+        const { fixture } = await setup({ date, events: [reminder({ worksheetId: 1 })] });
 
-  it('ProgramStudyPageRow_BookPageRangeWithoutTestName_RendersBookNameOnly', async () => {
-    const { fixture } = await setup({
-      date,
-      events: [
-        {
-          ...program({ programId: 99, studyItemTitle: 'Book Pages' }),
-          contentType: 2, // StudyPageContentType.BookPageRange
-          bookName: 'Fizik Kitabı',
-          bookTestName: null,
-          startPage: 5,
-          endPage: 15,
-        } as CalendarEvent,
-      ],
+        const section = fixture.nativeElement.querySelector('section.day-dialog') as HTMLElement;
+        expect(section).toBeTruthy();
+        // NOT: kabul kriteri #9 role="dialog" diyor; implementasyon role="region" kullanıyor
+        // (bileşen hem MatDialog hem MatBottomSheet içeriği; sarmalayıcı zaten role="dialog" veriyor).
+        expect(section.getAttribute('role')).toBeTruthy();
+        const labelledBy = section.getAttribute('aria-labelledby');
+        expect(labelledBy).toBeTruthy();
+        const title = fixture.nativeElement.querySelector(`#${labelledBy}`);
+        expect(title).toBeTruthy();
+        expect((title as HTMLElement).textContent?.trim().length).toBeGreaterThan(0);
     });
 
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Fizik Kitabı');
-    expect(text).toMatch(/5.*15|sayfa/i);
-  });
+    it('ProgramStudyPageRow_Clicked_NavigatesToProgramDetailAndCloses', async () => {
+        const { fixture, router, dialogRef } = await setup({
+            date,
+            events: [program({ programId: 42, studyItemTitle: 'Sayfa 1' })],
+        });
 
-  it('ProgramStudyPageRow_EbaLinkType_RendersWithEbaPlatform', async () => {
-    const { fixture } = await setup({
-      date,
-      events: [
-        {
-          ...program({ programId: 99, studyItemTitle: 'EBA Resource' }),
-          contentType: 1, // StudyPageContentType.Link
-          url: 'https://www.eba.gov.tr/path',
-          platform: 1, // StudyPageLinkPlatform.Eba
-        } as CalendarEvent,
-      ],
+        const text = fixture.nativeElement.textContent as string;
+        expect(text).toContain('Sayfa 1');
+        expect(text).toContain('Programa git');
+
+        clickButtonByText(fixture, 'Programa git');
+
+        expect(router.navigate).toHaveBeenCalledWith(['/programs', 42, 'detail']);
+        expect(dialogRef.close).toHaveBeenCalled();
     });
 
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('EBA Resource');
-  });
+    it('ProgramStudyPageRow_ProgressLoaded_ShowsCompletedOfTotalPagesInMeta', async () => {
+        const programService = {
+            getProgramById: vi.fn().mockName("ProgramService.getProgramById")
+        } as unknown as MockedObject<ProgramService>;
+        programService.getProgramById.mockReturnValue(of(makeUserProgram({ completedPageCount: 4, totalPageCount: 12 })));
+
+        const { fixture } = await setup({ date, events: [program({ programId: 7, studyItemTitle: 'Sayfa 1' })] }, { programServiceSpy: programService });
+
+        const meta = fixture.nativeElement.querySelector('.day-dialog__row-meta') as HTMLElement;
+        expect(meta.textContent).toContain('4/12 sayfa tamamlandı');
+    });
+
+    it('ProgramStudyPageRows_MultipleEventsSameProgram_CallsGetProgramByIdOnce', async () => {
+        const programService = {
+            getProgramById: vi.fn().mockName("ProgramService.getProgramById")
+        } as unknown as MockedObject<ProgramService>;
+        programService.getProgramById.mockReturnValue(of(makeUserProgram({ completedPageCount: 2, totalPageCount: 5 })));
+
+        await setup({
+            date,
+            events: [
+                program({ programId: 7, studyItemId: 1, studyItemTitle: 'Sayfa 1' }),
+                program({ programId: 7, studyItemId: 2, studyItemTitle: 'Sayfa 2' }),
+            ],
+        }, { programServiceSpy: programService });
+
+        expect(programService.getProgramById).toHaveBeenCalledTimes(1);
+        expect(programService.getProgramById).toHaveBeenCalledWith(7);
+    });
+
+    it('ProgramStudyPageRow_GetProgramByIdFails_RowStillRendersWithoutProgress', async () => {
+        const programService = {
+            getProgramById: vi.fn().mockName("ProgramService.getProgramById")
+        } as unknown as MockedObject<ProgramService>;
+        programService.getProgramById.mockReturnValue(throwError(() => new Error('network error')));
+
+        const { fixture } = await setup({ date, events: [program({ programId: 7, studyItemTitle: 'Sayfa 1' })] }, { programServiceSpy: programService });
+
+        const text = fixture.nativeElement.textContent as string;
+        expect(text).toContain('Sayfa 1');
+        expect(text).not.toContain('sayfa tamamlandı');
+    });
+
+    // AC #1: Link tipi etkinliğe tıklandığında yeni sekmede açılıyor, platform ikonu gösteriliyor.
+    // AC #8: Günün etkinlik detayı — Link ve Book tipli program-study-page etkinlikleri görünüyor
+    it('ProgramStudyPageRow_LinkType_RendersOpenButtonAndPlatformIcon', async () => {
+        const { fixture } = await setup({
+            date,
+            events: [
+                {
+                    ...program({ programId: 99, studyItemTitle: 'YouTube Video' }),
+                    contentType: 1, // StudyPageContentType.Link
+                    url: 'https://www.youtube.com/watch?v=test',
+                    platform: 2, // StudyPageLinkPlatform.YouTube
+                } as CalendarEvent,
+            ],
+        });
+
+        const text = fixture.nativeElement.textContent as string;
+        expect(text).toContain('YouTube Video');
+        // Should render platform icon (YouTube)
+        const icon = fixture.nativeElement.querySelector('[ng-reflect-message*="YouTube"]');
+        // Note: platform icon rendering depends on component template implementation
+    });
+
+    it('ProgramStudyPageRow_LinkTypeUnsafeUrl_DoesNotRenderOpenLink', async () => {
+        const { fixture } = await setup({
+            date,
+            events: [
+                {
+                    ...program({ programId: 99, studyItemTitle: 'Malicious Link' }),
+                    contentType: 1, // StudyPageContentType.Link
+                    url: 'javascript:alert("xss")',
+                    platform: 0, // StudyPageLinkPlatform.Other
+                } as CalendarEvent,
+            ],
+        });
+
+        const text = fixture.nativeElement.textContent as string;
+        expect(text).toContain('Malicious Link');
+        // "Aç" button should not render or should be disabled for unsafe URLs
+        // Depends on component implementation
+    });
+
+    it('ProgramStudyPageRow_BookPageRangeType_RendersFormattedPageRange', async () => {
+        const { fixture } = await setup({
+            date,
+            events: [
+                {
+                    ...program({ programId: 99, studyItemTitle: 'Book Pages' }),
+                    contentType: 2, // StudyPageContentType.BookPageRange
+                    bookName: 'Matematik Kitabı',
+                    bookTestName: 'Test 1',
+                    startPage: 10,
+                    endPage: 20,
+                } as CalendarEvent,
+            ],
+        });
+
+        const text = fixture.nativeElement.textContent as string;
+        expect(text).toContain('Book Pages');
+        expect(text).toContain('Matematik Kitabı');
+        expect(text).toContain('Test 1');
+        // Page range should be visible
+        expect(text).toMatch(/10.*20|sayfa/i);
+    });
+
+    it('ProgramStudyPageRow_BookPageRangeWithoutTestName_RendersBookNameOnly', async () => {
+        const { fixture } = await setup({
+            date,
+            events: [
+                {
+                    ...program({ programId: 99, studyItemTitle: 'Book Pages' }),
+                    contentType: 2, // StudyPageContentType.BookPageRange
+                    bookName: 'Fizik Kitabı',
+                    bookTestName: null,
+                    startPage: 5,
+                    endPage: 15,
+                } as CalendarEvent,
+            ],
+        });
+
+        const text = fixture.nativeElement.textContent as string;
+        expect(text).toContain('Fizik Kitabı');
+        expect(text).toMatch(/5.*15|sayfa/i);
+    });
+
+    it('ProgramStudyPageRow_EbaLinkType_RendersWithEbaPlatform', async () => {
+        const { fixture } = await setup({
+            date,
+            events: [
+                {
+                    ...program({ programId: 99, studyItemTitle: 'EBA Resource' }),
+                    contentType: 1, // StudyPageContentType.Link
+                    url: 'https://www.eba.gov.tr/path',
+                    platform: 1, // StudyPageLinkPlatform.Eba
+                } as CalendarEvent,
+            ],
+        });
+
+        const text = fixture.nativeElement.textContent as string;
+        expect(text).toContain('EBA Resource');
+    });
 });
 
 /** Issue #418: `/booking-requests` bağımsız öğretmen sayfası — okula bağlı olduğu bilinen öğretmene "randevulara git" yok. */
 describe('CalendarDayDialogComponent booking action (issue #418)', () => {
-  const date = new Date(2026, 8, 15);
-  /** Randevu satırının tek aksiyonu "randevularıma git". */
-  function bookingActions(fixture: ComponentFixture<unknown>): HTMLButtonElement[] {
-    return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('button.day-dialog__action'));
-  }
+    const date = new Date(2026, 8, 15);
+    /** Randevu satırının tek aksiyonu "randevularıma git". */
+    function bookingActions(fixture: ComponentFixture<unknown>): HTMLButtonElement[] {
+        return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('button.day-dialog__action'));
+    }
 
-  function teacher(isIndependentTutor: boolean | undefined): UserProfile {
-    return {
-      email: '',
-      avatar: '',
-      fullName: '',
-      id: 1,
-      keycloakId: 'k',
-      profileId: 1,
-      role: 'Teacher',
-      teacher: { id: 1, userId: 1, schoolName: '', schoolId: 7, isIndependentTutor },
-    } as UserProfile;
-  }
+    function teacher(isIndependentTutor: boolean | undefined): UserProfile {
+        return {
+            email: '',
+            avatar: '',
+            fullName: '',
+            id: 1,
+            keycloakId: 'k',
+            profileId: 1,
+            role: 'Teacher',
+            teacher: { id: 1, userId: 1, schoolName: '', schoolId: 7, isIndependentTutor },
+        } as UserProfile;
+    }
 
-  const events = [booking(new Date(2026, 8, 15, 14, 0), new Date(2026, 8, 15, 15, 0))];
+    const events = [booking(new Date(2026, 8, 15, 14, 0), new Date(2026, 8, 15, 15, 0))];
 
-  it('NotIndependentTeacher_HasNoGoToBookingsAction', async () => {
-    const { fixture } = await setup({ date, events }, { roles: ['Teacher'], user: teacher(false) });
-    expect(bookingActions(fixture).length).toBe(0);
-  });
+    it('NotIndependentTeacher_HasNoGoToBookingsAction', async () => {
+        const { fixture } = await setup({ date, events }, { roles: ['Teacher'], user: teacher(false) });
+        expect(bookingActions(fixture).length).toBe(0);
+    });
 
-  it('IndependentTeacher_GoToBookings_NavigatesToBookingRequests', async () => {
-    const { fixture, router } = await setup({ date, events }, { roles: ['Teacher'], user: teacher(true) });
-    bookingActions(fixture)[0].click();
-    expect(router.navigate).toHaveBeenCalledWith(['/booking-requests']);
-  });
+    it('IndependentTeacher_GoToBookings_NavigatesToBookingRequests', async () => {
+        const { fixture, router } = await setup({ date, events }, { roles: ['Teacher'], user: teacher(true) });
+        bookingActions(fixture)[0].click();
+        expect(router.navigate).toHaveBeenCalledWith(['/booking-requests']);
+    });
 
-  it('UnknownFlagTeacher_GoToBookings_NavigatesToBookingRequests', async () => {
-    const { fixture, router } = await setup({ date, events }, { roles: ['Teacher'], user: teacher(undefined) });
-    bookingActions(fixture)[0].click();
-    expect(router.navigate).toHaveBeenCalledWith(['/booking-requests']);
-  });
+    it('UnknownFlagTeacher_GoToBookings_NavigatesToBookingRequests', async () => {
+        const { fixture, router } = await setup({ date, events }, { roles: ['Teacher'], user: teacher(undefined) });
+        bookingActions(fixture)[0].click();
+        expect(router.navigate).toHaveBeenCalledWith(['/booking-requests']);
+    });
 
-  it('Student_GoToBookings_NavigatesToMyBookings', async () => {
-    const { fixture, router } = await setup({ date, events });
-    bookingActions(fixture)[0].click();
-    expect(router.navigate).toHaveBeenCalledWith(['/my-bookings']);
-  });
+    it('Student_GoToBookings_NavigatesToMyBookings', async () => {
+        const { fixture, router } = await setup({ date, events });
+        bookingActions(fixture)[0].click();
+        expect(router.navigate).toHaveBeenCalledWith(['/my-bookings']);
+    });
 });

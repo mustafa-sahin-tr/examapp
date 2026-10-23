@@ -44,7 +44,7 @@ describe('OidcFlowService', () => {
     expect(url.searchParams.get('code_challenge')).toBe(await computeCodeChallenge(record.codeVerifier));
     // Verifier asla URL'ye çıkmaz.
     expect(url.search).not.toContain(record.codeVerifier);
-    expect(url.searchParams.has('intent')).toBeFalse();
+    expect(url.searchParams.has('intent')).toBe(false);
     expect(record.state).toBe(state);
     expect(record.intent).toBeNull();
     expect(record.returnPath).toBeNull();
@@ -68,12 +68,9 @@ describe('OidcFlowService', () => {
   });
 
   it('begin_UnknownIntentAndUnsafeReturnPath_AreDropped', async () => {
-    const url = new URL(
-      await service.begin({ intent: 'admin', returnPath: '//evil.example/x' }),
-      'http://localhost'
-    );
+    const url = new URL(await service.begin({ intent: 'admin', returnPath: '//evil.example/x' }), 'http://localhost');
 
-    expect(url.searchParams.has('intent')).toBeFalse();
+    expect(url.searchParams.has('intent')).toBe(false);
     expect(storedRecords()[0].intent).toBeNull();
     expect(storedRecords()[0].returnPath).toBeNull();
   });

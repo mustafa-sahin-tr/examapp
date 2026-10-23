@@ -1,3 +1,4 @@
+import type { MockedObject } from "vitest";
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -12,114 +13,120 @@ import { SubjectService } from '../../../services/subject.service';
 import { translocoTestingModule } from '../../testing/transloco-testing';
 
 describe('DailyScopePickerComponent (issue #66)', () => {
-  let fixture: ComponentFixture<DailyScopePickerComponent>;
-  let component: DailyScopePickerComponent;
-  let studentService: jasmine.SpyObj<StudentService>;
-  let subjectService: jasmine.SpyObj<SubjectService>;
-  let emitted: Array<DailyStartScope | null>;
+    let fixture: ComponentFixture<DailyScopePickerComponent>;
+    let component: DailyScopePickerComponent;
+    let studentService: MockedObject<StudentService>;
+    let subjectService: MockedObject<SubjectService>;
+    let emitted: Array<DailyStartScope | null>;
 
-  const select = (value: number | null) => ({ value }) as MatSelectChange;
-  const field = (name: string) => fixture.debugElement.query(By.css(`[data-field="${name}"]`));
+    const select = (value: number | null) => ({ value }) as MatSelectChange;
+    const field = (name: string) => fixture.debugElement.query(By.css(`[data-field="${name}"]`));
 
-  function create(gradeId = 7): void {
-    studentService.getProfile.and.returnValue(of({ gradeId } as Partial<StudentProfile> as StudentProfile));
-    fixture = TestBed.createComponent(DailyScopePickerComponent);
-    component = fixture.componentInstance;
-    emitted = [];
-    component.scopeChange.subscribe((s) => emitted.push(s));
-    fixture.detectChanges();
-  }
+    function create(gradeId = 7): void {
+        studentService.getProfile.mockReturnValue(of({ gradeId } as Partial<StudentProfile> as StudentProfile));
+        fixture = TestBed.createComponent(DailyScopePickerComponent);
+        component = fixture.componentInstance;
+        emitted = [];
+        component.scopeChange.subscribe((s) => emitted.push(s));
+        fixture.detectChanges();
+    }
 
-  beforeEach(() => {
-    studentService = jasmine.createSpyObj<StudentService>('StudentService', ['getProfile']);
-    subjectService = jasmine.createSpyObj<SubjectService>('SubjectService', [
-      'getSubjectsByGrade',
-      'getTopicsBySubjectAndGrade',
-      'getSubTopicsByTopic',
-    ]);
-    subjectService.getSubjectsByGrade.and.returnValue(of([{ id: 3, name: 'Matematik' }, { id: 4, name: 'Türkçe' }]));
-    subjectService.getTopicsBySubjectAndGrade.and.returnValue(of([{ id: 30, name: 'Kesirler', subjectId: 3, gradeId: 7 }]));
-    subjectService.getSubTopicsByTopic.and.returnValue(of([{ id: 300, name: 'Sadeleştirme', topicId: 30 }]));
+    beforeEach(() => {
+        studentService = {
+            getProfile: vi.fn().mockName("StudentService.getProfile")
+        } as unknown as MockedObject<StudentService>;
+        subjectService = {
+            getSubjectsByGrade: vi.fn().mockName("SubjectService.getSubjectsByGrade"),
+            getTopicsBySubjectAndGrade: vi.fn().mockName("SubjectService.getTopicsBySubjectAndGrade"),
+            getSubTopicsByTopic: vi.fn().mockName("SubjectService.getSubTopicsByTopic")
+        } as unknown as MockedObject<SubjectService>;
+        subjectService.getSubjectsByGrade.mockReturnValue(of([{ id: 3, name: 'Matematik' }, { id: 4, name: 'Türkçe' }]));
+        subjectService.getTopicsBySubjectAndGrade.mockReturnValue(of([{ id: 30, name: 'Kesirler', subjectId: 3, gradeId: 7 }]));
+        subjectService.getSubTopicsByTopic.mockReturnValue(of([{ id: 300, name: 'Sadeleştirme', topicId: 30 }]));
 
-    TestBed.configureTestingModule({
-      imports: [DailyScopePickerComponent, translocoTestingModule()],
-      providers: [
-        provideNoopAnimations(),
-        { provide: StudentService, useValue: studentService },
-        { provide: SubjectService, useValue: subjectService },
-      ],
+        TestBed.configureTestingModule({
+            imports: [DailyScopePickerComponent, translocoTestingModule()],
+            providers: [
+                provideNoopAnimations(),
+                { provide: StudentService, useValue: studentService },
+                { provide: SubjectService, useValue: subjectService },
+            ],
+        });
     });
-  });
 
-  it('init_LoadsSubjectsForStudentGrade_ShowsOnlySubjectField', () => {
-    create();
+    it('init_LoadsSubjectsForStudentGrade_ShowsOnlySubjectField', () => {
+        create();
 
-    expect(subjectService.getSubjectsByGrade).toHaveBeenCalledOnceWith(7);
-    expect(component.subjects().length).toBe(2);
-    expect(field('subject')).toBeTruthy();
-    expect(field('topic')).toBeNull();
-    expect(field('subTopic')).toBeNull();
-  });
+        expect(subjectService.getSubjectsByGrade).toHaveBeenCalledTimes(1);
 
-  it('init_NoGrade_DoesNotRequestSubjects', () => {
-    create(0);
+        expect(subjectService.getSubjectsByGrade).toHaveBeenCalledWith(7);
+        expect(component.subjects().length).toBe(2);
+        expect(field('subject')).toBeTruthy();
+        expect(field('topic')).toBeNull();
+        expect(field('subTopic')).toBeNull();
+    });
 
-    expect(subjectService.getSubjectsByGrade).not.toHaveBeenCalled();
-    expect(component.subjects()).toEqual([]);
-  });
+    it('init_NoGrade_DoesNotRequestSubjects', () => {
+        create(0);
 
-  it('init_ProfileError_ShowsErrorState', () => {
-    studentService.getProfile.and.returnValue(throwError(() => new Error('x')));
-    fixture = TestBed.createComponent(DailyScopePickerComponent);
-    fixture.detectChanges();
+        expect(subjectService.getSubjectsByGrade).not.toHaveBeenCalled();
+        expect(component.subjects()).toEqual([]);
+    });
 
-    expect(fixture.componentInstance.error()).toBeTrue();
-    expect(fixture.debugElement.query(By.css('[role="alert"]'))).toBeTruthy();
-  });
+    it('init_ProfileError_ShowsErrorState', () => {
+        studentService.getProfile.mockReturnValue(throwError(() => new Error('x')));
+        fixture = TestBed.createComponent(DailyScopePickerComponent);
+        fixture.detectChanges();
 
-  it('subjectThenTopicThenSubTopic_LoadsOptionsAndEmitsNarrowingScope', () => {
-    create();
+        expect(fixture.componentInstance.error()).toBe(true);
+        expect(fixture.debugElement.query(By.css('[role="alert"]'))).toBeTruthy();
+    });
 
-    component.onSubjectChange(select(3));
-    fixture.detectChanges();
-    expect(subjectService.getTopicsBySubjectAndGrade).toHaveBeenCalledOnceWith(3, 7);
-    expect(field('topic')).toBeTruthy();
+    it('subjectThenTopicThenSubTopic_LoadsOptionsAndEmitsNarrowingScope', () => {
+        create();
 
-    component.onTopicChange(select(30));
-    fixture.detectChanges();
-    expect(subjectService.getSubTopicsByTopic).toHaveBeenCalledOnceWith(30);
-    expect(field('subTopic')).toBeTruthy();
+        component.onSubjectChange(select(3));
+        fixture.detectChanges();
+        expect(subjectService.getTopicsBySubjectAndGrade).toHaveBeenCalledTimes(1);
+        expect(subjectService.getTopicsBySubjectAndGrade).toHaveBeenCalledWith(3, 7);
+        expect(field('topic')).toBeTruthy();
 
-    component.onSubTopicChange(select(300));
+        component.onTopicChange(select(30));
+        fixture.detectChanges();
+        expect(subjectService.getSubTopicsByTopic).toHaveBeenCalledTimes(1);
+        expect(subjectService.getSubTopicsByTopic).toHaveBeenCalledWith(30);
+        expect(field('subTopic')).toBeTruthy();
 
-    expect(emitted).toEqual([
-      { subjectId: 3, topicId: null, subTopicId: null },
-      { subjectId: 3, topicId: 30, subTopicId: null },
-      { subjectId: 3, topicId: 30, subTopicId: 300 },
-    ]);
-  });
+        component.onSubTopicChange(select(300));
 
-  it('changingSubject_ResetsTopicAndSubTopic', () => {
-    create();
-    component.onSubjectChange(select(3));
-    component.onTopicChange(select(30));
-    component.onSubTopicChange(select(300));
+        expect(emitted).toEqual([
+            { subjectId: 3, topicId: null, subTopicId: null },
+            { subjectId: 3, topicId: 30, subTopicId: null },
+            { subjectId: 3, topicId: 30, subTopicId: 300 },
+        ]);
+    });
 
-    component.onSubjectChange(select(4));
+    it('changingSubject_ResetsTopicAndSubTopic', () => {
+        create();
+        component.onSubjectChange(select(3));
+        component.onTopicChange(select(30));
+        component.onSubTopicChange(select(300));
 
-    expect(component.topicId()).toBeNull();
-    expect(component.subTopicId()).toBeNull();
-    expect(emitted[emitted.length - 1]).toEqual({ subjectId: 4, topicId: null, subTopicId: null });
-  });
+        component.onSubjectChange(select(4));
 
-  it('clearingSubject_EmitsNull', () => {
-    create();
-    component.onSubjectChange(select(3));
+        expect(component.topicId()).toBeNull();
+        expect(component.subTopicId()).toBeNull();
+        expect(emitted[emitted.length - 1]).toEqual({ subjectId: 4, topicId: null, subTopicId: null });
+    });
 
-    component.onSubjectChange(select(null));
-    fixture.detectChanges();
+    it('clearingSubject_EmitsNull', () => {
+        create();
+        component.onSubjectChange(select(3));
 
-    expect(emitted[emitted.length - 1]).toBeNull();
-    expect(field('topic')).toBeNull();
-  });
+        component.onSubjectChange(select(null));
+        fixture.detectChanges();
+
+        expect(emitted[emitted.length - 1]).toBeNull();
+        expect(field('topic')).toBeNull();
+    });
 });

@@ -11,31 +11,31 @@ import landingTr from '../../../../../../public/i18n/landing/tr.json';
  * sahte ceviri verilmez, boylece bir anahtar bozulursa test kirilir.
  */
 const translocoTesting = TranslocoTestingModule.forRoot({
-  langs: { 'landing/tr': landingTr },
-  translocoConfig: {
-    availableLangs: [...SUPPORTED_LOCALE_CODES],
-    defaultLang: DEFAULT_LOCALE,
-  },
-  preloadLangs: true,
+    langs: { 'landing/tr': landingTr },
+    translocoConfig: {
+        availableLangs: [...SUPPORTED_LOCALE_CODES],
+        defaultLang: DEFAULT_LOCALE,
+    },
+    preloadLangs: true,
 });
 
 
 describe('EduBlogComponent', () => {
-  let component: EduBlogComponent;
-  let fixture: ComponentFixture<EduBlogComponent>;
+    let component: EduBlogComponent;
+    let fixture: ComponentFixture<EduBlogComponent>;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [EduBlogComponent, translocoTesting]
-    })
-    .compileComponents();
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            imports: [EduBlogComponent, translocoTesting]
+        })
+            .compileComponents();
 
-    fixture = TestBed.createComponent(EduBlogComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
+        fixture = TestBed.createComponent(EduBlogComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
+    it('should create', () => {
+        expect(component).toBeTruthy();
+    });
 });

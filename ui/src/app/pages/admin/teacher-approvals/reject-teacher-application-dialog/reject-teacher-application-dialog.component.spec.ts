@@ -7,23 +7,25 @@ import { translocoTestingModule } from '../../../../shared/testing/transloco-tes
 import adminTr from '../../../../../../public/i18n/admin/tr.json';
 
 describe('RejectTeacherApplicationDialogComponent — privacy hint (issue #187)', () => {
-  it('reasonField_ShowsPrivacyHint_LinkedToTextareaDescription', () => {
-    TestBed.configureTestingModule({
-      imports: [RejectTeacherApplicationDialogComponent, translocoTestingModule({ langs: { 'admin/tr': adminTr } })],
-      providers: [
-        provideNoopAnimations(),
-        { provide: MAT_DIALOG_DATA, useValue: { displayName: 'Ali Öğretmen' } },
-        { provide: MatDialogRef, useValue: jasmine.createSpyObj('MatDialogRef', ['close']) },
-      ],
-    });
-    const fixture = TestBed.createComponent(RejectTeacherApplicationDialogComponent);
-    fixture.detectChanges();
-    const root = fixture.nativeElement as HTMLElement;
+    it('reasonField_ShowsPrivacyHint_LinkedToTextareaDescription', () => {
+        TestBed.configureTestingModule({
+            imports: [RejectTeacherApplicationDialogComponent, translocoTestingModule({ langs: { 'admin/tr': adminTr } })],
+            providers: [
+                provideNoopAnimations(),
+                { provide: MAT_DIALOG_DATA, useValue: { displayName: 'Ali Öğretmen' } },
+                { provide: MatDialogRef, useValue: {
+                        close: vi.fn().mockName("MatDialogRef.close")
+                    } },
+            ],
+        });
+        const fixture = TestBed.createComponent(RejectTeacherApplicationDialogComponent);
+        fixture.detectChanges();
+        const root = fixture.nativeElement as HTMLElement;
 
-    const hint = root.querySelector<HTMLElement>('[data-testid="privacy-hint"]');
-    expect(hint?.textContent?.trim()).toBe(adminTr.approvals.rejectDialog.privacyHint);
-    const describedBy = root.querySelector('textarea')?.getAttribute('aria-describedby') ?? '';
-    expect(hint?.id).toBeTruthy();
-    expect(describedBy.split(' ')).toContain(hint!.id);
-  });
+        const hint = root.querySelector<HTMLElement>('[data-testid="privacy-hint"]');
+        expect(hint?.textContent?.trim()).toBe(adminTr.approvals.rejectDialog.privacyHint);
+        const describedBy = root.querySelector('textarea')?.getAttribute('aria-describedby') ?? '';
+        expect(hint?.id).toBeTruthy();
+        expect(describedBy.split(' ')).toContain(hint!.id);
+    });
 });

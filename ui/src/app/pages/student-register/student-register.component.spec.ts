@@ -16,22 +16,22 @@ import registerTr from '../../../../public/i18n/register/tr.json';
 const translocoTesting = translocoTestingModule({ langs: { 'register/tr': registerTr } });
 
 describe('StudentRegisterComponent', () => {
-  let component: StudentRegisterComponent;
-  let fixture: ComponentFixture<StudentRegisterComponent>;
+    let component: StudentRegisterComponent;
+    let fixture: ComponentFixture<StudentRegisterComponent>;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [StudentRegisterComponent, translocoTesting],
-      providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter([]), provideNoopAnimations()],
-    })
-    .compileComponents();
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            imports: [StudentRegisterComponent, translocoTesting],
+            providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter([]), provideNoopAnimations()],
+        })
+            .compileComponents();
 
-    fixture = TestBed.createComponent(StudentRegisterComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
+        fixture = TestBed.createComponent(StudentRegisterComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
+    it('should create', () => {
+        expect(component).toBeTruthy();
+    });
 });

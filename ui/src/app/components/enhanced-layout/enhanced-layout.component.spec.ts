@@ -1,5 +1,6 @@
+import type { Mock } from "vitest";
 import { Component, WritableSignal, signal, ChangeDetectionStrategy } from '@angular/core';
-import { ComponentFixture, TestBed, fakeAsync, flush, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
@@ -26,12 +27,12 @@ import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 
 /** Issue #106: DM rozet servisi stub'ı (HttpClient gerektirmesin). */
 function directMessageStub(count = 0) {
-  const unreadCount = signal(count);
-  return {
-    unreadCount: unreadCount.asReadonly(),
-    refreshUnreadCount: jasmine.createSpy('refreshUnreadCount').and.returnValue(of(count)),
-    resetUnreadCount: () => unreadCount.set(0),
-  };
+    const unreadCount = signal(count);
+    return {
+        unreadCount: unreadCount.asReadonly(),
+        refreshUnreadCount: vi.fn().mockName('refreshUnreadCount').mockReturnValue(of(count)),
+        resetUnreadCount: () => unreadCount.set(0),
+    };
 }
 
 /**
@@ -40,269 +41,271 @@ function directMessageStub(count = 0) {
  * edilmeden (ngOnInit / SignalR / refresh akışı tetiklenmeden) doğrulanır.
  */
 describe('EnhancedLayoutComponent menu (issue #154)', () => {
-  const ADMIN_LIST_ENTRIES = [
-    { id: 'admin-teachers', route: '/admin/teachers', labelKey: 'menu.adminTeachers', tr: 'Öğretmenler' },
-    { id: 'admin-students', route: '/admin/students', labelKey: 'menu.adminStudents', tr: 'Öğrenciler' },
-  ];
+    const ADMIN_LIST_ENTRIES = [
+        { id: 'admin-teachers', route: '/admin/teachers', labelKey: 'menu.adminTeachers', tr: 'Öğretmenler' },
+        { id: 'admin-students', route: '/admin/students', labelKey: 'menu.adminStudents', tr: 'Öğrenciler' },
+    ];
 
-  function create(roles: string[], unapprovedTeacher = false): EnhancedLayoutComponent {
-    const authStub: Partial<AuthService> = {
-      hasRealmRole: (role: string) => roles.includes(role),
-      isAuthenticated: () => of(true),
-      isUnapprovedTeacher: signal(unapprovedTeacher),
-      user: signal(null),
-    };
-    TestBed.configureTestingModule({
-      imports: [EnhancedLayoutComponent, translocoTestingModule()],
-      providers: [
-        provideRouter([]),
-        { provide: AuthService, useValue: authStub },
-        { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
-        { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0) } },
-        { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
-        { provide: DirectMessageService, useValue: directMessageStub() },
-        { provide: NotificationService, useValue: { unreadCount: signal(0) } },
-        { provide: UserThemeService, useValue: {} },
-        { provide: ThemeConfigService, useValue: {} },
-      ],
+    function create(roles: string[], unapprovedTeacher = false): EnhancedLayoutComponent {
+        const authStub: Partial<AuthService> = {
+            hasRealmRole: (role: string) => roles.includes(role),
+            isAuthenticated: () => of(true),
+            isUnapprovedTeacher: signal(unapprovedTeacher),
+            user: signal(null),
+        };
+        TestBed.configureTestingModule({
+            imports: [EnhancedLayoutComponent, translocoTestingModule()],
+            providers: [
+                provideRouter([]),
+                { provide: AuthService, useValue: authStub },
+                { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
+                { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0) } },
+                { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
+                { provide: DirectMessageService, useValue: directMessageStub() },
+                { provide: NotificationService, useValue: { unreadCount: signal(0) } },
+                { provide: UserThemeService, useValue: {} },
+                { provide: ThemeConfigService, useValue: {} },
+            ],
+        });
+        return TestBed.createComponent(EnhancedLayoutComponent).componentInstance;
+    }
+
+    it('visibleMenuItems_AdminRole_ContainsTeachersAndStudentsEntriesWithListRoutes', () => {
+        const component = create(['Admin']);
+
+        for (const entry of ADMIN_LIST_ENTRIES) {
+            const item = component.visibleMenuItems().find((i) => i.id === entry.id);
+            expect(item, entry.id).toBeDefined();
+            expect(item?.type, entry.id).toBe('menu');
+            expect(item?.route, entry.id).toBe(entry.route);
+            expect(item?.labelKey, entry.id).toBe(entry.labelKey);
+            expect(item?.icon, entry.id).toBeTruthy();
+        }
     });
-    return TestBed.createComponent(EnhancedLayoutComponent).componentInstance;
-  }
-
-  it('visibleMenuItems_AdminRole_ContainsTeachersAndStudentsEntriesWithListRoutes', () => {
-    const component = create(['Admin']);
-
-    for (const entry of ADMIN_LIST_ENTRIES) {
-      const item = component.visibleMenuItems().find((i) => i.id === entry.id);
-      expect(item).withContext(entry.id).toBeDefined();
-      expect(item?.type).withContext(entry.id).toBe('menu');
-      expect(item?.route).withContext(entry.id).toBe(entry.route);
-      expect(item?.labelKey).withContext(entry.id).toBe(entry.labelKey);
-      expect(item?.icon).withContext(entry.id).toBeTruthy();
-    }
-  });
-
-  for (const role of ['Teacher', 'Student']) {
-    it(`visibleMenuItems_${role}Role_DoesNotContainAdminListEntries`, () => {
-      const component = create([role]);
-      const routesShown = component.visibleMenuItems().map((i) => i.route);
-
-      for (const entry of ADMIN_LIST_ENTRIES) {
-        expect(routesShown).withContext(role).not.toContain(entry.route);
-      }
-    });
-  }
-
-  it('menuLabels_AdminListEntries_ResolveToTurkishTexts', () => {
-    create(['Admin']);
-    const transloco = TestBed.inject(TranslocoService);
-
-    for (const entry of ADMIN_LIST_ENTRIES) {
-      // Şablon `layout` prefix'i ile çevirir: t(item.labelKey)
-      expect(transloco.translate(`layout.${entry.labelKey}`)).toBe(entry.tr);
-    }
-  });
-
-  it('navigateTo_AdminListEntries_NavigatesToListRoute', () => {
-    const component = create(['Admin']);
-    const router = TestBed.inject(Router);
-    const navigateSpy = spyOn(router, 'navigate').and.returnValue(Promise.resolve(true));
-
-    for (const entry of ADMIN_LIST_ENTRIES) {
-      component.navigateTo(entry.route);
-      expect(navigateSpy).toHaveBeenCalledWith([entry.route], {});
-    }
-  });
-
-  it('routes_AdminListEntryRoutes_ExistInAppRoutes', () => {
-    const layoutRoute = routes.find((r) => Array.isArray(r.children));
-    const childPaths = layoutRoute?.children?.map((r) => `/${r.path}`) ?? [];
-
-    for (const entry of ADMIN_LIST_ENTRIES) {
-      expect(childPaths).toContain(entry.route);
-    }
-  });
-  it('visibleMenuItems_StudyLinksEntry_OnlyForTeacherWithTranslatedLabel (issue #61)', () => {
-    const component = create(['Teacher']);
-    const item = component.visibleMenuItems().find((i) => i.id === 'study-links');
-    expect(item?.route).toBe('/study-links');
-    expect(TestBed.inject(TranslocoService).translate('layout.menu.studyLinks')).toBe('Çalışma Linkleri');
-
-    TestBed.resetTestingModule();
-    const student = create(['Student']);
-    expect(student.visibleMenuItems().map((i) => i.route)).not.toContain('/study-links');
-  });
-
-  it('visibleMenuItems_QuestionTransfer_OnlyForAdmin (issue #365)', () => {
-    const admin = create(['Admin']);
-    const item = admin.visibleMenuItems().find((i) => i.id === 'questiontransfer');
-    expect(item?.route).toBe('/question-transfer');
-    expect(item?.roles).toEqual(['Admin']);
 
     for (const role of ['Teacher', 'Student']) {
-      TestBed.resetTestingModule();
-      const other = create([role]);
-      expect(other.visibleMenuItems().map((i) => i.route)).withContext(role).not.toContain('/question-transfer');
+        it(`visibleMenuItems_${role}Role_DoesNotContainAdminListEntries`, () => {
+            const component = create([role]);
+            const routesShown = component.visibleMenuItems().map((i) => i.route);
+
+            for (const entry of ADMIN_LIST_ENTRIES) {
+                expect(routesShown, role).not.toContain(entry.route);
+            }
+        });
     }
-  });
 
-  it('routes_QuestionTransfer_UsesAdminGuard (issue #365)', () => {
-    const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
-    const route = children.find((r) => r.path === 'question-transfer');
-    expect(route?.canActivate).toContain(adminGuard);
-  });
+    it('menuLabels_AdminListEntries_ResolveToTurkishTexts', () => {
+        create(['Admin']);
+        const transloco = TestBed.inject(TranslocoService);
 
-  // ── Issue #287: onaysız öğretmen menüsü ─────────────────────────────────────
+        for (const entry of ADMIN_LIST_ENTRIES) {
+            // Şablon `layout` prefix'i ile çevirir: t(item.labelKey)
+            expect(transloco.translate(`layout.${entry.labelKey}`)).toBe(entry.tr);
+        }
+    });
 
-  const TEACHER_ONLY_ROUTES = [
-    '/dashboard',
-    '/tests',
-    '/exam',
-    '/study-pages',
-    '/study-links',
-    '/availability',
-    '/booking-requests',
-    '/assignment-permission-requests',
-    '/student-school-requests',
-    '/my-calendar',
-  ];
+    it('navigateTo_AdminListEntries_NavigatesToListRoute', () => {
+        const component = create(['Admin']);
+        const router = TestBed.inject(Router);
+        const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
-  it('visibleMenuItems_UnapprovedTeacher_HidesTeacherItemsAndShowsSingleStatusEntry', () => {
-    const component = create(['Teacher'], true);
-    const items = component.visibleMenuItems();
-    const routesShown = items.map((i) => i.route);
+        for (const entry of ADMIN_LIST_ENTRIES) {
+            component.navigateTo(entry.route);
+            expect(navigateSpy).toHaveBeenCalledWith([entry.route], {});
+        }
+    });
 
-    for (const route of TEACHER_ONLY_ROUTES) {
-      expect(routesShown).withContext(route).not.toContain(route);
+    it('routes_AdminListEntryRoutes_ExistInAppRoutes', () => {
+        const layoutRoute = routes.find((r) => Array.isArray(r.children));
+        const childPaths = layoutRoute?.children?.map((r) => `/${r.path}`) ?? [];
+
+        for (const entry of ADMIN_LIST_ENTRIES) {
+            expect(childPaths).toContain(entry.route);
+        }
+    });
+    it('visibleMenuItems_StudyLinksEntry_OnlyForTeacherWithTranslatedLabel (issue #61)', () => {
+        const component = create(['Teacher']);
+        const item = component.visibleMenuItems().find((i) => i.id === 'study-links');
+        expect(item?.route).toBe('/study-links');
+        expect(TestBed.inject(TranslocoService).translate('layout.menu.studyLinks')).toBe('Çalışma Linkleri');
+
+        TestBed.resetTestingModule();
+        const student = create(['Student']);
+        expect(student.visibleMenuItems().map((i) => i.route)).not.toContain('/study-links');
+    });
+
+    it('visibleMenuItems_QuestionTransfer_OnlyForAdmin (issue #365)', () => {
+        const admin = create(['Admin']);
+        const item = admin.visibleMenuItems().find((i) => i.id === 'questiontransfer');
+        expect(item?.route).toBe('/question-transfer');
+        expect(item?.roles).toEqual(['Admin']);
+
+        for (const role of ['Teacher', 'Student']) {
+            TestBed.resetTestingModule();
+            const other = create([role]);
+            expect(other.visibleMenuItems().map((i) => i.route), role).not.toContain('/question-transfer');
+        }
+    });
+
+    it('routes_QuestionTransfer_UsesAdminGuard (issue #365)', () => {
+        const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
+        const route = children.find((r) => r.path === 'question-transfer');
+        expect(route?.canActivate).toContain(adminGuard);
+    });
+
+    // ── Issue #287: onaysız öğretmen menüsü ─────────────────────────────────────
+
+    const TEACHER_ONLY_ROUTES = [
+        '/dashboard',
+        '/tests',
+        '/exam',
+        '/study-pages',
+        '/study-links',
+        '/availability',
+        '/booking-requests',
+        '/assignment-permission-requests',
+        '/student-school-requests',
+        '/my-calendar',
+    ];
+
+    it('visibleMenuItems_UnapprovedTeacher_HidesTeacherItemsAndShowsSingleStatusEntry', () => {
+        const component = create(['Teacher'], true);
+        const items = component.visibleMenuItems();
+        const routesShown = items.map((i) => i.route);
+
+        for (const route of TEACHER_ONLY_ROUTES) {
+            expect(routesShown, route).not.toContain(route);
+        }
+        const status = items.filter((i) => i.id === 'teacher-approval-status');
+        expect(status.length).toBe(1);
+        expect(status[0].route).toBe('/teacher-approval-pending');
+        // Rolsüz (herkese açık) öğeler kalır; baştaki/sondaki ayırıcılar temizlenir.
+        expect(routesShown).toContain('/certificates');
+        // Issue #373: /student-profile yalnız öğrenciye; #417: onay bekleyen öğretmen de Ayarlar'a (/settings) ulaşır.
+        expect(routesShown).not.toContain('/student-profile');
+        expect(routesShown).toContain('/settings');
+        expect(items[0].type).toBe('menu');
+        expect(items[items.length - 1].type).toBe('menu');
+    });
+
+    it('visibleMenuItems_UnapprovedTeacher_KeepsTutorProfileApplicationForm', () => {
+        const component = create(['Teacher'], true);
+        expect(component.visibleMenuItems().map((i) => i.route)).toContain('/tutor-profile');
+
+        TestBed.resetTestingModule();
+        const student = create(['Student'], false);
+        expect(student.visibleMenuItems().map((i) => i.route)).not.toContain('/tutor-profile');
+    });
+
+    it('visibleBottomNavItems_UnapprovedTeacher_StatusEntryInsteadOfDashboardAndExams', () => {
+        const component = create(['Teacher'], true);
+        const routesShown = component.visibleBottomNavItems().map((i) => i.route);
+
+        expect(routesShown).toContain('/teacher-approval-pending');
+        expect(routesShown).not.toContain('/dashboard');
+        expect(routesShown).not.toContain('/tests');
+    });
+
+    it('visibleMenuItems_ApprovedTeacher_ShowsTeacherItemsWithoutStatusEntry', () => {
+        const component = create(['Teacher'], false);
+        const ids = component.visibleMenuItems().map((i) => i.id);
+
+        expect(ids).toContain('exam');
+        expect(ids).toContain('study-pages');
+        expect(ids).not.toContain('teacher-approval-status');
+        expect(component.visibleBottomNavItems().map((i) => i.id)).not.toContain('teacher-approval-status');
+    });
+
+    for (const role of ['Student', 'Admin']) {
+        it(`visibleMenuItems_${role}_NeverShowsStatusEntry`, () => {
+            const component = create([role], false);
+            expect(component.visibleMenuItems().map((i) => i.id)).not.toContain('teacher-approval-status');
+        });
     }
-    const status = items.filter((i) => i.id === 'teacher-approval-status');
-    expect(status.length).toBe(1);
-    expect(status[0].route).toBe('/teacher-approval-pending');
-    // Rolsüz (herkese açık) öğeler kalır; baştaki/sondaki ayırıcılar temizlenir.
-    expect(routesShown).toContain('/certificates');
-    // Issue #373: /student-profile yalnız öğrenciye; #417: onay bekleyen öğretmen de Ayarlar'a (/settings) ulaşır.
-    expect(routesShown).not.toContain('/student-profile');
-    expect(routesShown).toContain('/settings');
-    expect(items[0].type).toBe('menu');
-    expect(items[items.length - 1].type).toBe('menu');
-  });
 
-  it('visibleMenuItems_UnapprovedTeacher_KeepsTutorProfileApplicationForm', () => {
-    const component = create(['Teacher'], true);
-    expect(component.visibleMenuItems().map((i) => i.route)).toContain('/tutor-profile');
+    it('visibleMenuItems_ReactsWhenApprovalChanges', () => {
+        const unapproved = signal(true);
+        const authStub: Partial<AuthService> = {
+            hasRealmRole: (role: string) => role === 'Teacher',
+            isAuthenticated: () => of(true),
+            isUnapprovedTeacher: unapproved,
+            user: signal(null),
+        };
+        TestBed.configureTestingModule({
+            imports: [EnhancedLayoutComponent, translocoTestingModule()],
+            providers: [
+                provideRouter([]),
+                { provide: AuthService, useValue: authStub },
+                { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
+                { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0) } },
+                { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
+                { provide: DirectMessageService, useValue: directMessageStub() },
+                { provide: NotificationService, useValue: { unreadCount: signal(0) } },
+                { provide: UserThemeService, useValue: {} },
+                { provide: ThemeConfigService, useValue: {} },
+            ],
+        });
+        const component = TestBed.createComponent(EnhancedLayoutComponent).componentInstance;
+        expect(component.visibleMenuItems().map((i) => i.id)).not.toContain('exam');
 
-    TestBed.resetTestingModule();
-    const student = create(['Student'], false);
-    expect(student.visibleMenuItems().map((i) => i.route)).not.toContain('/tutor-profile');
-  });
+        unapproved.set(false);
 
-  it('visibleBottomNavItems_UnapprovedTeacher_StatusEntryInsteadOfDashboardAndExams', () => {
-    const component = create(['Teacher'], true);
-    const routesShown = component.visibleBottomNavItems().map((i) => i.route);
-
-    expect(routesShown).toContain('/teacher-approval-pending');
-    expect(routesShown).not.toContain('/dashboard');
-    expect(routesShown).not.toContain('/tests');
-  });
-
-  it('visibleMenuItems_ApprovedTeacher_ShowsTeacherItemsWithoutStatusEntry', () => {
-    const component = create(['Teacher'], false);
-    const ids = component.visibleMenuItems().map((i) => i.id);
-
-    expect(ids).toContain('exam');
-    expect(ids).toContain('study-pages');
-    expect(ids).not.toContain('teacher-approval-status');
-    expect(component.visibleBottomNavItems().map((i) => i.id)).not.toContain('teacher-approval-status');
-  });
-
-  for (const role of ['Student', 'Admin']) {
-    it(`visibleMenuItems_${role}_NeverShowsStatusEntry`, () => {
-      const component = create([role], false);
-      expect(component.visibleMenuItems().map((i) => i.id)).not.toContain('teacher-approval-status');
+        expect(component.visibleMenuItems().map((i) => i.id)).toContain('exam');
     });
-  }
 
-  it('visibleMenuItems_ReactsWhenApprovalChanges', () => {
-    const unapproved = signal(true);
-    const authStub: Partial<AuthService> = {
-      hasRealmRole: (role: string) => role === 'Teacher',
-      isAuthenticated: () => of(true),
-      isUnapprovedTeacher: unapproved,
-      user: signal(null),
-    };
-    TestBed.configureTestingModule({
-      imports: [EnhancedLayoutComponent, translocoTestingModule()],
-      providers: [
-        provideRouter([]),
-        { provide: AuthService, useValue: authStub },
-        { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
-        { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0) } },
-        { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
-        { provide: DirectMessageService, useValue: directMessageStub() },
-        { provide: NotificationService, useValue: { unreadCount: signal(0) } },
-        { provide: UserThemeService, useValue: {} },
-        { provide: ThemeConfigService, useValue: {} },
-      ],
+    it('menuLabel_TeacherApprovalStatus_TranslatedTrAndEn', () => {
+        create(['Teacher'], true);
+        const transloco = TestBed.inject(TranslocoService);
+        expect(transloco.translate('layout.menu.teacherApprovalStatus')).toBe('Başvuru durumu');
+        expect(transloco.translate('layout.menu.teacherApprovalStatus', {}, 'en')).toBe('Application status');
     });
-    const component = TestBed.createComponent(EnhancedLayoutComponent).componentInstance;
-    expect(component.visibleMenuItems().map((i) => i.id)).not.toContain('exam');
 
-    unapproved.set(false);
+    it('routes_TeacherApprovalPendingRoute_Exists', () => {
+        const layoutRoute = routes.find((r) => Array.isArray(r.children));
+        expect(layoutRoute?.children?.map((r) => r.path)).toContain('teacher-approval-pending');
+    });
 
-    expect(component.visibleMenuItems().map((i) => i.id)).toContain('exam');
-  });
+    // ── Issue #361: bekleyen öğrenci okul başvuruları ───────────────────────────
 
-  it('menuLabel_TeacherApprovalStatus_TranslatedTrAndEn', () => {
-    create(['Teacher'], true);
-    const transloco = TestBed.inject(TranslocoService);
-    expect(transloco.translate('layout.menu.teacherApprovalStatus')).toBe('Başvuru durumu');
-    expect(transloco.translate('layout.menu.teacherApprovalStatus', {}, 'en')).toBe('Application status');
-  });
+    it('visibleMenuItems_StudentSchoolRequests_TeacherAndAdminOnly (issue #361)', () => {
+        expect(create(['Teacher']).visibleMenuItems().map((i) => i.route)).toContain('/student-school-requests');
 
-  it('routes_TeacherApprovalPendingRoute_Exists', () => {
-    const layoutRoute = routes.find((r) => Array.isArray(r.children));
-    expect(layoutRoute?.children?.map((r) => r.path)).toContain('teacher-approval-pending');
-  });
+        TestBed.resetTestingModule();
+        const admin = create(['Admin']).visibleMenuItems().map((i) => i.route);
+        expect(admin).toContain('/admin/student-school-requests');
+        expect(admin).not.toContain('/student-school-requests');
 
-  // ── Issue #361: bekleyen öğrenci okul başvuruları ───────────────────────────
+        TestBed.resetTestingModule();
+        const student = create(['Student']).visibleMenuItems().map((i) => i.route);
+        expect(student).not.toContain('/student-school-requests');
+        expect(student).not.toContain('/admin/student-school-requests');
+    });
 
-  it('visibleMenuItems_StudentSchoolRequests_TeacherAndAdminOnly (issue #361)', () => {
-    expect(create(['Teacher']).visibleMenuItems().map((i) => i.route)).toContain('/student-school-requests');
+    it('routes_StudentSchoolRequests_GuardedByRole (issue #361)', () => {
+        const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
+        const teacherRoute = children.find((r) => r.path === 'student-school-requests');
+        const adminRoute = children.find((r) => r.path === 'admin/student-school-requests');
+        expect(teacherRoute?.canActivate?.length).toBe(3);
+        expect(adminRoute?.canActivate).toContain(adminGuard);
+    });
 
-    TestBed.resetTestingModule();
-    const admin = create(['Admin']).visibleMenuItems().map((i) => i.route);
-    expect(admin).toContain('/admin/student-school-requests');
-    expect(admin).not.toContain('/student-school-requests');
+    it('menuBadgeCount_StudentSchoolRequests_UsesPendingCount (issue #361)', () => {
+        const component = create(['Teacher']);
+        const service = TestBed.inject(StudentSchoolRequestService) as unknown as {
+            pendingCount: WritableSignal<number>;
+        };
+        service.pendingCount.set(3);
+        expect(component.menuBadgeCount('student-school-requests')).toBe(3);
+        expect(component.menuBadgeCount('admin-student-school-requests')).toBe(3);
+        expect(component.menuBadgeCount('access-requests')).toBe(0);
+    });
 
-    TestBed.resetTestingModule();
-    const student = create(['Student']).visibleMenuItems().map((i) => i.route);
-    expect(student).not.toContain('/student-school-requests');
-    expect(student).not.toContain('/admin/student-school-requests');
-  });
-
-  it('routes_StudentSchoolRequests_GuardedByRole (issue #361)', () => {
-    const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
-    const teacherRoute = children.find((r) => r.path === 'student-school-requests');
-    const adminRoute = children.find((r) => r.path === 'admin/student-school-requests');
-    expect(teacherRoute?.canActivate?.length).toBe(3);
-    expect(adminRoute?.canActivate).toContain(adminGuard);
-  });
-
-  it('menuBadgeCount_StudentSchoolRequests_UsesPendingCount (issue #361)', () => {
-    const component = create(['Teacher']);
-    const service = TestBed.inject(StudentSchoolRequestService) as unknown as { pendingCount: WritableSignal<number> };
-    service.pendingCount.set(3);
-    expect(component.menuBadgeCount('student-school-requests')).toBe(3);
-    expect(component.menuBadgeCount('admin-student-school-requests')).toBe(3);
-    expect(component.menuBadgeCount('access-requests')).toBe(0);
-  });
-
-  it('menuLabel_StudentSchoolRequests_TranslatedTrAndEn (issue #361)', () => {
-    create(['Teacher']);
-    const transloco = TestBed.inject(TranslocoService);
-    expect(transloco.translate('layout.menu.studentSchoolRequests')).toBe('Öğrenci Okul Başvuruları');
-    expect(transloco.translate('layout.menu.studentSchoolRequests', {}, 'en')).toBe('Student School Requests');
-  });
+    it('menuLabel_StudentSchoolRequests_TranslatedTrAndEn (issue #361)', () => {
+        create(['Teacher']);
+        const transloco = TestBed.inject(TranslocoService);
+        expect(transloco.translate('layout.menu.studentSchoolRequests')).toBe('Öğrenci Okul Başvuruları');
+        expect(transloco.translate('layout.menu.studentSchoolRequests', {}, 'en')).toBe('Student School Requests');
+    });
 });
 
 /**
@@ -310,554 +313,575 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
  * profil yenileme akışı `NEVER` ile askıda bırakılır, SignalR yalnızca `notificationsChanged$` akışı sağlar.
  */
 describe('EnhancedLayoutComponent notification badge (issue #146)', () => {
-  let fixture: ComponentFixture<EnhancedLayoutComponent>;
-  let notificationsChanged$: Subject<void>;
-  let authenticated$: BehaviorSubject<boolean>;
-  let unreadCount: WritableSignal<number>;
-  let refreshUnreadCount: jasmine.Spy;
-  let navigateSpy: jasmine.Spy;
-
-  function setup(isAuthenticated = true, roles: string[] = [], desktop = false): void {
-    notificationsChanged$ = new Subject<void>();
-    authenticated$ = new BehaviorSubject<boolean>(isAuthenticated);
-    unreadCount = signal(0);
-    refreshUnreadCount = jasmine.createSpy('refreshUnreadCount').and.callFake(() => of(unreadCount()));
-
-    const authStub: Partial<AuthService> = {
-      hasRealmRole: (role: string) => roles.includes(role),
-      isAuthenticated: () => authenticated$.asObservable(),
-      isUnapprovedTeacher: signal(false),
-      user: signal(null),
-      isCachedUserCurrent: () => true,
-      refreshProfile: () => NEVER,
-    };
-    TestBed.configureTestingModule({
-      imports: [EnhancedLayoutComponent, NoopAnimationsModule, translocoTestingModule()],
-      providers: [
-        // Dil seçici (LocalePreferenceService) HttpClient ister; bu testte istek beklenmez.
-        provideHttpClient(withXhr()),
-        provideHttpClientTesting(),
-        provideRouter([]),
-        { provide: AuthService, useValue: authStub },
-        {
-          provide: SignalRService,
-          useValue: {
-            startConnection: () => undefined,
-            accessRequestUpdates$: new Subject(),
-            notificationsChanged$: notificationsChanged$.asObservable(),
-          },
-        },
-        { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0) } },
-        { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
-        { provide: DirectMessageService, useValue: directMessageStub() },
-        {
-          provide: NotificationService,
-          useValue: {
-            unreadCount: unreadCount.asReadonly(),
-            refreshUnreadCount,
-            resetUnreadCount: () => unreadCount.set(0),
-          },
-        },
-        { provide: UserThemeService, useValue: { userTheme$: of(null) } },
-        { provide: ThemeConfigService, useValue: {} },
-      ],
+    beforeEach(() => {
+        vi.useFakeTimers();
     });
-    if (desktop) {
-      // Headless pencere dar: masaüstü araç çubuğunu çizdirmek için mobil kırılım eşleşmesin.
-      TestBed.overrideProvider(BreakpointObserver, { useValue: { observe: () => of({ matches: false, breakpoints: {} }) } });
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+    let fixture: ComponentFixture<EnhancedLayoutComponent>;
+    let notificationsChanged$: Subject<void>;
+    let authenticated$: BehaviorSubject<boolean>;
+    let unreadCount: WritableSignal<number>;
+    let refreshUnreadCount: Mock;
+    let navigateSpy: Mock;
+
+    function setup(isAuthenticated = true, roles: string[] = [], desktop = false): void {
+        notificationsChanged$ = new Subject<void>();
+        authenticated$ = new BehaviorSubject<boolean>(isAuthenticated);
+        unreadCount = signal(0);
+        refreshUnreadCount = vi.fn().mockName('refreshUnreadCount').mockImplementation(() => of(unreadCount()));
+
+        const authStub: Partial<AuthService> = {
+            hasRealmRole: (role: string) => roles.includes(role),
+            isAuthenticated: () => authenticated$.asObservable(),
+            isUnapprovedTeacher: signal(false),
+            user: signal(null),
+            isCachedUserCurrent: () => true,
+            refreshProfile: () => NEVER,
+        };
+        TestBed.configureTestingModule({
+            imports: [EnhancedLayoutComponent, NoopAnimationsModule, translocoTestingModule()],
+            providers: [
+                // Dil seçici (LocalePreferenceService) HttpClient ister; bu testte istek beklenmez.
+                provideHttpClient(withXhr()),
+                provideHttpClientTesting(),
+                provideRouter([]),
+                { provide: AuthService, useValue: authStub },
+                {
+                    provide: SignalRService,
+                    useValue: {
+                        startConnection: () => undefined,
+                        accessRequestUpdates$: new Subject(),
+                        notificationsChanged$: notificationsChanged$.asObservable(),
+                    },
+                },
+                { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0) } },
+                { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
+                { provide: DirectMessageService, useValue: directMessageStub() },
+                {
+                    provide: NotificationService,
+                    useValue: {
+                        unreadCount: unreadCount.asReadonly(),
+                        refreshUnreadCount,
+                        resetUnreadCount: () => unreadCount.set(0),
+                    },
+                },
+                { provide: UserThemeService, useValue: { userTheme$: of(null) } },
+                { provide: ThemeConfigService, useValue: {} },
+            ],
+        });
+        if (desktop) {
+            // Headless pencere dar: masaüstü araç çubuğunu çizdirmek için mobil kırılım eşleşmesin.
+            TestBed.overrideProvider(BreakpointObserver, { useValue: { observe: () => of({ matches: false, breakpoints: {} }) } });
+        }
+        navigateSpy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+        fixture = TestBed.createComponent(EnhancedLayoutComponent);
     }
-    navigateSpy = spyOn(TestBed.inject(Router), 'navigate').and.returnValue(Promise.resolve(true));
-    fixture = TestBed.createComponent(EnhancedLayoutComponent);
-  }
 
-  function bellButton(): HTMLButtonElement | null {
-    return (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('.notification-bell');
-  }
+    function bellButton(): HTMLButtonElement | null {
+        return (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('.notification-bell');
+    }
 
-  function badgeText(): string {
-    return bellButton()?.querySelector('.mat-badge-content')?.textContent?.trim() ?? '';
-  }
+    function badgeText(): string {
+        return bellButton()?.querySelector('.mat-badge-content')?.textContent?.trim() ?? '';
+    }
 
-  afterEach(() => localStorage.removeItem('user'));
+    afterEach(() => localStorage.removeItem('user'));
 
-  it('toolbar_ParentOnly_HidesNewestPopularAndWorksheetSearch (#421)', () => {
-    setup(true, ['Parent'], true);
-    fixture.detectChanges();
-    const el = fixture.nativeElement as HTMLElement;
-    expect(fixture.componentInstance.isParentOnly).toBeTrue();
-    expect(el.querySelector('mat-toolbar .section-nav')).not.toBeNull(); // masaüstü araç çubuğu çizildi
-    expect(el.querySelector('[data-test="toolbar-newest"]')).toBeNull();
-    expect(el.querySelector('[data-test="toolbar-popular"]')).toBeNull();
-    expect(el.querySelector('[data-test="toolbar-search"]')).toBeNull();
-  });
+    it('toolbar_ParentOnly_HidesNewestPopularAndWorksheetSearch (#421)', () => {
+        setup(true, ['Parent'], true);
+        fixture.detectChanges();
+        const el = fixture.nativeElement as HTMLElement;
+        expect(fixture.componentInstance.isParentOnly).toBe(true);
+        expect(el.querySelector('mat-toolbar .section-nav')).not.toBeNull(); // masaüstü araç çubuğu çizildi
+        expect(el.querySelector('[data-test="toolbar-newest"]')).toBeNull();
+        expect(el.querySelector('[data-test="toolbar-popular"]')).toBeNull();
+        expect(el.querySelector('[data-test="toolbar-search"]')).toBeNull();
+    });
 
-  it('toolbar_ParentWithAnotherRoleOrStudent_KeepsNewestPopularAndSearch (#421)', () => {
-    setup(true, ['Parent', 'Teacher'], true);
-    fixture.detectChanges();
-    const el = fixture.nativeElement as HTMLElement;
-    expect(fixture.componentInstance.isParentOnly).toBeFalse();
-    expect(el.querySelector('[data-test="toolbar-newest"]')).not.toBeNull();
-    expect(el.querySelector('[data-test="toolbar-popular"]')).not.toBeNull();
-    expect(el.querySelector('[data-test="toolbar-search"]')).not.toBeNull();
-  });
+    it('toolbar_ParentWithAnotherRoleOrStudent_KeepsNewestPopularAndSearch (#421)', () => {
+        setup(true, ['Parent', 'Teacher'], true);
+        fixture.detectChanges();
+        const el = fixture.nativeElement as HTMLElement;
+        expect(fixture.componentInstance.isParentOnly).toBe(false);
+        expect(el.querySelector('[data-test="toolbar-newest"]')).not.toBeNull();
+        expect(el.querySelector('[data-test="toolbar-popular"]')).not.toBeNull();
+        expect(el.querySelector('[data-test="toolbar-search"]')).not.toBeNull();
+    });
 
-  it('init_Authenticated_LoadsUnreadCountOnceAndShowsBadge', () => {
-    setup();
-    unreadCount.set(3);
-    fixture.detectChanges();
+    it('init_Authenticated_LoadsUnreadCountOnceAndShowsBadge', () => {
+        setup();
+        unreadCount.set(3);
+        fixture.detectChanges();
 
-    expect(refreshUnreadCount).toHaveBeenCalledTimes(1);
-    expect(bellButton()).not.toBeNull();
-    expect(badgeText()).toBe('3');
-    expect(bellButton()?.querySelector('.mat-badge-hidden')).toBeNull();
-    expect(bellButton()?.getAttribute('aria-label')).toBe('Bildirimler (3 okunmamış)');
-  });
+        expect(refreshUnreadCount).toHaveBeenCalledTimes(1);
+        expect(bellButton()).not.toBeNull();
+        expect(badgeText()).toBe('3');
+        expect(bellButton()?.querySelector('.mat-badge-hidden')).toBeNull();
+        expect(bellButton()?.getAttribute('aria-label')).toBe('Bildirimler (3 okunmamış)');
+    });
 
-  it('zeroUnread_HidesBadge', () => {
-    setup();
-    fixture.detectChanges();
+    it('zeroUnread_HidesBadge', () => {
+        setup();
+        fixture.detectChanges();
 
-    expect(bellButton()?.querySelector('.mat-badge-hidden')).not.toBeNull();
-    expect(bellButton()?.getAttribute('aria-label')).toBe('Bildirimler');
-  });
+        expect(bellButton()?.querySelector('.mat-badge-hidden')).not.toBeNull();
+        expect(bellButton()?.getAttribute('aria-label')).toBe('Bildirimler');
+    });
 
-  it('moreThan99Unread_ShowsCappedBadge', () => {
-    setup();
-    unreadCount.set(150);
-    fixture.detectChanges();
+    it('moreThan99Unread_ShowsCappedBadge', () => {
+        setup();
+        unreadCount.set(150);
+        fixture.detectChanges();
 
-    expect(badgeText()).toBe('99+');
-  });
+        expect(badgeText()).toBe('99+');
+    });
 
-  it('notAuthenticated_DoesNotRequestUnreadCount', () => {
-    setup(false);
-    fixture.detectChanges();
+    it('notAuthenticated_DoesNotRequestUnreadCount', () => {
+        setup(false);
+        fixture.detectChanges();
 
-    expect(refreshUnreadCount).not.toHaveBeenCalled();
-  });
+        expect(refreshUnreadCount).not.toHaveBeenCalled();
+    });
 
-  it('logout_ResetsCountAndLoginAgainRefetches', () => {
-    setup();
-    unreadCount.set(4);
-    fixture.detectChanges();
-    expect(badgeText()).toBe('4');
-    expect(refreshUnreadCount).toHaveBeenCalledTimes(1);
+    it('logout_ResetsCountAndLoginAgainRefetches', () => {
+        setup();
+        unreadCount.set(4);
+        fixture.detectChanges();
+        expect(badgeText()).toBe('4');
+        expect(refreshUnreadCount).toHaveBeenCalledTimes(1);
 
-    authenticated$.next(false);
-    fixture.detectChanges();
-    expect(unreadCount()).toBe(0);
+        authenticated$.next(false);
+        fixture.detectChanges();
+        expect(unreadCount()).toBe(0);
 
-    // Aynı değerin tekrar yayılması ek istek üretmez.
-    authenticated$.next(false);
-    authenticated$.next(true);
-    authenticated$.next(true);
-    expect(refreshUnreadCount).toHaveBeenCalledTimes(2);
-  });
+        // Aynı değerin tekrar yayılması ek istek üretmez.
+        authenticated$.next(false);
+        authenticated$.next(true);
+        authenticated$.next(true);
+        expect(refreshUnreadCount).toHaveBeenCalledTimes(2);
+    });
 
-  it('logout_StopsRefreshingOnHubPushes', fakeAsync(() => {
-    setup();
-    fixture.detectChanges();
-    authenticated$.next(false);
+    it('logout_StopsRefreshingOnHubPushes', async () => {
+        setup();
+        fixture.detectChanges();
+        authenticated$.next(false);
 
-    notificationsChanged$.next();
-    tick(EnhancedLayoutComponent.NOTIFICATION_REFRESH_DEBOUNCE_MS);
+        notificationsChanged$.next();
+        await vi.advanceTimersByTimeAsync(EnhancedLayoutComponent.NOTIFICATION_REFRESH_DEBOUNCE_MS);
 
-    expect(refreshUnreadCount).toHaveBeenCalledTimes(1);
-    fixture.destroy();
-    flush();
-  }));
+        expect(refreshUnreadCount).toHaveBeenCalledTimes(1);
+        fixture.destroy();
+        await vi.runAllTimersAsync();
+    });
 
-  it('hubPushes_AreDebouncedIntoSingleRefresh', fakeAsync(() => {
-    setup();
-    fixture.detectChanges();
-    expect(refreshUnreadCount).toHaveBeenCalledTimes(1);
+    it('hubPushes_AreDebouncedIntoSingleRefresh', async () => {
+        setup();
+        fixture.detectChanges();
+        expect(refreshUnreadCount).toHaveBeenCalledTimes(1);
 
-    notificationsChanged$.next();
-    notificationsChanged$.next();
-    notificationsChanged$.next();
-    tick(EnhancedLayoutComponent.NOTIFICATION_REFRESH_DEBOUNCE_MS - 1);
-    expect(refreshUnreadCount).toHaveBeenCalledTimes(1);
+        notificationsChanged$.next();
+        notificationsChanged$.next();
+        notificationsChanged$.next();
+        await vi.advanceTimersByTimeAsync(EnhancedLayoutComponent.NOTIFICATION_REFRESH_DEBOUNCE_MS - 1);
+        expect(refreshUnreadCount).toHaveBeenCalledTimes(1);
 
-    tick(1);
-    expect(refreshUnreadCount).toHaveBeenCalledTimes(2);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(refreshUnreadCount).toHaveBeenCalledTimes(2);
 
-    fixture.destroy();
-    flush();
-  }));
+        fixture.destroy();
+        await vi.runAllTimersAsync();
+    });
 
-  it('refreshError_IsSwallowedAndLaterPushStillRefreshes', fakeAsync(() => {
-    setup();
-    refreshUnreadCount.and.returnValues(throwError(() => new Error('down')), of(2));
-    fixture.detectChanges();
+    it('refreshError_IsSwallowedAndLaterPushStillRefreshes', async () => {
+        setup();
+        refreshUnreadCount.mockReturnValueOnce(throwError(() => new Error('down'))).mockReturnValueOnce(of(2));
+        fixture.detectChanges();
 
-    notificationsChanged$.next();
-    tick(EnhancedLayoutComponent.NOTIFICATION_REFRESH_DEBOUNCE_MS);
-    expect(refreshUnreadCount).toHaveBeenCalledTimes(2);
+        notificationsChanged$.next();
+        await vi.advanceTimersByTimeAsync(EnhancedLayoutComponent.NOTIFICATION_REFRESH_DEBOUNCE_MS);
+        expect(refreshUnreadCount).toHaveBeenCalledTimes(2);
 
-    fixture.destroy();
-    flush();
-  }));
+        fixture.destroy();
+        await vi.runAllTimersAsync();
+    });
 
-  it('bellClick_NavigatesToNotifications', () => {
-    setup();
-    fixture.detectChanges();
+    it('bellClick_NavigatesToNotifications', () => {
+        setup();
+        fixture.detectChanges();
 
-    bellButton()?.click();
+        bellButton()?.click();
 
-    expect(navigateSpy).toHaveBeenCalledWith(['/notifications']);
-  });
+        expect(navigateSpy).toHaveBeenCalledWith(['/notifications']);
+    });
 
-  it('routes_NotificationsRoute_ExistsWithAuthGuard', () => {
-    const layoutRoute = routes.find((r) => Array.isArray(r.children));
-    const route = layoutRoute?.children?.find((r) => r.path === 'notifications');
-    expect(route).toBeDefined();
-    expect(route?.canActivate?.length).toBeGreaterThan(0);
-  });
+    it('routes_NotificationsRoute_ExistsWithAuthGuard', () => {
+        const layoutRoute = routes.find((r) => Array.isArray(r.children));
+        const route = layoutRoute?.children?.find((r) => r.path === 'notifications');
+        expect(route).toBeDefined();
+        expect(route?.canActivate?.length).toBeGreaterThan(0);
+    });
 });
 
 /** Issue #106: DM menü girişleri ve okunmamış rozeti. Render edilmeden sınıf alanları doğrulanır. */
 describe('EnhancedLayoutComponent direct messages menu (issue #106)', () => {
-  function create(roles: string[], dmCount = 0): EnhancedLayoutComponent {
-    const authStub: Partial<AuthService> = {
-      hasRealmRole: (role: string) => roles.includes(role),
-      isAuthenticated: () => of(true),
-      isUnapprovedTeacher: signal(false),
-      user: signal(null),
-    };
-    TestBed.configureTestingModule({
-      imports: [EnhancedLayoutComponent, translocoTestingModule()],
-      providers: [
-        provideRouter([]),
-        { provide: AuthService, useValue: authStub },
-        { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
-        { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(2) } },
-        { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
-        { provide: DirectMessageService, useValue: directMessageStub(dmCount) },
-        { provide: NotificationService, useValue: { unreadCount: signal(0) } },
-        { provide: UserThemeService, useValue: {} },
-        { provide: ThemeConfigService, useValue: {} },
-      ],
+    function create(roles: string[], dmCount = 0): EnhancedLayoutComponent {
+        const authStub: Partial<AuthService> = {
+            hasRealmRole: (role: string) => roles.includes(role),
+            isAuthenticated: () => of(true),
+            isUnapprovedTeacher: signal(false),
+            user: signal(null),
+        };
+        TestBed.configureTestingModule({
+            imports: [EnhancedLayoutComponent, translocoTestingModule()],
+            providers: [
+                provideRouter([]),
+                { provide: AuthService, useValue: authStub },
+                { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
+                { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(2) } },
+                { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
+                { provide: DirectMessageService, useValue: directMessageStub(dmCount) },
+                { provide: NotificationService, useValue: { unreadCount: signal(0) } },
+                { provide: UserThemeService, useValue: {} },
+                { provide: ThemeConfigService, useValue: {} },
+            ],
+        });
+        return TestBed.createComponent(EnhancedLayoutComponent).componentInstance;
+    }
+
+    it('student_SeesTeacherMessagesEntry_NotInbox', () => {
+        const ids = create(['Student']).visibleMenuItems().map((i) => i.id);
+        expect(ids).toContain('teacher-messages');
+        expect(ids).not.toContain('student-messages');
     });
-    return TestBed.createComponent(EnhancedLayoutComponent).componentInstance;
-  }
 
-  it('student_SeesTeacherMessagesEntry_NotInbox', () => {
-    const ids = create(['Student']).visibleMenuItems().map((i) => i.id);
-    expect(ids).toContain('teacher-messages');
-    expect(ids).not.toContain('student-messages');
-  });
+    it('teacher_SeesStudentMessagesEntry_NotStudentPage', () => {
+        const ids = create(['Teacher']).visibleMenuItems().map((i) => i.id);
+        expect(ids).toContain('student-messages');
+        expect(ids).not.toContain('teacher-messages');
+    });
 
-  it('teacher_SeesStudentMessagesEntry_NotStudentPage', () => {
-    const ids = create(['Teacher']).visibleMenuItems().map((i) => i.id);
-    expect(ids).toContain('student-messages');
-    expect(ids).not.toContain('teacher-messages');
-  });
+    it('menuBadgeCount_DmItemsUseDmCount_AccessRequestsKeepOwnCount', () => {
+        const component = create(['Student'], 3);
+        expect(component.menuBadgeCount('teacher-messages')).toBe(3);
+        expect(component.menuBadgeCount('student-messages')).toBe(3);
+        expect(component.menuBadgeCount('access-requests')).toBe(2);
+        expect(component.menuBadgeCount('dashboard')).toBe(0);
+    });
 
-  it('menuBadgeCount_DmItemsUseDmCount_AccessRequestsKeepOwnCount', () => {
-    const component = create(['Student'], 3);
-    expect(component.menuBadgeCount('teacher-messages')).toBe(3);
-    expect(component.menuBadgeCount('student-messages')).toBe(3);
-    expect(component.menuBadgeCount('access-requests')).toBe(2);
-    expect(component.menuBadgeCount('dashboard')).toBe(0);
-  });
+    it('isDirectMessageItem_And_BadgeDescriptionKey', () => {
+        const component = create(['Student'], 2);
+        expect(component.isDirectMessageItem('teacher-messages')).toBe(true);
+        expect(component.isDirectMessageItem('access-requests')).toBe(false);
+        const transloco = TestBed.inject(TranslocoService);
+        expect(transloco.translate('layout.dmUnreadBadge', { count: 2 })).toBe('2 okunmamış konuşma');
+    });
 
-  it('isDirectMessageItem_And_BadgeDescriptionKey', () => {
-    const component = create(['Student'], 2);
-    expect(component.isDirectMessageItem('teacher-messages')).toBeTrue();
-    expect(component.isDirectMessageItem('access-requests')).toBeFalse();
-    const transloco = TestBed.inject(TranslocoService);
-    expect(transloco.translate('layout.dmUnreadBadge', { count: 2 })).toBe('2 okunmamış konuşma');
-  });
+    it('menuLabels_TranslatedTrAndEn', () => {
+        create(['Student']);
+        const transloco = TestBed.inject(TranslocoService);
+        expect(transloco.translate('layout.menu.teacherMessages')).toBe('Öğretmenime Yaz');
+        expect(transloco.translate('layout.menu.studentMessages', {}, 'en')).toBe('Student Messages');
+    });
 
-  it('menuLabels_TranslatedTrAndEn', () => {
-    create(['Student']);
-    const transloco = TestBed.inject(TranslocoService);
-    expect(transloco.translate('layout.menu.teacherMessages')).toBe('Öğretmenime Yaz');
-    expect(transloco.translate('layout.menu.studentMessages', {}, 'en')).toBe('Student Messages');
-  });
-
-  it('routes_DirectMessagePagesExist', () => {
-    const layoutRoute = routes.find((r) => Array.isArray(r.children));
-    const paths = layoutRoute?.children?.map((r) => r.path);
-    expect(paths).toContain('teacher-messages');
-    expect(paths).toContain('student-messages');
-  });
+    it('routes_DirectMessagePagesExist', () => {
+        const layoutRoute = routes.find((r) => Array.isArray(r.children));
+        const paths = layoutRoute?.children?.map((r) => r.path);
+        expect(paths).toContain('teacher-messages');
+        expect(paths).toContain('student-messages');
+    });
 });
 
 /** Issue #106 dilim b: SignalR `DirectMessageReceived` push'u sidenav DM rozetini gerçek zamanlı tazeler. */
 describe('EnhancedLayoutComponent DM badge push (issue #106 b)', () => {
-  let fixture: ComponentFixture<EnhancedLayoutComponent>;
-  let directMessageReceived$: Subject<{ conversationId: number; senderRole: 'Student' | 'Teacher' }>;
-  let dmRefresh: jasmine.Spy;
-
-  function setup(role: 'Student' | 'Teacher'): void {
-    directMessageReceived$ = new Subject();
-    dmRefresh = jasmine.createSpy('refreshUnreadCount').and.returnValue(of(1));
-    const authStub: Partial<AuthService> = {
-      hasRealmRole: (r: string) => r === role,
-      isAuthenticated: () => of(true),
-      isUnapprovedTeacher: signal(false),
-      user: signal(null),
-      isCachedUserCurrent: () => true,
-      refreshProfile: () => NEVER,
-    };
-    TestBed.configureTestingModule({
-      imports: [EnhancedLayoutComponent, NoopAnimationsModule, translocoTestingModule()],
-      providers: [
-        provideHttpClient(withXhr()),
-        provideHttpClientTesting(),
-        provideRouter([]),
-        { provide: AuthService, useValue: authStub },
-        {
-          provide: SignalRService,
-          useValue: {
-            startConnection: () => undefined,
-            accessRequestUpdates$: new Subject(),
-            notificationsChanged$: new Subject<void>().asObservable(),
-            directMessageReceived$: directMessageReceived$.asObservable(),
-          },
-        },
-        { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
-        { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
-        {
-          provide: DirectMessageService,
-          useValue: { unreadCount: signal(0).asReadonly(), refreshUnreadCount: dmRefresh, resetUnreadCount: () => undefined },
-        },
-        {
-          provide: NotificationService,
-          useValue: { unreadCount: signal(0).asReadonly(), refreshUnreadCount: () => of(0), resetUnreadCount: () => undefined },
-        },
-        { provide: UserThemeService, useValue: { userTheme$: of(null) } },
-        { provide: ThemeConfigService, useValue: {} },
-      ],
+    beforeEach(() => {
+        vi.useFakeTimers();
     });
-    fixture = TestBed.createComponent(EnhancedLayoutComponent);
-  }
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+    let fixture: ComponentFixture<EnhancedLayoutComponent>;
+    let directMessageReceived$: Subject<{
+        conversationId: number;
+        senderRole: 'Student' | 'Teacher';
+    }>;
+    let dmRefresh: Mock;
 
-  afterEach(() => localStorage.removeItem('user'));
+    function setup(role: 'Student' | 'Teacher'): void {
+        directMessageReceived$ = new Subject();
+        dmRefresh = vi.fn().mockName('refreshUnreadCount').mockReturnValue(of(1));
+        const authStub: Partial<AuthService> = {
+            hasRealmRole: (r: string) => r === role,
+            isAuthenticated: () => of(true),
+            isUnapprovedTeacher: signal(false),
+            user: signal(null),
+            isCachedUserCurrent: () => true,
+            refreshProfile: () => NEVER,
+        };
+        TestBed.configureTestingModule({
+            imports: [EnhancedLayoutComponent, NoopAnimationsModule, translocoTestingModule()],
+            providers: [
+                provideHttpClient(withXhr()),
+                provideHttpClientTesting(),
+                provideRouter([]),
+                { provide: AuthService, useValue: authStub },
+                {
+                    provide: SignalRService,
+                    useValue: {
+                        startConnection: () => undefined,
+                        accessRequestUpdates$: new Subject(),
+                        notificationsChanged$: new Subject<void>().asObservable(),
+                        directMessageReceived$: directMessageReceived$.asObservable(),
+                    },
+                },
+                { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
+                { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
+                {
+                    provide: DirectMessageService,
+                    useValue: { unreadCount: signal(0).asReadonly(), refreshUnreadCount: dmRefresh, resetUnreadCount: () => undefined },
+                },
+                {
+                    provide: NotificationService,
+                    useValue: { unreadCount: signal(0).asReadonly(), refreshUnreadCount: () => of(0), resetUnreadCount: () => undefined },
+                },
+                { provide: UserThemeService, useValue: { userTheme$: of(null) } },
+                { provide: ThemeConfigService, useValue: {} },
+            ],
+        });
+        fixture = TestBed.createComponent(EnhancedLayoutComponent);
+    }
 
-  it('studentPush_RefreshesStudentUnreadCount_Debounced', fakeAsync(() => {
-    setup('Student');
-    fixture.detectChanges();
-    tick();
-    expect(dmRefresh).toHaveBeenCalledTimes(1);
-    expect(dmRefresh).toHaveBeenCalledWith('Student');
+    afterEach(() => localStorage.removeItem('user'));
 
-    directMessageReceived$.next({ conversationId: 5, senderRole: 'Teacher' });
-    directMessageReceived$.next({ conversationId: 5, senderRole: 'Teacher' });
-    tick(EnhancedLayoutComponent.DM_PUSH_REFRESH_DEBOUNCE_MS);
+    it('studentPush_RefreshesStudentUnreadCount_Debounced', async () => {
+        setup('Student');
+        fixture.detectChanges();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(dmRefresh).toHaveBeenCalledTimes(1);
+        expect(dmRefresh).toHaveBeenCalledWith('Student');
 
-    expect(dmRefresh).toHaveBeenCalledTimes(2);
-    fixture.destroy();
-    flush();
-  }));
+        directMessageReceived$.next({ conversationId: 5, senderRole: 'Teacher' });
+        directMessageReceived$.next({ conversationId: 5, senderRole: 'Teacher' });
+        await vi.advanceTimersByTimeAsync(EnhancedLayoutComponent.DM_PUSH_REFRESH_DEBOUNCE_MS);
 
-  it('noPush_DoesNotRefreshAgain', fakeAsync(() => {
-    setup('Student');
-    fixture.detectChanges();
-    tick(EnhancedLayoutComponent.DM_PUSH_REFRESH_DEBOUNCE_MS * 2);
-    expect(dmRefresh).toHaveBeenCalledTimes(1);
-    fixture.destroy();
-    flush();
-  }));
+        expect(dmRefresh).toHaveBeenCalledTimes(2);
+        fixture.destroy();
+        await vi.runAllTimersAsync();
+    });
+
+    it('noPush_DoesNotRefreshAgain', async () => {
+        setup('Student');
+        fixture.detectChanges();
+        await vi.advanceTimersByTimeAsync(EnhancedLayoutComponent.DM_PUSH_REFRESH_DEBOUNCE_MS * 2);
+        expect(dmRefresh).toHaveBeenCalledTimes(1);
+        fixture.destroy();
+        await vi.runAllTimersAsync();
+    });
 });
 
 /** Tüm route ağacındaki tam yollar (`/a/b`), parametreli olanlar dahil. */
 function allRoutePaths(list: Routes, parent = ''): string[] {
-  return list.flatMap((r) => {
-    const own = r.path ? `${parent}/${r.path}` : parent;
-    const self = r.path !== undefined && r.path !== '**' ? [own || '/'] : [];
-    return [...self, ...(r.children ? allRoutePaths(r.children, own) : [])];
-  });
+    return list.flatMap((r) => {
+        const own = r.path ? `${parent}/${r.path}` : parent;
+        const self = r.path !== undefined && r.path !== '**' ? [own || '/'] : [];
+        return [...self, ...(r.children ? allRoutePaths(r.children, own) : [])];
+    });
 }
 
-function layoutProviders(
-  roles: string[],
-  unapprovedTeacher = false,
-  routeConfig: Routes = [],
-  user: UserProfile | null = null
-) {
-  const authStub: Partial<AuthService> = {
-    hasRealmRole: (role: string) => roles.includes(role),
-    isAuthenticated: () => of(true),
-    isUnapprovedTeacher: signal(unapprovedTeacher),
-    user: signal(user),
-  };
-  return [
-    provideRouter(routeConfig),
-    { provide: AuthService, useValue: authStub },
-    { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
-    { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0) } },
-    { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
-    { provide: DirectMessageService, useValue: directMessageStub() },
-    { provide: NotificationService, useValue: { unreadCount: signal(0) } },
-    { provide: UserThemeService, useValue: {} },
-    { provide: ThemeConfigService, useValue: {} },
-  ];
+function layoutProviders(roles: string[], unapprovedTeacher = false, routeConfig: Routes = [], user: UserProfile | null = null) {
+    const authStub: Partial<AuthService> = {
+        hasRealmRole: (role: string) => roles.includes(role),
+        isAuthenticated: () => of(true),
+        isUnapprovedTeacher: signal(unapprovedTeacher),
+        user: signal(user),
+    };
+    return [
+        provideRouter(routeConfig),
+        { provide: AuthService, useValue: authStub },
+        { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
+        { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0) } },
+        { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
+        { provide: DirectMessageService, useValue: directMessageStub() },
+        { provide: NotificationService, useValue: { unreadCount: signal(0) } },
+        { provide: UserThemeService, useValue: {} },
+        { provide: ThemeConfigService, useValue: {} },
+    ];
 }
 
 /** Issue #374 / #373: rotasız ve role uymayan menü öğeleri gizli; her görünür öğenin rotası tanımlı. */
 describe('EnhancedLayoutComponent menu routes (issues #374, #373)', () => {
-  const ROLE_CASES: Array<{ name: string; roles: string[]; unapproved?: boolean }> = [
-    { name: 'Student', roles: ['Student'] },
-    { name: 'Teacher', roles: ['Teacher'] },
-    { name: 'UnapprovedTeacher', roles: ['Teacher'], unapproved: true },
-    { name: 'Admin', roles: ['Admin'] },
-    { name: 'AdminTeacher', roles: ['Admin', 'Teacher'] },
-  ];
+    const ROLE_CASES: Array<{
+        name: string;
+        roles: string[];
+        unapproved?: boolean;
+    }> = [
+        { name: 'Student', roles: ['Student'] },
+        { name: 'Teacher', roles: ['Teacher'] },
+        { name: 'UnapprovedTeacher', roles: ['Teacher'], unapproved: true },
+        { name: 'Admin', roles: ['Admin'] },
+        { name: 'AdminTeacher', roles: ['Admin', 'Teacher'] },
+    ];
 
-  function create(roles: string[], unapproved = false): EnhancedLayoutComponent {
-    TestBed.configureTestingModule({
-      imports: [EnhancedLayoutComponent, translocoTestingModule()],
-      providers: layoutProviders(roles, unapproved),
-    });
-    return TestBed.createComponent(EnhancedLayoutComponent).componentInstance;
-  }
-
-  for (const roleCase of ROLE_CASES) {
-    it(`everyVisibleMenuItem_${roleCase.name}_HasRouteDefinedInAppRoutes`, () => {
-      const component = create(roleCase.roles, roleCase.unapproved);
-      const defined = new Set(allRoutePaths(routes));
-      const items = [...component.visibleMenuItems(), ...component.visibleBottomNavItems()].filter(
-        (i) => i.type === 'menu'
-      );
-
-      expect(items.length).toBeGreaterThan(0);
-      for (const item of items) {
-        expect(defined.has(item.route)).withContext(`${roleCase.name}: ${item.id} -> ${item.route}`).toBeTrue();
-      }
-    });
-
-    it(`visibleMenuItems_${roleCase.name}_HidesItemsWithoutPage`, () => {
-      const component = create(roleCase.roles, roleCase.unapproved);
-      const ids = component.visibleMenuItems().map((i) => i.id);
-      for (const hidden of ['students', 'help', 'feedback']) {
-        expect(ids).withContext(`${roleCase.name}: ${hidden}`).not.toContain(hidden);
-      }
-    });
-  }
-
-  // Issue #417: Ayarlar her rolde görünür; öğrenci kendi sayfasına, öğretmen/admin /settings'e gider.
-  const SETTINGS_CASES: Array<{ name: string; roles: string[]; unapproved?: boolean; route: string }> = [
-    { name: 'Student', roles: ['Student'], route: '/student-profile' },
-    { name: 'Teacher', roles: ['Teacher'], route: '/settings' },
-    { name: 'UnapprovedTeacher', roles: ['Teacher'], unapproved: true, route: '/settings' },
-    { name: 'Admin', roles: ['Admin'], route: '/settings' },
-    { name: 'AdminTeacher', roles: ['Admin', 'Teacher'], route: '/settings' },
-    // Karma rol: guard ile aynı kural (settingsUrlFor) — öğretmenlik /settings'e götürür.
-    { name: 'StudentTeacher', roles: ['Student', 'Teacher'], route: '/settings' },
-  ];
-
-  for (const c of SETTINGS_CASES) {
-    it(`settings_${c.name}_VisibleInSidenavAndBottomNav_WithRoleRoute (issue #417)`, () => {
-      const component = create(c.roles, c.unapproved);
-      for (const items of [component.visibleMenuItems(), component.visibleBottomNavItems()]) {
-        const settings = items.filter((i) => i.id === 'settings');
-        expect(settings.length).withContext(c.name).toBe(1);
-        expect(settings[0].route).withContext(c.name).toBe(c.route);
-      }
-      expect(component.settingsRoute).toBe(c.route);
-    });
-  }
-
-  it('settings_NonStudent_NeverLinksStudentProfile', () => {
-    for (const roles of [['Teacher'], ['Admin']]) {
-      TestBed.resetTestingModule();
-      const other = create(roles);
-      expect(other.visibleMenuItems().map((i) => i.route)).withContext(roles[0]).not.toContain('/student-profile');
-      expect(other.visibleBottomNavItems().map((i) => i.route)).withContext(roles[0]).not.toContain('/student-profile');
+    function create(roles: string[], unapproved = false): EnhancedLayoutComponent {
+        TestBed.configureTestingModule({
+            imports: [EnhancedLayoutComponent, translocoTestingModule()],
+            providers: layoutProviders(roles, unapproved),
+        });
+        return TestBed.createComponent(EnhancedLayoutComponent).componentInstance;
     }
-  });
 
-  it('routes_Settings_UsesSettingsGuardWithoutApprovalGate (issue #417)', () => {
-    const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
-    const route = children.find((r) => r.path === 'settings');
-    expect(route?.canActivate).toContain(settingsGuard);
-    expect(route?.loadComponent).toBeDefined();
-  });
+    for (const roleCase of ROLE_CASES) {
+        it(`everyVisibleMenuItem_${roleCase.name}_HasRouteDefinedInAppRoutes`, () => {
+            const component = create(roleCase.roles, roleCase.unapproved);
+            const defined = new Set(allRoutePaths(routes));
+            const items = [...component.visibleMenuItems(), ...component.visibleBottomNavItems()].filter((i) => i.type === 'menu');
 
-  it('routes_StudentProfile_UsesStudentGuard', () => {
-    const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
-    const route = children.find((r) => r.path === 'student-profile');
-    expect(route?.canActivate).toContain(studentGuard);
-  });
+            expect(items.length).toBeGreaterThan(0);
+            for (const item of items) {
+                expect(defined.has(item.route), `${roleCase.name}: ${item.id} -> ${item.route}`).toBe(true);
+            }
+        });
 
-  it('study_HiddenForStudentInSidenavAndBottomNav (issue #382)', () => {
-    const student = create(['Student']);
+        it(`visibleMenuItems_${roleCase.name}_HidesItemsWithoutPage`, () => {
+            const component = create(roleCase.roles, roleCase.unapproved);
+            const ids = component.visibleMenuItems().map((i) => i.id);
+            for (const hidden of ['students', 'help', 'feedback']) {
+                expect(ids, `${roleCase.name}: ${hidden}`).not.toContain(hidden);
+            }
+        });
+    }
 
-    expect(student.visibleMenuItems().map((i) => i.route)).not.toContain('/study');
-    expect(student.visibleBottomNavItems().map((i) => i.route)).not.toContain('/study');
-    expect(student.visibleMenuItems().map((i) => i.id)).not.toContain('study');
-    expect(student.visibleBottomNavItems().map((i) => i.id)).not.toContain('study');
-  });
+    // Issue #417: Ayarlar her rolde görünür; öğrenci kendi sayfasına, öğretmen/admin /settings'e gider.
+    const SETTINGS_CASES: Array<{
+        name: string;
+        roles: string[];
+        unapproved?: boolean;
+        route: string;
+    }> = [
+        { name: 'Student', roles: ['Student'], route: '/student-profile' },
+        { name: 'Teacher', roles: ['Teacher'], route: '/settings' },
+        { name: 'UnapprovedTeacher', roles: ['Teacher'], unapproved: true, route: '/settings' },
+        { name: 'Admin', roles: ['Admin'], route: '/settings' },
+        { name: 'AdminTeacher', roles: ['Admin', 'Teacher'], route: '/settings' },
+        // Karma rol: guard ile aynı kural (settingsUrlFor) — öğretmenlik /settings'e götürür.
+        { name: 'StudentTeacher', roles: ['Student', 'Teacher'], route: '/settings' },
+    ];
 
-  it('routes_Study_RedirectsToDashboardWithoutRenderingSamplePage (issue #382)', () => {
-    const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
-    const route = children.find((r) => r.path === 'study');
+    for (const c of SETTINGS_CASES) {
+        it(`settings_${c.name}_VisibleInSidenavAndBottomNav_WithRoleRoute (issue #417)`, () => {
+            const component = create(c.roles, c.unapproved);
+            for (const items of [component.visibleMenuItems(), component.visibleBottomNavItems()]) {
+                const settings = items.filter((i) => i.id === 'settings');
+                expect(settings.length, c.name).toBe(1);
+                expect(settings[0].route, c.name).toBe(c.route);
+            }
+            expect(component.settingsRoute).toBe(c.route);
+        });
+    }
 
-    expect(route).toBeDefined();
-    expect(route?.redirectTo).toBe('/dashboard');
-    expect(route?.component).toBeUndefined();
-    expect(route?.loadComponent).toBeUndefined();
-  });
+    it('settings_NonStudent_NeverLinksStudentProfile', () => {
+        for (const roles of [['Teacher'], ['Admin']]) {
+            TestBed.resetTestingModule();
+            const other = create(roles);
+            expect(other.visibleMenuItems().map((i) => i.route), roles[0]).not.toContain('/student-profile');
+            expect(other.visibleBottomNavItems().map((i) => i.route), roles[0]).not.toContain('/student-profile');
+        }
+    });
 
-  it('allRoutePaths_HelperResolvesNestedPaths', () => {
-    const paths = allRoutePaths(routes);
-    expect(paths).toContain('/programs/:id/detail');
-    expect(paths).toContain('/admin/teachers');
-    expect(paths).not.toContain('/help');
-  });
+    it('routes_Settings_UsesSettingsGuardWithoutApprovalGate (issue #417)', () => {
+        const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
+        const route = children.find((r) => r.path === 'settings');
+        expect(route?.canActivate).toContain(settingsGuard);
+        expect(route?.loadComponent).toBeDefined();
+    });
+
+    it('routes_StudentProfile_UsesStudentGuard', () => {
+        const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
+        const route = children.find((r) => r.path === 'student-profile');
+        expect(route?.canActivate).toContain(studentGuard);
+    });
+
+    it('study_HiddenForStudentInSidenavAndBottomNav (issue #382)', () => {
+        const student = create(['Student']);
+
+        expect(student.visibleMenuItems().map((i) => i.route)).not.toContain('/study');
+        expect(student.visibleBottomNavItems().map((i) => i.route)).not.toContain('/study');
+        expect(student.visibleMenuItems().map((i) => i.id)).not.toContain('study');
+        expect(student.visibleBottomNavItems().map((i) => i.id)).not.toContain('study');
+    });
+
+    it('routes_Study_RedirectsToDashboardWithoutRenderingSamplePage (issue #382)', () => {
+        const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
+        const route = children.find((r) => r.path === 'study');
+
+        expect(route).toBeDefined();
+        expect(route?.redirectTo).toBe('/dashboard');
+        expect(route?.component).toBeUndefined();
+        expect(route?.loadComponent).toBeUndefined();
+    });
+
+    it('allRoutePaths_HelperResolvesNestedPaths', () => {
+        const paths = allRoutePaths(routes);
+        expect(paths).toContain('/programs/:id/detail');
+        expect(paths).toContain('/admin/teachers');
+        expect(paths).not.toContain('/help');
+    });
 });
 
 @Component({ standalone: true, changeDetection: ChangeDetectionStrategy.Eager,
- template: '' })
-class ActiveItemStubPageComponent {}
+    template: '' })
+class ActiveItemStubPageComponent {
+}
 
 /** Issue #385: seçili menü öğesi gezinmeden (NavigationEnd) türetilir. */
 describe('EnhancedLayoutComponent active menu item (issue #385)', () => {
-  function create(roles: string[]): EnhancedLayoutComponent {
-    TestBed.configureTestingModule({
-      imports: [EnhancedLayoutComponent, translocoTestingModule()],
-      providers: layoutProviders(roles, false, [{ path: '**', component: ActiveItemStubPageComponent }]),
-    });
-    return TestBed.createComponent(EnhancedLayoutComponent).componentInstance;
-  }
-
-  async function expectActive(component: EnhancedLayoutComponent, cases: Array<[string, string | null]>) {
-    const router = TestBed.inject(Router);
-    for (const [url, expected] of cases) {
-      await router.navigateByUrl(url);
-      expect(component.activeMenuItem()).withContext(url).toBe(expected);
+    function create(roles: string[]): EnhancedLayoutComponent {
+        TestBed.configureTestingModule({
+            imports: [EnhancedLayoutComponent, translocoTestingModule()],
+            providers: layoutProviders(roles, false, [{ path: '**', component: ActiveItemStubPageComponent }]),
+        });
+        return TestBed.createComponent(EnhancedLayoutComponent).componentInstance;
     }
-  }
 
-  it('student_DetailPagesSelectParentItem_AndUnknownPageSelectsNothing', async () => {
-    await expectActive(create(['Student']), [
-      ['/dashboard', 'dashboard'],
-      ['/programs/5/detail', 'programsm'],
-      ['/program-create', 'programsm'],
-      ['/test/12', 'exams'],
-      ['/notifications', null],
-      ['/student-profile', 'settings'],
-    ]);
-  });
+    async function expectActive(component: EnhancedLayoutComponent, cases: Array<[
+        string,
+        string | null
+    ]>) {
+        const router = TestBed.inject(Router);
+        for (const [url, expected] of cases) {
+            await router.navigateByUrl(url);
+            expect(component.activeMenuItem(), url).toBe(expected);
+        }
+    }
 
-  it('teacher_ExamAndQuestionCanvasSelectExamAuthoring', async () => {
-    await expectActive(create(['Teacher']), [
-      ['/exam', 'exam'],
-      ['/exam/3', 'exam'],
-      ['/questioncanvas', 'exam'],
-      ['/test/12', 'exams'],
-      ['/study-pages/new', 'study-pages'],
-      ['/student-profile', null],
-      ['/settings', 'settings'],
-    ]);
-  });
+    it('student_DetailPagesSelectParentItem_AndUnknownPageSelectsNothing', async () => {
+        await expectActive(create(['Student']), [
+            ['/dashboard', 'dashboard'],
+            ['/programs/5/detail', 'programsm'],
+            ['/program-create', 'programsm'],
+            ['/test/12', 'exams'],
+            ['/notifications', null],
+            ['/student-profile', 'settings'],
+        ]);
+    });
 
-  it('beforeAnyNavigation_DoesNotDefaultToDashboard', () => {
-    const component = create(['Student']);
-    expect(component.activeMenuItem()).toBeNull();
-  });
+    it('teacher_ExamAndQuestionCanvasSelectExamAuthoring', async () => {
+        await expectActive(create(['Teacher']), [
+            ['/exam', 'exam'],
+            ['/exam/3', 'exam'],
+            ['/questioncanvas', 'exam'],
+            ['/test/12', 'exams'],
+            ['/study-pages/new', 'study-pages'],
+            ['/student-profile', null],
+            ['/settings', 'settings'],
+        ]);
+    });
+
+    it('beforeAnyNavigation_DoesNotDefaultToDashboard', () => {
+        const component = create(['Student']);
+        expect(component.activeMenuItem()).toBeNull();
+    });
 });
 
 /**
@@ -865,205 +889,205 @@ describe('EnhancedLayoutComponent active menu item (issue #385)', () => {
  * Karma penceresi mobil sorgusuna düşebildiği için her iki düzen de açıkça seçilir.
  */
 function renderedLayoutProviders(roles: string[], mobile: boolean) {
-  const authStub: Partial<AuthService> = {
-    hasRealmRole: (role: string) => roles.includes(role),
-    isAuthenticated: () => of(true),
-    isUnapprovedTeacher: signal(false),
-    isCachedUserCurrent: () => true,
-    refreshProfile: () => NEVER,
-    user: signal(null),
-  };
-  return [
-    { provide: BreakpointObserver, useValue: { observe: () => of({ matches: mobile, breakpoints: {} }) } },
-    provideHttpClient(withXhr()),
-    provideHttpClientTesting(),
-    provideRouter([]),
-    { provide: AuthService, useValue: authStub },
-    {
-      provide: SignalRService,
-      useValue: {
-        startConnection: () => undefined,
-        accessRequestUpdates$: new Subject(),
-        notificationsChanged$: new Subject<void>().asObservable(),
-        directMessageReceived$: new Subject().asObservable(),
-      },
-    },
-    { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
-    { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
-    { provide: DirectMessageService, useValue: directMessageStub() },
-    {
-      provide: NotificationService,
-      useValue: { unreadCount: signal(0).asReadonly(), refreshUnreadCount: () => of(0), resetUnreadCount: () => undefined },
-    },
-    { provide: UserThemeService, useValue: { userTheme$: of(null) } },
-    { provide: ThemeConfigService, useValue: {} },
-  ];
+    const authStub: Partial<AuthService> = {
+        hasRealmRole: (role: string) => roles.includes(role),
+        isAuthenticated: () => of(true),
+        isUnapprovedTeacher: signal(false),
+        isCachedUserCurrent: () => true,
+        refreshProfile: () => NEVER,
+        user: signal(null),
+    };
+    return [
+        { provide: BreakpointObserver, useValue: { observe: () => of({ matches: mobile, breakpoints: {} }) } },
+        provideHttpClient(withXhr()),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: AuthService, useValue: authStub },
+        {
+            provide: SignalRService,
+            useValue: {
+                startConnection: () => undefined,
+                accessRequestUpdates$: new Subject(),
+                notificationsChanged$: new Subject<void>().asObservable(),
+                directMessageReceived$: new Subject().asObservable(),
+            },
+        },
+        { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
+        { provide: StudentSchoolRequestService, useValue: { pendingCount: signal(0), refreshPendingCount: () => of(0) } },
+        { provide: DirectMessageService, useValue: directMessageStub() },
+        {
+            provide: NotificationService,
+            useValue: { unreadCount: signal(0).asReadonly(), refreshUnreadCount: () => of(0), resetUnreadCount: () => undefined },
+        },
+        { provide: UserThemeService, useValue: { userTheme$: of(null) } },
+        { provide: ThemeConfigService, useValue: {} },
+    ];
 }
 
 function renderLayout(roles: string[], mobile: boolean): ComponentFixture<EnhancedLayoutComponent> {
-  TestBed.configureTestingModule({
-    imports: [EnhancedLayoutComponent, NoopAnimationsModule, translocoTestingModule()],
-    providers: renderedLayoutProviders(roles, mobile),
-  });
-  const fixture = TestBed.createComponent(EnhancedLayoutComponent);
-  fixture.detectChanges();
-  return fixture;
+    TestBed.configureTestingModule({
+        imports: [EnhancedLayoutComponent, NoopAnimationsModule, translocoTestingModule()],
+        providers: renderedLayoutProviders(roles, mobile),
+    });
+    const fixture = TestBed.createComponent(EnhancedLayoutComponent);
+    fixture.detectChanges();
+    return fixture;
 }
 
 /** Issue #409: marka adı uygulama kabuğunda kök sözlükteki tek `brand.name` anahtarından gelir. */
 describe('EnhancedLayoutComponent brand name (issue #409)', () => {
-  afterEach(() => localStorage.removeItem('user'));
+    afterEach(() => localStorage.removeItem('user'));
 
-  function text(fixture: ComponentFixture<EnhancedLayoutComponent>, selector: string): string | undefined {
-    return (fixture.nativeElement as HTMLElement).querySelector(selector)?.textContent?.trim();
-  }
+    function text(fixture: ComponentFixture<EnhancedLayoutComponent>, selector: string): string | undefined {
+        return (fixture.nativeElement as HTMLElement).querySelector(selector)?.textContent?.trim();
+    }
 
-  it('desktopSidebarTitle_ShowsBrandNameFromI18n', () => {
-    const fixture = renderLayout(['Student'], false);
-    expect(text(fixture, '.app-title')).toBe('Hedef Okul');
-  });
+    it('desktopSidebarTitle_ShowsBrandNameFromI18n', () => {
+        const fixture = renderLayout(['Student'], false);
+        expect(text(fixture, '.app-title')).toBe('Hedef Okul');
+    });
 
-  it('mobileToolbarTitle_ShowsBrandNameFromI18n', () => {
-    const fixture = renderLayout(['Student'], true);
-    expect(text(fixture, '.mobile-toolbar-title')).toBe('Hedef Okul');
-  });
+    it('mobileToolbarTitle_ShowsBrandNameFromI18n', () => {
+        const fixture = renderLayout(['Student'], true);
+        expect(text(fixture, '.mobile-toolbar-title')).toBe('Hedef Okul');
+    });
 
-  it('brandName_IsSameInEnglish_AndNeverTheOldName', () => {
-    const fixture = renderLayout(['Student'], false);
-    TestBed.inject(TranslocoService).setActiveLang('en');
-    fixture.detectChanges();
-    expect(text(fixture, '.app-title')).toBe('Hedef Okul');
-    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('ExamApp');
-  });
+    it('brandName_IsSameInEnglish_AndNeverTheOldName', () => {
+        const fixture = renderLayout(['Student'], false);
+        TestBed.inject(TranslocoService).setActiveLang('en');
+        fixture.detectChanges();
+        expect(text(fixture, '.app-title')).toBe('Hedef Okul');
+        expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('ExamApp');
+    });
 });
 
 /** Issue #375: profil menüsünde yalnız çalışan öğeler (Ayarlar, Bildirimler, Çıkış). #417: Ayarlar tüm rollerde. */
 describe('EnhancedLayoutComponent profile menu (issue #375)', () => {
-  let fixture: ComponentFixture<EnhancedLayoutComponent>;
+    let fixture: ComponentFixture<EnhancedLayoutComponent>;
 
-  function setup(roles: string[]): void {
-    // Masaüstü düzeni: profil menüsü yalnız masaüstü toolbar'ında.
-    fixture = renderLayout(roles, false);
-  }
-
-  afterEach(() => localStorage.removeItem('user'));
-
-  function openProfileMenu(): HTMLElement[] {
-    const trigger = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.profile-menu');
-    expect(trigger).withContext('profile menu trigger').not.toBeNull();
-    trigger?.click();
-    fixture.detectChanges();
-    return Array.from(document.querySelectorAll<HTMLElement>('.ms-menu-panel .ms-menu-item'));
-  }
-
-  function titles(items: HTMLElement[]): (string | undefined)[] {
-    return items.map((i) => i.querySelector('.ms-item-title')?.textContent?.trim());
-  }
-
-  it('student_SeesSettingsNotificationsAndLogoutOnly', () => {
-    setup(['Student']);
-    const navigateSpy = spyOn(TestBed.inject(Router), 'navigate').and.returnValue(Promise.resolve(true));
-    const items = openProfileMenu();
-
-    expect(titles(items)).toEqual(['Ayarlar', 'Bildirimler', 'Çıkış Yap']);
-    items[0].click();
-    expect(navigateSpy).toHaveBeenCalledWith(['/student-profile'], {});
-  });
-
-  for (const roles of [['Teacher'], ['Admin']]) {
-    it(`${roles[0]}_SeesSettingsNotificationsAndLogout_SettingsOpensSettingsPage (issue #417)`, () => {
-      setup(roles);
-      const navigateSpy = spyOn(TestBed.inject(Router), 'navigate').and.returnValue(Promise.resolve(true));
-      const items = openProfileMenu();
-
-      expect(titles(items)).toEqual(['Ayarlar', 'Bildirimler', 'Çıkış Yap']);
-      items[0].click();
-      expect(navigateSpy).toHaveBeenCalledWith(['/settings'], {});
-    });
-  }
-
-  it('deadProfileHandlers_AreRemoved', () => {
-    setup(['Student']);
-    const component = fixture.componentInstance;
-    for (const handler of ['onProfile', 'onAccountSettings', 'onSupport']) {
-      expect(handler in component).withContext(handler).toBeFalse();
+    function setup(roles: string[]): void {
+        // Masaüstü düzeni: profil menüsü yalnız masaüstü toolbar'ında.
+        fixture = renderLayout(roles, false);
     }
-  });
+
+    afterEach(() => localStorage.removeItem('user'));
+
+    function openProfileMenu(): HTMLElement[] {
+        const trigger = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.profile-menu');
+        expect(trigger, 'profile menu trigger').not.toBeNull();
+        trigger?.click();
+        fixture.detectChanges();
+        return Array.from(document.querySelectorAll<HTMLElement>('.ms-menu-panel .ms-menu-item'));
+    }
+
+    function titles(items: HTMLElement[]): (string | undefined)[] {
+        return items.map((i) => i.querySelector('.ms-item-title')?.textContent?.trim());
+    }
+
+    it('student_SeesSettingsNotificationsAndLogoutOnly', () => {
+        setup(['Student']);
+        const navigateSpy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+        const items = openProfileMenu();
+
+        expect(titles(items)).toEqual(['Ayarlar', 'Bildirimler', 'Çıkış Yap']);
+        items[0].click();
+        expect(navigateSpy).toHaveBeenCalledWith(['/student-profile'], {});
+    });
+
+    for (const roles of [['Teacher'], ['Admin']]) {
+        it(`${roles[0]}_SeesSettingsNotificationsAndLogout_SettingsOpensSettingsPage (issue #417)`, () => {
+            setup(roles);
+            const navigateSpy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+            const items = openProfileMenu();
+
+            expect(titles(items)).toEqual(['Ayarlar', 'Bildirimler', 'Çıkış Yap']);
+            items[0].click();
+            expect(navigateSpy).toHaveBeenCalledWith(['/settings'], {});
+        });
+    }
+
+    it('deadProfileHandlers_AreRemoved', () => {
+        setup(['Student']);
+        const component = fixture.componentInstance;
+        for (const handler of ['onProfile', 'onAccountSettings', 'onSupport']) {
+            expect(handler in component, handler).toBe(false);
+        }
+    });
 });
 
 /** Issue #384: özel ders profili yalnız bağımsız öğretmene; okula bağlı öğretmende menüde yok, rota guard'lı. */
 describe('EnhancedLayoutComponent tutor profile entry (issue #384)', () => {
-  /** Backend kuralı `teacher.isIndependentTutor`; okul kimliği karar vermez. */
-  function teacherProfile(isIndependentTutor: boolean | undefined, schoolId: number | null = null): UserProfile {
-    return {
-      email: '',
-      avatar: '',
-      fullName: '',
-      id: 1,
-      keycloakId: 'k',
-      profileId: 1,
-      role: 'Teacher',
-      teacher: { id: 1, userId: 1, schoolName: '', schoolId, isIndependentTutor },
-    } as UserProfile;
-  }
+    /** Backend kuralı `teacher.isIndependentTutor`; okul kimliği karar vermez. */
+    function teacherProfile(isIndependentTutor: boolean | undefined, schoolId: number | null = null): UserProfile {
+        return {
+            email: '',
+            avatar: '',
+            fullName: '',
+            id: 1,
+            keycloakId: 'k',
+            profileId: 1,
+            role: 'Teacher',
+            teacher: { id: 1, userId: 1, schoolName: '', schoolId, isIndependentTutor },
+        } as UserProfile;
+    }
 
-  function create(roles: string[], user: UserProfile | null, unapproved = false): EnhancedLayoutComponent {
-    TestBed.configureTestingModule({
-      imports: [EnhancedLayoutComponent, translocoTestingModule()],
-      providers: layoutProviders(roles, unapproved, [], user),
-    });
-    return TestBed.createComponent(EnhancedLayoutComponent).componentInstance;
-  }
+    function create(roles: string[], user: UserProfile | null, unapproved = false): EnhancedLayoutComponent {
+        TestBed.configureTestingModule({
+            imports: [EnhancedLayoutComponent, translocoTestingModule()],
+            providers: layoutProviders(roles, unapproved, [], user),
+        });
+        return TestBed.createComponent(EnhancedLayoutComponent).componentInstance;
+    }
 
-  const routesOf = (c: EnhancedLayoutComponent) => c.visibleMenuItems().map((i) => i.route);
+    const routesOf = (c: EnhancedLayoutComponent) => c.visibleMenuItems().map((i) => i.route);
 
-  it('visibleMenuItems_NotIndependentTeacher_HidesTutorProfile', () => {
-    expect(routesOf(create(['Teacher'], teacherProfile(false, 7)))).not.toContain('/tutor-profile');
-  });
-
-  it('visibleMenuItems_NotIndependentUnapprovedTeacher_HidesTutorProfile', () => {
-    expect(routesOf(create(['Teacher'], teacherProfile(false), true))).not.toContain('/tutor-profile');
-  });
-
-  it('visibleMenuItems_IndependentTeacher_ShowsTutorProfile', () => {
-    expect(routesOf(create(['Teacher'], teacherProfile(true)))).toContain('/tutor-profile');
-  });
-
-  it('visibleMenuItems_IndependentFlagWins_OverSchoolId', () => {
-    // Okul kimliği olsa da backend bağımsız diyorsa öğe görünür (tek kural: isIndependentTutor).
-    expect(routesOf(create(['Teacher'], teacherProfile(true, 7)))).toContain('/tutor-profile');
-  });
-
-  it('visibleMenuItems_FlagUnknownOrProfileNotLoaded_ShowsTutorProfile', () => {
-    expect(routesOf(create(['Teacher'], teacherProfile(undefined, 7)))).toContain('/tutor-profile');
-    TestBed.resetTestingModule();
-    expect(routesOf(create(['Teacher'], null))).toContain('/tutor-profile');
-  });
-
-  it('routes_TutorProfile_UsesIndependentTeacherGuard', () => {
-    const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
-    const route = children.find((r) => r.path === 'tutor-profile');
-    expect(route?.canActivate).toContain(independentTeacherGuard);
-  });
-
-  // Issue #418: randevu (müsaitlik + gelen talepler) da bağımsız öğretmen özelliği — aynı kural.
-  for (const route of ['/availability', '/booking-requests']) {
-    it(`visibleMenuItems_NotIndependentTeacher_Hides_${route}`, () => {
-      expect(routesOf(create(['Teacher'], teacherProfile(false, 7)))).not.toContain(route);
+    it('visibleMenuItems_NotIndependentTeacher_HidesTutorProfile', () => {
+        expect(routesOf(create(['Teacher'], teacherProfile(false, 7)))).not.toContain('/tutor-profile');
     });
 
-    it(`visibleMenuItems_IndependentTeacher_Shows_${route}`, () => {
-      expect(routesOf(create(['Teacher'], teacherProfile(true)))).toContain(route);
+    it('visibleMenuItems_NotIndependentUnapprovedTeacher_HidesTutorProfile', () => {
+        expect(routesOf(create(['Teacher'], teacherProfile(false), true))).not.toContain('/tutor-profile');
     });
 
-    it(`visibleMenuItems_FlagUnknown_Shows_${route}`, () => {
-      expect(routesOf(create(['Teacher'], teacherProfile(undefined, 7)))).toContain(route);
+    it('visibleMenuItems_IndependentTeacher_ShowsTutorProfile', () => {
+        expect(routesOf(create(['Teacher'], teacherProfile(true)))).toContain('/tutor-profile');
     });
 
-    it(`routes_${route}_UsesIndependentTeacherGuard`, () => {
-      const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
-      const config = children.find((r) => `/${r.path}` === route);
-      expect(config?.canActivate).toContain(independentTeacherGuard);
+    it('visibleMenuItems_IndependentFlagWins_OverSchoolId', () => {
+        // Okul kimliği olsa da backend bağımsız diyorsa öğe görünür (tek kural: isIndependentTutor).
+        expect(routesOf(create(['Teacher'], teacherProfile(true, 7)))).toContain('/tutor-profile');
     });
-  }
+
+    it('visibleMenuItems_FlagUnknownOrProfileNotLoaded_ShowsTutorProfile', () => {
+        expect(routesOf(create(['Teacher'], teacherProfile(undefined, 7)))).toContain('/tutor-profile');
+        TestBed.resetTestingModule();
+        expect(routesOf(create(['Teacher'], null))).toContain('/tutor-profile');
+    });
+
+    it('routes_TutorProfile_UsesIndependentTeacherGuard', () => {
+        const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
+        const route = children.find((r) => r.path === 'tutor-profile');
+        expect(route?.canActivate).toContain(independentTeacherGuard);
+    });
+
+    // Issue #418: randevu (müsaitlik + gelen talepler) da bağımsız öğretmen özelliği — aynı kural.
+    for (const route of ['/availability', '/booking-requests']) {
+        it(`visibleMenuItems_NotIndependentTeacher_Hides_${route}`, () => {
+            expect(routesOf(create(['Teacher'], teacherProfile(false, 7)))).not.toContain(route);
+        });
+
+        it(`visibleMenuItems_IndependentTeacher_Shows_${route}`, () => {
+            expect(routesOf(create(['Teacher'], teacherProfile(true)))).toContain(route);
+        });
+
+        it(`visibleMenuItems_FlagUnknown_Shows_${route}`, () => {
+            expect(routesOf(create(['Teacher'], teacherProfile(undefined, 7)))).toContain(route);
+        });
+
+        it(`routes_${route}_UsesIndependentTeacherGuard`, () => {
+            const children = routes.find((r) => Array.isArray(r.children))?.children ?? [];
+            const config = children.find((r) => `/${r.path}` === route);
+            expect(config?.canActivate).toContain(independentTeacherGuard);
+        });
+    }
 });

@@ -40,7 +40,7 @@ describe('Angular yükseltmesi (#545)', () => {
       const appRef = await createApplication(appConfig);
       try {
         const zone = appRef.injector.get(NgZone);
-        expect(zone.run(() => NgZone.isInAngularZone())).toBeTrue();
+        expect(zone.run(() => NgZone.isInAngularZone())).toBe(true);
       } finally {
         appRef.destroy();
       }
@@ -63,7 +63,15 @@ describe('Angular yükseltmesi (#545)', () => {
 
     // Angular 22 varsayılanı OnPush; change-detection-eager migration'ı mevcut bileşenlere Eager yazdı.
     it('appComponent_KeepsEagerStrategyFromMigration', () => {
-      expect((AppComponent as unknown as { ɵcmp: { onPush: boolean } }).ɵcmp.onPush).toBeFalse();
+      expect(
+        (
+          AppComponent as unknown as {
+            ɵcmp: {
+              onPush: boolean;
+            };
+          }
+        ).ɵcmp.onPush
+      ).toBe(false);
     });
   });
 });

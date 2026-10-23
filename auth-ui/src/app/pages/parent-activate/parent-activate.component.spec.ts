@@ -1,3 +1,4 @@
+import type { Mock, MockedObject } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Location } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -43,32 +44,38 @@ function sampleChoice(): string {
 }
 
 describe('ParentActivateComponent (issue #440)', () => {
-  let service: jasmine.SpyObj<ParentActivationService>;
-  let location: jasmine.SpyObj<Location>;
-  let redirect: jasmine.Spy;
+  let service: MockedObject<ParentActivationService>;
+  let location: MockedObject<Location>;
+  let redirect: Mock;
 
   beforeEach(() => {
     sessionStorage.removeItem(PARENT_ACTIVATION_PENDING_KEY);
     // Gerçek tam sayfa navigasyonu (giriş) spec'te çalışmasın.
-    redirect = spyOn(ParentActivateComponent.prototype, 'redirect');
+    redirect = vi.spyOn(ParentActivateComponent.prototype, 'redirect').mockReturnValue(undefined);
   });
 
   afterEach(() => sessionStorage.removeItem(PARENT_ACTIVATION_PENDING_KEY));
 
   function create(
-    options: { fragment?: string | null; lookup$?: Observable<ParentActivationLookup>; loggedIn?: boolean } = {}
+    options: {
+      fragment?: string | null;
+      lookup$?: Observable<ParentActivationLookup>;
+      loggedIn?: boolean;
+    } = {}
   ) {
-    service = jasmine.createSpyObj<ParentActivationService>('ParentActivationService', [
-      'lookup',
-      'activate',
-      'resend',
-      'accept',
-    ]);
-    service.lookup.and.returnValue(options.lookup$ ?? of(lookupOf()));
-    service.activate.and.returnValue(NEVER);
-    service.resend.and.returnValue(NEVER);
-    service.accept.and.returnValue(NEVER);
-    location = jasmine.createSpyObj<Location>('Location', ['replaceState']);
+    service = {
+      lookup: vi.fn().mockName('ParentActivationService.lookup'),
+      activate: vi.fn().mockName('ParentActivationService.activate'),
+      resend: vi.fn().mockName('ParentActivationService.resend'),
+      accept: vi.fn().mockName('ParentActivationService.accept'),
+    } as unknown as MockedObject<ParentActivationService>;
+    service.lookup.mockReturnValue(options.lookup$ ?? of(lookupOf()));
+    service.activate.mockReturnValue(NEVER);
+    service.resend.mockReturnValue(NEVER);
+    service.accept.mockReturnValue(NEVER);
+    location = {
+      replaceState: vi.fn().mockName('Location.replaceState'),
+    } as unknown as MockedObject<Location>;
     const fragment = options.fragment === undefined ? `token=${TOKEN}` : options.fragment;
 
     TestBed.configureTestingModule({
@@ -142,7 +149,7 @@ describe('ParentActivateComponent (issue #440)', () => {
     const fixture = create({ lookup$: throwError(() => new HttpErrorResponse({ status: 500 })) });
     expect(q(fixture, '[data-testid="activate-error"]')).not.toBeNull();
 
-    service.lookup.and.returnValue(of(lookupOf()));
+    service.lookup.mockReturnValue(of(lookupOf()));
     (q(fixture, '.default-btn') as HTMLButtonElement).click();
     fixture.detectChanges();
 
@@ -162,7 +169,7 @@ describe('ParentActivateComponent (issue #440)', () => {
     const fixture = create({ lookup$: of(lookupOf({ expired: true, canResend: true })) });
     expect(q(fixture, '[data-testid="activate-expired"]')).not.toBeNull();
 
-    service.resend.and.returnValue(of({ message: 'ok' }));
+    service.resend.mockReturnValue(of({ message: 'ok' }));
     (q(fixture, '[data-testid="activate-resend"]') as HTMLButtonElement).click();
     fixture.detectChanges();
 
@@ -180,14 +187,19 @@ describe('ParentActivateComponent (issue #440)', () => {
 
   it('resend429_ShowsRetryMessage', () => {
     const fixture = create({ lookup$: of(lookupOf({ expired: true, canResend: true })) });
-    service.resend.and.returnValue(
-      throwError(() => new HttpErrorResponse({ status: 429, error: { errorCode: 'ParentInvitationResendLimited', retryAt: null } }))
+    service.resend.mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({ status: 429, error: { errorCode: 'ParentInvitationResendLimited', retryAt: null } })
+      )
     );
 
     fixture.componentInstance.resend();
     fixture.detectChanges();
 
-    expect(q(fixture, '[data-testid="activate-resend-error"]')?.textContent).toContain('Yeniden gönderim sınırına ulaşıldı');
+    expect(q(fixture, '[data-testid="activate-resend-error"]')?.textContent).toContain(
+      'Yeniden gönderim sınırına ulaşıldı'
+    );
   });
 
   it('newParent_RendersPasswordFieldsConsentTextAndPrivacyLink', () => {
@@ -229,7 +241,7 @@ describe('ParentActivateComponent (issue #440)', () => {
     const fixture = create();
     const chosen = sampleChoice();
     fillNewAccount(fixture, chosen, chosen);
-    service.activate.and.returnValue(of({ activated: true, passwordSet: true }));
+    service.activate.mockReturnValue(of({ activated: true, passwordSet: true }));
 
     fixture.componentInstance.submit();
     fixture.detectChanges();
@@ -248,7 +260,7 @@ describe('ParentActivateComponent (issue #440)', () => {
   it('activateTokenUsed409_SwitchesToUsedView', () => {
     const fixture = create();
     fillNewAccount(fixture, sampleChoice(), sampleChoice());
-    service.activate.and.returnValue(
+    service.activate.mockReturnValue(
       throwError(() => new HttpErrorResponse({ status: 409, error: { errorCode: 'ActivationTokenUsed' } }))
     );
 
@@ -261,10 +273,10 @@ describe('ParentActivateComponent (issue #440)', () => {
   it('activateExpired409_ReloadsLookupAndShowsExpired', () => {
     const fixture = create();
     fillNewAccount(fixture, sampleChoice(), sampleChoice());
-    service.activate.and.returnValue(
+    service.activate.mockReturnValue(
       throwError(() => new HttpErrorResponse({ status: 409, error: { errorCode: 'ActivationTokenExpired' } }))
     );
-    service.lookup.and.returnValue(of(lookupOf({ expired: true, canResend: true })));
+    service.lookup.mockReturnValue(of(lookupOf({ expired: true, canResend: true })));
 
     fixture.componentInstance.submit();
     fixture.detectChanges();
@@ -276,9 +288,10 @@ describe('ParentActivateComponent (issue #440)', () => {
     const fixture = create();
     const chosen = sampleChoice();
     fillNewAccount(fixture, chosen, chosen);
-    service.activate.and.returnValue(
+    service.activate.mockReturnValue(
       throwError(
-        () => new HttpErrorResponse({ status: 400, error: { errorCode: 'PasswordRejected', message: 'Şifre çok zayıf.' } })
+        () =>
+          new HttpErrorResponse({ status: 400, error: { errorCode: 'PasswordRejected', message: 'Şifre çok zayıf.' } })
       )
     );
 
@@ -292,15 +305,15 @@ describe('ParentActivateComponent (issue #440)', () => {
   it('activateConsentVersionMismatch_UnchecksConsentAndRefreshesLookup', () => {
     const fixture = create();
     fillNewAccount(fixture, sampleChoice(), sampleChoice());
-    service.activate.and.returnValue(
+    service.activate.mockReturnValue(
       throwError(() => new HttpErrorResponse({ status: 400, error: { errorCode: 'ConsentVersionMismatch' } }))
     );
-    service.lookup.and.returnValue(of(lookupOf({ consentVersion: '2026-11' })));
+    service.lookup.mockReturnValue(of(lookupOf({ consentVersion: '2026-11' })));
 
     fixture.componentInstance.submit();
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.form.controls.consent.value).toBeFalse();
+    expect(fixture.componentInstance.form.controls.consent.value).toBe(false);
     expect(fixture.componentInstance.lookup()?.consentVersion).toBe('2026-11');
     expect(fixture.componentInstance.view()).toBe('form');
   });
@@ -323,9 +336,15 @@ describe('ParentActivateComponent (issue #440)', () => {
 
   // ── #440 güvenlik turu: hesabı olan veli giriş yapıp `accept` ile kabul eder ─────────────────
 
-  const existing = () => lookupOf({ accountExists: true, requiresPasswordSetup: false, kind: 'ExistingParentApproval' });
+  const existing = () =>
+    lookupOf({ accountExists: true, requiresPasswordSetup: false, kind: 'ExistingParentApproval' });
 
-  function storedPending(): { token: string; consentAccepted: boolean; consentVersion: string; createdAt: number } | null {
+  function storedPending(): {
+    token: string;
+    consentAccepted: boolean;
+    consentVersion: string;
+    createdAt: number;
+  } | null {
     const raw = sessionStorage.getItem(PARENT_ACTIVATION_PENDING_KEY);
     return raw ? JSON.parse(raw) : null;
   }
@@ -362,7 +381,7 @@ describe('ParentActivateComponent (issue #440)', () => {
     expect(PARENT_ACTIVATE_LOGIN_URL).toBe('/app/login?returnUrl=%2Fapp%2Fparent-activate');
     expect(PARENT_ACTIVATE_LOGIN_URL).not.toContain(TOKEN);
     expect(storedPending()).toEqual(
-      jasmine.objectContaining({ token: TOKEN, consentAccepted: true, consentVersion: '2026-10' })
+      expect.objectContaining({ token: TOKEN, consentAccepted: true, consentVersion: '2026-10' })
     );
     expect(service.accept).not.toHaveBeenCalled();
   });
@@ -388,7 +407,7 @@ describe('ParentActivateComponent (issue #440)', () => {
     const fixture = create({ fragment: null, lookup$: of(existing()), loggedIn: true });
 
     expect(service.accept).not.toHaveBeenCalled();
-    expect(fixture.componentInstance.form.controls.consent.value).toBeFalse();
+    expect(fixture.componentInstance.form.controls.consent.value).toBe(false);
     expect(storedPending()).toBeNull();
   });
 
@@ -424,7 +443,7 @@ describe('ParentActivateComponent (issue #440)', () => {
   it('alreadyLoggedIn_ConsentThenAcceptDirectly_ShowsAcceptedWithParentPanelLink', () => {
     const fixture = create({ lookup$: of(existing()), loggedIn: true });
     expect(q(fixture, '[data-testid="activate-submit"]')?.textContent).toContain('Daveti Kabul Et');
-    service.accept.and.returnValue(of({ activated: true, passwordSet: false, message: 'ok' }));
+    service.accept.mockReturnValue(of({ activated: true, passwordSet: false, message: 'ok' }));
     fixture.componentInstance.form.controls.consent.setValue(true);
 
     fixture.componentInstance.submit();
@@ -440,7 +459,7 @@ describe('ParentActivateComponent (issue #440)', () => {
   it('activateLoginRequired409_SwitchesToSignInPath_KeepsConsent', () => {
     const fixture = create();
     fillNewAccount(fixture, sampleChoice(), sampleChoice());
-    service.activate.and.returnValue(
+    service.activate.mockReturnValue(
       throwError(() => new HttpErrorResponse({ status: 409, error: { errorCode: 'LoginRequired' } }))
     );
 
@@ -450,21 +469,31 @@ describe('ParentActivateComponent (issue #440)', () => {
     expect(q(fixture, '#parentPassword')).toBeNull();
     expect(q(fixture, '[data-testid="activate-account-exists"]')).not.toBeNull();
     expect(fixture.componentInstance.form.controls.password.value).toBe('');
-    expect(fixture.componentInstance.form.controls.consent.value).toBeTrue();
+    expect(fixture.componentInstance.form.controls.consent.value).toBe(true);
 
     fixture.componentInstance.submit();
     expect(redirect).toHaveBeenCalledWith(PARENT_ACTIVATE_LOGIN_URL);
     expect(storedPending()?.token).toBe(TOKEN);
   });
 
-  const acceptErrors: { name: string; status: number; code?: string; expected: string }[] = [
+  const acceptErrors: {
+    name: string;
+    status: number;
+    code?: string;
+    expected: string;
+  }[] = [
     {
       name: 'EmailMismatch403',
       status: 403,
       code: 'InvitationEmailMismatch',
       expected: 'Bu davet başka bir e-posta adresine gönderildi; davetin geldiği e-postayla giriş yapın.',
     },
-    { name: 'NotParent403', status: 403, code: 'ParentAccountRequired', expected: 'Bu daveti yalnız bir veli hesabı kabul edebilir.' },
+    {
+      name: 'NotParent403',
+      status: 403,
+      code: 'ParentAccountRequired',
+      expected: 'Bu daveti yalnız bir veli hesabı kabul edebilir.',
+    },
     { name: 'Plain403', status: 403, expected: 'Bu daveti kabul etme yetkin yok.' },
     { name: 'StudentLimit409', status: 409, code: 'StudentLimitReached', expected: 'veli sınırına ulaşıldı' },
   ];
@@ -476,10 +505,16 @@ describe('ParentActivateComponent (issue #440)', () => {
         JSON.stringify({ token: TOKEN, consentAccepted: true, consentVersion: '2026-10', createdAt: Date.now() })
       );
       const fixture = create({ fragment: null, lookup$: NEVER, loggedIn: true });
-      service.accept.and.returnValue(
-        throwError(() => new HttpErrorResponse({ status: scenario.status, error: scenario.code ? { errorCode: scenario.code } : null }))
+      service.accept.mockReturnValue(
+        throwError(
+          () =>
+            new HttpErrorResponse({
+              status: scenario.status,
+              error: scenario.code ? { errorCode: scenario.code } : null,
+            })
+        )
       );
-      service.lookup.and.returnValue(of(existing()));
+      service.lookup.mockReturnValue(of(existing()));
       fixture.componentInstance.loadLookup();
       fixture.detectChanges();
 
@@ -490,7 +525,7 @@ describe('ParentActivateComponent (issue #440)', () => {
 
   it('accept401_SessionExpired_KeepsPendingAndRestartsLogin', () => {
     const fixture = create({ lookup$: of(existing()), loggedIn: true });
-    service.accept.and.returnValue(throwError(() => new HttpErrorResponse({ status: 401 })));
+    service.accept.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 401 })));
     fixture.componentInstance.form.controls.consent.setValue(true);
 
     fixture.componentInstance.submit();
@@ -501,7 +536,7 @@ describe('ParentActivateComponent (issue #440)', () => {
 
   it('accept404_InvalidView', () => {
     const fixture = create({ lookup$: of(existing()), loggedIn: true });
-    service.accept.and.returnValue(
+    service.accept.mockReturnValue(
       throwError(() => new HttpErrorResponse({ status: 404, error: { errorCode: 'InvalidActivationToken' } }))
     );
     fixture.componentInstance.form.controls.consent.setValue(true);

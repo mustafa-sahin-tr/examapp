@@ -33,7 +33,7 @@ describe('pkce.util', () => {
   });
 
   it('computeCodeChallenge_InvalidVerifier_Throws', async () => {
-    await expectAsync(computeCodeChallenge('too-short')).toBeRejected();
+    await expect(computeCodeChallenge('too-short')).rejects.toThrow();
   });
 
   it('sha256Fallback_MatchesKnownVectorsAndRfcChallenge', () => {

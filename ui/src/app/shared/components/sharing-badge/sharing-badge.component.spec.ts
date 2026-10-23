@@ -7,50 +7,50 @@ import { translocoTestingModule } from '../../testing/transloco-testing';
 import rootTr from '../../../../../public/i18n/tr.json';
 
 describe('SharingBadgeComponent', () => {
-  let component: SharingBadgeComponent;
-  let fixture: ComponentFixture<SharingBadgeComponent>;
+    let component: SharingBadgeComponent;
+    let fixture: ComponentFixture<SharingBadgeComponent>;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [translocoTestingModule(), SharingBadgeComponent],
-    }).compileComponents();
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            imports: [translocoTestingModule(), SharingBadgeComponent],
+        }).compileComponents();
 
-    fixture = TestBed.createComponent(SharingBadgeComponent);
-    component = fixture.componentInstance;
-    component.teacherSharing = WorksheetTeacherSharing.PublicView;
-    fixture.detectChanges();
-  });
+        fixture = TestBed.createComponent(SharingBadgeComponent);
+        component = fixture.componentInstance;
+        component.teacherSharing = WorksheetTeacherSharing.PublicView;
+        fixture.detectChanges();
+    });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
+    it('should create', () => {
+        expect(component).toBeTruthy();
+    });
 
-  it('should show assignable label for PublicAssignable', () => {
-    component.teacherSharing = WorksheetTeacherSharing.PublicAssignable;
-    fixture.detectChanges();
-    expect(component.label()).toBe('Herkese Açık · Atanabilir');
-    expect(component.visible()).toBe(true);
-  });
+    it('should show assignable label for PublicAssignable', () => {
+        component.teacherSharing = WorksheetTeacherSharing.PublicAssignable;
+        fixture.detectChanges();
+        expect(component.label()).toBe('Herkese Açık · Atanabilir');
+        expect(component.visible()).toBe(true);
+    });
 
-  it('should show view-only label for PublicView', () => {
-    component.teacherSharing = WorksheetTeacherSharing.PublicView;
-    fixture.detectChanges();
-    expect(component.label()).toBe('Herkese Açık · Görüntüleme');
-    expect(component.visible()).toBe(true);
-  });
+    it('should show view-only label for PublicView', () => {
+        component.teacherSharing = WorksheetTeacherSharing.PublicView;
+        fixture.detectChanges();
+        expect(component.label()).toBe('Herkese Açık · Görüntüleme');
+        expect(component.visible()).toBe(true);
+    });
 
-  it('should show school icon and label for SchoolOnly (issue #191)', () => {
-    component.teacherSharing = WorksheetTeacherSharing.SchoolOnly;
-    fixture.detectChanges();
-    expect(component.visible()).toBe(true);
-    expect(component.icon()).toBe('school');
-    expect(component.label()).toBe(rootTr.shared.sharingBadge.schoolOnly);
-  });
+    it('should show school icon and label for SchoolOnly (issue #191)', () => {
+        component.teacherSharing = WorksheetTeacherSharing.SchoolOnly;
+        fixture.detectChanges();
+        expect(component.visible()).toBe(true);
+        expect(component.icon()).toBe('school');
+        expect(component.label()).toBe(rootTr.shared.sharingBadge.schoolOnly);
+    });
 
-  it('should hide the badge for Private and not mislabel it as public', () => {
-    component.teacherSharing = WorksheetTeacherSharing.Private;
-    fixture.detectChanges();
-    expect(component.visible()).toBe(false);
-    expect(component.label()).not.toContain('Herkese Açık');
-  });
+    it('should hide the badge for Private and not mislabel it as public', () => {
+        component.teacherSharing = WorksheetTeacherSharing.Private;
+        fixture.detectChanges();
+        expect(component.visible()).toBe(false);
+        expect(component.label()).not.toContain('Herkese Açık');
+    });
 });

@@ -1,3 +1,4 @@
+import type { MockedObject } from "vitest";
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
@@ -15,126 +16,128 @@ import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import studyPagesTr from '../../../../public/i18n/study-pages/tr.json';
 
 function makePage(overrides: Partial<StudyPage> = {}): StudyPage {
-  return {
-    id: 1,
-    title: 'Baslik',
-    description: '',
-    isPublished: true,
-    createdByUserId: 1,
-    createdByName: 'Ogretmen',
-    createdByRole: 'Teacher',
-    createTime: new Date().toISOString(),
-    contentType: StudyPageContentType.Image,
-    imageCount: 1,
-    images: [],
-    ...overrides,
-  } as StudyPage;
+    return {
+        id: 1,
+        title: 'Baslik',
+        description: '',
+        isPublished: true,
+        createdByUserId: 1,
+        createdByName: 'Ogretmen',
+        createdByRole: 'Teacher',
+        createTime: new Date().toISOString(),
+        contentType: StudyPageContentType.Image,
+        imageCount: 1,
+        images: [],
+        ...overrides,
+    } as StudyPage;
 }
 
 describe('StudyPagesComponent', () => {
-  let component: StudyPagesComponent;
-  let studyPageService: jasmine.SpyObj<StudyPageService>;
+    let component: StudyPagesComponent;
+    let studyPageService: MockedObject<StudyPageService>;
 
-  beforeEach(() => {
-    studyPageService = jasmine.createSpyObj<StudyPageService>('StudyPageService', [
-      'getPaged',
-      'delete',
-    ]);
-    studyPageService.getPaged.and.returnValue(
-      of({ items: [], totalCount: 0, pageNumber: 1, pageSize: 10 })
-    );
+    beforeEach(() => {
+        studyPageService = {
+            getPaged: vi.fn().mockName("StudyPageService.getPaged"),
+            delete: vi.fn().mockName("StudyPageService.delete")
+        } as unknown as MockedObject<StudyPageService>;
+        studyPageService.getPaged.mockReturnValue(of({ items: [], totalCount: 0, pageNumber: 1, pageSize: 10 }));
 
-    const subjectService = jasmine.createSpyObj<SubjectService>('SubjectService', ['loadCategories']);
-    subjectService.loadCategories.and.returnValue(of([]));
+        const subjectService = {
+            loadCategories: vi.fn().mockName("SubjectService.loadCategories")
+        };
+        subjectService.loadCategories.mockReturnValue(of([]));
 
-    TestBed.configureTestingModule({
-      imports: [StudyPagesComponent, translocoTestingModule({
-        langs: { 'study-pages/tr': studyPagesTr },
-        // app.config.ts ile aynı: tireli scope önekleri camelCase'e çevrilmez.
-        translocoConfig: { scopes: { keepCasing: true } },
-      })],
-      providers: [
-        provideHttpClient(withXhr()),
-        provideHttpClientTesting(),
-        provideNoopAnimations(),
-        { provide: StudyPageService, useValue: studyPageService },
-        { provide: SubjectService, useValue: subjectService },
-        { provide: MatDialog, useValue: jasmine.createSpyObj<MatDialog>('MatDialog', ['open']) },
-        { provide: MatSnackBar, useValue: jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']) },
-      ],
+        TestBed.configureTestingModule({
+            imports: [StudyPagesComponent, translocoTestingModule({
+                    langs: { 'study-pages/tr': studyPagesTr },
+                    // app.config.ts ile aynı: tireli scope önekleri camelCase'e çevrilmez.
+                    translocoConfig: { scopes: { keepCasing: true } },
+                })],
+            providers: [
+                provideHttpClient(withXhr()),
+                provideHttpClientTesting(),
+                provideNoopAnimations(),
+                { provide: StudyPageService, useValue: studyPageService },
+                { provide: SubjectService, useValue: subjectService },
+                { provide: MatDialog, useValue: {
+                        open: vi.fn().mockName("MatDialog.open")
+                    } },
+                { provide: MatSnackBar, useValue: {
+                        open: vi.fn().mockName("MatSnackBar.open")
+                    } },
+            ],
+        });
+
+        component = TestBed.createComponent(StudyPagesComponent).componentInstance;
     });
 
-    component = TestBed.createComponent(StudyPagesComponent).componentInstance;
-  });
+    /** Komponent scope'a göreli anahtar döner; sözlükteki karşılığı gerçek `tr.json`'dan okunur. */
+    function translate(relativeKey: string): string {
+        return TestBed.inject(TranslocoService).translate<string>(`study-pages.${relativeKey}`) ?? '';
+    }
 
-  /** Komponent scope'a göreli anahtar döner; sözlükteki karşılığı gerçek `tr.json`'dan okunur. */
-  function translate(relativeKey: string): string {
-    return TestBed.inject(TranslocoService).translate<string>(`study-pages.${relativeKey}`) ?? '';
-  }
-
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-
-  // Kriter 5: her etkinligin tipi ikon/etiketle ayirt edilebiliyor
-  describe('content type badge helpers', () => {
-    it('contentTypeIcon_ImagePage_ReturnsImageIcon', () => {
-      const page = makePage({ contentType: StudyPageContentType.Image });
-      expect(component.contentTypeIcon(page)).toBe('image');
-      expect(translate(component.contentTypeLabelKey(page))).toBe('Görsel');
-      expect(component.isImage(page)).toBeTrue();
-      expect(component.isLink(page)).toBeFalse();
-      expect(component.isBookPageRange(page)).toBeFalse();
+    it('should create', () => {
+        expect(component).toBeTruthy();
     });
 
-    it('contentTypeIcon_LinkPage_ReturnsLinkIcon', () => {
-      const page = makePage({ contentType: StudyPageContentType.Link });
-      expect(component.contentTypeIcon(page)).toBe('link');
-      expect(translate(component.contentTypeLabelKey(page))).toBe('Link');
-      expect(component.isLink(page)).toBeTrue();
-    });
+    // Kriter 5: her etkinligin tipi ikon/etiketle ayirt edilebiliyor
+    describe('content type badge helpers', () => {
+        it('contentTypeIcon_ImagePage_ReturnsImageIcon', () => {
+            const page = makePage({ contentType: StudyPageContentType.Image });
+            expect(component.contentTypeIcon(page)).toBe('image');
+            expect(translate(component.contentTypeLabelKey(page))).toBe('Görsel');
+            expect(component.isImage(page)).toBe(true);
+            expect(component.isLink(page)).toBe(false);
+            expect(component.isBookPageRange(page)).toBe(false);
+        });
 
-    it('contentTypeIcon_BookPageRangePage_ReturnsMenuBookIcon', () => {
-      const page = makePage({ contentType: StudyPageContentType.BookPageRange });
-      expect(component.contentTypeIcon(page)).toBe('menu_book');
-      expect(translate(component.contentTypeLabelKey(page))).toBe('Kitap Sayfası');
-      expect(component.isBookPageRange(page)).toBeTrue();
-    });
+        it('contentTypeIcon_LinkPage_ReturnsLinkIcon', () => {
+            const page = makePage({ contentType: StudyPageContentType.Link });
+            expect(component.contentTypeIcon(page)).toBe('link');
+            expect(translate(component.contentTypeLabelKey(page))).toBe('Link');
+            expect(component.isLink(page)).toBe(true);
+        });
 
-    it('contentTypeIcon_LegacyPageWithoutContentType_TreatsAsImage', () => {
-      const page = makePage({ contentType: undefined as unknown as StudyPageContentType });
-      expect(component.isImage(page)).toBeTrue();
-      expect(component.contentTypeIcon(page)).toBe('image');
-    });
+        it('contentTypeIcon_BookPageRangePage_ReturnsMenuBookIcon', () => {
+            const page = makePage({ contentType: StudyPageContentType.BookPageRange });
+            expect(component.contentTypeIcon(page)).toBe('menu_book');
+            expect(translate(component.contentTypeLabelKey(page))).toBe('Kitap Sayfası');
+            expect(component.isBookPageRange(page)).toBe(true);
+        });
 
-    it('contentTypeClass_EachType_ReturnsMatchingCssClass', () => {
-      expect(component.contentTypeClass(makePage({ contentType: StudyPageContentType.Image }))).toBe('type-image');
-      expect(component.contentTypeClass(makePage({ contentType: StudyPageContentType.Link }))).toBe('type-link');
-      expect(component.contentTypeClass(makePage({ contentType: StudyPageContentType.BookPageRange }))).toBe(
-        'type-book'
-      );
-    });
+        it('contentTypeIcon_LegacyPageWithoutContentType_TreatsAsImage', () => {
+            const page = makePage({ contentType: undefined as unknown as StudyPageContentType });
+            expect(component.isImage(page)).toBe(true);
+            expect(component.contentTypeIcon(page)).toBe('image');
+        });
 
-    it('platformIcon_EbaPlatform_ReturnsSchoolIconAndIsKnownPlatformTrue', () => {
-      const page = makePage({ contentType: StudyPageContentType.Link, platform: StudyPageLinkPlatform.Eba });
-      expect(component.platformIcon(page)).toBe('school');
-      expect(translate(component.platformLabelKey(page))).toBe('EBA');
-      expect(component.isKnownPlatform(page)).toBeTrue();
-    });
+        it('contentTypeClass_EachType_ReturnsMatchingCssClass', () => {
+            expect(component.contentTypeClass(makePage({ contentType: StudyPageContentType.Image }))).toBe('type-image');
+            expect(component.contentTypeClass(makePage({ contentType: StudyPageContentType.Link }))).toBe('type-link');
+            expect(component.contentTypeClass(makePage({ contentType: StudyPageContentType.BookPageRange }))).toBe('type-book');
+        });
 
-    it('platformIcon_YouTubePlatform_ReturnsSmartDisplayIconAndIsKnownPlatformTrue', () => {
-      const page = makePage({ contentType: StudyPageContentType.Link, platform: StudyPageLinkPlatform.YouTube });
-      expect(component.platformIcon(page)).toBe('smart_display');
-      expect(component.isKnownPlatform(page)).toBeTrue();
-    });
+        it('platformIcon_EbaPlatform_ReturnsSchoolIconAndIsKnownPlatformTrue', () => {
+            const page = makePage({ contentType: StudyPageContentType.Link, platform: StudyPageLinkPlatform.Eba });
+            expect(component.platformIcon(page)).toBe('school');
+            expect(translate(component.platformLabelKey(page))).toBe('EBA');
+            expect(component.isKnownPlatform(page)).toBe(true);
+        });
 
-    it('platformIcon_OtherOrMissingPlatform_IsKnownPlatformFalse', () => {
-      const page = makePage({ contentType: StudyPageContentType.Link, platform: StudyPageLinkPlatform.Other });
-      expect(component.isKnownPlatform(page)).toBeFalse();
+        it('platformIcon_YouTubePlatform_ReturnsSmartDisplayIconAndIsKnownPlatformTrue', () => {
+            const page = makePage({ contentType: StudyPageContentType.Link, platform: StudyPageLinkPlatform.YouTube });
+            expect(component.platformIcon(page)).toBe('smart_display');
+            expect(component.isKnownPlatform(page)).toBe(true);
+        });
 
-      const noPlatform = makePage({ contentType: StudyPageContentType.Link, platform: undefined });
-      expect(component.platformIcon(noPlatform)).toBe('link');
-      expect(component.isKnownPlatform(noPlatform)).toBeFalse();
+        it('platformIcon_OtherOrMissingPlatform_IsKnownPlatformFalse', () => {
+            const page = makePage({ contentType: StudyPageContentType.Link, platform: StudyPageLinkPlatform.Other });
+            expect(component.isKnownPlatform(page)).toBe(false);
+
+            const noPlatform = makePage({ contentType: StudyPageContentType.Link, platform: undefined });
+            expect(component.platformIcon(noPlatform)).toBe('link');
+            expect(component.isKnownPlatform(noPlatform)).toBe(false);
+        });
     });
-  });
 });

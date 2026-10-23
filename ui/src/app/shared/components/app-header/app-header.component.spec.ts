@@ -6,23 +6,23 @@ import { provideRouter } from '@angular/router';
 import { AppHeaderComponent } from './app-header.component';
 
 describe('AppHeaderComponent', () => {
-  let component: AppHeaderComponent;
-  let fixture: ComponentFixture<AppHeaderComponent>;
+    let component: AppHeaderComponent;
+    let fixture: ComponentFixture<AppHeaderComponent>;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [AppHeaderComponent],
-      // AuthService HttpClient ister; istekler test denetleyicisinde kalır, ağa çıkılmaz.
-      providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter([])],
-    })
-    .compileComponents();
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            imports: [AppHeaderComponent],
+            // AuthService HttpClient ister; istekler test denetleyicisinde kalır, ağa çıkılmaz.
+            providers: [provideHttpClient(withXhr()), provideHttpClientTesting(), provideRouter([])],
+        })
+            .compileComponents();
 
-    fixture = TestBed.createComponent(AppHeaderComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
+        fixture = TestBed.createComponent(AppHeaderComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
+    it('should create', () => {
+        expect(component).toBeTruthy();
+    });
 });

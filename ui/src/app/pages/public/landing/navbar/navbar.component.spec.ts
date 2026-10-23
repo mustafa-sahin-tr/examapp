@@ -17,81 +17,79 @@ import rootTr from '../../../../../../public/i18n/tr.json';
  * testi kirar.
  */
 const translocoTesting = TranslocoTestingModule.forRoot({
-  langs: {
-    tr: rootTr,
-    en: rootEn,
-    'landing/tr': landingTr,
-    'landing/en': landingEn,
-  },
-  translocoConfig: {
-    availableLangs: [...SUPPORTED_LOCALE_CODES],
-    defaultLang: DEFAULT_LOCALE,
-    reRenderOnLangChange: true,
-  },
-  preloadLangs: true,
+    langs: {
+        tr: rootTr,
+        en: rootEn,
+        'landing/tr': landingTr,
+        'landing/en': landingEn,
+    },
+    translocoConfig: {
+        availableLangs: [...SUPPORTED_LOCALE_CODES],
+        defaultLang: DEFAULT_LOCALE,
+        reRenderOnLangChange: true,
+    },
+    preloadLangs: true,
 });
 
 describe('NavbarComponent', () => {
-  let component: NavbarComponent;
-  let fixture: ComponentFixture<NavbarComponent>;
+    let component: NavbarComponent;
+    let fixture: ComponentFixture<NavbarComponent>;
 
-  function host(): HTMLElement {
-    return fixture.nativeElement as HTMLElement;
-  }
+    function host(): HTMLElement {
+        return fixture.nativeElement as HTMLElement;
+    }
 
-  function navLinkTexts(): string[] {
-    return Array.from(host().querySelectorAll<HTMLElement>('.navbar-nav .nav-link')).map((link) =>
-      (link.textContent ?? '').trim()
-    );
-  }
+    function navLinkTexts(): string[] {
+        return Array.from(host().querySelectorAll<HTMLElement>('.navbar-nav .nav-link')).map((link) => (link.textContent ?? '').trim());
+    }
 
-  beforeEach(async () => {
-    const localePreferenceSpy = jasmine.createSpyObj<LocalePreferenceService>('LocalePreferenceService', [
-      'persistPreference',
-    ]);
-    localePreferenceSpy.persistPreference.and.returnValue(of(undefined));
+    beforeEach(async () => {
+        const localePreferenceSpy = {
+            persistPreference: vi.fn().mockName("LocalePreferenceService.persistPreference")
+        };
+        localePreferenceSpy.persistPreference.mockReturnValue(of(undefined));
 
-    await TestBed.configureTestingModule({
-      imports: [NavbarComponent, translocoTesting],
-      providers: [provideRouter([]), { provide: LocalePreferenceService, useValue: localePreferenceSpy }],
-    }).compileComponents();
+        await TestBed.configureTestingModule({
+            imports: [NavbarComponent, translocoTesting],
+            providers: [provideRouter([]), { provide: LocalePreferenceService, useValue: localePreferenceSpy }],
+        }).compileComponents();
 
-    fixture = TestBed.createComponent(NavbarComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
+        fixture = TestBed.createComponent(NavbarComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+    });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
+    it('should create', () => {
+        expect(component).toBeTruthy();
+    });
 
-  it('logoAlt_ComesFromBrandKey (issue #409)', () => {
-    expect(host().querySelector('.navbar-brand img')?.getAttribute('alt')).toBe(rootTr.brand.name);
-    expect(rootTr.brand.name).toBe('Hedef Okul');
-  });
+    it('logoAlt_ComesFromBrandKey (issue #409)', () => {
+        expect(host().querySelector('.navbar-brand img')?.getAttribute('alt')).toBe(rootTr.brand.name);
+        expect(rootTr.brand.name).toBe('Hedef Okul');
+    });
 
-  it('navLinks_DefaultLocale_RenderTurkishLabels', () => {
-    expect(navLinkTexts()).toContain(landingTr.nav.home);
-    expect(navLinkTexts()).toContain(landingTr.nav.howItWorks);
-    expect(navLinkTexts()).toContain(landingTr.nav.login);
-  });
+    it('navLinks_DefaultLocale_RenderTurkishLabels', () => {
+        expect(navLinkTexts()).toContain(landingTr.nav.home);
+        expect(navLinkTexts()).toContain(landingTr.nav.howItWorks);
+        expect(navLinkTexts()).toContain(landingTr.nav.login);
+    });
 
-  it('navLinks_LocaleSwitchedToEnglish_RenderEnglishLabels', () => {
-    TestBed.inject(TranslocoService).setActiveLang('en');
-    fixture.detectChanges();
+    it('navLinks_LocaleSwitchedToEnglish_RenderEnglishLabels', () => {
+        TestBed.inject(TranslocoService).setActiveLang('en');
+        fixture.detectChanges();
 
-    expect(navLinkTexts()).toContain(landingEn.nav.home);
-    expect(navLinkTexts()).toContain(landingEn.nav.howItWorks);
-    expect(navLinkTexts()).toContain(landingEn.nav.login);
-  });
+        expect(navLinkTexts()).toContain(landingEn.nav.home);
+        expect(navLinkTexts()).toContain(landingEn.nav.howItWorks);
+        expect(navLinkTexts()).toContain(landingEn.nav.login);
+    });
 
-  it('toggler_Rendered_UsesTranslatedAriaLabel', () => {
-    const toggler = host().querySelector('.navbar-toggler') as HTMLElement;
+    it('toggler_Rendered_UsesTranslatedAriaLabel', () => {
+        const toggler = host().querySelector('.navbar-toggler') as HTMLElement;
 
-    expect(toggler.getAttribute('aria-label')).toBe(landingTr.nav.toggleMenu);
-  });
+        expect(toggler.getAttribute('aria-label')).toBe(landingTr.nav.toggleMenu);
+    });
 
-  it('languageSwitcher_Rendered_IsPartOfTheLandingNavbar', () => {
-    expect(host().querySelector('app-language-switcher')).not.toBeNull();
-  });
+    it('languageSwitcher_Rendered_IsPartOfTheLandingNavbar', () => {
+        expect(host().querySelector('app-language-switcher')).not.toBeNull();
+    });
 });

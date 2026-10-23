@@ -1,3 +1,4 @@
+import type { MockedObject } from "vitest";
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
@@ -8,85 +9,85 @@ import { ColorScheme, ColorSchemeService } from '../../../services/color-scheme.
 import { translocoTestingModule } from '../../testing/transloco-testing';
 
 describe('ColorSchemeToggleComponent', () => {
-  let component: ColorSchemeToggleComponent;
-  let fixture: ComponentFixture<ColorSchemeToggleComponent>;
-  let colorSchemeServiceSpy: jasmine.SpyObj<ColorSchemeService>;
-  let schemeSignal: ReturnType<typeof signal<ColorScheme>>;
+    let component: ColorSchemeToggleComponent;
+    let fixture: ComponentFixture<ColorSchemeToggleComponent>;
+    let colorSchemeServiceSpy: MockedObject<ColorSchemeService>;
+    let schemeSignal: ReturnType<typeof signal<ColorScheme>>;
 
-  beforeEach(async () => {
-    schemeSignal = signal<ColorScheme>('dark');
-    colorSchemeServiceSpy = jasmine.createSpyObj<ColorSchemeService>('ColorSchemeService', [
-      'setScheme',
-      'toggle',
-    ]);
-    Object.defineProperty(colorSchemeServiceSpy, 'colorScheme', {
-      value: schemeSignal.asReadonly(),
+    beforeEach(async () => {
+        schemeSignal = signal<ColorScheme>('dark');
+        colorSchemeServiceSpy = {
+            setScheme: vi.fn().mockName("ColorSchemeService.setScheme"),
+            toggle: vi.fn().mockName("ColorSchemeService.toggle")
+        } as unknown as MockedObject<ColorSchemeService>;
+        Object.defineProperty(colorSchemeServiceSpy, 'colorScheme', {
+            value: schemeSignal.asReadonly(),
+        });
+
+        await TestBed.configureTestingModule({
+            imports: [translocoTestingModule(), ColorSchemeToggleComponent],
+            providers: [{ provide: ColorSchemeService, useValue: colorSchemeServiceSpy }],
+        }).compileComponents();
+
+        fixture = TestBed.createComponent(ColorSchemeToggleComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
     });
 
-    await TestBed.configureTestingModule({
-      imports: [translocoTestingModule(), ColorSchemeToggleComponent],
-      providers: [{ provide: ColorSchemeService, useValue: colorSchemeServiceSpy }],
-    }).compileComponents();
+    it('should create', () => {
+        expect(component).toBeTruthy();
+    });
 
-    fixture = TestBed.createComponent(ColorSchemeToggleComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
+    it('isLight_CurrentSchemeIsDark_ReturnsFalse', () => {
+        expect(component.isLight()).toBe(false);
+    });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
+    it('isLight_CurrentSchemeIsLight_ReturnsTrue', () => {
+        schemeSignal.set('light');
+        fixture.detectChanges();
 
-  it('isLight_CurrentSchemeIsDark_ReturnsFalse', () => {
-    expect(component.isLight()).toBeFalse();
-  });
+        expect(component.isLight()).toBe(true);
+    });
 
-  it('isLight_CurrentSchemeIsLight_ReturnsTrue', () => {
-    schemeSignal.set('light');
-    fixture.detectChanges();
+    it('tooltip_CurrentSchemeIsDark_SuggestsSwitchingToLight', () => {
+        expect(component.tooltip()).toBe('Açık temaya geç');
+    });
 
-    expect(component.isLight()).toBeTrue();
-  });
+    it('tooltip_CurrentSchemeIsLight_SuggestsSwitchingToDark', () => {
+        schemeSignal.set('light');
+        fixture.detectChanges();
 
-  it('tooltip_CurrentSchemeIsDark_SuggestsSwitchingToLight', () => {
-    expect(component.tooltip()).toBe('Açık temaya geç');
-  });
+        expect(component.tooltip()).toBe('Koyu temaya geç');
+    });
 
-  it('tooltip_CurrentSchemeIsLight_SuggestsSwitchingToDark', () => {
-    schemeSignal.set('light');
-    fixture.detectChanges();
+    it('toggle_Called_DelegatesToColorSchemeServiceToggle', () => {
+        component.toggle();
 
-    expect(component.tooltip()).toBe('Koyu temaya geç');
-  });
+        expect(colorSchemeServiceSpy.toggle).toHaveBeenCalledTimes(1);
+        expect(colorSchemeServiceSpy.setScheme).not.toHaveBeenCalled();
+    });
 
-  it('toggle_Called_DelegatesToColorSchemeServiceToggle', () => {
-    component.toggle();
+    it('slideToggleChange_UserInteractsWithSlideToggle_CallsComponentToggle', () => {
+        const slideToggleDebugEl = fixture.debugElement.query(By.directive(MatSlideToggle));
+        const slideToggle = slideToggleDebugEl.componentInstance as MatSlideToggle;
 
-    expect(colorSchemeServiceSpy.toggle).toHaveBeenCalledTimes(1);
-    expect(colorSchemeServiceSpy.setScheme).not.toHaveBeenCalled();
-  });
+        slideToggle.change.emit({ source: slideToggle, checked: true } as never);
 
-  it('slideToggleChange_UserInteractsWithSlideToggle_CallsComponentToggle', () => {
-    const slideToggleDebugEl = fixture.debugElement.query(By.directive(MatSlideToggle));
-    const slideToggle = slideToggleDebugEl.componentInstance as MatSlideToggle;
+        expect(colorSchemeServiceSpy.toggle).toHaveBeenCalledTimes(1);
+    });
 
-    slideToggle.change.emit({ source: slideToggle, checked: true } as never);
+    it('slideToggle_CurrentSchemeIsDark_HasAriaLabelReflectingSwitchToLight', () => {
+        const btn = fixture.nativeElement.querySelector('mat-slide-toggle button') as HTMLElement;
 
-    expect(colorSchemeServiceSpy.toggle).toHaveBeenCalledTimes(1);
-  });
+        expect(btn.getAttribute('aria-label')).toBe('Açık temaya geç');
+    });
 
-  it('slideToggle_CurrentSchemeIsDark_HasAriaLabelReflectingSwitchToLight', () => {
-    const btn = fixture.nativeElement.querySelector('mat-slide-toggle button') as HTMLElement;
+    it('slideToggle_CurrentSchemeIsLight_HasAriaLabelReflectingSwitchToDark', () => {
+        schemeSignal.set('light');
+        fixture.detectChanges();
 
-    expect(btn.getAttribute('aria-label')).toBe('Açık temaya geç');
-  });
+        const btn = fixture.nativeElement.querySelector('mat-slide-toggle button') as HTMLElement;
 
-  it('slideToggle_CurrentSchemeIsLight_HasAriaLabelReflectingSwitchToDark', () => {
-    schemeSignal.set('light');
-    fixture.detectChanges();
-
-    const btn = fixture.nativeElement.querySelector('mat-slide-toggle button') as HTMLElement;
-
-    expect(btn.getAttribute('aria-label')).toBe('Koyu temaya geç');
-  });
+        expect(btn.getAttribute('aria-label')).toBe('Koyu temaya geç');
+    });
 });

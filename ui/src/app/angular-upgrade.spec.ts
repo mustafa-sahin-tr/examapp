@@ -17,7 +17,6 @@ import { of } from 'rxjs';
 
 import { AppComponent } from './app.component';
 import { appConfig } from './app.config';
-import { config as serverConfig } from './app.config.server';
 
 /**
  * Issue #545 — Angular major yükseltmelerinin (19 → 20 → 21 → 22) bizim koda dokunan kırıcı değişiklikleri.
@@ -170,6 +169,10 @@ describe('Angular yükseltmesi (#545)', () => {
         });
 
         it('serverAppConfig_KeepsZoneChangeDetection', async () => {
+            // `app.config.server` yüklenirken `provideServerRendering()` global `ngServerMode = true` yapıyor; dosyalar
+            // aynı tarayıcı bağlamında koştuğu için (isolate: false) sonraki dosyalarda `afterNextRender` no-op oluyordu.
+            // Statik import yerine burada yükle; global'i test-setup.ts geri alıyor.
+            const { config: serverConfig } = await import('./app.config.server');
             expect(await isZoneBased(serverConfig)).toBe(true);
         });
 

@@ -15,7 +15,11 @@
     "invalidRoute": "Invalid lesson address.",
     "roomUnavailable": "The meeting room could not be opened.",
     "addressUnverified": "The meeting address could not be verified.",
-    "teacherUnavailable": "Your teacher is temporarily unavailable; this lesson cannot be started right now."
+    "teacherUnavailable": "Your teacher is temporarily unavailable; this lesson cannot be started right now.",
+    "bookingCancelled": "This lesson was cancelled; the call was closed.",
+    "windowClosed": "The lesson time is over; the call was closed.",
+    "sessionEnded": "Your access to this lesson ended; the call was closed.",
+    "statusUnverified": "The lesson status could not be verified; the call was closed for safety. Please try again."
   },
   "tabs": {
     "label": "Lesson view",

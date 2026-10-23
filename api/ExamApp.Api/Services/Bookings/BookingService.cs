@@ -1315,6 +1315,34 @@ public partial class BookingService : IBookingService
         };
     }
 
+    /// <summary>
+    /// issue #320. Sınır (bilinçli): istemci tarafı uygulama — Jitsi JWT'si yalnız katılımda doğrulanır; yoklamayı yok sayan bir
+    /// istemci token süresi dolana kadar odada kalabilir. Sunucu tarafı oda kapatma takip issue'sunda.
+    /// </summary>
+    public async Task<LiveSessionStatusDto> GetLiveSessionStatusAsync(int callerUserId, int bookingId, CancellationToken ct = default)
+    {
+        var access = await GetLiveSessionAccessAsync(callerUserId, bookingId, ct);
+        return access.Denial switch
+        {
+            // Taraf olmayana da 404 (security review #320): randevu id'sinin varlığı sızdırılmaz.
+            BookingLiveSessionDenial.NotFound or BookingLiveSessionDenial.NotParticipant => new LiveSessionStatusDto
+                { Success = false, NotFound = true, Message = _localizer["booking.video.bookingNotFound"] },
+            BookingLiveSessionDenial.None => new LiveSessionStatusDto { Success = true, Active = true },
+            var denial => new LiveSessionStatusDto
+            {
+                Success = true,
+                Active = false,
+                ErrorCode = denial switch
+                {
+                    BookingLiveSessionDenial.TeacherUnavailable => LiveSessionStatusCodes.TeacherUnavailable,
+                    BookingLiveSessionDenial.NotApproved => LiveSessionStatusCodes.BookingNotApproved,
+                    BookingLiveSessionDenial.WindowNotOpen => LiveSessionStatusCodes.WindowNotOpen,
+                    _ => LiveSessionStatusCodes.WindowClosed
+                }
+            }
+        };
+    }
+
     private static VideoSessionResultDto VideoFail(
         string message, bool notFound = false, bool forbidden = false, bool conflict = false, string? errorCode = null)
         => new()

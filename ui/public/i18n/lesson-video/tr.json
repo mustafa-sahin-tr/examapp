@@ -15,7 +15,11 @@
     "invalidRoute": "Geçersiz ders adresi.",
     "roomUnavailable": "Görüşme odası açılamadı.",
     "addressUnverified": "Görüşme adresi doğrulanamadı.",
-    "teacherUnavailable": "Öğretmeniniz geçici olarak müsait değil; bu ders şu anda başlatılamıyor."
+    "teacherUnavailable": "Öğretmeniniz geçici olarak müsait değil; bu ders şu anda başlatılamıyor.",
+    "bookingCancelled": "Bu ders iptal edildi; görüşme kapatıldı.",
+    "windowClosed": "Ders süresi doldu; görüşme kapatıldı.",
+    "sessionEnded": "Bu derse erişiminiz sona erdi; görüşme kapatıldı.",
+    "statusUnverified": "Ders durumu doğrulanamadı; görüşme güvenlik için kapatıldı. Tekrar deneyin."
   },
   "tabs": {
     "label": "Ders görünümü",

@@ -3,6 +3,7 @@ using System.Text.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Bookings;
+using ExamApp.Api.Models.Dtos.Video;
 using ExamApp.Api.Services.Bookings;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Video;
@@ -1081,6 +1082,85 @@ public class BookingLifecycleTests : IDisposable
         // Bayat öneri yine reddedilebilir (yeni öneriye yer açılır).
         (await WithServiceAsync(s => s.RespondRescheduleAsync(StudentUserId, id, false))).Success.ShouldBeTrue();
         (await BookingAsync(id)).ProposedSlotId.ShouldBeNull();
+    }
+
+    // ------------------------------------------------------------------
+    // issue #320: açık görüşmenin periyodik durum yoklaması (live-status)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetLiveSessionStatusAsync_WithinWindow_IsActive()
+    {
+        var w = await SeedAsync();
+        var id = await ApprovedAsync(w.SlotId);
+        _clock.Now = LessonStartUtc.AddMinutes(10);
+
+        var status = await WithServiceAsync(s => s.GetLiveSessionStatusAsync(StudentUserId, id));
+
+        status.Success.ShouldBeTrue();
+        status.Active.ShouldBeTrue();
+        status.ErrorCode.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetLiveSessionStatusAsync_TeacherSuspendedDuringLesson_IsInactiveWithTeacherUnavailable()
+    {
+        var w = await SeedAsync();
+        var id = await ApprovedAsync(w.SlotId);
+        _clock.Now = LessonStartUtc.AddMinutes(10);
+        await using (var ctx = _db.NewContext())
+        {
+            var teacher = await ctx.Teachers.SingleAsync(t => t.Id == w.TeacherId);
+            teacher.AccountSuspendedAt = Now;
+            await ctx.SaveChangesAsync();
+        }
+
+        var status = await WithServiceAsync(s => s.GetLiveSessionStatusAsync(StudentUserId, id));
+
+        status.Success.ShouldBeTrue();
+        status.Active.ShouldBeFalse();
+        status.ErrorCode.ShouldBe(LiveSessionStatusCodes.TeacherUnavailable);
+    }
+
+    [Fact]
+    public async Task GetLiveSessionStatusAsync_CancelledBooking_IsInactiveWithBookingNotApproved()
+    {
+        var w = await SeedAsync();
+        var id = await ApprovedAsync(w.SlotId);
+        (await WithServiceAsync(s => s.CancelBookingAsync(TeacherUserId, id, null))).Success.ShouldBeTrue();
+        _clock.Now = LessonStartUtc.AddMinutes(10);
+
+        var status = await WithServiceAsync(s => s.GetLiveSessionStatusAsync(StudentUserId, id));
+
+        status.Active.ShouldBeFalse();
+        status.ErrorCode.ShouldBe(LiveSessionStatusCodes.BookingNotApproved);
+    }
+
+    [Fact]
+    public async Task GetLiveSessionStatusAsync_AfterWindow_IsInactiveWithWindowClosed()
+    {
+        var w = await SeedAsync();
+        var id = await ApprovedAsync(w.SlotId);
+        _clock.Now = LessonEndUtc.AddMinutes(31);
+
+        var status = await WithServiceAsync(s => s.GetLiveSessionStatusAsync(TeacherUserId, id));
+
+        status.Active.ShouldBeFalse();
+        status.ErrorCode.ShouldBe(LiveSessionStatusCodes.WindowClosed);
+    }
+
+    [Fact]
+    public async Task GetLiveSessionStatusAsync_NonParticipant_IsForbidden_AndUnknownBookingNotFound()
+    {
+        var w = await SeedAsync();
+        var id = await ApprovedAsync(w.SlotId);
+
+        var stranger = await WithServiceAsync(s => s.GetLiveSessionStatusAsync(OtherStudentUserId, id));
+        stranger.Success.ShouldBeFalse();
+        stranger.NotFound.ShouldBeTrue(); // taraf olmayana da 404 (varlık sızdırılmaz)
+
+        var missing = await WithServiceAsync(s => s.GetLiveSessionStatusAsync(StudentUserId, 999_999));
+        missing.NotFound.ShouldBeTrue();
     }
 }
 

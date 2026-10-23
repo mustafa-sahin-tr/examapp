@@ -169,4 +169,55 @@ public class BookingLifecycleEndpointsTests(IntegrationApiFactory factory) : Int
         accepted.NewEndTime.ShouldBe(new TimeOnly(15, 0));
         accepted.Parents.Select(p => p.ParentUserId).ShouldBe(new[] { w.ParentUserId });
     }
+
+    [Fact]
+    public async Task Live_status_reports_cancellation_and_hides_bookings_from_strangers_issue_320()
+    {
+        var w = await SeedAsync();
+        var id = await ApprovedBookingAsync(w);
+        var student = await StudentAsync(w.StudentUserId);
+        var teacher = await TeacherAsync(w.TeacherUserId);
+
+        // Ders 10 gün sonra: pencere henüz açık değil (token üretilmez, yalnız durum).
+        var before = await student.GetAsync($"/api/booking/requests/{id}/live-status");
+        before.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var beforeJson = await JsonAsync(before);
+        beforeJson.GetProperty("active").GetBoolean().ShouldBeFalse();
+        beforeJson.GetProperty("errorCode").GetString().ShouldBe("WindowNotOpen");
+
+        (await teacher.PostAsJsonAsync($"/api/booking/requests/{id}/cancel", new { reason = (string?)null }))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var after = await JsonAsync(await student.GetAsync($"/api/booking/requests/{id}/live-status"));
+        after.GetProperty("active").GetBoolean().ShouldBeFalse();
+        after.GetProperty("errorCode").GetString().ShouldBe("BookingNotApproved");
+
+        var stranger = await StudentAsync(NewUserId());
+        (await stranger.GetAsync($"/api/booking/requests/{id}/live-status")).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Live_status_after_teacher_suspension_ends_the_call_for_both_sides_issue_320()
+    {
+        var w = await SeedAsync();
+        var id = await ApprovedBookingAsync(w);
+        var student = await StudentAsync(w.StudentUserId);
+        var teacher = await TeacherAsync(w.TeacherUserId);
+        (await teacher.GetAsync($"/api/booking/requests/{id}/live-status")).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        await WithDbAsync(async db =>
+        {
+            var t = await db.Teachers.SingleAsync(x => x.UserId == w.TeacherUserId);
+            t.AccountSuspendedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+        });
+
+        // Öğrenci: nötr TeacherUnavailable (pencere kontrolünden önce gelir).
+        var studentStatus = await JsonAsync(await student.GetAsync($"/api/booking/requests/{id}/live-status"));
+        studentStatus.GetProperty("active").GetBoolean().ShouldBeFalse();
+        studentStatus.GetProperty("errorCode").GetString().ShouldBe("TeacherUnavailable");
+
+        // Askıdaki öğretmenin kendi yoklaması ApprovedTeacher policy'sinde 403 → istemci görüşmeyi kapatır.
+        (await teacher.GetAsync($"/api/booking/requests/{id}/live-status")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
 }

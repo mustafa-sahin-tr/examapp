@@ -342,6 +342,24 @@ public class BookingController : BaseController
         return result.Success ? Ok(result) : MapFailure(result);
     }
 
+    /// <summary>
+    /// issue #320: açık görüşme sayfasının periyodik yoklaması — token üretmez. <c>active=false</c> (askı, iptal, pencere
+    /// kapandı) gelince istemci Jitsi'yi kapatır. Askıdaki öğretmenin kendisi ApprovedTeacher policy'sinde 403
+    /// <c>TeacherNotApproved</c> alır; istemci bunu da sonlanma sayar.
+    /// </summary>
+    [HttpGet("requests/{id:int}/live-status")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)]
+    [Authorize(Roles = "Teacher,Student")]
+    public async Task<IActionResult> GetLiveSessionStatus(int id, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return UserNotResolved(_localizer["booking.unauthorized"].Value);
+
+        var result = await _bookingService.GetLiveSessionStatusAsync(user.Id, id, ct);
+        return result.Success ? Ok(result) : MapFailure(result);
+    }
+
     /// <summary>ResponseBaseDto bayraklarını HTTP koduna çevirir (404 / 403 / 409 / 400).</summary>
     private IActionResult MapFailure(ResponseBaseDto result)
     {

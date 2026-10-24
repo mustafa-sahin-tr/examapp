@@ -1,8 +1,6 @@
 using System;
 using System.Text.RegularExpressions;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
-using SixLabors.ImageSharp.PixelFormats;
+using SkiaSharp;
 
 namespace ExamApp.Api.Helpers;
 
@@ -29,39 +27,24 @@ public class ImageHelper
     // CropImage: Crops the given image bytes using the provided rectangle and returns the cropped image bytes.
     public byte[] CropImage(byte[] imageBytes, int x, int y, int width, int height)
     {
-        using var inputStream = new MemoryStream(imageBytes);
-        using var image = Image.Load<Rgba32>(inputStream);
-        image.Mutate(ctx => ctx.Crop(new SixLabors.ImageSharp.Rectangle(x, y, width, height)));
-        using var outputStream = new MemoryStream();
-        image.Save(outputStream, GetEncoder(image));
-        return outputStream.ToArray();
+        using var image = SkiaImaging.DecodeOriented(imageBytes, out var format);
+        var rect = SKRectI.Create(x, y, width, height);
+        if (width <= 0 || height <= 0 || !SKRectI.Create(0, 0, image.Width, image.Height).Contains(rect))
+            throw new ArgumentOutOfRangeException(nameof(imageBytes), "Crop rectangle must lie within the image.");
+
+        using var cropped = SkiaImaging.CropResize(image, rect, width, height);
+        return SkiaImaging.Encode(cropped, format);
     }
 
     public async Task<Stream?> ResizeImageAsync(Stream imageStream, double scale)
     {
-        // Cross-platform implementation using ImageSharp
-        using var image = await Image.LoadAsync<Rgba32>(imageStream);
+        using var buffer = new MemoryStream();
+        await imageStream.CopyToAsync(buffer);
+        using var image = SkiaImaging.DecodeOriented(buffer.ToArray(), out var format);
         int newWidth = (int)(image.Width * scale);
         int newHeight = (int)(image.Height * scale);
 
-        image.Mutate(x => x.Resize(newWidth, newHeight));
-        var outputStream = new MemoryStream();
-        await image.SaveAsync(outputStream, GetEncoder(image));
-        outputStream.Position = 0;
-        return outputStream;
-    }
-    
-    private static SixLabors.ImageSharp.Formats.IImageEncoder GetEncoder(Image<Rgba32> image)
-    {
-        var format = image.Metadata.DecodedImageFormat?.Name?.ToLowerInvariant();
-        return format switch
-        {
-            "jpeg" or "jpg" => new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder(),
-            "png" => new SixLabors.ImageSharp.Formats.Png.PngEncoder(),
-            "gif" => new SixLabors.ImageSharp.Formats.Gif.GifEncoder(),
-            "bmp" => new SixLabors.ImageSharp.Formats.Bmp.BmpEncoder(),
-            "webp" => new SixLabors.ImageSharp.Formats.Webp.WebpEncoder(),
-            _ => new SixLabors.ImageSharp.Formats.Png.PngEncoder()
-        };
+        using var resized = SkiaImaging.CropResize(image, SKRectI.Create(0, 0, image.Width, image.Height), newWidth, newHeight);
+        return new MemoryStream(SkiaImaging.Encode(resized, format));
     }
 }

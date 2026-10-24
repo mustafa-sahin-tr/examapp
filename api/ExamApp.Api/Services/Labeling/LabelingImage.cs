@@ -1,19 +1,15 @@
 using System;
 using System.IO;
+using System.Drawing;
 using System.Security.Cryptography;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats;
-using SixLabors.ImageSharp.Formats.Jpeg;
-using SixLabors.ImageSharp.Memory;
-using SixLabors.ImageSharp.Metadata.Profiles.Exif;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using ExamApp.Api.Helpers;
+using SkiaSharp;
 
 namespace ExamApp.Api.Services.Labeling;
 
 /// <summary>
 /// İşaretleme görselinin çözülmüş hali: SHA-256 (ham baytlar — question-detector <c>content_id</c> ile aynı girdi) ve
-/// Claude'a gidecek küçültülmüş JPEG'ler. <see cref="Dispose"/> ImageSharp tamponunu bırakır.
+/// Claude'a gidecek küçültülmüş JPEG'ler. <see cref="Dispose"/> Skia bitmap'ini bırakır.
 /// </summary>
 public sealed class LabelingImage : IDisposable
 {
@@ -22,18 +18,16 @@ public sealed class LabelingImage : IDisposable
 
     /// <summary>
     /// Piksel sınırları — küçük bir dosya devasa boyut bildirip belleği tüketmesin (decompression bomb). Başlık
-    /// <see cref="Image.Identify(DecoderOptions, ReadOnlySpan{byte})"/> ile okunur, sınır aşılırsa görsel hiç çözülmez.
+    /// <see cref="SkiaImaging.ReadHeader"/> ile okunur, sınır aşılırsa görsel hiç çözülmez.
     /// </summary>
     public const long MaxPixels = 40_000_000;
 
     public const int MaxEdge = 12_000;
 
-    // Çok kareli GIF/TIFF/WebP'nin yalnız ilk karesi.
-    private static readonly DecoderOptions DecoderOptions = new() { MaxFrames = 1 };
+    // Çok kareli GIF/WebP'nin yalnız ilk karesi çözülür (SkiaImaging).
+    private readonly SKBitmap _image;
 
-    private readonly Image<Rgb24> _image;
-
-    private LabelingImage(Image<Rgb24> image, string sha256)
+    private LabelingImage(SKBitmap image, string sha256)
     {
         _image = image;
         Sha256 = sha256;
@@ -55,8 +49,7 @@ public sealed class LabelingImage : IDisposable
         ReadHeader(bytes);
         try
         {
-            var image = Image.Load<Rgb24>(DecoderOptions, bytes);
-            image.Mutate(ctx => ctx.AutoOrient());
+            var image = SkiaImaging.DecodeOriented(bytes, out _);
             return new LabelingImage(image, ComputeSha256(bytes));
         }
         catch (Exception ex) when (IsImageError(ex))
@@ -94,19 +87,11 @@ public sealed class LabelingImage : IDisposable
         var targetWidth = Math.Max(1, (int)Math.Round(rect.Width / scale));
         var targetHeight = Math.Max(1, (int)Math.Round(rect.Height / scale));
 
-        using var clone = _image.Clone(ctx =>
-        {
-            ctx.Crop(rect);
-            if (scale > 1d)
-                ctx.Resize(targetWidth, targetHeight, KnownResamplers.Lanczos3);
-        });
-        // EXIF/XMP/IPTC (GPS, cihaz) dışarı taşınmaz: JPEG Claude'a ve bankaya kayıtta MinIO'ya gider.
-        clone.Metadata.ExifProfile = null;
-        clone.Metadata.XmpProfile = null;
-        clone.Metadata.IptcProfile = null;
-        using var ms = new MemoryStream();
-        clone.SaveAsJpeg(ms, new JpegEncoder { Quality = 90 });
-        return new EncodedRegion(ms.ToArray(), clone.Width, clone.Height, rect.X, rect.Y, rect.Width / (double)clone.Width,
+        using var clone = SkiaImaging.CropResize(_image, SKRectI.Create(rect.X, rect.Y, rect.Width, rect.Height),
+            scale > 1d ? targetWidth : rect.Width, scale > 1d ? targetHeight : rect.Height);
+        // EXIF/XMP/IPTC (GPS, cihaz) dışarı taşınmaz: Skia kodlayıcısı meta veri yazmaz; JPEG Claude'a ve bankaya kayıtta MinIO'ya gider.
+        var jpeg = SkiaImaging.Encode(clone, SKEncodedImageFormat.Jpeg, 90);
+        return new EncodedRegion(jpeg, clone.Width, clone.Height, rect.X, rect.Y, rect.Width / (double)clone.Width,
             rect.Height / (double)clone.Height);
     }
 
@@ -114,10 +99,10 @@ public sealed class LabelingImage : IDisposable
 
     private static (int Width, int Height) ReadHeader(byte[] bytes)
     {
-        ImageInfo info;
+        SkiaImageHeader info;
         try
         {
-            info = Image.Identify(DecoderOptions, bytes);
+            info = SkiaImaging.ReadHeader(bytes);
         }
         catch (Exception ex) when (IsImageError(ex))
         {
@@ -130,14 +115,11 @@ public sealed class LabelingImage : IDisposable
             throw new LabelingValidationException("labeling.imageTooLarge");
 
         // EXIF 5-8: görsel 90° döndürülerek gösterilir, genişlik/yükseklik yer değiştirir.
-        var rotated = info.Metadata.ExifProfile is { } exif
-                      && exif.TryGetValue(ExifTag.Orientation, out var orientation)
-                      && orientation.Value is >= 5 and <= 8;
-        return rotated ? (info.Height, info.Width) : (info.Width, info.Height);
+        return info.IsTransposed ? (info.Height, info.Width) : (info.Width, info.Height);
     }
 
     private static bool IsImageError(Exception ex) =>
-        ex is ImageFormatException or NotSupportedException or InvalidMemoryOperationException;
+        ex is ImageDecodeException or NotSupportedException or OutOfMemoryException;
 
     private static byte[] DecodeBase64(string base64)
     {

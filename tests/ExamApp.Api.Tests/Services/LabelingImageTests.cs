@@ -1,19 +1,14 @@
+using System.Drawing;
+using SkiaSharp;
 using System.Security.Cryptography;
 using ExamApp.Api.Services.Labeling;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using ExamApp.Api.Tests.Support;
 
 namespace ExamApp.Api.Tests.Services;
 
 public class LabelingImageTests
 {
-    private static byte[] Png(int width, int height)
-    {
-        using var image = new Image<Rgb24>(width, height);
-        using var ms = new MemoryStream();
-        image.SaveAsPng(ms);
-        return ms.ToArray();
-    }
+    private static byte[] Png(int width, int height) => TestImages.Png(width, height);
 
     private static string Sha256Hex(byte[] bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
 
@@ -269,5 +264,75 @@ public class LabelingImageTests
 
         image.Dispose();
         Should.NotThrow(() => image.Dispose());
+    }
+
+    // #559: Skia codec'i EXIF yönünü uygulamaz; SkiaImaging elle uygular (tarayıcı tuvaliyle aynı uzay).
+    private static byte[] RedLeftBlueRightJpeg(int width, int height, ushort orientation)
+    {
+        using var bitmap = new SKBitmap(width, height);
+        using (var canvas = new SKCanvas(bitmap))
+        {
+            canvas.DrawRect(0, 0, width / 2f, height, new SKPaint { Color = SKColors.Red });
+            canvas.DrawRect(width / 2f, 0, width / 2f, height, new SKPaint { Color = SKColors.Blue });
+        }
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Jpeg, 95);
+        return TestImages.WithExifOrientation(data.ToArray(), orientation);
+    }
+
+    private static SKColor PixelOf(byte[] jpeg, int x, int y)
+    {
+        using var bitmap = SKBitmap.Decode(jpeg);
+        return bitmap.GetPixel(x, y);
+    }
+
+    [Theory]
+    [InlineData((ushort)6)] // 90° saat yönü
+    [InlineData((ushort)8)] // 90° saat yönü tersi
+    [InlineData((ushort)5)]
+    [InlineData((ushort)7)]
+    public void Decode_ExifTransposedOrientation_SwapsDimensionsLikeHeader(ushort orientation)
+    {
+        var bytes = RedLeftBlueRightJpeg(200, 100, orientation);
+        var base64 = Convert.ToBase64String(bytes);
+
+        using var image = LabelingImage.Decode(base64);
+        image.Width.ShouldBe(100);
+        image.Height.ShouldBe(200);
+        var header = LabelingImage.ReadHeader(base64);
+        (header.Width, header.Height).ShouldBe((100, 200));
+    }
+
+    [Fact]
+    public void Decode_ExifRotate90Clockwise_PutsLeftEdgeOnTop()
+    {
+        using var image = LabelingImage.Decode(Convert.ToBase64String(RedLeftBlueRightJpeg(200, 100, 6)));
+        var jpeg = image.Encode(maxEdge: 1568).Jpeg;
+
+        var top = PixelOf(jpeg, 50, 20);
+        var bottom = PixelOf(jpeg, 50, 180);
+        top.Red.ShouldBeGreaterThan((byte)200);
+        top.Blue.ShouldBeLessThan((byte)60);
+        bottom.Blue.ShouldBeGreaterThan((byte)200);
+        bottom.Red.ShouldBeLessThan((byte)60);
+    }
+
+    [Fact]
+    public void Decode_ExifRotate180_KeepsDimensionsAndFlipsSides()
+    {
+        using var image = LabelingImage.Decode(Convert.ToBase64String(RedLeftBlueRightJpeg(200, 100, 3)));
+        (image.Width, image.Height).ShouldBe((200, 100));
+        var jpeg = image.Encode(maxEdge: 1568).Jpeg;
+        PixelOf(jpeg, 20, 50).Blue.ShouldBeGreaterThan((byte)200);
+        PixelOf(jpeg, 180, 50).Red.ShouldBeGreaterThan((byte)200);
+    }
+
+    [Fact]
+    public void Encode_DropsExifMetadata()
+    {
+        using var image = LabelingImage.Decode(Convert.ToBase64String(RedLeftBlueRightJpeg(200, 100, 6)));
+        var jpeg = image.Encode(maxEdge: 1568).Jpeg;
+        using var codec = SKCodec.Create(new SKMemoryStream(jpeg));
+        codec.EncodedOrigin.ShouldBe(SKEncodedOrigin.TopLeft);
     }
 }

@@ -3,6 +3,12 @@
 # ve açık review thread'i kalmayınca GitHub PR'ı merge commit ile kendisi birleştirir.
 # Check kırmızıysa merge olmaz; düzeltme push'u yeşile dönerse yine otomatik birleşir.
 # İstisna: `no-auto-merge` etiketi (sonradan eklenirse auto-merge kapatılır) ve fork PR'ları.
+#
+# Token: GitHub auto-merge PR'ı, auto-merge'ü AÇAN hesap adına birleştirir. GITHUB_TOKEN ile açılırsa merge
+# github-actions adına olur ve GITHUB_TOKEN olayları yeni iş akışı tetiklemez: `Closes #N` issue'yu kapatmıyor,
+# master'daki push koşuları (tests, gitleaks) çalışmıyordu (#548 → #545, #543 → #488, #537 → #57).
+# `AUTO_MERGE_TOKEN` (fine-grained PAT: bu repo, Contents + Pull requests: Read and write) tanımlıysa o
+# kullanılır; tanımlı değilse eski davranışa (GITHUB_TOKEN) düşer.
 name: auto-merge
 
 on:
@@ -29,7 +35,7 @@ jobs:
         if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-auto-merge') }}
         run: gh pr merge "$PR" --auto --merge --repo "$REPO"
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN || secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
 
@@ -37,6 +43,6 @@ jobs:
         if: ${{ contains(github.event.pull_request.labels.*.name, 'no-auto-merge') }}
         run: gh pr merge "$PR" --disable-auto --repo "$REPO" || true
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN || secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}

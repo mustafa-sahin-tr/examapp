@@ -315,8 +315,9 @@ export class WorksheetListComponent implements OnInit {
       this.fetch();
     });
 
-    this.loadAssignments();
+    // Atanmış testler (`assignments/active`) yalnız öğrenciye açık; öğretmende istek 403 döner (#557).
     if (this.isStudent) {
+      this.loadAssignments();
       this.loadStatusBuckets();
     }
   }

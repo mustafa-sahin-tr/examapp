@@ -4,13 +4,13 @@
       <!-- 🟢 Soru Başlığı ve Resmi -->
       <div class="question-lite-content">
         @if(question.text) {
-        <div class="question-lite-text" [innerHTML]="question.text | safeHtml"></div>
+        <div class="question-lite-text" [innerHTML]="question.text"></div>
         }
         @if(question.imageUrl) {
           <img [src]="question.imageUrl" class="question-lite-image" alt="" [appStorageImageRetry]="imageRefresh" />
         }
         @if(question.subText) {
-          <div class="question-lite-text" [innerHTML]="question.subText | safeHtml"></div>
+          <div class="question-lite-text" [innerHTML]="question.subText"></div>
         }
       </div>
   
@@ -20,7 +20,7 @@
           @if(question.isExample && correctAnswerVisible) {
           <div class="correct-answer">
               {{ t('correctAnswerPrefix') }}
-              <div class="question-lite-text" [innerHTML]="question.practiceCorrectAnswer | safeHtml"></div>
+              <div class="question-lite-text" [innerHTML]="question.practiceCorrectAnswer"></div>
             </div>
           }
           <button mat-button (click)="showCorrectAnswer()">{{ t('showResult') }}</button>

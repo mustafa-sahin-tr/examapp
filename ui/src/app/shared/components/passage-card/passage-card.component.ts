@@ -1,11 +1,9 @@
 import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { Passage } from '../../../models/question';
 
-import { SafeHtmlPipe } from '../../../services/safehtml';
-
 @Component({
   selector: 'app-passage-card',
-  imports: [SafeHtmlPipe],
+  imports: [],
   templateUrl: './passage-card.component.html',
   styleUrl: './passage-card.component.scss',
   changeDetection: ChangeDetectionStrategy.Eager,

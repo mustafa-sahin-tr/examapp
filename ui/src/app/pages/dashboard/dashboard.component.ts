@@ -8,8 +8,10 @@ import {
   OnInit,
   ViewChild,
   computed,
+  effect,
   inject,
   signal,
+  untracked,
   ChangeDetectionStrategy
 } from '@angular/core';
 import { Router } from '@angular/router';
@@ -18,6 +20,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { CompactTestCardComponent } from '../../shared/components/compact-test-card/compact-test-card.component';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 import { TestService } from '../../services/test.service';
+import { AuthService } from '../../services/auth.service';
 import { AssignedWorksheet } from '../../models/assignment';
 import { Test } from '../../models/test-instance';
 import { NgxChartsModule, Color, ScaleType } from '@swimlane/ngx-charts';
@@ -109,6 +112,23 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly transloco = inject(TranslocoService);
   private readonly localeService = inject(LocaleService);
   private readonly practiceService = inject(PracticeService);
+  private readonly auth = inject(AuthService);
+
+  /**
+   * Rapor uçları (`reports/users/{id}`) için kullanıcı id'si (#556). Girişten hemen sonra profil henüz yazılmamış
+   * olabilir; id gelene kadar istek atılmaz, gelince bir kez yüklenir. Kayıt sayfaları localStorage'a doğrudan
+   * yazdığı için oradaki id de okunur.
+   */
+  private readonly profileUserId = computed(() => {
+    const id = Number(this.auth.user()?.id);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  });
+  private reportsLoadedFor: number | null = null;
+
+  private readonly loadReportsWhenUserKnown = effect(() => {
+    this.profileUserId();
+    untracked(() => this.loadReportsIfUserKnown());
+  });
 
   /** `toLocaleDateString` gibi Intl API'lerine verilecek aktif dil etiketi (örn. 'tr', 'en-US'). */
   private get intlLocale(): string {
@@ -258,7 +278,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly showHeatmapAxisLabels = computed(() => !this.isMobileViewport());
 
   readonly scrollDistance = 600;
-  private readonly demoActivityUserId = 16;
   private activityLastMonthDisplayed = '';
   private resizeObserver?: ResizeObserver;
   private assignmentContainerRef?: ElementRef<HTMLDivElement>;
@@ -341,9 +360,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       },
     });
 
-    const resolvedUserId = this.getUserIdFromLocalStorage() ?? this.demoActivityUserId;
-    this.loadUserActivityHeatmap(resolvedUserId);
-    this.loadUserBadgeProgress(resolvedUserId);
+    this.loadReportsIfUserKnown();
     this.loadLastLogin();
     this.loadDailySet();
   }
@@ -415,7 +432,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         next: (res) => {
           this.resetMessage.set(res?.message || this.transloco.translate('dashboard.reset.queued'));
           // Try to refresh after a short delay.
-          const userId = this.getUserIdFromLocalStorage() ?? this.demoActivityUserId;
+          const userId = this.reportUserId();
           setTimeout(() => {
             this.testService.getActiveAssignments().subscribe({
               next: (assignments) => {
@@ -430,8 +447,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
                 // keep silent; user can refresh later
               },
             });
-            this.loadUserActivityHeatmap(userId);
-            this.loadUserBadgeProgress(userId);
+            if (userId !== null) {
+              this.loadUserActivityHeatmap(userId);
+              this.loadUserBadgeProgress(userId);
+            }
           }, 2500);
         },
         error: () => {
@@ -557,6 +576,22 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       topicId: assignment.topicId ?? undefined,
       subTopicId: assignment.subTopicId ?? undefined,
     };
+  }
+
+  /** Kullanıcı id'si biliniyorsa raporları o id için bir kez yükler (#556). */
+  /** Profil signal'ı, yoksa localStorage (signal değil; her çağrıda taze okunur). */
+  private reportUserId(): number | null {
+    return this.profileUserId() ?? currentUserId();
+  }
+
+  private loadReportsIfUserKnown(): void {
+    const userId = this.reportUserId();
+    if (userId === null || userId === this.reportsLoadedFor) {
+      return;
+    }
+    this.reportsLoadedFor = userId;
+    this.loadUserActivityHeatmap(userId);
+    this.loadUserBadgeProgress(userId);
   }
 
   private loadUserActivityHeatmap(userId: number): void {
@@ -843,10 +878,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     const target = new Date(date);
     const distanceToSunday = (7 - target.getDay()) % 7;
     return this.addDays(target, distanceToSunday);
-  }
-
-  private getUserIdFromLocalStorage(): number | null {
-    return currentUserId();
   }
 
   private updateViewportWidth(): void {

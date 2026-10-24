@@ -1,5 +1,5 @@
 import type { MockedObject } from "vitest";
-import { signal } from '@angular/core';
+import { WritableSignal, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
@@ -12,7 +12,7 @@ import { StudentResetService } from '../../services/student-reset.service';
 import { StudentService } from '../../services/student.service';
 import { LocaleService } from '../../services/locale.service';
 import { PracticeService } from '../../services/practice.service';
-import { AuthService } from '../../services/auth.service';
+import { AuthService, UserProfile } from '../../services/auth.service';
 import { StudentParentService } from '../../services/student-parent.service';
 import { DailySet } from '../../models/practice';
 import { TranslocoTestingModule } from '@jsverse/transloco';
@@ -102,6 +102,7 @@ describe('DashboardComponent', () => {
     let badgeServiceSpy: MockedObject<BadgeService>;
     let studentServiceSpy: MockedObject<StudentService>;
     let practiceServiceSpy: MockedObject<PracticeService>;
+    let authUser: WritableSignal<UserProfile | null>;
 
     function createComponent(): DashboardComponent {
         const fixture = TestBed.createComponent(DashboardComponent);
@@ -109,6 +110,8 @@ describe('DashboardComponent', () => {
     }
 
     beforeEach(() => {
+        localStorage.removeItem('user');
+        authUser = signal<UserProfile | null>({ id: 16 } as UserProfile);
         testServiceSpy = {
             getActiveAssignments: vi.fn().mockName("TestService.getActiveAssignments")
         } as unknown as MockedObject<TestService>;
@@ -144,7 +147,7 @@ describe('DashboardComponent', () => {
                         navigate: vi.fn().mockName("Router.navigate")
                     } },
                 // Issue #361: okul onayı bandı reaktif profili okur (bekleyen üyelik yok → render edilmez).
-                { provide: AuthService, useValue: { user: signal(null) } },
+                { provide: AuthService, useValue: { user: authUser } },
                 // Issue #440/#441: veli durumu kartı (durum yok → render edilmez; HTTP yok).
                 { provide: StudentParentService, useValue: {
                         resend: vi.fn().mockName("StudentParentService.resend"),
@@ -525,6 +528,54 @@ describe('DashboardComponent', () => {
             component.ngOnInit();
 
             expect(component.activityApiError()).toBe(false);
+        });
+    });
+
+    // #556: girişten hemen sonra profil yazılmamışken rapor uçları başka (demo) bir id ile çağrılmaz.
+    describe('report user id', () => {
+        it('reportUserId_ProfileMissing_DoesNotCallReportEndpoints', () => {
+            authUser.set(null);
+            createComponent().ngOnInit();
+            TestBed.tick();
+
+            expect(badgeServiceSpy.getUserActivity).not.toHaveBeenCalled();
+            expect(badgeServiceSpy.getUserBadgeProgress).not.toHaveBeenCalled();
+        });
+
+        it('reportUserId_ProfileArrivesLater_LoadsReportsOnceForThatUser', () => {
+            authUser.set(null);
+            createComponent().ngOnInit();
+            TestBed.tick();
+
+            authUser.set({ id: 7 } as UserProfile);
+            TestBed.tick();
+            authUser.set({ id: 7, fullName: 'st4' } as UserProfile);
+            TestBed.tick();
+
+            expect(badgeServiceSpy.getUserActivity).toHaveBeenCalledTimes(1);
+            expect(badgeServiceSpy.getUserActivity).toHaveBeenCalledWith(7);
+            expect(badgeServiceSpy.getUserBadgeProgress).toHaveBeenCalledTimes(1);
+            expect(badgeServiceSpy.getUserBadgeProgress).toHaveBeenCalledWith(7);
+        });
+
+        it('reportUserId_ProfileKnownAtInit_DoesNotReloadOnChangeDetection', () => {
+            createComponent().ngOnInit();
+            TestBed.tick();
+
+            expect(badgeServiceSpy.getUserActivity).toHaveBeenCalledTimes(1);
+            expect(badgeServiceSpy.getUserActivity).toHaveBeenCalledWith(16);
+        });
+
+        it('reportUserId_ProfileOnlyInLocalStorage_UsesStoredId', () => {
+            authUser.set(null);
+            localStorage.setItem('user', JSON.stringify({ id: 9 }));
+            try {
+                createComponent().ngOnInit();
+
+                expect(badgeServiceSpy.getUserActivity).toHaveBeenCalledWith(9);
+            } finally {
+                localStorage.removeItem('user');
+            }
         });
     });
 

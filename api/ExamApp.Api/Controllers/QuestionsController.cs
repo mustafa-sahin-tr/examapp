@@ -219,6 +219,12 @@ public class QuestionsController : BaseController
             return BadRequest(new { message = _localizer["questions.classification.invalidCorrectAnswerId"].Value });
         }
 
+        // #559 security review: ölçek doğrulanmadan yeniden boyutlandırma devasa hedef bitmap ayırabiliyordu.
+        if (request.Scale != 1 && !IsValidImageScale(request.Scale))
+        {
+            return BadRequest(new { message = _localizer["questions.image.invalidScale"].Value });
+        }
+
         var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
         if (await DenyUnlessQuestionOwnerAsync(questionId, user.Id) is { } denied)
             return denied;
@@ -239,6 +245,9 @@ public class QuestionsController : BaseController
 
         return Ok(response);
     }
+
+    /// <summary>UI ölçeği tuval görüntü genişliği / görsel genişliği; makul aralığın dışı reddedilir.</summary>
+    internal static bool IsValidImageScale(double scale) => double.IsFinite(scale) && scale >= 0.05 && scale <= 4;
 
     // BadgeService GeminiQuestionClassifier servis hesabıyla çağırır (issue #287 H1: servis sahiplik kontrolünden muaf).
     [HttpPut("{questionId}/classification")]

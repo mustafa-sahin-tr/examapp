@@ -20,9 +20,9 @@ public sealed class LabelingImage : IDisposable
     /// Piksel sınırları — küçük bir dosya devasa boyut bildirip belleği tüketmesin (decompression bomb). Başlık
     /// <see cref="SkiaImaging.ReadHeader"/> ile okunur, sınır aşılırsa görsel hiç çözülmez.
     /// </summary>
-    public const long MaxPixels = 40_000_000;
+    public const long MaxPixels = SkiaImaging.MaxPixels;
 
-    public const int MaxEdge = 12_000;
+    public const int MaxEdge = SkiaImaging.MaxEdge;
 
     // Çok kareli GIF/WebP'nin yalnız ilk karesi çözülür (SkiaImaging).
     private readonly SKBitmap _image;

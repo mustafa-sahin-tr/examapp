@@ -105,7 +105,7 @@ builder.Services.AddScoped<StudentReportService>();
 builder.Services.AddScoped<UserResetService>();
 builder.Services.AddScoped<BadgeDefinitionAdminService>();
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();
-// Soru sınıflandırıcısı: QuestionAnalyzer:Provider = Gemini (varsayılan) | Claude (issue #469).
+// Soru sınıflandırıcısı: QuestionAnalyzer:Provider = Claude (varsayılan) | Gemini (issue #469).
 builder.Services.AddQuestionClassifier(builder.Configuration);
 
 // issue #279 item 6: QuestionPoint üst sınırı (consumer tarafında sahte event ile puan şişirmeye karşı).

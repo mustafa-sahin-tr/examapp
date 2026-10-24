@@ -451,8 +451,8 @@ isteği iptal edilir, önceden getirme edilmez. Claude hatasında sunucu mesajı
 (bütçe/kota) Claude o oturumda askıya alınır (sayfalar YOLO ile açılır), Claude yeniden seçilince bir kez daha denenir. Manuel kayıt otomatik
 uygulanmaz, yalnız seçilince. Yetki / bütçe değişmedi (`Anthropic:LiveCallsPerHour`, `DailyBudgetUsd*`).
 
-**Issue #469 — Claude soru sınıflandırıcısı.** BadgeService'te `QuestionAnalyzer:Provider` = `Gemini` (varsayılan) |
-`Claude`; geçersiz değer açılışta patlar. Claude seçiliyken (`QuestionAnalyzer__Provider=Claude`) BadgeService
+**Issue #469 — Claude soru sınıflandırıcısı.** BadgeService'te `QuestionAnalyzer:Provider` = `Claude` (varsayılan, boşken de) |
+`Gemini`; geçersiz değer açılışta patlar. Claude seçiliyken BadgeService
 taksonomiyi exam API `GET /api/questions/classifier-taxonomy`'den (Admin/servis) alır (`Anthropic:TaxonomyCacheSeconds`,
 varsayılan 300 sn bellek önbelleği) ve sistem mesajının sonuna prompt-cache breakpoint'iyle koyar (`Anthropic:CacheTtl`
 `1h`|`5m`); yanıt JSON şemalı (structured output). Taksonomi dışı id dönerse sonuç yazılmaz, loglanır ve mesaj

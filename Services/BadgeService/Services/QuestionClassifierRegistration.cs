@@ -2,7 +2,7 @@ namespace BadgeService.Services;
 
 /// <summary>
 /// Picks the <see cref="IQuestionClassifier"/> from <c>QuestionAnalyzer:Provider</c> (issue #469):
-/// <c>Gemini</c> (default, also when unset) or <c>Claude</c>. Any other value fails at startup.
+/// <c>Claude</c> (default, also when unset) or <c>Gemini</c>. Any other value fails at startup.
 /// </summary>
 public static class QuestionClassifierRegistration
 {
@@ -12,16 +12,16 @@ public static class QuestionClassifierRegistration
 
     public static IServiceCollection AddQuestionClassifier(this IServiceCollection services, IConfiguration configuration)
     {
-        var provider = configuration[ProviderKey];
+        var provider = configuration[ProviderKey] ?? string.Empty;
 
-        if (string.IsNullOrWhiteSpace(provider) || provider.Equals(Gemini, StringComparison.OrdinalIgnoreCase))
+        if (provider.Equals(Gemini, StringComparison.OrdinalIgnoreCase))
         {
             services.Configure<GeminiOptions>(configuration.GetSection(GeminiOptions.SectionName));
             services.AddScoped<IQuestionClassifier, GeminiQuestionClassifier>();
             return services;
         }
 
-        if (provider.Equals(Claude, StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(provider) || provider.Equals(Claude, StringComparison.OrdinalIgnoreCase))
         {
             services.AddOptions<ClaudeClassifierOptions>()
                 .BindConfiguration(ClaudeClassifierOptions.SectionName)

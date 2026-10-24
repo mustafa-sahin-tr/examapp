@@ -280,6 +280,7 @@ services:
       - mynetwork
     volumes:
       - ./ui:/app
+      - /app/node_modules # konteynere özel; host'un node_modules'u etkilenmez
 
   auth-ui:
     container_name: auth-ui
@@ -297,6 +298,7 @@ services:
       - mynetwork
     volumes:
       - ./auth-ui:/app
+      - /app/node_modules # konteynere özel; host'un node_modules'u etkilenmez
 
   exam-pg-container:
     container_name: exam_pg_container

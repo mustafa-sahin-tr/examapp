@@ -81,10 +81,10 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24 # dockerfiles/ui ile aynı (node:24); Angular 22: ^22.22.3 || ^24.15
-          cache: yarn
-          cache-dependency-path: ui/yarn.lock
-      # ui keeps two lockfiles (#488): CI verifies yarn.lock, the prod image uses package-lock.json (npm ci).
-      - run: yarn install --frozen-lockfile
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      # npm only (package-lock.json is the single lockfile; same as the prod image and auth-ui-tests).
+      - run: npm ci --no-audit --no-fund
       # Vitest browser mode (#545): Playwright drives the runner's system Chrome; no Playwright browser download.
       - run: npx ng test --watch=false
         env:

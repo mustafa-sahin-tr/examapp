@@ -16,6 +16,43 @@ export const EXCALIDRAW_STYLESHEET_HREF = 'excalidraw.css';
 
 const STYLESHEET_ATTR = 'data-excalidraw-styles';
 
+/**
+ * Excalidraw her fontu `url(<asset yolu>), url(https://esm.sh/@excalidraw/…)` kaynak listesiyle kurar; esm.sh yedeği paket
+ * içinde sabittir, kapatılamaz. Chrome FontFace oluşturulurken listedeki HER kaynağı `font-src`'a göre denetlediği için
+ * yedek hiç indirilmese de her tahta açılışında ~230 CSP ihlali (konsol + `/csp-report` seli, gateway 429) üretiyordu.
+ */
+export const EXCALIDRAW_FONT_FALLBACK_ORIGIN = 'https://esm.sh/@excalidraw/';
+
+/** Kurulu filtre sınıfları; ikinci kurulum aynı pencereye tekrar sarmalamasın. */
+const filteredFontFaces = new WeakSet<object>();
+const FONT_SOURCE_SEPARATOR = /,\s*(?=url\(|local\()/;
+
+/** FontFace kaynak listesinden Excalidraw'ın esm.sh yedeklerini çıkarır; geriye kaynak kalmazsa listeye dokunmaz. */
+export function stripExcalidrawFontFallback(source: string): string {
+  const kept = source
+    .split(FONT_SOURCE_SEPARATOR)
+    .filter((part) => !part.trim().startsWith(`url(${EXCALIDRAW_FONT_FALLBACK_ORIGIN}`));
+  return kept.length ? kept.join(', ') : source;
+}
+
+/**
+ * `window.FontFace`'i yalnız string kaynaklarda esm.sh yedeğini atan bir alt sınıfla değiştirir (bir kez). Alt sınıf olduğu
+ * için `instanceof FontFace` ve `document.fonts.add` aynen çalışır; diğer fontlar etkilenmez.
+ */
+export function installExcalidrawFontFallbackFilter(win: Window & typeof globalThis = window): void {
+  const native = win.FontFace;
+  if (filteredFontFaces.has(native)) {
+    return;
+  }
+  class SelfHostedFontFace extends native {
+    constructor(family: string, source: string | BufferSource, descriptors?: FontFaceDescriptors) {
+      super(family, typeof source === 'string' ? stripExcalidrawFontFallback(source) : source, descriptors);
+    }
+  }
+  filteredFontFaces.add(SelfHostedFontFace);
+  win.FontFace = SelfHostedFontFace;
+}
+
 declare global {
   interface Window {
     /** Excalidraw'ın okuduğu global (font URL tabanı). */
@@ -55,6 +92,7 @@ function waitForLink(link: HTMLLinkElement): Promise<void> {
  */
 export async function loadExcalidrawCanvas(): Promise<WhiteboardCanvasMount> {
   window.EXCALIDRAW_ASSET_PATH = EXCALIDRAW_ASSET_PATH;
+  installExcalidrawFontFallbackFilter();
   const [module] = await Promise.all([import('./excalidraw-canvas'), ensureExcalidrawStylesheet()]);
   return module.mountExcalidrawCanvas;
 }

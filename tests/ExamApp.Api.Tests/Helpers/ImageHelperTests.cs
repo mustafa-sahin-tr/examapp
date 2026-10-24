@@ -1,6 +1,5 @@
 using ExamApp.Api.Helpers;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using ExamApp.Api.Tests.Support;
 
 namespace ExamApp.Api.Tests.Helpers;
 
@@ -8,13 +7,7 @@ public class ImageHelperTests
 {
     private readonly ImageHelper _sut = new();
 
-    private static byte[] Png(int w, int h)
-    {
-        using var image = new Image<Rgba32>(w, h);
-        using var ms = new MemoryStream();
-        image.SaveAsPng(ms);
-        return ms.ToArray();
-    }
+    private static byte[] Png(int w, int h) => TestImages.Png(w, h);
 
     [Theory]
     [InlineData("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", true)]
@@ -40,7 +33,7 @@ public class ImageHelperTests
     {
         var cropped = _sut.CropImage(Png(100, 80), x: 10, y: 5, width: 40, height: 20);
 
-        using var image = Image.Load(cropped);
+        var image = TestImages.Info(cropped);
         image.Width.ShouldBe(40);
         image.Height.ShouldBe(20);
     }
@@ -52,8 +45,29 @@ public class ImageHelperTests
         await using var result = await _sut.ResizeImageAsync(input, 0.5);
 
         result.ShouldNotBeNull();
-        using var image = await Image.LoadAsync(result!);
+        var image = TestImages.Info(result!);
         image.Width.ShouldBe(100);
         image.Height.ShouldBe(50);
     }
+
+    // #559: kırpma koordinatları tarayıcının gösterdiği (EXIF yönü uygulanmış) uzayda gelir.
+    [Fact]
+    public void CropImage_applies_exif_orientation_before_cropping()
+    {
+        var rotated = TestImages.WithExifOrientation(TestImages.Jpeg(200, 100), 6); // gösterimde 100x200
+
+        var cropped = _sut.CropImage(rotated, x: 0, y: 100, width: 100, height: 100);
+
+        var info = TestImages.Info(cropped);
+        (info.Width, info.Height).ShouldBe((100, 100));
+        info.Format.ShouldBe(SkiaSharp.SKEncodedImageFormat.Jpeg);
+    }
+
+    [Fact]
+    public void CropImage_outside_the_image_throws()
+        => Should.Throw<ArgumentOutOfRangeException>(() => _sut.CropImage(TestImages.Png(50, 50), 40, 40, 20, 20));
+
+    [Fact]
+    public void CropImage_keeps_png_format()
+        => TestImages.Info(_sut.CropImage(TestImages.Png(50, 50), 0, 0, 10, 10)).Format.ShouldBe(SkiaSharp.SKEncodedImageFormat.Png);
 }

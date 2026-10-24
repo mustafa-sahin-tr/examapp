@@ -25,7 +25,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import List, Sequence, Tuple
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 from guards import clamp_box
 
@@ -103,6 +103,16 @@ def labeled_page_ids(root: Path | None = None) -> List[str]:
     return list(ids)
 
 
+
+def open_oriented_rgb(image_bytes: bytes) -> Image.Image:
+    """Görseli EXIF yönü uygulanmış RGB olarak açar.
+
+    Tarayıcı tuvali ve exam API (#559, SkiaSharp) görseli EXIF yönüyle gösterir/kırpar; kutular o uzayda gelir.
+    Tahmin, QR okuma ve eğitim kaydı aynı uzayda olsun (yoksa döndürülmüş telefon fotoğrafında kutular kayar).
+    """
+    image = Image.open(BytesIO(image_bytes))
+    return ImageOps.exif_transpose(image).convert("RGB")
+
 def save_page(
     image_bytes: bytes,
     questions: Sequence[QuestionSample],
@@ -116,7 +126,7 @@ def save_page(
     Kutu görselin dışındaysa ValueError (clamp_box).
     """
     root = root or dataset_dir()
-    image = Image.open(BytesIO(image_bytes)).convert("RGB")
+    image = open_oriented_rgb(image_bytes)
     page_id = content_id(image_bytes)
     img_w, img_h = image.size
 

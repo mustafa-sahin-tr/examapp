@@ -12,6 +12,7 @@ using ExamApp.Foundation.Localization;
 using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
+using SkiaSharp;
 
 namespace ExamApp.Api.Services;
 
@@ -557,15 +558,19 @@ public class QuestionService : IQuestionService
                     mainImageBytes = Convert.FromBase64String(soruDto.ImageData.Split(',')[1]);
                 }
 
+                // #559: sayfa bir kez çözülür (piksel sınırı SkiaImaging'de); tüm kırpmalar bu bitmap'ten yapılır.
+                var mainImageFormat = SKEncodedImageFormat.Png;
+                using var mainImage = mainImageBytes != null ? _imageHelper.LoadImage(mainImageBytes, out mainImageFormat) : null;
+
                 // Passage'lar için crop ve upload işlemi
                 var passages = new List<Passage>();
                 foreach (var p in soruDto.Passages)
                 {
                     string passageImageUrl = string.Empty;
-                    if (mainImageBytes != null)
+                    if (mainImage != null)
                     {
-                        // Crop işlemi (ImageHelper'da CropImage metodu olmalı: byte[] CropImage(byte[] image, int x, int y, int width, int height))
-                        var croppedPassageImage = _imageHelper.CropImage(mainImageBytes, (int)p.X, (int)p.Y, (int)p.Width, (int)p.Height);
+                        using var passageBitmap = _imageHelper.CropBitmap(mainImage, (int)p.X, (int)p.Y, (int)p.Width, (int)p.Height);
+                        var croppedPassageImage = _imageHelper.EncodeImage(passageBitmap, mainImageFormat);
                         await using var passageStream = new MemoryStream(croppedPassageImage);
                         passageImageUrl = await _minioService.UploadFileAsync(passageStream, $"passages/{Guid.NewGuid()}.jpg");
                     }
@@ -613,9 +618,10 @@ public class QuestionService : IQuestionService
                     int effectiveQuestionHeight = questionDto.Height;
                     byte[]? questionV2Image = null;
 
-                    if (mainImageBytes != null)
+                    if (mainImage != null)
                     {
-                        croppedQuestionImage = _imageHelper.CropImage(mainImageBytes, (int)questionDto.X, (int)questionDto.Y, questionDto.Width, questionDto.Height);
+                        using var questionBitmap = _imageHelper.CropBitmap(mainImage, (int)questionDto.X, (int)questionDto.Y, questionDto.Width, questionDto.Height);
+                        croppedQuestionImage = _imageHelper.EncodeImage(questionBitmap, mainImageFormat);
 
                         await using (var questionStream = new MemoryStream(croppedQuestionImage))
                         {
@@ -634,7 +640,8 @@ public class QuestionService : IQuestionService
                             if (sanitizedHeight > 0 && sanitizedHeight < questionDto.Height)
                             {
                                 effectiveQuestionHeight = sanitizedHeight;
-                                questionV2Image = _imageHelper.CropImage(croppedQuestionImage, 0, 0, questionDto.Width, sanitizedHeight);
+                                using var questionV2Bitmap = _imageHelper.CropBitmap(questionBitmap, 0, 0, questionDto.Width, sanitizedHeight);
+                                questionV2Image = _imageHelper.EncodeImage(questionV2Bitmap, mainImageFormat);
                             }
                         }
 
@@ -664,8 +671,8 @@ public class QuestionService : IQuestionService
                             info.EffectiveWidth = cropWidth;
                             info.EffectiveHeight = cropHeight;
 
-                            var croppedAnswerImage = _imageHelper.CropImage(croppedQuestionImage, cropX, cropY, cropWidth, cropHeight);
-                            answerImagePayloads[index] = croppedAnswerImage;
+                            using var answerBitmap = _imageHelper.CropBitmap(questionBitmap, cropX, cropY, cropWidth, cropHeight);
+                            answerImagePayloads[index] = _imageHelper.EncodeImage(answerBitmap, mainImageFormat);
                         }
                     }
 

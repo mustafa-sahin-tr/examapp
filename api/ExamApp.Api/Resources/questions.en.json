@@ -38,6 +38,7 @@
       "notFound": "Question image not found!",
       "downloadFailed": "The question image could not be downloaded!",
       "resizeFailed": "The image could not be resized!",
+      "invalidScale": "The image scale must be between 0.05 and 4.",
       "uploadFailed": "The resized image could not be uploaded!",
       "resized": "Question image resized successfully!",
       "resizeError": "An error occurred while resizing the question image: {0}",

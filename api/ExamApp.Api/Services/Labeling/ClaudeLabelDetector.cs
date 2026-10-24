@@ -8,7 +8,7 @@ using ExamApp.Api.Models.Dtos.Labeling;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using SixLabors.ImageSharp;
+using System.Drawing;
 
 namespace ExamApp.Api.Services.Labeling;
 

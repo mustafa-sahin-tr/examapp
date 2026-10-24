@@ -133,7 +133,8 @@ public class MinIoService : IMinIoService
                     ".json" => "application/json",
                     ".png" => "image/png",
                     ".webp" => "image/webp",
-                    _ => "image/jpeg",
+                    // #559: görsel anahtarları tarihsel olarak hep .jpg; içerik PNG/WebP olabilir → baytlardan belirle.
+                    _ => ExamApp.Api.Helpers.ImageContentType.Sniff(fileStream) ?? "image/jpeg",
                 };
             }
 

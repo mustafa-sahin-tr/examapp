@@ -38,6 +38,7 @@
       "notFound": "Soru resmi bulunamadı!",
       "downloadFailed": "Soru resmi indirilemedi!",
       "resizeFailed": "Resim boyutlandırılamadı!",
+      "invalidScale": "Resim ölçeği 0,05 ile 4 arasında olmalı.",
       "uploadFailed": "Boyutlandırılmış resim yüklenemedi!",
       "resized": "Soru resmi başarıyla boyutlandırıldı!",
       "resizeError": "Soru resmi boyutlandırılırken hata oluştu: {0}",

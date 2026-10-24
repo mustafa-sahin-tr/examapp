@@ -4,8 +4,6 @@ using ExamApp.Api.Services;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
 
 namespace ExamApp.Api.Tests.Services;
 
@@ -15,14 +13,7 @@ public class QuestionServiceResizeImageTests : IDisposable
     private readonly IMinIoService _minio = Substitute.For<IMinIoService>();
     private QuestionService NewService(AppDbContext ctx) => new(ctx, new ImageHelper(), _minio);
 
-    private static Stream Png(int w, int h)
-    {
-        var ms = new MemoryStream();
-        using var img = new Image<Rgba32>(w, h);
-        img.SaveAsPng(ms);
-        ms.Position = 0;
-        return ms;
-    }
+    private static Stream Png(int w, int h) => new MemoryStream(TestImages.Png(w, h));
 
     [Fact]
     public async Task Reports_each_missing_precondition_in_turn()

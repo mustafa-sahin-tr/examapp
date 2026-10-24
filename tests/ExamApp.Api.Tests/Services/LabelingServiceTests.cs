@@ -7,8 +7,6 @@ using ExamApp.Api.Services.Labeling;
 using ExamApp.Api.Tests.Support;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
 
 namespace ExamApp.Api.Tests.Services;
 
@@ -61,13 +59,7 @@ public class LabelingServiceTests : IDisposable
             NullLogger<LabelingService>.Instance);
     }
 
-    private static byte[] Png(int width, int height)
-    {
-        using var image = new Image<Rgb24>(width, height);
-        using var ms = new MemoryStream();
-        image.SaveAsPng(ms);
-        return ms.ToArray();
-    }
+    private static byte[] Png(int width, int height) => TestImages.Png(width, height);
 
     private static string Base64(byte[] bytes) => Convert.ToBase64String(bytes);
 

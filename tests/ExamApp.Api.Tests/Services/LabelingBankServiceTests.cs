@@ -12,8 +12,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
 
 namespace ExamApp.Api.Tests.Services;
 
@@ -53,13 +51,7 @@ public class LabelingBankServiceTests : IDisposable
     private LabelingBankService NewService(AppDbContext ctx) =>
         new(ctx, _questions, _counters, _clock, NullLogger<LabelingBankService>.Instance);
 
-    private static byte[] Png(int width, int height)
-    {
-        using var image = new Image<Rgb24>(width, height);
-        using var ms = new MemoryStream();
-        image.SaveAsPng(ms);
-        return ms.ToArray();
-    }
+    private static byte[] Png(int width, int height) => TestImages.Png(width, height);
 
     private static string Sha256Hex(byte[] bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
 

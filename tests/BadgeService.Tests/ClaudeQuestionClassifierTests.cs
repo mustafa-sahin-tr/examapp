@@ -241,7 +241,7 @@ public class ClaudeQuestionClassifierTests
     }
 
     [Theory]
-    [InlineData(null, typeof(GeminiQuestionClassifier))]
+    [InlineData(null, typeof(ClaudeQuestionClassifier))]
     [InlineData("Gemini", typeof(GeminiQuestionClassifier))]
     [InlineData("claude", typeof(ClaudeQuestionClassifier))]
     public void Provider_config_selects_the_classifier(string? provider, Type expected)

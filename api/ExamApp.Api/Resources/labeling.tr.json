@@ -24,7 +24,9 @@
       "saveFailed": "Sorular havuza kaydedilemedi. Tekrar deneyin.",
       "userNotResolved": "Kullanıcı bilgisi bulunamadı.",
       "optionOutsideQuestion": "Şık kutusu soru kutusunun içinde olmalı.",
-      "rateLimited": "Saatlik havuza kayıt sınırına ulaştınız. Biraz sonra tekrar deneyin."
+      "rateLimited": "Saatlik havuza kayıt sınırına ulaştınız. Biraz sonra tekrar deneyin.",
+      "gradeRequired": "Sayfanın sınıfı seçilmeli.",
+      "gradeUnknown": "Seçilen sınıf bulunamadı."
     }
   }
 }

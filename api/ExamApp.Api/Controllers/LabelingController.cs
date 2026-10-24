@@ -128,7 +128,7 @@ public class LabelingController : BaseController
     /// <summary>
     /// Sayfadaki soruları teste bağlamadan soru bankasına kaydeder (issue #470); sahibi çağıran, sınıflandırma
     /// <c>QuestionCreatedEvent</c> ile başlar. Soru yazmak öğretmen yeteneği olduğundan sınıf düzeyindeki rollere ek olarak
-    /// Teacher veya Admin gerekir (QuestionTrainer tek başına yetmez). 400 geçersiz kutu / doğru şık eksik; 409 sayfa daha
+    /// Teacher veya Admin gerekir (QuestionTrainer tek başına yetmez). 400 geçersiz kutu / doğru şık eksik / sınıf eksik ya da bilinmiyor (#565); 409 sayfa daha
     /// önce kaydedildi (<c>force</c> ile yeniden kaydedilir) ya da şu an kaydediliyor; 429 saatlik kayıt sınırı; 500 kayıt
     /// başarısız.
     /// </summary>

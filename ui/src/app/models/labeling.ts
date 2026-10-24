@@ -125,6 +125,9 @@ export interface LabelingBankQuestion extends LabelingBankBox {
 export interface LabelingBankSaveRequest {
   imageBase64: string;
   questions: LabelingBankQuestion[];
+  /** Sayfanın sınıfı (`GET /api/exam/worksheet/grades` id'si; zorunlu, bilinmeyen sınıf → 400). Sınıflandırıcı yalnız
+   * bu sınıfın konularını kullanır (issue #565). */
+  gradeId: number;
   /** Sayfa daha önce kaydedildiyse de yeniden kaydet (sorular ikinci kez oluşur). */
   force: boolean;
 }

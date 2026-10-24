@@ -431,7 +431,8 @@ oluşturur — kırpma + MinIO + `QuestionCreatedEvent` (sınıflandırma otomat
 ister (QuestionTrainer tek başına yetmez); kullanıcı başına saatte 30 kayıt (429). Aynı sayfa (`LabelingPages` SHA-256;
 `BankSavedAt`/`BankQuestionCount`, süren kayıt `BankSaveStartedAt` — 10 dk sonra bayat; migration `AddLabelingPageBankSave`)
 ikinci kez kaydedilmek istenirse 409 `LabelingPageAlreadyInBank` → UI "Yine de kaydet" (force; sorular ikinci kez oluşur;
-süren kayıt force ile de aşılmaz). Şık kutuları soru kutusuna kırpılır. Pasaj ve kitap adı (`BookName`) bu ekrandan kaydedilmez (açık soru).
+süren kayıt force ile de aşılmaz). Şık kutuları soru kutusuna kırpılır. Pasaj ve kitap adı (`BookName`) bu ekrandan kaydedilmez (açık soru). **Sınıf zorunlu (#565):** araç çubuğundaki **Sınıf** açılır kutusu (localStorage `labeling.gradeId`) seçilmeden
+Havuza kaydet pasiftir; istek `gradeId` taşır (eksik/bilinmeyen → 400) ve `QuestionCreatedEvent.GradeId` olarak sınıflandırıcıya gider.
 
 **Issue #472 — test ekranında "Havuzdan ekle".** Test detayında (`/test/:id`, düzenleyebilen öğretmen/admin) **Havuzdan Ekle**
 soru bankası panelini seçim modunda açar; seçilenler `POST /api/exam/questions/test/{testId}/bank-questions` `{questionIds}` (en çok 60)
@@ -461,6 +462,13 @@ output token'ı ve tahmini USD loglanır (`Anthropic:InputUsdPerMTok`/`OutputUsd
 - **Anahtar:** Aspire'da işaretleme ekranıyla aynı `anthropic-api-key` parametresi BadgeService'e de `Anthropic__ApiKey`
   olarak gider (AppHost'u yeniden başlat). Anahtar yoksa sınıflandırma uyarıyla atlanır. docker-compose'da tanımlı değil.
 - `QuestionAnalyzer:AIActive=false` iken sağlayıcıdan bağımsız hiçbir sınıflandırma yapılmaz.
+- **Sınıf bağlamı (#565).** `QuestionCreatedEvent.GradeId` doluysa Claude sınıflandırıcı taksonomiyi
+  `GET /api/questions/classifier-taxonomy?gradeId=` ile yalnız o sınıfa bağlı ders/konu/alt konularla alır ve sınıf başına
+  önbellekler (prompt daha küçük, başka sınıfın aynı adlı konusu seçilemez; taksonomi dışı id reddi başka sınıfın id'sini de
+  reddeder). Sınıfın taksonomisi boşsa sınıflandırma uyarıyla **atlanır** (tüm taksonomiye düşülmez). `GradeId` null ise
+  tüm taksonomi. Exam API `GradeId`'yi şöyle çözer: istekte açıkça verilen sınıf (işaretleme ekranı) → teste bağlı kayıtta
+  testin `Worksheet.GradeId`'si → null. Gemini sağlayıcısı sınıfı yoksayar. `Question` tablosunda sınıf kolonu yok; sınıf
+  konu (`Topic.GradeId`) üzerinden gelir.
 
 **Issue #316 / #333 — UI Content-Security-Policy zorlanıyor.** `ui` ve `auth-ui` (dev-server: `angular.json` `serve.options.headers`;
 prod: `deploy/nginx/angular-spa.conf.template`) artık `Content-Security-Policy` gönderiyor (Report-Only değil). Satır içi betik,

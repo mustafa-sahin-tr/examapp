@@ -66,7 +66,19 @@ public class ConsumerTests : IDisposable
             QuestionId = 42, ClassificationSource = "Human",
         }));
 
-        await classifier.Received(1).ClassifyAndPersistAsync(42, Arg.Any<CancellationToken>());
+        await classifier.Received(1).ClassifyAndPersistAsync(42, null, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task QuestionCreatedConsumer_passes_the_event_GradeId_to_the_classifier()
+    {
+        var classifier = Substitute.For<IQuestionClassifier>();
+        await NewQuestionConsumer(classifier).Consume(Context(new QuestionCreatedEvent
+        {
+            QuestionId = 42, ClassificationSource = "Human", GradeId = 5,
+        }));
+
+        await classifier.Received(1).ClassifyAndPersistAsync(42, 5, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -78,7 +90,7 @@ public class ConsumerTests : IDisposable
             QuestionId = 42, ClassificationSource = "AI",
         }));
 
-        await classifier.DidNotReceive().ClassifyAndPersistAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await classifier.DidNotReceive().ClassifyAndPersistAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -90,14 +102,14 @@ public class ConsumerTests : IDisposable
             QuestionId = 42, ClassificationSource = "Human",
         }));
 
-        await classifier.DidNotReceive().ClassifyAndPersistAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await classifier.DidNotReceive().ClassifyAndPersistAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task QuestionCreatedConsumer_rethrows_classifier_failures_for_masstransit_retry()
     {
         var classifier = Substitute.For<IQuestionClassifier>();
-        classifier.ClassifyAndPersistAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        classifier.ClassifyAndPersistAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns<Task>(_ => throw new InvalidOperationException("gemini down"));
 
         await Should.ThrowAsync<InvalidOperationException>(() =>

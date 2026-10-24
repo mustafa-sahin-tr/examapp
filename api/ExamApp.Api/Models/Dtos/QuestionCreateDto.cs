@@ -10,6 +10,13 @@ public class BulkQuestionCreateDto
     public List<BulkPassageDto> Passages { get; set; }
     public List<BulkQuestionDto> Questions { get; set; }
     public HeaderInfo Header { get; set; }
+
+    /// <summary>
+    /// Issue #565: sorunun sınıfı, kaynak açıkça biliyorsa (işaretleme ekranındaki seçim). <c>Header.TestId</c> bir teste
+    /// çözülürse testin sınıfı esastır ve buradaki farklı değer reddedilir; test yoksa var olan bir sınıf olmalı.
+    /// Yalnız <c>QuestionCreatedEvent.GradeId</c>'ye gider (Question'da kolon yok).
+    /// </summary>
+    public int? GradeId { get; set; }
 }
 
 public class StudyPageAttachImageDto

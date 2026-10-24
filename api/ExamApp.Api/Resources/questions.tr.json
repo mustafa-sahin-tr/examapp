@@ -25,6 +25,8 @@
       "saved": "Sorular başarıyla kaydedildi!",
       "saveError": "Veri kaydedilirken hata oluştu: {0}",
       "correctAnswerMissing": "Doğru cevap belirtilmemiş.{0}",
+      "gradeMismatch": "GradeId ({0}) testin sınıfıyla ({1}) uyuşmuyor.",
+      "invalidGradeId": "Geçersiz GradeId: {0}",
       "invalidTopicId": "Geçersiz TopicId: {0}",
       "invalidSubjectId": "Geçersiz SubjectId: {0}",
       "invalidSubTopicIds": "Geçersiz SubTopicId(ler): {0}",

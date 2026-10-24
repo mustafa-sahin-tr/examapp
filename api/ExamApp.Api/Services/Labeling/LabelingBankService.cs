@@ -71,6 +71,12 @@ public sealed class LabelingBankService(
         foreach (var q in questions)
             ValidateShape(q);
 
+        // Issue #565: sınıf zorunlu ve var olmalı — sınıflandırıcı taksonomiyi buna daraltır.
+        if (request.GradeId <= 0)
+            throw new LabelingValidationException("labeling.bank.gradeRequired");
+        if (!await db.Grades.AnyAsync(g => g.Id == request.GradeId, ct))
+            throw new LabelingValidationException("labeling.bank.gradeUnknown");
+
         string sha256;
         int width, height;
         string imageData;
@@ -114,6 +120,7 @@ public sealed class LabelingBankService(
             Passages = [],
             Questions = bulkQuestions,
             Header = new HeaderInfo { TestId = null },
+            GradeId = request.GradeId,
         };
 
         ResponseBaseDto? result;

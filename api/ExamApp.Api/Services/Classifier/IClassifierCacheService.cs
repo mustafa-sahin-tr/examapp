@@ -15,8 +15,10 @@ public interface IClassifierCacheService
     /// <summary>
     /// The live taxonomy JSON (same payload the Gemini cache is built from) + its hash. Read by the Claude
     /// classifier in BadgeService (issue #469), which caches it with Anthropic prompt caching instead.
+    /// Issue #565: a positive <paramref name="gradeId"/> restricts it to that grade's subjects and topics
+    /// (same shape, hash of the filtered JSON); null or &lt;= 0 = the whole taxonomy.
     /// </summary>
-    Task<ClassifierTaxonomyDto> GetTaxonomyAsync(CancellationToken ct = default);
+    Task<ClassifierTaxonomyDto> GetTaxonomyAsync(int? gradeId = null, CancellationToken ct = default);
 
     /// <summary>Rebuild the Gemini cached content from the live taxonomy and persist the new pointer.</summary>
     Task<ClassifierCacheRefreshResultDto> RefreshAsync(int userId, CancellationToken ct = default);

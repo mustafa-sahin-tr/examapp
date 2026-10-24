@@ -2,7 +2,7 @@ import type { MockedObject } from "vitest";
 import { Component, EventEmitter, Input, Output, forwardRef, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { Subject, of, throwError } from 'rxjs';
+import { Observable, Subject, of, throwError } from 'rxjs';
 import { MatButtonToggleChange } from '@angular/material/button-toggle';
 import { MatSelectChange } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -14,6 +14,8 @@ import { LabelingPromptDialogComponent } from './labeling-prompt-dialog/labeling
 import { ImageSelectorComponent, TrainedPage } from '../image-selector/image-selector.component';
 import { QuestionDetectorService } from '../../services/question-detector.service';
 import { LabelingService } from '../../services/labeling.service';
+import { GradesService } from '../../services/grades.service';
+import { Grade } from '../../models/student';
 import { DetectionSource, LabelingAiModel, LabelingPage, LabelingPromptState, LabelingResult } from '../../models/labeling';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import labelingTr from '../../../../public/i18n/labeling/tr.json';
@@ -159,6 +161,10 @@ describe('LabelingComponent', () => {
     let component: LabelingComponent;
     let detector: MockedObject<QuestionDetectorService>;
     let labelingApi: MockedObject<LabelingService>;
+    let gradesApi: MockedObject<GradesService>;
+    const GRADES: Grade[] = [{ id: 4, name: '4. Sınıf' }, { id: 5, name: '5. Sınıf' }];
+    /** `setup` öncesi değiştirilebilir: sınıf listesi yanıtı. */
+    let gradesResponse: Observable<Grade[]>;
 
     function selector(): ImageSelectorStub {
         return fixture.debugElement.query((de) => de.componentInstance instanceof ImageSelectorStub)
@@ -185,6 +191,10 @@ describe('LabelingComponent', () => {
             saveToBank: vi.fn().mockName("LabelingService.saveToBank")
         } as unknown as MockedObject<LabelingService>;
         labelingApi.getAiModels.mockReturnValue(of(aiModels));
+        gradesApi = {
+            getGrades: vi.fn().mockName("GradesService.getGrades")
+        } as unknown as MockedObject<GradesService>;
+        gradesApi.getGrades.mockReturnValue(gradesResponse);
         // Varsayılan: sayfanın kaydı yok (404 → null).
         labelingApi.getPage.mockReturnValue(throwError(() => ({ status: 404 })));
         TestBed.configureTestingModule({
@@ -193,6 +203,7 @@ describe('LabelingComponent', () => {
                 provideNoopAnimations(),
                 { provide: QuestionDetectorService, useValue: detector },
                 { provide: LabelingService, useValue: labelingApi },
+                { provide: GradesService, useValue: gradesApi },
             ],
         });
         TestBed.overrideComponent(LabelingComponent, {
@@ -217,6 +228,8 @@ describe('LabelingComponent', () => {
         localStorage.removeItem('labeling.answerCount');
         localStorage.removeItem('labeling.source');
         localStorage.removeItem('labeling.aiModel');
+        localStorage.removeItem('labeling.gradeId');
+        gradesResponse = of(GRADES);
     });
 
     afterEach(() => {
@@ -937,7 +950,10 @@ describe('LabelingComponent', () => {
         }
 
         /** Sayfayı açar (isteğe bağlı mevcut bank kaydıyla) ve tuvalde verilen soruları hazır bırakır. */
-        async function openPageWith(regions: StubRegion[], page: LabelingPage | null = null): Promise<void> {
+        async function openPageWith(regions: StubRegion[], page: LabelingPage | null = null, gradeId: string | null = '5'): Promise<void> {
+            if (gradeId != null) {
+                localStorage.setItem('labeling.gradeId', gradeId);
+            }
             await setup();
             if (page) {
                 labelingApi.getPage.mockReturnValue(of(page));
@@ -994,6 +1010,7 @@ describe('LabelingComponent', () => {
         });
 
         it('saveToBank_ThenTrained_ShowsCombinedMessageAndAdvances', async () => {
+            localStorage.setItem('labeling.gradeId', '5');
             await setup();
             await pickFolder([image('p1.webp'), image('p2.webp')]);
             const first = component.current()!;
@@ -1105,6 +1122,76 @@ describe('LabelingComponent', () => {
             expect(component.canSaveToBank()).toBe(false);
             component.saveToBank();
             expect(labelingApi.saveToBank).not.toHaveBeenCalled();
+        });
+
+        describe('sınıf seçimi (#565)', () => {
+            function gradeSelect(): HTMLElement {
+                return fixture.nativeElement.querySelector('.lb-grade mat-select') as HTMLElement;
+            }
+
+            it('grades_Loaded_RendersOptionsInToolbarSelect', async () => {
+                await openPageWith([region('S1', 0)], null, null);
+
+                expect(gradesApi.getGrades).toHaveBeenCalledTimes(1);
+                expect(component.grades()).toEqual(GRADES);
+                expect(fixture.nativeElement.querySelector('.lb-toolbar').textContent).toContain(labelingTr.grade.label);
+                gradeSelect().click();
+                fixture.detectChanges();
+                await fixture.whenStable();
+                // CDK 21+: panel tetikleyicinin yanında native popover; document üzerinden aranır.
+                const options = Array.from(document.querySelectorAll('mat-option')).map((o) => o.textContent?.trim());
+                expect(options).toEqual(['4. Sınıf', '5. Sınıf']);
+            });
+
+            it('bankButton_NoGrade_DisabledWithHint_EnabledAfterSelection', async () => {
+                await openPageWith([region('S1', 0)], null, null);
+
+                expect(component.gradeId()).toBeNull();
+                expect(component.canSaveToBank()).toBe(false);
+                expect(bankButton().getAttribute('aria-disabled')).toBe('true');
+                component.saveToBank();
+                expect(labelingApi.saveToBank).not.toHaveBeenCalled();
+
+                component.setGrade({ value: 4 } as MatSelectChange);
+                fixture.detectChanges();
+
+                expect(component.canSaveToBank()).toBe(true);
+                expect(bankButton().getAttribute('aria-disabled')).not.toBe('true');
+                expect(localStorage.getItem('labeling.gradeId')).toBe('4');
+            });
+
+            it('saveToBank_SelectedGrade_RequestCarriesGradeId', async () => {
+                await openPageWith([region('S1', 0)], null, null);
+                component.setGrade({ value: 4 } as MatSelectChange);
+                labelingApi.saveToBank.mockReturnValue(of({ imageSha256: 'abc', bank: savedBank }));
+
+                component.saveToBank();
+
+                expect(vi.mocked(labelingApi.saveToBank).mock.lastCall![0].gradeId).toBe(4);
+            });
+
+            it('init_StoredGradeInList_IsRestored', async () => {
+                await openPageWith([region('S1', 0)], null, '5');
+
+                expect(component.gradeId()).toBe(5);
+                expect(component.canSaveToBank()).toBe(true);
+            });
+
+            it('init_StoredGradeNotInList_IsIgnored', async () => {
+                await openPageWith([region('S1', 0)], null, '99');
+
+                expect(component.gradeId()).toBeNull();
+                expect(component.canSaveToBank()).toBe(false);
+            });
+
+            it('init_GradesFail_NoGradeAndBankDisabled', async () => {
+                gradesResponse = throwError(() => ({ status: 500 }));
+                await openPageWith([region('S1', 0)], null, '5');
+
+                expect(component.gradesError()).toBe(true);
+                expect(component.gradeId()).toBeNull();
+                expect(component.canSaveToBank()).toBe(false);
+            });
         });
 
         it('saveToBank_ExistingRecord_AsksConfirmThenSendsForceTrue', async () => {

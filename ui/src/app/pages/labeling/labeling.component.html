@@ -101,6 +101,23 @@
       }
     </span>
 
+    <span class="lb-group">
+      <span class="lb-group__label" id="lb-grade-label">{{ t('grade.label') }}</span>
+      <mat-form-field class="lb-grade" appearance="outline" subscriptSizing="dynamic">
+        <mat-select [value]="gradeId()" (selectionChange)="setGrade($event)" aria-labelledby="lb-grade-label"
+          [disabled]="gradesLoading() || grades().length === 0"
+          [placeholder]="gradesLoading() ? t('grade.loading') : gradesError() ? t('grade.failed') : grades().length === 0 ? t('grade.empty') : t('grade.placeholder')">
+          @for (grade of grades(); track grade.id) {
+          <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      @if (gradesError()) {
+      <button mat-icon-button type="button" class="lb-grade__retry" (click)="loadGrades()" [matTooltip]="t('grade.retry')"
+        [attr.aria-label]="t('grade.retry')"><mat-icon>refresh</mat-icon></button>
+      }
+    </span>
+
     <mat-button-toggle-group hideSingleSelectionIndicator [value]="selectionMode()" [attr.aria-label]="t('drawMode')">
       <mat-button-toggle value="question" (click)="setDrawMode('question')">{{ t('modeQuestion') }}</mat-button-toggle>
       <mat-button-toggle value="answer" (click)="setDrawMode('answer')">{{ t('modeAnswer') }}</mat-button-toggle>
@@ -137,7 +154,7 @@
       }
     </button>
     <button mat-flat-button type="button" class="lb-bank" (click)="saveToBank()" [disabled]="!canSaveToBank()"
-      [attr.aria-busy]="bankSaving()" [matTooltip]="t('bank.hint')">
+      disabledInteractive [attr.aria-busy]="bankSaving()" [matTooltip]="gradeId() == null ? t('bank.needGrade') : t('bank.hint')">
       @if (bankSaving()) {
       <mat-spinner diameter="16" aria-hidden="true"></mat-spinner>
       } @else {

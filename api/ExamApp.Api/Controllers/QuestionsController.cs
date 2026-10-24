@@ -84,10 +84,11 @@ public class QuestionsController : BaseController
 
     // GET /api/questions/classifier-taxonomy — the live subject/topic/subtopic taxonomy the Claude
     // classifier (BadgeService, issue #469) puts into its prompt-cached system message. Service-to-service.
+    // Issue #565: ?gradeId= narrows it to that grade's subjects/topics (Hash follows the filtered JSON); <= 0 = no filter.
     [HttpGet("classifier-taxonomy")]
     [Authorize(Policy = QuestionAccessPolicies.AdminOrService)]
-    public async Task<ActionResult<ClassifierTaxonomyDto>> GetClassifierTaxonomy(CancellationToken ct)
-        => Ok(await _classifierCache.GetTaxonomyAsync(ct));
+    public async Task<ActionResult<ClassifierTaxonomyDto>> GetClassifierTaxonomy([FromQuery] int? gradeId, CancellationToken ct)
+        => Ok(await _classifierCache.GetTaxonomyAsync(gradeId, ct));
 
     // 🟢 GET /api/questions/{id} - ID ile Soru Çekme
     [HttpGet("{id}")]

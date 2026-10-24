@@ -45,7 +45,7 @@ public class GeminiQuestionClassifierTests
     public async Task Skips_entirely_when_the_api_key_is_not_configured()
     {
         var http = HappyHttp("{}");
-        await NewClassifier(http, new GeminiOptions { ApiKey = "" }).ClassifyAndPersistAsync(1, default);
+        await NewClassifier(http, new GeminiOptions { ApiKey = "" }).ClassifyAndPersistAsync(1, null, default);
         http.Requests.ShouldBeEmpty();
     }
 
@@ -55,7 +55,7 @@ public class GeminiQuestionClassifierTests
         var http = HappyHttp("""{ "subTopicIds": [1], "difficultyLevel": 3, "reasoning": "r" }""");
 
         await NewClassifier(http, new GeminiOptions { ApiKey = "secret-key-123", Model = "models/gemini-x" })
-            .ClassifyAndPersistAsync(1, default);
+            .ClassifyAndPersistAsync(1, null, default);
 
         var gemini = http.Requests.Single(r => r.RequestUri!.ToString().Contains(":generateContent"));
         gemini.RequestUri!.ToString().ShouldNotContain("key=");
@@ -71,7 +71,7 @@ public class GeminiQuestionClassifierTests
         var http = HappyHttp("""{ "subTopicIds": [1], "difficultyLevel": 3, "reasoning": "r" }""");
 
         await NewClassifier(http, new GeminiOptions { ApiKey = TestKey + "\n", Model = "models/gemini-x" })
-            .ClassifyAndPersistAsync(1, default);
+            .ClassifyAndPersistAsync(1, null, default);
 
         var gemini = http.Requests.Single(r => r.RequestUri!.ToString().Contains(":generateContent"));
         gemini.Headers.GetValues("x-goog-api-key").ShouldBe(new[] { "secret-key-123" });
@@ -82,7 +82,7 @@ public class GeminiQuestionClassifierTests
     {
         var http = HappyHttp("""{ "subTopicIds": [7, 7, 8, 9, 10], "subjectId": 3, "topicId": -1, "difficultyLevel": 99, "reasoning": "x" }""");
 
-        await NewClassifier(http).ClassifyAndPersistAsync(42, default);
+        await NewClassifier(http).ClassifyAndPersistAsync(42, null, default);
 
         http.Requests.Single(r => r.RequestUri!.ToString().Contains("/classification")).Method.ShouldBe(HttpMethod.Put);
         var body = http.BodyMatching("/classification");
@@ -103,7 +103,7 @@ public class GeminiQuestionClassifierTests
             .On("/classification", HttpStatusCode.OK, "{}");
 
         await NewClassifier(http, new GeminiOptions { ApiKey = "k", Model = "models/gemini-x", CachedContent = "cachedContents/fallback" })
-            .ClassifyAndPersistAsync(5, default);
+            .ClassifyAndPersistAsync(5, null, default);
 
         http.BodyMatching(":generateContent").ShouldContain("cachedContents/fallback");
     }
@@ -114,7 +114,7 @@ public class GeminiQuestionClassifierTests
         var http = new StubHttp()
             .On("/api/questions/classifier-cache", HttpStatusCode.OK, "{}");
 
-        await NewClassifier(http).ClassifyAndPersistAsync(5, default);
+        await NewClassifier(http).ClassifyAndPersistAsync(5, null, default);
 
         http.Requests.ShouldHaveSingleItem(); // only the pointer probe, nothing else
     }
@@ -127,7 +127,7 @@ public class GeminiQuestionClassifierTests
             .OnBytes("/image", new byte[] { 1 })
             .On(":generateContent", HttpStatusCode.OK, """{ "candidates": [] }""");
 
-        await Should.ThrowAsync<InvalidOperationException>(() => NewClassifier(clean).ClassifyAndPersistAsync(9, default));
+        await Should.ThrowAsync<InvalidOperationException>(() => NewClassifier(clean).ClassifyAndPersistAsync(9, null, default));
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public class GeminiQuestionClassifierTests
             .OnBytes("/image", new byte[] { 1 })
             .On(":generateContent", HttpStatusCode.InternalServerError, "boom");
 
-        await Should.ThrowAsync<InvalidOperationException>(() => NewClassifier(http).ClassifyAndPersistAsync(9, default));
+        await Should.ThrowAsync<InvalidOperationException>(() => NewClassifier(http).ClassifyAndPersistAsync(9, null, default));
     }
 
     [Fact]
@@ -148,6 +148,6 @@ public class GeminiQuestionClassifierTests
             .On("/api/questions/classifier-cache", HttpStatusCode.OK, """{ "cachedContentName": "cachedContents/abc" }""")
             .On("/image", HttpStatusCode.NotFound, "missing");
 
-        await Should.ThrowAsync<InvalidOperationException>(() => NewClassifier(http).ClassifyAndPersistAsync(9, default));
+        await Should.ThrowAsync<InvalidOperationException>(() => NewClassifier(http).ClassifyAndPersistAsync(9, null, default));
     }
 }

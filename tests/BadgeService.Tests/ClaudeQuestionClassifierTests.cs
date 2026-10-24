@@ -54,7 +54,7 @@ public class ClaudeQuestionClassifierTests
     {
         var http = HappyHttp();
 
-        await NewClassifier(http, chat: null).ClassifyAndPersistAsync(1, default);
+        await NewClassifier(http, chat: null).ClassifyAndPersistAsync(1, null, default);
 
         http.Requests.ShouldBeEmpty();
     }
@@ -65,7 +65,7 @@ public class ClaudeQuestionClassifierTests
         var http = HappyHttp();
         var chat = new FakeChatClient("""{ "subTopicIds": [101, 101, 100], "subjectId": 1, "topicId": 0, "difficultyLevel": 42, "reasoning": "kesir" }""");
 
-        await NewClassifier(http, chat).ClassifyAndPersistAsync(42, default);
+        await NewClassifier(http, chat).ClassifyAndPersistAsync(42, null, default);
 
         http.Requests.Single(r => r.RequestUri!.ToString().Contains("/42/classification")).Method.ShouldBe(HttpMethod.Put);
         var body = http.BodyMatching("/classification");
@@ -85,7 +85,7 @@ public class ClaudeQuestionClassifierTests
         var chat = new FakeChatClient("""{ "subTopicIds": [200], "difficultyLevel": 3, "reasoning": "r" }""");
 
         await NewClassifier(http, chat, new ClaudeClassifierOptions { ApiKey = "k", Model = "claude-sonnet-5-5", MaxOutputTokens = 1234 })
-            .ClassifyAndPersistAsync(7, default);
+            .ClassifyAndPersistAsync(7, null, default);
 
         var call = chat.Calls.ShouldHaveSingleItem();
         call.Options!.ModelId.ShouldBe("claude-sonnet-5-5");
@@ -113,8 +113,8 @@ public class ClaudeQuestionClassifierTests
         var chat = new FakeChatClient("""{ "subTopicIds": [100], "difficultyLevel": 3, "reasoning": "r" }""");
         var classifier = NewClassifier(http, chat);
 
-        await classifier.ClassifyAndPersistAsync(1, default);
-        await classifier.ClassifyAndPersistAsync(2, default);
+        await classifier.ClassifyAndPersistAsync(1, null, default);
+        await classifier.ClassifyAndPersistAsync(2, null, default);
 
         string SystemText(FakeChatClient.Call c) =>
             string.Concat(c.Messages.Single(m => m.Role == ChatRole.System).Contents.OfType<TextContent>().Select(t => t.Text));
@@ -128,8 +128,8 @@ public class ClaudeQuestionClassifierTests
         var chat = new FakeChatClient("""{ "subTopicIds": [100], "difficultyLevel": 3, "reasoning": "r" }""");
         var classifier = NewClassifier(http, chat);
 
-        await classifier.ClassifyAndPersistAsync(1, default);
-        await classifier.ClassifyAndPersistAsync(2, default);
+        await classifier.ClassifyAndPersistAsync(1, null, default);
+        await classifier.ClassifyAndPersistAsync(2, null, default);
 
         http.Requests.Count(r => r.RequestUri!.ToString().Contains("classifier-taxonomy")).ShouldBe(1);
     }
@@ -141,8 +141,8 @@ public class ClaudeQuestionClassifierTests
         var chat = new FakeChatClient("""{ "subTopicIds": [100], "difficultyLevel": 3, "reasoning": "r" }""");
         var classifier = NewClassifier(http, chat, new ClaudeClassifierOptions { ApiKey = "k", TaxonomyCacheSeconds = 0 });
 
-        await classifier.ClassifyAndPersistAsync(1, default);
-        await classifier.ClassifyAndPersistAsync(2, default);
+        await classifier.ClassifyAndPersistAsync(1, null, default);
+        await classifier.ClassifyAndPersistAsync(2, null, default);
 
         http.Requests.Count(r => r.RequestUri!.ToString().Contains("classifier-taxonomy")).ShouldBe(2);
     }
@@ -156,7 +156,7 @@ public class ClaudeQuestionClassifierTests
         var http = HappyHttp();
 
         var ex = await Should.ThrowAsync<InvalidOperationException>(
-            () => NewClassifier(http, new FakeChatClient(claudeJson)).ClassifyAndPersistAsync(5, default));
+            () => NewClassifier(http, new FakeChatClient(claudeJson)).ClassifyAndPersistAsync(5, null, default));
 
         ex.Message.ShouldContain("not in the taxonomy");
         http.Requests.ShouldNotContain(r => r.RequestUri!.ToString().Contains("/classification"));
@@ -168,7 +168,7 @@ public class ClaudeQuestionClassifierTests
         var http = HappyHttp();
 
         await NewClassifier(http, new FakeChatClient("""{ "subTopicIds": [100, 200], "difficultyLevel": 3, "reasoning": "r" }"""))
-            .ClassifyAndPersistAsync(5, default);
+            .ClassifyAndPersistAsync(5, null, default);
 
         http.BodyMatching("/classification").ShouldContain("\"subTopicIds\":[100,200]");
     }
@@ -180,10 +180,89 @@ public class ClaudeQuestionClassifierTests
             .On("/api/questions/classifier-taxonomy", HttpStatusCode.OK, TaxonomyResponse("""{"subjects":[]}"""));
         var chat = new FakeChatClient("{}");
 
-        await NewClassifier(http, chat).ClassifyAndPersistAsync(5, default);
+        await NewClassifier(http, chat).ClassifyAndPersistAsync(5, null, default);
 
         chat.Calls.ShouldBeEmpty();
         http.Requests.ShouldHaveSingleItem();
+    }
+
+    private static IEnumerable<string> TaxonomyUrls(StubHttp http) =>
+        http.Requests.Select(r => r.RequestUri!.ToString()).Where(u => u.Contains("classifier-taxonomy"));
+
+    // issue #565: grade context
+    [Fact]
+    public async Task With_a_grade_requests_the_filtered_taxonomy_and_persists_the_result()
+    {
+        var http = HappyHttp();
+        var chat = new FakeChatClient("""{ "subTopicIds": [101], "difficultyLevel": 3, "reasoning": "r" }""");
+
+        await NewClassifier(http, chat).ClassifyAndPersistAsync(8, 5, default);
+
+        TaxonomyUrls(http).ShouldHaveSingleItem().ShouldEndWith("/api/questions/classifier-taxonomy?gradeId=5");
+        chat.Calls.ShouldHaveSingleItem();
+        http.BodyMatching("/classification").ShouldContain("\"subTopicIds\":[101]");
+    }
+
+    [Fact]
+    public async Task With_a_grade_an_empty_filtered_taxonomy_skips_without_calling_Claude_or_falling_back()
+    {
+        var http = new StubHttp()
+            .On("/api/questions/classifier-taxonomy", HttpStatusCode.OK, TaxonomyResponse("""{"subjects":[]}"""))
+            .OnBytes("/image", new byte[] { 1 })
+            .On("/classification", HttpStatusCode.OK, "{}");
+        var chat = new FakeChatClient("{}");
+
+        await NewClassifier(http, chat).ClassifyAndPersistAsync(8, 9, default);
+
+        chat.Calls.ShouldBeEmpty();
+        TaxonomyUrls(http).ShouldHaveSingleItem().ShouldEndWith("?gradeId=9"); // no second, unfiltered fetch
+        http.Requests.ShouldNotContain(r => r.RequestUri!.ToString().Contains("/classification"));
+    }
+
+    [Fact]
+    public async Task Without_a_grade_requests_the_unfiltered_taxonomy()
+    {
+        var http = HappyHttp();
+        var chat = new FakeChatClient("""{ "subTopicIds": [100], "difficultyLevel": 3, "reasoning": "r" }""");
+
+        await NewClassifier(http, chat).ClassifyAndPersistAsync(8, null, default);
+
+        TaxonomyUrls(http).ShouldHaveSingleItem().ShouldEndWith("/api/questions/classifier-taxonomy");
+    }
+
+    [Fact]
+    public async Task Taxonomy_is_cached_per_grade_without_collisions()
+    {
+        var http = HappyHttp();
+        var chat = new FakeChatClient("""{ "subTopicIds": [100], "difficultyLevel": 3, "reasoning": "r" }""");
+        var classifier = NewClassifier(http, chat);
+
+        await classifier.ClassifyAndPersistAsync(1, 4, default);
+        await classifier.ClassifyAndPersistAsync(2, 5, default);
+        await classifier.ClassifyAndPersistAsync(3, 4, default);   // cached
+        await classifier.ClassifyAndPersistAsync(4, null, default); // separate (unfiltered) key
+
+        TaxonomyUrls(http).Count(u => u.EndsWith("?gradeId=4")).ShouldBe(1);
+        TaxonomyUrls(http).Count(u => u.EndsWith("?gradeId=5")).ShouldBe(1);
+        TaxonomyUrls(http).Count(u => !u.Contains("gradeId")).ShouldBe(1);
+        ClaudeQuestionClassifier.TaxonomyCacheKeyFor(4).ShouldBe("claude-question-classifier:taxonomy:4");
+        ClaudeQuestionClassifier.TaxonomyCacheKeyFor(null).ShouldBe(ClaudeQuestionClassifier.TaxonomyCacheKey);
+    }
+
+    [Fact]
+    public async Task With_a_grade_an_id_outside_the_filtered_taxonomy_is_rejected()
+    {
+        // grade 5 taxonomy only knows subtopic 100; Claude answers with 200 (another grade's subtopic)
+        var filtered = """{"subjects":[{"id":1,"name":"Matematik","topics":[{"id":10,"name":"Sayılar","grade":"5","subTopics":[{"id":100,"name":"Doğal sayılar"}]}]}]}""";
+        var http = new StubHttp()
+            .On("/api/questions/classifier-taxonomy", HttpStatusCode.OK, TaxonomyResponse(filtered))
+            .OnBytes("/image", new byte[] { 1 })
+            .On("/classification", HttpStatusCode.OK, "{}");
+
+        await Should.ThrowAsync<InvalidOperationException>(() =>
+            NewClassifier(http, new FakeChatClient("""{ "subTopicIds": [200], "difficultyLevel": 3, "reasoning": "r" }""")).ClassifyAndPersistAsync(8, 5, default));
+
+        http.Requests.ShouldNotContain(r => r.RequestUri!.ToString().Contains("/classification"));
     }
 
     [Fact]
@@ -193,7 +272,7 @@ public class ClaudeQuestionClassifierTests
             .On("/api/questions/classifier-taxonomy", HttpStatusCode.Forbidden, "nope");
 
         await Should.ThrowAsync<InvalidOperationException>(
-            () => NewClassifier(http, new FakeChatClient("{}")).ClassifyAndPersistAsync(5, default));
+            () => NewClassifier(http, new FakeChatClient("{}")).ClassifyAndPersistAsync(5, null, default));
     }
 
     [Fact]
@@ -202,7 +281,7 @@ public class ClaudeQuestionClassifierTests
         var http = HappyHttp();
         var chat = new FakeChatClient("""{ "subTopicIds": [10""", ChatFinishReason.Length);
 
-        await Should.ThrowAsync<InvalidOperationException>(() => NewClassifier(http, chat).ClassifyAndPersistAsync(5, default));
+        await Should.ThrowAsync<InvalidOperationException>(() => NewClassifier(http, chat).ClassifyAndPersistAsync(5, null, default));
         http.Requests.ShouldNotContain(r => r.RequestUri!.ToString().Contains("/classification"));
     }
 
@@ -212,7 +291,7 @@ public class ClaudeQuestionClassifierTests
         var http = HappyHttp();
 
         await Should.ThrowAsync<InvalidOperationException>(
-            () => NewClassifier(http, new FakeChatClient("not json")).ClassifyAndPersistAsync(5, default));
+            () => NewClassifier(http, new FakeChatClient("not json")).ClassifyAndPersistAsync(5, null, default));
     }
 
     [Fact]
@@ -301,7 +380,7 @@ public class ClaudeQuestionClassifierTests
             new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["ExamApi:BaseUrl"] = ExamApi }).Build(),
             new MemoryCache(new MemoryCacheOptions()), NullLoggerFactory.Instance, chat);
 
-        await classifier.ClassifyAndPersistAsync(3, default);
+        await classifier.ClassifyAndPersistAsync(3, null, default);
 
         using var request = System.Text.Json.JsonDocument.Parse(anthropicHttp.Bodies.ShouldHaveSingleItem());
         var root = request.RootElement;

@@ -35,12 +35,18 @@ public sealed class ExamApiClassificationClient(IHttpClientFactory httpClientFac
             mediaType is not null && mediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) ? mediaType : "image/jpeg");
     }
 
-    /// <summary><c>GET /api/questions/classifier-taxonomy</c> (issue #469).</summary>
-    public async Task<ClassifierTaxonomy> FetchTaxonomyAsync(string token, CancellationToken ct)
+    /// <summary>
+    /// <c>GET /api/questions/classifier-taxonomy</c> (issue #469); with <paramref name="gradeId"/> only that grade's
+    /// subjects/topics/subtopics (<c>?gradeId=</c>, issue #565).
+    /// </summary>
+    public async Task<ClassifierTaxonomy> FetchTaxonomyAsync(int? gradeId, string token, CancellationToken ct)
     {
         var client = CreateClient(token);
 
-        var response = await client.GetAsync($"{_baseUrl}/api/questions/classifier-taxonomy", ct);
+        var url = $"{_baseUrl}/api/questions/classifier-taxonomy";
+        if (gradeId.HasValue)
+            url += $"?gradeId={gradeId.Value}";
+        var response = await client.GetAsync(url, ct);
         var payload = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
         {

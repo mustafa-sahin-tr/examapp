@@ -8,7 +8,6 @@ import { IsStudentDirective } from '../../shared/directives/is-student.directive
 import { Router } from '@angular/router';
 import { CARDSTYLES, StyleConfig } from './worksheet-card-styles';
 import { MatCardModule } from '@angular/material/card';
-import { SafeHtmlPipe } from '../../services/safehtml';
 import { AssignedWorksheet } from '../../models/assignment';
 import { MatIconModule } from '@angular/material/icon';
 import { ThemeConfigService, WorksheetCardThemeConfig } from '../../services/theme-config.service';

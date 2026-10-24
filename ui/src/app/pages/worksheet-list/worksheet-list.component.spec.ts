@@ -108,6 +108,17 @@ describe('WorksheetListComponent', () => {
         expect(component).toBeTruthy();
     });
 
+    // #557: atanmış testler yalnız öğrenciye yüklenir; öğretmende student-only uç çağrılmaz (403 olurdu).
+    it('loads active assignments once for a student', () => {
+        expect(testService.getActiveAssignments).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not request active assignments for a teacher', () => {
+        TestBed.resetTestingModule();
+        fixture = configure(false);
+        expect(testService.getActiveAssignments).not.toHaveBeenCalled();
+    });
+
     describe('discoverAssignedTests / discoverExploreTests', () => {
         function setPaged(items: Partial<Test>[]): void {
             component.paged.set({

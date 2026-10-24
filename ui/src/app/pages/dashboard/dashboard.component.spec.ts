@@ -569,10 +569,13 @@ describe('DashboardComponent', () => {
         it('reportUserId_ProfileOnlyInLocalStorage_UsesStoredId', () => {
             authUser.set(null);
             localStorage.setItem('user', JSON.stringify({ id: 9 }));
-            createComponent().ngOnInit();
+            try {
+                createComponent().ngOnInit();
 
-            expect(badgeServiceSpy.getUserActivity).toHaveBeenCalledWith(9);
-            localStorage.removeItem('user');
+                expect(badgeServiceSpy.getUserActivity).toHaveBeenCalledWith(9);
+            } finally {
+                localStorage.removeItem('user');
+            }
         });
     });
 

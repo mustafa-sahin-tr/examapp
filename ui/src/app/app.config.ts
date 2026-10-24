@@ -33,6 +33,7 @@ import { firstValueFrom } from 'rxjs';
 import { SUPPORTED_LOCALES, SUPPORTED_LOCALE_CODES } from './models/locale';
 import { LocaleService, readStoredLocale } from './services/locale.service';
 import { TranslocoHttpLoader } from './services/transloco-http.loader';
+import { provideQuillConfig } from 'ngx-quill/config';
 
 // Desteklenen tüm diller için Angular locale verisi kaydı — `date`/`number` pipe'ları LOCALE_ID
 // hangi dile ayarlanırsa ayarlansın veriyi hazır bulur (NG0701'in kalıcı çözümü).
@@ -53,6 +54,9 @@ export const TR_DATE_FORMATS: MatDateFormats = {
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    // Security review L1 (#552): <quill-view-html> varsayılanda bypassSecurityTrustHtml kullanıyor; quill 2.0.3 HTML
+    // export'unda yaması olmayan XSS var (GHSA-v3m3-f69x-jf25). Editör ve görünüm Angular sanitizer'ından geçsin.
+    provideQuillConfig({ sanitize: true }),
     provideHttpClient(
       // Angular 22'nin varsayılan backend'i fetch; http-xhr-backend migration'ı mevcut XHR davranışını korur (#545).
       withXhr(),

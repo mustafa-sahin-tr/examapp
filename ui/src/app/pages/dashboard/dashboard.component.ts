@@ -119,14 +119,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
    * olabilir; id gelene kadar istek atılmaz, gelince bir kez yüklenir. Kayıt sayfaları localStorage'a doğrudan
    * yazdığı için oradaki id de okunur.
    */
-  private readonly reportUserId = computed(() => {
+  private readonly profileUserId = computed(() => {
     const id = Number(this.auth.user()?.id);
-    return Number.isFinite(id) && id > 0 ? id : currentUserId();
+    return Number.isFinite(id) && id > 0 ? id : null;
   });
   private reportsLoadedFor: number | null = null;
 
   private readonly loadReportsWhenUserKnown = effect(() => {
-    this.reportUserId();
+    this.profileUserId();
     untracked(() => this.loadReportsIfUserKnown());
   });
 
@@ -579,6 +579,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /** Kullanıcı id'si biliniyorsa raporları o id için bir kez yükler (#556). */
+  /** Profil signal'ı, yoksa localStorage (signal değil; her çağrıda taze okunur). */
+  private reportUserId(): number | null {
+    return this.profileUserId() ?? currentUserId();
+  }
+
   private loadReportsIfUserKnown(): void {
     const userId = this.reportUserId();
     if (userId === null || userId === this.reportsLoadedFor) {

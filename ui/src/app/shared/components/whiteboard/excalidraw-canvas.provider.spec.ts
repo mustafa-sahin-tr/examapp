@@ -36,12 +36,21 @@ describe('Excalidraw font fallback filter', () => {
         expect((new win.FontFace('Excalifont', buffer) as unknown as RecordingFontFace).source).toBe(buffer);
     });
 
-    it('works with the real browser FontFace (no CSP-violating source is registered)', async () => {
-        const win = { FontFace: window.FontFace } as unknown as Window & typeof globalThis;
+    it('passes the filtered source to the real browser FontFace', () => {
+        const native = window.FontFace;
+        const sources: unknown[] = [];
+        class SpyFontFace extends native {
+            constructor(family: string, source: string | BufferSource, descriptors?: FontFaceDescriptors) {
+                sources.push(source);
+                super(family, source, descriptors);
+            }
+        }
+        const win = { FontFace: SpyFontFace } as unknown as Window & typeof globalThis;
         installExcalidrawFontFallbackFilter(win);
 
         const face = new win.FontFace('ExcalifontTest', `${SELF}, ${ESM}`);
         expect(face).toBeInstanceOf(FontFace);
         expect(face.family).toBe('ExcalifontTest');
+        expect(sources).toEqual([SELF]);
     });
 });

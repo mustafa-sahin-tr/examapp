@@ -506,7 +506,7 @@ Gateway arkasında ui dev-server SSR'dan CSR'a düşer: host/proto dışındaki 
 `npm set strict-ssl false` çalıştırmıyor. Kurumsal proxy TLS'i kendi sertifikasıyla açıyorsa (npm `UNABLE_TO_GET_ISSUER_CERT_LOCALLY` /
 `SELF_SIGNED_CERT_IN_CHAIN`), proxy'nin kök CA'sını BuildKit secret'ı olarak ver; repoya girmez:
 `docker build --secret id=corp_ca,src=/yol/kurum-ca.pem -f dockerfiles/ui/Dockerfile.ui dockerfiles/ui -t exam-angular:latest`
-(auth-ui için `auth-ui:latest`), sonra `docker-compose up -d`. Secret verilmezse adım atlanır.
+(auth-ui için `auth-ui:latest`), sonra `docker-compose up -d` — **`--build` verme**: compose secret'sız yeniden derler ve CA düşer. Secret verilmezse adım atlanır.
 
 ## Port map (host → container)
 

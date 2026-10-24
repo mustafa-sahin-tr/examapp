@@ -12,7 +12,10 @@
   }
 
   @if (existingIds(); as existing) {
-    <app-question-bank-panel [selectable]="true" [disabledIds]="existing" (selectionChange)="onSelectionChange($event)" />
+    <app-question-bank-panel
+      filterLayout="selects"
+      [initialClassification]="data.initialClassification ?? null"
+      [selectable]="true" [disabledIds]="existing" (selectionChange)="onSelectionChange($event)" />
   } @else if (!errorMessage()) {
     <div class="bqd-loading"><mat-spinner diameter="32"></mat-spinner></div>
   }

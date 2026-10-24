@@ -1,5 +1,6 @@
 import type { Mock } from "vitest";
-import { Component, EventEmitter, Output, ChangeDetectionStrategy } from '@angular/core';
+import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
+import { By } from '@angular/platform-browser';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatDialog } from '@angular/material/dialog';
@@ -24,6 +25,10 @@ import qbEn from '../../../../../public/i18n/question-bank/en.json';
     template: '',
 })
 class ClassificationSelectorStub {
+    @Input()
+    layout: 'chips' | 'selects' = 'chips';
+    @Input()
+    initialSelection: ClassificationSelection | null = null;
     @Output()
     selectionChange = new EventEmitter<ClassificationSelection>();
 }
@@ -98,6 +103,49 @@ describe('QuestionBankPanelComponent (issue #471)', () => {
     function lastFilter(): Record<string, unknown> {
         return vi.mocked(search).mock.lastCall![0] as Record<string, unknown>;
     }
+
+    describe('filterLayout', () => {
+        const selector = () =>
+            fixture.debugElement.query(By.directive(ClassificationSelectorStub)).componentInstance as ClassificationSelectorStub;
+
+        it('filterLayout_Default_PassesChipsToClassificationSelector', async () => {
+            await settle();
+
+            expect(selector().layout).toBe('chips');
+        });
+
+        it('filterLayout_Selects_PassesSelectsToClassificationSelector', async () => {
+            fixture.componentRef.setInput('filterLayout', 'selects');
+            await settle();
+
+            expect(selector().layout).toBe('selects');
+        });
+    });
+
+    describe('initialClassification', () => {
+        const selector = () =>
+            fixture.debugElement.query(By.directive(ClassificationSelectorStub)).componentInstance as ClassificationSelectorStub;
+        const INITIAL: ClassificationSelection = { gradeId: 5, subjectId: 10, topicId: 100, subtopicIds: [1000] };
+
+        it('initialClassification_Set_FirstSearchUsesItAndSelectorReceivesIt', async () => {
+            fixture.componentRef.setInput('initialClassification', INITIAL);
+            await settle();
+
+            expect(search).toHaveBeenCalledTimes(1);
+            expect(lastFilter()).toMatchObject({ gradeId: 5, subjectId: 10, topicId: 100, subTopicIds: [1000], skip: 0 });
+            expect(selector().initialSelection).toEqual(INITIAL);
+        });
+
+        it('initialClassification_UserChangesSelection_OverridesInitialValue', async () => {
+            fixture.componentRef.setInput('initialClassification', INITIAL);
+            await settle();
+
+            selector().selectionChange.emit({ gradeId: 6, subjectId: null, topicId: null, subtopicIds: [] });
+            await settle();
+
+            expect(lastFilter()).toMatchObject({ gradeId: 6, subjectId: null, topicId: null, subTopicIds: [] });
+        });
+    });
 
     describe('filter computed (pure mapping)', () => {
         it('filter_DefaultState_ReturnsMineScopeAndNoConstraints', () => {

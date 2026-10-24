@@ -5,6 +5,28 @@
   margin-bottom: 16px;
 }
 
+.classification-selector.classification-selector--selects {
+  padding: 0;
+  background-color: transparent;
+  margin-bottom: 0;
+}
+
+.classification-selects {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+
+  mat-form-field {
+    flex: 1 1 160px;
+    min-width: 160px;
+  }
+
+  .classification-selects__subtopics {
+    flex-basis: 240px;
+  }
+}
+
 .classification-level {
   margin-bottom: 20px;
 }

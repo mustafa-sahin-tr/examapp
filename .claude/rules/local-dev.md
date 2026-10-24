@@ -481,15 +481,14 @@ serbest; özel bir hostname'den (tünel, `/etc/hosts` adı) açacaksan listeye e
 Gateway arkasında ui dev-server SSR'dan CSR'a düşer: host/proto dışındaki `X-Forwarded-*` başlıklarına güvenilmiyor
 (`trustProxyHeaders` varsayılan) ve log'da `Received "X-Forwarded-..." header but "trustProxyHeaders" was not set up` uyarısı
 çıkar. Bu beklenen davranış, sayfa normal açılır.
-- **Merge sonrası:** ui ve auth-ui'da `npm ci`, sonra Aspire'da
-  `aspire resource angular-app restart` ve `aspire resource auth-ui restart`. ui'nın `package-lock.json`'u artık izleniyor;
-  bağımlılık değişince yalnız `npm install --package-lock-only` (`ui/package.json` `//` notu).
+- **Merge sonrası:** Aspire'da `aspire resource angular-app restart` ve `aspire resource auth-ui restart`;
+  paket kurulumu ve kilit dosyası için bkz. "Yalnız npm".
 
 **Issue #545 — Angular 22.** `ui` ve `auth-ui` Angular 22.2'de (19 → 20 → 21 → 22, her major ayrı commit).
 - **Node:** Angular 22 CLI `^22.22.3 || ^24.15.0` ister; CI, `deploy/dockerfiles/angular-spa.Dockerfile` ve
   `dockerfiles/{ui,auth-ui}` `node:24`. Yerelde eski Node varsa `ng` açılmaz — Node 24 kur.
-- **Merge sonrası:** ui ve auth-ui'da `npm ci`; Aspire'da
-  `aspire resource angular-app restart` ve `aspire resource auth-ui restart`.
+- **Merge sonrası:** Aspire'da `aspire resource angular-app restart` ve `aspire resource auth-ui restart`;
+  paket kurulumu için bkz. "Yalnız npm".
 - **Proxy başlıkları:** Angular 22'de `AngularNodeAppEngine` varsayılan olarak hiçbir `X-Forwarded-*` başlığına güvenmiyor
   (#488'deki "host/proto'ya güvenilir" davranışı bitti). `trust-proxy-headers` migration'ı `src/server.ts`'e opt-in
   eklemedi (yalnız `main.server.ts`'e bakıyor) ve bilerek eklenmedi: prod statik nginx, dev-server'da SSR gateway
@@ -517,8 +516,9 @@ sabitlemeler yalnız `overrides`'ta.
 - **Merge sonrası:** `ui` ve `auth-ui` dizinlerinde `npm ci` (eski `node_modules` ile yarn kalıntısı varsa önce sil), sonra
   `aspire resource angular-app restart` ve `aspire resource auth-ui restart`.
 - Kilidi yalnız `npm install --package-lock-only` ile güncelle; diff'te win32/darwin/linux paketlerinden biri kayboluyorsa commit etme.
-- docker-compose dev'de `./ui` ve `./auth-ui` bind mount'tur: konteynerdeki `npm ci` host'taki `node_modules`'u silip Linux
-  binary'leriyle yeniden kurar. Aynı klasörü hem konteynerde hem host'ta kullanma; host'a dönünce `npm ci`.
+- docker-compose dev'de `./ui` ve `./auth-ui` bind mount'tur, ama `/app/node_modules` konteynere özel anonim volume'dur:
+  konteynerdeki `npm ci` kendi (Linux) `node_modules`'unu kurar, host etkilenmez. Volume'u sıfırlamak için
+  `docker-compose rm -sv angular-app auth-ui` sonra `up -d`.
 
 ## Port map (host → container)
 

@@ -70,7 +70,7 @@ these are the checks that exist:
 | `dotnet-unit` | Foundation/Api/OutboxPublisher/BadgeService/AuthApi/Gateway tests with `--filter "Category!=Integration"` | required-candidate |
 | `integration` | `ExamApp.Api.IntegrationTests` + tests tagged `[Trait("Category","Integration")]` (Testcontainers Postgres) | `continue-on-error` (PO decision) |
 | `ui-tests` | `ui/` `ng test` (npm ci, Vitest browser mode) | `continue-on-error` until #394 |
-| `auth-ui-tests` | `auth-ui/` `ng test` (npm ci, ChromeHeadlessCI) | required-candidate |
+| `auth-ui-tests` | `auth-ui/` `ng test` (npm ci, Vitest browser mode) | required-candidate |
 
 Any test that needs Docker/Postgres in a unit project must carry `[Trait("Category", "Integration")]`
 so `dotnet-unit` skips it. UI CI uses `karma.ci.conf.js` (`--no-sandbox` launcher); local `ng test` is unchanged.

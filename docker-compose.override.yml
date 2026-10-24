@@ -22,10 +22,10 @@ services:
     command: dotnet watch run --urls=http://+:8009
 
   angular-app:
-    command: sh -c "yarn install && yarn start"
+    command: sh -c "npm ci && npm start"
 
   auth-ui:
-    command: sh -c "yarn install && yarn start"
+    command: sh -c "npm ci && npm start"
 
   question-detector-dev:
     command: uvicorn main:app --host 0.0.0.0 --port 8080 --reload

@@ -481,14 +481,14 @@ serbest; özel bir hostname'den (tünel, `/etc/hosts` adı) açacaksan listeye e
 Gateway arkasında ui dev-server SSR'dan CSR'a düşer: host/proto dışındaki `X-Forwarded-*` başlıklarına güvenilmiyor
 (`trustProxyHeaders` varsayılan) ve log'da `Received "X-Forwarded-..." header but "trustProxyHeaders" was not set up` uyarısı
 çıkar. Bu beklenen davranış, sayfa normal açılır.
-- **Merge sonrası:** ui'da `yarn install` (ya da `npm ci`), auth-ui'da `npm ci`, sonra Aspire'da
+- **Merge sonrası:** ui ve auth-ui'da `npm ci`, sonra Aspire'da
   `aspire resource angular-app restart` ve `aspire resource auth-ui restart`. ui'nın `package-lock.json`'u artık izleniyor;
-  bağımlılık değişince `yarn.lock` ile birlikte güncelle (`ui/package.json` `//` notu).
+  bağımlılık değişince yalnız `npm install --package-lock-only` (`ui/package.json` `//` notu).
 
 **Issue #545 — Angular 22.** `ui` ve `auth-ui` Angular 22.2'de (19 → 20 → 21 → 22, her major ayrı commit).
 - **Node:** Angular 22 CLI `^22.22.3 || ^24.15.0` ister; CI, `deploy/dockerfiles/angular-spa.Dockerfile` ve
   `dockerfiles/{ui,auth-ui}` `node:24`. Yerelde eski Node varsa `ng` açılmaz — Node 24 kur.
-- **Merge sonrası:** ui'da `yarn install` (ya da `npm ci`), auth-ui'da `npm ci`; Aspire'da
+- **Merge sonrası:** ui ve auth-ui'da `npm ci`; Aspire'da
   `aspire resource angular-app restart` ve `aspire resource auth-ui restart`.
 - **Proxy başlıkları:** Angular 22'de `AngularNodeAppEngine` varsayılan olarak hiçbir `X-Forwarded-*` başlığına güvenmiyor
   (#488'deki "host/proto'ya güvenilir" davranışı bitti). `trust-proxy-headers` migration'ı `src/server.ts`'e opt-in
@@ -507,6 +507,18 @@ Gateway arkasında ui dev-server SSR'dan CSR'a düşer: host/proto dışındaki 
 `SELF_SIGNED_CERT_IN_CHAIN`), proxy'nin kök CA'sını BuildKit secret'ı olarak ver; repoya girmez:
 `docker build --secret id=corp_ca,src=/yol/kurum-ca.pem -f dockerfiles/ui/Dockerfile.ui dockerfiles/ui -t exam-angular:latest`
 (auth-ui için `auth-ui:latest`), sonra `docker-compose up -d` — **`--build` verme**: compose secret'sız yeniden derler ve CA düşer. Secret verilmezse adım atlanır.
+
+**Yalnız npm — yarn kaldırıldı.** `ui` ve `auth-ui` tek paket yöneticisi olarak npm + `package-lock.json` kullanır;
+`yarn.lock` dosyaları silindi (`ui/.gitignore` ve `auth-ui/.gitignore` `yarn.lock`'u yok sayar). Neden: Windows'ta çalıştırılan
+`npm install` mevcut `yarn.lock`'u sessizce yeniden yazıp yalnız o makinenin `win32-x64` isteğe bağlı native paketlerini
+bırakıyordu; yarn v1 `--frozen-lockfile` mac/linux'ta bunu yakalamadan kilitsiz kuruyordu (#488'e aykırı). CI (`ui-tests`),
+docker-compose dev (`npm ci && npm start`), Aspire ve prod imajı artık aynı kilidi kullanır; `resolutions` blokları kalktı,
+sabitlemeler yalnız `overrides`'ta.
+- **Merge sonrası:** `ui` ve `auth-ui` dizinlerinde `npm ci` (eski `node_modules` ile yarn kalıntısı varsa önce sil), sonra
+  `aspire resource angular-app restart` ve `aspire resource auth-ui restart`.
+- Kilidi yalnız `npm install --package-lock-only` ile güncelle; diff'te win32/darwin/linux paketlerinden biri kayboluyorsa commit etme.
+- docker-compose dev'de `./ui` ve `./auth-ui` bind mount'tur: konteynerdeki `npm ci` host'taki `node_modules`'u silip Linux
+  binary'leriyle yeniden kurar. Aynı klasörü hem konteynerde hem host'ta kullanma; host'a dönünce `npm ci`.
 
 ## Port map (host → container)
 

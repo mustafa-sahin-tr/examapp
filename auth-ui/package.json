@@ -36,11 +36,8 @@
     "vitest": "^5.0.0"
   },
   "//": [
-    "Güvenlik override'ı (issue #545; #488'in geçici yamaları Angular 22 + Vitest geçişiyle kaldırıldı): resolutions (yarn.lock; docker-compose dev) + overrides (package-lock.json; CI npm ci, Aspire, prod imajı) birlikte güncellenmeli. @angular/build > vite ~8.3.5: @angular/build 22.2.4 vite 8.3.0'ı tam sürümle sabitliyor (yalnız dev-server). Paket yükseltilip audit temiz çıkınca satır kaldırılabilir."
+    "Güvenlik override'ı (issue #545; #488'in geçici yamaları Angular 22 + Vitest geçişiyle kaldırıldı): overrides (package-lock.json; CI npm ci, Aspire, docker-compose dev, prod imajı) değişince kilit de güncellenmeli. @angular/build > vite ~8.3.5: @angular/build 22.2.4 vite 8.3.0'ı tam sürümle sabitliyor (yalnız dev-server). Paket yükseltilip audit temiz çıkınca satır kaldırılabilir."
   ],
-  "resolutions": {
-    "@angular/build/vite": "~8.3.5"
-  },
   "overrides": {
     "@angular/build": {
       "vite": "~8.3.5"

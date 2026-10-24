@@ -127,10 +127,29 @@ function controllableHash(pendingNames: string[] = []) {
     return { hash, release: (name: string) => resolvers.get(name)?.(`id-${name}`) };
 }
 
-/** Tüm bekleyen mikro görevler + crypto.subtle (gerçek async) tamamlansın. */
+/**
+ * Sürmekte olan gerçek tarayıcı async'leri (dosya okuma + SHA-256). Sayfa açılışı `void` ile başlar ve `predict`'ten
+ * önce iki kez hash'lenir; tam koşunun yükü altında bunlar sabit sayıda turda bitmeyebilir (flaky predict testi).
+ */
+const pendingNative = new Set<Promise<unknown>>();
+
+function trackNative<T>(promise: Promise<T>): Promise<T> {
+    pendingNative.add(promise);
+    const done = () => pendingNative.delete(promise);
+    promise.then(done, done);
+    return promise;
+}
+
+/** Tüm bekleyen mikro görevler + gerçek async (dosya okuma, crypto.subtle) tamamlansın. */
 async function settle(fixture: ComponentFixture<LabelingComponent>): Promise<void> {
-    for (let i = 0; i < 20; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 0));
+    for (let round = 0; round < 10; round++) {
+        await Promise.allSettled([...pendingNative]);
+        for (let i = 0; i < 20; i++) {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+        if (pendingNative.size === 0) {
+            break;
+        }
     }
     fixture.detectChanges();
 }
@@ -187,9 +206,22 @@ describe('LabelingComponent', () => {
     }
 
     beforeEach(() => {
+        pendingNative.clear();
+        const digest = crypto.subtle.digest.bind(crypto.subtle);
+        vi.spyOn(crypto.subtle, 'digest').mockImplementation((algorithm: AlgorithmIdentifier, data: BufferSource) =>
+            trackNative(digest(algorithm, data)));
+        const arrayBuffer = Blob.prototype.arrayBuffer;
+        vi.spyOn(Blob.prototype, 'arrayBuffer').mockImplementation(function (this: Blob) {
+            return trackNative(arrayBuffer.call(this));
+        });
         localStorage.removeItem('labeling.answerCount');
         localStorage.removeItem('labeling.source');
         localStorage.removeItem('labeling.aiModel');
+    });
+
+    afterEach(() => {
+        vi.mocked(crypto.subtle.digest).mockRestore();
+        vi.mocked(Blob.prototype.arrayBuffer).mockRestore();
     });
 
     it('init_LoadsLabeledPagesAndPassesTrainingInputsToSelector', async () => {

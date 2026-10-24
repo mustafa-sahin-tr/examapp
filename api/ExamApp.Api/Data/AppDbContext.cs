@@ -35,6 +35,8 @@ public class AppDbContext : DbContext
 
     private void ApplyAuditInfo()
     {
+        SanitizeRichText();
+
         var entries = ChangeTracker.Entries<BaseEntity>();
 
         foreach (var entry in entries)
@@ -66,6 +68,42 @@ public class AppDbContext : DbContext
             }
         }
     }
+    // #552 security review L2: soru/pasaj HTML'i hangi yoldan yazılırsa yazılsın (oluştur, güncelle, toplu kayıt,
+    // soru aktarımı) kayıt anında izin listesiyle temizlenir; yalnız eklenen ya da değişen alanlar.
+    private void SanitizeRichText()
+    {
+        foreach (var entry in ChangeTracker.Entries<Question>())
+        {
+            SanitizeIfChanged(entry, q => q.Text, (q, v) => q.Text = v);
+            SanitizeIfChanged(entry, q => q.SubText, (q, v) => q.SubText = v);
+            SanitizeIfChanged(entry, q => q.PracticeCorrectAnswer, (q, v) => q.PracticeCorrectAnswer = v);
+        }
+
+        foreach (var entry in ChangeTracker.Entries<Passage>())
+        {
+            SanitizeIfChanged(entry, p => p.Title, (p, v) => p.Title = v);
+            SanitizeIfChanged(entry, p => p.Text, (p, v) => p.Text = v);
+        }
+    }
+
+    private static void SanitizeIfChanged<T>(
+        Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<T> entry,
+        Expression<Func<T, string?>> property,
+        Action<T, string?> set) where T : class
+    {
+        if (entry.State != EntityState.Added && !(entry.State == EntityState.Modified && entry.Property(property).IsModified))
+        {
+            return;
+        }
+
+        var value = entry.Property(property).CurrentValue;
+        var sanitized = Helpers.RichTextSanitizer.Sanitize(value);
+        if (!string.Equals(value, sanitized, StringComparison.Ordinal))
+        {
+            set(entry.Entity, sanitized);
+        }
+    }
+
     public DbSet<Student> Students { get; set; } // Öğrenci tablosu
     public DbSet<Teacher> Teachers { get; set; } // Öğretmen tablosu
     public DbSet<Parent> Parents { get; set; } // Veli tablosu

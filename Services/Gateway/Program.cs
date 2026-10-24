@@ -214,6 +214,12 @@ app.Use(async (context, next) =>
 
 app.UseWebSockets();    // WebSocket desteği SignalR için gerekli
 
+// Yalnız Development: Angular dev-server HMR WebSocket'i (/ ve /app/, vite-hmr) allowlist'ten önce köprülenir (#545 E2E).
+if (app.Environment.IsDevelopment())
+{
+    app.UseDevHmrWebSocketBridge();
+}
+
 // Ocelot WS kolu gateway auth'unu atlıyor; upgrade auth'u Ocelot'tan önce burada (bkz. HubWebSocketAuthExtensions).
 app.UseHubWebSocketAuth();
 

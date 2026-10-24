@@ -36,6 +36,7 @@ public class DevHmrWebSocketBridgeTests
     [Theory]
     [InlineData("/", "?token=abc", false)]   // vite-hmr alt protokolü yok
     [InlineData("/", "", true)]              // token yok
+    [InlineData("/", "?xtoken=abc", true)]   // token anahtarı tam değil
     [InlineData("/app", "?token=abc", true)] // yol tam değil
     [InlineData("/api/exam/", "?token=abc", true)]
     [InlineData("/hub/badges", "?token=abc", true)]
@@ -66,13 +67,33 @@ public class DevHmrWebSocketBridgeTests
 
         var client = gateway.GetTestServer().CreateWebSocketClient();
         client.SubProtocols.Add(DevHmrWebSocketBridgeExtensions.HmrSubProtocol);
+        client.ConfigureRequest = req => req.Headers.Origin = "http://localhost";
         using var socket = await client.ConnectAsync(new Uri("ws://localhost/?token=abc"), CancellationToken.None);
 
         Assert.Equal(DevHmrWebSocketBridgeExtensions.HmrSubProtocol, socket.SubProtocol);
-        Assert.Equal("connected token=abc", await ReceiveTextAsync(socket));
+        // Origin dev-server'a iletilir; Vite token'ı yalnız Origin varken denetler (security review M1).
+        Assert.Equal("connected token=abc origin=http://localhost", await ReceiveTextAsync(socket));
 
         await socket.SendAsync(Encoding.UTF8.GetBytes("ping"), WebSocketMessageType.Text, true, CancellationToken.None);
         Assert.Equal("echo:ping", await ReceiveTextAsync(socket));
+    }
+
+    [Theory]
+    [InlineData("https://evil.example")]     // başka sitedeki sayfa (çapraz site WS ele geçirme)
+    [InlineData("http://localhost:4200")]    // farklı port = farklı origin
+    [InlineData(null)]                       // Origin yok (tarayıcı dışı istemci)
+    public async Task HmrUpgrade_FromForeignOrMissingOrigin_Returns403(string? origin)
+    {
+        await using var gateway = await StartGatewayAsync(Env);
+        var client = gateway.GetTestServer().CreateWebSocketClient();
+        client.SubProtocols.Add(DevHmrWebSocketBridgeExtensions.HmrSubProtocol);
+        if (origin is not null)
+        {
+            client.ConfigureRequest = req => req.Headers.Origin = origin;
+        }
+
+        var ex = await Assert.ThrowsAnyAsync<Exception>(() => client.ConnectAsync(new Uri("ws://localhost/?token=abc"), CancellationToken.None));
+        Assert.Contains("403", ex.Message);
     }
 
     [Theory]
@@ -124,7 +145,7 @@ public class DevHmrWebSocketBridgeTests
             }
 
             using var ws = await ctx.WebSockets.AcceptWebSocketAsync(DevHmrWebSocketBridgeExtensions.HmrSubProtocol);
-            await ws.SendAsync(Encoding.UTF8.GetBytes($"connected token={ctx.Request.Query["token"]}"), WebSocketMessageType.Text, true, CancellationToken.None);
+            await ws.SendAsync(Encoding.UTF8.GetBytes($"connected token={ctx.Request.Query["token"]} origin={ctx.Request.Headers.Origin}"), WebSocketMessageType.Text, true, CancellationToken.None);
             var buffer = new byte[1024];
             while (true)
             {

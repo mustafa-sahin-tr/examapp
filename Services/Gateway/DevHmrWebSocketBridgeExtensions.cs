@@ -1,4 +1,5 @@
 using System.Net.WebSockets;
+using Microsoft.AspNetCore.WebUtilities;
 
 /// <summary>
 /// Yalnız Development: Angular dev-server'ın (Vite) HMR WebSocket'ini gateway üzerinden geçirir.
@@ -7,7 +8,13 @@ using System.Net.WebSockets;
 /// iletemiyor, <see cref="HubWebSocketAuthExtensions"/> da (doğru olarak) reddediyordu — konsolda 400 ve canlı yenileme yok.
 /// Bu köprü <see cref="HubWebSocketAuthExtensions"/>'tan ÖNCE çalışır ve yalnız şu isteği alır: WebSocket, yol tam
 /// <c>/</c> ya da <c>/app/</c>, <c>vite-hmr</c> alt protokolü ve <c>token</c> sorgusu. Diğer her şey eskisi gibi
-/// allowlist'e gider. Token'ı Vite kendisi doğrular (köprü yalnız taşır). Production'da hiç eklenmez (prod UI statik nginx).
+/// allowlist'e gider. Production'da hiç eklenmez (prod UI statik nginx).
+/// <para>
+/// Çapraz site koruması (security review M1): Vite token'ı yalnız <c>Origin</c> başlığı olan istekte denetler; köprünün
+/// <see cref="ClientWebSocket"/>'i Origin göndermeseydi her bağlantı token'sız kabul edilirdi (CVE-2025-24010 sınıfı). Bu
+/// yüzden Origin zorunludur, gateway'in kendi origin'i (aynı scheme + Host) olmalıdır ve dev-server'a aynen iletilir —
+/// token denetimini yine Vite yapar.
+/// </para>
 /// </summary>
 public static class DevHmrWebSocketBridgeExtensions
 {
@@ -17,7 +24,7 @@ public static class DevHmrWebSocketBridgeExtensions
     public static Uri? ResolveTarget(
         PathString path, QueryString query, IEnumerable<string> subProtocols, Func<string, string?> env)
     {
-        if (!subProtocols.Contains(HmrSubProtocol) || !query.HasValue || !query.Value!.Contains("token=", StringComparison.Ordinal))
+        if (!subProtocols.Contains(HmrSubProtocol) || !QueryHelpers.ParseQuery(query.Value).ContainsKey("token"))
         {
             return null;
         }
@@ -37,6 +44,15 @@ public static class DevHmrWebSocketBridgeExtensions
         return new UriBuilder("ws", host, portNumber, path.Value) { Query = query.Value![1..] }.Uri;
     }
 
+    /// <summary>Origin gateway'in kendi origin'i mi (tarayıcıdaki sayfa gateway'den açılmış olmalı).</summary>
+    public static bool IsSameOrigin(HttpRequest request)
+    {
+        var origin = request.Headers.Origin.ToString();
+        return Uri.TryCreate(origin, UriKind.Absolute, out var parsed)
+            && string.Equals(parsed.Scheme, request.Scheme, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(parsed.Authority, request.Host.Value, StringComparison.OrdinalIgnoreCase);
+    }
+
     public static IApplicationBuilder UseDevHmrWebSocketBridge(this IApplicationBuilder app, Func<string, string?>? env = null)
     {
         env ??= Environment.GetEnvironmentVariable;
@@ -51,8 +67,15 @@ public static class DevHmrWebSocketBridgeExtensions
                 return;
             }
 
+            if (!IsSameOrigin(context.Request))
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
+
             using var upstream = new ClientWebSocket();
             upstream.Options.AddSubProtocol(HmrSubProtocol);
+            upstream.Options.SetRequestHeader("Origin", context.Request.Headers.Origin.ToString());
             try
             {
                 await upstream.ConnectAsync(target, context.RequestAborted);
@@ -65,8 +88,12 @@ public static class DevHmrWebSocketBridgeExtensions
 
             using var downstream = await context.WebSockets.AcceptWebSocketAsync(HmrSubProtocol);
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
-            await Task.WhenAny(Pump(downstream, upstream, cts.Token), Pump(upstream, downstream, cts.Token));
+            var toDevServer = Pump(downstream, upstream, cts.Token);
+            var toBrowser = Pump(upstream, downstream, cts.Token);
+            await Task.WhenAny(toDevServer, toBrowser);
             await cts.CancelAsync();
+            // Soketler dispose edilmeden önce iki pompa da bitsin (review: yarışta ObjectDisposedException).
+            await Task.WhenAll(toDevServer, toBrowser);
         });
     }
 
@@ -90,7 +117,7 @@ public static class DevHmrWebSocketBridgeExtensions
                 await to.SendAsync(buffer.AsMemory(0, result.Count), result.MessageType, result.EndOfMessage, ct);
             }
         }
-        catch (Exception ex) when (ex is OperationCanceledException or WebSocketException)
+        catch (Exception ex) when (ex is OperationCanceledException or WebSocketException or ObjectDisposedException)
         {
             // Bir taraf koptu; diğer pompa iptal edilir.
         }

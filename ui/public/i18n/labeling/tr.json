@@ -35,7 +35,16 @@
     "cardTitle": "Soru havuzu",
     "cardSaved": "Havuza kaydedildi ({{count}} soru)",
     "forbidden": "Havuza soru kaydetmek için öğretmen ya da yönetici olmalısınız.",
-    "savedAndTrained": "{{count}} soru havuza kaydedildi ve eğitime gönderildi; sınıflandırma arka planda başladı."
+    "savedAndTrained": "{{count}} soru havuza kaydedildi ve eğitime gönderildi; sınıflandırma arka planda başladı.",
+    "needGrade": "Önce sınıf seçin"
+  },
+  "grade": {
+    "label": "Sınıf",
+    "placeholder": "Sınıf seçin",
+    "loading": "Yükleniyor…",
+    "failed": "Sınıflar yüklenemedi",
+    "empty": "Sınıf yok",
+    "retry": "Sınıfları yeniden yükle"
   },
   "stats": {
     "label": "Oturum sayaçları",

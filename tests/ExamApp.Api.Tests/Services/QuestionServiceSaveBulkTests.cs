@@ -505,6 +505,143 @@ public class QuestionServiceSaveBulkTests : IDisposable
         (await check.Questions.CountAsync()).ShouldBe(0);
     }
 
+    // ---- Issue #565: QuestionCreatedEvent.GradeId ----
+
+    private async Task<List<QuestionCreatedEvent>> ReadEventsAsync()
+    {
+        await using var check = _db.NewContext();
+        return (await check.OutboxMessages
+                .Where(m => m.Type == OutboxEventRegistry.NameFor<QuestionCreatedEvent>())
+                .ToListAsync())
+            .Select(m => System.Text.Json.JsonSerializer.Deserialize<QuestionCreatedEvent>(m.Content)!)
+            .ToList();
+    }
+
+    private async Task<int> AddGradeAsync(string name)
+    {
+        await using var ctx = _db.NewContext();
+        var g = new Grade { Name = name };
+        ctx.Grades.Add(g);
+        await ctx.SaveChangesAsync();
+        return g.Id;
+    }
+
+    private async Task<int> AddWorksheetAsync(int gradeId)
+    {
+        await using var ctx = _db.NewContext();
+        var ws = new Worksheet { Name = "W", Description = "", GradeId = gradeId };
+        ctx.Worksheets.Add(ws);
+        await ctx.SaveChangesAsync();
+        return ws.Id;
+    }
+
+    [Fact]
+    public async Task Event_grade_is_the_explicit_grade_of_the_request()
+    {
+        var tax = await SeedTaxonomyAsync();
+        var gradeId = await AddGradeAsync("4");
+
+        await using (var ctx = _db.NewContext())
+        {
+            var dto = Dto(new HeaderInfo { SubjectId = tax.SubjectId, TopicId = tax.TopicId }, Mcq("S1"), Mcq("S2"));
+            dto.GradeId = gradeId;
+            (await NewService(ctx).SaveBulkQuestion(dto)).Success.ShouldBeTrue();
+        }
+
+        var events = await ReadEventsAsync();
+        events.Count.ShouldBe(2);
+        events.ShouldAllBe(e => e.GradeId == gradeId);
+    }
+
+    [Fact]
+    public async Task Explicit_grade_different_from_the_worksheet_grade_is_rejected_and_saves_nothing()
+    {
+        await SeedTaxonomyAsync();
+        var worksheetGrade = await AddGradeAsync("4");
+        var otherGrade = await AddGradeAsync("5");
+        var worksheetId = await AddWorksheetAsync(worksheetGrade);
+
+        await using (var ctx = _db.NewContext())
+        {
+            var dto = Dto(new HeaderInfo { TestId = worksheetId }, Mcq());
+            dto.GradeId = otherGrade;
+            var r = await NewService(ctx).SaveBulkQuestion(dto);
+            r.Success.ShouldBeFalse();
+            r.Message.ShouldContain("uyuşmuyor");
+        }
+
+        await using var check = _db.NewContext();
+        (await check.Questions.CountAsync()).ShouldBe(0);
+        (await check.OutboxMessages.CountAsync()).ShouldBe(0);
+        (await check.TestQuestions.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Explicit_grade_equal_to_the_worksheet_grade_is_accepted()
+    {
+        await SeedTaxonomyAsync();
+        var worksheetGrade = await AddGradeAsync("4");
+        var worksheetId = await AddWorksheetAsync(worksheetGrade);
+
+        await using (var ctx = _db.NewContext())
+        {
+            var dto = Dto(new HeaderInfo { TestId = worksheetId }, Mcq());
+            dto.GradeId = worksheetGrade;
+            (await NewService(ctx).SaveBulkQuestion(dto)).Success.ShouldBeTrue();
+        }
+
+        (await ReadEventsAsync()).ShouldHaveSingleItem().GradeId.ShouldBe(worksheetGrade);
+    }
+
+    [Fact]
+    public async Task Event_grade_falls_back_to_the_worksheet_grade()
+    {
+        await SeedTaxonomyAsync();
+        var gradeId = await AddGradeAsync("4");
+        var worksheetId = await AddWorksheetAsync(gradeId);
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).SaveBulkQuestion(Dto(new HeaderInfo { TestId = worksheetId }, Mcq("S1"), Mcq("S2"))))
+                .Success.ShouldBeTrue();
+
+        var events = await ReadEventsAsync();
+        events.Count.ShouldBe(2);
+        events.ShouldAllBe(e => e.GradeId == gradeId);
+    }
+
+    [Fact]
+    public async Task Event_grade_is_null_without_a_test_or_an_explicit_grade()
+    {
+        var tax = await SeedTaxonomyAsync();
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).SaveBulkQuestion(Dto(
+                new HeaderInfo { SubjectId = tax.SubjectId, TopicId = tax.TopicId }, Mcq()))).Success.ShouldBeTrue();
+
+        (await ReadEventsAsync()).ShouldHaveSingleItem().GradeId.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(987_654)]
+    public async Task Rejects_an_unknown_explicit_grade_and_saves_nothing(int gradeId)
+    {
+        var tax = await SeedTaxonomyAsync();
+
+        await using (var ctx = _db.NewContext())
+        {
+            var dto = Dto(new HeaderInfo { SubjectId = tax.SubjectId, TopicId = tax.TopicId }, Mcq());
+            dto.GradeId = gradeId;
+            var r = await NewService(ctx).SaveBulkQuestion(dto);
+            r.Success.ShouldBeFalse();
+            r.Message.ShouldContain("Geçersiz GradeId");
+        }
+
+        await using var check = _db.NewContext();
+        (await check.Questions.CountAsync()).ShouldBe(0);
+        (await check.OutboxMessages.CountAsync()).ShouldBe(0);
+    }
+
     [Fact]
     public void Subtopic_lists_are_capped_at_50_entries_by_model_validation()
     {

@@ -341,11 +341,23 @@ public class QuestionService : IQuestionService
                 // 🟢 Record QuestionCreated event to Outbox for new questions only (OutboxPublisher will publish)
                 if (questionDto.Id == 0) // Yeni soru oluşturuldı
                 {
+                    // Issue #565: sınıflandırıcı taksonomiyi testin sınıfına daraltsın; testsiz kayıtta sınıf bilinmiyor.
+                    int? gradeId = null;
+                    if (questionDto.TestId.HasValue)
+                    {
+                        var worksheetGradeId = await _context.Worksheets
+                            .Where(w => w.Id == questionDto.TestId.Value)
+                            .Select(w => (int?)w.GradeId)
+                            .FirstOrDefaultAsync();
+                        gradeId = worksheetGradeId is > 0 ? worksheetGradeId : null;
+                    }
+
                     var @event = new QuestionCreatedEvent
                     {
                         QuestionId = question.Id,
                         SubjectId = question.SubjectId,
                         TopicId = question.TopicId,
+                        GradeId = gradeId,
                         ClassificationSource = question.ClassificationSource?.ToString(),
                         CreatedAt = DateTime.UtcNow,
                         Text = question.Text
@@ -505,6 +517,29 @@ public class QuestionService : IQuestionService
                         }
                     }
 
+                }
+
+                // Issue #565: sınıflandırıcıya gidecek sınıf — test varsa testin sınıfı esastır (istekteki farklı sınıf
+                // reddedilir); test yoksa istekte açıkça gelen sınıf (işaretleme ekranı, doğrulanır); ikisi de yoksa null.
+                // Tüm sorular için tek kez çözülür (döngüde sorgu yok).
+                int? eventGradeId;
+                if (worksheet != null)
+                {
+                    if (soruDto.GradeId.HasValue && soruDto.GradeId.Value != worksheet.GradeId)
+                        throw new InvalidOperationException(_localizer[
+                            "questions.bulk.gradeMismatch", soruDto.GradeId.Value, worksheet.GradeId]);
+                    eventGradeId = worksheet.GradeId > 0 ? worksheet.GradeId : null;
+                }
+                else if (soruDto.GradeId.HasValue)
+                {
+                    var explicitGradeId = soruDto.GradeId.Value;
+                    if (explicitGradeId <= 0 || !await _context.Grades.AnyAsync(g => g.Id == explicitGradeId))
+                        throw new InvalidOperationException(_localizer["questions.bulk.invalidGradeId", explicitGradeId]);
+                    eventGradeId = explicitGradeId;
+                }
+                else
+                {
+                    eventGradeId = null;
                 }
 
                 // Validate classification consistency (header + issue #454 per-question overrides):
@@ -824,6 +859,7 @@ public class QuestionService : IQuestionService
                         QuestionId = question.Id,
                         SubjectId = question.SubjectId,
                         TopicId = question.TopicId,
+                        GradeId = eventGradeId,
                         ClassificationSource = question.ClassificationSource?.ToString(),
                         CreatedAt = DateTime.UtcNow,
                         Text = question.Text

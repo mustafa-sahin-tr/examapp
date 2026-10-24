@@ -70,8 +70,11 @@ public class GeminiQuestionClassifier : IQuestionClassifier
         _logger = logger;
     }
 
-    public async Task ClassifyAndPersistAsync(int questionId, CancellationToken cancellationToken)
+    public async Task ClassifyAndPersistAsync(int questionId, int? gradeId, CancellationToken cancellationToken)
     {
+        if (gradeId.HasValue)
+            _logger.LogDebug("Grade filtering is Claude-only; ignoring gradeId {GradeId} for question {QuestionId}.", gradeId, questionId);
+
         if (string.IsNullOrWhiteSpace(_gemini.ApiKey))
         {
             _logger.LogWarning("⚠️ Gemini not configured (ApiKey). Skipping classification for {QuestionId}.", questionId);

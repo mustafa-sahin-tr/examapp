@@ -33,9 +33,20 @@ public class LabelingBankServiceTests : IDisposable
     private readonly InMemoryFixedWindowCounterStore _counters;
     private BulkQuestionCreateDto? _captured;
 
+    /// <summary>İsteklerin taşıdığı var olan sınıf (issue #565: bankaya kayıtta zorunlu).</summary>
+    private readonly int _gradeId;
+
     public LabelingBankServiceTests()
     {
         _counters = new InMemoryFixedWindowCounterStore(_clock);
+
+        using (var seed = _db.NewContext())
+        {
+            var grade = new Grade { Name = "5. Sınıf" };
+            seed.Grades.Add(grade);
+            seed.SaveChanges();
+            _gradeId = grade.Id;
+        }
 
         // Varsayılan: kayıt başarılı, gönderilen DTO yakalanır.
         _questions.SaveBulkQuestion(Arg.Any<BulkQuestionCreateDto>(), Arg.Any<int>())
@@ -58,9 +69,10 @@ public class LabelingBankServiceTests : IDisposable
     private static LabelingBankBoxDto Box(int x, int y, int w, int h) => new() { X = x, Y = y, Width = w, Height = h };
 
     /// <summary>İki şıklı / üç şıklı iki soru içeren geçerli bir istek.</summary>
-    private static LabelingBankSaveRequestDto ValidRequest(byte[] png, bool force = false) => new()
+    private LabelingBankSaveRequestDto ValidRequest(byte[] png, bool force = false) => new()
     {
         ImageBase64 = Convert.ToBase64String(png),
+        GradeId = _gradeId,
         Force = force,
         Questions =
         [
@@ -233,6 +245,86 @@ public class LabelingBankServiceTests : IDisposable
     }
 
     // ---------- Eşleme ----------
+
+    // ---------- Sınıf (issue #565) ----------
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-3)]
+    public async Task SaveToBankAsync_MissingGrade_ThrowsGradeRequiredAndSavesNothing(int gradeId)
+    {
+        var png = Png(320, 200);
+        await using var ctx = _db.NewContext();
+        var request = ValidRequest(png);
+        request.GradeId = gradeId;
+
+        var ex = await Should.ThrowAsync<LabelingValidationException>(() => NewService(ctx).SaveToBankAsync(request, Actor, ActingUserId));
+
+        ex.Message.ShouldBe("labeling.bank.gradeRequired");
+        await _questions.DidNotReceiveWithAnyArgs().SaveBulkQuestion(default!, default);
+        await using var read = _db.NewContext();
+        (await read.LabelingPages.AnyAsync()).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task SaveToBankAsync_UnknownGrade_ThrowsGradeUnknownAndSavesNothing()
+    {
+        var png = Png(320, 200);
+        await using var ctx = _db.NewContext();
+        var request = ValidRequest(png);
+        request.GradeId = _gradeId + 999;
+
+        var ex = await Should.ThrowAsync<LabelingValidationException>(() => NewService(ctx).SaveToBankAsync(request, Actor, ActingUserId));
+
+        ex.Message.ShouldBe("labeling.bank.gradeUnknown");
+        await _questions.DidNotReceiveWithAnyArgs().SaveBulkQuestion(default!, default);
+        await using var read = _db.NewContext();
+        (await read.LabelingPages.AnyAsync()).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task SaveToBankAsync_UnknownGrade_IsRejectedBeforeTheImageIsDecoded()
+    {
+        await using var ctx = _db.NewContext();
+        var request = ValidRequest(Png(320, 200));
+        request.ImageBase64 = "not-an-image";
+        request.GradeId = _gradeId + 999;
+
+        var ex = await Should.ThrowAsync<LabelingValidationException>(() => NewService(ctx).SaveToBankAsync(request, Actor, ActingUserId));
+
+        ex.Message.ShouldBe("labeling.bank.gradeUnknown");
+    }
+
+    [Fact]
+    public async Task SaveToBankAsync_ValidGrade_IsPassedToTheBulkDto()
+    {
+        await using var ctx = _db.NewContext();
+        await NewService(ctx).SaveToBankAsync(ValidRequest(Png(320, 200)), Actor, ActingUserId);
+
+        _captured.ShouldNotBeNull().GradeId.ShouldBe(_gradeId);
+    }
+
+    [Fact]
+    public void GradeId_MissingOrNonPositive_FailsModelValidation()
+    {
+        static bool IsValid(object model) => System.ComponentModel.DataAnnotations.Validator.TryValidateObject(
+            model, new System.ComponentModel.DataAnnotations.ValidationContext(model),
+            new List<System.ComponentModel.DataAnnotations.ValidationResult>(), validateAllProperties: true);
+
+        var request = ValidRequest(Png(32, 32));
+        IsValid(request).ShouldBeTrue();
+        request.GradeId = 0;
+        IsValid(request).ShouldBeFalse();
+        request.GradeId = -1;
+        IsValid(request).ShouldBeFalse();
+
+        // Alan hiç gönderilmezse 0 olarak bağlanır → [ApiController] 400 döner.
+        var missing = System.Text.Json.JsonSerializer.Deserialize<LabelingBankSaveRequestDto>(
+            System.Text.Json.JsonSerializer.Serialize(new { imageBase64 = request.ImageBase64, questions = request.Questions }),
+            new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!;
+        missing.GradeId.ShouldBe(0);
+        IsValid(missing).ShouldBeFalse();
+    }
 
     [Fact]
     public async Task SaveToBankAsync_ValidQuestions_MapsToBulkDtoWithoutTest()

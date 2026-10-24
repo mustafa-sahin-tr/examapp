@@ -25,6 +25,8 @@
       "saved": "Questions saved successfully!",
       "saveError": "An error occurred while saving data: {0}",
       "correctAnswerMissing": "No correct answer specified.{0}",
+      "gradeMismatch": "GradeId ({0}) does not match the test's grade ({1}).",
+      "invalidGradeId": "Invalid GradeId: {0}",
       "invalidTopicId": "Invalid TopicId: {0}",
       "invalidSubjectId": "Invalid SubjectId: {0}",
       "invalidSubTopicIds": "Invalid SubTopicId(s): {0}",

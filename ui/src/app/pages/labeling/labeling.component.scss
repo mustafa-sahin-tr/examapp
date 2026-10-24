@@ -381,6 +381,15 @@
   --mat-form-field-container-vertical-padding: 6px;
 }
 
+// Havuza kayıt sınıfı (issue #565): kompakt alan.
+.lb-grade {
+  width: 150px;
+  font-size: 13px;
+
+  --mat-form-field-container-height: 36px;
+  --mat-form-field-container-vertical-padding: 6px;
+}
+
 .lb-source {
   &__main {
     display: flex;

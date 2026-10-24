@@ -51,7 +51,7 @@ public class ClassifierCacheService : IClassifierCacheService
     public async Task<ClassifierCacheStatusDto> GetStatusAsync(CancellationToken ct = default)
     {
         var config = await _context.ClassifierCacheConfigs.FindAsync(new object[] { ClassifierCacheConfig.SingletonId }, ct);
-        var (payload, subTopicCount) = await BuildTaxonomyPayloadAsync(ct);
+        var (payload, subTopicCount) = await BuildTaxonomyPayloadAsync(gradeId: null, ct);
         var currentHash = Sha256(payload);
 
         return new ClassifierCacheStatusDto
@@ -71,9 +71,9 @@ public class ClassifierCacheService : IClassifierCacheService
         return (config?.CachedContentName, config?.Model ?? _options.Model);
     }
 
-    public async Task<ClassifierTaxonomyDto> GetTaxonomyAsync(CancellationToken ct = default)
+    public async Task<ClassifierTaxonomyDto> GetTaxonomyAsync(int? gradeId = null, CancellationToken ct = default)
     {
-        var (payload, subTopicCount) = await BuildTaxonomyPayloadAsync(ct);
+        var (payload, subTopicCount) = await BuildTaxonomyPayloadAsync(gradeId is > 0 ? gradeId : null, ct);
         return new ClassifierTaxonomyDto { Taxonomy = payload, Hash = Sha256(payload), SubTopicCount = subTopicCount };
     }
 
@@ -82,7 +82,7 @@ public class ClassifierCacheService : IClassifierCacheService
         if (string.IsNullOrWhiteSpace(_options.ApiKey))
             return Fail(_localizer["classifier.cache.apiKeyMissing"]);
 
-        var (payload, subTopicCount) = await BuildTaxonomyPayloadAsync(ct);
+        var (payload, subTopicCount) = await BuildTaxonomyPayloadAsync(gradeId: null, ct);
         if (subTopicCount == 0)
             return Fail(_localizer["classifier.cache.taxonomyEmpty"]);
 
@@ -146,18 +146,30 @@ public class ClassifierCacheService : IClassifierCacheService
             _logger.LogWarning("Scheduled classifier cache refresh failed: {Message}", result.Message);
     }
 
-    /// <summary>Compact JSON tree the classifier prompt refers to. Returns (json, subtopicCount).</summary>
-    private async Task<(string Payload, int SubTopicCount)> BuildTaxonomyPayloadAsync(CancellationToken ct)
+    /// <summary>
+    /// Compact JSON tree the classifier prompt refers to. Returns (json, subtopicCount). <paramref name="gradeId"/> null =
+    /// whole taxonomy (Gemini cache + status always use that); otherwise only that grade's subjects/topics (#565).
+    /// </summary>
+    private async Task<(string Payload, int SubTopicCount)> BuildTaxonomyPayloadAsync(int? gradeId, CancellationToken ct)
     {
-        var tree = await _taxonomy.GetTreeAsync(ct: ct);
+        var tree = await _taxonomy.GetTreeAsync(gradeId, ct: ct);
+
+        // GetTreeAsync(gradeId) narrows subjects (GradeSubject link) but keeps all of their topics, including other grades'
+        // same-named ones (admin tree needs that). The classifier must only see that grade's topics (#565).
+        List<TaxonomyTopicDto> TopicsOf(TaxonomySubjectDto s) =>
+            gradeId.HasValue ? s.Topics.Where(t => t.GradeId == gradeId.Value).ToList() : s.Topics;
+
+        // With a grade filter, a linked subject whose topics all belong to other grades carries nothing the classifier
+        // can pick, so drop it (smaller prompt). Unfiltered output is unchanged.
+        var subjects = gradeId.HasValue ? tree.Subjects.Where(s => TopicsOf(s).Count > 0) : tree.Subjects;
 
         var model = new
         {
-            subjects = tree.Subjects.Select(s => new
+            subjects = subjects.Select(s => new
             {
                 id = s.Id,
                 name = s.Name,
-                topics = s.Topics.Select(t => new
+                topics = TopicsOf(s).Select(t => new
                 {
                     id = t.Id,
                     name = t.Name,
@@ -167,7 +179,7 @@ public class ClassifierCacheService : IClassifierCacheService
             }),
         };
 
-        var subTopicCount = tree.Subjects.Sum(s => s.Topics.Sum(t => t.SubTopics.Count));
+        var subTopicCount = tree.Subjects.Sum(s => TopicsOf(s).Sum(t => t.SubTopics.Count));
         var json = JsonSerializer.Serialize(model, new JsonSerializerOptions { WriteIndented = false });
         return (json, subTopicCount);
     }

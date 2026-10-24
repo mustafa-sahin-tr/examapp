@@ -24,7 +24,9 @@
       "saveFailed": "The questions could not be saved to the pool. Please try again.",
       "userNotResolved": "User profile could not be found.",
       "optionOutsideQuestion": "Each option box must be inside its question box.",
-      "rateLimited": "You reached the hourly limit for saving to the pool. Please try again later."
+      "rateLimited": "You reached the hourly limit for saving to the pool. Please try again later.",
+      "gradeRequired": "Choose the grade of the page.",
+      "gradeUnknown": "The selected grade was not found."
     }
   }
 }

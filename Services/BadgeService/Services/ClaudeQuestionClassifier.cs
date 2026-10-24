@@ -19,6 +19,13 @@ namespace BadgeService.Services;
 /// so per question only the image and the short instruction are billed at the full input price. The answer is
 /// structured output (JSON schema of a private response record); an id outside the taxonomy rejects
 /// the whole result (logged, thrown → the message lands in the endpoint's error queue, as before).
+///
+/// Grade context (issue #565): when the event carries a <c>GradeId</c> the taxonomy is fetched with
+/// <c>?gradeId=</c> (only that grade's subjects/topics/subtopics) and memory-cached per grade
+/// (<c>{TaxonomyCacheKey}:{gradeId}</c>); the system message (instructions + taxonomy) is therefore a per-grade
+/// prompt-cache prefix. An empty grade taxonomy skips the question with a warning — it never falls back to the
+/// full taxonomy — and an id from another grade is rejected like any id outside the (filtered) taxonomy.
+/// A null grade keeps the previous behaviour (whole taxonomy).
 /// </summary>
 public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
 {
@@ -87,7 +94,7 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
         _chat = chat;
     }
 
-    public async Task ClassifyAndPersistAsync(int questionId, CancellationToken cancellationToken)
+    public async Task ClassifyAndPersistAsync(int questionId, int? gradeId, CancellationToken cancellationToken)
     {
         if (_chat is null)
         {
@@ -103,10 +110,13 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
         var token = await _tokenProvider.GetAccessTokenAsync(cancellationToken);
         var examApi = new ExamApiClassificationClient(_httpClientFactory, _examApiBaseUrl);
 
-        var taxonomy = await GetTaxonomyAsync(examApi, token, cancellationToken);
+        var taxonomy = await GetTaxonomyAsync(examApi, gradeId, token, cancellationToken);
         if (taxonomy.SubTopicCount == 0)
         {
-            _logger.LogWarning("⚠️ Classifier taxonomy is empty. Skipping question {QuestionId}.", questionId);
+            if (gradeId.HasValue)
+                _logger.LogWarning("⚠️ Classifier taxonomy for grade {GradeId} is empty. Skipping question {QuestionId} (no fallback to the full taxonomy).", gradeId, questionId);
+            else
+                _logger.LogWarning("⚠️ Classifier taxonomy is empty. Skipping question {QuestionId}.", questionId);
             return;
         }
 
@@ -114,9 +124,9 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
         var (result, usage) = await CallClaudeAsync(image, taxonomy, cancellationToken);
 
         _logger.LogInformation(
-            "💰 Question {QuestionId} — Claude {Model} usage: input={InputTokens}, cacheWrite={CacheWriteTokens}, " +
+            "💰 Question {QuestionId} (grade {GradeId}) — Claude {Model} usage: input={InputTokens}, cacheWrite={CacheWriteTokens}, " +
             "cacheRead={CacheReadTokens}, output={OutputTokens}, estimatedCost=${CostUsd}",
-            questionId, _options.Model, usage.InputTokens, usage.CacheWriteTokens, usage.CacheReadTokens, usage.OutputTokens,
+            questionId, gradeId?.ToString() ?? "-", _options.Model, usage.InputTokens, usage.CacheWriteTokens, usage.CacheReadTokens, usage.OutputTokens,
             EstimateCostUsd(usage).ToString("0.######", System.Globalization.CultureInfo.InvariantCulture));
 
         ExamApiClassificationClient.Normalize(result);
@@ -140,14 +150,18 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
         _logger.LogInformation("✅ Question {QuestionId} classification persisted", questionId);
     }
 
-    private async Task<ClassifierTaxonomy> GetTaxonomyAsync(ExamApiClassificationClient examApi, string token, CancellationToken ct)
+    internal static string TaxonomyCacheKeyFor(int? gradeId) =>
+        gradeId.HasValue ? $"{TaxonomyCacheKey}:{gradeId.Value}" : TaxonomyCacheKey;
+
+    private async Task<ClassifierTaxonomy> GetTaxonomyAsync(ExamApiClassificationClient examApi, int? gradeId, string token, CancellationToken ct)
     {
-        if (_cache.TryGetValue(TaxonomyCacheKey, out ClassifierTaxonomy? cached) && cached is not null)
+        var cacheKey = TaxonomyCacheKeyFor(gradeId);
+        if (_cache.TryGetValue(cacheKey, out ClassifierTaxonomy? cached) && cached is not null)
             return cached;
 
-        var taxonomy = await examApi.FetchTaxonomyAsync(token, ct);
+        var taxonomy = await examApi.FetchTaxonomyAsync(gradeId, token, ct);
         if (_options.TaxonomyCacheSeconds > 0)
-            _cache.Set(TaxonomyCacheKey, taxonomy, TimeSpan.FromSeconds(_options.TaxonomyCacheSeconds));
+            _cache.Set(cacheKey, taxonomy, TimeSpan.FromSeconds(_options.TaxonomyCacheSeconds));
         return taxonomy;
     }
 

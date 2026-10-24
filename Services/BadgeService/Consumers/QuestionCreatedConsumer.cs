@@ -25,8 +25,8 @@ public class QuestionCreatedConsumer : IConsumer<QuestionCreatedEvent>
     {
         var @event = context.Message;
 
-        _logger.LogInformation("📨 QuestionCreated event received. QuestionId: {QuestionId}, ClassificationSource: {ClassificationSource}",
-            @event.QuestionId, @event.ClassificationSource);
+        _logger.LogInformation("📨 QuestionCreated event received. QuestionId: {QuestionId}, ClassificationSource: {ClassificationSource}, GradeId: {GradeId}",
+            @event.QuestionId, @event.ClassificationSource, @event.GradeId);
 
         if (!_aiActive)
         {
@@ -43,7 +43,7 @@ public class QuestionCreatedConsumer : IConsumer<QuestionCreatedEvent>
 
         try
         {
-            await _classifier.ClassifyAndPersistAsync(@event.QuestionId, context.CancellationToken);
+            await _classifier.ClassifyAndPersistAsync(@event.QuestionId, @event.GradeId, context.CancellationToken);
         }
         catch (Exception ex)
         {

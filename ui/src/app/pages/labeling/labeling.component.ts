@@ -14,6 +14,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { ActiveInspector, ImageSelectorComponent, TrainedPage } from '../image-selector/image-selector.component';
 import { QuestionDetectorService } from '../../services/question-detector.service';
+import { GradesService } from '../../services/grades.service';
+import { Grade } from '../../models/student';
 import { LabelingCandidate, isLabelingImage, pageIdOf, pickNextUnlabeled, sortLabelingFiles } from './labeling-pool';
 import {
   DetectionSource,
@@ -36,6 +38,8 @@ const ANSWER_COUNTS = [3, 4, 5] as const;
 /** Kayıtlı manuel yoksa sayfa hangi kaynakla açılsın (Model = YOLO, Ai = Claude) ve seçili Claude modeli. */
 const SOURCE_STORAGE_KEY = 'labeling.source';
 const AI_MODEL_STORAGE_KEY = 'labeling.aiModel';
+/** Havuza kaydedilen sayfanın sınıfı (issue #565); yalnız listede hâlâ varsa geri yüklenir. */
+const GRADE_STORAGE_KEY = 'labeling.gradeId';
 
 type PreferredSource = 'Model' | 'Ai';
 
@@ -77,6 +81,7 @@ export class LabelingComponent {
   private readonly transloco = inject(TranslocoService);
   private readonly labelingApi = inject(LabelingService);
   private readonly dialog = inject(MatDialog);
+  private readonly gradesApi = inject(GradesService);
 
   private readonly selectorRef = viewChild(ImageSelectorComponent);
 
@@ -164,9 +169,18 @@ export class LabelingComponent {
   readonly bankSaving = signal(false);
   /** Açık sayfanın bankaya son kaydı (yoksa null). */
   readonly bankRecord = computed(() => this.pageRecord()?.bank ?? null);
-  /** Eğit ile aynı ön koşullar + en az bir soru; kayıt sürerken kapalı. */
+  /** Sınıf listesi (`GET /api/exam/worksheet/grades`); havuza kayıt seçili sınıfı taşır (issue #565). */
+  readonly grades = signal<Grade[]>([]);
+  readonly gradesLoading = signal(false);
+  readonly gradesError = signal(false);
+  readonly gradeId = signal<number | null>(null);
+  /** Eğit ile aynı ön koşullar + en az bir soru + seçili sınıf; kayıt sürerken kapalı. */
   readonly canSaveToBank = computed(
-    () => this.canTrain() && !this.bankSaving() && (this.selectorRef()?.regions().length ?? 0) > 0
+    () =>
+      this.gradeId() != null &&
+      this.canTrain() &&
+      !this.bankSaving() &&
+      (this.selectorRef()?.regions().length ?? 0) > 0
   );
 
   // --- Kaynak: Manuel kayıt / Model (YOLO) / Claude ---
@@ -231,6 +245,37 @@ export class LabelingComponent {
     });
     void this.loadLabeledPages();
     this.loadAiModels();
+    this.loadGrades();
+  }
+
+  loadGrades(): void {
+    this.gradesLoading.set(true);
+    this.gradesError.set(false);
+    this.gradesApi
+      .getGrades()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (grades) => {
+          const list = grades ?? [];
+          this.grades.set(list);
+          this.gradesLoading.set(false);
+          const stored = Number(readStored(GRADE_STORAGE_KEY));
+          const current = this.gradeId() ?? stored;
+          this.gradeId.set(list.some((g) => g.id === current) ? current : null);
+        },
+        error: (error) => {
+          console.error('labeling grades failed', error);
+          this.grades.set([]);
+          this.gradesLoading.set(false);
+          this.gradesError.set(true);
+        },
+      });
+  }
+
+  setGrade(event: MatSelectChange): void {
+    const id = event.value as number;
+    this.gradeId.set(id);
+    writeStored(GRADE_STORAGE_KEY, String(id));
   }
 
   private loadAiModels(): void {
@@ -693,9 +738,13 @@ export class LabelingComponent {
    * yeniden denenebilir (kayıt kartı bankada olduğunu gösterir). Kayıt başarısızsa eğitime gönderilmez.
    */
   private submitBank(image: string, questions: LabelingBankQuestion[], force: boolean): void {
+    const gradeId = this.gradeId();
+    if (gradeId == null) {
+      return;
+    }
     const token = this.pageToken;
     this.bankSaving.set(true);
-    this.labelingApi.saveToBank({ imageBase64: image, questions, force }).subscribe({
+    this.labelingApi.saveToBank({ imageBase64: image, questions, gradeId, force }).subscribe({
       next: (response) => {
         if (token !== this.pageToken) {
           return;

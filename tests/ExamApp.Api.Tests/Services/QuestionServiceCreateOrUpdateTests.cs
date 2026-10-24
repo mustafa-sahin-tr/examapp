@@ -64,6 +64,48 @@ public class QuestionServiceCreateOrUpdateTests : IDisposable
     }
 
     [Fact]
+    public async Task Creating_a_question_in_a_test_puts_the_test_grade_on_the_event()
+    {
+        int worksheetId, gradeId;
+        await using (var ctx = _db.NewContext())
+        {
+            var grade = new Grade { Name = "7" };
+            ctx.Grades.Add(grade);
+            await ctx.SaveChangesAsync();
+            var ws = new Worksheet { Name = "W", Description = "", GradeId = grade.Id };
+            ctx.Worksheets.Add(ws);
+            await ctx.SaveChangesAsync();
+            (worksheetId, gradeId) = (ws.Id, grade.Id);
+        }
+
+        await using (var ctx = _db.NewContext())
+            await NewService(ctx).CreateOrUpdateQuestion(new QuestionDto
+            {
+                Id = 0, Text = "?", TestId = worksheetId,
+                Answers = new List<AnswerDto> { new() { Text = "a", IsCorrect = true }, new() { Text = "b" } },
+            });
+
+        await using var check = _db.NewContext();
+        var evt = System.Text.Json.JsonSerializer.Deserialize<QuestionCreatedEvent>((await check.OutboxMessages.SingleAsync()).Content)!;
+        evt.GradeId.ShouldBe(gradeId);
+    }
+
+    [Fact]
+    public async Task Creating_a_question_without_a_test_leaves_the_event_grade_null()
+    {
+        await using (var ctx = _db.NewContext())
+            await NewService(ctx).CreateOrUpdateQuestion(new QuestionDto
+            {
+                Id = 0, Text = "?",
+                Answers = new List<AnswerDto> { new() { Text = "a", IsCorrect = true }, new() { Text = "b" } },
+            });
+
+        await using var check = _db.NewContext();
+        var evt = System.Text.Json.JsonSerializer.Deserialize<QuestionCreatedEvent>((await check.OutboxMessages.SingleAsync()).Content)!;
+        evt.GradeId.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task Updating_an_existing_question_rewrites_scalar_fields_and_answers()
     {
         int qId;

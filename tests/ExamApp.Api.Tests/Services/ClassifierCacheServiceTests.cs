@@ -181,5 +181,109 @@ public class ClassifierCacheServiceTests : IDisposable
         model.ShouldBe("models/def");
     }
 
+    // ---- Issue #565: classifier taxonomy filtered by grade (real TaxonomyService over SQLite) ----
+
+    private sealed record GradeTax(int Grade3, int Grade4, int MathId, int ScienceId, int Math3SubTopic, int Math4SubTopic);
+
+    /// <summary>
+    /// Matematik linked to grades 3 and 4 with a same-named "Kesirler" topic in each; Fen linked only to grade 4.
+    /// </summary>
+    private async Task<GradeTax> SeedGradeTaxonomyAsync()
+    {
+        await using var ctx = _db.NewContext();
+        var g3 = new Grade { Name = "3" };
+        var g4 = new Grade { Name = "4" };
+        var math = new Subject { Name = "Matematik" };
+        var science = new Subject { Name = "Fen" };
+        ctx.AddRange(g3, g4, math, science);
+        await ctx.SaveChangesAsync();
+        ctx.GradeSubjects.AddRange(
+            new GradeSubject { SubjectId = math.Id, GradeId = g3.Id },
+            new GradeSubject { SubjectId = math.Id, GradeId = g4.Id },
+            new GradeSubject { SubjectId = science.Id, GradeId = g4.Id });
+        var math3 = new Topic { Name = "Kesirler", SubjectId = math.Id, GradeId = g3.Id };
+        var math4 = new Topic { Name = "Kesirler", SubjectId = math.Id, GradeId = g4.Id };
+        var sci4 = new Topic { Name = "Kuvvet", SubjectId = science.Id, GradeId = g4.Id };
+        ctx.Topics.AddRange(math3, math4, sci4);
+        await ctx.SaveChangesAsync();
+        var st3 = new SubTopic { Name = "Basit kesirler", TopicId = math3.Id };
+        var st4 = new SubTopic { Name = "Basit kesirler", TopicId = math4.Id };
+        var stSci = new SubTopic { Name = "Sürtünme", TopicId = sci4.Id };
+        ctx.SubTopics.AddRange(st3, st4, stSci);
+        await ctx.SaveChangesAsync();
+        return new GradeTax(g3.Id, g4.Id, math.Id, science.Id, st3.Id, st4.Id);
+    }
+
+    private ClassifierCacheService NewServiceWithRealTaxonomy(AppDbContext ctx)
+        => new(ctx, new TaxonomyService(ctx, Substitute.For<Hangfire.IBackgroundJobClient>()),
+            new StubHttp(HttpStatusCode.OK, GoodGeminiBody),
+            Options.Create(new GeminiCacheOptions { ApiKey = "k", Model = "models/def", BaseUrl = "https://g" }),
+            NullLogger<ClassifierCacheService>.Instance);
+
+    private static List<(int Id, List<(int TopicId, List<int> SubTopicIds)> Topics)> Parse(string taxonomy)
+    {
+        using var doc = System.Text.Json.JsonDocument.Parse(taxonomy);
+        return doc.RootElement.GetProperty("subjects").EnumerateArray()
+            .Select(s => (s.GetProperty("id").GetInt32(),
+                s.GetProperty("topics").EnumerateArray()
+                    .Select(t => (t.GetProperty("id").GetInt32(),
+                        t.GetProperty("subTopics").EnumerateArray().Select(st => st.GetProperty("id").GetInt32()).ToList()))
+                    .ToList()))
+            .ToList();
+    }
+
+    [Fact]
+    public async Task Taxonomy_for_a_grade_keeps_only_that_grades_subjects_and_topics_and_changes_the_hash()
+    {
+        var tax = await SeedGradeTaxonomyAsync();
+        await using var ctx = _db.NewContext();
+        var service = NewServiceWithRealTaxonomy(ctx);
+
+        var all = await service.GetTaxonomyAsync();
+        var grade3 = await service.GetTaxonomyAsync(tax.Grade3);
+
+        all.SubTopicCount.ShouldBe(3);
+        grade3.SubTopicCount.ShouldBe(1);
+        grade3.Hash.ShouldNotBe(all.Hash);
+
+        var subject = Parse(grade3.Taxonomy).ShouldHaveSingleItem(); // Fen is not linked to grade 3
+        subject.Id.ShouldBe(tax.MathId);
+        var topic = subject.Topics.ShouldHaveSingleItem();           // grade 4's same-named "Kesirler" dropped
+        topic.SubTopicIds.ShouldBe(new[] { tax.Math3SubTopic });
+
+        var grade4 = await service.GetTaxonomyAsync(tax.Grade4);
+        grade4.SubTopicCount.ShouldBe(2);
+        Parse(grade4.Taxonomy).SelectMany(s => s.Topics).SelectMany(t => t.SubTopicIds)
+            .ShouldNotContain(tax.Math3SubTopic);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task Taxonomy_without_a_positive_grade_is_the_whole_taxonomy(int? gradeId)
+    {
+        await SeedGradeTaxonomyAsync();
+        await using var ctx = _db.NewContext();
+        var service = NewServiceWithRealTaxonomy(ctx);
+
+        var unfiltered = await service.GetTaxonomyAsync();
+        var result = await service.GetTaxonomyAsync(gradeId);
+
+        result.Taxonomy.ShouldBe(unfiltered.Taxonomy);
+        result.Hash.ShouldBe(unfiltered.Hash);
+        Parse(result.Taxonomy).Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Gemini_status_keeps_using_the_whole_taxonomy()
+    {
+        await using var ctx = _db.NewContext();
+        await NewService(ctx, new StubHttp(HttpStatusCode.OK, GoodGeminiBody)).GetStatusAsync();
+
+        await _taxonomy.Received().GetTreeAsync(null, Arg.Any<bool>(), Arg.Any<CancellationToken>());
+        await _taxonomy.DidNotReceive().GetTreeAsync(Arg.Is<int?>(g => g != null), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
     public void Dispose() => _db.Dispose();
 }

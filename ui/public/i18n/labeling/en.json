@@ -35,7 +35,16 @@
     "cardTitle": "Question pool",
     "cardSaved": "Saved to the pool ({{count}} questions)",
     "forbidden": "Only teachers and admins can save questions to the pool.",
-    "savedAndTrained": "{{count}} questions saved to the pool and sent for training; classification started in the background."
+    "savedAndTrained": "{{count}} questions saved to the pool and sent for training; classification started in the background.",
+    "needGrade": "Choose a grade first"
+  },
+  "grade": {
+    "label": "Grade",
+    "placeholder": "Choose a grade",
+    "loading": "Loading…",
+    "failed": "Grades could not be loaded",
+    "empty": "No grades",
+    "retry": "Reload grades"
   },
   "stats": {
     "label": "Session counters",

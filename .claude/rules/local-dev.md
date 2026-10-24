@@ -528,6 +528,12 @@ sabitlemeler yalnız `overrides`'ta.
   konteynerdeki `npm ci` kendi (Linux) `node_modules`'unu kurar, host etkilenmez. Volume'u sıfırlamak için
   `docker-compose rm -sv angular-app auth-ui` sonra `up -d`.
 
+**Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
+her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), MinIO `exam-questions`'daki
+`questions/ answers/ passages/ question-transfer/` nesnelerini ve bekleyen QuestionCreated outbox mesajlarını siler;
+`--wipe-dataset` question-detector eğitim verisini de (`dataset/`, Drive arşivine dokunmaz) boşaltır. Önce
+`--dry-run`; birden fazla Postgres/MinIO konteyneri varsa `PG_CONTAINER`/`MINIO_CONTAINER` ile seç.
+
 ## Port map (host → container)
 
 | Service | Host port | Notes |

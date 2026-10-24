@@ -16,7 +16,7 @@ from guards import (
     MAX_COORD,
     MAX_QUESTIONS_PER_REQUEST,
 )
-from dataset_store import QuestionSample, labeled_page_ids, save_page
+from dataset_store import QuestionSample, labeled_page_ids, open_oriented_rgb, save_page
 
 _enable_docs = os.getenv("ENABLE_API_DOCS", "").lower() in ("1", "true", "yes")
 app = FastAPI(
@@ -106,7 +106,7 @@ def predict(data: ImageData):
             base64_data = base64_data.split(",", 1)[1]
         # Base64'ten image oluştur
         image_bytes = base64.b64decode(base64_data)
-        image = Image.open(BytesIO(image_bytes)).convert("RGB")
+        image = open_oriented_rgb(image_bytes)
         logger.info(f"Received image with shape: {image.size}")
         # Predict et
         results = model.predict(
@@ -240,7 +240,7 @@ async def read_qr_code(request: ImageData):
             base64_data = base64_data.split(",", 1)[1]
         # Base64'ten image oluştur
         image_bytes = base64.b64decode(base64_data)
-        image = Image.open(BytesIO(image_bytes)).convert("RGB")
+        image = open_oriented_rgb(image_bytes)
 
         # Base64 decode
         # image_data = base64.b64decode(request.image_base64)

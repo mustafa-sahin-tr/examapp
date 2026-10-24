@@ -9,7 +9,7 @@ from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), "training"))
-from dataset_store import QuestionSample, content_id, labeled_page_ids, save_page, yolo_lines  # noqa: E402
+from dataset_store import QuestionSample, content_id, labeled_page_ids, open_oriented_rgb, save_page, yolo_lines  # noqa: E402
 import train  # noqa: E402
 
 
@@ -174,3 +174,24 @@ def test_labeled_page_ids_reads_manifest_unique_and_skips_bad_lines(tmp_path):
     second = save_page(_page(color=(0, 0, 0)), [], page_complete=False, root=tmp_path)["page_id"]
     assert labeled_page_ids(tmp_path) == [first, second]
     assert first == content_id(_page())
+
+
+def _exif_rotated_jpeg(width: int, height: int, orientation: int) -> bytes:
+    image = Image.new("RGB", (width, height), "white")
+    exif = Image.Exif()
+    exif[0x0112] = orientation  # Orientation
+    buf = BytesIO()
+    image.save(buf, format="JPEG", exif=exif.tobytes())
+    return buf.getvalue()
+
+
+def test_open_oriented_rgb_applies_exif_orientation():
+    # #559: exam API (SkiaSharp) ve tarayıcı EXIF yönüyle çalışır; detector da aynı uzayda açar.
+    image = open_oriented_rgb(_exif_rotated_jpeg(200, 100, 6))
+    assert image.size == (100, 200)
+    assert image.mode == "RGB"
+
+
+def test_open_oriented_rgb_without_exif_keeps_size():
+    image = open_oriented_rgb(_exif_rotated_jpeg(200, 100, 1))
+    assert image.size == (200, 100)

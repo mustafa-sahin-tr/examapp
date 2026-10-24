@@ -245,6 +245,7 @@
       "subject": "Ders",
       "topic": "Konu",
       "subtopics": "Alt Konular (Çoklu Seçim)",
+      "any": "Tümü",
       "apply": "Uygula"
     },
     "colorSchemeToggle": {

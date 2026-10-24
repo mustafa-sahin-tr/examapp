@@ -9,9 +9,12 @@ import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@js
 import { LinkBankQuestionsResult } from '../../../../models/question-bank';
 import { QuestionService } from '../../../../services/question.service';
 import { QuestionBankPanelComponent } from '../../../../shared/components/question-bank-panel/question-bank-panel.component';
+import { ClassificationSelection } from '../../../../shared/components/classification-selector/classification-selector.component';
 
 export interface BankQuestionDialogData {
   testId: number;
+  /** Panel filtresinin açılıştaki seçimi (testin sınıf/ders/konu/alt konusu); yoksa filtresiz açılır. */
+  initialClassification?: ClassificationSelection;
 }
 
 /**

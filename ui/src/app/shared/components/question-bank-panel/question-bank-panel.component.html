@@ -1,6 +1,8 @@
 <div class="qb-panel" *transloco="let t; prefix: 'question-bank'">
   <section class="qb-filters" [attr.aria-label]="t('filters.title')">
-    <app-classification-selector (selectionChange)="onClassificationChange($event)" />
+    <app-classification-selector [layout]="filterLayout()"
+      [initialSelection]="initialClassification()"
+      (selectionChange)="onClassificationChange($event)" />
 
     <div class="qb-filters__row">
       <mat-button-toggle-group

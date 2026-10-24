@@ -56,6 +56,7 @@ import {
   BankQuestionDialogComponent,
   BankQuestionDialogData,
 } from './components/bank-question-dialog/bank-question-dialog.component';
+import { ClassificationSelection } from '../../shared/components/classification-selector/classification-selector.component';
 import { LinkBankQuestionsResult } from '../../models/question-bank';
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 import { QuestionNavigatorComponent } from '../../shared/components/question-navigator/question-navigator.component';
@@ -510,7 +511,7 @@ export class WorksheetDetailComponent implements OnInit {
     this.dialog
       .open<BankQuestionDialogComponent, BankQuestionDialogData, LinkBankQuestionsResult | undefined>(
         BankQuestionDialogComponent,
-        { data: { testId }, width: '1100px', maxWidth: '95vw', autoFocus: false }
+        { data: { testId, initialClassification: this.bankInitialClassification() }, width: '1100px', maxWidth: '95vw', autoFocus: false }
       )
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -525,6 +526,20 @@ export class WorksheetDetailComponent implements OnInit {
           this.reloadWorksheet();
         }
       });
+  }
+
+  /** Havuz diyaloğu testin kendi sınıflandırmasıyla filtreli açılsın; hiçbiri yoksa filtresiz. */
+  private bankInitialClassification(): ClassificationSelection | undefined {
+    const ws = this.detail()?.worksheet;
+    if (!ws?.gradeId && !ws?.subjectId && !ws?.topicId && !ws?.subTopicId) {
+      return undefined;
+    }
+    return {
+      gradeId: ws.gradeId ?? null,
+      subjectId: ws.subjectId ?? null,
+      topicId: ws.topicId ?? null,
+      subtopicIds: ws.subTopicId ? [ws.subTopicId] : [],
+    };
   }
 
   /** "Atama izni iste" dialogunu açar (issue #13). 409 → "Talebiniz bekleniyor" durumuna geçer. */

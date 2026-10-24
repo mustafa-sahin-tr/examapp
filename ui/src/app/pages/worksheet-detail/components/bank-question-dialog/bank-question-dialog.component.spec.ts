@@ -7,11 +7,12 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { Subject, of, throwError } from 'rxjs';
 
-import { BankQuestionDialogComponent } from './bank-question-dialog.component';
+import { BankQuestionDialogComponent, BankQuestionDialogData } from './bank-question-dialog.component';
 import { QuestionService } from '../../../../services/question.service';
 import { Question } from '../../../../models/question';
 import { LinkBankQuestionsResult } from '../../../../models/question-bank';
 import { QuestionBankPanelComponent } from '../../../../shared/components/question-bank-panel/question-bank-panel.component';
+import { ClassificationSelection } from '../../../../shared/components/classification-selector/classification-selector.component';
 import { translocoTestingModule } from '../../../../shared/testing/transloco-testing';
 import rootTr from '../../../../../../public/i18n/tr.json';
 import worksheetDetailTr from '../../../../../../public/i18n/worksheet-detail/tr.json';
@@ -24,6 +25,10 @@ class QuestionBankPanelStub {
     selectable = false;
     @Input()
     disabledIds: number[] = [];
+    @Input()
+    filterLayout: 'chips' | 'selects' = 'chips';
+    @Input()
+    initialClassification: ClassificationSelection | null = null;
     @Output()
     selectionChange = new EventEmitter<number[]>();
 }
@@ -33,9 +38,11 @@ describe('BankQuestionDialogComponent (issue #472)', () => {
     let questions: MockedObject<QuestionService>;
     let dialogRef: MockedObject<MatDialogRef<BankQuestionDialogComponent>>;
     let existing$: Subject<Question[]>;
+    let dialogData: BankQuestionDialogData;
 
     beforeEach(() => {
         existing$ = new Subject<Question[]>();
+        dialogData = { testId: 12 };
         questions = {
             getAll: vi.fn().mockName("QuestionService.getAll"),
             linkBankQuestions: vi.fn().mockName("QuestionService.linkBankQuestions")
@@ -54,7 +61,7 @@ describe('BankQuestionDialogComponent (issue #472)', () => {
             ],
             providers: [
                 provideNoopAnimations(),
-                { provide: MAT_DIALOG_DATA, useValue: { testId: 12 } },
+                { provide: MAT_DIALOG_DATA, useValue: dialogData },
                 { provide: MatDialogRef, useValue: dialogRef },
                 { provide: QuestionService, useValue: questions },
             ],
@@ -89,6 +96,27 @@ describe('BankQuestionDialogComponent (issue #472)', () => {
 
         expect(panel()!.selectable).toBe(true);
         expect(panel()!.disabledIds).toEqual([3, 7]);
+    });
+
+    it('panel_UsesSelectsFilterLayoutInDialog', () => {
+        loadExisting([]);
+
+        expect(panel()!.filterLayout).toBe('selects');
+    });
+
+    it('panel_NoInitialClassification_PassesNull', () => {
+        loadExisting([]);
+
+        expect(panel()!.initialClassification).toBeNull();
+    });
+
+    it('panel_InitialClassificationInData_IsPassedToPanel', () => {
+        const initial: ClassificationSelection = { gradeId: 5, subjectId: 10, topicId: 100, subtopicIds: [1000] };
+        dialogData.initialClassification = initial;
+
+        loadExisting([]);
+
+        expect(panel()!.initialClassification).toEqual(initial);
     });
 
     it('submit_IsDisabledUntilSomethingIsSelected', () => {

@@ -24,7 +24,7 @@ import { CommentThreadComponent } from '../../shared/components/comment-thread/c
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 import { StudyLinkSuggestionsComponent } from '../../shared/components/study-link-suggestions/study-link-suggestions.component';
 import { QuestionRegion } from '../../models/draws';
-import { BankQuestionDialogComponent } from './components/bank-question-dialog/bank-question-dialog.component';
+import { BankQuestionDialogComponent, BankQuestionDialogData } from './components/bank-question-dialog/bank-question-dialog.component';
 import { LinkBankQuestionsResult } from '../../models/question-bank';
 
 import { TranslocoTestingModule } from '@jsverse/transloco';
@@ -966,6 +966,7 @@ describe('WorksheetDetailComponent add from bank (issue #472)', () => {
     function setup(options: {
         canEdit?: boolean;
         result?: LinkBankQuestionsResult;
+        worksheet?: Partial<Test>;
     } = {}) {
         const testService = {
             getWorksheetDetail: vi.fn().mockName("TestService.getWorksheetDetail"),
@@ -973,7 +974,7 @@ describe('WorksheetDetailComponent add from bank (issue #472)', () => {
             getWorksheetAssignmentsForTeacher: vi.fn().mockName("TestService.getWorksheetAssignmentsForTeacher")
         };
         testService.getWorksheetDetail.mockImplementation((id: number) => of({
-            worksheet: { id, name: 'Deneme', canEdit: options.canEdit ?? true, canAssign: true, isOwner: true },
+            worksheet: { id, name: 'Deneme', canEdit: options.canEdit ?? true, canAssign: true, isOwner: true, ...options.worksheet },
             attempts: [],
             similarWorksheets: [],
         } as unknown as WorksheetDetail));
@@ -1042,6 +1043,42 @@ describe('WorksheetDetailComponent add from bank (issue #472)', () => {
                 testId: number;
             };
         }).data).toEqual({ testId: 12 });
+    });
+
+    it('openBankQuestionDialog_WorksheetClassified_PassesInitialClassification', async () => {
+        const { component, dialog } = setup({ worksheet: { gradeId: 5, subjectId: 10, topicId: 100, subTopicId: 1000 } });
+        component.ngOnInit();
+        await settle();
+
+        component['openBankQuestionDialog']();
+
+        const data = (vi.mocked(dialog.open).mock.lastCall![1] as { data: BankQuestionDialogData }).data;
+        expect(data).toEqual({
+            testId: 12,
+            initialClassification: { gradeId: 5, subjectId: 10, topicId: 100, subtopicIds: [1000] },
+        });
+    });
+
+    it('openBankQuestionDialog_PartialClassification_FillsMissingWithNull', async () => {
+        const { component, dialog } = setup({ worksheet: { subjectId: 10 } });
+        component.ngOnInit();
+        await settle();
+
+        component['openBankQuestionDialog']();
+
+        const data = (vi.mocked(dialog.open).mock.lastCall![1] as { data: BankQuestionDialogData }).data;
+        expect(data.initialClassification).toEqual({ gradeId: null, subjectId: 10, topicId: null, subtopicIds: [] });
+    });
+
+    it('openBankQuestionDialog_WorksheetUnclassified_PassesNoInitialClassification', async () => {
+        const { component, dialog } = setup();
+        component.ngOnInit();
+        await settle();
+
+        component['openBankQuestionDialog']();
+
+        const data = (vi.mocked(dialog.open).mock.lastCall![1] as { data: BankQuestionDialogData }).data;
+        expect(data.initialClassification).toBeUndefined();
     });
 
     it('openBankQuestionDialog_AddedQuestions_ShowsCountAndReloadsDetail', async () => {

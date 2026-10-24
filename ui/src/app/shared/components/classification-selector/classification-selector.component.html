@@ -1,4 +1,50 @@
-<div class="classification-selector" *transloco="let t; prefix: 'shared.classificationSelector'">
+<div class="classification-selector" [class.classification-selector--selects]="layout() === 'selects'" *transloco="let t; prefix: 'shared.classificationSelector'">
+  @if (layout() === 'selects') {
+  <div class="classification-selects">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>{{ t('grade') }}</mat-label>
+      <mat-select data-testid="grade-select" [value]="selectedGrade()" [disabled]="grades().length === 0"
+        (selectionChange)="selectGrade($event.value)">
+        <mat-option [value]="null">{{ t('any') }}</mat-option>
+        @for (grade of grades(); track grade.id) {
+        <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>{{ t('subject') }}</mat-label>
+      <mat-select data-testid="subject-select" [value]="selectedSubject()"
+        [disabled]="!selectedGrade() || subjects().length === 0" (selectionChange)="selectSubject($event.value)">
+        <mat-option [value]="null">{{ t('any') }}</mat-option>
+        @for (subject of subjects(); track subject.id) {
+        <mat-option [value]="subject.id">{{ subject.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>{{ t('topic') }}</mat-label>
+      <mat-select data-testid="topic-select" [value]="selectedTopic()"
+        [disabled]="!selectedSubject() || topics().length === 0" (selectionChange)="selectTopic($event.value)">
+        <mat-option [value]="null">{{ t('any') }}</mat-option>
+        @for (topic of topics(); track topic.id) {
+        <mat-option [value]="topic.id">{{ topic.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="classification-selects__subtopics">
+      <mat-label>{{ t('subtopics') }}</mat-label>
+      <mat-select data-testid="subtopic-select" multiple [value]="selectedSubtopics()"
+        [disabled]="!selectedTopic() || subtopics().length === 0" (selectionChange)="selectSubtopics($event.value)">
+        @for (subtopic of subtopics(); track subtopic.id) {
+        <mat-option [value]="subtopic.id">{{ subtopic.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+  } @else {
   <!-- Grade Selection -->
   <div class="classification-level">
     <h4 class="level-title">{{ t('grade') }}</h4>
@@ -71,6 +117,8 @@
       </mat-chip-listbox>
     </div>
   </div>
+  }
+
   }
 
   @if (showApplyButton) {

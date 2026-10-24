@@ -245,6 +245,7 @@
       "subject": "Subject",
       "topic": "Topic",
       "subtopics": "Subtopics (multiple choice)",
+      "any": "All",
       "apply": "Apply"
     },
     "colorSchemeToggle": {

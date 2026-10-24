@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, input, output, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, DestroyRef, computed, inject, input, linkedSignal, output, signal, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -74,6 +74,8 @@ export class QuestionBankPanelComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   /** Seçim modu (#472): kartlarda onay kutusu, seçim `selectionChange` ile bildirilir. */
+  /** Sınıf/Ders/Konu/Alt Konu filtresinin düzeni: sayfada çip, "Havuzdan soru ekle" diyaloğunda açılır kutu. */
+  readonly filterLayout = input<'chips' | 'selects'>('chips');
   readonly selectable = input(false);
   /** Seçilemeyen (ör. zaten testte olan) soru id'leri. */
   readonly disabledIds = input<number[]>([]);
@@ -83,7 +85,14 @@ export class QuestionBankPanelComponent {
   readonly AI = ClassificationSource.AI;
 
   readonly scope = signal<QuestionBankScope>('mine');
-  readonly classification = signal<ClassificationSelection | null>(null);
+  // Başlangıç değeri input'tan gelir; kullanıcı seçimi (`onClassificationChange`) üzerine yazar.
+  readonly classification = linkedSignal<ClassificationSelection | null>(() => this.initialClassification());
+  /**
+   * Açılışta seçili gelecek sınıf/ders/konu/alt konu (ör. "Havuzdan soru ekle" → testin kendi sınıflandırması).
+   * Seçici `initialSelection` uygularken `selectionChange` yaymaz; ilk arama bu değeri `classification` üzerinden alır.
+   */
+  readonly initialClassification = input<ClassificationSelection | null>(null);
+
   readonly source = signal<QuestionBankSourceFilter>('any');
   readonly status = signal<QuestionBankStatusFilter>('any');
   readonly answer = signal<QuestionBankAnswerFilter>('any');

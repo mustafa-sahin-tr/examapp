@@ -1,8 +1,10 @@
-import { Component, EventEmitter, inject, Input, Output, signal, effect, computed, ChangeDetectionStrategy } from '@angular/core';
+import { Component, EventEmitter, inject, input, Input, Output, signal, effect, computed, ChangeDetectionStrategy } from '@angular/core';
 
 import { MatChipsModule } from '@angular/material/chips';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 import { TranslocoDirective } from '@jsverse/transloco';
 import { StudentService } from '../../../services/student.service';
 import { SubjectService } from '../../../services/subject.service';
@@ -24,13 +26,19 @@ export interface ClassificationSelection {
 @Component({
   selector: 'app-classification-selector',
   standalone: true,
-  imports: [MatChipsModule, MatButtonModule, MatIconModule, TranslocoDirective],
+  imports: [MatChipsModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatSelectModule, TranslocoDirective],
   templateUrl: './classification-selector.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./classification-selector.component.scss'],
 })
 export class ClassificationSelectorComponent {
   @Input() showApplyButton: boolean = false;
+
+  /**
+   * `chips`: her seviye çip listesi (soru tuvali). `selects`: dört seviye tek satırda açılır kutu
+   * (soru havuzu filtresi; Sınıf/Ders/Konu tekli + "Tümü" ile temizlenir, Alt Konular çoklu).
+   */
+  readonly layout = input<'chips' | 'selects'>('chips');
 
   private suppressSelectionChange = false;
 
@@ -249,22 +257,26 @@ export class ClassificationSelectorComponent {
     });
   }
 
-  selectGrade(gradeId: number) {
+  selectGrade(gradeId: number | null) {
     this.selectedGrade.set(gradeId);
     this.selectedSubject.set(null);
     this.selectedTopic.set(null);
     this.selectedSubtopics.set([]);
   }
 
-  selectSubject(subjectId: number) {
+  selectSubject(subjectId: number | null) {
     this.selectedSubject.set(subjectId);
     this.selectedTopic.set(null);
     this.selectedSubtopics.set([]);
   }
 
-  selectTopic(topicId: number) {
+  selectTopic(topicId: number | null) {
     this.selectedTopic.set(topicId);
     this.selectedSubtopics.set([]);
+  }
+
+  selectSubtopics(subtopicIds: number[]) {
+    this.selectedSubtopics.set(subtopicIds ?? []);
   }
 
   toggleSubtopic(subtopicId: number) {

@@ -23,8 +23,47 @@ env:
   # yalnız api.nuget.org'u gösteriyor (<clear/> + nuget.org), ekstra ayar gerekmez.
 
 jobs:
+  # Yalnız doküman / dev script'i değişen PR'larda ağır test işleri atlanır. Workflow'u paths-ignore ile hiç
+  # tetiklememek required check'leri (dotnet-unit, integration, ui-tests, auth-ui-tests) sonsuza dek bekletir ve
+  # auto-merge kilitlenir; `if:` ile atlanan iş "skipped" raporlanır ve required check'i karşılar.
+  # Kod sayılmayanlar: *.md, .claude/**, deploy/scripts/dev-* (dev-only). deploy/scripts'in geri kalanı KOD sayılır:
+  # OutboxEventRegistryTests / MinioPresignAccountTests rabbitmq-init.sh ve minio-presign-init.sh'i okuyor.
+  # push (master) ve workflow_dispatch'te her zaman tam koşar. gitleaks (scan) ayrı workflow, her zaman koşar.
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      code: ${{ steps.detect.outputs.code }}
+    steps:
+      - id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          files="$(gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename')"
+          code=false
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            case "$f" in
+              *.md|.claude/*|deploy/scripts/dev-*) echo "kod değil: $f" ;;
+              *) echo "kod: $f"; code=true ;;
+            esac
+          done <<< "$files"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "testler koşacak mı: $code"
+
   dotnet-unit:
     name: dotnet-unit
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -42,11 +81,13 @@ jobs:
         run: dotnet restore ExamApp.slnx --source https://api.nuget.org/v3/index.json
       - name: Build
         run: dotnet build ExamApp.slnx --no-restore -c Release
-      - name: Unit tests (Category=Integration hari�)
+      - name: Unit tests (Category=Integration hariç)
         run: dotnet test ExamApp.slnx --no-build -c Release --filter "Category!=Integration"
 
   integration:
     name: integration
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     # PO kararı: başta bilgilendirici; stabil olunca kaldırılır.
@@ -69,6 +110,8 @@ jobs:
 
   ui-tests:
     name: ui-tests
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -92,6 +135,8 @@ jobs:
 
   auth-ui-tests:
     name: auth-ui-tests
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:

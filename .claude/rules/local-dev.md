@@ -529,10 +529,28 @@ sabitlemeler yalnız `overrides`'ta.
   `docker-compose rm -sv angular-app auth-ui` sonra `up -d`.
 
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
-her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), MinIO `exam-questions`'daki
-`questions/ answers/ passages/ question-transfer/` nesnelerini ve bekleyen QuestionCreated outbox mesajlarını siler;
-`--wipe-dataset` question-detector eğitim verisini de (`dataset/`, Drive arşivine dokunmaz) boşaltır. Önce
-`--dry-run`; birden fazla Postgres/MinIO konteyneri varsa `PG_CONTAINER`/`MINIO_CONTAINER` ile seç.
+her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını
+(`TestInstances` — Questions'a FK'sı yok, CASCADE ulaşmaz, açıkça silinir; aksi halde "boş test yapılmış" gibi kalır),
+bu cevaplardan türeyen puan/rozet verisini **her iki DB'de** (worksheet: `StudentPoints`, `StudentPointHistories`,
+`StudentBadges`, `StudentRewards`, `StudentSpecialEvents`, `Leaderboards`, `StudentBadgeProjections`, `StudentDailyXps`,
+`Students.ProgressResetAtUtc`=NULL; badge: `UserResetService`'in sildiği set — `BadgeEarned`, `StudentBadgeProgresses`,
+`StudentDailyActivities`, `Student{Question,Subject}Aggregates`, `ProcessedAnswerSubmissions`, `AnswerPointAwards`,
+`UserResetMarkers`, `Type='BadgeEarned'` bildirimleri — tüm öğrenciler için sert silme; uygulamadaki
+`POST api/student/me/reset` öğrenci başına ve soft-delete'tir), MinIO `exam-questions`'daki
+`questions/ answers/ passages/ question-transfer/` nesnelerini ve bekleyen QuestionCreated / StudentPointsChanged /
+StudentBadgeEarned outbox mesajlarını siler; `Worksheets`, taksonomi, kullanıcılar, `BadgeDefinitions` kalır. `BADGE_DB` (varsayılan `badge`) ile badge DB adı seçilir;
+`--wipe-dataset` question-detector eğitim verisini de (`dataset/`, Drive arşivine dokunmaz) boşaltır. İsteğe bağlı gruplar:
+- `--wipe-tests`: `Worksheets` + `DailyQuestionSets` + `PracticeSessions` (CASCADE: atamalar, hatırlatıcılar, erişim
+  istekleri, test yorumları) ve MinIO `worksheets`/`exams` bucket'ları. `Books`/`BookTests` kalır: `StudyItems` onlara FK
+  ile bağlı, silmek çalışma sayfalarını ve program takvimlerini götürürdü.
+- `--wipe-social`: mesajlaşma tabloları, `WorksheetCommentModerationEvents`, badge DB'de tüm bildirimler.
+- `--wipe-logs`: üç DB'de işlenmiş outbox (bekleyen/hatalı kalır), `LoginEvents`, `Admin*Logs`, `QuestionTransfer*`,
+  `ProcessedLoginAttempts`, Hangfire'da yalnız bitmiş işler + stats sayaçları (recurring/zamanlanmış işler kalır).
+- `--all`: üçü birden (dataset hariç). Veli bağları, kullanıcılar, randevular, çalışma sayfaları, programlar hiçbir
+  bayrakta yok (veli bağı silinirse öğrenciler #441 grace süresine düşer).
+
+Önce `--dry-run` (seçilen grupların sayılarını da gösterir); birden fazla Postgres/MinIO konteyneri varsa
+`PG_CONTAINER`/`MINIO_CONTAINER` ile seç.
 
 ## Port map (host → container)
 

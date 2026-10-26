@@ -1,5 +1,6 @@
 using ExamApp.Api.Services.Teachers.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models;
@@ -643,8 +644,63 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         var response = await _testSession.SaveAnswer(dto, user, ct);
         // issue #367: test artık Started değil → 409 { success:false, conflict:true, errorCode:"TestNotInProgress" }.
+        // issue #571: geçersiz etkileşim cevabı → 400 { success:false, invalidInput:true, errorCode:"InvalidAnswerPayload" }.
         // Diğer başarısızlıklar (soru/instance yok) eski sözleşmeyle 200 + success:false kalır.
+        if (response.InvalidInput)
+            return BadRequest(response);
         return response.Conflict ? Conflict(response) : Ok(response);
+    }
+
+    /// <summary>
+    /// issue #571: etkinlik "Cevapları kontrol et" — gateway: <c>POST /api/exam/test-instances/{instanceId}/check</c>.
+    /// 200 satır bazlı sonuç (çözüm yok) · 400 geçersiz istek/cevap (hiçbir şey yazılmaz) · 404 oturum yok / başkasının ·
+    /// 409 etkinlik değil (NotAnActivity) ya da oturum Started değil (TestNotInProgress).
+    /// </summary>
+    [HttpPost("~/api/test-instances/{instanceId:int}/check")]
+    [Authorize(Roles = "Student,Teacher,Admin")] // save-answer ile aynı kapı (issue #287 review H1)
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
+    [EnableRateLimiting(ActivityCheckRateLimiting.Policy)] // review #571: kullanıcı başına (RateLimiting:ActivityCheck), 429
+    [RequestSizeLimit(ActivityCheckRequestSizeLimit)] // review #571: 100 madde × 16 KB + pay
+    public async Task<IActionResult> CheckActivity(int instanceId, [FromBody] ActivityCheckRequestDto request, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
+
+        var response = await _testSession.CheckActivityAsync(instanceId, request, user.Id, ct);
+        return ActivityResult(response);
+    }
+
+    /// <summary>
+    /// issue #571: etkinlik "Doğru cevapları göster" — gateway: <c>GET /api/exam/test-instances/{instanceId}/solutions</c>.
+    /// 200 çözümler · 404 oturum yok / başkasının · 409 etkinlik değil (NotAnActivity) ya da henüz kontrol yok
+    /// (ActivityCheckRequired). İlk çağrı <c>SolutionsRevealedAt</c>'i yazar.
+    /// </summary>
+    [HttpGet("~/api/test-instances/{instanceId:int}/solutions")]
+    [Authorize(Roles = "Student,Teacher,Admin")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)]
+    public async Task<IActionResult> GetActivitySolutions(int instanceId, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
+
+        var response = await _testSession.GetActivitySolutionsAsync(instanceId, user.Id, ct);
+        return ActivityResult(response);
+    }
+
+    /// <summary>review #571: kontrol gövdesi üst sınırı — <see cref="ActivityCheckRequestDto.MaxAnswers"/> × 16 KB payload + pay (2 MB).</summary>
+    private const long ActivityCheckRequestSizeLimit = 2L * 1024 * 1024;
+
+    private IActionResult ActivityResult(TestSessionResultDto response)
+    {
+        if (response.NotFound)
+            return NotFound(response);
+        if (response.InvalidInput)
+            return BadRequest(response);
+        if (response.Conflict)
+            return Conflict(response);
+        return Ok(response);
     }
 
     [HttpPut("end-test/{testInstanceId}")]

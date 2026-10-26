@@ -15,6 +15,11 @@ public class TestSessionResultDto : ResponseBaseDto
     /// yalnız <see cref="TestSessionRejectReasons.TimeExpired"/> — oturum süre sınırı yüzünden Expired. Diğer durumlarda null.
     /// </summary>
     public string? Reason { get; set; }
+
+    /// <summary>
+    /// issue #571: istek yazmadan önce reddedildi (bozuk/geçersiz etkileşim cevabı ya da kontrol isteği) — controller 400'e eşler.
+    /// </summary>
+    public bool InvalidInput { get; set; }
 }
 
 public static class TestSessionRejectReasons
@@ -30,4 +35,19 @@ public static class TestSessionErrorCodes
     /// üretilmedi. <c>end-test</c>: yalnız Expired için (Completed'a tekrar end-test idempotent başarıdır).
     /// </summary>
     public const string TestNotInProgress = "TestNotInProgress";
+
+    /// <summary>
+    /// issue #571: 400 — etkileşim cevabı geçersiz (ayrıştırılamıyor, tip uyuşmuyor, 16 KB'tan büyük, plan dışı hedef/kart id'si,
+    /// aynı hedef/kart iki kez) ya da seçilen şık sorunun şıkkı değil. Hiçbir şey yazılmadı (AnswerRevision artmadı).
+    /// </summary>
+    public const string InvalidAnswerPayload = "InvalidAnswerPayload";
+
+    /// <summary>issue #571: 400 — kontrol isteği geçersiz (boş, çok madde, tekrarlanan ya da oturuma ait olmayan madde).</summary>
+    public const string InvalidCheckRequest = "InvalidCheckRequest";
+
+    /// <summary>issue #571: 409 — kontrol / "doğru cevapları göster" yalnız etkinlikte (<c>Worksheet.Kind = Activity</c>).</summary>
+    public const string NotAnActivity = "NotAnActivity";
+
+    /// <summary>issue #571: 409 — "doğru cevapları göster" en az bir kontrolden sonra açılır.</summary>
+    public const string ActivityCheckRequired = "ActivityCheckRequired";
 }

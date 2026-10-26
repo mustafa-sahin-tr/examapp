@@ -257,7 +257,9 @@ public sealed class ParentAssignmentService : IParentAssignmentService
         });
     }
 
-    internal sealed record AnswerRow(int InstanceId, int WorksheetQuestionId, int? SelectedAnswerId);
+    /// <param name="HasPayload">issue #571: etkileşim cevabı (<c>AnswerPayload</c>) var mı.</param>
+    /// <param name="IsCorrect">issue #571: satırın kayıtlı kontrol sonucu (yalnız etkileşim cevabında kullanılır).</param>
+    internal sealed record AnswerRow(int InstanceId, int WorksheetQuestionId, int? SelectedAnswerId, bool HasPayload = false, bool IsCorrect = false);
 
     internal sealed record QuestionMeta(int? CorrectAnswerId, int? TopicId, string? TopicName);
 
@@ -278,7 +280,7 @@ public sealed class ParentAssignmentService : IParentAssignmentService
     private Task<List<AnswerRow>> LoadAnswersAsync(IReadOnlyCollection<int> instanceIds, CancellationToken ct)
         => _context.TestInstanceQuestions.AsNoTracking()
             .Where(q => instanceIds.Contains(q.WorksheetInstanceId))
-            .Select(q => new AnswerRow(q.WorksheetInstanceId, q.WorksheetQuestionId, q.SelectedAnswerId))
+            .Select(q => new AnswerRow(q.WorksheetInstanceId, q.WorksheetQuestionId, q.SelectedAnswerId, q.AnswerPayload != null, q.IsCorrect))
             .ToListAsync(ct);
 
     /// <summary>
@@ -321,8 +323,12 @@ public sealed class ParentAssignmentService : IParentAssignmentService
     }
 
     private static (int Correct, int Wrong, int Blank) Tally(IEnumerable<AnswerRow> answers, IReadOnlyDictionary<int, QuestionMeta> meta)
-        => WorksheetScoring.Tally(answers, a => a.SelectedAnswerId,
-            a => meta.TryGetValue(a.WorksheetQuestionId, out var m) ? m.CorrectAnswerId : null);
+        => WorksheetScoring.Tally(answers, a =>
+        {
+            var known = meta.TryGetValue(a.WorksheetQuestionId, out var m);
+            return new WorksheetScoring.AnswerFacts(
+                a.SelectedAnswerId, a.HasPayload, a.IsCorrect, known ? m!.CorrectAnswerId : null, QuestionKnown: known);
+        });
 
     /// <summary>Öğretmen adları: auth-api'ye TEK toplu çağrı; erişilemezse/süre aşılırsa boş (ad null döner).</summary>
     private async Task<IReadOnlyDictionary<int, string>> LookupNamesAsync(IEnumerable<int> userIds, CancellationToken ct)

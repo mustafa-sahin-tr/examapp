@@ -326,9 +326,12 @@ public class TestCompletionAnswerLockPostgresTests(IntegrationApiFactory factory
                 var grade = new Grade { Name = "5" };
                 ctx.Grades.Add(grade);
                 await ctx.SaveChangesAsync();
-                var worksheet = new Worksheet { Name = "W", Description = "", GradeId = grade.Id };
-                ctx.Add(worksheet);
-                await ctx.SaveChangesAsync();
+                // Raw SQL, not the EF model: the current Worksheet model has Kind (issue #571 Worksheets.Kind), which
+                // this migration point lacks.
+                var worksheetId = (await ctx.Database.SqlQueryRaw<int>("""
+                    INSERT INTO "Worksheets" ("Name", "Description", "GradeId", "MaxDurationSeconds", "IsPracticeTest", "CreateTime", "IsDeleted")
+                    VALUES ('W', '', {0}, 0, FALSE, now(), FALSE) RETURNING "Id" AS "Value"
+                    """, grade.Id).ToListAsync()).Single();
                 // Student via raw SQL too: the current model has Students columns the old schema lacks (issue #361
                 // SchoolVerifiedAt / LastRejectedSchoolId ...).
                 var student = new
@@ -346,9 +349,9 @@ public class TestCompletionAnswerLockPostgresTests(IntegrationApiFactory factory
                     """;
                 var completed = (int)WorksheetInstanceStatus.Completed;
                 await ctx.Database.ExecuteSqlRawAsync(insertInstance,
-                    student.Id, worksheet.Id, completed, DateTime.UtcNow.AddHours(-2), DateTime.UtcNow.AddHours(-1));
+                    student.Id, worksheetId, completed, DateTime.UtcNow.AddHours(-2), DateTime.UtcNow.AddHours(-1));
                 await ctx.Database.ExecuteSqlRawAsync(insertInstance,
-                    student.Id, worksheet.Id, completed, DateTime.UtcNow.AddMinutes(-30), DateTime.UtcNow);
+                    student.Id, worksheetId, completed, DateTime.UtcNow.AddMinutes(-30), DateTime.UtcNow);
                 retakeId = await ctx.TestInstances.IgnoreQueryFilters()
                     .OrderByDescending(i => i.Id).Select(i => i.Id).FirstAsync();
             }

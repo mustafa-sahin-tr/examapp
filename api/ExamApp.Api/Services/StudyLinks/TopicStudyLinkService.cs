@@ -290,12 +290,11 @@ public class TopicStudyLinkService : ITopicStudyLinkService
         if (!WorksheetInstanceStatusRules.IsFinished(status))
             return new StudyLinkSuggestionsResultDto { Success = true };
 
-        // "Yanlış" = işaretlenmiş VE doğru cevaptan farklı (WorksheetDetailService.CreateWorksheetFromMistakesAsync
-        // ve UI sonuç ekranı ile aynı tanım). Boş bırakılan sorular yanlış sayılmaz.
+        // "Yanlış" = WorksheetScoring.IsWrongRow (issue #571 hibrit kuralı: yanlış şık ya da tamamı doğru olmayan etkileşim
+        // cevabı; WorksheetDetailService.CreateWorksheetFromMistakesAsync ile aynı tanım). Boş bırakılan sorular yanlış sayılmaz.
         var wrong = await _context.TestInstanceQuestions.AsNoTracking()
-            .Where(wiq => wiq.WorksheetInstanceId == testInstanceId
-                && wiq.SelectedAnswerId != null
-                && wiq.WorksheetQuestion.Question.CorrectAnswerId != wiq.SelectedAnswerId)
+            .Where(wiq => wiq.WorksheetInstanceId == testInstanceId)
+            .Where(WorksheetScoring.IsWrongRow)
             .Select(wiq => new { wiq.Id, wiq.WorksheetQuestion.QuestionId, wiq.WorksheetQuestion.Order })
             .ToListAsync(ct);
 

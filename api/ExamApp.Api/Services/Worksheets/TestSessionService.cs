@@ -2,6 +2,7 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Interactions;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Parents;
 using ExamApp.Foundation.Contracts;
@@ -30,11 +31,16 @@ public class TestSessionService : ITestSessionService
     // issue #423: veli bildirimi için sub/ad çözümü (opsiyonel; DI verir, DI'siz birim testler null bırakır → ad boş, event yine yazılır).
     private readonly IAuthApiClient? _authApi;
 
-    public TestSessionService(AppDbContext context, IStringLocalizer<Messages>? localizer = null, IAuthApiClient? authApi = null)
+    // issue #571: etkileşim tipine göre sunucu tarafı kontrolcü. DI verir; DI'sız birim testler yerleşik kontrolcüleri alır.
+    private readonly IInteractionGraderRegistry _graders;
+
+    public TestSessionService(AppDbContext context, IStringLocalizer<Messages>? localizer = null, IAuthApiClient? authApi = null,
+        IInteractionGraderRegistry? graders = null)
     {
         _context = context;
         _authApi = authApi;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
+        _graders = graders ?? InteractionGraderRegistry.Default;
     }
 
     public async Task<Paged<InstanceSummaryDto>> GetCompletedTestsAsync(StudentProfileDto student, int pageNumber, int pageSize)
@@ -43,7 +49,9 @@ public class TestSessionService : ITestSessionService
             // issue #396: öğrencinin kendi geçmişi bitmiş oturumları listeler (Completed + Expired) — süresi dolan test de
             // sonuç sayfasına buradan ulaşılır. Puan, cevaplananlar üzerinden aynı formülle hesaplanır.
             .Where(wi => wi.StudentId == student.Id
-                && (wi.Status == WorksheetInstanceStatus.Completed || wi.Status == WorksheetInstanceStatus.Expired))
+                && (wi.Status == WorksheetInstanceStatus.Completed || wi.Status == WorksheetInstanceStatus.Expired)
+                // issue #571: etkinlikler puansız — skor listesine girmez.
+                && wi.Worksheet.Kind != WorksheetKind.Activity)
             .Select(wi => new
             {
                 wi.Id,
@@ -53,17 +61,10 @@ public class TestSessionService : ITestSessionService
                 wi.StartTime,
                 TotalQuestions = wi.WorksheetInstanceQuestions.Count(),
 
-                CorrectAnswers = wi.WorksheetInstanceQuestions.Count(wiq =>
-                    wiq.SelectedAnswerId != null &&
-                    wi.Worksheet.WorksheetQuestions.Any(wq =>
-                        wq.Id == wiq.WorksheetQuestionId &&
-                        wq.Question.CorrectAnswerId == wiq.SelectedAnswerId)),
-
-                WrongAnswers = wi.WorksheetInstanceQuestions.Count(wiq =>
-                    wiq.SelectedAnswerId != null &&
-                    wi.Worksheet.WorksheetQuestions.Any(wq =>
-                        wq.Id == wiq.WorksheetQuestionId &&
-                        wq.Question.CorrectAnswerId != wiq.SelectedAnswerId))
+                // issue #571: WorksheetScoring hibrit kuralı (MCQ aynı; etkileşimli cevaplar da sayılır).
+                // Yanlış = toplam − doğru − boş: sorusu silinmiş boş olmayan satır da yanlış sayılır (WorksheetScoring dokümanı).
+                CorrectAnswers = wi.WorksheetInstanceQuestions.AsQueryable().Count(WorksheetScoring.IsCorrectRow),
+                BlankAnswers = wi.WorksheetInstanceQuestions.AsQueryable().Count(WorksheetScoring.IsBlankRow)
             })
             .ToListAsync();
 
@@ -77,7 +78,7 @@ public class TestSessionService : ITestSessionService
                 (int)(wi.EndTime.Value - wi.StartTime).TotalMinutes : 0,
             TotalQuestions = wi.TotalQuestions,
             CorrectAnswers = wi.CorrectAnswers,
-            WrongAnswers = wi.WrongAnswers,
+            WrongAnswers = wi.TotalQuestions - wi.CorrectAnswers - wi.BlankAnswers,
             Score = (wi.CorrectAnswers * 100) / (wi.TotalQuestions > 0 ? wi.TotalQuestions : 1)
         })
         .OrderByDescending(wi => wi.CompletedDate)
@@ -459,6 +460,8 @@ public class TestSessionService : ITestSessionService
                     : Math.Max(1, Math.Min(questionDto.Answers.Count, 4));
 
 
+                // issue #571: satır bazlı sonuç yalnız etkileşimli (MCQ dışı) cevapta ve çözümle aynı kapıdan (bitmiş test).
+                var exposeGrade = includeCorrectAnswer && !IsMcq(questionEntity.InteractionType);
                 return new WorksheetInstanceQuestionDto
                 {
                     Id = tiq.Id,
@@ -466,7 +469,11 @@ public class TestSessionService : ITestSessionService
                     Question = questionDto,
                     SelectedAnswerId = tiq.SelectedAnswerId,
                     AnswerPayload = tiq.AnswerPayload,
-                    TimeTaken = tiq.TimeTaken
+                    TimeTaken = tiq.TimeTaken,
+                    IsCorrect = exposeGrade ? tiq.IsCorrect : null,
+                    CorrectCount = exposeGrade ? tiq.CorrectCount : null,
+                    TotalCount = exposeGrade ? tiq.TotalCount : null,
+                    Feedback = exposeGrade ? tiq.Feedback : null
                 };
             }).ToList()
         };
@@ -480,6 +487,10 @@ public class TestSessionService : ITestSessionService
     /// <c>(Order, Id)</c>'si — <see cref="Helpers.WorksheetQuestionNumbering"/> ile aynı kural. Önceden açık sıra yoktu
     /// (Include'un döndüğü sıra); fark yalnız eşit Order'da görülür.
     /// </summary>
+    private static bool IsMcq(string? interactionType)
+        => string.IsNullOrWhiteSpace(interactionType)
+            || interactionType.Trim().Equals(McqGrader.Type, StringComparison.OrdinalIgnoreCase);
+
     private static IEnumerable<WorksheetInstanceQuestion> OrderedForDisplay(IEnumerable<WorksheetInstanceQuestion> questions) =>
         questions
             .OrderBy(tiq => tiq.WorksheetQuestion.Order)
@@ -534,80 +545,39 @@ public class TestSessionService : ITestSessionService
                 };
             }
 
+            // issue #571: the payload is validated by the question type's grader BEFORE the transaction, the status lock
+            // and the AnswerRevision increment — an invalid payload (unknown zone/card id, duplicate, oversized, malformed)
+            // is rejected (400) and nothing is written.
+            // review #571: global 16 KB cap for every type; MCQ stores no payload (Normalize → null); a non-MCQ question
+            // stores no option id; an option id must belong to this question (else 400 instead of an FK 500); an empty
+            // drag-drop payload (no placements) is stored as null (blank, not wrong).
+            var grader = _graders.Resolve(question.InteractionType);
+            var prepared = await PrepareAnswerAsync(question, grader,
+                dto.SelectedAnswerId > 0 ? dto.SelectedAnswerId : null, dto.AnswerPayload, ct);
+            if (prepared == null)
+                return InvalidPayloadAnswer();
+            var (selectedAnswerId, payload) = prepared.Value;
+
+            // review #571 (blocker): an Activity (Kind = Activity) is pointless (#569) — its answer is stored and graded but
+            // NO AnswerSubmittedEvent is written (otherwise check → reveal solutions → save-answer would award points).
+            // Read without the Worksheet query filter so a worksheet soft-deleted mid-test still resolves (default Test).
+            var isActivity = await WorksheetKindOfInstanceAsync(testInstanceQuestion.WorksheetInstanceId, ct) == WorksheetKind.Activity;
+
             // issue #279 review: see the AnswerRevision comment below for why the transaction exists at all.
             await using var transaction = await _context.Database.BeginTransactionAsync(ct);
 
-            // issue #367: the instance must still be Started — otherwise a student could finish the test, read the
-            // correct answers (only exposed once Completed) and rewrite wrong answers into right ones, each rewrite
-            // emitting a fresh AnswerSubmittedEvent (points/badges). The status is checked by a conditional no-op
-            // UPDATE on the instance row as the FIRST statement of the write transaction, not by a prior read:
-            // the UPDATE takes the row's write lock until COMMIT, and EndTest's UPDATE of the same row (Status →
-            // Completed) needs that lock too, so the two serialize:
-            //   - SaveAnswer first → EndTest waits for our commit; the answer lands before completion (in-flight
-            //     answer sent right before "finish" is kept — #383 awaits it before calling end-test).
-            //   - EndTest first → our UPDATE waits, Postgres re-evaluates the WHERE on the committed row (READ
-            //     COMMITTED), sees Completed → 0 rows → reject. Nothing below runs: no answer write, no outbox row.
-            // A plain SELECT of Status here would not lock and could read Started just before EndTest commits.
-            var stillInProgress = await _context.TestInstances
-                .Where(ti => ti.Id == testInstanceQuestion.WorksheetInstanceId
-                    && ti.Status == WorksheetInstanceStatus.Started)
-                .ExecuteUpdateAsync(s => s.SetProperty(ti => ti.Status, ti => ti.Status), ct);
-
-            if (stillInProgress == 0)
-            {
-                await transaction.RollbackAsync(ct);
-                _context.ChangeTracker.Clear();
-                // Only to pick the message/reason (time-up vs. completed); the decision itself was the locked UPDATE.
-                var finishedAs = await _context.TestInstances
-                    .AsNoTracking()
-                    .Where(ti => ti.Id == testInstanceQuestion.WorksheetInstanceId)
-                    .Select(ti => new { ti.Status, ti.StartTime, ti.MaxDurationSeconds })
-                    .FirstOrDefaultAsync(ct);
-                return NotInProgressAnswer(timeExpired: finishedAs != null
-                    && IsTimeUp(finishedAs.Status, finishedAs.StartTime, finishedAs.MaxDurationSeconds));
-            }
-
-            // issue #396: server-side time limit. Checked AFTER the status lock above, so StartTime/limit and the Expired
-            // write below are decided while we hold the row — a concurrent EndTest waits and then sees Expired. The
-            // Expired write is committed (not rolled back) so the instance is closed for every later request too; nothing
-            // else (answer, revision, outbox) is written. The limit is the instance's own snapshot (copied at start-test).
-            var timing = await _context.TestInstances
-                .AsNoTracking()
-                .Where(ti => ti.Id == testInstanceQuestion.WorksheetInstanceId)
-                .Select(ti => new { ti.StartTime, ti.MaxDurationSeconds })
-                .FirstAsync(ct);
-
-            var status = await ExpireIfOverdueAsync(
-                testInstanceQuestion.WorksheetInstanceId, WorksheetInstanceStatus.Started, timing.StartTime,
-                timing.MaxDurationSeconds, user.Id, ct);
-            if (status != WorksheetInstanceStatus.Started)
-            {
-                await transaction.CommitAsync(ct);
-                _context.ChangeTracker.Clear();
-                return NotInProgressAnswer(timeExpired: IsTimeUp(status, timing.StartTime, timing.MaxDurationSeconds));
-            }
+            var rejected = await LockStartedInstanceAsync(testInstanceQuestion.WorksheetInstanceId, user.Id, transaction, ct);
+            if (rejected != null)
+                return rejected;
 
             // Store MCQ selection and/or structured answer payload
-            testInstanceQuestion.SelectedAnswerId = dto.SelectedAnswerId > 0 ? dto.SelectedAnswerId : null;
-            testInstanceQuestion.AnswerPayload = string.IsNullOrWhiteSpace(dto.AnswerPayload) ? null : dto.AnswerPayload;
+            testInstanceQuestion.SelectedAnswerId = selectedAnswerId;
+            testInstanceQuestion.AnswerPayload = payload;
             testInstanceQuestion.TimeTaken = dto.TimeTaken;
 
-            var interactionType = question.InteractionType ?? "mcq";
-            var isDragDropLabeling = interactionType.Equals("dragDropLabeling", StringComparison.OrdinalIgnoreCase);
-
-            bool isCorrect;
-            if (isDragDropLabeling)
-            {
-                // For dragDropLabeling, correctness is determined client-side for practice (IsExample)
-                // and server-side evaluation can be added later. For now, we store payload and mark unknown as false.
-                isCorrect = false;
-            }
-            else
-            {
-                var correctAnswerId = question.CorrectAnswerId;
-                isCorrect = correctAnswerId.HasValue && correctAnswerId.Value == dto.SelectedAnswerId;
-            }
-            testInstanceQuestion.IsCorrect = isCorrect;
+            // issue #571: server-side grading by interaction type (MCQ: unchanged rule, selected == correct; dragDropLabeling:
+            // per drop zone). IsCorrect = all rows correct; no partial points (the event still carries only IsCorrect).
+            var isCorrect = ApplyGrade(testInstanceQuestion, question, grader);
 
             var primarySubTopicId = question.QuestionSubTopics?.FirstOrDefault()?.SubTopicId;
 
@@ -646,6 +616,18 @@ public class TestSessionService : ITestSessionService
                 .Select(x => x.AnswerRevision)
                 .FirstAsync(ct);
 
+            if (isActivity)
+            {
+                // review #571: activity — answer, grade fields and revision only; no outbox row (completion chain is #572).
+                await _context.SaveChangesAsync(ct);
+                await transaction.CommitAsync(ct);
+                return new TestSessionResultDto
+                {
+                    Success = true,
+                    Message = _localizer["worksheets.session.answerSaved"]
+                };
+            }
+
             // 1. Event oluştur
             // EventId = outbox satırının Id'si (LoginAttemptedEvent ile aynı desen, issue #243) —
             // BadgeService bu satırı işlenmiş sayıp aynı SaveChanges'te idempotency defterine yazar.
@@ -668,7 +650,7 @@ public class TestSessionService : ITestSessionService
                 TestInstanceId = dto.TestInstanceId,
                 TestInstanceQuestionId = testInstanceQuestion.Id,
                 Revision = newRevision,
-                SelectedAnswerId = dto.SelectedAnswerId > 0 ? dto.SelectedAnswerId : null
+                SelectedAnswerId = selectedAnswerId
             };
 
             // 2. Outbox'a yaz
@@ -692,6 +674,100 @@ public class TestSessionService : ITestSessionService
             };
         }, ct);
     }
+
+    /// <summary>
+    /// issue #367/#396 (extracted unchanged from <see cref="SaveAnswer"/> for issue #571, shared with the activity check): the
+    /// FIRST statement of an open write transaction. Takes the instance row lock with a conditional no-op UPDATE (Started only)
+    /// and applies the server-side time limit. null = still Started, the caller holds the row lock and may write; otherwise the
+    /// transaction is already rolled back (not Started) or committed (Expired write) and the 409 result is returned.
+    /// </summary>
+    private async Task<TestSessionResultDto?> LockStartedInstanceAsync(
+        int instanceId, int actingUserId, Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction, CancellationToken ct)
+    {
+        // issue #367: the instance must still be Started — otherwise a student could finish the test, read the
+        // correct answers (only exposed once Completed) and rewrite wrong answers into right ones, each rewrite
+        // emitting a fresh AnswerSubmittedEvent (points/badges). The status is checked by a conditional no-op
+        // UPDATE on the instance row as the FIRST statement of the write transaction, not by a prior read:
+        // the UPDATE takes the row's write lock until COMMIT, and EndTest's UPDATE of the same row (Status →
+        // Completed) needs that lock too, so the two serialize:
+        //   - SaveAnswer first → EndTest waits for our commit; the answer lands before completion (in-flight
+        //     answer sent right before "finish" is kept — #383 awaits it before calling end-test).
+        //   - EndTest first → our UPDATE waits, Postgres re-evaluates the WHERE on the committed row (READ
+        //     COMMITTED), sees Completed → 0 rows → reject. Nothing below runs: no answer write, no outbox row.
+        // A plain SELECT of Status here would not lock and could read Started just before EndTest commits.
+        var stillInProgress = await _context.TestInstances
+            .Where(ti => ti.Id == instanceId
+                && ti.Status == WorksheetInstanceStatus.Started)
+            .ExecuteUpdateAsync(s => s.SetProperty(ti => ti.Status, ti => ti.Status), ct);
+
+        if (stillInProgress == 0)
+        {
+            await transaction.RollbackAsync(ct);
+            _context.ChangeTracker.Clear();
+            // Only to pick the message/reason (time-up vs. completed); the decision itself was the locked UPDATE.
+            var finishedAs = await _context.TestInstances
+                .AsNoTracking()
+                .Where(ti => ti.Id == instanceId)
+                .Select(ti => new { ti.Status, ti.StartTime, ti.MaxDurationSeconds })
+                .FirstOrDefaultAsync(ct);
+            return NotInProgressAnswer(timeExpired: finishedAs != null
+                && IsTimeUp(finishedAs.Status, finishedAs.StartTime, finishedAs.MaxDurationSeconds));
+        }
+
+        // issue #396: server-side time limit. Checked AFTER the status lock above, so StartTime/limit and the Expired
+        // write below are decided while we hold the row — a concurrent EndTest waits and then sees Expired. The
+        // Expired write is committed (not rolled back) so the instance is closed for every later request too; nothing
+        // else (answer, revision, outbox) is written. The limit is the instance's own snapshot (copied at start-test).
+        var timing = await _context.TestInstances
+            .AsNoTracking()
+            .Where(ti => ti.Id == instanceId)
+            .Select(ti => new { ti.StartTime, ti.MaxDurationSeconds })
+            .FirstAsync(ct);
+
+        var status = await ExpireIfOverdueAsync(
+            instanceId, WorksheetInstanceStatus.Started, timing.StartTime,
+            timing.MaxDurationSeconds, actingUserId, ct);
+        if (status != WorksheetInstanceStatus.Started)
+        {
+            await transaction.CommitAsync(ct);
+            _context.ChangeTracker.Clear();
+            return NotInProgressAnswer(timeExpired: IsTimeUp(status, timing.StartTime, timing.MaxDurationSeconds));
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// issue #571: satırı tipin kontrolcüsüyle puanlar ve sonucu satıra yazar (<c>IsCorrect</c>, <c>CorrectCount</c>,
+    /// <c>TotalCount</c>, <c>GradedBy = Auto</c>, <c>Feedback</c>). Satırın <c>SelectedAnswerId</c>/<c>AnswerPayload</c>'u önceden
+    /// set edilmiş olmalı. Çözüm: <c>Question.InteractionSolution</c>, yoksa (taşınmamış eski satır) plandan ayrılan.
+    /// </summary>
+    private static InteractionGradeResult Grade(WorksheetInstanceQuestion row, Question question, IInteractionGrader grader)
+    {
+        var (_, solution) = InteractionPlanSolution.ForOutput(question.InteractionPlan, question.InteractionSolution, includeSolution: true);
+        return grader.Grade(new InteractionGradeInput(
+            question.InteractionPlan, solution, row.AnswerPayload, row.SelectedAnswerId, question.CorrectAnswerId));
+    }
+
+    private static bool ApplyGrade(WorksheetInstanceQuestion row, Question question, IInteractionGrader grader)
+    {
+        var result = Grade(row, question, grader);
+        row.IsCorrect = result.IsCorrect;
+        row.CorrectCount = result.CorrectCount;
+        row.TotalCount = result.TotalCount;
+        row.GradedBy = AnswerGradedBy.Auto;
+        row.Feedback = result.Feedback;
+        return result.IsCorrect;
+    }
+
+    /// <summary>issue #571: geçersiz etkileşim cevabı → 400; hiçbir şey yazılmadı.</summary>
+    private TestSessionResultDto InvalidPayloadAnswer() => new()
+    {
+        Success = false,
+        InvalidInput = true,
+        ErrorCode = TestSessionErrorCodes.InvalidAnswerPayload,
+        Message = _localizer["worksheets.session.invalidAnswerPayload"]
+    };
 
     /// <param name="timeExpired">issue #396: oturum süre sınırıyla Expired — ayrı mesaj + <see cref="TestSessionRejectReasons.TimeExpired"/>.</param>
     private TestSessionResultDto NotInProgressAnswer(bool timeExpired) => new()
@@ -738,7 +814,11 @@ public class TestSessionService : ITestSessionService
 
         // issue #423: öğrencinin Active velisi varsa tamamlanma, veli event'leriyle AYNI transaction'da yazılır. Veli yoksa
         // (çoğunluk) yol değişmez: tek koşullu UPDATE, ekstra HTTP/outbox yok. Ad/sub çözümü transaction DIŞINDA, fail-soft.
+        // issue #571: etkinlik (Kind = Activity) puansız — veliye test sonucu bildirimi gitmez (tamamlanma zinciri #572).
+        // Kind ayrı okunur (review #571): timing projeksiyonu Worksheet'e JOIN etmemeli — sınav sırasında soft-delete edilen
+        // worksheet'te timing null olur ve #396 süre kontrolü atlanırdı.
         var parentPlan = timing != null && currentStatus == WorksheetInstanceStatus.Started
+            && await WorksheetKindOfInstanceAsync(testInstanceId, ct) != WorksheetKind.Activity
             ? await PlanParentNotificationsAsync(testInstanceId, userId, timing.StudentId, timing.WorksheetId, timing.StartTime, ct)
             : null;
         var now = DateTime.UtcNow; // issue #423 (m2): plandan SONRA alınır, EndTime/event zamanı gerçek tamamlanmaya yakın olur
@@ -811,6 +891,259 @@ public class TestSessionService : ITestSessionService
         };
     }
 
+    /// <summary>
+    /// issue #571: etkinlik "Cevapları kontrol et". Yalnız oturumun sahibi öğrenci (yoksa NotFound) ve yalnız etkinlikte
+    /// (<c>Worksheet.Kind = Activity</c>, yoksa 409 <see cref="TestSessionErrorCodes.NotAnActivity"/>). Önce tüm maddeler
+    /// doğrulanır (biri bile geçersizse 400, hiçbir şey yazılmaz); sonra tek transaction'da: oturum kilidi (Started değilse
+    /// 409, <see cref="SaveAnswer"/> ile aynı kural), cevaplar + kontrol sonuçları, <c>AnswerRevision</c> artışı,
+    /// <c>CheckCount</c>+1, <c>FirstCheckedAt</c> (ilk kez). Outbox event'i YAZILMAZ (etkinlik tamamlama zinciri #572).
+    /// Yanıt satır bazlı doğru/yanlış döner; çözümü / doğru şıkkı döndürmez.
+    /// </summary>
+    public async Task<ActivityCheckResultDto> CheckActivityAsync(
+        int instanceId, ActivityCheckRequestDto request, int userId, CancellationToken ct = default)
+    {
+        var answers = request?.Answers;
+        if (answers == null || answers.Count == 0 || answers.Count > ActivityCheckRequestDto.MaxAnswers
+            || answers.Any(a => a == null || a.InstanceQuestionId <= 0)
+            || answers.Select(a => a.InstanceQuestionId).Distinct().Count() != answers.Count)
+            return InvalidCheckRequest<ActivityCheckResultDto>();
+
+        // Sahiplik + tür kilit DIŞINDA okunur: Kind bugün değiştirilemez (#571). #573 Kind'ı düzenlenebilir yaparsa bu okuma
+        // aşağıdaki transaction'ın oturum kilidinin İÇİNE taşınmalı (aksi halde kontrol ile tür değişimi yarışır).
+        var owned = await _context.TestInstances.AsNoTracking()
+            .AnyAsync(ti => ti.Id == instanceId && ti.Student.UserId == userId, ct);
+        if (!owned)
+            return InstanceNotFound<ActivityCheckResultDto>();
+        if (await WorksheetKindOfInstanceAsync(instanceId, ct) != WorksheetKind.Activity)
+            return NotAnActivity<ActivityCheckResultDto>();
+
+        var ids = answers.Select(a => a.InstanceQuestionId).ToList();
+
+        // SaveAnswer ile aynı yeniden deneme deseni: tüm birim (yükleme, kilit, yazma, commit) strateji delegesinin içinde.
+        var strategy = _context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async _ =>
+        {
+            _context.ChangeTracker.Clear();
+
+            var rows = await _context.TestInstanceQuestions
+                .Include(t => t.WorksheetQuestion)
+                    .ThenInclude(wq => wq.Question)
+                .Where(t => t.WorksheetInstanceId == instanceId && ids.Contains(t.Id))
+                .ToListAsync(ct);
+            if (rows.Count != ids.Count || rows.Any(r => r.WorksheetQuestion?.Question == null))
+                return InvalidCheckRequest<ActivityCheckResultDto>();
+
+            var byId = rows.ToDictionary(r => r.Id);
+            var plan = new List<(WorksheetInstanceQuestion Row, Question Question, IInteractionGrader Grader, int? Selected, string? Payload)>();
+            foreach (var answer in answers)
+            {
+                var row = byId[answer.InstanceQuestionId];
+                var question = row.WorksheetQuestion.Question;
+                var grader = _graders.Resolve(question.InteractionType);
+                // save-answer ile aynı hazırlık: 16 KB sınırı, doğrulama, normalize, şık sahipliği (geçersiz → 400, yazma yok).
+                var prepared = await PrepareAnswerAsync(question, grader,
+                    answer.SelectedAnswerId > 0 ? answer.SelectedAnswerId : null, answer.AnswerPayload, ct);
+                if (prepared == null)
+                    return As<ActivityCheckResultDto>(InvalidPayloadAnswer());
+                plan.Add((row, question, grader, prepared.Value.SelectedAnswerId, prepared.Value.Payload));
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync(ct);
+
+            var rejected = await LockStartedInstanceAsync(instanceId, userId, transaction, ct);
+            if (rejected != null)
+                return As<ActivityCheckResultDto>(rejected);
+
+            var results = new List<ActivityCheckQuestionResultDto>(plan.Count);
+            foreach (var (row, question, grader, selected, payload) in plan)
+            {
+                row.SelectedAnswerId = selected;
+                row.AnswerPayload = payload;
+                ApplyGrade(row, question, grader);
+                results.Add(new ActivityCheckQuestionResultDto
+                {
+                    InstanceQuestionId = row.Id,
+                    IsCorrect = row.IsCorrect,
+                    CorrectCount = row.CorrectCount,
+                    TotalCount = row.TotalCount,
+                    Feedback = row.Feedback
+                });
+            }
+
+            // AnswerRevision: SaveAnswer'daki gibi atomik artış (her cevap yazımı revizyonu ilerletir). İzlenen satırlarda
+            // AnswerRevision Modified değil, SaveChanges artışı ezmez.
+            await _context.TestInstanceQuestions
+                .Where(x => ids.Contains(x.Id))
+                .ExecuteUpdateAsync(u => u.SetProperty(x => x.AnswerRevision, x => x.AnswerRevision + 1), ct);
+
+            var now = DateTime.UtcNow;
+            await _context.TestInstances
+                .Where(ti => ti.Id == instanceId)
+                .ExecuteUpdateAsync(u => u
+                    .SetProperty(ti => ti.CheckCount, ti => ti.CheckCount + 1)
+                    .SetProperty(ti => ti.FirstCheckedAt, ti => ti.FirstCheckedAt ?? (DateTime?)now)
+                    .SetProperty(ti => ti.UpdateTime, (DateTime?)now)
+                    .SetProperty(ti => ti.UpdateUserId, (int?)userId), ct);
+
+            await _context.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+
+            return new ActivityCheckResultDto
+            {
+                Success = true,
+                Message = _localizer["worksheets.session.activityChecked"],
+                CorrectCount = results.Sum(r => r.CorrectCount),
+                TotalCount = results.Sum(r => r.TotalCount),
+                Questions = results
+            };
+        }, ct);
+    }
+
+    /// <summary>
+    /// issue #571: etkinlik "Doğru cevapları göster". Yalnız sahibi (yoksa NotFound), yalnız etkinlik (409
+    /// <see cref="TestSessionErrorCodes.NotAnActivity"/>) ve en az bir kontrolden sonra (<c>CheckCount == 0</c> → 409
+    /// <see cref="TestSessionErrorCodes.ActivityCheckRequired"/>). İlk açılışta <c>SolutionsRevealedAt</c> yazılır; sonrasında
+    /// yeniden kontrol serbesttir. MCQ'da doğru şık, etkileşimli soruda çözüm döner.
+    /// </summary>
+    public async Task<ActivitySolutionsResultDto> GetActivitySolutionsAsync(int instanceId, int userId, CancellationToken ct = default)
+    {
+        var instance = await _context.TestInstances.AsNoTracking()
+            .Where(ti => ti.Id == instanceId && ti.Student.UserId == userId)
+            .Select(ti => new { ti.CheckCount })
+            .FirstOrDefaultAsync(ct);
+        if (instance == null)
+            return InstanceNotFound<ActivitySolutionsResultDto>();
+        if (await WorksheetKindOfInstanceAsync(instanceId, ct) != WorksheetKind.Activity)
+            return NotAnActivity<ActivitySolutionsResultDto>();
+        if (instance.CheckCount == 0)
+        {
+            return new ActivitySolutionsResultDto
+            {
+                Success = false,
+                Conflict = true,
+                ErrorCode = TestSessionErrorCodes.ActivityCheckRequired,
+                Message = _localizer["worksheets.session.activityCheckRequired"]
+            };
+        }
+
+        var now = DateTime.UtcNow;
+        await _context.TestInstances
+            .Where(ti => ti.Id == instanceId && ti.SolutionsRevealedAt == null)
+            .ExecuteUpdateAsync(u => u
+                .SetProperty(ti => ti.SolutionsRevealedAt, (DateTime?)now)
+                .SetProperty(ti => ti.UpdateTime, (DateTime?)now)
+                .SetProperty(ti => ti.UpdateUserId, (int?)userId), ct);
+
+        var rows = await _context.TestInstanceQuestions.AsNoTracking()
+            .Where(t => t.WorksheetInstanceId == instanceId)
+            .Select(t => new
+            {
+                t.Id,
+                t.WorksheetQuestion.Order,
+                WorksheetQuestionId = t.WorksheetQuestion.Id,
+                t.WorksheetQuestion.QuestionId,
+                t.WorksheetQuestion.Question.InteractionType,
+                t.WorksheetQuestion.Question.CorrectAnswerId,
+                t.WorksheetQuestion.Question.InteractionPlan,
+                t.WorksheetQuestion.Question.InteractionSolution
+            })
+            .ToListAsync(ct);
+
+        return new ActivitySolutionsResultDto
+        {
+            Success = true,
+            Questions = rows
+                .OrderBy(r => r.Order).ThenBy(r => r.WorksheetQuestionId) // issue #309 görüntü sırası
+                .Select(r =>
+                {
+                    var mcq = IsMcq(r.InteractionType);
+                    return new ActivitySolutionDto
+                    {
+                        InstanceQuestionId = r.Id,
+                        QuestionId = r.QuestionId,
+                        CorrectAnswerId = mcq ? r.CorrectAnswerId : null,
+                        InteractionSolution = mcq
+                            ? null
+                            : InteractionPlanSolution.ForOutput(r.InteractionPlan, r.InteractionSolution, includeSolution: true).Solution
+                    };
+                })
+                .ToList()
+        };
+    }
+
+    /// <summary>
+    /// review #571: oturumun worksheet türü — Worksheet soft-delete query filter'ı OLMADAN (sınav sırasında silinen worksheet
+    /// de çözülür; oturum sorgusuna JOIN eklenip satır düşürülmez). Bulunamazsa <see cref="WorksheetKind.Test"/>.
+    /// </summary>
+    private async Task<WorksheetKind> WorksheetKindOfInstanceAsync(int instanceId, CancellationToken ct)
+        => await _context.TestInstances.AsNoTracking().IgnoreQueryFilters()
+            .Where(ti => ti.Id == instanceId)
+            .Select(ti => (WorksheetKind?)ti.Worksheet.Kind)
+            .FirstOrDefaultAsync(ct) ?? WorksheetKind.Test;
+
+    /// <summary>
+    /// review #571: save-answer ve kontrol ucunun ortak cevap hazırlığı. null = geçersiz (400, hiçbir şey yazılmaz): payload
+    /// <see cref="InteractionPayload.MaxLength"/>'ten büyük, tipin kontrolcüsü reddediyor, ya da MCQ'da seçilen şık bu sorunun
+    /// (silinmemiş) şıkkı değil. Aksi halde saklanacak (şık, payload): MCQ dışı tipte şık null; payload kontrolcünün
+    /// <see cref="IInteractionGrader.Normalize"/>'ıyla (MCQ → null, yerleşimsiz drag-drop → null).
+    /// </summary>
+    private async Task<(int? SelectedAnswerId, string? Payload)?> PrepareAnswerAsync(
+        Question question, IInteractionGrader grader, int? selectedAnswerId, string? rawPayload, CancellationToken ct)
+    {
+        var payload = string.IsNullOrWhiteSpace(rawPayload) ? null : rawPayload;
+        if (payload != null && payload.Length > InteractionPayload.MaxLength)
+            return null;
+        if (!grader.Validate(question.InteractionPlan, payload))
+            return null;
+        payload = grader.Normalize(payload);
+
+        var isMcq = grader.InteractionType.Equals(McqGrader.Type, StringComparison.OrdinalIgnoreCase);
+        if (!isMcq)
+            return (null, payload);
+
+        if (selectedAnswerId != null
+            && !await _context.Answers.AsNoTracking().AnyAsync(a => a.Id == selectedAnswerId && a.QuestionId == question.Id, ct))
+            return null;
+
+        return (selectedAnswerId, payload);
+    }
+
+    private T InvalidCheckRequest<T>() where T : TestSessionResultDto, new() => new()
+    {
+        Success = false,
+        InvalidInput = true,
+        ErrorCode = TestSessionErrorCodes.InvalidCheckRequest,
+        Message = _localizer["worksheets.session.invalidCheckRequest"]
+    };
+
+    private T InstanceNotFound<T>() where T : TestSessionResultDto, new() => new()
+    {
+        Success = false,
+        NotFound = true,
+        Message = _localizer["worksheets.session.instanceNotFound"]
+    };
+
+    private T NotAnActivity<T>() where T : TestSessionResultDto, new() => new()
+    {
+        Success = false,
+        Conflict = true,
+        ErrorCode = TestSessionErrorCodes.NotAnActivity,
+        Message = _localizer["worksheets.session.notAnActivity"]
+    };
+
+    /// <summary>Ortak hata sonucunu (kilit / payload reddi) uçun yanıt tipine kopyalar.</summary>
+    private static T As<T>(TestSessionResultDto source) where T : TestSessionResultDto, new() => new()
+    {
+        Success = source.Success,
+        Message = source.Message,
+        NotFound = source.NotFound,
+        Forbidden = source.Forbidden,
+        Conflict = source.Conflict,
+        InvalidInput = source.InvalidInput,
+        ErrorCode = source.ErrorCode,
+        Reason = source.Reason
+    };
+
     private sealed record ParentCompletionPlan(
         int StudentId,
         int WorksheetId,
@@ -867,18 +1200,12 @@ public class TestSessionService : ITestSessionService
         if (recipients.Count == 0)
             return;
 
-        // Tek sorgu: toplam + doğru (öğrencinin sonuç ekranıyla aynı formül).
-        var counts = await _context.TestInstanceQuestions.AsNoTracking()
-            .Where(q => q.WorksheetInstanceId == testInstanceId)
-            .GroupBy(_ => 1)
-            .Select(g => new
-            {
-                Total = g.Count(),
-                Correct = g.Count(q => q.SelectedAnswerId != null && q.WorksheetQuestion.Question.CorrectAnswerId == q.SelectedAnswerId)
-            })
-            .FirstOrDefaultAsync(ct);
-        var total = counts?.Total ?? 0;
-        var correct = counts?.Correct ?? 0;
+        // Toplam + doğru (öğrencinin sonuç ekranıyla aynı formül; issue #571: WorksheetScoring hibrit kuralı — etkileşimli
+        // cevaplar da sayılır). UPDATE satır kilidi tutulduğu için iki sayım tutarlı.
+        var rows = _context.TestInstanceQuestions.AsNoTracking()
+            .Where(q => q.WorksheetInstanceId == testInstanceId);
+        var total = await rows.CountAsync(ct);
+        var correct = await rows.CountAsync(WorksheetScoring.IsCorrectRow, ct);
         var score = WorksheetScoring.ScorePercent(correct, total);
 
         foreach (var parent in recipients)

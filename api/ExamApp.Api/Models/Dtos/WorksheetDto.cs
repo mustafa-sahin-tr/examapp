@@ -95,6 +95,13 @@ public class WorksheetInstanceQuestionDto
     public int? SelectedAnswerId { get; set; }
     public string? AnswerPayload { get; set; }
     public int? TimeTaken { get; set; }
+
+    // issue #571: etkileşimli (MCQ dışı) sorunun kontrol sonucu — yalnız sonuç ekranında (bitmiş test, çözümle aynı kapı);
+    // diğer yanıtlarda ve MCQ'da null. Feedback: {"rows":[{"id","correct"}]} (çözüm içermez).
+    public bool? IsCorrect { get; set; }
+    public int? CorrectCount { get; set; }
+    public int? TotalCount { get; set; }
+    public string? Feedback { get; set; }
 }
 
 public class WorksheetInstanceResultDto

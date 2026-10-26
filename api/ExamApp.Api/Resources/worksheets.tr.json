@@ -11,7 +11,13 @@
       "answerRejectedNotInProgress": "Test tamamlandığı için cevap artık kaydedilemez.",
       "notInProgress": "Bu test artık devam etmiyor.",
       "answerRejectedTimeUp": "Test süresi dolduğu için cevap artık kaydedilemez.",
-      "timeUp": "Test süresi doldu."
+      "timeUp": "Test süresi doldu.",
+      "invalidAnswerPayload": "Cevap geçersiz; kaydedilmedi.",
+      "invalidCheckRequest": "Kontrol isteği geçersiz.",
+      "notAnActivity": "Bu işlem yalnız etkinliklerde kullanılabilir.",
+      "activityCheckRequired": "Doğru cevapları görmek için önce cevaplarını kontrol et.",
+      "activityChecked": "Cevaplar kontrol edildi.",
+      "activityCheckRateLimited": "Kısa sürede çok fazla kontrol isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     },
 
     "accessRequest": {

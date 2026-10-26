@@ -11,7 +11,8 @@ import {
   postLoginDestination,
 } from './callback.component';
 import { AuthService, TokenResponse } from '../../services/auth.service';
-import { OIDC_FLOW_KEY_PREFIX, OidcLoginRecord } from '../../services/oidc-flow.service';
+import { OIDC_FLOW_KEY_PREFIX, OidcFlowService, OidcLoginRecord } from '../../services/oidc-flow.service';
+import { PRERENDERING_CHANGE_EVENT } from '../../shared/utils/when-activated.util';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { BRAND_NAME } from '../../shared/brand';
 
@@ -90,7 +91,10 @@ describe('CallbackComponent', () => {
   }
 
   beforeEach(() => sessionStorage.clear());
-  afterEach(() => sessionStorage.clear());
+  afterEach(() => {
+    Reflect.deleteProperty(document, 'prerendering');
+    sessionStorage.clear();
+  });
 
   it('should create', () => {
     const fixture = createComponent({});
@@ -342,6 +346,63 @@ describe('CallbackComponent', () => {
 
     it('rolsüz kullanıcıda returnPath profil tamamlamayı atlatmaz', () => {
       expect(postLoginDestination([], { intent: null, returnPath: '/tests/1' })).toBe('/app/complete-profile');
+    });
+  });
+
+  describe('issue #595: ön-yükleme (prerender)', () => {
+    function setPrerendering(value: boolean): void {
+      Object.defineProperty(document, 'prerendering', { value, configurable: true, writable: true });
+    }
+
+    it('prerender_NoConsumeNoExchange_UntilActivated_ThenOnce', async () => {
+      seedRecord();
+      setPrerendering(true);
+      const fixture = createComponent({ code: 'auth-code', state: STATE });
+      const consume = vi.spyOn(TestBed.inject(OidcFlowService), 'consume');
+
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(150);
+
+      expect(consume).not.toHaveBeenCalled();
+      expect(authServiceSpy.exchangeCodeForToken).not.toHaveBeenCalled();
+      expect(sessionStorage.getItem(OIDC_FLOW_KEY_PREFIX + STATE)).not.toBeNull();
+
+      setPrerendering(false);
+      document.dispatchEvent(new Event(PRERENDERING_CHANGE_EVENT));
+      document.dispatchEvent(new Event(PRERENDERING_CHANGE_EVENT));
+      await vi.advanceTimersByTimeAsync(150);
+
+      expect(consume).toHaveBeenCalledTimes(1);
+      expect(authServiceSpy.exchangeCodeForToken).toHaveBeenCalledTimes(1);
+      expect(authServiceSpy.exchangeCodeForToken).toHaveBeenCalledWith('auth-code', VERIFIER);
+      expect(sessionStorage.getItem(OIDC_FLOW_KEY_PREFIX + STATE)).toBeNull();
+    });
+
+    it('prerender_DestroyedBeforeActivation_NeverConsumes', async () => {
+      seedRecord();
+      setPrerendering(true);
+      const fixture = createComponent({ code: 'auth-code', state: STATE });
+      const consume = vi.spyOn(TestBed.inject(OidcFlowService), 'consume');
+
+      fixture.detectChanges();
+      fixture.destroy();
+      setPrerendering(false);
+      document.dispatchEvent(new Event(PRERENDERING_CHANGE_EVENT));
+      await vi.advanceTimersByTimeAsync(150);
+
+      expect(consume).not.toHaveBeenCalled();
+      expect(authServiceSpy.exchangeCodeForToken).not.toHaveBeenCalled();
+    });
+
+    it('noPrerender_ConsumesImmediately', async () => {
+      seedRecord();
+      const fixture = createComponent({ code: 'auth-code', state: STATE });
+      const consume = vi.spyOn(TestBed.inject(OidcFlowService), 'consume');
+
+      fixture.detectChanges();
+      expect(consume).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(150);
+      expect(authServiceSpy.exchangeCodeForToken).toHaveBeenCalledTimes(1);
     });
   });
 });

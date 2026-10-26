@@ -1,7 +1,8 @@
-import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, DestroyRef, DOCUMENT, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { LocaleHintService } from '../../services/locale-hint.service';
 import { OidcFlowService } from '../../services/oidc-flow.service';
+import { runWhenPageActivated } from '../../shared/utils/when-activated.util';
 
 /**
  * `/app/login`: tek işi Keycloak girişini başlatmaktır (issue #347). Eski e-posta/şifre formu (BFF password
@@ -23,11 +24,18 @@ export class LoginComponent implements OnInit {
   private readonly localeHint = inject(LocaleHintService);
   private readonly route = inject(ActivatedRoute);
   private readonly oidcFlow = inject(OidcFlowService);
+  private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
   /** Login başlatılamadıysa (ör. tarayıcı depolaması kapalı) gösterilen mesaj. */
   readonly startError = signal<string | null>(null);
 
+  /**
+   * Issue #595: Chrome adres çubuğu sayfayı ön-yüklerse (prerender) state/PKCE kaydı ön-yükleme bağlamının
+   * sessionStorage'ına yazılır ve etkinleşince kaybolur → callback "Oturum doğrulanamadı". Bu yüzden login
+   * yalnız sayfa etkinken başlatılır; ön-yükleme yoksa hemen.
+   */
   ngOnInit(): void {
-    void this.startOidcLogin();
+    runWhenPageActivated(() => void this.startOidcLogin(), this.document, this.destroyRef);
   }
 
   /**

@@ -28,23 +28,6 @@
   color: var(--ms-text-medium);
 }
 
-.asum__card {
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid var(--ms-border);
-  background: var(--ms-surface-weak);
-
-  h2 {
-    margin: 0 0 6px;
-    font: 600 15px var(--mainFontFamily);
-    color: var(--ms-text-strong);
-  }
-
-  p {
-    margin: 6px 0 0;
-  }
-}
-
 .asum__actions {
   display: flex;
   flex-wrap: wrap;

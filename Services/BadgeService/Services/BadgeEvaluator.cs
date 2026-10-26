@@ -68,6 +68,63 @@ public class BadgeEvaluator
             return;
         }
 
+        await AwardAsync(
+            userId, clientId, badgeDefinitions,
+            (BadgeDefinition d, out int current, out int target) =>
+                BadgeRuleEvaluator.TryEvaluateRule(d, questionAggregate, subjectAggregates, activitySummary, out current, out target),
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Issue #572: <c>ActivityCompletedEvent</c> sonrası etkinlik rozetlerini (CompletedActivityCount,
+    /// ActivityStudyTimeMinutes, ActivityDayStreak) değerlendirir. Yalnız <see cref="StudentActivityCompletion"/>
+    /// satırlarını okur; soru aggregate'lerine / günlük aktiviteye / puan outbox'ına dokunmaz. Kazanım, bildirim ve
+    /// <c>StudentBadgeEarnedEvent</c> outbox satırı AnswerSubmitted yoluyla aynı <see cref="AwardAsync"/>'ten geçer.
+    /// İdempotent: aynı verilerle tekrar çalıştırmak yeni rozet/bildirim üretmez.
+    /// </summary>
+    /// <param name="referenceDate">Seri için referans gün (olayın Europe/Istanbul günü).</param>
+    public async Task EvaluateActivityCompletedAsync(int userId, string? clientId, DateTime referenceDate, CancellationToken cancellationToken = default)
+    {
+        var badgeDefinitions = (await _context.BadgeDefinitions
+                .AsNoTracking()
+                .Where(x => x.IsActive)
+                .ToListAsync(cancellationToken))
+            .Where(x => BadgeRuleEvaluator.IsActivityRuleType(x.RuleType))
+            .ToList();
+
+        if (badgeDefinitions.Count == 0)
+        {
+            return;
+        }
+
+        // Ledger belleğe yüklenmez: sayı/süre SQL toplamı, seri sınırlı pencerede DISTINCT günlerle hesaplanır.
+        var computed = new Dictionary<Guid, (int Current, int Target)>();
+        foreach (var d in badgeDefinitions)
+        {
+            if (BadgeRuleEvaluator.TryParseActivityRule(d, out var rule))
+            {
+                var current = await ActivityCompletionStats.ComputeCurrentAsync(_context, userId, rule, referenceDate, cancellationToken);
+                computed[d.Id] = (current, rule.Target);
+            }
+        }
+
+        await AwardAsync(
+            userId, clientId ?? string.Empty, badgeDefinitions,
+            (BadgeDefinition d, out int current, out int target) =>
+            {
+                current = 0; target = 0;
+                if (!computed.TryGetValue(d.Id, out var v)) return false;
+                (current, target) = v;
+                return true;
+            },
+            cancellationToken);
+    }
+
+    private delegate bool RuleEvaluation(BadgeDefinition definition, out int currentValue, out int targetValue);
+
+    private async Task AwardAsync(
+        int userId, string clientId, IReadOnlyList<BadgeDefinition> badgeDefinitions, RuleEvaluation evaluate, CancellationToken cancellationToken)
+    {
         var earnedBadgeIds = (await _context.BadgeEarned
             .Where(x => x.UserId == userId)
             .Select(x => x.BadgeDefinitionId)
@@ -84,7 +141,7 @@ public class BadgeEvaluator
 
         foreach (var definition in badgeDefinitions)
         {
-            if (!BadgeRuleEvaluator.TryEvaluateRule(definition, questionAggregate, subjectAggregates, activitySummary, out var currentValue, out var targetValue))
+            if (!evaluate(definition, out var currentValue, out var targetValue))
             {
                 continue;
             }

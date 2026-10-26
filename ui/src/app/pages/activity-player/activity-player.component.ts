@@ -4,11 +4,14 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  NgZone,
+  PLATFORM_ID,
   computed,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -28,10 +31,12 @@ import {
   activityRoute,
   parseActivityFeedback,
 } from '../../models/activity';
+import { ActivityProgressView, toActivityProgressView } from '../../models/activity-summary.model';
 import { AssignedWorksheet } from '../../models/assignment';
 import { AnswerChoice, QuestionRegion } from '../../models/draws';
 import { TestInstance, TestInstanceQuestion, TestStatus } from '../../models/test-instance';
 import { ActivityService } from '../../services/activity.service';
+import { BadgeService } from '../../services/badge.service';
 import { TestService } from '../../services/test.service';
 import {
   ActivityCheckPanelComponent,
@@ -50,6 +55,8 @@ import {
   QuestionCanvasDragDropLabelingComponent,
 } from '../../shared/components/question-canvas-dragdrop-labeling/question-canvas-dragdrop-labeling.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
+import { ActiveTimeTracker, ACTIVITY_MAX_ACTIVE_SECONDS } from '../../shared/utils/active-time-tracker';
+import { currentUserId } from '../../shared/utils/current-user-id.util';
 import { createStorageImageResolver } from '../../shared/utils/storage-image-refresh.util';
 import { QuestionLiteViewComponent } from '../question-lite-view/question-lite-view.component';
 
@@ -57,6 +64,12 @@ import { QuestionLiteViewComponent } from '../question-lite-view/question-lite-v
 export const ACTIVITY_SCOPE = 'activity';
 
 const DRAG_DROP = 'dragDropLabeling';
+
+/** Issue #572: etkin süreyi sayan etkileşimler (oynatıcı içinde). */
+const ACTIVITY_EVENTS = ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'wheel', 'scroll'] as const;
+/** Issue #572: bitirdikten sonra rozet işlemesi (outbox → RabbitMQ) yetişsin diye tek gecikmeli yeniden okuma (ms). */
+export const ACTIVITY_SUMMARY_REFETCH_MS = 2000;
+const ACTIVE_SECONDS_KEY = 'activity.activeSeconds:';
 
 interface ItemAnswer {
   selectedAnswerId: number | null;
@@ -111,6 +124,11 @@ export class ActivityPlayerComponent {
   private readonly transloco = inject(TranslocoService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly badgeService = inject(BadgeService);
+  private readonly zone = inject(NgZone);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly document = inject(DOCUMENT);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   private readonly contentRef = viewChild<ElementRef<HTMLElement>>('itemContent');
 
@@ -158,6 +176,18 @@ export class ActivityPlayerComponent {
   readonly finished = signal(false);
   readonly nextActivity = signal<AssignedWorksheet | null>(null);
   readonly nextBusy = signal(false);
+  /** Issue #572: etkinlik sonundaki "Bugün" + rozet kartları; yüklenemezse null (kartlar gizli, hata gösterilmez). */
+  readonly progress = signal<ActivityProgressView>({ today: null, badge: null });
+
+  /**
+   * Issue #572: etkinliğin etkin süresi (sn) — yalnız sekme görünürken ve son 2 dk içinde oynatıcıda etkileşim varken sayılır,
+   * 1800 sn tavanlı; `end-test` gövdesinde `activeSeconds` olarak gider. Ekranda sayaç yok.
+   */
+  private readonly activeTime = new ActiveTimeTracker();
+  /** Sayacın ait olduğu oturum (sonraki etkinliğe geçerken `instanceId` önce değişir). 0 = sayılan oturum yok. */
+  private activeInstanceId = 0;
+  private progressSub: Subscription | null = null;
+  private progressRefetch: ReturnType<typeof setTimeout> | null = null;
 
   /** issue #365 (S3): imzalı görsel URL'si dolarsa oturum yeniden çekilir (salt okuma). */
   readonly imageRefresh = createStorageImageResolver(
@@ -254,6 +284,11 @@ export class ActivityPlayerComponent {
 
   constructor() {
     this.transloco.selectTranslate('state.loading', {}, ACTIVITY_SCOPE).pipe(takeUntilDestroyed()).subscribe();
+    this.listenForActivity();
+    this.destroyRef.onDestroy(() => {
+      this.persistActiveSeconds();
+      this.clearProgressRefetch();
+    });
 
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       const id = Number(params.get('testInstanceId'));
@@ -320,16 +355,30 @@ export class ActivityPlayerComponent {
     const firstEmpty = items.findIndex((item) => !this.hasAnswer(item, answers[item.id]));
     this.currentIndex.set(firstEmpty >= 0 ? firstEmpty : 0);
     this.itemStartedAt = Date.now();
+    if (this.finished()) {
+      this.activeTime.stop();
+    } else {
+      this.activeTime.start(this.restoredActiveSeconds(items), this.pageVisible());
+      this.activeInstanceId = this.instanceId();
+    }
     this.loadState.set('ready');
 
     if (this.finished()) {
       this.loadNextActivity();
+      this.loadProgress();
     }
   }
 
   private resetState(): void {
+    this.persistActiveSeconds();
+    this.activeTime.stop();
+    this.activeInstanceId = 0;
     this.nextActivitySub?.unsubscribe();
     this.nextActivitySub = null;
+    this.progressSub?.unsubscribe();
+    this.progressSub = null;
+    this.clearProgressRefetch();
+    this.progress.set({ today: null, badge: null });
     this.inFlight.clear();
     this.queued.clear();
     this.failedItems.clear();
@@ -607,12 +656,19 @@ export class ActivityPlayerComponent {
       }
     }
     try {
-      const response = await firstValueFrom(this.testService.completeTest(this.instanceId()));
+      this.activeTime.activity();
+      const activeSeconds = this.activeTime.seconds();
+      const response = await firstValueFrom(this.testService.completeTest(this.instanceId(), { activeSeconds }));
       if (response?.success === false) {
         this.handleActionError(response, 'finish');
         return;
       }
       this.markFinished();
+      // Rozet değerlendirmesi asenkron: tamamlanan etkinlik ilk okumada henüz yoksa 2 sn sonra bir kez daha okunur.
+      this.progressRefetch = setTimeout(() => {
+        this.progressRefetch = null;
+        this.loadProgress();
+      }, ACTIVITY_SUMMARY_REFETCH_MS);
     } catch (error) {
       this.handleActionError(error, 'finish');
     } finally {
@@ -621,9 +677,13 @@ export class ActivityPlayerComponent {
   }
 
   private markFinished(): void {
+    this.activeTime.stop();
+    this.clearStoredActiveSeconds();
+    this.activeInstanceId = 0;
     this.revealed.set(false);
     this.finished.set(true);
     this.loadNextActivity();
+    this.loadProgress();
   }
 
   private handleActionError(source: unknown, action: ActivityAction): void {
@@ -692,6 +752,95 @@ export class ActivityPlayerComponent {
         },
         error: () => this.nextActivity.set(null),
       });
+  }
+
+  /** Issue #572: "Bugün" + rozet ilerlemesi. Hata → kartlar gizli kalır (bildirim yok). */
+  private loadProgress(): void {
+    const userId = currentUserId();
+    if (!userId) return;
+    this.progressSub?.unsubscribe();
+    this.progressSub = this.badgeService
+      .getActivitySummary(userId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => this.progress.set(toActivityProgressView(response)),
+        error: () => this.progress.set({ today: null, badge: null }),
+      });
+  }
+
+  private clearProgressRefetch(): void {
+    if (this.progressRefetch !== null) {
+      clearTimeout(this.progressRefetch);
+      this.progressRefetch = null;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Etkin süre (#572)
+  // ---------------------------------------------------------------------------
+
+  /** Oynatıcıdaki etkileşimler ve sekme görünürlüğü; zone dışında (her `pointermove` değişiklik algılaması tetiklemesin). */
+  private listenForActivity(): void {
+    if (!this.isBrowser) return;
+    const element = this.host.nativeElement;
+    const onActivity = () => this.activeTime.activity();
+    const onVisibility = () => {
+      this.activeTime.setVisible(this.pageVisible());
+      if (!this.pageVisible()) this.persistActiveSeconds();
+    };
+    const onPageHide = () => this.persistActiveSeconds();
+    this.zone.runOutsideAngular(() => {
+      ACTIVITY_EVENTS.forEach((type) => element.addEventListener(type, onActivity, { capture: true, passive: true }));
+      this.document.addEventListener('visibilitychange', onVisibility);
+      this.document.defaultView?.addEventListener('pagehide', onPageHide);
+    });
+    this.destroyRef.onDestroy(() => {
+      ACTIVITY_EVENTS.forEach((type) => element.removeEventListener(type, onActivity, { capture: true }));
+      this.document.removeEventListener('visibilitychange', onVisibility);
+      this.document.defaultView?.removeEventListener('pagehide', onPageHide);
+    });
+  }
+
+  private pageVisible(): boolean {
+    return !this.isBrowser || this.document.visibilityState !== 'hidden';
+  }
+
+  /**
+   * Yeniden yüklemede başlangıç değeri: aynı sekmede kaydedilmiş etkin süre (sessionStorage), yoksa (başka sekme/cihaz)
+   * maddelerin `timeTaken` toplamı — sunucunun `activeSeconds` gelmediğinde kullandığı kaynakla aynı (tavanlı).
+   */
+  private restoredActiveSeconds(items: TestInstanceQuestion[]): number {
+    const stored = Number(this.storage()?.getItem(ACTIVE_SECONDS_KEY + this.instanceId()));
+    const seed = Number.isFinite(stored) && stored > 0
+      ? stored
+      : items.reduce((sum, item) => sum + Math.max(0, item.timeTaken || 0), 0);
+    return Math.min(ACTIVITY_MAX_ACTIVE_SECONDS, seed);
+  }
+
+  private persistActiveSeconds(): void {
+    if (this.activeInstanceId <= 0) return;
+    try {
+      this.storage()?.setItem(ACTIVE_SECONDS_KEY + this.activeInstanceId, String(this.activeTime.seconds()));
+    } catch {
+      // Depolama dolu/kapalı: yeniden yüklemede `timeTaken` toplamına düşülür.
+    }
+  }
+
+  private clearStoredActiveSeconds(): void {
+    if (this.activeInstanceId <= 0) return;
+    try {
+      this.storage()?.removeItem(ACTIVE_SECONDS_KEY + this.activeInstanceId);
+    } catch {
+      // yok say
+    }
+  }
+
+  private storage(): Storage | null {
+    try {
+      return this.isBrowser ? this.document.defaultView?.sessionStorage ?? null : null;
+    } catch {
+      return null;
+    }
   }
 
   async openNextActivity(): Promise<void> {

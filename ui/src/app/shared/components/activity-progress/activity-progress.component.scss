@@ -1,0 +1,29 @@
+:host {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+:host:empty {
+  display: none;
+}
+
+.aprog__card {
+  flex: 1 1 240px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border);
+  background: var(--ms-surface-weak);
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+
+  h2 {
+    margin: 0 0 6px;
+    font: 600 15px var(--mainFontFamily);
+    color: var(--ms-text-strong);
+  }
+
+  p {
+    margin: 6px 0 0;
+  }
+}

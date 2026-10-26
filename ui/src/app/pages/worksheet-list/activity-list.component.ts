@@ -6,20 +6,25 @@ import { TranslocoDirective } from '@jsverse/transloco';
 import { catchError, forkJoin, of } from 'rxjs';
 
 import { WorksheetKind } from '../../models/activity';
+import { ActivityProgressView, toActivityProgressView } from '../../models/activity-summary.model';
 import { AssignedWorksheet } from '../../models/assignment';
 import { Test } from '../../models/test-instance';
+import { BadgeService } from '../../services/badge.service';
 import { TestService } from '../../services/test.service';
+import { ActivityProgressComponent } from '../../shared/components/activity-progress/activity-progress.component';
+import { currentUserId } from '../../shared/utils/current-user-id.util';
 import { WorksheetListViewCardComponent } from './worksheet-list-view-card.component';
 
 /**
  * Issue #573: öğrencinin "Etkinlikler" sekmesi — atanmış (başlanmamış), devam eden ve tamamlanan etkinlik sayfaları.
  * Kaynaklar tür filtresiyle (`kind=1`) okunur: `assignments/active`, `list?statuses=0|1`. Kart, mevcut worksheet kartıdır
  * (etkinlikte puan/yüzde/süre göstermez). Scope sözlüğü üst sayfa (`worksheet-list`) tarafından sağlanır.
+ * Issue #572: üstte "Bugün" + en yakın etkinlik rozeti (BadgeService `activity-summary`); yüklenemezse gizli.
  */
 @Component({
   selector: 'app-activity-list',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule, TranslocoDirective, WorksheetListViewCardComponent],
+  imports: [MatButtonModule, MatIconModule, TranslocoDirective, WorksheetListViewCardComponent, ActivityProgressComponent],
   templateUrl: './activity-list.component.html',
   styleUrl: './activity-list.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -27,6 +32,7 @@ import { WorksheetListViewCardComponent } from './worksheet-list-view-card.compo
 export class ActivityListComponent implements OnInit {
   private readonly testService = inject(TestService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly badgeService = inject(BadgeService);
 
   readonly subjectNames = input<Map<number, string>>(new Map());
   readonly gradeNames = input<Map<number, string>>(new Map());
@@ -38,6 +44,7 @@ export class ActivityListComponent implements OnInit {
   readonly assignments = signal<AssignedWorksheet[]>([]);
   readonly inProgress = signal<Test[]>([]);
   readonly completed = signal<Test[]>([]);
+  readonly progress = signal<ActivityProgressView>({ today: null, badge: null });
 
   /** Atanmış ama başlanmamış etkinlikler (başlananlar "Devam ediyor"da). */
   readonly fresh = computed<Test[]>(() => {
@@ -53,6 +60,20 @@ export class ActivityListComponent implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    this.loadProgress();
+  }
+
+  /** Issue #572: hata → kartlar gizli kalır, bildirim yok. */
+  private loadProgress(): void {
+    const userId = currentUserId();
+    if (!userId) return;
+    this.badgeService
+      .getActivitySummary(userId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => this.progress.set(toActivityProgressView(response)),
+        error: () => this.progress.set({ today: null, badge: null }),
+      });
   }
 
   load(): void {

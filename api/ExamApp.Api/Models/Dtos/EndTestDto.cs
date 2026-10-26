@@ -11,6 +11,19 @@ public class EndTestInstanceDto
 
 }
 
+/// <summary>
+/// issue #572: <c>PUT end-test/{testInstanceId}</c> isteğe bağlı gövdesi. Gövdesiz çağrı (test bitirme, eski istemci) geçerlidir.
+/// </summary>
+public class EndTestRequestDto
+{
+    /// <summary>
+    /// Yalnız etkinlikte okunur: oynatıcının ölçtüğü etkin süre (sn; 2 dk'dan uzun hareketsizlik hariç). Sunucu güvenmez,
+    /// <c>[0, min(ActivityOptions.MaxActiveSecondsPerActivity, oturum başlangıcından beri geçen süre)]</c> aralığına kırpar;
+    /// gönderilmezse maddelerin <c>TimeTaken</c> toplamı aynı kuralla kullanılır. Testte yok sayılır.
+    /// </summary>
+    public int? ActiveSeconds { get; set; }
+}
+
 public class InstanceSummaryDto
 {
     public int Id { get; set; }

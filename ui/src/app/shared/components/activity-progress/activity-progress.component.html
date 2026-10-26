@@ -1,0 +1,18 @@
+<ng-container *transloco="let t; prefix: 'shared.activity.summary'">
+  @if (today(); as d) {
+    <div class="aprog__card" data-testid="today-card">
+      <h2>{{ t('todayTitle') }}</h2>
+      <p>{{ t('todayLine', { activities: d.activityCount, minutes: d.activeMinutes, streak: d.streakDays }) }}</p>
+    </div>
+  }
+
+  @if (badge(); as b) {
+    <div class="aprog__card" data-testid="badge-card">
+      <h2>{{ t('badgeLine', { name: b.name, current: b.current, target: b.target }) }}</h2>
+      <mat-progress-bar mode="determinate" [value]="badgePercent()" [attr.aria-label]="t('badgeAria', { name: b.name })"></mat-progress-bar>
+      @if (badgeRemaining() > 0) {
+        <p>{{ t('badgeRemaining', { count: badgeRemaining() }) }}</p>
+      }
+    </div>
+  }
+</ng-container>

@@ -60,4 +60,12 @@ public class WorksheetInstance : BaseEntity
 
     /// <summary>issue #573: ilk kontroldeki toplam satır sayısı (gönderilen maddelerin <c>TotalCount</c> toplamı). Testte null.</summary>
     public int? FirstCheckTotalCount { get; set; }
+
+    /// <summary>
+    /// issue #572: etkinliğin etkin çalışma süresi (sn) — tamamlanmada (<c>EndTest</c>, Started → Completed) bir kez yazılır:
+    /// istemcinin bildirdiği değer (yoksa maddelerin <c>TimeTaken</c> toplamı), <c>[0, min(ActivityOptions.MaxActiveSecondsPerActivity,
+    /// başlangıçtan beri geçen süre)]</c> aralığına kırpılmış. <c>ActivityCompletedEvent.ActiveSeconds</c> ile aynı değer. Testte ve
+    /// tamamlanmamış etkinlikte null.
+    /// </summary>
+    public int? ActiveSeconds { get; set; }
 }

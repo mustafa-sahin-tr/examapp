@@ -2,6 +2,8 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
+import { ActivitySummaryResponse } from '../models/activity-summary.model';
+
 export interface UserActivityDay {
   dateUtc: string;
   questionCount: number;
@@ -86,5 +88,10 @@ export class BadgeService {
   getUserBadgeProgress(userId: number): Observable<BadgeProgressResponse> {
     const url = `${this.badgeApiUrl}/reports/users/${userId}/badge-progress`;
     return this.http.get<BadgeProgressResponse>(url);
+  }
+
+  /** Issue #572: bugünkü etkinlik özeti + en yakın etkinlik rozetleri (başka kullanıcı için 403). */
+  getActivitySummary(userId: number): Observable<ActivitySummaryResponse> {
+    return this.http.get<ActivitySummaryResponse>(`${this.badgeApiUrl}/reports/users/${userId}/activity-summary`);
   }
 }

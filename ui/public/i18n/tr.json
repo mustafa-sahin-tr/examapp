@@ -575,7 +575,8 @@
         "info": "{{correct}} / {{total}} doğru",
         "todayTitle": "Bugün",
         "todayLine": "{{activities}} etkinlik · {{minutes}} dk etkin süre · {{streak}} gün üst üste",
-        "badgeLine": "{{name}} · {{current}}/{{target}} etkinlik",
+        "badgeLine": "{{name}} rozeti: {{current}}/{{target}} etkinlik",
+        "badgeAria": "{{name}} rozeti ilerlemesi",
         "badgeRemaining": "{{count}} etkinlik daha!",
         "next": "Sıradaki etkinlik",
         "backToList": "Listeye dön"

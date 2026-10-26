@@ -79,6 +79,11 @@ public class UserResetService
         var pointAwards = await _db.AnswerPointAwards.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
         if (pointAwards.Count > 0) _db.AnswerPointAwards.RemoveRange(pointAwards);
 
+        // issue #572: etkinlik tamamlama ledger'ı (etkinlik rozetlerinin veri kaynağı) da silinir; reset sonrası
+        // sayı/süre/seri sıfırdan başlar. Yeniden teslim edilen eski ActivityCompletedEvent'ler marker ile yok sayılır.
+        var activityCompletions = await _db.StudentActivityCompletions.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
+        if (activityCompletions.Count > 0) _db.StudentActivityCompletions.RemoveRange(activityCompletions);
+
         // issue #396: sıfırlama çizgisi — bundan önce gönderilmiş (SubmittedAt < ResetAtUtc) ama henüz tüketilmemiş
         // AnswerSubmittedEvent'ler AnswerSubmissionAggregationService'te yok sayılır. Silmelerle aynı SaveChanges:
         // ya ikisi birden ya hiçbiri. Çizgi yalnız ileri gider (sırasız/tekrar çağrı geri almaz).

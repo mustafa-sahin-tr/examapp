@@ -24,7 +24,11 @@ public class StudentReportService
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken);
 
-        if (summary == null)
+        // Issue #572: yalnız etkinlik çözen öğrencinin soru aggregate'i yoktur ama etkinlik rozet ilerlemesi/kazanımı olabilir;
+        // o durumda boş rapora düşme (soru alanları 0 döner). Hiç ilerleme/kazanım yoksa eski boş rapor davranışı aynen.
+        if (summary == null
+            && !await _context.StudentBadgeProgresses.AnyAsync(x => x.UserId == userId, cancellationToken)
+            && !await _context.BadgeEarned.AnyAsync(x => x.UserId == userId, cancellationToken))
         {
             return await BuildEmptyReportAsync(userId, cancellationToken);
         }
@@ -71,6 +75,24 @@ public class StudentReportService
             })
             .ToList();
 
+        // Issue #572: etkinlik rozet ilerlemesi saklı satırdan değil CANLI hesaplanır (seri bozulduysa "5/7" bayat kalmasın);
+        // activity-summary ile aynı kaynak. Kazanılmış rozetin değeri düşürülmez.
+        var activityToday = ActivityCompletionStats.ToIstanbulDate(DateTime.UtcNow);
+        var progressByBadgeId = progressRows.ToDictionary(x => x.BadgeDefinitionId, x => x.BadgeDefinition);
+        foreach (var item in badgeProgress)
+        {
+            if (item.IsCompleted
+                || !progressByBadgeId.TryGetValue(item.BadgeDefinitionId, out var def)
+                || !BadgeRuleEvaluator.TryParseActivityRule(def, out var rule))
+            {
+                continue;
+            }
+
+            var live = await ActivityCompletionStats.ComputeCurrentAsync(_context, userId, rule, activityToday, cancellationToken);
+            item.TargetValue = rule.Target;
+            item.CurrentValue = Math.Min(live, rule.Target);
+        }
+
         var dailyActivities = await _context.StudentDailyActivities
             .AsNoTracking()
             .Where(x => x.UserId == userId)
@@ -98,23 +120,95 @@ public class StudentReportService
         {
             Summary = new StudentSummaryDto
             {
-                UserId = summary.UserId,
-                TotalQuestions = summary.TotalQuestions,
-                CorrectQuestions = summary.CorrectQuestions,
-                AccuracyPercentage = summary.TotalQuestions == 0 ? 0 : Math.Round((double)summary.CorrectQuestions / summary.TotalQuestions * 100, 2),
-                TotalPoints = summary.TotalPoints,
-                CurrentCorrectStreak = summary.CurrentCorrectStreak,
-                BestCorrectStreak = summary.BestCorrectStreak,
-                TotalTimeSeconds = summary.TotalTimeSeconds,
+                UserId = userId,
+                TotalQuestions = summary?.TotalQuestions ?? 0,
+                CorrectQuestions = summary?.CorrectQuestions ?? 0,
+                AccuracyPercentage = summary == null || summary.TotalQuestions == 0 ? 0 : Math.Round((double)summary.CorrectQuestions / summary.TotalQuestions * 100, 2),
+                TotalPoints = summary?.TotalPoints ?? 0,
+                CurrentCorrectStreak = summary?.CurrentCorrectStreak ?? 0,
+                BestCorrectStreak = summary?.BestCorrectStreak ?? 0,
+                TotalTimeSeconds = summary?.TotalTimeSeconds ?? 0,
                 TotalActiveDays = activitySummary.TotalActiveDays,
                 CurrentActivityStreak = activitySummary.CurrentStreak,
                 BestActivityStreak = activitySummary.BestStreak,
-                LastAnsweredAtUtc = summary.LastAnsweredAtUtc,
-                LastUpdatedUtc = summary.LastUpdatedUtc
+                LastAnsweredAtUtc = summary?.LastAnsweredAtUtc,
+                LastUpdatedUtc = summary?.LastUpdatedUtc ?? DateTime.UtcNow
             },
             BadgeProgress = badgeProgress,
             SubjectBreakdown = subjects
         };
+    }
+
+    /// <summary>
+    /// Issue #572: bugünün (Europe/Istanbul) etkinlik özeti + henüz kazanılmamış aktif etkinlik rozetlerinden hedefe
+    /// en yakın en çok 3 tanesi (current/target azalan). Hepsi kazanıldıysa <c>Badges</c> boş. Değerler canlı
+    /// <see cref="StudentActivityCompletion"/>'dan hesaplanır (seri bozulduysa eski ilerleme satırı gösterilmez).
+    /// </summary>
+    public async Task<ActivitySummaryDto> GetActivitySummaryAsync(int userId, DateTime? nowUtc = null, CancellationToken cancellationToken = default)
+    {
+        var today = ActivityCompletionStats.ToIstanbulDate(nowUtc ?? DateTime.UtcNow);
+
+        var summary = new ActivitySummaryDto
+        {
+            Today = new ActivityTodayDto
+            {
+                ActivityCount = await ActivityCompletionStats.CountOnDateAsync(_context, userId, today, cancellationToken),
+                ActiveMinutes = await ActivityCompletionStats.StudyMinutesAsync(_context, userId, null, today, cancellationToken),
+                StreakDays = await ActivityCompletionStats.CurrentDayStreakAsync(_context, userId, null, today, cancellationToken),
+            }
+        };
+
+        var definitions = (await _context.BadgeDefinitions
+                .AsNoTracking()
+                .Where(x => x.IsActive)
+                .ToListAsync(cancellationToken))
+            .Where(x => BadgeRuleEvaluator.IsActivityRuleType(x.RuleType))
+            .ToList();
+        if (definitions.Count == 0)
+        {
+            return summary;
+        }
+
+        var earnedIds = (await _context.BadgeEarned
+                .AsNoTracking()
+                .Where(x => x.UserId == userId)
+                .Select(x => x.BadgeDefinitionId)
+                .ToListAsync(cancellationToken))
+            .ToHashSet();
+
+        var candidates = new List<ActivityBadgeProgressDto>();
+        foreach (var definition in definitions.Where(d => !earnedIds.Contains(d.Id)))
+        {
+            if (!BadgeRuleEvaluator.TryParseActivityRule(definition, out var rule))
+            {
+                continue;
+            }
+
+            var current = await ActivityCompletionStats.ComputeCurrentAsync(_context, userId, rule, today, cancellationToken);
+            // Eşiği geçmiş ama henüz ödüllenmemiş (ör. admin hedefi düşürdü): "10/10" göstermek yerine atla; sonraki
+            // etkinlikte değerlendirici ödüllendirir.
+            if (current >= rule.Target)
+            {
+                continue;
+            }
+
+            candidates.Add(new ActivityBadgeProgressDto
+            {
+                Code = definition.Code,
+                Name = definition.Name,
+                Current = current,
+                Target = rule.Target,
+                Earned = false,
+            });
+        }
+
+        summary.Badges = candidates
+            .OrderByDescending(x => (double)x.Current / x.Target)
+            .ThenBy(x => x.Target)
+            .ThenBy(x => x.Code, StringComparer.Ordinal)
+            .Take(3)
+            .ToList();
+        return summary;
     }
 
     private async Task<BadgeProgressReportDto> BuildEmptyReportAsync(int userId, CancellationToken cancellationToken)
@@ -141,7 +235,12 @@ public class StudentReportService
 
         foreach (var definition in definitions)
         {
-            if (!BadgeRuleEvaluator.TryEvaluateRule(definition, null, emptySubjects, activitySummary, out _, out var targetValue))
+            var targetValue = 0;
+            if (BadgeRuleEvaluator.TryParseActivityRule(definition, out var activityRule))
+            {
+                targetValue = activityRule.Target;
+            }
+            else if (!BadgeRuleEvaluator.TryEvaluateRule(definition, null, emptySubjects, activitySummary, out _, out targetValue))
             {
                 continue;
             }

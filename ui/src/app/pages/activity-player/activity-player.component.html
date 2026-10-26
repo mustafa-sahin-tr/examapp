@@ -20,6 +20,8 @@
       @if (finished()) {
         <app-activity-summary
           [result]="summary()"
+          [today]="progress().today"
+          [badge]="progress().badge"
           [hasNext]="!!nextActivity()"
           [nextBusy]="nextBusy()"
           (next)="openNextActivity()"

@@ -35,6 +35,10 @@ public static class BadgeRuleTypeCatalog
         SubjectTarget("SubjectAnswerCount", "Belirli bir derste çözülen soru sayısı."),
         SubjectTarget("SubjectCorrectCount", "Belirli bir derste verilen doğru cevap sayısı."),
         SubjectTarget("SubjectStudyTimeMinutes", "Belirli bir derste çalışılan süre (dakika)."),
+        // Issue #572: etkinlik rozetleri (puansız); ders filtresi (subjectId) opsiyonel.
+        OptionalSubjectTarget("CompletedActivityCount", "Tamamlanan farklı etkinlik sayısı (aynı etkinliği tekrar çözmek sayıyı artırmaz)."),
+        OptionalSubjectTarget("ActivityStudyTimeMinutes", "Etkinliklerde toplam etkin çalışma süresi (dakika)."),
+        OptionalSubjectTarget("ActivityDayStreak", $"Üst üste etkinlik tamamlanan gün sayısı (Europe/Istanbul günü, güncel seri; en çok {ActivityCompletionStats.MaxStreakTarget})."),
     };
 
     public static IReadOnlyList<RuleTypeSchema> All => Schemas;
@@ -79,9 +83,46 @@ public static class BadgeRuleTypeCatalog
         };
 
         var isSubjectRule = schema.Fields.Any(f => f.Name == "subjectId");
+        var isOptionalSubjectRule = isSubjectRule && !schema.Fields.Any(f => f.Name == "subjectName");
 
         try
         {
+            if (isOptionalSubjectRule)
+            {
+                var config = JsonSerializer.Deserialize<ActivityTargetRuleConfig>(ruleConfigJson, jsonOptions);
+                if (config is null)
+                {
+                    errors.Add(new RuleValidationError("ruleConfigJson", "RuleConfigJson çözümlenemedi."));
+                    return false;
+                }
+
+                ValidateTarget(config.Target, errors);
+
+                // Seri hesabı son StreakWindowDays günü okur; daha büyük hedef ulaşılamaz olurdu.
+                if (string.Equals(schema.RuleType, "ActivityDayStreak", StringComparison.OrdinalIgnoreCase)
+                    && config.Target.HasValue && config.Target.Value > ActivityCompletionStats.MaxStreakTarget)
+                {
+                    errors.Add(new RuleValidationError("target", $"target en fazla {ActivityCompletionStats.MaxStreakTarget} olabilir."));
+                }
+
+                if (config.SubjectId.HasValue && config.SubjectId.Value <= 0)
+                {
+                    errors.Add(new RuleValidationError("subjectId", "subjectId pozitif bir tam sayı olmalıdır."));
+                }
+
+                if (errors.Count > 0)
+                {
+                    return false;
+                }
+
+                normalizedRuleConfigJson = JsonSerializer.Serialize(new ActivityTargetRuleConfig
+                {
+                    Target = config.Target,
+                    SubjectId = config.SubjectId,
+                });
+                return true;
+            }
+
             if (isSubjectRule)
             {
                 var config = JsonSerializer.Deserialize<SubjectTargetRuleConfig>(ruleConfigJson, jsonOptions);
@@ -172,6 +213,15 @@ public static class BadgeRuleTypeCatalog
             new RuleTypeFieldSchema("target", "integer", true, MinTarget, MaxTarget, null),
         });
 
+    private static RuleTypeSchema OptionalSubjectTarget(string ruleType, string description) => new(
+        ruleType,
+        description,
+        new[]
+        {
+            new RuleTypeFieldSchema("target", "integer", true, MinTarget, MaxTarget, null),
+            new RuleTypeFieldSchema("subjectId", "integer", false, 1, null, null),
+        });
+
     private static RuleTypeSchema SubjectTarget(string ruleType, string description) => new(
         ruleType,
         description,
@@ -216,4 +266,16 @@ public sealed record SubjectTargetRuleConfig
 
     [JsonPropertyName("subjectName")]
     public string? SubjectName { get; init; }
+}
+
+/// <summary>Issue #572: etkinlik kuralları — <c>target</c> zorunlu, <c>subjectId</c> opsiyonel (yoksa tüm dersler).</summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record ActivityTargetRuleConfig
+{
+    [JsonPropertyName("target")]
+    public int? Target { get; init; }
+
+    [JsonPropertyName("subjectId")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? SubjectId { get; init; }
 }

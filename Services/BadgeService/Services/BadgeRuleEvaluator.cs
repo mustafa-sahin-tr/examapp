@@ -8,6 +8,53 @@ namespace BadgeService.Services;
 
 internal static class BadgeRuleEvaluator
 {
+    /// <summary>
+    /// Issue #572: etkinlik kural türleri (soru aggregate'lerinden DEĞİL, <see cref="StudentActivityCompletion"/>'dan
+    /// değerlendirilir). <see cref="TryEvaluateRule"/> bunları bilmez (false döner) — AnswerSubmitted yolu onları
+    /// ne verir ne sayar; <see cref="TryParseActivityRule"/> + <see cref="ActivityCompletionStats.ComputeCurrentAsync"/> ise yalnız bunları değerlendirir.
+    /// </summary>
+    public static bool IsActivityRuleType(string? ruleType) =>
+        ruleType?.Trim().ToLowerInvariant() is "completedactivitycount" or "activitystudytimeminutes" or "activitydaystreak";
+
+    /// <summary>
+    /// Etkinlik kuralının config'ini çözer (değer hesabı yok — <see cref="ActivityCompletionStats.ComputeCurrentAsync"/> SQL'de
+    /// hesaplar, ledger belleğe yüklenmez).
+    /// </summary>
+    public static bool TryParseActivityRule(BadgeDefinition definition, out ActivityRule rule)
+    {
+        rule = default;
+        if (!IsActivityRuleType(definition.RuleType) || string.IsNullOrWhiteSpace(definition.RuleConfigJson))
+        {
+            return false;
+        }
+
+        JsonElement config;
+        try
+        {
+            using var document = JsonDocument.Parse(definition.RuleConfigJson);
+            config = document.RootElement.Clone();
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+
+        if (!TryReadInt(config, out var target, "target") || target <= 0)
+        {
+            return false;
+        }
+
+        int? subjectId = TryReadInt(config, out var subjectIdValue, "subjectId") && subjectIdValue > 0 ? subjectIdValue : null;
+        var kind = definition.RuleType.Trim().ToLowerInvariant() switch
+        {
+            "completedactivitycount" => ActivityRuleKind.Count,
+            "activitystudytimeminutes" => ActivityRuleKind.Minutes,
+            _ => ActivityRuleKind.Streak,
+        };
+        rule = new ActivityRule(kind, target, subjectId);
+        return true;
+    }
+
     public static bool TryEvaluateRule(
         BadgeDefinition definition,
         StudentQuestionAggregate? questionAggregate,

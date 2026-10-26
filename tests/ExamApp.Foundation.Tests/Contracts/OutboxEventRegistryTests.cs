@@ -186,6 +186,14 @@ public class OutboxEventRegistryTests
         => OutboxEventRegistry.Resolve(stored!).ShouldBeNull();
 
     [Fact]
+    public void Resolve_knows_the_activity_completed_event_issue_572()
+    {
+        var name = OutboxEventRegistry.NameFor<ActivityCompletedEvent>();
+        name.ShouldBe("ExamApp.Foundation.Contracts.ActivityCompletedEvent");
+        OutboxEventRegistry.Resolve(name).ShouldBe(typeof(ActivityCompletedEvent));
+    }
+
+    [Fact]
     public void Resolve_knows_the_student_badge_earned_event_issue_422()
         => OutboxEventRegistry.Resolve(OutboxEventRegistry.NameFor<StudentBadgeEarnedEvent>()).ShouldBe(typeof(StudentBadgeEarnedEvent));
 

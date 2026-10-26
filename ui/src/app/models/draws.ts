@@ -80,4 +80,7 @@ export type RegionOrAnswerHit =
   | { type: 'question'; value: { questionIndex: number; answerIndex: null } }
   | { type: 'passage'; value: { passageId: string } }
   | { type: 'dropzone'; value: { questionIndex: number; dropZoneId: string } }
+  // Issue #574: matris seçim satır kutusu ve hücre kutusu.
+  | { type: 'matrixRow'; value: { questionIndex: number; rowId: string } }
+  | { type: 'matrixCell'; value: { questionIndex: number; rowId: string; columnId: string } }
   | null;

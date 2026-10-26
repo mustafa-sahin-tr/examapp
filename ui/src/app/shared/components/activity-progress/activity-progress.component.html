@@ -8,10 +8,10 @@
 
   @if (badge(); as b) {
     <div class="aprog__card" data-testid="badge-card">
-      <h2>{{ t('badgeLine', { name: b.name, current: b.current, target: b.target }) }}</h2>
+      <h2>{{ t('badgeLine' + unitSuffix(), { name: b.name, current: b.current, target: b.target }) }}</h2>
       <mat-progress-bar mode="determinate" [value]="badgePercent()" [attr.aria-label]="t('badgeAria', { name: b.name })"></mat-progress-bar>
       @if (badgeRemaining() > 0) {
-        <p>{{ t('badgeRemaining', { count: badgeRemaining() }) }}</p>
+        <p>{{ t('badgeRemaining' + unitSuffix(), { count: badgeRemaining() }) }}</p>
       }
     </div>
   }

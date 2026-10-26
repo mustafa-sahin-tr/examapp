@@ -1,6 +1,17 @@
 <form *transloco="let t; prefix: 'test-create'" class="tf" [class.compact]="compact" [formGroup]="form" (ngSubmit)="onSubmit.emit()">
   <!-- KOMPAKT VARYANT -->
   @if (compact) {
+    <!-- Issue #574: hızlı oluşturmada da sayfa türü (soru tuvalinden etkinlik sayfası açılabilsin). -->
+    @if (hasKindControl) {
+      <div class="field">
+        <label id="tf-kind-label-compact">{{ t('form.kindLabel') }}</label>
+        <mat-button-toggle-group class="kind-toggle" formControlName="kind" aria-labelledby="tf-kind-label-compact"
+          data-testid="kind-toggle">
+          <mat-button-toggle [value]="kinds.Test" data-testid="kind-test">{{ t('form.kindTest') }}</mat-button-toggle>
+          <mat-button-toggle [value]="kinds.Activity" data-testid="kind-activity">{{ t('form.kindActivity') }}</mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
+    }
     <div class="field">
       <label>{{ t('form.nameLabel') }}<span class="req">*</span></label>
       <input class="control" type="text" formControlName="name" [placeholder]="t('form.namePlaceholder')" />
@@ -22,11 +33,14 @@
           <mat-icon class="chev">expand_more</mat-icon>
         </div>
       </div>
-      <div class="field dur">
-        <label>{{ t('form.durationLabel') }}<span class="req">*</span></label>
-        <input class="control" type="number" min="1" formControlName="maxDurationMinutes" />
-      </div>
+      @if (!isActivity) {
+        <div class="field dur">
+          <label>{{ t('form.durationLabel') }}<span class="req">*</span></label>
+          <input class="control" type="number" min="1" formControlName="maxDurationMinutes" />
+        </div>
+      }
     </div>
+    @if (!isActivity) {
     <div class="toggle-row">
       <button
         type="button"
@@ -40,6 +54,7 @@
         <div class="t-sub">{{ t('form.practiceHintCompact') }}</div>
       </div>
     </div>
+    }
     <div class="toggle-row">
       <button
         type="button"

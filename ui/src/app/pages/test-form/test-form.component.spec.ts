@@ -67,6 +67,31 @@ describe('TestFormComponent', () => {
         expect(icons).not.toContain('done_all');
     });
 
+    // Issue #574: soru tuvalindeki hızlı oluşturmada da Tür (Test / Etkinlik sayfası) seçilir.
+    describe('compact kind toggle (#574)', () => {
+        it('compactWithKindControl_ShowsToggleAndActivityHidesDurationAndPractice', () => {
+            component.form.addControl('kind', new FormBuilder().control(0));
+            component.compact = true;
+            fixture.detectChanges();
+            const el = fixture.nativeElement as HTMLElement;
+            expect(el.querySelector('[data-testid="kind-toggle"]')).not.toBeNull();
+            expect(el.querySelector('input[formControlName="maxDurationMinutes"]')).not.toBeNull();
+
+            (el.querySelector('[data-testid="kind-activity"] button') as HTMLButtonElement).click();
+            fixture.detectChanges();
+
+            expect(component.form.get('kind')!.value).toBe(1);
+            expect(el.querySelector('input[formControlName="maxDurationMinutes"]')).toBeNull();
+            expect(el.textContent).not.toContain(testCreateTr.form.practiceLabel);
+        });
+
+        it('compactWithoutKindControl_HidesToggle', () => {
+            component.compact = true;
+            fixture.detectChanges();
+            expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="kind-toggle"]')).toBeNull();
+        });
+    });
+
     describe('compact input', () => {
         it('compact_DefaultsToFalse_RendersFullForm', () => {
             fixture.detectChanges();

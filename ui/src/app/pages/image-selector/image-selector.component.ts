@@ -17,6 +17,16 @@ import { timeout } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { QuestionRegion, AnswerChoice, RegionOrAnswerHit, ClassificationSource } from '../../models/draws';
 import { PASSAGE_INSTRUCTION_MAX_LENGTH, PassageKind } from '../../models/activity';
+import {
+  MATRIX_CHOICE,
+  MATRIX_CHOICE_LIMITS,
+  MATRIX_COLUMN_PRESETS,
+  MatrixBox,
+  MatrixChoiceColumn,
+  MatrixChoicePlanV1,
+  MatrixColumnPreset,
+  MatrixSelections,
+} from '../../models/matrix-choice';
 import { QuillModule } from 'ngx-quill';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -70,7 +80,39 @@ interface WarningMarker {
   type?: 'error' | 'warning' | 'info';
 }
 
-export type QuestionInteractionType = 'mcq' | 'dragDropLabeling';
+export type QuestionInteractionType = 'mcq' | 'dragDropLabeling' | typeof MATRIX_CHOICE;
+
+/** Tuvalde çizim modu. Issue #574: `matrixRow` satır kutusu, `matrixCell` (isteğe bağlı) hücre kutusu çizer. */
+export type CanvasSelectionMode = 'passage' | 'question' | 'answer' | 'dropzone' | 'matrixRow' | 'matrixCell';
+
+/** MCQ dışı (etkileşimli) tür: şık çizilmez, eğitime (send-to-fix) gönderilmez, doğruluk `interactionSolution`'da. */
+export function isInteractiveType(type: QuestionInteractionType): boolean {
+  return type !== 'mcq';
+}
+
+/** Issue #574: matris yazarlık durumu (soru başına). Kutular soru bölgesine göredir. */
+interface MatrixChoiceAuthoringState {
+  multiPerRow: boolean;
+  columns: MatrixChoiceColumn[];
+  rows: Array<{ id: string; label: string; box: MatrixBox; cells: Record<string, MatrixBox> }>;
+  solution: MatrixSelections;
+  /** Hücre çiziminde yeni kutunun bağlanacağı kolon; her çizimden sonra sıradaki kolona geçer. */
+  activeColumnId: string | null;
+}
+
+/** Müfettişin matris bölümü (`ActiveInspector.matrix`). */
+export interface MatrixInspector {
+  multiPerRow: boolean;
+  columns: MatrixChoiceColumn[];
+  rows: Array<{ id: string; no: number; label: string; solution: string[]; cellCount: number }>;
+  activeColumnId: string | null;
+  /** En az bir hücre kutusu çizildi. */
+  hasCells: boolean;
+  /** Tüm satırlarda tüm kolonların hücresi var (öğrenci görsel üstünde dokunur). */
+  allCells: boolean;
+  missingSolutionCount: number;
+  limits: typeof MATRIX_CHOICE_LIMITS;
+}
 
 interface DragDropLabelingPlanV1 {
   version: 1;
@@ -99,6 +141,11 @@ export interface QuestionValidationIssue {
 export interface QuestionValidationOptions {
   /** true: MCQ'da doğru cevap işaretli olmalı (Kaydet). false: yalnız şık sayısı (Eğit). */
   requireCorrectAnswer: boolean;
+  /**
+   * true: etkileşimli (MCQ dışı) sorular hiç denetlenmez — çağıran onları zaten göndermiyorsa (işaretleme ekranının
+   * bankaya kaydı). Varsayılan: Kaydet'te (requireCorrectAnswer) matris soruları denetlenir (#574).
+   */
+  skipInteractive?: boolean;
 }
 
 /** `trained` olayı: eğitim veri setine yazılan sayfa (question-detector `page_id` = sha256(görsel)[:16]). */
@@ -137,6 +184,8 @@ export interface ActiveInspector {
   draggables: Array<{ id: string; label: string }>;
   zoneAssignments: Record<string, string>;
   labelCount: number;
+  /** Issue #574: yalnız matrixChoice sorusunda dolu. */
+  matrix: MatrixInspector | null;
   isExample: boolean;
   exampleAnswer: string;
   difficulty: number | null;
@@ -245,8 +294,8 @@ export class ImageSelectorComponent {
   private destroyed = false;
   public onlyQuestionMode = signal<boolean>(false);
   public answerCount = signal<number>(4);
-  public selectionMode = signal<'passage' | 'question' | 'answer' | 'dropzone' | null>(null);
-  public selectionModeLocked = signal<'passage' | 'question' | 'answer' | 'dropzone' | null>(null);
+  public selectionMode = signal<CanvasSelectionMode | null>(null);
+  public selectionModeLocked = signal<CanvasSelectionMode | null>(null);
   public passages = signal<CanvasPassage[]>([]);
   public selectedPassageMap = new Map<string, string>(); // 🗂 Soru ID -> Passage ID eşlemesi
   public imageData = signal<string | null>(null); // 🖼️ Base64 formatında resim verisi
@@ -302,10 +351,13 @@ export class ImageSelectorComponent {
   /** Tuvale yeni bir sayfa/görsel yüklenmeye başladığında yayınlanır (sayfaya özel ebeveyn durumu sıfırlansın). */
   @Output() imageChange = new EventEmitter<void>();
 
-  contextMenuType: 'region' | 'answer' | 'worksheet' | 'dropzone' | 'passage' = 'region'; // ✅ Sağ tıklama menüsünün türü
+  contextMenuType: 'region' | 'answer' | 'worksheet' | 'dropzone' | 'passage' | 'matrix' = 'region'; // ✅ Sağ tıklama menüsünün türü
   selectedRegion: number | null = null;
   selectedAnswer: number | null = null; // ✅ Seçili cevap indeksi
   selectedDropZoneId: string | null = null;
+  /** Issue #574: sağ tıklanan matris satırı / hücresinin kolonu. */
+  selectedMatrixRowId: string | null = null;
+  selectedMatrixColumnId: string | null = null;
   previewMode = signal(false); // ✅ Önizleme açma durumu
   currentTestId = signal<number | null>(null); // Test ID'yi sakla
 
@@ -315,6 +367,7 @@ export class ImageSelectorComponent {
   // Interaction authoring (per region.name)
   public interactionTypes = new Map<string, QuestionInteractionType>();
   public labelingState = new Map<string, DragDropLabelingAuthoringState>();
+  public matrixState = new Map<string, MatrixChoiceAuthoringState>();
 
   // Classification selection for preview mode
   public currentClassification = signal<ClassificationSelection | null>(null);
@@ -622,6 +675,25 @@ export class ImageSelectorComponent {
         }
       }
 
+      // Issue #574: matris — önce hücre, sonra satır kutusu.
+      if (this.getInteractionType(region.name) === MATRIX_CHOICE) {
+        const matrix = this.ensureMatrixState(region.name);
+        const inside = (b: MatrixBox) =>
+          x >= region.x + b.x && x <= region.x + b.x + b.width && y >= region.y + b.y && y <= region.y + b.y + b.height;
+        for (const row of matrix.rows) {
+          for (const [columnId, cell] of Object.entries(row.cells)) {
+            if (inside(cell)) {
+              return { type: 'matrixCell', value: { questionIndex: qi, rowId: row.id, columnId } };
+            }
+          }
+        }
+        for (const row of matrix.rows) {
+          if (inside(row.box)) {
+            return { type: 'matrixRow', value: { questionIndex: qi, rowId: row.id } };
+          }
+        }
+      }
+
       // Önce answer'ları kontrol edelim
       for (let ai = 0; ai < region.answers.length; ai++) {
         const answer = region.answers[ai];
@@ -708,6 +780,14 @@ export class ImageSelectorComponent {
       this.selectedAnswer = null;
       this.selectedDropZoneId = hit.value.dropZoneId;
       this.selectedPassageId = null;
+    } else if (hit.type === 'matrixRow' || hit.type === 'matrixCell') {
+      this.contextMenuType = 'matrix';
+      this.selectedRegion = hit.value.questionIndex;
+      this.selectedAnswer = null;
+      this.selectedDropZoneId = null;
+      this.selectedPassageId = null;
+      this.selectedMatrixRowId = hit.value.rowId;
+      this.selectedMatrixColumnId = hit.type === 'matrixCell' ? hit.value.columnId : null;
     } else if (hit.type === 'question') {
       this.contextMenuType = 'region';
       this.selectedPassageId = null;
@@ -735,6 +815,8 @@ export class ImageSelectorComponent {
     this.selectedAnswer = null; // Seçili cevabı sıfırla
     this.selectedDropZoneId = null;
     this.selectedPassageId = null;
+    this.selectedMatrixRowId = null;
+    this.selectedMatrixColumnId = null;
   }
 
   stopEvent(event?: MouseEvent) {
@@ -761,6 +843,20 @@ export class ImageSelectorComponent {
         const regionName = this.regions()[idx]?.name;
         if (regionName) {
           this.removeDropZone(regionName, this.selectedDropZoneId);
+        }
+      }
+    } else if (action === 'removeMatrixQuestion') {
+      if (this.selectedRegion != null && this.selectedRegion >= 0) this.removeQuestion(this.selectedRegion);
+    } else if (action === 'selectMatrixRowMode') {
+      this.selectMatrixRowMode(this.selectedRegion!);
+    } else if (action === 'removeMatrixRow' || action === 'removeMatrixCell') {
+      const regionName = this.regions()[this.selectedRegion ?? -1]?.name;
+      const rowId = this.selectedMatrixRowId;
+      if (regionName && rowId) {
+        if (action === 'removeMatrixRow') {
+          this.removeMatrixRow(regionName, rowId);
+        } else if (this.selectedMatrixColumnId) {
+          this.removeMatrixCell(regionName, rowId, this.selectedMatrixColumnId);
         }
       }
     } else if (action === 'alignAnswers') {
@@ -1262,7 +1358,7 @@ export class ImageSelectorComponent {
     this.autoAlign.set(!this.autoAlign());
   }
 
-  lockSelectionMode(mode: 'passage' | 'question' | 'answer' | 'dropzone' | null) {
+  lockSelectionMode(mode: CanvasSelectionMode | null) {
     this.selectionModeLocked.set(mode);
     this.toggleSelectionMode(mode);
   }
@@ -1366,6 +1462,10 @@ export class ImageSelectorComponent {
         return 'blue';
       case 'dropzone':
         return 'orange';
+      case 'matrixRow':
+        return this.getThemeColors().matrixRow;
+      case 'matrixCell':
+        return this.getThemeColors().matrixCell;
       default:
         return 'black';
     }
@@ -1383,10 +1483,13 @@ export class ImageSelectorComponent {
       this.warningMarkers = this.warningMarkers.filter((w) => w.id !== region.id);
     }
     // Uyarı ikonu her zaman doğru cevap kontrolünü de gösterir; dragDrop uyarıları da yalnız görseldir.
+    const type = this.getInteractionType(region.name);
     const messages =
-      this.getInteractionType(region.name) === 'dragDropLabeling'
+      type === 'dragDropLabeling'
         ? this.dragDropIssues(region)
-        : this.mcqIssues(region, { requireCorrectAnswer: true });
+        : type === MATRIX_CHOICE
+          ? [...this.matrixIssues(region.name), ...this.matrixNotices(region.name)]
+          : this.mcqIssues(region, { requireCorrectAnswer: true });
 
     if (messages.length > 0) {
       this.warningMarkers.push({
@@ -1434,14 +1537,56 @@ export class ImageSelectorComponent {
   }
 
   /**
+   * Issue #574: matris kuralları — backend aynı kuralla reddeder (2..10 kolon, 1..60 satır, her satırın çözümü). Kaydet'te
+   * engelleyici; uyarı ikonunda da görünür.
+   */
+  private matrixIssues(regionName: string): string[] {
+    const state = this.ensureMatrixState(regionName);
+    const limits = MATRIX_CHOICE_LIMITS;
+    const messages: string[] = [];
+    if (state.rows.length < limits.minRows) {
+      messages.push(this.tr('warnings.matrixNoRows'));
+    }
+    if (state.rows.length > limits.maxRows) {
+      messages.push(this.tr('warnings.matrixTooManyRows', { max: limits.maxRows }));
+    }
+    if (state.columns.length < limits.minColumns || state.columns.length > limits.maxColumns) {
+      messages.push(this.tr('warnings.matrixColumnCount', { min: limits.minColumns, max: limits.maxColumns }));
+    }
+    if (state.columns.some((c) => !c.label.trim())) {
+      messages.push(this.tr('warnings.matrixEmptyColumnLabel'));
+    }
+    const missing = state.rows.filter((r) => !(state.solution[r.id]?.length)).length;
+    if (missing > 0) {
+      messages.push(this.tr('warnings.matrixMissingSolution', { count: missing }));
+    }
+    return messages;
+  }
+
+  /** Matris bilgi notları — gönderimi engellemez (eksik hücre kutusu: öğrenci listeden seçer). */
+  private matrixNotices(regionName: string): string[] {
+    const state = this.ensureMatrixState(regionName);
+    const cellCount = state.rows.reduce((sum, r) => sum + Object.keys(r.cells).length, 0);
+    const expected = state.rows.length * state.columns.length;
+    return cellCount > 0 && cellCount < expected ? [this.tr('warnings.matrixPartialCells')] : [];
+  }
+
+  /**
    * Gönderim (Eğit / Kaydet) öncesi soru bazında engelleyici sorunlar.
-   * Yalnız MCQ kuralları uygulanır: dragDropLabeling soruları Eğit'e hiç gönderilmez ve Kaydet'te
-   * dragDrop uyarıları kasıtlı olarak engelleyici değildir (yalnız ikonda görünür).
+   * MCQ kuralları her zaman; matris kuralları yalnız Kaydet'te (requireCorrectAnswer) — etkileşimli sorular Eğit'e hiç
+   * gönderilmez. dragDropLabeling uyarıları kasıtlı olarak engelleyici değildir (yalnız ikonda görünür).
    */
   public validateQuestions(opts: QuestionValidationOptions): QuestionValidationIssue[] {
     const issues: QuestionValidationIssue[] = [];
     this.regions().forEach((region, index) => {
-      if (this.getInteractionType(region.name) === 'dragDropLabeling') {
+      const type = this.getInteractionType(region.name);
+      if (isInteractiveType(type)) {
+        if (type === MATRIX_CHOICE && opts.requireCorrectAnswer && !opts.skipInteractive) {
+          const matrixMessages = this.matrixIssues(region.name);
+          if (matrixMessages.length > 0) {
+            issues.push({ index, no: index + 1, name: region.name, messages: matrixMessages });
+          }
+        }
         return;
       }
       const messages = this.mcqIssues(region, opts);
@@ -1479,7 +1624,16 @@ export class ImageSelectorComponent {
   }
 
   /** Çizimde kullanılan token değerleri — bir kez çözümlenip cache'lenir (sıcak yol). */
-  private themeColors?: { accent: string; label: string; fontFamily: string };
+  private themeColors?: {
+    accent: string;
+    label: string;
+    fontFamily: string;
+    /** Issue #574: matris satırı / hücresi / doğru hücre dolgusu ve etiket zemini. */
+    matrixRow: string;
+    matrixCell: string;
+    matrixSolution: string;
+    surface: string;
+  };
 
   private getThemeColors() {
     if (!this.themeColors) {
@@ -1487,6 +1641,10 @@ export class ImageSelectorComponent {
         accent: this.cssVar('--ms-action-border') || this.cssVar('--primaryColor') || 'red',
         label: this.cssVar('--ms-text-strong') || 'white',
         fontFamily: this.cssVar('--mainFontFamily') || 'sans-serif',
+        matrixRow: this.cssVar('--ms-colors-code-turquoise') || 'teal',
+        matrixCell: this.cssVar('--ms-colors-code-orange') || 'darkorange',
+        matrixSolution: this.cssVar('--ms-colors-status-success') || 'green',
+        surface: this.cssVar('--ms-colors-white') || 'white',
       };
     }
     return this.themeColors;
@@ -1591,8 +1749,8 @@ export class ImageSelectorComponent {
       // 🟦 **Şık alanlarını mavi renkte çiz**
       if (!this.onlyQuestionMode()) {
         for (const region of this.regions()) {
-          // dragDropLabeling sorularda şık çizimi gerekmiyor
-          if (this.getInteractionType(region.name) === 'dragDropLabeling') {
+          // Etkileşimli sorularda (sürükle-bırak, matris) şık çizimi gerekmiyor
+          if (isInteractiveType(this.getInteractionType(region.name))) {
             continue;
           }
 
@@ -1630,6 +1788,67 @@ export class ImageSelectorComponent {
           this.ctx.strokeRect(region.x + z.x, region.y + z.y, z.width, z.height);
         }
       }
+
+      this.drawMatrixOverlays();
+    }
+  }
+
+  /**
+   * Issue #574: matris satırları (düz, numara etiketli), hücreleri (kalın kesik çizgi + açık zemin üstünde kolon etiketi) ve
+   * doğru hücreler (dolgu). Renkler temadan (`getThemeColors`); hücre çizgisinin altına açık bir kontur çizilir ki her
+   * sayfa renginde seçilebilsin.
+   */
+  private drawMatrixOverlays() {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const theme = this.getThemeColors();
+    for (const region of this.regions()) {
+      if (this.getInteractionType(region.name) !== MATRIX_CHOICE) continue;
+      const state = this.ensureMatrixState(region.name);
+      const labels = new Map(state.columns.map((c) => [c.id, c.label]));
+      state.rows.forEach((row, ri) => {
+        const rx = region.x + row.box.x;
+        const ry = region.y + row.box.y;
+        ctx.save();
+        ctx.setLineDash([]);
+        ctx.strokeStyle = theme.matrixRow;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(rx, ry, row.box.width, row.box.height);
+        ctx.font = `bold 12px ${theme.fontFamily}`;
+        const tag = `${ri + 1}`;
+        const tagW = ctx.measureText(tag).width + 8;
+        ctx.fillStyle = theme.matrixRow;
+        ctx.fillRect(rx - tagW, ry, tagW, 16);
+        ctx.fillStyle = theme.surface;
+        ctx.fillText(tag, rx - tagW + 4, ry + 12);
+
+        const solution = state.solution[row.id] ?? [];
+        for (const [columnId, cell] of Object.entries(row.cells)) {
+          const cx = region.x + cell.x;
+          const cy = region.y + cell.y;
+          ctx.globalAlpha = solution.includes(columnId) ? 0.35 : 0.12;
+          ctx.fillStyle = solution.includes(columnId) ? theme.matrixSolution : theme.matrixCell;
+          ctx.fillRect(cx, cy, cell.width, cell.height);
+          ctx.globalAlpha = 1;
+          ctx.setLineDash([]);
+          ctx.strokeStyle = theme.surface;
+          ctx.lineWidth = 5;
+          ctx.strokeRect(cx, cy, cell.width, cell.height);
+          ctx.setLineDash([6, 4]);
+          ctx.strokeStyle = solution.includes(columnId) ? theme.matrixSolution : theme.matrixCell;
+          ctx.lineWidth = 3;
+          ctx.strokeRect(cx, cy, cell.width, cell.height);
+          ctx.setLineDash([]);
+          const text = labels.get(columnId) || columnId;
+          ctx.font = `bold 11px ${theme.fontFamily}`;
+          const textW = ctx.measureText(text).width + 6;
+          ctx.fillStyle = theme.surface;
+          ctx.fillRect(cx + 2, cy + 2, textW, 14);
+          ctx.fillStyle = theme.matrixCell;
+          ctx.fillText(text, cx + 5, cy + 13);
+        }
+        ctx.restore();
+      });
     }
   }
 
@@ -1697,13 +1916,13 @@ export class ImageSelectorComponent {
 
     const mode = this.selectionMode();
 
-    if (hit && hit.type === 'question') {
-      // Şık / drop-zone çizimi hangi soruya ait olacak — modu ZORLAMADAN sadece hedef soruyu belirle.
+    if (hit && (hit.type === 'question' || hit.type === 'matrixRow' || hit.type === 'matrixCell')) {
+      // Şık / drop-zone / matris çizimi hangi soruya ait olacak — modu ZORLAMADAN sadece hedef soruyu belirle.
       // Mod artık üstteki segmented kontrolden geliyor.
       this.selectedQuestionIndex = hit.value.questionIndex;
     } else if (!hit) {
-      // Boş alanda şık / zone çizilemez.
-      if (mode === 'answer' || mode === 'dropzone') {
+      // Boş alanda şık / zone / matris kutusu çizilemez.
+      if (mode === 'answer' || mode === 'dropzone' || mode === 'matrixRow' || mode === 'matrixCell') {
         console.log('Exited startSelection hit === null. IsDrawing :', this.isDrawing);
         return;
       }
@@ -1766,7 +1985,15 @@ export class ImageSelectorComponent {
     if (isClick) {
       this.isDrawing = false;
       this.pendingHit = null;
-      if (hit && (hit.type === 'answer' || hit.type === 'dropzone')) {
+      const mode = this.selectionMode();
+      if (hit && hit.type === 'matrixCell' && (mode === 'matrixRow' || mode === 'matrixCell')) {
+        // Issue #574: matris modunda hücreye tık = o hücrenin kolonunu satırın çözümü olarak işaretle / kaldır (mod değişmez).
+        const regionName = this.regions()[hit.value.questionIndex]?.name;
+        if (regionName) this.toggleMatrixSolution(regionName, hit.value.rowId, hit.value.columnId);
+        this.focusQuestionKeepingMode(hit.value.questionIndex);
+      } else if (hit && hit.type === 'matrixCell') {
+        this.selectQuestion(hit.value.questionIndex);
+      } else if (hit && (hit.type === 'answer' || hit.type === 'dropzone' || hit.type === 'matrixRow')) {
         this.selectQuestion(hit.value.questionIndex);
       } else {
         this.drawImage();
@@ -1878,6 +2105,11 @@ export class ImageSelectorComponent {
         const relY = absY1 - region.y;
         this.addDropZone(region.name, relX, relY, absW, absH);
       }
+    } else if (
+      (this.selectionMode() === 'matrixRow' || this.selectionMode() === 'matrixCell') &&
+      this.selectedQuestionIndex !== -1
+    ) {
+      this.addMatrixBoxFromDrag(this.selectedQuestionIndex, this.startX, this.startY, endX, endY);
     }
 
     this.isDrawing = false;
@@ -1886,7 +2118,7 @@ export class ImageSelectorComponent {
     console.log('Exited  EndSelection. IsDrawing :', this.isDrawing);
   }
 
-  toggleSelectionMode(mode: 'question' | 'answer' | 'passage' | 'dropzone' | null) {
+  toggleSelectionMode(mode: CanvasSelectionMode | null) {
     if (this.selectionModeLocked()) {
       this.selectionMode.set(this.selectionModeLocked());
       return;
@@ -1911,6 +2143,8 @@ export class ImageSelectorComponent {
 
     if (type === 'dragDropLabeling') {
       this.ensureLabelingState(regionName);
+    } else if (type === MATRIX_CHOICE) {
+      this.ensureMatrixState(regionName);
     }
 
     this.drawImage();
@@ -2061,6 +2295,9 @@ export class ImageSelectorComponent {
   }
 
   private buildInteractionPlanJson(regionName: string): string | null {
+    if (this.getInteractionType(regionName) === MATRIX_CHOICE) {
+      return JSON.stringify(this.buildMatrixPlan(regionName));
+    }
     const plan = this.buildInteractionPlan(regionName);
     if (!plan) return null;
     return JSON.stringify(plan);
@@ -2071,9 +2308,368 @@ export class ImageSelectorComponent {
    * aksi halde öğrenciye giden plan cevabı sızdırırdı. dragDropLabeling dışında null.
    */
   private buildInteractionSolutionJson(regionName: string): string | null {
+    if (this.getInteractionType(regionName) === MATRIX_CHOICE) {
+      return this.buildMatrixSolutionJson(regionName);
+    }
     if (this.getInteractionType(regionName) !== 'dragDropLabeling') return null;
     const state = this.ensureLabelingState(regionName);
     return JSON.stringify({ placements: state.placements });
+  }
+
+  // -------- Issue #574: matris seçim yazarlığı --------
+
+  public ensureMatrixState(regionName: string): MatrixChoiceAuthoringState {
+    const existing = this.matrixState.get(regionName);
+    if (existing) return existing;
+    const preset = MATRIX_COLUMN_PRESETS.trueFalse;
+    const columns = preset.labels.map((label, i) => ({ id: `c${i + 1}`, label }));
+    const created: MatrixChoiceAuthoringState = {
+      multiPerRow: preset.multiPerRow,
+      columns,
+      rows: [],
+      solution: {},
+      activeColumnId: columns[0].id,
+    };
+    this.matrixState.set(regionName, created);
+    return created;
+  }
+
+  private commitMatrix(regionName: string, state: MatrixChoiceAuthoringState) {
+    this.matrixState.set(regionName, { ...state });
+    this.drawImage();
+  }
+
+  public selectMatrixRowMode(questionIndex: number) {
+    this.selectMatrixMode(questionIndex, 'matrixRow');
+  }
+
+  public selectMatrixCellMode(questionIndex: number, columnId?: string) {
+    const regionName = this.regions()[questionIndex]?.name;
+    if (regionName && columnId) this.setMatrixActiveColumn(regionName, columnId);
+    this.selectMatrixMode(questionIndex, 'matrixCell');
+  }
+
+  private selectMatrixMode(questionIndex: number, mode: 'matrixRow' | 'matrixCell') {
+    if (questionIndex < 0 || questionIndex >= this.regions().length) {
+      return;
+    }
+    this.selectedQuestionIndex = questionIndex;
+    const regionName = this.regions()[questionIndex].name;
+    this.interactionTypes.set(regionName, MATRIX_CHOICE);
+    this.ensureMatrixState(regionName);
+    // Araç çubuğu modu kilitlediyse kilit de güncellenir; yoksa sonraki soru seçimi eski kilide döndürür.
+    if (this.selectionModeLocked()) this.selectionModeLocked.set(mode);
+    this.selectionMode.set(mode);
+    this.drawImage();
+  }
+
+  /** Kolon şablonu: kolonları yeniden kurar (aynı sıradaki kolon id'si korunur; artan kolonların hücre/çözümü silinir). */
+  public applyMatrixPreset(regionName: string, preset: MatrixColumnPreset) {
+    const definition = MATRIX_COLUMN_PRESETS[preset];
+    const state = this.ensureMatrixState(regionName);
+    this.resizeMatrixColumns(state, definition.labels.length);
+    state.columns = state.columns.map((c, i) => ({ ...c, label: definition.labels[i] }));
+    state.multiPerRow = definition.multiPerRow;
+    this.trimMatrixSolutionToSingle(state);
+    this.commitMatrix(regionName, state);
+  }
+
+  public setMatrixColumnCount(regionName: string, rawValue: string | number) {
+    const parsed = Math.floor(Number(rawValue));
+    const limits = MATRIX_CHOICE_LIMITS;
+    const state = this.ensureMatrixState(regionName);
+    const next = Number.isFinite(parsed)
+      ? Math.max(limits.minColumns, Math.min(limits.maxColumns, parsed))
+      : state.columns.length;
+    this.resizeMatrixColumns(state, next);
+    this.commitMatrix(regionName, state);
+  }
+
+  private resizeMatrixColumns(state: MatrixChoiceAuthoringState, count: number) {
+    const columns = state.columns.slice(0, count);
+    for (let i = columns.length; i < count; i++) {
+      columns.push({ id: this.nextMatrixId('c', columns.map((c) => c.id)), label: `${i + 1}` });
+    }
+    const keep = new Set(columns.map((c) => c.id));
+    state.columns = columns;
+    state.rows = state.rows.map((row) => ({
+      ...row,
+      cells: Object.fromEntries(Object.entries(row.cells).filter(([id]) => keep.has(id))),
+    }));
+    state.solution = this.filterMatrixSolution(state.solution, (columnId) => keep.has(columnId));
+    if (!state.activeColumnId || !keep.has(state.activeColumnId)) {
+      state.activeColumnId = columns[0]?.id ?? null;
+    }
+  }
+
+  public setMatrixColumnLabel(regionName: string, columnId: string, label: string) {
+    const state = this.ensureMatrixState(regionName);
+    const value = (label ?? '').slice(0, MATRIX_CHOICE_LIMITS.maxLabelLength);
+    state.columns = state.columns.map((c) => (c.id === columnId ? { ...c, label: value } : c));
+    this.commitMatrix(regionName, state);
+  }
+
+  public setMatrixMultiPerRow(regionName: string, multi: boolean) {
+    const state = this.ensureMatrixState(regionName);
+    state.multiPerRow = !!multi;
+    this.trimMatrixSolutionToSingle(state);
+    this.commitMatrix(regionName, state);
+  }
+
+  /** Çoklu seçim kapanınca her satırda yalnız ilk (kolon sırasına göre) çözüm kalır. */
+  private trimMatrixSolutionToSingle(state: MatrixChoiceAuthoringState) {
+    if (state.multiPerRow) return;
+    const solution: MatrixSelections = {};
+    Object.entries(state.solution).forEach(([rowId, cols]) => {
+      if (cols.length > 0) solution[rowId] = [cols[0]];
+    });
+    state.solution = solution;
+  }
+
+  public setMatrixRowLabel(regionName: string, rowId: string, label: string) {
+    const state = this.ensureMatrixState(regionName);
+    const value = (label ?? '').slice(0, MATRIX_CHOICE_LIMITS.maxLabelLength);
+    state.rows = state.rows.map((r) => (r.id === rowId ? { ...r, label: value } : r));
+    this.matrixState.set(regionName, { ...state });
+  }
+
+  public setMatrixActiveColumn(regionName: string, columnId: string) {
+    const state = this.ensureMatrixState(regionName);
+    if (!state.columns.some((c) => c.id === columnId)) return;
+    state.activeColumnId = columnId;
+    this.matrixState.set(regionName, { ...state });
+  }
+
+  /** Satırın çözümü: tekli seçimde kolonu seçer (aynısına yeniden basınca kaldırır), çokluda aç/kapa. */
+  public toggleMatrixSolution(regionName: string, rowId: string, columnId: string) {
+    const state = this.ensureMatrixState(regionName);
+    if (!state.rows.some((r) => r.id === rowId) || !state.columns.some((c) => c.id === columnId)) return;
+    const current = state.solution[rowId] ?? [];
+    let next: string[];
+    if (state.multiPerRow) {
+      const toggled = current.includes(columnId) ? current.filter((c) => c !== columnId) : [...current, columnId];
+      next = state.columns.map((c) => c.id).filter((id) => toggled.includes(id));
+    } else {
+      next = current.length === 1 && current[0] === columnId ? [] : [columnId];
+    }
+    const solution = { ...state.solution };
+    if (next.length > 0) solution[rowId] = next;
+    else delete solution[rowId];
+    state.solution = solution;
+    this.commitMatrix(regionName, state);
+  }
+
+  public removeMatrixRow(regionName: string, rowId: string) {
+    const state = this.ensureMatrixState(regionName);
+    state.rows = state.rows.filter((r) => r.id !== rowId);
+    const solution = { ...state.solution };
+    delete solution[rowId];
+    state.solution = solution;
+    this.commitMatrix(regionName, state);
+  }
+
+  public removeLastMatrixRow(regionName: string) {
+    const last = this.ensureMatrixState(regionName).rows.at(-1);
+    if (last) this.removeMatrixRow(regionName, last.id);
+  }
+
+  public clearMatrixRows(regionName: string) {
+    const state = this.ensureMatrixState(regionName);
+    state.rows = [];
+    state.solution = {};
+    this.commitMatrix(regionName, state);
+  }
+
+  public removeMatrixCell(regionName: string, rowId: string, columnId: string) {
+    const state = this.ensureMatrixState(regionName);
+    state.rows = state.rows.map((r) => {
+      if (r.id !== rowId) return r;
+      const cells = { ...r.cells };
+      delete cells[columnId];
+      return { ...r, cells };
+    });
+    this.commitMatrix(regionName, state);
+  }
+
+  public clearMatrixCells(regionName: string) {
+    const state = this.ensureMatrixState(regionName);
+    state.rows = state.rows.map((r) => ({ ...r, cells: {} }));
+    this.commitMatrix(regionName, state);
+  }
+
+  /**
+   * İlk satırın hücrelerini diğer satırlara kopyalar: hücrenin ilk satır kutusuna göre yatay/dikey kayması her satırın
+   * kutusuna uygulanır ve satır kutusuna sığdırılır. Tablo düzenli ise tek satır çizmek yeter.
+   */
+  public copyMatrixCellsFromFirstRow(regionName: string) {
+    const state = this.ensureMatrixState(regionName);
+    const [first, ...others] = state.rows;
+    if (!first || Object.keys(first.cells).length === 0) return;
+    state.rows = [
+      first,
+      ...others.map((row) => {
+        const cells: Record<string, MatrixBox> = {};
+        Object.entries(first.cells).forEach(([columnId, cell]) => {
+          // Kayma ilk satırın kutusuna göre hem yatayda hem dikeyde: iki sütunlu düzende sağ sütundaki satırın
+          // hücreleri de kendi kutusuna oturur. Sonuç satır kutusuna sığdırılır.
+          const span = (start: number, size: number, firstStart: number, rowStart: number, rowSize: number) => {
+            const rowEnd = rowStart + rowSize;
+            const from = Math.max(rowStart, Math.min(rowStart + (start - firstStart), rowEnd - 1));
+            return { from, size: Math.max(1, Math.min(size, rowEnd - from)) };
+          };
+          const h = span(cell.x, cell.width, first.box.x, row.box.x, row.box.width);
+          const v = span(cell.y, cell.height, first.box.y, row.box.y, row.box.height);
+          cells[columnId] = { x: h.from, y: v.from, width: h.size, height: v.size };
+        });
+        return { ...row, cells };
+      }),
+    ];
+    this.commitMatrix(regionName, state);
+  }
+
+  /** Sürüklemeyle çizilen kutu: `matrixRow` modunda yeni satır, `matrixCell` modunda merkezinin düştüğü satıra hücre. */
+  private addMatrixBoxFromDrag(questionIndex: number, x1: number, y1: number, x2: number, y2: number) {
+    const region = this.regions()[questionIndex];
+    if (!region) return;
+    const absX1 = Math.min(x1, x2);
+    const absY1 = Math.min(y1, y2);
+    const absX2 = Math.max(x1, x2);
+    const absY2 = Math.max(y1, y2);
+    if (absX2 - absX1 < 6 || absY2 - absY1 < 6) return;
+    const within =
+      absX1 >= region.x && absY1 >= region.y && absX2 <= region.x + region.width && absY2 <= region.y + region.height;
+    if (!within) {
+      this.snackBar.open(this.tr('messages.matrixOutsideQuestion'), this.tr('common.ok'), { duration: 2000 });
+      return;
+    }
+    // Koordinatlar soru bölgesine göre ve tam sayı (backend kutuları sayı olarak saklar; kırpma tam piksel).
+    const box: MatrixBox = {
+      x: Math.round(absX1 - region.x),
+      y: Math.round(absY1 - region.y),
+      width: Math.max(1, Math.round(absX2 - absX1)),
+      height: Math.max(1, Math.round(absY2 - absY1)),
+    };
+    // Araç çubuğundaki "Matris" modu MCQ/sürükle-bırak sorusunda çizerse çizim kaybolmasın: soru matrise döner.
+    if (this.getInteractionType(region.name) !== MATRIX_CHOICE) {
+      this.interactionTypes.set(region.name, MATRIX_CHOICE);
+      this.ensureMatrixState(region.name);
+    }
+    if (this.selectionMode() === 'matrixRow') {
+      this.addMatrixRow(region.name, box);
+    } else {
+      this.addMatrixCell(region.name, box);
+    }
+  }
+
+  private addMatrixRow(regionName: string, box: MatrixBox) {
+    const state = this.ensureMatrixState(regionName);
+    if (state.rows.length >= MATRIX_CHOICE_LIMITS.maxRows) {
+      this.snackBar.open(this.tr('warnings.matrixTooManyRows', { max: MATRIX_CHOICE_LIMITS.maxRows }), this.tr('common.ok'), {
+        duration: 2500,
+      });
+      return;
+    }
+    const id = this.nextMatrixId('r', state.rows.map((r) => r.id));
+    state.rows = [...state.rows, { id, label: '', box, cells: {} }];
+    this.matrixState.set(regionName, { ...state });
+  }
+
+  private addMatrixCell(regionName: string, box: MatrixBox) {
+    const state = this.ensureMatrixState(regionName);
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    const row = state.rows.find(
+      (r) => cx >= r.box.x && cx <= r.box.x + r.box.width && cy >= r.box.y && cy <= r.box.y + r.box.height
+    );
+    if (!row) {
+      this.snackBar.open(this.tr('messages.matrixCellOutsideRow'), this.tr('common.ok'), { duration: 2500 });
+      return;
+    }
+    const columnId = state.activeColumnId ?? state.columns[0]?.id;
+    if (!columnId) return;
+    state.rows = state.rows.map((r) => (r.id === row.id ? { ...r, cells: { ...r.cells, [columnId]: box } } : r));
+    // Sıradaki kolona geç: satır satır hızlı çizim (D, Y, D, Y, ...).
+    const index = state.columns.findIndex((c) => c.id === columnId);
+    state.activeColumnId = state.columns[(index + 1) % state.columns.length]?.id ?? columnId;
+    this.matrixState.set(regionName, { ...state });
+  }
+
+  private nextMatrixId(prefix: 'r' | 'c', used: string[]): string {
+    const taken = new Set(used);
+    let n = used.length + 1;
+    for (let i = 1; i <= used.length + 1; i++) {
+      if (!taken.has(`${prefix}${i}`)) {
+        n = i;
+        break;
+      }
+    }
+    return `${prefix}${n}`;
+  }
+
+  private filterMatrixSolution(solution: MatrixSelections, keepColumn: (columnId: string) => boolean): MatrixSelections {
+    const result: MatrixSelections = {};
+    Object.entries(solution).forEach(([rowId, cols]) => {
+      const kept = cols.filter(keepColumn);
+      if (kept.length > 0) result[rowId] = kept;
+    });
+    return result;
+  }
+
+  /** Öğrenciye giden plan: çözüm içermez (#570). Boş satır metni gönderilmez. */
+  private buildMatrixPlan(regionName: string): MatrixChoicePlanV1 {
+    const state = this.ensureMatrixState(regionName);
+    return {
+      version: 1,
+      type: MATRIX_CHOICE,
+      multiPerRow: state.multiPerRow,
+      columns: state.columns.map((c) => ({ id: c.id, label: c.label.trim() })),
+      rows: state.rows.map((r) => ({
+        id: r.id,
+        ...(r.label.trim() ? { label: r.label.trim() } : {}),
+        box: { ...r.box },
+        ...(Object.keys(r.cells).length > 0 ? { cells: { ...r.cells } } : {}),
+      })),
+    };
+  }
+
+  /** Çözüm `{rowId: [colId]}` (plan satır sırasıyla); hiç işaret yoksa null (backend boş nesneyi kabul etmez). */
+  private buildMatrixSolutionJson(regionName: string): string | null {
+    const state = this.ensureMatrixState(regionName);
+    const solution: MatrixSelections = {};
+    state.rows.forEach((r) => {
+      const cols = state.solution[r.id];
+      if (cols?.length) solution[r.id] = [...cols];
+    });
+    return Object.keys(solution).length > 0 ? JSON.stringify(solution) : null;
+  }
+
+  private buildMatrixInspector(regionName: string): MatrixInspector {
+    const state = this.ensureMatrixState(regionName);
+    const cellTotal = state.rows.reduce((sum, r) => sum + Object.keys(r.cells).length, 0);
+    return {
+      multiPerRow: state.multiPerRow,
+      columns: state.columns,
+      rows: state.rows.map((r, i) => ({
+        id: r.id,
+        no: i + 1,
+        label: r.label,
+        solution: state.solution[r.id] ?? [],
+        cellCount: Object.keys(r.cells).length,
+      })),
+      activeColumnId: state.activeColumnId,
+      hasCells: cellTotal > 0,
+      allCells: state.rows.length > 0 && cellTotal === state.rows.length * state.columns.length,
+      missingSolutionCount: state.rows.filter((r) => !(state.solution[r.id]?.length)).length,
+      limits: MATRIX_CHOICE_LIMITS,
+    };
+  }
+
+  /** Soruyu müfettişe odaklar ama çizim modunu değiştirmez (matris hücresine tık). */
+  private focusQuestionKeepingMode(index: number) {
+    this.selectedQuestionIndex = index;
+    this.selectedRegion = index;
+    this.selectedQuestionChange.emit({ index, region: this.regions()[index] ?? null });
+    this.drawImage();
   }
 
   selectQuestion(index: number) {
@@ -2081,7 +2677,16 @@ export class ImageSelectorComponent {
     this.selectedRegion = index;
     const regionName = this.regions()[index]?.name;
     const interactionType = regionName ? this.getInteractionType(regionName) : 'mcq';
-    this.toggleSelectionMode(interactionType === 'dragDropLabeling' ? 'dropzone' : 'answer');
+    const current = this.selectionMode();
+    this.toggleSelectionMode(
+      interactionType === 'dragDropLabeling'
+        ? 'dropzone'
+        : interactionType === MATRIX_CHOICE
+          ? current === 'matrixCell' || current === 'matrixRow'
+            ? current
+            : 'matrixRow'
+          : 'answer'
+    );
     this.selectedQuestionChange.emit({ index, region: this.regions()[index] ?? null });
     this.drawImage();
     requestAnimationFrame(() => this.scrollActiveRegionIntoView());
@@ -2169,6 +2774,7 @@ export class ImageSelectorComponent {
       draggables,
       zoneAssignments,
       labelCount: isLabeling ? this.getLabelCount(name) : 0,
+      matrix: interactionType === MATRIX_CHOICE ? this.buildMatrixInspector(name) : null,
       isExample: this.isExample(name),
       exampleAnswer: this.getExampleAnswer(name),
       difficulty: this.previewDifficultyLevel(),
@@ -2239,7 +2845,7 @@ export class ImageSelectorComponent {
 
     // dragDropLabeling questions are not MCQ and should not be sent to the
     // fix/training endpoint that expects answers + correct answer.
-    const mcqQuestions = regions.filter((q) => this.getInteractionType(q.name) !== 'dragDropLabeling');
+    const mcqQuestions = regions.filter((q) => !isInteractiveType(this.getInteractionType(q.name)));
     if (!emptyPage && mcqQuestions.length === 0) {
       // Gönderilseydi sayfa boş gibi gider, model dragDrop sorularını arka plan öğrenirdi.
       if (advance) {
@@ -2689,6 +3295,7 @@ export class ImageSelectorComponent {
     this.selectedPassageMap.clear();
     this.interactionTypes.clear();
     this.labelingState.clear();
+    this.matrixState.clear();
     this.warningMarkers = [];
     this.selectedQuestionIndex = -1;
     this.selectedAnswer = -1;
@@ -2806,6 +3413,7 @@ export class ImageSelectorComponent {
     this.selectedPassageMap.delete(regionName);
     this.interactionTypes.delete(regionName);
     this.labelingState.delete(regionName);
+    this.matrixState.delete(regionName);
     this.warningMarkers = this.warningMarkers.filter((w) => w.id !== this.regions()[questionIndex].id);
     this.regions.set(this.regions().filter((_, index) => index !== questionIndex));
 

@@ -120,6 +120,10 @@
               <mat-icon style="vertical-align: middle; margin-right: 8px">radio_button_unchecked</mat-icon>
               {{ t('menu.drawDropZone') }}
             </button>
+            <button (click)="handleMenuAction('selectMatrixRowMode', $event)">
+              <mat-icon style="vertical-align: middle; margin-right: 8px">table_rows</mat-icon>
+              {{ t('menu.drawMatrixRow') }}
+            </button>
             <!-- dragDropLabeling hızlı ayarları (sağ panel olmadan) -->
             @if (
               selectedRegion! >= 0 && getInteractionType(regions()[selectedRegion || 0].name) === 'dragDropLabeling'
@@ -166,6 +170,29 @@
             @if (contextMenuType === 'answer') {
               <button (click)="handleMenuAction('removeAnswer', $event)">
                 <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>{{ t('menu.removeAnswer') }}
+              </button>
+            }
+            <!-- Matris satırı / hücresi için menü (#574) -->
+            @if (contextMenuType === 'matrix' && selectedMatrixRowId) {
+              <div style="padding: 6px 8px; font-size: 12px; opacity: 0.8">{{ t('menu.matrixRowLabel', { id: selectedMatrixRowId }) }}</div>
+              @if (selectedMatrixColumnId) {
+                <button (click)="handleMenuAction('removeMatrixCell', $event)">
+                  <mat-icon style="vertical-align: middle; margin-right: 8px">grid_off</mat-icon>
+                  {{ t('menu.removeMatrixCell') }}
+                </button>
+              }
+              <button (click)="handleMenuAction('removeMatrixRow', $event)">
+                <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>
+                {{ t('menu.removeMatrixRow') }}
+              </button>
+              <mat-divider></mat-divider>
+              <button (click)="handleMenuAction('selectMatrixRowMode', $event)">
+                <mat-icon style="vertical-align: middle; margin-right: 8px">table_rows</mat-icon>
+                {{ t('menu.drawMatrixRow') }}
+              </button>
+              <button (click)="handleMenuAction('removeMatrixQuestion', $event)">
+                <mat-icon style="vertical-align: middle; margin-right: 8px">delete_forever</mat-icon>
+                {{ t('menu.removeQuestion') }}
               </button>
             }
             <!-- DropZone için menü -->

@@ -1,0 +1,107 @@
+<div class="mc-root" [class.is-activity]="activity()" [class.is-cell-mode]="cellMode()"
+  *transloco="let t; prefix: 'shared.questionCanvas'">
+  @if (!hidePassage && passageImageUrl(); as pUrl) {
+    <div class="mc-passage">
+      @if (passageTitle(); as title) {
+        <div class="mc-passage__title">{{ title }}</div>
+      }
+      <img class="mc-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (imageUrl(); as url) {
+    <div class="mc-stage">
+      <div class="mc-image-wrap">
+        <img class="mc-image" [src]="url" [alt]="t('questionAlt')" [appStorageImageRetry]="imageRefresh" />
+        @if (plan(); as p) {
+          <div class="mc-overlay" data-testid="mc-overlay">
+            @for (row of rows(); track row.id; let ri = $index) {
+              @if (cellMode()) {
+                <div class="mc-cell-group" role="group" [attr.aria-label]="rowAria(row, ri)" [attr.data-row]="row.id">
+                  @for (col of columns(); track col.id) {
+                    <button type="button" class="mc-cell"
+                      [class.is-selected]="isSelected(row.id, col.id)"
+                      [class.is-solution]="solutionShown() && isSelected(row.id, col.id)"
+                      [ngStyle]="boxStyle(cell(row, col.id))"
+                      [disabled]="solutionShown()"
+                      [attr.aria-pressed]="isSelected(row.id, col.id)"
+                      [attr.aria-label]="cellAria(row, ri, col.label)"
+                      [attr.data-cell]="row.id + ':' + col.id"
+                      (click)="toggle(row.id, col.id)">
+                      @if (isSelected(row.id, col.id)) {
+                        <mat-icon class="mc-cell__icon" aria-hidden="true">{{ multi() ? 'check_box' : 'check_circle' }}</mat-icon>
+                      }
+                    </button>
+                  }
+                </div>
+              } @else if (row.box) {
+                <div class="mc-row-box" [class.is-focused]="focusedRowId() === row.id" [ngStyle]="boxStyle(row.box)"
+                  aria-hidden="true" [attr.data-row-box]="row.id">
+                  <span class="mc-row-box__no">{{ ri + 1 }}</span>
+                </div>
+              }
+              @if (rowMark()(row.id); as mark) {
+                <span class="mc-mark" [class.mc-mark--wrong]="mark === 'wrong'" [ngStyle]="markStyle(row)" aria-hidden="true"
+                  [attr.data-mark]="row.id">
+                  <mat-icon>{{ mark === 'correct' ? 'check' : 'close' }}</mat-icon>
+                </span>
+              }
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  @if (plan(); as p) {
+    @if (!cellMode()) {
+      <ol class="mc-list" data-testid="mc-list">
+        @for (row of rows(); track row.id; let ri = $index) {
+          <li class="mc-list__row"
+            [class.is-correct]="rowMark()(row.id) === 'correct'"
+            [class.is-wrong]="rowMark()(row.id) === 'wrong'"
+            [attr.data-row]="row.id"
+            (focusin)="focusedRowId.set(row.id)" (focusout)="focusedRowId.set(null)"
+            (mouseenter)="focusedRowId.set(row.id)" (mouseleave)="focusedRowId.set(null)">
+            <span class="mc-list__label">
+              <span class="mc-list__no">{{ ri + 1 }}.</span>
+              <span class="mc-list__text">{{ rowTitle(row, ri) }}</span>
+            </span>
+            <span class="mc-list__options" role="group" [attr.aria-label]="rowAria(row, ri)">
+              @for (col of columns(); track col.id) {
+                <button type="button" class="mc-option"
+                  [class.is-selected]="isSelected(row.id, col.id)"
+                  [class.is-solution]="solutionShown() && isSelected(row.id, col.id)"
+                  [disabled]="solutionShown()"
+                  [attr.aria-pressed]="isSelected(row.id, col.id)"
+                  [attr.aria-label]="cellAria(row, ri, col.label)"
+                  [attr.data-cell]="row.id + ':' + col.id"
+                  (click)="toggle(row.id, col.id)">
+                  @if (isSelected(row.id, col.id)) {
+                    <mat-icon class="mc-option__icon" aria-hidden="true">{{ multi() ? 'check_box' : 'radio_button_checked' }}</mat-icon>
+                  }
+                  <span>{{ col.label }}</span>
+                </button>
+              }
+            </span>
+            @if (rowMark()(row.id); as mark) {
+              <span class="mc-list__mark" [class.mc-list__mark--wrong]="mark === 'wrong'">
+                <mat-icon aria-hidden="true">{{ mark === 'correct' ? 'check' : 'close' }}</mat-icon>
+                <span>{{ mark === 'correct' ? t('markCorrect') : t('markWrong') }}</span>
+              </span>
+            }
+          </li>
+        }
+      </ol>
+    }
+
+    <div class="mc-footer">
+      <p class="mc-hint" aria-live="polite">{{ hint() }}</p>
+      <button mat-stroked-button type="button" class="mc-clear" (click)="clearAll()"
+        [disabled]="solutionShown() || answeredCount() === 0">
+        <mat-icon>restart_alt</mat-icon>
+        {{ 'common.clear' | transloco }}
+      </button>
+    </div>
+  }
+</div>

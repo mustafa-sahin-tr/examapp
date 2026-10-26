@@ -636,4 +636,103 @@ describe('ActivityPlayerComponent (#573)', () => {
     expect(badgeService.getActivitySummary).toHaveBeenCalledTimes(2);
     expect(q('today-card')?.textContent).toContain('1 etkinlik · 3 dk etkin süre · 1 gün üst üste');
   });
+  // Issue #574: matris seçim maddesi — oynatıcı, kontrol gövdesi, satır sonuçları ve çözüm satırları.
+  describe('matrixChoice (#574)', () => {
+    const MATRIX_PLAN = JSON.stringify({
+      version: 1,
+      type: 'matrixChoice',
+      multiPerRow: false,
+      columns: [{ id: 'c1', label: 'D' }, { id: 'c2', label: 'Y' }],
+      rows: [
+        { id: 'r1', label: 'Kuşlar uçar.', box: { x: 0, y: 0, width: 100, height: 20 } },
+        { id: 'r2', box: { x: 0, y: 30, width: 100, height: 20 } },
+      ],
+    });
+    const ANSWER_R1 = JSON.stringify({ version: 1, type: 'matrixChoice', selections: { r1: ['c2'] } });
+    const matrixInstance = (overrides: Partial<TestInstance> = {}) =>
+      instance(overrides, [{ answerPayload: ANSWER_R1, question: { ...instance().testInstanceQuestions[0].question, interactionType: 'matrixChoice', interactionPlan: MATRIX_PLAN } }]);
+    const rowTexts = () => Array.from(el().querySelectorAll('[data-testid="result-row"]')).map((r) => r.textContent ?? '');
+
+    it('rendersMatrixPlayer_PartialAnswerIsBlankItem', async () => {
+      await create(matrixInstance());
+      fixture.componentInstance.goTo(0);
+      await settle();
+
+      expect(el().querySelector('app-question-canvas-matrix-choice')).not.toBeNull();
+      expect(el().querySelector('app-question-canvas-dragdrop-labeling')).toBeNull();
+      expect(fixture.componentInstance.steps()[0].state).toBe('answered');
+      expect(fixture.componentInstance.blankItems()).toContain('a');
+    });
+
+    it('blankWarning_MatrixUsesNeutralWording_DragDropOnlyKeepsPlacementText', async () => {
+      await create(matrixInstance());
+      await settle();
+      expect(fixture.componentInstance.blankKind()).toBe('generic');
+      expect(q('blank-warning')?.textContent).toContain('boş bırakılan yer');
+
+      fixture.destroy();
+      TestBed.resetTestingModule();
+      await create(instance({}, [{}, { selectedAnswerId: 11 }]));
+      await settle();
+      expect(fixture.componentInstance.blankKind()).toBe('placement');
+      expect(q('blank-warning')?.textContent).toContain('boş yerleştirme');
+    });
+
+    it('change_SavesPayloadAndCheckSendsIt_RowsShowSelectionAndMarks', async () => {
+      await create(matrixInstance());
+      fixture.componentInstance.goTo(0);
+      await settle();
+      const item = fixture.componentInstance.items()[0];
+      const both = JSON.stringify({ version: 1, type: 'matrixChoice', selections: { r1: ['c2'], r2: ['c1'] } });
+      fixture.componentInstance.onDragDropChange(both, item);
+      await settle();
+      expect(testService['saveAnswer']).toHaveBeenCalledWith(expect.objectContaining({ testQuestionId: 101, answerPayload: both }));
+      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 1,
+          totalCount: 3,
+          questions: [
+            { instanceQuestionId: 101, isCorrect: false, correctCount: 1, totalCount: 2, feedback: '{"rows":[{"id":"r1","correct":false},{"id":"r2","correct":true}]}' },
+            { instanceQuestionId: 102, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+
+      expect(activityService.check.mock.lastCall![1][0]).toEqual({ instanceQuestionId: 101, selectedAnswerId: null, answerPayload: both });
+      const rows = rowTexts();
+      expect(rows[0]).toContain('Kuşlar uçar.: Y');
+      expect(rows[1]).toContain('Satır 2: D');
+      expect(el().querySelectorAll('.mc-list__row.is-wrong').length).toBe(1);
+      expect(el().querySelectorAll('.mc-list__row.is-correct').length).toBe(1);
+      expect(el().textContent).not.toMatch(/%|puan|XP/i);
+    });
+
+    it('reveal_RowsShowSolutionColumnsAndPlayerShowsSolution', async () => {
+      await create(matrixInstance({ checkCount: 1 }));
+      activityService.getSolutions.mockReturnValue(
+        of({
+          success: true,
+          questions: [
+            { instanceQuestionId: 101, questionId: 1, correctAnswerId: null, interactionSolution: '{"r1":["c1"],"r2":["c2"]}' },
+            { instanceQuestionId: 102, questionId: 2, correctAnswerId: 11, interactionSolution: null },
+          ],
+        })
+      );
+      fixture.componentInstance.goTo(0);
+
+      await fixture.componentInstance.reveal();
+      await settle();
+
+      const rows = fixture.componentInstance.currentRows();
+      expect(rows.map((r) => r.solution)).toEqual(['D', 'Y']);
+      expect(rows[1].label).toBe('Satır 2: boş');
+      expect(el().querySelector('[data-cell="r1:c1"]')?.getAttribute('aria-pressed')).toBe('true');
+      expect(el().querySelector('[data-cell="r1:c2"]')?.getAttribute('aria-pressed')).toBe('false');
+    });
+  });
 });

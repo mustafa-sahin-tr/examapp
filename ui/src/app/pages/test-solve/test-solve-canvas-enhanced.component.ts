@@ -1,3 +1,4 @@
+import { isBlankMatrixChoicePayload } from '../../models/matrix-choice';
 import {
   AfterViewInit,
   Component,
@@ -1792,7 +1793,9 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   private isQuestionAnswered(question: TestInstanceQuestion): boolean {
-    return !!question.selectedAnswerId || this.isNonEmptyPayload(question.answerPayload);
+    // Issue #574: seçimsiz matris cevabı (Temizle) gönderilir ama cevapsız sayılır (sunucu da boş cevap sayar).
+    const payload = question.answerPayload;
+    return !!question.selectedAnswerId || (this.isNonEmptyPayload(payload) && !isBlankMatrixChoicePayload(payload));
   }
 
   private isNonEmptyPayload(payload: string | undefined): boolean {

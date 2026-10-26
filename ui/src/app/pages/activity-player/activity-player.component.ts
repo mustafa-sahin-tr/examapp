@@ -34,6 +34,14 @@ import {
 import { ActivityProgressView, toActivityProgressView } from '../../models/activity-summary.model';
 import { AssignedWorksheet } from '../../models/assignment';
 import { AnswerChoice, QuestionRegion } from '../../models/draws';
+import {
+  MatrixChoicePlanV1,
+  isMatrixChoiceType,
+  parseMatrixChoicePlan,
+  parseMatrixChoiceSelections,
+  parseMatrixChoiceSolution,
+  selectionOf,
+} from '../../models/matrix-choice';
 import { TestInstance, TestInstanceQuestion, TestStatus } from '../../models/test-instance';
 import { ActivityService } from '../../services/activity.service';
 import { BadgeService } from '../../services/badge.service';
@@ -54,6 +62,7 @@ import {
   DragDropLabelingPlanV1,
   QuestionCanvasDragDropLabelingComponent,
 } from '../../shared/components/question-canvas-dragdrop-labeling/question-canvas-dragdrop-labeling.component';
+import { QuestionCanvasMatrixChoiceComponent } from '../../shared/components/question-canvas-matrix-choice/question-canvas-matrix-choice.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 import { ActiveTimeTracker, ACTIVITY_MAX_ACTIVE_SECONDS } from '../../shared/utils/active-time-tracker';
 import { currentUserId } from '../../shared/utils/current-user-id.util';
@@ -108,6 +117,7 @@ export type ActivityAction = 'check' | 'reveal' | 'finish';
     ActivityCheckPanelComponent,
     ActivitySummaryComponent,
     QuestionCanvasDragDropLabelingComponent,
+    QuestionCanvasMatrixChoiceComponent,
     QuestionCanvasViewComponentv5,
     QuestionLiteViewComponent,
   ],
@@ -205,6 +215,7 @@ export class ActivityPlayerComponent {
   private readonly failedItems = new Set<number>();
   private nextActivitySub: Subscription | null = null;
   private readonly plans = new Map<number, DragDropLabelingPlanV1 | null>();
+  private readonly matrixPlans = new Map<number, MatrixChoicePlanV1 | null>();
 
   readonly title = computed(() => this.instance()?.testName ?? '');
   readonly currentItem = computed(() => this.items()[this.currentIndex()] ?? null);
@@ -234,6 +245,13 @@ export class ActivityPlayerComponent {
       .filter((label): label is string => label !== null);
   });
 
+  /** Issue #574: boş maddelerin hepsi sürükle-bırak ise "boş yerleştirme", değilse genel "boş bırakılan yer" metni. */
+  readonly blankKind = computed<'placement' | 'generic'>(() => {
+    const answers = this.answers();
+    const blank = this.items().filter((item) => this.isIncomplete(item, answers[item.id]));
+    return blank.length > 0 && blank.every((item) => this.isDragDrop(item)) ? 'placement' : 'generic';
+  });
+
   /** Kontrolden sonra en az bir madde değişti (sonucu düştü). */
   readonly stale = computed(() => {
     if (!this.summary()) return false;
@@ -261,6 +279,7 @@ export class ActivityPlayerComponent {
     const revealed = this.revealed();
     if (!result && !revealed) return [];
     const solution = revealed ? this.solutions()?.[item.id] ?? null : null;
+    if (this.isMatrix(item)) return this.matrixRows(item, result, solution);
     return this.isDragDrop(item)
       ? this.dragDropRows(item, result, solution)
       : this.mcqRows(item, result, solution);
@@ -433,6 +452,7 @@ export class ActivityPlayerComponent {
   // Cevaplar
   // ---------------------------------------------------------------------------
 
+  /** Etkileşimli madde (sürükle-bırak, matris #574): cevap `answerPayload` olarak kaydedilir. */
   onDragDropChange(payload: string, item: TestInstanceQuestion): void {
     if (this.revealed() || this.finished() || this.contentLocked()) return;
     this.updateAnswer(item, { selectedAnswerId: null, answerPayload: payload });
@@ -552,7 +572,7 @@ export class ActivityPlayerComponent {
     const sent = new Map(items.map((item) => [item.id, this.signature(answers[item.id])]));
     const body = items.map((item) => {
       const answer = answers[item.id];
-      return this.isDragDrop(item)
+      return this.isInteractive(item)
         ? { instanceQuestionId: item.id, selectedAnswerId: null, answerPayload: answer?.answerPayload ?? null }
         : { instanceQuestionId: item.id, selectedAnswerId: answer?.selectedAnswerId ?? null, answerPayload: null };
     });
@@ -870,7 +890,27 @@ export class ActivityPlayerComponent {
   // ---------------------------------------------------------------------------
 
   isDragDrop(item: TestInstanceQuestion): boolean {
-    return (item.question?.interactionType || 'mcq') === DRAG_DROP;
+    return (item.question?.interactionType || 'mcq').toLowerCase() === DRAG_DROP.toLowerCase();
+  }
+
+  isMatrix(item: TestInstanceQuestion): boolean {
+    return isMatrixChoiceType(item.question?.interactionType);
+  }
+
+  /** Cevabı `answerPayload` olan (MCQ dışı) madde. */
+  private isInteractive(item: TestInstanceQuestion): boolean {
+    return this.isDragDrop(item) || this.isMatrix(item);
+  }
+
+  private matrixPlanFor(item: TestInstanceQuestion): MatrixChoicePlanV1 | null {
+    if (!this.matrixPlans.has(item.id)) {
+      this.matrixPlans.set(item.id, parseMatrixChoicePlan(item.question?.interactionPlan));
+    }
+    return this.matrixPlans.get(item.id) ?? null;
+  }
+
+  private matrixAnsweredRows(item: TestInstanceQuestion, answer: ItemAnswer | undefined): number {
+    return Object.keys(parseMatrixChoiceSelections(answer?.answerPayload, this.matrixPlanFor(item))).length;
   }
 
   answerFor(item: TestInstanceQuestion): ItemAnswer | undefined {
@@ -906,12 +946,14 @@ export class ActivityPlayerComponent {
   }
 
   private hasAnswer(item: TestInstanceQuestion, answer: ItemAnswer | undefined): boolean {
+    if (this.isMatrix(item)) return this.matrixAnsweredRows(item, answer) > 0;
     if (this.isDragDrop(item)) return this.placementsOf(answer?.answerPayload).length > 0;
     return !!answer?.selectedAnswerId;
   }
 
   /** Boş satırı olan madde: MCQ seçilmemiş ya da hedeflerin bir kısmı boş. */
   private isIncomplete(item: TestInstanceQuestion, answer: ItemAnswer | undefined): boolean {
+    if (this.isMatrix(item)) return this.matrixAnsweredRows(item, answer) < (this.matrixPlanFor(item)?.rows.length ?? 0);
     if (!this.isDragDrop(item)) return !answer?.selectedAnswerId;
     const zones = this.planFor(item)?.dropZones.length ?? 0;
     return this.placementsOf(answer?.answerPayload).length < zones;
@@ -955,6 +997,26 @@ export class ActivityPlayerComponent {
         label: this.tr('rows.zone', { n: index + 1, content: own ? labels.get(own) ?? own : this.tr('rows.empty') }),
         correct: marks.has(zone.id) ? marks.get(zone.id)! : null,
         solution: solution ? (correctId ? labels.get(correctId) ?? correctId : this.tr('rows.empty')) : null,
+      };
+    });
+  }
+
+  /** Issue #574: matris satırları — satır adı + öğrencinin seçimi, ✓/✗ ve (çözüm açıkken) doğru kolonlar. */
+  private matrixRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
+    const plan = this.matrixPlanFor(item);
+    if (!plan) return [];
+    const labels = new Map(plan.columns.map((c) => [c.id, c.label]));
+    const selections = parseMatrixChoiceSelections(this.answers()[item.id]?.answerPayload, plan);
+    const solved = solution ? parseMatrixChoiceSolution(solution.interactionSolution, plan) : {};
+    const marks = new Map((result?.rows ?? []).map((row) => [row.id, row.correct]));
+    const join = (ids: string[] | undefined) =>
+      ids?.length ? ids.map((id) => labels.get(id) ?? id).join(', ') : this.tr('rows.empty');
+    return plan.rows.map((row, index) => {
+      const name = row.label?.trim() || this.tr('rows.matrixRowFallback', { n: index + 1 });
+      return {
+        label: this.tr('rows.matrixRow', { name, content: join(selectionOf(selections, row.id)) }),
+        correct: marks.has(row.id) ? marks.get(row.id)! : null,
+        solution: solution ? join(selectionOf(solved, row.id)) : null,
       };
     });
   }

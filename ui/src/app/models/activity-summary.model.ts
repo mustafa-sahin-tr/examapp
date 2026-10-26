@@ -25,6 +25,21 @@ export interface ActivitySummaryResponse {
   badges: ActivityBadgeProgress[];
 }
 
+/** Rozet ilerlemesinin birimi. */
+export type ActivityBadgeUnit = 'activities' | 'minutes' | 'days';
+
+/**
+ * Issue #572/#574: DTO kural türü taşımadığı için birim rozet kodunun önekinden çıkarılır (BadgeSeeder kodları):
+ * `activity-time-*` → dakika (ActivityStudyTimeMinutes), `activity-streak-*` → gün (ActivityDayStreak), diğerleri
+ * (`activity-count-*`) → etkinlik. Yeni bir etkinlik rozeti türü eklenirse önek buraya da eklenmeli.
+ */
+export function activityBadgeUnit(code: string | null | undefined): ActivityBadgeUnit {
+  const normalized = (code ?? '').toLowerCase();
+  if (normalized.startsWith('activity-time')) return 'minutes';
+  if (normalized.startsWith('activity-streak')) return 'days';
+  return 'activities';
+}
+
 /** Ekranda gösterilecek hal: "Bugün" kartı yalnız bugün etkinlik varsa, rozet kartı en yakın kazanılmamış rozet. */
 export interface ActivityProgressView {
   today: ActivityTodayStats | null;

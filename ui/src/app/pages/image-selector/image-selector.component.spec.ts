@@ -801,6 +801,277 @@ describe('ImageSelectorComponent', () => {
         });
     });
 
+    // Issue #574: matris seçim yazarlığı — satır/hücre çizimi, kolonlar, çözüm, plan/çözüm JSON'u ve doğrulama.
+    describe('matrixChoice authoring', () => {
+        /** Soru bölgesi (100,100) konumunda; çizim koordinatları tuval (mutlak) pikselidir. */
+        function setupMatrix() {
+            vi.spyOn(component, 'drawImage').mockReturnValue(undefined);
+            component.regions.set([{ ...region('Soru 1', []), x: 100, y: 100, width: 400, height: 300 }] as any);
+            component.interactionTypes.set('Soru 1', 'matrixChoice');
+            component.ensureMatrixState('Soru 1');
+        }
+        function draw(mode: 'matrixRow' | 'matrixCell', x1: number, y1: number, x2: number, y2: number) {
+            component.selectionMode.set(mode);
+            (component as any).addMatrixBoxFromDrag(0, x1, y1, x2, y2);
+        }
+
+        it('drawRowsAndCells_BuildsRelativePlanAndSeparateSolution', () => {
+            setupMatrix();
+            draw('matrixRow', 110, 110, 410, 140);
+            draw('matrixRow', 110.4, 150, 410, 180.6);
+            component.setMatrixRowLabel('Soru 1', 'r1', '  Kuşlar uçar.  ');
+            draw('matrixCell', 330, 112, 360, 138); // aktif kolon c1 → sonra c2'ye geçer
+            draw('matrixCell', 370, 112, 400, 138);
+            component.toggleMatrixSolution('Soru 1', 'r1', 'c1');
+            component.toggleMatrixSolution('Soru 1', 'r2', 'c2');
+
+            const q = component.getRegions(null).questions[0];
+            const plan = JSON.parse(q.interactionPlan!);
+
+            expect(q.interactionType).toBe('matrixChoice');
+            expect(plan).toEqual({
+                version: 1,
+                type: 'matrixChoice',
+                multiPerRow: false,
+                columns: [{ id: 'c1', label: 'D' }, { id: 'c2', label: 'Y' }],
+                rows: [
+                    {
+                        id: 'r1',
+                        label: 'Kuşlar uçar.',
+                        box: { x: 10, y: 10, width: 300, height: 30 },
+                        cells: { c1: { x: 230, y: 12, width: 30, height: 26 }, c2: { x: 270, y: 12, width: 30, height: 26 } },
+                    },
+                    { id: 'r2', box: { x: 10, y: 50, width: 300, height: 31 } },
+                ],
+            });
+            expect(plan.solution).toBeUndefined();
+            expect(JSON.parse(q.interactionSolution!)).toEqual({ r1: ['c1'], r2: ['c2'] });
+            expect(q.answers).toEqual([]);
+        });
+
+        it('noSolutionMarked_SendsNullSolution', () => {
+            setupMatrix();
+            draw('matrixRow', 110, 110, 410, 140);
+
+            expect(component.getRegions(null).questions[0].interactionSolution).toBeNull();
+        });
+
+        it('drawOutsideQuestionOrCellOutsideRow_IsRejected', () => {
+            setupMatrix();
+            const open = vi.spyOn((component as any).snackBar, 'open').mockReturnValue(undefined);
+            draw('matrixRow', 50, 110, 300, 140);
+            expect(component.ensureMatrixState('Soru 1').rows).toEqual([]);
+
+            draw('matrixRow', 110, 110, 410, 140);
+            draw('matrixCell', 120, 250, 150, 280);
+            expect(component.ensureMatrixState('Soru 1').rows[0].cells).toEqual({});
+            expect(open).toHaveBeenCalledTimes(2);
+        });
+
+        it('solution_SingleReplacesMultiTogglesAndTurningMultiOffTrims', () => {
+            setupMatrix();
+            draw('matrixRow', 110, 110, 410, 140);
+            component.applyMatrixPreset('Soru 1', 'compare');
+            component.toggleMatrixSolution('Soru 1', 'r1', 'c1');
+            component.toggleMatrixSolution('Soru 1', 'r1', 'c3');
+            expect(component.ensureMatrixState('Soru 1').solution).toEqual({ r1: ['c3'] });
+
+            component.setMatrixMultiPerRow('Soru 1', true);
+            component.toggleMatrixSolution('Soru 1', 'r1', 'c1');
+            expect(component.ensureMatrixState('Soru 1').solution).toEqual({ r1: ['c1', 'c3'] });
+
+            component.setMatrixMultiPerRow('Soru 1', false);
+            expect(component.ensureMatrixState('Soru 1').solution).toEqual({ r1: ['c1'] });
+        });
+
+        it('columnCount_ClampsAndDropsRemovedColumnsFromCellsAndSolution', () => {
+            setupMatrix();
+            draw('matrixRow', 110, 110, 410, 140);
+            component.setMatrixColumnCount('Soru 1', 3);
+            component.setMatrixActiveColumn('Soru 1', 'c3');
+            draw('matrixCell', 330, 112, 360, 138);
+            component.toggleMatrixSolution('Soru 1', 'r1', 'c3');
+
+            component.setMatrixColumnCount('Soru 1', 1);
+
+            const state = component.ensureMatrixState('Soru 1');
+            expect(state.columns.map((c) => c.id)).toEqual(['c1', 'c2']);
+            expect(state.rows[0].cells).toEqual({});
+            expect(state.solution).toEqual({});
+            component.setMatrixColumnCount('Soru 1', 99);
+            expect(component.ensureMatrixState('Soru 1').columns.length).toBe(10);
+        });
+
+        it('copyCellsFromFirstRow_AlignsCellsToEachRowBox', () => {
+            setupMatrix();
+            draw('matrixRow', 110, 110, 410, 140);
+            draw('matrixRow', 110, 200, 410, 240);
+            draw('matrixCell', 330, 112, 360, 138);
+            draw('matrixCell', 370, 112, 400, 138);
+
+            component.copyMatrixCellsFromFirstRow('Soru 1');
+
+            const r2 = component.ensureMatrixState('Soru 1').rows[1];
+            expect(r2.cells).toEqual({ c1: { x: 230, y: 102, width: 30, height: 26 }, c2: { x: 270, y: 102, width: 30, height: 26 } });
+            expect(component.getActiveInspector()?.matrix?.allCells).toBe(true);
+        });
+
+        it('hitTest_CellBeforeRow_AndRemoveRowDropsItsSolution', () => {
+            setupMatrix();
+            draw('matrixRow', 110, 110, 410, 140);
+            draw('matrixCell', 330, 112, 360, 138);
+            component.toggleMatrixSolution('Soru 1', 'r1', 'c1');
+
+            expect(component.getRegionOrAnswerAtPosition(340, 120)).toEqual({
+                type: 'matrixCell',
+                value: { questionIndex: 0, rowId: 'r1', columnId: 'c1' },
+            });
+            expect(component.getRegionOrAnswerAtPosition(150, 120)).toEqual({
+                type: 'matrixRow',
+                value: { questionIndex: 0, rowId: 'r1' },
+            });
+
+            component.removeMatrixRow('Soru 1', 'r1');
+            expect(component.ensureMatrixState('Soru 1').solution).toEqual({});
+        });
+
+        it('validateQuestions_Save_BlocksIncompleteMatrix_TrainAndSkipInteractiveDoNot', () => {
+            setupMatrix();
+            const tr = (key: string, params?: Record<string, unknown>) => (component as any).tr(key, params);
+
+            expect(component.validateQuestions({ requireCorrectAnswer: true })[0].messages).toEqual([tr('warnings.matrixNoRows')]);
+
+            draw('matrixRow', 110, 110, 410, 140);
+            draw('matrixRow', 110, 150, 410, 180);
+            component.setMatrixColumnLabel('Soru 1', 'c2', '  ');
+            component.toggleMatrixSolution('Soru 1', 'r1', 'c1');
+            expect(component.validateQuestions({ requireCorrectAnswer: true })[0].messages).toEqual([
+                tr('warnings.matrixEmptyColumnLabel'),
+                tr('warnings.matrixMissingSolution', { count: 1 }),
+            ]);
+            expect(component.validateQuestions({ requireCorrectAnswer: false })).toEqual([]);
+            expect(component.validateQuestions({ requireCorrectAnswer: true, skipInteractive: true })).toEqual([]);
+
+            component.setMatrixColumnLabel('Soru 1', 'c2', 'Y');
+            component.toggleMatrixSolution('Soru 1', 'r2', 'c2');
+            expect(component.validateQuestions({ requireCorrectAnswer: true })).toEqual([]);
+        });
+
+        it('partialCells_IsWarningOnlyNotBlocking', () => {
+            setupMatrix();
+            draw('matrixRow', 110, 110, 410, 140);
+            draw('matrixCell', 330, 112, 360, 138);
+            component.toggleMatrixSolution('Soru 1', 'r1', 'c1');
+            const r = component.regions()[0];
+
+            component.checkRegionWarning(r);
+
+            expect(component.warningMarkers.find((w) => w.id === r.id)?.messages).toEqual([
+                (component as any).tr('warnings.matrixPartialCells'),
+            ]);
+            expect(component.validateQuestions({ requireCorrectAnswer: true })).toEqual([]);
+        });
+
+        it('sendToFix_OnlyMatrixQuestions_DoesNotPost', () => {
+            setupMatrix();
+            component.imageData.set('data:image/png;base64,xx');
+            const sendSpy = vi.spyOn(component.questionDetectorService, 'sendtoFix').mockReturnValue(of({ success: true, added: 0, imageFile: 'p.png' }));
+            vi.spyOn((component as any).snackBar, 'open').mockReturnValue(undefined);
+
+            component.sendToFix();
+
+            expect(sendSpy).not.toHaveBeenCalled();
+        });
+
+        // E2E (Sosyal Bilgiler s.186): iki sütunlu düzende sağ sütundaki satırın hücreleri kendi kutusuna kaymalı.
+        it('copyCellsFromFirstRow_TwoColumnLayout_OffsetsXAndClampsToRowBox', () => {
+            setupMatrix();
+            draw('matrixRow', 110, 110, 290, 140); // sol sütun: box x 10..190
+            draw('matrixRow', 310, 110, 450, 140); // sağ sütun, daha dar: box x 210..350
+            draw('matrixCell', 230, 112, 260, 138); // c1 göreli x 130 → sağ satırda 210+120=330
+            draw('matrixCell', 260, 112, 290, 138); // c2 göreli x 160 → 370, kutuya sığdırılır
+
+            component.copyMatrixCellsFromFirstRow('Soru 1');
+
+            const r2 = component.ensureMatrixState('Soru 1').rows[1];
+            expect(r2.cells['c1']).toEqual({ x: 330, y: 12, width: 20, height: 26 });
+            expect(r2.cells['c2']).toEqual({ x: 349, y: 12, width: 1, height: 26 });
+            Object.values(r2.cells).forEach((c) => {
+                expect(c.x).toBeGreaterThanOrEqual(r2.box.x);
+                expect(c.x + c.width).toBeLessThanOrEqual(r2.box.x + r2.box.width);
+            });
+        });
+
+        it('toolbarMatrixMode_OnMcqQuestion_ConvertsToMatrixInsteadOfLosingRows', () => {
+            vi.spyOn(component, 'drawImage').mockReturnValue(undefined);
+            component.regions.set([{ ...region('Soru 1', []), x: 100, y: 100, width: 400, height: 300 }] as any);
+            expect(component.getInteractionType('Soru 1')).toBe('mcq');
+
+            draw('matrixRow', 110, 110, 410, 140);
+
+            expect(component.getInteractionType('Soru 1')).toBe('matrixChoice');
+            expect(JSON.parse(component.getRegions(null).questions[0].interactionPlan!).rows.length).toBe(1);
+        });
+
+        it('lockedToolbarMode_SelectMatrixCellMode_UpdatesLockAndSurvivesQuestionSelect', () => {
+            setupMatrix();
+            component.lockSelectionMode('matrixRow');
+
+            component.selectMatrixCellMode(0, 'c2');
+            expect(component.selectionModeLocked()).toBe('matrixCell');
+            expect(component.ensureMatrixState('Soru 1').activeColumnId).toBe('c2');
+
+            component.selectQuestion(0);
+            expect(component.selectionMode()).toBe('matrixCell');
+        });
+
+        it('cellClick_TogglesSolutionOnlyInMatrixModes', () => {
+            setupMatrix();
+            draw('matrixRow', 110, 110, 410, 140);
+            draw('matrixCell', 330, 112, 360, 138);
+            (component as any).ctx = {};
+            const click = (mode: 'answer' | 'matrixCell') => {
+                component.selectionMode.set(mode);
+                vi.spyOn(component as any, 'toCanvasPoint').mockReturnValue({ x: 340, y: 120 });
+                (component as any).startX = 340;
+                (component as any).startY = 120;
+                (component as any).isDrawing = true;
+                (component as any).pendingHit = component.getRegionOrAnswerAtPosition(340, 120);
+                component.endSelection(new MouseEvent('mouseup'));
+            };
+
+            click('answer');
+            expect(component.ensureMatrixState('Soru 1').solution).toEqual({});
+
+            click('matrixCell');
+            expect(component.ensureMatrixState('Soru 1').solution).toEqual({ r1: ['c1'] });
+            expect(component.selectionMode()).toBe('matrixCell');
+        });
+
+        it('planBuilder_EmitsOnlyContractKeysAndRegexSafeIds', () => {
+            setupMatrix();
+            component.setMatrixColumnCount('Soru 1', 10);
+            draw('matrixRow', 110, 110, 410, 140);
+            draw('matrixCell', 330, 112, 360, 138);
+            component.setMatrixRowLabel('Soru 1', 'r1', 'Metin');
+
+            const plan = JSON.parse(component.getRegions(null).questions[0].interactionPlan!);
+
+            expect(Object.keys(plan).sort()).toEqual(['columns', 'multiPerRow', 'rows', 'type', 'version']);
+            plan.columns.forEach((c: object) => expect(Object.keys(c).sort()).toEqual(['id', 'label']));
+            expect(Object.keys(plan.rows[0]).sort()).toEqual(['box', 'cells', 'id', 'label']);
+            expect(Object.keys(plan.rows[0].box).sort()).toEqual(['height', 'width', 'x', 'y']);
+            const ids = [...plan.columns.map((c: { id: string }) => c.id), ...plan.rows.map((r: { id: string }) => r.id)];
+            ids.forEach((id: string) => expect(id).toMatch(/^[A-Za-z0-9_-]{1,32}$/));
+        });
+
+        it('removeQuestionAndReset_ClearMatrixState', () => {
+            setupMatrix();
+            component.resetRegions();
+            expect(component.matrixState.size).toBe(0);
+        });
+    });
+
     // Bekleme anlarının görünürlüğü: analiz örtüsü, eğitime gönderim meşgul durumu ve hata yolları.
     describe('busy states (predict / sendToFix)', () => {
         let snackBarOpen: Mock;

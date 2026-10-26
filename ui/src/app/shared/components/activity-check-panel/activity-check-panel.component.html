@@ -14,7 +14,7 @@
   @if (blankItems().length > 0 && !revealed()) {
     <div class="acp__box acp__box--warn" role="status" data-testid="blank-warning">
       <mat-icon aria-hidden="true">warning</mat-icon>
-      <span>{{ t('blankWarning', { count: blankItems().length, items: blankItems().join(', ') }) }}</span>
+      <span>{{ t(blankKind() === 'generic' ? 'blankWarningGeneric' : 'blankWarning', { count: blankItems().length, items: blankItems().join(', ') }) }}</span>
     </div>
   }
 

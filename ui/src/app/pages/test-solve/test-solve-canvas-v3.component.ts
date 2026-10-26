@@ -25,6 +25,8 @@ import { QuestionLiteViewComponent } from '../question-lite-view/question-lite-v
 import { CountdownComponent } from '../../shared/components/countdown/countdown.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 import { QuestionCanvasDragDropLabelingComponent } from '../../shared/components/question-canvas-dragdrop-labeling/question-canvas-dragdrop-labeling.component';
+import { isMatrixChoiceType } from '../../models/matrix-choice';
+import { QuestionCanvasMatrixChoiceComponent } from '../../shared/components/question-canvas-matrix-choice/question-canvas-matrix-choice.component';
 import { StorageImageRetryDirective } from '../../shared/directives/storage-image-retry.directive';
 
 /**
@@ -55,6 +57,7 @@ import { StorageImageRetryDirective } from '../../shared/directives/storage-imag
     CountdownComponent,
     QuestionCanvasViewComponentv5,
     QuestionCanvasDragDropLabelingComponent,
+    QuestionCanvasMatrixChoiceComponent,
     TranslocoDirective,
     StorageImageRetryDirective,
   ],
@@ -145,6 +148,13 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
   public showPassageOnly(questionIndex: number) {
     if (!this.isPassageFirstActive(questionIndex)) return;
     this.passageOnlyByQuestionIndex.set(questionIndex, true);
+  }
+
+  /** Issue #574 (L3): etkileşim türü büyük/küçük harf duyarsız; bilinmeyen tür MCQ. */
+  public interactionKind(type: string | null | undefined): 'mcq' | 'dragDropLabeling' | 'matrixChoice' {
+    const normalized = (type ?? '').toLowerCase();
+    if (normalized === 'dragdroplabeling') return 'dragDropLabeling';
+    return isMatrixChoiceType(type) ? 'matrixChoice' : 'mcq';
   }
 
   // Explicitly re-expose on v3 for Angular template type-checking.

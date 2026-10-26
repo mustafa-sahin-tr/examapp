@@ -455,6 +455,65 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
     });
 });
 
+// Issue #574: matris seçim dalı — tür normalizasyonu, payload kaydı ve seçimsiz cevabın boş sayılması.
+describe('TestSolveCanvasComponentv3 — matrixChoice (#574)', () => {
+    let fixture: ComponentFixture<TestSolveCanvasComponentv3>;
+    let component: TestSolveCanvasComponentv3;
+    let testService: MockedObject<TestService>;
+    const MATRIX = (selections: Record<string, string[]>) => JSON.stringify({ version: 1, type: 'matrixChoice', selections });
+
+    beforeEach(async () => {
+        testService = {
+            saveAnswer: vi.fn().mockName('TestService.saveAnswer'),
+            completeTest: vi.fn(),
+            getCanvasTestWithAnswers: vi.fn(),
+            convertTestInstanceToRegions: vi.fn(),
+        } as unknown as MockedObject<TestService>;
+        testService.saveAnswer.mockReturnValue(of(OK));
+        await TestBed.configureTestingModule({
+            imports: [TestSolveCanvasComponentv3, translocoTesting],
+            providers: [
+                provideRouter([]),
+                { provide: ActivatedRoute, useValue: { paramMap: NEVER } },
+                { provide: TestService, useValue: testService },
+            ],
+        }).compileComponents();
+        fixture = TestBed.createComponent(TestSolveCanvasComponentv3);
+        component = fixture.componentInstance;
+        component.testInstance = buildInstance();
+        component.currentIndex.set(0);
+    });
+
+    afterEach(() => fixture.destroy());
+
+    it('interactionKind_IsCaseInsensitive_UnknownIsMcq', () => {
+        expect(component.interactionKind('matrixChoice')).toBe('matrixChoice');
+        expect(component.interactionKind('MatrixChoice')).toBe('matrixChoice');
+        expect(component.interactionKind('DRAGDROPLABELING')).toBe('dragDropLabeling');
+        expect(component.interactionKind(null)).toBe('mcq');
+        expect(component.interactionKind('somethingElse')).toBe('mcq');
+    });
+
+    it('matrixPayload_IsSavedThroughThePayloadPath', () => {
+        const payload = MATRIX({ r1: ['c2'] });
+
+        component.saveDragDropAnswerForQuestion(payload, 1);
+
+        expect(testService.saveAnswer).toHaveBeenCalledWith(
+            expect.objectContaining({ testQuestionId: 102, selectedAnswerId: 0, answerPayload: payload, testInstanceId: 7 })
+        );
+        expect(component.unansweredCount()).toBe(1);
+    });
+
+    it('blankMatrixPayload_IsSentButCountsAsUnanswered', () => {
+        component.saveDragDropAnswerForQuestion(MATRIX({ r1: ['c2'] }), 1);
+        component.saveDragDropAnswerForQuestion(MATRIX({}), 1);
+
+        expect(vi.mocked(testService.saveAnswer).mock.lastCall![0].answerPayload).toBe(MATRIX({}));
+        expect(component.unansweredCount()).toBe(2);
+    });
+});
+
 describe('isTestCompletedRejection', () => {
     it('only the TestNotInProgress error code counts; a bare 409 or conflict flag does not', () => {
         expect(isTestCompletedRejection(conflict409())).toBe(true);

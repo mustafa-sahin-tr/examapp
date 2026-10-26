@@ -345,7 +345,7 @@
           }
         </div>
         } @else {
-        @if ((questionData.question.question.interactionType || 'mcq') === 'dragDropLabeling') {
+        @if (interactionKind(questionData.question.question.interactionType) === 'dragDropLabeling') {
         <app-question-canvas-dragdrop-labeling class="canvas-stage" [questionRegion]="questionData.region"
           [imageRefresh]="imageRefresh"
           [interactionPlanJson]="questionData.question.question.interactionPlan || null"
@@ -355,6 +355,17 @@
           [hidePassage]="isPassageFirstActive(questionData.index)"
           (answerPayloadChange)="saveDragDropAnswerForQuestion($event, questionData.index)"
           (answered)="focusOnQuestion(questionData.index)"></app-question-canvas-dragdrop-labeling>
+        } @else if (interactionKind(questionData.question.question.interactionType) === 'matrixChoice') {
+        <!-- Issue #574: matris seçim; cevap aynı payload kayıt yolundan gider. -->
+        <app-question-canvas-matrix-choice class="canvas-stage" [questionRegion]="questionData.region"
+          [imageRefresh]="imageRefresh"
+          [interactionPlanJson]="questionData.question.question.interactionPlan || null"
+          [interactionSolutionJson]="questionData.question.question.interactionSolution || null"
+          [answerPayloadJson]="questionData.question.answerPayload || null"
+          [practiceFeedback]="questionData.question.question.isExample"
+          [hidePassage]="isPassageFirstActive(questionData.index)"
+          (answerPayloadChange)="saveDragDropAnswerForQuestion($event, questionData.index)"
+          (answered)="focusOnQuestion(questionData.index)"></app-question-canvas-matrix-choice>
         } @else {
         <app-question-canvas-view-v5 #canvasView class="canvas-stage" [questionRegion]="questionData.region"
           [imageRefresh]="imageRefresh"

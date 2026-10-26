@@ -31,6 +31,18 @@ describe('ActivitySummaryComponent (#573, #572)', () => {
     expect(q('badge-card')).toBeNull();
   });
 
+  // Issue #574: birim rozet kodunun önekinden — süre rozeti dakika, seri rozeti gün.
+  it.each([
+    ['activity-time-2', 'Odak rozeti: 40/60 dk', '20 dk daha!'],
+    ['activity-streak-1', 'Odak rozeti: 40/60 gün', '20 gün daha!'],
+    ['activity-count-3', 'Odak rozeti: 40/60 etkinlik', '20 etkinlik daha!'],
+  ])('badgeUnit_FromCodePrefix_%s', (code, line, remaining) => {
+    setup({ badge: { code, name: 'Odak', current: 40, target: 60, earned: false } });
+
+    expect(q('badge-card')?.textContent).toContain(line);
+    expect(q('badge-card')?.textContent).toContain(remaining);
+  });
+
   it('withData_TodayAndBadgeCardsRender', () => {
     setup({
       today: { activityCount: 3, activeMinutes: 24, streakDays: 2 },

@@ -298,7 +298,19 @@
       "poolReturnAria": "Etiketler alanı: seçili etiketi geri koy",
       "markCorrect": "Doğru",
       "markWrong": "Yanlış",
-      "poolReturn": "Etiketlere geri koy"
+      "poolReturn": "Etiketlere geri koy",
+      "matrix": {
+        "hintSingle": "Her satır için bir seçeneğe dokun. Aynı seçeneğe yeniden dokunursan seçim kalkar.",
+        "hintMulti": "Her satırda uyan seçeneklerin hepsini seç; yeniden dokununca seçim kalkar.",
+        "solutionShownHint": "Doğru cevaplar gösteriliyor.",
+        "rowFallback": "Satır {{n}}",
+        "rowAria": "Satır {{n}}: {{label}}",
+        "cellAria": "{{row}} — {{column}}",
+        "announceSelected": "{{row}}: {{column}} seçildi.",
+        "announceCleared": "{{row}}: {{column}} seçimi kaldırıldı.",
+        "markCorrect": "Doğru",
+        "markWrong": "Yanlış"
+      }
     },
     "sharingBadge": {
       "publicAssignable": "Herkese Açık · Atanabilir",
@@ -568,7 +580,8 @@
         "checkRequired": "Doğru cevaplar için önce bir kez kontrol et.",
         "generic": "Bir sorun oluştu. Tekrar dene.",
         "retry": "Tekrar dene",
-        "networkUnsaved": "Bağlantı sorunu: bazı cevapların henüz kaydedilmedi. Tekrar dene."
+        "networkUnsaved": "Bağlantı sorunu: bazı cevapların henüz kaydedilmedi. Tekrar dene.",
+        "blankWarningGeneric": "{{count}} maddede boş bırakılan yer var ({{items}}). Boş bırakılanlar yanlış sayılır. Yine de kontrol edebilirsin."
       },
       "summary": {
         "title": "Etkinlik bitti",
@@ -579,7 +592,11 @@
         "badgeAria": "{{name}} rozeti ilerlemesi",
         "badgeRemaining": "{{count}} etkinlik daha!",
         "next": "Sıradaki etkinlik",
-        "backToList": "Listeye dön"
+        "backToList": "Listeye dön",
+        "badgeLineMinutes": "{{name}} rozeti: {{current}}/{{target}} dk",
+        "badgeLineDays": "{{name}} rozeti: {{current}}/{{target}} gün",
+        "badgeRemainingMinutes": "{{count}} dk daha!",
+        "badgeRemainingDays": "{{count}} gün daha!"
       },
       "launch": {
         "failed": "Etkinlik açılamadı. Tekrar dene.",

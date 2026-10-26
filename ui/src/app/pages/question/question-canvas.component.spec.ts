@@ -128,6 +128,36 @@ describe('QuestionCanvasComponent', () => {
         expect(component).toBeTruthy();
     });
 
+    // Issue #574 (E2E): hedef sayfa menüsü boş aramada da listeler, adla eşleşir ve etkinlik sayfalarını gösterir.
+    describe('target worksheet search (#574)', () => {
+        const wait = () => new Promise((resolve) => setTimeout(resolve, 350));
+        const sheets = [
+            { id: 1, name: 'Pilot Matris Etkinlikleri #574', subtitle: '', kind: 1 },
+            { id: 2, name: 'Deneme', subtitle: 'Kesirler', kind: 0 },
+        ];
+
+        it('emptySearch_RequestsRecentWorksheetsAndListsBothKinds', async () => {
+            testService.search.mockReturnValue(of({ items: sheets }) as any);
+            fixture = TestBed.createComponent(QuestionCanvasComponent);
+            component = fixture.componentInstance;
+            await wait();
+
+            expect(testService.search).toHaveBeenCalledWith('', [], [], 1, 100);
+            expect(component.filteredTestListSignal().map((t) => t.id)).toEqual([1, 2]);
+        });
+
+        it('search_MatchesNameEvenWithoutSubtitle', async () => {
+            testService.search.mockReturnValue(of({ items: sheets }) as any);
+            fixture = TestBed.createComponent(QuestionCanvasComponent);
+            component = fixture.componentInstance;
+            component.questionForm.get('testId')!.setValue('pilot matris');
+            await wait();
+
+            expect(testService.search).toHaveBeenLastCalledWith('pilot matris', [], [], 1, 100);
+            expect(component.filteredTestListSignal().map((t) => t.id)).toEqual([1]);
+        });
+    });
+
     describe('canPreview', () => {
         it('canPreview_NoIdAndNoTestValue_ReturnsFalse', () => {
             component.id = null;

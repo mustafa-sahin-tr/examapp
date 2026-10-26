@@ -17,14 +17,16 @@ import {
   ImageSelectorComponent,
   ActiveInspector,
   CanvasPassage,
+  CanvasSelectionMode,
   QuestionInteractionType,
 } from '../image-selector/image-selector.component';
+import { MatrixColumnPreset } from '../../models/matrix-choice';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { PASSAGE_INSTRUCTION_MAX_LENGTH, PassageKind, saveValidationMessage } from '../../models/activity';
+import { PASSAGE_INSTRUCTION_MAX_LENGTH, PassageKind, WorksheetKind, saveValidationMessage } from '../../models/activity';
 import { Subject } from '../../models/subject';
 import { Topic } from '../../models/topic';
 import { SubTopic } from '../../models/subtopic';
-import { debounceTime, of, switchMap } from 'rxjs';
+import { catchError, debounceTime, of, startWith, switchMap } from 'rxjs';
 import { SidenavService } from '../../services/sidenav.service';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -211,36 +213,42 @@ export class QuestionCanvasComponent implements OnInit {
     this.resetTest = false;
   });
 
+  /**
+   * Hedef sayfa araması. Issue #574 (E2E): arama kutusu boşken de istek atılır (son sayfalar listelenir; eskiden menü
+   * yazmadan hep "Sonuç yok" diyordu). Tür filtresi yok: test ve etkinlik sayfaları birlikte gelir (rozetle ayrılır).
+   */
   readonly searchResultSignal = toSignal(
     this.questionForm.get('testId')!.valueChanges.pipe(
+      startWith(''),
       debounceTime(300),
-      switchMap((searchValue) => {
-        if (!searchValue) {
-          return of({ items: [] });
-        }
-        return this.testService.search(searchValue, [], [], 1, 1000);
-      })
+      switchMap((searchValue) =>
+        this.testService
+          .search(typeof searchValue === 'string' ? searchValue.trim() : '', [], [], 1, 100)
+          .pipe(catchError(() => of({ items: [] as Test[] })))
+      )
     ),
-    { initialValue: { items: [] } }
+    { initialValue: { items: [] as Test[] } }
   );
 
   readonly filteredTestListSignal = computed(() => {
     const results = this.searchResultSignal();
     const bookTestId = this.questionForm.get('bookTestId')?.value;
     const testId = this.questionForm.get('testValue')?.value;
-    const testText = this.questionForm.get('testId')?.value;
-    return results.items.filter((test: Test) => {
+    const raw = this.questionForm.get('testId')?.value;
+    const testText = typeof raw === 'string' ? raw.trim().toLocaleLowerCase('tr') : '';
+    // Ad VEYA alt başlık eşleşir (eskiden yalnız alt başlık: adıyla aranan sayfa sunucudan gelse de eleniyordu).
+    const matches = (test: Test) =>
+      !testText ||
+      (test.name ?? '').toLocaleLowerCase('tr').includes(testText) ||
+      (test.subtitle ?? '').toLocaleLowerCase('tr').includes(testText);
+    return (results.items ?? []).filter((test: Test) => {
       if (test.id == testId) return true;
-      if (bookTestId) {
-        return (
-          test.bookTestId === +bookTestId &&
-          (testText === '' || test.subtitle?.toLowerCase().includes(testText.toLowerCase()))
-        );
-      } else {
-        return testText === '' || test.subtitle?.toLowerCase().includes(testText.toLowerCase());
-      }
+      if (bookTestId && test.bookTestId !== +bookTestId) return false;
+      return matches(test);
     });
   });
+
+  readonly worksheetKinds = WorksheetKind;
 
   fullScreen = signal(false);
 
@@ -539,11 +547,11 @@ export class QuestionCanvasComponent implements OnInit {
       });
   }
 
-  get selectionMode(): 'passage' | 'question' | 'answer' | 'dropzone' | null {
+  get selectionMode(): CanvasSelectionMode | null {
     return this.imageSelector?.selectionMode() ?? null;
   }
 
-  setSelectionMode(mode: 'question' | 'answer' | 'passage' | 'dropzone') {
+  setSelectionMode(mode: CanvasSelectionMode) {
     this.imageSelector.lockSelectionMode(this.selectionMode === mode ? null : mode);
   }
 
@@ -694,6 +702,68 @@ export class QuestionCanvasComponent implements OnInit {
     if (name) {
       this.imageSelector.setZoneSolution(name, zoneId, draggableId);
     }
+  }
+
+  // ---- Issue #574: matris seçim ----
+
+  insMatrixPreset(preset: MatrixColumnPreset) {
+    const name = this.insName;
+    if (name) this.imageSelector.applyMatrixPreset(name, preset);
+  }
+
+  insMatrixColumnCount(event: Event) {
+    const name = this.insName;
+    if (name) this.imageSelector.setMatrixColumnCount(name, (event.target as HTMLInputElement)?.value ?? '');
+  }
+
+  insMatrixColumnLabel(columnId: string, event: Event) {
+    const name = this.insName;
+    if (name) this.imageSelector.setMatrixColumnLabel(name, columnId, (event.target as HTMLInputElement)?.value ?? '');
+  }
+
+  insMatrixMulti(multi: boolean) {
+    const name = this.insName;
+    if (name) this.imageSelector.setMatrixMultiPerRow(name, multi);
+  }
+
+  insMatrixRowMode() {
+    const idx = this.insIndex;
+    if (idx != null) this.imageSelector.selectMatrixRowMode(idx);
+  }
+
+  insMatrixCellMode(columnId: string) {
+    const idx = this.insIndex;
+    if (idx != null) this.imageSelector.selectMatrixCellMode(idx, columnId);
+  }
+
+  insMatrixRemoveLastRow() {
+    const name = this.insName;
+    if (name) this.imageSelector.removeLastMatrixRow(name);
+  }
+
+  insMatrixClearRows() {
+    const name = this.insName;
+    if (name) this.imageSelector.clearMatrixRows(name);
+  }
+
+  insMatrixCopyCells() {
+    const name = this.insName;
+    if (name) this.imageSelector.copyMatrixCellsFromFirstRow(name);
+  }
+
+  insMatrixClearCells() {
+    const name = this.insName;
+    if (name) this.imageSelector.clearMatrixCells(name);
+  }
+
+  insMatrixRowLabel(rowId: string, event: Event) {
+    const name = this.insName;
+    if (name) this.imageSelector.setMatrixRowLabel(name, rowId, (event.target as HTMLInputElement)?.value ?? '');
+  }
+
+  insMatrixToggleSolution(rowId: string, columnId: string) {
+    const name = this.insName;
+    if (name) this.imageSelector.toggleMatrixSolution(name, rowId, columnId);
   }
 
   insToggleExample() {

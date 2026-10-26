@@ -38,6 +38,13 @@ describe('ActivityCheckPanelComponent (#573)', () => {
     expect(btn('check')?.disabled).toBe(false);
   });
 
+  it('blankKindGeneric_UsesNeutralWording', () => {
+    setup({ blankItems: ['a'], blankKind: 'generic' });
+
+    expect(q('blank-warning')?.textContent).toContain('1 maddede boş bırakılan yer var (a)');
+    expect(q('blank-warning')?.textContent).not.toContain('yerleştirme');
+  });
+
   it('afterCheck_SummaryInAriaLiveRegion_FixWrongRecheckAndRevealEnabled', () => {
     setup({ checkCount: 1, summary: { correct: 8, total: 10 } });
 

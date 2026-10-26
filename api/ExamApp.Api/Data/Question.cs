@@ -53,8 +53,13 @@ public class Question : BaseEntity
     // Canvas interaction type (e.g. mcq, dragDropLabeling)
     public string? InteractionType { get; set; }
 
-    // Optional interaction metadata (JSON)
+    // Optional interaction metadata (JSON) — issue #570: çözümsüz saklanır.
     public string? InteractionPlan { get; set; }
+
+    // issue #570: etkileşim çözümü (JSON, ör. {"placements":[...]}) plandan ayrı; öğrenciye yalnız örnek soruda /
+    // bitmiş testte, öğretmene yalnız sahibi/admin ise döner. Entity yanlışlıkla serileştirilirse sızmasın diye JsonIgnore.
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? InteractionSolution { get; set; }
 
     public double? X { get; set; }
 

@@ -40,6 +40,8 @@ export interface Question {
   answerColCount: number;
   interactionType?: string;
   interactionPlan?: string;
+  /** issue #570: doğru yerleşimler (JSON), plandan ayrı; yalnız yetkili/izinli durumda dolu gelir. */
+  interactionSolution?: string | null;
   x: number;
   y: number;
   width: number;

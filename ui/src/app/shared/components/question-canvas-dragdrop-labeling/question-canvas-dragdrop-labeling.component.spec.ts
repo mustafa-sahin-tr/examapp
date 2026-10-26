@@ -17,12 +17,14 @@ const PLAN = {
         { id: 'd1', label: 'Kalp' },
         { id: 'd2', label: 'Beyin' },
     ],
-    solution: {
-        placements: [
-            { draggableId: 'd1', dropZoneId: 'z1' },
-            { draggableId: 'd2', dropZoneId: 'z2' },
-        ],
-    },
+};
+
+// issue #570: çözüm plandan ayrı girdi (`interactionSolutionJson`).
+const SOLUTION = {
+    placements: [
+        { draggableId: 'd1', dropZoneId: 'z1' },
+        { draggableId: 'd2', dropZoneId: 'z2' },
+    ],
 };
 
 function region(overrides: Record<string, unknown> = {}): QuestionRegion {
@@ -46,6 +48,7 @@ describe('QuestionCanvasDragDropLabelingComponent (#545)', () => {
         region?: QuestionRegion;
         plan?: string | null;
         answer?: string | null;
+        solution?: string | null;
         practiceFeedback?: boolean;
         hidePassage?: boolean;
     }): void {
@@ -56,6 +59,7 @@ describe('QuestionCanvasDragDropLabelingComponent (#545)', () => {
         fixture.componentRef.setInput('questionRegion', inputs.region ?? region());
         fixture.componentRef.setInput('interactionPlanJson', inputs.plan === undefined ? JSON.stringify(PLAN) : inputs.plan);
         fixture.componentRef.setInput('answerPayloadJson', inputs.answer ?? null);
+        fixture.componentRef.setInput('interactionSolutionJson', inputs.solution === undefined ? JSON.stringify(SOLUTION) : inputs.solution);
         fixture.componentRef.setInput('practiceFeedback', inputs.practiceFeedback ?? false);
         fixture.componentRef.setInput('hidePassage', inputs.hidePassage ?? false);
         fixture.detectChanges();
@@ -115,6 +119,50 @@ describe('QuestionCanvasDragDropLabelingComponent (#545)', () => {
         expect(el().querySelector('#zone-z1')?.classList.contains('is-correct')).toBe(true);
         expect(el().querySelector('#zone-z2')?.classList.contains('is-correct')).toBe(false);
         expect(el().querySelector('#zone-z2')?.classList.contains('is-incorrect')).toBe(false);
+    });
+
+    const SWAPPED = JSON.stringify({
+        version: 1,
+        type: 'dragDropLabeling',
+        placements: [
+            { dropZoneId: 'z1', draggableId: 'd2' },
+            { dropZoneId: 'z2', draggableId: 'd1' },
+        ],
+    });
+    const marked = () => zones().filter((z) => z.classList.contains('is-correct') || z.classList.contains('is-incorrect'));
+
+    it('template_PracticeFeedbackWithSolution_MarksWrongPlacementsIncorrect', () => {
+        setup({ practiceFeedback: true, answer: SWAPPED });
+
+        expect(el().querySelector('#zone-z1')?.classList.contains('is-incorrect')).toBe(true);
+        expect(el().querySelector('#zone-z2')?.classList.contains('is-incorrect')).toBe(true);
+    });
+
+    // issue #570: istemci tarafı kontrol yalnız örnek sorularda; çözüm gelse bile practiceFeedback kapalıysa işaret yok.
+    it('template_NoPracticeFeedback_NoMarksEvenWithSolution', () => {
+        setup({ practiceFeedback: false, answer: SWAPPED });
+
+        expect(marked()).toEqual([]);
+    });
+
+    it('template_PracticeFeedbackWithoutSolution_NoMarks', () => {
+        setup({ practiceFeedback: true, solution: null, answer: SWAPPED });
+
+        expect(marked()).toEqual([]);
+    });
+
+    // Plan içinde eski `solution` kalsa bile kaynak değildir (yalnız ayrı girdi).
+    it('template_LegacySolutionInsidePlan_IsIgnored', () => {
+        setup({ practiceFeedback: true, solution: null, plan: JSON.stringify({ ...PLAN, solution: SOLUTION }), answer: SWAPPED });
+
+        expect(marked()).toEqual([]);
+    });
+
+    it('template_MalformedSolutionJson_NoMarksAndNoError', () => {
+        setup({ practiceFeedback: true, solution: '{not json', answer: SWAPPED });
+
+        expect(marked()).toEqual([]);
+        expect(zones().length).toBe(2);
     });
 
     it('template_PassageWithTitle_ShowsPassageUnlessHidden', () => {

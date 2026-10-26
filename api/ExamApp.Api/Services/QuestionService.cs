@@ -100,7 +100,19 @@ public class QuestionService : IQuestionService
                 // question.TopicId = questionDto.TopicId;
                 question.AnswerColCount = questionDto.AnswerColCount;
                 question.InteractionType = questionDto.InteractionType;
-                question.InteractionPlan = questionDto.InteractionPlan;
+                // issue #570: plan çözümsüz saklanır; çözüm ayrı alandan, yoksa plandan (eski istemci), o da yoksa mevcut değer.
+                if (!InteractionPlanSolution.TryResolveForWrite(questionDto.InteractionPlan, questionDto.InteractionSolution,
+                        question.InteractionSolution, out var storedPlan, out var storedSolution))
+                {
+                    return new QuestionSavedDto
+                    {
+                        Success = false,
+                        InvalidInput = true,
+                        Message = _localizer["questions.interactionSolution.invalid"]
+                    };
+                }
+                question.InteractionPlan = storedPlan;
+                question.InteractionSolution = storedSolution;
                 question.ShowPassageFirst = questionDto.ShowPassageFirst;
 
 
@@ -483,6 +495,25 @@ public class QuestionService : IQuestionService
         if (actingUserId > 0)
             _context.SetCurrentUser(actingUserId);
 
+        // issue #570: tüm soruların plan/çözümü transaction'dan ve MinIO yüklemelerinden ÖNCE doğrulanıp ayrılır — bozuk bir
+        // öğe hiçbir şey yüklenmeden/yazılmadan reddedilir (ham istisna mesajı dönmez).
+        var interactionByQuestion = new Dictionary<BulkQuestionDto, (string? Plan, string? Solution)>(ReferenceEqualityComparer.Instance);
+        foreach (var bulkQuestion in soruDto.Questions ?? new List<BulkQuestionDto>())
+        {
+            if (bulkQuestion == null)
+                continue;
+            if (!InteractionPlanSolution.TryResolveForWrite(bulkQuestion.InteractionPlan, bulkQuestion.InteractionSolution,
+                    existingSolution: null, out var resolvedPlan, out var resolvedSolution))
+            {
+                return new ResponseBaseDto
+                {
+                    Success = false,
+                    Message = _localizer["questions.bulk.invalidInteractionSolution", bulkQuestion.Name]
+                };
+            }
+            interactionByQuestion[bulkQuestion] = (resolvedPlan, resolvedSolution);
+        }
+
         // Wrapped in CreateExecutionStrategy so EF Core's retry-on-failure
         // (enabled by the Aspire Npgsql client integration) can retry the
         // whole transaction as one unit instead of rejecting it outright.
@@ -738,6 +769,10 @@ public class QuestionService : IQuestionService
                     questionClassifications.TryGetValue(questionDto, out var questionClassification);
                     var classificationSource = questionClassification?.Source ?? headerClassificationSource;
 
+                    // issue #570: plan çözümsüz saklanır; çözüm ayrı alandan ya da (eski istemci) plan içindeki solution'dan
+                    // (metodun başında doğrulandı).
+                    var (storedPlan, storedSolution) = interactionByQuestion[questionDto];
+
                     var question = new Question
                     {
                         ImageUrl = questionImageUrl,
@@ -751,9 +786,8 @@ public class QuestionService : IQuestionService
                         PracticeCorrectAnswer = questionDto.IsExample ? questionDto.ExampleAnswer : null,
                         IsCanvasQuestion = true,
                         InteractionType = interactionType,
-                        InteractionPlan = string.IsNullOrWhiteSpace(questionDto.InteractionPlan)
-                            ? null
-                            : questionDto.InteractionPlan,
+                        InteractionPlan = storedPlan,
+                        InteractionSolution = storedSolution,
                         ShowPassageFirst = questionDto.ShowPassageFirst,
                         SubjectId = questionClassification != null ? questionClassification.SubjectId : soruDto.Header.SubjectId,
                         TopicId = questionClassification != null ? questionClassification.TopicId : soruDto.Header.TopicId,

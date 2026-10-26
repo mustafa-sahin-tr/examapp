@@ -33,7 +33,12 @@
       "subjectTopicMismatch": "Topic.SubjectId ile Question.SubjectId uyumsuz. Question.SubjectId={0} ('{1}'), Topic(Id={2}, Name='{3}') SubjectId={4} ('{5}').",
       "subTopicsFromMultipleTopics": "Aynı question için birden fazla TopicId'ye ait SubTopic gönderildi. Tüm subtopic'lerin TopicId değeri aynı olmalı. {0}",
       "topicIdMissingWithSubTopics": "Header.TopicId belirtilmemiş/0 ancak SubTopic listesi var. SubTopic'lerin TopicId değeri {0}. Detay: {1}",
-      "subTopicTopicMismatch": "SubTopic'nin topic'i, question üzerinde setlenen TopicId'den farklı. Question.TopicId={0} ('{1}'), SubTopic(Id={2}, Name='{3}') TopicId={4} ('{5}')."
+      "subTopicTopicMismatch": "SubTopic'nin topic'i, question üzerinde setlenen TopicId'den farklı. Question.TopicId={0} ('{1}'), SubTopic(Id={2}, Name='{3}') TopicId={4} ('{5}').",
+      "invalidInteractionSolution": "Geçersiz etkileşim planı veya çözümü (yinelenen anahtarsız JSON nesnesi olmalı): {0}"
+    },
+
+    "interactionSolution": {
+      "invalid": "Geçersiz etkileşim planı veya çözümü: yinelenen anahtarsız bir JSON nesnesi olmalı."
     },
 
     "image": {

@@ -405,6 +405,10 @@ public class TestSessionService : ITestSessionService
             TestInstanceQuestions = OrderedForDisplay(testInstance.WorksheetInstanceQuestions).Select(tiq =>
             {
                 var questionEntity = tiq.WorksheetQuestion.Question;
+                // issue #570: plan çözümsüz; etkileşim çözümü CorrectAnswerId ile aynı kapıdan (bitmiş test) ya da örnek soruda.
+                var (interactionPlan, interactionSolution) = InteractionPlanSolution.ForOutput(
+                    questionEntity.InteractionPlan, questionEntity.InteractionSolution,
+                    includeSolution: questionEntity.IsExample || includeCorrectAnswer);
                 var questionDto = new QuestionDto
                 {
                     Id = questionEntity.Id,
@@ -413,7 +417,8 @@ public class TestSessionService : ITestSessionService
                     ImageUrl = questionEntity.ImageUrl,
                     IsExample = questionEntity.IsExample,
                     InteractionType = questionEntity.InteractionType,
-                    InteractionPlan = questionEntity.InteractionPlan,
+                    InteractionPlan = interactionPlan,
+                    InteractionSolution = interactionSolution,
                     ShowPassageFirst = questionEntity.ShowPassageFirst,
                     CorrectAnswerId = includeCorrectAnswer ? questionEntity.CorrectAnswerId : null,
                     Passage = questionEntity.PassageId.HasValue ? new PassageDto

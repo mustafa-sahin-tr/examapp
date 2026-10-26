@@ -58,8 +58,18 @@ public class QuestionDto
     // Canvas interaction (e.g. mcq, dragDropLabeling)
     public string? InteractionType { get; set; }
 
-    // Optional interaction metadata (JSON)
+    // Optional interaction metadata (JSON) — issue #570: yanıtlarda her zaman çözümsüz (solution alanı yok).
+    // Kayıtta yinelenen anahtarsız bir JSON nesnesi olmalı (InteractionPlanSolution.IsValidPlan).
+    [MaxLength(ExamApp.Api.Helpers.InteractionPlanSolution.MaxPlanLength)]
     public string? InteractionPlan { get; set; }
+
+    /// <summary>
+    /// issue #570: etkileşim çözümü (JSON nesnesi, ör. <c>{"placements":[...]}</c>). Kayıtta: boşsa plan içindeki
+    /// <c>solution</c> ayrılır, o da yoksa güncellemede mevcut çözüm korunur. Yanıtta yalnız soru sahibi/admin düzenleme
+    /// yanıtında, öğrenciye yalnız örnek (<c>IsExample</c>) soruda ya da doğru cevapların açıldığı bitmiş oturumda dolu.
+    /// </summary>
+    [MaxLength(ExamApp.Api.Helpers.InteractionPlanSolution.MaxSolutionLength)]
+    public string? InteractionSolution { get; set; }
 
     public double? X { get; set; }
     public double? Y { get; set; }

@@ -1,4 +1,5 @@
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Services.Teachers;
 using Hangfire;
 using Hangfire.Storage;
@@ -413,6 +414,11 @@ public class QuestionTransferJobRunner
 
         var questions = await LoadQuestionsAsync(bundleQuestionIds);
 
+        // issue #570: plan/çözüm soru başına bir kez ayrılır (taşınmamış eski satırın planındaki çözüm de ayrı alana gider).
+        var interactionById = questions
+            .GroupBy(q => q.Id)
+            .ToDictionary(g => g.Key, g => InteractionPlanSolution.Split(g.First().InteractionPlan));
+
         var manifest = new
         {
             version = 2,
@@ -433,7 +439,9 @@ public class QuestionTransferJobRunner
                 practiceCorrectAnswer = q.PracticeCorrectAnswer,
                 answerColCount = q.AnswerColCount,
                 interactionType = q.InteractionType,
-                interactionPlan = q.InteractionPlan,
+                // issue #570: çözüm ayrı alan; plan çözümsüz.
+                interactionPlan = interactionById[q.Id].Plan,
+                interactionSolution = q.InteractionSolution ?? interactionById[q.Id].Solution,
                 x = q.X,
                 y = q.Y,
                 width = q.Width,
@@ -488,6 +496,30 @@ public class QuestionTransferJobRunner
         var manifestEntry = zip.CreateEntry("manifest.json", CompressionLevel.Fastest);
         await using var entryStream = manifestEntry.Open();
         await JsonSerializer.SerializeAsync(entryStream, manifest);
+    }
+
+    /// <summary>
+    /// issue #570: manifestten plan + çözüm. Ayrı <c>interactionSolution</c> (string) varsa o kullanılır; yoksa eski manifest
+    /// planındaki <c>solution</c> ayrılır. Plan her durumda çözümsüz yazılır.
+    /// </summary>
+    private static (string? Plan, string? Solution) ReadInteractionPlanAndSolution(JsonElement qEl)
+    {
+        var plan = qEl.TryGetProperty("interactionPlan", out var ip) && ip.ValueKind == JsonValueKind.String ? ip.GetString() : null;
+        var explicitSolution = qEl.TryGetProperty("interactionSolution", out var isol) && isol.ValueKind == JsonValueKind.String
+            ? isol.GetString()
+            : null;
+        // Geçersiz (nesne olmayan / yinelenen anahtarlı / sınır aşan) ayrı çözüm yok sayılır; plan içindeki çözüme düşülür.
+        if (!InteractionPlanSolution.IsValidSolution(explicitSolution))
+            explicitSolution = null;
+        if (InteractionPlanSolution.TryResolveForWrite(plan, explicitSolution, existingSolution: null,
+                out var storedPlan, out var storedSolution))
+            return (storedPlan, storedSolution);
+
+        // Katı kurala uymayan eski plan (geçersiz JSON, yinelenen anahtar, nesne olmayan gömülü çözüm): aktarım düşmez —
+        // plan yine çözümsüz yazılır (ayrıştırılabiliyorsa), çözüm yalnız geçerliyse alınır.
+        var (tolerantPlan, tolerantSolution) = InteractionPlanSolution.Split(plan);
+        var solution = string.IsNullOrWhiteSpace(explicitSolution) ? tolerantSolution : explicitSolution.Trim();
+        return (tolerantPlan, InteractionPlanSolution.IsValidSolution(solution) ? solution : null);
     }
 
     private async Task<List<Question>> LoadQuestionsAsync(List<int> ids)
@@ -652,6 +684,9 @@ public class QuestionTransferJobRunner
 
                     var (subjectId, topicId) = await ResolveTaxonomyAsync(qEl, subjectIdByName, topicIdByKey);
 
+                    // issue #570: interactionSolution ayrı alan (manifest v2+); yoksa (eski manifest) plan içindeki solution ayrılır.
+                    var (importedPlan, importedSolution) = ReadInteractionPlanAndSolution(qEl);
+
                     var question = new Question
                     {
                         Text = qEl.GetProperty("text").GetString(),
@@ -665,7 +700,8 @@ public class QuestionTransferJobRunner
                         PracticeCorrectAnswer = qEl.TryGetProperty("practiceCorrectAnswer", out var pca) ? pca.GetString() : null,
                         AnswerColCount = qEl.TryGetProperty("answerColCount", out var acc) ? acc.GetInt32() : 3,
                         InteractionType = qEl.TryGetProperty("interactionType", out var it) ? it.GetString() : null,
-                        InteractionPlan = qEl.TryGetProperty("interactionPlan", out var ip) ? ip.GetString() : null,
+                        InteractionPlan = importedPlan,
+                        InteractionSolution = importedSolution,
                         X = qEl.TryGetProperty("x", out var x) ? x.GetDouble() : null,
                         Y = qEl.TryGetProperty("y", out var y) ? y.GetDouble() : null,
                         Width = qEl.TryGetProperty("width", out var w) ? w.GetInt32() : null,

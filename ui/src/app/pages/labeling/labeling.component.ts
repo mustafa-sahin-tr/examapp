@@ -12,7 +12,12 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
-import { ActiveInspector, ImageSelectorComponent, TrainedPage } from '../image-selector/image-selector.component';
+import {
+  ActiveInspector,
+  ImageSelectorComponent,
+  TrainedPage,
+  isInteractiveType,
+} from '../image-selector/image-selector.component';
 import { QuestionDetectorService } from '../../services/question-detector.service';
 import { GradesService } from '../../services/grades.service';
 import { Grade } from '../../models/student';
@@ -696,13 +701,14 @@ export class LabelingComponent {
     if (!selector || !image || !this.canSaveToBank()) {
       return;
     }
-    const regions = selector.regions().filter((r) => selector.getInteractionType(r.name) !== 'dragDropLabeling');
+    // Etkileşimli sorular (sürükle-bırak, matris #574) bu ekrandan bankaya kaydedilmez.
+    const regions = selector.regions().filter((r) => !isInteractiveType(selector.getInteractionType(r.name)));
     if (regions.length === 0) {
       this.snackBar.open(this.tr('bank.noMcq'), this.tr('ok'), { duration: 5000 });
       return;
     }
     // Şık sayısı + doğru şık; sorunlu ilk soru seçilir ve snackbar ile bildirilir.
-    if (!selector.ensureQuestionsValid({ requireCorrectAnswer: true })) {
+    if (!selector.ensureQuestionsValid({ requireCorrectAnswer: true, skipInteractive: true })) {
       return;
     }
     const questions: LabelingBankQuestion[] = regions.map((q) => ({

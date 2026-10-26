@@ -22,7 +22,13 @@
     "answerCountMismatch": "Şık sayısı {{count}} olmalı",
     "noCorrectAnswer": "Doğru cevap yok",
     "questionIssue": "{{no}}. soru: {{messages}}",
-    "moreQuestions": "ve {{count}} soru daha"
+    "moreQuestions": "ve {{count}} soru daha",
+    "matrixNoRows": "Matris satırı çizilmemiş",
+    "matrixTooManyRows": "Matris en çok {{max}} satır olabilir",
+    "matrixColumnCount": "Matris {{min}}–{{max}} kolon olmalı",
+    "matrixEmptyColumnLabel": "Boş kolon adı var",
+    "matrixMissingSolution": "{{count}} satırın doğru cevabı işaretlenmemiş",
+    "matrixPartialCells": "Hücre kutuları eksik: öğrenci görselin altındaki listeden seçecek"
   },
   "menu": {
     "removeQuestion": "Soru Sil",
@@ -46,7 +52,11 @@
     "removePassage": "Pasajı Sil",
     "selectQuestion": "Soru Seç",
     "askAi": "Yapay Zekâya Sor",
-    "selectPassageMode": "Pasaj Seç"
+    "selectPassageMode": "Pasaj Seç",
+    "drawMatrixRow": "Matris satırı çiz",
+    "matrixRowLabel": "Matris satırı {{id}}",
+    "removeMatrixCell": "Hücreyi sil",
+    "removeMatrixRow": "Satırı sil"
   },
   "messages": {
     "classificationApplied": "Sınıflandırma uygulandı.",
@@ -63,7 +73,9 @@
     "questionRemoveError": "Soru silinirken hata oluştu!",
     "analysisInProgress": "Sayfa analiz ediliyor…",
     "analysisError": "Sayfa analiz edilemedi. Tekrar deneyin ya da soruları elle işaretleyin.",
-    "pageLoadError": "Sayfa görseli okunamadı. Dosyayı kontrol edip tekrar deneyin."
+    "pageLoadError": "Sayfa görseli okunamadı. Dosyayı kontrol edip tekrar deneyin.",
+    "matrixOutsideQuestion": "Matris kutusu soru alanının içinde olmalı.",
+    "matrixCellOutsideRow": "Hücre kutusu bir satır kutusunun içinde olmalı (önce satırı çizin)."
   },
   "coordinateJson": {
     "activated": "Koordinat JSON'u bulundu: {{pages}} sayfada {{questions}} soru, soru tespiti yerine JSON kullanılıyor.",
@@ -76,7 +88,7 @@
   "training": {
     "emptyPageAdded": "Boş sayfa eğitime eklendi.",
     "emptyPageExcluded": "Sayfada soru yok ve sayfa soru eğitimine alınmıyor; gönderilecek bir şey yok.",
-    "dragDropOnly": "Sayfada yalnız sürükle-bırak sorular var; bunlar eğitime gönderilmediği için sayfa gönderilmedi (model bu soruları arka plan olarak öğrenirdi).",
+    "dragDropOnly": "Sayfada yalnız etkileşimli sorular (sürükle-bırak, matris) var; bunlar eğitime gönderilmediği için sayfa gönderilmedi (model bu soruları arka plan olarak öğrenirdi).",
     "questionsAdded": "{{count}} soru eğitime eklendi ({{file}}).",
     "noImage": "Önce bir sayfa yükleyin.",
     "sendError": "Sayfa eğitime gönderilemedi. Tekrar deneyin.",

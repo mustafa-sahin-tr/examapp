@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { TranslocoDirective } from '@jsverse/transloco';
 
-import { ActivityBadgeProgress, ActivityTodayStats } from '../../../models/activity-summary.model';
+import { ActivityBadgeProgress, ActivityTodayStats, activityBadgeUnit } from '../../../models/activity-summary.model';
 
 /**
  * Issue #572: "Bugün" (etkinlik sayısı, etkin dakika, seri) ve en yakın etkinlik rozeti ilerlemesi ("Kâşif rozeti: 8/10
@@ -23,6 +23,11 @@ export class ActivityProgressComponent {
   readonly badgePercent = computed(() => {
     const b = this.badge();
     return b && b.target > 0 ? Math.min(100, (b.current / b.target) * 100) : 0;
+  });
+  /** Çeviri anahtarı soneki: etkinlik (sonek yok), dakika (`Minutes`), gün (`Days`). */
+  readonly unitSuffix = computed(() => {
+    const unit = activityBadgeUnit(this.badge()?.code);
+    return unit === 'minutes' ? 'Minutes' : unit === 'days' ? 'Days' : '';
   });
   readonly badgeRemaining = computed(() => {
     const b = this.badge();

@@ -22,7 +22,13 @@
     "answerCountMismatch": "There should be {{count}} choices",
     "noCorrectAnswer": "No correct answer",
     "questionIssue": "Question {{no}}: {{messages}}",
-    "moreQuestions": "and {{count}} more questions"
+    "moreQuestions": "and {{count}} more questions",
+    "matrixNoRows": "No matrix rows drawn",
+    "matrixTooManyRows": "A matrix can have at most {{max}} rows",
+    "matrixColumnCount": "A matrix needs {{min}}–{{max}} columns",
+    "matrixEmptyColumnLabel": "A column has no name",
+    "matrixMissingSolution": "{{count}} row(s) have no correct answer marked",
+    "matrixPartialCells": "Some cell boxes are missing: students will choose from the list below the image"
   },
   "menu": {
     "removeQuestion": "Delete question",
@@ -46,7 +52,11 @@
     "removePassage": "Delete passage",
     "selectQuestion": "Select question",
     "askAi": "Ask AI",
-    "selectPassageMode": "Select passage"
+    "selectPassageMode": "Select passage",
+    "drawMatrixRow": "Draw matrix row",
+    "matrixRowLabel": "Matrix row {{id}}",
+    "removeMatrixCell": "Delete cell",
+    "removeMatrixRow": "Delete row"
   },
   "messages": {
     "classificationApplied": "Classification applied.",
@@ -63,7 +73,9 @@
     "questionRemoveError": "Something went wrong while deleting the question.",
     "analysisInProgress": "Analyzing page…",
     "analysisError": "The page could not be analyzed. Try again or mark the questions manually.",
-    "pageLoadError": "The page image could not be read. Check the file and try again."
+    "pageLoadError": "The page image could not be read. Check the file and try again.",
+    "matrixOutsideQuestion": "The matrix box must be inside the question area.",
+    "matrixCellOutsideRow": "A cell box must be inside a row box (draw the row first)."
   },
   "coordinateJson": {
     "activated": "Coordinate JSON found: {{questions}} questions on {{pages}} pages; using the JSON instead of question detection.",
@@ -76,7 +88,7 @@
   "training": {
     "emptyPageAdded": "Empty page added to training.",
     "emptyPageExcluded": "The page has no questions and is excluded from question training; there is nothing to send.",
-    "dragDropOnly": "The page only has drag-and-drop questions; they are not sent to training, so the page was not sent (the model would learn them as background).",
+    "dragDropOnly": "The page only has interactive questions (drag-and-drop, matrix); they are not sent to training, so the page was not sent (the model would learn them as background).",
     "questionsAdded": "Added {{count}} questions to training ({{file}}).",
     "noImage": "Load a page first.",
     "sendError": "The page could not be sent to training. Try again.",

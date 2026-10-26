@@ -242,6 +242,7 @@ builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.ITestSessionService, 
 // issue #571: sunucu tarafı etkileşim kontrolcüleri (tip → kontrolcü; durumsuz).
 builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGrader, ExamApp.Api.Services.Interactions.McqGrader>();
 builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGrader, ExamApp.Api.Services.Interactions.DragDropLabelingGrader>();
+builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGrader, ExamApp.Api.Services.Interactions.MatrixChoiceGrader>(); // issue #574
 builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGraderRegistry, ExamApp.Api.Services.Interactions.InteractionGraderRegistry>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetAuthoringService, ExamApp.Api.Services.Worksheets.WorksheetAuthoringService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetDetailService, ExamApp.Api.Services.Worksheets.WorksheetDetailService>();

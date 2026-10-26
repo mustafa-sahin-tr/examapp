@@ -298,7 +298,19 @@
       "poolReturnAria": "Labels area: put the selected label back",
       "markCorrect": "Correct",
       "markWrong": "Wrong",
-      "poolReturn": "Put back in labels"
+      "poolReturn": "Put back in labels",
+      "matrix": {
+        "hintSingle": "Tap one option for each row. Tap the same option again to clear it.",
+        "hintMulti": "Select every option that fits in each row; tap again to clear.",
+        "solutionShownHint": "Showing the correct answers.",
+        "rowFallback": "Row {{n}}",
+        "rowAria": "Row {{n}}: {{label}}",
+        "cellAria": "{{row}} — {{column}}",
+        "announceSelected": "{{row}}: {{column}} selected.",
+        "announceCleared": "{{row}}: {{column}} cleared.",
+        "markCorrect": "Correct",
+        "markWrong": "Wrong"
+      }
     },
     "sharingBadge": {
       "publicAssignable": "Public · Assignable",
@@ -568,7 +580,8 @@
         "checkRequired": "Check your answers once to see the correct answers.",
         "generic": "Something went wrong. Try again.",
         "retry": "Try again",
-        "networkUnsaved": "Connection problem: some of your answers are not saved yet. Try again."
+        "networkUnsaved": "Connection problem: some of your answers are not saved yet. Try again.",
+        "blankWarningGeneric": "{{count}} items have unanswered parts ({{items}}). Unanswered parts count as wrong. You can still check."
       },
       "summary": {
         "title": "Activity finished",
@@ -579,7 +592,11 @@
         "badgeAria": "{{name}} badge progress",
         "badgeRemaining": "{{count}} more activities!",
         "next": "Next activity",
-        "backToList": "Back to the list"
+        "backToList": "Back to the list",
+        "badgeLineMinutes": "{{name}} badge: {{current}}/{{target}} min",
+        "badgeLineDays": "{{name}} badge: {{current}}/{{target}} days",
+        "badgeRemainingMinutes": "{{count}} more minutes!",
+        "badgeRemainingDays": "{{count}} more days!"
       },
       "launch": {
         "failed": "The activity could not be opened. Try again.",

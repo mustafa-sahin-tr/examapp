@@ -1,5 +1,6 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
+using ExamApp.Api.Services.Interactions;
 using ExamApp.Api.Services.Teachers;
 using Hangfire;
 using Hangfire.Storage;
@@ -19,17 +20,21 @@ public class QuestionTransferJobRunner
     private readonly AppDbContext _db;
     private readonly IMinIoService _minio;
     private readonly IApprovedTeacherGuard _teacherGuard;
+    // review #574 (L1): içe alınan etkileşim tanımı kayıt yoluyla aynı kontrolcüyle doğrulanır.
+    private readonly IInteractionGraderRegistry _graders;
 
     private const int ExportBundleSize = 2000;
 
     /// <summary>issue #289 (security D2): sahibi artık onaylı öğretmen olmayan işin sonlandırma mesajı.</summary>
     public const string OwnerNotApprovedMessage = "Job owner's teacher account is not approved (or is suspended); job was not run.";
 
-    public QuestionTransferJobRunner(AppDbContext db, IMinIoService minio, IApprovedTeacherGuard teacherGuard)
+    public QuestionTransferJobRunner(AppDbContext db, IMinIoService minio, IApprovedTeacherGuard teacherGuard,
+        IInteractionGraderRegistry? graders = null)
     {
         _db = db;
         _minio = minio;
         _teacherGuard = teacherGuard;
+        _graders = graders ?? InteractionGraderRegistry.Default;
     }
 
     /// <summary>
@@ -623,6 +628,9 @@ public class QuestionTransferJobRunner
             var skippedCount = 0;
             var failedCount = 0;
             var failedSamples = new List<string>();
+            // review #574 (L1): tanımı geçersiz etkileşim (soru yine içe alınır, çözüm/plan düşürülür). Anahtar = dış soru
+            // anahtarı (yeniden denenen transaction aynı uyarıyı iki kez saymasın).
+            var interactionWarnings = new Dictionary<string, string>(StringComparer.Ordinal);
 
             // In-memory maps for this import run
             var subjectIdByName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -688,6 +696,27 @@ public class QuestionTransferJobRunner
 
                     // issue #570: interactionSolution ayrı alan (manifest v2+); yoksa (eski manifest) plan içindeki solution ayrılır.
                     var (importedPlan, importedSolution) = ReadInteractionPlanAndSolution(qEl);
+                    // review #574 (L1/L3): tip kanonik; tanım kontrolcüyle doğrulanır. Plan geçerli ama çözüm tutarsızsa çözüm,
+                    // plan da geçersizse ikisi düşürülür (öğrenciye bilinmeyen alan taşıyan plan gitmesin) ve uyarı yazılır.
+                    var importedType = _graders.CanonicalType(
+                        qEl.TryGetProperty("interactionType", out var it) && it.ValueKind == JsonValueKind.String ? it.GetString() : null);
+                    var interactionGrader = _graders.Resolve(importedType);
+                    if (!interactionGrader.ValidateDefinition(importedPlan, importedSolution))
+                    {
+                        string dropped;
+                        if (interactionGrader.ValidateDefinition(importedPlan, null))
+                        {
+                            importedSolution = null;
+                            dropped = "solution";
+                        }
+                        else
+                        {
+                            importedPlan = null;
+                            importedSolution = null;
+                            dropped = "plan and solution";
+                        }
+                        interactionWarnings[externalKey] = $"{externalKey}: invalid {importedType} definition, {dropped} dropped";
+                    }
 
                     var question = new Question
                     {
@@ -701,7 +730,7 @@ public class QuestionTransferJobRunner
                         IsExample = qEl.TryGetProperty("isExample", out var ie) && ie.ValueKind == JsonValueKind.True,
                         PracticeCorrectAnswer = qEl.TryGetProperty("practiceCorrectAnswer", out var pca) ? pca.GetString() : null,
                         AnswerColCount = qEl.TryGetProperty("answerColCount", out var acc) ? acc.GetInt32() : 3,
-                        InteractionType = qEl.TryGetProperty("interactionType", out var it) ? it.GetString() : null,
+                        InteractionType = importedType,
                         InteractionPlan = importedPlan,
                         InteractionSolution = importedSolution,
                         X = qEl.TryGetProperty("x", out var x) ? x.GetDouble() : null,
@@ -895,6 +924,10 @@ public class QuestionTransferJobRunner
             if (failedSamples.Count > 0)
             {
                 summary += " Samples: " + string.Join(" | ", failedSamples);
+            }
+            if (interactionWarnings.Count > 0)
+            {
+                summary += $" Warnings {interactionWarnings.Count}: " + string.Join(" | ", interactionWarnings.Values.Take(10));
             }
             job.Message = summary;
             await _db.SaveChangesAsync();

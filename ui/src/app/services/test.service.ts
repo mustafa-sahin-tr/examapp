@@ -145,7 +145,8 @@ export class TestService {
     const subjectIdsParam = subjectIds && subjectIds.length > 0 ? '&subjectIds=' + subjectIds.join(`&subjectIds=`) : '';
     const gradeIdParam = gradeIds && gradeIds.length > 0 ? '&gradeIds=' + gradeIds.join(`&gradeIds=`) : '';
     const bookTestIdParam = booktestId ? `&bookTestId=${booktestId}` : '';
-    var reqUrl = `${this.baseUrl}/list?search=${query}&pageNumber=${pageNumber}&pageSize=${pageSize}${subjectIdsParam}${gradeIdParam}${bookTestIdParam}`;
+    // Arama metni kodlanır: "#574" gibi bir ad sorguyu "#"ta kesip pageNumber/pageSize'ı düşürüyordu (#574 E2E).
+    var reqUrl = `${this.baseUrl}/list?search=${encodeURIComponent(query ?? '')}&pageNumber=${pageNumber}&pageSize=${pageSize}${subjectIdsParam}${gradeIdParam}${bookTestIdParam}`;
     console.log(reqUrl);
     return this.http.get<Paged<Test>>(reqUrl);
   }

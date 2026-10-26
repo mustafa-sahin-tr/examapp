@@ -990,7 +990,7 @@ describe('LabelingComponent', () => {
                     ],
                 },
             ]);
-            expect(selector().ensureQuestionsValid).toHaveBeenCalledWith({ requireCorrectAnswer: true });
+            expect(selector().ensureQuestionsValid).toHaveBeenCalledWith({ requireCorrectAnswer: true, skipInteractive: true });
             expect(component.bankRecord()?.questionCount).toBe(1);
             expect(component.bankSaving()).toBe(false);
         });
@@ -1082,7 +1082,7 @@ describe('LabelingComponent', () => {
 
             component.saveToBank();
 
-            expect(selector().ensureQuestionsValid).toHaveBeenCalledWith({ requireCorrectAnswer: true });
+            expect(selector().ensureQuestionsValid).toHaveBeenCalledWith({ requireCorrectAnswer: true, skipInteractive: true });
             expect(labelingApi.saveToBank).not.toHaveBeenCalled();
         });
 

@@ -46,6 +46,11 @@ export class ActivityCheckPanelComponent {
   readonly stale = input(false);
   /** Boş yerleştirmesi olan maddelerin etiketleri (a, c …) — engellemeyen uyarı. */
   readonly blankItems = input<string[]>([]);
+  /**
+   * Issue #574: boş uyarısının metni — `placement` (yalnız sürükle-bırak maddeleri boş: "boş yerleştirme") ya da `generic`
+   * (matris / çoktan seçmeli de var: "boş bırakılan yer").
+   */
+  readonly blankKind = input<'placement' | 'generic'>('placement');
   readonly rows = input<ActivityResultRow[]>([]);
   readonly error = input<ActivityPanelError | null>(null);
   /** `generic` hatada gösterilecek sunucu mesajı (yerelleştirilmiş). */

@@ -27,6 +27,13 @@ public interface IInteractionGrader
     /// (<c>placements: []</c>) null yapar. Varsayılan: aynen.
     /// </summary>
     string? Normalize(string? payload) => payload;
+
+    /// <summary>
+    /// issue #574: kayıtta (soru kaydı / toplu kayıt) tipe özgü tanım doğrulaması — <see cref="Helpers.InteractionPlanSolution.TryResolveForWrite"/>'dan
+    /// GEÇMİŞ (çözümsüz) plan ve ayrılmış çözüm verilir. false → kayıt reddedilir (400), hiçbir şey yazılmaz. İstisna atmaz.
+    /// Varsayılan: true (MCQ, dragDropLabeling — bugünkü davranış değişmez).
+    /// </summary>
+    bool ValidateDefinition(string? plan, string? solution) => true;
 }
 
 /// <summary>review #571: tüm etkileşim tipleri için ortak payload üst sınırı (karakter); save-answer ve kontrol ucu uygular.</summary>
@@ -68,4 +75,20 @@ public interface IInteractionGraderRegistry
     /// MCQ kuralıyla kontrol edilir (seçilen şık == doğru şık).
     /// </summary>
     IInteractionGrader Resolve(string? interactionType);
+}
+
+/// <summary>review #574 (L3): kayıtta tip adının kanonik biçimi.</summary>
+public static class InteractionGraderRegistryExtensions
+{
+    /// <summary>
+    /// Tipin kendi kontrolcüsü varsa (MCQ dışı) kontrolcünün kanonik adı (<c>"MatrixChoice"</c> → <c>"matrixChoice"</c>);
+    /// MCQ, boş ya da bilinmeyen tip (MCQ'ya düşer) girdiyle aynen döner — bugünkü saklama davranışı değişmez.
+    /// </summary>
+    public static string? CanonicalType(this IInteractionGraderRegistry registry, string? interactionType)
+    {
+        var grader = registry.Resolve(interactionType);
+        return grader.InteractionType.Equals(McqGrader.Type, StringComparison.OrdinalIgnoreCase)
+            ? interactionType
+            : grader.InteractionType;
+    }
 }

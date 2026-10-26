@@ -10,7 +10,9 @@
   "rows": {
     "zone": "Target {{n}}: {{content}}",
     "choice": "Your choice: {{content}}",
-    "empty": "empty"
+    "empty": "empty",
+    "matrixRow": "{{name}}: {{content}}",
+    "matrixRowFallback": "Row {{n}}"
   },
   "saveFailed": "Your last answer could not be saved; it will be sent again when you check.",
   "finishCheckRequired": "Check your answers once before finishing.",

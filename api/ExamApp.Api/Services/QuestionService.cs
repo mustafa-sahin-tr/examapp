@@ -5,6 +5,7 @@ using System.Text.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Interactions;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Storage;
 using ExamApp.Foundation.Contracts;
@@ -30,13 +31,18 @@ public class QuestionService : IQuestionService
     // verir; parametre yalnizca DI'siz kurulan (birim test) senaryolar icin opsiyonel.
     private readonly IStringLocalizer<Messages> _localizer;
 
+    // issue #574: tipe özgü plan/çözüm doğrulaması (kayıtta) ve "etkileşimli mi" kararı; DI'sız kurulumda yerleşik kontrolcüler.
+    private readonly IInteractionGraderRegistry _graders;
+
     public QuestionService(
         AppDbContext context,
         ImageHelper imageHelper,
         IMinIoService minioService,
         IStringLocalizer<Messages>? localizer = null,
-        StorageAreaPolicy? storagePolicy = null)
+        StorageAreaPolicy? storagePolicy = null,
+        IInteractionGraderRegistry? graders = null)
     {
+        _graders = graders ?? InteractionGraderRegistry.Default;
         _imageHelper = imageHelper;
         _context = context;
         _minioService = minioService;
@@ -112,7 +118,8 @@ public class QuestionService : IQuestionService
                 // question.SubjectId = questionDto.SubjectId;
                 // question.TopicId = questionDto.TopicId;
                 question.AnswerColCount = questionDto.AnswerColCount;
-                question.InteractionType = questionDto.InteractionType;
+                // review #574 (L3): kontrolcüsü olan tip kanonik yazılır ("MatrixChoice" → "matrixChoice"); MCQ/boş/bilinmeyen aynen.
+                question.InteractionType = _graders.CanonicalType(questionDto.InteractionType);
                 // issue #570: plan çözümsüz saklanır; çözüm ayrı alandan, yoksa plandan (eski istemci), o da yoksa mevcut değer.
                 if (!InteractionPlanSolution.TryResolveForWrite(questionDto.InteractionPlan, questionDto.InteractionSolution,
                         question.InteractionSolution, out var storedPlan, out var storedSolution))
@@ -122,6 +129,16 @@ public class QuestionService : IQuestionService
                         Success = false,
                         InvalidInput = true,
                         Message = _localizer["questions.interactionSolution.invalid"]
+                    };
+                }
+                // issue #574: tipe özgü tanım (ör. matrixChoice şeması + çözümün planla tutarlılığı); MCQ/drag-drop'ta her zaman geçer.
+                if (!_graders.Resolve(questionDto.InteractionType).ValidateDefinition(storedPlan, storedSolution))
+                {
+                    return new QuestionSavedDto
+                    {
+                        Success = false,
+                        InvalidInput = true,
+                        Message = _localizer["questions.interactionDefinition.invalid"]
                     };
                 }
                 question.InteractionPlan = storedPlan;
@@ -539,6 +556,13 @@ public class QuestionService : IQuestionService
         }
     }
 
+    /// <summary>
+    /// issue #574: MCQ kuralı dışında kendi kontrolcüsü olan tip (dragDropLabeling, matrixChoice). Bilinmeyen tip MCQ
+    /// kontrolcüsüne düştüğü için etkileşimli sayılmaz (bugünkü davranış: doğru şık zorunlu, question-v2 kırpılır).
+    /// </summary>
+    private bool IsInteractive(string? interactionType) =>
+        !_graders.Resolve(interactionType).InteractionType.Equals(McqGrader.Type, StringComparison.OrdinalIgnoreCase);
+
     public async Task<ResponseBaseDto> SaveBulkQuestion(BulkQuestionCreateDto soruDto, int actingUserId = 0)
     {
         // issue #287 H1: audit alanları (CreateUserId = soru sahibi) istek sahibine damgalanır.
@@ -570,6 +594,15 @@ public class QuestionService : IQuestionService
                 {
                     Success = false,
                     Message = _localizer["questions.bulk.invalidInteractionSolution", bulkQuestion.Name]
+                };
+            }
+            // issue #574: tipe özgü tanım doğrulaması da yüklemeden önce.
+            if (!_graders.Resolve(bulkQuestion.InteractionType).ValidateDefinition(resolvedPlan, resolvedSolution))
+            {
+                return new ResponseBaseDto
+                {
+                    Success = false,
+                    Message = _localizer["questions.bulk.invalidInteractionDefinition", bulkQuestion.Name]
                 };
             }
             interactionByQuestion[bulkQuestion] = (resolvedPlan, resolvedSolution);
@@ -730,7 +763,7 @@ public class QuestionService : IQuestionService
 
                     var interactionType = string.IsNullOrWhiteSpace(questionDto.InteractionType)
                         ? "mcq"
-                        : questionDto.InteractionType.Trim();
+                        : _graders.CanonicalType(questionDto.InteractionType.Trim())!;
 
                     byte[]? croppedQuestionImage = null;
                     string questionImageUrl = string.Empty;
@@ -761,8 +794,9 @@ public class QuestionService : IQuestionService
 
                         questionV2Image = croppedQuestionImage;
                         // For MCQ we trim question-v2 above the answer block to improve UI.
-                        // For dragDropLabeling, drop zones are inside the question image, so we must keep full height.
-                        if (!interactionType.Equals("dragDropLabeling", StringComparison.OrdinalIgnoreCase) && answerInfos.Any())
+                        // For interactive types (dragDropLabeling, matrixChoice) the targets are inside the question image,
+                        // so we must keep full height.
+                        if (!IsInteractive(interactionType) && answerInfos.Any())
                         {
                             var topAnswerRelativeY = answerInfos.Min(a => a.RelativeY);
                             var sanitizedHeight = (int)Math.Round(topAnswerRelativeY);
@@ -896,12 +930,13 @@ public class QuestionService : IQuestionService
                             IsCanvasQuestion = true
                         }).ToList();
 
-                        var isLabeling = interactionType.Equals("dragDropLabeling", StringComparison.OrdinalIgnoreCase);
-                        var correctLabel = isLabeling
+                        // Etkileşimli soruda (MCQ dışı) doğruluk InteractionSolution'dadır; doğru şık gerekmez.
+                        var isInteractive = IsInteractive(interactionType);
+                        var correctLabel = isInteractive
                             ? null
                             : sourceAnswers.FirstOrDefault(a => a.IsCorrect)?.Label;
 
-                        if (!isLabeling && correctLabel == null)
+                        if (!isInteractive && correctLabel == null)
                         {
                             throw new InvalidOperationException(_localizer["questions.bulk.correctAnswerMissing", questionDto.Name]);
                         }
@@ -927,7 +962,7 @@ public class QuestionService : IQuestionService
                             await _context.SaveChangesAsync();
                         }
 
-                        if (!isLabeling)
+                        if (!isInteractive)
                         {
                             question.CorrectAnswerId = answers.FirstOrDefault(a => a.Text == correctLabel)?.Id;
                             await _context.SaveChangesAsync();

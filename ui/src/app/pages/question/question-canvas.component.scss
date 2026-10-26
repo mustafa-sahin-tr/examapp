@@ -1221,3 +1221,99 @@
   color: var(--ms-text-weak);
   font-size: 12px;
 }
+
+// Issue #574: matris seçim yazarlığı (müfettiş).
+.qc-matrix {
+  &__columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    gap: 6px;
+  }
+
+  &__col-input,
+  &__row-input {
+    height: 32px;
+    padding: 0 8px;
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 4px 8px;
+    padding: 6px;
+    border-radius: 9px;
+    border: 1px solid var(--ms-border-weak);
+
+    &.is-missing {
+      border-style: dashed;
+      border-color: var(--ms-danger-border);
+    }
+  }
+
+  &__answers {
+    grid-column: 2;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  &__answer {
+    min-width: 36px;
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1px solid var(--ms-border-weak);
+    background: var(--ms-surface-medium);
+    color: var(--ms-text-strong);
+    font-family: var(--mainFontFamily);
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+
+    &.is-correct {
+      background: var(--ms-success-surface);
+      border-color: var(--ms-success-border);
+      color: var(--ms-success-text);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--ms-action-border-focus);
+      outline-offset: 1px;
+    }
+  }
+
+  &__missing {
+    color: var(--ms-danger-text);
+  }
+
+  .qc-btn.is-active {
+    border-color: var(--ms-action-border-focus);
+    background: var(--ms-action-background-weak);
+  }
+}
+
+// Issue #574: hedef sayfa menüsünde tür rozeti (Test / Etkinlik).
+.qc-test-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qc-kind-badge {
+  flex: none;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--mainFontFamily);
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface-medium);
+  color: var(--ms-text-medium);
+
+  &--activity {
+    border-color: var(--ms-info-border);
+    background: var(--ms-info-surface-weak);
+    color: var(--ms-info-text);
+  }
+}

@@ -1,0 +1,324 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.mc-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.mc-passage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+
+  &__title {
+    font-weight: 700;
+    font-family: var(--mainFontFamily);
+  }
+
+  &__image {
+    display: block;
+    max-width: 100%;
+    max-height: 35vh;
+    object-fit: contain;
+  }
+}
+
+.mc-stage {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+}
+
+// Sarmalayıcı görselle aynı boyutta: kaplama yüzdeleri görselin kendisine oturur.
+.mc-image-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+}
+
+.mc-image {
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  width: auto;
+  height: auto;
+}
+
+.mc-root.is-cell-mode .mc-image {
+  max-height: 75vh;
+}
+
+.mc-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+// Görsel üstü hücre: seçili = düz kenar + dolgu + ikon (renk tek sinyal değil).
+.mc-cell {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 2px dashed var(--ms-action-border);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  line-height: 1;
+
+  &:hover:not(:disabled) {
+    background: var(--ms-action-background-weak-hover);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+
+  // Seçili hücre: sayfadaki baskı okunur kalsın diye zemin yarı saydam (token rengi %25), belirgin düz kenar + köşede
+  // küçük işaret rozeti (ikon metnin üstünü kapatmaz).
+  &.is-selected {
+    border: 3px solid var(--ms-action-border-focus);
+    background: color-mix(in srgb, var(--ms-action-background) 25%, transparent);
+  }
+
+  &.is-solution {
+    border-color: var(--ms-info-border);
+    background: color-mix(in srgb, var(--ms-info-surface) 35%, transparent);
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &__icon {
+    position: absolute;
+    top: -9px;
+    right: -9px;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    border-radius: 50%;
+    background: var(--ms-surface);
+    color: var(--ms-action-text);
+    pointer-events: none;
+  }
+}
+
+.mc-root.is-activity .mc-cell {
+  min-width: 28px;
+  min-height: 28px;
+}
+
+.mc-row-box {
+  position: absolute;
+  border: 2px dashed var(--ms-border);
+  border-radius: 6px;
+  pointer-events: none;
+
+  &.is-focused {
+    border-style: solid;
+    border-color: var(--ms-action-border-focus);
+    background: var(--ms-action-background-weak);
+  }
+
+  &__no {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 4px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    background: var(--ms-surface-inverse);
+    color: var(--ms-text-inverse);
+  }
+}
+
+.mc-mark {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  pointer-events: none;
+  background: var(--ms-success-surface);
+  color: var(--ms-success-text);
+  border: 1px solid var(--ms-success-border);
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+
+  &--wrong {
+    background: var(--ms-danger-surface);
+    color: var(--ms-danger-text);
+    border-color: var(--ms-danger-border);
+  }
+}
+
+.mc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  &__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--ms-border-weak);
+    background: var(--ms-surface);
+
+    &.is-correct {
+      border-color: var(--ms-success-border);
+      background: var(--ms-success-surface-weak);
+    }
+
+    &.is-wrong {
+      border-style: dashed;
+      border-color: var(--ms-danger-border);
+      background: var(--ms-danger-surface-weak);
+    }
+  }
+
+  &__label {
+    flex: 1 1 200px;
+    display: flex;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  &__no {
+    font-weight: 700;
+    color: var(--ms-text-medium);
+  }
+
+  &__text {
+    overflow-wrap: anywhere;
+  }
+
+  &__options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  &__mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ms-success-text);
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    &--wrong {
+      color: var(--ms-danger-text);
+    }
+  }
+}
+
+.mc-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 44px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--ms-action-border);
+  background: var(--ms-surface);
+  color: var(--ms-action-text);
+  font-family: var(--mainFontFamily);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--ms-action-background-weak-hover);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+
+  &.is-selected {
+    background: var(--ms-action-background);
+    border-color: var(--ms-action-background);
+    color: var(--ms-action-text-inverse);
+  }
+
+  &.is-solution {
+    background: var(--ms-info-surface);
+    border-color: var(--ms-info-border);
+    color: var(--ms-info-text);
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &__icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.mc-root.is-activity .mc-option {
+  min-height: 44px;
+}
+
+.mc-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mc-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ms-text-medium);
+}

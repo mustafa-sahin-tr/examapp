@@ -37,7 +37,12 @@
       "subTopicsFromMultipleTopics": "SubTopics belonging to more than one TopicId were sent for the same question. All subtopics must share the same TopicId. {0}",
       "topicIdMissingWithSubTopics": "Header.TopicId is missing/0 but a SubTopic list was provided. The SubTopics' TopicId is {0}. Details: {1}",
       "subTopicTopicMismatch": "The SubTopic's topic differs from the TopicId set on the question. Question.TopicId={0} ('{1}'), SubTopic(Id={2}, Name='{3}') TopicId={4} ('{5}').",
-      "invalidInteractionSolution": "Invalid interaction plan or solution (must be a JSON object without duplicate keys): {0}"
+      "invalidInteractionSolution": "Invalid interaction plan or solution (must be a JSON object without duplicate keys): {0}",
+      "invalidInteractionDefinition": "Invalid interaction definition (the plan does not match the schema — unknown field, invalid id or box — or the solution does not match the plan): {0}"
+    },
+
+    "interactionDefinition": {
+      "invalid": "Invalid interaction definition: the plan does not match the schema (unknown field, invalid id or box) or the solution does not match the plan."
     },
 
     "interactionSolution": {

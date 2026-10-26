@@ -47,8 +47,13 @@
         </button>
         <mat-divider></mat-divider>
         @for (worksheet of filteredTestListSignal(); track worksheet.id) {
-        <button mat-menu-item type="button" (click)="onOptionSelected(worksheet)">
-          {{ worksheet.name }} — {{ worksheet.subtitle }}
+        <button mat-menu-item type="button" (click)="onOptionSelected(worksheet)" [attr.data-kind]="worksheet.kind ?? 0">
+          <span class="qc-test-option">
+            <span class="qc-kind-badge" [class.qc-kind-badge--activity]="worksheet.kind === worksheetKinds.Activity">
+              {{ worksheet.kind === worksheetKinds.Activity ? t('canvas.kindActivity') : t('canvas.kindTest') }}
+            </span>
+            <span>{{ worksheet.name }}@if (worksheet.subtitle) { — {{ worksheet.subtitle }} }</span>
+          </span>
         </button>
         } @empty {
         <div class="qc-menu-empty">{{ t('canvas.noResults') }}</div>
@@ -270,6 +275,8 @@
           <button type="button" [class.is-active]="selectionMode === 'answer'" (click)="setSelectionMode('answer')">{{ t('canvas.modeAnswer') }}</button>
           <button type="button" [class.is-active]="selectionMode === 'passage'" (click)="setSelectionMode('passage')">{{ t('canvas.modePassage') }}</button>
           <button type="button" [class.is-active]="selectionMode === 'dropzone'" (click)="setSelectionMode('dropzone')">{{ t('canvas.modeDropZone') }}</button>
+          <button type="button" [class.is-active]="selectionMode === 'matrixRow' || selectionMode === 'matrixCell'"
+            (click)="setSelectionMode('matrixRow')">{{ t('canvas.modeMatrix') }}</button>
         </div>
         <div class="qc-canvas__toolbar-right">
           @if (detection.available() && !coordinateJsonMode) {
@@ -403,6 +410,8 @@
                 [attr.aria-pressed]="d.interactionType === 'mcq'" (click)="insSetInteractionType('mcq')">{{ t('inspector.mcq') }}</button>
               <button type="button" [class.is-active]="d.interactionType === 'dragDropLabeling'"
                 [attr.aria-pressed]="d.interactionType === 'dragDropLabeling'" (click)="insSetInteractionType('dragDropLabeling')">{{ t('inspector.dragDrop') }}</button>
+              <button type="button" [class.is-active]="d.interactionType === 'matrixChoice'"
+                [attr.aria-pressed]="d.interactionType === 'matrixChoice'" (click)="insSetInteractionType('matrixChoice')">{{ t('inspector.matrix') }}</button>
             </div>
           </section>
 
@@ -487,6 +496,99 @@
               </div>
               }
             </div>
+          </section>
+          }
+
+          <!-- Matris seçim (#574) -->
+          @if (d.interactionType === 'matrixChoice' && d.matrix; as m) {
+          <section class="qc-insp-sec qc-matrix" data-testid="inspector-matrix">
+            <div class="qc-lbl">{{ t('inspector.matrixColumns') }}</div>
+            <div class="qc-btn-row" role="group" [attr.aria-label]="t('inspector.matrixPresets')">
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" (click)="insMatrixPreset('trueFalse')">{{ t('inspector.matrixPresetTrueFalse') }}</button>
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" (click)="insMatrixPreset('checkTable')">{{ t('inspector.matrixPresetCheck') }}</button>
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" (click)="insMatrixPreset('compare')">{{ t('inspector.matrixPresetCompare') }}</button>
+            </div>
+            <div class="qc-row">
+              <span class="qc-lbl">{{ t('inspector.matrixColumnCount') }}</span>
+              <input class="qc-input-sm" type="number" [min]="m.limits.minColumns" [max]="m.limits.maxColumns"
+                [value]="m.columns.length" (change)="insMatrixColumnCount($event)" [attr.aria-label]="t('inspector.matrixColumnCount')" />
+            </div>
+            <div class="qc-matrix__columns">
+              @for (col of m.columns; track col.id; let ci = $index) {
+              <input class="control qc-input qc-matrix__col-input" type="text" [attr.maxlength]="m.limits.maxLabelLength"
+                [value]="col.label" (change)="insMatrixColumnLabel(col.id, $event)"
+                [attr.aria-label]="t('inspector.matrixColumnLabelAria', { n: ci + 1 })" />
+              }
+            </div>
+            <div class="qc-row">
+              <button type="button" class="qc-switch" [class.off]="!m.multiPerRow" [attr.aria-pressed]="m.multiPerRow"
+                [attr.aria-label]="t('inspector.matrixMulti')" (click)="insMatrixMulti(!m.multiPerRow)"></button>
+              <span>{{ t('inspector.matrixMulti') }}</span>
+            </div>
+
+            <div class="qc-lbl">{{ t('inspector.matrixRows') }}</div>
+            <div class="qc-btn-row">
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [class.is-active]="selectionMode === 'matrixRow'"
+                (click)="insMatrixRowMode()">
+                <mat-icon>table_rows</mat-icon>{{ t('inspector.matrixDrawRow') }}
+              </button>
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [disabled]="!m.rows.length" (click)="insMatrixRemoveLastRow()">
+                <mat-icon>undo</mat-icon>{{ t('inspector.matrixLastRow') }}
+              </button>
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [disabled]="!m.rows.length" (click)="insMatrixClearRows()">
+                <mat-icon>delete_sweep</mat-icon>{{ t('inspector.matrixClearRows') }}
+              </button>
+            </div>
+
+            <div class="qc-lbl">{{ t('inspector.matrixCells') }}</div>
+            <span class="qc-hint-sm">{{ t('inspector.matrixCellsHint') }}</span>
+            <div class="qc-btn-row" role="group" [attr.aria-label]="t('inspector.matrixDrawCell')">
+              @for (col of m.columns; track col.id) {
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm"
+                [class.is-active]="selectionMode === 'matrixCell' && m.activeColumnId === col.id"
+                [attr.aria-pressed]="selectionMode === 'matrixCell' && m.activeColumnId === col.id"
+                [disabled]="!m.rows.length" (click)="insMatrixCellMode(col.id)">
+                <mat-icon>crop_square</mat-icon>{{ col.label || col.id }}
+              </button>
+              }
+            </div>
+            <div class="qc-btn-row">
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [disabled]="m.rows.length < 2 || !m.hasCells"
+                (click)="insMatrixCopyCells()">
+                <mat-icon>content_copy</mat-icon>{{ t('inspector.matrixCopyCells') }}
+              </button>
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [disabled]="!m.hasCells" (click)="insMatrixClearCells()">
+                <mat-icon>grid_off</mat-icon>{{ t('inspector.matrixClearCells') }}
+              </button>
+            </div>
+            <span class="qc-hint-sm" data-testid="matrix-cell-mode">
+              {{ m.allCells ? t('inspector.matrixCellModeTap') : t('inspector.matrixCellModeList') }}
+            </span>
+
+            <div class="qc-lbl">{{ t('inspector.matrixSolution') }}</div>
+            <div class="qc-solution">
+              @for (row of m.rows; track row.id) {
+              <div class="qc-matrix__row" [class.is-missing]="!row.solution.length" [attr.data-row]="row.id">
+                <span class="qc-zone-id">{{ row.no }}</span>
+                <input class="control qc-input qc-matrix__row-input" type="text" [attr.maxlength]="m.limits.maxLabelLength"
+                  [value]="row.label" [placeholder]="t('inspector.matrixRowLabelPlaceholder')"
+                  (change)="insMatrixRowLabel(row.id, $event)" [attr.aria-label]="t('inspector.matrixRowLabelAria', { n: row.no })" />
+                <span class="qc-matrix__answers" role="group" [attr.aria-label]="t('inspector.matrixRowSolutionAria', { n: row.no })">
+                  @for (col of m.columns; track col.id) {
+                  <button type="button" class="qc-matrix__answer" [class.is-correct]="row.solution.includes(col.id)"
+                    [attr.aria-pressed]="row.solution.includes(col.id)" (click)="insMatrixToggleSolution(row.id, col.id)">
+                    {{ col.label || col.id }}
+                  </button>
+                  }
+                </span>
+              </div>
+              } @empty {
+              <span class="qc-hint-sm">{{ t('inspector.matrixNoRows') }}</span>
+              }
+            </div>
+            @if (m.missingSolutionCount > 0 && m.rows.length > 0) {
+            <span class="qc-hint-sm qc-matrix__missing" role="status">{{ t('inspector.matrixMissingSolution', { count: m.missingSolutionCount }) }}</span>
+            }
           </section>
           }
 

@@ -4,7 +4,8 @@ import { ActivatedRoute, convertToParamMap } from '@angular/router';
 
 import { LoginComponent } from './login.component';
 import { LOCALE_STORAGE_KEY } from '../../services/locale-hint.service';
-import { OIDC_FLOW_KEY_PREFIX, OidcLoginRecord } from '../../services/oidc-flow.service';
+import { OIDC_FLOW_KEY_PREFIX, OidcFlowService, OidcLoginRecord } from '../../services/oidc-flow.service';
+import { PRERENDERING_CHANGE_EVENT } from '../../shared/utils/when-activated.util';
 import { computeCodeChallenge } from '../../shared/utils/pkce.util';
 
 /**
@@ -55,6 +56,8 @@ describe('LoginComponent', () => {
   });
 
   afterEach(() => {
+    // Ön-yükleme testinin gölgelediği özelliği kaldır (Document.prototype getter'ı geri gelir).
+    Reflect.deleteProperty(document, 'prerendering');
     localStorage.clear();
     sessionStorage.clear();
   });
@@ -110,6 +113,55 @@ describe('LoginComponent', () => {
     const url = await redirectUrl();
 
     expect(storedRecord(url.searchParams.get('state')!).returnPath).toBeNull();
+  });
+
+  it('issue #595: normal açılışta begin hemen bir kez çağrılır', async () => {
+    const begin = vi.spyOn(TestBed.inject(OidcFlowService), 'begin');
+
+    fixture.detectChanges();
+    expect(begin).toHaveBeenCalledTimes(1);
+    await redirected;
+    expect(redirectSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('issue #595: ön-yüklemede begin çağrılmaz; prerenderingchange sonrası bir kez başlatır', async () => {
+    const begin = vi.spyOn(TestBed.inject(OidcFlowService), 'begin');
+    Object.defineProperty(document, 'prerendering', { value: true, configurable: true, writable: true });
+
+    fixture.detectChanges();
+    // Korumasız ngOnInit begin'i senkron çağırır; yönlendirme ve kayıt yazımı yalnız begin'den sonra gelir.
+    // Bu yüzden negatif iddialar zamanlamaya bağlı değil — whenStable yalnızca bekleyen işleri boşaltır.
+    expect(begin).not.toHaveBeenCalled();
+    await fixture.whenStable();
+
+    expect(begin).not.toHaveBeenCalled();
+    expect(redirectSpy).not.toHaveBeenCalled();
+    expect(Object.keys(sessionStorage).filter((k) => k.startsWith(OIDC_FLOW_KEY_PREFIX))).toEqual([]);
+
+    Object.defineProperty(document, 'prerendering', { value: false, configurable: true, writable: true });
+    document.dispatchEvent(new Event(PRERENDERING_CHANGE_EVENT));
+    const url = await redirectUrl();
+    document.dispatchEvent(new Event(PRERENDERING_CHANGE_EVENT));
+
+    expect(begin).toHaveBeenCalledTimes(1);
+    expect(redirectSpy).toHaveBeenCalledTimes(1);
+    expect(storedRecord(url.searchParams.get('state')!).state).toBe(url.searchParams.get('state'));
+  });
+
+  it('issue #595: ön-yüklemede yok edilen sayfa etkinleşince başlatmaz', async () => {
+    const begin = vi.spyOn(TestBed.inject(OidcFlowService), 'begin');
+    Object.defineProperty(document, 'prerendering', { value: true, configurable: true, writable: true });
+
+    fixture.detectChanges();
+    fixture.destroy();
+    Object.defineProperty(document, 'prerendering', { value: false, configurable: true, writable: true });
+    document.dispatchEvent(new Event(PRERENDERING_CHANGE_EVENT));
+    // Etkinleşme dinleyicisi kaldırılmasaydı begin bu dispatch içinde senkron çağrılırdı.
+    expect(begin).not.toHaveBeenCalled();
+    await fixture.whenStable();
+
+    expect(begin).not.toHaveBeenCalled();
+    expect(redirectSpy).not.toHaveBeenCalled();
   });
 
   it('mevcut query parametrelerini koruyarak ui_locales ekler', () => {

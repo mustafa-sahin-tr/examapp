@@ -52,6 +52,10 @@ export function toRegisterIntent(value: unknown): RegisterIntent | null {
  * tamamlanır, ancak kayıt niyeti (`intent`) o sekmede kaybolur; kullanıcı rol ön seçimi olmadan profil
  * tamamlama ekranına düşer. Bilinçli tercih: state/verifier'ı localStorage gibi sekmeler arası paylaşılan
  * bir yere koymak login CSRF korumasını zayıflatırdı.
+ *
+ * Ön-yükleme (issue #595): Chrome adres çubuğu sayfayı arka planda ön-yükleyebilir (prerender); o bağlamın
+ * sessionStorage'ı etkinleşmede atılır. `begin()` ön-yüklenen sayfada çağrılmamalı — çağıranlar
+ * `runWhenPageActivated` (`shared/utils/when-activated.util.ts`) ile sayfa etkinleşene kadar bekler.
  */
 @Injectable({ providedIn: 'root' })
 export class OidcFlowService {

@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, DestroyRef, DOCUMENT, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { take } from 'rxjs';
 import { AuthService, pickAppRole } from '../../services/auth.service';
@@ -9,6 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { httpErrorMessage } from '../../shared/utils/http-error-message';
 import { safeRedirectTarget } from '../../shared/utils/safe-redirect.util';
 import { BRAND_NAME } from '../../shared/brand';
+import { runWhenPageActivated } from '../../shared/utils/when-activated.util';
 
 /** state doğrulaması başarısız olduğunda gösterilen mesaj (kod değişimi yapılmaz). */
 export const STATE_MISMATCH_MESSAGE = 'Oturum doğrulanamadı. Lütfen yeniden giriş yapın.';
@@ -67,6 +68,8 @@ export class CallbackComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly oidcFlow = inject(OidcFlowService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly brandName = BRAND_NAME;
   readonly currentStep = signal(1);
@@ -115,7 +118,15 @@ export class CallbackComponent implements OnInit {
     window.location.href = url;
   }
 
+  /**
+   * Issue #595: ön-yüklenmiş (prerender) bir callback state kaydını ve tek kullanımlık code'u tüketmesin —
+   * kayıt/code değişimi sayfa etkinleşene kadar bekler; ön-yükleme yoksa hemen. State doğrulaması (#347) aynı.
+   */
   ngOnInit(): void {
+    runWhenPageActivated(() => this.handleCallback(), this.document, this.destroyRef);
+  }
+
+  private handleCallback(): void {
     this.route.queryParams.pipe(take(1)).subscribe(async (params) => {
       // Keycloak hata dönüşü (ör. kullanıcı iptal etti): kayıt tüketilir ki tekrar kullanılamasın; otomatik
       // /login yönlendirmesi YAPILMAZ (aynı hatayla sonsuz döngü olmasın), kullanıcı "Tekrar dene"ye basar.

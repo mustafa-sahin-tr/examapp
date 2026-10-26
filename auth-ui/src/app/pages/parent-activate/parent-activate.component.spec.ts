@@ -18,6 +18,7 @@ import {
 } from '../../services/parent-activation-pending.service';
 import { AuthService } from '../../services/auth.service';
 import { ParentActivationLookup } from '../../models/parent-activation.model';
+import { PRERENDERING_CHANGE_EVENT } from '../../shared/utils/when-activated.util';
 
 const TOKEN = 'tok-abc-123';
 
@@ -54,7 +55,10 @@ describe('ParentActivateComponent (issue #440)', () => {
     redirect = vi.spyOn(ParentActivateComponent.prototype, 'redirect').mockReturnValue(undefined);
   });
 
-  afterEach(() => sessionStorage.removeItem(PARENT_ACTIVATION_PENDING_KEY));
+  afterEach(() => {
+    Reflect.deleteProperty(document, 'prerendering');
+    sessionStorage.removeItem(PARENT_ACTIVATION_PENDING_KEY);
+  });
 
   function create(
     options: {
@@ -545,5 +549,54 @@ describe('ParentActivateComponent (issue #440)', () => {
     fixture.detectChanges();
 
     expect(q(fixture, '[data-testid="activate-invalid"]')).not.toBeNull();
+  });
+
+  describe('issue #595: ön-yükleme (prerender)', () => {
+    function setPrerendering(value: boolean): void {
+      Object.defineProperty(document, 'prerendering', { value, configurable: true, writable: true });
+    }
+
+    function stalePending(): string {
+      return JSON.stringify({ token: 'old-token', consentAccepted: true, consentVersion: '2026-10', createdAt: Date.now() });
+    }
+
+    it('prerender_NoLookupNoStorageWrite_UntilActivated_ThenStartsOnce', () => {
+      const stale = stalePending();
+      sessionStorage.setItem(PARENT_ACTIVATION_PENDING_KEY, stale);
+      setPrerendering(true);
+
+      const fixture = create();
+
+      expect(service.lookup).not.toHaveBeenCalled();
+      expect(sessionStorage.getItem(PARENT_ACTIVATION_PENDING_KEY)).toBe(stale);
+      expect(fixture.componentInstance.view()).toBe('loading');
+
+      setPrerendering(false);
+      document.dispatchEvent(new Event(PRERENDERING_CHANGE_EVENT));
+      document.dispatchEvent(new Event(PRERENDERING_CHANGE_EVENT));
+
+      expect(service.lookup).toHaveBeenCalledTimes(1);
+      expect(service.lookup).toHaveBeenCalledWith(TOKEN);
+      // Yeni bağlantıyla gelindi: eski bekleyen kabul ancak etkinleşince temizlenir.
+      expect(sessionStorage.getItem(PARENT_ACTIVATION_PENDING_KEY)).toBeNull();
+      expect(fixture.componentInstance.view()).toBe('form');
+    });
+
+    it('prerender_DestroyedBeforeActivation_NeverStarts', () => {
+      setPrerendering(true);
+      const fixture = create();
+      fixture.destroy();
+
+      setPrerendering(false);
+      document.dispatchEvent(new Event(PRERENDERING_CHANGE_EVENT));
+
+      expect(service.lookup).not.toHaveBeenCalled();
+      expect(redirect).not.toHaveBeenCalled();
+    });
+
+    it('noPrerender_StartsImmediately', () => {
+      create();
+      expect(service.lookup).toHaveBeenCalledTimes(1);
+    });
   });
 });

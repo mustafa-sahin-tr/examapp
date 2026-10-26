@@ -1,4 +1,14 @@
-import { Component, OnDestroy, OnInit, computed, inject, signal, DOCUMENT, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  OnDestroy,
+  OnInit,
+  computed,
+  inject,
+  signal,
+  DOCUMENT,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { Location } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Meta } from '@angular/platform-browser';
@@ -29,6 +39,7 @@ import { ParentActivationService } from '../../services/parent-activation.servic
 import { ParentActivationPending, ParentActivationPendingService } from '../../services/parent-activation-pending.service';
 import { AuthService } from '../../services/auth.service';
 import { BRAND_NAME } from '../../shared/brand';
+import { runWhenPageActivated } from '../../shared/utils/when-activated.util';
 
 /** Sayfanın auth-ui içindeki yolu (taban `/app/` → `/app/parent-activate#token=...`). */
 export const PARENT_ACTIVATE_PATH = '/parent-activate';
@@ -98,6 +109,7 @@ export class ParentActivateComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly pending = inject(ParentActivationPendingService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly brandName = BRAND_NAME;
   protected readonly privacyPolicyUrl = PRIVACY_POLICY_URL;
@@ -149,11 +161,27 @@ export class ParentActivateComponent implements OnInit, OnDestroy {
   );
 
   constructor() {
+    // Issue #595: token okuma, no-referrer ve replaceState bilerek ön-yüklemede de çalışır (depolama/ağ yok);
+    // sessionStorage, istek ve yönlendirme yapan başlangıç `ngOnInit` → `start()` içinde etkinleşmeyi bekler.
     // Bağlantıdaki token dış kaynaklara (font, görsel) Referer ile sızmasın.
     this.meta.updateTag({ name: 'referrer', content: 'no-referrer' });
     this.token =
       activationTokenFromFragment(this.route.snapshot.fragment) ??
       activationTokenFromFragment(this.document.location?.hash);
+    // Token'ı (parçayla birlikte) adres çubuğundan ve geçmişten hemen sil (yalnız bellekte kalır).
+    this.location.replaceState(PARENT_ACTIVATE_PATH);
+  }
+
+  /**
+   * Issue #595: sessionStorage'a dokunan (bekleyen kabul), istek atan ve kendiliğinden kabul/giriş yönlendirmesi
+   * yapabilen başlangıç, sayfa ön-yüklenmişse (prerender) etkinleşene kadar bekler — ön-yükleme bağlamının
+   * sessionStorage'ı etkinleşmede atılır. Ön-yükleme yoksa hemen çalışır.
+   */
+  ngOnInit(): void {
+    runWhenPageActivated(() => this.start(), this.document, this.destroyRef);
+  }
+
+  private start(): void {
     const pending = this.pending.peek();
     if (!this.token && pending) {
       // Giriş turundan dönüş: token yalnız sessionStorage'daydı.
@@ -166,11 +194,6 @@ export class ParentActivateComponent implements OnInit, OnDestroy {
       this.resumed = pending;
     }
     this.loggedIn.set(this.auth.hasValidSessionToken());
-    // Token'ı (parçayla birlikte) adres çubuğundan ve geçmişten hemen sil (yalnız bellekte kalır).
-    this.location.replaceState(PARENT_ACTIVATE_PATH);
-  }
-
-  ngOnInit(): void {
     if (!this.token) {
       this.view.set('invalid');
       return;

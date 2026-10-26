@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { PASSAGE_INSTRUCTION_MAX_LENGTH, PassageKind, saveValidationMessage } from '../../models/activity';
 import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { FormGroup, Validators, FormArray, FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -104,6 +105,8 @@ export class QuestionComponent implements OnInit {
   private readonly transloco = inject(TranslocoService);
   questionForm!: FormGroup;
   bookService = inject(BookService);
+  readonly passageKinds = PassageKind;
+  readonly passageInstructionMax = PASSAGE_INSTRUCTION_MAX_LENGTH;
 
   resetFormWithDefaultValues(state: any) {
     this.questionForm = new FormGroup<QuestionForm>({
@@ -123,6 +126,8 @@ export class QuestionComponent implements OnInit {
       passageText: new FormControl(''),
       passageImage: new FormControl(''),
       passageTitle: new FormControl(''),
+      passageKind: new FormControl(PassageKind.Reading, { nonNullable: true }),
+      passageInstruction: new FormControl('', { validators: [Validators.maxLength(PASSAGE_INSTRUCTION_MAX_LENGTH)] }),
       testId: new FormControl(state?.testId || 0, { nonNullable: true, validators: [Validators.required] }),
       answers: new FormArray(
         Array(4)
@@ -378,6 +383,14 @@ export class QuestionComponent implements OnInit {
         title: formData.passageTitle,
         text: formData.passageText,
         imageUrl: formData.passageImage,
+        // Issue #573: tür/yönerge yalnız yeni kapsamda gönderilir; var olan kapsamda null = değişmez.
+        ...(formData.passageId > 0
+          ? { kind: null, instruction: null }
+          : {
+              kind: formData.passageKind,
+              instruction:
+                formData.passageKind === PassageKind.Activity ? (formData.passageInstruction ?? '').trim() || null : null,
+            }),
       },
       answers: formData.answers.map((answer: any, index: number) => ({
         text: answer.text,
@@ -432,7 +445,8 @@ export class QuestionComponent implements OnInit {
       error: (err) => {
         console.error('Hata oluştu:', err);
         // Issue #287: başkasının sorusunu düzenleme / yetkisiz rol → gövdesiz 403.
-        alert(this.tr(err?.status === 403 ? 'common.forbidden' : 'common.saveError'));
+        // Issue #573: 400 doğrulama mesajı (ör. yönerge geçersiz) sunucunun yerelleştirilmiş metniyle gösterilir.
+        alert(saveValidationMessage(err) ?? this.tr(err?.status === 403 ? 'common.forbidden' : 'common.saveError'));
       },
     });
 

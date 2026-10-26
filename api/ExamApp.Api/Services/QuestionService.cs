@@ -45,7 +45,7 @@ public class QuestionService : IQuestionService
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
-    public async Task<QuestionSavedDto> CreateOrUpdateQuestion(QuestionDto questionDto, int actingUserId = 0)
+    public async Task<QuestionSavedDto> CreateOrUpdateQuestion(QuestionDto questionDto, int actingUserId = 0, bool isAdmin = false)
     {
         // issue #287 H1: audit alanları (CreateUserId = soru sahibi) istek sahibine damgalanır.
         if (actingUserId > 0)
@@ -69,6 +69,19 @@ public class QuestionService : IQuestionService
                 };
             }
             newPassage.ImageUrl = normalizedPassageImage;
+        }
+
+        // issue #573 (security review): yönerge düz metin — kontrol karakteri varsa hiçbir şey yazılmadan 400 (DTO doğrulamasının
+        // servis tarafı kopyası; DI'sız/doğrudan çağıranlar için).
+        if (questionDto.Passage?.Instruction is { } instruction
+            && (instruction.Length > Passage.MaxInstructionLength || PlainTextAttribute.ContainsControlCharacters(instruction)))
+        {
+            return new QuestionSavedDto
+            {
+                Success = false,
+                InvalidInput = true,
+                Message = _localizer["questions.passage.invalidInstruction"]
+            };
         }
 
         try
@@ -178,6 +191,7 @@ public class QuestionService : IQuestionService
                         // issue #402: güncellemede var olan paragraf artık gerçekten bağlanır (eskiden yalnız varlığı kontrol
                         // edilip bağlanmıyordu). Sahiplik controller'da (IQuestionOwnershipGuard.CanUsePassageAsync) doğrulanır.
                         question.PassageId = passage.Id;
+                        ApplyPassageActivityFields(passage, questionDto.Passage, isNew: false, CanEditExistingPassage(passage, actingUserId, isAdmin));
                     }
                     else
                     {
@@ -186,6 +200,7 @@ public class QuestionService : IQuestionService
                             Title = questionDto.Passage.Title,
                             Text = questionDto.Passage.Text
                         };
+                        ApplyPassageActivityFields(passage, questionDto.Passage, isNew: true, canEdit: true);
                         // issue #365 (S2): istemci değeri olduğu gibi saklanmaz. Base64 ise (oluşturma dalıyla aynı)
                         // yüklenir — eskiden data URI ham hâliyle ImageUrl'e yazılıyordu; değilse metodun başında
                         // passages/ allowlist'ine normalize edilmiş (query'siz) adrestir.
@@ -316,6 +331,7 @@ public class QuestionService : IQuestionService
                         .FirstOrDefaultAsync(p => p.Id == questionDto.Passage.Id) ?? throw new InvalidOperationException(_localizer["questions.passageNotFound"]);
 
                         question.PassageId = passage.Id;
+                        ApplyPassageActivityFields(passage, questionDto.Passage, isNew: false, CanEditExistingPassage(passage, actingUserId, isAdmin));
                         _context.Questions.Update(question);
                         await _context.SaveChangesAsync();
 
@@ -328,6 +344,7 @@ public class QuestionService : IQuestionService
                             Title = questionDto.Passage.Title,
                             Text = questionDto.Passage.Text
                         };
+                        ApplyPassageActivityFields(passage, questionDto.Passage, isNew: true, canEdit: true);
                         // 📌 Base64 görsel yüklenir; değilse metodun başında passages/ allowlist'ine normalize edilmiş adres (#365).
                         passage.ImageUrl = await ResolveNewPassageImageAsync(questionDto.Passage.ImageUrl, questionDto.TestId);
 
@@ -407,6 +424,39 @@ public class QuestionService : IQuestionService
     /// Yeni paragrafın saklanacak görsel adresi: base64 ise MinIO'ya yüklenir, değilse (metodun başında passages/
     /// allowlist'ine normalize edilmiş) değer aynen döner; boşsa null.
     /// </summary>
+    /// <summary>
+    /// issue #573: kapsamın etkinlik alanları. Yeni kapsamda null tür = Reading. Var olan kapsamda (bağlama) yalnız gönderilen
+    /// alanlar değişir — alanı göndermeyen eski istemci türü/yönergeyi sıfırlamaz. Boş/boşluk yönerge = temizle.
+    /// <paramref name="canEdit"/> false ise (var olan kapsamın sahibi değil, admin değil) alanlar yok sayılır; bağlama aynen yapılır.
+    /// </summary>
+    internal static void ApplyPassageActivityFields(Passage passage, PassageDto dto, bool isNew, bool canEdit)
+    {
+        if (!isNew && !canEdit)
+            return;
+
+        if (dto.Kind.HasValue)
+            passage.Kind = dto.Kind.Value;
+        else if (isNew)
+            passage.Kind = PassageKind.Reading;
+
+        if (dto.Instruction != null || isNew)
+            passage.Instruction = NormalizeInstruction(dto.Instruction);
+    }
+
+    /// <summary>
+    /// issue #573 (security review): var olan kapsamın tür/yönergesini yalnız kapsamın sahibi (<c>CreateUserId</c>) ya da admin
+    /// değiştirebilir. <c>IQuestionOwnershipGuard.CanUsePassageAsync</c> bağlamaya (paylaşılan kapsam, legacy kapsamda bağlı
+    /// sorunun sahibi) izin verse de bu, başkasının kapsamını (ve ona bağlı diğer soruları) değiştirme yetkisi değildir. Legacy
+    /// (sahipsiz, CreateUserId 0/null) kapsam: admin dışında hiç değiştirilmez — bağlı başka kullanıcının sorusu olup olmadığını
+    /// türetmek yerine daha güvenli olan seçildi.
+    /// </summary>
+    internal static bool CanEditExistingPassage(Passage passage, int actingUserId, bool isAdmin)
+        => isAdmin || (actingUserId > 0 && passage.CreateUserId is { } owner && owner > 0 && owner == actingUserId);
+
+    /// <summary>issue #573: boş/boşluk yönerge null saklanır; uzunluk DTO doğrulamasında sınırlıdır.</summary>
+    internal static string? NormalizeInstruction(string? instruction)
+        => string.IsNullOrWhiteSpace(instruction) ? null : instruction.Trim();
+
     private async Task<string?> ResolveNewPassageImageAsync(string? image, int? testId)
     {
         if (string.IsNullOrEmpty(image))
@@ -494,6 +544,17 @@ public class QuestionService : IQuestionService
         // issue #287 H1: audit alanları (CreateUserId = soru sahibi) istek sahibine damgalanır.
         if (actingUserId > 0)
             _context.SetCurrentUser(actingUserId);
+
+        // issue #573 (security review): kapsam yönergeleri yüklemeden önce doğrulanır (düz metin, uzunluk).
+        if ((soruDto.Passages ?? new List<BulkPassageDto>()).Any(p => p?.Instruction is { } i
+                && (i.Length > Passage.MaxInstructionLength || PlainTextAttribute.ContainsControlCharacters(i))))
+        {
+            return new ResponseBaseDto
+            {
+                Success = false,
+                Message = _localizer["questions.passage.invalidInstruction"]
+            };
+        }
 
         // issue #570: tüm soruların plan/çözümü transaction'dan ve MinIO yüklemelerinden ÖNCE doğrulanıp ayrılır — bozuk bir
         // öğe hiçbir şey yüklenmeden/yazılmadan reddedilir (ham istisna mesajı dönmez).
@@ -648,7 +709,11 @@ public class QuestionService : IQuestionService
                         Height = p.Height,
                         Title = p.Id,
                         IsCanvasQuestion = true,
-                        ImageUrl = passageImageUrl
+                        ImageUrl = passageImageUrl,
+                        // issue #573: etkinlik kapsamı (tür + yönerge). Title yukarıda istemci geçici id'si olarak kalır
+                        // (soru → kapsam eşlemesi passageLookup ile ona bakar).
+                        Kind = p.Kind ?? PassageKind.Reading,
+                        Instruction = NormalizeInstruction(p.Instruction)
                     });
                 }
                 _context.Passage.AddRange(passages);

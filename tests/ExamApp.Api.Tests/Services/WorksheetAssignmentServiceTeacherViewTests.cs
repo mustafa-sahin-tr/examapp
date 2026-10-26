@@ -33,6 +33,8 @@ public class WorksheetAssignmentServiceTeacherViewTests : IDisposable
             var g = new Grade { Name = "5" };
             ctx.Grades.Add(g);
             await ctx.SaveChangesAsync();
+            // issue #573 review: name/kind are returned without assignments only to the worksheet owner (or admin).
+            ctx.SetCurrentUser(TeacherUserId);
             var ws = new Worksheet { Name = "Deneme", Description = "", GradeId = g.Id };
             ctx.Worksheets.Add(ws);
             await ctx.SaveChangesAsync();

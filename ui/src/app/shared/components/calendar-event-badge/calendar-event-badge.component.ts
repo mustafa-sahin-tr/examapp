@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoService } from '@jsverse/transloco';
 import { CalendarEvent } from '../../../models/calendar-event';
+import { WorksheetKind } from '../../../models/activity';
 
 type BadgeVariant = 'reminder-pending' | 'reminder-sent' | 'deadline-open' | 'deadline-done' | 'booking';
 
@@ -52,12 +53,18 @@ export class CalendarEventBadgeComponent {
     return e.isCompleted ? 'deadline-done' : 'deadline-open';
   });
 
-  readonly icon = computed(() => VARIANT_ICON[this.variant()]);
-
-  readonly ariaLabel = computed(
-    () =>
-      `${this.transloco.translate<string>(VARIANT_LABEL_KEY[this.variant()]) ?? ''}: ${
-        this.event().worksheetTitle
-      }`
+  /** Issue #573: etkinlik sayfası (hatırlatma / teslim) testten ayrı ikon ve etiketle gösterilir. */
+  readonly isActivity = computed(
+    () => this.event().kind !== 'booking' && this.event().worksheetKind === WorksheetKind.Activity
   );
+
+  readonly icon = computed(() => (this.isActivity() ? 'extension' : VARIANT_ICON[this.variant()]));
+
+  readonly ariaLabel = computed(() => {
+    const variant = this.transloco.translate<string>(VARIANT_LABEL_KEY[this.variant()]) ?? '';
+    const activity = this.isActivity()
+      ? ` (${this.transloco.translate<string>('shared.calendar.activityLabel') ?? ''})`
+      : '';
+    return `${variant}${activity}: ${this.event().worksheetTitle}`;
+  });
 }

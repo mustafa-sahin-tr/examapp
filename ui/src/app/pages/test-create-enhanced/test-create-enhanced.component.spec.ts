@@ -49,7 +49,11 @@ describe('TestCreateEnhancedComponent', () => {
     let router: MockedObject<Router>;
     let snackBar: MockedObject<MatSnackBar>;
 
-    function configure(idParam: string | null, exam: Record<string, unknown> = {}): ComponentFixture<TestCreateEnhancedComponent> {
+    function configure(
+        idParam: string | null,
+        exam: Record<string, unknown> = {},
+        query: Record<string, string> = {}
+    ): ComponentFixture<TestCreateEnhancedComponent> {
         // Guard: component reads history.state.testValue when there is no :id param.
         window.history.replaceState({}, '');
 
@@ -114,7 +118,12 @@ describe('TestCreateEnhancedComponent', () => {
                 { provide: BreakpointObserver, useValue: { observe: () => of({ matches: false, breakpoints: {} }) } },
                 {
                     provide: ActivatedRoute,
-                    useValue: { snapshot: { paramMap: convertToParamMap(idParam ? { id: idParam } : {}) } },
+                    useValue: {
+                        snapshot: {
+                            paramMap: convertToParamMap(idParam ? { id: idParam } : {}),
+                            queryParamMap: convertToParamMap(query),
+                        },
+                    },
                 },
             ],
         });
@@ -417,6 +426,80 @@ describe('TestCreateEnhancedComponent', () => {
             const icons: string[] = Array.from(fixture.nativeElement.querySelectorAll('app-test-form button mat-icon')).map((i) => ((i as HTMLElement).textContent || '').trim());
 
             expect(icons).not.toContain('done_all');
+        });
+    });
+
+    // Issue #573: Tür (Test | Etkinlik sayfası).
+    describe('kind (#573)', () => {
+        const el = (fixture: ComponentFixture<TestCreateEnhancedComponent>) => fixture.nativeElement as HTMLElement;
+
+        it('newForm_DefaultsToTest_SendsKind0', () => {
+            const fixture = configure(null);
+            const c = fixture.componentInstance;
+            c.testForm.patchValue({ name: 'Yeni', gradeId: 1 });
+
+            c.onSubmit();
+
+            expect(vi.mocked(testService.create).mock.lastCall![0].kind).toBe(0);
+            expect(el(fixture).querySelector('[data-testid="kind-toggle"]')).not.toBeNull();
+        });
+
+        it('activity_HidesDurationAndPractice_LabelsInstruction_SendsZeroDuration', () => {
+            const fixture = configure(null);
+            const c = fixture.componentInstance;
+            c.testForm.patchValue({ name: 'Etkinlik', gradeId: 1, maxDurationMinutes: 25, isPracticeTest: true });
+
+            (el(fixture).querySelector('[data-testid="kind-activity"] button') as HTMLButtonElement).click();
+            fixture.detectChanges();
+
+            expect(el(fixture).querySelector('input[formcontrolname="maxDurationMinutes"]')).toBeNull();
+            expect(el(fixture).querySelector('label[for="tf-description"]')?.textContent?.trim()).toBe('Yönerge');
+            expect(el(fixture).querySelector('h1')?.textContent).toContain('Etkinlik');
+            c.onSubmit();
+            const payload = vi.mocked(testService.create).mock.lastCall![0];
+            expect(payload.kind).toBe(1);
+            expect(payload.maxDurationSeconds).toBe(0);
+            expect(payload.isPracticeTest).toBe(false);
+        });
+
+        it('queryKindActivity_PreselectsActivity', () => {
+            const c = configure(null, {}, { kind: 'activity' }).componentInstance;
+
+            expect(c.isActivity).toBe(true);
+        });
+
+        it('editSolvedWorksheet_KindToggleLockedWithHint', () => {
+            const fixture = configure('5', { kind: 1, maxDurationSeconds: 0, instanceCount: 3 });
+            fixture.detectChanges();
+
+            expect(fixture.componentInstance.kindLocked()).toBe(true);
+            expect(fixture.componentInstance.testForm.get('kind')!.disabled).toBe(true);
+            expect(el(fixture).querySelector('[data-testid="kind-locked"]')).not.toBeNull();
+            fixture.componentInstance.onSubmit();
+            expect(vi.mocked(testService.create).mock.lastCall![0].kind).toBe(1);
+        });
+
+        it('save409KindLocked_RevertsKindLocksToggleAndShowsServerMessage', () => {
+            const fixture = configure('5', { kind: 0, instanceCount: 0 });
+            const c = fixture.componentInstance;
+            testService.create.mockReturnValue(
+                throwError(
+                    () =>
+                        new HttpErrorResponse({
+                            status: 409,
+                            error: { success: false, conflict: true, errorCode: 'WorksheetKindLocked', message: 'Tür kilitli.' },
+                        })
+                )
+            );
+            c.testForm.patchValue({ kind: 1 });
+
+            c.onSubmit();
+            fixture.detectChanges();
+
+            expect(snackBar.open).toHaveBeenCalledWith('Tür kilitli.', expect.any(String), expect.any(Object));
+            expect(c.kindLocked()).toBe(true);
+            expect(c.testForm.getRawValue().kind).toBe(0);
+            expect(c.testForm.get('maxDurationMinutes')!.enabled).toBe(true);
         });
     });
 });

@@ -18,6 +18,10 @@ export type QuestionForm = {
     passageText: FormControl<string | null>,
     passageImage: FormControl<string | null>,
     passageTitle: FormControl<string | null>,
+    /** Issue #573: yeni kapsamın türü (0 Okuma metni, 1 Etkinlik). */
+    passageKind: FormControl<number>,
+    /** Issue #573: yeni etkinlik kapsamının yönergesi. */
+    passageInstruction: FormControl<string | null>,
     answers: FormArray
 }
 

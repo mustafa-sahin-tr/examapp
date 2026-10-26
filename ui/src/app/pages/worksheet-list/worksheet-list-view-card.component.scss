@@ -317,3 +317,10 @@
     }
   }
 }
+
+// Issue #573: tamamlanan etkinliğin ilk kontrol bilgisi — vurgusuz metin (puan/yüzde değil).
+.wcard__info {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ms-text-medium);
+}

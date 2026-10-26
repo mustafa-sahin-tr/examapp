@@ -48,6 +48,9 @@ public static class TestSessionErrorCodes
     /// <summary>issue #571: 409 — kontrol / "doğru cevapları göster" yalnız etkinlikte (<c>Worksheet.Kind = Activity</c>).</summary>
     public const string NotAnActivity = "NotAnActivity";
 
-    /// <summary>issue #571: 409 — "doğru cevapları göster" en az bir kontrolden sonra açılır.</summary>
+    /// <summary>
+    /// issue #571: 409 — "doğru cevapları göster" en az bir kontrolden sonra açılır. issue #573: etkinlikte <c>end-test</c> de
+    /// en az bir kontrol ister (oturum Started kalır, hiçbir şey yazılmaz).
+    /// </summary>
     public const string ActivityCheckRequired = "ActivityCheckRequired";
 }

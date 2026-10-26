@@ -73,6 +73,19 @@
                 <label for="passageTitle">{{ t('form.passageTitleLabel') }}</label>
                 <quill-editor   id="passageTitle" formControlName="passageTitle" theme="snow"></quill-editor>
 
+                <!-- Issue #573: kapsam türü + etkinlik yönergesi -->
+                <label for="passageKind">{{ t('form.passageKindLabel') }}</label>
+                <select id="passageKind" formControlName="passageKind">
+                  <option [ngValue]="passageKinds.Reading">{{ t('inspector.passageKindReading') }}</option>
+                  <option [ngValue]="passageKinds.Activity">{{ t('inspector.passageKindActivity') }}</option>
+                </select>
+                @if (questionForm.value.passageKind === passageKinds.Activity) {
+                  <label for="passageInstruction">{{ t('form.passageInstructionLabel') }}</label>
+                  <textarea id="passageInstruction" rows="3" formControlName="passageInstruction"
+                    [attr.maxlength]="passageInstructionMax"
+                    [placeholder]="t('inspector.passageInstructionPlaceholder')"></textarea>
+                }
+
               }
 
 

@@ -4,7 +4,8 @@
     "titleStudent": "Sınav Kütüphanesi",
     "subtitleTeacher": "Oluşturduğun testleri yönet, düzenle ve öğrencilere ata.",
     "subtitleStudent": "Konu ve zorluğa göre test bul, çöz ve ilerlemeni takip et.",
-    "newTest": "Yeni Test"
+    "newTest": "Yeni Test",
+    "newActivity": "Yeni Etkinlik"
   },
   "tabs": {
     "aria": "Bölümler",
@@ -146,7 +147,13 @@
     "primaryContinue": "Devam Et",
     "primaryViewResult": "Sonucu Gör",
     "primaryStartPractice": "Çalışmaya Başla",
-    "primaryStart": "Başla"
+    "primaryStart": "Başla",
+    "tagActivity": "Etkinlik",
+    "itemCount": "{{count}} madde",
+    "primaryStartActivity": "Başla",
+    "primaryContinueActivity": "Devam et",
+    "primaryViewActivity": "Detayı gör",
+    "activityFirstCheck": "İlk kontrol: {{correct}} / {{total}} doğru"
   },
   "enhanced": {
     "navNewest": "Yeni Testler",
@@ -194,5 +201,21 @@
     "cardCompleted": "Tamamlandı",
     "emptyTitle": "Sonuç bulunamadı",
     "emptyText": "Arama kriterlerinizi değiştirmeyi deneyin"
+  },
+  "kindTabs": {
+    "aria": "Sayfa türü",
+    "tests": "Testler",
+    "activities": "Etkinlikler",
+    "activitiesCount": "Etkinlikler ({{count}})"
+  },
+  "activities": {
+    "loading": "Etkinlikler yükleniyor",
+    "error": "Etkinlikler yüklenemedi.",
+    "emptyTitle": "Henüz etkinlik yok",
+    "emptyText": "Öğretmenin bir etkinlik sayfası atadığında burada görünür.",
+    "newTitle": "Yeni",
+    "inProgressTitle": "Devam ediyor",
+    "completedTitle": "Tamamlandı",
+    "partialError": "Bazı etkinlikler yüklenemedi; liste eksik olabilir."
   }
 }

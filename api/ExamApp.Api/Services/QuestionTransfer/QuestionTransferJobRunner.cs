@@ -475,6 +475,8 @@ public class QuestionTransferJobRunner
                         y = q.Passage.Y,
                         width = q.Passage.Width,
                         height = q.Passage.Height,
+                        kind = (int)q.Passage.Kind, // issue #573
+                        instruction = q.Passage.Instruction,
                     }
                     : null,
                 answers = q.Answers.Select(a => new
@@ -730,6 +732,9 @@ public class QuestionTransferJobRunner
                                     Width = passageEl.TryGetProperty("width", out var pw) && pw.ValueKind != JsonValueKind.Null ? pw.GetInt32() : null,
                                     Height = passageEl.TryGetProperty("height", out var ph) && ph.ValueKind != JsonValueKind.Null ? ph.GetInt32() : null,
                                     IsCanvasQuestion = true,
+                                    // issue #573: tür + yönerge taşınır; eski paketlerde alan yoksa Reading / null.
+                                    Kind = ReadPassageKind(passageEl),
+                                    Instruction = ReadPassageInstruction(passageEl),
                                 };
 
                                 // Upload passage image (best-effort)
@@ -900,6 +905,23 @@ public class QuestionTransferJobRunner
             job.Message = ex.Message;
             await _db.SaveChangesAsync();
         }
+    }
+
+
+    /// <summary>issue #573: içe aktarılan kapsam türü — tanımsız/eksik değer Reading.</summary>
+    private static PassageKind ReadPassageKind(JsonElement passageEl)
+        => passageEl.TryGetProperty("kind", out var k) && k.ValueKind == JsonValueKind.Number
+            && k.TryGetInt32(out var kv) && Enum.IsDefined(typeof(PassageKind), kv)
+                ? (PassageKind)kv
+                : PassageKind.Reading;
+
+    /// <summary>issue #573: içe aktarılan yönerge — string değilse null, sınırdan uzunsa kırpılır.</summary>
+    private static string? ReadPassageInstruction(JsonElement passageEl)
+    {
+        if (!passageEl.TryGetProperty("instruction", out var i) || i.ValueKind != JsonValueKind.String)
+            return null;
+        var value = i.GetString();
+        return value is { Length: > Passage.MaxInstructionLength } ? value[..Passage.MaxInstructionLength] : value;
     }
 
     private static string? TransformQuestionV2Url(string? url)

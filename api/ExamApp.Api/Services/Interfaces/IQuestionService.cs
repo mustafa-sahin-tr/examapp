@@ -7,7 +7,8 @@ namespace ExamApp.Api.Services.Interfaces;
 public interface IQuestionService
 {
     /// <param name="actingUserId">issue #287 H1: &gt; 0 ise yeni sorular bu kullanıcıya damgalanır (Question.CreateUserId → sahiplik).</param>
-    Task<QuestionSavedDto> CreateOrUpdateQuestion(QuestionDto questionDto, int actingUserId = 0);
+    /// <param name="isAdmin">issue #573: var olan kapsamın tür/yönergesini sahibi olmayan admin de değiştirebilir.</param>
+    Task<QuestionSavedDto> CreateOrUpdateQuestion(QuestionDto questionDto, int actingUserId = 0, bool isAdmin = false);
 
     /// <param name="actingUserId">issue #287 H1: &gt; 0 ise yeni sorular bu kullanıcıya damgalanır (Question.CreateUserId → sahiplik).</param>
     Task<ResponseBaseDto> SaveBulkQuestion(BulkQuestionCreateDto soruDto, int actingUserId = 0);

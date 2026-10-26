@@ -4,7 +4,8 @@
     "titleStudent": "Test Library",
     "subtitleTeacher": "Manage, edit and assign the tests you have created.",
     "subtitleStudent": "Find tests by topic and difficulty, take them and track your progress.",
-    "newTest": "New Test"
+    "newTest": "New Test",
+    "newActivity": "New Activity"
   },
   "tabs": {
     "aria": "Sections",
@@ -146,7 +147,13 @@
     "primaryContinue": "Continue",
     "primaryViewResult": "View Result",
     "primaryStartPractice": "Start Practicing",
-    "primaryStart": "Start"
+    "primaryStart": "Start",
+    "tagActivity": "Activity",
+    "itemCount": "{{count}} items",
+    "primaryStartActivity": "Start",
+    "primaryContinueActivity": "Continue",
+    "primaryViewActivity": "View details",
+    "activityFirstCheck": "First check: {{correct}} / {{total}} correct"
   },
   "enhanced": {
     "navNewest": "New Tests",
@@ -194,5 +201,21 @@
     "cardCompleted": "Completed",
     "emptyTitle": "No results found",
     "emptyText": "Try changing your search criteria"
+  },
+  "kindTabs": {
+    "aria": "Page type",
+    "tests": "Tests",
+    "activities": "Activities",
+    "activitiesCount": "Activities ({{count}})"
+  },
+  "activities": {
+    "loading": "Loading activities",
+    "error": "Activities could not be loaded.",
+    "emptyTitle": "No activities yet",
+    "emptyText": "When your teacher assigns an activity page, it shows up here.",
+    "newTitle": "New",
+    "inProgressTitle": "In progress",
+    "completedTitle": "Completed",
+    "partialError": "Some activities could not be loaded; the list may be incomplete."
   }
 }

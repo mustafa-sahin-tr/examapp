@@ -35,7 +35,14 @@
     "cancel": "İptal",
     "commentsLabel": "Yorum ve soru",
     "commentsHint": "Açıkken öğrenciler bu test ve soruları hakkında yorum ya da soru yazabilir; mevcut yorumlar kapalıyken de görünür.",
-    "commentsHintCompact": "Öğrenciler yorum ve soru yazabilsin"
+    "commentsHintCompact": "Öğrenciler yorum ve soru yazabilsin",
+    "kindLabel": "Tür",
+    "kindTest": "Test",
+    "kindActivity": "Etkinlik sayfası",
+    "kindActivityHint": "Etkinlik sayfasında süre ve puan yoktur; öğrenci maddeleri kontrol edip yanlışlarını düzeltir.",
+    "kindLockedHint": "Bu sayfa öğrenciler tarafından açıldığı için türü değiştirilemez.",
+    "instructionLabel": "Yönerge",
+    "instructionPlaceholder": "Öğrenciye ne yapacağını kısaca anlat (ör. Resimleri doğru kelimelerle eşleştir)."
   },
   "page": {
     "creating": "Oluşturuluyor…",
@@ -54,7 +61,8 @@
     "uploading": "Yükleniyor…",
     "pickFile": "Dosya Seç",
     "visibilityTitle": "Görünürlük",
-    "visibilityNote": "Bu testi diğer öğretmenlerin ve öğrencilerin nasıl göreceğini belirle. Değişiklik anında kaydedilir."
+    "visibilityNote": "Bu testi diğer öğretmenlerin ve öğrencilerin nasıl göreceğini belirle. Değişiklik anında kaydedilir.",
+    "titleNewActivity": "Yeni Etkinlik Sayfası Oluştur"
   },
   "preview": {
     "title": "Kart Önizleme",
@@ -65,7 +73,8 @@
     "saveChanges": "Değişiklikleri Kaydet",
     "addQuestion": "Soru Ekle",
     "defaultName": "Test Adı",
-    "gradePlaceholder": "Sınıf Seçin"
+    "gradePlaceholder": "Sınıf Seçin",
+    "activity": "Etkinlik"
   },
   "snackbar": {
     "close": "Kapat",
@@ -86,6 +95,7 @@
     "changesSaved": "Değişiklikler kaydedildi.",
     "subtopicRequired": "Alt konu seçilmedi",
     "navigatingToList": "Test listesine yönlendiriliyorsunuz...",
-    "navigatingToQuestions": "Soru ekleme adımına geçiliyor..."
+    "navigatingToQuestions": "Soru ekleme adımına geçiliyor...",
+    "kindLocked": "Bu sayfa öğrenciler tarafından açıldığı için türü değiştirilemez."
   }
 }

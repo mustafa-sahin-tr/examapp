@@ -18,6 +18,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatTabsModule } from '@angular/material/tabs';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 
@@ -46,6 +47,15 @@ import { TestService } from '../../services/test.service';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 
 import { WorksheetListViewCardComponent } from './worksheet-list-view-card.component';
+import { ActivityListComponent } from './activity-list.component';
+import { WorksheetKind } from '../../models/activity';
+
+/** Issue #573: üst düzey sekme — Testler | Etkinlikler (`?type=activities`). */
+export type WorksheetPageKind = 'tests' | 'activities';
+
+export function pageKindFromQuery(value: unknown): WorksheetPageKind {
+  return value === 'activities' ? 'activities' : 'tests';
+}
 
 /** Sayfa çevirileri kendi scope'unda: `public/i18n/worksheet-list/<lang>.json` (issue #183). */
 const WORKSHEET_LIST_SCOPE = 'worksheet-list';
@@ -66,7 +76,9 @@ interface GradeOption {
     MatMenuModule,
     MatButtonModule,
     MatSlideToggleModule,
+    MatTabsModule,
     PaginationComponent,
+    ActivityListComponent,
     WorksheetListViewCardComponent,
     CompactTestCardComponent,
     TranslocoDirective
@@ -103,6 +115,10 @@ export class WorksheetListComponent implements OnInit {
   readonly subjects = toSignal(this.subjectService.loadCategories(), { initialValue: [] as Subject[] });
   readonly grades = toSignal(this.gradesService.getGrades(), { initialValue: [] as GradeOption[] });
 
+  /** Issue #573: Testler | Etkinlikler. Tür filtresi tüm test listelerine (`kind`) uygulanır. */
+  readonly pageKind = signal<WorksheetPageKind>('tests');
+  /** Öğrencinin açık (tamamlanmamış) etkinlik ataması sayısı — sekme adındaki sayaç. */
+  readonly openActivityCount = signal(0);
   readonly viewMode = signal<'grid' | 'list'>('grid');
   readonly tab = signal<WorksheetListTab>('discover');
   readonly sortBy = signal<WorksheetSortBy>('newest');
@@ -295,6 +311,17 @@ export class WorksheetListComponent implements OnInit {
     this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const search = ((params['search'] as string) ?? '').trim();
       const section = (params['section'] as string) ?? '';
+      const kind = pageKindFromQuery(params['type']);
+      const kindChanged = kind !== this.pageKind();
+      this.pageKind.set(kind);
+      if (kindChanged) {
+        this.selectedIds.set(new Set());
+        if (kind === 'activities') {
+          // Süre / çalışma testi filtreleri etkinlikte anlamsız.
+          this.durationBucket.set(null);
+          this.practiceOnly.set(false);
+        }
+      }
 
       this.search.set(search);
       if (section === 'newest') {
@@ -338,6 +365,7 @@ export class WorksheetListComponent implements OnInit {
       maxQuestionCount: question?.max,
       isPracticeTest: this.practiceOnly() ? true : undefined,
       includeShared: this.isTeacher && this.includeShared() ? true : undefined,
+      kind: this.listKind(),
       sortBy: this.sortBy(),
       sortDir: this.sortBy() === 'alphabetical' ? 'asc' : undefined,
       pageNumber: this.pageNumber(),
@@ -345,8 +373,16 @@ export class WorksheetListComponent implements OnInit {
     };
   }
 
+  /** Liste isteklerindeki tür filtresi (#573): Testler sekmesi etkinlikleri, Etkinlikler sekmesi testleri göstermez. */
+  private listKind(): 0 | 1 {
+    return this.pageKind() === 'activities' ? WorksheetKind.Activity : WorksheetKind.Test;
+  }
+
+  /** Öğrencinin Etkinlikler sekmesi kendi bileşeninde (ActivityListComponent) yüklenir. */
+  readonly showStudentActivities = computed(() => this.isStudent && this.pageKind() === 'activities');
+
   fetch(): void {
-    if (this.tab() !== 'discover') {
+    if (this.tab() !== 'discover' || this.showStudentActivities()) {
       return;
     }
     this.fetchTrigger.next();
@@ -377,7 +413,14 @@ export class WorksheetListComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
-        next: (items) => this.assignments.set(items ?? []),
+        next: (items) => {
+          // Issue #573: tek istek; etkinlikler test sekmelerinde gösterilmez, yalnız sekme sayacına girer.
+          const all = items ?? [];
+          this.assignments.set(all.filter((a) => a.kind !== WorksheetKind.Activity));
+          this.openActivityCount.set(
+            all.filter((a) => a.kind === WorksheetKind.Activity && !a.isCompleted && !a.isFinished).length
+          );
+        },
         error: () => this.assignmentsError.set(this.tr('error.assignmentsLoadFailed')),
       });
   }
@@ -388,10 +431,10 @@ export class WorksheetListComponent implements OnInit {
     this.bucketsError.set(null);
     forkJoin({
       inProgress: this.testService
-        .listWorksheets({ statuses: [0], pageSize: 50, sortBy: 'recent' })
+        .listWorksheets({ statuses: [0], pageSize: 50, sortBy: 'recent', kind: WorksheetKind.Test })
         .pipe(catchError(() => of(null))),
       completed: this.testService
-        .listWorksheets({ statuses: [1], pageSize: 50, sortBy: 'recent' })
+        .listWorksheets({ statuses: [1], pageSize: 50, sortBy: 'recent', kind: WorksheetKind.Test })
         .pipe(catchError(() => of(null))),
     })
       .pipe(
@@ -434,6 +477,18 @@ export class WorksheetListComponent implements OnInit {
     } else if (this.isStudent) {
       this.loadStatusBuckets();
     }
+  }
+
+  /** Issue #573: Testler | Etkinlikler sekmesi — URL'de `?type=activities` (geri tuşu ve paylaşılabilir bağlantı). */
+  setPageKind(kind: WorksheetPageKind): void {
+    if (this.pageKind() === kind) {
+      return;
+    }
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { type: kind === 'activities' ? 'activities' : null },
+      queryParamsHandling: 'merge',
+    });
   }
 
   setSort(sort: WorksheetSortBy): void {
@@ -618,6 +673,10 @@ export class WorksheetListComponent implements OnInit {
   }
 
   onCreate(): void {
+    if (this.pageKind() === 'activities') {
+      this.router.navigate(['/exam'], { queryParams: { kind: 'activity' } });
+      return;
+    }
     this.router.navigate(['/exam']);
   }
 

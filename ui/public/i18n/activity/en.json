@@ -1,0 +1,20 @@
+{
+  "state": {
+    "loading": "Loading activity...",
+    "error": "The activity could not be loaded.",
+    "empty": "This activity has no items yet.",
+    "retry": "Try again",
+    "backToList": "Back to the list"
+  },
+  "itemAria": "Item {{label}} content",
+  "rows": {
+    "zone": "Target {{n}}: {{content}}",
+    "choice": "Your choice: {{content}}",
+    "empty": "empty"
+  },
+  "saveFailed": "Your last answer could not be saved; it will be sent again when you check.",
+  "finishCheckRequired": "Check your answers once before finishing.",
+  "alreadyFinished": "This activity has already been finished.",
+  "nextFailed": "The next activity could not be opened.",
+  "dismiss": "OK"
+}

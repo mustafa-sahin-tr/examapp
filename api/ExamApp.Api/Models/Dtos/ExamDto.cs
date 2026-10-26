@@ -22,6 +22,14 @@ public class ExamDto
     public bool IsPracticeTest { get; set; }
 
     /// <summary>
+    /// issue #573: sayfa türü (0 = Test, 1 = Activity). null = oluştururken Test, güncellerken mevcut değer korunur.
+    /// Activity'de <see cref="MaxDurationSeconds"/> 0'a, <see cref="IsPracticeTest"/> false'a zorlanır. Oturumu (instance)
+    /// olan sayfanın türü değiştirilemez (409 <c>WorksheetKindLocked</c>).
+    /// </summary>
+    [EnumDataType(typeof(WorksheetKind))]
+    public WorksheetKind? Kind { get; set; }
+
+    /// <summary>
     /// issue #105: öğrenciler yorum-soru yazabilir mi. null = oluştururken varsayılan (true), güncellerken mevcut
     /// değer korunur — alanı göndermeyen eski istemciler ayarı yanlışlıkla kapatmasın.
     /// </summary>
@@ -51,6 +59,9 @@ public class ExamDto
 
 public class ExamSavedDto : ResponseBaseDto
 {
+    /// <summary>issue #573: makine tarafından okunabilir hata kodu (bkz. <see cref="WorksheetAuthoringErrorCodes"/>); başarıda null.</summary>
+    public string? ErrorCode { get; set; }
+
     public int? BookId { get; set; }
     public int? BookTestId { get; set; } = null;
     public int? ExamId { get; set; } = null;
@@ -75,4 +86,11 @@ public class ExamAllStatisticsDto
 public static class WorksheetDurationLimits
 {
     public const int MaxSeconds = 86_400;
+}
+
+/// <summary>issue #573: test/etkinlik oluşturma-güncelleme hata kodları.</summary>
+public static class WorksheetAuthoringErrorCodes
+{
+    /// <summary>409 — en az bir öğrenci oturumu (silinmiş dahil) olan sayfanın türü (Test ⇄ Activity) değiştirilemez. Hiçbir şey yazılmadı.</summary>
+    public const string WorksheetKindLocked = "WorksheetKindLocked";
 }

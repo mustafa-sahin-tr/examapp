@@ -31,6 +31,7 @@ import {
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { createStorageImageResolver } from '../../shared/utils/storage-image-refresh.util';
 import { StorageImageRetryDirective } from '../../shared/directives/storage-image-retry.directive';
+import { ACTIVITY_ERROR_CODES, WorksheetKind, activityErrorCode, activityErrorMessage } from '../../models/activity';
 
 /**
  * Test oluşturma/düzenleme akışının çevirileri tek scope'ta toplanır (issue #183):
@@ -132,6 +133,13 @@ export class TestCreateEnhancedComponent implements OnInit {
   readonly teacherSharing = signal<WorksheetTeacherSharing>(WorksheetTeacherSharing.Private);
   readonly studentVisibility = signal<WorksheetStudentVisibility>(WorksheetStudentVisibility.Normal);
   readonly isSavingVisibility = signal(false);
+  /**
+   * Issue #573: tür değiştirilemez — sayfanın öğrenci oturumu var. Düzenlemede `instanceCount > 0` ise baştan kilitli;
+   * sayılmayan (silinmiş) oturum yüzünden sunucu 409 `WorksheetKindLocked` dönerse de kilitlenir ve tür geri alınır.
+   */
+  readonly kindLocked = signal(false);
+  /** Düzenlemede sunucudaki tür (409'da geri dönülecek değer). */
+  private savedKind: WorksheetKind = WorksheetKind.Test;
   testForm!: FormGroup;
   books: any[] = [];
   bookTests: any[] = [];
@@ -166,11 +174,55 @@ export class TestCreateEnhancedComponent implements OnInit {
 
   ngOnInit(): void {
     this.id = this.route.snapshot.paramMap.get('id') ? Number(this.route.snapshot.paramMap.get('id')) : null;
+    // Issue #573: Testlerim > Etkinlikler > "Yeni Etkinlik" `?kind=activity` ile gelir.
+    this.initialKind =
+      this.route.snapshot.queryParamMap?.get('kind') === 'activity' ? WorksheetKind.Activity : WorksheetKind.Test;
     if (!this.id) {
       const navigation = this.router.currentNavigation();
       this.id = history.state.testValue;
     }
     this.reloadComponent(this.id!);
+  }
+
+  private initialKind: WorksheetKind = WorksheetKind.Test;
+
+  /** Issue #573: formdaki tür (kilitli/disabled olsa da). */
+  get formKind(): WorksheetKind {
+    return this.testForm?.getRawValue()?.kind === WorksheetKind.Activity ? WorksheetKind.Activity : WorksheetKind.Test;
+  }
+
+  get isActivity(): boolean {
+    return this.formKind === WorksheetKind.Activity;
+  }
+
+  /**
+   * Issue #573: etkinlikte süre ve çalışma testi alanları devre dışı (doğrulamaya girmez; backend 0/false'a zorlar).
+   * Salt okunur formda dokunulmaz.
+   */
+  private applyKindState(): void {
+    if (!this.testForm || (this.isEditMode && !this.canEdit())) {
+      return;
+    }
+    const activity = this.isActivity;
+    ['maxDurationMinutes', 'isPracticeTest'].forEach((name) => {
+      const control = this.testForm.get(name);
+      if (!control) {
+        return;
+      }
+      if (activity && control.enabled) {
+        control.disable({ emitEvent: false });
+      } else if (!activity && control.disabled) {
+        control.enable({ emitEvent: false });
+      }
+    });
+    const kindControl = this.testForm.get('kind');
+    if (kindControl) {
+      if (this.kindLocked() && kindControl.enabled) {
+        kindControl.disable({ emitEvent: false });
+      } else if (!this.kindLocked() && kindControl.disabled) {
+        kindControl.enable({ emitEvent: false });
+      }
+    }
   }
 
   public set thisId(value: number | null) {
@@ -181,6 +233,7 @@ export class TestCreateEnhancedComponent implements OnInit {
     this.thisId = id;
     this.isEditMode = this.id !== null && this.id !== undefined && this.id > 0;
     this.canEdit.set(true);
+    this.kindLocked.set(false);
     this.testForm = this.fb.group({
       id: [this.id || null],
       name: ['', Validators.required],
@@ -200,7 +253,14 @@ export class TestCreateEnhancedComponent implements OnInit {
       topicId: [''],
       subtopicId: [''],
       questionCount: [0],
+      // Issue #573: sayfa türü (0 Test, 1 Etkinlik).
+      kind: [this.isEditMode ? WorksheetKind.Test : this.initialKind],
     });
+    this.testForm
+      .get('kind')!
+      .valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.applyKindState());
+    this.applyKindState();
     // Issue #7: sınıf seçilmeden ders/konu/alt konu seçilemez.
     this.applyClassificationEnabledState();
     this.testForm
@@ -411,6 +471,11 @@ export class TestCreateEnhancedComponent implements OnInit {
           }
           this.teacherSharing.set(exam.teacherSharing ?? WorksheetTeacherSharing.Private);
           this.studentVisibility.set(exam.studentVisibility ?? WorksheetStudentVisibility.Normal);
+          // Issue #573: tür + çözülmüş sayfada tür kilidi.
+          this.savedKind = exam.kind === WorksheetKind.Activity ? WorksheetKind.Activity : WorksheetKind.Test;
+          this.kindLocked.set((exam.instanceCount ?? 0) > 0);
+          this.testForm.patchValue({ kind: this.savedKind }, { emitEvent: false });
+          this.applyKindState();
         }),
         switchMap((exam) =>
           this.bookService.getTestsByBook(exam.bookId || 0).pipe(
@@ -423,7 +488,8 @@ export class TestCreateEnhancedComponent implements OnInit {
                   name: exam.name,
                   description: exam.description,
                   gradeId: exam.gradeId,
-                  maxDurationMinutes: exam.maxDurationSeconds / 60,
+                  // Etkinlikte süre 0 gelir; alan devre dışı ama türe dönülürse geçerli varsayılan kalsın.
+                  maxDurationMinutes: exam.maxDurationSeconds > 0 ? exam.maxDurationSeconds / 60 : 10,
                   isPracticeTest: exam.isPracticeTest,
                   commentsEnabled: exam.commentsEnabled !== false,
                   subtitle: exam.subtitle,
@@ -565,13 +631,16 @@ export class TestCreateEnhancedComponent implements OnInit {
   }
 
   private createTestPayload(): Test {
+    const activity = this.isActivity;
     return {
       id: this.id,
       name: this.testForm.value.name,
       description: this.testForm.value.description,
       gradeId: this.testForm.value.gradeId,
-      maxDurationSeconds: +this.testForm.value.maxDurationMinutes * 60,
-      isPracticeTest: this.testForm.value.isPracticeTest,
+      // Issue #573: etkinlikte süre yok ve çalışma testi değil (backend de zorlar).
+      maxDurationSeconds: activity ? 0 : +this.testForm.value.maxDurationMinutes * 60,
+      isPracticeTest: activity ? false : this.testForm.value.isPracticeTest,
+      kind: this.formKind,
       commentsEnabled: this.testForm.value.commentsEnabled !== false,
       imageUrl: this.testForm.value.imageUrl,
       subtitle: this.testForm.value.subtitle,
@@ -594,17 +663,34 @@ export class TestCreateEnhancedComponent implements OnInit {
     this.testService
       .create(this.createTestPayload())
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((response) => {
-        this.snackBar.open(
-          this.tr(this.isEditMode ? 'snackbar.changesSaved' : 'snackbar.testCreated'),
-          this.tr('snackbar.close'),
-          { duration: 2000 }
-        );
-        if (this.isEditMode) {
-          this.reloadComponent(response.examId);
-        } else {
-          this.router.navigate(['/exam', response.examId]);
-        }
+      .subscribe({
+        next: (response) => {
+          this.snackBar.open(
+            this.tr(this.isEditMode ? 'snackbar.changesSaved' : 'snackbar.testCreated'),
+            this.tr('snackbar.close'),
+            { duration: 2000 }
+          );
+          if (this.isEditMode) {
+            this.reloadComponent(response.examId);
+          } else {
+            this.router.navigate(['/exam', response.examId]);
+          }
+        },
+        error: (err: unknown) => {
+          // Issue #573: oturumu olan sayfanın türü değiştirilemez → tür geri alınır ve kilitlenir.
+          if (activityErrorCode(err) === ACTIVITY_ERROR_CODES.worksheetKindLocked) {
+            this.kindLocked.set(true);
+            this.testForm.patchValue({ kind: this.savedKind }, { emitEvent: false });
+            this.applyKindState();
+            this.snackBar.open(
+              activityErrorMessage(err) ?? this.tr('snackbar.kindLocked'),
+              this.tr('snackbar.close'),
+              { duration: 5000 }
+            );
+            return;
+          }
+          this.snackBar.open(this.toUserErrorMessage(err), this.tr('snackbar.close'), { duration: 3000 });
+        },
       });
   }
 
@@ -656,6 +742,10 @@ export class TestCreateEnhancedComponent implements OnInit {
       this.lookupName(this.subjects, v.subjectId),
       this.lookupName(this.topics, v.topicId),
     ].filter((x) => !!x);
+  }
+
+  get previewIsActivity(): boolean {
+    return this.isActivity;
   }
 
   get previewDuration(): number {

@@ -33,7 +33,11 @@
             }
             <div class="chips">
               @if (gradeName()) { <span class="chip">{{ gradeName() }}</span> }
-              <span class="chip">{{ t(d.worksheet.isPracticeTest ? 'hero.practice' : 'hero.assessment') }}</span>
+              @if (isActivity()) {
+                <span class="chip" data-testid="activity-chip">{{ t('activity.chip') }}</span>
+              } @else {
+                <span class="chip">{{ t(d.worksheet.isPracticeTest ? 'hero.practice' : 'hero.assessment') }}</span>
+              }
               @if (d.rewardBadgeText) {
                 <span class="chip badge"><mat-icon>military_tech</mat-icon>{{ d.rewardBadgeText }}</span>
               }
@@ -43,8 +47,10 @@
               <div class="stat">
                 <mat-icon>menu_book</mat-icon>
                 <span class="st-val">{{ d.worksheet.questionCount ?? 0 }}</span>
-                <span class="st-lbl">{{ t('stats.questions') }}</span>
+                <span class="st-lbl">{{ t(isActivity() ? 'activity.items' : 'stats.questions') }}</span>
               </div>
+              <!-- Issue #573: etkinlikte süre, çözen sayısı ve ortalama puan gösterilmez. -->
+              @if (!isActivity()) {
               <div class="stat">
                 <mat-icon>timer</mat-icon>
                 <span class="st-val">{{ formatDuration(d.worksheet.maxDurationSeconds) }}</span>
@@ -60,17 +66,21 @@
                 <span class="st-val">{{ percentLabel(d.stats.averageScorePercent) }}</span>
                 <span class="st-lbl">{{ t('stats.averageScore') }}</span>
               </div>
+              }
             </div>
 
             <div class="cta-row" *appIsStudent>
               @if (!exam.instance) {
-                <button class="btn btn-primary" (click)="StartTest(exam.id)">
-                  <mat-icon>play_arrow</mat-icon>{{ t('cta.start') }}
+                <button class="btn btn-primary" data-testid="start-cta" (click)="StartTest(exam.id)">
+                  <mat-icon>play_arrow</mat-icon>{{ t(isActivity() ? 'activity.start' : 'cta.start') }}
                 </button>
               } @else if (instanceStarted) {
-                <button class="btn btn-primary" (click)="StartTest(exam.id)">
-                  <mat-icon>play_arrow</mat-icon>{{ t('cta.continue') }}
+                <button class="btn btn-primary" data-testid="start-cta" (click)="StartTest(exam.id)">
+                  <mat-icon>play_arrow</mat-icon>{{ t(isActivity() ? 'activity.continue' : 'cta.continue') }}
                 </button>
+              } @else if (isActivity() && instanceCompleted) {
+                <!-- Issue #573: tekrar çözüm #572'ye ertelendi (öğrenci/sayfa başına tek oturum, #367). -->
+                <span class="chip" data-testid="activity-done"><mat-icon>check_circle</mat-icon>{{ t('activity.completed') }}</span>
               }
             </div>
           </div>
@@ -80,7 +90,7 @@
           <div class="stack">
             @if (d.worksheet.description) {
               <div class="card">
-                <h3><span class="dot"></span>{{ t('start.overviewTitle') }}</h3>
+                <h3><span class="dot"></span>{{ t(isActivity() ? 'activity.instructionTitle' : 'start.overviewTitle') }}</h3>
                 <p class="p">{{ d.worksheet.description }}</p>
               </div>
             }
@@ -138,18 +148,22 @@
             <div class="sticky-cta" *appIsStudent>
               <span class="s-status"><i></i>{{ t('start.ready') }}</span>
               <div class="s-meta">
-                <div><mat-icon>timer</mat-icon>{{ t('start.autoFinish', { duration: formatDuration(d.worksheet.maxDurationSeconds) }) }}</div>
+                @if (!isActivity()) {
+                  <div><mat-icon>timer</mat-icon>{{ t('start.autoFinish', { duration: formatDuration(d.worksheet.maxDurationSeconds) }) }}</div>
+                }
                 <div><mat-icon>swap_horiz</mat-icon>{{ t('start.navigateBack', { count: d.worksheet.questionCount ?? 0 }) }}</div>
                 <div><mat-icon>shield</mat-icon>{{ t('start.offlineSafe') }}</div>
               </div>
               @if (!exam.instance) {
                 <button class="btn btn-primary full" (click)="StartTest(exam.id)">
-                  <mat-icon>play_arrow</mat-icon>{{ t('cta.start') }}
+                  <mat-icon>play_arrow</mat-icon>{{ t(isActivity() ? 'activity.start' : 'cta.start') }}
                 </button>
               } @else if (instanceStarted) {
                 <button class="btn btn-primary full" (click)="StartTest(exam.id)">
-                  <mat-icon>play_arrow</mat-icon>{{ t('cta.continue') }}
+                  <mat-icon>play_arrow</mat-icon>{{ t(isActivity() ? 'activity.continue' : 'cta.continue') }}
                 </button>
+              } @else if (isActivity() && instanceCompleted) {
+                <span class="s-status" data-testid="activity-done-side"><mat-icon>check_circle</mat-icon>{{ t('activity.completed') }}</span>
               }
             </div>
 
@@ -207,7 +221,7 @@
               }
             </div>
 
-            @if (d.attempts.length) {
+            @if (d.attempts.length && !isActivity()) {
               <div class="card">
                 <h3><span class="dot"></span>{{ t('attempts.title') }}</h3>
                 @for (attempt of d.attempts; track attempt.instanceId; let first = $first) {
@@ -238,7 +252,7 @@
               </div>
             }
 
-            @if (d.similarWorksheets.length) {
+            @if (d.similarWorksheets.length && !isActivity()) {
               <div class="card">
                 <h3><span class="dot"></span>{{ t('similar.title') }}</h3>
                 @for (similar of d.similarWorksheets; track similar.id) {
@@ -263,7 +277,9 @@
         </div>
 
         <div class="rules">
-          <div class="r"><span class="ri"><mat-icon>timer</mat-icon></span>{{ t('start.ruleAutoComplete') }}</div>
+          @if (!isActivity()) {
+            <div class="r"><span class="ri"><mat-icon>timer</mat-icon></span>{{ t('start.ruleAutoComplete') }}</div>
+          }
           <div class="r"><span class="ri"><mat-icon>swap_horiz</mat-icon></span>{{ t('start.ruleNavigate') }}</div>
           <div class="r"><span class="ri"><mat-icon>check</mat-icon></span>{{ t('start.ruleAutoSave') }}</div>
         </div>
@@ -472,8 +488,13 @@
             }
             <div class="chips">
               @if (gradeName()) { <span class="chip">{{ gradeName() }}</span> }
-              <span class="chip">{{ t('hero.questionCount', { count: d.worksheet.questionCount ?? 0 }) }}</span>
-              <span class="chip">{{ t(d.worksheet.isPracticeTest ? 'hero.practice' : 'hero.assessment') }}</span>
+              @if (isActivity()) {
+                <span class="chip">{{ t('activity.itemCount', { count: d.worksheet.questionCount ?? 0 }) }}</span>
+                <span class="chip" data-testid="activity-chip">{{ t('activity.chip') }}</span>
+              } @else {
+                <span class="chip">{{ t('hero.questionCount', { count: d.worksheet.questionCount ?? 0 }) }}</span>
+                <span class="chip">{{ t(d.worksheet.isPracticeTest ? 'hero.practice' : 'hero.assessment') }}</span>
+              }
               @if (d.teacherInsights && d.teacherInsights.unclassifiedCount > 0) {
                 <span class="chip draft">{{ t('teacher.unclassifiedChip', { count: d.teacherInsights.unclassifiedCount }) }}</span>
               }
@@ -497,7 +518,7 @@
         <div class="cols">
           <div class="stack">
             <div class="card">
-              <h3><span class="dot"></span>{{ t('teacher.classProgressTitle') }}</h3>
+              <h3><span class="dot"></span>{{ t(isActivity() ? 'activity.trackingTitle' : 'teacher.classProgressTitle') }}</h3>
 
               @switch (assignmentPanel()) {
                 @case ('loading') {
@@ -537,13 +558,18 @@
                       <div class="sm"><span class="v g">{{ summary.completedCount }}</span><span class="l">{{ t('teacher.summaryCompleted') }}</span></div>
                       <div class="sm"><span class="v w">{{ summary.inProgressCount }}</span><span class="l">{{ t('teacher.summaryInProgress') }}</span></div>
                       <div class="sm"><span class="v">{{ summaryPendingCount(summary) }}</span><span class="l">{{ t('teacher.summaryNotStarted') }}</span></div>
-                      <div class="sm"><span class="v">{{ percentLabel(d.stats.averageScorePercent) }}</span><span class="l">{{ t('teacher.summaryClassAverage') }}</span></div>
+                      @if (!isActivity()) {
+                        <div class="sm"><span class="v">{{ percentLabel(d.stats.averageScorePercent) }}</span><span class="l">{{ t('teacher.summaryClassAverage') }}</span></div>
+                      }
                     </div>
                   }
                   @if (lastRefreshed(); as refreshed) {
                     <div class="last-refreshed"><mat-icon>schedule</mat-icon>
                       <span>{{ t('teacher.lastUpdate', { date: refreshed | date : 'dd MMM HH:mm' }) }}</span></div>
                   }
+                  @if (isActivity()) {
+                    <app-activity-tracking-table [students]="activityTrackingStudents()" [gradeLabel]="gradeLabelFn" />
+                  } @else {
                   <mat-accordion class="assignment-accordion" multi>
                     @for (assignment of teacherAssignments(); track assignment.assignmentId) {
                       <mat-expansion-panel [expanded]="teacherAssignments().length === 1">
@@ -584,11 +610,12 @@
                       </mat-expansion-panel>
                     }
                   </mat-accordion>
+                  }
                 }
               }
             </div>
 
-            @if (d.teacherInsights && d.teacherInsights.hardestQuestions.length) {
+            @if (d.teacherInsights && d.teacherInsights.hardestQuestions.length && !isActivity()) {
               <div class="card">
                 <h3><span class="dot"></span>{{ t('teacher.hardestTitle') }}</h3>
                 @for (hard of d.teacherInsights.hardestQuestions; track hard.questionId) {
@@ -765,15 +792,19 @@
     @if (view() !== 'teacher') {
       <div class="mobile-cta" *appIsStudent>
         @if (view() === 'start') {
-          <span class="meta">{{ t('start.autoFinish', { duration: formatDuration(d.worksheet.maxDurationSeconds) }) }}</span>
+          @if (!isActivity()) {
+            <span class="meta">{{ t('start.autoFinish', { duration: formatDuration(d.worksheet.maxDurationSeconds) }) }}</span>
+          }
           @if (!exam.instance) {
             <button class="btn btn-primary full" (click)="StartTest(exam.id)">
-            <mat-icon>play_arrow</mat-icon>{{ t('cta.start') }}
+            <mat-icon>play_arrow</mat-icon>{{ t(isActivity() ? 'activity.start' : 'cta.start') }}
           </button>
           } @else if (instanceStarted) {
             <button class="btn btn-primary full" (click)="StartTest(exam.id)">
-            <mat-icon>play_arrow</mat-icon>{{ t('cta.continue') }}
+            <mat-icon>play_arrow</mat-icon>{{ t(isActivity() ? 'activity.continue' : 'cta.continue') }}
           </button>
+          } @else if (isActivity() && instanceCompleted) {
+            <span class="meta"><mat-icon>check_circle</mat-icon>{{ t('activity.completed') }}</span>
           }
         } @else if (completedResult()) {
           <button class="btn btn-amber full" (click)="createFromMistakes()" [disabled]="fromMistakesLoading()">

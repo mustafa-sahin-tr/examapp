@@ -305,7 +305,7 @@ public class ExamController : BaseController
 
     [Authorize(Roles = "Student")]
     [HttpGet("assignments/active")]
-    public async Task<IActionResult> GetActiveAssignments()
+    public async Task<IActionResult> GetActiveAssignments([FromQuery] WorksheetKind? kind = null)
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
@@ -314,7 +314,8 @@ public class ExamController : BaseController
         }
 
         var student = await _studentService.GetStudentProfile(user.Id);
-        var assignments = await _assignmentService.GetActiveAssignmentsForStudentAsync(student);
+        // issue #573: kind = tür filtresi (null = hepsi).
+        var assignments = await _assignmentService.GetActiveAssignmentsForStudentAsync(student, kind);
         return Ok(assignments);
     }
 
@@ -510,7 +511,8 @@ public class ExamController : BaseController
         int? maxDurationSeconds = null,
         bool? isPracticeTest = null,
         [FromQuery] List<int>? bookIds = null,
-        bool includeShared = false)
+        bool includeShared = false,
+        WorksheetKind? kind = null)
     {
         var filterDto = new ExamFilterDto
         {
@@ -530,7 +532,8 @@ public class ExamController : BaseController
             maxDurationSeconds = maxDurationSeconds,
             isPracticeTest = isPracticeTest,
             bookIds = bookIds,
-            includeShared = includeShared
+            includeShared = includeShared,
+            kind = kind // issue #573
         };
 
         Paged<WorksheetDto> result = null;
@@ -735,6 +738,11 @@ public class ExamController : BaseController
             if (response.Forbidden)
             {
                 return Forbid();
+            }
+            // issue #573: oturumu olan sayfanın türü değiştirilemez → 409 WorksheetKindLocked.
+            if (response.Conflict)
+            {
+                return Conflict(response);
             }
         }
         return Ok(response);

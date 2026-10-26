@@ -4,6 +4,9 @@
     "saveFailed": "Soru kaydedilemedi!",
     "created": "Soru başarıyla kaydedildi!",
     "updated": "Soru başarıyla güncellendi!",
+    "passage": {
+      "invalidInstruction": "Yönerge geçersiz: en çok 2000 karakter düz metin olmalı ve kontrol karakteri içermemeli."
+    },
     "passageNotFound": "Kapsam bulunamadı!",
     "imageNotFound": "Soru veya soru görseli bulunamadı.",
     "imageNotFoundInStorage": "Soru görseli depoda bulunamadı.",

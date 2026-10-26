@@ -16,6 +16,7 @@
       "invalidCheckRequest": "Kontrol isteği geçersiz.",
       "notAnActivity": "Bu işlem yalnız etkinliklerde kullanılabilir.",
       "activityCheckRequired": "Doğru cevapları görmek için önce cevaplarını kontrol et.",
+      "activityEndCheckRequired": "Etkinliği bitirmeden önce cevaplarını en az bir kez kontrol et.",
       "activityChecked": "Cevaplar kontrol edildi.",
       "activityCheckRateLimited": "Kısa sürede çok fazla kontrol isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     },
@@ -59,6 +60,7 @@
       "bookTestNotSelected": "Kipta Test seçilmedi!",
       "bookNotFound": "Kitap bulunamadı!",
       "testNotFound": "Test bulunamadı!",
+      "kindLocked": "Bu sayfayı çözmeye başlayan öğrenciler var; türü (test / etkinlik) artık değiştirilemez.",
       "editForbidden": "Bu testi düzenleme yetkiniz yok.",
       "updated": "Test başarıyla güncellendi!",
       "created": "Test başarıyla kaydedildi!",

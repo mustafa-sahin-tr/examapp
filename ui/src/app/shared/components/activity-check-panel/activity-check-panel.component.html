@@ -1,0 +1,122 @@
+<section class="acp" *transloco="let t; prefix: 'shared.activity.check'">
+  <div class="acp__live" aria-live="polite" data-testid="check-live">
+    @if (summary(); as s) {
+      <p class="acp__summary" data-testid="check-summary">
+        <b>{{ t('summary', { correct: s.correct, total: s.total }) }}</b>
+        · {{ wrongCount() > 0 ? t('summaryFix') : t('summaryAllCorrect') }}
+      </p>
+    }
+    @if (stale() && hasChecked()) {
+      <p class="acp__note">{{ t('staleNote') }}</p>
+    }
+  </div>
+
+  @if (blankItems().length > 0 && !revealed()) {
+    <div class="acp__box acp__box--warn" role="status" data-testid="blank-warning">
+      <mat-icon aria-hidden="true">warning</mat-icon>
+      <span>{{ t('blankWarning', { count: blankItems().length, items: blankItems().join(', ') }) }}</span>
+    </div>
+  }
+
+  @if (revealed()) {
+    <div class="acp__box acp__box--info" data-testid="revealed-info">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <span>{{ t('revealedInfo') }}</span>
+    </div>
+  }
+
+  @if (rows().length > 0) {
+    <div class="acp__rows">
+      <h2 class="acp__rows-title">{{ t('rowsTitle') }}</h2>
+      <ul>
+        @for (row of rows(); track $index) {
+          <li
+            class="acp__row"
+            [class.acp__row--ok]="row.correct === true"
+            [class.acp__row--no]="row.correct === false"
+            data-testid="result-row"
+          >
+            @if (row.correct === true) {
+              <mat-icon aria-hidden="true">check</mat-icon><b>{{ t('rowCorrect') }}</b>
+            } @else if (row.correct === false) {
+              <mat-icon aria-hidden="true">close</mat-icon><b>{{ t('rowWrong') }}</b>
+            }
+            <span>— {{ row.label }}</span>
+            @if (row.solution) {
+              <span class="acp__solution">· {{ t('rowSolution') }}: {{ row.solution }}</span>
+            }
+          </li>
+        }
+      </ul>
+    </div>
+  }
+
+  @if (error(); as err) {
+    <div class="acp__box" [class.acp__box--danger]="err !== 'checkRequired'" [class.acp__box--warn]="err === 'checkRequired'"
+      role="alert" data-testid="check-error">
+      <mat-icon aria-hidden="true">{{ err === 'checkRequired' ? 'warning' : 'error_outline' }}</mat-icon>
+      <div class="acp__error-body">
+        @switch (err) {
+          @case ('rateLimited') {
+            <p><b>{{ t('rateLimitedTitle') }}</b> {{ t('rateLimited') }}</p>
+          }
+          @case ('network') {
+            <p>{{ answersSaved() ? t('network') : t('networkUnsaved') }}</p>
+          }
+          @case ('checkRequired') {
+            <p>{{ t('checkRequired') }}</p>
+          }
+          @default {
+            <p>{{ errorMessage() || t('generic') }}</p>
+          }
+        }
+        @if (err === 'network' || err === 'generic') {
+          <button mat-stroked-button type="button" class="acp__btn" data-testid="retry" [disabled]="busy()" (click)="retry.emit()">
+            {{ t('retry') }}
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+  <div class="acp__actions">
+    @if (!revealed()) {
+      <button mat-flat-button type="button" class="acp__btn" data-testid="check" [disabled]="busy()" (click)="check.emit()">
+        @if (checking()) {
+          <mat-spinner diameter="18" aria-hidden="true"></mat-spinner>
+        } @else {
+          <mat-icon>fact_check</mat-icon>
+        }
+        {{ t(checking() ? 'checking' : hasChecked() ? 'recheck' : 'check') }}
+      </button>
+      @if (wrongCount() > 0) {
+        <button mat-stroked-button type="button" class="acp__btn" data-testid="fix-wrong" [disabled]="busy()" (click)="fixWrong.emit()">
+          <mat-icon>edit</mat-icon>{{ t('fixWrong') }}
+        </button>
+      }
+      <span class="acp__with-hint">
+        <button mat-stroked-button type="button" class="acp__btn" data-testid="reveal" [disabled]="!hasChecked() || busy()"
+          [attr.aria-describedby]="hasChecked() ? null : 'acp-reveal-hint'" (click)="reveal.emit()">
+          <mat-icon>visibility</mat-icon>{{ t(revealing() ? 'revealing' : 'reveal') }}
+        </button>
+        @if (!hasChecked()) {
+          <small id="acp-reveal-hint" class="acp__hint">{{ t('revealLockedHint') }}</small>
+        }
+      </span>
+    } @else {
+      <button mat-flat-button type="button" class="acp__btn" data-testid="restore" (click)="restore.emit()">
+        <mat-icon>undo</mat-icon>{{ t('restore') }}
+      </button>
+    }
+
+    <span class="acp__with-hint acp__finish">
+      <button mat-stroked-button type="button" class="acp__btn" data-testid="finish" [disabled]="!hasChecked() || busy()"
+        [attr.aria-describedby]="hasChecked() ? null : 'acp-finish-hint'" (click)="finish.emit()">
+        <mat-icon>flag</mat-icon>{{ t(finishing() ? 'finishing' : 'finish') }}
+      </button>
+      @if (!hasChecked()) {
+        <small id="acp-finish-hint" class="acp__hint">{{ t('finishLockedHint') }}</small>
+      }
+    </span>
+  </div>
+</section>

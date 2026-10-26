@@ -1,3 +1,4 @@
+using ExamApp.Api.Data;
 using ExamApp.Api.Services.Storage;
 using System;
 using System.ComponentModel.DataAnnotations;
@@ -37,6 +38,15 @@ public class BulkPassageDto
     public double Y { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }
+
+    /// <summary>issue #573: kapsam türü (0 = Reading, 1 = Activity); null = Reading.</summary>
+    [EnumDataType(typeof(PassageKind))]
+    public PassageKind? Kind { get; set; }
+
+    /// <summary>issue #573: etkinlik yönergesi (isteğe bağlı).</summary>
+    [MaxLength(ExamApp.Api.Data.Passage.MaxInstructionLength)]
+    [ExamApp.Api.Helpers.PlainText] // düz metin; kontrol karakteri → 400 (innerHTML ile render edilmez)
+    public string? Instruction { get; set; }
 }
 
 public class BulkQuestionDto

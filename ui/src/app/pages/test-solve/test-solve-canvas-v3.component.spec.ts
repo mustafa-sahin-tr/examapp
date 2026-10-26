@@ -270,6 +270,17 @@ describe('TestSolveCanvasComponentv3 — finish flow (issue #383)', () => {
         });
     }
 
+    // Issue #573: etkinlik oturumu test ekranında açılmaz; oynatıcıya yönlenir ve sayaç/soru yüklemesi başlamaz.
+    it('opening /testsolve for an activity instance redirects to the activity player', async () => {
+        testService.getCanvasTestWithAnswers.mockReturnValue(of(buildInstance({ kind: 1 })));
+
+        await component.loadTest(7);
+
+        expect(navigateSpy).toHaveBeenCalledTimes(1);
+        expect(navigateSpy).toHaveBeenCalledWith(['/activity', 7], { replaceUrl: true });
+        expect(testService.convertTestInstanceToRegions).not.toHaveBeenCalled();
+    });
+
     it('time up: finishes without a confirm dialog and goes to the result page', async () => {
         component.testInstance = buildInstance({ maxDurationSeconds: 2 });
 

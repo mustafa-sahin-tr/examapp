@@ -222,6 +222,31 @@ describe('CalendarDayDialogComponent', () => {
         expect(text).not.toContain('Tamamlandı');
     });
 
+    // Issue #573: etkinlik sayfası testten ayrı etiket + ikonla; tıklayınca aynı detay akışı (orada oynatıcıya geçilir).
+    it('AssignmentDeadline_Activity_ShowsActivityLabelAndOpenActivityAction', async () => {
+        const { fixture, router } = await setup({ date, events: [deadline({ worksheetId: 8, worksheetKind: 1 })] });
+
+        const detail = fixture.nativeElement.querySelector('.day-dialog__row-detail') as HTMLElement;
+        expect(detail.textContent).toContain('Etkinlik sayfası');
+        expect(detail.querySelector('mat-icon')?.textContent).toBe('extension');
+        clickButtonByText(fixture, 'Etkinliği aç');
+        expect(router.navigate).toHaveBeenCalledWith(['/test', 8], {});
+    });
+
+    it('AssignmentDeadline_CompletedActivity_DoesNotSayViewResult', async () => {
+        const { fixture } = await setup({ date, events: [deadline({ worksheetId: 8, worksheetKind: 1, isCompleted: true })] });
+
+        const text = fixture.nativeElement.textContent as string;
+        expect(text).not.toContain('Sonucu gör');
+        expect(text).toContain('Detaya git');
+    });
+
+    it('AssignmentDeadline_Test_HasNoActivityLabel', async () => {
+        const { fixture } = await setup({ date, events: [deadline({ worksheetId: 1, worksheetKind: 0 })] });
+
+        expect(fixture.nativeElement.querySelector('.day-dialog__row-detail')).toBeNull();
+    });
+
     it('Rows_WithCompletedAndPendingEvents_CompletedRenderedLast', async () => {
         const { fixture } = await setup({
             date,

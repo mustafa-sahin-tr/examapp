@@ -35,7 +35,14 @@
     "cancel": "Cancel",
     "commentsLabel": "Comments and questions",
     "commentsHint": "When on, students can post comments or questions about this test and its questions; existing comments stay visible when off.",
-    "commentsHintCompact": "Let students post comments and questions"
+    "commentsHintCompact": "Let students post comments and questions",
+    "kindLabel": "Type",
+    "kindTest": "Test",
+    "kindActivity": "Activity page",
+    "kindActivityHint": "Activity pages have no time limit or score; students check their items and fix their mistakes.",
+    "kindLockedHint": "Students have already opened this page, so its type cannot be changed.",
+    "instructionLabel": "Instructions",
+    "instructionPlaceholder": "Briefly tell students what to do (e.g. Match the pictures with the right words)."
   },
   "page": {
     "creating": "Creating…",
@@ -54,7 +61,8 @@
     "uploading": "Uploading…",
     "pickFile": "Choose File",
     "visibilityTitle": "Visibility",
-    "visibilityNote": "Decide how other teachers and students see this test. Changes are saved immediately."
+    "visibilityNote": "Decide how other teachers and students see this test. Changes are saved immediately.",
+    "titleNewActivity": "Create a New Activity Page"
   },
   "preview": {
     "title": "Card Preview",
@@ -65,7 +73,8 @@
     "saveChanges": "Save Changes",
     "addQuestion": "Add Question",
     "defaultName": "Test Name",
-    "gradePlaceholder": "Select Grade"
+    "gradePlaceholder": "Select Grade",
+    "activity": "Activity"
   },
   "snackbar": {
     "close": "Close",
@@ -86,6 +95,7 @@
     "changesSaved": "Changes saved.",
     "subtopicRequired": "No subtopic selected",
     "navigatingToList": "Redirecting you to the test list...",
-    "navigatingToQuestions": "Moving on to adding questions..."
+    "navigatingToQuestions": "Moving on to adding questions...",
+    "kindLocked": "Students have already opened this page, so its type cannot be changed."
   }
 }

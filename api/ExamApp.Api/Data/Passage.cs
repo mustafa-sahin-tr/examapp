@@ -20,4 +20,25 @@ public class Passage : BaseEntity
 
     public bool IsCanvasQuestion { get; set; } = false;
 
+    /// <summary>
+    /// issue #573: kapsamın türü. <see cref="PassageKind.Reading"/> (varsayılan) okuma metni/görseli; <see cref="PassageKind.Activity"/>
+    /// etkinlik sayfasının ortak yönergesi + (varsa) kitap görseli. Mevcut satırlar Reading.
+    /// </summary>
+    public PassageKind Kind { get; set; } = PassageKind.Reading;
+
+    /// <summary>
+    /// issue #573: etkinlik yönergesi (ör. "Resimdeki varlıkları adlarıyla eşleştir."). En çok <see cref="MaxInstructionLength"/>
+    /// karakter. DÜZ METİNDİR: istemci asla <c>innerHTML</c>/<c>[innerHTML]</c>/bypassSecurityTrust* ile işlememeli, yalnız metin
+    /// bağlamasıyla (interpolation) göstermeli. ASCII kontrol karakterleri (\n, \r, \t hariç) girişte reddedilir (400).
+    /// </summary>
+    public string? Instruction { get; set; }
+
+    public const int MaxInstructionLength = 2000;
+}
+
+/// <summary>issue #573: kapsam türü — okuma metni ya da etkinlik yönergesi.</summary>
+public enum PassageKind
+{
+    Reading = 0,
+    Activity = 1
 }

@@ -4,6 +4,9 @@
     "saveFailed": "The question could not be saved!",
     "created": "Question saved successfully!",
     "updated": "Question updated successfully!",
+    "passage": {
+      "invalidInstruction": "Invalid instruction: it must be plain text of at most 2000 characters without control characters."
+    },
     "passageNotFound": "Passage not found!",
     "imageNotFound": "Question or question image not found.",
     "imageNotFoundInStorage": "The question image was not found in storage.",

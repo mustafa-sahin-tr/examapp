@@ -2,6 +2,7 @@ import { Answer } from './answer';
 import { ClassificationSource } from './draws';
 import { Subject } from './subject';
 import { SubTopic } from './subtopic';
+import { PassageKind } from './activity';
 
 export interface Passage {
   id: number;
@@ -13,6 +14,10 @@ export interface Passage {
   width: number;
   height: number;
   isCanvasQuestion: boolean;
+  /** Issue #573: kapsam türü (0 Okuma metni, 1 Etkinlik). Yanıtlarda her zaman dolu; eski yanıtta yok → Okuma metni. */
+  kind?: PassageKind | null;
+  /** Issue #573: etkinlik yönergesi (en çok 2000 karakter); yoksa null. */
+  instruction?: string | null;
 }
 
 export interface Question {

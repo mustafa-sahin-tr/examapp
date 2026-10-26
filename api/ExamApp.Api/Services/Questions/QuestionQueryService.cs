@@ -79,6 +79,8 @@ public class QuestionQueryService : IQuestionQueryService
                         Y = q.Passage.Y,
                         Width = q.Passage.Width,
                         Height = q.Passage.Height,
+                        Kind = q.Passage.Kind, // issue #573
+                        Instruction = q.Passage.Instruction,
                     } : null,
                     CorrectAnswerId = q.CorrectAnswerId,
                     AnswerColCount = q.AnswerColCount
@@ -137,6 +139,8 @@ public class QuestionQueryService : IQuestionQueryService
                 Y = p.Y,
                 Width = p.Width,
                 Height = p.Height,
+                Kind = p.Kind, // issue #573
+                Instruction = p.Instruction,
             })
             .ToListAsync(ct);
     }
@@ -210,6 +214,8 @@ public class QuestionQueryService : IQuestionQueryService
                         Y = tq.Question.Passage.Y,
                         Width = tq.Question.Passage.Width,
                         Height = tq.Question.Passage.Height,
+                        Kind = tq.Question.Passage.Kind, // issue #573
+                        Instruction = tq.Question.Passage.Instruction,
                     } : null,
                     CorrectAnswerId = tq.Question.CorrectAnswerId,
                     AnswerColCount = tq.Question.AnswerColCount,

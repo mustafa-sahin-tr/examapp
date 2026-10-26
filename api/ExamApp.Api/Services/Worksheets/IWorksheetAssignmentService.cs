@@ -17,7 +17,7 @@ public interface IWorksheetAssignmentService
     Task<ResponseBaseDto> AssignWorksheetAsync(
         WorksheetAssignmentRequestDto request, SchoolScope requester, CancellationToken ct = default);
 
-    Task<List<AssignedWorksheetDto>> GetActiveAssignmentsForStudentAsync(StudentProfileDto student);
+    Task<List<AssignedWorksheetDto>> GetActiveAssignmentsForStudentAsync(StudentProfileDto student, WorksheetKind? kind = null);
 
     /// <summary>issue #190: requester.UserId atamaları yapan öğretmen; öğrenci listesi requester okuluyla sınırlı.</summary>
     Task<TeacherWorksheetAssignmentsDto> GetWorksheetAssignmentsForTeacherAsync(int worksheetId, SchoolScope requester);

@@ -638,6 +638,11 @@ public class AppDbContext : DbContext
             .WithOne(q => q.Passage)
             .HasForeignKey(q => q.PassageId);
 
+        // issue #573: etkinlik yönergesi sınırlı uzunluk (DTO doğrulamasıyla aynı sınır).
+        modelBuilder.Entity<Passage>()
+            .Property(p => p.Instruction)
+            .HasMaxLength(ExamApp.Api.Data.Passage.MaxInstructionLength);
+
         modelBuilder.Entity<Question>()
             .HasMany(q => q.Answers)
             .WithOne(a => a.Question)

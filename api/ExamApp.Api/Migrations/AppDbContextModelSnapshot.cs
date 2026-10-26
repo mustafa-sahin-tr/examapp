@@ -1613,11 +1613,18 @@ namespace ExamApp.Api.Migrations
                     b.Property<string>("ImageUrl")
                         .HasColumnType("text");
 
+                    b.Property<string>("Instruction")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.Property<bool>("IsCanvasQuestion")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Text")
                         .HasColumnType("text");
@@ -4512,6 +4519,12 @@ namespace ExamApp.Api.Migrations
                     b.Property<DateTime?>("EndTime")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("FirstCheckCorrectCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("FirstCheckTotalCount")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime?>("FirstCheckedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -4569,6 +4582,9 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("text");
 
                     b.Property<int>("AnswerRevision")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("CheckedAnswerRevision")
                         .HasColumnType("integer");
 
                     b.Property<int>("CorrectCount")

@@ -18,6 +18,9 @@ public class AssignedWorksheetDto
     public int? SubTopicId { get; set; }
     public int MaxDurationSeconds { get; set; }
     public bool IsPracticeTest { get; set; }
+
+    /// <summary>issue #573: sayfa türü (0 = Test, 1 = Activity).</summary>
+    public WorksheetKind Kind { get; set; } = WorksheetKind.Test;
     public string? Subtitle { get; set; }
     [StorageUrl(StorageArea.WorksheetCover)]
     public string? ImageUrl { get; set; }
@@ -43,6 +46,12 @@ public class AssignedWorksheetDto
     public DateTime? InstanceStartTime { get; set; }
     public DateTime? InstanceEndTime { get; set; }
     public string AssignmentStatus { get; set; } = "NotStarted";
+
+    /// <summary>issue #573: yalnız etkinlikte — ilk kontroldeki doğru satır sayısı; kontrol yoksa / testte null.</summary>
+    public int? FirstCheckCorrectCount { get; set; }
+
+    /// <summary>issue #573: yalnız etkinlikte — ilk kontroldeki toplam satır sayısı; kontrol yoksa / testte null.</summary>
+    public int? FirstCheckTotalCount { get; set; }
 
     public bool HasStarted => InstanceStatus.HasValue;
     public bool IsCompleted => InstanceStatus == WorksheetInstanceStatus.Completed;

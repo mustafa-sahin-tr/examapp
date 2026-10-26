@@ -1,3 +1,5 @@
+import { WorksheetKind } from './activity';
+
 export interface AssignedWorksheet {
   assignmentId: number;
   worksheetId: number;
@@ -9,6 +11,8 @@ export interface AssignedWorksheet {
   subTopicId?: number | null;
   maxDurationSeconds: number;
   isPracticeTest: boolean;
+  /** Issue #573: sayfa türü (0 Test, 1 Etkinlik). */
+  kind?: WorksheetKind;
   subtitle?: string | null;
   imageUrl?: string | null;
   badgeText?: string | null;
@@ -32,6 +36,10 @@ export interface AssignedWorksheet {
   commentsEnabledOverride?: boolean | null;
   /** Issue #105: öğrenci için etkin değer (`override ?? worksheet.commentsEnabled`). */
   commentsEnabled?: boolean;
+  /** Issue #573: etkinlikte ilk kontroldeki doğru satır sayısı; kontrol yoksa / testte null. */
+  firstCheckCorrectCount?: number | null;
+  /** Issue #573: etkinlikte ilk kontroldeki toplam satır sayısı; kontrol yoksa / testte null. */
+  firstCheckTotalCount?: number | null;
 }
 
 export type AssignmentStudentStatus = 'Scheduled' | 'NotStarted' | 'InProgress' | 'Completed' | 'Expired';
@@ -45,6 +53,10 @@ export interface TeacherAssignmentStudentSummary {
   status: AssignmentStudentStatus;
   instanceId?: number | null;
   lastActivity?: string | null;
+  /** Issue #573: etkinlikte ilk kontroldeki doğru satır sayısı; kontrol yoksa / testte null. */
+  firstCheckCorrectCount?: number | null;
+  /** Issue #573: etkinlikte ilk kontroldeki toplam satır sayısı (yanlış = toplam − doğru); kontrol yoksa / testte null. */
+  firstCheckTotalCount?: number | null;
 }
 
 export interface TeacherWorksheetAssignment {
@@ -80,6 +92,8 @@ export interface AssignmentProgressSummary {
 export interface TeacherWorksheetAssignments {
   worksheetId: number;
   worksheetName: string;
+  /** Issue #573: sayfa türü — etkinlikte "Çalışma takibi" tablosu gösterilir. */
+  worksheetKind?: WorksheetKind;
   retrievedAt: string;
   summary: AssignmentProgressSummary;
   assignments: TeacherWorksheetAssignment[];

@@ -1,4 +1,5 @@
-<div class="dd-root" *transloco="let t; prefix: 'shared.questionCanvas'">
+<div class="dd-root" [class.is-activity]="activity()" *transloco="let t; prefix: 'shared.questionCanvas'"
+  (keydown.escape)="cancelSelection()">
   <div class="dd-canvas">
     @if (!hidePassage && passageImageUrl(); as pUrl) {
       <div class="dd-passage">
@@ -14,24 +15,58 @@
         <img class="dd-image" [src]="url" [alt]="t('questionAlt')" [appStorageImageRetry]="imageRefresh" />
         @if (plan(); as p) {
           <div class="dd-overlay">
-            @for (z of zones(); track z) {
+            @for (z of zones(); track z; let zi = $index) {
+              <!-- S4: hedef bir grup; etkinleştirme içteki düğmede (iç içe role=button yok). -->
               <div
                 class="dd-zone"
                 [ngClass]="zoneClass()(z.id)"
+                [class.is-target]="!!selected()"
                 [ngStyle]="zoneStyle()(z)"
                 cdkDropList
                 [id]="'zone-' + z.id"
-                [cdkDropListData]="zoneState()[z.id]"
+                [cdkDropListData]="displayZones()[z.id]"
                 [cdkDropListConnectedTo]="allDropListIds()"
+                [cdkDropListDisabled]="solutionShown()"
                 (cdkDropListDropped)="dropToZone(z.id, $event)"
+                [attr.role]="activity() ? 'group' : null"
+                [attr.aria-label]="activity() ? zoneAria(z.id, zi) : null"
                 >
-                @if ((zoneState()[z.id] || []).length === 0) {
+                @if (activity()) {
+                  <button
+                    type="button"
+                    class="dd-zone__target"
+                    [disabled]="solutionShown()"
+                    [attr.aria-label]="zoneAria(z.id, zi)"
+                    (click)="onZoneActivate(z.id, $event)"
+                  ></button>
+                }
+                @if ((displayZones()[z.id] || []).length === 0) {
                   <div class="dd-zone__slot"></div>
                 }
-                @for (item of zoneState()[z.id] || []; track item) {
-                  <div class="dd-chip" cdkDrag [cdkDragData]="item">
+                @for (item of displayZones()[z.id] || []; track item) {
+                  <div
+                    class="dd-chip"
+                    [class.is-selected]="isSelected(item)"
+                    cdkDrag
+                    [cdkDragData]="item"
+                    [cdkDragDisabled]="dragDisabled()"
+                    (cdkDragStarted)="onDragStarted()"
+                    (cdkDragEnded)="onDragEnded()"
+                    [attr.role]="activity() ? 'button' : null"
+                    [attr.tabindex]="activity() && !solutionShown() ? 0 : null"
+                    [attr.aria-pressed]="activity() ? isSelected(item) : null"
+                    [attr.aria-label]="activity() ? t('chipAria', { label: draggableLabel()(item) }) : null"
+                    (click)="onChipActivate(item, z.id, $event)"
+                    (keydown.enter)="onChipActivate(item, z.id, $event)"
+                    (keydown.space)="activity() && $event.preventDefault(); onChipActivate(item, z.id, $event)"
+                  >
                     {{ draggableLabel()(item) }}
                   </div>
+                }
+                @if (zoneMark()(z.id); as mark) {
+                  <span class="dd-zone__mark" [class.dd-zone__mark--wrong]="mark === 'wrong'" aria-hidden="true">
+                    <mat-icon>{{ mark === 'correct' ? 'check' : 'close' }}</mat-icon>
+                  </span>
                 }
               </div>
             }
@@ -44,7 +79,7 @@
   <div class="dd-pool">
     <div class="dd-pool__header">
       <div class="dd-pool__title">{{ t('labels') }}</div>
-      <button mat-stroked-button type="button" (click)="clearAll()">
+      <button mat-stroked-button type="button" (click)="clearAll()" [disabled]="solutionShown()">
         <mat-icon>restart_alt</mat-icon>
         {{ 'common.clear' | transloco }}
       </button>
@@ -52,17 +87,44 @@
 
     <div
       class="dd-pool__list"
+      [class.is-target]="!!selected() && selected()!.from !== 'pool'"
       cdkDropList
       id="pool"
-      [cdkDropListData]="pool()"
+      [cdkDropListData]="displayPool()"
       [cdkDropListConnectedTo]="zoneDropListIds()"
+      [cdkDropListDisabled]="solutionShown()"
       (cdkDropListDropped)="dropToPool($event)"
+      (click)="onPoolActivate($event)"
       >
-      @for (item of pool(); track item) {
-        <div class="dd-chip" cdkDrag [cdkDragData]="item">
+      @for (item of displayPool(); track item) {
+        <div
+          class="dd-chip"
+          [class.is-selected]="isSelected(item)"
+          cdkDrag
+          [cdkDragData]="item"
+          [cdkDragDisabled]="dragDisabled()"
+          (cdkDragStarted)="onDragStarted()"
+          (cdkDragEnded)="onDragEnded()"
+          [attr.role]="activity() ? 'button' : null"
+          [attr.tabindex]="activity() && !solutionShown() ? 0 : null"
+          [attr.aria-pressed]="activity() ? isSelected(item) : null"
+          [attr.aria-label]="activity() ? t('chipAria', { label: draggableLabel()(item) }) : null"
+          (click)="onChipActivate(item, 'pool', $event)"
+          (keydown.enter)="onChipActivate(item, 'pool', $event)"
+          (keydown.space)="activity() && $event.preventDefault(); onChipActivate(item, 'pool', $event)"
+        >
           {{ draggableLabel()(item) }}
         </div>
       }
     </div>
+
+    @if (activity()) {
+      @if (selected() && selected()!.from !== 'pool') {
+        <button mat-stroked-button type="button" class="dd-pool__return" data-testid="pool-return" (click)="onPoolActivate($event)">
+          <mat-icon>undo</mat-icon>{{ t('poolReturn') }}
+        </button>
+      }
+      <p class="dd-hint" aria-live="polite">{{ hint() }}</p>
+    }
   </div>
 </div>

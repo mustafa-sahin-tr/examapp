@@ -146,6 +146,83 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         };
     }
 
+    /// <summary>
+    /// issue #573: istenen tür (null = mevcut korunur; yeni kayıtta Test) uygulanır. Etkinlik süresiz ve "çalışma testi"
+    /// değildir: <c>MaxDurationSeconds = 0</c>, <c>IsPracticeTest = false</c> zorlanır (istemci ne gönderirse göndersin).
+    /// </summary>
+    internal static void ApplyKind(Worksheet worksheet, WorksheetKind? requested)
+    {
+        if (requested.HasValue)
+            worksheet.Kind = requested.Value;
+        if (worksheet.Kind == WorksheetKind.Activity)
+        {
+            worksheet.MaxDurationSeconds = 0;
+            worksheet.IsPracticeTest = false;
+        }
+    }
+
+    /// <summary>
+    /// issue #573: türü değişen (Test ⇄ Activity) ve en az bir oturumu olan (soft-delete edilmiş dahil — IgnoreQueryFilters)
+    /// sayfa → 409 <see cref="WorksheetAuthoringErrorCodes.WorksheetKindLocked"/>; aksi halde null. Oturumun puanlama/kontrol
+    /// kuralları türe bağlı olduğundan (skor listeleri, kontrol ucu, end-test) başlamış oturumun türü değişmemeli.
+    /// </summary>
+    private async Task<ExamSavedDto?> KindChangeLockedAsync(Worksheet worksheet, WorksheetKind? requested)
+    {
+        if (!IsKindChange(worksheet, requested))
+            return null;
+
+        return await HasAnyInstanceAsync(worksheet.Id) ? KindLockedResult() : null;
+    }
+
+    private static bool IsKindChange(Worksheet worksheet, WorksheetKind? requested)
+        => requested.HasValue && requested.Value != worksheet.Kind;
+
+    private Task<bool> HasAnyInstanceAsync(int worksheetId)
+        => _context.TestInstances.IgnoreQueryFilters().AnyAsync(ti => ti.WorksheetId == worksheetId);
+
+    /// <summary>
+    /// issue #573: tür değişen sayfanın son kaydı. Transaction + <see cref="WorksheetKindLock"/> (StartTestAsync'in oturum
+    /// INSERT'iyle aynı kilit) altında oturum yeniden kontrol edilir: kilitsiz ön kontrol ile yazım arasında açılan oturum
+    /// türü değiştirmeyi engeller (409, hiçbir şey yazılmaz). Yeniden denemede izlenen değişiklikler korunur
+    /// (<c>acceptAllChangesOnSuccess: false</c>, commit sonrası <c>AcceptAllChanges</c>). null = kaydedildi.
+    /// </summary>
+    private async Task<ExamSavedDto?> SaveKindChangeUnderLockAsync(int worksheetId)
+    {
+        var strategy = _context.Database.CreateExecutionStrategy();
+        var locked = await strategy.ExecuteAsync(async () =>
+        {
+            await using var tx = await _context.Database.BeginTransactionAsync();
+            await _context.Database.AcquireWorksheetKindLockAsync(worksheetId);
+            if (await HasAnyInstanceAsync(worksheetId))
+            {
+                await tx.RollbackAsync();
+                return true;
+            }
+
+            await _context.SaveChangesAsync(acceptAllChangesOnSuccess: false); // burada audit çalışır
+            await tx.CommitAsync();
+            return false;
+        });
+
+        if (locked)
+        {
+            _context.ChangeTracker.Clear(); // yazılmayan değişiklikler bu isteğin sonraki işlerine sızmasın
+            return KindLockedResult();
+        }
+
+        _context.ChangeTracker.AcceptAllChanges();
+        return null;
+    }
+
+    private ExamSavedDto KindLockedResult()
+        => new ExamSavedDto
+        {
+            Success = false,
+            Conflict = true,
+            ErrorCode = WorksheetAuthoringErrorCodes.WorksheetKindLocked,
+            Message = _localizer["worksheets.authoring.kindLocked"]
+        };
+
     public async Task<ExamSavedDto> CreateOrUpdateAsync(ExamDto examDto, int userId, bool isAdmin)
     {
         if (examDto == null)
@@ -293,6 +370,8 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
 
             Worksheet? examination;
             var newId = 0;
+            // issue #573: tür değişen var olan sayfa — son kayıt tür kilidinin altında yeniden kontrolle yapılır.
+            int? kindChangeWorksheetId = null;
             if (examDto.Id > 0)
             {
                 examination = await _context.Worksheets.FindAsync(examDto.Id);
@@ -331,11 +410,17 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                     };
                 }
 
+                if (await KindChangeLockedAsync(examination, examDto.Kind) is { } kindLocked)
+                    return kindLocked;
+                if (IsKindChange(examination, examDto.Kind))
+                    kindChangeWorksheetId = examination.Id;
+
                 examination.Name = examDto.Name;
                 examination.Description = examDto.Description;
                 examination.GradeId = examDto.GradeId;
                 examination.MaxDurationSeconds = examDto.MaxDurationSeconds;
                 examination.IsPracticeTest = examDto.IsPracticeTest;
+                ApplyKind(examination, examDto.Kind);
                 // issue #105: null = mevcut değer korunur.
                 if (examDto.CommentsEnabled.HasValue)
                     examination.CommentsEnabled = examDto.CommentsEnabled.Value;
@@ -398,12 +483,18 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                         };
                     }
 
+                    if (await KindChangeLockedAsync(existingExam, examDto.Kind) is { } kindLocked)
+                        return kindLocked;
+                    if (IsKindChange(existingExam, examDto.Kind))
+                        kindChangeWorksheetId = existingExam.Id;
+
                     // Update existing exam
                     existingExam.Name = examDto.Name;
                     existingExam.Description = examDto.Description;
                     existingExam.GradeId = examDto.GradeId;
                     existingExam.MaxDurationSeconds = examDto.MaxDurationSeconds;
                     existingExam.IsPracticeTest = examDto.IsPracticeTest;
+                    ApplyKind(existingExam, examDto.Kind);
                     if (examDto.CommentsEnabled.HasValue)
                         existingExam.CommentsEnabled = examDto.CommentsEnabled.Value;
                     existingExam.Subtitle = examDto.Subtitle;
@@ -437,6 +528,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                         TopicId = examDto.TopicId,
                         SubTopicId = examDto.SubTopicId,
                     };
+                    ApplyKind(examination, examDto.Kind);
                     if (!string.IsNullOrEmpty(newImageUrl))
                     {
                         examination.ImageUrl = newImageUrl;
@@ -447,7 +539,17 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             }
 
             _context.SetCurrentUser(userId);
-            await _context.SaveChangesAsync(); // burada audit çalışır
+            if (kindChangeWorksheetId is { } lockedWorksheetId)
+            {
+                // issue #573: tür değişimi atomik — görseller yukarıda yüklendi; kilit (start-test ile aynı) altında oturum yeniden
+                // kontrol edilir, varsa hiçbir şey yazılmaz (409).
+                if (await SaveKindChangeUnderLockAsync(lockedWorksheetId) is { } raceLocked)
+                    return raceLocked;
+            }
+            else
+            {
+                await _context.SaveChangesAsync(); // burada audit çalışır
+            }
             return new ExamSavedDto
             {
                 Success = true,
@@ -636,6 +738,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             SubTopicId = source.SubTopicId,
             MaxDurationSeconds = source.MaxDurationSeconds,
             IsPracticeTest = source.IsPracticeTest,
+            Kind = source.Kind, // issue #573: kopya kaynağın türünü taşır (etkinlik kopyası etkinliktir)
             CommentsEnabled = true, // issue #105 (review D8): kopyalayan yeni sahip — ayar devralınmaz, varsayılan açık başlar
             Subtitle = source.Subtitle,
             BadgeText = source.BadgeText,

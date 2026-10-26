@@ -8,7 +8,7 @@ export interface RoutedMenuEntry {
 /**
  * Issue #385: menüde kendi öğesi olmayan alt/detay sayfaları, üst menü öğesinin rotasına eşlenir.
  * Anahtar URL yolu öneki (segment sınırında eşleşir), değer menü öğesinin rotası.
- * - `/test/:id` (worksheet detayı), `/tests-enhanced`, `/testsolve/...` → Sınavlar (`/tests`)
+ * - `/test/:id` (worksheet detayı), `/tests-enhanced`, `/testsolve/...`, `/activity/...` (#573) → Sınavlar (`/tests`)
  * - `/program-create` → Programlarım (`/programs`); `/programs/:id/detail` önek eşleşmesiyle zaten bulunur
  * - Öğretmen soru akışı `/questioncanvas...`, `/question...`, `/questions/view`, `/imageselect` → Test Ekleme (`/exam`):
  *   soru ekleme, test oluşturma/detay akışından açılır
@@ -22,6 +22,7 @@ const ROUTE_ALIASES: ReadonlyArray<readonly [prefix: string, target: string]> = 
   ['/questions/view', '/exam'],
   ['/imageselect', '/exam'],
   ['/testsolve', '/tests'],
+  ['/activity', '/tests'],
   ['/question', '/exam'],
   ['/test', '/tests'],
 ];

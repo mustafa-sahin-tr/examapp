@@ -1,0 +1,64 @@
+<section class="apf" *transloco="let t; prefix: 'shared.activity.frame'">
+  <header class="apf__head">
+    <h1 class="apf__title">{{ title() }}</h1>
+    <span class="apf__count" data-testid="item-count">{{ t('itemOf', { current: displayIndex() + 1, total: total() }) }}</span>
+  </header>
+
+  <mat-progress-bar
+    class="apf__progress"
+    mode="determinate"
+    [value]="progress()"
+    [attr.aria-label]="t('progressAria', { current: displayIndex() + 1, total: total() })"
+  ></mat-progress-bar>
+
+  @if (trimmedInstruction(); as text) {
+    <div class="apf__instruction" data-testid="instruction">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <p><b>{{ t('instructionLabel') }}:</b> {{ text }}</p>
+    </div>
+  }
+
+  <nav class="apf__steps" [attr.aria-label]="t('stepsAria')">
+    <ol>
+      @for (step of steps(); track $index; let i = $index) {
+        <li>
+          <button
+            type="button"
+            class="apf__step"
+            [class.apf__step--current]="i === displayIndex()"
+            [class.apf__step--answered]="step.state === 'answered'"
+            [class.apf__step--correct]="step.state === 'correct'"
+            [class.apf__step--wrong]="step.state === 'wrong'"
+            [attr.aria-current]="i === displayIndex() ? 'step' : null"
+            [attr.aria-label]="t('stepAria', { label: label(i), state: t(stateKey(i, step.state)) })"
+            (click)="select(i)"
+          >
+            <span>{{ label(i) }}</span>
+            @if (step.state === 'answered' || step.state === 'correct') {
+              <mat-icon class="apf__step-icon" aria-hidden="true">check</mat-icon>
+            } @else if (step.state === 'wrong') {
+              <mat-icon class="apf__step-icon" aria-hidden="true">close</mat-icon>
+            }
+          </button>
+        </li>
+      }
+    </ol>
+  </nav>
+
+  <div class="apf__content">
+    <ng-content />
+  </div>
+
+  <div class="apf__nav">
+    <button mat-stroked-button type="button" class="apf__nav-btn" data-testid="prev" [disabled]="!canPrev()"
+      (click)="select(displayIndex() - 1)">
+      <mat-icon>arrow_back</mat-icon>{{ t('prev') }}
+    </button>
+    <button mat-flat-button type="button" class="apf__nav-btn" data-testid="next" [disabled]="!canNext()"
+      (click)="select(displayIndex() + 1)">
+      {{ t('next') }}<mat-icon iconPositionEnd>arrow_forward</mat-icon>
+    </button>
+  </div>
+
+  <ng-content select="[activityFooter]" />
+</section>

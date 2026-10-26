@@ -61,6 +61,15 @@ public class WorksheetInstanceQuestion : BaseEntity
     /// ve doğru/yanlış taşır — beklenen cevabı (çözümü) ASLA içermez. MCQ'da null.
     /// </summary>
     public string? Feedback { get; set; }
+
+    /// <summary>
+    /// issue #573: etkinlikte bu satırın en son "Cevapları kontrol et" ile kontrol edildiği andaki <see cref="AnswerRevision"/>.
+    /// Oynatıcı yeniden yüklenince satırın kontrol sonucu (doğru/yanlış, geri bildirim) yalnız
+    /// <c>CheckedAnswerRevision == AnswerRevision</c> iken döner: kontrolden sonra save-answer ile değişen cevabın sonucu
+    /// gösterilmez (aksi halde save-answer + yeniden yükleme sayılmayan, hız sınırsız bir "kontrol" olurdu). Hiç kontrol
+    /// edilmediyse / testte null.
+    /// </summary>
+    public int? CheckedAnswerRevision { get; set; }
 }
 
 /// <summary>issue #571: cevabın sonucunu kim verdi.</summary>

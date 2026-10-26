@@ -237,6 +237,7 @@ public class TestSessionServiceInteractionScoringParityTests : IDisposable
         var w = await SeedWorldAsync();
         var (instanceId, rows, correct, wrong) = await SeedInstanceAsync(w, w.ActivityId, WorksheetInstanceStatus.Started);
         await AnswerMixedAsync(instanceId, rows, correct, wrong);
+        await MarkActivityCheckedAsync(instanceId); // issue #573: etkinlik en az bir kontrolden sonra bitirilebilir
 
         await using (var ctx = _db.NewContext())
         {
@@ -274,6 +275,7 @@ public class TestSessionServiceInteractionScoringParityTests : IDisposable
         var w = await SeedWorldAsync();
         var (instanceId, rows, correct, wrong) = await SeedInstanceAsync(w, w.ActivityId, WorksheetInstanceStatus.Started);
         await AnswerMixedAsync(instanceId, rows, correct, wrong);
+        await MarkActivityCheckedAsync(instanceId); // issue #573: etkinlik en az bir kontrolden sonra bitirilebilir
 
         await using (var ctx = _db.NewContext())
         {
@@ -283,6 +285,14 @@ public class TestSessionServiceInteractionScoringParityTests : IDisposable
         await using var check = _db.NewContext();
         (await check.TestInstances.AsNoTracking().SingleAsync(x => x.Id == instanceId)).Status.ShouldBe(WorksheetInstanceStatus.Completed);
         (await EventsAsync<ParentChildTestCompletedEvent>()).ShouldBeEmpty();
+    }
+
+    /// <summary>issue #573: end-test etkinlikte CheckCount &gt;= 1 ister; bu testler kontrol akışını değil skordan dışlamayı sınar.</summary>
+    private async Task MarkActivityCheckedAsync(int instanceId)
+    {
+        await using var ctx = _db.NewContext();
+        await ctx.TestInstances.Where(x => x.Id == instanceId)
+            .ExecuteUpdateAsync(u => u.SetProperty(x => x.CheckCount, 1).SetProperty(x => x.FirstCheckedAt, DateTime.UtcNow));
     }
 
     // ---------------------------------------------------------------- review #571: istatistik + öğretmen aktivitesi

@@ -16,6 +16,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { timeout } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { QuestionRegion, AnswerChoice, RegionOrAnswerHit, ClassificationSource } from '../../models/draws';
+import { PASSAGE_INSTRUCTION_MAX_LENGTH, PassageKind } from '../../models/activity';
 import { QuillModule } from 'ngx-quill';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -109,6 +110,21 @@ export interface TrainedPage {
   added: number;
 }
 
+/**
+ * Tuvalde çizilen kapsam (passage). Issue #573: `kind` (0 Okuma metni, 1 Etkinlik) ve `instruction` (etkinlik yönergesi)
+ * toplu kayıtta `BulkPassageDto.Kind`/`Instruction` olarak gider; verilmezse backend Okuma metni varsayar.
+ */
+export interface CanvasPassage {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  showPassageFirst?: boolean;
+  kind?: PassageKind | null;
+  instruction?: string | null;
+}
+
 export interface ActiveInspector {
   index: number;
   no: number;
@@ -124,7 +140,7 @@ export interface ActiveInspector {
   isExample: boolean;
   exampleAnswer: string;
   difficulty: number | null;
-  passages: Array<{ id: string; x: number; y: number; width: number; height: number; showPassageFirst?: boolean }>;
+  passages: CanvasPassage[];
   selectedPassageId: string;
   passageFirst: boolean;
 }
@@ -231,9 +247,7 @@ export class ImageSelectorComponent {
   public answerCount = signal<number>(4);
   public selectionMode = signal<'passage' | 'question' | 'answer' | 'dropzone' | null>(null);
   public selectionModeLocked = signal<'passage' | 'question' | 'answer' | 'dropzone' | null>(null);
-  public passages = signal<
-    { id: string; x: number; y: number; width: number; height: number; showPassageFirst?: boolean }[]
-  >([]);
+  public passages = signal<CanvasPassage[]>([]);
   public selectedPassageMap = new Map<string, string>(); // 🗂 Soru ID -> Passage ID eşlemesi
   public imageData = signal<string | null>(null); // 🖼️ Base64 formatında resim verisi
   public bookName = signal<string | null>(null);
@@ -816,6 +830,27 @@ export class ImageSelectorComponent {
 
     this.regions.set(nextRegions);
     this.drawImage();
+  }
+
+  /** Issue #573: kapsam türü (Okuma metni / Etkinlik). Okuma metnine dönülünce yönerge korunur ama gönderilmez. */
+  public setPassageKind(passageId: string, kind: PassageKind) {
+    const normalizedId = String(passageId);
+    this.passages.set(this.passages().map((p) => (String(p.id) === normalizedId ? { ...p, kind } : p)));
+  }
+
+  /** Issue #573: etkinlik yönergesi (en çok 2000 karakter; fazlası kırpılır). */
+  public setPassageInstruction(passageId: string, instruction: string) {
+    const normalizedId = String(passageId);
+    const value = (instruction ?? '').slice(0, PASSAGE_INSTRUCTION_MAX_LENGTH);
+    this.passages.set(this.passages().map((p) => (String(p.id) === normalizedId ? { ...p, instruction: value } : p)));
+  }
+
+  /** Toplu kayıt gövdesindeki kapsam: tür ve (yalnız etkinlikte) yönerge. */
+  private toBulkPassage(p: CanvasPassage) {
+    const box = this.roundBox(p);
+    const kind = p.kind === PassageKind.Activity ? PassageKind.Activity : PassageKind.Reading;
+    const instruction = kind === PassageKind.Activity ? (p.instruction ?? '').trim() || null : null;
+    return { ...box, kind, instruction };
   }
 
   public isPassageFirstEnabledForPassage(passageId: string | null): boolean {
@@ -2627,7 +2662,7 @@ export class ImageSelectorComponent {
   public getRegions(header: any) {
     return {
       imageData: this.imageData(),
-      passages: this.passages().map((p) => this.roundBox(p)),
+      passages: this.passages().map((p) => this.toBulkPassage(p)),
       questions: this.regions().map((region) => ({
         ...this.roundBox(region),
         answers: region.answers?.map((a) => this.roundBox(a)),

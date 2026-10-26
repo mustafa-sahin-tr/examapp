@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { WorksheetListViewCardComponent } from './worksheet-list-view-card.component';
+import { ActivityLauncherService } from '../../services/activity-launcher.service';
 import { Test, WorksheetTeacherSharing } from '../../models/test-instance';
 
 import { TranslocoTestingModule } from '@jsverse/transloco';
@@ -25,11 +26,12 @@ const translocoTesting = TranslocoTestingModule.forRoot({
 
 describe('WorksheetListViewCardComponent', () => {
     let component: WorksheetListViewCardComponent;
+    const launcher = { open: vi.fn() };
 
     beforeEach(() => {
         TestBed.configureTestingModule({
             imports: [WorksheetListViewCardComponent, translocoTesting],
-            providers: [provideRouter([])],
+            providers: [provideRouter([]), { provide: ActivityLauncherService, useValue: launcher }],
         });
 
         component = TestBed.createComponent(WorksheetListViewCardComponent).componentInstance;
@@ -117,6 +119,97 @@ describe('WorksheetListViewCardComponent', () => {
 
             expect(event.stopPropagation).toHaveBeenCalled();
             expect(emitSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    // Issue #573: etkinlik kartı — puan/yüzde/süre yok, madde dili, başlat/devam doğrudan oynatıcıya.
+    describe('activity (#573)', () => {
+        const event = { stopPropagation: vi.fn() } as unknown as Event;
+
+        beforeEach(() => launcher.open.mockClear());
+
+        it('primary_NotCompletedActivity_OpensPlayerViaLauncher', () => {
+            setCourse({ id: 31, kind: 1, instance: { status: 0 } as Test['instance'] });
+
+            expect(component.primaryLabel).toBe('Devam et');
+            component.openPrimary(event);
+
+            expect(launcher.open).toHaveBeenCalledWith(31);
+        });
+
+        it('primary_NotStartedActivity_LabelStart', () => {
+            setCourse({ id: 32, kind: 1 });
+
+            expect(component.primaryLabel).toBe('Başla');
+        });
+
+        it('primary_CompletedActivity_GoesToDetailNotLauncher', () => {
+            setCourse({ id: 33, kind: 1, instance: { status: 1 } as Test['instance'] });
+
+            component.openPrimary(event);
+
+            expect(component.primaryLabel).toBe('Detayı gör');
+            expect(launcher.open).not.toHaveBeenCalled();
+        });
+
+        it('progress_UsesAnsweredQuestionsNotScoreFields', () => {
+            setCourse({
+                kind: 1,
+                questionCount: 4,
+                instance: { status: 0, answeredQuestions: 3, totalQuestions: 4, correctAnswers: 0, wrongAnswers: 0 } as Test['instance'],
+            });
+
+            expect(component.progressPercent).toBe(75);
+        });
+
+        it('template_CompletedActivity_NoScoreRingNoDuration', () => {
+            const fixture = TestBed.createComponent(WorksheetListViewCardComponent);
+            fixture.componentInstance.course = {
+                id: 3,
+                name: 'Biten',
+                kind: 1,
+                questionCount: 10,
+                maxDurationSeconds: 0,
+                instance: { status: 1, score: 0, correctAnswers: 0, wrongAnswers: 0 },
+            } as unknown as Test;
+            fixture.detectChanges();
+            const el = fixture.nativeElement as HTMLElement;
+
+            expect(el.querySelector('.wcard__ring')).toBeNull();
+            expect(el.textContent).toContain('10 madde');
+            expect(el.textContent).not.toContain('dk');
+            expect(el.textContent).not.toMatch(/%|puan/i);
+            expect(el.querySelector('[data-testid="activity-first-check"]')).toBeNull();
+        });
+
+        it('template_CompletedActivityWithFirstCheck_ShowsInfoLineWithoutPercent', () => {
+            const fixture = TestBed.createComponent(WorksheetListViewCardComponent);
+            fixture.componentInstance.course = {
+                id: 3,
+                name: 'Biten',
+                kind: 1,
+                questionCount: 10,
+                instance: { status: 1, score: 0, firstCheckCorrectCount: 8, firstCheckTotalCount: 10 },
+            } as unknown as Test;
+            fixture.detectChanges();
+            const el = fixture.nativeElement as HTMLElement;
+
+            expect(el.querySelector('[data-testid="activity-first-check"]')?.textContent?.trim()).toBe('İlk kontrol: 8 / 10 doğru');
+            expect(el.querySelector('.wcard__ring')).toBeNull();
+            expect(el.textContent).not.toMatch(/%/);
+        });
+
+        it('template_TestCard_NeverShowsActivityInfoLine', () => {
+            const fixture = TestBed.createComponent(WorksheetListViewCardComponent);
+            fixture.componentInstance.course = {
+                id: 4,
+                name: 'Test',
+                kind: 0,
+                instance: { status: 1, score: 50, correctAnswers: 1, wrongAnswers: 1, firstCheckCorrectCount: 1, firstCheckTotalCount: 2 },
+            } as unknown as Test;
+            fixture.detectChanges();
+
+            expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="activity-first-check"]')).toBeNull();
         });
     });
 });

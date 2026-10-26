@@ -64,6 +64,22 @@
         <section class="card">
           <h3><span class="dot"></span>{{ t('form.identityTitle') }}</h3>
           <p class="card-note">{{ t('form.identityNote') }}</p>
+          <!-- Issue #573: sayfa türü — Test | Etkinlik sayfası -->
+          @if (hasKindControl) {
+            <div class="field">
+              <label id="tf-kind-label">{{ t('form.kindLabel') }}</label>
+              <mat-button-toggle-group class="kind-toggle" formControlName="kind" aria-labelledby="tf-kind-label"
+                data-testid="kind-toggle">
+                <mat-button-toggle [value]="kinds.Test" data-testid="kind-test">{{ t('form.kindTest') }}</mat-button-toggle>
+                <mat-button-toggle [value]="kinds.Activity" data-testid="kind-activity">{{ t('form.kindActivity') }}</mat-button-toggle>
+              </mat-button-toggle-group>
+              @if (kindLocked) {
+                <p class="card-note field-hint" data-testid="kind-locked">{{ t('form.kindLockedHint') }}</p>
+              } @else if (isActivity) {
+                <p class="card-note field-hint">{{ t('form.kindActivityHint') }}</p>
+              }
+            </div>
+          }
           <div class="field">
             <label>{{ t('form.nameLabel') }}<span class="req">*</span></label>
             <input class="control" type="text" formControlName="name" [placeholder]="t('form.namePlaceholder')" />
@@ -73,14 +89,17 @@
             <input class="control" type="text" formControlName="subtitle" [placeholder]="t('form.subtitlePlaceholder')" />
           </div>
           <div class="field">
-            <label>{{ t('form.descriptionLabel') }}</label>
-            <textarea class="control area" rows="3" formControlName="description" [placeholder]="t('form.descriptionPlaceholder')"></textarea>
+            <label for="tf-description">{{ t(isActivity ? 'form.instructionLabel' : 'form.descriptionLabel') }}</label>
+            <textarea id="tf-description" class="control area" rows="3" formControlName="description"
+              [placeholder]="t(isActivity ? 'form.instructionPlaceholder' : 'form.descriptionPlaceholder')"></textarea>
           </div>
         </section>
         <!-- AYARLAR -->
         <section class="card">
           <h3><span class="dot"></span>{{ t('form.settingsTitle') }}</h3>
           <p class="card-note">{{ t('form.settingsNote') }}</p>
+          <!-- Issue #573: etkinlikte süre ve çalışma testi yok (backend 0 / false'a zorlar). -->
+          @if (!isActivity) {
           <div class="settings-row">
             <div class="field dur">
               <label>{{ t('form.durationLabel') }}<span class="req">*</span></label>
@@ -100,6 +119,7 @@
               <div class="t-sub">{{ t('form.practiceHint') }}</div>
             </div>
           </div>
+          }
           <!-- Issue #105: öğrenci yorum/soru anahtarı (varsayılan açık) -->
           <div class="toggle-row">
             <button

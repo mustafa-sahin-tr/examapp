@@ -1,0 +1,76 @@
+:host {
+  display: block;
+}
+
+.ap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.ap__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--ms-text-medium);
+
+  &--error {
+    color: var(--ms-danger-text);
+    background: var(--ms-danger-surface);
+    border: 1px solid var(--ms-danger-border);
+    border-radius: 12px;
+  }
+}
+
+.ap__state-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.ap__btn {
+  min-height: 44px;
+}
+
+.ap__item {
+  display: block;
+  min-height: 240px;
+  border-radius: 12px;
+
+  &.is-busy {
+    pointer-events: none;
+    opacity: 0.7;
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+}
+
+.ap__save-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--ms-warning-text-medium);
+}
+
+// Mobilde kontrol paneli ekranın altında sabit kalır (maket: "sabit çubuk").
+@media (max-width: 640px) {
+  .ap {
+    padding: 12px 12px 0;
+  }
+
+  .ap__panel {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+  }
+}

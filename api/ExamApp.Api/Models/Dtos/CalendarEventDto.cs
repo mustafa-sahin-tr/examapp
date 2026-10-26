@@ -31,6 +31,12 @@ public class CalendarEventDto
 
     public string WorksheetTitle { get; set; } = string.Empty;
 
+    /// <summary>
+    /// issue #573: worksheet tabanlı etkinliklerde (reminder, assignment-deadline) sayfa türü (0 = Test, 1 = Activity);
+    /// diğerlerinde null. <see cref="Kind"/> (etkinlik tipi string'i) ile karıştırma.
+    /// </summary>
+    public WorksheetKind? WorksheetKind { get; set; }
+
     public string? Subject { get; set; }
 
     [StorageUrl(StorageArea.WorksheetCover, StorageArea.StudyPage)]

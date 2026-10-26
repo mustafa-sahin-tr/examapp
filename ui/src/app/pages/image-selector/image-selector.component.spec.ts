@@ -715,6 +715,31 @@ describe('ImageSelectorComponent', () => {
             expect(component.passages()[0].width).toBe(100.6);
         });
 
+        // issue #573: kapsam türü + etkinlik yönergesi BulkPassageDto.Kind / Instruction olarak gider.
+        it('getRegions_Passages_SendKindAndInstructionOnlyForActivity', () => {
+            component.regions.set([]);
+            component.passages.set([
+                { id: 'p1', x: 0, y: 0, width: 10, height: 10 },
+                { id: 'p2', x: 0, y: 0, width: 10, height: 10 },
+            ]);
+            component.setPassageKind('p2', 1);
+            component.setPassageInstruction('p2', '  Resimleri eşleştir.  ');
+            component.setPassageInstruction('p1', 'okuma metninde gönderilmez');
+
+            const [p1, p2] = component.getRegions(null).passages;
+
+            expect(p1).toEqual(expect.objectContaining({ id: 'p1', kind: 0, instruction: null }));
+            expect(p2).toEqual(expect.objectContaining({ id: 'p2', kind: 1, instruction: 'Resimleri eşleştir.' }));
+        });
+
+        it('setPassageInstruction_TruncatesTo2000Characters', () => {
+            component.passages.set([{ id: 'p1', x: 0, y: 0, width: 10, height: 10 }]);
+
+            component.setPassageInstruction('p1', 'x'.repeat(2100));
+
+            expect(component.passages()[0].instruction!.length).toBe(2000);
+        });
+
         // issue #570: doğru yerleşimler plandan ayrı alanda gider; plan öğrenciye çözüm sızdırmamalı.
         it('getRegions_DragDropQuestion_SendsSolutionSeparatelyAndPlanWithoutSolution', () => {
             component.regions.set([region('Soru 1', [])] as any);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ExamApp.Api.Data;
 
 namespace ExamApp.Api.Models.Dtos;
 
@@ -7,6 +8,9 @@ public class TeacherWorksheetAssignmentsDto
 {
     public int WorksheetId { get; set; }
     public string WorksheetName { get; set; } = string.Empty;
+
+    /// <summary>issue #573: sayfa türü (0 = Test, 1 = Activity) — UI etkinlikte "Çalışma takibi" tablosunu gösterir.</summary>
+    public WorksheetKind WorksheetKind { get; set; } = WorksheetKind.Test;
     public DateTime RetrievedAt { get; set; } = DateTime.UtcNow;
     public AssignmentProgressSummaryDto Summary { get; set; } = new();
     public List<TeacherWorksheetAssignmentDto> Assignments { get; set; } = new();
@@ -55,6 +59,12 @@ public class TeacherAssignmentStudentDto
     public string Status { get; set; } = AssignmentStudentStatuses.NotStarted;
     public int? InstanceId { get; set; }
     public DateTime? LastActivity { get; set; }
+
+    /// <summary>issue #573: etkinlikte ilk kontroldeki doğru satır sayısı; kontrol yoksa / testte null.</summary>
+    public int? FirstCheckCorrectCount { get; set; }
+
+    /// <summary>issue #573: etkinlikte ilk kontroldeki toplam satır sayısı; kontrol yoksa / testte null.</summary>
+    public int? FirstCheckTotalCount { get; set; }
 }
 
 public static class AssignmentStudentStatuses

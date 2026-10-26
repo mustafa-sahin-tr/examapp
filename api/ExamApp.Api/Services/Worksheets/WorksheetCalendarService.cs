@@ -196,7 +196,8 @@ public class WorksheetCalendarService : IWorksheetCalendarService
                 r.Status,
                 Title = r.Worksheet.Name,
                 Subject = r.Worksheet.Subject != null ? r.Worksheet.Subject.Name : null,
-                r.Worksheet.ImageUrl
+                r.Worksheet.ImageUrl,
+                WorksheetKind = r.Worksheet.Kind // issue #573
             })
             .ToListAsync(ct);
 
@@ -206,6 +207,7 @@ public class WorksheetCalendarService : IWorksheetCalendarService
             Date = DateTime.SpecifyKind(r.ScheduledFor, DateTimeKind.Utc),
             WorksheetId = r.WorksheetId,
             WorksheetTitle = r.Title,
+            WorksheetKind = r.WorksheetKind,
             Subject = r.Subject,
             ImageUrl = r.ImageUrl,
             Status = r.Status.ToString(),
@@ -227,7 +229,8 @@ public class WorksheetCalendarService : IWorksheetCalendarService
                 a.CreateUserId,
                 Title = a.Worksheet.Name,
                 Subject = a.Worksheet.Subject != null ? a.Worksheet.Subject.Name : null,
-                a.Worksheet.ImageUrl
+                a.Worksheet.ImageUrl,
+                WorksheetKind = a.Worksheet.Kind // issue #573
             })
             .ToListAsync(ct);
 
@@ -262,6 +265,7 @@ public class WorksheetCalendarService : IWorksheetCalendarService
             Date = DateTime.SpecifyKind(r.EndAt, DateTimeKind.Utc),
             WorksheetId = r.WorksheetId,
             WorksheetTitle = r.Title,
+            WorksheetKind = r.WorksheetKind,
             Subject = r.Subject,
             ImageUrl = r.ImageUrl,
             IsCompleted = completedWorksheetIds.Contains(r.WorksheetId),

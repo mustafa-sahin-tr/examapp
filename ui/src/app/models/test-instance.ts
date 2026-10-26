@@ -2,6 +2,7 @@ import { Subject } from 'rxjs';
 import { Answer } from './answer';
 import { Question } from './question';
 import { ResponseBase } from './worksheet-access-request.model';
+import { WorksheetKind } from './activity';
 
 export enum TestStatus {
   NotStarted = -1,
@@ -38,6 +39,15 @@ export interface TestInstanceQuestion {
   selectedAnswerId: number;
   answerPayload?: string;
   timeTaken: number;
+  /**
+   * Issue #571/#573: satırın son kontrol sonucu. Etkinlikte yalnız kontrol edilip sonra DEĞİŞMEDİYSE dolu (yeniden
+   * yüklemede işaretler geri gelir); testte yalnız bitmiş sonuç ekranında. Diğer durumlarda null/undefined.
+   */
+  isCorrect?: boolean | null;
+  correctCount?: number | null;
+  totalCount?: number | null;
+  /** JSON string `{"rows":[{"id","correct"}]}` (MCQ'da null). */
+  feedback?: string | null;
 }
 export interface TestInstance {
   id: number;
@@ -56,6 +66,20 @@ export interface TestInstance {
    * henüz dönmüyorsa undefined kalır; çözüm ekranı o durumda navigasyon state'ine düşer.
    */
   worksheetId?: number;
+  /** Issue #573: sayfa türü (0 Test, 1 Etkinlik). Eski yanıtta yok → Test. */
+  kind?: WorksheetKind;
+  /** Issue #573: etkinlikte "Cevapları kontrol et" sayısı; testte null. */
+  checkCount?: number | null;
+  /** Issue #573: sayfa açıklaması — oynatıcıda maddenin yönergesi yoksa yedek yönerge. */
+  worksheetDescription?: string | null;
+  /** Issue #573: etkinlikte ilk kontrol anı (UTC ISO); testte null. */
+  firstCheckedAt?: string | null;
+  /** Issue #573: etkinlikte çözümün ilk açıldığı an (UTC ISO); testte null. */
+  solutionsRevealedAt?: string | null;
+  /** Issue #573: etkinlikte ilk kontroldeki doğru satır sayısı; kontrol yoksa / testte null. */
+  firstCheckCorrectCount?: number | null;
+  /** Issue #573: etkinlikte ilk kontroldeki toplam satır sayısı; kontrol yoksa / testte null. */
+  firstCheckTotalCount?: number | null;
 }
 
 /** Backend `TestSessionErrorCodes` (issue #367). */
@@ -147,6 +171,11 @@ export interface Test {
    * `WorksheetDto.CommentsEnabled`; kaydederken `ExamDto.CommentsEnabled` — güncellemede gönderilmezse değişmez.
    */
   commentsEnabled?: boolean;
+  /**
+   * Issue #573: sayfa türü (0 Test, 1 Etkinlik). Okumada `WorksheetDto.Kind`; kaydederken `ExamDto.Kind` — null/undefined
+   * = oluştururken Test, güncellerken değişmez. Etkinlikte `instance` skor alanları hesaplanmaz (0) ve gösterilmez.
+   */
+  kind?: WorksheetKind | null;
 }
 
 export interface InstanceSummary {
@@ -160,4 +189,12 @@ export interface InstanceSummary {
   wrongAnswers: number;
   totalQuestions: number;
   status: number;
+  /** Issue #573: yalnız etkinlikte — cevaplanmış madde sayısı (mini ilerleme). Testte null. */
+  answeredQuestions?: number | null;
+  /** Issue #573: yalnız etkinlikte — kontrol sayısı. Testte null. */
+  checkCount?: number | null;
+  /** Issue #573: yalnız etkinlikte — ilk kontroldeki doğru satır sayısı; kontrol yoksa / testte null. */
+  firstCheckCorrectCount?: number | null;
+  /** Issue #573: yalnız etkinlikte — ilk kontroldeki toplam satır sayısı; kontrol yoksa / testte null. */
+  firstCheckTotalCount?: number | null;
 }

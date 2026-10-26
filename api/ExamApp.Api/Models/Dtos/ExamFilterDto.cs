@@ -33,6 +33,9 @@ public class ExamFilterDto : FilterBaseDto
     public bool? isPracticeTest = null;
     public List<int>? bookIds = null;
 
+    /// <summary>issue #573: sayfa türü filtresi (0 = Test, 1 = Activity); null = hepsi.</summary>
+    public WorksheetKind? kind = null;
+
     /// <summary>
     /// True ise öğretmen kendi worksheet'lerine ek olarak başka öğretmenlerin PublicView/PublicAssignable
     /// worksheet'lerini de listede görür (issue #11). Admin ve öğrenci akışlarını etkilemez.

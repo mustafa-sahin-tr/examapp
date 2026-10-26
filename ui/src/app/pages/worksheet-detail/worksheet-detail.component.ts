@@ -69,6 +69,8 @@ import { LocaleService } from '../../services/locale.service';
 import { CommentThreadComponent } from '../../shared/components/comment-thread/comment-thread.component';
 import { CommentReportListComponent } from '../../shared/components/comment-report-list/comment-report-list.component';
 import { WorksheetCommentRef, toPositiveId } from '../../models/worksheet-comment.model';
+import { WorksheetKind, activityRoute } from '../../models/activity';
+import { ActivityTrackingTableComponent } from './components/activity-tracking-table/activity-tracking-table.component';
 
 interface AssignmentPanelState {
   loading: boolean;
@@ -106,6 +108,7 @@ const WORKSHEET_DETAIL_SCOPE = 'worksheet-detail';
     MatDatepickerModule,
     TranslocoDirective,
     StorageImageRetryDirective,
+    ActivityTrackingTableComponent,
   ],
   providers: [provideTranslocoScope(WORKSHEET_DETAIL_SCOPE)],
   templateUrl: './worksheet-detail.component-dlms.html',
@@ -269,9 +272,26 @@ export class WorksheetDetailComponent implements OnInit {
 
   protected readonly sharedOwnerName = computed(() => this.detail()?.worksheet?.ownerName ?? null);
 
+  /**
+   * Issue #573: etkinlik sayfası — puan, yüzde, sıralama, süre gösterilmez; öğrenci her zaman "başla" görünümünde
+   * (tamamlanmış etkinlikte skorlu sonuç görünümü yok), öğretmen "Çalışma takibi" tablosunu görür.
+   */
+  protected readonly isActivity = computed(() => this.detail()?.worksheet?.kind === WorksheetKind.Activity);
+
+  /** Öğretmen tablosu için `studentGradeLabel` (şablonda fonksiyon girdisi). */
+  protected readonly gradeLabelFn = (student: TeacherAssignmentStudentSummary) => this.studentGradeLabel(student);
+
+  /** Tüm atamaların öğrencileri (tablo aynı öğrenciyi tek satırda birleştirir). */
+  protected readonly activityTrackingStudents = computed<TeacherAssignmentStudentSummary[]>(() =>
+    this.assignmentPanelState().assignments.flatMap((assignment) => assignment.students ?? [])
+  );
+
   protected readonly view = computed<WorksheetView>(() => {
     if (this.isTeacher) {
       return 'teacher';
+    }
+    if (this.isActivity()) {
+      return 'start';
     }
     return this.completedResult() ? 'completed' : 'start';
   });
@@ -379,6 +399,11 @@ export class WorksheetDetailComponent implements OnInit {
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe((response) => {
         if (response.success) {
+          if (this.isActivity()) {
+            // Issue #573: etkinlik kendi oynatıcısında açılır (kontrol/çözüm, puansız).
+            this.router.navigate(activityRoute(response.instanceId), { state: { worksheetId: id } });
+            return;
+          }
           // Issue #383: çözüm ekranı bitince sonuç sayfasına (/test/{worksheetId}) döner.
           this.router.navigate(['/testsolve', response.instanceId], { state: { worksheetId: id } });
           return;

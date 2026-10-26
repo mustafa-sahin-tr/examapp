@@ -52,6 +52,7 @@ import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { questionCanvasImageUrl, storageImageKey } from '../../shared/utils/storage-image-url.util';
 import { createStorageImageResolver } from '../../shared/utils/storage-image-refresh.util';
+import { WorksheetKind, activityRoute } from '../../models/activity';
 
 /**
  * Sınav çözme ekranının metinleri kendi Transloco scope'unda: `public/i18n/test-solve/<lang>.json`
@@ -413,6 +414,13 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       // 📥 Test verisini asenkron olarak al
       this.testInstance = await lastValueFrom(this.testService.getCanvasTestWithAnswers(testId));
       console.log('Test loaded', this.testInstance);
+
+      // Issue #573: etkinlik oturumu test ekranında çözülmez; kendi oynatıcısına (kontrol/çözüm, puansız) gider.
+      if (this.testInstance?.kind === WorksheetKind.Activity) {
+        this.redirectedToResult = true;
+        void this.router.navigate(activityRoute(this.testInstance.id ?? testId), { replaceUrl: true });
+        return;
+      }
 
       // 📥 Soruları yükle ve resimleri bekle
 

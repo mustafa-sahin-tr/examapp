@@ -683,3 +683,13 @@
     background: var(--main-bg-color);
   }
 }
+
+// Issue #573: Testler | Etkinlikler üst sekmeleri (mat-tab-nav-bar).
+.wl__kind-tabs {
+  margin-bottom: 12px;
+  font-family: var(--mainFontFamily);
+
+  a {
+    min-height: 44px;
+  }
+}

@@ -41,7 +41,9 @@
     "questionContentRequired": "Lütfen soruya metin veya resim ekleyin!",
     "minAnswersRequired": "Lütfen en az 3 cevap şıkkını doldurun!",
     "correctAnswerRequired": "Lütfen doğru cevabı seçin!",
-    "saveSuccess": "Soru başarıyla kaydedildi!"
+    "saveSuccess": "Soru başarıyla kaydedildi!",
+    "passageKindLabel": "Kapsam türü",
+    "passageInstructionLabel": "Yönerge"
   },
   "canvas": {
     "title": "Soru Ekle",
@@ -130,7 +132,12 @@
     "warnings": "Uyarılar",
     "dismissWarning": "Yoksay",
     "deleteQuestion": "Soruyu Sil",
-    "emptyHint": "Tuval üzerinde bir soru seçin; şıklar, sınıflandırma ve uyarılar burada görünür."
+    "emptyHint": "Tuval üzerinde bir soru seçin; şıklar, sınıflandırma ve uyarılar burada görünür.",
+    "passageKind": "Tür",
+    "passageKindReading": "Okuma metni",
+    "passageKindActivity": "Etkinlik",
+    "passageInstruction": "Yönerge",
+    "passageInstructionPlaceholder": "Öğrenciye bu maddelerde ne yapacağını anlat (ör. Resimleri eşleştir)."
   },
   "preview": {
     "headingWithTest": "Ön İzleme — {{testName}}",

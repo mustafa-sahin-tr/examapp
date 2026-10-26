@@ -1,0 +1,56 @@
+:host {
+  display: block;
+}
+
+.asum {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  border-radius: 12px;
+  background: var(--main-foreground-color);
+  border: 1px solid var(--ms-border);
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.asum__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-family: var(--mainFontFamily);
+  color: var(--ms-text-strong);
+}
+
+.asum__info {
+  margin: 0;
+  color: var(--ms-text-medium);
+}
+
+.asum__card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border);
+  background: var(--ms-surface-weak);
+
+  h2 {
+    margin: 0 0 6px;
+    font: 600 15px var(--mainFontFamily);
+    color: var(--ms-text-strong);
+  }
+
+  p {
+    margin: 6px 0 0;
+  }
+}
+
+.asum__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.asum__btn {
+  min-height: 44px;
+}

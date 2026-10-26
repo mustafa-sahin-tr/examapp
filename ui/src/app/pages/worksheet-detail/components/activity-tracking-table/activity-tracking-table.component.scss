@@ -1,0 +1,39 @@
+:host {
+  display: block;
+  overflow-x: auto;
+}
+
+.att__table {
+  width: 100%;
+  background: transparent;
+  font-family: var(--paragraphFontFamily);
+}
+
+.att__muted,
+.att__empty {
+  color: var(--ms-text-weak);
+}
+
+.att__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  &--completed {
+    color: var(--ms-success-text-medium);
+  }
+
+  &--inProgress {
+    color: var(--ms-warning-text-medium);
+  }
+
+  &--expired {
+    color: var(--ms-danger-text-medium);
+  }
+}

@@ -233,5 +233,29 @@
     "loadFailed": "Testin soruları yüklenemedi.",
     "submitFailed": "Sorular teste eklenemedi. Lütfen tekrar deneyin.",
     "notFound": "Seçilen sorulardan biri bu teste eklenemiyor (silinmiş ya da artık erişiminiz olmayabilir). Seçiminizi değiştirip tekrar deneyin."
+  },
+  "activity": {
+    "chip": "Etkinlik sayfası",
+    "items": "Madde",
+    "itemCount": "{{count}} madde",
+    "start": "Etkinliğe başla",
+    "continue": "Etkinliğe devam et",
+    "completed": "Tamamlandı",
+    "instructionTitle": "Yönerge",
+    "trackingTitle": "Çalışma takibi",
+    "trackingEmpty": "Bu atamada öğrenci bilgisi yok.",
+    "colStudent": "Öğrenci",
+    "colStatus": "Durum",
+    "colActiveTime": "Etkin süre",
+    "colFirstCheck": "İlk kontrol",
+    "firstCheck": "{{correct}} doğru · {{wrong}} yanlış",
+    "noData": "Veri yok",
+    "status": {
+      "completed": "Tamamladı",
+      "inProgress": "Devam ediyor",
+      "notStarted": "Başlamadı",
+      "scheduled": "Planlandı",
+      "expired": "Süresi doldu"
+    }
   }
 }

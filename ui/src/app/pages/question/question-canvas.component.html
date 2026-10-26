@@ -559,6 +559,23 @@
                 [attr.aria-pressed]="d.passageFirst" [attr.aria-label]="t('inspector.passageFirst')" (click)="insTogglePassageFirst()"></button>
               <span>{{ t('inspector.passageFirst') }}</span>
             </div>
+            <!-- Issue #573: kapsam türü + etkinlik yönergesi (toplu kayıtta BulkPassageDto.Kind / Instruction) -->
+            @let selPassage = insSelectedPassage(d);
+            <div class="qc-lbl" id="qc-passage-kind-lbl">{{ t('inspector.passageKind') }}</div>
+            <mat-button-toggle-group class="qc-passage-kind" aria-labelledby="qc-passage-kind-lbl"
+              [value]="selPassage?.kind ?? passageKinds.Reading" (change)="insSetPassageKind($event.value)"
+              data-testid="passage-kind">
+              <mat-button-toggle [value]="passageKinds.Reading">{{ t('inspector.passageKindReading') }}</mat-button-toggle>
+              <mat-button-toggle [value]="passageKinds.Activity">{{ t('inspector.passageKindActivity') }}</mat-button-toggle>
+            </mat-button-toggle-group>
+            @if (selPassage?.kind === passageKinds.Activity) {
+            <label class="qc-lbl" for="qc-passage-instruction">{{ t('inspector.passageInstruction') }}</label>
+            <textarea id="qc-passage-instruction" class="control qc-input qc-passage-instruction" rows="3"
+              [attr.maxlength]="passageInstructionMax" [placeholder]="t('inspector.passageInstructionPlaceholder')"
+              [value]="selPassage?.instruction ?? ''" (input)="insSetPassageInstruction($any($event.target).value)"
+              data-testid="passage-instruction"></textarea>
+            <small class="qc-passage-count">{{ (selPassage?.instruction ?? '').length }} / {{ passageInstructionMax }}</small>
+            }
             }
           </section>
           }

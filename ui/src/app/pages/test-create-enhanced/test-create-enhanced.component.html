@@ -26,7 +26,7 @@
     }
     <div class="page-head">
       <div class="ph-text">
-        <h1>{{ t(isEditMode ? 'page.titleEdit' : 'page.titleNew') }}</h1>
+        <h1>{{ t(isEditMode ? 'page.titleEdit' : isActivity ? 'page.titleNewActivity' : 'page.titleNew') }}</h1>
         <p class="sub">
           {{ t(isEditMode ? 'page.subtitleEdit' : 'page.subtitleNew') }}
         </p>
@@ -37,7 +37,7 @@
       <div class="stack">
         <app-test-form [form]="testForm" [books]="books" [bookTests]="bookTests" [grades]="grades" [subjects]="subjects"
           [topics]="topics" [subtopics]="subtopics" [showAddBookInput]="showAddBookInput"
-          [showAddBookTestInput]="showAddBookTestInput" [isEditMode]="isEditMode"
+          [showAddBookTestInput]="showAddBookTestInput" [isEditMode]="isEditMode" [kindLocked]="kindLocked()"
           (onBookChange)="onBookChange($event)" (openNewBookAdd)="openNewBookAdd()" (onNewBookBlur)="onNewBookBlur()"
           (openNewBookTestAdd)="openNewBookTestAdd()" (onSubjectChange)="onSubjectChange($event)"
           (onTopicChange)="onTopicChange($event)" (onGradeChange)="onGradeChange($event)" (onSubmit)="onSubmit()"
@@ -87,7 +87,9 @@
             <div class="pc-head">{{ t('preview.title') }}</div>
             <div class="wc">
               <div class="wc-cover">
-                @if (previewIsPractice) {
+                @if (previewIsActivity) {
+                  <span class="pract">{{ t('preview.activity') }}</span>
+                } @else if (previewIsPractice) {
                   <span class="pract">{{ t('preview.practice') }}</span>
                 }
                 @if (previewImage) {
@@ -112,7 +114,9 @@
                 <div class="wc-meta">
                   <div><mat-icon>menu_book</mat-icon>{{ t('preview.questionCount', { count: previewQuestionCount }) }}
                 </div>
-                <div><mat-icon>schedule</mat-icon>{{ t('preview.duration', { minutes: previewDuration }) }}</div>
+                @if (!previewIsActivity) {
+                  <div><mat-icon>schedule</mat-icon>{{ t('preview.duration', { minutes: previewDuration }) }}</div>
+                }
               </div>
             </div>
           </div>

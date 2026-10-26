@@ -192,6 +192,7 @@ public class WorksheetDetailService : IWorksheetDetailService
                 SubTopicId = worksheet.SubTopicId,
                 MaxDurationSeconds = worksheet.MaxDurationSeconds,
                 IsPracticeTest = worksheet.IsPracticeTest,
+                Kind = worksheet.Kind, // issue #573
                 CommentsEnabled = worksheet.CommentsEnabled, // issue #105
                 Subtitle = worksheet.Subtitle,
                 ImageUrl = worksheet.ImageUrl,

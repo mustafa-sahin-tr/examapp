@@ -233,5 +233,29 @@
     "loadFailed": "The test's questions could not be loaded.",
     "submitFailed": "The questions could not be added. Please try again.",
     "notFound": "One of the selected questions can't be added to this test (it may have been deleted or is no longer available to you). Change your selection and try again."
+  },
+  "activity": {
+    "chip": "Activity page",
+    "items": "Items",
+    "itemCount": "{{count}} items",
+    "start": "Start activity",
+    "continue": "Continue activity",
+    "completed": "Completed",
+    "instructionTitle": "Instructions",
+    "trackingTitle": "Progress tracking",
+    "trackingEmpty": "No student information for this assignment.",
+    "colStudent": "Student",
+    "colStatus": "Status",
+    "colActiveTime": "Active time",
+    "colFirstCheck": "First check",
+    "firstCheck": "{{correct}} correct · {{wrong}} wrong",
+    "noData": "No data",
+    "status": {
+      "completed": "Completed",
+      "inProgress": "In progress",
+      "notStarted": "Not started",
+      "scheduled": "Scheduled",
+      "expired": "Expired"
+    }
   }
 }

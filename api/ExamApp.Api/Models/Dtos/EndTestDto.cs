@@ -25,4 +25,19 @@ public class InstanceSummaryDto
     public int TotalQuestions { get; set; }
 
     public int Status { get; set; } // 0: In Progress, 1: Completed, 2: Canceled
+
+    /// <summary>
+    /// issue #573: yalnız etkinlikte dolu — cevaplanmış (boş olmayan) madde sayısı (liste kartındaki mini ilerleme). Etkinlikte
+    /// <see cref="Score"/>/<see cref="CorrectAnswers"/>/<see cref="WrongAnswers"/> hesaplanmaz (0). Testte null.
+    /// </summary>
+    public int? AnsweredQuestions { get; set; }
+
+    /// <summary>issue #573: yalnız etkinlikte dolu — "Cevapları kontrol et" sayısı. Testte null.</summary>
+    public int? CheckCount { get; set; }
+
+    /// <summary>issue #573: yalnız etkinlikte — ilk kontroldeki doğru satır sayısı; kontrol yoksa / testte null.</summary>
+    public int? FirstCheckCorrectCount { get; set; }
+
+    /// <summary>issue #573: yalnız etkinlikte — ilk kontroldeki toplam satır sayısı; kontrol yoksa / testte null.</summary>
+    public int? FirstCheckTotalCount { get; set; }
 }

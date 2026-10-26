@@ -83,14 +83,58 @@
   background: rgba(47, 112, 255, 0.06);
 }
 
+// Issue #573: doğru = düz success kenar + ✓; yanlış = kesik danger kenar + ✗ (renk tek sinyal değil).
 .dd-zone.is-correct {
-  border-color: rgba(67, 160, 71, 0.9);
-  background: rgba(67, 160, 71, 0.10);
+  border-style: solid;
+  border-color: var(--ms-success-border);
+  background: var(--ms-success-surface-weak);
 }
 
 .dd-zone.is-incorrect {
-  border-color: rgba(229, 57, 53, 0.9);
-  background: rgba(229, 57, 53, 0.08);
+  border-style: dashed;
+  border-color: var(--ms-danger-border);
+  background: var(--ms-danger-surface-weak);
+}
+
+.dd-zone.is-solution {
+  border-style: solid;
+  border-color: var(--ms-info-border);
+  background: var(--ms-info-surface-weak);
+}
+
+.dd-zone__mark {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ms-success-surface);
+  color: var(--ms-success-text);
+  border: 1px solid var(--ms-success-border);
+  pointer-events: none;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+
+  &--wrong {
+    background: var(--ms-danger-surface);
+    color: var(--ms-danger-text);
+    border-color: var(--ms-danger-border);
+  }
+}
+
+.dd-hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--ms-text-medium);
+  font-family: var(--paragraphFontFamily);
 }
 
 .dd-zone__slot {
@@ -156,4 +200,55 @@
 
 .dd-chip.cdk-drag-placeholder {
   opacity: 0.25;
+}
+
+// Issue #573 (S3): dokun-dokun / klavye yalnız etkinlik modunda; test ekranı eski görünümünde kalır.
+.dd-root.is-activity {
+  .dd-zone.is-target {
+    border-color: var(--ms-action-border-focus);
+  }
+
+  .dd-zone__target {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: none;
+    border-radius: inherit;
+    background: transparent;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 3px solid var(--ms-action-border-focus);
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      cursor: default;
+    }
+  }
+
+  .dd-chip {
+    position: relative;
+    z-index: 1;
+    min-height: 44px;
+
+    &:focus-visible,
+    &.is-selected {
+      outline: 3px solid var(--ms-action-border-focus);
+      outline-offset: 2px;
+    }
+  }
+
+  .dd-pool__list.is-target {
+    outline: 2px dashed var(--ms-action-border-focus);
+    outline-offset: 2px;
+    cursor: pointer;
+  }
+
+  .dd-pool__return {
+    margin-top: 8px;
+    min-height: 44px;
+  }
 }

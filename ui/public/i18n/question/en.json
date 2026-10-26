@@ -41,7 +41,9 @@
     "questionContentRequired": "Please add text or an image to the question.",
     "minAnswersRequired": "Please fill in at least 3 answer choices.",
     "correctAnswerRequired": "Please select the correct answer.",
-    "saveSuccess": "Question saved successfully."
+    "saveSuccess": "Question saved successfully.",
+    "passageKindLabel": "Passage type",
+    "passageInstructionLabel": "Instructions"
   },
   "canvas": {
     "title": "Add question",
@@ -130,7 +132,12 @@
     "warnings": "Warnings",
     "dismissWarning": "Dismiss",
     "deleteQuestion": "Delete question",
-    "emptyHint": "Select a question on the canvas; its choices, classification and warnings appear here."
+    "emptyHint": "Select a question on the canvas; its choices, classification and warnings appear here.",
+    "passageKind": "Type",
+    "passageKindReading": "Reading text",
+    "passageKindActivity": "Activity",
+    "passageInstruction": "Instructions",
+    "passageInstructionPlaceholder": "Tell students what to do in these items (e.g. Match the pictures)."
   },
   "preview": {
     "headingWithTest": "Preview — {{testName}}",

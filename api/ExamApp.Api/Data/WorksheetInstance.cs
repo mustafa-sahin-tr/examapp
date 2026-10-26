@@ -51,4 +51,13 @@ public class WorksheetInstance : BaseEntity
 
     /// <summary>issue #571: öğrencinin "doğru cevapları göster" ile çözümü ilk açtığı an (UTC); açmadıysa null.</summary>
     public DateTime? SolutionsRevealedAt { get; set; }
+
+    /// <summary>
+    /// issue #573: ilk kontroldeki doğru satır sayısı (öğretmen takibi "7 doğru · 3 yanlış"). İlk kontrol
+    /// (<see cref="FirstCheckedAt"/> null iken) ile aynı transaction'da bir kez yazılır; sonraki kontroller değiştirmez. Testte null.
+    /// </summary>
+    public int? FirstCheckCorrectCount { get; set; }
+
+    /// <summary>issue #573: ilk kontroldeki toplam satır sayısı (gönderilen maddelerin <c>TotalCount</c> toplamı). Testte null.</summary>
+    public int? FirstCheckTotalCount { get; set; }
 }

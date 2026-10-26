@@ -1,0 +1,67 @@
+<section class="al" *transloco="let t; prefix: 'worksheet-list'" data-testid="activity-list">
+  @if (!loading() && partialError()) {
+    <div class="al__warn" role="status" data-testid="activity-partial-error">
+      <mat-icon aria-hidden="true">warning</mat-icon>
+      <span>{{ t('activities.partialError') }}</span>
+      <button mat-stroked-button type="button" class="al__btn" (click)="load()">{{ t('error.retry') }}</button>
+    </div>
+  }
+  @if (loading()) {
+    <div class="al__grid" role="status" [attr.aria-label]="t('activities.loading')">
+      @for (i of [1, 2, 3]; track i) {
+        <div class="al__skeleton"></div>
+      }
+    </div>
+  } @else if (error()) {
+    <div class="al__state al__state--error" role="alert">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <p>{{ t('activities.error') }}</p>
+      <button mat-stroked-button type="button" class="al__btn" (click)="load()">{{ t('error.retry') }}</button>
+    </div>
+  } @else if (isEmpty()) {
+    <div class="al__state" data-testid="activity-empty">
+      <mat-icon aria-hidden="true">extension</mat-icon>
+      <p class="al__state-title">{{ t('activities.emptyTitle') }}</p>
+      <p>{{ t('activities.emptyText') }}</p>
+    </div>
+  } @else {
+    @if (fresh().length) {
+      <h2 class="al__section-title">{{ t('activities.newTitle') }}</h2>
+      <div class="al__grid">
+        @for (item of fresh(); track item.id) {
+          <app-worksheet-list-view-card
+            [course]="item"
+            [subjectName]="subjectName(item.subjectId)"
+            [gradeName]="gradeName(item.gradeId)"
+            [assignment]="assignmentFor(item.id)"
+          />
+        }
+      </div>
+    }
+    @if (inProgress().length) {
+      <h2 class="al__section-title">{{ t('activities.inProgressTitle') }}</h2>
+      <div class="al__grid">
+        @for (item of inProgress(); track item.id) {
+          <app-worksheet-list-view-card
+            [course]="item"
+            [subjectName]="subjectName(item.subjectId)"
+            [gradeName]="gradeName(item.gradeId)"
+            [assignment]="assignmentFor(item.id)"
+          />
+        }
+      </div>
+    }
+    @if (completed().length) {
+      <h2 class="al__section-title">{{ t('activities.completedTitle') }}</h2>
+      <div class="al__grid">
+        @for (item of completed(); track item.id) {
+          <app-worksheet-list-view-card
+            [course]="item"
+            [subjectName]="subjectName(item.subjectId)"
+            [gradeName]="gradeName(item.gradeId)"
+          />
+        }
+      </div>
+    }
+  }
+</section>

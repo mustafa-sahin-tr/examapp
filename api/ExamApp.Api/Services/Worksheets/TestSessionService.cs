@@ -127,49 +127,71 @@ public class TestSessionService : ITestSessionService
         if (existing != null)
             return existing;
 
-        var instance = new WorksheetInstance
-        {
-            WorksheetId = testId,
-            StudentId = student.Id,
-            Status = WorksheetInstanceStatus.Started,
-            WorksheetInstanceQuestions = new List<WorksheetInstanceQuestion>(),
-            StartTime = DateTime.UtcNow,
-            // issue #396: süre sınırının kopyası — öğretmen worksheet süresini sonradan değiştirse de bu oturum etkilenmez.
-            MaxDurationSeconds = worksheet.MaxDurationSeconds
-        };
-
-        // Teste ait soruları TestQuestion tablosundan çekiyoruz
-        var testQuestions = await _context.TestQuestions
+        // Teste ait soruları TestQuestion tablosundan çekiyoruz (kilit dışında okunur). Include'lar korunur: soft-delete
+        // filtreli soru gezinmesi silinmiş sorunun satırını önceki davranıştaki gibi dışarıda bırakır.
+        var testQuestionIds = (await _context.TestQuestions
+            .AsNoTracking()
             .Where(tq => tq.TestId == testId)
             .Include(tq => tq.Question)
                 .ThenInclude(q => q.QuestionSubTopics)
             .OrderBy(tq => tq.Order)
             .ThenBy(tq => tq.Id) // issue #309: eşit Order'da kararlı sıra (WorksheetQuestionNumbering ile aynı)
-            .ToListAsync();
+            .ToListAsync())
+            .Select(tq => tq.Id)
+            .ToList();
 
-        foreach (var tq in testQuestions)
+        // issue #573: oturum INSERT'i worksheet tür kilidinin (WorksheetKindLock) altında — tür değişimiyle (WorksheetAuthoringService)
+        // serileşir: değişim önce commit edildiyse süre kopyası yeni değerden okunur (etkinlik → 0); oturum önce commit edildiyse
+        // değişim kilidin altında oturumu görüp 409 WorksheetKindLocked döner. SaveAnswer ile aynı yeniden deneme deseni.
+        var strategy = _context.Database.CreateExecutionStrategy();
+        var created = await strategy.ExecuteAsync(async () =>
         {
-            instance.WorksheetInstanceQuestions.Add(new WorksheetInstanceQuestion
+            _context.ChangeTracker.Clear();
+            await using var tx = await _context.Database.BeginTransactionAsync();
+            await _context.Database.AcquireWorksheetKindLockAsync(testId);
+
+            // issue #396: süre sınırının kopyası — öğretmen worksheet süresini sonradan değiştirse de bu oturum etkilenmez.
+            // Kilidin altında yeniden okunur (tür değişimi süreyi 0'a çekmiş olabilir); worksheet arada silindiyse ilk okuma.
+            var maxDurationSeconds = await _context.Worksheets.AsNoTracking()
+                .Where(w => w.Id == testId)
+                .Select(w => (int?)w.MaxDurationSeconds)
+                .FirstOrDefaultAsync() ?? worksheet.MaxDurationSeconds;
+
+            var instance = new WorksheetInstance
             {
-                WorksheetQuestionId = tq.Id,
-                IsCorrect = false,
-                TimeTaken = 0
-            });
-        }
+                WorksheetId = testId,
+                StudentId = student.Id,
+                Status = WorksheetInstanceStatus.Started,
+                WorksheetInstanceQuestions = testQuestionIds.Select(id => new WorksheetInstanceQuestion
+                {
+                    WorksheetQuestionId = id,
+                    IsCorrect = false,
+                    TimeTaken = 0
+                }).ToList(),
+                StartTime = DateTime.UtcNow,
+                MaxDurationSeconds = maxDurationSeconds
+            };
 
-        _context.TestInstances.Add(instance);
-        try
-        {
-            await _context.SaveChangesAsync(); // burada audit çalışır
-        }
-        catch (DbUpdateException ex) when (IsDuplicateLiveInstanceViolation(ex))
-        {
-            // issue #367: eşzamanlı ikinci start-test (çift tık / iki sekme) IX_TestInstances_StudentId_WorksheetId'ye
-            // düştü: bizimkini bırak, kazananın instance'ını döndür (DailyQuestionSetService ile aynı desen).
-            foreach (var tiq in instance.WorksheetInstanceQuestions.ToList())
-                _context.Entry(tiq).State = EntityState.Detached;
-            _context.Entry(instance).State = EntityState.Detached;
+            _context.TestInstances.Add(instance);
+            try
+            {
+                await _context.SaveChangesAsync(); // burada audit çalışır
+            }
+            catch (DbUpdateException ex) when (IsDuplicateLiveInstanceViolation(ex))
+            {
+                // issue #367: eşzamanlı ikinci start-test (çift tık / iki sekme) IX_TestInstances_StudentId_WorksheetId'ye
+                // düştü: bizimkini bırak, kazananın instance'ını döndür (DailyQuestionSetService ile aynı desen).
+                await tx.RollbackAsync();
+                _context.ChangeTracker.Clear();
+                return (WorksheetInstance?)null;
+            }
 
+            await tx.CommitAsync();
+            return instance;
+        });
+
+        if (created == null)
+        {
             return await ExistingInstanceResultAsync(student.Id, testId)
                 ?? throw new InvalidOperationException("Test instance unique violation but no existing instance found.");
         }
@@ -177,8 +199,8 @@ public class TestSessionService : ITestSessionService
         return new TestStartResultDto
         {
             Success = true,
-            InstanceId = instance.Id,
-            StartTime = instance.StartTime
+            InstanceId = created.Id,
+            StartTime = created.StartTime
         };
     }
 
@@ -335,7 +357,9 @@ public class TestSessionService : ITestSessionService
                             Id = tiq.WorksheetQuestion.Question.Passage!.Id,
                             Title = tiq.WorksheetQuestion.Question.Passage.Title,
                             Text = tiq.WorksheetQuestion.Question.Passage.Text,
-                            ImageUrl = tiq.WorksheetQuestion.Question.Passage.ImageUrl
+                            ImageUrl = tiq.WorksheetQuestion.Question.Passage.ImageUrl,
+                            Kind = tiq.WorksheetQuestion.Question.Passage.Kind, // issue #573
+                            Instruction = tiq.WorksheetQuestion.Question.Passage.Instruction
                         }
                         : null,
                     Answers = tiq.WorksheetQuestion?.Question?.Answers?.Select(a => new AnswerDto
@@ -394,6 +418,10 @@ public class TestSessionService : ITestSessionService
             return null;
         }
 
+        // issue #573: etkinlik oynatıcısı yeniden yüklenince kontrol durumu geri gelsin diye kontrol sayaçları ve (aşağıda)
+        // satır bazlı son kontrol sonucu döner. Test oturumlarında bu alanlar null ve maruz kalma kuralları değişmez.
+        var isActivity = testInstance.Worksheet.Kind == WorksheetKind.Activity;
+
         var response = new WorksheetInstanceResultDto
         {
             Id = testInstance.Id,
@@ -403,6 +431,13 @@ public class TestSessionService : ITestSessionService
             MaxDurationSeconds = DisplayedLimit(testInstance),
             RemainingSeconds = TestTimeLimit.RemainingSeconds(status, testInstance.StartTime, testInstance.MaxDurationSeconds, now),
             IsPracticeTest = testInstance.Worksheet.IsPracticeTest,
+            Kind = testInstance.Worksheet.Kind,
+            WorksheetDescription = testInstance.Worksheet.Description,
+            CheckCount = isActivity ? testInstance.CheckCount : null,
+            FirstCheckedAt = isActivity ? testInstance.FirstCheckedAt : null,
+            SolutionsRevealedAt = isActivity ? testInstance.SolutionsRevealedAt : null,
+            FirstCheckCorrectCount = isActivity ? testInstance.FirstCheckCorrectCount : null,
+            FirstCheckTotalCount = isActivity ? testInstance.FirstCheckTotalCount : null,
             TestInstanceQuestions = OrderedForDisplay(testInstance.WorksheetInstanceQuestions).Select(tiq =>
             {
                 var questionEntity = tiq.WorksheetQuestion.Question;
@@ -431,7 +466,9 @@ public class TestSessionService : ITestSessionService
                         X = questionEntity.Passage?.X,
                         Y = questionEntity.Passage?.Y,
                         Width = questionEntity.Passage?.Width,
-                        Height = questionEntity.Passage?.Height
+                        Height = questionEntity.Passage?.Height,
+                        Kind = questionEntity.Passage?.Kind ?? PassageKind.Reading, // issue #573
+                        Instruction = questionEntity.Passage?.Instruction
                     } : null,
                     PracticeCorrectAnswer = questionEntity.PracticeCorrectAnswer,
                     AnswerColCount = questionEntity.AnswerColCount,
@@ -461,7 +498,10 @@ public class TestSessionService : ITestSessionService
 
 
                 // issue #571: satır bazlı sonuç yalnız etkileşimli (MCQ dışı) cevapta ve çözümle aynı kapıdan (bitmiş test).
-                var exposeGrade = includeCorrectAnswer && !IsMcq(questionEntity.InteractionType);
+                // issue #573: etkinlikte ayrıca son kontrol sonucu — yalnız satır kontrol edildikten sonra DEĞİŞMEDİYSE
+                // (CheckedAnswerRevision == AnswerRevision); kontrol ucunun zaten döndürdüğü bilgi (MCQ dahil), çözüm değil.
+                var exposeGrade = (includeCorrectAnswer && !IsMcq(questionEntity.InteractionType))
+                    || (isActivity && tiq.CheckedAnswerRevision.HasValue && tiq.CheckedAnswerRevision == tiq.AnswerRevision);
                 return new WorksheetInstanceQuestionDto
                 {
                     Id = tiq.Id,
@@ -760,6 +800,15 @@ public class TestSessionService : ITestSessionService
         return result.IsCorrect;
     }
 
+    /// <summary>issue #573: etkinlik kontrol edilmeden bitirilemez → 409; oturum Started kalır.</summary>
+    private TestSessionResultDto ActivityEndCheckRequired() => new()
+    {
+        Success = false,
+        Conflict = true,
+        ErrorCode = TestSessionErrorCodes.ActivityCheckRequired,
+        Message = _localizer["worksheets.session.activityEndCheckRequired"]
+    };
+
     /// <summary>issue #571: geçersiz etkileşim cevabı → 400; hiçbir şey yazılmadı.</summary>
     private TestSessionResultDto InvalidPayloadAnswer() => new()
     {
@@ -817,9 +866,25 @@ public class TestSessionService : ITestSessionService
         // issue #571: etkinlik (Kind = Activity) puansız — veliye test sonucu bildirimi gitmez (tamamlanma zinciri #572).
         // Kind ayrı okunur (review #571): timing projeksiyonu Worksheet'e JOIN etmemeli — sınav sırasında soft-delete edilen
         // worksheet'te timing null olur ve #396 süre kontrolü atlanırdı.
-        var parentPlan = timing != null && currentStatus == WorksheetInstanceStatus.Started
-            && await WorksheetKindOfInstanceAsync(testInstanceId, ct) != WorksheetKind.Activity
-            ? await PlanParentNotificationsAsync(testInstanceId, userId, timing.StudentId, timing.WorksheetId, timing.StartTime, ct)
+        var openKind = timing != null && currentStatus == WorksheetInstanceStatus.Started
+            ? await WorksheetKindOfInstanceAsync(testInstanceId, ct)
+            : (WorksheetKind?)null;
+
+        // issue #573: etkinlik en az bir "Cevapları kontrol et"ten sonra bitirilebilir (boş maddeler engellemez). Buradaki okuma
+        // yalnız temiz hata mesajı için ön kontroldür; asıl kural aşağıdaki koşullu UPDATE'in WHERE'inde (tür + CheckCount aynı
+        // satır kilidinin altında değerlendirilir). Tür, oturumu olan sayfada değişemez (WorksheetKindLock).
+        if (openKind == WorksheetKind.Activity)
+        {
+            var checkCount = await _context.TestInstances.AsNoTracking()
+                .Where(ti => ti.Id == testInstanceId)
+                .Select(ti => ti.CheckCount)
+                .FirstOrDefaultAsync(ct);
+            if (checkCount < 1)
+                return ActivityEndCheckRequired();
+        }
+
+        var parentPlan = openKind is { } kind && kind != WorksheetKind.Activity
+            ? await PlanParentNotificationsAsync(testInstanceId, userId, timing!.StudentId, timing.WorksheetId, timing.StartTime, ct)
             : null;
         var now = DateTime.UtcNow; // issue #423 (m2): plandan SONRA alınır, EndTime/event zamanı gerçek tamamlanmaya yakın olur
 
@@ -828,7 +893,11 @@ public class TestSessionService : ITestSessionService
         Task<int> ConditionalComplete() => _context.TestInstances
             .Where(ti => ti.Id == testInstanceId
                 && ti.Student.UserId == userId
-                && ti.Status == WorksheetInstanceStatus.Started)
+                && ti.Status == WorksheetInstanceStatus.Started
+                // issue #573: etkinlik ancak en az bir kontrolden sonra tamamlanır (Worksheet query filter'ı olmadan — sınav
+                // sırasında silinen worksheet de çözülür, WorksheetKindOfInstanceAsync ile aynı).
+                && (ti.CheckCount > 0 || !_context.Worksheets.IgnoreQueryFilters()
+                    .Any(w => w.Id == ti.WorksheetId && w.Kind == WorksheetKind.Activity)))
             .ExecuteUpdateAsync(s => s
                 .SetProperty(ti => ti.Status, WorksheetInstanceStatus.Completed)
                 .SetProperty(ti => ti.EndTime, (DateTime?)now)
@@ -887,6 +956,8 @@ public class TestSessionService : ITestSessionService
                 Success = true,
                 Message = _localizer["worksheets.session.ended"]
             },
+            // issue #573: hâlâ Started ama UPDATE 0 satır = etkinlik kontrol edilmemiş (WHERE koruması).
+            WorksheetInstanceStatus.Started => ActivityEndCheckRequired(),
             _ => NotInProgressEnd(timeExpired: IsTimeUp(final!.Status, final.StartTime, final.MaxDurationSeconds))
         };
     }
@@ -908,8 +979,9 @@ public class TestSessionService : ITestSessionService
             || answers.Select(a => a.InstanceQuestionId).Distinct().Count() != answers.Count)
             return InvalidCheckRequest<ActivityCheckResultDto>();
 
-        // Sahiplik + tür kilit DIŞINDA okunur: Kind bugün değiştirilemez (#571). #573 Kind'ı düzenlenebilir yaparsa bu okuma
-        // aşağıdaki transaction'ın oturum kilidinin İÇİNE taşınmalı (aksi halde kontrol ile tür değişimi yarışır).
+        // Sahiplik + tür burada hızlı ön kontrol (hata sırası: NotFound → NotAnActivity → TestNotInProgress). Tür aşağıda oturum
+        // kilidinin İÇİNDE yeniden okunur. #573: Kind yalnız hiç oturumu olmayan sayfada, WorksheetKindLock altında değişir
+        // (start-test'in INSERT'iyle aynı kilit) — bu oturum var olduğuna göre tür artık değişemez; iç okuma ek güvencedir.
         var owned = await _context.TestInstances.AsNoTracking()
             .AnyAsync(ti => ti.Id == instanceId && ti.Student.UserId == userId, ct);
         if (!owned)
@@ -954,6 +1026,14 @@ public class TestSessionService : ITestSessionService
             if (rejected != null)
                 return As<ActivityCheckResultDto>(rejected);
 
+            // issue #573 (review): tür oturum kilidinin altında yeniden okunur.
+            if (await WorksheetKindOfInstanceAsync(instanceId, ct) != WorksheetKind.Activity)
+            {
+                await transaction.RollbackAsync(ct);
+                _context.ChangeTracker.Clear();
+                return NotAnActivity<ActivityCheckResultDto>();
+            }
+
             var results = new List<ActivityCheckQuestionResultDto>(plan.Count);
             foreach (var (row, question, grader, selected, payload) in plan)
             {
@@ -972,15 +1052,25 @@ public class TestSessionService : ITestSessionService
 
             // AnswerRevision: SaveAnswer'daki gibi atomik artış (her cevap yazımı revizyonu ilerletir). İzlenen satırlarda
             // AnswerRevision Modified değil, SaveChanges artışı ezmez.
+            // issue #573: CheckedAnswerRevision = yeni revizyon (aynı UPDATE, sağ taraf eski değer) — yeniden yüklemede bu satırın
+            // kontrol sonucu yalnız sonradan save-answer ile değişmediyse döner.
             await _context.TestInstanceQuestions
                 .Where(x => ids.Contains(x.Id))
-                .ExecuteUpdateAsync(u => u.SetProperty(x => x.AnswerRevision, x => x.AnswerRevision + 1), ct);
+                .ExecuteUpdateAsync(u => u
+                    .SetProperty(x => x.AnswerRevision, x => x.AnswerRevision + 1)
+                    .SetProperty(x => x.CheckedAnswerRevision, x => (int?)(x.AnswerRevision + 1)), ct);
 
             var now = DateTime.UtcNow;
+            var checkCorrect = results.Sum(r => r.CorrectCount);
+            var checkTotal = results.Sum(r => r.TotalCount);
+            // issue #573: ilk kontrol özeti (öğretmen takibi) yalnız ilk kontrolde, aynı UPDATE'te (SET sağ tarafları eski satırı
+            // görür: FirstCheckedAt == null yalnız ilk kontrolde doğru). Oturum satırı kilitli olduğundan iki ilk kontrol yarışamaz.
             await _context.TestInstances
                 .Where(ti => ti.Id == instanceId)
                 .ExecuteUpdateAsync(u => u
                     .SetProperty(ti => ti.CheckCount, ti => ti.CheckCount + 1)
+                    .SetProperty(ti => ti.FirstCheckCorrectCount, ti => ti.FirstCheckedAt == null ? (int?)checkCorrect : ti.FirstCheckCorrectCount)
+                    .SetProperty(ti => ti.FirstCheckTotalCount, ti => ti.FirstCheckedAt == null ? (int?)checkTotal : ti.FirstCheckTotalCount)
                     .SetProperty(ti => ti.FirstCheckedAt, ti => ti.FirstCheckedAt ?? (DateTime?)now)
                     .SetProperty(ti => ti.UpdateTime, (DateTime?)now)
                     .SetProperty(ti => ti.UpdateUserId, (int?)userId), ct);
@@ -992,8 +1082,8 @@ public class TestSessionService : ITestSessionService
             {
                 Success = true,
                 Message = _localizer["worksheets.session.activityChecked"],
-                CorrectCount = results.Sum(r => r.CorrectCount),
-                TotalCount = results.Sum(r => r.TotalCount),
+                CorrectCount = checkCorrect,
+                TotalCount = checkTotal,
                 Questions = results
             };
         }, ct);
@@ -1004,6 +1094,12 @@ public class TestSessionService : ITestSessionService
     /// <see cref="TestSessionErrorCodes.NotAnActivity"/>) ve en az bir kontrolden sonra (<c>CheckCount == 0</c> → 409
     /// <see cref="TestSessionErrorCodes.ActivityCheckRequired"/>). İlk açılışta <c>SolutionsRevealedAt</c> yazılır; sonrasında
     /// yeniden kontrol serbesttir. MCQ'da doğru şık, etkileşimli soruda çözüm döner.
+    /// <para>
+    /// Kabul edilmiş ürün riski (issue #573 security review D1): bir öğretmen başka sahibin damgalı sorusunu (#472
+    /// <c>CanLink</c>) kendi etkinliğine bağlayıp kendine atayarak bir kontrolden sonra o sorunun <c>interactionSolution</c>'ını
+    /// görebilir. Bu, önceden var olan "bitmiş testin sonuç sayfası" yolundaki maruziyetle aynıdır (orada da bağlanan sorunun
+    /// çözümü bitirince görünür); ek bir kapı eklenmedi. Takip: #581 / #584.
+    /// </para>
     /// </summary>
     public async Task<ActivitySolutionsResultDto> GetActivitySolutionsAsync(int instanceId, int userId, CancellationToken ct = default)
     {

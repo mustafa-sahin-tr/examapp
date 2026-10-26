@@ -16,8 +16,11 @@ import { BookService } from '../../services/book.service';
 import {
   ImageSelectorComponent,
   ActiveInspector,
+  CanvasPassage,
   QuestionInteractionType,
 } from '../image-selector/image-selector.component';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { PASSAGE_INSTRUCTION_MAX_LENGTH, PassageKind, saveValidationMessage } from '../../models/activity';
 import { Subject } from '../../models/subject';
 import { Topic } from '../../models/topic';
 import { SubTopic } from '../../models/subtopic';
@@ -55,6 +58,7 @@ const QUESTION_TRAINER_ROLE = 'QuestionTrainer';
     MatProgressSpinnerModule,
     MatCheckboxModule,
     MatTooltipModule,
+    MatButtonToggleModule,
     ImageSelectorComponent,
     TestCreateEnhancedComponent,
     TranslocoDirective,
@@ -724,6 +728,31 @@ export class QuestionCanvasComponent implements OnInit {
     }
   }
 
+  /** Issue #573: inspector'da seçili kapsam (tür + yönerge alanları için). */
+  insSelectedPassage(d: ActiveInspector): CanvasPassage | null {
+    if (!d.selectedPassageId || d.selectedPassageId === '0') {
+      return null;
+    }
+    return d.passages.find((p) => String(p.id) === String(d.selectedPassageId)) ?? null;
+  }
+
+  insSetPassageKind(kind: PassageKind) {
+    const passageId = this.insData?.selectedPassageId;
+    if (passageId && passageId !== '0') {
+      this.imageSelector.setPassageKind(passageId, kind);
+    }
+  }
+
+  insSetPassageInstruction(value: string) {
+    const passageId = this.insData?.selectedPassageId;
+    if (passageId && passageId !== '0') {
+      this.imageSelector.setPassageInstruction(passageId, value);
+    }
+  }
+
+  readonly passageKinds = PassageKind;
+  readonly passageInstructionMax = PASSAGE_INSTRUCTION_MAX_LENGTH;
+
   insDismissWarning(event: MouseEvent) {
     this.imageSelector.dismissWarning(event);
   }
@@ -1010,6 +1039,11 @@ export class QuestionCanvasComponent implements OnInit {
         if (err?.status === 403) {
           this.notify('common.forbidden', 4000);
           return;
+        }
+        // Issue #573: sunucu doğrulama mesajı (ör. yönergede kontrol karakteri → questions.passage.invalidInstruction).
+        const validationMessage = saveValidationMessage(err);
+        if (validationMessage) {
+          this.snackBar.open(validationMessage, this.tr('common.snackbarAction'), { duration: 6000 });
         }
         for (const key in err?.error?.errors) {
           if (key.startsWith('$.')) {

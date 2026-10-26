@@ -653,7 +653,9 @@ public class PracticeSessionService : IPracticeSessionService
                     X = q.Passage.X,
                     Y = q.Passage.Y,
                     Width = q.Passage.Width,
-                    Height = q.Passage.Height
+                    Height = q.Passage.Height,
+                    Kind = q.Passage.Kind, // issue #573
+                    Instruction = q.Passage.Instruction
                 }
                 : null,
             Answers = q.Answers

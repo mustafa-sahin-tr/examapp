@@ -164,7 +164,7 @@ public class QuestionsController : BaseController
             && await DenyUnlessPassageUsableAsync(passage.Id!.Value, user.Id, questionDto.Id > 0 ? questionDto.Id : null) is { } passageDenied)
             return passageDenied;
 
-        var response = await _questionService.CreateOrUpdateQuestion(questionDto, user.Id);
+        var response = await _questionService.CreateOrUpdateQuestion(questionDto, user.Id, IsAdmin);
         if (response == null)
         {
             return BadRequest(new { message = _localizer["questions.saveFailed"].Value });

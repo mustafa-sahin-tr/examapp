@@ -1,0 +1,36 @@
+<section class="asum" *transloco="let t; prefix: 'shared.activity.summary'" data-testid="activity-summary">
+  <h1 class="asum__title" tabindex="-1">
+    <mat-icon aria-hidden="true">celebration</mat-icon>{{ t('title') }}
+  </h1>
+  @if (result(); as r) {
+    <p class="asum__info" data-testid="summary-info">{{ t('info', { correct: r.correct, total: r.total }) }}</p>
+  }
+
+  @if (today(); as d) {
+    <div class="asum__card" data-testid="today-card">
+      <h2>{{ t('todayTitle') }}</h2>
+      <p>{{ t('todayLine', { activities: d.activityCount, minutes: d.activeMinutes, streak: d.streakDays }) }}</p>
+    </div>
+  }
+
+  @if (badge(); as b) {
+    <div class="asum__card" data-testid="badge-card">
+      <h2>{{ t('badgeLine', { name: b.name, current: b.current, target: b.target }) }}</h2>
+      <mat-progress-bar mode="determinate" [value]="badgePercent()" [attr.aria-label]="b.name"></mat-progress-bar>
+      @if (badgeRemaining() > 0) {
+        <p>{{ t('badgeRemaining', { count: badgeRemaining() }) }}</p>
+      }
+    </div>
+  }
+
+  <div class="asum__actions">
+    @if (hasNext()) {
+      <button mat-flat-button type="button" class="asum__btn" data-testid="next-activity" [disabled]="nextBusy()" (click)="next.emit()">
+        <mat-icon>arrow_forward</mat-icon>{{ t('next') }}
+      </button>
+    }
+    <button mat-stroked-button type="button" class="asum__btn" data-testid="back-to-list" (click)="backToList.emit()">
+      <mat-icon>list</mat-icon>{{ t('backToList') }}
+    </button>
+  </div>
+</section>

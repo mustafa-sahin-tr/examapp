@@ -1,4 +1,5 @@
 import { StudyPageContentType, StudyPageLinkPlatform } from './study-page';
+import { WorksheetKind } from './activity';
 
 /**
  * Öğrenci takvimi etkinlikleri — backend `CalendarEventDto` ile birebir
@@ -25,6 +26,11 @@ export interface CalendarEvent {
   worksheetId: number;
   /** program-study-page için boş string. */
   worksheetTitle: string;
+  /**
+   * Issue #573: worksheet tabanlı etkinliklerde (reminder, assignment-deadline) sayfa türü (0 Test, 1 Etkinlik); diğerlerinde
+   * null. `kind` (takvim etkinliği tipi) ile karıştırma.
+   */
+  worksheetKind?: WorksheetKind | null;
   subject: string | null;
   imageUrl: string | null;
   /** Yalnızca kind === 'reminder'. */

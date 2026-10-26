@@ -5,7 +5,9 @@
     [attr.aria-label]="t('card.openAria', { name: course.name })"
     [style.backgroundImage]="'url(' + coverUrl + ')'"
   >
-    @if (course.isPracticeTest) {
+    @if (isActivity) {
+      <span class="wcard__tag wcard__tag--info" data-testid="activity-tag">{{ t('card.tagActivity') }}</span>
+    } @else if (course.isPracticeTest) {
       <span class="wcard__tag wcard__tag--info">{{ t('card.tagPractice') }}</span>
     } @else if (course.badgeText) {
       <span class="wcard__tag">{{ course.badgeText }}</span>
@@ -79,9 +81,13 @@
     }
 
     <p class="wcard__meta">
-      <span>{{ t('card.questionCount', { count: course.questionCount || 0 }) }}</span>
-      <span aria-hidden="true">·</span>
-      <span>{{ t('card.durationMinutes', { minutes: durationMinutes }) }}</span>
+      @if (isActivity) {
+        <span>{{ t('card.itemCount', { count: course.questionCount || 0 }) }}</span>
+      } @else {
+        <span>{{ t('card.questionCount', { count: course.questionCount || 0 }) }}</span>
+        <span aria-hidden="true">·</span>
+        <span>{{ t('card.durationMinutes', { minutes: durationMinutes }) }}</span>
+      }
       <span aria-hidden="true">·</span>
       <span>{{ t('card.solvedCount', { count: course.instanceCount || 0 }) }}</span>
     </p>
@@ -92,13 +98,19 @@
       </div>
     }
 
-    @if (!isTeacher && status === 'completed' && instance) {
+    @if (!isTeacher && status === 'completed' && instance && !isActivity) {
       <div class="wcard__result">
         <span class="wcard__ring" [style.--v]="scorePercent">{{ scorePercent }}</span>
         <span class="wcard__resulttext">
           {{ t('card.result', { correct: instance.correctAnswers, wrong: instance.wrongAnswers }) }}
         </span>
       </div>
+    }
+
+    @if (!isTeacher && status === 'completed' && activityFirstCheck; as fc) {
+      <p class="wcard__info" data-testid="activity-first-check">
+        {{ t('card.activityFirstCheck', { correct: fc.correct, total: fc.total }) }}
+      </p>
     }
 
     @if (!isTeacher && hasActiveAssignmentInput && dueLabel) {
@@ -129,7 +141,7 @@
         >
           {{ primaryLabel }}
         </button>
-        @if (status === 'completed') {
+        @if (status === 'completed' && !isActivity) {
           <button type="button" class="wcard__icon" (click)="openPrimary($event)" [attr.aria-label]="t('card.retryAria')">
             <mat-icon>replay</mat-icon>
           </button>

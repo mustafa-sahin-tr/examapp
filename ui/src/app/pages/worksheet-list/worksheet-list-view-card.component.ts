@@ -1,5 +1,5 @@
 
-import { Component, EventEmitter, Input, Output, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, EventEmitter, Injector, Input, Output, inject, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -8,6 +8,8 @@ import { InstanceSummary, Test, WorksheetTeacherSharing } from '../../models/tes
 import { AssignedWorksheet } from '../../models/assignment';
 import { SharingBadgeComponent } from '../../shared/components/sharing-badge/sharing-badge.component';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
+import { WorksheetKind } from '../../models/activity';
+import { ActivityLauncherService } from '../../services/activity-launcher.service';
 
 type CardStatus = 'none' | 'inprogress' | 'completed';
 
@@ -42,6 +44,8 @@ export class WorksheetListViewCardComponent {
 
   private readonly router = inject(Router);
   private readonly transloco = inject(TranslocoService);
+  /** Etkinlik başlatıcı yalnız gerektiğinde çözülür (kart testlerinde HttpClient gerekmesin). */
+  private readonly injector = inject(Injector);
 
   /** Scope provider'ı üst sayfa (`worksheet-list`) verir; burada yalnızca tam anahtarla okunur. */
   private tr(key: string, params?: Record<string, unknown>): string {
@@ -102,6 +106,11 @@ export class WorksheetListViewCardComponent {
     return this.course.ownerName ?? null;
   }
 
+  /** Issue #573: etkinlik sayfası — puan/yüzde/süre gösterilmez, "madde" dili kullanılır. */
+  get isActivity(): boolean {
+    return this.course.kind === WorksheetKind.Activity;
+  }
+
   get instance(): InstanceSummary | null {
     return this.course.instance ?? null;
   }
@@ -129,6 +138,10 @@ export class WorksheetListViewCardComponent {
     if (!this.instance) {
       return 0;
     }
+    // Issue #573: etkinlikte skor alanları hesaplanmaz (0); ilerleme `answeredQuestions`'tan.
+    if (this.isActivity) {
+      return this.instance.answeredQuestions ?? 0;
+    }
     return (this.instance.correctAnswers ?? 0) + (this.instance.wrongAnswers ?? 0);
   }
 
@@ -138,6 +151,15 @@ export class WorksheetListViewCardComponent {
       return 0;
     }
     return Math.min(100, Math.round((this.answered / total) * 100));
+  }
+
+  /** Issue #573: tamamlanan etkinliğin ilk kontrol sonucu — yalnız bilgi satırı ("8 / 10 doğru"), yüzde değil. */
+  get activityFirstCheck(): { correct: number; total: number } | null {
+    const instance = this.instance;
+    if (!this.isActivity || !instance || instance.firstCheckCorrectCount == null || instance.firstCheckTotalCount == null) {
+      return null;
+    }
+    return { correct: instance.firstCheckCorrectCount, total: instance.firstCheckTotalCount };
   }
 
   get scorePercent(): number {
@@ -169,6 +191,16 @@ export class WorksheetListViewCardComponent {
     if (this.isTeacher) {
       return this.tr('card.edit');
     }
+    if (this.isActivity) {
+      switch (this.status) {
+        case 'inprogress':
+          return this.tr('card.primaryContinueActivity');
+        case 'completed':
+          return this.tr('card.primaryViewActivity');
+        default:
+          return this.tr('card.primaryStartActivity');
+      }
+    }
     switch (this.status) {
       case 'inprogress':
         return this.tr('card.primaryContinue');
@@ -183,6 +215,11 @@ export class WorksheetListViewCardComponent {
     event.stopPropagation();
     if (this.isTeacher) {
       this.router.navigate(['/exam', this.course.id]);
+      return;
+    }
+    // Issue #573: başlanmamış / devam eden etkinlik doğrudan oynatıcıda açılır.
+    if (this.isActivity && this.status !== 'completed') {
+      this.injector.get(ActivityLauncherService).open(this.course.id);
       return;
     }
     this.router.navigate(['/test', this.course.id]);

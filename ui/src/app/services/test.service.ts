@@ -39,6 +39,16 @@ import {
 } from '../models/worksheet-detail';
 import { storageImageKey } from '../shared/utils/storage-image-url.util';
 
+/** Backend `ExamSavedDto` — kaydetme yanıtı. */
+export interface WorksheetSaveResult {
+  message: string;
+  examId: number;
+  success?: boolean;
+  conflict?: boolean;
+  /** Issue #573: ör. `WorksheetKindLocked`; başarıda null. */
+  errorCode?: string | null;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -181,6 +191,9 @@ export class TestService {
     if (filter.includeShared != null) {
       params = params.set('includeShared', String(filter.includeShared));
     }
+    if (filter.kind != null) {
+      params = params.set('kind', String(filter.kind));
+    }
     if (filter.sortBy) {
       params = params.set('sortBy', filter.sortBy);
     }
@@ -205,8 +218,13 @@ export class TestService {
     return this.http.get<Paged<InstanceSummary>>(`${this.baseUrl}/CompletedTests?pageNumber=${pageNumber}&pageSize=10`);
   }
 
-  getActiveAssignments(): Observable<AssignedWorksheet[]> {
-    return this.http.get<AssignedWorksheet[]>(`${this.baseUrl}/assignments/active`);
+  /** Issue #573: `kind` verilirse yalnız o türdeki atamalar (0 Test, 1 Etkinlik); verilmezse hepsi. */
+  getActiveAssignments(kind?: 0 | 1): Observable<AssignedWorksheet[]> {
+    if (kind == null) {
+      return this.http.get<AssignedWorksheet[]>(`${this.baseUrl}/assignments/active`);
+    }
+    const params = new HttpParams().set('kind', String(kind));
+    return this.http.get<AssignedWorksheet[]>(`${this.baseUrl}/assignments/active`, { params });
   }
 
   getWorksheetAssignmentsForTeacher(worksheetId: number): Observable<TeacherWorksheetAssignments> {
@@ -217,8 +235,12 @@ export class TestService {
     return this.http.post<ApiResponse>(`${this.baseUrl}/assignments`, request);
   }
 
-  create(test: Test): Observable<{ message: string; examId: number }> {
-    return this.http.post<any>(this.baseUrl, test);
+  /**
+   * Oluşturur/günceller (backend `ExamSavedDto`). Issue #573: oturumu olan sayfanın türü değiştirilirse HTTP 409
+   * `{ success:false, conflict:true, errorCode:'WorksheetKindLocked', message }` (hata dalına düşer).
+   */
+  create(test: Test): Observable<WorksheetSaveResult> {
+    return this.http.post<WorksheetSaveResult>(this.baseUrl, test);
   }
 
   delete(id: number): Observable<any> {

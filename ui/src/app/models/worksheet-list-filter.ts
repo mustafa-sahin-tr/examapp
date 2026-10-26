@@ -25,6 +25,8 @@ export interface WorksheetListFilter {
   bookTestId?: number;
   /** Öğretmen: kendi worksheet'lerine ek olarak diğer öğretmenlerin Public* worksheet'lerini de getir (issue #11). */
   includeShared?: boolean;
+  /** Issue #573: sayfa türü filtresi (0 Test, 1 Etkinlik); verilmezse hepsi. */
+  kind?: 0 | 1;
   sortBy?: WorksheetSortBy;
   sortDir?: WorksheetSortDir;
   pageNumber?: number;

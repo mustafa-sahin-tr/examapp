@@ -46,7 +46,11 @@ describe('WorksheetListComponent', () => {
     let testService: MockedObject<TestService>;
     let authService: MockedObject<AuthService>;
 
-    function configure(isStudent = true): ComponentFixture<WorksheetListComponent> {
+    function configure(
+        isStudent = true,
+        queryParams: Record<string, string> = {},
+        assignments: AssignedWorksheet[] = []
+    ): ComponentFixture<WorksheetListComponent> {
         testService = {
             listWorksheets: vi.fn().mockName("TestService.listWorksheets"),
             getActiveAssignments: vi.fn().mockName("TestService.getActiveAssignments"),
@@ -54,7 +58,7 @@ describe('WorksheetListComponent', () => {
             copyWorksheet: vi.fn().mockName("TestService.copyWorksheet")
         } as unknown as MockedObject<TestService>;
         testService.listWorksheets.mockReturnValue(of({ items: [], totalCount: 0, pageNumber: 1, pageSize: 12 } as Paged<Test>));
-        testService.getActiveAssignments.mockReturnValue(of([]));
+        testService.getActiveAssignments.mockReturnValue(of(assignments));
 
         const subjectService = {
             loadCategories: vi.fn().mockName("SubjectService.loadCategories")
@@ -85,7 +89,7 @@ describe('WorksheetListComponent', () => {
                     provide: ActivatedRoute,
                     useValue: {
                         snapshot: { data: {}, paramMap: convertToParamMap({}) },
-                        queryParams: of({}),
+                        queryParams: of(queryParams),
                     },
                 },
             ],
@@ -436,6 +440,74 @@ describe('WorksheetListComponent', () => {
 
             expect(snackBar.open).toHaveBeenCalledWith('Kopyalama başarısız.', 'Tamam', expect.any(Object));
             expect(router.navigate).not.toHaveBeenCalled();
+        });
+    });
+
+    // Issue #573: Testler | Etkinlikler üst sekmeleri ve tür filtresi.
+    describe('kind tabs (#573)', () => {
+        const el = () => fixture.nativeElement as HTMLElement;
+        const listCalls = () => testService.listWorksheets.mock.calls.map((c) => c[0]);
+
+        it('testsTab_StudentBucketsRequestOnlyTests', () => {
+            expect(listCalls().length).toBeGreaterThan(0);
+            expect(listCalls().every((f) => f.kind === 0)).toBe(true);
+            expect(el().querySelector('app-activity-list')).toBeNull();
+        });
+
+        it('assignments_ActivitiesExcludedFromTestTabsAndCountedInTabLabel', () => {
+            TestBed.resetTestingModule();
+            fixture = configure(true, {}, [
+                { worksheetId: 1, name: 'Test', kind: 0 } as AssignedWorksheet,
+                { worksheetId: 2, name: 'Etkinlik', kind: 1, isCompleted: false } as AssignedWorksheet,
+                { worksheetId: 3, name: 'Bitti', kind: 1, isCompleted: true } as AssignedWorksheet,
+            ]);
+            component = fixture.componentInstance;
+            fixture.detectChanges();
+
+            expect(component.assignments().map((a) => a.worksheetId)).toEqual([1]);
+            expect(el().querySelector('[data-testid="kind-tab-activities"]')?.textContent?.trim()).toBe('Etkinlikler (1)');
+            expect(testService.getActiveAssignments).toHaveBeenCalledTimes(1);
+        });
+
+        it('studentActivitiesTab_RendersActivityListWithKindFilters', () => {
+            TestBed.resetTestingModule();
+            fixture = configure(true, { type: 'activities' });
+            component = fixture.componentInstance;
+            fixture.detectChanges();
+
+            expect(component.pageKind()).toBe('activities');
+            expect(el().querySelector('app-activity-list')).not.toBeNull();
+            expect(el().querySelector('.wl__tabs')).toBeNull();
+            expect(testService.getActiveAssignments).toHaveBeenCalledWith(1);
+            expect(listCalls().some((f) => f.kind === 1 && f.statuses?.[0] === 0)).toBe(true);
+            expect(listCalls().some((f) => f.kind === 1 && f.statuses?.[0] === 1)).toBe(true);
+        });
+
+        it('teacherActivitiesTab_DiscoverFetchUsesKindActivityAndCreateOpensActivityForm', () => {
+            TestBed.resetTestingModule();
+            fixture = configure(false, { type: 'activities' });
+            component = fixture.componentInstance;
+            const router = TestBed.inject(Router) as unknown as { navigate: ReturnType<typeof vi.fn> };
+            testService.listWorksheets.mockClear();
+
+            component.setSort('popular');
+            fixture.detectChanges();
+
+            expect(listCalls()[0].kind).toBe(1);
+            expect(el().querySelector('.wl__header-actions')?.textContent).toContain('Yeni Etkinlik');
+            component.onCreate();
+            expect(router.navigate).toHaveBeenCalledWith(['/exam'], { queryParams: { kind: 'activity' } });
+        });
+
+        it('setPageKind_WritesTypeQueryParam', () => {
+            const router = TestBed.inject(Router) as unknown as { navigate: ReturnType<typeof vi.fn> };
+
+            component.setPageKind('activities');
+
+            expect(router.navigate).toHaveBeenCalledWith(
+                [],
+                expect.objectContaining({ queryParams: { type: 'activities' }, queryParamsHandling: 'merge' })
+            );
         });
     });
 });

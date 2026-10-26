@@ -188,7 +188,8 @@
         "programPlan": "Çalışma planı",
         "programPlanDone": "Tamamlanan plan",
         "booking": "Ders randevusu"
-      }
+      },
+      "activityLabel": "Etkinlik sayfası"
     },
     "calendarLegend": {
       "aria": "Takvim gösterge açıklaması"
@@ -238,7 +239,8 @@
       "goToDetail": "Detaya git",
       "editReminder": "Hatırlatıcıyı düzenle",
       "viewResult": "Sonucu gör",
-      "startSolving": "Çözmeye başla"
+      "startSolving": "Çözmeye başla",
+      "openActivity": "Etkinliği aç"
     },
     "classificationSelector": {
       "grade": "Sınıf",
@@ -284,7 +286,19 @@
       "passageAlt": "Paragraf görseli",
       "questionAlt": "Soru görseli",
       "choiceAria": "Şık {{label}}",
-      "labels": "Etiketler"
+      "labels": "Etiketler",
+      "tapHintIdle": "Bir etikete dokun, sonra hedefe dokun.",
+      "keyboardHint": "Etiketi sürükleyebilir ya da seçip hedefe bırakabilirsin: Enter ile seç, Tab ile hedefe geç, Enter ile bırak. Esc seçimi iptal eder.",
+      "tapHintSelected": "“{{label}}” seçildi — şimdi bir hedefe dokun.",
+      "tapHintSelectedPlaced": "“{{label}}” seçildi — başka bir hedefe dokun ya da etiketler alanına geri koy.",
+      "solutionShownHint": "Doğru yerleşim gösteriliyor.",
+      "zoneAria": "Hedef {{n}}: {{content}}",
+      "zoneEmpty": "boş",
+      "chipAria": "Etiket {{label}}",
+      "poolReturnAria": "Etiketler alanı: seçili etiketi geri koy",
+      "markCorrect": "Doğru",
+      "markWrong": "Yanlış",
+      "poolReturn": "Etiketlere geri koy"
     },
     "sharingBadge": {
       "publicAssignable": "Herkese Açık · Atanabilir",
@@ -510,6 +524,66 @@
       "action": "Rozetlerim",
       "close": "Kapat",
       "fallbackName": "Yeni rozet"
+    },
+    "activity": {
+      "frame": {
+        "itemOf": "Madde {{current}} / {{total}}",
+        "progressAria": "İlerleme: madde {{current}} / {{total}}",
+        "instructionLabel": "Yönerge",
+        "stepsAria": "Maddeler",
+        "stepAria": "Madde {{label}}: {{state}}",
+        "stateCurrent": "şu an açık",
+        "stateAnswered": "cevaplandı",
+        "stateEmpty": "boş",
+        "stateCorrect": "doğru",
+        "stateWrong": "yanlış",
+        "prev": "Önceki",
+        "next": "Sonraki"
+      },
+      "check": {
+        "check": "Cevapları kontrol et",
+        "checking": "Kontrol ediliyor…",
+        "recheck": "Yeniden kontrol et",
+        "fixWrong": "Yanlışları düzelt",
+        "reveal": "Doğru cevapları göster",
+        "revealing": "Getiriliyor…",
+        "revealLockedHint": "İlk kontrolden sonra açılır",
+        "restore": "Cevabımı geri getir",
+        "finish": "Etkinliği bitir",
+        "finishing": "Bitiriliyor…",
+        "finishLockedHint": "Bitirmeden önce cevaplarını bir kez kontrol et.",
+        "blankWarning": "{{count}} maddede boş yerleştirme var ({{items}}). Boş bırakılan satırlar boş sayılır. Yine de kontrol edebilirsin.",
+        "summary": "{{correct}} / {{total}} doğru",
+        "summaryFix": "Yanlışları düzeltip yeniden kontrol edebilirsin.",
+        "summaryAllCorrect": "Hepsi doğru, harika!",
+        "staleNote": "Kontrolden sonra cevabını değiştirdin; yeniden kontrol edebilirsin.",
+        "rowsTitle": "Bu maddenin sonucu",
+        "rowCorrect": "Doğru",
+        "rowWrong": "Yanlış",
+        "rowSolution": "Doğru cevap",
+        "revealedInfo": "Doğru cevaplar gösteriliyor. Kendi cevabına dönüp düzenleyebilir ve yeniden kontrol edebilirsin.",
+        "rateLimitedTitle": "Çok sık kontrol ettin.",
+        "rateLimited": "Biraz bekleyip tekrar dene.",
+        "network": "Kontrol edilemedi. Cevapların kayıtlı.",
+        "checkRequired": "Doğru cevaplar için önce bir kez kontrol et.",
+        "generic": "Bir sorun oluştu. Tekrar dene.",
+        "retry": "Tekrar dene",
+        "networkUnsaved": "Bağlantı sorunu: bazı cevapların henüz kaydedilmedi. Tekrar dene."
+      },
+      "summary": {
+        "title": "Etkinlik bitti",
+        "info": "{{correct}} / {{total}} doğru",
+        "todayTitle": "Bugün",
+        "todayLine": "{{activities}} etkinlik · {{minutes}} dk etkin süre · {{streak}} gün üst üste",
+        "badgeLine": "{{name}} · {{current}}/{{target}} etkinlik",
+        "badgeRemaining": "{{count}} etkinlik daha!",
+        "next": "Sıradaki etkinlik",
+        "backToList": "Listeye dön"
+      },
+      "launch": {
+        "failed": "Etkinlik açılamadı. Tekrar dene.",
+        "dismiss": "Tamam"
+      }
     }
   },
   "dashboard": {

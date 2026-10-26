@@ -1200,3 +1200,24 @@
     }
   }
 }
+
+// Issue #573: kapsam türü + etkinlik yönergesi.
+.qc-passage-kind {
+  margin: 4px 0 8px;
+
+  mat-button-toggle {
+    min-height: 44px;
+  }
+}
+
+.qc-passage-instruction {
+  width: 100%;
+  resize: vertical;
+}
+
+.qc-passage-count {
+  display: block;
+  text-align: right;
+  color: var(--ms-text-weak);
+  font-size: 12px;
+}

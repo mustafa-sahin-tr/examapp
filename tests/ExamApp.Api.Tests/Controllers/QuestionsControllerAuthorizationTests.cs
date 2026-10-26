@@ -126,7 +126,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
     private async Task<IHost> StartHostAsync()
     {
         var questionService = Substitute.For<IQuestionService>();
-        questionService.CreateOrUpdateQuestion(Arg.Any<QuestionDto>(), Arg.Any<int>())
+        questionService.CreateOrUpdateQuestion(Arg.Any<QuestionDto>(), Arg.Any<int>(), Arg.Any<bool>())
             .Returns(new QuestionSavedDto { Success = true });
         questionService.SaveBulkQuestion(Arg.Any<BulkQuestionCreateDto>(), Arg.Any<int>())
             .Returns(new ResponseBaseDto { Success = true });

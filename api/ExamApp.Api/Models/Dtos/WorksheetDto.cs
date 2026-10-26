@@ -17,6 +17,9 @@ public class WorksheetDto
     public int MaxDurationSeconds { get; set; }
     public bool IsPracticeTest { get; set; }
 
+    /// <summary>issue #573: sayfa türü (0 = Test, 1 = Activity). Activity'de <see cref="Instance"/> skor alanları hesaplanmaz.</summary>
+    public WorksheetKind Kind { get; set; } = WorksheetKind.Test;
+
     // issue #105: worksheet varsayılanı — öğrenciler yeni yorum-soru yazabilir mi (atama override'ı hariç).
     public bool CommentsEnabled { get; set; } = true;
     public string? Subtitle { get; set; }
@@ -119,5 +122,27 @@ public class WorksheetInstanceResultDto
     /// </summary>
     public int? RemainingSeconds { get; set; }
     public bool IsPracticeTest { get; set; }
+
+    /// <summary>issue #573: sayfa türü (0 = Test, 1 = Activity).</summary>
+    public WorksheetKind Kind { get; set; } = WorksheetKind.Test;
+
+    /// <summary>issue #573: worksheet açıklaması (etkinlikte yönerge yedeği); TestName ile aynı görünürlük.</summary>
+    public string? WorksheetDescription { get; set; }
+
+    /// <summary>issue #573: etkinlikte "Cevapları kontrol et" sayısı; testte null.</summary>
+    public int? CheckCount { get; set; }
+
+    /// <summary>issue #573: etkinlikte ilk kontrol anı (UTC); kontrol yoksa / testte null.</summary>
+    public DateTime? FirstCheckedAt { get; set; }
+
+    /// <summary>issue #573: etkinlikte çözümün ilk açıldığı an (UTC); açılmadıysa / testte null.</summary>
+    public DateTime? SolutionsRevealedAt { get; set; }
+
+    /// <summary>issue #573: etkinlikte ilk kontroldeki doğru satır sayısı; kontrol yoksa / testte null.</summary>
+    public int? FirstCheckCorrectCount { get; set; }
+
+    /// <summary>issue #573: etkinlikte ilk kontroldeki toplam satır sayısı; kontrol yoksa / testte null.</summary>
+    public int? FirstCheckTotalCount { get; set; }
+
     public List<WorksheetInstanceQuestionDto> TestInstanceQuestions { get; set; } = new();
 }

@@ -122,6 +122,13 @@ export const routes: Routes = [
         component: TestSolveCanvasComponentv2,
         canActivate: [authGuard, approvedTeacherGuard],
       },
+      {
+        // Issue #573: etkinlik sayfası oynatıcısı (madde madde, kontrol/çözüm; puansız). Test oturumu gelirse /testsolve'a döner.
+        path: 'activity/:testInstanceId',
+        canActivate: [authGuard, approvedTeacherGuard],
+        loadComponent: () =>
+          import('./pages/activity-player/activity-player.component').then((m) => m.ActivityPlayerComponent),
+      },
       { path: 'test/:testId', component: WorksheetDetailComponent, canActivate: [authGuard, approvedTeacherGuard] },
       // Issue #373: yalnız öğrenci verisiyle çalışır; öğretmen/admin boş sayfa + 500 görüyordu → /dashboard'a yönlendirilir.
       { path: 'student-profile', component: StudentProfileComponent, canActivate: [authGuard, studentGuard] },

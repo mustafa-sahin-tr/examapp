@@ -1137,3 +1137,142 @@ describe('WorksheetDetailComponent add from bank (issue #472)', () => {
         expect(readOnly.fixture.debugElement.query(By.css('[data-testid="add-from-bank-btn"]'))).toBeNull();
     });
 });
+
+// Issue #573: etkinlik sayfası — öğrenci ve öğretmen ekranlarında puan/yüzde/sıralama yok; öğretmende "Çalışma takibi".
+describe('WorksheetDetailComponent activity page (#573)', () => {
+    function setup(role: 'Student' | 'Teacher', instanceStatus: number | null = null) {
+        const testService = {
+            getWorksheetDetail: vi.fn().mockReturnValue(NEVER),
+            startTest: vi.fn(),
+            get: vi.fn().mockReturnValue(NEVER),
+        };
+        const router = { navigate: vi.fn() };
+        TestBed.configureTestingModule({
+            imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
+            providers: [
+                provideHttpClient(withXhr()),
+                provideHttpClientTesting(),
+                provideNativeDateAdapter(),
+                { provide: TestService, useValue: testService },
+                { provide: Router, useValue: router },
+                { provide: MatSnackBar, useValue: { open: vi.fn() } },
+                { provide: MatDialog, useValue: { open: vi.fn() } },
+                { provide: AuthService, useValue: { hasRole: (r: string) => r === role, hasRealmRole: () => false, user: signal(null) } },
+                { provide: StudentService, useValue: {} },
+                { provide: GradesService, useValue: { getGrades: () => of([]) } },
+                {
+                    provide: ActivatedRoute,
+                    useValue: {
+                        snapshot: { paramMap: convertToParamMap({}), data: {} },
+                        params: of({}),
+                        queryParams: of({}),
+                        paramMap: of(convertToParamMap({})),
+                        queryParamMap: of(convertToParamMap({})),
+                    },
+                },
+            ],
+        });
+
+        const fixture = TestBed.createComponent(WorksheetDetailComponent);
+        const component = fixture.componentInstance;
+        component.testId = 12;
+        component.exam = {
+            id: 12,
+            name: 'Hayvanlar',
+            kind: 1,
+            instance: instanceStatus === null ? undefined : { status: instanceStatus },
+        } as unknown as Test;
+        component['detail'].set({
+            worksheet: { id: 12, name: 'Hayvanlar', kind: 1, questionCount: 4, maxDurationSeconds: 0, canEdit: true, canAssign: true, description: 'Resimleri eşleştir.' },
+            stats: { solverCount: 3, averageScorePercent: 75 },
+            topicBreakdown: [],
+            outcomes: [],
+            rewardBadgeText: null,
+            sampleQuestion: null,
+            attempts: [{ instanceId: 1, completedDate: null, durationSeconds: 60, correctCount: 0, totalCount: 4, scorePercent: 0 }],
+            improvementPoints: null,
+            similarWorksheets: [{ id: 2, name: 'Benzer', questionCount: 4, isPracticeTest: false, averageScorePercent: 50 }],
+            teacherInsights: {
+                hardestQuestions: [{ questionId: 1, order: 1, text: 'S', subtopicName: null, answeredCount: 3, correctPercent: 10 }],
+                difficultyDistribution: { easy: 1, medium: 0, hard: 0 },
+                classifiedCount: 1,
+                totalQuestionCount: 1,
+                unclassifiedCount: 0,
+            },
+            completedResult: {
+                instanceId: 1,
+                scorePercent: 0,
+                correctCount: 0,
+                wrongCount: 0,
+                emptyCount: 4,
+                durationSeconds: 60,
+                topicSuccess: [],
+                rank: { position: 1, totalStudents: 3, classAveragePercent: 75 },
+            },
+        } as unknown as WorksheetDetail);
+        return { fixture, component, testService, router };
+    }
+
+    const text = (fixture: ComponentFixture<WorksheetDetailComponent>) => (fixture.nativeElement as HTMLElement).textContent ?? '';
+
+    it('student_NeverShowsScoreResultView_EvenWithCompletedResult', () => {
+        const { fixture, component } = setup('Student', 1);
+        fixture.detectChanges();
+
+        expect(component['view']()).toBe('start');
+        expect(fixture.nativeElement.querySelector('.result-hero')).toBeNull();
+        expect(text(fixture)).not.toMatch(/%|puan|sıralama/i);
+        expect(text(fixture)).toContain('Etkinlik sayfası');
+        expect(fixture.nativeElement.querySelector('[data-testid="activity-done"]')).not.toBeNull();
+        // Tekrar çözüm #572'ye ertelendi: tamamlanan etkinlikte başlat/yeniden çöz düğmesi yok.
+        expect(fixture.nativeElement.querySelector('[data-testid="activity-resolve"]')).toBeNull();
+        expect(fixture.nativeElement.querySelector('[data-testid="start-cta"]')).toBeNull();
+        expect(text(fixture)).not.toContain('Yeniden çöz');
+    });
+
+    it('student_StartNavigatesToActivityPlayer', () => {
+        const { fixture, component, testService, router } = setup('Student');
+        fixture.detectChanges();
+        testService.startTest.mockReturnValue(of({ success: true, instanceId: 77 }));
+
+        component.StartTest(12);
+
+        expect(router.navigate).toHaveBeenCalledWith(['/activity', 77], { state: { worksheetId: 12 } });
+    });
+
+    it('teacher_ShowsTrackingTable_NoClassAverageOrHardestQuestions', () => {
+        const { fixture, component } = setup('Teacher');
+        component['assignmentPanelState'].set({
+            loading: false,
+            assignments: [
+                {
+                    assignmentId: 1,
+                    targetType: 'Grade',
+                    targetName: '3-A',
+                    isActive: true,
+                    startAt: '2026-10-20T08:00:00Z',
+                    studentCount: 1,
+                    completedCount: 1,
+                    inProgressCount: 0,
+                    notStartedCount: 0,
+                    scheduledCount: 0,
+                    expiredCount: 0,
+                    students: [
+                        { studentId: 1, userId: 1, studentNumber: '101', status: 'Completed', firstCheckCorrectCount: 7, firstCheckTotalCount: 10 },
+                    ],
+                },
+            ],
+            summary: { totalAssignments: 1, activeAssignments: 1, upcomingAssignments: 0, totalStudents: 1, completedCount: 1, inProgressCount: 0, notStartedCount: 0, scheduledCount: 0, expiredCount: 0 },
+            lastRefreshed: null,
+            error: null,
+        });
+        fixture.detectChanges();
+
+        expect(text(fixture)).toContain('Çalışma takibi');
+        expect(fixture.nativeElement.querySelector('app-activity-tracking-table')).not.toBeNull();
+        expect(text(fixture)).toContain('7 doğru · 3 yanlış');
+        expect(fixture.nativeElement.querySelector('[data-testid="hardest-question"]')).toBeNull();
+        expect(text(fixture)).not.toContain('75');
+        expect(text(fixture)).not.toMatch(/%/);
+    });
+});

@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import type { MockedObject } from "vitest";
 import { Component, EventEmitter, Input, Output, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -818,6 +819,35 @@ describe('QuestionCanvasComponent', () => {
                 expect(snackBarOpen).toHaveBeenCalled();
                 expect(imageSelectorFake.nextImage).not.toHaveBeenCalled();
             });
+        });
+
+        // Issue #573: yönergede kontrol karakteri → 400 `questions.passage.invalidInstruction`; sunucu mesajı gösterilir.
+        it('onSave_InvalidPassageInstruction400_ShowsServerMessage', async () => {
+            const { fixture: localFixture, component, saveBulk$ } = await setup({ isAdmin: false });
+            const snackBarOpen = vi.spyOn(localFixture.debugElement.injector.get(MatSnackBar), 'open').mockReturnValue(undefined as never);
+
+            component.onSave();
+            saveBulk$.error(
+                new HttpErrorResponse({
+                    status: 400,
+                    error: { success: false, invalidInput: true, message: 'Yönerge geçersiz: kontrol karakteri içermemeli.' },
+                })
+            );
+
+            expect(snackBarOpen).toHaveBeenCalledWith('Yönerge geçersiz: kontrol karakteri içermemeli.', 'Tamam', expect.any(Object));
+            expect(component.saving()).toBe(false);
+        });
+
+        it('onSave_ModelValidation400_ShowsFieldMessage', async () => {
+            const { fixture: localFixture, component, saveBulk$ } = await setup({ isAdmin: false });
+            const snackBarOpen = vi.spyOn(localFixture.debugElement.injector.get(MatSnackBar), 'open').mockReturnValue(undefined as never);
+
+            component.onSave();
+            saveBulk$.error(
+                new HttpErrorResponse({ status: 400, error: { errors: { 'Passages[0].Instruction': ['Yönerge geçersiz.'] } } })
+            );
+
+            expect(snackBarOpen).toHaveBeenCalledWith('Yönerge geçersiz.', 'Tamam', expect.any(Object));
         });
 
         it('onSave_SavingAlreadyTrue_DoesNotCallSaveBulkAgain', async () => {

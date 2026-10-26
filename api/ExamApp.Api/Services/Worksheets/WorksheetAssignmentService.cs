@@ -236,7 +236,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         };
     }
 
-    public async Task<List<AssignedWorksheetDto>> GetActiveAssignmentsForStudentAsync(StudentProfileDto student)
+    public async Task<List<AssignedWorksheetDto>> GetActiveAssignmentsForStudentAsync(StudentProfileDto student, WorksheetKind? kind = null)
     {
         ArgumentNullException.ThrowIfNull(student);
 
@@ -244,7 +244,12 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 
         // issue #236: aktif atama + hedef/okul koşulu tek tanımdan (WorksheetAccess.ActiveAssignmentsFor →
         // WorksheetStudentAccess.AssignmentVisibleTo); test başlatma kapısıyla aynı küme, ayrı kopya mantık yok.
-        var assignmentsQuery = _context.ActiveAssignmentsFor(student.Id, student.GradeId, student.SchoolId, now)
+        var activeAssignments = _context.ActiveAssignmentsFor(student.Id, student.GradeId, student.SchoolId, now);
+        // issue #573: tür filtresi (null = hepsi).
+        if (kind.HasValue)
+            activeAssignments = activeAssignments.Where(wa => wa.Worksheet.Kind == kind.Value);
+
+        var assignmentsQuery = activeAssignments
             .Include(wa => wa.Worksheet)
                 .ThenInclude(w => w.WorksheetQuestions)
             .Include(wa => wa.Worksheet)
@@ -295,6 +300,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                     SubTopicId = worksheet?.SubTopicId,
                     MaxDurationSeconds = worksheet?.MaxDurationSeconds ?? 0,
                     IsPracticeTest = worksheet?.IsPracticeTest ?? false,
+                    Kind = worksheet?.Kind ?? WorksheetKind.Test, // issue #573
                     Subtitle = worksheet?.Subtitle,
                     ImageUrl = worksheet?.ImageUrl,
                     BadgeText = worksheet?.BadgeText,
@@ -311,7 +317,9 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                     InstanceStatus = instance?.Status,
                     InstanceStartTime = instance?.StartTime,
                     InstanceEndTime = instance?.EndTime,
-                    AssignmentStatus = ResolveAssignmentStatus(instance)
+                    AssignmentStatus = ResolveAssignmentStatus(instance),
+                    FirstCheckCorrectCount = worksheet?.Kind == WorksheetKind.Activity ? instance?.FirstCheckCorrectCount : null,
+                    FirstCheckTotalCount = worksheet?.Kind == WorksheetKind.Activity ? instance?.FirstCheckTotalCount : null
                 };
             })
             .ToList();
@@ -345,10 +353,22 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 
         if (!assignments.Any())
         {
+            // issue #573 (security review): ataması olmayan ve sayfanın sahibi/admin olmayan istek sahibine ad/tür dönülmez —
+            // "worksheet yok" yanıtıyla aynı boş DTO (id taramasıyla başkasının sayfa adı/türü öğrenilemez). Sahip için aynen.
+            if (!WorksheetAccess.CanModify(worksheet.CreateUserId, teacherUserId, requester.IsUnrestricted))
+            {
+                return new TeacherWorksheetAssignmentsDto
+                {
+                    WorksheetId = worksheetId,
+                    WorksheetName = string.Empty
+                };
+            }
+
             return new TeacherWorksheetAssignmentsDto
             {
                 WorksheetId = worksheetId,
-                WorksheetName = worksheet.Name
+                WorksheetName = worksheet.Name,
+                WorksheetKind = worksheet.Kind
             };
         }
 
@@ -398,6 +418,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 
         var assignmentDtos = new List<TeacherWorksheetAssignmentDto>();
         var summary = new AssignmentProgressSummaryDto();
+        var isActivity = worksheet.Kind == WorksheetKind.Activity;
 
         foreach (var assignment in assignments)
         {
@@ -457,7 +478,10 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                         : null,
                     Status = status,
                     InstanceId = relevantInstance?.Id,
-                    LastActivity = relevantInstance?.EndTime ?? relevantInstance?.StartTime
+                    LastActivity = relevantInstance?.EndTime ?? relevantInstance?.StartTime,
+                    // issue #573: etkinlikte ilk kontrol özeti ("7 doğru · 3 yanlış"); kontrol yoksa / testte null.
+                    FirstCheckCorrectCount = isActivity ? relevantInstance?.FirstCheckCorrectCount : null,
+                    FirstCheckTotalCount = isActivity ? relevantInstance?.FirstCheckTotalCount : null
                 });
             }
 
@@ -514,6 +538,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         {
             WorksheetId = worksheetId,
             WorksheetName = worksheet.Name,
+            WorksheetKind = worksheet.Kind, // issue #573
             Summary = summary,
             Assignments = assignmentDtos
         };

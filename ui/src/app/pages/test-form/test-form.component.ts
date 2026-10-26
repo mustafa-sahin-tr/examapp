@@ -4,7 +4,9 @@ import { FormGroup, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { TranslocoDirective } from '@jsverse/transloco';
+import { WorksheetKind } from '../../models/activity';
 
 @Component({
   selector: 'app-test-form',
@@ -19,6 +21,7 @@ import { TranslocoDirective } from '@jsverse/transloco';
     MatCheckboxModule,
     MatButtonModule,
     MatIconModule,
+    MatButtonToggleModule,
     TranslocoDirective
 ],
 })
@@ -36,6 +39,13 @@ export class TestFormComponent {
   @Input() isEditMode = false;
   /** Kompakt varyant: bölüm kartları/notları gizlenir. */
   @Input() compact = false;
+  /**
+   * Issue #573: tür değiştirilemez (sayfanın öğrenci oturumu var — backend 409 `WorksheetKindLocked`). Kontrolü parent
+   * disable eder; bu girdi yalnız açıklama metnini gösterir.
+   */
+  @Input() kindLocked = false;
+
+  readonly kinds = WorksheetKind;
 
   @Output() onBookChange = new EventEmitter<any>();
   @Output() openNewBookAdd = new EventEmitter<void>();
@@ -49,6 +59,16 @@ export class TestFormComponent {
 
   value(name: string): any {
     return this.form?.get(name)?.value;
+  }
+
+  /** Issue #573: formda tür kontrolü var mı (eski/kompakt formlar taşımaz). */
+  get hasKindControl(): boolean {
+    return !!this.form?.get('kind');
+  }
+
+  /** Issue #573: etkinlik sayfası — süre ve çalışma testi alanları gizlenir, açıklama "Yönerge" olur. */
+  get isActivity(): boolean {
+    return this.value('kind') === WorksheetKind.Activity;
   }
 
   /** Ders/Konu/Alt Konu alanları yalnızca sınıf seçiliyken kullanılabilir. */

@@ -372,3 +372,12 @@ textarea.control.area {
   color: var(--ms-text-strong);
   border-color: var(--ms-border-strong);
 }
+
+// Issue #573: Tür (Test | Etkinlik sayfası) seçimi.
+.kind-toggle {
+  align-self: flex-start;
+
+  mat-button-toggle {
+    min-height: 44px;
+  }
+}

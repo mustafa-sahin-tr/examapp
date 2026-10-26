@@ -188,7 +188,8 @@
         "programPlan": "Study plan",
         "programPlanDone": "Completed plan",
         "booking": "Lesson booking"
-      }
+      },
+      "activityLabel": "Activity page"
     },
     "calendarLegend": {
       "aria": "Calendar legend"
@@ -238,7 +239,8 @@
       "goToDetail": "Go to details",
       "editReminder": "Edit reminder",
       "viewResult": "View result",
-      "startSolving": "Start solving"
+      "startSolving": "Start solving",
+      "openActivity": "Open activity"
     },
     "classificationSelector": {
       "grade": "Grade",
@@ -284,7 +286,19 @@
       "passageAlt": "Passage image",
       "questionAlt": "Question image",
       "choiceAria": "Choice {{label}}",
-      "labels": "Labels"
+      "labels": "Labels",
+      "tapHintIdle": "Tap a label, then tap a target.",
+      "keyboardHint": "Drag a label or select it and drop it on a target: Enter selects, Tab moves to a target, Enter drops. Esc cancels the selection.",
+      "tapHintSelected": "“{{label}}” selected — now tap a target.",
+      "tapHintSelectedPlaced": "“{{label}}” selected — tap another target or put it back in the labels area.",
+      "solutionShownHint": "The correct placement is shown.",
+      "zoneAria": "Target {{n}}: {{content}}",
+      "zoneEmpty": "empty",
+      "chipAria": "Label {{label}}",
+      "poolReturnAria": "Labels area: put the selected label back",
+      "markCorrect": "Correct",
+      "markWrong": "Wrong",
+      "poolReturn": "Put back in labels"
     },
     "sharingBadge": {
       "publicAssignable": "Public · Assignable",
@@ -510,6 +524,66 @@
       "action": "My badges",
       "close": "Close",
       "fallbackName": "New badge"
+    },
+    "activity": {
+      "frame": {
+        "itemOf": "Item {{current}} / {{total}}",
+        "progressAria": "Progress: item {{current}} / {{total}}",
+        "instructionLabel": "Instructions",
+        "stepsAria": "Items",
+        "stepAria": "Item {{label}}: {{state}}",
+        "stateCurrent": "open now",
+        "stateAnswered": "answered",
+        "stateEmpty": "empty",
+        "stateCorrect": "correct",
+        "stateWrong": "wrong",
+        "prev": "Previous",
+        "next": "Next"
+      },
+      "check": {
+        "check": "Check my answers",
+        "checking": "Checking…",
+        "recheck": "Check again",
+        "fixWrong": "Fix the wrong ones",
+        "reveal": "Show correct answers",
+        "revealing": "Loading…",
+        "revealLockedHint": "Available after the first check",
+        "restore": "Bring back my answer",
+        "finish": "Finish activity",
+        "finishing": "Finishing…",
+        "finishLockedHint": "Check your answers once before finishing.",
+        "blankWarning": "{{count}} items have empty placements ({{items}}). Empty rows count as empty. You can still check.",
+        "summary": "{{correct}} / {{total}} correct",
+        "summaryFix": "Fix the wrong ones and check again.",
+        "summaryAllCorrect": "All correct, great!",
+        "staleNote": "You changed your answer after checking; you can check again.",
+        "rowsTitle": "Result for this item",
+        "rowCorrect": "Correct",
+        "rowWrong": "Wrong",
+        "rowSolution": "Correct answer",
+        "revealedInfo": "Correct answers are shown. Go back to your own answer to edit it and check again.",
+        "rateLimitedTitle": "You checked too often.",
+        "rateLimited": "Wait a little and try again.",
+        "network": "Could not check. Your answers are saved.",
+        "checkRequired": "Check your answers once to see the correct answers.",
+        "generic": "Something went wrong. Try again.",
+        "retry": "Try again",
+        "networkUnsaved": "Connection problem: some of your answers are not saved yet. Try again."
+      },
+      "summary": {
+        "title": "Activity finished",
+        "info": "{{correct}} / {{total}} correct",
+        "todayTitle": "Today",
+        "todayLine": "{{activities}} activities · {{minutes}} min active time · {{streak}} days in a row",
+        "badgeLine": "{{name}} · {{current}}/{{target}} activities",
+        "badgeRemaining": "{{count}} more activities!",
+        "next": "Next activity",
+        "backToList": "Back to the list"
+      },
+      "launch": {
+        "failed": "The activity could not be opened. Try again.",
+        "dismiss": "OK"
+      }
     }
   },
   "dashboard": {

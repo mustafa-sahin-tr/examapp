@@ -16,6 +16,7 @@
       "invalidCheckRequest": "The check request is invalid.",
       "notAnActivity": "This action is only available for activities.",
       "activityCheckRequired": "Check your answers first to see the correct answers.",
+      "activityEndCheckRequired": "Check your answers at least once before finishing the activity.",
       "activityChecked": "Answers checked.",
       "activityCheckRateLimited": "Too many check requests in a short time. Please wait a moment and try again."
     },
@@ -59,6 +60,7 @@
       "bookTestNotSelected": "No book test selected!",
       "bookNotFound": "Book not found!",
       "testNotFound": "Test not found!",
+      "kindLocked": "Students have already started this page; its type (test / activity) can no longer be changed.",
       "editForbidden": "You do not have permission to edit this test.",
       "updated": "The test was updated successfully!",
       "created": "The test was saved successfully!",

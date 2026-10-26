@@ -108,8 +108,12 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   /**
    * Sınav çözme ekranı (/testsolve/...) aktif mi. Bu ekranın kendi alt dock'u var;
    * genel mobil alt nav aynı alanı paylaşıp dock'u kapatıyordu (issue #72), bu yüzden gizlenir.
+   * Issue #573: etkinlik oynatıcısı (/activity/...) da kendi sabit kontrol çubuğunu taşır; aynı kural.
    */
-  readonly isExamRoute = computed(() => this.currentUrl().startsWith('/testsolve'));
+  readonly isExamRoute = computed(() => {
+    const url = this.currentUrl();
+    return url.startsWith('/testsolve') || url.startsWith('/activity/');
+  });
   /**
    * Soru tuvali (/questioncanvas, /questioncanvas/:id) aktif mi. Tuvalin kendi üst çubuğu var;
    * masaüstünde genel toolbar (Yeni/Popüler/Ara...) bu ekranda gereksiz yer kaplar, gizlenir.

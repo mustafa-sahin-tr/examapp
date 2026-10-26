@@ -93,6 +93,7 @@ public class ExamService : IExamService
     {
         dto.TeacherSharing = w.TeacherSharing;
         dto.StudentVisibility = w.StudentVisibility;
+        dto.Kind = w.Kind; // issue #573: tüm WorksheetDto eşlemeleri bu yardımcıdan geçer
 
         var isOwner = w.CreateUserId.HasValue && w.CreateUserId.Value > 0
             && requesterUserId.HasValue && w.CreateUserId.Value == requesterUserId.Value;
@@ -116,6 +117,9 @@ public class ExamService : IExamService
             query = query.Where(t => t.MaxDurationSeconds <= dto.maxDurationSeconds.Value);
         if (dto.isPracticeTest.HasValue)
             query = query.Where(t => t.IsPracticeTest == dto.isPracticeTest.Value);
+        // issue #573: tür filtresi (null = hepsi — eski istemciler etkilenmez).
+        if (dto.kind.HasValue)
+            query = query.Where(t => t.Kind == dto.kind.Value);
         if (dto.bookIds != null && dto.bookIds.Any())
             query = query.Where(t => t.BookTest != null && dto.bookIds.Contains(t.BookTest.BookId));
         return query;
@@ -401,7 +405,26 @@ public class ExamService : IExamService
             var instance = instances.FirstOrDefault(i => i.WorksheetId == t.Id);
 
             InstanceSummaryDto? instanceDto = null;
-            if (instance != null)
+            if (instance != null && t.Kind == WorksheetKind.Activity)
+            {
+                // issue #573: etkinlik puansız — skor/doğru/yanlış hesaplanmaz (0 kalır); yalnız ilerleme (cevaplanan madde).
+                instanceDto = new InstanceSummaryDto
+                {
+                    Id = instance.Id,
+                    Name = t.Name,
+                    Status = (int)instance.Status,
+                    ImageUrl = t.ImageUrl,
+                    CompletedDate = instance.EndTime ?? DateTime.UtcNow,
+                    DurationMinutes = instance.EndTime.HasValue ?
+                (int)(instance.EndTime.Value - instance.StartTime).TotalMinutes : 0,
+                    TotalQuestions = instance.WorksheetInstanceQuestions.Count,
+                    AnsweredQuestions = instance.WorksheetInstanceQuestions.Count(wiq => wiq.SelectedAnswerId != null || wiq.AnswerPayload != null),
+                    CheckCount = instance.CheckCount,
+                    FirstCheckCorrectCount = instance.FirstCheckCorrectCount,
+                    FirstCheckTotalCount = instance.FirstCheckTotalCount
+                };
+            }
+            else if (instance != null)
             {
                 // issue #571: WorksheetScoring hibrit kuralı (MCQ aynı; etkileşimli cevaplar da sayılır; sorusu silinmiş boş
                 // olmayan satır yanlış).

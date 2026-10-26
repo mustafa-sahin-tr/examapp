@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { CalendarEvent } from '../../../models/calendar-event';
+import { WorksheetKind } from '../../../models/activity';
 import { UserProgram } from '../../../models/program.interfaces';
 import { ProgramService } from '../../../services/program.service';
 import { AuthService } from '../../../services/auth.service';
@@ -275,6 +276,12 @@ export class CalendarDayDialogComponent {
       };
     }
 
+    // Issue #573: etkinlik sayfası testten ayrı: detay satırında "Etkinlik sayfası" + ikon, aksiyon "Etkinliği aç".
+    const isActivity = ev.worksheetKind === WorksheetKind.Activity;
+    const activityDetail: DayEventDetail | null = isActivity
+      ? { icon: 'extension', text: this.t('shared.calendar.activityLabel') }
+      : null;
+
     if (ev.kind === 'reminder') {
       const sent = ev.status === 'Sent';
       const variant: DayEventVariant = sent ? 'reminder-sent' : 'reminder-pending';
@@ -299,7 +306,7 @@ export class CalendarDayDialogComponent {
             run: () => this.navigate(ev.worksheetId, { reminder: 'edit' }),
           },
         ],
-        detail: null,
+        detail: activityDetail,
         programId: null,
       };
     }
@@ -322,17 +329,17 @@ export class CalendarDayDialogComponent {
       actions: [
         done
           ? {
-              label: this.t('shared.calendarDayDialog.viewResult'),
+              label: this.t(isActivity ? 'shared.calendarDayDialog.goToDetail' : 'shared.calendarDayDialog.viewResult'),
               icon: 'grading',
               run: () => this.navigate(ev.worksheetId),
             }
           : {
-              label: this.t('shared.calendarDayDialog.startSolving'),
-              icon: 'play_arrow',
+              label: this.t(isActivity ? 'shared.calendarDayDialog.openActivity' : 'shared.calendarDayDialog.startSolving'),
+              icon: isActivity ? 'extension' : 'play_arrow',
               run: () => this.navigate(ev.worksheetId),
             },
       ],
-      detail: null,
+      detail: activityDetail,
       programId: null,
     };
   }

@@ -42,4 +42,31 @@ public class WorksheetInstanceQuestion : BaseEntity
     /// sıra karıştırabiliyordu). Varsayılan 0 = henüz hiç cevaplanmamış satır.
     /// </summary>
     public int AnswerRevision { get; set; }
+
+    /// <summary>
+    /// issue #571: kontrolcünün (<c>IInteractionGrader</c>) satır bazlı sonucu — doğru satır sayısı. MCQ'da 1/0.
+    /// <see cref="IsCorrect"/> = <c>CorrectCount == TotalCount &amp;&amp; TotalCount &gt; 0</c>. Kısmi puan yok: testte puan
+    /// yalnız <see cref="IsCorrect"/> ile verilir.
+    /// </summary>
+    public int CorrectCount { get; set; }
+
+    /// <summary>issue #571: kontrol edilen satır sayısı (MCQ'da 1; çözümü olmayan etkileşimli soruda 0 = puanlanamaz).</summary>
+    public int TotalCount { get; set; }
+
+    /// <summary>issue #571: sonucu kim verdi. Bugün yalnız <see cref="AnswerGradedBy.Auto"/> yazılır.</summary>
+    public AnswerGradedBy GradedBy { get; set; } = AnswerGradedBy.Auto;
+
+    /// <summary>
+    /// issue #571: satır bazlı geri bildirim (JSON, jsonb), ör. <c>{"rows":[{"id":"z1","correct":false}]}</c>. Yalnız satır id'si
+    /// ve doğru/yanlış taşır — beklenen cevabı (çözümü) ASLA içermez. MCQ'da null.
+    /// </summary>
+    public string? Feedback { get; set; }
+}
+
+/// <summary>issue #571: cevabın sonucunu kim verdi.</summary>
+public enum AnswerGradedBy
+{
+    Auto = 0,
+    AI = 1,
+    Teacher = 2
 }

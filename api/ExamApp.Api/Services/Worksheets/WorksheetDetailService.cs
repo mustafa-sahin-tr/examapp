@@ -63,10 +63,17 @@ public class WorksheetDetailService : IWorksheetDetailService
         public WorksheetInstanceStatus Status { get; init; }
         public DateTime StartTime { get; init; }
         public DateTime? EndTime { get; init; }
-        public List<(int WorksheetQuestionId, int? SelectedAnswerId)> Answers { get; init; } = new();
+        public List<AnswerData> Answers { get; init; } = new();
 
         public DateTime SortKey => EndTime ?? StartTime;
     }
+
+    /// <summary>issue #571: puanlamaya giren satır alanları (WorksheetScoring hibrit kuralı: şık, etkileşim cevabı, kayıtlı sonuç).</summary>
+    private sealed record AnswerData(int WorksheetQuestionId, int? SelectedAnswerId, bool HasPayload, bool IsCorrect);
+
+    private static WorksheetScoring.AnswerFacts FactsOf(AnswerData a, Dictionary<int, int?> correctMap)
+        => new(a.SelectedAnswerId, a.HasPayload, a.IsCorrect, correctMap.GetValueOrDefault(a.WorksheetQuestionId),
+            QuestionKnown: correctMap.ContainsKey(a.WorksheetQuestionId));
 
     public async Task<WorksheetDetailDto?> GetWorksheetDetailAsync(int worksheetId, string role, int? studentId, int userId, bool isAdmin = false, CancellationToken ct = default)
     {
@@ -134,8 +141,10 @@ public class WorksheetDetailService : IWorksheetDetailService
             wq => wq.Id,
             wq => WorksheetScoring.TopicKey(true, wq.Question.TopicId, wq.Question.Topic?.Name, UnclassifiedTopicName));
 
-        int CorrectOf(InstanceData i) => WorksheetScoring.Tally(
-            i.Answers, a => a.SelectedAnswerId, a => correctMap.GetValueOrDefault(a.WorksheetQuestionId)).Correct;
+        int CorrectOf(InstanceData i) => WorksheetScoring.Tally(i.Answers, a => FactsOf(a, correctMap)).Correct;
+
+        // issue #571: etkinlik puansız — kitle istatistikleri (ortalama, sıralama) hesaplanmaz.
+        var isActivity = worksheet.Kind == WorksheetKind.Activity;
 
         // Lightweight projection: only the two columns we score on, no full entity graph.
         var instances = (await _context.TestInstances
@@ -149,7 +158,7 @@ public class WorksheetDetailService : IWorksheetDetailService
                 ti.StartTime,
                 ti.EndTime,
                 Answers = ti.WorksheetInstanceQuestions
-                    .Select(wiq => new { wiq.WorksheetQuestionId, wiq.SelectedAnswerId })
+                    .Select(wiq => new { wiq.WorksheetQuestionId, wiq.SelectedAnswerId, HasPayload = wiq.AnswerPayload != null, wiq.IsCorrect })
                     .ToList()
             })
             .ToListAsync(ct))
@@ -160,7 +169,7 @@ public class WorksheetDetailService : IWorksheetDetailService
                 Status = x.Status,
                 StartTime = x.StartTime,
                 EndTime = x.EndTime,
-                Answers = x.Answers.Select(a => (a.WorksheetQuestionId, a.SelectedAnswerId)).ToList()
+                Answers = x.Answers.Select(a => new AnswerData(a.WorksheetQuestionId, a.SelectedAnswerId, a.HasPayload, a.IsCorrect)).ToList()
             })
             .ToList();
 
@@ -204,7 +213,7 @@ public class WorksheetDetailService : IWorksheetDetailService
             Stats = new WorksheetStatsDto
             {
                 SolverCount = instances.Select(i => i.StudentId).Distinct().Count(),
-                AverageScorePercent = completedInstances.Count > 0
+                AverageScorePercent = !isActivity && completedInstances.Count > 0
                     ? (int)Math.Round(completedInstances.Average(i => ScorePercent(CorrectOf(i), i.Answers.Count)))
                     : (int?)null
             }
@@ -294,7 +303,7 @@ public class WorksheetDetailService : IWorksheetDetailService
                 .FirstOrDefault();
 
             if (latest != null)
-                result.CompletedResult = await BuildCompletedResultAsync(worksheetId, latest, correctMap, topicMap, studentId!.Value, ct);
+                result.CompletedResult = await BuildCompletedResultAsync(worksheetId, latest, correctMap, topicMap, studentId!.Value, isActivity, ct);
         }
 
         // ---- planned reminder (student) ----
@@ -339,16 +348,15 @@ public class WorksheetDetailService : IWorksheetDetailService
         var perInstance = await _context.TestInstances
             .AsNoTracking()
             // issue #396: benzer testlerin ortalaması yalnız puanlı tamamlanmış oturumlardan (Expired sayılmaz).
-            .Where(ti => ids.Contains(ti.WorksheetId) && ti.Status == WorksheetInstanceStatus.Completed)
+            // issue #571: etkinlik puansız — ortalaması yok.
+            .Where(ti => ids.Contains(ti.WorksheetId) && ti.Status == WorksheetInstanceStatus.Completed
+                && ti.Worksheet.Kind != WorksheetKind.Activity)
             .Select(ti => new
             {
                 ti.WorksheetId,
                 Total = ti.WorksheetInstanceQuestions.Count(),
-                Correct = ti.WorksheetInstanceQuestions.Count(wiq =>
-                    wiq.SelectedAnswerId != null
-                    && ti.Worksheet.WorksheetQuestions.Any(wq =>
-                        wq.Id == wiq.WorksheetQuestionId
-                        && wq.Question.CorrectAnswerId == wiq.SelectedAnswerId))
+                // issue #571: WorksheetScoring hibrit kuralı.
+                Correct = ti.WorksheetInstanceQuestions.AsQueryable().Count(WorksheetScoring.IsCorrectRow)
             })
             .ToListAsync(ct);
 
@@ -373,9 +381,10 @@ public class WorksheetDetailService : IWorksheetDetailService
         List<InstanceData> completedInstances,
         Dictionary<int, int?> correctMap)
     {
+        // issue #571: cevaplanmış = boş değil (şık ya da etkileşim cevabı); doğru = WorksheetScoring hibrit kuralı.
         var answers = completedInstances
             .SelectMany(i => i.Answers)
-            .Where(a => a.SelectedAnswerId != null)
+            .Where(a => !WorksheetScoring.IsBlank(a.SelectedAnswerId, a.HasPayload))
             .ToList();
 
         var statsByWq = answers
@@ -385,9 +394,9 @@ public class WorksheetDetailService : IWorksheetDetailService
                 g =>
                 {
                     var answered = g.Count();
-                    var correct = g.Count(a =>
-                        correctMap.TryGetValue(a.WorksheetQuestionId, out var ca)
-                        && ca != null && ca == a.SelectedAnswerId);
+                    var correct = g.Count(a => WorksheetScoring.IsCorrect(
+                        a.SelectedAnswerId, correctMap.GetValueOrDefault(a.WorksheetQuestionId), a.HasPayload, a.IsCorrect,
+                        questionKnown: correctMap.ContainsKey(a.WorksheetQuestionId)));
                     return (Answered: answered, Correct: correct);
                 });
 
@@ -446,13 +455,14 @@ public class WorksheetDetailService : IWorksheetDetailService
         Dictionary<int, int?> correctMap,
         Dictionary<int, (int? TopicId, string Name)> topicMap,
         int studentId,
+        bool isActivity,
         CancellationToken ct)
     {
         var answers = instance.Answers;
         var total = answers.Count;
 
-        int? CorrectAnswerOf((int WorksheetQuestionId, int? SelectedAnswerId) a) => correctMap.GetValueOrDefault(a.WorksheetQuestionId);
-        var (correct, wrong, empty) = WorksheetScoring.Tally(answers, a => a.SelectedAnswerId, CorrectAnswerOf);
+        WorksheetScoring.AnswerFacts Facts(AnswerData a) => FactsOf(a, correctMap);
+        var (correct, wrong, empty) = WorksheetScoring.Tally(answers, Facts);
 
         var dto = new WorksheetCompletedResultDto
         {
@@ -469,7 +479,7 @@ public class WorksheetDetailService : IWorksheetDetailService
                 .Select(g =>
                 {
                     var gTotal = g.Count();
-                    var gCorrect = WorksheetScoring.Tally(g, a => a.SelectedAnswerId, CorrectAnswerOf).Correct;
+                    var gCorrect = WorksheetScoring.Tally(g, Facts).Correct;
                     return new WorksheetTopicSuccessDto
                     {
                         TopicId = g.Key.TopicId,
@@ -483,7 +493,8 @@ public class WorksheetDetailService : IWorksheetDetailService
                 .ToList()
         };
 
-        dto.Rank = await BuildRankAsync(worksheetId, correctMap, studentId, ct);
+        // issue #571: etkinlikte sıralama / sınıf ortalaması yok.
+        dto.Rank = isActivity ? null : await BuildRankAsync(worksheetId, correctMap, studentId, ct);
         return dto;
     }
 
@@ -561,11 +572,8 @@ public class WorksheetDetailService : IWorksheetDetailService
                 ti.StartTime,
                 ti.EndTime,
                 Total = ti.WorksheetInstanceQuestions.Count(),
-                Correct = ti.WorksheetInstanceQuestions.Count(wiq =>
-                    wiq.SelectedAnswerId != null
-                    && ti.Worksheet.WorksheetQuestions.Any(wq =>
-                        wq.Id == wiq.WorksheetQuestionId
-                        && wq.Question.CorrectAnswerId == wiq.SelectedAnswerId))
+                // issue #571: WorksheetScoring hibrit kuralı.
+                Correct = ti.WorksheetInstanceQuestions.AsQueryable().Count(WorksheetScoring.IsCorrectRow)
             })
             .ToListAsync(ct))
             .GroupBy(x => x.StudentId)
@@ -627,11 +635,13 @@ public class WorksheetDetailService : IWorksheetDetailService
         if (existing.HasValue)
             return new WorksheetFromMistakesResultDto { WorksheetId = existing.Value };
 
-        // Sadece yanlış İŞARETLENEN sorular (selected != correct). Boş bırakılanlar dahil DEĞİL.
+        // Sadece yanlış cevaplanan sorular (issue #571: WorksheetScoring hibrit kuralı — yanlış şık ya da tamamı doğru olmayan
+        // etkileşim cevabı). Boş bırakılanlar dahil DEĞİL.
         var wrongQuestions = instance.WorksheetInstanceQuestions
-            .Where(wiq => wiq.SelectedAnswerId != null
-                && wiq.WorksheetQuestion?.Question != null
-                && wiq.WorksheetQuestion.Question.CorrectAnswerId != wiq.SelectedAnswerId)
+            .Where(wiq => wiq.WorksheetQuestion?.Question != null
+                && !WorksheetScoring.IsBlank(wiq.SelectedAnswerId, wiq.AnswerPayload != null)
+                && !WorksheetScoring.IsCorrect(wiq.SelectedAnswerId, wiq.WorksheetQuestion.Question.CorrectAnswerId,
+                    wiq.AnswerPayload != null, wiq.IsCorrect))
             .OrderBy(wiq => wiq.WorksheetQuestion.Order)
             .Select(wiq => wiq.WorksheetQuestion.Question)
             .GroupBy(q => q.Id)

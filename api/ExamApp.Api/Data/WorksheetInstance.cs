@@ -42,4 +42,13 @@ public class WorksheetInstance : BaseEntity
     public ICollection<WorksheetInstanceQuestion> WorksheetInstanceQuestions { get; set; }
 
     public WorksheetInstanceStatus Status { get; set; } // 🟢 Test durumu
+
+    /// <summary>issue #571: etkinlikte "Cevapları kontrol et" sayısı (<c>POST test-instances/{id}/check</c>). Testte hep 0.</summary>
+    public int CheckCount { get; set; }
+
+    /// <summary>issue #571: ilk kontrol anı (UTC); hiç kontrol edilmediyse null.</summary>
+    public DateTime? FirstCheckedAt { get; set; }
+
+    /// <summary>issue #571: öğrencinin "doğru cevapları göster" ile çözümü ilk açtığı an (UTC); açmadıysa null.</summary>
+    public DateTime? SolutionsRevealedAt { get; set; }
 }

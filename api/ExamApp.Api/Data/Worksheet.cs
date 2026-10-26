@@ -58,4 +58,17 @@ public class Worksheet : BaseEntity
     /// </summary>
     public bool CommentsEnabled { get; set; } = true;
 
+    /// <summary>
+    /// issue #571: sayfa türü. <see cref="WorksheetKind.Activity"/> (etkinlik) puansızdır: skor/not hesaplarına (sonuç
+    /// listeleri, ortalamalar, sıralama, veli test bildirimi) girmez; kontrol ucu ve "doğru cevapları göster" yalnız etkinlikte
+    /// açıktır. Oluşturma akışı #573.
+    /// </summary>
+    public WorksheetKind Kind { get; set; } = WorksheetKind.Test;
+}
+
+/// <summary>issue #571: worksheet türü — test (puanlı) ya da etkinlik (puansız, kontrol edilebilir).</summary>
+public enum WorksheetKind
+{
+    Test = 0,
+    Activity = 1
 }

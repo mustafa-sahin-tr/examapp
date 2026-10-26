@@ -1035,11 +1035,14 @@ public class TeacherService : ITeacherService
     private async Task<List<StudentActivity>> GetStudentActivityAsync(
         int teacherId, StudentTargetScope target, DateTime cutoff, CancellationToken ct)
     {
-        var worksheetIds = await _context.Worksheets
+        var ownedWorksheets = await _context.Worksheets
             .AsNoTracking()
             .Where(w => w.CreateUserId == teacherId)
-            .Select(w => w.Id)
+            .Select(w => new { w.Id, w.Kind })
             .ToListAsync(ct);
+        var worksheetIds = ownedWorksheets.Select(w => w.Id).ToList();
+        // issue #571: etkinlik puansız — çözülen soru/süre (çalışma takibi, DashboardService ile aynı) sayılır, doğru sayılmaz.
+        var activityWorksheetIds = ownedWorksheets.Where(w => w.Kind == WorksheetKind.Activity).Select(w => w.Id).ToHashSet();
 
         if (worksheetIds.Count == 0)
             return new List<StudentActivity>();
@@ -1078,7 +1081,7 @@ public class TeacherService : ITeacherService
             .Select(g => new StudentActivity(
                 studentsById[g.Key],
                 g.Sum(r => r.Solved),
-                g.Sum(r => r.Correct),
+                g.Sum(r => activityWorksheetIds.Contains(r.WorksheetId) ? 0 : r.Correct),
                 g.Sum(r => r.TimeSeconds)))
             .Where(a => a.QuestionsSolved > 0)
             .ToList();

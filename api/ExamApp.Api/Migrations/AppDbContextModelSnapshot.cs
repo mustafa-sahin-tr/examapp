@@ -4428,6 +4428,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsPracticeTest")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
                     b.Property<int>("MaxDurationSeconds")
                         .HasColumnType("integer");
 
@@ -4491,6 +4494,9 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("CheckCount")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -4506,11 +4512,17 @@ namespace ExamApp.Api.Migrations
                     b.Property<DateTime?>("EndTime")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("FirstCheckedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
                     b.Property<int?>("MaxDurationSeconds")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("SolutionsRevealedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("StartTime")
                         .HasColumnType("timestamp with time zone");
@@ -4559,6 +4571,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<int>("AnswerRevision")
                         .HasColumnType("integer");
 
+                    b.Property<int>("CorrectCount")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -4569,6 +4584,12 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Feedback")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("GradedBy")
                         .HasColumnType("integer");
 
                     b.Property<bool>("IsCorrect")
@@ -4584,6 +4605,9 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<int>("TimeTaken")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TotalCount")
                         .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdateTime")

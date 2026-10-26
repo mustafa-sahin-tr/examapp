@@ -239,6 +239,10 @@ builder.Services.AddSingleton<Microsoft.Extensions.Options.IConfigureOptions<Mic
 builder.Services.AddScoped<IExamService, ExamService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetAssignmentService, ExamApp.Api.Services.Worksheets.WorksheetAssignmentService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.ITestSessionService, ExamApp.Api.Services.Worksheets.TestSessionService>();
+// issue #571: sunucu tarafı etkileşim kontrolcüleri (tip → kontrolcü; durumsuz).
+builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGrader, ExamApp.Api.Services.Interactions.McqGrader>();
+builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGrader, ExamApp.Api.Services.Interactions.DragDropLabelingGrader>();
+builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGraderRegistry, ExamApp.Api.Services.Interactions.InteractionGraderRegistry>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetAuthoringService, ExamApp.Api.Services.Worksheets.WorksheetAuthoringService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetDetailService, ExamApp.Api.Services.Worksheets.WorksheetDetailService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetReminderService, ExamApp.Api.Services.Worksheets.WorksheetReminderService>();
@@ -403,6 +407,7 @@ builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminAccountStatusSe
 builder.Services.AddAdminAccountStatusRateLimiting();
 builder.Services.AddQuestionBankSearchRateLimiting();
 builder.Services.AddQuestionBankLinkRateLimiting();
+builder.Services.AddActivityCheckRateLimiting(); // issue #571
 builder.Services.AddBookingLifecycleRateLimiting(); // issue #315
 // issue #365 (S3): kitap sayfası sorgusu (POST study-items/book-pages/lookup) kullanıcı başına rate limit.
 builder.Services.AddStudyBookPageLookupRateLimiting();

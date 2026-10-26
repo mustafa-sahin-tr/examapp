@@ -403,15 +403,15 @@ public class ExamService : IExamService
             InstanceSummaryDto? instanceDto = null;
             if (instance != null)
             {
-                var correct = instance.WorksheetInstanceQuestions.Count(wiq =>
-                    wiq.SelectedAnswerId != null &&
-                    t.WorksheetQuestions.Any(wq => wq.Id == wiq.WorksheetQuestionId
-                        && wq.Question.CorrectAnswerId == wiq.SelectedAnswerId));
-
-                var wrong = instance.WorksheetInstanceQuestions.Count(wiq =>
-                    wiq.SelectedAnswerId != null &&
-                    t.WorksheetQuestions.Any(wq => wq.Id == wiq.WorksheetQuestionId
-                        && wq.Question.CorrectAnswerId != wiq.SelectedAnswerId));
+                // issue #571: WorksheetScoring hibrit kuralı (MCQ aynı; etkileşimli cevaplar da sayılır; sorusu silinmiş boş
+                // olmayan satır yanlış).
+                var correctMap = t.WorksheetQuestions
+                    .Where(wq => wq.Question != null)
+                    .ToDictionary(wq => wq.Id, wq => wq.Question.CorrectAnswerId);
+                var (correct, wrong, _) = WorksheetScoring.Tally(instance.WorksheetInstanceQuestions, wiq =>
+                    new WorksheetScoring.AnswerFacts(wiq.SelectedAnswerId, wiq.AnswerPayload != null, wiq.IsCorrect,
+                        correctMap.GetValueOrDefault(wiq.WorksheetQuestionId),
+                        QuestionKnown: correctMap.ContainsKey(wiq.WorksheetQuestionId)));
                 instanceDto = new InstanceSummaryDto
                 {
                     Id = instance.Id,
@@ -737,15 +737,39 @@ public class ExamService : IExamService
         return questions;
     }
 
+    /// <summary>
+    /// issue #571: istatistik için tek oturumun doğru/yanlış/boş sayısı (WorksheetScoring hibrit kuralı).
+    /// <paramref name="correctMap"/>: WorksheetQuestionId → doğru şık; sorusu silinmiş satır sözlükte yoktur (QuestionKnown=false).
+    /// </summary>
+    private static (int Correct, int Wrong, int Blank) TallyStatistics(
+        WorksheetInstance instance, IReadOnlyDictionary<int, int?> correctMap)
+        => WorksheetScoring.Tally(instance.WorksheetInstanceQuestions, q =>
+        {
+            var known = correctMap.TryGetValue(q.WorksheetQuestionId, out var correctAnswerId);
+            return new WorksheetScoring.AnswerFacts(q.SelectedAnswerId, q.AnswerPayload != null, q.IsCorrect,
+                correctAnswerId, QuestionKnown: known);
+        });
+
     public async Task<ExamAllStatisticsDto> GetGroupedStudentStatistics(int studentId)
     {
         var testInstances = await _context.TestInstances
-            .Where(ti => ti.StudentId == studentId)
+            // issue #571: etkinlik (Kind = Activity) puansız — istatistiğe hiç girmez.
+            .Where(ti => ti.StudentId == studentId && ti.Worksheet.Kind != WorksheetKind.Activity)
             .Include(ti => ti.Worksheet)
+            // review #571: soru zinciri Include EDİLMEZ — zorunlu gezinme + soft-delete filtresi (INNER JOIN) sorusu silinmiş
+            // satırı listeden düşürürdü. Doğru şık ayrı sözlükten okunur; sözlükte olmayan soru = bilinmeyen (boş değilse yanlış).
             .Include(ti => ti.WorksheetInstanceQuestions)
-                .ThenInclude(wiq => wiq.WorksheetQuestion)
-                    .ThenInclude(wq => wq.Question)
             .ToListAsync();
+
+        var worksheetQuestionIds = testInstances
+            .SelectMany(ti => ti.WorksheetInstanceQuestions)
+            .Select(q => q.WorksheetQuestionId)
+            .Distinct()
+            .ToList();
+        var correctMap = await _context.TestQuestions.AsNoTracking()
+            .Where(wq => worksheetQuestionIds.Contains(wq.Id))
+            .Select(wq => new { wq.Id, wq.Question.CorrectAnswerId })
+            .ToDictionaryAsync(x => x.Id, x => x.CorrectAnswerId);
 
         // 🔹 Total verileri için
         int totalSolved = testInstances.Count;
@@ -760,21 +784,13 @@ public class ExamService : IExamService
         foreach (var instance in completedTests)
         {
             foreach (var question in instance.WorksheetInstanceQuestions)
-            {
                 totalTimeTaken += question.TimeTaken / 60;
 
-                if (question.SelectedAnswerId.HasValue)
-                {
-                    var correctAnswerId = question.WorksheetQuestion.Question.CorrectAnswerId;
-                    if (correctAnswerId.HasValue)
-                    {
-                        if (question.SelectedAnswerId == correctAnswerId)
-                            totalCorrect++;
-                        else
-                            totalWrong++;
-                    }
-                }
-            }
+            // issue #571: WorksheetScoring hibrit kuralı (etkileşimli cevaplar da sayılır; doğru şıkkı olmayan sorudaki şık
+            // cevabı artık yanlış sayılır — önceden hiç sayılmıyordu).
+            var (correct, wrong, _) = TallyStatistics(instance, correctMap);
+            totalCorrect += correct;
+            totalWrong += wrong;
         }
 
         // 🔹 Gruplama verileri
@@ -792,21 +808,11 @@ public class ExamService : IExamService
                 foreach (var instance in completed)
                 {
                     foreach (var question in instance.WorksheetInstanceQuestions)
-                    {
                         groupTimeTaken += question.TimeTaken / 60;
 
-                        if (question.SelectedAnswerId.HasValue)
-                        {
-                            var correctAnswerId = question.WorksheetQuestion.Question.CorrectAnswerId;
-                            if (correctAnswerId.HasValue)
-                            {
-                                if (question.SelectedAnswerId == correctAnswerId)
-                                    groupCorrect++;
-                                else
-                                    groupWrong++;
-                            }
-                        }
-                    }
+                    var (correct, wrong, _) = TallyStatistics(instance, correctMap); // issue #571: hibrit kural
+                    groupCorrect += correct;
+                    groupWrong += wrong;
                 }
 
                 return new

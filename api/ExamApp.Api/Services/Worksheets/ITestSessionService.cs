@@ -24,4 +24,13 @@ public interface ITestSessionService
 
     /// <summary>issue #367: idempotent — zaten Completed instance için de başarı döner (EndTime değişmez).</summary>
     Task<TestSessionResultDto> EndTest(int testInstanceId, int userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #571: etkinlik kontrolü — satır bazlı doğru/yanlış döner, çözümü döndürmez. NotFound (sahibi değil / yok),
+    /// InvalidInput (400), Conflict (409: etkinlik değil / oturum Started değil).
+    /// </summary>
+    Task<ActivityCheckResultDto> CheckActivityAsync(int instanceId, ActivityCheckRequestDto request, int userId, CancellationToken ct = default);
+
+    /// <summary>issue #571: "doğru cevapları göster" — en az bir kontrolden sonra; aksi halde Conflict (409).</summary>
+    Task<ActivitySolutionsResultDto> GetActivitySolutionsAsync(int instanceId, int userId, CancellationToken ct = default);
 }

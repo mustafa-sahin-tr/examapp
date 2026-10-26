@@ -82,7 +82,8 @@ public class StudentService : IStudentService
                     .Select(lb => lb.Rank)
                     .FirstOrDefault(),
                 RecentTests = _context.TestInstances
-                    .Where(ti => ti.StudentId == s.Id)
+                    // issue #571: etkinlik puansız — son test skorlarına girmez.
+                    .Where(ti => ti.StudentId == s.Id && ti.Worksheet.Kind != WorksheetKind.Activity)
                     .OrderByDescending(ti => ti.StartTime)
                     .Take(5)
                     .Select(ti => new StudentWorkSheetSummaryDto

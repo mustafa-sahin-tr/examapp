@@ -1,20 +1,40 @@
 using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 
 namespace ExamApp.Api.Helpers;
 
 /// <summary>
 /// Bir test oturumunun puanlama kuralı — TEK kaynak (issue #421 review M1). Öğrencinin kendi sonuç ekranı
-/// (<c>WorksheetDetailService</c>) ve veli test sonucu özeti (<c>ParentAssignmentService</c>) aynı sayıları buradan üretir;
-/// eşdeğerlik <c>ParentAssignmentServiceTests.Parent_result_numbers_match_the_student_detail_screen</c>'de aynı oturum iki
-/// uçtan puanlanarak doğrulanır.
+/// (<c>WorksheetDetailService</c>), veli test sonucu özeti (<c>ParentAssignmentService</c>), tamamlanan testler listesi ve veli
+/// bildirimi (<c>TestSessionService</c>), test listesi (<c>ExamService</c>) ve "yanlışlarım" listeleri aynı sayıları buradan
+/// üretir; eşdeğerlik <c>ParentAssignmentServiceTests.Parent_result_numbers_match_the_student_detail_screen</c>'de aynı oturum
+/// iki uçtan puanlanarak doğrulanır.
+/// <para>
+/// issue #571 — hibrit kural (MCQ sonuçları değişmez; etkileşimli cevaplar da sayılır):
+/// </para>
 /// <list type="bullet">
 /// <item>Toplam = oturumdaki soru satırı sayısı.</item>
-/// <item>Boş = şık seçilmemiş (<c>SelectedAnswerId == null</c>; şıksız/payload cevaplar da boş sayılır — mevcut davranış).</item>
-/// <item>Doğru = seçilen şık sorunun doğru şıkkı (doğru şıkkı bilinmeyen/silinmiş soru doğru sayılmaz).</item>
-/// <item>Yanlış = kalan.</item>
-/// <item>Puan = doğru × 100 / toplam (aşağı yuvarlanır; toplam 0 ise 0).</item>
+/// <item>Doğru = (şık seçilmiş VE seçilen şık sorunun doğru şıkkı) YA DA (şık seçilmemiş, etkileşim cevabı
+/// (<c>AnswerPayload</c>) var VE kontrolcü tamamını doğru bulmuş — kayıtlı <c>IsCorrect</c>). Doğru şıkkı bilinmeyen/silinmiş
+/// soru şık cevabında doğru sayılmaz.</item>
+/// <item>Boş = şık seçilmemiş VE etkileşim cevabı yok.</item>
+/// <item>Yanlış = kalan. Sorusu silinmiş/bilinmeyen (soft-delete) satır boş değilse HER ZAMAN yanlıştır — şık da etkileşim
+/// cevabı da (kayıtlı <c>IsCorrect</c>'e bakılmaz).</item>
+/// <item>Puan = doğru × 100 / toplam (aşağı yuvarlanır; toplam 0 ise 0). Kısmi puan yok (satır bazlı
+/// <c>CorrectCount</c>/<c>TotalCount</c> yalnız geri bildirimdir).</item>
 /// </list>
+/// Sorgu tarafı <see cref="IsCorrectRow"/> / <see cref="IsWrongRow"/> / <see cref="IsBlankRow"/> (EF'e çevrilebilir;
+/// gezinme koleksiyonunda <c>.AsQueryable().Count(...)</c> ile), bellek tarafı <see cref="Tally{T}"/>. <c>Worksheet.Kind ==
+/// Activity</c> (etkinlik) oturumları skor/not hesaplarına hiç girmez — çağıranlar filtreler.
+/// <para>
+/// Silinmiş soru ve SQL (review #571): <see cref="IsCorrectRow"/>/<see cref="IsWrongRow"/> sorunun doğru şıkkına
+/// <c>WorksheetQuestion.Question</c> gezinmesiyle bakar; soft-delete query filter'lı zorunlu gezinme INNER JOIN olduğundan
+/// sorusu silinmiş satır bu iki sayımda HİÇ görünmez (ne doğru ne yanlış). <see cref="IsBlankRow"/> gezinmesizdir. Bu yüzden
+/// sayım yapan sorgular yanlışı <c>toplam − doğru − boş</c> olarak hesaplar (bellek kuralıyla aynı: silinmiş sorunun boş olmayan
+/// satırı yanlış); <see cref="IsWrongRow"/> yalnız "yanlış soruları listele" gibi sorusu var olan satırlara bakan yerlerde
+/// kullanılır.
+/// </para>
 /// </summary>
 public static class WorksheetScoring
 {
@@ -24,20 +44,52 @@ public static class WorksheetScoring
     public static int DurationSeconds(DateTime startTime, DateTime? endTime)
         => endTime.HasValue ? (int)Math.Max(0, (endTime.Value - startTime).TotalSeconds) : 0;
 
-    public static bool IsCorrect(int? selectedAnswerId, int? correctAnswerId)
-        => selectedAnswerId != null && correctAnswerId != null && correctAnswerId == selectedAnswerId;
+    /// <summary>issue #571: satır doğru mu (sınıf dokümanındaki hibrit kural; <see cref="IsCorrectRow"/> ile aynı).</summary>
+    /// <param name="hasPayload">Satırda etkileşim cevabı (<c>AnswerPayload != null</c>) var mı.</param>
+    /// <param name="storedIsCorrect">Satırın kayıtlı <c>IsCorrect</c>'i (kontrolcü sonucu).</param>
+    /// <param name="questionKnown">Satırın sorusu biliniyor mu (silinmiş/bilinmeyen soru → hiçbir cevap doğru değil).</param>
+    public static bool IsCorrect(int? selectedAnswerId, int? correctAnswerId, bool hasPayload, bool storedIsCorrect,
+        bool questionKnown = true)
+        => questionKnown
+            && (selectedAnswerId != null
+                ? correctAnswerId != null && correctAnswerId == selectedAnswerId
+                : hasPayload && storedIsCorrect);
 
-    /// <param name="correctAnswerOf">Satırın sorusunun doğru şıkkı; soru bilinmiyorsa null.</param>
-    public static (int Correct, int Wrong, int Blank) Tally<T>(
-        IEnumerable<T> answers, Func<T, int?> selectedAnswerOf, Func<T, int?> correctAnswerOf)
+    /// <summary>issue #571: boş = şık yok VE etkileşim cevabı yok.</summary>
+    public static bool IsBlank(int? selectedAnswerId, bool hasPayload) => selectedAnswerId == null && !hasPayload;
+
+    /// <summary>issue #571: sorgu tarafı "doğru" — <see cref="IsCorrect(int?, int?, bool, bool)"/> ile aynı kural.</summary>
+    public static readonly Expression<Func<WorksheetInstanceQuestion, bool>> IsCorrectRow = wiq =>
+        (wiq.SelectedAnswerId != null && wiq.SelectedAnswerId == wiq.WorksheetQuestion.Question.CorrectAnswerId)
+        || (wiq.SelectedAnswerId == null && wiq.AnswerPayload != null && wiq.IsCorrect);
+
+    /// <summary>
+    /// issue #571: sorgu tarafı "yanlış" = boş değil ve doğru değil — yalnız sorusu VAR olan satırlar için (bkz. sınıf dokümanı:
+    /// sayımda <c>toplam − doğru − boş</c> kullanın).
+    /// </summary>
+    public static readonly Expression<Func<WorksheetInstanceQuestion, bool>> IsWrongRow = wiq =>
+        (wiq.SelectedAnswerId != null && wiq.SelectedAnswerId != wiq.WorksheetQuestion.Question.CorrectAnswerId)
+        || (wiq.SelectedAnswerId == null && wiq.AnswerPayload != null && !wiq.IsCorrect);
+
+    /// <summary>issue #571: sorgu tarafı "boş".</summary>
+    public static readonly Expression<Func<WorksheetInstanceQuestion, bool>> IsBlankRow = wiq =>
+        wiq.SelectedAnswerId == null && wiq.AnswerPayload == null;
+
+    /// <summary>issue #571: satır başına puanlamaya giren alanlar (bellek tarafı).</summary>
+    /// <param name="CorrectAnswerId">Satırın sorusunun doğru şıkkı; soru bilinmiyorsa null.</param>
+    /// <param name="QuestionKnown">Satırın sorusu biliniyor mu (silinmiş soru → boş değilse yanlış; SQL sayımıyla aynı).</param>
+    public readonly record struct AnswerFacts(
+        int? SelectedAnswerId, bool HasPayload, bool StoredIsCorrect, int? CorrectAnswerId, bool QuestionKnown = true);
+
+    public static (int Correct, int Wrong, int Blank) Tally<T>(IEnumerable<T> answers, Func<T, AnswerFacts> factsOf)
     {
         int correct = 0, wrong = 0, blank = 0;
         foreach (var answer in answers)
         {
-            var selected = selectedAnswerOf(answer);
-            if (selected == null)
+            var f = factsOf(answer);
+            if (IsBlank(f.SelectedAnswerId, f.HasPayload))
                 blank++;
-            else if (IsCorrect(selected, correctAnswerOf(answer)))
+            else if (IsCorrect(f.SelectedAnswerId, f.CorrectAnswerId, f.HasPayload, f.StoredIsCorrect, f.QuestionKnown))
                 correct++;
             else
                 wrong++;

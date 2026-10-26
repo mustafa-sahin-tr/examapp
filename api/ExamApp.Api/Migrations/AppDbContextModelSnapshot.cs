@@ -4501,6 +4501,9 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("ActiveSeconds")
+                        .HasColumnType("integer");
+
                     b.Property<int>("CheckCount")
                         .HasColumnType("integer");
 

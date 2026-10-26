@@ -354,6 +354,62 @@ namespace BadgeService.Migrations
                     b.ToTable("ProcessedLoginAttempts");
                 });
 
+            modelBuilder.Entity("BadgeService.Entities.StudentActivityCompletion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActiveSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("ActivityDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("ActivityId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("AnsweredItemCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CompletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("CountsTowardBadges")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ItemCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SubjectId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WorksheetInstanceId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_StudentActivityCompletions_EventId");
+
+                    b.HasIndex("UserId", "ActivityDate");
+
+                    b.HasIndex("UserId", "ActivityId");
+
+                    b.HasIndex("UserId", "WorksheetInstanceId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_StudentActivityCompletions_UserId_WorksheetInstanceId");
+
+                    b.ToTable("StudentActivityCompletions");
+                });
+
             modelBuilder.Entity("BadgeService.Entities.StudentBadgeProgress", b =>
                 {
                     b.Property<Guid>("Id")

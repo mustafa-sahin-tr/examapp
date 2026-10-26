@@ -211,6 +211,7 @@ var rabbit = isBackfillCommand ? null : RabbitMqConnectionSettings.Require(build
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<AnswerSubmittedConsumer, AnswerSubmittedConsumerDefinition>();
+    x.AddConsumer<ActivityCompletedConsumer, ActivityCompletedConsumerDefinition>(); // issue #572
     x.AddConsumer<QuestionCreatedConsumer>();
     x.AddConsumer<WorksheetReminderDueConsumer, WorksheetReminderDueConsumerDefinition>();
     x.AddConsumer<WorksheetAccessRequestedConsumer, WorksheetAccessRequestedConsumerDefinition>();
@@ -256,6 +257,7 @@ builder.Services.AddMassTransit(x =>
 
             // Kullanıcı bazlı sıralı işleme (partitioner) AnswerSubmittedConsumerDefinition'da (issue #225).
             e.ConfigureConsumer<AnswerSubmittedConsumer>(context);
+            e.ConfigureConsumer<ActivityCompletedConsumer>(context); // issue #572 (puansız etkinlik rozetleri)
             e.ConfigureConsumer<QuestionCreatedConsumer>(context);
             // WorksheetReminderDueConsumer'ın retry'ı WorksheetReminderDueConsumerDefinition'da
             // scope'lu; diğer iki consumer'ın davranışı değişmez.

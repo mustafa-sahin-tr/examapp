@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivitySummaryComponent } from './activity-summary.component';
 import { translocoTestingModule } from '../../testing/transloco-testing';
 
-describe('ActivitySummaryComponent (#573)', () => {
+describe('ActivitySummaryComponent (#573, #572)', () => {
   let fixture: ComponentFixture<ActivitySummaryComponent>;
   const el = () => fixture.nativeElement as HTMLElement;
   const q = (id: string) => el().querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
@@ -34,11 +34,13 @@ describe('ActivitySummaryComponent (#573)', () => {
   it('withData_TodayAndBadgeCardsRender', () => {
     setup({
       today: { activityCount: 3, activeMinutes: 24, streakDays: 2 },
-      badge: { name: 'Kâşif rozeti', current: 8, target: 10 },
+      badge: { code: 'activity-count-1', name: 'Kâşif', current: 8, target: 10, earned: false },
     });
 
     expect(q('today-card')?.textContent).toContain('3 etkinlik · 24 dk etkin süre · 2 gün üst üste');
+    expect(q('badge-card')?.textContent).toContain('Kâşif rozeti: 8/10 etkinlik');
     expect(q('badge-card')?.textContent).toContain('2 etkinlik daha!');
+    expect(el().textContent).not.toMatch(/%|puan|XP/i);
   });
 
   it('nextButton_OnlyWhenThereIsANextActivity', () => {

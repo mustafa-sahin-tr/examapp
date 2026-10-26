@@ -1,4 +1,7 @@
 <section class="al" *transloco="let t; prefix: 'worksheet-list'" data-testid="activity-list">
+  @if (progress().today || progress().badge) {
+    <app-activity-progress [today]="progress().today" [badge]="progress().badge" data-testid="activity-list-progress" />
+  }
   @if (!loading() && partialError()) {
     <div class="al__warn" role="status" data-testid="activity-partial-error">
       <mat-icon aria-hidden="true">warning</mat-icon>

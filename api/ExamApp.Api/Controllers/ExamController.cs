@@ -709,10 +709,14 @@ public class ExamController : BaseController
     [HttpPut("end-test/{testInstanceId}")]
     [Authorize(Roles = "Student,Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
-    public async Task<IActionResult> EndTest(int testInstanceId, CancellationToken ct)
+    public async Task<IActionResult> EndTest(
+        int testInstanceId,
+        CancellationToken ct,
+        [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] EndTestRequestDto? request = null)
     {
         var user = await GetAuthenticatedUserAsync();
-        var response = await _testSession.EndTest(testInstanceId, user.Id, ct);
+        // issue #572: gövde isteğe bağlı (test bitirme gövdesiz kalır); etkinlikte oynatıcının ölçtüğü ActiveSeconds'ı taşır.
+        var response = await _testSession.EndTest(testInstanceId, user.Id, request, user.KeycloakId, ct);
         // issue #367: zaten Completed → 200 success (idempotent); Expired → 409 TestNotInProgress.
         return response.Conflict ? Conflict(response) : Ok(response);
     }

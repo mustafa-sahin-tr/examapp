@@ -121,14 +121,28 @@ public class ExamControllerWorksheetKindTests
     [Fact]
     public async Task EndTest_ActivityCheckRequired_Returns409()
     {
-        _testSession.EndTest(5, UserId, Arg.Any<CancellationToken>()).Returns(new TestSessionResultDto
-        {
-            Success = false, Conflict = true, ErrorCode = TestSessionErrorCodes.ActivityCheckRequired,
-        });
+        _testSession.EndTest(5, UserId, Arg.Any<EndTestRequestDto?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new TestSessionResultDto
+            {
+                Success = false, Conflict = true, ErrorCode = TestSessionErrorCodes.ActivityCheckRequired,
+            });
 
         var result = await NewController().EndTest(5, default);
 
         result.ShouldBeOfType<ConflictObjectResult>();
+    }
+
+    [Fact]
+    public async Task EndTest_ForwardsActiveSecondsBodyToService_Issue572()
+    {
+        _testSession.EndTest(6, UserId, Arg.Any<EndTestRequestDto?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new TestSessionResultDto { Success = true });
+
+        var result = await NewController().EndTest(6, default, new EndTestRequestDto { ActiveSeconds = 321 });
+
+        result.ShouldBeOfType<OkObjectResult>();
+        await _testSession.Received(1).EndTest(
+            6, UserId, Arg.Is<EndTestRequestDto?>(r => r != null && r.ActiveSeconds == 321), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     // ---------------------------------------------------------------- kind sorgu parametresi

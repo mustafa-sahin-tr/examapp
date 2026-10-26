@@ -23,6 +23,7 @@ public class BadgeDbContext : DbContext
     public DbSet<NotificationEventLog> NotificationEventLogs => Set<NotificationEventLog>();
     public DbSet<HiddenCommentTombstone> HiddenCommentTombstones => Set<HiddenCommentTombstone>();
     public DbSet<UserResetMarker> UserResetMarkers => Set<UserResetMarker>();
+    public DbSet<StudentActivityCompletion> StudentActivityCompletions => Set<StudentActivityCompletion>();
 
     /// <summary>
     /// BadgeService'in kendi transactional outbox'ı (issue #225). exam/identity DB'lerindeki tabloyla
@@ -30,6 +31,9 @@ public class BadgeDbContext : DbContext
     /// OutboxPublisher kodu üçüncü bir instance (<c>badge-outbox-publisher</c>) olarak bu DB'yi poll eder.
     /// </summary>
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+
+    internal const string StudentActivityCompletion_EventIdIndex = "IX_StudentActivityCompletions_EventId";
+    internal const string StudentActivityCompletion_UserInstanceIndex = "IX_StudentActivityCompletions_UserId_WorksheetInstanceId";
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -219,5 +223,23 @@ public class BadgeDbContext : DbContext
         modelBuilder.Entity<UserResetMarker>()
             .Property(x => x.UserId)
             .ValueGeneratedNever();
+
+        // Issue #572: etkinlik tamamlama ledger'ı (bkz. StudentActivityCompletion XML doc). İki unique index idempotency
+        // anahtarıdır; (UserId, ActivityId) ve (UserId, ActivityDate) rozet istatistiği sorguları içindir.
+        modelBuilder.Entity<StudentActivityCompletion>().HasKey(x => x.Id);
+        // Yerel (Istanbul) takvim günü: saat dilimi içermeyen "date" — timestamptz'ye Kind=Unspecified yazılamaz.
+        modelBuilder.Entity<StudentActivityCompletion>().Property(x => x.ActivityDate).HasColumnType("date");
+        modelBuilder.Entity<StudentActivityCompletion>()
+            .HasIndex(x => x.EventId)
+            .IsUnique()
+            .HasDatabaseName(StudentActivityCompletion_EventIdIndex);
+        modelBuilder.Entity<StudentActivityCompletion>()
+            .HasIndex(x => new { x.UserId, x.WorksheetInstanceId })
+            .IsUnique()
+            .HasDatabaseName(StudentActivityCompletion_UserInstanceIndex);
+        modelBuilder.Entity<StudentActivityCompletion>()
+            .HasIndex(x => new { x.UserId, x.ActivityId });
+        modelBuilder.Entity<StudentActivityCompletion>()
+            .HasIndex(x => new { x.UserId, x.ActivityDate });
     }
 }

@@ -118,8 +118,12 @@ export class TestService {
     return this.http.post<TestSessionResult>(`${this.baseUrl}/save-answer`, studentAnswer);
   }
 
-  completeTest(testInstanceId: number): Observable<TestSessionResult> {
-    return this.http.put<TestSessionResult>(`${this.baseUrl}/end-test/${testInstanceId}`, null);
+  /**
+   * `PUT end-test`. Issue #572: etkinlik oynatıcısı ölçtüğü etkin süreyi (`activeSeconds`) gövdede gönderir; testler gövdesiz
+   * çağırır (sunucu testte gövdeyi yok sayar).
+   */
+  completeTest(testInstanceId: number, body?: { activeSeconds: number }): Observable<TestSessionResult> {
+    return this.http.put<TestSessionResult>(`${this.baseUrl}/end-test/${testInstanceId}`, body ?? null);
   }
 
   startTest(testInstanceId: number): Observable<TestStartResult> {

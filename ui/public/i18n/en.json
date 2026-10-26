@@ -575,7 +575,8 @@
         "info": "{{correct}} / {{total}} correct",
         "todayTitle": "Today",
         "todayLine": "{{activities}} activities · {{minutes}} min active time · {{streak}} days in a row",
-        "badgeLine": "{{name}} · {{current}}/{{target}} activities",
+        "badgeLine": "{{name}} badge: {{current}}/{{target}} activities",
+        "badgeAria": "{{name}} badge progress",
         "badgeRemaining": "{{count}} more activities!",
         "next": "Next activity",
         "backToList": "Back to the list"

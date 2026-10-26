@@ -840,7 +840,12 @@ public class TestSessionService : ITestSessionService
     /// writing, which is what serializes "complete" against an in-flight answer (see the comment there).
     /// </para>
     /// </summary>
-    public async Task<TestSessionResultDto> EndTest(int testInstanceId, int userId, CancellationToken ct = default)
+    public Task<TestSessionResultDto> EndTest(int testInstanceId, int userId, CancellationToken ct = default)
+        => EndTest(testInstanceId, userId, request: null, clientId: null, ct);
+
+    /// <inheritdoc />
+    public async Task<TestSessionResultDto> EndTest(
+        int testInstanceId, int userId, EndTestRequestDto? request, string? clientId, CancellationToken ct = default)
     {
         // issue #396: a Started instance past its time limit (+ tolerance) is closed as Expired, not Completed — the
         // conditional write in ExpireIfOverdueAsync races with SaveAnswer/another EndTest on the same row lock; the
@@ -886,6 +891,10 @@ public class TestSessionService : ITestSessionService
         var parentPlan = openKind is { } kind && kind != WorksheetKind.Activity
             ? await PlanParentNotificationsAsync(testInstanceId, userId, timing!.StudentId, timing.WorksheetId, timing.StartTime, ct)
             : null;
+        // issue #572: etkinlik tamamlanınca tek ActivityCompletedEvent — atama / ders / konu transaction DIŞINDA okunur (salt okuma).
+        var activityPlan = openKind == WorksheetKind.Activity
+            ? await PlanActivityCompletionAsync(timing!.StudentId, timing.WorksheetId, timing.StartTime, ct)
+            : null;
         var now = DateTime.UtcNow; // issue #423 (m2): plandan SONRA alınır, EndTime/event zamanı gerçek tamamlanmaya yakın olur
 
         // ExecuteUpdate bypasses the SaveChanges audit hook, so UpdateTime/UpdateUserId are stamped here (the caller
@@ -905,7 +914,7 @@ public class TestSessionService : ITestSessionService
                 .SetProperty(ti => ti.UpdateUserId, (int?)userId), ct);
 
         var completed = 0;
-        if (parentPlan == null)
+        if (parentPlan == null && activityPlan == null)
         {
             completed = await ConditionalComplete();
         }
@@ -917,12 +926,20 @@ public class TestSessionService : ITestSessionService
                 _context.ChangeTracker.Clear();
                 await using var tx = await _context.Database.BeginTransactionAsync(ct);
                 completed = await ConditionalComplete();
-                if (completed == 1)
+                if (completed == 1 && parentPlan != null)
                 {
                     // UPDATE satır kilidini tutuyor ve Completed sonrası cevap yazımı reddediliyor → sayılar kesin.
                     // Security M1: Active veliler transaction İÇİNDE (FOR SHARE) yeniden okunur; plan ∩ şimdiki Active.
                     var stillActive = await ParentNotificationSupport.ActiveParentIdsLockedAsync(_context, parentPlan.StudentId, ct);
                     await AddParentCompletedEventsAsync(parentPlan, stillActive, testInstanceId, now, ct);
+                    await _context.SaveChangesAsync(ct);
+                }
+                else if (completed == 1 && activityPlan != null)
+                {
+                    // issue #572: event yalnız bu çağrı Started → Completed yaptıysa (1 satır) ve AYNI transaction'da yazılır; ikinci
+                    // EndTest 0 satır günceller → ikinci event yok. Satır kilidi tutulduğu için madde sayısı / süreler kesin.
+                    await AddActivityCompletedEventAsync(
+                        activityPlan, testInstanceId, userId, clientId, request?.ActiveSeconds, timing!.StartTime, now, ct);
                     await _context.SaveChangesAsync(ct);
                 }
                 await tx.CommitAsync(ct);
@@ -1239,6 +1256,140 @@ public class TestSessionService : ITestSessionService
         ErrorCode = source.ErrorCode,
         Reason = source.Reason
     };
+
+    /// <summary>issue #572: etkinlik tamamlama event'inin transaction öncesi okunan alanları.</summary>
+    private sealed record ActivityCompletionPlan(int StudentId, int WorksheetId, int? AssignmentId, int? SubjectId, int? TopicId);
+
+    /// <summary>
+    /// issue #572: atama (öğrenciye görünür, oturumu penceresinde sayan — <see cref="AssignmentInstanceWindow.Counts"/>; öğrenci
+    /// hedefli olan önce, sonra en yeni), etkinliğin ders/konusu. Worksheet sorgu filtresi yok sayılır (çözüm sırasında silinen
+    /// etkinlik de tamamlanır, <see cref="WorksheetKindOfInstanceAsync"/> ile aynı).
+    /// </summary>
+    private async Task<ActivityCompletionPlan> PlanActivityCompletionAsync(
+        int studentId, int worksheetId, DateTime instanceStartTime, CancellationToken ct)
+    {
+        var worksheet = await _context.Worksheets.AsNoTracking().IgnoreQueryFilters()
+            .Where(w => w.Id == worksheetId)
+            .Select(w => new { w.SubjectId, w.TopicId })
+            .FirstOrDefaultAsync(ct);
+
+        int? assignmentId = null;
+        var student = await _context.Students.AsNoTracking()
+            .Where(s => s.Id == studentId)
+            .Select(s => new { s.GradeId, VerifiedSchoolId = s.SchoolVerifiedAt != null ? s.SchoolId : null })
+            .FirstOrDefaultAsync(ct);
+        if (student != null)
+        {
+            var planNow = DateTime.UtcNow;
+            var windows = await _context.WorksheetAssignments.AsNoTracking()
+                .Where(WorksheetStudentAccess.AssignmentVisibleTo(studentId, student.GradeId, student.VerifiedSchoolId))
+                .Where(a => a.WorksheetId == worksheetId && a.StartAt <= planNow)
+                .OrderByDescending(a => a.StudentId != null).ThenByDescending(a => a.StartAt).ThenByDescending(a => a.Id)
+                .Take(ParentAssignmentScope.MaxRows)
+                .Select(a => new { a.Id, a.StartAt, a.EndAt })
+                .ToListAsync(ct);
+            assignmentId = windows
+                .Where(w => AssignmentInstanceWindow.Counts(instanceStartTime, WorksheetInstanceStatus.Started, w.StartAt, w.EndAt))
+                .Select(w => (int?)w.Id)
+                .FirstOrDefault();
+        }
+
+        return new ActivityCompletionPlan(studentId, worksheetId, assignmentId, worksheet?.SubjectId, worksheet?.TopicId);
+    }
+
+    /// <summary>
+    /// issue #572: etkin süre kırpması — <c>clamp(bildirilen, 0, min(<see cref="ActivityOptions.MaxActiveSecondsPerActivity"/>,
+    /// windowStart → now sn))</c>. Bildirilen yoksa maddelerin <c>TimeTaken</c> toplamı aynı kuralla. review M1: windowStart
+    /// oturumun başlangıcı ya da öğrencinin bu oturumla çakışan başka bir etkinliğinin en geç bitişi (bkz.
+    /// <see cref="ActivityWindowStartAsync"/>) — paralel açılan etkinlikler aynı saati birden çok kez saydıramaz.
+    /// </summary>
+    internal static int ClampActiveSeconds(long reportedOrFallback, DateTime windowStart, DateTime now)
+    {
+        var elapsed = Math.Max(0L, (long)(now - windowStart).TotalSeconds);
+        var upper = Math.Min(ActivityOptions.MaxActiveSecondsPerActivity, elapsed);
+        return (int)Math.Clamp(reportedOrFallback, 0L, upper);
+    }
+
+    /// <summary>
+    /// issue #572 (review M1): süre penceresinin başı = <c>max(StartTime, öğrencinin bu oturum başladıktan SONRA biten diğer
+    /// Completed etkinlik oturumlarının en geç EndTime'ı)</c>. Çakışan aralıklar böylece bir kez sayılır: önce biten etkinlik
+    /// [başlangıç, bitiş]'i, sonraki yalnız [o bitiş, şimdi]'yi alabilir. <see cref="ActivityCompletionLock"/> altında çağrılır
+    /// (eşzamanlı tamamlamalar birbirinin commit'ini görür). Soft-delete edilmiş worksheet'in oturumu da sayılır (süre harcandı).
+    /// </summary>
+    private async Task<DateTime> ActivityWindowStartAsync(int studentId, int testInstanceId, DateTime startTime, CancellationToken ct)
+    {
+        var latestOtherEnd = await _context.TestInstances.AsNoTracking().IgnoreQueryFilters()
+            .Where(ti => ti.StudentId == studentId
+                && ti.Id != testInstanceId
+                && !ti.IsDeleted
+                && ti.Status == WorksheetInstanceStatus.Completed
+                && ti.EndTime != null && ti.EndTime > startTime
+                && _context.Worksheets.IgnoreQueryFilters().Any(w => w.Id == ti.WorksheetId && w.Kind == WorksheetKind.Activity))
+            .MaxAsync(ti => ti.EndTime, ct);
+        return latestOtherEnd is { } end && end > startTime ? end : startTime;
+    }
+
+    /// <summary>
+    /// issue #572: tek <see cref="ActivityCompletedEvent"/> + <c>WorksheetInstance.ActiveSeconds</c>; çağıranın transaction'ında
+    /// (koşullu Completed UPDATE'inden SONRA, satır kilidi tutulurken), çağıranın SaveChanges'iyle. Doğru/yanlış sayısı taşınmaz.
+    /// </summary>
+    private async Task AddActivityCompletedEventAsync(
+        ActivityCompletionPlan plan, int testInstanceId, int userId, string? clientId, int? reportedActiveSeconds,
+        DateTime startTime, DateTime completedAtUtc, CancellationToken ct)
+    {
+        // review M1: öğrencinin etkinlik tamamlamaları seri — pencere hesabı önceki (eşzamanlı) tamamlamanın commit'ini görür.
+        await _context.Database.AcquireActivityCompletionLockAsync(plan.StudentId, ct);
+
+        // Oturumun kendi (silinmemiş) satırları; sorgu filtreleri bilerek yok sayılır (review minor): madde sayısı, süre ve ders
+        // yedeği aynı kümeden gelir — çözüm sırasında soru / worksheet-soru bağı soft-delete edilse de madde çözülmüştür ve
+        // dersi anlamlıdır (WorksheetKindOfInstanceAsync ile aynı yaklaşım).
+        var rows = _context.TestInstanceQuestions.AsNoTracking().IgnoreQueryFilters()
+            .Where(q => q.WorksheetInstanceId == testInstanceId && !q.IsDeleted);
+        var itemCount = await rows.CountAsync(ct);
+        // M2: cevaplı madde sayısı — Completed + satır kilidi altında, sonradan cevap yazılamaz → kesin.
+        var answeredItemCount = await rows.CountAsync(q => q.SelectedAnswerId != null || q.AnswerPayload != null, ct);
+
+        long reported = reportedActiveSeconds
+            ?? await rows.SumAsync(q => (long)q.TimeTaken, ct);
+        var windowStart = await ActivityWindowStartAsync(plan.StudentId, testInstanceId, startTime, ct);
+        var activeSeconds = ClampActiveSeconds(reported, windowStart, completedAtUtc);
+
+        // Etkinliğin dersi yoksa maddelerin en sık dersi (eşitlikte küçük id — deterministik).
+        var subjectId = plan.SubjectId ?? await rows
+            .Where(q => q.WorksheetQuestion.Question.SubjectId != null)
+            .GroupBy(q => q.WorksheetQuestion.Question.SubjectId)
+            .OrderByDescending(g => g.Count()).ThenBy(g => g.Key)
+            .Select(g => g.Key)
+            .FirstOrDefaultAsync(ct);
+
+        await _context.TestInstances
+            .Where(ti => ti.Id == testInstanceId)
+            .ExecuteUpdateAsync(s => s.SetProperty(ti => ti.ActiveSeconds, (int?)activeSeconds), ct);
+
+        var outboxId = Guid.NewGuid();
+        _context.OutboxMessages.Add(new OutboxMessage
+        {
+            Id = outboxId,
+            Type = OutboxEventRegistry.NameFor<ActivityCompletedEvent>(),
+            Content = JsonSerializer.Serialize(new ActivityCompletedEvent
+            {
+                EventId = outboxId,
+                UserId = userId,
+                StudentId = plan.StudentId,
+                ClientId = string.IsNullOrEmpty(clientId) ? null : clientId,
+                ActivityId = plan.WorksheetId,
+                WorksheetInstanceId = testInstanceId,
+                AssignmentId = plan.AssignmentId,
+                SubjectId = subjectId,
+                TopicId = plan.TopicId,
+                ItemCount = itemCount,
+                AnsweredItemCount = answeredItemCount,
+                ActiveSeconds = activeSeconds,
+                CompletedAtUtc = DateTime.SpecifyKind(completedAtUtc, DateTimeKind.Utc)
+            }),
+            CreatedAt = completedAtUtc
+        });
+    }
 
     private sealed record ParentCompletionPlan(
         int StudentId,

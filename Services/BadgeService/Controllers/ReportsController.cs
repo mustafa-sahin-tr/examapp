@@ -59,6 +59,21 @@ public class ReportsController : ControllerBase
         return Ok(report);
     }
 
+    /// <summary>Issue #572: günlük etkinlik özeti + en yakın (kazanılmamış) etkinlik rozetleri.</summary>
+    [HttpGet("users/{userId:int}/activity-summary")]
+    public async Task<ActionResult<ActivitySummaryDto>> GetActivitySummaryAsync(
+        int userId,
+        CancellationToken cancellationToken)
+    {
+        if (!await CanViewReportAsync(userId, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        var report = await _reportService.GetActivitySummaryAsync(userId, cancellationToken: cancellationToken);
+        return Ok(report);
+    }
+
     /// <summary>
     /// IDOR koruması (issue #165): route'taki <paramref name="requestedUserId"/> ile token'daki
     /// kimliğin aynı kişi olduğunu doğrular. Admin rolü açık istisnadır. Rapor servisi ancak bu

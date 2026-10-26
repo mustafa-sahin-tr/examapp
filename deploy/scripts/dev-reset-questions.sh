@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Dev-only: soru bankasını sıfırlar — tüm sorular (ve onlara bağlı her şey), öğrencilerin test oturumları
 # (TestInstances) ve bu cevaplardan türeyen puan/rozet verisi (exam DB + badge DB), MinIO'daki soru/şık/paragraf
-# görselleri, işaretleme ekranı kayıtları (LabelingPages/LabelingResults) ve bekleyen QuestionCreated /
+# görselleri, işaretleme ekranı kayıtları (LabelingPages/LabelingResults) ve bekleyen QuestionCreated / ActivityCompleted /
 # StudentPointsChanged / StudentBadgeEarned outbox mesajları silinir. İsteğe bağlı olarak question-detector eğitim
 # verisi (dataset/) de sıfırlanır; o zaman işaretleme ekranı her sayfayı yeniden "işaretlenmemiş" sayar.
 #
@@ -17,7 +17,7 @@
 # badge DB — öğrencinin kendi "ilerlemeyi sıfırla" ucunun (POST api/student/me/reset, #243, BadgeService
 # UserResetService) sildiği tabloların TÜM öğrenciler için toplu hali: BadgeEarned, StudentBadgeProgresses,
 # StudentDailyActivities, StudentQuestionAggregates, StudentSubjectAggregates, ProcessedAnswerSubmissions,
-# AnswerPointAwards, UserResetMarkers; Notifications'tan yalnız Type='BadgeEarned' satırları; bekleyen
+# AnswerPointAwards, UserResetMarkers, StudentActivityCompletions (#572); Notifications'tan yalnız Type='BadgeEarned' satırları; bekleyen
 # StudentPointsChanged/StudentBadgeEarned outbox mesajları. BadgeDefinitions, diğer bildirimler, locale tercihleri kalır.
 # (Uygulama içi uç öğrenci başına ve soft-delete'tir; burası dev'de her şeyi sert siler.)
 #
@@ -147,6 +147,7 @@ psql_exec -At -c "
       || '  Passage=' || (SELECT count(*) FROM \"Passage\")
       || '  LabelingPages=' || (SELECT count(*) FROM \"LabelingPages\")
       || '  QuestionCreated outbox (bekleyen)=' || (SELECT count(*) FROM \"OutboxMessages\" WHERE \"Type\" LIKE '%QuestionCreated%' AND \"ProcessedAt\" IS NULL)
+      || '  ActivityCompleted outbox (bekleyen)=' || (SELECT count(*) FROM \"OutboxMessages\" WHERE \"Type\" LIKE '%ActivityCompleted%' AND \"ProcessedAt\" IS NULL)
       || E'\n  TestInstances=' || (SELECT count(*) FROM \"TestInstances\")
       || '  StudentPoints=' || (SELECT count(*) FROM \"StudentPoints\")
       || '  StudentBadges=' || (SELECT count(*) FROM \"StudentBadges\")
@@ -155,6 +156,7 @@ badge_psql_exec -At -c "
   SELECT '  [badge] BadgeEarned=' || (SELECT count(*) FROM \"BadgeEarned\")
       || '  AnswerPointAwards=' || (SELECT count(*) FROM \"AnswerPointAwards\")
       || '  StudentDailyActivities=' || (SELECT count(*) FROM \"StudentDailyActivities\")
+      || '  StudentActivityCompletions=' || (SELECT count(*) FROM \"StudentActivityCompletions\")
       || '  BadgeEarned bildirimi=' || (SELECT count(*) FROM \"Notifications\" WHERE \"Type\" = 'BadgeEarned');"
 echo "MinIO nesneleri:"
 for p in "${MINIO_PREFIXES[@]}"; do
@@ -222,7 +224,7 @@ TRUNCATE TABLE "Questions", "Answers", "Passage", "LabelingResults", "LabelingPa
   "StudentBadgeProjections", "StudentDailyXps"
   RESTART IDENTITY CASCADE;
 UPDATE "Students" SET "ProgressResetAtUtc" = NULL WHERE "ProgressResetAtUtc" IS NOT NULL;
-DELETE FROM "OutboxMessages" WHERE "Type" LIKE '%QuestionCreated%' AND "ProcessedAt" IS NULL;
+DELETE FROM "OutboxMessages" WHERE ("Type" LIKE '%QuestionCreated%' OR "Type" LIKE '%ActivityCompleted%') AND "ProcessedAt" IS NULL;
 COMMIT;
 SQL
 
@@ -233,7 +235,7 @@ echo "▶ Postgres ($BADGE_DB): puan/rozet hesap tabloları boşaltılıyor…"
 badge_psql_exec <<'SQL'
 BEGIN;
 TRUNCATE TABLE "BadgeEarned", "StudentBadgeProgresses", "StudentDailyActivities", "StudentQuestionAggregates",
-  "StudentSubjectAggregates", "ProcessedAnswerSubmissions", "AnswerPointAwards", "UserResetMarkers"
+  "StudentSubjectAggregates", "ProcessedAnswerSubmissions", "AnswerPointAwards", "UserResetMarkers", "StudentActivityCompletions"
   RESTART IDENTITY CASCADE;
 DELETE FROM "Notifications" WHERE "Type" = 'BadgeEarned';
 DELETE FROM "OutboxMessages" WHERE ("Type" LIKE '%StudentPointsChanged%' OR "Type" LIKE '%StudentBadgeEarned%') AND "ProcessedAt" IS NULL;

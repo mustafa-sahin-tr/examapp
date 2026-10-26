@@ -261,7 +261,8 @@ public class BadgeIconTests : IDisposable
         }
 
         await using var read = _db.NewContext();
-        var all = await read.BadgeDefinitions.AsNoTracking().ToListAsync();
+        // Issue #572: "activity-" seed'leri sonradan eklendi (IconUrl'siz, yalnız Icon); bu test özgün 37 seed'i pinler.
+        var all = (await read.BadgeDefinitions.AsNoTracking().ToListAsync()).Where(b => !b.Code.StartsWith("activity-", StringComparison.Ordinal)).ToList();
 
         all.Count.ShouldBe(37);
         foreach (var badge in all)

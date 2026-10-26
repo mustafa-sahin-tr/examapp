@@ -284,6 +284,69 @@ public class BadgeSeeder
                 pathOrder: i + 1));
         }
 
+        // Issue #572 (epic #569): etkinlik rozetleri — puansız; soru aggregate'lerinden değil tamamlanan etkinliklerden
+        // (ActivityCompletedEvent) beslenir. Ders filtresi yok. Kodlar "activity-" önekli (BadgeSeederTests/backfill
+        // testleri bu öneki #148/#149 öncesi eşleme haritasından hariç tutar).
+        var activityCountMilestones = new (string Name, int Target, string Icon)[]
+        {
+            ("Kâşif", 10, "explore"),
+            ("Gezgin", 50, "travel_explore"),
+            ("Usta Kâşif", 100, "emoji_events")
+        };
+
+        for (var i = 0; i < activityCountMilestones.Length; i++)
+        {
+            var milestone = activityCountMilestones[i];
+            desiredBadges.Add(CreateBadge(
+                code: $"activity-count-{i + 1}",
+                name: milestone.Name,
+                description: $"{milestone.Target} farklı etkinlik tamamladın.",
+                category: "Etkinlik",
+                ruleType: "CompletedActivityCount",
+                config: new { target = milestone.Target },
+                iconUrl: null,
+                icon: milestone.Icon,
+                pathKey: "activity-explorer",
+                pathName: "Kâşif Yolu",
+                pathOrder: i + 1));
+        }
+
+        var activityTimeMilestones = new (string Name, int Minutes, string Description, string Icon)[]
+        {
+            ("Etkinlik Çalışkanı", 300, "Etkinliklerde toplam 5 saat çalıştın.", "hourglass_top"),
+            ("Etkinlik Maratoncusu", 1200, "Etkinliklerde toplam 20 saat çalıştın.", "timer")
+        };
+
+        for (var i = 0; i < activityTimeMilestones.Length; i++)
+        {
+            var milestone = activityTimeMilestones[i];
+            desiredBadges.Add(CreateBadge(
+                code: $"activity-time-{i + 1}",
+                name: milestone.Name,
+                description: milestone.Description,
+                category: "Etkinlik",
+                ruleType: "ActivityStudyTimeMinutes",
+                config: new { target = milestone.Minutes },
+                iconUrl: null,
+                icon: milestone.Icon,
+                pathKey: "activity-time",
+                pathName: "Etkinlik Süresi Yolu",
+                pathOrder: i + 1));
+        }
+
+        desiredBadges.Add(CreateBadge(
+            code: "activity-streak-1",
+            name: "Etkinlik Serisi",
+            description: "7 gün üst üste etkinlik tamamladın.",
+            category: "Etkinlik",
+            ruleType: "ActivityDayStreak",
+            config: new { target = 7 },
+            iconUrl: null,
+            icon: "local_fire_department",
+            pathKey: "activity-streak",
+            pathName: "Etkinlik Seri Yolu",
+            pathOrder: 1));
+
         return desiredBadges;
     }
 

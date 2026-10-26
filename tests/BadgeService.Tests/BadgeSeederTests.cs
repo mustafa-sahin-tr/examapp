@@ -174,7 +174,8 @@ public class BadgeSeederTests : IDisposable
             ["Sürekli Öğrenen"] = "active-days-3",
         };
 
-        var desired = BadgeSeeder.GetDesiredNameCodePairsForTesting();
+        // Issue #572: "activity-" seed'leri #148 migration'ından sonra eklendi; backfill haritasında yer almaz.
+        var desired = BadgeSeeder.GetDesiredNameCodePairsForTesting().Where(d => !d.Code.StartsWith("activity-", StringComparison.Ordinal)).ToList();
 
         desired.Count.ShouldBe(migrationNameToCode.Count);
         foreach (var (name, code) in desired)

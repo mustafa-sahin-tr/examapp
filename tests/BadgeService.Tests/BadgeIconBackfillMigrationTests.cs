@@ -67,7 +67,8 @@ public class BadgeIconBackfillMigrationTests : IClassFixture<BadgeIconBackfillPo
     [Fact]
     public async Task Backfill_sets_the_seeder_icon_on_every_untouched_seed_row()
     {
-        var desired = BadgeSeeder.GetDesiredIconsForTesting();
+        // Issue #572: "activity-" seed'leri #149 backfill migration'ından sonra eklendi.
+        var desired = BadgeSeeder.GetDesiredIconsForTesting().Where(d => !d.Code.StartsWith("activity-", StringComparison.Ordinal)).ToList();
         desired.Count.ShouldBe(37);
 
         await using (var db = NewDb())

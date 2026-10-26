@@ -114,7 +114,7 @@ public class BadgeRuleTypeCatalogTests
     [Fact]
     public void All_returns_a_schema_per_canonical_rule_type()
     {
-        BadgeRuleTypeCatalog.All.Count.ShouldBe(9);
+        BadgeRuleTypeCatalog.All.Count.ShouldBe(12); // 9 + #572 etkinlik kuralları (3)
         BadgeRuleTypeCatalog.All.ShouldAllBe(s => s.Fields.Count > 0);
     }
 }

@@ -5,8 +5,9 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
 
-import { ActivityPlayerComponent } from './activity-player.component';
+import { ACTIVITY_SUMMARY_REFETCH_MS, ActivityPlayerComponent } from './activity-player.component';
 import { ActivityService } from '../../services/activity.service';
+import { BadgeService } from '../../services/badge.service';
 import { TestService } from '../../services/test.service';
 import { TestInstance, TestStatus } from '../../models/test-instance';
 import { WorksheetKind } from '../../models/activity';
@@ -86,10 +87,21 @@ function instance(overrides: Partial<TestInstance> = {}, questionOverrides: Reco
 }
 
 describe('ActivityPlayerComponent (#573)', () => {
-  afterEach(() => (testServiceAssignments = []));
+  beforeEach(() => localStorage.setItem('user', JSON.stringify({ id: 77 })));
+  afterEach(() => {
+    testServiceAssignments = [];
+    summaryResponse = { today: { activityCount: 0, activeMinutes: 0, streakDays: 0 }, badges: [] };
+    fixture?.destroy();
+    sessionStorage.removeItem('activity.activeSeconds:42');
+    localStorage.removeItem('user');
+    vi.useRealTimers();
+  });
   let fixture: ComponentFixture<ActivityPlayerComponent>;
   let testService: Record<string, Mock>;
   let activityService: { check: Mock; getSolutions: Mock };
+  let badgeService: { getActivitySummary: Mock };
+  /** `create()` öncesi ayarlanırsa `getActivitySummary` bunu döner. */
+  let summaryResponse: unknown = { today: { activityCount: 0, activeMinutes: 0, streakDays: 0 }, badges: [] };
   let router: Router;
   /** `create()` öncesi ayarlanırsa `getActiveAssignments` bunu döner. */
   let testServiceAssignments: unknown[] = [];
@@ -110,6 +122,11 @@ describe('ActivityPlayerComponent (#573)', () => {
       startTest: vi.fn(),
     };
     activityService = { check: vi.fn(), getSolutions: vi.fn() };
+    badgeService = {
+      getActivitySummary: vi
+        .fn()
+        .mockImplementation(() => (summaryResponse instanceof Error ? throwError(() => summaryResponse) : of(summaryResponse))),
+    };
 
     TestBed.configureTestingModule({
       imports: [
@@ -127,6 +144,7 @@ describe('ActivityPlayerComponent (#573)', () => {
         provideRouter([]),
         { provide: TestService, useValue: testService },
         { provide: ActivityService, useValue: activityService },
+        { provide: BadgeService, useValue: badgeService },
         { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ testInstanceId: '42' })) } },
       ],
     });
@@ -524,5 +542,98 @@ describe('ActivityPlayerComponent (#573)', () => {
     await create();
 
     expect(q('item-content')?.getAttribute('aria-label')).toBe('Madde b içeriği');
+  });
+
+  // ---------------------------------------------------------------------------
+  // Issue #572: etkin süre + "Bugün" / rozet kartları
+  // ---------------------------------------------------------------------------
+
+  const pointer = () => q('item-content')!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+
+  it('i572_Finish_SendsActiveSeconds_SeededFromTimeTaken_ExcludingIdleGap', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-26T10:00:00Z'));
+    await create(instance({ checkCount: 1 })); // timeTaken toplamı 5 sn → başlangıç
+    vi.setSystemTime(new Date('2026-10-26T10:00:30Z'));
+    pointer(); // +30
+    vi.setSystemTime(new Date('2026-10-26T10:05:30Z')); // 5 dk hareketsiz → sayılmaz
+    pointer();
+    vi.setSystemTime(new Date('2026-10-26T10:05:40Z')); // +10 (bitir tıklaması)
+
+    await fixture.componentInstance.finish();
+
+    expect(testService['completeTest']).toHaveBeenCalledWith(42, { activeSeconds: 45 });
+  });
+
+  it('i572_ActiveSeconds_CappedAt1800', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-26T10:00:00Z'));
+    await create(instance({ checkCount: 1 }, [{ timeTaken: 1500 }, { timeTaken: 400 }]));
+    vi.setSystemTime(new Date('2026-10-26T10:01:00Z'));
+    pointer();
+
+    await fixture.componentInstance.finish();
+
+    expect(testService['completeTest']).toHaveBeenCalledWith(42, { activeSeconds: 1800 });
+  });
+
+  it('i572_Reload_SeedsFromSessionStorage', async () => {
+    sessionStorage.setItem('activity.activeSeconds:42', '120');
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-26T10:00:00Z'));
+    await create(instance({ checkCount: 1 }));
+
+    await fixture.componentInstance.finish(); // aynı an → +0
+
+    expect(testService['completeTest']).toHaveBeenCalledWith(42, { activeSeconds: 120 });
+    expect(sessionStorage.getItem('activity.activeSeconds:42')).toBeNull();
+  });
+
+  it('i572_Finished_ShowsTodayAndBadgeCards_NoPoints', async () => {
+    summaryResponse = {
+      today: { activityCount: 2, activeMinutes: 14, streakDays: 3 },
+      badges: [{ code: 'activity-count-1', name: 'Kâşif', current: 8, target: 10, earned: false }],
+    };
+    await create(instance({ status: TestStatus.Completed, checkCount: 1 }));
+
+    expect(badgeService.getActivitySummary).toHaveBeenCalledWith(77);
+    expect(q('today-card')?.textContent).toContain('2 etkinlik · 14 dk etkin süre · 3 gün üst üste');
+    expect(q('badge-card')?.textContent).toContain('Kâşif rozeti: 8/10 etkinlik');
+    expect(q('activity-summary')?.textContent).not.toMatch(/%|puan|XP/i);
+  });
+
+  it('i572_SummaryFailure_HidesCards_NoToast', async () => {
+    summaryResponse = new HttpErrorResponse({ status: 500 });
+    await create(instance({ status: TestStatus.Completed, checkCount: 1 }));
+
+    expect(q('activity-summary')).not.toBeNull();
+    expect(q('today-card')).toBeNull();
+    expect(q('badge-card')).toBeNull();
+    expect(document.querySelector('mat-snack-bar-container')).toBeNull();
+  });
+
+  it('i572_InProgress_DoesNotFetchSummary', async () => {
+    await create();
+
+    expect(badgeService.getActivitySummary).not.toHaveBeenCalled();
+  });
+
+  it('i572_AfterFinish_RefetchesSummaryOnceAfterDelay', async () => {
+    await create(instance({ checkCount: 1 }));
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    summaryResponse = { today: { activityCount: 0, activeMinutes: 0, streakDays: 0 }, badges: [] };
+
+    await fixture.componentInstance.finish();
+    fixture.detectChanges();
+    expect(badgeService.getActivitySummary).toHaveBeenCalledTimes(1);
+    expect(q('today-card')).toBeNull();
+
+    summaryResponse = { today: { activityCount: 1, activeMinutes: 3, streakDays: 1 }, badges: [] };
+    await vi.advanceTimersByTimeAsync(ACTIVITY_SUMMARY_REFETCH_MS);
+    fixture.detectChanges();
+    await vi.advanceTimersByTimeAsync(10 * ACTIVITY_SUMMARY_REFETCH_MS);
+
+    expect(badgeService.getActivitySummary).toHaveBeenCalledTimes(2);
+    expect(q('today-card')?.textContent).toContain('1 etkinlik · 3 dk etkin süre · 1 gün üst üste');
   });
 });

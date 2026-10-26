@@ -143,8 +143,8 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         classification.RemoveQuestionFromTest(Arg.Any<int>(), Arg.Any<int>()).Returns(new ResponseBaseDto { Success = true });
 
         var query = Substitute.For<IQuestionQueryService>();
-        query.GetQuestionById(Arg.Any<int>()).Returns(new QuestionDto { Id = 1, ImageUrl = "q/question.jpg" });
-        query.GetQuestionByTestId(Arg.Any<int>()).Returns(new List<QuestionDto>());
+        query.GetQuestionById(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(new QuestionDto { Id = 1, ImageUrl = "q/question.jpg" });
+        query.GetQuestionByTestId(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(new List<QuestionDto>());
         query.GetLastTenPassages(Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(new List<PassageDto>());
         query.SearchBankAsync(Arg.Any<QuestionBankQuery>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(new QuestionBankPageDto { Total = 0 });
@@ -432,6 +432,44 @@ public class QuestionsControllerAuthorizationTests : IDisposable
 
         (await SendAsync(client, Owner, HttpMethod.Put, $"/api/questions/{_legacyQuestion}/correct-answer",
             new { correctAnswerId = 1, scale = 1 })).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    // ---------------- issue #570: çözüm görünürlüğü — görüntüleyen kimliği ve admin bayrağı servise geçer ----------------
+
+    [Fact]
+    public async Task GetQuestionById_OwnerTeacher_PassesViewerIdWithoutAdminFlag()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        var response = await SendAsync(client, Owner, HttpMethod.Get, $"/api/questions/{_legacyQuestion}");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        await _questionQuery.Received(1).GetQuestionById(_legacyQuestion, OwnerTeacher, false, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetQuestionById_Admin_PassesAdminFlag()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        var response = await SendAsync(client, Admin, HttpMethod.Get, $"/api/questions/{_legacyQuestion}");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        await _questionQuery.Received(1).GetQuestionById(_legacyQuestion, AdminUser, true, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetQuestionByTestId_CopierTeacher_PassesViewerIdWithoutAdminFlag()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        var response = await SendAsync(client, Copier, HttpMethod.Get, $"/api/questions/bytest/{_copyWorksheet}");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        await _questionQuery.Received(1).GetQuestionByTestId(_copyWorksheet, CopierTeacher, false, Arg.Any<CancellationToken>());
     }
 
     // ---------------- issue #471: GET api/questions/bank ----------------

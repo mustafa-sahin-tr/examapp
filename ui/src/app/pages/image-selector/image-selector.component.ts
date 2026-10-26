@@ -76,9 +76,6 @@ interface DragDropLabelingPlanV1 {
   type: 'dragDropLabeling';
   dropZones: Array<{ id: string; x: number; y: number; width: number; height: number }>;
   draggables: Array<{ id: string; label: string }>;
-  solution?: {
-    placements: Array<{ draggableId: string; dropZoneId: string }>;
-  };
 }
 
 interface DragDropLabelingAuthoringState {
@@ -1391,7 +1388,9 @@ export class ImageSelectorComponent {
       messages.push(this.tr('warnings.noDraggables'));
     }
     if (region.isExample) {
-      const placements = plan?.solution?.placements ?? [];
+      const placements = this.getInteractionType(region.name) === 'dragDropLabeling'
+        ? this.ensureLabelingState(region.name).placements
+        : [];
       if (placements.length === 0) {
         messages.push(this.tr('warnings.noSolutionPlacements'));
       }
@@ -2023,9 +2022,6 @@ export class ImageSelectorComponent {
       type: 'dragDropLabeling',
       dropZones: state.dropZones,
       draggables: state.draggables,
-      solution: {
-        placements: state.placements,
-      },
     };
   }
 
@@ -2033,6 +2029,16 @@ export class ImageSelectorComponent {
     const plan = this.buildInteractionPlan(regionName);
     if (!plan) return null;
     return JSON.stringify(plan);
+  }
+
+  /**
+   * issue #570: doğru yerleşimler plandan ayrı gönderilir (`BulkQuestionDto.interactionSolution`); plan çözüm taşımaz,
+   * aksi halde öğrenciye giden plan cevabı sızdırırdı. dragDropLabeling dışında null.
+   */
+  private buildInteractionSolutionJson(regionName: string): string | null {
+    if (this.getInteractionType(regionName) !== 'dragDropLabeling') return null;
+    const state = this.ensureLabelingState(regionName);
+    return JSON.stringify({ placements: state.placements });
   }
 
   selectQuestion(index: number) {
@@ -2593,6 +2599,7 @@ export class ImageSelectorComponent {
         exampleAnswer: this.isExample(region.name) ? this.getExampleAnswer(region.name) : null,
         interactionType: this.getInteractionType(region.name),
         interactionPlan: this.buildInteractionPlanJson(region.name),
+        interactionSolution: this.buildInteractionSolutionJson(region.name),
       })),
       header: header,
     };
@@ -2630,6 +2637,7 @@ export class ImageSelectorComponent {
         exampleAnswer: this.isExample(region.name) ? this.getExampleAnswer(region.name) : null,
         interactionType: this.getInteractionType(region.name),
         interactionPlan: this.buildInteractionPlanJson(region.name),
+        interactionSolution: this.buildInteractionSolutionJson(region.name),
       })),
       header: header,
     };

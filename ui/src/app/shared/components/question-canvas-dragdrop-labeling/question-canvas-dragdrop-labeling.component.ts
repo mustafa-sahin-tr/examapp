@@ -13,9 +13,11 @@ export interface DragDropLabelingPlanV1 {
   type: 'dragDropLabeling';
   dropZones: Array<{ id: string; x: number; y: number; width: number; height: number }>;
   draggables: Array<{ id: string; label: string }>;
-  solution?: {
-    placements: Array<{ draggableId: string; dropZoneId: string }>;
-  };
+}
+
+/** issue #570: doğru yerleşimler plandan ayrı gelir (`QuestionDto.interactionSolution`). */
+export interface DragDropLabelingSolution {
+  placements: DragDropLabelingPlacement[];
 }
 
 export interface DragDropLabelingPlacement {
@@ -50,6 +52,14 @@ export class QuestionCanvasDragDropLabelingComponent {
     this.resetStateFromPlan();
   }
 
+  /**
+   * issue #570: doğru yerleşimler (JSON, `{"placements":[...]}`). Backend yalnız örnek soruda, biten test sonucunda
+   * ya da sahip/admin için doldurur; plan artık çözüm taşımaz.
+   */
+  @Input() set interactionSolutionJson(value: string | null | undefined) {
+    this._solution.set(this.parseSolution(value));
+  }
+
   /** issue #365 (S3): görsel yüklenemezse taze imzalı URL'yi bulan fonksiyon (sahip sayfa verir). */
   @Input() imageRefresh: StorageImageResolver | null = null;
 
@@ -72,6 +82,7 @@ export class QuestionCanvasDragDropLabelingComponent {
   private _planJson = signal<string | null>(null);
   private _plan = signal<DragDropLabelingPlanV1 | null>(null);
   private _answerPayloadJson = signal<string | null>(null);
+  private _solution = signal<DragDropLabelingPlacement[]>([]);
 
   // pool holds draggable ids not placed
   public pool = signal<string[]>([]);
@@ -121,9 +132,10 @@ export class QuestionCanvasDragDropLabelingComponent {
 
   public zoneClass = computed(() => {
     return (zoneId: string) => {
+      // İstemci tarafı kontrol yalnız örnek sorularda (practiceFeedback); çözüm girdisi yoksa işaret yok.
       if (!this.practiceFeedback) return '';
-      const plan = this._plan();
-      const solution = plan?.solution?.placements ?? [];
+      const solution = this._solution();
+      if (solution.length === 0) return '';
       const current = this.buildPlacements();
       const expected = solution.find((p) => p.dropZoneId === zoneId)?.draggableId ?? null;
       const actual = current.find((p) => p.dropZoneId === zoneId)?.draggableId ?? null;
@@ -173,10 +185,23 @@ export class QuestionCanvasDragDropLabelingComponent {
         type: 'dragDropLabeling',
         dropZones: parsed.dropZones as DragDropLabelingPlanV1['dropZones'],
         draggables: parsed.draggables as DragDropLabelingPlanV1['draggables'],
-        solution: parsed.solution as any,
       };
     } catch {
       return null;
+    }
+  }
+
+  private parseSolution(json: string | null | undefined): DragDropLabelingPlacement[] {
+    if (!json) return [];
+    try {
+      const parsed = JSON.parse(json) as Partial<DragDropLabelingSolution> | null;
+      if (!parsed || !Array.isArray(parsed.placements)) return [];
+      return parsed.placements.filter(
+        (p): p is DragDropLabelingPlacement =>
+          !!p && typeof p.draggableId === 'string' && typeof p.dropZoneId === 'string',
+      );
+    } catch {
+      return [];
     }
   }
 

@@ -349,6 +349,7 @@
         <app-question-canvas-dragdrop-labeling class="canvas-stage" [questionRegion]="questionData.region"
           [imageRefresh]="imageRefresh"
           [interactionPlanJson]="questionData.question.question.interactionPlan || null"
+          [interactionSolutionJson]="questionData.question.question.interactionSolution || null"
           [answerPayloadJson]="questionData.question.answerPayload || null"
           [practiceFeedback]="questionData.question.question.isExample"
           [hidePassage]="isPassageFirstActive(questionData.index)"

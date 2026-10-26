@@ -3,6 +3,7 @@ using ExamApp.Api.Helpers;
 using ExamApp.Foundation.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace ExamApp.Api.Services.Questions;
 
@@ -81,30 +82,37 @@ public sealed class QuestionOwnershipGuard : IQuestionOwnershipGuard
 
     public QuestionOwnershipGuard(AppDbContext context) => _context = context;
 
+    /// <summary>
+    /// Soru sahipliği kuralının TEK kaynağı (EF'e çevrilebilir; <see cref="CanModifyQuestionAsync"/> ve issue #570 çözüm
+    /// görünürlüğü <c>QuestionQueryService</c> aynı ağacı kullanır): damgalı soruda <c>CreateUserId == userId</c>; eski
+    /// (CreateUserId 0/null) soruda soruyu içeren KOPYA OLMAYAN bir testin sahibi. <paramref name="userId"/> &lt;= 0 → false.
+    /// Admin muafiyeti çağıranın işidir.
+    /// </summary>
+    public static Expression<Func<Question, bool>> OwnedBy(AppDbContext context, int userId) =>
+        q => userId > 0 && ((q.CreateUserId ?? 0) > 0
+            ? q.CreateUserId == userId
+            : context.TestQuestions.Any(tq =>
+                tq.QuestionId == q.Id
+                && tq.Worksheet.SourceWorksheetId == null
+                && tq.Worksheet.CreateUserId == userId));
+
     public async Task<QuestionAccessResult> CanModifyQuestionAsync(int questionId, int userId, bool isAdmin, CancellationToken ct = default)
     {
-        var row = await _context.Questions.AsNoTracking()
+        // Tek sorgu: satır yoksa null (NotFound), varsa sahiplik sonucu.
+        var owns = await _context.Questions.AsNoTracking()
             .Where(q => q.Id == questionId)
-            .Select(q => new
-            {
-                q.CreateUserId,
-                OwnsOriginalWorksheet = userId > 0 && _context.TestQuestions.Any(tq =>
-                    tq.QuestionId == q.Id
-                    && tq.Worksheet.SourceWorksheetId == null
-                    && tq.Worksheet.CreateUserId == userId)
-            })
+            .Select(OwnedBy(_context, userId))
+            .Select(o => (bool?)o)
             .FirstOrDefaultAsync(ct);
 
-        if (row == null)
+        if (owns == null)
             return QuestionAccessResult.NotFound;
         if (isAdmin)
             return QuestionAccessResult.Allowed;
         if (userId <= 0)
             return QuestionAccessResult.Forbidden;
 
-        var createdBy = row.CreateUserId ?? 0;
-        var owns = createdBy > 0 ? createdBy == userId : row.OwnsOriginalWorksheet;
-        return owns ? QuestionAccessResult.Allowed : QuestionAccessResult.Forbidden;
+        return owns.Value ? QuestionAccessResult.Allowed : QuestionAccessResult.Forbidden;
     }
 
     public async Task<QuestionAccessResult> CanModifyWorksheetAsync(int worksheetId, int userId, bool isAdmin, CancellationToken ct = default)

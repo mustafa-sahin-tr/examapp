@@ -48,7 +48,17 @@ public class BulkQuestionDto
     public int Width { get; set; }
     public int Height { get; set; }
     public string? InteractionType { get; set; }
+
+    /// <summary>issue #570: yinelenen anahtarsız bir JSON nesnesi olmalı (InteractionPlanSolution.IsValidPlan).</summary>
+    [MaxLength(ExamApp.Api.Helpers.InteractionPlanSolution.MaxPlanLength)]
     public string? InteractionPlan { get; set; }
+
+    /// <summary>
+    /// issue #570: etkileşim çözümü (JSON nesnesi, ör. <c>{"placements":[...]}</c>), plandan ayrı. Boşsa plan içindeki
+    /// <c>solution</c> (eski istemci) ayrılıp kullanılır; plan her durumda çözümsüz saklanır.
+    /// </summary>
+    [MaxLength(ExamApp.Api.Helpers.InteractionPlanSolution.MaxSolutionLength)]
+    public string? InteractionSolution { get; set; }
     public bool ShowPassageFirst { get; set; }
     public bool IsExample { get; set; } // EF'de `IsExample`
     public string? ExampleAnswer { get; set; } // EF'de `PracticeCorrectAnswer`

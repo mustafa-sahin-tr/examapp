@@ -99,7 +99,8 @@ public class QuestionsController : BaseController
         if (await DenyUnlessQuestionViewerAsync(id, user.Id) is { } denied)
             return denied;
 
-        var response = await _questionQuery.GetQuestionById(id);
+        // issue #570: etkileşim çözümü yalnız sahibine/admine (görüntüleyen diğer öğretmen çözümsüz alır).
+        var response = await _questionQuery.GetQuestionById(id, user.Id, IsAdmin, HttpContext.RequestAborted);
         if (response == null)
         {
             return NotFound(new { message = _localizer["questions.notFound"].Value });
@@ -125,7 +126,8 @@ public class QuestionsController : BaseController
         if (await DenyUnlessWorksheetViewerAsync(testid, user.Id) is { } denied)
             return denied;
 
-        var questionList = await _questionQuery.GetQuestionByTestId(testid);
+        // issue #570: etkileşim çözümü soru bazında yalnız sahibine/admine.
+        var questionList = await _questionQuery.GetQuestionByTestId(testid, user.Id, IsAdmin, HttpContext.RequestAborted);
         return Ok(questionList);
     }
 
@@ -299,7 +301,7 @@ public class QuestionsController : BaseController
                 return denied;
         }
 
-        var question = await _questionQuery.GetQuestionById(id);
+        var question = await _questionQuery.GetQuestionById(id, ct: HttpContext.RequestAborted);
         if (question == null || string.IsNullOrWhiteSpace(question.ImageUrl))
         {
             return NotFound(new { message = _localizer["questions.imageNotFound"].Value });

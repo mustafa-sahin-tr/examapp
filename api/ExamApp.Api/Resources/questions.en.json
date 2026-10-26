@@ -33,7 +33,12 @@
       "subjectTopicMismatch": "Topic.SubjectId does not match Question.SubjectId. Question.SubjectId={0} ('{1}'), Topic(Id={2}, Name='{3}') SubjectId={4} ('{5}').",
       "subTopicsFromMultipleTopics": "SubTopics belonging to more than one TopicId were sent for the same question. All subtopics must share the same TopicId. {0}",
       "topicIdMissingWithSubTopics": "Header.TopicId is missing/0 but a SubTopic list was provided. The SubTopics' TopicId is {0}. Details: {1}",
-      "subTopicTopicMismatch": "The SubTopic's topic differs from the TopicId set on the question. Question.TopicId={0} ('{1}'), SubTopic(Id={2}, Name='{3}') TopicId={4} ('{5}')."
+      "subTopicTopicMismatch": "The SubTopic's topic differs from the TopicId set on the question. Question.TopicId={0} ('{1}'), SubTopic(Id={2}, Name='{3}') TopicId={4} ('{5}').",
+      "invalidInteractionSolution": "Invalid interaction plan or solution (must be a JSON object without duplicate keys): {0}"
+    },
+
+    "interactionSolution": {
+      "invalid": "Invalid interaction plan or solution: it must be a JSON object without duplicate keys."
     },
 
     "image": {

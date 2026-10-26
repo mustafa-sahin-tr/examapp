@@ -714,6 +714,66 @@ describe('ImageSelectorComponent', () => {
             expect(stateRegion.passage!.x).toBe(3.7);
             expect(component.passages()[0].width).toBe(100.6);
         });
+
+        // issue #570: doğru yerleşimler plandan ayrı alanda gider; plan öğrenciye çözüm sızdırmamalı.
+        it('getRegions_DragDropQuestion_SendsSolutionSeparatelyAndPlanWithoutSolution', () => {
+            component.regions.set([region('Soru 1', [])] as any);
+            component.interactionTypes.set('Soru 1', 'dragDropLabeling');
+            (component as any).addDropZone('Soru 1', 10, 10, 50, 20);
+            (component as any).addDropZone('Soru 1', 70, 10, 50, 20);
+            component.setLabelCount('Soru 1', '2');
+            vi.spyOn(component, 'drawImage').mockReturnValue(undefined);
+            component.generateDraggables('Soru 1');
+            component.setZoneSolution('Soru 1', 'z1', 'd2');
+            component.setZoneSolution('Soru 1', 'z2', 'd1');
+
+            const q = component.getRegions(null).questions[0];
+
+            const plan = JSON.parse(q.interactionPlan!);
+            expect(plan.solution).toBeUndefined();
+            expect(plan.dropZones.map((z: { id: string }) => z.id)).toEqual(['z1', 'z2']);
+            expect(plan.draggables.map((d: { id: string }) => d.id)).toEqual(['d1', 'd2']);
+            expect(JSON.parse(q.interactionSolution!)).toEqual({
+                placements: [
+                    { dropZoneId: 'z1', draggableId: 'd2' },
+                    { dropZoneId: 'z2', draggableId: 'd1' },
+                ],
+            });
+        });
+
+        it('getRegions_DragDropWithoutPlacements_SendsEmptyPlacements', () => {
+            component.regions.set([region('Soru 1', [])] as any);
+            component.interactionTypes.set('Soru 1', 'dragDropLabeling');
+
+            const q = component.getRegions(null).questions[0];
+
+            expect(JSON.parse(q.interactionSolution!)).toEqual({ placements: [] });
+        });
+
+        it('getRegions_McqQuestion_SendsNullPlanAndSolution', () => {
+            component.regions.set([region('Soru 1', [answer(0, 0)])] as any);
+
+            const q = component.getRegions(null).questions[0];
+
+            expect(q.interactionPlan).toBeNull();
+            expect(q.interactionSolution).toBeNull();
+        });
+
+        // "Örnek soruda çözüm yok" uyarısı plan yerine yazarlık durumundaki yerleşimlere bakar.
+        it('dragDropIssues_ExampleWithoutPlacements_WarnsAndWithPlacements_DoesNot', () => {
+            const r = { ...region('Soru 1', []), isExample: true };
+            component.interactionTypes.set('Soru 1', 'dragDropLabeling');
+            (component as any).addDropZone('Soru 1', 10, 10, 50, 20);
+            component.setLabelCount('Soru 1', '1');
+            vi.spyOn(component, 'drawImage').mockReturnValue(undefined);
+            component.generateDraggables('Soru 1');
+            const noSolution = (component as any).tr('warnings.noSolutionPlacements');
+
+            expect((component as any).dragDropIssues(r)).toContain(noSolution);
+
+            component.setZoneSolution('Soru 1', 'z1', 'd1');
+            expect((component as any).dragDropIssues(r)).not.toContain(noSolution);
+        });
     });
 
     // Bekleme anlarının görünürlüğü: analiz örtüsü, eğitime gönderim meşgul durumu ve hata yolları.

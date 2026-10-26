@@ -5,13 +5,21 @@ namespace ExamApp.Api.Services.Questions;
 /// <summary>Question/passage reads. Split out of the former god-class <c>QuestionService</c>.</summary>
 public interface IQuestionQueryService
 {
-    Task<QuestionDto?> GetQuestionById(int id);
+    /// <summary>
+    /// Tek soru (düzenleme yanıtı). issue #570: plan çözümsüz döner; <c>InteractionSolution</c> yalnız
+    /// <paramref name="solutionViewerIsAdmin"/> ya da <paramref name="solutionViewerUserId"/> sorunun sahibiyse
+    /// (<see cref="IQuestionOwnershipGuard.CanModifyQuestionAsync"/> kuralı) dolar. Varsayılan: çözüm yok.
+    /// </summary>
+    Task<QuestionDto?> GetQuestionById(int id, int solutionViewerUserId = 0, bool solutionViewerIsAdmin = false,
+        CancellationToken ct = default);
     /// <summary>
     /// issue #402 (P4): son 10 paragraf — admin tüm paragraflar, diğerleri yalnız kendi oluşturdukları
     /// (<c>Passage.CreateUserId == userId</c>). <paramref name="userId"/> &lt;= 0 (profil çözülemedi) → boş liste.
     /// </summary>
     Task<List<PassageDto>> GetLastTenPassages(int userId, bool isAdmin, CancellationToken ct = default);
-    Task<List<QuestionDto>> GetQuestionByTestId(int testid);
+    /// <summary>Testin soruları. issue #570: çözüm kuralı <see cref="GetQuestionById"/> ile aynı, soru bazında.</summary>
+    Task<List<QuestionDto>> GetQuestionByTestId(int testid, int solutionViewerUserId = 0, bool solutionViewerIsAdmin = false,
+        CancellationToken ct = default);
 
     /// <summary>
     /// issue #471: soru bankası araması (sayfalı, en yeni önce). Kapsam <c>mine</c>: çağıranın soruları

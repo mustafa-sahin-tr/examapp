@@ -15,75 +15,104 @@ public class QuestionQueryService : IQuestionQueryService
         _context = context;
     }
 
-    public async Task<QuestionDto?> GetQuestionById(int id)
+    public async Task<QuestionDto?> GetQuestionById(int id, int solutionViewerUserId = 0, bool solutionViewerIsAdmin = false,
+        CancellationToken ct = default)
     {
-        var question = await _context.Questions
+        var row = await _context.Questions
             .Include(q => q.Answers)
             .Include(q => q.Subject)
             .Include(q => q.QuestionSubTopics)
                 .ThenInclude(qst => qst.SubTopic)
             .Where(q => q.Id == id)
-            .Select(q => new QuestionDto
+            .Select(q => new
             {
-                Id = q.Id,
-                Text = q.Text,
-                SubText = q.SubText,
-                ImageUrl = q.ImageUrl,
-                BookName = q.BookName,
-                SubjectId = q.SubjectId,
-                TopicId = q.TopicId,
-                CategoryName = q.Subject.Name,
-                Point = q.Point,
-                DifficultyLevel = q.DifficultyLevel,
-                X = q.X,
-                Y = q.Y,
-                Width = q.Width,
-                Height = q.Height,
-                SanitizedHeight = q.SanitizedHeight,
-                InteractionType = q.InteractionType,
-                InteractionPlan = q.InteractionPlan,
-                ShowPassageFirst = q.ShowPassageFirst,
-                Answers = q.Answers.Select(a => new AnswerDto
+                q.InteractionSolution,
+                Dto = new QuestionDto
                 {
-                    Id = a.Id,
-                    Text = a.Text,
-                    ImageUrl = a.ImageUrl,
-                    X = a.X,
-                    Y = a.Y,
-                    Width = a.Width,
-                    Height = a.Height,
-
-                }).ToList(),
-                SubTopics = q.QuestionSubTopics
-                    .Where(qst => qst.SubTopic != null)
-                    .Select(qst => new SubTopicDto
+                    Id = q.Id,
+                    Text = q.Text,
+                    SubText = q.SubText,
+                    ImageUrl = q.ImageUrl,
+                    BookName = q.BookName,
+                    SubjectId = q.SubjectId,
+                    TopicId = q.TopicId,
+                    CategoryName = q.Subject.Name,
+                    Point = q.Point,
+                    DifficultyLevel = q.DifficultyLevel,
+                    X = q.X,
+                    Y = q.Y,
+                    Width = q.Width,
+                    Height = q.Height,
+                    SanitizedHeight = q.SanitizedHeight,
+                    InteractionType = q.InteractionType,
+                    InteractionPlan = q.InteractionPlan,
+                    ShowPassageFirst = q.ShowPassageFirst,
+                    Answers = q.Answers.Select(a => new AnswerDto
                     {
-                        Id = qst.SubTopic.Id,
-                        Name = qst.SubTopic.Name,
-                        TopicId = qst.SubTopic.TopicId
-                    })
-                    .ToList(),
-                IsExample = q.IsExample,
-                PracticeCorrectAnswer = q.PracticeCorrectAnswer,
-                Passage = q.PassageId.HasValue ? new PassageDto
-                {
-                    Id = q.Passage.Id,
-                    Title = q.Passage.Title,
-                    Text = q.Passage.Text,
-                    ImageUrl = q.Passage.ImageUrl,
-                    X = q.Passage.X,
-                    Y = q.Passage.Y,
-                    Width = q.Passage.Width,
-                    Height = q.Passage.Height,
-                } : null,
-                CorrectAnswerId = q.CorrectAnswerId,
-                AnswerColCount = q.AnswerColCount
+                        Id = a.Id,
+                        Text = a.Text,
+                        ImageUrl = a.ImageUrl,
+                        X = a.X,
+                        Y = a.Y,
+                        Width = a.Width,
+                        Height = a.Height,
+
+                    }).ToList(),
+                    SubTopics = q.QuestionSubTopics
+                        .Where(qst => qst.SubTopic != null)
+                        .Select(qst => new SubTopicDto
+                        {
+                            Id = qst.SubTopic.Id,
+                            Name = qst.SubTopic.Name,
+                            TopicId = qst.SubTopic.TopicId
+                        })
+                        .ToList(),
+                    IsExample = q.IsExample,
+                    PracticeCorrectAnswer = q.PracticeCorrectAnswer,
+                    Passage = q.PassageId.HasValue ? new PassageDto
+                    {
+                        Id = q.Passage.Id,
+                        Title = q.Passage.Title,
+                        Text = q.Passage.Text,
+                        ImageUrl = q.Passage.ImageUrl,
+                        X = q.Passage.X,
+                        Y = q.Passage.Y,
+                        Width = q.Passage.Width,
+                        Height = q.Passage.Height,
+                    } : null,
+                    CorrectAnswerId = q.CorrectAnswerId,
+                    AnswerColCount = q.AnswerColCount
+                }
             })
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(ct);
 
+        if (row == null)
+            return null;
 
+        // issue #570: çözüm yalnız sorunun sahibine / admine (QuestionOwnershipGuard.OwnedBy kuralı). Sahiplik sorgusu
+        // yalnız gizlenecek bir şey varsa çalışır (çözüm kolonu ya da plan dolu).
+        var canSeeSolution = HasSolutionCandidate(row.InteractionSolution, row.Dto.InteractionPlan)
+            && (solutionViewerIsAdmin || await _context.Questions.AsNoTracking()
+                .Where(q => q.Id == id)
+                .Where(QuestionOwnershipGuard.OwnedBy(_context, solutionViewerUserId))
+                .AnyAsync(ct));
 
-        return question;
+        ApplyInteractionSolution(row.Dto, row.InteractionSolution, canSeeSolution);
+        return row.Dto;
+    }
+
+    private static bool HasSolutionCandidate(string? storedSolution, string? plan) =>
+        !string.IsNullOrWhiteSpace(storedSolution) || !string.IsNullOrWhiteSpace(plan);
+
+    /// <summary>
+    /// issue #570: plan her zaman çözümsüz döner; <see cref="QuestionDto.InteractionSolution"/> yalnız
+    /// <paramref name="canSeeSolution"/> (sahibi/admin) iken dolar. Örnek soru (<c>IsExample</c>) öğretmen tarafında da
+    /// sahiplik kuralına tabidir — öğrenci yolları ayrı (TestSessionService, PracticeSessionService).
+    /// </summary>
+    private static void ApplyInteractionSolution(QuestionDto dto, string? storedSolution, bool canSeeSolution)
+    {
+        (dto.InteractionPlan, dto.InteractionSolution) =
+            InteractionPlanSolution.ForOutput(dto.InteractionPlan, storedSolution, canSeeSolution);
     }
 
     public async Task<List<PassageDto>> GetLastTenPassages(int userId, bool isAdmin, CancellationToken ct = default)
@@ -112,9 +141,10 @@ public class QuestionQueryService : IQuestionQueryService
             .ToListAsync(ct);
     }
 
-    public async Task<List<QuestionDto>> GetQuestionByTestId(int testid)
+    public async Task<List<QuestionDto>> GetQuestionByTestId(int testid, int solutionViewerUserId = 0, bool solutionViewerIsAdmin = false,
+        CancellationToken ct = default)
     {
-        var questionList = await _context.TestQuestions
+        var rows = await _context.TestQuestions
             .Include(tq => tq.Question)
                 .ThenInclude(q => q.Answers)
             .Include(tq => tq.Question)
@@ -126,69 +156,93 @@ public class QuestionQueryService : IQuestionQueryService
                     .ThenInclude(qst => qst.SubTopic)
             .Where(tq => tq.TestId == testid && !tq.IsDeleted)
             .OrderBy(tq => tq.Order)
-            .Select(tq => new QuestionDto
+            .Select(tq => new
             {
-                Id = tq.Question.Id,
-                Text = tq.Question.Text,
-                SubText = tq.Question.SubText,
-                ImageUrl = tq.Question.ImageUrl,
-                BookName = tq.Question.BookName,
-                SubjectId = tq.Question.SubjectId,
-                TopicId = tq.Question.TopicId,
-                CategoryName = tq.Question.Subject.Name,
-                Point = tq.Question.Point,
-                DifficultyLevel = tq.Question.DifficultyLevel,
-                X = tq.Question.X,
-                Y = tq.Question.Y,
-                Width = tq.Question.Width,
-                Height = tq.Question.Height,
-                SanitizedHeight = tq.Question.SanitizedHeight,
-                InteractionType = tq.Question.InteractionType,
-                InteractionPlan = tq.Question.InteractionPlan,
-                ShowPassageFirst = tq.Question.ShowPassageFirst,
-                Answers = tq.Question.Answers.Select(a => new AnswerDto
+                tq.Question.InteractionSolution,
+                Dto = new QuestionDto
                 {
-                    Id = a.Id,
-                    Text = a.Text,
-                    ImageUrl = a.ImageUrl,
-                    X = a.X,
-                    Y = a.Y,
-                    Width = a.Width,
-                    Height = a.Height,
-                }).ToList(),
-                SubTopics = tq.Question.QuestionSubTopics
-                    .Where(qst => qst.SubTopic != null)
-                    .Select(qst => new SubTopicDto
+                    Id = tq.Question.Id,
+                    Text = tq.Question.Text,
+                    SubText = tq.Question.SubText,
+                    ImageUrl = tq.Question.ImageUrl,
+                    BookName = tq.Question.BookName,
+                    SubjectId = tq.Question.SubjectId,
+                    TopicId = tq.Question.TopicId,
+                    CategoryName = tq.Question.Subject.Name,
+                    Point = tq.Question.Point,
+                    DifficultyLevel = tq.Question.DifficultyLevel,
+                    X = tq.Question.X,
+                    Y = tq.Question.Y,
+                    Width = tq.Question.Width,
+                    Height = tq.Question.Height,
+                    SanitizedHeight = tq.Question.SanitizedHeight,
+                    InteractionType = tq.Question.InteractionType,
+                    InteractionPlan = tq.Question.InteractionPlan,
+                    ShowPassageFirst = tq.Question.ShowPassageFirst,
+                    Answers = tq.Question.Answers.Select(a => new AnswerDto
                     {
-                        Id = qst.SubTopic.Id,
-                        Name = qst.SubTopic.Name,
-                        TopicId = qst.SubTopic.TopicId
-                    })
-                    .ToList(),
-                IsExample = tq.Question.IsExample,
-                PracticeCorrectAnswer = tq.Question.PracticeCorrectAnswer,
-                Passage = tq.Question.PassageId.HasValue ? new PassageDto
-                {
-                    Id = tq.Question.Passage.Id,
-                    Title = tq.Question.Passage.Title,
-                    Text = tq.Question.Passage.Text,
-                    ImageUrl = tq.Question.Passage.ImageUrl,
-                    X = tq.Question.Passage.X,
-                    Y = tq.Question.Passage.Y,
-                    Width = tq.Question.Passage.Width,
-                    Height = tq.Question.Passage.Height,
-                } : null,
-                CorrectAnswerId = tq.Question.CorrectAnswerId,
-                AnswerColCount = tq.Question.AnswerColCount,
-                Order = tq.Order,
-                ClassificationSource = tq.Question.ClassificationSource ?? ClassificationSource.Human
+                        Id = a.Id,
+                        Text = a.Text,
+                        ImageUrl = a.ImageUrl,
+                        X = a.X,
+                        Y = a.Y,
+                        Width = a.Width,
+                        Height = a.Height,
+                    }).ToList(),
+                    SubTopics = tq.Question.QuestionSubTopics
+                        .Where(qst => qst.SubTopic != null)
+                        .Select(qst => new SubTopicDto
+                        {
+                            Id = qst.SubTopic.Id,
+                            Name = qst.SubTopic.Name,
+                            TopicId = qst.SubTopic.TopicId
+                        })
+                        .ToList(),
+                    IsExample = tq.Question.IsExample,
+                    PracticeCorrectAnswer = tq.Question.PracticeCorrectAnswer,
+                    Passage = tq.Question.PassageId.HasValue ? new PassageDto
+                    {
+                        Id = tq.Question.Passage.Id,
+                        Title = tq.Question.Passage.Title,
+                        Text = tq.Question.Passage.Text,
+                        ImageUrl = tq.Question.Passage.ImageUrl,
+                        X = tq.Question.Passage.X,
+                        Y = tq.Question.Passage.Y,
+                        Width = tq.Question.Passage.Width,
+                        Height = tq.Question.Passage.Height,
+                    } : null,
+                    CorrectAnswerId = tq.Question.CorrectAnswerId,
+                    AnswerColCount = tq.Question.AnswerColCount,
+                    Order = tq.Order,
+                    ClassificationSource = tq.Question.ClassificationSource ?? ClassificationSource.Human
 
+                }
             })
-            .ToListAsync();
+            .ToListAsync(ct);
 
+        // issue #570: soru bazında sahiplik (QuestionOwnershipGuard.OwnedBy) tek ek sorguyla — N+1 yok; gizlenecek bir şey
+        // yoksa ya da admin ise sorgu atlanır.
+        var candidateIds = rows
+            .Where(r => HasSolutionCandidate(r.InteractionSolution, r.Dto.InteractionPlan))
+            .Select(r => r.Dto.Id)
+            .Distinct()
+            .ToList();
+        HashSet<int> visibleSolutionIds;
+        if (candidateIds.Count == 0)
+            visibleSolutionIds = new HashSet<int>();
+        else if (solutionViewerIsAdmin)
+            visibleSolutionIds = candidateIds.ToHashSet();
+        else
+            visibleSolutionIds = (await _context.Questions.AsNoTracking()
+                .Where(q => candidateIds.Contains(q.Id))
+                .Where(QuestionOwnershipGuard.OwnedBy(_context, solutionViewerUserId))
+                .Select(q => q.Id)
+                .ToListAsync(ct)).ToHashSet();
 
+        foreach (var row in rows)
+            ApplyInteractionSolution(row.Dto, row.InteractionSolution, visibleSolutionIds.Contains(row.Dto.Id));
 
-        return questionList;
+        return rows.Select(r => r.Dto).ToList();
     }
 
     public async Task<QuestionBankPageDto> SearchBankAsync(QuestionBankQuery filter, int userId, bool isAdmin, CancellationToken ct = default)

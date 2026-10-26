@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Dashboard;
 using ExamApp.Foundation.Contracts;
@@ -613,58 +614,65 @@ public class PracticeSessionService : IPracticeSessionService
     /// (bkz. <see cref="GetReviewAsync"/>). True ise <see cref="QuestionDto.CorrectAnswerId"/> ve eşleşen
     /// <see cref="AnswerDto.IsCorrect"/> doldurulur; aksi halde ikisi de boş kalır.
     /// </summary>
-    private static QuestionDto MapQuestion(Question q, bool revealCorrectAnswer) => new()
+    private static QuestionDto MapQuestion(Question q, bool revealCorrectAnswer)
     {
-        Id = q.Id,
-        Text = q.Text ?? string.Empty,
-        SubText = q.SubText,
-        ImageUrl = q.ImageUrl,
-        SubjectId = q.SubjectId,
-        TopicId = q.TopicId,
-        Point = q.Point,
-        DifficultyLevel = q.DifficultyLevel,
-        IsExample = q.IsExample,
-        InteractionType = q.InteractionType,
-        InteractionPlan = q.InteractionPlan,
-        ShowPassageFirst = q.ShowPassageFirst,
-        PracticeCorrectAnswer = q.PracticeCorrectAnswer,
-        AnswerColCount = q.AnswerColCount,
-        IsCanvasQuestion = q.IsCanvasQuestion,
-        X = q.X,
-        Y = q.Y,
-        Width = q.Width,
-        Height = q.Height,
-        SanitizedHeight = q.SanitizedHeight,
-        CorrectAnswerId = revealCorrectAnswer ? q.CorrectAnswerId : null,
-        Passage = q.PassageId.HasValue && q.Passage != null
-            ? new PassageDto
-            {
-                Id = q.Passage.Id,
-                Title = q.Passage.Title,
-                Text = q.Passage.Text,
-                ImageUrl = q.Passage.ImageUrl,
-                X = q.Passage.X,
-                Y = q.Passage.Y,
-                Width = q.Passage.Width,
-                Height = q.Passage.Height
-            }
-            : null,
-        Answers = q.Answers
-            .OrderBy(a => a.Order ?? int.MaxValue)
-            .ThenBy(a => a.Id)
-            .Select(a => new AnswerDto
-            {
-                Id = a.Id,
-                Text = a.Text,
-                ImageUrl = a.ImageUrl,
-                X = a.X,
-                Y = a.Y,
-                Width = a.Width,
-                Height = a.Height,
-                Tag = a.Tag,
-                Order = a.Order,
-                IsCorrect = revealCorrectAnswer && q.CorrectAnswerId.HasValue && q.CorrectAnswerId.Value == a.Id
-            })
-            .ToList()
-    };
+        // issue #570: plan çözümsüz; etkileşim çözümü yalnız örnek soruda ya da cevaplanmış/pas geçilmiş soruda.
+        var (interactionPlan, interactionSolution) = InteractionPlanSolution.ForOutput(
+            q.InteractionPlan, q.InteractionSolution, includeSolution: q.IsExample || revealCorrectAnswer);
+        return new QuestionDto
+        {
+            Id = q.Id,
+            Text = q.Text ?? string.Empty,
+            SubText = q.SubText,
+            ImageUrl = q.ImageUrl,
+            SubjectId = q.SubjectId,
+            TopicId = q.TopicId,
+            Point = q.Point,
+            DifficultyLevel = q.DifficultyLevel,
+            IsExample = q.IsExample,
+            InteractionType = q.InteractionType,
+            InteractionPlan = interactionPlan,
+            InteractionSolution = interactionSolution,
+            ShowPassageFirst = q.ShowPassageFirst,
+            PracticeCorrectAnswer = q.PracticeCorrectAnswer,
+            AnswerColCount = q.AnswerColCount,
+            IsCanvasQuestion = q.IsCanvasQuestion,
+            X = q.X,
+            Y = q.Y,
+            Width = q.Width,
+            Height = q.Height,
+            SanitizedHeight = q.SanitizedHeight,
+            CorrectAnswerId = revealCorrectAnswer ? q.CorrectAnswerId : null,
+            Passage = q.PassageId.HasValue && q.Passage != null
+                ? new PassageDto
+                {
+                    Id = q.Passage.Id,
+                    Title = q.Passage.Title,
+                    Text = q.Passage.Text,
+                    ImageUrl = q.Passage.ImageUrl,
+                    X = q.Passage.X,
+                    Y = q.Passage.Y,
+                    Width = q.Passage.Width,
+                    Height = q.Passage.Height
+                }
+                : null,
+            Answers = q.Answers
+                .OrderBy(a => a.Order ?? int.MaxValue)
+                .ThenBy(a => a.Id)
+                .Select(a => new AnswerDto
+                {
+                    Id = a.Id,
+                    Text = a.Text,
+                    ImageUrl = a.ImageUrl,
+                    X = a.X,
+                    Y = a.Y,
+                    Width = a.Width,
+                    Height = a.Height,
+                    Tag = a.Tag,
+                    Order = a.Order,
+                    IsCorrect = revealCorrectAnswer && q.CorrectAnswerId.HasValue && q.CorrectAnswerId.Value == a.Id
+                })
+                .ToList()
+        };
+    }
 }

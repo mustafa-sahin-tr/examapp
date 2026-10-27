@@ -41,4 +41,10 @@ public interface ITestSessionService
 
     /// <summary>issue #571: "doğru cevapları göster" — en az bir kontrolden sonra; aksi halde Conflict (409).</summary>
     Task<ActivitySolutionsResultDto> GetActivitySolutionsAsync(int instanceId, int userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #609: tamamlanmış etkinliği aynı oturumda yeniden çözmeye açar (cevaplar silinir, ilk sonuç korunur). NotFound
+    /// (sahibi değil / yok), Conflict (409: etkinlik değil / tamamlanmamış). Zaten yeniden çözülüyorsa idempotent başarı.
+    /// </summary>
+    Task<ActivityRetakeResultDto> RetakeActivityAsync(int instanceId, int userId, CancellationToken ct = default);
 }

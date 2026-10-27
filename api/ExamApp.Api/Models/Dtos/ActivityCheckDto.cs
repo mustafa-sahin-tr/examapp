@@ -63,3 +63,17 @@ public class ActivitySolutionDto
     /// <summary>Etkileşimli soru: çözüm (JSON, ör. <c>{"placements":[...]}</c>); MCQ'da null.</summary>
     public string? InteractionSolution { get; set; }
 }
+
+/// <summary>
+/// issue #609: "Yeniden çöz" yanıtı (<c>POST api/test-instances/{instanceId}/retake</c>). Aynı oturum sıfırlanır (yeni oturum
+/// açılmaz): <see cref="InstanceId"/> istekteki oturumdur, oynatıcı onu yeniden açar.
+/// </summary>
+public class ActivityRetakeResultDto : TestSessionResultDto
+{
+    public int InstanceId { get; set; }
+
+    /// <summary>
+    /// true = oturum zaten yeniden çözülüyordu (bir önceki retake / çift tık); hiçbir şey sıfırlanmadı, mevcut cevaplar duruyor.
+    /// </summary>
+    public bool AlreadyRetaking { get; set; }
+}

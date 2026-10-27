@@ -53,12 +53,20 @@ public class AssignedWorksheetDto
     /// <summary>issue #573: yalnız etkinlikte — ilk kontroldeki toplam satır sayısı; kontrol yoksa / testte null.</summary>
     public int? FirstCheckTotalCount { get; set; }
 
+    /// <summary>
+    /// issue #609: tamamlanmış etkinlik yeniden çözülüyor — <see cref="InstanceStatus"/> Started (oynatıcı devam eder),
+    /// <see cref="AssignmentStatus"/> ise "Completed" kalır (ödev yeniden açık sayılmaz). Testte hep false.
+    /// </summary>
+    public bool Retaking { get; set; }
+
     public bool HasStarted => InstanceStatus.HasValue;
-    public bool IsCompleted => InstanceStatus == WorksheetInstanceStatus.Completed;
+    /// <summary>issue #609: yeniden çözülen etkinlik de (<see cref="Retaking"/>) tamamlanmış ödev sayılır.</summary>
+    public bool IsCompleted => InstanceStatus == WorksheetInstanceStatus.Completed || Retaking;
 
     /// <summary>
     /// issue #396: oturum bitti mi (Completed ya da süresi dolmuş Expired) — devam/tekrar yok; UI teslim tarihi uyarısını
     /// ve "devam ediyor" görünümünü buna göre kapatır. <see cref="IsCompleted"/> yalnız puanlı tamamlanmayı söyler.
+    /// issue #609: yeniden çözülen etkinlik (<see cref="Retaking"/>) de bitmiş sayılır — kartta teslim/aciliyet uyarısı yanmaz.
     /// </summary>
-    public bool IsFinished => ExamApp.Api.Helpers.WorksheetInstanceStatusRules.IsFinished(InstanceStatus);
+    public bool IsFinished => ExamApp.Api.Helpers.WorksheetInstanceStatusRules.IsFinished(InstanceStatus) || Retaking;
 }

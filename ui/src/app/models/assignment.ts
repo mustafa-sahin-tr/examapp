@@ -40,6 +40,11 @@ export interface AssignedWorksheet {
   firstCheckCorrectCount?: number | null;
   /** Issue #573: etkinlikte ilk kontroldeki toplam satır sayısı; kontrol yoksa / testte null. */
   firstCheckTotalCount?: number | null;
+  /**
+   * Issue #609: tamamlanmış etkinlik yeniden çözülüyor — `instanceStatus` 0 (Started, oynatıcı devam eder),
+   * `assignmentStatus` "Completed" ve `isCompleted` true kalır. Testte hep false.
+   */
+  retaking?: boolean;
 }
 
 export type AssignmentStudentStatus = 'Scheduled' | 'NotStarted' | 'InProgress' | 'Completed' | 'Expired';
@@ -57,6 +62,13 @@ export interface TeacherAssignmentStudentSummary {
   firstCheckCorrectCount?: number | null;
   /** Issue #573: etkinlikte ilk kontroldeki toplam satır sayısı (yanlış = toplam − doğru); kontrol yoksa / testte null. */
   firstCheckTotalCount?: number | null;
+  /**
+   * Issue #609: öğrenci tamamlanmış etkinliği şu an yeniden çözüyor. `status` yine Completed ve ilk kontrol özeti ilk
+   * denemeninkidir. Testte hep false.
+   */
+  retaking?: boolean;
+  /** Issue #609: etkinlikte "Yeniden çöz" sayısı (0 = hiç); testte hep 0. */
+  retakeCount?: number;
 }
 
 export interface TeacherWorksheetAssignment {

@@ -692,6 +692,26 @@ public class ExamController : BaseController
         return ActivityResult(response);
     }
 
+    /// <summary>
+    /// issue #609: tamamlanmış etkinliği "Yeniden çöz" — gateway: <c>POST /api/exam/test-instances/{instanceId}/retake</c> (gövdesiz).
+    /// Aynı oturum sıfırlanır (yeni oturum açılmaz). 200 <c>{ success, instanceId, alreadyRetaking }</c> · 404 oturum yok /
+    /// başkasının ya da etkinlik silinmiş · 403 öğrenci artık başlatamaz (AccessDenied: atama/sınıf/görünürlük, start-test kuralı) ·
+    /// 409 etkinlik değil (NotAnActivity) ya da tamamlanmamış (ActivityNotCompleted) · 429 kullanıcı başına sınır (RateLimited).
+    /// </summary>
+    [HttpPost("~/api/test-instances/{instanceId:int}/retake")]
+    [Authorize(Roles = "Student,Teacher,Admin")] // check ile aynı kapı (issue #287 review H1); sahiplik serviste
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
+    [EnableRateLimiting(ActivityRetakeRateLimiting.Policy)] // issue #609 review L1: kullanıcı başına (RateLimiting:ActivityRetake), 429
+    public async Task<IActionResult> RetakeActivity(int instanceId, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
+
+        var response = await _testSession.RetakeActivityAsync(instanceId, user.Id, ct);
+        return ActivityResult(response);
+    }
+
     /// <summary>review #571: kontrol gövdesi üst sınırı — <see cref="ActivityCheckRequestDto.MaxAnswers"/> × 16 KB payload + pay (2 MB).</summary>
     private const long ActivityCheckRequestSizeLimit = 2L * 1024 * 1024;
 
@@ -699,6 +719,8 @@ public class ExamController : BaseController
     {
         if (response.NotFound)
             return NotFound(response);
+        if (response.Forbidden)
+            return StatusCode(StatusCodes.Status403Forbidden, response); // issue #609: retake erişim kararı
         if (response.InvalidInput)
             return BadRequest(response);
         if (response.Conflict)

@@ -707,6 +707,7 @@
         "badgeRemaining": "{{count}} etkinlik daha!",
         "next": "Sıradaki etkinlik",
         "backToList": "Listeye dön",
+        "retake": "Yeniden çöz",
         "badgeLineMinutes": "{{name}} rozeti: {{current}}/{{target}} dk",
         "badgeLineDays": "{{name}} rozeti: {{current}}/{{target}} gün",
         "badgeRemainingMinutes": "{{count}} dk daha!",
@@ -715,6 +716,14 @@
       "launch": {
         "failed": "Etkinlik açılamadı. Tekrar dene.",
         "dismiss": "Tamam"
+      },
+      "retake": {
+        "retakeTitle": "Etkinliği yeniden çöz",
+        "retakeMessage": "Cevapların silinecek, etkinliği baştan çözeceksin. İlk sonucun öğretmeninde kalır.",
+        "retakeConfirm": "Yeniden çöz",
+        "retakeCancel": "Vazgeç",
+        "retakeFailed": "Etkinlik yeniden açılamadı. Tekrar dene.",
+        "retakeRateLimited": "Çok sık denedin, biraz bekleyip tekrar dene."
       }
     }
   },

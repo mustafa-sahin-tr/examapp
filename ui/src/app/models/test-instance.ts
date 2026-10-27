@@ -80,6 +80,11 @@ export interface TestInstance {
   firstCheckCorrectCount?: number | null;
   /** Issue #573: etkinlikte ilk kontroldeki toplam satır sayısı; kontrol yoksa / testte null. */
   firstCheckTotalCount?: number | null;
+  /**
+   * Issue #609: etkinliğin ilk tamamlanma anı (UTC ISO); hiç tamamlanmadıysa / testte null. `status` Started iken doluysa
+   * oturum yeniden çözülüyordur.
+   */
+  firstCompletedAt?: string | null;
 }
 
 /** Backend `TestSessionErrorCodes` (issue #367). */
@@ -197,4 +202,9 @@ export interface InstanceSummary {
   firstCheckCorrectCount?: number | null;
   /** Issue #573: yalnız etkinlikte — ilk kontroldeki toplam satır sayısı; kontrol yoksa / testte null. */
   firstCheckTotalCount?: number | null;
+  /**
+   * Issue #609: yalnız etkinlikte — ilk tamamlanma anı (UTC ISO); hiç tamamlanmadıysa / testte null. `status` 0 iken doluysa
+   * etkinlik yeniden çözülüyordur.
+   */
+  firstCompletedAt?: string | null;
 }

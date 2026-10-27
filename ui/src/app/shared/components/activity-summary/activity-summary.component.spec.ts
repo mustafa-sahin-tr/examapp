@@ -69,4 +69,24 @@ describe('ActivitySummaryComponent (#573, #572)', () => {
 
     expect(events).toEqual(['next', 'list']);
   });
+
+  it('retake_HiddenByDefault_ShownWhenCanRetakeAndEmits (#609)', () => {
+    setup();
+    expect(q('summary-retake')).toBeNull();
+
+    TestBed.resetTestingModule();
+    setup({ canRetake: true });
+    const emitted: unknown[] = [];
+    fixture.componentInstance.retake.subscribe(() => emitted.push(true));
+    const button = q('summary-retake') as HTMLButtonElement;
+    expect(button.textContent).toContain('Yeniden çöz');
+    button.click();
+    expect(emitted.length).toBe(1);
+  });
+
+  it('retake_BusyDisablesButton (#609)', () => {
+    setup({ canRetake: true, retakeBusy: true });
+
+    expect((q('summary-retake') as HTMLButtonElement).disabled).toBe(true);
+  });
 });

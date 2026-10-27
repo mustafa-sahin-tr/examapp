@@ -26,6 +26,9 @@
           [nextBusy]="nextBusy()"
           (next)="openNextActivity()"
           (backToList)="backToList()"
+          [canRetake]="canRetake()"
+          [retakeBusy]="retakeBusy()"
+          (retake)="retake()"
         />
       } @else if (items().length === 0) {
         <div class="ap__state" role="status">

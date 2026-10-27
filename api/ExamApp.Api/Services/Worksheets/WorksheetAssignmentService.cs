@@ -319,7 +319,9 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                     InstanceEndTime = instance?.EndTime,
                     AssignmentStatus = ResolveAssignmentStatus(instance),
                     FirstCheckCorrectCount = worksheet?.Kind == WorksheetKind.Activity ? instance?.FirstCheckCorrectCount : null,
-                    FirstCheckTotalCount = worksheet?.Kind == WorksheetKind.Activity ? instance?.FirstCheckTotalCount : null
+                    FirstCheckTotalCount = worksheet?.Kind == WorksheetKind.Activity ? instance?.FirstCheckTotalCount : null,
+                    // issue #609: InstanceStatus gerçek durum (Started → oynatıcı devam eder); AssignmentStatus Completed kalır.
+                    Retaking = instance != null && WorksheetInstanceStatusRules.IsRetaking(instance.Status, instance.FirstCompletedAt)
                 };
             })
             .ToList();
@@ -442,9 +444,11 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             foreach (var student in targetStudents)
             {
                 // issue #367: ortak pencere kuralı (atamadan önce tamamlanmış instance da sayılır) — AssignmentInstanceWindow.
+                // issue #609: yeniden çözülen etkinlik (Started + FirstCompletedAt) tamamlanmış sayılır — TrackingStatus.
                 var relevantInstance = AssignmentInstanceWindow.SelectRelevant(
                     instances.Where(ti => ti.StudentId == student.Id),
-                    assignment.StartAt, assignment.EndAt, ti => ti.StartTime, ti => ti.Status);
+                    assignment.StartAt, assignment.EndAt, ti => ti.StartTime,
+                    ti => WorksheetInstanceStatusRules.TrackingStatus(ti.Status, ti.FirstCompletedAt));
 
                 var status = ResolveStudentAssignmentStatus(assignment, relevantInstance, now);
 
@@ -478,10 +482,15 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                         : null,
                     Status = status,
                     InstanceId = relevantInstance?.Id,
-                    LastActivity = relevantInstance?.EndTime ?? relevantInstance?.StartTime,
+                    // issue #609: yeniden çözülürken EndTime boş — ilk tamamlanma anı gösterilir.
+                    LastActivity = relevantInstance?.EndTime ?? relevantInstance?.FirstCompletedAt ?? relevantInstance?.StartTime,
                     // issue #573: etkinlikte ilk kontrol özeti ("7 doğru · 3 yanlış"); kontrol yoksa / testte null.
+                    // issue #609: yeniden çözümde korunur (ilk denemenin sonucu).
                     FirstCheckCorrectCount = isActivity ? relevantInstance?.FirstCheckCorrectCount : null,
-                    FirstCheckTotalCount = isActivity ? relevantInstance?.FirstCheckTotalCount : null
+                    FirstCheckTotalCount = isActivity ? relevantInstance?.FirstCheckTotalCount : null,
+                    Retaking = relevantInstance != null
+                        && WorksheetInstanceStatusRules.IsRetaking(relevantInstance.Status, relevantInstance.FirstCompletedAt),
+                    RetakeCount = isActivity ? relevantInstance?.RetakeCount ?? 0 : 0
                 });
             }
 
@@ -561,7 +570,8 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             return "NotStarted";
         }
 
-        return instance.Status switch
+        // issue #609: yeniden çözülen etkinlik ödevi yeniden açmaz (öğretmen görünümüyle aynı) → Completed.
+        return WorksheetInstanceStatusRules.TrackingStatus(instance.Status, instance.FirstCompletedAt) switch
         {
             WorksheetInstanceStatus.Completed => "Completed",
             WorksheetInstanceStatus.Expired => "Expired",
@@ -572,5 +582,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 
     // issue #420: kural veli özetiyle paylaşılır (AssignmentStudentStatusRules) — tek tanım.
     private static string ResolveStudentAssignmentStatus(WorksheetAssignment assignment, WorksheetInstance? instance, DateTime now)
-        => AssignmentStudentStatusRules.Resolve(assignment.StartAt, assignment.EndAt, instance?.Status, instance?.EndTime, now);
+        => AssignmentStudentStatusRules.Resolve(assignment.StartAt, assignment.EndAt,
+            instance == null ? null : WorksheetInstanceStatusRules.TrackingStatus(instance.Status, instance.FirstCompletedAt), // issue #609
+            instance?.EndTime, now);
 }

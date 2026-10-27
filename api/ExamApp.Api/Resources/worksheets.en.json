@@ -18,7 +18,11 @@
       "activityCheckRequired": "Check your answers first to see the correct answers.",
       "activityEndCheckRequired": "Check your answers at least once before finishing the activity.",
       "activityChecked": "Answers checked.",
-      "activityCheckRateLimited": "Too many check requests in a short time. Please wait a moment and try again."
+      "activityCheckRateLimited": "Too many check requests in a short time. Please wait a moment and try again.",
+      "activityRetakeStarted": "The activity has been reopened to solve again.",
+      "activityRetakeNotCompleted": "Only a completed activity can be solved again.",
+      "activityRetakeRateLimited": "Too many solve-again requests in a short time. Please wait a moment and try again.",
+      "activityRetakeWorksheetNotFound": "Activity not found."
     },
 
     "accessRequest": {

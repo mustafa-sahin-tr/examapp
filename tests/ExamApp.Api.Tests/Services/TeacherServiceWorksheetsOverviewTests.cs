@@ -222,6 +222,40 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
     }
 
     [Fact]
+    public async Task GetWorksheetsOverviewAsync_RetakingActivity_StillCountsAsCompleted()
+    {
+        // issue #609: yeniden çözülen etkinlik (Started + FirstCompletedAt) tamamlanma yüzdesini düşürmez.
+        await using (var ctx = _db.NewContext())
+        {
+            SchoolTeacher(TeacherId);
+            ctx.SetCurrentUser(TeacherId);
+            var grade = new Grade { Name = "8" };
+            ctx.Grades.Add(grade);
+            await ctx.SaveChangesAsync();
+
+            var ws = new Worksheet { Name = "WS", Description = "", GradeId = grade.Id, Kind = WorksheetKind.Activity };
+            var student = new Student { UserId = 709, StudentNumber = "r", SchoolId = _teacherSchoolId, SchoolVerifiedAt = DateTime.UtcNow };
+            ctx.AddRange(ws, student);
+            await ctx.SaveChangesAsync();
+
+            var startAt = DateTime.UtcNow.AddDays(-2);
+            ctx.WorksheetAssignments.Add(new WorksheetAssignment { WorksheetId = ws.Id, StudentId = student.Id, StartAt = startAt });
+            ctx.TestInstances.Add(new WorksheetInstance
+            {
+                WorksheetId = ws.Id, StudentId = student.Id, StartTime = startAt.AddHours(1),
+                Status = WorksheetInstanceStatus.Started, FirstCompletedAt = startAt.AddHours(2),
+                AttemptStartedAt = DateTime.UtcNow.AddMinutes(-5), RetakeCount = 1
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var check = _db.NewContext();
+        var result = await NewService(check).GetWorksheetsOverviewAsync(SchoolTeacher(TeacherId));
+
+        result.ShouldHaveSingleItem().CompletionPercentage.ShouldBe(100);
+    }
+
+    [Fact]
     public async Task GetWorksheetsOverviewAsync_CompletionBelowFifty_CalculatesPercentageCorrectly()
     {
         // 1 of 4 assigned students completed -> 25%.

@@ -90,4 +90,26 @@ describe('WorksheetCardComponent', () => {
         expect(expiredClass).not.toBe('border-urgent-personal');
         expect(expiredClass).not.toBe('border-in-progress-personal');
     });
+
+    // issue #609: yeniden çözülen etkinlik (oturum Started, retaking → isFinished) bitmiş ödevdir — aciliyet/devam görünümü yok.
+    it('a retaking activity assignment shows neither the deadline warning nor in-progress', () => {
+        component.themeConfig = { ...component.themeConfig, borders: true, gradient: true };
+        const endSoon = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+        component.assignment = {
+            isGradeAssignment: false,
+            endAt: endSoon,
+            kind: 1,
+            instanceStatus: 0,
+            hasStarted: true,
+            isCompleted: true,
+            isFinished: true,
+            retaking: true,
+            assignmentStatus: 'Completed',
+        } as unknown as AssignedWorksheet;
+
+        expect(component.getStatusBorderClass()).toBe('border-completed-personal');
+        expect(component.getStatusIcon()).toBe('check_circle');
+        expect(component.getGradientClass()).not.toContain('urgent');
+        expect(component.getGradientClass()).not.toContain('in-progress');
+    });
 });

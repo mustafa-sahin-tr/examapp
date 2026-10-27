@@ -126,6 +126,18 @@ export class WorksheetListViewCardComponent {
     return 'none';
   }
 
+  /**
+   * Issue #609: tamamlanmış etkinlik yeniden çözülüyor — oturum Started (kart "Devam et" gösterir, oynatıcıyı açar), atama ise
+   * tamamlanmış kalır. Kaynak: oturum özetinin `firstCompletedAt`'i (atamasız etkinlikte de) ya da atamanın `retaking`'i.
+   */
+  get isRetaking(): boolean {
+    return (
+      this.isActivity &&
+      this.status === 'inprogress' &&
+      (!!this.instance?.firstCompletedAt || this.assignment?.retaking === true)
+    );
+  }
+
   get subtitle(): string {
     return [this.subjectName, this.gradeName].filter((v) => !!v).join(' · ');
   }

@@ -707,6 +707,7 @@
         "badgeRemaining": "{{count}} more activities!",
         "next": "Next activity",
         "backToList": "Back to the list",
+        "retake": "Solve again",
         "badgeLineMinutes": "{{name}} badge: {{current}}/{{target}} min",
         "badgeLineDays": "{{name}} badge: {{current}}/{{target}} days",
         "badgeRemainingMinutes": "{{count}} more minutes!",
@@ -715,6 +716,14 @@
       "launch": {
         "failed": "The activity could not be opened. Try again.",
         "dismiss": "OK"
+      },
+      "retake": {
+        "retakeTitle": "Solve the activity again",
+        "retakeMessage": "Your answers will be deleted and you will start the activity from the beginning. Your first result stays with your teacher.",
+        "retakeConfirm": "Solve again",
+        "retakeCancel": "Cancel",
+        "retakeFailed": "The activity could not be reopened. Try again.",
+        "retakeRateLimited": "You tried too often. Wait a moment and try again."
       }
     }
   },

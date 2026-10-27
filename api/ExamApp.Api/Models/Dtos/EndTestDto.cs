@@ -53,4 +53,10 @@ public class InstanceSummaryDto
 
     /// <summary>issue #573: yalnız etkinlikte — ilk kontroldeki toplam satır sayısı; kontrol yoksa / testte null.</summary>
     public int? FirstCheckTotalCount { get; set; }
+
+    /// <summary>
+    /// issue #609: yalnız etkinlikte — ilk tamamlanma anı (UTC); hiç tamamlanmadıysa / testte null. <see cref="Status"/> 0 (Started)
+    /// iken doluysa etkinlik yeniden çözülüyordur (detay sayfası "Devam et", liste kartı tamamlandı rozeti).
+    /// </summary>
+    public DateTime? FirstCompletedAt { get; set; }
 }

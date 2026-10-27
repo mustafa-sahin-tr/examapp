@@ -28,6 +28,8 @@ export const ACTIVITY_ERROR_CODES = {
   invalidAnswerPayload: 'InvalidAnswerPayload',
   rateLimited: 'RateLimited',
   worksheetKindLocked: 'WorksheetKindLocked',
+  /** Issue #609: 409 — yalnız tamamlanmış etkinlik yeniden çözülebilir (Started/Expired). */
+  activityNotCompleted: 'ActivityNotCompleted',
 } as const;
 
 /** Backend `ActivityCheckRequestDto.MaxAnswers`. */
@@ -73,6 +75,15 @@ export interface ActivitySolution {
 /** Backend `ActivitySolutionsResultDto`. */
 export interface ActivitySolutionsResult extends TestSessionResult {
   questions: ActivitySolution[];
+}
+
+/**
+ * Issue #609: backend `ActivityRetakeResultDto` (`POST api/test-instances/{id}/retake`). Aynı oturum sıfırlanır; oynatıcı
+ * `instanceId` ile açılır. `alreadyRetaking` = zaten yeniden çözülüyordu, hiçbir şey silinmedi (oynatıcı yine açılır).
+ */
+export interface ActivityRetakeResult extends TestSessionResult {
+  instanceId: number;
+  alreadyRetaking: boolean;
 }
 
 /** Satır bazlı geri bildirim — `feedback` JSON'undan ayrıştırılır. */

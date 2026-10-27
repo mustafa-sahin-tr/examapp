@@ -18,7 +18,11 @@
       "activityCheckRequired": "Doğru cevapları görmek için önce cevaplarını kontrol et.",
       "activityEndCheckRequired": "Etkinliği bitirmeden önce cevaplarını en az bir kez kontrol et.",
       "activityChecked": "Cevaplar kontrol edildi.",
-      "activityCheckRateLimited": "Kısa sürede çok fazla kontrol isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin."
+      "activityCheckRateLimited": "Kısa sürede çok fazla kontrol isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin.",
+      "activityRetakeStarted": "Etkinlik yeniden çözülmek üzere açıldı.",
+      "activityRetakeNotCompleted": "Yalnız tamamlanmış bir etkinlik yeniden çözülebilir.",
+      "activityRetakeRateLimited": "Kısa sürede çok fazla yeniden çözme isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin.",
+      "activityRetakeWorksheetNotFound": "Etkinlik bulunamadı."
     },
 
     "accessRequest": {

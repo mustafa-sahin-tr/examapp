@@ -215,6 +215,109 @@ public class ExamControllerActivityCheckTests
         result.ShouldBeOfType<NotFoundObjectResult>();
     }
 
+    // ---------------------------------------------------------------- issue #609: POST test-instances/{id}/retake
+
+    [Fact]
+    public async Task RetakeActivity_Success_Returns200AndPassesTheCallerId()
+    {
+        var response = new ActivityRetakeResultDto { Success = true, InstanceId = 5 };
+        _testSession.RetakeActivityAsync(5, UserId, Arg.Any<CancellationToken>()).Returns(response);
+
+        var result = await NewController().RetakeActivity(5, default);
+
+        result.ShouldBeOfType<OkObjectResult>().Value.ShouldBe(response);
+    }
+
+    [Theory]
+    [InlineData(TestSessionErrorCodes.NotAnActivity)]
+    [InlineData(TestSessionErrorCodes.ActivityNotCompleted)]
+    public async Task RetakeActivity_Conflict_Returns409(string errorCode)
+    {
+        _testSession.RetakeActivityAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new ActivityRetakeResultDto { Success = false, Conflict = true, ErrorCode = errorCode });
+
+        var result = await NewController().RetakeActivity(5, default);
+
+        result.ShouldBeOfType<ConflictObjectResult>().Value.ShouldBeOfType<ActivityRetakeResultDto>().ErrorCode.ShouldBe(errorCode);
+    }
+
+    [Fact]
+    public async Task RetakeActivity_NotFound_Returns404()
+    {
+        _testSession.RetakeActivityAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new ActivityRetakeResultDto { Success = false, NotFound = true });
+
+        var result = await NewController().RetakeActivity(5, default);
+
+        result.ShouldBeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task RetakeActivity_AccessDenied_Returns403()
+    {
+        _testSession.RetakeActivityAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new ActivityRetakeResultDto { Success = false, Forbidden = true, ErrorCode = TestSessionErrorCodes.AccessDenied });
+
+        var result = await NewController().RetakeActivity(5, default);
+
+        var obj = result.ShouldBeOfType<ObjectResult>();
+        obj.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        obj.Value.ShouldBeOfType<ActivityRetakeResultDto>().ErrorCode.ShouldBe(TestSessionErrorCodes.AccessDenied);
+    }
+
+    [Fact]
+    public void RetakeActivity_Endpoint_UsesThePerUserActivityRetakeRateLimitPolicy()
+    {
+        var method = typeof(ExamController).GetMethod(nameof(ExamController.RetakeActivity))!;
+
+        method.GetCustomAttributes<EnableRateLimitingAttribute>().ShouldHaveSingleItem()
+            .PolicyName.ShouldBe(ActivityRetakeRateLimiting.Policy);
+    }
+
+    [Fact]
+    public void ActivityRetakeRateLimitOptions_DefaultTo5PerMinute()
+    {
+        var o = new ActivityRetakeRateLimitOptions();
+        o.PermitLimit.ShouldBe(5);
+        o.WindowSeconds.ShouldBe(60);
+    }
+
+    [Fact]
+    public async Task ActivityRetakeRateLimitPolicy_PartitionsPerUser_AndRejectsWith429RateLimited()
+    {
+        var options = Substitute.For<IOptionsMonitor<ActivityRetakeRateLimitOptions>>();
+        options.CurrentValue.Returns(new ActivityRetakeRateLimitOptions { PermitLimit = 1, WindowSeconds = 60 });
+        var policy = new ActivityRetakeRateLimitPolicy(options,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ActivityRetakeRateLimitPolicy>.Instance);
+
+        var context = HttpFor("user-retake");
+        var partition = policy.GetPartition(context);
+        policy.GetPartition(HttpFor("other-user")).PartitionKey.ShouldNotBe(partition.PartitionKey);
+        using var limiter = partition.Factory(partition.PartitionKey);
+        limiter.AttemptAcquire().IsAcquired.ShouldBeTrue();
+        var rejected = limiter.AttemptAcquire();
+        rejected.IsAcquired.ShouldBeFalse();
+
+        await policy.OnRejected!(new OnRejectedContext { HttpContext = context, Lease = rejected }, CancellationToken.None);
+
+        context.Response.StatusCode.ShouldBe(StatusCodes.Status429TooManyRequests);
+        context.Response.Body.Seek(0, SeekOrigin.Begin);
+        using var doc = JsonDocument.Parse(context.Response.Body);
+        doc.RootElement.GetProperty("errorCode").GetString().ShouldBe("RateLimited");
+    }
+
+    [Fact]
+    public void RetakeActivity_Endpoint_IsPostOnTheInstanceRetakeRouteWithRoleGate()
+    {
+        var method = typeof(ExamController).GetMethod(nameof(ExamController.RetakeActivity))!;
+
+        method.GetCustomAttribute<Microsoft.AspNetCore.Mvc.HttpPostAttribute>()!.Template
+            .ShouldBe("~/api/test-instances/{instanceId:int}/retake");
+        method.GetCustomAttributes<AuthorizeAttribute>().Select(a => a.Roles)
+            .ShouldContain("Student,Teacher,Admin");
+        method.GetCustomAttributes<AuthorizeAttribute>().Where(a => a.Policy != null).ShouldNotBeEmpty();
+    }
+
     // ---------------------------------------------------------------- rota ve yetkilendirme attribute'ları
 
     [Fact]

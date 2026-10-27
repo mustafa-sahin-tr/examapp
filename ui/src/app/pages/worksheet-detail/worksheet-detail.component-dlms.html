@@ -78,9 +78,15 @@
                 <button class="btn btn-primary" data-testid="start-cta" (click)="StartTest(exam.id)">
                   <mat-icon>play_arrow</mat-icon>{{ t(isActivity() ? 'activity.continue' : 'cta.continue') }}
                 </button>
+                @if (instanceRetaking) {
+                  <span class="chip" data-testid="activity-retaking"><mat-icon>replay</mat-icon>{{ t('activity.retakingBadge') }}</span>
+                }
               } @else if (isActivity() && instanceCompleted) {
-                <!-- Issue #573: tekrar çözüm #572'ye ertelendi (öğrenci/sayfa başına tek oturum, #367). -->
+                <!-- Issue #609: tamamlanmış etkinlik aynı oturumda yeniden çözülür (onay → retake → oynatıcı). Testte yok. -->
                 <span class="chip" data-testid="activity-done"><mat-icon>check_circle</mat-icon>{{ t('activity.completed') }}</span>
+                <button class="btn btn-primary" data-testid="activity-retake" [disabled]="retakeBusy()" (click)="retakeActivity()">
+                  <mat-icon>replay</mat-icon>{{ t('activity.retake') }}
+                </button>
               }
             </div>
           </div>
@@ -159,11 +165,17 @@
                   <mat-icon>play_arrow</mat-icon>{{ t(isActivity() ? 'activity.start' : 'cta.start') }}
                 </button>
               } @else if (instanceStarted) {
+                @if (instanceRetaking) {
+                  <span class="s-status" data-testid="activity-retaking-side"><mat-icon>replay</mat-icon>{{ t('activity.retakingBadge') }}</span>
+                }
                 <button class="btn btn-primary full" (click)="StartTest(exam.id)">
                   <mat-icon>play_arrow</mat-icon>{{ t(isActivity() ? 'activity.continue' : 'cta.continue') }}
                 </button>
               } @else if (isActivity() && instanceCompleted) {
                 <span class="s-status" data-testid="activity-done-side"><mat-icon>check_circle</mat-icon>{{ t('activity.completed') }}</span>
+                <button class="btn btn-primary full" data-testid="activity-retake-side" [disabled]="retakeBusy()" (click)="retakeActivity()">
+                  <mat-icon>replay</mat-icon>{{ t('activity.retake') }}
+                </button>
               }
             </div>
 

@@ -418,6 +418,7 @@ builder.Services.AddAdminAccountStatusRateLimiting();
 builder.Services.AddQuestionBankSearchRateLimiting();
 builder.Services.AddQuestionBankLinkRateLimiting();
 builder.Services.AddActivityCheckRateLimiting(); // issue #571
+builder.Services.AddActivityRetakeRateLimiting(); // issue #609
 builder.Services.AddBookingLifecycleRateLimiting(); // issue #315
 // issue #365 (S3): kitap sayfası sorgusu (POST study-items/book-pages/lookup) kullanıcı başına rate limit.
 builder.Services.AddStudyBookPageLookupRateLimiting();

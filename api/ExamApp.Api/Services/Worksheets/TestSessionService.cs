@@ -438,6 +438,7 @@ public class TestSessionService : ITestSessionService
             SolutionsRevealedAt = isActivity ? testInstance.SolutionsRevealedAt : null,
             FirstCheckCorrectCount = isActivity ? testInstance.FirstCheckCorrectCount : null,
             FirstCheckTotalCount = isActivity ? testInstance.FirstCheckTotalCount : null,
+            FirstCompletedAt = isActivity ? testInstance.FirstCompletedAt : null, // issue #609
             TestInstanceQuestions = OrderedForDisplay(testInstance.WorksheetInstanceQuestions).Select(tiq =>
             {
                 var questionEntity = tiq.WorksheetQuestion.Question;
@@ -910,6 +911,8 @@ public class TestSessionService : ITestSessionService
             .ExecuteUpdateAsync(s => s
                 .SetProperty(ti => ti.Status, WorksheetInstanceStatus.Completed)
                 .SetProperty(ti => ti.EndTime, (DateTime?)now)
+                // issue #609: ilk tamamlanma anı bir kez yazılır; yeniden çözülen etkinliğin tekrar tamamlanması değiştirmez.
+                .SetProperty(ti => ti.FirstCompletedAt, ti => ti.FirstCompletedAt ?? (DateTime?)now)
                 .SetProperty(ti => ti.UpdateTime, (DateTime?)now)
                 .SetProperty(ti => ti.UpdateUserId, (int?)userId), ct);
 
@@ -1185,6 +1188,166 @@ public class TestSessionService : ITestSessionService
     }
 
     /// <summary>
+    /// issue #609: tamamlanmış etkinliği "Yeniden çöz". Yeni oturum AÇILMAZ (öğrenci + worksheet başına tek canlı oturum,
+    /// #367 unique index'i) — aynı oturum sıfırlanır. Yalnız oturumun sahibi (yoksa NotFound), yalnız etkinlik (409
+    /// <see cref="TestSessionErrorCodes.NotAnActivity"/>; test davranışı değişmez) ve yalnız Completed oturum (409
+    /// <see cref="TestSessionErrorCodes.ActivityNotCompleted"/>: hiç tamamlanmamış Started ya da Expired). Oturum zaten yeniden
+    /// çözülüyorsa (Started + <c>FirstCompletedAt</c> dolu) idempotent başarı, hiçbir şey sıfırlanmaz (<c>AlreadyRetaking</c>).
+    /// <para>
+    /// Tek transaction: önce koşullu UPDATE (<c>WHERE Status = Completed</c>) — satır kilidini alır, EndTest/SaveAnswer/kontrol
+    /// ile aynı kilitte serileşir; iki eşzamanlı retake'ten yalnız biri 1 satır görür, kaybeden hiçbir şeyi sıfırlamaz (kazananın
+    /// açtığı oturumda yazılan cevaplar silinmez). Sonra maddelerin cevap/kontrol alanları temizlenir (satırlar kalır,
+    /// <c>AnswerRevision</c> ileri gider). Oturumda: Status = Started, EndTime / SolutionsRevealedAt = null, CheckCount = 0.
+    /// KORUNAN: <c>FirstCheckCorrectCount/TotalCount/FirstCheckedAt</c> (öğretmenin gördüğü ilk sonuç; kontrol yalnız
+    /// <c>FirstCheckedAt == null</c> iken yazar), <c>FirstCompletedAt</c>, <c>ActiveSeconds</c> (yeniden tamamlamada birikir) ve
+    /// <c>StartTime</c> (atama penceresi <see cref="AssignmentInstanceWindow"/> buna bakar; sıfırlansaydı teslim tarihinden
+    /// sonra yeniden çözülen etkinlik öğretmen takibinden düşerdi). Denemenin başlangıcı ayrıca <c>AttemptStartedAt</c>'e yazılır
+    /// (etkin süre penceresi), <c>RetakeCount</c> +1. Erişim start-test kuralıyla (403 AccessDenied); silinmiş etkinlik 404. Etkinlik süresiz olduğundan (#573) süre kopyası 0'a çekilir —
+    /// eski bir oturumun kopyası kalmışsa eski StartTime yüzünden yeniden açılan oturum hemen Expired olmasın.
+    /// </para>
+    /// Yeniden tamamlama EndTest'te yine bir <see cref="ActivityCompletedEvent"/> yazar (aynı WorksheetInstanceId); BadgeService
+    /// (UserId, WorksheetInstanceId) ile tekilleştirdiği için rozet sayaçları şişmez. Puan yok (etkinlik puansız, #571).
+    /// </summary>
+    public async Task<ActivityRetakeResultDto> RetakeActivityAsync(int instanceId, int userId, CancellationToken ct = default)
+    {
+        var instance = await _context.TestInstances.AsNoTracking()
+            .Where(ti => ti.Id == instanceId && ti.Student.UserId == userId)
+            .Select(ti => new
+            {
+                ti.Status, ti.FirstCompletedAt, ti.WorksheetId, ti.StudentId,
+                ti.Student.GradeId, VerifiedSchoolId = ti.Student.SchoolVerifiedAt != null ? ti.Student.SchoolId : null
+            })
+            .FirstOrDefaultAsync(ct);
+        if (instance == null)
+            return InstanceNotFound<ActivityRetakeResultDto>();
+        if (await WorksheetKindOfInstanceAsync(instanceId, ct) != WorksheetKind.Activity)
+            return NotAnActivity<ActivityRetakeResultDto>();
+
+        // review M2: yeniden çözme yeni bir çözüm başlatmaktır → start-test ile AYNI erişim kararı (atama / sınıf + görünürlük).
+        // Silinmiş etkinlik (Worksheet query filter'ı) yeniden açılmaz.
+        var worksheet = await _context.Worksheets.AsNoTracking()
+            .Where(w => w.Id == instance.WorksheetId)
+            .Select(w => new { w.GradeId, w.StudentVisibility })
+            .FirstOrDefaultAsync(ct);
+        if (worksheet == null)
+            return RetakeWorksheetNotFound();
+        var hasActiveAssignment = await _context.ActiveAssignmentsFor(instance.StudentId, instance.GradeId, instance.VerifiedSchoolId, DateTime.UtcNow)
+            .AnyAsync(a => a.WorksheetId == instance.WorksheetId, ct);
+        var isGradeMatch = instance.GradeId.HasValue && worksheet.GradeId == instance.GradeId.Value;
+        if (!WorksheetAccess.CanStudentStartTest(hasActiveAssignment, isGradeMatch, worksheet.StudentVisibility))
+            return RetakeAccessDenied();
+
+        if (WorksheetInstanceStatusRules.IsRetaking(instance.Status, instance.FirstCompletedAt))
+            return RetakeStarted(instanceId, alreadyRetaking: true);
+        if (instance.Status != WorksheetInstanceStatus.Completed)
+            return ActivityNotCompleted();
+
+        var strategy = _context.Database.CreateExecutionStrategy();
+        var reopened = await strategy.ExecuteAsync(async _ =>
+        {
+            _context.ChangeTracker.Clear();
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+            var now = DateTime.UtcNow;
+
+            // Karar bu koşullu UPDATE'te (ön okumalar yalnız hata mesajı içindir). review Ö3: tür (ve silinmemiş etkinlik) aynı
+            // WHERE'de — savunma derinliği (tür, oturumu olan sayfada zaten değişemez, #573). FirstCompletedAt migration'dan önce
+            // tamamlanmış ve doldurulmamış bir satırda EndTime ile tamamlanır (ilk tamamlanmayı kaybetmemek için).
+            var updated = await _context.TestInstances
+                .Where(ti => ti.Id == instanceId
+                    && ti.Student.UserId == userId
+                    && ti.Status == WorksheetInstanceStatus.Completed
+                    && _context.Worksheets.IgnoreQueryFilters()
+                        .Any(w => w.Id == ti.WorksheetId && w.Kind == WorksheetKind.Activity && !w.IsDeleted))
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(ti => ti.Status, WorksheetInstanceStatus.Started)
+                    .SetProperty(ti => ti.FirstCompletedAt, ti => ti.FirstCompletedAt ?? ti.EndTime ?? (DateTime?)now)
+                    .SetProperty(ti => ti.AttemptStartedAt, (DateTime?)now)
+                    .SetProperty(ti => ti.RetakeCount, ti => ti.RetakeCount + 1)
+                    .SetProperty(ti => ti.EndTime, (DateTime?)null)
+                    .SetProperty(ti => ti.SolutionsRevealedAt, (DateTime?)null)
+                    .SetProperty(ti => ti.CheckCount, 0)
+                    .SetProperty(ti => ti.MaxDurationSeconds, (int?)0)
+                    .SetProperty(ti => ti.UpdateTime, (DateTime?)now)
+                    .SetProperty(ti => ti.UpdateUserId, (int?)userId), ct);
+
+            if (updated == 0)
+            {
+                await tx.RollbackAsync(ct);
+                _context.ChangeTracker.Clear();
+                return false;
+            }
+
+            // Cevaplar ve kontrol sonuçları silinir; satırlar (madde listesi) kalır. AnswerRevision ileri gider (önceki
+            // denemenin revizyonları yeniden kullanılmaz); CheckedAnswerRevision null → eski kontrol sonucu yeniden yüklemede dönmez.
+            await _context.TestInstanceQuestions
+                .Where(q => q.WorksheetInstanceId == instanceId)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(q => q.SelectedAnswerId, (int?)null)
+                    .SetProperty(q => q.AnswerPayload, (string?)null)
+                    .SetProperty(q => q.IsCorrect, false)
+                    .SetProperty(q => q.CorrectCount, 0)
+                    .SetProperty(q => q.TotalCount, 0)
+                    .SetProperty(q => q.GradedBy, AnswerGradedBy.Auto)
+                    .SetProperty(q => q.Feedback, (string?)null)
+                    .SetProperty(q => q.CheckedAnswerRevision, (int?)null)
+                    .SetProperty(q => q.ShowCorrectAnswer, false)
+                    .SetProperty(q => q.TimeTaken, 0)
+                    .SetProperty(q => q.AnswerRevision, q => q.AnswerRevision + 1)
+                    .SetProperty(q => q.UpdateTime, (DateTime?)now)
+                    .SetProperty(q => q.UpdateUserId, (int?)userId), ct);
+
+            await tx.CommitAsync(ct);
+            return true;
+        }, ct);
+
+        if (reopened)
+            return RetakeStarted(instanceId, alreadyRetaking: false);
+
+        // Yarışı başka bir istek kazandı: aynı oturum zaten yeniden açıldıysa idempotent başarı, aksi halde 409.
+        var final = await _context.TestInstances.AsNoTracking()
+            .Where(ti => ti.Id == instanceId && ti.Student.UserId == userId)
+            .Select(ti => new { ti.Status, ti.FirstCompletedAt })
+            .FirstOrDefaultAsync(ct);
+        if (final == null)
+            return InstanceNotFound<ActivityRetakeResultDto>();
+        return WorksheetInstanceStatusRules.IsRetaking(final.Status, final.FirstCompletedAt)
+            ? RetakeStarted(instanceId, alreadyRetaking: true)
+            : ActivityNotCompleted();
+    }
+
+    private ActivityRetakeResultDto RetakeAccessDenied() => new()
+    {
+        Success = false,
+        Forbidden = true,
+        ErrorCode = TestSessionErrorCodes.AccessDenied,
+        Message = _localizer["worksheets.session.accessDenied"]
+    };
+
+    private ActivityRetakeResultDto RetakeWorksheetNotFound() => new()
+    {
+        Success = false,
+        NotFound = true,
+        ErrorCode = TestSessionErrorCodes.WorksheetNotFound,
+        Message = _localizer["worksheets.session.activityRetakeWorksheetNotFound"]
+    };
+
+    private ActivityRetakeResultDto RetakeStarted(int instanceId, bool alreadyRetaking) => new()
+    {
+        Success = true,
+        InstanceId = instanceId,
+        AlreadyRetaking = alreadyRetaking,
+        Message = _localizer["worksheets.session.activityRetakeStarted"]
+    };
+
+    private ActivityRetakeResultDto ActivityNotCompleted() => new()
+    {
+        Success = false,
+        Conflict = true,
+        ErrorCode = TestSessionErrorCodes.ActivityNotCompleted,
+        Message = _localizer["worksheets.session.activityRetakeNotCompleted"]
+    };
+
+    /// <summary>
     /// review #571: oturumun worksheet türü — Worksheet soft-delete query filter'ı OLMADAN (sınav sırasında silinen worksheet
     /// de çözülür; oturum sorgusuna JOIN eklenip satır düşürülmez). Bulunamazsa <see cref="WorksheetKind.Test"/>.
     /// </summary>
@@ -1318,14 +1481,19 @@ public class TestSessionService : ITestSessionService
     /// </summary>
     private async Task<DateTime> ActivityWindowStartAsync(int studentId, int testInstanceId, DateTime startTime, CancellationToken ct)
     {
+        // issue #609 (review U1): şu an yeniden çözülen (Started + FirstCompletedAt) diğer etkinliğin EndTime'ı boş; onun daha önce
+        // talep ettiği süre en az FirstCompletedAt'e kadar uzanır → bitiş olarak FirstCompletedAt sayılır. Birden çok yeniden
+        // çözümde önceki denemelerin son bitişi tutulmaz (sadelik): FirstCompletedAt alt sınırdır, pencere gereğinden geniş
+        // kalabilir ama asla negatif/çakışık sayım üretmez; üst sınır yine MaxActiveSecondsPerActivity. Yeniden tamamlandığında
+        // EndTime dolar ve normal kurala döner.
         var latestOtherEnd = await _context.TestInstances.AsNoTracking().IgnoreQueryFilters()
             .Where(ti => ti.StudentId == studentId
                 && ti.Id != testInstanceId
                 && !ti.IsDeleted
-                && ti.Status == WorksheetInstanceStatus.Completed
-                && ti.EndTime != null && ti.EndTime > startTime
+                && ((ti.Status == WorksheetInstanceStatus.Completed && ti.EndTime != null && ti.EndTime > startTime)
+                    || (ti.Status == WorksheetInstanceStatus.Started && ti.FirstCompletedAt != null && ti.FirstCompletedAt > startTime))
                 && _context.Worksheets.IgnoreQueryFilters().Any(w => w.Id == ti.WorksheetId && w.Kind == WorksheetKind.Activity))
-            .MaxAsync(ti => ti.EndTime, ct);
+            .MaxAsync(ti => ti.Status == WorksheetInstanceStatus.Completed ? ti.EndTime : ti.FirstCompletedAt, ct);
         return latestOtherEnd is { } end && end > startTime ? end : startTime;
     }
 
@@ -1351,7 +1519,13 @@ public class TestSessionService : ITestSessionService
 
         long reported = reportedActiveSeconds
             ?? await rows.SumAsync(q => (long)q.TimeTaken, ct);
-        var windowStart = await ActivityWindowStartAsync(plan.StudentId, testInstanceId, startTime, ct);
+        // issue #609 (review L3): yeniden çözülen etkinlikte bu denemenin başlangıcı AttemptStartedAt (StartTime ilk denemenin).
+        var attemptStartedAt = await _context.TestInstances.AsNoTracking().IgnoreQueryFilters()
+            .Where(ti => ti.Id == testInstanceId)
+            .Select(ti => ti.AttemptStartedAt)
+            .FirstOrDefaultAsync(ct);
+        var attemptStart = attemptStartedAt is { } a && a > startTime ? a : startTime;
+        var windowStart = await ActivityWindowStartAsync(plan.StudentId, testInstanceId, attemptStart, ct);
         var activeSeconds = ClampActiveSeconds(reported, windowStart, completedAtUtc);
 
         // Etkinliğin dersi yoksa maddelerin en sık dersi (eşitlikte küçük id — deterministik).
@@ -1362,9 +1536,11 @@ public class TestSessionService : ITestSessionService
             .Select(g => g.Key)
             .FirstOrDefaultAsync(ct);
 
+        // issue #609: yeniden çözülen etkinlikte etkin süre birikir (önceki denemelerin süresi + bu deneme); ilk tamamlanmada
+        // ActiveSeconds null olduğundan değer aynen bu denemeninkidir. Event yalnız bu denemenin süresini taşır.
         await _context.TestInstances
             .Where(ti => ti.Id == testInstanceId)
-            .ExecuteUpdateAsync(s => s.SetProperty(ti => ti.ActiveSeconds, (int?)activeSeconds), ct);
+            .ExecuteUpdateAsync(s => s.SetProperty(ti => ti.ActiveSeconds, ti => (int?)((ti.ActiveSeconds ?? 0) + activeSeconds)), ct);
 
         var outboxId = Guid.NewGuid();
         _context.OutboxMessages.Add(new OutboxMessage

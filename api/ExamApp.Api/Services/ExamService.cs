@@ -421,7 +421,8 @@ public class ExamService : IExamService
                     AnsweredQuestions = instance.WorksheetInstanceQuestions.Count(wiq => wiq.SelectedAnswerId != null || wiq.AnswerPayload != null),
                     CheckCount = instance.CheckCount,
                     FirstCheckCorrectCount = instance.FirstCheckCorrectCount,
-                    FirstCheckTotalCount = instance.FirstCheckTotalCount
+                    FirstCheckTotalCount = instance.FirstCheckTotalCount,
+                    FirstCompletedAt = instance.FirstCompletedAt // issue #609
                 };
             }
             else if (instance != null)

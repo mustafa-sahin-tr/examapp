@@ -68,4 +68,22 @@ public class WorksheetInstance : BaseEntity
     /// tamamlanmamış etkinlikte null.
     /// </summary>
     public int? ActiveSeconds { get; set; }
+
+    /// <summary>
+    /// issue #609: oturumun İLK Started → Completed geçişinin anı (UTC); bir kez yazılır, sonra değişmez. Etkinlik yeniden
+    /// çözülürken (<c>POST api/test-instances/{id}/retake</c>) oturum Started'a döner ve <see cref="EndTime"/> boşalır, ama bu alan
+    /// dolu kalır: öğretmen/veli takibi ve atama durumu oturumu "tamamlandı" saymaya devam eder
+    /// (<see cref="ExamApp.Api.Helpers.WorksheetInstanceStatusRules.TrackingStatus"/>). Migration mevcut Completed satırları
+    /// <see cref="EndTime"/> ile doldurur. Hiç tamamlanmamış oturumda null.
+    /// </summary>
+    public DateTime? FirstCompletedAt { get; set; }
+
+    /// <summary>
+    /// issue #609: son "Yeniden çöz"ün anı (UTC) — o denemenin başlangıcı. Etkin süre kırpması pencereyi bundan başlatır
+    /// (<see cref="StartTime"/> ilk denemenin başlangıcı olarak kalır; atama penceresi ona bakar). Hiç yeniden çözülmediyse null.
+    /// </summary>
+    public DateTime? AttemptStartedAt { get; set; }
+
+    /// <summary>issue #609: kaç kez "Yeniden çöz" yapıldı (öğretmen takibinde gösterilir). Varsayılan 0.</summary>
+    public int RetakeCount { get; set; }
 }

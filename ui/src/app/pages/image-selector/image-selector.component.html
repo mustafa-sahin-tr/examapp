@@ -124,6 +124,10 @@
               <mat-icon style="vertical-align: middle; margin-right: 8px">table_rows</mat-icon>
               {{ t('menu.drawMatrixRow') }}
             </button>
+            <button (click)="handleMenuAction('selectSlotMode', $event)">
+              <mat-icon style="vertical-align: middle; margin-right: 8px">input</mat-icon>
+              {{ t('menu.drawSlot') }}
+            </button>
             <!-- dragDropLabeling hızlı ayarları (sağ panel olmadan) -->
             @if (
               selectedRegion! >= 0 && getInteractionType(regions()[selectedRegion || 0].name) === 'dragDropLabeling'
@@ -189,6 +193,23 @@
               <button (click)="handleMenuAction('selectMatrixRowMode', $event)">
                 <mat-icon style="vertical-align: middle; margin-right: 8px">table_rows</mat-icon>
                 {{ t('menu.drawMatrixRow') }}
+              </button>
+              <button (click)="handleMenuAction('removeMatrixQuestion', $event)">
+                <mat-icon style="vertical-align: middle; margin-right: 8px">delete_forever</mat-icon>
+                {{ t('menu.removeQuestion') }}
+              </button>
+            }
+            <!-- Cevap kutusu için menü (#575) -->
+            @if (contextMenuType === 'slot' && selectedSlotId) {
+              <div style="padding: 6px 8px; font-size: 12px; opacity: 0.8">{{ t('menu.slotLabel', { id: selectedSlotId }) }}</div>
+              <button (click)="handleMenuAction('removeSlot', $event)">
+                <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>
+                {{ t('menu.removeSlot') }}
+              </button>
+              <mat-divider></mat-divider>
+              <button (click)="handleMenuAction('selectSlotMode', $event)">
+                <mat-icon style="vertical-align: middle; margin-right: 8px">input</mat-icon>
+                {{ t('menu.drawSlot') }}
               </button>
               <button (click)="handleMenuAction('removeMatrixQuestion', $event)">
                 <mat-icon style="vertical-align: middle; margin-right: 8px">delete_forever</mat-icon>

@@ -1,0 +1,273 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.sf-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.sf-passage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+
+  &__title {
+    font-weight: 700;
+    font-family: var(--mainFontFamily);
+  }
+
+  &__image {
+    display: block;
+    max-width: 100%;
+    max-height: 35vh;
+    object-fit: contain;
+  }
+}
+
+// Yazı boyutu sahne genişliğiyle ölçeklenir (kutular görselle birlikte küçülür / büyür).
+.sf-stage {
+  container-type: inline-size;
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+}
+
+// Sarmalayıcı görselle aynı boyutta: kaplama yüzdeleri görselin kendisine oturur.
+.sf-image-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+}
+
+.sf-image {
+  display: block;
+  max-width: 100%;
+  max-height: 75vh;
+  width: auto;
+  height: auto;
+}
+
+.sf-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+// Kutu: görsel üstünde, en küçük dokunma boyutu korunur (kutu küçükse alan biraz taşar).
+.sf-slot {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 36px;
+  min-height: 28px;
+  line-height: 1.2;
+  font-size: clamp(12px, 1.8cqi, 20px);
+
+  // Kesir bileşeni küçük kutudan taşabilir (yatay ve dikey): sayfanın üstünde kalsın, kırpılmasın.
+  &--fraction {
+    min-width: 44px;
+    min-height: 52px;
+    z-index: 1;
+    overflow: visible;
+  }
+
+  &:focus-within {
+    z-index: 2;
+  }
+
+  // Doğru: düz yeşil kenar; yanlış: kesik kırmızı kenar (renk tek sinyal değil, köşede ✓ / ✗ da var).
+  &.is-correct .sf-input,
+  &.is-correct .sf-fraction {
+    border-color: var(--ms-success-border);
+    box-shadow: 0 0 0 2px var(--ms-success-border);
+  }
+
+  &.is-wrong .sf-input,
+  &.is-wrong .sf-fraction {
+    border-style: dashed;
+    border-color: var(--ms-danger-border);
+    box-shadow: 0 0 0 2px var(--ms-danger-border);
+  }
+}
+
+.sf-root.is-activity .sf-slot {
+  min-width: 44px;
+  min-height: 36px;
+
+  &--fraction {
+    min-height: 60px;
+  }
+}
+
+.sf-input {
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: inherit;
+  padding: 0 0.3em;
+  border: 2px solid var(--ms-action-border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ms-surface) 92%, transparent);
+  color: var(--ms-text-strong);
+  font: inherit;
+  font-family: var(--mainFontFamily);
+  font-weight: 700;
+
+  &:focus-visible {
+    outline: 3px solid var(--ms-action-border-focus);
+    outline-offset: 1px;
+  }
+
+  &.is-palette-target {
+    border-color: var(--ms-action-border-focus);
+  }
+}
+
+.sf-select {
+  padding: 0 0.15em;
+  cursor: pointer;
+}
+
+.sf-fraction {
+  box-sizing: border-box;
+  flex: 1 0 auto;
+  min-width: 100%;
+  height: 100%;
+  padding: 2px;
+  border: 2px solid var(--ms-action-border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ms-surface) 92%, transparent);
+}
+
+.sf-unit {
+  flex: none;
+  padding: 0 0.2em;
+  border-radius: 4px;
+  background: var(--ms-surface);
+  color: var(--ms-text-medium);
+  font-weight: 700;
+}
+
+.sf-solution {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  padding: 0 0.3em;
+  border: 2px solid var(--ms-info-border);
+  border-radius: 6px;
+  background: var(--ms-info-surface);
+  color: var(--ms-info-text);
+  font-family: var(--mainFontFamily);
+  font-weight: 700;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sf-mark {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  pointer-events: none;
+  background: var(--ms-success-surface);
+  color: var(--ms-success-text);
+  border: 1px solid var(--ms-success-border);
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+
+  &--wrong {
+    background: var(--ms-danger-surface);
+    color: var(--ms-danger-text);
+    border-color: var(--ms-danger-border);
+  }
+}
+
+.sf-palette {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+
+  &__label {
+    flex: 1 0 100%;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ms-text-medium);
+  }
+
+  &__symbol {
+    min-width: 44px;
+    min-height: 40px;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1px solid var(--ms-action-border);
+    background: var(--ms-surface);
+    color: var(--ms-action-text);
+    font-family: var(--mainFontFamily);
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--ms-action-background-weak-hover);
+    }
+
+    &:focus-visible {
+      outline: 3px solid var(--ms-action-border-focus);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.sf-root.is-activity .sf-palette__symbol {
+  min-height: 44px;
+}
+
+.sf-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sf-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ms-text-medium);
+}

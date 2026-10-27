@@ -557,7 +557,7 @@ public class QuestionService : IQuestionService
     }
 
     /// <summary>
-    /// issue #574: MCQ kuralı dışında kendi kontrolcüsü olan tip (dragDropLabeling, matrixChoice). Bilinmeyen tip MCQ
+    /// issue #574: MCQ kuralı dışında kendi kontrolcüsü olan tip (dragDropLabeling, matrixChoice, slotFill). Bilinmeyen tip MCQ
     /// kontrolcüsüne düştüğü için etkileşimli sayılmaz (bugünkü davranış: doğru şık zorunlu, question-v2 kırpılır).
     /// </summary>
     private bool IsInteractive(string? interactionType) =>
@@ -794,7 +794,7 @@ public class QuestionService : IQuestionService
 
                         questionV2Image = croppedQuestionImage;
                         // For MCQ we trim question-v2 above the answer block to improve UI.
-                        // For interactive types (dragDropLabeling, matrixChoice) the targets are inside the question image,
+                        // For interactive types (dragDropLabeling, matrixChoice, slotFill) the targets are inside the question image,
                         // so we must keep full height.
                         if (!IsInteractive(interactionType) && answerInfos.Any())
                         {

@@ -28,7 +28,28 @@
     "matrixColumnCount": "A matrix needs {{min}}–{{max}} columns",
     "matrixEmptyColumnLabel": "A column has no name",
     "matrixMissingSolution": "{{count}} row(s) have no correct answer marked",
-    "matrixPartialCells": "Some cell boxes are missing: students will choose from the list below the image"
+    "matrixPartialCells": "Some cell boxes are missing: students will choose from the list below the image",
+    "slotNone": "No answer boxes drawn",
+    "slotTooMany": "At most {{max}} answer boxes are allowed",
+    "slot": {
+      "missingNumber": "Box {{n}}: no correct number entered",
+      "invalidNumber": "Box {{n}}: the correct value is not a readable number (e.g. 3/4, 0,75, %75, 2 3/5)",
+      "numberHasUnit": "Box {{n}}: don't type a unit in the correct value; add it to the units field",
+      "unitsMissing": "Box {{n}}: a unit is expected but no accepted unit is listed",
+      "percentWithUnit": "Box {{n}}: a percentage answer cannot require a unit",
+      "notSimplest": "Box {{n}}: simplest form is required but the correct value is not simplified",
+      "missingAccept": "Box {{n}}: no accepted answer",
+      "optionCount": "Box {{n}}: a choice box needs 2–12 options",
+      "emptyOptionLabel": "Box {{n}}: an option has no label",
+      "missingCorrectOption": "Box {{n}}: no correct option marked",
+      "symbolCount": "Box {{n}}: the palette needs 1–20 symbols",
+      "symbolTooLong": "Box {{n}}: a symbol can be at most 8 characters",
+      "missingPaletteAccept": "Box {{n}}: no accepted answer",
+      "tooLong": "Box {{n}}: a field is too long or has too many values",
+      "entryFormMismatch": "Box {{n}}: with equivalence off, a fraction box needs a fraction as the correct value",
+      "entryWithRequiredUnit": "Box {{n}}: a fraction box can’t require a unit",
+      "invalidUnit": "Box {{n}}: one of the accepted units is not a readable unit"
+    }
   },
   "menu": {
     "removeQuestion": "Delete question",
@@ -56,7 +77,10 @@
     "drawMatrixRow": "Draw matrix row",
     "matrixRowLabel": "Matrix row {{id}}",
     "removeMatrixCell": "Delete cell",
-    "removeMatrixRow": "Delete row"
+    "removeMatrixRow": "Delete row",
+    "drawSlot": "Draw answer box",
+    "slotLabel": "Answer box {{id}}",
+    "removeSlot": "Delete box"
   },
   "messages": {
     "classificationApplied": "Classification applied.",
@@ -75,7 +99,8 @@
     "analysisError": "The page could not be analyzed. Try again or mark the questions manually.",
     "pageLoadError": "The page image could not be read. Check the file and try again.",
     "matrixOutsideQuestion": "The matrix box must be inside the question area.",
-    "matrixCellOutsideRow": "A cell box must be inside a row box (draw the row first)."
+    "matrixCellOutsideRow": "A cell box must be inside a row box (draw the row first).",
+    "slotOutsideQuestion": "The answer box must be inside the question area."
   },
   "coordinateJson": {
     "activated": "Coordinate JSON found: {{questions}} questions on {{pages}} pages; using the JSON instead of question detection.",
@@ -88,7 +113,7 @@
   "training": {
     "emptyPageAdded": "Empty page added to training.",
     "emptyPageExcluded": "The page has no questions and is excluded from question training; there is nothing to send.",
-    "dragDropOnly": "The page only has interactive questions (drag-and-drop, matrix); they are not sent to training, so the page was not sent (the model would learn them as background).",
+    "dragDropOnly": "The page only has interactive questions (drag-and-drop, matrix, answer boxes); they are not sent to training, so the page was not sent (the model would learn them as background).",
     "questionsAdded": "Added {{count}} questions to training ({{file}}).",
     "noImage": "Load a page first.",
     "sendError": "The page could not be sent to training. Try again.",

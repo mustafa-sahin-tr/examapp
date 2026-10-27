@@ -492,6 +492,33 @@ describe('TestSolveCanvasComponentv3 — matrixChoice (#574)', () => {
         expect(component.interactionKind('DRAGDROPLABELING')).toBe('dragDropLabeling');
         expect(component.interactionKind(null)).toBe('mcq');
         expect(component.interactionKind('somethingElse')).toBe('mcq');
+        expect(component.interactionKind('slotFill')).toBe('slotFill');
+        expect(component.interactionKind('SLOTFILL')).toBe('slotFill');
+    });
+
+    it('completeTest_FlushesSlotFillPlayersBeforeSaving (#575)', async () => {
+        const order: string[] = [];
+        const player = { flush: vi.fn(() => order.push('flush')) };
+        (component as unknown as { slotFillPlayers: () => unknown[] }).slotFillPlayers = () => [player];
+        testService.completeTest.mockImplementation(() => {
+            order.push('complete');
+            return of(OK);
+        });
+
+        await component.completeTest();
+
+        expect(player.flush).toHaveBeenCalledTimes(1);
+        expect(order[0]).toBe('flush');
+    });
+
+    it('blankSlotFillPayload_IsSentButCountsAsUnanswered (#575)', () => {
+        const slot = (values: Record<string, string>) => JSON.stringify({ version: 1, type: 'slotFill', values });
+        component.saveDragDropAnswerForQuestion(slot({ s1: '3/4' }), 1);
+        expect(component.unansweredCount()).toBe(1);
+        component.saveDragDropAnswerForQuestion(slot({}), 1);
+
+        expect(vi.mocked(testService.saveAnswer).mock.lastCall![0].answerPayload).toBe(slot({}));
+        expect(component.unansweredCount()).toBe(2);
     });
 
     it('matrixPayload_IsSavedThroughThePayloadPath', () => {

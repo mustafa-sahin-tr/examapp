@@ -14,7 +14,7 @@ namespace ExamApp.Api.Services.Interactions;
 /// <item>Çözüm (#570, <c>Question.InteractionSolution</c>): <c>{"rowId":["colId", ...], ...}</c>.</item>
 /// <item>Öğrenci payload'u: <c>{version:1,type:"matrixChoice",selections:{"rowId":["colId"]}}</c>.</item>
 /// </list>
-/// Kayıtta plan her düzeyde izinli alan listesine (allowlist) uymalı, id'ler <c>^[A-Za-z0-9_-]{1,32}$</c> (review #574).
+/// Kayıtta plan her düzeyde izinli alan listesine (allowlist) uymalı, id'ler <see cref="InteractionIds"/> kuralına uyar (review #574; ayrılmış adlar #575).
 /// Satırlar = plandaki TÜM satırlar, plan sırasıyla (cevapsız satır yanlış). Satır doğru ⇔ seçilen küme == çözüm kümesi.
 /// Geri bildirim yalnız satır id'si + doğru/yanlış taşır; beklenen kolon ASLA yazılmaz. Satırların hepsi geri bildirimde
 /// olduğu için (dragDropLabeling'den farklı olarak) hangi satırların çözümlü olduğu da sızmaz. Çözümü olmayan soru
@@ -31,8 +31,6 @@ public sealed class MatrixChoiceGrader : IInteractionGrader
     public const int MaxIdLength = 32;
     public const int MaxLabelLength = 200;
 
-    /// <summary>review #574 (L2): satır/kolon id'si — plan, çözüm ve payload'da aynı kural.</summary>
-    private static readonly Regex IdPattern = new("^[A-Za-z0-9_-]{1,32}$", RegexOptions.CultureInvariant);
 
     // review #574 (M1): kayıtta planın her düzeyinde izinli alanlar; bilinmeyen alan (gizli veri / iç içe "solution") reddedilir.
     private static readonly HashSet<string> RootKeys = new(StringComparer.Ordinal) { "version", "type", "multiPerRow", "columns", "rows" };
@@ -40,7 +38,7 @@ public sealed class MatrixChoiceGrader : IInteractionGrader
     private static readonly HashSet<string> RowKeys = new(StringComparer.Ordinal) { "id", "label", "box", "cells" };
     private static readonly HashSet<string> BoxKeys = new(StringComparer.Ordinal) { "x", "y", "width", "height" };
 
-    private static bool IsValidId(string? id) => id != null && IdPattern.IsMatch(id);
+    private static bool IsValidId(string? id) => InteractionIds.IsValid(id);
 
     private static bool HasOnlyKeys(JsonElement obj, HashSet<string> allowed)
     {

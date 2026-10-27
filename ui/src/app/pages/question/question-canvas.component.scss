@@ -1317,3 +1317,116 @@
     color: var(--ms-info-text);
   }
 }
+
+// Issue #575: cevap kutusu yazarlığı (müfettiş).
+.qc-slot {
+  &__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  &__chip {
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid var(--ms-border-weak);
+    background: var(--ms-surface-medium);
+    color: var(--ms-text-strong);
+    font-family: var(--mainFontFamily);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+
+    &.is-missing {
+      border-style: dashed;
+      border-color: var(--ms-danger-border);
+    }
+
+    &.is-active {
+      border-style: solid;
+      border-color: var(--ms-action-border-focus);
+      background: var(--ms-action-background-weak);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--ms-action-border-focus);
+      outline-offset: 1px;
+    }
+  }
+
+  &__editor {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--ms-border-weak);
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__textarea {
+    height: auto;
+    min-height: 56px;
+    padding: 8px 12px;
+    resize: vertical;
+  }
+
+  &__option {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px;
+
+    .qc-input {
+      height: 34px;
+    }
+
+    .qc-matrix__answer mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      vertical-align: middle;
+    }
+  }
+
+  &__preview {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ms-success-text);
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    &.is-wrong {
+      color: var(--ms-danger-text);
+    }
+  }
+
+  &__issues {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 12px;
+    color: var(--ms-danger-text);
+  }
+
+  .qc-btn.is-active {
+    border-color: var(--ms-action-border-focus);
+    background: var(--ms-action-background-weak);
+  }
+
+  .qc-segmented button {
+    padding: 7px 6px;
+  }
+}

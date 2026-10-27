@@ -1,0 +1,110 @@
+<div class="sf-root" [class.is-activity]="activity()" [class.is-solution]="solutionShown()"
+  *transloco="let t; prefix: 'shared.questionCanvas'">
+  @if (!hidePassage && passageImageUrl(); as pUrl) {
+    <div class="sf-passage">
+      @if (passageTitle(); as title) {
+        <div class="sf-passage__title">{{ title }}</div>
+      }
+      <img class="sf-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (imageUrl(); as url) {
+    <div class="sf-stage">
+      <div class="sf-image-wrap">
+        <img class="sf-image" [src]="url" [alt]="t('questionAlt')" [appStorageImageRetry]="imageRefresh" />
+        @if (plan()) {
+          <div class="sf-overlay" data-testid="sf-overlay">
+            @for (slot of slots(); track slot.id; let i = $index) {
+              @let mark = slotMark()(slot);
+              <div class="sf-slot"
+                [class.sf-slot--fraction]="slot.input.kind === 'number' && slot.input.entry !== 'plain'"
+                [class.is-correct]="mark === 'correct'"
+                [class.is-wrong]="mark === 'wrong'"
+                [ngStyle]="boxStyle(slot.box)"
+                [attr.data-slot]="slot.id">
+                @if (solutionShown()) {
+                  <span class="sf-solution" [attr.aria-label]="slotAria(slot, i)" [attr.data-solution]="slot.id">{{ solutionText(slot) }}</span>
+                } @else {
+                  @switch (slot.input.kind) {
+                    @case ('number') {
+                      @if (slot.input.entry === 'plain') {
+                        <!-- inputmode=text: iOS ondalık klavyesinde / % - ve birim harfleri yok. -->
+                        <input class="sf-input" type="text" inputmode="text" autocomplete="off" spellcheck="false"
+                          [attr.maxlength]="limits.maxValueLength" [value]="valueFor(slot.id)"
+                          [attr.aria-label]="slotAria(slot, i)" [attr.data-slot-input]="slot.id"
+                          (input)="onInput(slot.id, $event)" (change)="onCommit(slot.id, $event)" />
+                      } @else {
+                        <app-fraction-input class="sf-fraction" [mixed]="slot.input.entry === 'mixed'"
+                          [value]="valueFor(slot.id)" [ariaLabel]="slotAria(slot, i)"
+                          [wholeLabel]="t('slotFill.whole')" [numeratorLabel]="t('slotFill.numerator')"
+                          [denominatorLabel]="t('slotFill.denominator')" [attr.data-slot-input]="slot.id"
+                          (valueInput)="onFractionInput(slot.id, $event)" (valueCommit)="onFractionCommit(slot.id, $event)" />
+                      }
+                      @if (slot.input.unit) {
+                        <span class="sf-unit" aria-hidden="true">{{ slot.input.unit }}</span>
+                      }
+                    }
+                    @case ('select') {
+                      <select class="sf-input sf-select" [attr.aria-label]="slotAria(slot, i)" [attr.data-slot-input]="slot.id"
+                        (change)="onCommit(slot.id, $event)">
+                        <option value="" [selected]="!valueFor(slot.id)">{{ t('slotFill.selectPlaceholder') }}</option>
+                        @for (option of slot.input.options; track option.id) {
+                          <option [value]="option.id" [selected]="valueFor(slot.id) === option.id">{{ option.label }}</option>
+                        }
+                      </select>
+                    }
+                    @case ('palette') {
+                      <input class="sf-input" type="text" autocomplete="off" spellcheck="false"
+                        [attr.maxlength]="limits.maxValueLength" [value]="valueFor(slot.id)"
+                        [class.is-palette-target]="paletteSlot()?.slot?.id === slot.id"
+                        [attr.aria-label]="slotAria(slot, i)" [attr.data-slot-input]="slot.id"
+                        (focus)="onPaletteFocus(slot.id)"
+                        (input)="onInput(slot.id, $event)" (change)="onCommit(slot.id, $event)" />
+                    }
+                    @default {
+                      <input class="sf-input" type="text" autocomplete="off"
+                        [attr.maxlength]="limits.maxValueLength" [value]="valueFor(slot.id)"
+                        [attr.aria-label]="slotAria(slot, i)" [attr.data-slot-input]="slot.id"
+                        (input)="onInput(slot.id, $event)" (change)="onCommit(slot.id, $event)" />
+                    }
+                  }
+                }
+                @if (mark) {
+                  <span class="sf-mark" [class.sf-mark--wrong]="mark === 'wrong'" aria-hidden="true" [attr.data-mark]="slot.id">
+                    <mat-icon>{{ mark === 'correct' ? 'check' : 'close' }}</mat-icon>
+                  </span>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  @if (plan()) {
+    @if (!solutionShown() && paletteSlot(); as target) {
+      <div class="sf-palette" role="toolbar" data-testid="sf-palette"
+        [attr.aria-label]="t('slotFill.paletteAria', { n: target.index + 1 })">
+        <span class="sf-palette__label">{{ t('slotFill.paletteLabel', { n: target.index + 1 }) }}</span>
+        @if (target.slot.input.kind === 'palette') {
+          @for (symbol of target.slot.input.symbols; track symbol) {
+            <button type="button" class="sf-palette__symbol" [attr.data-symbol]="symbol"
+              [attr.aria-label]="t('slotFill.insertSymbol', { symbol })"
+              (mousedown)="$event.preventDefault()" (click)="insertSymbol(target.slot.id, symbol)">{{ symbol }}</button>
+          }
+        }
+      </div>
+    }
+
+    <div class="sf-footer">
+      <p class="sf-hint" aria-live="polite">{{ hint() }}</p>
+      <button mat-stroked-button type="button" class="sf-clear" (click)="clearAll()"
+        [disabled]="solutionShown() || filledCount() === 0">
+        <mat-icon>restart_alt</mat-icon>
+        {{ 'common.clear' | transloco }}
+      </button>
+    </div>
+  }
+</div>

@@ -277,6 +277,7 @@
           <button type="button" [class.is-active]="selectionMode === 'dropzone'" (click)="setSelectionMode('dropzone')">{{ t('canvas.modeDropZone') }}</button>
           <button type="button" [class.is-active]="selectionMode === 'matrixRow' || selectionMode === 'matrixCell'"
             (click)="setSelectionMode('matrixRow')">{{ t('canvas.modeMatrix') }}</button>
+          <button type="button" [class.is-active]="selectionMode === 'slot'" (click)="setSelectionMode('slot')">{{ t('canvas.modeSlot') }}</button>
         </div>
         <div class="qc-canvas__toolbar-right">
           @if (detection.available() && !coordinateJsonMode) {
@@ -412,6 +413,8 @@
                 [attr.aria-pressed]="d.interactionType === 'dragDropLabeling'" (click)="insSetInteractionType('dragDropLabeling')">{{ t('inspector.dragDrop') }}</button>
               <button type="button" [class.is-active]="d.interactionType === 'matrixChoice'"
                 [attr.aria-pressed]="d.interactionType === 'matrixChoice'" (click)="insSetInteractionType('matrixChoice')">{{ t('inspector.matrix') }}</button>
+              <button type="button" [class.is-active]="d.interactionType === 'slotFill'"
+                [attr.aria-pressed]="d.interactionType === 'slotFill'" (click)="insSetInteractionType('slotFill')">{{ t('inspector.slotFill') }}</button>
             </div>
           </section>
 
@@ -588,6 +591,194 @@
             </div>
             @if (m.missingSolutionCount > 0 && m.rows.length > 0) {
             <span class="qc-hint-sm qc-matrix__missing" role="status">{{ t('inspector.matrixMissingSolution', { count: m.missingSolutionCount }) }}</span>
+            }
+          </section>
+          }
+
+          <!-- Cevap kutusu (#575) -->
+          @if (d.interactionType === 'slotFill' && d.slotFill; as sf) {
+          <section class="qc-insp-sec qc-slot" data-testid="inspector-slot">
+            <div class="qc-lbl">{{ t('inspector.slotBoxes') }}</div>
+            <div class="qc-btn-row">
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [class.is-active]="selectionMode === 'slot'"
+                (click)="insSlotMode()">
+                <mat-icon>input</mat-icon>{{ t('inspector.slotDraw') }}
+              </button>
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [disabled]="!sf.slots.length" (click)="insSlotRemoveLast()">
+                <mat-icon>undo</mat-icon>{{ t('inspector.slotLast') }}
+              </button>
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [disabled]="!sf.slots.length" (click)="insSlotClear()">
+                <mat-icon>delete_sweep</mat-icon>{{ t('inspector.slotClear') }}
+              </button>
+            </div>
+            <span class="qc-hint-sm">{{ t('inspector.slotDrawHint') }}</span>
+
+            <div class="qc-slot__chips" role="group" [attr.aria-label]="t('inspector.slotBoxes')">
+              @for (slot of sf.slots; track slot.id) {
+              <button type="button" class="qc-slot__chip" [class.is-active]="sf.selected?.id === slot.id"
+                [class.is-missing]="slot.issues.length > 0" [attr.aria-pressed]="sf.selected?.id === slot.id"
+                [attr.data-slot]="slot.id" (click)="insSlotSelect(slot.id)">
+                {{ slot.no }} · {{ t('inspector.slotKind.' + slot.kind) }}
+              </button>
+              } @empty {
+              <span class="qc-hint-sm">{{ t('inspector.slotNone') }}</span>
+              }
+            </div>
+
+            @if (sf.selected; as s) {
+            <div class="qc-slot__editor" data-testid="slot-editor" [attr.data-slot]="s.id">
+              <div class="qc-lbl">{{ t('inspector.slotTitle', { n: s.no }) }}</div>
+              <input class="control qc-input" type="text" [attr.maxlength]="sf.limits.maxLabelLength" [value]="s.label"
+                [placeholder]="t('inspector.slotLabelPlaceholder')" [attr.aria-label]="t('inspector.slotLabelAria', { n: s.no })"
+                (change)="insSlotLabel(s.id, $event)" />
+
+              <div class="qc-segmented qc-segmented--full" role="group" [attr.aria-label]="t('inspector.slotKindAria')">
+                @for (kind of slotKinds; track kind) {
+                <button type="button" [class.is-active]="s.kind === kind" [attr.aria-pressed]="s.kind === kind"
+                  [attr.data-kind]="kind" (click)="insSlotKind(s.id, kind)">{{ t('inspector.slotKind.' + kind) }}</button>
+                }
+              </div>
+
+              @switch (s.kind) {
+              @case ('number') {
+              <div class="qc-segmented qc-segmented--full" role="group" [attr.aria-label]="t('inspector.slotEntryAria')">
+                @for (entry of slotEntries; track entry) {
+                <button type="button" [class.is-active]="s.entry === entry" [attr.aria-pressed]="s.entry === entry"
+                  [attr.data-entry]="entry" (click)="insSlotEntry(s.id, entry)">{{ t('inspector.slotEntry.' + entry) }}</button>
+                }
+              </div>
+              <label class="qc-slot__field">
+                <span class="qc-lbl">{{ t('inspector.slotValue') }}</span>
+                <input class="control qc-input" type="text" inputmode="decimal" maxlength="64" [value]="s.value"
+                  [placeholder]="t('inspector.slotValuePlaceholder')" data-testid="slot-value" (change)="insSlotValue(s.id, $event)" />
+              </label>
+              <div class="qc-row">
+                <button type="button" class="qc-switch" [class.off]="!s.equivalence" [attr.aria-pressed]="s.equivalence"
+                  [attr.aria-label]="t('inspector.slotEquivalence')" data-testid="slot-equivalence"
+                  (click)="insSlotEquivalence(s.id, !s.equivalence)"></button>
+                <span>{{ t('inspector.slotEquivalence') }}</span>
+              </div>
+              <div class="qc-row">
+                <button type="button" class="qc-switch" [class.off]="!s.requireSimplest" [attr.aria-pressed]="s.requireSimplest"
+                  [attr.aria-label]="t('inspector.slotSimplest')" (click)="insSlotSimplest(s.id, !s.requireSimplest)"></button>
+                <span>{{ t('inspector.slotSimplest') }}</span>
+              </div>
+              <label class="qc-slot__field">
+                <span class="qc-lbl">{{ t('inspector.slotUnitHint') }}</span>
+                <input class="control qc-input" type="text" [attr.maxlength]="sf.limits.maxUnitHintLength" [value]="s.unitHint"
+                  [placeholder]="t('inspector.slotUnitHintPlaceholder')" (change)="insSlotUnitHint(s.id, $event)" />
+              </label>
+              <div class="qc-segmented qc-segmented--full" role="group" [attr.aria-label]="t('inspector.slotUnitModeAria')">
+                @for (mode of slotUnitModes; track mode) {
+                <button type="button" [class.is-active]="s.unitMode === mode" [attr.aria-pressed]="s.unitMode === mode"
+                  [attr.data-unit-mode]="mode" (click)="insSlotUnitMode(s.id, mode)">{{ t('inspector.slotUnitMode.' + mode) }}</button>
+                }
+              </div>
+              @if (s.unitMode !== 'none') {
+              <label class="qc-slot__field">
+                <span class="qc-lbl">{{ t('inspector.slotUnits') }}</span>
+                <input class="control qc-input" type="text" [value]="s.units.join(', ')"
+                  [placeholder]="t('inspector.slotUnitsPlaceholder')" (change)="insSlotUnits(s.id, $event)" />
+              </label>
+              }
+              }
+              @case ('text') {
+              <label class="qc-slot__field">
+                <span class="qc-lbl">{{ t('inspector.slotAccept') }}</span>
+                <textarea class="control qc-input qc-slot__textarea" rows="3" [value]="s.accept.join('\n')"
+                  [placeholder]="t('inspector.slotAcceptPlaceholder')" data-testid="slot-accept"
+                  (change)="insSlotAccept(s.id, $event)"></textarea>
+              </label>
+              <label class="qc-slot__field">
+                <span class="qc-lbl">{{ t('inspector.slotSuffixes') }}</span>
+                <input class="control qc-input" type="text" [value]="s.optionalSuffixes.join(', ')"
+                  [placeholder]="t('inspector.slotSuffixesPlaceholder')" (change)="insSlotSuffixes(s.id, $event)" />
+              </label>
+              <span class="qc-hint-sm">{{ t('inspector.slotTextRules') }}</span>
+              }
+              @case ('select') {
+              <div class="qc-lbl">{{ t('inspector.slotOptions') }}</div>
+              <div class="qc-solution">
+                @for (option of s.options; track option.id; let oi = $index) {
+                <div class="qc-slot__option" [attr.data-option]="option.id">
+                  <button type="button" class="qc-matrix__answer" [class.is-correct]="s.correctOptionIds.includes(option.id)"
+                    [attr.aria-pressed]="s.correctOptionIds.includes(option.id)"
+                    [attr.aria-label]="t('inspector.slotOptionCorrectAria', { n: oi + 1 })"
+                    (click)="insSlotToggleOption(s.id, option.id)">
+                    <mat-icon>{{ s.correctOptionIds.includes(option.id) ? 'check' : 'radio_button_unchecked' }}</mat-icon>
+                  </button>
+                  <input class="control qc-input" type="text" [attr.maxlength]="sf.limits.maxLabelLength" [value]="option.label"
+                    [placeholder]="t('inspector.slotOptionPlaceholder', { n: oi + 1 })"
+                    [attr.aria-label]="t('inspector.slotOptionAria', { n: oi + 1 })"
+                    (change)="insSlotOptionLabel(s.id, option.id, $event)" />
+                  <button type="button" class="qc-icon-btn" [disabled]="s.options.length <= sf.limits.minSelectOptions"
+                    [attr.aria-label]="t('inspector.slotOptionRemove', { n: oi + 1 })" (click)="insSlotRemoveOption(s.id, option.id)">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+                }
+              </div>
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [disabled]="s.options.length >= sf.limits.maxSelectOptions"
+                (click)="insSlotAddOption(s.id)">
+                <mat-icon>add</mat-icon>{{ t('inspector.slotOptionAdd') }}
+              </button>
+              }
+              @case ('palette') {
+              <div class="qc-btn-row" role="group" [attr.aria-label]="t('inspector.slotPalettePresets')">
+                <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" (click)="insSlotPreset(s.id, 'geometry')">{{ t('inspector.slotPresetGeometry') }}</button>
+                <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" (click)="insSlotPreset(s.id, 'punctuation')">{{ t('inspector.slotPresetPunctuation') }}</button>
+              </div>
+              <label class="qc-slot__field">
+                <span class="qc-lbl">{{ t('inspector.slotSymbols') }}</span>
+                <input class="control qc-input" type="text" [value]="s.symbols.join(' ')"
+                  [placeholder]="t('inspector.slotSymbolsPlaceholder')" data-testid="slot-symbols" (change)="insSlotSymbols(s.id, $event)" />
+              </label>
+              <label class="qc-slot__field">
+                <span class="qc-lbl">{{ t('inspector.slotAccept') }}</span>
+                <textarea class="control qc-input qc-slot__textarea" rows="2" [value]="s.paletteAccept.join('\n')"
+                  [placeholder]="t('inspector.slotPaletteAcceptPlaceholder')" (change)="insSlotPaletteAccept(s.id, $event)"></textarea>
+              </label>
+              <span class="qc-hint-sm">{{ t('inspector.slotPaletteRules') }}</span>
+              }
+              }
+
+              @if (s.kind !== 'select') {
+              <label class="qc-slot__field">
+                <span class="qc-lbl">{{ t('inspector.slotPreview') }}</span>
+                <input class="control qc-input" type="text" [value]="slotPreviewFor(s.id)"
+                  [placeholder]="t('inspector.slotPreviewPlaceholder')" data-testid="slot-preview"
+                  (input)="insSlotPreview(s.id, $event)" />
+              </label>
+              @if (insSlotPreviewResult(s.id); as result) {
+              <span class="qc-slot__preview" [class.is-wrong]="result === 'wrong'" role="status" data-testid="slot-preview-result">
+                <mat-icon>{{ result === 'correct' ? 'check' : 'close' }}</mat-icon>
+                {{ result === 'correct' ? t('inspector.slotPreviewCorrect') : t('inspector.slotPreviewWrong') }}
+              </span>
+              }
+              }
+
+              @if (s.issues.length) {
+              <ul class="qc-slot__issues" role="status">
+                @for (issue of s.issues; track issue) {
+                <li>{{ t('inspector.slotIssue.' + issue) }}</li>
+                }
+              </ul>
+              }
+
+              <div class="qc-btn-row">
+                <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [disabled]="sf.slots.length < 2"
+                  data-testid="slot-apply-all" (click)="insSlotApplyAll(s.id)">
+                  <mat-icon>content_copy</mat-icon>{{ t('inspector.slotApplyAll') }}
+                </button>
+                <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" (click)="insSlotRemove(s.id)">
+                  <mat-icon>delete</mat-icon>{{ t('inspector.slotRemove') }}
+                </button>
+              </div>
+            </div>
+            }
+
+            @if (sf.missingCount > 0) {
+            <span class="qc-hint-sm qc-matrix__missing" role="status">{{ t('inspector.slotMissing', { count: sf.missingCount }) }}</span>
             }
           </section>
           }

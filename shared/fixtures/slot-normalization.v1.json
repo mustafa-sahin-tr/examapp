@@ -1,0 +1,2400 @@
+{
+  "$comment": [
+    "issue #575: slotFill kutu cevabı normalleştirme — C# (SlotAnswerNormalizer / SlotFillGrader.IsSlotCorrect) ve TS aynı vektörleri geçer.",
+    "Biçim (v1, sabit): kök nesne { $comment, version, vectors }. vectors[i] = { kind: number|text|palette, solution, answer, expected, note }.",
+    "solution, InteractionSolution'daki TEK kutu girdisidir. number varsayılanları (alan yoksa): equivalence=true, requireSimplest=false, units=[], unitMode='none'. text: optionalSuffixes=[].",
+    "WS (boşluk sınıfı, her yerde aynı; JS/.NET \\s KULLANILMAZ): [\\t\\n\\v\\f\\r \\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000\\uFEFF]. Boş = boş string ya da yalnız WS karakterleri → her zaman yanlış.",
+    "Türkçe küçük harf: kod noktası bazında — İ→i, I→ı, diğerleri tek başına basit (bağlamsız) küçük harf (astral dahil; Σ→σ, son sigma ς yok); ardından 'i'+U+0307 → 'i'. Aksan katlaması yok.",
+    "Sayı ön işleme: ham UTF-16 uzunluğu > 64 → geçersiz. Sonra NFC, Türkçe küçük harf, U+2212→'-', WS dizileri tek ' ', baş/son ' ' kırp.",
+    "Yüzde: '^- ?%' ile başlıyorsa yüzde ve s = '-' + kalan; aksi halde '%' ile başlıyor ya da bitiyorsa yüzde, işaret atılır (sonra ' ' kırp); kalanda '%' varsa geçersiz. Yüzdeye kesir/tam sayılı kesir/birim yazılamaz.",
+    "Sayı deseni (tam eşleşme, ASCII rakam): ^(?:(?<neg>-) ?)?(?:(?<whole>[0-9]+) (?:tam )?(?<mn>[0-9]+) ?/ ?(?<md>[0-9]+)|(?<fn>[0-9]+) ?/ ?(?<fd>[0-9]+)|(?<dec>[0-9]+(?:[.,][0-9]+)*))(?: ?(?<unit>[\\p{L}°\\p{Sc}][\\p{L}\\p{M}°²³ ]*(?:/ ?[\\p{L}][\\p{L}\\p{M}²³ ]*)?))?$ — \\p{L}/\\p{M}/\\p{Sc} yalnız BMP (UTF-16 kod birimi bazında; astral harf eşleşmez → geçersiz; JS'te 'u' bayrağı kullanılırsa astral'i ayrıca dışla). ² ³ yalnız birimin içinde.",
+    "dec: yalnız rakam = tam sayı. Virgül varsa ^([1-9][0-9]{0,2}(\\.[0-9]{3})+|[0-9]+),[0-9]+$ = ondalık. Yalnız nokta: ^[1-9][0-9]{0,2}(\\.[0-9]{3})+$ = binlik (tam sayı biçimi); aksi halde ^[0-9]+\\.[0-9]+$ ve noktadan sonra TAM 3 OLMAYAN hane = ondalık; başka her şey geçersiz ('0.750', '1234.567', '1,250.5', ',5', '12.').",
+    "Tam sayılı kesir: 0 < pay < payda (tam kısım 0 olabilir: '0 1/2' = 1/2, biçim mixed). Sıfır payda geçersiz. Negatif işaret tüm sayıya uygulanır (-2 3/5 = -(2+3/5)). -0 = 0.",
+    "Biçimler: integer, decimal, fraction, mixed, percent. equivalence=false → öğrencinin biçimi = çözüm değerinin biçimi VE değer eşit. requireSimplest → öğrenci fraction/mixed yazdıysa yazılı pay/payda için ebob=1 (0/5 sade değil).",
+    "Birim anahtarı = NFC + Türkçe küçük harf + TÜM WS silinir. none → birim olmamalı; optional → yoksa doğru, varsa listede; required → olmalı ve listede. Çözüm değeri birim taşıyamaz.",
+    "Metin: NFC, Türkçe küçük harf, kesme ’ ‘ ʼ ` ´ → ', WS dizileri tek ' ' + kırp, sondaki . , ; : ! ? ve WS (tekrarlı) atılır. Doğru ⇔ cevap == kabul ya da kabul + ' ' + ek (hepsi normalize).",
+    "Palet: NFC, tüm WS silinir, büyük/küçük harf duyarlı birebir karşılaştırma."
+  ],
+  "version": 1,
+  "vectors": [
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "3/4",
+      "expected": true,
+      "note": "aynı kesir"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "0,75",
+      "expected": true,
+      "note": "equivalence: ondalık virgül"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "%75",
+      "expected": true,
+      "note": "equivalence: yüzde önde"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "75%",
+      "expected": true,
+      "note": "equivalence: yüzde sonda"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "% 75",
+      "expected": true,
+      "note": "equivalence: yüzde + boşluk"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "75 %",
+      "expected": true,
+      "note": "equivalence: sayı + boşluk + yüzde"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "6/8",
+      "expected": true,
+      "note": "equivalence: sadeleşmemiş kesir (requireSimplest kapalı)"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "0.75",
+      "expected": true,
+      "note": "tek noktalı ondalık: noktadan sonra 2 hane → ondalık"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "0,7",
+      "expected": false,
+      "note": "farklı değer"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "3 / 4",
+      "expected": true,
+      "note": "eğik çizgi çevresinde boşluk"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "%75%",
+      "expected": false,
+      "note": "iki yüzde işareti geçersiz"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "1/8",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "%12,5",
+      "expected": true,
+      "note": "ondalıklı yüzde"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": true,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "6/8",
+      "expected": false,
+      "note": "requireSimplest: sade olmayan kesir yanlış"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": true,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "0,75",
+      "expected": true,
+      "note": "requireSimplest yalnız kesir/tam sayılı kesire uygulanır"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": true,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "3/4",
+      "expected": true,
+      "note": "requireSimplest: sade kesir"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": false,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "0,75",
+      "expected": false,
+      "note": "equivalence kapalı: biçim farklı (ondalık ≠ kesir)"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": false,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "%75",
+      "expected": false,
+      "note": "equivalence kapalı: biçim farklı (yüzde ≠ kesir)"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": false,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "6/8",
+      "expected": true,
+      "note": "equivalence kapalı: aynı biçim (kesir) + aynı değer"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": false,
+        "requireSimplest": true,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "6/8",
+      "expected": false,
+      "note": "equivalence kapalı + requireSimplest"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": false,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "3/4",
+      "expected": true,
+      "note": "equivalence kapalı: birebir"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "%75",
+        "equivalence": false,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "75%",
+      "expected": true,
+      "note": "equivalence kapalı: yüzde ↔ yüzde"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "%75",
+        "equivalence": false,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "% 75",
+      "expected": true,
+      "note": "equivalence kapalı: yüzde boşluklu"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "%75",
+        "equivalence": false,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "3/4",
+      "expected": false,
+      "note": "equivalence kapalı: kesir ≠ yüzde"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "0,75",
+        "equivalence": false,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "0,750",
+      "expected": true,
+      "note": "equivalence kapalı: ondalık ↔ ondalık (sondaki sıfır)"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "0,75",
+        "equivalence": false,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "3/4",
+      "expected": false,
+      "note": "equivalence kapalı: kesir ≠ ondalık"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "8/2",
+      "expected": true,
+      "note": "equivalence: tam sayıya eşit kesir"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "4",
+        "equivalence": false,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "8/2",
+      "expected": false,
+      "note": "equivalence kapalı: kesir ≠ tam sayı"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "4,0",
+      "expected": true,
+      "note": "equivalence: 4,0 = 4"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "4",
+        "equivalence": false,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "4,0",
+      "expected": false,
+      "note": "equivalence kapalı: ondalık ≠ tam sayı"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "7",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "007",
+      "expected": true,
+      "note": "baştaki sıfırlar"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "1250",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "1.250",
+      "expected": true,
+      "note": "binlik nokta: noktadan sonra tam 3 hane → binlik"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "1250",
+        "equivalence": false,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "1.250",
+      "expected": true,
+      "note": "binlik gruplu tam sayı biçimi tam sayıdır"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "1250",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "1250",
+      "expected": true,
+      "note": "gruplamasız"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "1250,5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "1.250,5",
+      "expected": true,
+      "note": "binlik nokta + ondalık virgül"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "1250",
+        "equivalence": false,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "1.250,0",
+      "expected": false,
+      "note": "equivalence kapalı: 1.250,0 ondalık biçim"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "1,25",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "1.250",
+      "expected": false,
+      "note": "1.250 binliktir (1250), 1,25 değil"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "1,25",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "1.25",
+      "expected": true,
+      "note": "tek nokta + 2 hane → ondalık"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "1,2345",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "1.2345",
+      "expected": true,
+      "note": "tek nokta + 4 hane → ondalık"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "0,75",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "0.750",
+      "expected": false,
+      "note": "0.750 geçersiz: 3 hane = binlik ama ilk grup 0 olamaz"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "1234567",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "1.234.567",
+      "expected": true,
+      "note": "çoklu binlik grubu"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "12345",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "12.345",
+      "expected": true,
+      "note": "ilk grup 1-3 hane"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "1234567",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "1234.567",
+      "expected": false,
+      "note": "ilk grup 3 haneden uzun + 3 hane → geçersiz"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "1250,5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "1,250.5",
+      "expected": false,
+      "note": "İngilizce yazım (virgül binlik, nokta ondalık) geçersiz"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "0,5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": ",5",
+      "expected": false,
+      "note": "virgülden önce rakam zorunlu"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "12",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "12.",
+      "expected": false,
+      "note": "sayılarda sondaki noktalama atılmaz → geçersiz"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "-3",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "-3",
+      "expected": true,
+      "note": "negatif"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "-3",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "- 3",
+      "expected": true,
+      "note": "eksi + boşluk"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "-3",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "−3",
+      "expected": true,
+      "note": "Unicode eksi (U+2212)"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "-3",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "3",
+      "expected": false,
+      "note": "işaret farklı"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "-3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "-0,75",
+      "expected": true,
+      "note": "negatif kesir ↔ negatif ondalık"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "3/-4",
+      "expected": false,
+      "note": "paydada eksi geçersiz"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "2 3/5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "2 3/5",
+      "expected": true,
+      "note": "tam sayılı kesir"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "2 3/5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "2 tam 3/5",
+      "expected": true,
+      "note": "'tam' kelimesiyle"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "2 3/5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "2 TAM 3/5",
+      "expected": true,
+      "note": "'TAM' büyük harf"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "2 3/5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "13/5",
+      "expected": true,
+      "note": "equivalence: bileşik kesir"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "2 3/5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "2,6",
+      "expected": true,
+      "note": "equivalence: ondalık"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "2 3/5",
+        "equivalence": false,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "13/5",
+      "expected": false,
+      "note": "equivalence kapalı: bileşik kesir ≠ tam sayılı kesir"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "2 3/5",
+        "equivalence": false,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "2 tam 3/5",
+      "expected": true,
+      "note": "equivalence kapalı: aynı biçim"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "2 3/5",
+        "equivalence": true,
+        "requireSimplest": true,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "2 6/10",
+      "expected": false,
+      "note": "requireSimplest: tam sayılı kesrin kesir kısmı sade değil"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "2 3/5",
+        "equivalence": true,
+        "requireSimplest": true,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "26/10",
+      "expected": false,
+      "note": "requireSimplest: sade olmayan bileşik kesir"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "2 3/5",
+        "equivalence": true,
+        "requireSimplest": true,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "2,6",
+      "expected": true,
+      "note": "requireSimplest ondalığa uygulanmaz"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "11/3",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "2 5/3",
+      "expected": false,
+      "note": "tam sayılı kesirde kesir kısmı basit olmalı (pay < payda)"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "-2 3/5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "-2 3/5",
+      "expected": true,
+      "note": "negatif tam sayılı kesir = -(2 + 3/5)"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "-2 3/5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "-2,6",
+      "expected": true,
+      "note": "negatif tam sayılı kesir ↔ ondalık"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "3/0",
+      "expected": false,
+      "note": "sıfır payda geçersiz"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "0",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "0/0",
+      "expected": false,
+      "note": "0/0 geçersiz"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "",
+      "expected": false,
+      "note": "boş cevap"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "   ",
+      "expected": false,
+      "note": "yalnız boşluk"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "٣/٤",
+      "expected": false,
+      "note": "yalnız ASCII rakam 0-9 kabul edilir"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "5 cm 3",
+      "expected": false,
+      "note": "birimden sonra sayı geçersiz"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm"
+        ],
+        "unitMode": "none"
+      },
+      "answer": "5",
+      "expected": true,
+      "note": "unitMode none: birimsiz"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm"
+        ],
+        "unitMode": "none"
+      },
+      "answer": "5 cm",
+      "expected": false,
+      "note": "unitMode none: birim yazılırsa yanlış"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm",
+          "santimetre"
+        ],
+        "unitMode": "optional"
+      },
+      "answer": "5",
+      "expected": true,
+      "note": "unitMode optional: birim yazılmayabilir"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm",
+          "santimetre"
+        ],
+        "unitMode": "optional"
+      },
+      "answer": "5 cm",
+      "expected": true,
+      "note": "unitMode optional: listedeki birim"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm",
+          "santimetre"
+        ],
+        "unitMode": "optional"
+      },
+      "answer": "5cm",
+      "expected": true,
+      "note": "birim bitişik (5cm == 5 cm)"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm",
+          "santimetre"
+        ],
+        "unitMode": "optional"
+      },
+      "answer": "5 CM",
+      "expected": true,
+      "note": "birim büyük/küçük harf duyarsız"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm",
+          "santimetre"
+        ],
+        "unitMode": "optional"
+      },
+      "answer": "5 santimetre",
+      "expected": true,
+      "note": "birim eşanlamlısı"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm",
+          "santimetre"
+        ],
+        "unitMode": "optional"
+      },
+      "answer": "5 m",
+      "expected": false,
+      "note": "unitMode optional: listede olmayan birim"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm",
+          "santimetre"
+        ],
+        "unitMode": "required"
+      },
+      "answer": "5",
+      "expected": false,
+      "note": "unitMode required: birim zorunlu"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm",
+          "santimetre"
+        ],
+        "unitMode": "required"
+      },
+      "answer": "5 cm",
+      "expected": true,
+      "note": "unitMode required: listedeki birim"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm",
+          "santimetre"
+        ],
+        "unitMode": "required"
+      },
+      "answer": "5 Santimetre",
+      "expected": true,
+      "note": "unitMode required: eşanlamlı büyük harfle"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm",
+          "santimetre"
+        ],
+        "unitMode": "required"
+      },
+      "answer": "5 santi metre",
+      "expected": true,
+      "note": "birimde boşluklar yok sayılır"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm",
+          "santimetre"
+        ],
+        "unitMode": "required"
+      },
+      "answer": "5 c m",
+      "expected": true,
+      "note": "birimde boşluklar yok sayılır (c m == cm)"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm",
+          "santimetre"
+        ],
+        "unitMode": "required"
+      },
+      "answer": "5 mm",
+      "expected": false,
+      "note": "unitMode required: yanlış birim"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "0,5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm"
+        ],
+        "unitMode": "required"
+      },
+      "answer": "1/2 cm",
+      "expected": true,
+      "note": "kesir + birim"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "2 3/5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "kg"
+        ],
+        "unitMode": "required"
+      },
+      "answer": "2 tam 3/5 kg",
+      "expected": true,
+      "note": "tam sayılı kesir + birim"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "kg"
+        ],
+        "unitMode": "required"
+      },
+      "answer": "5 KG",
+      "expected": true,
+      "note": "birim TR küçük harf"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "İnç"
+        ],
+        "unitMode": "required"
+      },
+      "answer": "5 inç",
+      "expected": true,
+      "note": "birim TR küçük harf: İnç → inç"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "İnç"
+        ],
+        "unitMode": "required"
+      },
+      "answer": "5 INÇ",
+      "expected": false,
+      "note": "birim TR küçük harf: INÇ → ınç ≠ inç"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm"
+        ],
+        "unitMode": "optional"
+      },
+      "answer": "%5 cm",
+      "expected": false,
+      "note": "yüzdeye birim geçersiz"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "45",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "°"
+        ],
+        "unitMode": "required"
+      },
+      "answer": "45°",
+      "expected": true,
+      "note": "derece işareti birim"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "60",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "km/sa"
+        ],
+        "unitMode": "required"
+      },
+      "answer": "60 km/sa",
+      "expected": true,
+      "note": "bölü işaretli birim"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "İzmir"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "izmir",
+      "expected": true,
+      "note": "TR: İ → i"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "İzmir"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "İZMİR",
+      "expected": true,
+      "note": "TR: büyük harf"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "İzmir"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "IZMIR",
+      "expected": false,
+      "note": "TR: I → ı (ızmır ≠ izmir)"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "İzmir"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "izmır",
+      "expected": false,
+      "note": "ı ≠ i"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "İzmir"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "  izmir  ",
+      "expected": true,
+      "note": "baş/son boşluk"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "İzmir"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "izmir.",
+      "expected": true,
+      "note": "sondaki nokta atılır"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "İzmir"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "İzmir!?",
+      "expected": true,
+      "note": "sondaki birden fazla noktalama atılır"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "İzmir"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "izmir .",
+      "expected": true,
+      "note": "noktalama + boşluk"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "İzmir"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "i̇zmir",
+      "expected": true,
+      "note": "i + birleşik nokta (U+0307) = i ('İ'.toLowerCase() çıktısı)"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "İzmir"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "",
+      "expected": false,
+      "note": "boş cevap"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "İzmir"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "...",
+      "expected": false,
+      "note": "yalnız noktalama = boş"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "ışık"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "IŞIK",
+      "expected": true,
+      "note": "TR: IŞIK → ışık"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "ışık"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "isik",
+      "expected": false,
+      "note": "aksan katlaması yok"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "ılık"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "ilik",
+      "expected": false,
+      "note": "ılık ≠ ilik"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "ılık"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "ILIK",
+      "expected": true,
+      "note": "TR: ILIK → ılık"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "şeker"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "seker",
+      "expected": false,
+      "note": "ş ≠ s"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "şeker"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "şeker",
+      "expected": true,
+      "note": "NFC: s + birleşik çengel = ş"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "Doğu Anadolu"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "doğu   anadolu",
+      "expected": true,
+      "note": "iç boşluklar teke indirilir"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "Doğu Anadolu"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "doğuanadolu",
+      "expected": false,
+      "note": "boşluk silinmez, teke indirilir"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "Ankara",
+          "Angora"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "angora",
+      "expected": true,
+      "note": "çoklu kabul"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "artar"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "artar,",
+      "expected": true,
+      "note": "sondaki virgül"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "artar"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "art.ar",
+      "expected": false,
+      "note": "aradaki noktalama korunur"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "artar"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": ",artar",
+      "expected": false,
+      "note": "baştaki noktalama atılmaz"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "Ege"
+        ],
+        "optionalSuffixes": [
+          "Bölgesi"
+        ]
+      },
+      "answer": "Ege",
+      "expected": true,
+      "note": "isteğe bağlı ek olmadan"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "Ege"
+        ],
+        "optionalSuffixes": [
+          "Bölgesi"
+        ]
+      },
+      "answer": "Ege Bölgesi",
+      "expected": true,
+      "note": "isteğe bağlı ek ile"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "Ege"
+        ],
+        "optionalSuffixes": [
+          "Bölgesi"
+        ]
+      },
+      "answer": "EGE BÖLGESİ",
+      "expected": true,
+      "note": "ek de TR küçük harfe çevrilir"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "Ege"
+        ],
+        "optionalSuffixes": [
+          "Bölgesi"
+        ]
+      },
+      "answer": "Ege  Bölgesi",
+      "expected": true,
+      "note": "ek öncesi çoklu boşluk"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "Ege"
+        ],
+        "optionalSuffixes": [
+          "Bölgesi"
+        ]
+      },
+      "answer": "EgeBölgesi",
+      "expected": false,
+      "note": "ek bitişik yazılamaz"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "Ege"
+        ],
+        "optionalSuffixes": [
+          "Bölgesi"
+        ]
+      },
+      "answer": "Bölgesi",
+      "expected": false,
+      "note": "yalnız ek"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "Ege"
+        ],
+        "optionalSuffixes": [
+          "Bölgesi"
+        ]
+      },
+      "answer": "Ege Bölgesinde",
+      "expected": false,
+      "note": "ek birebir olmalı"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "Ege"
+        ],
+        "optionalSuffixes": [
+          "Bölgesi"
+        ]
+      },
+      "answer": "Ege Bölgesi Bölgesi",
+      "expected": false,
+      "note": "ek bir kez"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "Ege Bölgesi"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "Ege",
+      "expected": false,
+      "note": "kabul ek içeriyorsa kısaltma kabul edilmez"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "Atatürk'ün"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "Atatürk’ün",
+      "expected": true,
+      "note": "kesme: ’ (U+2019) → '"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "Atatürk'ün"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "Atatürkʼün",
+      "expected": true,
+      "note": "kesme: ʼ (U+02BC) → '"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "Atatürk’ün"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "Atatürk'ün",
+      "expected": true,
+      "note": "kabul tarafı da birleştirilir"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "Atatürk'ün"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "Atatürkün",
+      "expected": false,
+      "note": "kesme atılmaz"
+    },
+    {
+      "kind": "palette",
+      "solution": {
+        "accept": [
+          "∠ABC",
+          "∠CBA"
+        ]
+      },
+      "answer": "∠ABC",
+      "expected": true,
+      "note": "birebir"
+    },
+    {
+      "kind": "palette",
+      "solution": {
+        "accept": [
+          "∠ABC",
+          "∠CBA"
+        ]
+      },
+      "answer": "∠ CBA",
+      "expected": true,
+      "note": "ikinci kabul + boşluk"
+    },
+    {
+      "kind": "palette",
+      "solution": {
+        "accept": [
+          "∠ABC",
+          "∠CBA"
+        ]
+      },
+      "answer": " ∠ A B C ",
+      "expected": true,
+      "note": "tüm boşluklar silinir"
+    },
+    {
+      "kind": "palette",
+      "solution": {
+        "accept": [
+          "∠ABC",
+          "∠CBA"
+        ]
+      },
+      "answer": "∠abc",
+      "expected": false,
+      "note": "büyük/küçük harf duyarlı"
+    },
+    {
+      "kind": "palette",
+      "solution": {
+        "accept": [
+          "∠ABC",
+          "∠CBA"
+        ]
+      },
+      "answer": "∠ACB",
+      "expected": false,
+      "note": "harf sırası"
+    },
+    {
+      "kind": "palette",
+      "solution": {
+        "accept": [
+          "[AB]⊥[CD]"
+        ]
+      },
+      "answer": "[AB] ⊥ [CD]",
+      "expected": true,
+      "note": "sembol çevresi boşluk"
+    },
+    {
+      "kind": "palette",
+      "solution": {
+        "accept": [
+          "[AB]⊥[CD]"
+        ]
+      },
+      "answer": "[ab]⊥[cd]",
+      "expected": false,
+      "note": "büyük/küçük harf duyarlı"
+    },
+    {
+      "kind": "palette",
+      "solution": {
+        "accept": [
+          "AB//CD"
+        ]
+      },
+      "answer": "AB // CD",
+      "expected": true,
+      "note": "// çevresi boşluk"
+    },
+    {
+      "kind": "palette",
+      "solution": {
+        "accept": [
+          "AB//CD"
+        ]
+      },
+      "answer": "AB/ /CD",
+      "expected": true,
+      "note": "boşluk silinince AB//CD"
+    },
+    {
+      "kind": "palette",
+      "solution": {
+        "accept": [
+          "AB//CD"
+        ]
+      },
+      "answer": "AB||CD",
+      "expected": false,
+      "note": "farklı sembol"
+    },
+    {
+      "kind": "palette",
+      "solution": {
+        "accept": [
+          "∠ABC"
+        ]
+      },
+      "answer": "",
+      "expected": false,
+      "note": "boş cevap"
+    },
+    {
+      "kind": "palette",
+      "solution": {
+        "accept": [
+          "∠ABC"
+        ]
+      },
+      "answer": "∠ABC ",
+      "expected": true,
+      "note": "bölünmez boşluk (NBSP) da silinir"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm"
+        ],
+        "unitMode": "optional"
+      },
+      "answer": "5 cm",
+      "expected": true,
+      "note": "boşluk sınıfı: NBSP (U+00A0)"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm"
+        ],
+        "unitMode": "optional"
+      },
+      "answer": "5 cm",
+      "expected": true,
+      "note": "boşluk sınıfı: dar NBSP (U+202F)"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm"
+        ],
+        "unitMode": "optional"
+      },
+      "answer": "5cm",
+      "expected": true,
+      "note": "boşluk sınıfı: NEL (U+0085; JS \\s'te yok)"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "﻿5",
+      "expected": true,
+      "note": "boşluk sınıfı: BOM (U+FEFF; .NET \\s'te yok) baştan kırpılır"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": " ",
+      "expected": false,
+      "note": "yalnız boşluk sınıfı karakteri = boş"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "Doğu Anadolu"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "Doğu Anadolu",
+      "expected": true,
+      "note": "metin: U+202F teke indirilir"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "İzmir"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "﻿İzmir",
+      "expected": true,
+      "note": "metin: BOM / NEL kırpılır"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "İzmir"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": " ﻿",
+      "expected": false,
+      "note": "metin: yalnız boşluk sınıfı = boş"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "İzmir"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "İzmir.﻿",
+      "expected": true,
+      "note": "metin: sondaki noktalama + BOM"
+    },
+    {
+      "kind": "palette",
+      "solution": {
+        "accept": [
+          "∠ABC"
+        ]
+      },
+      "answer": "∠﻿A BC",
+      "expected": true,
+      "note": "palet: BOM / U+202F / NEL silinir"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "３/４",
+      "expected": false,
+      "note": "tam genişlik rakam (U+FF13) geçersiz"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "12",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "１２",
+      "expected": false,
+      "note": "tam genişlik rakam geçersiz"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "0,75000000000000000000000000000000000000000000000000000000000000",
+      "expected": true,
+      "note": "girdi uzunluğu 64 karakter (sınır) → geçerli"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "0,750000000000000000000000000000000000000000000000000000000000000",
+      "expected": false,
+      "note": "girdi uzunluğu 65 karakter → geçersiz (ham UTF-16 uzunluğu, normalleştirmeden önce)"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "0",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "-0",
+      "expected": true,
+      "note": "-0 = 0"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "0",
+        "equivalence": false,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "-0",
+      "expected": true,
+      "note": "-0 tam sayı biçimidir"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "0",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "-0/5",
+      "expected": true,
+      "note": "-0/5 = 0"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "0",
+        "equivalence": true,
+        "requireSimplest": true,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "0/5",
+      "expected": false,
+      "note": "0/5 en sade değil (ebob(0,5)=5)"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "-3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "%-75",
+      "expected": true,
+      "note": "yüzde işaretinden sonra eksi"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "-3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "-%75",
+      "expected": true,
+      "note": "yüzde işaretinden önce eksi (-%75 = %-75)"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "-3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "- %75",
+      "expected": true,
+      "note": "eksi + boşluk + yüzde"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "-3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "-75%",
+      "expected": true,
+      "note": "eksi + sonda yüzde"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "-%75",
+      "expected": false,
+      "note": "işaret farklı"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "-3/4",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "-%-75",
+      "expected": false,
+      "note": "çift eksi geçersiz"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "1/2",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "0 1/2",
+      "expected": true,
+      "note": "tam kısmı 0 olan tam sayılı kesir geçerlidir (= 1/2)"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "1/2",
+        "equivalence": false,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "0 1/2",
+      "expected": false,
+      "note": "equivalence kapalı: 0 1/2 tam sayılı kesir biçimidir"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "-1/2",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [],
+        "unitMode": "none"
+      },
+      "answer": "-0 1/2",
+      "expected": true,
+      "note": "-0 1/2 = -1/2"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "m²"
+        ],
+        "unitMode": "optional"
+      },
+      "answer": "5 ²",
+      "expected": false,
+      "note": "birim ² ile başlayamaz (yalnız içinde)"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "m²"
+        ],
+        "unitMode": "required"
+      },
+      "answer": "5 m²",
+      "expected": true,
+      "note": "birim içinde ²"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "₺",
+          "TL"
+        ],
+        "unitMode": "required"
+      },
+      "answer": "5 ₺",
+      "expected": true,
+      "note": "para birimi sembolü (\\p{Sc}) birim başlatır"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "₺",
+          "TL"
+        ],
+        "unitMode": "required"
+      },
+      "answer": "5₺",
+      "expected": true,
+      "note": "para birimi bitişik"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "₺",
+          "TL"
+        ],
+        "unitMode": "required"
+      },
+      "answer": "5 tl",
+      "expected": true,
+      "note": "para birimi eşanlamlısı TR küçük harf"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "₺",
+          "TL"
+        ],
+        "unitMode": "optional"
+      },
+      "answer": "₺5",
+      "expected": false,
+      "note": "sayıdan önce birim geçersiz"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "€"
+        ],
+        "unitMode": "required"
+      },
+      "answer": "5 €",
+      "expected": true,
+      "note": "€ birim"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "$"
+        ],
+        "unitMode": "required"
+      },
+      "answer": "5 $",
+      "expected": true,
+      "note": "$ birim"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm"
+        ],
+        "unitMode": "optional"
+      },
+      "answer": "5 %",
+      "expected": false,
+      "note": "yüzde birim değildir (5 % = %5 ≠ 5)"
+    },
+    {
+      "kind": "number",
+      "solution": {
+        "value": "5",
+        "equivalence": true,
+        "requireSimplest": false,
+        "units": [
+          "cm"
+        ],
+        "unitMode": "optional"
+      },
+      "answer": "5 𝐜𝐦",
+      "expected": false,
+      "note": "astral harf (U+1D41C) birim olamaz → geçersiz sayı"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "𐐨"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "𐐀",
+      "expected": true,
+      "note": "astral harfler de kod noktası bazında küçük harfe (Deseret U+10400 → U+10428)"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "οδοσ"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "ΟΔΟΣ",
+      "expected": true,
+      "note": "kod noktası bazında küçük harf: Σ her zaman σ"
+    },
+    {
+      "kind": "text",
+      "solution": {
+        "accept": [
+          "οδος"
+        ],
+        "optionalSuffixes": []
+      },
+      "answer": "ΟΔΟΣ",
+      "expected": false,
+      "note": "bağlama duyarlı son sigma (ς) yok"
+    }
+  ]
+}

@@ -23,6 +23,9 @@ globs:
 
 - **Angular Material** is the component library — use it for all UI primitives (buttons, inputs, cards, dialogs, icons, menus, etc.).
 - Import only the specific Material modules needed in each component's `imports: []` array.
+- **Exception — image-overlay players** (issue #575, `question-canvas-slot-fill`): controls positioned inside small boxes on
+  top of a question image may use native `<select>` / `<input>` where `mat-select` / `mat-form-field` can't fit the box.
+  Style them with the CSS tokens and keep keyboard access + `aria-label`; everywhere else use Material.
 
 ## Styling
 

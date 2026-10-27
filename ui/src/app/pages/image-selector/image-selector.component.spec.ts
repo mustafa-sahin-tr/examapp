@@ -1072,6 +1072,177 @@ describe('ImageSelectorComponent', () => {
         });
     });
 
+    // Issue #575: cevap kutusu yazarlığı — kutu çizimi, tür ayarları, plan/çözüm JSON'u, kopyalama ve doğrulama.
+    describe('slotFill authoring', () => {
+        function setupSlots() {
+            vi.spyOn(component, 'drawImage').mockReturnValue(undefined);
+            component.regions.set([{ ...region('Soru 1', []), x: 100, y: 100, width: 400, height: 300 }] as any);
+            component.interactionTypes.set('Soru 1', 'slotFill');
+            component.ensureSlotFillState('Soru 1');
+        }
+        function draw(x1: number, y1: number, x2: number, y2: number) {
+            component.selectionMode.set('slot');
+            (component as any).addSlotFromDrag(0, x1, y1, x2, y2);
+        }
+        const state = () => component.ensureSlotFillState('Soru 1');
+        const save = () => component.getRegions(null).questions[0];
+
+        it('drawSlots_BuildsRelativePlanAndSeparateSolutionForEverySlot', () => {
+            setupSlots();
+            draw(110, 110, 160.4, 130.6);
+            component.setSlotValue('Soru 1', 's1', ' 3/4 ');
+            component.setSlotEntry('Soru 1', 's1', 'fraction');
+            component.setSlotUnitHint('Soru 1', 's1', ' cm ');
+            draw(200, 110, 300, 130);
+            component.setSlotKind('Soru 1', 's2', 'text');
+            component.setSlotLabel('Soru 1', 's2', '  Başkent ');
+            component.setSlotAccept('Soru 1', 's2', 'İzmir\n izmir \n\nSmyrna');
+            component.setSlotSuffixes('Soru 1', 's2', 'Bölgesi, ili');
+
+            const q = save();
+            const plan = JSON.parse(q.interactionPlan!);
+            expect(q.interactionType).toBe('slotFill');
+            expect(plan).toEqual({
+                version: 1,
+                type: 'slotFill',
+                slots: [
+                    { id: 's1', box: { x: 10, y: 10, width: 50, height: 21 }, input: { kind: 'number', entry: 'fraction', unit: 'cm' } },
+                    { id: 's2', label: 'Başkent', box: { x: 100, y: 10, width: 100, height: 20 }, input: { kind: 'text' } },
+                ],
+            });
+            expect(JSON.parse(q.interactionSolution!)).toEqual({
+                s1: { value: '3/4', equivalence: true, requireSimplest: false, units: [], unitMode: 'none' },
+                s2: { accept: ['İzmir', 'Smyrna'], optionalSuffixes: ['Bölgesi', 'ili'] },
+            });
+            expect(q.answers).toEqual([]);
+        });
+
+        it('newSlot_InheritsSelectedSlotSettingsButNotValues', () => {
+            setupSlots();
+            draw(110, 110, 160, 130);
+            component.setSlotKind('Soru 1', 's1', 'select');
+            component.setSlotOptionLabel('Soru 1', 's1', 'o1', 'artar');
+            component.setSlotOptionLabel('Soru 1', 's1', 'o2', 'azalır');
+            component.toggleSlotCorrectOption('Soru 1', 's1', 'o2');
+            draw(200, 110, 260, 130);
+
+            const s2 = state().slots[1];
+            expect(s2.kind).toBe('select');
+            expect(s2.options.map((o) => o.label)).toEqual(['artar', 'azalır']);
+            expect(s2.correctOptionIds).toEqual([]);
+            expect(state().selectedSlotId).toBe('s2');
+        });
+
+        it('applySettingsToAll_CopiesSettingsKeepsEachSlotsValue', () => {
+            setupSlots();
+            draw(110, 110, 160, 130);
+            draw(200, 110, 260, 130);
+            component.setSlotValue('Soru 1', 's2', '12');
+            component.setSlotUnitHint('Soru 1', 's1', 'cm');
+            component.setSlotUnitMode('Soru 1', 's1', 'required');
+            component.setSlotEquivalence('Soru 1', 's1', false);
+
+            component.applySlotSettingsToAll('Soru 1', 's1');
+
+            const s2 = state().slots[1];
+            expect(s2).toMatchObject({ unitHint: 'cm', unitMode: 'required', units: ['cm'], equivalence: false, value: '12' });
+        });
+
+        it('validation_BlocksSaveWhenSlotHasNoCorrectValue_AndMirrorsServerRules', () => {
+            setupSlots();
+            expect(component.validateQuestions({ requireCorrectAnswer: true })[0].messages).toEqual(['Cevap kutusu çizilmemiş']);
+
+            draw(110, 110, 160, 130);
+            expect(component.validateQuestions({ requireCorrectAnswer: true })[0].messages).toEqual(['Kutu 1: doğru sayı yazılmamış']);
+            expect(component.validateQuestions({ requireCorrectAnswer: false })).toEqual([]);
+            expect(component.validateQuestions({ requireCorrectAnswer: true, skipInteractive: true })).toEqual([]);
+            expect(save().interactionSolution).toBeNull();
+
+            component.setSlotValue('Soru 1', 's1', '5 cm');
+            expect(component.validateQuestions({ requireCorrectAnswer: true })[0].messages[0]).toContain('birim');
+            component.setSlotValue('Soru 1', 's1', '%40');
+            component.setSlotUnitMode('Soru 1', 's1', 'required');
+            const codes = () => component.getActiveInspector()!.slotFill!.slots[0].issues;
+            expect(codes()).toEqual(['unitsMissing', 'percentWithUnit']);
+            component.setSlotUnitMode('Soru 1', 's1', 'none');
+            component.setSlotEntry('Soru 1', 's1', 'fraction');
+            component.setSlotEquivalence('Soru 1', 's1', false);
+            expect(codes()).toEqual(['entryFormMismatch']);
+            component.setSlotValue('Soru 1', 's1', '6/8');
+            component.setSlotRequireSimplest('Soru 1', 's1', true);
+            expect(codes()).toEqual(['notSimplest']);
+            component.setSlotValue('Soru 1', 's1', '3/4');
+            expect(component.validateQuestions({ requireCorrectAnswer: true })).toEqual([]);
+            component.setSlotUnits('Soru 1', 's1', 'cm');
+            component.setSlotUnitMode('Soru 1', 's1', 'required');
+            expect(codes()).toEqual(['entryWithRequiredUnit']);
+            component.setSlotEntry('Soru 1', 's1', 'plain');
+            component.setSlotEquivalence('Soru 1', 's1', true);
+            component.setSlotUnits('Soru 1', 's1', 'cm, m², ₺');
+            expect(codes()).toEqual([]);
+            component.setSlotUnits('Soru 1', 's1', 'cm, ², 5cm');
+            expect(codes()).toEqual(['invalidUnit']);
+            // "Birim yok" kipinde gizli kalan birimler gönderilmez ve kaydı engellemez.
+            component.setSlotUnitMode('Soru 1', 's1', 'none');
+            expect(codes()).toEqual([]);
+            expect(JSON.parse(save().interactionSolution!).s1.units).toEqual([]);
+        });
+
+        it('selectAndPalette_ValidationAndPresets', () => {
+            setupSlots();
+            draw(110, 110, 160, 130);
+            component.setSlotKind('Soru 1', 's1', 'select');
+            const codes = () => component.getActiveInspector()!.slotFill!.slots[0].issues;
+            expect(codes()).toEqual(['emptyOptionLabel', 'missingCorrectOption']);
+            component.removeSlotOption('Soru 1', 's1', 'o2');
+            expect(codes()).toContain('optionCount');
+
+            component.setSlotKind('Soru 1', 's1', 'palette');
+            expect(codes()).toEqual(['symbolCount', 'missingPaletteAccept']);
+            component.applySlotPalettePreset('Soru 1', 's1', 'geometry');
+            component.applySlotPalettePreset('Soru 1', 's1', 'geometry');
+            component.setSlotPaletteAccept('Soru 1', 's1', '∠ABC');
+            expect(state().slots[0].symbols).toEqual(['∠', '⊥', '//', '[AB]', '(AB)', '|AB|']);
+            expect(codes()).toEqual([]);
+            expect(JSON.parse(save().interactionPlan!).slots[0].input).toEqual({ kind: 'palette', symbols: ['∠', '⊥', '//', '[AB]', '(AB)', '|AB|'] });
+        });
+
+        it('preview_UsesNormalizer', () => {
+            setupSlots();
+            draw(110, 110, 160, 130);
+            component.setSlotValue('Soru 1', 's1', '3/4');
+            expect(component.previewSlotAnswer('Soru 1', 's1', '%75')).toBe(true);
+            component.setSlotEquivalence('Soru 1', 's1', false);
+            expect(component.previewSlotAnswer('Soru 1', 's1', '0,75')).toBe(false);
+            expect(component.previewSlotAnswer('Soru 1', 's1', '')).toBeNull();
+        });
+
+        it('drawOutsideQuestion_IsRejected_HitTestFindsSlot_RemoveAndReset', () => {
+            setupSlots();
+            const open = vi.spyOn((component as any).snackBar, 'open').mockReturnValue(undefined);
+            draw(50, 110, 300, 140);
+            expect(state().slots).toEqual([]);
+            expect(open).toHaveBeenCalledTimes(1);
+
+            draw(110, 110, 160, 130);
+            expect(component.getRegionOrAnswerAtPosition(120, 120)).toEqual({ type: 'slot', value: { questionIndex: 0, slotId: 's1' } });
+            component.removeSlot('Soru 1', 's1');
+            expect(state().slots).toEqual([]);
+            component.resetRegions();
+            expect(component.slotFillState.size).toBe(0);
+        });
+
+        it('slotModeOnMcqQuestion_TurnsItIntoSlotFill_SelectKeepsSlotMode', () => {
+            vi.spyOn(component, 'drawImage').mockReturnValue(undefined);
+            component.regions.set([{ ...region('Soru 1', []), x: 100, y: 100, width: 400, height: 300 }] as any);
+            draw(110, 110, 160, 130);
+
+            expect(component.getInteractionType('Soru 1')).toBe('slotFill');
+            component.selectQuestion(0);
+            expect(component.selectionMode()).toBe('slot');
+        });
+    });
+
     // Bekleme anlarının görünürlüğü: analiz örtüsü, eğitime gönderim meşgul durumu ve hata yolları.
     describe('busy states (predict / sendToFix)', () => {
         let snackBarOpen: Mock;

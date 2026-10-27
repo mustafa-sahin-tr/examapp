@@ -1,4 +1,5 @@
 import { isBlankMatrixChoicePayload } from '../../models/matrix-choice';
+import { isBlankSlotFillPayload } from '../../models/slot-fill';
 import {
   AfterViewInit,
   Component,
@@ -1008,8 +1009,18 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
    * 2) herhangi biri başarısızsa tamamlama isteği GÖNDERİLMEZ, hata gösterilir, öğrenci tekrar dener;
    * 3) tamamlama başarılıysa sonuç sayfasına (`/test/{worksheetId}`) gidilir.
    */
+  /**
+   * Issue #575: ekrandaki etkileşimli oynatıcıların yazılmış ama henüz yayınlanmamış cevabını (cevap kutusu, kayıt
+   * gecikmeli) hemen yayınlatır; şablonu olan alt sınıf doldurur.
+   */
+  protected flushInteractivePlayers(): void {
+    // Temel bileşenin şablonunda cevap kutusu oynatıcısı yok.
+  }
+
   async completeTest(): Promise<void> {
     if (this.finishing() || this.redirectedToResult || !this.testInstance) return;
+    // Kilitten önce: bekleyen cevap kutusu değeri normal kayıt yolundan gider, aşağıdaki flush onu da bekler.
+    this.flushInteractivePlayers();
     this.finishing.set(true);
     this.autoPlay = false;
     this.testTimerSubscription?.unsubscribe();
@@ -1793,9 +1804,12 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   private isQuestionAnswered(question: TestInstanceQuestion): boolean {
-    // Issue #574: seçimsiz matris cevabı (Temizle) gönderilir ama cevapsız sayılır (sunucu da boş cevap sayar).
+    // Issue #574 / #575: seçimsiz matris / boş kutulu cevap (Temizle) gönderilir ama cevapsız sayılır (sunucu da boş sayar).
     const payload = question.answerPayload;
-    return !!question.selectedAnswerId || (this.isNonEmptyPayload(payload) && !isBlankMatrixChoicePayload(payload));
+    return (
+      !!question.selectedAnswerId ||
+      (this.isNonEmptyPayload(payload) && !isBlankMatrixChoicePayload(payload) && !isBlankSlotFillPayload(payload))
+    );
   }
 
   private isNonEmptyPayload(payload: string | undefined): boolean {

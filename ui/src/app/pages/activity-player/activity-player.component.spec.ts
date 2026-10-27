@@ -631,11 +631,157 @@ describe('ActivityPlayerComponent (#573)', () => {
     summaryResponse = { today: { activityCount: 1, activeMinutes: 3, streakDays: 1 }, badges: [] };
     await vi.advanceTimersByTimeAsync(ACTIVITY_SUMMARY_REFETCH_MS);
     fixture.detectChanges();
-    await vi.advanceTimersByTimeAsync(10 * ACTIVITY_SUMMARY_REFETCH_MS);
+    await vi.advanceTimersByTimeAsync(20_000);
 
+    // Artış görüldü: izleme durdu (2 sn'deki okumadan sonra başka istek yok).
     expect(badgeService.getActivitySummary).toHaveBeenCalledTimes(2);
     expect(q('today-card')?.textContent).toContain('1 etkinlik · 3 dk etkin süre · 1 gün üst üste');
   });
+
+  // #575 E2E: rozet işlemesi 2 sn'den geç biterse 5 ve 10. saniyede yeniden okunur; artınca durur.
+  it('i572_AfterFinish_BacksOffAt2_5_10s_StopsOnIncrease', async () => {
+    await create(instance({ checkCount: 1 }));
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    summaryResponse = { today: { activityCount: 1, activeMinutes: 5, streakDays: 1 }, badges: [] };
+
+    await fixture.componentInstance.finish();
+    expect(badgeService.getActivitySummary).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(badgeService.getActivitySummary).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(badgeService.getActivitySummary).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(2999);
+    expect(badgeService.getActivitySummary).toHaveBeenCalledTimes(2);
+
+    summaryResponse = { today: { activityCount: 2, activeMinutes: 9, streakDays: 1 }, badges: [] };
+    await vi.advanceTimersByTimeAsync(1);
+    expect(badgeService.getActivitySummary).toHaveBeenCalledTimes(3);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(badgeService.getActivitySummary).toHaveBeenCalledTimes(3);
+    fixture.detectChanges();
+    expect(q('today-card')?.textContent).toContain('2 etkinlik');
+  });
+
+  it('i572_AfterFinish_NoChange_StopsAfterThreeRefetches', async () => {
+    await create(instance({ checkCount: 1 }));
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    summaryResponse = { today: { activityCount: 1, activeMinutes: 5, streakDays: 1 }, badges: [] };
+
+    await fixture.componentInstance.finish();
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    expect(badgeService.getActivitySummary).toHaveBeenCalledTimes(4);
+  });
+
+  it('i572_AfterFinish_DestroyCancelsPendingRefetch', async () => {
+    await create(instance({ checkCount: 1 }));
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    await fixture.componentInstance.finish();
+    fixture.destroy();
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    expect(badgeService.getActivitySummary).toHaveBeenCalledTimes(1);
+  });
+
+  // Issue #575: cevap kutusu maddesi — oynatıcı, eksik kutu, kontrol gövdesi, kutu satırları ve çözüm.
+  describe('slotFill (#575)', () => {
+    const SLOT_PLAN = JSON.stringify({
+      version: 1,
+      type: 'slotFill',
+      slots: [
+        { id: 's1', box: { x: 0, y: 0, width: 50, height: 20 }, input: { kind: 'number', entry: 'fraction' } },
+        { id: 's2', box: { x: 60, y: 0, width: 50, height: 20 }, input: { kind: 'select', options: [{ id: 'o1', label: 'artar' }, { id: 'o2', label: 'azalır' }] } },
+      ],
+    });
+    const PARTIAL = JSON.stringify({ version: 1, type: 'slotFill', values: { s1: '3/4' } });
+    const slotInstance = (overrides: Partial<TestInstance> = {}) =>
+      instance(overrides, [{ answerPayload: PARTIAL, question: { ...instance().testInstanceQuestions[0].question, interactionType: 'SlotFill', interactionPlan: SLOT_PLAN } }]);
+    const rowTexts = () => Array.from(el().querySelectorAll('[data-testid="result-row"]')).map((r) => r.textContent ?? '');
+
+    it('rendersSlotFillPlayer_AnyEmptySlotIsBlankItem', async () => {
+      await create(slotInstance());
+      fixture.componentInstance.goTo(0);
+      await settle();
+
+      expect(el().querySelector('app-question-canvas-slot-fill')).not.toBeNull();
+      expect(el().querySelector('app-question-canvas-matrix-choice')).toBeNull();
+      expect(fixture.componentInstance.steps()[0].state).toBe('answered');
+      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankKind()).toBe('generic');
+    });
+
+    it('change_SavesPayloadAndCheckSendsIt_RowsShowValuesAndMarks', async () => {
+      await create(slotInstance());
+      fixture.componentInstance.goTo(0);
+      await settle();
+      const item = fixture.componentInstance.items()[0];
+      const both = JSON.stringify({ version: 1, type: 'slotFill', values: { s1: '3/4', s2: 'o1' } });
+      fixture.componentInstance.onDragDropChange(both, item);
+      await settle();
+      expect(testService['saveAnswer']).toHaveBeenCalledWith(expect.objectContaining({ testQuestionId: 101, answerPayload: both }));
+      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 1,
+          totalCount: 3,
+          questions: [
+            { instanceQuestionId: 101, isCorrect: false, correctCount: 1, totalCount: 2, feedback: '{"rows":[{"id":"s1","correct":true},{"id":"s2","correct":false}]}' },
+            { instanceQuestionId: 102, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+
+      expect(activityService.check.mock.lastCall![1][0]).toEqual({ instanceQuestionId: 101, selectedAnswerId: null, answerPayload: both });
+      const rows = rowTexts();
+      expect(rows[0]).toContain('Kutu 1: 3/4');
+      expect(rows[1]).toContain('Kutu 2: artar');
+      expect(el().querySelectorAll('.sf-slot.is-correct').length).toBe(1);
+      expect(el().querySelectorAll('.sf-slot.is-wrong').length).toBe(1);
+      expect(el().textContent).not.toMatch(/%|puan|XP/i);
+    });
+
+    it('check_FlushesTypedButUnsavedSlotValueFirst', async () => {
+      await create(slotInstance());
+      fixture.componentInstance.goTo(0);
+      await settle();
+      const input = el().querySelector('[data-slot-input="s1"] [data-part="denominator"]') as HTMLInputElement;
+      input.value = '8';
+      input.dispatchEvent(new Event('input'));
+
+      await fixture.componentInstance.runCheck();
+
+      const sent = JSON.parse(activityService.check.mock.lastCall![1][0].answerPayload);
+      expect(sent.values.s1).toBe('3/8');
+    });
+
+    it('reveal_RowsShowAcceptedValuesAndPlayerShowsSolution', async () => {
+      await create(slotInstance({ checkCount: 1 }));
+      activityService.getSolutions.mockReturnValue(
+        of({
+          success: true,
+          questions: [
+            { instanceQuestionId: 101, questionId: 1, correctAnswerId: null, interactionSolution: '{"s1":{"value":"3/4"},"s2":{"optionIds":["o2"]}}' },
+            { instanceQuestionId: 102, questionId: 2, correctAnswerId: 11, interactionSolution: null },
+          ],
+        })
+      );
+      fixture.componentInstance.goTo(0);
+
+      await fixture.componentInstance.reveal();
+      await settle();
+
+      const rows = fixture.componentInstance.currentRows();
+      expect(rows.map((r) => r.solution)).toEqual(['3/4', 'azalır']);
+      expect(rows[1].label).toBe('Kutu 2: boş');
+      expect(el().querySelector('[data-solution="s2"]')?.textContent?.trim()).toBe('azalır');
+    });
+  });
+
   // Issue #574: matris seçim maddesi — oynatıcı, kontrol gövdesi, satır sonuçları ve çözüm satırları.
   describe('matrixChoice (#574)', () => {
     const MATRIX_PLAN = JSON.stringify({

@@ -1,0 +1,18 @@
+@if (mixed()) {
+  <!-- Tam kısım negatif olabilir ("-2 3/5"): sayısal klavyede eksi yok, metin klavyesi. -->
+  <input #whole class="fi-field fi-field--whole" type="text" inputmode="text" autocomplete="off" maxlength="12"
+    [id]="idPrefix() ? idPrefix() + '-whole' : null"
+    [value]="parts().whole" [disabled]="disabled()" [attr.aria-label]="fieldLabel(wholeLabel())"
+    data-part="whole" (input)="onInput()" (change)="onCommit()" />
+}
+<span class="fi-stack">
+  <input class="fi-field" type="text" inputmode="numeric" autocomplete="off" maxlength="12"
+    #numerator [id]="idPrefix() ? idPrefix() + '-numerator' : null"
+    [value]="parts().numerator" [disabled]="disabled()" [attr.aria-label]="fieldLabel(numeratorLabel())"
+    data-part="numerator" (input)="onInput()" (change)="onCommit()" />
+  <span class="fi-bar" aria-hidden="true"></span>
+  <input class="fi-field" type="text" inputmode="numeric" autocomplete="off" maxlength="12"
+    #denominator [id]="idPrefix() ? idPrefix() + '-denominator' : null"
+    [value]="parts().denominator" [disabled]="disabled()" [attr.aria-label]="fieldLabel(denominatorLabel())"
+    data-part="denominator" (input)="onInput()" (change)="onCommit()" />
+</span>

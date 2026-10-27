@@ -12,7 +12,8 @@
     "choice": "Your choice: {{content}}",
     "empty": "empty",
     "matrixRow": "{{name}}: {{content}}",
-    "matrixRowFallback": "Row {{n}}"
+    "matrixRowFallback": "Row {{n}}",
+    "slot": "Box {{n}}: {{content}}"
   },
   "saveFailed": "Your last answer could not be saved; it will be sent again when you check.",
   "finishCheckRequired": "Check your answers once before finishing.",

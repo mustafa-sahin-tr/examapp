@@ -21,6 +21,7 @@ import {
   QuestionInteractionType,
 } from '../image-selector/image-selector.component';
 import { MatrixColumnPreset } from '../../models/matrix-choice';
+import { SlotKind, SlotNumberEntry, SlotPalettePreset, SlotUnitMode } from '../../models/slot-fill';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { PASSAGE_INSTRUCTION_MAX_LENGTH, PassageKind, WorksheetKind, saveValidationMessage } from '../../models/activity';
 import { Subject } from '../../models/subject';
@@ -764,6 +765,141 @@ export class QuestionCanvasComponent implements OnInit {
   insMatrixToggleSolution(rowId: string, columnId: string) {
     const name = this.insName;
     if (name) this.imageSelector.toggleMatrixSolution(name, rowId, columnId);
+  }
+
+  // ---- Issue #575: cevap kutusu ----
+
+  readonly slotKinds: SlotKind[] = ['number', 'text', 'select', 'palette'];
+  readonly slotEntries: SlotNumberEntry[] = ['plain', 'fraction', 'mixed'];
+  readonly slotUnitModes: SlotUnitMode[] = ['none', 'optional', 'required'];
+  /** "Öğrenci şunu yazarsa" önizlemesi: `soru adı + kutu id` → yazılan deneme cevabı (kayda girmez). */
+  private readonly slotPreview = signal<ReadonlyMap<string, string>>(new Map());
+
+  private static inputValue(event: Event): string {
+    return (event.target as HTMLInputElement | HTMLTextAreaElement | null)?.value ?? '';
+  }
+
+  private withSlot(run: (name: string) => void) {
+    const name = this.insName;
+    if (name) run(name);
+  }
+
+  insSlotMode() {
+    const idx = this.insIndex;
+    if (idx != null) this.imageSelector.selectSlotFillMode(idx);
+  }
+
+  insSlotSelect(slotId: string) {
+    this.withSlot((name) => this.imageSelector.selectSlot(name, slotId));
+  }
+
+  insSlotKind(slotId: string, kind: SlotKind) {
+    this.withSlot((name) => this.imageSelector.setSlotKind(name, slotId, kind));
+  }
+
+  insSlotLabel(slotId: string, event: Event) {
+    this.withSlot((name) => this.imageSelector.setSlotLabel(name, slotId, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  insSlotEntry(slotId: string, entry: SlotNumberEntry) {
+    this.withSlot((name) => this.imageSelector.setSlotEntry(name, slotId, entry));
+  }
+
+  insSlotValue(slotId: string, event: Event) {
+    this.withSlot((name) => this.imageSelector.setSlotValue(name, slotId, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  insSlotEquivalence(slotId: string, on: boolean) {
+    this.withSlot((name) => this.imageSelector.setSlotEquivalence(name, slotId, on));
+  }
+
+  insSlotSimplest(slotId: string, on: boolean) {
+    this.withSlot((name) => this.imageSelector.setSlotRequireSimplest(name, slotId, on));
+  }
+
+  insSlotUnitHint(slotId: string, event: Event) {
+    this.withSlot((name) => this.imageSelector.setSlotUnitHint(name, slotId, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  insSlotUnitMode(slotId: string, mode: SlotUnitMode) {
+    this.withSlot((name) => this.imageSelector.setSlotUnitMode(name, slotId, mode));
+  }
+
+  insSlotUnits(slotId: string, event: Event) {
+    this.withSlot((name) => this.imageSelector.setSlotUnits(name, slotId, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  insSlotAccept(slotId: string, event: Event) {
+    this.withSlot((name) => this.imageSelector.setSlotAccept(name, slotId, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  insSlotSuffixes(slotId: string, event: Event) {
+    this.withSlot((name) => this.imageSelector.setSlotSuffixes(name, slotId, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  insSlotAddOption(slotId: string) {
+    this.withSlot((name) => this.imageSelector.addSlotOption(name, slotId));
+  }
+
+  insSlotRemoveOption(slotId: string, optionId: string) {
+    this.withSlot((name) => this.imageSelector.removeSlotOption(name, slotId, optionId));
+  }
+
+  insSlotOptionLabel(slotId: string, optionId: string, event: Event) {
+    this.withSlot((name) =>
+      this.imageSelector.setSlotOptionLabel(name, slotId, optionId, QuestionCanvasComponent.inputValue(event))
+    );
+  }
+
+  insSlotToggleOption(slotId: string, optionId: string) {
+    this.withSlot((name) => this.imageSelector.toggleSlotCorrectOption(name, slotId, optionId));
+  }
+
+  insSlotSymbols(slotId: string, event: Event) {
+    this.withSlot((name) => this.imageSelector.setSlotSymbols(name, slotId, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  insSlotPreset(slotId: string, preset: SlotPalettePreset) {
+    this.withSlot((name) => this.imageSelector.applySlotPalettePreset(name, slotId, preset));
+  }
+
+  insSlotPaletteAccept(slotId: string, event: Event) {
+    this.withSlot((name) => this.imageSelector.setSlotPaletteAccept(name, slotId, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  insSlotApplyAll(slotId: string) {
+    this.withSlot((name) => this.imageSelector.applySlotSettingsToAll(name, slotId));
+  }
+
+  insSlotRemove(slotId: string) {
+    this.withSlot((name) => this.imageSelector.removeSlot(name, slotId));
+  }
+
+  insSlotRemoveLast() {
+    this.withSlot((name) => this.imageSelector.removeLastSlot(name));
+  }
+
+  insSlotClear() {
+    this.withSlot((name) => this.imageSelector.clearSlots(name));
+  }
+
+  slotPreviewFor(slotId: string): string {
+    return this.slotPreview().get(`${this.insName}\u0000${slotId}`) ?? '';
+  }
+
+  insSlotPreview(slotId: string, event: Event) {
+    const key = `${this.insName}\u0000${slotId}`;
+    const value = QuestionCanvasComponent.inputValue(event);
+    this.slotPreview.update((all) => new Map(all).set(key, value));
+  }
+
+  /** Önizleme sonucu: boş deneme / eksik ayarlı kutuda null. */
+  insSlotPreviewResult(slotId: string): 'correct' | 'wrong' | null {
+    const name = this.insName;
+    const answer = this.slotPreviewFor(slotId);
+    if (!name || !answer.trim()) return null;
+    const result = this.imageSelector.previewSlotAnswer(name, slotId, answer);
+    return result === null ? null : result ? 'correct' : 'wrong';
   }
 
   insToggleExample() {

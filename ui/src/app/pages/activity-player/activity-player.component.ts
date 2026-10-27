@@ -31,7 +31,7 @@ import {
   activityRoute,
   parseActivityFeedback,
 } from '../../models/activity';
-import { ActivityProgressView, toActivityProgressView } from '../../models/activity-summary.model';
+import { ActivityProgressView, ActivityTodayStats, toActivityProgressView } from '../../models/activity-summary.model';
 import { AssignedWorksheet } from '../../models/assignment';
 import { AnswerChoice, QuestionRegion } from '../../models/draws';
 import {
@@ -42,6 +42,17 @@ import {
   parseMatrixChoiceSolution,
   selectionOf,
 } from '../../models/matrix-choice';
+import {
+  SlotFillPlanV1,
+  isSlotFillType,
+  parseSlotFillPlan,
+  parseSlotFillSolution,
+  parseSlotFillValues,
+  solutionDisplay,
+  solutionOf,
+  valueDisplay,
+  valueOf,
+} from '../../models/slot-fill';
 import { TestInstance, TestInstanceQuestion, TestStatus } from '../../models/test-instance';
 import { ActivityService } from '../../services/activity.service';
 import { BadgeService } from '../../services/badge.service';
@@ -63,6 +74,7 @@ import {
   QuestionCanvasDragDropLabelingComponent,
 } from '../../shared/components/question-canvas-dragdrop-labeling/question-canvas-dragdrop-labeling.component';
 import { QuestionCanvasMatrixChoiceComponent } from '../../shared/components/question-canvas-matrix-choice/question-canvas-matrix-choice.component';
+import { QuestionCanvasSlotFillComponent } from '../../shared/components/question-canvas-slot-fill/question-canvas-slot-fill.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 import { ActiveTimeTracker, ACTIVITY_MAX_ACTIVE_SECONDS } from '../../shared/utils/active-time-tracker';
 import { currentUserId } from '../../shared/utils/current-user-id.util';
@@ -76,8 +88,13 @@ const DRAG_DROP = 'dragDropLabeling';
 
 /** Issue #572: etkin süreyi sayan etkileşimler (oynatıcı içinde). */
 const ACTIVITY_EVENTS = ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'wheel', 'scroll'] as const;
-/** Issue #572: bitirdikten sonra rozet işlemesi (outbox → RabbitMQ) yetişsin diye tek gecikmeli yeniden okuma (ms). */
-export const ACTIVITY_SUMMARY_REFETCH_MS = 2000;
+/**
+ * Issue #572 / #575 E2E: bitirdikten sonra rozet işlemesi (outbox → RabbitMQ) asenkron; özet bitirmeden itibaren ~2, 5 ve
+ * 10. saniyede yeniden okunur ve bugünkü etkinlik sayısı ya da etkin dakika artınca durur.
+ */
+export const ACTIVITY_SUMMARY_REFETCH_SCHEDULE_MS = [2000, 5000, 10000] as const;
+/** İlk yeniden okuma gecikmesi (ms). */
+export const ACTIVITY_SUMMARY_REFETCH_MS = ACTIVITY_SUMMARY_REFETCH_SCHEDULE_MS[0];
 const ACTIVE_SECONDS_KEY = 'activity.activeSeconds:';
 
 interface ItemAnswer {
@@ -118,6 +135,7 @@ export type ActivityAction = 'check' | 'reveal' | 'finish';
     ActivitySummaryComponent,
     QuestionCanvasDragDropLabelingComponent,
     QuestionCanvasMatrixChoiceComponent,
+    QuestionCanvasSlotFillComponent,
     QuestionCanvasViewComponentv5,
     QuestionLiteViewComponent,
   ],
@@ -141,6 +159,8 @@ export class ActivityPlayerComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   private readonly contentRef = viewChild<ElementRef<HTMLElement>>('itemContent');
+  /** Issue #575: cevap kutusu oynatıcısı (yazılıp henüz kaydedilmemiş değer kontrol / bitir öncesi alınır). */
+  private readonly slotFillPlayer = viewChild(QuestionCanvasSlotFillComponent);
 
   readonly instanceId = signal(0);
   readonly loadState = signal<LoadState>('loading');
@@ -198,6 +218,10 @@ export class ActivityPlayerComponent {
   private activeInstanceId = 0;
   private progressSub: Subscription | null = null;
   private progressRefetch: ReturnType<typeof setTimeout> | null = null;
+  /** Bitirme sonrası özet izleme: karşılaştırma tabanı ve sıradaki yeniden okuma (null = izleme yok). */
+  private progressWatch: { baseline: ActivityTodayStats | null; attempt: number } | null = null;
+  /** Son okunan ham "Bugün" (görünüm 0 etkinlikte kartı gizler; karşılaştırma ham değerle yapılır). */
+  private lastToday: ActivityTodayStats | null = null;
 
   /** issue #365 (S3): imzalı görsel URL'si dolarsa oturum yeniden çekilir (salt okuma). */
   readonly imageRefresh = createStorageImageResolver(
@@ -216,6 +240,7 @@ export class ActivityPlayerComponent {
   private nextActivitySub: Subscription | null = null;
   private readonly plans = new Map<number, DragDropLabelingPlanV1 | null>();
   private readonly matrixPlans = new Map<number, MatrixChoicePlanV1 | null>();
+  private readonly slotFillPlans = new Map<number, SlotFillPlanV1 | null>();
 
   readonly title = computed(() => this.instance()?.testName ?? '');
   readonly currentItem = computed(() => this.items()[this.currentIndex()] ?? null);
@@ -280,6 +305,7 @@ export class ActivityPlayerComponent {
     if (!result && !revealed) return [];
     const solution = revealed ? this.solutions()?.[item.id] ?? null : null;
     if (this.isMatrix(item)) return this.matrixRows(item, result, solution);
+    if (this.isSlotFill(item)) return this.slotFillRows(item, result, solution);
     return this.isDragDrop(item)
       ? this.dragDropRows(item, result, solution)
       : this.mcqRows(item, result, solution);
@@ -398,6 +424,7 @@ export class ActivityPlayerComponent {
     this.progressSub = null;
     this.clearProgressRefetch();
     this.progress.set({ today: null, badge: null });
+    this.lastToday = null;
     this.inFlight.clear();
     this.queued.clear();
     this.failedItems.clear();
@@ -561,8 +588,17 @@ export class ActivityPlayerComponent {
   // Kontrol / çözüm / bitir
   // ---------------------------------------------------------------------------
 
+  /**
+   * Issue #575: cevap kutusunda yazılmış ama (duraksama / alan bırakma olmadan) henüz yayınlanmamış değer kayda girsin.
+   * Kilit (`checking` / `finishing`) açılmadan ÖNCE çağrılmalı: kilitliyken `onDragDropChange` değişikliği yok sayar.
+   */
+  private flushPlayers(): void {
+    if (!this.contentLocked()) this.slotFillPlayer()?.flush();
+  }
+
   async runCheck(): Promise<void> {
     if (this.checking() || this.finished()) return;
+    this.flushPlayers();
     this.checking.set(true);
     this.clearPanelError();
     await this.flushSaves();
@@ -655,6 +691,7 @@ export class ActivityPlayerComponent {
 
   async finish(): Promise<void> {
     if (this.finishing() || this.finished()) return;
+    this.flushPlayers();
     this.finishing.set(true);
     this.clearPanelError();
     this.accumulateTime();
@@ -675,6 +712,8 @@ export class ActivityPlayerComponent {
         return;
       }
     }
+    // Bitirmeden önceki "Bugün" (varsa): yeniden okumada artış buna göre aranır.
+    const todayBefore = this.lastToday;
     try {
       this.activeTime.activity();
       const activeSeconds = this.activeTime.seconds();
@@ -683,12 +722,10 @@ export class ActivityPlayerComponent {
         this.handleActionError(response, 'finish');
         return;
       }
+      // Rozet değerlendirmesi asenkron: izleme `markFinished`'in ilk okumasından önce başlar (ilk sonuç da sayılır).
+      this.clearProgressRefetch();
+      this.progressWatch = { baseline: todayBefore, attempt: 0 };
       this.markFinished();
-      // Rozet değerlendirmesi asenkron: tamamlanan etkinlik ilk okumada henüz yoksa 2 sn sonra bir kez daha okunur.
-      this.progressRefetch = setTimeout(() => {
-        this.progressRefetch = null;
-        this.loadProgress();
-      }, ACTIVITY_SUMMARY_REFETCH_MS);
     } catch (error) {
       this.handleActionError(error, 'finish');
     } finally {
@@ -783,12 +820,46 @@ export class ActivityPlayerComponent {
       .getActivitySummary(userId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (response) => this.progress.set(toActivityProgressView(response)),
-        error: () => this.progress.set({ today: null, badge: null }),
+        next: (response) => {
+          this.progress.set(toActivityProgressView(response));
+          this.lastToday = response?.today ?? null;
+          this.onProgressLoaded(this.lastToday);
+        },
+        error: () => {
+          this.progress.set({ today: null, badge: null });
+          this.onProgressLoaded(null);
+        },
       });
   }
 
+  /**
+   * Bitirme sonrası izleme: taban yoksa ilk okunan değer taban olur; bugünkü etkinlik sayısı ya da etkin dakika tabandan
+   * büyükse durulur, değilse takvimdeki sıradaki ana (2 / 5 / 10 sn) kadar beklenip yeniden okunur.
+   */
+  private onProgressLoaded(today: ActivityTodayStats | null): void {
+    const watch = this.progressWatch;
+    if (!watch) return;
+    if (watch.baseline === null) {
+      watch.baseline = today;
+    } else if (today && (today.activityCount > watch.baseline.activityCount || today.activeMinutes > watch.baseline.activeMinutes)) {
+      this.progressWatch = null;
+      return;
+    }
+    const schedule = ACTIVITY_SUMMARY_REFETCH_SCHEDULE_MS;
+    if (watch.attempt >= schedule.length) {
+      this.progressWatch = null;
+      return;
+    }
+    const delay = schedule[watch.attempt] - (watch.attempt > 0 ? schedule[watch.attempt - 1] : 0);
+    watch.attempt += 1;
+    this.progressRefetch = setTimeout(() => {
+      this.progressRefetch = null;
+      this.loadProgress();
+    }, delay);
+  }
+
   private clearProgressRefetch(): void {
+    this.progressWatch = null;
     if (this.progressRefetch !== null) {
       clearTimeout(this.progressRefetch);
       this.progressRefetch = null;
@@ -897,9 +968,25 @@ export class ActivityPlayerComponent {
     return isMatrixChoiceType(item.question?.interactionType);
   }
 
+  isSlotFill(item: TestInstanceQuestion): boolean {
+    return isSlotFillType(item.question?.interactionType);
+  }
+
   /** Cevabı `answerPayload` olan (MCQ dışı) madde. */
   private isInteractive(item: TestInstanceQuestion): boolean {
-    return this.isDragDrop(item) || this.isMatrix(item);
+    return this.isDragDrop(item) || this.isMatrix(item) || this.isSlotFill(item);
+  }
+
+  private slotFillPlanFor(item: TestInstanceQuestion): SlotFillPlanV1 | null {
+    if (!this.slotFillPlans.has(item.id)) {
+      this.slotFillPlans.set(item.id, parseSlotFillPlan(item.question?.interactionPlan));
+    }
+    return this.slotFillPlans.get(item.id) ?? null;
+  }
+
+  /** Issue #575: doldurulmuş kutu sayısı. */
+  private slotFillFilled(item: TestInstanceQuestion, answer: ItemAnswer | undefined): number {
+    return Object.keys(parseSlotFillValues(answer?.answerPayload, this.slotFillPlanFor(item))).length;
   }
 
   private matrixPlanFor(item: TestInstanceQuestion): MatrixChoicePlanV1 | null {
@@ -947,6 +1034,7 @@ export class ActivityPlayerComponent {
 
   private hasAnswer(item: TestInstanceQuestion, answer: ItemAnswer | undefined): boolean {
     if (this.isMatrix(item)) return this.matrixAnsweredRows(item, answer) > 0;
+    if (this.isSlotFill(item)) return this.slotFillFilled(item, answer) > 0;
     if (this.isDragDrop(item)) return this.placementsOf(answer?.answerPayload).length > 0;
     return !!answer?.selectedAnswerId;
   }
@@ -954,6 +1042,7 @@ export class ActivityPlayerComponent {
   /** Boş satırı olan madde: MCQ seçilmemiş ya da hedeflerin bir kısmı boş. */
   private isIncomplete(item: TestInstanceQuestion, answer: ItemAnswer | undefined): boolean {
     if (this.isMatrix(item)) return this.matrixAnsweredRows(item, answer) < (this.matrixPlanFor(item)?.rows.length ?? 0);
+    if (this.isSlotFill(item)) return this.slotFillFilled(item, answer) < (this.slotFillPlanFor(item)?.slots.length ?? 0);
     if (!this.isDragDrop(item)) return !answer?.selectedAnswerId;
     const zones = this.planFor(item)?.dropZones.length ?? 0;
     return this.placementsOf(answer?.answerPayload).length < zones;
@@ -1017,6 +1106,24 @@ export class ActivityPlayerComponent {
         label: this.tr('rows.matrixRow', { name, content: join(selectionOf(selections, row.id)) }),
         correct: marks.has(row.id) ? marks.get(row.id)! : null,
         solution: solution ? join(selectionOf(solved, row.id)) : null,
+      };
+    });
+  }
+
+  /** Issue #575: kutu satırları — "Kutu n: değer", ✓/✗ ve (çözüm açıkken) kabul edilen değer. */
+  private slotFillRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
+    const plan = this.slotFillPlanFor(item);
+    if (!plan) return [];
+    const values = parseSlotFillValues(this.answers()[item.id]?.answerPayload, plan);
+    const solved = solution ? parseSlotFillSolution(solution.interactionSolution, plan) : null;
+    const marks = new Map((result?.rows ?? []).map((row) => [row.id, row.correct]));
+    return plan.slots.map((slot, index) => {
+      const own = valueOf(values, slot.id);
+      const accepted = solved ? solutionDisplay(slot.input, solutionOf(solved, slot.id)) : '';
+      return {
+        label: this.tr('rows.slot', { n: index + 1, content: own ? valueDisplay(slot.input, own) : this.tr('rows.empty') }),
+        correct: marks.has(slot.id) ? marks.get(slot.id)! : null,
+        solution: solved ? accepted || this.tr('rows.empty') : null,
       };
     });
   }

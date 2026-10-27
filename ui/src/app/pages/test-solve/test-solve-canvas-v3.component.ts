@@ -7,6 +7,7 @@ import {
   computed,
   inject,
   signal,
+  viewChildren,
   ChangeDetectionStrategy
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -26,7 +27,9 @@ import { CountdownComponent } from '../../shared/components/countdown/countdown.
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 import { QuestionCanvasDragDropLabelingComponent } from '../../shared/components/question-canvas-dragdrop-labeling/question-canvas-dragdrop-labeling.component';
 import { isMatrixChoiceType } from '../../models/matrix-choice';
+import { isSlotFillType } from '../../models/slot-fill';
 import { QuestionCanvasMatrixChoiceComponent } from '../../shared/components/question-canvas-matrix-choice/question-canvas-matrix-choice.component';
+import { QuestionCanvasSlotFillComponent } from '../../shared/components/question-canvas-slot-fill/question-canvas-slot-fill.component';
 import { StorageImageRetryDirective } from '../../shared/directives/storage-image-retry.directive';
 
 /**
@@ -58,6 +61,7 @@ import { StorageImageRetryDirective } from '../../shared/directives/storage-imag
     QuestionCanvasViewComponentv5,
     QuestionCanvasDragDropLabelingComponent,
     QuestionCanvasMatrixChoiceComponent,
+    QuestionCanvasSlotFillComponent,
     TranslocoDirective,
     StorageImageRetryDirective,
   ],
@@ -150,11 +154,19 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
     this.passageOnlyByQuestionIndex.set(questionIndex, true);
   }
 
-  /** Issue #574 (L3): etkileşim türü büyük/küçük harf duyarsız; bilinmeyen tür MCQ. */
-  public interactionKind(type: string | null | undefined): 'mcq' | 'dragDropLabeling' | 'matrixChoice' {
+  /** Issue #574 (L3) / #575: etkileşim türü büyük/küçük harf duyarsız; bilinmeyen tür MCQ. */
+  public interactionKind(type: string | null | undefined): 'mcq' | 'dragDropLabeling' | 'matrixChoice' | 'slotFill' {
     const normalized = (type ?? '').toLowerCase();
     if (normalized === 'dragdroplabeling') return 'dragDropLabeling';
+    if (isSlotFillType(type)) return 'slotFill';
     return isMatrixChoiceType(type) ? 'matrixChoice' : 'mcq';
+  }
+
+  private readonly slotFillPlayers = viewChildren(QuestionCanvasSlotFillComponent);
+
+  /** Issue #575: bitirme / süre dolunca teslim öncesi cevap kutularındaki bekleyen değerler kayda girer. */
+  protected override flushInteractivePlayers(): void {
+    this.slotFillPlayers().forEach((player) => player.flush());
   }
 
   // Explicitly re-expose on v3 for Angular template type-checking.

@@ -27,6 +27,27 @@ import {
   MatrixColumnPreset,
   MatrixSelections,
 } from '../../models/matrix-choice';
+import { SLOT_FILL, SLOT_FILL_LIMITS, SLOT_PALETTE_PRESETS, SlotBox, SlotKind, SlotPalettePreset } from '../../models/slot-fill';
+import { isSlotAnswerCorrect } from '../../shared/utils/slot-normalizer';
+import {
+  COMMA_SEPARATOR,
+  LINE_SEPARATOR,
+  SPACE_SEPARATOR,
+  SlotAuthoring,
+  SlotFillAuthoringState,
+  SlotFillInspector,
+  buildSlotFillInspector,
+  buildSlotFillPlan,
+  buildSlotFillSolution,
+  copySlotSettings,
+  createSlotFillState,
+  newSlot,
+  nextSlotId,
+  parseList,
+  slotFillIssues,
+  slotIssues,
+  slotSolution,
+} from './slot-fill-authoring';
 import { QuillModule } from 'ngx-quill';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -80,10 +101,13 @@ interface WarningMarker {
   type?: 'error' | 'warning' | 'info';
 }
 
-export type QuestionInteractionType = 'mcq' | 'dragDropLabeling' | typeof MATRIX_CHOICE;
+export type QuestionInteractionType = 'mcq' | 'dragDropLabeling' | typeof MATRIX_CHOICE | typeof SLOT_FILL;
 
-/** Tuvalde çizim modu. Issue #574: `matrixRow` satır kutusu, `matrixCell` (isteğe bağlı) hücre kutusu çizer. */
-export type CanvasSelectionMode = 'passage' | 'question' | 'answer' | 'dropzone' | 'matrixRow' | 'matrixCell';
+/**
+ * Tuvalde çizim modu. Issue #574: `matrixRow` satır kutusu, `matrixCell` (isteğe bağlı) hücre kutusu çizer.
+ * Issue #575: `slot` cevap kutusu çizer.
+ */
+export type CanvasSelectionMode = 'passage' | 'question' | 'answer' | 'dropzone' | 'matrixRow' | 'matrixCell' | 'slot';
 
 /** MCQ dışı (etkileşimli) tür: şık çizilmez, eğitime (send-to-fix) gönderilmez, doğruluk `interactionSolution`'da. */
 export function isInteractiveType(type: QuestionInteractionType): boolean {
@@ -186,6 +210,8 @@ export interface ActiveInspector {
   labelCount: number;
   /** Issue #574: yalnız matrixChoice sorusunda dolu. */
   matrix: MatrixInspector | null;
+  /** Issue #575: yalnız slotFill sorusunda dolu. */
+  slotFill: SlotFillInspector | null;
   isExample: boolean;
   exampleAnswer: string;
   difficulty: number | null;
@@ -351,13 +377,15 @@ export class ImageSelectorComponent {
   /** Tuvale yeni bir sayfa/görsel yüklenmeye başladığında yayınlanır (sayfaya özel ebeveyn durumu sıfırlansın). */
   @Output() imageChange = new EventEmitter<void>();
 
-  contextMenuType: 'region' | 'answer' | 'worksheet' | 'dropzone' | 'passage' | 'matrix' = 'region'; // ✅ Sağ tıklama menüsünün türü
+  contextMenuType: 'region' | 'answer' | 'worksheet' | 'dropzone' | 'passage' | 'matrix' | 'slot' = 'region'; // ✅ Sağ tıklama menüsünün türü
   selectedRegion: number | null = null;
   selectedAnswer: number | null = null; // ✅ Seçili cevap indeksi
   selectedDropZoneId: string | null = null;
   /** Issue #574: sağ tıklanan matris satırı / hücresinin kolonu. */
   selectedMatrixRowId: string | null = null;
   selectedMatrixColumnId: string | null = null;
+  /** Issue #575: sağ tıklanan cevap kutusu. */
+  selectedSlotId: string | null = null;
   previewMode = signal(false); // ✅ Önizleme açma durumu
   currentTestId = signal<number | null>(null); // Test ID'yi sakla
 
@@ -368,6 +396,7 @@ export class ImageSelectorComponent {
   public interactionTypes = new Map<string, QuestionInteractionType>();
   public labelingState = new Map<string, DragDropLabelingAuthoringState>();
   public matrixState = new Map<string, MatrixChoiceAuthoringState>();
+  public slotFillState = new Map<string, SlotFillAuthoringState>();
 
   // Classification selection for preview mode
   public currentClassification = signal<ClassificationSelection | null>(null);
@@ -694,6 +723,17 @@ export class ImageSelectorComponent {
         }
       }
 
+      // Issue #575: cevap kutuları (sonra çizilen üstte).
+      if (this.getInteractionType(region.name) === SLOT_FILL) {
+        const slots = this.ensureSlotFillState(region.name).slots;
+        for (let si = slots.length - 1; si >= 0; si--) {
+          const b = slots[si].box;
+          if (x >= region.x + b.x && x <= region.x + b.x + b.width && y >= region.y + b.y && y <= region.y + b.y + b.height) {
+            return { type: 'slot', value: { questionIndex: qi, slotId: slots[si].id } };
+          }
+        }
+      }
+
       // Önce answer'ları kontrol edelim
       for (let ai = 0; ai < region.answers.length; ai++) {
         const answer = region.answers[ai];
@@ -788,6 +828,13 @@ export class ImageSelectorComponent {
       this.selectedPassageId = null;
       this.selectedMatrixRowId = hit.value.rowId;
       this.selectedMatrixColumnId = hit.type === 'matrixCell' ? hit.value.columnId : null;
+    } else if (hit.type === 'slot') {
+      this.contextMenuType = 'slot';
+      this.selectedRegion = hit.value.questionIndex;
+      this.selectedAnswer = null;
+      this.selectedDropZoneId = null;
+      this.selectedPassageId = null;
+      this.selectedSlotId = hit.value.slotId;
     } else if (hit.type === 'question') {
       this.contextMenuType = 'region';
       this.selectedPassageId = null;
@@ -817,6 +864,7 @@ export class ImageSelectorComponent {
     this.selectedPassageId = null;
     this.selectedMatrixRowId = null;
     this.selectedMatrixColumnId = null;
+    this.selectedSlotId = null;
   }
 
   stopEvent(event?: MouseEvent) {
@@ -859,6 +907,11 @@ export class ImageSelectorComponent {
           this.removeMatrixCell(regionName, rowId, this.selectedMatrixColumnId);
         }
       }
+    } else if (action === 'selectSlotMode') {
+      this.selectSlotFillMode(this.selectedRegion!);
+    } else if (action === 'removeSlot') {
+      const regionName = this.regions()[this.selectedRegion ?? -1]?.name;
+      if (regionName && this.selectedSlotId) this.removeSlot(regionName, this.selectedSlotId);
     } else if (action === 'alignAnswers') {
       this.alignAnswers(this.selectedRegion!, true);
     } else if (action === 'predict') {
@@ -1466,6 +1519,8 @@ export class ImageSelectorComponent {
         return this.getThemeColors().matrixRow;
       case 'matrixCell':
         return this.getThemeColors().matrixCell;
+      case 'slot':
+        return this.getThemeColors().slotBox;
       default:
         return 'black';
     }
@@ -1489,7 +1544,9 @@ export class ImageSelectorComponent {
         ? this.dragDropIssues(region)
         : type === MATRIX_CHOICE
           ? [...this.matrixIssues(region.name), ...this.matrixNotices(region.name)]
-          : this.mcqIssues(region, { requireCorrectAnswer: true });
+          : type === SLOT_FILL
+            ? this.slotFillMessages(region.name)
+            : this.mcqIssues(region, { requireCorrectAnswer: true });
 
     if (messages.length > 0) {
       this.warningMarkers.push({
@@ -1587,6 +1644,13 @@ export class ImageSelectorComponent {
             issues.push({ index, no: index + 1, name: region.name, messages: matrixMessages });
           }
         }
+        // Issue #575: cevap kutusu kuralları da yalnız Kaydet'te (kutusu / doğru değeri eksik soru kaydedilmez).
+        if (type === SLOT_FILL && opts.requireCorrectAnswer && !opts.skipInteractive) {
+          const slotMessages = this.slotFillMessages(region.name);
+          if (slotMessages.length > 0) {
+            issues.push({ index, no: index + 1, name: region.name, messages: slotMessages });
+          }
+        }
         return;
       }
       const messages = this.mcqIssues(region, opts);
@@ -1633,6 +1697,9 @@ export class ImageSelectorComponent {
     matrixCell: string;
     matrixSolution: string;
     surface: string;
+    /** Issue #575: cevap kutusu çerçevesi / eksik değerli kutu. */
+    slotBox: string;
+    slotMissing: string;
   };
 
   private getThemeColors() {
@@ -1645,6 +1712,8 @@ export class ImageSelectorComponent {
         matrixCell: this.cssVar('--ms-colors-code-orange') || 'darkorange',
         matrixSolution: this.cssVar('--ms-colors-status-success') || 'green',
         surface: this.cssVar('--ms-colors-white') || 'white',
+        slotBox: this.cssVar('--ms-colors-code-purple') || 'purple',
+        slotMissing: this.cssVar('--ms-colors-status-error') || 'crimson',
       };
     }
     return this.themeColors;
@@ -1790,6 +1859,51 @@ export class ImageSelectorComponent {
       }
 
       this.drawMatrixOverlays();
+      this.drawSlotFillOverlays();
+    }
+  }
+
+  /**
+   * Issue #575: cevap kutuları — numara + tür etiketi; doğru değeri / ayarı eksik kutu kesik kırmızı, seçili kutu kalın.
+   * Renkler temadan (`getThemeColors`); açık kontur her sayfa renginde seçilebilsin diye altta.
+   */
+  private drawSlotFillOverlays() {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const theme = this.getThemeColors();
+    const kindTag: Record<SlotKind, string> = { number: '123', text: 'Aa', select: '▾', palette: '∠' };
+    for (const region of this.regions()) {
+      if (this.getInteractionType(region.name) !== SLOT_FILL) continue;
+      const state = this.ensureSlotFillState(region.name);
+      state.slots.forEach((slot, index) => {
+        const x = region.x + slot.box.x;
+        const y = region.y + slot.box.y;
+        const missing = slotIssues(slot).length > 0;
+        const selected = state.selectedSlotId === slot.id;
+        const color = missing ? theme.slotMissing : theme.slotBox;
+        ctx.save();
+        ctx.globalAlpha = 0.12;
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, slot.box.width, slot.box.height);
+        ctx.globalAlpha = 1;
+        ctx.setLineDash([]);
+        ctx.strokeStyle = theme.surface;
+        ctx.lineWidth = selected ? 7 : 5;
+        ctx.strokeRect(x, y, slot.box.width, slot.box.height);
+        ctx.setLineDash(missing ? [6, 4] : []);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = selected ? 4 : 2;
+        ctx.strokeRect(x, y, slot.box.width, slot.box.height);
+        ctx.setLineDash([]);
+        ctx.font = `bold 11px ${theme.fontFamily}`;
+        const tag = `${index + 1} ${kindTag[slot.kind]}`;
+        const tagW = ctx.measureText(tag).width + 8;
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y - 15, tagW, 15);
+        ctx.fillStyle = theme.surface;
+        ctx.fillText(tag, x + 4, y - 4);
+        ctx.restore();
+      });
     }
   }
 
@@ -1916,13 +2030,13 @@ export class ImageSelectorComponent {
 
     const mode = this.selectionMode();
 
-    if (hit && (hit.type === 'question' || hit.type === 'matrixRow' || hit.type === 'matrixCell')) {
+    if (hit && (hit.type === 'question' || hit.type === 'matrixRow' || hit.type === 'matrixCell' || hit.type === 'slot')) {
       // Şık / drop-zone / matris çizimi hangi soruya ait olacak — modu ZORLAMADAN sadece hedef soruyu belirle.
       // Mod artık üstteki segmented kontrolden geliyor.
       this.selectedQuestionIndex = hit.value.questionIndex;
     } else if (!hit) {
       // Boş alanda şık / zone / matris kutusu çizilemez.
-      if (mode === 'answer' || mode === 'dropzone' || mode === 'matrixRow' || mode === 'matrixCell') {
+      if (mode === 'answer' || mode === 'dropzone' || mode === 'matrixRow' || mode === 'matrixCell' || mode === 'slot') {
         console.log('Exited startSelection hit === null. IsDrawing :', this.isDrawing);
         return;
       }
@@ -1993,6 +2107,11 @@ export class ImageSelectorComponent {
         this.focusQuestionKeepingMode(hit.value.questionIndex);
       } else if (hit && hit.type === 'matrixCell') {
         this.selectQuestion(hit.value.questionIndex);
+      } else if (hit && hit.type === 'slot') {
+        // Issue #575: kutuya tık = müfettişte o kutuyu düzenle (mod değişmez).
+        const regionName = this.regions()[hit.value.questionIndex]?.name;
+        if (regionName) this.selectSlot(regionName, hit.value.slotId);
+        this.focusQuestionKeepingMode(hit.value.questionIndex);
       } else if (hit && (hit.type === 'answer' || hit.type === 'dropzone' || hit.type === 'matrixRow')) {
         this.selectQuestion(hit.value.questionIndex);
       } else {
@@ -2110,6 +2229,8 @@ export class ImageSelectorComponent {
       this.selectedQuestionIndex !== -1
     ) {
       this.addMatrixBoxFromDrag(this.selectedQuestionIndex, this.startX, this.startY, endX, endY);
+    } else if (this.selectionMode() === 'slot' && this.selectedQuestionIndex !== -1) {
+      this.addSlotFromDrag(this.selectedQuestionIndex, this.startX, this.startY, endX, endY);
     }
 
     this.isDrawing = false;
@@ -2145,6 +2266,8 @@ export class ImageSelectorComponent {
       this.ensureLabelingState(regionName);
     } else if (type === MATRIX_CHOICE) {
       this.ensureMatrixState(regionName);
+    } else if (type === SLOT_FILL) {
+      this.ensureSlotFillState(regionName);
     }
 
     this.drawImage();
@@ -2298,6 +2421,9 @@ export class ImageSelectorComponent {
     if (this.getInteractionType(regionName) === MATRIX_CHOICE) {
       return JSON.stringify(this.buildMatrixPlan(regionName));
     }
+    if (this.getInteractionType(regionName) === SLOT_FILL) {
+      return JSON.stringify(buildSlotFillPlan(this.ensureSlotFillState(regionName)));
+    }
     const plan = this.buildInteractionPlan(regionName);
     if (!plan) return null;
     return JSON.stringify(plan);
@@ -2310,6 +2436,10 @@ export class ImageSelectorComponent {
   private buildInteractionSolutionJson(regionName: string): string | null {
     if (this.getInteractionType(regionName) === MATRIX_CHOICE) {
       return this.buildMatrixSolutionJson(regionName);
+    }
+    if (this.getInteractionType(regionName) === SLOT_FILL) {
+      const solution = buildSlotFillSolution(this.ensureSlotFillState(regionName));
+      return solution ? JSON.stringify(solution) : null;
     }
     if (this.getInteractionType(regionName) !== 'dragDropLabeling') return null;
     const state = this.ensureLabelingState(regionName);
@@ -2664,6 +2794,240 @@ export class ImageSelectorComponent {
     };
   }
 
+  // -------- Issue #575: cevap kutusu (slotFill) yazarlığı --------
+
+  public ensureSlotFillState(regionName: string): SlotFillAuthoringState {
+    const existing = this.slotFillState.get(regionName);
+    if (existing) return existing;
+    const created = createSlotFillState();
+    this.slotFillState.set(regionName, created);
+    return created;
+  }
+
+  private commitSlotFill(regionName: string, state: SlotFillAuthoringState) {
+    this.slotFillState.set(regionName, { ...state });
+    this.drawImage();
+  }
+
+  /** "Kutu" çizim modu: soru cevap kutusu türüne geçer; araç çubuğu kilidi varsa kilit de güncellenir. */
+  public selectSlotFillMode(questionIndex: number) {
+    if (questionIndex < 0 || questionIndex >= this.regions().length) return;
+    this.selectedQuestionIndex = questionIndex;
+    const regionName = this.regions()[questionIndex].name;
+    this.interactionTypes.set(regionName, SLOT_FILL);
+    this.ensureSlotFillState(regionName);
+    if (this.selectionModeLocked()) this.selectionModeLocked.set('slot');
+    this.selectionMode.set('slot');
+    this.drawImage();
+  }
+
+  public selectSlot(regionName: string, slotId: string | null) {
+    const state = this.ensureSlotFillState(regionName);
+    if (slotId !== null && !state.slots.some((s) => s.id === slotId)) return;
+    state.selectedSlotId = slotId;
+    this.commitSlotFill(regionName, state);
+  }
+
+  private updateSlot(regionName: string, slotId: string, change: (slot: SlotAuthoring) => SlotAuthoring) {
+    const state = this.ensureSlotFillState(regionName);
+    if (!state.slots.some((s) => s.id === slotId)) return;
+    state.slots = state.slots.map((s) => (s.id === slotId ? change({ ...s }) : s));
+    this.commitSlotFill(regionName, state);
+  }
+
+  public setSlotKind(regionName: string, slotId: string, kind: SlotKind) {
+    this.updateSlot(regionName, slotId, (slot) => ({ ...slot, kind }));
+  }
+
+  public setSlotLabel(regionName: string, slotId: string, label: string) {
+    const value = (label ?? '').slice(0, SLOT_FILL_LIMITS.maxLabelLength);
+    this.updateSlot(regionName, slotId, (slot) => ({ ...slot, label: value }));
+  }
+
+  public setSlotEntry(regionName: string, slotId: string, entry: SlotAuthoring['entry']) {
+    this.updateSlot(regionName, slotId, (slot) => ({ ...slot, entry }));
+  }
+
+  public setSlotUnitHint(regionName: string, slotId: string, unit: string) {
+    const value = (unit ?? '').trim().slice(0, SLOT_FILL_LIMITS.maxUnitHintLength);
+    this.updateSlot(regionName, slotId, (slot) => ({ ...slot, unitHint: value }));
+  }
+
+  public setSlotValue(regionName: string, slotId: string, value: string) {
+    this.updateSlot(regionName, slotId, (slot) => ({ ...slot, value: (value ?? '').slice(0, 64) }));
+  }
+
+  public setSlotEquivalence(regionName: string, slotId: string, on: boolean) {
+    this.updateSlot(regionName, slotId, (slot) => ({ ...slot, equivalence: !!on }));
+  }
+
+  public setSlotRequireSimplest(regionName: string, slotId: string, on: boolean) {
+    this.updateSlot(regionName, slotId, (slot) => ({ ...slot, requireSimplest: !!on }));
+  }
+
+  /** Birim kipi; birim listesi boşken kutunun gösterdiği birim listeye alınır (en yaygın durum: "cm" yazılır). */
+  public setSlotUnitMode(regionName: string, slotId: string, mode: SlotAuthoring['unitMode']) {
+    this.updateSlot(regionName, slotId, (slot) => ({
+      ...slot,
+      unitMode: mode,
+      units: mode !== 'none' && slot.units.length === 0 && slot.unitHint.trim() ? [slot.unitHint.trim()] : slot.units,
+    }));
+  }
+
+  /** Kabul edilen birimler: virgülle ayrılır ("cm, santimetre"). */
+  public setSlotUnits(regionName: string, slotId: string, text: string) {
+    this.updateSlot(regionName, slotId, (slot) => ({ ...slot, units: parseList(text, COMMA_SEPARATOR) }));
+  }
+
+  /** Metin kabul listesi: her satıra bir cevap. */
+  public setSlotAccept(regionName: string, slotId: string, text: string) {
+    this.updateSlot(regionName, slotId, (slot) => ({ ...slot, accept: parseList(text, LINE_SEPARATOR) }));
+  }
+
+  /** İsteğe bağlı ekler ("Bölgesi"): virgül ya da satırla ayrılır. */
+  public setSlotSuffixes(regionName: string, slotId: string, text: string) {
+    this.updateSlot(regionName, slotId, (slot) => ({ ...slot, optionalSuffixes: parseList(text, COMMA_SEPARATOR) }));
+  }
+
+  public addSlotOption(regionName: string, slotId: string) {
+    this.updateSlot(regionName, slotId, (slot) => {
+      if (slot.options.length >= SLOT_FILL_LIMITS.maxSelectOptions) return slot;
+      const id = nextSlotId('o', slot.options.map((o) => o.id));
+      return { ...slot, options: [...slot.options, { id, label: '' }] };
+    });
+  }
+
+  public removeSlotOption(regionName: string, slotId: string, optionId: string) {
+    this.updateSlot(regionName, slotId, (slot) => ({
+      ...slot,
+      options: slot.options.filter((o) => o.id !== optionId),
+      correctOptionIds: slot.correctOptionIds.filter((id) => id !== optionId),
+    }));
+  }
+
+  public setSlotOptionLabel(regionName: string, slotId: string, optionId: string, label: string) {
+    const value = (label ?? '').slice(0, SLOT_FILL_LIMITS.maxLabelLength);
+    this.updateSlot(regionName, slotId, (slot) => ({
+      ...slot,
+      options: slot.options.map((o) => (o.id === optionId ? { ...o, label: value } : o)),
+    }));
+  }
+
+  /** Doğru seçenek aç/kapa (birden fazla doğru seçenek olabilir). */
+  public toggleSlotCorrectOption(regionName: string, slotId: string, optionId: string) {
+    this.updateSlot(regionName, slotId, (slot) => {
+      if (!slot.options.some((o) => o.id === optionId)) return slot;
+      const on = slot.correctOptionIds.includes(optionId);
+      const next = on ? slot.correctOptionIds.filter((id) => id !== optionId) : [...slot.correctOptionIds, optionId];
+      return { ...slot, correctOptionIds: slot.options.map((o) => o.id).filter((id) => next.includes(id)) };
+    });
+  }
+
+  /** Palet sembolleri: boşlukla ayrılır ("∠ ⊥ // [AB]"). */
+  public setSlotSymbols(regionName: string, slotId: string, text: string) {
+    this.updateSlot(regionName, slotId, (slot) => ({ ...slot, symbols: parseList(text, SPACE_SEPARATOR) }));
+  }
+
+  /** Hazır palet: eksik semboller sona eklenir (geometri + noktalama birlikte kullanılabilir). */
+  public applySlotPalettePreset(regionName: string, slotId: string, preset: SlotPalettePreset) {
+    const symbols = SLOT_PALETTE_PRESETS[preset] ?? [];
+    this.updateSlot(regionName, slotId, (slot) => ({
+      ...slot,
+      symbols: [...slot.symbols, ...symbols.filter((s) => !slot.symbols.includes(s))].slice(0, SLOT_FILL_LIMITS.maxPaletteSymbols),
+    }));
+  }
+
+  /** Palet kabul listesi: her satıra bir cevap. */
+  public setSlotPaletteAccept(regionName: string, slotId: string, text: string) {
+    this.updateSlot(regionName, slotId, (slot) => ({ ...slot, paletteAccept: parseList(text, LINE_SEPARATOR) }));
+  }
+
+  /** "Tüm kutulara uygula": tür ve ayarlar (giriş, birim, eşdeğerlik, seçenekler, semboller) kopyalanır; doğru değerler kalır. */
+  public applySlotSettingsToAll(regionName: string, slotId: string) {
+    const state = this.ensureSlotFillState(regionName);
+    const source = state.slots.find((s) => s.id === slotId);
+    if (!source) return;
+    state.slots = state.slots.map((s) => (s.id === slotId ? s : copySlotSettings(source, s)));
+    this.commitSlotFill(regionName, state);
+  }
+
+  public removeSlot(regionName: string, slotId: string) {
+    const state = this.ensureSlotFillState(regionName);
+    state.slots = state.slots.filter((s) => s.id !== slotId);
+    if (state.selectedSlotId === slotId) state.selectedSlotId = state.slots.at(-1)?.id ?? null;
+    this.commitSlotFill(regionName, state);
+  }
+
+  public removeLastSlot(regionName: string) {
+    const last = this.ensureSlotFillState(regionName).slots.at(-1);
+    if (last) this.removeSlot(regionName, last.id);
+  }
+
+  public clearSlots(regionName: string) {
+    const state = this.ensureSlotFillState(regionName);
+    state.slots = [];
+    state.selectedSlotId = null;
+    this.commitSlotFill(regionName, state);
+  }
+
+  /** Müfettiş önizlemesi: "öğrenci şunu yazarsa doğru mu?" — boş cevapta ya da kutu ayarı eksikken null. */
+  public previewSlotAnswer(regionName: string, slotId: string, answer: string): boolean | null {
+    const slot = this.ensureSlotFillState(regionName).slots.find((s) => s.id === slotId);
+    if (!slot || !(answer ?? '').trim() || slotIssues(slot).length > 0) return null;
+    return isSlotAnswerCorrect(slot.kind, slotSolution(slot), answer);
+  }
+
+  /** Sürüklemeyle çizilen kutu: yeni kutu, seçili (yoksa son) kutunun ayarlarıyla açılır ve seçilir. */
+  private addSlotFromDrag(questionIndex: number, x1: number, y1: number, x2: number, y2: number) {
+    const region = this.regions()[questionIndex];
+    if (!region) return;
+    const absX1 = Math.min(x1, x2);
+    const absY1 = Math.min(y1, y2);
+    const absX2 = Math.max(x1, x2);
+    const absY2 = Math.max(y1, y2);
+    if (absX2 - absX1 < 6 || absY2 - absY1 < 6) return;
+    const within =
+      absX1 >= region.x && absY1 >= region.y && absX2 <= region.x + region.width && absY2 <= region.y + region.height;
+    if (!within) {
+      this.snackBar.open(this.tr('messages.slotOutsideQuestion'), this.tr('common.ok'), { duration: 2000 });
+      return;
+    }
+    // Araç çubuğundaki "Kutu" modu başka türde bir soruya çizerse çizim kaybolmasın: soru cevap kutusuna döner.
+    if (this.getInteractionType(region.name) !== SLOT_FILL) {
+      this.interactionTypes.set(region.name, SLOT_FILL);
+    }
+    const state = this.ensureSlotFillState(region.name);
+    if (state.slots.length >= SLOT_FILL_LIMITS.maxSlots) {
+      this.snackBar.open(this.tr('warnings.slotTooMany', { max: SLOT_FILL_LIMITS.maxSlots }), this.tr('common.ok'), {
+        duration: 2500,
+      });
+      return;
+    }
+    const box: SlotBox = {
+      x: Math.round(absX1 - region.x),
+      y: Math.round(absY1 - region.y),
+      width: Math.max(1, Math.round(absX2 - absX1)),
+      height: Math.max(1, Math.round(absY2 - absY1)),
+    };
+    const template = state.slots.find((s) => s.id === state.selectedSlotId) ?? state.slots.at(-1) ?? null;
+    const id = nextSlotId('s', state.slots.map((s) => s.id));
+    state.slots = [...state.slots, newSlot(id, box, template)];
+    state.selectedSlotId = id;
+    this.slotFillState.set(region.name, { ...state });
+    this.focusQuestionKeepingMode(questionIndex);
+  }
+
+  /** Kayıt engelleyen cevap kutusu sorunları (uyarı ikonu + Kaydet). */
+  private slotFillMessages(regionName: string): string[] {
+    return slotFillIssues(this.ensureSlotFillState(regionName)).map((issue) =>
+      issue.code === 'noSlots'
+        ? this.tr('warnings.slotNone')
+        : issue.code === 'tooManySlots'
+          ? this.tr('warnings.slotTooMany', { max: SLOT_FILL_LIMITS.maxSlots })
+          : this.tr(`warnings.slot.${issue.code}`, { n: issue.no })
+    );
+  }
+
   /** Soruyu müfettişe odaklar ama çizim modunu değiştirmez (matris hücresine tık). */
   private focusQuestionKeepingMode(index: number) {
     this.selectedQuestionIndex = index;
@@ -2685,7 +3049,9 @@ export class ImageSelectorComponent {
           ? current === 'matrixCell' || current === 'matrixRow'
             ? current
             : 'matrixRow'
-          : 'answer'
+          : interactionType === SLOT_FILL
+            ? 'slot'
+            : 'answer'
     );
     this.selectedQuestionChange.emit({ index, region: this.regions()[index] ?? null });
     this.drawImage();
@@ -2775,6 +3141,7 @@ export class ImageSelectorComponent {
       zoneAssignments,
       labelCount: isLabeling ? this.getLabelCount(name) : 0,
       matrix: interactionType === MATRIX_CHOICE ? this.buildMatrixInspector(name) : null,
+      slotFill: interactionType === SLOT_FILL ? buildSlotFillInspector(this.ensureSlotFillState(name)) : null,
       isExample: this.isExample(name),
       exampleAnswer: this.getExampleAnswer(name),
       difficulty: this.previewDifficultyLevel(),
@@ -3296,6 +3663,7 @@ export class ImageSelectorComponent {
     this.interactionTypes.clear();
     this.labelingState.clear();
     this.matrixState.clear();
+    this.slotFillState.clear();
     this.warningMarkers = [];
     this.selectedQuestionIndex = -1;
     this.selectedAnswer = -1;
@@ -3414,6 +3782,7 @@ export class ImageSelectorComponent {
     this.interactionTypes.delete(regionName);
     this.labelingState.delete(regionName);
     this.matrixState.delete(regionName);
+    this.slotFillState.delete(regionName);
     this.warningMarkers = this.warningMarkers.filter((w) => w.id !== this.regions()[questionIndex].id);
     this.regions.set(this.regions().filter((_, index) => index !== questionIndex));
 

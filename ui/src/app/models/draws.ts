@@ -83,4 +83,6 @@ export type RegionOrAnswerHit =
   // Issue #574: matris seçim satır kutusu ve hücre kutusu.
   | { type: 'matrixRow'; value: { questionIndex: number; rowId: string } }
   | { type: 'matrixCell'; value: { questionIndex: number; rowId: string; columnId: string } }
+  // Issue #575: cevap kutusu.
+  | { type: 'slot'; value: { questionIndex: number; slotId: string } }
   | null;

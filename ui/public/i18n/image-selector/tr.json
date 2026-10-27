@@ -28,7 +28,28 @@
     "matrixColumnCount": "Matris {{min}}–{{max}} kolon olmalı",
     "matrixEmptyColumnLabel": "Boş kolon adı var",
     "matrixMissingSolution": "{{count}} satırın doğru cevabı işaretlenmemiş",
-    "matrixPartialCells": "Hücre kutuları eksik: öğrenci görselin altındaki listeden seçecek"
+    "matrixPartialCells": "Hücre kutuları eksik: öğrenci görselin altındaki listeden seçecek",
+    "slotNone": "Cevap kutusu çizilmemiş",
+    "slotTooMany": "En çok {{max}} cevap kutusu olabilir",
+    "slot": {
+      "missingNumber": "Kutu {{n}}: doğru sayı yazılmamış",
+      "invalidNumber": "Kutu {{n}}: doğru değer sayı olarak okunamadı (ör. 3/4, 0,75, %75, 2 3/5)",
+      "numberHasUnit": "Kutu {{n}}: doğru değere birim yazma; birimi birim alanına ekle",
+      "unitsMissing": "Kutu {{n}}: birim isteniyor ama kabul edilen birim yok",
+      "percentWithUnit": "Kutu {{n}}: yüzdeli cevapta birim zorunlu olamaz",
+      "notSimplest": "Kutu {{n}}: en sade kesir isteniyor ama doğru değer sade değil",
+      "missingAccept": "Kutu {{n}}: kabul edilen cevap yok",
+      "optionCount": "Kutu {{n}}: seçim kutusunda 2–12 seçenek olmalı",
+      "emptyOptionLabel": "Kutu {{n}}: boş seçenek adı var",
+      "missingCorrectOption": "Kutu {{n}}: doğru seçenek işaretlenmemiş",
+      "symbolCount": "Kutu {{n}}: palette 1–20 sembol olmalı",
+      "symbolTooLong": "Kutu {{n}}: sembol en çok 8 karakter olabilir",
+      "missingPaletteAccept": "Kutu {{n}}: kabul edilen cevap yok",
+      "tooLong": "Kutu {{n}}: bir alan çok uzun ya da çok fazla değer var",
+      "entryFormMismatch": "Kutu {{n}}: eşdeğerlik kapalıyken kesir kutusunun doğru değeri kesir olmalı",
+      "entryWithRequiredUnit": "Kutu {{n}}: kesir kutusunda birim zorunlu olamaz",
+      "invalidUnit": "Kutu {{n}}: kabul edilen birimlerden biri birim olarak okunamıyor"
+    }
   },
   "menu": {
     "removeQuestion": "Soru Sil",
@@ -56,7 +77,10 @@
     "drawMatrixRow": "Matris satırı çiz",
     "matrixRowLabel": "Matris satırı {{id}}",
     "removeMatrixCell": "Hücreyi sil",
-    "removeMatrixRow": "Satırı sil"
+    "removeMatrixRow": "Satırı sil",
+    "drawSlot": "Cevap kutusu çiz",
+    "slotLabel": "Cevap kutusu {{id}}",
+    "removeSlot": "Kutuyu sil"
   },
   "messages": {
     "classificationApplied": "Sınıflandırma uygulandı.",
@@ -75,7 +99,8 @@
     "analysisError": "Sayfa analiz edilemedi. Tekrar deneyin ya da soruları elle işaretleyin.",
     "pageLoadError": "Sayfa görseli okunamadı. Dosyayı kontrol edip tekrar deneyin.",
     "matrixOutsideQuestion": "Matris kutusu soru alanının içinde olmalı.",
-    "matrixCellOutsideRow": "Hücre kutusu bir satır kutusunun içinde olmalı (önce satırı çizin)."
+    "matrixCellOutsideRow": "Hücre kutusu bir satır kutusunun içinde olmalı (önce satırı çizin).",
+    "slotOutsideQuestion": "Cevap kutusu soru alanının içinde olmalı."
   },
   "coordinateJson": {
     "activated": "Koordinat JSON'u bulundu: {{pages}} sayfada {{questions}} soru, soru tespiti yerine JSON kullanılıyor.",
@@ -88,7 +113,7 @@
   "training": {
     "emptyPageAdded": "Boş sayfa eğitime eklendi.",
     "emptyPageExcluded": "Sayfada soru yok ve sayfa soru eğitimine alınmıyor; gönderilecek bir şey yok.",
-    "dragDropOnly": "Sayfada yalnız etkileşimli sorular (sürükle-bırak, matris) var; bunlar eğitime gönderilmediği için sayfa gönderilmedi (model bu soruları arka plan olarak öğrenirdi).",
+    "dragDropOnly": "Sayfada yalnız etkileşimli sorular (sürükle-bırak, matris, cevap kutusu) var; bunlar eğitime gönderilmediği için sayfa gönderilmedi (model bu soruları arka plan olarak öğrenirdi).",
     "questionsAdded": "{{count}} soru eğitime eklendi ({{file}}).",
     "noImage": "Önce bir sayfa yükleyin.",
     "sendError": "Sayfa eğitime gönderilemedi. Tekrar deneyin.",

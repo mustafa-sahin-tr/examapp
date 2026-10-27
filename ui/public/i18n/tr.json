@@ -310,6 +310,21 @@
         "announceCleared": "{{row}}: {{column}} seçimi kaldırıldı.",
         "markCorrect": "Doğru",
         "markWrong": "Yanlış"
+      },
+      "slotFill": {
+        "hint": "Kutulara cevabını yaz. Kesirde payı üste, paydayı alta yaz. Kutudan çıkınca cevabın kaydedilir.",
+        "solutionShownHint": "Kabul edilen cevaplar gösteriliyor.",
+        "slotAria": "Kutu {{n}}",
+        "slotAriaLabeled": "Kutu {{n}}: {{label}}",
+        "whole": "tam",
+        "numerator": "pay",
+        "denominator": "payda",
+        "selectPlaceholder": "Seç",
+        "paletteLabel": "Kutu {{n}} için semboller",
+        "paletteAria": "Kutu {{n}} sembol paleti",
+        "insertSymbol": "{{symbol}} ekle",
+        "markCorrect": "doğru",
+        "markWrong": "yanlış"
       }
     },
     "sharingBadge": {

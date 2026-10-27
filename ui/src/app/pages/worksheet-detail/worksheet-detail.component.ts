@@ -71,6 +71,7 @@ import { CommentReportListComponent } from '../../shared/components/comment-repo
 import { WorksheetCommentRef, toPositiveId } from '../../models/worksheet-comment.model';
 import { WorksheetKind, activityRoute } from '../../models/activity';
 import { ActivityTrackingTableComponent } from './components/activity-tracking-table/activity-tracking-table.component';
+import { ActivityLauncherService } from '../../services/activity-launcher.service';
 
 interface AssignmentPanelState {
   loading: boolean;
@@ -124,6 +125,7 @@ export class WorksheetDetailComponent implements OnInit {
   private injector = inject(Injector);
   private readonly transloco = inject(TranslocoService);
   private readonly localeService = inject(LocaleService);
+  private readonly activityLauncher = inject(ActivityLauncherService);
 
   /** Scope'lu anahtarı tam adıyla senkron çevirir; şablon yardımcıları `*transloco` bloğu içinde çalışır. */
   private tr(key: string, params?: Record<string, unknown>): string {
@@ -444,6 +446,23 @@ export class WorksheetDetailComponent implements OnInit {
 
   get instanceStarted(): boolean {
     return this.exam.instance?.status === 0;
+  }
+
+  /** Issue #609: tamamlanmış etkinlik yeniden çözülüyor (oturum Started + `firstCompletedAt` dolu); testte hep false. */
+  get instanceRetaking(): boolean {
+    return this.isActivity() && this.instanceStarted && !!this.exam.instance?.firstCompletedAt;
+  }
+
+  /** Issue #609: yeniden çözme onayı açık / istek uçuşta — düğmeler pasif. */
+  protected readonly retakeBusy = computed(() => this.activityLauncher.retaking() !== null);
+
+  /**
+   * Issue #609: tamamlanmış etkinliği "Yeniden çöz" — onay, aynı oturumun sıfırlanması ve oynatıcı. Yalnız etkinlikte; testin
+   * davranışı değişmez.
+   */
+  protected retakeActivity(): void {
+    if (!this.isActivity() || !this.instanceCompleted) return;
+    this.activityLauncher.retake(this.exam.instance?.id, this.exam.id);
   }
 
   editWorksheet(id: number | null) {

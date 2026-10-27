@@ -4763,6 +4763,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("ActiveSeconds")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("AttemptStartedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("CheckCount")
                         .HasColumnType("integer");
 
@@ -4790,10 +4793,16 @@ namespace ExamApp.Api.Migrations
                     b.Property<DateTime?>("FirstCheckedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("FirstCompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
                     b.Property<int?>("MaxDurationSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RetakeCount")
                         .HasColumnType("integer");
 
                     b.Property<DateTime?>("SolutionsRevealedAt")

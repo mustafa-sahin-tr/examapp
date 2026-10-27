@@ -13,7 +13,9 @@
       <span class="wcard__tag">{{ course.badgeText }}</span>
     }
 
-    @if (!isTeacher && status === 'inprogress') {
+    @if (!isTeacher && isRetaking) {
+      <span class="wcard__tag wcard__tag--warn" data-testid="card-retaking">{{ t('card.tagRetaking') }}</span>
+    } @else if (!isTeacher && status === 'inprogress') {
       <span class="wcard__tag wcard__tag--warn">{{ t('card.tagInProgress') }}</span>
     } @else if (!isTeacher && status === 'completed') {
       <span class="wcard__tag wcard__tag--success">{{ t('card.tagCompleted') }}</span>

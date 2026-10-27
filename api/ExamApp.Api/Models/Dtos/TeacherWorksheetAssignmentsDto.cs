@@ -65,6 +65,15 @@ public class TeacherAssignmentStudentDto
 
     /// <summary>issue #573: etkinlikte ilk kontroldeki toplam satır sayısı; kontrol yoksa / testte null.</summary>
     public int? FirstCheckTotalCount { get; set; }
+
+    /// <summary>
+    /// issue #609: öğrenci tamamlanmış etkinliği şu an yeniden çözüyor. <see cref="Status"/> yine Completed ve ilk kontrol özeti
+    /// ilk denemeninkidir; UI "yeniden çözüyor" rozeti gösterebilir. Testte hep false.
+    /// </summary>
+    public bool Retaking { get; set; }
+
+    /// <summary>issue #609: etkinlikte "Yeniden çöz" sayısı (0 = hiç); testte hep 0.</summary>
+    public int RetakeCount { get; set; }
 }
 
 public static class AssignmentStudentStatuses

@@ -137,11 +137,12 @@ public sealed class ParentDashboardService : IParentDashboardService
             .Where(q => q.WorksheetInstance.StudentId == studentId
                 && (q.SelectedAnswerId != null || q.AnswerPayload != null) && q.UpdateTime != null)
             .MaxAsync(q => q.UpdateTime, ct);
-        // Son başlatma + son bitirme tek sorguda (sabit anahtarla gruplanmış iki MAX).
+        // Son başlatma + son bitirme tek sorguda (sabit anahtarla gruplanmış iki MAX). issue #609: yeniden çözülen etkinlikte EndTime
+        // boş — ilk tamamlanma son bitiş sayılır.
         var instanceTimes = await _context.TestInstances.AsNoTracking()
             .Where(ti => ti.StudentId == studentId)
             .GroupBy(_ => 1)
-            .Select(g => new { LastStart = g.Max(ti => (DateTime?)ti.StartTime), LastEnd = g.Max(ti => ti.EndTime) })
+            .Select(g => new { LastStart = g.Max(ti => (DateTime?)ti.StartTime), LastEnd = g.Max(ti => ti.EndTime ?? ti.FirstCompletedAt) })
             .FirstOrDefaultAsync(ct);
         var lastPractice = await _context.PracticeSessionQuestions.AsNoTracking()
             .Where(p => p.PracticeSession.StudentId == studentId && p.AnsweredAt != null)

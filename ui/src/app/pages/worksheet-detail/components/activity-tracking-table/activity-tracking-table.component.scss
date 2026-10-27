@@ -37,3 +37,20 @@
     color: var(--ms-danger-text-medium);
   }
 }
+
+// Issue #609: "yeniden çözüyor" — durum Tamamladı kalır, yanında küçük rozet.
+.att__retaking {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--ms-warning-text);
+  background: var(--ms-warning-surface-weak);
+}
+
+// Issue #609: "N kez yeniden çözdü" — ikincil bilgi, durumun altında.
+.att__retake-count {
+  display: block;
+  font-size: 12px;
+}

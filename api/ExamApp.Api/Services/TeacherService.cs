@@ -745,7 +745,11 @@ public class TeacherService : ITeacherService
             : await _context.TestInstances
                 .AsNoTracking()
                 .Where(ti => worksheetIds.Contains(ti.WorksheetId) && allTargetStudentIds.Contains(ti.StudentId))
-                .Select(ti => new InstanceSnapshot(ti.WorksheetId, ti.StudentId, ti.StartTime, ti.EndTime, ti.Status))
+                // issue #609: yeniden çözülen etkinlik (Started + FirstCompletedAt) tamamlanmış sayılır (CASE, SQL'de).
+                .Select(ti => new InstanceSnapshot(ti.WorksheetId, ti.StudentId, ti.StartTime, ti.EndTime,
+                    ti.Status == WorksheetInstanceStatus.Started && ti.FirstCompletedAt != null
+                        ? WorksheetInstanceStatus.Completed
+                        : ti.Status))
                 .ToListAsync(ct);
 
         var instancesByWorksheetStudent = instances
@@ -831,7 +835,11 @@ public class TeacherService : ITeacherService
         var instances = await _context.TestInstances
             .AsNoTracking()
             .Where(ti => worksheetIds.Contains(ti.WorksheetId) && targetStudentIds.Contains(ti.StudentId))
-            .Select(ti => new InstanceSnapshot(ti.WorksheetId, ti.StudentId, ti.StartTime, ti.EndTime, ti.Status))
+            // issue #609: yeniden çözülen etkinlik (Started + FirstCompletedAt) tamamlanmış sayılır (CASE, SQL'de).
+            .Select(ti => new InstanceSnapshot(ti.WorksheetId, ti.StudentId, ti.StartTime, ti.EndTime,
+                ti.Status == WorksheetInstanceStatus.Started && ti.FirstCompletedAt != null
+                    ? WorksheetInstanceStatus.Completed
+                    : ti.Status))
             .ToListAsync(ct);
 
         var instancesByPair = instances

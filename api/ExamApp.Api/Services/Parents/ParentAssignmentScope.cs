@@ -45,13 +45,19 @@ internal static class ParentAssignmentScope
 
     internal sealed record AssignmentRow(int AssignmentId, int WorksheetId, DateTime StartAt, DateTime? EndAt, int? CreateUserId);
 
-    internal sealed record InstanceRow(int InstanceId, int WorksheetId, DateTime StartTime, WorksheetInstanceStatus Status, DateTime? EndTime)
+    /// <param name="Status">Takip durumu (<see cref="WorksheetInstanceStatusRules.TrackingStatus"/>): yeniden çözülen etkinlik
+    /// Completed görünür (kova "tamamlandı" kalır, #609).</param>
+    /// <param name="Retaking">issue #609: etkinlik şu an yeniden çözülüyor (Started + FirstCompletedAt) — cevaplar silindi.</param>
+    internal sealed record InstanceRow(
+        int InstanceId, int WorksheetId, DateTime StartTime, WorksheetInstanceStatus Status, DateTime? EndTime, bool Retaking = false)
     {
         /// <summary>
         /// Sonucu var mı: öğrencinin kendi geçmişi/sonuç ekranıyla AYNI kural — <see cref="WorksheetInstanceStatusRules.IsFinished(WorksheetInstanceStatus)"/>
-        /// (Completed ya da süresi dolmuş Expired, #396). Devam eden oturumun sonucu yoktur.
+        /// (Completed ya da süresi dolmuş Expired, #396). Devam eden oturumun sonucu yoktur. issue #609: yeniden çözülen etkinliğin
+        /// sonucu yoktur (önceki denemenin cevapları silindi, yenisi bitmedi) — liste sonuç bağlantısı vermez, sonuç ucu 404.
+        /// Yeniden tamamlanınca veli son denemeyi görür (etkinlik puansız; bilinçli kabul).
         /// </summary>
-        public bool HasResult => WorksheetInstanceStatusRules.IsFinished(Status);
+        public bool HasResult => !Retaking && WorksheetInstanceStatusRules.IsFinished(Status);
     }
 
     /// <summary>Worksheet başına seçilen temsilci atama + o pencerenin ilgili instance'ı + kova.</summary>
@@ -82,7 +88,11 @@ internal static class ParentAssignmentScope
         var worksheetIds = assignments.Select(a => a.WorksheetId).Distinct().ToList();
         var instances = await context.TestInstances.AsNoTracking()
             .Where(ti => ti.StudentId == grant.StudentId && worksheetIds.Contains(ti.WorksheetId))
-            .Select(ti => new InstanceRow(ti.Id, ti.WorksheetId, ti.StartTime, ti.Status, ti.EndTime))
+            // issue #609: yeniden çözülen etkinlik (Started + FirstCompletedAt) tamamlanmış sayılır — öğretmen takibiyle aynı.
+            .Select(ti => new InstanceRow(ti.Id, ti.WorksheetId, ti.StartTime,
+                ti.Status == WorksheetInstanceStatus.Started && ti.FirstCompletedAt != null ? WorksheetInstanceStatus.Completed : ti.Status,
+                ti.EndTime,
+                ti.Status == WorksheetInstanceStatus.Started && ti.FirstCompletedAt != null))
             .ToListAsync(ct);
 
         return new LoadResult(Classify(assignments, instances, now).ToList(), assignments.Count >= MaxRows);

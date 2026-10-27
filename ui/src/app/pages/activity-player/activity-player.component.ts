@@ -79,6 +79,7 @@ import {
 import { TestInstance, TestInstanceQuestion, TestStatus } from '../../models/test-instance';
 import { seededShuffle } from '../../shared/utils/seeded-shuffle';
 import { ActivityService } from '../../services/activity.service';
+import { ActivityLauncherService } from '../../services/activity-launcher.service';
 import { BadgeService } from '../../services/badge.service';
 import { TestService } from '../../services/test.service';
 import {
@@ -183,6 +184,7 @@ export class ActivityPlayerComponent {
   private readonly router = inject(Router);
   private readonly testService = inject(TestService);
   private readonly activityService = inject(ActivityService);
+  private readonly activityLauncher = inject(ActivityLauncherService);
   private readonly transloco = inject(TranslocoService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
@@ -253,6 +255,12 @@ export class ActivityPlayerComponent {
   readonly stepLabel = activityStepLabel;
 
   readonly finished = signal(false);
+  /**
+   * Issue #609: oturum tamamlandı (süresi dolmadı) — özet ekranında "Yeniden çöz". Başka sekmede bitmiş (durumu bilinmeyen)
+   * oturumda false; sayfa yeniden yüklenince gerçek durumdan gelir.
+   */
+  readonly canRetake = signal(false);
+  readonly retakeBusy = computed(() => this.activityLauncher.retaking() !== null);
   readonly nextActivity = signal<AssignedWorksheet | null>(null);
   readonly nextBusy = signal(false);
   /** Issue #572: etkinlik sonundaki "Bugün" + rozet kartları; yüklenemezse null (kartlar gizli, hata gösterilmez). */
@@ -472,6 +480,7 @@ export class ActivityPlayerComponent {
     this.retainedRows.set({});
     this.checkCount.set(instance.checkCount ?? 0);
     this.finished.set(instance.status !== TestStatus.Started);
+    this.canRetake.set(instance.status === TestStatus.Completed);
     this.summary.set(this.summaryFrom(items, results) ?? this.firstCheckSummary(instance));
     const firstEmpty = items.findIndex((item) => !this.hasAnswer(item, answers[item.id]));
     this.currentIndex.set(firstEmpty >= 0 ? firstEmpty : 0);
@@ -516,6 +525,7 @@ export class ActivityPlayerComponent {
     this.checkCount.set(0);
     this.revealed.set(false);
     this.finished.set(false);
+    this.canRetake.set(false);
     this.panelError.set(null);
     this.panelErrorMessage.set(null);
     this.saveFailed.set(false);
@@ -822,7 +832,7 @@ export class ActivityPlayerComponent {
       // Rozet değerlendirmesi asenkron: izleme `markFinished`'in ilk okumasından önce başlar (ilk sonuç da sayılır).
       this.clearProgressRefetch();
       this.progressWatch = { baseline: todayBefore, attempt: 0 };
-      this.markFinished();
+      this.markFinished(true);
     } catch (error) {
       this.handleActionError(error, 'finish');
     } finally {
@@ -830,7 +840,8 @@ export class ActivityPlayerComponent {
     }
   }
 
-  private markFinished(): void {
+  private markFinished(completed: boolean): void {
+    this.canRetake.set(completed);
     this.activeTime.stop();
     this.clearStoredActiveSeconds();
     this.activeInstanceId = 0;
@@ -879,7 +890,7 @@ export class ActivityPlayerComponent {
   private showFinishedElsewhere(): void {
     if (this.finished()) return;
     this.snackBar.open(this.tr('alreadyFinished'), this.tr('dismiss'), { duration: 4000 });
-    this.markFinished();
+    this.markFinished(false);
   }
 
   // ---------------------------------------------------------------------------
@@ -1047,6 +1058,15 @@ export class ActivityPlayerComponent {
     } finally {
       this.nextBusy.set(false);
     }
+  }
+
+  /**
+   * Issue #609: özet ekranından "Yeniden çöz" — onay + `retake` (aynı oturum sıfırlanır); oynatıcı zaten bu oturumun
+   * rotasında olduğundan gezinme yerine oturum yeniden yüklenir.
+   */
+  retake(): void {
+    if (!this.finished() || !this.canRetake()) return;
+    this.activityLauncher.retake(this.instanceId(), this.instance()?.worksheetId, () => void this.load());
   }
 
   backToList(): void {

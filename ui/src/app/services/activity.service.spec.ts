@@ -33,4 +33,15 @@ describe('ActivityService (#573)', () => {
     expect(req.request.method).toBe('GET');
     req.flush({ success: true, questions: [] });
   });
+
+  it('retake_PostsWithoutBodyToRetakeRoute (#609)', () => {
+    let result: unknown;
+    service.retake(42).subscribe((r) => (result = r));
+
+    const req = http.expectOne('/api/exam/test-instances/42/retake');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toBeNull();
+    req.flush({ success: true, instanceId: 42, alreadyRetaking: false });
+    expect(result).toEqual({ success: true, instanceId: 42, alreadyRetaking: false });
+  });
 });

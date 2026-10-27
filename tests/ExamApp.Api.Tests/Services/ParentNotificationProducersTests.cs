@@ -346,6 +346,29 @@ public class ParentNotificationProducersTests : IDisposable
     }
 
     [Fact]
+    public async Task Sweep_does_not_notify_for_a_retaking_activity_that_was_completed_once()
+    {
+        // issue #609: yeniden çözülen etkinlik (Started + FirstCompletedAt) bir kez tamamlandı → gecikme bildirimi yok.
+        var w = await SeedAsync();
+        await LinkAsync(w.ParentA, w.StudentId, ParentStudentLinkStatus.Active);
+        await AssignAsync(w, Ago(TimeSpan.FromHours(2)));
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.TestInstances.Add(new WorksheetInstance
+            {
+                StudentId = w.StudentId, WorksheetId = w.WorksheetId, Status = WorksheetInstanceStatus.Started,
+                StartTime = Ago(TimeSpan.FromDays(1)), FirstCompletedAt = Ago(TimeSpan.FromHours(20)), RetakeCount = 1,
+                AttemptStartedAt = Ago(TimeSpan.FromHours(1)),
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await SweepAsync();
+
+        (await EventsAsync<ParentHomeworkOverdueEvent>()).ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task Sweep_does_not_notify_a_parent_who_linked_after_the_deadline()
     {
         var w = await SeedAsync();

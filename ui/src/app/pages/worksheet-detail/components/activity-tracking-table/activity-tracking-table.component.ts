@@ -12,6 +12,10 @@ export interface ActivityTrackingRow {
   gradeName: string;
   status: AssignmentStudentStatus;
   firstCheck: { correct: number; wrong: number } | null;
+  /** Issue #609: tamamlanmış etkinliği şu an yeniden çözüyor (durum Tamamladı, ilk kontrol ilk denemenin). */
+  retaking: boolean;
+  /** Issue #609: kaç kez yeniden çözdü (0 = hiç). */
+  retakeCount: number;
 }
 
 const STATUS_ICON: Record<AssignmentStudentStatus, string> = {
@@ -70,6 +74,8 @@ export class ActivityTrackingTableComponent {
               wrong: Math.max(0, s.firstCheckTotalCount - s.firstCheckCorrectCount),
             }
           : null,
+      retaking: s.status === 'Completed' && s.retaking === true,
+      retakeCount: Math.max(0, s.retakeCount ?? 0),
     }));
   });
 

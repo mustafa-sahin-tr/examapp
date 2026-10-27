@@ -516,6 +516,39 @@ public class ParentAssignmentServiceTests : IDisposable
     // ---------------------------------------------------------------- test result
 
     [Fact]
+    public async Task Retaking_activity_stays_completed_but_has_no_result_until_recompleted()
+    {
+        // issue #609 (review K1): yeniden çözülen etkinlik (Started + FirstCompletedAt) kovada "tamamlandı" kalır ama sonucu yoktur
+        // (önceki cevaplar silindi) — listede sonuç bağlantısı yok, sonuç ucu 404 (ChildAccessible, Result null).
+        await SeedAsync();
+        var ws = await WorksheetAsync("Etkinlik");
+        await AssignAsync(ws, Now.AddDays(-2), Now.AddDays(2));
+        var instance = await InstanceAsync(ws, Now.AddDays(-1), WorksheetInstanceStatus.Started);
+        await using (var ctx = _db.NewContext())
+        {
+            await ctx.TestInstances.Where(ti => ti.Id == instance)
+                .ExecuteUpdateAsync(u => u.SetProperty(ti => ti.FirstCompletedAt, (DateTime?)Now.AddHours(-20)));
+        }
+
+        var item = (await ListAsync())!.Items.ShouldHaveSingleItem();
+        item.Status.ShouldBe(ParentAssignmentStatuses.Completed);
+        item.TestInstanceId.ShouldBeNull();
+
+        var lookup = await ResultAsync(instance);
+        lookup.ChildAccessible.ShouldBeTrue();
+        lookup.Result.ShouldBeNull();
+
+        // Yeniden tamamlanınca veli son denemeyi görür (bilinçli kabul).
+        await using (var ctx = _db.NewContext())
+        {
+            await ctx.TestInstances.Where(ti => ti.Id == instance)
+                .ExecuteUpdateAsync(u => u.SetProperty(ti => ti.Status, WorksheetInstanceStatus.Completed)
+                    .SetProperty(ti => ti.EndTime, (DateTime?)Now.AddMinutes(-5)));
+        }
+        (await ResultAsync(instance)).Result.ShouldNotBeNull().TestInstanceId.ShouldBe(instance);
+    }
+
+    [Fact]
     public async Task Test_result_summary_with_topic_breakdown()
     {
         await SeedAsync();

@@ -53,4 +53,19 @@ public static class TestSessionErrorCodes
     /// en az bir kontrol ister (oturum Started kalır, hiçbir şey yazılmaz).
     /// </summary>
     public const string ActivityCheckRequired = "ActivityCheckRequired";
+
+    /// <summary>
+    /// issue #609: 409 — yeniden çözme (<c>POST api/test-instances/{id}/retake</c>) yalnız tamamlanmış (Completed) etkinlikte;
+    /// hiç tamamlanmamış Started ya da Expired oturum açılmaz, hiçbir şey yazılmaz.
+    /// </summary>
+    public const string ActivityNotCompleted = "ActivityNotCompleted";
+
+    /// <summary>
+    /// issue #609: 403 — yeniden çözme, start-test ile aynı erişim kararından geçemedi (atama bitti/geri çekildi, sınıf değişti,
+    /// görünürlük kapandı; <c>WorksheetAccess.CanStudentStartTest</c>). Hiçbir şey yazılmadı.
+    /// </summary>
+    public const string AccessDenied = "AccessDenied";
+
+    /// <summary>issue #609: 404 — oturumun etkinliği silinmiş (soft-delete); yeniden çözülemez, hiçbir şey yazılmadı.</summary>
+    public const string WorksheetNotFound = "WorksheetNotFound";
 }

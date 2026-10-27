@@ -18,6 +18,12 @@
             <mat-icon aria-hidden="true">{{ iconFor(row.status) }}</mat-icon>
             {{ t('status.' + statusKey(row.status)) }}
           </span>
+          @if (row.retaking) {
+            <span class="att__retaking" data-testid="tracking-retaking">{{ t('retakingBadge') }}</span>
+          }
+          @if (row.retakeCount > 0) {
+            <span class="att__muted att__retake-count" data-testid="tracking-retake-count">{{ t('retakeCount', { count: row.retakeCount }) }}</span>
+          }
         </td>
       </ng-container>
 

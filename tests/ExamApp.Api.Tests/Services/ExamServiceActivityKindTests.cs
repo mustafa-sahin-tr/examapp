@@ -203,4 +203,36 @@ public class ExamServiceActivityKindTests : IDisposable
 
         item.Instance.ShouldNotBeNull().CheckCount.ShouldBe(0);
     }
+
+    // ---------------------------------------------------------------- issue #609: FirstCompletedAt (yalnız etkinlik)
+
+    [Fact]
+    public async Task GetWorksheetsForStudentsAsync_RetakingActivity_CarriesFirstCompletedAt_TestKindStaysNull()
+    {
+        var w = await SeedAsync();
+        var firstCompletedAt = new DateTime(2020, 1, 2, 0, 3, 0, DateTimeKind.Utc);
+        await using (var ctx = _db.NewContext())
+        {
+            // Etkinlik yeniden çözülüyor (Started + FirstCompletedAt); test oturumunun kolonu da dolu (migration backfill'i gibi).
+            await ctx.TestInstances.Where(ti => ti.Id == w.ActivityInstanceId || ti.Id == w.TestInstanceId)
+                .ExecuteUpdateAsync(u => u.SetProperty(ti => ti.FirstCompletedAt, (DateTime?)firstCompletedAt));
+        }
+
+        var page = await StudentListAsync(w);
+
+        var activity = page.Items.Single(i => i.Id == w.ActivityWorksheetId).Instance.ShouldNotBeNull();
+        activity.Status.ShouldBe((int)WorksheetInstanceStatus.Started);
+        activity.FirstCompletedAt.ShouldBe(firstCompletedAt);
+        page.Items.Single(i => i.Id == w.TestWorksheetId).Instance.ShouldNotBeNull().FirstCompletedAt.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetWorksheetsForStudentsAsync_NeverCompletedActivity_HasNullFirstCompletedAt()
+    {
+        var w = await SeedAsync();
+
+        var page = await StudentListAsync(w);
+
+        page.Items.Single(i => i.Id == w.ActivityWorksheetId).Instance.ShouldNotBeNull().FirstCompletedAt.ShouldBeNull();
+    }
 }

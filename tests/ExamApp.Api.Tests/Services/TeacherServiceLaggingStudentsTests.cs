@@ -177,6 +177,39 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
     }
 
     [Fact]
+    public async Task GetLaggingStudentsAsync_RetakingActivityAfterDeadline_IsNotLagging()
+    {
+        // issue #609: yeniden çözülen etkinlik (Started + FirstCompletedAt) tamamlanmış sayılır — teslimi geçmiş olsa da geride değil.
+        await using (var ctx = _db.NewContext())
+        {
+            var gradeId = await SeedGradeAsync(ctx);
+            ctx.SetCurrentUser(TeacherId);
+            var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId, Kind = WorksheetKind.Activity };
+            var student = new Student { UserId = 309, StudentNumber = "r", SchoolName = "s" };
+            ctx.AddRange(ws, student);
+            await ctx.SaveChangesAsync();
+
+            var startAt = DateTime.UtcNow.AddDays(-5);
+            ctx.WorksheetAssignments.Add(new WorksheetAssignment
+            {
+                WorksheetId = ws.Id, StudentId = student.Id, StartAt = startAt, EndAt = DateTime.UtcNow.AddDays(-1)
+            });
+            ctx.TestInstances.Add(new WorksheetInstance
+            {
+                WorksheetId = ws.Id, StudentId = student.Id, StartTime = startAt.AddHours(1),
+                Status = WorksheetInstanceStatus.Started, FirstCompletedAt = startAt.AddHours(2),
+                AttemptStartedAt = DateTime.UtcNow.AddMinutes(-5), RetakeCount = 1
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var check = _db.NewContext();
+        var result = await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId));
+
+        result.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task GetLaggingStudentsAsync_CompletedAndNotExpired_IsExcluded()
     {
         await using (var ctx = _db.NewContext())

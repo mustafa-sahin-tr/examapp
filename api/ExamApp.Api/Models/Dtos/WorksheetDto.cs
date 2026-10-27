@@ -144,5 +144,11 @@ public class WorksheetInstanceResultDto
     /// <summary>issue #573: etkinlikte ilk kontroldeki toplam satır sayısı; kontrol yoksa / testte null.</summary>
     public int? FirstCheckTotalCount { get; set; }
 
+    /// <summary>
+    /// issue #609: etkinliğin ilk tamamlanma anı (UTC); hiç tamamlanmadıysa / testte null. <c>Status = Started</c> iken doluysa
+    /// oturum yeniden çözülüyordur.
+    /// </summary>
+    public DateTime? FirstCompletedAt { get; set; }
+
     public List<WorksheetInstanceQuestionDto> TestInstanceQuestions { get; set; } = new();
 }

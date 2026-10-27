@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { WorksheetListViewCardComponent } from './worksheet-list-view-card.component';
 import { ActivityLauncherService } from '../../services/activity-launcher.service';
 import { Test, WorksheetTeacherSharing } from '../../models/test-instance';
+import { AssignedWorksheet } from '../../models/assignment';
 
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES } from '../../models/locale';
@@ -210,6 +211,77 @@ describe('WorksheetListViewCardComponent', () => {
             fixture.detectChanges();
 
             expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="activity-first-check"]')).toBeNull();
+        });
+    
+        it('template_RetakingActivity_ContinueOpensPlayerWithRetakingTag (#609)', () => {
+            const fixture = TestBed.createComponent(WorksheetListViewCardComponent);
+            fixture.componentInstance.course = {
+                id: 35,
+                name: 'Yeniden',
+                kind: 1,
+                questionCount: 4,
+                instance: { status: 0, answeredQuestions: 0, totalQuestions: 4 },
+            } as unknown as Test;
+            fixture.componentInstance.assignment = {
+                worksheetId: 35,
+                instanceStatus: 0,
+                assignmentStatus: 'Completed',
+                isCompleted: true,
+                hasStarted: true,
+                retaking: true,
+            } as unknown as AssignedWorksheet;
+            fixture.detectChanges();
+            const el = fixture.nativeElement as HTMLElement;
+
+            expect(el.querySelector('[data-testid="card-retaking"]')?.textContent?.trim()).toBe('Yeniden çözüyor');
+            expect(el.textContent).not.toContain('Devam ediyor');
+            expect(el.textContent).not.toContain('Öğretmenin atadı');
+            const primary = el.querySelector('.wcard__actions button') as HTMLButtonElement;
+            expect(primary.textContent?.trim()).toBe('Devam et');
+
+            primary.click();
+            expect(launcher.open).toHaveBeenCalledWith(35);
+        });
+
+        it('template_UnassignedRetakingActivity_TagFromInstanceFirstCompletedAt (#609)', () => {
+            const fixture = TestBed.createComponent(WorksheetListViewCardComponent);
+            fixture.componentInstance.course = {
+                id: 37,
+                name: 'Keşfet',
+                kind: 1,
+                instance: { status: 0, firstCompletedAt: '2026-10-27T10:00:00Z' },
+            } as unknown as Test;
+            fixture.detectChanges();
+            const el = fixture.nativeElement as HTMLElement;
+
+            expect(el.querySelector('[data-testid="card-retaking"]')?.textContent?.trim()).toBe('Yeniden çözüyor');
+            expect(el.textContent).not.toContain('Devam ediyor');
+            (el.querySelector('.wcard__actions button') as HTMLButtonElement).click();
+            expect(launcher.open).toHaveBeenCalledWith(37);
+        });
+
+        it('template_TestCardWithFirstCompletedAt_NoRetakingTag (#609)', () => {
+            const fixture = TestBed.createComponent(WorksheetListViewCardComponent);
+            fixture.componentInstance.course = {
+                id: 38,
+                name: 'Test',
+                kind: 0,
+                instance: { status: 0, firstCompletedAt: '2026-10-27T10:00:00Z' },
+            } as unknown as Test;
+            fixture.detectChanges();
+
+            expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="card-retaking"]')).toBeNull();
+        });
+
+        it('template_InProgressActivityWithoutRetaking_ShowsInProgressTag (#609)', () => {
+            const fixture = TestBed.createComponent(WorksheetListViewCardComponent);
+            fixture.componentInstance.course = { id: 36, name: 'Devam', kind: 1, instance: { status: 0 } } as unknown as Test;
+            fixture.componentInstance.assignment = { worksheetId: 36, isCompleted: false, retaking: false } as unknown as AssignedWorksheet;
+            fixture.detectChanges();
+            const el = fixture.nativeElement as HTMLElement;
+
+            expect(el.querySelector('[data-testid="card-retaking"]')).toBeNull();
+            expect(el.textContent).toContain('Devam ediyor');
         });
     });
 });

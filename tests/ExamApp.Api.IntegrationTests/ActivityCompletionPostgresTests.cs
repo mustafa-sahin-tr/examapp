@@ -183,4 +183,61 @@ public class ActivityCompletionPostgresTests(IntegrationApiFactory factory) : In
         var total = (await ActivityEventsAsync(first)).Single().ActiveSeconds + (await ActivityEventsAsync(second)).Single().ActiveSeconds;
         total.ShouldBeLessThanOrEqualTo(1805); // kilitsiz ikisi de 1800 alırdı (3600)
     }
+
+    // ---------------------------------------------------------------- issue #609: yeniden çöz (aynı oturum sıfırlanır)
+
+    private async Task<ActivityRetakeResultDto> RetakeAsync(Seed seed)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<ITestSessionService>();
+        return await service.RetakeActivityAsync(seed.InstanceId, seed.UserId);
+    }
+
+    [Fact]
+    public async Task Concurrent_retakes_reopen_the_instance_once_and_keep_first_completion()
+    {
+        var seed = await SeedActivityAsync();
+        (await EndTestAsync(seed)).Success.ShouldBeTrue();
+        var firstEnd = await WithDbAsync(db => db.TestInstances.AsNoTracking()
+            .Where(x => x.Id == seed.InstanceId).Select(x => x.EndTime).SingleAsync());
+
+        var results = await Task.WhenAll(Enumerable.Range(0, 6).Select(_ => RetakeAsync(seed)));
+
+        results.ShouldAllBe(r => r.Success && r.InstanceId == seed.InstanceId);
+        results.Count(r => !r.AlreadyRetaking).ShouldBe(1); // yalnız biri sıfırladı
+        var instance = await WithDbAsync(db => db.TestInstances.AsNoTracking().SingleAsync(x => x.Id == seed.InstanceId));
+        instance.Status.ShouldBe(WorksheetInstanceStatus.Started);
+        instance.EndTime.ShouldBeNull();
+        instance.CheckCount.ShouldBe(0);
+        instance.FirstCompletedAt.ShouldBe(firstEnd);
+        instance.ActiveSeconds.ShouldBe(ReportedSeconds);
+        (await WithDbAsync(db => db.TestInstances.AsNoTracking().CountAsync(x => x.WorksheetId == seed.WorksheetId))).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Recompleting_a_retaken_activity_writes_a_second_event_for_the_same_instance_and_accumulates_seconds()
+    {
+        var seed = await SeedActivityAsync();
+        (await EndTestAsync(seed)).Success.ShouldBeTrue();
+        var firstCompletedAt = await WithDbAsync(db => db.TestInstances.AsNoTracking()
+            .Where(x => x.Id == seed.InstanceId).Select(x => x.FirstCompletedAt).SingleAsync());
+        firstCompletedAt.ShouldNotBeNull();
+
+        (await RetakeAsync(seed)).AlreadyRetaking.ShouldBeFalse();
+        // Yeni denemede bir kontrol (EndTest en az bir kontrol ister, #573); deneme 10 dk önce açılmış sayılır (etkin süre penceresi
+        // AttemptStartedAt'ten başlar).
+        await WithDbAsync(db => db.TestInstances.Where(x => x.Id == seed.InstanceId)
+            .ExecuteUpdateAsync(u => u.SetProperty(x => x.CheckCount, 1)
+                .SetProperty(x => x.AttemptStartedAt, (DateTime?)DateTime.UtcNow.AddMinutes(-10))));
+        (await EndTestAsync(seed, 60)).Success.ShouldBeTrue();
+
+        var events = await ActivityEventsAsync(seed);
+        events.Count.ShouldBe(2);
+        events.ShouldAllBe(e => e.WorksheetInstanceId == seed.InstanceId && e.UserId == seed.UserId);
+        var instance = await WithDbAsync(db => db.TestInstances.AsNoTracking().SingleAsync(x => x.Id == seed.InstanceId));
+        instance.Status.ShouldBe(WorksheetInstanceStatus.Completed);
+        instance.FirstCompletedAt.ShouldBe(firstCompletedAt);
+        instance.ActiveSeconds.ShouldBe(ReportedSeconds + 60);
+        instance.RetakeCount.ShouldBe(1);
+    }
 }

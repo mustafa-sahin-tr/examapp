@@ -117,6 +117,19 @@ describe('ParentChildAssignmentsComponent (issue #421)', () => {
         (chip.querySelector('.mdc-evolution-chip__action--primary') as HTMLElement).click();
     }
 
+    // issue #609: yeniden çözülen etkinlik veli listesinde tamamlanmış görünür ama oturum id'si null (sonuç ucu 404) —
+    // "Sonucu gör" düğmesi ve puan satırı çıkmaz.
+    it('completedWithoutInstance_RetakingActivity_NoResultButtonOrScore', async () => {
+        const retaking: ParentChildAssignmentItem = { ...completed, worksheetId: 3, title: 'Etkinlik', testInstanceId: null, result: null };
+        const el = await setup(listOf([retaking]));
+
+        const [row] = rows(el);
+        expect(text(row.querySelector('[data-test="row-status"]'))).toBe(parentDashboardTr.assignments.status.completed);
+        expect(row.querySelector('[data-test="row-open-result"]')).toBeNull();
+        expect(row.querySelector('[data-test="row-score"]')).toBeNull();
+        expect(service.getChildTestResult).not.toHaveBeenCalled();
+    });
+
     it('loadsTheChildsListOnInit_AndRendersRows', async () => {
         const el = await setup();
         expect(service.getChildAssignments).toHaveBeenCalledTimes(1);

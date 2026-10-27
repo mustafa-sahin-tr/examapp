@@ -153,7 +153,8 @@
     "primaryStartActivity": "Başla",
     "primaryContinueActivity": "Devam et",
     "primaryViewActivity": "Detayı gör",
-    "activityFirstCheck": "İlk kontrol: {{correct}} / {{total}} doğru"
+    "activityFirstCheck": "İlk kontrol: {{correct}} / {{total}} doğru",
+    "tagRetaking": "Yeniden çözüyor"
   },
   "enhanced": {
     "navNewest": "Yeni Testler",

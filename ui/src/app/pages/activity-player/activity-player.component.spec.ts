@@ -1,4 +1,5 @@
 import type { Mock } from 'vitest';
+import { WritableSignal, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
@@ -7,6 +8,7 @@ import { Subject, of, throwError } from 'rxjs';
 
 import { ACTIVITY_SUMMARY_REFETCH_MS, ActivityPlayerComponent } from './activity-player.component';
 import { ActivityService } from '../../services/activity.service';
+import { ActivityLauncherService } from '../../services/activity-launcher.service';
 import { BadgeService } from '../../services/badge.service';
 import { TestService } from '../../services/test.service';
 import { TestInstance, TestStatus } from '../../models/test-instance';
@@ -100,6 +102,7 @@ describe('ActivityPlayerComponent (#573)', () => {
   let testService: Record<string, Mock>;
   let activityService: { check: Mock; getSolutions: Mock };
   let badgeService: { getActivitySummary: Mock };
+  let launcher: { retaking: WritableSignal<number | null>; retake: Mock; open: Mock };
   /** `create()` öncesi ayarlanırsa `getActivitySummary` bunu döner. */
   let summaryResponse: unknown = { today: { activityCount: 0, activeMinutes: 0, streakDays: 0 }, badges: [] };
   let router: Router;
@@ -122,6 +125,7 @@ describe('ActivityPlayerComponent (#573)', () => {
       startTest: vi.fn(),
     };
     activityService = { check: vi.fn(), getSolutions: vi.fn() };
+    launcher = { retaking: signal<number | null>(null), retake: vi.fn(), open: vi.fn() };
     badgeService = {
       getActivitySummary: vi
         .fn()
@@ -145,6 +149,7 @@ describe('ActivityPlayerComponent (#573)', () => {
         { provide: TestService, useValue: testService },
         { provide: ActivityService, useValue: activityService },
         { provide: BadgeService, useValue: badgeService },
+        { provide: ActivityLauncherService, useValue: launcher },
         { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ testInstanceId: '42' })) } },
       ],
     });
@@ -372,6 +377,52 @@ describe('ActivityPlayerComponent (#573)', () => {
 
     expect(q('activity-summary')).not.toBeNull();
     expect(el().querySelector('app-activity-player-frame')).toBeNull();
+  });
+
+  it('completedInstance_RetakeConfirmedReloadsSameSessionAsPlayer (#609)', async () => {
+    await create(instance({ status: TestStatus.Completed, checkCount: 1 }));
+
+    (q('summary-retake') as HTMLButtonElement).click();
+    expect(launcher.retake).toHaveBeenCalledWith(42, 9, expect.any(Function));
+
+    // Sunucu oturumu sıfırladı: aynı rota, gezinme yok — oturum yeniden yüklenir ve oynatıcı açılır.
+    testService['getCanvasTestWithAnswers'].mockReturnValue(
+      of(instance({ checkCount: 0, firstCompletedAt: '2026-10-27T10:00:00Z' }, [{ answerPayload: null }]))
+    );
+    const reopen = launcher.retake.mock.calls[0][2] as () => void;
+    reopen();
+    await settle();
+
+    expect(testService['getCanvasTestWithAnswers']).toHaveBeenCalledTimes(2);
+    expect(q('activity-summary')).toBeNull();
+    expect(el().querySelector('app-activity-player-frame')).not.toBeNull();
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('retakeInFlight_DisablesSummaryButton (#609)', async () => {
+    await create(instance({ status: TestStatus.Completed, checkCount: 1 }));
+    launcher.retaking.set(42);
+    await settle();
+
+    expect((q('summary-retake') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('expiredInstance_SummaryWithoutRetake (#609)', async () => {
+    await create(instance({ status: TestStatus.Expired, checkCount: 1 }));
+
+    expect(q('activity-summary')).not.toBeNull();
+    expect(q('summary-retake')).toBeNull();
+    fixture.componentInstance.retake();
+    expect(launcher.retake).not.toHaveBeenCalled();
+  });
+
+  it('finishSuccess_SummaryOffersRetake (#609)', async () => {
+    await create(instance({ checkCount: 1 }));
+
+    await fixture.componentInstance.finish();
+    await settle();
+
+    expect(q('summary-retake')).not.toBeNull();
   });
 
   // ---------------------------------------------------------------------------------------------

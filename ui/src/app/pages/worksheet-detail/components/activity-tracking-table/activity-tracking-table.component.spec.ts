@@ -71,4 +71,34 @@ describe('ActivityTrackingTableComponent (#573)', () => {
 
     expect(el().textContent).toContain('Bu atamada öğrenci bilgisi yok.');
   });
+
+  it('retaking_CompletedStatusKeptWithBadgeAndFirstAttemptResult (#609)', () => {
+    setup([
+      student({ studentId: 1, status: 'Completed', retaking: true, firstCheckCorrectCount: 7, firstCheckTotalCount: 10 }),
+      student({ studentId: 2, studentNumber: '102', status: 'Completed', firstCheckCorrectCount: 5, firstCheckTotalCount: 5 }),
+    ]);
+
+    const [retaking, done] = rows();
+    expect(retaking.querySelector('.att__status')?.textContent).toContain('Tamamladı');
+    expect(retaking.querySelector('[data-testid="tracking-retaking"]')?.textContent?.trim()).toBe('Yeniden çözüyor');
+    expect(retaking.querySelector('[data-testid="first-check"]')?.textContent?.trim()).toBe('7 doğru · 3 yanlış');
+    expect(done.querySelector('[data-testid="tracking-retaking"]')).toBeNull();
+  });
+
+  it('retakeCount_ShownAsSecondaryInfoOnlyWhenPositive (#609)', () => {
+    setup([
+      student({ studentId: 1, status: 'Completed', retaking: true, retakeCount: 2, firstCheckCorrectCount: 7, firstCheckTotalCount: 10 }),
+      student({ studentId: 2, studentNumber: '102', status: 'Completed', retakeCount: 1 }),
+      student({ studentId: 3, studentNumber: '103', status: 'Completed', retakeCount: 0 }),
+    ]);
+
+    const [a, b, c] = rows();
+    expect(a.querySelector('[data-testid="tracking-retaking"]')).not.toBeNull();
+    expect(a.querySelector('[data-testid="tracking-retake-count"]')?.textContent?.trim()).toBe('2 kez yeniden çözdü');
+    expect(b.querySelector('[data-testid="tracking-retaking"]')).toBeNull();
+    expect(b.querySelector('[data-testid="tracking-retake-count"]')?.textContent?.trim()).toBe('1 kez yeniden çözdü');
+    expect(c.querySelector('[data-testid="tracking-retake-count"]')).toBeNull();
+    // İlk denemenin sonucu korunur.
+    expect(a.querySelector('[data-testid="first-check"]')?.textContent?.trim()).toBe('7 doğru · 3 yanlış');
+  });
 });

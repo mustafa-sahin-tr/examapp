@@ -26,6 +26,7 @@ import { StudyLinkSuggestionsComponent } from '../../shared/components/study-lin
 import { QuestionRegion } from '../../models/draws';
 import { BankQuestionDialogComponent, BankQuestionDialogData } from './components/bank-question-dialog/bank-question-dialog.component';
 import { LinkBankQuestionsResult } from '../../models/question-bank';
+import { ActivityLauncherService } from '../../services/activity-launcher.service';
 
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES } from '../../models/locale';
@@ -1140,13 +1141,14 @@ describe('WorksheetDetailComponent add from bank (issue #472)', () => {
 
 // Issue #573: etkinlik sayfası — öğrenci ve öğretmen ekranlarında puan/yüzde/sıralama yok; öğretmende "Çalışma takibi".
 describe('WorksheetDetailComponent activity page (#573)', () => {
-    function setup(role: 'Student' | 'Teacher', instanceStatus: number | null = null) {
+    function setup(role: 'Student' | 'Teacher', instanceStatus: number | null = null, kind = 1, firstCompletedAt: string | null = null) {
         const testService = {
             getWorksheetDetail: vi.fn().mockReturnValue(NEVER),
             startTest: vi.fn(),
             get: vi.fn().mockReturnValue(NEVER),
         };
         const router = { navigate: vi.fn() };
+        const launcher = { retaking: signal<number | null>(null), retake: vi.fn(), open: vi.fn() };
         TestBed.configureTestingModule({
             imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
             providers: [
@@ -1160,6 +1162,7 @@ describe('WorksheetDetailComponent activity page (#573)', () => {
                 { provide: AuthService, useValue: { hasRole: (r: string) => r === role, hasRealmRole: () => false, user: signal(null) } },
                 { provide: StudentService, useValue: {} },
                 { provide: GradesService, useValue: { getGrades: () => of([]) } },
+                { provide: ActivityLauncherService, useValue: launcher },
                 {
                     provide: ActivatedRoute,
                     useValue: {
@@ -1179,11 +1182,11 @@ describe('WorksheetDetailComponent activity page (#573)', () => {
         component.exam = {
             id: 12,
             name: 'Hayvanlar',
-            kind: 1,
-            instance: instanceStatus === null ? undefined : { status: instanceStatus },
+            kind,
+            instance: instanceStatus === null ? undefined : { id: 55, status: instanceStatus, firstCompletedAt },
         } as unknown as Test;
         component['detail'].set({
-            worksheet: { id: 12, name: 'Hayvanlar', kind: 1, questionCount: 4, maxDurationSeconds: 0, canEdit: true, canAssign: true, description: 'Resimleri eşleştir.' },
+            worksheet: { id: 12, name: 'Hayvanlar', kind, questionCount: 4, maxDurationSeconds: 0, canEdit: true, canAssign: true, description: 'Resimleri eşleştir.' },
             stats: { solverCount: 3, averageScorePercent: 75 },
             topicBreakdown: [],
             outcomes: [],
@@ -1210,7 +1213,7 @@ describe('WorksheetDetailComponent activity page (#573)', () => {
                 rank: { position: 1, totalStudents: 3, classAveragePercent: 75 },
             },
         } as unknown as WorksheetDetail);
-        return { fixture, component, testService, router };
+        return { fixture, component, testService, router, launcher };
     }
 
     const text = (fixture: ComponentFixture<WorksheetDetailComponent>) => (fixture.nativeElement as HTMLElement).textContent ?? '';
@@ -1224,10 +1227,73 @@ describe('WorksheetDetailComponent activity page (#573)', () => {
         expect(text(fixture)).not.toMatch(/%|puan|sıralama/i);
         expect(text(fixture)).toContain('Etkinlik sayfası');
         expect(fixture.nativeElement.querySelector('[data-testid="activity-done"]')).not.toBeNull();
-        // Tekrar çözüm #572'ye ertelendi: tamamlanan etkinlikte başlat/yeniden çöz düğmesi yok.
-        expect(fixture.nativeElement.querySelector('[data-testid="activity-resolve"]')).toBeNull();
         expect(fixture.nativeElement.querySelector('[data-testid="start-cta"]')).toBeNull();
+    });
+
+    it('student_CompletedActivity_ShowsRetakeInHeroAndSidePanel (#609)', () => {
+        const { fixture, launcher } = setup('Student', 1);
+        fixture.detectChanges();
+
+        const hero = fixture.nativeElement.querySelector('[data-testid="activity-retake"]') as HTMLButtonElement;
+        const side = fixture.nativeElement.querySelector('[data-testid="activity-retake-side"]') as HTMLButtonElement;
+        expect(hero?.textContent).toContain('Yeniden çöz');
+        expect(side?.textContent).toContain('Yeniden çöz');
+        // "Tamamlandı" chip'i kalır.
+        expect(fixture.nativeElement.querySelector('[data-testid="activity-done"]')).not.toBeNull();
+
+        side.click();
+        expect(launcher.retake).toHaveBeenCalledWith(55, 12);
+    });
+
+    it('student_RetakeInFlight_DisablesButtons (#609)', () => {
+        const { fixture, launcher } = setup('Student', 1);
+        launcher.retaking.set(55);
+        fixture.detectChanges();
+
+        expect((fixture.nativeElement.querySelector('[data-testid="activity-retake"]') as HTMLButtonElement).disabled).toBe(true);
+        expect((fixture.nativeElement.querySelector('[data-testid="activity-retake-side"]') as HTMLButtonElement).disabled).toBe(true);
+    });
+
+    it('student_StartedActivity_ShowsContinueNotRetake (#609)', () => {
+        const { fixture } = setup('Student', 0);
+        fixture.detectChanges();
+
+        expect(fixture.nativeElement.querySelector('[data-testid="start-cta"]')?.textContent).toContain('Etkinliğe devam et');
+        expect(fixture.nativeElement.querySelector('[data-testid="activity-retake"]')).toBeNull();
+        // Hiç tamamlanmamış oturum: "Yeniden çözüyor" etiketi yok.
+        expect(fixture.nativeElement.querySelector('[data-testid="activity-retaking"]')).toBeNull();
+        expect(fixture.nativeElement.querySelector('[data-testid="activity-retaking-side"]')).toBeNull();
+    });
+
+    it('student_RetakingActivity_ContinueWithRetakingLabelInHeroAndSide (#609)', () => {
+        const { fixture } = setup('Student', 0, 1, '2026-10-27T10:00:00Z');
+        fixture.detectChanges();
+
+        expect(fixture.nativeElement.querySelector('[data-testid="start-cta"]')?.textContent).toContain('Etkinliğe devam et');
+        expect(fixture.nativeElement.querySelector('[data-testid="activity-retaking"]')?.textContent).toContain('Yeniden çözüyor');
+        expect(fixture.nativeElement.querySelector('[data-testid="activity-retaking-side"]')?.textContent).toContain('Yeniden çözüyor');
+        expect(fixture.nativeElement.querySelector('[data-testid="activity-retake"]')).toBeNull();
+    });
+
+    it('student_StartedTestWithFirstCompletedAt_NoRetakingLabel (#609)', () => {
+        const { fixture, component } = setup('Student', 0, 0, '2026-10-27T10:00:00Z');
+        component['detail'].update((d) => (d ? { ...d, completedResult: null } : d));
+        fixture.detectChanges();
+
+        expect(fixture.nativeElement.querySelector('[data-testid="activity-retaking"]')).toBeNull();
+        expect(fixture.nativeElement.querySelector('[data-testid="activity-retaking-side"]')).toBeNull();
+    });
+
+    it('student_CompletedTest_NoRetakeButton (#609)', () => {
+        const { fixture, component, launcher } = setup('Student', 1, 0);
+        component['detail'].update((d) => (d ? { ...d, completedResult: null } : d));
+        fixture.detectChanges();
+
+        expect(fixture.nativeElement.querySelector('[data-testid="activity-retake"]')).toBeNull();
+        expect(fixture.nativeElement.querySelector('[data-testid="activity-retake-side"]')).toBeNull();
         expect(text(fixture)).not.toContain('Yeniden çöz');
+        component['retakeActivity']();
+        expect(launcher.retake).not.toHaveBeenCalled();
     });
 
     it('student_StartNavigatesToActivityPlayer', () => {

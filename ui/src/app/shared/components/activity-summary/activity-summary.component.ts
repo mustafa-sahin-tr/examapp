@@ -10,6 +10,7 @@ import { ActivityProgressComponent } from '../activity-progress/activity-progres
 /**
  * Issue #573: etkinlik sonu — "Etkinlik bitti", bilgi satırı ("8 / 10 doğru"; puan/yüzde/XP değil), "Bugün" ve rozet
  * kartları (#572, `ActivityProgressComponent`; veri yoksa gizli) ve Sıradaki etkinlik / Listeye dön.
+ * Issue #609: tamamlanmış etkinlikte "Yeniden çöz" (`canRetake`; süresi dolan oturumda gizli).
  */
 @Component({
   selector: 'app-activity-summary',
@@ -26,7 +27,11 @@ export class ActivitySummaryComponent {
   /** Sıradaki atanmış etkinlik varsa düğme gösterilir. */
   readonly hasNext = input(false);
   readonly nextBusy = input(false);
+  /** Issue #609: oturum tamamlandı (süresi dolmadı) — "Yeniden çöz" gösterilir. */
+  readonly canRetake = input(false);
+  readonly retakeBusy = input(false);
 
   readonly next = output<void>();
   readonly backToList = output<void>();
+  readonly retake = output<void>();
 }

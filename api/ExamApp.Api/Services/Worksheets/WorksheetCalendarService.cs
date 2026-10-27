@@ -249,7 +249,9 @@ public class WorksheetCalendarService : IWorksheetCalendarService
             // issue #396: süresi dolan oturum da bitmiştir (tekrar çözülemez) — teslim tarihi etkinliği "yapıldı" görünür,
             // öğrenciye artık yapamayacağı bir işi hatırlatmaz.
             .Where(ti => ti.StudentId == studentId
-                && (ti.Status == WorksheetInstanceStatus.Completed || ti.Status == WorksheetInstanceStatus.Expired)
+                && (ti.Status == WorksheetInstanceStatus.Completed || ti.Status == WorksheetInstanceStatus.Expired
+                    // issue #609: yeniden çözülen etkinlik bir kez tamamlandı — teslim tarihi "yapıldı" kalır, hatırlatılmaz.
+                    || ti.FirstCompletedAt != null)
                 && worksheetIds.Contains(ti.WorksheetId))
             .Select(ti => ti.WorksheetId)
             .Distinct()

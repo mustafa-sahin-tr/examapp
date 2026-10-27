@@ -148,7 +148,15 @@ public sealed class ParentHomeworkOverdueSweepJob : IParentHomeworkOverdueSweepJ
             .ToListAsync(ct);
         var instances = (await _context.TestInstances.AsNoTracking()
                 .Where(ti => studentIds.Contains(ti.StudentId) && worksheetIds.Contains(ti.WorksheetId))
-                .Select(ti => new { ti.Id, ti.StudentId, ti.WorksheetId, ti.StartTime, ti.Status, ti.EndTime })
+                // issue #609: yeniden çözülen etkinlik tamamlanmış sayılır — gecikme bildirimi üretmez.
+                .Select(ti => new
+                {
+                    ti.Id, ti.StudentId, ti.WorksheetId, ti.StartTime,
+                    Status = ti.Status == WorksheetInstanceStatus.Started && ti.FirstCompletedAt != null
+                        ? WorksheetInstanceStatus.Completed
+                        : ti.Status,
+                    ti.EndTime
+                })
                 .ToListAsync(ct))
             .ToLookup(i => (i.WorksheetId, i.StudentId), i => new InstanceLite(i.Id, i.StartTime, i.Status, i.EndTime));
 

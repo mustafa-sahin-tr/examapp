@@ -605,6 +605,23 @@ sabitlemeler yalnız `overrides`'ta.
   konteynerdeki `npm ci` kendi (Linux) `node_modules`'unu kurar, host etkilenmez. Volume'u sıfırlamak için
   `docker-compose rm -sv angular-app auth-ui` sonra `up -d`.
 
+**Issue #609 — tamamlanmış etkinliği yeniden çöz.** `POST /api/exam/test-instances/{id}/retake` (gövdesiz; yalnız oturumun sahibi,
+yalnız `Kind=Activity`, yalnız Completed; start-test ile aynı erişim kararı — atama / sınıf + görünürlük) **aynı oturumu** sıfırlar,
+yeni oturum açılmaz (#367 unique index'i değişmedi): cevaplar / kontrol sonuçları silinir, `Status=Started`, `EndTime`/`SolutionsRevealedAt`
+boş, `CheckCount=0`, `AttemptStartedAt=now`, `RetakeCount+1`; ilk kontrol özeti (`FirstCheck*`), `StartTime` (atama penceresi),
+`ActiveSeconds` (yeniden tamamlamada birikir; deneme penceresi `AttemptStartedAt`'ten) ve `FirstCompletedAt` korunur. Hata: 404 (yok /
+başkasının; silinmiş etkinlik `WorksheetNotFound`), 403 `AccessDenied`, 409 `NotAnActivity` (test davranışı aynı) / `ActivityNotCompleted`
+(Started ya da Expired), 429 `RateLimited` (`RateLimiting:ActivityRetake`, kullanıcı başına dakikada 5); zaten yeniden çözülüyorsa 200
+`alreadyRetaking: true` (hiçbir şey silinmez). Öğretmen/veli takibi, öğrencinin atama durumu (`isCompleted`/`isFinished`) ve takvim yeniden
+çözülen oturumu tamamlandı sayar (`WorksheetInstanceStatusRules.TrackingStatus`; DTO'larda `retaking`, öğretmende `retakeCount`).
+Bilinçli kabuller: (1) öğrencinin kendi "Tamamlanan" filtresi gerçek durumu kullanır — yeniden çözülen etkinlik "devam eden"de görünür;
+(2) veli yeniden çözüm sürerken sonuç göremez (önceki cevaplar silindi; liste sonuç bağlantısı vermez, sonuç ucu 404), yeniden
+tamamlanınca **son denemeyi** görür (etkinlik puansız, pratik); (3) yeniden tamamlama aynı `WorksheetInstanceId` ile ikinci
+`ActivityCompletedEvent` yazar ve BadgeService (UserId, WorksheetInstanceId) ile yok sayar → rozet sayacı / çalışma süresi şişmez; ilk
+tamamlama rozet şartını sağlamadıysa (`CountsTowardBadges=false`) yeniden tamamlama da sayılmaz (aynı tekillik). Migration
+`AddTestInstanceRetakeTracking` (`FirstCompletedAt`, `AttemptStartedAt`, `RetakeCount`; mevcut Completed satırları `EndTime` ile doldurur)
+exam API açılışında uygulanır (Aspire'da exam API'yi yeniden başlat).
+
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını
 (`TestInstances` — Questions'a FK'sı yok, CASCADE ulaşmaz, açıkça silinir; aksi halde "boş test yapılmış" gibi kalır),

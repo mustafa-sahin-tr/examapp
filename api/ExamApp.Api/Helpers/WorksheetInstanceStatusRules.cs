@@ -23,4 +23,16 @@ public static class WorksheetInstanceStatusRules
     /// <summary>EF sorgularında <see cref="IsFinished(WorksheetInstanceStatus)"/> karşılığı.</summary>
     public static readonly Expression<Func<WorksheetInstance, bool>> Finished =
         ti => ti.Status == WorksheetInstanceStatus.Completed || ti.Status == WorksheetInstanceStatus.Expired;
+
+    /// <summary>
+    /// issue #609: takip (öğretmen ilerlemesi, atama durumu, veli özeti, takvim) için oturum durumu. Yeniden çözülen etkinlik
+    /// (Started ama <c>FirstCompletedAt</c> dolu) bir kez tamamlanmıştır → Completed sayılır; öğretmen önceki sonucu kaybetmez,
+    /// atama yeniden "açık" olmaz. Diğer her durumda saklanan durum. Öğrencinin kendi oynatıcısı/listesi gerçek durumu kullanır.
+    /// </summary>
+    public static WorksheetInstanceStatus TrackingStatus(WorksheetInstanceStatus status, DateTime? firstCompletedAt) =>
+        status == WorksheetInstanceStatus.Started && firstCompletedAt != null ? WorksheetInstanceStatus.Completed : status;
+
+    /// <summary>issue #609: oturum yeniden çözülüyor mu (bir kez tamamlanmış, şu an Started).</summary>
+    public static bool IsRetaking(WorksheetInstanceStatus status, DateTime? firstCompletedAt) =>
+        status == WorksheetInstanceStatus.Started && firstCompletedAt != null;
 }

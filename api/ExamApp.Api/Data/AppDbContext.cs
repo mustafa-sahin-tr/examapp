@@ -212,6 +212,10 @@ public class AppDbContext : DbContext
     public DbSet<LabelingResult> LabelingResults { get; set; }
     public DbSet<LabelingPromptVersion> LabelingPromptVersions { get; set; }
 
+    // Issue #579: etkinlik yapısı — tip başına talimat sürümleri ve kırpma + tip + model önbelleği.
+    public DbSet<LabelingActivityPromptVersion> LabelingActivityPromptVersions { get; set; }
+    public DbSet<LabelingActivityResult> LabelingActivityResults { get; set; }
+
     // Issue #577: kitap kaydı (ofset, cevap anahtarı, içindekiler) ve soru kaynağı (kırpma SHA-256 tekrar engeli).
     public DbSet<BookPageOffset> BookPageOffsets { get; set; }
     public DbSet<BookAnswerKeyRange> BookAnswerKeyRanges { get; set; }
@@ -1071,6 +1075,19 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<LabelingPromptVersion>(e =>
         {
             e.HasIndex(p => p.Version).IsUnique();
+        });
+
+        // Issue #579: tip başına sürüm numarası; etkin sürüm = tipin en yükseği.
+        modelBuilder.Entity<LabelingActivityPromptVersion>(e =>
+        {
+            e.HasIndex(p => new { p.InteractionType, p.Version }).IsUnique();
+        });
+
+        modelBuilder.Entity<LabelingActivityResult>(e =>
+        {
+            e.Property(r => r.PlanJson).HasColumnType("jsonb");
+            e.Property(r => r.EstimatedCostUsd).HasPrecision(12, 6);
+            e.HasIndex(r => new { r.CropSha256, r.InteractionType, r.ModelName }).IsUnique();
         });
 
         // Issue #577: kitap kaydı. Aynı içeriğin asıl kaydı (tek seviye, servis doğrular); asıl kayıt silinemez (Restrict).

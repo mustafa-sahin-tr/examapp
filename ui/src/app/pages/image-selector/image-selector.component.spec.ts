@@ -2300,4 +2300,206 @@ describe('ImageSelectorComponent', () => {
             });
         });
     });
+
+    describe('activity drafts (issue #579)', () => {
+        function activity(y: number, component: string, interaction_type: string) {
+            return { class_id: 0, x: 10, y, width: 200, height: 120, subpredictions: [], kind: 'activity', component, interaction_type };
+        }
+
+        beforeEach(() => {
+            component.applyExternalPrediction(component.beginExternalDetection(), {
+                success: true,
+                predictions: [
+                    activity(10, 'A', 'matrixChoice'),
+                    activity(200, 'B', 'slotFill'),
+                    activity(400, 'C', 'dragPlace'),
+                    activity(600, 'C', 'match'),
+                ],
+            } as any, { kind: 'Ai', modelName: 'claude-a' });
+        });
+
+        it('detectionRevision_NewDetection_Increments', () => {
+            const before = component.detectionRevision();
+
+            component.applyExternalPrediction(component.beginExternalDetection(), { success: true, predictions: [] } as any, { kind: 'Model' });
+
+            expect(component.detectionRevision()).toBe(before + 1);
+        });
+
+        it('applyInteractionDraft_MatrixPlan_LoadsRowsCellsColumnsWithoutSolution', () => {
+            const plan = {
+                version: 1,
+                type: 'matrixChoice',
+                multiPerRow: false,
+                columns: [{ id: 'c1', label: 'D' }, { id: 'c2', label: 'Y' }],
+                rows: [
+                    { id: 'r1', label: 'Su kaynar.', box: { x: 0, y: 0, width: 180, height: 20 }, cells: { c1: { x: 140, y: 0, width: 18, height: 18 } } },
+                    // Kutusuz satır: hücrelerin kapsayan kutusu kullanılır.
+                    { id: 'r2', cells: { c1: { x: 140, y: 30, width: 18, height: 18 }, c2: { x: 160, y: 30, width: 18, height: 18 } } },
+                    // Kutusu da hücresi de yok: atlanır.
+                    { id: 'r3', label: 'boş' },
+                ],
+            };
+
+            expect(component.applyInteractionDraft('Soru 1', 'matrixChoice', plan)).toBe('applied');
+
+            const state = component.matrixState.get('Soru 1')!;
+            expect(state.columns).toEqual([{ id: 'c1', label: 'D' }, { id: 'c2', label: 'Y' }]);
+            expect(state.rows.map((r) => r.id)).toEqual(['r1', 'r2']);
+            expect(state.rows[0].label).toBe('Su kaynar.');
+            expect(state.rows[1].box).toEqual({ x: 140, y: 30, width: 38, height: 18 });
+            expect(Object.keys(state.solution)).toEqual([]);
+            component.selectQuestion(0);
+            expect(component.getActiveInspector()!.matrix!.rows.length).toBe(2);
+        });
+
+        it('applyInteractionDraft_SlotFillPlan_LoadsSlotsWithInputSettingsAndEmptyAnswers', () => {
+            const plan = {
+                version: 1,
+                type: 'slotFill',
+                slots: [
+                    { id: 's1', label: 'a', box: { x: 5, y: 6, width: 40, height: 20 }, input: { kind: 'number', entry: 'fraction', unit: 'cm' } },
+                    { id: 's2', box: { x: 5, y: 40, width: 40, height: 20 }, input: { kind: 'select', options: [{ id: 'o1', label: 'var' }, { id: 'o2', label: 'yok' }] } },
+                    { id: 's3', box: { x: 5, y: 80, width: 40, height: 20 }, input: { kind: 'palette', symbols: ['<', '>'] } },
+                ],
+            };
+
+            expect(component.applyInteractionDraft('Soru 2', 'slotFill', plan)).toBe('applied');
+
+            const slots = component.slotFillState.get('Soru 2')!.slots;
+            expect(slots.map((s) => s.kind)).toEqual(['number', 'select', 'palette']);
+            expect(slots[0]).toEqual(expect.objectContaining({ label: 'a', entry: 'fraction', unitHint: 'cm', value: '', box: { x: 5, y: 6, width: 40, height: 20 } }));
+            expect(slots[1].options).toEqual([{ id: 'o1', label: 'var' }, { id: 'o2', label: 'yok' }]);
+            expect(slots[1].correctOptionIds).toEqual([]);
+            expect(slots[2].symbols).toEqual(['<', '>']);
+        });
+
+        it('applyInteractionDraft_DragPlacePlan_LoadsTargetsAndCards', () => {
+            const plan = {
+                version: 1,
+                type: 'dragPlace',
+                mode: 'place',
+                reuse: false,
+                targets: [{ id: 't1', label: 'Canlı', capacity: 3 }, { id: 't2', box: { x: 10, y: 10, width: 50, height: 30 }, capacity: 1 }],
+                cards: [{ id: 'c1', label: 'Kedi' }, { id: 'c2', box: { x: 70, y: 10, width: 40, height: 30 } }],
+            };
+
+            expect(component.applyInteractionDraft('Soru 3', 'dragPlace', plan)).toBe('applied');
+
+            const state = component.dragPlaceState.get('Soru 3')!;
+            expect(state.targets).toEqual([
+                { id: 't1', label: 'Canlı', box: null, capacity: 3 },
+                { id: 't2', label: '', box: { x: 10, y: 10, width: 50, height: 30 }, capacity: 1 },
+            ]);
+            expect(state.cards.map((c) => c.id)).toEqual(['c1', 'c2']);
+            expect(Object.keys(state.solution)).toEqual([]);
+        });
+
+        it('applyInteractionDraft_MatchPlan_LoadsItemsAndPrelinkedPairOnly', () => {
+            const plan = {
+                version: 1,
+                type: 'match',
+                left: [{ id: 'l1', label: 'Elma' }, { id: 'l2', box: { x: 0, y: 30, width: 40, height: 20 } }],
+                right: [{ id: 'r1', label: 'Meyve' }, { id: 'r2', label: 'Sebze' }],
+                prelinked: [{ leftId: 'l1', rightId: 'r1' }],
+            };
+
+            expect(component.applyInteractionDraft('Soru 4', 'match', plan)).toBe('applied');
+
+            const state = component.matchState.get('Soru 4')!;
+            expect(state.left.map((i) => i.id)).toEqual(['l1', 'l2']);
+            expect(state.right.map((i) => i.label)).toEqual(['Meyve', 'Sebze']);
+            expect(state.pairs['l1']).toBe('r1');
+            expect(state.prelinked).toEqual(['l1']);
+        });
+
+        it('applyInteractionDraft_WrongTypeOrEmptyPlan_ReturnsFalseAndKeepsState', () => {
+            const before = component.matrixState.get('Soru 1');
+
+            expect(component.applyInteractionDraft('Soru 1', 'matrixChoice', { version: 1, type: 'slotFill', slots: [] })).toBe('invalid');
+            expect(component.applyInteractionDraft('Soru 1', 'matrixChoice', null)).toBe('invalid');
+            expect(component.applyInteractionDraft('Yok', 'matrixChoice', {})).toBe('invalid');
+            expect(component.matrixState.get('Soru 1')).toBe(before);
+        });
+
+        it('applyInteractionDraft_DoesNotCountAsUnsavedEdit', () => {
+            component.applyInteractionDraft('Soru 2', 'slotFill', {
+                version: 1, type: 'slotFill', slots: [{ id: 's1', box: { x: 1, y: 1, width: 10, height: 10 }, input: { kind: 'text' } }],
+            });
+
+            expect(component.hasUnsavedEdits()).toBe(false);
+        });
+
+        describe('el yazarlığı korunur (W2)', () => {
+            const place = (targets: number) => ({
+                version: 1, type: 'dragPlace', mode: 'place', reuse: false,
+                targets: Array.from({ length: targets }, (_, i) => ({ id: `t${i + 1}`, label: `H${i + 1}`, capacity: 1 })),
+                cards: [{ id: 'c1', label: 'Kart' }],
+            });
+
+            it('handDrawnState_DraftKeptAndStateUnchanged_ReplaceOptionOverwrites', () => {
+                component.addDragPlaceBucket('Soru 3', 'Elle');
+                const before = component.dragPlaceState.get('Soru 3');
+
+                expect(component.applyInteractionDraft('Soru 3', 'dragPlace', place(2))).toBe('kept');
+                expect(component.dragPlaceState.get('Soru 3')).toBe(before);
+
+                expect(component.applyInteractionDraft('Soru 3', 'dragPlace', place(2), { replace: true })).toBe('applied');
+                expect(component.dragPlaceState.get('Soru 3')!.targets.map((t) => t.label)).toEqual(['H1', 'H2']);
+            });
+
+            it('previousDraftUnedited_NewDraftReplacesIt', () => {
+                expect(component.applyInteractionDraft('Soru 3', 'dragPlace', place(1))).toBe('applied');
+
+                expect(component.applyInteractionDraft('Soru 3', 'dragPlace', place(3))).toBe('applied');
+                expect(component.dragPlaceState.get('Soru 3')!.targets.length).toBe(3);
+            });
+
+            it('previousDraftEditedByHand_TypeSwitchedAwayAndBack_EditsKept', () => {
+                component.applyInteractionDraft('Soru 3', 'dragPlace', place(1));
+                component.setDragPlaceTargetLabel('Soru 3', 't1', 'Öğretmen düzeltti');
+                component.setActivityInteraction(2, 'match');
+                component.setActivityInteraction(2, 'dragPlace');
+
+                expect(component.hasAuthoringEdits('Soru 3', 'dragPlace')).toBe(true);
+                expect(component.applyInteractionDraft('Soru 3', 'dragPlace', place(1))).toBe('kept');
+                expect(component.dragPlaceState.get('Soru 3')!.targets[0].label).toBe('Öğretmen düzeltti');
+            });
+
+            it('solutionEditedByHand_CountsAsEdit', () => {
+                component.applyInteractionDraft('Soru 3', 'dragPlace', place(1));
+                component.toggleDragPlaceAssignment('Soru 3', 't1', 'c1');
+
+                expect(component.applyInteractionDraft('Soru 3', 'dragPlace', place(1))).toBe('kept');
+            });
+
+            it('removeQuestion_ForgetsDraftFingerprint', () => {
+                component.applyInteractionDraft('Soru 4', 'match', {
+                    version: 1, type: 'match', left: [{ id: 'l1', label: 'a' }], right: [{ id: 'r1', label: 'b' }], prelinked: [],
+                });
+                component.removeQuestion(3);
+
+                expect(component.hasAuthoringEdits('Soru 4', 'match')).toBe(false);
+            });
+        });
+
+        it('setActivityInteraction_ComponentC_SwitchesBetweenDragPlaceAndMatch', () => {
+            const regionsBefore = component.regions();
+
+            component.setActivityInteraction(2, 'match');
+
+            expect(component.getInteractionType('Soru 3')).toBe('match');
+            // Bölge listesi yenilenir (üst komponent tip değişimini buradan izler) ve düzeltme sayılır.
+            expect(component.regions()).not.toBe(regionsBefore);
+            expect(component.hasUnsavedEdits()).toBe(true);
+        });
+
+        it('setActivityInteraction_InconsistentWithComponent_Ignored', () => {
+            component.setActivityInteraction(0, 'match');
+            component.setActivityInteraction(1, 'dragPlace');
+
+            expect(component.getInteractionType('Soru 1')).toBe('matrixChoice');
+            expect(component.getInteractionType('Soru 2')).toBe('slotFill');
+        });
+    });
 });

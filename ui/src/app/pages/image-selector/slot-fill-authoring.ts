@@ -9,6 +9,7 @@ import {
   SlotBox,
   SlotFillPlanV1,
   SlotFillSolutionMap,
+  SlotFillSlot,
   SlotInput,
   SlotKind,
   SlotNumberEntry,
@@ -101,6 +102,29 @@ const SETTING_KEYS = [
 
 export function createSlotFillState(): SlotFillAuthoringState {
   return { slots: [], selectedSlotId: null };
+}
+
+/**
+ * Issue #579: kayıtlı / taslak plandan yazarlık durumu (çözümsüz: doğru değerler boş). Plan `parseSlotFillPlan` ile
+ * temizlenmiş olmalı.
+ */
+export function slotFillStateFromPlan(plan: SlotFillPlanV1): SlotFillAuthoringState {
+  return { slots: plan.slots.map(slotFromPlan), selectedSlotId: null };
+}
+
+function slotFromPlan(slot: SlotFillSlot): SlotAuthoring {
+  const base = newSlot(slot.id, { ...slot.box });
+  const next: SlotAuthoring = { ...base, label: slot.label ?? '', kind: slot.input.kind };
+  switch (slot.input.kind) {
+    case 'number':
+      return { ...next, entry: slot.input.entry, unitHint: slot.input.unit ?? '' };
+    case 'select':
+      return { ...next, options: slot.input.options.map((o) => ({ ...o })) };
+    case 'palette':
+      return { ...next, symbols: [...slot.input.symbols] };
+    default:
+      return next;
+  }
 }
 
 /** Yeni kutu: şablon verilirse onun ayarları (tür, giriş, birim, seçenekler, semboller), doğru değerler boş. */

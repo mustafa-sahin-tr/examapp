@@ -62,6 +62,27 @@ export function createMatchState(): MatchAuthoringState {
   return { left: [], right: [], pairs: emptyPairs(), prelinked: [], selectedLeftId: null };
 }
 
+/**
+ * Issue #579: kayıtlı / taslak plandan yazarlık durumu. Plan çözüm taşımaz; yalnız örnek (önceden bağlı) çiftler eşleşme
+ * olarak gelir. Plan `parseMatchPlan` ile temizlenmiş olmalı.
+ */
+export function matchStateFromPlan(plan: MatchPlanV1): MatchAuthoringState {
+  const item = (i: { id: string; label?: string | null; box?: InteractionBox | null }): MatchItemAuthoring => ({
+    id: i.id,
+    label: i.label ?? '',
+    box: i.box ? copyBox(i.box) : null,
+  });
+  const pairs = emptyPairs();
+  plan.prelinked.forEach((p) => (pairs[p.leftId] = p.rightId));
+  return {
+    left: plan.left.map(item),
+    right: plan.right.map(item),
+    pairs,
+    prelinked: plan.prelinked.map((p) => p.leftId),
+    selectedLeftId: null,
+  };
+}
+
 function allIds(state: MatchAuthoringState): string[] {
   return [...state.left.map((i) => i.id), ...state.right.map((i) => i.id)];
 }

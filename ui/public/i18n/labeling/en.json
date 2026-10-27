@@ -124,6 +124,11 @@
         "info_box": "Info boxes are not cropped: they are not sent to training or the bank.",
         "answer_key": "Answer keys are not cropped: they are not sent to training or the bank.",
         "noise": "Noise (optical form, QR code, page header …) is not cropped: it is not sent to training or the bank."
+      },
+      "interaction": "Type",
+      "interactions": {
+        "dragPlace": "Drag and place",
+        "match": "Matching"
       }
     }
   },
@@ -180,7 +185,22 @@
     "saveFailed": "Could not save.",
     "cancel": "Cancel",
     "save": "Save",
-    "placeholderMissing": "Warning: {width} or {height} is missing — without the pixel size Claude's boxes may drift."
+    "placeholderMissing": "Warning: {width} or {height} is missing — without the pixel size Claude's boxes may drift.",
+    "tabs": {
+      "page": "Page",
+      "matrixChoice": "Matrix choice",
+      "slotFill": "Answer box",
+      "dragPlace": "Drag and place",
+      "match": "Matching"
+    },
+    "activity": {
+      "loadFailed": "Activity instructions could not be loaded.",
+      "hint": "Crops of activity blocks of this type are sent to Claude with this instruction. Saving creates a new version; only this type's cache is invalidated (drafts of other types come from the cache). The response schema is fixed.",
+      "instruction": "Instruction",
+      "missing": "The server returned no instruction for this type."
+    },
+    "unsavedOthers": "Other tabs have unsaved changes; they will be lost if you save and close:",
+    "saveAnyway": "Save anyway"
   },
   "book": {
     "label": "Book",
@@ -194,5 +214,40 @@
     "tocHint": "From the table of contents: the subject / topic default when saving to the bank",
     "tocGradeMismatch": "The grade differs from the table of contents; the book topic will not be applied",
     "tocStale": "The table of contents entry is invalid (deleted topic)"
+  },
+  "structure": {
+    "title": "Activity draft",
+    "claudeOnly": "The draft structure is extracted only for the Claude source (or a manual record that started from Claude).",
+    "loading": "Extracting structure…",
+    "ready": "Draft ready",
+    "cached": "cached",
+    "live": "live",
+    "promptVersion": "prompt v{{version}}",
+    "notApplied": "The draft could not be applied to the canvas (empty plan or it does not fit this type).",
+    "invalid": "The draft failed validation and needs fixing:",
+    "instruction": "Instruction:",
+    "retry": "Try again",
+    "reExtract": "Extract structure again (paid)",
+    "reExtractHint": "Ignores the saved draft and asks Claude again; this is billed.",
+    "reExtractConfirm": "Claude will be asked again for this activity's structure and it will be billed. Your manual edits are kept; the new draft replaces them only via \"Apply draft\".",
+    "reExtractAction": "Extract again",
+    "missingResult": "The server returned no result for this block.",
+    "failed": "The activity structure could not be extracted.",
+    "unavailable": "Claude is not configured; activity structure cannot be extracted.",
+    "promptSaved": "{{type}} instruction v{{version}} saved; only drafts of this type use the new instruction. Manually edited activities are kept; the new draft replaces them only via \"Apply draft\".",
+    "promptAskPage": "Extract this page again",
+    "types": {
+      "matrixChoice": "Matrix choice",
+      "slotFill": "Answer box",
+      "dragPlace": "Drag and place",
+      "match": "Matching"
+    },
+    "promptUnchanged": "Instruction unchanged (v{{version}}); nothing to extract again.",
+    "kept": "Your manual edits were kept; the draft was not applied to the canvas.",
+    "apply": "Apply draft",
+    "applyConfirm": "The draft will be applied to the canvas; your manual edits to this activity will be lost.",
+    "applyAction": "Apply",
+    "stale": "The box changed; the draft will be extracted again.",
+    "firstCallCost": "first call ~${{cost}}"
   }
 }

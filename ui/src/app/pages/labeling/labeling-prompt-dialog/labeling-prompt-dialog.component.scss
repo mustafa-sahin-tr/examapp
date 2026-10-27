@@ -69,3 +69,21 @@
   margin: 0;
   color: var(--ms-danger-background);
 }
+
+// Issue #579: Sayfa + etkinlik tipi sekmeleri.
+.lp-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+}
+
+.lp-unsaved {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--ms-danger-background);
+}

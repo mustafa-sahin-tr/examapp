@@ -354,10 +354,100 @@
           </mat-select>
         </mat-form-field>
         }
+        @if (d.blockKind === 'activity' && d.activityComponent === 'C') {
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ k('interaction') }}</mat-label>
+          <mat-select class="lb-interaction-select" [value]="d.interactionType" (selectionChange)="insSetInteraction($event.value)"
+            [disabled]="inspectorLocked">
+            @for (type of componentCTypes; track type) {
+            <mat-option [value]="type">{{ k('interactions.' + type) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        }
         @if (d.blockKind !== 'mcq_question') {
         <p class="lb-hint-sm lb-kind__hint">{{ k('hint.' + d.blockKind) }}</p>
         }
       </section>
+
+      <!-- Issue #579: tipli etkinliğin Claude taslağı (satır / kutu / hedef / öğe tuvalde çizili; düzeltme #581). -->
+      @if (d.blockKind === 'activity' && d.interactionType !== 'mcq') {
+      <section class="lb-insp-sec lb-structure" *transloco="let st; prefix: 'labeling.structure'" [attr.aria-label]="st('title')">
+        <div class="lb-insp-sec__head">
+          <span class="lb-lbl">{{ st('title') }}</span>
+        </div>
+        @if (!structureEnabled()) {
+        <p class="lb-hint-sm">{{ st('claudeOnly') }}</p>
+        } @else {
+        @if (draftOf(d.name); as draft) {
+        @if (draft.stale && draft.status !== 'loading') {
+        <p class="lb-hint-sm lb-structure__stale">{{ st('stale') }}</p>
+        }
+        @switch (draft.status) {
+        @case ('loading') {
+        <p class="lb-structure__status" role="status">
+          <mat-spinner diameter="14" aria-hidden="true"></mat-spinner>{{ st('loading') }}
+        </p>
+        }
+        @case ('ok') {
+        <p class="lb-structure__status lb-structure__status--ok">
+          <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ st('ready') }}
+          @if (draft.result?.origin; as origin) { <span class="lb-pill">{{ origin === 'cached' ? st('cached') : st('live') }}</span> }
+        </p>
+        @if (draft.result; as r) {
+        <p class="lb-hint-sm lb-structure__meta">
+          {{ st('types.' + r.interactionType) }}
+          @if (r.estimatedCostUsd != null) {
+          <!-- Önbellekten gelen sonucun maliyeti ilk (canlı) çağrınındır; şimdi ödenmedi. -->
+          · <span class="lb-structure__cost">{{ r.origin === 'cached'
+            ? st('firstCallCost', { cost: (r.estimatedCostUsd | number: '1.4-4') })
+            : '~$' + (r.estimatedCostUsd | number: '1.4-4') }}</span>
+          }
+          @if (r.promptVersion != null) { · {{ st('promptVersion', { version: r.promptVersion }) }} }
+        </p>
+        @if (draft.apply === 'invalid') {
+        <p class="lb-hint-sm lb-hint-sm--warn lb-structure__not-applied">{{ st('notApplied') }}</p>
+        } @else if (draft.apply === 'kept') {
+        <p class="lb-hint-sm lb-structure__kept">{{ st('kept') }}</p>
+        <button mat-stroked-button type="button" class="lb-structure__apply" (click)="applyDraft(d.name)"
+          [disabled]="inspectorLocked">
+          <mat-icon>file_download</mat-icon>{{ st('apply') }}
+        </button>
+        }
+        @if (!r.valid) {
+        <div class="lb-structure__invalid" role="alert">
+          <span class="lb-hint-sm lb-hint-sm--warn">{{ st('invalid') }}</span>
+          <ul class="lb-structure__errors">
+            @for (message of r.validationErrors; track $index) { <li>{{ message }}</li> }
+          </ul>
+        </div>
+        }
+        @if (r.instruction?.trim(); as instruction) {
+        <p class="lb-structure__instruction"><span class="lb-lbl">{{ st('instruction') }}</span> {{ instruction }}</p>
+        }
+        }
+        }
+        @case ('error') {
+        <p class="lb-hint-sm lb-hint-sm--warn lb-structure__error" role="alert">{{ draft.error }}</p>
+        }
+        }
+        <div class="lb-btn-row">
+          @if (draft.status === 'error') {
+          <button mat-stroked-button type="button" class="lb-structure__retry" (click)="retryStructure(d.name)"
+            [disabled]="inspectorLocked">
+            <mat-icon>refresh</mat-icon>{{ st('retry') }}
+          </button>
+          } @else {
+          <button mat-stroked-button type="button" class="lb-structure__re-extract" (click)="reExtractStructure(d.name)"
+            [disabled]="inspectorLocked || draft.status === 'loading'" [matTooltip]="st('reExtractHint')">
+            <mat-icon>paid</mat-icon>{{ st('reExtract') }}
+          </button>
+          }
+        </div>
+        }
+        }
+      </section>
+      }
 
       @if (d.blockKind === 'mcq_question') {
       <section class="lb-insp-sec">

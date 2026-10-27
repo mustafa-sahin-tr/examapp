@@ -4,7 +4,6 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Anthropic;
 using ExamApp.Api.Models.Dtos.Labeling;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
@@ -94,17 +93,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
     {
         _options = options.Value;
         _logger = loggerFactory.CreateLogger<ClaudeLabelDetector>();
-        if (string.IsNullOrWhiteSpace(_options.ApiKey))
-            return;
-
-        // AsIChatClient: Anthropic SDK'nın MEAI köprüsü. Model sabitlenmez, istek başına ChatOptions.ModelId'den gelir.
-        // UseLogging/UseOpenTelemetry: Aspire dashboard'unda istek/yanıt izleri (gen_ai.* span'leri).
-        _chat = new AnthropicClient { ApiKey = _options.ApiKey }
-            .AsIChatClient()
-            .AsBuilder()
-            .UseLogging(loggerFactory)
-            .UseOpenTelemetry()
-            .Build();
+        _chat = LabelingClaude.CreateClient(_options, loggerFactory);
     }
 
     public bool IsConfigured => _chat is not null;
@@ -208,54 +197,9 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
             (int)Math.Min(outputTokens, int.MaxValue));
     }
 
-    private async Task<(T Result, LabelingAiUsage Usage)> AskAsync<T>(
-        LabelingAiModelOption model, int maxOutputTokens, EncodedRegion region, string instruction, CancellationToken ct)
-    {
-        var chatOptions = new ChatOptions
-        {
-            ModelId = model.Id,
-            MaxOutputTokens = maxOutputTokens,
-            Reasoning = ParseEffort(_options.Effort) is { } effort ? new ReasoningOptions { Effort = effort } : null,
-        };
-
-        // Görsel metinden önce: Claude görsel + talimat sırasında daha isabetli.
-        List<ChatMessage> messages =
-        [
-            new(ChatRole.System, SystemPrompt),
-            new(ChatRole.User, [new DataContent(region.Jpeg, "image/jpeg"), new TextContent(instruction)]),
-        ];
-
-        ChatResponse<T> response;
-        try
-        {
-            response = await _chat!.GetResponseAsync<T>(messages, chatOptions, cancellationToken: ct);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
-        {
-            _logger.LogWarning(ex, "[Labeling] Claude call failed (model {Model})", model.Id);
-            throw new LabelingAiException("Claude request failed.", ex);
-        }
-
-        var usage = new LabelingAiUsage(response.Usage?.InputTokenCount ?? 0, response.Usage?.OutputTokenCount ?? 0);
-        // Yanıt geldi = token ödendi: başarısızlıkta da kullanım istisnayla taşınır (bütçe/toplam).
-        if (response.FinishReason == ChatFinishReason.ContentFilter)
-            throw new LabelingAiException("Claude declined the request.", usage: usage);
-        if (response.FinishReason == ChatFinishReason.Length)
-            throw new LabelingAiException("Claude response was truncated.", usage: usage);
-        if (!response.TryGetResult(out var result) || result is null)
-            throw new LabelingAiException("Claude response did not match the schema.", usage: usage);
-
-        return (result, usage);
-    }
-
-    private static ReasoningEffort? ParseEffort(string? value) => value?.Trim().ToLowerInvariant() switch
-    {
-        "low" => ReasoningEffort.Low,
-        "medium" => ReasoningEffort.Medium,
-        "high" => ReasoningEffort.High,
-        "xhigh" => ReasoningEffort.ExtraHigh,
-        _ => null,
-    };
+    private Task<(T Result, LabelingAiUsage Usage)> AskAsync<T>(
+        LabelingAiModelOption model, int maxOutputTokens, EncodedRegion region, string instruction, CancellationToken ct) =>
+        LabelingClaude.AskAsync<T>(_chat!, _options, _logger, model, maxOutputTokens, SystemPrompt, region, instruction, ct);
 
     public void Dispose() => _chat?.Dispose();
 
@@ -332,7 +276,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
         string InteractionType,
         int X1, int Y1, int X2, int Y2);
 
-    private sealed record OptionBoxes(List<OptionBox> Options);
+    internal sealed record OptionBoxes(List<OptionBox> Options);
 
-    private sealed record OptionBox(string Label, int X1, int Y1, int X2, int Y2);
+    internal sealed record OptionBox(string Label, int X1, int Y1, int X2, int Y2);
 }

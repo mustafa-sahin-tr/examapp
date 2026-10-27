@@ -398,6 +398,9 @@ builder.Services.AddSingleton<ExamApp.Api.Services.Labeling.IClaudeLabelDetector
 builder.Services.AddScoped<ExamApp.Api.Services.Labeling.ILabelingService, ExamApp.Api.Services.Labeling.LabelingService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Labeling.ILabelingBankService, ExamApp.Api.Services.Labeling.LabelingBankService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Labeling.IBookRegistryService, ExamApp.Api.Services.Labeling.BookRegistryService>(); // issue #577
+// issue #579: etkinlik yapısı (blok başına tipine göre Claude çağrısı); anahtar boşsa canlı çağrı 503.
+builder.Services.AddSingleton<ExamApp.Api.Services.Labeling.IActivityStructureExtractor, ExamApp.Api.Services.Labeling.ClaudeActivityStructureExtractor>();
+builder.Services.AddScoped<ExamApp.Api.Services.Labeling.IActivityStructureService, ExamApp.Api.Services.Labeling.ActivityStructureService>();
 // issue #262: audit saklama süresi (KVKK) — AdminDataAccessLog:RetentionDays (varsayılan 180), günlük Hangfire temizliği.
 builder.Services.AddOptions<ExamApp.Api.Services.AdminUsers.AdminDataAccessLogOptions>()
     .BindConfiguration(ExamApp.Api.Services.AdminUsers.AdminDataAccessLogOptions.SectionName)

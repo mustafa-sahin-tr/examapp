@@ -44,6 +44,13 @@ public class LabelingAiOptions
     [Range(1, 10_000)]
     public int LiveCallsPerHour { get; set; } = 60;
 
+    /// <summary>
+    /// Issue #579 (review L1): kullanıcı başına dakikada en fazla <c>activity-structure</c> isteği — kayıttan dönenler dahil
+    /// (kırpma hash'i ve DB sorgusu her istekte çalışır).
+    /// </summary>
+    [Range(1, 10_000)]
+    public int ActivityStructureRequestsPerMinute { get; set; } = 30;
+
     /// <summary><c>low|medium|high|xhigh</c> (MEAI <c>ReasoningEffort</c>); boşsa modelin varsayılanı.</summary>
     public string? Effort { get; set; } = "low";
 }

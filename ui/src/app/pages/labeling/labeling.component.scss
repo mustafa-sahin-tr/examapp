@@ -523,3 +523,41 @@
     width: 100%;
   }
 }
+
+// Issue #579: etkinlik taslağı (Claude yapı çıkarma) kartı.
+.lb-structure {
+  &__status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-weight: 500;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: var(--primaryColor);
+    }
+  }
+
+  &__errors {
+    margin: 4px 0 0;
+    padding-left: 18px;
+    font-family: var(--paragraphFontFamily);
+    font-size: 12px;
+    color: var(--ms-danger-text);
+  }
+
+  &__instruction {
+    margin: 0;
+    font-family: var(--paragraphFontFamily);
+    font-size: 12px;
+    color: var(--ms-text);
+    white-space: pre-line;
+  }
+
+  button {
+    align-self: flex-start;
+  }
+}

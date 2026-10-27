@@ -436,6 +436,40 @@ QuestionTrainer (onaylı, askıda olmayan öğretmen; gateway'de de kural var).
 - Kaba ölçüm (2026-10-22, A4 test sayfası, effort low): Opus 5.5 ~7-13 sn, ~$0.04-0.05/sayfa; Haiku 5.5 ~11 sn,
   ~$0.001/sayfa — Ocelot'un varsayılan 90 sn zaman aşımının altında.
 
+**Issue #579 — Claude ile etkinlik yapısı (blok → taslak etkileşim planı).** `POST /api/exam/labeling/activity-structure`
+`{imageBase64 (bütün sayfa), model, force, blocks: [{key, x, y, width, height (sayfa pikseli), interactionType}]}` (1–20 blok;
+tipler `matrixChoice` | `slotFill` | `dragPlace` | `match`). Blok başına **bir** Claude çağrısı; talimat + JSON şeması bloğun
+tipinden seçilir, çağrılar paralel (`Anthropic:MaxParallelCrops`). Kırpma = blok + 16 px pay (sayfaya kırpılır, `MaxImageEdge`'e
+küçültülür). Yanıt istek sırasıyla blok başına `{key, interactionType, status (ok|error), origin (live|cached|null), plan,
+instruction, valid, validationErrors, promptVersion, inputTokens, outputTokens, estimatedCostUsd, error}`: `plan` tipin
+InteractionPlan v1'i (id'ler sunucuda: `c1`/`r1`, `s1` (+ seçenek `s1o1`), `t1`/`k1`, `l1`/`r1`), kutular **blok kutusuna göre
+göreli** sayfa pikseli ve blok kutusuna kırpılmış; çözüm yok (#580). `valid` = kontrolcünün `ValidateDefinition`'ı (taslak geçersiz
+olabilir, yine döner; `validationErrors` yerelleştirilmiş ipuçları). Tek bloğun Claude hatası yalnız o bloğu `status: error` yapar.
+- **Önbellek** `LabelingActivityResults`: anahtar (kırpma SHA-256, tip, model); kırpma hash'i #577 `QuestionCropHash` tanımı (bankaya
+  kayıttaki yolla, aynı blok bankaya kaydedilince `QuestionSources.CropSha256` ile aynı). Satır yalnız **o tipin** prompt parmak izi
+  (tip + talimat + `ActivityStructureSettings.SchemaRevision` + tipin şema revizyonu) tutarsa döner (`origin: cached`, ücretsiz;
+  token/maliyet ilk çağrınındır). Bir tipin talimatı değişince yalnız o tip yeniden çıkarılır; tip değiştirilen blok yeni tipin
+  talimatıyla yeniden çıkarılır (eski tipin kaydı durur). `force` kaydı atlar ve üzerine yazar. Aynı istekte aynı kırpma + tip tek çağrı.
+- **Kota:** #578 ile ortak sayaçlar — kayıtta olmayan her blok `LiveCallsPerHour`'dan 1 düşer (istek başında toplu; yetmezse istek
+  bütünüyle 429 `LabelingRateLimited` ve reddedilen istek kotayı yemez). Çağrılardan önce en kötü durum maliyeti (blok başına kırpma
+  görseli + ~3000 talimat token'ı girdi, 8000 çıktı, modelin fiyatıyla) kullanıcı ve toplam günlük bütçeden **atomik olarak ayrılır**;
+  sığmazsa 429 `LabelingBudgetExceeded` (ayrılan geri alınır), çağrılar bitince gerçek maliyete düzeltilir (ödenmiş başarısız çağrı
+  dahil). Pahalı modelde (Opus) tek istekteki blok sayısı bütçeyle sınırlanabilir. `ai-detect` bu rezervasyonu kullanmaz (en kötü
+  durum sayfa + 40 şık çağrısı fazla karamsar); eski "harcanan ≥ sınır" kontrolüyle kalır. Kayıttan dönenler dahil kullanıcı
+  başına dakikada `Anthropic:ActivityStructureRequestsPerMinute` (30) istek, aşınca 429 `LabelingRateLimited`. Canlı çağrı
+  gerekiyor ve anahtar yoksa 503 (tamamı kayıtlıysa anahtarsız da döner).
+- **İstemci giderse:** kota alındıktan sonra çağrılar istek iptalinden bağımsız koşar (yalnız 3 dk sunucu zaman aşımı ve uygulama
+  kapanışı keser; hiç başlamamış çağrının saatlik kotası iade edilir); başarılı sonuçlar yine önbelleğe yazılır, bütçe düzeltilir.
+  Tek bloğun önbellek kaydı başarısız olursa loglanır, yanıt yine döner (o blok sonraki istekte yeniden çıkarılır).
+- **Tip başına talimat:** `GET /api/exam/labeling/activity-prompts` (4 tip: etkin, varsayılan = sürüm 0, son 20 sürüm),
+  `PUT /api/exam/labeling/activity-prompts/{interactionType}` `{instruction}` (≤ 4000, `{width}`/`{height}`) → yeni etkin sürüm
+  (`LabelingActivityPromptVersions`, tip başına numara; etkinle aynı içerik yeni sürüm açmaz). Sistem mesajı, koordinat kuralı ve
+  şemalar kodda (`ActivityStructureSettings`, `ActivityDrafts`): ortak kısım değişirse `SchemaRevision`'ı, tek tipin şeması/eşlemesi
+  değişirse o tipin revizyonunu artır. Yetki işaretlemeyle aynı (Admin + QuestionTrainer, onaylı öğretmen; gateway kuralı kapsıyor).
+  **Bilinçli kabul (review L2):** talimatlar #578 sayfa prompt'u gibi **genel**dir — herhangi bir QuestionTrainer bir tipin
+  talimatını değiştirince herkesin sonraki çağrıları onu kullanır (sürüm geçmişi kimin kaydettiğini tutar, eski sürüme dönülebilir).
+- Migration `AddLabelingActivityStructure` exam API açılışında uygulanır (Aspire'da exam API'yi yeniden başlat).
+
 **Issue #470 — işaretleme ekranından soru bankasına kayıt.** Araç çubuğunda **Havuza kaydet** = bankaya kayıt + başarılıysa
 **Eğit** ile aynı akış (send-to-fix → manuel kayıt → sonraki sayfa; eğitim başarısızsa sayfa açık kalır, Eğit ile yeniden
 denenir; kayıt başarısızsa eğitime gönderilmez). Düz **Eğit** değişmedi (bankaya yazmaz). `POST /api/exam/labeling/pages/bank` sayfadaki MCQ soruları müfettişte

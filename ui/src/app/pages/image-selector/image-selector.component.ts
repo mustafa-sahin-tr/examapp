@@ -26,8 +26,18 @@ import {
   MatrixChoicePlanV1,
   MatrixColumnPreset,
   MatrixSelections,
+  emptyMatrixSelections,
+  parseMatrixChoicePlan,
 } from '../../models/matrix-choice';
-import { SLOT_FILL, SLOT_FILL_LIMITS, SLOT_PALETTE_PRESETS, SlotBox, SlotKind, SlotPalettePreset } from '../../models/slot-fill';
+import {
+  SLOT_FILL,
+  SLOT_FILL_LIMITS,
+  SLOT_PALETTE_PRESETS,
+  SlotBox,
+  SlotKind,
+  SlotPalettePreset,
+  parseSlotFillPlan,
+} from '../../models/slot-fill';
 import { isSlotAnswerCorrect } from '../../shared/utils/slot-normalizer';
 import {
   COMMA_SEPARATOR,
@@ -46,10 +56,11 @@ import {
   parseList,
   slotFillIssues,
   slotIssues,
+  slotFillStateFromPlan,
   slotSolution,
 } from './slot-fill-authoring';
-import { DRAG_PLACE, DragPlaceMode } from '../../models/drag-place';
-import { MATCH, MatchSide } from '../../models/match';
+import { DRAG_PLACE, DragPlaceMode, parseDragPlacePlan } from '../../models/drag-place';
+import { MATCH, MatchSide, parseMatchPlan } from '../../models/match';
 import { InteractionBox } from '../../models/interaction-ids';
 import {
   DragPlaceAuthoringState,
@@ -62,6 +73,7 @@ import {
   buildDragPlaceSolution,
   createDragPlaceState,
   dragPlaceIssues,
+  dragPlaceStateFromPlan,
   fillOrderFromCards,
   removePlaceCard,
   removePlaceTarget,
@@ -83,6 +95,7 @@ import {
   buildMatchSolution,
   createMatchState,
   matchIssues,
+  matchStateFromPlan,
   removeMatchItem,
   selectMatchLeft,
   setMatchItemLabel,
@@ -96,6 +109,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { QuestionDetectorService } from '../../services/question-detector.service';
 import {
   ActivityComponent,
+  BlockInteractionType,
   BlockKind,
   Prediction,
   PredictionList,
@@ -191,6 +205,25 @@ const BOX_MODES: ReadonlySet<CanvasSelectionMode> = new Set<CanvasSelectionMode>
   'matchLeft',
   'matchRight',
 ]);
+
+/**
+ * Issue #579: `applyInteractionDraft` sonucu — `applied` yüklendi, `kept` elle yazarlık korundu (taslak bekliyor),
+ * `invalid` plan o tipe uymuyor / boş.
+ */
+export type InteractionDraftApply = 'applied' | 'kept' | 'invalid';
+
+/** Kutuların kapsayan kutusu (boş listede null). */
+function boundingBox(boxes: MatrixBox[]): MatrixBox | null {
+  if (boxes.length === 0) return null;
+  const x = Math.min(...boxes.map((b) => b.x));
+  const y = Math.min(...boxes.map((b) => b.y));
+  return {
+    x,
+    y,
+    width: Math.max(...boxes.map((b) => b.x + b.width)) - x,
+    height: Math.max(...boxes.map((b) => b.y + b.height)) - y,
+  };
+}
 
 /** MCQ dışı (etkileşimli) tür: şık çizilmez, eğitime (send-to-fix) gönderilmez, doğruluk `interactionSolution`'da. */
 export function isInteractiveType(type: QuestionInteractionType): boolean {
@@ -402,6 +435,11 @@ export class ImageSelectorComponent {
   @Output() manualSaved = new EventEmitter<string>();
   /** Tuvaldeki kutuların kaynağı; eğitime gönderilince manuel kayda başlangıç kaynağı olarak yazılır. */
   public readonly detectionSource = signal<DetectionSource | null>(null);
+  /**
+   * Issue #579: tuvaldeki bölgeler yeni bir tespitle (ya da yeni sayfayla) baştan kuruldukça artar. Bölge adları her
+   * tespitte "Soru 1"den başladığı için üst komponent bölgeye bağlı durumu (etkinlik taslakları) bununla sıfırlar.
+   */
+  public readonly detectionRevision = signal(0);
   /** Bu sayfanın son YOLO tahmini (eğitime gönderimde Model anlık görüntüsü olarak saklanır). */
   private lastModelPrediction: { imageData: string; list: PredictionList } | null = null;
   /** Son uygulanan tespitin kutuları; `hasUnsavedEdits` bununla karşılaştırır. */
@@ -492,6 +530,8 @@ export class ImageSelectorComponent {
   public slotFillState = new Map<string, SlotFillAuthoringState>();
   public dragPlaceState = new Map<string, DragPlaceAuthoringState>();
   public matchState = new Map<string, MatchAuthoringState>();
+  /** Issue #579: bölge + tip → son uygulanan taslaktan sonraki yazarlık izi (elle düzeltme ayrımı). */
+  private draftFingerprints = new Map<string, string>();
   /**
    * Issue #578: bölge adına göre blok türü (+ etkinlik bileşeni). Kayıt yoksa `mcq_question`. `info_box` / `answer_key` /
    * `noise` kırpılmaz (eğitime, bankaya, teste gitmez); `activity` etkileşimli soru gibi eğitime gitmez.
@@ -1424,6 +1464,7 @@ export class ImageSelectorComponent {
     this.detectionSource.set(null);
     this.lastModelPrediction = null;
     this.appliedSnapshot = null;
+    this.detectionRevision.update((n) => n + 1);
     return ++this.loadSeq;
   }
 
@@ -2709,6 +2750,140 @@ export class ImageSelectorComponent {
     } else {
       this.interactionTypes.delete(regionName);
     }
+  }
+
+  /**
+   * Issue #579: C bileşeninde (sürükle-yerleştir ailesi) etkileşim tipi seçimi — dragPlace | match. Bileşenle tutarsız tip
+   * (A'da match gibi) yok sayılır.
+   */
+  public setActivityInteraction(questionIndex: number, type: BlockInteractionType) {
+    const region = this.regions()[questionIndex];
+    if (!region || this.getBlockKind(region.name) !== 'activity') return;
+    if (!isConsistentInteraction(this.getActivityComponent(region.name), type)) return;
+    this.setInteractionTypeFor(region.name, type);
+    this.regions.set([...this.regions()]);
+    this.checkRegionWarning(region);
+    this.drawImage();
+  }
+
+  /**
+   * Issue #579: Claude'un çıkardığı taslak planı (kutular blok kutusuna göre) bölgenin o tipteki yazarlık durumuna yükler;
+   * tuvalde satır / hücre, cevap kutusu, hedef / kart, sol / sağ öğe olarak çizilir. Çözüm yok (doğru değerler boş).
+   * Elle yapılan yazarlık ezilmez: o tipin durumu doluysa ve son yüklenen taslaktan farklıysa (öğretmen çizdi / düzeltti)
+   * `'kept'` döner ve durum değişmez; `replace` ("Taslağı uygula" onayı) yine de değiştirir. Plan o tipin geçerli planı
+   * değilse (bozuk, boş) `'invalid'`.
+   */
+  public applyInteractionDraft(
+    regionName: string,
+    type: BlockInteractionType,
+    plan: unknown,
+    options: { replace?: boolean } = {}
+  ): InteractionDraftApply {
+    if (!this.regions().some((r) => r.name === regionName) || plan == null) return 'invalid';
+    let json: string;
+    try {
+      json = JSON.stringify(plan);
+    } catch {
+      return 'invalid';
+    }
+    const apply = this.draftLoader(regionName, type, json);
+    if (!apply) return 'invalid';
+    if (!options.replace && this.hasAuthoringEdits(regionName, type)) return 'kept';
+    apply();
+    this.draftFingerprints.set(`${regionName}\u0000${type}`, this.authoringFingerprint(regionName, type) ?? '');
+    this.drawImage();
+    return 'applied';
+  }
+
+  /**
+   * Bölgenin o tipteki yazarlığı elle değişti mi: durum boş değil ve son uygulanan taslağın (yoksa hiçbir taslağın)
+   * izinden farklı.
+   */
+  public hasAuthoringEdits(regionName: string, type: BlockInteractionType): boolean {
+    if (this.isAuthoringEmpty(regionName, type)) return false;
+    const applied = this.draftFingerprints.get(`${regionName}\u0000${type}`);
+    return applied === undefined || applied !== this.authoringFingerprint(regionName, type);
+  }
+
+  /** Taslak planı ayrıştırır; geçerliyse durumu yazan işlev (henüz yazmaz), değilse null. */
+  private draftLoader(regionName: string, type: BlockInteractionType, json: string): (() => void) | null {
+    if (type === MATRIX_CHOICE) {
+      const parsed = parseMatrixChoicePlan(json);
+      const state = parsed ? this.matrixStateFromPlan(parsed) : null;
+      return state ? () => this.matrixState.set(regionName, state) : null;
+    }
+    if (type === SLOT_FILL) {
+      const parsed = parseSlotFillPlan(json);
+      return parsed ? () => this.slotFillState.set(regionName, slotFillStateFromPlan(parsed)) : null;
+    }
+    if (type === DRAG_PLACE) {
+      const parsed = parseDragPlacePlan(json);
+      return parsed ? () => this.dragPlaceState.set(regionName, dragPlaceStateFromPlan(parsed)) : null;
+    }
+    if (type === MATCH) {
+      const parsed = parseMatchPlan(json);
+      return parsed ? () => this.matchState.set(regionName, matchStateFromPlan(parsed)) : null;
+    }
+    return null;
+  }
+
+  private isAuthoringEmpty(regionName: string, type: BlockInteractionType): boolean {
+    switch (type) {
+      case MATRIX_CHOICE:
+        return (this.matrixState.get(regionName)?.rows.length ?? 0) === 0;
+      case SLOT_FILL:
+        return (this.slotFillState.get(regionName)?.slots.length ?? 0) === 0;
+      case DRAG_PLACE: {
+        const state = this.dragPlaceState.get(regionName);
+        return !state || (state.targets.length === 0 && state.cards.length === 0);
+      }
+      case MATCH: {
+        const state = this.matchState.get(regionName);
+        return !state || (state.left.length === 0 && state.right.length === 0);
+      }
+    }
+  }
+
+  /** Yazarlığın plan + çözüm izi (durum yoksa null); taslaktan sonra elle düzeltme olup olmadığını ayırt eder. */
+  private authoringFingerprint(regionName: string, type: BlockInteractionType): string | null {
+    switch (type) {
+      case MATRIX_CHOICE:
+        return this.matrixState.has(regionName)
+          ? JSON.stringify([this.buildMatrixPlan(regionName), this.buildMatrixSolutionJson(regionName)])
+          : null;
+      case SLOT_FILL: {
+        const state = this.slotFillState.get(regionName);
+        return state ? JSON.stringify([buildSlotFillPlan(state), buildSlotFillSolution(state)]) : null;
+      }
+      case DRAG_PLACE: {
+        const state = this.dragPlaceState.get(regionName);
+        return state ? JSON.stringify([buildDragPlacePlan(state), buildDragPlaceSolution(state)]) : null;
+      }
+      case MATCH: {
+        const state = this.matchState.get(regionName);
+        return state ? JSON.stringify([buildMatchPlan(state), buildMatchSolution(state)]) : null;
+      }
+    }
+  }
+
+  /**
+   * Matris planı → yazarlık durumu. Satır kutusu zorunlu (yazarlık satırı kutuyla çizer); kutusuz satırda hücrelerin
+   * kapsayan kutusu kullanılır, ikisi de yoksa satır atlanır. Hiç satır kalmazsa null.
+   */
+  private matrixStateFromPlan(plan: MatrixChoicePlanV1): MatrixChoiceAuthoringState | null {
+    const rows = plan.rows.flatMap((row) => {
+      const cells = { ...(row.cells ?? {}) } as Record<string, MatrixBox>;
+      const box = row.box ?? boundingBox(Object.values(cells));
+      return box ? [{ id: row.id, label: row.label ?? '', box: { ...box }, cells }] : [];
+    });
+    if (rows.length === 0) return null;
+    return {
+      multiPerRow: plan.multiPerRow,
+      columns: plan.columns.map((c) => ({ ...c })),
+      rows,
+      solution: emptyMatrixSelections(),
+      activeColumnId: plan.columns[0]?.id ?? null,
+    };
   }
 
   /** Tespit sonucundaki türü bölgeye yazar; tipli etkinlik, tür seçicide o tipi seçmekle aynıdır. */
@@ -4111,6 +4286,8 @@ export class ImageSelectorComponent {
         // Issue #578: tür / bileşen değişikliği de kaydedilmemiş düzeltmedir.
         this.getBlockKind(q.name),
         this.getActivityComponent(q.name),
+        // Issue #579: C bileşeninde dragPlace ↔ match seçimi de düzeltmedir (manuel kayıt tipi taşır).
+        this.getBlockKind(q.name) === 'activity' ? this.getInteractionType(q.name) : null,
       ])
     );
   }
@@ -4239,6 +4416,7 @@ export class ImageSelectorComponent {
     this.slotFillState.clear();
     this.dragPlaceState.clear();
     this.matchState.clear();
+    this.draftFingerprints.clear();
     this.regions.set(
       sorted
         // Issue #578: tür alanları bölgeye kopyalanmaz (soru kaydına gitmesin), `blockKinds`'te tutulur.
@@ -4268,6 +4446,7 @@ export class ImageSelectorComponent {
         }))
     );
     sorted.forEach((prediction, index) => this.applyPredictedKind(`Soru ${index + 1}`, prediction));
+    this.detectionRevision.update((n) => n + 1);
 
     const questionCount = this.regions().length;
 
@@ -4433,6 +4612,7 @@ export class ImageSelectorComponent {
     this.slotFillState.clear();
     this.dragPlaceState.clear();
     this.matchState.clear();
+    this.draftFingerprints.clear();
     this.warningMarkers = [];
     this.selectedQuestionIndex = -1;
     this.selectedAnswer = -1;
@@ -4555,6 +4735,9 @@ export class ImageSelectorComponent {
     this.slotFillState.delete(regionName);
     this.dragPlaceState.delete(regionName);
     this.matchState.delete(regionName);
+    for (const key of [...this.draftFingerprints.keys()]) {
+      if (key.startsWith(`${regionName}\u0000`)) this.draftFingerprints.delete(key);
+    }
     this.warningMarkers = this.warningMarkers.filter((w) => w.id !== this.regions()[questionIndex].id);
     this.regions.set(this.regions().filter((_, index) => index !== questionIndex));
 

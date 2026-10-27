@@ -47,7 +47,8 @@
               [class.is-busy]="contentLocked()"
               [attr.aria-busy]="contentLocked() ? 'true' : null"
               [attr.inert]="contentLocked() ? '' : null"
-              [attr.aria-label]="t('itemAria', { label: stepLabel(currentIndex()) })">
+              [attr.aria-label]="t('itemAria', { label: stepLabel(currentIndex()) })"
+              (pointerdown)="onItemInteract()">
               @if (isDragDrop(item)) {
                 @if (currentRegion(); as region) {
                   <app-question-canvas-dragdrop-labeling
@@ -87,6 +88,38 @@
                     [feedbackRows]="revealed() ? null : currentFeedbackRows()"
                     [showSolution]="revealed()"
                     [activityMode]="true"
+                    (answerPayloadChange)="onDragDropChange($event, item)"
+                  />
+                }
+              } @else if (isDragPlace(item)) {
+                @if (currentRegion(); as region) {
+                  <app-question-canvas-drag-place
+                    [questionRegion]="region"
+                    [imageRefresh]="imageRefresh"
+                    [interactionPlanJson]="item.question.interactionPlan || null"
+                    [interactionSolutionJson]="currentSolution()?.interactionSolution ?? null"
+                    [answerPayloadJson]="answerFor(item)?.answerPayload ?? null"
+                    [feedbackRows]="revealed() ? null : currentFeedbackRows()"
+                    [showSolution]="revealed()"
+                    [activityMode]="true"
+                    [disabled]="contentLocked()"
+                    [shuffleSeed]="item.id"
+                    (answerPayloadChange)="onDragDropChange($event, item)"
+                  />
+                }
+              } @else if (isMatch(item)) {
+                @if (currentRegion(); as region) {
+                  <app-question-canvas-match
+                    [questionRegion]="region"
+                    [imageRefresh]="imageRefresh"
+                    [interactionPlanJson]="item.question.interactionPlan || null"
+                    [interactionSolutionJson]="currentSolution()?.interactionSolution ?? null"
+                    [answerPayloadJson]="answerFor(item)?.answerPayload ?? null"
+                    [feedbackRows]="revealed() ? null : currentFeedbackRows()"
+                    [showSolution]="revealed()"
+                    [activityMode]="true"
+                    [disabled]="contentLocked()"
+                    [shuffleSeed]="item.id"
                     (answerPayloadChange)="onDragDropChange($event, item)"
                   />
                 }
@@ -134,6 +167,10 @@
             [error]="panelError()"
             [errorMessage]="panelErrorMessage()"
             [answersSaved]="answersSaved()"
+            [collapsible]="narrowScreen()"
+            [collapsed]="panelCollapsed()"
+            (expand)="panelCollapsed.set(false)"
+            (collapse)="panelCollapsed.set(true)"
             (check)="runCheck()"
             (retry)="retryFailed()"
             (reveal)="reveal()"

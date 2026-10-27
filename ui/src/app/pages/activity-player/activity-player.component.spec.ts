@@ -881,4 +881,233 @@ describe('ActivityPlayerComponent (#573)', () => {
       expect(el().querySelector('[data-cell="r1:c2"]')?.getAttribute('aria-pressed')).toBe('false');
     });
   });
+
+  describe('dragPlace + match (#576)', () => {
+    const DP_PLAN = JSON.stringify({
+      version: 1,
+      type: 'dragPlace',
+      mode: 'place',
+      reuse: false,
+      targets: [{ id: 't1', label: 'Erime', capacity: 2 }, { id: 't2', label: 'Donma', capacity: 1 }],
+      cards: [{ id: 'c1', label: 'Buz' }, { id: 'c2', label: 'Mum' }, { id: 'c3', label: 'Su' }],
+    });
+    const DP_PARTIAL = JSON.stringify({ version: 1, type: 'dragPlace', placements: [{ targetId: 't1', cardId: 'c1' }, { targetId: 't1', cardId: 'c3' }] });
+    const MT_PLAN = JSON.stringify({
+      version: 1,
+      type: 'match',
+      left: [{ id: 'l1', label: 'Deprem' }, { id: 'l2', label: 'Sel' }, { id: 'l3', label: 'Çığ' }],
+      right: [{ id: 'r1', label: 'Fay' }, { id: 'r2', label: 'Yağmur' }, { id: 'r3', label: 'Kar' }, { id: 'r4', label: 'Rüzgâr' }],
+      prelinked: [{ leftId: 'l1', rightId: 'r1' }],
+    });
+    const MT_PARTIAL = JSON.stringify({ version: 1, type: 'match', pairs: [{ leftId: 'l2', rightId: 'r3' }] });
+    const base = () => instance().testInstanceQuestions[0].question;
+    const typed = (type: string, plan: string, answer: string, overrides: Partial<TestInstance> = {}) =>
+      instance(overrides, [{ answerPayload: answer, question: { ...base(), interactionType: type, interactionPlan: plan } }]);
+    const rowTexts = () => Array.from(el().querySelectorAll('[data-testid="result-row"]')).map((r) => r.textContent ?? '');
+
+    it('dragPlace_RendersPlayer_IncompleteOnlyWhenNothingPlacedOrOrderGap_NeutralWording', async () => {
+      await create(typed('DragPlace', DP_PLAN, DP_PARTIAL));
+      fixture.componentInstance.goTo(0);
+      await settle();
+
+      expect(el().querySelector('app-question-canvas-drag-place')).not.toBeNull();
+      expect(el().querySelector('app-question-canvas-dragdrop-labeling')).toBeNull();
+      expect(fixture.componentInstance.steps()[0].state).toBe('answered');
+      // Boş kalan kova (çeldirici / boş olması doğru olabilir) eksik sayılmaz.
+      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+      const item = fixture.componentInstance.items()[0];
+      fixture.componentInstance.onDragDropChange(JSON.stringify({ version: 1, type: 'dragPlace', placements: [] }), item);
+      await settle();
+      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankKind()).toBe('generic');
+    });
+
+    it('dragPlace_OrderModeGapIsIncomplete', async () => {
+      const order = JSON.stringify({
+        version: 1,
+        type: 'dragPlace',
+        mode: 'order',
+        targets: [{ id: 't1', capacity: 1 }, { id: 't2', capacity: 1 }],
+        cards: [{ id: 'c1', label: 'A' }, { id: 'c2', label: 'B' }],
+      });
+      await create(typed('dragPlace', order, JSON.stringify({ version: 1, type: 'dragPlace', placements: [{ targetId: 't1', cardId: 'c2' }] })));
+      expect(fixture.componentInstance.blankItems()).toContain('a');
+    });
+
+    it('dragPlace_CheckSendsPayload_RowsAggregatePerTarget_IncludingMissingCardRow', async () => {
+      await create(typed('dragPlace', DP_PLAN, DP_PARTIAL));
+      fixture.componentInstance.goTo(0);
+      await settle();
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 1,
+          totalCount: 4,
+          questions: [
+            {
+              instanceQuestionId: 101,
+              isCorrect: false,
+              correctCount: 1,
+              totalCount: 3,
+              feedback: '{"rows":[{"id":"t1:c1","correct":true},{"id":"t1:","correct":false},{"id":"t2:","correct":false},{"id":"t1:c3","correct":false}]}',
+            },
+            { instanceQuestionId: 102, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+
+      expect(activityService.check.mock.lastCall![1][0]).toEqual({ instanceQuestionId: 101, selectedAnswerId: null, answerPayload: DP_PARTIAL });
+      const rows = fixture.componentInstance.currentRows();
+      expect(rows.map((r) => [r.label, r.correct])).toEqual([
+        ['Erime: Buz, Su', false],
+        ['Donma: boş', false],
+      ]);
+      expect(rowTexts()[0]).toContain('Erime: Buz, Su');
+      expect(el().querySelector('[data-placed="t1:c3"]')?.classList).toContain('is-wrong');
+      expect(el().querySelector('[data-group="t2"]')?.classList).toContain('is-incomplete');
+
+      // Yanlış kart havuza alınınca madde değişir: sonucu düşer, yeni cevap kaydedilir.
+      (el().querySelector('[data-return="t1:c3"]') as HTMLElement).click();
+      await settle();
+      expect(testService['saveAnswer']).toHaveBeenLastCalledWith(
+        expect.objectContaining({ testQuestionId: 101, answerPayload: JSON.stringify({ version: 1, type: 'dragPlace', placements: [{ targetId: 't1', cardId: 'c1' }] }) })
+      );
+      expect(fixture.componentInstance.results()[101]).toBeUndefined();
+      // Diğer kartların işaretleri kalır; taşınan kart havuzda işaretsiz.
+      expect(el().querySelector('[data-placed="t1:c1"]')?.classList).toContain('is-correct');
+      expect(el().querySelector('[data-testid="dp-pool"] [data-card="c3"]')).not.toBeNull();
+      expect(fixture.componentInstance.stale()).toBe(true);
+    });
+
+    it('lockedWhileChecking_PlayersGetDisabled', async () => {
+      await create(typed('dragPlace', DP_PLAN, DP_PARTIAL));
+      fixture.componentInstance.goTo(0);
+      fixture.componentInstance.checking.set(true);
+      await settle();
+      const player = fixture.debugElement.query((d) => d.name === 'app-question-canvas-drag-place').componentInstance;
+      expect(player.locked()).toBe(true);
+      fixture.componentInstance.checking.set(false);
+      await settle();
+      expect(player.locked()).toBe(false);
+    });
+
+    it('dragPlace_RevealShowsSolutionPerTarget', async () => {
+      await create(typed('dragPlace', DP_PLAN, DP_PARTIAL, { checkCount: 1 }));
+      activityService.getSolutions.mockReturnValue(
+        of({
+          success: true,
+          questions: [
+            { instanceQuestionId: 101, questionId: 1, correctAnswerId: null, interactionSolution: '{"t1":["c1","c2"],"t2":["c3"]}' },
+            { instanceQuestionId: 102, questionId: 2, correctAnswerId: 11, interactionSolution: null },
+          ],
+        })
+      );
+      fixture.componentInstance.goTo(0);
+      await fixture.componentInstance.reveal();
+      await settle();
+
+      expect(fixture.componentInstance.currentRows().map((r) => r.solution)).toEqual(['Buz, Mum', 'Su']);
+      expect(el().querySelector('[data-placed="t2:c3"]')).not.toBeNull();
+    });
+
+    it('match_RendersPlayer_UnpairedLeftIsIncomplete_RowsSkipExample', async () => {
+      await create(typed('Match', MT_PLAN, MT_PARTIAL));
+      fixture.componentInstance.goTo(0);
+      await settle();
+
+      expect(el().querySelector('app-question-canvas-match')).not.toBeNull();
+      expect(fixture.componentInstance.blankItems()).toContain('a');
+      expect(fixture.componentInstance.blankKind()).toBe('generic');
+
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 0,
+          totalCount: 3,
+          questions: [
+            { instanceQuestionId: 101, isCorrect: false, correctCount: 0, totalCount: 2, feedback: '{"rows":[{"id":"l2","correct":false},{"id":"l3","correct":false}]}' },
+            { instanceQuestionId: 102, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+      expect(fixture.componentInstance.currentRows().map((r) => [r.label, r.correct])).toEqual([
+        ['Sel: Kar', false],
+        ['Çığ: boş', false],
+      ]);
+
+      const full = JSON.stringify({ version: 1, type: 'match', pairs: [{ leftId: 'l2', rightId: 'r2' }, { leftId: 'l3', rightId: 'r3' }] });
+      fixture.componentInstance.onDragDropChange(full, fixture.componentInstance.items()[0]);
+      await settle();
+      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+    });
+  });
+
+  describe('mobile result panel collapse (#576 E2E)', () => {
+    const checkResponse = () =>
+      of({
+        success: true,
+        correctCount: 0,
+        totalCount: 2,
+        questions: [
+          { instanceQuestionId: 101, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+          { instanceQuestionId: 102, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+        ],
+      });
+
+    it('narrow_FixWrongCollapses_ExpandReopens_NewCheckReopens', async () => {
+      await create();
+      fixture.componentInstance.narrowScreen.set(true);
+      activityService.check.mockReturnValue(checkResponse());
+      await fixture.componentInstance.runCheck();
+      await settle();
+      expect(q('check-compact')).toBeNull();
+      expect(q('collapse')).not.toBeNull();
+
+      (q('fix-wrong') as HTMLButtonElement).click();
+      await settle();
+      expect(q('check-compact')).not.toBeNull();
+      expect(q('check-summary')?.textContent).toContain('0 / 2 doğru');
+
+      (q('expand') as HTMLButtonElement).click();
+      await settle();
+      expect(q('check-compact')).toBeNull();
+
+      q('item-content')!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+      await settle();
+      expect(q('check-compact')).not.toBeNull();
+
+      await fixture.componentInstance.runCheck();
+      await settle();
+      expect(q('check-compact')).toBeNull();
+    });
+
+    it('answerChangeAfterCheck_Collapses_WideScreenNeverCompact', async () => {
+      await create();
+      fixture.componentInstance.narrowScreen.set(true);
+      activityService.check.mockReturnValue(checkResponse());
+      await fixture.componentInstance.runCheck();
+      fixture.componentInstance.onChoiceSelected(12, fixture.componentInstance.items()[1]);
+      await settle();
+      expect(fixture.componentInstance.panelCollapsed()).toBe(true);
+      expect(q('check-compact')).not.toBeNull();
+
+      fixture.componentInstance.narrowScreen.set(false);
+      await settle();
+      expect(q('check-compact')).toBeNull();
+      expect(q('collapse')).toBeNull();
+    });
+
+    it('beforeAnyCheck_InteractionDoesNotCollapse', async () => {
+      await create();
+      fixture.componentInstance.narrowScreen.set(true);
+      q('item-content')!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+      await settle();
+      expect(fixture.componentInstance.panelCollapsed()).toBe(false);
+    });
+  });
 });
+

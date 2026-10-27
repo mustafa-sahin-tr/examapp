@@ -1,0 +1,233 @@
+<div class="dp-root" [class.is-activity]="activity()" [class.is-solution]="solutionShown()" [class.is-locked]="locked()" [class.is-order]="orderMode()"
+  [class.is-picking]="!!selected()" (keydown.escape)="cancelSelection()"
+  *transloco="let t; prefix: 'shared.questionCanvas'">
+  @if (!hidePassage && passageImageUrl(); as pUrl) {
+    <div class="dp-passage">
+      @if (passageTitle(); as title) {
+        <div class="dp-passage__title">{{ title }}</div>
+      }
+      <img class="dp-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  <!-- Kart içeriği: görsel kırpması ve/veya metin. -->
+  <ng-template #cardBody let-cardId let-compact="compact">
+    @let c = card(cardId);
+    @if (c?.box && imageUrl() && region(); as r) {
+      <app-question-image-crop class="dp-card__crop" [src]="imageUrl()!" [box]="c!.box!" [sourceWidth]="r.width"
+        [sourceHeight]="r.height" [maxHeight]="compact ? 40 : 88" [imageRefresh]="imageRefresh" />
+    }
+    @if (c?.label) {
+      <span class="dp-card__label">{{ c!.label }}</span>
+    } @else if (!c?.box || !imageUrl()) {
+      <span class="dp-card__label">{{ cardText(cardId) }}</span>
+    }
+  </ng-template>
+
+  <!-- Hedefe yerleşmiş kartlar (bırakma alanı ve kova ortak). -->
+  <ng-template #placedCards let-target let-compact="compact">
+    @for (cardId of cardsOf(target.id); track cardId) {
+      @let mark = pairMark()(target.id, cardId);
+      <div class="dp-placed" [class.dp-placed--compact]="compact"
+        cdkDrag [cdkDragData]="dragData(cardId, target.id)" [cdkDragDisabled]="dragDisabled()"
+        (cdkDragStarted)="onDragStarted()" (cdkDragEnded)="onDragEnded()">
+        <div class="dp-card dp-card--placed" [class.dp-card--compact]="compact"
+          [class.is-correct]="mark === 'correct'" [class.is-wrong]="mark === 'wrong'"
+          role="button" [attr.tabindex]="locked() ? null : 0" [attr.aria-disabled]="locked() ? 'true' : null"
+          [attr.aria-label]="placedCardAria(target.id, cardId)" [attr.data-placed]="target.id + ':' + cardId"
+          (click)="onPlacedCard(target.id, cardId, $event)"
+          (keydown.enter)="onPlacedCard(target.id, cardId, $event)" (keydown.space)="onPlacedCard(target.id, cardId, $event)">
+          <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: cardId, compact: compact }" />
+          @if (mark) {
+            <span class="dp-mark" [class.dp-mark--wrong]="mark === 'wrong'" aria-hidden="true" [attr.data-mark]="target.id + ':' + cardId">
+              <mat-icon>{{ mark === 'correct' ? 'check' : 'close' }}</mat-icon>
+            </span>
+          }
+        </div>
+        @if (mark === 'wrong') {
+          <button type="button" class="dp-return" [class.dp-return--icon]="compact" data-testid="return-to-pool"
+            [attr.data-return]="target.id + ':' + cardId" [disabled]="locked()"
+            [attr.aria-label]="t('dragPlace.returnToPoolAria', { card: cardText(cardId) })"
+            (click)="onReturn(target.id, cardId, $event)">
+            <mat-icon aria-hidden="true">undo</mat-icon>
+            @if (!compact) { <span>{{ t('dragPlace.returnToPool') }}</span> }
+          </button>
+        }
+      </div>
+    }
+  </ng-template>
+
+  @if (imageUrl(); as url) {
+    <div class="dp-stage">
+      <div class="dp-image-wrap">
+        <img class="dp-image" [src]="url" [alt]="t('questionAlt')" [appStorageImageRetry]="imageRefresh" />
+        @if (zoneTargets().length > 0) {
+          <div class="dp-overlay" data-testid="dp-overlay">
+            @for (target of zoneTargets(); track target.id) {
+              <!-- Görsel üstündeki alan yalnız özet gösterir (kart yok): içerik alan kutusunu hiç aşmaz, öğeler üst üste binmez.
+                   Yerleşen kartlar ve "Havuza geri al" aşağıdaki Yerleşimler tepsisinde. -->
+              @let state = targetState()(target.id);
+              @let placedHere = cardsOf(target.id);
+              <div class="dp-zone" [ngStyle]="boxStyle(target.box)" [class.is-full]="isFull(target)"
+                [class.is-incomplete]="state === 'incomplete'" [class.is-wrong]="state === 'wrong'"
+                [class.is-correct]="state === 'correct'" [class.is-pending]="pendingTarget() === target.id"
+                cdkDropList [id]="listId(target.id)" [cdkDropListData]="target.id"
+                [cdkDropListConnectedTo]="targetConnectedTo()" [cdkDropListEnterPredicate]="canEnter"
+                [cdkDropListSortingDisabled]="true" [cdkDropListDisabled]="locked()"
+                (cdkDropListDropped)="onDrop($event)" [attr.data-target]="target.id">
+                <!-- Klavye ve ekran okuyucu tepsideki başlığı kullanır; bu düğme yalnız işaretçi içindir. -->
+                <button type="button" class="dp-zone__button" tabindex="-1" [disabled]="locked()"
+                  [attr.aria-label]="targetAria(target)" [title]="zoneTitle(target)"
+                  (click)="onTarget(target, $event)"></button>
+                <span class="dp-zone__summary" aria-hidden="true" [attr.data-zone-summary]="target.id">
+                  @if (target.capacity === 1 && placedHere.length === 1) {
+                    <span class="dp-zone__text">{{ cardText(placedHere[0]) }}</span>
+                  } @else if (placedHere.length > 0) {
+                    <span class="dp-zone__count">{{ placedHere.length }}/{{ target.capacity }}</span>
+                  }
+                  @if (state) {
+                    <span class="dp-zone__state" [attr.data-zone-state]="state">
+                      <mat-icon>{{ state === 'correct' ? 'check' : state === 'wrong' ? 'close' : 'priority_high' }}</mat-icon>
+                    </span>
+                  }
+                </span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  @if (plan()) {
+    @if (groupTargets().length > 0) {
+      <section class="dp-groups" data-testid="dp-buckets">
+        @if (zoneTargets().length > 0) {
+          <div class="dp-section-title">{{ t('dragPlace.trayTitle') }}</div>
+        }
+        <div class="dp-buckets">
+          @for (target of groupTargets(); track target.id) {
+            @let incomplete = targetIncomplete()(target.id);
+            <section class="dp-bucket" [class.is-full]="isFull(target)" [class.is-incomplete]="incomplete"
+              [class.is-pending]="pendingTarget() === target.id"
+              cdkDropList [id]="groupListId(target)" [cdkDropListData]="target.id"
+              [cdkDropListConnectedTo]="targetConnectedTo()" [cdkDropListEnterPredicate]="canEnter"
+              [cdkDropListSortingDisabled]="true" [cdkDropListDisabled]="locked()"
+              (cdkDropListDropped)="onDrop($event)" [attr.data-group]="target.id">
+              <button type="button" class="dp-bucket__head" data-target-button [attr.data-for]="target.id" [disabled]="locked()"
+                [attr.aria-pressed]="pendingTarget() === target.id"
+                [attr.aria-label]="targetAria(target)" (click)="onTarget(target, $event)" (keydown)="onTargetKeydown($event)">
+                <span class="dp-bucket__name">
+                  @if (target.box) { <mat-icon class="dp-bucket__pin" aria-hidden="true">place</mat-icon> }
+                  {{ targetText(target) }}
+                </span>
+                @if (target.capacity > 1) {
+                  <span class="dp-bucket__count" aria-hidden="true">{{ cardsOf(target.id).length }}/{{ target.capacity }}</span>
+                }
+                @if (incomplete) {
+                  <span class="dp-incomplete" aria-hidden="true" [attr.data-incomplete]="target.id">
+                    <mat-icon>priority_high</mat-icon>{{ t('dragPlace.targetIncomplete') }}
+                  </span>
+                }
+              </button>
+              <div class="dp-bucket__cards" (click)="onTarget(target, $event)">
+                <ng-container *ngTemplateOutlet="placedCards; context: { $implicit: target, compact: false }" />
+                @if (cardsOf(target.id).length === 0) {
+                  <span class="dp-bucket__empty" aria-hidden="true">{{ t('dragPlace.dropHere') }}</span>
+                }
+              </div>
+            </section>
+          }
+        </div>
+      </section>
+    }
+
+    @if (orderMode()) {
+      <section class="dp-sequence" data-testid="dp-sequence">
+        <div class="dp-section-title">{{ t('dragPlace.sequenceTitle') }}</div>
+        <ol class="dp-sequence__list" cdkDropList [id]="sequenceListId" [cdkDropListData]="'sequence'"
+          [cdkDropListConnectedTo]="sequenceConnectedTo()" [cdkDropListDisabled]="locked()"
+          (cdkDropListDropped)="onDrop($event)">
+          @for (entry of sequenceItems(); track entry.key; let i = $index; let first = $first; let last = $last) {
+            @let cardId = entry.cardId;
+            @let mark = sequenceMark(i, cardId);
+            <li class="dp-seq-item" [class.is-correct]="mark === 'correct'" [class.is-wrong]="mark === 'wrong'"
+              cdkDrag [cdkDragData]="dragData(cardId, 'sequence', i)" [cdkDragDisabled]="dragDisabled()"
+              (cdkDragStarted)="onDragStarted()" (cdkDragEnded)="onDragEnded()" [attr.data-sequence-index]="i"
+              [attr.data-card]="cardId">
+              <span class="dp-seq-item__no">{{ positionText(i) }}</span>
+              <span class="dp-seq-item__card">
+                <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: cardId, compact: true }" />
+              </span>
+              @if (mark) {
+                <span class="dp-mark dp-mark--inline" [class.dp-mark--wrong]="mark === 'wrong'" [attr.data-mark]="i + ':' + cardId">
+                  <mat-icon aria-hidden="true">{{ mark === 'correct' ? 'check' : 'close' }}</mat-icon>
+                  <span class="dp-visually-hidden">{{ t(mark === 'correct' ? 'dragPlace.markCorrect' : 'dragPlace.markWrong') }}</span>
+                </span>
+              }
+              <span class="dp-seq-item__actions">
+                <button mat-icon-button type="button" data-move="up" [disabled]="first || locked()"
+                  [attr.aria-label]="t('dragPlace.moveUp', { card: cardText(cardId) })" (click)="moveBy(i, -1)">
+                  <mat-icon>arrow_upward</mat-icon>
+                </button>
+                <button mat-icon-button type="button" data-move="down" [disabled]="last || locked()"
+                  [attr.aria-label]="t('dragPlace.moveDown', { card: cardText(cardId) })" (click)="moveBy(i, 1)">
+                  <mat-icon>arrow_downward</mat-icon>
+                </button>
+                <button mat-icon-button type="button" data-testid="seq-remove" [disabled]="locked()"
+                  [attr.aria-label]="t('dragPlace.returnToPoolAria', { card: cardText(cardId) })" (click)="removeAt(i)">
+                  <mat-icon>undo</mat-icon>
+                </button>
+              </span>
+            </li>
+          }
+        </ol>
+        @for (i of emptyPositions(); track i) {
+          <div class="dp-seq-empty" aria-hidden="true" [class.is-incomplete]="targets()[i] && targetIncomplete()(targets()[i].id)">
+            <span class="dp-seq-item__no">{{ positionText(i) }}</span>
+            <span>{{ t('dragPlace.sequenceEmpty') }}</span>
+            @if (targets()[i] && targetIncomplete()(targets()[i].id)) {
+              <span class="dp-incomplete" [attr.data-incomplete]="targets()[i].id">
+                <mat-icon>priority_high</mat-icon>{{ t('dragPlace.targetIncomplete') }}
+              </span>
+            }
+          </div>
+        }
+      </section>
+    }
+
+    <section class="dp-pool">
+      <div class="dp-section-title">
+        {{ t('dragPlace.poolTitle') }}
+        @if (reuse()) { <span class="dp-note">{{ t('dragPlace.reuseNote') }}</span> }
+      </div>
+      <div class="dp-pool__list" cdkDropList [id]="poolListId" [cdkDropListData]="'pool'"
+        [cdkDropListConnectedTo]="poolConnectedTo()" [cdkDropListSortingDisabled]="true"
+        [cdkDropListDisabled]="locked()" (cdkDropListDropped)="onDrop($event)" data-testid="dp-pool">
+        @for (c of poolCards(); track c.id) {
+          <div class="dp-card" [class.is-selected]="isSelected(c.id)"
+            cdkDrag [cdkDragData]="dragData(c.id, 'pool')" [cdkDragDisabled]="dragDisabled()"
+            (cdkDragStarted)="onDragStarted()" (cdkDragEnded)="onDragEnded()"
+            role="button" [attr.tabindex]="locked() ? null : 0" [attr.aria-disabled]="locked() ? 'true' : null"
+            [attr.aria-pressed]="orderMode() ? null : isSelected(c.id)"
+            [attr.aria-label]="orderMode() ? t('dragPlace.addToSequenceAria', { card: cardText(c.id) }) : cardText(c.id)"
+            [attr.data-card]="c.id"
+            (click)="onPoolCard(c.id, $event)" (keydown.enter)="onPoolCard(c.id, $event)" (keydown.space)="onPoolCard(c.id, $event)">
+            <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: c.id, compact: false }" />
+          </div>
+        } @empty {
+          <span class="dp-pool__empty">{{ t('dragPlace.poolEmpty') }}</span>
+        }
+      </div>
+    </section>
+
+    <div class="dp-footer">
+      <p class="dp-hint" aria-live="polite" data-testid="dp-hint">{{ hint() }}</p>
+      <button mat-stroked-button type="button" class="dp-clear" (click)="clearAll()"
+        [disabled]="locked() || placedCount() === 0">
+        <mat-icon>restart_alt</mat-icon>
+        {{ 'common.clear' | transloco }}
+      </button>
+    </div>
+  }
+</div>

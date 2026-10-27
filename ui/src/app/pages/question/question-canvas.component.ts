@@ -22,6 +22,8 @@ import {
 } from '../image-selector/image-selector.component';
 import { MatrixColumnPreset } from '../../models/matrix-choice';
 import { SlotKind, SlotNumberEntry, SlotPalettePreset, SlotUnitMode } from '../../models/slot-fill';
+import { DragPlaceMode } from '../../models/drag-place';
+import { MatchSide } from '../../models/match';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { PASSAGE_INSTRUCTION_MAX_LENGTH, PassageKind, WorksheetKind, saveValidationMessage } from '../../models/activity';
 import { Subject } from '../../models/subject';
@@ -881,6 +883,98 @@ export class QuestionCanvasComponent implements OnInit {
 
   insSlotClear() {
     this.withSlot((name) => this.imageSelector.clearSlots(name));
+  }
+
+  // ---- Issue #576: sürükle-yerleştir / eşleştirme ----
+
+  private withRegion(run: (name: string) => void) {
+    const name = this.insName;
+    if (name) run(name);
+  }
+
+  insPlaceMode(mode: DragPlaceMode) {
+    this.withRegion((name) => this.imageSelector.setDragPlaceMode(name, mode));
+  }
+
+  insPlaceReuse(on: boolean) {
+    this.withRegion((name) => this.imageSelector.setDragPlaceReuse(name, on));
+  }
+
+  insPlaceDrawMode(mode: 'placeTarget' | 'placeCard') {
+    const idx = this.insIndex;
+    if (idx != null) this.imageSelector.selectDragPlaceMode(idx, mode);
+  }
+
+  insPlaceAddBucket() {
+    this.withRegion((name) => this.imageSelector.addDragPlaceBucket(name));
+  }
+
+  insPlaceFillOrder() {
+    this.withRegion((name) => this.imageSelector.fillDragPlaceOrderFromCards(name));
+  }
+
+  insPlaceAddCards(text: string) {
+    this.withRegion((name) => this.imageSelector.addDragPlaceCardsFromText(name, text));
+  }
+
+  insPlaceSelectTarget(targetId: string) {
+    this.withRegion((name) => this.imageSelector.selectDragPlaceTarget(name, targetId));
+  }
+
+  insPlaceTargetLabel(targetId: string, event: Event) {
+    this.withRegion((name) => this.imageSelector.setDragPlaceTargetLabel(name, targetId, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  /** Kapasite: sınırlara çekilen değer alana geri yazılır (99 yazılınca 30 görünsün). */
+  insPlaceCapacity(targetId: string, event: Event) {
+    this.withRegion((name) => {
+      this.imageSelector.setDragPlaceTargetCapacity(name, targetId, QuestionCanvasComponent.inputValue(event));
+      const capacity = this.imageSelector.ensureDragPlaceState(name).targets.find((t) => t.id === targetId)?.capacity;
+      const input = event.target as HTMLInputElement | null;
+      if (input && capacity !== undefined) input.value = String(capacity);
+    });
+  }
+
+  insPlaceRemoveTarget(targetId: string) {
+    this.withRegion((name) => this.imageSelector.removeDragPlaceTarget(name, targetId));
+  }
+
+  insPlaceCardLabel(cardId: string, event: Event) {
+    this.withRegion((name) => this.imageSelector.setDragPlaceCardLabel(name, cardId, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  insPlaceRemoveCard(cardId: string) {
+    this.withRegion((name) => this.imageSelector.removeDragPlaceCard(name, cardId));
+  }
+
+  insPlaceToggle(targetId: string, cardId: string) {
+    this.withRegion((name) => this.imageSelector.toggleDragPlaceAssignment(name, targetId, cardId));
+  }
+
+  insMatchDrawMode(mode: 'matchLeft' | 'matchRight') {
+    const idx = this.insIndex;
+    if (idx != null) this.imageSelector.selectMatchMode(idx, mode);
+  }
+
+  insMatchAddText(side: MatchSide, text: string) {
+    this.withRegion((name) => this.imageSelector.addMatchItemsFromText(name, side, text));
+  }
+
+  insMatchLabel(side: MatchSide, id: string, event: Event) {
+    this.withRegion((name) => this.imageSelector.setMatchItemLabel(name, side, id, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  insMatchRemove(side: MatchSide, id: string) {
+    this.withRegion((name) => this.imageSelector.removeMatchItemFrom(name, side, id));
+  }
+
+  insMatchPair(leftId: string, event: Event) {
+    const rightId = (event.target as HTMLSelectElement | null)?.value ?? '';
+    this.withRegion((name) => this.imageSelector.setMatchPair(name, leftId, rightId || null));
+  }
+
+  insMatchPrelinked(leftId: string) {
+    this.withRegion((name) => this.imageSelector.toggleMatchPrelinked(name, leftId));
   }
 
   slotPreviewFor(slotId: string): string {

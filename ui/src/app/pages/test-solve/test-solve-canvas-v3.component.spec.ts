@@ -494,6 +494,22 @@ describe('TestSolveCanvasComponentv3 — matrixChoice (#574)', () => {
         expect(component.interactionKind('somethingElse')).toBe('mcq');
         expect(component.interactionKind('slotFill')).toBe('slotFill');
         expect(component.interactionKind('SLOTFILL')).toBe('slotFill');
+        expect(component.interactionKind('DragPlace')).toBe('dragPlace');
+        expect(component.interactionKind('MATCH')).toBe('match');
+    });
+
+    it('blankDragPlaceAndMatchPayloads_AreSentButCountAsUnanswered (#576)', () => {
+        const place = (placements: object[]) => JSON.stringify({ version: 1, type: 'dragPlace', placements });
+        const match = (pairs: object[]) => JSON.stringify({ version: 1, type: 'match', pairs });
+        component.saveDragDropAnswerForQuestion(place([{ targetId: 't1', cardId: 'c1' }]), 1);
+        expect(component.unansweredCount()).toBe(1);
+        component.saveDragDropAnswerForQuestion(place([]), 1);
+        expect(vi.mocked(testService.saveAnswer).mock.lastCall![0].answerPayload).toBe(place([]));
+        expect(component.unansweredCount()).toBe(2);
+        component.saveDragDropAnswerForQuestion(match([{ leftId: 'l1', rightId: 'r1' }]), 1);
+        expect(component.unansweredCount()).toBe(1);
+        component.saveDragDropAnswerForQuestion(match([]), 1);
+        expect(component.unansweredCount()).toBe(2);
     });
 
     it('completeTest_FlushesSlotFillPlayersBeforeSaving (#575)', async () => {

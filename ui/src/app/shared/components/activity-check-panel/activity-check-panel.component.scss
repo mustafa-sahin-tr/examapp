@@ -128,3 +128,38 @@
   color: var(--ms-text-weak);
   font-size: 12px;
 }
+
+// Issue #576 (E2E): dar ekranda daraltılmış sonuç çubuğu ve aç/kapa oku.
+.acp {
+  position: relative;
+}
+
+.acp--collapsible {
+  padding-right: 52px;
+}
+
+.acp--compact {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 12px;
+}
+
+.acp__compact-summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.acp__toggle {
+  flex: 0 0 auto;
+
+  &--corner {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+  }
+}

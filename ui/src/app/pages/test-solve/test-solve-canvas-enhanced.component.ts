@@ -1,5 +1,7 @@
 import { isBlankMatrixChoicePayload } from '../../models/matrix-choice';
 import { isBlankSlotFillPayload } from '../../models/slot-fill';
+import { isBlankDragPlacePayload } from '../../models/drag-place';
+import { isBlankMatchPayload } from '../../models/match';
 import {
   AfterViewInit,
   Component,
@@ -1804,11 +1806,16 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   private isQuestionAnswered(question: TestInstanceQuestion): boolean {
-    // Issue #574 / #575: seçimsiz matris / boş kutulu cevap (Temizle) gönderilir ama cevapsız sayılır (sunucu da boş sayar).
+    // Issue #574 / #575 / #576: seçimsiz matris / boş kutulu / yerleşimsiz / eşleşmesiz cevap (Temizle) gönderilir ama
+    // cevapsız sayılır (sunucu da boş sayar).
     const payload = question.answerPayload;
     return (
       !!question.selectedAnswerId ||
-      (this.isNonEmptyPayload(payload) && !isBlankMatrixChoicePayload(payload) && !isBlankSlotFillPayload(payload))
+      (this.isNonEmptyPayload(payload) &&
+        !isBlankMatrixChoicePayload(payload) &&
+        !isBlankSlotFillPayload(payload) &&
+        !isBlankDragPlacePayload(payload) &&
+        !isBlankMatchPayload(payload))
     );
   }
 

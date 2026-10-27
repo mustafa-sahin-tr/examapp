@@ -34,6 +34,15 @@ public interface IInteractionGrader
     /// Varsayılan: true (MCQ, dragDropLabeling — bugünkü davranış değişmez).
     /// </summary>
     bool ValidateDefinition(string? plan, string? solution) => true;
+
+    /// <summary>
+    /// review #576 (H1/M1): <see cref="ValidateDefinition"/>'dan GEÇMİŞ tanımı saklanacak biçime getirir — ör. dragPlace kartlarını /
+    /// match sağ öğelerini rastgele sıraya dizip opak id'lerle değiştirir ve çözümü (örnek çiftleri) buna göre eşler; yazarlık
+    /// sırası/ardışık id'ler çözümü ele vermesin. Kayıt yolları (tekli güncelleme yalnız tanım değiştiyse, toplu kayıt, içe aktarım)
+    /// çağırır. Sonuç yine <see cref="ValidateDefinition"/>'dan geçer ve aynı cevabı aynı puanlar. İstisna atmaz; bir şey
+    /// yapamazsa girdiyi aynen döner. Varsayılan: aynen (MCQ, dragDropLabeling, matrixChoice, slotFill).
+    /// </summary>
+    (string? Plan, string? Solution) PrepareForStorage(string? plan, string? solution) => (plan, solution);
 }
 
 /// <summary>review #571: tüm etkileşim tipleri için ortak payload üst sınırı (karakter); save-answer ve kontrol ucu uygular.</summary>

@@ -85,4 +85,8 @@ export type RegionOrAnswerHit =
   | { type: 'matrixCell'; value: { questionIndex: number; rowId: string; columnId: string } }
   // Issue #575: cevap kutusu.
   | { type: 'slot'; value: { questionIndex: number; slotId: string } }
+  // Issue #576: sürükle-yerleştir hedefi / kartı ve eşleştirme öğesi.
+  | { type: 'placeTarget'; value: { questionIndex: number; targetId: string } }
+  | { type: 'placeCard'; value: { questionIndex: number; cardId: string } }
+  | { type: 'matchItem'; value: { questionIndex: number; side: 'left' | 'right'; itemId: string } }
   | null;

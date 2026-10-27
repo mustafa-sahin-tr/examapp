@@ -1,0 +1,246 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.mt-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.mt-passage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+
+  &__title {
+    font-weight: 700;
+    font-family: var(--mainFontFamily);
+  }
+
+  &__image {
+    display: block;
+    max-width: 100%;
+    max-height: 35vh;
+    object-fit: contain;
+  }
+}
+
+.mt-stage {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+}
+
+.mt-image {
+  display: block;
+  max-width: 100%;
+  max-height: 40vh;
+  width: auto;
+  height: auto;
+}
+
+// Pano: iki sütun yan yana (360px'te de); aradaki boşlukta çizgiler.
+.mt-board {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: clamp(28px, 12vw, 120px);
+  align-items: start;
+  padding: 4px 0;
+}
+
+.mt-lines {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.mt-line {
+  stroke: var(--ms-action-border);
+  stroke-width: 3;
+  stroke-linecap: round;
+
+  &--example {
+    stroke: var(--ms-border-weak);
+    stroke-dasharray: 2 6;
+  }
+
+  &--solution {
+    stroke: var(--ms-success-border);
+  }
+
+  &--correct {
+    stroke: var(--ms-success-border);
+  }
+
+  &--wrong {
+    stroke: var(--ms-danger-border);
+    stroke-dasharray: 8 6;
+  }
+}
+
+.mt-dot {
+  fill: var(--ms-action-border);
+
+  &.mt-line--correct {
+    fill: var(--ms-success-border);
+  }
+
+  &.mt-line--wrong {
+    fill: var(--ms-danger-border);
+  }
+}
+
+.mt-col {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+
+  &__cell {
+    display: flex;
+    min-width: 0;
+  }
+}
+
+.mt-item {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 2px solid var(--ms-action-border);
+  border-radius: 10px;
+  background: var(--ms-surface);
+  color: var(--ms-text-strong);
+  font: inherit;
+  font-family: var(--mainFontFamily);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+  touch-action: manipulation;
+
+  &:focus-visible {
+    outline: 3px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+
+  &.is-linked {
+    background: color-mix(in srgb, var(--ms-action-border) 10%, var(--ms-surface));
+  }
+
+  &.is-selected {
+    border-color: var(--ms-action-border-focus);
+    background: color-mix(in srgb, var(--ms-action-border-focus) 16%, var(--ms-surface));
+    box-shadow: 0 0 0 3px var(--ms-focus-ring);
+  }
+
+  &.is-example {
+    border-style: dotted;
+    border-color: var(--ms-border-weak);
+    cursor: default;
+  }
+
+  &.is-correct {
+    border-color: var(--ms-success-border);
+  }
+
+  &.is-wrong {
+    border-style: dashed;
+    border-color: var(--ms-danger-border);
+  }
+
+  &:disabled {
+    color: var(--ms-text);
+  }
+
+  &__crop {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  &__label {
+    overflow-wrap: anywhere;
+  }
+
+  &__tag {
+    font-family: var(--paragraphFontFamily);
+    font-weight: 400;
+    font-size: 0.8em;
+    opacity: 0.8;
+  }
+}
+
+.mt-root.is-picking .mt-item:not(:disabled):not(.is-selected) {
+  border-color: var(--ms-action-border-focus);
+}
+
+.mt-mark {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--ms-success-border);
+  color: var(--ms-surface);
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+
+  &--wrong {
+    background: var(--ms-danger-border);
+  }
+}
+
+.mt-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mt-hint {
+  margin: 0;
+  flex: 1 1 200px;
+  font-size: 0.9em;
+}
+
+@media (min-width: 720px) {
+  .mt-root.is-activity .mt-item {
+    min-height: 52px;
+    padding: 8px 12px;
+  }
+}

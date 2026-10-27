@@ -717,6 +717,8 @@ public class QuestionTransferJobRunner
                         }
                         interactionWarnings[externalKey] = $"{externalKey}: invalid {importedType} definition, {dropped} dropped";
                     }
+                    // review #576 (H1/M1): saklanacak biçim (dragPlace / match: karışık sıra + opak id).
+                    (importedPlan, importedSolution) = interactionGrader.PrepareForStorage(importedPlan, importedSolution);
 
                     var question = new Question
                     {

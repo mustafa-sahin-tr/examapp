@@ -1,0 +1,22 @@
+:host {
+  display: block;
+  max-width: 100%;
+  line-height: 0;
+}
+
+.qic {
+  position: relative;
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--ms-surface);
+}
+
+.qic__img {
+  position: absolute;
+  max-width: none;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+}

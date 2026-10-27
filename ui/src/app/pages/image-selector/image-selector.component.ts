@@ -48,6 +48,47 @@ import {
   slotIssues,
   slotSolution,
 } from './slot-fill-authoring';
+import { DRAG_PLACE, DragPlaceMode } from '../../models/drag-place';
+import { MATCH, MatchSide } from '../../models/match';
+import { InteractionBox } from '../../models/interaction-ids';
+import {
+  DragPlaceAuthoringState,
+  DragPlaceInspector,
+  addPlaceCardBox,
+  addPlaceCardsFromText,
+  addPlaceTarget,
+  buildDragPlaceInspector,
+  buildDragPlacePlan,
+  buildDragPlaceSolution,
+  createDragPlaceState,
+  dragPlaceIssues,
+  fillOrderFromCards,
+  removePlaceCard,
+  removePlaceTarget,
+  selectPlaceTarget,
+  setDragPlaceMode,
+  setDragPlaceReuse,
+  setPlaceCardLabel,
+  setPlaceTargetCapacity,
+  setPlaceTargetLabel,
+  togglePlaceAssignment,
+} from './drag-place-authoring';
+import {
+  MatchAuthoringState,
+  MatchInspector,
+  addMatchItem,
+  addMatchItemsFromText,
+  buildMatchInspector,
+  buildMatchPlan,
+  buildMatchSolution,
+  createMatchState,
+  matchIssues,
+  removeMatchItem,
+  selectMatchLeft,
+  setMatchItemLabel,
+  setMatchPair,
+  toggleMatchPrelinked,
+} from './match-authoring';
 import { QuillModule } from 'ngx-quill';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -101,13 +142,44 @@ interface WarningMarker {
   type?: 'error' | 'warning' | 'info';
 }
 
-export type QuestionInteractionType = 'mcq' | 'dragDropLabeling' | typeof MATRIX_CHOICE | typeof SLOT_FILL;
+export type QuestionInteractionType =
+  | 'mcq'
+  | 'dragDropLabeling'
+  | typeof MATRIX_CHOICE
+  | typeof SLOT_FILL
+  | typeof DRAG_PLACE
+  | typeof MATCH;
 
 /**
  * Tuvalde çizim modu. Issue #574: `matrixRow` satır kutusu, `matrixCell` (isteğe bağlı) hücre kutusu çizer.
  * Issue #575: `slot` cevap kutusu çizer.
  */
-export type CanvasSelectionMode = 'passage' | 'question' | 'answer' | 'dropzone' | 'matrixRow' | 'matrixCell' | 'slot';
+export type CanvasSelectionMode =
+  | 'passage'
+  | 'question'
+  | 'answer'
+  | 'dropzone'
+  | 'matrixRow'
+  | 'matrixCell'
+  | 'slot'
+  // Issue #576: sürükle-yerleştir hedef kutusu / kart kırpması, eşleştirme sol / sağ öğe kırpması.
+  | 'placeTarget'
+  | 'placeCard'
+  | 'matchLeft'
+  | 'matchRight';
+
+/** Issue #576: kutu çizimi soru bölgesinde zorunlu olan modlar (boş alanda çizilmez). */
+const BOX_MODES: ReadonlySet<CanvasSelectionMode> = new Set<CanvasSelectionMode>([
+  'answer',
+  'dropzone',
+  'matrixRow',
+  'matrixCell',
+  'slot',
+  'placeTarget',
+  'placeCard',
+  'matchLeft',
+  'matchRight',
+]);
 
 /** MCQ dışı (etkileşimli) tür: şık çizilmez, eğitime (send-to-fix) gönderilmez, doğruluk `interactionSolution`'da. */
 export function isInteractiveType(type: QuestionInteractionType): boolean {
@@ -212,6 +284,9 @@ export interface ActiveInspector {
   matrix: MatrixInspector | null;
   /** Issue #575: yalnız slotFill sorusunda dolu. */
   slotFill: SlotFillInspector | null;
+  /** Issue #576: yalnız dragPlace / match sorusunda dolu. */
+  dragPlace: DragPlaceInspector | null;
+  match: MatchInspector | null;
   isExample: boolean;
   exampleAnswer: string;
   difficulty: number | null;
@@ -377,7 +452,7 @@ export class ImageSelectorComponent {
   /** Tuvale yeni bir sayfa/görsel yüklenmeye başladığında yayınlanır (sayfaya özel ebeveyn durumu sıfırlansın). */
   @Output() imageChange = new EventEmitter<void>();
 
-  contextMenuType: 'region' | 'answer' | 'worksheet' | 'dropzone' | 'passage' | 'matrix' | 'slot' = 'region'; // ✅ Sağ tıklama menüsünün türü
+  contextMenuType: 'region' | 'answer' | 'worksheet' | 'dropzone' | 'passage' | 'matrix' | 'slot' | 'place' | 'match' = 'region'; // ✅ Sağ tıklama menüsünün türü
   selectedRegion: number | null = null;
   selectedAnswer: number | null = null; // ✅ Seçili cevap indeksi
   selectedDropZoneId: string | null = null;
@@ -386,6 +461,9 @@ export class ImageSelectorComponent {
   selectedMatrixColumnId: string | null = null;
   /** Issue #575: sağ tıklanan cevap kutusu. */
   selectedSlotId: string | null = null;
+  /** Issue #576: sağ tıklanan sürükle-yerleştir hedefi / kartı ya da eşleştirme öğesi. */
+  selectedPlaceItem: { kind: 'target' | 'card'; id: string } | null = null;
+  selectedMatchItem: { side: MatchSide; id: string } | null = null;
   previewMode = signal(false); // ✅ Önizleme açma durumu
   currentTestId = signal<number | null>(null); // Test ID'yi sakla
 
@@ -397,6 +475,8 @@ export class ImageSelectorComponent {
   public labelingState = new Map<string, DragDropLabelingAuthoringState>();
   public matrixState = new Map<string, MatrixChoiceAuthoringState>();
   public slotFillState = new Map<string, SlotFillAuthoringState>();
+  public dragPlaceState = new Map<string, DragPlaceAuthoringState>();
+  public matchState = new Map<string, MatchAuthoringState>();
 
   // Classification selection for preview mode
   public currentClassification = signal<ClassificationSelection | null>(null);
@@ -734,6 +814,24 @@ export class ImageSelectorComponent {
         }
       }
 
+      // Issue #576: sürükle-yerleştir — önce kartlar (genelde hedeflerin içinde küçük), sonra hedefler; eşleştirme öğeleri.
+      const inBox = (b: InteractionBox | null) =>
+        !!b && x >= region.x + b.x && x <= region.x + b.x + b.width && y >= region.y + b.y && y <= region.y + b.y + b.height;
+      if (this.getInteractionType(region.name) === DRAG_PLACE) {
+        const place = this.ensureDragPlaceState(region.name);
+        const card = [...place.cards].reverse().find((c) => inBox(c.box));
+        if (card) return { type: 'placeCard', value: { questionIndex: qi, cardId: card.id } };
+        const target = [...place.targets].reverse().find((t) => inBox(t.box));
+        if (target) return { type: 'placeTarget', value: { questionIndex: qi, targetId: target.id } };
+      }
+      if (this.getInteractionType(region.name) === MATCH) {
+        const match = this.ensureMatchState(region.name);
+        for (const side of ['right', 'left'] as const) {
+          const item = [...match[side]].reverse().find((i) => inBox(i.box));
+          if (item) return { type: 'matchItem', value: { questionIndex: qi, side, itemId: item.id } };
+        }
+      }
+
       // Önce answer'ları kontrol edelim
       for (let ai = 0; ai < region.answers.length; ai++) {
         const answer = region.answers[ai];
@@ -835,6 +933,21 @@ export class ImageSelectorComponent {
       this.selectedDropZoneId = null;
       this.selectedPassageId = null;
       this.selectedSlotId = hit.value.slotId;
+    } else if (hit.type === 'placeTarget' || hit.type === 'placeCard') {
+      this.contextMenuType = 'place';
+      this.selectedRegion = hit.value.questionIndex;
+      this.selectedAnswer = null;
+      this.selectedDropZoneId = null;
+      this.selectedPassageId = null;
+      this.selectedPlaceItem =
+        hit.type === 'placeTarget' ? { kind: 'target', id: hit.value.targetId } : { kind: 'card', id: hit.value.cardId };
+    } else if (hit.type === 'matchItem') {
+      this.contextMenuType = 'match';
+      this.selectedRegion = hit.value.questionIndex;
+      this.selectedAnswer = null;
+      this.selectedDropZoneId = null;
+      this.selectedPassageId = null;
+      this.selectedMatchItem = { side: hit.value.side, id: hit.value.itemId };
     } else if (hit.type === 'question') {
       this.contextMenuType = 'region';
       this.selectedPassageId = null;
@@ -865,6 +978,8 @@ export class ImageSelectorComponent {
     this.selectedMatrixRowId = null;
     this.selectedMatrixColumnId = null;
     this.selectedSlotId = null;
+    this.selectedPlaceItem = null;
+    this.selectedMatchItem = null;
   }
 
   stopEvent(event?: MouseEvent) {
@@ -912,6 +1027,21 @@ export class ImageSelectorComponent {
     } else if (action === 'removeSlot') {
       const regionName = this.regions()[this.selectedRegion ?? -1]?.name;
       if (regionName && this.selectedSlotId) this.removeSlot(regionName, this.selectedSlotId);
+    } else if (action === 'selectPlaceMode') {
+      this.selectDragPlaceMode(this.selectedRegion!, 'placeTarget');
+    } else if (action === 'selectMatchMode') {
+      this.selectMatchMode(this.selectedRegion!, 'matchLeft');
+    } else if (action === 'removePlaceItem') {
+      const regionName = this.regions()[this.selectedRegion ?? -1]?.name;
+      const item = this.selectedPlaceItem;
+      if (regionName && item) {
+        if (item.kind === 'target') this.removeDragPlaceTarget(regionName, item.id);
+        else this.removeDragPlaceCard(regionName, item.id);
+      }
+    } else if (action === 'removeMatchItem') {
+      const regionName = this.regions()[this.selectedRegion ?? -1]?.name;
+      const item = this.selectedMatchItem;
+      if (regionName && item) this.removeMatchItemFrom(regionName, item.side, item.id);
     } else if (action === 'alignAnswers') {
       this.alignAnswers(this.selectedRegion!, true);
     } else if (action === 'predict') {
@@ -1521,6 +1651,14 @@ export class ImageSelectorComponent {
         return this.getThemeColors().matrixCell;
       case 'slot':
         return this.getThemeColors().slotBox;
+      case 'placeTarget':
+        return this.getThemeColors().placeTarget;
+      case 'placeCard':
+        return this.getThemeColors().placeCard;
+      case 'matchLeft':
+        return this.getThemeColors().matchLeft;
+      case 'matchRight':
+        return this.getThemeColors().matchRight;
       default:
         return 'black';
     }
@@ -1546,7 +1684,11 @@ export class ImageSelectorComponent {
           ? [...this.matrixIssues(region.name), ...this.matrixNotices(region.name)]
           : type === SLOT_FILL
             ? this.slotFillMessages(region.name)
-            : this.mcqIssues(region, { requireCorrectAnswer: true });
+            : type === DRAG_PLACE
+              ? this.dragPlaceMessages(region.name)
+              : type === MATCH
+                ? this.matchMessages(region.name)
+                : this.mcqIssues(region, { requireCorrectAnswer: true });
 
     if (messages.length > 0) {
       this.warningMarkers.push({
@@ -1651,6 +1793,13 @@ export class ImageSelectorComponent {
             issues.push({ index, no: index + 1, name: region.name, messages: slotMessages });
           }
         }
+        // Issue #576: sürükle-yerleştir / eşleştirme kuralları da yalnız Kaydet'te.
+        if ((type === DRAG_PLACE || type === MATCH) && opts.requireCorrectAnswer && !opts.skipInteractive) {
+          const messages = type === DRAG_PLACE ? this.dragPlaceMessages(region.name) : this.matchMessages(region.name);
+          if (messages.length > 0) {
+            issues.push({ index, no: index + 1, name: region.name, messages });
+          }
+        }
         return;
       }
       const messages = this.mcqIssues(region, opts);
@@ -1700,6 +1849,11 @@ export class ImageSelectorComponent {
     /** Issue #575: cevap kutusu çerçevesi / eksik değerli kutu. */
     slotBox: string;
     slotMissing: string;
+    /** Issue #576: sürükle-yerleştir hedefi / kartı, eşleştirme sol / sağ öğesi. */
+    placeTarget: string;
+    placeCard: string;
+    matchLeft: string;
+    matchRight: string;
   };
 
   private getThemeColors() {
@@ -1714,6 +1868,10 @@ export class ImageSelectorComponent {
         surface: this.cssVar('--ms-colors-white') || 'white',
         slotBox: this.cssVar('--ms-colors-code-purple') || 'purple',
         slotMissing: this.cssVar('--ms-colors-status-error') || 'crimson',
+        placeTarget: this.cssVar('--ms-colors-code-blue') || 'steelblue',
+        placeCard: this.cssVar('--ms-colors-code-sand') || 'sienna',
+        matchLeft: this.cssVar('--ms-colors-code-green') || 'olivedrab',
+        matchRight: this.cssVar('--ms-colors-code-yellow') || 'goldenrod',
       };
     }
     return this.themeColors;
@@ -1860,6 +2018,115 @@ export class ImageSelectorComponent {
 
       this.drawMatrixOverlays();
       this.drawSlotFillOverlays();
+      this.drawDragPlaceOverlays();
+      this.drawMatchOverlays();
+    }
+  }
+
+  /** Kutu + köşe etiketi (açık kontur altta: her sayfa renginde seçilebilsin). */
+  private drawTaggedBox(
+    x: number,
+    y: number,
+    box: InteractionBox,
+    color: string,
+    tag: string,
+    opts: { dashed?: boolean; bold?: boolean; fill?: number } = {}
+  ) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const theme = this.getThemeColors();
+    ctx.save();
+    ctx.globalAlpha = opts.fill ?? 0.1;
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, box.width, box.height);
+    ctx.globalAlpha = 1;
+    ctx.setLineDash([]);
+    ctx.strokeStyle = theme.surface;
+    ctx.lineWidth = opts.bold ? 7 : 5;
+    ctx.strokeRect(x, y, box.width, box.height);
+    ctx.setLineDash(opts.dashed ? [6, 4] : []);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = opts.bold ? 4 : 2;
+    ctx.strokeRect(x, y, box.width, box.height);
+    ctx.setLineDash([]);
+    ctx.font = `bold 11px ${theme.fontFamily}`;
+    const tagW = ctx.measureText(tag).width + 8;
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y - 15, tagW, 15);
+    ctx.fillStyle = theme.surface;
+    ctx.fillText(tag, x + 4, y - 4);
+    ctx.restore();
+  }
+
+  /**
+   * Issue #576: hedef kutuları (düz, "H n ×kapasite"; seçili hedef kalın) ve kart kırpmaları (kesik, "K n"; seçili hedefin
+   * doğru kartı dolgulu).
+   */
+  private drawDragPlaceOverlays() {
+    const theme = this.getThemeColors();
+    for (const region of this.regions()) {
+      if (this.getInteractionType(region.name) !== DRAG_PLACE) continue;
+      const state = this.ensureDragPlaceState(region.name);
+      const selectedCards = new Set(
+        state.selectedTargetId && Object.hasOwn(state.solution, state.selectedTargetId) ? state.solution[state.selectedTargetId] : []
+      );
+      state.targets.forEach((target, i) => {
+        if (!target.box) return;
+        const tag = state.mode === 'order' ? `${i + 1}.` : `H${i + 1}${target.capacity > 1 ? ` ×${target.capacity}` : ''}`;
+        this.drawTaggedBox(region.x + target.box.x, region.y + target.box.y, target.box, theme.placeTarget, tag, {
+          bold: state.selectedTargetId === target.id,
+        });
+      });
+      state.cards.forEach((card, i) => {
+        if (!card.box) return;
+        this.drawTaggedBox(region.x + card.box.x, region.y + card.box.y, card.box, theme.placeCard, `K${i + 1}`, {
+          dashed: true,
+          fill: selectedCards.has(card.id) ? 0.35 : 0.1,
+        });
+      });
+    }
+  }
+
+  /** Issue #576: eşleştirme sol ("L n") / sağ ("R n", kesik) kırpmaları ve bağlı çiftlerin arasındaki çizgi. */
+  private drawMatchOverlays() {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const theme = this.getThemeColors();
+    for (const region of this.regions()) {
+      if (this.getInteractionType(region.name) !== MATCH) continue;
+      const state = this.ensureMatchState(region.name);
+      const center = (b: InteractionBox) => ({ x: region.x + b.x + b.width / 2, y: region.y + b.y + b.height / 2 });
+      state.left.forEach((item, i) => {
+        if (item.box) {
+          this.drawTaggedBox(region.x + item.box.x, region.y + item.box.y, item.box, theme.matchLeft, `L${i + 1}`, {
+            bold: state.selectedLeftId === item.id,
+          });
+        }
+      });
+      state.right.forEach((item, i) => {
+        if (item.box) {
+          this.drawTaggedBox(region.x + item.box.x, region.y + item.box.y, item.box, theme.matchRight, `R${i + 1}`, { dashed: true });
+        }
+      });
+      state.left.forEach((item) => {
+        const rightId = Object.hasOwn(state.pairs, item.id) ? state.pairs[item.id] : null;
+        const right = state.right.find((r) => r.id === rightId);
+        if (!item.box || !right?.box) return;
+        const a = center(item.box);
+        const b = center(right.box);
+        ctx.save();
+        ctx.setLineDash(state.prelinked.includes(item.id) ? [2, 6] : []);
+        ctx.strokeStyle = theme.surface;
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+        ctx.strokeStyle = theme.matchLeft;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+      });
     }
   }
 
@@ -2030,13 +2297,22 @@ export class ImageSelectorComponent {
 
     const mode = this.selectionMode();
 
-    if (hit && (hit.type === 'question' || hit.type === 'matrixRow' || hit.type === 'matrixCell' || hit.type === 'slot')) {
+    if (
+      hit &&
+      (hit.type === 'question' ||
+        hit.type === 'matrixRow' ||
+        hit.type === 'matrixCell' ||
+        hit.type === 'slot' ||
+        hit.type === 'placeTarget' ||
+        hit.type === 'placeCard' ||
+        hit.type === 'matchItem')
+    ) {
       // Şık / drop-zone / matris çizimi hangi soruya ait olacak — modu ZORLAMADAN sadece hedef soruyu belirle.
       // Mod artık üstteki segmented kontrolden geliyor.
       this.selectedQuestionIndex = hit.value.questionIndex;
     } else if (!hit) {
       // Boş alanda şık / zone / matris kutusu çizilemez.
-      if (mode === 'answer' || mode === 'dropzone' || mode === 'matrixRow' || mode === 'matrixCell' || mode === 'slot') {
+      if (mode && BOX_MODES.has(mode)) {
         console.log('Exited startSelection hit === null. IsDrawing :', this.isDrawing);
         return;
       }
@@ -2111,6 +2387,12 @@ export class ImageSelectorComponent {
         // Issue #575: kutuya tık = müfettişte o kutuyu düzenle (mod değişmez).
         const regionName = this.regions()[hit.value.questionIndex]?.name;
         if (regionName) this.selectSlot(regionName, hit.value.slotId);
+        this.focusQuestionKeepingMode(hit.value.questionIndex);
+      } else if (hit && (hit.type === 'placeTarget' || hit.type === 'placeCard' || hit.type === 'matchItem')) {
+        // Issue #576: hedefe tık = çözüm atamasında seç; karta tık = seçili hedefin doğru kartı yap / kaldır;
+        // sol öğeye tık = seç; sağ öğeye tık = seçili sola bağla (mod değişmez).
+        const regionName = this.regions()[hit.value.questionIndex]?.name;
+        if (regionName) this.onAuthoringItemClick(regionName, hit);
         this.focusQuestionKeepingMode(hit.value.questionIndex);
       } else if (hit && (hit.type === 'answer' || hit.type === 'dropzone' || hit.type === 'matrixRow')) {
         this.selectQuestion(hit.value.questionIndex);
@@ -2231,6 +2513,14 @@ export class ImageSelectorComponent {
       this.addMatrixBoxFromDrag(this.selectedQuestionIndex, this.startX, this.startY, endX, endY);
     } else if (this.selectionMode() === 'slot' && this.selectedQuestionIndex !== -1) {
       this.addSlotFromDrag(this.selectedQuestionIndex, this.startX, this.startY, endX, endY);
+    } else if (
+      (this.selectionMode() === 'placeTarget' ||
+        this.selectionMode() === 'placeCard' ||
+        this.selectionMode() === 'matchLeft' ||
+        this.selectionMode() === 'matchRight') &&
+      this.selectedQuestionIndex !== -1
+    ) {
+      this.addInteractionBoxFromDrag(this.selectionMode()!, this.selectedQuestionIndex, this.startX, this.startY, endX, endY);
     }
 
     this.isDrawing = false;
@@ -2268,6 +2558,10 @@ export class ImageSelectorComponent {
       this.ensureMatrixState(regionName);
     } else if (type === SLOT_FILL) {
       this.ensureSlotFillState(regionName);
+    } else if (type === DRAG_PLACE) {
+      this.ensureDragPlaceState(regionName);
+    } else if (type === MATCH) {
+      this.ensureMatchState(regionName);
     }
 
     this.drawImage();
@@ -2424,6 +2718,12 @@ export class ImageSelectorComponent {
     if (this.getInteractionType(regionName) === SLOT_FILL) {
       return JSON.stringify(buildSlotFillPlan(this.ensureSlotFillState(regionName)));
     }
+    if (this.getInteractionType(regionName) === DRAG_PLACE) {
+      return JSON.stringify(buildDragPlacePlan(this.ensureDragPlaceState(regionName)));
+    }
+    if (this.getInteractionType(regionName) === MATCH) {
+      return JSON.stringify(buildMatchPlan(this.ensureMatchState(regionName)));
+    }
     const plan = this.buildInteractionPlan(regionName);
     if (!plan) return null;
     return JSON.stringify(plan);
@@ -2439,6 +2739,14 @@ export class ImageSelectorComponent {
     }
     if (this.getInteractionType(regionName) === SLOT_FILL) {
       const solution = buildSlotFillSolution(this.ensureSlotFillState(regionName));
+      return solution ? JSON.stringify(solution) : null;
+    }
+    if (this.getInteractionType(regionName) === DRAG_PLACE) {
+      const solution = buildDragPlaceSolution(this.ensureDragPlaceState(regionName));
+      return solution ? JSON.stringify(solution) : null;
+    }
+    if (this.getInteractionType(regionName) === MATCH) {
+      const solution = buildMatchSolution(this.ensureMatchState(regionName));
       return solution ? JSON.stringify(solution) : null;
     }
     if (this.getInteractionType(regionName) !== 'dragDropLabeling') return null;
@@ -3028,6 +3336,215 @@ export class ImageSelectorComponent {
     );
   }
 
+  // -------- Issue #576: sürükle-yerleştir (dragPlace) ve eşleştirme (match) yazarlığı --------
+
+  public ensureDragPlaceState(regionName: string): DragPlaceAuthoringState {
+    const existing = this.dragPlaceState.get(regionName);
+    if (existing) return existing;
+    const created = createDragPlaceState();
+    this.dragPlaceState.set(regionName, created);
+    return created;
+  }
+
+  public ensureMatchState(regionName: string): MatchAuthoringState {
+    const existing = this.matchState.get(regionName);
+    if (existing) return existing;
+    const created = createMatchState();
+    this.matchState.set(regionName, created);
+    return created;
+  }
+
+  private updateDragPlace(regionName: string, change: (state: DragPlaceAuthoringState) => DragPlaceAuthoringState) {
+    this.dragPlaceState.set(regionName, change(this.ensureDragPlaceState(regionName)));
+    this.drawImage();
+  }
+
+  private updateMatch(regionName: string, change: (state: MatchAuthoringState) => MatchAuthoringState) {
+    this.matchState.set(regionName, change(this.ensureMatchState(regionName)));
+    this.drawImage();
+  }
+
+  /** Hedef / kart çizim modu: soru sürükle-yerleştir türüne geçer; araç çubuğu kilidi varsa kilit de güncellenir. */
+  public selectDragPlaceMode(questionIndex: number, mode: 'placeTarget' | 'placeCard') {
+    this.selectInteractionMode(questionIndex, DRAG_PLACE, mode);
+  }
+
+  /** Sol / sağ öğe çizim modu: soru eşleştirme türüne geçer. */
+  public selectMatchMode(questionIndex: number, mode: 'matchLeft' | 'matchRight') {
+    this.selectInteractionMode(questionIndex, MATCH, mode);
+  }
+
+  private selectInteractionMode(questionIndex: number, type: typeof DRAG_PLACE | typeof MATCH, mode: CanvasSelectionMode) {
+    if (questionIndex < 0 || questionIndex >= this.regions().length) return;
+    this.selectedQuestionIndex = questionIndex;
+    const regionName = this.regions()[questionIndex].name;
+    this.interactionTypes.set(regionName, type);
+    if (type === DRAG_PLACE) this.ensureDragPlaceState(regionName);
+    else this.ensureMatchState(regionName);
+    if (this.selectionModeLocked()) this.selectionModeLocked.set(mode);
+    this.selectionMode.set(mode);
+    this.drawImage();
+  }
+
+  public setDragPlaceMode(regionName: string, mode: DragPlaceMode) {
+    this.updateDragPlace(regionName, (s) => setDragPlaceMode(s, mode));
+  }
+
+  public setDragPlaceReuse(regionName: string, reuse: boolean) {
+    this.updateDragPlace(regionName, (s) => setDragPlaceReuse(s, reuse));
+  }
+
+  /** Kutusuz hedef (kova; sıra modunda konum). */
+  public addDragPlaceBucket(regionName: string, label = '') {
+    this.updateDragPlace(regionName, (s) => addPlaceTarget(s, null, label));
+  }
+
+  public addDragPlaceCardsFromText(regionName: string, text: string) {
+    this.updateDragPlace(regionName, (s) => addPlaceCardsFromText(s, text));
+  }
+
+  public removeDragPlaceTarget(regionName: string, targetId: string) {
+    this.updateDragPlace(regionName, (s) => removePlaceTarget(s, targetId));
+  }
+
+  public removeDragPlaceCard(regionName: string, cardId: string) {
+    this.updateDragPlace(regionName, (s) => removePlaceCard(s, cardId));
+  }
+
+  public setDragPlaceTargetLabel(regionName: string, targetId: string, label: string) {
+    this.updateDragPlace(regionName, (s) => setPlaceTargetLabel(s, targetId, label));
+  }
+
+  public setDragPlaceTargetCapacity(regionName: string, targetId: string, value: string | number) {
+    this.updateDragPlace(regionName, (s) => setPlaceTargetCapacity(s, targetId, Number(value)));
+  }
+
+  public setDragPlaceCardLabel(regionName: string, cardId: string, label: string) {
+    this.updateDragPlace(regionName, (s) => setPlaceCardLabel(s, cardId, label));
+  }
+
+  public selectDragPlaceTarget(regionName: string, targetId: string | null) {
+    this.updateDragPlace(regionName, (s) => selectPlaceTarget(s, targetId));
+  }
+
+  /** Kartı hedefin doğru kartı yap / kaldır; çok kartlık hedef doluysa bildirilir. */
+  public toggleDragPlaceAssignment(regionName: string, targetId: string, cardId: string) {
+    const before = this.ensureDragPlaceState(regionName);
+    const after = togglePlaceAssignment(before, targetId, cardId);
+    if (after === before) {
+      this.snackBar.open(this.tr('messages.placeTargetFull'), this.tr('common.ok'), { duration: 2500 });
+      return;
+    }
+    this.dragPlaceState.set(regionName, after);
+    this.drawImage();
+  }
+
+  public fillDragPlaceOrderFromCards(regionName: string) {
+    this.updateDragPlace(regionName, (s) => fillOrderFromCards(s));
+  }
+
+  public addMatchItemsFromText(regionName: string, side: MatchSide, text: string) {
+    this.updateMatch(regionName, (s) => addMatchItemsFromText(s, side, text));
+  }
+
+  public removeMatchItemFrom(regionName: string, side: MatchSide, id: string) {
+    this.updateMatch(regionName, (s) => removeMatchItem(s, side, id));
+  }
+
+  public setMatchItemLabel(regionName: string, side: MatchSide, id: string, label: string) {
+    this.updateMatch(regionName, (s) => setMatchItemLabel(s, side, id, label));
+  }
+
+  public setMatchPair(regionName: string, leftId: string, rightId: string | null) {
+    this.updateMatch(regionName, (s) => setMatchPair(s, leftId, rightId || null));
+  }
+
+  public toggleMatchPrelinked(regionName: string, leftId: string) {
+    this.updateMatch(regionName, (s) => toggleMatchPrelinked(s, leftId));
+  }
+
+  public selectMatchLeft(regionName: string, leftId: string | null) {
+    this.updateMatch(regionName, (s) => selectMatchLeft(s, leftId));
+  }
+
+  /** Tuvalde hedef / kart / eşleştirme öğesine tık (çizim modu değişmez). */
+  private onAuthoringItemClick(
+    regionName: string,
+    hit: Extract<RegionOrAnswerHit, { type: 'placeTarget' | 'placeCard' | 'matchItem' }>
+  ) {
+    if (hit.type === 'placeTarget') {
+      this.selectDragPlaceTarget(regionName, hit.value.targetId);
+    } else if (hit.type === 'placeCard') {
+      const targetId = this.ensureDragPlaceState(regionName).selectedTargetId;
+      if (targetId) this.toggleDragPlaceAssignment(regionName, targetId, hit.value.cardId);
+    } else if (hit.value.side === 'left') {
+      this.selectMatchLeft(regionName, hit.value.itemId);
+    } else {
+      const leftId = this.ensureMatchState(regionName).selectedLeftId;
+      if (leftId) this.setMatchPair(regionName, leftId, hit.value.itemId);
+    }
+  }
+
+  /**
+   * Sürüklemeyle çizilen hedef / kart / eşleştirme öğesi (soru bölgesine göre). Araç çubuğu modu başka türde bir soruya
+   * çizerse çizim kaybolmasın: soru o türe döner.
+   */
+  private addInteractionBoxFromDrag(mode: CanvasSelectionMode, questionIndex: number, x1: number, y1: number, x2: number, y2: number) {
+    const region = this.regions()[questionIndex];
+    if (!region) return;
+    const absX1 = Math.min(x1, x2);
+    const absY1 = Math.min(y1, y2);
+    const absX2 = Math.max(x1, x2);
+    const absY2 = Math.max(y1, y2);
+    if (absX2 - absX1 < 6 || absY2 - absY1 < 6) return;
+    const within =
+      absX1 >= region.x && absY1 >= region.y && absX2 <= region.x + region.width && absY2 <= region.y + region.height;
+    if (!within) {
+      this.snackBar.open(this.tr('messages.boxOutsideQuestion'), this.tr('common.ok'), { duration: 2000 });
+      return;
+    }
+    const box: InteractionBox = {
+      x: Math.round(absX1 - region.x),
+      y: Math.round(absY1 - region.y),
+      width: Math.max(1, Math.round(absX2 - absX1)),
+      height: Math.max(1, Math.round(absY2 - absY1)),
+    };
+    if (mode === 'placeTarget' || mode === 'placeCard') {
+      this.interactionTypes.set(region.name, DRAG_PLACE);
+      const state = this.ensureDragPlaceState(region.name);
+      const next = mode === 'placeTarget' ? addPlaceTarget(state, box) : addPlaceCardBox(state, box);
+      if (next === state) {
+        this.snackBar.open(this.tr('messages.interactionLimit'), this.tr('common.ok'), { duration: 2500 });
+        return;
+      }
+      this.dragPlaceState.set(region.name, next);
+    } else {
+      this.interactionTypes.set(region.name, MATCH);
+      const state = this.ensureMatchState(region.name);
+      const next = addMatchItem(state, mode === 'matchLeft' ? 'left' : 'right', box);
+      if (next === state) {
+        this.snackBar.open(this.tr('messages.interactionLimit'), this.tr('common.ok'), { duration: 2500 });
+        return;
+      }
+      this.matchState.set(region.name, next);
+    }
+    this.focusQuestionKeepingMode(questionIndex);
+  }
+
+  /** Kayıt engelleyen sürükle-yerleştir sorunları (uyarı ikonu + Kaydet). */
+  private dragPlaceMessages(regionName: string): string[] {
+    return dragPlaceIssues(this.ensureDragPlaceState(regionName)).map((issue) =>
+      this.tr(`warnings.dragPlace.${issue.code}`, { n: issue.no })
+    );
+  }
+
+  /** Kayıt engelleyen eşleştirme sorunları. */
+  private matchMessages(regionName: string): string[] {
+    return matchIssues(this.ensureMatchState(regionName)).map((issue) =>
+      this.tr(`warnings.match.${issue.code}`, { n: issue.no, count: issue.count })
+    );
+  }
+
   /** Soruyu müfettişe odaklar ama çizim modunu değiştirmez (matris hücresine tık). */
   private focusQuestionKeepingMode(index: number) {
     this.selectedQuestionIndex = index;
@@ -3051,7 +3568,15 @@ export class ImageSelectorComponent {
             : 'matrixRow'
           : interactionType === SLOT_FILL
             ? 'slot'
-            : 'answer'
+            : interactionType === DRAG_PLACE
+              ? current === 'placeTarget' || current === 'placeCard'
+                ? current
+                : 'placeTarget'
+              : interactionType === MATCH
+                ? current === 'matchLeft' || current === 'matchRight'
+                  ? current
+                  : 'matchLeft'
+                : 'answer'
     );
     this.selectedQuestionChange.emit({ index, region: this.regions()[index] ?? null });
     this.drawImage();
@@ -3142,6 +3667,8 @@ export class ImageSelectorComponent {
       labelCount: isLabeling ? this.getLabelCount(name) : 0,
       matrix: interactionType === MATRIX_CHOICE ? this.buildMatrixInspector(name) : null,
       slotFill: interactionType === SLOT_FILL ? buildSlotFillInspector(this.ensureSlotFillState(name)) : null,
+      dragPlace: interactionType === DRAG_PLACE ? buildDragPlaceInspector(this.ensureDragPlaceState(name)) : null,
+      match: interactionType === MATCH ? buildMatchInspector(this.ensureMatchState(name)) : null,
       isExample: this.isExample(name),
       exampleAnswer: this.getExampleAnswer(name),
       difficulty: this.previewDifficultyLevel(),
@@ -3664,6 +4191,8 @@ export class ImageSelectorComponent {
     this.labelingState.clear();
     this.matrixState.clear();
     this.slotFillState.clear();
+    this.dragPlaceState.clear();
+    this.matchState.clear();
     this.warningMarkers = [];
     this.selectedQuestionIndex = -1;
     this.selectedAnswer = -1;
@@ -3783,6 +4312,8 @@ export class ImageSelectorComponent {
     this.labelingState.delete(regionName);
     this.matrixState.delete(regionName);
     this.slotFillState.delete(regionName);
+    this.dragPlaceState.delete(regionName);
+    this.matchState.delete(regionName);
     this.warningMarkers = this.warningMarkers.filter((w) => w.id !== this.regions()[questionIndex].id);
     this.regions.set(this.regions().filter((_, index) => index !== questionIndex));
 

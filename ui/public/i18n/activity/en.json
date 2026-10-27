@@ -13,7 +13,14 @@
     "empty": "empty",
     "matrixRow": "{{name}}: {{content}}",
     "matrixRowFallback": "Row {{n}}",
-    "slot": "Box {{n}}: {{content}}"
+    "slot": "Box {{n}}: {{content}}",
+    "place": "{{name}}: {{content}}",
+    "match": "{{name}}: {{content}}",
+    "cardFallback": "Card {{n}}",
+    "targetFallback": "Target {{n}}",
+    "positionFallback": "Position {{n}}",
+    "leftFallback": "Left {{n}}",
+    "rightFallback": "Right {{n}}"
   },
   "saveFailed": "Your last answer could not be saved; it will be sent again when you check.",
   "finishCheckRequired": "Check your answers once before finishing.",

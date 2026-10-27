@@ -61,6 +61,16 @@ export class ActivityCheckPanelComponent {
    */
   readonly answersSaved = input(true);
 
+  /**
+   * Issue #576 (E2E): dar ekranda kontrol sonrası panel ekranın çoğunu kaplıyordu. `collapsible` açıkken (sahibi dar ekranda
+   * verir) panel daraltılabilir; `collapsed` iken yalnız kompakt çubuk: özet + "Yeniden kontrol et" + genişlet oku. Hata
+   * varsa ya da henüz kontrol yoksa daraltılmış hal uygulanmaz (uyarı / ilk kontrol düğmesi görünür kalmalı).
+   */
+  readonly collapsible = input(false);
+  readonly collapsed = input(false);
+  readonly expand = output<void>();
+  readonly collapse = output<void>();
+
   readonly check = output<void>();
   readonly reveal = output<void>();
   readonly restore = output<void>();
@@ -75,4 +85,7 @@ export class ActivityCheckPanelComponent {
     return s ? Math.max(0, s.total - s.correct) : 0;
   });
   readonly busy = computed(() => this.checking() || this.revealing() || this.finishing());
+  readonly compact = computed(
+    () => this.collapsible() && this.collapsed() && this.hasChecked() && !this.error() && !this.revealed()
+  );
 }

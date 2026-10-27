@@ -30,6 +30,10 @@ import { isMatrixChoiceType } from '../../models/matrix-choice';
 import { isSlotFillType } from '../../models/slot-fill';
 import { QuestionCanvasMatrixChoiceComponent } from '../../shared/components/question-canvas-matrix-choice/question-canvas-matrix-choice.component';
 import { QuestionCanvasSlotFillComponent } from '../../shared/components/question-canvas-slot-fill/question-canvas-slot-fill.component';
+import { isDragPlaceType } from '../../models/drag-place';
+import { isMatchType } from '../../models/match';
+import { QuestionCanvasDragPlaceComponent } from '../../shared/components/question-canvas-drag-place/question-canvas-drag-place.component';
+import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
 import { StorageImageRetryDirective } from '../../shared/directives/storage-image-retry.directive';
 
 /**
@@ -62,6 +66,8 @@ import { StorageImageRetryDirective } from '../../shared/directives/storage-imag
     QuestionCanvasDragDropLabelingComponent,
     QuestionCanvasMatrixChoiceComponent,
     QuestionCanvasSlotFillComponent,
+    QuestionCanvasDragPlaceComponent,
+    QuestionCanvasMatchComponent,
     TranslocoDirective,
     StorageImageRetryDirective,
   ],
@@ -154,11 +160,15 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
     this.passageOnlyByQuestionIndex.set(questionIndex, true);
   }
 
-  /** Issue #574 (L3) / #575: etkileşim türü büyük/küçük harf duyarsız; bilinmeyen tür MCQ. */
-  public interactionKind(type: string | null | undefined): 'mcq' | 'dragDropLabeling' | 'matrixChoice' | 'slotFill' {
+  /** Issue #574 (L3) / #575 / #576: etkileşim türü büyük/küçük harf duyarsız; bilinmeyen tür MCQ. */
+  public interactionKind(
+    type: string | null | undefined
+  ): 'mcq' | 'dragDropLabeling' | 'matrixChoice' | 'slotFill' | 'dragPlace' | 'match' {
     const normalized = (type ?? '').toLowerCase();
     if (normalized === 'dragdroplabeling') return 'dragDropLabeling';
     if (isSlotFillType(type)) return 'slotFill';
+    if (isDragPlaceType(type)) return 'dragPlace';
+    if (isMatchType(type)) return 'match';
     return isMatrixChoiceType(type) ? 'matrixChoice' : 'mcq';
   }
 

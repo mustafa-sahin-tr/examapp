@@ -1,0 +1,7 @@
+@if (geometry(); as g) {
+  <span class="qic" [style.width]="g.width" [style.aspect-ratio]="g.ratio" data-testid="image-crop">
+    <img class="qic__img" [src]="src()" [alt]="alt()" draggable="false"
+      [style.width.%]="g.imgWidth" [style.left.%]="g.left" [style.top.%]="g.top"
+      [appStorageImageRetry]="imageRefresh()" />
+  </span>
+}

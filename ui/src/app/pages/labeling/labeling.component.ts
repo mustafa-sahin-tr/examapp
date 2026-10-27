@@ -8,9 +8,11 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import {
   ActiveInspector,
@@ -21,7 +23,14 @@ import {
 import { QuestionDetectorService } from '../../services/question-detector.service';
 import { GradesService } from '../../services/grades.service';
 import { Grade } from '../../models/student';
-import { LabelingCandidate, isLabelingImage, pageIdOf, pickNextUnlabeled, sortLabelingFiles } from './labeling-pool';
+import {
+  LabelingCandidate,
+  filePageOf,
+  isLabelingImage,
+  pageIdOf,
+  pickNextUnlabeled,
+  sortLabelingFiles,
+} from './labeling-pool';
 import {
   DetectionSource,
   LabelingAiModel,
@@ -34,6 +43,16 @@ import {
 } from '../../models/labeling';
 import { LabelingService, manualDetectionSource, sha256OfDataUrl } from '../../services/labeling.service';
 import { LabelingPromptDialogComponent } from './labeling-prompt-dialog/labeling-prompt-dialog.component';
+import { LabelingBook, LabelingBookPageInfo, LabelingCropConflict } from '../../models/labeling-book';
+import { LabelingBookService } from '../../services/labeling-book.service';
+import {
+  ConfirmDialogComponent,
+  ConfirmDialogData,
+} from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import {
+  LabelingCropDuplicateDialogComponent,
+  LabelingCropDuplicateDialogData,
+} from './labeling-crop-duplicate-dialog/labeling-crop-duplicate-dialog.component';
 
 /** Sayfa metinleri kendi Transloco scope'unda: `public/i18n/labeling/<lang>.json`. */
 const LABELING_SCOPE = 'labeling';
@@ -45,6 +64,16 @@ const SOURCE_STORAGE_KEY = 'labeling.source';
 const AI_MODEL_STORAGE_KEY = 'labeling.aiModel';
 /** Havuza kaydedilen sayfanın sınıfı (issue #565); yalnız listede hâlâ varsa geri yüklenir. */
 const GRADE_STORAGE_KEY = 'labeling.gradeId';
+/** Issue #577: seçili kaynak kitap; yalnız listede hâlâ varsa geri yüklenir. */
+const BOOK_STORAGE_KEY = 'labeling.bookId';
+/** Soru başına etkinlik / madde etiketi üst sınırı (sunucuyla aynı). */
+export const MAX_QUESTION_LABEL = 50;
+
+/** Müfettişte soru başına girilen kitap etiketleri (bölge adına göre; sayfa değişince silinir). */
+export interface QuestionLabels {
+  activityLabel: string;
+  itemLabel: string;
+}
 
 type PreferredSource = 'Model' | 'Ai';
 
@@ -68,8 +97,10 @@ type DrawMode = 'question' | 'answer';
     DatePipe,
     DecimalPipe,
     MatIconModule,
+    MatInputModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
+    RouterLink,
     TranslocoDirective,
     ImageSelectorComponent,
   ],
@@ -87,6 +118,7 @@ export class LabelingComponent {
   private readonly labelingApi = inject(LabelingService);
   private readonly dialog = inject(MatDialog);
   private readonly gradesApi = inject(GradesService);
+  private readonly booksApi = inject(LabelingBookService);
 
   private readonly selectorRef = viewChild(ImageSelectorComponent);
 
@@ -179,6 +211,11 @@ export class LabelingComponent {
   readonly gradesLoading = signal(false);
   readonly gradesError = signal(false);
   readonly gradeId = signal<number | null>(null);
+  /**
+   * Kullanıcının elle seçtiği (localStorage'daki) sınıf. İçindekiler sınıfı yalnız o sayfa için `gradeId`'yi değiştirir;
+   * içindekiler olmayan sayfada bu sınıfa dönülür (CR11 — TOC sınıfı sonraki sayfaya sızmaz).
+   */
+  private readonly manualGradeId = signal<number | null>(null);
   /** Eğit ile aynı ön koşullar + en az bir soru + seçili sınıf; kayıt sürerken kapalı. */
   readonly canSaveToBank = computed(
     () =>
@@ -226,6 +263,30 @@ export class LabelingComponent {
     return file ? file.webkitRelativePath || file.name : '';
   });
 
+  // --- Kaynak kitap (issue #577): dosya sayfası → basılı sayfa, cevap anahtarı, içindekiler varsayılanı ---
+  readonly maxQuestionLabel = MAX_QUESTION_LABEL;
+  /** Kitap listesi; yetki yoksa / hata olursa boş (kitap seçimi gizlenir, eski davranış). */
+  readonly books = signal<LabelingBook[]>([]);
+  readonly booksError = signal(false);
+  readonly bookId = signal<number | null>(null);
+  readonly selectedBook = computed(() => this.books().find((b) => b.id === this.bookId()) ?? null);
+  /** Açık görselin dosya adından okunan sayfa numarası (`page_040.webp` → 40, `kitap_12.png` → 12). */
+  readonly filePage = computed(() => (this.current() ? filePageOf(this.currentPath()) : null));
+  readonly bookPage = signal<LabelingBookPageInfo | null>(null);
+  readonly bookPageLoading = signal(false);
+  readonly bookPageError = signal(false);
+  private bookPageSeq = 0;
+  /** İçindekilerden gelen sınıflandırma ("Fen Bilimleri › Maddenin Hâlleri"). */
+  readonly tocLabel = computed(() => {
+    const toc = this.bookPage()?.toc;
+    if (!toc) {
+      return null;
+    }
+    return [toc.subjectName, toc.topicName, toc.subTopicName].filter((part): part is string => !!part).join(' › ');
+  });
+  /** Soru başına etkinlik / madde etiketleri (bölge adı → etiketler). */
+  readonly questionLabels = signal<Record<string, QuestionLabels>>({});
+
   constructor() {
     this.destroyRef.onDestroy(() => {
       this.pickSeq++;
@@ -248,9 +309,100 @@ export class LabelingComponent {
         }
       });
     });
+    // Kitap ya da sayfa değişince sayfanın kitap bilgisi (basılı sayfa, içindekiler) yeniden sorulur.
+    effect(() => {
+      const bookId = this.bookId();
+      const filePage = this.filePage();
+      untracked(() => this.loadBookPage(bookId, filePage));
+    });
     void this.loadLabeledPages();
     this.loadAiModels();
     this.loadGrades();
+    this.loadBooks();
+  }
+
+  loadBooks(): void {
+    this.booksError.set(false);
+    this.booksApi
+      .list()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (books) => {
+          const list = books ?? [];
+          this.books.set(list);
+          const stored = Number(readStored(BOOK_STORAGE_KEY));
+          const current = this.bookId() ?? stored;
+          this.bookId.set(list.some((b) => b.id === current) ? current : null);
+        },
+        error: (error) => {
+          // Yetki yok / servis kapalı: kitapsız devam (sınıf elle seçilir).
+          console.error('labeling books failed', error);
+          this.books.set([]);
+          this.booksError.set(true);
+        },
+      });
+  }
+
+  setBook(event: MatSelectChange): void {
+    const id = (event.value as number | null) ?? null;
+    this.bookId.set(id);
+    writeStored(BOOK_STORAGE_KEY, id == null ? '' : String(id));
+  }
+
+  /**
+   * Sayfanın kitap bilgisi. İçindekiler sınıf veriyorsa sınıf seçimi o sayfa için ona çekilir (kullanıcı yine
+   * değiştirebilir; localStorage'a yazılmaz). Her yeni sayfada önce elle seçilen sınıfa dönülür. Geç gelen yanıt
+   * `bookPageSeq` ile ayıklanır.
+   */
+  private loadBookPage(bookId: number | null, filePage: number | null): void {
+    const seq = ++this.bookPageSeq;
+    this.bookPage.set(null);
+    this.bookPageError.set(false);
+    this.gradeId.set(this.manualGradeId());
+    if (bookId == null || filePage == null) {
+      this.bookPageLoading.set(false);
+      return;
+    }
+    this.bookPageLoading.set(true);
+    this.booksApi
+      .getPage(bookId, filePage)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (info) => {
+          if (seq !== this.bookPageSeq) {
+            return;
+          }
+          this.bookPageLoading.set(false);
+          this.bookPage.set(info);
+          const gradeId = info?.toc?.gradeId;
+          // Sınıf listesi henüz gelmediyse `loadGrades` seçimi listeye göre doğrular.
+          if (gradeId != null && (this.grades().length === 0 || this.grades().some((g) => g.id === gradeId))) {
+            this.gradeId.set(gradeId);
+          }
+        },
+        error: (error) => {
+          if (seq !== this.bookPageSeq) {
+            return;
+          }
+          console.error('labeling book page failed', error);
+          this.bookPageLoading.set(false);
+          this.bookPageError.set(true);
+        },
+      });
+  }
+
+  retryBookPage(): void {
+    this.loadBookPage(this.bookId(), this.filePage());
+  }
+
+  /** Müfettişteki seçili sorunun etiketleri. */
+  labelsOf(name: string): QuestionLabels {
+    return this.questionLabels()[name] ?? { activityLabel: '', itemLabel: '' };
+  }
+
+  setQuestionLabel(name: string, field: keyof QuestionLabels, target: EventTarget | null): void {
+    const value = ((target as HTMLInputElement | null)?.value ?? '').slice(0, MAX_QUESTION_LABEL);
+    this.questionLabels.update((all) => ({ ...all, [name]: { ...this.labelsOf(name), [field]: value } }));
   }
 
   loadGrades(): void {
@@ -265,8 +417,11 @@ export class LabelingComponent {
           this.grades.set(list);
           this.gradesLoading.set(false);
           const stored = Number(readStored(GRADE_STORAGE_KEY));
-          const current = this.gradeId() ?? stored;
-          this.gradeId.set(list.some((g) => g.id === current) ? current : null);
+          const manual = this.manualGradeId() ?? stored;
+          this.manualGradeId.set(list.some((g) => g.id === manual) ? manual : null);
+          // İçindekiler sınıfı (liste gelmeden uygulanmış olabilir) listede varsa kalır, yoksa elle seçilene dönülür.
+          const tocGrade = this.bookPage()?.toc?.gradeId ?? null;
+          this.gradeId.set(tocGrade != null && list.some((g) => g.id === tocGrade) ? tocGrade : this.manualGradeId());
         },
         error: (error) => {
           console.error('labeling grades failed', error);
@@ -280,8 +435,18 @@ export class LabelingComponent {
   setGrade(event: MatSelectChange): void {
     const id = event.value as number;
     this.gradeId.set(id);
+    this.manualGradeId.set(id);
     writeStored(GRADE_STORAGE_KEY, String(id));
   }
+
+  /**
+   * CR1: seçili sınıf içindekiler sınıfından farklı — sunucu kitap konusunu uygulamaz (sınıflandırıcı seçili sınıfla
+   * çalışır); uyarı gösterilir, içindekiler etiketi üstü çizili.
+   */
+  readonly tocGradeMismatch = computed(() => {
+    const tocGrade = this.bookPage()?.toc?.gradeId;
+    return tocGrade != null && this.gradeId() != null && this.gradeId() !== tocGrade;
+  });
 
   private loadAiModels(): void {
     this.labelingApi
@@ -544,6 +709,7 @@ export class LabelingComponent {
     this.aiOrigin.set(null);
     this.aiBusy.set(false);
     this.bankSaving.set(false);
+    this.questionLabels.set({});
     this.snackBar.dismiss();
   }
 
@@ -711,11 +877,18 @@ export class LabelingComponent {
     if (!selector.ensureQuestionsValid({ requireCorrectAnswer: true, skipInteractive: true })) {
       return;
     }
-    const questions: LabelingBankQuestion[] = regions.map((q) => ({
-      ...roundBox(q),
-      options: q.answers.map(roundBox),
-      correctOptionIndex: q.answers.findIndex((a) => a.isCorrect),
-    }));
+    const questions: LabelingBankQuestion[] = regions.map((q) => {
+      const labels = this.labelsOf(q.name);
+      const activityLabel = labels.activityLabel.trim();
+      const itemLabel = labels.itemLabel.trim();
+      return {
+        ...roundBox(q),
+        options: q.answers.map(roundBox),
+        correctOptionIndex: q.answers.findIndex((a) => a.isCorrect),
+        ...(activityLabel ? { activityLabel } : {}),
+        ...(itemLabel ? { itemLabel } : {}),
+      };
+    });
     const existing = this.bankRecord();
     if (existing) {
       this.confirmBankAgain(existing, image, questions);
@@ -749,8 +922,12 @@ export class LabelingComponent {
       return;
     }
     const token = this.pageToken;
+    // Kaynak kitap yalnız seçiliyse ve dosya adından sayfa numarası okunduysa gider (sunucu içindekileri uygular).
+    const bookId = this.bookId();
+    const filePage = this.filePage();
+    const source = bookId != null && filePage != null ? { bookId, filePage } : {};
     this.bankSaving.set(true);
-    this.labelingApi.saveToBank({ imageBase64: image, questions, gradeId, force }).subscribe({
+    this.labelingApi.saveToBank({ imageBase64: image, questions, gradeId, force, ...source }).subscribe({
       next: (response) => {
         if (token !== this.pageToken) {
           return;
@@ -772,11 +949,22 @@ export class LabelingComponent {
         this.bankSaving.set(false);
         console.error('labeling bank save failed', error);
         const status = (error as { status?: number })?.status;
-        const body = (error as { error?: Partial<LabelingBankConflict> })?.error;
+        const body = (error as { error?: Partial<LabelingBankConflict> | Partial<LabelingCropConflict> })?.error;
+        if (status === 409 && body?.errorCode === 'LabelingCropAlreadyInBank') {
+          // Aynı kırpma bankada (issue #577): mevcut kayıtlar listelenir, onaylanırsa force ile yeniden gönderilir.
+          this.confirmCropDuplicate((body as Partial<LabelingCropConflict>).existing ?? [], image, questions);
+          return;
+        }
+        if (status === 409 && body?.errorCode === 'LabelingAnswerKeyPage') {
+          // Sayfa cevap anahtarı aralığında (issue #577): onaylanırsa force ile kaydedilir.
+          this.confirmAnswerKeyPage(body.message || this.tr('bank.answerKey.message'), image, questions);
+          return;
+        }
         if (status === 409 && body?.existing) {
           // Kayıt bilgisi bu sayfada yoktu (ya da başka bir sekmede kaydedildi): bilgiyi göster, yeniden kaydı sor.
-          this.setBankRecord(null, body.existing);
-          this.confirmBankAgain(body.existing, image, questions);
+          const existing = body.existing as LabelingBankInfo;
+          this.setBankRecord(null, existing);
+          this.confirmBankAgain(existing, image, questions);
           return;
         }
         // 403: işaretleme rolü (QuestionTrainer) var ama soru yazma rolü (Teacher/Admin) yok.
@@ -784,6 +972,45 @@ export class LabelingComponent {
         this.snackBar.open(message, this.tr('ok'), { duration: 6000 });
       },
     });
+  }
+
+  private confirmAnswerKeyPage(message: string, image: string, questions: LabelingBankQuestion[]): void {
+    const token = this.pageToken;
+    const data: ConfirmDialogData = {
+      title: this.tr('bank.answerKey.title'),
+      message,
+      confirmText: this.tr('bank.answerKey.force'),
+      cancelText: this.tr('bank.answerKey.cancel'),
+      icon: 'key',
+      confirmColor: 'warn',
+    };
+    this.dialog
+      .open(ConfirmDialogComponent, { data, autoFocus: false })
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((force) => {
+        if (force === true && token === this.pageToken && this.canSaveToBank()) {
+          this.submitBank(image, questions, true);
+        }
+      });
+  }
+
+  private confirmCropDuplicate(
+    existing: LabelingCropConflict['existing'],
+    image: string,
+    questions: LabelingBankQuestion[]
+  ): void {
+    const token = this.pageToken;
+    const data: LabelingCropDuplicateDialogData = { existing };
+    this.dialog
+      .open(LabelingCropDuplicateDialogComponent, { data, width: '560px', maxWidth: '95vw', autoFocus: false })
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((force) => {
+        if (force === true && token === this.pageToken && this.canSaveToBank()) {
+          this.submitBank(image, questions, true);
+        }
+      });
   }
 
   private setBankRecord(sha: string | null, bank: LabelingBankInfo): void {

@@ -69,7 +69,7 @@
       "invalidSubTopicId": "Invalid subtopic ID.",
       "invalidSubjectId": "Invalid subject ID.",
       "invalidTopicId": "Invalid topic ID.",
-      "invalidSource": "Invalid classification source: {0}. Expected 'Human' or 'AI'.",
+      "invalidSource": "Invalid classification source: {0}. Expected 'Human', 'AI' or 'Book'.",
       "invalidDifficulty": "Invalid difficulty level. It must be between 1 and 10.",
       "updated": "Question classification updated successfully!",
       "updateError": "An error occurred while updating the question classification: {0}",

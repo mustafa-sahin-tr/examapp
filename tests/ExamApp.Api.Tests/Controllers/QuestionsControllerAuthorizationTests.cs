@@ -160,11 +160,14 @@ public class QuestionsControllerAuthorizationTests : IDisposable
 
         var classifierCache = Substitute.For<IClassifierCacheService>();
         classifierCache.GetActivePointerAsync(Arg.Any<CancellationToken>()).Returns((null, "m"));
-        classifierCache.GetTaxonomyAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        classifierCache.GetTaxonomyAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(new ClassifierTaxonomyDto { Taxonomy = "{}", Hash = "h", SubTopicCount = 0 });
         // Issue #565: ?gradeId= reaches the service.
-        classifierCache.GetTaxonomyAsync(7, Arg.Any<CancellationToken>())
+        classifierCache.GetTaxonomyAsync(7, Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(new ClassifierTaxonomyDto { Taxonomy = "{}", Hash = "h-grade-7", SubTopicCount = 0 });
+        // Issue #577: ?topicId= reaches the service too (book TOC hybrid mode).
+        classifierCache.GetTaxonomyAsync(7, 42, Arg.Any<CancellationToken>())
+            .Returns(new ClassifierTaxonomyDto { Taxonomy = "{}", Hash = "h-grade-7-topic-42", SubTopicCount = 0 });
 
         return await new HostBuilder()
             .ConfigureWebHost(web =>
@@ -327,6 +330,18 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         var response = await SendAsync(client, Service, HttpMethod.Get, "/api/questions/classifier-taxonomy?gradeId=7");
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await response.Content.ReadAsStringAsync()).ShouldContain("\"hash\":\"h-grade-7\"");
+    }
+
+    [Fact]
+    // issue #577: ?topicId= tek konuya daraltılmış taksonomiyi ister (kitap içindekiler, hibrit mod).
+    public async Task Classifier_taxonomy_passes_the_topic_filter_through()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        var response = await SendAsync(client, Service, HttpMethod.Get, "/api/questions/classifier-taxonomy?gradeId=7&topicId=42");
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await response.Content.ReadAsStringAsync()).ShouldContain("\"hash\":\"h-grade-7-topic-42\"");
     }
 
     [Fact]

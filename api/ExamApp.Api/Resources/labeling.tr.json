@@ -26,7 +26,32 @@
       "optionOutsideQuestion": "Şık kutusu soru kutusunun içinde olmalı.",
       "rateLimited": "Saatlik havuza kayıt sınırına ulaştınız. Biraz sonra tekrar deneyin.",
       "gradeRequired": "Sayfanın sınıfı seçilmeli.",
-      "gradeUnknown": "Seçilen sınıf bulunamadı."
+      "gradeUnknown": "Seçilen sınıf bulunamadı.",
+      "cropAlreadySaved": "Bu kırpma daha önce havuza kaydedildi.",
+      "bookPageRequired": "Kitap ve dosya sayfası birlikte verilmeli.",
+      "answerKeyPage": "Bu sayfa kitabın cevap anahtarı aralığında; soru olarak kaydedilmesi beklenmiyor."
+    },
+    "books": {
+      "notFound": "Kitap bulunamadı.",
+      "nameRequired": "Kitap adı boş olamaz.",
+      "nameTooLong": "Kitap adı en fazla 200 karakter olabilir.",
+      "nameTaken": "Bu adla kayıtlı bir kitap var.",
+      "notesTooLong": "Not en fazla 500 karakter olabilir.",
+      "tooManyRanges": "Çok fazla aralık gönderildi.",
+      "invalidRange": "Sayfa aralığı geçersiz (başlangıç ≥ 1, başlangıç ≤ bitiş).",
+      "invalidOffset": "Ofset geçersiz: bastırılmış sayfa 1'den küçük olamaz.",
+      "offsetOverlap": "Ofset aralıkları çakışıyor.",
+      "answerKeyOverlap": "Cevap anahtarı aralıkları çakışıyor.",
+      "tocOverlap": "İçindekiler aralıkları çakışıyor.",
+      "gradeUnknown": "İçindekilerdeki sınıf bulunamadı.",
+      "subjectUnknown": "İçindekilerdeki ders bulunamadı.",
+      "topicMismatch": "İçindekilerdeki konu seçilen ders ve sınıfa ait değil.",
+      "subTopicMismatch": "İçindekilerdeki alt konu seçilen konuya ait değil (alt konu için konu seçilmeli).",
+      "canonicalInvalid": "Asıl kitap geçersiz (kendisi, bulunamadı ya da başka bir kitaba bağlı).",
+      "inUse": "Kitap kullanımda (soru, test ya da başka bir baskı ona bağlı); silinemez.",
+      "invalidPage": "Sayfa numarası geçersiz.",
+      "renameForbidden": "Bu kitap öğretmenlerin içeriğinde kullanılıyor; adını ya da asıl kaydını yalnız yönetici değiştirebilir.",
+      "busy": "Kitap kaydı şu an başka bir işlemde. Tekrar deneyin."
     }
   }
 }

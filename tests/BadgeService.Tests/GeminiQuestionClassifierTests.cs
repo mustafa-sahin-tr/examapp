@@ -42,6 +42,15 @@ public class GeminiQuestionClassifierTests
         .On("/classification", HttpStatusCode.OK, "{}");
 
     [Fact]
+    // issue #577: Gemini cannot constrain to a topic — skipped, the book's topic is kept.
+    public async Task Topic_constrained_classification_is_skipped()
+    {
+        var http = HappyHttp("{}");
+        await NewClassifier(http).ClassifyWithinTopicAndPersistAsync(1, 5, 10, default);
+        http.Requests.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task Skips_entirely_when_the_api_key_is_not_configured()
     {
         var http = HappyHttp("{}");

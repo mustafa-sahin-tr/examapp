@@ -448,6 +448,16 @@ describe('QuestionBankPanelComponent (issue #471)', () => {
             fixture.destroy();
         });
 
+        it('template_BookClassifiedItem_ShowsBookIndicator', async () => {
+            search.mockReturnValue(of(makePage([makeItem(1, { classificationSource: ClassificationSource.Book }), makeItem(2)])));
+            await settle();
+
+            const icons = fixture.nativeElement.querySelectorAll('.qb-card__book') as NodeListOf<HTMLElement>;
+            expect(icons.length).toBe(1);
+            expect(icons[0].textContent?.trim()).toBe('menu_book');
+            fixture.destroy();
+        });
+
         it('template_UnclassifiedAndNoAnswerItem_ShowsWarningTags', async () => {
             search.mockReturnValue(of(makePage([makeItem(1, { isClassified: false, hasCorrectAnswer: false })])));
             await settle();

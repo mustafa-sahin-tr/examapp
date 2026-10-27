@@ -60,7 +60,8 @@ public class LabelingBankServiceTests : IDisposable
     public void Dispose() => _db.Dispose();
 
     private LabelingBankService NewService(AppDbContext ctx) =>
-        new(ctx, _questions, _counters, _clock, NullLogger<LabelingBankService>.Instance);
+        new(ctx, _questions, _counters, _clock, NullLogger<LabelingBankService>.Instance,
+            new BookRegistryService(ctx, _clock), new ImageHelper());
 
     private static byte[] Png(int width, int height) => TestImages.Png(width, height);
 
@@ -318,12 +319,25 @@ public class LabelingBankServiceTests : IDisposable
         request.GradeId = -1;
         IsValid(request).ShouldBeFalse();
 
-        // Alan hiç gönderilmezse 0 olarak bağlanır → [ApiController] 400 döner.
+        // Issue #577: alan hiç gönderilmezse null bağlanır (kitap sayfasında içindekilerin sınıfı kullanılabilir); model
+        // geçerli, sınıf yine bulunamazsa servis 400 labeling.bank.gradeRequired döner (SaveToBankAsync_NoGradeAndNoBook_...).
         var missing = System.Text.Json.JsonSerializer.Deserialize<LabelingBankSaveRequestDto>(
             System.Text.Json.JsonSerializer.Serialize(new { imageBase64 = request.ImageBase64, questions = request.Questions }),
             new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!;
-        missing.GradeId.ShouldBe(0);
-        IsValid(missing).ShouldBeFalse();
+        missing.GradeId.ShouldBeNull();
+        IsValid(missing).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task SaveToBankAsync_NoGradeAndNoBook_ThrowsGradeRequired()
+    {
+        await using var ctx = _db.NewContext();
+        var request = ValidRequest(Png(320, 200));
+        request.GradeId = null;
+
+        var ex = await Should.ThrowAsync<LabelingValidationException>(() => NewService(ctx).SaveToBankAsync(request, Actor, ActingUserId));
+
+        ex.Message.ShouldBe("labeling.bank.gradeRequired");
     }
 
     [Fact]

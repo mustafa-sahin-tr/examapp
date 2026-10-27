@@ -56,6 +56,9 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
 
     internal const string UserInstruction = "Bu soruyu sınıflandır.";
 
+    private const string AiSource = "AI";
+    private const string BookSource = "Book";
+
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IServiceTokenProvider _tokenProvider;
     private readonly ClaudeClassifierOptions _options;
@@ -94,7 +97,18 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
         _chat = chat;
     }
 
-    public async Task ClassifyAndPersistAsync(int questionId, int? gradeId, CancellationToken cancellationToken)
+    public Task ClassifyAndPersistAsync(int questionId, int? gradeId, CancellationToken cancellationToken) =>
+        ClassifyCoreAsync(questionId, gradeId, topicId: null, cancellationToken);
+
+    /// <summary>
+    /// Issue #577 (book TOC hybrid): taxonomy narrowed to <paramref name="topicId"/> (<c>&amp;topicId=</c>, cached per
+    /// grade + topic). The result keeps the book's topic (subject untouched) and is persisted with source <c>Book</c>;
+    /// an empty topic taxonomy (no subtopics) skips with a warning.
+    /// </summary>
+    public Task ClassifyWithinTopicAndPersistAsync(int questionId, int? gradeId, int topicId, CancellationToken cancellationToken) =>
+        ClassifyCoreAsync(questionId, gradeId, topicId, cancellationToken);
+
+    private async Task ClassifyCoreAsync(int questionId, int? gradeId, int? topicId, CancellationToken cancellationToken)
     {
         if (_chat is null)
         {
@@ -110,10 +124,12 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
         var token = await _tokenProvider.GetAccessTokenAsync(cancellationToken);
         var examApi = new ExamApiClassificationClient(_httpClientFactory, _examApiBaseUrl);
 
-        var taxonomy = await GetTaxonomyAsync(examApi, gradeId, token, cancellationToken);
+        var taxonomy = await GetTaxonomyAsync(examApi, gradeId, topicId, token, cancellationToken);
         if (taxonomy.SubTopicCount == 0)
         {
-            if (gradeId.HasValue)
+            if (topicId.HasValue)
+                _logger.LogWarning("⚠️ Classifier taxonomy for topic {TopicId} (grade {GradeId}) has no subtopics. Skipping question {QuestionId}; book topic kept.", topicId, gradeId?.ToString() ?? "-", questionId);
+            else if (gradeId.HasValue)
                 _logger.LogWarning("⚠️ Classifier taxonomy for grade {GradeId} is empty. Skipping question {QuestionId} (no fallback to the full taxonomy).", gradeId, questionId);
             else
                 _logger.LogWarning("⚠️ Classifier taxonomy is empty. Skipping question {QuestionId}.", questionId);
@@ -141,11 +157,19 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
                 $"Claude classification for question {questionId} rejected: {unknown} is not in the taxonomy.");
         }
 
+        if (topicId.HasValue)
+        {
+            // Book TOC: the topic is the book's — keep it (subject untouched); only subtopic + difficulty are the model's.
+            // Every subtopic is already inside this topic (filtered taxonomy, FindUnknownId above).
+            result.TopicId = topicId;
+            result.SubjectId = null;
+        }
+
         _logger.LogInformation(
             "🔎 Question {QuestionId} — Claude result: subTopics=[{SubTopics}], subjectId={SubjectId}, topicId={TopicId}, difficulty={Difficulty}",
             questionId, string.Join(",", result.SubTopicIds), result.SubjectId, result.TopicId, result.DifficultyLevel);
 
-        await examApi.PersistAsync(questionId, result, token, cancellationToken);
+        await examApi.PersistAsync(questionId, result, token, cancellationToken, topicId.HasValue ? BookSource : AiSource);
 
         _logger.LogInformation("✅ Question {QuestionId} classification persisted", questionId);
     }
@@ -153,13 +177,20 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
     internal static string TaxonomyCacheKeyFor(int? gradeId) =>
         gradeId.HasValue ? $"{TaxonomyCacheKey}:{gradeId.Value}" : TaxonomyCacheKey;
 
-    private async Task<ClassifierTaxonomy> GetTaxonomyAsync(ExamApiClassificationClient examApi, int? gradeId, string token, CancellationToken ct)
+    /// <summary>Issue #577: topic-filtered taxonomies get their own key (<c>…:{grade|-}:topic:{id}</c>), no collision with grade keys.</summary>
+    internal static string TaxonomyCacheKeyFor(int? gradeId, int? topicId) =>
+        topicId.HasValue
+            ? $"{TaxonomyCacheKey}:{(gradeId.HasValue ? gradeId.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "-")}:topic:{topicId.Value}"
+            : TaxonomyCacheKeyFor(gradeId);
+
+    private async Task<ClassifierTaxonomy> GetTaxonomyAsync(
+        ExamApiClassificationClient examApi, int? gradeId, int? topicId, string token, CancellationToken ct)
     {
-        var cacheKey = TaxonomyCacheKeyFor(gradeId);
+        var cacheKey = TaxonomyCacheKeyFor(gradeId, topicId);
         if (_cache.TryGetValue(cacheKey, out ClassifierTaxonomy? cached) && cached is not null)
             return cached;
 
-        var taxonomy = await examApi.FetchTaxonomyAsync(gradeId, token, ct);
+        var taxonomy = await examApi.FetchTaxonomyAsync(gradeId, topicId, token, ct);
         if (_options.TaxonomyCacheSeconds > 0)
             _cache.Set(cacheKey, taxonomy, TimeSpan.FromSeconds(_options.TaxonomyCacheSeconds));
         return taxonomy;

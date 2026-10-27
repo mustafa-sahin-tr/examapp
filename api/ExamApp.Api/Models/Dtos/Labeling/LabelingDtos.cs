@@ -91,6 +91,14 @@ public class LabelingBankQuestionDto : LabelingBankBoxDto
 
     /// <summary><see cref="Options"/> içindeki doğru şıkkın sırası.</summary>
     public int CorrectOptionIndex { get; set; } = -1;
+
+    /// <summary>Issue #577: etkinlik etiketi ("Etkinlik 9"); yalnız <c>BookId</c> verildiyse saklanır.</summary>
+    [MaxLength(Data.QuestionSource.MaxLabelLength)]
+    public string? ActivityLabel { get; set; }
+
+    /// <summary>Issue #577: madde etiketi ("3", "b"); yalnız <c>BookId</c> verildiyse saklanır.</summary>
+    [MaxLength(Data.QuestionSource.MaxLabelLength)]
+    public string? ItemLabel { get; set; }
 }
 
 /// <summary>
@@ -108,15 +116,32 @@ public class LabelingBankSaveRequestDto
     /// <summary>
     /// Issue #565: sayfanın sınıfı (zorunlu, var olan bir <c>Grade</c>). Sınıflandırıcı soruları yalnız bu sınıfın
     /// konularına yerleştirir (<c>QuestionCreatedEvent.GradeId</c>).
+    /// Issue #577: kitap sayfasında verilmezse içindekilerdeki sınıf kullanılır; verilirse o kazanır. İkisi de yoksa 400.
     /// </summary>
-    [Range(1, int.MaxValue)] // eksik alan 0 olarak bağlanır → 400
-    public int GradeId { get; set; }
+    [Range(1, int.MaxValue)]
+    public int? GradeId { get; set; }
 
-    /// <summary>true: sayfa daha önce bankaya kaydedildiyse de yeniden kaydet (sorular ikinci kez oluşur).</summary>
+    /// <summary>
+    /// Issue #577: sayfanın kitabı. <see cref="FilePage"/> ile birlikte verilir: ders/konu/alt konu içindekilerden gelir
+    /// (<c>ClassificationSource = Book</c>), <c>BookName</c> kitap adı olur, her soruya <c>QuestionSource</c> yazılır ve aynı
+    /// kırpma bankada varsa (<c>Force</c> değilse) 409 <c>LabelingCropAlreadyInBank</c>.
+    /// </summary>
+    [Range(1, int.MaxValue)]
+    public int? BookId { get; set; }
+
+    /// <summary>Issue #577: kitabın dosya sayfası (1'den başlar). <see cref="BookId"/> ile birlikte zorunlu.</summary>
+    [Range(1, int.MaxValue)]
+    public int? FilePage { get; set; }
+
+    /// <summary>true: sayfa (ya da kırpma) daha önce bankaya kaydedildiyse de yeniden kaydet (sorular ikinci kez oluşur).</summary>
     public bool Force { get; set; }
 }
 
-public record LabelingBankSaveResponseDto(string ImageSha256, LabelingBankInfoDto Bank);
+/// <summary>
+/// <c>TocApplied</c> (issue #577): kitap sayfasının içindekiler ders/konusu sorulara uygulandı (sınıf içindekilerle aynı,
+/// satır silinmiş taksonomiye işaret etmiyor ve en az konu var → <c>ClassificationSource = Book</c>).
+/// </summary>
+public record LabelingBankSaveResponseDto(string ImageSha256, LabelingBankInfoDto Bank, bool TocApplied = false);
 
 public class LabelingAiDetectRequestDto
 {

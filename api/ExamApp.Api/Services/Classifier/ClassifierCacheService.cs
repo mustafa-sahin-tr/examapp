@@ -51,7 +51,7 @@ public class ClassifierCacheService : IClassifierCacheService
     public async Task<ClassifierCacheStatusDto> GetStatusAsync(CancellationToken ct = default)
     {
         var config = await _context.ClassifierCacheConfigs.FindAsync(new object[] { ClassifierCacheConfig.SingletonId }, ct);
-        var (payload, subTopicCount) = await BuildTaxonomyPayloadAsync(gradeId: null, ct);
+        var (payload, subTopicCount) = await BuildTaxonomyPayloadAsync(gradeId: null, ct, topicId: null);
         var currentHash = Sha256(payload);
 
         return new ClassifierCacheStatusDto
@@ -71,9 +71,9 @@ public class ClassifierCacheService : IClassifierCacheService
         return (config?.CachedContentName, config?.Model ?? _options.Model);
     }
 
-    public async Task<ClassifierTaxonomyDto> GetTaxonomyAsync(int? gradeId = null, CancellationToken ct = default)
+    public async Task<ClassifierTaxonomyDto> GetTaxonomyAsync(int? gradeId = null, int? topicId = null, CancellationToken ct = default)
     {
-        var (payload, subTopicCount) = await BuildTaxonomyPayloadAsync(gradeId is > 0 ? gradeId : null, ct);
+        var (payload, subTopicCount) = await BuildTaxonomyPayloadAsync(gradeId is > 0 ? gradeId : null, ct, topicId is > 0 ? topicId : null);
         return new ClassifierTaxonomyDto { Taxonomy = payload, Hash = Sha256(payload), SubTopicCount = subTopicCount };
     }
 
@@ -82,7 +82,7 @@ public class ClassifierCacheService : IClassifierCacheService
         if (string.IsNullOrWhiteSpace(_options.ApiKey))
             return Fail(_localizer["classifier.cache.apiKeyMissing"]);
 
-        var (payload, subTopicCount) = await BuildTaxonomyPayloadAsync(gradeId: null, ct);
+        var (payload, subTopicCount) = await BuildTaxonomyPayloadAsync(gradeId: null, ct, topicId: null);
         if (subTopicCount == 0)
             return Fail(_localizer["classifier.cache.taxonomyEmpty"]);
 
@@ -150,18 +150,21 @@ public class ClassifierCacheService : IClassifierCacheService
     /// Compact JSON tree the classifier prompt refers to. Returns (json, subtopicCount). <paramref name="gradeId"/> null =
     /// whole taxonomy (Gemini cache + status always use that); otherwise only that grade's subjects/topics (#565).
     /// </summary>
-    private async Task<(string Payload, int SubTopicCount)> BuildTaxonomyPayloadAsync(int? gradeId, CancellationToken ct)
+    private async Task<(string Payload, int SubTopicCount)> BuildTaxonomyPayloadAsync(int? gradeId, CancellationToken ct, int? topicId)
     {
         var tree = await _taxonomy.GetTreeAsync(gradeId, ct: ct);
 
         // GetTreeAsync(gradeId) narrows subjects (GradeSubject link) but keeps all of their topics, including other grades'
         // same-named ones (admin tree needs that). The classifier must only see that grade's topics (#565).
+        // Issue #577: topicId keeps only that topic (book TOC hybrid mode).
         List<TaxonomyTopicDto> TopicsOf(TaxonomySubjectDto s) =>
-            gradeId.HasValue ? s.Topics.Where(t => t.GradeId == gradeId.Value).ToList() : s.Topics;
+            gradeId.HasValue || topicId.HasValue
+                ? s.Topics.Where(t => (!gradeId.HasValue || t.GradeId == gradeId.Value) && (!topicId.HasValue || t.Id == topicId.Value)).ToList()
+                : s.Topics;
 
-        // With a grade filter, a linked subject whose topics all belong to other grades carries nothing the classifier
+        // With a grade/topic filter, a subject whose topics were all filtered out carries nothing the classifier
         // can pick, so drop it (smaller prompt). Unfiltered output is unchanged.
-        var subjects = gradeId.HasValue ? tree.Subjects.Where(s => TopicsOf(s).Count > 0) : tree.Subjects;
+        var subjects = gradeId.HasValue || topicId.HasValue ? tree.Subjects.Where(s => TopicsOf(s).Count > 0) : tree.Subjects;
 
         var model = new
         {

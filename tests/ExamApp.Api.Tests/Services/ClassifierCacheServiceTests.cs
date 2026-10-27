@@ -4,6 +4,7 @@ using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.Classifier;
 using ExamApp.Api.Services.Taxonomy;
 using ExamApp.Api.Tests.Support;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -273,6 +274,30 @@ public class ClassifierCacheServiceTests : IDisposable
         result.Taxonomy.ShouldBe(unfiltered.Taxonomy);
         result.Hash.ShouldBe(unfiltered.Hash);
         Parse(result.Taxonomy).Count.ShouldBe(2);
+    }
+
+    [Fact]
+    // issue #577: ?topicId= yalnız o konuyu (ve dersini) bırakır; sınıfla birlikte de çalışır, başka sınıfın konusu boş döner.
+    public async Task Taxonomy_for_a_topic_keeps_only_that_topic()
+    {
+        var tax = await SeedGradeTaxonomyAsync();
+        int math4Topic;
+        await using (var read = _db.NewContext())
+            math4Topic = await read.Topics.Where(t => t.GradeId == tax.Grade4 && t.SubjectId == tax.MathId).Select(t => t.Id).SingleAsync();
+        await using var ctx = _db.NewContext();
+        var service = NewServiceWithRealTaxonomy(ctx);
+
+        var topicOnly = await service.GetTaxonomyAsync(topicId: math4Topic);
+        var withGrade = await service.GetTaxonomyAsync(tax.Grade4, math4Topic);
+        var otherGrade = await service.GetTaxonomyAsync(tax.Grade3, math4Topic);
+
+        topicOnly.SubTopicCount.ShouldBe(1);
+        var subject = Parse(topicOnly.Taxonomy).ShouldHaveSingleItem();
+        subject.Id.ShouldBe(tax.MathId);
+        subject.Topics.ShouldHaveSingleItem().TopicId.ShouldBe(math4Topic);
+        withGrade.Taxonomy.ShouldBe(topicOnly.Taxonomy);
+        otherGrade.SubTopicCount.ShouldBe(0);
+        Parse(otherGrade.Taxonomy).ShouldBeEmpty();
     }
 
     [Fact]

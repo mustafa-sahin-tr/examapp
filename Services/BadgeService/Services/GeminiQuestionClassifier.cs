@@ -119,6 +119,18 @@ public class GeminiQuestionClassifier : IQuestionClassifier
         _logger.LogInformation("✅ Question {QuestionId} classification persisted", questionId);
     }
 
+    /// <summary>
+    /// Issue #577: Gemini classifies against one cached whole-taxonomy content and cannot be constrained to a topic, so the
+    /// book-TOC hybrid mode is Claude-only here — skipped, the book's topic is kept.
+    /// </summary>
+    public Task ClassifyWithinTopicAndPersistAsync(int questionId, int? gradeId, int topicId, CancellationToken cancellationToken)
+    {
+        _logger.LogWarning(
+            "⏭️ Topic-constrained classification is Claude-only; skipping question {QuestionId} (book topic {TopicId} kept).",
+            questionId, topicId);
+        return Task.CompletedTask;
+    }
+
     private async Task<(string? CachedContent, string Model)> ResolveCachePointerAsync(string token, CancellationToken ct)
     {
         try

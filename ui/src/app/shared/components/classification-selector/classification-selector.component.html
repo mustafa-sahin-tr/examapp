@@ -53,8 +53,8 @@
         @for (grade of grades(); track grade.id) {
         <mat-chip-option [value]="grade.id" (click)="selectGrade(grade.id)">
           {{ grade.name }}
-          @if (classificationSource() === 1) {
-          <mat-icon style="font-size: 14px; height: 14px; width: 14px; margin-right: 4px;">auto_awesome</mat-icon>
+          @if (sourceIcon(); as icon) {
+          <mat-icon style="font-size: 14px; height: 14px; width: 14px; margin-right: 4px;" [attr.aria-label]="t(icon.labelKey)" [attr.title]="t(icon.labelKey)">{{ icon.name }}</mat-icon>
           }
         </mat-chip-option>
         }
@@ -71,8 +71,8 @@
         @for (subject of subjects(); track subject.id) {
         <mat-chip-option [value]="subject.id" (click)="selectSubject(subject.id)">
           {{ subject.name }}
-          @if (classificationSource() === 1) {
-          <mat-icon style="font-size: 14px; height: 14px; width: 14px; margin-right: 4px;">auto_awesome</mat-icon>
+          @if (sourceIcon(); as icon) {
+          <mat-icon style="font-size: 14px; height: 14px; width: 14px; margin-right: 4px;" [attr.aria-label]="t(icon.labelKey)" [attr.title]="t(icon.labelKey)">{{ icon.name }}</mat-icon>
           }
         </mat-chip-option>
         }
@@ -90,8 +90,8 @@
         @for (topic of topics(); track topic.id) {
         <mat-chip-option [value]="topic.id" (click)="selectTopic(topic.id)">
           {{ topic.name }}
-          @if (classificationSource() === 1 && topic.id === selectedTopic()) {
-          <mat-icon style="font-size: 14px; height: 14px; width: 14px; margin-right: 4px;">auto_awesome</mat-icon>
+          @if (sourceIcon(); as icon) { @if (topic.id === selectedTopic()) {
+          <mat-icon style="font-size: 14px; height: 14px; width: 14px; margin-right: 4px;" [attr.aria-label]="t(icon.labelKey)" [attr.title]="t(icon.labelKey)">{{ icon.name }}</mat-icon> }
           }
         </mat-chip-option>
         }
@@ -109,8 +109,8 @@
         @for (subtopic of subtopics(); track subtopic.id) {
         <mat-chip-option [selected]="isSubtopicSelected(subtopic.id)" (click)="toggleSubtopic(subtopic.id)">
           {{ subtopic.name }}
-          @if (classificationSource() === 1) {
-          <mat-icon style="font-size: 14px; height: 14px; width: 14px; margin-right: 4px;">auto_awesome</mat-icon>
+          @if (sourceIcon(); as icon) {
+          <mat-icon style="font-size: 14px; height: 14px; width: 14px; margin-right: 4px;" [attr.aria-label]="t(icon.labelKey)" [attr.title]="t(icon.labelKey)">{{ icon.name }}</mat-icon>
           }
         </mat-chip-option>
         }

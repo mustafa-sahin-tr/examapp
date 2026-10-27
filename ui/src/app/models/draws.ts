@@ -26,6 +26,8 @@ export interface PassageRegion {
 export enum ClassificationSource {
   Human = 0,
   AI = 1,
+  /** Issue #577: kitabın içindekilerinden (işaretleme ekranı, kaynak kitap seçiliyken havuza kayıt). */
+  Book = 2,
 }
 
 /**

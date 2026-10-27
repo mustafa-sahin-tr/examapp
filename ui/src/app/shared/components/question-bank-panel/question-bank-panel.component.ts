@@ -83,6 +83,7 @@ export class QuestionBankPanelComponent {
 
   readonly pageSizeOptions = [12, 24, 48];
   readonly AI = ClassificationSource.AI;
+  readonly BOOK = ClassificationSource.Book;
 
   readonly scope = signal<QuestionBankScope>('mine');
   // Başlangıç değeri input'tan gelir; kullanıcı seçimi (`onClassificationChange`) üzerine yazar.

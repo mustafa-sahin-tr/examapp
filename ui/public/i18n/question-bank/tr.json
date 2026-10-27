@@ -45,7 +45,8 @@
     "select": "Seç",
     "alreadyAdded": "Testte var",
     "cannotLink": "Eklenemez",
-    "cannotLinkTooltip": "Sahibi belli olmayan eski bir soru; teste eklenemez. Testi kopyalayarak kullanabilirsiniz."
+    "cannotLinkTooltip": "Sahibi belli olmayan eski bir soru; teste eklenemez. Testi kopyalayarak kullanabilirsiniz.",
+    "bookTooltip": "Kitap içindekilerinden sınıflandırıldı"
   },
   "preview": {
     "title": "Soru #{{id}}",

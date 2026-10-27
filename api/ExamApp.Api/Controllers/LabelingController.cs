@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Linq;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
@@ -128,8 +129,9 @@ public class LabelingController : BaseController
     /// <summary>
     /// Sayfadaki soruları teste bağlamadan soru bankasına kaydeder (issue #470); sahibi çağıran, sınıflandırma
     /// <c>QuestionCreatedEvent</c> ile başlar. Soru yazmak öğretmen yeteneği olduğundan sınıf düzeyindeki rollere ek olarak
-    /// Teacher veya Admin gerekir (QuestionTrainer tek başına yetmez). 400 geçersiz kutu / doğru şık eksik / sınıf eksik ya da bilinmiyor (#565); 409 sayfa daha
-    /// önce kaydedildi (<c>force</c> ile yeniden kaydedilir) ya da şu an kaydediliyor; 429 saatlik kayıt sınırı; 500 kayıt
+    /// Teacher veya Admin gerekir (QuestionTrainer tek başına yetmez). 400 geçersiz kutu / doğru şık eksik / sınıf eksik ya da bilinmiyor (#565) /
+    /// kitap bulunamadı ya da kitap-sayfa eksik (#577); 409 sayfa daha önce kaydedildi (<c>force</c> ile yeniden kaydedilir) ya da
+    /// şu an kaydediliyor, ya da aynı kırpma bankada var (<c>LabelingCropAlreadyInBank</c>, #577); 429 saatlik kayıt sınırı; 500 kayıt
     /// başarısız.
     /// </summary>
     [HttpPost("pages/bank")]
@@ -159,6 +161,22 @@ public class LabelingController : BaseController
                 existing = ex.Existing,
             });
         }
+        catch (LabelingCropDuplicateException ex)
+        {
+            // Issue #577: aynı kırpma bankada var (herhangi bir kitap/baskı); force ile yine de kaydedilir.
+            return Conflict(new
+            {
+                message = _localizer["labeling.bank.cropAlreadySaved"].Value,
+                errorCode = "LabelingCropAlreadyInBank",
+                // Security M1: başkasının sorusu yalnız {questionIndex, otherOwner: true} (Admin hepsini görür).
+                existing = ex.Existing.Select(e => e.ToResponse()).ToList(),
+            });
+        }
+        catch (LabelingAnswerKeyPageException)
+        {
+            // Issue #577 (CR12): cevap anahtarı sayfası; force ile yine de kaydedilir.
+            return Conflict(Error("labeling.bank.answerKeyPage", "LabelingAnswerKeyPage"));
+        }
         catch (LabelingRateLimitException ex)
         {
             if (ex.RetryAfter is { } retryAfter)
@@ -175,7 +193,7 @@ public class LabelingController : BaseController
     }
 
     private LabelingActor CurrentActor() =>
-        new(KeyCloakId, User.FindFirstValue("name") ?? User.FindFirstValue("preferred_username"));
+        new(KeyCloakId, User.FindFirstValue("name") ?? User.FindFirstValue("preferred_username"), IsAdmin);
 
     private object Error(string messageKey, string? errorCode = null) =>
         new { message = _localizer[messageKey].Value, errorCode };

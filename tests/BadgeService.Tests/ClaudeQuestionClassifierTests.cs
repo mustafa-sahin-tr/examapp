@@ -265,6 +265,79 @@ public class ClaudeQuestionClassifierTests
         http.Requests.ShouldNotContain(r => r.RequestUri!.ToString().Contains("/classification"));
     }
 
+    // issue #577: book TOC hybrid — classify only the subtopic within the book's topic
+    [Fact]
+    public async Task Within_a_topic_requests_the_topic_taxonomy_keeps_the_topic_and_persists_as_Book()
+    {
+        var topicTaxonomy = """{"subjects":[{"id":1,"name":"Matematik","topics":[{"id":10,"name":"Sayılar","grade":"5","subTopics":[{"id":100,"name":"Doğal sayılar"},{"id":101,"name":"Kesirler"}]}]}]}""";
+        var http = new StubHttp()
+            .On("/api/questions/classifier-taxonomy", HttpStatusCode.OK, TaxonomyResponse(topicTaxonomy))
+            .OnBytes("/image", new byte[] { 1 })
+            .On("/classification", HttpStatusCode.OK, "{}");
+        var chat = new FakeChatClient("""{ "subTopicIds": [101], "subjectId": 1, "topicId": 10, "difficultyLevel": 4, "reasoning": "r" }""");
+
+        await NewClassifier(http, chat).ClassifyWithinTopicAndPersistAsync(8, 5, 10, default);
+
+        TaxonomyUrls(http).ShouldHaveSingleItem().ShouldEndWith("/api/questions/classifier-taxonomy?gradeId=5&topicId=10");
+        var body = http.BodyMatching("/classification");
+        body.ShouldContain("\"classificationSource\":\"Book\"");
+        body.ShouldContain("\"topicId\":10");
+        body.ShouldContain("\"subjectId\":null");
+        body.ShouldContain("\"subTopicIds\":[101]");
+        body.ShouldContain("\"difficulty\":4");
+    }
+
+    [Fact]
+    public async Task Within_a_topic_without_subtopics_skips_and_keeps_the_book_topic()
+    {
+        var http = new StubHttp()
+            .On("/api/questions/classifier-taxonomy", HttpStatusCode.OK, TaxonomyResponse("""{"subjects":[]}"""))
+            .OnBytes("/image", new byte[] { 1 })
+            .On("/classification", HttpStatusCode.OK, "{}");
+        var chat = new FakeChatClient("{}");
+
+        await NewClassifier(http, chat).ClassifyWithinTopicAndPersistAsync(8, 5, 10, default);
+
+        chat.Calls.ShouldBeEmpty();
+        http.Requests.ShouldNotContain(r => r.RequestUri!.ToString().Contains("/classification"));
+    }
+
+    [Fact]
+    public async Task Within_a_topic_a_subtopic_of_another_topic_is_rejected()
+    {
+        var topicTaxonomy = """{"subjects":[{"id":1,"name":"Matematik","topics":[{"id":10,"name":"Sayılar","grade":"5","subTopics":[{"id":100,"name":"Doğal sayılar"}]}]}]}""";
+        var http = new StubHttp()
+            .On("/api/questions/classifier-taxonomy", HttpStatusCode.OK, TaxonomyResponse(topicTaxonomy))
+            .OnBytes("/image", new byte[] { 1 })
+            .On("/classification", HttpStatusCode.OK, "{}");
+
+        await Should.ThrowAsync<InvalidOperationException>(() =>
+            NewClassifier(http, new FakeChatClient("""{ "subTopicIds": [200], "difficultyLevel": 3, "reasoning": "r" }"""))
+                .ClassifyWithinTopicAndPersistAsync(8, 5, 10, default));
+
+        http.Requests.ShouldNotContain(r => r.RequestUri!.ToString().Contains("/classification"));
+    }
+
+    [Fact]
+    public async Task Topic_taxonomies_are_cached_per_grade_and_topic_separately_from_grade_taxonomies()
+    {
+        var http = HappyHttp();
+        var chat = new FakeChatClient("""{ "subTopicIds": [100], "difficultyLevel": 3, "reasoning": "r" }""");
+        var classifier = NewClassifier(http, chat);
+
+        await classifier.ClassifyWithinTopicAndPersistAsync(1, 5, 10, default);
+        await classifier.ClassifyWithinTopicAndPersistAsync(2, 5, 10, default); // cached
+        await classifier.ClassifyAndPersistAsync(3, 5, default);                 // grade key, separate
+        await classifier.ClassifyWithinTopicAndPersistAsync(4, null, 10, default);
+
+        TaxonomyUrls(http).Count(u => u.EndsWith("?gradeId=5&topicId=10")).ShouldBe(1);
+        TaxonomyUrls(http).Count(u => u.EndsWith("?gradeId=5")).ShouldBe(1);
+        TaxonomyUrls(http).Count(u => u.EndsWith("?topicId=10")).ShouldBe(1);
+        ClaudeQuestionClassifier.TaxonomyCacheKeyFor(5, 10).ShouldBe("claude-question-classifier:taxonomy:5:topic:10");
+        ClaudeQuestionClassifier.TaxonomyCacheKeyFor(null, 10).ShouldBe("claude-question-classifier:taxonomy:-:topic:10");
+        ClaudeQuestionClassifier.TaxonomyCacheKeyFor(5, null).ShouldBe(ClaudeQuestionClassifier.TaxonomyCacheKeyFor(5));
+    }
+
     [Fact]
     public async Task Throws_when_the_taxonomy_fetch_fails()
     {

@@ -8,6 +8,7 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Labeling;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Questions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -22,6 +23,19 @@ public sealed class LabelingBankDuplicateException(LabelingBankInfoDto? existing
     /// <summary>Önceki tamamlanmış kayıt; sayfa ilk kez kaydedilirken başka istek sürüyorsa null.</summary>
     public LabelingBankInfoDto? Existing { get; } = existing;
 }
+
+/// <summary>
+/// Issue #577: istenen soruların en az birinin kırpması (SHA-256) bankada zaten var ve <c>Force</c> verilmedi → 409
+/// <c>LabelingCropAlreadyInBank</c>.
+/// </summary>
+public sealed class LabelingCropDuplicateException(IReadOnlyList<LabelingCropDuplicateDto> existing)
+    : Exception("Labeling question crop already saved to the question bank.")
+{
+    public IReadOnlyList<LabelingCropDuplicateDto> Existing { get; } = existing;
+}
+
+/// <summary>Issue #577 (CR12): kitap sayfası cevap anahtarı aralığında ve <c>Force</c> verilmedi → 409 <c>LabelingAnswerKeyPage</c>.</summary>
+public sealed class LabelingAnswerKeyPageException() : Exception("Labeling page is in the book's answer key range.");
 
 /// <summary>Sorular oluşturulamadı (görsel kırpma / DB) → 500; ayrıntı loglanır, istemciye sızdırılmaz.</summary>
 public sealed class LabelingBankSaveException() : Exception("Saving labeling questions to the bank failed.");
@@ -44,8 +58,13 @@ public sealed class LabelingBankService(
     IQuestionService questionService,
     IFixedWindowCounterStore rateLimitStore,
     TimeProvider timeProvider,
-    ILogger<LabelingBankService> logger) : ILabelingBankService
+    ILogger<LabelingBankService> logger,
+    IBookRegistryService books,
+    ImageHelper imageHelper) : ILabelingBankService
 {
+    /// <summary>409 <c>LabelingCropAlreadyInBank</c> yanıtındaki mevcut kayıt sayısı üst sınırı.</summary>
+    public const int MaxReportedCropDuplicates = 50;
+
     public const int MaxQuestions = 100;
     public const int MinOptions = 2;
     public const int MaxOptions = 10;
@@ -71,15 +90,38 @@ public sealed class LabelingBankService(
         foreach (var q in questions)
             ValidateShape(q);
 
-        // Issue #565: sınıf zorunlu ve var olmalı — sınıflandırıcı taksonomiyi buna daraltır.
-        if (request.GradeId <= 0)
+        // Issue #577: kitap sayfası (kitap + dosya sayfası birlikte). İçindekiler sınıf/ders/konu varsayılanını verir.
+        BookPageContext? bookPage = null;
+        if (request.BookId is not null || request.FilePage is not null)
+        {
+            if (request.BookId is not > 0 || request.FilePage is not > 0)
+                throw new LabelingValidationException("labeling.bank.bookPageRequired");
+            bookPage = await books.ResolvePageAsync(request.BookId.Value, request.FilePage.Value, ct)
+                       ?? throw new LabelingValidationException("labeling.books.notFound");
+            if (bookPage.IsAnswerKey && !request.Force)
+                throw new LabelingAnswerKeyPageException();
+            if (bookPage.TocStale)
+                logger.LogWarning("[Labeling] book {BookId} page {Page}: TOC entry points to deleted taxonomy; not applied",
+                    bookPage.BookId, bookPage.FilePage);
+        }
+
+        // Issue #565: sınıf zorunlu ve var olmalı — sınıflandırıcı taksonomiyi buna daraltır. #577: istekteki sınıf kazanır;
+        // yoksa içindekilerin sınıfı.
+        var gradeId = request.GradeId is > 0 ? request.GradeId.Value : bookPage?.Toc?.GradeId ?? 0;
+        if (gradeId <= 0)
             throw new LabelingValidationException("labeling.bank.gradeRequired");
-        if (!await db.Grades.AnyAsync(g => g.Id == request.GradeId, ct))
+        if (!await db.Grades.AnyAsync(g => g.Id == gradeId, ct))
             throw new LabelingValidationException("labeling.bank.gradeUnknown");
+
+        // İçindekilerin ders/konusu yalnız sınıf onunla aynıysa uygulanır (başka sınıf seçildiyse konusu o sınıfa ait değil).
+        var toc = bookPage?.Toc is { } entry && entry.GradeId == gradeId ? entry : null;
+        if (bookPage?.Toc is not null && toc is null)
+            logger.LogInformation("[Labeling] book {BookId} page {Page}: request grade {Grade} differs from TOC grade {TocGrade}; TOC taxonomy not applied",
+                bookPage.BookId, bookPage.FilePage, gradeId, bookPage.Toc.GradeId);
 
         string sha256;
         int width, height;
-        string imageData;
+        byte[] pageJpeg;
         List<BulkQuestionDto> bulkQuestions;
         // Görsel çözülür ve EXIF yönü uygulanır: tuvaldeki kutular o uzayda; toplu kayıt bu (tam boy, metadata'sız) JPEG'i
         // kırpar. Çözülmüş görsel kayıttan önce bırakılır.
@@ -89,18 +131,29 @@ public sealed class LabelingBankService(
             width = image.Width;
             height = image.Height;
             bulkQuestions = questions.Select((q, i) => ToBulkQuestion(q, i, width, height)).ToList();
-            imageData = "data:image/jpeg;base64," + Convert.ToBase64String(image.Encode(LabelingImage.MaxEdge).Jpeg);
+            pageJpeg = image.Encode(LabelingImage.MaxEdge).Jpeg;
         }
+        var imageData = "data:image/jpeg;base64," + Convert.ToBase64String(pageJpeg);
 
         var page = await GetOrCreatePageAsync(sha256, width, height, ct);
         var previous = ToBankInfo(page);
         if (previous is not null && !request.Force)
             throw new LabelingBankDuplicateException(previous);
 
+        // Kırpma hash'i (görsel çözme + kırpma) pahalı: sınır ondan önce; kırpma tekrarı 409'ları da sayılır (review 4 / L4).
         var decision = await rateLimitStore.TryAcquireAsync(
             $"labeling-bank:{actor.KeycloakId}", 1, SavesPerHour, RateLimitWindow, ct);
         if (!decision.Allowed)
             throw new LabelingRateLimitException(decision.RetryAfter);
+
+        if (bookPage is not null)
+        {
+            ApplyBookSource(bulkQuestions, questions, bookPage);
+            // Issue #577: aynı kırpma (toplu kaydın yükleyeceği question.jpg baytları) bankada varsa kayıttan ve talepten önce
+            // uyar. Hash toplu kaydın izlediği yolla aynı JPEG'den hesaplanır (QuestionCropHash).
+            if (!request.Force)
+                await ThrowIfCropsExistAsync(bulkQuestions, pageJpeg, actingUserId, actor.IsAdmin, ct);
+        }
 
         // "Kaydediliyor" işareti: tamamlanmış kayıt alanları (BankSavedAt...) yalnız başarıda yazılır. Son kayıt okuduğumuz
         // değerde değilse ya da başka bir kayıt sürüyorsa (bayat değilse) → 409.
@@ -119,8 +172,18 @@ public sealed class LabelingBankService(
             ImageData = imageData,
             Passages = [],
             Questions = bulkQuestions,
-            Header = new HeaderInfo { TestId = null },
-            GradeId = request.GradeId,
+            Header = toc is null
+                ? new HeaderInfo { TestId = null }
+                : new HeaderInfo
+                {
+                    TestId = null,
+                    SubjectId = toc.SubjectId,
+                    TopicId = toc.TopicId,
+                    Subtopics = toc.SubTopicId is { } subTopicId ? [subTopicId] : [],
+                    // Konu yoksa (yalnız ders) kaynak Human kalır: sınıflandırıcı bugünkü gibi çalışır.
+                    ClassificationSource = toc.TopicId is null ? null : nameof(ClassificationSource.Book),
+                },
+            GradeId = gradeId,
         };
 
         ResponseBaseDto? result;
@@ -145,7 +208,83 @@ public sealed class LabelingBankService(
 
         logger.LogInformation("[Labeling] page {Hash}: {Count} questions saved to bank by {User}{Again}",
             sha256[..16], bulkQuestions.Count, actor.KeycloakId, previous is null ? "" : " (again)");
-        return new LabelingBankSaveResponseDto(sha256, new LabelingBankInfoDto(now, name, bulkQuestions.Count));
+        return new LabelingBankSaveResponseDto(sha256, new LabelingBankInfoDto(now, name, bulkQuestions.Count),
+            TocApplied: toc?.TopicId is not null);
+    }
+
+    /// <summary>Kitap adı ve soru başına kaynak (sunucu içi <see cref="BulkQuestionDto.Source"/>).</summary>
+    private static void ApplyBookSource(
+        List<BulkQuestionDto> bulkQuestions, IReadOnlyList<LabelingBankQuestionDto> questions, BookPageContext bookPage)
+    {
+        for (var i = 0; i < bulkQuestions.Count; i++)
+        {
+            bulkQuestions[i].BookName = bookPage.BookName;
+            bulkQuestions[i].Source = new BulkQuestionSourceInfo(
+                bookPage.BookId, bookPage.FilePage, bookPage.PrintedPage,
+                NormalizeLabel(questions[i].ActivityLabel), NormalizeLabel(questions[i].ItemLabel));
+        }
+    }
+
+    private static string? NormalizeLabel(string? value)
+    {
+        var trimmed = value?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? null : Truncate(trimmed, QuestionSource.MaxLabelLength);
+    }
+
+    /// <summary>
+    /// Kırpma hash'lerinden biri bankada (silinmemiş soru, herhangi bir kitap/baskı) varsa
+    /// <see cref="LabelingCropDuplicateException"/>.
+    /// </summary>
+    private async Task ThrowIfCropsExistAsync(
+        List<BulkQuestionDto> bulkQuestions, byte[] pageJpeg, int actingUserId, bool isAdmin, CancellationToken ct)
+    {
+        IReadOnlyList<string> hashes;
+        try
+        {
+            hashes = QuestionCropHash.Compute(imageHelper, pageJpeg,
+                bulkQuestions.Select(q => ((int)q.X, (int)q.Y, q.Width, q.Height)).ToList());
+        }
+        catch (Exception ex) when (ex is ImageDecodeException or ArgumentOutOfRangeException)
+        {
+            throw new LabelingValidationException("labeling.invalidImage");
+        }
+
+        var distinct = hashes.Distinct().ToList();
+        var existing = await db.QuestionSources.IgnoreQueryFilters().AsNoTracking()
+            .Where(s => distinct.Contains(s.CropSha256) && !s.Question.IsDeleted)
+            .OrderBy(s => s.QuestionId)
+            .Select(s => new
+            {
+                s.QuestionId, s.CropSha256, BookName = s.Book.Name, s.FilePage, s.PrintedPage, s.ActivityLabel, s.ItemLabel,
+            })
+            .Take(MaxReportedCropDuplicates)
+            .ToListAsync(ct);
+        if (existing.Count == 0)
+            return;
+
+        // Security M1: ayrıntı yalnız çağıranın sorusu için (Admin hepsi); sahiplik kuralı soru bankasıyla aynı (OwnedBy).
+        var visible = new HashSet<int>();
+        if (isAdmin)
+        {
+            visible.UnionWith(existing.Select(e => e.QuestionId));
+        }
+        else
+        {
+            var ids = existing.Select(e => e.QuestionId).Distinct().ToList();
+            visible.UnionWith(await db.Questions.IgnoreQueryFilters().AsNoTracking()
+                .Where(q => ids.Contains(q.Id))
+                .Where(QuestionOwnershipGuard.OwnedBy(db, actingUserId))
+                .Select(q => q.Id)
+                .ToListAsync(ct));
+        }
+
+        var duplicates = hashes
+            .SelectMany((hash, index) => existing.Where(e => e.CropSha256 == hash).Select(e => new LabelingCropDuplicateDto(
+                index, e.QuestionId, e.BookName, e.FilePage, e.PrintedPage, e.ActivityLabel, e.ItemLabel,
+                OtherOwner: !visible.Contains(e.QuestionId))))
+            .Take(MaxReportedCropDuplicates)
+            .ToList();
+        throw new LabelingCropDuplicateException(duplicates);
     }
 
     internal static LabelingBankInfoDto? ToBankInfo(LabelingPage page) =>

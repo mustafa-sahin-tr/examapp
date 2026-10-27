@@ -266,6 +266,9 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("CanonicalBookId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -285,6 +288,10 @@ namespace ExamApp.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<DateTime?>("UpdateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -293,7 +300,60 @@ namespace ExamApp.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CanonicalBookId");
+
                     b.ToTable("Books");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.BookAnswerKeyRange", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BookId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("FileFrom")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("FileTo")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookId", "FileFrom");
+
+                    b.ToTable("BookAnswerKeyRanges");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.BookPageOffset", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BookId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("FileFrom")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("FileTo")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Offset")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookId", "FileFrom");
+
+                    b.ToTable("BookPageOffsets");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.BookTest", b =>
@@ -337,6 +397,50 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("BookId");
 
                     b.ToTable("BookTests");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.BookTocEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BookId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("FileFrom")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("FileTo")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("GradeId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SubTopicId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SubjectId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TopicId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GradeId");
+
+                    b.HasIndex("SubTopicId");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("TopicId");
+
+                    b.HasIndex("BookId", "FileFrom");
+
+                    b.ToTable("BookTocEntries");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Booking", b =>
@@ -2063,6 +2167,52 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("TopicId");
 
                     b.ToTable("Questions");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionSource", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ActivityLabel")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("BookId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CropSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .IsFixedLength();
+
+                    b.Property<int>("FilePage")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ItemLabel")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int?>("PrintedPage")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QuestionId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookId");
+
+                    b.HasIndex("CropSha256");
+
+                    b.HasIndex("QuestionId")
+                        .IsUnique();
+
+                    b.ToTable("QuestionSources");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.QuestionSubTopic", b =>
@@ -4762,6 +4912,34 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Question");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.Book", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Book", "CanonicalBook")
+                        .WithMany()
+                        .HasForeignKey("CanonicalBookId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CanonicalBook");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.BookAnswerKeyRange", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Book", null)
+                        .WithMany()
+                        .HasForeignKey("BookId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.BookPageOffset", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Book", null)
+                        .WithMany()
+                        .HasForeignKey("BookId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.BookTest", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.Book", "Book")
@@ -4771,6 +4949,37 @@ namespace ExamApp.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Book");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.BookTocEntry", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Book", null)
+                        .WithMany()
+                        .HasForeignKey("BookId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Grade", null)
+                        .WithMany()
+                        .HasForeignKey("GradeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SubTopic", null)
+                        .WithMany()
+                        .HasForeignKey("SubTopicId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Subject", null)
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Topic", null)
+                        .WithMany()
+                        .HasForeignKey("TopicId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Booking", b =>
@@ -5113,6 +5322,25 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Subject");
 
                     b.Navigation("Topic");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionSource", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Book", "Book")
+                        .WithMany()
+                        .HasForeignKey("BookId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.Question", "Question")
+                        .WithOne()
+                        .HasForeignKey("ExamApp.Api.Data.QuestionSource", "QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Book");
+
+                    b.Navigation("Question");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.QuestionSubTopic", b =>

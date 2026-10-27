@@ -212,6 +212,12 @@ public class AppDbContext : DbContext
     public DbSet<LabelingResult> LabelingResults { get; set; }
     public DbSet<LabelingPromptVersion> LabelingPromptVersions { get; set; }
 
+    // Issue #577: kitap kaydı (ofset, cevap anahtarı, içindekiler) ve soru kaynağı (kırpma SHA-256 tekrar engeli).
+    public DbSet<BookPageOffset> BookPageOffsets { get; set; }
+    public DbSet<BookAnswerKeyRange> BookAnswerKeyRanges { get; set; }
+    public DbSet<BookTocEntry> BookTocEntries { get; set; }
+    public DbSet<QuestionSource> QuestionSources { get; set; }
+
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -1065,6 +1071,44 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<LabelingPromptVersion>(e =>
         {
             e.HasIndex(p => p.Version).IsUnique();
+        });
+
+        // Issue #577: kitap kaydı. Aynı içeriğin asıl kaydı (tek seviye, servis doğrular); asıl kayıt silinemez (Restrict).
+        modelBuilder.Entity<Book>(e =>
+        {
+            e.HasOne(b => b.CanonicalBook).WithMany().HasForeignKey(b => b.CanonicalBookId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Aralık kümeleri kitapla birlikte yaşar; kitap soft-delete olduğu için Cascade yalnız sert silmede çalışır.
+        modelBuilder.Entity<BookPageOffset>(e =>
+        {
+            e.HasOne<Book>().WithMany().HasForeignKey(o => o.BookId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(o => new { o.BookId, o.FileFrom });
+        });
+        modelBuilder.Entity<BookAnswerKeyRange>(e =>
+        {
+            e.HasOne<Book>().WithMany().HasForeignKey(r => r.BookId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(r => new { r.BookId, r.FileFrom });
+        });
+        modelBuilder.Entity<BookTocEntry>(e =>
+        {
+            e.HasOne<Book>().WithMany().HasForeignKey(t => t.BookId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Grade>().WithMany().HasForeignKey(t => t.GradeId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Subject>().WithMany().HasForeignKey(t => t.SubjectId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Topic>().WithMany().HasForeignKey(t => t.TopicId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<SubTopic>().WithMany().HasForeignKey(t => t.SubTopicId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(t => new { t.BookId, t.FileFrom });
+        });
+
+        // Soru başına tek kaynak; kırpma hash'i tekrar kontrolü için indeksli (tekil değil: Force ile ikinci kayıt mümkün).
+        modelBuilder.Entity<QuestionSource>(e =>
+        {
+            e.HasOne(s => s.Question).WithOne().HasForeignKey<QuestionSource>(s => s.QuestionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(s => s.Book).WithMany().HasForeignKey(s => s.BookId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(s => s.QuestionId).IsUnique();
+            e.HasIndex(s => s.CropSha256);
+            e.HasIndex(s => s.BookId);
+            e.Property(s => s.CropSha256).IsFixedLength();
         });
 
         // Login event'leri (issue #84). Index'ler ileride admin dashboard'un (issue #6)

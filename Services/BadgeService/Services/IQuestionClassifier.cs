@@ -8,4 +8,11 @@ namespace BadgeService.Services;
 public interface IQuestionClassifier
 {
     Task ClassifyAndPersistAsync(int questionId, int? gradeId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Issue #577 (book TOC, <see cref="BookTocMode.Hybrid"/>): the topic is known — classify only the subtopic and
+    /// difficulty within <paramref name="topicId"/>; topic and subject are not changed and the persisted source stays
+    /// <c>Book</c>. Providers that cannot constrain the taxonomy skip (the book's topic is kept).
+    /// </summary>
+    Task ClassifyWithinTopicAndPersistAsync(int questionId, int? gradeId, int topicId, CancellationToken cancellationToken);
 }

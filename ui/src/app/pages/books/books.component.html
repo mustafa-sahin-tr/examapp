@@ -1,0 +1,293 @@
+<div class="bk" *transloco="let t; prefix: 'books'">
+  <header class="bk-head">
+    <div class="bk-title">
+      <mat-icon aria-hidden="true">menu_book</mat-icon>
+      <div>
+        <h1>{{ t('title') }}</h1>
+        <p>{{ t('subtitle') }}</p>
+      </div>
+    </div>
+    <button mat-flat-button type="button" (click)="createNew()">
+      <mat-icon>add</mat-icon>{{ t('new') }}
+    </button>
+  </header>
+
+  <div class="bk-body">
+    <!-- Kitap listesi -->
+    <nav class="bk-list" [attr.aria-label]="t('list.label')">
+      @if (loading()) {
+      <div class="bk-state" role="status">
+        <mat-spinner diameter="24" aria-hidden="true"></mat-spinner><span>{{ t('list.loading') }}</span>
+      </div>
+      } @else if (error()) {
+      <div class="bk-state bk-state--error" role="alert">
+        <mat-icon aria-hidden="true">error_outline</mat-icon><span>{{ t('list.failed') }}</span>
+        <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+      </div>
+      } @else if (books().length === 0) {
+      <div class="bk-state bk-state--empty">
+        <mat-icon aria-hidden="true">library_books</mat-icon><span>{{ t('list.empty') }}</span>
+      </div>
+      } @else {
+      <ul class="bk-items">
+        @for (book of books(); track book.id) {
+        <li>
+          <button type="button" class="bk-item" [class.is-active]="selectedId() === book.id"
+            [attr.aria-current]="selectedId() === book.id ? 'true' : null" (click)="select(book)">
+            <span class="bk-item__name">{{ book.name }}</span>
+            @if (canonicalName(book); as canonical) {
+            <span class="bk-item__meta">{{ t('list.edition', { name: canonical }) }}</span>
+            }
+            <span class="bk-item__meta">{{ bookSummary(book) || t('list.noRanges') }}</span>
+          </button>
+        </li>
+        }
+      </ul>
+      }
+    </nav>
+
+    <!-- Düzenleyici -->
+    @if (selectedId() == null) {
+    <div class="bk-state bk-state--empty bk-editor-empty">
+      <mat-icon aria-hidden="true">edit_note</mat-icon><span>{{ t('selectHint') }}</span>
+    </div>
+    } @else {
+    <form class="bk-editor" [formGroup]="form" (ngSubmit)="save()" novalidate>
+      <section class="bk-sec">
+        <h2>{{ selectedId() === 'new' ? t('editor.newTitle') : t('editor.editTitle') }}</h2>
+        <div class="bk-fields">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bk-field--wide">
+            <mat-label>{{ t('editor.name') }}</mat-label>
+            <input matInput formControlName="name" [maxlength]="maxName" required />
+            @if (rowErrors('name', 0).length > 0 && form.controls.name.touched) {
+            <mat-error>{{ t('validation.nameRequired') }}</mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>{{ t('editor.canonical') }}</mat-label>
+            <mat-select formControlName="canonicalBookId">
+              <mat-option [value]="null">{{ t('editor.canonicalNone') }}</mat-option>
+              @for (book of canonicalOptions(); track book.id) {
+              <mat-option [value]="book.id">{{ book.name }}</mat-option>
+              }
+            </mat-select>
+            <mat-hint>{{ t('editor.canonicalHint') }}</mat-hint>
+          </mat-form-field>
+        </div>
+        <mat-form-field appearance="outline" class="bk-field--block">
+          <mat-label>{{ t('editor.notes') }}</mat-label>
+          <textarea matInput formControlName="notes" rows="2" [maxlength]="maxNotes"></textarea>
+        </mat-form-field>
+      </section>
+
+      <!-- Ofset aralıkları -->
+      <section class="bk-sec" formArrayName="offsets">
+        <div class="bk-sec__head">
+          <h3>{{ t('offsets.title') }}</h3>
+          <button mat-stroked-button type="button" (click)="addOffset()"><mat-icon>add</mat-icon>{{ t('offsets.add') }}</button>
+        </div>
+        <p class="bk-hint">{{ t('offsets.hint') }}</p>
+        @for (row of offsets.controls; track row; let i = $index) {
+        <div class="bk-row" [formGroupName]="i">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bk-num">
+            <mat-label>{{ t('fileFrom') }}</mat-label>
+            <input matInput type="number" min="1" [max]="maxFilePage" step="1" formControlName="fileFrom" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bk-num">
+            <mat-label>{{ t('fileTo') }}</mat-label>
+            <input matInput type="number" min="1" [max]="maxFilePage" step="1" formControlName="fileTo" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bk-num">
+            <mat-label>{{ t('offsets.offset') }}</mat-label>
+            <input matInput type="number" step="1" formControlName="offset" />
+          </mat-form-field>
+          <span class="bk-preview" aria-live="polite">
+            @if (preview(i); as p) {
+            {{ t('offsets.preview', { file: p.fileFrom, printed: p.printedFrom }) }}
+            @if (p.fileTo !== p.fileFrom) { · {{ t('offsets.preview', { file: p.fileTo, printed: p.printedTo }) }} }
+            }
+          </span>
+          <button mat-icon-button type="button" (click)="removeRow('offsets', i)" [attr.aria-label]="t('removeRow', { row: i + 1 })">
+            <mat-icon>delete</mat-icon>
+          </button>
+          @for (e of rowErrors('offsets', i); track $index) {
+          <p class="bk-row__error" role="alert">{{ errorText(e) }}</p>
+          }
+        </div>
+        } @empty {
+        <p class="bk-hint">{{ t('offsets.empty') }}</p>
+        }
+      </section>
+
+      <!-- Cevap anahtarı aralıkları -->
+      <section class="bk-sec" formArrayName="answerKeyRanges">
+        <div class="bk-sec__head">
+          <h3>{{ t('answerKeys.title') }}</h3>
+          <button mat-stroked-button type="button" (click)="addAnswerKeyRange()"><mat-icon>add</mat-icon>{{ t('answerKeys.add') }}</button>
+        </div>
+        @for (row of answerKeyRanges.controls; track row; let i = $index) {
+        <div class="bk-row" [formGroupName]="i">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bk-num">
+            <mat-label>{{ t('fileFrom') }}</mat-label>
+            <input matInput type="number" min="1" [max]="maxFilePage" step="1" formControlName="fileFrom" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bk-num">
+            <mat-label>{{ t('fileTo') }}</mat-label>
+            <input matInput type="number" min="1" [max]="maxFilePage" step="1" formControlName="fileTo" />
+          </mat-form-field>
+          <button mat-icon-button type="button" (click)="removeRow('answerKeyRanges', i)" [attr.aria-label]="t('removeRow', { row: i + 1 })">
+            <mat-icon>delete</mat-icon>
+          </button>
+          @for (e of rowErrors('answerKeyRanges', i); track $index) {
+          <p class="bk-row__error" role="alert">{{ errorText(e) }}</p>
+          }
+        </div>
+        } @empty {
+        <p class="bk-hint">{{ t('answerKeys.empty') }}</p>
+        }
+      </section>
+
+      <!-- İçindekiler -->
+      <section class="bk-sec" formArrayName="toc">
+        <div class="bk-sec__head">
+          <h3>{{ t('toc.title') }}</h3>
+          <button mat-stroked-button type="button" (click)="addTocEntry()"><mat-icon>add</mat-icon>{{ t('toc.add') }}</button>
+        </div>
+        <p class="bk-hint">{{ t('toc.hint') }}</p>
+        @if (gradesError()) {
+        <p class="bk-row__error" role="alert">
+          {{ t('toc.gradesFailed') }}
+          <button mat-button type="button" (click)="loadGrades()">{{ t('retry') }}</button>
+        </p>
+        }
+        @for (row of toc.controls; track row; let i = $index) {
+        <div class="bk-row bk-row--toc" [formGroupName]="i">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bk-num">
+            <mat-label>{{ t('fileFrom') }}</mat-label>
+            <input matInput type="number" min="1" [max]="maxFilePage" step="1" formControlName="fileFrom" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bk-num">
+            <mat-label>{{ t('fileTo') }}</mat-label>
+            <input matInput type="number" min="1" [max]="maxFilePage" step="1" formControlName="fileTo" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bk-sel">
+            <mat-label>{{ t('toc.grade') }}</mat-label>
+            <mat-select formControlName="gradeId" (selectionChange)="onTocGradeChange(i)">
+              @for (g of grades(); track g.id) { <mat-option [value]="g.id">{{ g.name }}</mat-option> }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bk-sel">
+            <mat-label>{{ t('toc.subject') }}</mat-label>
+            <mat-select formControlName="subjectId" (selectionChange)="onTocSubjectChange(i)">
+              @for (s of subjectsFor(row); track s.id) { <mat-option [value]="s.id">{{ s.name }}</mat-option> }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bk-sel">
+            <mat-label>{{ t('toc.topic') }}</mat-label>
+            <mat-select formControlName="topicId" (selectionChange)="onTocTopicChange(i)">
+              <mat-option [value]="null">{{ t('toc.none') }}</mat-option>
+              @for (tp of topicsFor(row); track tp.id) { <mat-option [value]="tp.id">{{ tp.name }}</mat-option> }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bk-sel">
+            <mat-label>{{ t('toc.subTopic') }}</mat-label>
+            <mat-select formControlName="subTopicId">
+              <mat-option [value]="null">{{ t('toc.none') }}</mat-option>
+              @for (st of subTopicsFor(row); track st.id) { <mat-option [value]="st.id">{{ st.name }}</mat-option> }
+            </mat-select>
+          </mat-form-field>
+          <button mat-icon-button type="button" (click)="removeRow('toc', i)" [attr.aria-label]="t('removeRow', { row: i + 1 })">
+            <mat-icon>delete</mat-icon>
+          </button>
+          @for (e of rowErrors('toc', i); track $index) {
+          <p class="bk-row__error" role="alert">{{ errorText(e) }}</p>
+          }
+        </div>
+        } @empty {
+        <p class="bk-hint">{{ t('toc.empty') }}</p>
+        }
+      </section>
+
+      @if (saveError(); as message) {
+      <p class="bk-row__error" role="alert">{{ message }}</p>
+      }
+      <div class="bk-actions">
+        @if (selectedBook()) {
+        <button mat-stroked-button type="button" class="bk-danger" (click)="remove()" [disabled]="deleting() || saving()">
+          <mat-icon>delete</mat-icon>{{ t('delete.action') }}
+        </button>
+        }
+        <span class="bk-actions__spacer"></span>
+        <button mat-button type="button" (click)="cancel()" [disabled]="saving()">{{ t('cancel') }}</button>
+        <button mat-flat-button type="submit" [disabled]="saving() || errors().length > 0" [attr.aria-busy]="saving()">
+          @if (saving()) { <mat-spinner diameter="16" aria-hidden="true"></mat-spinner> } @else { <mat-icon>save</mat-icon> }
+          <span>{{ saving() ? t('saving') : t('save') }}</span>
+        </button>
+      </div>
+
+      <!-- Dönüştürücü: kayıtlı hal sunucuya sorulur -->
+      @if (selectedBook(); as book) {
+      <section class="bk-sec bk-conv" [attr.aria-label]="t('converter.title')">
+        <h3>{{ t('converter.title') }}</h3>
+        <p class="bk-hint">{{ form.dirty ? t('converter.unsavedHint') : t('converter.hint') }}</p>
+        <div class="bk-conv__grid">
+          <div class="bk-conv__box">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bk-num">
+              <mat-label>{{ t('converter.filePage') }}</mat-label>
+              <input matInput type="number" min="1" step="1" class="bk-conv-file" [value]="convFile() ?? ''"
+                (input)="setNumber($event.target, 'convFile')" (keydown.enter)="$event.preventDefault(); convertFile()" />
+            </mat-form-field>
+            <button mat-stroked-button type="button" (click)="convertFile()" [disabled]="convFile() == null || convPageLoading()">
+              {{ t('converter.toPrinted') }}
+            </button>
+            <div class="bk-conv__result" aria-live="polite">
+              @if (convPageLoading()) {
+              <mat-spinner diameter="16" aria-hidden="true"></mat-spinner>
+              } @else if (convPageError()) {
+              <span class="bk-row__error">{{ t('converter.failed') }}</span>
+              } @else if (convPage(); as p) {
+              <span class="bk-conv-printed">
+                {{ p.printedPage != null ? t('converter.printedResult', { file: p.filePage, printed: p.printedPage }) : t('converter.noOffset', { file: p.filePage }) }}
+              </span>
+              @if (p.isAnswerKey) { <span class="bk-pill">{{ t('converter.answerKey') }}</span> }
+              @if (p.tocStale) { <span class="bk-row__error bk-conv-stale">{{ t('converter.tocStale') }}</span> }
+              @if (p.toc; as toc) {
+              <span class="bk-pill bk-pill--toc">{{ toc.subjectName }}@if (toc.topicName) { › {{ toc.topicName }} }@if (toc.subTopicName) { › {{ toc.subTopicName }} } · {{ toc.gradeName }}</span>
+              }
+              }
+            </div>
+          </div>
+          <div class="bk-conv__box">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bk-num">
+              <mat-label>{{ t('converter.printedPage') }}</mat-label>
+              <input matInput type="number" step="1" class="bk-conv-printed-input" [value]="convPrinted() ?? ''"
+                (input)="setNumber($event.target, 'convPrinted')" (keydown.enter)="$event.preventDefault(); convertPrinted()" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bk-num">
+              <mat-label>{{ t('converter.near') }}</mat-label>
+              <input matInput type="number" min="1" step="1" [value]="convNear() ?? ''"
+                (input)="setNumber($event.target, 'convNear')" [matTooltip]="t('converter.nearHint')" />
+            </mat-form-field>
+            <button mat-stroked-button type="button" (click)="convertPrinted()" [disabled]="convPrinted() == null || convPrintedLoading()">
+              {{ t('converter.toFile') }}
+            </button>
+            <div class="bk-conv__result" aria-live="polite">
+              @if (convPrintedLoading()) {
+              <mat-spinner diameter="16" aria-hidden="true"></mat-spinner>
+              } @else if (convPrintedError()) {
+              <span class="bk-row__error">{{ t('converter.failed') }}</span>
+              } @else if (convFilePages(); as pages) {
+              <span class="bk-conv-files">
+                {{ pages.length > 0 ? t('converter.fileResult', { printed: convPrinted(), files: pages.join(', ') }) : t('converter.noFile', { printed: convPrinted() }) }}
+              </span>
+              }
+            </div>
+          </div>
+        </div>
+        <p class="bk-hint">{{ t('converter.bookLabel', { name: book.name }) }}</p>
+      </section>
+      }
+    </form>
+    }
+  </div>
+</div>

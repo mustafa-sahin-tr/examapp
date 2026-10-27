@@ -57,6 +57,110 @@ public class ConsumerTests : IDisposable
     private static QuestionCreatedConsumer NewQuestionConsumer(IQuestionClassifier classifier, bool aiActive = true)
         => new(classifier, NullLogger<QuestionCreatedConsumer>.Instance, Config(aiActive));
 
+    // ---- issue #577: book TOC modes ----
+
+    private static QuestionCreatedConsumer NewBookConsumer(IQuestionClassifier classifier, string? mode)
+    {
+        var values = new Dictionary<string, string?> { ["QuestionAnalyzer:AIActive"] = "true" };
+        if (mode is not null)
+            values[BookTocModeConfig.Key] = mode;
+        return new(classifier, NullLogger<QuestionCreatedConsumer>.Instance,
+            new ConfigurationBuilder().AddInMemoryCollection(values).Build());
+    }
+
+    private static QuestionCreatedEvent BookEvent(int? topicId, params int[] subTopicIds) => new()
+    {
+        QuestionId = 42, ClassificationSource = "Book", GradeId = 5, SubjectId = 1, TopicId = topicId, SubTopicIds = subTopicIds.ToList(),
+    };
+
+    private static async Task AssertNoClassificationAsync(IQuestionClassifier classifier)
+    {
+        await classifier.DidNotReceive().ClassifyAndPersistAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+        await classifier.DidNotReceive().ClassifyWithinTopicAndPersistAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("Hybrid")]
+    [InlineData("hybrid")]
+    public async Task Book_question_with_a_subtopic_is_not_classified_in_hybrid_mode(string? mode)
+    {
+        var classifier = Substitute.For<IQuestionClassifier>();
+        await NewBookConsumer(classifier, mode).Consume(Context(BookEvent(10, 100)));
+        await AssertNoClassificationAsync(classifier);
+    }
+
+    [Fact]
+    public async Task Book_question_with_a_topic_only_is_classified_within_that_topic_in_hybrid_mode()
+    {
+        var classifier = Substitute.For<IQuestionClassifier>();
+        await NewBookConsumer(classifier, "Hybrid").Consume(Context(BookEvent(10)));
+
+        await classifier.Received(1).ClassifyWithinTopicAndPersistAsync(42, 5, 10, Arg.Any<CancellationToken>());
+        await classifier.DidNotReceive().ClassifyAndPersistAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Book_question_from_an_older_publisher_without_SubTopicIds_counts_as_no_subtopic()
+    {
+        var classifier = Substitute.For<IQuestionClassifier>();
+        var @event = BookEvent(10);
+        @event.SubTopicIds = null;
+        await NewBookConsumer(classifier, null).Consume(Context(@event));
+
+        await classifier.Received(1).ClassifyWithinTopicAndPersistAsync(42, 5, 10, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Book_question_without_a_topic_is_classified_normally_in_hybrid_mode()
+    {
+        var classifier = Substitute.For<IQuestionClassifier>();
+        await NewBookConsumer(classifier, "Hybrid").Consume(Context(BookEvent(null)));
+
+        await classifier.Received(1).ClassifyAndPersistAsync(42, 5, Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(null)]
+    public async Task Skip_mode_never_classifies_book_questions(int? topicId)
+    {
+        var classifier = Substitute.For<IQuestionClassifier>();
+        await NewBookConsumer(classifier, "Skip").Consume(Context(BookEvent(topicId)));
+        await AssertNoClassificationAsync(classifier);
+    }
+
+    [Fact]
+    public async Task Always_mode_classifies_book_questions_like_human_ones()
+    {
+        var classifier = Substitute.For<IQuestionClassifier>();
+        await NewBookConsumer(classifier, "Always").Consume(Context(BookEvent(10, 100)));
+
+        await classifier.Received(1).ClassifyAndPersistAsync(42, 5, Arg.Any<CancellationToken>());
+        await classifier.DidNotReceive().ClassifyWithinTopicAndPersistAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("Skip")]
+    [InlineData("Hybrid")]
+    public async Task Book_modes_do_not_change_human_questions(string mode)
+    {
+        var classifier = Substitute.For<IQuestionClassifier>();
+        await NewBookConsumer(classifier, mode).Consume(Context(new QuestionCreatedEvent
+        {
+            QuestionId = 42, ClassificationSource = "Human", GradeId = 5, TopicId = 10, SubTopicIds = [100],
+        }));
+
+        await classifier.Received(1).ClassifyAndPersistAsync(42, 5, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void Unknown_BookTocMode_fails_fast()
+    {
+        Should.Throw<InvalidOperationException>(() => NewBookConsumer(Substitute.For<IQuestionClassifier>(), "Sometimes"))
+            .Message.ShouldContain(BookTocModeConfig.Key);
+    }
+
     [Fact]
     public async Task QuestionCreatedConsumer_classifies_a_human_authored_question()
     {

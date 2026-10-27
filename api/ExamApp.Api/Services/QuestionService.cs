@@ -927,6 +927,23 @@ public class QuestionService : IQuestionService
 
                     createdQuestions.Add(question); // 🟢 Track for OutboxMessage
 
+                    // Issue #577: kitap kaynağı (yalnız sunucu içi çağrıdan, işaretleme ekranı). Hash yüklenen question.jpg
+                    // baytlarından — kayıt öncesi tekrar kontrolü (QuestionCropHash.Compute) aynı değeri üretir.
+                    if (questionDto.Source is { } source && croppedQuestionImage != null)
+                    {
+                        _context.QuestionSources.Add(new QuestionSource
+                        {
+                            QuestionId = question.Id,
+                            BookId = source.BookId,
+                            FilePage = source.FilePage,
+                            PrintedPage = source.PrintedPage,
+                            ActivityLabel = source.ActivityLabel,
+                            ItemLabel = source.ItemLabel,
+                            CropSha256 = ExamApp.Api.Services.Labeling.QuestionCropHash.Of(croppedQuestionImage),
+                        });
+                        await _context.SaveChangesAsync();
+                    }
+
                     if (!questionDto.IsExample)
                     {
                         var answers = sourceAnswers.Select(a => new Answer
@@ -1005,6 +1022,8 @@ public class QuestionService : IQuestionService
                         TopicId = question.TopicId,
                         GradeId = eventGradeId,
                         ClassificationSource = question.ClassificationSource?.ToString(),
+                        // Issue #577: sınıflandırıcı içindekilerden gelen alt konuyu bilsin (Book + alt konu → atla).
+                        SubTopicIds = question.QuestionSubTopics?.Select(st => st.SubTopicId).ToList() ?? new List<int>(),
                         CreatedAt = DateTime.UtcNow,
                         Text = question.Text
                     };

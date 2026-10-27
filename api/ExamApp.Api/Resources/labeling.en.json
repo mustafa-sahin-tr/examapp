@@ -26,7 +26,32 @@
       "optionOutsideQuestion": "Each option box must be inside its question box.",
       "rateLimited": "You reached the hourly limit for saving to the pool. Please try again later.",
       "gradeRequired": "Choose the grade of the page.",
-      "gradeUnknown": "The selected grade was not found."
+      "gradeUnknown": "The selected grade was not found.",
+      "cropAlreadySaved": "This crop was already saved to the question pool.",
+      "bookPageRequired": "Book and file page must be given together.",
+      "answerKeyPage": "This page is in the book's answer key range; it is not expected to be saved as questions."
+    },
+    "books": {
+      "notFound": "Book not found.",
+      "nameRequired": "Book name cannot be empty.",
+      "nameTooLong": "Book name can be at most 200 characters.",
+      "nameTaken": "A book with this name already exists.",
+      "notesTooLong": "Notes can be at most 500 characters.",
+      "tooManyRanges": "Too many ranges were sent.",
+      "invalidRange": "Invalid page range (start ≥ 1, start ≤ end).",
+      "invalidOffset": "Invalid offset: the printed page cannot be below 1.",
+      "offsetOverlap": "Offset ranges overlap.",
+      "answerKeyOverlap": "Answer key ranges overlap.",
+      "tocOverlap": "Table of contents ranges overlap.",
+      "gradeUnknown": "A grade in the table of contents was not found.",
+      "subjectUnknown": "A subject in the table of contents was not found.",
+      "topicMismatch": "A topic in the table of contents does not belong to the selected subject and grade.",
+      "subTopicMismatch": "A subtopic in the table of contents does not belong to the selected topic (a subtopic needs a topic).",
+      "canonicalInvalid": "Invalid canonical book (itself, not found, or linked to another book).",
+      "inUse": "The book is in use (questions, tests or another edition refer to it); it cannot be deleted.",
+      "invalidPage": "Invalid page number.",
+      "renameForbidden": "This book is used in teachers' content; only an administrator can change its name or canonical edition.",
+      "busy": "The book registry is busy with another operation. Try again."
     }
   }
 }

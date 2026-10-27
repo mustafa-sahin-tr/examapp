@@ -990,7 +990,9 @@ public class QuestionTransferJobRunner
         var source = cs.ValueKind switch
         {
             JsonValueKind.String => cs.GetString(),
-            JsonValueKind.Number => cs.TryGetInt32(out var numberValue) ? ((ClassificationSource)numberValue).ToString() : null,
+            JsonValueKind.Number => cs.TryGetInt32(out var numberValue) && Enum.IsDefined((ClassificationSource)numberValue)
+                ? ((ClassificationSource)numberValue).ToString()
+                : null,
             _ => null,
         };
 
@@ -999,7 +1001,8 @@ public class QuestionTransferJobRunner
             return null;
         }
 
-        return Enum.TryParse<ClassificationSource>(source, ignoreCase: true, out var parsed)
+        // Issue #577 (security L5): tanımsız sayısal değer ("99" ya da 99) enum'a dökülüp saklanmasın.
+        return Enum.TryParse<ClassificationSource>(source, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed)
             ? parsed
             : null;
     }

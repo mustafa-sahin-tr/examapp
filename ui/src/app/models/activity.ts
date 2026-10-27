@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import type { OpenTextStudentReview } from './open-text';
 import { TestSessionResult } from './test-instance';
 
 /**
@@ -53,6 +54,8 @@ export interface ActivityCheckQuestionResult {
   correctCount: number;
   totalCount: number;
   feedback: string | null;
+  /** Issue #583: openText maddede değerlendirme durumu (sayımlara girmez: 0/0); diğer tiplerde null/undefined. */
+  openTextReview?: OpenTextStudentReview | null;
 }
 
 /** Backend `ActivityCheckResultDto` (çözüm içermez). */

@@ -93,4 +93,7 @@ public static class WorksheetAuthoringErrorCodes
 {
     /// <summary>409 — en az bir öğrenci oturumu (silinmiş dahil) olan sayfanın türü (Test ⇄ Activity) değiştirilemez. Hiçbir şey yazılmadı.</summary>
     public const string WorksheetKindLocked = "WorksheetKindLocked";
+
+    /// <summary>issue #583: 409 — açık uçlu maddesi olan etkinlik Test'e çevrilemez. Hiçbir şey yazılmadı.</summary>
+    public const string OpenTextNotAllowedInTest = ExamApp.Api.Services.Worksheets.OpenTextTestGuard.ErrorCode;
 }

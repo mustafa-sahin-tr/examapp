@@ -446,6 +446,11 @@
                 [attr.aria-pressed]="d.interactionType === 'match'" (click)="insSetInteractionType('match')">{{ t('inspector.match') }}</button>
               <button type="button" [class.is-active]="d.interactionType === 'textSelect'"
                 [attr.aria-pressed]="d.interactionType === 'textSelect'" (click)="insSetInteractionType('textSelect')">{{ t('inspector.textSelect') }}</button>
+              <!-- Issue #583: açık uçlu yalnız etkinlik sayfasında (testte doğru/yanlış sayılamaz). -->
+              @if (activityContext() || d.interactionType === 'openText') {
+              <button type="button" data-testid="type-open-text" [class.is-active]="d.interactionType === 'openText'"
+                [attr.aria-pressed]="d.interactionType === 'openText'" (click)="insSetInteractionType('openText')">{{ t('inspector.openText') }}</button>
+              }
             </div>
           </section>
 
@@ -1224,6 +1229,53 @@
               }
             </div>
             }
+          </section>
+          }
+
+          <!-- Açık uçlu cevap (#583): sözcük sınırı, satır, örnek cevap + rubrik (elle) -->
+          @if (d.interactionType === 'openText' && d.openText; as ot) {
+          <section class="qc-insp-sec qc-open-text" data-testid="inspector-open-text">
+            @if (!activityContext()) {
+            <p class="qc-hint-sm qc-open-text__warn" role="alert" data-testid="open-text-activity-only">{{ t('inspector.openTextActivityOnly') }}</p>
+            }
+            <p class="qc-hint-sm">{{ t('inspector.openTextHint') }}</p>
+            <div class="qc-open-text__limits">
+              <label class="qc-slot__field">
+                <span class="qc-lbl">{{ t('inspector.openTextMinWords') }}</span>
+                <input class="control qc-input" type="number" inputmode="numeric" data-testid="open-text-min"
+                  [min]="ot.limits.minWordLimit" [max]="ot.limits.maxWordLimit" [value]="ot.minWords ?? ''"
+                  [placeholder]="t('inspector.openTextNoLimit')" (change)="insOpenTextLimit('minWords', $event)" />
+              </label>
+              <label class="qc-slot__field">
+                <span class="qc-lbl">{{ t('inspector.openTextMaxWords') }}</span>
+                <input class="control qc-input" type="number" inputmode="numeric" data-testid="open-text-max"
+                  [min]="ot.limits.minWordLimit" [max]="ot.limits.maxWordLimit" [value]="ot.maxWords ?? ''"
+                  [placeholder]="t('inspector.openTextNoLimit')" (change)="insOpenTextLimit('maxWords', $event)" />
+              </label>
+              <label class="qc-slot__field">
+                <span class="qc-lbl">{{ t('inspector.openTextLines') }}</span>
+                <input class="control qc-input" type="number" inputmode="numeric" data-testid="open-text-lines"
+                  [min]="ot.limits.minLines" [max]="ot.limits.maxLines" [value]="ot.lines ?? ''"
+                  (change)="insOpenTextLimit('lines', $event)" />
+              </label>
+            </div>
+            @if (ot.maxWords !== null) {
+            <span class="qc-hint-sm">{{ t('inspector.openTextOverflowHint', { max: ot.maxWords * 2 }) }}</span>
+            }
+            <label class="qc-slot__field">
+              <span class="qc-lbl">{{ t('inspector.openTextSample') }}</span>
+              <textarea class="control qc-input qc-slot__textarea" rows="4" data-testid="open-text-sample"
+                [attr.maxlength]="ot.limits.maxSolutionTextLength" [value]="ot.sampleAnswer"
+                [placeholder]="t('inspector.openTextSamplePlaceholder')" (change)="insOpenTextSolution('sampleAnswer', $event)"></textarea>
+            </label>
+            <span class="qc-hint-sm">{{ t('inspector.openTextSampleHint') }}</span>
+            <label class="qc-slot__field">
+              <span class="qc-lbl">{{ t('inspector.openTextRubric') }}</span>
+              <textarea class="control qc-input qc-slot__textarea" rows="4" data-testid="open-text-rubric"
+                [attr.maxlength]="ot.limits.maxSolutionTextLength" [value]="ot.rubric"
+                [placeholder]="t('inspector.openTextRubricPlaceholder')" (change)="insOpenTextSolution('rubric', $event)"></textarea>
+            </label>
+            <span class="qc-hint-sm">{{ t('inspector.openTextRubricHint') }}</span>
           </section>
           }
 

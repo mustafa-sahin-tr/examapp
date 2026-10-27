@@ -352,7 +352,21 @@
     "textAcceptPlaceholder": "Doğrusu (birden çoksa virgülle)",
     "textAcceptAria": "Hedef {{n}} kabul edilen düzeltmeler",
     "textSuffixPlaceholder": "İsteğe bağlı ekler (virgülle)",
-    "textSuffixAria": "Hedef {{n}} isteğe bağlı ekler"
+    "textSuffixAria": "Hedef {{n}} isteğe bağlı ekler",
+    "openText": "Açık uçlu",
+    "openTextActivityOnly": "Açık uçlu madde yalnız etkinlik sayfasında kaydedilir (testte doğru / yanlış sayılamaz).",
+    "openTextHint": "Öğrenci görselin altındaki kutuya yazar; cevabı öğretmen değerlendirir (yeterli / kısmen / eksik). Puan yok.",
+    "openTextMinWords": "En az sözcük",
+    "openTextMaxWords": "En çok sözcük",
+    "openTextLines": "Satır",
+    "openTextNoLimit": "Sınırsız",
+    "openTextOverflowHint": "{{max}} sözcüğü aşan cevap kaydedilmez (en çok sınırının 2 katı).",
+    "openTextSample": "Örnek cevap",
+    "openTextSamplePlaceholder": "Kitaptaki örnek cevap (isteğe bağlı)",
+    "openTextSampleHint": "Öğrenci “Doğru cevapları göster”de görür.",
+    "openTextRubric": "Değerlendirme ölçütü (rubrik)",
+    "openTextRubricPlaceholder": "Cevapta aranacak noktalar (isteğe bağlı)",
+    "openTextRubricHint": "Öğrenci görmez; değerlendirme kuyruğunda öğretmene gösterilir."
   },
   "preview": {
     "headingWithTest": "Ön İzleme — {{testName}}",

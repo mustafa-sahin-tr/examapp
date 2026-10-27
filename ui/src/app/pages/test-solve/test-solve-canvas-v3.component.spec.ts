@@ -496,6 +496,7 @@ describe('TestSolveCanvasComponentv3 — matrixChoice (#574)', () => {
         expect(component.interactionKind('SLOTFILL')).toBe('slotFill');
         expect(component.interactionKind('DragPlace')).toBe('dragPlace');
         expect(component.interactionKind('MATCH')).toBe('match');
+        expect(component.interactionKind('OpenText')).toBe('openText');
         expect(component.interactionKind('TextSelect')).toBe('textSelect');
     });
 

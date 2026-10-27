@@ -1686,3 +1686,20 @@
     overflow-wrap: anywhere;
   }
 }
+
+// Issue #583: açık uçlu cevap yazarlığı (müfettiş).
+.qc-open-text {
+  &__limits {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  &__warn {
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--ms-warning-border);
+    background: var(--ms-warning-surface);
+    color: var(--ms-warning-text);
+  }
+}

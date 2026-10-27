@@ -131,7 +131,8 @@
     "medium": "Medium",
     "hard": "Hard",
     "legendItem": "{{label}} · {{count}}",
-    "unclassifiedWarn": "{{count}} questions unclassified — topic/difficulty must be set manually"
+    "unclassifiedWarn": "{{count}} questions unclassified — topic/difficulty must be set manually",
+    "openTextReviews": "Review open-ended answers"
   },
   "status": {
     "completed": "Completed",

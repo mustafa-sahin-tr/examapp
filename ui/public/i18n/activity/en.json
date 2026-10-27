@@ -26,11 +26,14 @@
     "textWordFix": "“{{word}}” → {{content}}",
     "textWordExtra": "“{{word}}” (extra)",
     "textTarget": "Target {{n}}: “{{word}}”",
-    "textNone": "No word selected yet"
+    "textNone": "No word selected yet",
+    "openText": "Your answer: {{count}} words",
+    "openTextEmpty": "Your answer: blank"
   },
   "saveFailed": "Your last answer could not be saved; it will be sent again when you check.",
   "finishCheckRequired": "Check your answers once before finishing.",
   "alreadyFinished": "This activity has already been finished.",
   "nextFailed": "The next activity could not be opened.",
-  "dismiss": "OK"
+  "dismiss": "OK",
+  "openTextTooLong": "Your text is too long; shorten it and try again."
 }

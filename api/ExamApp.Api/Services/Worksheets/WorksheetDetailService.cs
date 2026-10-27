@@ -71,9 +71,10 @@ public class WorksheetDetailService : IWorksheetDetailService
     /// <summary>issue #571: puanlamaya giren satır alanları (WorksheetScoring hibrit kuralı: şık, etkileşim cevabı, kayıtlı sonuç).</summary>
     private sealed record AnswerData(int WorksheetQuestionId, int? SelectedAnswerId, bool HasPayload, bool IsCorrect);
 
-    private static WorksheetScoring.AnswerFacts FactsOf(AnswerData a, Dictionary<int, int?> correctMap)
+    /// <param name="openTextIds">issue #583 (savunma): açık uçlu maddelerin <c>WorksheetQuestion.Id</c>'leri — puanlamaya girmez.</param>
+    private static WorksheetScoring.AnswerFacts FactsOf(AnswerData a, Dictionary<int, int?> correctMap, IReadOnlySet<int> openTextIds)
         => new(a.SelectedAnswerId, a.HasPayload, a.IsCorrect, correctMap.GetValueOrDefault(a.WorksheetQuestionId),
-            QuestionKnown: correctMap.ContainsKey(a.WorksheetQuestionId));
+            QuestionKnown: correctMap.ContainsKey(a.WorksheetQuestionId), Excluded: openTextIds.Contains(a.WorksheetQuestionId));
 
     public async Task<WorksheetDetailDto?> GetWorksheetDetailAsync(int worksheetId, string role, int? studentId, int userId, bool isAdmin = false, CancellationToken ct = default)
     {
@@ -137,11 +138,12 @@ public class WorksheetDetailService : IWorksheetDetailService
         var totalQuestions = questions.Count;
 
         var correctMap = questions.ToDictionary(wq => wq.Id, wq => wq.Question.CorrectAnswerId);
+        var openTextIds = questions.Where(wq => wq.Question.InteractionType == ExamApp.Api.Services.Interactions.OpenTextGrader.Type).Select(wq => wq.Id).ToHashSet();
         var topicMap = questions.ToDictionary(
             wq => wq.Id,
             wq => WorksheetScoring.TopicKey(true, wq.Question.TopicId, wq.Question.Topic?.Name, UnclassifiedTopicName));
 
-        int CorrectOf(InstanceData i) => WorksheetScoring.Tally(i.Answers, a => FactsOf(a, correctMap)).Correct;
+        int CorrectOf(InstanceData i) => WorksheetScoring.Tally(i.Answers, a => FactsOf(a, correctMap, openTextIds)).Correct;
 
         // issue #571: etkinlik puansız — kitle istatistikleri (ortalama, sıralama) hesaplanmaz.
         var isActivity = worksheet.Kind == WorksheetKind.Activity;
@@ -215,7 +217,7 @@ public class WorksheetDetailService : IWorksheetDetailService
             {
                 SolverCount = instances.Select(i => i.StudentId).Distinct().Count(),
                 AverageScorePercent = !isActivity && completedInstances.Count > 0
-                    ? (int)Math.Round(completedInstances.Average(i => ScorePercent(CorrectOf(i), i.Answers.Count)))
+                    ? (int)Math.Round(completedInstances.Average(i => ScorePercent(CorrectOf(i), WorksheetScoring.Total(i.Answers, a => FactsOf(a, correctMap, openTextIds)))))
                     : (int?)null
             }
         };
@@ -272,7 +274,7 @@ public class WorksheetDetailService : IWorksheetDetailService
             result.Attempts = mine.Select(i =>
             {
                 var correct = CorrectOf(i);
-                var total = i.Answers.Count;
+                var total = WorksheetScoring.Total(i.Answers, a => FactsOf(a, correctMap, openTextIds));
                 return new WorksheetAttemptDto
                 {
                     InstanceId = i.InstanceId,
@@ -293,7 +295,7 @@ public class WorksheetDetailService : IWorksheetDetailService
 
         // ---- teacher insights (sahiplik gerekir; değilse null, 404 değil) ----
         if (teacherOwnsWorksheet)
-            result.TeacherInsights = BuildTeacherInsights(questions, totalQuestions, completedInstances, correctMap);
+            result.TeacherInsights = BuildTeacherInsights(questions, totalQuestions, completedInstances, correctMap, openTextIds);
 
         // ---- completed result (student) ----
         if (isStudent)
@@ -304,7 +306,7 @@ public class WorksheetDetailService : IWorksheetDetailService
                 .FirstOrDefault();
 
             if (latest != null)
-                result.CompletedResult = await BuildCompletedResultAsync(worksheetId, latest, correctMap, topicMap, studentId!.Value, isActivity, ct);
+                result.CompletedResult = await BuildCompletedResultAsync(worksheetId, latest, correctMap, openTextIds, topicMap, studentId!.Value, isActivity, ct);
         }
 
         // ---- planned reminder (student) ----
@@ -346,6 +348,7 @@ public class WorksheetDetailService : IWorksheetDetailService
 
         var ids = candidates.Select(c => c.Id).ToList();
 
+        var isScoredRow = WorksheetScoring.IsScoredRow(_context); // issue #583: açık uçlu satır toplama girmez
         var perInstance = await _context.TestInstances
             .AsNoTracking()
             // issue #396: benzer testlerin ortalaması yalnız puanlı tamamlanmış oturumlardan (Expired sayılmaz).
@@ -355,7 +358,7 @@ public class WorksheetDetailService : IWorksheetDetailService
             .Select(ti => new
             {
                 ti.WorksheetId,
-                Total = ti.WorksheetInstanceQuestions.Count(),
+                Total = ti.WorksheetInstanceQuestions.AsQueryable().Count(isScoredRow), // issue #583
                 // issue #571: WorksheetScoring hibrit kuralı.
                 Correct = ti.WorksheetInstanceQuestions.AsQueryable().Count(WorksheetScoring.IsCorrectRow)
             })
@@ -380,12 +383,13 @@ public class WorksheetDetailService : IWorksheetDetailService
         List<WorksheetQuestion> questions,
         int totalQuestions,
         List<InstanceData> completedInstances,
-        Dictionary<int, int?> correctMap)
+        Dictionary<int, int?> correctMap,
+        IReadOnlySet<int> openTextIds)
     {
         // issue #571: cevaplanmış = boş değil (şık ya da etkileşim cevabı); doğru = WorksheetScoring hibrit kuralı.
         var answers = completedInstances
             .SelectMany(i => i.Answers)
-            .Where(a => !WorksheetScoring.IsBlank(a.SelectedAnswerId, a.HasPayload))
+            .Where(a => !WorksheetScoring.IsBlank(a.SelectedAnswerId, a.HasPayload) && !openTextIds.Contains(a.WorksheetQuestionId))
             .ToList();
 
         var statsByWq = answers
@@ -454,15 +458,17 @@ public class WorksheetDetailService : IWorksheetDetailService
         int worksheetId,
         InstanceData instance,
         Dictionary<int, int?> correctMap,
+        IReadOnlySet<int> openTextIds,
         Dictionary<int, (int? TopicId, string Name)> topicMap,
         int studentId,
         bool isActivity,
         CancellationToken ct)
     {
-        var answers = instance.Answers;
+        // issue #583 (savunma): açık uçlu satırlar skor, konu ve toplama girmez.
+        var answers = instance.Answers.Where(a => !openTextIds.Contains(a.WorksheetQuestionId)).ToList();
         var total = answers.Count;
 
-        WorksheetScoring.AnswerFacts Facts(AnswerData a) => FactsOf(a, correctMap);
+        WorksheetScoring.AnswerFacts Facts(AnswerData a) => FactsOf(a, correctMap, openTextIds);
         var (correct, wrong, empty) = WorksheetScoring.Tally(answers, Facts);
 
         var dto = new WorksheetCompletedResultDto
@@ -561,6 +567,7 @@ public class WorksheetDetailService : IWorksheetDetailService
             return null;
         }
 
+        var isScoredRow = WorksheetScoring.IsScoredRow(_context); // issue #583: açık uçlu satır toplama girmez
         var scored = (await _context.TestInstances
             .AsNoTracking()
             // issue #396: sıralama/sınıf ortalaması yalnız puanlı tamamlanmış oturumlardan (Expired sayılmaz).
@@ -572,7 +579,7 @@ public class WorksheetDetailService : IWorksheetDetailService
                 ti.StudentId,
                 ti.StartTime,
                 ti.EndTime,
-                Total = ti.WorksheetInstanceQuestions.Count(),
+                Total = ti.WorksheetInstanceQuestions.AsQueryable().Count(isScoredRow), // issue #583
                 // issue #571: WorksheetScoring hibrit kuralı.
                 Correct = ti.WorksheetInstanceQuestions.AsQueryable().Count(WorksheetScoring.IsCorrectRow)
             })
@@ -640,6 +647,8 @@ public class WorksheetDetailService : IWorksheetDetailService
         // etkileşim cevabı). Boş bırakılanlar dahil DEĞİL.
         var wrongQuestions = instance.WorksheetInstanceQuestions
             .Where(wiq => wiq.WorksheetQuestion?.Question != null
+                // issue #583: açık uçlu madde "yanlış" değildir ve teste giremez.
+                && wiq.WorksheetQuestion.Question.InteractionType != ExamApp.Api.Services.Interactions.OpenTextGrader.Type
                 && !WorksheetScoring.IsBlank(wiq.SelectedAnswerId, wiq.AnswerPayload != null)
                 && !WorksheetScoring.IsCorrect(wiq.SelectedAnswerId, wiq.WorksheetQuestion.Question.CorrectAnswerId,
                     wiq.AnswerPayload != null, wiq.IsCorrect))

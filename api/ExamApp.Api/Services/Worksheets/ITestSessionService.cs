@@ -14,7 +14,8 @@ public interface ITestSessionService
 
     Task<WorksheetInstanceDto?> GetTestInstanceQuestionsAsync(int testInstanceId, int userId);
 
-    Task<WorksheetInstanceResultDto?> GetCanvasTestResultAsync(int testInstanceId, int userId, bool includeCorrectAnswer = false);
+    Task<WorksheetInstanceResultDto?> GetCanvasTestResultAsync(int testInstanceId, int userId, bool includeCorrectAnswer = false,
+        CancellationToken ct = default);
 
     /// <summary>
     /// issue #367: yalnız <c>Started</c> instance'a yazar; aksi halde <c>Conflict=true</c> +

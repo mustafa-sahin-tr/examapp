@@ -131,7 +131,8 @@
     "medium": "Orta",
     "hard": "Zor",
     "legendItem": "{{label}} · {{count}}",
-    "unclassifiedWarn": "{{count}} soru sınıflandırılmadı — konu/zorluk elle atanmalı"
+    "unclassifiedWarn": "{{count}} soru sınıflandırılmadı — konu/zorluk elle atanmalı",
+    "openTextReviews": "Açık uçlu cevapları değerlendir"
   },
   "status": {
     "completed": "Tamamladı",

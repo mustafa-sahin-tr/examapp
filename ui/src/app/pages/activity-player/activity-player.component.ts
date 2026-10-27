@@ -76,6 +76,16 @@ import {
   textSelectFeedbackFromCounts,
   textValueOf,
 } from '../../models/text-select';
+import {
+  OpenTextStudentReview,
+  countOpenTextWords,
+  isBlankOpenText,
+  isOpenTextType,
+  openTextRowStatus,
+  parseOpenTextAnswer,
+  parseOpenTextFeedbackStatus,
+  parseOpenTextStudentReview,
+} from '../../models/open-text';
 import { TestInstance, TestInstanceQuestion, TestStatus } from '../../models/test-instance';
 import { seededShuffle } from '../../shared/utils/seeded-shuffle';
 import { ActivityService } from '../../services/activity.service';
@@ -93,7 +103,10 @@ import {
   ActivityStep,
   activityStepLabel,
 } from '../../shared/components/activity-player-frame/activity-player-frame.component';
-import { ActivitySummaryComponent } from '../../shared/components/activity-summary/activity-summary.component';
+import {
+  ActivitySummaryComponent,
+  ActivitySummaryOpenTextItem,
+} from '../../shared/components/activity-summary/activity-summary.component';
 import {
   DragDropLabelingPlanV1,
   QuestionCanvasDragDropLabelingComponent,
@@ -103,6 +116,7 @@ import { QuestionCanvasSlotFillComponent } from '../../shared/components/questio
 import { QuestionCanvasDragPlaceComponent } from '../../shared/components/question-canvas-drag-place/question-canvas-drag-place.component';
 import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
 import { QuestionCanvasTextSelectComponent } from '../../shared/components/question-canvas-text-select/question-canvas-text-select.component';
+import { QuestionCanvasOpenTextComponent } from '../../shared/components/question-canvas-open-text/question-canvas-open-text.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 import { ActiveTimeTracker, ACTIVITY_MAX_ACTIVE_SECONDS } from '../../shared/utils/active-time-tracker';
 import { currentUserId } from '../../shared/utils/current-user-id.util';
@@ -169,6 +183,7 @@ export type ActivityAction = 'check' | 'reveal' | 'finish';
     QuestionCanvasMatrixChoiceComponent,
     QuestionCanvasSlotFillComponent,
     QuestionCanvasTextSelectComponent,
+    QuestionCanvasOpenTextComponent,
     QuestionCanvasDragPlaceComponent,
     QuestionCanvasMatchComponent,
     QuestionCanvasViewComponentv5,
@@ -199,6 +214,8 @@ export class ActivityPlayerComponent {
   private readonly slotFillPlayer = viewChild(QuestionCanvasSlotFillComponent);
   /** Issue #582: metin işaretleme oynatıcısı (yazılıp henüz kaydedilmemiş düzeltme kontrol / bitir öncesi alınır). */
   private readonly textSelectPlayer = viewChild(QuestionCanvasTextSelectComponent);
+  /** Issue #583: açık uçlu cevap oynatıcısı (yazılıp henüz kaydedilmemiş metin kontrol / bitir / madde değişimi öncesi alınır). */
+  private readonly openTextPlayer = viewChild(QuestionCanvasOpenTextComponent);
 
   readonly instanceId = signal(0);
   readonly loadState = signal<LoadState>('loading');
@@ -216,6 +233,11 @@ export class ActivityPlayerComponent {
    */
   readonly retainedRows = signal<Record<number, ActivityFeedbackRow[]>>({});
   readonly solutions = signal<Record<number, ActivitySolution> | null>(null);
+  /**
+   * Issue #583: açık uçlu maddelerin değerlendirme durumu (madde id'si → sunucunun `openTextReview`'ü; yoksa null). Yüklemede ve
+   * her kontrolde sunucudan gelir; metin değişince yerelde düşer (değerlendirilmişse "eskidi", değilse gönderilmemiş taslak).
+   */
+  readonly openTextReviews = signal<Record<number, OpenTextStudentReview | null>>({});
   readonly checkCount = signal(0);
   readonly summary = signal<ActivityCheckSummary | null>(null);
   readonly revealed = signal(false);
@@ -316,6 +338,8 @@ export class ActivityPlayerComponent {
     const results = this.results();
     const answers = this.answers();
     return this.items().map((item) => {
+      // Issue #583: açık uçlu madde doğru/yanlış sayılmaz (öğretmen değerlendirir): yalnız cevaplandı / boş.
+      if (this.isOpenText(item)) return { state: this.hasAnswer(item, answers[item.id]) ? 'answered' : 'empty' };
       const result = results[item.id];
       if (result) return { state: result.isCorrect ? 'correct' : 'wrong' };
       return { state: this.hasAnswer(item, answers[item.id]) ? 'answered' : 'empty' };
@@ -362,6 +386,29 @@ export class ActivityPlayerComponent {
     return parseTextSelectFeedback(result.feedback) ?? textSelectFeedbackFromCounts(result.rows, result.correctCount, result.totalCount);
   });
 
+  /** Issue #583: geçerli açık uçlu maddenin değerlendirme durumu (yoksa null). */
+  readonly currentOpenTextReview = computed<OpenTextStudentReview | null>(() => {
+    const item = this.currentItem();
+    return item ? this.openTextReviews()[item.id] ?? null : null;
+  });
+
+  /**
+   * Issue #583: etkinlik sonu özetindeki açık uçlu maddeler (madde etiketi + değerlendirme). Puan / sayım değil: öğrenci
+   * öğretmenin değerlendirmesini ve geri bildirimini burada görür.
+   */
+  readonly openTextSummary = computed<ActivitySummaryOpenTextItem[]>(() => {
+    const reviews = this.openTextReviews();
+    const answers = this.answers();
+    return this.items()
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => this.isOpenText(item))
+      .map(({ item, index }) => ({
+        label: activityStepLabel(index),
+        answered: this.hasAnswer(item, answers[item.id]),
+        review: reviews[item.id] ?? null,
+      }));
+  });
+
   readonly currentSolution = computed(() => {
     const item = this.currentItem();
     return item ? this.solutions()?.[item.id] ?? null : null;
@@ -381,6 +428,7 @@ export class ActivityPlayerComponent {
     if (this.isDragPlace(item)) return this.dragPlaceRows(item, result, solution);
     if (this.isMatch(item)) return this.matchRows(item, result, solution);
     if (this.isTextSelect(item)) return this.textSelectRows(item, result, solution);
+    if (this.isOpenText(item)) return this.openTextRows(item, result);
     return this.isDragDrop(item)
       ? this.dragDropRows(item, result, solution)
       : this.mcqRows(item, result, solution);
@@ -455,7 +503,9 @@ export class ActivityPlayerComponent {
     const items = [...instance.testInstanceQuestions];
     const answers: Record<number, ItemAnswer> = {};
     const results: Record<number, ItemResult> = {};
+    const reviews: Record<number, OpenTextStudentReview | null> = {};
     for (const item of items) {
+      if (this.isOpenText(item)) reviews[item.id] = parseOpenTextStudentReview(item.openTextReview);
       answers[item.id] = {
         selectedAnswerId: item.selectedAnswerId || null,
         answerPayload: item.answerPayload?.trim() ? item.answerPayload : null,
@@ -477,6 +527,7 @@ export class ActivityPlayerComponent {
     this.regions.set(regions);
     this.answers.set(answers);
     this.results.set(results);
+    this.openTextReviews.set(reviews);
     this.retainedRows.set({});
     this.checkCount.set(instance.checkCount ?? 0);
     this.finished.set(instance.status !== TestStatus.Started);
@@ -521,6 +572,7 @@ export class ActivityPlayerComponent {
     this.results.set({});
     this.retainedRows.set({});
     this.solutions.set(null);
+    this.openTextReviews.set({});
     this.summary.set(null);
     this.checkCount.set(0);
     this.revealed.set(false);
@@ -543,6 +595,8 @@ export class ActivityPlayerComponent {
 
   goTo(index: number): void {
     if (index < 0 || index >= this.items().length || index === this.currentIndex()) return;
+    // Issue #583: oynatıcı maddeye bağlı yeniden kurulur; yazılıp henüz kaydedilmemiş değer (kutu, düzeltme, metin) önce alınır.
+    this.flushPlayers();
     this.accumulateTime();
     this.currentIndex.set(index);
   }
@@ -551,7 +605,7 @@ export class ActivityPlayerComponent {
   focusFirstWrong(): void {
     this.panelCollapsed.set(true);
     const results = this.results();
-    const index = this.items().findIndex((item) => results[item.id]?.isCorrect === false);
+    const index = this.items().findIndex((item) => !this.isOpenText(item) && results[item.id]?.isCorrect === false);
     if (index < 0) return;
     this.goTo(index);
     queueMicrotask(() => this.contentRef()?.nativeElement.focus());
@@ -593,6 +647,7 @@ export class ActivityPlayerComponent {
       return;
     }
     this.answers.update((all) => ({ ...all, [item.id]: answer }));
+    if (this.isOpenText(item)) this.markOpenTextChanged(item);
     // Değişen maddenin kontrol sonucu artık geçerli değil (backend de yeniden yüklemede döndürmez).
     const previousRows = this.results()[item.id]?.rows;
     if (previousRows && (this.isDragPlace(item) || this.isMatch(item))) {
@@ -697,11 +752,13 @@ export class ActivityPlayerComponent {
     if (!this.contentLocked()) {
       this.slotFillPlayer()?.flush();
       this.textSelectPlayer()?.flush();
+      this.openTextPlayer()?.flush();
     }
   }
 
   async runCheck(): Promise<void> {
     if (this.checking() || this.finished()) return;
+    if (this.blockOnTooLongOpenText('check')) return;
     this.flushPlayers();
     this.checking.set(true);
     this.clearPanelError();
@@ -725,9 +782,15 @@ export class ActivityPlayerComponent {
       }
       const current = this.answers();
       const next: Record<number, ItemResult> = {};
+      const reviews = { ...this.openTextReviews() };
+      const openTextIds = new Set(items.filter((item) => this.isOpenText(item)).map((item) => item.id));
       for (const question of response.questions ?? []) {
         // Kontrol uçuştayken değişen maddenin sonucu uygulanmaz.
         if (sent.get(question.instanceQuestionId) !== this.signature(current[question.instanceQuestionId])) continue;
+        // Issue #583: açık uçlu maddenin kontrolü onu öğretmene gönderir; değerlendirme durumu yanıttan (yoksa satırdan).
+        if (openTextIds.has(question.instanceQuestionId)) {
+          reviews[question.instanceQuestionId] = this.reviewFromCheck(question.openTextReview, question.feedback);
+        }
         next[question.instanceQuestionId] = {
           isCorrect: question.isCorrect,
           correctCount: question.correctCount,
@@ -737,10 +800,12 @@ export class ActivityPlayerComponent {
         };
       }
       this.results.set(next);
+      this.openTextReviews.set(reviews);
       this.retainedRows.set({});
       this.panelCollapsed.set(false);
       this.checkCount.update((count) => count + 1);
-      this.summary.set({ correct: response.correctCount, total: response.totalCount });
+      // Issue #583: açık uçlu maddeler sayımlara girmez; yalnız onlardan oluşan etkinlikte "0 / 0 doğru" gösterilmez.
+      this.summary.set(response.totalCount > 0 ? { correct: response.correctCount, total: response.totalCount } : null);
       // Kontrol gönderilen cevapları kaydetti: başarısız kayıtlar bu cevaplarla kapandı.
       items.forEach((item) => {
         if (sent.get(item.id) === this.signature(current[item.id])) this.failedItems.delete(item.id);
@@ -798,6 +863,7 @@ export class ActivityPlayerComponent {
 
   async finish(): Promise<void> {
     if (this.finishing() || this.finished()) return;
+    if (this.blockOnTooLongOpenText('finish')) return;
     this.flushPlayers();
     this.finishing.set(true);
     this.clearPanelError();
@@ -840,7 +906,31 @@ export class ActivityPlayerComponent {
     }
   }
 
+  /**
+   * Issue #583: açık uçlu metin en çok sözcüğün 2 katını aşıyorsa oynatıcı onu kaydetmez; kontrol / bitirme son KAYITLI (eski)
+   * metni gönderirdi. Bunun yerine panelde "Metin çok uzun" hatası gösterilir ve işlem yapılmaz (öğrenci kısaltıp yeniden dener).
+   */
+  private blockOnTooLongOpenText(action: ActivityAction): boolean {
+    if (this.contentLocked() || !this.openTextPlayer()?.isBlocked()) return false;
+    this.failedAction.set(action);
+    this.panelError.set('generic');
+    this.panelErrorMessage.set(this.tr('openTextTooLong'));
+    this.panelCollapsed.set(false);
+    return true;
+  }
+
   private markFinished(completed: boolean): void {
+    // Issue #583: oturum bitince cevaplı açık uçlu maddeler gönderilmiş sayılır (sunucu da öyle sayar): değerlendirme bekliyor.
+    const answers = this.answers();
+    const reviews = { ...this.openTextReviews() };
+    let changed = false;
+    for (const item of this.items()) {
+      if (this.isOpenText(item) && !reviews[item.id] && this.hasAnswer(item, answers[item.id])) {
+        reviews[item.id] = { status: 'pending', evaluation: null, feedback: null, reviewedAt: null };
+        changed = true;
+      }
+    }
+    if (changed) this.openTextReviews.set(reviews);
     this.canRetake.set(completed);
     this.activeTime.stop();
     this.clearStoredActiveSeconds();
@@ -1101,6 +1191,10 @@ export class ActivityPlayerComponent {
     return isTextSelectType(item.question?.interactionType);
   }
 
+  isOpenText(item: TestInstanceQuestion): boolean {
+    return isOpenTextType(item.question?.interactionType);
+  }
+
   /** Cevabı `answerPayload` olan (MCQ dışı) madde. */
   private isInteractive(item: TestInstanceQuestion): boolean {
     return (
@@ -1109,8 +1203,31 @@ export class ActivityPlayerComponent {
       this.isSlotFill(item) ||
       this.isDragPlace(item) ||
       this.isMatch(item) ||
-      this.isTextSelect(item)
+      this.isTextSelect(item) ||
+      this.isOpenText(item)
     );
+  }
+
+  /**
+   * Issue #583: açık uçlu metin değişti — sunucuda değerlendirme artık eski metne ait ("outdated"; öğrenci eski değerlendirmeyi
+   * notla görür), değerlendirme yoksa metin yeniden kontrol edilene dek gönderilmemiş taslaktır (null → "kontrol et" ipucu).
+   */
+  private markOpenTextChanged(item: TestInstanceQuestion): void {
+    const review = this.openTextReviews()[item.id] ?? null;
+    if (!review) return;
+    const next: OpenTextStudentReview | null = review.evaluation ? { ...review, status: 'outdated' } : null;
+    this.openTextReviews.update((all) => ({ ...all, [item.id]: next }));
+  }
+
+  /** Kontrol yanıtındaki değerlendirme; yoksa satır durumundan (cevapsızda null). */
+  private reviewFromCheck(raw: unknown, feedback: string | null | undefined): OpenTextStudentReview | null {
+    const review = parseOpenTextStudentReview(raw);
+    if (review) return review;
+    const status = parseOpenTextFeedbackStatus(feedback);
+    if (!status) return null;
+    return status === 'pending'
+      ? { status: 'pending', evaluation: null, feedback: null, reviewedAt: null }
+      : { status: 'reviewed', evaluation: status, feedback: null, reviewedAt: null };
   }
 
   private dragPlacePlanFor(item: TestInstanceQuestion): DragPlacePlanV1 | null {
@@ -1197,6 +1314,7 @@ export class ActivityPlayerComponent {
     if (this.isTextSelect(item)) {
       return !isEmptyTextSelectAnswer(parseTextSelectAnswer(answer?.answerPayload, this.textSelectPlanFor(item)));
     }
+    if (this.isOpenText(item)) return !isBlankOpenText(parseOpenTextAnswer(answer?.answerPayload));
     if (this.isDragDrop(item)) return this.placementsOf(answer?.answerPayload).length > 0;
     return !!answer?.selectedAnswerId;
   }
@@ -1229,6 +1347,8 @@ export class ActivityPlayerComponent {
       if (parsed.selected.length === 0) return true;
       return plan.mode === 'correct' && parsed.selected.every((id) => !textValueOf(parsed, id).trim());
     }
+    // Issue #583: açık uçlu maddede metin yok = boş (sözcük sınırı uyarısı oynatıcıda).
+    if (this.isOpenText(item)) return isBlankOpenText(parseOpenTextAnswer(answer?.answerPayload));
     if (!this.isDragDrop(item)) return !answer?.selectedAnswerId;
     const zones = this.planFor(item)?.dropZones.length ?? 0;
     return this.placementsOf(answer?.answerPayload).length < zones;
@@ -1243,7 +1363,13 @@ export class ActivityPlayerComponent {
    * Devam eden etkinlikte kullanılmaz — orada özet güncel kontrol satırlarını yansıtır.
    */
   private firstCheckSummary(instance: TestInstance): ActivityCheckSummary | null {
-    if (!this.finished() || instance.firstCheckCorrectCount == null || instance.firstCheckTotalCount == null) {
+    // Issue #583: yalnız açık uçlu maddeli etkinlikte ilk kontrol 0 / 0'dır (sayılmaz): bilgi satırı gösterilmez.
+    if (
+      !this.finished() ||
+      instance.firstCheckCorrectCount == null ||
+      instance.firstCheckTotalCount == null ||
+      instance.firstCheckTotalCount <= 0
+    ) {
       return null;
     }
     return { correct: instance.firstCheckCorrectCount, total: instance.firstCheckTotalCount };
@@ -1252,10 +1378,12 @@ export class ActivityPlayerComponent {
   private summaryFrom(items: TestInstanceQuestion[], results: Record<number, ItemResult>): ActivityCheckSummary | null {
     const checked = items.filter((item) => !!results[item.id]);
     if (checked.length === 0) return null;
-    return checked.reduce(
+    const summary = checked.reduce(
       (acc, item) => ({ correct: acc.correct + results[item.id].correctCount, total: acc.total + results[item.id].totalCount }),
       { correct: 0, total: 0 }
     );
+    // Issue #583: açık uçlu satırlar 0 / 0 gelir; yalnız onlar kontrol edildiyse özet yok.
+    return summary.total > 0 ? summary : null;
   }
 
   private dragDropRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
@@ -1412,6 +1540,25 @@ export class ActivityPlayerComponent {
             : this.tr('rows.textWord', { word });
       return { label, correct: row ? row.correct : null, solution: null };
     });
+  }
+
+  /**
+   * Issue #583: açık uçlu madde tek satır — "Cevabın: n sözcük" ve doğru/yanlış yerine değerlendirme durumu (bekliyor / Yeterli /
+   * Kısmen / Eksik). Kontrol ya da değerlendirme yoksa satır yok; çözüm açıkken örnek cevap oynatıcıda gösterilir.
+   */
+  private openTextRows(item: TestInstanceQuestion, result: ItemResult | undefined): ActivityResultRow[] {
+    const review = this.openTextReviews()[item.id] ?? null;
+    const status = openTextRowStatus(review) ?? (result ? parseOpenTextFeedbackStatus(result.feedback) : null);
+    if (!status) return [];
+    const words = countOpenTextWords(parseOpenTextAnswer(this.answers()[item.id]?.answerPayload));
+    return [
+      {
+        label: words > 0 ? this.tr('rows.openText', { count: words }) : this.tr('rows.openTextEmpty'),
+        correct: null,
+        status,
+        solution: null,
+      },
+    ];
   }
 
   private mcqRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {

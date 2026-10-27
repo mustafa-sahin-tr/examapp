@@ -45,6 +45,7 @@ public class TestSessionService : ITestSessionService
 
     public async Task<Paged<InstanceSummaryDto>> GetCompletedTestsAsync(StudentProfileDto student, int pageNumber, int pageSize)
     {
+        var isScoredRow = WorksheetScoring.IsScoredRow(_context); // issue #583: açık uçlu satır toplama girmez
         var query = await _context.TestInstances
             // issue #396: öğrencinin kendi geçmişi bitmiş oturumları listeler (Completed + Expired) — süresi dolan test de
             // sonuç sayfasına buradan ulaşılır. Puan, cevaplananlar üzerinden aynı formülle hesaplanır.
@@ -59,12 +60,12 @@ public class TestSessionService : ITestSessionService
                 wi.Worksheet.ImageUrl,
                 wi.EndTime,
                 wi.StartTime,
-                TotalQuestions = wi.WorksheetInstanceQuestions.Count(),
+                TotalQuestions = wi.WorksheetInstanceQuestions.AsQueryable().Count(isScoredRow), // issue #583
 
                 // issue #571: WorksheetScoring hibrit kuralı (MCQ aynı; etkileşimli cevaplar da sayılır).
                 // Yanlış = toplam − doğru − boş: sorusu silinmiş boş olmayan satır da yanlış sayılır (WorksheetScoring dokümanı).
                 CorrectAnswers = wi.WorksheetInstanceQuestions.AsQueryable().Count(WorksheetScoring.IsCorrectRow),
-                BlankAnswers = wi.WorksheetInstanceQuestions.AsQueryable().Count(WorksheetScoring.IsBlankRow)
+                BlankAnswers = wi.WorksheetInstanceQuestions.AsQueryable().Where(isScoredRow).Count(WorksheetScoring.IsBlankRow)
             })
             .ToListAsync();
 
@@ -385,7 +386,8 @@ public class TestSessionService : ITestSessionService
         return worksheetInstanceDto;
     }
 
-    public async Task<WorksheetInstanceResultDto?> GetCanvasTestResultAsync(int testInstanceId, int userId, bool includeCorrectAnswer = false)
+    public async Task<WorksheetInstanceResultDto?> GetCanvasTestResultAsync(int testInstanceId, int userId, bool includeCorrectAnswer = false,
+        CancellationToken ct = default)
     {
         var testInstance = await _context.TestInstances
             .Include(ti => ti.Worksheet)
@@ -398,7 +400,7 @@ public class TestSessionService : ITestSessionService
                 .ThenInclude(tq => tq.Question)
                 .ThenInclude(q => q.Passage)
             .FirstOrDefaultAsync(ti => ti.Id == testInstanceId &&
-                    ti.Student.UserId == userId);
+                    ti.Student.UserId == userId, ct);
 
         if (testInstance == null)
         {
@@ -421,6 +423,12 @@ public class TestSessionService : ITestSessionService
         // issue #573: etkinlik oynatıcısı yeniden yüklenince kontrol durumu geri gelsin diye kontrol sayaçları ve (aşağıda)
         // satır bazlı son kontrol sonucu döner. Test oturumlarında bu alanlar null ve maruz kalma kuralları değişmez.
         var isActivity = testInstance.Worksheet.Kind == WorksheetKind.Activity;
+
+        // issue #583: açık uçlu maddelerin değerlendirmeleri (öğrenci kendi değerlendirmesini görür; yalnız etkinlikte ve openText
+        // varsa sorgulanır — değerlendirme kuyruğu yalnız etkinlikler içindir).
+        var openTextReviews = isActivity && testInstance.WorksheetInstanceQuestions.Any(q => OpenTextGrader.IsOpenText(q.WorksheetQuestion?.Question?.InteractionType))
+            ? await OpenTextReviewSupport.LoadForInstanceAsync(_context, testInstance.Id, ct)
+            : new Dictionary<int, OpenTextReview>();
 
         var response = new WorksheetInstanceResultDto
         {
@@ -446,6 +454,8 @@ public class TestSessionService : ITestSessionService
                 var (interactionPlan, interactionSolution) = InteractionPlanSolution.ForOutput(
                     questionEntity.InteractionPlan, questionEntity.InteractionSolution,
                     includeSolution: questionEntity.IsExample || includeCorrectAnswer);
+                // issue #583: openText'te öğrenciye yalnız örnek cevap gider (rubrik öğretmene özel).
+                interactionSolution = OpenTextGrader.StudentVisibleSolution(questionEntity.InteractionType, interactionSolution);
                 var questionDto = new QuestionDto
                 {
                     Id = questionEntity.Id,
@@ -503,6 +513,10 @@ public class TestSessionService : ITestSessionService
                 // (CheckedAnswerRevision == AnswerRevision); kontrol ucunun zaten döndürdüğü bilgi (MCQ dahil), çözüm değil.
                 var exposeGrade = (includeCorrectAnswer && !IsMcq(questionEntity.InteractionType))
                     || (isActivity && tiq.CheckedAnswerRevision.HasValue && tiq.CheckedAnswerRevision == tiq.AnswerRevision);
+                // issue #583: açık uçlu maddede öğretmen değerlendirmesi kontrol kapısından bağımsız döner (öğrencinin kendi bilgisi;
+                // eskimiş değerlendirme "outdated" olarak). Geri bildirim satırı güncel değerlendirmeyi taşır.
+                var isOpenText = OpenTextGrader.IsOpenText(questionEntity.InteractionType);
+                var openTextReview = isOpenText ? openTextReviews.GetValueOrDefault(tiq.Id) : null;
                 return new WorksheetInstanceQuestionDto
                 {
                     Id = tiq.Id,
@@ -514,7 +528,11 @@ public class TestSessionService : ITestSessionService
                     IsCorrect = exposeGrade ? tiq.IsCorrect : null,
                     CorrectCount = exposeGrade ? tiq.CorrectCount : null,
                     TotalCount = exposeGrade ? tiq.TotalCount : null,
-                    Feedback = exposeGrade ? tiq.Feedback : null
+                    Feedback = exposeGrade ? (isOpenText ? OpenTextReviewSupport.Feedback(openTextReview, tiq.Feedback) : tiq.Feedback) : null,
+                    OpenTextReview = isOpenText && isActivity
+                        ? OpenTextReviewSupport.StudentView(openTextReview, hasAnswer: tiq.AnswerPayload != null,
+                            OpenTextReviewSupport.IsSubmitted(tiq.AnswerPayload != null, tiq.CheckedAnswerRevision, tiq.AnswerRevision, status))
+                        : null
                 };
             }).ToList()
         };
@@ -657,7 +675,15 @@ public class TestSessionService : ITestSessionService
                 .Select(x => x.AnswerRevision)
                 .FirstAsync(ct);
 
-            if (isActivity)
+            // issue #583: open-ended answer — the teacher's review goes stale when the text differs from the reviewed text (same
+            // transaction, row lock held by the revision UPDATE above, so a concurrent review serializes with this write).
+            var isOpenText = OpenTextGrader.IsOpenText(grader.InteractionType);
+            if (isOpenText)
+                await OpenTextReviewSupport.SyncStaleAsync(_context, testInstanceQuestion.Id, payload, ct);
+
+            // issue #583: an open-ended answer is never auto-graded — no AnswerSubmittedEvent (no points, no "wrong" in stats)
+            // even in a test; it waits for the teacher's review.
+            if (isActivity || isOpenText)
             {
                 // review #571: activity — answer, grade fields and revision only; no outbox row (completion chain is #572).
                 await _context.SaveChangesAsync(ct);
@@ -1080,6 +1106,28 @@ public class TestSessionService : ITestSessionService
                     .SetProperty(x => x.AnswerRevision, x => x.AnswerRevision + 1)
                     .SetProperty(x => x.CheckedAnswerRevision, x => (int?)(x.AnswerRevision + 1)), ct);
 
+            // issue #583: açık uçlu maddeler — değerlendirmenin güncelliği yeni metne göre (aynı kilit altında); satır artık gönderildi
+            // (kontrol edildi) → durum pending / reviewed / outdated. Sayımlara girmez (0/0).
+            var openTextRows = plan.Where(p => OpenTextGrader.IsOpenText(p.Grader.InteractionType)).Select(p => p.Row.Id).ToList();
+            if (openTextRows.Count > 0)
+            {
+                foreach (var (row, _, grader, _, payload) in plan)
+                {
+                    if (OpenTextGrader.IsOpenText(grader.InteractionType))
+                        await OpenTextReviewSupport.SyncStaleAsync(_context, row.Id, payload, ct);
+                }
+                var reviews = await _context.OpenTextReviews.AsNoTracking()
+                    .Where(r => openTextRows.Contains(r.WorksheetInstanceQuestionId))
+                    .ToDictionaryAsync(r => r.WorksheetInstanceQuestionId, ct);
+                foreach (var result in results.Where(r => openTextRows.Contains(r.InstanceQuestionId)))
+                {
+                    var review = reviews.GetValueOrDefault(result.InstanceQuestionId);
+                    result.Feedback = OpenTextReviewSupport.Feedback(review, result.Feedback);
+                    var hasAnswer = byId[result.InstanceQuestionId].AnswerPayload != null;
+                    result.OpenTextReview = OpenTextReviewSupport.StudentView(review, hasAnswer, submitted: hasAnswer);
+                }
+            }
+
             var now = DateTime.UtcNow;
             var checkCorrect = results.Sum(r => r.CorrectCount);
             var checkTotal = results.Sum(r => r.TotalCount);
@@ -1178,9 +1226,11 @@ public class TestSessionService : ITestSessionService
                         InstanceQuestionId = r.Id,
                         QuestionId = r.QuestionId,
                         CorrectAnswerId = mcq ? r.CorrectAnswerId : null,
+                        // issue #583: openText'te yalnız örnek cevap (rubrik öğretmene özel).
                         InteractionSolution = mcq
                             ? null
-                            : InteractionPlanSolution.ForOutput(r.InteractionPlan, r.InteractionSolution, includeSolution: true).Solution
+                            : OpenTextGrader.StudentVisibleSolution(r.InteractionType,
+                                InteractionPlanSolution.ForOutput(r.InteractionPlan, r.InteractionSolution, includeSolution: true).Solution)
                     };
                 })
                 .ToList()
@@ -1295,6 +1345,9 @@ public class TestSessionService : ITestSessionService
                     .SetProperty(q => q.AnswerRevision, q => q.AnswerRevision + 1)
                     .SetProperty(q => q.UpdateTime, (DateTime?)now)
                     .SetProperty(q => q.UpdateUserId, (int?)userId), ct);
+
+            // issue #583: cevaplar silindi → bu oturumun açık uçlu değerlendirmeleri de (yeni deneme yeniden değerlendirilir).
+            await OpenTextReviewSupport.DeleteForInstanceAsync(_context, instanceId, ct);
 
             await tx.CommitAsync(ct);
             return true;
@@ -1627,7 +1680,7 @@ public class TestSessionService : ITestSessionService
         // cevaplar da sayılır). UPDATE satır kilidi tutulduğu için iki sayım tutarlı.
         var rows = _context.TestInstanceQuestions.AsNoTracking()
             .Where(q => q.WorksheetInstanceId == testInstanceId);
-        var total = await rows.CountAsync(ct);
+        var total = await rows.CountAsync(WorksheetScoring.IsScoredRow(_context), ct); // issue #583: açık uçlu hariç
         var correct = await rows.CountAsync(WorksheetScoring.IsCorrectRow, ct);
         var score = WorksheetScoring.ScorePercent(correct, total);
 

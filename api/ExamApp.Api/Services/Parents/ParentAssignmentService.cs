@@ -235,6 +235,7 @@ public sealed class ParentAssignmentService : IParentAssignmentService
             FinishedAt = row.EndTime.HasValue ? ParentDashboardService.TruncateToHour(row.EndTime.Value) : null,
             Score = Score(answers, meta, row.StartTime, row.EndTime),
             Topics = answers
+                .Where(a => !IsExcluded(a, meta))
                 .GroupBy(a => meta.TryGetValue(a.WorksheetQuestionId, out var m)
                     ? WorksheetScoring.TopicKey(true, m.TopicId, m.TopicName, unclassified)
                     : WorksheetScoring.TopicKey(false, null, null, unclassified))
@@ -261,7 +262,8 @@ public sealed class ParentAssignmentService : IParentAssignmentService
     /// <param name="IsCorrect">issue #571: satırın kayıtlı kontrol sonucu (yalnız etkileşim cevabında kullanılır).</param>
     internal sealed record AnswerRow(int InstanceId, int WorksheetQuestionId, int? SelectedAnswerId, bool HasPayload = false, bool IsCorrect = false);
 
-    internal sealed record QuestionMeta(int? CorrectAnswerId, int? TopicId, string? TopicName);
+    /// <param name="IsOpenText">issue #583 (savunma): açık uçlu soru — skor/konu sayımlarına ve toplama girmez.</param>
+    internal sealed record QuestionMeta(int? CorrectAnswerId, int? TopicId, string? TopicName, bool IsOpenText = false);
 
     private async Task<Dictionary<int, ParentTestScoreDto>> ScoreInstancesAsync(
         IReadOnlyList<ParentAssignmentScope.InstanceRow> instances, CancellationToken ct)
@@ -300,16 +302,18 @@ public sealed class ParentAssignmentService : IParentAssignmentService
                 wq.Id,
                 wq.Question.CorrectAnswerId,
                 wq.Question.TopicId,
-                TopicName = wq.Question.Topic != null ? wq.Question.Topic.Name : null
+                TopicName = wq.Question.Topic != null ? wq.Question.Topic.Name : null,
+                wq.Question.InteractionType
             })
-            .ToDictionaryAsync(x => x.Id, x => new QuestionMeta(x.CorrectAnswerId, x.TopicId, x.TopicName), ct);
+            .ToDictionaryAsync(x => x.Id, x => new QuestionMeta(x.CorrectAnswerId, x.TopicId, x.TopicName,
+                x.InteractionType == ExamApp.Api.Services.Interactions.OpenTextGrader.Type), ct);
     }
 
     internal static ParentTestScoreDto Score(
         IReadOnlyCollection<AnswerRow> answers, IReadOnlyDictionary<int, QuestionMeta> meta, DateTime startTime, DateTime? endTime)
     {
         var (correct, wrong, blank) = Tally(answers, meta);
-        var total = answers.Count;
+        var total = answers.Count(a => !IsExcluded(a, meta));
         return new ParentTestScoreDto
         {
             ScorePercent = WorksheetScoring.ScorePercent(correct, total),
@@ -322,12 +326,16 @@ public sealed class ParentAssignmentService : IParentAssignmentService
         };
     }
 
+    private static bool IsExcluded(AnswerRow a, IReadOnlyDictionary<int, QuestionMeta> meta)
+        => meta.TryGetValue(a.WorksheetQuestionId, out var m) && m.IsOpenText;
+
     private static (int Correct, int Wrong, int Blank) Tally(IEnumerable<AnswerRow> answers, IReadOnlyDictionary<int, QuestionMeta> meta)
         => WorksheetScoring.Tally(answers, a =>
         {
             var known = meta.TryGetValue(a.WorksheetQuestionId, out var m);
             return new WorksheetScoring.AnswerFacts(
-                a.SelectedAnswerId, a.HasPayload, a.IsCorrect, known ? m!.CorrectAnswerId : null, QuestionKnown: known);
+                a.SelectedAnswerId, a.HasPayload, a.IsCorrect, known ? m!.CorrectAnswerId : null, QuestionKnown: known,
+                Excluded: known && m!.IsOpenText);
         });
 
     /// <summary>Öğretmen adları: auth-api'ye TEK toplu çağrı; erişilemezse/süre aşılırsa boş (ad null döner).</summary>

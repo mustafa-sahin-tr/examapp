@@ -144,4 +144,8 @@ public class LinkBankQuestionsResultDto
 
     /// <summary>Zaten testte olduğu için atlanan soru id'leri.</summary>
     public List<int> AlreadyInTestQuestionIds { get; set; } = new();
+
+    /// <summary>issue #583: istek reddedildi (hiçbir şey yazılmadı) — ör. <c>OpenTextNotAllowedInTest</c> (400); başarıda null.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? ErrorCode { get; set; }
 }

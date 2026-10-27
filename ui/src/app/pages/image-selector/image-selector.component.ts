@@ -62,6 +62,19 @@ import {
 import { DRAG_PLACE, DragPlaceMode, parseDragPlacePlan } from '../../models/drag-place';
 import { MATCH, MatchSide, parseMatchPlan } from '../../models/match';
 import { TEXT_SELECT, TextSelectMode, TextSelectStyle, parseTextSelectPlan } from '../../models/text-select';
+import { OPEN_TEXT, OPEN_TEXT_LIMITS } from '../../models/open-text';
+import {
+  OpenTextAuthoringState,
+  OpenTextInspector,
+  buildOpenTextInspector,
+  buildOpenTextPlan,
+  buildOpenTextSolution,
+  createOpenTextState,
+  openTextIssues,
+  parseLimitInput,
+  setOpenTextLimit,
+  setOpenTextSolutionText,
+} from './open-text-authoring';
 import { InteractionBox } from '../../models/interaction-ids';
 import {
   DragPlaceAuthoringState,
@@ -202,7 +215,8 @@ export type QuestionInteractionType =
   | typeof SLOT_FILL
   | typeof DRAG_PLACE
   | typeof MATCH
-  | typeof TEXT_SELECT;
+  | typeof TEXT_SELECT
+  | typeof OPEN_TEXT;
 
 /**
  * Tuvalde çizim modu. Issue #574: `matrixRow` satır kutusu, `matrixCell` (isteğe bağlı) hücre kutusu çizer.
@@ -381,6 +395,8 @@ export interface ActiveInspector {
   match: MatchInspector | null;
   /** Issue #582: yalnız textSelect sorusunda dolu. */
   textSelect: TextSelectInspector | null;
+  /** Issue #583: yalnız openText sorusunda dolu. */
+  openText: OpenTextInspector | null;
   /** Issue #581: basılı cevap maskeleri (bölgeye göreli). */
   masks: MaskBox[];
   isExample: boolean;
@@ -586,6 +602,8 @@ export class ImageSelectorComponent {
   public dragPlaceState = new Map<string, DragPlaceAuthoringState>();
   public matchState = new Map<string, MatchAuthoringState>();
   public textSelectState = new Map<string, TextSelectAuthoringState>();
+  /** Issue #583: açık uçlu cevap planı + örnek cevap / rubrik. */
+  public openTextState = new Map<string, OpenTextAuthoringState>();
   /** Issue #579: bölge + tip → son uygulanan taslaktan sonraki yazarlık izi (elle düzeltme ayrımı). */
   private draftFingerprints = new Map<string, string>();
   /** Issue #581: bölge adı → basılı cevap maskeleri (bölgeye göreli). */
@@ -1845,7 +1863,9 @@ export class ImageSelectorComponent {
                 ? this.matchMessages(region.name)
                 : type === TEXT_SELECT
                   ? this.textSelectMessages(region.name)
-                  : this.mcqIssues(region, { requireCorrectAnswer: true });
+                  : type === OPEN_TEXT
+                    ? this.openTextMessages(region.name)
+                    : this.mcqIssues(region, { requireCorrectAnswer: true });
 
     if (messages.length > 0) {
       this.warningMarkers.push({
@@ -1956,13 +1976,19 @@ export class ImageSelectorComponent {
           }
         }
         // Issue #576: sürükle-yerleştir / eşleştirme kuralları da yalnız Kaydet'te.
-        if ((type === DRAG_PLACE || type === MATCH || type === TEXT_SELECT) && opts.requireCorrectAnswer && !opts.skipInteractive) {
+        if (
+          (type === DRAG_PLACE || type === MATCH || type === TEXT_SELECT || type === OPEN_TEXT) &&
+          opts.requireCorrectAnswer &&
+          !opts.skipInteractive
+        ) {
           const messages =
             type === DRAG_PLACE
               ? this.dragPlaceMessages(region.name)
               : type === MATCH
                 ? this.matchMessages(region.name)
-                : this.textSelectMessages(region.name);
+                : type === TEXT_SELECT
+                  ? this.textSelectMessages(region.name)
+                  : this.openTextMessages(region.name);
           if (messages.length > 0) {
             issues.push({ index, no: index + 1, name: region.name, messages });
           }
@@ -3045,7 +3071,7 @@ export class ImageSelectorComponent {
     }
     if (isBlockInteractionType(type)) {
       const component: ActivityComponent =
-        type === MATRIX_CHOICE ? 'A' : type === SLOT_FILL ? 'B' : type === TEXT_SELECT ? 'D' : 'C';
+        type === MATRIX_CHOICE ? 'A' : type === SLOT_FILL ? 'B' : type === TEXT_SELECT ? 'D' : type === OPEN_TEXT ? 'H' : 'C';
       this.blockKinds.set(name, { kind: 'activity', component });
     }
     this.setInteractionTypeFor(name, type);
@@ -3223,6 +3249,7 @@ export class ImageSelectorComponent {
       const parsed = parseTextSelectPlan(json);
       return parsed ? () => this.textSelectState.set(regionName, textSelectStateFromPlan(parsed)) : null;
     }
+    // Issue #583: openText taslağı çıkarılmaz (bu uca gönderilmez); gelirse yok sayılır.
     return null;
   }
 
@@ -3242,6 +3269,8 @@ export class ImageSelectorComponent {
       }
       case TEXT_SELECT:
         return (this.textSelectState.get(regionName)?.tokens.length ?? 0) === 0;
+      case OPEN_TEXT:
+        return true;
     }
   }
 
@@ -3267,6 +3296,10 @@ export class ImageSelectorComponent {
       case TEXT_SELECT: {
         const state = this.textSelectState.get(regionName);
         return state ? JSON.stringify([buildTextSelectPlan(state), buildTextSelectSolution(state)]) : null;
+      }
+      case OPEN_TEXT: {
+        const state = this.openTextState.get(regionName);
+        return state ? JSON.stringify([buildOpenTextPlan(state), buildOpenTextSolution(state)]) : null;
       }
     }
   }
@@ -3299,8 +3332,9 @@ export class ImageSelectorComponent {
     }
     const component = kind === 'activity' && isActivityComponent(prediction.component) ? prediction.component : null;
     this.blockKinds.set(regionName, { kind, component });
-    // Issue #582: eski (#578) kayıtlarda D bloğunun tipi null gelebilir; D tek tipli (textSelect).
-    const type = prediction.interaction_type ?? (component === 'D' ? interactionForComponent(component, null) : null);
+    // Issue #582 / #583: eski kayıtlarda D / H bloğunun tipi null gelebilir; ikisi de tek tipli (textSelect / openText).
+    const type =
+      prediction.interaction_type ?? (component === 'D' || component === 'H' ? interactionForComponent(component, null) : null);
     if (kind === 'activity' && isBlockInteractionType(type) && isConsistentInteraction(component, type)) {
       this.setInteractionTypeFor(regionName, type);
     }
@@ -3321,6 +3355,8 @@ export class ImageSelectorComponent {
       this.ensureMatchState(regionName);
     } else if (type === TEXT_SELECT) {
       this.ensureTextSelectState(regionName);
+    } else if (type === OPEN_TEXT) {
+      this.ensureOpenTextState(regionName);
     }
   }
 
@@ -3484,6 +3520,9 @@ export class ImageSelectorComponent {
     if (this.getInteractionType(regionName) === TEXT_SELECT) {
       return JSON.stringify(buildTextSelectPlan(this.ensureTextSelectState(regionName)));
     }
+    if (this.getInteractionType(regionName) === OPEN_TEXT) {
+      return JSON.stringify(buildOpenTextPlan(this.ensureOpenTextState(regionName)));
+    }
     const plan = this.buildInteractionPlan(regionName);
     if (!plan) return null;
     return JSON.stringify(plan);
@@ -3511,6 +3550,11 @@ export class ImageSelectorComponent {
     }
     if (this.getInteractionType(regionName) === TEXT_SELECT) {
       const solution = buildTextSelectSolution(this.ensureTextSelectState(regionName));
+      return solution ? JSON.stringify(solution) : null;
+    }
+    // Issue #583: örnek cevap + rubrik (boş çözüm geçerli: değerlendirme elle).
+    if (this.getInteractionType(regionName) === OPEN_TEXT) {
+      const solution = buildOpenTextSolution(this.ensureOpenTextState(regionName));
       return solution ? JSON.stringify(solution) : null;
     }
     if (this.getInteractionType(regionName) !== 'dragDropLabeling') return null;
@@ -4437,6 +4481,43 @@ export class ImageSelectorComponent {
     this.focusQuestionKeepingMode(questionIndex);
   }
 
+  // -------- Issue #583: açık uçlu cevap (openText) yazarlığı --------
+
+  public ensureOpenTextState(regionName: string): OpenTextAuthoringState {
+    const existing = this.openTextState.get(regionName);
+    if (existing) return existing;
+    const created = createOpenTextState();
+    this.openTextState.set(regionName, created);
+    return created;
+  }
+
+  private updateOpenText(regionName: string, change: (state: OpenTextAuthoringState) => OpenTextAuthoringState) {
+    this.openTextState.set(regionName, change(this.ensureOpenTextState(regionName)));
+    this.regions.set([...this.regions()]);
+    const region = this.regions().find((r) => r.name === regionName);
+    if (region) this.checkRegionWarning(region);
+  }
+
+  /** Sözcük sınırı / satır alanı: boş = sınırsız (satırda varsayılan); tam sayı değilse uyarı, kayıt engellenir. */
+  public setOpenTextLimit(regionName: string, field: 'minWords' | 'maxWords' | 'lines', text: string) {
+    this.updateOpenText(regionName, (s) => setOpenTextLimit(s, field, parseLimitInput(text)));
+  }
+
+  public setOpenTextSolutionText(regionName: string, field: 'sampleAnswer' | 'rubric', text: string) {
+    this.updateOpenText(regionName, (s) => setOpenTextSolutionText(s, field, text));
+  }
+
+  /** Kayıt engelleyen açık uçlu cevap sorunları. */
+  private openTextMessages(regionName: string): string[] {
+    return openTextIssues(this.ensureOpenTextState(regionName)).map((issue) =>
+      this.tr(`warnings.openText.${issue.code}`, {
+        maxWords: OPEN_TEXT_LIMITS.maxWordLimit,
+        maxLines: OPEN_TEXT_LIMITS.maxLines,
+        maxLength: OPEN_TEXT_LIMITS.maxSolutionTextLength,
+      })
+    );
+  }
+
   /** Kayıt engelleyen metin işaretleme sorunları. */
   private textSelectMessages(regionName: string): string[] {
     return textSelectIssues(this.ensureTextSelectState(regionName)).map((issue) =>
@@ -4571,6 +4652,7 @@ export class ImageSelectorComponent {
       dragPlace: interactionType === DRAG_PLACE ? buildDragPlaceInspector(this.ensureDragPlaceState(name)) : null,
       match: interactionType === MATCH ? buildMatchInspector(this.ensureMatchState(name)) : null,
       textSelect: interactionType === TEXT_SELECT ? buildTextSelectInspector(this.ensureTextSelectState(name)) : null,
+      openText: interactionType === OPEN_TEXT ? buildOpenTextInspector(this.ensureOpenTextState(name)) : null,
       masks: this.getMasks(name),
       isExample: this.isExample(name),
       exampleAnswer: this.getExampleAnswer(name),
@@ -4976,6 +5058,7 @@ export class ImageSelectorComponent {
     this.dragPlaceState.clear();
     this.matchState.clear();
     this.textSelectState.clear();
+    this.openTextState.clear();
     this.draftFingerprints.clear();
     this.masks.clear();
     this.regions.set(
@@ -5181,6 +5264,7 @@ export class ImageSelectorComponent {
     this.dragPlaceState.clear();
     this.matchState.clear();
     this.textSelectState.clear();
+    this.openTextState.clear();
     this.draftFingerprints.clear();
     this.masks.clear();
     this.warningMarkers = [];
@@ -5306,6 +5390,7 @@ export class ImageSelectorComponent {
     this.dragPlaceState.delete(regionName);
     this.matchState.delete(regionName);
     this.textSelectState.delete(regionName);
+    this.openTextState.delete(regionName);
     this.masks.delete(regionName);
     for (const key of [...this.draftFingerprints.keys()]) {
       if (key.startsWith(`${regionName}\u0000`)) this.draftFingerprints.delete(key);

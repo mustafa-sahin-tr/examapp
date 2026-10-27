@@ -239,6 +239,7 @@ builder.Services.AddSingleton<Microsoft.Extensions.Options.IConfigureOptions<Mic
 builder.Services.AddScoped<IExamService, ExamService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetAssignmentService, ExamApp.Api.Services.Worksheets.WorksheetAssignmentService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.ITestSessionService, ExamApp.Api.Services.Worksheets.TestSessionService>();
+builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IOpenTextReviewService, ExamApp.Api.Services.Worksheets.OpenTextReviewService>(); // issue #583
 // issue #571: sunucu tarafı etkileşim kontrolcüleri (tip → kontrolcü; durumsuz).
 builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGrader, ExamApp.Api.Services.Interactions.McqGrader>();
 builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGrader, ExamApp.Api.Services.Interactions.DragDropLabelingGrader>();
@@ -248,6 +249,7 @@ builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionRand
 builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGrader, ExamApp.Api.Services.Interactions.DragPlaceGrader>(); // issue #576
 builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGrader, ExamApp.Api.Services.Interactions.MatchGrader>(); // issue #576
 builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGrader, ExamApp.Api.Services.Interactions.TextSelectGrader>(); // issue #582
+builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGrader, ExamApp.Api.Services.Interactions.OpenTextGrader>(); // issue #583
 builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGraderRegistry, ExamApp.Api.Services.Interactions.InteractionGraderRegistry>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetAuthoringService, ExamApp.Api.Services.Worksheets.WorksheetAuthoringService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetDetailService, ExamApp.Api.Services.Worksheets.WorksheetDetailService>();
@@ -419,6 +421,8 @@ builder.Services.AddQuestionBankSearchRateLimiting();
 builder.Services.AddQuestionBankLinkRateLimiting();
 builder.Services.AddActivityCheckRateLimiting(); // issue #571
 builder.Services.AddActivityRetakeRateLimiting(); // issue #609
+builder.Services.AddOpenTextReviewRateLimiting(); // issue #583
+builder.Services.AddOpenTextReviewReadRateLimiting(); // issue #583 review D1
 builder.Services.AddBookingLifecycleRateLimiting(); // issue #315
 // issue #365 (S3): kitap sayfası sorgusu (POST study-items/book-pages/lookup) kullanıcı başına rate limit.
 builder.Services.AddStudyBookPageLookupRateLimiting();

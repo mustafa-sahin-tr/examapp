@@ -6,7 +6,7 @@ import { Subject, takeUntil } from 'rxjs';
 
 import { ImageSelectorComponent, InteractionDraftApply } from '../image-selector/image-selector.component';
 import { LabelingActivityBlock, LabelingActivityStructureResult, LabelingBankBox } from '../../models/labeling';
-import { BlockInteractionType, isBlockInteractionType } from '../../models/prediction';
+import { BlockInteractionType, isDraftableInteractionType } from '../../models/prediction';
 import { LabelingService } from '../../services/labeling.service';
 
 /** Issue #579: tek istekte en çok bu kadar blok (sunucu sınırı); fazlası ardışık isteklere bölünür. */
@@ -187,7 +187,8 @@ export class CanvasActivityDrafts {
     }
     return selector.regions().flatMap((region) => {
       const type = selector.getInteractionType(region.name);
-      if (selector.getBlockKind(region.name) !== 'activity' || !isBlockInteractionType(type)) {
+      // Issue #583: openText bloğu yapı çıkarımına gönderilmez (sunucu taslak çıkarmaz; varsayılan planla açılır).
+      if (selector.getBlockKind(region.name) !== 'activity' || !isDraftableInteractionType(type)) {
         return [];
       }
       return [{ key: region.name, ...roundBox(region), interactionType: type }];

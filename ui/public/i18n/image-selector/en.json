@@ -89,6 +89,14 @@
       "missingAccept": "Target {{n}}: no accepted correction",
       "tooLong": "Target {{n}}: correction list too long (max 20 entries, 100 characters each)",
       "missingGapAccept": "Gap {{n}}: no correct mark chosen"
+    },
+    "openText": {
+      "minWordsRange": "Min words must be a whole number between 1 and {{maxWords}}.",
+      "maxWordsRange": "Max words must be a whole number between 1 and {{maxWords}}.",
+      "minAboveMax": "Min words cannot be greater than max words.",
+      "linesRange": "Lines must be a whole number between 1 and {{maxLines}}.",
+      "sampleTooLong": "The sample answer can be at most {{maxLength}} characters.",
+      "rubricTooLong": "The rubric can be at most {{maxLength}} characters."
     }
   },
   "menu": {

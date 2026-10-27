@@ -168,7 +168,14 @@ export class WorksheetListViewCardComponent {
   /** Issue #573: tamamlanan etkinliğin ilk kontrol sonucu — yalnız bilgi satırı ("8 / 10 doğru"), yüzde değil. */
   get activityFirstCheck(): { correct: number; total: number } | null {
     const instance = this.instance;
-    if (!this.isActivity || !instance || instance.firstCheckCorrectCount == null || instance.firstCheckTotalCount == null) {
+    // Issue #583: yalnız açık uçlu maddeli etkinlikte ilk kontrol 0 / 0'dır (sayılmaz): satır gösterilmez.
+    if (
+      !this.isActivity ||
+      !instance ||
+      instance.firstCheckCorrectCount == null ||
+      instance.firstCheckTotalCount == null ||
+      instance.firstCheckTotalCount <= 0
+    ) {
       return null;
     }
     return { correct: instance.firstCheckCorrectCount, total: instance.firstCheckTotalCount };

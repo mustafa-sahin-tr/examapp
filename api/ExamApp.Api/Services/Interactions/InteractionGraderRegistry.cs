@@ -21,7 +21,7 @@ public sealed class InteractionGraderRegistry : IInteractionGraderRegistry
     /// <summary>DI'sız kurulan servisler (birim testleri) için yerleşik kontrolcüler.</summary>
     public static InteractionGraderRegistry Default { get; } =
         new(new IInteractionGrader[] { new McqGrader(), new DragDropLabelingGrader(), new MatrixChoiceGrader(), new SlotFillGrader(),
-            new DragPlaceGrader(), new MatchGrader(), new TextSelectGrader() });
+            new DragPlaceGrader(), new MatchGrader(), new TextSelectGrader(), new OpenTextGrader() });
 
     public IInteractionGrader Resolve(string? interactionType)
         => !string.IsNullOrWhiteSpace(interactionType) && _graders.TryGetValue(interactionType.Trim(), out var grader)

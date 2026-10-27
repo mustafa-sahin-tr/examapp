@@ -38,7 +38,7 @@ public sealed class QuestionTestLinkService(AppDbContext context) : IQuestionTes
             // Kullanılabilirlik kilit altında: kontrol ile yazma arasında soru/test silinemez ya da gizlenemez (TOCTOU).
             var worksheet = await context.Worksheets.AsNoTracking()
                 .Where(w => w.Id == worksheetId)
-                .Select(w => new { w.CreateUserId, w.SourceWorksheetId })
+                .Select(w => new { w.CreateUserId, w.SourceWorksheetId, w.Kind })
                 .FirstOrDefaultAsync(ct);
             if (worksheet == null)
                 return null;
@@ -50,6 +50,13 @@ public sealed class QuestionTestLinkService(AppDbContext context) : IQuestionTes
             var grantsLegacyOwnership = worksheet.SourceWorksheetId == null && ownerId > 0;
             if (!await AllLinkableAsync(ids, userId, isAdmin, ownerId, grantsLegacyOwnership, ct))
                 return null;
+
+            // issue #583: açık uçlu madde teste bağlanamaz (yalnız etkinlik) — hiçbir şey yazılmaz, 400.
+            if (worksheet.Kind == WorksheetKind.Test && await Worksheets.OpenTextTestGuard.AnyOpenTextAsync(context, ids, ct))
+            {
+                await transaction.RollbackAsync(ct);
+                return new LinkBankQuestionsResultDto { ErrorCode = Worksheets.OpenTextTestGuard.ErrorCode };
+            }
 
             // Testin mevcut (silinmemiş) üyelikleri ve son sıra numarası.
             var existing = await context.TestQuestions.AsNoTracking()

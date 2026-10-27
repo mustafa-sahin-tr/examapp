@@ -47,6 +47,13 @@ describe('ActivityTrackingTableComponent (#573)', () => {
     expect(cells).toEqual(['7 doğru · 3 yanlış', '—']);
   });
 
+  it('firstCheck_ZeroTotal_OpenTextOnlyActivity_ShowsDash (#583)', () => {
+    setup([student({ studentId: 1, status: 'Completed', firstCheckCorrectCount: 0, firstCheckTotalCount: 0 })]);
+
+    expect(rows()[0].querySelector('[data-testid="first-check"]')?.textContent?.trim()).toBe('—');
+    expect(el().textContent).not.toContain('0 doğru');
+  });
+
   it('status_IconPlusText_ActiveTimeDashUntil572', () => {
     setup([student({ status: 'InProgress' })]);
 

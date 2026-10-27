@@ -1584,6 +1584,56 @@ describe('QuestionCanvasComponent', () => {
                     expect(slots.find((x) => x.id === b)!.value).toBe('23');
                 });
 
+                // Issue #583: "Açık uçlu" yalnız etkinlik sayfasında; sınırlar + örnek cevap / rubrik plana / çözüme gider.
+                it('openText_TypeOnlyInActivityContext_InspectorBuildsPlanAndSolution', async () => {
+                    const { fixture: f, component, el } = await render();
+                    const sel = component.imageSelector;
+                    vi.spyOn(sel, 'drawImage').mockReturnValue(undefined);
+                    sel.regions.set([{ name: 'Soru 1', x: 0, y: 0, width: 400, height: 300, answers: [], passageId: '0', imageId: '', imageUrl: '', id: 0, isExample: false, exampleAnswer: null }] as any);
+                    (sel as any).selectedRegion = 0;
+                    f.detectChanges();
+                    expect(el.querySelector('[data-testid="type-open-text"]')).toBeNull();
+
+                    component.onOptionSelected({ id: 7, name: 'Etkinlik', subtitle: 'E', kind: 1 } as any);
+                    f.detectChanges();
+                    const typeButton = el.querySelector<HTMLButtonElement>('[data-testid="type-open-text"]');
+                    expect(typeButton).not.toBeNull();
+                    typeButton!.click();
+                    f.detectChanges();
+
+                    expect(sel.getInteractionType('Soru 1')).toBe('openText');
+                    expect(el.querySelector('[data-testid="inspector-open-text"]')).not.toBeNull();
+                    expect(el.querySelector('[data-testid="open-text-activity-only"]')).toBeNull();
+                    const change = (testId: string, value: string) => {
+                        const field = el.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-testid="${testId}"]`)!;
+                        field.value = value;
+                        field.dispatchEvent(new Event('change'));
+                        f.detectChanges();
+                    };
+                    change('open-text-min', '20');
+                    change('open-text-max', '120');
+                    change('open-text-lines', '6');
+                    change('open-text-sample', '  Kitaptaki örnek cevap.  ');
+                    change('open-text-rubric', 'İki neden yazmalı.');
+
+                    expect(JSON.parse((sel as any).buildInteractionPlanJson('Soru 1'))).toEqual({
+                        version: 1, type: 'openText', minWords: 20, maxWords: 120, lines: 6,
+                    });
+                    expect(JSON.parse((sel as any).buildInteractionSolutionJson('Soru 1'))).toEqual({
+                        sampleAnswer: 'Kitaptaki örnek cevap.', rubric: 'İki neden yazmalı.',
+                    });
+                    expect(sel.validateQuestions({ requireCorrectAnswer: true })).toEqual([]);
+
+                    // Geçersiz sınır kaydı engeller; test sayfasına dönülürse uyarı görünür.
+                    change('open-text-min', '500');
+                    const issues = sel.validateQuestions({ requireCorrectAnswer: true });
+                    expect(issues).toHaveLength(1);
+                    expect(issues[0].messages).toHaveLength(1);
+                    component.onOptionSelected({ id: 8, name: 'Test', subtitle: 'T', kind: 0 } as any);
+                    f.detectChanges();
+                    expect(el.querySelector('[data-testid="open-text-activity-only"]')).not.toBeNull();
+                });
+
                 // Aynı kolon id'si (c1) iki soruda: soru değişince ilk sorunun DOM değeri ikinciye taşınmamalı.
                 it('inspector_SwitchQuestion_MatrixColumnLabelShowsOwnValue', async () => {
                     const { fixture: f, component, el } = await render();

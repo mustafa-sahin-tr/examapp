@@ -14,7 +14,9 @@ namespace ExamApp.Api.Helpers;
 /// issue #571 — hibrit kural (MCQ sonuçları değişmez; etkileşimli cevaplar da sayılır):
 /// </para>
 /// <list type="bullet">
-/// <item>Toplam = oturumdaki soru satırı sayısı.</item>
+/// <item>Toplam = oturumdaki soru satırı sayısı — issue #583 (savunma): açık uçlu (<c>openText</c>) satırlar hariç; bu satırlar
+/// ne doğru ne yanlış ne boş sayılır (öğretmen değerlendirmesi puansızdır). openText teste giremez (kayıt yolları reddeder);
+/// kural yalnız eski/kaçak veride skoru bozmamak için.</item>
 /// <item>Doğru = (şık seçilmiş VE seçilen şık sorunun doğru şıkkı) YA DA (şık seçilmemiş, etkileşim cevabı
 /// (<c>AnswerPayload</c>) var VE kontrolcü tamamını doğru bulmuş — kayıtlı <c>IsCorrect</c>). Doğru şıkkı bilinmeyen/silinmiş
 /// soru şık cevabında doğru sayılmaz.</item>
@@ -68,8 +70,10 @@ public static class WorksheetScoring
     /// sayımda <c>toplam − doğru − boş</c> kullanın).
     /// </summary>
     public static readonly Expression<Func<WorksheetInstanceQuestion, bool>> IsWrongRow = wiq =>
-        (wiq.SelectedAnswerId != null && wiq.SelectedAnswerId != wiq.WorksheetQuestion.Question.CorrectAnswerId)
-        || (wiq.SelectedAnswerId == null && wiq.AnswerPayload != null && !wiq.IsCorrect);
+        ((wiq.SelectedAnswerId != null && wiq.SelectedAnswerId != wiq.WorksheetQuestion.Question.CorrectAnswerId)
+            || (wiq.SelectedAnswerId == null && wiq.AnswerPayload != null && !wiq.IsCorrect))
+        // issue #583: açık uçlu satır yanlış sayılmaz (puanlamaya girmez).
+        && wiq.WorksheetQuestion.Question.InteractionType != ExamApp.Api.Services.Interactions.OpenTextGrader.Type;
 
     /// <summary>issue #571: sorgu tarafı "boş".</summary>
     public static readonly Expression<Func<WorksheetInstanceQuestion, bool>> IsBlankRow = wiq =>
@@ -78,8 +82,30 @@ public static class WorksheetScoring
     /// <summary>issue #571: satır başına puanlamaya giren alanlar (bellek tarafı).</summary>
     /// <param name="CorrectAnswerId">Satırın sorusunun doğru şıkkı; soru bilinmiyorsa null.</param>
     /// <param name="QuestionKnown">Satırın sorusu biliniyor mu (silinmiş soru → boş değilse yanlış; SQL sayımıyla aynı).</param>
+    /// <param name="Excluded">issue #583: puanlamaya girmeyen satır (açık uçlu); hiçbir sayıma ve toplama girmez.</param>
     public readonly record struct AnswerFacts(
-        int? SelectedAnswerId, bool HasPayload, bool StoredIsCorrect, int? CorrectAnswerId, bool QuestionKnown = true);
+        int? SelectedAnswerId, bool HasPayload, bool StoredIsCorrect, int? CorrectAnswerId, bool QuestionKnown = true,
+        bool Excluded = false);
+
+    /// <summary>issue #583: puanlamaya giren satır sayısı (toplam) — <see cref="AnswerFacts.Excluded"/> satırlar hariç.</summary>
+    public static int Total<T>(IEnumerable<T> answers, Func<T, AnswerFacts> factsOf)
+    {
+        var total = 0;
+        foreach (var answer in answers)
+        {
+            if (!factsOf(answer).Excluded)
+                total++;
+        }
+        return total;
+    }
+
+    /// <summary>
+    /// issue #583: sorgu tarafı "puanlanan satır" — sorusu açık uçlu (<c>openText</c>) olmayan satır. Bağlam üzerinden korelasyonlu
+    /// EXISTS ile (gezinme JOIN'i değil): sorusu / bağı silinmiş satır eskisi gibi sayılır. Toplam ve boş sayımlarında kullanılır.
+    /// </summary>
+    public static Expression<Func<WorksheetInstanceQuestion, bool>> IsScoredRow(ExamApp.Api.Data.AppDbContext db) => wiq =>
+        !db.TestQuestions.Any(wq => wq.Id == wiq.WorksheetQuestionId
+            && wq.Question.InteractionType == ExamApp.Api.Services.Interactions.OpenTextGrader.Type);
 
     public static (int Correct, int Wrong, int Blank) Tally<T>(IEnumerable<T> answers, Func<T, AnswerFacts> factsOf)
     {
@@ -87,6 +113,8 @@ public static class WorksheetScoring
         foreach (var answer in answers)
         {
             var f = factsOf(answer);
+            if (f.Excluded)
+                continue;
             if (IsBlank(f.SelectedAnswerId, f.HasPayload))
                 blank++;
             else if (IsCorrect(f.SelectedAnswerId, f.CorrectAnswerId, f.HasPayload, f.StoredIsCorrect, f.QuestionKnown))

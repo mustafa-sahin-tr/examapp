@@ -580,6 +580,11 @@
                       <span>{{ t('teacher.lastUpdate', { date: refreshed | date : 'dd MMM HH:mm' }) }}</span></div>
                   }
                   @if (isActivity()) {
+                    <!-- Issue #583: bu etkinliğin açık uçlu cevaplarını değerlendirme kuyruğu (etkinliğe filtreli). -->
+                    <a mat-stroked-button class="open-text-reviews-link" data-testid="open-text-reviews-link"
+                      [routerLink]="['/open-text-reviews']" [queryParams]="{ worksheetId: d.worksheet.id }">
+                      <mat-icon>rate_review</mat-icon>{{ t('teacher.openTextReviews') }}
+                    </a>
                     <app-activity-tracking-table [students]="activityTrackingStudents()" [gradeLabel]="gradeLabelFn" />
                   } @else {
                   <mat-accordion class="assignment-accordion" multi>

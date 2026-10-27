@@ -200,6 +200,20 @@ describe('WorksheetListViewCardComponent', () => {
             expect(el.textContent).not.toMatch(/%/);
         });
 
+        it('template_OpenTextOnlyActivity_ZeroTotal_HidesInfoLine (#583)', () => {
+            const fixture = TestBed.createComponent(WorksheetListViewCardComponent);
+            fixture.componentInstance.course = {
+                id: 5,
+                name: 'Açık uçlu',
+                kind: 1,
+                questionCount: 2,
+                instance: { status: 1, score: 0, firstCheckCorrectCount: 0, firstCheckTotalCount: 0 },
+            } as unknown as Test;
+            fixture.detectChanges();
+
+            expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="activity-first-check"]')).toBeNull();
+        });
+
         it('template_TestCard_NeverShowsActivityInfoLine', () => {
             const fixture = TestBed.createComponent(WorksheetListViewCardComponent);
             fixture.componentInstance.course = {

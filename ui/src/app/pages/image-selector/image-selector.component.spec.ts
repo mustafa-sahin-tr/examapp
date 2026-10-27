@@ -2651,6 +2651,43 @@ describe('ImageSelectorComponent', () => {
         });
     });
 
+    describe('openText (issue #583)', () => {
+        it('activityH_BecomesOpenTextWithDefaultPlan_NoDraft_SavesPlanAndSolution', () => {
+            component.applyExternalPrediction(component.beginExternalDetection(), {
+                success: true,
+                predictions: [{ class_id: 0, x: 10, y: 10, width: 300, height: 120, subpredictions: [], kind: 'activity', component: 'H' }],
+            } as any, { kind: 'Ai', modelName: 'claude-a' });
+
+            expect(component.getInteractionType('Soru 1')).toBe('openText');
+            expect(JSON.parse((component as any).buildInteractionPlanJson('Soru 1'))).toEqual({
+                version: 1, type: 'openText', minWords: null, maxWords: null, lines: 5,
+            });
+            expect((component as any).buildInteractionSolutionJson('Soru 1')).toBeNull();
+            // Taslak çıkarımı yok: gelen plan yok sayılır.
+            expect(component.applyInteractionDraft('Soru 1', 'openText', { version: 1, type: 'openText', maxWords: 10 })).toBe('invalid');
+            expect(component.hasAuthoringEdits('Soru 1', 'openText')).toBe(false);
+
+            component.setOpenTextLimit('Soru 1', 'maxWords', '80');
+            component.setOpenTextSolutionText('Soru 1', 'rubric', 'Ölçüt');
+            expect(JSON.parse((component as any).buildInteractionPlanJson('Soru 1')).maxWords).toBe(80);
+            expect(JSON.parse((component as any).buildInteractionSolutionJson('Soru 1'))).toEqual({ rubric: 'Ölçüt' });
+            (component as any).selectedRegion = 0;
+            expect(component.getActiveInspector()?.openText).toMatchObject({ maxWords: 80, rubric: 'Ölçüt', issues: [] });
+        });
+
+        it('setRegionInteraction_OpenTextOnActivityBlock_SetsComponentH', () => {
+            component.applyExternalPrediction(component.beginExternalDetection(), {
+                success: true,
+                predictions: [{ class_id: 0, x: 10, y: 10, width: 300, height: 120, subpredictions: [], kind: 'activity', component: 'A', interaction_type: 'matrixChoice' }],
+            } as any, { kind: 'Ai', modelName: 'claude-a' });
+
+            component.setRegionInteraction(0, 'openText');
+
+            expect(component.getActivityComponent('Soru 1')).toBe('H');
+            expect(component.getInteractionType('Soru 1')).toBe('openText');
+        });
+    });
+
     describe('print masks (issue #581)', () => {
         /** Bölge (100,100) 400×300; içinde (120,120)'de 40×20 şık. Çizim koordinatları tuval pikselidir. */
         function setup() {

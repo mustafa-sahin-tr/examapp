@@ -8,6 +8,7 @@ using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interactions;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Storage;
+using ExamApp.Api.Services.Worksheets;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Localization;
 using ExamApp.Foundation.Persistence;
@@ -94,6 +95,21 @@ public class QuestionService : IQuestionService
                 Success = false,
                 InvalidInput = true,
                 Message = _localizer["questions.passage.invalidInstruction"]
+            };
+        }
+
+        // issue #583: açık uçlu madde yalnız etkinlikte — Test sayfasına eklenen ya da Test'e bağlı soruyu openText'e çeviren kayıt
+        // hiçbir şey yazılmadan 400.
+        if (OpenTextGrader.IsOpenText(questionDto.InteractionType)
+            && ((questionDto.TestId is > 0 && await OpenTextTestGuard.IsTestAsync(_context, questionDto.TestId.Value))
+                || (questionDto.Id > 0 && await OpenTextTestGuard.QuestionInAnyTestAsync(_context, questionDto.Id))))
+        {
+            return new QuestionSavedDto
+            {
+                Success = false,
+                InvalidInput = true,
+                ErrorCode = OpenTextTestGuard.ErrorCode,
+                Message = _localizer[OpenTextTestGuard.MessageKey]
             };
         }
 
@@ -593,6 +609,20 @@ public class QuestionService : IQuestionService
             {
                 Success = false,
                 Message = _localizer["questions.passage.invalidInstruction"]
+            };
+        }
+
+        // issue #583: açık uçlu madde Test sayfasına toplu kayıtla da eklenemez (yüklemeden önce, 400).
+        if (soruDto.Header?.TestId is > 0
+            && (soruDto.Questions ?? new List<BulkQuestionDto>()).Any(q => q != null && OpenTextGrader.IsOpenText(q.InteractionType))
+            && await OpenTextTestGuard.IsTestAsync(_context, soruDto.Header.TestId.Value))
+        {
+            return new QuestionSavedDto
+            {
+                Success = false,
+                InvalidInput = true,
+                ErrorCode = OpenTextTestGuard.ErrorCode,
+                Message = _localizer[OpenTextTestGuard.MessageKey]
             };
         }
 

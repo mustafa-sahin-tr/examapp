@@ -1,6 +1,7 @@
 import { DRAG_PLACE } from './drag-place';
 import { MATCH } from './match';
 import { MATRIX_CHOICE } from './matrix-choice';
+import { OPEN_TEXT } from './open-text';
 import { SLOT_FILL } from './slot-fill';
 import { TEXT_SELECT } from './text-select';
 
@@ -27,9 +28,10 @@ export type BlockInteractionType =
     | typeof SLOT_FILL
     | typeof DRAG_PLACE
     | typeof MATCH
-    | typeof TEXT_SELECT;
+    | typeof TEXT_SELECT
+    | typeof OPEN_TEXT;
 
-const BLOCK_INTERACTION_TYPES: readonly string[] = [MATRIX_CHOICE, SLOT_FILL, DRAG_PLACE, MATCH, TEXT_SELECT];
+const BLOCK_INTERACTION_TYPES: readonly string[] = [MATRIX_CHOICE, SLOT_FILL, DRAG_PLACE, MATCH, TEXT_SELECT, OPEN_TEXT];
 
 export interface Prediction {
     class_id: number;
@@ -84,8 +86,16 @@ export function isBlockInteractionType(value: unknown): value is BlockInteractio
 }
 
 /**
+ * Issue #583: Claude etkinlik yapısı (#579 `activity-structure`) çıkarılabilen tip. `openText`'in planı basit (sözcük sınırı,
+ * satır) ve sunucu taslağını çıkarmaz: H bloğu tuvalde varsayılan planla açılır, bu uca gönderilmez.
+ */
+export function isDraftableInteractionType(value: unknown): value is BlockInteractionType {
+    return isBlockInteractionType(value) && value !== OPEN_TEXT;
+}
+
+/**
  * Bileşen ↔ etkileşim tipi tutarlılığı (sunucu `LabelingBlocks.IsConsistent`; elle kayıt bunu doğrular): A → matrixChoice,
- * B → slotFill, C → dragPlace | match, D → textSelect (#582). Diğer ailelerin kontrolcüsü yok.
+ * B → slotFill, C → dragPlace | match, D → textSelect (#582), H → openText (#583). Diğer ailelerin kontrolcüsü yok.
  */
 export function isConsistentInteraction(component: ActivityComponent | null, type: string): boolean {
     switch (component) {
@@ -97,14 +107,16 @@ export function isConsistentInteraction(component: ActivityComponent | null, typ
             return type === DRAG_PLACE || type === MATCH;
         case 'D':
             return type === TEXT_SELECT;
+        case 'H':
+            return type === OPEN_TEXT;
         default:
             return false;
     }
 }
 
 /**
- * Bileşen elle seçilince kullanılacak etkileşim tipi: A / B / D tek tipli; C'de mevcut dragPlace / match korunur, yoksa
- * dragPlace; E–I ve bileşensiz etkinlik etkileşimsiz (null). Issue #582: D bloğu (eski #578 kayıtlarında tipi null gelse de)
+ * Bileşen elle seçilince kullanılacak etkileşim tipi: A / B / D / H (#583) tek tipli; C'de mevcut dragPlace / match korunur, yoksa
+ * dragPlace; E, F, G, I ve bileşensiz etkinlik etkileşimsiz (null). Issue #582: D bloğu (eski #578 kayıtlarında tipi null gelse de)
  * textSelect sayılır.
  */
 export function interactionForComponent(
@@ -120,6 +132,8 @@ export function interactionForComponent(
             return current === MATCH ? MATCH : DRAG_PLACE;
         case 'D':
             return TEXT_SELECT;
+        case 'H':
+            return OPEN_TEXT;
         default:
             return null;
     }

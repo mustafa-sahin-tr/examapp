@@ -620,10 +620,10 @@ public class ExamController : BaseController
     [HttpGet("test-canvas-instance-result/{testInstanceId}")]
     [Authorize(Roles = "Student,Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
-    public async Task<IActionResult> GetTestCanvasInstanceResults(int testInstanceId)
+    public async Task<IActionResult> GetTestCanvasInstanceResults(int testInstanceId, CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync();
-        var response = await _testSession.GetCanvasTestResultAsync(testInstanceId, user.Id, true);
+        var response = await _testSession.GetCanvasTestResultAsync(testInstanceId, user.Id, true, ct);
         return Ok(response);
     }
 
@@ -631,10 +631,10 @@ public class ExamController : BaseController
     [HttpGet("test-canvas-instance/{testInstanceId}")]
     [Authorize(Roles = "Student,Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
-    public async Task<IActionResult> GetTestCanvasInstanceQuestions(int testInstanceId)
+    public async Task<IActionResult> GetTestCanvasInstanceQuestions(int testInstanceId, CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync();
-        var response = await _testSession.GetCanvasTestResultAsync(testInstanceId, user.Id);
+        var response = await _testSession.GetCanvasTestResultAsync(testInstanceId, user.Id, ct: ct);
         return Ok(response);
     }
 

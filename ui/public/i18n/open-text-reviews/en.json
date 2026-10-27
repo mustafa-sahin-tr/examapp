@@ -1,0 +1,58 @@
+{
+  "title": "Open-ended answers",
+  "subtitle": "Review your students’ open-ended activity answers as sufficient / partial / insufficient and write feedback. No points are given; the review and feedback are visible to the student.",
+  "actions": {
+    "refresh": "Refresh",
+    "save": "Review",
+    "update": "Update review"
+  },
+  "filters": {
+    "statusAria": "Status",
+    "pending": "Pending",
+    "reviewed": "Reviewed",
+    "all": "All",
+    "worksheet": "This activity",
+    "worksheetNamed": "Activity: {{name}}",
+    "clearWorksheet": "Remove activity filter"
+  },
+  "state": {
+    "loading": "Loading answers…",
+    "empty": {
+      "pending": "No answers are waiting for review.",
+      "reviewed": "You have not reviewed any answers yet.",
+      "all": "No open-ended answers."
+    }
+  },
+  "unknownStudent": "Student",
+  "itemOf": "{{name}} · Item {{label}}",
+  "imageAlt": "Item {{label}} image",
+  "answer": "Student’s answer",
+  "words": "{{count}} words",
+  "limitsBoth": "at least {{min}}, at most {{max}}",
+  "limitsMin": "at least {{min}}",
+  "limitsMax": "at most {{max}}",
+  "solutionTitle": "Sample answer and rubric",
+  "sampleAnswer": "Sample answer",
+  "rubric": "Rubric",
+  "currentReview": "Current review",
+  "evaluate": "Review",
+  "evaluation": {
+    "sufficient": "Sufficient",
+    "partial": "Partial",
+    "insufficient": "Insufficient"
+  },
+  "feedback": "Feedback (visible to the student)",
+  "feedbackPlaceholder": "A short note (optional)",
+  "paginatorAria": "Pages",
+  "messages": {
+    "loadFailed": "Answers could not be loaded.",
+    "saved": "Review saved.",
+    "ok": "OK",
+    "answerChanged": "The student’s answer changed; the list was refreshed.",
+    "rateLimited": "You saved too often; wait a moment and try again.",
+    "saveFailed": "The review could not be saved.",
+    "forbidden": "You are not allowed to review this answer; the list was refreshed."
+  },
+  "imageAltPlain": "Item image",
+  "lockedByOther": "Another teacher reviewed this; you cannot change this review."
+}

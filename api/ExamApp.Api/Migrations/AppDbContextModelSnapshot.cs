@@ -1443,6 +1443,57 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("LoginEvents");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.OpenTextReview", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AnswerSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Evaluation")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Feedback")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ReviewedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<bool>("Stale")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("WorksheetInstanceQuestionId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorksheetInstanceQuestionId")
+                        .IsUnique();
+
+                    b.ToTable("OpenTextReviews");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.Parent", b =>
                 {
                     b.Property<int>("Id")
@@ -2274,6 +2325,9 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("SubjectId");
 
                     b.HasIndex("TopicId");
+
+                    b.HasIndex(new[] { "InteractionType" }, "IX_Questions_InteractionType_OpenText")
+                        .HasFilter("\"InteractionType\" = 'openText'");
 
                     b.ToTable("Questions");
                 });
@@ -4038,6 +4092,8 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("StudentId", "WorksheetId", "StartAt");
 
+                    b.HasIndex(new[] { "CreateUserId", "WorksheetId" }, "IX_WorksheetAssignments_CreateUserId_WorksheetId");
+
                     b.HasIndex(new[] { "EndAt" }, "IX_WorksheetAssignments_EndAt_NotNull")
                         .HasFilter("\"EndAt\" IS NOT NULL");
 
@@ -5261,6 +5317,17 @@ namespace ExamApp.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("LearningOutcome");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.OpenTextReview", b =>
+                {
+                    b.HasOne("WorksheetInstanceQuestion", "WorksheetInstanceQuestion")
+                        .WithMany()
+                        .HasForeignKey("WorksheetInstanceQuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("WorksheetInstanceQuestion");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.ParentConsent", b =>

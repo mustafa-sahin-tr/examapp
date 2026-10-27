@@ -33,6 +33,8 @@ import { QuestionCanvasSlotFillComponent } from '../../shared/components/questio
 import { isDragPlaceType } from '../../models/drag-place';
 import { isMatchType } from '../../models/match';
 import { isTextSelectType } from '../../models/text-select';
+import { isOpenTextType } from '../../models/open-text';
+import { QuestionCanvasOpenTextComponent } from '../../shared/components/question-canvas-open-text/question-canvas-open-text.component';
 import { QuestionCanvasDragPlaceComponent } from '../../shared/components/question-canvas-drag-place/question-canvas-drag-place.component';
 import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
 import { QuestionCanvasTextSelectComponent } from '../../shared/components/question-canvas-text-select/question-canvas-text-select.component';
@@ -72,6 +74,7 @@ import { StorageImageRetryDirective } from '../../shared/directives/storage-imag
     QuestionCanvasDragPlaceComponent,
     QuestionCanvasMatchComponent,
     QuestionCanvasTextSelectComponent,
+    QuestionCanvasOpenTextComponent,
     TranslocoDirective,
     StorageImageRetryDirective,
   ],
@@ -164,16 +167,20 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
     this.passageOnlyByQuestionIndex.set(questionIndex, true);
   }
 
-  /** Issue #574 (L3) / #575 / #576 / #582: etkileşim türü büyük/küçük harf duyarsız; bilinmeyen tür MCQ. */
+  /**
+   * Issue #574 (L3) / #575 / #576 / #582 / #583: etkileşim türü büyük/küçük harf duyarsız; bilinmeyen tür MCQ. `openText` yalnız
+   * etkinlikte sunulur (testte puanı yanlış sayar); eski / kopya bir testte gelirse yine yazılabilir.
+   */
   public interactionKind(
     type: string | null | undefined
-  ): 'mcq' | 'dragDropLabeling' | 'matrixChoice' | 'slotFill' | 'dragPlace' | 'match' | 'textSelect' {
+  ): 'mcq' | 'dragDropLabeling' | 'matrixChoice' | 'slotFill' | 'dragPlace' | 'match' | 'textSelect' | 'openText' {
     const normalized = (type ?? '').toLowerCase();
     if (normalized === 'dragdroplabeling') return 'dragDropLabeling';
     if (isSlotFillType(type)) return 'slotFill';
     if (isDragPlaceType(type)) return 'dragPlace';
     if (isMatchType(type)) return 'match';
     if (isTextSelectType(type)) return 'textSelect';
+    if (isOpenTextType(type)) return 'openText';
     return isMatrixChoiceType(type) ? 'matrixChoice' : 'mcq';
   }
 

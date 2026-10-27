@@ -105,6 +105,12 @@ public class WorksheetInstanceQuestionDto
     public int? CorrectCount { get; set; }
     public int? TotalCount { get; set; }
     public string? Feedback { get; set; }
+
+    /// <summary>
+    /// issue #583: açık uçlu (<c>openText</c>) maddede öğrencinin kendi değerlendirme durumu (pending / reviewed / outdated +
+    /// değerlendirme ve geri bildirim); diğer tiplerde, cevapsız ya da gönderilmemiş ve değerlendirilmemiş maddede null.
+    /// </summary>
+    public ExamApp.Api.Models.Dtos.OpenText.OpenTextStudentReviewDto? OpenTextReview { get; set; }
 }
 
 public class WorksheetInstanceResultDto

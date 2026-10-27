@@ -619,6 +619,8 @@ public class PracticeSessionService : IPracticeSessionService
         // issue #570: plan çözümsüz; etkileşim çözümü yalnız örnek soruda ya da cevaplanmış/pas geçilmiş soruda.
         var (interactionPlan, interactionSolution) = InteractionPlanSolution.ForOutput(
             q.InteractionPlan, q.InteractionSolution, includeSolution: q.IsExample || revealCorrectAnswer);
+        // issue #583: openText'te öğrenciye yalnız örnek cevap gider (rubrik öğretmene özel).
+        interactionSolution = ExamApp.Api.Services.Interactions.OpenTextGrader.StudentVisibleSolution(q.InteractionType, interactionSolution);
         return new QuestionDto
         {
             Id = q.Id,

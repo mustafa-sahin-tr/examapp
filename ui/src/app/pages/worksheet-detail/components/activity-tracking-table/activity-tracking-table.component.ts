@@ -68,7 +68,8 @@ export class ActivityTrackingTableComponent {
       gradeName: label(s),
       status: s.status,
       firstCheck:
-        s.firstCheckTotalCount != null && s.firstCheckCorrectCount != null
+        // Issue #583: yalnız açık uçlu maddeli etkinlikte ilk kontrol 0 / 0 (sayılmaz) → "—".
+        s.firstCheckTotalCount != null && s.firstCheckCorrectCount != null && s.firstCheckTotalCount > 0
           ? {
               correct: s.firstCheckCorrectCount,
               wrong: Math.max(0, s.firstCheckTotalCount - s.firstCheckCorrectCount),

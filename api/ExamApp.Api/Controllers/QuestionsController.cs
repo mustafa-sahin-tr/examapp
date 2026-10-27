@@ -174,7 +174,7 @@ public class QuestionsController : BaseController
         // issue #365 (S2): geçersiz girdi (ör. allowlist dışı paragraf görsel adresi) servis tarafından yazmadan önce reddedilir.
         if (response.InvalidInput)
         {
-            return BadRequest(new { message = response.Message });
+            return BadRequest(new { message = response.Message, errorCode = response.ErrorCode });
         }
         return Ok(response);
     }
@@ -198,7 +198,7 @@ public class QuestionsController : BaseController
         // issue #581: yazmadan önce reddedilen girdi (ör. geçersiz maske) yerelleştirilmiş mesajıyla 400.
         if (reponse is QuestionSavedDto { InvalidInput: true } invalid)
         {
-            return BadRequest(new { message = invalid.Message });
+            return BadRequest(new { message = invalid.Message, errorCode = invalid.ErrorCode });
         }
         if (reponse == null || !reponse.Success)
         {
@@ -366,6 +366,9 @@ public class QuestionsController : BaseController
         var result = await _testLinks.LinkAsync(testId, request.QuestionIds!, user.Id, IsAdmin, HttpContext.RequestAborted);
         if (result == null)
             return NotFound(new { success = false, message = _localizer["questions.notFound"].Value });
+        if (result.ErrorCode != null) // issue #583: açık uçlu madde teste bağlanamaz
+            return BadRequest(new { success = false, errorCode = result.ErrorCode,
+                message = _localizer[ExamApp.Api.Services.Worksheets.OpenTextTestGuard.MessageKey].Value });
 
         return Ok(result);
     }

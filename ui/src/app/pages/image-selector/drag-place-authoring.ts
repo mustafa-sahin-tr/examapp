@@ -84,6 +84,25 @@ export function createDragPlaceState(): DragPlaceAuthoringState {
   return { mode: 'place', reuse: false, targets: [], cards: [], solution: emptySolution(), selectedTargetId: null };
 }
 
+/**
+ * Issue #579: kayıtlı / taslak plandan yazarlık durumu (çözümsüz). Plan `parseDragPlacePlan` ile temizlenmiş olmalı.
+ */
+export function dragPlaceStateFromPlan(plan: DragPlacePlanV1): DragPlaceAuthoringState {
+  return {
+    mode: plan.mode,
+    reuse: plan.reuse,
+    targets: plan.targets.map((t) => ({
+      id: t.id,
+      label: t.label ?? '',
+      box: t.box ? copyBox(t.box) : null,
+      capacity: plan.mode === 'order' ? 1 : clampCapacity(t.capacity),
+    })),
+    cards: plan.cards.map((c) => ({ id: c.id, label: c.label ?? '', box: c.box ? copyBox(c.box) : null })),
+    solution: emptySolution(),
+    selectedTargetId: null,
+  };
+}
+
 /** `prefix` + ilk boş numara; hedef `t`, kart `c` öneki aldığı için iki uzay çakışmaz. */
 export function nextInteractionId(prefix: string, used: string[]): string {
   const taken = new Set(used);

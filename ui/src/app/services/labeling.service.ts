@@ -2,8 +2,13 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
+import { BlockInteractionType } from '../models/prediction';
 import {
   DetectionSource,
+  LabelingActivityPrompt,
+  LabelingActivityPromptsState,
+  LabelingActivityStructureRequest,
+  LabelingActivityStructureResponse,
   LabelingAiDetectRequest,
   LabelingAiDetectResponse,
   LabelingAiModel,
@@ -13,6 +18,7 @@ import {
   LabelingPromptState,
   LabelingResult,
   LabelingSaveManualRequest,
+  LabelingSaveActivityPromptRequest,
   LabelingSavePromptRequest,
 } from '../models/labeling';
 
@@ -52,6 +58,29 @@ export class LabelingService {
   /** Yeni sürüm olarak kaydeder; sonraki Claude çağrıları bunu kullanır. */
   savePrompt(request: LabelingSavePromptRequest): Observable<LabelingPromptState> {
     return this.http.put<LabelingPromptState>(`${this.baseUrl}/prompt`, request);
+  }
+
+  /**
+   * Issue #579: etkinlik bloklarının taslak etkileşim planları (blok başına bir Claude çağrısı, sunucuda paralel; kayıtlı
+   * sonuç `force` değilse ücretsiz döner). 429 `LabelingRateLimited` / `LabelingBudgetExceeded`, anahtar yoksa 503.
+   */
+  activityStructure(request: LabelingActivityStructureRequest): Observable<LabelingActivityStructureResponse> {
+    return this.http.post<LabelingActivityStructureResponse>(`${this.baseUrl}/activity-structure`, request);
+  }
+
+  getActivityPrompts(): Observable<LabelingActivityPromptsState> {
+    return this.http.get<LabelingActivityPromptsState>(`${this.baseUrl}/activity-prompts`);
+  }
+
+  /** Tipin talimatını yeni sürüm olarak kaydeder (etkin sürümü döner); yalnız o tipin önbelleği geçersiz olur. */
+  saveActivityPrompt(
+    type: BlockInteractionType,
+    request: LabelingSaveActivityPromptRequest
+  ): Observable<LabelingActivityPrompt> {
+    return this.http.put<LabelingActivityPrompt>(
+      `${this.baseUrl}/activity-prompts/${encodeURIComponent(type)}`,
+      request
+    );
   }
 }
 

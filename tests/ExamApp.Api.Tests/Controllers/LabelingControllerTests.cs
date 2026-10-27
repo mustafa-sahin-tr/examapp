@@ -74,7 +74,11 @@ public class LabelingControllerTests
             .ToList();
 
         actions.Select(m => m.Name).OrderBy(n => n)
-            .ShouldBe(new[] { "DetectWithAi", "GetAiModels", "GetPage", "GetPrompt", "SaveManual", "SavePrompt", "SaveToBank" });
+            .ShouldBe(new[]
+            {
+                "DetectWithAi", "ExtractActivityStructure", "GetActivityPrompts", "GetAiModels", "GetPage", "GetPrompt",
+                "SaveActivityPrompt", "SaveManual", "SavePrompt", "SaveToBank",
+            });
 
         foreach (var m in actions)
         {
@@ -556,5 +560,119 @@ public class LabelingControllerTests
             method.GetCustomAttributes<AllowAnonymousAttribute>().ShouldBeEmpty(name);
             method.GetCustomAttributes<AuthorizeAttribute>().ShouldBeEmpty(name);
         }
+    }
+
+    // ---------- Etkinlik yapısı (issue #579) ----------
+
+    private readonly IActivityStructureService _activities = Substitute.For<IActivityStructureService>();
+
+    private static ActivityStructureRequestDto ActivityRequest() => new()
+    {
+        ImageBase64 = "iVBORw0KGgo=",
+        Model = "claude-test",
+        Blocks = [new ActivityStructureBlockDto { Key = "b1", InteractionType = "matrixChoice", Width = 10, Height = 10 }],
+    };
+
+    [Theory]
+    [InlineData(nameof(LabelingController.ExtractActivityStructure), typeof(HttpPostAttribute), "activity-structure")]
+    [InlineData(nameof(LabelingController.GetActivityPrompts), typeof(HttpGetAttribute), "activity-prompts")]
+    [InlineData(nameof(LabelingController.SaveActivityPrompt), typeof(HttpPutAttribute), "activity-prompts/{interactionType}")]
+    public void ActivityEndpoints_UseControllerRolesAndExpectedRoutes(string action, Type verb, string template)
+    {
+        var method = typeof(LabelingController).GetMethod(action)!;
+
+        var attribute = method.GetCustomAttributes<HttpMethodAttribute>().Single();
+        attribute.GetType().ShouldBe(verb);
+        attribute.Template.ShouldBe(template);
+        // Sınıf düzeyi: Admin + QuestionTrainer ve onaylı/askıda olmayan öğretmen politikası; uç daraltmaz, açmaz.
+        method.GetCustomAttributes<AuthorizeAttribute>().ShouldBeEmpty();
+        method.GetCustomAttributes<AllowAnonymousAttribute>().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ExtractActivityStructure_Success_LocalizesBlockErrorsAndValidationHints_AndPassesActor()
+    {
+        _activities.ExtractAsync(default!, default!, default).ReturnsForAnyArgs(new ActivityStructureResponseDto(
+        [
+            new("b1", "matrixChoice", "ok", "live", null, "Yönerge", false, ["labeling.activity.invalid.tooFewColumns"], 0, 10, 5,
+                0.001m, null),
+            new("b2", "slotFill", "error", null, null, null, false, [], 0, null, null, null, ActivityStructureService.AiFailedKey),
+        ]));
+
+        var result = await NewController().ExtractActivityStructure(ActivityRequest(), _activities, CancellationToken.None);
+
+        var body = result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<ActivityStructureResponseDto>();
+        body.Results[0].ValidationErrors.ShouldBe(["En az iki seçenek kolonu ekleyin."]);
+        body.Results[0].Error.ShouldBeNull();
+        body.Results[1].Error.ShouldBe("Claude bu etkinliği okuyamadı. Tekrar deneyin ya da elle çizin.");
+        await _activities.Received(1).ExtractAsync(Arg.Any<ActivityStructureRequestDto>(),
+            Arg.Is<LabelingActor>(a => a.KeycloakId == TrainerKeycloakId), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExtractActivityStructure_ValidationException_Returns400()
+    {
+        _activities.ExtractAsync(default!, default!, default)
+            .ThrowsAsyncForAnyArgs(new LabelingValidationException("labeling.activity.unknownType"));
+
+        var result = await NewController().ExtractActivityStructure(ActivityRequest(), _activities, CancellationToken.None);
+
+        result.ShouldBeOfType<BadRequestObjectResult>();
+    }
+
+    [Theory]
+    [InlineData(true, "LabelingBudgetExceeded")]
+    [InlineData(false, "LabelingRateLimited")]
+    public async Task ExtractActivityStructure_Quota_Returns429WithSameCodesAsAiDetect(bool budget, string errorCode)
+    {
+        _activities.ExtractAsync(default!, default!, default)
+            .ThrowsAsyncForAnyArgs(new LabelingRateLimitException(TimeSpan.FromSeconds(90.2), budget));
+        var controller = NewController();
+
+        var result = await controller.ExtractActivityStructure(ActivityRequest(), _activities, CancellationToken.None);
+
+        var obj = result.ShouldBeOfType<ObjectResult>();
+        obj.StatusCode.ShouldBe(StatusCodes.Status429TooManyRequests);
+        obj.Value!.GetType().GetProperty("errorCode")!.GetValue(obj.Value).ShouldBe(errorCode);
+        controller.Response.Headers.RetryAfter.ToString().ShouldBe("91");
+    }
+
+    [Fact]
+    public async Task ExtractActivityStructure_NotConfigured_Returns503()
+    {
+        _activities.ExtractAsync(default!, default!, default).ThrowsAsyncForAnyArgs(new LabelingAiUnavailableException());
+
+        var result = await NewController().ExtractActivityStructure(ActivityRequest(), _activities, CancellationToken.None);
+
+        result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+    }
+
+    [Fact]
+    public async Task GetActivityPrompts_ReturnsServiceState()
+    {
+        var state = new ActivityPromptStateDto([]);
+        _activities.GetPromptsAsync(default).ReturnsForAnyArgs(state);
+
+        var result = await NewController().GetActivityPrompts(_activities, CancellationToken.None);
+
+        result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeSameAs(state);
+    }
+
+    [Fact]
+    public async Task SaveActivityPrompt_PassesTypeAndActor_AndMapsValidationTo400()
+    {
+        var saved = new ActivityPromptVersionDto(2, "x", "trainer", DateTime.UtcNow);
+        _activities.SavePromptAsync("slotFill", Arg.Any<ActivitySavePromptRequestDto>(), Arg.Any<LabelingActor>(), Arg.Any<CancellationToken>())
+            .Returns(saved);
+        _activities.SavePromptAsync("bogus", Arg.Any<ActivitySavePromptRequestDto>(), Arg.Any<LabelingActor>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new LabelingValidationException("labeling.activity.unknownType"));
+        var controller = NewController();
+
+        (await controller.SaveActivityPrompt("slotFill", new() { Instruction = "x" }, _activities, CancellationToken.None))
+            .ShouldBeOfType<OkObjectResult>().Value.ShouldBeSameAs(saved);
+        (await controller.SaveActivityPrompt("bogus", new() { Instruction = "x" }, _activities, CancellationToken.None))
+            .ShouldBeOfType<BadRequestObjectResult>();
+        await _activities.Received(1).SavePromptAsync("slotFill", Arg.Any<ActivitySavePromptRequestDto>(),
+            Arg.Is<LabelingActor>(a => a.KeycloakId == TrainerKeycloakId), Arg.Any<CancellationToken>());
     }
 }

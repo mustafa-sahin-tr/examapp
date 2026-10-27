@@ -1,4 +1,4 @@
-import { PredictionList } from './prediction';
+import { BlockInteractionType, PredictionList } from './prediction';
 
 /** Sunucudaki işaretleme kaynağı (exam API `LabelingSource`). */
 export type LabelingSourceName = 'Model' | 'Ai' | 'Manual';
@@ -158,4 +158,81 @@ export interface LabelingBankConflict {
   /** `LabelingAnswerKeyPage` (#577): sayfa kitabın cevap anahtarı aralığında; `existing` yok, `force` ile kaydedilir. */
   errorCode: 'LabelingPageAlreadyInBank' | 'LabelingAnswerKeyPage';
   existing: LabelingBankInfo | null;
+}
+
+// ---------------- Issue #579: etkinlik yapısı (kırpma → taslak InteractionPlan) ----------------
+
+/** `POST /api/exam/labeling/activity-structure` isteğindeki tek blok (sayfa pikseli). */
+export interface LabelingActivityBlock {
+  /** İstemcinin blok anahtarı (yanıtta aynen döner); işaretleme ekranında bölge adı. */
+  key: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  interactionType: BlockInteractionType;
+}
+
+/** 1..20 blok; her blok kendi tipinin talimatı ve şemasıyla ayrı çağrıda çıkarılır. */
+export interface LabelingActivityStructureRequest {
+  imageBase64: string;
+  model: string;
+  /** true: kayıtlı sonuç yok sayılır, Claude'a yeniden sorulur (ücretli). */
+  force: boolean;
+  blocks: LabelingActivityBlock[];
+}
+
+/**
+ * Bloğun taslağı. `plan` o tipin InteractionPlan v1'i (soru tuvali yazarlığının ürettiği şekil; kutular blok kutusuna
+ * göre, sayfa pikseli); çözüm taşımaz. `valid=false` iken plan yine gelebilir, `validationErrors` sunucu doğrulamasıdır.
+ */
+export interface LabelingActivityStructureResult {
+  key: string;
+  interactionType: BlockInteractionType;
+  status: 'ok' | 'error';
+  origin: 'live' | 'cached' | null;
+  plan: Record<string, unknown> | null;
+  /** Kitapta basılı yönerge metni (varsa). */
+  instruction: string | null;
+  valid: boolean;
+  validationErrors: string[];
+  promptVersion: number | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  estimatedCostUsd: number | null;
+  error: string | null;
+}
+
+/** Sonuçlar istek sırasıyla. */
+export interface LabelingActivityStructureResponse {
+  results: LabelingActivityStructureResult[];
+}
+
+/** Bir etkileşim tipinin talimat sürümü; `version` 0 = koddaki varsayılan. */
+export interface LabelingActivityPrompt {
+  version: number;
+  instruction: string;
+  createdByName: string | null;
+  createdAt: string | null;
+}
+
+/** Tip başına etkin sürüm, varsayılan ve son sürümler (yeniden eskiye). */
+export interface LabelingActivityPromptType {
+  interactionType: BlockInteractionType;
+  active: LabelingActivityPrompt;
+  defaults: LabelingActivityPrompt;
+  history: LabelingActivityPrompt[];
+}
+
+/** `GET /api/exam/labeling/activity-prompts`. */
+export interface LabelingActivityPromptsState {
+  types: LabelingActivityPromptType[];
+}
+
+/**
+ * `PUT /api/exam/labeling/activity-prompts/{type}` gövdesi; yanıt tipin yeni etkin sürümüdür (`LabelingActivityPrompt`; aynı
+ * içerik → sürüm açılmaz, etkin sürüm döner).
+ */
+export interface LabelingSaveActivityPromptRequest {
+  instruction: string;
 }

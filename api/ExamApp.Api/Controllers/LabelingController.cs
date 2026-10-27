@@ -74,14 +74,7 @@ public class LabelingController : BaseController
         }
         catch (LabelingRateLimitException ex)
         {
-            if (ex.RetryAfter is { } retryAfter)
-            {
-                Response.Headers.RetryAfter =
-                    Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
-            }
-            return StatusCode(StatusCodes.Status429TooManyRequests, ex.Budget
-                ? Error("labeling.budgetExceeded", "LabelingBudgetExceeded")
-                : Error("labeling.rateLimited", "LabelingRateLimited"));
+            return RateLimited(ex);
         }
         catch (LabelingAiUnavailableException)
         {
@@ -104,6 +97,57 @@ public class LabelingController : BaseController
         try
         {
             return Ok(await _service.SavePromptAsync(request, CurrentActor(), ct));
+        }
+        catch (LabelingValidationException ex)
+        {
+            return BadRequest(Error(ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// Issue #579: etkinlik bloklarının taslak etkileşim planı (blok başına tipine göre bir Claude çağrısı, paralel). Kayıtlı
+    /// sonuç (aynı kırpma + tip + model + o tipin prompt'u) ücretsiz döner (<c>origin=cached</c>). 400 geçersiz istek; 429 saatlik
+    /// kota / günlük bütçe (canlı çağrı gereken blok sayısı baştan sayılır); 503 API anahtarı yok. Tek bloğun Claude hatası
+    /// yalnız o bloğu <c>status=error</c> yapar.
+    /// </summary>
+    [HttpPost("activity-structure")]
+    [RequestSizeLimit(32 * 1024 * 1024)]
+    public async Task<IActionResult> ExtractActivityStructure(
+        [FromBody] ActivityStructureRequestDto request, [FromServices] IActivityStructureService activities, CancellationToken ct)
+    {
+        try
+        {
+            var response = await activities.ExtractAsync(request, CurrentActor(), ct);
+            return Ok(new ActivityStructureResponseDto(response.Results.Select(Localize).ToList()));
+        }
+        catch (LabelingValidationException ex)
+        {
+            return BadRequest(Error(ex.Message));
+        }
+        catch (LabelingRateLimitException ex)
+        {
+            return RateLimited(ex);
+        }
+        catch (LabelingAiUnavailableException)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, Error("labeling.aiUnavailable", "LabelingAiUnavailable"));
+        }
+    }
+
+    /// <summary>Issue #579: tip başına etkinlik talimatları — etkin sürüm, koddaki varsayılan ve son sürümler.</summary>
+    [HttpGet("activity-prompts")]
+    public async Task<IActionResult> GetActivityPrompts([FromServices] IActivityStructureService activities, CancellationToken ct) =>
+        Ok(await activities.GetPromptsAsync(ct));
+
+    /// <summary>Issue #579: tipin talimatını yeni sürüm olarak kaydeder (içerik aynıysa sürüm açılmaz); etkin sürümü döner.</summary>
+    [HttpPut("activity-prompts/{interactionType}")]
+    public async Task<IActionResult> SaveActivityPrompt(
+        string interactionType, [FromBody] ActivitySavePromptRequestDto request,
+        [FromServices] IActivityStructureService activities, CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await activities.SavePromptAsync(interactionType, request, CurrentActor(), ct));
         }
         catch (LabelingValidationException ex)
         {
@@ -191,6 +235,26 @@ public class LabelingController : BaseController
             return StatusCode(StatusCodes.Status500InternalServerError, Error("labeling.bank.saveFailed", "LabelingBankSaveFailed"));
         }
     }
+
+    /// <summary>Claude kotası (#578/#579 ortak): 429 + Retry-After (en az 1 sn), bütçe / saatlik kota hata kodu.</summary>
+    private ObjectResult RateLimited(LabelingRateLimitException ex)
+    {
+        if (ex.RetryAfter is { } retryAfter)
+        {
+            Response.Headers.RetryAfter =
+                Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+        }
+        return StatusCode(StatusCodes.Status429TooManyRequests, ex.Budget
+            ? Error("labeling.budgetExceeded", "LabelingBudgetExceeded")
+            : Error("labeling.rateLimited", "LabelingRateLimited"));
+    }
+
+    /// <summary>Servisin döndürdüğü anahtarlar (blok hatası, doğrulama ipuçları) → istek dilinde mesaj.</summary>
+    private ActivityStructureResultDto Localize(ActivityStructureResultDto result) => result with
+    {
+        Error = result.Error is null ? null : _localizer[result.Error].Value,
+        ValidationErrors = result.ValidationErrors.Select(key => _localizer[key].Value).ToList(),
+    };
 
     private LabelingActor CurrentActor() =>
         new(KeyCloakId, User.FindFirstValue("name") ?? User.FindFirstValue("preferred_username"), IsAdmin);

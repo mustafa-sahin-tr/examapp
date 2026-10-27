@@ -53,6 +53,25 @@
       "invalidPage": "Sayfa numarası geçersiz.",
       "renameForbidden": "Bu kitap öğretmenlerin içeriğinde kullanılıyor; adını ya da asıl kaydını yalnız yönetici değiştirebilir.",
       "busy": "Kitap kaydı şu an başka bir işlemde. Tekrar deneyin."
+    },
+    "activity": {
+      "unknownType": "Bilinmeyen etkinlik tipi (matrixChoice, slotFill, dragPlace ya da match).",
+      "invalidBlocks": "1 ile 20 arasında etkinlik bloğu gönderin.",
+      "invalidBlockKey": "Her bloğun en fazla 64 karakterlik bir kimliği olmalı.",
+      "duplicateBlockKey": "Blok kimlikleri tekil olmalı.",
+      "aiFailed": "Claude bu etkinliği okuyamadı. Tekrar deneyin ya da elle çizin.",
+      "invalid": {
+        "definition": "Taslak bu haliyle kaydedilemez; öğelerini kontrol edin.",
+        "tooFewColumns": "En az iki seçenek kolonu ekleyin.",
+        "noRows": "En az bir satır ekleyin.",
+        "noSlots": "En az bir cevap kutusu ekleyin.",
+        "selectOptions": "Seçmeli kutunun en az iki seçeneği olmalı.",
+        "paletteSymbols": "Sembol kutusunun en az bir sembolü olmalı.",
+        "noTargets": "En az bir hedef ekleyin.",
+        "noCards": "En az bir kart ekleyin.",
+        "matchItems": "İki kolonda da en az bir öğe olmalı.",
+        "matchAllPrelinked": "Öğrencinin eşleştireceği en az bir öğe kalmalı (hepsi örnek olamaz)."
+      }
     }
   }
 }

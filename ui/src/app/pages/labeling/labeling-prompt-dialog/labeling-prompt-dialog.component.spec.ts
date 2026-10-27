@@ -5,7 +5,13 @@ import { MatDialogRef } from '@angular/material/dialog';
 import { Subject, of, throwError } from 'rxjs';
 
 import { LabelingPromptDialogComponent } from './labeling-prompt-dialog.component';
-import { LabelingPrompt, LabelingPromptState } from '../../../models/labeling';
+import {
+    LabelingActivityPromptType,
+    LabelingActivityPromptsState,
+    LabelingPrompt,
+    LabelingPromptState,
+} from '../../../models/labeling';
+import { BlockInteractionType } from '../../../models/prediction';
 import { LabelingService } from '../../../services/labeling.service';
 import { translocoTestingModule } from '../../../shared/testing/transloco-testing';
 import labelingTr from '../../../../../public/i18n/labeling/tr.json';
@@ -33,6 +39,27 @@ function state(overrides: Partial<LabelingPromptState> = {}): LabelingPromptStat
     };
 }
 
+function activityType(type: BlockInteractionType, version = 1): LabelingActivityPromptType {
+    const active = { version, instruction: `${type} v${version}`, createdByName: 'Eğitmen', createdAt: '2026-10-26T00:00:00Z' };
+    return {
+        interactionType: type,
+        active,
+        defaults: { version: 0, instruction: `${type} varsayılan`, createdByName: null, createdAt: null },
+        history: version > 0 ? [active, { ...active, version: version - 1, instruction: `${type} eski` }] : [],
+    };
+}
+
+function activityState(): LabelingActivityPromptsState {
+    return {
+        types: [
+            activityType('matrixChoice', 2),
+            activityType('slotFill', 0),
+            activityType('dragPlace', 1),
+            activityType('match', 1),
+        ],
+    };
+}
+
 describe('LabelingPromptDialogComponent', () => {
     let fixture: ComponentFixture<LabelingPromptDialogComponent>;
     let component: LabelingPromptDialogComponent;
@@ -42,12 +69,15 @@ describe('LabelingPromptDialogComponent', () => {
         disableClose: boolean;
     };
 
-    function create(getPrompt = of(state())): void {
+    function create(getPrompt = of(state()), getActivityPrompts = of(activityState())): void {
         api = {
             getPrompt: vi.fn().mockName("LabelingService.getPrompt"),
-            savePrompt: vi.fn().mockName("LabelingService.savePrompt")
+            savePrompt: vi.fn().mockName("LabelingService.savePrompt"),
+            getActivityPrompts: vi.fn().mockName("LabelingService.getActivityPrompts"),
+            saveActivityPrompt: vi.fn().mockName("LabelingService.saveActivityPrompt")
         } as unknown as MockedObject<LabelingService>;
         api.getPrompt.mockReturnValue(getPrompt);
+        api.getActivityPrompts.mockReturnValue(getActivityPrompts);
         dialogRef = { close: vi.fn().mockName('close'), disableClose: false };
         TestBed.configureTestingModule({
             imports: [LabelingPromptDialogComponent, translocoTestingModule({ langs: { 'labeling/tr': labelingTr } })],
@@ -305,6 +335,164 @@ describe('LabelingPromptDialogComponent', () => {
             component.cancel();
 
             expect(dialogRef.close).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('etkinlik sekmeleri (#579)', () => {
+        function tabLabels(): string[] {
+            return Array.from(fixture.nativeElement.querySelectorAll('.mdc-tab__text-label') as NodeListOf<HTMLElement>).map((el) =>
+                el.textContent!.trim()
+            );
+        }
+
+        it('template_ShowsPageTabAndOneTabPerActivityType', () => {
+            create();
+
+            expect(tabLabels()).toEqual([
+                labelingTr.prompt.tabs.page,
+                labelingTr.prompt.tabs.matrixChoice,
+                labelingTr.prompt.tabs.slotFill,
+                labelingTr.prompt.tabs.dragPlace,
+                labelingTr.prompt.tabs.match,
+            ]);
+        });
+
+        it('init_LoadsActivityPromptsAndFillsEachTypeFromActiveVersion', () => {
+            create();
+
+            expect(api.getActivityPrompts).toHaveBeenCalledTimes(1);
+            expect(component.activityLoading()).toBe(false);
+            expect(component.activityForms.matrixChoice.value).toBe('matrixChoice v2');
+            expect(component.activityForms.slotFill.value).toBe('slotFill v0');
+            expect(component.activityState('match')?.active.version).toBe(1);
+        });
+
+        it('activityLoadFails_PageTabStillWorks_RetryRecovers', () => {
+            vi.spyOn(console, 'error').mockReturnValue(undefined);
+            create(of(state()), throwError(() => new Error('down')));
+
+            expect(component.activityLoadFailed()).toBe(true);
+            expect(component.loadFailed()).toBe(false);
+            expect(component.canSaveSelected()).toBe(true);
+
+            component.onTabChange(1);
+            expect(component.canSaveSelected()).toBe(false);
+
+            api.getActivityPrompts.mockReturnValue(of(activityState()));
+            component.loadActivity();
+            expect(component.activityLoadFailed()).toBe(false);
+            expect(component.canSaveSelected()).toBe(true);
+        });
+
+        it('loadActivityVersionAndDefaults_FillOnlyThatType', () => {
+            create();
+
+            component.loadActivityVersion('matrixChoice', 1);
+            component.resetActivityToDefaults('dragPlace');
+
+            expect(component.activityForms.matrixChoice.value).toBe('matrixChoice eski');
+            expect(component.activityForms.dragPlace.value).toBe('dragPlace varsayılan');
+            expect(component.activityForms.match.value).toBe('match v1');
+        });
+
+        it('saveSelected_OnActivityTab_SavesOnlyThatTypeAndClosesWithActivityResult', () => {
+            create();
+            const saved = activityType('slotFill', 1).active;
+            api.saveActivityPrompt.mockReturnValue(of(saved));
+            component.onTabChange(2);
+            component.activityForms.slotFill.setValue('Yeni kutu talimatı');
+
+            component.saveSelected();
+
+            expect(api.saveActivityPrompt).toHaveBeenCalledTimes(1);
+            expect(api.saveActivityPrompt).toHaveBeenCalledWith('slotFill', { instruction: 'Yeni kutu talimatı' });
+            expect(api.savePrompt).not.toHaveBeenCalled();
+            expect(dialogRef.close).toHaveBeenCalledWith({ kind: 'activity', interactionType: 'slotFill', prompt: saved });
+        });
+
+        it('saveSelected_OnPageTab_SavesPagePrompt', () => {
+            create();
+            api.savePrompt.mockReturnValue(of(state()));
+
+            component.saveSelected();
+
+            expect(api.savePrompt).toHaveBeenCalledTimes(1);
+            expect(api.saveActivityPrompt).not.toHaveBeenCalled();
+        });
+
+        it('saveActivity_EmptyInstruction_DoesNotCallApi', () => {
+            create();
+            component.activityForms.match.setValue('');
+
+            component.saveActivity('match');
+
+            expect(api.saveActivityPrompt).not.toHaveBeenCalled();
+        });
+
+        it('saveActivity_ServerError_ShowsMessageStaysOpen_TabChangeClearsIt', () => {
+            create();
+            api.saveActivityPrompt.mockReturnValue(throwError(() => ({ error: { message: 'Çok uzun' } })));
+            component.onTabChange(4);
+
+            component.saveSelected();
+
+            expect(component.saveError()).toBe('Çok uzun');
+            expect(dialogRef.close).not.toHaveBeenCalled();
+            expect(dialogRef.disableClose).toBe(false);
+            component.onTabChange(0);
+            expect(component.saveError()).toBeNull();
+        });
+    
+        it('saveSelected_OtherTabHasUnsavedChanges_WarnsAndSavesOnlyAfterConfirm', () => {
+            create();
+            api.saveActivityPrompt.mockReturnValue(of(activityType('match', 2).active));
+            component.activityForms.matrixChoice.setValue('Kaydedilmemiş matris');
+            component.form.controls.questionInstruction.setValue('Kaydedilmemiş sayfa');
+            component.onTabChange(4);
+            component.activityForms.match.setValue('Yeni eşleştirme');
+
+            component.saveSelected();
+
+            expect(api.saveActivityPrompt).not.toHaveBeenCalled();
+            expect(component.unsavedOthers()).toEqual(['page', 'matrixChoice']);
+            fixture.detectChanges();
+            const warning = fixture.nativeElement.querySelector('.lp-unsaved') as HTMLElement;
+            expect(warning.textContent).toContain(labelingTr.prompt.tabs.matrixChoice);
+            expect(warning.textContent).toContain(labelingTr.prompt.tabs.page);
+
+            (warning.querySelector('.lp-save-anyway') as HTMLButtonElement).click();
+
+            expect(api.saveActivityPrompt).toHaveBeenCalledWith('match', { instruction: 'Yeni eşleştirme' });
+            expect(component.unsavedOthers()).toEqual([]);
+        });
+
+        it('saveSelected_OnlyCurrentTabChanged_SavesWithoutWarning', () => {
+            create();
+            api.saveActivityPrompt.mockReturnValue(of(activityType('match', 2).active));
+            component.onTabChange(4);
+            component.activityForms.match.setValue('Yeni');
+
+            component.saveSelected();
+
+            expect(api.saveActivityPrompt).toHaveBeenCalledTimes(1);
+        });
+
+        it('saveActivity_SameVersionReturned_ClosesAsUnchanged', () => {
+            create();
+            api.saveActivityPrompt.mockReturnValue(of(activityType('matrixChoice', 2).active));
+
+            component.saveActivity('matrixChoice');
+
+            expect(dialogRef.close).toHaveBeenCalledWith({ kind: 'unchanged', version: 2 });
+        });
+
+        it('savePage_SameVersionReturned_ClosesAsUnchanged', () => {
+            create();
+            api.savePrompt.mockReturnValue(of(state()));
+
+            component.save();
+
+            expect(dialogRef.close).toHaveBeenCalledWith({ kind: 'unchanged', version: 2 });
         });
     });
 });

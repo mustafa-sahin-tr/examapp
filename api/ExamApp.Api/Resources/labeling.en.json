@@ -53,6 +53,25 @@
       "invalidPage": "Invalid page number.",
       "renameForbidden": "This book is used in teachers' content; only an administrator can change its name or canonical edition.",
       "busy": "The book registry is busy with another operation. Try again."
+    },
+    "activity": {
+      "unknownType": "Unknown activity type (matrixChoice, slotFill, dragPlace or match).",
+      "invalidBlocks": "Send 1 to 20 activity blocks.",
+      "invalidBlockKey": "Each block needs an id of at most 64 characters.",
+      "duplicateBlockKey": "Block ids must be unique.",
+      "aiFailed": "Claude could not read this activity. Try again or draw it by hand.",
+      "invalid": {
+        "definition": "The draft cannot be saved as is; check its items.",
+        "tooFewColumns": "Add at least two choice columns.",
+        "noRows": "Add at least one row.",
+        "noSlots": "Add at least one answer box.",
+        "selectOptions": "A choice box needs at least two options.",
+        "paletteSymbols": "A symbol box needs at least one symbol.",
+        "noTargets": "Add at least one target.",
+        "noCards": "Add at least one card.",
+        "matchItems": "Both columns need at least one item.",
+        "matchAllPrelinked": "At least one item must be left for the student to match (not all can be examples)."
+      }
     }
   }
 }

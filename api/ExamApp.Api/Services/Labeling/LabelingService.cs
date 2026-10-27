@@ -59,9 +59,6 @@ public sealed class LabelingService(
     private const int MaxQuestions = 300;
     private const int PromptHistoryLimit = 20;
     private const int MaxOptionsPerQuestion = 26;
-    private const string TotalBudgetKey = "labeling-ai-usd:all";
-    private static readonly TimeSpan RateLimitWindow = TimeSpan.FromHours(1);
-    private static readonly TimeSpan BudgetWindow = TimeSpan.FromHours(24);
 
     /// <summary>API anahtarı yoksa boş: UI Claude seçeneğini kapatır (her çağrı 503 olurdu).</summary>
     public IReadOnlyList<LabelingAiModelDto> GetAiModels() =>
@@ -106,14 +103,7 @@ public sealed class LabelingService(
         if (!detector.IsConfigured)
             throw new LabelingAiUnavailableException();
 
-        var userBudgetKey = $"labeling-ai-usd:{actor.KeycloakId}";
-        await EnsureBudgetAsync(userBudgetKey, options.Value.DailyBudgetUsdPerUser, ct);
-        await EnsureBudgetAsync(TotalBudgetKey, options.Value.DailyBudgetUsdTotal, ct);
-
-        var decision = await rateLimitStore.TryAcquireAsync(
-            $"labeling-ai:{actor.KeycloakId}", 1, options.Value.LiveCallsPerHour, RateLimitWindow, ct);
-        if (!decision.Allowed)
-            throw new LabelingRateLimitException(decision.RetryAfter);
+        await LabelingAiQuota.EnsureAndAcquireAsync(rateLimitStore, actor, options.Value, 1, ct);
 
         ClaudeDetection detection;
         try
@@ -123,19 +113,17 @@ public sealed class LabelingService(
         catch (LabelingAiException ex) when (ex.Usage is { } failed)
         {
             // Yanıt geldi ama kullanılamadı (kesik / ret / şema dışı): token ödendi, bütçeye sayılır (bütçe kaçağı olmasın).
-            var failedCost = Cost(model, failed.Input, failed.Output);
-            await ChargeBudgetAsync(userBudgetKey, failedCost);
-            await ChargeBudgetAsync(TotalBudgetKey, failedCost);
+            var failedCost = LabelingAiQuota.Cost(model, failed.Input, failed.Output);
+            await LabelingAiQuota.ChargeAsync(rateLimitStore, actor, failedCost);
             logger.LogWarning(
                 "[Labeling] Claude {Model} page {Hash} failed after a paid response: {In}/{Out} tokens, ~${Cost:F4} charged",
                 model.Id, image.Sha256[..16], failed.Input, failed.Output, failedCost);
             throw;
         }
-        var cost = Cost(model, detection.InputTokens, detection.OutputTokens);
+        var cost = LabelingAiQuota.Cost(model, detection.InputTokens, detection.OutputTokens);
 
         // Ödenmiş sonuç: istemci bu arada vazgeçse de harcama sayılır ve sonuç kaydedilir (tekrar ödenmesin).
-        await ChargeBudgetAsync(userBudgetKey, cost);
-        await ChargeBudgetAsync(TotalBudgetKey, cost);
+        await LabelingAiQuota.ChargeAsync(rateLimitStore, actor, cost);
         logger.LogInformation(
             "[Labeling] Claude {Model} prompt v{Prompt} page {Hash}: {Questions} questions, {In}/{Out} tokens, ~${Cost:F4}",
             model.Id, prompt.Version, image.Sha256[..16], detection.Predictions.Predictions.Count, detection.InputTokens,
@@ -267,26 +255,6 @@ public sealed class LabelingService(
     private static LabelingPromptDto ToDto(LabelingPromptSettings p, string? createdByName, DateTime? createdAt) =>
         new(p.Version, p.QuestionInstruction, p.OptionInstruction, p.QuestionPadding, p.OptionPadding,
             p.ExpandQuestionToOptions, createdByName, createdAt);
-
-    /// <summary>Kullanıcı / toplam günlük harcama sınırı (mikro-USD sayaç) dolduysa yeni canlı çağrı yapılmaz.</summary>
-    private async Task EnsureBudgetAsync(string key, decimal limitUsd, CancellationToken ct)
-    {
-        var spent = await rateLimitStore.PeekAsync(key, ct);
-        if (spent.Count >= ToMicroUsd(limitUsd))
-            throw new LabelingRateLimitException(spent.RemainingWindow, budget: true);
-    }
-
-    private async Task ChargeBudgetAsync(string key, decimal costUsd)
-    {
-        var micro = ToMicroUsd(costUsd);
-        if (micro > 0)
-            await rateLimitStore.TryAcquireAsync(key, micro, int.MaxValue, BudgetWindow, CancellationToken.None);
-    }
-
-    private static decimal Cost(LabelingAiModelOption model, long inputTokens, long outputTokens) =>
-        (inputTokens * model.InputUsdPerMTok + outputTokens * model.OutputUsdPerMTok) / 1_000_000m;
-
-    private static int ToMicroUsd(decimal usd) => (int)Math.Clamp(Math.Ceiling(usd * 1_000_000m), 0, int.MaxValue);
 
     private async Task<LabelingPage> GetOrCreatePageAsync(string sha256, int width, int height, CancellationToken ct)
     {

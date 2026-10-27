@@ -124,6 +124,11 @@
         "info_box": "Anlatım kutusu kırpılmaz: eğitime ve bankaya gitmez.",
         "answer_key": "Cevap anahtarı kırpılmaz: eğitime ve bankaya gitmez.",
         "noise": "Gürültü (optik form, karekod, sayfa başlığı …) kırpılmaz: eğitime ve bankaya gitmez."
+      },
+      "interaction": "Tip",
+      "interactions": {
+        "dragPlace": "Sürükle-yerleştir",
+        "match": "Eşleştirme"
       }
     }
   },
@@ -180,7 +185,22 @@
     "saveFailed": "Kaydedilemedi.",
     "cancel": "Vazgeç",
     "save": "Kaydet",
-    "placeholderMissing": "Uyarı: {width} veya {height} yok — Claude piksel boyutunu bilmezse kutular kayabilir."
+    "placeholderMissing": "Uyarı: {width} veya {height} yok — Claude piksel boyutunu bilmezse kutular kayabilir.",
+    "tabs": {
+      "page": "Sayfa",
+      "matrixChoice": "Matris seçim",
+      "slotFill": "Cevap kutusu",
+      "dragPlace": "Sürükle-yerleştir",
+      "match": "Eşleştirme"
+    },
+    "activity": {
+      "loadFailed": "Etkinlik talimatları yüklenemedi.",
+      "hint": "Bu tipteki etkinlik bloklarının kırpması bu talimatla Claude'a gönderilir. Kaydetmek yeni bir sürüm oluşturur; yalnız bu tipin önbelleği geçersiz olur (diğer tiplerin taslakları önbellekten döner). Yanıt şeması sabittir.",
+      "instruction": "Talimat",
+      "missing": "Sunucu bu tip için talimat döndürmedi."
+    },
+    "unsavedOthers": "Diğer sekmelerde kaydedilmemiş değişiklik var; kaydedip kapatırsanız kaybolur:",
+    "saveAnyway": "Yine de kaydet"
   },
   "book": {
     "label": "Kitap",
@@ -194,5 +214,40 @@
     "tocHint": "İçindekilerden: havuza kayıtta ders / konu varsayılanı olur",
     "tocGradeMismatch": "Sınıf içindekilerden farklı; kitap konusu uygulanmayacak",
     "tocStale": "İçindekiler satırı geçersiz (silinmiş konu)"
+  },
+  "structure": {
+    "title": "Etkinlik taslağı",
+    "claudeOnly": "Taslak yapı yalnız Claude kaynağında (ya da Claude'dan başlayan manuel kayıtta) çıkarılır.",
+    "loading": "Yapı çıkarılıyor…",
+    "ready": "Taslak hazır",
+    "cached": "önbellek",
+    "live": "canlı",
+    "promptVersion": "prompt v{{version}}",
+    "notApplied": "Taslak tuvale uygulanamadı (plan boş ya da bu tipe uymuyor).",
+    "invalid": "Taslak doğrulamadan geçmedi; düzeltilmesi gerekiyor:",
+    "instruction": "Yönerge:",
+    "retry": "Tekrar dene",
+    "reExtract": "Yapıyı yeniden çıkar (ücretli)",
+    "reExtractHint": "Kayıtlı taslak yok sayılır, Claude'a yeniden sorulur ve ücretlendirilir.",
+    "reExtractConfirm": "Bu etkinliğin yapısı Claude'a yeniden sorulacak ve ücretlendirilecek. Elle yaptığınız düzenlemeler korunur; yeni taslak yalnız \"Taslağı uygula\" ile onların yerine geçer.",
+    "reExtractAction": "Yeniden çıkar",
+    "missingResult": "Sunucu bu blok için sonuç döndürmedi.",
+    "failed": "Etkinlik yapısı çıkarılamadı.",
+    "unavailable": "Claude yapılandırılmamış; etkinlik yapısı çıkarılamıyor.",
+    "promptSaved": "{{type}} talimatı v{{version}} kaydedildi; yalnız bu tipin taslakları yeni talimatla çıkarılır. Elle düzenlenmiş etkinlikler korunur, yeni taslak yalnız \"Taslağı uygula\" ile değiştirir.",
+    "promptAskPage": "Bu sayfadakileri yeniden çıkar",
+    "types": {
+      "matrixChoice": "Matris seçim",
+      "slotFill": "Cevap kutusu",
+      "dragPlace": "Sürükle-yerleştir",
+      "match": "Eşleştirme"
+    },
+    "promptUnchanged": "Talimat değişmedi (v{{version}}); yeniden çıkarma gerekmiyor.",
+    "kept": "Elle yaptığınız düzenleme korundu; taslak tuvale uygulanmadı.",
+    "apply": "Taslağı uygula",
+    "applyConfirm": "Taslak tuvale uygulanacak; bu etkinlikte elle yaptığınız düzenlemeler kaybolacak.",
+    "applyAction": "Uygula",
+    "stale": "Kutu değişti; taslak yeniden çıkarılacak.",
+    "firstCallCost": "ilk çağrı ~${{cost}}"
   }
 }

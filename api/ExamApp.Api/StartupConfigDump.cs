@@ -5,10 +5,10 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
 
-// NOT (#228): Bu dosyanın beş kopyası var (api/ExamApp.Api, auth-api, Services/BadgeService,
-// Services/Gateway, finance-api/finance-api). Gateway ve finance-api ExamApp.Foundation'ı
-// referans etmediği için ortak kütüphaneye taşınmadı. Kopyalar arasında YALNIZCA `Sections`
-// listesi farklı olabilir; redaksiyon bölümü (işaret yorumları arası) birebir aynı tutulmalıdır
+// NOT (#228): Bu dosyanın dört kopyası var (api/ExamApp.Api, auth-api, Services/BadgeService,
+// Services/Gateway). Gateway ExamApp.Foundation'ı referans etmediği için ortak kütüphaneye
+// taşınmadı. Kopyalar arasında YALNIZCA `Sections` listesi farklı olabilir; redaksiyon bölümü
+// (işaret yorumları arası) birebir aynı tutulmalıdır
 // (tests/ExamApp.Api.Tests/Helpers/StartupConfigDumpTests.cs bunu doğrular).
 internal static class StartupConfigDump
 {

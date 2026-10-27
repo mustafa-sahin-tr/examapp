@@ -4,14 +4,14 @@
 ## Project Overview
 
 ExamApp is a microservices-based online examination platform. It includes:
-- Angular 19 frontends (`ui/`, `auth-ui/`, `finance-app/`)
-- .NET Core backend APIs (`api/`, `auth-api/`, `finance-api/`)
+- Angular 19 frontends (`ui/`, `auth-ui/`)
+- .NET Core backend APIs (`api/`, `auth-api/`)
 - AI-powered question detection (`question-detector/`)
 - Infrastructure: MinIO, RabbitMQ, Keycloak, PostgreSQL, Ocelot Gateway
 
 ## Architecture & Service Boundaries
 
-- **Frontend**: Angular 19 apps in `ui/`, `auth-ui/`, `finance-app/`. Each has its own `src/` and follows Angular CLI conventions. Shared UI logic is not cross-imported between apps.
+- **Frontend**: Angular 19 apps in `ui/`, `auth-ui/`. Each has its own `src/` and follows Angular CLI conventions. Shared UI logic is not cross-imported between apps.
 - **Backend**: Each API (e.g., `ExamApp.Api`, `AuthService`, `BadgeService`) is a separate .NET Core project with its own `Controllers/`, `Services/`, `Data/`, and `Models/`.
 - **Communication**: Services communicate via REST APIs and RabbitMQ for event-driven flows. MinIO is used for file storage. Keycloak provides authentication/authorization (OIDC/JWT).
 - **Database**: Each service has its own PostgreSQL schema/context. Migrations are managed via EF Core.
@@ -19,7 +19,7 @@ ExamApp is a microservices-based online examination platform. It includes:
 ## Developer Workflows
 
 - **Start All Services**: `docker-compose up` (root) spins up all services and dependencies.
-- **Frontend Dev**: `cd ui && npm install && ng serve` (or `auth-ui/`, `finance-app/`)
+- **Frontend Dev**: `cd ui && npm install && ng serve` (or `auth-ui/`)
 - **Backend Dev**: `cd api && dotnet run --project ExamApp.Api` (or other API folders)
 - **Database Migrations**: `cd api/ExamApp.Api && dotnet ef migrations add <Name> && dotnet ef database update`
 - **Unit Tests**:
@@ -30,7 +30,7 @@ ExamApp is a microservices-based online examination platform. It includes:
 ## Project-Specific Conventions
 
 - **Angular**: Use standalone components, signals, and Angular Material. Prefer feature modules for logical grouping. Use `Mat*` modules for UI. Test files use `TestBed` and `ComponentFixture`.
-- **.NET Core**: Use dependency injection for all services. Controllers are thin; business logic is in `Services/`. Use `AppDbContext`/`FinanceDbContext` for EF Core. Exception handling via middleware. Swagger is enabled in development.
+- **.NET Core**: Use dependency injection for all services. Controllers are thin; business logic is in `Services/`. Use `AppDbContext` for EF Core. Exception handling via middleware. Swagger is enabled in development.
 - **Auth**: All APIs expect JWT tokens from Keycloak. User roles: Student, Teacher, Parent. Role-based access enforced in controllers/services.
 - **File Storage**: Use MinIO via `IMinIoService` for file operations.
 - **Events**: Use RabbitMQ for async/event-driven flows (see commented `AddMassTransit` in `Program.cs`).

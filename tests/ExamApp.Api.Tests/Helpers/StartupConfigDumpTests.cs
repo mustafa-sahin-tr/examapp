@@ -149,7 +149,7 @@ public class StartupConfigDumpTests
     }
 
     /// <summary>
-    /// StartupConfigDump beş serviste kopya (Gateway ve finance-api ExamApp.Foundation'ı referans etmiyor).
+    /// StartupConfigDump dört serviste kopya (Gateway ExamApp.Foundation'ı referans etmiyor).
     /// Redaksiyon bloğu kopyalar arasında sapmasın diye birebir karşılaştırılır.
     /// </summary>
     [Fact]
@@ -162,7 +162,6 @@ public class StartupConfigDumpTests
             "auth-api/StartupConfigDump.cs",
             "Services/BadgeService/StartupConfigDump.cs",
             "Services/Gateway/StartupConfigDump.cs",
-            "finance-api/finance-api/StartupConfigDump.cs",
         };
 
         var reference = ExtractRedactionBlock(Path.Combine(root, copies[0]));

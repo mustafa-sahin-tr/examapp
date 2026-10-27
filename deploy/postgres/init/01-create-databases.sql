@@ -22,10 +22,6 @@ SELECT format('CREATE DATABASE %I;', 'catalog')
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'catalog');
 \gexec
 
-SELECT format('CREATE DATABASE %I;', 'finance_db')
-WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'finance_db');
-\gexec
-
 SELECT format('CREATE DATABASE %I;', 'keycloak')
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'keycloak');
 \gexec

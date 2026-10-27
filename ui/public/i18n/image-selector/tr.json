@@ -146,10 +146,17 @@
   "training": {
     "emptyPageAdded": "Boş sayfa eğitime eklendi.",
     "emptyPageExcluded": "Sayfada soru yok ve sayfa soru eğitimine alınmıyor; gönderilecek bir şey yok.",
-    "dragDropOnly": "Sayfada yalnız etkileşimli sorular (sürükle-bırak, matris, cevap kutusu, yerleştirme, eşleştirme) var; bunlar eğitime gönderilmediği için sayfa gönderilmedi (model bu soruları arka plan olarak öğrenirdi).",
+    "dragDropOnly": "Sayfada yalnız etkileşimli sorular (sürükle-bırak, matris, cevap kutusu, yerleştirme, eşleştirme) ya da etkinlik blokları var; bunlar eğitime gönderilmediği için sayfa gönderilmedi (model bu soruları arka plan olarak öğrenirdi).",
     "questionsAdded": "{{count}} soru eğitime eklendi ({{file}}).",
     "noImage": "Önce bir sayfa yükleyin.",
     "sendError": "Sayfa eğitime gönderilemedi. Tekrar deneyin.",
     "manualSaveFailed": "Sayfa eğitime gönderildi ama işaretleme kaydı (Manuel) yazılamadı."
+  },
+  "blockKinds": {
+    "mcq_question": "Soru",
+    "activity": "Etkinlik",
+    "info_box": "Anlatım",
+    "answer_key": "Cevap anahtarı",
+    "noise": "Gürültü"
   }
 }

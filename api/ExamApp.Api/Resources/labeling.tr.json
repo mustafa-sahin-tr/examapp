@@ -8,6 +8,7 @@
     "invalidBaseSource": "Geçersiz başlangıç kaynağı.",
     "tooManyBoxes": "Çok fazla kutu gönderildi.",
     "invalidBox": "Kutu koordinatları geçersiz.",
+    "invalidBlockKind": "Blok türü, bileşen ya da etkileşim tipi geçersiz.",
     "pageNotFound": "Bu sayfa için kayıt yok.",
     "aiUnavailable": "Claude ile işaretleme yapılandırılmamış (API anahtarı yok).",
     "aiFailed": "Claude bu sayfayı işaretleyemedi. Tekrar deneyin ya da başka bir model seçin.",

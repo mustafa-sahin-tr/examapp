@@ -1977,4 +1977,327 @@ describe('ImageSelectorComponent', () => {
             });
         });
     });
+
+    describe('block kinds (issue #578)', () => {
+        function box(y: number, extra: Record<string, unknown> = {}, answers = 0) {
+            return {
+                class_id: 0,
+                x: 10,
+                y,
+                width: 200,
+                height: 80,
+                subpredictions: Array.from({ length: answers }, (_, i) => ({
+                    class_id: 0, x: 12, y: y + 2 + i * 30, width: 20, height: 20, subpredictions: [],
+                })),
+                ...extra,
+            };
+        }
+
+        /** Sırayla: MCQ, etkinlik A (matrixChoice), tipsiz etkinlik D, anlatım, cevap anahtarı, gürültü. */
+        function mixedPrediction() {
+            return {
+                success: true,
+                predictions: [
+                    box(10, {}, 2),
+                    box(100, { kind: 'activity', component: 'A', interaction_type: 'matrixChoice' }),
+                    box(200, { kind: 'activity', component: 'D' }),
+                    box(300, { kind: 'info_box' }),
+                    box(400, { kind: 'answer_key' }),
+                    box(500, { kind: 'noise' }),
+                ],
+            };
+        }
+
+        function applyMixed() {
+            component.applyExternalPrediction(component.beginExternalDetection(), mixedPrediction() as any, {
+                kind: 'Ai',
+                modelName: 'claude-a',
+            });
+        }
+
+        it('applyExternalPrediction_KindsInPrediction_StoredPerRegionAndNotCopiedOntoRegion', () => {
+            applyMixed();
+
+            const names = component.regions().map((r) => r.name);
+            expect(names.map((n) => component.getBlockKind(n))).toEqual([
+                'mcq_question', 'activity', 'activity', 'info_box', 'answer_key', 'noise',
+            ]);
+            expect(component.getActivityComponent('Soru 2')).toBe('A');
+            expect(component.getActivityComponent('Soru 3')).toBe('D');
+            expect(component.getActivityComponent('Soru 4')).toBeNull();
+            expect('kind' in component.regions()[1]).toBe(false);
+            expect('interaction_type' in component.regions()[1]).toBe(false);
+        });
+
+        it('applyExternalPrediction_ActivityWithInteractionType_SetsRegionInteractionType', () => {
+            applyMixed();
+
+            expect(component.getInteractionType('Soru 2')).toBe('matrixChoice');
+            expect(component.getActiveInspector()).toBeTruthy();
+            // Tipsiz etkinlik: blok etkinlik olarak işaretli kalır, etkileşimi yok.
+            expect(component.getInteractionType('Soru 3')).toBe('mcq');
+            expect(component.getInteractionType('Soru 4')).toBe('mcq');
+        });
+
+        it('applyExternalPrediction_InconsistentInteractionType_Ignored', () => {
+            const list = { success: true, predictions: [box(10, { kind: 'activity', component: 'B', interaction_type: 'matrixChoice' })] };
+            component.applyExternalPrediction(component.beginExternalDetection(), list as any, { kind: 'Ai' });
+
+            expect(component.getBlockKind('Soru 1')).toBe('activity');
+            expect(component.getInteractionType('Soru 1')).toBe('mcq');
+        });
+
+        it('applyExternalPrediction_NewDetection_ClearsPreviousKindsAndInteractionTypes', () => {
+            applyMixed();
+
+            component.applyExternalPrediction(component.beginExternalDetection(), {
+                success: true,
+                predictions: [box(10, {}, 2), box(100, {}, 2)],
+            } as any, { kind: 'Model' });
+
+            expect(component.getBlockKind('Soru 2')).toBe('mcq_question');
+            expect(component.getInteractionType('Soru 2')).toBe('mcq');
+        });
+
+        it('checkRegionWarning_TypedActivityBlock_NoAuthoringWarnings', () => {
+            // Yazarlık işaretleme ekranında yapılmaz (#581): Claude'un tiplediği etkinlikte boş matris hata sayılmaz.
+            applyMixed();
+            const activity = component.regions()[1];
+
+            component.checkRegionWarning(activity);
+
+            expect(component.warningMarkers.some((m) => m.id === activity.id)).toBe(false);
+        });
+
+        it('checkRegionWarning_QuestionWithUserPickedType_KeepsAuthoringWarnings', () => {
+            applyMixed();
+            const question = component.regions()[0];
+            component.onInteractionTypeChange({ target: { value: 'matrixChoice' } } as unknown as Event, question.name);
+
+            component.checkRegionWarning(question);
+
+            expect(component.warningMarkers.some((m) => m.id === question.id)).toBe(true);
+        });
+
+        it('getActiveInspector_ExposesKindAndComponent', () => {
+            applyMixed();
+            component.selectQuestion(1);
+
+            const inspector = component.getActiveInspector()!;
+
+            expect(inspector.blockKind).toBe('activity');
+            expect(inspector.activityComponent).toBe('A');
+        });
+
+        it('validateQuestions_NonQuestionBlocksWithoutAnswers_NotReported', () => {
+            component.answerCount.set(2);
+            applyMixed();
+
+            const issues = component.validateQuestions({ requireCorrectAnswer: false, skipInteractive: true });
+
+            expect(issues).toEqual([]);
+        });
+
+        it('getRegions_ExcludesInfoAnswerKeyNoiseAndUntypedActivity', () => {
+            applyMixed();
+
+            const payload = component.getRegions({});
+
+            expect(payload.questions.map((q) => q.name)).toEqual(['Soru 1', 'Soru 2']);
+            expect(payload.questions[1].interactionType).toBe('matrixChoice');
+        });
+
+        describe('inspector kind change', () => {
+            beforeEach(() => applyMixed());
+
+            it('setBlockKind_ToInfoBox_ChangesKindAndCountsAsUnsavedEdit', () => {
+                expect(component.hasUnsavedEdits()).toBe(false);
+
+                component.setBlockKind(0, 'info_box');
+
+                expect(component.getBlockKind('Soru 1')).toBe('info_box');
+                expect(component.isMcqRegion('Soru 1')).toBe(false);
+                expect(component.hasUnsavedEdits()).toBe(true);
+            });
+
+            it('setBlockKind_ActivityBackToQuestion_RestoresMcqBehaviour', () => {
+                component.setBlockKind(1, 'mcq_question');
+
+                expect(component.getBlockKind('Soru 2')).toBe('mcq_question');
+                expect(component.getActivityComponent('Soru 2')).toBeNull();
+                expect(component.getInteractionType('Soru 2')).toBe('mcq');
+                expect(component.isMcqRegion('Soru 2')).toBe(true);
+            });
+
+            it('setActivityComponent_MapsComponentToInteractionType', () => {
+                component.setBlockKind(3, 'activity');
+                expect(component.getInteractionType('Soru 4')).toBe('mcq');
+
+                component.setActivityComponent(3, 'B');
+                expect(component.getInteractionType('Soru 4')).toBe('slotFill');
+
+                component.setActivityComponent(3, 'C');
+                expect(component.getInteractionType('Soru 4')).toBe('dragPlace');
+
+                component.setActivityComponent(3, 'G');
+                expect(component.getInteractionType('Soru 4')).toBe('mcq');
+                expect(component.getActivityComponent('Soru 4')).toBe('G');
+            });
+
+            it('setActivityComponent_NotAnActivity_Ignored', () => {
+                component.setActivityComponent(0, 'A');
+
+                expect(component.getBlockKind('Soru 1')).toBe('mcq_question');
+                expect(component.getInteractionType('Soru 1')).toBe('mcq');
+            });
+        });
+
+        describe('sendToFix', () => {
+            beforeEach(() => {
+                component.imageData.set('data:image/png;base64,AAAA');
+                component.answerCount.set(2);
+                vi.spyOn(component, 'nextImage').mockReturnValue(undefined);
+            });
+
+            function sendSpy() {
+                return vi.spyOn(component.questionDetectorService, 'sendtoFix').mockReturnValue(of({ success: true, added: 1, imageFile: 'abcdef0123456789' }));
+            }
+
+            function saveManualSpy() {
+                return vi.spyOn(component['labelingService'], 'saveManual').mockReturnValue(of({ imageSha256: 'f'.repeat(64), width: 1, height: 1, results: [] }));
+            }
+
+            it('sendToFix_MixedKinds_TrainsOnlyMcqQuestions', () => {
+                applyMixed();
+                const send = sendSpy();
+                saveManualSpy();
+
+                component.sendToFix();
+
+                expect(send).toHaveBeenCalledTimes(1);
+                const data = vi.mocked(send).mock.lastCall![0];
+                expect(data.questions.length).toBe(1);
+                expect(data.questions[0].y).toBe(10);
+            });
+
+            it('sendToFix_OnlyExcludedBlocks_SendsEmptyPage', () => {
+                component.applyExternalPrediction(component.beginExternalDetection(), {
+                    success: true,
+                    predictions: [box(10, { kind: 'info_box' }), box(100, { kind: 'noise' }), box(200, { kind: 'answer_key' })],
+                } as any, { kind: 'Ai' });
+                const send = sendSpy();
+                saveManualSpy();
+                const trained: Array<{ emptyPage: boolean }> = [];
+                component.trained.subscribe((e) => trained.push(e));
+
+                component.sendToFix();
+
+                expect(send).toHaveBeenCalledTimes(1);
+                expect(vi.mocked(send).mock.lastCall![0].questions).toEqual([]);
+                expect(trained[0].emptyPage).toBe(true);
+            });
+
+            it('sendToFix_OnlyActivityBlocks_NotSent', () => {
+                component.applyExternalPrediction(component.beginExternalDetection(), {
+                    success: true,
+                    predictions: [box(10, { kind: 'activity', component: 'H' })],
+                } as any, { kind: 'Ai' });
+                const send = sendSpy();
+                vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue(undefined as never);
+
+                component.sendToFix();
+
+                expect(send).not.toHaveBeenCalled();
+            });
+
+            it('sendToFix_CarriedBlocksSamePage_AppendedUnchangedToManualRecord', () => {
+                // Soru tuvali: Manuel / Claude sonucunun soru dışı blokları tuvale uygulanmaz ama kayıtta korunur.
+                const carried = [box(300, { kind: 'info_box' }), box(400, { kind: 'activity', component: 'A', interaction_type: 'matrixChoice' })];
+                component.applyExternalPrediction(component.beginExternalDetection(), {
+                    success: true,
+                    predictions: [box(10, {}, 2)],
+                } as any, { kind: 'Manual', base: null }, carried as any);
+                expect(component.regions().length).toBe(1);
+                sendSpy();
+                const saveManual = saveManualSpy();
+
+                component.sendToFix(true, false);
+
+                const predictions = vi.mocked(saveManual).mock.lastCall![0].predictions.predictions;
+                expect(predictions.length).toBe(3);
+                expect(predictions[0].kind).toBeUndefined();
+                expect(predictions.slice(1)).toEqual(carried);
+            });
+
+            it('sendToFix_CarriedBlocksAfterNewDetection_NotAppended', () => {
+                component.applyExternalPrediction(component.beginExternalDetection(), {
+                    success: true,
+                    predictions: [box(10, {}, 2)],
+                } as any, { kind: 'Manual', base: null }, [box(300, { kind: 'noise' })] as any);
+                // Yeni tespit (YOLO / Claude, düşen blok yok) saklananları siler.
+                component.applyExternalPrediction(component.beginExternalDetection(), {
+                    success: true,
+                    predictions: [box(10, {}, 2)],
+                } as any, { kind: 'Model' });
+                sendSpy();
+                const saveManual = saveManualSpy();
+
+                component.sendToFix(true, false);
+
+                expect(vi.mocked(saveManual).mock.lastCall![0].predictions.predictions.length).toBe(1);
+            });
+
+            it('sendToFix_CarriedBlocksOtherPage_NotAppended', () => {
+                component.applyExternalPrediction(component.beginExternalDetection(), {
+                    success: true,
+                    predictions: [box(10, {}, 2)],
+                } as any, { kind: 'Manual', base: null }, [box(300, { kind: 'noise' })] as any);
+                component.imageData.set('data:image/png;base64,BBBB');
+                sendSpy();
+                const saveManual = saveManualSpy();
+
+                component.sendToFix(true, false);
+
+                expect(vi.mocked(saveManual).mock.lastCall![0].predictions.predictions.length).toBe(1);
+            });
+
+            it('resetRegions_ClearsCarriedBlocks', () => {
+                component.applyExternalPrediction(component.beginExternalDetection(), {
+                    success: true,
+                    predictions: [box(10, {}, 2)],
+                } as any, { kind: 'Manual', base: null }, [box(300, { kind: 'noise' })] as any);
+
+                component.resetRegions();
+
+                expect(component['carriedBlocks']).toBeNull();
+            });
+
+            it('sendToFix_ManualRecord_CarriesKindsAndRoundTrips', () => {
+                applyMixed();
+                sendSpy();
+                const saveManual = saveManualSpy();
+
+                component.sendToFix();
+
+                const predictions = vi.mocked(saveManual).mock.lastCall![0].predictions;
+                expect(predictions.predictions.map((p) => p.kind ?? null)).toEqual([
+                    null, 'activity', 'activity', 'info_box', 'answer_key', 'noise',
+                ]);
+                expect(predictions.predictions[0].subpredictions.length).toBe(2);
+                expect(predictions.predictions[1]).toEqual(expect.objectContaining({ component: 'A', interaction_type: 'matrixChoice', subpredictions: [] }));
+                expect(predictions.predictions[2].component).toBe('D');
+                expect('interaction_type' in predictions.predictions[2]).toBe(false);
+                expect('component' in predictions.predictions[3]).toBe(false);
+
+                // Manuel kaynağı açılınca türler (renkler) geri gelir.
+                component.applyExternalPrediction(component.beginExternalDetection(), predictions, { kind: 'Manual', base: null });
+
+                expect(component.regions().map((r) => component.getBlockKind(r.name))).toEqual([
+                    'mcq_question', 'activity', 'activity', 'info_box', 'answer_key', 'noise',
+                ]);
+                expect(component.getInteractionType('Soru 2')).toBe('matrixChoice');
+                expect(component.getActivityComponent('Soru 3')).toBe('D');
+            });
+        });
+    });
 });

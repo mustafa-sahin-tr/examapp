@@ -146,10 +146,17 @@
   "training": {
     "emptyPageAdded": "Empty page added to training.",
     "emptyPageExcluded": "The page has no questions and is excluded from question training; there is nothing to send.",
-    "dragDropOnly": "The page only has interactive questions (drag-and-drop, matrix, answer boxes, placement, matching); they are not sent to training, so the page was not sent (the model would learn them as background).",
+    "dragDropOnly": "The page only has interactive questions (drag-and-drop, matrix, answer boxes, placement, matching) or activity blocks; they are not sent to training, so the page was not sent (the model would learn them as background).",
     "questionsAdded": "Added {{count}} questions to training ({{file}}).",
     "noImage": "Load a page first.",
     "sendError": "The page could not be sent to training. Try again.",
     "manualSaveFailed": "The page was sent to training, but the labeling record (Manual) could not be saved."
+  },
+  "blockKinds": {
+    "mcq_question": "Question",
+    "activity": "Activity",
+    "info_box": "Info box",
+    "answer_key": "Answer key",
+    "noise": "Noise"
   }
 }

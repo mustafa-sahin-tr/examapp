@@ -115,8 +115,23 @@ public sealed class LabelingService(
         if (!decision.Allowed)
             throw new LabelingRateLimitException(decision.RetryAfter);
 
-        var detection = await detector.DetectAsync(image, model, prompt, ct);
-        var cost = (detection.InputTokens * model.InputUsdPerMTok + detection.OutputTokens * model.OutputUsdPerMTok) / 1_000_000m;
+        ClaudeDetection detection;
+        try
+        {
+            detection = await detector.DetectAsync(image, model, prompt, ct);
+        }
+        catch (LabelingAiException ex) when (ex.Usage is { } failed)
+        {
+            // Yanıt geldi ama kullanılamadı (kesik / ret / şema dışı): token ödendi, bütçeye sayılır (bütçe kaçağı olmasın).
+            var failedCost = Cost(model, failed.Input, failed.Output);
+            await ChargeBudgetAsync(userBudgetKey, failedCost);
+            await ChargeBudgetAsync(TotalBudgetKey, failedCost);
+            logger.LogWarning(
+                "[Labeling] Claude {Model} page {Hash} failed after a paid response: {In}/{Out} tokens, ~${Cost:F4} charged",
+                model.Id, image.Sha256[..16], failed.Input, failed.Output, failedCost);
+            throw;
+        }
+        var cost = Cost(model, detection.InputTokens, detection.OutputTokens);
 
         // Ödenmiş sonuç: istemci bu arada vazgeçse de harcama sayılır ve sonuç kaydedilir (tekrar ödenmesin).
         await ChargeBudgetAsync(userBudgetKey, cost);
@@ -268,6 +283,9 @@ public sealed class LabelingService(
             await rateLimitStore.TryAcquireAsync(key, micro, int.MaxValue, BudgetWindow, CancellationToken.None);
     }
 
+    private static decimal Cost(LabelingAiModelOption model, long inputTokens, long outputTokens) =>
+        (inputTokens * model.InputUsdPerMTok + outputTokens * model.OutputUsdPerMTok) / 1_000_000m;
+
     private static int ToMicroUsd(decimal usd) => (int)Math.Clamp(Math.Ceiling(usd * 1_000_000m), 0, int.MaxValue);
 
     private async Task<LabelingPage> GetOrCreatePageAsync(string sha256, int width, int height, CancellationToken ct)
@@ -341,7 +359,9 @@ public sealed class LabelingService(
 
     /// <summary>
     /// İstemcinin gönderdiği kutuları sınırlar: adet, negatif değer ve yalnız <c>class_id = 0</c> (question-detector'ın tek
-    /// sınıfı); koordinatlar sayfa sınırına kırpılır. JSONB'ye yalnız bilinen alanlar yazılır.
+    /// sınıfı); koordinatlar sayfa sınırına kırpılır. JSONB'ye yalnız bilinen alanlar yazılır. Issue #578: üst düzey kutunun
+    /// <c>kind</c>/<c>component</c>/<c>interaction_type</c>'ı <see cref="LabelingBlocks.IsValidManual"/> ile doğrulanır
+    /// (geçersiz → <c>labeling.invalidBlockKind</c>); şıklarda bu alanlar yazılmaz.
     /// </summary>
     private static PredictionListDto Sanitize(PredictionListDto input, int pageWidth, int pageHeight)
     {
@@ -366,12 +386,21 @@ public sealed class LabelingService(
             };
         }
 
+        PredictionDto Block(PredictionDto q)
+        {
+            if (!LabelingBlocks.IsValidManual(q.Kind, q.Component, q.InteractionType))
+                throw new LabelingValidationException("labeling.invalidBlockKind");
+            var block = Box(q, (q.Subpredictions ?? []).Select(a => Box(a, [])).ToList());
+            block.Kind = q.Kind;
+            block.Component = q.Component;
+            block.InteractionType = q.InteractionType;
+            return block;
+        }
+
         return new PredictionListDto
         {
             Success = true,
-            Predictions = questions
-                .Select(q => Box(q, (q.Subpredictions ?? []).Select(a => Box(a, [])).ToList()))
-                .ToList(),
+            Predictions = questions.Select(Block).ToList(),
         };
     }
 

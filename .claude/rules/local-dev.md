@@ -406,6 +406,19 @@ her soru kırpması → şık kutuları), Manuel = eğitime gönderilen son hal 
 `LabelingPages`/`LabelingResults` (sayfa = ham görsel SHA-256; question-detector `content_id` = ilk 16 hane); aynı sayfa +
 model için kayıtlı Claude sonucu varsa API'ye gidilmez ("Tekrar AI'a sor" zorlar, ücretli). Uçlar yalnız Admin +
 QuestionTrainer (onaylı, askıda olmayan öğretmen; gateway'de de kural var).
+- **Blok türleri (#578, `SchemaRevision` 4).** Claude 1. aşaması sayfadaki bütün blokları **tek çağrıda** türüyle döner:
+  `kind` = `mcq_question` | `activity` | `info_box` (anlatım, "Bilgi"/"Hatırlayalım", "Örnek" çözümü) | `answer_key` | `noise`
+  (optik form, karekod, başlık/altlık, logo); `activity` için `component` (epic #569 ailesi `A`–`I`) ve `interaction_type`
+  (sunucu bileşenden türetir: A → `matrixChoice`, B → `slotFill`, C → `dragPlace`|`match`, diğerleri null). Şık aşaması yalnız
+  `mcq_question` için çalışır; diğer bloklar şıksız, yalnız soru payı + sayfa kırpması. Güvenlik ağı (revizyon 3): bileşensiz
+  `activity`'ye de şık aşaması sorulur, >= 2 şık bulunursa `mcq_question` olur (şıklarla), aksi halde etkinlik kalır; bileşenli
+  etkinlik şık aşamasına girmez. Bilinmeyen tür `noise` sayılır (log). Sınırlar (revizyon 4): `MaxQuestionsPerPage` yalnız şık
+  çağrısı alabilecek blokları (`mcq_question` + bileşensiz `activity`) sayar, tüm bloklar en çok `MaxQuestionsPerPage * 3`;
+  1. aşama çıktı sınırı 12000 token. Kesik / reddedilmiş / şema dışı ama yanıt almış çağrının token'ı da bütçeye sayılır.
+  Alanlar `PredictionDto`'da isteğe bağlı (null = `mcq_question`, YOLO/eski kayıt) ve `PUT pages/manual` ile gidip gelir;
+  geçersiz değer 400 `labeling.invalidBlockKind`. Revizyon 2–4 eski Claude sonuçlarının önbellek anahtarını geçersiz kılar.
+  **Kaydedilmiş özel prompt sürümü yeni varsayılanı ezer** (eski "yalnız MCQ" talimatıyla Claude yalnız `mcq_question` döner):
+  yeni talimatı almak için Prompt penceresinde varsayılanı yükleyip kaydedin.
 - **API anahtarı repoya girmez.** Aspire: `dotnet user-secrets set "Parameters:anthropic-api-key" "<anahtar>" --project AppHost`
   (AppHost `anthropic-api-key` secret parametresi → exam API `Anthropic__ApiKey`); AppHost'u yeniden başlat. Anahtar
   yoksa model listesi boş döner, UI Claude seçeneğini kapatır, `ai-detect` 503. docker-compose'da tanımlı değil.

@@ -555,6 +555,24 @@ public class LabelingPromptServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task SavePromptAsync_EditedCodeDefault_OpensNewVersionAndSameContentAgainDoesNot()
+    {
+        // Issue #578: ekrandaki varsayılan (blok türü talimatı) düzenlenip kaydedilince v1; aynı içerikle Kaydet v2 açmaz.
+        await using var ctx = _db.NewContext();
+        var service = NewService(ctx);
+        var edited = LabelingPromptSettings.DefaultQuestionInstruction + " Treat \"Etkinlik\" headings as activities.";
+
+        var first = await service.SavePromptAsync(Prompt(edited, LabelingPromptSettings.DefaultOptionInstruction), Actor);
+        var second = await service.SavePromptAsync(Prompt(edited, LabelingPromptSettings.DefaultOptionInstruction), Actor);
+
+        first.Active.Version.ShouldBe(1);
+        first.Active.QuestionInstruction.ShouldBe(edited);
+        first.Defaults.QuestionInstruction.ShouldBe(LabelingPromptSettings.DefaultQuestionInstruction);
+        second.Active.Version.ShouldBe(1);
+        second.History.Count.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task SavePromptAsync_WhitespaceOnlyDifference_IsTreatedAsSameContent()
     {
         await using var ctx = _db.NewContext();

@@ -94,7 +94,18 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { QuestionDetectorService } from '../../services/question-detector.service';
-import { Prediction, PredictionList } from '../../models/prediction';
+import {
+  ActivityComponent,
+  BlockKind,
+  Prediction,
+  PredictionList,
+  blockKindOf,
+  interactionForComponent,
+  isActivityComponent,
+  isBlockInteractionType,
+  isConsistentInteraction,
+  isExcludedBlockKind,
+} from '../../models/prediction';
 import { DetectionSource } from '../../models/labeling';
 import { LabelingService } from '../../services/labeling.service';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -274,6 +285,10 @@ export interface ActiveInspector {
   region: QuestionRegion;
   name: string;
   interactionType: QuestionInteractionType;
+  /** Issue #578: blok türü (Claude tespiti ya da müfettişte elle); varsayılan `mcq_question`. */
+  blockKind: BlockKind;
+  /** Issue #578: yalnız `activity` bloğunda (A–I). */
+  activityComponent: ActivityComponent | null;
   answers: AnswerChoice[];
   warnings: string[];
   dropZones: Array<{ id: string; x: number; y: number; width: number; height: number }>;
@@ -477,6 +492,16 @@ export class ImageSelectorComponent {
   public slotFillState = new Map<string, SlotFillAuthoringState>();
   public dragPlaceState = new Map<string, DragPlaceAuthoringState>();
   public matchState = new Map<string, MatchAuthoringState>();
+  /**
+   * Issue #578: bölge adına göre blok türü (+ etkinlik bileşeni). Kayıt yoksa `mcq_question`. `info_box` / `answer_key` /
+   * `noise` kırpılmaz (eğitime, bankaya, teste gitmez); `activity` etkileşimli soru gibi eğitime gitmez.
+   */
+  public blockKinds = new Map<string, { kind: BlockKind; component: ActivityComponent | null }>();
+  /**
+   * Issue #578: tuvale uygulanmadan saklanan soru dışı bloklar (soru tuvali yalnız MCQ uygular). Aynı sayfanın manuel
+   * kaydına değiştirilmeden eklenir; yeni tespitte ve sayfa değişince silinir.
+   */
+  private carriedBlocks: { imageData: string | null; blocks: Prediction[] } | null = null;
 
   // Classification selection for preview mode
   public currentClassification = signal<ClassificationSelection | null>(null);
@@ -1677,8 +1702,12 @@ export class ImageSelectorComponent {
     }
     // Uyarı ikonu her zaman doğru cevap kontrolünü de gösterir; dragDrop uyarıları da yalnız görseldir.
     const type = this.getInteractionType(region.name);
-    const messages =
-      type === 'dragDropLabeling'
+    // Issue #578: soru dışı blokta (Claude / işaretleme ekranı türü) uyarı yok: anlatım, gürültü, tipsiz etkinlikte şık kuralı
+    // yok; tipli etkinliğin yazarlığı bu ekranlarda yapılmaz (#581), boş yazarlık durumu hata sayılmaz. Soru tuvalinde
+    // tipi elle seçilen sorular (tür: Soru) uyarılarını göstermeye devam eder.
+    const messages = this.getBlockKind(region.name) !== 'mcq_question'
+      ? []
+      : type === 'dragDropLabeling'
         ? this.dragDropIssues(region)
         : type === MATRIX_CHOICE
           ? [...this.matrixIssues(region.name), ...this.matrixNotices(region.name)]
@@ -1779,6 +1808,11 @@ export class ImageSelectorComponent {
     const issues: QuestionValidationIssue[] = [];
     this.regions().forEach((region, index) => {
       const type = this.getInteractionType(region.name);
+      // Issue #578: etkileşimsiz soru dışı bloklar (anlatım, cevap anahtarı, gürültü, tipsiz etkinlik) hiçbir yere soru
+      // olarak gitmez; denetlenmez.
+      if (this.getBlockKind(region.name) !== 'mcq_question' && !isInteractiveType(type)) {
+        return;
+      }
       if (isInteractiveType(type)) {
         if (type === MATRIX_CHOICE && opts.requireCorrectAnswer && !opts.skipInteractive) {
           const matrixMessages = this.matrixIssues(region.name);
@@ -1854,6 +1888,9 @@ export class ImageSelectorComponent {
     placeCard: string;
     matchLeft: string;
     matchRight: string;
+    /** Issue #578: blok türü renkleri ve tür etiketinin metni. */
+    kinds: Record<BlockKind, string>;
+    kindOn: string;
   };
 
   private getThemeColors() {
@@ -1872,6 +1909,14 @@ export class ImageSelectorComponent {
         placeCard: this.cssVar('--ms-colors-code-sand') || 'sienna',
         matchLeft: this.cssVar('--ms-colors-code-green') || 'olivedrab',
         matchRight: this.cssVar('--ms-colors-code-yellow') || 'goldenrod',
+        kinds: {
+          mcq_question: this.cssVar('--ms-block-kind-question') || 'red',
+          activity: this.cssVar('--ms-block-kind-activity') || 'steelblue',
+          info_box: this.cssVar('--ms-block-kind-info') || 'goldenrod',
+          answer_key: this.cssVar('--ms-block-kind-answer-key') || 'purple',
+          noise: this.cssVar('--ms-block-kind-noise') || 'gray',
+        },
+        kindOn: this.cssVar('--ms-block-kind-on') || 'white',
       };
     }
     return this.themeColors;
@@ -1942,6 +1987,13 @@ export class ImageSelectorComponent {
       this.regions().forEach((region, i) => {
         if (!this.ctx) return;
         const isActive = i === activeIndex;
+        // Issue #578: soru dışı bloklar türünün rengiyle, etiketi her zaman görünür çizilir.
+        const kind = this.getBlockKind(region.name);
+        if (kind !== 'mcq_question') {
+          this.drawKindBox(region, i, kind, isActive);
+          this.checkRegionWarning(region);
+          return;
+        }
 
         if (isActive) {
           this.ctx.save();
@@ -1953,7 +2005,7 @@ export class ImageSelectorComponent {
           this.ctx.strokeStyle = accent;
           this.ctx.lineWidth = 4;
         } else {
-          this.ctx.strokeStyle = 'red';
+          this.ctx.strokeStyle = theme.kinds.mcq_question;
           this.ctx.globalAlpha = 0.4;
           this.ctx.lineWidth = 2;
         }
@@ -1976,8 +2028,8 @@ export class ImageSelectorComponent {
       // 🟦 **Şık alanlarını mavi renkte çiz**
       if (!this.onlyQuestionMode()) {
         for (const region of this.regions()) {
-          // Etkileşimli sorularda (sürükle-bırak, matris) şık çizimi gerekmiyor
-          if (isInteractiveType(this.getInteractionType(region.name))) {
+          // Etkileşimli sorularda (sürükle-bırak, matris) ve soru dışı bloklarda (#578) şık çizimi gerekmiyor
+          if (isInteractiveType(this.getInteractionType(region.name)) || this.getBlockKind(region.name) !== 'mcq_question') {
             continue;
           }
 
@@ -2021,6 +2073,42 @@ export class ImageSelectorComponent {
       this.drawDragPlaceOverlays();
       this.drawMatchOverlays();
     }
+  }
+
+  /** Issue #578: soru dışı blok — türün rengiyle çerçeve, açık dolgu ve `S{n} · tür` etiketi. */
+  private drawKindBox(region: QuestionRegion, index: number, kind: BlockKind, isActive: boolean) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const theme = this.getThemeColors();
+    const color = theme.kinds[kind];
+    ctx.save();
+    ctx.globalAlpha = isActive ? 0.16 : 0.08;
+    ctx.fillStyle = color;
+    ctx.fillRect(region.x, region.y, region.width, region.height);
+    ctx.globalAlpha = isActive ? 1 : 0.75;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = isActive ? 4 : 2;
+    ctx.setLineDash(isExcludedBlockKind(kind) ? [8, 5] : []);
+    ctx.strokeRect(region.x, region.y, region.width, region.height);
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+    const label = `S${index + 1} · ${this.blockKindLabel(region.name)}`;
+    ctx.font = `bold ${isActive ? 15 : 13}px ${theme.fontFamily}`;
+    const height = isActive ? 20 : 18;
+    const textW = ctx.measureText(label).width;
+    ctx.fillStyle = color;
+    ctx.fillRect(region.x, Math.max(0, region.y - height), textW + 12, height);
+    ctx.fillStyle = theme.kindOn;
+    ctx.fillText(label, region.x + 6, Math.max(height - 6, region.y - 6));
+    ctx.restore();
+  }
+
+  /** Tuvaldeki kısa tür etiketi: "Etkinlik · A", "Anlatım", … */
+  public blockKindLabel(regionName: string): string {
+    const kind = this.getBlockKind(regionName);
+    const label = this.tr(`blockKinds.${kind}`);
+    const component = kind === 'activity' ? this.getActivityComponent(regionName) : null;
+    return component ? `${label} ${component}` : label;
   }
 
   /** Kutu + köşe etiketi (açık kontur altta: her sayfa renginde seçilebilsin). */
@@ -2550,6 +2638,94 @@ export class ImageSelectorComponent {
   public onInteractionTypeChange(event: Event, regionName: string) {
     const select = event.target as HTMLSelectElement;
     const type = (select.value as QuestionInteractionType) || 'mcq';
+    this.setInteractionTypeFor(regionName, type);
+    this.drawImage();
+  }
+
+  // -------- Issue #578: blok türü --------
+  public getBlockKind(regionName: string): BlockKind {
+    return this.blockKinds.get(regionName)?.kind ?? 'mcq_question';
+  }
+
+  public getActivityComponent(regionName: string): ActivityComponent | null {
+    return this.blockKinds.get(regionName)?.component ?? null;
+  }
+
+  /** Çoktan seçmeli soru bloğu ve MCQ etkileşimi: eğitime (send-to-fix) ve işaretleme ekranından bankaya giden. */
+  public isMcqRegion(regionName: string): boolean {
+    return this.getBlockKind(regionName) === 'mcq_question' && !isInteractiveType(this.getInteractionType(regionName));
+  }
+
+  /**
+   * Soru tuvalinde soru olarak kaydedilebilir: soru bloğu ya da etkileşim tipi seçilmiş etkinlik. Anlatım / cevap
+   * anahtarı / gürültü ve tipsiz etkinlik kaydedilmez.
+   */
+  public isSavableRegion(regionName: string): boolean {
+    const kind = this.getBlockKind(regionName);
+    return kind === 'mcq_question' || (kind === 'activity' && isInteractiveType(this.getInteractionType(regionName)));
+  }
+
+  /**
+   * Müfettişten tür değişikliği. Soru'ya dönünce MCQ davranışı (şıklar, eğitim) geri gelir; Etkinlik'te bileşen korunur
+   * ve etkileşim tipi bileşenden türetilir; diğer türlerde etkileşim tipi kalkar.
+   */
+  public setBlockKind(questionIndex: number, kind: BlockKind) {
+    const region = this.regions()[questionIndex];
+    if (!region) return;
+    const name = region.name;
+    if (kind === 'activity') {
+      const component = this.getActivityComponent(name);
+      this.blockKinds.set(name, { kind, component });
+      this.applyComponentInteraction(name, component);
+    } else {
+      if (kind === 'mcq_question') {
+        this.blockKinds.delete(name);
+      } else {
+        this.blockKinds.set(name, { kind, component: null });
+      }
+      this.interactionTypes.delete(name);
+    }
+    this.regions.set([...this.regions()]);
+    this.checkRegionWarning(region);
+    this.drawImage();
+  }
+
+  /** Etkinlik bileşeni (A–I ya da null); etkileşim tipi bileşenle tutarlı olacak şekilde güncellenir. */
+  public setActivityComponent(questionIndex: number, component: ActivityComponent | null) {
+    const region = this.regions()[questionIndex];
+    if (!region || this.getBlockKind(region.name) !== 'activity') return;
+    this.blockKinds.set(region.name, { kind: 'activity', component });
+    this.applyComponentInteraction(region.name, component);
+    this.regions.set([...this.regions()]);
+    this.checkRegionWarning(region);
+    this.drawImage();
+  }
+
+  private applyComponentInteraction(regionName: string, component: ActivityComponent | null) {
+    const current = this.getInteractionType(regionName);
+    const type = interactionForComponent(component, current);
+    if (type) {
+      this.setInteractionTypeFor(regionName, type);
+    } else {
+      this.interactionTypes.delete(regionName);
+    }
+  }
+
+  /** Tespit sonucundaki türü bölgeye yazar; tipli etkinlik, tür seçicide o tipi seçmekle aynıdır. */
+  private applyPredictedKind(regionName: string, prediction: Prediction) {
+    const kind = blockKindOf(prediction);
+    if (kind === 'mcq_question') {
+      return;
+    }
+    const component = kind === 'activity' && isActivityComponent(prediction.component) ? prediction.component : null;
+    this.blockKinds.set(regionName, { kind, component });
+    const type = prediction.interaction_type;
+    if (kind === 'activity' && isBlockInteractionType(type) && isConsistentInteraction(component, type)) {
+      this.setInteractionTypeFor(regionName, type);
+    }
+  }
+
+  private setInteractionTypeFor(regionName: string, type: QuestionInteractionType) {
     this.interactionTypes.set(regionName, type);
 
     if (type === 'dragDropLabeling') {
@@ -2563,8 +2739,6 @@ export class ImageSelectorComponent {
     } else if (type === MATCH) {
       this.ensureMatchState(regionName);
     }
-
-    this.drawImage();
   }
 
   public selectDropZoneMode(questionIndex: number) {
@@ -3659,6 +3833,8 @@ export class ImageSelectorComponent {
       region,
       name,
       interactionType,
+      blockKind: this.getBlockKind(name),
+      activityComponent: this.getActivityComponent(name),
       answers: region.answers ?? [],
       warnings: this.warningMarkers.filter((m) => m.id === region.id).flatMap((m) => m.messages),
       dropZones,
@@ -3726,9 +3902,13 @@ export class ImageSelectorComponent {
       return;
     }
     const regions = this.regions();
+    // dragDropLabeling / etkileşimli sorular ve etkinlik blokları (#578) MCQ değildir; şık + doğru cevap bekleyen eğitime
+    // gönderilmez. Anlatım / cevap anahtarı / gürültü blokları hiç kırpılmaz (sayfada arka plan olarak kalır).
+    const mcqQuestions = regions.filter((q) => this.isMcqRegion(q.name));
+    const nonTrainable = regions.filter((q) => !this.isMcqRegion(q.name) && !isExcludedBlockKind(this.getBlockKind(q.name)));
     // Hiç soru yok: kullanıcı modelin bulduklarını silmiştir (Eğit = işaretleme doğru), sayfa tamamı
     // arka plan olarak eğitime gider. Soru eğitimine alınmayacaksa gönderilecek bir şey kalmaz.
-    const emptyPage = regions.length === 0;
+    const emptyPage = mcqQuestions.length === 0 && nonTrainable.length === 0;
     // advance=false: "Kaydet ve Düzelt"in kayıt sonrası çağrısı — "kaydedildi" mesajı ezilmesin, sessiz dön.
     if (emptyPage && !pageComplete) {
       if (advance) {
@@ -3737,9 +3917,9 @@ export class ImageSelectorComponent {
       return;
     }
 
-    // dragDropLabeling questions are not MCQ and should not be sent to the
-    // fix/training endpoint that expects answers + correct answer.
-    const mcqQuestions = regions.filter((q) => !isInteractiveType(this.getInteractionType(q.name)));
+    // Kasıtlı kural (#578): yalnız tipli/tipsiz etkinlik (ya da etkileşimli soru) varsa sayfa gönderilmez (dragDropOnly);
+    // MCQ + etkinlik karışık sayfada MCQ'lar eğitilir, etkinlikler arka plan olur; yalnız anlatım / cevap anahtarı /
+    // gürültü varsa sayfa (pageComplete iken) boş sayfa olarak gider.
     if (!emptyPage && mcqQuestions.length === 0) {
       // Gönderilseydi sayfa boş gibi gider, model dragDrop sorularını arka plan öğrenirdi.
       if (advance) {
@@ -3790,8 +3970,12 @@ export class ImageSelectorComponent {
             duration: 3000,
           });
           this.trained.emit({ pageId: String(data.imageFile ?? ''), emptyPage, added: Number(data.added ?? 0) });
-          // Manuel kayıt = eğitime giden hal (sürükle-bırak sorular eğitime gitmediği için kayda da girmez).
-          this.saveManualRecord(sentImage!, mcqQuestions);
+          // Manuel kayıt = eğitime giden hal (sürükle-bırak sorular eğitime gitmediği için kayda da girmez) + türü
+          // işaretlenmiş soru dışı bloklar (#578; Manuel kaynağı açılınca renkleriyle geri gelsin).
+          const manualRegions = regions.filter(
+            (q) => mcqQuestions.includes(q) || this.getBlockKind(q.name) !== 'mcq_question'
+          );
+          this.saveManualRecord(sentImage!, manualRegions);
           if (
             advance &&
             this.advanceOnTrain &&
@@ -3886,11 +4070,21 @@ export class ImageSelectorComponent {
    * Dış kaynaklı kutuları tuvale uygular (`/predict` ile aynı şekil). Bu arada sayfa değiştiyse ya da yeni analiz
    * başladıysa yok sayılır.
    */
-  public applyExternalPrediction(seq: number, predictions: PredictionList, source: DetectionSource) {
-    if (seq === this.predictSeq) {
+  public applyExternalPrediction(
+    seq: number,
+    predictions: PredictionList,
+    source: DetectionSource,
+    carriedBlocks: Prediction[] = []
+  ) {
+    const current = seq === this.predictSeq;
+    if (current) {
       this.detectionSource.set(source);
     }
     this.applyPrediction(seq, predictions);
+    // applyPrediction önceki saklananları siler; bu tespitin düşürülen blokları ondan sonra yazılır.
+    if (current && carriedBlocks.length > 0 && Array.isArray(predictions?.predictions)) {
+      this.carriedBlocks = { imageData: this.imageData(), blocks: carriedBlocks };
+    }
   }
 
   public failExternalDetection(seq: number) {
@@ -3908,7 +4102,16 @@ export class ImageSelectorComponent {
 
   private serializeBoxes(): string {
     return JSON.stringify(
-      this.regions().map((q) => [q.x, q.y, q.width, q.height, (q.answers ?? []).map((a) => [a.x, a.y, a.width, a.height])])
+      this.regions().map((q) => [
+        q.x,
+        q.y,
+        q.width,
+        q.height,
+        (q.answers ?? []).map((a) => [a.x, a.y, a.width, a.height]),
+        // Issue #578: tür / bileşen değişikliği de kaydedilmemiş düzeltmedir.
+        this.getBlockKind(q.name),
+        this.getActivityComponent(q.name),
+      ])
     );
   }
 
@@ -3933,11 +4136,33 @@ export class ImageSelectorComponent {
     });
     const predictions: PredictionList = {
       success: true,
-      predictions: questions.map((q) => ({
-        ...toPrediction(q),
-        subpredictions: (q.answers ?? []).map((a) => ({ ...toPrediction(a), subpredictions: [] })),
-      })),
+      predictions: questions.map((q): Prediction => {
+        const kind = this.getBlockKind(q.name);
+        if (kind === 'mcq_question') {
+          return {
+            ...toPrediction(q),
+            subpredictions: (q.answers ?? []).map((a) => ({ ...toPrediction(a), subpredictions: [] })),
+          };
+        }
+        // Issue #578: soru dışı blok şıksız gider; bileşen ve etkileşim tipi yalnız etkinlikte, tip bileşenle tutarlıysa
+        // (sunucu aynı kuralla doğrular).
+        const component = kind === 'activity' ? this.getActivityComponent(q.name) : null;
+        const type = kind === 'activity' ? this.getInteractionType(q.name) : null;
+        return {
+          ...toPrediction(q),
+          subpredictions: [],
+          kind,
+          ...(component ? { component } : {}),
+          ...(type && isBlockInteractionType(type) && isConsistentInteraction(component, type)
+            ? { interaction_type: type }
+            : {}),
+        };
+      }),
     };
+    // Issue #578: tuvale uygulanmamış soru dışı bloklar (aynı sayfa) kayıtta değiştirilmeden korunur.
+    if (this.carriedBlocks?.imageData === imageData) {
+      predictions.predictions.push(...this.carriedBlocks.blocks);
+    }
     const snapshot = this.lastModelPrediction?.imageData === imageData ? this.lastModelPrediction.list : null;
     this.labelingService
       .saveManual({
@@ -3988,25 +4213,36 @@ export class ImageSelectorComponent {
     console.log(questions);
     const imageWidth = Math.max(...questions.predictions.map((q) => q.x + q.width));
     // soruları sırala
+    const sorted = questions.predictions
+      .filter((q: any) => q.class_id === 0)
+      .sort((a, b) => {
+        // Sayfanın ortasını bulmak için tahmini bir sınır (örneğin width / 2)
+        const middleX = imageWidth / 2;
+
+        // Sol sütunları önce al (a ve b'nin sol sütun mu sağ sütun mu olduğunu kontrol et)
+        const aIsLeft = a.x < middleX;
+        const bIsLeft = b.x < middleX;
+
+        if (aIsLeft !== bIsLeft) {
+          return aIsLeft ? -1 : 1; // Sol sütun önde gelir
+        }
+
+        // Aynı sütundalarsa yukarıdan aşağıya (y koordinatına göre) sıralama yap
+        return a.y - b.y;
+      });
+    // Yeni tespit bölgeleri baştan kurar: önceki tespitin tür / etkileşim tipleri (aynı adlı) yeni kutulara taşınmasın.
+    this.blockKinds.clear();
+    this.carriedBlocks = null;
+    this.interactionTypes.clear();
+    this.labelingState.clear();
+    this.matrixState.clear();
+    this.slotFillState.clear();
+    this.dragPlaceState.clear();
+    this.matchState.clear();
     this.regions.set(
-      questions.predictions
-        .filter((q: any) => q.class_id === 0)
-        .sort((a, b) => {
-          // Sayfanın ortasını bulmak için tahmini bir sınır (örneğin width / 2)
-          const middleX = imageWidth / 2;
-
-          // Sol sütunları önce al (a ve b'nin sol sütun mu sağ sütun mu olduğunu kontrol et)
-          const aIsLeft = a.x < middleX;
-          const bIsLeft = b.x < middleX;
-
-          if (aIsLeft !== bIsLeft) {
-            return aIsLeft ? -1 : 1; // Sol sütun önde gelir
-          }
-
-          // Aynı sütundalarsa yukarıdan aşağıya (y koordinatına göre) sıralama yap
-          return a.y - b.y;
-        })
-        .map((q, index) => ({
+      sorted
+        // Issue #578: tür alanları bölgeye kopyalanmaz (soru kaydına gitmesin), `blockKinds`'te tutulur.
+        .map(({ kind: _kind, component: _component, interaction_type: _type, ...q }, index) => ({
           ...q,
           name: `Soru ${index + 1}`,
           answers: q.subpredictions
@@ -4031,6 +4267,7 @@ export class ImageSelectorComponent {
           imageUrl: '',
         }))
     );
+    sorted.forEach((prediction, index) => this.applyPredictedKind(`Soru ${index + 1}`, prediction));
 
     const questionCount = this.regions().length;
 
@@ -4163,7 +4400,8 @@ export class ImageSelectorComponent {
     return {
       imageData: this.imageData(),
       passages: this.passages().map((p) => this.toBulkPassage(p)),
-      questions: this.regions().map((region) => ({
+      // Issue #578: anlatım / cevap anahtarı / gürültü ve tipsiz etkinlik blokları soru olarak kaydedilmez.
+      questions: this.regions().filter((region) => this.isSavableRegion(region.name)).map((region) => ({
         ...this.roundBox(region),
         answers: region.answers?.map((a) => this.roundBox(a)),
         ...(region.passage ? { passage: this.roundBox(region.passage) } : {}),
@@ -4188,6 +4426,8 @@ export class ImageSelectorComponent {
     this.exampleFlags.clear();
     this.selectedPassageMap.clear();
     this.interactionTypes.clear();
+    this.blockKinds.clear();
+    this.carriedBlocks = null;
     this.labelingState.clear();
     this.matrixState.clear();
     this.slotFillState.clear();
@@ -4309,6 +4549,7 @@ export class ImageSelectorComponent {
     this.exampleFlags.delete(regionName);
     this.selectedPassageMap.delete(regionName);
     this.interactionTypes.delete(regionName);
+    this.blockKinds.delete(regionName);
     this.labelingState.delete(regionName);
     this.matrixState.delete(regionName);
     this.slotFillState.delete(regionName);

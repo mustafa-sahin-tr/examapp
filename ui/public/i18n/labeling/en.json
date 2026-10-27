@@ -96,7 +96,36 @@
     "activityLabel": "Activity",
     "itemLabel": "Item",
     "activityPlaceholder": "e.g. Activity 9",
-    "itemPlaceholder": "e.g. 3"
+    "itemPlaceholder": "e.g. 3",
+    "kind": {
+      "label": "Type",
+      "component": "Component",
+      "componentNone": "Unknown",
+      "types": {
+        "mcq_question": "Question",
+        "activity": "Activity",
+        "info_box": "Info box",
+        "answer_key": "Answer key",
+        "noise": "Noise"
+      },
+      "components": {
+        "A": "Matrix choice",
+        "B": "Answer box",
+        "C": "Drag and place",
+        "D": "Mark on text",
+        "E": "Region / colouring",
+        "F": "Grid canvas",
+        "G": "Game engines",
+        "H": "Open ended",
+        "I": "Custom simulation"
+      },
+      "hint": {
+        "activity": "Activities are not sent to training or saved to the bank from this screen; they go to the activity flow.",
+        "info_box": "Info boxes are not cropped: they are not sent to training or the bank.",
+        "answer_key": "Answer keys are not cropped: they are not sent to training or the bank.",
+        "noise": "Noise (optical form, QR code, page header …) is not cropped: it is not sent to training or the bank."
+      }
+    }
   },
   "source": {
     "label": "Source",
@@ -128,7 +157,8 @@
     "promptHint": "Claude instructions and box padding",
     "promptSaved": "Prompt v{{version}} saved; the next Claude calls use it.",
     "promptAskPage": "Ask this page again",
-    "promptVersion": "prompt v{{version}}"
+    "promptVersion": "prompt v{{version}}",
+    "legend": "Block types"
   },
   "prompt": {
     "title": "Claude prompt settings",

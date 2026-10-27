@@ -123,6 +123,68 @@ public class LabelingPromptSettingsTests
         original.Fingerprint.ShouldBe(LabelingPromptSettings.Default.Fingerprint);
     }
 
+    // ---------- Issue #578: blok türleri ----------
+
+    [Fact]
+    public void SchemaRevision_IsFourForBlockKindsSafetyNetAndSplitCaps()
+    {
+        LabelingPromptSettings.SchemaRevision.ShouldBe(4);
+    }
+
+    [Fact]
+    public void Fingerprint_SchemaRevisionBump_ChangesCacheKeyForSameContent()
+    {
+        // Revizyon 1 ile üretilmiş (ör. özel kaydedilmiş bir sürümün) Claude sonucu, aynı talimatla bile kayıttan dönmez.
+        var custom = new LabelingPromptSettings(3, "Find questions {width}x{height}", "Options {width}x{height}", 6, 4, true);
+
+        custom.Fingerprint.ShouldBe(custom.ComputeFingerprint(LabelingPromptSettings.SchemaRevision));
+        custom.Fingerprint.ShouldNotBe(custom.ComputeFingerprint(1));
+        custom.ComputeFingerprint(3).ShouldNotBe(custom.ComputeFingerprint(4));
+    }
+
+    [Theory]
+    [InlineData("mcq_question")]
+    [InlineData("activity")]
+    [InlineData("info_box")]
+    [InlineData("answer_key")]
+    [InlineData("noise")]
+    [InlineData("matrixChoice")]
+    [InlineData("slotFill")]
+    [InlineData("dragPlace")]
+    [InlineData("match")]
+    [InlineData("karekod")]
+    [InlineData("Örnek")]
+    [InlineData("Cevap Anahtarı")]
+    public void DefaultQuestionInstruction_NamesEveryKindTypeAndKeyCase(string term)
+    {
+        LabelingPromptSettings.DefaultQuestionInstruction.ShouldContain(term);
+    }
+
+    [Theory]
+    [InlineData("A matrix choice")]
+    [InlineData("B answer box")]
+    [InlineData("C drag and place")]
+    [InlineData("D mark on text")]
+    [InlineData("E regions")]
+    [InlineData("F grid canvas")]
+    [InlineData("G game engines")]
+    [InlineData("H open-ended")]
+    [InlineData("I special simulation")]
+    public void DefaultQuestionInstruction_DescribesEveryComponentFamily(string family)
+    {
+        LabelingPromptSettings.DefaultQuestionInstruction.ShouldContain(family);
+    }
+
+    [Fact]
+    public void DefaultQuestionInstruction_KeepsMcqBoxRules()
+    {
+        // Mevcut MCQ kutusu kuralları korunur (gerileme olmasın): numara dışarıda, kök + şekil + şıklar içeride.
+        var instruction = LabelingPromptSettings.DefaultQuestionInstruction;
+        instruction.ShouldContain("must stay OUTSIDE the box");
+        instruction.ShouldContain("any figure or table that belongs to it");
+        instruction.ShouldContain("reading passages shared by several questions");
+    }
+
     [Fact]
     public void MaxConstants_MatchDocumentedLimits()
     {

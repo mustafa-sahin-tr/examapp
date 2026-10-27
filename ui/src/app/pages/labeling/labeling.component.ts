@@ -18,8 +18,8 @@ import {
   ActiveInspector,
   ImageSelectorComponent,
   TrainedPage,
-  isInteractiveType,
 } from '../image-selector/image-selector.component';
+import { ACTIVITY_COMPONENTS, ActivityComponent, BLOCK_KINDS, BlockKind } from '../../models/prediction';
 import { QuestionDetectorService } from '../../services/question-detector.service';
 import { GradesService } from '../../services/grades.service';
 import { Grade } from '../../models/student';
@@ -123,6 +123,9 @@ export class LabelingComponent {
   private readonly selectorRef = viewChild(ImageSelectorComponent);
 
   readonly answerCounts = ANSWER_COUNTS;
+  /** Issue #578: müfettişteki Tür / Bileşen seçenekleri ve araç çubuğu lejantı. */
+  readonly blockKinds = BLOCK_KINDS;
+  readonly activityComponents = ACTIVITY_COMPONENTS;
   /** Sayfa id'si (sha256[:16]); testlerde gecikmeli hash için değiştirilir. */
   hashFile: (file: File) => Promise<string> = (file) => pageIdOf(file);
 
@@ -253,6 +256,11 @@ export class LabelingComponent {
     return this.pageRecord()?.results.find((r) => r.source === 'Ai' && r.modelName === source.modelName) ?? null;
   });
   readonly selectedAiModel = computed(() => this.aiModels().find((m) => m.id === this.aiModelId()) ?? null);
+  /** Issue #578: tür renkleri lejantı yalnız Claude sonucu (ya da Claude'dan başlayan manuel kayıt) açıkken. */
+  readonly showKindLegend = computed(() => {
+    const source = this.detectionSource();
+    return source?.kind === 'Ai' || (source?.kind === 'Manual' && source.base?.source === 'Ai');
+  });
   /** Analiz / gönderim sürerken kaynak değiştirilmez. */
   readonly sourceLocked = computed(() => !this.current() || this.analysing() || this.sendingToFix());
   readonly finished = computed(
@@ -867,8 +875,9 @@ export class LabelingComponent {
     if (!selector || !image || !this.canSaveToBank()) {
       return;
     }
-    // Etkileşimli sorular (sürükle-bırak, matris #574) bu ekrandan bankaya kaydedilmez.
-    const regions = selector.regions().filter((r) => !isInteractiveType(selector.getInteractionType(r.name)));
+    // Etkileşimli sorular (sürükle-bırak, matris #574) ve soru dışı bloklar (#578: etkinlik, anlatım, cevap anahtarı,
+    // gürültü) bu ekrandan bankaya kaydedilmez.
+    const regions = selector.regions().filter((r) => selector.isMcqRegion(r.name));
     if (regions.length === 0) {
       this.snackBar.open(this.tr('bank.noMcq'), this.tr('ok'), { duration: 5000 });
       return;
@@ -1117,6 +1126,21 @@ export class LabelingComponent {
     const index = this.inspector?.index;
     if (index != null && !this.inspectorLocked) {
       this.selectorRef()?.selectAnswerMode(index);
+    }
+  }
+
+  /** Issue #578: yanlış blok türünü düzeltir (renk değişir; Soru'ya dönünce MCQ davranışı geri gelir). */
+  insSetKind(kind: BlockKind): void {
+    const index = this.inspector?.index;
+    if (index != null && !this.inspectorLocked) {
+      this.selectorRef()?.setBlockKind(index, kind);
+    }
+  }
+
+  insSetComponent(component: ActivityComponent | null): void {
+    const index = this.inspector?.index;
+    if (index != null && !this.inspectorLocked) {
+      this.selectorRef()?.setActivityComponent(index, component);
     }
   }
 

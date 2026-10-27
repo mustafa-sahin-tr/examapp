@@ -113,6 +113,13 @@
   --ms-shadow-overlay: 0 18px 40px rgb(0 0 0 / 35%);
   --ms-shadow-menu: 0 14px 34px rgb(0 0 0 / 40%);
   --ms-border-on-fill: rgb(0 0 0 / 25%);
+  /* Issue #578: işaretleme tuvalinde blok türü renkleri (çerçeve, etiket zemini, lejant) ve etiket metni */
+  --ms-block-kind-question: #FF6B6B;
+  --ms-block-kind-activity: #2BB2FF;
+  --ms-block-kind-info: #FFBA0D;
+  --ms-block-kind-answer-key: #C792FF;
+  --ms-block-kind-noise: #9AA3AE;
+  --ms-block-kind-on: #0D0F12;
 }
 
 // Light şema — dark ile aynı hue, ters lightness. Yüzeyler beyaz/lavanta, metinler koyu mor-gri.
@@ -199,6 +206,13 @@
   --ms-shadow-overlay: 0 18px 40px rgb(33 29 58 / 18%);
   --ms-shadow-menu: 0 14px 34px rgb(33 29 58 / 20%);
   --ms-border-on-fill: rgb(0 0 0 / 12%);
+  /* Issue #578: blok türü renkleri — açık yüzeyde koyu tonlar, etiket metni beyaz */
+  --ms-block-kind-question: #D92D3A;
+  --ms-block-kind-activity: #0077C2;
+  --ms-block-kind-info: #A87500;
+  --ms-block-kind-answer-key: #7A3FD1;
+  --ms-block-kind-noise: #5F6773;
+  --ms-block-kind-on: #FFFFFF;
 }
 
 // Paylaşılan (tema-bağımsız) token'lar

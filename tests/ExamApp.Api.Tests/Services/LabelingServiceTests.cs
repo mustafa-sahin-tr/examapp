@@ -344,6 +344,34 @@ public class LabelingServiceTests : IDisposable
         (await NewService(read).GetPageAsync(Sha256Hex(png))).ShouldBeNull();
     }
 
+    [Fact]
+    public async Task DetectWithAiAsync_ClaudeFailsAfterPaidResponse_ChargesBudgetAndRethrows()
+    {
+        // Security D1: kesik/ret/şema dışı yanıtın token'ı ödendi → bütçeye sayılır (1M girdi * $3 + 1M çıktı * $15).
+        _detector.DetectAsync(default!, default!, default!).ThrowsAsyncForAnyArgs(
+            new LabelingAiException("Claude response was truncated.", usage: new LabelingAiUsage(1_000_000, 1_000_000)));
+        await using var ctx = _db.NewContext();
+
+        await Should.ThrowAsync<LabelingAiException>(() => NewService(ctx).DetectWithAiAsync(
+            new LabelingAiDetectRequestDto { ImageBase64 = Base64(Png(16, 16)), Model = "claude-test" }, Actor));
+
+        (await _counters.PeekAsync($"labeling-ai-usd:{Actor.KeycloakId}")).Count.ShouldBe(18_000_000);
+        (await _counters.PeekAsync("labeling-ai-usd:all")).Count.ShouldBe(18_000_000);
+    }
+
+    [Fact]
+    public async Task DetectWithAiAsync_ClaudeFailsWithoutResponse_ChargesNothing()
+    {
+        _detector.DetectAsync(default!, default!, default!)
+            .ThrowsAsyncForAnyArgs(new LabelingAiException("Claude request failed."));
+        await using var ctx = _db.NewContext();
+
+        await Should.ThrowAsync<LabelingAiException>(() => NewService(ctx).DetectWithAiAsync(
+            new LabelingAiDetectRequestDto { ImageBase64 = Base64(Png(16, 16)), Model = "claude-test" }, Actor));
+
+        (await _counters.PeekAsync($"labeling-ai-usd:{Actor.KeycloakId}")).Count.ShouldBe(0);
+    }
+
     // ---------- SaveManualAsync ----------
 
     [Fact]
@@ -631,5 +659,124 @@ public class LabelingServiceTests : IDisposable
             NewService(ctx).SaveManualAsync(ManualRequest(Png(100, 100), predictions: predictions), Actor));
 
         ex.Message.ShouldBe("labeling.invalidBox");
+    }
+
+    // ---------- Issue #578: blok türleri ----------
+
+    private static PredictionListDto Blocks(params (string? Kind, string? Component, string? InteractionType)[] blocks) => new()
+    {
+        Success = true,
+        Predictions = blocks.Select((b, i) => new PredictionDto
+        {
+            ClassId = 0, X = 1, Y = 1 + i * 20, Width = 30, Height = 15,
+            Kind = b.Kind, Component = b.Component, InteractionType = b.InteractionType,
+        }).ToList(),
+    };
+
+    [Fact]
+    public async Task SaveManualAsync_BlockKinds_RoundTripThroughStoredResult()
+    {
+        var png = Png(100, 200);
+        var predictions = Blocks(
+            (null, null, null),
+            ("mcq_question", null, null),
+            ("activity", "C", "match"),
+            ("activity", "F", null),
+            ("info_box", null, null),
+            ("answer_key", null, null),
+            ("noise", null, null));
+        predictions.Predictions[1].Subpredictions = [new PredictionDto { X = 2, Y = 22, Width = 5, Height = 5 }];
+        await using (var ctx = _db.NewContext())
+        {
+            await NewService(ctx).SaveManualAsync(ManualRequest(png, predictions), Actor);
+        }
+
+        await using var read = _db.NewContext();
+        var page = await NewService(read).GetPageAsync(Sha256Hex(png));
+
+        var stored = page!.Results.Single(r => r.Source == "Manual").Predictions.Predictions;
+        stored.Select(p => p.Kind).ShouldBe([null, "mcq_question", "activity", "activity", "info_box", "answer_key", "noise"]);
+        stored.Select(p => p.Component).ShouldBe([null, null, "C", "F", null, null, null]);
+        stored.Select(p => p.InteractionType).ShouldBe([null, null, "match", null, null, null, null]);
+        stored[1].Subpredictions.Single().Kind.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task SaveManualAsync_OptionCarryingBlockFields_AreNotStored()
+    {
+        var png = Png(100, 100);
+        var predictions = Blocks(("mcq_question", null, null));
+        predictions.Predictions[0].Subpredictions =
+            [new PredictionDto { X = 2, Y = 2, Width = 5, Height = 5, Kind = "activity", Component = "A" }];
+        await using var ctx = _db.NewContext();
+
+        var page = await NewService(ctx).SaveManualAsync(ManualRequest(png, predictions), Actor);
+
+        var option = page.Results.Single().Predictions.Predictions.Single().Subpredictions.Single();
+        option.Kind.ShouldBeNull();
+        option.Component.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("question", null, null)]
+    [InlineData("info_box", "A", null)]
+    [InlineData("activity", "J", null)]
+    [InlineData("activity", "A", "slotFill")]
+    [InlineData("activity", null, "dragPlace")]
+    [InlineData(null, null, "match")]
+    public async Task SaveManualAsync_InvalidBlockKind_ThrowsAndSavesNothing(string? kind, string? component, string? interactionType)
+    {
+        var png = Png(100, 100);
+        await using (var ctx = _db.NewContext())
+        {
+            var ex = await Should.ThrowAsync<LabelingValidationException>(() =>
+                NewService(ctx).SaveManualAsync(ManualRequest(png, Blocks((kind, component, interactionType))), Actor));
+            ex.Message.ShouldBe("labeling.invalidBlockKind");
+        }
+
+        await using var read = _db.NewContext();
+        (await NewService(read).GetPageAsync(Sha256Hex(png)))?.Results.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task DetectWithAiAsync_BlockKinds_ArePersistedAndServedFromCache()
+    {
+        var detection = new ClaudeDetection(Blocks(("activity", "B", "slotFill"), ("noise", null, null)), 10, 5);
+        _detector.DetectAsync(default!, default!, default!).ReturnsForAnyArgs(detection);
+        var request = new LabelingAiDetectRequestDto { ImageBase64 = Base64(Png(50, 60)), Model = "claude-test" };
+        await using (var ctx = _db.NewContext())
+        {
+            await NewService(ctx).DetectWithAiAsync(request, Actor);
+        }
+
+        await using var read = _db.NewContext();
+        var cached = await NewService(read).DetectWithAiAsync(request, Actor);
+
+        cached.Origin.ShouldBe("cached");
+        var p = cached.Result.Predictions.Predictions;
+        p.Select(x => x.Kind).ShouldBe(["activity", "noise"]);
+        p[0].Component.ShouldBe("B");
+        p[0].InteractionType.ShouldBe("slotFill");
+    }
+
+    [Fact]
+    public async Task GetPageAsync_LegacyStoredJsonWithoutKind_ReadsAsNullKind()
+    {
+        var png = Png(40, 40);
+        await using (var ctx = _db.NewContext())
+        {
+            await NewService(ctx).SaveManualAsync(ManualRequest(png), Actor);
+            var row = ctx.LabelingResults.Single();
+            // Revizyon 2 öncesi kayıt: kind alanları hiç yok.
+            row.BoxesJson = """{"success":true,"predictions":[{"class_id":0,"x":1,"y":2,"width":3,"height":4,"subpredictions":[]}]}""";
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var box = (await NewService(read).GetPageAsync(Sha256Hex(png)))!.Results.Single().Predictions.Predictions.Single();
+
+        box.Kind.ShouldBeNull();
+        box.Component.ShouldBeNull();
+        box.InteractionType.ShouldBeNull();
     }
 }

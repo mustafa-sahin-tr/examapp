@@ -6,6 +6,8 @@ import { Subject, firstValueFrom, takeUntil } from 'rxjs';
 import { ImageSelectorComponent } from '../image-selector/image-selector.component';
 import { LabelingAiDetectResponse, LabelingAiModel, LabelingPage, LabelingResult } from '../../models/labeling';
 import { LabelingService, manualDetectionSource, sha256OfDataUrl } from '../../services/labeling.service';
+import { DetectionSource } from '../../models/labeling';
+import { PredictionList, blockKindOf, onlyMcqBlocks } from '../../models/prediction';
 
 /** Soru tuvalinde kutuların kaynağı: kayıtlı manuel / YOLO (Model) / Claude (Ai). */
 export type CanvasSourceKind = 'Manual' | 'Model' | 'Ai';
@@ -228,11 +230,7 @@ export class CanvasDetectionSource {
     } else {
       const manual = this.manualRecord();
       if (manual) {
-        selector.applyExternalPrediction(
-          selector.beginExternalDetection(),
-          manual.predictions,
-          manualDetectionSource(manual)
-        );
+        applyMcqOnly(selector, selector.beginExternalDetection(), manual.predictions, manualDetectionSource(manual));
       }
     }
   }
@@ -265,7 +263,7 @@ export class CanvasDetectionSource {
       this.mergeResult(response.imageSha256, response.result);
       this.aiOrigin.set(response.origin);
       this.aiNotice.set(null);
-      selector.applyExternalPrediction(seq, response.result.predictions, {
+      applyMcqOnly(selector, seq, response.result.predictions, {
         kind: 'Ai',
         modelName: response.result.modelName,
         promptVersion: response.result.promptVersion,
@@ -446,5 +444,26 @@ function writeStored(key: string, value: string): void {
     localStorage.setItem(key, value);
   } catch {
     // depolama kapalı: yalnız bu oturumda geçerli
+  }
+}
+
+/**
+ * Issue #578: tuval sayfayı teste MCQ olarak kaydeder; tuvale yalnız çoktan seçmeli soru blokları uygulanır. Düşen bloklar
+ * (etkinlik, anlatım, cevap anahtarı, gürültü) seçicide saklanır: "Kaydet ve Düzelt" manuel kaydı yazarken işaretleme
+ * ekranındaki etiketleri silmesin.
+ */
+function applyMcqOnly(
+  selector: ImageSelectorComponent,
+  seq: number,
+  list: PredictionList,
+  source: DetectionSource
+): void {
+  const dropped = Array.isArray(list?.predictions)
+    ? list.predictions.filter((p) => blockKindOf(p) !== 'mcq_question')
+    : [];
+  if (dropped.length > 0) {
+    selector.applyExternalPrediction(seq, onlyMcqBlocks(list), source, dropped);
+  } else {
+    selector.applyExternalPrediction(seq, onlyMcqBlocks(list), source);
   }
 }

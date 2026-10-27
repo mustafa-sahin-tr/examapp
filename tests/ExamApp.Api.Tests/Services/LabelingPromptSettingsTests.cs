@@ -126,9 +126,23 @@ public class LabelingPromptSettingsTests
     // ---------- Issue #578: blok türleri ----------
 
     [Fact]
-    public void SchemaRevision_IsFourForBlockKindsSafetyNetAndSplitCaps()
+    public void SchemaRevision_IsFiveForTextSelectComponentD()
     {
-        LabelingPromptSettings.SchemaRevision.ShouldBe(4);
+        LabelingPromptSettings.SchemaRevision.ShouldBe(5);
+    }
+
+    [Fact]
+    public void DefaultQuestionInstruction_MapsComponentDToTextSelect_IncludingPunctuationGaps()
+    {
+        // review #582: Süper Combo s.134 "( ) içine noktalama" bloğu B/slotFill sanılıyordu.
+        var instruction = LabelingPromptSettings.Default.QuestionInstruction;
+        instruction.ShouldContain("-> textSelect");
+        instruction.ShouldContain("it is D, not B");
+        instruction.ShouldContain("For E-I use interactionType other");
+        // Türkçe Ustası s.184: D bloğu yalnız yönergeye kutulanıyordu; metin/hikâye (başlığıyla) bloğun içinde olmalı.
+        instruction.ShouldContain("the whole passage, including its title, is inside the box");
+        instruction.ShouldNotContain("For D-I");
+        instruction.Length.ShouldBeLessThanOrEqualTo(LabelingPromptSettings.MaxInstructionLength);
     }
 
     [Fact]

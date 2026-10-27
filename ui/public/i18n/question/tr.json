@@ -104,7 +104,8 @@
     "kindActivity": "Etkinlik",
     "modeSlot": "Kutu",
     "modePlace": "Yerleştir",
-    "modeMatch": "Eşleştir"
+    "modeMatch": "Eşleştir",
+    "modeTextLine": "Metin"
   },
   "inspector": {
     "quickCreateTitle": "Yeni Test Oluştur",
@@ -253,6 +254,7 @@
     },
     "dragPlace": "Yerleştir",
     "match": "Eşleştir",
+    "textSelect": "Metin",
     "placeModeAria": "Yerleştirme türü",
     "placeModePlace": "Yerleştir / sınıflandır",
     "placeModeOrder": "Sırala",
@@ -307,7 +309,50 @@
     "matchNoPair": "Eş seç",
     "matchExample": "Örnek çift",
     "matchPairedWith": "eşi: L{{n}}",
-    "matchNoItems": "Henüz öğe yok."
+    "matchNoItems": "Henüz öğe yok.",
+    "textMode": "Etkinlik türü",
+    "textModes": {
+      "select": "Seç / bul",
+      "correct": "Düzelt",
+      "punctuation": "Noktalama"
+    },
+    "textStyle": "Seçim görünümü",
+    "textStyles": {
+      "underline": "Alt çizgi",
+      "circle": "Daire",
+      "highlight": "Vurgu"
+    },
+    "textPalette": "Noktalama paleti",
+    "textPaletteHint": "Sembolleri boşlukla ayırın (en çok 20, her biri en çok 8 karakter). Paletten çıkan sembol doğru cevaplardan da düşer.",
+    "textLines": "Metin satırları",
+    "textDrawLine": "Satır kutusu çiz",
+    "textLineHint": "Görselde bir satırın çevresine kutu çizin, sonra metnini yazıp ekleyin. Boşluklar için ( ) yazın. Satırlar yalnız kutunun dikey konumuna göre sıralanır: iki sütunlu metinde okuma sırasını kontrol edin.",
+    "textLineReady": "Satır kutusu çizildi; metnini yazıp Satır ekle'ye basın.",
+    "textLineText": "Satırın metni",
+    "textLinePlaceholder": "Kitaptaki gibi, yazım hataları düzeltilmeden",
+    "textAddLine": "Satır ekle",
+    "textCancelLine": "Kutuyu kaldır",
+    "textTokens": "Metin ({{count}} öğe, {{gaps}} boşluk)",
+    "textTokensAria": "Metnin kelimeleri",
+    "textTokenHint": {
+      "select": "Doğru cevap olan kelimelere tıklayın (tuvalde de olur). Yan yana işaretlenen kelimeler tek hedef olur.",
+      "correct": "Yanlış yazılmış kelimelere tıklayın, aşağıda her hedefin doğrusunu yazın. Yan yana kelimeler tek hedef olur (\"Sonun da\").",
+      "punctuation": "Bir boşluğa tıklayın ve doğru işaret(ler)ini seçin."
+    },
+    "textNoTokens": "Henüz metin yok.",
+    "textGapAccept": "Boşluk {{n}}: doğru işaret(ler)",
+    "textTokenText": "Kelimenin metni",
+    "textRemoveToken": "Öğeyi sil",
+    "textTargets": "Doğru cevaplar (elle)",
+    "textNoTargets": "Henüz hedef işaretlenmedi.",
+    "textSplit": "Ayır",
+    "textSplitHint": "Hedefi kelime başına ayrı hedeflere böler",
+    "textMultiTargetHint": "{{count}} kelimelik hedef — tek hata sayılır; ayrı hatalarsa Ayır'a basın.",
+    "textRemoveTarget": "Hedef {{n}}'i kaldır",
+    "textAcceptPlaceholder": "Doğrusu (birden çoksa virgülle)",
+    "textAcceptAria": "Hedef {{n}} kabul edilen düzeltmeler",
+    "textSuffixPlaceholder": "İsteğe bağlı ekler (virgülle)",
+    "textSuffixAria": "Hedef {{n}} isteğe bağlı ekler"
   },
   "preview": {
     "headingWithTest": "Ön İzleme — {{testName}}",

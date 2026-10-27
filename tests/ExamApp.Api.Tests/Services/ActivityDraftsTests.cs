@@ -243,6 +243,105 @@ public class ActivityDraftsTests
             .ShouldBe(["labeling.activity.invalid.noTargets", "labeling.activity.invalid.noCards"]);
     }
 
+    // ---------- textSelect (#582) ----------
+
+    private static ActivityDrafts.TextDraftLine Line(string text, int x1, int y1, int x2, int y2) => new(text, x1, y1, x2, y2);
+
+    [Fact]
+    public void Map_TextSelect_TokenizesLinesInBlockSpace_MergesLineBreakHyphen_AndPassesValidation()
+    {
+        // Kırpma (10,10)-(60,15) → blokta (4,4) 100x10; (10,20)-(30,25) → (4,24) 40x10. Kırpmadaki (0,30)-(5,35) blok dışı → satır atılır.
+        var draft = new ActivityDrafts.TextDraft(" Yanlış yazılan kelimeleri bulunuz. ", "Select", "UNDERLINE", ["."],
+            [Line("Sonun da dolaş-", 10, 10, 60, 15), Line("mış.", 10, 20, 30, 25), Line("   ", 10, 30, 60, 35), Line("dışarıda", 0, 30, 5, 35)]);
+
+        var mapped = ActivityDrafts.Map(draft, Frame);
+
+        mapped.Instruction.ShouldBe("Yanlış yazılan kelimeleri bulunuz.");
+        var plan = mapped.Plan;
+        ((string)plan["type"]!).ShouldBe(TextSelectGrader.Type);
+        ((string)plan["mode"]!).ShouldBe("select");
+        ((string)plan["style"]!).ShouldBe("underline");
+        plan.ContainsKey("palette").ShouldBeFalse();                    // palet yalnız punctuation'da
+        var tokens = plan["tokens"]!.AsArray();
+        tokens.Select(t => ((string)t!["id"]!, (string)t["text"]!, (int)t["line"]!)).ShouldBe([("t1", "Sonun", 0), ("t2", "da", 0), ("t3", "dolaşmış.", 0)]);
+        // "Sonun da dolaş-" L=15, W=100: Sonun 0..33, da 40..53, dolaş- 60..100.
+        Xywh(tokens[0]!["boxes"]![0]).ShouldBe((4, 4, 33, 10));
+        tokens[2]!["boxes"]!.AsArray().Select(Xywh).ShouldBe([(64, 4, 40, 10), (4, 24, 40, 10)]);
+        tokens.ShouldAllBe(t => !t!.AsObject().ContainsKey("gap"));
+        Valid(TextSelectGrader.Type, plan).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Map_TextSelect_Punctuation_UsesGapsAndDefaultPaletteWhenModelGivesNone()
+    {
+        var draft = new ActivityDrafts.TextDraft("", "punctuation", "circle", [], [Line("Eyvah ( ) Ne yaptın()", 10, 10, 60, 15)]);
+
+        var plan = ActivityDrafts.Map(draft, Frame).Plan;
+
+        ((string)plan["mode"]!).ShouldBe("punctuation");
+        plan.ContainsKey("style").ShouldBeFalse();                      // punctuation'da stil yok
+        plan["palette"]!.AsArray().Select(p => (string)p!).ShouldBe(ActivityDrafts.DefaultTextSelectPalette);
+        var tokens = plan["tokens"]!.AsArray();
+        tokens.Select(t => ((string)t!["id"]!, (string)t["text"]!)).ShouldBe([("t1", "Eyvah"), ("g1", "( )"), ("t2", "Ne"), ("t3", "yaptın"), ("g2", "( )")]);
+        ((bool)tokens[1]!["gap"]!).ShouldBeTrue();
+        Valid(TextSelectGrader.Type, plan).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Map_TextSelect_ModelPaletteIsDedupedAndLimited_UnknownModeFallsBackToSelect()
+    {
+        var punctuation = ActivityDrafts.Map(new ActivityDrafts.TextDraft("", "punctuation", "", [" ! ", "!", "?", "123456789"],
+            [Line("Gel ( )", 10, 10, 60, 15)]), Frame).Plan;
+        punctuation["palette"]!.AsArray().Select(p => (string)p!).ShouldBe(["!", "?"]);
+
+        var unknown = ActivityDrafts.Map(new ActivityDrafts.TextDraft("", "underline-words", "bold", [], [Line("Gel", 10, 10, 60, 15)]), Frame).Plan;
+        ((string)unknown["mode"]!).ShouldBe("select");
+        unknown.ContainsKey("style").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Map_TextSelect_PunctuationWithoutGaps_KeepsModeAndIsExplained()
+    {
+        var plan = ActivityDrafts.Map(new ActivityDrafts.TextDraft("", "punctuation", "", ["."], [Line("Gel buraya", 10, 10, 60, 15)]), Frame).Plan;
+
+        ((string)plan["mode"]!).ShouldBe("punctuation");
+        Valid(TextSelectGrader.Type, plan).ShouldBeFalse();
+        ActivityPlanDiagnostics.Explain(TextSelectGrader.Type, plan.ToJsonString()).ShouldBe(["labeling.activity.invalid.noGaps"]);
+    }
+
+    [Fact]
+    public void Map_TextSelect_GapsInSelectMode_AndNoText_AreExplained()
+    {
+        var gaps = ActivityDrafts.Map(new ActivityDrafts.TextDraft("", "select", "", [], [Line("Gel ( )", 10, 10, 60, 15)]), Frame).Plan;
+        Valid(TextSelectGrader.Type, gaps).ShouldBeFalse();
+        ActivityPlanDiagnostics.Explain(TextSelectGrader.Type, gaps.ToJsonString()).ShouldBe(["labeling.activity.invalid.gapsNeedPunctuation"]);
+
+        var empty = ActivityDrafts.Map(new ActivityDrafts.TextDraft(null!, null!, null!, null!, null!), Frame).Plan;
+        empty["tokens"]!.AsArray().ShouldBeEmpty();
+        ActivityPlanDiagnostics.Explain(TextSelectGrader.Type, empty.ToJsonString()).ShouldBe(["labeling.activity.invalid.noText"]);
+    }
+
+    [Fact]
+    public void Map_TextSelect_LongWordIsTruncatedToGraderLimit()
+    {
+        var plan = ActivityDrafts.Map(new ActivityDrafts.TextDraft("", "select", "", [], [Line(new string('a', 80), 10, 10, 60, 15)]), Frame).Plan;
+
+        ((string)plan["tokens"]![0]!["text"]!).Length.ShouldBe(TextSelectGrader.MaxTokenTextLength);
+        Valid(TextSelectGrader.Type, plan).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Map_TextSelect_TruncationNeverSplitsASurrogatePair()
+    {
+        // review #582 (D2): 63 harf + emoji (2 birim, 64.–65.) → 63 birime kesilir, yarım surrogate kalmaz.
+        var text = new string('a', 63) + "\U0001F600" + "b";
+        var plan = ActivityDrafts.Map(new ActivityDrafts.TextDraft("", "select", "", [], [Line(text, 10, 10, 60, 15)]), Frame).Plan;
+
+        var token = (string)plan["tokens"]![0]!["text"]!;
+        token.ShouldBe(new string('a', 63));
+        ActivityDrafts.TruncateText(new string('a', 62) + "\U0001F600" + "b", 64).ShouldBe(new string('a', 62) + "\U0001F600");
+    }
+
     [Fact]
     public void Explain_GraderRejectsForAnotherReason_ReturnsGenericKey()
     {
@@ -273,11 +372,12 @@ public class ActivityDraftsTests
     [InlineData("SLOTFILL", "slotFill")]
     [InlineData(" dragPlace ", "dragPlace")]
     [InlineData("match", "match")]
+    [InlineData("TEXTSELECT", "textSelect")]
     [InlineData("mcq", null)]
     [InlineData("dragDropLabeling", null)]
     [InlineData("", null)]
     [InlineData(null, null)]
-    public void Canonical_AcceptsOnlyTheFourPilotTypes(string? input, string? expected) =>
+    public void Canonical_AcceptsOnlyTheSupportedTypes(string? input, string? expected) =>
         ActivityStructureSettings.Canonical(input).ShouldBe(expected);
 
     [Fact]
@@ -285,7 +385,7 @@ public class ActivityDraftsTests
     {
         var instructions = ActivityStructureSettings.Types.Select(ActivityStructureSettings.DefaultInstruction).ToList();
 
-        instructions.Distinct().Count().ShouldBe(4);
+        instructions.Distinct().Count().ShouldBe(5);
         instructions.ShouldAllBe(i => i.Contains("{width}") && i.Contains("{height}")
                                       && i.Length <= ActivityStructureSettings.MaxInstructionLength);
     }

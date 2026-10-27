@@ -2,6 +2,7 @@
   "labeling": {
     "invalidImage": "The image could not be read.",
     "imageTooLarge": "The image is too large (20 MB max).",
+    "imageTooManyPixels": "The image resolution is too high ({0} megapixels max, longest edge {1} px max). Downscale the image and upload it again.",
     "invalidRegion": "Invalid region.",
     "invalidHash": "Invalid page id.",
     "unknownModel": "This AI model is not available.",
@@ -56,7 +57,7 @@
       "busy": "The book registry is busy with another operation. Try again."
     },
     "activity": {
-      "unknownType": "Unknown activity type (matrixChoice, slotFill, dragPlace or match).",
+      "unknownType": "Unknown activity type (matrixChoice, slotFill, dragPlace, match or textSelect).",
       "invalidBlocks": "Send 1 to 20 activity blocks.",
       "invalidBlockKey": "Each block needs an id of at most 64 characters.",
       "duplicateBlockKey": "Block ids must be unique.",
@@ -71,7 +72,11 @@
         "noTargets": "Add at least one target.",
         "noCards": "Add at least one card.",
         "matchItems": "Both columns need at least one item.",
-        "matchAllPrelinked": "At least one item must be left for the student to match (not all can be examples)."
+        "matchAllPrelinked": "At least one item must be left for the student to match (not all can be examples).",
+        "noText": "No text was read; add at least one line.",
+        "noGaps": "A punctuation activity needs at least one \"( )\" gap.",
+        "tooManyGaps": "A block can have at most 100 \"( )\" gaps; split the block.",
+        "gapsNeedPunctuation": "The text has \"( )\" gaps; switch the mode to punctuation or remove the gaps."
       }
     }
   }

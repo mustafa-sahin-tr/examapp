@@ -100,7 +100,7 @@ public class LabelingBooksController : BaseController
         }
         catch (LabelingValidationException ex)
         {
-            return BadRequest(Error(ex.Message));
+            return BadRequest(Error(ex.Message, args: ex.Args));
         }
         catch (BookRegistryConflictException ex)
         {
@@ -112,6 +112,7 @@ public class LabelingBooksController : BaseController
         }
     }
 
-    private object Error(string messageKey, string? errorCode = null) =>
-        new { message = _localizer[messageKey].Value, errorCode };
+    // Biçim argümanı yalnız varsa verilir: argümansız anahtarlarda süslü parantezli metin ("{width}") format hatası vermesin.
+    private object Error(string messageKey, string? errorCode = null, object[]? args = null) =>
+        new { message = (args is { Length: > 0 } ? _localizer[messageKey, args] : _localizer[messageKey]).Value, errorCode };
 }

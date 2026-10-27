@@ -290,6 +290,8 @@
             (click)="setSelectionMode('placeTarget')">{{ t('canvas.modePlace') }}</button>
           <button type="button" [class.is-active]="selectionMode === 'matchLeft' || selectionMode === 'matchRight'"
             (click)="setSelectionMode('matchLeft')">{{ t('canvas.modeMatch') }}</button>
+          <button type="button" [class.is-active]="selectionMode === 'textLine'"
+            (click)="setSelectionMode('textLine')">{{ t('canvas.modeTextLine') }}</button>
           <button type="button" class="qc-mode-mask" [class.is-active]="selectionMode === 'mask'"
             [title]="t('mask.modeHint')" (click)="setSelectionMode('mask')">{{ t('mask.mode') }}</button>
         </div>
@@ -442,6 +444,8 @@
                 [attr.aria-pressed]="d.interactionType === 'dragPlace'" (click)="insSetInteractionType('dragPlace')">{{ t('inspector.dragPlace') }}</button>
               <button type="button" [class.is-active]="d.interactionType === 'match'"
                 [attr.aria-pressed]="d.interactionType === 'match'" (click)="insSetInteractionType('match')">{{ t('inspector.match') }}</button>
+              <button type="button" [class.is-active]="d.interactionType === 'textSelect'"
+                [attr.aria-pressed]="d.interactionType === 'textSelect'" (click)="insSetInteractionType('textSelect')">{{ t('inspector.textSelect') }}</button>
             </div>
           </section>
 
@@ -1084,6 +1088,142 @@
               }
             </div>
             <span class="qc-hint-sm" data-testid="match-distractors">{{ t('inspector.placeDistractorCount', { count: mt.distractorCount }) }}</span>
+          </section>
+          }
+
+          <!-- Metin üzerinde işaretleme (#582); cevaplar yalnız elle -->
+          @if (d.interactionType === 'textSelect' && d.textSelect; as ts) {
+          <section class="qc-insp-sec qc-text-select" data-testid="inspector-text-select">
+            <div class="qc-lbl">{{ t('inspector.textMode') }}</div>
+            <div class="qc-segmented qc-segmented--full" role="group" [attr.aria-label]="t('inspector.textMode')">
+              @for (mode of textSelectModes; track mode) {
+              <button type="button" [class.is-active]="ts.mode === mode" [attr.aria-pressed]="ts.mode === mode"
+                [attr.data-text-mode]="mode" (click)="insTextMode(mode)">{{ t('inspector.textModes.' + mode) }}</button>
+              }
+            </div>
+            @if (ts.mode === 'punctuation') {
+            <label class="qc-slot__field">
+              <span class="qc-lbl">{{ t('inspector.textPalette') }}</span>
+              <input class="control qc-input" type="text" data-testid="text-palette" [value]="ts.palette.join(' ')"
+                (change)="insTextPalette($event)" />
+            </label>
+            <span class="qc-hint-sm">{{ t('inspector.textPaletteHint') }}</span>
+            } @else {
+            <div class="qc-lbl">{{ t('inspector.textStyle') }}</div>
+            <div class="qc-segmented qc-segmented--full" role="group" [attr.aria-label]="t('inspector.textStyle')">
+              @for (style of textSelectStyles; track style) {
+              <button type="button" [class.is-active]="ts.style === style" [attr.aria-pressed]="ts.style === style"
+                (click)="insTextStyle(style)">{{ t('inspector.textStyles.' + style) }}</button>
+              }
+            </div>
+            }
+
+            <div class="qc-lbl">{{ t('inspector.textLines') }}</div>
+            <div class="qc-btn-row">
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [class.is-active]="selectionMode === 'textLine'"
+                data-testid="text-line-mode" (click)="insTextLineMode()">
+                <mat-icon>crop_7_5</mat-icon>{{ t('inspector.textDrawLine') }}
+              </button>
+            </div>
+            <span class="qc-hint-sm" data-testid="text-line-hint">{{ ts.hasPendingLine ? t('inspector.textLineReady') : t('inspector.textLineHint') }}</span>
+            <label class="qc-slot__field">
+              <span class="qc-lbl">{{ t('inspector.textLineText') }}</span>
+              <textarea #textLineText class="control qc-input qc-slot__textarea" rows="2" data-testid="text-line-text"
+                [placeholder]="t('inspector.textLinePlaceholder')"></textarea>
+            </label>
+            <div class="qc-btn-row">
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" data-testid="text-add-line" [disabled]="!ts.hasPendingLine"
+                (click)="insTextAddLine(textLineText)">
+                <mat-icon>playlist_add</mat-icon>{{ t('inspector.textAddLine') }}
+              </button>
+              @if (ts.hasPendingLine) {
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" (click)="insTextCancelLine()">
+                <mat-icon>close</mat-icon>{{ t('inspector.textCancelLine') }}
+              </button>
+              }
+            </div>
+
+            <div class="qc-lbl">{{ t('inspector.textTokens', { count: ts.tokenCount, gaps: ts.gapCount }) }}</div>
+            <span class="qc-hint-sm">{{ t('inspector.textTokenHint.' + ts.mode) }}</span>
+            <div class="qc-text-select__text" role="group" [attr.aria-label]="t('inspector.textTokensAria')">
+              @for (line of ts.lines; track line.line) {
+              <div class="qc-text-select__line">
+                @for (token of line.tokens; track token.id) {
+                <button type="button" class="qc-text-select__chip" [class.is-gap]="token.gap"
+                  [class.is-target]="token.targetNo !== null && ts.mode !== 'punctuation'" [class.is-selected]="token.selected"
+                  [class.is-missing]="token.gap && !token.accept.length" [attr.data-text-token]="token.id"
+                  [attr.aria-pressed]="token.gap ? token.selected : token.targetNo !== null"
+                  (click)="insTextTokenClick(token.id)">
+                  {{ token.gap ? '( ' + (token.accept.join(' ') || ' ') + ' )' : token.text }}
+                  @if (token.targetNo !== null && ts.mode !== 'punctuation') {
+                  <sup class="qc-text-select__no">{{ token.targetNo }}</sup>
+                  }
+                </button>
+                }
+              </div>
+              } @empty {
+              <span class="qc-hint-sm">{{ t('inspector.textNoTokens') }}</span>
+              }
+            </div>
+
+            @if (ts.selected; as sel) {
+            <div class="qc-text-select__editor" data-testid="text-token-editor">
+              @if (sel.gap) {
+              <span class="qc-lbl">{{ t('inspector.textGapAccept', { n: sel.gapNo }) }}</span>
+              <span class="qc-matrix__answers" role="group" [attr.aria-label]="t('inspector.textGapAccept', { n: sel.gapNo })">
+                @for (symbol of ts.palette; track symbol) {
+                <button type="button" class="qc-matrix__answer" [class.is-correct]="sel.accept.includes(symbol)"
+                  [attr.aria-pressed]="sel.accept.includes(symbol)" [attr.data-gap-symbol]="symbol"
+                  (click)="insTextGapSymbol(sel.id, symbol)">{{ symbol }}</button>
+                }
+              </span>
+              } @else {
+              <label class="qc-slot__field">
+                <span class="qc-lbl">{{ t('inspector.textTokenText') }}</span>
+                <input class="control qc-input" type="text" data-testid="text-token-text" [attr.maxlength]="ts.limits.maxTokenTextLength"
+                  [value]="sel.text" (change)="insTextTokenText(sel.id, $event)" />
+              </label>
+              }
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" data-testid="text-remove-token" (click)="insTextRemoveToken(sel.id)">
+                <mat-icon>delete</mat-icon>{{ t('inspector.textRemoveToken') }}
+              </button>
+            </div>
+            }
+
+            @if (ts.mode !== 'punctuation') {
+            <div class="qc-lbl">{{ t('inspector.textTargets') }}</div>
+            <div class="qc-solution">
+              @for (target of ts.targets; track target.no) {
+              <div class="qc-text-select__target" [class.is-missing]="target.missing" [attr.data-text-target]="target.no">
+                <div class="qc-row">
+                  <span class="qc-zone-id">{{ target.no }}</span>
+                  <span class="qc-text-select__target-text">{{ target.text }}</span>
+                  @if (target.tokenIds.length > 1) {
+                  <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" data-testid="text-split"
+                    [matTooltip]="t('inspector.textSplitHint')" (click)="insTextSplit(target.no - 1)">
+                    <mat-icon>call_split</mat-icon>{{ t('inspector.textSplit') }}
+                  </button>
+                  }
+                  <button type="button" class="qc-icon-btn" [attr.aria-label]="t('inspector.textRemoveTarget', { n: target.no })"
+                    (click)="insTextRemoveTarget(target.no - 1)"><mat-icon>close</mat-icon></button>
+                </div>
+                @if (target.tokenIds.length > 1) {
+                <span class="qc-hint-sm" data-testid="text-multi-hint">{{ t('inspector.textMultiTargetHint', { count: target.tokenIds.length }) }}</span>
+                }
+                @if (ts.mode === 'correct') {
+                <input class="control qc-input" type="text" data-testid="text-accept" [value]="target.accept.join(', ')"
+                  [placeholder]="t('inspector.textAcceptPlaceholder')" [attr.aria-label]="t('inspector.textAcceptAria', { n: target.no })"
+                  (change)="insTextAccept(target.no - 1, $event)" />
+                <input class="control qc-input" type="text" [value]="target.optionalSuffixes.join(', ')"
+                  [placeholder]="t('inspector.textSuffixPlaceholder')" [attr.aria-label]="t('inspector.textSuffixAria', { n: target.no })"
+                  (change)="insTextSuffixes(target.no - 1, $event)" />
+                }
+              </div>
+              } @empty {
+              <span class="qc-hint-sm">{{ t('inspector.textNoTargets') }}</span>
+              }
+            </div>
+            }
           </section>
           }
 

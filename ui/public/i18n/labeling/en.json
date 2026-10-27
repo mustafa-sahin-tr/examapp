@@ -191,7 +191,8 @@
       "matrixChoice": "Matrix choice",
       "slotFill": "Answer box",
       "dragPlace": "Drag and place",
-      "match": "Matching"
+      "match": "Matching",
+      "textSelect": "Text marking"
     },
     "activity": {
       "loadFailed": "Activity instructions could not be loaded.",
@@ -220,7 +221,8 @@
       "matrixChoice": "Matrix choice",
       "slotFill": "Answer box",
       "dragPlace": "Drag and place",
-      "match": "Matching"
+      "match": "Matching",
+      "textSelect": "Text marking"
     },
     "promptSaved": "{{type}} instruction v{{version}} saved; in the question canvas, drafts of this type are extracted with the new instruction.",
     "promptUnchanged": "Instruction unchanged (v{{version}}); nothing to extract again."

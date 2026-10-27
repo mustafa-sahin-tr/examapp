@@ -72,6 +72,23 @@
       "tooLong": "Ad çok uzun (en çok 200 karakter)",
       "missingPair": "{{count}} sol öğenin eşi seçilmemiş",
       "allPrelinked": "Örnek dışında eşlenecek sol öğe kalmadı"
+    },
+    "textSelect": {
+      "noText": "Metin yok (satır kutusu çizip metnini yazın)",
+      "tooManyTokens": "En çok 600 kelime / boşluk olabilir; bloğu bölün",
+      "tooManyLines": "En çok 300 satır olabilir",
+      "tokenTooLong": "Kelime {{n}}: metin boş ya da çok uzun (en çok 64 karakter)",
+      "noGaps": "Noktalama etkinliğinde en az bir \"( )\" boşluğu olmalı",
+      "tooManyGaps": "En çok 100 \"( )\" boşluğu olabilir; bloğu bölün",
+      "gapsNeedPunctuation": "Metinde \"( )\" boşlukları var; modu noktalama yapın ya da boşlukları silin",
+      "paletteCount": "Palette 1 ile 20 arasında sembol olmalı",
+      "symbolTooLong": "Bir palet sembolü çok uzun (en çok 8 karakter)",
+      "noTargets": "Doğru cevap işaretlenmedi (kelimeye tıklayıp hedef yapın)",
+      "tooManyTargets": "En çok 100 hedef olabilir",
+      "targetTooLong": "Hedef {{n}}: en çok 8 kelime olabilir (Ayır ile bölün)",
+      "missingAccept": "Hedef {{n}}: kabul edilen düzeltme yazılmadı",
+      "tooLong": "Hedef {{n}}: düzeltme listesi çok uzun (en çok 20 giriş, her biri 100 karakter)",
+      "missingGapAccept": "Boşluk {{n}}: doğru işaret seçilmedi"
     }
   },
   "menu": {
@@ -106,10 +123,12 @@
     "removeSlot": "Kutuyu sil",
     "drawPlace": "Yerleştirme hedefi / kartı çiz",
     "drawMatch": "Eşleştirme öğesi çiz",
+    "drawTextLine": "Metin satırı kutusu çiz",
     "placeTargetLabel": "Hedef {{id}}",
     "placeCardLabel": "Kart {{id}}",
     "matchLeftLabel": "Sol öğe {{id}}",
     "matchRightLabel": "Sağ öğe {{id}}",
+    "textTokenLabel": "Metin öğesi: {{id}}",
     "removeItem": "Öğeyi sil"
   },
   "messages": {

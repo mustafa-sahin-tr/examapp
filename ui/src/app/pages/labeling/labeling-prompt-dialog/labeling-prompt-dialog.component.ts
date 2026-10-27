@@ -24,13 +24,14 @@ import { DRAG_PLACE } from '../../../models/drag-place';
 import { MATCH } from '../../../models/match';
 import { MATRIX_CHOICE } from '../../../models/matrix-choice';
 import { SLOT_FILL } from '../../../models/slot-fill';
+import { TEXT_SELECT } from '../../../models/text-select';
 import { LabelingService } from '../../../services/labeling.service';
 
 const MAX_INSTRUCTION = 4000;
 const MAX_PADDING = 50;
 
 /** Issue #579: prompt ekranında sayfa sekmesinden sonra sırayla gösterilen etkinlik tipleri (her biri ayrı sürümlenir). */
-export const ACTIVITY_PROMPT_TYPES: readonly BlockInteractionType[] = [MATRIX_CHOICE, SLOT_FILL, DRAG_PLACE, MATCH];
+export const ACTIVITY_PROMPT_TYPES: readonly BlockInteractionType[] = [MATRIX_CHOICE, SLOT_FILL, DRAG_PLACE, MATCH, TEXT_SELECT];
 
 /** Bir etkinlik tipinin talimatı kaydedildi (diyalog bununla kapanır). */
 export interface LabelingActivityPromptSaved {

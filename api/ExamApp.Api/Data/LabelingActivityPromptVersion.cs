@@ -12,7 +12,7 @@ public class LabelingActivityPromptVersion
 {
     public int Id { get; set; }
 
-    /// <summary><c>matrixChoice</c> | <c>slotFill</c> | <c>dragPlace</c> | <c>match</c>.</summary>
+    /// <summary><c>matrixChoice</c> | <c>slotFill</c> | <c>dragPlace</c> | <c>match</c> | <c>textSelect</c> (#582).</summary>
     [MaxLength(32)]
     public string InteractionType { get; set; } = string.Empty;
 

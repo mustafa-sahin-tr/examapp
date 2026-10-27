@@ -354,6 +354,7 @@ describe('LabelingPromptDialogComponent', () => {
                 labelingTr.prompt.tabs.slotFill,
                 labelingTr.prompt.tabs.dragPlace,
                 labelingTr.prompt.tabs.match,
+                labelingTr.prompt.tabs.textSelect,
             ]);
         });
 

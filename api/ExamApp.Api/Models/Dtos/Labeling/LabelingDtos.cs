@@ -43,8 +43,8 @@ public class PredictionDto
     public string? Component { get; set; }
 
     /// <summary>
-    /// Issue #578: <c>matrixChoice</c> | <c>slotFill</c> | <c>dragPlace</c> | <c>match</c>; yalnız <c>kind = activity</c> iken ve
-    /// bileşenle tutarlıysa (A → matrixChoice, B → slotFill, C → dragPlace | match), aksi halde null.
+    /// Issue #578: <c>matrixChoice</c> | <c>slotFill</c> | <c>dragPlace</c> | <c>match</c> | <c>textSelect</c>; yalnız <c>kind = activity</c> iken ve
+    /// bileşenle tutarlıysa (A → matrixChoice, B → slotFill, C → dragPlace | match, D → textSelect #582), aksi halde null.
     /// </summary>
     [JsonPropertyName("interaction_type")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

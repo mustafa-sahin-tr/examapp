@@ -198,6 +198,53 @@ describe('QuestionCanvasComponent', () => {
         });
     });
 
+    describe('textSelect inspector bridge (#582)', () => {
+        it('textActions_DelegateWithActiveQuestion_AddLineClearsFieldOnlyOnSuccess', () => {
+            const sel = {
+                currentRegion: { name: 'Soru 2' },
+                activeRegionIndex: 1,
+                selectTextLineMode: vi.fn(),
+                setTextSelectMode: vi.fn(),
+                setTextSelectStyle: vi.fn(),
+                setTextSelectPalette: vi.fn(),
+                addTextSelectLine: vi.fn().mockReturnValueOnce(true).mockReturnValueOnce(false),
+                clickTextSelectToken: vi.fn(),
+                setTextSelectTokenText: vi.fn(),
+                toggleTextSelectGapSymbol: vi.fn(),
+                splitTextSelectTarget: vi.fn(),
+                setTextSelectTargetAccept: vi.fn(),
+            };
+            component.imageSelector = sel as any;
+
+            component.insTextLineMode();
+            component.insTextMode('punctuation');
+            component.insTextStyle('circle');
+            component.insTextPalette({ target: { value: '. , !' } } as unknown as Event);
+            const field = { value: 'Bir gün' } as HTMLTextAreaElement;
+            component.insTextAddLine(field);
+            expect(field.value).toBe('');
+            field.value = 'tekrar';
+            component.insTextAddLine(field);
+            expect(field.value).toBe('tekrar');
+            component.insTextTokenClick('t3');
+            component.insTextTokenText('t3', { target: { value: 'dolaşmış' } } as unknown as Event);
+            component.insTextGapSymbol('g1', '!');
+            component.insTextSplit(0);
+            component.insTextAccept(0, { target: { value: 'Sonunda' } } as unknown as Event);
+
+            expect(sel.selectTextLineMode).toHaveBeenCalledWith(1);
+            expect(sel.setTextSelectMode).toHaveBeenCalledWith('Soru 2', 'punctuation');
+            expect(sel.setTextSelectStyle).toHaveBeenCalledWith('Soru 2', 'circle');
+            expect(sel.setTextSelectPalette).toHaveBeenCalledWith('Soru 2', '. , !');
+            expect(sel.addTextSelectLine).toHaveBeenCalledWith('Soru 2', 'Bir gün');
+            expect(sel.clickTextSelectToken).toHaveBeenCalledWith('Soru 2', 't3');
+            expect(sel.setTextSelectTokenText).toHaveBeenCalledWith('Soru 2', 't3', 'dolaşmış');
+            expect(sel.toggleTextSelectGapSymbol).toHaveBeenCalledWith('Soru 2', 'g1', '!');
+            expect(sel.splitTextSelectTarget).toHaveBeenCalledWith('Soru 2', 0);
+            expect(sel.setTextSelectTargetAccept).toHaveBeenCalledWith('Soru 2', 0, 'Sonunda');
+        });
+    });
+
     // Issue #581: hedef sayfanın türü (etkinlik bağlamı), etkinlik bloğunda tip seçimi, maske köprüsü, öğrenci gibi çöz.
     describe('activity context (#581)', () => {
         it('onOptionSelected_ActivityWorksheet_UsesRowKindWithoutFetching', () => {

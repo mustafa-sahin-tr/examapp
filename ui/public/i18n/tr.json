@@ -383,6 +383,44 @@
         "rightFallback": "Sağ {{n}}",
         "markCorrect": "doğru",
         "markWrong": "yanlış"
+      },
+      "textSelect": {
+        "hint": {
+          "select": "Yönergeye uyan kelimelere dokun; yeniden dokununca seçim kalkar. Kaç tane olduğu söylenmez.",
+          "correct": "Yanlış yazılmış kelimeye dokun, alttaki kutuya doğrusunu yaz. Birden çok kelimelik hatada kelimelerden birine yazman yeter.",
+          "punctuation": "Parantezli boşluğa dokun, alttaki paletten uygun işareti seç."
+        },
+        "solutionShownHint": "Doğru cevaplar gösteriliyor.",
+        "viewAria": "Görünüm",
+        "viewImage": "Görsel",
+        "viewText": "Metin",
+        "textViewAria": "Metin görünümü",
+        "gapAria": "Boşluk {{n}}",
+        "gapValue": "işaret: {{value}}",
+        "gapEmpty": "boş",
+        "selected": "seçili",
+        "correctionValue": "düzeltme: {{value}}",
+        "correctionEmpty": "düzeltme yazılmadı",
+        "solutionTarget": "doğru cevap",
+        "acceptedCorrection": "doğrusu: {{value}}",
+        "mark": {
+          "correct": "doğru",
+          "extra": "fazla seçim",
+          "value": "düzeltme yanlış",
+          "wrong": "yanlış"
+        },
+        "extraTag": "fazla",
+        "tooMany": "Çok fazla kelime seçtin; işaretler gösterilmiyor. Seçimini azaltıp yeniden kontrol et.",
+        "counter": "Bulunan {{found}} · Kalan {{missing}} · Fazla {{extra}}",
+        "counterPunctuation": "Doğru {{correct}} · Yanlış {{wrong}}",
+        "paletteLabel": "Boşluk {{n}} için işaret seç",
+        "paletteAria": "Boşluk {{n}} noktalama paleti",
+        "putSymbol": "{{symbol}} koy",
+        "clearGap": "Boşalt",
+        "done": "Tamam",
+        "correctionLabel": "«{{word}}» kelimesinin doğrusu",
+        "correctionAria": "«{{word}}» için düzeltme",
+        "deselect": "Seçimi kaldır"
       }
     },
     "sharingBadge": {

@@ -2000,7 +2000,7 @@ describe('ImageSelectorComponent', () => {
                 predictions: [
                     box(10, {}, 2),
                     box(100, { kind: 'activity', component: 'A', interaction_type: 'matrixChoice' }),
-                    box(200, { kind: 'activity', component: 'D' }),
+                    box(200, { kind: 'activity', component: 'E' }),
                     box(300, { kind: 'info_box' }),
                     box(400, { kind: 'answer_key' }),
                     box(500, { kind: 'noise' }),
@@ -2023,7 +2023,7 @@ describe('ImageSelectorComponent', () => {
                 'mcq_question', 'activity', 'activity', 'info_box', 'answer_key', 'noise',
             ]);
             expect(component.getActivityComponent('Soru 2')).toBe('A');
-            expect(component.getActivityComponent('Soru 3')).toBe('D');
+            expect(component.getActivityComponent('Soru 3')).toBe('E');
             expect(component.getActivityComponent('Soru 4')).toBeNull();
             expect('kind' in component.regions()[1]).toBe(false);
             expect('interaction_type' in component.regions()[1]).toBe(false);
@@ -2285,7 +2285,7 @@ describe('ImageSelectorComponent', () => {
                 ]);
                 expect(predictions.predictions[0].subpredictions.length).toBe(2);
                 expect(predictions.predictions[1]).toEqual(expect.objectContaining({ component: 'A', interaction_type: 'matrixChoice', subpredictions: [] }));
-                expect(predictions.predictions[2].component).toBe('D');
+                expect(predictions.predictions[2].component).toBe('E');
                 expect('interaction_type' in predictions.predictions[2]).toBe(false);
                 expect('component' in predictions.predictions[3]).toBe(false);
 
@@ -2296,7 +2296,7 @@ describe('ImageSelectorComponent', () => {
                     'mcq_question', 'activity', 'activity', 'info_box', 'answer_key', 'noise',
                 ]);
                 expect(component.getInteractionType('Soru 2')).toBe('matrixChoice');
-                expect(component.getActivityComponent('Soru 3')).toBe('D');
+                expect(component.getActivityComponent('Soru 3')).toBe('E');
             });
         });
     });
@@ -2503,6 +2503,154 @@ describe('ImageSelectorComponent', () => {
         });
     });
 
+    describe('textSelect authoring (issue #582)', () => {
+        /** Bölge (100,100) 400×300. Çizim koordinatları tuval pikselidir. */
+        function setup() {
+            vi.spyOn(component, 'drawImage').mockReturnValue(undefined);
+            component.regions.set([{ ...region('Soru 1', []), x: 100, y: 100, width: 400, height: 300 }] as any);
+            (component as any).ctx = {};
+        }
+
+        function pointer(x1: number, y1: number, x2 = x1, y2 = y1) {
+            const point = vi.spyOn(component as any, 'toCanvasPoint').mockReturnValue({ x: x1, y: y1 });
+            component.startSelection(new MouseEvent('mousedown'));
+            point.mockReturnValue({ x: x2, y: y2 });
+            component.endSelection(new MouseEvent('mouseup'));
+            point.mockRestore();
+        }
+
+        const state = () => component.ensureTextSelectState('Soru 1');
+        const save = () => component.getRegions(null).questions[0];
+        const messages = () => component.validateQuestions({ requireCorrectAnswer: true })[0]?.messages ?? [];
+
+        it('select_DrawLineBoxes_AddLines_ClickTokensToMarkTargets_PlanAndSolutionSeparate', () => {
+            setup();
+            component.selectTextLineMode(0);
+            expect(component.getInteractionType('Soru 1')).toBe('textSelect');
+
+            // İkinci satır önce çizilir; okuma sırası kutunun dikey konumundan gelir.
+            pointer(110, 160, 260.4, 180);
+            expect(state().pendingLine).toEqual({ x: 10, y: 60, width: 150, height: 20 });
+            expect(component.addTextSelectLine('Soru 1', 'gökte ki kuş')).toBe(true);
+            pointer(110, 110, 260, 130);
+            expect(component.addTextSelectLine('Soru 1', 'Sonun da  dolaş-')).toBe(true);
+            expect(component.addTextSelectLine('Soru 1', 'kutu yok')).toBe(false);
+
+            expect(state().tokens.map((t) => [t.id, t.text, t.line])).toEqual([
+                ['t4', 'Sonun', 0],
+                ['t5', 'da', 0],
+                ['t6', 'dolaş-', 0],
+                ['t1', 'gökte', 1],
+                ['t2', 'ki', 1],
+                ['t3', 'kuş', 1],
+            ]);
+            expect(messages()).toContain('Doğru cevap işaretlenmedi (kelimeye tıklayıp hedef yapın)');
+
+            // Tuvalde kelimeye tık = hedef; yan yana kelimeler tek hedef.
+            pointer(115, 115); // Sonun
+            pointer(175, 115); // da
+            pointer(115, 165); // gökte
+            expect(state().targets.map((t) => t.tokenIds)).toEqual([['t4', 't5'], ['t1']]);
+            component.setTextSelectTokenText('Soru 1', 't6', 'dolaşmış');
+            component.setTextSelectStyle('Soru 1', 'circle');
+
+            const q = save();
+            expect(q.interactionType).toBe('textSelect');
+            const plan = JSON.parse(q.interactionPlan!);
+            expect(plan).toEqual(expect.objectContaining({ version: 1, type: 'textSelect', mode: 'select', style: 'circle' }));
+            expect('palette' in plan).toBe(false);
+            expect(plan.tokens[2]).toEqual({ id: 't6', text: 'dolaşmış', line: 0, boxes: [expect.any(Object)] });
+            expect(JSON.parse(q.interactionSolution!)).toEqual({ targets: [{ tokenIds: ['t4', 't5'] }, { tokenIds: ['t1'] }] });
+            expect(messages()).toEqual([]);
+
+            // Ayır: hedef kelime başına bölünür; aynı kelimeye yeniden tık hedeften çıkarır.
+            component.splitTextSelectTarget('Soru 1', 0);
+            expect(state().targets.map((t) => t.tokenIds)).toEqual([['t4'], ['t5'], ['t1']]);
+            pointer(175, 115);
+            expect(state().targets.map((t) => t.tokenIds)).toEqual([['t4'], ['t1']]);
+        });
+
+        it('correct_TargetsNeedAcceptedCorrection', () => {
+            setup();
+            component.selectTextLineMode(0);
+            pointer(110, 110, 260, 130);
+            component.addTextSelectLine('Soru 1', 'Sonun da geldi');
+            component.setTextSelectMode('Soru 1', 'correct');
+            component.toggleTextSelectTarget('Soru 1', 't1');
+            component.toggleTextSelectTarget('Soru 1', 't2');
+
+            expect(messages()).toEqual(['Hedef 1: kabul edilen düzeltme yazılmadı']);
+            component.setTextSelectTargetAccept('Soru 1', 0, 'Sonunda, sonunda ,Nihayet');
+
+            expect(JSON.parse(save().interactionSolution!)).toEqual({ targets: [{ tokenIds: ['t1', 't2'], accept: ['Sonunda', 'Nihayet'] }] });
+            expect(component.getActiveInspector()?.textSelect?.targets[0].text).toBe('Sonun da');
+            expect(messages()).toEqual([]);
+        });
+
+        it('punctuation_GapsGetSymbolsFromPalette_GapsNeedPunctuationOtherwise', () => {
+            setup();
+            component.selectTextLineMode(0);
+            pointer(110, 110, 300, 130);
+            component.addTextSelectLine('Soru 1', 'Eyvah( ) ne yaptın ()');
+
+            expect(messages()).toContain('Metinde "( )" boşlukları var; modu noktalama yapın ya da boşlukları silin');
+            component.setTextSelectMode('Soru 1', 'punctuation');
+            expect(messages()).toEqual(['Boşluk 1: doğru işaret seçilmedi', 'Boşluk 2: doğru işaret seçilmedi']);
+
+            // Boşluğa tık = seç (hedef olmaz); sembol paletten.
+            const gap = state().tokens.find((t) => t.id === 'g1')!;
+            pointer(100 + gap.boxes[0].x + 2, 112);
+            expect(state().selectedTokenId).toBe('g1');
+            expect(state().targets).toEqual([]);
+            component.toggleTextSelectGapSymbol('Soru 1', 'g1', '!');
+            component.toggleTextSelectGapSymbol('Soru 1', 'g2', '?');
+            component.toggleTextSelectGapSymbol('Soru 1', 'g2', '.');
+            component.toggleTextSelectGapSymbol('Soru 1', 'g2', 'x'); // palette yok: yok sayılır
+
+            const q = save();
+            const plan = JSON.parse(q.interactionPlan!);
+            expect(plan.palette).toEqual(['.', ',', '?', '!', ':', ';', '...', '-']);
+            expect('style' in plan).toBe(false);
+            expect(plan.tokens.filter((t: { gap?: boolean }) => t.gap).map((t: { id: string; text: string }) => [t.id, t.text])).toEqual([
+                ['g1', '( )'],
+                ['g2', '( )'],
+            ]);
+            expect(JSON.parse(q.interactionSolution!)).toEqual({ gaps: { g1: { accept: ['!'] }, g2: { accept: ['.', '?'] } } });
+
+            // Paletten çıkan sembol çözümden de düşer.
+            component.setTextSelectPalette('Soru 1', '. , !');
+            expect(JSON.parse(save().interactionSolution!)).toEqual({ gaps: { g1: { accept: ['!'] }, g2: { accept: ['.'] } } });
+            component.removeTextSelectToken('Soru 1', 'g2');
+            expect(messages()).toEqual([]);
+        });
+
+        it('activityD_NullInteractionType_BecomesTextSelect_AndDraftLoads', () => {
+            component.applyExternalPrediction(component.beginExternalDetection(), {
+                success: true,
+                predictions: [{ class_id: 0, x: 10, y: 10, width: 300, height: 120, subpredictions: [], kind: 'activity', component: 'D' }],
+            } as any, { kind: 'Ai', modelName: 'claude-a' });
+
+            expect(component.getInteractionType('Soru 1')).toBe('textSelect');
+            const plan = {
+                version: 1,
+                type: 'textSelect',
+                mode: 'punctuation',
+                palette: ['.', '!'],
+                tokens: [
+                    { id: 't1', text: 'Eyvah', line: 0, boxes: [{ x: 4, y: 4, width: 23, height: 10 }] },
+                    { id: 'g1', text: '( )', line: 0, gap: true, boxes: [{ x: 31, y: 4, width: 14, height: 10 }] },
+                ],
+            };
+            expect(component.applyInteractionDraft('Soru 1', 'textSelect', plan)).toBe('applied');
+            expect(component.ensureTextSelectState('Soru 1').palette).toEqual(['.', '!']);
+            expect(component.hasAuthoringEdits('Soru 1', 'textSelect')).toBe(false);
+            component.toggleTextSelectGapSymbol('Soru 1', 'g1', '!');
+            expect(component.hasAuthoringEdits('Soru 1', 'textSelect')).toBe(true);
+            expect(component.applyInteractionDraft('Soru 1', 'textSelect', plan)).toBe('kept');
+            expect(component.applyInteractionDraft('Soru 1', 'textSelect', { type: 'textSelect', mode: 'select', tokens: [] })).toBe('invalid');
+        });
+    });
+
     describe('print masks (issue #581)', () => {
         /** Bölge (100,100) 400×300; içinde (120,120)'de 40×20 şık. Çizim koordinatları tuval pikselidir. */
         function setup() {
@@ -2684,7 +2832,7 @@ describe('ImageSelectorComponent', () => {
             component.applyExternalPrediction(component.beginExternalDetection(), {
                 success: true,
                 predictions: [
-                    { class_id: 0, x: 10, y: 10, width: 200, height: 80, subpredictions: [], kind: 'activity', component: 'D' },
+                    { class_id: 0, x: 10, y: 10, width: 200, height: 80, subpredictions: [], kind: 'activity', component: 'E' },
                     { class_id: 0, x: 10, y: 100, width: 200, height: 80, subpredictions: [], kind: 'activity', component: 'A', interaction_type: 'matrixChoice' },
                 ],
             } as any, { kind: 'Ai', modelName: 'claude-a' });

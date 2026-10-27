@@ -191,7 +191,8 @@
       "matrixChoice": "Matris seçim",
       "slotFill": "Cevap kutusu",
       "dragPlace": "Sürükle-yerleştir",
-      "match": "Eşleştirme"
+      "match": "Eşleştirme",
+      "textSelect": "Metin işaretleme"
     },
     "activity": {
       "loadFailed": "Etkinlik talimatları yüklenemedi.",
@@ -220,7 +221,8 @@
       "matrixChoice": "Matris seçim",
       "slotFill": "Cevap kutusu",
       "dragPlace": "Sürükle-yerleştir",
-      "match": "Eşleştirme"
+      "match": "Eşleştirme",
+      "textSelect": "Metin işaretleme"
     },
     "promptSaved": "{{type}} talimatı v{{version}} kaydedildi; soru tuvalinde bu tipin taslakları yeni talimatla çıkarılır.",
     "promptUnchanged": "Talimat değişmedi (v{{version}}); yeniden çıkarma gerekmiyor."

@@ -61,6 +61,7 @@ import {
 } from './slot-fill-authoring';
 import { DRAG_PLACE, DragPlaceMode, parseDragPlacePlan } from '../../models/drag-place';
 import { MATCH, MatchSide, parseMatchPlan } from '../../models/match';
+import { TEXT_SELECT, TextSelectMode, TextSelectStyle, parseTextSelectPlan } from '../../models/text-select';
 import { InteractionBox } from '../../models/interaction-ids';
 import {
   DragPlaceAuthoringState,
@@ -102,6 +103,32 @@ import {
   setMatchPair,
   toggleMatchPrelinked,
 } from './match-authoring';
+import {
+  TextSelectAuthoringState,
+  TextSelectInspector,
+  addTextLine,
+  buildTextSelectInspector,
+  buildTextSelectPlan,
+  buildTextSelectSolution,
+  createTextSelectState,
+  parseAcceptText,
+  parsePaletteText,
+  removeTextTarget,
+  removeTextToken,
+  selectTextToken,
+  setPendingTextLine,
+  setTextSelectMode,
+  setTextSelectPalette,
+  setTextSelectStyle,
+  setTextTargetAccept,
+  setTextTargetSuffixes,
+  setTextTokenText,
+  splitTextTarget,
+  textSelectIssues,
+  textSelectStateFromPlan,
+  toggleGapSymbol,
+  toggleTextTarget,
+} from './text-select-authoring';
 import { QuillModule } from 'ngx-quill';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -174,7 +201,8 @@ export type QuestionInteractionType =
   | typeof MATRIX_CHOICE
   | typeof SLOT_FILL
   | typeof DRAG_PLACE
-  | typeof MATCH;
+  | typeof MATCH
+  | typeof TEXT_SELECT;
 
 /**
  * Tuvalde çizim modu. Issue #574: `matrixRow` satır kutusu, `matrixCell` (isteğe bağlı) hücre kutusu çizer.
@@ -194,7 +222,9 @@ export type CanvasSelectionMode =
   | 'matchLeft'
   | 'matchRight'
   // Issue #581: basılı cevabı öğrenci görselinde örten maske dikdörtgeni.
-  | 'mask';
+  | 'mask'
+  // Issue #582: metin üzerinde işaretleme — "satır ekle" için satır kutusu.
+  | 'textLine';
 
 /** Issue #576: kutu çizimi soru bölgesinde zorunlu olan modlar (boş alanda çizilmez). */
 const BOX_MODES: ReadonlySet<CanvasSelectionMode> = new Set<CanvasSelectionMode>([
@@ -208,6 +238,7 @@ const BOX_MODES: ReadonlySet<CanvasSelectionMode> = new Set<CanvasSelectionMode>
   'matchLeft',
   'matchRight',
   'mask',
+  'textLine',
 ]);
 
 /**
@@ -348,6 +379,8 @@ export interface ActiveInspector {
   /** Issue #576: yalnız dragPlace / match sorusunda dolu. */
   dragPlace: DragPlaceInspector | null;
   match: MatchInspector | null;
+  /** Issue #582: yalnız textSelect sorusunda dolu. */
+  textSelect: TextSelectInspector | null;
   /** Issue #581: basılı cevap maskeleri (bölgeye göreli). */
   masks: MaskBox[];
   isExample: boolean;
@@ -525,7 +558,7 @@ export class ImageSelectorComponent {
   /** Tuvale yeni bir sayfa/görsel yüklenmeye başladığında yayınlanır (sayfaya özel ebeveyn durumu sıfırlansın). */
   @Output() imageChange = new EventEmitter<void>();
 
-  contextMenuType: 'region' | 'answer' | 'worksheet' | 'dropzone' | 'passage' | 'matrix' | 'slot' | 'place' | 'match' = 'region'; // ✅ Sağ tıklama menüsünün türü
+  contextMenuType: 'region' | 'answer' | 'worksheet' | 'dropzone' | 'passage' | 'matrix' | 'slot' | 'place' | 'match' | 'text' = 'region'; // ✅ Sağ tıklama menüsünün türü
   selectedRegion: number | null = null;
   selectedAnswer: number | null = null; // ✅ Seçili cevap indeksi
   selectedDropZoneId: string | null = null;
@@ -537,6 +570,8 @@ export class ImageSelectorComponent {
   /** Issue #576: sağ tıklanan sürükle-yerleştir hedefi / kartı ya da eşleştirme öğesi. */
   selectedPlaceItem: { kind: 'target' | 'card'; id: string } | null = null;
   selectedMatchItem: { side: MatchSide; id: string } | null = null;
+  /** Issue #582: sağ tıklanan metin token'ı. */
+  selectedTextTokenId: string | null = null;
   previewMode = signal(false); // ✅ Önizleme açma durumu
   currentTestId = signal<number | null>(null); // Test ID'yi sakla
 
@@ -550,6 +585,7 @@ export class ImageSelectorComponent {
   public slotFillState = new Map<string, SlotFillAuthoringState>();
   public dragPlaceState = new Map<string, DragPlaceAuthoringState>();
   public matchState = new Map<string, MatchAuthoringState>();
+  public textSelectState = new Map<string, TextSelectAuthoringState>();
   /** Issue #579: bölge + tip → son uygulanan taslaktan sonraki yazarlık izi (elle düzeltme ayrımı). */
   private draftFingerprints = new Map<string, string>();
   /** Issue #581: bölge adı → basılı cevap maskeleri (bölgeye göreli). */
@@ -918,6 +954,11 @@ export class ImageSelectorComponent {
           if (item) return { type: 'matchItem', value: { questionIndex: qi, side, itemId: item.id } };
         }
       }
+      // Issue #582: metin token'ları (tirelenmiş kelimenin her kutusu aynı token).
+      if (this.getInteractionType(region.name) === TEXT_SELECT) {
+        const token = this.ensureTextSelectState(region.name).tokens.find((t) => t.boxes.some((b) => inBox(b)));
+        if (token) return { type: 'textToken', value: { questionIndex: qi, tokenId: token.id } };
+      }
 
       // Önce answer'ları kontrol edelim
       for (let ai = 0; ai < region.answers.length; ai++) {
@@ -1035,6 +1076,13 @@ export class ImageSelectorComponent {
       this.selectedDropZoneId = null;
       this.selectedPassageId = null;
       this.selectedMatchItem = { side: hit.value.side, id: hit.value.itemId };
+    } else if (hit.type === 'textToken') {
+      this.contextMenuType = 'text';
+      this.selectedRegion = hit.value.questionIndex;
+      this.selectedAnswer = null;
+      this.selectedDropZoneId = null;
+      this.selectedPassageId = null;
+      this.selectedTextTokenId = hit.value.tokenId;
     } else if (hit.type === 'question') {
       this.contextMenuType = 'region';
       this.selectedPassageId = null;
@@ -1067,6 +1115,7 @@ export class ImageSelectorComponent {
     this.selectedSlotId = null;
     this.selectedPlaceItem = null;
     this.selectedMatchItem = null;
+    this.selectedTextTokenId = null;
   }
 
   stopEvent(event?: MouseEvent) {
@@ -1129,6 +1178,11 @@ export class ImageSelectorComponent {
       const regionName = this.regions()[this.selectedRegion ?? -1]?.name;
       const item = this.selectedMatchItem;
       if (regionName && item) this.removeMatchItemFrom(regionName, item.side, item.id);
+    } else if (action === 'removeTextToken') {
+      const regionName = this.regions()[this.selectedRegion ?? -1]?.name;
+      if (regionName && this.selectedTextTokenId) this.removeTextSelectToken(regionName, this.selectedTextTokenId);
+    } else if (action === 'selectTextLineMode') {
+      this.selectTextLineMode(this.selectedRegion!);
     } else if (action === 'alignAnswers') {
       this.alignAnswers(this.selectedRegion!, true);
     } else if (action === 'predict') {
@@ -1789,7 +1843,9 @@ export class ImageSelectorComponent {
               ? this.dragPlaceMessages(region.name)
               : type === MATCH
                 ? this.matchMessages(region.name)
-                : this.mcqIssues(region, { requireCorrectAnswer: true });
+                : type === TEXT_SELECT
+                  ? this.textSelectMessages(region.name)
+                  : this.mcqIssues(region, { requireCorrectAnswer: true });
 
     if (messages.length > 0) {
       this.warningMarkers.push({
@@ -1900,8 +1956,13 @@ export class ImageSelectorComponent {
           }
         }
         // Issue #576: sürükle-yerleştir / eşleştirme kuralları da yalnız Kaydet'te.
-        if ((type === DRAG_PLACE || type === MATCH) && opts.requireCorrectAnswer && !opts.skipInteractive) {
-          const messages = type === DRAG_PLACE ? this.dragPlaceMessages(region.name) : this.matchMessages(region.name);
+        if ((type === DRAG_PLACE || type === MATCH || type === TEXT_SELECT) && opts.requireCorrectAnswer && !opts.skipInteractive) {
+          const messages =
+            type === DRAG_PLACE
+              ? this.dragPlaceMessages(region.name)
+              : type === MATCH
+                ? this.matchMessages(region.name)
+                : this.textSelectMessages(region.name);
           if (messages.length > 0) {
             issues.push({ index, no: index + 1, name: region.name, messages });
           }
@@ -1960,6 +2021,10 @@ export class ImageSelectorComponent {
     placeCard: string;
     matchLeft: string;
     matchRight: string;
+    /** Issue #582: metin token'ı / hedef token'ı / boşluk (gap). */
+    textToken: string;
+    textTarget: string;
+    textGap: string;
     /** Issue #578: blok türü renkleri ve tür etiketinin metni. */
     kinds: Record<BlockKind, string>;
     kindOn: string;
@@ -1983,6 +2048,9 @@ export class ImageSelectorComponent {
         placeCard: this.cssVar('--ms-colors-code-sand') || 'sienna',
         matchLeft: this.cssVar('--ms-colors-code-green') || 'olivedrab',
         matchRight: this.cssVar('--ms-colors-code-yellow') || 'goldenrod',
+        textToken: this.cssVar('--ms-colors-code-blue') || 'steelblue',
+        textTarget: this.cssVar('--ms-colors-status-success') || 'green',
+        textGap: this.cssVar('--ms-colors-code-orange') || 'darkorange',
         kinds: {
           mcq_question: this.cssVar('--ms-block-kind-question') || 'red',
           activity: this.cssVar('--ms-block-kind-activity') || 'steelblue',
@@ -2147,6 +2215,7 @@ export class ImageSelectorComponent {
       this.drawSlotFillOverlays();
       this.drawDragPlaceOverlays();
       this.drawMatchOverlays();
+      this.drawTextSelectOverlays();
       this.drawMaskOverlays();
     }
   }
@@ -2345,6 +2414,82 @@ export class ImageSelectorComponent {
   }
 
   /**
+   * Issue #582: metin token'ları (ince çerçeve), hedef token'ları (yeşil dolgu, hedef numarası), boşluklar (turuncu kesik; doğru
+   * sembol(ler) etikette), seçili token kalın, bekleyen satır kutusu kesik.
+   */
+  private drawTextSelectOverlays() {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const theme = this.getThemeColors();
+    for (const region of this.regions()) {
+      if (this.getInteractionType(region.name) !== TEXT_SELECT) continue;
+      const state = this.ensureTextSelectState(region.name);
+      const targetNo = new Map<string, number>();
+      state.targets.forEach((t, i) => t.tokenIds.forEach((id) => targetNo.set(id, i + 1)));
+      const punctuation = state.mode === 'punctuation';
+      for (const token of state.tokens) {
+        const selected = state.selectedTokenId === token.id;
+        const no = targetNo.get(token.id);
+        token.boxes.forEach((b, bi) => {
+          const x = region.x + b.x;
+          const y = region.y + b.y;
+          if (token.gap) {
+            const accept = Object.hasOwn(state.gapAccept, token.id) ? state.gapAccept[token.id] : [];
+            this.drawTaggedBox(x, y, b, theme.textGap, accept.length ? accept.join(' ') : '?', { dashed: !accept.length, bold: selected, fill: 0.15 });
+            return;
+          }
+          const target = !punctuation && no !== undefined;
+          ctx.save();
+          ctx.globalAlpha = target ? 0.25 : 0.06;
+          ctx.fillStyle = target ? theme.textTarget : theme.textToken;
+          ctx.fillRect(x, y, b.width, b.height);
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = target ? theme.textTarget : theme.textToken;
+          ctx.lineWidth = selected ? 3 : 1;
+          ctx.strokeRect(x, y, b.width, b.height);
+          if (target && bi === 0) {
+            ctx.font = `bold 10px ${theme.fontFamily}`;
+            const tag = `${no}`;
+            const tagW = ctx.measureText(tag).width + 6;
+            ctx.fillStyle = theme.textTarget;
+            ctx.fillRect(x, y - 12, tagW, 12);
+            ctx.fillStyle = theme.surface;
+            ctx.fillText(tag, x + 3, y - 3);
+          }
+          ctx.restore();
+        });
+      }
+      // Çok kelimeli hedef: kelimelerini (satır başına) çevreleyen tek kesik çerçeve — tek hata mı, ayrı hatalar mı görünsün.
+      if (!punctuation) {
+        const byId = new Map(state.tokens.map((t) => [t.id, t]));
+        for (const target of state.targets) {
+          if (target.tokenIds.length < 2) continue;
+          const perLine = new Map<number, InteractionBox[]>();
+          for (const id of target.tokenIds) {
+            for (const b of byId.get(id)?.boxes ?? []) {
+              const key = Math.round(b.y);
+              perLine.set(key, [...(perLine.get(key) ?? []), b]);
+            }
+          }
+          ctx.save();
+          ctx.setLineDash([5, 3]);
+          ctx.strokeStyle = theme.textTarget;
+          ctx.lineWidth = 2;
+          for (const boxes of perLine.values()) {
+            const frame = boundingBox(boxes);
+            if (frame) ctx.strokeRect(region.x + frame.x - 3, region.y + frame.y - 3, frame.width + 6, frame.height + 6);
+          }
+          ctx.restore();
+        }
+      }
+      if (state.pendingLine) {
+        const b = state.pendingLine;
+        this.drawTaggedBox(region.x + b.x, region.y + b.y, b, theme.textToken, '+', { dashed: true, fill: 0.08 });
+      }
+    }
+  }
+
+  /**
    * Issue #575: cevap kutuları — numara + tür etiketi; doğru değeri / ayarı eksik kutu kesik kırmızı, seçili kutu kalın.
    * Renkler temadan (`getThemeColors`); açık kontur her sayfa renginde seçilebilsin diye altta.
    */
@@ -2531,7 +2676,8 @@ export class ImageSelectorComponent {
         hit.type === 'slot' ||
         hit.type === 'placeTarget' ||
         hit.type === 'placeCard' ||
-        hit.type === 'matchItem')
+        hit.type === 'matchItem' ||
+        hit.type === 'textToken')
     ) {
       // Şık / drop-zone / matris çizimi hangi soruya ait olacak — modu ZORLAMADAN sadece hedef soruyu belirle.
       // Mod artık üstteki segmented kontrolden geliyor.
@@ -2618,6 +2764,11 @@ export class ImageSelectorComponent {
         // Issue #575: kutuya tık = müfettişte o kutuyu düzenle (mod değişmez).
         const regionName = this.regions()[hit.value.questionIndex]?.name;
         if (regionName) this.selectSlot(regionName, hit.value.slotId);
+        this.focusQuestionKeepingMode(hit.value.questionIndex);
+      } else if (hit && hit.type === 'textToken') {
+        // Issue #582: token'a tık = müfettişte seç; select / correct'te ayrıca hedef işaretle / kaldır (mod değişmez).
+        const regionName = this.regions()[hit.value.questionIndex]?.name;
+        if (regionName) this.clickTextSelectToken(regionName, hit.value.tokenId);
         this.focusQuestionKeepingMode(hit.value.questionIndex);
       } else if (hit && (hit.type === 'placeTarget' || hit.type === 'placeCard' || hit.type === 'matchItem')) {
         // Issue #576: hedefe tık = çözüm atamasında seç; karta tık = seçili hedefin doğru kartı yap / kaldır;
@@ -2746,6 +2897,8 @@ export class ImageSelectorComponent {
       this.addMaskFromDrag(this.selectedQuestionIndex, this.startX, this.startY, endX, endY);
     } else if (this.selectionMode() === 'slot' && this.selectedQuestionIndex !== -1) {
       this.addSlotFromDrag(this.selectedQuestionIndex, this.startX, this.startY, endX, endY);
+    } else if (this.selectionMode() === 'textLine' && this.selectedQuestionIndex !== -1) {
+      this.setTextLineFromDrag(this.selectedQuestionIndex, this.startX, this.startY, endX, endY);
     } else if (
       (this.selectionMode() === 'placeTarget' ||
         this.selectionMode() === 'placeCard' ||
@@ -2891,7 +3044,8 @@ export class ImageSelectorComponent {
       return;
     }
     if (isBlockInteractionType(type)) {
-      const component: ActivityComponent = type === MATRIX_CHOICE ? 'A' : type === SLOT_FILL ? 'B' : 'C';
+      const component: ActivityComponent =
+        type === MATRIX_CHOICE ? 'A' : type === SLOT_FILL ? 'B' : type === TEXT_SELECT ? 'D' : 'C';
       this.blockKinds.set(name, { kind: 'activity', component });
     }
     this.setInteractionTypeFor(name, type);
@@ -2997,6 +3151,8 @@ export class ImageSelectorComponent {
     } else if (type === MATCH) {
       const match = this.ensureMatchState(region.name);
       [...match.left, ...match.right].forEach((i) => rel(i.box));
+    } else if (type === TEXT_SELECT) {
+      this.ensureTextSelectState(region.name).tokens.forEach((t) => t.boxes.forEach(rel));
     }
     return boxes.some((b) => {
       const w = Math.min(b.x + b.width, mask.x + mask.width) - Math.max(b.x, mask.x);
@@ -3063,6 +3219,10 @@ export class ImageSelectorComponent {
       const parsed = parseMatchPlan(json);
       return parsed ? () => this.matchState.set(regionName, matchStateFromPlan(parsed)) : null;
     }
+    if (type === TEXT_SELECT) {
+      const parsed = parseTextSelectPlan(json);
+      return parsed ? () => this.textSelectState.set(regionName, textSelectStateFromPlan(parsed)) : null;
+    }
     return null;
   }
 
@@ -3080,6 +3240,8 @@ export class ImageSelectorComponent {
         const state = this.matchState.get(regionName);
         return !state || (state.left.length === 0 && state.right.length === 0);
       }
+      case TEXT_SELECT:
+        return (this.textSelectState.get(regionName)?.tokens.length ?? 0) === 0;
     }
   }
 
@@ -3101,6 +3263,10 @@ export class ImageSelectorComponent {
       case MATCH: {
         const state = this.matchState.get(regionName);
         return state ? JSON.stringify([buildMatchPlan(state), buildMatchSolution(state)]) : null;
+      }
+      case TEXT_SELECT: {
+        const state = this.textSelectState.get(regionName);
+        return state ? JSON.stringify([buildTextSelectPlan(state), buildTextSelectSolution(state)]) : null;
       }
     }
   }
@@ -3133,7 +3299,8 @@ export class ImageSelectorComponent {
     }
     const component = kind === 'activity' && isActivityComponent(prediction.component) ? prediction.component : null;
     this.blockKinds.set(regionName, { kind, component });
-    const type = prediction.interaction_type;
+    // Issue #582: eski (#578) kayıtlarda D bloğunun tipi null gelebilir; D tek tipli (textSelect).
+    const type = prediction.interaction_type ?? (component === 'D' ? interactionForComponent(component, null) : null);
     if (kind === 'activity' && isBlockInteractionType(type) && isConsistentInteraction(component, type)) {
       this.setInteractionTypeFor(regionName, type);
     }
@@ -3152,6 +3319,8 @@ export class ImageSelectorComponent {
       this.ensureDragPlaceState(regionName);
     } else if (type === MATCH) {
       this.ensureMatchState(regionName);
+    } else if (type === TEXT_SELECT) {
+      this.ensureTextSelectState(regionName);
     }
   }
 
@@ -3312,6 +3481,9 @@ export class ImageSelectorComponent {
     if (this.getInteractionType(regionName) === MATCH) {
       return JSON.stringify(buildMatchPlan(this.ensureMatchState(regionName)));
     }
+    if (this.getInteractionType(regionName) === TEXT_SELECT) {
+      return JSON.stringify(buildTextSelectPlan(this.ensureTextSelectState(regionName)));
+    }
     const plan = this.buildInteractionPlan(regionName);
     if (!plan) return null;
     return JSON.stringify(plan);
@@ -3335,6 +3507,10 @@ export class ImageSelectorComponent {
     }
     if (this.getInteractionType(regionName) === MATCH) {
       const solution = buildMatchSolution(this.ensureMatchState(regionName));
+      return solution ? JSON.stringify(solution) : null;
+    }
+    if (this.getInteractionType(regionName) === TEXT_SELECT) {
+      const solution = buildTextSelectSolution(this.ensureTextSelectState(regionName));
       return solution ? JSON.stringify(solution) : null;
     }
     if (this.getInteractionType(regionName) !== 'dragDropLabeling') return null;
@@ -3962,13 +4138,18 @@ export class ImageSelectorComponent {
     this.selectInteractionMode(questionIndex, MATCH, mode);
   }
 
-  private selectInteractionMode(questionIndex: number, type: typeof DRAG_PLACE | typeof MATCH, mode: CanvasSelectionMode) {
+  private selectInteractionMode(
+    questionIndex: number,
+    type: typeof DRAG_PLACE | typeof MATCH | typeof TEXT_SELECT,
+    mode: CanvasSelectionMode
+  ) {
     if (questionIndex < 0 || questionIndex >= this.regions().length) return;
     this.selectedQuestionIndex = questionIndex;
     const regionName = this.regions()[questionIndex].name;
     this.interactionTypes.set(regionName, type);
     if (type === DRAG_PLACE) this.ensureDragPlaceState(regionName);
-    else this.ensureMatchState(regionName);
+    else if (type === MATCH) this.ensureMatchState(regionName);
+    else this.ensureTextSelectState(regionName);
     if (this.selectionModeLocked()) this.selectionModeLocked.set(mode);
     this.selectionMode.set(mode);
     this.drawImage();
@@ -4133,6 +4314,136 @@ export class ImageSelectorComponent {
     );
   }
 
+  // -------- Issue #582: metin üzerinde işaretleme (textSelect) yazarlığı --------
+
+  public ensureTextSelectState(regionName: string): TextSelectAuthoringState {
+    const existing = this.textSelectState.get(regionName);
+    if (existing) return existing;
+    const created = createTextSelectState();
+    this.textSelectState.set(regionName, created);
+    return created;
+  }
+
+  private updateTextSelect(regionName: string, change: (state: TextSelectAuthoringState) => TextSelectAuthoringState) {
+    this.textSelectState.set(regionName, change(this.ensureTextSelectState(regionName)));
+    this.drawImage();
+  }
+
+  /** "Satır kutusu çiz" modu: soru metin işaretleme türüne geçer; çizilen kutu bekleyen satır olur. */
+  public selectTextLineMode(questionIndex: number) {
+    this.selectInteractionMode(questionIndex, TEXT_SELECT, 'textLine');
+  }
+
+  public setTextSelectMode(regionName: string, mode: TextSelectMode) {
+    this.updateTextSelect(regionName, (s) => setTextSelectMode(s, mode));
+  }
+
+  public setTextSelectStyle(regionName: string, style: TextSelectStyle) {
+    this.updateTextSelect(regionName, (s) => setTextSelectStyle(s, style));
+  }
+
+  /** Palet metni (boşlukla ayrılmış semboller). */
+  public setTextSelectPalette(regionName: string, text: string) {
+    this.updateTextSelect(regionName, (s) => setTextSelectPalette(s, parsePaletteText(text)));
+  }
+
+  public selectTextSelectToken(regionName: string, tokenId: string | null) {
+    this.updateTextSelect(regionName, (s) => selectTextToken(s, tokenId));
+  }
+
+  public setTextSelectTokenText(regionName: string, tokenId: string, text: string) {
+    this.updateTextSelect(regionName, (s) => setTextTokenText(s, tokenId, text));
+  }
+
+  public removeTextSelectToken(regionName: string, tokenId: string) {
+    this.updateTextSelect(regionName, (s) => removeTextToken(s, tokenId));
+  }
+
+  public toggleTextSelectTarget(regionName: string, tokenId: string) {
+    this.updateTextSelect(regionName, (s) => toggleTextTarget(selectTextToken(s, tokenId), tokenId));
+  }
+
+  public splitTextSelectTarget(regionName: string, index: number) {
+    this.updateTextSelect(regionName, (s) => splitTextTarget(s, index));
+  }
+
+  public removeTextSelectTarget(regionName: string, index: number) {
+    this.updateTextSelect(regionName, (s) => removeTextTarget(s, index));
+  }
+
+  public setTextSelectTargetAccept(regionName: string, index: number, text: string) {
+    this.updateTextSelect(regionName, (s) => setTextTargetAccept(s, index, parseAcceptText(text)));
+  }
+
+  public setTextSelectTargetSuffixes(regionName: string, index: number, text: string) {
+    this.updateTextSelect(regionName, (s) => setTextTargetSuffixes(s, index, parseAcceptText(text)));
+  }
+
+  public toggleTextSelectGapSymbol(regionName: string, gapId: string, symbol: string) {
+    this.updateTextSelect(regionName, (s) => toggleGapSymbol(s, gapId, symbol));
+  }
+
+  public clearPendingTextLine(regionName: string) {
+    this.updateTextSelect(regionName, (s) => setPendingTextLine(s, null));
+  }
+
+  /**
+   * "Satır ekle": bekleyen satır kutusuna yazılan metin token'lara bölünür. Kutu yoksa ya da metin boşsa false; token sınırı
+   * aşılırsa bildirilir.
+   */
+  public addTextSelectLine(regionName: string, text: string): boolean {
+    const state = this.ensureTextSelectState(regionName);
+    if (!state.pendingLine || !text.trim()) return false;
+    const next = addTextLine(state, state.pendingLine, text);
+    if (next === state) {
+      this.snackBar.open(this.tr('messages.interactionLimit'), this.tr('common.ok'), { duration: 2500 });
+      return false;
+    }
+    this.textSelectState.set(regionName, next);
+    this.regions.set([...this.regions()]);
+    this.drawImage();
+    return true;
+  }
+
+  /** Tuvalde token'a tık: select / correct'te hedef işaretle / kaldır, punctuation'da yalnız seç (sembol müfettişte). */
+  public clickTextSelectToken(regionName: string, tokenId: string) {
+    const state = this.ensureTextSelectState(regionName);
+    const token = state.tokens.find((t) => t.id === tokenId);
+    if (!token) return;
+    if (state.mode !== 'punctuation' && !token.gap) {
+      this.toggleTextSelectTarget(regionName, tokenId);
+    } else {
+      this.selectTextSelectToken(regionName, tokenId);
+    }
+  }
+
+  /** Sürüklemeyle çizilen satır kutusu (soru bölgesine göre, yuvarlanmış); metni müfettişte yazılır. */
+  private setTextLineFromDrag(questionIndex: number, x1: number, y1: number, x2: number, y2: number) {
+    const region = this.regions()[questionIndex];
+    if (!region) return;
+    const absX1 = Math.max(Math.min(x1, x2), region.x);
+    const absY1 = Math.max(Math.min(y1, y2), region.y);
+    const absX2 = Math.min(Math.max(x1, x2), region.x + region.width);
+    const absY2 = Math.min(Math.max(y1, y2), region.y + region.height);
+    if (absX2 - absX1 < 6 || absY2 - absY1 < 4) return;
+    const box: InteractionBox = {
+      x: Math.round(absX1 - region.x),
+      y: Math.round(absY1 - region.y),
+      width: Math.max(1, Math.round(absX2 - absX1)),
+      height: Math.max(1, Math.round(absY2 - absY1)),
+    };
+    this.interactionTypes.set(region.name, TEXT_SELECT);
+    this.textSelectState.set(region.name, setPendingTextLine(this.ensureTextSelectState(region.name), box));
+    this.focusQuestionKeepingMode(questionIndex);
+  }
+
+  /** Kayıt engelleyen metin işaretleme sorunları. */
+  private textSelectMessages(regionName: string): string[] {
+    return textSelectIssues(this.ensureTextSelectState(regionName)).map((issue) =>
+      this.tr(`warnings.textSelect.${issue.code}`, { n: issue.no })
+    );
+  }
+
   /** Soruyu müfettişe odaklar ama çizim modunu değiştirmez (matris hücresine tık). */
   private focusQuestionKeepingMode(index: number) {
     this.selectedQuestionIndex = index;
@@ -4259,6 +4570,7 @@ export class ImageSelectorComponent {
       slotFill: interactionType === SLOT_FILL ? buildSlotFillInspector(this.ensureSlotFillState(name)) : null,
       dragPlace: interactionType === DRAG_PLACE ? buildDragPlaceInspector(this.ensureDragPlaceState(name)) : null,
       match: interactionType === MATCH ? buildMatchInspector(this.ensureMatchState(name)) : null,
+      textSelect: interactionType === TEXT_SELECT ? buildTextSelectInspector(this.ensureTextSelectState(name)) : null,
       masks: this.getMasks(name),
       isExample: this.isExample(name),
       exampleAnswer: this.getExampleAnswer(name),
@@ -4663,6 +4975,7 @@ export class ImageSelectorComponent {
     this.slotFillState.clear();
     this.dragPlaceState.clear();
     this.matchState.clear();
+    this.textSelectState.clear();
     this.draftFingerprints.clear();
     this.masks.clear();
     this.regions.set(
@@ -4867,6 +5180,7 @@ export class ImageSelectorComponent {
     this.slotFillState.clear();
     this.dragPlaceState.clear();
     this.matchState.clear();
+    this.textSelectState.clear();
     this.draftFingerprints.clear();
     this.masks.clear();
     this.warningMarkers = [];
@@ -4991,6 +5305,7 @@ export class ImageSelectorComponent {
     this.slotFillState.delete(regionName);
     this.dragPlaceState.delete(regionName);
     this.matchState.delete(regionName);
+    this.textSelectState.delete(regionName);
     this.masks.delete(regionName);
     for (const key of [...this.draftFingerprints.keys()]) {
       if (key.startsWith(`${regionName}\u0000`)) this.draftFingerprints.delete(key);

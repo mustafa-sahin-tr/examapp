@@ -52,7 +52,7 @@ public class LabelingController : BaseController
         }
         catch (LabelingValidationException ex)
         {
-            return BadRequest(Error(ex.Message));
+            return BadRequest(Error(ex.Message, args: ex.Args));
         }
     }
 
@@ -70,7 +70,7 @@ public class LabelingController : BaseController
         }
         catch (LabelingValidationException ex)
         {
-            return BadRequest(Error(ex.Message));
+            return BadRequest(Error(ex.Message, args: ex.Args));
         }
         catch (LabelingRateLimitException ex)
         {
@@ -100,7 +100,7 @@ public class LabelingController : BaseController
         }
         catch (LabelingValidationException ex)
         {
-            return BadRequest(Error(ex.Message));
+            return BadRequest(Error(ex.Message, args: ex.Args));
         }
     }
 
@@ -122,7 +122,7 @@ public class LabelingController : BaseController
         }
         catch (LabelingValidationException ex)
         {
-            return BadRequest(Error(ex.Message));
+            return BadRequest(Error(ex.Message, args: ex.Args));
         }
         catch (LabelingRateLimitException ex)
         {
@@ -151,7 +151,7 @@ public class LabelingController : BaseController
         }
         catch (LabelingValidationException ex)
         {
-            return BadRequest(Error(ex.Message));
+            return BadRequest(Error(ex.Message, args: ex.Args));
         }
     }
 
@@ -166,7 +166,7 @@ public class LabelingController : BaseController
         }
         catch (LabelingValidationException ex)
         {
-            return BadRequest(Error(ex.Message));
+            return BadRequest(Error(ex.Message, args: ex.Args));
         }
     }
 
@@ -194,7 +194,7 @@ public class LabelingController : BaseController
         }
         catch (LabelingValidationException ex)
         {
-            return BadRequest(Error(ex.Message));
+            return BadRequest(Error(ex.Message, args: ex.Args));
         }
         catch (LabelingBankDuplicateException ex)
         {
@@ -259,6 +259,7 @@ public class LabelingController : BaseController
     private LabelingActor CurrentActor() =>
         new(KeyCloakId, User.FindFirstValue("name") ?? User.FindFirstValue("preferred_username"), IsAdmin);
 
-    private object Error(string messageKey, string? errorCode = null) =>
-        new { message = _localizer[messageKey].Value, errorCode };
+    // Biçim argümanı yalnız varsa verilir: argümansız anahtarlarda süslü parantezli metin ("{width}") format hatası vermesin.
+    private object Error(string messageKey, string? errorCode = null, object[]? args = null) =>
+        new { message = (args is { Length: > 0 } ? _localizer[messageKey, args] : _localizer[messageKey]).Value, errorCode };
 }

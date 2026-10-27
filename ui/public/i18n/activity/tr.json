@@ -20,7 +20,13 @@
     "targetFallback": "Hedef {{n}}",
     "positionFallback": "{{n}}. sıra",
     "leftFallback": "Sol {{n}}",
-    "rightFallback": "Sağ {{n}}"
+    "rightFallback": "Sağ {{n}}",
+    "textGap": "Boşluk {{n}}: {{content}}",
+    "textWord": "«{{word}}»",
+    "textWordFix": "«{{word}}» → {{content}}",
+    "textWordExtra": "«{{word}}» (fazla)",
+    "textTarget": "Hedef {{n}}: «{{word}}»",
+    "textNone": "Henüz kelime seçilmedi"
   },
   "saveFailed": "Son cevabın kaydedilemedi; kontrol ettiğinde yeniden gönderilecek.",
   "finishCheckRequired": "Bitirmeden önce cevaplarını bir kez kontrol et.",

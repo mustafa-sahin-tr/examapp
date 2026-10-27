@@ -45,7 +45,7 @@ public class ActivityStructureBlockDto
 
     public double Height { get; set; }
 
-    /// <summary><c>matrixChoice</c> | <c>slotFill</c> | <c>dragPlace</c> | <c>match</c>.</summary>
+    /// <summary><c>matrixChoice</c> | <c>slotFill</c> | <c>dragPlace</c> | <c>match</c> | <c>textSelect</c> (#582).</summary>
     public string? InteractionType { get; set; }
 }
 

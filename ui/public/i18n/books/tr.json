@@ -1,0 +1,112 @@
+{
+  "title": "Kitaplar",
+  "subtitle": "İşaretleme ekranı için kitap kaydı: dosya ↔ basılı sayfa ofseti, cevap anahtarı sayfaları ve içindekiler (sayfaya göre sınıf ve konu varsayılanı).",
+  "new": "Yeni kitap",
+  "retry": "Tekrar dene",
+  "selectHint": "Düzenlemek için listeden bir kitap seçin ya da yeni kitap ekleyin.",
+  "fileFrom": "Dosya başı",
+  "fileTo": "Dosya sonu",
+  "removeRow": "{{row}}. satırı sil",
+  "save": "Kaydet",
+  "saving": "Kaydediliyor…",
+  "saved": "Kitap kaydedildi.",
+  "saveFailed": "Kitap kaydedilemedi.",
+  "cancel": "Vazgeç",
+  "ok": "Tamam",
+  "list": {
+    "label": "Kitap listesi",
+    "loading": "Kitaplar yükleniyor…",
+    "failed": "Kitaplar yüklenemedi.",
+    "empty": "Henüz kitap yok.",
+    "edition": "Baskısı: {{name}}",
+    "offsets": "{{count}} ofset aralığı",
+    "toc": "{{count}} içindekiler kaydı",
+    "answerKey": "cevap anahtarı: {{ranges}}",
+    "noRanges": "Aralık girilmedi"
+  },
+  "editor": {
+    "newTitle": "Yeni kitap",
+    "editTitle": "Kitabı düzenle",
+    "name": "Kitap adı",
+    "canonical": "Asıl baskı",
+    "canonicalNone": "Yok (bu kitap asıl baskı)",
+    "canonicalHint": "Aynı içerik başka adla basıldıysa (ör. kurumsal baskı) asıl kitabı seçin.",
+    "notes": "Notlar"
+  },
+  "offsets": {
+    "title": "Sayfa ofseti",
+    "hint": "Basılı sayfa = dosya sayfası + ofset. Ofset negatif olabilir; fasiküllü kitapta her fasikül için ayrı aralık girin.",
+    "add": "Aralık ekle",
+    "offset": "Ofset",
+    "preview": "dosya {{file}} → basılı {{printed}}",
+    "empty": "Ofset aralığı yok: basılı sayfa bilinmez."
+  },
+  "answerKeys": {
+    "title": "Cevap anahtarı sayfaları",
+    "add": "Aralık ekle",
+    "empty": "Cevap anahtarı aralığı yok."
+  },
+  "toc": {
+    "title": "İçindekiler",
+    "hint": "Dosya sayfa aralığı → sınıf / ders / konu / alt konu. İşaretleme ekranında sayfanın varsayılanı olur.",
+    "add": "Kayıt ekle",
+    "grade": "Sınıf",
+    "subject": "Ders",
+    "topic": "Konu",
+    "subTopic": "Alt konu",
+    "none": "—",
+    "empty": "İçindekiler kaydı yok.",
+    "gradesFailed": "Sınıflar yüklenemedi."
+  },
+  "validation": {
+    "nameRequired": "Kitap adı zorunlu.",
+    "fromRequired": "{{row}}. satır: dosya başı girin.",
+    "toRequired": "{{row}}. satır: dosya sonu girin.",
+    "offsetRequired": "{{row}}. satır: ofset girin (tam sayı, negatif olabilir).",
+    "fromMin": "{{row}}. satır: sayfa numarası 1'den küçük olamaz.",
+    "fromAfterTo": "{{row}}. satır: başlangıç bitişten büyük olamaz.",
+    "overlap": "{{row}}. satır {{other}}. satırla çakışıyor.",
+    "gradeRequired": "{{row}}. satır: sınıf seçin.",
+    "subjectRequired": "{{row}}. satır: ders seçin.",
+    "subTopicNeedsTopic": "{{row}}. satır: alt konu için önce konu seçin.",
+    "printedMin": "{{row}}. satır: ilk basılı sayfa 1'den küçük olamaz (dosya başı + ofset ≥ 1).",
+    "toMax": "{{row}}. satır: dosya sonu en çok {{max}} olabilir.",
+    "printedMax": "{{row}}. satır: son basılı sayfa en çok {{max}} olabilir (dosya sonu + ofset)."
+  },
+  "delete": {
+    "action": "Sil",
+    "title": "Kitabı sil",
+    "message": "\"{{name}}\" silinsin mi?",
+    "confirm": "Sil",
+    "cancel": "Vazgeç",
+    "done": "Kitap silindi.",
+    "inUse": "Bu kitaptan soru kaydedildiği için silinemez.",
+    "failed": "Kitap silinemedi."
+  },
+  "discard": {
+    "title": "Kaydedilmemiş değişiklikler",
+    "message": "Bu kitaptaki değişiklikler kaydedilmedi. Vazgeçilsin mi?",
+    "confirm": "Değişiklikleri at",
+    "cancel": "Düzenlemeye dön"
+  },
+  "converter": {
+    "title": "Dönüştürücü",
+    "hint": "Kayıtlı aralıklarla dosya ↔ basılı sayfa dönüşümünü doğrulayın (fasiküllü kitaplar için).",
+    "unsavedHint": "Kaydedilmemiş değişiklikler var: dönüştürücü kayıtlı hali kullanır.",
+    "filePage": "Dosya sayfası",
+    "toPrinted": "Basılıya çevir",
+    "printedResult": "dosya {{file}} → basılı {{printed}}",
+    "noOffset": "dosya {{file}}: ofset aralığı yok",
+    "answerKey": "cevap anahtarı",
+    "printedPage": "Basılı sayfa",
+    "near": "Yakın dosya sayfası",
+    "nearHint": "Basılı numara fasiküllerde tekrar ediyorsa bu dosya sayfasına en yakın olan önce gelir.",
+    "toFile": "Dosyaya çevir",
+    "fileResult": "basılı {{printed}} → dosya {{files}}",
+    "noFile": "basılı {{printed}}: eşleşen dosya sayfası yok",
+    "failed": "Dönüştürülemedi.",
+    "bookLabel": "Kitap: {{name}}",
+    "tocStale": "İçindekiler satırı geçersiz (silinmiş konu)"
+  },
+  "renameForbidden": "Kullanımdaki ortak kitabın adını yalnız yönetici değiştirebilir."
+}

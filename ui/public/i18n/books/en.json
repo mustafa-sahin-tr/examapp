@@ -1,0 +1,112 @@
+{
+  "title": "Books",
+  "subtitle": "Book records for the labeling screen: file ↔ printed page offset, answer key pages and table of contents (grade and topic default per page).",
+  "new": "New book",
+  "retry": "Try again",
+  "selectHint": "Pick a book from the list to edit it, or add a new one.",
+  "fileFrom": "File from",
+  "fileTo": "File to",
+  "removeRow": "Remove row {{row}}",
+  "save": "Save",
+  "saving": "Saving…",
+  "saved": "Book saved.",
+  "saveFailed": "The book could not be saved.",
+  "cancel": "Cancel",
+  "ok": "OK",
+  "list": {
+    "label": "Book list",
+    "loading": "Loading books…",
+    "failed": "Books could not be loaded.",
+    "empty": "No books yet.",
+    "edition": "Edition of: {{name}}",
+    "offsets": "{{count}} offset ranges",
+    "toc": "{{count}} table of contents entries",
+    "answerKey": "answer key: {{ranges}}",
+    "noRanges": "No ranges entered"
+  },
+  "editor": {
+    "newTitle": "New book",
+    "editTitle": "Edit book",
+    "name": "Book name",
+    "canonical": "Canonical edition",
+    "canonicalNone": "None (this is the canonical edition)",
+    "canonicalHint": "If the same content was printed under another name (e.g. an institutional edition), pick the original book.",
+    "notes": "Notes"
+  },
+  "offsets": {
+    "title": "Page offset",
+    "hint": "Printed page = file page + offset. The offset may be negative; for a book in fascicles enter one range per fascicle.",
+    "add": "Add range",
+    "offset": "Offset",
+    "preview": "file {{file}} → printed {{printed}}",
+    "empty": "No offset ranges: printed pages are unknown."
+  },
+  "answerKeys": {
+    "title": "Answer key pages",
+    "add": "Add range",
+    "empty": "No answer key ranges."
+  },
+  "toc": {
+    "title": "Table of contents",
+    "hint": "File page range → grade / subject / topic / subtopic. Becomes the page default on the labeling screen.",
+    "add": "Add entry",
+    "grade": "Grade",
+    "subject": "Subject",
+    "topic": "Topic",
+    "subTopic": "Subtopic",
+    "none": "—",
+    "empty": "No table of contents entries.",
+    "gradesFailed": "Grades could not be loaded."
+  },
+  "validation": {
+    "nameRequired": "The book name is required.",
+    "fromRequired": "Row {{row}}: enter the first file page.",
+    "toRequired": "Row {{row}}: enter the last file page.",
+    "offsetRequired": "Row {{row}}: enter the offset (whole number, may be negative).",
+    "fromMin": "Row {{row}}: page numbers start at 1.",
+    "fromAfterTo": "Row {{row}}: the start cannot be after the end.",
+    "overlap": "Row {{row}} overlaps row {{other}}.",
+    "gradeRequired": "Row {{row}}: pick a grade.",
+    "subjectRequired": "Row {{row}}: pick a subject.",
+    "subTopicNeedsTopic": "Row {{row}}: pick a topic before the subtopic.",
+    "printedMin": "Row {{row}}: the first printed page must be at least 1 (file from + offset ≥ 1).",
+    "toMax": "Row {{row}}: the last file page can be at most {{max}}.",
+    "printedMax": "Row {{row}}: the last printed page can be at most {{max}} (file to + offset)."
+  },
+  "delete": {
+    "action": "Delete",
+    "title": "Delete book",
+    "message": "Delete \"{{name}}\"?",
+    "confirm": "Delete",
+    "cancel": "Cancel",
+    "done": "Book deleted.",
+    "inUse": "Questions were saved from this book, so it cannot be deleted.",
+    "failed": "The book could not be deleted."
+  },
+  "discard": {
+    "title": "Unsaved changes",
+    "message": "Changes to this book were not saved. Discard them?",
+    "confirm": "Discard changes",
+    "cancel": "Keep editing"
+  },
+  "converter": {
+    "title": "Converter",
+    "hint": "Check file ↔ printed page conversion with the saved ranges (for books in fascicles).",
+    "unsavedHint": "There are unsaved changes: the converter uses the saved version.",
+    "filePage": "File page",
+    "toPrinted": "To printed",
+    "printedResult": "file {{file}} → printed {{printed}}",
+    "noOffset": "file {{file}}: no offset range",
+    "answerKey": "answer key",
+    "printedPage": "Printed page",
+    "near": "Near file page",
+    "nearHint": "If the printed number repeats across fascicles, the one closest to this file page comes first.",
+    "toFile": "To file",
+    "fileResult": "printed {{printed}} → file {{files}}",
+    "noFile": "printed {{printed}}: no matching file page",
+    "failed": "Could not convert.",
+    "bookLabel": "Book: {{name}}",
+    "tocStale": "The table of contents entry is invalid (deleted topic)"
+  },
+  "renameForbidden": "Only an admin can rename a shared book that is in use."
+}

@@ -45,7 +45,8 @@
     "select": "Select",
     "alreadyAdded": "Already in test",
     "cannotLink": "Can't add",
-    "cannotLinkTooltip": "An older question without a recorded owner; it can't be added to a test. Copy its test to use it."
+    "cannotLinkTooltip": "An older question without a recorded owner; it can't be added to a test. Copy its test to use it.",
+    "bookTooltip": "Classified from the book's table of contents"
   },
   "preview": {
     "title": "Question #{{id}}",

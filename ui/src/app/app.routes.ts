@@ -100,6 +100,12 @@ export const routes: Routes = [
         canActivate: [authGuard, roleGuard('Admin', 'QuestionTrainer')],
         loadComponent: () => import('./pages/labeling/labeling.component').then((m) => m.LabelingComponent),
       },
+      {
+        // Issue #577: işaretleme kitap kaydı (ofset, cevap anahtarı, içindekiler) — işaretleme ile aynı roller.
+        path: 'books',
+        canActivate: [authGuard, roleGuard('Admin', 'QuestionTrainer')],
+        loadComponent: () => import('./pages/books/books.component').then((m) => m.BooksComponent),
+      },
       { path: 'question', component: QuestionComponent, canActivate: [authGuard] },
       {
         // Issue #471: soru bankası araması — backend Teacher/Admin + onaylı öğretmen.

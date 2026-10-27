@@ -82,6 +82,17 @@ export class ClassificationSelectorComponent {
   public selectedTopic = signal<number | null>(null);
   public selectedSubtopics = signal<number[]>([]);
   public classificationSource = signal<ClassificationSource>(ClassificationSource.Human);
+  /** Otomatik sınıflandırmanın işareti: AI (yapay zekâ) ya da Book (kitabın içindekileri, #577); elle seçimde yok. */
+  public readonly sourceIcon = computed<{ name: string; labelKey: string } | null>(() => {
+    switch (this.classificationSource()) {
+      case ClassificationSource.AI:
+        return { name: 'auto_awesome', labelKey: 'sourceAi' };
+      case ClassificationSource.Book:
+        return { name: 'menu_book', labelKey: 'sourceBook' };
+      default:
+        return null;
+    }
+  });
 
   public loading = signal(false);
 

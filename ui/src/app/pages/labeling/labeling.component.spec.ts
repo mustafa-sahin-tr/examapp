@@ -7,6 +7,7 @@ import { MatButtonToggleChange } from '@angular/material/button-toggle';
 import { MatSelectChange } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
+import { provideRouter } from '@angular/router';
 
 import { LabelingComponent } from './labeling.component';
 import { pageIdOf } from './labeling-pool';
@@ -15,6 +16,10 @@ import { ImageSelectorComponent, TrainedPage } from '../image-selector/image-sel
 import { QuestionDetectorService } from '../../services/question-detector.service';
 import { LabelingService } from '../../services/labeling.service';
 import { GradesService } from '../../services/grades.service';
+import { LabelingBookService } from '../../services/labeling-book.service';
+import { LabelingBook, LabelingBookPageInfo } from '../../models/labeling-book';
+import { LabelingCropDuplicateDialogComponent } from './labeling-crop-duplicate-dialog/labeling-crop-duplicate-dialog.component';
+import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { Grade } from '../../models/student';
 import { DetectionSource, LabelingAiModel, LabelingPage, LabelingPromptState, LabelingResult } from '../../models/labeling';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
@@ -165,6 +170,9 @@ describe('LabelingComponent', () => {
     const GRADES: Grade[] = [{ id: 4, name: '4. Sınıf' }, { id: 5, name: '5. Sınıf' }];
     /** `setup` öncesi değiştirilebilir: sınıf listesi yanıtı. */
     let gradesResponse: Observable<Grade[]>;
+    let booksApi: MockedObject<LabelingBookService>;
+    /** `setup` öncesi değiştirilebilir: kitap listesi yanıtı (varsayılan boş → kitap seçimi gizli). */
+    let booksResponse: Observable<LabelingBook[]>;
 
     function selector(): ImageSelectorStub {
         return fixture.debugElement.query((de) => de.componentInstance instanceof ImageSelectorStub)
@@ -195,13 +203,21 @@ describe('LabelingComponent', () => {
             getGrades: vi.fn().mockName("GradesService.getGrades")
         } as unknown as MockedObject<GradesService>;
         gradesApi.getGrades.mockReturnValue(gradesResponse);
+        booksApi = {
+            list: vi.fn().mockName("LabelingBookService.list"),
+            getPage: vi.fn().mockName("LabelingBookService.getPage")
+        } as unknown as MockedObject<LabelingBookService>;
+        booksApi.list.mockReturnValue(booksResponse);
+        booksApi.getPage.mockReturnValue(throwError(() => ({ status: 404 })));
         // Varsayılan: sayfanın kaydı yok (404 → null).
         labelingApi.getPage.mockReturnValue(throwError(() => ({ status: 404 })));
         TestBed.configureTestingModule({
             imports: [LabelingComponent, translocoTestingModule({ langs: { 'labeling/tr': labelingTr } })],
             providers: [
                 provideNoopAnimations(),
+                provideRouter([]),
                 { provide: QuestionDetectorService, useValue: detector },
+                { provide: LabelingBookService, useValue: booksApi },
                 { provide: LabelingService, useValue: labelingApi },
                 { provide: GradesService, useValue: gradesApi },
             ],
@@ -229,7 +245,9 @@ describe('LabelingComponent', () => {
         localStorage.removeItem('labeling.source');
         localStorage.removeItem('labeling.aiModel');
         localStorage.removeItem('labeling.gradeId');
+        localStorage.removeItem('labeling.bookId');
         gradesResponse = of(GRADES);
+        booksResponse = of([]);
     });
 
     afterEach(() => {
@@ -1251,6 +1269,18 @@ describe('LabelingComponent', () => {
             expect(component.bankRecord()).toBeNull();
         });
 
+        it('saveToBank_GradeRequired400_ShowsLocalizedServerMessage', async () => {
+            await openPageWith([region('S1', 0)]);
+            labelingApi.saveToBank.mockReturnValue(throwError(() => ({ status: 400, error: { message: 'Sayfanın sınıfı seçilmeli.' } })));
+            const snack = vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue(undefined as never);
+
+            component.saveToBank();
+
+            expect(snack).toHaveBeenCalledWith('Sayfanın sınıfı seçilmeli.', labelingTr.ok, expect.any(Object));
+            expect(selector().sendToFix).not.toHaveBeenCalled();
+            expect(component.bankSaving()).toBe(false);
+        });
+
         it('saveToBank_ServerErrorWithoutBody_ShowsGenericFailure', async () => {
             await openPageWith([region('S1', 0)]);
             labelingApi.saveToBank.mockReturnValue(throwError(() => ({ status: 500 })));
@@ -1259,6 +1289,273 @@ describe('LabelingComponent', () => {
             component.saveToBank();
 
             expect(snack).toHaveBeenCalledWith(labelingTr.bank.failed, labelingTr.ok, expect.any(Object));
+        });
+
+        describe('kaynak kitap (#577)', () => {
+            const BOOK: LabelingBook = {
+                id: 7, name: 'TT MatLab', canonicalBookId: null, canonicalBookName: null, notes: null,
+                offsets: [{ fileFrom: 1, fileTo: 100, offset: -1 }], answerKeyRanges: [{ fileFrom: 200, fileTo: 210 }], toc: [],
+            };
+            const PAGE_INFO: LabelingBookPageInfo = {
+                filePage: 40, printedPage: 39, isAnswerKey: false,
+                toc: {
+                    fileFrom: 30, fileTo: 50, printedFrom: 29, printedTo: 49, gradeId: 4, subjectId: 3, topicId: 11, subTopicId: null,
+                    gradeName: '4. Sınıf', subjectName: 'Fen Bilimleri', topicName: 'Maddenin Hâlleri', subTopicName: null,
+                },
+            };
+
+            /** Kitap listesi + (isteğe bağlı) kayıtlı kitap seçimiyle `page_040.webp` sayfasını açar. */
+            async function openBookPage(regions: StubRegion[], storedBookId: string | null = '7', gradeId: string | null = '5'): Promise<void> {
+                if (storedBookId != null) {
+                    localStorage.setItem('labeling.bookId', storedBookId);
+                }
+                if (gradeId != null) {
+                    localStorage.setItem('labeling.gradeId', gradeId);
+                }
+                booksResponse = of([BOOK]);
+                await setup();
+                booksApi.getPage.mockReturnValue(of(PAGE_INFO));
+                await pickFolder([image('page_040.webp')]);
+                selector().regions.set(regions);
+                fixture.detectChanges();
+                await settle(fixture);
+            }
+
+            it('bookSelected_PageInfoWithToc_SetsGradeDefaultAndShowsPrintedAndTocChip', async () => {
+                await openBookPage([region('S1', 0)]);
+
+                expect(component.bookId()).toBe(7);
+                expect(component.filePage()).toBe(40);
+                expect(booksApi.getPage).toHaveBeenCalledWith(7, 40);
+                // Kayıtlı sınıf 5'ti; içindekiler 4 diyor → varsayılan 4 (localStorage'a yazılmaz).
+                expect(component.gradeId()).toBe(4);
+                expect(localStorage.getItem('labeling.gradeId')).toBe('5');
+                expect(component.tocLabel()).toBe('Fen Bilimleri › Maddenin Hâlleri');
+                const el = fixture.nativeElement as HTMLElement;
+                expect(el.querySelector('.lb-book__page')?.textContent?.trim()).toBe('s. 39 (dosya 40)');
+                expect(el.querySelector('.lb-book__toc')?.textContent).toContain('Fen Bilimleri › Maddenin Hâlleri');
+                expect(el.querySelector('.lb-book__answer-key')).toBeNull();
+            });
+
+            it('bookSelected_UserChangesGradeAfterDefault_KeepsUserChoice_WarnsAndStrikesToc', async () => {
+                await openBookPage([region('S1', 0)]);
+                expect(component.tocGradeMismatch()).toBe(false);
+
+                component.setGrade({ value: 5 } as MatSelectChange);
+                fixture.detectChanges();
+
+                expect(component.gradeId()).toBe(5);
+                expect(component.tocGradeMismatch()).toBe(true);
+                const el = fixture.nativeElement as HTMLElement;
+                expect(el.querySelector('.lb-book__toc')?.classList.contains('lb-pill--off')).toBe(true);
+                expect(el.querySelector('.lb-book__mismatch')?.textContent).toContain(labelingTr.book.tocGradeMismatch);
+            });
+
+            it('tocGrade_DoesNotLeakToNextPageWithoutToc_RestoresManualGrade', async () => {
+                localStorage.setItem('labeling.bookId', '7');
+                localStorage.setItem('labeling.gradeId', '5');
+                booksResponse = of([BOOK]);
+                await setup();
+                booksApi.getPage.mockImplementation((_id: number, filePage: number) =>
+                    of(filePage === 40 ? PAGE_INFO : { filePage, printedPage: filePage - 1, isAnswerKey: false, toc: null }));
+                await pickFolder([image('page_040.webp'), image('page_041.webp')]);
+                expect(component.gradeId()).toBe(4);
+
+                component.skip();
+                await settle(fixture);
+
+                expect(component.filePage()).toBe(41);
+                expect(component.gradeId()).toBe(5);
+                expect(component.tocGradeMismatch()).toBe(false);
+            });
+
+            it('tocStale_ShowsWarningNoChip_KeepsManualGrade', async () => {
+                localStorage.setItem('labeling.bookId', '7');
+                localStorage.setItem('labeling.gradeId', '5');
+                booksResponse = of([BOOK]);
+                await setup();
+                booksApi.getPage.mockReturnValue(of({ filePage: 40, printedPage: 39, isAnswerKey: false, toc: null, tocStale: true }));
+                await pickFolder([image('page_040.webp')]);
+                await settle(fixture);
+
+                const el = fixture.nativeElement as HTMLElement;
+                expect(el.querySelector('.lb-book__stale')?.textContent).toContain(labelingTr.book.tocStale);
+                expect(el.querySelector('.lb-book__toc')).toBeNull();
+                expect(component.gradeId()).toBe(5);
+            });
+
+            it('bookSelected_AnswerKeyPage_ShowsBadge', async () => {
+                booksResponse = of([BOOK]);
+                localStorage.setItem('labeling.bookId', '7');
+                await setup();
+                booksApi.getPage.mockReturnValue(of({ filePage: 205, printedPage: null, isAnswerKey: true, toc: null }));
+                await pickFolder([image('page_205.webp')]);
+                await settle(fixture);
+
+                const el = fixture.nativeElement as HTMLElement;
+                expect(el.querySelector('.lb-book__answer-key')).not.toBeNull();
+                expect(el.querySelector('.lb-book__page')?.textContent).toContain('dosya 205');
+            });
+
+            it('storedBookNotInList_NoBookSelected_NoPageLookup', async () => {
+                await openBookPage([region('S1', 0)], '99');
+
+                expect(component.bookId()).toBeNull();
+                expect(booksApi.getPage).not.toHaveBeenCalled();
+                expect(component.gradeId()).toBe(5);
+            });
+
+            it('booksListFails_SelectorHidden_BankSaveWithoutBook', async () => {
+                booksResponse = throwError(() => ({ status: 403 }));
+                localStorage.setItem('labeling.gradeId', '5');
+                await setup();
+                await pickFolder([image('page_040.webp')]);
+                selector().regions.set([region('S1', 0)]);
+                fixture.detectChanges();
+                labelingApi.saveToBank.mockReturnValue(of({ imageSha256: 'abc', bank: savedBank }));
+
+                component.saveToBank();
+
+                expect((fixture.nativeElement as HTMLElement).querySelector('.lb-book')).toBeNull();
+                const request = vi.mocked(labelingApi.saveToBank).mock.lastCall![0];
+                expect('bookId' in request).toBe(false);
+                expect('filePage' in request).toBe(false);
+            });
+
+            it('saveToBank_BookSelected_RequestCarriesBookIdFilePageAndTrimmedLabels', async () => {
+                await openBookPage([region('S1', 0), region('S2', 1)]);
+                labelingApi.saveToBank.mockReturnValue(of({ imageSha256: 'abc', bank: savedBank }));
+                component.setQuestionLabel('S1', 'activityLabel', { value: '  Etkinlik 9 ' } as unknown as EventTarget);
+                component.setQuestionLabel('S1', 'itemLabel', { value: '3' } as unknown as EventTarget);
+
+                component.saveToBank();
+
+                const request = vi.mocked(labelingApi.saveToBank).mock.lastCall![0];
+                expect(request.bookId).toBe(7);
+                expect(request.filePage).toBe(40);
+                expect(request.gradeId).toBe(4);
+                expect(request.questions[0].activityLabel).toBe('Etkinlik 9');
+                expect(request.questions[0].itemLabel).toBe('3');
+                expect('activityLabel' in request.questions[1]).toBe(false);
+                expect('itemLabel' in request.questions[1]).toBe(false);
+            });
+
+            it('setQuestionLabel_LongerThanLimit_IsTruncatedTo50', async () => {
+                await openBookPage([region('S1', 0)]);
+
+                component.setQuestionLabel('S1', 'itemLabel', { value: 'x'.repeat(80) } as unknown as EventTarget);
+
+                expect(component.labelsOf('S1').itemLabel.length).toBe(50);
+            });
+
+            it('pageChange_ClearsQuestionLabels', async () => {
+                await openBookPage([region('S1', 0)]);
+                component.setQuestionLabel('S1', 'itemLabel', { value: '3' } as unknown as EventTarget);
+
+                component.skip();
+                await settle(fixture);
+
+                expect(component.labelsOf('S1').itemLabel).toBe('');
+            });
+
+            it('saveToBank_FileNameWithoutNumber_SendsNoBookSource', async () => {
+                booksResponse = of([BOOK]);
+                localStorage.setItem('labeling.bookId', '7');
+                localStorage.setItem('labeling.gradeId', '5');
+                await setup();
+                await pickFolder([image('kapak.webp')]);
+                selector().regions.set([region('S1', 0)]);
+                fixture.detectChanges();
+                labelingApi.saveToBank.mockReturnValue(of({ imageSha256: 'abc', bank: savedBank }));
+
+                component.saveToBank();
+
+                expect(component.filePage()).toBeNull();
+                expect(booksApi.getPage).not.toHaveBeenCalled();
+                expect((fixture.nativeElement as HTMLElement).querySelector('.lb-book__info')?.textContent)
+                    .toContain(labelingTr.book.noPageNumber);
+                const request = vi.mocked(labelingApi.saveToBank).mock.lastCall![0];
+                expect(request.bookId).toBeUndefined();
+                expect(request.filePage).toBeUndefined();
+            });
+
+            describe('cevap anahtarı sayfası (409 LabelingAnswerKeyPage)', () => {
+                const conflict = () => throwError(() => ({
+                    status: 409, error: { message: 'Sayfa cevap anahtarında.', errorCode: 'LabelingAnswerKeyPage' },
+                }));
+
+                it('conflict_ConfirmWithServerMessage_ForceResubmits', async () => {
+                    await openBookPage([region('S1', 0)]);
+                    labelingApi.saveToBank.mockReturnValueOnce(conflict())
+                        .mockReturnValueOnce(of({ imageSha256: 'abc', bank: savedBank }));
+                    const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({ afterClosed: () => of(true) } as never);
+
+                    component.saveToBank();
+
+                    expect(open).toHaveBeenCalledWith(ConfirmDialogComponent, expect.objectContaining({
+                        data: expect.objectContaining({ message: 'Sayfa cevap anahtarında.', confirmText: labelingTr.bank.answerKey.force }),
+                    }));
+                    expect(labelingApi.saveToBank).toHaveBeenCalledTimes(2);
+                    expect(vi.mocked(labelingApi.saveToBank).mock.lastCall![0].force).toBe(true);
+                    expect(component.bankRecord()?.questionCount).toBe(1);
+                });
+
+                it('conflict_Declined_NothingSent', async () => {
+                    await openBookPage([region('S1', 0)]);
+                    labelingApi.saveToBank.mockReturnValue(conflict());
+                    vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({ afterClosed: () => of(false) } as never);
+
+                    component.saveToBank();
+
+                    expect(labelingApi.saveToBank).toHaveBeenCalledTimes(1);
+                    expect(selector().sendToFix).not.toHaveBeenCalled();
+                    expect(component.bankRecord()).toBeNull();
+                });
+            });
+
+            describe('aynı kırpma (409 LabelingCropAlreadyInBank)', () => {
+                const existing = [
+                    { questionIndex: 0, questionId: 501, bookName: 'TT MatLab', filePage: 40, printedPage: 39, activityLabel: null, itemLabel: '3' },
+                ];
+                const conflict = () => throwError(() => ({
+                    status: 409, error: { message: 'x', errorCode: 'LabelingCropAlreadyInBank', existing },
+                }));
+
+                function dialogResult(result: boolean | undefined) {
+                    return vi.spyOn(TestBed.inject(MatDialog), 'open')
+                        .mockReturnValue({ afterClosed: () => of(result) } as never);
+                }
+
+                it('conflict_OpensDialogWithExistingRecords_ForceResubmits', async () => {
+                    await openBookPage([region('S1', 0)]);
+                    labelingApi.saveToBank.mockReturnValueOnce(conflict())
+                        .mockReturnValueOnce(of({ imageSha256: 'abc', bank: savedBank }));
+                    const open = dialogResult(true);
+
+                    component.saveToBank();
+
+                    expect(open).toHaveBeenCalledWith(LabelingCropDuplicateDialogComponent, expect.objectContaining({ data: { existing } }));
+                    expect(labelingApi.saveToBank).toHaveBeenCalledTimes(2);
+                    const retry = vi.mocked(labelingApi.saveToBank).mock.lastCall![0];
+                    expect(retry.force).toBe(true);
+                    expect(retry.bookId).toBe(7);
+                    // Sayfa-düzeyi kayıt kartı kırpma çakışmasında yazılmaz.
+                    expect(component.bankRecord()?.questionCount).toBe(1);
+                });
+
+                it('conflict_DialogCancelled_DoesNotResubmitOrTrain', async () => {
+                    await openBookPage([region('S1', 0)]);
+                    labelingApi.saveToBank.mockReturnValue(conflict());
+                    dialogResult(false);
+
+                    component.saveToBank();
+
+                    expect(labelingApi.saveToBank).toHaveBeenCalledTimes(1);
+                    expect(selector().sendToFix).not.toHaveBeenCalled();
+                    expect(component.bankRecord()).toBeNull();
+                    expect(component.bankSaving()).toBe(false);
+                });
+            });
         });
     });
 

@@ -36,7 +36,26 @@
     "cardSaved": "Havuza kaydedildi ({{count}} soru)",
     "forbidden": "Havuza soru kaydetmek için öğretmen ya da yönetici olmalısınız.",
     "savedAndTrained": "{{count}} soru havuza kaydedildi ve eğitime gönderildi; sınıflandırma arka planda başladı.",
-    "needGrade": "Önce sınıf seçin"
+    "needGrade": "Önce sınıf seçin",
+    "cropDuplicate": {
+      "title": "Bu kırpma havuzda var",
+      "message": "Aynı soru görseli havuzda {{count}} kayıtta bulunuyor.",
+      "question": "Soru #{{id}}",
+      "filePage": "dosya {{page}}",
+      "printedPage": "basılı {{page}}",
+      "itemLabel": "madde {{label}}",
+      "noSource": "kaynak bilgisi yok",
+      "hint": "Yine de kaydedilirse soru ikinci kez oluşur.",
+      "cancel": "Vazgeç",
+      "force": "Yine de kaydet",
+      "otherOwner": "Başka bir kullanıcının kaydı"
+    },
+    "answerKey": {
+      "title": "Cevap anahtarı sayfası",
+      "message": "Bu sayfa kitabın cevap anahtarı aralığında. Yine de soru olarak kaydedilsin mi?",
+      "cancel": "Vazgeç",
+      "force": "Yine de kaydet"
+    }
   },
   "grade": {
     "label": "Sınıf",
@@ -72,7 +91,12 @@
     "align": "Hizala",
     "drawAnswer": "Şık çiz",
     "deleteQuestion": "Soruyu sil",
-    "emptyHint": "Sayfada soru yok. Soru kutusu çiz ya da yeniden tespit et; hiç soru olmadan Eğit sayfayı boş sayfa olarak gönderir."
+    "emptyHint": "Sayfada soru yok. Soru kutusu çiz ya da yeniden tespit et; hiç soru olmadan Eğit sayfayı boş sayfa olarak gönderir.",
+    "labels": "Kitap etiketleri",
+    "activityLabel": "Etkinlik",
+    "itemLabel": "Madde",
+    "activityPlaceholder": "ör. Etkinlik 9",
+    "itemPlaceholder": "ör. 3"
   },
   "source": {
     "label": "Kaynak",
@@ -127,5 +151,18 @@
     "cancel": "Vazgeç",
     "save": "Kaydet",
     "placeholderMissing": "Uyarı: {width} veya {height} yok — Claude piksel boyutunu bilmezse kutular kayabilir."
+  },
+  "book": {
+    "label": "Kitap",
+    "none": "Kitapsız",
+    "manage": "Kitapları yönet (yeni sekme)",
+    "noPageNumber": "Dosya adında sayfa numarası yok",
+    "pageFailed": "Kitap bilgisi alınamadı",
+    "printed": "s. {{printed}} (dosya {{file}})",
+    "noPrinted": "dosya {{file}} · basılı sayfa yok",
+    "answerKey": "cevap anahtarı",
+    "tocHint": "İçindekilerden: havuza kayıtta ders / konu varsayılanı olur",
+    "tocGradeMismatch": "Sınıf içindekilerden farklı; kitap konusu uygulanmayacak",
+    "tocStale": "İçindekiler satırı geçersiz (silinmiş konu)"
   }
 }

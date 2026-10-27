@@ -397,6 +397,7 @@ builder.Services.AddOptions<ExamApp.Api.Services.Labeling.LabelingAiOptions>()
 builder.Services.AddSingleton<ExamApp.Api.Services.Labeling.IClaudeLabelDetector, ExamApp.Api.Services.Labeling.ClaudeLabelDetector>();
 builder.Services.AddScoped<ExamApp.Api.Services.Labeling.ILabelingService, ExamApp.Api.Services.Labeling.LabelingService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Labeling.ILabelingBankService, ExamApp.Api.Services.Labeling.LabelingBankService>();
+builder.Services.AddScoped<ExamApp.Api.Services.Labeling.IBookRegistryService, ExamApp.Api.Services.Labeling.BookRegistryService>(); // issue #577
 // issue #262: audit saklama süresi (KVKK) — AdminDataAccessLog:RetentionDays (varsayılan 180), günlük Hangfire temizliği.
 builder.Services.AddOptions<ExamApp.Api.Services.AdminUsers.AdminDataAccessLogOptions>()
     .BindConfiguration(ExamApp.Api.Services.AdminUsers.AdminDataAccessLogOptions.SectionName)

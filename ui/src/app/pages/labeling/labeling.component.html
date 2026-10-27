@@ -118,6 +118,59 @@
       }
     </span>
 
+    <!-- Kaynak kitap (issue #577): dosya sayfası → basılı sayfa, cevap anahtarı, içindekiler varsayılanı. -->
+    @if (books().length > 0) {
+    <span class="lb-group lb-book">
+      <span class="lb-group__label" id="lb-book-label">{{ t('book.label') }}</span>
+      <mat-form-field class="lb-grade" appearance="outline" subscriptSizing="dynamic">
+        <mat-select [value]="bookId()" (selectionChange)="setBook($event)" aria-labelledby="lb-book-label"
+          [placeholder]="t('book.none')">
+          <mat-option [value]="null">{{ t('book.none') }}</mat-option>
+          @for (book of books(); track book.id) {
+          <mat-option [value]="book.id">{{ book.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      @if (selectedBook()) {
+      <span class="lb-book__info" aria-live="polite">
+        @if (filePage() == null) {
+        <span class="lb-hint-sm lb-hint-sm--warn">{{ t('book.noPageNumber') }}</span>
+        } @else if (bookPageLoading()) {
+        <mat-spinner diameter="14" aria-hidden="true"></mat-spinner>
+        } @else if (bookPageError()) {
+        <span class="lb-hint-sm lb-hint-sm--warn">{{ t('book.pageFailed') }}</span>
+        <button mat-icon-button type="button" (click)="retryBookPage()" [matTooltip]="t('retry')"
+          [attr.aria-label]="t('retry')"><mat-icon>refresh</mat-icon></button>
+        } @else if (bookPage(); as page) {
+        <span class="lb-pill lb-book__page">
+          @if (page.printedPage != null) {
+          {{ t('book.printed', { printed: page.printedPage, file: page.filePage }) }}
+          } @else {
+          {{ t('book.noPrinted', { file: page.filePage }) }}
+          }
+        </span>
+        @if (page.isAnswerKey) {
+        <span class="lb-pill lb-pill--warn lb-book__answer-key">{{ t('book.answerKey') }}</span>
+        }
+        @if (tocLabel(); as toc) {
+        <span class="lb-pill lb-pill--toc lb-book__toc" [class.lb-pill--off]="tocGradeMismatch()"
+          [matTooltip]="tocGradeMismatch() ? t('book.tocGradeMismatch') : t('book.tocHint')">
+          <mat-icon aria-hidden="true">menu_book</mat-icon>{{ toc }}
+        </span>
+        @if (tocGradeMismatch()) {
+        <span class="lb-hint-sm lb-hint-sm--warn lb-book__mismatch" role="status">{{ t('book.tocGradeMismatch') }}</span>
+        }
+        } @else if (page.tocStale) {
+        <span class="lb-hint-sm lb-hint-sm--warn lb-book__stale" role="status">{{ t('book.tocStale') }}</span>
+        }
+        }
+      </span>
+      }
+      <a mat-icon-button routerLink="/books" target="_blank" rel="noopener" [matTooltip]="t('book.manage')"
+        [attr.aria-label]="t('book.manage')"><mat-icon>edit_note</mat-icon></a>
+    </span>
+    }
+
     <mat-button-toggle-group hideSingleSelectionIndicator [value]="selectionMode()" [attr.aria-label]="t('drawMode')">
       <mat-button-toggle value="question" (click)="setDrawMode('question')">{{ t('modeQuestion') }}</mat-button-toggle>
       <mat-button-toggle value="answer" (click)="setDrawMode('answer')">{{ t('modeAnswer') }}</mat-button-toggle>
@@ -301,6 +354,21 @@
             <mat-icon>crop_square</mat-icon>{{ t('drawAnswer') }}
           </button>
         </div>
+      </section>
+
+      <!-- Kitap etiketleri (issue #577): havuza kayıtta soruyla gider; isteğe bağlı. -->
+      <section class="lb-insp-sec lb-labels">
+        <span class="lb-lbl">{{ t('labels') }}</span>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ t('activityLabel') }}</mat-label>
+          <input matInput class="lb-activity-label" [value]="labelsOf(d.name).activityLabel" [attr.maxlength]="maxQuestionLabel"
+            [placeholder]="t('activityPlaceholder')" (input)="setQuestionLabel(d.name, 'activityLabel', $event.target)" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ t('itemLabel') }}</mat-label>
+          <input matInput class="lb-item-label" [value]="labelsOf(d.name).itemLabel" [attr.maxlength]="maxQuestionLabel"
+            [placeholder]="t('itemPlaceholder')" (input)="setQuestionLabel(d.name, 'itemLabel', $event.target)" />
+        </mat-form-field>
       </section>
 
       <section class="lb-insp-sec">

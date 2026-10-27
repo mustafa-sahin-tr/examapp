@@ -119,6 +119,10 @@ export interface LabelingBankQuestion extends LabelingBankBox {
   /** Şıklar okunma sırasıyla (A, B, C, ...); orijinal sayfa pikseli. */
   options: LabelingBankBox[];
   correctOptionIndex: number;
+  /** Issue #577: kitaptaki etkinlik etiketi ("Etkinlik 9"), en çok 50 karakter; boşsa gönderilmez. */
+  activityLabel?: string;
+  /** Issue #577: madde etiketi ("3", "b"), en çok 50 karakter; boşsa gönderilmez. */
+  itemLabel?: string;
 }
 
 /** `POST /api/exam/labeling/pages/bank`: soruları teste bağlamadan soru bankasına kaydeder. */
@@ -128,18 +132,30 @@ export interface LabelingBankSaveRequest {
   /** Sayfanın sınıfı (`GET /api/exam/worksheet/grades` id'si; zorunlu, bilinmeyen sınıf → 400). Sınıflandırıcı yalnız
    * bu sınıfın konularını kullanır (issue #565). */
   gradeId: number;
-  /** Sayfa daha önce kaydedildiyse de yeniden kaydet (sorular ikinci kez oluşur). */
+  /** Sayfa ya da aynı kırpma daha önce kaydedildiyse de yeniden kaydet (sorular ikinci kez oluşur). */
   force: boolean;
+  /**
+   * Issue #577: kaynak kitap (`/api/exam/labeling/books`) ve görselin dosya sayfası. Sunucu içindekiler varsayılanını
+   * (sınıf / ders / konu / alt konu, `ClassificationSource=Book`) uygular ve kaynağı kaydeder. Kitap seçili değilse yok.
+   */
+  bookId?: number;
+  filePage?: number;
 }
 
 export interface LabelingBankSaveResponse {
   imageSha256: string;
   bank: LabelingBankInfo;
+  /** Issue #577: içindekiler sınıflandırması soruya uygulandı mı (kitapsız kayıtta / sınıf farklıysa false ya da yok). */
+  tocApplied?: boolean;
 }
 
-/** 409 gövdesi: sayfa daha önce kaydedildi (`existing`) ya da şu an kaydediliyor. */
+/**
+ * 409 gövdesi: sayfa daha önce kaydedildi (`existing`) ya da şu an kaydediliyor. Aynı kırpma bankadaysa gövde
+ * `LabelingCropConflict`tır (`models/labeling-book.ts`, `errorCode: 'LabelingCropAlreadyInBank'`).
+ */
 export interface LabelingBankConflict {
   message: string;
-  errorCode: 'LabelingPageAlreadyInBank';
+  /** `LabelingAnswerKeyPage` (#577): sayfa kitabın cevap anahtarı aralığında; `existing` yok, `force` ile kaydedilir. */
+  errorCode: 'LabelingPageAlreadyInBank' | 'LabelingAnswerKeyPage';
   existing: LabelingBankInfo | null;
 }

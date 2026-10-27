@@ -14,7 +14,8 @@ using Microsoft.Extensions.Options;
 namespace ExamApp.Api.Services.Labeling;
 
 /// <summary>İşlemi yapan kullanıcı (token'dan).</summary>
-public sealed record LabelingActor(string? KeycloakId, string? Name);
+/// <summary>İşaretleme çağıranı. <c>IsAdmin</c> (issue #577): kırpma tekrarında başkasının sorusunun ayrıntısını görebilir.</summary>
+public sealed record LabelingActor(string? KeycloakId, string? Name, bool IsAdmin = false);
 
 /// <summary>Anthropic API anahtarı yok → 503.</summary>
 public sealed class LabelingAiUnavailableException() : Exception("Claude labeling is not configured.");

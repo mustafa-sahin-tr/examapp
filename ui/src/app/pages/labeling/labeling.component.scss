@@ -419,3 +419,57 @@
   font-size: 11px;
   font-weight: 400;
 }
+
+// Kaynak kitap (issue #577): seçim + sayfa bilgisi.
+.lb-book {
+  &__info {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &__page {
+    font-size: 12px;
+    color: var(--ms-text);
+  }
+
+  &__toc {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+
+    mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+  }
+}
+
+.lb-pill--warn {
+  border-color: var(--ms-warning-text-weak);
+  background: var(--ms-warning-surface);
+  color: var(--ms-warning-text);
+}
+
+.lb-pill--toc {
+  border-color: var(--ms-action-border);
+  background: var(--ms-action-background-weak);
+  color: var(--ms-action-text);
+  font-size: 12px;
+}
+
+.lb-labels mat-form-field {
+  width: 100%;
+  font-size: 13px;
+}
+
+// CR1: seçili sınıf içindekilerden farklı — kitap konusu uygulanmayacak.
+.lb-pill--off {
+  border-color: var(--ms-border);
+  background: transparent;
+  color: var(--ms-text-weak);
+  text-decoration: line-through;
+  opacity: 0.7;
+}

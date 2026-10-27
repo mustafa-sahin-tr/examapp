@@ -107,6 +107,8 @@ builder.Services.AddScoped<BadgeDefinitionAdminService>();
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();
 // Soru sınıflandırıcısı: QuestionAnalyzer:Provider = Claude (varsayılan) | Gemini (issue #469).
 builder.Services.AddQuestionClassifier(builder.Configuration);
+// Issue #577: QuestionAnalyzer:BookTocMode = Hybrid (varsayılan) | Skip | Always — geçersiz değer açılışta patlar.
+BookTocModeConfig.Read(builder.Configuration);
 
 // issue #279 item 6: QuestionPoint üst sınırı (consumer tarafında sahte event ile puan şişirmeye karşı).
 builder.Services.AddOptions<AnswerPointOptions>()

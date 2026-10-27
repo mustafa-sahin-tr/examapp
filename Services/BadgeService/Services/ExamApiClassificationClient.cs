@@ -39,13 +39,22 @@ public sealed class ExamApiClassificationClient(IHttpClientFactory httpClientFac
     /// <c>GET /api/questions/classifier-taxonomy</c> (issue #469); with <paramref name="gradeId"/> only that grade's
     /// subjects/topics/subtopics (<c>?gradeId=</c>, issue #565).
     /// </summary>
-    public async Task<ClassifierTaxonomy> FetchTaxonomyAsync(int? gradeId, string token, CancellationToken ct)
+    public Task<ClassifierTaxonomy> FetchTaxonomyAsync(int? gradeId, string token, CancellationToken ct) =>
+        FetchTaxonomyAsync(gradeId, topicId: null, token, ct);
+
+    /// <summary>Issue #577: with <paramref name="topicId"/> only that topic (<c>&amp;topicId=</c>, book TOC hybrid mode).</summary>
+    public async Task<ClassifierTaxonomy> FetchTaxonomyAsync(int? gradeId, int? topicId, string token, CancellationToken ct)
     {
         var client = CreateClient(token);
 
         var url = $"{_baseUrl}/api/questions/classifier-taxonomy";
+        var query = new List<string>(2);
         if (gradeId.HasValue)
-            url += $"?gradeId={gradeId.Value}";
+            query.Add($"gradeId={gradeId.Value}");
+        if (topicId.HasValue)
+            query.Add($"topicId={topicId.Value}");
+        if (query.Count > 0)
+            url += "?" + string.Join("&", query);
         var response = await client.GetAsync(url, ct);
         var payload = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
@@ -63,7 +72,12 @@ public sealed class ExamApiClassificationClient(IHttpClientFactory httpClientFac
         return ClassifierTaxonomy.Parse(taxonomy, hash ?? string.Empty);
     }
 
-    public async Task PersistAsync(int questionId, QuestionClassificationResult result, string token, CancellationToken ct)
+    /// <summary>
+    /// <paramref name="classificationSource"/>: <c>AI</c> by default; the book-TOC hybrid mode (issue #577) persists
+    /// <c>Book</c> — topic/subject came from the book, only subtopic + difficulty from the model.
+    /// </summary>
+    public async Task PersistAsync(
+        int questionId, QuestionClassificationResult result, string token, CancellationToken ct, string classificationSource = "AI")
     {
         var client = CreateClient(token);
 
@@ -72,7 +86,7 @@ public sealed class ExamApiClassificationClient(IHttpClientFactory httpClientFac
             subjectId = result.SubjectId,
             topicId = result.TopicId,
             subTopicIds = result.SubTopicIds.ToArray(),
-            classificationSource = "AI",
+            classificationSource,
             difficulty = result.DifficultyLevel,
         };
 

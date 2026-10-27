@@ -114,6 +114,30 @@ public class QuestionClassificationServiceTests : IDisposable
             .ShouldBe(ClassificationSource.Human);
     }
 
+    [Theory]
+    // issue #577: sayısal string TryParse'ı geçer; tanımsız değer reddedilir, Book kabul edilir.
+    [InlineData("99", false)]
+    [InlineData("2", true)]
+    [InlineData("Book", true)]
+    public async Task Numeric_or_Book_classification_source(string source, bool accepted)
+    {
+        var w = await SeedAsync();
+        await using (var ctx = _db.NewContext())
+        {
+            var r = await NewService(ctx).UpdateQuestionClassification(
+                w.QuestionId, subTopicIds: new[] { w.SubTopicA }, classificationSourceStr: source);
+            r.Success.ShouldBe(accepted);
+            if (!accepted)
+                r.Message.ShouldContain("'Book'");
+        }
+
+        if (accepted)
+        {
+            await using var check = _db.NewContext();
+            (await check.Questions.FirstAsync(x => x.Id == w.QuestionId)).ClassificationSource.ShouldBe(ClassificationSource.Book);
+        }
+    }
+
     [Fact]
     public async Task An_unrecognised_classification_source_is_rejected()
     {

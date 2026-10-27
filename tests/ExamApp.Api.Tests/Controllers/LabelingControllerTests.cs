@@ -401,6 +401,57 @@ public class LabelingControllerTests
     }
 
     [Fact]
+    // issue #577: aynı kırpma bankada → 409 LabelingCropAlreadyInBank + mevcut kayıtlar.
+    public async Task SaveToBank_CropDuplicate_Returns409WithExistingCrops()
+    {
+        IReadOnlyList<LabelingCropDuplicateDto> existing = [new LabelingCropDuplicateDto(0, 12, "TT MatLab 5", 60, 10, "Etkinlik 9", "3")];
+        _bank.SaveToBankAsync(default!, default!, default, default)
+            .ThrowsAsyncForAnyArgs(new LabelingCropDuplicateException(existing));
+
+        var result = await NewBankController(TeacherProfile()).SaveToBank(BankRequest(), _bank, CancellationToken.None);
+
+        var obj = result.ShouldBeOfType<ConflictObjectResult>();
+        obj.Value!.GetType().GetProperty("errorCode")!.GetValue(obj.Value).ShouldBe("LabelingCropAlreadyInBank");
+        ((IEnumerable<object>)obj.Value.GetType().GetProperty("existing")!.GetValue(obj.Value)!).ShouldBe(existing);
+    }
+
+    [Fact]
+    // review M1: başkasının sorusu yalnız {questionIndex, otherOwner:true} olarak serileşir.
+    public async Task SaveToBank_CropDuplicateOfAnotherOwner_SerializesOnlyIndexAndFlag()
+    {
+        IReadOnlyList<LabelingCropDuplicateDto> existing =
+        [
+            new LabelingCropDuplicateDto(0, 12, "Kitap", 60, 10, "Etkinlik 9", "3"),
+            new LabelingCropDuplicateDto(1, 13, "Gizli kitap", 61, 11, "E", "4", OtherOwner: true),
+        ];
+        _bank.SaveToBankAsync(default!, default!, default, default)
+            .ThrowsAsyncForAnyArgs(new LabelingCropDuplicateException(existing));
+
+        var obj = (await NewBankController(TeacherProfile()).SaveToBank(BankRequest(), _bank, CancellationToken.None))
+            .ShouldBeOfType<ConflictObjectResult>();
+        var json = System.Text.Json.JsonSerializer.Serialize(obj.Value,
+            new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        var items = doc.RootElement.GetProperty("existing").EnumerateArray().ToList();
+        items[0].GetProperty("questionId").GetInt32().ShouldBe(12);
+        items[0].GetProperty("otherOwner").GetBoolean().ShouldBeFalse();
+        items[1].EnumerateObject().Select(p => p.Name).OrderBy(n => n).ShouldBe(new[] { "otherOwner", "questionIndex" });
+        items[1].GetProperty("otherOwner").GetBoolean().ShouldBeTrue();
+        json.ShouldNotContain("Gizli kitap");
+    }
+
+    [Fact]
+    public async Task SaveToBank_AnswerKeyPage_Returns409()
+    {
+        _bank.SaveToBankAsync(default!, default!, default, default).ThrowsAsyncForAnyArgs(new LabelingAnswerKeyPageException());
+
+        var obj = (await NewBankController(TeacherProfile()).SaveToBank(BankRequest(), _bank, CancellationToken.None))
+            .ShouldBeOfType<ConflictObjectResult>();
+        obj.Value!.GetType().GetProperty("errorCode")!.GetValue(obj.Value).ShouldBe("LabelingAnswerKeyPage");
+    }
+
+    [Fact]
     public async Task SaveToBank_DuplicateWhileClaimInProgress_Returns409WithNullExisting()
     {
         _bank.SaveToBankAsync(default!, default!, default, default)

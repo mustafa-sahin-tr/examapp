@@ -1,3 +1,5 @@
+import { MAX_BOOK_FILE_PAGE } from '../../models/labeling-book';
+
 /**
  * İşaretleme modu: klasör havuzundan ad sırasıyla, daha önce eğitime alınmamış sayfa seçimi.
  * Saf fonksiyonlar (DOM / Angular yok) — birim testleri doğrudan bunları sınar.
@@ -111,4 +113,19 @@ export async function pickNextUnlabeled<F>(options: PickOptions<F>): Promise<Lab
     return { file, pageId };
   }
   return null;
+}
+
+/**
+ * Issue #577: görsel dosya adından dosya sayfası numarası. Önce `page_040` / `page-40` / `page 40` (büyük-küçük harf
+ * duyarsız), yoksa uzantısız adın sonundaki sayı (`040.webp`, `kitap_12.png`). Klasör adları yoksayılır; bulunamazsa ya
+ * da 1..100000 dışındaysa null.
+ */
+export function filePageOf(path: string): number | null {
+  const base = (path.split(/[\\/]/).pop() ?? '').replace(/\.[^.]+$/, '');
+  const match = /page[_\- ]?(\d+)/i.exec(base) ?? /(\d+)$/.exec(base);
+  if (!match) {
+    return null;
+  }
+  const page = Number.parseInt(match[1], 10);
+  return Number.isSafeInteger(page) && page >= 1 && page <= MAX_BOOK_FILE_PAGE ? page : null;
 }

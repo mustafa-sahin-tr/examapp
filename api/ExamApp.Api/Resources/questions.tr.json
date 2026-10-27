@@ -69,7 +69,7 @@
       "invalidSubTopicId": "Geçersiz alt konu (subtopic) ID'si.",
       "invalidSubjectId": "Geçersiz ders (subject) ID'si.",
       "invalidTopicId": "Geçersiz konu (topic) ID'si.",
-      "invalidSource": "Geçersiz sınıflandırma kaynağı: {0}. 'Human' veya 'AI' beklenmektedir.",
+      "invalidSource": "Geçersiz sınıflandırma kaynağı: {0}. 'Human', 'AI' veya 'Book' beklenmektedir.",
       "invalidDifficulty": "Geçersiz zorluk seviyesi. 1 ile 10 arasında olmalıdır.",
       "updated": "Soru sınıflandırması başarıyla güncellendi!",
       "updateError": "Soru sınıflandırması güncellenirken hata oluştu: {0}",

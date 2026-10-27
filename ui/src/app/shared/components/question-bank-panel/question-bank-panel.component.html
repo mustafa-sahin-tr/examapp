@@ -104,6 +104,8 @@
             <span>{{ item.subjectName || t('card.noSubject') }}</span>
             @if (item.classificationSource === AI) {
               <mat-icon class="qb-card__ai" [matTooltip]="t('card.aiTooltip')">auto_awesome</mat-icon>
+            } @else if (item.classificationSource === BOOK) {
+              <mat-icon class="qb-card__ai qb-card__book" [matTooltip]="t('card.bookTooltip')">menu_book</mat-icon>
             }
           </div>
           @if (item.topicName) {

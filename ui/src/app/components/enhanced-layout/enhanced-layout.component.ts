@@ -279,6 +279,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'questiontransfer', labelKey: 'menu.questionTransfer', icon: 'swap_horiz', route: '/question-transfer', type: 'menu', roles: ['Admin'] },
     // Soru tespit modeli için işaretleme modu (test/soru kaydı yok, yalnız eğitim verisi); send-to-fix ile aynı roller.
     { id: 'labeling', labelKey: 'menu.labeling', icon: 'model_training', route: '/labeling', type: 'menu', roles: ['Admin', 'QuestionTrainer'] },
+    // Issue #577: işaretleme kitap kaydı (sayfa ofseti, cevap anahtarı, içindekiler).
+    { id: 'labeling-books', labelKey: 'menu.labelingBooks', icon: 'menu_book', route: '/books', type: 'menu', roles: ['Admin', 'QuestionTrainer'] },
   ];
   // Bottom navigation items for mobile (max 4 primary items + menu trigger)
   bottomNavItems: MenuItem[] = [

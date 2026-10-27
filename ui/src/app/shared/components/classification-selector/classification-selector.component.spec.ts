@@ -118,6 +118,18 @@ describe('ClassificationSelectorComponent (#545)', () => {
         expect(sparkles.length).toBeGreaterThan(0);
     });
 
+    it('template_BookSource_ShowsBookIconWithLabel_NoSparkle', () => {
+        setup();
+        fixture.componentRef.setInput('initialSelection', { ...FULL, classificationSource: ClassificationSource.Book });
+        render();
+
+        const icons = Array.from(el().querySelectorAll('mat-icon'));
+        const books = icons.filter((i) => i.textContent?.trim() === 'menu_book');
+        expect(books.length).toBeGreaterThan(0);
+        expect(books[0].getAttribute('aria-label')).toBe('Kitap');
+        expect(icons.some((i) => i.textContent?.trim() === 'auto_awesome')).toBe(false);
+    });
+
     it('template_HumanSource_HasNoSparkleIcons', () => {
         setup();
         fixture.componentRef.setInput('initialSelection', FULL);

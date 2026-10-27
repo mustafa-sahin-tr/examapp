@@ -452,6 +452,25 @@ isteği iptal edilir, önceden getirme edilmez. Claude hatasında sunucu mesajı
 (bütçe/kota) Claude o oturumda askıya alınır (sayfalar YOLO ile açılır), Claude yeniden seçilince bir kez daha denenir. Manuel kayıt otomatik
 uygulanmaz, yalnız seçilince. Yetki / bütçe değişmedi (`Anthropic:LiveCallsPerHour`, `DailyBudgetUsd*`).
 
+**Issue #577 — kitap kaydı.** Admin + QuestionTrainer için **Kitaplar** sayfası (`/books`): kitap, sayfa ofsetleri, cevap
+anahtarı aralıkları ve içindekiler (dosya sayfa aralığı → sınıf / ders / konu / alt konu) girilir. Uçlar
+`/api/exam/labeling/books` altında (işaretlemeyle aynı yetki, gateway kuralı da): `GET`/`POST`, `GET`/`PUT`/`DELETE /{id}` (PUT kümeleri
+bütün olarak değiştirir; kullanımdaki kitap silinmez, 409 `LabelingBookInUse`), `GET /{id}/pages/{filePage}` (bastırılmış sayfa, cevap
+anahtarı mı, içindekiler satırı), `GET /{id}/printed/{printedPage}?near=` (dosya sayfaları). Sayfalar **dosya** sayfasıdır (1'den);
+**bastırılmış = dosya + ofset** (ofset negatif olabilir); fasiküllü kitapta (TT MatLab) her fasikül ayrı aralık, bastırılmış numara
+tekrar edebilir → birden çok dosya sayfası, `near`'a en yakın önce. Aralıklar küme içinde çakışmaz. İşaretleme ekranında kitap + sayfa
+seçilince `pages/bank` `bookId`/`filePage` taşır: sınıf (istekte yoksa) ve ders/konu içindekilerden gelir (`ClassificationSource=Book`,
+sınıflandırıcı davranışı `QuestionAnalyzer:BookTocMode`, bkz. architecture.md), `BookName` kitap adı olur, soru başına `QuestionSources`
+(bastırılmış sayfa, etkinlik/madde etiketi, yüklenen kırpmanın SHA-256'sı) yazılır. Aynı kırpma bankada varsa kayıttan önce 409
+`LabelingCropAlreadyInBank` (+ mevcut kayıtlar; başkasının sorusu yalnız `{questionIndex, otherOwner: true}`, Admin hepsini görür) →
+UI "Yine de kaydet" (`force`); cevap anahtarı sayfası 409 `LabelingAnswerKeyPage` (force ile kaydedilir); yanıtta `tocApplied`. Silinmiş
+taksonomiye işaret eden içindekiler satırı uygulanmaz (`pages/{filePage}` → `toc: null`, `tocStale: true`). Öğretmen içeriğinde
+kullanılan kitabın (kitap testi, çalışma öğesi, başka kullanıcının aynı adlı sorusu) adını / asıl kaydını yalnız Admin değiştirir
+(403 `LabelingBookRenameForbidden`). Migration `AddBookRegistry` exam API açılışında uygulanır (Aspire'da exam API'yi yeniden başlat).
+**Yayın:** exam API ile BadgeService birlikte deploy edilir; eski BadgeService `Book` kaynağını tanımaz ve kitap sorularını AI ile
+sınıflandırıp içindekilerin konusunun üzerine yazar. Ayrı yayın gerekiyorsa önce BadgeService'i `QuestionAnalyzer__BookTocMode=Skip`
+ile çıkar, exam API'den sonra `Hybrid`'e al.
+
 **Issue #469 — Claude soru sınıflandırıcısı.** BadgeService'te `QuestionAnalyzer:Provider` = `Claude` (varsayılan, boşken de) |
 `Gemini`; geçersiz değer açılışta patlar. Claude seçiliyken BadgeService
 taksonomiyi exam API `GET /api/questions/classifier-taxonomy`'den (Admin/servis) alır (`Anthropic:TaxonomyCacheSeconds`,

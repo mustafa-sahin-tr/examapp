@@ -1,0 +1,55 @@
+.cd-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mainFontFamily);
+
+  mat-icon {
+    color: var(--secondaryColor);
+  }
+}
+
+.cd-message,
+.cd-hint {
+  margin: 0 0 8px;
+  font-family: var(--paragraphFontFamily);
+}
+
+.cd-hint {
+  font-size: 13px;
+  color: var(--ms-text-weak);
+}
+
+.cd-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.cd-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--ms-border);
+  border-radius: 8px;
+  background: var(--main-bg-color);
+}
+
+.cd-link {
+  font-weight: 600;
+  color: var(--ms-action-navigation);
+}
+
+.cd-meta {
+  font-size: 13px;
+  color: var(--ms-text-medium);
+}
+
+.cd-other {
+  font-style: italic;
+  color: var(--ms-text-medium);
+}

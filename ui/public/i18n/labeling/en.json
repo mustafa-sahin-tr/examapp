@@ -36,7 +36,26 @@
     "cardSaved": "Saved to the pool ({{count}} questions)",
     "forbidden": "Only teachers and admins can save questions to the pool.",
     "savedAndTrained": "{{count}} questions saved to the pool and sent for training; classification started in the background.",
-    "needGrade": "Choose a grade first"
+    "needGrade": "Choose a grade first",
+    "cropDuplicate": {
+      "title": "This crop is already in the bank",
+      "message": "The same question image is in the bank in {{count}} record(s).",
+      "question": "Question #{{id}}",
+      "filePage": "file {{page}}",
+      "printedPage": "printed {{page}}",
+      "itemLabel": "item {{label}}",
+      "noSource": "no source info",
+      "hint": "Saving anyway creates the question a second time.",
+      "cancel": "Cancel",
+      "force": "Save anyway",
+      "otherOwner": "Another user's record"
+    },
+    "answerKey": {
+      "title": "Answer key page",
+      "message": "This page is in the book's answer key range. Save it as questions anyway?",
+      "cancel": "Cancel",
+      "force": "Save anyway"
+    }
   },
   "grade": {
     "label": "Grade",
@@ -72,7 +91,12 @@
     "align": "Align",
     "drawAnswer": "Draw choice",
     "deleteQuestion": "Delete question",
-    "emptyHint": "No questions on this page. Draw a question box or re-detect; Train with no questions sends the page as an empty page."
+    "emptyHint": "No questions on this page. Draw a question box or re-detect; Train with no questions sends the page as an empty page.",
+    "labels": "Book labels",
+    "activityLabel": "Activity",
+    "itemLabel": "Item",
+    "activityPlaceholder": "e.g. Activity 9",
+    "itemPlaceholder": "e.g. 3"
   },
   "source": {
     "label": "Source",
@@ -127,5 +151,18 @@
     "cancel": "Cancel",
     "save": "Save",
     "placeholderMissing": "Warning: {width} or {height} is missing — without the pixel size Claude's boxes may drift."
+  },
+  "book": {
+    "label": "Book",
+    "none": "No book",
+    "manage": "Manage books (new tab)",
+    "noPageNumber": "No page number in the file name",
+    "pageFailed": "Book info could not be loaded",
+    "printed": "p. {{printed}} (file {{file}})",
+    "noPrinted": "file {{file}} · no printed page",
+    "answerKey": "answer key",
+    "tocHint": "From the table of contents: the subject / topic default when saving to the bank",
+    "tocGradeMismatch": "The grade differs from the table of contents; the book topic will not be applied",
+    "tocStale": "The table of contents entry is invalid (deleted topic)"
   }
 }

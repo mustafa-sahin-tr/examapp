@@ -72,6 +72,7 @@
       "questionBank": "Question Pool",
       "questionTransfer": "Question Transfer",
       "labeling": "Labeling",
+      "labelingBooks": "Books",
       "reports": "Reports",
       "settings": "Settings",
       "admin": "Administration",
@@ -248,7 +249,9 @@
       "topic": "Topic",
       "subtopics": "Subtopics (multiple choice)",
       "any": "All",
-      "apply": "Apply"
+      "apply": "Apply",
+      "sourceAi": "AI",
+      "sourceBook": "Book"
     },
     "colorSchemeToggle": {
       "toDark": "Switch to dark theme",

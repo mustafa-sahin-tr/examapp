@@ -182,7 +182,8 @@ public class QuestionClassificationService : IQuestionClassificationService
 
             // Default to "Human" if not provided
             var sourceStr = !string.IsNullOrEmpty(classificationSourceStr) ? classificationSourceStr : "Human";
-            if (Enum.TryParse<ClassificationSource>(sourceStr, ignoreCase: true, out var parsedSource))
+            // Issue #577: sayısal string ("7") TryParse'ı geçer; tanımsız değer reddedilir.
+            if (Enum.TryParse<ClassificationSource>(sourceStr, ignoreCase: true, out var parsedSource) && Enum.IsDefined(parsedSource))
                 question.ClassificationSource = parsedSource;
             else
                 return new ResponseBaseDto { Success = false, Message = _localizer["questions.classification.invalidSource", sourceStr] };

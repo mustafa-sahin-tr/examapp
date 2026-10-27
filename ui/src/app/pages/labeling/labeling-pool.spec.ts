@@ -1,4 +1,4 @@
-import { compareLabelingPaths, isLabelingImage, pageIdOf, pickNextUnlabeled, sortLabelingFiles, toHex, } from './labeling-pool';
+import { compareLabelingPaths, filePageOf, isLabelingImage, pageIdOf, pickNextUnlabeled, sortLabelingFiles, toHex, } from './labeling-pool';
 
 describe('labeling-pool', () => {
     describe('isLabelingImage', () => {
@@ -155,5 +155,25 @@ describe('labeling-pool', () => {
 
             expect(result).toBeNull();
         });
+    });
+});
+
+describe('filePageOf (#577)', () => {
+    it.each([
+        ['kitap/page_040.webp', 40],
+        ['kitap/PAGE-7.png', 7],
+        ['page 12.jpg', 12],
+        ['fasikul2/page_3_b.webp', 3],
+        ['fasikul2/12.webp', 12],
+        ['kitap_015.png', 15],
+        ['kitap/kapak.webp', null],
+        ['b5/kapak.webp', null],
+        ['page_0.png', null],
+        ['page_100000.png', 100000],
+        ['scan_100001.png', null],
+        ['IMG_20261027.jpg', null],
+        ['', null],
+    ])('%s → %s', (path, expected) => {
+        expect(filePageOf(path)).toBe(expected);
     });
 });

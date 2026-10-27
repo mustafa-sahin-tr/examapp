@@ -82,7 +82,18 @@ public class BulkQuestionDto
     /// <c>topicId</c>/<c>subtopicId</c>/sayısal <c>classificationSource</c> zaten bulunabiliyor.
     /// </summary>
     public BulkQuestionClassificationDto? Classification { get; set; }
+
+    /// <summary>
+    /// Issue #577: kitap kaynağı — yalnız sunucu içinden (işaretleme ekranı bankaya kayıt) doldurulur; istemci JSON'undan
+    /// bağlanmaz. Doluysa toplu kayıt aynı transaction'da <c>QuestionSource</c> yazar; kırpma SHA-256'sı yüklenen soru
+    /// görselinin baytlarından hesaplanır.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public BulkQuestionSourceInfo? Source { get; set; }
 }
+
+/// <summary>Issue #577: <see cref="BulkQuestionDto.Source"/> — sunucu içi kitap kaynağı bilgisi.</summary>
+public sealed record BulkQuestionSourceInfo(int BookId, int FilePage, int? PrintedPage, string? ActivityLabel, string? ItemLabel);
 
 public class BulkQuestionClassificationDto
 {

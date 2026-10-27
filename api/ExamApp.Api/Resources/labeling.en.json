@@ -8,6 +8,7 @@
     "invalidBaseSource": "Invalid base source.",
     "tooManyBoxes": "Too many boxes were sent.",
     "invalidBox": "Invalid box coordinates.",
+    "invalidBlockKind": "Invalid block type, component or interaction type.",
     "pageNotFound": "No record for this page.",
     "aiUnavailable": "Claude labeling is not configured (no API key).",
     "aiFailed": "Claude could not label this page. Try again or pick another model.",

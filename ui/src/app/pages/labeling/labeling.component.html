@@ -99,6 +99,14 @@
         </mat-select>
       </mat-form-field>
       }
+      <!-- Issue #578: Claude blok türü renkleri (tuvaldeki çerçeve / etiket rengi). -->
+      @if (showKindLegend()) {
+      <ul class="lb-legend" [attr.aria-label]="t('source.legend')">
+        @for (kind of blockKinds; track kind) {
+        <li class="lb-legend__item"><span class="lb-kind-dot lb-kind-dot--{{ kind }}" aria-hidden="true"></span>{{ t('inspector.kind.types.' + kind) }}</li>
+        }
+      </ul>
+      }
     </span>
 
     <span class="lb-group">
@@ -323,6 +331,35 @@
       <p class="lb-inspector__summary">{{ t('questionCount', { count: questionCount }) }}</p>
 
       @if (inspector; as d) {
+      <!-- Issue #578: blok türü; yanlış etiket buradan düzeltilir. Soru dışı türler eğitime / bankaya gitmez. -->
+      <section class="lb-insp-sec lb-kind" *transloco="let k; prefix: 'labeling.inspector.kind'">
+        <span class="lb-lbl" id="lb-kind-label">{{ k('label') }}</span>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-select class="lb-kind-select" [value]="d.blockKind" (selectionChange)="insSetKind($event.value)"
+            [disabled]="inspectorLocked" aria-labelledby="lb-kind-label">
+            @for (kind of blockKinds; track kind) {
+            <mat-option [value]="kind"><span class="lb-kind-dot lb-kind-dot--{{ kind }}" aria-hidden="true"></span>{{ k('types.' + kind) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        @if (d.blockKind === 'activity') {
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>{{ k('component') }}</mat-label>
+          <mat-select class="lb-component-select" [value]="d.activityComponent" (selectionChange)="insSetComponent($event.value)"
+            [disabled]="inspectorLocked">
+            <mat-option [value]="null">{{ k('componentNone') }}</mat-option>
+            @for (component of activityComponents; track component) {
+            <mat-option [value]="component">{{ component }} · {{ k('components.' + component) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        }
+        @if (d.blockKind !== 'mcq_question') {
+        <p class="lb-hint-sm lb-kind__hint">{{ k('hint.' + d.blockKind) }}</p>
+        }
+      </section>
+
+      @if (d.blockKind === 'mcq_question') {
       <section class="lb-insp-sec">
         <div class="lb-insp-sec__head">
           <span class="lb-lbl">{{ t('answers') }}</span>
@@ -370,6 +407,7 @@
             [placeholder]="t('itemPlaceholder')" (input)="setQuestionLabel(d.name, 'itemLabel', $event.target)" />
         </mat-form-field>
       </section>
+      }
 
       <section class="lb-insp-sec">
         <button mat-stroked-button type="button" class="lb-danger" (click)="insRemoveQuestion()" [disabled]="inspectorLocked">

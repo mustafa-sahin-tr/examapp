@@ -96,7 +96,36 @@
     "activityLabel": "Etkinlik",
     "itemLabel": "Madde",
     "activityPlaceholder": "ör. Etkinlik 9",
-    "itemPlaceholder": "ör. 3"
+    "itemPlaceholder": "ör. 3",
+    "kind": {
+      "label": "Tür",
+      "component": "Bileşen",
+      "componentNone": "Bilinmiyor",
+      "types": {
+        "mcq_question": "Soru",
+        "activity": "Etkinlik",
+        "info_box": "Anlatım",
+        "answer_key": "Cevap anahtarı",
+        "noise": "Gürültü"
+      },
+      "components": {
+        "A": "Matris seçim",
+        "B": "Cevap kutusu",
+        "C": "Sürükle-yerleştir",
+        "D": "Metin üzerinde işaretleme",
+        "E": "Bölge / boyama",
+        "F": "Izgara tuvali",
+        "G": "Oyun motorları",
+        "H": "Açık uçlu",
+        "I": "Özel simülasyon"
+      },
+      "hint": {
+        "activity": "Etkinlik eğitime ve bu ekrandan bankaya gönderilmez; etkinlik akışında işlenir.",
+        "info_box": "Anlatım kutusu kırpılmaz: eğitime ve bankaya gitmez.",
+        "answer_key": "Cevap anahtarı kırpılmaz: eğitime ve bankaya gitmez.",
+        "noise": "Gürültü (optik form, karekod, sayfa başlığı …) kırpılmaz: eğitime ve bankaya gitmez."
+      }
+    }
   },
   "source": {
     "label": "Kaynak",
@@ -128,7 +157,8 @@
     "promptHint": "Claude talimatları ve kutu payları",
     "promptSaved": "Prompt v{{version}} kaydedildi; sonraki Claude çağrıları bunu kullanır.",
     "promptAskPage": "Bu sayfayı yeniden sor",
-    "promptVersion": "prompt v{{version}}"
+    "promptVersion": "prompt v{{version}}",
+    "legend": "Blok türleri"
   },
   "prompt": {
     "title": "Claude prompt ayarları",

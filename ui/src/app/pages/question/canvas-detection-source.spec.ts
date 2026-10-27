@@ -196,6 +196,34 @@ describe('CanvasDetectionSource', () => {
             expect(labelingApi.aiDetect).not.toHaveBeenCalled();
         });
 
+        it('onPageReady_AiResultWithNonQuestionBlocks_AppliesOnlyMcqBlocks', async () => {
+            // Issue #578: tuval sayfayı teste MCQ olarak kaydeder; etkinlik / anlatım / cevap anahtarı / gürültü düşer.
+            const mcq = { class_id: 0, x: 1, y: 1, width: 10, height: 10, subpredictions: [] };
+            const legacy = { ...mcq, y: 20 };
+            const mixed: PredictionList = {
+                success: true,
+                predictions: [
+                    { ...mcq, kind: 'mcq_question' },
+                    { ...mcq, y: 40, kind: 'activity', component: 'A', interaction_type: 'matrixChoice' },
+                    { ...mcq, y: 60, kind: 'info_box' },
+                    { ...mcq, y: 80, kind: 'answer_key' },
+                    { ...mcq, y: 100, kind: 'noise' },
+                    legacy,
+                ],
+            };
+            labelingApi.aiDetect.mockReturnValue(of({ origin: 'cached', imageSha256: 'sha-a', result: aiResult({ predictions: mixed }) }));
+            const source = create({ preferred: 'Ai' });
+            await waitUntil(() => source.available(), 'modeller');
+
+            await source.onPageReady(PAGE_A);
+            await waitUntil(() => vi.mocked(selector.applyExternalPrediction).mock.calls.length === 1, 'Claude sonucu uygulandı');
+
+            const call = vi.mocked(selector.applyExternalPrediction).mock.lastCall!;
+            expect((call[1] as PredictionList).predictions).toEqual([{ ...mcq, kind: 'mcq_question' }, legacy]);
+            // Düşen bloklar seçicide saklanır (manuel kayıtta korunur).
+            expect(call[3]).toEqual(mixed.predictions.slice(1, 5));
+        });
+
         it('onPageReady_AiPreference_CallsAiDetectAndAppliesAiSource', async () => {
             const source = create({ preferred: 'Ai' });
             await waitUntil(() => source.available(), 'modeller');
@@ -501,6 +529,22 @@ describe('CanvasDetectionSource', () => {
             expect(selector.applyExternalPrediction).toHaveBeenCalledTimes(1);
 
             expect(selector.applyExternalPrediction).toHaveBeenCalledWith(1, PREDICTIONS, { kind: 'Manual', base: null });
+        });
+
+        it('selectSource_ManualWithNonQuestionBlocks_AppliesOnlyMcqBlocks', async () => {
+            const mcq = { class_id: 0, x: 1, y: 1, width: 10, height: 10, subpredictions: [] };
+            const manual: PredictionList = { success: true, predictions: [mcq, { ...mcq, y: 30, kind: 'info_box' }, { ...mcq, y: 60, kind: 'activity' }] };
+            labelingApi.getPage.mockReturnValue(of(pageWith([aiResult({ source: 'Manual', modelName: 'manual', predictions: manual })])));
+            const source = create({ preferred: 'Model' });
+            await waitUntil(() => source.available(), 'modeller');
+            await source.onPageReady(PAGE_A);
+            await waitUntil(() => source.manualRecord() !== null, 'manuel kayıt bulundu');
+
+            source.selectSource('Manual');
+
+            const call = vi.mocked(selector.applyExternalPrediction).mock.lastCall!;
+            expect((call[1] as PredictionList).predictions).toEqual([mcq]);
+            expect(call[3]).toEqual(manual.predictions.slice(1));
         });
     });
 

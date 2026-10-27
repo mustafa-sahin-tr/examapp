@@ -473,3 +473,53 @@
   text-decoration: line-through;
   opacity: 0.7;
 }
+
+// Issue #578: blok türü renkleri (tuvaldeki çerçeveyle aynı token'lar).
+.lb-legend {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--ms-text-weak);
+    white-space: nowrap;
+  }
+}
+
+.lb-kind-dot {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 2px;
+  vertical-align: middle;
+
+  .lb-legend__item & {
+    margin-right: 0;
+  }
+
+  &--mcq_question { background: var(--ms-block-kind-question); }
+  &--activity { background: var(--ms-block-kind-activity); }
+  &--info_box { background: var(--ms-block-kind-info); }
+  &--answer_key { background: var(--ms-block-kind-answer-key); }
+  &--noise { background: var(--ms-block-kind-noise); }
+}
+
+.lb-kind {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  mat-form-field {
+    width: 100%;
+  }
+}

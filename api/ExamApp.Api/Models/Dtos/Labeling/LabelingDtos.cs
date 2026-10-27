@@ -28,6 +28,27 @@ public class PredictionDto
 
     [JsonPropertyName("subpredictions")]
     public List<PredictionDto> Subpredictions { get; set; } = new();
+
+    /// <summary>
+    /// Issue #578: blok türü — <c>mcq_question</c> | <c>activity</c> | <c>info_box</c> | <c>answer_key</c> | <c>noise</c>
+    /// (<see cref="Services.Labeling.LabelingBlocks"/>). null = <c>mcq_question</c> (YOLO, eski kayıtlar). Yalnız üst düzey kutu.
+    /// </summary>
+    [JsonPropertyName("kind")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Kind { get; set; }
+
+    /// <summary>Issue #578: bileşen ailesi <c>A</c>..<c>I</c> (epic #569); yalnız <c>kind = activity</c> iken.</summary>
+    [JsonPropertyName("component")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Component { get; set; }
+
+    /// <summary>
+    /// Issue #578: <c>matrixChoice</c> | <c>slotFill</c> | <c>dragPlace</c> | <c>match</c>; yalnız <c>kind = activity</c> iken ve
+    /// bileşenle tutarlıysa (A → matrixChoice, B → slotFill, C → dragPlace | match), aksi halde null.
+    /// </summary>
+    [JsonPropertyName("interaction_type")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? InteractionType { get; set; }
 }
 
 public class PredictionListDto

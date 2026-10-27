@@ -4,7 +4,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { Observable, Subject, of, throwError } from 'rxjs';
 import { MatButtonToggleChange } from '@angular/material/button-toggle';
-import { MatSelectChange } from '@angular/material/select';
+import { MatSelect, MatSelectChange } from '@angular/material/select';
+import { By } from '@angular/platform-browser';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
@@ -80,6 +81,13 @@ class ImageSelectorStub {
     /** Soru tipi (ad → tip); tanımsız = mcq. */
     interactionTypes: Record<string, string> = {};
     getInteractionType = vi.fn().mockName('getInteractionType').mockImplementation((name: string) => this.interactionTypes[name] ?? 'mcq');
+    /** Issue #578: blok türü (ad → tür); tanımsız = mcq_question. */
+    blockKinds: Record<string, string> = {};
+    isMcqRegion = vi.fn().mockName('isMcqRegion').mockImplementation(
+        (name: string) => (this.blockKinds[name] ?? 'mcq_question') === 'mcq_question' && (this.interactionTypes[name] ?? 'mcq') === 'mcq'
+    );
+    setBlockKind = vi.fn().mockName('setBlockKind');
+    setActivityComponent = vi.fn().mockName('setActivityComponent');
     ensureQuestionsValid = vi.fn().mockName('ensureQuestionsValid').mockReturnValue(true);
     loaded: File[] = [];
     /** Gerçek bileşen gibi: yükleme anında eski sayfa durumu silinir, görsel okunmuş sayılır. */
@@ -500,7 +508,11 @@ describe('LabelingComponent', () => {
             return fixture.nativeElement.querySelector('.lb-inspector');
         }
 
-        async function openPageWithQuestion(answerLabels: string[]): Promise<void> {
+        async function openPageWithQuestion(
+            answerLabels: string[],
+            blockKind = 'mcq_question',
+            activityComponent: string | null = null
+        ): Promise<void> {
             await setup();
             await pickFolder([image('a.webp')]);
             selector().regions.set([{ name: 'q1' }, { name: 'q2' }]);
@@ -508,10 +520,80 @@ describe('LabelingComponent', () => {
                 index: 1,
                 no: 2,
                 name: 'q2',
+                blockKind,
+                activityComponent,
                 answers: answerLabels.map((label, i) => ({ id: i + 1, label, isCorrect: i === 1 })),
             };
             fixture.detectChanges();
         }
+
+        describe('blok türü (#578)', () => {
+            function selectValue(css: string): unknown {
+                return fixture.debugElement.query(By.css(css)).injector.get(MatSelect).value;
+            }
+
+            it('kindSelect_ShowsCurrentKindAndForwardsChange', async () => {
+                await openPageWithQuestion(['A', 'B', 'C', 'D']);
+                const el = inspectorEl()!;
+                expect(selectValue('.lb-kind-select')).toBe('mcq_question');
+                // Soru: şıklar görünür, bileşen seçimi yok.
+                expect(el.querySelectorAll('.lb-choice').length).toBe(4);
+                expect(el.querySelector('.lb-component-select')).toBeNull();
+
+                component.insSetKind('info_box');
+
+                expect(selector().setBlockKind).toHaveBeenCalledWith(1, 'info_box');
+            });
+
+            it('nonQuestionKind_HidesAnswersAndShowsHint', async () => {
+                await openPageWithQuestion([], 'noise');
+                const el = inspectorEl()!;
+                expect(el.querySelector('.lb-choice')).toBeNull();
+                expect(el.querySelector('.lb-activity-label')).toBeNull();
+                expect(el.querySelector('.lb-kind__hint')?.textContent).toContain(labelingTr.inspector.kind.hint.noise);
+            });
+
+            it('activityKind_ShowsComponentSelectAndForwardsChange', async () => {
+                await openPageWithQuestion([], 'activity', 'A');
+                const el = inspectorEl()!;
+                expect(el.querySelector('.lb-component-select')).not.toBeNull();
+                expect(selectValue('.lb-component-select')).toBe('A');
+
+                component.insSetComponent('C');
+
+                expect(selector().setActivityComponent).toHaveBeenCalledWith(1, 'C');
+            });
+
+            it('legend_VisibleOnlyForClaudeSourceOrClaudeBasedManual', async () => {
+                await openPageWithQuestion(['A']);
+                const legend = () => fixture.nativeElement.querySelector('.lb-legend') as HTMLElement | null;
+                expect(legend()).toBeNull();
+
+                selector().detectionSource.set({ kind: 'Ai', modelName: 'claude-a' });
+                fixture.detectChanges();
+                expect(legend()!.querySelectorAll('.lb-legend__item').length).toBe(5);
+                expect(legend()!.textContent).toContain(labelingTr.inspector.kind.types.info_box);
+
+                selector().detectionSource.set({ kind: 'Model' });
+                fixture.detectChanges();
+                expect(legend()).toBeNull();
+
+                selector().detectionSource.set({ kind: 'Manual', base: { source: 'Ai', modelName: 'claude-a' } });
+                fixture.detectChanges();
+                expect(legend()).not.toBeNull();
+            });
+
+            it('whileSending_KindChangeIgnored', async () => {
+                await openPageWithQuestion(['A'], 'activity');
+                selector().sendingToFix.set(true);
+
+                component.insSetKind('mcq_question');
+                component.insSetComponent('A');
+
+                expect(selector().setBlockKind).not.toHaveBeenCalled();
+                expect(selector().setActivityComponent).not.toHaveBeenCalled();
+            });
+        });
 
         it('showsSelectedQuestionAnswersAndCountMismatch', async () => {
             await openPageWithQuestion(['A', 'B', 'C']);
@@ -1086,6 +1168,30 @@ describe('LabelingComponent', () => {
         it('saveToBank_DragDropOnly_ShowsNoMcqAndSendsNothing', async () => {
             await openPageWith([region('S1', 0)]);
             selector().interactionTypes['S1'] = 'dragDropLabeling';
+            const snack = vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue(undefined as never);
+
+            component.saveToBank();
+
+            expect(labelingApi.saveToBank).not.toHaveBeenCalled();
+            expect(snack).toHaveBeenCalledWith(labelingTr.bank.noMcq, labelingTr.ok, expect.any(Object));
+        });
+
+        it('saveToBank_NonQuestionBlocks_SendsOnlyMcqQuestions', async () => {
+            // Issue #578: etkinlik, anlatım, cevap anahtarı ve gürültü bloğu bankaya gitmez.
+            await openPageWith([region('S1', 1), region('S2', 0, 10, 120), region('S3', 0, 10, 240), region('S4', 0, 10, 360), region('S5', 2, 10, 480)]);
+            selector().blockKinds = { S2: 'activity', S3: 'info_box', S4: 'answer_key', S5: 'noise' };
+            labelingApi.saveToBank.mockReturnValue(of({ imageSha256: 'abc', bank: savedBank }));
+
+            component.saveToBank();
+
+            const request = vi.mocked(labelingApi.saveToBank).mock.lastCall![0];
+            expect(request.questions.length).toBe(1);
+            expect(request.questions[0].correctOptionIndex).toBe(1);
+        });
+
+        it('saveToBank_OnlyNonQuestionBlocks_ShowsNoMcqAndSendsNothing', async () => {
+            await openPageWith([region('S1', 0)]);
+            selector().blockKinds = { S1: 'info_box' };
             const snack = vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue(undefined as never);
 
             component.saveToBank();

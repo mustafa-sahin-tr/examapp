@@ -447,6 +447,10 @@ public class QuestionTransferJobRunner
                 // issue #570: çözüm ayrı alan; plan çözümsüz.
                 interactionPlan = interactionById[q.Id].Plan,
                 interactionSolution = q.InteractionSolution ?? interactionById[q.Id].Solution,
+                // issue #580: çözümün kaynağı / onayı (onaylayan kimliği ortam dışına taşınmaz).
+                solutionSource = q.SolutionSource.ToString(),
+                solutionStatus = ExamApp.Api.Services.Questions.QuestionSolutionApproval.ToStatus(q.SolutionStatus),
+                solutionPromptVersion = q.SolutionPromptVersion,
                 x = q.X,
                 y = q.Y,
                 width = q.Width,
@@ -741,6 +745,8 @@ public class QuestionTransferJobRunner
                         Height = qEl.TryGetProperty("height", out var h) ? h.GetInt32() : null,
                         IsCanvasQuestion = true,
                     };
+                    // issue #580: manifestteki kaynak/onay; yoksa migration kuralı (çözümlü etkileşimli → Human/Approved).
+                    ApplyImportedSolutionState(question, qEl, _graders.Resolve(importedType).InteractionType != McqGrader.Type);
 
                     // Passage (dedupe within this import)
                     if (qEl.TryGetProperty("passage", out var passageEl) && passageEl.ValueKind == JsonValueKind.Object)
@@ -978,6 +984,39 @@ public class QuestionTransferJobRunner
 
         var value = dl.GetInt32();
         return Math.Clamp(value, 1, 10);
+    }
+
+    /// <summary>
+    /// Issue #580: içe aktarılan sorunun çözüm kaynağı/onayı. Çözüm yoksa None/Approved. Manifest Key/AI diyorsa kaynak korunur ve
+    /// manifest açıkça <c>approved</c> demedikçe Pending (onaysız AI çözümü içe aktarımla yayına çıkmaz; onaylayan kimliği taşınmaz).
+    /// Aksi halde (eski manifest, Human, None) çözümlü etkileşimli soru Human/Approved — migration veri adımıyla aynı kural.
+    /// </summary>
+    internal static void ApplyImportedSolutionState(Question question, JsonElement qEl, bool interactive)
+    {
+        if (!interactive || string.IsNullOrWhiteSpace(question.InteractionSolution))
+        {
+            question.SolutionSource = SolutionSource.None;
+            question.SolutionStatus = SolutionStatus.Approved;
+            return;
+        }
+
+        var source = qEl.TryGetProperty("solutionSource", out var srcEl) && srcEl.ValueKind == JsonValueKind.String
+            ? srcEl.GetString()
+            : null;
+        if (string.Equals(source, nameof(SolutionSource.Key), StringComparison.OrdinalIgnoreCase)
+            || string.Equals(source, nameof(SolutionSource.AI), StringComparison.OrdinalIgnoreCase))
+        {
+            question.SolutionSource = string.Equals(source, "Key", StringComparison.OrdinalIgnoreCase) ? SolutionSource.Key : SolutionSource.AI;
+            var approved = qEl.TryGetProperty("solutionStatus", out var stEl) && stEl.ValueKind == JsonValueKind.String
+                           && string.Equals(stEl.GetString(), "approved", StringComparison.OrdinalIgnoreCase);
+            question.SolutionStatus = approved ? SolutionStatus.Approved : SolutionStatus.Pending;
+            question.SolutionPromptVersion = qEl.TryGetProperty("solutionPromptVersion", out var pvEl)
+                && pvEl.ValueKind == JsonValueKind.Number && pvEl.TryGetInt32(out var pv) ? pv : null;
+            return;
+        }
+
+        question.SolutionSource = SolutionSource.Human;
+        question.SolutionStatus = SolutionStatus.Approved;
     }
 
     private static ClassificationSource? ParseClassificationSource(JsonElement qEl)

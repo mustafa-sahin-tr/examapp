@@ -22,7 +22,8 @@
     "answerNo": "Not set",
     "inTest": "Linked test",
     "inTestYes": "Yes",
-    "inTestNo": "No"
+    "inTestNo": "No",
+    "pendingSolutions": "Awaiting approval"
   },
   "results": {
     "total": "{{count}} questions",
@@ -46,11 +47,25 @@
     "alreadyAdded": "Already in test",
     "cannotLink": "Can't add",
     "cannotLinkTooltip": "An older question without a recorded owner; it can't be added to a test. Copy its test to use it.",
-    "bookTooltip": "Classified from the book's table of contents"
+    "bookTooltip": "Classified from the book's table of contents",
+    "solutionPending": "Solution awaiting approval",
+    "solutionApprovedTag": "Solution approved",
+    "solutionSources": {
+      "Key": "Key",
+      "AI": "AI"
+    },
+    "approveSolution": "Approve solution",
+    "solutionApproved": "Solution approved.",
+    "solutionForbidden": "Only QuestionTrainer and Admin can approve solutions.",
+    "solutionApproveFailed": "The solution could not be approved.",
+    "close": "Close",
+    "solutionPromptVersion": "v{{version}}"
   },
   "preview": {
     "title": "Question #{{id}}",
     "imageAlt": "Image of question {{id}}",
-    "close": "Close"
+    "close": "Close",
+    "approve": "Approve",
+    "approveHint": "Approve the solution after reviewing the question; the approver and time are recorded."
   }
 }

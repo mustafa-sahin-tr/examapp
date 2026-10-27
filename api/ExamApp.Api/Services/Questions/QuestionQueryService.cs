@@ -46,6 +46,10 @@ public class QuestionQueryService : IQuestionQueryService
                     SanitizedHeight = q.SanitizedHeight,
                     InteractionType = q.InteractionType,
                     InteractionPlan = q.InteractionPlan,
+                    // issue #580: çözüm kaynağı / onay durumu (yazar görünümü; son projeksiyonda istemcide çevrilir).
+                    SolutionSource = QuestionSolutionApproval.ToSourceName(q.SolutionSource),
+                    SolutionStatus = QuestionSolutionApproval.ToStatus(q.SolutionStatus),
+                    SolutionPromptVersion = q.SolutionPromptVersion,
                     ShowPassageFirst = q.ShowPassageFirst,
                     Answers = q.Answers.Select(a => new AnswerDto
                     {
@@ -182,6 +186,10 @@ public class QuestionQueryService : IQuestionQueryService
                     SanitizedHeight = tq.Question.SanitizedHeight,
                     InteractionType = tq.Question.InteractionType,
                     InteractionPlan = tq.Question.InteractionPlan,
+                    // issue #580: çözüm kaynağı / onay durumu (yazar görünümü; son projeksiyonda istemcide çevrilir).
+                    SolutionSource = QuestionSolutionApproval.ToSourceName(tq.Question.SolutionSource),
+                    SolutionStatus = QuestionSolutionApproval.ToStatus(tq.Question.SolutionStatus),
+                    SolutionPromptVersion = tq.Question.SolutionPromptVersion,
                     ShowPassageFirst = tq.Question.ShowPassageFirst,
                     Answers = tq.Question.Answers.Select(a => new AnswerDto
                     {
@@ -324,6 +332,8 @@ public class QuestionQueryService : IQuestionQueryService
             query = hasCorrectAnswer
                 ? query.Where(q => q.CorrectAnswerId != null)
                 : query.Where(q => q.CorrectAnswerId == null);
+        if (filter.ParsedSolutionStatus is { } solutionStatus)
+            query = query.Where(q => q.SolutionStatus == solutionStatus);
 
         page.Total = await query.CountAsync(ct);
         if (page.Total == 0 || page.Skip >= page.Total)
@@ -355,6 +365,9 @@ public class QuestionQueryService : IQuestionQueryService
                 ClassificationSource = q.ClassificationSource,
                 IsClassified = q.SubjectId != null && q.TopicId != null,
                 HasCorrectAnswer = q.CorrectAnswerId != null,
+                SolutionSource = QuestionSolutionApproval.ToSourceName(q.SolutionSource),
+                SolutionStatus = QuestionSolutionApproval.ToStatus(q.SolutionStatus),
+                SolutionPromptVersion = q.SolutionPromptVersion,
                 TestCount = visibleMemberships.Count(tq => tq.QuestionId == q.Id),
                 IsOwn = (userId > 0 && q.CreateUserId == userId) || (hasLegacyOwned && legacyOwnedIds.Contains(q.Id)),
                 CanLink = q.CreateUserId > 0 || (hasLegacyOwned && legacyOwnedIds.Contains(q.Id)),

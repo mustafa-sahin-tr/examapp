@@ -1,6 +1,7 @@
 {
   "worksheets": {
     "session": {
+      "pendingSolutionApproval": "This activity is not available yet (its solutions are awaiting approval).",
       "accessDenied": "You do not have permission to access this test.",
       "instanceQuestionNotFound": "Test instance question not found.",
       "questionDataNotFound": "Question data not found for the worksheet.",
@@ -37,6 +38,7 @@
     },
 
     "assignment": {
+      "pendingSolutionApproval": "This activity has items whose solutions (from AI or the answer key) are not approved yet; it cannot be assigned until they are.",
       "targetRequired": "At least one target (student or class) must be selected.",
       "studentAndGradeTogether": "A student and a class cannot be selected in the same assignment.",
       "endBeforeStart": "The end time must be later than the start time.",

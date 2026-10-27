@@ -779,4 +779,36 @@ public class LabelingServiceTests : IDisposable
         box.Component.ShouldBeNull();
         box.InteractionType.ShouldBeNull();
     }
+
+    // ---------- issue #580: etiketler manuel kayıtta ----------
+
+    [Fact]
+    public async Task SaveManualAsync_RoundTripsTrimmedLabels()
+    {
+        var png = Png(100, 100);
+        var boxes = Boxes((1, 2, 30, 40), (50, 50, 20, 20));
+        boxes.Predictions[0].Label = "  ETKİNLİK 3 ";
+        boxes.Predictions[1].Label = "   ";
+        boxes.SectionLabel = " TEST 01 ";
+
+        await using var ctx = _db.NewContext();
+        var page = await NewService(ctx).SaveManualAsync(ManualRequest(png, boxes), Actor);
+
+        var manual = page.Results.Single(r => r.Source == "Manual").Predictions;
+        manual.SectionLabel.ShouldBe("TEST 01");
+        manual.Predictions.Select(p => p.Label).ShouldBe(["ETKİNLİK 3", null]);
+    }
+
+    [Theory]
+    [InlineData(65, false)]
+    [InlineData(10, true)]
+    public async Task SaveManualAsync_InvalidLabel_Is400(int length, bool control)
+    {
+        var boxes = Boxes((1, 2, 30, 40));
+        boxes.Predictions[0].Label = control ? "ETK\u0001" : new string('a', length);
+
+        await using var ctx = _db.NewContext();
+        var ex = await Should.ThrowAsync<LabelingValidationException>(() => NewService(ctx).SaveManualAsync(ManualRequest(Png(100, 100), boxes), Actor));
+        ex.Message.ShouldBe("labeling.invalidLabel");
+    }
 }

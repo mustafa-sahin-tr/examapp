@@ -71,6 +71,34 @@ public class QuestionDto
     [MaxLength(ExamApp.Api.Helpers.InteractionPlanSolution.MaxSolutionLength)]
     public string? InteractionSolution { get; set; }
 
+    /// <summary>
+    /// Issue #580: çözümün kaynağı. İstekte <c>Key</c> | <c>AI</c> | <c>Human</c> (boş = Human; başka değer 400) — yalnız çözüm değiştiyse
+    /// dikkate alınır: Key/AI onay bekler (<c>pending</c>), Human doğrudan onaylıdır. Yanıtta (sahip/admin düzenleme görünümü) kayıtlı
+    /// kaynak (<c>None</c> dahil).
+    /// </summary>
+    [MaxLength(16)]
+    public string? SolutionSource { get; set; }
+
+    /// <summary>
+    /// Issue #580 (yalnız istek): true + çağıran Admin/QuestionTrainer → Key/AI çözümü onaylı kaydedilir (onaylayan = çağıran). Diğer
+    /// roller için yok sayılır.
+    /// </summary>
+    public bool? SolutionApproved { get; set; }
+
+    /// <summary>Issue #580: Key/AI çözümünü üreten talimat sürümü (onay ekranında gösterilir).</summary>
+    [Range(0, int.MaxValue)]
+    public int? SolutionPromptVersion { get; set; }
+
+    /// <summary>
+    /// Issue #580: işaretleme ekranındaki taslak çözümün id'si (<c>POST api/labeling/activity-solution</c> → <c>draftSolutionId</c>).
+    /// Verilirse kaynak/onay/sürüm sunucuda bu taslaktan türetilir (<see cref="SolutionSource"/> yok sayılır); taslağın tipi ve çözümü
+    /// (taslak id'leriyle) gönderilenle aynı olmalı, yoksa 400 <c>questions.solution.draftMismatch</c>. Onaylı yalnız taslak onaylıysa.
+    /// </summary>
+    public int? DraftSolutionId { get; set; }
+
+    /// <summary>Issue #580 (yalnız yanıt): <c>pending</c> | <c>approved</c>; istekte yok sayılır.</summary>
+    public string? SolutionStatus { get; set; }
+
     public double? X { get; set; }
     public double? Y { get; set; }
     public double? Width { get; set; }

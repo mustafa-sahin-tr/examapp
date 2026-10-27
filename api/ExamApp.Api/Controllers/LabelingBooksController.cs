@@ -92,6 +92,33 @@ public class LabelingBooksController : BaseController
             return result is null ? NotFound(Error("labeling.books.notFound")) : Ok(result);
         });
 
+    /// <summary>
+    /// Issue #580: kitabın okunmuş cevap anahtarı maddeleri. <c>printedPage</c>: etkinliğin bastırılmış sayfası (anahtarda yazan);
+    /// <c>activityLabel</c>: normalize etiket eşlemesi (<see cref="ActivityLabelMatcher"/>: büyük/küçük harf ve Türkçe karakter duyarsız,
+    /// numaralar aynı ve tür kelimesi aynı ya da biri çıplak numara). Filtresiz: kitabın tüm maddeleri. En çok 500 (<c>skip</c> ile
+    /// sayfalı), <c>total</c> eşleşen sayı. <c>filePage</c> (review W11): etkinliğin dosya sayfası — fasiküllü kitapta önce aynı
+    /// fasikülün (ofset aralığı), yoksa etkinlikten sonraki ilk cevap anahtarı aralığının maddeleri; <c>printedPage</c> verilmediyse
+    /// ondan türetilir. 404 kitap yok.
+    /// </summary>
+    [HttpGet("{id:int}/answer-key")]
+    public Task<IActionResult> ListAnswerKey(
+        int id, [FromQuery] int? printedPage, [FromQuery] string? activityLabel, [FromQuery] int skip, [FromQuery] int? filePage,
+        [FromServices] IActivitySolutionService solutions, CancellationToken ct) =>
+        Handle(async () => await solutions.ListAnswerKeyAsync(id, printedPage, activityLabel, skip, filePage, ct) is { } list
+            ? Ok(list)
+            : NotFound(Error("labeling.books.notFound")));
+
+    /// <summary>
+    /// Issue #580 (kapsam genişlemesi): sayfadaki soruların / etkinliklerin anahtar maddeleri tek istekte (en çok 60 öğe). Eşleme
+    /// kuralı <see cref="ActivitySolutionService.LookupAnswerKeyAsync"/>. 400 geçersiz istek; 404 kitap yok.
+    /// </summary>
+    [HttpPost("{id:int}/answer-key/lookup")]
+    public Task<IActionResult> LookupAnswerKey(
+        int id, [FromBody] AnswerKeyLookupRequestDto request, [FromServices] IActivitySolutionService solutions, CancellationToken ct) =>
+        Handle(async () => await solutions.LookupAnswerKeyAsync(id, request, ct) is { } result
+            ? Ok(result)
+            : NotFound(Error("labeling.books.notFound")));
+
     private async Task<IActionResult> Handle(System.Func<Task<IActionResult>> action)
     {
         try

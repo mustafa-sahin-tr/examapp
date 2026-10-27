@@ -22,7 +22,8 @@
     "answerNo": "Belirlenmemiş",
     "inTest": "Bağlı test",
     "inTestYes": "Var",
-    "inTestNo": "Yok"
+    "inTestNo": "Yok",
+    "pendingSolutions": "Onay bekleyen"
   },
   "results": {
     "total": "{{count}} soru",
@@ -46,11 +47,25 @@
     "alreadyAdded": "Testte var",
     "cannotLink": "Eklenemez",
     "cannotLinkTooltip": "Sahibi belli olmayan eski bir soru; teste eklenemez. Testi kopyalayarak kullanabilirsiniz.",
-    "bookTooltip": "Kitap içindekilerinden sınıflandırıldı"
+    "bookTooltip": "Kitap içindekilerinden sınıflandırıldı",
+    "solutionPending": "Çözüm onay bekliyor",
+    "solutionApprovedTag": "Çözüm onaylı",
+    "solutionSources": {
+      "Key": "Anahtar",
+      "AI": "AI"
+    },
+    "approveSolution": "Çözümü onayla",
+    "solutionApproved": "Çözüm onaylandı.",
+    "solutionForbidden": "Çözümü yalnız QuestionTrainer ve Admin onaylayabilir.",
+    "solutionApproveFailed": "Çözüm onaylanamadı.",
+    "close": "Kapat",
+    "solutionPromptVersion": "v{{version}}"
   },
   "preview": {
     "title": "Soru #{{id}}",
     "imageAlt": "{{id}} numaralı sorunun görseli",
-    "close": "Kapat"
+    "close": "Kapat",
+    "approve": "Onayla",
+    "approveHint": "Çözümü soruyu görerek onaylayın; onaylayan ve zaman kayda yazılır."
   }
 }

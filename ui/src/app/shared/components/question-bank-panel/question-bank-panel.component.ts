@@ -4,14 +4,17 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { catchError, debounceTime, of, switchMap, tap } from 'rxjs';
 import { ClassificationSource } from '../../../models/draws';
 import { QuestionBankFilter, QuestionBankItem, QuestionBankPage } from '../../../models/question-bank';
@@ -20,7 +23,11 @@ import {
   ClassificationSelection,
   ClassificationSelectorComponent,
 } from '../classification-selector/classification-selector.component';
-import { QuestionBankPreviewDialogComponent } from './question-bank-preview-dialog.component';
+import {
+  QuestionBankPreviewData,
+  QuestionBankPreviewDialogComponent,
+  QuestionBankPreviewResult,
+} from './question-bank-preview-dialog.component';
 
 /** Çeviriler kendi Transloco scope'unda: `public/i18n/question-bank/<lang>.json`. */
 export const QUESTION_BANK_SCOPE = 'question-bank';
@@ -54,10 +61,12 @@ const EMPTY_PAGE: QuestionBankPage = { items: [], total: 0, skip: 0, take: 0 };
     MatButtonToggleModule,
     MatCardModule,
     MatCheckboxModule,
+    MatChipsModule,
     MatFormFieldModule,
     MatIconModule,
     MatPaginatorModule,
     MatProgressBarModule,
+    MatProgressSpinnerModule,
     MatSelectModule,
     MatTooltipModule,
     TranslocoDirective,
@@ -72,6 +81,8 @@ export class QuestionBankPanelComponent {
   private readonly bank = inject(QuestionBankService);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly snackBar = inject(MatSnackBar);
+  private readonly transloco = inject(TranslocoService);
 
   /** Seçim modu (#472): kartlarda onay kutusu, seçim `selectionChange` ile bildirilir. */
   /** Sınıf/Ders/Konu/Alt Konu filtresinin düzeni: sayfada çip, "Havuzdan soru ekle" diyaloğunda açılır kutu. */
@@ -80,6 +91,13 @@ export class QuestionBankPanelComponent {
   /** Seçilemeyen (ör. zaten testte olan) soru id'leri. */
   readonly disabledIds = input<number[]>([]);
   readonly selectionChange = output<number[]>();
+  /**
+   * Issue #580: kartlarda "Çözümü onayla" (onay bekleyen etkinlik çözümü). Yalnız Admin + QuestionTrainer için açılır;
+   * sunucu da diğer rollere 403 verir.
+   */
+  readonly canApproveSolutions = input(false);
+  /** Admin başkasının sorusunu da onaylar; QuestionTrainer yalnız kendi sorusunu (sunucu kuralı). */
+  readonly canApproveOthersSolutions = input(false);
 
   readonly pageSizeOptions = [12, 24, 48];
   readonly AI = ClassificationSource.AI;
@@ -99,6 +117,10 @@ export class QuestionBankPanelComponent {
   readonly answer = signal<QuestionBankAnswerFilter>('any');
   readonly inTest = signal<QuestionBankInTestFilter>('any');
   readonly difficulty = signal<QuestionBankDifficultyFilter>('any');
+  /** Issue #580: yalnız onay bekleyen çözümü olan sorular. */
+  readonly pendingSolutionsOnly = signal(false);
+  /** Çözüm onayı süren soru id'leri. */
+  readonly approvingIds = signal<ReadonlySet<number>>(new Set());
   readonly pageIndex = signal(0);
   readonly pageSize = signal(24);
 
@@ -130,6 +152,7 @@ export class QuestionBankPanelComponent {
       classified: status === 'any' ? null : status === 'classified',
       hasCorrectAnswer: answer === 'any' ? null : answer === 'yes',
       inTest: inTest === 'any' ? null : inTest === 'yes',
+      solutionStatus: this.pendingSolutionsOnly() ? 'pending' : null,
       skip: this.pageIndex() * this.pageSize(),
       take: this.pageSize(),
     };
@@ -193,6 +216,89 @@ export class QuestionBankPanelComponent {
     this.pageIndex.set(0);
   }
 
+  setPendingSolutionsOnly(value: boolean): void {
+    this.pendingSolutionsOnly.set(value);
+    this.pageIndex.set(0);
+  }
+
+  /** Kart etiketi yalnız anahtardan / AI gelen çözümde (elle yazılan sorular zaten onaylı sayılır, etiket gürültü olurdu). */
+  hasGeneratedSolution(item: QuestionBankItem): boolean {
+    return item.solutionSource === 'Key' || item.solutionSource === 'AI';
+  }
+
+  /** Kartta "Çözümü onayla" görünür mü: yetki + onay bekliyor + (kendi sorusu ya da Admin), seçim modunda değil. */
+  canApprove(item: QuestionBankItem): boolean {
+    return (
+      !this.selectable() &&
+      this.canApproveSolutions() &&
+      item.solutionStatus === 'pending' &&
+      (item.isOwn || this.canApproveOthersSolutions())
+    );
+  }
+
+  isApproving(item: QuestionBankItem): boolean {
+    return this.approvingIds().has(item.id);
+  }
+
+  /**
+   * Issue #580: "Çözümü onayla" önce önizlemeyi açar (soru, çözüm kaynağı, talimat sürümü); onay diyalogdaki "Onayla" ile.
+   */
+  reviewSolution(item: QuestionBankItem): void {
+    if (!this.canApprove(item) || this.isApproving(item)) return;
+    const data: QuestionBankPreviewData = { item, approve: true };
+    this.dialog
+      .open<QuestionBankPreviewDialogComponent, QuestionBankPreviewData, QuestionBankPreviewResult>(
+        QuestionBankPreviewDialogComponent,
+        { data, maxWidth: '90vw', autoFocus: false }
+      )
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        if (result === 'approve') this.approveSolution(item);
+      });
+  }
+
+  /**
+   * Issue #580: sorunun çözümünü onaylar. Başarılıysa kart onaylı görünür; "Onay bekleyen" filtresi açıksa listeden çıkar.
+   * Hata mesajı (yerelleştirilmiş) sunucudan gelir.
+   */
+  approveSolution(item: QuestionBankItem): void {
+    if (!this.canApprove(item) || this.isApproving(item)) return;
+    this.approvingIds.update((ids) => new Set([...ids, item.id]));
+    this.bank
+      .approveSolution(item.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (state) => {
+          this.approvingIds.update((ids) => without(ids, item.id));
+          this.page.update((page) => {
+            if (this.pendingSolutionsOnly()) {
+              const items = page.items.filter((i) => i.id !== item.id);
+              return { ...page, items, total: Math.max(0, page.total - (page.items.length - items.length)) };
+            }
+            const approved: Partial<QuestionBankItem> = {
+              solutionStatus: state?.solutionStatus ?? 'approved',
+              ...(state?.solutionSource ? { solutionSource: state.solutionSource } : {}),
+            };
+            return { ...page, items: page.items.map((i) => (i.id === item.id ? { ...i, ...approved } : i)) };
+          });
+          this.snackBar.open(this.tr('card.solutionApproved'), this.tr('card.close'), { duration: 3000 });
+        },
+        error: (error: unknown) => {
+          this.approvingIds.update((ids) => without(ids, item.id));
+          const status = (error as { status?: number })?.status;
+          const serverMessage = (error as { error?: { message?: string } })?.error?.message;
+          const message =
+            serverMessage || this.tr(status === 403 ? 'card.solutionForbidden' : 'card.solutionApproveFailed');
+          this.snackBar.open(message, this.tr('card.close'), { duration: 5000 });
+        },
+      });
+  }
+
+  private tr(key: string): string {
+    return this.transloco.translate<string>(`${QUESTION_BANK_SCOPE}.${key}`) ?? '';
+  }
+
   onPage(event: PageEvent): void {
     this.pageSize.set(event.pageSize);
     this.pageIndex.set(event.pageIndex);
@@ -232,4 +338,10 @@ export class QuestionBankPanelComponent {
       autoFocus: false,
     });
   }
+}
+
+function without(ids: ReadonlySet<number>, id: number): ReadonlySet<number> {
+  const next = new Set(ids);
+  next.delete(id);
+  return next;
 }

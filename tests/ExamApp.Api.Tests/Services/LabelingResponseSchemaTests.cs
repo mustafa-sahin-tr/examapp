@@ -18,6 +18,12 @@ public class LabelingResponseSchemaTests
         nameof(ActivityDrafts.MatchDraft),
         nameof(ClaudeLabelDetector.PageBlocks),
         nameof(ClaudeLabelDetector.OptionBoxes),
+        // Issue #580
+        nameof(ActivitySolutionDrafts.AnswerKeyDraft),
+        nameof(ActivitySolutionDrafts.MatrixSolutionDraft),
+        nameof(ActivitySolutionDrafts.SlotSolutionDraft),
+        nameof(ActivitySolutionDrafts.DragSolutionDraft),
+        nameof(ActivitySolutionDrafts.MatchSolutionDraft),
     };
 
     [Theory]
@@ -32,6 +38,11 @@ public class LabelingResponseSchemaTests
             nameof(ActivityDrafts.MatchDraft) => await CaptureAsync<ActivityDrafts.MatchDraft>(),
             nameof(ClaudeLabelDetector.PageBlocks) => await CaptureAsync<ClaudeLabelDetector.PageBlocks>(),
             nameof(ClaudeLabelDetector.OptionBoxes) => await CaptureAsync<ClaudeLabelDetector.OptionBoxes>(),
+            nameof(ActivitySolutionDrafts.AnswerKeyDraft) => await CaptureAsync<ActivitySolutionDrafts.AnswerKeyDraft>(),
+            nameof(ActivitySolutionDrafts.MatrixSolutionDraft) => await CaptureAsync<ActivitySolutionDrafts.MatrixSolutionDraft>(),
+            nameof(ActivitySolutionDrafts.SlotSolutionDraft) => await CaptureAsync<ActivitySolutionDrafts.SlotSolutionDraft>(),
+            nameof(ActivitySolutionDrafts.DragSolutionDraft) => await CaptureAsync<ActivitySolutionDrafts.DragSolutionDraft>(),
+            nameof(ActivitySolutionDrafts.MatchSolutionDraft) => await CaptureAsync<ActivitySolutionDrafts.MatchSolutionDraft>(),
             _ => throw new ArgumentOutOfRangeException(nameof(type)),
         };
 

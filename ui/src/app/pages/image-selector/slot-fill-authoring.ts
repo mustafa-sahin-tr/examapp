@@ -13,8 +13,12 @@ import {
   SlotInput,
   SlotKind,
   SlotNumberEntry,
+  SlotNumberSolution,
+  SlotPaletteSolution,
   SlotSelectOption,
+  SlotSelectSolution,
   SlotSolution,
+  SlotTextSolution,
   SlotUnitMode,
   emptySlotSolutions,
   isValidSlotId,
@@ -245,6 +249,58 @@ export function slotSolution(slot: SlotAuthoring): SlotSolution {
     case 'palette':
       return { accept: clean(slot.paletteAccept, normalizePaletteText) };
   }
+}
+
+/**
+ * Issue #580: kayıtlı / taslak çözümü kutuya yazar (kutunun türüne göre; tür ayarları — giriş, birim ipucu, seçenekler,
+ * semboller — değişmez). Çözüm `parseSlotFillSolution` ile kutunun planına göre temizlenmiş olmalı.
+ */
+export function slotWithSolution(slot: SlotAuthoring, solution: SlotSolution): SlotAuthoring {
+  switch (slot.kind) {
+    case 'number': {
+      const s = solution as Partial<SlotNumberSolution>;
+      if (typeof s.value !== 'string') return slot;
+      return {
+        ...slot,
+        value: s.value,
+        equivalence: s.equivalence !== false,
+        requireSimplest: s.requireSimplest === true,
+        unitMode: s.unitMode ?? 'none',
+        units: [...(s.units ?? [])],
+      };
+    }
+    case 'text': {
+      const s = solution as Partial<SlotTextSolution>;
+      return { ...slot, accept: [...(s.accept ?? [])], optionalSuffixes: [...(s.optionalSuffixes ?? [])] };
+    }
+    case 'select': {
+      const ids = new Set(slot.options.map((o) => o.id));
+      const s = solution as Partial<SlotSelectSolution>;
+      return { ...slot, correctOptionIds: (s.optionIds ?? []).filter((id) => ids.has(id)) };
+    }
+    case 'palette': {
+      const s = solution as Partial<SlotPaletteSolution>;
+      return { ...slot, paletteAccept: [...(s.accept ?? [])] };
+    }
+  }
+}
+
+/**
+ * Issue #580: kutunun doğru değerlerini siler (tür ayarları kalır) — çözümde yer almayan kutu eski değerini taşımasın.
+ */
+export function slotWithoutSolution(slot: SlotAuthoring): SlotAuthoring {
+  return {
+    ...slot,
+    value: '',
+    equivalence: true,
+    requireSimplest: false,
+    unitMode: 'none',
+    units: [],
+    accept: [],
+    optionalSuffixes: [],
+    correctOptionIds: [],
+    paletteAccept: [],
+  };
 }
 
 /** Kutunun doğru değeri girilmiş mi (en az bir değer; ayrıntılı geçerlilik `slotIssues`). */

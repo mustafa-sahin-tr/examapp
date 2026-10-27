@@ -174,6 +174,21 @@
         }
       </span>
       }
+      <!-- Issue #580: seçili kitabın cevap anahtarı görselleri toplu okunur; sayfalarda bloklar anahtarda aranır. -->
+      @if (aiModels().length > 0) {
+      <input #keyFilesInput type="file" multiple accept="image/*" hidden class="lb-ak-bulk__input" (change)="onAnswerKeyFiles($event)" />
+      <button mat-stroked-button type="button" class="lb-ak-bulk__open" (click)="keyFilesInput.click()" [disabled]="!canBulkReadKeys()"
+        disabledInteractive [matTooltip]="bookId() == null ? t('answerKey.bulk.needBook') : t('answerKey.bulk.hint')"
+        [attr.aria-busy]="bulkKeyProgress() != null">
+        @if (bulkKeyProgress(); as progress) {
+        <mat-spinner diameter="16" aria-hidden="true"></mat-spinner>
+        <span class="lb-ak-bulk__progress" role="status">{{ t('answerKey.bulk.progress', { done: progress.done + 1, total: progress.total }) }}</span>
+        } @else {
+        <mat-icon>upload_file</mat-icon>
+        }
+        @if (!bulkKeyProgress()) { {{ t('answerKey.bulk.open') }} }
+      </button>
+      }
       <a mat-icon-button routerLink="/books" target="_blank" rel="noopener" [matTooltip]="t('book.manage')"
         [attr.aria-label]="t('book.manage')"><mat-icon>edit_note</mat-icon></a>
     </span>
@@ -193,6 +208,18 @@
     @if (aiModels().length > 0) {
     <button mat-stroked-button type="button" (click)="openPromptDialog()" [matTooltip]="t('source.promptHint')">
       <mat-icon>tune</mat-icon>{{ t('source.prompt') }}
+    </button>
+    }
+    <!-- Issue #580: kitabın cevap anahtarı sayfasında satırlar Claude ile okunur (kayıtlı sonuç ücretsiz). -->
+    @if (isAnswerKeyPage() && aiModels().length > 0) {
+    <button mat-stroked-button type="button" class="lb-read-key" (click)="readAnswerKey()" [disabled]="!canReadAnswerKey()"
+      [attr.aria-busy]="answerKeyReading()" [matTooltip]="t('answerKey.readHint')">
+      @if (answerKeyReading()) {
+      <mat-spinner diameter="16" aria-hidden="true"></mat-spinner>
+      } @else {
+      <mat-icon>key</mat-icon>
+      }
+      {{ t('answerKey.read') }}
     </button>
     }
 
@@ -223,6 +250,19 @@
       }
       <span>{{ bankSaving() ? t('bank.saving') : t('bank.save') }}</span>
     </button>
+  </div>
+  }
+
+  @if (bulkKeySummary(); as sum) {
+  <div class="lb-hint lb-ak-bulk__summary" role="status">
+    <mat-icon aria-hidden="true">key</mat-icon>
+    <span>
+      {{ t('answerKey.bulk.summary', { pages: sum.pages, total: sum.total, rows: sum.rows, cost: (sum.costUsd | number: '1.4-4') }) }}
+      @if (sum.stale > 0) { · {{ t('answerKey.bulk.stale', { count: sum.stale }) }} }
+      @if (sum.skipped > 0) { · {{ t('answerKey.bulk.skipped', { count: sum.skipped }) }} }
+      @for (f of sum.failed; track $index) { <br /><span class="lb-ak-bulk__failed">{{ f.name }}: {{ f.message }}</span> }
+    </span>
+    <button mat-icon-button type="button" (click)="dismissBulkSummary()" [attr.aria-label]="t('answerKey.bulk.dismiss')"><mat-icon>close</mat-icon></button>
   </div>
   }
 
@@ -326,6 +366,91 @@
         <p class="lb-hint-sm">{{ b.savedAt | date: 'short' }}@if (b.savedByName) { · {{ b.savedByName }} }</p>
       </section>
       </ng-container>
+      }
+
+      <!-- Issue #580: cevap anahtarı satırları (düzenle / sil); görsel cevapların kutuları sayfada kesik çizgiyle. -->
+      @if (isAnswerKeyPage()) {
+      <section class="lb-insp-sec lb-answer-key" *transloco="let ak; prefix: 'labeling.answerKey'" [attr.aria-label]="ak('title')">
+        <div class="lb-insp-sec__head">
+          <span class="lb-lbl">{{ ak('title') }}</span>
+          @if (answerKeyMeta()) { <span class="lb-count">{{ answerKeyEntries().length }}</span> }
+        </div>
+        @if (answerKeyReading()) {
+        <p class="lb-structure__status" role="status"><mat-spinner diameter="14" aria-hidden="true"></mat-spinner>{{ ak('reading') }}</p>
+        } @else if (answerKeyError(); as error) {
+        <p class="lb-hint-sm lb-hint-sm--warn lb-answer-key__error" role="alert">{{ error }}</p>
+        } @else if (answerKeyMeta(); as meta) {
+        <p class="lb-hint-sm lb-answer-key__meta">
+          <span class="lb-pill">{{ meta.origin === 'cached' ? ak('cached') : ak('live') }}</span>
+          @if (meta.estimatedCostUsd != null) {
+          · <span class="lb-answer-key__cost">{{ meta.origin === 'cached'
+            ? ak('firstCallCost', { cost: (meta.estimatedCostUsd | number: '1.4-4') })
+            : '~$' + (meta.estimatedCostUsd | number: '1.4-4') }}</span>
+          }
+          @if (meta.promptVersion != null) { · {{ ak('promptVersion', { version: meta.promptVersion }) }} }
+        </p>
+        @if (meta.stale) {
+        <p class="lb-hint-sm lb-hint-sm--warn lb-answer-key__stale" role="status">{{ ak('stale') }}</p>
+        }
+        <ul class="lb-ak-list">
+          @for (entry of answerKeyEntries(); track entry.id) {
+          <li class="lb-ak-entry" [class.lb-ak-entry--visual]="entry.visual">
+            @if (editingEntryId() === entry.id) {
+            <div class="lb-ak-form">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>{{ ak('printedPage') }}</mat-label>
+                <input matInput class="lb-ak-printed" inputmode="numeric" [value]="entryForm().printedPage"
+                  (input)="setEntryField('printedPage', $event.target)" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>{{ ak('activity') }}</mat-label>
+                <input matInput class="lb-ak-activity" [value]="entryForm().activityLabel" [attr.maxlength]="answerKeyLimits.maxLabel"
+                  (input)="setEntryField('activityLabel', $event.target)" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>{{ ak('item') }}</mat-label>
+                <input matInput class="lb-ak-item" [value]="entryForm().itemLabel" [attr.maxlength]="answerKeyLimits.maxLabel"
+                  (input)="setEntryField('itemLabel', $event.target)" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>{{ ak('answer') }}</mat-label>
+                <input matInput class="lb-ak-answer" [value]="entryForm().answerText" [attr.maxlength]="answerKeyLimits.maxAnswer"
+                  (input)="setEntryField('answerText', $event.target)" />
+              </mat-form-field>
+              <div class="lb-btn-row">
+                <button mat-flat-button type="button" class="lb-ak-save" (click)="saveEntry(entry)"
+                  [disabled]="entryBusyId() != null">{{ ak('save') }}</button>
+                <button mat-button type="button" (click)="cancelEntryEdit()" [disabled]="entryBusyId() != null">{{ ak('cancel') }}</button>
+              </div>
+            </div>
+            } @else {
+            <span class="lb-ak-entry__label">{{ entryLabel(entry) || ak('noLabel') }}</span>
+            <span class="lb-ak-entry__answer">
+              @if (entry.visual) { <mat-icon class="lb-ak-entry__visual" [matTooltip]="ak('visualHint')" [attr.aria-label]="ak('visual')">image</mat-icon> }
+              {{ entry.answerText || (entry.visual ? ak('visual') : '—') }}
+            </span>
+            <span class="lb-ak-entry__actions">
+              <button mat-icon-button type="button" class="lb-ak-edit" (click)="editEntry(entry)"
+                [disabled]="entryBusyId() != null" [attr.aria-label]="ak('edit')"><mat-icon>edit</mat-icon></button>
+              <button mat-icon-button type="button" class="lb-ak-delete" (click)="deleteEntry(entry)"
+                [disabled]="entryBusyId() != null" [attr.aria-label]="ak('delete')"><mat-icon>delete</mat-icon></button>
+            </span>
+            }
+          </li>
+          } @empty {
+          <li class="lb-hint-sm">{{ ak('empty') }}</li>
+          }
+        </ul>
+        <div class="lb-btn-row">
+          <button mat-stroked-button type="button" class="lb-ak-reread" (click)="readAnswerKey(true)"
+            [disabled]="!canReadAnswerKey()" [matTooltip]="ak('rereadHint')">
+            <mat-icon>paid</mat-icon>{{ ak('reread') }}
+          </button>
+        </div>
+        } @else {
+        <p class="lb-hint-sm">{{ aiModels().length > 0 ? ak('notRead') : ak('claudeOff') }}</p>
+        }
+      </section>
       }
 
       <p class="lb-inspector__summary">{{ t('questionCount', { count: questionCount }) }}</p>
@@ -472,6 +597,40 @@
         @if (d.answers.length !== answerCount()) {
         <p class="lb-hint-sm lb-hint-sm--warn">{{ t('answerCountMismatch', { count: answerCount() }) }}</p>
         }
+        <!-- Issue #580: cevap anahtarındaki harf şıkkı ön seçer (öğretmen seçmediyse); bulunamazsa elle işaretlenir. -->
+        @if (keyLookupOf(d.name); as lookup) {
+        <div class="lb-mcq-key" *transloco="let mk; prefix: 'labeling.mcqKey'">
+          @switch (lookup.status) {
+          @case ('loading') { <p class="lb-structure__status" role="status"><mat-spinner diameter="14" aria-hidden="true"></mat-spinner>{{ mk('loading') }}</p> }
+          @case ('error') {
+          <p class="lb-hint-sm lb-hint-sm--warn" role="alert">{{ mk('failed') }}
+            <button mat-button type="button" (click)="lookupKey(d.name, true)">{{ mk('retry') }}</button></p>
+          }
+          @default {
+          @if (mcqKeyLetter(d.name); as letter) {
+          <p class="lb-hint-sm lb-mcq-key__applied"><span class="lb-pill">{{ mk('fromKey') }}</span> {{ mk('applied', { letter }) }}</p>
+          } @else if (lookup.entries.length === 0) {
+          <p class="lb-hint-sm lb-mcq-key__none">{{ mk('notFound') }}</p>
+          } @else if (lookup.entries.length > 1) {
+          <p class="lb-hint-sm lb-mcq-key__ambiguous">{{ mk('ambiguous') }}</p>
+          <div class="lb-btn-row">
+            @for (entry of lookup.entries; track entry.id) {
+            <button mat-stroked-button type="button" class="lb-mcq-key__pick" (click)="applyMcqKey(d.name, entry)"
+              [disabled]="inspectorLocked || !isOptionAnswer(entry)" [matTooltip]="entryLabel(entry)">{{ entry.answerText || '—' }}</button>
+            }
+          </div>
+          } @else {
+          <p class="lb-hint-sm lb-mcq-key__found">{{ mk('found', { answer: lookup.entries[0].answerText || '—' }) }}
+            @if (isOptionAnswer(lookup.entries[0])) {
+            <button mat-button type="button" class="lb-mcq-key__apply" (click)="applyMcqKey(d.name, lookup.entries[0])"
+              [disabled]="inspectorLocked">{{ mk('apply') }}</button>
+            }
+          </p>
+          }
+          }
+          }
+        </div>
+        }
         <div class="lb-btn-row">
           <button mat-stroked-button type="button" (click)="insAlignAnswers()"
             [disabled]="inspectorLocked || d.answers.length < 2">
@@ -483,9 +642,15 @@
         </div>
       </section>
 
-      <!-- Kitap etiketleri (issue #577): havuza kayıtta soruyla gider; isteğe bağlı. -->
+      }
+
+      <!-- Kitap etiketleri (issue #577): havuza kayıtta soruyla gider; isteğe bağlı. #580: etkinlikte cevap anahtarını bulur. -->
+      @if (d.blockKind === 'mcq_question' || d.blockKind === 'activity') {
       <section class="lb-insp-sec lb-labels">
         <span class="lb-lbl">{{ t('labels') }}</span>
+        @if (detectedLabelOf(d.name); as detected) {
+        <p class="lb-hint-sm lb-labels__detected">{{ t('detectedLabel', { label: detected }) }}</p>
+        }
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>{{ t('activityLabel') }}</mat-label>
           <input matInput class="lb-activity-label" [value]="labelsOf(d.name).activityLabel" [attr.maxlength]="maxQuestionLabel"
@@ -496,6 +661,148 @@
           <input matInput class="lb-item-label" [value]="labelsOf(d.name).itemLabel" [attr.maxlength]="maxQuestionLabel"
             [placeholder]="t('itemPlaceholder')" (input)="setQuestionLabel(d.name, 'itemLabel', $event.target)" />
         </mat-form-field>
+      </section>
+      }
+
+      <!-- Issue #580: etkinliğin çözümü — anahtardan ya da AI ile; tuvale uygulanır, onay bekler. -->
+      @if (d.blockKind === 'activity' && d.interactionType !== 'mcq' && structureEnabled() && draftOf(d.name)?.status === 'ok') {
+      <section class="lb-insp-sec lb-solution" *transloco="let so; prefix: 'labeling.solution'" [attr.aria-label]="so('title')">
+        <div class="lb-insp-sec__head">
+          <span class="lb-lbl">{{ so('title') }}</span>
+        </div>
+        @switch (keyLookupBlocker(d.name)) {
+        @case ('noBook') { <p class="lb-hint-sm lb-solution__key-state">{{ so('noBook') }}</p> }
+        @case ('needLabel') { <p class="lb-hint-sm lb-solution__key-state">{{ so('needLabel') }}</p> }
+        @default {
+        @if (keyLookupOf(d.name); as lookup) {
+        @switch (lookup.status) {
+        @case ('loading') {
+        <p class="lb-structure__status lb-solution__key-state" role="status"><mat-spinner diameter="14" aria-hidden="true"></mat-spinner>{{ so('keyLoading') }}</p>
+        }
+        @case ('error') {
+        <p class="lb-hint-sm lb-hint-sm--warn lb-solution__key-state" role="alert">{{ so('keyFailed') }}
+          <button mat-button type="button" class="lb-solution__key-retry" (click)="lookupKey(d.name, true)">{{ so('retry') }}</button>
+        </p>
+        }
+        @default {
+        @if (keyAmbiguous(d.name)) {
+        <p class="lb-hint-sm lb-solution__key-state lb-solution__ambiguous">{{ so('ambiguous') }}</p>
+        <div class="lb-btn-row">
+          @for (group of keyGroups(d.name); track group.id) {
+          <button mat-stroked-button type="button" class="lb-solution__pick" (click)="chooseKeyGroup(d.name, group.id)"
+            [disabled]="inspectorLocked">{{ so('pickGroup', { label: group.label, count: group.entries.length }) }}</button>
+          }
+        </div>
+        } @else if (matchingKeyEntries(d.name); as entries) {
+        @if (entries.length > 0) {
+        <p class="lb-hint-sm lb-solution__key-state">{{ so('keyFound', { count: entries.length }) }}</p>
+        <ul class="lb-solution__key-list">
+          @for (entry of entries; track entry.id) {
+          <li>{{ entry.itemLabel ? entry.itemLabel + ': ' : '' }}{{ entry.answerText || (entry.visual ? so('visual') : '—') }}</li>
+          }
+        </ul>
+        } @else {
+        <p class="lb-hint-sm lb-solution__key-state">{{ so('keyNone') }}</p>
+        }
+        }
+        }
+        }
+        }
+        }
+        }
+
+        @if (solutionOf(d.name); as sol) {
+        @switch (sol.status) {
+        @case ('loading') {
+        <p class="lb-structure__status" role="status"><mat-spinner diameter="14" aria-hidden="true"></mat-spinner>{{ so('solving') }}</p>
+        }
+        @case ('error') {
+        <p class="lb-hint-sm lb-hint-sm--warn lb-solution__error" role="alert">{{ sol.error }}</p>
+        }
+        @case ('planChanged') {
+        <p class="lb-hint-sm lb-hint-sm--warn lb-solution__plan-changed" role="status">{{ so('planChangedStored') }}</p>
+        }
+        @case ('ok') {
+        @if (sol.response; as r) {
+        <p class="lb-solution__badges">
+          <span class="lb-pill lb-solution__source lb-solution__source--{{ r.source }}">{{ so('sources.' + r.source) }}</span>
+          @if (r.status === 'approved') {
+          <span class="lb-pill lb-solution__status lb-solution__status--approved">{{ so('approved') }}</span>
+          } @else {
+          <span class="lb-pill lb-pill--warn lb-solution__status lb-solution__status--pending">{{ so('pending') }}</span>
+          }
+        </p>
+        @if (r.status === 'approved' && (r.approvedByName || r.approvedAt)) {
+        <p class="lb-hint-sm lb-solution__approver">
+          {{ r.approvedByName ?? '' }}@if (r.approvedByName && r.approvedAt) { · }@if (r.approvedAt) { {{ r.approvedAt | date: 'short' }} }
+        </p>
+        }
+        <p class="lb-hint-sm lb-solution__meta">
+          @if (r.origin) { <span class="lb-pill">{{ r.origin === 'cached' ? so('cached') : so('live') }}</span> }
+          @if (r.estimatedCostUsd != null) {
+          · <span class="lb-solution__cost">{{ r.origin === 'cached'
+            ? so('firstCallCost', { cost: (r.estimatedCostUsd | number: '1.4-4') })
+            : '~$' + (r.estimatedCostUsd | number: '1.4-4') }}</span>
+          }
+          @if (r.promptVersion != null) { · <span class="lb-solution__prompt">{{ so('promptVersion', { version: r.promptVersion }) }}</span> }
+        </p>
+        @if (!r.valid) {
+        <div class="lb-structure__invalid lb-solution__invalid" role="alert">
+          <span class="lb-hint-sm lb-hint-sm--warn">{{ so('invalid') }}</span>
+          <ul class="lb-structure__errors">
+            @for (message of r.validationErrors; track $index) { <li>{{ message }}</li> }
+          </ul>
+        </div>
+        }
+        @if (solutionPlanStale(d.name)) {
+        <p class="lb-hint-sm lb-hint-sm--warn lb-solution__plan-stale" role="status">{{ so('planChanged') }}</p>
+        } @else if (sol.apply === 'invalid') {
+        <p class="lb-hint-sm lb-hint-sm--warn lb-solution__not-applied">{{ so('notApplied') }}</p>
+        } @else if (sol.apply === 'kept') {
+        <p class="lb-hint-sm lb-solution__kept">{{ so('kept') }}</p>
+        <button mat-stroked-button type="button" class="lb-solution__apply" (click)="applySolution(d.name)"
+          [disabled]="inspectorLocked">
+          <mat-icon>file_download</mat-icon>{{ so('apply') }}
+        </button>
+        } @else if (solutionEdited(d.name)) {
+        <p class="lb-hint-sm lb-solution__edited">{{ so('edited') }}</p>
+        <button mat-stroked-button type="button" class="lb-solution__save-edit" (click)="saveSolutionEdit(d.name)"
+          [disabled]="inspectorLocked || sol.busy != null || r.draftSolutionId == null">
+          <mat-icon>save</mat-icon>{{ so('saveEdit') }}
+        </button>
+        }
+        @if (canApproveSolutions && r.status !== 'approved') {
+        <button mat-flat-button type="button" class="lb-solution__approve" (click)="approveSolution(d.name)"
+          [disabled]="!canApproveSolution(d.name)"
+          [matTooltip]="solutionPlanStale(d.name) ? so('planChanged') : solutionEdited(d.name) ? so('approveEditedHint') : r.valid ? so('approveHint') : so('approveInvalidHint')">
+          @if (sol.busy === 'approving') { <mat-spinner diameter="16" aria-hidden="true"></mat-spinner> } @else { <mat-icon>verified</mat-icon> }
+          {{ solutionEdited(d.name) ? so('approveEdited') : so('approve') }}
+        </button>
+        }
+        }
+        }
+        }
+        }
+
+        <div class="lb-btn-row">
+          @if (matchingKeyEntries(d.name).length > 0) {
+          <button mat-stroked-button type="button" class="lb-solution__from-key" (click)="solve(d.name, 'key')"
+            [disabled]="!canSolve(d.name)">
+            <mat-icon>key</mat-icon>{{ so('fromKey') }}
+          </button>
+          } @else {
+          <button mat-stroked-button type="button" class="lb-solution__ai" (click)="solve(d.name, 'ai')"
+            [disabled]="!canSolve(d.name)" [matTooltip]="so('aiHint')">
+            <mat-icon>auto_awesome</mat-icon>{{ so('ai') }}
+          </button>
+          }
+          @if (solutionOf(d.name)?.status === 'ok') {
+          <button mat-stroked-button type="button" class="lb-solution__resolve" (click)="resolve(d.name)"
+            [disabled]="!canSolve(d.name)" [matTooltip]="so('resolveHint')">
+            <mat-icon>paid</mat-icon>{{ so('resolve') }}
+          </button>
+          }
+        </div>
       </section>
       }
 

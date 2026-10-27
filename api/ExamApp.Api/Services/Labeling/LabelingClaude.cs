@@ -35,9 +35,20 @@ internal static class LabelingClaude
     /// Görsel + talimat → <typeparamref name="T"/> (şema <c>GetResponseAsync&lt;T&gt;</c> ile). Yanıt kullanılamazsa
     /// <see cref="LabelingAiException"/>; yanıt geldiyse harcanan token istisnayla taşınır.
     /// </summary>
+    public static Task<(T Result, LabelingAiUsage Usage)> AskAsync<T>(
+        IChatClient chat, LabelingAiOptions options, ILogger logger, LabelingAiModelOption model, int maxOutputTokens,
+        string systemPrompt, EncodedRegion region, string instruction, CancellationToken ct) =>
+        // Görsel metinden önce: Claude görsel + talimat sırasında daha isabetli.
+        AskAsync<T>(chat, options, logger, model, maxOutputTokens, systemPrompt,
+            [new DataContent(region.Jpeg, "image/jpeg"), new TextContent(instruction)], ct);
+
+    /// <summary>
+    /// Issue #580: birden çok parça (ör. etkinlik kırpması + anahtar kırpmaları + talimat) tek kullanıcı mesajında. Hata/kullanım
+    /// davranışı tek görselli sürümle aynı.
+    /// </summary>
     public static async Task<(T Result, LabelingAiUsage Usage)> AskAsync<T>(
         IChatClient chat, LabelingAiOptions options, ILogger logger, LabelingAiModelOption model, int maxOutputTokens,
-        string systemPrompt, EncodedRegion region, string instruction, CancellationToken ct)
+        string systemPrompt, IList<AIContent> userContents, CancellationToken ct)
     {
         var chatOptions = new ChatOptions
         {
@@ -46,11 +57,10 @@ internal static class LabelingClaude
             Reasoning = ParseEffort(options.Effort) is { } effort ? new ReasoningOptions { Effort = effort } : null,
         };
 
-        // Görsel metinden önce: Claude görsel + talimat sırasında daha isabetli.
         List<ChatMessage> messages =
         [
             new(ChatRole.System, systemPrompt),
-            new(ChatRole.User, [new DataContent(region.Jpeg, "image/jpeg"), new TextContent(instruction)]),
+            new(ChatRole.User, userContents),
         ];
 
         ChatResponse<T> response;

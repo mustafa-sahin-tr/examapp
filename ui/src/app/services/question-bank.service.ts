@@ -1,13 +1,21 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { QuestionBankFilter, QuestionBankPage } from '../models/question-bank';
+import { QuestionBankFilter, QuestionBankPage, QuestionSolutionState } from '../models/question-bank';
 
 /** issue #471: soru bankası araması. */
 @Injectable({ providedIn: 'root' })
 export class QuestionBankService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/exam/questions/bank';
+
+  /**
+   * Issue #580: sorunun (etkinlik) çözümünü onaylar — yalnız Admin + QuestionTrainer, diğerleri 403. Onaylanmamış çözümü
+   * olan etkinlik öğrenciye atanamaz.
+   */
+  approveSolution(questionId: number): Observable<QuestionSolutionState> {
+    return this.http.post<QuestionSolutionState>(`/api/exam/questions/${questionId}/solution/approve`, {});
+  }
 
   search(filter: QuestionBankFilter): Observable<QuestionBankPage> {
     let params = new HttpParams();

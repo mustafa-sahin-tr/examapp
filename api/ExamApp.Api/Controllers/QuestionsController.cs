@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Security.Claims;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -44,6 +45,9 @@ public class QuestionsController : BaseController
     private readonly IQuestionTestLinkService _testLinks;
 
     private const string AuthoringRoles = "Teacher,Admin";
+
+    // Issue #580: AI / cevap anahtarı çözümünü onaylayabilenler (işaretleme uçlarıyla aynı küme).
+    private const string SolutionApproverRoles = "Admin,QuestionTrainer";
 
     // Client'a dönen tüm metinler bu sözlükten gelir (issue #184). Aktif dil, istek kültürünü
     // ayarlayan RequestLocalization middleware'inden (#181) okunur.
@@ -166,7 +170,7 @@ public class QuestionsController : BaseController
             && await DenyUnlessPassageUsableAsync(passage.Id!.Value, user.Id, questionDto.Id > 0 ? questionDto.Id : null) is { } passageDenied)
             return passageDenied;
 
-        var response = await _questionService.CreateOrUpdateQuestion(questionDto, user.Id, IsAdmin);
+        var response = await _questionService.CreateOrUpdateQuestion(questionDto, user.Id, IsAdmin, CurrentSolutionActor());
         if (response == null)
         {
             return BadRequest(new { message = _localizer["questions.saveFailed"].Value });
@@ -194,7 +198,7 @@ public class QuestionsController : BaseController
             && await DenyUnlessWorksheetOwnerAsync(testId, user.Id) is { } denied)
             return denied;
 
-        var reponse = await _questionService.SaveBulkQuestion(soruDto, user.Id);
+        var reponse = await _questionService.SaveBulkQuestion(soruDto, user.Id, CurrentSolutionActor());
         if (reponse == null || !reponse.Success)
         {
             return BadRequest(_localizer["questions.bulk.saveFailed"].Value);
@@ -250,6 +254,35 @@ public class QuestionsController : BaseController
 
         return Ok(response);
     }
+
+    /// <summary>
+    /// Issue #580: sorunun bekleyen (cevap anahtarından / AI) çözümünü onaylar; onaylayan kullanıcı ve zaman kaydedilir. Yalnız Admin ve
+    /// QuestionTrainer (rol kısıtı — diğer roller 403); QuestionTrainer ayrıca onaylı öğretmen ve sorunun sahibi olmalı (admin muaf).
+    /// 200 güncel durum; 400 sorunun onaylanacak çözümü yok; 404.
+    /// </summary>
+    [HttpPost("{questionId:int}/solution/approve")]
+    [Authorize(Roles = SolutionApproverRoles)]
+    public async Task<IActionResult> ApproveSolution(
+        int questionId, [FromServices] IQuestionSolutionApprovalService approvals, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync(ct);
+        if (await DenyUnlessQuestionOwnerAsync(questionId, user.Id) is { } denied)
+            return denied;
+
+        var (outcome, state) = await approvals.ApproveAsync(questionId, CurrentSolutionActor(), ct);
+        return outcome switch
+        {
+            QuestionSolutionApproveOutcome.NotFound => NotFound(new { message = _localizer["questions.notFound"].Value }),
+            QuestionSolutionApproveOutcome.NoSolution => BadRequest(new { message = _localizer["questions.solution.nothingToApprove"].Value }),
+            _ => Ok(state),
+        };
+    }
+
+    /// <summary>Issue #580: soru yazanın çözüm onayı yetkisi (Admin ya da QuestionTrainer) ve kimliği.</summary>
+    private SolutionActor CurrentSolutionActor() => new(
+        KeyCloakId,
+        User.FindFirstValue("name") ?? User.FindFirstValue("preferred_username"),
+        IsAdmin || User.IsInRole("QuestionTrainer"));
 
     /// <summary>UI ölçeği tuval görüntü genişliği / görsel genişliği; makul aralığın dışı reddedilir.</summary>
     internal static bool IsValidImageScale(double scale) => double.IsFinite(scale) && scale >= 0.05 && scale <= 4;

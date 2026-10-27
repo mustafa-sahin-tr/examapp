@@ -7,6 +7,7 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interactions;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Questions;
 using ExamApp.Api.Services.Storage;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Localization;
@@ -51,7 +52,8 @@ public class QuestionService : IQuestionService
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
-    public async Task<QuestionSavedDto> CreateOrUpdateQuestion(QuestionDto questionDto, int actingUserId = 0, bool isAdmin = false)
+    public async Task<QuestionSavedDto> CreateOrUpdateQuestion(QuestionDto questionDto, int actingUserId = 0, bool isAdmin = false,
+        SolutionActor? solutionActor = null)
     {
         // issue #287 H1: audit alanları (CreateUserId = soru sahibi) istek sahibine damgalanır.
         if (actingUserId > 0)
@@ -87,6 +89,17 @@ public class QuestionService : IQuestionService
                 Success = false,
                 InvalidInput = true,
                 Message = _localizer["questions.passage.invalidInstruction"]
+            };
+        }
+
+        // issue #580: çözüm kaynağı Key | AI | Human (boş = Human); bilinmeyen değer hiçbir şey yazılmadan 400.
+        if (!QuestionSolutionApproval.TryParseSource(questionDto.SolutionSource, out var requestedSolutionSource))
+        {
+            return new QuestionSavedDto
+            {
+                Success = false,
+                InvalidInput = true,
+                Message = _localizer["questions.solution.invalidSource"]
             };
         }
 
@@ -144,14 +157,34 @@ public class QuestionService : IQuestionService
                 }
                 // review #576 (H1/M1): tanım değiştiyse saklanacak biçime (dragPlace kartları / match sağ öğeleri karışık sıra +
                 // opak id); aynı tanım yeniden kaydedilince dokunulmaz (kayıtlı cevapların id'leri bozulmasın).
-                if (!string.Equals(previousInteractionType, question.InteractionType, StringComparison.Ordinal)
+                // issue #580: işaretleme taslağından gelen çözüm — kaynak/onay sunucuda taslak satırından türetilir.
+                var (draftOk, solutionDraft) = await ResolveSolutionDraftAsync(questionDto.DraftSolutionId, questionDto.InteractionType, storedSolution);
+                if (!draftOk)
+                {
+                    return new QuestionSavedDto
+                    {
+                        Success = false,
+                        InvalidInput = true,
+                        Message = _localizer["questions.solution.draftMismatch"]
+                    };
+                }
+                // issue #580 (review C1): "çözüm değişti" yalnız çözüm JSON'u (kanonik) değişince — kutu/plan değişikliği onayı aklamaz.
+                var solutionChanged = !CanonicalJson.Equal(storedSolution, question.InteractionSolution);
+                var definitionChanged = !string.Equals(previousInteractionType, question.InteractionType, StringComparison.Ordinal)
                     || !string.Equals(storedPlan, question.InteractionPlan, StringComparison.Ordinal)
-                    || !string.Equals(storedSolution, question.InteractionSolution, StringComparison.Ordinal))
+                    || !string.Equals(storedSolution, question.InteractionSolution, StringComparison.Ordinal);
+                if (definitionChanged)
                 {
                     (storedPlan, storedSolution) = _graders.Resolve(questionDto.InteractionType).PrepareForStorage(storedPlan, storedSolution);
                 }
                 question.InteractionPlan = storedPlan;
                 question.InteractionSolution = storedSolution;
+                // issue #580: kaynak/onay kuralları (önceki durum sorunun mevcut alanları).
+                QuestionSolutionApproval.Apply(question,
+                    hasSolution: IsInteractive(question.InteractionType) && !string.IsNullOrWhiteSpace(storedSolution),
+                    solutionChanged,
+                    requestedSolutionSource, questionDto.SolutionApproved == true, questionDto.SolutionPromptVersion,
+                    solutionActor, DateTime.UtcNow, solutionDraft);
                 question.ShowPassageFirst = questionDto.ShowPassageFirst;
 
 
@@ -569,10 +602,29 @@ public class QuestionService : IQuestionService
     /// issue #574: MCQ kuralı dışında kendi kontrolcüsü olan tip (dragDropLabeling, matrixChoice, slotFill, dragPlace, match). Bilinmeyen tip MCQ
     /// kontrolcüsüne düştüğü için etkileşimli sayılmaz (bugünkü davranış: doğru şık zorunlu, question-v2 kırpılır).
     /// </summary>
+    /// <summary>
+    /// Issue #580: <paramref name="draftId"/> verildiyse işaretleme taslağı (<c>LabelingActivitySolutions</c>) yüklenir; tipi ve çözümü
+    /// (kanonik JSON, <c>PrepareForStorage</c> öncesi taslak id'leriyle) kaydedilenle aynı olmalı — değilse false (400). Kaynak, sürüm
+    /// ve onay taslaktan gelir; istemcinin bildirdiği kaynak yok sayılır.
+    /// </summary>
+    private async Task<(bool Ok, SolutionDraftInfo? Draft)> ResolveSolutionDraftAsync(int? draftId, string? interactionType, string? solution)
+    {
+        if (draftId is null)
+            return (true, null);
+        var row = await _context.LabelingActivitySolutions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == draftId.Value);
+        if (row?.SolutionJson is null
+            || !string.Equals(row.InteractionType, _graders.CanonicalType(interactionType), StringComparison.Ordinal)
+            || !CanonicalJson.Equal(row.SolutionJson, solution))
+            return (false, null);
+        return (true, new SolutionDraftInfo(row.Source, row.PromptVersion, row.Status == SolutionStatus.Approved,
+            row.ApprovedByKeycloakId, row.ApprovedByName, row.ApprovedAt));
+    }
+
     private bool IsInteractive(string? interactionType) =>
         !_graders.Resolve(interactionType).InteractionType.Equals(McqGrader.Type, StringComparison.OrdinalIgnoreCase);
 
-    public async Task<ResponseBaseDto> SaveBulkQuestion(BulkQuestionCreateDto soruDto, int actingUserId = 0)
+    public async Task<ResponseBaseDto> SaveBulkQuestion(BulkQuestionCreateDto soruDto, int actingUserId = 0,
+        SolutionActor? solutionActor = null)
     {
         // issue #287 H1: audit alanları (CreateUserId = soru sahibi) istek sahibine damgalanır.
         if (actingUserId > 0)
@@ -592,6 +644,7 @@ public class QuestionService : IQuestionService
         // issue #570: tüm soruların plan/çözümü transaction'dan ve MinIO yüklemelerinden ÖNCE doğrulanıp ayrılır — bozuk bir
         // öğe hiçbir şey yüklenmeden/yazılmadan reddedilir (ham istisna mesajı dönmez).
         var interactionByQuestion = new Dictionary<BulkQuestionDto, (string? Plan, string? Solution)>(ReferenceEqualityComparer.Instance);
+        var draftByQuestion = new Dictionary<BulkQuestionDto, SolutionDraftInfo?>(ReferenceEqualityComparer.Instance);
         foreach (var bulkQuestion in soruDto.Questions ?? new List<BulkQuestionDto>())
         {
             if (bulkQuestion == null)
@@ -614,6 +667,26 @@ public class QuestionService : IQuestionService
                     Message = _localizer["questions.bulk.invalidInteractionDefinition", bulkQuestion.Name]
                 };
             }
+            // issue #580: çözüm kaynağı Key | AI | Human (boş = Human).
+            if (!QuestionSolutionApproval.TryParseSource(bulkQuestion.SolutionSource, out _))
+            {
+                return new ResponseBaseDto
+                {
+                    Success = false,
+                    Message = _localizer["questions.solution.invalidSource"]
+                };
+            }
+            // issue #580: taslak çözüm (draftSolutionId) — tip ve eşlenmiş çözüm taslakla aynı olmalı.
+            var (bulkDraftOk, bulkDraft) = await ResolveSolutionDraftAsync(bulkQuestion.DraftSolutionId, bulkQuestion.InteractionType, resolvedSolution);
+            if (!bulkDraftOk)
+            {
+                return new ResponseBaseDto
+                {
+                    Success = false,
+                    Message = _localizer["questions.solution.draftMismatch"]
+                };
+            }
+            draftByQuestion[bulkQuestion] = bulkDraft;
             // review #576 (H1/M1): saklanacak biçim (dragPlace / match: karışık sıra + opak id).
             interactionByQuestion[bulkQuestion] = _graders.Resolve(bulkQuestion.InteractionType).PrepareForStorage(resolvedPlan, resolvedSolution);
         }
@@ -903,6 +976,12 @@ public class QuestionService : IQuestionService
                         PassageId = matchedPassage?.Id,
                         ClassificationSource = classificationSource
                     };
+                    // issue #580: yeni soru — çözümü varsa kaynak/onay kuralları (Key/AI onay bekler, Human onaylı).
+                    QuestionSolutionApproval.TryParseSource(questionDto.SolutionSource, out var bulkSolutionSource);
+                    QuestionSolutionApproval.Apply(question,
+                        hasSolution: IsInteractive(interactionType) && !string.IsNullOrWhiteSpace(storedSolution),
+                        solutionChanged: true, bulkSolutionSource, questionDto.SolutionApproved == true,
+                        questionDto.SolutionPromptVersion, solutionActor, DateTime.UtcNow, draftByQuestion.GetValueOrDefault(questionDto));
 
                     if (questionClassification != null)
                     {

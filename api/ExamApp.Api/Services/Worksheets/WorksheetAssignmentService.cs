@@ -106,6 +106,13 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             return new ResponseBaseDto { Success = false, Message = message };
         }
 
+        // issue #580: onaylanmamış (AI / cevap anahtarı) çözümlü soru içeren sayfa (tür fark etmez) atanamaz. Erişim kontrollerinden
+        // sonra: görünmeyen sayfa için "bulunamadı" cevabı değişmez.
+        if (await WorksheetSolutionGate.HasPendingSolutionAsync(_context, worksheet.Id, ct))
+        {
+            return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.pendingSolutionApproval"] };
+        }
+
         // issue #222 (security Ö2): scope'un okulu çok rollü hesapta Students tablosundan gelmiş olabilir. Öğretmen
         // yetkisiyle yapılan atamada okul ÖĞRETMEN kaydından doğrulanır; kayıt yoksa veya uyuşmazsa fail-closed red.
         // Worksheet erişim kontrollerinden sonra: görünmeyen worksheet için "bulunamadı" cevabı değişmez.

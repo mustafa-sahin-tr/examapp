@@ -298,7 +298,8 @@ describe('WorksheetDetailComponent assign deep link', () => {
         const testService = {
             getWorksheetDetail: vi.fn().mockName("TestService.getWorksheetDetail"),
             get: vi.fn().mockName("TestService.get"),
-            getWorksheetAssignmentsForTeacher: vi.fn().mockName("TestService.getWorksheetAssignmentsForTeacher")
+            getWorksheetAssignmentsForTeacher: vi.fn().mockName("TestService.getWorksheetAssignmentsForTeacher"),
+            assignWorksheet: vi.fn().mockName("TestService.assignWorksheet")
         };
         testService.getWorksheetDetail.mockImplementation((id: number) => of({
             worksheet: { id, name: 'Deneme', canEdit: true, canAssign: options.canAssign ?? true },
@@ -358,7 +359,7 @@ describe('WorksheetDetailComponent assign deep link', () => {
         });
 
         const component = TestBed.createComponent(WorksheetDetailComponent).componentInstance;
-        return { component, dialog, router, grades, snackBar, route };
+        return { component, dialog, router, grades, snackBar, route, testService };
     }
 
     /** paramMap aboneliği `await lastValueFrom(get)` içerir; mikro görevler boşalsın. */
@@ -409,6 +410,20 @@ describe('WorksheetDetailComponent assign deep link', () => {
         // Yalnız `assign` düşürülür; 'merge' sayesinde commentId/tab URL'de kalır.
         expect(extras.queryParams).toEqual({ assign: null });
         expect(extras.queryParamsHandling).toBe('merge');
+    });
+
+    // Issue #580: onaylanmamış çözümlü etkinlik atanamaz; sunucunun yerelleştirilmiş mesajı gösterilir.
+    it('assignment_PendingSolutionApproval400_ShowsServerMessage', async () => {
+        const { component, dialog, snackBar, testService } = setup({ role: 'Teacher', query: { assign: 'student' } });
+        const message = 'Bu etkinlikte çözümü henüz onaylanmamış maddeler var; onaylanmadan öğrenciye atanamaz.';
+        dialog.open.mockReturnValue({ afterClosed: () => of({ request: { worksheetId: 12 } }) } as MatDialogRef<unknown>);
+        testService.assignWorksheet.mockReturnValue(throwError(() => ({ status: 400, error: { success: false, message } })));
+
+        component.ngOnInit();
+        await settle();
+
+        expect(testService.assignWorksheet).toHaveBeenCalledWith({ worksheetId: 12 });
+        expect(snackBar.open).toHaveBeenCalledWith(message, expect.any(String), expect.any(Object));
     });
 
     it('ngOnInit_AssignQueryButCannotAssign_DoesNotOpenDialogAndShowsInfoSnackbar', async () => {

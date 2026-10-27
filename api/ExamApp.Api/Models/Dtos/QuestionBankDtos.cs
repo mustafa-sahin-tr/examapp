@@ -37,6 +37,20 @@ public class QuestionBankQuery
     public bool? HasCorrectAnswer { get; set; }
 
     /// <summary>
+    /// Issue #580: çözüm onay durumu — <c>pending</c> (Key/AI çözümü onay bekliyor) | <c>approved</c>. Büyük/küçük harf duyarsız; boş =
+    /// farketmez.
+    /// </summary>
+    public string? SolutionStatus { get; set; }
+
+    /// <summary>Geçerli <see cref="SolutionStatus"/> değeri; boşsa null.</summary>
+    public SolutionStatus? ParsedSolutionStatus => SolutionStatus?.Trim().ToLowerInvariant() switch
+    {
+        "pending" => Data.SolutionStatus.Pending,
+        "approved" => Data.SolutionStatus.Approved,
+        _ => null,
+    };
+
+    /// <summary>
     /// true → en az bir teste bağlı; false → çağıranın görebildiği hiçbir teste bağlı değil; null → farketmez. Sayım
     /// <see cref="QuestionBankItemDto.TestCount"/> ile aynıdır (öğretmen için görebildiği silinmemiş testler).
     /// </summary>
@@ -66,6 +80,8 @@ public class QuestionBankQuery
         if (!string.IsNullOrEmpty(Scope) && !IsAllScope && !string.Equals(Scope, "mine", StringComparison.OrdinalIgnoreCase))
             return false;
         if (!string.IsNullOrEmpty(Source) && ParsedSource is null)
+            return false;
+        if (!string.IsNullOrWhiteSpace(SolutionStatus) && ParsedSolutionStatus is null)
             return false;
         if (MinDifficulty is < 1 or > 10 || MaxDifficulty is < 1 or > 10)
             return false;
@@ -100,6 +116,15 @@ public class QuestionBankItemDto
     /// <summary>Ders ve konusu belirlenmiş mi.</summary>
     public bool IsClassified { get; set; }
     public bool HasCorrectAnswer { get; set; }
+
+    /// <summary>Issue #580: çözüm kaynağı — <c>None</c> | <c>Human</c> | <c>Key</c> | <c>AI</c>.</summary>
+    public string SolutionSource { get; set; } = "None";
+
+    /// <summary>Issue #580: <c>pending</c> (onay bekliyor) | <c>approved</c>.</summary>
+    public string SolutionStatus { get; set; } = "approved";
+
+    /// <summary>Issue #580: Key/AI çözümünü üreten talimat sürümü (onay ekranında); yoksa null.</summary>
+    public int? SolutionPromptVersion { get; set; }
 
     /// <summary>Sorunun bağlı olduğu, çağıranın görebildiği (silinmemiş) test sayısı; admin için tümü.</summary>
     public int TestCount { get; set; }
@@ -144,4 +169,21 @@ public class LinkBankQuestionsResultDto
 
     /// <summary>Zaten testte olduğu için atlanan soru id'leri.</summary>
     public List<int> AlreadyInTestQuestionIds { get; set; } = new();
+}
+
+/// <summary>Issue #580: sorunun çözüm kaynağı ve onay durumu (<c>pending</c> | <c>approved</c>).</summary>
+public class QuestionSolutionStateDto
+{
+    public int QuestionId { get; set; }
+
+    /// <summary><c>None</c> | <c>Human</c> | <c>Key</c> | <c>AI</c>.</summary>
+    public string SolutionSource { get; set; } = "None";
+
+    public string SolutionStatus { get; set; } = "approved";
+
+    public int? SolutionPromptVersion { get; set; }
+
+    public string? SolutionApprovedByName { get; set; }
+
+    public DateTime? SolutionApprovedAt { get; set; }
 }

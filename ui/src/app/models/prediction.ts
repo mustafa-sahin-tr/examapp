@@ -38,11 +38,18 @@ export interface Prediction {
     component?: ActivityComponent | null;
     /** Issue #578: yalnız `kind = activity` ve bileşenle tutarlıysa (bkz. `isConsistentInteraction`). */
     interaction_type?: BlockInteractionType | null;
+    /**
+     * Issue #580: bloğun kitapta basılı etiketi — etkinlikte etkinlik etiketi ("Etkinlik 3"), soruda soru numarası ("4");
+     * cevap anahtarında aramak için. Yalnız Claude tespitinde.
+     */
+    label?: string | null;
 }
 
 export interface PredictionList {
     success: boolean;
     predictions: Prediction[];
+    /** Issue #580: sayfanın bölüm başlığı ("TEST 01"); test sorularının cevap anahtarındaki etkinlik etiketi. */
+    section_label?: string | null;
 }
 
 /** Kutunun blok türü; bilinmeyen / eksik değer `mcq_question`. */

@@ -1,7 +1,7 @@
 import { Component, DestroyRef, computed, effect, inject, signal, untracked, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { Subject, firstValueFrom, merge, takeUntil } from 'rxjs';
+import { Observable, Subject, firstValueFrom, merge, takeUntil } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleChange, MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog } from '@angular/material/dialog';
@@ -42,16 +42,23 @@ import {
   sortLabelingFiles,
 } from './labeling-pool';
 import {
+  ANSWER_KEY_LIMITS,
   DetectionSource,
   LabelingAiModel,
   LabelingBankBox,
   LabelingBankConflict,
   LabelingBankInfo,
   LabelingActivityBlock,
+  LabelingActivitySolutionResponse,
   LabelingActivityStructureResult,
+  LabelingAnswerKeyEntry,
+  LabelingAnswerKeyReadRequest,
+  LabelingAnswerKeyReadResponse,
   LabelingBankQuestion,
   LabelingPage,
+  LabelingPromptKind,
   LabelingResult,
+  LabelingSolutionMode,
 } from '../../models/labeling';
 import { LabelingService, manualDetectionSource, sha256OfDataUrl } from '../../services/labeling.service';
 import {
@@ -59,7 +66,9 @@ import {
   LabelingPromptDialogResult,
   isActivityPromptSaved,
   isPromptUnchanged,
+  isSolutionPromptKind,
 } from './labeling-prompt-dialog/labeling-prompt-dialog.component';
+import { AuthService } from '../../services/auth.service';
 import { LabelingBook, LabelingBookPageInfo, LabelingCropConflict } from '../../models/labeling-book';
 import { LabelingBookService } from '../../services/labeling-book.service';
 import {
@@ -114,6 +123,55 @@ export interface ActivityDraft {
   requestId: number;
 }
 
+/**
+ * Issue #580: etkinlik bloğunun cevap anahtarı araması (açık sayfanın basılı sayfası + bloğun etkinlik etiketi). Etiket /
+ * sayfa değişince yeniden aranır; eski isteğin yanıtı `requestId` ile ayıklanır.
+ */
+export interface AnswerKeyLookup {
+  /** Sorgunun izi (kitap, sayfa, bölüm, etiket); aynı sorgu yeniden sorulmaz. */
+  query: string;
+  status: 'loading' | 'ok' | 'error';
+  entries: LabelingAnswerKeyEntry[];
+  requestId: number;
+}
+
+/**
+ * Issue #580: etkinlik bloğunun taslak çözümü (bölge adına göre). Yazıldığı yapı taslağına (`draftRequestId`) bağlıdır:
+ * yapı yeniden çıkarılınca / tip değişince geçersiz sayılır (id'ler değişmiş olabilir).
+ */
+export interface ActivitySolutionDraft {
+  interactionType: BlockInteractionType;
+  draftRequestId: number;
+  mode: LabelingSolutionMode;
+  /** `planChanged`: kayıtlı çözüm var ama başka bir plana yazılmış (yeniden çözülmeli; durum / onay gösterilmez). */
+  status: 'loading' | 'ok' | 'error' | 'planChanged';
+  response: LabelingActivitySolutionResponse | null;
+  /** Çözümün yazıldığı planın kanonik JSON'u; tuvaldeki plan değişince çözüm bayatlar. */
+  planJson: string | null;
+  error: string | null;
+  /** Çözüm tuvale ne oldu (`applyInteractionSolution`); yanıt gelmeden ya da çözüm yokken null. */
+  apply: InteractionDraftApply | null;
+  /** Uygulandığı / kaydedildiği andaki tuval çözümü (JSON); elle düzeltme bununla karşılaştırılır. */
+  appliedJson: string | null;
+  busy: 'saving' | 'approving' | null;
+  requestId: number;
+}
+
+/** Issue #580: toplu cevap anahtarı yüklemesinin özeti. */
+export interface AnswerKeyBulkSummary {
+  total: number;
+  /** Okunan sayfa. */
+  pages: number;
+  rows: number;
+  /** Yalnız canlı (ücretli) okumaların tahmini maliyeti. */
+  costUsd: number;
+  /** Kayıtlı satırları başka talimat / modelle okunmuş sayfalar. */
+  stale: number;
+  /** Kota / bütçe / anahtar yok yüzünden okunmayan kalan dosyalar. */
+  skipped: number;
+  failed: Array<{ name: string; message: string }>;
+}
+
 /** Müfettişte soru başına girilen kitap etiketleri (bölge adına göre; sayfa değişince silinir). */
 export interface QuestionLabels {
   activityLabel: string;
@@ -164,6 +222,7 @@ export class LabelingComponent {
   private readonly dialog = inject(MatDialog);
   private readonly gradesApi = inject(GradesService);
   private readonly booksApi = inject(LabelingBookService);
+  private readonly auth = inject(AuthService);
 
   private readonly selectorRef = viewChild(ImageSelectorComponent);
 
@@ -356,9 +415,68 @@ export class LabelingComponent {
   /** Yapı yalnız Claude kaynağında (ya da Claude'dan başlayan manuel kayıtta) ve izinli model varken istenir. */
   readonly structureEnabled = computed(() => this.showKindLegend() && this.aiModels().length > 0);
 
+  // --- Issue #580: cevap anahtarı okuma ve etkinlik çözümü ---
+  /** Onay yalnız Admin + QuestionTrainer realm rolüyle (sunucu da 403 verir); diğerlerinde düğme gizli. */
+  readonly canApproveSolutions = this.auth.hasRealmRole('Admin') || this.auth.hasRealmRole('QuestionTrainer');
+  /** Açık sayfa seçili kitabın cevap anahtarı aralığında. */
+  readonly isAnswerKeyPage = computed(
+    () => this.bookId() != null && this.filePage() != null && this.bookPage()?.isAnswerKey === true
+  );
+  readonly answerKeyEntries = signal<LabelingAnswerKeyEntry[]>([]);
+  readonly answerKeyReading = signal(false);
+  readonly answerKeyError = signal<string | null>(null);
+  /** Son okumanın kaynağı / prompt sürümü / maliyeti (okunmadıysa null). */
+  readonly answerKeyMeta = signal<Omit<LabelingAnswerKeyReadResponse, 'entries'> | null>(null);
+  readonly canReadAnswerKey = computed(
+    () =>
+      this.isAnswerKeyPage() &&
+      this.aiModels().length > 0 &&
+      !!this.selectorRef()?.imageData() &&
+      !this.answerKeyReading() &&
+      !this.analysing() &&
+      !this.sendingToFix()
+  );
+  /** Düzenlenen anahtar satırı ve formu (metin alanları; basılı sayfa sayı metni). */
+  readonly editingEntryId = signal<number | null>(null);
+  readonly entryForm = signal({ printedPage: '', activityLabel: '', itemLabel: '', answerText: '' });
+  /** Kaydı / silinmesi süren satır. */
+  readonly entryBusyId = signal<number | null>(null);
+  readonly answerKeyLimits = ANSWER_KEY_LIMITS;
+  private answerKeySeq = 0;
+  /** Toplu yükleme ilerlemesi ("3/8 okunuyor") ve son özet. */
+  readonly bulkKeyProgress = signal<{ done: number; total: number; current: string } | null>(null);
+  readonly bulkKeySummary = signal<AnswerKeyBulkSummary | null>(null);
+  private bulkKeySeq = 0;
+  /** Toplu yükleme: kitap seçili, Claude modeli var, başka yükleme sürmüyor. */
+  readonly canBulkReadKeys = computed(
+    () => this.bookId() != null && this.aiModels().length > 0 && this.bulkKeyProgress() == null
+  );
+  /** Bölge adı → anahtar araması. */
+  readonly keyLookups = signal<Record<string, AnswerKeyLookup>>({});
+  private keyLookupSeq = 0;
+  private readonly keyLookupTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** Etiket yazılırken anahtar aramasından önce beklenen süre (testlerde 0). */
+  keyLookupDebounceMs = 400;
+  /** Belirsiz anahtarda öğretmenin seçtiği grup (bölge adı → grup). */
+  readonly keyChoices = signal<Record<string, string>>({});
+  /** Anahtardan ön seçilen şık (bölge adı → satır + şık sırası). */
+  readonly mcqKeyApplied = signal<Record<string, { entryId: number; answerIndex: number }>>({});
+  /** Otomatik "Anahtardan çöz" bir kez (bölge + yapı taslağı). */
+  private readonly autoSolved = new Set<string>();
+  /** Kayıtlı çözümü aranan bloklar (bitene kadar otomatik çözüm beklenir). */
+  private readonly restoringSolutions = new Set<string>();
+  /** Etiketlerin tespitten doldurulduğu son tespit. */
+  private labelsSeededRevision: number | null = null;
+  /** Bölge adı → taslak çözüm. */
+  readonly activitySolutions = signal<Record<string, ActivitySolutionDraft>>({});
+  private solutionSeq = 0;
+  /** Tuvalde cevap anahtarı kutusu çizili mi (gereksiz yeniden çizim olmasın). */
+  private answerKeyOverlaysShown = false;
+
   constructor() {
     this.destroyRef.onDestroy(() => {
       this.pickSeq++;
+      this.bulkKeySeq++;
       this.prefetch = null;
       this.resetPageState();
     });
@@ -395,7 +513,16 @@ export class LabelingComponent {
       const revision = selector.detectionRevision();
       const enabled = this.structureEnabled();
       const busy = this.analysing();
-      untracked(() => this.syncActivityDrafts(revision, enabled && !busy));
+      untracked(() => {
+        this.syncActivityDrafts(revision, enabled && !busy);
+        this.syncKeyLookups(revision);
+      });
+    });
+    // Issue #580: cevap anahtarındaki görsel cevapların kutuları sayfada çizilir.
+    effect(() => {
+      const selector = this.selectorRef();
+      const entries = this.answerKeyEntries();
+      untracked(() => this.drawAnswerKeyOverlays(selector, entries));
     });
     void this.loadLabeledPages();
     this.loadAiModels();
@@ -440,6 +567,9 @@ export class LabelingComponent {
     const seq = ++this.bookPageSeq;
     this.bookPage.set(null);
     this.bookPageError.set(false);
+    // Sayfa / kitap değişti: anahtar okuması ve etkinliklerin anahtar aramaları bu sayfaya ait değil.
+    this.clearAnswerKey();
+    this.clearKeyLookups();
     this.gradeId.set(this.manualGradeId());
     if (bookId == null || filePage == null) {
       this.bookPageLoading.set(false);
@@ -456,6 +586,7 @@ export class LabelingComponent {
           }
           this.bookPageLoading.set(false);
           this.bookPage.set(info);
+          this.refreshKeyLookups();
           const gradeId = info?.toc?.gradeId;
           // Sınıf listesi henüz gelmediyse `loadGrades` seçimi listeye göre doğrular.
           if (gradeId != null && (this.grades().length === 0 || this.grades().some((g) => g.id === gradeId))) {
@@ -485,6 +616,12 @@ export class LabelingComponent {
   setQuestionLabel(name: string, field: keyof QuestionLabels, target: EventTarget | null): void {
     const value = ((target as HTMLInputElement | null)?.value ?? '').slice(0, MAX_QUESTION_LABEL);
     this.questionLabels.update((all) => ({ ...all, [name]: { ...this.labelsOf(name), [field]: value } }));
+    // Issue #580: etkinlik etiketi cevap anahtarı satırlarını bulur (madde etiketi yalnız istemcide süzer).
+    const kind = this.selectorRef()?.getBlockKind(name);
+    if (kind === 'activity' || kind === 'mcq_question') {
+      this.mcqKeyApplied.update((all) => omit(all, name));
+      this.scheduleKeyLookup(name);
+    }
   }
 
   loadGrades(): void {
@@ -687,7 +824,14 @@ export class LabelingComponent {
    * Issue #579: bir tipin talimatı kaydedildi. Bu sayfada o tipte taslak varsa yeni talimatla yeniden çıkarmak önerilir
    * (yeni prompt hash'i → canlı, ücretli çağrı); diğer tiplerin taslakları etkilenmez.
    */
-  private onActivityPromptSaved(type: BlockInteractionType, version: number, token: number): void {
+  private onActivityPromptSaved(kind: LabelingPromptKind, version: number, token: number): void {
+    if (isSolutionPromptKind(kind)) {
+      // Issue #580: yalnız o talimatın önbelleği geçersiz olur; sonraki okuma / çözüm yeni sürümle (ücretli) üretilir.
+      const name = this.tr(`solution.promptKinds.${kind}`);
+      this.snackBar.open(this.tr('solution.promptSaved', { kind: name, version }), this.tr('ok'), { duration: 5000 });
+      return;
+    }
+    const type = kind;
     const typeName = this.tr(`structure.types.${type}`);
     const message = this.tr('structure.promptSaved', { type: typeName, version });
     const keys = () => this.typedActivityBlocks().filter((b) => b.interactionType === type);
@@ -833,6 +977,13 @@ export class LabelingComponent {
     this.activityDrafts.set({});
     this.draftRevision = null;
     this.clearBoxRefresh();
+    this.clearAnswerKey();
+    this.clearKeyLookups();
+    this.activitySolutions.set({});
+    this.mcqKeyApplied.set({});
+    this.autoSolved.clear();
+    this.restoringSolutions.clear();
+    this.labelsSeededRevision = null;
     this.snackBar.dismiss();
   }
 
@@ -1335,6 +1486,10 @@ export class LabelingComponent {
       if (Object.keys(this.activityDrafts()).length > 0) {
         this.activityDrafts.set({});
       }
+      if (Object.keys(this.activitySolutions()).length > 0) {
+        this.activitySolutions.set({});
+      }
+      this.restoringSolutions.clear();
     }
     const blocks = this.typedActivityBlocks();
     const drafts = this.activityDrafts();
@@ -1507,6 +1662,13 @@ export class LabelingComponent {
             }
           }
           this.activityDrafts.set(next);
+          // Issue #580: bu kırpmanın kayıtlı çözüm taslağı varsa (sayfa yeniden açıldı) geri yüklenir.
+          for (const block of blocks) {
+            if (next[block.key]?.requestId === requestId) {
+              this.restoreSolution(block.key);
+              this.tryAutoSolve(block.key);
+            }
+          }
           done(null);
         },
         error: (error) => {
@@ -1561,6 +1723,1116 @@ export class LabelingComponent {
         const apply = selector.applyInteractionDraft(name, draft.interactionType, draft.result?.plan, { replace: true });
         this.activityDrafts.update((all) => (all[name]?.requestId === draft.requestId ? { ...all, [name]: { ...all[name], apply } } : all));
       });
+  }
+
+  // ---------------- Issue #580: cevap anahtarı sayfası ----------------
+
+  /**
+   * "Cevap anahtarını oku (Claude)": sayfa kitabın anahtar aralığındaysa satırlar okunur (kayıtlı sonuç ücretsiz döner).
+   * `force` ("Yeniden oku") kayıtlı sonucu yok sayar ve ücretlidir: önce onay.
+   */
+  readAnswerKey(force = false): void {
+    if (!this.canReadAnswerKey()) {
+      return;
+    }
+    if (!force) {
+      this.runAnswerKeyRead(false);
+      return;
+    }
+    const token = this.pageToken;
+    this.snackBar
+      .open(this.tr('answerKey.rereadConfirm'), this.tr('answerKey.rereadAction'), { duration: 8000 })
+      .onAction()
+      .subscribe(() => {
+        if (token === this.pageToken && this.canReadAnswerKey()) {
+          this.runAnswerKeyRead(true);
+        }
+      });
+  }
+
+  private runAnswerKeyRead(force: boolean, confirmOverwrite = false): void {
+    const bookId = this.bookId();
+    const filePage = this.filePage();
+    const image = this.pageImage;
+    const model = this.structureModel();
+    if (bookId == null || filePage == null || !image || !model) {
+      return;
+    }
+    const seq = ++this.answerKeySeq;
+    this.answerKeyReading.set(true);
+    this.answerKeyError.set(null);
+    this.editingEntryId.set(null);
+    this.labelingApi
+      .readAnswerKey({ bookId, filePage, imageBase64: image, model, force, ...(confirmOverwrite ? { confirmOverwrite } : {}) })
+      .pipe(takeUntil(this.pageChanged), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          if (seq !== this.answerKeySeq) {
+            return;
+          }
+          this.answerKeyReading.set(false);
+          this.answerKeyEntries.set(response?.entries ?? []);
+          this.answerKeyMeta.set({
+            origin: response.origin,
+            promptVersion: response.promptVersion,
+            estimatedCostUsd: response.estimatedCostUsd,
+            stale: response.stale === true,
+          });
+          if (response.origin === 'live' && response.estimatedCostUsd != null) {
+            this.snackBar.open(
+              this.tr('source.liveDone', { cost: response.estimatedCostUsd.toFixed(4) }),
+              this.tr('ok'),
+              { duration: 4000 }
+            );
+          }
+        },
+        error: (error) => {
+          if (seq !== this.answerKeySeq) {
+            return;
+          }
+          console.error('labeling answer-key read failed', error);
+          this.answerKeyReading.set(false);
+          const status = (error as { status?: number })?.status;
+          const body = (error as { error?: { errorCode?: string; message?: string } })?.error;
+          if (status === 409 && body?.errorCode === 'LabelingAnswerKeyHasEdits' && !confirmOverwrite) {
+            // Elle düzeltilmiş satırlar yeniden okumada silinir: önce onay.
+            this.confirmAnswerKeyOverwrite(body.message || this.tr('answerKey.overwrite.message'));
+            return;
+          }
+          const message = this.serverError(error, 'answerKey.failed', 'answerKey.unavailable');
+          this.answerKeyError.set(message);
+          this.snackBar.open(message, this.tr('ok'), { duration: 6000 });
+        },
+      });
+  }
+
+  private confirmAnswerKeyOverwrite(message: string): void {
+    const token = this.pageToken;
+    const data: ConfirmDialogData = {
+      title: this.tr('answerKey.overwrite.title'),
+      message,
+      confirmText: this.tr('answerKey.overwrite.confirm'),
+      cancelText: this.tr('answerKey.overwrite.cancel'),
+      icon: 'warning',
+      confirmColor: 'warn',
+    };
+    this.dialog
+      .open(ConfirmDialogComponent, { data, autoFocus: false })
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (confirmed === true && token === this.pageToken && this.canReadAnswerKey()) {
+          this.runAnswerKeyRead(true, true);
+        }
+      });
+  }
+
+  // ---------------- Issue #580: cevap anahtarlarını toplu yükleme ----------------
+
+  /**
+   * "Cevap anahtarlarını yükle": seçilen görseller seçili kitap için sırayla okunur (kayıtlı okuma ücretsiz döner). Dosya
+   * adından sayfa numarası okunabiliyorsa (`page_201.webp`) `filePage` gider, yoksa sunucu bulur. Elle düzeltilmiş satırlı
+   * sayfada (409) tek okumadaki gibi onay istenir; 429 / 503'te (kota, bütçe, anahtar yok) kalanlar okunmaz. Bitince özet
+   * gösterilir ve açık sayfanın blokları yeniden aranır.
+   */
+  async onAnswerKeyFiles(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const files = sortLabelingFiles(Array.from(input.files ?? []).filter(isLabelingImage));
+    input.value = '';
+    const bookId = this.bookId();
+    const model = this.aiModelId();
+    if (files.length === 0 || !this.canBulkReadKeys() || bookId == null || !model) {
+      return;
+    }
+    const seq = ++this.bulkKeySeq;
+    const summary: AnswerKeyBulkSummary = { total: files.length, pages: 0, rows: 0, costUsd: 0, stale: 0, skipped: 0, failed: [] };
+    this.bulkKeySummary.set(null);
+    for (let i = 0; i < files.length; i++) {
+      if (seq !== this.bulkKeySeq) {
+        return;
+      }
+      const file = files[i];
+      const name = file.webkitRelativePath || file.name;
+      this.bulkKeyProgress.set({ done: i, total: files.length, current: name });
+      let outcome: 'ok' | 'stop' | 'next';
+      try {
+        const imageBase64 = await readDataUrl(file);
+        const filePage = filePageOf(name);
+        outcome = await this.bulkReadOne(seq, summary, name, {
+          bookId,
+          imageBase64,
+          model,
+          force: false,
+          ...(filePage != null ? { filePage } : {}),
+        });
+      } catch (error) {
+        console.error('labeling answer-key file read failed', name, error);
+        summary.failed.push({ name, message: this.tr('answerKey.bulk.unreadable') });
+        outcome = 'next';
+      }
+      if (outcome === 'stop') {
+        summary.skipped = files.length - i - 1;
+        break;
+      }
+    }
+    if (seq !== this.bulkKeySeq) {
+      return;
+    }
+    this.bulkKeyProgress.set(null);
+    this.bulkKeySummary.set(summary);
+    // Yeni satırlar açık sayfanın bloklarını bulabilir.
+    const names = this.selectorRef()?.regions().map((r) => r.name) ?? [];
+    if (this.bookId() === bookId && this.bookPage() && this.showKindLegend() && names.length > 0) {
+      this.lookupKeys(names, true);
+    }
+  }
+
+  private async bulkReadOne(
+    seq: number,
+    summary: AnswerKeyBulkSummary,
+    name: string,
+    request: LabelingAnswerKeyReadRequest
+  ): Promise<'ok' | 'stop' | 'next'> {
+    try {
+      const response = await firstValueFrom(this.labelingApi.readAnswerKey(request).pipe(takeUntilDestroyed(this.destroyRef)));
+      summary.pages++;
+      summary.rows += response?.entries?.length ?? 0;
+      if (response?.origin === 'live') {
+        summary.costUsd += response.estimatedCostUsd ?? 0;
+      }
+      if (response?.stale) {
+        summary.stale++;
+      }
+      return 'ok';
+    } catch (error) {
+      if (seq !== this.bulkKeySeq) {
+        return 'stop';
+      }
+      console.error('labeling answer-key bulk read failed', name, error);
+      const status = (error as { status?: number })?.status;
+      const body = (error as { error?: { errorCode?: string; message?: string } })?.error;
+      if (status === 409 && body?.errorCode === 'LabelingAnswerKeyHasEdits' && !request.confirmOverwrite) {
+        const confirmed = await firstValueFrom(
+          this.dialog
+            .open(ConfirmDialogComponent, {
+              data: {
+                title: this.tr('answerKey.overwrite.title'),
+                message: `${name}: ${body.message || this.tr('answerKey.overwrite.message')}`,
+                confirmText: this.tr('answerKey.overwrite.confirm'),
+                cancelText: this.tr('answerKey.overwrite.cancel'),
+                icon: 'warning',
+                confirmColor: 'warn',
+              } satisfies ConfirmDialogData,
+              autoFocus: false,
+            })
+            .afterClosed()
+        );
+        if (confirmed === true && seq === this.bulkKeySeq) {
+          return this.bulkReadOne(seq, summary, name, { ...request, force: true, confirmOverwrite: true });
+        }
+        summary.failed.push({ name, message: this.tr('answerKey.bulk.keptEdits') });
+        return 'next';
+      }
+      const message = this.serverError(error, 'answerKey.failed', 'answerKey.unavailable');
+      summary.failed.push({ name, message });
+      return status === 429 || status === 503 ? 'stop' : 'next';
+    }
+  }
+
+  dismissBulkSummary(): void {
+    this.bulkKeySummary.set(null);
+  }
+
+  /** Okuma sonucu ve düzenleme durumu silinir; süren okuma yanıtı yok sayılır. */
+  private clearAnswerKey(): void {
+    this.answerKeySeq++;
+    this.answerKeyEntries.set([]);
+    this.answerKeyMeta.set(null);
+    this.answerKeyError.set(null);
+    this.answerKeyReading.set(false);
+    this.editingEntryId.set(null);
+    this.entryBusyId.set(null);
+  }
+
+  private drawAnswerKeyOverlays(selector: ImageSelectorComponent | undefined, entries: LabelingAnswerKeyEntry[]): void {
+    if (!selector) {
+      return;
+    }
+    const boxes = entries
+      .filter((e) => e.visual && !!e.box)
+      .map((e) => ({ box: e.box!, tag: entryTag(e) }));
+    if (boxes.length === 0 && !this.answerKeyOverlaysShown) {
+      return;
+    }
+    this.answerKeyOverlaysShown = boxes.length > 0;
+    selector.setAnswerKeyOverlays(boxes);
+  }
+
+  /** Satırın kısa etiketi ("s. 12 · Etkinlik 3 · b"). */
+  entryLabel(entry: LabelingAnswerKeyEntry): string {
+    return entryTag(entry);
+  }
+
+  editEntry(entry: LabelingAnswerKeyEntry): void {
+    if (this.entryBusyId() != null) {
+      return;
+    }
+    this.editingEntryId.set(entry.id);
+    this.entryForm.set({
+      printedPage: entry.printedPage == null ? '' : String(entry.printedPage),
+      activityLabel: entry.activityLabel ?? '',
+      itemLabel: entry.itemLabel ?? '',
+      answerText: entry.answerText ?? '',
+    });
+  }
+
+  setEntryField(field: 'printedPage' | 'activityLabel' | 'itemLabel' | 'answerText', target: EventTarget | null): void {
+    const value = (target as HTMLInputElement | null)?.value ?? '';
+    this.entryForm.update((form) => ({ ...form, [field]: value }));
+  }
+
+  cancelEntryEdit(): void {
+    this.editingEntryId.set(null);
+  }
+
+  /** Boş metin null gider; basılı sayfa tam sayı değilse kaydedilmez. */
+  saveEntry(entry: LabelingAnswerKeyEntry): void {
+    if (this.editingEntryId() !== entry.id || this.entryBusyId() != null) {
+      return;
+    }
+    const form = this.entryForm();
+    const printedText = form.printedPage.trim();
+    const printedPage = printedText === '' ? null : Number(printedText);
+    if (printedPage != null && (!Number.isInteger(printedPage) || printedPage < 1 || printedPage > ANSWER_KEY_LIMITS.maxPrintedPage)) {
+      this.snackBar.open(this.tr('answerKey.invalidPage'), this.tr('ok'), { duration: 4000 });
+      return;
+    }
+    const text = (value: string, max: number) => value.trim().slice(0, max) || null;
+    const seq = this.answerKeySeq;
+    this.entryBusyId.set(entry.id);
+    this.labelingApi
+      .updateAnswerKeyEntry(entry.id, {
+        printedPage,
+        activityLabel: text(form.activityLabel, ANSWER_KEY_LIMITS.maxLabel),
+        itemLabel: text(form.itemLabel, ANSWER_KEY_LIMITS.maxLabel),
+        answerText: text(form.answerText, ANSWER_KEY_LIMITS.maxAnswer),
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => {
+          if (seq !== this.answerKeySeq) {
+            return;
+          }
+          this.entryBusyId.set(null);
+          this.editingEntryId.set(null);
+          this.answerKeyEntries.update((all) => all.map((e) => (e.id === entry.id ? { ...e, ...updated } : e)));
+        },
+        error: (error) => {
+          if (seq !== this.answerKeySeq) {
+            return;
+          }
+          console.error('labeling answer-key entry update failed', error);
+          this.entryBusyId.set(null);
+          this.snackBar.open(this.serverError(error, 'answerKey.saveFailed'), this.tr('ok'), { duration: 6000 });
+        },
+      });
+  }
+
+  deleteEntry(entry: LabelingAnswerKeyEntry): void {
+    if (this.entryBusyId() != null) {
+      return;
+    }
+    const seq = this.answerKeySeq;
+    this.entryBusyId.set(entry.id);
+    this.labelingApi
+      .deleteAnswerKeyEntry(entry.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          if (seq !== this.answerKeySeq) {
+            return;
+          }
+          this.entryBusyId.set(null);
+          if (this.editingEntryId() === entry.id) {
+            this.editingEntryId.set(null);
+          }
+          this.answerKeyEntries.update((all) => all.filter((e) => e.id !== entry.id));
+        },
+        error: (error) => {
+          if (seq !== this.answerKeySeq) {
+            return;
+          }
+          console.error('labeling answer-key entry delete failed', error);
+          this.entryBusyId.set(null);
+          this.snackBar.open(this.serverError(error, 'answerKey.deleteFailed'), this.tr('ok'), { duration: 6000 });
+        },
+      });
+  }
+
+  // ---------------- Issue #580: cevap anahtarında arama (soru + etkinlik) ----------------
+
+  /** Bölgenin anahtar araması (yoksa null). */
+  keyLookupOf(name: string): AnswerKeyLookup | null {
+    return this.keyLookups()[name] ?? null;
+  }
+
+  /**
+   * Etkinliğin anahtar satırlarının grupları (basılı sayfa + etkinlik etiketi). Birden fazla grup = belirsiz (ör. fasiküllü
+   * kitapta aynı etiket iki kez): öğretmen seçer.
+   */
+  keyGroups(name: string): Array<{ id: string; label: string; entries: LabelingAnswerKeyEntry[] }> {
+    const lookup = this.keyLookupOf(name);
+    if (lookup?.status !== 'ok') {
+      return [];
+    }
+    const groups = new Map<string, { id: string; label: string; entries: LabelingAnswerKeyEntry[] }>();
+    for (const entry of lookup.entries) {
+      const id = `${entry.printedPage ?? ''}|${normalizeLabel(entry.activityLabel)}`;
+      const group = groups.get(id) ?? { id, label: entryTag({ ...entry, itemLabel: null }), entries: [] };
+      group.entries.push(entry);
+      groups.set(id, group);
+    }
+    return [...groups.values()];
+  }
+
+  /** Etkinlikte anahtar belirsiz ve henüz seçilmedi. */
+  keyAmbiguous(name: string): boolean {
+    return this.keyGroups(name).length > 1 && !this.keyGroups(name).some((g) => g.id === this.keyChoices()[name]);
+  }
+
+  /** Belirsiz anahtarda öğretmenin seçtiği grup; seçimden sonra (etkinlikte) anahtardan çözüm bir kez otomatik istenir. */
+  chooseKeyGroup(name: string, groupId: string): void {
+    this.keyChoices.update((all) => ({ ...all, [name]: groupId }));
+    this.tryAutoSolve(name);
+  }
+
+  /**
+   * Bloğun anahtar satırları: etiketle bulunanlar (belirsizse seçilen grup); madde etiketi girildiyse yalnız o maddeninkiler
+   * (büyük / küçük harf, boşluk ve noktalama farkı yok sayılır). Soru bloklarında süzme yok (madde etiketi soru numarasıdır).
+   */
+  matchingKeyEntries(name: string): LabelingAnswerKeyEntry[] {
+    const lookup = this.keyLookupOf(name);
+    if (lookup?.status !== 'ok') {
+      return [];
+    }
+    if (this.selectorRef()?.getBlockKind(name) !== 'activity') {
+      return lookup.entries;
+    }
+    const groups = this.keyGroups(name);
+    const choice = this.keyChoices()[name];
+    const base = groups.length > 1 ? (groups.find((g) => g.id === choice)?.entries ?? []) : lookup.entries;
+    const item = normalizeLabel(this.labelsOf(name).itemLabel);
+    return item ? base.filter((e) => normalizeLabel(e.itemLabel) === item) : base;
+  }
+
+  /** Anahtar aramasının neden yapılamadığı (`null`: aranabilir). */
+  keyLookupBlocker(name: string): 'noBook' | 'needLabel' | null {
+    if (this.bookId() == null || this.filePage() == null) {
+      return 'noBook';
+    }
+    return this.lookupItemOf(name) ? null : 'needLabel';
+  }
+
+  /**
+   * Bloğun arama girdisi: etkinlikte etkinlik etiketi; soruda soru numarası (madde etiketi), bölüm = etkinlik etiketi alanı
+   * (tespitin bölüm başlığıyla dolar). Etiketsiz / başka türde null.
+   */
+  private lookupItemOf(name: string): { label: string; section: string } | null {
+    const kind = this.selectorRef()?.getBlockKind(name);
+    const labels = this.labelsOf(name);
+    if (kind === 'activity') {
+      const label = labels.activityLabel.trim();
+      return label ? { label, section: '' } : null;
+    }
+    if (kind === 'mcq_question') {
+      const label = labels.itemLabel.trim();
+      return label ? { label, section: labels.activityLabel.trim() } : null;
+    }
+    return null;
+  }
+
+  private lookupQuery(name: string): string | null {
+    const item = this.lookupItemOf(name);
+    if (!item) {
+      return null;
+    }
+    return [this.bookId(), this.filePage(), this.bookPage()?.printedPage ?? '', item.section, item.label].join('|');
+  }
+
+  private scheduleKeyLookup(name: string): void {
+    const timer = this.keyLookupTimers.get(name);
+    if (timer != null) {
+      clearTimeout(timer);
+    }
+    this.keyLookupTimers.set(
+      name,
+      setTimeout(() => {
+        this.keyLookupTimers.delete(name);
+        this.lookupKey(name);
+      }, this.keyLookupDebounceMs)
+    );
+  }
+
+  /** Tek bloğun anahtarı (etiket düzenlendi / tekrar dene); aynı sorgunun başarılı sonucu varsa `force` olmadan sorulmaz. */
+  lookupKey(name: string, force = false): void {
+    this.lookupKeys([name], force);
+  }
+
+  /**
+   * Blokların anahtar satırları: bölüm etiketine göre gruplanıp grup başına tek istek (`answer-key/lookup`). Etiketi
+   * olmayan bloğun araması silinir. Yanıt sayfa / tespit değişince yok sayılır; sonuçla soru şıkkı ön seçilir, etkinlik
+   * anahtardan çözülür.
+   */
+  private lookupKeys(names: string[], force: boolean): void {
+    const bookId = this.bookId();
+    const filePage = this.filePage();
+    const printedPage = this.bookPage()?.printedPage ?? null;
+    if (bookId == null || filePage == null) {
+      return;
+    }
+    const groups = new Map<string, Array<{ name: string; label: string; query: string }>>();
+    for (const name of names) {
+      const item = this.lookupItemOf(name);
+      const query = this.lookupQuery(name);
+      if (!item || !query) {
+        if (this.keyLookups()[name]) {
+          this.keyLookups.update((all) => omit(all, name));
+        }
+        continue;
+      }
+      const existing = this.keyLookups()[name];
+      if (!force && existing && existing.status !== 'error' && existing.query === query) {
+        continue;
+      }
+      const group = groups.get(item.section) ?? [];
+      group.push({ name, label: item.label, query });
+      groups.set(item.section, group);
+    }
+    for (const [section, items] of groups) {
+      const requestId = ++this.keyLookupSeq;
+      this.keyLookups.update((all) => {
+        const next = { ...all };
+        for (const item of items) {
+          next[item.name] = { query: item.query, status: 'loading', entries: [], requestId };
+        }
+        return next;
+      });
+      this.keyChoices.update((all) => items.reduce((acc, item) => omit(acc, item.name), all));
+      const settle = (results: Map<string, LabelingAnswerKeyEntry[]> | null) => {
+        this.keyLookups.update((all) => {
+          const next = { ...all };
+          for (const item of items) {
+            if (next[item.name]?.requestId === requestId) {
+              next[item.name] = results
+                ? { ...next[item.name], status: 'ok', entries: results.get(item.name) ?? [] }
+                : { ...next[item.name], status: 'error' };
+            }
+          }
+          return next;
+        });
+        if (results) {
+          items.forEach((item) => this.afterKeyLookup(item.name, requestId));
+        }
+      };
+      this.labelingApi
+        .lookupAnswerKey(bookId, {
+          filePage,
+          ...(printedPage != null ? { printedPage } : {}),
+          ...(section ? { sectionLabel: section } : {}),
+          items: items.map((item) => ({ key: item.name, label: item.label })),
+        })
+        .pipe(takeUntil(merge(this.pageChanged, this.draftsReset)), takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (response) => settle(new Map((response?.results ?? []).map((r) => [r.key, r.entries ?? []]))),
+          error: (error) => {
+            console.error('labeling answer-key lookup failed', error);
+            settle(null);
+          },
+        });
+    }
+  }
+
+  /** Arama sonucu: soruda tek harfli cevap şıkkı ön seçer (öğretmen seçmediyse), etkinlikte anahtardan çözümü dener. */
+  private afterKeyLookup(name: string, requestId: number): void {
+    const lookup = this.keyLookupOf(name);
+    if (lookup?.requestId !== requestId || lookup.status !== 'ok') {
+      return;
+    }
+    const kind = this.selectorRef()?.getBlockKind(name);
+    if (kind === 'mcq_question' && lookup.entries.length === 1) {
+      this.applyMcqKey(name, lookup.entries[0], false);
+    } else if (kind === 'activity') {
+      this.tryAutoSolve(name);
+    }
+  }
+
+  /**
+   * Anahtardaki harfi (A→0 …) şık olarak işaretler. Otomatikte öğretmen bir şık seçtiyse dokunulmaz; belirsiz anahtardan
+   * öğretmenin seçimi (`manual`) her zaman uygular.
+   */
+  applyMcqKey(name: string, entry: LabelingAnswerKeyEntry, manual = true): void {
+    const selector = this.selectorRef();
+    const index = selector?.regions().findIndex((r) => r.name === name) ?? -1;
+    const region = index >= 0 ? selector!.regions()[index] : null;
+    const answerIndex = optionIndexOf(entry.answerText);
+    if (!selector || !region || answerIndex == null || answerIndex >= (region.answers?.length ?? 0) || this.inspectorLocked) {
+      return;
+    }
+    if (!manual && region.answers.some((a) => a.isCorrect)) {
+      return;
+    }
+    selector.setCorrectAnswer(index, answerIndex, 1);
+    this.mcqKeyApplied.update((all) => ({ ...all, [name]: { entryId: entry.id, answerIndex } }));
+  }
+
+  /** Tespitin bloğa verdiği basılı etiket (müfettişte gösterilir; etiket alanı düzenlenebilir). */
+  detectedLabelOf(name: string): string | null {
+    return this.selectorRef()?.getBlockLabel(name) ?? null;
+  }
+
+  /** Soruda anahtardan seçilen şık hâlâ seçiliyse harfi ("B"), değilse null. */
+  mcqKeyLetter(name: string): string | null {
+    const applied = this.mcqKeyApplied()[name];
+    const region = this.selectorRef()?.regions().find((r) => r.name === name);
+    if (!applied || !region?.answers?.[applied.answerIndex]?.isCorrect) {
+      return null;
+    }
+    return String.fromCharCode(65 + applied.answerIndex);
+  }
+
+  /** Anahtardaki cevap şık harfi mi (A–J). */
+  isOptionAnswer(entry: LabelingAnswerKeyEntry): boolean {
+    return optionIndexOf(entry.answerText) != null;
+  }
+
+  /**
+   * Etkinlik anahtarda bulunduysa "Anahtardan çöz" bir kez otomatik istenir (sunucu önbelleği; maliyet gösterilir): taslak
+   * tuvalde, çözüm yok, kayıtlı çözüm geri yükleme beklenmiyor, anahtar belirsiz değil. AI ile çözüm hiç otomatik değil.
+   */
+  private tryAutoSolve(name: string): void {
+    const draft = this.draftOf(name);
+    if (!draft || this.restoringSolutions.has(name) || this.activitySolutions()[name]) {
+      return;
+    }
+    const key = `${name}\u0000${draft.requestId}`;
+    if (this.autoSolved.has(key) || !this.canSolve(name) || this.keyAmbiguous(name) || this.matchingKeyEntries(name).length === 0) {
+      return;
+    }
+    this.autoSolved.add(key);
+    this.requestSolution(name, 'key', false);
+  }
+
+  /**
+   * Tespitten sonra (Claude kaynağı ya da Claude'dan başlayan manuel kayıt): blok etiketleri boş etiket alanlarına yazılır
+   * (etkinlik → etkinlik etiketi; soru → bölüm başlığı + soru numarası), kitap seçili ve sayfa bilgisi geldiyse etiketli
+   * bütün bloklar tek istekte aranır. Tespit başına bir kez.
+   */
+  private syncKeyLookups(revision: number): void {
+    const selector = this.selectorRef();
+    if (!selector || !this.showKindLegend() || this.analysing()) {
+      return;
+    }
+    if (this.labelsSeededRevision !== revision) {
+      this.labelsSeededRevision = revision;
+      this.autoSolved.clear();
+      this.mcqKeyApplied.set({});
+      this.keyChoices.set({});
+      const section = selector.sectionLabel() ?? '';
+      const seeded = { ...this.questionLabels() };
+      let changed = false;
+      for (const region of selector.regions()) {
+        const current = seeded[region.name];
+        if (current && (current.activityLabel || current.itemLabel)) {
+          continue;
+        }
+        const label = (selector.getBlockLabel(region.name) ?? '').slice(0, MAX_QUESTION_LABEL);
+        const kind = selector.getBlockKind(region.name);
+        const next =
+          kind === 'activity'
+            ? { activityLabel: label, itemLabel: '' }
+            : kind === 'mcq_question'
+              ? { activityLabel: label ? section.slice(0, MAX_QUESTION_LABEL) : '', itemLabel: label }
+              : null;
+        if (next && (next.activityLabel || next.itemLabel)) {
+          seeded[region.name] = next;
+          changed = true;
+        }
+      }
+      if (changed) {
+        this.questionLabels.set(seeded);
+      }
+    }
+    this.lookupPage();
+  }
+
+  /** Sayfadaki etiketli soru / etkinlik bloklarının anahtarı (aranmamış ya da sorgusu değişmiş olanlar). */
+  private lookupPage(): void {
+    const selector = this.selectorRef();
+    if (!selector || this.bookId() == null || this.filePage() == null || !this.bookPage() || !this.showKindLegend()) {
+      return;
+    }
+    const names = selector
+      .regions()
+      .map((r) => r.name)
+      .filter((name) => {
+        const query = this.lookupQuery(name);
+        return !!query && this.keyLookups()[name]?.query !== query;
+      });
+    if (names.length > 0) {
+      this.lookupKeys(names, false);
+    }
+  }
+
+  /** Kitap sayfası bilgisi geldi: etiketli blokların anahtarı aranır. */
+  private refreshKeyLookups(): void {
+    this.lookupPage();
+  }
+
+  private clearKeyLookups(): void {
+    this.keyLookupTimers.forEach((timer) => clearTimeout(timer));
+    this.keyLookupTimers.clear();
+    this.keyLookupSeq++;
+    if (Object.keys(this.keyLookups()).length > 0) {
+      this.keyLookups.set({});
+    }
+    this.keyChoices.set({});
+  }
+
+  // ---------------- Issue #580: etkinlik çözümü ----------------
+
+  /**
+   * Bloğun geçerli çözümü: yazıldığı yapı taslağı hâlâ geçerliyse (yeniden çıkarılmadı, tip değişmedi); değilse null.
+   */
+  solutionOf(name: string): ActivitySolutionDraft | null {
+    const solution = this.activitySolutions()[name];
+    const draft = this.draftOf(name);
+    if (
+      !solution ||
+      !draft ||
+      draft.status !== 'ok' ||
+      solution.draftRequestId !== draft.requestId ||
+      solution.interactionType !== draft.interactionType
+    ) {
+      return null;
+    }
+    return solution;
+  }
+
+  /** Çözüm istenebilir mi: taslak tuvalde (uygulandı ya da öğretmenin yazarlığı korundu), istek / kayıt sürmüyor. */
+  canSolve(name: string): boolean {
+    const draft = this.draftOf(name);
+    const solution = this.solutionOf(name);
+    return (
+      this.structureEnabled() &&
+      !this.inspectorLocked &&
+      draft?.status === 'ok' &&
+      !draft.stale &&
+      draft.apply != null &&
+      draft.apply !== 'invalid' &&
+      solution?.status !== 'loading' &&
+      solution?.busy == null
+    );
+  }
+
+  /** "Anahtardan çöz" (eşleşen satırlarla) / "AI ile çöz (ücretli)"; kayıtlı sonuç `force` değilse ücretsiz döner. */
+  solve(name: string, mode: LabelingSolutionMode): void {
+    if (!this.canSolve(name)) {
+      return;
+    }
+    this.requestSolution(name, mode, false);
+  }
+
+  /** "Yeniden çöz (ücretli)": kayıtlı sonuç yok sayılır — önce onay. */
+  resolve(name: string): void {
+    const current = this.solutionOf(name);
+    if (!current || !this.canSolve(name)) {
+      return;
+    }
+    const token = this.pageToken;
+    const requestId = current.requestId;
+    this.snackBar
+      .open(this.tr('solution.resolveConfirm'), this.tr('solution.resolveAction'), { duration: 8000 })
+      .onAction()
+      .subscribe(() => {
+        if (token === this.pageToken && this.solutionOf(name)?.requestId === requestId && this.canSolve(name)) {
+          this.requestSolution(name, current.mode, true);
+        }
+      });
+  }
+
+  private requestSolution(name: string, mode: LabelingSolutionMode, force: boolean): void {
+    const selector = this.selectorRef();
+    const draft = this.draftOf(name);
+    const block = this.typedActivityBlocks().find((b) => b.key === name);
+    const image = this.pageImage;
+    const model = this.structureModel();
+    if (!selector || !draft?.result || !block || block.interactionType !== draft.interactionType || !image || !model) {
+      return;
+    }
+    const entryIds = mode === 'key' ? this.matchingKeyEntries(name).map((e) => e.id) : [];
+    if (mode === 'key' && entryIds.length === 0) {
+      return;
+    }
+    // Çözüm tuvaldeki planın id'lerine göre yazılsın (taslak ya da öğretmenin korunan yazarlığı).
+    const plan = selector.getInteractionPlan(name) ?? draft.result.plan;
+    if (!plan) {
+      return;
+    }
+    const requestId = ++this.solutionSeq;
+    const type = block.interactionType;
+    this.activitySolutions.update((all) => ({
+      ...all,
+      [name]: {
+        interactionType: type,
+        draftRequestId: draft.requestId,
+        mode,
+        status: 'loading',
+        response: null,
+        error: null,
+        apply: null,
+        appliedJson: null,
+        busy: null,
+        requestId,
+        planJson: canonicalJson(plan),
+      },
+    }));
+    selector.setDraftSolution(name, null);
+    const token = this.pageToken;
+    const revision = this.draftRevision;
+    const current = () =>
+      token === this.pageToken &&
+      revision === this.draftRevision &&
+      this.activitySolutions()[name]?.requestId === requestId &&
+      this.draftOf(name)?.requestId === draft.requestId;
+    this.labelingApi
+      .solveActivity({
+        imageBase64: image,
+        x: block.x,
+        y: block.y,
+        width: block.width,
+        height: block.height,
+        interactionType: type,
+        plan,
+        model,
+        force,
+        mode,
+        ...(mode === 'key' ? { key: { entryIds } } : {}),
+      })
+      .pipe(takeUntil(merge(this.pageChanged, this.draftsReset)), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          if (!current()) {
+            return;
+          }
+          const hasSolution = !!response?.solution;
+          const apply = hasSolution ? (this.selectorRef()?.applyInteractionSolution(name, type, response.solution) ?? null) : null;
+          this.patchSolution(name, requestId, {
+            status: hasSolution ? 'ok' : 'error',
+            response,
+            error: hasSolution ? null : response?.error || this.tr('solution.failed'),
+            apply,
+            appliedJson: apply === 'applied' ? this.canvasSolutionJson(name) : null,
+          });
+          this.linkDraftSolution(name);
+          if (response?.origin === 'live' && response.estimatedCostUsd != null) {
+            this.snackBar.open(
+              this.tr('source.liveDone', { cost: response.estimatedCostUsd.toFixed(4) }),
+              this.tr('ok'),
+              { duration: 4000 }
+            );
+          }
+        },
+        error: (error) => {
+          if (!current()) {
+            return;
+          }
+          console.error('labeling activity-solution failed', error);
+          const message = this.serverError(error, 'solution.failed', 'solution.unavailable');
+          this.patchSolution(name, requestId, { status: 'error', error: message });
+          // 429 (saatlik tavan / günlük bütçe) ve diğer hatalar: sunucunun mesajı gösterilir.
+          this.snackBar.open(message, this.tr('ok'), { duration: 6000 });
+        },
+      });
+  }
+
+  /**
+   * Sayfa yeniden açıldı: bloğun kırpmasının kayıtlı çözüm taslağı (en son güncellenen, aynı tip; planı tuvaldekiyle
+   * aynı olan önce) tuvale yüklenir. Kayıt yoksa / istek başarısızsa sessiz kalınır (öğretmen yeniden çözebilir).
+   */
+  private restoreSolution(name: string): void {
+    const draft = this.draftOf(name);
+    const crop = draft?.result?.cropSha256;
+    if (!draft || draft.status !== 'ok' || !crop || draft.apply == null || draft.apply === 'invalid' || this.solutionOf(name)) {
+      return;
+    }
+    const token = this.pageToken;
+    const revision = this.draftRevision;
+    this.restoringSolutions.add(name);
+    const done = () => {
+      this.restoringSolutions.delete(name);
+      if (token === this.pageToken && revision === this.draftRevision) {
+        this.tryAutoSolve(name);
+      }
+    };
+    this.labelingApi
+      .getActivitySolutions(crop)
+      .pipe(takeUntil(merge(this.pageChanged, this.draftsReset)), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (list) => {
+          const latest = this.draftOf(name);
+          const selector = this.selectorRef();
+          if (
+            token !== this.pageToken ||
+            revision !== this.draftRevision ||
+            latest?.requestId !== draft.requestId ||
+            this.activitySolutions()[name] ||
+            !selector
+          ) {
+            return;
+          }
+          const type = draft.interactionType;
+          const candidates = (list?.solutions ?? []).filter(
+            (sol) => !!sol.solution && sol.draftSolutionId != null && (sol.interactionType ?? type) === type
+          );
+          const plan = canonicalJson(selector.getInteractionPlan(name));
+          // W7: yalnız tuvaldeki planla birebir aynı plana yazılmış çözüm yüklenir; başka plana yazılmışsa id'ler tutmayabilir.
+          const pick = candidates.find((sol) => !!sol.plan && canonicalJson(sol.plan) === plan);
+          if (!pick) {
+            if (candidates.length > 0) {
+              const latest = candidates[0];
+              this.activitySolutions.update((all) => ({
+                ...all,
+                [name]: {
+                  interactionType: type,
+                  draftRequestId: draft.requestId,
+                  mode: latest.mode ?? (latest.source === 'AI' ? 'ai' : 'key'),
+                  status: 'planChanged',
+                  response: null,
+                  error: null,
+                  apply: null,
+                  appliedJson: null,
+                  busy: null,
+                  requestId: ++this.solutionSeq,
+                  planJson: null,
+                },
+              }));
+            }
+            return;
+          }
+          const apply = selector.applyInteractionSolution(name, type, pick.solution);
+          this.activitySolutions.update((all) => ({
+            ...all,
+            [name]: {
+              interactionType: type,
+              draftRequestId: draft.requestId,
+              mode: pick.mode ?? (pick.source === 'AI' ? 'ai' : 'key'),
+              status: 'ok',
+              response: pick,
+              error: null,
+              apply,
+              appliedJson: apply === 'applied' ? this.canvasSolutionJson(name) : null,
+              busy: null,
+              requestId: ++this.solutionSeq,
+              planJson: plan,
+            },
+          }));
+          this.linkDraftSolution(name);
+        },
+        error: (error) => {
+          console.error('labeling activity-solution restore failed', error);
+          done();
+        },
+        complete: done,
+      });
+  }
+
+  /**
+   * "Çözümü uygula": öğretmenin elle yazarlığı korunduğu için bekleyen çözümü tuvale yazar — el düzenlemeleri kaybolur,
+   * önce onay.
+   */
+  applySolution(name: string): void {
+    const solution = this.solutionOf(name);
+    if (!solution?.response?.solution || solution.apply !== 'kept' || this.inspectorLocked) {
+      return;
+    }
+    const token = this.pageToken;
+    this.snackBar
+      .open(this.tr('solution.applyConfirm'), this.tr('solution.applyAction'), { duration: 8000 })
+      .onAction()
+      .subscribe(() => {
+        const latest = this.solutionOf(name);
+        const selector = this.selectorRef();
+        if (token !== this.pageToken || latest?.requestId !== solution.requestId || !selector || !latest.response?.solution) {
+          return;
+        }
+        const apply = selector.applyInteractionSolution(name, latest.interactionType, latest.response.solution, {
+          replace: true,
+        });
+        this.patchSolution(name, latest.requestId, {
+          apply,
+          appliedJson: apply === 'applied' ? this.canvasSolutionJson(name) : null,
+        });
+        this.linkDraftSolution(name);
+      });
+  }
+
+  /**
+   * W8: tuvaldeki plan çözümün yazıldığı plandan farklı (öğretmen satır / kutu / öğe değiştirdi) — çözüm bayat; onay ve
+   * düzeltme kaydı kapalı, yeniden çözülmeli.
+   */
+  solutionPlanStale(name: string): boolean {
+    const solution = this.solutionOf(name);
+    if (solution?.status !== 'ok' || solution.planJson == null) {
+      return false;
+    }
+    return canonicalJson(this.selectorRef()?.getInteractionPlan(name) ?? null) !== solution.planJson;
+  }
+
+  /**
+   * Tuvaldeki çözüm bu taslak kaydından geldiyse tuvale bildirilir: soru kaydında `draftSolutionId` gider (#580). Çözüm
+   * uygulanmadıysa bağ kaldırılır.
+   */
+  private linkDraftSolution(name: string): void {
+    const solution = this.solutionOf(name);
+    const id = solution?.status === 'ok' && solution.apply === 'applied' ? (solution.response?.draftSolutionId ?? null) : null;
+    this.selectorRef()?.setDraftSolution(name, id);
+  }
+
+  /** Tuvaldeki çözüm uygulanandan farklı (öğretmen tuvalde işaretleri / eşleşmeleri değiştirdi). */
+  solutionEdited(name: string): boolean {
+    const solution = this.solutionOf(name);
+    if (
+      solution?.status !== 'ok' ||
+      solution.apply !== 'applied' ||
+      solution.appliedJson == null ||
+      this.solutionPlanStale(name)
+    ) {
+      return false;
+    }
+    return this.canvasSolutionJson(name) !== solution.appliedJson;
+  }
+
+  /** "Düzeltmeyi kaydet": tuvaldeki çözüm sunucuya yazılır (kaynak `Human`, onay bekler). */
+  saveSolutionEdit(name: string): void {
+    const solution = this.solutionOf(name);
+    const id = solution?.response?.draftSolutionId;
+    const edited = this.selectorRef()?.getInteractionSolution(name) ?? null;
+    if (!solution || id == null || solution.busy != null || this.inspectorLocked || this.solutionPlanStale(name)) {
+      return;
+    }
+    if (!edited) {
+      this.snackBar.open(this.tr('solution.emptyEdit'), this.tr('ok'), { duration: 5000 });
+      return;
+    }
+    const json = JSON.stringify(edited);
+    this.runSolutionAction(name, solution, 'saving', this.labelingApi.updateActivitySolution(id, edited, false), json);
+  }
+
+  /**
+   * "Onayla" (Admin + QuestionTrainer): onaylayan ve zaman kayda yazılır. Tuvalde düzeltme varsa düzeltme kaydedilip
+   * onaylanır (kaynak `Human`); doğrulamadan geçmeyen çözüm düzeltilmeden onaylanmaz.
+   */
+  approveSolution(name: string): void {
+    if (!this.canApproveSolution(name)) {
+      return;
+    }
+    const solution = this.solutionOf(name)!;
+    const id = solution.response!.draftSolutionId!;
+    if (this.solutionEdited(name)) {
+      const edited = this.selectorRef()?.getInteractionSolution(name) ?? null;
+      if (!edited) {
+        this.snackBar.open(this.tr('solution.emptyEdit'), this.tr('ok'), { duration: 5000 });
+        return;
+      }
+      this.runSolutionAction(
+        name,
+        solution,
+        'approving',
+        this.labelingApi.updateActivitySolution(id, edited, true),
+        JSON.stringify(edited)
+      );
+      return;
+    }
+    this.runSolutionAction(name, solution, 'approving', this.labelingApi.approveActivitySolution(id), null);
+  }
+
+  /** Onay düğmesi etkin mi: yetki, kayıt, onaylanmamış, iş sürmüyor; geçersiz çözüm yalnız düzeltilmişse. */
+  canApproveSolution(name: string): boolean {
+    const solution = this.solutionOf(name);
+    const response = solution?.response;
+    return (
+      this.canApproveSolutions &&
+      !this.inspectorLocked &&
+      solution?.status === 'ok' &&
+      solution.busy == null &&
+      response?.draftSolutionId != null &&
+      response.status !== 'approved' &&
+      !this.solutionPlanStale(name) &&
+      (response.valid || this.solutionEdited(name))
+    );
+  }
+
+  private runSolutionAction(
+    name: string,
+    solution: ActivitySolutionDraft,
+    busy: 'saving' | 'approving',
+    request: Observable<LabelingActivitySolutionResponse>,
+    appliedJson: string | null
+  ): void {
+    const token = this.pageToken;
+    const requestId = solution.requestId;
+    this.patchSolution(name, requestId, { busy });
+    request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (response) => {
+        if (token !== this.pageToken) {
+          return;
+        }
+        this.patchSolution(name, requestId, {
+          busy: null,
+          // Sunucu yalnız değişen alanları döndürse de önceki yanıt korunur (ör. çözüm gövdesi).
+          response: { ...solution.response!, ...response },
+          ...(appliedJson != null ? { appliedJson } : {}),
+        });
+        this.linkDraftSolution(name);
+        this.snackBar.open(this.tr(busy === 'approving' ? 'solution.approvedDone' : 'solution.savedDone'), this.tr('ok'), {
+          duration: 4000,
+        });
+      },
+      error: (error) => {
+        if (token !== this.pageToken) {
+          return;
+        }
+        console.error(`labeling activity-solution ${busy} failed`, error);
+        this.patchSolution(name, requestId, { busy: null });
+        const status = (error as { status?: number })?.status;
+        const message =
+          busy === 'approving' && status === 403
+            ? this.tr('solution.forbidden')
+            : this.serverError(error, busy === 'approving' ? 'solution.approveFailed' : 'solution.saveFailed');
+        this.snackBar.open(message, this.tr('ok'), { duration: 6000 });
+      },
+    });
+  }
+
+  private patchSolution(name: string, requestId: number, patch: Partial<ActivitySolutionDraft>): void {
+    this.activitySolutions.update((all) =>
+      all[name]?.requestId === requestId ? { ...all, [name]: { ...all[name], ...patch } } : all
+    );
+  }
+
+  private canvasSolutionJson(name: string): string | null {
+    const solution = this.selectorRef()?.getInteractionSolution(name) ?? null;
+    return solution ? JSON.stringify(solution) : null;
+  }
+
+  /** Sunucu mesajı (yerelleştirilmiş) varsa o; 503'te `unavailableKey`, diğerlerinde `fallbackKey`. */
+  private serverError(error: unknown, fallbackKey: string, unavailableKey?: string): string {
+    const status = (error as { status?: number })?.status;
+    const serverMessage = (error as { error?: { message?: string } })?.error?.message;
+    if (serverMessage) {
+      return serverMessage;
+    }
+    return this.tr(status === 503 && unavailableKey ? unavailableKey : fallbackKey);
   }
 
   insRemoveQuestion(): void {
@@ -1659,6 +2931,65 @@ export class LabelingComponent {
   private tr(key: string, params?: Record<string, unknown>): string {
     return this.transloco.translate<string>(`${LABELING_SCOPE}.${key}`, params) ?? '';
   }
+}
+
+/** Anahtar satırının kısa etiketi: "s. 12 · Etkinlik 3 · b" (boş alanlar atlanır). */
+function entryTag(entry: LabelingAnswerKeyEntry): string {
+  return [
+    entry.printedPage != null ? `s. ${entry.printedPage}` : null,
+    entry.activityLabel?.trim() || null,
+    entry.itemLabel?.trim() || null,
+  ]
+    .filter((part): part is string => !!part)
+    .join(' · ');
+}
+
+/** Etiket karşılaştırması: noktalama atılır ("a)" ≈ "a", "1." ≈ "1"), boşluklar sadeleşir, Türkçe küçük harf. */
+export function normalizeLabel(value: string | null | undefined): string {
+  return (value ?? '')
+    .replace(/[\p{P}\p{S}]+/gu, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLocaleLowerCase('tr');
+}
+
+/** Anahtarları sıralı JSON (plan karşılaştırması alan sırasından bağımsız olsun). */
+function canonicalJson(value: unknown): string {
+  const sort = (v: unknown): unknown => {
+    if (Array.isArray(v)) {
+      return v.map(sort);
+    }
+    if (v && typeof v === 'object') {
+      return Object.fromEntries(
+        Object.keys(v as Record<string, unknown>)
+          .sort()
+          .map((k) => [k, sort((v as Record<string, unknown>)[k])])
+      );
+    }
+    return v;
+  };
+  return JSON.stringify(sort(value ?? null));
+}
+
+function readDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+/** Anahtardaki şık harfi → sıra ("B" → 1, "c)" → 2); harf değilse null. */
+function optionIndexOf(answer: string | null | undefined): number | null {
+  const match = /^\s*\(?([A-Ja-j])\)?[.)]?\s*$/.exec(answer ?? '');
+  return match ? match[1].toUpperCase().charCodeAt(0) - 65 : null;
+}
+
+function omit<T>(record: Record<string, T>, key: string): Record<string, T> {
+  const next = { ...record };
+  delete next[key];
+  return next;
 }
 
 function sameBox(a: LabelingBankBox, b: LabelingBankBox): boolean {

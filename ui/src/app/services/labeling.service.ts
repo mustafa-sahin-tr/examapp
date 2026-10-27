@@ -1,20 +1,30 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { BlockInteractionType } from '../models/prediction';
 import {
   DetectionSource,
   LabelingActivityPrompt,
   LabelingActivityPromptsState,
   LabelingActivityStructureRequest,
   LabelingActivityStructureResponse,
+  LabelingActivitySolutionList,
+  LabelingActivitySolutionRequest,
+  LabelingActivitySolutionResponse,
+  LabelingAnswerKeyBatchLookupResponse,
+  LabelingAnswerKeyEntry,
+  LabelingAnswerKeyLookupRequest,
+  LabelingAnswerKeyEntryUpdate,
+  LabelingAnswerKeyLookupResponse,
+  LabelingAnswerKeyReadRequest,
+  LabelingAnswerKeyReadResponse,
   LabelingAiDetectRequest,
   LabelingAiDetectResponse,
   LabelingAiModel,
   LabelingBankSaveRequest,
   LabelingBankSaveResponse,
   LabelingPage,
+  LabelingPromptKind,
   LabelingPromptState,
   LabelingResult,
   LabelingSaveManualRequest,
@@ -74,13 +84,80 @@ export class LabelingService {
 
   /** Tipin talimatını yeni sürüm olarak kaydeder (etkin sürümü döner); yalnız o tipin önbelleği geçersiz olur. */
   saveActivityPrompt(
-    type: BlockInteractionType,
+    type: LabelingPromptKind,
     request: LabelingSaveActivityPromptRequest
   ): Observable<LabelingActivityPrompt> {
     return this.http.put<LabelingActivityPrompt>(
       `${this.baseUrl}/activity-prompts/${encodeURIComponent(type)}`,
       request
     );
+  }
+
+  // ---------------- Issue #580: cevap anahtarı ve etkinlik çözümü ----------------
+
+  /** Cevap anahtarı sayfasını Claude ile okur (kayıtlı sonuç `force` değilse ücretsiz); anahtar aralığı dışında 400. */
+  readAnswerKey(request: LabelingAnswerKeyReadRequest): Observable<LabelingAnswerKeyReadResponse> {
+    return this.http.post<LabelingAnswerKeyReadResponse>(`${this.baseUrl}/answer-key/read`, request);
+  }
+
+  /** Kitabın anahtar satırları; basılı sayfa / etkinlik etiketiyle süzülür (boş alanlar gönderilmez). */
+  getAnswerKey(
+    bookId: number,
+    filter: { printedPage?: number | null; activityLabel?: string | null; filePage?: number | null } = {}
+  ): Observable<LabelingAnswerKeyLookupResponse> {
+    let params = new HttpParams();
+    // Etkinliğin DOSYA sayfası: fasiküllü kitapta tekrar eden basılı numarayı ayırır.
+    if (filter.filePage != null) {
+      params = params.set('filePage', filter.filePage);
+    }
+    if (filter.printedPage != null) {
+      params = params.set('printedPage', filter.printedPage);
+    }
+    if (filter.activityLabel?.trim()) {
+      params = params.set('activityLabel', filter.activityLabel.trim());
+    }
+    return this.http.get<LabelingAnswerKeyLookupResponse>(`${this.baseUrl}/books/${bookId}/answer-key`, { params });
+  }
+
+  /** Sayfadaki blokların (soru + etkinlik) anahtar satırları tek istekte; sonuçlar `key` ile döner. */
+  lookupAnswerKey(bookId: number, request: LabelingAnswerKeyLookupRequest): Observable<LabelingAnswerKeyBatchLookupResponse> {
+    return this.http.post<LabelingAnswerKeyBatchLookupResponse>(`${this.baseUrl}/books/${bookId}/answer-key/lookup`, request);
+  }
+
+  updateAnswerKeyEntry(id: number, request: LabelingAnswerKeyEntryUpdate): Observable<LabelingAnswerKeyEntry> {
+    return this.http.put<LabelingAnswerKeyEntry>(`${this.baseUrl}/answer-key/entries/${id}`, request);
+  }
+
+  deleteAnswerKeyEntry(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/answer-key/entries/${id}`);
+  }
+
+  /** Etkinlik bloğunun taslak çözümü (anahtardan ya da AI); 429 tavan / bütçe, 503 anahtar yok. */
+  solveActivity(request: LabelingActivitySolutionRequest): Observable<LabelingActivitySolutionResponse> {
+    return this.http.post<LabelingActivitySolutionResponse>(`${this.baseUrl}/activity-solution`, request);
+  }
+
+  /**
+   * Elle düzeltilen çözüm (taslak planına göre geçerli olmalı). `approve` false: onay bekler; true: düzelten onaylar (kaynak
+   * `Human`, onaylayan + zaman yazılır).
+   */
+  updateActivitySolution(
+    id: number,
+    solution: Record<string, unknown>,
+    approve = false
+  ): Observable<LabelingActivitySolutionResponse> {
+    return this.http.put<LabelingActivitySolutionResponse>(`${this.baseUrl}/activity-solution/${id}`, { solution, approve });
+  }
+
+  /** Kırpmanın kayıtlı çözüm taslakları (sayfa yeniden açılınca geri yüklemek için), en son güncellenen önce. */
+  getActivitySolutions(cropSha256: string): Observable<LabelingActivitySolutionList> {
+    const params = new HttpParams().set('cropSha256', cropSha256);
+    return this.http.get<LabelingActivitySolutionList>(`${this.baseUrl}/activity-solution`, { params });
+  }
+
+  /** Yalnız Admin + QuestionTrainer (diğerleri 403). */
+  approveActivitySolution(id: number): Observable<LabelingActivitySolutionResponse> {
+    return this.http.post<LabelingActivitySolutionResponse>(`${this.baseUrl}/activity-solution/${id}/approve`, {});
   }
 }
 

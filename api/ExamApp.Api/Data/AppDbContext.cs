@@ -216,6 +216,11 @@ public class AppDbContext : DbContext
     public DbSet<LabelingActivityPromptVersion> LabelingActivityPromptVersions { get; set; }
     public DbSet<LabelingActivityResult> LabelingActivityResults { get; set; }
 
+    // Issue #580: cevap anahtarı okumaları (kitap + dosya sayfası) ve etkinlik taslağı çözümleri (onay altyapısı).
+    public DbSet<LabelingAnswerKeyPage> LabelingAnswerKeyPages { get; set; }
+    public DbSet<LabelingAnswerKeyEntry> LabelingAnswerKeyEntries { get; set; }
+    public DbSet<LabelingActivitySolution> LabelingActivitySolutions { get; set; }
+
     // Issue #577: kitap kaydı (ofset, cevap anahtarı, içindekiler) ve soru kaynağı (kırpma SHA-256 tekrar engeli).
     public DbSet<BookPageOffset> BookPageOffsets { get; set; }
     public DbSet<BookAnswerKeyRange> BookAnswerKeyRanges { get; set; }
@@ -1088,6 +1093,45 @@ public class AppDbContext : DbContext
             e.Property(r => r.PlanJson).HasColumnType("jsonb");
             e.Property(r => r.EstimatedCostUsd).HasPrecision(12, 6);
             e.HasIndex(r => new { r.CropSha256, r.InteractionType, r.ModelName }).IsUnique();
+        });
+
+        // Issue #580: cevap anahtarı — kitap + dosya sayfası başına tek okuma; maddeler okumayla birlikte silinir.
+        modelBuilder.Entity<LabelingAnswerKeyPage>(e =>
+        {
+            e.HasOne<Book>().WithMany().HasForeignKey(p => p.BookId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(p => new { p.BookId, p.FilePage }).IsUnique().HasFilter("\"FilePage\" IS NOT NULL");
+            // Sayfası bilinmeyen (toplu yüklenen) okumalar görsel hash'iyle tekil.
+            e.HasIndex(p => new { p.BookId, p.ImageSha256 }).IsUnique().HasFilter("\"FilePage\" IS NULL")
+                .HasDatabaseName("IX_LabelingAnswerKeyPages_BookId_ImageSha256_NoFilePage");
+            e.Property(p => p.EstimatedCostUsd).HasPrecision(12, 6);
+        });
+        modelBuilder.Entity<LabelingAnswerKeyEntry>(e =>
+        {
+            e.HasOne(x => x.Page).WithMany(p => p.Entries).HasForeignKey(x => x.PageId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.BookId, x.PrintedPage });
+            e.HasIndex(x => new { x.PageId, x.Order });
+            e.HasIndex(x => x.FilePage);
+        });
+        modelBuilder.Entity<LabelingActivitySolution>(e =>
+        {
+            e.Property(s => s.PlanJson).HasColumnType("jsonb");
+            e.Property(s => s.SolutionJson).HasColumnType("jsonb");
+            e.Property(s => s.Source).HasConversion<string>().HasMaxLength(16);
+            e.Property(s => s.Status).HasConversion<string>().HasMaxLength(16);
+            e.Property(s => s.EstimatedCostUsd).HasPrecision(12, 6);
+            // Review W5: geçmiş tutulur (onaylı / düzeltilmiş satırın üzerine yazılmaz) — benzersiz değil, en yenisi seçilir.
+            e.HasIndex(s => new { s.CropSha256, s.InteractionType, s.PlanHash, s.Mode, s.KeyInputHash, s.ModelName });
+        });
+
+        // Issue #580: çözüm kaynağı / onayı ad olarak; mevcut satırlar migration'da doldurulur (QuestionSolutionBackfill).
+        modelBuilder.Entity<Question>(e =>
+        {
+            e.Property(q => q.SolutionSource).HasConversion<string>().HasMaxLength(16).HasDefaultValue(SolutionSource.None);
+            e.Property(q => q.SolutionStatus).HasConversion<string>().HasMaxLength(16).HasDefaultValue(SolutionStatus.Approved);
+            // Onay bekleyenler azınlıkta: atama/başlatma kapısı ve banka filtresi için kısmi index.
+            e.HasIndex(q => q.SolutionStatus)
+                .HasDatabaseName("IX_Questions_SolutionStatus_Pending")
+                .HasFilter("\"SolutionStatus\" = 'Pending'");
         });
 
         // Issue #577: kitap kaydı. Aynı içeriğin asıl kaydı (tek seviye, servis doğrular); asıl kayıt silinemez (Restrict).

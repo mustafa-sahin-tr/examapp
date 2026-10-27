@@ -201,6 +201,8 @@ export interface LabelingActivityStructureResult {
   outputTokens: number | null;
   estimatedCostUsd: number | null;
   error: string | null;
+  /** Issue #580: bloğun kırpma hash'i — kayıtlı çözüm taslağını geri yüklemek için. */
+  cropSha256?: string | null;
 }
 
 /** Sonuçlar istek sırasıyla. */
@@ -216,9 +218,17 @@ export interface LabelingActivityPrompt {
   createdAt: string | null;
 }
 
+/**
+ * Etkinlik talimatlarının anahtarı: #579 etkileşim tipleri (yapı çıkarma) ve #580'in üç çözüm talimatı — `answerKey`
+ * (cevap anahtarı sayfasını okuma), `solveFromKey` (görsel cevabı anahtar kırpmasından çözüme çevirme), `solveAi`
+ * (anahtarsız maddede çözüm önerme).
+ */
+export type LabelingSolutionPromptKind = 'answerKey' | 'solveFromKey' | 'solveAi';
+export type LabelingPromptKind = BlockInteractionType | LabelingSolutionPromptKind;
+
 /** Tip başına etkin sürüm, varsayılan ve son sürümler (yeniden eskiye). */
 export interface LabelingActivityPromptType {
-  interactionType: BlockInteractionType;
+  interactionType: LabelingPromptKind;
   active: LabelingActivityPrompt;
   defaults: LabelingActivityPrompt;
   history: LabelingActivityPrompt[];
@@ -235,4 +245,156 @@ export interface LabelingActivityPromptsState {
  */
 export interface LabelingSaveActivityPromptRequest {
   instruction: string;
+}
+
+// ---------------- Issue #580: cevap anahtarı ve etkinlik çözümü ----------------
+
+/** Cevap anahtarı sayfasından okunan tek satır (`box`: anahtar sayfasında, sayfa pikseli; yalnız görsel cevaplarda). */
+export interface LabelingAnswerKeyEntry {
+  id: number;
+  filePage: number;
+  printedPage: number | null;
+  activityLabel: string | null;
+  itemLabel: string | null;
+  answerText: string | null;
+  /** Cevap mini görsel (eşleştirme çizgisi, ✓ tablosu, boyalı şekil): çözüm anahtar kırpmasıyla birlikte çıkarılır. */
+  visual: boolean;
+  box: LabelingBankBox | null;
+  /** Öğretmen düzelttiyse son düzelten ve zaman. */
+  editedByName?: string | null;
+  editedAt?: string | null;
+}
+
+/** Sunucu sınırları (`AnswerKeyEntryUpdateRequestDto`). */
+export const ANSWER_KEY_LIMITS = { maxLabel: 64, maxAnswer: 1000, maxPrintedPage: 100_000 } as const;
+
+/** `POST /api/exam/labeling/answer-key/read`: sayfa kitabın cevap anahtarı aralığında olmalı (yoksa 400 `LabelingNotAnswerKeyPage`). */
+export interface LabelingAnswerKeyReadRequest {
+  bookId: number;
+  /** Anahtar sayfasının dosya sayfası; toplu yüklemede dosya adından okunamazsa gönderilmez (sunucu sayfayı kendisi bulur). */
+  filePage?: number;
+  imageBase64: string;
+  model: string;
+  force: boolean;
+  /** `force` okumada elle düzeltilmiş satırlar varsa sunucu 409 `LabelingAnswerKeyHasEdits` döner; true ile üzerine yazılır. */
+  confirmOverwrite?: boolean;
+}
+
+/**
+ * `origin`: `cached` iken maliyet / token ilk (canlı) okumanındır. `stale`: kayıtlı satırlar başka bir talimat / modelle
+ * okunmuş (yine de gösterilir; yeniden okuma ücretli).
+ */
+export interface LabelingAnswerKeyReadResponse {
+  origin: 'live' | 'cached';
+  promptVersion: number;
+  estimatedCostUsd: number;
+  entries: LabelingAnswerKeyEntry[];
+  inputTokens?: number;
+  outputTokens?: number;
+  stale?: boolean;
+  /** Sayfada elle düzeltilmiş / silinmiş satır var (yeniden okuma `confirmOverwrite` ister). */
+  hasEdits?: boolean;
+}
+
+/** `GET /api/exam/labeling/books/{bookId}/answer-key?printedPage=&activityLabel=`. */
+export interface LabelingAnswerKeyLookupResponse {
+  entries: LabelingAnswerKeyEntry[];
+  total?: number;
+}
+
+/**
+ * `POST /api/exam/labeling/books/{bookId}/answer-key/lookup`: sayfadaki blokların anahtar satırları tek istekte. Etkinlikte
+ * `label` etkinlik etiketi; test sorusunda soru numarası (bölüm `sectionLabel`, ör. "TEST 01").
+ */
+export interface LabelingAnswerKeyLookupItem {
+  key: string;
+  label: string;
+  itemLabel?: string;
+}
+
+export interface LabelingAnswerKeyLookupRequest {
+  /** Blokların bulunduğu (etkinlik) sayfanın dosya sayfası. */
+  filePage: number;
+  printedPage?: number;
+  sectionLabel?: string;
+  items: LabelingAnswerKeyLookupItem[];
+}
+
+export interface LabelingAnswerKeyLookupResult {
+  key: string;
+  entries: LabelingAnswerKeyEntry[];
+}
+
+export interface LabelingAnswerKeyBatchLookupResponse {
+  results: LabelingAnswerKeyLookupResult[];
+}
+
+/** `PUT /api/exam/labeling/answer-key/entries/{id}` gövdesi (boş metin null gönderilir). */
+export interface LabelingAnswerKeyEntryUpdate {
+  printedPage: number | null;
+  activityLabel: string | null;
+  itemLabel: string | null;
+  answerText: string | null;
+}
+
+/** Çözümün kaynağı: anahtardan, AI önerisi ya da elle düzeltme. */
+export type LabelingSolutionSource = 'Key' | 'AI' | 'Human';
+export type LabelingSolutionStatus = 'pending' | 'approved';
+/** `key`: kitabın cevap anahtarı satırlarından; `ai`: anahtarsız maddede Claude önerisi (ücretli). */
+export type LabelingSolutionMode = 'key' | 'ai';
+
+/** `POST /api/exam/labeling/activity-solution`: etkinlik bloğunun taslak çözümü (blok kutusu sayfa pikseli). */
+export interface LabelingActivitySolutionRequest {
+  imageBase64: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  interactionType: BlockInteractionType;
+  /** Bloğun taslak planı (#579); çözüm bu planın id'lerine göre yazılır. */
+  plan: Record<string, unknown>;
+  model: string;
+  force: boolean;
+  mode: LabelingSolutionMode;
+  key?: { entryIds: number[] };
+}
+
+/**
+ * Taslak çözüm (`ActivitySolutionDto`). `solution` tipin çözüm şeması (matrixChoice `{"r1":["c2"]}`, slotFill
+ * `{s1:{value…}}`, dragPlace `{"t1":["c1"]}`, match `{"l1":"r3"}`). `error` doluysa Claude çözemedi (`draftSolutionId`
+ * null, kayıt yok). `origin`: `live` | `cached`; okuma / düzenleme / onay yanıtında null. `valid=false` taslak düzeltilmeden
+ * onaylanamaz.
+ */
+export interface LabelingActivitySolutionResponse {
+  draftSolutionId: number | null;
+  solution: Record<string, unknown> | null;
+  source: LabelingSolutionSource | null;
+  status: LabelingSolutionStatus | null;
+  promptVersion: number | null;
+  origin: 'live' | 'cached' | null;
+  valid: boolean;
+  validationErrors: string[];
+  estimatedCostUsd: number | null;
+  error: string | null;
+  cropSha256?: string | null;
+  interactionType?: BlockInteractionType | null;
+  planHash?: string | null;
+  /** Çözümün yazıldığı taslak plan. */
+  plan?: Record<string, unknown> | null;
+  mode?: LabelingSolutionMode | null;
+  modelName?: string | null;
+  keyEntryIds?: number[] | null;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  createdByName?: string | null;
+  createdAt?: string | null;
+  editedByName?: string | null;
+  editedAt?: string | null;
+  approvedByName?: string | null;
+  approvedAt?: string | null;
+}
+
+/** `GET /api/exam/labeling/activity-solution?cropSha256=`: kırpmanın kayıtlı çözümleri, en son güncellenen önce (≤ 10). */
+export interface LabelingActivitySolutionList {
+  solutions: LabelingActivitySolutionResponse[];
 }

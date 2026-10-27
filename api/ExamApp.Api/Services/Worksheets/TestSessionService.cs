@@ -127,6 +127,13 @@ public class TestSessionService : ITestSessionService
         if (existing != null)
             return existing;
 
+        // issue #580: onaylanmamış (AI / cevap anahtarı) çözümlü soru içeren sayfada (tür fark etmez) yeni oturum açılmaz (403). Var olan
+        // oturum yukarıda döner: öğrencinin başlattığı / bitirdiği sayfa kaybolmaz.
+        if (await WorksheetSolutionGate.HasPendingSolutionAsync(_context, testId))
+        {
+            throw new UnauthorizedAccessException(_localizer["worksheets.session.pendingSolutionApproval"]);
+        }
+
         // Teste ait soruları TestQuestion tablosundan çekiyoruz (kilit dışında okunur). Include'lar korunur: soft-delete
         // filtreli soru gezinmesi silinmiş sorunun satırını önceki davranıştaki gibi dışarıda bırakır.
         var testQuestionIds = (await _context.TestQuestions

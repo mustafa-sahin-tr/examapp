@@ -645,6 +645,8 @@ public class WorksheetDetailService : IWorksheetDetailService
                     wiq.AnswerPayload != null, wiq.IsCorrect))
             .OrderBy(wiq => wiq.WorksheetQuestion.Order)
             .Select(wiq => wiq.WorksheetQuestion.Question)
+            // issue #580: çözümü sonradan onay beklemeye düşen soru yeni sayfaya alınmaz (atanamazdı).
+            .Where(q => q.SolutionStatus != SolutionStatus.Pending)
             .GroupBy(q => q.Id)
             .Select(g => g.First())
             .ToList();

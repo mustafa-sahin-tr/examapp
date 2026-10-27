@@ -40,18 +40,49 @@ public static class RouteRoleAuthExtensions
         new("/api/exam/labeling", ["Admin", "QuestionTrainer"], []),
     ];
 
+    /// <summary>
+    /// Issue #580: cok segmentli tek bir uca rol kurali. <see cref="Segments"/> yolun TUM segmentleri (sayisi esit, buyuk/kucuk harf
+    /// duyarsiz); <c>*</c> herhangi bir bos olmayan tek segment. Onek kurallarindan sonra denenir.
+    /// </summary>
+    public sealed record RoleRestrictedPattern(string[] Segments, string[] Roles)
+    {
+        public bool Matches(string normalizedPath)
+        {
+            var parts = normalizedPath.Trim('/').Split('/');
+            if (parts.Length != Segments.Length)
+                return false;
+            for (var i = 0; i < parts.Length; i++)
+            {
+                if (parts[i].Length == 0)
+                    return false;
+                if (Segments[i] != "*" && !string.Equals(Segments[i], parts[i], StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
+            return true;
+        }
+    }
+
+    // Issue #580: soru cozumu onayi (AI / cevap anahtari) -> yalniz Admin + QuestionTrainer (backend ayrica rol + sahiplik denetler).
+    public static readonly RoleRestrictedPattern[] DefaultPatterns =
+    [
+        new(["api", "exam", "questions", "*", "solution", "approve"], ["Admin", "QuestionTrainer"]),
+    ];
+
     public static IApplicationBuilder UseRouteRoleAuth(
         this IApplicationBuilder app,
         IEnumerable<RoleRestrictedPrefix>? rules = null,
-        string scheme = "Bearer")
+        string scheme = "Bearer",
+        IEnumerable<RoleRestrictedPattern>? patterns = null)
     {
         var list = (rules ?? Default).ToArray();
+        var patternList = (patterns ?? DefaultPatterns).ToArray();
         return app.Use(async (context, next) =>
         {
             // "//" birlestirilir: "/question-detector-dev//send-to-fix" genel kurala dusup Admin kuralini atlamasin.
             var normalized = new PathString(CollapseSlashes(context.Request.Path.Value ?? ""));
             var rule = list.FirstOrDefault(r => normalized.StartsWithSegments(r.PathPrefix));
-            if (rule is null || HttpMethods.IsOptions(context.Request.Method))
+            var pattern = rule is null ? patternList.FirstOrDefault(p => p.Matches(normalized.Value ?? "")) : null;
+            if ((rule is null && pattern is null) || HttpMethods.IsOptions(context.Request.Method))
             {
                 await next();
                 return;
@@ -75,11 +106,19 @@ public static class RouteRoleAuthExtensions
                 return;
             }
 
-            normalized.StartsWithSegments(rule.PathPrefix, out var remainder);
-            var segment = remainder.Value?.Trim('/') ?? "";
-            var allowed = rule.SegmentGroups
-                .FirstOrDefault(g => g.Segments.Contains(segment, StringComparer.OrdinalIgnoreCase))?.Roles
-                ?? rule.FallbackRoles;
+            string[] allowed;
+            if (rule is not null)
+            {
+                normalized.StartsWithSegments(rule.PathPrefix, out var remainder);
+                var segment = remainder.Value?.Trim('/') ?? "";
+                allowed = rule.SegmentGroups
+                    .FirstOrDefault(g => g.Segments.Contains(segment, StringComparer.OrdinalIgnoreCase))?.Roles
+                    ?? rule.FallbackRoles;
+            }
+            else
+            {
+                allowed = pattern!.Roles;
+            }
             if (!allowed.Any(a => roles.Contains(a, StringComparer.OrdinalIgnoreCase)))
             {
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;

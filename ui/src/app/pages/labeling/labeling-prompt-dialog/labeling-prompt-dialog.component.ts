@@ -17,7 +17,9 @@ import {
   LabelingActivityPrompt,
   LabelingActivityPromptType,
   LabelingPrompt,
+  LabelingPromptKind,
   LabelingPromptState,
+  LabelingSolutionPromptKind,
 } from '../../../models/labeling';
 import { BlockInteractionType } from '../../../models/prediction';
 import { DRAG_PLACE } from '../../../models/drag-place';
@@ -32,10 +34,24 @@ const MAX_PADDING = 50;
 /** Issue #579: prompt ekranında sayfa sekmesinden sonra sırayla gösterilen etkinlik tipleri (her biri ayrı sürümlenir). */
 export const ACTIVITY_PROMPT_TYPES: readonly BlockInteractionType[] = [MATRIX_CHOICE, SLOT_FILL, DRAG_PLACE, MATCH];
 
+/**
+ * Issue #580: etkinlik tiplerinden sonra çözüm talimatları — cevap anahtarı okuma, anahtardan çözüm, AI çözüm. Aynı uç
+ * (`activity-prompts/{kind}`), aynı sürüm / varsayılan / kayıt düzeni; her biri yalnız kendi önbelleğini geçersiz kılar.
+ */
+export const SOLUTION_PROMPT_KINDS: readonly LabelingSolutionPromptKind[] = ['answerKey', 'solveFromKey', 'solveAi'];
+
+/** Sayfa sekmesinden sonraki sekmeler sırasıyla. */
+export const PROMPT_KINDS: readonly LabelingPromptKind[] = [...ACTIVITY_PROMPT_TYPES, ...SOLUTION_PROMPT_KINDS];
+
+export function isSolutionPromptKind(kind: LabelingPromptKind): kind is LabelingSolutionPromptKind {
+  return (SOLUTION_PROMPT_KINDS as readonly string[]).includes(kind);
+}
+
 /** Bir etkinlik tipinin talimatı kaydedildi (diyalog bununla kapanır). */
 export interface LabelingActivityPromptSaved {
   kind: 'activity';
-  interactionType: BlockInteractionType;
+  /** Etkileşim tipi (#579) ya da çözüm talimatı (#580). */
+  interactionType: LabelingPromptKind;
   /** Tipin yeni etkin sürümü. */
   prompt: LabelingActivityPrompt;
 }
@@ -61,7 +77,7 @@ export function isPromptUnchanged(result: LabelingPromptDialogResult): result is
 }
 
 /** Sekme anahtarı: `page` ya da etkinlik tipi (çeviri `labeling.prompt.tabs.<anahtar>`). */
-export type PromptTabKey = 'page' | BlockInteractionType;
+export type PromptTabKey = 'page' | LabelingPromptKind;
 
 /**
  * Claude ön-etiketleme prompt'u. "Sayfa" sekmesi: iki aşamanın talimatı + kutu payları. Issue #579: etkinlik tipi başına
@@ -98,7 +114,9 @@ export class LabelingPromptDialogComponent {
   private readonly fb = inject(NonNullableFormBuilder);
 
   readonly maxInstruction = MAX_INSTRUCTION;
-  readonly activityTypes = ACTIVITY_PROMPT_TYPES;
+  /** Sayfa sekmesinden sonraki sekmeler: etkinlik tipleri + çözüm talimatları (#580). */
+  readonly activityTypes = PROMPT_KINDS;
+  readonly isSolutionKind = isSolutionPromptKind;
   readonly state = signal<LabelingPromptState | null>(null);
   readonly loading = signal(true);
   readonly saving = signal(false);
@@ -119,22 +137,20 @@ export class LabelingPromptDialogComponent {
   readonly activityLoading = signal(true);
   readonly activityLoadFailed = signal(false);
   /** Tip → sunucudaki durum (etkin, varsayılan, geçmiş). */
-  readonly activityStates = signal<Partial<Record<BlockInteractionType, LabelingActivityPromptType>>>({});
-  readonly activityForms: Record<BlockInteractionType, FormControl<string>> = Object.fromEntries(
-    ACTIVITY_PROMPT_TYPES.map((type) => [
+  readonly activityStates = signal<Partial<Record<LabelingPromptKind, LabelingActivityPromptType>>>({});
+  readonly activityForms: Record<LabelingPromptKind, FormControl<string>> = Object.fromEntries(
+    PROMPT_KINDS.map((type) => [
       type,
       this.fb.control('', [Validators.required, Validators.maxLength(MAX_INSTRUCTION)]),
     ])
-  ) as Record<BlockInteractionType, FormControl<string>>;
+  ) as Record<LabelingPromptKind, FormControl<string>>;
   /**
    * Kaydedilecek sekme dışında kaydedilmemiş değişikliği olan sekmeler; doluysa uyarı gösterilir, "Yine de kaydet"
    * onaylar (diyalog kapanınca o değişiklikler kaybolur).
    */
   readonly unsavedOthers = signal<PromptTabKey[]>([]);
   /** Seçili sekmenin etkinlik tipi (Sayfa sekmesinde null). */
-  readonly selectedActivityType = computed<BlockInteractionType | null>(
-    () => ACTIVITY_PROMPT_TYPES[this.selectedTab() - 1] ?? null
-  );
+  readonly selectedActivityType = computed<LabelingPromptKind | null>(() => PROMPT_KINDS[this.selectedTab() - 1] ?? null);
 
   constructor() {
     this.load();
@@ -170,9 +186,9 @@ export class LabelingPromptDialogComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (state) => {
-          const byType: Partial<Record<BlockInteractionType, LabelingActivityPromptType>> = {};
+          const byType: Partial<Record<LabelingPromptKind, LabelingActivityPromptType>> = {};
           for (const entry of state?.types ?? []) {
-            if (ACTIVITY_PROMPT_TYPES.includes(entry.interactionType)) {
+            if (PROMPT_KINDS.includes(entry.interactionType)) {
               byType[entry.interactionType] = entry;
               this.activityForms[entry.interactionType].setValue(entry.active.instruction);
             }
@@ -188,23 +204,23 @@ export class LabelingPromptDialogComponent {
       });
   }
 
-  activityState(type: BlockInteractionType): LabelingActivityPromptType | null {
+  activityState(type: LabelingPromptKind): LabelingActivityPromptType | null {
     return this.activityStates()[type] ?? null;
   }
 
-  fillActivity(type: BlockInteractionType, prompt: LabelingActivityPrompt): void {
+  fillActivity(type: LabelingPromptKind, prompt: LabelingActivityPrompt): void {
     this.activityForms[type].setValue(prompt.instruction);
     this.activityForms[type].markAsDirty();
   }
 
-  loadActivityVersion(type: BlockInteractionType, version: number): void {
+  loadActivityVersion(type: LabelingPromptKind, version: number): void {
     const prompt = this.activityState(type)?.history.find((p) => p.version === version);
     if (prompt) {
       this.fillActivity(type, prompt);
     }
   }
 
-  resetActivityToDefaults(type: BlockInteractionType): void {
+  resetActivityToDefaults(type: LabelingPromptKind): void {
     const defaults = this.activityState(type)?.defaults;
     if (defaults) {
       this.fillActivity(type, defaults);
@@ -238,7 +254,7 @@ export class LabelingPromptDialogComponent {
   saveSelected(confirmed = false): void {
     const type = this.selectedActivityType();
     const current: PromptTabKey = type ?? 'page';
-    const others = (['page', ...ACTIVITY_PROMPT_TYPES] as PromptTabKey[]).filter(
+    const others = (['page', ...PROMPT_KINDS] as PromptTabKey[]).filter(
       (tab) => tab !== current && this.hasUnsavedChanges(tab)
     );
     if (others.length > 0 && !confirmed) {
@@ -266,7 +282,7 @@ export class LabelingPromptDialogComponent {
   }
 
   /** Tipin talimatını yeni sürüm olarak kaydeder; yalnız o tipin önbelleği geçersiz olur. */
-  saveActivity(type: BlockInteractionType): void {
+  saveActivity(type: LabelingPromptKind): void {
     const control = this.activityForms[type];
     if (control.invalid || this.saving() || !this.activityState(type)) {
       control.markAsTouched();

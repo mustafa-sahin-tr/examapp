@@ -111,6 +111,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
             ct);
 
         var blocks = NormalizeBlocks(detected.Blocks, page, _options.MaxQuestionsPerPage, model.Id);
+        var sectionLabel = ActivityDrafts.Label(detected.SectionLabel, PredictionDto.MaxLabelLength);
 
         var pageBounds = new Rectangle(0, 0, image.Width, image.Height);
         long inputTokens = pageUsage.Input;
@@ -136,7 +137,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
             if (!NeedsOptionCall(block.Kind))
             {
                 // Etkinlik / anlatım / cevap anahtarı / gürültü: şık aranmaz (2. aşama yok), yalnız pay + sayfa kırpması.
-                return ToPrediction(padded, block.Kind, []);
+                return ToPrediction(padded, block.Kind, [], block.Label);
             }
 
             await gate.WaitAsync(ct);
@@ -157,7 +158,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
                     // Bileşensiz etkinliğin şık denemesi başarısız: etkinlik olarak kalır. Ödenmiş token yine sayılır.
                     _logger.LogWarning(ex, "[Labeling] option probe failed for a component-less activity (model {Model})", model.Id);
                     AddUsage(ex.Usage);
-                    return ToPrediction(padded, block.Kind, []);
+                    return ToPrediction(padded, block.Kind, [], block.Label);
                 }
                 catch (LabelingAiException ex)
                 {
@@ -174,7 +175,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
                     .Select(r => Rectangle.Intersect(Rectangle.Inflate(r, prompt.OptionPadding, prompt.OptionPadding), pageBounds))
                     .ToList();
                 if (probe && optionRects.Count < MinProbeOptions)
-                    return ToPrediction(padded, block.Kind, []);
+                    return ToPrediction(padded, block.Kind, [], block.Label);
                 var kind = probe ? McqClassification : block.Kind;
                 var question = padded;
                 // Eğitim verisinde şıklar sorunun içinde olmalı: istenirse soru kutusu şıkların birleşimi kadar genişler.
@@ -183,7 +184,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
 
                 return ToPrediction(question, kind, optionRects
                     .Select(r => new PredictionDto { ClassId = 0, X = r.X, Y = r.Y, Width = r.Width, Height = r.Height })
-                    .ToList());
+                    .ToList(), block.Label);
             }
             finally
             {
@@ -192,7 +193,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
         }));
 
         return new ClaudeDetection(
-            new PredictionListDto { Success = true, Predictions = predictions.ToList() },
+            new PredictionListDto { Success = true, Predictions = predictions.ToList(), SectionLabel = sectionLabel },
             (int)Math.Min(inputTokens, int.MaxValue),
             (int)Math.Min(outputTokens, int.MaxValue));
     }
@@ -204,7 +205,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
     public void Dispose() => _chat?.Dispose();
 
     /// <summary>1. aşama bloğunun sayfa uzayındaki dikdörtgeni ve normalleştirilmiş türü.</summary>
-    internal sealed record DetectedBlock(Rectangle Rect, LabelingBlocks.Classification Kind);
+    internal sealed record DetectedBlock(Rectangle Rect, LabelingBlocks.Classification Kind, string? Label = null);
 
     /// <summary>
     /// 1. aşama yanıtı → sayfa uzayı: tür normalleştirilir (bilinmeyen → noise, loglanır), çok küçük kutular atılır.
@@ -233,7 +234,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
                     continue;
                 candidates++;
             }
-            result.Add(new DetectedBlock(rect, kind));
+            result.Add(new DetectedBlock(rect, kind, ActivityDrafts.Label(b.Label, PredictionDto.MaxLabelLength)));
             if (result.Count >= maxBlocks)
                 break;
         }
@@ -244,8 +245,10 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
     private static bool NeedsOptionCall(LabelingBlocks.Classification kind) =>
         kind.Kind == LabelingBlocks.McqQuestion || (kind.Kind == LabelingBlocks.Activity && kind.Component is null);
 
-    private static PredictionDto ToPrediction(Rectangle box, LabelingBlocks.Classification kind, List<PredictionDto> options) => new()
+    private static PredictionDto ToPrediction(
+        Rectangle box, LabelingBlocks.Classification kind, List<PredictionDto> options, string? label = null) => new()
     {
+        Label = label,
         ClassId = 0,
         X = box.X,
         Y = box.Y,
@@ -264,6 +267,8 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
     // talimatı eski/özel bir sürüm olsa da izinli değerler modele ulaşır). Tür önce, koordinatlar sonra: model bloğu
     // sınıflandırıp sonra çerçeveler.
     internal sealed record PageBlocks(
+        [property: Description("The printed test or section title of the page (e.g. \"TEST 01\", \"Destekleme Testi 2\"), or an empty string.")]
+        string SectionLabel,
         [property: Description("Every block on the page in reading order (top to bottom; left column before right column).")]
         List<Block> Blocks);
 
@@ -274,6 +279,8 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
         string Component,
         [property: Description("When kind is activity: matrixChoice, slotFill, dragPlace, match or other; otherwise \"none\".")]
         string InteractionType,
+        [property: Description("Printed label: the activity's label (\"ETKİNLİK 24\") or the question number (\"5\"); otherwise an empty string.")]
+        string Label,
         int X1, int Y1, int X2, int Y2);
 
     internal sealed record OptionBoxes(List<OptionBox> Options);

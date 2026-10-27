@@ -49,6 +49,17 @@ public class PredictionDto
     [JsonPropertyName("interaction_type")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? InteractionType { get; set; }
+
+    /// <summary>
+    /// Issue #580 (kapsam genişlemesi): bloğun basılı etiketi — etkinlikte "EŞLEŞTİRME - 1", "Uygulama - 2", "ETKİNLİK 24"; çoktan
+    /// seçmelide soru numarası ("5"). En çok <see cref="MaxLabelLength"/> karakter; yoksa null (yazılmaz). Cevap anahtarı eşlemesinin
+    /// girdisi (<c>POST books/{id}/answer-key/lookup</c>).
+    /// </summary>
+    [JsonPropertyName("label")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Label { get; set; }
+
+    public const int MaxLabelLength = 64;
 }
 
 public class PredictionListDto
@@ -58,6 +69,14 @@ public class PredictionListDto
 
     [JsonPropertyName("predictions")]
     public List<PredictionDto> Predictions { get; set; } = new();
+
+    /// <summary>
+    /// Issue #580 (kapsam genişlemesi): sayfanın basılı test / bölüm başlığı ("TEST 01", "Destekleme Testi 2"); yoksa null (yazılmaz).
+    /// Çoktan seçmeli sorunun anahtar eşlemesinde <c>sectionLabel</c>. En çok <see cref="PredictionDto.MaxLabelLength"/> karakter.
+    /// </summary>
+    [JsonPropertyName("section_label")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? SectionLabel { get; set; }
 }
 
 /// <summary><c>GET api/labeling/ai-models</c> — UI'daki model listesi (ad + 1M token fiyatı).</summary>

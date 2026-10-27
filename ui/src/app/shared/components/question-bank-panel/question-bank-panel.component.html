@@ -52,6 +52,14 @@
         </mat-select>
       </mat-form-field>
 
+      <!-- Issue #580: onaylanmamış etkinlik çözümü olan sorular. -->
+      <mat-chip-listbox class="qb-pending-filter" [attr.aria-label]="t('filters.pendingSolutions')">
+        <mat-chip-option class="qb-pending-filter__chip" [selected]="pendingSolutionsOnly()"
+          (selectionChange)="setPendingSolutionsOnly($event.selected)">
+          {{ t('filters.pendingSolutions') }}
+        </mat-chip-option>
+      </mat-chip-listbox>
+
       <mat-form-field appearance="outline" subscriptSizing="dynamic">
         <mat-label>{{ t('filters.inTest') }}</mat-label>
         <mat-select [value]="inTest()" (selectionChange)="setInTest($event.value)">
@@ -132,8 +140,29 @@
             @if (!item.isOwn) {
               <span class="qb-tag">{{ t('card.shared') }}</span>
             }
+            @if (item.solutionStatus === 'pending') {
+              <span class="qb-tag qb-tag--warning qb-card__solution-pending">
+                {{ t('card.solutionPending') }}@if (hasGeneratedSolution(item)) { · {{ t('card.solutionSources.' + item.solutionSource) }} }@if (item.solutionPromptVersion != null) { · {{ t('card.solutionPromptVersion', { version: item.solutionPromptVersion }) }} }
+              </span>
+            } @else if (item.solutionStatus === 'approved' && hasGeneratedSolution(item)) {
+              <span class="qb-tag qb-tag--success qb-card__solution-approved">{{ t('card.solutionApprovedTag') }}</span>
+            }
           </div>
         </mat-card-content>
+
+        @if (canApprove(item)) {
+          <mat-card-actions class="qb-card__actions">
+            <button mat-stroked-button type="button" class="qb-card__approve" (click)="reviewSolution(item)"
+              [disabled]="isApproving(item)">
+              @if (isApproving(item)) {
+                <mat-spinner diameter="16" aria-hidden="true" />
+              } @else {
+                <mat-icon>verified</mat-icon>
+              }
+              {{ t('card.approveSolution') }}
+            </button>
+          </mat-card-actions>
+        }
 
         @if (selectable()) {
           <mat-card-actions class="qb-card__actions">

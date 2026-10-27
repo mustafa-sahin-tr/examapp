@@ -470,6 +470,77 @@ olabilir, yine döner; `validationErrors` yerelleştirilmiş ipuçları). Tek bl
   talimatını değiştirince herkesin sonraki çağrıları onu kullanır (sürüm geçmişi kimin kaydettiğini tutar, eski sürüme dönülebilir).
 - Migration `AddLabelingActivityStructure` exam API açılışında uygulanır (Aspire'da exam API'yi yeniden başlat).
 
+**Issue #580 — cevap anahtarı okuma, AI çözüm önerisi ve çözüm onayı.** Taslak düzeyinde (işaretleme ekranı); etkinliğin bankaya
+yazılması #581. Uçlar `/api/exam/labeling/*` (Admin + QuestionTrainer, onaylı öğretmen; gateway `/api/exam/labeling` kuralı kapsıyor):
+- `POST answer-key/read` `{bookId, filePage, imageBase64, model, force}` — dosya sayfası kitabın cevap anahtarı aralığında olmalı (#577;
+  değilse 400 `LabelingNotAnswerKeyPage`, kitap yoksa 404). Claude sayfayı okur → maddeler `{id, filePage, printedPage (maddenin ait
+  olduğu ETKİNLİĞİN anahtarda yazan sayfası), activityLabel, itemLabel, answerText, visual, box (anahtar sayfası pikseli, yalnız görsel
+  cevap)}`; (kitap, dosya sayfası) başına `LabelingAnswerKeyPages` + `LabelingAnswerKeyEntries`, canlı okuma o sayfanın maddelerini
+  **değiştirir** (öğretmen düzeltmeleri dahil). Önbellek: aynı sayfa görseli SHA-256 + model + `answerKey` talimatının parmak izi →
+  `origin: cached`, ücretsiz (öğretmenin düzelttiği maddelerle). **Düzeltme koruması (review W6):** sayfada düzeltilmiş ya da
+  silinmiş madde varsa `force`'suz istek görsel/model/talimat farklı olsa da kayıtlı maddeleri döner (`stale: true`, `hasEdits: true`);
+  `force` + düzeltme → 409 `LabelingAnswerKeyHasEdits`, üzerine yazmak için `confirmOverwrite: true`. Madde silme yumuşaktır
+  (`DeletedAt/By`; listede ve çözüm girdisinde görünmez). Sayfa başına en çok 60 görsel madde ve 4 MB kırpma (aşanlar kırpmasız). **Görsel cevap kırpmaları** sunucuda, maddenin satırında `bytea`
+  (`CropJpeg`, JPEG, uzun kenar ≤ 1024 px, ~150 KB üst sınır) + `CropSha256`: yalnız Claude'a girdi (tarayıcıya sunulmaz → imzalı URL /
+  MinIO gerekmez), ömrü maddeye bağlı (değiştirmede aynı transaction'da silinir, artık nesne kalmaz), testler MinIO'suz koşar. Liste
+  sorgusu baytları okumaz (projeksiyon).
+- `GET books/{bookId}/answer-key?printedPage=&activityLabel=&skip=` → `{entries, total}` (en çok 500). Etiket eşlemesi
+  (`ActivityLabelMatcher`): Türkçe küçük harf + ASCII'ye katlama (İ/I/ı, ş, ğ, ü, ö, ç), etiket = tür kelimesi + numara grupları;
+  ikisi de numaralıysa numaralar aynı ve tür kelimesi aynı ya da biri çıplak numara ("Etkinlik 9" ≈ "ETKİNLİK 9" ≈ "9." ≈ "9. Etkinlik",
+  ≠ "Alıştırma 9", "Etkinlik 3.2" ≈ "3.2"); ikisi de numarasızsa metin eşitliği; biri numaralı diğeri değilse eşleşmez.
+  Gürültü: "no"/"numara"/"numaralı"/":" ve numaralı etikette tek harfli son ek ("Etkinlik 9a", "Etkinlik No: 9") yok sayılır; int'e
+  sığmayan numara eşleşmez. **Fasikül (review W11):** `&filePage=` (etkinliğin DOSYA sayfası; `printedPage` yoksa ondan türetilir)
+  verilirse adaylar önce anahtar sayfası etkinlikle aynı ofset aralığında olanlara, yoksa etkinlikten sonraki ilk cevap anahtarı
+  aralığına (yoksa öncekine) daraltılır; hiçbiri tutmazsa daraltma yok.
+  `PUT answer-key/entries/{id}` `{printedPage, activityLabel, itemLabel, answerText}` (düzelteni kaydeder), `DELETE answer-key/entries/{id}`
+  (yumuşak, sileni kaydeder).
+- `POST activity-solution` `{imageBase64, x, y, width, height (blok, sayfa pikseli), interactionType, plan (taslak plan, taslak id'leri),
+  model, force, mode: key|ai, key: {entryIds}}` → `{draftSolutionId, solution, source (Key|AI|Human), status (pending|approved),
+  promptVersion, origin, valid, validationErrors, estimatedCostUsd, error, cropSha256, planHash, plan, mode, keyEntryIds, …approvedByName,
+  approvedAt, editedByName, editedAt}`. Plan tipin `ValidateDefinition`'ından geçmeli (400 `labeling.solution.invalidPlan`, Claude'a
+  gidilmez). `key`: 1–60 madde, metinleri + görsel kırpmaları (en çok 8) etkinlik kırpmasıyla birlikte (`solveFromKey`); `ai`: yalnız
+  etkinlik kırpması (`solveAi`). Çözüm şeması tipin çözüm biçimi (matrixChoice `{"r1":["c1"]}`, slotFill kutu türüne göre
+  `{value}`/`{accept}`/`{optionIds}`, dragPlace `{"t1":["k1"]}` (her hedef), match `{"l1":"r3"}`), `$ref`'siz. Sonuç `ValidateDefinition`
+  ile işaretlenir (geçersiz de saklanır, onaylanamaz). Claude hatası 200 + `error` (kaydedilmez). Kırpma hash'i #579 ile aynı tanım;
+  #579 `activity-structure` sonucuna `cropSha256` eklendi.
+- **Çözüm önbelleği** `LabelingActivitySolutions`: anahtar (kırpma SHA-256, tip, plan hash'i, mod, anahtar girdisi hash'i (madde
+  metinleri + kırpma hash'leri, id değil), model); satır yalnız o **modun** talimat parmak izi + tipin çözüm revizyonu tutarsa döner.
+  `solveAi` değişince yalnız AI çözümleri, `solveFromKey` değişince yalnız anahtar çözümleri, `answerKey` değişince yalnız anahtar
+  okumaları yeniden üretilir. Anahtar benzersiz değil (review W5, geçmiş): kayıttan dönen en yeni eşleşen satır; canlı sonuç / `force`
+  en yeni satırın üzerine yalnız onaylanmamış ve düzeltilmemişse yazar, aksi halde yeni satır açar. Plan hash'i sıralı anahtarlı
+  kanonik JSON'dan. Bütçe tahmini metin uzunluğundan (talimat + plan + anahtar metni, karakter/3) + görseller. `GET activity-solution?cropSha256=&interactionType=&planHash=`
+  → `{solutions}` (en son güncellenen önce, en çok 10) — yeniden açılışta geri yükleme.
+- **Onay (taslak):** `PUT activity-solution/{id}` `{solution, approve}` — düzeltme taslak planına göre geçerli olmalı; `approve=false`
+  kaynak aynı, durum `pending`, düzelten + zaman kaydedilir; `approve=true` düzelten onaylar. `POST activity-solution/{id}/approve` →
+  `approved`, onaylayan (Keycloak id + ad) ve zaman kaydedilir; insan düzeltmesi olmuş çözüm onayda kaynak `Human` olur, düzeltilmeden
+  onaylanan Key/AI kalır. Geçersiz çözüm onaylanamaz (400). Onay ekranında `promptVersion` gösterilir.
+- **Kota:** #578/#579 ile ortak (`LiveCallsPerHour`, `DailyBudgetUsd*`; en kötü durum baştan ayrılır, gerçek maliyete düzeltilir,
+  ödenmiş başarısız çağrı dahil; istemci giderse çağrı sürer). Dakikalık sınır `ActivityStructureRequestsPerMinute`, ayrı sayaç
+  (`labeling-solution-req:`).
+- **Talimatlar:** `GET/PUT activity-prompts[/{kind}]` artık 7 sekme: 4 yapı tipi + `answerKey`, `solveFromKey`, `solveAi` (aynı DTO,
+  varsayılanlar kodda, sürüm 0). Kodda sabit: sistem mesajları, anahtar şeması, tip açıklaması + çözüm şemaları — değişirse
+  `ActivityStructureSettings` tür revizyonu / `SolutionTypeRevisions` artar.
+- **Soru düzeyinde onay (#581 ve yayın kapısı):** `Questions` yeni kolonlar `SolutionSource` (None|Human|Key|AI), `SolutionStatus`
+  (Approved|Pending), `SolutionPromptVersion`, `SolutionApprovedByKeycloakId/Name`, `SolutionApprovedAt`. Yazma kuralı (soru kaydı +
+  toplu kayıt, DTO `draftSolutionId`/`solutionSource`/`solutionApproved`/`solutionPromptVersion`): `draftSolutionId` verilirse kaynak,
+  sürüm ve onay sunucuda `LabelingActivitySolutions` satırından (tip + çözüm aynı olmalı, yoksa 400 `questions.solution.draftMismatch`;
+  onaylı yalnız taslak onaylıysa ya da Admin/QT `solutionApproved=true`). "Değişti" = çözüm JSON'u (kanonik) değişti — yalnız plan/kutu
+  değişikliği kaynağı ve durumu korur (review C1). Çözüm değiştiyse: bildirilen Key/AI → `Pending` (Admin/QT + `solutionApproved=true`
+  → onaylı); Human/boş → Human/Approved (onaylayan = yazan) — ANCAK önceki çözüm onay bekleyen Key/AI ise ve yazan onaylayamıyorsa kaynak
+  korunur, Pending kalır. Onaylayamayan biri onay bekleyen çözümü silerse (ör. MCQ'ya çevirip geri alma) durum Pending kalır; onaylayan
+  onay ucuyla temizler. İçe aktarım (soru transferi) manifestteki `solutionSource/Status/PromptVersion`'ı taşır (Key/AI yalnız
+  açıkça `approved` ise onaylı), yoksa migration kuralı. `POST /api/exam/questions/{id}/solution/approve` yalnız Admin +
+  QuestionTrainer (rol kısıtı, diğerleri 403; QuestionTrainer sorunun sahibi olmalı, Admin muaf; gateway'de de
+  `RouteRoleAuthExtensions.DefaultPatterns` kuralı `/api/exam/questions/*/solution/approve`). Banka: `GET questions/bank?solutionStatus=pending|approved`,
+  satırlarda `solutionSource`/`solutionStatus`/`solutionPromptVersion`. **Kapı (review C2: tür fark etmez):** `Pending` çözümlü (silinmemiş) soru içeren
+  HER sayfa atanamaz (`worksheets.assignment.pendingSolutionApproval`), öğrenci yeni oturum başlatamaz (403
+  `worksheets.session.pendingSolutionApproval`; var olan oturum açılır) ve keşfet listesinde görünmez (öğrencinin oturumu varsa kalır).
+  Pratik havuzu ve "Yanlışlarım" sayfası bu soruları almaz. "Havuzdan ekle" bağlamaya izin verir (kapı yayında durdurur).
+- Migration'lar `AddAnswerKeyAndSolutionApproval` (3 tablo + 6 kolon; veri adımı migration içinde: çözümü olan mevcut etkileşimli sorular
+  `Human`/`Approved`, testlerdeki `Data/QuestionSolutionBackfill.Sql` ile eşit) ve `AnswerKeySoftDeleteAndSolutionHistory` (madde
+  yumuşak silme kolonları, çözüm anahtarı benzersiz değil) exam API açılışında uygulanır — Aspire'da exam API'yi ve gateway'i yeniden
+  başlat.
+
 **Issue #470 — işaretleme ekranından soru bankasına kayıt.** Araç çubuğunda **Havuza kaydet** = bankaya kayıt + başarılıysa
 **Eğit** ile aynı akış (send-to-fix → manuel kayıt → sonraki sayfa; eğitim başarısızsa sayfa açık kalır, Eğit ile yeniden
 denenir; kayıt başarısızsa eğitime gönderilmez). Düz **Eğit** değişmedi (bankaya yazmaz). `POST /api/exam/labeling/pages/bank` sayfadaki MCQ soruları müfettişte

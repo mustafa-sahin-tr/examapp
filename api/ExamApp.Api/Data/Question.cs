@@ -76,5 +76,22 @@ public class Question : BaseEntity
 
     public ClassificationSource? ClassificationSource { get; set; }
 
+    // Issue #580: etkileşim çözümünün kaynağı ve onayı. Key/AI çözümü Admin ya da QuestionTrainer onaylayana kadar Pending: böyle bir soru
+    // içeren etkinlik sayfası atanamaz / başlatılamaz / keşfette görünmez. Yazma kuralları QuestionSolutionApproval'da.
+    public SolutionSource SolutionSource { get; set; } = SolutionSource.None;
+
+    public SolutionStatus SolutionStatus { get; set; } = SolutionStatus.Approved;
+
+    /// <summary>Key/AI çözümünü üreten talimat sürümü (gösterim); insan çözümünde null.</summary>
+    public int? SolutionPromptVersion { get; set; }
+
+    [MaxLength(64)]
+    public string? SolutionApprovedByKeycloakId { get; set; }
+
+    [MaxLength(200)]
+    public string? SolutionApprovedByName { get; set; }
+
+    public DateTime? SolutionApprovedAt { get; set; }
+
 }
 

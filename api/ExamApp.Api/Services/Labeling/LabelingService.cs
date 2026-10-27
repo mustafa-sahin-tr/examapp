@@ -362,6 +362,7 @@ public sealed class LabelingService(
             block.Kind = q.Kind;
             block.Component = q.Component;
             block.InteractionType = q.InteractionType;
+            block.Label = CleanLabel(q.Label);
             return block;
         }
 
@@ -369,7 +370,22 @@ public sealed class LabelingService(
         {
             Success = true,
             Predictions = questions.Select(Block).ToList(),
+            SectionLabel = CleanLabel(input.SectionLabel),
         };
+    }
+
+    /// <summary>
+    /// Issue #580: blok etiketi / bölüm başlığı — kırpılır, boşsa null; en çok <see cref="PredictionDto.MaxLabelLength"/> karakter ve
+    /// kontrol karakteri yok (aksi halde 400 <c>labeling.invalidLabel</c>).
+    /// </summary>
+    private static string? CleanLabel(string? value)
+    {
+        var trimmed = value?.Trim();
+        if (string.IsNullOrEmpty(trimmed))
+            return null;
+        if (trimmed.Length > PredictionDto.MaxLabelLength || trimmed.Any(char.IsControl))
+            throw new LabelingValidationException("labeling.invalidLabel");
+        return trimmed;
     }
 
     private static string? Truncate(string? value, int max) =>

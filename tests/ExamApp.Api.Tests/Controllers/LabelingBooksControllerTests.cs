@@ -77,7 +77,7 @@ public class LabelingBooksControllerTests
             .ToList();
 
         actions.Select(m => m.Name).OrderBy(n => n)
-            .ShouldBe(new[] { "Create", "Delete", "FindFilePages", "Get", "GetPage", "List", "Update" });
+            .ShouldBe(new[] { "Create", "Delete", "FindFilePages", "Get", "GetPage", "List", "ListAnswerKey", "LookupAnswerKey", "Update" });
         foreach (var m in actions)
         {
             m.GetCustomAttributes<AllowAnonymousAttribute>().ShouldBeEmpty(m.Name);

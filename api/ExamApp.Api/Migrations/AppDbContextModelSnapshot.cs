@@ -1072,6 +1072,285 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("LabelingActivityResults");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.LabelingActivitySolution", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ApprovedByKeycloakId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ApprovedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByKeycloakId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("CreatedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("CropSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("EditedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EditedByKeycloakId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("EditedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("EstimatedCostUsd")
+                        .HasPrecision(12, 6)
+                        .HasColumnType("numeric(12,6)");
+
+                    b.Property<int>("InputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("InteractionType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("KeyEntryIdsJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("KeyInputHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("ModelName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("OutputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PlanHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("PlanJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("PromptHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int?>("PromptVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SolutionJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CropSha256", "InteractionType", "PlanHash", "Mode", "KeyInputHash", "ModelName");
+
+                    b.ToTable("LabelingActivitySolutions");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.LabelingAnswerKeyEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ActivityLabel")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("AnswerText")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("BookId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("BoxHeight")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("BoxWidth")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("BoxX")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("BoxY")
+                        .HasColumnType("integer");
+
+                    b.Property<byte[]>("CropJpeg")
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("CropSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeletedByKeycloakId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("DeletedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("EditedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EditedByKeycloakId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("EditedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int?>("FilePage")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ItemLabel")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PageId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PrintedPage")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Visual")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FilePage");
+
+                    b.HasIndex("BookId", "PrintedPage");
+
+                    b.HasIndex("PageId", "Order");
+
+                    b.ToTable("LabelingAnswerKeyEntries");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.LabelingAnswerKeyPage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BookId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByKeycloakId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("CreatedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("EstimatedCostUsd")
+                        .HasPrecision(12, 6)
+                        .HasColumnType("numeric(12,6)");
+
+                    b.Property<int?>("FilePage")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ImageSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("InputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ModelName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("OutputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PromptHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("PromptVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookId", "FilePage")
+                        .IsUnique()
+                        .HasFilter("\"FilePage\" IS NOT NULL");
+
+                    b.HasIndex("BookId", "ImageSha256")
+                        .IsUnique()
+                        .HasDatabaseName("IX_LabelingAnswerKeyPages_BookId_ImageSha256_NoFilePage")
+                        .HasFilter("\"FilePage\" IS NULL");
+
+                    b.ToTable("LabelingAnswerKeyPages");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.LabelingPage", b =>
                 {
                     b.Property<int>("Id")
@@ -2236,6 +2515,34 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("ShowPassageFirst")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("SolutionApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SolutionApprovedByKeycloakId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("SolutionApprovedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int?>("SolutionPromptVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SolutionSource")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("None");
+
+                    b.Property<string>("SolutionStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("Approved");
+
                     b.Property<string>("SubText")
                         .HasColumnType("text");
 
@@ -2270,6 +2577,10 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("CreateUserId");
 
                     b.HasIndex("PassageId");
+
+                    b.HasIndex("SolutionStatus")
+                        .HasDatabaseName("IX_Questions_SolutionStatus_Pending")
+                        .HasFilter("\"SolutionStatus\" = 'Pending'");
 
                     b.HasIndex("SubjectId");
 
@@ -5210,6 +5521,26 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Province");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.LabelingAnswerKeyEntry", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.LabelingAnswerKeyPage", "Page")
+                        .WithMany("Entries")
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Page");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.LabelingAnswerKeyPage", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Book", null)
+                        .WithMany()
+                        .HasForeignKey("BookId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.LabelingResult", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.LabelingPage", "Page")
@@ -6071,6 +6402,11 @@ namespace ExamApp.Api.Migrations
             modelBuilder.Entity("ExamApp.Api.Data.DailyQuestionSet", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.LabelingAnswerKeyPage", b =>
+                {
+                    b.Navigation("Entries");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.LabelingPage", b =>

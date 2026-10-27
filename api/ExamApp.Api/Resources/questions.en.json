@@ -84,6 +84,12 @@
       "imageDataDecodeFailed": "ImageData could not be decoded.",
       "uploaded": "The image was uploaded under study page books.",
       "uploadError": "An error occurred while uploading the image: {0}"
+    },
+
+    "solution": {
+      "invalidSource": "Invalid solution source (Key, AI or Human).",
+      "nothingToApprove": "This question has no solution to approve.",
+      "draftMismatch": "The draft solution does not match this question (interaction type or solution differs). Apply the draft again."
     }
   }
 }

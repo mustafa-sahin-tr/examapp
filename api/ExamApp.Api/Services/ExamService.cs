@@ -3,6 +3,7 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Worksheets;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Persistence;
 using Microsoft.AspNetCore.Http;
@@ -351,6 +352,12 @@ public class ExamService : IExamService
                 .Any(a => a.WorksheetId == t.Id)
             || (t.StudentVisibility == WorksheetStudentVisibility.Normal
                 && studentProfile.GradeId.HasValue && t.GradeId == studentProfile.GradeId.Value));
+
+        // issue #580: onaylanmamış (AI / cevap anahtarı) çözümlü soru içeren sayfa (tür fark etmez) keşfette/listede görünmez —
+        // öğrencinin daha önce açtığı oturum varsa kalır (yeni oturum StartTestAsync'te zaten reddedilir).
+        var pendingWorksheetIds = WorksheetSolutionGate.PendingWorksheetIds(_context);
+        query = query.Where(t => !pendingWorksheetIds.Contains(t.Id)
+            || _context.TestInstances.Any(ti => ti.WorksheetId == t.Id && ti.StudentId == studentProfile.Id));
 
         if (dto.statuses != null && dto.statuses.Any())
         {

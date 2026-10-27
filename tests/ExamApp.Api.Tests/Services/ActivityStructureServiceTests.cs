@@ -566,7 +566,9 @@ public class ActivityStructureServiceTests : IDisposable
 
         var state = await NewService(ctx).GetPromptsAsync();
 
-        state.Types.Select(t => t.InteractionType).ShouldBe(["matrixChoice", "slotFill", "dragPlace", "match"]);
+        // Issue #580: dört yapı tipine ek olarak üç çözüm talimatı.
+        state.Types.Select(t => t.InteractionType)
+            .ShouldBe(["matrixChoice", "slotFill", "dragPlace", "match", "answerKey", "solveFromKey", "solveAi"]);
         state.Types.ShouldAllBe(t => t.Active.Version == 0 && t.Defaults.Version == 0 && t.History.Count == 0
                                      && t.Active.Instruction == ActivityStructureSettings.DefaultInstruction(t.InteractionType)
                                      && t.Active.CreatedAt == null && t.Active.CreatedByName == null);

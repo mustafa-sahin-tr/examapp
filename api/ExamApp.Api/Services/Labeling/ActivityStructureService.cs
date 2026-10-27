@@ -167,7 +167,7 @@ public sealed class ActivityStructureService(
                 response.Add(new ActivityStructureResultDto(block.Key, block.Type, StatusError, null, null, null, false, [],
                     outcome.Work.Prompt.Version, outcome.FailedUsage is { } u ? (int)Math.Min(u.Input, int.MaxValue) : null,
                     outcome.FailedUsage is { } o ? (int)Math.Min(o.Output, int.MaxValue) : null,
-                    outcome.FailedUsage is null ? null : Math.Round(outcome.Cost, 6), AiFailedKey));
+                    outcome.FailedUsage is null ? null : Math.Round(outcome.Cost, 6), AiFailedKey, outcome.Work.Hash));
                 continue;
             }
 
@@ -181,8 +181,9 @@ public sealed class ActivityStructureService(
 
     public async Task<ActivityPromptStateDto> GetPromptsAsync(CancellationToken ct = default)
     {
-        var types = new List<ActivityPromptTypeStateDto>(ActivityStructureSettings.Types.Count);
-        foreach (var type in ActivityStructureSettings.Types)
+        // Issue #580: dört yapı tipine ek olarak üç çözüm talimatı (answerKey, solveFromKey, solveAi) — aynı DTO, ayrı sekme.
+        var types = new List<ActivityPromptTypeStateDto>(ActivityStructureSettings.PromptKinds.Count);
+        foreach (var type in ActivityStructureSettings.PromptKinds)
         {
             var history = await db.LabelingActivityPromptVersions.AsNoTracking()
                 .Where(p => p.InteractionType == type)
@@ -199,7 +200,7 @@ public sealed class ActivityStructureService(
     public async Task<ActivityPromptVersionDto> SavePromptAsync(
         string interactionType, ActivitySavePromptRequestDto request, LabelingActor actor, CancellationToken ct = default)
     {
-        var type = ActivityStructureSettings.Canonical(interactionType)
+        var type = ActivityStructureSettings.CanonicalPromptKind(interactionType)
                    ?? throw new LabelingValidationException("labeling.activity.unknownType");
         var instruction = request.Instruction?.Trim() ?? string.Empty;
         if (instruction.Length == 0)
@@ -207,7 +208,7 @@ public sealed class ActivityStructureService(
         if (instruction.Length > ActivityStructureSettings.MaxInstructionLength)
             throw new LabelingValidationException("labeling.promptTooLong");
 
-        var active = await GetActiveVersionAsync(type, ct);
+        var active = await ActivityPromptStore.GetActiveVersionAsync(db, type, ct);
         var activeSettings = active is null
             ? ActivityStructureSettings.Default(type)
             : new ActivityPromptSettings(type, active.Version, active.Instruction);
@@ -291,18 +292,8 @@ public sealed class ActivityStructureService(
     /// kodlanır (<c>LabelingImage.MaxEdge</c>, küçültme yok), her blok o JPEG'den kırpılır. Aynı blok ileride bankaya
     /// kaydedilirse <c>QuestionSource.CropSha256</c> ile aynı değer çıkar.
     /// </summary>
-    private IReadOnlyList<string> CropHashes(LabelingImage image, IReadOnlyList<Rectangle> rects)
-    {
-        try
-        {
-            var pageJpeg = image.Encode(LabelingImage.MaxEdge).Jpeg;
-            return QuestionCropHash.Compute(imageHelper, pageJpeg, rects.Select(r => (r.X, r.Y, r.Width, r.Height)).ToList());
-        }
-        catch (Exception ex) when (ex is ImageDecodeException or ArgumentOutOfRangeException)
-        {
-            throw new LabelingValidationException("labeling.invalidImage");
-        }
-    }
+    private IReadOnlyList<string> CropHashes(LabelingImage image, IReadOnlyList<Rectangle> rects) =>
+        ActivityCropHash.Compute(imageHelper, image, rects);
 
     private async Task<LiveOutcome> RunLiveAsync(
         LiveWork work, LabelingImage image, LabelingAiModelOption model, SemaphoreSlim gate, CancellationToken ct)
@@ -439,22 +430,11 @@ public sealed class ActivityStructureService(
         }
 
         return new ActivityStructureResultDto(block.Key, block.Type, StatusOk, origin, plan, row.Instruction, valid, errors,
-            row.PromptVersion, row.InputTokens, row.OutputTokens, row.EstimatedCostUsd, null);
+            row.PromptVersion, row.InputTokens, row.OutputTokens, row.EstimatedCostUsd, null, row.CropSha256);
     }
 
-    private async Task<ActivityPromptSettings> GetActivePromptAsync(string type, CancellationToken ct)
-    {
-        var latest = await GetActiveVersionAsync(type, ct);
-        return latest is null
-            ? ActivityStructureSettings.Default(type)
-            : new ActivityPromptSettings(type, latest.Version, latest.Instruction);
-    }
-
-    private Task<LabelingActivityPromptVersion?> GetActiveVersionAsync(string type, CancellationToken ct) =>
-        db.LabelingActivityPromptVersions.AsNoTracking()
-            .Where(p => p.InteractionType == type)
-            .OrderByDescending(p => p.Version)
-            .FirstOrDefaultAsync(ct);
+    private Task<ActivityPromptSettings> GetActivePromptAsync(string type, CancellationToken ct) =>
+        ActivityPromptStore.GetActiveAsync(db, type, ct);
 
     private static ActivityPromptVersionDto ToDto(LabelingActivityPromptVersion p) =>
         new(p.Version, p.Instruction, p.CreatedByName, p.CreatedAt);

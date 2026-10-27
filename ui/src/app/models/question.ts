@@ -47,6 +47,11 @@ export interface Question {
   interactionPlan?: string;
   /** issue #570: doğru yerleşimler (JSON), plandan ayrı; yalnız yetkili/izinli durumda dolu gelir. */
   interactionSolution?: string | null;
+  /**
+   * Issue #580: çözüm işaretleme ekranındaki taslak çözüm kaydından (`LabelingActivitySolution`) geldiyse onun id'si;
+   * sunucu kaynak (Key / AI / Human) ve onay durumunu bu kayıttan türetir.
+   */
+  draftSolutionId?: number | null;
   x: number;
   y: number;
   width: number;

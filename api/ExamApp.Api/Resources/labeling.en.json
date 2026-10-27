@@ -17,6 +17,7 @@
     "promptRequired": "Instructions cannot be empty.",
     "promptTooLong": "An instruction can be at most 4000 characters.",
     "invalidPadding": "Padding must be between 0 and 50 pixels.",
+    "invalidLabel": "A label can be at most 64 characters and cannot contain control characters.",
     "bank": {
       "noQuestions": "There are no questions to save.",
       "invalidOptions": "Each question must have 2-10 options.",
@@ -72,6 +73,27 @@
         "matchItems": "Both columns need at least one item.",
         "matchAllPrelinked": "At least one item must be left for the student to match (not all can be examples)."
       }
+    },
+    "answerKey": {
+      "notAnswerKeyPage": "This page is not in the book's answer key range.",
+      "aiFailed": "Claude could not read this answer key page. Try again or choose another model.",
+      "entryNotFound": "Answer key entry not found.",
+      "answerRequired": "A non-visual entry needs an answer.",
+      "hasEdits": "This answer key page has teacher corrections; reading it again deletes them. Confirm to continue.",
+      "invalidLookup": "Send 1 to 60 items; each needs a unique key (≤ 64 characters) and labels of at most 64 characters."
+    },
+    "solution": {
+      "aiFailed": "Claude could not produce a solution for this activity. Try again or enter it by hand.",
+      "invalid": "The solution cannot be saved as is; check the answer of every item.",
+      "invalidMode": "The solution mode must be key or ai.",
+      "invalidPlan": "The activity draft is invalid; fix its structure first.",
+      "invalidSolution": "The solution does not fit the draft's structure.",
+      "keyRequired": "Select 1 to 60 answer key entries to solve from the key.",
+      "keyEntryNotFound": "One of the selected answer key entries was not found.",
+      "tooManyKeyEntries": "At most 60 answer key entries can be selected.",
+      "tooManyKeyImages": "At most 8 visual answers can be selected.",
+      "notFound": "Solution draft not found.",
+      "cannotApproveInvalid": "An invalid solution cannot be approved; fix it first."
     }
   }
 }

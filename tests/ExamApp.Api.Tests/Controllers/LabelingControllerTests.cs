@@ -76,8 +76,10 @@ public class LabelingControllerTests
         actions.Select(m => m.Name).OrderBy(n => n)
             .ShouldBe(new[]
             {
-                "DetectWithAi", "ExtractActivityStructure", "GetActivityPrompts", "GetAiModels", "GetPage", "GetPrompt",
-                "SaveActivityPrompt", "SaveManual", "SavePrompt", "SaveToBank",
+                "ApproveActivitySolution", "DeleteAnswerKeyEntry", "DetectWithAi", "ExtractActivityStructure",
+                "FindActivitySolutions", "GetActivityPrompts", "GetAiModels", "GetPage", "GetPrompt", "ReadAnswerKey",
+                "SaveActivityPrompt", "SaveManual", "SavePrompt", "SaveToBank", "SolveActivity", "UpdateActivitySolution",
+                "UpdateAnswerKeyEntry",
             });
 
         foreach (var m in actions)
@@ -577,6 +579,15 @@ public class LabelingControllerTests
     [InlineData(nameof(LabelingController.ExtractActivityStructure), typeof(HttpPostAttribute), "activity-structure")]
     [InlineData(nameof(LabelingController.GetActivityPrompts), typeof(HttpGetAttribute), "activity-prompts")]
     [InlineData(nameof(LabelingController.SaveActivityPrompt), typeof(HttpPutAttribute), "activity-prompts/{interactionType}")]
+    // Issue #580: cevap anahtarı ve çözüm uçları (onay dahil) sınıf düzeyindeki Admin + QuestionTrainer kapısının arkasında —
+    // diğer roller 403 alır.
+    [InlineData(nameof(LabelingController.ReadAnswerKey), typeof(HttpPostAttribute), "answer-key/read")]
+    [InlineData(nameof(LabelingController.UpdateAnswerKeyEntry), typeof(HttpPutAttribute), "answer-key/entries/{id:int}")]
+    [InlineData(nameof(LabelingController.DeleteAnswerKeyEntry), typeof(HttpDeleteAttribute), "answer-key/entries/{id:int}")]
+    [InlineData(nameof(LabelingController.SolveActivity), typeof(HttpPostAttribute), "activity-solution")]
+    [InlineData(nameof(LabelingController.FindActivitySolutions), typeof(HttpGetAttribute), "activity-solution")]
+    [InlineData(nameof(LabelingController.UpdateActivitySolution), typeof(HttpPutAttribute), "activity-solution/{id:int}")]
+    [InlineData(nameof(LabelingController.ApproveActivitySolution), typeof(HttpPostAttribute), "activity-solution/{id:int}/approve")]
     public void ActivityEndpoints_UseControllerRolesAndExpectedRoutes(string action, Type verb, string template)
     {
         var method = typeof(LabelingController).GetMethod(action)!;
@@ -674,5 +685,87 @@ public class LabelingControllerTests
             .ShouldBeOfType<BadRequestObjectResult>();
         await _activities.Received(1).SavePromptAsync("slotFill", Arg.Any<ActivitySavePromptRequestDto>(),
             Arg.Is<LabelingActor>(a => a.KeycloakId == TrainerKeycloakId), Arg.Any<CancellationToken>());
+    }
+
+    // ---------- Cevap anahtarı ve çözüm (issue #580) ----------
+
+    private readonly IActivitySolutionService _solutions = Substitute.For<IActivitySolutionService>();
+
+    private static AnswerKeyReadRequestDto KeyRequest() => new() { BookId = 1, FilePage = 295, ImageBase64 = "iVBORw0KGgo=", Model = "m" };
+
+    [Fact]
+    public async Task ReadAnswerKey_NotAnswerKeyPage_Returns400WithErrorCode()
+    {
+        _solutions.ReadAnswerKeyAsync(Arg.Any<AnswerKeyReadRequestDto>(), Arg.Any<LabelingActor>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new LabelingNotAnswerKeyPageException());
+
+        var result = await NewController().ReadAnswerKey(KeyRequest(), _solutions, CancellationToken.None);
+
+        var bad = result.ShouldBeOfType<BadRequestObjectResult>();
+        bad.Value!.ToString()!.ShouldContain("LabelingNotAnswerKeyPage");
+    }
+
+    [Theory]
+    [InlineData(typeof(LabelingNotFoundException), 404)]
+    [InlineData(typeof(LabelingAiException), 502)]
+    [InlineData(typeof(LabelingAiUnavailableException), 503)]
+    public async Task ReadAnswerKey_MapsServiceExceptions(Type exception, int status)
+    {
+        Exception ex = exception == typeof(LabelingNotFoundException) ? new LabelingNotFoundException("labeling.books.notFound")
+            : exception == typeof(LabelingAiException) ? new LabelingAiException("x")
+            : new LabelingAiUnavailableException();
+        _solutions.ReadAnswerKeyAsync(Arg.Any<AnswerKeyReadRequestDto>(), Arg.Any<LabelingActor>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(ex);
+
+        var result = await NewController().ReadAnswerKey(KeyRequest(), _solutions, CancellationToken.None);
+
+        result.ShouldBeAssignableTo<ObjectResult>()!.StatusCode.ShouldBe(status);
+    }
+
+    [Fact]
+    public async Task SolveActivity_LocalizesErrorAndValidationKeys_AndPassesActor()
+    {
+        _solutions.SolveAsync(Arg.Any<ActivitySolutionRequestDto>(), Arg.Any<LabelingActor>(), Arg.Any<CancellationToken>())
+            .Returns(new LabelingActivitySolutionDto(null, null, null, null, 0, null, false, [ActivitySolutionService.InvalidSolutionKey], null,
+                ActivitySolutionService.AiFailedKey));
+
+        var result = await NewController().SolveActivity(new ActivitySolutionRequestDto(), _solutions, CancellationToken.None);
+
+        var dto = result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<LabelingActivitySolutionDto>();
+        dto.Error.ShouldNotBe(ActivitySolutionService.AiFailedKey);
+        dto.ValidationErrors.Single().ShouldNotBe(ActivitySolutionService.InvalidSolutionKey);
+        await _solutions.Received(1).SolveAsync(Arg.Any<ActivitySolutionRequestDto>(),
+            Arg.Is<LabelingActor>(a => a.KeycloakId == TrainerKeycloakId), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReadAnswerKey_HasEdits_Returns409WithErrorCode()
+    {
+        _solutions.ReadAnswerKeyAsync(Arg.Any<AnswerKeyReadRequestDto>(), Arg.Any<LabelingActor>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new LabelingAnswerKeyHasEditsException());
+
+        var result = await NewController().ReadAnswerKey(KeyRequest(), _solutions, CancellationToken.None);
+
+        result.ShouldBeOfType<ConflictObjectResult>().Value!.ToString()!.ShouldContain("LabelingAnswerKeyHasEdits");
+    }
+
+    [Fact]
+    public async Task ApproveActivitySolution_Missing_Returns404_Invalid_Returns400()
+    {
+        _solutions.ApproveSolutionAsync(1, Arg.Any<LabelingActor>(), Arg.Any<CancellationToken>()).Returns((LabelingActivitySolutionDto?)null);
+        _solutions.ApproveSolutionAsync(2, Arg.Any<LabelingActor>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new LabelingValidationException("labeling.solution.cannotApproveInvalid"));
+
+        (await NewController().ApproveActivitySolution(1, _solutions, CancellationToken.None)).ShouldBeOfType<NotFoundObjectResult>();
+        (await NewController().ApproveActivitySolution(2, _solutions, CancellationToken.None)).ShouldBeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task DeleteAnswerKeyEntry_Returns204Or404()
+    {
+        _solutions.DeleteEntryAsync(1, Arg.Any<LabelingActor>(), Arg.Any<CancellationToken>()).Returns(true);
+
+        (await NewController().DeleteAnswerKeyEntry(1, _solutions, CancellationToken.None)).ShouldBeOfType<NoContentResult>();
+        (await NewController().DeleteAnswerKeyEntry(2, _solutions, CancellationToken.None)).ShouldBeOfType<NotFoundObjectResult>();
     }
 }

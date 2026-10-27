@@ -84,6 +84,12 @@
       "imageDataDecodeFailed": "ImageData decode edilemedi.",
       "uploaded": "Görsel study page books altına yüklendi.",
       "uploadError": "Resim yüklenirken hata oluştu: {0}"
+    },
+
+    "solution": {
+      "invalidSource": "Geçersiz çözüm kaynağı (Key, AI ya da Human).",
+      "nothingToApprove": "Bu sorunun onaylanacak bir çözümü yok.",
+      "draftMismatch": "Taslak çözüm bu soruyla uyuşmuyor (etkileşim tipi ya da çözüm farklı). Taslağı yeniden uygulayın."
     }
   }
 }

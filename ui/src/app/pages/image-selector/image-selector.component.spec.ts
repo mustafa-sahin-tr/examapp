@@ -2501,5 +2501,157 @@ describe('ImageSelectorComponent', () => {
             expect(component.getInteractionType('Soru 1')).toBe('matrixChoice');
             expect(component.getInteractionType('Soru 2')).toBe('slotFill');
         });
+
+        describe('activity solutions (issue #580)', () => {
+            const matrixPlan = {
+                version: 1, type: 'matrixChoice', multiPerRow: false,
+                columns: [{ id: 'c1', label: 'D' }, { id: 'c2', label: 'Y' }],
+                rows: [
+                    { id: 'r1', box: { x: 0, y: 0, width: 180, height: 20 } },
+                    { id: 'r2', box: { x: 0, y: 30, width: 180, height: 20 } },
+                ],
+            };
+            const slotPlan = {
+                version: 1, type: 'slotFill',
+                slots: [
+                    { id: 's1', box: { x: 5, y: 6, width: 40, height: 20 }, input: { kind: 'number', entry: 'fraction', unit: 'cm' } },
+                    { id: 's2', box: { x: 5, y: 40, width: 40, height: 20 }, input: { kind: 'text' } },
+                    { id: 's3', box: { x: 5, y: 70, width: 40, height: 20 }, input: { kind: 'select', options: [{ id: 'o1', label: 'var' }, { id: 'o2', label: 'yok' }] } },
+                    { id: 's4', box: { x: 5, y: 100, width: 40, height: 20 }, input: { kind: 'palette', symbols: ['<', '>'] } },
+                ],
+            };
+            const dragPlan = {
+                version: 1, type: 'dragPlace', mode: 'place', reuse: false,
+                targets: [{ id: 't1', label: 'Canlı', capacity: 2 }, { id: 't2', label: 'Cansız', capacity: 1 }],
+                cards: [{ id: 'c1', label: 'Kedi' }, { id: 'c2', label: 'Taş' }, { id: 'c3', label: 'Ağaç' }],
+            };
+            const matchPlan = {
+                version: 1, type: 'match',
+                left: [{ id: 'l1', label: 'Elma' }, { id: 'l2', label: 'Havuç' }, { id: 'l3', label: 'Üzüm' }],
+                right: [{ id: 'r1', label: 'Meyve' }, { id: 'r2', label: 'Sebze' }, { id: 'r3', label: 'Tahıl' }],
+                prelinked: [{ leftId: 'l1', rightId: 'r1' }],
+            };
+
+            beforeEach(() => {
+                component.applyInteractionDraft('Soru 1', 'matrixChoice', matrixPlan);
+                component.applyInteractionDraft('Soru 2', 'slotFill', slotPlan);
+                component.applyInteractionDraft('Soru 3', 'dragPlace', dragPlan);
+                component.applyInteractionDraft('Soru 4', 'match', matchPlan);
+            });
+
+            it('matrix_SolutionSetsCheckedCells_UnknownIdsDropped_SingleChoiceTrimmed', () => {
+                expect(component.applyInteractionSolution('Soru 1', 'matrixChoice', { r1: ['c2', 'c1'], r2: ['c9'], r9: ['c1'] })).toBe('applied');
+
+                expect(component.matrixState.get('Soru 1')!.solution).toEqual({ r1: ['c2'] });
+                expect(component.getInteractionSolution('Soru 1')).toEqual({ r1: ['c2'] });
+            });
+
+            it('slotFill_SolutionWrittenPerSlotKind_SettingsKept', () => {
+                const solution = {
+                    s1: { value: '3/4', equivalence: false, requireSimplest: true, units: ['cm'], unitMode: 'optional' },
+                    s2: { accept: ['kedi', 'pisi'], optionalSuffixes: ['ler'] },
+                    s3: { optionIds: ['o2', 'o9'] },
+                    s4: { accept: ['<'] },
+                };
+
+                expect(component.applyInteractionSolution('Soru 2', 'slotFill', solution)).toBe('applied');
+
+                const slots = component.slotFillState.get('Soru 2')!.slots;
+                expect(slots[0]).toEqual(expect.objectContaining({
+                    value: '3/4', equivalence: false, requireSimplest: true, units: ['cm'], unitMode: 'optional', entry: 'fraction', unitHint: 'cm',
+                }));
+                expect(slots[1]).toEqual(expect.objectContaining({ accept: ['kedi', 'pisi'], optionalSuffixes: ['ler'] }));
+                expect(slots[2].correctOptionIds).toEqual(['o2']);
+                expect(slots[3].paletteAccept).toEqual(['<']);
+            });
+
+            it('slotFill_SlotsMissingFromSolution_AreCleared', () => {
+                component.applyInteractionSolution('Soru 2', 'slotFill', {
+                    s1: { value: '1/2' }, s2: { accept: ['a'] }, s3: { optionIds: ['o1'] }, s4: { accept: ['>'] },
+                });
+
+                expect(component.applyInteractionSolution('Soru 2', 'slotFill', { s2: { accept: ['b'] } })).toBe('applied');
+
+                const slots = component.slotFillState.get('Soru 2')!.slots;
+                expect(slots[0].value).toBe('');
+                expect(slots[0].unitHint).toBe('cm');
+                expect(slots[1].accept).toEqual(['b']);
+                expect(slots[2].correctOptionIds).toEqual([]);
+                expect(slots[2].options.length).toBe(2);
+                expect(slots[3].paletteAccept).toEqual([]);
+                expect(component.getInteractionSolution('Soru 2')!['s1']).toEqual(expect.objectContaining({ value: '' }));
+            });
+
+            it('draftSolutionId_SentInGetRegionsOnlyWhileCanvasSolutionUnchanged', () => {
+                component.applyInteractionSolution('Soru 1', 'matrixChoice', { r1: ['c1'] });
+                component.setDraftSolution('Soru 1', 55);
+                const question = (name: string) =>
+                    (component.getRegions({}).questions as Array<{ name: string; draftSolutionId?: number }>).find((q) => q.name === name)!;
+
+                expect(question('Soru 1').draftSolutionId).toBe(55);
+                expect('draftSolutionId' in question('Soru 2')).toBe(false);
+
+                component.toggleMatrixSolution('Soru 1', 'r2', 'c2');
+                expect('draftSolutionId' in question('Soru 1')).toBe(false);
+
+                component.setDraftSolution('Soru 1', 56);
+                expect(question('Soru 1').draftSolutionId).toBe(56);
+                component.setDraftSolution('Soru 1', null);
+                expect(component.draftSolutionIdFor('Soru 1')).toBeNull();
+            });
+
+            it('dragPlace_SolutionSetsPlacementsWithinCapacity', () => {
+                expect(component.applyInteractionSolution('Soru 3', 'dragPlace', { t1: ['c1', 'c3'], t2: ['c2', 'c3'], t9: ['c1'] })).toBe('applied');
+
+                expect(component.dragPlaceState.get('Soru 3')!.solution).toEqual({ t1: ['c1', 'c3'], t2: ['c2'] });
+            });
+
+            it('match_SolutionSetsOpenPairs_PrelinkedKept_RightUsedOnce', () => {
+                expect(component.applyInteractionSolution('Soru 4', 'match', { l1: 'r3', l2: 'r2', l3: 'r2' })).toBe('applied');
+
+                const state = component.matchState.get('Soru 4')!;
+                expect(state.pairs['l1']).toBe('r1');
+                expect(state.pairs['l2']).toBe('r2');
+                expect(state.pairs['l3']).toBeUndefined();
+                expect(component.getInteractionSolution('Soru 4')).toEqual({ l2: 'r2' });
+            });
+
+            it('nothingFitsPlan_WrongTypeOrMissingRegion_Invalid', () => {
+                expect(component.applyInteractionSolution('Soru 1', 'matrixChoice', { r9: ['c1'] })).toBe('invalid');
+                expect(component.applyInteractionSolution('Soru 1', 'slotFill', { s1: { value: '1' } })).toBe('invalid');
+                expect(component.applyInteractionSolution('Yok', 'matrixChoice', { r1: ['c1'] })).toBe('invalid');
+                expect(component.applyInteractionSolution('Soru 1', 'matrixChoice', null)).toBe('invalid');
+                expect(component.matrixState.get('Soru 1')!.solution).toEqual({});
+            });
+
+            it('appliedSolution_NotAnEdit_LaterHandEditKeepsNextSolutionUnlessReplace', () => {
+                component.applyInteractionSolution('Soru 3', 'dragPlace', { t1: ['c1'] });
+                expect(component.hasAuthoringEdits('Soru 3', 'dragPlace')).toBe(false);
+
+                component.toggleDragPlaceAssignment('Soru 3', 't2', 'c2');
+
+                expect(component.applyInteractionSolution('Soru 3', 'dragPlace', { t1: ['c3'] })).toBe('kept');
+                expect(component.dragPlaceState.get('Soru 3')!.solution).toEqual({ t1: ['c1'], t2: ['c2'] });
+                expect(component.applyInteractionSolution('Soru 3', 'dragPlace', { t1: ['c3'] }, { replace: true })).toBe('applied');
+                expect(component.dragPlaceState.get('Soru 3')!.solution).toEqual({ t1: ['c3'] });
+            });
+
+            it('getInteractionPlan_ReturnsAuthoringPlanWithoutSolution', () => {
+                component.applyInteractionSolution('Soru 1', 'matrixChoice', { r1: ['c1'] });
+
+                const plan = component.getInteractionPlan('Soru 1')!;
+                expect(plan['type']).toBe('matrixChoice');
+                expect(JSON.stringify(plan)).not.toContain('solution');
+                expect((plan['rows'] as unknown[]).length).toBe(2);
+            });
+
+            it('answerKeyOverlays_StoredAndCleared', () => {
+                component.setAnswerKeyOverlays([{ box: { x: 1, y: 2, width: 30, height: 40 }, tag: 'Etkinlik 3' }]);
+                expect(component.getAnswerKeyOverlays()).toEqual([{ box: { x: 1, y: 2, width: 30, height: 40 }, tag: 'Etkinlik 3' }]);
+
+                component.setAnswerKeyOverlays([]);
+                expect(component.getAnswerKeyOverlays()).toEqual([]);
+            });
+        });
     });
 });

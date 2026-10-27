@@ -31,8 +31,10 @@ public sealed record LabelingPromptSettings(
     /// aşaması sorulur, >= 2 şık bulunursa <c>mcq_question</c>'a çevrilir (son işleme değişti). 4: sınır ayrıldı —
     /// <c>MaxQuestionsPerPage</c> yalnız şık çağrısı alabilecek blokları (<c>mcq_question</c> + bileşensiz <c>activity</c>),
     /// toplam blok sınırı <c>MaxQuestionsPerPage * 3</c> (yoğun sayfada gürültü son soruları itmez).
+    /// 5 (issue #580): 1. aşama blok başına basılı <c>label</c> (etkinlik etiketi / soru numarası) ve sayfa başına <c>sectionLabel</c>
+    /// (test / bölüm başlığı) döner.
     /// </summary>
-    public const int SchemaRevision = 4;
+    public const int SchemaRevision = 5;
 
     /// <summary>Talimatlar + paylar + <see cref="SchemaRevision"/> SHA-256'sı (hex); AI sonuçlarının önbellek anahtarı.</summary>
     /// Önbelleğe alınmaz: record'un <c>with</c> kopyası alanı da kopyalar ve eski izi taşırdı.
@@ -76,7 +78,10 @@ public sealed record LabelingPromptSettings(
         "D mark on text (underline, circle words in a passage). E regions / colouring (colour or select areas of a " +
         "picture). F grid canvas (drawing on a grid, number line, graph). G game engines (maze, crossword, word search, " +
         "cipher). H open-ended (explain, write a sentence or paragraph). I special simulation (anything else).\n" +
-        "For D-I use interactionType other. For kinds other than activity use \"none\" for component and interactionType. " +
+        "For D-I use interactionType other. For kinds other than activity use \"none\" for component and interactionType.\n" +
+        "label: for an activity its printed label as printed (\"EŞLEŞTİRME - 1\", \"Uygulama - 2\", \"ETKİNLİK 24\"); for an " +
+        "mcq_question its printed question number without the dot (\"5\"); otherwise an empty string. sectionLabel: the page's " +
+        "printed test or section title (\"TEST 01\", \"Destekleme Testi 2\") or an empty string.\n" +
         "Return an empty list if the page has no blocks.";
 
     public const string DefaultOptionInstruction =

@@ -17,8 +17,27 @@ export interface QuestionBankFilter {
   hasCorrectAnswer?: boolean | null;
   /** true: en az bir teste bağlı; false: hiçbir teste bağlı değil; null: farketmez. */
   inTest?: boolean | null;
+  /** Issue #580: `pending` — onaylanmamış etkinlik çözümü olan sorular. */
+  solutionStatus?: QuestionSolutionStatus | null;
   skip?: number;
   take?: number;
+}
+
+/**
+ * Issue #580: sorunun çözüm onay durumu ve kaynağı. Elle yazılan (ve çözümsüz) sorular `approved`; cevap anahtarından / AI
+ * gelen çözüm Admin ya da QuestionTrainer onaylayana kadar `pending`.
+ */
+export type QuestionSolutionStatus = 'pending' | 'approved';
+export type QuestionSolutionSource = 'None' | 'Human' | 'Key' | 'AI';
+
+/** `POST api/exam/questions/{id}/solution/approve` yanıtı. */
+export interface QuestionSolutionState {
+  questionId: number;
+  solutionSource: QuestionSolutionSource;
+  solutionStatus: QuestionSolutionStatus;
+  solutionPromptVersion: number | null;
+  solutionApprovedByName: string | null;
+  solutionApprovedAt: string | null;
 }
 
 export interface QuestionBankItem {
@@ -39,6 +58,10 @@ export interface QuestionBankItem {
   /** issue #472: "Havuzdan ekle" ile teste bağlanabilir mi (kendi sorusu ya da sahibi belli soru). */
   canLink: boolean;
   createTime: string;
+  /** Issue #580: çözüm onay durumu / kaynağı / üreten talimat sürümü (eski yanıtta yok). */
+  solutionStatus?: QuestionSolutionStatus | null;
+  solutionSource?: QuestionSolutionSource | null;
+  solutionPromptVersion?: number | null;
 }
 
 export interface QuestionBankPage {

@@ -444,4 +444,40 @@ public class ClaudeLabelDetectorTests
         {
         }
     }
+
+    // ---------- issue #580: blok etiketi / bölüm başlığı ----------
+
+    [Fact]
+    public async Task DetectAsync_CarriesBlockLabelsAndSectionLabel()
+    {
+        var blocks = new object[]
+        {
+            new { kind = "mcq_question", component = "none", interactionType = "none", label = " 5 ", x1 = 60, y1 = 220, x2 = 900, y2 = 500 },
+            new { kind = "activity", component = "A", interactionType = "matrixChoice", label = "ETKİNLİK 24", x1 = 60, y1 = 520, x2 = 900, y2 = 700 },
+            new { kind = "noise", component = "none", interactionType = "none", label = "", x1 = 60, y1 = 720, x2 = 900, y2 = 900 },
+        };
+        var chat = new FakeChatClient(JsonSerializer.Serialize(new { sectionLabel = "TEST 01", blocks }), 2, CropMode.Ok);
+        using var detector = Detector(chat);
+        using var image = LabelingImage.Decode(Convert.ToBase64String(Png(1000, 1400)));
+
+        var detection = await detector.DetectAsync(image, TestModel, LabelingPromptSettings.Default);
+
+        detection.Predictions.SectionLabel.ShouldBe("TEST 01");
+        detection.Predictions.Predictions.Select(p => p.Label).ShouldBe(["5", "ETKİNLİK 24", null]);
+        detection.Predictions.Predictions[0].Subpredictions.ShouldAllBe(o => o.Label == null);
+        chat.PageSchema!.ShouldContain("sectionLabel");
+        chat.PageSchema!.ShouldContain("\"label\"");
+
+        var json = JsonSerializer.Serialize(detection.Predictions);
+        json.ShouldContain("\"section_label\":\"TEST 01\"");
+        using var doc = JsonDocument.Parse(json);
+        doc.RootElement.GetProperty("predictions")[2].TryGetProperty("label", out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void PageInstruction_AsksForLabels_AndSchemaRevisionBumped()
+    {
+        LabelingPromptSettings.DefaultQuestionInstruction.ShouldContain("sectionLabel");
+        LabelingPromptSettings.SchemaRevision.ShouldBe(5);
+    }
 }

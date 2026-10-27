@@ -1,6 +1,7 @@
 {
   "worksheets": {
     "session": {
+      "pendingSolutionApproval": "Bu etkinlik henüz yayında değil (çözümleri onay bekliyor).",
       "accessDenied": "Bu sınava erişim izniniz yok.",
       "instanceQuestionNotFound": "Test sorusu bulunamadı.",
       "questionDataNotFound": "Worksheet için soru verisi bulunamadı.",
@@ -37,6 +38,7 @@
     },
 
     "assignment": {
+      "pendingSolutionApproval": "Bu etkinlikte çözümü henüz onaylanmamış (AI ya da cevap anahtarından gelen) maddeler var; onaylanmadan öğrenciye atanamaz.",
       "targetRequired": "En az bir hedef (öğrenci veya sınıf) seçilmelidir.",
       "studentAndGradeTogether": "Aynı atamada öğrenci ve sınıf birlikte seçilemez.",
       "endBeforeStart": "Bitiş zamanı başlangıç zamanından sonra olmalıdır.",

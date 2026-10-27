@@ -155,6 +155,123 @@ public class LabelingController : BaseController
         }
     }
 
+    /// <summary>
+    /// Issue #580: kitabın cevap anahtarı sayfasını Claude ile okur ve (kitap, dosya sayfası) başına saklar; aynı görsel + model +
+    /// <c>answerKey</c> talimatı için kayıtlı okuma ücretsiz döner (<c>origin=cached</c>). 400 geçersiz istek / sayfa cevap anahtarı
+    /// aralığında değil (<c>LabelingNotAnswerKeyPage</c>); 404 kitap yok; 409 sayfada öğretmen düzeltmesi var ve <c>force</c> istendi ama
+    /// <c>confirmOverwrite</c> yok (<c>LabelingAnswerKeyHasEdits</c>); 429 kota/bütçe; 502 Claude okuyamadı; 503 API anahtarı yok.
+    /// Düzeltmesi olan sayfa <c>force</c>'suz istekte yeniden okunmaz (<c>stale</c>).
+    /// </summary>
+    [HttpPost("answer-key/read")]
+    [RequestSizeLimit(32 * 1024 * 1024)]
+    public Task<IActionResult> ReadAnswerKey(
+        [FromBody] AnswerKeyReadRequestDto request, [FromServices] IActivitySolutionService solutions, CancellationToken ct) =>
+        HandleSolutionAsync(async () => Ok(await solutions.ReadAnswerKeyAsync(request, CurrentActor(), ct)),
+            "labeling.answerKey.aiFailed");
+
+    /// <summary>Issue #580: anahtar maddesini düzeltir (okuma hatası). 404 madde yok; 400 geçersiz alan.</summary>
+    [HttpPut("answer-key/entries/{id:int}")]
+    public Task<IActionResult> UpdateAnswerKeyEntry(
+        int id, [FromBody] AnswerKeyEntryUpdateRequestDto request, [FromServices] IActivitySolutionService solutions,
+        CancellationToken ct) =>
+        HandleSolutionAsync(async () => await solutions.UpdateEntryAsync(id, request, CurrentActor(), ct) is { } entry
+            ? Ok(entry)
+            : NotFound(Error("labeling.answerKey.entryNotFound")));
+
+    /// <summary>Issue #580: anahtar maddesini siler. 204; 404 madde yok.</summary>
+    [HttpDelete("answer-key/entries/{id:int}")]
+    public async Task<IActionResult> DeleteAnswerKeyEntry(int id, [FromServices] IActivitySolutionService solutions, CancellationToken ct) =>
+        await solutions.DeleteEntryAsync(id, CurrentActor(), ct) ? NoContent() : NotFound(Error("labeling.answerKey.entryNotFound"));
+
+    /// <summary>
+    /// Issue #580: taslak etkinliğin çözümü — <c>mode=key</c> seçilen anahtar maddeleri (metin + görsel kırpma) + etkinlik kırpması,
+    /// <c>mode=ai</c> yalnız etkinlik kırpması. Çözüm onay bekler (<c>status=pending</c>). Kayıtlı sonuç (aynı kırpma + plan + tip + mod +
+    /// anahtar girdisi + model, o modun talimatıyla) ücretsiz döner. 400 geçersiz istek / plan; 429; 503. Claude hatası 200 + <c>error</c>.
+    /// </summary>
+    [HttpPost("activity-solution")]
+    [RequestSizeLimit(32 * 1024 * 1024)]
+    public Task<IActionResult> SolveActivity(
+        [FromBody] ActivitySolutionRequestDto request, [FromServices] IActivitySolutionService solutions, CancellationToken ct) =>
+        HandleSolutionAsync(async () => Ok(Localize(await solutions.SolveAsync(request, CurrentActor(), ct))));
+
+    /// <summary>
+    /// Issue #580: kırpmanın kayıtlı çözüm taslakları (en son güncellenen önce, en çok 10) — yeniden açılışta geri yükleme.
+    /// <c>cropSha256</c> zorunlu (#579 <c>activity-structure</c> yanıtındaki <c>cropSha256</c>).
+    /// </summary>
+    [HttpGet("activity-solution")]
+    public Task<IActionResult> FindActivitySolutions(
+        [FromQuery] string? cropSha256, [FromQuery] string? interactionType, [FromQuery] string? planHash,
+        [FromServices] IActivitySolutionService solutions, CancellationToken ct) =>
+        HandleSolutionAsync(async () =>
+        {
+            var list = await solutions.FindSolutionsAsync(cropSha256, interactionType, planHash, ct);
+            return Ok(new ActivitySolutionListDto(list.Solutions.Select(Localize).ToList()));
+        });
+
+    /// <summary>
+    /// Issue #580: çözümü düzeltir (taslak planına göre geçerli olmalı). <c>approve=false</c>: kaynak aynı, durum pending;
+    /// <c>approve=true</c>: düzelten onaylar (kaynak Human). 404; 400 geçersiz çözüm.
+    /// </summary>
+    [HttpPut("activity-solution/{id:int}")]
+    public Task<IActionResult> UpdateActivitySolution(
+        int id, [FromBody] ActivitySolutionUpdateRequestDto request, [FromServices] IActivitySolutionService solutions,
+        CancellationToken ct) =>
+        HandleSolutionAsync(async () => await solutions.UpdateSolutionAsync(id, request, CurrentActor(), ct) is { } dto
+            ? Ok(Localize(dto))
+            : NotFound(Error("labeling.solution.notFound")));
+
+    /// <summary>
+    /// Issue #580: çözümü onaylar — onaylayan kullanıcı ve zaman kaydedilir. Yalnız Admin + QuestionTrainer (sınıf düzeyi; diğer
+    /// roller 403). 404; 400 geçersiz çözüm onaylanamaz.
+    /// </summary>
+    [HttpPost("activity-solution/{id:int}/approve")]
+    public Task<IActionResult> ApproveActivitySolution(int id, [FromServices] IActivitySolutionService solutions, CancellationToken ct) =>
+        HandleSolutionAsync(async () => await solutions.ApproveSolutionAsync(id, CurrentActor(), ct) is { } dto
+            ? Ok(Localize(dto))
+            : NotFound(Error("labeling.solution.notFound")));
+
+    private async Task<IActionResult> HandleSolutionAsync(Func<Task<IActionResult>> action, string aiFailedKey = "labeling.solution.aiFailed")
+    {
+        try
+        {
+            return await action();
+        }
+        catch (LabelingValidationException ex)
+        {
+            return BadRequest(Error(ex.Message));
+        }
+        catch (LabelingNotAnswerKeyPageException ex)
+        {
+            return BadRequest(Error(ex.Message, "LabelingNotAnswerKeyPage"));
+        }
+        catch (LabelingNotFoundException ex)
+        {
+            return NotFound(Error(ex.Message));
+        }
+        catch (LabelingAnswerKeyHasEditsException ex)
+        {
+            return Conflict(Error(ex.Message, "LabelingAnswerKeyHasEdits"));
+        }
+        catch (LabelingRateLimitException ex)
+        {
+            return RateLimited(ex);
+        }
+        catch (LabelingAiUnavailableException)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, Error("labeling.aiUnavailable", "LabelingAiUnavailable"));
+        }
+        catch (LabelingAiException)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, Error(aiFailedKey, "LabelingAiFailed"));
+        }
+    }
+
+    private LabelingActivitySolutionDto Localize(LabelingActivitySolutionDto dto) => dto with
+    {
+        Error = dto.Error is null ? null : _localizer[dto.Error].Value,
+        ValidationErrors = dto.ValidationErrors.Select(key => _localizer[key].Value).ToList(),
+    };
+
     /// <summary>Eğitime gönderilen son hal (Manuel) + o anki YOLO tahmini (Model). Güncel sayfa kaydını döner.</summary>
     [HttpPut("pages/manual")]
     [RequestSizeLimit(32 * 1024 * 1024)]

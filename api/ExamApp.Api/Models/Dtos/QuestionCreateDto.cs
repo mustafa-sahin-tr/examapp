@@ -69,6 +69,25 @@ public class BulkQuestionDto
     /// </summary>
     [MaxLength(ExamApp.Api.Helpers.InteractionPlanSolution.MaxSolutionLength)]
     public string? InteractionSolution { get; set; }
+
+    /// <summary>Issue #580: çözüm kaynağı <c>Key</c> | <c>AI</c> | <c>Human</c> (boş = Human); Key/AI onay bekler.</summary>
+    [MaxLength(16)]
+    public string? SolutionSource { get; set; }
+
+    /// <summary>Issue #580: true + çağıran Admin/QuestionTrainer → Key/AI çözümü onaylı kaydedilir.</summary>
+    public bool? SolutionApproved { get; set; }
+
+    /// <summary>Issue #580: Key/AI çözümünü üreten talimat sürümü.</summary>
+    [System.ComponentModel.DataAnnotations.Range(0, int.MaxValue)]
+    public int? SolutionPromptVersion { get; set; }
+
+    /// <summary>
+    /// Issue #580: işaretleme ekranındaki taslak çözümün id'si (<c>POST api/labeling/activity-solution</c> → <c>draftSolutionId</c>).
+    /// Verilirse kaynak/onay/sürüm sunucuda bu taslaktan türetilir (<see cref="SolutionSource"/> yok sayılır); taslağın tipi ve çözümü
+    /// (taslak id'leriyle) gönderilenle aynı olmalı, yoksa 400 <c>questions.solution.draftMismatch</c>. Onaylı yalnız taslak onaylıysa.
+    /// </summary>
+    public int? DraftSolutionId { get; set; }
+
     public bool ShowPassageFirst { get; set; }
     public bool IsExample { get; set; } // EF'de `IsExample`
     public string? ExampleAnswer { get; set; } // EF'de `PracticeCorrectAnswer`

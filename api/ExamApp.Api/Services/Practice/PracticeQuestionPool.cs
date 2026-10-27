@@ -30,7 +30,9 @@ internal static class PracticeQuestionPool
             .Where(q => q.TopicId == null || q.Topic.GradeId == gradeId)
             // Pratik değerlendirmesi SelectedAnswerId <-> CorrectAnswerId karşılaştırmasına dayanır;
             // sürükle-bırak gibi CorrectAnswerId'siz etkileşim tipleri bu MVP'de değerlendirilemez.
-            .Where(q => q.CorrectAnswerId != null);
+            .Where(q => q.CorrectAnswerId != null)
+            // issue #580: onaylanmamış (AI / cevap anahtarı) çözümlü soru pratiğe çıkmaz.
+            .Where(q => q.SolutionStatus != SolutionStatus.Pending);
 
         if (subjectIds.Count > 0)
             pool = pool.Where(q => q.SubjectId != null && subjectIds.Contains(q.SubjectId.Value));

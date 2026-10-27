@@ -28,6 +28,7 @@ import {
   MatrixSelections,
   emptyMatrixSelections,
   parseMatrixChoicePlan,
+  parseMatrixChoiceSolution,
 } from '../../models/matrix-choice';
 import {
   SLOT_FILL,
@@ -37,6 +38,7 @@ import {
   SlotKind,
   SlotPalettePreset,
   parseSlotFillPlan,
+  parseSlotFillSolution,
 } from '../../models/slot-fill';
 import { isSlotAnswerCorrect } from '../../shared/utils/slot-normalizer';
 import {
@@ -58,9 +60,11 @@ import {
   slotIssues,
   slotFillStateFromPlan,
   slotSolution,
+  slotWithSolution,
+  slotWithoutSolution,
 } from './slot-fill-authoring';
-import { DRAG_PLACE, DragPlaceMode, parseDragPlacePlan } from '../../models/drag-place';
-import { MATCH, MatchSide, parseMatchPlan } from '../../models/match';
+import { DRAG_PLACE, DragPlaceMode, parseDragPlacePlan, parseDragPlaceSolution } from '../../models/drag-place';
+import { MATCH, MatchSide, parseMatchPlan, parseMatchSolution } from '../../models/match';
 import { InteractionBox } from '../../models/interaction-ids';
 import {
   DragPlaceAuthoringState,
@@ -532,6 +536,16 @@ export class ImageSelectorComponent {
   public matchState = new Map<string, MatchAuthoringState>();
   /** Issue #579: bölge + tip → son uygulanan taslaktan sonraki yazarlık izi (elle düzeltme ayrımı). */
   private draftFingerprints = new Map<string, string>();
+  /**
+   * Issue #580: bölgeye uygulanan taslak çözümün sunucu kaydı ve uygulandığı andaki çözüm JSON'u. Kayıtta (`getRegions`)
+   * yalnız tuvaldeki çözüm hâlâ aynıysa `draftSolutionId` gider (sunucu kaynak / onay durumunu bu kayıttan türetir).
+   */
+  private draftSolutionLinks = new Map<string, { id: number; solutionJson: string | null }>();
+  /** Issue #580: tespitin blok başına basılı etiketi (etkinlik etiketi / soru numarası) ve sayfanın bölüm başlığı. */
+  private blockLabels = new Map<string, string>();
+  public readonly sectionLabel = signal<string | null>(null);
+  /** Issue #580: cevap anahtarı sayfasında görsel cevap kutuları (salt çizim). */
+  private answerKeyOverlays: Array<{ box: InteractionBox; tag: string }> = [];
   /**
    * Issue #578: bölge adına göre blok türü (+ etkinlik bileşeni). Kayıt yoksa `mcq_question`. `info_box` / `answer_key` /
    * `noise` kırpılmaz (eğitime, bankaya, teste gitmez); `activity` etkileşimli soru gibi eğitime gitmez.
@@ -2113,6 +2127,7 @@ export class ImageSelectorComponent {
       this.drawSlotFillOverlays();
       this.drawDragPlaceOverlays();
       this.drawMatchOverlays();
+      this.drawAnswerKeyOverlays();
     }
   }
 
@@ -2803,6 +2818,158 @@ export class ImageSelectorComponent {
     if (this.isAuthoringEmpty(regionName, type)) return false;
     const applied = this.draftFingerprints.get(`${regionName}\u0000${type}`);
     return applied === undefined || applied !== this.authoringFingerprint(regionName, type);
+  }
+
+  /**
+   * Issue #580: taslak çözümü (anahtardan / AI) bölgenin o tipteki yazarlığına yazar — matris işaretleri, kutu değerleri,
+   * yerleşimler, eşleşmeler; tuvalde çizilir. Yalnız güncel planda olan id'ler alınır. `applyInteractionDraft` ile aynı
+   * kural: son uygulanan taslaktan (plan ya da çözüm) sonra elle değişiklik varsa `'kept'` (değişmez), `replace` yine de
+   * yazar; yazarlık boşsa ya da çözümden hiçbir şey bu plana uymuyorsa `'invalid'`.
+   */
+  public applyInteractionSolution(
+    regionName: string,
+    type: BlockInteractionType,
+    solution: unknown,
+    options: { replace?: boolean } = {}
+  ): InteractionDraftApply {
+    if (!this.regions().some((r) => r.name === regionName) || this.getInteractionType(regionName) !== type) return 'invalid';
+    if (!solution || typeof solution !== 'object' || Array.isArray(solution) || this.isAuthoringEmpty(regionName, type)) {
+      return 'invalid';
+    }
+    let json: string;
+    try {
+      json = JSON.stringify(solution);
+    } catch {
+      return 'invalid';
+    }
+    const apply = this.solutionLoader(regionName, type, json);
+    if (!apply) return 'invalid';
+    if (!options.replace && this.hasAuthoringEdits(regionName, type)) return 'kept';
+    apply();
+    this.draftFingerprints.set(`${regionName}\u0000${type}`, this.authoringFingerprint(regionName, type) ?? '');
+    this.regions.set([...this.regions()]);
+    this.drawImage();
+    return 'applied';
+  }
+
+  /**
+   * Issue #580: bölgenin tuvaldeki çözümü bu taslak çözüm kaydından (id) geliyor; null bağı kaldırır. Çağrı anındaki çözüm
+   * saklanır; sonradan elle değişirse kayıtta id gönderilmez.
+   */
+  public setDraftSolution(regionName: string, draftSolutionId: number | null): void {
+    if (draftSolutionId == null) {
+      this.draftSolutionLinks.delete(regionName);
+      return;
+    }
+    this.draftSolutionLinks.set(regionName, { id: draftSolutionId, solutionJson: this.buildInteractionSolutionJson(regionName) });
+  }
+
+  /** Issue #580: tespitin bu bloğa verdiği basılı etiket (yoksa null). */
+  public getBlockLabel(regionName: string): string | null {
+    return this.blockLabels.get(regionName) ?? null;
+  }
+
+  /** Kayıtta gönderilecek taslak çözüm id'si: bağ var ve tuvaldeki çözüm uygulanan haliyle aynı. */
+  public draftSolutionIdFor(regionName: string): number | null {
+    const link = this.draftSolutionLinks.get(regionName);
+    if (!link || !isBlockInteractionType(this.getInteractionType(regionName))) return null;
+    return link.solutionJson === this.buildInteractionSolutionJson(regionName) ? link.id : null;
+  }
+
+  /** Bölgenin güncel çözümü (yazarlıktan; yoksa null) — elle düzeltme kaydı ve karşılaştırma için. */
+  public getInteractionSolution(regionName: string): Record<string, unknown> | null {
+    const json = this.buildInteractionSolutionJson(regionName);
+    if (!json) return null;
+    try {
+      const parsed = JSON.parse(json) as unknown;
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Bölgenin güncel planı (yazarlıktan; çözümsüz) — çözüm isteği bu planın id'lerine göre yazılır. */
+  public getInteractionPlan(regionName: string): Record<string, unknown> | null {
+    if (!isBlockInteractionType(this.getInteractionType(regionName))) return null;
+    const json = this.buildInteractionPlanJson(regionName);
+    if (!json) return null;
+    try {
+      const parsed = JSON.parse(json) as unknown;
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Çözümü güncel plana göre ayrıştırır; plana uyan en az bir giriş varsa yazan işlev, yoksa null. */
+  private solutionLoader(regionName: string, type: BlockInteractionType, json: string): (() => void) | null {
+    switch (type) {
+      case MATRIX_CHOICE: {
+        const state = this.ensureMatrixState(regionName);
+        const selections = parseMatrixChoiceSolution(json, this.buildMatrixPlan(regionName));
+        const solution = emptyMatrixSelections();
+        Object.keys(selections).forEach((rowId) => {
+          solution[rowId] = state.multiPerRow ? selections[rowId] : selections[rowId].slice(0, 1);
+        });
+        if (Object.keys(solution).length === 0) return null;
+        return () => this.matrixState.set(regionName, { ...state, solution });
+      }
+      case SLOT_FILL: {
+        const state = this.ensureSlotFillState(regionName);
+        const map = parseSlotFillSolution(json, buildSlotFillPlan(state));
+        if (!state.slots.some((slot) => Object.hasOwn(map, slot.id))) return null;
+        // Çözümde olmayan kutunun eski değeri silinir (kısmi çözüm eski değerlerle karışmasın).
+        const slots = state.slots.map((slot) =>
+          Object.hasOwn(map, slot.id) ? slotWithSolution(slot, map[slot.id]) : slotWithoutSolution(slot)
+        );
+        return () => this.slotFillState.set(regionName, { ...state, slots });
+      }
+      case DRAG_PLACE: {
+        const state = this.ensureDragPlaceState(regionName);
+        const solution = parseDragPlaceSolution(json, buildDragPlacePlan(state));
+        if (Object.keys(solution).length === 0) return null;
+        return () => this.dragPlaceState.set(regionName, { ...state, solution });
+      }
+      case MATCH: {
+        const state = this.ensureMatchState(regionName);
+        const map = parseMatchSolution(json, buildMatchPlan(state));
+        const open = Object.keys(map).filter((leftId) => !state.prelinked.includes(leftId));
+        if (open.length === 0) return null;
+        // Örnek (önceden bağlı) çiftler korunur; çözüm yalnız açık sollara yazılır, bir sağ öğe en çok bir sola.
+        const pairs = Object.create(null) as Record<string, string>;
+        state.prelinked.forEach((leftId) => {
+          if (Object.hasOwn(state.pairs, leftId)) pairs[leftId] = state.pairs[leftId];
+        });
+        const usedRight = new Set(Object.values(pairs));
+        open.forEach((leftId) => {
+          const rightId = map[leftId];
+          if (usedRight.has(rightId)) return;
+          usedRight.add(rightId);
+          pairs[leftId] = rightId;
+        });
+        return () => this.matchState.set(regionName, { ...state, pairs });
+      }
+    }
+  }
+
+  /**
+   * Issue #580: cevap anahtarı sayfasında görsel cevapların kutuları (sayfa pikseli, salt çizim; seçilemez / eğitime
+   * gitmez). Boş liste temizler.
+   */
+  public setAnswerKeyOverlays(boxes: Array<{ box: InteractionBox; tag: string }>): void {
+    this.answerKeyOverlays = boxes.map((b) => ({ box: { ...b.box }, tag: b.tag }));
+    this.drawImage();
+  }
+
+  public getAnswerKeyOverlays(): ReadonlyArray<{ box: InteractionBox; tag: string }> {
+    return this.answerKeyOverlays;
+  }
+
+  private drawAnswerKeyOverlays() {
+    const color = this.getThemeColors().kinds.answer_key;
+    for (const overlay of this.answerKeyOverlays) {
+      this.drawTaggedBox(overlay.box.x, overlay.box.y, overlay.box, color, overlay.tag, { dashed: true, fill: 0.08 });
+    }
   }
 
   /** Taslak planı ayrıştırır; geçerliyse durumu yazan işlev (henüz yazmaz), değilse null. */
@@ -4409,6 +4576,9 @@ export class ImageSelectorComponent {
       });
     // Yeni tespit bölgeleri baştan kurar: önceki tespitin tür / etkileşim tipleri (aynı adlı) yeni kutulara taşınmasın.
     this.blockKinds.clear();
+    this.draftSolutionLinks.clear();
+    this.blockLabels.clear();
+    this.sectionLabel.set(questions.section_label?.trim() || null);
     this.carriedBlocks = null;
     this.interactionTypes.clear();
     this.labelingState.clear();
@@ -4420,7 +4590,7 @@ export class ImageSelectorComponent {
     this.regions.set(
       sorted
         // Issue #578: tür alanları bölgeye kopyalanmaz (soru kaydına gitmesin), `blockKinds`'te tutulur.
-        .map(({ kind: _kind, component: _component, interaction_type: _type, ...q }, index) => ({
+        .map(({ kind: _kind, component: _component, interaction_type: _type, label: _label, ...q }, index) => ({
           ...q,
           name: `Soru ${index + 1}`,
           answers: q.subpredictions
@@ -4445,7 +4615,11 @@ export class ImageSelectorComponent {
           imageUrl: '',
         }))
     );
-    sorted.forEach((prediction, index) => this.applyPredictedKind(`Soru ${index + 1}`, prediction));
+    sorted.forEach((prediction, index) => {
+      this.applyPredictedKind(`Soru ${index + 1}`, prediction);
+      const label = typeof prediction.label === 'string' ? prediction.label.trim() : '';
+      if (label) this.blockLabels.set(`Soru ${index + 1}`, label);
+    });
     this.detectionRevision.update((n) => n + 1);
 
     const questionCount = this.regions().length;
@@ -4590,6 +4764,7 @@ export class ImageSelectorComponent {
         interactionType: this.getInteractionType(region.name),
         interactionPlan: this.buildInteractionPlanJson(region.name),
         interactionSolution: this.buildInteractionSolutionJson(region.name),
+        ...(this.draftSolutionIdFor(region.name) != null ? { draftSolutionId: this.draftSolutionIdFor(region.name) } : {}),
       })),
       header: header,
     };
@@ -4606,6 +4781,9 @@ export class ImageSelectorComponent {
     this.selectedPassageMap.clear();
     this.interactionTypes.clear();
     this.blockKinds.clear();
+    this.draftSolutionLinks.clear();
+    this.blockLabels.clear();
+    this.sectionLabel.set(null);
     this.carriedBlocks = null;
     this.labelingState.clear();
     this.matrixState.clear();
@@ -4738,6 +4916,8 @@ export class ImageSelectorComponent {
     for (const key of [...this.draftFingerprints.keys()]) {
       if (key.startsWith(`${regionName}\u0000`)) this.draftFingerprints.delete(key);
     }
+    this.draftSolutionLinks.delete(regionName);
+    this.blockLabels.delete(regionName);
     this.warningMarkers = this.warningMarkers.filter((w) => w.id !== this.regions()[questionIndex].id);
     this.regions.set(this.regions().filter((_, index) => index !== questionIndex));
 

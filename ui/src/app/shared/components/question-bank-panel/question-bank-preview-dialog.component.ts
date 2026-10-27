@@ -4,6 +4,21 @@ import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { QuestionBankItem } from '../../../models/question-bank';
 
+/**
+ * Issue #580: çözüm onayı önizlemeden yapılır — `approve` ile açılan diyalog soruyu, çözümün kaynağını ve üreten talimat
+ * sürümünü gösterir; "Onayla" diyaloğu `'approve'` ile kapatır.
+ */
+export interface QuestionBankPreviewData {
+  item: QuestionBankItem;
+  approve: true;
+}
+
+export type QuestionBankPreviewResult = 'approve' | undefined;
+
+function isApproveData(data: QuestionBankItem | QuestionBankPreviewData): data is QuestionBankPreviewData {
+  return (data as QuestionBankPreviewData).approve === true;
+}
+
 /** Panelle aynı scope adı (panel dosyasından import döngüsel olurdu). */
 const QUESTION_BANK_SCOPE = 'question-bank';
 
@@ -34,9 +49,22 @@ const QUESTION_BANK_SCOPE = 'question-bank';
             · {{ st.name }}
           }
         </p>
+        @if (approve) {
+          <p class="qb-preview__solution">
+            {{ t('card.solutionPending') }}
+            @if (item.solutionSource === 'Key' || item.solutionSource === 'AI') { · {{ t('card.solutionSources.' + item.solutionSource) }} }
+            @if (item.solutionPromptVersion != null) {
+              · <span class="qb-preview__prompt">{{ t('card.solutionPromptVersion', { version: item.solutionPromptVersion }) }}</span>
+            }
+          </p>
+          <p class="qb-preview__hint">{{ t('preview.approveHint') }}</p>
+        }
       </mat-dialog-content>
       <mat-dialog-actions align="end">
         <button mat-button mat-dialog-close>{{ t('preview.close') }}</button>
+        @if (approve) {
+          <button mat-flat-button class="qb-preview__approve" [mat-dialog-close]="'approve'">{{ t('preview.approve') }}</button>
+        }
       </mat-dialog-actions>
     </ng-container>
   `,
@@ -50,12 +78,16 @@ const QUESTION_BANK_SCOPE = 'question-bank';
       background: var(--whiteColor);
     }
     .qb-preview__meta,
-    .qb-preview__empty {
+    .qb-preview__empty,
+    .qb-preview__solution,
+    .qb-preview__hint {
       color: var(--ms-text-medium);
       font-family: var(--paragraphFontFamily);
     }
   `,
 })
 export class QuestionBankPreviewDialogComponent {
-  readonly item = inject<QuestionBankItem>(MAT_DIALOG_DATA);
+  private readonly data = inject<QuestionBankItem | QuestionBankPreviewData>(MAT_DIALOG_DATA);
+  readonly item: QuestionBankItem = isApproveData(this.data) ? this.data.item : this.data;
+  readonly approve = isApproveData(this.data);
 }

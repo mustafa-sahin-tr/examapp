@@ -17,6 +17,7 @@
     "promptRequired": "Talimatlar boş olamaz.",
     "promptTooLong": "Talimat en fazla 4000 karakter olabilir.",
     "invalidPadding": "Pay 0-50 piksel arasında olmalı.",
+    "invalidLabel": "Etiket en fazla 64 karakter olabilir ve kontrol karakteri içeremez.",
     "bank": {
       "noQuestions": "Kaydedilecek soru yok.",
       "invalidOptions": "Her sorunun 2-10 şıkkı olmalı.",
@@ -72,6 +73,27 @@
         "matchItems": "İki kolonda da en az bir öğe olmalı.",
         "matchAllPrelinked": "Öğrencinin eşleştireceği en az bir öğe kalmalı (hepsi örnek olamaz)."
       }
+    },
+    "answerKey": {
+      "notAnswerKeyPage": "Bu sayfa kitabın cevap anahtarı aralığında değil.",
+      "aiFailed": "Claude bu cevap anahtarı sayfasını okuyamadı. Tekrar deneyin ya da başka bir model seçin.",
+      "entryNotFound": "Cevap anahtarı maddesi bulunamadı.",
+      "answerRequired": "Görsel olmayan maddenin cevabı boş olamaz.",
+      "hasEdits": "Bu cevap anahtarı sayfasında öğretmen düzeltmeleri var; yeniden okumak bunları siler. Onaylıyorsanız yeniden deneyin.",
+      "invalidLookup": "1 ile 60 arasında öğe gönderin; her öğenin tekil bir kimliği (≤ 64 karakter) ve en çok 64 karakterlik etiketleri olmalı."
+    },
+    "solution": {
+      "aiFailed": "Claude bu etkinliğin çözümünü üretemedi. Tekrar deneyin ya da elle girin.",
+      "invalid": "Çözüm bu haliyle kaydedilemez; her maddenin cevabını kontrol edin.",
+      "invalidMode": "Çözüm modu key ya da ai olmalı.",
+      "invalidPlan": "Etkinlik taslağı geçersiz; önce yapısını düzeltin.",
+      "invalidSolution": "Çözüm taslağın yapısına uymuyor.",
+      "keyRequired": "Anahtardan çözüm için 1 ile 60 arasında cevap anahtarı maddesi seçin.",
+      "keyEntryNotFound": "Seçilen cevap anahtarı maddelerinden biri bulunamadı.",
+      "tooManyKeyEntries": "En fazla 60 cevap anahtarı maddesi seçilebilir.",
+      "tooManyKeyImages": "En fazla 8 görsel cevap seçilebilir.",
+      "notFound": "Çözüm taslağı bulunamadı.",
+      "cannotApproveInvalid": "Geçersiz çözüm onaylanamaz; önce düzeltin."
     }
   }
 }

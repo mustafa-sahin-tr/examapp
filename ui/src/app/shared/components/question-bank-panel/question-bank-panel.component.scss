@@ -162,4 +162,15 @@
     background: var(--ms-warning-surface-weak);
     color: var(--ms-text-strong);
   }
+
+  // Issue #580: onaylı etkinlik çözümü.
+  &--success {
+    background: var(--ms-success-surface-weak);
+    color: var(--ms-text-strong);
+  }
+}
+
+// Issue #580: "Onay bekleyen" filtre çipi diğer filtrelerle aynı satırda.
+.qb-pending-filter {
+  align-self: center;
 }

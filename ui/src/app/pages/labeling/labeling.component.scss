@@ -561,3 +561,156 @@
     align-self: flex-start;
   }
 }
+
+// Issue #580: cevap anahtarı satırları (anahtar sayfasında) ve etkinlik çözümü kartı.
+.lb-answer-key {
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+  }
+
+  button {
+    align-self: flex-start;
+  }
+}
+
+.lb-ak-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.lb-ak-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 6px;
+  padding: 4px 6px;
+  border: 1px solid var(--ms-border);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--ms-text);
+
+  &--visual {
+    border-style: dashed;
+    border-color: var(--ms-block-kind-answer-key);
+  }
+
+  &__label {
+    grid-column: 1;
+    color: var(--ms-text-weak);
+    font-size: 11px;
+  }
+
+  &__answer {
+    grid-column: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--paragraphFontFamily);
+    color: var(--ms-text);
+    overflow-wrap: anywhere;
+  }
+
+  &__visual {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    color: var(--ms-block-kind-answer-key);
+  }
+
+  &__actions {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    display: inline-flex;
+  }
+}
+
+.lb-ak-form {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  mat-form-field {
+    width: 100%;
+    font-size: 12px;
+  }
+}
+
+.lb-solution {
+  &__key-list {
+    margin: 0;
+    padding-left: 18px;
+    font-family: var(--paragraphFontFamily);
+    font-size: 12px;
+    color: var(--ms-text);
+  }
+
+  &__badges,
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+  }
+
+  &__source {
+    border-color: var(--ms-action-border);
+    background: var(--ms-action-background-weak);
+    color: var(--ms-action-text);
+  }
+
+  &__status--approved {
+    border-color: var(--ms-success-border);
+    background: var(--ms-success-surface);
+    color: var(--ms-success-text);
+  }
+
+  &__approver {
+    margin: 0;
+  }
+
+  &__error {
+    margin: 0;
+  }
+
+  button {
+    align-self: flex-start;
+  }
+}
+
+// Issue #580: toplu cevap anahtarı yükleme özeti ve sorunun anahtar durumu.
+.lb-ak-bulk__summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--ms-text);
+
+  span {
+    flex: 1;
+  }
+}
+
+.lb-ak-bulk__failed {
+  color: var(--ms-danger-text);
+  font-size: 12px;
+}
+
+.lb-mcq-key {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  p {
+    margin: 0;
+  }
+}

@@ -11,7 +11,7 @@ import {
     LabelingPrompt,
     LabelingPromptState,
 } from '../../../models/labeling';
-import { BlockInteractionType } from '../../../models/prediction';
+import { LabelingPromptKind } from '../../../models/labeling';
 import { LabelingService } from '../../../services/labeling.service';
 import { translocoTestingModule } from '../../../shared/testing/transloco-testing';
 import labelingTr from '../../../../../public/i18n/labeling/tr.json';
@@ -39,7 +39,7 @@ function state(overrides: Partial<LabelingPromptState> = {}): LabelingPromptStat
     };
 }
 
-function activityType(type: BlockInteractionType, version = 1): LabelingActivityPromptType {
+function activityType(type: LabelingPromptKind, version = 1): LabelingActivityPromptType {
     const active = { version, instruction: `${type} v${version}`, createdByName: 'Eğitmen', createdAt: '2026-10-26T00:00:00Z' };
     return {
         interactionType: type,
@@ -56,6 +56,9 @@ function activityState(): LabelingActivityPromptsState {
             activityType('slotFill', 0),
             activityType('dragPlace', 1),
             activityType('match', 1),
+            activityType('answerKey', 1),
+            activityType('solveFromKey', 0),
+            activityType('solveAi', 3),
         ],
     };
 }
@@ -354,6 +357,9 @@ describe('LabelingPromptDialogComponent', () => {
                 labelingTr.prompt.tabs.slotFill,
                 labelingTr.prompt.tabs.dragPlace,
                 labelingTr.prompt.tabs.match,
+                labelingTr.prompt.tabs.answerKey,
+                labelingTr.prompt.tabs.solveFromKey,
+                labelingTr.prompt.tabs.solveAi,
             ]);
         });
 
@@ -493,6 +499,71 @@ describe('LabelingPromptDialogComponent', () => {
             component.save();
 
             expect(dialogRef.close).toHaveBeenCalledWith({ kind: 'unchanged', version: 2 });
+        });
+    });
+
+    describe('çözüm talimatı sekmeleri (#580)', () => {
+        it('init_FillsThreeSolutionKindsFromActiveVersion', () => {
+            create();
+
+            expect(component.activityForms.answerKey.value).toBe('answerKey v1');
+            expect(component.activityForms.solveFromKey.value).toBe('solveFromKey v0');
+            expect(component.activityForms.solveAi.value).toBe('solveAi v3');
+        });
+
+        it('solutionTab_ShowsVersionAndOwnHint', () => {
+            create();
+            component.onTabChange(5);
+            fixture.detectChanges();
+
+            const tab = fixture.nativeElement.querySelector('.lp-activity[data-type="answerKey"]') as HTMLElement;
+            expect(tab.textContent).toContain('Etkin: v1');
+            expect(tab.textContent).toContain(labelingTr.prompt.solution.hints.answerKey);
+            expect(tab.textContent).not.toContain(labelingTr.prompt.activity.hint);
+        });
+
+        it('saveSelected_OnSolveAiTab_SavesThatKindAndClosesWithItsResult', () => {
+            create();
+            const saved = activityType('solveAi', 4).active;
+            api.saveActivityPrompt.mockReturnValue(of(saved));
+            component.onTabChange(7);
+            component.activityForms.solveAi.setValue('Yeni AI çözüm talimatı');
+
+            component.saveSelected();
+
+            expect(api.saveActivityPrompt).toHaveBeenCalledWith('solveAi', { instruction: 'Yeni AI çözüm talimatı' });
+            expect(dialogRef.close).toHaveBeenCalledWith({ kind: 'activity', interactionType: 'solveAi', prompt: saved });
+        });
+
+        it('loadVersionAndDefaults_OnAnswerKeyTab_FillOnlyThatKind', () => {
+            create();
+
+            component.loadActivityVersion('answerKey', 0);
+            component.resetActivityToDefaults('solveFromKey');
+
+            expect(component.activityForms.answerKey.value).toBe('answerKey eski');
+            expect(component.activityForms.solveFromKey.value).toBe('solveFromKey varsayılan');
+            expect(component.activityForms.solveAi.value).toBe('solveAi v3');
+        });
+
+        it('saveSolutionKind_SameVersion_ClosesAsUnchanged', () => {
+            create();
+            api.saveActivityPrompt.mockReturnValue(of(activityType('solveAi', 3).active));
+            component.onTabChange(7);
+
+            component.saveSelected();
+
+            expect(dialogRef.close).toHaveBeenCalledWith({ kind: 'unchanged', version: 3 });
+        });
+
+        it('serverOmitsSolutionKind_TabShowsMissingAndSaveDisabled', () => {
+            create(of(state()), of({ types: activityState().types.filter((t) => t.interactionType !== 'solveFromKey') }));
+            component.onTabChange(6);
+            fixture.detectChanges();
+
+            expect(component.canSaveSelected()).toBe(false);
+            const tab = fixture.nativeElement.querySelector('.lp-activity[data-type="solveFromKey"]') as HTMLElement;
+            expect(tab.textContent).toContain(labelingTr.prompt.activity.missing);
         });
     });
 });

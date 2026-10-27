@@ -3,7 +3,8 @@ import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from 
 import { By } from '@angular/platform-browser';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
-import { MatDialog } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { Subject, of, throwError } from 'rxjs';
 
@@ -71,10 +72,12 @@ describe('QuestionBankPanelComponent (issue #471)', () => {
     let fixture: ComponentFixture<QuestionBankPanelComponent>;
     let component: QuestionBankPanelComponent;
     let search: Mock;
+    let approveSolution: Mock;
     let dialogOpen: Mock;
 
     beforeEach(() => {
         search = vi.fn().mockName('search').mockReturnValue(of(EMPTY_PAGE));
+        approveSolution = vi.fn().mockName('approveSolution');
         dialogOpen = vi.fn().mockName('open');
 
         TestBed.overrideComponent(QuestionBankPanelComponent, {
@@ -85,7 +88,7 @@ describe('QuestionBankPanelComponent (issue #471)', () => {
             imports: [QuestionBankPanelComponent, translocoTestingModule({ langs: { 'question-bank/tr': qbTr, 'question-bank/en': qbEn } })],
             providers: [
                 provideNoopAnimations(),
-                { provide: QuestionBankService, useValue: { search } },
+                { provide: QuestionBankService, useValue: { search, approveSolution } },
                 { provide: MatDialog, useValue: { open: dialogOpen } },
             ],
         });
@@ -161,6 +164,7 @@ describe('QuestionBankPanelComponent (issue #471)', () => {
                 classified: null,
                 hasCorrectAnswer: null,
                 inTest: null,
+                solutionStatus: null,
                 skip: 0,
                 take: 24,
             });
@@ -635,5 +639,192 @@ describe('QuestionBankPanelComponent (issue #471)', () => {
             expect(vi.mocked(dialogOpen).mock.lastCall![1].data.id).toBe(5);
             fixture.destroy();
         });
+    });
+
+    describe('çözüm onayı (#580)', () => {
+        const pending = (id: number, source: QuestionBankItem['solutionSource'] = 'AI') =>
+            makeItem(id, { solutionStatus: 'pending', solutionSource: source, solutionPromptVersion: 4 });
+
+        function snack(): Mock {
+            return vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue(undefined as never) as unknown as Mock;
+        }
+
+        it('pendingChip_Selected_SendsSolutionStatusPendingAndResetsPage', async () => {
+            await settle();
+            component.onPage({ pageIndex: 2, pageSize: 24, length: 100 });
+            await settle();
+
+            component.setPendingSolutionsOnly(true);
+            await settle();
+
+            expect(lastFilter()).toMatchObject({ solutionStatus: 'pending', skip: 0 });
+            component.setPendingSolutionsOnly(false);
+            await settle();
+            expect(lastFilter()['solutionStatus']).toBeNull();
+            fixture.destroy();
+        });
+
+        it('template_PendingChip_ClickTogglesFilter', async () => {
+            await settle();
+
+            (fixture.nativeElement.querySelector('.qb-pending-filter__chip .mdc-evolution-chip__action--primary') as HTMLElement).click();
+            await settle();
+
+            expect(component.pendingSolutionsOnly()).toBe(true);
+            expect(lastFilter()).toMatchObject({ solutionStatus: 'pending' });
+            fixture.destroy();
+        });
+
+        it('template_PendingBadgeWithSource_ApprovedTagOnlyForGeneratedSolutions', async () => {
+            search.mockReturnValue(of(makePage([
+                pending(1, 'Key'),
+                makeItem(2, { solutionStatus: 'approved', solutionSource: 'AI' }),
+                makeItem(3, { solutionStatus: 'approved', solutionSource: 'Human' }),
+                makeItem(4),
+            ])));
+            await settle();
+
+            const cards = fixture.nativeElement.querySelectorAll('.qb-card') as NodeListOf<HTMLElement>;
+            expect(cards[0].querySelector('.qb-card__solution-pending')?.textContent?.replace(/\s+/g, ' ').trim())
+                .toBe(`${qbTr.card.solutionPending} · ${qbTr.card.solutionSources.Key} · v4`);
+            expect(cards[1].querySelector('.qb-card__solution-approved')?.textContent).toContain(qbTr.card.solutionApprovedTag);
+            expect(cards[2].querySelector('.qb-card__solution-approved')).toBeNull();
+            expect(cards[3].querySelector('.qb-card__solution-pending, .qb-card__solution-approved')).toBeNull();
+            fixture.destroy();
+        });
+
+        it('approveAction_OnlyWhenAllowedPendingOwnOrAdminAndNotSelecting', async () => {
+            search.mockReturnValue(of(makePage([pending(1), makeItem(2), makeItem(3, { solutionStatus: 'pending', solutionSource: 'AI', isOwn: false })])));
+            await settle();
+            expect(fixture.nativeElement.querySelector('.qb-card__approve')).toBeNull();
+
+            fixture.componentRef.setInput('canApproveSolutions', true);
+            await settle();
+            // QuestionTrainer yalnız kendi sorusunu onaylar.
+            expect(fixture.nativeElement.querySelectorAll('.qb-card__approve').length).toBe(1);
+
+            fixture.componentRef.setInput('canApproveOthersSolutions', true);
+            await settle();
+            expect(fixture.nativeElement.querySelectorAll('.qb-card__approve').length).toBe(2);
+
+            fixture.componentRef.setInput('selectable', true);
+            await settle();
+            expect(fixture.nativeElement.querySelector('.qb-card__approve')).toBeNull();
+            fixture.destroy();
+        });
+
+        it('approveClick_OpensPreviewWithApprove_ApprovesOnlyWhenConfirmedThere', async () => {
+            fixture.componentRef.setInput('canApproveSolutions', true);
+            search.mockReturnValue(of(makePage([pending(1)])));
+            approveSolution.mockReturnValue(of({ questionId: 1, solutionSource: 'AI', solutionStatus: 'approved' }));
+            snack();
+            await settle();
+            dialogOpen.mockReturnValueOnce({ afterClosed: () => of(undefined) });
+
+            (fixture.nativeElement.querySelector('.qb-card__approve') as HTMLButtonElement).click();
+
+            const [dialogComponent, config] = vi.mocked(dialogOpen).mock.lastCall!;
+            expect(dialogComponent).toBe(QuestionBankPreviewDialogComponent);
+            expect(config.data).toEqual({ item: component.page().items[0], approve: true });
+            expect(approveSolution).not.toHaveBeenCalled();
+
+            dialogOpen.mockReturnValueOnce({ afterClosed: () => of('approve') });
+            (fixture.nativeElement.querySelector('.qb-card__approve') as HTMLButtonElement).click();
+            expect(approveSolution).toHaveBeenCalledWith(1);
+            fixture.destroy();
+        });
+
+        it('approve_Success_ItemApprovedAndSnackbar', async () => {
+            fixture.componentRef.setInput('canApproveSolutions', true);
+            search.mockReturnValue(of(makePage([pending(1)])));
+            approveSolution.mockReturnValue(of({
+                questionId: 1, solutionSource: 'AI', solutionStatus: 'approved', solutionPromptVersion: 3,
+                solutionApprovedByName: 'Ayşe', solutionApprovedAt: '2026-10-27T00:00:00Z',
+            }));
+            const open = snack();
+            await settle();
+
+            dialogOpen.mockReturnValueOnce({ afterClosed: () => of('approve') });
+            (fixture.nativeElement.querySelector('.qb-card__approve') as HTMLButtonElement).click();
+            fixture.detectChanges();
+
+            expect(approveSolution).toHaveBeenCalledWith(1);
+            expect(component.page().items[0].solutionStatus).toBe('approved');
+            expect(fixture.nativeElement.querySelector('.qb-card__approve')).toBeNull();
+            expect(fixture.nativeElement.querySelector('.qb-card__solution-approved')).not.toBeNull();
+            expect(open).toHaveBeenCalledWith(qbTr.card.solutionApproved, qbTr.card.close, expect.any(Object));
+            fixture.destroy();
+        });
+
+        it('approve_WithPendingFilter_RemovesItemAndDecrementsTotal', async () => {
+            fixture.componentRef.setInput('canApproveSolutions', true);
+            component.setPendingSolutionsOnly(true);
+            search.mockReturnValue(of(makePage([pending(1), pending(2)], 5)));
+            approveSolution.mockReturnValue(of({ questionId: 1, solutionSource: 'AI', solutionStatus: 'approved' }));
+            snack();
+            await settle();
+
+            component.approveSolution(component.page().items[0]);
+
+            expect(component.page().items.map((i) => i.id)).toEqual([2]);
+            expect(component.page().total).toBe(4);
+            fixture.destroy();
+        });
+
+        it('approve_Errors_ShowServerMessageOrForbidden_ItemStaysPending', async () => {
+            fixture.componentRef.setInput('canApproveSolutions', true);
+            search.mockReturnValue(of(makePage([pending(1)])));
+            const open = snack();
+            await settle();
+
+            approveSolution.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 400, error: { message: 'Onaylanacak çözüm yok.' } })));
+            component.approveSolution(component.page().items[0]);
+            expect(open).toHaveBeenLastCalledWith('Onaylanacak çözüm yok.', qbTr.card.close, expect.any(Object));
+
+            approveSolution.mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 403 })));
+            component.approveSolution(component.page().items[0]);
+            expect(open).toHaveBeenLastCalledWith(qbTr.card.solutionForbidden, qbTr.card.close, expect.any(Object));
+
+            expect(component.page().items[0].solutionStatus).toBe('pending');
+            expect(component.isApproving(component.page().items[0])).toBe(false);
+            fixture.destroy();
+        });
+
+        it('approve_NotAllowed_NoCall', async () => {
+            search.mockReturnValue(of(makePage([pending(1)])));
+            await settle();
+
+            component.approveSolution(component.page().items[0]);
+
+            expect(approveSolution).not.toHaveBeenCalled();
+            fixture.destroy();
+        });
+    });
+});
+
+describe('QuestionBankPreviewDialogComponent (#580 onay)', () => {
+    function create(data: unknown) {
+        TestBed.configureTestingModule({
+            imports: [QuestionBankPreviewDialogComponent, translocoTestingModule({ langs: { 'question-bank/tr': qbTr } })],
+            providers: [provideNoopAnimations(), { provide: MAT_DIALOG_DATA, useValue: data }, { provide: MatDialogRef, useValue: { close: vi.fn() } }],
+        });
+        const fixture = TestBed.createComponent(QuestionBankPreviewDialogComponent);
+        fixture.detectChanges();
+        return fixture.nativeElement as HTMLElement;
+    }
+
+    it('plainPreview_NoApproveButtonOrSolutionLine', () => {
+        const el = create(makeItem(3));
+
+        expect(el.querySelector('.qb-preview__approve')).toBeNull();
+        expect(el.querySelector('.qb-preview__solution')).toBeNull();
+    });
+
+    it('approvePreview_ShowsSourcePromptVersionAndApproveButton', () => {
+        const el = create({ item: makeItem(3, { solutionStatus: 'pending', solutionSource: 'Key', solutionPromptVersion: 7 }), approve: true });
+
+        expect(el.querySelector('.qb-preview__solution')?.textContent).toContain(qbTr.card.solutionSources.Key);
+        expect(el.querySelector('.qb-preview__prompt')?.textContent).toContain('v7');
+        expect(el.querySelector('.qb-preview__approve')?.textContent).toContain(qbTr.preview.approve);
     });
 });

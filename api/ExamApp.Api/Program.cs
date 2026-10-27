@@ -294,6 +294,7 @@ builder.Services.AddScoped<IQuestionService, QuestionService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionClassificationService, ExamApp.Api.Services.Questions.QuestionClassificationService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionQueryService, ExamApp.Api.Services.Questions.QuestionQueryService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionTestLinkService, ExamApp.Api.Services.Questions.QuestionTestLinkService>();
+builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionSolutionApprovalService, ExamApp.Api.Services.Questions.QuestionSolutionApprovalService>(); // issue #580
 builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionOwnershipGuard, ExamApp.Api.Services.Questions.QuestionOwnershipGuard>(); // issue #287 H1
 builder.Services.AddScoped<IAuthApiClient, AuthApiClient>();
 // issue #265: dashboard gün sınırı yerel takvim (Dashboard:TimeZone, varsayılan Europe/Istanbul; geçersiz kimlik başlangıçta
@@ -401,6 +402,9 @@ builder.Services.AddScoped<ExamApp.Api.Services.Labeling.IBookRegistryService, E
 // issue #579: etkinlik yapısı (blok başına tipine göre Claude çağrısı); anahtar boşsa canlı çağrı 503.
 builder.Services.AddSingleton<ExamApp.Api.Services.Labeling.IActivityStructureExtractor, ExamApp.Api.Services.Labeling.ClaudeActivityStructureExtractor>();
 builder.Services.AddScoped<ExamApp.Api.Services.Labeling.IActivityStructureService, ExamApp.Api.Services.Labeling.ActivityStructureService>();
+// issue #580: cevap anahtarı okuma + etkinlik taslağı çözümü (Claude); anahtar boşsa canlı çağrı 503.
+builder.Services.AddSingleton<ExamApp.Api.Services.Labeling.IActivitySolutionAi, ExamApp.Api.Services.Labeling.ClaudeActivitySolutionAi>();
+builder.Services.AddScoped<ExamApp.Api.Services.Labeling.IActivitySolutionService, ExamApp.Api.Services.Labeling.ActivitySolutionService>();
 // issue #262: audit saklama süresi (KVKK) — AdminDataAccessLog:RetentionDays (varsayılan 180), günlük Hangfire temizliği.
 builder.Services.AddOptions<ExamApp.Api.Services.AdminUsers.AdminDataAccessLogOptions>()
     .BindConfiguration(ExamApp.Api.Services.AdminUsers.AdminDataAccessLogOptions.SectionName)

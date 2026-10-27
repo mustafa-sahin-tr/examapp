@@ -214,4 +214,50 @@ public class RouteRoleAuthTests
             return Task.CompletedTask;
         }
     }
+
+    // ---------- issue #580: soru çözümü onayı ----------
+
+    [Theory]
+    [InlineData("/api/exam/questions/12/solution/approve", "Teacher")]
+    [InlineData("/api/exam/questions/12/solution/approve", "Student")]
+    [InlineData("/api/exam/QUESTIONS/12/Solution/Approve", "Teacher")]
+    [InlineData("/api/exam//questions/12/solution/approve/", "Teacher")]
+    public async Task SolutionApprove_OtherRoles_Return403(string path, string roles)
+    {
+        using var client = await CreateClientAsync();
+        var res = await client.SendAsync(Post(path, roles));
+        Assert.Equal(HttpStatusCode.Forbidden, res.StatusCode);
+    }
+
+    [Fact]
+    public async Task SolutionApprove_Anonymous_Returns401()
+    {
+        using var client = await CreateClientAsync();
+        var res = await client.SendAsync(Post("/api/exam/questions/12/solution/approve", roles: null));
+        Assert.Equal(HttpStatusCode.Unauthorized, res.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("/api/exam/questions/12/solution/approve", "Teacher,QuestionTrainer")]
+    [InlineData("/api/exam/questions/12/solution/approve", "Admin")]
+    // Kural yalnız onay ucunu kapsar: soru bankası ve diğer soru uçları gateway'de rol kuralına girmez (backend denetler).
+    [InlineData("/api/exam/questions/12", "Teacher")]
+    [InlineData("/api/exam/questions/12/solution", "Teacher")]
+    [InlineData("/api/exam/questions/bank", "Teacher")]
+    [InlineData("/api/exam/questions/12/solution/approve/extra", "Teacher")]
+    public async Task SolutionApprove_AllowedRoles_And_OtherPaths_PassThrough(string path, string roles)
+    {
+        using var client = await CreateClientAsync();
+        var res = await client.SendAsync(Post(path, roles));
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+    }
+
+    [Fact]
+    public void Pattern_RequiresExactSegmentCount_AndNonEmptyWildcard()
+    {
+        var pattern = RouteRoleAuthExtensions.DefaultPatterns.Single();
+        Assert.True(pattern.Matches("/api/exam/questions/7/solution/approve"));
+        Assert.False(pattern.Matches("/api/exam/questions/solution/approve"));
+        Assert.False(pattern.Matches("/api/exam/questions/7/8/solution/approve"));
+    }
 }

@@ -125,4 +125,17 @@ public sealed class GatewayRouteRoleWiringTests : IClassFixture<GatewayWebSocket
         status.ShouldNotBe(HttpStatusCode.Unauthorized);
         status.ShouldNotBe(HttpStatusCode.Forbidden);
     }
+
+    // Issue #580: soru çözümü onayı gerçek pipeline'da da Admin + QuestionTrainer.
+    [Fact]
+    public async Task Teacher_OnSolutionApprove_Returns403() =>
+        (await PostAsync("/api/exam/questions/5/solution/approve", _factory.CreateToken("Teacher"))).ShouldBe(HttpStatusCode.Forbidden);
+
+    [Fact]
+    public async Task QuestionTrainer_OnSolutionApprove_PassesRoleGate()
+    {
+        var status = await PostAsync("/api/exam/questions/5/solution/approve", _factory.CreateToken("Teacher", "QuestionTrainer"));
+        status.ShouldNotBe(HttpStatusCode.Unauthorized);
+        status.ShouldNotBe(HttpStatusCode.Forbidden);
+    }
 }

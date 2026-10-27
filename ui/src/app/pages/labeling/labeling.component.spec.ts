@@ -10,13 +10,14 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
 
-import { LabelingComponent } from './labeling.component';
+import { LabelingComponent, normalizeLabel } from './labeling.component';
 import { pageIdOf } from './labeling-pool';
 import { LabelingPromptDialogComponent } from './labeling-prompt-dialog/labeling-prompt-dialog.component';
 import { ImageSelectorComponent, TrainedPage } from '../image-selector/image-selector.component';
 import { QuestionDetectorService } from '../../services/question-detector.service';
 import { LabelingService } from '../../services/labeling.service';
 import { GradesService } from '../../services/grades.service';
+import { AuthService } from '../../services/auth.service';
 import { LabelingBookService } from '../../services/labeling-book.service';
 import { LabelingBook, LabelingBookPageInfo } from '../../models/labeling-book';
 import { LabelingCropDuplicateDialogComponent } from './labeling-crop-duplicate-dialog/labeling-crop-duplicate-dialog.component';
@@ -24,8 +25,11 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/c
 import { Grade } from '../../models/student';
 import {
     DetectionSource,
+    LabelingActivitySolutionResponse,
     LabelingActivityStructureResponse,
     LabelingActivityStructureResult,
+    LabelingAnswerKeyEntry,
+    LabelingAnswerKeyReadResponse,
     LabelingAiModel,
     LabelingPage,
     LabelingPromptState,
@@ -101,6 +105,21 @@ class ImageSelectorStub {
     readonly detectionRevision = signal(0);
     setActivityInteraction = vi.fn().mockName('setActivityInteraction');
     applyInteractionDraft = vi.fn().mockName('applyInteractionDraft').mockReturnValue('applied');
+    /** Issue #580: çözüm uygulama, tuvaldeki çözüm / plan ve cevap anahtarı kutuları. */
+    applyInteractionSolution = vi.fn().mockName('applyInteractionSolution').mockReturnValue('applied');
+    /** Tuvaldeki çözüm (ad → çözüm); test elle değiştirir. */
+    canvasSolutions: Record<string, Record<string, unknown> | null> = {};
+    getInteractionSolution = vi.fn().mockName('getInteractionSolution').mockImplementation((name: string) => this.canvasSolutions[name] ?? null);
+    /** Tuvaldeki plan (ad → plan); tanımsız ise ada göre sabit bir plan. */
+    canvasPlans: Record<string, Record<string, unknown>> = {};
+    getInteractionPlan = vi.fn().mockName('getInteractionPlan').mockImplementation(
+        (name: string) => this.canvasPlans[name] ?? ({ version: 1, type: this.interactionTypes[name], plan: name }));
+    setDraftSolution = vi.fn().mockName('setDraftSolution');
+    /** Issue #580: tespitin blok etiketleri (ad → etiket) ve sayfanın bölüm başlığı. */
+    blockLabels: Record<string, string> = {};
+    getBlockLabel = vi.fn().mockName('getBlockLabel').mockImplementation((name: string) => this.blockLabels[name] ?? null);
+    readonly sectionLabel = signal<string | null>(null);
+    setAnswerKeyOverlays = vi.fn().mockName('setAnswerKeyOverlays');
     ensureQuestionsValid = vi.fn().mockName('ensureQuestionsValid').mockReturnValue(true);
     loaded: File[] = [];
     /** Gerçek bileşen gibi: yükleme anında eski sayfa durumu silinir, görsel okunmuş sayılır. */
@@ -194,6 +213,8 @@ describe('LabelingComponent', () => {
     let booksApi: MockedObject<LabelingBookService>;
     /** `setup` öncesi değiştirilebilir: kitap listesi yanıtı (varsayılan boş → kitap seçimi gizli). */
     let booksResponse: Observable<LabelingBook[]>;
+    /** `setup` öncesi değiştirilebilir: token'daki realm rolleri (issue #580 onay düğmesi). */
+    let realmRoles: string[];
 
     function selector(): ImageSelectorStub {
         return fixture.debugElement.query((de) => de.componentInstance instanceof ImageSelectorStub)
@@ -218,8 +239,21 @@ describe('LabelingComponent', () => {
             aiDetect: vi.fn().mockName("LabelingService.aiDetect"),
             saveManual: vi.fn().mockName("LabelingService.saveManual"),
             saveToBank: vi.fn().mockName("LabelingService.saveToBank"),
-            activityStructure: vi.fn().mockName("LabelingService.activityStructure")
+            activityStructure: vi.fn().mockName("LabelingService.activityStructure"),
+            readAnswerKey: vi.fn().mockName("LabelingService.readAnswerKey"),
+            getAnswerKey: vi.fn().mockName("LabelingService.getAnswerKey"),
+            lookupAnswerKey: vi.fn().mockName("LabelingService.lookupAnswerKey"),
+            updateAnswerKeyEntry: vi.fn().mockName("LabelingService.updateAnswerKeyEntry"),
+            deleteAnswerKeyEntry: vi.fn().mockName("LabelingService.deleteAnswerKeyEntry"),
+            solveActivity: vi.fn().mockName("LabelingService.solveActivity"),
+            updateActivitySolution: vi.fn().mockName("LabelingService.updateActivitySolution"),
+            approveActivitySolution: vi.fn().mockName("LabelingService.approveActivitySolution"),
+            getActivitySolutions: vi.fn().mockName("LabelingService.getActivitySolutions")
         } as unknown as MockedObject<LabelingService>;
+        // Varsayılan: kırpmanın kayıtlı çözümü yok.
+        labelingApi.getActivitySolutions.mockReturnValue(of({ solutions: [] }));
+        labelingApi.getAnswerKey.mockReturnValue(of({ entries: [] }));
+        labelingApi.lookupAnswerKey.mockReturnValue(of({ results: [] }));
         labelingApi.getAiModels.mockReturnValue(of(aiModels));
         gradesApi = {
             getGrades: vi.fn().mockName("GradesService.getGrades")
@@ -242,6 +276,7 @@ describe('LabelingComponent', () => {
                 { provide: LabelingBookService, useValue: booksApi },
                 { provide: LabelingService, useValue: labelingApi },
                 { provide: GradesService, useValue: gradesApi },
+                { provide: AuthService, useValue: { hasRealmRole: (role: string) => realmRoles.includes(role) } },
             ],
         });
         TestBed.overrideComponent(LabelingComponent, {
@@ -270,6 +305,7 @@ describe('LabelingComponent', () => {
         localStorage.removeItem('labeling.bookId');
         gradesResponse = of(GRADES);
         booksResponse = of([]);
+        realmRoles = ['Teacher', 'QuestionTrainer'];
     });
 
     afterEach(() => {
@@ -2280,6 +2316,686 @@ describe('LabelingComponent', () => {
                 expect(snackBar).toHaveBeenCalledWith(expect.any(String), labelingTr.ok, expect.any(Object));
             });
         });
+
+        describe('cevap anahtarı ve çözüm (#580)', () => {
+            const BOOK: LabelingBook = {
+                id: 7, name: 'TT MatLab', canonicalBookId: null, canonicalBookName: null, notes: null,
+                offsets: [{ fileFrom: 1, fileTo: 300, offset: -1 }], answerKeyRanges: [{ fileFrom: 200, fileTo: 210 }], toc: [],
+            };
+            const ACTIVITY_PAGE: LabelingBookPageInfo = { filePage: 40, printedPage: 39, isAnswerKey: false, toc: null };
+            const KEY_PAGE: LabelingBookPageInfo = { filePage: 201, printedPage: 200, isAnswerKey: true, toc: null };
+
+            function entry(id: number, overrides: Partial<LabelingAnswerKeyEntry> = {}): LabelingAnswerKeyEntry {
+                return {
+                    id, filePage: 201, printedPage: 39, activityLabel: 'Etkinlik 3', itemLabel: null, answerText: `cevap ${id}`,
+                    visual: false, box: null, ...overrides,
+                };
+            }
+
+            function solutionResponse(overrides: Partial<LabelingActivitySolutionResponse> = {}): LabelingActivitySolutionResponse {
+                return {
+                    draftSolutionId: 55, solution: { r1: ['c2'] }, source: 'Key', status: 'pending', promptVersion: 4,
+                    origin: 'cached', valid: true, validationErrors: [], estimatedCostUsd: 0.002, error: null, ...overrides,
+                };
+            }
+
+            const ACTIVITY: Block[] = [{ name: 'Soru 1', kind: 'activity', type: 'matrixChoice' }];
+
+            /** Kitap seçili, `page_040.webp` (basılı 39) ya da anahtar sayfası; Claude tespiti + etkinlik taslağı hazır. */
+            async function openBookActivity(blocks: Block[] = ACTIVITY, pageInfo: LabelingBookPageInfo = ACTIVITY_PAGE, file = 'page_040.webp') {
+                localStorage.setItem('labeling.bookId', '7');
+                booksResponse = of([BOOK]);
+                await setup([], false, [model]);
+                (labelingApi as unknown as { activityStructure: unknown }).activityStructure = structure;
+                component.structureDebounceMs = 0;
+                component.keyLookupDebounceMs = 0;
+                booksApi.getPage.mockReturnValue(of(pageInfo));
+                echoOk();
+                await pickFolder([image(file)]);
+                await applyDetection(blocks);
+            }
+
+            function inspect(name: string, interactionType: string) {
+                selector().inspector = { index: 0, no: 1, name, blockKind: 'activity', activityComponent: 'A', interactionType, answers: [] };
+                fixture.detectChanges();
+            }
+
+            async function setLabel(name: string, field: 'activityLabel' | 'itemLabel', value: string) {
+                component.setQuestionLabel(name, field, { value } as unknown as EventTarget);
+                await settle(fixture);
+            }
+
+            function el(selectorText: string): HTMLElement | null {
+                return fixture.nativeElement.querySelector(selectorText);
+            }
+
+            describe('cevap anahtarı sayfası', () => {
+                it('readButton_OnlyOnAnswerKeyPage', async () => {
+                    await openBookActivity(ACTIVITY, ACTIVITY_PAGE);
+                    expect(component.isAnswerKeyPage()).toBe(false);
+                    expect(el('.lb-read-key')).toBeNull();
+                    expect(el('.lb-answer-key')).toBeNull();
+                });
+
+                it('readButton_NoBookSelected_Hidden', async () => {
+                    echoOk();
+                    await openPage(ACTIVITY);
+                    expect(el('.lb-read-key')).toBeNull();
+                });
+
+                it('read_SendsBookFilePageImageModel_ListsEntriesAndDrawsVisualBoxes', async () => {
+                    await openBookActivity([], KEY_PAGE, 'page_201.webp');
+                    expect(el('.lb-read-key')).not.toBeNull();
+                    expect(el('.lb-answer-key')?.textContent).toContain(labelingTr.answerKey.notRead);
+                    labelingApi.readAnswerKey.mockReturnValue(of({
+                        origin: 'cached', promptVersion: 2, estimatedCostUsd: 0.01,
+                        entries: [entry(1), entry(2, { visual: true, answerText: null, itemLabel: 'b', box: { x: 5, y: 6, width: 70, height: 80 } })],
+                    }));
+
+                    (el('.lb-read-key') as HTMLButtonElement).click();
+                    await settle(fixture);
+
+                    const request = labelingApi.readAnswerKey.mock.calls[0][0];
+                    expect(request).toEqual(expect.objectContaining({ bookId: 7, filePage: 201, model: 'claude-a', force: false }));
+                    expect(request.imageBase64).toContain('data:image/webp;base64,');
+                    const items = fixture.nativeElement.querySelectorAll('.lb-ak-entry') as NodeListOf<HTMLElement>;
+                    expect(items.length).toBe(2);
+                    expect(items[0].textContent).toContain('s. 39 · Etkinlik 3');
+                    expect(items[0].textContent).toContain('cevap 1');
+                    expect(items[1].textContent).toContain(labelingTr.answerKey.visual);
+                    expect(el('.lb-answer-key__cost')?.textContent).toContain('ilk çağrı ~$0.0100');
+                    expect(el('.lb-answer-key')?.textContent).toContain('prompt v2');
+                    expect(selector().setAnswerKeyOverlays).toHaveBeenLastCalledWith([
+                        { box: { x: 5, y: 6, width: 70, height: 80 }, tag: 's. 39 · Etkinlik 3 · b' },
+                    ]);
+                });
+
+                it('read_NotAnswerKeyPage400_ShowsServerMessage', async () => {
+                    await openBookActivity([], KEY_PAGE, 'page_201.webp');
+                    labelingApi.readAnswerKey.mockReturnValue(throwError(() => ({
+                        status: 400, error: { message: 'Sayfa cevap anahtarı aralığında değil.', errorCode: 'LabelingNotAnswerKeyPage' },
+                    })));
+                    const snack = vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue(undefined as never);
+
+                    component.readAnswerKey();
+                    fixture.detectChanges();
+
+                    expect(snack).toHaveBeenCalledWith('Sayfa cevap anahtarı aralığında değil.', labelingTr.ok, expect.any(Object));
+                    expect(el('.lb-answer-key__error')?.textContent).toContain('Sayfa cevap anahtarı aralığında değil.');
+                    expect(component.answerKeyReading()).toBe(false);
+                });
+
+                it('reread_RequiresConfirmThenForceTrue', async () => {
+                    await openBookActivity([], KEY_PAGE, 'page_201.webp');
+                    labelingApi.readAnswerKey.mockReturnValue(of({ origin: 'live', promptVersion: 1, estimatedCostUsd: 0.02, entries: [] }));
+                    const action = new Subject<void>();
+                    vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue({ onAction: () => action.asObservable() } as never);
+
+                    component.readAnswerKey(true);
+                    expect(labelingApi.readAnswerKey).not.toHaveBeenCalled();
+                    action.next();
+
+                    expect(labelingApi.readAnswerKey).toHaveBeenCalledWith(expect.objectContaining({ force: true }));
+                });
+
+                it('read_StaleStoredRows_ShowsStaleWarning', async () => {
+                    await openBookActivity([], KEY_PAGE, 'page_201.webp');
+                    labelingApi.readAnswerKey.mockReturnValue(of({ origin: 'cached', promptVersion: 1, estimatedCostUsd: 0.01, entries: [entry(1)], stale: true }));
+
+                    component.readAnswerKey();
+                    fixture.detectChanges();
+
+                    expect(el('.lb-answer-key__stale')?.textContent).toContain(labelingTr.answerKey.stale);
+                    expect(component.answerKeyEntries().length).toBe(1);
+                });
+
+                it('reread409HasEdits_ConfirmSendsConfirmOverwrite_CancelSendsNothing', async () => {
+                    await openBookActivity([], KEY_PAGE, 'page_201.webp');
+                    vi.spyOn(console, 'error').mockReturnValue(undefined);
+                    vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue({ onAction: () => of(undefined) } as never);
+                    const dialogOpen = vi.spyOn(TestBed.inject(MatDialog), 'open');
+                    labelingApi.readAnswerKey.mockReturnValueOnce(throwError(() => ({
+                        status: 409, error: { errorCode: 'LabelingAnswerKeyHasEdits', message: 'Elle düzeltilmiş 2 satır silinecek.' },
+                    })));
+                    dialogOpen.mockReturnValueOnce({ afterClosed: () => of(false) } as never);
+
+                    component.readAnswerKey(true);
+
+                    expect(dialogOpen).toHaveBeenCalledWith(ConfirmDialogComponent, expect.objectContaining({
+                        data: expect.objectContaining({ message: 'Elle düzeltilmiş 2 satır silinecek.' }),
+                    }));
+                    expect(labelingApi.readAnswerKey).toHaveBeenCalledTimes(1);
+
+                    labelingApi.readAnswerKey.mockReturnValueOnce(throwError(() => ({ status: 409, error: { errorCode: 'LabelingAnswerKeyHasEdits' } })));
+                    labelingApi.readAnswerKey.mockReturnValueOnce(of({ origin: 'live', promptVersion: 2, estimatedCostUsd: 0.02, entries: [] }));
+                    dialogOpen.mockReturnValueOnce({ afterClosed: () => of(true) } as never);
+                    component.readAnswerKey(true);
+
+                    expect(labelingApi.readAnswerKey).toHaveBeenCalledTimes(3);
+                    expect(labelingApi.readAnswerKey.mock.calls[1][0].confirmOverwrite).toBeUndefined();
+                    expect(labelingApi.readAnswerKey.mock.calls[2][0]).toEqual(expect.objectContaining({ force: true, confirmOverwrite: true }));
+                    expect(component.answerKeyError()).toBeNull();
+                });
+
+                it('modelChange_DoesNotReReadAnswerKey', async () => {
+                    await openBookActivity([], KEY_PAGE, 'page_201.webp');
+                    labelingApi.readAnswerKey.mockReturnValue(of({ origin: 'cached', promptVersion: 1, estimatedCostUsd: 0, entries: [entry(1)] }));
+                    component.readAnswerKey();
+                    labelingApi.aiDetect.mockReturnValue(new Subject<never>().asObservable());
+
+                    component.setAiModel({ value: 'claude-a', source: { value: 'claude-a' } } as unknown as MatSelectChange);
+                    await settle(fixture);
+
+                    expect(labelingApi.readAnswerKey).toHaveBeenCalledTimes(1);
+                });
+
+                it('staleRead_AfterPageChange_IsIgnored', async () => {
+                    localStorage.setItem('labeling.bookId', '7');
+                    booksResponse = of([BOOK]);
+                    await setup([], false, [model]);
+                    booksApi.getPage.mockImplementation((_id: number, filePage: number) => of({ ...KEY_PAGE, filePage }));
+                    await pickFolder([image('page_201.webp'), image('page_202.webp')]);
+                    const pending = new Subject<LabelingAnswerKeyReadResponse>();
+                    labelingApi.readAnswerKey.mockReturnValue(pending.asObservable());
+                    component.readAnswerKey();
+
+                    component.skip();
+                    await settle(fixture);
+                    pending.next({ origin: 'live', promptVersion: 1, estimatedCostUsd: 0.02, entries: [entry(1)] });
+
+                    expect(component.filePage()).toBe(202);
+                    expect(component.answerKeyEntries()).toEqual([]);
+                    expect(component.answerKeyMeta()).toBeNull();
+                });
+
+                it('editEntry_Save_PutsTrimmedFieldsAndUpdatesRow', async () => {
+                    await openBookActivity([], KEY_PAGE, 'page_201.webp');
+                    labelingApi.readAnswerKey.mockReturnValue(of({ origin: 'cached', promptVersion: 1, estimatedCostUsd: 0, entries: [entry(1)] }));
+                    component.readAnswerKey();
+                    labelingApi.updateAnswerKeyEntry.mockImplementation((id, body) => of(entry(id, { ...body })));
+
+                    component.editEntry(component.answerKeyEntries()[0]);
+                    component.setEntryField('printedPage', { value: ' 41 ' } as unknown as EventTarget);
+                    component.setEntryField('itemLabel', { value: ' c ' } as unknown as EventTarget);
+                    component.setEntryField('answerText', { value: '   ' } as unknown as EventTarget);
+                    component.saveEntry(component.answerKeyEntries()[0]);
+                    fixture.detectChanges();
+
+                    expect(labelingApi.updateAnswerKeyEntry).toHaveBeenCalledWith(1, {
+                        printedPage: 41, activityLabel: 'Etkinlik 3', itemLabel: 'c', answerText: null,
+                    });
+                    expect(component.editingEntryId()).toBeNull();
+                    expect(component.answerKeyEntries()[0]).toEqual(expect.objectContaining({ printedPage: 41, itemLabel: 'c', answerText: null }));
+                    expect(el('.lb-ak-entry')?.textContent).toContain('s. 41 · Etkinlik 3 · c');
+                });
+
+                it('editEntry_InvalidPrintedPage_NotSent', async () => {
+                    await openBookActivity([], KEY_PAGE, 'page_201.webp');
+                    labelingApi.readAnswerKey.mockReturnValue(of({ origin: 'cached', promptVersion: 1, estimatedCostUsd: 0, entries: [entry(1)] }));
+                    component.readAnswerKey();
+                    const snack = vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue(undefined as never);
+
+                    component.editEntry(component.answerKeyEntries()[0]);
+                    component.setEntryField('printedPage', { value: '3.5' } as unknown as EventTarget);
+                    component.saveEntry(component.answerKeyEntries()[0]);
+
+                    expect(labelingApi.updateAnswerKeyEntry).not.toHaveBeenCalled();
+                    expect(snack).toHaveBeenCalledWith(labelingTr.answerKey.invalidPage, labelingTr.ok, expect.any(Object));
+                });
+
+                it('deleteEntry_RemovesRow_FailureKeepsItAndShowsMessage', async () => {
+                    await openBookActivity([], KEY_PAGE, 'page_201.webp');
+                    labelingApi.readAnswerKey.mockReturnValue(of({
+                        origin: 'cached', promptVersion: 1, estimatedCostUsd: 0,
+                        entries: [entry(1), entry(2, { visual: true, box: { x: 1, y: 2, width: 3, height: 4 } })],
+                    }));
+                    component.readAnswerKey();
+                    TestBed.tick();
+                    expect(selector().setAnswerKeyOverlays).toHaveBeenLastCalledWith([
+                        { box: { x: 1, y: 2, width: 3, height: 4 }, tag: 's. 39 · Etkinlik 3' },
+                    ]);
+                    labelingApi.deleteAnswerKeyEntry.mockReturnValueOnce(of(undefined));
+
+                    component.deleteEntry(component.answerKeyEntries()[1]);
+                    TestBed.tick();
+
+                    expect(labelingApi.deleteAnswerKeyEntry).toHaveBeenCalledWith(2);
+                    expect(component.answerKeyEntries().map((e) => e.id)).toEqual([1]);
+                    expect(selector().setAnswerKeyOverlays).toHaveBeenLastCalledWith([]);
+
+                    vi.spyOn(console, 'error').mockReturnValue(undefined);
+                    const snack = vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue(undefined as never);
+                    labelingApi.deleteAnswerKeyEntry.mockReturnValueOnce(throwError(() => ({ status: 404, error: { message: 'Madde bulunamadı.' } })));
+                    component.deleteEntry(component.answerKeyEntries()[0]);
+
+                    expect(component.answerKeyEntries().map((e) => e.id)).toEqual([1]);
+                    expect(snack).toHaveBeenCalledWith('Madde bulunamadı.', labelingTr.ok, expect.any(Object));
+                    expect(component.entryBusyId()).toBeNull();
+                });
+            });
+
+            describe('etkinlik çözümü', () => {
+                it('labelsShownForActivityBlocks_NoLabel_ShowsNeedLabel_AiButton', async () => {
+                    await openBookActivity();
+                    inspect('Soru 1', 'matrixChoice');
+
+                    expect(el('.lb-labels .lb-activity-label')).not.toBeNull();
+                    expect(el('.lb-solution')?.textContent).toContain(labelingTr.solution.needLabel);
+                    expect(el('.lb-solution__ai')).not.toBeNull();
+                    expect(el('.lb-solution__from-key')).toBeNull();
+                    expect(labelingApi.getAnswerKey).not.toHaveBeenCalled();
+                });
+
+                it('activityLabel_LooksUpKeyWithPrintedPage_Found_SolveFromKeySendsMatchingEntryIds', async () => {
+                    await openBookActivity();
+                    labelingApi.getAnswerKey.mockReturnValue(of({ entries: [entry(11, { itemLabel: 'a' }), entry(12, { itemLabel: 'B' })] }));
+                    labelingApi.solveActivity.mockReturnValue(of(solutionResponse()));
+
+                    await setLabel('Soru 1', 'activityLabel', 'Etkinlik 3');
+                    inspect('Soru 1', 'matrixChoice');
+
+                    expect(labelingApi.getAnswerKey).toHaveBeenCalledWith(7, { printedPage: 39, activityLabel: 'Etkinlik 3', filePage: 40 });
+                    expect(el('.lb-solution')?.textContent).toContain('2 satır bulundu');
+                    expect(el('.lb-solution__ai')).toBeNull();
+
+                    // Madde etiketi yalnız istemcide süzer (büyük/küçük harf duyarsız), yeniden sorulmaz.
+                    await setLabel('Soru 1', 'itemLabel', ' b ');
+                    (el('.lb-solution__from-key') as HTMLButtonElement).click();
+
+                    expect(labelingApi.getAnswerKey).toHaveBeenCalledTimes(1);
+                    const request = labelingApi.solveActivity.mock.calls[0][0];
+                    expect(request).toEqual(expect.objectContaining({
+                        mode: 'key', key: { entryIds: [12] }, force: false, model: 'claude-a', interactionType: 'matrixChoice',
+                        x: 10, y: 0, width: 200, height: 81,
+                    }));
+                    expect(request.plan).toEqual({ version: 1, type: 'matrixChoice', plan: 'Soru 1' });
+                });
+
+                it('keyNotFound_AiButton_SolveSendsModeAiWithoutKey', async () => {
+                    await openBookActivity();
+                    labelingApi.solveActivity.mockReturnValue(of(solutionResponse({ source: 'AI' })));
+                    await setLabel('Soru 1', 'activityLabel', 'Etkinlik 9');
+                    inspect('Soru 1', 'matrixChoice');
+
+                    expect(el('.lb-solution')?.textContent).toContain(labelingTr.solution.keyNone);
+                    (el('.lb-solution__ai') as HTMLButtonElement).click();
+
+                    const request = labelingApi.solveActivity.mock.calls[0][0];
+                    expect(request.mode).toBe('ai');
+                    expect(request.key).toBeUndefined();
+                });
+
+                it('noBook_AiOnly_NoLookup', async () => {
+                    echoOk();
+                    await openPage(ACTIVITY);
+                    labelingApi.solveActivity.mockReturnValue(of(solutionResponse({ source: 'AI' })));
+                    await setLabel('Soru 1', 'activityLabel', 'Etkinlik 3');
+                    inspect('Soru 1', 'matrixChoice');
+
+                    expect(labelingApi.getAnswerKey).not.toHaveBeenCalled();
+                    expect(el('.lb-solution')?.textContent).toContain(labelingTr.solution.noBook);
+                    component.solve('Soru 1', 'ai');
+                    expect(labelingApi.solveActivity).toHaveBeenCalledWith(expect.objectContaining({ mode: 'ai' }));
+                });
+
+                it('solutionAppliedPerType_IntoAuthoringStateOfThatRegion', async () => {
+                    const blocks: Block[] = [
+                        { name: 'Soru 1', kind: 'activity', type: 'matrixChoice' },
+                        { name: 'Soru 2', kind: 'activity', type: 'slotFill' },
+                        { name: 'Soru 3', kind: 'activity', type: 'dragPlace' },
+                        { name: 'Soru 4', kind: 'activity', type: 'match' },
+                    ];
+                    const solutions: Record<string, Record<string, unknown>> = {
+                        'Soru 1': { r1: ['c2'] },
+                        'Soru 2': { s1: { value: '3/4' } },
+                        'Soru 3': { t1: ['c1'] },
+                        'Soru 4': { l1: 'r3' },
+                    };
+                    await openBookActivity(blocks);
+                    labelingApi.solveActivity.mockImplementation((request) => {
+                        const name = blocks.find((b) => b.type === request.interactionType)!.name;
+                        return of(solutionResponse({ source: 'AI', solution: solutions[name] }));
+                    });
+
+                    for (const b of blocks) {
+                        component.solve(b.name, 'ai');
+                    }
+
+                    const stub = selector();
+                    for (const b of blocks) {
+                        expect(stub.applyInteractionSolution).toHaveBeenCalledWith(b.name, b.type, solutions[b.name]);
+                        expect(component.solutionOf(b.name)).toEqual(expect.objectContaining({ status: 'ok', apply: 'applied' }));
+                    }
+                });
+
+                it('okSolution_ShowsSourcePendingPromptCostAndValidationErrors', async () => {
+                    await openBookActivity();
+                    labelingApi.solveActivity.mockReturnValue(of(solutionResponse({
+                        source: 'AI', origin: 'live', estimatedCostUsd: 0.0031, valid: false, validationErrors: ['Satır 2 boş'],
+                    })));
+                    vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue(undefined as never);
+
+                    component.solve('Soru 1', 'ai');
+                    inspect('Soru 1', 'matrixChoice');
+
+                    const text = el('.lb-solution')!.textContent!;
+                    expect(el('.lb-solution__source')?.textContent).toContain(labelingTr.solution.sources.AI);
+                    expect(el('.lb-solution__status--pending')?.textContent).toContain(labelingTr.solution.pending);
+                    expect(el('.lb-solution__prompt')?.textContent).toContain('prompt v4');
+                    expect(el('.lb-solution__cost')?.textContent).toContain('~$0.0031');
+                    expect(text).toContain('Satır 2 boş');
+                    // Doğrulamadan geçmeyen çözüm düzeltilmeden onaylanmaz.
+                    expect((el('.lb-solution__approve') as HTMLButtonElement).disabled).toBe(true);
+                });
+
+                it('keptSolution_ApplyConfirmed_ReplacesWithReplaceOption', async () => {
+                    await openBookActivity();
+                    labelingApi.solveActivity.mockReturnValue(of(solutionResponse()));
+                    selector().applyInteractionSolution.mockReturnValueOnce('kept');
+                    component.solve('Soru 1', 'ai');
+                    inspect('Soru 1', 'matrixChoice');
+                    expect(el('.lb-solution__kept')).not.toBeNull();
+                    const action = new Subject<void>();
+                    vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue({ onAction: () => action.asObservable() } as never);
+
+                    (el('.lb-solution__apply') as HTMLButtonElement).click();
+                    action.next();
+
+                    expect(selector().applyInteractionSolution).toHaveBeenLastCalledWith('Soru 1', 'matrixChoice', { r1: ['c2'] }, { replace: true });
+                    expect(component.solutionOf('Soru 1')?.apply).toBe('applied');
+                });
+
+                it('approveButton_HiddenWithoutTrainerOrAdminRealmRole', async () => {
+                    realmRoles = ['Teacher'];
+                    await openBookActivity();
+                    labelingApi.solveActivity.mockReturnValue(of(solutionResponse()));
+                    component.solve('Soru 1', 'ai');
+                    inspect('Soru 1', 'matrixChoice');
+
+                    expect(component.canApproveSolutions).toBe(false);
+                    expect(el('.lb-solution__status--pending')).not.toBeNull();
+                    expect(el('.lb-solution__approve')).toBeNull();
+                    component.approveSolution('Soru 1');
+                    expect(labelingApi.approveActivitySolution).not.toHaveBeenCalled();
+                });
+
+                it('approve_AdminRole_CallsApproveAndShowsApproverAndTime', async () => {
+                    realmRoles = ['Admin'];
+                    await openBookActivity();
+                    labelingApi.solveActivity.mockReturnValue(of(solutionResponse()));
+                    labelingApi.approveActivitySolution.mockReturnValue(of(solutionResponse({
+                        status: 'approved', origin: null, approvedByName: 'Eğitmen Ayşe', approvedAt: '2026-10-27T09:30:00Z',
+                    })));
+                    vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue(undefined as never);
+                    component.solve('Soru 1', 'ai');
+                    inspect('Soru 1', 'matrixChoice');
+
+                    (el('.lb-solution__approve') as HTMLButtonElement).click();
+                    fixture.detectChanges();
+
+                    expect(labelingApi.approveActivitySolution).toHaveBeenCalledWith(55);
+                    expect(el('.lb-solution__status--approved')?.textContent).toContain(labelingTr.solution.approved);
+                    expect(el('.lb-solution__approver')?.textContent).toContain('Eğitmen Ayşe');
+                    expect(el('.lb-solution__approve')).toBeNull();
+                });
+
+                it('approve_Forbidden403_ShowsForbiddenMessage', async () => {
+                    await openBookActivity();
+                    labelingApi.solveActivity.mockReturnValue(of(solutionResponse()));
+                    labelingApi.approveActivitySolution.mockReturnValue(throwError(() => ({ status: 403 })));
+                    vi.spyOn(console, 'error').mockReturnValue(undefined);
+                    const snack = vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue(undefined as never);
+                    component.solve('Soru 1', 'ai');
+
+                    component.approveSolution('Soru 1');
+
+                    expect(snack).toHaveBeenCalledWith(labelingTr.solution.forbidden, labelingTr.ok, expect.any(Object));
+                    expect(component.solutionOf('Soru 1')?.busy).toBeNull();
+                    expect(component.solutionOf('Soru 1')?.response?.status).toBe('pending');
+                });
+
+                it('canvasEdit_SaveEditPutsWithoutApprove_ApproveAfterEditPutsWithApprove', async () => {
+                    await openBookActivity();
+                    const stub = selector();
+                    stub.canvasSolutions['Soru 1'] = { r1: ['c2'] };
+                    labelingApi.solveActivity.mockReturnValue(of(solutionResponse()));
+                    labelingApi.updateActivitySolution.mockImplementation((_id, solution, approve) =>
+                        of(solutionResponse({ solution, source: approve ? 'Human' : 'Key', status: approve ? 'approved' : 'pending', origin: null })));
+                    vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue(undefined as never);
+                    component.solve('Soru 1', 'ai');
+                    inspect('Soru 1', 'matrixChoice');
+                    expect(component.solutionEdited('Soru 1')).toBe(false);
+
+                    stub.canvasSolutions['Soru 1'] = { r1: ['c1'] };
+                    fixture.detectChanges();
+                    expect(el('.lb-solution__edited')).not.toBeNull();
+                    (el('.lb-solution__save-edit') as HTMLButtonElement).click();
+
+                    expect(labelingApi.updateActivitySolution).toHaveBeenLastCalledWith(55, { r1: ['c1'] }, false);
+                    expect(component.solutionEdited('Soru 1')).toBe(false);
+
+                    stub.canvasSolutions['Soru 1'] = { r1: ['c3'] };
+                    component.approveSolution('Soru 1');
+                    fixture.detectChanges();
+
+                    expect(labelingApi.updateActivitySolution).toHaveBeenLastCalledWith(55, { r1: ['c3'] }, true);
+                    expect(labelingApi.approveActivitySolution).not.toHaveBeenCalled();
+                    expect(el('.lb-solution__source')?.textContent).toContain(labelingTr.solution.sources.Human);
+                    expect(el('.lb-solution__status--approved')).not.toBeNull();
+                });
+
+                it('staleSolution_AfterPageChange_IsIgnored', async () => {
+                    localStorage.setItem('labeling.bookId', '7');
+                    booksResponse = of([BOOK]);
+                    await setup([], false, [model]);
+                    (labelingApi as unknown as { activityStructure: unknown }).activityStructure = structure;
+                    component.structureDebounceMs = 0;
+                    booksApi.getPage.mockReturnValue(of(ACTIVITY_PAGE));
+                    echoOk();
+                    await pickFolder([image('page_040.webp'), image('page_041.webp')]);
+                    await applyDetection(ACTIVITY);
+                    const pending = new Subject<LabelingActivitySolutionResponse>();
+                    labelingApi.solveActivity.mockReturnValue(pending.asObservable());
+                    component.solve('Soru 1', 'ai');
+                    expect(component.solutionOf('Soru 1')?.status).toBe('loading');
+
+                    component.skip();
+                    await settle(fixture);
+                    await applyDetection(ACTIVITY);
+                    pending.next(solutionResponse());
+
+                    expect(selector().applyInteractionSolution).not.toHaveBeenCalled();
+                    expect(component.solutionOf('Soru 1')).toBeNull();
+                });
+
+                it('staleSolution_StructureReExtracted_SolutionDroppedAndLateResponseIgnored', async () => {
+                    await openBookActivity();
+                    const pending = new Subject<LabelingActivitySolutionResponse>();
+                    labelingApi.solveActivity.mockReturnValue(pending.asObservable());
+                    component.solve('Soru 1', 'ai');
+
+                    const action = new Subject<void>();
+                    vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue({ onAction: () => action.asObservable() } as never);
+                    component.reExtractStructure('Soru 1');
+                    action.next();
+                    await settle(fixture);
+                    pending.next(solutionResponse());
+
+                    expect(component.solutionOf('Soru 1')).toBeNull();
+                    expect(selector().applyInteractionSolution).not.toHaveBeenCalled();
+                });
+
+                it('rateLimited429_ShowsServerMessageAndMarksError', async () => {
+                    await openBookActivity();
+                    labelingApi.solveActivity.mockReturnValue(throwError(() => ({
+                        status: 429, error: { message: 'Günlük bütçe doldu.', errorCode: 'LabelingBudgetExceeded' },
+                    })));
+                    vi.spyOn(console, 'error').mockReturnValue(undefined);
+                    const snack = vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue(undefined as never);
+
+                    component.solve('Soru 1', 'ai');
+                    inspect('Soru 1', 'matrixChoice');
+
+                    expect(snack).toHaveBeenCalledWith('Günlük bütçe doldu.', labelingTr.ok, expect.any(Object));
+                    expect(el('.lb-solution__error')?.textContent).toContain('Günlük bütçe doldu.');
+                });
+
+                it('claudeError200_ShowsErrorNothingApplied', async () => {
+                    await openBookActivity();
+                    labelingApi.solveActivity.mockReturnValue(of(solutionResponse({ draftSolutionId: null, solution: null, error: 'Claude çözemedi.' })));
+
+                    component.solve('Soru 1', 'ai');
+
+                    expect(component.solutionOf('Soru 1')).toEqual(expect.objectContaining({ status: 'error', error: 'Claude çözemedi.' }));
+                    expect(selector().applyInteractionSolution).not.toHaveBeenCalled();
+                });
+
+                it('resolve_RequiresConfirmThenForceTrueSameMode', async () => {
+                    await openBookActivity();
+                    labelingApi.solveActivity.mockReturnValue(of(solutionResponse({ source: 'AI' })));
+                    component.solve('Soru 1', 'ai');
+                    const action = new Subject<void>();
+                    vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue({ onAction: () => action.asObservable() } as never);
+
+                    component.resolve('Soru 1');
+                    expect(labelingApi.solveActivity).toHaveBeenCalledTimes(1);
+                    action.next();
+
+                    expect(labelingApi.solveActivity).toHaveBeenCalledTimes(2);
+                    expect(labelingApi.solveActivity.mock.calls[1][0]).toEqual(expect.objectContaining({ mode: 'ai', force: true }));
+                });
+
+                it('reopen_RestoresStoredSolutionByCropPreferringSamePlan', async () => {
+                    localStorage.setItem('labeling.bookId', '7');
+                    booksResponse = of([BOOK]);
+                    await setup([], false, [model]);
+                    (labelingApi as unknown as { activityStructure: unknown }).activityStructure = structure;
+                    structure.mockImplementation((request) =>
+                        of({ results: request.blocks.map((b) => result(b.key, b.interactionType, { cropSha256: 'abc123' })) }));
+                    booksApi.getPage.mockReturnValue(of(ACTIVITY_PAGE));
+                    labelingApi.getActivitySolutions.mockReturnValue(of({
+                        solutions: [
+                            solutionResponse({ draftSolutionId: 1, interactionType: 'slotFill', solution: { s1: { value: '1' } } }),
+                            solutionResponse({ draftSolutionId: 2, interactionType: 'matrixChoice', plan: { other: true }, solution: { r1: ['c9'] } }),
+                            solutionResponse({
+                                draftSolutionId: 3, interactionType: 'matrixChoice', status: 'approved', approvedByName: 'Ayşe',
+                                plan: { type: 'matrixChoice', plan: 'Soru 1', version: 1 }, solution: { r1: ['c1'] },
+                            }),
+                        ],
+                    }));
+                    await pickFolder([image('page_040.webp')]);
+                    await applyDetection(ACTIVITY);
+                    inspect('Soru 1', 'matrixChoice');
+
+                    expect(labelingApi.getActivitySolutions).toHaveBeenCalledWith('abc123');
+                    expect(selector().applyInteractionSolution).toHaveBeenCalledWith('Soru 1', 'matrixChoice', { r1: ['c1'] });
+                    expect(component.solutionOf('Soru 1')?.response?.draftSolutionId).toBe(3);
+                    expect(el('.lb-solution__status--approved')).not.toBeNull();
+                    expect(labelingApi.solveActivity).not.toHaveBeenCalled();
+                });
+
+                it('reopen_StoredSolutionsOnlyForOtherPlans_PlanChangedStateNothingApplied', async () => {
+                    localStorage.setItem('labeling.bookId', '7');
+                    booksResponse = of([BOOK]);
+                    await setup([], false, [model]);
+                    (labelingApi as unknown as { activityStructure: unknown }).activityStructure = structure;
+                    structure.mockImplementation((request) =>
+                        of({ results: request.blocks.map((b) => result(b.key, b.interactionType, { cropSha256: 'abc123' })) }));
+                    booksApi.getPage.mockReturnValue(of(ACTIVITY_PAGE));
+                    labelingApi.getActivitySolutions.mockReturnValue(of({
+                        solutions: [
+                            solutionResponse({ draftSolutionId: 2, interactionType: 'matrixChoice', plan: { other: true }, status: 'approved' }),
+                            solutionResponse({ draftSolutionId: 4, interactionType: 'matrixChoice', plan: null }),
+                        ],
+                    }));
+                    await pickFolder([image('page_040.webp')]);
+                    await applyDetection(ACTIVITY);
+                    inspect('Soru 1', 'matrixChoice');
+
+                    expect(selector().applyInteractionSolution).not.toHaveBeenCalled();
+                    expect(component.solutionOf('Soru 1')?.status).toBe('planChanged');
+                    expect(el('.lb-solution__plan-changed')?.textContent).toContain('Plan değişti, yeniden çöz');
+                    expect(el('.lb-solution__status')).toBeNull();
+                    expect(el('.lb-solution__approve')).toBeNull();
+                    // Yeniden çözülebilir.
+                    expect(component.canSolve('Soru 1')).toBe(true);
+                });
+
+                it('canvasPlanChangedAfterSolve_SolutionStale_ApproveAndSaveDisabled', async () => {
+                    await openBookActivity();
+                    const stub = selector();
+                    stub.canvasSolutions['Soru 1'] = { r1: ['c2'] };
+                    labelingApi.solveActivity.mockReturnValue(of(solutionResponse()));
+                    component.solve('Soru 1', 'ai');
+                    inspect('Soru 1', 'matrixChoice');
+                    expect(component.solutionPlanStale('Soru 1')).toBe(false);
+                    expect(component.canApproveSolution('Soru 1')).toBe(true);
+
+                    stub.canvasPlans['Soru 1'] = { version: 1, type: 'matrixChoice', rows: ['yeni satır'] };
+                    stub.canvasSolutions['Soru 1'] = { r1: ['c1'] };
+                    fixture.detectChanges();
+
+                    expect(component.solutionPlanStale('Soru 1')).toBe(true);
+                    expect(el('.lb-solution__plan-stale')?.textContent).toContain('Plan değişti');
+                    expect((el('.lb-solution__approve') as HTMLButtonElement).disabled).toBe(true);
+                    expect(el('.lb-solution__save-edit')).toBeNull();
+                    component.approveSolution('Soru 1');
+                    component.saveSolutionEdit('Soru 1');
+                    expect(labelingApi.approveActivitySolution).not.toHaveBeenCalled();
+                    expect(labelingApi.updateActivitySolution).not.toHaveBeenCalled();
+                });
+
+                it('appliedSolution_LinksDraftSolutionIdOnCanvas_ResolveUnlinksFirst', async () => {
+                    await openBookActivity();
+                    labelingApi.solveActivity.mockReturnValue(of(solutionResponse()));
+                    component.solve('Soru 1', 'ai');
+
+                    expect(selector().setDraftSolution).toHaveBeenLastCalledWith('Soru 1', 55);
+
+                    const pending = new Subject<LabelingActivitySolutionResponse>();
+                    labelingApi.solveActivity.mockReturnValue(pending.asObservable());
+                    const action = new Subject<void>();
+                    vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue({ onAction: () => action.asObservable() } as never);
+                    component.resolve('Soru 1');
+                    action.next();
+                    expect(selector().setDraftSolution).toHaveBeenLastCalledWith('Soru 1', null);
+
+                    // Tuvalde korunan elle yazarlık: çözüm uygulanmadı, bağ yok.
+                    selector().applyInteractionSolution.mockReturnValueOnce('kept');
+                    pending.next(solutionResponse({ draftSolutionId: 77 }));
+                    expect(selector().setDraftSolution).toHaveBeenLastCalledWith('Soru 1', null);
+                });
+
+                it('itemLabelMatching_IgnoresPunctuation', async () => {
+                    await openBookActivity();
+                    labelingApi.getAnswerKey.mockReturnValue(of({ entries: [entry(11, { itemLabel: 'a)' }), entry(12, { itemLabel: 'B.' }), entry(13, { itemLabel: '1.' })] }));
+                    await setLabel('Soru 1', 'activityLabel', 'Etkinlik 3');
+
+                    await setLabel('Soru 1', 'itemLabel', 'b)');
+                    expect(component.matchingKeyEntries('Soru 1').map((e) => e.id)).toEqual([12]);
+                    await setLabel('Soru 1', 'itemLabel', '1');
+                    expect(component.matchingKeyEntries('Soru 1').map((e) => e.id)).toEqual([13]);
+                    expect(normalizeLabel(' (A) ')).toBe('a');
+                    expect(normalizeLabel('Etkinlik  3.')).toBe('etkinlik 3');
+                });
+
+                it('solutionPromptSaved_SnackbarNamesKindWithoutReExtract', async () => {
+                    echoOk();
+                    await openPage(ACTIVITY);
+                    vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+                        afterClosed: () => of({
+                            kind: 'activity', interactionType: 'solveAi',
+                            prompt: { version: 5, instruction: 'x', createdByName: null, createdAt: null },
+                        }),
+                    } as never);
+                    const snack = vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue({ onAction: () => new Subject<void>() } as never);
+
+                    component.openPromptDialog();
+
+                    expect(snack).toHaveBeenCalledWith(expect.stringContaining('AI çözüm talimatı v5'), labelingTr.ok, expect.any(Object));
+                    expect(structure).toHaveBeenCalledTimes(1);
+                });
+            });
+        });
     });
 });
-

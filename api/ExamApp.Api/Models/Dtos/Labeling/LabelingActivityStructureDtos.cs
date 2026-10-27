@@ -54,7 +54,8 @@ public class ActivityStructureBlockDto
 /// mesaj). <c>Origin</c>: <c>live</c> (Claude'a gerçekten soruldu) | <c>cached</c> (kayıtlı sonuç, maliyet yok; token/maliyet
 /// sonucu ilk üreten çağrınındır) | null (hata). <see cref="Plan"/>: tipin InteractionPlan v1'i, kutular BLOK kutusuna göre
 /// göreli sayfa pikseli (çözüm yok, #580). <see cref="Valid"/>/<see cref="ValidationErrors"/>: tipin kayıt doğrulaması
-/// (<c>ValidateDefinition</c>) — taslak geçersiz olabilir, yine döner.
+/// (<c>ValidateDefinition</c>) — taslak geçersiz olabilir, yine döner. <see cref="CropSha256"/> (issue #580): bloğun kırpma hash'i —
+/// <c>GET api/labeling/activity-solution?cropSha256=</c> ile kayıtlı çözüm taslağını geri yüklemek için.
 /// </summary>
 public record ActivityStructureResultDto(
     string Key,
@@ -69,7 +70,8 @@ public record ActivityStructureResultDto(
     int? InputTokens,
     int? OutputTokens,
     decimal? EstimatedCostUsd,
-    string? Error);
+    string? Error,
+    string? CropSha256 = null);
 
 public record ActivityStructureResponseDto(IReadOnlyList<ActivityStructureResultDto> Results);
 
@@ -86,7 +88,7 @@ public record ActivityPromptTypeStateDto(
 /// <summary><c>GET api/labeling/activity-prompts</c>.</summary>
 public record ActivityPromptStateDto(IReadOnlyList<ActivityPromptTypeStateDto> Types);
 
-/// <summary><c>PUT api/labeling/activity-prompts/{interactionType}</c>; <c>{width}</c>/<c>{height}</c> yer tutucuları desteklenir.</summary>
+/// <summary><c>PUT api/labeling/activity-prompts/{kind}</c> (dört yapı tipi + #580 <c>answerKey</c>, <c>solveFromKey</c>, <c>solveAi</c>); <c>{width}</c>/<c>{height}</c> yer tutucuları desteklenir.</summary>
 public class ActivitySavePromptRequestDto
 {
     public string? Instruction { get; set; }

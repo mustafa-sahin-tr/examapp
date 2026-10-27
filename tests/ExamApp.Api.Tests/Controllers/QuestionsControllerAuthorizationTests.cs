@@ -81,7 +81,24 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         ctx.SaveChanges();
 
         (_worksheet, _copyWorksheet, _legacyQuestion, _copierQuestion) = (w.Id, w2.Id, legacy.Id, own.Id);
+
+        // Issue #580: Owner'ın onay bekleyen AI çözümlü etkileşimli sorusu.
+        ctx.SetCurrentUser(OwnerTeacher);
+        var pending = new Question
+        {
+            Text = "etkinlik",
+            InteractionType = "matrixChoice",
+            InteractionSolution = "{\"r1\":[\"c1\"]}",
+            SolutionSource = SolutionSource.AI,
+            SolutionStatus = SolutionStatus.Pending,
+            SolutionPromptVersion = 3,
+        };
+        ctx.Questions.Add(pending);
+        ctx.SaveChanges();
+        _pendingQuestion = pending.Id;
     }
+
+    private readonly int _pendingQuestion;
 
     public void Dispose() => _db.Dispose();
 
@@ -126,9 +143,9 @@ public class QuestionsControllerAuthorizationTests : IDisposable
     private async Task<IHost> StartHostAsync()
     {
         var questionService = Substitute.For<IQuestionService>();
-        questionService.CreateOrUpdateQuestion(Arg.Any<QuestionDto>(), Arg.Any<int>(), Arg.Any<bool>())
+        questionService.CreateOrUpdateQuestion(Arg.Any<QuestionDto>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<SolutionActor?>())
             .Returns(new QuestionSavedDto { Success = true });
-        questionService.SaveBulkQuestion(Arg.Any<BulkQuestionCreateDto>(), Arg.Any<int>())
+        questionService.SaveBulkQuestion(Arg.Any<BulkQuestionCreateDto>(), Arg.Any<int>(), Arg.Any<SolutionActor?>())
             .Returns(new ResponseBaseDto { Success = true });
         questionService.AttachImageToStudyPage(Arg.Any<StudyPageAttachImageDto>())
             .Returns(new StudyPageAttachImageResponseDto { Success = true });
@@ -210,6 +227,8 @@ public class QuestionsControllerAuthorizationTests : IDisposable
                     services.AddSingleton(minio);
                     services.AddSingleton(classifierCache);
                     services.AddSingleton<ImageHelper>();
+                    services.AddSingleton(TimeProvider.System);
+                    services.AddScoped<IQuestionSolutionApprovalService, QuestionSolutionApprovalService>(); // issue #580
                 });
                 web.Configure(app =>
                 {
@@ -652,5 +671,58 @@ public class QuestionsControllerAuthorizationTests : IDisposable
 
         await _testLinks.DidNotReceive().LinkAsync(Arg.Any<int>(), Arg.Any<IReadOnlyList<int>>(), Arg.Any<int>(),
             Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    // ---------------- issue #580: çözüm onayı ----------------
+
+    private static readonly Caller OwnerTrainer = new(OwnerTeacher, "Teacher,QuestionTrainer");
+    private static readonly Caller CopierTrainer = new(CopierTeacher, "Teacher,QuestionTrainer");
+
+    [Fact]
+    public async Task ApproveSolution_OnlyAdminAndQuestionTrainer_OthersGet403()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+        var path = $"/api/questions/{_pendingQuestion}/solution/approve";
+
+        foreach (var caller in new[] { Owner, Copier, Student, Parent, Service })
+            (await SendAsync(client, caller, HttpMethod.Post, path)).StatusCode.ShouldBe(HttpStatusCode.Forbidden, caller.Roles);
+
+        await using var ctx = _db.NewContext();
+        (await ctx.Questions.SingleAsync(q => q.Id == _pendingQuestion)).SolutionStatus.ShouldBe(SolutionStatus.Pending);
+    }
+
+    [Fact]
+    public async Task ApproveSolution_QuestionTrainerOwner_RecordsApproverAndTime_KeepsSourceAndPromptVersion()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        var response = await SendAsync(client, OwnerTrainer, HttpMethod.Post, $"/api/questions/{_pendingQuestion}/solution/approve");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync();
+        body.ShouldContain("\"solutionStatus\":\"approved\"");
+        body.ShouldContain("\"solutionSource\":\"AI\"");
+        body.ShouldContain("\"solutionPromptVersion\":3");
+        await using var ctx = _db.NewContext();
+        var q = await ctx.Questions.SingleAsync(x => x.Id == _pendingQuestion);
+        q.SolutionStatus.ShouldBe(SolutionStatus.Approved);
+        q.SolutionApprovedByKeycloakId.ShouldBe($"u{OwnerTeacher}");
+        q.SolutionApprovedAt.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task ApproveSolution_TrainerWhoDoesNotOwnTheQuestion_Gets404_AdminApprovesAny()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+        var path = $"/api/questions/{_pendingQuestion}/solution/approve";
+
+        (await SendAsync(client, CopierTrainer, HttpMethod.Post, path)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await SendAsync(client, Admin, HttpMethod.Post, path)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        // Çözümsüz soru: onaylanacak bir şey yok.
+        (await SendAsync(client, Admin, HttpMethod.Post, $"/api/questions/{_legacyQuestion}/solution/approve")).StatusCode
+            .ShouldBe(HttpStatusCode.BadRequest);
     }
 }

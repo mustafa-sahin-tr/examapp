@@ -130,7 +130,8 @@
         "dragPlace": "Drag and place",
         "match": "Matching"
       }
-    }
+    },
+    "detectedLabel": "Detected label: {{label}}"
   },
   "source": {
     "label": "Source",
@@ -191,7 +192,10 @@
       "matrixChoice": "Matrix choice",
       "slotFill": "Answer box",
       "dragPlace": "Drag and place",
-      "match": "Matching"
+      "match": "Matching",
+      "answerKey": "Answer key reading",
+      "solveFromKey": "Solution from key",
+      "solveAi": "AI solution"
     },
     "activity": {
       "loadFailed": "Activity instructions could not be loaded.",
@@ -200,7 +204,14 @@
       "missing": "The server returned no instruction for this type."
     },
     "unsavedOthers": "Other tabs have unsaved changes; they will be lost if you save and close:",
-    "saveAnyway": "Save anyway"
+    "saveAnyway": "Save anyway",
+    "solution": {
+      "hints": {
+        "answerKey": "The book's answer key page is sent to Claude with this instruction; rows (printed page, activity, item, answer, visual or not) are extracted. Saving creates a new version; only the answer key readings' cache is invalidated. The response schema is fixed.",
+        "solveFromKey": "For items whose answer is a picture, the activity crop and the key crop are sent together with this instruction; the solution follows the activity type's schema. Saving creates a new version; only solutions from the key are invalidated.",
+        "solveAi": "The crop of an activity that is not in the answer key is sent with this instruction; Claude suggests a solution (needs approval). Saving creates a new version; only AI solutions are invalidated."
+      }
+    }
   },
   "book": {
     "label": "Book",
@@ -249,5 +260,129 @@
     "applyAction": "Apply",
     "stale": "The box changed; the draft will be extracted again.",
     "firstCallCost": "first call ~${{cost}}"
+  },
+  "answerKey": {
+    "read": "Read answer key (Claude)",
+    "readHint": "Claude reads the rows on this answer key page (printed page, activity, item, answer); a stored result is returned for free.",
+    "title": "Answer key",
+    "reading": "Reading the answer key…",
+    "cached": "cached",
+    "live": "live",
+    "firstCallCost": "first call ~${{cost}}",
+    "promptVersion": "prompt v{{version}}",
+    "printedPage": "Printed page",
+    "activity": "Activity",
+    "item": "Item",
+    "answer": "Answer",
+    "save": "Save",
+    "cancel": "Cancel",
+    "noLabel": "(no label)",
+    "visual": "visual answer",
+    "visualHint": "The answer is a small picture; its box is drawn dashed on the page and the solution is taken from the key crop.",
+    "edit": "Edit row",
+    "delete": "Delete row",
+    "empty": "No answer rows were found on this page.",
+    "reread": "Read again (paid)",
+    "rereadHint": "Ignores the stored result, asks Claude again and is charged.",
+    "rereadConfirm": "Claude will read this answer key page again and it will be charged; the rows are replaced with the new ones.",
+    "rereadAction": "Read again",
+    "notRead": "This page is in the book's answer key. Use \"Read answer key\" in the toolbar to extract its rows.",
+    "claudeOff": "Claude is not configured; the answer key cannot be read.",
+    "failed": "The answer key could not be read.",
+    "unavailable": "Claude is not configured; the answer key cannot be read.",
+    "invalidPage": "The printed page must be a whole number between 1 and 100000.",
+    "saveFailed": "The row could not be saved.",
+    "deleteFailed": "The row could not be deleted.",
+    "stale": "The instruction / model changed — the stored rows are shown; reading again is paid.",
+    "overwrite": {
+      "title": "Some rows were corrected by hand",
+      "message": "This page has answer key rows corrected by hand; reading again will delete them.",
+      "confirm": "Read again anyway",
+      "cancel": "Cancel"
+    },
+    "bulk": {
+      "open": "Upload answer keys",
+      "hint": "Select the answer key pages (images) of the selected book; Claude reads them one by one, stored readings are free.",
+      "needBook": "Select a book first.",
+      "progress": "Reading {{done}}/{{total}}",
+      "summary": "Answer key: {{pages}}/{{total}} pages, {{rows}} rows, ~${{cost}}",
+      "stale": "stored rows kept on {{count}} pages (different instruction / model)",
+      "skipped": "{{count}} files not read (quota / budget)",
+      "unreadable": "The file could not be read.",
+      "keptEdits": "Rows corrected by hand were kept; not read again.",
+      "dismiss": "Close summary"
+    }
+  },
+  "solution": {
+    "title": "Solution",
+    "noBook": "No book or file page: the answer key cannot be searched, the solution is suggested by AI.",
+    "needLabel": "Enter the activity label to find it in the answer key (e.g. \"Activity 3\").",
+    "keyLoading": "Searching the answer key…",
+    "keyFailed": "The answer key could not be searched.",
+    "retry": "Retry",
+    "keyFound": "{{count}} rows found in the answer key.",
+    "visual": "visual answer",
+    "keyNone": "Not in the answer key — manual marking comes with #581; you can ask AI to solve it (paid).",
+    "solving": "Extracting the solution…",
+    "sources": {
+      "Key": "Key",
+      "AI": "AI",
+      "Human": "Manual"
+    },
+    "approved": "Approved",
+    "pending": "Awaiting approval",
+    "cached": "cached",
+    "live": "live",
+    "firstCallCost": "first call ~${{cost}}",
+    "promptVersion": "prompt v{{version}}",
+    "invalid": "The solution failed validation:",
+    "notApplied": "The solution could not be applied to the canvas (it does not fit this activity's plan).",
+    "kept": "Your manual edits on the canvas were kept; the solution was not applied.",
+    "apply": "Apply solution",
+    "applyConfirm": "The solution will be applied to the canvas; your manual edits on this activity will be lost.",
+    "applyAction": "Apply",
+    "edited": "The solution was changed on the canvas; once saved it needs approval again.",
+    "saveEdit": "Save correction",
+    "approve": "Approve",
+    "approveHint": "Approves the solution; the approver and time are recorded.",
+    "approveEditedHint": "The correction on the canvas is saved and approved; the source becomes \"Manual\".",
+    "fromKey": "Solve from key",
+    "ai": "Solve with AI (paid)",
+    "aiHint": "Claude suggests a solution for an activity that is not in the answer key; a stored result is returned for free.",
+    "resolve": "Solve again (paid)",
+    "resolveHint": "Ignores the stored solution, asks Claude again and is charged.",
+    "resolveConfirm": "Claude will be asked for this activity's solution again and it will be charged; the new solution needs approval.",
+    "resolveAction": "Solve again",
+    "failed": "The solution could not be extracted.",
+    "unavailable": "Claude is not configured; the solution cannot be extracted.",
+    "emptyEdit": "There is no solution on the canvas; nothing to save.",
+    "approvedDone": "Solution approved.",
+    "savedDone": "Correction saved; awaiting approval.",
+    "forbidden": "Only QuestionTrainer and Admin can approve solutions.",
+    "approveFailed": "The solution could not be approved.",
+    "saveFailed": "The correction could not be saved.",
+    "promptSaved": "{{kind}} instruction v{{version}} saved; only this instruction's results are regenerated (paid).",
+    "promptKinds": {
+      "answerKey": "Answer key reading",
+      "solveFromKey": "Solution from key",
+      "solveAi": "AI solution"
+    },
+    "approveEdited": "Correct and approve",
+    "approveInvalidHint": "The solution failed validation; correct it on the canvas first.",
+    "planChanged": "Plan changed, solve again: the solution was not written for the plan on the canvas; approval and saving corrections are disabled.",
+    "planChangedStored": "Plan changed, solve again: the stored solution was written for a different draft plan.",
+    "ambiguous": "Several activities with this label are in the answer key; pick which one:",
+    "pickGroup": "{{label}} ({{count}} rows)"
+  },
+  "mcqKey": {
+    "loading": "Searching the answer key…",
+    "failed": "The answer key could not be searched.",
+    "retry": "Retry",
+    "fromKey": "From key",
+    "applied": "Correct option: {{letter}}",
+    "notFound": "Not found in the answer key; mark the correct option by hand.",
+    "ambiguous": "The answer key has several rows; pick the right one:",
+    "found": "In the key: {{answer}}",
+    "apply": "Mark option"
   }
 }

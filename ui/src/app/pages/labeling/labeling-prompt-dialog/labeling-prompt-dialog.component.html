@@ -87,7 +87,8 @@
       </div>
       </mat-tab>
 
-      <!-- Issue #579: etkinlik tipi başına talimat (her tip ayrı sürüm; yalnız o tipin önbelleği geçersiz olur). -->
+      <!-- Issue #579: etkinlik tipi başına talimat; #580: ardından üç çözüm talimatı (her biri ayrı sürüm, yalnız kendi
+           önbelleğini geçersiz kılar). -->
       @for (type of activityTypes; track type) {
       <mat-tab [label]="t('tabs.' + type)">
       <div class="lp-tab lp-activity" [attr.data-type]="type">
@@ -105,7 +106,7 @@
           @if (a.active.createdAt) { · {{ a.active.createdAt | date: 'short' }} }
           @if (a.active.createdByName) { · {{ a.active.createdByName }} }
         </p>
-        <p class="lp-hint">{{ t('activity.hint') }}</p>
+        <p class="lp-hint">{{ isSolutionKind(type) ? t('solution.hints.' + type) : t('activity.hint') }}</p>
         <mat-form-field appearance="outline" class="lp-wide">
           <mat-label>{{ t('activity.instruction') }}</mat-label>
           <textarea matInput class="lp-activity-instruction" [formControl]="activityForms[type]" rows="10"

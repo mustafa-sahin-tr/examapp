@@ -130,7 +130,8 @@
         "dragPlace": "Sürükle-yerleştir",
         "match": "Eşleştirme"
       }
-    }
+    },
+    "detectedLabel": "Tespit edilen etiket: {{label}}"
   },
   "source": {
     "label": "Kaynak",
@@ -191,7 +192,10 @@
       "matrixChoice": "Matris seçim",
       "slotFill": "Cevap kutusu",
       "dragPlace": "Sürükle-yerleştir",
-      "match": "Eşleştirme"
+      "match": "Eşleştirme",
+      "answerKey": "Anahtar okuma",
+      "solveFromKey": "Anahtardan çözüm",
+      "solveAi": "AI çözüm"
     },
     "activity": {
       "loadFailed": "Etkinlik talimatları yüklenemedi.",
@@ -200,7 +204,14 @@
       "missing": "Sunucu bu tip için talimat döndürmedi."
     },
     "unsavedOthers": "Diğer sekmelerde kaydedilmemiş değişiklik var; kaydedip kapatırsanız kaybolur:",
-    "saveAnyway": "Yine de kaydet"
+    "saveAnyway": "Yine de kaydet",
+    "solution": {
+      "hints": {
+        "answerKey": "Kitabın cevap anahtarı sayfası bu talimatla Claude'a gönderilir; satırlar (basılı sayfa, etkinlik, madde, cevap, görsel mi) çıkarılır. Kaydetmek yeni bir sürüm oluşturur; yalnız anahtar okumalarının önbelleği geçersiz olur. Yanıt şeması sabittir.",
+        "solveFromKey": "Cevabı görsel olan maddelerde etkinlik kırpması ve anahtar kırpması bu talimatla birlikte gönderilir; çözüm etkinliğin tipinin şemasıyla yazılır. Kaydetmek yeni bir sürüm oluşturur; yalnız anahtardan çözümlerin önbelleği geçersiz olur.",
+        "solveAi": "Cevap anahtarında olmayan etkinliğin kırpması bu talimatla gönderilir; Claude çözüm önerir (onay bekler). Kaydetmek yeni bir sürüm oluşturur; yalnız AI çözümlerinin önbelleği geçersiz olur."
+      }
+    }
   },
   "book": {
     "label": "Kitap",
@@ -249,5 +260,129 @@
     "applyAction": "Uygula",
     "stale": "Kutu değişti; taslak yeniden çıkarılacak.",
     "firstCallCost": "ilk çağrı ~${{cost}}"
+  },
+  "answerKey": {
+    "read": "Cevap anahtarını oku (Claude)",
+    "readHint": "Bu cevap anahtarı sayfasındaki satırlar (basılı sayfa, etkinlik, madde, cevap) Claude ile okunur; kayıtlı sonuç varsa ücretsiz döner.",
+    "title": "Cevap anahtarı",
+    "reading": "Cevap anahtarı okunuyor…",
+    "cached": "önbellek",
+    "live": "canlı",
+    "firstCallCost": "ilk çağrı ~${{cost}}",
+    "promptVersion": "prompt v{{version}}",
+    "printedPage": "Basılı sayfa",
+    "activity": "Etkinlik",
+    "item": "Madde",
+    "answer": "Cevap",
+    "save": "Kaydet",
+    "cancel": "Vazgeç",
+    "noLabel": "(etiketsiz)",
+    "visual": "görsel cevap",
+    "visualHint": "Cevap mini görsel; kutusu sayfada kesik çizgiyle gösterilir, çözüm anahtar kırpmasından çıkarılır.",
+    "edit": "Satırı düzenle",
+    "delete": "Satırı sil",
+    "empty": "Bu sayfada cevap satırı bulunamadı.",
+    "reread": "Yeniden oku (ücretli)",
+    "rereadHint": "Kayıtlı sonuç yok sayılır, Claude'a yeniden sorulur ve ücretlendirilir.",
+    "rereadConfirm": "Cevap anahtarı sayfası Claude'a yeniden okutulacak ve ücretlendirilecek; okunan satırlar yenileriyle değişir.",
+    "rereadAction": "Yeniden oku",
+    "notRead": "Bu sayfa kitabın cevap anahtarında. Satırları çıkarmak için araç çubuğundan \"Cevap anahtarını oku\".",
+    "claudeOff": "Claude yapılandırılmamış; cevap anahtarı okunamıyor.",
+    "failed": "Cevap anahtarı okunamadı.",
+    "unavailable": "Claude yapılandırılmamış; cevap anahtarı okunamıyor.",
+    "invalidPage": "Basılı sayfa 1 ile 100000 arasında bir tam sayı olmalı.",
+    "saveFailed": "Satır kaydedilemedi.",
+    "deleteFailed": "Satır silinemedi.",
+    "stale": "Talimat / model değişti — kayıtlı satırlar gösteriliyor; yeniden okuma ücretli.",
+    "overwrite": {
+      "title": "Elle düzeltilmiş satırlar var",
+      "message": "Bu sayfada elle düzeltilmiş anahtar satırları var; yeniden okuma onları silecek.",
+      "confirm": "Yine de yeniden oku",
+      "cancel": "Vazgeç"
+    },
+    "bulk": {
+      "open": "Cevap anahtarlarını yükle",
+      "hint": "Seçili kitabın cevap anahtarı sayfalarını (görseller) seçin; sırayla Claude ile okunur, kayıtlı okumalar ücretsiz döner.",
+      "needBook": "Önce kitap seçin.",
+      "progress": "{{done}}/{{total}} okunuyor",
+      "summary": "Cevap anahtarı: {{pages}}/{{total}} sayfa, {{rows}} satır, ~${{cost}}",
+      "stale": "{{count}} sayfada kayıtlı satırlar korundu (talimat / model farklı)",
+      "skipped": "{{count}} dosya okunmadı (kota / bütçe)",
+      "unreadable": "Dosya okunamadı.",
+      "keptEdits": "Elle düzeltilmiş satırlar korundu; yeniden okunmadı.",
+      "dismiss": "Özeti kapat"
+    }
+  },
+  "solution": {
+    "title": "Çözüm",
+    "noBook": "Kitap ve dosya sayfası yok: cevap anahtarı aranamaz, çözüm AI ile önerilir.",
+    "needLabel": "Cevap anahtarında bulmak için etkinlik etiketini girin (ör. \"Etkinlik 3\").",
+    "keyLoading": "Cevap anahtarında aranıyor…",
+    "keyFailed": "Cevap anahtarı aranamadı.",
+    "retry": "Tekrar dene",
+    "keyFound": "Cevap anahtarında {{count}} satır bulundu.",
+    "visual": "görsel cevap",
+    "keyNone": "Anahtarda yok — elle işaretleme #581'de; isterseniz AI ile çözdürebilirsiniz (ücretli).",
+    "solving": "Çözüm çıkarılıyor…",
+    "sources": {
+      "Key": "Anahtar",
+      "AI": "AI",
+      "Human": "Elle"
+    },
+    "approved": "Onaylandı",
+    "pending": "Onay bekliyor",
+    "cached": "önbellek",
+    "live": "canlı",
+    "firstCallCost": "ilk çağrı ~${{cost}}",
+    "promptVersion": "prompt v{{version}}",
+    "invalid": "Çözüm doğrulamadan geçmedi:",
+    "notApplied": "Çözüm tuvale uygulanamadı (bu etkinliğin planına uymuyor).",
+    "kept": "Tuvalde elle yaptığınız düzenleme korundu; çözüm uygulanmadı.",
+    "apply": "Çözümü uygula",
+    "applyConfirm": "Çözüm tuvale uygulanacak; bu etkinlikte elle yaptığınız düzenlemeler kaybolacak.",
+    "applyAction": "Uygula",
+    "edited": "Çözüm tuvalde değiştirildi; kaydedilince yeniden onay bekler.",
+    "saveEdit": "Düzeltmeyi kaydet",
+    "approve": "Onayla",
+    "approveHint": "Çözümü onaylar; onaylayan ve zaman kayda yazılır.",
+    "approveEditedHint": "Tuvaldeki düzeltme kaydedilir ve onaylanır; kaynak \"Elle\" olur.",
+    "fromKey": "Anahtardan çöz",
+    "ai": "AI ile çöz (ücretli)",
+    "aiHint": "Cevap anahtarında olmayan etkinliğin çözümünü Claude önerir; kayıtlı sonuç varsa ücretsiz döner.",
+    "resolve": "Yeniden çöz (ücretli)",
+    "resolveHint": "Kayıtlı çözüm yok sayılır, Claude'a yeniden sorulur ve ücretlendirilir.",
+    "resolveConfirm": "Bu etkinliğin çözümü Claude'a yeniden sorulacak ve ücretlendirilecek; yeni çözüm onay bekler.",
+    "resolveAction": "Yeniden çöz",
+    "failed": "Çözüm çıkarılamadı.",
+    "unavailable": "Claude yapılandırılmamış; çözüm çıkarılamıyor.",
+    "emptyEdit": "Tuvalde çözüm yok; kaydedilecek bir şey yok.",
+    "approvedDone": "Çözüm onaylandı.",
+    "savedDone": "Düzeltme kaydedildi; onay bekliyor.",
+    "forbidden": "Çözümü yalnız QuestionTrainer ve Admin onaylayabilir.",
+    "approveFailed": "Çözüm onaylanamadı.",
+    "saveFailed": "Düzeltme kaydedilemedi.",
+    "promptSaved": "{{kind}} talimatı v{{version}} kaydedildi; yalnız bu talimatın sonuçları yeniden üretilir (ücretli).",
+    "promptKinds": {
+      "answerKey": "Anahtar okuma",
+      "solveFromKey": "Anahtardan çözüm",
+      "solveAi": "AI çözüm"
+    },
+    "approveEdited": "Düzeltip onayla",
+    "approveInvalidHint": "Çözüm doğrulamadan geçmedi; önce tuvalde düzeltin.",
+    "planChanged": "Plan değişti, yeniden çöz: çözüm tuvaldeki plana yazılmamış; onay ve düzeltme kaydı kapalı.",
+    "planChangedStored": "Plan değişti, yeniden çöz: kayıtlı çözüm başka bir taslak plana yazılmış.",
+    "ambiguous": "Anahtarda bu etiketle birden fazla etkinlik var; hangisi olduğunu seçin:",
+    "pickGroup": "{{label}} ({{count}} satır)"
+  },
+  "mcqKey": {
+    "loading": "Cevap anahtarında aranıyor…",
+    "failed": "Cevap anahtarı aranamadı.",
+    "retry": "Tekrar dene",
+    "fromKey": "Anahtardan",
+    "applied": "Doğru şık: {{letter}}",
+    "notFound": "Anahtarda bulunamadı; doğru şıkkı elle işaretleyin.",
+    "ambiguous": "Anahtarda birden fazla satır var; doğrusunu seçin:",
+    "found": "Anahtarda: {{answer}}",
+    "apply": "Şıkkı işaretle"
   }
 }

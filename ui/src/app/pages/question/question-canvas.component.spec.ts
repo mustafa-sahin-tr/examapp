@@ -158,6 +158,46 @@ describe('QuestionCanvasComponent', () => {
         });
     });
 
+    // Issue #576: müfettişin sürükle-yerleştir / eşleştirme düğmeleri tuvale (ImageSelector) aktarılır.
+    describe('dragPlace + match inspector bridge (#576)', () => {
+        it('placeAndMatchActions_DelegateWithActiveQuestion', () => {
+            const sel = {
+                currentRegion: { name: 'Soru 2' },
+                activeRegionIndex: 1,
+                selectDragPlaceMode: vi.fn(),
+                setDragPlaceMode: vi.fn(),
+                addDragPlaceCardsFromText: vi.fn(),
+                setDragPlaceTargetCapacity: vi.fn(),
+                ensureDragPlaceState: vi.fn(() => ({ targets: [{ id: 't1', capacity: 30 }] })),
+                toggleDragPlaceAssignment: vi.fn(),
+                selectMatchMode: vi.fn(),
+                setMatchPair: vi.fn(),
+                toggleMatchPrelinked: vi.fn(),
+            };
+            component.imageSelector = sel as any;
+
+            component.insPlaceDrawMode('placeCard');
+            component.insPlaceMode('order');
+            component.insPlaceAddCards('A\nB');
+            const capacityInput = { value: '99' };
+            component.insPlaceCapacity('t1', { target: capacityInput } as unknown as Event);
+            component.insPlaceToggle('t1', 'c2');
+            component.insMatchDrawMode('matchRight');
+            component.insMatchPair('l1', { target: { value: '' } } as unknown as Event);
+            component.insMatchPrelinked('l1');
+
+            expect(sel.selectDragPlaceMode).toHaveBeenCalledWith(1, 'placeCard');
+            expect(sel.setDragPlaceMode).toHaveBeenCalledWith('Soru 2', 'order');
+            expect(sel.addDragPlaceCardsFromText).toHaveBeenCalledWith('Soru 2', 'A\nB');
+            expect(sel.setDragPlaceTargetCapacity).toHaveBeenCalledWith('Soru 2', 't1', '99');
+            expect(capacityInput.value).toBe('30');
+            expect(sel.toggleDragPlaceAssignment).toHaveBeenCalledWith('Soru 2', 't1', 'c2');
+            expect(sel.selectMatchMode).toHaveBeenCalledWith(1, 'matchRight');
+            expect(sel.setMatchPair).toHaveBeenCalledWith('Soru 2', 'l1', null);
+            expect(sel.toggleMatchPrelinked).toHaveBeenCalledWith('Soru 2', 'l1');
+        });
+    });
+
     describe('canPreview', () => {
         it('canPreview_NoIdAndNoTestValue_ReturnsFalse', () => {
             component.id = null;

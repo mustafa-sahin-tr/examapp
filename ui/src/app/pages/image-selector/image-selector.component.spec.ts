@@ -1243,6 +1243,146 @@ describe('ImageSelectorComponent', () => {
         });
     });
 
+    describe('dragPlace + match authoring (#576)', () => {
+        function setupRegion(type: 'dragPlace' | 'match') {
+            vi.spyOn(component, 'drawImage').mockReturnValue(undefined);
+            component.regions.set([{ ...region('Soru 1', []), x: 100, y: 100, width: 400, height: 300 }] as any);
+            component.interactionTypes.set('Soru 1', type);
+        }
+        function draw(mode: string, x1: number, y1: number, x2: number, y2: number) {
+            component.selectionMode.set(mode as any);
+            (component as any).addInteractionBoxFromDrag(mode, 0, x1, y1, x2, y2);
+        }
+        const place = () => component.ensureDragPlaceState('Soru 1');
+        const match = () => component.ensureMatchState('Soru 1');
+        const save = () => component.getRegions(null).questions[0];
+        const messages = () => component.validateQuestions({ requireCorrectAnswer: true })[0]?.messages ?? [];
+
+        it('dragPlace_DrawTargetsAndCards_BucketsTextCards_SolutionByClicks_PlanAndSolutionSeparate', () => {
+            setupRegion('dragPlace');
+            draw('placeTarget', 110, 110, 210.4, 160.6);
+            component.setDragPlaceTargetLabel('Soru 1', 't1', ' Erime ');
+            component.addDragPlaceBucket('Soru 1');
+            component.setDragPlaceTargetLabel('Soru 1', 't2', 'Donma');
+            component.setDragPlaceTargetCapacity('Soru 1', 't2', '3');
+            component.addDragPlaceCardsFromText('Soru 1', 'Buz\n\n  Mum \nSu');
+            draw('placeCard', 300, 300, 350, 330);
+
+            // Tuvalde hedefe tık = seç, karta tık = seçili hedefe ata.
+            expect(component.getRegionOrAnswerAtPosition(120, 120)).toEqual({ type: 'placeTarget', value: { questionIndex: 0, targetId: 't1' } });
+            expect(component.getRegionOrAnswerAtPosition(310, 310)).toEqual({ type: 'placeCard', value: { questionIndex: 0, cardId: 'c4' } });
+            (component as any).onAuthoringItemClick('Soru 1', { type: 'placeTarget', value: { questionIndex: 0, targetId: 't1' } });
+            (component as any).onAuthoringItemClick('Soru 1', { type: 'placeCard', value: { questionIndex: 0, cardId: 'c4' } });
+            component.toggleDragPlaceAssignment('Soru 1', 't2', 'c1');
+            component.toggleDragPlaceAssignment('Soru 1', 't2', 'c2');
+
+            const q = save();
+            expect(q.interactionType).toBe('dragPlace');
+            expect(JSON.parse(q.interactionPlan!)).toEqual({
+                version: 1,
+                type: 'dragPlace',
+                mode: 'place',
+                reuse: false,
+                targets: [
+                    { id: 't1', label: 'Erime', box: { x: 10, y: 10, width: 100, height: 51 }, capacity: 1 },
+                    { id: 't2', label: 'Donma', capacity: 3 },
+                ],
+                cards: [
+                    { id: 'c1', label: 'Buz' },
+                    { id: 'c2', label: 'Mum' },
+                    { id: 'c3', label: 'Su' },
+                    { id: 'c4', box: { x: 200, y: 200, width: 50, height: 30 } },
+                ],
+            });
+            expect(JSON.parse(q.interactionSolution!)).toEqual({ t1: ['c4'], t2: ['c1', 'c2'] });
+            expect(component.getActiveInspector()!.dragPlace!.distractorCount).toBe(1);
+            expect(q.answers).toEqual([]);
+            expect(messages()).toEqual([]);
+        });
+
+        it('dragPlace_ValidationMirrorsServer_ReuseAndOrderMode', () => {
+            setupRegion('dragPlace');
+            expect(messages()).toEqual(['Hedef yok (görselde kutu çizin ya da kova ekleyin)', 'Kart yok']);
+            component.addDragPlaceBucket('Soru 1');
+            component.addDragPlaceCardsFromText('Soru 1', 'A\nB');
+            expect(messages()).toEqual(['Hedef 1: kovanın adı yok', 'Hiçbir hedefe doğru kart atanmamış']);
+            expect(save().interactionSolution).toBeNull();
+            expect(component.validateQuestions({ requireCorrectAnswer: true, skipInteractive: true })).toEqual([]);
+
+            component.setDragPlaceTargetLabel('Soru 1', 't1', 'Kova');
+            component.addDragPlaceBucket('Soru 1', 'İkinci');
+            component.toggleDragPlaceAssignment('Soru 1', 't1', 'c1');
+            component.toggleDragPlaceAssignment('Soru 1', 't2', 'c1');
+            // Tekrar kullanım kapalı: kart ikinci hedefe taşınır.
+            expect({ ...place().solution }).toEqual({ t2: ['c1'] });
+            component.setDragPlaceReuse('Soru 1', true);
+            component.toggleDragPlaceAssignment('Soru 1', 't1', 'c1');
+            expect({ ...place().solution }).toEqual({ t2: ['c1'], t1: ['c1'] });
+            component.setDragPlaceReuse('Soru 1', false);
+            expect({ ...place().solution }).toEqual({ t1: ['c1'] });
+
+            component.fillDragPlaceOrderFromCards('Soru 1');
+            const plan = JSON.parse(save().interactionPlan!);
+            expect(plan.mode).toBe('order');
+            expect(plan.targets.every((t: { capacity: number }) => t.capacity === 1)).toBe(true);
+            expect(JSON.parse(save().interactionSolution!)).toEqual({ t1: ['c1'], t2: ['c2'] });
+            component.addDragPlaceBucket('Soru 1');
+            expect(messages()).toEqual(['3. sıranın doğru kartı yok']);
+        });
+
+        it('match_TextAndCropItems_PairsPrelinkedExample_IdsDoNotOverlap', () => {
+            setupRegion('match');
+            component.addMatchItemsFromText('Soru 1', 'left', 'Deprem\nSel');
+            draw('matchLeft', 110, 110, 160, 160);
+            component.addMatchItemsFromText('Soru 1', 'right', 'Fay\nYağmur\nÇığ\nKar');
+            expect(messages()).toEqual(['3 sol öğenin eşi seçilmemiş']);
+
+            component.setMatchPair('Soru 1', 'l1', 'r1');
+            component.setMatchPair('Soru 1', 'l2', 'r2');
+            (component as any).onAuthoringItemClick('Soru 1', { type: 'matchItem', value: { questionIndex: 0, side: 'left', itemId: 'l3' } });
+            (component as any).onAuthoringItemClick('Soru 1', { type: 'matchItem', value: { questionIndex: 0, side: 'right', itemId: 'r2' } });
+            // Sağ öğe bir kez kullanılır: r2 artık l3'ün; l2 eşsiz kalır.
+            expect({ ...match().pairs }).toEqual({ l1: 'r1', l3: 'r2' });
+            component.setMatchPair('Soru 1', 'l2', 'r3');
+            component.toggleMatchPrelinked('Soru 1', 'l1');
+
+            const q = save();
+            const plan = JSON.parse(q.interactionPlan!);
+            expect(q.interactionType).toBe('match');
+            expect(plan.left).toEqual([{ id: 'l1', label: 'Deprem' }, { id: 'l2', label: 'Sel' }, { id: 'l3', box: { x: 10, y: 10, width: 50, height: 50 } }]);
+            expect(plan.right.map((r: { id: string }) => r.id)).toEqual(['r1', 'r2', 'r3', 'r4']);
+            expect(plan.prelinked).toEqual([{ leftId: 'l1', rightId: 'r1' }]);
+            expect(JSON.parse(q.interactionSolution!)).toEqual({ l2: 'r3', l3: 'r2' });
+            const ids = [...plan.left, ...plan.right].map((i: { id: string }) => i.id);
+            expect(new Set(ids).size).toBe(ids.length);
+            expect(component.getActiveInspector()!.match!.distractorCount).toBe(1);
+            expect(messages()).toEqual([]);
+
+            component.toggleMatchPrelinked('Soru 1', 'l2');
+            component.toggleMatchPrelinked('Soru 1', 'l3');
+            expect(messages()).toEqual(['Örnek dışında eşlenecek sol öğe kalmadı']);
+        });
+
+        it('drawOnMcqQuestion_TurnsTypeAndSelectKeepsMode_OutsideRejected_ResetClears', () => {
+            vi.spyOn(component, 'drawImage').mockReturnValue(undefined);
+            component.regions.set([{ ...region('Soru 1', []), x: 100, y: 100, width: 400, height: 300 }] as any);
+            const open = vi.spyOn((component as any).snackBar, 'open').mockReturnValue(undefined);
+            draw('placeTarget', 50, 110, 160, 160);
+            expect(open).toHaveBeenCalledTimes(1);
+            draw('matchRight', 110, 110, 160, 160);
+            expect(component.getInteractionType('Soru 1')).toBe('match');
+            component.selectQuestion(0);
+            expect(component.selectionMode()).toBe('matchRight');
+            component.selectDragPlaceMode(0, 'placeCard');
+            expect(component.getInteractionType('Soru 1')).toBe('dragPlace');
+            component.selectQuestion(0);
+            expect(component.selectionMode()).toBe('placeCard');
+            component.resetRegions();
+            expect(component.dragPlaceState.size).toBe(0);
+            expect(component.matchState.size).toBe(0);
+        });
+    });
+
     // Bekleme anlarının görünürlüğü: analiz örtüsü, eğitime gönderim meşgul durumu ve hata yolları.
     describe('busy states (predict / sendToFix)', () => {
         let snackBarOpen: Mock;

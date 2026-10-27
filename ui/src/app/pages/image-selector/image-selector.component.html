@@ -128,6 +128,14 @@
               <mat-icon style="vertical-align: middle; margin-right: 8px">input</mat-icon>
               {{ t('menu.drawSlot') }}
             </button>
+            <button (click)="handleMenuAction('selectPlaceMode', $event)">
+              <mat-icon style="vertical-align: middle; margin-right: 8px">move_down</mat-icon>
+              {{ t('menu.drawPlace') }}
+            </button>
+            <button (click)="handleMenuAction('selectMatchMode', $event)">
+              <mat-icon style="vertical-align: middle; margin-right: 8px">compare_arrows</mat-icon>
+              {{ t('menu.drawMatch') }}
+            </button>
             <!-- dragDropLabeling hızlı ayarları (sağ panel olmadan) -->
             @if (
               selectedRegion! >= 0 && getInteractionType(regions()[selectedRegion || 0].name) === 'dragDropLabeling'
@@ -210,6 +218,44 @@
               <button (click)="handleMenuAction('selectSlotMode', $event)">
                 <mat-icon style="vertical-align: middle; margin-right: 8px">input</mat-icon>
                 {{ t('menu.drawSlot') }}
+              </button>
+              <button (click)="handleMenuAction('removeMatrixQuestion', $event)">
+                <mat-icon style="vertical-align: middle; margin-right: 8px">delete_forever</mat-icon>
+                {{ t('menu.removeQuestion') }}
+              </button>
+            }
+            <!-- Sürükle-yerleştir hedefi / kartı için menü (#576) -->
+            @if (contextMenuType === 'place' && selectedPlaceItem; as item) {
+              <div style="padding: 6px 8px; font-size: 12px; opacity: 0.8">
+                {{ t(item.kind === 'target' ? 'menu.placeTargetLabel' : 'menu.placeCardLabel', { id: item.id }) }}
+              </div>
+              <button (click)="handleMenuAction('removePlaceItem', $event)">
+                <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>
+                {{ t('menu.removeItem') }}
+              </button>
+              <mat-divider></mat-divider>
+              <button (click)="handleMenuAction('selectPlaceMode', $event)">
+                <mat-icon style="vertical-align: middle; margin-right: 8px">move_down</mat-icon>
+                {{ t('menu.drawPlace') }}
+              </button>
+              <button (click)="handleMenuAction('removeMatrixQuestion', $event)">
+                <mat-icon style="vertical-align: middle; margin-right: 8px">delete_forever</mat-icon>
+                {{ t('menu.removeQuestion') }}
+              </button>
+            }
+            <!-- Eşleştirme öğesi için menü (#576) -->
+            @if (contextMenuType === 'match' && selectedMatchItem; as item) {
+              <div style="padding: 6px 8px; font-size: 12px; opacity: 0.8">
+                {{ t(item.side === 'left' ? 'menu.matchLeftLabel' : 'menu.matchRightLabel', { id: item.id }) }}
+              </div>
+              <button (click)="handleMenuAction('removeMatchItem', $event)">
+                <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>
+                {{ t('menu.removeItem') }}
+              </button>
+              <mat-divider></mat-divider>
+              <button (click)="handleMenuAction('selectMatchMode', $event)">
+                <mat-icon style="vertical-align: middle; margin-right: 8px">compare_arrows</mat-icon>
+                {{ t('menu.drawMatch') }}
               </button>
               <button (click)="handleMenuAction('removeMatrixQuestion', $event)">
                 <mat-icon style="vertical-align: middle; margin-right: 8px">delete_forever</mat-icon>

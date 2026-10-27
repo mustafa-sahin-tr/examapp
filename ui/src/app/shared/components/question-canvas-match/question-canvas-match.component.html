@@ -1,0 +1,83 @@
+<div class="mt-root" [class.is-activity]="activity()" [class.is-solution]="solutionShown()"
+  [class.is-picking]="!!selected()" (keydown.escape)="cancelSelection()"
+  *transloco="let t; prefix: 'shared.questionCanvas'">
+  @if (!hidePassage && passageImageUrl(); as pUrl) {
+    <div class="mt-passage">
+      @if (passageTitle(); as title) {
+        <div class="mt-passage__title">{{ title }}</div>
+      }
+      <img class="mt-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (imageUrl(); as url) {
+    <div class="mt-stage">
+      <img class="mt-image" [src]="url" [alt]="t('questionAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (plan()) {
+    <div class="mt-board" #board data-testid="mt-board">
+      <svg class="mt-lines" aria-hidden="true" data-testid="mt-lines"
+        [attr.width]="boardSize().width" [attr.height]="boardSize().height"
+        [attr.viewBox]="'0 0 ' + boardSize().width + ' ' + boardSize().height">
+        @for (line of lines(); track line.leftId) {
+          <line class="mt-line" [attr.x1]="line.x1" [attr.y1]="line.y1" [attr.x2]="line.x2" [attr.y2]="line.y2"
+            [class.mt-line--example]="line.kind === 'example'" [class.mt-line--solution]="line.kind === 'solution'"
+            [class.mt-line--correct]="line.mark === 'correct'" [class.mt-line--wrong]="line.mark === 'wrong'"
+            [attr.data-line]="line.leftId + ':' + line.rightId" />
+          <circle class="mt-dot" [attr.cx]="line.x1" [attr.cy]="line.y1" r="4"
+            [class.mt-line--correct]="line.mark === 'correct'" [class.mt-line--wrong]="line.mark === 'wrong'" />
+          <circle class="mt-dot" [attr.cx]="line.x2" [attr.cy]="line.y2" r="4"
+            [class.mt-line--correct]="line.mark === 'correct'" [class.mt-line--wrong]="line.mark === 'wrong'" />
+        }
+      </svg>
+
+      @for (side of sides; track side) {
+        @let items = side === 'left' ? left() : right();
+        <ul class="mt-col" [class.mt-col--left]="side === 'left'" [class.mt-col--right]="side === 'right'"
+          [attr.aria-label]="t(side === 'left' ? 'match.leftColumn' : 'match.rightColumn')">
+          @for (item of items; track item.id; let i = $index) {
+            @let mark = side === 'left' ? leftMark()(item.id) : null;
+            @let prelinked = isPrelinked(side, item.id);
+            <li class="mt-col__cell">
+              <button type="button" class="mt-item" [attr.data-side]="side" [attr.data-item]="item.id"
+                [class.is-selected]="isSelected(side, item.id)" [class.is-linked]="!!partnerOf(side, item.id)"
+                [class.is-example]="prelinked" [class.is-correct]="mark === 'correct'" [class.is-wrong]="mark === 'wrong'"
+                [disabled]="prelinked || locked()" [attr.aria-pressed]="isSelected(side, item.id)"
+                [attr.aria-label]="itemAria(side, item)"
+                (click)="onItem(side, item.id, $event)" (keydown)="onItemKeydown(side, i, $event)">
+                @if (item.box && imageUrl() && region(); as r) {
+                  <app-question-image-crop class="mt-item__crop" [src]="imageUrl()!" [box]="item.box" [sourceWidth]="r.width"
+                    [sourceHeight]="r.height" [maxHeight]="72" [imageRefresh]="imageRefresh" />
+                }
+                @if (item.label) {
+                  <span class="mt-item__label">{{ item.label }}</span>
+                } @else if (!item.box || !imageUrl()) {
+                  <span class="mt-item__label">{{ itemText(side, item.id) }}</span>
+                }
+                @if (prelinked) {
+                  <span class="mt-item__tag">{{ t('match.example') }}</span>
+                }
+                @if (mark) {
+                  <span class="mt-mark" [class.mt-mark--wrong]="mark === 'wrong'" aria-hidden="true" [attr.data-mark]="item.id">
+                    <mat-icon>{{ mark === 'correct' ? 'check' : 'close' }}</mat-icon>
+                  </span>
+                }
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+
+    <div class="mt-footer">
+      <p class="mt-hint" aria-live="polite" data-testid="mt-hint">{{ hint() }}</p>
+      <button mat-stroked-button type="button" class="mt-clear" (click)="clearAll()"
+        [disabled]="locked() || pairedCount() === 0">
+        <mat-icon>restart_alt</mat-icon>
+        {{ 'common.clear' | transloco }}
+      </button>
+    </div>
+  }
+</div>

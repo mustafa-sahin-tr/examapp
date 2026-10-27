@@ -119,6 +119,7 @@ public class QuestionService : IQuestionService
                 // question.TopicId = questionDto.TopicId;
                 question.AnswerColCount = questionDto.AnswerColCount;
                 // review #574 (L3): kontrolcüsü olan tip kanonik yazılır ("MatrixChoice" → "matrixChoice"); MCQ/boş/bilinmeyen aynen.
+                var previousInteractionType = question.InteractionType;
                 question.InteractionType = _graders.CanonicalType(questionDto.InteractionType);
                 // issue #570: plan çözümsüz saklanır; çözüm ayrı alandan, yoksa plandan (eski istemci), o da yoksa mevcut değer.
                 if (!InteractionPlanSolution.TryResolveForWrite(questionDto.InteractionPlan, questionDto.InteractionSolution,
@@ -140,6 +141,14 @@ public class QuestionService : IQuestionService
                         InvalidInput = true,
                         Message = _localizer["questions.interactionDefinition.invalid"]
                     };
+                }
+                // review #576 (H1/M1): tanım değiştiyse saklanacak biçime (dragPlace kartları / match sağ öğeleri karışık sıra +
+                // opak id); aynı tanım yeniden kaydedilince dokunulmaz (kayıtlı cevapların id'leri bozulmasın).
+                if (!string.Equals(previousInteractionType, question.InteractionType, StringComparison.Ordinal)
+                    || !string.Equals(storedPlan, question.InteractionPlan, StringComparison.Ordinal)
+                    || !string.Equals(storedSolution, question.InteractionSolution, StringComparison.Ordinal))
+                {
+                    (storedPlan, storedSolution) = _graders.Resolve(questionDto.InteractionType).PrepareForStorage(storedPlan, storedSolution);
                 }
                 question.InteractionPlan = storedPlan;
                 question.InteractionSolution = storedSolution;
@@ -557,7 +566,7 @@ public class QuestionService : IQuestionService
     }
 
     /// <summary>
-    /// issue #574: MCQ kuralı dışında kendi kontrolcüsü olan tip (dragDropLabeling, matrixChoice, slotFill). Bilinmeyen tip MCQ
+    /// issue #574: MCQ kuralı dışında kendi kontrolcüsü olan tip (dragDropLabeling, matrixChoice, slotFill, dragPlace, match). Bilinmeyen tip MCQ
     /// kontrolcüsüne düştüğü için etkileşimli sayılmaz (bugünkü davranış: doğru şık zorunlu, question-v2 kırpılır).
     /// </summary>
     private bool IsInteractive(string? interactionType) =>
@@ -605,7 +614,8 @@ public class QuestionService : IQuestionService
                     Message = _localizer["questions.bulk.invalidInteractionDefinition", bulkQuestion.Name]
                 };
             }
-            interactionByQuestion[bulkQuestion] = (resolvedPlan, resolvedSolution);
+            // review #576 (H1/M1): saklanacak biçim (dragPlace / match: karışık sıra + opak id).
+            interactionByQuestion[bulkQuestion] = _graders.Resolve(bulkQuestion.InteractionType).PrepareForStorage(resolvedPlan, resolvedSolution);
         }
 
         // Wrapped in CreateExecutionStrategy so EF Core's retry-on-failure
@@ -794,7 +804,7 @@ public class QuestionService : IQuestionService
 
                         questionV2Image = croppedQuestionImage;
                         // For MCQ we trim question-v2 above the answer block to improve UI.
-                        // For interactive types (dragDropLabeling, matrixChoice, slotFill) the targets are inside the question image,
+                        // For interactive types (dragDropLabeling, matrixChoice, slotFill, dragPlace, match) the targets are inside the question image,
                         // so we must keep full height.
                         if (!IsInteractive(interactionType) && answerInfos.Any())
                         {

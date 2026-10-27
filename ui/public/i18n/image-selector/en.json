@@ -49,6 +49,29 @@
       "entryFormMismatch": "Box {{n}}: with equivalence off, a fraction box needs a fraction as the correct value",
       "entryWithRequiredUnit": "Box {{n}}: a fraction box can’t require a unit",
       "invalidUnit": "Box {{n}}: one of the accepted units is not a readable unit"
+    },
+    "dragPlace": {
+      "noTargets": "No targets (draw a box on the image or add a bucket)",
+      "tooManyTargets": "At most 30 targets",
+      "noCards": "No cards",
+      "tooManyCards": "At most 60 cards",
+      "targetNoLabel": "Target {{n}}: the bucket has no name",
+      "cardEmpty": "Card {{n}}: no text or crop",
+      "tooLong": "A name is too long (max 200 characters)",
+      "overCapacity": "Target {{n}}: more correct cards than its capacity",
+      "noSolution": "No correct card assigned to any target",
+      "orderMissing": "Position {{n}} has no correct card"
+    },
+    "match": {
+      "noLeft": "No left items",
+      "tooManyLeft": "At most 30 left items",
+      "noRight": "No right items",
+      "tooManyRight": "At most 30 right items",
+      "leftEmpty": "Left {{n}}: no text or crop",
+      "rightEmpty": "Right {{n}}: no text or crop",
+      "tooLong": "A name is too long (max 200 characters)",
+      "missingPair": "{{count}} left items have no pair",
+      "allPrelinked": "No left item left to match besides the example"
     }
   },
   "menu": {
@@ -80,7 +103,14 @@
     "removeMatrixRow": "Delete row",
     "drawSlot": "Draw answer box",
     "slotLabel": "Answer box {{id}}",
-    "removeSlot": "Delete box"
+    "removeSlot": "Delete box",
+    "drawPlace": "Draw a placement target / card",
+    "drawMatch": "Draw a matching item",
+    "placeTargetLabel": "Target {{id}}",
+    "placeCardLabel": "Card {{id}}",
+    "matchLeftLabel": "Left item {{id}}",
+    "matchRightLabel": "Right item {{id}}",
+    "removeItem": "Delete item"
   },
   "messages": {
     "classificationApplied": "Classification applied.",
@@ -100,7 +130,10 @@
     "pageLoadError": "The page image could not be read. Check the file and try again.",
     "matrixOutsideQuestion": "The matrix box must be inside the question area.",
     "matrixCellOutsideRow": "A cell box must be inside a row box (draw the row first).",
-    "slotOutsideQuestion": "The answer box must be inside the question area."
+    "slotOutsideQuestion": "The answer box must be inside the question area.",
+    "placeTargetFull": "The target is full: raise its capacity or remove a card first.",
+    "boxOutsideQuestion": "The box must be inside the question area.",
+    "interactionLimit": "This question already has the maximum number of items."
   },
   "coordinateJson": {
     "activated": "Coordinate JSON found: {{questions}} questions on {{pages}} pages; using the JSON instead of question detection.",
@@ -113,7 +146,7 @@
   "training": {
     "emptyPageAdded": "Empty page added to training.",
     "emptyPageExcluded": "The page has no questions and is excluded from question training; there is nothing to send.",
-    "dragDropOnly": "The page only has interactive questions (drag-and-drop, matrix, answer boxes); they are not sent to training, so the page was not sent (the model would learn them as background).",
+    "dragDropOnly": "The page only has interactive questions (drag-and-drop, matrix, answer boxes, placement, matching); they are not sent to training, so the page was not sent (the model would learn them as background).",
     "questionsAdded": "Added {{count}} questions to training ({{file}}).",
     "noImage": "Load a page first.",
     "sendError": "The page could not be sent to training. Try again.",

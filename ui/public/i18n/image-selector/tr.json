@@ -49,6 +49,29 @@
       "entryFormMismatch": "Kutu {{n}}: eşdeğerlik kapalıyken kesir kutusunun doğru değeri kesir olmalı",
       "entryWithRequiredUnit": "Kutu {{n}}: kesir kutusunda birim zorunlu olamaz",
       "invalidUnit": "Kutu {{n}}: kabul edilen birimlerden biri birim olarak okunamıyor"
+    },
+    "dragPlace": {
+      "noTargets": "Hedef yok (görselde kutu çizin ya da kova ekleyin)",
+      "tooManyTargets": "En çok 30 hedef olabilir",
+      "noCards": "Kart yok",
+      "tooManyCards": "En çok 60 kart olabilir",
+      "targetNoLabel": "Hedef {{n}}: kovanın adı yok",
+      "cardEmpty": "Kart {{n}}: metin ya da kırpma yok",
+      "tooLong": "Ad çok uzun (en çok 200 karakter)",
+      "overCapacity": "Hedef {{n}}: doğru kart sayısı kapasiteyi aşıyor",
+      "noSolution": "Hiçbir hedefe doğru kart atanmamış",
+      "orderMissing": "{{n}}. sıranın doğru kartı yok"
+    },
+    "match": {
+      "noLeft": "Sol öğe yok",
+      "tooManyLeft": "En çok 30 sol öğe olabilir",
+      "noRight": "Sağ öğe yok",
+      "tooManyRight": "En çok 30 sağ öğe olabilir",
+      "leftEmpty": "Sol {{n}}: metin ya da kırpma yok",
+      "rightEmpty": "Sağ {{n}}: metin ya da kırpma yok",
+      "tooLong": "Ad çok uzun (en çok 200 karakter)",
+      "missingPair": "{{count}} sol öğenin eşi seçilmemiş",
+      "allPrelinked": "Örnek dışında eşlenecek sol öğe kalmadı"
     }
   },
   "menu": {
@@ -80,7 +103,14 @@
     "removeMatrixRow": "Satırı sil",
     "drawSlot": "Cevap kutusu çiz",
     "slotLabel": "Cevap kutusu {{id}}",
-    "removeSlot": "Kutuyu sil"
+    "removeSlot": "Kutuyu sil",
+    "drawPlace": "Yerleştirme hedefi / kartı çiz",
+    "drawMatch": "Eşleştirme öğesi çiz",
+    "placeTargetLabel": "Hedef {{id}}",
+    "placeCardLabel": "Kart {{id}}",
+    "matchLeftLabel": "Sol öğe {{id}}",
+    "matchRightLabel": "Sağ öğe {{id}}",
+    "removeItem": "Öğeyi sil"
   },
   "messages": {
     "classificationApplied": "Sınıflandırma uygulandı.",
@@ -100,7 +130,10 @@
     "pageLoadError": "Sayfa görseli okunamadı. Dosyayı kontrol edip tekrar deneyin.",
     "matrixOutsideQuestion": "Matris kutusu soru alanının içinde olmalı.",
     "matrixCellOutsideRow": "Hücre kutusu bir satır kutusunun içinde olmalı (önce satırı çizin).",
-    "slotOutsideQuestion": "Cevap kutusu soru alanının içinde olmalı."
+    "slotOutsideQuestion": "Cevap kutusu soru alanının içinde olmalı.",
+    "placeTargetFull": "Hedef dolu: önce kapasiteyi artırın ya da bir kartı kaldırın.",
+    "boxOutsideQuestion": "Kutu soru alanının içinde olmalı.",
+    "interactionLimit": "Bu soruda en çok sayıda öğe var."
   },
   "coordinateJson": {
     "activated": "Koordinat JSON'u bulundu: {{pages}} sayfada {{questions}} soru, soru tespiti yerine JSON kullanılıyor.",
@@ -113,7 +146,7 @@
   "training": {
     "emptyPageAdded": "Boş sayfa eğitime eklendi.",
     "emptyPageExcluded": "Sayfada soru yok ve sayfa soru eğitimine alınmıyor; gönderilecek bir şey yok.",
-    "dragDropOnly": "Sayfada yalnız etkileşimli sorular (sürükle-bırak, matris, cevap kutusu) var; bunlar eğitime gönderilmediği için sayfa gönderilmedi (model bu soruları arka plan olarak öğrenirdi).",
+    "dragDropOnly": "Sayfada yalnız etkileşimli sorular (sürükle-bırak, matris, cevap kutusu, yerleştirme, eşleştirme) var; bunlar eğitime gönderilmediği için sayfa gönderilmedi (model bu soruları arka plan olarak öğrenirdi).",
     "questionsAdded": "{{count}} soru eğitime eklendi ({{file}}).",
     "noImage": "Önce bir sayfa yükleyin.",
     "sendError": "Sayfa eğitime gönderilemedi. Tekrar deneyin.",

@@ -170,4 +170,59 @@ describe('ActivityCheckPanelComponent (#573)', () => {
 
     expect(events).toEqual(['reveal', 'fix', 'finish']);
   });
+
+  describe('collapsible on narrow screens (#576 E2E)', () => {
+    const checked = { checkCount: 1, summary: { correct: 6, total: 15 }, rows: [{ label: 'a', correct: false }] };
+
+    it('collapsed_ShowsOnlyCompactBar_WithSummaryRecheckAndExpand', () => {
+      setup({ ...checked, collapsible: true, collapsed: true });
+      const expand = vi.fn();
+      const check = vi.fn();
+      fixture.componentInstance.expand.subscribe(expand);
+      fixture.componentInstance.check.subscribe(check);
+
+      expect(q('check-compact')).not.toBeNull();
+      expect(q('check-summary')?.textContent).toContain('6 / 15 doğru');
+      expect(el().querySelectorAll('[data-testid="result-row"]').length).toBe(0);
+      expect(q('finish')).toBeNull();
+      expect(btn('check')?.textContent).toContain('Yeniden kontrol et');
+      expect(btn('expand')?.getAttribute('aria-expanded')).toBe('false');
+      btn('expand')!.click();
+      btn('check')!.click();
+      expect(expand).toHaveBeenCalledTimes(1);
+      expect(check).toHaveBeenCalledTimes(1);
+    });
+
+    it('expandedCollapsible_HasCollapseToggle_NotCollapsibleHasNone', () => {
+      setup({ ...checked, collapsible: true, collapsed: false });
+      const collapse = vi.fn();
+      fixture.componentInstance.collapse.subscribe(collapse);
+      expect(q('check-compact')).toBeNull();
+      expect(el().querySelectorAll('[data-testid="result-row"]').length).toBe(1);
+      btn('collapse')!.click();
+      expect(collapse).toHaveBeenCalledTimes(1);
+
+      fixture.componentRef.setInput('collapsible', false);
+      fixture.componentRef.setInput('collapsed', true);
+      fixture.detectChanges();
+      expect(q('collapse')).toBeNull();
+      expect(q('check-compact')).toBeNull();
+    });
+
+    it('collapsedIsIgnored_BeforeFirstCheck_OnError_AndWhenRevealed', () => {
+      setup({ collapsible: true, collapsed: true });
+      expect(q('check-compact')).toBeNull();
+      fixture.componentRef.setInput('checkCount', 1);
+      fixture.componentRef.setInput('error', 'network');
+      fixture.detectChanges();
+      expect(q('check-compact')).toBeNull();
+      expect(q('check-error')).not.toBeNull();
+      fixture.componentRef.setInput('error', null);
+      fixture.componentRef.setInput('revealed', true);
+      fixture.detectChanges();
+      expect(q('check-compact')).toBeNull();
+      expect(q('restore')).not.toBeNull();
+    });
+  });
 });
+

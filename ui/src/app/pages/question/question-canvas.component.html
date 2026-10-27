@@ -278,6 +278,10 @@
           <button type="button" [class.is-active]="selectionMode === 'matrixRow' || selectionMode === 'matrixCell'"
             (click)="setSelectionMode('matrixRow')">{{ t('canvas.modeMatrix') }}</button>
           <button type="button" [class.is-active]="selectionMode === 'slot'" (click)="setSelectionMode('slot')">{{ t('canvas.modeSlot') }}</button>
+          <button type="button" [class.is-active]="selectionMode === 'placeTarget' || selectionMode === 'placeCard'"
+            (click)="setSelectionMode('placeTarget')">{{ t('canvas.modePlace') }}</button>
+          <button type="button" [class.is-active]="selectionMode === 'matchLeft' || selectionMode === 'matchRight'"
+            (click)="setSelectionMode('matchLeft')">{{ t('canvas.modeMatch') }}</button>
         </div>
         <div class="qc-canvas__toolbar-right">
           @if (detection.available() && !coordinateJsonMode) {
@@ -415,6 +419,10 @@
                 [attr.aria-pressed]="d.interactionType === 'matrixChoice'" (click)="insSetInteractionType('matrixChoice')">{{ t('inspector.matrix') }}</button>
               <button type="button" [class.is-active]="d.interactionType === 'slotFill'"
                 [attr.aria-pressed]="d.interactionType === 'slotFill'" (click)="insSetInteractionType('slotFill')">{{ t('inspector.slotFill') }}</button>
+              <button type="button" [class.is-active]="d.interactionType === 'dragPlace'"
+                [attr.aria-pressed]="d.interactionType === 'dragPlace'" (click)="insSetInteractionType('dragPlace')">{{ t('inspector.dragPlace') }}</button>
+              <button type="button" [class.is-active]="d.interactionType === 'match'"
+                [attr.aria-pressed]="d.interactionType === 'match'" (click)="insSetInteractionType('match')">{{ t('inspector.match') }}</button>
             </div>
           </section>
 
@@ -780,6 +788,197 @@
             @if (sf.missingCount > 0) {
             <span class="qc-hint-sm qc-matrix__missing" role="status">{{ t('inspector.slotMissing', { count: sf.missingCount }) }}</span>
             }
+          </section>
+          }
+
+          <!-- Sürükle-yerleştir (#576) -->
+          @if (d.interactionType === 'dragPlace' && d.dragPlace; as dp) {
+          <section class="qc-insp-sec qc-place" data-testid="inspector-place">
+            <div class="qc-segmented qc-segmented--full" role="group" [attr.aria-label]="t('inspector.placeModeAria')">
+              <button type="button" [class.is-active]="dp.mode === 'place'" [attr.aria-pressed]="dp.mode === 'place'"
+                data-place-mode="place" (click)="insPlaceMode('place')">{{ t('inspector.placeModePlace') }}</button>
+              <button type="button" [class.is-active]="dp.mode === 'order'" [attr.aria-pressed]="dp.mode === 'order'"
+                data-place-mode="order" (click)="insPlaceMode('order')">{{ t('inspector.placeModeOrder') }}</button>
+            </div>
+            <div class="qc-row">
+              <button type="button" class="qc-switch" [class.off]="!dp.reuse" [attr.aria-pressed]="dp.reuse"
+                [attr.aria-label]="t('inspector.placeReuse')" data-testid="place-reuse" (click)="insPlaceReuse(!dp.reuse)"></button>
+              <span>{{ t('inspector.placeReuse') }}</span>
+            </div>
+
+            <div class="qc-lbl">{{ dp.mode === 'order' ? t('inspector.placePositions') : t('inspector.placeTargets') }}</div>
+            <div class="qc-btn-row">
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [class.is-active]="selectionMode === 'placeTarget'"
+                (click)="insPlaceDrawMode('placeTarget')">
+                <mat-icon>crop_free</mat-icon>{{ t('inspector.placeDrawTarget') }}
+              </button>
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" data-testid="place-add-bucket"
+                [disabled]="dp.targets.length >= dp.limits.maxTargets" (click)="insPlaceAddBucket()">
+                <mat-icon>add_box</mat-icon>{{ dp.mode === 'order' ? t('inspector.placeAddPosition') : t('inspector.placeAddBucket') }}
+              </button>
+              @if (dp.mode === 'order') {
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [disabled]="!dp.cards.length"
+                data-testid="place-fill-order" (click)="insPlaceFillOrder()">
+                <mat-icon>format_list_numbered</mat-icon>{{ t('inspector.placeFillOrder') }}
+              </button>
+              }
+            </div>
+            <div class="qc-solution">
+              @for (target of dp.targets; track target.id) {
+              <div class="qc-place__target" [class.is-active]="dp.selected?.id === target.id" [attr.data-target]="target.id">
+                <button type="button" class="qc-zone-id qc-place__pick" [attr.aria-pressed]="dp.selected?.id === target.id"
+                  [attr.aria-label]="t('inspector.placeSelectTargetAria', { n: target.no })" (click)="insPlaceSelectTarget(target.id)">
+                  {{ dp.mode === 'order' ? target.no + '.' : 'H' + target.no }}
+                </button>
+                <input class="control qc-input" type="text" [attr.maxlength]="dp.limits.maxLabelLength" [value]="target.label"
+                  [placeholder]="target.box ? t('inspector.placeTargetLabelOptional') : t('inspector.placeTargetLabelPlaceholder')"
+                  [attr.aria-label]="t('inspector.placeTargetLabelAria', { n: target.no })" (change)="insPlaceTargetLabel(target.id, $event)" />
+                @if (dp.mode === 'place') {
+                <input class="qc-input-sm" type="number" [min]="1" [max]="dp.limits.maxCapacity" [value]="target.capacity"
+                  [attr.aria-label]="t('inspector.placeCapacityAria', { n: target.no })" (change)="insPlaceCapacity(target.id, $event)" />
+                }
+                <button type="button" class="qc-icon-btn" [attr.aria-label]="t('inspector.placeRemoveTarget', { n: target.no })"
+                  (click)="insPlaceRemoveTarget(target.id)"><mat-icon>close</mat-icon></button>
+                <span class="qc-place__assigned">{{ target.cardIds.length }}/{{ target.capacity }} · {{ target.box ? t('inspector.placeOnImage') : t('inspector.placeBucket') }}</span>
+              </div>
+              } @empty {
+              <span class="qc-hint-sm">{{ t('inspector.placeNoTargets') }}</span>
+              }
+            </div>
+
+            <div class="qc-lbl">{{ t('inspector.placeCards') }}</div>
+            <div class="qc-btn-row">
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [class.is-active]="selectionMode === 'placeCard'"
+                (click)="insPlaceDrawMode('placeCard')">
+                <mat-icon>crop</mat-icon>{{ t('inspector.placeDrawCard') }}
+              </button>
+            </div>
+            <label class="qc-slot__field">
+              <span class="qc-lbl">{{ t('inspector.placeCardsText') }}</span>
+              <textarea #placeCardsText class="control qc-input qc-slot__textarea" rows="3" data-testid="place-cards-text"
+                [placeholder]="t('inspector.placeCardsTextPlaceholder')"></textarea>
+            </label>
+            <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" data-testid="place-add-cards"
+              [disabled]="dp.cards.length >= dp.limits.maxCards"
+              (click)="insPlaceAddCards(placeCardsText.value); placeCardsText.value = ''">
+              <mat-icon>playlist_add</mat-icon>{{ t('inspector.placeAddCards') }}
+            </button>
+            <div class="qc-solution">
+              @for (card of dp.cards; track card.id) {
+              <div class="qc-place__card" [attr.data-card]="card.id">
+                <span class="qc-zone-id">K{{ card.no }}</span>
+                <input class="control qc-input" type="text" [attr.maxlength]="dp.limits.maxLabelLength" [value]="card.label"
+                  [placeholder]="card.box ? t('inspector.placeCardLabelOptional') : ''"
+                  [attr.aria-label]="t('inspector.placeCardLabelAria', { n: card.no })" (change)="insPlaceCardLabel(card.id, $event)" />
+                <button type="button" class="qc-icon-btn" [attr.aria-label]="t('inspector.placeRemoveCard', { n: card.no })"
+                  (click)="insPlaceRemoveCard(card.id)"><mat-icon>close</mat-icon></button>
+                <span class="qc-place__assigned">
+                  {{ card.box ? t('inspector.placeCrop') + ' · ' : '' }}{{ card.targetNos.length ? t('inspector.placeCardIn', { targets: card.targetNos.join(', ') }) : t('inspector.placeDistractor') }}
+                </span>
+              </div>
+              } @empty {
+              <span class="qc-hint-sm">{{ t('inspector.placeNoCards') }}</span>
+              }
+            </div>
+
+            <div class="qc-lbl">{{ t('inspector.placeSolution') }}</div>
+            @if (dp.selected; as sel) {
+            <span class="qc-hint-sm">{{ t('inspector.placeSolutionHint', { n: sel.no, count: sel.cardIds.length, capacity: sel.capacity }) }}</span>
+            <div class="qc-slot__chips" role="group" [attr.aria-label]="t('inspector.placeSolutionAria', { n: sel.no })" data-testid="place-solution">
+              @for (card of dp.cards; track card.id) {
+              <button type="button" class="qc-slot__chip" [class.is-active]="sel.cardIds.includes(card.id)"
+                [attr.aria-pressed]="sel.cardIds.includes(card.id)" [attr.data-card]="card.id"
+                (click)="insPlaceToggle(sel.id, card.id)">
+                K{{ card.no }}{{ card.label ? ' · ' + card.label : '' }}
+              </button>
+              }
+            </div>
+            } @else {
+            <span class="qc-hint-sm">{{ t('inspector.placeSelectTargetFirst') }}</span>
+            }
+            <span class="qc-hint-sm" data-testid="place-distractors">{{ t('inspector.placeDistractorCount', { count: dp.distractorCount }) }}</span>
+          </section>
+          }
+
+          <!-- Eşleştirme (#576) -->
+          @if (d.interactionType === 'match' && d.match; as mt) {
+          <section class="qc-insp-sec qc-place" data-testid="inspector-match">
+            <div class="qc-btn-row">
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [class.is-active]="selectionMode === 'matchLeft'"
+                (click)="insMatchDrawMode('matchLeft')">
+                <mat-icon>crop</mat-icon>{{ t('inspector.matchDrawLeft') }}
+              </button>
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [class.is-active]="selectionMode === 'matchRight'"
+                (click)="insMatchDrawMode('matchRight')">
+                <mat-icon>crop</mat-icon>{{ t('inspector.matchDrawRight') }}
+              </button>
+            </div>
+            <span class="qc-hint-sm">{{ t('inspector.matchDrawHint') }}</span>
+
+            <label class="qc-slot__field">
+              <span class="qc-lbl">{{ t('inspector.matchLeftText') }}</span>
+              <textarea #matchLeftText class="control qc-input qc-slot__textarea" rows="2" data-testid="match-left-text"
+                [placeholder]="t('inspector.matchTextPlaceholder')"></textarea>
+            </label>
+            <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" data-testid="match-add-left"
+              (click)="insMatchAddText('left', matchLeftText.value); matchLeftText.value = ''">
+              <mat-icon>playlist_add</mat-icon>{{ t('inspector.matchAddLeft') }}
+            </button>
+            <label class="qc-slot__field">
+              <span class="qc-lbl">{{ t('inspector.matchRightText') }}</span>
+              <textarea #matchRightText class="control qc-input qc-slot__textarea" rows="2" data-testid="match-right-text"
+                [placeholder]="t('inspector.matchTextPlaceholder')"></textarea>
+            </label>
+            <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" data-testid="match-add-right"
+              (click)="insMatchAddText('right', matchRightText.value); matchRightText.value = ''">
+              <mat-icon>playlist_add</mat-icon>{{ t('inspector.matchAddRight') }}
+            </button>
+
+            <div class="qc-lbl">{{ t('inspector.matchLeft') }}</div>
+            <div class="qc-solution">
+              @for (item of mt.left; track item.id) {
+              <div class="qc-place__target" [class.is-active]="mt.selectedLeftId === item.id" [attr.data-left]="item.id">
+                <span class="qc-zone-id">L{{ item.no }}</span>
+                <input class="control qc-input" type="text" [attr.maxlength]="mt.limits.maxLabelLength" [value]="item.label"
+                  [placeholder]="item.box ? t('inspector.placeCardLabelOptional') : ''"
+                  [attr.aria-label]="t('inspector.matchLeftLabelAria', { n: item.no })" (change)="insMatchLabel('left', item.id, $event)" />
+                <button type="button" class="qc-icon-btn" [attr.aria-label]="t('inspector.matchRemoveLeft', { n: item.no })"
+                  (click)="insMatchRemove('left', item.id)"><mat-icon>close</mat-icon></button>
+                <select class="qc-inline-select qc-place__pair" [value]="item.rightId" data-testid="match-pair"
+                  [attr.aria-label]="t('inspector.matchPairAria', { n: item.no })" (change)="insMatchPair(item.id, $event)">
+                  <option value="">{{ t('inspector.matchNoPair') }}</option>
+                  @for (r of mt.right; track r.id) {
+                  <option [value]="r.id" [selected]="item.rightId === r.id">R{{ r.no }}{{ r.label ? ' · ' + r.label : '' }}</option>
+                  }
+                </select>
+                <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm qc-place__example" [class.is-active]="item.prelinked"
+                  [attr.aria-pressed]="item.prelinked" [disabled]="!item.rightId" data-testid="match-prelinked"
+                  (click)="insMatchPrelinked(item.id)">
+                  <mat-icon>{{ item.prelinked ? 'link' : 'link_off' }}</mat-icon>{{ t('inspector.matchExample') }}
+                </button>
+              </div>
+              } @empty {
+              <span class="qc-hint-sm">{{ t('inspector.matchNoItems') }}</span>
+              }
+            </div>
+
+            <div class="qc-lbl">{{ t('inspector.matchRight') }}</div>
+            <div class="qc-solution">
+              @for (item of mt.right; track item.id) {
+              <div class="qc-place__card" [attr.data-right]="item.id">
+                <span class="qc-zone-id">R{{ item.no }}</span>
+                <input class="control qc-input" type="text" [attr.maxlength]="mt.limits.maxLabelLength" [value]="item.label"
+                  [placeholder]="item.box ? t('inspector.placeCardLabelOptional') : ''"
+                  [attr.aria-label]="t('inspector.matchRightLabelAria', { n: item.no })" (change)="insMatchLabel('right', item.id, $event)" />
+                <button type="button" class="qc-icon-btn" [attr.aria-label]="t('inspector.matchRemoveRight', { n: item.no })"
+                  (click)="insMatchRemove('right', item.id)"><mat-icon>close</mat-icon></button>
+                <span class="qc-place__assigned">{{ item.leftNo ? t('inspector.matchPairedWith', { n: item.leftNo }) : t('inspector.placeDistractor') }}</span>
+              </div>
+              } @empty {
+              <span class="qc-hint-sm">{{ t('inspector.matchNoItems') }}</span>
+              }
+            </div>
+            <span class="qc-hint-sm" data-testid="match-distractors">{{ t('inspector.placeDistractorCount', { count: mt.distractorCount }) }}</span>
           </section>
           }
 

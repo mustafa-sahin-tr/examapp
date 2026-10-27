@@ -377,6 +377,32 @@
           [hidePassage]="isPassageFirstActive(questionData.index)"
           (answerPayloadChange)="saveDragDropAnswerForQuestion($event, questionData.index)"
           (answered)="focusOnQuestion(questionData.index)"></app-question-canvas-slot-fill>
+        } @else if (interactionKind(questionData.question.question.interactionType) === 'dragPlace') {
+        <!-- Issue #576: sürükle-yerleştir; cevap aynı payload kayıt yolundan gider. Ayrı parça (ilk paket büyümesin). -->
+        @defer (on immediate) {
+        <app-question-canvas-drag-place class="canvas-stage" [questionRegion]="questionData.region"
+          [imageRefresh]="imageRefresh" [shuffleSeed]="questionData.question.id"
+          [interactionPlanJson]="questionData.question.question.interactionPlan || null"
+          [interactionSolutionJson]="questionData.question.question.interactionSolution || null"
+          [answerPayloadJson]="questionData.question.answerPayload || null"
+          [practiceFeedback]="questionData.question.question.isExample"
+          [hidePassage]="isPassageFirstActive(questionData.index)"
+          (answerPayloadChange)="saveDragDropAnswerForQuestion($event, questionData.index)"
+          (answered)="focusOnQuestion(questionData.index)"></app-question-canvas-drag-place>
+        }
+        } @else if (interactionKind(questionData.question.question.interactionType) === 'match') {
+        <!-- Issue #576: eşleştirme (ayrı parça). -->
+        @defer (on immediate) {
+        <app-question-canvas-match class="canvas-stage" [questionRegion]="questionData.region"
+          [imageRefresh]="imageRefresh" [shuffleSeed]="questionData.question.id"
+          [interactionPlanJson]="questionData.question.question.interactionPlan || null"
+          [interactionSolutionJson]="questionData.question.question.interactionSolution || null"
+          [answerPayloadJson]="questionData.question.answerPayload || null"
+          [practiceFeedback]="questionData.question.question.isExample"
+          [hidePassage]="isPassageFirstActive(questionData.index)"
+          (answerPayloadChange)="saveDragDropAnswerForQuestion($event, questionData.index)"
+          (answered)="focusOnQuestion(questionData.index)"></app-question-canvas-match>
+        }
         } @else {
         <app-question-canvas-view-v5 #canvasView class="canvas-stage" [questionRegion]="questionData.region"
           [imageRefresh]="imageRefresh"

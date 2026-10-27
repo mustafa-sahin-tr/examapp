@@ -53,7 +53,18 @@ import {
   valueDisplay,
   valueOf,
 } from '../../models/slot-fill';
+import {
+  DragPlacePlanV1,
+  cardsIn,
+  isDragPlaceType,
+  parseDragPlacePlacements,
+  parseDragPlacePlan,
+  parseDragPlaceSolution,
+  placementCount,
+} from '../../models/drag-place';
+import { MatchPlanV1, isMatchType, openLefts, parseMatchPairs, parseMatchPlan, parseMatchSolution, rightOf } from '../../models/match';
 import { TestInstance, TestInstanceQuestion, TestStatus } from '../../models/test-instance';
+import { seededShuffle } from '../../shared/utils/seeded-shuffle';
 import { ActivityService } from '../../services/activity.service';
 import { BadgeService } from '../../services/badge.service';
 import { TestService } from '../../services/test.service';
@@ -75,6 +86,8 @@ import {
 } from '../../shared/components/question-canvas-dragdrop-labeling/question-canvas-dragdrop-labeling.component';
 import { QuestionCanvasMatrixChoiceComponent } from '../../shared/components/question-canvas-matrix-choice/question-canvas-matrix-choice.component';
 import { QuestionCanvasSlotFillComponent } from '../../shared/components/question-canvas-slot-fill/question-canvas-slot-fill.component';
+import { QuestionCanvasDragPlaceComponent } from '../../shared/components/question-canvas-drag-place/question-canvas-drag-place.component';
+import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 import { ActiveTimeTracker, ACTIVITY_MAX_ACTIVE_SECONDS } from '../../shared/utils/active-time-tracker';
 import { currentUserId } from '../../shared/utils/current-user-id.util';
@@ -85,6 +98,8 @@ import { QuestionLiteViewComponent } from '../question-lite-view/question-lite-v
 export const ACTIVITY_SCOPE = 'activity';
 
 const DRAG_DROP = 'dragDropLabeling';
+/** Sonuç panelinin daraltılabildiği dar ekran (#576 E2E; oynatıcıların dokun-dokun eşiğiyle aynı). */
+const NARROW_QUERY = '(max-width: 640px)';
 
 /** Issue #572: etkin süreyi sayan etkileşimler (oynatıcı içinde). */
 const ACTIVITY_EVENTS = ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'wheel', 'scroll'] as const;
@@ -136,6 +151,8 @@ export type ActivityAction = 'check' | 'reveal' | 'finish';
     QuestionCanvasDragDropLabelingComponent,
     QuestionCanvasMatrixChoiceComponent,
     QuestionCanvasSlotFillComponent,
+    QuestionCanvasDragPlaceComponent,
+    QuestionCanvasMatchComponent,
     QuestionCanvasViewComponentv5,
     QuestionLiteViewComponent,
   ],
@@ -171,6 +188,12 @@ export class ActivityPlayerComponent {
 
   readonly answers = signal<Record<number, ItemAnswer>>({});
   readonly results = signal<Record<number, ItemResult>>({});
+  /**
+   * Issue #576: kontrolden sonra değişen sürükle-yerleştir / eşleştirme maddesinin son kontrol satırları. Sonuç (özet, adım
+   * durumu) yine düşer; oynatıcı işaretleri satır id'siyle (`hedef:kart` / sol id) arar, böylece "Havuza geri al" sonrası
+   * yalnız taşınan kartın işareti kalkar, diğer kartların ✓/✗'si kalır.
+   */
+  readonly retainedRows = signal<Record<number, ActivityFeedbackRow[]>>({});
   readonly solutions = signal<Record<number, ActivitySolution> | null>(null);
   readonly checkCount = signal(0);
   readonly summary = signal<ActivityCheckSummary | null>(null);
@@ -184,6 +207,13 @@ export class ActivityPlayerComponent {
   /** Hatası gösterilen adım (W2: "Tekrar dene" bunu yeniden dener). */
   readonly failedAction = signal<ActivityAction | null>(null);
   readonly saveFailed = signal(false);
+  /**
+   * Issue #576 (E2E): dar ekranda (≤ 640px) kontrol paneli kontrolden sonra ekranın çoğunu kaplıyordu. "Yanlışları düzelt"e
+   * basınca ya da öğrenci maddede bir şeye dokununca / cevabı değiştirince panel kompakt çubuğa iner; çubuktan yeniden
+   * açılır. Yeni kontrol sonucu paneli yeniden açar.
+   */
+  readonly narrowScreen = signal(false);
+  readonly panelCollapsed = signal(false);
 
   /** Kontrol/bitirme sürerken içerik salt okunur (gönderilen cevap ile ekran ayrışmasın). */
   readonly contentLocked = computed(() => this.checking() || this.finishing());
@@ -241,6 +271,8 @@ export class ActivityPlayerComponent {
   private readonly plans = new Map<number, DragDropLabelingPlanV1 | null>();
   private readonly matrixPlans = new Map<number, MatrixChoicePlanV1 | null>();
   private readonly slotFillPlans = new Map<number, SlotFillPlanV1 | null>();
+  private readonly dragPlacePlans = new Map<number, DragPlacePlanV1 | null>();
+  private readonly matchPlans = new Map<number, MatchPlanV1 | null>();
 
   readonly title = computed(() => this.instance()?.testName ?? '');
   readonly currentItem = computed(() => this.items()[this.currentIndex()] ?? null);
@@ -287,7 +319,7 @@ export class ActivityPlayerComponent {
   readonly currentFeedbackRows = computed<ActivityFeedbackRow[] | null>(() => {
     const item = this.currentItem();
     if (!item) return null;
-    return this.results()[item.id]?.rows ?? null;
+    return this.results()[item.id]?.rows ?? this.retainedRows()[item.id] ?? null;
   });
 
   readonly currentSolution = computed(() => {
@@ -306,6 +338,8 @@ export class ActivityPlayerComponent {
     const solution = revealed ? this.solutions()?.[item.id] ?? null : null;
     if (this.isMatrix(item)) return this.matrixRows(item, result, solution);
     if (this.isSlotFill(item)) return this.slotFillRows(item, result, solution);
+    if (this.isDragPlace(item)) return this.dragPlaceRows(item, result, solution);
+    if (this.isMatch(item)) return this.matchRows(item, result, solution);
     return this.isDragDrop(item)
       ? this.dragDropRows(item, result, solution)
       : this.mcqRows(item, result, solution);
@@ -328,6 +362,13 @@ export class ActivityPlayerComponent {
   });
 
   constructor() {
+    if (this.isBrowser && typeof window.matchMedia === 'function') {
+      const query = window.matchMedia(NARROW_QUERY);
+      this.narrowScreen.set(query.matches);
+      const listener = (event: MediaQueryListEvent) => this.narrowScreen.set(event.matches);
+      query.addEventListener('change', listener);
+      this.destroyRef.onDestroy(() => query.removeEventListener('change', listener));
+    }
     this.transloco.selectTranslate('state.loading', {}, ACTIVITY_SCOPE).pipe(takeUntilDestroyed()).subscribe();
     this.listenForActivity();
     this.destroyRef.onDestroy(() => {
@@ -394,6 +435,7 @@ export class ActivityPlayerComponent {
     this.regions.set(regions);
     this.answers.set(answers);
     this.results.set(results);
+    this.retainedRows.set({});
     this.checkCount.set(instance.checkCount ?? 0);
     this.finished.set(instance.status !== TestStatus.Started);
     this.summary.set(this.summaryFrom(items, results) ?? this.firstCheckSummary(instance));
@@ -434,6 +476,7 @@ export class ActivityPlayerComponent {
     this.regions.set([]);
     this.answers.set({});
     this.results.set({});
+    this.retainedRows.set({});
     this.solutions.set(null);
     this.summary.set(null);
     this.checkCount.set(0);
@@ -445,6 +488,8 @@ export class ActivityPlayerComponent {
     this.nextActivity.set(null);
     this.timeSpent.clear();
     this.plans.clear();
+    this.dragPlacePlans.clear();
+    this.matchPlans.clear();
   }
 
   // ---------------------------------------------------------------------------
@@ -459,6 +504,7 @@ export class ActivityPlayerComponent {
 
   /** "Yanlışları düzelt": ilk yanlış maddeye geçer ve içeriğe odaklar. */
   focusFirstWrong(): void {
+    this.panelCollapsed.set(true);
     const results = this.results();
     const index = this.items().findIndex((item) => results[item.id]?.isCorrect === false);
     if (index < 0) return;
@@ -490,13 +536,23 @@ export class ActivityPlayerComponent {
     this.updateAnswer(item, { selectedAnswerId: answerId, answerPayload: null });
   }
 
+  /** Maddede etkileşim (dokunma / tıklama): kontrol yapıldıysa sonuç paneli kompakt çubuğa iner. */
+  onItemInteract(): void {
+    if (this.checkCount() > 0) this.panelCollapsed.set(true);
+  }
+
   private updateAnswer(item: TestInstanceQuestion, answer: ItemAnswer): void {
+    this.onItemInteract();
     const previous = this.answers()[item.id];
     if (previous && previous.selectedAnswerId === answer.selectedAnswerId && previous.answerPayload === answer.answerPayload) {
       return;
     }
     this.answers.update((all) => ({ ...all, [item.id]: answer }));
     // Değişen maddenin kontrol sonucu artık geçerli değil (backend de yeniden yüklemede döndürmez).
+    const previousRows = this.results()[item.id]?.rows;
+    if (previousRows && (this.isDragPlace(item) || this.isMatch(item))) {
+      this.retainedRows.update((all) => ({ ...all, [item.id]: previousRows }));
+    }
     if (this.results()[item.id]) {
       this.results.update((all) => {
         const next = { ...all };
@@ -632,6 +688,8 @@ export class ActivityPlayerComponent {
         };
       }
       this.results.set(next);
+      this.retainedRows.set({});
+      this.panelCollapsed.set(false);
       this.checkCount.update((count) => count + 1);
       this.summary.set({ correct: response.correctCount, total: response.totalCount });
       // Kontrol gönderilen cevapları kaydetti: başarısız kayıtlar bu cevaplarla kapandı.
@@ -972,9 +1030,31 @@ export class ActivityPlayerComponent {
     return isSlotFillType(item.question?.interactionType);
   }
 
+  isDragPlace(item: TestInstanceQuestion): boolean {
+    return isDragPlaceType(item.question?.interactionType);
+  }
+
+  isMatch(item: TestInstanceQuestion): boolean {
+    return isMatchType(item.question?.interactionType);
+  }
+
   /** Cevabı `answerPayload` olan (MCQ dışı) madde. */
   private isInteractive(item: TestInstanceQuestion): boolean {
-    return this.isDragDrop(item) || this.isMatrix(item) || this.isSlotFill(item);
+    return this.isDragDrop(item) || this.isMatrix(item) || this.isSlotFill(item) || this.isDragPlace(item) || this.isMatch(item);
+  }
+
+  private dragPlacePlanFor(item: TestInstanceQuestion): DragPlacePlanV1 | null {
+    if (!this.dragPlacePlans.has(item.id)) {
+      this.dragPlacePlans.set(item.id, parseDragPlacePlan(item.question?.interactionPlan));
+    }
+    return this.dragPlacePlans.get(item.id) ?? null;
+  }
+
+  private matchPlanFor(item: TestInstanceQuestion): MatchPlanV1 | null {
+    if (!this.matchPlans.has(item.id)) {
+      this.matchPlans.set(item.id, parseMatchPlan(item.question?.interactionPlan));
+    }
+    return this.matchPlans.get(item.id) ?? null;
   }
 
   private slotFillPlanFor(item: TestInstanceQuestion): SlotFillPlanV1 | null {
@@ -1035,6 +1115,8 @@ export class ActivityPlayerComponent {
   private hasAnswer(item: TestInstanceQuestion, answer: ItemAnswer | undefined): boolean {
     if (this.isMatrix(item)) return this.matrixAnsweredRows(item, answer) > 0;
     if (this.isSlotFill(item)) return this.slotFillFilled(item, answer) > 0;
+    if (this.isDragPlace(item)) return placementCount(parseDragPlacePlacements(answer?.answerPayload, this.dragPlacePlanFor(item))) > 0;
+    if (this.isMatch(item)) return Object.keys(parseMatchPairs(answer?.answerPayload, this.matchPlanFor(item))).length > 0;
     if (this.isDragDrop(item)) return this.placementsOf(answer?.answerPayload).length > 0;
     return !!answer?.selectedAnswerId;
   }
@@ -1043,6 +1125,20 @@ export class ActivityPlayerComponent {
   private isIncomplete(item: TestInstanceQuestion, answer: ItemAnswer | undefined): boolean {
     if (this.isMatrix(item)) return this.matrixAnsweredRows(item, answer) < (this.matrixPlanFor(item)?.rows.length ?? 0);
     if (this.isSlotFill(item)) return this.slotFillFilled(item, answer) < (this.slotFillPlanFor(item)?.slots.length ?? 0);
+    // Issue #576: sürükle-yerleştirde hiç yerleşim yok ya da sıra modunda boş konum var (boş kalması doğru olabilecek
+    // kova / fazla hedef sayılmaz); eşleştirmede eşlenmemiş sol öğe = eksik (yalnız uyarı).
+    if (this.isDragPlace(item)) {
+      const plan = this.dragPlacePlanFor(item);
+      const placed = parseDragPlacePlacements(answer?.answerPayload, plan);
+      if (!plan) return false;
+      if (placementCount(placed) === 0) return true;
+      return plan.mode === 'order' && plan.targets.some((t) => cardsIn(placed, t.id).length === 0);
+    }
+    if (this.isMatch(item)) {
+      const plan = this.matchPlanFor(item);
+      const pairs = parseMatchPairs(answer?.answerPayload, plan);
+      return !!plan && openLefts(plan).some((left) => !rightOf(pairs, left.id));
+    }
     if (!this.isDragDrop(item)) return !answer?.selectedAnswerId;
     const zones = this.planFor(item)?.dropZones.length ?? 0;
     return this.placementsOf(answer?.answerPayload).length < zones;
@@ -1126,6 +1222,59 @@ export class ActivityPlayerComponent {
         solution: solved ? accepted || this.tr('rows.empty') : null,
       };
     });
+  }
+
+  /**
+   * Issue #576: hedef satırları — "<hedef>: <kartlar>". Hedefin sonucu, satır id'si `<hedef>:` ile başlayan sunucu satırlarından
+   * (yanlış yerleşim ya da eksik kart `"<hedef>:"` varsa ✗); hangi kartın eksik olduğu hesaplanmaz.
+   */
+  private dragPlaceRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
+    const plan = this.dragPlacePlanFor(item);
+    if (!plan) return [];
+    // "Kart n" numarası oynatıcıdaki karışık havuz sırasıyla aynı (tohum = madde id'si).
+    const cardName = new Map(
+      seededShuffle(plan.cards, `${item.id}`).map((c, i) => [c.id, c.label?.trim() || this.tr('rows.cardFallback', { n: i + 1 })])
+    );
+    const placed = parseDragPlacePlacements(this.answers()[item.id]?.answerPayload, plan);
+    const solved = solution ? parseDragPlaceSolution(solution.interactionSolution, plan) : null;
+    const rows = result?.rows ?? [];
+    const join = (ids: string[]) => (ids.length ? ids.map((id) => cardName.get(id) ?? id).join(', ') : this.tr('rows.empty'));
+    return plan.targets.map((target, index) => {
+      const name =
+        target.label?.trim() ||
+        this.tr(plan.mode === 'order' ? 'rows.positionFallback' : 'rows.targetFallback', { n: index + 1 });
+      const own = rows.filter((row) => row.id.startsWith(`${target.id}:`));
+      return {
+        label: this.tr('rows.place', { name, content: join(cardsIn(placed, target.id)) }),
+        correct: own.length === 0 ? null : own.every((row) => row.correct),
+        solution: solved ? join(cardsIn(solved, target.id)) : null,
+      };
+    });
+  }
+
+  /** Issue #576: eşleştirme satırları — "<sol>: <sağ>" (örnek çift hariç), ✓/✗ ve (çözüm açıkken) doğru eş. */
+  private matchRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
+    const plan = this.matchPlanFor(item);
+    if (!plan) return [];
+    const leftName = (id: string) => {
+      const index = plan.left.findIndex((i) => i.id === id);
+      return plan.left[index]?.label?.trim() || this.tr('rows.leftFallback', { n: index + 1 });
+    };
+    // "Sağ n" numarası oynatıcıdaki karışık sağ sütun sırasıyla aynı (tohum = madde id'si).
+    const rights = seededShuffle(plan.right, `${item.id}`);
+    const rightName = (id: string | null) => {
+      if (!id) return this.tr('rows.empty');
+      const index = rights.findIndex((i) => i.id === id);
+      return rights[index]?.label?.trim() || this.tr('rows.rightFallback', { n: index + 1 });
+    };
+    const pairs = parseMatchPairs(this.answers()[item.id]?.answerPayload, plan);
+    const solved = solution ? parseMatchSolution(solution.interactionSolution, plan) : null;
+    const marks = new Map((result?.rows ?? []).map((row) => [row.id, row.correct]));
+    return openLefts(plan).map((left) => ({
+      label: this.tr('rows.match', { name: leftName(left.id), content: rightName(rightOf(pairs, left.id)) }),
+      correct: marks.has(left.id) ? marks.get(left.id)! : null,
+      solution: solved ? rightName(rightOf(solved, left.id)) : null,
+    }));
   }
 
   private mcqRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {

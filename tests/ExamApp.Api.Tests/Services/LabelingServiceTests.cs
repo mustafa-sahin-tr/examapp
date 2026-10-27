@@ -2,6 +2,7 @@ using NSubstitute.ExceptionExtensions;
 using System.Security.Cryptography;
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
+using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Labeling;
 using ExamApp.Api.Services.Labeling;
 using ExamApp.Api.Tests.Support;
@@ -736,6 +737,81 @@ public class LabelingServiceTests : IDisposable
 
         await using var read = _db.NewContext();
         (await NewService(read).GetPageAsync(Sha256Hex(png)))?.Results.ShouldBeEmpty();
+    }
+
+    // ---------- Issue #581: maskeler ----------
+
+    [Fact]
+    public async Task SaveManualAsync_Masks_RoundTripOnTopLevelBlocks_AndAreDroppedOnOptions()
+    {
+        var png = Png(100, 100);
+        var predictions = Blocks(("activity", "F", null), ("mcq_question", null, null));
+        predictions.Predictions[0].Masks = [new RegionBoxDto { X = 2, Y = 3.5, Width = 10, Height = 4 }, new RegionBoxDto { X = 25, Y = 10, Width = 50, Height = 50 }];
+        predictions.Predictions[1].Subpredictions =
+            [new PredictionDto { X = 2, Y = 22, Width = 5, Height = 5, Masks = [new RegionBoxDto { X = 0, Y = 0, Width = 1, Height = 1 }] }];
+        await using (var ctx = _db.NewContext())
+        {
+            await NewService(ctx).SaveManualAsync(ManualRequest(png, predictions), Actor);
+        }
+
+        await using var read = _db.NewContext();
+        var stored = (await NewService(read).GetPageAsync(Sha256Hex(png)))!
+            .Results.Single(r => r.Source == "Manual").Predictions.Predictions;
+        stored[0].Masks.ShouldNotBeNull().Select(m => (m.X, m.Y, m.Width, m.Height))
+            .ShouldBe([(2d, 3.5d, 10d, 4d), (25d, 10d, 50d, 50d)]);
+        stored[1].Masks.ShouldBeNull();
+        stored[1].Subpredictions.Single().Masks.ShouldBeNull();
+
+        // API/JSONB biçimi: küçük harf alanlar; maskesiz blokta alan yazılmaz.
+        var json = System.Text.Json.JsonSerializer.Serialize(stored);
+        json.ShouldContain("\"masks\":[{\"x\":2,\"y\":3.5,\"width\":10,\"height\":4}");
+        System.Text.RegularExpressions.Regex.Matches(json, "\"masks\"").Count.ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData(-1, 0, 5, 5)]
+    [InlineData(0, 0, 0.5, 5)]
+    [InlineData(0, 0, 5, 0)]
+    [InlineData(30, 0, 5, 5)]  // blok 30x15: sağında, kesişmez
+    [InlineData(0, 15, 5, 5)]  // altında
+    [InlineData(double.NaN, 0, 5, 5)]
+    public async Task SaveManualAsync_InvalidMask_ThrowsAndSavesNothing(double x, double y, double w, double h)
+    {
+        var png = Png(100, 100);
+        var predictions = Blocks(("activity", "F", null));
+        predictions.Predictions[0].Masks = [new RegionBoxDto { X = x, Y = y, Width = w, Height = h }];
+        await using (var ctx = _db.NewContext())
+        {
+            var ex = await Should.ThrowAsync<LabelingValidationException>(() =>
+                NewService(ctx).SaveManualAsync(ManualRequest(png, predictions), Actor));
+            ex.Message.ShouldBe("labeling.invalidMask");
+        }
+
+        await using var read = _db.NewContext();
+        (await NewService(read).GetPageAsync(Sha256Hex(png)))?.Results.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task SaveManualAsync_MoreThanTwentyMasks_Throws()
+    {
+        var png = Png(100, 100);
+        var predictions = Blocks(("activity", "F", null));
+        predictions.Predictions[0].Masks = Enumerable.Range(0, 21)
+            .Select(i => new RegionBoxDto { X = i, Y = 0, Width = 1, Height = 1 }).ToList();
+        await using var ctx = _db.NewContext();
+
+        var ex = await Should.ThrowAsync<LabelingValidationException>(() =>
+            NewService(ctx).SaveManualAsync(ManualRequest(png, predictions), Actor));
+        ex.Message.ShouldBe("labeling.invalidMask");
+    }
+
+    [Fact]
+    public void PredictionDto_Masks_BindFromClientJson()
+    {
+        var dto = System.Text.Json.JsonSerializer.Deserialize<PredictionDto>(
+            """{"class_id":0,"x":1,"y":1,"width":30,"height":15,"masks":[{"x":1,"y":2,"width":3,"height":4}]}""")!;
+        var mask = dto.Masks.ShouldNotBeNull().ShouldHaveSingleItem();
+        (mask.X, mask.Y, mask.Width, mask.Height).ShouldBe((1d, 2d, 3d, 4d));
     }
 
     [Fact]

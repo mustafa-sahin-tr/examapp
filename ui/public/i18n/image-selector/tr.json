@@ -133,7 +133,9 @@
     "slotOutsideQuestion": "Cevap kutusu soru alanının içinde olmalı.",
     "placeTargetFull": "Hedef dolu: önce kapasiteyi artırın ya da bir kartı kaldırın.",
     "boxOutsideQuestion": "Kutu soru alanının içinde olmalı.",
-    "interactionLimit": "Bu soruda en çok sayıda öğe var."
+    "interactionLimit": "Bu soruda en çok sayıda öğe var.",
+    "maskLimit": "Bir soruya en çok {{max}} maske çizilebilir.",
+    "maskOverAnswer": "Maske bir şıkkı/öğeyi kapatıyor; öğrenci o şıkkı göremez. Yalnız basılı cevap yazısını örtün."
   },
   "coordinateJson": {
     "activated": "Koordinat JSON'u bulundu: {{pages}} sayfada {{questions}} soru, soru tespiti yerine JSON kullanılıyor.",

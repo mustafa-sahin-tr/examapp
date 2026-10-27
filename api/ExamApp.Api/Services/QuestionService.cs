@@ -13,6 +13,8 @@ using ExamApp.Foundation.Localization;
 using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using SkiaSharp;
 
 namespace ExamApp.Api.Services;
@@ -34,14 +36,19 @@ public class QuestionService : IQuestionService
     // issue #574: tipe özgü plan/çözüm doğrulaması (kayıtta) ve "etkileşimli mi" kararı; DI'sız kurulumda yerleşik kontrolcüler.
     private readonly IInteractionGraderRegistry _graders;
 
+    // issue #581: maske sayısı (görsel verisi değil) Information seviyesinde loglanır.
+    private readonly ILogger<QuestionService> _logger;
+
     public QuestionService(
         AppDbContext context,
         ImageHelper imageHelper,
         IMinIoService minioService,
         IStringLocalizer<Messages>? localizer = null,
         StorageAreaPolicy? storagePolicy = null,
-        IInteractionGraderRegistry? graders = null)
+        IInteractionGraderRegistry? graders = null,
+        ILogger<QuestionService>? logger = null)
     {
+        _logger = logger ?? NullLogger<QuestionService>.Instance;
         _graders = graders ?? InteractionGraderRegistry.Default;
         _imageHelper = imageHelper;
         _context = context;
@@ -596,6 +603,16 @@ public class QuestionService : IQuestionService
         {
             if (bulkQuestion == null)
                 continue;
+            // issue #581: maskeler de yüklemeden önce doğrulanır (controller 400'e eşler).
+            if (!QuestionImageMasks.IsValid(bulkQuestion.Masks, bulkQuestion.Width, bulkQuestion.Height))
+            {
+                return new QuestionSavedDto
+                {
+                    Success = false,
+                    InvalidInput = true,
+                    Message = _localizer["questions.invalidMask", bulkQuestion.Name]
+                };
+            }
             if (!InteractionPlanSolution.TryResolveForWrite(bulkQuestion.InteractionPlan, bulkQuestion.InteractionSolution,
                     existingSolution: null, out var resolvedPlan, out var resolvedSolution))
             {
@@ -731,6 +748,20 @@ public class QuestionService : IQuestionService
                 // #559: sayfa bir kez çözülür (piksel sınırı SkiaImaging'de); tüm kırpmalar bu bitmap'ten yapılır.
                 var mainImageFormat = SKEncodedImageFormat.Png;
                 using var mainImage = mainImageBytes != null ? _imageHelper.LoadImage(mainImageBytes, out mainImageFormat) : null;
+
+                // issue #581 (security review M): tüm soruların maskeleri sayfa koordinatında, HERHANGİ bir kırpmadan önce sayfaya
+                // boyanır — kapsam (passage / etkinlik) ve üst üste binen soru kırpmaları da basılı cevabı taşımasın.
+                // QuestionCropHash.Compute aynı sırayı izler (önce sayfa, sonra kırpma).
+                if (mainImage != null)
+                {
+                    foreach (var maskedQuestion in soruDto.Questions ?? new List<BulkQuestionDto>())
+                    {
+                        if (maskedQuestion?.Masks is not { Count: > 0 } masks)
+                            continue;
+                        QuestionImageMasks.ApplyToPage(mainImage, (int)maskedQuestion.X, (int)maskedQuestion.Y,
+                            maskedQuestion.Width, maskedQuestion.Height, masks);
+                    }
+                }
 
                 // Passage'lar için crop ve upload işlemi
                 var passages = new List<Passage>();
@@ -926,6 +957,9 @@ public class QuestionService : IQuestionService
                     await _context.SaveChangesAsync();
 
                     createdQuestions.Add(question); // 🟢 Track for OutboxMessage
+                    if (questionDto.Masks is { Count: > 0 } savedMasks)
+                        _logger.LogInformation("[Questions] bulk save: question {QuestionId} stored with {MaskCount} answer mask(s)",
+                            question.Id, savedMasks.Count);
 
                     // Issue #577: kitap kaynağı (yalnız sunucu içi çağrıdan, işaretleme ekranı). Hash yüklenen question.jpg
                     // baytlarından — kayıt öncesi tekrar kontrolü (QuestionCropHash.Compute) aynı değeri üretir.

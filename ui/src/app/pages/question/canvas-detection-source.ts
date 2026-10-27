@@ -7,7 +7,12 @@ import { ImageSelectorComponent } from '../image-selector/image-selector.compone
 import { LabelingAiDetectResponse, LabelingAiModel, LabelingPage, LabelingResult } from '../../models/labeling';
 import { LabelingService, manualDetectionSource, sha256OfDataUrl } from '../../services/labeling.service';
 import { DetectionSource } from '../../models/labeling';
-import { PredictionList, blockKindOf, onlyMcqBlocks } from '../../models/prediction';
+import { BlockKind, PredictionList, blockKindOf, onlyBlockKinds } from '../../models/prediction';
+
+/** Test sayfasında tuvale yalnız çoktan seçmeli sorular uygulanır. */
+const TEST_BLOCK_KINDS: readonly BlockKind[] = ['mcq_question'];
+/** Issue #581: etkinlik sayfasında soru ve etkinlik blokları uygulanır; anlatım / cevap anahtarı / gürültü düşer. */
+const ACTIVITY_BLOCK_KINDS: readonly BlockKind[] = ['mcq_question', 'activity'];
 
 /** Soru tuvalinde kutuların kaynağı: kayıtlı manuel / YOLO (Model) / Claude (Ai). */
 export type CanvasSourceKind = 'Manual' | 'Model' | 'Ai';
@@ -66,6 +71,13 @@ export class CanvasDetectionSource {
   );
   /** Sayfa görseli hazır (kaynak değiştirilebilir). */
   readonly hasPage = computed(() => this.pageImage() !== null);
+  /**
+   * Issue #581: hedef sayfa etkinlik (`Worksheet.Kind=Activity`): Claude / manuel kayıttan etkinlik blokları da tuvale
+   * uygulanır. Test sayfasında (ya da sayfa seçilmemişken) yalnız çoktan seçmeli sorular.
+   */
+  readonly activityContext = signal(false);
+  /** Son uygulanan Claude / manuel tespit (bağlam değişince yeniden süzmek için); sayfa değişince silinir. */
+  private lastApplied: { list: PredictionList; source: DetectionSource } | null = null;
 
   private readonly pageImage = signal<string | null>(null);
   private pageSha: string | null = null;
@@ -125,6 +137,44 @@ export class CanvasDetectionSource {
     this.pageRecord.set(null);
     this.aiOrigin.set(null);
     this.aiBusy.set(false);
+    this.lastApplied = null;
+  }
+
+  /**
+   * Issue #581: hedef sayfanın türü belli oldu / değişti. Açık sayfa Claude ya da manuel kayıtla açıldıysa ve etkinlik bloğu
+   * içeriyorsa aynı sonuç yeni bağlamla yeniden süzülür (ücretsiz; kaydedilmemiş düzeltme varsa önce sorulur).
+   */
+  setActivityContext(on: boolean): void {
+    if (on === this.activityContext()) {
+      return;
+    }
+    this.activityContext.set(on);
+    const last = this.lastApplied;
+    const selector = this.selector();
+    if (
+      !selector ||
+      !last ||
+      this.aiBusy() ||
+      this.activeKind() !== last.source.kind ||
+      !last.list.predictions.some((p) => blockKindOf(p) === 'activity')
+    ) {
+      return;
+    }
+    this.confirmDiscard(() => {
+      if (this.lastApplied === last) {
+        this.applyBlocks(selector, selector.beginExternalDetection(), last.list, last.source);
+      }
+    });
+  }
+
+  /**
+   * Issue #581: etkinlik taslağı (#579) için Claude modeli — sayfayı işaretleyen model (izinliyse; manuel kayıtta başlangıç
+   * modeli), yoksa seçili model.
+   */
+  draftModel(): string {
+    const source = this.selector()?.detectionSource();
+    const name = source?.kind === 'Manual' ? source.base?.modelName : source?.modelName;
+    return name && this.aiModels().some((m) => m.id === name) ? name : this.aiModelId();
   }
 
   /**
@@ -230,7 +280,7 @@ export class CanvasDetectionSource {
     } else {
       const manual = this.manualRecord();
       if (manual) {
-        applyMcqOnly(selector, selector.beginExternalDetection(), manual.predictions, manualDetectionSource(manual));
+        this.applyBlocks(selector, selector.beginExternalDetection(), manual.predictions, manualDetectionSource(manual));
       }
     }
   }
@@ -263,7 +313,7 @@ export class CanvasDetectionSource {
       this.mergeResult(response.imageSha256, response.result);
       this.aiOrigin.set(response.origin);
       this.aiNotice.set(null);
-      applyMcqOnly(selector, seq, response.result.predictions, {
+      this.applyBlocks(selector, seq, response.result.predictions, {
         kind: 'Ai',
         modelName: response.result.modelName,
         promptVersion: response.result.promptVersion,
@@ -412,6 +462,23 @@ export class CanvasDetectionSource {
       });
   }
 
+  /**
+   * Issue #578 / #581: tuvale bağlamın blok türleri uygulanır (test: yalnız çoktan seçmeli; etkinlik: soru + etkinlik).
+   * Düşen bloklar (anlatım, cevap anahtarı, gürültü; testte etkinlik de) seçicide saklanır: "Kaydet ve Düzelt" manuel kaydı
+   * yazarken işaretleme ekranındaki etiketleri silmesin.
+   */
+  private applyBlocks(selector: ImageSelectorComponent, seq: number, list: PredictionList, source: DetectionSource): void {
+    const kinds = this.activityContext() ? ACTIVITY_BLOCK_KINDS : TEST_BLOCK_KINDS;
+    const valid = Array.isArray(list?.predictions);
+    this.lastApplied = valid ? { list, source } : null;
+    const dropped = valid ? list.predictions.filter((p) => !kinds.includes(blockKindOf(p))) : [];
+    if (dropped.length > 0) {
+      selector.applyExternalPrediction(seq, onlyBlockKinds(list, kinds), source, dropped);
+    } else {
+      selector.applyExternalPrediction(seq, onlyBlockKinds(list, kinds), source);
+    }
+  }
+
   private setPreferredSource(kind: PreferredSource): void {
     this.preferredSource.set(kind);
     writeStored(SOURCE_STORAGE_KEY, kind);
@@ -444,26 +511,5 @@ function writeStored(key: string, value: string): void {
     localStorage.setItem(key, value);
   } catch {
     // depolama kapalı: yalnız bu oturumda geçerli
-  }
-}
-
-/**
- * Issue #578: tuval sayfayı teste MCQ olarak kaydeder; tuvale yalnız çoktan seçmeli soru blokları uygulanır. Düşen bloklar
- * (etkinlik, anlatım, cevap anahtarı, gürültü) seçicide saklanır: "Kaydet ve Düzelt" manuel kaydı yazarken işaretleme
- * ekranındaki etiketleri silmesin.
- */
-function applyMcqOnly(
-  selector: ImageSelectorComponent,
-  seq: number,
-  list: PredictionList,
-  source: DetectionSource
-): void {
-  const dropped = Array.isArray(list?.predictions)
-    ? list.predictions.filter((p) => blockKindOf(p) !== 'mcq_question')
-    : [];
-  if (dropped.length > 0) {
-    selector.applyExternalPrediction(seq, onlyMcqBlocks(list), source, dropped);
-  } else {
-    selector.applyExternalPrediction(seq, onlyMcqBlocks(list), source);
   }
 }

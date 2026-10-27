@@ -24,8 +24,6 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/c
 import { Grade } from '../../models/student';
 import {
     DetectionSource,
-    LabelingActivityStructureResponse,
-    LabelingActivityStructureResult,
     LabelingAiModel,
     LabelingPage,
     LabelingPromptState,
@@ -1680,7 +1678,8 @@ describe('LabelingComponent', () => {
     });
 
 
-    describe('etkinlik yapısı (#579)', () => {
+    // Issue #581: taslak yapı (#579) artık soru tuvalinde çıkarılır; işaretleme ekranı blok türünü tutar, taslak istemez.
+    describe('etkinlik blokları (#579 → #581)', () => {
         const model: LabelingAiModel = {
             id: 'claude-a',
             displayName: 'Claude A',
@@ -1695,45 +1694,23 @@ describe('LabelingComponent', () => {
             type?: string;
         }
 
-        /** Sırayla: MCQ, A (matris), B (kutu), C (sürükle), tipsiz etkinlik D, anlatım, gürültü. */
         const MIXED: Block[] = [
             { name: 'Soru 1' },
             { name: 'Soru 2', kind: 'activity', type: 'matrixChoice' },
             { name: 'Soru 3', kind: 'activity', type: 'slotFill' },
             { name: 'Soru 4', kind: 'activity', type: 'dragPlace' },
             { name: 'Soru 5', kind: 'activity' },
-            { name: 'Soru 6', kind: 'info_box' },
-            { name: 'Soru 7', kind: 'noise' },
         ];
 
-        function result(key: string, interactionType: string, overrides: Partial<LabelingActivityStructureResult> = {}) {
-            return {
-                key,
-                interactionType,
-                status: 'ok',
-                origin: 'cached',
-                plan: { version: 1, type: interactionType },
-                instruction: null,
-                valid: true,
-                validationErrors: [],
-                promptVersion: 2,
-                inputTokens: 100,
-                outputTokens: 50,
-                estimatedCostUsd: 0.0012,
-                error: null,
-                ...overrides,
-            } as LabelingActivityStructureResult;
-        }
+        let structure: Mock<LabelingService['activityStructure']>;
+        beforeEach(() => {
+            structure = vi.fn().mockName('LabelingService.activityStructure');
+        });
 
-        /** İstenen blokların hepsi için başarılı yanıt. */
-        function echoOk() {
-            structure.mockImplementation((request) =>
-                of({ results: request.blocks.map((b) => result(b.key, b.interactionType)) })
-            );
-        }
-
-        /** Tuvale tespit uygulanmış gibi: türler, tipler, bölgeler ve kaynak. */
-        async function applyDetection(blocks: Block[], source: DetectionSource = { kind: 'Ai', modelName: 'claude-a' }) {
+        async function openPage(blocks: Block[] = MIXED, source: DetectionSource = { kind: 'Ai', modelName: 'claude-a' }) {
+            await setup([], false, [model]);
+            (labelingApi as unknown as { activityStructure: unknown }).activityStructure = structure;
+            await pickFolder([image('a.webp')]);
             const stub = selector();
             stub.blockKinds = {};
             stub.interactionTypes = {};
@@ -1742,490 +1719,53 @@ describe('LabelingComponent', () => {
                 if (b.type) stub.interactionTypes[b.name] = b.type;
             });
             stub.detectionSource.set(source);
-            stub.regions.set(blocks.map((b, i) => ({ name: b.name, x: 10.4, y: i * 100, width: 200, height: 80.6 })));
+            stub.regions.set(blocks.map((b, i) => ({ name: b.name, x: 10, y: i * 100, width: 200, height: 80 })));
             stub.detectionRevision.update((n) => n + 1);
             TestBed.tick();
             await settle(fixture);
         }
 
-        /** `setup` hizmet taklitlerini yeniden kurar; yapı ucunun taklidi testten önce hazırlanıp buraya bağlanır. */
-        let structure: Mock<LabelingService['activityStructure']>;
-        beforeEach(() => {
-            structure = vi.fn().mockName('LabelingService.activityStructure');
-        });
-
-        async function openFolder(files = [image('a.webp')]) {
-            await setup([], false, [model]);
-            (labelingApi as unknown as { activityStructure: unknown }).activityStructure = structure;
-            component.structureDebounceMs = 0;
-            await pickFolder(files);
+        function inspect(name: string, interactionType: string, activityComponent = 'A') {
+            selector().inspector = { index: 1, no: 2, name, blockKind: 'activity', activityComponent, interactionType, answers: [] };
+            fixture.detectChanges();
         }
 
-        async function openPage(blocks: Block[] = MIXED, source?: DetectionSource, files = [image('a.webp')]) {
-            await openFolder(files);
-            await applyDetection(blocks, source);
-        }
-
-        /** Bölgenin tipini müfettişten değiştirmiş gibi (gerçek bileşen `regions` sinyalini yeniler). */
-        async function changeType(name: string, type: string | null) {
-            const stub = selector();
-            if (type) stub.interactionTypes[name] = type;
-            else delete stub.interactionTypes[name];
-            stub.regions.set([...stub.regions()]);
-            TestBed.tick();
-            await settle(fixture);
-        }
-
-        function requestedKeys(call: number): string[] {
-            return structure.mock.calls[call][0].blocks.map((b) => b.key);
-        }
-
-        it('claudePage_TypedActivities_OneBatchWithOnlyTypedBlocksAndForceFalse', async () => {
-            echoOk();
+        it('claudePage_TypedActivities_NoActivityStructureRequest', async () => {
             await openPage();
-
-            expect(structure).toHaveBeenCalledTimes(1);
-            const request = structure.mock.calls[0][0];
-            expect(request.model).toBe('claude-a');
-            expect(request.force).toBe(false);
-            expect(request.imageBase64).toContain('data:image/webp;base64,');
-            // MCQ, tipsiz etkinlik, anlatım ve gürültü istenmez; kutular yuvarlanır.
-            expect(request.blocks).toEqual([
-                { key: 'Soru 2', x: 10, y: 100, width: 200, height: 81, interactionType: 'matrixChoice' },
-                { key: 'Soru 3', x: 10, y: 200, width: 200, height: 81, interactionType: 'slotFill' },
-                { key: 'Soru 4', x: 10, y: 300, width: 200, height: 81, interactionType: 'dragPlace' },
-            ]);
-        });
-
-        it('claudePage_NoTypedActivities_NoRequest', async () => {
-            echoOk();
-            await openPage([{ name: 'Soru 1' }, { name: 'Soru 2', kind: 'activity' }, { name: 'Soru 3', kind: 'answer_key' }]);
 
             expect(structure).not.toHaveBeenCalled();
         });
 
-        it('modelSource_TypedActivities_NoRequest', async () => {
-            echoOk();
-            await openPage(MIXED, { kind: 'Model' });
+        it('inspector_TypedActivity_NoDraftCard', async () => {
+            await openPage();
 
+            inspect('Soru 2', 'matrixChoice');
+
+            expect(fixture.nativeElement.querySelector('.lb-structure')).toBeNull();
             expect(structure).not.toHaveBeenCalled();
-        });
-
-        it('manualRecordFromClaude_TypedActivities_RequestsWithRecordModel', async () => {
-            echoOk();
-            await openPage(MIXED, { kind: 'Manual', base: { source: 'Ai', modelName: 'claude-a' } });
-
-            expect(structure).toHaveBeenCalledTimes(1);
-            expect(structure.mock.calls[0][0].force).toBe(false);
-        });
-
-        it('okResults_AppliedToAuthoringStatePerTypeAndKeptAsDrafts', async () => {
-            structure.mockReturnValue(of({
-                results: [
-                    result('Soru 2', 'matrixChoice', { origin: 'live' }),
-                    result('Soru 3', 'slotFill', { valid: false, validationErrors: ['Kutu 2 boş'] }),
-                    result('Soru 4', 'dragPlace', { status: 'error', plan: null, error: 'Claude yanıtı okunamadı' }),
-                ],
-            } as LabelingActivityStructureResponse));
-            await openPage();
-            const stub = selector();
-
-            expect(stub.applyInteractionDraft).toHaveBeenCalledTimes(2);
-            expect(stub.applyInteractionDraft).toHaveBeenCalledWith('Soru 2', 'matrixChoice', { version: 1, type: 'matrixChoice' });
-            expect(stub.applyInteractionDraft).toHaveBeenCalledWith('Soru 3', 'slotFill', { version: 1, type: 'slotFill' });
-            const drafts = component.activityDrafts();
-            expect(drafts['Soru 2']).toEqual(expect.objectContaining({ status: 'ok', apply: 'applied', interactionType: 'matrixChoice' }));
-            expect(drafts['Soru 3'].result?.validationErrors).toEqual(['Kutu 2 boş']);
-            expect(drafts['Soru 4']).toEqual(expect.objectContaining({ status: 'error', error: 'Claude yanıtı okunamadı' }));
-        });
-
-        it('typeChange_ReRequestsOnlyThatBlock', async () => {
-            echoOk();
-            await openPage();
-
-            await changeType('Soru 4', 'match');
-
-            expect(structure).toHaveBeenCalledTimes(2);
-            expect(structure.mock.calls[1][0].blocks).toEqual([
-                expect.objectContaining({ key: 'Soru 4', interactionType: 'match' }),
-            ]);
-            expect(structure.mock.calls[1][0].force).toBe(false);
-            expect(selector().applyInteractionDraft).toHaveBeenLastCalledWith('Soru 4', 'match', { version: 1, type: 'match' });
-        });
-
-        it('typeRemovedThenRestored_DraftDroppedThenReRequested', async () => {
-            echoOk();
-            await openPage();
-
-            await changeType('Soru 2', null);
-            expect(component.activityDrafts()['Soru 2']).toBeUndefined();
-            expect(structure).toHaveBeenCalledTimes(1);
-
-            await changeType('Soru 2', 'matrixChoice');
-            expect(structure).toHaveBeenCalledTimes(2);
-            expect(requestedKeys(1)).toEqual(['Soru 2']);
-        });
-
-        it('unrelatedRegionUpdate_NoNewRequest', async () => {
-            echoOk();
-            await openPage();
-
-            selector().regions.set([...selector().regions()]);
-            TestBed.tick();
-            await settle(fixture);
-
-            expect(structure).toHaveBeenCalledTimes(1);
-        });
-
-        it('staleResponse_AfterPageChange_IsIgnored', async () => {
-            const pending = new Subject<LabelingActivityStructureResponse>();
-            structure.mockReturnValue(pending.asObservable());
-            await openPage(MIXED, undefined, [image('a.webp'), image('b.webp')]);
-
-            component.skip();
-            await settle(fixture);
-            pending.next({ results: [result('Soru 2', 'matrixChoice')] });
-
-            expect(selector().applyInteractionDraft).not.toHaveBeenCalled();
-            expect(component.activityDrafts()).toEqual({});
-        });
-
-        it('staleResponse_AfterNewDetection_IsIgnored', async () => {
-            const pending = new Subject<LabelingActivityStructureResponse>();
-            structure.mockReturnValueOnce(pending.asObservable());
-            await openPage();
-            structure.mockReturnValue(new Subject<LabelingActivityStructureResponse>().asObservable());
-
-            await applyDetection(MIXED);
-            pending.next({ results: [result('Soru 2', 'matrixChoice')] });
-
-            expect(selector().applyInteractionDraft).not.toHaveBeenCalled();
-            expect(component.activityDrafts()['Soru 2'].status).toBe('loading');
-        });
-
-        it('staleResponse_BlockTypeChangedWhileLoading_OldResultIgnoredForThatBlock', async () => {
-            const first = new Subject<LabelingActivityStructureResponse>();
-            const second = new Subject<LabelingActivityStructureResponse>();
-            structure.mockReturnValueOnce(first.asObservable()).mockReturnValueOnce(second.asObservable());
-            await openPage();
-
-            await changeType('Soru 4', 'match');
-            first.next({ results: [result('Soru 2', 'matrixChoice'), result('Soru 3', 'slotFill'), result('Soru 4', 'dragPlace')] });
-
-            expect(selector().applyInteractionDraft).not.toHaveBeenCalledWith('Soru 4', 'dragPlace', expect.anything());
-            expect(component.activityDrafts()['Soru 4']).toEqual(expect.objectContaining({ status: 'loading', interactionType: 'match' }));
-            expect(component.activityDrafts()['Soru 2'].status).toBe('ok');
-
-            second.next({ results: [result('Soru 4', 'match')] });
-            expect(component.activityDrafts()['Soru 4']).toEqual(expect.objectContaining({ status: 'ok', interactionType: 'match' }));
-        });
-
-        it('rateLimited429_ShowsServerMessageAndMarksDraftsFailed', async () => {
-            vi.spyOn(console, 'error').mockReturnValue(undefined);
-            structure.mockReturnValue(throwError(() => ({
-                status: 429,
-                error: { errorCode: 'LabelingBudgetExceeded', message: 'Günlük Claude bütçesi doldu.' },
-            })));
-            await openFolder();
-            const snackBar = vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue(undefined as never);
-
-            await applyDetection(MIXED);
-
-            expect(snackBar).toHaveBeenCalledWith('Günlük Claude bütçesi doldu.', expect.any(String), expect.any(Object));
-            expect(component.activityDrafts()['Soru 2']).toEqual(expect.objectContaining({ status: 'error', error: 'Günlük Claude bütçesi doldu.' }));
-            // Hatalı taslak kendiliğinden yeniden istenmez.
-            selector().regions.set([...selector().regions()]);
-            TestBed.tick();
-            await settle(fixture);
-            expect(structure).toHaveBeenCalledTimes(1);
-        });
-
-        it('noKey503WithoutMessage_ShowsUnavailable', async () => {
-            vi.spyOn(console, 'error').mockReturnValue(undefined);
-            structure.mockReturnValue(throwError(() => ({ status: 503 })));
-            await openPage();
-
-            expect(component.activityDrafts()['Soru 3'].error).toBe(labelingTr.structure.unavailable);
-        });
-
-        const MANY = Array.from({ length: 23 }, (_, i) => ({ name: `Soru ${i + 1}`, kind: 'activity', type: 'slotFill' }));
-
-        it('moreThan20Blocks_BatchesSentSequentiallyAllLoadingUpfront', async () => {
-            const first = new Subject<LabelingActivityStructureResponse>();
-            structure.mockReturnValueOnce(first.asObservable()).mockReturnValueOnce(of({ results: [] }));
-            await openPage(MANY);
-
-            // İkinci istek ilki bitmeden gitmez; tüm bloklar baştan yükleniyor.
-            expect(structure).toHaveBeenCalledTimes(1);
-            expect(requestedKeys(0).length).toBe(20);
-            expect(component.activityDrafts()['Soru 23'].status).toBe('loading');
-
-            first.next({ results: [] });
-            first.complete();
-
-            expect(structure).toHaveBeenCalledTimes(2);
-            expect(requestedKeys(1).length).toBe(3);
-        });
-
-        it('moreThan20Blocks_FirstBatchFails_RestNotSentAndMarkedFailed', async () => {
-            vi.spyOn(console, 'error').mockReturnValue(undefined);
-            structure.mockReturnValue(throwError(() => ({ status: 429, error: { message: 'Bütçe doldu' } })));
-            await openPage(MANY);
-
-            expect(structure).toHaveBeenCalledTimes(1);
-            expect(component.activityDrafts()['Soru 23']).toEqual(expect.objectContaining({ status: 'error', error: 'Bütçe doldu' }));
-        });
-
-        it('liveResult_ShowsCostWithoutFirstCallLabel', async () => {
-            structure.mockReturnValue(of({ results: [result('Soru 2', 'matrixChoice', { origin: 'live' })] } as LabelingActivityStructureResponse));
-            await openPage([{ name: 'Soru 2', kind: 'activity', type: 'matrixChoice' }]);
-            selector().inspector = { index: 0, no: 1, name: 'Soru 2', blockKind: 'activity', activityComponent: 'A', interactionType: 'matrixChoice', answers: [] };
-            fixture.detectChanges();
-
-            const cost = fixture.nativeElement.querySelector('.lb-structure__cost')!.textContent!.trim();
-            expect(cost).toBe('~$0.0012');
-        });
-
-        it('deletedRegion_DraftDroppedEvenWhenNotClaude_NewRegionWithSameNameDoesNotInherit', async () => {
-            echoOk();
-            await openPage();
-            // Kaynak YOLO'ya döndü sayılmaz (yeni tespit yok); yalnız yapı kapalı: model listesi boşaldı.
-            component.aiModels.set([]);
-            await changeType('Soru 2', null);
-
-            expect(component.activityDrafts()['Soru 2']).toBeUndefined();
-
-            component.aiModels.set([model]);
-            await changeType('Soru 2', 'matrixChoice');
-            expect(requestedKeys(1)).toEqual(['Soru 2']);
-        });
-
-        it('regionMoved_DraftStaleThenReRequestedAfterDebounceWithNewBox', async () => {
-            echoOk();
-            await openFolder();
-            component.structureDebounceMs = 30;
-            await applyDetection(MIXED);
-            const stub = selector();
-
-            stub.regions.set(stub.regions().map((r) => (r.name === 'Soru 3' ? { ...r, x: 50, width: 150 } : r)));
-            TestBed.tick();
-            fixture.detectChanges();
-
-            expect(component.activityDrafts()['Soru 3'].stale).toBe(true);
-            expect(structure).toHaveBeenCalledTimes(1);
-
-            await new Promise((resolve) => setTimeout(resolve, 60));
-            await settle(fixture);
-
-            expect(structure).toHaveBeenCalledTimes(2);
-            expect(structure.mock.calls[1][0]).toEqual(expect.objectContaining({ force: false }));
-            expect(structure.mock.calls[1][0].blocks).toEqual([
-                expect.objectContaining({ key: 'Soru 3', x: 50, width: 150, interactionType: 'slotFill' }),
-            ]);
-            expect(component.activityDrafts()['Soru 3']).toEqual(expect.objectContaining({ status: 'ok', stale: false }));
-        });
-
-        it('regionResizedRepeatedly_OnlyOneRequestAfterLastChange', async () => {
-            echoOk();
-            await openFolder();
-            component.structureDebounceMs = 40;
-            await applyDetection(MIXED);
-            const stub = selector();
-
-            for (const width of [190, 180, 170]) {
-                stub.regions.set(stub.regions().map((r) => (r.name === 'Soru 2' ? { ...r, width } : r)));
-                TestBed.tick();
-                await new Promise((resolve) => setTimeout(resolve, 10));
-            }
-            await new Promise((resolve) => setTimeout(resolve, 80));
-            await settle(fixture);
-
-            expect(structure).toHaveBeenCalledTimes(2);
-            expect(structure.mock.calls[1][0].blocks).toEqual([expect.objectContaining({ key: 'Soru 2', width: 170 })]);
-        });
-
-        it('keptDraft_ApplyConfirmed_ReplacesWithReplaceOption', async () => {
-            echoOk();
-            await openFolder();
-            selector().applyInteractionDraft.mockReturnValue('kept');
-            await applyDetection([{ name: 'Soru 2', kind: 'activity', type: 'matrixChoice' }]);
-            selector().inspector = { index: 0, no: 1, name: 'Soru 2', blockKind: 'activity', activityComponent: 'A', interactionType: 'matrixChoice', answers: [] };
-            fixture.detectChanges();
-            const el = fixture.nativeElement.querySelector('.lb-structure') as HTMLElement;
-            expect(el.querySelector('.lb-structure__kept')).not.toBeNull();
-            expect(el.querySelector('.lb-structure__apply')).not.toBeNull();
-            const action = new Subject<void>();
-            const snackBar = vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue({ onAction: () => action.asObservable() } as never);
-            selector().applyInteractionDraft.mockReturnValue('applied');
-
-            component.applyDraft('Soru 2');
-            expect(snackBar).toHaveBeenCalledWith(labelingTr.structure.applyConfirm, labelingTr.structure.applyAction, expect.any(Object));
-            expect(selector().applyInteractionDraft).toHaveBeenCalledTimes(1);
-            action.next();
-
-            expect(selector().applyInteractionDraft).toHaveBeenLastCalledWith('Soru 2', 'matrixChoice', { version: 1, type: 'matrixChoice' }, { replace: true });
-            expect(component.activityDrafts()['Soru 2'].apply).toBe('applied');
-        });
-
-        it('reExtractConfirm_SaysEditsReplacedOnlyViaApplyDraft', () => {
-            expect(labelingTr.structure.reExtractConfirm).toContain(labelingTr.structure.apply);
-            expect(labelingTr.structure.promptSaved).toContain(labelingTr.structure.apply);
-        });
-
-        it('reExtract_Confirmed_SendsSingleBlockWithForceTrue', async () => {
-            echoOk();
-            await openPage();
-            const action = new Subject<void>();
-            vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue({ onAction: () => action.asObservable() } as never);
-
-            component.reExtractStructure('Soru 3');
-            expect(structure).toHaveBeenCalledTimes(1);
-            action.next();
-
-            expect(structure).toHaveBeenCalledTimes(2);
-            expect(structure.mock.calls[1][0]).toEqual(expect.objectContaining({ force: true }));
-            expect(requestedKeys(1)).toEqual(['Soru 3']);
-        });
-
-        it('reExtract_PageChangedBeforeConfirm_NoPaidCall', async () => {
-            echoOk();
-            await openPage(MIXED, undefined, [image('a.webp'), image('b.webp')]);
-            const action = new Subject<void>();
-            vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue({ onAction: () => action.asObservable() } as never);
-
-            component.reExtractStructure('Soru 3');
-            component.skip();
-            await settle(fixture);
-            action.next();
-
-            expect(structure.mock.calls.every(([request]) => request.force === false)).toBe(true);
-        });
-
-        it('retryAfterError_UsesCache', async () => {
-            vi.spyOn(console, 'error').mockReturnValue(undefined);
-            structure.mockReturnValueOnce(throwError(() => ({ status: 500 })));
-            await openPage();
-            echoOk();
-
-            component.retryStructure('Soru 2');
-
-            expect(structure.mock.calls[1][0]).toEqual(expect.objectContaining({ force: false }));
-            expect(component.activityDrafts()['Soru 2'].status).toBe('ok');
         });
 
         it('insSetInteraction_ForwardsToSelector', async () => {
-            echoOk();
             await openPage();
             selector().inspector = { index: 3, no: 4, name: 'Soru 4', blockKind: 'activity', activityComponent: 'C', interactionType: 'dragPlace', answers: [] };
 
             component.insSetInteraction('match');
 
             expect(selector().setActivityInteraction).toHaveBeenCalledWith(3, 'match');
+            expect(structure).not.toHaveBeenCalled();
         });
 
-        describe('müfettiş', () => {
-            function structureEl(): HTMLElement | null {
-                return fixture.nativeElement.querySelector('.lb-structure');
-            }
+        it('componentC_ShowsTypeSelectWithDragPlaceAndMatch', async () => {
+            await openPage();
 
-            function inspect(name: string, interactionType: string, activityComponent = 'A') {
-                selector().inspector = { index: 1, no: 2, name, blockKind: 'activity', activityComponent, interactionType, answers: [] };
-                fixture.detectChanges();
-            }
+            inspect('Soru 4', 'dragPlace', 'C');
 
-            it('okDraft_ShowsOriginCostPromptValidationErrorsAndInstruction', async () => {
-                structure.mockReturnValue(of({
-                    results: [
-                        result('Soru 2', 'matrixChoice', {
-                            valid: false,
-                            validationErrors: ['Satır 3 kutusuz'],
-                            instruction: 'Doğru ise D, yanlış ise Y yazınız.',
-                        }),
-                    ],
-                } as LabelingActivityStructureResponse));
-                await openPage([{ name: 'Soru 1' }, { name: 'Soru 2', kind: 'activity', type: 'matrixChoice' }]);
+            const select = fixture.debugElement.query(By.css('.lb-interaction-select'));
+            expect(select).not.toBeNull();
+            expect(select.injector.get(MatSelect).value).toBe('dragPlace');
 
-                inspect('Soru 2', 'matrixChoice');
-
-                const text = structureEl()!.textContent!;
-                expect(text).toContain(labelingTr.structure.ready);
-                expect(text).toContain(labelingTr.structure.cached);
-                expect(structureEl()!.querySelector('.lb-structure__cost')?.textContent).toContain('ilk çağrı ~$0.0012');
-                expect(text).toContain('prompt v2');
-                expect(text).toContain('Satır 3 kutusuz');
-                expect(text).toContain('Doğru ise D, yanlış ise Y yazınız.');
-                expect(structureEl()!.querySelector('.lb-structure__re-extract')).not.toBeNull();
-            });
-
-            it('blankInstruction_HidesInstructionLine', async () => {
-                for (const instruction of [null, '', '   ']) {
-                    structure.mockReturnValue(of({
-                        results: [result('Soru 2', 'matrixChoice', { instruction })],
-                    } as LabelingActivityStructureResponse));
-                    await openPage([{ name: 'Soru 2', kind: 'activity', type: 'matrixChoice' }]);
-
-                    inspect('Soru 2', 'matrixChoice');
-
-                    expect(structureEl()!.querySelector('.lb-structure__instruction')).toBeNull();
-                    expect(structureEl()!.textContent).not.toContain(labelingTr.structure.instruction);
-                    TestBed.resetTestingModule();
-                }
-            });
-
-            it('loadingDraft_ShowsSpinnerAndDisablesReExtract', async () => {
-                structure.mockReturnValue(new Subject<LabelingActivityStructureResponse>().asObservable());
-                await openPage();
-
-                inspect('Soru 2', 'matrixChoice');
-
-                expect(structureEl()!.textContent).toContain(labelingTr.structure.loading);
-                expect((structureEl()!.querySelector('.lb-structure__re-extract') as HTMLButtonElement).disabled).toBe(true);
-            });
-
-            it('errorDraft_ShowsMessageAndRetry', async () => {
-                structure.mockReturnValue(of({
-                    results: [result('Soru 2', 'matrixChoice', { status: 'error', plan: null, error: 'Zaman aşımı' })],
-                } as LabelingActivityStructureResponse));
-                await openPage([{ name: 'Soru 2', kind: 'activity', type: 'matrixChoice' }]);
-
-                inspect('Soru 2', 'matrixChoice');
-
-                expect(structureEl()!.querySelector('.lb-structure__error')?.textContent).toContain('Zaman aşımı');
-                expect(structureEl()!.querySelector('.lb-structure__retry')).not.toBeNull();
-            });
-
-            it('notApplied_ShowsWarning', async () => {
-                echoOk();
-                await openFolder();
-                selector().applyInteractionDraft.mockReturnValue('invalid');
-                await applyDetection([{ name: 'Soru 2', kind: 'activity', type: 'slotFill' }]);
-
-                inspect('Soru 2', 'slotFill', 'B');
-
-                expect(structureEl()!.querySelector('.lb-structure__not-applied')).not.toBeNull();
-            });
-
-            it('modelSource_ShowsClaudeOnlyHint', async () => {
-                await openPage(MIXED, { kind: 'Model' });
-
-                inspect('Soru 2', 'matrixChoice');
-
-                expect(structureEl()!.textContent).toContain(labelingTr.structure.claudeOnly);
-            });
-
-            it('componentC_ShowsTypeSelectWithDragPlaceAndMatch', async () => {
-                echoOk();
-                await openPage();
-
-                inspect('Soru 4', 'dragPlace', 'C');
-
-                const select = fixture.debugElement.query(By.css('.lb-interaction-select'));
-                expect(select).not.toBeNull();
-                expect(select.injector.get(MatSelect).value).toBe('dragPlace');
-
-                inspect('Soru 2', 'matrixChoice', 'A');
-                expect(fixture.debugElement.query(By.css('.lb-interaction-select'))).toBeNull();
-            });
+            inspect('Soru 2', 'matrixChoice', 'A');
+            expect(fixture.debugElement.query(By.css('.lb-interaction-select'))).toBeNull();
         });
 
         describe('etkinlik talimatı kaydı (prompt diyaloğu)', () => {
@@ -2233,31 +1773,23 @@ describe('LabelingComponent', () => {
                 vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({ afterClosed: () => of(result) } as never);
             }
 
-            const saved = {
-                kind: 'activity',
-                interactionType: 'dragPlace',
-                prompt: { version: 3, instruction: 'x', createdByName: 'Eğitmen', createdAt: '2026-10-27T00:00:00Z' },
-            };
-
-            it('activityPromptSaved_ActionReExtractsOnlyThatTypeWithoutForce', async () => {
-                echoOk();
+            it('activityPromptSaved_SnackbarOnly_NoReExtract', async () => {
                 await openPage();
-                dialogClosesWith(saved);
-                const action = new Subject<void>();
-                const snackBar = vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue({ onAction: () => action.asObservable() } as never);
+                dialogClosesWith({
+                    kind: 'activity',
+                    interactionType: 'dragPlace',
+                    prompt: { version: 3, instruction: 'x', createdByName: 'Eğitmen', createdAt: '2026-10-27T00:00:00Z' },
+                });
+                const snackBar = vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue({ onAction: () => new Subject<void>() } as never);
 
                 component.openPromptDialog();
-                expect(snackBar).toHaveBeenCalledWith(expect.stringContaining('v3'), labelingTr.structure.promptAskPage, expect.any(Object));
-                action.next();
 
-                expect(structure).toHaveBeenCalledTimes(2);
-                expect(structure.mock.calls[1][0]).toEqual(expect.objectContaining({ force: false }));
-                expect(requestedKeys(1)).toEqual(['Soru 4']);
+                expect(snackBar).toHaveBeenCalledWith(expect.stringContaining('v3'), labelingTr.ok, expect.any(Object));
+                expect(structure).not.toHaveBeenCalled();
                 expect(labelingApi.aiDetect).not.toHaveBeenCalled();
             });
 
             it('promptUnchanged_SnackbarWithoutReExtractOffer', async () => {
-                echoOk();
                 await openPage();
                 dialogClosesWith({ kind: 'unchanged', version: 2 });
                 const snackBar = vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue({ onAction: () => new Subject<void>() } as never);
@@ -2265,19 +1797,7 @@ describe('LabelingComponent', () => {
                 component.openPromptDialog();
 
                 expect(snackBar).toHaveBeenCalledWith(expect.stringContaining('v2'), labelingTr.ok, expect.any(Object));
-                expect(structure).toHaveBeenCalledTimes(1);
                 expect(labelingApi.aiDetect).not.toHaveBeenCalled();
-            });
-
-            it('activityPromptSaved_NoBlockOfThatType_SnackbarWithoutAction', async () => {
-                echoOk();
-                await openPage([{ name: 'Soru 2', kind: 'activity', type: 'matrixChoice' }]);
-                dialogClosesWith(saved);
-                const snackBar = vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue({ onAction: () => new Subject<void>() } as never);
-
-                component.openPromptDialog();
-
-                expect(snackBar).toHaveBeenCalledWith(expect.any(String), labelingTr.ok, expect.any(Object));
             });
         });
     });

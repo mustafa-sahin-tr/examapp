@@ -617,4 +617,62 @@ describe('CanvasDetectionSource', () => {
             expect(labelingApi.aiDetect).not.toHaveBeenCalled();
         });
     });
+
+    // Issue #581: etkinlik sayfasında soru + etkinlik blokları uygulanır; anlatım / cevap anahtarı / gürültü düşer.
+    describe('etkinlik bağlamı (#581)', () => {
+        const mcq = { class_id: 0, x: 1, y: 1, width: 10, height: 10, subpredictions: [] };
+        const mixed: PredictionList = {
+            success: true,
+            predictions: [
+                { ...mcq, kind: 'mcq_question' },
+                { ...mcq, y: 40, kind: 'activity', component: 'A', interaction_type: 'matrixChoice' },
+                { ...mcq, y: 50, kind: 'activity', component: 'E' },
+                { ...mcq, y: 60, kind: 'info_box' },
+                { ...mcq, y: 80, kind: 'answer_key' },
+                { ...mcq, y: 100, kind: 'noise' },
+            ],
+        };
+
+        beforeEach(() => {
+            labelingApi.aiDetect.mockReturnValue(of({ origin: 'cached', imageSha256: 'sha-a', result: aiResult({ predictions: mixed }) }));
+        });
+
+        it('activityContext_AppliesMcqAndActivityBlocks_DropsOthers', async () => {
+            const source = create({ preferred: 'Ai' });
+            source.setActivityContext(true);
+            await waitUntil(() => source.available(), 'modeller');
+
+            await source.onPageReady(PAGE_A);
+            await waitUntil(() => vi.mocked(selector.applyExternalPrediction).mock.calls.length === 1, 'Claude sonucu');
+
+            const call = vi.mocked(selector.applyExternalPrediction).mock.lastCall!;
+            expect((call[1] as PredictionList).predictions).toEqual(mixed.predictions.slice(0, 3));
+            expect(call[3]).toEqual(mixed.predictions.slice(3));
+        });
+
+        it('setActivityContext_AfterClaudePage_ReappliesSameResultWithoutNewCall', async () => {
+            const source = create({ preferred: 'Ai' });
+            await waitUntil(() => source.available(), 'modeller');
+            await source.onPageReady(PAGE_A);
+            await waitUntil(() => vi.mocked(selector.applyExternalPrediction).mock.calls.length === 1, 'Claude sonucu');
+            expect((vi.mocked(selector.applyExternalPrediction).mock.lastCall![1] as PredictionList).predictions).toHaveLength(1);
+
+            source.setActivityContext(true);
+
+            expect(selector.applyExternalPrediction).toHaveBeenCalledTimes(2);
+            expect((vi.mocked(selector.applyExternalPrediction).mock.lastCall![1] as PredictionList).predictions).toHaveLength(3);
+            expect(labelingApi.aiDetect).toHaveBeenCalledTimes(1);
+        });
+
+        it('draftModel_UsesDetectingModelWhenAllowed', async () => {
+            const source = create({ preferred: 'Ai' });
+            await waitUntil(() => source.available(), 'modeller');
+            selector.detectionSource.set({ kind: 'Ai', modelName: OPUS.id } as never);
+
+            expect(source.draftModel()).toBe(OPUS.id);
+
+            selector.detectionSource.set({ kind: 'Model' });
+            expect(source.draftModel()).toBe(HAIKU.id);
+        });
+    });
 });

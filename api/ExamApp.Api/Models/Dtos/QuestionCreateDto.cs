@@ -84,6 +84,14 @@ public class BulkQuestionDto
     public BulkQuestionClassificationDto? Classification { get; set; }
 
     /// <summary>
+    /// Issue #581: basılı cevabı öğrenci görselinde örten maske dikdörtgenleri (soru bölgesine göre, sayfa pikseli; en çok
+    /// <see cref="ExamApp.Api.Helpers.QuestionImageMasks.MaxMasks"/>). Kırpmadan sonra, yükleme ve kırpma hash'inden önce
+    /// opak beyazla boyanır; ayrıca saklanmaz. Geçersizse (negatif, kenar &lt; 1, fazla) hiçbir şey yazılmadan 400
+    /// <c>questions.invalidMask</c>.
+    /// </summary>
+    public List<RegionBoxDto>? Masks { get; set; }
+
+    /// <summary>
     /// Issue #577: kitap kaynağı — yalnız sunucu içinden (işaretleme ekranı bankaya kayıt) doldurulur; istemci JSON'undan
     /// bağlanmaz. Doluysa toplu kayıt aynı transaction'da <c>QuestionSource</c> yazar; kırpma SHA-256'sı yüklenen soru
     /// görselinin baytlarından hesaplanır.

@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, effect, inject, OnInit, signal, ViewChild, ChangeDetectionStrategy } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, OnInit, signal, untracked, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { FormGroup, Validators, FormControl, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
@@ -29,7 +29,7 @@ import { PASSAGE_INSTRUCTION_MAX_LENGTH, PassageKind, WorksheetKind, saveValidat
 import { Subject } from '../../models/subject';
 import { Topic } from '../../models/topic';
 import { SubTopic } from '../../models/subtopic';
-import { catchError, debounceTime, of, startWith, switchMap } from 'rxjs';
+import { Subject as RxSubject, catchError, debounceTime, distinctUntilChanged, map, of, startWith, switchMap } from 'rxjs';
 import { SidenavService } from '../../services/sidenav.service';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -41,6 +41,8 @@ import { TestCreateEnhancedComponent } from '../test-create-enhanced/test-create
 import { ClassificationSource, QuestionRegion } from '../../models/draws';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { CanvasDetectionSource, CanvasSourceKind } from './canvas-detection-source';
+import { CanvasActivityDrafts } from './canvas-activity-drafts';
+import { isBlockInteractionType } from '../../models/prediction';
 
 /** Sayfa metinleri kendi Transloco scope'unda: `public/i18n/question/<lang>.json` (issue #183). */
 const QUESTION_SCOPE = 'question';
@@ -69,7 +71,7 @@ const QUESTION_TRAINER_ROLE = 'QuestionTrainer';
     TranslocoDirective,
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
-  providers: [provideTranslocoScope(QUESTION_SCOPE), CanvasDetectionSource],
+  providers: [provideTranslocoScope(QUESTION_SCOPE), CanvasDetectionSource, CanvasActivityDrafts],
 })
 export class QuestionCanvasComponent implements OnInit {
   /** Alt bileşen; signal'de tutulur ki `busy` gibi computed'lar onun meşgul sinyallerini izleyebilsin. */
@@ -143,6 +145,16 @@ export class QuestionCanvasComponent implements OnInit {
    * kullanıcılarda image-selector kendi YOLO tespitiyle açılır (`externalDetection` kapalı).
    */
   readonly detection = inject(CanvasDetectionSource);
+  /** Issue #581: etkinlik sayfasında tipli etkinlik bloklarının Claude taslağı (#579). */
+  readonly drafts = inject(CanvasActivityDrafts);
+  /** Issue #581: hedef sayfanın türü (sayfa seçilmemiş / okunamadıysa null → test davranışı). */
+  readonly worksheetKind = signal<WorksheetKind | null>(null);
+  /**
+   * Hedef sayfa etkinlik: Claude / manuel kayıttan etkinlik blokları da uygulanır, taslak istenir. Maskeleme her sayfada
+   * açık (test sayfalarında da doğru şık basılı / renkli olabilir).
+   */
+  readonly activityContext = computed(() => this.worksheetKind() === WorksheetKind.Activity);
+  private readonly worksheetContext = new RxSubject<{ id: number | null; kind?: WorksheetKind | null }>();
   /** saveBulk isteği sürerken kaydet butonlarını kilitler. */
   readonly saving = signal(false);
   /** Kaydet akışında test oluşturuluyor / oluşturulan test okunuyor (onCreateAsync + testService.get). */
@@ -212,6 +224,7 @@ export class QuestionCanvasComponent implements OnInit {
     if (!this.resetTest) {
       this.questionForm.get('testId')?.setValue(null, { emitEvent: false });
       this.questionForm.get('testValue')?.setValue(null, { emitEvent: false });
+      untracked(() => this.syncWorksheetContext());
     }
     this.resetTest = false;
   });
@@ -275,6 +288,36 @@ export class QuestionCanvasComponent implements OnInit {
   constructor() {
     this.setFullScreen(false);
     this.detection.attach(() => this.imageSelectorRef(), this.canTrain, QUESTION_SCOPE);
+    this.drafts.attach({
+      selector: () => this.imageSelectorRef(),
+      enabled: () => this.activityContext() && this.detection.available() && this.detection.hasPage(),
+      locked: () => this.busy(),
+      model: () => this.detection.draftModel(),
+      scope: QUESTION_SCOPE,
+    });
+    // Issue #581: hedef sayfa değişince türü okunur (menüden seçilende liste satırındaki tür kullanılır).
+    this.worksheetContext
+      .pipe(
+        distinctUntilChanged((a, b) => a.id === b.id && a.kind === b.kind),
+        switchMap(({ id, kind }) => {
+          if (!id) return of(null);
+          if (kind != null) return of(kind);
+          return this.testService.get(id).pipe(
+            map((worksheet) => (worksheet?.kind === WorksheetKind.Activity ? WorksheetKind.Activity : WorksheetKind.Test)),
+            catchError(() => of(null))
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((kind) => this.worksheetKind.set(kind));
+    this.questionForm
+      .get('testValue')!
+      .valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.syncWorksheetContext());
+    effect(() => {
+      const activity = this.activityContext();
+      untracked(() => this.detection.setActivityContext(activity));
+    });
     // Komponent bu arada yok edilirse bekleyen geçiş iptal edilir; aksi halde yok edilmiş
     // imageSelector'a dokunur (#394: testlerde sonraki spec'e sızıp tüm koşuyu düşürüyordu).
     this.destroyRef.onDestroy(() => {
@@ -440,7 +483,25 @@ export class QuestionCanvasComponent implements OnInit {
 
   onOptionSelected(worksheet: Test) {
     this.questionForm.get('testId')?.setValue(worksheet.subtitle, { emitEvent: false });
+    // Menü satırı türü taşır: valueChanges'teki tür tazelemesi istek atmadan bunu kullanır.
+    this.knownWorksheetKind = { id: Number(worksheet.id), kind: worksheet.kind ?? WorksheetKind.Test };
     this.questionForm.get('testValue')?.setValue(worksheet.id);
+  }
+
+  /** Son seçilen / oluşturulan sayfanın bilinen türü. */
+  private knownWorksheetKind: { id: number; kind: WorksheetKind } | null = null;
+
+  /** Kaydın gideceği sayfa: formdaki hedef, yoksa route'taki id. */
+  private get targetWorksheetId(): number | null {
+    const id = Number(this.questionForm.get('testValue')?.value) || Number(this.id) || 0;
+    return id > 0 ? id : null;
+  }
+
+  /** Issue #581: hedef sayfanın türünü tazeler; `kind` biliniyorsa (menü satırı) istek atılmaz. */
+  private syncWorksheetContext(kind?: WorksheetKind | null) {
+    const id = this.targetWorksheetId;
+    const known = this.knownWorksheetKind?.id === id ? this.knownWorksheetKind.kind : undefined;
+    this.worksheetContext.next({ id, kind: kind ?? known });
   }
 
   ngOnInit() {
@@ -458,6 +519,7 @@ export class QuestionCanvasComponent implements OnInit {
     this.resetFormWithDefaultValues(history.state);
     this.id = this.route.snapshot.paramMap.get('id') ? Number(this.route.snapshot.paramMap.get('id')) : null;
     this.isEditMode = this.id !== null;
+    this.syncWorksheetContext();
   }
 
   sendToFix() {
@@ -472,6 +534,7 @@ export class QuestionCanvasComponent implements OnInit {
   onImageChange() {
     this.excludeFromTraining.set(false);
     this.detection.resetPage();
+    this.drafts.resetPage();
   }
 
   /** Kaynak düğmesi: kayıt / geçiş / analiz sürerken ya da koordinat JSON modunda kapalı. */
@@ -543,6 +606,7 @@ export class QuestionCanvasComponent implements OnInit {
         next: (testData) => {
           this.questionForm.get('testId')?.setValue(testData.subtitle, { emitEvent: false });
           this.questionForm.get('testValue')?.setValue(testData.id, { emitEvent: false });
+          this.syncWorksheetContext(testData.kind);
         },
         error: (err) => {
           console.error('Test bilgisi alınamadı:', err);
@@ -625,7 +689,43 @@ export class QuestionCanvasComponent implements OnInit {
     if (!name) {
       return;
     }
+    // Issue #581: etkinlik bloğunda tip bileşeni de belirler; "Çoktan seçmeli" bloğu soruya çevirir.
+    const idx = this.insIndex;
+    if (idx != null && this.imageSelector.getBlockKind(name) === 'activity') {
+      this.imageSelector.setRegionInteraction(idx, type);
+      return;
+    }
     this.imageSelector.onInteractionTypeChange({ target: { value: type } } as unknown as Event, name);
+  }
+
+  // ---- Issue #581: etkinlik taslağı + basılı cevap maskesi ----
+
+  /** Müfettişteki etkinlik bloğunun taslak kartı görünür mü (tipli etkinlik, etkinlik sayfası). */
+  insHasDraftCard(d: ActiveInspector): boolean {
+    return this.activityContext() && d.blockKind === 'activity' && isBlockInteractionType(d.interactionType);
+  }
+
+  insMaskMode() {
+    const idx = this.insIndex;
+    if (idx != null) this.imageSelector.selectMaskMode(idx);
+  }
+
+  insRemoveMask(index: number) {
+    const name = this.insName;
+    if (name) this.imageSelector.removeMask(name, index);
+  }
+
+  insClearMasks() {
+    const name = this.insName;
+    if (name) this.imageSelector.clearMasks(name);
+  }
+
+  /** Öğrenci gibi çöz: kayıtlı sayfayı önizlemede açar (etkileşimli maddeler oynatıcıyla). */
+  solveAsStudent() {
+    if (this.busy() || !this.canPreview || this.previewOn) {
+      return;
+    }
+    this.togglePreviewMode();
   }
 
   insSetCorrectAnswer(answerIndex: number) {
@@ -1241,6 +1341,12 @@ export class QuestionCanvasComponent implements OnInit {
     if (this.busy() || !this.questionsReadyToSave()) {
       return;
     }
+    // Issue #599: hedef sayfa seçiliyse (navigasyon state, route, menü, hızlı oluşturma) doğrudan ona kaydedilir; gömülü
+    // test formundan yeni test oluşturulmaz (alt konu / kitap zorunluluğu mevcut sayfaya kaydı engelliyordu).
+    if (this.targetWorksheetId) {
+      this.onSave(sendToFix);
+      return;
+    }
     this.creating.set(true);
     this.testCreateEnhancedComponent.onCreateAsync().subscribe({
       next: (test) => {
@@ -1296,8 +1402,10 @@ export class QuestionCanvasComponent implements OnInit {
       }
     }
 
+    // Hedef: formdaki sayfa, yoksa route'taki / az önce oluşturulan sayfa (`this.id`).
+    const targetId = this.targetWorksheetId ?? 0;
     const questionPayload = {
-      testId: formData.testValue ? formData.testValue : 0,
+      testId: targetId,
       topicId: formData.topicId,
       subjectId: formData.subjectId,
     };
@@ -1318,7 +1426,7 @@ export class QuestionCanvasComponent implements OnInit {
           // Sonraki sayfaya geçişi aşağıdaki 2 sn'lik zamanlayıcı yapar; sendToFix ayrıca ilerletmesin.
           this.imageSelector.sendToFix(!this.excludeFromTraining(), false);
         }
-        this.testCreateEnhancedComponent.reloadComponent(formData.testValue);
+        this.testCreateEnhancedComponent.reloadComponent(targetId);
         if (this.destroyed) {
           return;
         }

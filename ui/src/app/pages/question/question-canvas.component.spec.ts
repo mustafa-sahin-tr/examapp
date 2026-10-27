@@ -198,6 +198,102 @@ describe('QuestionCanvasComponent', () => {
         });
     });
 
+    // Issue #581: hedef sayfanın türü (etkinlik bağlamı), etkinlik bloğunda tip seçimi, maske köprüsü, öğrenci gibi çöz.
+    describe('activity context (#581)', () => {
+        it('onOptionSelected_ActivityWorksheet_UsesRowKindWithoutFetching', () => {
+            component.onOptionSelected({ id: 7, name: 'Etkinlik', subtitle: 'E', kind: 1 } as any);
+
+            expect(component.activityContext()).toBe(true);
+            expect(testService.get).not.toHaveBeenCalled();
+
+            component.onOptionSelected({ id: 8, name: 'Test', subtitle: 'T', kind: 0 } as any);
+            expect(component.activityContext()).toBe(false);
+        });
+
+        it('ngOnInit_WorksheetFromNavigationState_FetchesKind', () => {
+            window.history.replaceState({ testValue: 42, testId: 'Etkinlik' }, '');
+            testService.get.mockReturnValue(of({ id: 42, subtitle: 'E', kind: 1 }) as any);
+
+            component.ngOnInit();
+
+            expect(testService.get).toHaveBeenCalledWith(42);
+            expect(testService.get).toHaveBeenCalledTimes(1);
+            expect(component.activityContext()).toBe(true);
+        });
+
+        it('ngOnInit_TestWorksheetOrNoContext_StaysTestBehaviour', () => {
+            component.ngOnInit();
+            expect(component.activityContext()).toBe(false);
+
+            window.history.replaceState({ testValue: 43 }, '');
+            testService.get.mockReturnValue(of({ id: 43, subtitle: 'T' }) as any);
+            component.ngOnInit();
+
+            expect(component.worksheetKind()).toBe(0);
+            expect(component.activityContext()).toBe(false);
+        });
+
+        it('insSetInteractionType_ActivityBlock_UsesSetRegionInteraction', () => {
+            const sel = {
+                currentRegion: { name: 'Soru 2' },
+                activeRegionIndex: 1,
+                getBlockKind: vi.fn((name: string) => (name === 'Soru 2' ? 'activity' : 'mcq_question')),
+                setRegionInteraction: vi.fn(),
+                onInteractionTypeChange: vi.fn(),
+            };
+            component.imageSelector = sel as any;
+
+            component.insSetInteractionType('match');
+            expect(sel.setRegionInteraction).toHaveBeenCalledWith(1, 'match');
+            expect(sel.onInteractionTypeChange).not.toHaveBeenCalled();
+
+            sel.currentRegion = { name: 'Soru 1' };
+            sel.activeRegionIndex = 0;
+            component.insSetInteractionType('slotFill');
+            expect(sel.onInteractionTypeChange).toHaveBeenCalledTimes(1);
+        });
+
+        it('maskActions_DelegateWithActiveQuestion', () => {
+            const sel = {
+                currentRegion: { name: 'Soru 3' },
+                activeRegionIndex: 2,
+                selectMaskMode: vi.fn(),
+                removeMask: vi.fn(),
+                clearMasks: vi.fn(),
+            };
+            component.imageSelector = sel as any;
+
+            component.insMaskMode();
+            component.insRemoveMask(1);
+            component.insClearMasks();
+
+            expect(sel.selectMaskMode).toHaveBeenCalledWith(2);
+            expect(sel.removeMask).toHaveBeenCalledWith('Soru 3', 1);
+            expect(sel.clearMasks).toHaveBeenCalledWith('Soru 3');
+        });
+
+        it('solveAsStudent_SavedWorksheet_OpensPreview', () => {
+            const fake = makeImageSelectorFake({ pageLoading: () => false, inProgress: () => false, sendingToFix: () => false });
+            component.imageSelector = fake as any;
+            component.questionForm.get('testValue')?.setValue(55 as any, { emitEvent: false });
+
+            component.solveAsStudent();
+
+            expect(fake.togglePreviewMode).toHaveBeenCalledWith(55);
+        });
+
+        it('insHasDraftCard_OnlyTypedActivityInActivityContext', () => {
+            const d = { blockKind: 'activity', interactionType: 'matrixChoice' } as any;
+            expect(component.insHasDraftCard(d)).toBe(false);
+
+            component.onOptionSelected({ id: 7, name: 'Etkinlik', subtitle: 'E', kind: 1 } as any);
+
+            expect(component.insHasDraftCard(d)).toBe(true);
+            expect(component.insHasDraftCard({ ...d, interactionType: 'mcq' })).toBe(false);
+            expect(component.insHasDraftCard({ ...d, blockKind: 'mcq_question' })).toBe(false);
+        });
+    });
+
     describe('canPreview', () => {
         it('canPreview_NoIdAndNoTestValue_ReturnsFalse', () => {
             component.id = null;
@@ -1290,6 +1386,47 @@ describe('QuestionCanvasComponent', () => {
                 });
             }
 
+            // Issue #599: hedef sayfa seçiliyse kayıt doğrudan ona gider, gömülü formdan test oluşturulmaz.
+            for (const action of ['onSaveAndNew', 'onSaveAndFix', 'onSubmit'] as const) {
+                it(`${action}_TargetSelected_SavesToTargetWithoutCreatingTest`, async () => {
+                    const { component, tceFake, questionServiceLocal, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+                    component.questionForm.get('testValue')?.setValue(3 as any, { emitEvent: false });
+
+                    await withMockClock(() => {
+                        component[action]();
+                        component[action](); // çift tık: kayıt sürerken ikinci istek yok
+
+                        expect(tceFake.onCreateAsync).not.toHaveBeenCalled();
+                        expect(questionServiceLocal.saveBulk).toHaveBeenCalledTimes(1);
+                        expect(imageSelectorFake.getRegions).toHaveBeenCalledWith(expect.objectContaining({ testId: 3 }));
+
+                        saveBulk$.next({});
+                        expect(tceFake.reloadComponent).toHaveBeenCalledWith(3);
+                        vi.advanceTimersByTime(2000);
+                        expect(imageSelectorFake.nextImage).toHaveBeenCalledTimes(1);
+                    });
+                });
+            }
+
+            it('onSaveAndNew_RouteIdWithoutFormTarget_SavesToRouteWorksheet', async () => {
+                const { component, tceFake, imageSelectorFake } = await setup({ isAdmin: false });
+                component.id = 12;
+
+                component.onSaveAndNew();
+
+                expect(tceFake.onCreateAsync).not.toHaveBeenCalled();
+                expect(imageSelectorFake.getRegions).toHaveBeenCalledWith(expect.objectContaining({ testId: 12 }));
+            });
+
+            it('onSaveAndNew_NoTarget_CreatesTestThenSavesToIt', async () => {
+                const { component, tceFake, imageSelectorFake } = await setup({ isAdmin: false });
+
+                component.onSaveAndNew();
+
+                expect(tceFake.onCreateAsync).toHaveBeenCalledTimes(1);
+                expect(imageSelectorFake.getRegions).toHaveBeenCalledWith(expect.objectContaining({ testId: 7 }));
+            });
+
             it('onSaveAndNew_CreateFails_ClearsCreating', async () => {
                 const { component, tceFake, questionServiceLocal } = await setup({ isAdmin: false });
                 const create$ = new Subject<any>();
@@ -1367,6 +1504,64 @@ describe('QuestionCanvasComponent', () => {
                     const caretButton = () => el.querySelector<HTMLButtonElement>('.qc-split__caret')!;
                     return { ...ctx, el, trainButton, saveButton, caretButton };
                 }
+
+                // E2E (#581): kutu 3'e yazılan değer, boş kutu 4'e geçince DOM'da kalıp onunkine ekleniyordu ("29023").
+                it('slotEditor_SwitchToEmptySlot_ShowsOnlyThatSlotsValue', async () => {
+                    const { fixture: f, component, el } = await render();
+                    const sel = component.imageSelector;
+                    vi.spyOn(sel, 'drawImage').mockReturnValue(undefined);
+                    sel.regions.set([{ name: 'Soru 1', x: 0, y: 0, width: 400, height: 300, answers: [], passageId: '0', imageId: '', imageUrl: '', id: 0, isExample: false, exampleAnswer: null }] as any);
+                    sel.interactionTypes.set('Soru 1', 'slotFill');
+                    (sel as any).addSlotFromDrag(0, 10, 10, 60, 40);
+                    (sel as any).addSlotFromDrag(0, 10, 60, 60, 90);
+                    const [a, b] = sel.ensureSlotFillState('Soru 1').slots.map((x) => x.id);
+                    sel.selectSlot('Soru 1', a);
+                    f.detectChanges();
+                    const valueInput = () => el.querySelector<HTMLInputElement>('[data-testid="slot-value"]')!;
+                    const type = (text: string) => {
+                        const input = valueInput();
+                        input.value = input.value + text;
+                        input.dispatchEvent(new Event('change'));
+                    };
+
+                    type('290');
+                    // Yazma ve kutu değişimi aynı değişiklik algılama turunda (olay birleştirme): arada yeniden çizim yok.
+                    sel.selectSlot('Soru 1', b);
+                    f.detectChanges();
+                    expect(valueInput().value).toBe('');
+                    type('23');
+                    f.detectChanges();
+
+                    const slots = sel.ensureSlotFillState('Soru 1').slots;
+                    expect(slots.find((x) => x.id === a)!.value).toBe('290');
+                    expect(slots.find((x) => x.id === b)!.value).toBe('23');
+                });
+
+                // Aynı kolon id'si (c1) iki soruda: soru değişince ilk sorunun DOM değeri ikinciye taşınmamalı.
+                it('inspector_SwitchQuestion_MatrixColumnLabelShowsOwnValue', async () => {
+                    const { fixture: f, component, el } = await render();
+                    const sel = component.imageSelector;
+                    vi.spyOn(sel, 'drawImage').mockReturnValue(undefined);
+                    const base = { y: 0, width: 400, height: 300, answers: [], passageId: '0', imageId: '', imageUrl: '', id: 0, isExample: false, exampleAnswer: null };
+                    sel.regions.set([{ ...base, name: 'Soru 1', x: 0 }, { ...base, name: 'Soru 2', x: 500 }] as any);
+                    for (const name of ['Soru 1', 'Soru 2']) {
+                        sel.interactionTypes.set(name, 'matrixChoice');
+                        sel.ensureMatrixState(name);
+                        sel.setMatrixColumnLabel(name, 'c1', '');
+                    }
+                    (sel as any).selectedRegion = 0;
+                    f.detectChanges();
+                    const firstLabel = () => el.querySelector<HTMLInputElement>('.qc-matrix__col-input')!;
+                    firstLabel().value = 'Doğru';
+                    firstLabel().dispatchEvent(new Event('change'));
+
+                    (sel as any).selectedRegion = 1;
+                    f.detectChanges();
+
+                    expect(firstLabel().value).toBe('');
+                    expect(sel.ensureMatrixState('Soru 1').columns[0].label).toBe('Doğru');
+                    expect(sel.ensureMatrixState('Soru 2').columns[0].label).toBe('');
+                });
 
                 it('buttons_Idle_AreEnabled', async () => {
                     const { trainButton, saveButton, caretButton } = await render();

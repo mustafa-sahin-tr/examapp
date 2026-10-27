@@ -117,6 +117,7 @@ import {
   interactionForComponent,
   isActivityComponent,
   isBlockInteractionType,
+  PredictionMask,
   isConsistentInteraction,
   isExcludedBlockKind,
 } from '../../models/prediction';
@@ -191,7 +192,9 @@ export type CanvasSelectionMode =
   | 'placeTarget'
   | 'placeCard'
   | 'matchLeft'
-  | 'matchRight';
+  | 'matchRight'
+  // Issue #581: basılı cevabı öğrenci görselinde örten maske dikdörtgeni.
+  | 'mask';
 
 /** Issue #576: kutu çizimi soru bölgesinde zorunlu olan modlar (boş alanda çizilmez). */
 const BOX_MODES: ReadonlySet<CanvasSelectionMode> = new Set<CanvasSelectionMode>([
@@ -204,7 +207,17 @@ const BOX_MODES: ReadonlySet<CanvasSelectionMode> = new Set<CanvasSelectionMode>
   'placeCard',
   'matchLeft',
   'matchRight',
+  'mask',
 ]);
+
+/**
+ * Issue #581: basılı cevap maskesi — soru bölgesine göreli (sayfa pikseli). Sunucu kırpılan soru görselinin üstüne opak
+ * beyaz boyar; öğrenci basılı cevabı görmez. Bölge başına en çok `MAX_MASKS_PER_REGION`.
+ */
+export type MaskBox = PredictionMask;
+
+/** Issue #581: bölge başına maske üst sınırı (sunucu sınırıyla aynı). */
+export const MAX_MASKS_PER_REGION = 20;
 
 /**
  * Issue #579: `applyInteractionDraft` sonucu — `applied` yüklendi, `kept` elle yazarlık korundu (taslak bekliyor),
@@ -335,6 +348,8 @@ export interface ActiveInspector {
   /** Issue #576: yalnız dragPlace / match sorusunda dolu. */
   dragPlace: DragPlaceInspector | null;
   match: MatchInspector | null;
+  /** Issue #581: basılı cevap maskeleri (bölgeye göreli). */
+  masks: MaskBox[];
   isExample: boolean;
   exampleAnswer: string;
   difficulty: number | null;
@@ -429,6 +444,11 @@ export class ImageSelectorComponent {
    * kaynağı (manuel kayıt / YOLO / Claude) seçip `predict()` ya da `applyExternalPrediction()` çağırır.
    */
   @Input() externalDetection = false;
+  /**
+   * Issue #581: soru tuvali etkinlik bloklarını yazar — tipli etkinliğin yazarlık uyarıları (matris / kutu / hedef …)
+   * tuvalde de gösterilir. İşaretleme ekranında kapalı (orada yazarlık yapılmaz).
+   */
+  @Input() authorActivities = false;
   /** `externalDetection` açıkken sayfa görseli hazır (değer: `imageData`, FileReader data URL'i). */
   @Output() pageReady = new EventEmitter<string>();
   /** Manuel kayıt exam API'ye yazıldı (değer: kaydedilen sayfanın `imageData`'sı). */
@@ -532,6 +552,8 @@ export class ImageSelectorComponent {
   public matchState = new Map<string, MatchAuthoringState>();
   /** Issue #579: bölge + tip → son uygulanan taslaktan sonraki yazarlık izi (elle düzeltme ayrımı). */
   private draftFingerprints = new Map<string, string>();
+  /** Issue #581: bölge adı → basılı cevap maskeleri (bölgeye göreli). */
+  public masks = new Map<string, MaskBox[]>();
   /**
    * Issue #578: bölge adına göre blok türü (+ etkinlik bileşeni). Kayıt yoksa `mcq_question`. `info_box` / `answer_key` /
    * `noise` kırpılmaz (eğitime, bankaya, teste gitmez); `activity` etkileşimli soru gibi eğitime gitmez.
@@ -1622,6 +1644,10 @@ export class ImageSelectorComponent {
       console.log('Exited  tapCorrectAnswer isDrawing :', this.isDrawing);
       return;
     }
+    // Issue #581: maske çoğu zaman basılı cevabın (şıkkın) üstüne çizilir; çizim bitişindeki tık doğru cevabı değiştirmesin.
+    if (this.selectionMode() === 'mask') {
+      return;
+    }
 
     const { x: mouseX, y: mouseY } = this.toCanvasPoint(event);
 
@@ -1725,6 +1751,8 @@ export class ImageSelectorComponent {
         return this.getThemeColors().matchLeft;
       case 'matchRight':
         return this.getThemeColors().matchRight;
+      case 'mask':
+        return this.getThemeColors().mask;
       default:
         return 'black';
     }
@@ -1746,7 +1774,10 @@ export class ImageSelectorComponent {
     // Issue #578: soru dışı blokta (Claude / işaretleme ekranı türü) uyarı yok: anlatım, gürültü, tipsiz etkinlikte şık kuralı
     // yok; tipli etkinliğin yazarlığı bu ekranlarda yapılmaz (#581), boş yazarlık durumu hata sayılmaz. Soru tuvalinde
     // tipi elle seçilen sorular (tür: Soru) uyarılarını göstermeye devam eder.
-    const messages = this.getBlockKind(region.name) !== 'mcq_question'
+    // Issue #581: soru tuvalinde (`authorActivities`) tipli etkinlik yazarlığı yapılır; uyarıları da görünür.
+    const kind = this.getBlockKind(region.name);
+    const authoredActivity = this.authorActivities && kind === 'activity' && isInteractiveType(type);
+    const messages = kind !== 'mcq_question' && !authoredActivity
       ? []
       : type === 'dragDropLabeling'
         ? this.dragDropIssues(region)
@@ -1932,6 +1963,8 @@ export class ImageSelectorComponent {
     /** Issue #578: blok türü renkleri ve tür etiketinin metni. */
     kinds: Record<BlockKind, string>;
     kindOn: string;
+    /** Issue #581: basılı cevap maskesinin tarama çizgisi. */
+    mask: string;
   };
 
   private getThemeColors() {
@@ -1958,6 +1991,7 @@ export class ImageSelectorComponent {
           noise: this.cssVar('--ms-block-kind-noise') || 'gray',
         },
         kindOn: this.cssVar('--ms-block-kind-on') || 'white',
+        mask: this.cssVar('--ms-danger-border') || 'crimson',
       };
     }
     return this.themeColors;
@@ -2113,6 +2147,57 @@ export class ImageSelectorComponent {
       this.drawSlotFillOverlays();
       this.drawDragPlaceOverlays();
       this.drawMatchOverlays();
+      this.drawMaskOverlays();
+    }
+  }
+
+  /**
+   * Issue #581: maske — sunucu bu alanı opak beyaza boyar; tuvalde yarı opak yüzey + çapraz tarama ile gösterilir (altındaki
+   * basılı cevap öğretmene hâlâ seçilebilir).
+   */
+  private drawMaskOverlays() {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const theme = this.getThemeColors();
+    for (const region of this.regions()) {
+      const masks = this.masks.get(region.name) ?? [];
+      masks.forEach((mask, i) => {
+        // Kayıttaki gibi bölgenin yuvarlanmış köşesine göre.
+        const x = Math.round(region.x) + mask.x;
+        const y = Math.round(region.y) + mask.y;
+        ctx.save();
+        ctx.globalAlpha = 0.7;
+        ctx.fillStyle = theme.surface;
+        ctx.fillRect(x, y, mask.width, mask.height);
+        ctx.globalAlpha = 0.9;
+        ctx.beginPath();
+        ctx.rect(x, y, mask.width, mask.height);
+        ctx.clip();
+        ctx.beginPath();
+        ctx.strokeStyle = theme.mask;
+        ctx.lineWidth = 1.5;
+        const step = 8;
+        for (let d = -mask.height; d < mask.width; d += step) {
+          ctx.moveTo(x + d, y + mask.height);
+          ctx.lineTo(x + d + mask.height, y);
+        }
+        ctx.stroke();
+        ctx.restore();
+        ctx.save();
+        ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = theme.mask;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, mask.width, mask.height);
+        ctx.setLineDash([]);
+        ctx.font = `bold 11px ${theme.fontFamily}`;
+        const tag = `M${i + 1}`;
+        const tagW = ctx.measureText(tag).width + 8;
+        ctx.fillStyle = theme.mask;
+        ctx.fillRect(x, y, tagW, 15);
+        ctx.fillStyle = theme.surface;
+        ctx.fillText(tag, x + 4, y + 11);
+        ctx.restore();
+      });
     }
   }
 
@@ -2426,6 +2511,18 @@ export class ImageSelectorComponent {
 
     const mode = this.selectionMode();
 
+    // Issue #581: maske basılı cevabın (çoğu zaman bir şıkkın) üstüne çizilir; hedef bölge isabetle değil, başlangıç noktasını
+    // içeren bölgeyle belirlenir (önce seçili soru).
+    if (mode === 'mask') {
+      const index = this.regionIndexAt(this.startX, this.startY);
+      if (index < 0) {
+        return;
+      }
+      this.selectedQuestionIndex = index;
+      this.isDrawing = true;
+      return;
+    }
+
     if (
       hit &&
       (hit.type === 'question' ||
@@ -2505,6 +2602,11 @@ export class ImageSelectorComponent {
       this.isDrawing = false;
       this.pendingHit = null;
       const mode = this.selectionMode();
+      // Issue #581: maske modunda kısa tık çözüm / seçim değiştirmez (hücre, kart, öğe atamaları korunur).
+      if (mode === 'mask') {
+        this.drawImage();
+        return;
+      }
       if (hit && hit.type === 'matrixCell' && (mode === 'matrixRow' || mode === 'matrixCell')) {
         // Issue #574: matris modunda hücreye tık = o hücrenin kolonunu satırın çözümü olarak işaretle / kaldır (mod değişmez).
         const regionName = this.regions()[hit.value.questionIndex]?.name;
@@ -2640,6 +2742,8 @@ export class ImageSelectorComponent {
       this.selectedQuestionIndex !== -1
     ) {
       this.addMatrixBoxFromDrag(this.selectedQuestionIndex, this.startX, this.startY, endX, endY);
+    } else if (this.selectionMode() === 'mask' && this.selectedQuestionIndex !== -1) {
+      this.addMaskFromDrag(this.selectedQuestionIndex, this.startX, this.startY, endX, endY);
     } else if (this.selectionMode() === 'slot' && this.selectedQuestionIndex !== -1) {
       this.addSlotFromDrag(this.selectedQuestionIndex, this.startX, this.startY, endX, endY);
     } else if (
@@ -2764,6 +2868,141 @@ export class ImageSelectorComponent {
     this.regions.set([...this.regions()]);
     this.checkRegionWarning(region);
     this.drawImage();
+  }
+
+  /**
+   * Issue #581: soru tuvalinde etkinlik bloğunun tipi. Tipli seçim bileşeni tutarlı kılar (matris → A, cevap kutusu → B,
+   * sürükle-yerleştir / eşleştirme → C); `mcq` bloğu çoktan seçmeli soruya çevirir (aksi halde tipsiz etkinlik kaydedilmez);
+   * eski `dragDropLabeling` bileşene dokunmadan atanır. Etkinlik olmayan bölgede normal tip değişikliğidir.
+   */
+  public setRegionInteraction(questionIndex: number, type: QuestionInteractionType) {
+    const region = this.regions()[questionIndex];
+    if (!region) return;
+    const name = region.name;
+    if (this.getBlockKind(name) !== 'activity') {
+      this.setInteractionTypeFor(name, type);
+      this.regions.set([...this.regions()]);
+      this.checkRegionWarning(region);
+      this.drawImage();
+      return;
+    }
+    if (type === 'mcq') {
+      this.setBlockKind(questionIndex, 'mcq_question');
+      return;
+    }
+    if (isBlockInteractionType(type)) {
+      const component: ActivityComponent = type === MATRIX_CHOICE ? 'A' : type === SLOT_FILL ? 'B' : 'C';
+      this.blockKinds.set(name, { kind: 'activity', component });
+    }
+    this.setInteractionTypeFor(name, type);
+    this.regions.set([...this.regions()]);
+    this.checkRegionWarning(region);
+    this.drawImage();
+  }
+
+  // -------- Issue #581: basılı cevap maskesi --------
+
+  public getMasks(regionName: string): MaskBox[] {
+    return this.masks.get(regionName) ?? [];
+  }
+
+  /** Maske çizim modu (bölge seçilir; çizimler o bölgeye göre saklanır). */
+  public selectMaskMode(questionIndex: number) {
+    if (questionIndex < 0 || questionIndex >= this.regions().length) return;
+    this.selectedQuestionIndex = questionIndex;
+    this.selectedRegion = questionIndex;
+    if (this.selectionModeLocked()) this.selectionModeLocked.set('mask');
+    this.selectionMode.set('mask');
+    this.drawImage();
+  }
+
+  public removeMask(regionName: string, index: number) {
+    const masks = this.getMasks(regionName);
+    if (index < 0 || index >= masks.length) return;
+    const next = masks.filter((_, i) => i !== index);
+    if (next.length > 0) {
+      this.masks.set(regionName, next);
+    } else {
+      this.masks.delete(regionName);
+    }
+    this.regions.set([...this.regions()]);
+    this.drawImage();
+  }
+
+  public clearMasks(regionName: string) {
+    if (!this.masks.has(regionName)) return;
+    this.masks.delete(regionName);
+    this.regions.set([...this.regions()]);
+    this.drawImage();
+  }
+
+  /** Noktayı içeren bölge (önce seçili soru, sonra sırayla); yoksa -1. */
+  private regionIndexAt(x: number, y: number): number {
+    const regions = this.regions();
+    const inside = (r: QuestionRegion) => x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height;
+    const selected = regions[this.selectedQuestionIndex];
+    if (selected && inside(selected)) return this.selectedQuestionIndex;
+    return regions.findIndex(inside);
+  }
+
+  /** Sürüklenen dikdörtgen bölgeye kırpılır ve bölgeye göreli, yuvarlanmış saklanır. */
+  private addMaskFromDrag(questionIndex: number, x1: number, y1: number, x2: number, y2: number) {
+    const region = this.regions()[questionIndex];
+    if (!region) return;
+    // Kayıtta bölge yuvarlanır (`roundBox`); maske o köşeye göre ve çizilen alanı tam kapsayacak şekilde (başlangıç aşağı,
+    // bitiş yukarı yuvarlanır) saklanır.
+    const rx = Math.round(region.x);
+    const ry = Math.round(region.y);
+    const rRight = rx + Math.max(1, Math.round(region.width));
+    const rBottom = ry + Math.max(1, Math.round(region.height));
+    const left = Math.max(Math.floor(Math.min(x1, x2)), rx);
+    const top = Math.max(Math.floor(Math.min(y1, y2)), ry);
+    const right = Math.min(Math.ceil(Math.max(x1, x2)), rRight);
+    const bottom = Math.min(Math.ceil(Math.max(y1, y2)), rBottom);
+    if (right - left < 4 || bottom - top < 4) return;
+    const masks = this.getMasks(region.name);
+    if (masks.length >= MAX_MASKS_PER_REGION) {
+      this.snackBar.open(this.tr('messages.maskLimit', { max: MAX_MASKS_PER_REGION }), this.tr('common.ok'), {
+        duration: 2500,
+      });
+      return;
+    }
+    const box: MaskBox = { x: left - rx, y: top - ry, width: right - left, height: bottom - top };
+    this.masks.set(region.name, [...masks, box]);
+    this.regions.set([...this.regions()]);
+    this.focusQuestionKeepingMode(questionIndex);
+    if (this.maskCoversAnswerBox(region, { x: left, y: top, width: right - left, height: bottom - top })) {
+      this.snackBar.open(this.tr('messages.maskOverAnswer'), this.tr('common.ok'), { duration: 6000 });
+    }
+  }
+
+  /**
+   * Maske (sayfa pikseli) bir şık kutusunun ya da etkinlik öğesinin (hücre, cevap kutusu, hedef, kart, eşleştirme öğesi)
+   * en az yarısını kapatıyor mu — öğrenci o şıkkı / öğeyi göremez; maske yalnız basılı cevap yazısını örtmeli.
+   */
+  private maskCoversAnswerBox(region: QuestionRegion, mask: MaskBox): boolean {
+    const boxes: MaskBox[] = (region.answers ?? []).map((a) => ({ x: a.x, y: a.y, width: a.width, height: a.height }));
+    const rel = (b: { x: number; y: number; width: number; height: number } | null | undefined) => {
+      if (b) boxes.push({ x: region.x + b.x, y: region.y + b.y, width: b.width, height: b.height });
+    };
+    const type = this.getInteractionType(region.name);
+    if (type === MATRIX_CHOICE) {
+      this.ensureMatrixState(region.name).rows.forEach((row) => Object.values(row.cells).forEach(rel));
+    } else if (type === SLOT_FILL) {
+      this.ensureSlotFillState(region.name).slots.forEach((slot) => rel(slot.box));
+    } else if (type === DRAG_PLACE) {
+      const place = this.ensureDragPlaceState(region.name);
+      place.targets.forEach((t) => rel(t.box));
+      place.cards.forEach((c) => rel(c.box));
+    } else if (type === MATCH) {
+      const match = this.ensureMatchState(region.name);
+      [...match.left, ...match.right].forEach((i) => rel(i.box));
+    }
+    return boxes.some((b) => {
+      const w = Math.min(b.x + b.width, mask.x + mask.width) - Math.max(b.x, mask.x);
+      const h = Math.min(b.y + b.height, mask.y + mask.height) - Math.max(b.y, mask.y);
+      return w > 0 && h > 0 && w * h >= 0.5 * b.width * b.height;
+    });
   }
 
   /**
@@ -4020,6 +4259,7 @@ export class ImageSelectorComponent {
       slotFill: interactionType === SLOT_FILL ? buildSlotFillInspector(this.ensureSlotFillState(name)) : null,
       dragPlace: interactionType === DRAG_PLACE ? buildDragPlaceInspector(this.ensureDragPlaceState(name)) : null,
       match: interactionType === MATCH ? buildMatchInspector(this.ensureMatchState(name)) : null,
+      masks: this.getMasks(name),
       isExample: this.isExample(name),
       exampleAnswer: this.getExampleAnswer(name),
       difficulty: this.previewDifficultyLevel(),
@@ -4288,6 +4528,8 @@ export class ImageSelectorComponent {
         this.getActivityComponent(q.name),
         // Issue #579: C bileşeninde dragPlace ↔ match seçimi de düzeltmedir (manuel kayıt tipi taşır).
         this.getBlockKind(q.name) === 'activity' ? this.getInteractionType(q.name) : null,
+        // Issue #581: maske de kaydedilmemiş düzeltmedir.
+        (this.masks.get(q.name) ?? []).map((m) => [m.x, m.y, m.width, m.height]),
       ])
     );
   }
@@ -4315,10 +4557,14 @@ export class ImageSelectorComponent {
       success: true,
       predictions: questions.map((q): Prediction => {
         const kind = this.getBlockKind(q.name);
+        // Issue #581: maskeler kayıtta saklanır (bölgenin yuvarlanmış köşesine göre); kayıt uygulanınca geri gelir.
+        const masks = this.getMasks(q.name);
+        const maskPart = masks.length > 0 ? { masks: masks.map((m) => ({ ...m })) } : {};
         if (kind === 'mcq_question') {
           return {
             ...toPrediction(q),
             subpredictions: (q.answers ?? []).map((a) => ({ ...toPrediction(a), subpredictions: [] })),
+            ...maskPart,
           };
         }
         // Issue #578: soru dışı blok şıksız gider; bileşen ve etkileşim tipi yalnız etkinlikte, tip bileşenle tutarlıysa
@@ -4333,6 +4579,7 @@ export class ImageSelectorComponent {
           ...(type && isBlockInteractionType(type) && isConsistentInteraction(component, type)
             ? { interaction_type: type }
             : {}),
+          ...maskPart,
         };
       }),
     };
@@ -4417,10 +4664,11 @@ export class ImageSelectorComponent {
     this.dragPlaceState.clear();
     this.matchState.clear();
     this.draftFingerprints.clear();
+    this.masks.clear();
     this.regions.set(
       sorted
         // Issue #578: tür alanları bölgeye kopyalanmaz (soru kaydına gitmesin), `blockKinds`'te tutulur.
-        .map(({ kind: _kind, component: _component, interaction_type: _type, ...q }, index) => ({
+        .map(({ kind: _kind, component: _component, interaction_type: _type, masks: _masks, ...q }, index) => ({
           ...q,
           name: `Soru ${index + 1}`,
           answers: q.subpredictions
@@ -4445,7 +4693,12 @@ export class ImageSelectorComponent {
           imageUrl: '',
         }))
     );
-    sorted.forEach((prediction, index) => this.applyPredictedKind(`Soru ${index + 1}`, prediction));
+    sorted.forEach((prediction, index) => {
+      this.applyPredictedKind(`Soru ${index + 1}`, prediction);
+      // Issue #581: manuel kayıttaki maskeler geri yüklenir (geçersizler atlanır).
+      const masks = validMasks(prediction.masks);
+      if (masks.length > 0) this.masks.set(`Soru ${index + 1}`, masks);
+    });
     this.detectionRevision.update((n) => n + 1);
 
     const questionCount = this.regions().length;
@@ -4590,6 +4843,8 @@ export class ImageSelectorComponent {
         interactionType: this.getInteractionType(region.name),
         interactionPlan: this.buildInteractionPlanJson(region.name),
         interactionSolution: this.buildInteractionSolutionJson(region.name),
+        // Issue #581: basılı cevap maskeleri (bölgeye göreli); sunucu kırpılan görselin üstüne opak boyar.
+        ...(this.getMasks(region.name).length > 0 ? { masks: this.getMasks(region.name) } : {}),
       })),
       header: header,
     };
@@ -4613,6 +4868,7 @@ export class ImageSelectorComponent {
     this.dragPlaceState.clear();
     this.matchState.clear();
     this.draftFingerprints.clear();
+    this.masks.clear();
     this.warningMarkers = [];
     this.selectedQuestionIndex = -1;
     this.selectedAnswer = -1;
@@ -4735,6 +4991,7 @@ export class ImageSelectorComponent {
     this.slotFillState.delete(regionName);
     this.dragPlaceState.delete(regionName);
     this.matchState.delete(regionName);
+    this.masks.delete(regionName);
     for (const key of [...this.draftFingerprints.keys()]) {
       if (key.startsWith(`${regionName}\u0000`)) this.draftFingerprints.delete(key);
     }
@@ -5073,4 +5330,14 @@ export class ImageSelectorComponent {
   getExampleAnswer(questionId: string): string {
     return this.exampleAnswers.get(questionId) ?? '';
   }
+}
+
+/** Issue #581: kayıttan gelen maskeler — sonlu, negatif olmayan, kenarı en az 1; en çok `MAX_MASKS_PER_REGION`. */
+function validMasks(masks: unknown): MaskBox[] {
+  if (!Array.isArray(masks)) return [];
+  const ok = (v: unknown, min: number): v is number => typeof v === 'number' && Number.isFinite(v) && v >= min;
+  return masks
+    .filter((m): m is MaskBox => !!m && ok(m.x, 0) && ok(m.y, 0) && ok(m.width, 1) && ok(m.height, 1))
+    .slice(0, MAX_MASKS_PER_REGION)
+    .map((m) => ({ x: m.x, y: m.y, width: m.width, height: m.height }));
 }

@@ -123,7 +123,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
             typeInfo.AsType() == typeof(QuestionsController);
     }
 
-    private async Task<IHost> StartHostAsync()
+    private async Task<IHost> StartHostAsync(Action<IQuestionService>? configureQuestionService = null)
     {
         var questionService = Substitute.For<IQuestionService>();
         questionService.CreateOrUpdateQuestion(Arg.Any<QuestionDto>(), Arg.Any<int>(), Arg.Any<bool>())
@@ -134,6 +134,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
             .Returns(new StudyPageAttachImageResponseDto { Success = true });
         questionService.ResizeQuestionImage(Arg.Any<int>(), Arg.Any<double>())
             .Returns(new ResponseBaseDto { Success = true });
+        configureQuestionService?.Invoke(questionService);
 
         var classification = Substitute.For<IQuestionClassificationService>();
         classification.UpdateCorrectAnswer(Arg.Any<int>(), Arg.Any<int>()).Returns(new ResponseBaseDto { Success = true });
@@ -262,6 +263,21 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         (HttpMethod.Delete, $"/api/questions/test/{_worksheet}/question/{_legacyQuestion}", null),
         (HttpMethod.Post, $"/api/questions/test/{_worksheet}/bank-questions", new { questionIds = new[] { _legacyQuestion } }),
     };
+
+    [Fact]
+    public async Task Bulk_save_rejected_as_invalid_input_returns_400_with_the_localized_message()
+    {
+        // issue #581: servis yazmadan önce reddettiyse (ör. geçersiz maske) genel "kaydedilemedi" değil, servisin mesajı.
+        using var host = await StartHostAsync(qs => qs.SaveBulkQuestion(Arg.Any<BulkQuestionCreateDto>(), Arg.Any<int>())
+            .Returns(new QuestionSavedDto { Success = false, InvalidInput = true, Message = "mask-invalid-581" }));
+        using var client = host.GetTestClient();
+
+        var response = await SendAsync(client, Owner, HttpMethod.Post, "/api/questions/save",
+            new { imageData = "x", passages = Array.Empty<object>(), header = new { testId = _worksheet }, questions = Array.Empty<object>() });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).ShouldContain("mask-invalid-581");
+    }
 
     [Fact]
     public async Task Student_and_parent_are_forbidden_on_every_endpoint()

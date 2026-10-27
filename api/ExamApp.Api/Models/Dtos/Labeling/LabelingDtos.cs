@@ -49,6 +49,15 @@ public class PredictionDto
     [JsonPropertyName("interaction_type")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? InteractionType { get; set; }
+
+    /// <summary>
+    /// Issue #581: basılı cevap maskeleri (bloğa göre, sayfa pikseli) — manuel kayıtta saklanır, sayfa yeniden açılınca geri
+    /// gelir. Yalnız üst düzey kutu; en çok <see cref="Helpers.QuestionImageMasks.MaxMasks"/>, sonlu, x/y ≥ 0, kenar ≥ 1,
+    /// blokla kesişmeli (aksi halde 400 <c>labeling.invalidMask</c>).
+    /// </summary>
+    [JsonPropertyName("masks")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<RegionBoxDto>? Masks { get; set; }
 }
 
 public class PredictionListDto

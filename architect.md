@@ -37,7 +37,7 @@ Outbox + Hangfire + n8n + in-process Backg kuyruğu modeli. Hangi işin nereye a
 - 44 DbSet, 105 migration (squash edilmemiaget_v2).
 
 6. Gateway teknik borç
-ocelot.json sabit host/port; ölü rotalar (question-detector-dev, finance-api, comment'li catalog). CatalogService
+ocelot.json sabit host/port; ölü rotalar (question-detector-dev, comment'li catalog). CatalogService
 klasörü var ama solution'da yok, compose'ds.
 
 7. İşletim riskleri
@@ -45,7 +45,6 @@ klasörü var ama solution'da yok, compose'ds.
 - Console.WriteLine ile loglama (ILogger ystdout'a yazılıyor.
 - Compose'da düz metin secret (exampass, minioadmin).
 - Container'lara kaynak kod volume mount eler gerçekte kullanılmıyor, dev/prodparitesi yok.
-- finance-api/app/ios aynı repoda ve gatewnmış.
 
 Öncelik sırası (öneri)
 

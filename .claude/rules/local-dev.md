@@ -575,7 +575,7 @@ Gateway arkasında ui dev-server SSR'dan CSR'a düşer: host/proto dışındaki 
 - **CDK 21+ overlay:** bağlı paneller (mat-select, autocomplete) `OverlayContainer` yerine tetikleyicinin yanında native
   popover olarak açılır; testte paneli `document` üzerinden ara.
 
-**Issue #553 — dev UI imajlarında TLS doğrulaması açık.** `dockerfiles/{ui,auth-ui,finance-ui}` artık
+**Issue #553 — dev UI imajlarında TLS doğrulaması açık.** `dockerfiles/{ui,auth-ui}` artık
 `npm set strict-ssl false` çalıştırmıyor. Kurumsal proxy TLS'i kendi sertifikasıyla açıyorsa (npm `UNABLE_TO_GET_ISSUER_CERT_LOCALLY` /
 `SELF_SIGNED_CERT_IN_CHAIN`), proxy'nin kök CA'sını BuildKit secret'ı olarak ver; repoya girmez:
 `docker build --secret id=corp_ca,src=/yol/kurum-ca.pem -f dockerfiles/ui/Dockerfile.ui dockerfiles/ui -t exam-angular:latest`

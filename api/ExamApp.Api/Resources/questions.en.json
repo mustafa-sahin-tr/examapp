@@ -4,6 +4,7 @@
     "saveFailed": "The question could not be saved!",
     "created": "Question saved successfully!",
     "updated": "Question updated successfully!",
+    "invalidMask": "Invalid mask on question {0}: at most 20 rectangles, with non-negative position and width/height of at least 1.",
     "passage": {
       "invalidInstruction": "Invalid instruction: it must be plain text of at most 2000 characters without control characters."
     },

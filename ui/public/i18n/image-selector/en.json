@@ -133,7 +133,9 @@
     "slotOutsideQuestion": "The answer box must be inside the question area.",
     "placeTargetFull": "The target is full: raise its capacity or remove a card first.",
     "boxOutsideQuestion": "The box must be inside the question area.",
-    "interactionLimit": "This question already has the maximum number of items."
+    "interactionLimit": "This question already has the maximum number of items.",
+    "maskLimit": "At most {{max}} masks per question.",
+    "maskOverAnswer": "The mask covers an option/item; the student will not see it. Cover only the printed answer text."
   },
   "coordinateJson": {
     "activated": "Coordinate JSON found: {{questions}} questions on {{pages}} pages; using the JSON instead of question detection.",

@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
+using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Labeling;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -329,7 +330,8 @@ public sealed class LabelingService(
     /// İstemcinin gönderdiği kutuları sınırlar: adet, negatif değer ve yalnız <c>class_id = 0</c> (question-detector'ın tek
     /// sınıfı); koordinatlar sayfa sınırına kırpılır. JSONB'ye yalnız bilinen alanlar yazılır. Issue #578: üst düzey kutunun
     /// <c>kind</c>/<c>component</c>/<c>interaction_type</c>'ı <see cref="LabelingBlocks.IsValidManual"/> ile doğrulanır
-    /// (geçersiz → <c>labeling.invalidBlockKind</c>); şıklarda bu alanlar yazılmaz.
+    /// (geçersiz → <c>labeling.invalidBlockKind</c>); şıklarda bu alanlar yazılmaz. Issue #581: üst düzey kutunun <c>masks</c>'ı
+    /// doğrulanıp kopyalanır (geçersiz → <c>labeling.invalidMask</c>); şıklarda atılır.
     /// </summary>
     private static PredictionListDto Sanitize(PredictionListDto input, int pageWidth, int pageHeight)
     {
@@ -362,6 +364,15 @@ public sealed class LabelingService(
             block.Kind = q.Kind;
             block.Component = q.Component;
             block.InteractionType = q.InteractionType;
+            // Issue #581: maskeler toplu kayıttaki kurallarla (bloğun kırpılmış boyutuna göre) doğrulanır; yalnız bilinen alanlar.
+            if (q.Masks is { } masks)
+            {
+                if (!QuestionImageMasks.IsValid(masks, block.Width, block.Height))
+                    throw new LabelingValidationException("labeling.invalidMask");
+                block.Masks = masks.Count == 0
+                    ? null
+                    : masks.Select(m => new RegionBoxDto { X = m.X, Y = m.Y, Width = m.Width, Height = m.Height }).ToList();
+            }
             return block;
         }
 

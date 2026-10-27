@@ -1489,3 +1489,101 @@
     background: var(--ms-action-background-weak);
   }
 }
+
+// Issue #581: etkinlik bağlamı rozeti (araç çubuğu).
+.qc-activity-ctx {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--ms-info-border);
+  background: var(--ms-info-surface-weak);
+  color: var(--ms-info-text);
+  font-family: var(--paragraphFontFamily);
+  font-size: 12px;
+  font-weight: 600;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+// Issue #581: etkinlik bloğu + Claude taslak kartı (müfettiş).
+.qc-activity__untyped {
+  margin: 0;
+}
+
+.qc-draft {
+  &__status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-family: var(--paragraphFontFamily);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ms-text);
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: var(--primaryColor);
+    }
+  }
+
+  &__pill {
+    padding: 0 8px;
+    border-radius: 999px;
+    border: 1px solid var(--ms-border-weak);
+    font-size: 11px;
+    color: var(--ms-text-weak);
+  }
+
+  &__cost {
+    font-size: 12px;
+    color: var(--ms-text-weak);
+  }
+
+  &__warn {
+    color: var(--ms-danger-background);
+  }
+
+  &__errors {
+    margin: 4px 0 0;
+    padding-left: 18px;
+    font-family: var(--paragraphFontFamily);
+    font-size: 12px;
+    color: var(--ms-danger-background);
+  }
+
+  &__instruction {
+    margin: 0;
+    font-family: var(--paragraphFontFamily);
+    font-size: 12px;
+    color: var(--ms-text);
+    white-space: pre-line;
+  }
+}
+
+// Issue #581: basılı cevap maskesi listesi.
+.qc-mask {
+  &__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__draw.is-active {
+    border-color: var(--ms-danger-border);
+    color: var(--ms-text);
+  }
+}

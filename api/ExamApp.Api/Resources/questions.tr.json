@@ -4,6 +4,7 @@
     "saveFailed": "Soru kaydedilemedi!",
     "created": "Soru başarıyla kaydedildi!",
     "updated": "Soru başarıyla güncellendi!",
+    "invalidMask": "{0} sorusunda geçersiz maske: en çok 20 dikdörtgen olmalı, konum negatif olmamalı, genişlik/yükseklik en az 1 olmalı.",
     "passage": {
       "invalidInstruction": "Yönerge geçersiz: en çok 2000 karakter düz metin olmalı ve kontrol karakteri içermemeli."
     },

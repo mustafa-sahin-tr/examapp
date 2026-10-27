@@ -38,6 +38,19 @@ export interface Prediction {
     component?: ActivityComponent | null;
     /** Issue #578: yalnız `kind = activity` ve bileşenle tutarlıysa (bkz. `isConsistentInteraction`). */
     interaction_type?: BlockInteractionType | null;
+    /**
+     * Issue #581: basılı cevap maskeleri (yalnız üst düzey kutu; kutunun yuvarlanmış sol üst köşesine göre, sayfa pikseli,
+     * en çok 20). Manuel kayıtta saklanır, kayıt uygulanınca tuvale geri gelir.
+     */
+    masks?: PredictionMask[] | null;
+}
+
+/** Issue #581: bölgeye göreli maske dikdörtgeni (exam API `RegionBoxDto`). */
+export interface PredictionMask {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
 }
 
 export interface PredictionList {
@@ -102,14 +115,14 @@ export function interactionForComponent(
 }
 
 /**
- * Yalnız çoktan seçmeli soru bloklarını bırakır (soru tuvali: sayfa teste MCQ olarak kaydedilir). Geçersiz liste olduğu
- * gibi döner (uygulayan hata dalını çalıştırır).
+ * Issue #581: yalnız verilen türlerdeki blokları bırakır (soru tuvali etkinlik sayfasında: soru + etkinlik). Geçersiz liste
+ * olduğu gibi döner.
  */
-export function onlyMcqBlocks(list: PredictionList): PredictionList {
+export function onlyBlockKinds(list: PredictionList, kinds: readonly BlockKind[]): PredictionList {
     if (!list || !Array.isArray(list.predictions)) {
         return list;
     }
-    return { ...list, predictions: list.predictions.filter((p) => blockKindOf(p) === 'mcq_question') };
+    return { ...list, predictions: list.predictions.filter((p) => kinds.includes(blockKindOf(p))) };
 }
 
 /**

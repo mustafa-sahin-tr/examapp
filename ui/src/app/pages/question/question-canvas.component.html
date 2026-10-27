@@ -160,6 +160,14 @@
       </div>
       }
 
+      @if (activityContext()) {
+      <button type="button" class="qc-btn qc-btn--ghost qc-solve-as-student" [disabled]="busy() || !canPreview || previewOn"
+        [title]="canPreview ? t('activityDraft.solveAsStudentHint') : t('activityDraft.solveAsStudentNeedsSave')"
+        (click)="solveAsStudent()">
+        <mat-icon>play_circle</mat-icon>{{ t('activityDraft.solveAsStudent') }}
+      </button>
+      }
+
       @if (canTrain) {
       <mat-checkbox class="qc-train-opt-out" [checked]="excludeFromTraining()"
         (change)="excludeFromTraining.set($event.checked)"
@@ -282,8 +290,15 @@
             (click)="setSelectionMode('placeTarget')">{{ t('canvas.modePlace') }}</button>
           <button type="button" [class.is-active]="selectionMode === 'matchLeft' || selectionMode === 'matchRight'"
             (click)="setSelectionMode('matchLeft')">{{ t('canvas.modeMatch') }}</button>
+          <button type="button" class="qc-mode-mask" [class.is-active]="selectionMode === 'mask'"
+            [title]="t('mask.modeHint')" (click)="setSelectionMode('mask')">{{ t('mask.mode') }}</button>
         </div>
         <div class="qc-canvas__toolbar-right">
+          @if (activityContext()) {
+          <span class="qc-count qc-activity-ctx" role="status" [title]="t('activityDraft.contextHint')">
+            <mat-icon aria-hidden="true">extension</mat-icon>{{ t('activityDraft.context') }}
+          </span>
+          }
           @if (detection.available() && !coordinateJsonMode) {
           <span class="qc-count qc-source" role="group" [attr.aria-label]="t('detection.group')">
             <span class="qc-count__label">{{ t('detection.label') }}</span>
@@ -346,7 +361,7 @@
         <app-image-selector [previewMetaProvider]="previewMetaProvider" [navigationLocked]="navigationBusy()"
           (previewQuestionChange)="onPreviewQuestionChange($event)"
           (selectedQuestionChange)="onInspectorQuestionChange($event)"
-          (imageChange)="onImageChange()" [externalDetection]="canTrain"
+          (imageChange)="onImageChange()" [externalDetection]="canTrain" [authorActivities]="true"
           (pageReady)="detection.onPageReady($event)" (manualSaved)="detection.onManualSaved($event)"></app-image-selector>
       </div>
 
@@ -406,13 +421,17 @@
 
         @if (!showQuickCreate()) {
           @if (insData; as d) {
+          <!-- Soru değişince müfettiş yeniden kurulur: aynı id'li (c1, s1 …) alanlar başka sorunun DOM değerini göstermesin. -->
+          @for (insKey of [d.name]; track insKey) {
 
           <!-- Etkileşim Tipi -->
           <section class="qc-insp-sec">
             <div class="qc-lbl">{{ t('inspector.interactionType') }}</div>
             <div class="qc-segmented qc-segmented--full" role="group" [attr.aria-label]="t('inspector.interactionType')">
-              <button type="button" [class.is-active]="d.interactionType === 'mcq'"
-                [attr.aria-pressed]="d.interactionType === 'mcq'" (click)="insSetInteractionType('mcq')">{{ t('inspector.mcq') }}</button>
+              <button type="button" [class.is-active]="d.interactionType === 'mcq' && d.blockKind !== 'activity'"
+                [attr.aria-pressed]="d.interactionType === 'mcq' && d.blockKind !== 'activity'"
+                [title]="d.blockKind === 'activity' ? t('activityDraft.toQuestionHint') : ''"
+                (click)="insSetInteractionType('mcq')">{{ t('inspector.mcq') }}</button>
               <button type="button" [class.is-active]="d.interactionType === 'dragDropLabeling'"
                 [attr.aria-pressed]="d.interactionType === 'dragDropLabeling'" (click)="insSetInteractionType('dragDropLabeling')">{{ t('inspector.dragDrop') }}</button>
               <button type="button" [class.is-active]="d.interactionType === 'matrixChoice'"
@@ -426,8 +445,92 @@
             </div>
           </section>
 
+          <!-- Issue #581: etkinlik bloğu (Claude blok türü) + taslak yapı (#579) -->
+          @if (d.blockKind === 'activity') {
+          <section class="qc-insp-sec qc-activity" data-testid="inspector-activity">
+            <div class="qc-lbl">{{ t('activityDraft.block', { component: d.activityComponent ?? '–' }) }}</div>
+            @if (!insHasDraftCard(d)) {
+            <p class="qc-hint-sm qc-activity__untyped">{{ t('activityDraft.untyped') }}</p>
+            }
+          </section>
+          }
+
+          @if (insHasDraftCard(d)) {
+          <section class="qc-insp-sec qc-draft" data-testid="inspector-draft" [attr.aria-label]="t('activityDraft.title')">
+            <div class="qc-lbl">{{ t('activityDraft.title') }}</div>
+            @if (!drafts.enabled()) {
+            <p class="qc-hint-sm">{{ t('activityDraft.claudeOnly') }}</p>
+            } @else {
+            @if (drafts.draftOf(d.name); as draft) {
+            @if (draft.stale && draft.status !== 'loading') {
+            <p class="qc-hint-sm qc-draft__stale">{{ t('activityDraft.stale') }}</p>
+            }
+            @switch (draft.status) {
+            @case ('loading') {
+            <p class="qc-draft__status" role="status">
+              <mat-spinner diameter="14" aria-hidden="true"></mat-spinner>{{ t('activityDraft.loading') }}
+            </p>
+            }
+            @case ('ok') {
+            <p class="qc-draft__status qc-draft__status--ok">
+              <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ t('activityDraft.ready') }}
+              @if (draft.result?.origin; as origin) {
+              <span class="qc-draft__pill">{{ origin === 'cached' ? t('activityDraft.cached') : t('activityDraft.live') }}</span>
+              }
+              @if (draft.result?.estimatedCostUsd != null) {
+              <!-- Önbellekten gelen sonucun maliyeti ilk (canlı) çağrınındır; şimdi ödenmedi. -->
+              <span class="qc-draft__cost">{{ draft.result?.origin === 'cached'
+                ? t('activityDraft.firstCallCost', { cost: (draft.result?.estimatedCostUsd | number: '1.4-4') })
+                : '~$' + (draft.result?.estimatedCostUsd | number: '1.4-4') }}</span>
+              }
+            </p>
+            @if (draft.apply === 'invalid') {
+            <p class="qc-hint-sm qc-draft__warn qc-draft__not-applied">{{ t('activityDraft.notApplied') }}</p>
+            } @else if (draft.apply === 'kept') {
+            <p class="qc-hint-sm qc-draft__kept">{{ t('activityDraft.kept') }}</p>
+            <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm qc-draft__apply" [disabled]="busy()"
+              (click)="drafts.applyDraft(d.name)">
+              <mat-icon>file_download</mat-icon>{{ t('activityDraft.apply') }}
+            </button>
+            }
+            @if (draft.result && !draft.result.valid) {
+            <div class="qc-draft__invalid" role="alert">
+              <span class="qc-hint-sm qc-draft__warn">{{ t('activityDraft.invalid') }}</span>
+              <ul class="qc-draft__errors">
+                @for (message of draft.result.validationErrors; track $index) { <li>{{ message }}</li> }
+              </ul>
+            </div>
+            }
+            @if (draft.result?.instruction?.trim(); as instruction) {
+            <p class="qc-draft__instruction"><span class="qc-lbl">{{ t('activityDraft.instruction') }}</span> {{ instruction }}</p>
+            }
+            <p class="qc-hint-sm">{{ t('activityDraft.solutionByHand') }}</p>
+            }
+            @case ('error') {
+            <p class="qc-hint-sm qc-draft__warn qc-draft__error" role="alert">{{ draft.error }}</p>
+            }
+            }
+            <div class="qc-btn-row">
+              @if (draft.status === 'error') {
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm qc-draft__retry" [disabled]="busy()"
+                (click)="drafts.retry(d.name)">
+                <mat-icon>refresh</mat-icon>{{ t('activityDraft.retry') }}
+              </button>
+              } @else {
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm qc-draft__re-extract"
+                [disabled]="busy() || draft.status === 'loading'" [matTooltip]="t('activityDraft.reExtractHint')"
+                (click)="drafts.reExtract(d.name)">
+                <mat-icon>paid</mat-icon>{{ t('activityDraft.reExtract') }}
+              </button>
+              }
+            </div>
+            }
+            }
+          </section>
+          }
+
           <!-- Şıklar -->
-          @if (d.interactionType === 'mcq') {
+          @if (d.interactionType === 'mcq' && d.blockKind !== 'activity') {
           <section class="qc-insp-sec">
             <div class="qc-lbl">{{ t('inspector.answers') }}</div>
             <div class="qc-choices">
@@ -634,6 +737,8 @@
             </div>
 
             @if (sf.selected; as s) {
+            <!-- Kutu değişince düzenleyici yeniden kurulur: commit edilip yeniden çizilmemiş DOM değeri sonraki kutuya taşınmasın. -->
+            @for (slotKey of [s.id]; track slotKey) {
             <div class="qc-slot__editor" data-testid="slot-editor" [attr.data-slot]="s.id">
               <div class="qc-lbl">{{ t('inspector.slotTitle', { n: s.no }) }}</div>
               <input class="control qc-input" type="text" [attr.maxlength]="sf.limits.maxLabelLength" [value]="s.label"
@@ -783,7 +888,7 @@
                 </button>
               </div>
             </div>
-            }
+            } }
 
             @if (sf.missingCount > 0) {
             <span class="qc-hint-sm qc-matrix__missing" role="status">{{ t('inspector.slotMissing', { count: sf.missingCount }) }}</span>
@@ -982,6 +1087,36 @@
           </section>
           }
 
+          <!-- Issue #581: basılı cevap maskesi (öğrenci görselinde opak beyaz) -->
+          <section class="qc-insp-sec qc-mask" data-testid="inspector-mask">
+            <div class="qc-lbl">{{ t('mask.title') }}</div>
+            <p class="qc-hint-sm">{{ t('mask.hint') }}</p>
+            <div class="qc-btn-row">
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm qc-mask__draw" [class.is-active]="selectionMode === 'mask'"
+                (click)="insMaskMode()">
+                <mat-icon>format_color_reset</mat-icon>{{ t('mask.draw') }}
+              </button>
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm qc-mask__clear" [disabled]="!d.masks.length"
+                (click)="insClearMasks()">
+                <mat-icon>delete_sweep</mat-icon>{{ t('mask.clear') }}
+              </button>
+            </div>
+            @if (d.masks.length) {
+            <ul class="qc-mask__list">
+              @for (m of d.masks; track $index; let i = $index) {
+              <li class="qc-row">
+                <span class="qc-zone-id">M{{ i + 1 }}</span>
+                <span class="qc-hint-sm">{{ m.width }}×{{ m.height }}</span>
+                <button type="button" class="qc-icon-btn qc-icon-btn--sm qc-mask__remove" (click)="insRemoveMask(i)"
+                  [attr.aria-label]="t('mask.removeAria', { no: i + 1 })">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </li>
+              }
+            </ul>
+            }
+          </section>
+
           <!-- Sınıflandırma -->
           <section class="qc-insp-sec">
             <div class="qc-lbl">{{ t('inspector.classification') }}</div>
@@ -1090,6 +1225,7 @@
             </button>
           </section>
 
+          }
           } @else {
           <p class="qc-inspector__hint">
             {{ t('inspector.emptyHint') }}

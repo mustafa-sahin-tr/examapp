@@ -2502,4 +2502,231 @@ describe('ImageSelectorComponent', () => {
             expect(component.getInteractionType('Soru 2')).toBe('slotFill');
         });
     });
+
+    describe('print masks (issue #581)', () => {
+        /** Bölge (100,100) 400×300; içinde (120,120)'de 40×20 şık. Çizim koordinatları tuval pikselidir. */
+        function setup() {
+            vi.spyOn(component, 'drawImage').mockReturnValue(undefined);
+            component.regions.set([
+                {
+                    ...region('Soru 1', [{ label: 'A', x: 120, y: 120, width: 40, height: 20, isCorrect: false, id: 0 }]),
+                    x: 100, y: 100, width: 400, height: 300,
+                },
+                { ...region('Soru 2', []), x: 100, y: 500, width: 400, height: 200 },
+            ] as any);
+            (component as any).ctx = {};
+        }
+
+        /** Gerçek fare akışı: mousedown → mouseup (→ click). */
+        function drag(x1: number, y1: number, x2: number, y2: number) {
+            const point = vi.spyOn(component as any, 'toCanvasPoint').mockReturnValue({ x: x1, y: y1 });
+            component.startSelection(new MouseEvent('mousedown'));
+            point.mockReturnValue({ x: x2, y: y2 });
+            component.endSelection(new MouseEvent('mouseup'));
+            component.tapCorrectAnswer(new MouseEvent('click'));
+            point.mockRestore();
+        }
+
+        it('maskMode_DragOverChoice_StoresRegionRelativeMaskAndDoesNotMarkCorrect', () => {
+            setup();
+            component.lockSelectionMode('mask');
+
+            drag(115, 115, 165.4, 145.6);
+
+            expect(component.getMasks('Soru 1')).toEqual([{ x: 15, y: 15, width: 51, height: 31 }]);
+            expect(component.regions()[0].answers[0].isCorrect).toBe(false);
+            expect(component.getActiveInspector()!.masks).toHaveLength(1);
+            expect(component.hasUnsavedEdits()).toBe(false); // appliedSnapshot yok (elle çizilen sayfa)
+        });
+
+        it('maskMode_DragPastRegionEdge_ClampedToRegion_StartOutsideIgnored', () => {
+            setup();
+            component.lockSelectionMode('mask');
+
+            drag(450, 350, 600, 450);
+            drag(10, 10, 60, 60);
+
+            expect(component.getMasks('Soru 1')).toEqual([{ x: 350, y: 250, width: 50, height: 50 }]);
+            expect(component.getMasks('Soru 2')).toEqual([]);
+        });
+
+        it('getRegions_SendsMasksOnlyForMaskedRegions', () => {
+            setup();
+            component.lockSelectionMode('mask');
+            drag(110, 110, 150, 140);
+            drag(200, 520, 260, 560);
+            drag(300, 600, 340, 640);
+
+            const [q1, q2] = component.getRegions(null).questions as any[];
+
+            expect(q1.masks).toEqual([{ x: 10, y: 10, width: 40, height: 30 }]);
+            expect(q2.masks).toEqual([
+                { x: 100, y: 20, width: 60, height: 40 },
+                { x: 200, y: 100, width: 40, height: 40 },
+            ]);
+
+            component.removeMask('Soru 2', 0);
+            component.clearMasks('Soru 1');
+
+            const after = component.getRegions(null).questions as any[];
+            expect('masks' in after[0]).toBe(false);
+            expect(after[1].masks).toEqual([{ x: 200, y: 100, width: 40, height: 40 }]);
+        });
+
+        it('maskLimit_TwentyPerRegion', () => {
+            setup();
+            const snack = vi.spyOn((component as any).snackBar, 'open').mockReturnValue(undefined);
+            component.lockSelectionMode('mask');
+            for (let i = 0; i < 21; i++) {
+                drag(110 + i * 10, 300, 118 + i * 10, 320);
+            }
+
+            expect(component.getMasks('Soru 1')).toHaveLength(20);
+            expect(snack).toHaveBeenCalledTimes(1);
+        });
+
+        it('fractionalRegion_MaskRelativeToRoundedOriginAndCoversDrawnArea', () => {
+            setup();
+            component.regions.set([{ ...component.regions()[0], x: 100.6, y: 99.4 }, component.regions()[1]] as any);
+            component.lockSelectionMode('mask');
+
+            drag(200.7, 300.2, 240.3, 330.9);
+
+            // Kayıtta bölge (101, 99); maske 200..241 × 300..331 sayfa pikselini kapsar.
+            expect(component.getMasks('Soru 1')).toEqual([{ x: 99, y: 201, width: 41, height: 31 }]);
+            expect((component.getRegions(null).questions[0] as any).x).toBe(101);
+        });
+
+        it('maskOverOptionBox_WarnsButKeepsMask', () => {
+            setup();
+            const snack = vi.spyOn((component as any).snackBar, 'open').mockReturnValue(undefined);
+            component.lockSelectionMode('mask');
+
+            drag(300, 300, 340, 320); // şıktan uzak: uyarı yok
+            expect(snack).not.toHaveBeenCalled();
+
+            drag(118, 118, 165, 142); // A şıkkını (120,120 40×20) tamamen kapatır
+            expect(snack).toHaveBeenCalledWith(imageSelectorTr.messages.maskOverAnswer, expect.any(String), expect.any(Object));
+            expect(component.getMasks('Soru 1')).toHaveLength(2);
+        });
+
+        it('maskOverActivityItem_Warns', () => {
+            setup();
+            const snack = vi.spyOn((component as any).snackBar, 'open').mockReturnValue(undefined);
+            component.interactionTypes.set('Soru 2', 'slotFill');
+            (component as any).addSlotFromDrag(1, 150, 550, 190, 580);
+            component.lockSelectionMode('mask');
+
+            drag(148, 548, 192, 582);
+
+            expect(snack).toHaveBeenCalledWith(imageSelectorTr.messages.maskOverAnswer, expect.any(String), expect.any(Object));
+        });
+
+        it('maskMode_ShortClickOnPlaceCard_DoesNotChangeSolution', () => {
+            setup();
+            component.interactionTypes.set('Soru 2', 'dragPlace');
+            component.ensureDragPlaceState('Soru 2');
+            (component as any).addInteractionBoxFromDrag('placeTarget', 1, 120, 520, 220, 600);
+            (component as any).addInteractionBoxFromDrag('placeCard', 1, 300, 520, 360, 560);
+            const state = component.ensureDragPlaceState('Soru 2');
+            component.selectDragPlaceTarget('Soru 2', state.targets[0].id);
+            const before = JSON.stringify(component.ensureDragPlaceState('Soru 2').solution);
+            component.lockSelectionMode('mask');
+
+            drag(320, 540, 321, 541);
+
+            expect(JSON.stringify(component.ensureDragPlaceState('Soru 2').solution)).toBe(before);
+            expect(component.getMasks('Soru 2')).toEqual([]);
+        });
+
+        it('manualRecord_SavesMasksAndRestoresThemWhenApplied', () => {
+            setup();
+            component.regions.set([component.regions()[0]]);
+            component.imageData.set('data:image/png;base64,AAAA');
+            component.lockSelectionMode('mask');
+            drag(110, 110, 150, 140);
+            component.detectionSource.set({ kind: 'Ai', modelName: 'claude-a' } as any);
+            component.answerCount.set(1);
+            vi.spyOn(component, 'nextImage').mockReturnValue(undefined);
+            vi.spyOn(component.questionDetectorService, 'sendtoFix').mockReturnValue(of({ success: true, added: 1, imageFile: 'abcdef0123456789' }) as any);
+            const saveManual = vi.spyOn(component['labelingService'], 'saveManual').mockReturnValue(of({ imageSha256: 'f'.repeat(64), width: 1, height: 1, results: [] }) as any);
+
+            component.sendToFix();
+
+            const predictions = vi.mocked(saveManual).mock.lastCall![0].predictions.predictions as any[];
+            expect(predictions[0].masks).toEqual([{ x: 10, y: 10, width: 40, height: 30 }]);
+            expect(predictions).toHaveLength(1);
+
+            component.applyExternalPrediction(component.beginExternalDetection(), {
+                success: true,
+                predictions: [
+                    { ...predictions[0], masks: [...predictions[0].masks, { x: -1, y: 0, width: 5, height: 5 }] },
+                ],
+            } as any, { kind: 'Manual', base: null } as any);
+
+            expect(component.getMasks('Soru 1')).toEqual([{ x: 10, y: 10, width: 40, height: 30 }]);
+            expect('masks' in component.regions()[0]).toBe(false);
+        });
+
+        it('removeQuestion_DropsItsMasks', () => {
+            setup();
+            component.lockSelectionMode('mask');
+            drag(110, 110, 150, 140);
+
+            component.removeQuestion(0);
+
+            expect(component.getMasks('Soru 1')).toEqual([]);
+        });
+    });
+
+    describe('activity authoring on the canvas (issue #581)', () => {
+        function applyActivities() {
+            component.applyExternalPrediction(component.beginExternalDetection(), {
+                success: true,
+                predictions: [
+                    { class_id: 0, x: 10, y: 10, width: 200, height: 80, subpredictions: [], kind: 'activity', component: 'D' },
+                    { class_id: 0, x: 10, y: 100, width: 200, height: 80, subpredictions: [], kind: 'activity', component: 'A', interaction_type: 'matrixChoice' },
+                ],
+            } as any, { kind: 'Ai', modelName: 'claude-a' });
+        }
+
+        it('setRegionInteraction_UntypedActivityToMatch_SetsComponentCAndBecomesSavable', () => {
+            applyActivities();
+            expect(component.isSavableRegion('Soru 1')).toBe(false);
+
+            component.setRegionInteraction(0, 'match');
+
+            expect(component.getActivityComponent('Soru 1')).toBe('C');
+            expect(component.getInteractionType('Soru 1')).toBe('match');
+            expect(component.isSavableRegion('Soru 1')).toBe(true);
+        });
+
+        it('setRegionInteraction_ActivityToMcq_TurnsBlockIntoQuestion', () => {
+            applyActivities();
+
+            component.setRegionInteraction(1, 'mcq');
+
+            expect(component.getBlockKind('Soru 2')).toBe('mcq_question');
+            expect(component.isMcqRegion('Soru 2')).toBe(true);
+        });
+
+        it('authorActivities_TypedActivityShowsAuthoringWarnings', () => {
+            applyActivities();
+            const region2 = component.regions()[1];
+
+            component.checkRegionWarning(region2);
+            expect(component.getActiveInspector() && (component as any).warningMarkers.length).toBe(0);
+
+            component.authorActivities = true;
+            component.checkRegionWarning(region2);
+            expect((component as any).warningMarkers.length).toBe(1);
+        });
+
+        it('savedActivityItems_KeepReadingOrder', () => {
+            applyActivities();
+            component.setRegionInteraction(0, 'slotFill');
+
+            expect(component.getRegions(null).questions.map((q: any) => q.name)).toEqual(['Soru 1', 'Soru 2']);
+        });
+    });
 });

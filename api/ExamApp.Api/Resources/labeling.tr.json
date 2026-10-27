@@ -8,6 +8,7 @@
     "invalidBaseSource": "Geçersiz başlangıç kaynağı.",
     "tooManyBoxes": "Çok fazla kutu gönderildi.",
     "invalidBox": "Kutu koordinatları geçersiz.",
+    "invalidMask": "Geçersiz maske: blok başına en çok 20 dikdörtgen; konum negatif olmamalı, genişlik/yükseklik en az 1 olmalı ve blokla kesişmeli.",
     "invalidBlockKind": "Blok türü, bileşen ya da etkileşim tipi geçersiz.",
     "pageNotFound": "Bu sayfa için kayıt yok.",
     "aiUnavailable": "Claude ile işaretleme yapılandırılmamış (API anahtarı yok).",

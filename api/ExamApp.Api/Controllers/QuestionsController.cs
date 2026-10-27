@@ -195,6 +195,11 @@ public class QuestionsController : BaseController
             return denied;
 
         var reponse = await _questionService.SaveBulkQuestion(soruDto, user.Id);
+        // issue #581: yazmadan önce reddedilen girdi (ör. geçersiz maske) yerelleştirilmiş mesajıyla 400.
+        if (reponse is QuestionSavedDto { InvalidInput: true } invalid)
+        {
+            return BadRequest(new { message = invalid.Message });
+        }
         if (reponse == null || !reponse.Success)
         {
             return BadRequest(_localizer["questions.bulk.saveFailed"].Value);

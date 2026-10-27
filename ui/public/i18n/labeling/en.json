@@ -216,38 +216,13 @@
     "tocStale": "The table of contents entry is invalid (deleted topic)"
   },
   "structure": {
-    "title": "Activity draft",
-    "claudeOnly": "The draft structure is extracted only for the Claude source (or a manual record that started from Claude).",
-    "loading": "Extracting structure…",
-    "ready": "Draft ready",
-    "cached": "cached",
-    "live": "live",
-    "promptVersion": "prompt v{{version}}",
-    "notApplied": "The draft could not be applied to the canvas (empty plan or it does not fit this type).",
-    "invalid": "The draft failed validation and needs fixing:",
-    "instruction": "Instruction:",
-    "retry": "Try again",
-    "reExtract": "Extract structure again (paid)",
-    "reExtractHint": "Ignores the saved draft and asks Claude again; this is billed.",
-    "reExtractConfirm": "Claude will be asked again for this activity's structure and it will be billed. Your manual edits are kept; the new draft replaces them only via \"Apply draft\".",
-    "reExtractAction": "Extract again",
-    "missingResult": "The server returned no result for this block.",
-    "failed": "The activity structure could not be extracted.",
-    "unavailable": "Claude is not configured; activity structure cannot be extracted.",
-    "promptSaved": "{{type}} instruction v{{version}} saved; only drafts of this type use the new instruction. Manually edited activities are kept; the new draft replaces them only via \"Apply draft\".",
-    "promptAskPage": "Extract this page again",
     "types": {
       "matrixChoice": "Matrix choice",
       "slotFill": "Answer box",
       "dragPlace": "Drag and place",
       "match": "Matching"
     },
-    "promptUnchanged": "Instruction unchanged (v{{version}}); nothing to extract again.",
-    "kept": "Your manual edits were kept; the draft was not applied to the canvas.",
-    "apply": "Apply draft",
-    "applyConfirm": "The draft will be applied to the canvas; your manual edits to this activity will be lost.",
-    "applyAction": "Apply",
-    "stale": "The box changed; the draft will be extracted again.",
-    "firstCallCost": "first call ~${{cost}}"
+    "promptSaved": "{{type}} instruction v{{version}} saved; in the question canvas, drafts of this type are extracted with the new instruction.",
+    "promptUnchanged": "Instruction unchanged (v{{version}}); nothing to extract again."
   }
 }

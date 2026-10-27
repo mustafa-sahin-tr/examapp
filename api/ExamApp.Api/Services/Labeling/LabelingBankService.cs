@@ -242,7 +242,8 @@ public sealed class LabelingBankService(
         try
         {
             hashes = QuestionCropHash.Compute(imageHelper, pageJpeg,
-                bulkQuestions.Select(q => ((int)q.X, (int)q.Y, q.Width, q.Height)).ToList());
+                bulkQuestions.Select(q => ((int)q.X, (int)q.Y, q.Width, q.Height)).ToList(),
+                bulkQuestions.Select(q => (IReadOnlyList<RegionBoxDto>?)q.Masks).ToList());
         }
         catch (Exception ex) when (ex is ImageDecodeException or ArgumentOutOfRangeException)
         {

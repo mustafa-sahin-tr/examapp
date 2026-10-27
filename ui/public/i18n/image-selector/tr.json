@@ -89,6 +89,14 @@
       "missingAccept": "Hedef {{n}}: kabul edilen düzeltme yazılmadı",
       "tooLong": "Hedef {{n}}: düzeltme listesi çok uzun (en çok 20 giriş, her biri 100 karakter)",
       "missingGapAccept": "Boşluk {{n}}: doğru işaret seçilmedi"
+    },
+    "openText": {
+      "minWordsRange": "En az sözcük 1–{{maxWords}} arasında bir tam sayı olmalı.",
+      "maxWordsRange": "En çok sözcük 1–{{maxWords}} arasında bir tam sayı olmalı.",
+      "minAboveMax": "En az sözcük en çok sözcükten büyük olamaz.",
+      "linesRange": "Satır sayısı 1–{{maxLines}} arasında bir tam sayı olmalı.",
+      "sampleTooLong": "Örnek cevap en çok {{maxLength}} karakter olabilir.",
+      "rubricTooLong": "Rubrik en çok {{maxLength}} karakter olabilir."
     }
   },
   "menu": {

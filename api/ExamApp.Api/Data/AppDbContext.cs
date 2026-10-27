@@ -222,6 +222,9 @@ public class AppDbContext : DbContext
     public DbSet<BookTocEntry> BookTocEntries { get; set; }
     public DbSet<QuestionSource> QuestionSources { get; set; }
 
+    // Issue #583: açık uçlu cevap değerlendirmesi (öğretmen kuyruğu; puansız).
+    public DbSet<OpenTextReview> OpenTextReviews { get; set; }
+
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -1127,6 +1130,26 @@ public class AppDbContext : DbContext
             e.HasIndex(s => s.BookId);
             e.Property(s => s.CropSha256).IsFixedLength();
         });
+
+        // Issue #583: oturum satırı başına tek değerlendirme; satır (sert) silinirse değerlendirme de gider. Enum'lar string
+        // (ham SQL'de okunur, üye sırası değişse de geçmiş anlamı kaymaz). Kuyruk "bekleyen" sorgusu satır id'siyle EXISTS yapar.
+        modelBuilder.Entity<OpenTextReview>(e =>
+        {
+            e.HasOne(r => r.WorksheetInstanceQuestion).WithMany()
+                .HasForeignKey(r => r.WorksheetInstanceQuestionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(r => r.WorksheetInstanceQuestionId).IsUnique();
+            e.Property(r => r.Evaluation).HasConversion<string>().HasMaxLength(16);
+            e.Property(r => r.Source).HasConversion<string>().HasMaxLength(16);
+            e.Property(r => r.AnswerSha256).IsFixedLength();
+        });
+
+        // Issue #583: kuyruk sorgusu — açık uçlu sorular (kısmi index, yalnız openText satırları) ve öğretmenin kendi atamaları
+        // (takip kuralı: CreateUserId + WorksheetId).
+        modelBuilder.Entity<Question>()
+            .HasIndex(q => q.InteractionType, "IX_Questions_InteractionType_OpenText")
+            .HasFilter("\"InteractionType\" = 'openText'");
+        modelBuilder.Entity<WorksheetAssignment>()
+            .HasIndex(a => new { a.CreateUserId, a.WorksheetId }, "IX_WorksheetAssignments_CreateUserId_WorksheetId");
 
         // Login event'leri (issue #84). Index'ler ileride admin dashboard'un (issue #6)
         // "kullanıcı bazlı son login" ve "tarih aralığı / rol bazlı sayım" sorguları için.

@@ -16,7 +16,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
-import { ActivatedRoute, NavigationExtras, ParamMap, Router } from '@angular/router';
+import { ActivatedRoute, NavigationExtras, ParamMap, Router, RouterLink } from '@angular/router';
 import { Test, TestInstance, TestInstanceQuestion, WorksheetTeacherSharing } from '../../models/test-instance';
 import { finalize, lastValueFrom } from 'rxjs';
 import { TestService } from '../../services/test.service';
@@ -110,6 +110,7 @@ const WORKSHEET_DETAIL_SCOPE = 'worksheet-detail';
     TranslocoDirective,
     StorageImageRetryDirective,
     ActivityTrackingTableComponent,
+    RouterLink,
   ],
   providers: [provideTranslocoScope(WORKSHEET_DETAIL_SCOPE)],
   templateUrl: './worksheet-detail.component-dlms.html',

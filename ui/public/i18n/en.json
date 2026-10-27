@@ -81,7 +81,8 @@
       "adminStudents": "Students",
       "adminSchools": "Schools",
       "adminBadgeDefinitions": "Badges",
-      "adminCommentReports": "Comment Reports"
+      "adminCommentReports": "Comment Reports",
+      "openTextReviews": "Open-ended answers"
     },
     "bottomNav": {
       "home": "Home",
@@ -421,6 +422,20 @@
         "correctionLabel": "Correct form of “{{word}}”",
         "correctionAria": "Correction for “{{word}}”",
         "deselect": "Unselect"
+      },
+      "openText": {
+        "label": "Your answer",
+        "placeholder": "Write your answer here…",
+        "words": "{{count}} words",
+        "limitsBoth": "at least {{min}}, at most {{max}} words",
+        "limitsMin": "at least {{min}} words",
+        "limitsMax": "at most {{max}} words",
+        "under": "Write at least {{min}} words.",
+        "over": "At most {{max}} words are expected; try to shorten your answer.",
+        "blocked": "Your answer is too long (at most {{max}} words are expected); it is not saved like this. It will be saved once you shorten it.",
+        "submitHint": "Your answer is saved. Press “Check answers” to send it to your teacher.",
+        "sampleTitle": "Sample answer",
+        "noSample": "There is no sample answer for this item; your teacher will review your answer."
       }
     },
     "sharingBadge": {
@@ -695,7 +710,13 @@
         "blankWarningGeneric": "{{count}} items have unanswered parts ({{items}}). Unanswered parts count as wrong. You can still check.",
         "expand": "Show results",
         "collapse": "Minimise results",
-        "staleShort": "answers changed"
+        "staleShort": "answers changed",
+        "openTextStatus": {
+          "pending": "Waiting for review",
+          "sufficient": "Sufficient",
+          "partial": "Partial",
+          "insufficient": "Insufficient"
+        }
       },
       "summary": {
         "title": "Activity finished",
@@ -711,7 +732,11 @@
         "badgeLineMinutes": "{{name}} badge: {{current}}/{{target}} min",
         "badgeLineDays": "{{name}} badge: {{current}}/{{target}} days",
         "badgeRemainingMinutes": "{{count}} more minutes!",
-        "badgeRemainingDays": "{{count}} more days!"
+        "badgeRemainingDays": "{{count}} more days!",
+        "openTextTitle": "Your open-ended answers",
+        "openTextItem": "Item {{label}}",
+        "openTextNotSent": "Not sent",
+        "openTextEmpty": "Left blank"
       },
       "launch": {
         "failed": "The activity could not be opened. Try again.",
@@ -725,6 +750,18 @@
         "retakeFailed": "The activity could not be reopened. Try again.",
         "retakeRateLimited": "You tried too often. Wait a moment and try again."
       }
+    },
+    "openTextReview": {
+      "pending": "Waiting for teacher review",
+      "evaluationLabel": "Review",
+      "evaluation": {
+        "sufficient": "Sufficient",
+        "partial": "Partial",
+        "insufficient": "Insufficient"
+      },
+      "feedbackLabel": "Teacher’s note",
+      "outdatedStudent": "Your answer changed; it will be reviewed again.",
+      "outdatedTeacher": "This review belongs to the student’s previous text."
     }
   },
   "dashboard": {

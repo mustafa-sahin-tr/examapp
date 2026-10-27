@@ -191,6 +191,13 @@ export const routes: Routes = [
           ),
       },
       {
+        // Issue #583: açık uçlu etkinlik cevaplarının değerlendirme kuyruğu (backend Teacher/Admin + onaylı öğretmen; kapsam sunucuda).
+        path: 'open-text-reviews',
+        canActivate: [authGuard, roleGuard('Teacher', 'Admin'), approvedTeacherGuard],
+        loadComponent: () =>
+          import('./pages/open-text-reviews/open-text-reviews.component').then((m) => m.OpenTextReviewsComponent),
+      },
+      {
         // Issue #361: okulun onaylı öğretmeni — kendi okulunu seçen öğrencilerin üyelik onayı (kapsam sunucuda).
         path: 'student-school-requests',
         canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],

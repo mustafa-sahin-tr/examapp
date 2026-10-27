@@ -1,0 +1,154 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.ot-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.ot-passage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+
+  &__title {
+    font-weight: 700;
+    font-family: var(--mainFontFamily);
+  }
+
+  &__image {
+    display: block;
+    max-width: 100%;
+    max-height: 35vh;
+    object-fit: contain;
+  }
+}
+
+.ot-stage {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+}
+
+.ot-image {
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  width: auto;
+  height: auto;
+}
+
+.ot-field {
+  width: 100%;
+}
+
+// 16px: iOS Safari odaklanınca sayfayı yakınlaştırmasın; metin sarılır, satır sonları korunur.
+.ot-textarea {
+  font-family: var(--paragraphFontFamily);
+  font-size: 16px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  resize: vertical;
+}
+
+.ot-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ot-counter {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ms-text-medium);
+
+  &.is-under {
+    color: var(--ms-text-medium);
+  }
+
+  &.is-over {
+    color: var(--ms-warning-text);
+    font-weight: 600;
+  }
+
+  &.is-blocked {
+    color: var(--ms-danger-text);
+    font-weight: 600;
+  }
+}
+
+.ot-clear {
+  min-height: 44px;
+}
+
+.ot-warn,
+.ot-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+
+  mat-icon {
+    flex: none;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.ot-warn {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--ms-warning-border);
+  background: var(--ms-warning-surface);
+  color: var(--ms-warning-text);
+
+  &--danger {
+    border-color: var(--ms-danger-border);
+    background: var(--ms-danger-surface);
+    color: var(--ms-danger-text);
+  }
+}
+
+.ot-hint {
+  color: var(--ms-text-medium);
+}
+
+.ot-sample {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-success-border);
+  background: var(--ms-success-surface-weak);
+
+  &__title {
+    margin: 0;
+    font: 600 14px var(--mainFontFamily);
+    color: var(--ms-success-text);
+  }
+
+  &__text {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}

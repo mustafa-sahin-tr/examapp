@@ -61,9 +61,13 @@
             class="acp__row"
             [class.acp__row--ok]="row.correct === true"
             [class.acp__row--no]="row.correct === false"
+            [class.acp__row--status]="!!row.status"
+            [attr.data-status]="row.status ?? null"
             data-testid="result-row"
           >
-            @if (row.correct === true) {
+            @if (row.status; as status) {
+              <mat-icon aria-hidden="true">{{ openTextIcon[status] }}</mat-icon><b>{{ t('openTextStatus.' + status) }}</b>
+            } @else if (row.correct === true) {
               <mat-icon aria-hidden="true">check</mat-icon><b>{{ t('rowCorrect') }}</b>
             } @else if (row.correct === false) {
               <mat-icon aria-hidden="true">close</mat-icon><b>{{ t('rowWrong') }}</b>

@@ -138,4 +138,7 @@ public class WorksheetFromMistakesResultDto
 public class CopyWorksheetResultDto : ResponseBaseDto
 {
     public int WorksheetId { get; set; }
+
+    /// <summary>issue #583: hata kodu (ör. <c>OpenTextNotAllowedInTest</c> → 400); başarıda null.</summary>
+    public string? ErrorCode { get; set; }
 }

@@ -125,4 +125,45 @@ public sealed class GatewayRouteRoleWiringTests : IClassFixture<GatewayWebSocket
         status.ShouldNotBe(HttpStatusCode.Unauthorized);
         status.ShouldNotBe(HttpStatusCode.Forbidden);
     }
+
+    // issue #583: açık uçlu değerlendirme kuyruğu — yalnız Teacher + Admin.
+    private async Task<HttpStatusCode> SendAsync(HttpMethod method, string path, string? token)
+    {
+        using var client = _factory.CreateClient();
+        using var req = new HttpRequestMessage(method, path);
+        if (method != HttpMethod.Get) req.Content = new StringContent("{}");
+        if (token is not null) req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return (await client.SendAsync(req)).StatusCode;
+    }
+
+    public static TheoryData<string, string> OpenTextReviewEndpoints => new()
+    {
+        { "GET", "/api/exam/open-text-reviews" },
+        { "PUT", "/api/exam/open-text-reviews/42" },
+    };
+
+    [Theory]
+    [MemberData(nameof(OpenTextReviewEndpoints))]
+    public async Task OpenTextReviews_Anonymous_Returns401(string method, string path) =>
+        (await SendAsync(new HttpMethod(method), path, null)).ShouldBe(HttpStatusCode.Unauthorized);
+
+    [Theory]
+    [MemberData(nameof(OpenTextReviewEndpoints))]
+    public async Task OpenTextReviews_StudentOrParent_Returns403(string method, string path)
+    {
+        (await SendAsync(new HttpMethod(method), path, _factory.CreateToken("Student"))).ShouldBe(HttpStatusCode.Forbidden);
+        (await SendAsync(new HttpMethod(method), path, _factory.CreateToken("Parent"))).ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Theory]
+    [MemberData(nameof(OpenTextReviewEndpoints))]
+    public async Task OpenTextReviews_TeacherOrAdmin_PassesRoleGate(string method, string path)
+    {
+        foreach (var role in new[] { "Teacher", "Admin" })
+        {
+            var status = await SendAsync(new HttpMethod(method), path, _factory.CreateToken(role));
+            status.ShouldNotBe(HttpStatusCode.Unauthorized);
+            status.ShouldNotBe(HttpStatusCode.Forbidden);
+        }
+    }
 }

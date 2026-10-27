@@ -3,6 +3,7 @@ import { Answer } from './answer';
 import { Question } from './question';
 import { ResponseBase } from './worksheet-access-request.model';
 import { WorksheetKind } from './activity';
+import type { OpenTextStudentReview } from './open-text';
 
 export enum TestStatus {
   NotStarted = -1,
@@ -48,6 +49,11 @@ export interface TestInstanceQuestion {
   totalCount?: number | null;
   /** JSON string `{"rows":[{"id","correct"}]}` (MCQ'da null). */
   feedback?: string | null;
+  /**
+   * Issue #583: açık uçlu (`openText`) maddede öğrencinin kendi değerlendirme durumu (yalnız etkinlik); cevapsız / taslak hiç
+   * gönderilmemiş maddede ve diğer tiplerde null/undefined. Ham sunucu değeri — `parseOpenTextStudentReview` ile okunur.
+   */
+  openTextReview?: OpenTextStudentReview | null;
 }
 export interface TestInstance {
   id: number;

@@ -1,0 +1,147 @@
+<section class="otq" *transloco="let t; prefix: 'open-text-reviews'">
+  <header class="otq__head">
+    <div>
+      <h1>{{ t('title') }}</h1>
+      <p>{{ t('subtitle') }}</p>
+    </div>
+    <button mat-stroked-button type="button" class="otq__btn" data-testid="otq-refresh" (click)="load()" [disabled]="loading()">
+      <mat-icon>refresh</mat-icon>{{ t('actions.refresh') }}
+    </button>
+  </header>
+
+  <div class="otq__filters">
+    <mat-button-toggle-group class="otq__status" [value]="status()" (change)="setStatus($event.value)" hideSingleSelectionIndicator
+      [attr.aria-label]="t('filters.statusAria')">
+      @for (s of statuses; track s) {
+        <mat-button-toggle [value]="s" [attr.data-testid]="'otq-status-' + s">{{ t('filters.' + s) }}</mat-button-toggle>
+      }
+    </mat-button-toggle-group>
+    @if (worksheetId()) {
+      <span class="otq__chip" data-testid="otq-worksheet-filter">
+        <mat-icon aria-hidden="true">filter_alt</mat-icon>
+        {{ worksheetName() ? t('filters.worksheetNamed', { name: worksheetName() }) : t('filters.worksheet') }}
+        <button mat-icon-button type="button" class="otq__chip-clear" [attr.aria-label]="t('filters.clearWorksheet')"
+          (click)="clearWorksheet()"><mat-icon>close</mat-icon></button>
+      </span>
+    }
+  </div>
+
+  @if (loading() && items().length === 0) {
+    <div class="otq__state" role="status">
+      <mat-spinner diameter="36" aria-hidden="true"></mat-spinner>
+      <span>{{ t('state.loading') }}</span>
+    </div>
+  } @else if (error()) {
+    <div class="otq__state otq__state--error" role="alert" data-testid="otq-error">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <span>{{ error() }}</span>
+      <button mat-stroked-button type="button" (click)="load()">{{ 'common.retry' | transloco }}</button>
+    </div>
+  } @else if (isEmpty()) {
+    <div class="otq__state" data-testid="otq-empty">
+      <mat-icon class="otq__empty-icon" aria-hidden="true">task_alt</mat-icon>
+      <span>{{ t('state.empty.' + status()) }}</span>
+    </div>
+  } @else {
+    <ul class="otq__list">
+      @for (item of items(); track item.instanceQuestionId) {
+        @let draft = draftOf(item);
+        @let label = itemLabel(item);
+        <li class="otq__card" data-testid="otq-item" [attr.data-id]="item.instanceQuestionId" [attr.data-status]="item.status">
+          <div class="otq__meta">
+            <span class="otq__student"><mat-icon aria-hidden="true">person</mat-icon>{{ item.studentNumber || t('unknownStudent') }}</span>
+            @if (item.gradeName) {
+              <span class="otq__grade">{{ item.gradeName }}</span>
+            }
+            <span class="otq__activity" data-testid="otq-activity">{{ label ? t('itemOf', { name: item.worksheetName, label: label }) : item.worksheetName }}</span>
+            <span class="otq__date">{{ formatDate(item.answeredAt) }}</span>
+          </div>
+
+          <div class="otq__body">
+            @if (item.questionImageUrl) {
+              <img class="otq__image" [src]="item.questionImageUrl" [alt]="label ? t('imageAlt', { label: label }) : t('imageAltPlain')"
+                loading="lazy" [appStorageImageRetry]="imageRefresh" />
+            } @else if (item.questionText) {
+              <p class="otq__question-text">{{ item.questionText }}</p>
+            }
+
+            <div class="otq__answer">
+              <span class="otq__label">{{ t('answer') }}</span>
+              <p class="otq__answer-text" data-testid="otq-text">{{ item.text }}</p>
+              <span class="otq__words" data-testid="otq-words">
+                {{ t('words', { count: item.wordCount }) }}
+                @if (item.minWords != null && item.maxWords != null) {
+                  · {{ t('limitsBoth', { min: item.minWords, max: item.maxWords }) }}
+                } @else if (item.minWords != null) {
+                  · {{ t('limitsMin', { min: item.minWords }) }}
+                } @else if (item.maxWords != null) {
+                  · {{ t('limitsMax', { max: item.maxWords }) }}
+                }
+              </span>
+            </div>
+
+            @if (item.sampleAnswer || item.rubric) {
+              <mat-expansion-panel class="otq__solution">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>{{ t('solutionTitle') }}</mat-panel-title>
+                </mat-expansion-panel-header>
+                @if (item.sampleAnswer) {
+                  <span class="otq__label">{{ t('sampleAnswer') }}</span>
+                  <p class="otq__plain" data-testid="otq-sample">{{ item.sampleAnswer }}</p>
+                }
+                @if (item.rubric) {
+                  <span class="otq__label">{{ t('rubric') }}</span>
+                  <p class="otq__plain" data-testid="otq-rubric">{{ item.rubric }}</p>
+                }
+              </mat-expansion-panel>
+            }
+
+            @if (currentReview(item); as review) {
+              <div class="otq__current">
+                <span class="otq__label">{{ t('currentReview') }}</span>
+                <app-open-text-review-status [review]="review" audience="teacher" />
+              </div>
+            }
+
+            @if (!canEdit(item)) {
+              <p class="otq__locked" role="note" data-testid="otq-locked">
+                <mat-icon aria-hidden="true">lock</mat-icon>{{ t('lockedByOther') }}
+              </p>
+            }
+            <form class="otq__form" [class.is-locked]="!canEdit(item)" (submit)="$event.preventDefault(); save(item)">
+              <span class="otq__label" [id]="'otq-eval-' + item.instanceQuestionId">{{ t('evaluate') }}</span>
+              <mat-button-toggle-group class="otq__eval" [value]="draft.evaluation" (change)="setEvaluation(item, $event.value)"
+                [attr.aria-labelledby]="'otq-eval-' + item.instanceQuestionId" [disabled]="!canEdit(item) || savingId() === item.instanceQuestionId">
+                @for (ev of evaluations; track ev) {
+                  <mat-button-toggle [value]="ev" [attr.data-evaluation]="ev">{{ t('evaluation.' + ev) }}</mat-button-toggle>
+                }
+              </mat-button-toggle-group>
+              <mat-form-field class="otq__feedback" appearance="outline" subscriptSizing="dynamic">
+                <mat-label>{{ t('feedback') }}</mat-label>
+                <textarea matInput rows="3" data-testid="otq-feedback" [attr.maxlength]="limits.maxFeedbackLength"
+                  [value]="draft.feedback" [placeholder]="t('feedbackPlaceholder')" [readonly]="!canEdit(item)"
+                  (input)="setFeedback(item, $event)"></textarea>
+                <mat-hint align="end">{{ draft.feedback.length }} / {{ limits.maxFeedbackLength }}</mat-hint>
+              </mat-form-field>
+              @if (canEdit(item)) {
+              <div class="otq__actions">
+                <button mat-flat-button type="submit" class="otq__btn" data-testid="otq-save" [disabled]="!canSave(item)">
+                  @if (savingId() === item.instanceQuestionId) {
+                    <mat-spinner diameter="18" aria-hidden="true"></mat-spinner>
+                  } @else {
+                    <mat-icon>rate_review</mat-icon>
+                  }
+                  {{ t(item.review ? 'actions.update' : 'actions.save') }}
+                </button>
+              </div>
+              }
+            </form>
+          </div>
+        </li>
+      }
+    </ul>
+
+    <mat-paginator class="otq__paginator" [length]="totalCount()" [pageIndex]="pageIndex()" [pageSize]="pageSize()"
+      [pageSizeOptions]="[10, 20, 50]" (page)="onPage($event)" [attr.aria-label]="t('paginatorAria')"></mat-paginator>
+  }
+</section>

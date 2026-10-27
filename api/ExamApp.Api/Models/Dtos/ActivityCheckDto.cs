@@ -42,8 +42,14 @@ public class ActivityCheckQuestionResultDto
     public int CorrectCount { get; set; }
     public int TotalCount { get; set; }
 
-    /// <summary>Satır bazlı geri bildirim (JSON string, <c>{"rows":[{"id","correct"}]}</c>) ya da null (MCQ / puanlanamaz).</summary>
+    /// <summary>
+    /// Satır bazlı geri bildirim (JSON string, <c>{"rows":[{"id","correct"}]}</c>) ya da null (MCQ / puanlanamaz). issue #583:
+    /// openText'te <c>{"rows":[{"id":"text","status":"pending"|"sufficient"|"partial"|"insufficient"}]}</c> (0/0, sayımlara girmez).
+    /// </summary>
     public string? Feedback { get; set; }
+
+    /// <summary>issue #583: openText maddede değerlendirme durumu; diğer tiplerde null.</summary>
+    public ExamApp.Api.Models.Dtos.OpenText.OpenTextStudentReviewDto? OpenTextReview { get; set; }
 }
 
 /// <summary>issue #571: "doğru cevapları göster" yanıtı (<c>GET api/test-instances/{instanceId}/solutions</c>).</summary>

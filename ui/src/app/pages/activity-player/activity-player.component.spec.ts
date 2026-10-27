@@ -796,6 +796,38 @@ describe('ActivityPlayerComponent (#573)', () => {
       expect(el().textContent).not.toMatch(/%|puan|XP/i);
     });
 
+    it('samePlanTwoItems_TypeInA_GoToEmptyB_BackToA_KeepsAValue (#583 review)', async () => {
+      const TEXT_PLAN = JSON.stringify({
+        version: 1,
+        type: 'slotFill',
+        slots: [{ id: 's1', box: { x: 0, y: 0, width: 50, height: 20 }, input: { kind: 'text' } }],
+      });
+      const base = instance().testInstanceQuestions[0].question;
+      await create(
+        instance({}, [
+          { answerPayload: undefined, question: { ...base, id: 1, interactionType: 'slotFill', interactionPlan: TEXT_PLAN } },
+          { answerPayload: undefined, question: { ...base, id: 2, interactionType: 'slotFill', interactionPlan: TEXT_PLAN } },
+        ])
+      );
+      const field = () => el().querySelector('[data-slot-input="s1"]') as HTMLInputElement;
+      fixture.componentInstance.goTo(0);
+      await settle();
+      field().value = 'elma';
+      field().dispatchEvent(new Event('input'));
+
+      fixture.componentInstance.goTo(1);
+      await settle();
+      expect(field().value).toBe('');
+      fixture.componentInstance.goTo(0);
+      await settle();
+
+      expect(field().value).toBe('elma');
+      expect(testService['saveAnswer']).toHaveBeenCalledWith(
+        expect.objectContaining({ testQuestionId: 101, answerPayload: expect.stringContaining('elma') })
+      );
+      expect(fixture.componentInstance.answerFor(fixture.componentInstance.items()[1])?.answerPayload ?? null).toBeNull();
+    });
+
     it('check_FlushesTypedButUnsavedSlotValueFirst', async () => {
       await create(slotInstance());
       fixture.componentInstance.goTo(0);
@@ -1307,5 +1339,243 @@ describe('ActivityPlayerComponent (#573)', () => {
       expect(fixture.componentInstance.panelCollapsed()).toBe(false);
     });
   });
-});
 
+  describe('openText (#583)', () => {
+    const OT_PLAN = JSON.stringify({ version: 1, type: 'openText', minWords: null, maxWords: 50, lines: 4 });
+    const otAnswer = (text: string) => JSON.stringify({ version: 1, type: 'openText', text });
+    const otQuestion = (extra: Record<string, unknown> = {}) => ({
+      answerPayload: otAnswer('bir iki üç'),
+      question: { ...instance().testInstanceQuestions[0].question, interactionType: 'openText', interactionPlan: OT_PLAN },
+      ...extra,
+    });
+    const rowTexts = () => Array.from(el().querySelectorAll('[data-testid="result-row"]')).map((r) => r.textContent ?? '');
+
+    it('check_SubmitsText_RowIsPendingNotWrong_StepAnswered_TotalsExcludeOpenText', async () => {
+      await create(instance({}, [otQuestion(), { selectedAnswerId: 11 }]));
+      fixture.componentInstance.goTo(0);
+      await settle();
+
+      expect(el().querySelector('app-question-canvas-open-text')).not.toBeNull();
+      expect(q('ot-submit-hint')).not.toBeNull();
+
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 1,
+          totalCount: 1,
+          questions: [
+            {
+              instanceQuestionId: 101,
+              isCorrect: false,
+              correctCount: 0,
+              totalCount: 0,
+              feedback: '{"rows":[{"id":"text","status":"pending"}]}',
+              openTextReview: { status: 'pending', evaluation: null, feedback: null, reviewedAt: null },
+            },
+            { instanceQuestionId: 102, isCorrect: true, correctCount: 1, totalCount: 1, feedback: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+
+      expect(activityService.check.mock.lastCall![1][0]).toEqual({
+        instanceQuestionId: 101,
+        selectedAnswerId: null,
+        answerPayload: otAnswer('bir iki üç'),
+      });
+      expect(fixture.componentInstance.steps()[0].state).toBe('answered');
+      const row = el().querySelector('[data-testid="result-row"]')!;
+      expect(row.getAttribute('data-status')).toBe('pending');
+      expect(row.textContent).toContain('Değerlendirme bekliyor');
+      expect(row.textContent).toContain('Cevabın: 3 sözcük');
+      expect(row.textContent).not.toContain('Yanlış');
+      expect(q('ot-pending')?.textContent).toContain('Öğretmen değerlendirmesi bekliyor');
+      expect(q('check-summary')?.textContent).toContain('1 / 1 doğru');
+      expect(q('fix-wrong')).toBeNull();
+      expect(el().textContent).not.toMatch(/%|puan|XP/i);
+    });
+
+    it('onlyOpenTextItems_CheckSummaryHidden', async () => {
+      const only = instance({}, [otQuestion()]);
+      only.testInstanceQuestions = only.testInstanceQuestions.slice(0, 1);
+      await create(only);
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 0,
+          totalCount: 0,
+          questions: [
+            {
+              instanceQuestionId: 101,
+              isCorrect: false,
+              correctCount: 0,
+              totalCount: 0,
+              feedback: '{"rows":[{"id":"text","status":"pending"}]}',
+              openTextReview: { status: 'pending', evaluation: null, feedback: null, reviewedAt: null },
+            },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+
+      expect(fixture.componentInstance.summary()).toBeNull();
+      expect(q('check-summary')).toBeNull();
+      expect(rowTexts()[0]).toContain('Değerlendirme bekliyor');
+      expect(fixture.componentInstance.checkCount()).toBe(1);
+    });
+
+    it('reviewed_ShowsBadgeAndFeedback_EditingMakesItOutdated', async () => {
+      await create(
+        instance({}, [
+          otQuestion({
+            openTextReview: { status: 'reviewed', evaluation: 'partial', feedback: 'Bir örnek ekle.', reviewedAt: '2026-10-27T10:00:00Z' },
+          }),
+        ])
+      );
+      fixture.componentInstance.goTo(0);
+      await settle();
+      expect(q('ot-evaluation')?.textContent).toContain('Kısmen');
+      expect(q('ot-feedback')?.textContent).toContain('Bir örnek ekle.');
+
+      const item = fixture.componentInstance.items()[0];
+      fixture.componentInstance.onDragDropChange(otAnswer('bir iki üç dört'), item);
+      await settle();
+
+      expect(fixture.componentInstance.currentOpenTextReview()?.status).toBe('outdated');
+      expect(q('ot-outdated')).not.toBeNull();
+      expect(q('ot-evaluation')?.textContent).toContain('Kısmen');
+    });
+
+    it('pendingThenEdited_BecomesUnsentDraft_ShowsSubmitHint', async () => {
+      await create(
+        instance({}, [otQuestion({ openTextReview: { status: 'pending', evaluation: null, feedback: null, reviewedAt: null } })])
+      );
+      fixture.componentInstance.goTo(0);
+      await settle();
+      expect(q('ot-pending')).not.toBeNull();
+
+      fixture.componentInstance.onDragDropChange(otAnswer('yeni metin'), fixture.componentInstance.items()[0]);
+      await settle();
+
+      expect(fixture.componentInstance.currentOpenTextReview()).toBeNull();
+      expect(q('ot-pending')).toBeNull();
+      expect(q('ot-submit-hint')).not.toBeNull();
+    });
+
+    it('goTo_FlushesTypedButUnsavedText', async () => {
+      await create(instance({}, [otQuestion({ answerPayload: undefined })]));
+      fixture.componentInstance.goTo(0);
+      await settle();
+      expect(fixture.componentInstance.steps()[0].state).toBe('empty');
+      expect(fixture.componentInstance.blankItems()).toContain('a');
+
+      const field = q('ot-text') as HTMLTextAreaElement;
+      field.value = 'yazdım ama beklemedim';
+      field.dispatchEvent(new Event('input'));
+      fixture.componentInstance.goTo(1);
+      await settle();
+
+      expect(testService['saveAnswer']).toHaveBeenCalledWith(
+        expect.objectContaining({ testQuestionId: 101, answerPayload: otAnswer('yazdım ama beklemedim') })
+      );
+      expect(fixture.componentInstance.steps()[0].state).toBe('answered');
+    });
+
+    it('sharedPlayer_TypeInA_GoToEmptyB_BackToA_KeepsAText (review #1)', async () => {
+      const both = instance({}, [otQuestion({ answerPayload: undefined }), otQuestion({ answerPayload: undefined })]);
+      await create(both);
+      fixture.componentInstance.goTo(0);
+      await settle();
+      const field = () => q('ot-text') as HTMLTextAreaElement;
+      field().value = 'A cevabı';
+      field().dispatchEvent(new Event('input'));
+
+      fixture.componentInstance.goTo(1);
+      await settle();
+      expect(field().value).toBe('');
+      fixture.componentInstance.goTo(0);
+      await settle();
+
+      expect(field().value).toBe('A cevabı');
+      expect(fixture.componentInstance.answerFor(fixture.componentInstance.items()[1])?.answerPayload ?? null).toBeNull();
+    });
+
+    it('tooLongText_BlocksCheckAndFinish_WithPanelError (review #3)', async () => {
+      const plan = JSON.stringify({ version: 1, type: 'openText', minWords: null, maxWords: 2, lines: 2 });
+      await create(
+        instance({ checkCount: 1 }, [
+          otQuestion({ answerPayload: otAnswer('kısa'), question: { ...otQuestion().question, interactionPlan: plan } }),
+          { selectedAnswerId: 11 },
+        ])
+      );
+      fixture.componentInstance.goTo(0);
+      await settle();
+      const field = q('ot-text') as HTMLTextAreaElement;
+      field.value = 'bir iki üç dört beş';
+      field.dispatchEvent(new Event('input'));
+      await settle();
+
+      await fixture.componentInstance.runCheck();
+      await settle();
+      expect(activityService.check).not.toHaveBeenCalled();
+      expect(q('check-error')?.textContent).toContain('Metin çok uzun; kısaltıp tekrar dene.');
+
+      await fixture.componentInstance.finish();
+      await settle();
+      expect(testService['completeTest']).not.toHaveBeenCalled();
+      expect(testService['saveAnswer']).not.toHaveBeenCalled();
+    });
+
+    it('reveal_ShowsSampleAnswerInPlayer', async () => {
+      await create(instance({ checkCount: 1 }, [otQuestion()]));
+      fixture.componentInstance.goTo(0);
+      await settle();
+      activityService.getSolutions.mockReturnValue(
+        of({
+          success: true,
+          questions: [
+            { instanceQuestionId: 101, questionId: 1, correctAnswerId: null, interactionSolution: '{"sampleAnswer":"Kitaptaki örnek."}' },
+            { instanceQuestionId: 102, questionId: 2, correctAnswerId: 11, interactionSolution: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.reveal();
+      await settle();
+
+      expect(q('ot-sample')?.textContent).toContain('Kitaptaki örnek.');
+      expect((q('ot-text') as HTMLTextAreaElement).readOnly).toBe(true);
+    });
+
+    it('finished_SummaryListsOpenTextReviews_NotCountedInInfo', async () => {
+      await create(
+        instance(
+          { status: TestStatus.Completed, firstCheckCorrectCount: 1, firstCheckTotalCount: 1 },
+          [
+            otQuestion({
+              openTextReview: { status: 'reviewed', evaluation: 'sufficient', feedback: 'Harika <b>iş</b>', reviewedAt: '2026-10-27T10:00:00Z' },
+            }),
+            { selectedAnswerId: 11 },
+          ]
+        )
+      );
+
+      const item = q('summary-open-text-item');
+      expect(item?.textContent).toContain('Madde a');
+      expect(item?.textContent).toContain('Yeterli');
+      expect(item?.querySelector('[data-testid="ot-feedback"]')?.textContent).toContain('Harika <b>iş</b>');
+      expect(item?.querySelector('b b')).toBeNull();
+      expect(q('summary-info')?.textContent).toContain('1 / 1 doğru');
+    });
+
+    it('finishWithoutReview_MarksAnsweredOpenTextPending', async () => {
+      await create(instance({ checkCount: 1 }, [otQuestion(), { selectedAnswerId: 11 }]));
+      await fixture.componentInstance.finish();
+      await settle();
+
+      expect(fixture.componentInstance.openTextReviews()[101]?.status).toBe('pending');
+      expect(q('summary-open-text-item')?.textContent).toContain('Öğretmen değerlendirmesi bekliyor');
+    });
+  });
+});

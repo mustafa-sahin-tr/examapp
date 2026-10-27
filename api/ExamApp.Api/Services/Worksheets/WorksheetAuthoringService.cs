@@ -171,6 +171,18 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         if (!IsKindChange(worksheet, requested))
             return null;
 
+        // issue #583: açık uçlu maddesi olan etkinlik Test'e çevrilemez (409).
+        if (requested == WorksheetKind.Test && await OpenTextTestGuard.WorksheetHasOpenTextAsync(_context, worksheet.Id))
+        {
+            return new ExamSavedDto
+            {
+                Success = false,
+                Conflict = true,
+                ErrorCode = WorksheetAuthoringErrorCodes.OpenTextNotAllowedInTest,
+                Message = _localizer[OpenTextTestGuard.MessageKey]
+            };
+        }
+
         return await HasAnyInstanceAsync(worksheet.Id) ? KindLockedResult() : null;
     }
 
@@ -725,6 +737,15 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             result.Success = false;
             result.NotFound = true;
             result.Message = _localizer["worksheets.authoring.worksheetNotFound"];
+            return result;
+        }
+
+        // issue #583: (eski/kaçak veride) açık uçlu maddesi olan test kopyalanmaz — kopya da test olurdu.
+        if (source.Kind == WorksheetKind.Test && await OpenTextTestGuard.WorksheetHasOpenTextAsync(_context, source.Id, ct))
+        {
+            result.Success = false;
+            result.ErrorCode = OpenTextTestGuard.ErrorCode;
+            result.Message = _localizer[OpenTextTestGuard.MessageKey];
             return result;
         }
 

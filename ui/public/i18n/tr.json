@@ -81,7 +81,8 @@
       "adminStudents": "Öğrenciler",
       "adminSchools": "Okullar",
       "adminBadgeDefinitions": "Rozetler",
-      "adminCommentReports": "Yorum Şikayetleri"
+      "adminCommentReports": "Yorum Şikayetleri",
+      "openTextReviews": "Açık uçlu cevaplar"
     },
     "bottomNav": {
       "home": "Ana Sayfa",
@@ -421,6 +422,20 @@
         "correctionLabel": "«{{word}}» kelimesinin doğrusu",
         "correctionAria": "«{{word}}» için düzeltme",
         "deselect": "Seçimi kaldır"
+      },
+      "openText": {
+        "label": "Cevabın",
+        "placeholder": "Cevabını buraya yaz…",
+        "words": "{{count}} sözcük",
+        "limitsBoth": "en az {{min}}, en çok {{max}} sözcük",
+        "limitsMin": "en az {{min}} sözcük",
+        "limitsMax": "en çok {{max}} sözcük",
+        "under": "En az {{min}} sözcük yazmalısın.",
+        "over": "En çok {{max}} sözcük isteniyor; cevabını kısaltmayı dene.",
+        "blocked": "Cevabın çok uzun (en çok {{max}} sözcük isteniyor); bu hâli kaydedilmez. Kısaltınca kaydedilir.",
+        "submitHint": "Cevabın kaydedildi. Öğretmenine göndermek için “Cevapları kontrol et”e bas.",
+        "sampleTitle": "Örnek cevap",
+        "noSample": "Bu madde için örnek cevap yok; cevabını öğretmenin değerlendirecek."
       }
     },
     "sharingBadge": {
@@ -695,7 +710,13 @@
         "blankWarningGeneric": "{{count}} maddede boş bırakılan yer var ({{items}}). Boş bırakılanlar yanlış sayılır. Yine de kontrol edebilirsin.",
         "expand": "Sonuçları göster",
         "collapse": "Sonuçları küçült",
-        "staleShort": "cevap değişti"
+        "staleShort": "cevap değişti",
+        "openTextStatus": {
+          "pending": "Değerlendirme bekliyor",
+          "sufficient": "Yeterli",
+          "partial": "Kısmen",
+          "insufficient": "Eksik"
+        }
       },
       "summary": {
         "title": "Etkinlik bitti",
@@ -711,7 +732,11 @@
         "badgeLineMinutes": "{{name}} rozeti: {{current}}/{{target}} dk",
         "badgeLineDays": "{{name}} rozeti: {{current}}/{{target}} gün",
         "badgeRemainingMinutes": "{{count}} dk daha!",
-        "badgeRemainingDays": "{{count}} gün daha!"
+        "badgeRemainingDays": "{{count}} gün daha!",
+        "openTextTitle": "Açık uçlu cevapların",
+        "openTextItem": "Madde {{label}}",
+        "openTextNotSent": "Gönderilmedi",
+        "openTextEmpty": "Boş bırakıldı"
       },
       "launch": {
         "failed": "Etkinlik açılamadı. Tekrar dene.",
@@ -725,6 +750,18 @@
         "retakeFailed": "Etkinlik yeniden açılamadı. Tekrar dene.",
         "retakeRateLimited": "Çok sık denedin, biraz bekleyip tekrar dene."
       }
+    },
+    "openTextReview": {
+      "pending": "Öğretmen değerlendirmesi bekliyor",
+      "evaluationLabel": "Değerlendirme",
+      "evaluation": {
+        "sufficient": "Yeterli",
+        "partial": "Kısmen",
+        "insufficient": "Eksik"
+      },
+      "feedbackLabel": "Öğretmenin notu",
+      "outdatedStudent": "Cevabın değişti; yeniden değerlendirilecek.",
+      "outdatedTeacher": "Bu değerlendirme öğrencinin önceki metnine ait."
     }
   },
   "dashboard": {

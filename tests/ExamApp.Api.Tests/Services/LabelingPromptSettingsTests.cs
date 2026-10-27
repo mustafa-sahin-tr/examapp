@@ -126,9 +126,18 @@ public class LabelingPromptSettingsTests
     // ---------- Issue #578: blok türleri ----------
 
     [Fact]
-    public void SchemaRevision_IsFiveForTextSelectComponentD()
+    public void SchemaRevision_IsSixForOpenTextComponentH()
     {
-        LabelingPromptSettings.SchemaRevision.ShouldBe(5);
+        LabelingPromptSettings.SchemaRevision.ShouldBe(6);
+    }
+
+    [Fact]
+    public void DefaultQuestionInstruction_MapsComponentHToOpenText()
+    {
+        // issue #583: H (açık uçlu) artık openText; "other" yalnız E, F, G, I.
+        var instruction = LabelingPromptSettings.Default.QuestionInstruction;
+        instruction.ShouldContain("-> openText");
+        instruction.ShouldNotContain("For E-I");
     }
 
     [Fact]
@@ -138,7 +147,7 @@ public class LabelingPromptSettingsTests
         var instruction = LabelingPromptSettings.Default.QuestionInstruction;
         instruction.ShouldContain("-> textSelect");
         instruction.ShouldContain("it is D, not B");
-        instruction.ShouldContain("For E-I use interactionType other");
+        instruction.ShouldContain("For E, F, G and I use interactionType other");
         // Türkçe Ustası s.184: D bloğu yalnız yönergeye kutulanıyordu; metin/hikâye (başlığıyla) bloğun içinde olmalı.
         instruction.ShouldContain("the whole passage, including its title, is inside the box");
         instruction.ShouldNotContain("For D-I");

@@ -1,0 +1,84 @@
+<div class="ot-root" [class.is-activity]="activity()" [class.is-solution]="solutionShown()"
+  *transloco="let t; prefix: 'shared.questionCanvas'">
+  @if (!hidePassage && passageImageUrl(); as pUrl) {
+    <div class="ot-passage">
+      @if (passageTitle(); as title) {
+        <div class="ot-passage__title">{{ title }}</div>
+      }
+      <img class="ot-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (imageUrl(); as url) {
+    <div class="ot-stage">
+      <img class="ot-image" [src]="url" [alt]="t('questionAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  <mat-form-field class="ot-field" appearance="outline" subscriptSizing="dynamic">
+    <mat-label>{{ t('openText.label') }}</mat-label>
+    <textarea matInput class="ot-textarea" data-testid="ot-text" [rows]="rows()" [value]="text()"
+      [attr.maxlength]="limits.maxTextLength" [readonly]="readOnly()" [attr.aria-readonly]="readOnly()"
+      [attr.aria-describedby]="counterId" [placeholder]="t('openText.placeholder')"
+      autocomplete="off" (input)="onInput($event)" (change)="onCommit()" (blur)="onCommit()"></textarea>
+  </mat-form-field>
+
+  <div class="ot-footer">
+    <p [id]="counterId" class="ot-counter" data-testid="ot-counter" [attr.data-state]="wordState()"
+      [class.is-under]="wordState() === 'under'" [class.is-over]="wordState() === 'over'"
+      [class.is-blocked]="wordState() === 'blocked'">
+      <span>{{ t('openText.words', { count: wordCount() }) }}</span>
+      @if (minWords() != null && maxWords() != null) {
+        <span class="ot-counter__limits">· {{ t('openText.limitsBoth', { min: minWords(), max: maxWords() }) }}</span>
+      } @else if (minWords() != null) {
+        <span class="ot-counter__limits">· {{ t('openText.limitsMin', { min: minWords() }) }}</span>
+      } @else if (maxWords() != null) {
+        <span class="ot-counter__limits">· {{ t('openText.limitsMax', { max: maxWords() }) }}</span>
+      }
+    </p>
+    @if (!solutionShown()) {
+      <button mat-stroked-button type="button" class="ot-clear" data-testid="ot-clear" (click)="clear()"
+        [disabled]="isDisabled() || !text()">
+        <mat-icon>restart_alt</mat-icon>
+        {{ 'common.clear' | transloco }}
+      </button>
+    }
+  </div>
+
+  @switch (wordState()) {
+    @case ('blocked') {
+      <p class="ot-warn ot-warn--danger" role="alert" data-testid="ot-blocked">
+        <mat-icon aria-hidden="true">block</mat-icon>{{ t('openText.blocked', { max: maxWords() }) }}
+      </p>
+    }
+    @case ('over') {
+      <p class="ot-warn" role="status" data-testid="ot-over">
+        <mat-icon aria-hidden="true">warning</mat-icon>{{ t('openText.over', { max: maxWords() }) }}
+      </p>
+    }
+    @case ('under') {
+      <p class="ot-hint" data-testid="ot-under">{{ t('openText.under', { min: minWords() }) }}</p>
+    }
+  }
+
+  @if (activity() && !solutionShown()) {
+    @if (currentReview(); as review) {
+      <app-open-text-review-status [review]="review" audience="student" />
+    } @else if (showSubmitHint()) {
+      <p class="ot-hint ot-hint--submit" role="status" data-testid="ot-submit-hint">
+        <mat-icon aria-hidden="true">send</mat-icon>{{ t('openText.submitHint') }}
+      </p>
+    }
+  }
+
+  @if (showSample()) {
+    <section class="ot-sample" data-testid="ot-sample" [attr.aria-label]="t('openText.sampleTitle')">
+      <h3 class="ot-sample__title">{{ t('openText.sampleTitle') }}</h3>
+      @if (sampleAnswer(); as sample) {
+        <p class="ot-sample__text">{{ sample }}</p>
+      } @else {
+        <p class="ot-hint" data-testid="ot-no-sample">{{ t('openText.noSample') }}</p>
+      }
+    </section>
+  }
+</div>

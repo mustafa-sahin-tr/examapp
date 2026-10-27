@@ -25,6 +25,19 @@
       "activityRetakeWorksheetNotFound": "Etkinlik bulunamadı."
     },
 
+    "openTextReview": {
+      "invalidReview": "Değerlendirme geçersiz: yeterli, kısmen ya da eksik seçin; geri bildirim en çok 1000 karakter düz metin olmalı.",
+      "notFound": "Açık uçlu cevap bulunamadı.",
+      "notSubmitted": "Öğrenci bu cevabı henüz göndermedi.",
+      "answerChanged": "Öğrenci cevabını değiştirdi. Listeyi yenileyip yeni cevabı değerlendirin.",
+      "saved": "Değerlendirme kaydedildi.",
+      "invalidQuery": "Geçersiz kuyruk sorgusu.",
+      "rateLimited": "Kısa sürede çok fazla değerlendirme kaydedildi. Biraz bekleyip yeniden deneyin.",
+      "notAllowedInTest": "Açık uçlu madde yalnız etkinlikte kullanılabilir; teste eklenemez.",
+      "forbidden": "Bu değerlendirmeyi başka bir öğretmen yaptı; yalnız o öğretmen ya da yönetici düzeltebilir.",
+      "readRateLimited": "Kuyruk kısa sürede çok fazla yüklendi. Biraz bekleyip yeniden deneyin."
+    },
+
     "accessRequest": {
       "worksheetNotFound": "Worksheet bulunamadı.",
       "ownWorksheet": "Kendi sınavınız için izin talebi oluşturamazsınız.",

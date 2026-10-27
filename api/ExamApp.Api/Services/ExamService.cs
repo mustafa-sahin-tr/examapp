@@ -432,10 +432,18 @@ public class ExamService : IExamService
                 var correctMap = t.WorksheetQuestions
                     .Where(wq => wq.Question != null)
                     .ToDictionary(wq => wq.Id, wq => wq.Question.CorrectAnswerId);
-                var (correct, wrong, _) = WorksheetScoring.Tally(instance.WorksheetInstanceQuestions, wiq =>
-                    new WorksheetScoring.AnswerFacts(wiq.SelectedAnswerId, wiq.AnswerPayload != null, wiq.IsCorrect,
+                // issue #583 (savunma): açık uçlu satır toplama ve sayımlara girmez.
+                var openTextIds = t.WorksheetQuestions
+                    .Where(wq => wq.Question != null && wq.Question.InteractionType == ExamApp.Api.Services.Interactions.OpenTextGrader.Type)
+                    .Select(wq => wq.Id)
+                    .ToHashSet();
+                WorksheetScoring.AnswerFacts Facts(WorksheetInstanceQuestion wiq) =>
+                    new(wiq.SelectedAnswerId, wiq.AnswerPayload != null, wiq.IsCorrect,
                         correctMap.GetValueOrDefault(wiq.WorksheetQuestionId),
-                        QuestionKnown: correctMap.ContainsKey(wiq.WorksheetQuestionId)));
+                        QuestionKnown: correctMap.ContainsKey(wiq.WorksheetQuestionId),
+                        Excluded: openTextIds.Contains(wiq.WorksheetQuestionId));
+                var (correct, wrong, _) = WorksheetScoring.Tally(instance.WorksheetInstanceQuestions, Facts);
+                var scoredTotal = WorksheetScoring.Total(instance.WorksheetInstanceQuestions, Facts);
                 instanceDto = new InstanceSummaryDto
                 {
                     Id = instance.Id,
@@ -445,10 +453,10 @@ public class ExamService : IExamService
                     CompletedDate = instance.EndTime ?? DateTime.UtcNow,
                     DurationMinutes = instance.EndTime.HasValue ?
                 (int)(instance.EndTime.Value - instance.StartTime).TotalMinutes : 0,
-                    TotalQuestions = instance.WorksheetInstanceQuestions.Count,
+                    TotalQuestions = scoredTotal,
                     CorrectAnswers = correct,
                     WrongAnswers = wrong,
-                    Score = (correct * 100) / (instance.WorksheetInstanceQuestions.Count > 0 ? instance.WorksheetInstanceQuestions.Count : 1)
+                    Score = (correct * 100) / (scoredTotal > 0 ? scoredTotal : 1)
                 };
             }
 
@@ -766,12 +774,12 @@ public class ExamService : IExamService
     /// <paramref name="correctMap"/>: WorksheetQuestionId → doğru şık; sorusu silinmiş satır sözlükte yoktur (QuestionKnown=false).
     /// </summary>
     private static (int Correct, int Wrong, int Blank) TallyStatistics(
-        WorksheetInstance instance, IReadOnlyDictionary<int, int?> correctMap)
+        WorksheetInstance instance, IReadOnlyDictionary<int, int?> correctMap, IReadOnlySet<int> openTextIds)
         => WorksheetScoring.Tally(instance.WorksheetInstanceQuestions, q =>
         {
             var known = correctMap.TryGetValue(q.WorksheetQuestionId, out var correctAnswerId);
             return new WorksheetScoring.AnswerFacts(q.SelectedAnswerId, q.AnswerPayload != null, q.IsCorrect,
-                correctAnswerId, QuestionKnown: known);
+                correctAnswerId, QuestionKnown: known, Excluded: openTextIds.Contains(q.WorksheetQuestionId));
         });
 
     public async Task<ExamAllStatisticsDto> GetGroupedStudentStatistics(int studentId)
@@ -792,8 +800,14 @@ public class ExamService : IExamService
             .ToList();
         var correctMap = await _context.TestQuestions.AsNoTracking()
             .Where(wq => worksheetQuestionIds.Contains(wq.Id))
-            .Select(wq => new { wq.Id, wq.Question.CorrectAnswerId })
-            .ToDictionaryAsync(x => x.Id, x => x.CorrectAnswerId);
+            .Select(wq => new { wq.Id, wq.Question.CorrectAnswerId, wq.Question.InteractionType })
+            .ToListAsync();
+        // issue #583 (savunma): açık uçlu satırlar istatistiğe girmez.
+        var openTextIds = correctMap
+            .Where(x => x.InteractionType == ExamApp.Api.Services.Interactions.OpenTextGrader.Type)
+            .Select(x => x.Id)
+            .ToHashSet();
+        var correctById = correctMap.ToDictionary(x => x.Id, x => x.CorrectAnswerId);
 
         // 🔹 Total verileri için
         int totalSolved = testInstances.Count;
@@ -812,7 +826,7 @@ public class ExamService : IExamService
 
             // issue #571: WorksheetScoring hibrit kuralı (etkileşimli cevaplar da sayılır; doğru şıkkı olmayan sorudaki şık
             // cevabı artık yanlış sayılır — önceden hiç sayılmıyordu).
-            var (correct, wrong, _) = TallyStatistics(instance, correctMap);
+            var (correct, wrong, _) = TallyStatistics(instance, correctById, openTextIds);
             totalCorrect += correct;
             totalWrong += wrong;
         }
@@ -834,7 +848,7 @@ public class ExamService : IExamService
                     foreach (var question in instance.WorksheetInstanceQuestions)
                         groupTimeTaken += question.TimeTaken / 60;
 
-                    var (correct, wrong, _) = TallyStatistics(instance, correctMap); // issue #571: hibrit kural
+                    var (correct, wrong, _) = TallyStatistics(instance, correctById, openTextIds); // issue #571: hibrit kural
                     groupCorrect += correct;
                     groupWrong += wrong;
                 }

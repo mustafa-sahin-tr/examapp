@@ -1,0 +1,26 @@
+@if (review(); as r) {
+<div class="otr" [attr.data-status]="r.status" data-testid="ot-review" *transloco="let t; prefix: 'shared.openTextReview'">
+  @if (evaluation(); as ev) {
+    <p class="otr__badge otr__badge--{{ ev }}" data-testid="ot-evaluation" [attr.data-evaluation]="ev">
+      <mat-icon aria-hidden="true">{{ icon() }}</mat-icon>
+      <span>{{ t('evaluationLabel') }}: <b>{{ t('evaluation.' + ev) }}</b></span>
+    </p>
+    @if (r.feedback) {
+      <div class="otr__feedback" data-testid="ot-feedback">
+        <span class="otr__feedback-label">{{ t('feedbackLabel') }}</span>
+        <p class="otr__feedback-text">{{ r.feedback }}</p>
+      </div>
+    }
+    @if (r.status === 'outdated') {
+      <p class="otr__note" role="status" data-testid="ot-outdated">
+        <mat-icon aria-hidden="true">update</mat-icon>{{ t(audience() === 'teacher' ? 'outdatedTeacher' : 'outdatedStudent') }}
+      </p>
+    }
+  } @else {
+    <p class="otr__badge otr__badge--pending" role="status" data-testid="ot-pending">
+      <mat-icon aria-hidden="true">{{ icon() }}</mat-icon>
+      <span>{{ t('pending') }}</span>
+    </p>
+  }
+</div>
+}

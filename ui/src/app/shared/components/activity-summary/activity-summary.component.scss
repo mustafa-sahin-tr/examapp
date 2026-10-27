@@ -37,3 +37,41 @@
 .asum__btn {
   min-height: 44px;
 }
+
+.asum__open-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.asum__open-text-title {
+  margin: 0;
+  font: 600 16px var(--mainFontFamily);
+  color: var(--ms-text-strong);
+}
+
+.asum__open-text-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.asum__open-text-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--ms-border-weak);
+}
+
+.asum__open-text-label {
+  font-weight: 600;
+}
+
+.asum__open-text-empty {
+  color: var(--ms-text-medium);
+}

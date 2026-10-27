@@ -25,6 +25,19 @@
       "activityRetakeWorksheetNotFound": "Activity not found."
     },
 
+    "openTextReview": {
+      "invalidReview": "The review is invalid: choose sufficient, partial or insufficient; feedback must be plain text of at most 1000 characters.",
+      "notFound": "Open-ended answer not found.",
+      "notSubmitted": "The student has not submitted this answer yet.",
+      "answerChanged": "The student changed the answer. Refresh the list and review the new answer.",
+      "saved": "Review saved.",
+      "invalidQuery": "Invalid queue query.",
+      "rateLimited": "Too many reviews in a short time. Please wait a moment and try again.",
+      "notAllowedInTest": "Open-ended items can only be used in activities, not in tests.",
+      "forbidden": "Another teacher made this review; only that teacher or an administrator can change it.",
+      "readRateLimited": "The review queue was loaded too often in a short time. Please wait a moment and try again."
+    },
+
     "accessRequest": {
       "worksheetNotFound": "Worksheet not found.",
       "ownWorksheet": "You cannot request access to your own test.",

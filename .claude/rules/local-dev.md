@@ -622,6 +622,29 @@ tamamlama rozet şartını sağlamadıysa (`CountsTowardBadges=false`) yeniden t
 `AddTestInstanceRetakeTracking` (`FirstCompletedAt`, `AttemptStartedAt`, `RetakeCount`; mevcut Completed satırları `EndTime` ile doldurur)
 exam API açılışında uygulanır (Aspire'da exam API'yi yeniden başlat).
 
+**Issue #583 — `openText` (bileşen H, açık uçlu cevap; AI'sız ilk sürüm).** Plan `{"version":1,"type":"openText","minWords?","maxWords?","lines?"}`
+(sözcük 1..2000, min ≤ max, satır 1..30), çözüm `{"sampleAnswer?","rubric?"}` (düz metin ≤ 4000; boş geçerli). Öğrenci payload'u
+`{"version":1,"type":"openText","text"}` (≤ 8000 karakter; boş = cevapsız); sözcük sınırı zorlanmaz, yalnız `maxWords × 2`'yi aşan
+metin 400. Otomatik kontrol yok: satır 0/0 (doğru/yanlış ve ilk kontrol özetine girmez), geri bildirim
+`{"rows":[{"id":"text","status":"pending"|"sufficient"|"partial"|"insufficient"}]}`; açık uçlu cevap `AnswerSubmittedEvent` yazmaz
+(puan yok). **Yalnız etkinlikte:** havuzdan ekle, tekli/toplu soru kaydı, test kopyalama 400, Activity → Test tür değişimi 409
+`OpenTextNotAllowedInTest`; skor kuralı (`WorksheetScoring`) savunma olarak açık uçlu satırı toplamdan düşer, "yanlışlarım" testine
+almaz. Öğrenciye çözümden yalnız `sampleAnswer` gider. Kontrol edilen (ya da oturumu etkin durumda bitmiş) cevap öğretmen kuyruğuna
+düşer: `GET /api/exam/open-text-reviews?status=pending|reviewed|all&worksheetId=&page=&pageSize=` (page ≤ 10000, pageSize ≤ 50;
+kullanıcı başına dakikada 60, `RateLimiting:OpenTextReviewRead`) ve `PUT /api/exam/open-text-reviews/{instanceQuestionId}`
+`{evaluation, feedback?, answerHash}` (dakikada 60, `RateLimiting:OpenTextReview`). Yetki: gateway Teacher + Admin
+(`RouteRoleAuthExtensions`), backend onaylı öğretmen + #573 takip kuralı — öğretmen etkinliği **kendi atamasıyla** hedeflediği, okul
+kapsamındaki öğrencinin **atama penceresinde sayılan** oturumunu görür; Admin hepsini. Başkasının verdiği değerlendirmeyi yalnız o
+kullanıcı ve Admin düzeltir (diğerine 403 `OpenTextReviewForbidden`, satırda `canEdit:false`). **Rubrik yalnız sorunun sahibine ve
+Admin'e** döner (diğer değerlendirenlere `rubric: null`); örnek cevap herkese. Öğrenci değerlendirmeyi oturum ve kontrol yanıtlarında
+`openTextReview` (`pending` / `reviewed` / `outdated` + değerlendirme, geri bildirim) olarak görür; metni değişince değerlendirme eskir
+(`outdated`, gönderilince yeniden kuyrukta), cevap boşaltılınca gösterilmez, yeniden çözme (#609) siler. Düz metin süzgeci
+(`PlainTextAttribute`; öğrenci metni, geri bildirim, çözüm, pasaj yönergesi) C0 (\n \r \t hariç), DEL + C1 (U+007F–U+009F) ve bidi
+(U+202A–U+202E, U+2066–U+2069) karakterlerini reddeder. İşaretleme: H → `openText` (sayfa prompt'u `SchemaRevision` 6; kayıtlı özel
+prompt sürümü yeni varsayılanı ezer). Değerlendirme bildirimi (BadgeService) bu sürümde yok. Migration `AddOpenTextReviews` (tablo +
+`IX_Questions_InteractionType_OpenText` kısmi, `IX_WorksheetAssignments_CreateUserId_WorksheetId`) exam API açılışında uygulanır
+(Aspire'da exam API'yi yeniden başlat).
+
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını
 (`TestInstances` — Questions'a FK'sı yok, CASCADE ulaşmaz, açıkça silinir; aksi halde "boş test yapılmış" gibi kalır),

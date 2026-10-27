@@ -272,7 +272,7 @@ public sealed class ClaudeLabelDetector : IClaudeLabelDetector, IDisposable
         string Kind,
         [property: Description("Activity component family letter A-I when kind is activity; otherwise \"none\".")]
         string Component,
-        [property: Description("When kind is activity: matrixChoice, slotFill, dragPlace, match, textSelect or other; otherwise \"none\".")]
+        [property: Description("When kind is activity: matrixChoice, slotFill, dragPlace, match, textSelect, openText or other; otherwise \"none\".")]
         string InteractionType,
         int X1, int Y1, int X2, int Y2);
 

@@ -97,6 +97,31 @@
     border-style: dashed;
     color: var(--ms-danger-text);
   }
+
+  // Issue #583: açık uçlu satır — doğru/yanlış değil, değerlendirme durumu.
+  &--status[data-status='pending'] {
+    background: var(--ms-info-surface);
+    border-color: var(--ms-info-border);
+    color: var(--ms-info-text);
+  }
+
+  &--status[data-status='sufficient'] {
+    background: var(--ms-success-surface);
+    border-color: var(--ms-success-border);
+    color: var(--ms-success-text);
+  }
+
+  &--status[data-status='partial'] {
+    background: var(--ms-warning-surface);
+    border-color: var(--ms-warning-border);
+    color: var(--ms-warning-text);
+  }
+
+  &--status[data-status='insufficient'] {
+    background: var(--ms-danger-surface);
+    border-color: var(--ms-danger-border);
+    color: var(--ms-danger-text);
+  }
 }
 
 .acp__solution {

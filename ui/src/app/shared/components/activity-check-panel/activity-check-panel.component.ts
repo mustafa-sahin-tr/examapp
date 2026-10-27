@@ -4,6 +4,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslocoDirective } from '@jsverse/transloco';
 
+import { OpenTextRowStatus } from '../../../models/open-text';
+
 /** Kontrol/çözüm/bitirme isteğinin kullanıcıya gösterilen hata türü. */
 export type ActivityPanelError = 'rateLimited' | 'network' | 'checkRequired' | 'generic';
 
@@ -13,12 +15,24 @@ export interface ActivityCheckSummary {
   total: number;
 }
 
-/** Geçerli maddenin bir satırı: `correct` null = henüz kontrol yok; `solution` yalnız çözüm açıkken. */
+/**
+ * Geçerli maddenin bir satırı: `correct` null = henüz kontrol yok; `solution` yalnız çözüm açıkken. Issue #583: açık uçlu
+ * maddede `status` doludur — ✓/✗ yerine "Değerlendirme bekliyor" ya da öğretmenin değerlendirmesi gösterilir.
+ */
 export interface ActivityResultRow {
   label: string;
   correct: boolean | null;
   solution?: string | null;
+  status?: OpenTextRowStatus | null;
 }
+
+/** Issue #583: açık uçlu satır durumunun ikonu. */
+export const OPEN_TEXT_ROW_ICON: Record<OpenTextRowStatus, string> = {
+  pending: 'hourglass_top',
+  sufficient: 'check_circle',
+  partial: 'adjust',
+  insufficient: 'error_outline',
+};
 
 /**
  * Issue #573: "Cevapları kontrol et" paneli — kontrol / yeniden kontrol, satır bazlı sonuç (✓/✗ + metin; renk tek sinyal
@@ -78,6 +92,8 @@ export class ActivityCheckPanelComponent {
   readonly finish = output<void>();
   /** W2: hata kutusundaki "Tekrar dene" — sahibi başarısız adımı (kontrol/çözüm/bitir) yeniden dener. */
   readonly retry = output<void>();
+
+  readonly openTextIcon = OPEN_TEXT_ROW_ICON;
 
   readonly hasChecked = computed(() => this.checkCount() > 0);
   readonly wrongCount = computed(() => {

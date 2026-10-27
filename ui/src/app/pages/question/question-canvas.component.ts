@@ -43,7 +43,7 @@ import { ClassificationSource, QuestionRegion } from '../../models/draws';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { CanvasDetectionSource, CanvasSourceKind } from './canvas-detection-source';
 import { CanvasActivityDrafts } from './canvas-activity-drafts';
-import { isBlockInteractionType } from '../../models/prediction';
+import { isDraftableInteractionType } from '../../models/prediction';
 
 /** Sayfa metinleri kendi Transloco scope'unda: `public/i18n/question/<lang>.json` (issue #183). */
 const QUESTION_SCOPE = 'question';
@@ -703,7 +703,8 @@ export class QuestionCanvasComponent implements OnInit {
 
   /** Müfettişteki etkinlik bloğunun taslak kartı görünür mü (tipli etkinlik, etkinlik sayfası). */
   insHasDraftCard(d: ActiveInspector): boolean {
-    return this.activityContext() && d.blockKind === 'activity' && isBlockInteractionType(d.interactionType);
+    // Issue #583: openText taslağı çıkarılmaz (plan basit); H bloğu varsayılan planla açılır, taslak kartı yok.
+    return this.activityContext() && d.blockKind === 'activity' && isDraftableInteractionType(d.interactionType);
   }
 
   insMaskMode() {
@@ -1141,6 +1142,18 @@ export class QuestionCanvasComponent implements OnInit {
 
   insTextSuffixes(index: number, event: Event) {
     this.withRegion((name) => this.imageSelector.setTextSelectTargetSuffixes(name, index, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  // ---- Issue #583: açık uçlu cevap ----
+
+  /** Sözcük sınırı / satır alanı (boş = sınırsız / varsayılan). */
+  insOpenTextLimit(field: 'minWords' | 'maxWords' | 'lines', event: Event) {
+    this.withRegion((name) => this.imageSelector.setOpenTextLimit(name, field, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  /** Örnek cevap / rubrik (elle; düz metin). */
+  insOpenTextSolution(field: 'sampleAnswer' | 'rubric', event: Event) {
+    this.withRegion((name) => this.imageSelector.setOpenTextSolutionText(name, field, QuestionCanvasComponent.inputValue(event)));
   }
 
   slotPreviewFor(slotId: string): string {

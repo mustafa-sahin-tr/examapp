@@ -6,6 +6,24 @@
     <p class="asum__info" data-testid="summary-info">{{ t('info', { correct: r.correct, total: r.total }) }}</p>
   }
 
+  @if (openTextItems().length > 0) {
+    <section class="asum__open-text" data-testid="summary-open-text" [attr.aria-label]="t('openTextTitle')">
+      <h2 class="asum__open-text-title">{{ t('openTextTitle') }}</h2>
+      <ul class="asum__open-text-list">
+        @for (entry of openTextItems(); track entry.label) {
+          <li class="asum__open-text-item" data-testid="summary-open-text-item">
+            <span class="asum__open-text-label">{{ t('openTextItem', { label: entry.label }) }}</span>
+            @if (entry.review) {
+              <app-open-text-review-status [review]="entry.review" audience="student" />
+            } @else {
+              <span class="asum__open-text-empty">{{ t(entry.answered ? 'openTextNotSent' : 'openTextEmpty') }}</span>
+            }
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
   <app-activity-progress [today]="today()" [badge]="badge()" />
 
   <div class="asum__actions">

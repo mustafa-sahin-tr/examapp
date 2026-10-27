@@ -1,0 +1,58 @@
+{
+  "title": "Açık uçlu cevaplar",
+  "subtitle": "Öğrencilerinin etkinliklerdeki açık uçlu cevaplarını yeterli / kısmen / eksik olarak değerlendir ve geri bildirim yaz. Puan verilmez; değerlendirme ve geri bildirim öğrenciye görünür.",
+  "actions": {
+    "refresh": "Yenile",
+    "save": "Değerlendir",
+    "update": "Değerlendirmeyi güncelle"
+  },
+  "filters": {
+    "statusAria": "Durum",
+    "pending": "Bekleyen",
+    "reviewed": "Değerlendirilen",
+    "all": "Hepsi",
+    "worksheet": "Bu etkinlik",
+    "worksheetNamed": "Etkinlik: {{name}}",
+    "clearWorksheet": "Etkinlik filtresini kaldır"
+  },
+  "state": {
+    "loading": "Cevaplar yükleniyor…",
+    "empty": {
+      "pending": "Değerlendirme bekleyen cevap yok.",
+      "reviewed": "Henüz değerlendirdiğin cevap yok.",
+      "all": "Açık uçlu cevap yok."
+    }
+  },
+  "unknownStudent": "Öğrenci",
+  "itemOf": "{{name}} · Madde {{label}}",
+  "imageAlt": "Madde {{label}} görseli",
+  "answer": "Öğrencinin cevabı",
+  "words": "{{count}} sözcük",
+  "limitsBoth": "en az {{min}}, en çok {{max}}",
+  "limitsMin": "en az {{min}}",
+  "limitsMax": "en çok {{max}}",
+  "solutionTitle": "Örnek cevap ve rubrik",
+  "sampleAnswer": "Örnek cevap",
+  "rubric": "Rubrik",
+  "currentReview": "Mevcut değerlendirme",
+  "evaluate": "Değerlendirme",
+  "evaluation": {
+    "sufficient": "Yeterli",
+    "partial": "Kısmen",
+    "insufficient": "Eksik"
+  },
+  "feedback": "Geri bildirim (öğrenci görür)",
+  "feedbackPlaceholder": "Kısa bir not (isteğe bağlı)",
+  "paginatorAria": "Sayfalar",
+  "messages": {
+    "loadFailed": "Cevaplar yüklenemedi.",
+    "saved": "Değerlendirme kaydedildi.",
+    "ok": "Tamam",
+    "answerChanged": "Öğrencinin cevabı değişti; liste yenilendi.",
+    "rateLimited": "Çok sık kaydettin; biraz bekleyip tekrar dene.",
+    "saveFailed": "Değerlendirme kaydedilemedi.",
+    "forbidden": "Bu cevabı değerlendirme yetkin yok; liste yenilendi."
+  },
+  "imageAltPlain": "Madde görseli",
+  "lockedByOther": "Başka bir öğretmen değerlendirdi; bu değerlendirmeyi değiştiremezsin."
+}

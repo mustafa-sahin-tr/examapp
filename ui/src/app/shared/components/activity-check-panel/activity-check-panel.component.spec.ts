@@ -224,5 +224,23 @@ describe('ActivityCheckPanelComponent (#573)', () => {
       expect(q('restore')).not.toBeNull();
     });
   });
-});
 
+  it('openTextRow_ShowsReviewStatusInsteadOfCorrectWrong (#583)', () => {
+    setup({
+      checkCount: 1,
+      rows: [
+        { label: 'Cevabın: 12 sözcük', correct: null, status: 'pending' },
+        { label: 'Cevabın: 30 sözcük', correct: null, status: 'insufficient' },
+      ],
+    });
+
+    const rows = Array.from(el().querySelectorAll('[data-testid="result-row"]'));
+    expect(rows[0].getAttribute('data-status')).toBe('pending');
+    expect(rows[0].textContent).toContain('Değerlendirme bekliyor');
+    expect(rows[0].textContent).toContain('Cevabın: 12 sözcük');
+    expect(rows[0].textContent).not.toMatch(/Doğru|Yanlış/);
+    expect(rows[0].classList).toContain('acp__row--status');
+    expect(rows[1].textContent).toContain('Eksik');
+    expect(rows[1].classList).not.toContain('acp__row--no');
+  });
+});

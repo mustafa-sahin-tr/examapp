@@ -3,6 +3,7 @@ import { isBlankSlotFillPayload } from '../../models/slot-fill';
 import { isBlankDragPlacePayload } from '../../models/drag-place';
 import { isBlankMatchPayload } from '../../models/match';
 import { isBlankTextSelectPayload } from '../../models/text-select';
+import { isBlankOpenTextPayload } from '../../models/open-text';
 import {
   AfterViewInit,
   Component,
@@ -1807,7 +1808,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   private isQuestionAnswered(question: TestInstanceQuestion): boolean {
-    // Issue #574 / #575 / #576 / #582: seçimsiz matris / boş kutulu / yerleşimsiz / eşleşmesiz / seçimsiz metin cevabı (Temizle)
+    // Issue #574 / #575 / #576 / #582 / #583: seçimsiz matris / boş kutulu / yerleşimsiz / eşleşmesiz / seçimsiz metin cevabı (Temizle)
     // gönderilir ama cevapsız sayılır (sunucu da boş sayar).
     const payload = question.answerPayload;
     return (
@@ -1817,7 +1818,8 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
         !isBlankSlotFillPayload(payload) &&
         !isBlankDragPlacePayload(payload) &&
         !isBlankMatchPayload(payload) &&
-        !isBlankTextSelectPayload(payload))
+        !isBlankTextSelectPayload(payload) &&
+        !isBlankOpenTextPayload(payload))
     );
   }
 

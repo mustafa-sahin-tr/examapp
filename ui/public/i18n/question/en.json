@@ -352,7 +352,21 @@
     "textAcceptPlaceholder": "Correct form (comma-separated if several)",
     "textAcceptAria": "Target {{n}} accepted corrections",
     "textSuffixPlaceholder": "Optional suffixes (comma-separated)",
-    "textSuffixAria": "Target {{n}} optional suffixes"
+    "textSuffixAria": "Target {{n}} optional suffixes",
+    "openText": "Open-ended",
+    "openTextActivityOnly": "Open-ended items are saved only on activity pages (they cannot be marked right / wrong in a test).",
+    "openTextHint": "The student writes in the box under the image; the teacher reviews the answer (sufficient / partial / insufficient). No points.",
+    "openTextMinWords": "Min words",
+    "openTextMaxWords": "Max words",
+    "openTextLines": "Lines",
+    "openTextNoLimit": "No limit",
+    "openTextOverflowHint": "Answers over {{max}} words are not saved (twice the maximum).",
+    "openTextSample": "Sample answer",
+    "openTextSamplePlaceholder": "Sample answer from the book (optional)",
+    "openTextSampleHint": "The student sees it under “Show correct answers”.",
+    "openTextRubric": "Rubric",
+    "openTextRubricPlaceholder": "Points to look for in the answer (optional)",
+    "openTextRubricHint": "Not shown to the student; shown to the teacher in the review queue."
   },
   "preview": {
     "headingWithTest": "Preview — {{testName}}",

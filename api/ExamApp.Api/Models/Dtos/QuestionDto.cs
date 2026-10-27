@@ -140,4 +140,7 @@ public class QuestionSavedDto : ResponseBaseDto
     /// (e.g. a passage image URL outside the allowlist, issue #365). Lets the controller map to HTTP 400.
     /// </summary>
     public bool InvalidInput { get; set; }
+
+    /// <summary>issue #583: makine tarafından okunabilir hata kodu (ör. <c>OpenTextNotAllowedInTest</c>); yoksa null.</summary>
+    public string? ErrorCode { get; set; }
 }

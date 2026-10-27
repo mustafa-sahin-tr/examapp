@@ -32,9 +32,10 @@ public sealed record LabelingPromptSettings(
     /// <c>MaxQuestionsPerPage</c> yalnız şık çağrısı alabilecek blokları (<c>mcq_question</c> + bileşensiz <c>activity</c>),
     /// toplam blok sınırı <c>MaxQuestionsPerPage * 3</c> (yoğun sayfada gürültü son soruları itmez). 5 (issue #582): bileşen D
     /// tanımı genişledi (metindeki "( )" noktalama boşlukları, yazım yanlışı bulma, düzeltme) ve D → <c>textSelect</c>; yanıt
-    /// şemasının <c>interactionType</c> açıklamasına <c>textSelect</c> eklendi.
+    /// şemasının <c>interactionType</c> açıklamasına <c>textSelect</c> eklendi. 6 (issue #583): H (açık uçlu) → <c>openText</c>;
+    /// "other" yalnız E, F, G, I için; yanıt şemasının <c>interactionType</c> açıklamasına <c>openText</c> eklendi.
     /// </summary>
-    public const int SchemaRevision = 5;
+    public const int SchemaRevision = 6;
 
     /// <summary>Talimatlar + paylar + <see cref="SchemaRevision"/> SHA-256'sı (hex); AI sonuçlarının önbellek anahtarı.</summary>
     /// Önbelleğe alınmaz: record'un <c>with</c> kopyası alanı da kopyalar ve eski izi taşırdı.
@@ -82,8 +83,9 @@ public sealed record LabelingPromptSettings(
         "wrong word correctly) -> textSelect.\n" +
         "E regions / colouring (colour or select areas of a " +
         "picture). F grid canvas (drawing on a grid, number line, graph). G game engines (maze, crossword, word search, " +
-        "cipher). H open-ended (explain, write a sentence or paragraph). I special simulation (anything else).\n" +
-        "For E-I use interactionType other. For kinds other than activity use \"none\" for component and interactionType. " +
+        "cipher). H open-ended: the student writes a free answer (explain, give reasons, write a sentence, paragraph, " +
+        "letter or petition) -> openText. I special simulation (anything else).\n" +
+        "For E, F, G and I use interactionType other. For kinds other than activity use \"none\" for component and interactionType. " +
         "Return an empty list if the page has no blocks.";
 
     public const string DefaultOptionInstruction =

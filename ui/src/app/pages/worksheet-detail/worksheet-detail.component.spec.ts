@@ -4,7 +4,7 @@ import { By } from '@angular/platform-browser';
 import { ComponentFixture, DeferBlockBehavior, DeferBlockState, TestBed } from '@angular/core/testing';
 import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink, convertToParamMap } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { BehaviorSubject, NEVER, Observable, Subject, map, of, throwError } from 'rxjs';
@@ -1340,5 +1340,10 @@ describe('WorksheetDetailComponent activity page (#573)', () => {
         expect(fixture.nativeElement.querySelector('[data-testid="hardest-question"]')).toBeNull();
         expect(text(fixture)).not.toContain('75');
         expect(text(fixture)).not.toMatch(/%/);
+        // Issue #583: etkinliğe filtreli açık uçlu cevap kuyruğu bağlantısı.
+        const link = fixture.nativeElement.querySelector('[data-testid="open-text-reviews-link"]') as HTMLAnchorElement;
+        expect(link?.textContent).toContain('Açık uçlu cevapları değerlendir');
+        const routerLink = fixture.debugElement.query((d) => d.nativeElement === link).injector.get(RouterLink);
+        expect(routerLink.queryParams).toEqual({ worksheetId: component['detail']()?.worksheet?.id });
     });
 });

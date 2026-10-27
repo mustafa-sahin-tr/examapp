@@ -28,6 +28,7 @@
           (backToList)="backToList()"
           [canRetake]="canRetake()"
           [retakeBusy]="retakeBusy()"
+          [openTextItems]="openTextSummary()"
           (retake)="retake()"
         />
       } @else if (items().length === 0) {
@@ -52,6 +53,12 @@
               [attr.inert]="contentLocked() ? '' : null"
               [attr.aria-label]="t('itemAria', { label: stepLabel(currentIndex()) })"
               (pointerdown)="onItemInteract()">
+              <!--
+                Issue #583: oynatıcılar maddeye bağlı yeniden kurulur. Aynı örnek madde değişince yeniden kullanılırsa, aynı planlı
+                iki madde arasında (plan girdisi değişmez) önceki maddenin "son yayın" izi A→B→A dönüşünde A'nın kayıtlı cevabını
+                eski yankı sanıp atabilirdi. Bekleyen değerler `goTo` içinde madde değişmeden önce alınır.
+              -->
+              @for (key of [item.id]; track key) {
               @if (isDragDrop(item)) {
                 @if (currentRegion(); as region) {
                   <app-question-canvas-dragdrop-labeling
@@ -141,6 +148,21 @@
                     (answerPayloadChange)="onDragDropChange($event, item)"
                   />
                 }
+              } @else if (isOpenText(item)) {
+                @if (currentRegion(); as region) {
+                  <app-question-canvas-open-text
+                    [questionRegion]="region"
+                    [imageRefresh]="imageRefresh"
+                    [interactionPlanJson]="item.question.interactionPlan || null"
+                    [interactionSolutionJson]="currentSolution()?.interactionSolution ?? null"
+                    [answerPayloadJson]="answerFor(item)?.answerPayload ?? null"
+                    [review]="currentOpenTextReview()"
+                    [showSolution]="revealed()"
+                    [activityMode]="true"
+                    [disabled]="contentLocked()"
+                    (answerPayloadChange)="onDragDropChange($event, item)"
+                  />
+                }
               } @else if (item.question.isCanvasQuestion) {
                 @if (currentRegion(); as region) {
                   <app-question-canvas-view-v5
@@ -159,6 +181,7 @@
                   [selectedAnswerId]="answerFor(item)?.selectedAnswerId ?? null"
                   (answerSelected)="onChoiceSelected($event, item)"
                 />
+              }
               }
             </div>
           }

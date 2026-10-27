@@ -79,6 +79,8 @@ export interface ActivitySolutionsResult extends TestSessionResult {
 export interface ActivityFeedbackRow {
   id: string;
   correct: boolean;
+  /** Issue #582 (textSelect): yanlış satırın nedeni — `extra` (fazla seçim) | `value` (düzeltme yanlış). */
+  reason?: string | null;
 }
 
 /** `feedback` JSON'unu güvenli ayrıştırır; bozuk/boş girdide boş liste. */

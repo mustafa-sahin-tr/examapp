@@ -106,6 +106,38 @@ public class ClaudeActivityStructureExtractorTests
     }
 
     [Fact]
+    public async Task TextSelect_SendsLineSchema_AndTokenizesLinesIntoBlockRelativeTokens()
+    {
+        // issue #582: kırpmada (16,16)-(116,26) = blokta (0,0) 100x10; "Kuş dolaş-" (L=10) + "mış." → "dolaşmış." iki kutu.
+        var (result, chat) = await ExtractAsync(TextSelectGrader.Type, new
+        {
+            instruction = "Yazım yanlışlarını bulunuz.",
+            mode = "select",
+            style = "circle",
+            palette = Array.Empty<string>(),
+            lines = new[]
+            {
+                new { text = "Kuş dolaş-", x1 = 16, y1 = 16, x2 = 116, y2 = 26 },
+                new { text = "mış.", x1 = 16, y1 = 36, x2 = 56, y2 = 46 },
+            },
+        });
+
+        chat.Schema.ShouldNotBeNull();
+        chat.Schema.ShouldContain("lines");
+        chat.Schema.ShouldNotContain("tokens");
+        chat.Instruction.ShouldContain("do NOT correct spelling");
+        result.Instruction.ShouldBe("Yazım yanlışlarını bulunuz.");
+        var plan = Plan(result);
+        ((string)plan["mode"]!).ShouldBe("select");
+        ((string)plan["style"]!).ShouldBe("circle");
+        var tokens = plan["tokens"]!.AsArray();
+        tokens.Select(t => (string)t!["text"]!).ShouldBe(["Kuş", "dolaşmış."]);
+        Xywh(tokens[1]!["boxes"]![0]).ShouldBe((40, 0, 60, 10));
+        Xywh(tokens[1]!["boxes"]![1]).ShouldBe((0, 20, 40, 10));
+        InteractionGraderRegistry.Default.Resolve(TextSelectGrader.Type).ValidateDefinition(result.PlanJson, null).ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task CustomInstruction_IsRenderedAndSent()
     {
         var (_, chat) = await ExtractAsync(MatchGrader.Type,

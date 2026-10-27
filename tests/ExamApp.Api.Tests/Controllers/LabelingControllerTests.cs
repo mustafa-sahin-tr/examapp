@@ -378,6 +378,24 @@ public class LabelingControllerTests
     }
 
     [Fact]
+    public async Task GetPage_ImageTooManyPixels_Returns400WithResolutionLimitsNot20Mb()
+    {
+        // Çözünürlük aşımı ayrı anahtar; mesajda megapiksel + uzun kenar sınırı biçimlenir, "20 MB" görünmez.
+        _service.GetPageAsync(default!, default)
+            .ThrowsAsyncForAnyArgs(new LabelingValidationException("labeling.imageTooManyPixels", 40L, LabelingImage.MaxEdge));
+
+        var result = await NewController().GetPage(new string('a', 64), CancellationToken.None);
+
+        var obj = result.ShouldBeOfType<BadRequestObjectResult>();
+        var message = System.Text.Json.JsonSerializer.SerializeToElement(obj.Value).GetProperty("message").GetString();
+        message.ShouldNotBeNull();
+        message.ShouldContain("40");
+        message.ShouldContain(LabelingImage.MaxEdge.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        message.ShouldNotContain("20 MB");
+        message.ShouldNotContain("{0}");
+    }
+
+    [Fact]
     public async Task SaveToBank_ValidationException_Returns400WithMessageKey()
     {
         _bank.SaveToBankAsync(default!, default!, default, default)

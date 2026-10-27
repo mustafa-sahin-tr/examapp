@@ -32,8 +32,11 @@ import { QuestionCanvasMatrixChoiceComponent } from '../../shared/components/que
 import { QuestionCanvasSlotFillComponent } from '../../shared/components/question-canvas-slot-fill/question-canvas-slot-fill.component';
 import { isDragPlaceType } from '../../models/drag-place';
 import { isMatchType } from '../../models/match';
+import { isTextSelectType } from '../../models/text-select';
 import { QuestionCanvasDragPlaceComponent } from '../../shared/components/question-canvas-drag-place/question-canvas-drag-place.component';
 import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
+import { QuestionCanvasTextSelectComponent } from '../../shared/components/question-canvas-text-select/question-canvas-text-select.component';
+import { FLUSHABLE_PLAYER } from '../../shared/utils/flushable-player';
 import { StorageImageRetryDirective } from '../../shared/directives/storage-image-retry.directive';
 
 /**
@@ -68,6 +71,7 @@ import { StorageImageRetryDirective } from '../../shared/directives/storage-imag
     QuestionCanvasSlotFillComponent,
     QuestionCanvasDragPlaceComponent,
     QuestionCanvasMatchComponent,
+    QuestionCanvasTextSelectComponent,
     TranslocoDirective,
     StorageImageRetryDirective,
   ],
@@ -160,23 +164,30 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
     this.passageOnlyByQuestionIndex.set(questionIndex, true);
   }
 
-  /** Issue #574 (L3) / #575 / #576: etkileşim türü büyük/küçük harf duyarsız; bilinmeyen tür MCQ. */
+  /** Issue #574 (L3) / #575 / #576 / #582: etkileşim türü büyük/küçük harf duyarsız; bilinmeyen tür MCQ. */
   public interactionKind(
     type: string | null | undefined
-  ): 'mcq' | 'dragDropLabeling' | 'matrixChoice' | 'slotFill' | 'dragPlace' | 'match' {
+  ): 'mcq' | 'dragDropLabeling' | 'matrixChoice' | 'slotFill' | 'dragPlace' | 'match' | 'textSelect' {
     const normalized = (type ?? '').toLowerCase();
     if (normalized === 'dragdroplabeling') return 'dragDropLabeling';
     if (isSlotFillType(type)) return 'slotFill';
     if (isDragPlaceType(type)) return 'dragPlace';
     if (isMatchType(type)) return 'match';
+    if (isTextSelectType(type)) return 'textSelect';
     return isMatrixChoiceType(type) ? 'matrixChoice' : 'mcq';
   }
 
   private readonly slotFillPlayers = viewChildren(QuestionCanvasSlotFillComponent);
+  /** Issue #582: metin işaretleme oynatıcısı `@defer` içinde; sınıfla sorgulamak onu ilk pakete çekerdi. */
+  private readonly flushablePlayers = viewChildren(FLUSHABLE_PLAYER);
 
-  /** Issue #575: bitirme / süre dolunca teslim öncesi cevap kutularındaki bekleyen değerler kayda girer. */
+  /**
+   * Issue #575 / #582: bitirme / süre dolunca teslim öncesi cevap kutularındaki ve metin düzeltmelerindeki bekleyen değerler
+   * kayda girer.
+   */
   protected override flushInteractivePlayers(): void {
     this.slotFillPlayers().forEach((player) => player.flush());
+    this.flushablePlayers().forEach((player) => player.flush());
   }
 
   // Explicitly re-expose on v3 for Angular template type-checking.

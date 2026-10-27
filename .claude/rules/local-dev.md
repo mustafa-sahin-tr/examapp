@@ -406,17 +406,18 @@ her soru kırpması → şık kutuları), Manuel = eğitime gönderilen son hal 
 `LabelingPages`/`LabelingResults` (sayfa = ham görsel SHA-256; question-detector `content_id` = ilk 16 hane); aynı sayfa +
 model için kayıtlı Claude sonucu varsa API'ye gidilmez ("Tekrar AI'a sor" zorlar, ücretli). Uçlar yalnız Admin +
 QuestionTrainer (onaylı, askıda olmayan öğretmen; gateway'de de kural var).
-- **Blok türleri (#578, `SchemaRevision` 4).** Claude 1. aşaması sayfadaki bütün blokları **tek çağrıda** türüyle döner:
+- **Blok türleri (#578, `SchemaRevision` 5).** Claude 1. aşaması sayfadaki bütün blokları **tek çağrıda** türüyle döner:
   `kind` = `mcq_question` | `activity` | `info_box` (anlatım, "Bilgi"/"Hatırlayalım", "Örnek" çözümü) | `answer_key` | `noise`
   (optik form, karekod, başlık/altlık, logo); `activity` için `component` (epic #569 ailesi `A`–`I`) ve `interaction_type`
-  (sunucu bileşenden türetir: A → `matrixChoice`, B → `slotFill`, C → `dragPlace`|`match`, diğerleri null). Şık aşaması yalnız
+  (sunucu bileşenden türetir: A → `matrixChoice`, B → `slotFill`, C → `dragPlace`|`match`, D → `textSelect` (#582), diğerleri null). Şık aşaması yalnız
   `mcq_question` için çalışır; diğer bloklar şıksız, yalnız soru payı + sayfa kırpması. Güvenlik ağı (revizyon 3): bileşensiz
   `activity`'ye de şık aşaması sorulur, >= 2 şık bulunursa `mcq_question` olur (şıklarla), aksi halde etkinlik kalır; bileşenli
   etkinlik şık aşamasına girmez. Bilinmeyen tür `noise` sayılır (log). Sınırlar (revizyon 4): `MaxQuestionsPerPage` yalnız şık
   çağrısı alabilecek blokları (`mcq_question` + bileşensiz `activity`) sayar, tüm bloklar en çok `MaxQuestionsPerPage * 3`;
   1. aşama çıktı sınırı 12000 token. Kesik / reddedilmiş / şema dışı ama yanıt almış çağrının token'ı da bütçeye sayılır.
   Alanlar `PredictionDto`'da isteğe bağlı (null = `mcq_question`, YOLO/eski kayıt) ve `PUT pages/manual` ile gidip gelir;
-  geçersiz değer 400 `labeling.invalidBlockKind`. Revizyon 2–4 eski Claude sonuçlarının önbellek anahtarını geçersiz kılar.
+  geçersiz değer 400 `labeling.invalidBlockKind`. Revizyon 2–5 eski Claude sonuçlarının önbellek anahtarını geçersiz kılar (5, #582: D tanımı metindeki `( )` noktalama
+  boşluklarını, yazım yanlışı bulmayı ve düzeltmeyi kapsar; B'den ayrımı prompt'ta).
   **Kaydedilmiş özel prompt sürümü yeni varsayılanı ezer** (eski "yalnız MCQ" talimatıyla Claude yalnız `mcq_question` döner):
   yeni talimatı almak için Prompt penceresinde varsayılanı yükleyip kaydedin.
 - **API anahtarı repoya girmez.** Aspire: `dotnet user-secrets set "Parameters:anthropic-api-key" "<anahtar>" --project AppHost`
@@ -438,11 +439,11 @@ QuestionTrainer (onaylı, askıda olmayan öğretmen; gateway'de de kural var).
 
 **Issue #579 — Claude ile etkinlik yapısı (blok → taslak etkileşim planı).** `POST /api/exam/labeling/activity-structure`
 `{imageBase64 (bütün sayfa), model, force, blocks: [{key, x, y, width, height (sayfa pikseli), interactionType}]}` (1–20 blok;
-tipler `matrixChoice` | `slotFill` | `dragPlace` | `match`). Blok başına **bir** Claude çağrısı; talimat + JSON şeması bloğun
+tipler `matrixChoice` | `slotFill` | `dragPlace` | `match` | `textSelect` (#582)). Blok başına **bir** Claude çağrısı; talimat + JSON şeması bloğun
 tipinden seçilir, çağrılar paralel (`Anthropic:MaxParallelCrops`). Kırpma = blok + 16 px pay (sayfaya kırpılır, `MaxImageEdge`'e
 küçültülür). Yanıt istek sırasıyla blok başına `{key, interactionType, status (ok|error), origin (live|cached|null), plan,
 instruction, valid, validationErrors, promptVersion, inputTokens, outputTokens, estimatedCostUsd, error}`: `plan` tipin
-InteractionPlan v1'i (id'ler sunucuda: `c1`/`r1`, `s1` (+ seçenek `s1o1`), `t1`/`k1`, `l1`/`r1`), kutular **blok kutusuna göre
+InteractionPlan v1'i (id'ler sunucuda: `c1`/`r1`, `s1` (+ seçenek `s1o1`), `t1`/`k1`, `l1`/`r1`, textSelect `t1`/`g1`), kutular **blok kutusuna göre
 göreli** sayfa pikseli ve blok kutusuna kırpılmış; çözüm yok (#580). `valid` = kontrolcünün `ValidateDefinition`'ı (taslak geçersiz
 olabilir, yine döner; `validationErrors` yerelleştirilmiş ipuçları). Tek bloğun Claude hatası yalnız o bloğu `status: error` yapar.
 - **Önbellek** `LabelingActivityResults`: anahtar (kırpma SHA-256, tip, model); kırpma hash'i #577 `QuestionCropHash` tanımı (bankaya
@@ -461,7 +462,7 @@ olabilir, yine döner; `validationErrors` yerelleştirilmiş ipuçları). Tek bl
 - **İstemci giderse:** kota alındıktan sonra çağrılar istek iptalinden bağımsız koşar (yalnız 3 dk sunucu zaman aşımı ve uygulama
   kapanışı keser; hiç başlamamış çağrının saatlik kotası iade edilir); başarılı sonuçlar yine önbelleğe yazılır, bütçe düzeltilir.
   Tek bloğun önbellek kaydı başarısız olursa loglanır, yanıt yine döner (o blok sonraki istekte yeniden çıkarılır).
-- **Tip başına talimat:** `GET /api/exam/labeling/activity-prompts` (4 tip: etkin, varsayılan = sürüm 0, son 20 sürüm),
+- **Tip başına talimat:** `GET /api/exam/labeling/activity-prompts` (5 tip: etkin, varsayılan = sürüm 0, son 20 sürüm),
   `PUT /api/exam/labeling/activity-prompts/{interactionType}` `{instruction}` (≤ 4000, `{width}`/`{height}`) → yeni etkin sürüm
   (`LabelingActivityPromptVersions`, tip başına numara; etkinle aynı içerik yeni sürüm açmaz). Sistem mesajı, koordinat kuralı ve
   şemalar kodda (`ActivityStructureSettings`, `ActivityDrafts`): ortak kısım değişirse `SchemaRevision`'ı, tek tipin şeması/eşlemesi
@@ -469,6 +470,16 @@ olabilir, yine döner; `validationErrors` yerelleştirilmiş ipuçları). Tek bl
   **Bilinçli kabul (review L2):** talimatlar #578 sayfa prompt'u gibi **genel**dir — herhangi bir QuestionTrainer bir tipin
   talimatını değiştirince herkesin sonraki çağrıları onu kullanır (sürüm geçmişi kimin kaydettiğini tutar, eski sürüme dönülebilir).
 - Migration `AddLabelingActivityStructure` exam API açılışında uygulanır (Aspire'da exam API'yi yeniden başlat).
+
+**Issue #582 — `textSelect` (bileşen D, metin üzerinde işaretleme).** Modlar `select` (altını çiz / yuvarlak / yanlışı bul),
+`punctuation` (`( )` boşluklarına palet sembolü), `correct` (yanlışı seç + düzeltmesini yaz; `SlotAnswerNormalizer` metin kuralı).
+Plan token listesidir (`{id, text, line, boxes (1–3), gap?}`, en çok 600 token / 100 gap); kontrol bulunan / eksik / fazla sayar,
+geri bildirim yalnız seçilen token'ları ve sayıları taşır. Claude (`activity-structure`, tip `textSelect`) yalnız **satır** döner
+(metin aynen, hatalar düzeltilmez); token'lar ve kutuları sunucuda `TextSelectTokenizer` ile (satır sonu tiresi birleşir:
+`dolaş-` + `mış` → `dolaşmış`, iki kutu). Aynı kural TS'de; ikisi `shared/fixtures/text-tokenize.v1.json`'u koşar — kuralı
+değiştirirsen fixture'ı ve `textSelect` tip revizyonunu (`ActivityStructureSettings`) birlikte güncelle. İşaretleme ekranında
+bileşen D artık `textSelect` türetir; #582'den önce kaydedilmiş Claude sayfa sonuçlarında D bloklarının tipi null kalır
+("Tekrar AI'a sor" ya da elle seçim; sayfa prompt'u revizyon 5 olduğundan eski sonuçlar zaten kayıttan dönmez). Migration yok.
 
 **Issue #470 — işaretleme ekranından soru bankasına kayıt.** Araç çubuğunda **Havuza kaydet** = bankaya kayıt + başarılıysa
 **Eğit** ile aynı akış (send-to-fix → manuel kayıt → sonraki sayfa; eğitim başarısızsa sayfa açık kalır, Eğit ile yeniden

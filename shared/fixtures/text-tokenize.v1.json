@@ -1,0 +1,161 @@
+{
+  "$comment": [
+    "issue #582: textSelect satır → token bölme — C# (TextSelectTokenizer.Tokenize) ve TS aynı vakaları geçer.",
+    "Biçim (v1, sabit): kök nesne { $comment, version, cases }. cases[i] = { name, note, lines: [{ text, box }], expected: [{ id, text, line, gap?, boxes }] }. box = { x, y, width, height } tam sayı piksel.",
+    "1) Metin: NFC; WS dizileri tek ' ' (WS sınıfı: [\\t\\n\\v\\f\\r \\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000\\uFEFF]); baş/son ' ' kırpılır.",
+    "2) Parçalar (soldan sağa, global eşleşme): \\( ?\\)|(?:(?!\\( ?\\))[^ ])+ — '( )' / '()' gap (metni '( )'), aksi halde boşluksuz ve gap içermeyen en uzun dizi; noktalama kelimeye yapışık kalır.",
+    "3) Kutu: normalize metnin uzunluğu L (UTF-16), parça [s, e) → x = X + floor(W*s/L), sağ = X + floor(W*e/L), width = max(1, sağ - x); y/height satırınki.",
+    "4) Satır sonu tiresi: satırın son token'ı gap değil ve harf + '-' ile bitiyorsa (\\p{L}-$) ve kutu sayısı < 3 ise, HEMEN sonraki satırın ilk parçası (gap değilse) eklenir: metin son '-' atılıp birleşir, kutu eklenir, line ilk parçanınki. Zincirlenir; boş satır zinciri keser.",
+    "5) Id'ler okuma sırasıyla: kelime t1, t2…; gap g1, g2…. line = girdi satırının 0 tabanlı sırası (boş satır sıra tüketir). gap alanı yalnız gap token'da (true).",
+    "Sınırlar (600 token, 64 karakter, 300 satır) tokenizer'da uygulanmaz; çağıran keser, kontrolcü doğrular."
+  ],
+  "version": 1,
+  "cases": [
+    {
+      "name": "normal",
+      "note": "Boşlukla ayrılmış kelimeler; L=15, W=150 → karakter başına 10 px (boşluklar dahil).",
+      "lines": [{ "text": "Bir gün ormanda", "box": { "x": 0, "y": 0, "width": 150, "height": 20 } }],
+      "expected": [
+        { "id": "t1", "text": "Bir", "line": 0, "boxes": [{ "x": 0, "y": 0, "width": 30, "height": 20 }] },
+        { "id": "t2", "text": "gün", "line": 0, "boxes": [{ "x": 40, "y": 0, "width": 30, "height": 20 }] },
+        { "id": "t3", "text": "ormanda", "line": 0, "boxes": [{ "x": 80, "y": 0, "width": 70, "height": 20 }] }
+      ]
+    },
+    {
+      "name": "punctuation-attached",
+      "note": "Noktalama kelimeye yapışık kalır; kutu x ofseti satırın x'inden başlar.",
+      "lines": [{ "text": "Eyvah, ne yaptın!", "box": { "x": 10, "y": 5, "width": 170, "height": 18 } }],
+      "expected": [
+        { "id": "t1", "text": "Eyvah,", "line": 0, "boxes": [{ "x": 10, "y": 5, "width": 60, "height": 18 }] },
+        { "id": "t2", "text": "ne", "line": 0, "boxes": [{ "x": 80, "y": 5, "width": 20, "height": 18 }] },
+        { "id": "t3", "text": "yaptın!", "line": 0, "boxes": [{ "x": 110, "y": 5, "width": 70, "height": 18 }] }
+      ]
+    },
+    {
+      "name": "gaps",
+      "note": "'( )' kelimeye yapışık olsa da ayrılır; '()' ve '(   )' (önce tek boşluğa iner) da gap, metni '( )'. Normalize metin 'Ali( ) geldi () dedi ( )' (L=24).",
+      "lines": [{ "text": "Ali( ) geldi ()  dedi (   )", "box": { "x": 0, "y": 0, "width": 240, "height": 20 } }],
+      "expected": [
+        { "id": "t1", "text": "Ali", "line": 0, "boxes": [{ "x": 0, "y": 0, "width": 30, "height": 20 }] },
+        { "id": "g1", "text": "( )", "line": 0, "gap": true, "boxes": [{ "x": 30, "y": 0, "width": 30, "height": 20 }] },
+        { "id": "t2", "text": "geldi", "line": 0, "boxes": [{ "x": 70, "y": 0, "width": 50, "height": 20 }] },
+        { "id": "g2", "text": "( )", "line": 0, "gap": true, "boxes": [{ "x": 130, "y": 0, "width": 20, "height": 20 }] },
+        { "id": "t3", "text": "dedi", "line": 0, "boxes": [{ "x": 160, "y": 0, "width": 40, "height": 20 }] },
+        { "id": "g3", "text": "( )", "line": 0, "gap": true, "boxes": [{ "x": 210, "y": 0, "width": 30, "height": 20 }] }
+      ]
+    },
+    {
+      "name": "line-break-hyphen",
+      "note": "'dolaş-' + 'mış' → tek token 'dolaşmış', iki kutu, line 0; sonraki kelime kendi satırında.",
+      "lines": [
+        { "text": "Kuş dolaş-", "box": { "x": 0, "y": 0, "width": 100, "height": 20 } },
+        { "text": "mış ağaçta.", "box": { "x": 0, "y": 30, "width": 110, "height": 20 } }
+      ],
+      "expected": [
+        { "id": "t1", "text": "Kuş", "line": 0, "boxes": [{ "x": 0, "y": 0, "width": 30, "height": 20 }] },
+        { "id": "t2", "text": "dolaşmış", "line": 0, "boxes": [{ "x": 40, "y": 0, "width": 60, "height": 20 }, { "x": 0, "y": 30, "width": 30, "height": 20 }] },
+        { "id": "t3", "text": "ağaçta.", "line": 1, "boxes": [{ "x": 40, "y": 30, "width": 70, "height": 20 }] }
+      ]
+    },
+    {
+      "name": "hyphen-not-word-break",
+      "note": "Tek başına '-' ayrı token; harf değil rakamdan sonraki tire ('1990-') satır birleştirmez.",
+      "lines": [
+        { "text": "Ali - Veli 1990-", "box": { "x": 0, "y": 0, "width": 160, "height": 10 } },
+        { "text": "larda", "box": { "x": 0, "y": 20, "width": 50, "height": 10 } }
+      ],
+      "expected": [
+        { "id": "t1", "text": "Ali", "line": 0, "boxes": [{ "x": 0, "y": 0, "width": 30, "height": 10 }] },
+        { "id": "t2", "text": "-", "line": 0, "boxes": [{ "x": 40, "y": 0, "width": 10, "height": 10 }] },
+        { "id": "t3", "text": "Veli", "line": 0, "boxes": [{ "x": 60, "y": 0, "width": 40, "height": 10 }] },
+        { "id": "t4", "text": "1990-", "line": 0, "boxes": [{ "x": 110, "y": 0, "width": 50, "height": 10 }] },
+        { "id": "t5", "text": "larda", "line": 1, "boxes": [{ "x": 0, "y": 20, "width": 50, "height": 10 }] }
+      ]
+    },
+    {
+      "name": "hyphen-chain-max-three-boxes",
+      "note": "Zincir: 'ab-' + 'cd-' + 'ef-' → 'abcdef-' (3 kutu, sınır; son tire kalır); 'gh' ayrı token.",
+      "lines": [
+        { "text": "ab-", "box": { "x": 0, "y": 0, "width": 30, "height": 10 } },
+        { "text": "cd-", "box": { "x": 0, "y": 10, "width": 30, "height": 10 } },
+        { "text": "ef-", "box": { "x": 0, "y": 20, "width": 30, "height": 10 } },
+        { "text": "gh", "box": { "x": 0, "y": 30, "width": 20, "height": 10 } }
+      ],
+      "expected": [
+        { "id": "t1", "text": "abcdef-", "line": 0, "boxes": [
+          { "x": 0, "y": 0, "width": 30, "height": 10 },
+          { "x": 0, "y": 10, "width": 30, "height": 10 },
+          { "x": 0, "y": 20, "width": 30, "height": 10 }
+        ] },
+        { "id": "t2", "text": "gh", "line": 3, "boxes": [{ "x": 0, "y": 30, "width": 20, "height": 10 }] }
+      ]
+    },
+    {
+      "name": "empty-and-single-word-lines",
+      "note": "Tek kelimelik satır tüm satır kutusunu alır; boş / yalnız boşluk satırı token üretmez ama line sırasını tüketir ve tire zincirini keser.",
+      "lines": [
+        { "text": "Merhaba", "box": { "x": 5, "y": 5, "width": 70, "height": 10 } },
+        { "text": "   ", "box": { "x": 0, "y": 20, "width": 50, "height": 10 } },
+        { "text": "Gel-", "box": { "x": 0, "y": 40, "width": 40, "height": 10 } },
+        { "text": "", "box": { "x": 0, "y": 50, "width": 40, "height": 10 } },
+        { "text": "di", "box": { "x": 0, "y": 60, "width": 20, "height": 10 } }
+      ],
+      "expected": [
+        { "id": "t1", "text": "Merhaba", "line": 0, "boxes": [{ "x": 5, "y": 5, "width": 70, "height": 10 }] },
+        { "id": "t2", "text": "Gel-", "line": 2, "boxes": [{ "x": 0, "y": 40, "width": 40, "height": 10 }] },
+        { "id": "t3", "text": "di", "line": 4, "boxes": [{ "x": 0, "y": 60, "width": 20, "height": 10 }] }
+      ]
+    },
+    {
+      "name": "whitespace-normalization",
+      "note": "Sekme ve NBSP tek boşluğa iner, baş/son boşluk kırpılır: '  Bir\\tgün\\u00A0 ' → 'Bir gün' (L=7).",
+      "lines": [{ "text": "  Bir\tgün  ", "box": { "x": 0, "y": 0, "width": 70, "height": 10 } }],
+      "expected": [
+        { "id": "t1", "text": "Bir", "line": 0, "boxes": [{ "x": 0, "y": 0, "width": 30, "height": 10 }] },
+        { "id": "t2", "text": "gün", "line": 0, "boxes": [{ "x": 40, "y": 0, "width": 30, "height": 10 }] }
+      ]
+    },
+    {
+      "name": "nfc-composition",
+      "note": "Ayrık biçimli girdi önce NFC'ye birleşir: 'gu\\u0308n' (4 birim) → 'gün' (3); L=9 (ayrık hâliyle 10 olurdu), W=90 → karakter başına 10 px.",
+      "lines": [{ "text": "gu\u0308n bitti", "box": { "x": 0, "y": 0, "width": 90, "height": 10 } }],
+      "expected": [
+        { "id": "t1", "text": "g\u00fcn", "line": 0, "boxes": [{ "x": 0, "y": 0, "width": 30, "height": 10 }] },
+        { "id": "t2", "text": "bitti", "line": 0, "boxes": [{ "x": 40, "y": 0, "width": 50, "height": 10 }] }
+      ]
+    },
+    {
+      "name": "rounding-floor",
+      "note": "Oranlı dilim floor ile: 'a bc' (L=4), X=3, W=10 → a: 3..5, bc: 8..13.",
+      "lines": [{ "text": "a bc", "box": { "x": 3, "y": 0, "width": 10, "height": 8 } }],
+      "expected": [
+        { "id": "t1", "text": "a", "line": 0, "boxes": [{ "x": 3, "y": 0, "width": 2, "height": 8 }] },
+        { "id": "t2", "text": "bc", "line": 0, "boxes": [{ "x": 8, "y": 0, "width": 5, "height": 8 }] }
+      ]
+    },
+    {
+      "name": "minimum-width-one",
+      "note": "Dar satır: 'a b' (L=3), W=2 → a'nın dilimi 0 px olur, genişlik en az 1.",
+      "lines": [{ "text": "a b", "box": { "x": 0, "y": 0, "width": 2, "height": 5 } }],
+      "expected": [
+        { "id": "t1", "text": "a", "line": 0, "boxes": [{ "x": 0, "y": 0, "width": 1, "height": 5 }] },
+        { "id": "t2", "text": "b", "line": 0, "boxes": [{ "x": 1, "y": 0, "width": 1, "height": 5 }] }
+      ]
+    },
+    {
+      "name": "multi-token-error-and-gap-after-hyphen",
+      "note": "Çok kelimeli hata ('Sonun da') iki ayrı token; tireli satırın ardından gap ile başlayan satır birleşmez.",
+      "lines": [
+        { "text": "Sonun da gel-", "box": { "x": 0, "y": 0, "width": 130, "height": 10 } },
+        { "text": "( ) dik", "box": { "x": 0, "y": 20, "width": 70, "height": 10 } }
+      ],
+      "expected": [
+        { "id": "t1", "text": "Sonun", "line": 0, "boxes": [{ "x": 0, "y": 0, "width": 50, "height": 10 }] },
+        { "id": "t2", "text": "da", "line": 0, "boxes": [{ "x": 60, "y": 0, "width": 20, "height": 10 }] },
+        { "id": "t3", "text": "gel-", "line": 0, "boxes": [{ "x": 90, "y": 0, "width": 40, "height": 10 }] },
+        { "id": "g1", "text": "( )", "line": 1, "gap": true, "boxes": [{ "x": 0, "y": 20, "width": 30, "height": 10 }] },
+        { "id": "t4", "text": "dik", "line": 1, "boxes": [{ "x": 40, "y": 20, "width": 30, "height": 10 }] }
+      ]
+    }
+  ]
+}

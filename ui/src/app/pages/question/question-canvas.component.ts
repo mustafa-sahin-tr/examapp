@@ -24,6 +24,7 @@ import { MatrixColumnPreset } from '../../models/matrix-choice';
 import { SlotKind, SlotNumberEntry, SlotPalettePreset, SlotUnitMode } from '../../models/slot-fill';
 import { DragPlaceMode } from '../../models/drag-place';
 import { MatchSide } from '../../models/match';
+import { TEXT_SELECT_MODES, TEXT_SELECT_STYLES, TextSelectMode, TextSelectStyle } from '../../models/text-select';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { PASSAGE_INSTRUCTION_MAX_LENGTH, PassageKind, WorksheetKind, saveValidationMessage } from '../../models/activity';
 import { Subject } from '../../models/subject';
@@ -1075,6 +1076,71 @@ export class QuestionCanvasComponent implements OnInit {
 
   insMatchPrelinked(leftId: string) {
     this.withRegion((name) => this.imageSelector.toggleMatchPrelinked(name, leftId));
+  }
+
+  // ---- Issue #582: metin üzerinde işaretleme ----
+
+  readonly textSelectModes = TEXT_SELECT_MODES;
+  readonly textSelectStyles = TEXT_SELECT_STYLES;
+
+  insTextMode(mode: TextSelectMode) {
+    this.withRegion((name) => this.imageSelector.setTextSelectMode(name, mode));
+  }
+
+  insTextStyle(style: TextSelectStyle) {
+    this.withRegion((name) => this.imageSelector.setTextSelectStyle(name, style));
+  }
+
+  insTextPalette(event: Event) {
+    this.withRegion((name) => this.imageSelector.setTextSelectPalette(name, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  insTextLineMode() {
+    const idx = this.insIndex;
+    if (idx != null) this.imageSelector.selectTextLineMode(idx);
+  }
+
+  /** "Satır ekle": bekleyen satır kutusuna metni böler; eklendiyse metin alanı temizlenir. */
+  insTextAddLine(field: HTMLTextAreaElement) {
+    const name = this.insName;
+    if (name && this.imageSelector.addTextSelectLine(name, field.value)) field.value = '';
+  }
+
+  insTextCancelLine() {
+    this.withRegion((name) => this.imageSelector.clearPendingTextLine(name));
+  }
+
+  /** Müfettişteki kelimeye tık: tuvaldeki tıkla aynı (select / correct'te hedef işaretle, punctuation'da seç). */
+  insTextTokenClick(tokenId: string) {
+    this.withRegion((name) => this.imageSelector.clickTextSelectToken(name, tokenId));
+  }
+
+  insTextTokenText(tokenId: string, event: Event) {
+    this.withRegion((name) => this.imageSelector.setTextSelectTokenText(name, tokenId, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  insTextRemoveToken(tokenId: string) {
+    this.withRegion((name) => this.imageSelector.removeTextSelectToken(name, tokenId));
+  }
+
+  insTextGapSymbol(gapId: string, symbol: string) {
+    this.withRegion((name) => this.imageSelector.toggleTextSelectGapSymbol(name, gapId, symbol));
+  }
+
+  insTextSplit(index: number) {
+    this.withRegion((name) => this.imageSelector.splitTextSelectTarget(name, index));
+  }
+
+  insTextRemoveTarget(index: number) {
+    this.withRegion((name) => this.imageSelector.removeTextSelectTarget(name, index));
+  }
+
+  insTextAccept(index: number, event: Event) {
+    this.withRegion((name) => this.imageSelector.setTextSelectTargetAccept(name, index, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  insTextSuffixes(index: number, event: Event) {
+    this.withRegion((name) => this.imageSelector.setTextSelectTargetSuffixes(name, index, QuestionCanvasComponent.inputValue(event)));
   }
 
   slotPreviewFor(slotId: string): string {

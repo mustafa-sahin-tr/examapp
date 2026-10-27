@@ -63,6 +63,19 @@ import {
   placementCount,
 } from '../../models/drag-place';
 import { MatchPlanV1, isMatchType, openLefts, parseMatchPairs, parseMatchPlan, parseMatchSolution, rightOf } from '../../models/match';
+import {
+  TextSelectFeedback,
+  TextSelectPlanV1,
+  gapAcceptOf,
+  isEmptyTextSelectAnswer,
+  isTextSelectType,
+  parseTextSelectAnswer,
+  parseTextSelectPlan,
+  parseTextSelectSolution,
+  parseTextSelectFeedback,
+  textSelectFeedbackFromCounts,
+  textValueOf,
+} from '../../models/text-select';
 import { TestInstance, TestInstanceQuestion, TestStatus } from '../../models/test-instance';
 import { seededShuffle } from '../../shared/utils/seeded-shuffle';
 import { ActivityService } from '../../services/activity.service';
@@ -88,6 +101,7 @@ import { QuestionCanvasMatrixChoiceComponent } from '../../shared/components/que
 import { QuestionCanvasSlotFillComponent } from '../../shared/components/question-canvas-slot-fill/question-canvas-slot-fill.component';
 import { QuestionCanvasDragPlaceComponent } from '../../shared/components/question-canvas-drag-place/question-canvas-drag-place.component';
 import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
+import { QuestionCanvasTextSelectComponent } from '../../shared/components/question-canvas-text-select/question-canvas-text-select.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 import { ActiveTimeTracker, ACTIVITY_MAX_ACTIVE_SECONDS } from '../../shared/utils/active-time-tracker';
 import { currentUserId } from '../../shared/utils/current-user-id.util';
@@ -122,6 +136,8 @@ interface ItemResult {
   correctCount: number;
   totalCount: number;
   rows: ActivityFeedbackRow[];
+  /** Ham `feedback` JSON'u (#582: textSelect sayıları ve `tooMany` buradan okunur). */
+  feedback?: string | null;
 }
 
 type LoadState = 'loading' | 'error' | 'ready';
@@ -151,6 +167,7 @@ export type ActivityAction = 'check' | 'reveal' | 'finish';
     QuestionCanvasDragDropLabelingComponent,
     QuestionCanvasMatrixChoiceComponent,
     QuestionCanvasSlotFillComponent,
+    QuestionCanvasTextSelectComponent,
     QuestionCanvasDragPlaceComponent,
     QuestionCanvasMatchComponent,
     QuestionCanvasViewComponentv5,
@@ -178,6 +195,8 @@ export class ActivityPlayerComponent {
   private readonly contentRef = viewChild<ElementRef<HTMLElement>>('itemContent');
   /** Issue #575: cevap kutusu oynatıcısı (yazılıp henüz kaydedilmemiş değer kontrol / bitir öncesi alınır). */
   private readonly slotFillPlayer = viewChild(QuestionCanvasSlotFillComponent);
+  /** Issue #582: metin işaretleme oynatıcısı (yazılıp henüz kaydedilmemiş düzeltme kontrol / bitir öncesi alınır). */
+  private readonly textSelectPlayer = viewChild(QuestionCanvasTextSelectComponent);
 
   readonly instanceId = signal(0);
   readonly loadState = signal<LoadState>('loading');
@@ -273,6 +292,7 @@ export class ActivityPlayerComponent {
   private readonly slotFillPlans = new Map<number, SlotFillPlanV1 | null>();
   private readonly dragPlacePlans = new Map<number, DragPlacePlanV1 | null>();
   private readonly matchPlans = new Map<number, MatchPlanV1 | null>();
+  private readonly textSelectPlans = new Map<number, TextSelectPlanV1 | null>();
 
   readonly title = computed(() => this.instance()?.testName ?? '');
   readonly currentItem = computed(() => this.items()[this.currentIndex()] ?? null);
@@ -322,6 +342,18 @@ export class ActivityPlayerComponent {
     return this.results()[item.id]?.rows ?? this.retainedRows()[item.id] ?? null;
   });
 
+  /**
+   * Issue #582: metin işaretleme maddesinin kontrol sonucu — sunucunun `feedback`'i (satırlar, sayılar, `tooMany`); ayrıştırılamazsa
+   * satırlardan ve kontrol sayılarından (bulunan = doğru sayısı, fazla = `extra` satırları, kalan = toplam − bulunan − fazla).
+   */
+  readonly currentTextSelectFeedback = computed<TextSelectFeedback | null>(() => {
+    const item = this.currentItem();
+    if (!item || this.revealed()) return null;
+    const result = this.results()[item.id];
+    if (!result) return null;
+    return parseTextSelectFeedback(result.feedback) ?? textSelectFeedbackFromCounts(result.rows, result.correctCount, result.totalCount);
+  });
+
   readonly currentSolution = computed(() => {
     const item = this.currentItem();
     return item ? this.solutions()?.[item.id] ?? null : null;
@@ -340,6 +372,7 @@ export class ActivityPlayerComponent {
     if (this.isSlotFill(item)) return this.slotFillRows(item, result, solution);
     if (this.isDragPlace(item)) return this.dragPlaceRows(item, result, solution);
     if (this.isMatch(item)) return this.matchRows(item, result, solution);
+    if (this.isTextSelect(item)) return this.textSelectRows(item, result, solution);
     return this.isDragDrop(item)
       ? this.dragDropRows(item, result, solution)
       : this.mcqRows(item, result, solution);
@@ -425,6 +458,7 @@ export class ActivityPlayerComponent {
           correctCount: item.correctCount ?? 0,
           totalCount: item.totalCount ?? 0,
           rows: parseActivityFeedback(item.feedback),
+          feedback: item.feedback ?? null,
         };
       }
       this.timeSpent.set(item.id, item.timeTaken || 0);
@@ -490,6 +524,7 @@ export class ActivityPlayerComponent {
     this.plans.clear();
     this.dragPlacePlans.clear();
     this.matchPlans.clear();
+    this.textSelectPlans.clear();
   }
 
   // ---------------------------------------------------------------------------
@@ -649,7 +684,10 @@ export class ActivityPlayerComponent {
    * Kilit (`checking` / `finishing`) açılmadan ÖNCE çağrılmalı: kilitliyken `onDragDropChange` değişikliği yok sayar.
    */
   private flushPlayers(): void {
-    if (!this.contentLocked()) this.slotFillPlayer()?.flush();
+    if (!this.contentLocked()) {
+      this.slotFillPlayer()?.flush();
+      this.textSelectPlayer()?.flush();
+    }
   }
 
   async runCheck(): Promise<void> {
@@ -685,6 +723,7 @@ export class ActivityPlayerComponent {
           correctCount: question.correctCount,
           totalCount: question.totalCount,
           rows: parseActivityFeedback(question.feedback),
+          feedback: question.feedback,
         };
       }
       this.results.set(next);
@@ -1038,9 +1077,20 @@ export class ActivityPlayerComponent {
     return isMatchType(item.question?.interactionType);
   }
 
+  isTextSelect(item: TestInstanceQuestion): boolean {
+    return isTextSelectType(item.question?.interactionType);
+  }
+
   /** Cevabı `answerPayload` olan (MCQ dışı) madde. */
   private isInteractive(item: TestInstanceQuestion): boolean {
-    return this.isDragDrop(item) || this.isMatrix(item) || this.isSlotFill(item) || this.isDragPlace(item) || this.isMatch(item);
+    return (
+      this.isDragDrop(item) ||
+      this.isMatrix(item) ||
+      this.isSlotFill(item) ||
+      this.isDragPlace(item) ||
+      this.isMatch(item) ||
+      this.isTextSelect(item)
+    );
   }
 
   private dragPlacePlanFor(item: TestInstanceQuestion): DragPlacePlanV1 | null {
@@ -1055,6 +1105,13 @@ export class ActivityPlayerComponent {
       this.matchPlans.set(item.id, parseMatchPlan(item.question?.interactionPlan));
     }
     return this.matchPlans.get(item.id) ?? null;
+  }
+
+  private textSelectPlanFor(item: TestInstanceQuestion): TextSelectPlanV1 | null {
+    if (!this.textSelectPlans.has(item.id)) {
+      this.textSelectPlans.set(item.id, parseTextSelectPlan(item.question?.interactionPlan));
+    }
+    return this.textSelectPlans.get(item.id) ?? null;
   }
 
   private slotFillPlanFor(item: TestInstanceQuestion): SlotFillPlanV1 | null {
@@ -1117,6 +1174,9 @@ export class ActivityPlayerComponent {
     if (this.isSlotFill(item)) return this.slotFillFilled(item, answer) > 0;
     if (this.isDragPlace(item)) return placementCount(parseDragPlacePlacements(answer?.answerPayload, this.dragPlacePlanFor(item))) > 0;
     if (this.isMatch(item)) return Object.keys(parseMatchPairs(answer?.answerPayload, this.matchPlanFor(item))).length > 0;
+    if (this.isTextSelect(item)) {
+      return !isEmptyTextSelectAnswer(parseTextSelectAnswer(answer?.answerPayload, this.textSelectPlanFor(item)));
+    }
     if (this.isDragDrop(item)) return this.placementsOf(answer?.answerPayload).length > 0;
     return !!answer?.selectedAnswerId;
   }
@@ -1138,6 +1198,16 @@ export class ActivityPlayerComponent {
       const plan = this.matchPlanFor(item);
       const pairs = parseMatchPairs(answer?.answerPayload, plan);
       return !!plan && openLefts(plan).some((left) => !rightOf(pairs, left.id));
+    }
+    // Issue #582: noktalamada boş gap; seçimde hiç seçim yok (hedef sayısı bilinmez); düzeltmede seçili kelimelerin hiçbirine
+    // düzeltme yazılmamış. Çok kelimeli hatada ("Sonun da") düzeltme kelimelerden birine yazılır, diğeri boş kalır: eksik değil.
+    if (this.isTextSelect(item)) {
+      const plan = this.textSelectPlanFor(item);
+      if (!plan) return false;
+      const parsed = parseTextSelectAnswer(answer?.answerPayload, plan);
+      if (plan.mode === 'punctuation') return plan.tokens.some((t) => t.gap && !textValueOf(parsed, t.id));
+      if (parsed.selected.length === 0) return true;
+      return plan.mode === 'correct' && parsed.selected.every((id) => !textValueOf(parsed, id).trim());
     }
     if (!this.isDragDrop(item)) return !answer?.selectedAnswerId;
     const zones = this.planFor(item)?.dropZones.length ?? 0;
@@ -1275,6 +1345,53 @@ export class ActivityPlayerComponent {
       correct: marks.has(left.id) ? marks.get(left.id)! : null,
       solution: solved ? rightName(rightOf(solved, left.id)) : null,
     }));
+  }
+
+  /**
+   * Issue #582: noktalamada boşluk satırları ("Boşluk n: işaret", ✓/✗, çözüm açıkken doğru işaret(ler)); seçim / düzeltmede
+   * kontrol sonrası seçili kelimeler ("«kelime» → düzeltme", fazla seçim ayrıca belirtilir), çözüm açıkken hedefler
+   * ("Hedef n: «kelimeler»", kabul edilen düzeltme). Hangi hedefin eksik olduğu kontrol sonucunda söylenmez.
+   */
+  private textSelectRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
+    const plan = this.textSelectPlanFor(item);
+    if (!plan) return [];
+    const answer = parseTextSelectAnswer(this.answers()[item.id]?.answerPayload, plan);
+    const solved = solution ? parseTextSelectSolution(solution.interactionSolution, plan) : null;
+    const rows = new Map((result?.rows ?? []).map((row) => [row.id, row]));
+    const text = new Map(plan.tokens.map((t) => [t.id, t.text]));
+    if (plan.mode === 'punctuation') {
+      return plan.tokens
+        .filter((t) => t.gap)
+        .map((gap, index) => {
+          const own = textValueOf(answer, gap.id);
+          const accept = solved ? gapAcceptOf(solved, gap.id) : [];
+          return {
+            label: this.tr('rows.textGap', { n: index + 1, content: own || this.tr('rows.empty') }),
+            correct: rows.has(gap.id) ? rows.get(gap.id)!.correct : null,
+            solution: solved ? accept.join(' / ') || this.tr('rows.empty') : null,
+          };
+        });
+    }
+    if (solved) {
+      return solved.targets.map((target, index) => ({
+        label: this.tr('rows.textTarget', { n: index + 1, word: target.tokenIds.map((id) => text.get(id) ?? id).join(' ') }),
+        correct: target.tokenIds.some((id) => rows.get(id)?.correct) ? true : result ? false : null,
+        solution: plan.mode === 'correct' ? target.accept.join(' / ') || this.tr('rows.empty') : target.tokenIds.map((id) => text.get(id) ?? id).join(' '),
+      }));
+    }
+    if (answer.selected.length === 0) return result ? [{ label: this.tr('rows.textNone'), correct: false, solution: null }] : [];
+    return answer.selected.map((id) => {
+      const word = text.get(id) ?? id;
+      const row = rows.get(id);
+      const fix = textValueOf(answer, id);
+      const label =
+        row?.reason === 'extra'
+          ? this.tr('rows.textWordExtra', { word })
+          : plan.mode === 'correct'
+            ? this.tr('rows.textWordFix', { word, content: fix || this.tr('rows.empty') })
+            : this.tr('rows.textWord', { word });
+      return { label, correct: row ? row.correct : null, solution: null };
+    });
   }
 
   private mcqRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {

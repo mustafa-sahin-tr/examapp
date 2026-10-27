@@ -91,4 +91,6 @@ export type RegionOrAnswerHit =
   | { type: 'placeTarget'; value: { questionIndex: number; targetId: string } }
   | { type: 'placeCard'; value: { questionIndex: number; cardId: string } }
   | { type: 'matchItem'; value: { questionIndex: number; side: 'left' | 'right'; itemId: string } }
+  // Issue #582: metin token'ı (kelime ya da boşluk).
+  | { type: 'textToken'; value: { questionIndex: number; tokenId: string } }
   | null;

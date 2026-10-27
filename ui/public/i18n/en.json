@@ -383,6 +383,44 @@
         "rightFallback": "Right {{n}}",
         "markCorrect": "correct",
         "markWrong": "wrong"
+      },
+      "textSelect": {
+        "hint": {
+          "select": "Tap the words that fit the instruction; tap again to unselect. How many there are is not given.",
+          "correct": "Tap the misspelled word and type the correct form in the box below. For a multi-word mistake, typing it on one of the words is enough.",
+          "punctuation": "Tap a bracketed gap and pick the right mark from the palette below."
+        },
+        "solutionShownHint": "The correct answers are shown.",
+        "viewAria": "View",
+        "viewImage": "Image",
+        "viewText": "Text",
+        "textViewAria": "Text view",
+        "gapAria": "Gap {{n}}",
+        "gapValue": "mark: {{value}}",
+        "gapEmpty": "empty",
+        "selected": "selected",
+        "correctionValue": "correction: {{value}}",
+        "correctionEmpty": "no correction typed",
+        "solutionTarget": "correct answer",
+        "acceptedCorrection": "correct form: {{value}}",
+        "mark": {
+          "correct": "correct",
+          "extra": "extra selection",
+          "value": "wrong correction",
+          "wrong": "wrong"
+        },
+        "extraTag": "extra",
+        "tooMany": "You selected too many words, so marks are not shown. Select fewer and check again.",
+        "counter": "Found {{found}} · Left {{missing}} · Extra {{extra}}",
+        "counterPunctuation": "Correct {{correct}} · Wrong {{wrong}}",
+        "paletteLabel": "Pick a mark for gap {{n}}",
+        "paletteAria": "Punctuation palette for gap {{n}}",
+        "putSymbol": "Put {{symbol}}",
+        "clearGap": "Clear",
+        "done": "Done",
+        "correctionLabel": "Correct form of “{{word}}”",
+        "correctionAria": "Correction for “{{word}}”",
+        "deselect": "Unselect"
       }
     },
     "sharingBadge": {

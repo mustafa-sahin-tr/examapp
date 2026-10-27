@@ -20,7 +20,13 @@
     "targetFallback": "Target {{n}}",
     "positionFallback": "Position {{n}}",
     "leftFallback": "Left {{n}}",
-    "rightFallback": "Right {{n}}"
+    "rightFallback": "Right {{n}}",
+    "textGap": "Gap {{n}}: {{content}}",
+    "textWord": "“{{word}}”",
+    "textWordFix": "“{{word}}” → {{content}}",
+    "textWordExtra": "“{{word}}” (extra)",
+    "textTarget": "Target {{n}}: “{{word}}”",
+    "textNone": "No word selected yet"
   },
   "saveFailed": "Your last answer could not be saved; it will be sent again when you check.",
   "finishCheckRequired": "Check your answers once before finishing.",

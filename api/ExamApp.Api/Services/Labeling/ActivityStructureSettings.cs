@@ -47,11 +47,12 @@ public static class ActivityStructureSettings
         [SlotFillGrader.Type] = 1,
         [DragPlaceGrader.Type] = 1,
         [MatchGrader.Type] = 1,
+        [TextSelectGrader.Type] = 1, // issue #582
     };
 
     /// <summary>Desteklenen tipler, ekrandaki sekme sırasıyla.</summary>
     public static IReadOnlyList<string> Types { get; } =
-        [MatrixChoiceGrader.Type, SlotFillGrader.Type, DragPlaceGrader.Type, MatchGrader.Type];
+        [MatrixChoiceGrader.Type, SlotFillGrader.Type, DragPlaceGrader.Type, MatchGrader.Type, TextSelectGrader.Type];
 
     /// <summary>Tipin kanonik adı (büyük/küçük harf duyarsız); desteklenmiyorsa null.</summary>
     public static string? Canonical(string? interactionType)
@@ -71,6 +72,7 @@ public static class ActivityStructureSettings
         SlotFillGrader.Type => DefaultSlotFillInstruction,
         DragPlaceGrader.Type => DefaultDragPlaceInstruction,
         MatchGrader.Type => DefaultMatchInstruction,
+        TextSelectGrader.Type => DefaultTextSelectInstruction,
         _ => throw new ArgumentOutOfRangeException(nameof(interactionType), interactionType, "Unsupported activity type."),
     };
 
@@ -153,4 +155,28 @@ public static class ActivityStructureSettings
         "- prelinked: pairs already connected in a printed example, as 0-based indexes into left and right; an empty " +
         "list if there is no example.\n" +
         "Return empty lists if the image has no such activity.";
+
+    /// <summary>
+    /// issue #582: metin üzerinde işaretleme (bileşen D). Claude SATIR düzeyinde döner (metin + satır kutusu); token'lar ve token
+    /// kutuları sunucuda (<see cref="TextSelectTokenizer"/>). Metin aynen kopyalanır: yazım/noktalama hataları DÜZELTİLMEZ (hata
+    /// bulma etkinliği), satır sonu tireleri korunur, boşluklar "( )" yazılır.
+    /// </summary>
+    public const string DefaultTextSelectInstruction =
+        "This image is one activity cropped from a page of a Turkish school book ({width}x{height} px). The student works " +
+        "on a printed text: underlines or circles words, finds the spelling or punctuation mistakes in it, writes " +
+        "punctuation marks into the empty brackets \"( )\" in the text, or picks the wrong words and writes them " +
+        "correctly. Describe its structure. " + Common +
+        "- mode: punctuation when the text has empty brackets \"( )\" for punctuation marks; correct when the student " +
+        "must also write the correct form of the words they find; otherwise select (underline, circle, find the " +
+        "mistakes).\n" +
+        "- style: circle when the instruction says to circle (yuvarlak içine al), underline when it says to underline " +
+        "(altını çiz), otherwise highlight.\n" +
+        "- palette: for punctuation, the punctuation marks the student may use (the ones the instruction lists, " +
+        "otherwise the ones that fit the text, for example \".\", \",\", \"?\", \"!\"); otherwise an empty list.\n" +
+        "- lines: every printed line of the text the student works on, top to bottom (left column before right " +
+        "column), without the instruction and the activity label. text = the line exactly as printed, character by " +
+        "character: do NOT correct spelling, spacing or punctuation mistakes (finding them is the exercise), keep a " +
+        "hyphen at the end of a line where a word is split, and write every empty bracket as \"( )\". Box (x1, y1, " +
+        "x2, y2) = the line from its first to its last character.\n" +
+        "Return an empty list if the image has no such text.";
 }

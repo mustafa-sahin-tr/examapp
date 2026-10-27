@@ -128,6 +128,12 @@ public sealed class ClaudeActivityStructureExtractor : IActivityStructureExtract
                 (mapped, usage) = (ActivityDrafts.Map(draft, frame), u);
                 break;
             }
+            case TextSelectGrader.Type: // issue #582: satır düzeyi yanıt; token'lar sunucuda
+            {
+                var (draft, u) = await AskAsync<ActivityDrafts.TextDraft>(model, crop, instruction, ct);
+                (mapped, usage) = (ActivityDrafts.Map(draft, frame), u);
+                break;
+            }
             default:
                 throw new ArgumentOutOfRangeException(nameof(prompt), prompt.InteractionType, "Unsupported activity type.");
         }

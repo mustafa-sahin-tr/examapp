@@ -496,6 +496,7 @@ describe('TestSolveCanvasComponentv3 — matrixChoice (#574)', () => {
         expect(component.interactionKind('SLOTFILL')).toBe('slotFill');
         expect(component.interactionKind('DragPlace')).toBe('dragPlace');
         expect(component.interactionKind('MATCH')).toBe('match');
+        expect(component.interactionKind('TextSelect')).toBe('textSelect');
     });
 
     it('blankDragPlaceAndMatchPayloads_AreSentButCountAsUnanswered (#576)', () => {
@@ -510,6 +511,23 @@ describe('TestSolveCanvasComponentv3 — matrixChoice (#574)', () => {
         expect(component.unansweredCount()).toBe(1);
         component.saveDragDropAnswerForQuestion(match([]), 1);
         expect(component.unansweredCount()).toBe(2);
+    });
+
+    it('blankTextSelectPayload_IsSentButCountsAsUnanswered (#582)', () => {
+        const text = (selected: string[], values: Record<string, string> = {}) =>
+            JSON.stringify({ version: 1, type: 'textSelect', selected, values });
+        component.saveDragDropAnswerForQuestion(text(['t1']), 1);
+        expect(component.unansweredCount()).toBe(1);
+        component.saveDragDropAnswerForQuestion(text([], { g1: ' ' }), 1);
+        expect(vi.mocked(testService.saveAnswer).mock.lastCall![0].answerPayload).toBe(text([], { g1: ' ' }));
+        expect(component.unansweredCount()).toBe(2);
+    });
+
+    it('completeTest_FlushesTextSelectPlayersByToken (#582)', () => {
+        const player = { flush: vi.fn() };
+        (component as unknown as { flushablePlayers: () => unknown[] }).flushablePlayers = () => [player];
+        (component as unknown as { flushInteractivePlayers: () => void }).flushInteractivePlayers();
+        expect(player.flush).toHaveBeenCalledTimes(1);
     });
 
     it('completeTest_FlushesSlotFillPlayersBeforeSaving (#575)', async () => {

@@ -27,18 +27,19 @@ public static class LabelingBlocks
     /// <summary>Kontrolcüsü yazılmış etkileşim tipleri (grader sabitleri).</summary>
     public static IReadOnlySet<string> InteractionTypes { get; } = new HashSet<string>(StringComparer.Ordinal)
     {
-        MatrixChoiceGrader.Type, SlotFillGrader.Type, DragPlaceGrader.Type, MatchGrader.Type,
+        MatrixChoiceGrader.Type, SlotFillGrader.Type, DragPlaceGrader.Type, MatchGrader.Type, TextSelectGrader.Type,
     };
 
     /// <summary>
-    /// Bileşen ↔ etkileşim tipi tutarlılığı: A → matrixChoice, B → slotFill, C → dragPlace | match. Diğer ailelerin henüz
-    /// kontrolcüsü yok (her tip tutarsız).
+    /// Bileşen ↔ etkileşim tipi tutarlılığı: A → matrixChoice, B → slotFill, C → dragPlace | match, D → textSelect (#582).
+    /// Diğer ailelerin henüz kontrolcüsü yok (her tip tutarsız).
     /// </summary>
     public static bool IsConsistent(string? component, string interactionType) => component switch
     {
         "A" => interactionType == MatrixChoiceGrader.Type,
         "B" => interactionType == SlotFillGrader.Type,
         "C" => interactionType == DragPlaceGrader.Type || interactionType == MatchGrader.Type,
+        "D" => interactionType == TextSelectGrader.Type,
         _ => false,
     };
 
@@ -48,8 +49,8 @@ public static class LabelingBlocks
     /// <summary>
     /// Claude'un yazdığı değerleri sunucu kuralına çeker: bilinmeyen <c>kind</c> → <see cref="Noise"/> (<c>UnknownKind</c>;
     /// çağıran loglar). Bileşen ve etkileşim tipi yalnız <see cref="Activity"/>'de kalır; bileşen A–I dışıysa null. Etkileşim
-    /// tipi bileşenden türetilir: A/B tek tipli (model ne yazarsa yazsın), C'de modelin dragPlace/match seçimi geçerliyse o,
-    /// değilse null; D–I null.
+    /// tipi bileşenden türetilir: A/B/D tek tipli (model ne yazarsa yazsın; sayfa prompt'u D için "other" ister), C'de modelin
+    /// dragPlace/match seçimi geçerliyse o, değilse null; E–I null.
     /// </summary>
     public static Classification Normalize(string? kind, string? component, string? interactionType)
     {
@@ -69,6 +70,7 @@ public static class LabelingBlocks
         {
             "A" => MatrixChoiceGrader.Type,
             "B" => SlotFillGrader.Type,
+            "D" => TextSelectGrader.Type,
             "C" when requested is not null && IsConsistent("C", requested) => requested,
             _ => null,
         };

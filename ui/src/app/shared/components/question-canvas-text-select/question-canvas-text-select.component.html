@@ -1,0 +1,164 @@
+<div class="ts-root" [class.is-activity]="activity()" [class.is-solution]="solutionShown()"
+  [class.has-bar]="!!activeToken()"
+  [class.ts-style--underline]="styleName() === 'underline'" [class.ts-style--circle]="styleName() === 'circle'"
+  [class.ts-style--highlight]="styleName() === 'highlight'" [attr.data-mode]="mode()"
+  *transloco="let t; prefix: 'shared.questionCanvas'">
+  @if (!hidePassage && passageImageUrl(); as pUrl) {
+    <div class="ts-passage">
+      @if (passageTitle(); as title) {
+        <div class="ts-passage__title">{{ title }}</div>
+      }
+      <img class="ts-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (plan()) {
+    <div class="ts-toolbar">
+      <p class="ts-hint" aria-live="polite">{{ hint() }}</p>
+      <mat-button-toggle-group class="ts-view" [value]="view()" (change)="setView($event.value)" hideSingleSelectionIndicator
+        [attr.aria-label]="t('textSelect.viewAria')">
+        <mat-button-toggle value="image" data-testid="ts-view-image">
+          <mat-icon aria-hidden="true">image</mat-icon>{{ t('textSelect.viewImage') }}
+        </mat-button-toggle>
+        <mat-button-toggle value="text" data-testid="ts-view-text">
+          <mat-icon aria-hidden="true">notes</mat-icon>{{ t('textSelect.viewText') }}
+        </mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
+
+    @if (view() === 'image' && imageUrl(); as url) {
+      <div class="ts-stage">
+        <div class="ts-image-wrap">
+          <img class="ts-image" [src]="url" [alt]="t('questionAlt')" [appStorageImageRetry]="imageRefresh" />
+          <div class="ts-overlay" data-testid="ts-overlay">
+            @for (token of tokens(); track token.id) {
+              @let v = viewOf(token);
+              <!-- Noktalamada kelimeler etkileşimsiz: görsel zaten metni gösterir, kutu çizilmez. -->
+              @if (mode() !== 'punctuation' || token.gap) {
+              @for (box of token.boxes; track $index; let first = $first) {
+                @if (first) {
+                  <button type="button" class="ts-box" [ngStyle]="boxStyle(box)"
+                    [class.is-gap]="token.gap" [class.is-selected]="v.selected" [class.is-active]="activeId() === token.id"
+                    [class.is-filled]="!!v.value" [class.is-solution]="v.solution"
+                    [class.is-correct]="v.mark === 'correct'" [class.is-extra]="v.mark === 'extra'"
+                    [class.is-value]="v.mark === 'value'" [class.is-wrong]="v.mark === 'wrong'"
+                    [attr.data-token]="token.id" [attr.aria-pressed]="isPressed(token)" [attr.aria-label]="tokenAria(token)"
+                    [disabled]="isDisabled()" (click)="onToken(token)">
+                    @if (token.gap && (solutionShown() ? v.solutionText : v.value); as symbol) {
+                      <span class="ts-box__symbol">{{ symbol }}</span>
+                    } @else if (!token.gap && (solutionShown() ? v.solutionText : (mode() === 'correct' && v.selected ? v.value : '')); as fix) {
+                      <span class="ts-box__fix">{{ fix }}</span>
+                    }
+                    @if (v.mark === 'extra') {
+                      <span class="ts-box__tag" aria-hidden="true">{{ t('textSelect.extraTag') }}</span>
+                    }
+                  </button>
+                } @else {
+                  <!-- Tirelenmiş kelimenin sonraki satırdaki parçası: aynı token (klavye ilk kutudan). -->
+                  <span class="ts-box ts-box--cont" aria-hidden="true" [ngStyle]="boxStyle(box)"
+                    [class.is-selected]="v.selected" [class.is-solution]="v.solution"
+                    [class.is-correct]="v.mark === 'correct'" [class.is-extra]="v.mark === 'extra'"
+                    [class.is-value]="v.mark === 'value'" [attr.data-token-part]="token.id"
+                    (click)="onToken(token)"></span>
+                }
+              }
+              }
+            }
+          </div>
+        </div>
+      </div>
+    } @else {
+      <div class="ts-text" role="group" data-testid="ts-text" [attr.aria-label]="t('textSelect.textViewAria')">
+        @for (line of lines(); track line.line) {
+          <div class="ts-line">
+            @for (token of line.tokens; track token.id) {
+              @let v = viewOf(token);
+              @if (mode() === 'punctuation' && !token.gap) {
+              <!-- Noktalamada kelimeler düz metin (düğme değil, sekme durağı yok). -->
+              <span class="ts-word ts-word--static" [attr.data-word]="token.id"><span class="ts-word__text">{{ token.text }}</span></span>
+              } @else {
+              <button type="button" class="ts-word"
+                [class.is-gap]="token.gap" [class.is-selected]="v.selected" [class.is-active]="activeId() === token.id"
+                [class.is-filled]="!!v.value" [class.is-solution]="v.solution"
+                [class.is-correct]="v.mark === 'correct'" [class.is-extra]="v.mark === 'extra'"
+                [class.is-value]="v.mark === 'value'" [class.is-wrong]="v.mark === 'wrong'"
+                [attr.data-word]="token.id" [attr.aria-pressed]="isPressed(token)" [attr.aria-label]="tokenAria(token)"
+                [disabled]="isDisabled()" (click)="onToken(token)">
+                <span class="ts-word__text">{{ token.gap ? gapLabel(token) : token.text }}</span>
+                @if (!token.gap && (solutionShown() ? v.solutionText : (mode() === 'correct' && v.selected ? v.value : '')); as fix) {
+                  <span class="ts-word__fix">→ {{ fix }}</span>
+                }
+                @if (v.mark === 'extra') {
+                  <span class="ts-word__tag" aria-hidden="true">{{ t('textSelect.extraTag') }}</span>
+                }
+              </button>
+              }
+            }
+          </div>
+        }
+      </div>
+    }
+
+    @if (activeToken(); as active) {
+      @if (mode() === 'punctuation') {
+        <div class="ts-bar" role="toolbar" data-testid="ts-palette"
+          [attr.aria-label]="t('textSelect.paletteAria', { n: gapNo(active) })">
+          <span class="ts-bar__label">{{ t('textSelect.paletteLabel', { n: gapNo(active) }) }}</span>
+          <div class="ts-bar__symbols">
+            @for (symbol of plan()!.palette; track symbol) {
+              <button type="button" class="ts-bar__symbol" [class.is-chosen]="viewOf(active).value === symbol"
+                [attr.data-symbol]="symbol" [attr.aria-pressed]="viewOf(active).value === symbol"
+                [attr.aria-label]="t('textSelect.putSymbol', { symbol })"
+                (click)="chooseSymbol(active.id, symbol)">{{ symbol }}</button>
+            }
+          </div>
+          <div class="ts-bar__actions">
+            <button mat-stroked-button type="button" data-testid="ts-gap-clear" [disabled]="!viewOf(active).value"
+              (click)="clearGap(active.id)">
+              <mat-icon>backspace</mat-icon>{{ t('textSelect.clearGap') }}
+            </button>
+            <button mat-flat-button type="button" data-testid="ts-bar-close" (click)="closeBar()">
+              {{ t('textSelect.done') }}
+            </button>
+          </div>
+        </div>
+      } @else {
+        <div class="ts-bar" role="group" data-testid="ts-correction-bar"
+          [attr.aria-label]="t('textSelect.correctionAria', { word: active.text })">
+          <label class="ts-bar__field">
+            <span class="ts-bar__label">{{ t('textSelect.correctionLabel', { word: active.text }) }}</span>
+            <input class="ts-bar__input" type="text" autocomplete="off" spellcheck="false" data-testid="ts-correction"
+              [attr.maxlength]="limits.maxValueLength" [value]="viewOf(active).value"
+              (input)="onCorrectionInput(active.id, $event)" (change)="onCorrectionCommit(active.id, $event)"
+              (keydown.enter)="onCorrectionCommit(active.id, $event); closeBar()" (keydown.escape)="closeBar()" />
+          </label>
+          <div class="ts-bar__actions">
+            <button mat-stroked-button type="button" data-testid="ts-deselect" (click)="deselect(active.id)">
+              <mat-icon>remove_done</mat-icon>{{ t('textSelect.deselect') }}
+            </button>
+            <button mat-flat-button type="button" data-testid="ts-bar-close" (click)="closeBar()">
+              {{ t('textSelect.done') }}
+            </button>
+          </div>
+        </div>
+      }
+    }
+
+    @if (tooMany()) {
+      <p class="ts-too-many" role="status" data-testid="ts-too-many">
+        <mat-icon aria-hidden="true">warning</mat-icon>{{ t('textSelect.tooMany') }}
+      </p>
+    }
+
+    <div class="ts-footer">
+      @if (counter(); as text) {
+        <p class="ts-counter" role="status" data-testid="ts-counter">{{ text }}</p>
+      }
+      <button mat-stroked-button type="button" class="ts-clear" (click)="clearAll()"
+        [disabled]="solutionShown() || isDisabled() || answeredCount() === 0">
+        <mat-icon>restart_alt</mat-icon>
+        {{ 'common.clear' | transloco }}
+      </button>
+    </div>
+  }
+</div>

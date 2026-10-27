@@ -2,6 +2,7 @@
   "labeling": {
     "invalidImage": "Görsel okunamadı.",
     "imageTooLarge": "Görsel çok büyük (en fazla 20 MB).",
+    "imageTooManyPixels": "Görsel çözünürlüğü çok yüksek (en fazla {0} megapiksel, uzun kenar en fazla {1} px). Görseli küçültüp yeniden yükleyin.",
     "invalidRegion": "Geçersiz bölge.",
     "invalidHash": "Geçersiz sayfa kimliği.",
     "unknownModel": "Bu AI modeli kullanılamıyor.",
@@ -56,7 +57,7 @@
       "busy": "Kitap kaydı şu an başka bir işlemde. Tekrar deneyin."
     },
     "activity": {
-      "unknownType": "Bilinmeyen etkinlik tipi (matrixChoice, slotFill, dragPlace ya da match).",
+      "unknownType": "Bilinmeyen etkinlik tipi (matrixChoice, slotFill, dragPlace, match ya da textSelect).",
       "invalidBlocks": "1 ile 20 arasında etkinlik bloğu gönderin.",
       "invalidBlockKey": "Her bloğun en fazla 64 karakterlik bir kimliği olmalı.",
       "duplicateBlockKey": "Blok kimlikleri tekil olmalı.",
@@ -71,7 +72,11 @@
         "noTargets": "En az bir hedef ekleyin.",
         "noCards": "En az bir kart ekleyin.",
         "matchItems": "İki kolonda da en az bir öğe olmalı.",
-        "matchAllPrelinked": "Öğrencinin eşleştireceği en az bir öğe kalmalı (hepsi örnek olamaz)."
+        "matchAllPrelinked": "Öğrencinin eşleştireceği en az bir öğe kalmalı (hepsi örnek olamaz).",
+        "noText": "Metin okunamadı; en az bir satır ekleyin.",
+        "noGaps": "Noktalama etkinliğinde en az bir \"( )\" boşluğu olmalı.",
+        "tooManyGaps": "Bir blokta en fazla 100 \"( )\" boşluğu olabilir; bloğu bölün.",
+        "gapsNeedPunctuation": "Metinde \"( )\" boşlukları var; modu noktalama yapın ya da boşlukları silin."
       }
     }
   }

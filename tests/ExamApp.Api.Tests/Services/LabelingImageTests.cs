@@ -58,13 +58,16 @@ public class LabelingImageTests
     }
 
     [Fact]
-    public void Decode_WidthBeyondMaxEdge_ThrowsImageTooLarge()
+    public void Decode_WidthBeyondMaxEdge_ThrowsImageTooManyPixelsWithLimits()
     {
+        // Bayt sınırı (20 MB) değil çözünürlük: ayrı anahtar, mesaja megapiksel + uzun kenar sınırı gider.
         var ex = Should.Throw<LabelingValidationException>(() =>
             LabelingImage.Decode(Convert.ToBase64String(Png(LabelingImage.MaxEdge + 1, 1))));
 
-        ex.Message.ShouldBe("labeling.imageTooLarge");
+        ex.Message.ShouldBe("labeling.imageTooManyPixels");
+        ex.Args.ShouldBe(new object[] { 40L, LabelingImage.MaxEdge });
     }
+
 
     [Theory]
     [InlineData(null)]

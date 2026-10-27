@@ -1587,3 +1587,102 @@
     color: var(--ms-text);
   }
 }
+
+// Issue #582: metin üzerinde işaretleme yazarlığı — satırlara dizilmiş kelime çipleri, hedefler, boşluk sembolleri.
+.qc-text-select {
+  &__text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 260px;
+    overflow: auto;
+    padding: 6px;
+    border-radius: 8px;
+    border: 1px solid var(--ms-border-weak);
+    background: var(--ms-surface);
+  }
+
+  &__line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px 4px;
+  }
+
+  &__chip {
+    position: relative;
+    padding: 2px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--ms-border-weak);
+    background: var(--ms-surface);
+    color: var(--ms-text-strong);
+    font-family: var(--paragraphFontFamily);
+    font-size: 13px;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--ms-action-background-weak-hover);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--ms-action-border-focus);
+      outline-offset: 1px;
+    }
+
+    &.is-target {
+      border-color: var(--ms-success-border);
+      background: var(--ms-success-surface);
+      color: var(--ms-success-text);
+      font-weight: 700;
+    }
+
+    &.is-gap {
+      border-style: dashed;
+      border-color: var(--ms-action-border);
+      font-family: var(--mainFontFamily);
+      font-weight: 700;
+      white-space: pre;
+    }
+
+    &.is-gap.is-missing {
+      border-color: var(--ms-danger-border);
+    }
+
+    &.is-selected {
+      box-shadow: 0 0 0 2px var(--ms-action-border-focus);
+    }
+  }
+
+  &__no {
+    margin-left: 2px;
+    font-size: 10px;
+  }
+
+  &__editor {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 6px;
+    padding: 6px;
+    border-radius: 8px;
+    background: var(--ms-action-background-weak);
+  }
+
+  &__target {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 0;
+
+    &.is-missing .qc-zone-id {
+      background: var(--ms-danger-surface);
+      color: var(--ms-danger-text);
+    }
+  }
+
+  &__target-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+}

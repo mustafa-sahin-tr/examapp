@@ -62,8 +62,11 @@ public class LabelingBlocksTests
     [InlineData("C", "MATCH", "C", "match")]
     [InlineData("C", "other", "C", null)]
     [InlineData("C", "slotFill", "C", null)]
-    // D–I: kontrolcü yok.
-    [InlineData("D", "other", "D", null)]
+    // D tek tipli (#582): model "other" yazar, tip bileşenden türetilir.
+    [InlineData("D", "other", "D", "textSelect")]
+    [InlineData("d", "matrixChoice", "D", "textSelect")]
+    // E–I: kontrolcü yok.
+    [InlineData("E", "textSelect", "E", null)]
     [InlineData("H", "matrixChoice", "H", null)]
     [InlineData("I", null, "I", null)]
     // A–I dışı bileşen → null, tip de null.
@@ -93,6 +96,7 @@ public class LabelingBlocksTests
     [InlineData("activity", "B", "slotFill")]
     [InlineData("activity", "C", "dragPlace")]
     [InlineData("activity", "C", "match")]
+    [InlineData("activity", "D", "textSelect")]
     public void IsValidManual_AllowedCombinations_AreValid(string? kind, string? component, string? interactionType)
     {
         LabelingBlocks.IsValidManual(kind, component, interactionType).ShouldBeTrue();
@@ -110,6 +114,7 @@ public class LabelingBlocksTests
     [InlineData("activity", "A", "slotFill")]
     [InlineData("activity", "C", "matrixChoice")]
     [InlineData("activity", "D", "matrixChoice")]
+    [InlineData("activity", "E", "textSelect")]
     [InlineData("activity", null, "slotFill")]
     [InlineData("activity", "B", "other")]
     public void IsValidManual_InvalidCombinations_AreRejected(string? kind, string? component, string? interactionType)

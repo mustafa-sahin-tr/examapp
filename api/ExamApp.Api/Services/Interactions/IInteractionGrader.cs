@@ -40,7 +40,7 @@ public interface IInteractionGrader
     /// match sağ öğelerini rastgele sıraya dizip opak id'lerle değiştirir ve çözümü (örnek çiftleri) buna göre eşler; yazarlık
     /// sırası/ardışık id'ler çözümü ele vermesin. Kayıt yolları (tekli güncelleme yalnız tanım değiştiyse, toplu kayıt, içe aktarım)
     /// çağırır. Sonuç yine <see cref="ValidateDefinition"/>'dan geçer ve aynı cevabı aynı puanlar. İstisna atmaz; bir şey
-    /// yapamazsa girdiyi aynen döner. Varsayılan: aynen (MCQ, dragDropLabeling, matrixChoice, slotFill).
+    /// yapamazsa girdiyi aynen döner. Varsayılan: aynen (MCQ, dragDropLabeling, matrixChoice, slotFill, textSelect — token sırası okuma sırasıdır).
     /// </summary>
     (string? Plan, string? Solution) PrepareForStorage(string? plan, string? solution) => (plan, solution);
 }

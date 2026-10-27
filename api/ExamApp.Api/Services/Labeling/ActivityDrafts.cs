@@ -88,6 +88,18 @@ internal static class ActivityDrafts
 
     internal sealed record MatchDraftPair(int Left, int Right);
 
+    /// <summary>issue #582: <c>textSelect</c> satır düzeyinde döner; token'lar sunucuda (<see cref="TextSelectTokenizer"/>).</summary>
+    internal sealed record TextDraft(
+        [property: Description("The printed instruction sentence, or an empty string.")] string Instruction,
+        [property: Description("One of: select, punctuation, correct.")] string Mode,
+        [property: Description("One of: underline, circle, highlight.")] string Style,
+        [property: Description("For punctuation: the punctuation marks the student may use; otherwise empty.")] List<string> Palette,
+        [property: Description("Every printed line of the text, top to bottom, copied exactly (mistakes kept).")] List<TextDraftLine> Lines);
+
+    internal sealed record TextDraftLine(
+        [property: Description("The line exactly as printed; empty brackets as \"( )\"; a line-end hyphen kept.")] string Text,
+        int X1, int Y1, int X2, int Y2);
+
     // ------------------------------------------------------------------ koordinatlar
 
     /// <summary>
@@ -288,6 +300,82 @@ internal static class ActivityDrafts
         return new Mapped(plan, PrintedInstruction(draft.Instruction));
     }
 
+    /// <summary>
+    /// issue #582: punctuation modunda Claude palet vermediyse kullanılan noktalama paleti (öğretmen yazarlıkta düzenler).
+    /// </summary>
+    internal static readonly string[] DefaultTextSelectPalette = [".", ",", "?", "!", ":", ";", "...", "-"];
+
+    /// <summary>
+    /// issue #582: satırlar (kutusu blok içinde kalan, metni boş olmayan; en çok <see cref="TextSelectGrader.MaxLines"/>) kırpma →
+    /// blok-göreli kutuya çevrilip <see cref="TextSelectTokenizer"/>'a verilir; token'lar <see cref="TextSelectGrader.MaxTokens"/>'a,
+    /// metinleri <see cref="TextSelectGrader.MaxTokenTextLength"/>'e kesilir. Mod bilinmiyorsa <c>select</c>; stil yalnız
+    /// select/correct'te (bilinmiyorsa yazılmaz = highlight); palet yalnız punctuation'da (boşsa varsayılan). punctuation ama hiç
+    /// "( )" yoksa mod korunur, taslak geçersiz döner (<see cref="ActivityPlanDiagnostics"/>).
+    /// </summary>
+    public static Mapped Map(TextDraft draft, BlockFrame frame)
+    {
+        var mode = draft.Mode?.Trim().ToLowerInvariant() switch
+        {
+            TextSelectGrader.ModePunctuation => TextSelectGrader.ModePunctuation,
+            TextSelectGrader.ModeCorrect => TextSelectGrader.ModeCorrect,
+            _ => TextSelectGrader.ModeSelect,
+        };
+
+        var lines = new List<TextSelectTokenizer.Line>();
+        foreach (var line in draft.Lines ?? [])
+        {
+            if (line is null || lines.Count >= TextSelectGrader.MaxLines || string.IsNullOrWhiteSpace(line.Text))
+                continue;
+            if (frame.Box(line.X1, line.Y1, line.X2, line.Y2) is not { } box)
+                continue;
+            lines.Add(new TextSelectTokenizer.Line(line.Text,
+                new TextSelectTokenizer.TokenBox((int)box["x"]!, (int)box["y"]!, (int)box["width"]!, (int)box["height"]!)));
+        }
+
+        var tokens = new JsonArray();
+        foreach (var token in TextSelectTokenizer.Tokenize(lines).Take(TextSelectGrader.MaxTokens))
+        {
+            var boxes = new JsonArray();
+            foreach (var b in token.Boxes)
+                boxes.Add(new JsonObject { ["x"] = b.X, ["y"] = b.Y, ["width"] = b.Width, ["height"] = b.Height });
+            var entry = new JsonObject
+            {
+                ["id"] = token.Id,
+                ["text"] = TruncateText(token.Text, TextSelectGrader.MaxTokenTextLength),
+                ["line"] = token.Line,
+                ["boxes"] = boxes,
+            };
+            if (token.Gap)
+                entry["gap"] = true;
+            tokens.Add(entry);
+        }
+
+        var plan = new JsonObject
+        {
+            ["version"] = 1,
+            ["type"] = TextSelectGrader.Type,
+            ["mode"] = mode,
+        };
+        if (mode == TextSelectGrader.ModePunctuation)
+        {
+            var palette = new JsonArray();
+            foreach (var symbol in Distinct(draft.Palette, int.MaxValue)
+                         .Where(s => s.Length <= TextSelectGrader.MaxSymbolLength).Take(TextSelectGrader.MaxSymbols))
+                palette.Add(symbol);
+            if (palette.Count == 0)
+            {
+                foreach (var symbol in DefaultTextSelectPalette)
+                    palette.Add(symbol);
+            }
+            plan["palette"] = palette;
+        }
+        else if (draft.Style?.Trim().ToLowerInvariant() is TextSelectGrader.StyleUnderline or TextSelectGrader.StyleCircle
+                 or TextSelectGrader.StyleHighlight)
+            plan["style"] = draft.Style.Trim().ToLowerInvariant();
+        plan["tokens"] = tokens;
+        return new Mapped(plan, PrintedInstruction(draft.Instruction));
+    }
+
     /// <summary>Öğeler (etiket ya da kutu zorunlu) ve Claude'un 0 tabanlı sırası → üretilen id (örnek çiftler için).</summary>
     private sealed record MatchItem(string? Label, int X1, int Y1, int X2, int Y2);
 
@@ -336,6 +424,15 @@ internal static class ActivityDrafts
         if (cleaned.Length == 0 || cleaned.Equals("none", StringComparison.OrdinalIgnoreCase))
             return null;
         return cleaned.Length <= max ? cleaned : cleaned[..max].TrimEnd();
+    }
+
+    /// <summary>review #582 (D2): en çok <paramref name="max"/> UTF-16 birimine keser; surrogate çiftini bölmez.</summary>
+    internal static string TruncateText(string value, int max)
+    {
+        if (value.Length <= max)
+            return value;
+        var length = char.IsHighSurrogate(value[max - 1]) ? max - 1 : max;
+        return value[..length];
     }
 
     internal static string? PrintedInstruction(string? value) => Label(value, MaxPrintedInstructionLength);
@@ -413,6 +510,21 @@ internal static class ActivityPlanDiagnostics
                     else if (Count(plan, "prelinked") >= Count(plan, "left"))
                         errors.Add("labeling.activity.invalid.matchAllPrelinked");
                     break;
+                case TextSelectGrader.Type:
+                {
+                    var tokens = plan["tokens"] as JsonArray ?? [];
+                    var gaps = tokens.Count(t => t?["gap"] is JsonValue g && g.TryGetValue<bool>(out var isGap) && isGap);
+                    var punctuation = (string?)plan["mode"] == TextSelectGrader.ModePunctuation;
+                    if (tokens.Count < TextSelectGrader.MinTokens)
+                        errors.Add("labeling.activity.invalid.noText");
+                    else if (punctuation && gaps < TextSelectGrader.MinGaps)
+                        errors.Add("labeling.activity.invalid.noGaps");
+                    else if (punctuation && gaps > TextSelectGrader.MaxGaps)
+                        errors.Add("labeling.activity.invalid.tooManyGaps");
+                    else if (!punctuation && gaps > 0)
+                        errors.Add("labeling.activity.invalid.gapsNeedPunctuation");
+                    break;
+                }
             }
         }
         catch (JsonException)

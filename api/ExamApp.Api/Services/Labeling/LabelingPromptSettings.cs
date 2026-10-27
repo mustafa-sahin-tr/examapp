@@ -30,9 +30,11 @@ public sealed record LabelingPromptSettings(
     /// <c>interactionType</c>); şık aşaması yalnız <c>mcq_question</c> için. 3 (issue #578): bileşensiz <c>activity</c>'ye de şık
     /// aşaması sorulur, >= 2 şık bulunursa <c>mcq_question</c>'a çevrilir (son işleme değişti). 4: sınır ayrıldı —
     /// <c>MaxQuestionsPerPage</c> yalnız şık çağrısı alabilecek blokları (<c>mcq_question</c> + bileşensiz <c>activity</c>),
-    /// toplam blok sınırı <c>MaxQuestionsPerPage * 3</c> (yoğun sayfada gürültü son soruları itmez).
+    /// toplam blok sınırı <c>MaxQuestionsPerPage * 3</c> (yoğun sayfada gürültü son soruları itmez). 5 (issue #582): bileşen D
+    /// tanımı genişledi (metindeki "( )" noktalama boşlukları, yazım yanlışı bulma, düzeltme) ve D → <c>textSelect</c>; yanıt
+    /// şemasının <c>interactionType</c> açıklamasına <c>textSelect</c> eklendi.
     /// </summary>
-    public const int SchemaRevision = 4;
+    public const int SchemaRevision = 5;
 
     /// <summary>Talimatlar + paylar + <see cref="SchemaRevision"/> SHA-256'sı (hex); AI sonuçlarının önbellek anahtarı.</summary>
     /// Önbelleğe alınmaz: record'un <c>with</c> kopyası alanı da kopyalar ve eski izi taşırdı.
@@ -55,7 +57,8 @@ public sealed record LabelingPromptSettings(
         "- activity: an interactive exercise the student completes on the page without lettered options (true/false, " +
         "fill in the blanks, matching, tables to fill, ordering, sorting, drawing, colouring, puzzles, open-ended " +
         "writing). One box per exercise, enclosing its label (\"ETKİNLİK 3\", \"UYGULAMA - 1\", \"TAK - TİK\", " +
-        "\"EŞLEŞTİRME\"), its instruction sentence and all of its items, tables and pictures together; never return the " +
+        "\"EŞLEŞTİRME\"), its instruction sentence and all of its items, tables, pictures and the text or passage the " +
+        "student works on together (for a D activity the whole passage, including its title, is inside the box); never return the " +
         "instruction or the label as a separate block. A numbered exercise with several sub-items is one block.\n" +
         "- info_box: topic explanations and information boxes (\"Bilgi\", \"Hatırlayalım\", \"Biliyor musunuz?\", " +
         "concept or definition boxes, summaries) and worked examples (\"Örnek\" with its solution, \"Çözüm\").\n" +
@@ -70,13 +73,17 @@ public sealed record LabelingPromptSettings(
         "A matrix choice: mark a choice per row (D/Y true-false, classifying items in a table, multiple selection, " +
         "choosing <, > or =) -> interactionType matrixChoice.\n" +
         "B answer box: write a short answer into boxes (short answer, fill in the blank, fill a table, label a map or " +
-        "diagram) -> slotFill.\n" +
+        "diagram) -> slotFill. If the blanks are empty brackets \"( )\" inside a running text where punctuation marks go, " +
+        "it is D, not B.\n" +
         "C drag and place: place given cards or words (fill from a word pool, sort into groups, put in order) -> " +
         "dragPlace; match two columns with lines -> match.\n" +
-        "D mark on text (underline, circle words in a passage). E regions / colouring (colour or select areas of a " +
+        "D mark on text: work on the words of a printed text or passage (underline or circle words, find the spelling " +
+        "or punctuation mistakes in the text, put punctuation marks into the empty brackets \"( )\" of the text, write a " +
+        "wrong word correctly) -> textSelect.\n" +
+        "E regions / colouring (colour or select areas of a " +
         "picture). F grid canvas (drawing on a grid, number line, graph). G game engines (maze, crossword, word search, " +
         "cipher). H open-ended (explain, write a sentence or paragraph). I special simulation (anything else).\n" +
-        "For D-I use interactionType other. For kinds other than activity use \"none\" for component and interactionType. " +
+        "For E-I use interactionType other. For kinds other than activity use \"none\" for component and interactionType. " +
         "Return an empty list if the page has no blocks.";
 
     public const string DefaultOptionInstruction =

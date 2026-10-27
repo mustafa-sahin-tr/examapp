@@ -111,8 +111,9 @@ public sealed class LabelingImage : IDisposable
 
         if (info.Width <= 0 || info.Height <= 0)
             throw new LabelingValidationException("labeling.invalidImage");
+        // Çözünürlük aşımı bayt aşımından ayrı anahtar: kullanıcı "en fazla 20 MB" görüp küçük dosyayı yeniden denemesin.
         if ((long)info.Width * info.Height > MaxPixels || Math.Max(info.Width, info.Height) > MaxEdge)
-            throw new LabelingValidationException("labeling.imageTooLarge");
+            throw new LabelingValidationException("labeling.imageTooManyPixels", MaxPixels / 1_000_000, MaxEdge);
 
         // EXIF 5-8: görsel 90° döndürülerek gösterilir, genişlik/yükseklik yer değiştirir.
         return info.IsTransposed ? (info.Height, info.Width) : (info.Width, info.Height);
@@ -163,4 +164,8 @@ public sealed record EncodedRegion(byte[] Jpeg, int Width, int Height, int Offse
 }
 
 /// <summary>İstemci girdisi geçersiz → 400. <see cref="Exception.Message"/> yerelleştirme anahtarıdır.</summary>
-public sealed class LabelingValidationException(string messageKey) : Exception(messageKey);
+public sealed class LabelingValidationException(string messageKey, params object[] args) : Exception(messageKey)
+{
+    /// <summary>Yerelleştirilmiş mesajın biçim argümanları (ör. <c>labeling.imageTooManyPixels</c>: megapiksel, uzun kenar); çoğunlukla boş.</summary>
+    public object[] Args { get; } = args;
+}

@@ -782,6 +782,153 @@ describe('ActivityPlayerComponent (#573)', () => {
     });
   });
 
+  describe('textSelect (#582)', () => {
+    const box = (x: number) => ({ x, y: 0, width: 20, height: 10 });
+    const CORRECT_PLAN = JSON.stringify({
+      version: 1,
+      type: 'textSelect',
+      mode: 'correct',
+      style: 'underline',
+      tokens: [
+        { id: 't1', text: 'Sonun', line: 0, boxes: [box(0)] },
+        { id: 't2', text: 'da', line: 0, boxes: [box(30)] },
+        { id: 't3', text: 'geldi', line: 0, boxes: [box(60)] },
+      ],
+    });
+    const PUNCT_PLAN = JSON.stringify({
+      version: 1,
+      type: 'textSelect',
+      mode: 'punctuation',
+      palette: ['.', '!'],
+      tokens: [
+        { id: 't1', text: 'Eyvah', line: 0, boxes: [box(0)] },
+        { id: 'g1', text: '( )', line: 0, gap: true, boxes: [box(30)] },
+        { id: 'g2', text: '( )', line: 0, gap: true, boxes: [box(60)] },
+      ],
+    });
+    const textInstance = (plan: string, answer: string | null, overrides: Partial<TestInstance> = {}) =>
+      instance(overrides, [
+        { answerPayload: answer, question: { ...instance().testInstanceQuestions[0].question, interactionType: 'textSelect', interactionPlan: plan } },
+      ]);
+    const rowTexts = () => Array.from(el().querySelectorAll('[data-testid="result-row"]')).map((r) => r.textContent ?? '');
+    /** Görsel ya da (dar ekranda varsayılan) metin görünümündeki token düğmesi. */
+    const token = (id: string) => el().querySelector(`[data-token="${id}"], [data-word="${id}"]`) as HTMLElement | null;
+
+    it('correct_SelectionWithoutFixIsBlank_CheckSendsPayload_RowsAndPlayerMarksWithCounter', async () => {
+      const selected = JSON.stringify({ version: 1, type: 'textSelect', selected: ['t2'], values: {} });
+      await create(textInstance(CORRECT_PLAN, selected));
+      fixture.componentInstance.goTo(0);
+      await settle();
+
+      expect(el().querySelector('app-question-canvas-text-select')).not.toBeNull();
+      expect(fixture.componentInstance.steps()[0].state).toBe('answered');
+      expect(fixture.componentInstance.blankItems()).toContain('a');
+
+      const item = fixture.componentInstance.items()[0];
+      const fixed = JSON.stringify({ version: 1, type: 'textSelect', selected: ['t2', 't3'], values: { t2: 'Sonunda' } });
+      fixture.componentInstance.onDragDropChange(fixed, item);
+      await settle();
+      expect(testService['saveAnswer']).toHaveBeenCalledWith(expect.objectContaining({ testQuestionId: 101, answerPayload: fixed }));
+
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 1,
+          totalCount: 4,
+          questions: [
+            {
+              instanceQuestionId: 101,
+              isCorrect: false,
+              correctCount: 1,
+              totalCount: 3,
+              feedback: '{"rows":[{"id":"t2","correct":true},{"id":"t3","correct":false,"reason":"extra"}],"found":1,"missing":1,"extra":1}',
+            },
+            { instanceQuestionId: 102, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+
+      expect(activityService.check.mock.lastCall![1][0]).toEqual({ instanceQuestionId: 101, selectedAnswerId: null, answerPayload: fixed });
+      const rows = rowTexts();
+      expect(rows[0]).toContain('«da» → Sonunda');
+      expect(rows[1]).toContain('«geldi» (fazla)');
+      expect(token('t2')?.classList).toContain('is-correct');
+      expect(token('t3')?.classList).toContain('is-extra');
+      expect(el().querySelector('[data-testid="ts-counter"]')?.textContent).toBe('Bulunan 1 · Kalan 1 · Fazla 1');
+      expect(el().textContent).not.toMatch(/%|puan|XP/i);
+    });
+
+    it('correct_MultiWordTargetWithFixOnOneWord_IsNotBlank_TooManyFeedbackReachesPlayer', async () => {
+      const answer = JSON.stringify({ version: 1, type: 'textSelect', selected: ['t1', 't2'], values: { t1: 'Sonunda' } });
+      await create(textInstance(CORRECT_PLAN, answer));
+      fixture.componentInstance.goTo(0);
+      await settle();
+      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 0,
+          totalCount: 1,
+          questions: [
+            { instanceQuestionId: 101, isCorrect: false, correctCount: 0, totalCount: 5, feedback: '{"rows":[],"found":0,"missing":1,"extra":4,"tooMany":true}' },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+      expect(fixture.componentInstance.currentTextSelectFeedback()).toEqual({ rows: [], found: 0, missing: 1, extra: 4, tooMany: true });
+      expect(q('ts-too-many')).not.toBeNull();
+    });
+
+    it('check_FlushesTypedButUnsavedCorrectionFirst', async () => {
+      const selected = JSON.stringify({ version: 1, type: 'textSelect', selected: ['t1'], values: {} });
+      await create(textInstance(CORRECT_PLAN, selected));
+      fixture.componentInstance.goTo(0);
+      await settle();
+      token('t1')!.click(); // çubuğu açar
+      await settle();
+      const input = el().querySelector('[data-testid="ts-correction"]') as HTMLInputElement;
+      input.value = 'Sonunda';
+      input.dispatchEvent(new Event('input'));
+      activityService.check.mockReturnValue(of({ success: true, correctCount: 0, totalCount: 0, questions: [] }));
+
+      await fixture.componentInstance.runCheck();
+
+      const sent = JSON.parse(activityService.check.mock.lastCall![1][0].answerPayload);
+      expect(sent.values).toEqual({ t1: 'Sonunda' });
+    });
+
+    it('punctuation_EmptyGapIsIncomplete_RevealRowsShowAcceptedSymbols', async () => {
+      const partial = JSON.stringify({ version: 1, type: 'textSelect', values: { g1: '!' } });
+      await create(textInstance(PUNCT_PLAN, partial, { checkCount: 1 }));
+      fixture.componentInstance.goTo(0);
+      await settle();
+      expect(fixture.componentInstance.blankItems()).toContain('a');
+
+      activityService.getSolutions.mockReturnValue(
+        of({
+          success: true,
+          questions: [
+            { instanceQuestionId: 101, questionId: 1, correctAnswerId: null, interactionSolution: '{"gaps":{"g1":{"accept":["!"]},"g2":{"accept":["."]}}}' },
+            { instanceQuestionId: 102, questionId: 2, correctAnswerId: 11, interactionSolution: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.reveal();
+      await settle();
+
+      const rows = fixture.componentInstance.currentRows();
+      expect(rows.map((r) => [r.label, r.solution])).toEqual([
+        ['Boşluk 1: !', '!'],
+        ['Boşluk 2: boş', '.'],
+      ]);
+      expect(token('g2')?.classList).toContain('is-solution');
+    });
+  });
+
   // Issue #574: matris seçim maddesi — oynatıcı, kontrol gövdesi, satır sonuçları ve çözüm satırları.
   describe('matrixChoice (#574)', () => {
     const MATRIX_PLAN = JSON.stringify({

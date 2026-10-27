@@ -104,7 +104,8 @@
     "kindActivity": "Activity",
     "modeSlot": "Box",
     "modePlace": "Place",
-    "modeMatch": "Match"
+    "modeMatch": "Match",
+    "modeTextLine": "Text"
   },
   "inspector": {
     "quickCreateTitle": "Create new worksheet",
@@ -253,6 +254,7 @@
     },
     "dragPlace": "Place",
     "match": "Match",
+    "textSelect": "Text",
     "placeModeAria": "Placement type",
     "placeModePlace": "Place / sort",
     "placeModeOrder": "Order",
@@ -307,7 +309,50 @@
     "matchNoPair": "Choose pair",
     "matchExample": "Example pair",
     "matchPairedWith": "paired with L{{n}}",
-    "matchNoItems": "No items yet."
+    "matchNoItems": "No items yet.",
+    "textMode": "Activity type",
+    "textModes": {
+      "select": "Select / find",
+      "correct": "Correct",
+      "punctuation": "Punctuation"
+    },
+    "textStyle": "Selection look",
+    "textStyles": {
+      "underline": "Underline",
+      "circle": "Circle",
+      "highlight": "Highlight"
+    },
+    "textPalette": "Punctuation palette",
+    "textPaletteHint": "Separate symbols with spaces (max 20, each max 8 characters). A symbol removed from the palette is also removed from the correct answers.",
+    "textLines": "Text lines",
+    "textDrawLine": "Draw a line box",
+    "textLineHint": "Draw a box around a line on the image, then type its text and add it. Type ( ) for gaps. Lines are ordered by the box's vertical position only: check the reading order in two-column text.",
+    "textLineReady": "Line box drawn; type its text and press Add line.",
+    "textLineText": "Line text",
+    "textLinePlaceholder": "As printed, without fixing spelling mistakes",
+    "textAddLine": "Add line",
+    "textCancelLine": "Remove box",
+    "textTokens": "Text ({{count}} items, {{gaps}} gaps)",
+    "textTokensAria": "Words of the text",
+    "textTokenHint": {
+      "select": "Click the words that are correct answers (also works on the canvas). Adjacent marked words form one target.",
+      "correct": "Click the misspelled words and type each target's correct form below. Adjacent words form one target (\"Sonun da\").",
+      "punctuation": "Click a gap and pick its correct mark(s)."
+    },
+    "textNoTokens": "No text yet.",
+    "textGapAccept": "Gap {{n}}: correct mark(s)",
+    "textTokenText": "Word text",
+    "textRemoveToken": "Delete item",
+    "textTargets": "Correct answers (by hand)",
+    "textNoTargets": "No target marked yet.",
+    "textSplit": "Split",
+    "textSplitHint": "Splits the target into one target per word",
+    "textMultiTargetHint": "{{count}}-word target — counts as one mistake; if they are separate mistakes, press Split.",
+    "textRemoveTarget": "Remove target {{n}}",
+    "textAcceptPlaceholder": "Correct form (comma-separated if several)",
+    "textAcceptAria": "Target {{n}} accepted corrections",
+    "textSuffixPlaceholder": "Optional suffixes (comma-separated)",
+    "textSuffixAria": "Target {{n}} optional suffixes"
   },
   "preview": {
     "headingWithTest": "Preview — {{testName}}",

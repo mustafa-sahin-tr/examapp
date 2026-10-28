@@ -1,0 +1,100 @@
+<div class="cw-root" [class.is-solution]="solutionShown()" *transloco="let t; prefix: 'shared.questionCanvas.crossword'">
+  @if (!hidePassage && passageImageUrl(); as pUrl) {
+    <div class="cw-passage">
+      @if (passageTitle(); as title) {
+        <div class="cw-passage__title">{{ title }}</div>
+      }
+      <img class="cw-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (imageUrl(); as url) {
+    <div class="cw-image-wrap">
+      <img class="cw-image" [src]="url" [alt]="t('imageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (!plan()) {
+    <p class="cw-hint" data-testid="cw-invalid">{{ t('invalid') }}</p>
+  } @else {
+    <div class="cw-body">
+      <div class="cw-scroll">
+        <div class="cw-grid" data-testid="cw-grid" role="grid" [attr.aria-label]="t('gridAria')"
+          [style.grid-template-columns]="'repeat(' + plan()!.cols + ', var(--cw-cell))'">
+          @for (row of cells(); track $index) {
+            @for (cell of row; track cell.key) {
+              @if (cell.white) {
+                <div class="cw-cell" role="gridcell" [class.is-active]="activeCells().has(cell.key)"
+                  [class.is-ok]="cellMarks().get(cell.key) === 'ok'" [class.is-bad]="cellMarks().get(cell.key) === 'bad'"
+                  [class.is-fixed]="fixedCells().has(cell.key)">
+                  @if (cell.number !== null) {
+                    <span class="cw-cell__num" aria-hidden="true">{{ cell.number }}</span>
+                  }
+                  <input class="cw-cell__input" type="text" inputmode="text" autocomplete="off" autocapitalize="characters"
+                    spellcheck="false" maxlength="2" [attr.data-cell]="cell.key" [value]="letter(cell)"
+                    [readOnly]="readOnly()" [attr.aria-label]="cellAria(cell)" (focus)="onFocus(cell)"
+                    (blur)="onBlur(cell)" (mousedown)="onPointerDown(cell)" (click)="onCellClick(cell)"
+                    (input)="onInput($event, cell)" (keydown)="onKeydown($event, cell)" />
+                </div>
+              } @else {
+                <div class="cw-cell cw-cell--block" aria-hidden="true"></div>
+              }
+            }
+          }
+        </div>
+      </div>
+
+      <div class="cw-clues">
+        @if (activeClueView(); as clue) {
+          <p class="cw-current" data-testid="cw-current">
+            <strong>{{ clueNumber(clue) }} {{ clue.dir === 'across' ? '→' : '↓' }}</strong> {{ clue.text }}
+          </p>
+        }
+        @for (group of [{ dir: 'across', list: across() }, { dir: 'down', list: down() }]; track group.dir) {
+          @if (group.list.length) {
+            <section class="cw-clues__group">
+              <h4 class="cw-clues__title">{{ t(group.dir) }}</h4>
+              <ol class="cw-clues__list">
+                @for (clue of group.list; track clue.id) {
+                  <li>
+                    <button type="button" class="cw-clue" [attr.data-clue]="clue.id"
+                      [class.is-active]="activeClue() === clue.id" [class.is-ok]="clueMarks().get(clue.id) === true"
+                      [class.is-bad]="clueMarks().get(clue.id) === false" (click)="selectClue(clue)">
+                      <span class="cw-clue__num">{{ clueNumber(clue) }}</span>
+                      <span class="cw-clue__text">{{ clue.text }}</span>
+                      @if (clueMarks().get(clue.id) === true) {
+                        <mat-icon class="cw-clue__icon" aria-hidden="true">check</mat-icon><span class="cw-sr">{{ t('clueOk') }}</span>
+                      } @else if (clueMarks().get(clue.id) === false) {
+                        <mat-icon class="cw-clue__icon" aria-hidden="true">close</mat-icon><span class="cw-sr">{{ t('clueWrong') }}</span>
+                      }
+                    </button>
+                  </li>
+                }
+              </ol>
+            </section>
+          }
+        }
+      </div>
+    </div>
+
+    @if (!solutionShown()) {
+      <div class="cw-actions">
+        <button mat-stroked-button type="button" data-testid="cw-reset" [disabled]="!canReset()" (click)="reset()">
+          <mat-icon>restart_alt</mat-icon>{{ t('reset') }}
+        </button>
+      </div>
+    }
+  }
+
+  @if (feedbackState(); as fb) {
+    <p class="cw-result" role="status" data-testid="cw-result" [class.is-ok]="correctCount() === fb.rows.length"
+      [class.is-bad]="correctCount() < fb.rows.length">
+      <mat-icon aria-hidden="true">{{ correctCount() === fb.rows.length ? 'check_circle' : 'error' }}</mat-icon>
+      {{ correctCount() === fb.rows.length ? t('resultOk') : t('resultPartial', { ok: correctCount(), total: fb.rows.length }) }}
+    </p>
+  }
+
+  @if (solutionShown()) {
+    <p class="cw-hint" data-testid="cw-solution-hint">{{ t('solutionShown') }}</p>
+  }
+</div>

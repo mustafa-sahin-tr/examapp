@@ -529,6 +529,72 @@
           </div>
         }
 
+        @if (crossword(); as cw) {
+          <div class="ae__block" data-testid="crossword-form">
+            <p class="ae__hint">{{ t('crossword.hint') }}</p>
+            <div class="ae__row">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>{{ t('crossword.rows') }}</mat-label>
+                <input matInput type="number" data-testid="cw-rows" [min]="crosswordLimits.minSize" [max]="crosswordLimits.maxSize"
+                  [value]="cw.rows" (change)="setCrosswordSize(+$any($event.target).value, cw.cols)" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>{{ t('crossword.cols') }}</mat-label>
+                <input matInput type="number" data-testid="cw-cols" [min]="crosswordLimits.minSize" [max]="crosswordLimits.maxSize"
+                  [value]="cw.cols" (change)="setCrosswordSize(cw.rows, +$any($event.target).value)" />
+              </mat-form-field>
+              <button mat-stroked-button type="button" data-testid="cw-auto" (click)="autoLayoutCrossword()">
+                <mat-icon>auto_fix_high</mat-icon>{{ t('crossword.autoLayout') }}
+              </button>
+            </div>
+            @if (crosswordUnplaced(); as unplaced) {
+              <p class="ae__hint" role="status" data-testid="cw-auto-result">
+                {{ unplaced.length ? t('crossword.unplaced', { list: unplaced.join(', ') }) : t('crossword.placed') }}
+              </p>
+            }
+            @for (entry of cw.entries; track $index; let ei = $index) {
+              <div class="ae__entry" [attr.data-entry]="ei">
+                <div class="ae__row">
+                  <span class="ae__index">{{ ei + 1 }}.</span>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>{{ t('crossword.answer') }}</mat-label>
+                    <input matInput [value]="entry.answer" [attr.maxlength]="crosswordLimits.maxSize + 10"
+                      (input)="setCrosswordEntry(ei, { answer: $any($event.target).value })" />
+                    <mat-hint>{{ t('crossword.length', { n: crosswordLength(entry) }) }}</mat-hint>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                    <mat-label>{{ t('crossword.clue') }}</mat-label>
+                    <input matInput [value]="entry.clue" [attr.maxlength]="crosswordLimits.maxClue"
+                      (input)="setCrosswordEntry(ei, { clue: $any($event.target).value })" />
+                  </mat-form-field>
+                  <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="cw.entries.length <= 1"
+                    (click)="removeCrosswordEntry(ei)"><mat-icon>close</mat-icon></button>
+                </div>
+                <div class="ae__row">
+                  <mat-button-toggle-group [value]="entry.dir" [attr.aria-label]="t('crossword.dir')"
+                    (change)="setCrosswordEntry(ei, { dir: $event.value })">
+                    <mat-button-toggle value="across">{{ t('crossword.across') }}</mat-button-toggle>
+                    <mat-button-toggle value="down">{{ t('crossword.down') }}</mat-button-toggle>
+                  </mat-button-toggle-group>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__narrow">
+                    <mat-label>{{ t('crossword.row') }}</mat-label>
+                    <input matInput type="number" min="1" [max]="cw.rows" [value]="entry.row + 1"
+                      (change)="setCrosswordPosition(ei, 'row', $any($event.target).value)" />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__narrow">
+                    <mat-label>{{ t('crossword.col') }}</mat-label>
+                    <input matInput type="number" min="1" [max]="cw.cols" [value]="entry.col + 1"
+                      (change)="setCrosswordPosition(ei, 'col', $any($event.target).value)" />
+                  </mat-form-field>
+                </div>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="cw.entries.length >= crosswordLimits.maxEntries" (click)="addCrosswordEntry()">
+              <mat-icon>add</mat-icon>{{ t('crossword.addEntry') }}
+            </button>
+          </div>
+        }
+
         <div class="ae__field">
           <span class="ae__label">{{ t('classification.title') }}</span>
           <p class="ae__hint">{{ t('classification.hint') }}</p>
@@ -586,6 +652,11 @@
             }
             @case ('mazeTree') {
               <app-question-canvas-maze-tree [questionRegion]="previewRegion()"
+                [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
+                [showSolution]="showSolution()" [activityMode]="true" />
+            }
+            @case ('crossword') {
+              <app-question-canvas-crossword [questionRegion]="previewRegion()"
                 [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
                 [showSolution]="showSolution()" [activityMode]="true" />
             }

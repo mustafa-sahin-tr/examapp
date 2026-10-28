@@ -24,7 +24,8 @@
     "mazeTree": "D/Y ağacı",
     "mazeBoard": "Işıklı pano",
     "mazeRooms": "Labirent (odalı)",
-    "mazeStones": "Irmak taşları"
+    "mazeStones": "Irmak taşları",
+    "crossword": "Çengel bulmaca"
   },
   "kindHints": {
     "matrix": "Her satır için doğru seçeneği işaretle. D/Y şablonu iki kolon kurar; çoklu seçimde satırda birden çok doğru olabilir.",
@@ -155,7 +156,17 @@
     "mazeNoRoute": "Başlangıçtan doğru kapılar izlenince bitişe varılmıyor; odaların doğru kapılarını kontrol et.",
     "mazeStoneCount": "{{min}}–{{max}} taş olmalı.",
     "mazeBlankStone": "Boş taş bırakma.",
-    "mazeNoMarkedStone": "En az bir taşı basılmaz olarak işaretle."
+    "mazeNoMarkedStone": "En az bir taşı basılmaz olarak işaretle.",
+    "crosswordGridSize": "Izgara {{min}}–{{max}} satır ve sütun olmalı.",
+    "crosswordEntryCount": "{{min}}–{{max}} kelime olmalı.",
+    "crosswordAnswerRequired": "Her kelimenin cevabını yazın.",
+    "crosswordAnswerLength": "Cevaplar {{min}}–{{max}} harf olmalı.",
+    "crosswordAnswerChars": "Cevaplarda yalnız harf ve rakam kullanın.",
+    "crosswordClueRequired": "Her kelimenin ipucunu yazın.",
+    "crosswordOutOfGrid": "{{n}}. kelime ızgaraya sığmıyor.",
+    "crosswordConflict": "{{n}}. kelime kesiştiği hücrede başka bir harfle çakışıyor.",
+    "crosswordOverlap": "{{n}}. kelime aynı yöndeki başka bir kelimenin üstüne biniyor.",
+    "crosswordTouching": "{{n}}. kelime aynı yöndeki başka bir kelimeye bitişik; araya boş hücre bırakın."
   },
   "snackbar": {
     "created": "Madde etkinliğe eklendi.",
@@ -223,5 +234,22 @@
     "stone": "Taş {{n}}",
     "markStone": "Taş {{n}}: basılmaz",
     "addStone": "Taş ekle"
+  },
+  "crossword": {
+    "hint": "Kelimeleri ve ipuçlarını yazın. \"Otomatik yerleştir\" kelimeleri kesiştirerek ızgaraya yerleştirir; yönü ve başlangıç hücresini elle de değiştirebilirsiniz.",
+    "rows": "Satır",
+    "cols": "Sütun",
+    "autoLayout": "Otomatik yerleştir",
+    "placed": "Bütün kelimeler kesiştirilerek yerleştirildi.",
+    "unplaced": "Şu kelimeler başka bir kelimeyle kesiştirilemedi, ayrı satıra kondu: {{list}}",
+    "answer": "Cevap",
+    "length": "{{n}} harf",
+    "clue": "İpucu",
+    "dir": "Yön",
+    "across": "Soldan sağa",
+    "down": "Yukarıdan aşağıya",
+    "row": "Satır",
+    "col": "Sütun",
+    "addEntry": "Kelime ekle"
   }
 }

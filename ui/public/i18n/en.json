@@ -466,6 +466,20 @@
         "exitName": "Exit {{n}}",
         "stepOk": "correct",
         "stoneWrong": "wrong"
+      },
+      "crossword": {
+        "passageAlt": "Reading passage image",
+        "imageAlt": "Activity image",
+        "invalid": "This activity could not be opened.",
+        "gridAria": "Crossword grid",
+        "across": "Across",
+        "down": "Down",
+        "reset": "Clear",
+        "clueOk": "correct",
+        "clueWrong": "wrong",
+        "resultOk": "All words are correct!",
+        "resultPartial": "{{ok}} of {{total}} words are correct; check the red words again.",
+        "solutionShown": "The correct letters are shown; red letters are where you wrote something else."
       }
     },
     "sharingBadge": {

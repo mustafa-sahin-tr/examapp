@@ -294,7 +294,9 @@
         "match": "Eşleştirme",
         "textSelect": "Metinde işaretleme",
         "dragDropLabeling": "Etiketleme",
-        "openText": "Açık uçlu"
+        "openText": "Açık uçlu",
+        "mazeTree": "Yol oyunu",
+        "crossword": "Çengel bulmaca"
       }
     },
     "addTextItem": "Görselsiz madde ekle"

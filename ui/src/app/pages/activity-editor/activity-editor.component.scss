@@ -409,3 +409,25 @@
   border-radius: 10px;
   border: 1px solid var(--ms-border-weak);
 }
+
+// Issue #586: çengel bulmaca kelime satırı (cevap + ipucu, altında yön ve başlangıç hücresi).
+.ae__entry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--ms-border-weak);
+
+  .ae__row {
+    flex-wrap: wrap;
+  }
+}
+
+.ae__index {
+  min-width: 24px;
+  font-weight: 700;
+}
+
+.ae__narrow {
+  flex: 0 0 96px;
+}

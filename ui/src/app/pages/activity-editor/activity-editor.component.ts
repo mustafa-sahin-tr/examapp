@@ -39,6 +39,13 @@ import {
   authorBlanks,
 } from '../../models/activity-authoring-blanks';
 import {
+  CROSSWORD_FORM_LIMITS,
+  CrosswordEntryForm,
+  CrosswordForm,
+  answerLetters,
+  autoLayout,
+} from '../../models/activity-authoring-crossword';
+import {
   MAZE_FORM_LIMITS,
   MazeBoardForm,
   MazeRoomsForm,
@@ -56,6 +63,7 @@ import {
   ClassificationSelection,
   ClassificationSelectorComponent,
 } from '../../shared/components/classification-selector/classification-selector.component';
+import { QuestionCanvasCrosswordComponent } from '../../shared/components/question-canvas-crossword/question-canvas-crossword.component';
 import { QuestionCanvasDragPlaceComponent } from '../../shared/components/question-canvas-drag-place/question-canvas-drag-place.component';
 import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
 import { QuestionCanvasMazeTreeComponent } from '../../shared/components/question-canvas-maze-tree/question-canvas-maze-tree.component';
@@ -113,6 +121,7 @@ interface EditableItem {
     QuestionCanvasMatchComponent,
     QuestionCanvasSlotFillComponent,
     QuestionCanvasMazeTreeComponent,
+    QuestionCanvasCrosswordComponent,
   ],
   providers: [provideTranslocoScope(ACTIVITY_EDITOR_SCOPE)],
   templateUrl: './activity-editor.component.html',
@@ -134,6 +143,9 @@ export class ActivityEditorComponent {
   readonly mazeLabelMax = MAZE_FORM_LIMITS.maxLabel;
   readonly treeDepths = [1, 2, 3, 4];
   readonly gridSizes = [2, 3, 4];
+  readonly crosswordLimits = CROSSWORD_FORM_LIMITS;
+  /** Otomatik yerleştirmenin son sonucu: kesiştirilemeyip ayrı satıra konan kelimeler (1 tabanlı). */
+  readonly crosswordUnplaced = signal<number[] | null>(null);
 
   readonly testId = Number(this.route.snapshot.queryParamMap.get('testId')) || null;
   private readonly gradeId = Number(this.route.snapshot.queryParamMap.get('gradeId')) || null;
@@ -176,6 +188,7 @@ export class ActivityEditorComponent {
   readonly mazeBoard = computed(() => (this.form().kind === 'mazeBoard' ? (this.form() as MazeBoardForm) : null));
   readonly mazeRooms = computed(() => (this.form().kind === 'mazeRooms' ? (this.form() as MazeRoomsForm) : null));
   readonly mazeStones = computed(() => (this.form().kind === 'mazeStones' ? (this.form() as MazeStonesForm) : null));
+  readonly crossword = computed(() => (this.form().kind === 'crossword' ? (this.form() as CrosswordForm) : null));
   /** D/Y ağacının düzeyleri: genişlik öncelikli sırada her düzeyin ifade dizinleri. */
   readonly treeLevels = computed(() => {
     const f = this.mazeTree();
@@ -253,6 +266,7 @@ export class ActivityEditorComponent {
   selectKind(kind: AuthoringKind): void {
     if (kind === this.kind() || this.editingId()) return;
     this.form.set(emptyForm(kind, this.trueFalseLabels(), this.mazeDefaults()));
+    this.crosswordUnplaced.set(null);
     this.submitted.set(false);
   }
 
@@ -598,6 +612,43 @@ export class ActivityEditorComponent {
     this.updateMazeStones((f) => ({ ...f, stones: f.stones.filter((_, i) => i !== index) }));
   }
 
+  // ---- Çengel bulmaca ----
+
+  setCrosswordSize(rows: number, cols: number): void {
+    this.updateCrossword((f) => ({ ...f, rows, cols }));
+  }
+
+  setCrosswordEntry(index: number, patch: Partial<CrosswordEntryForm>): void {
+    this.crosswordUnplaced.set(null);
+    this.updateCrossword((f) => ({ ...f, entries: f.entries.map((e, i) => (i === index ? { ...e, ...patch } : e)) }));
+  }
+
+  /** Satır / sütun alanı 1 tabanlı gösterilir. */
+  setCrosswordPosition(index: number, field: 'row' | 'col', value: string): void {
+    const n = Number.parseInt(value, 10);
+    if (Number.isFinite(n)) this.setCrosswordEntry(index, { [field]: n - 1 });
+  }
+
+  addCrosswordEntry(): void {
+    this.updateCrossword((f) => ({ ...f, entries: [...f.entries, { answer: '', clue: '', dir: 'across', row: 0, col: 0 }] }));
+  }
+
+  removeCrosswordEntry(index: number): void {
+    this.updateCrossword((f) => ({ ...f, entries: f.entries.filter((_, i) => i !== index) }));
+  }
+
+  autoLayoutCrossword(): void {
+    const f = this.crossword();
+    if (!f) return;
+    const result = autoLayout(f);
+    this.form.set(result.form);
+    this.crosswordUnplaced.set(result.unplaced);
+  }
+
+  crosswordLength(entry: CrosswordEntryForm): number {
+    return answerLetters(entry.answer).length;
+  }
+
   // ---- Boşluk doldurma / kelime havuzu (metin) ----
 
   setBlankText(value: string): void {
@@ -828,6 +879,7 @@ export class ActivityEditorComponent {
     this.editingPassageId = null;
     this.originalImage = null;
     this.form.set(emptyForm(kind, this.trueFalseLabels(), this.mazeDefaults()));
+    this.crosswordUnplaced.set(null);
     this.instruction.set('');
     this.image.set(null);
     this.imageError.set(null);
@@ -899,6 +951,11 @@ export class ActivityEditorComponent {
     if (f) this.form.set(update(f));
   }
 
+  private updateCrossword(update: (f: CrosswordForm) => CrosswordForm): void {
+    const f = this.crossword();
+    if (f) this.form.set(update(f));
+  }
+
   private updateMazeStones(update: (f: MazeStonesForm) => MazeStonesForm): void {
     const f = this.mazeStones();
     if (f) this.form.set(update(f));
@@ -960,5 +1017,7 @@ function itemTitle(form: AuthoringForm, instruction: string | null | undefined):
       return form.rooms[form.start]?.text ?? '';
     case 'mazeStones':
       return form.stones[0]?.text ?? '';
+    case 'crossword':
+      return form.entries[0]?.clue ?? '';
   }
 }

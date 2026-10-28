@@ -272,6 +272,11 @@
                   <mat-label>{{ t('shortAnswer.answers') }}</mat-label>
                   <input matInput [value]="row.answers" (input)="setShortRow(si, 'answers', $any($event.target).value)" />
                 </mat-form-field>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__letter">
+                  <mat-label>{{ t('shortAnswer.letter') }}</mat-label>
+                  <input matInput [value]="row.letter ?? ''" maxlength="1" [attr.data-letter]="si"
+                    (input)="setShortRow(si, 'letter', $any($event.target).value)" />
+                </mat-form-field>
                 <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="sa.rows.length <= 1"
                   (click)="removeShortRow(si)"><mat-icon>close</mat-icon></button>
               </div>
@@ -279,6 +284,13 @@
             <button mat-button type="button" [disabled]="sa.rows.length >= 80" (click)="addShortRow()">
               <mat-icon>add</mat-icon>{{ t('shortAnswer.add') }}
             </button>
+            <span class="ae__label">{{ t('shortAnswer.cipher') }}</span>
+            <p class="ae__hint">{{ t('shortAnswer.cipherHint') }}</p>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+              <mat-label>{{ t('shortAnswer.cipherWord') }}</mat-label>
+              <input matInput [value]="sa.cipher ?? ''" maxlength="40" data-testid="cipher-word"
+                (input)="setShortCipher($any($event.target).value)" />
+            </mat-form-field>
           </div>
         }
 

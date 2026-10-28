@@ -94,6 +94,26 @@
     </div>
   }
 
+  <!-- #586 (dilim d): şifre şeridi — hücrenin altında sorunun numarası, doğru cevapla harf açılır. -->
+  @if (cipherCells().length > 0) {
+    <div class="sf-cipher" data-testid="sf-cipher" [class.is-solved]="cipherSolved()">
+      <span class="sf-cipher__label">{{ t('slotFill.cipherLabel') }}</span>
+      <div class="sf-cipher__cells" role="list">
+        @for (cell of cipherCells(); track $index) {
+          @if (cell.slot) {
+            <span class="sf-cipher__cell" role="listitem" [class.is-open]="!!cell.letter"
+              [attr.data-cipher-cell]="$index" [attr.aria-label]="cipherAria(cell)">
+              <span class="sf-cipher__letter" aria-hidden="true">{{ cell.letter ?? '' }}</span>
+              <span class="sf-cipher__no" aria-hidden="true">{{ cell.n }}</span>
+            </span>
+          } @else {
+            <span class="sf-cipher__gap" aria-hidden="true"></span>
+          }
+        }
+      </div>
+    </div>
+  }
+
   @if (plan()) {
     @if (!solutionShown() && paletteSlot(); as target) {
       <div class="sf-palette" role="toolbar" data-testid="sf-palette"

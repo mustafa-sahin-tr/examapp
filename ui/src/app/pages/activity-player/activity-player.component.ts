@@ -45,6 +45,7 @@ import {
 import {
   SlotFillPlanV1,
   isSlotFillType,
+  parseSlotFillCipherFeedback,
   parseSlotFillPlan,
   parseSlotFillSolution,
   parseSlotFillValues,
@@ -470,6 +471,13 @@ export class ActivityPlayerComponent {
     const item = this.currentItem();
     if (!item || this.revealed()) return null;
     return parseLogicGridFeedback(this.results()[item.id]?.feedback);
+  });
+
+  /** Issue #586: cevap kutusu şifresinin açılmış harfleri (hücre başına); çözüm açıkken ya da kontrol yoksa null. */
+  readonly currentSlotCipher = computed<(string | null)[] | null>(() => {
+    const item = this.currentItem();
+    if (!item || this.revealed()) return null;
+    return parseSlotFillCipherFeedback(this.results()[item.id]?.feedback);
   });
 
   /** Issue #583: geçerli açık uçlu maddenin değerlendirme durumu (yoksa null). */

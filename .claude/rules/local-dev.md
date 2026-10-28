@@ -732,6 +732,16 @@ seçenek. Oynatıcı: hücre döngüsü boş → ✓ → ✗; "✓ koyunca satı
 denetlenir (iki ✓ ya da hepsi ✗ → kırmızı çerçeve). Yazarlık görselsiz editörde (tür **Mantık tablosu**). Migration yok; Aspire'da exam
 API'yi yeniden başlat.
 
+**Issue #586 dilim d — şifre katmanı (`slotFill` + `cipher`).** Yeni tip yok: `slotFill` planına isteğe bağlı
+`cipher:{cells:["s2",null,"s1",...]}` (gizli kelimenin hücreleri: kutu id'si ya da `null` = boşluk; 2–40 hücre, en az 2 harf hücresi,
+başta / sonda boşluk yok, aynı kutu birden çok hücrede geçebilir; görselli ve görselsiz planda). Harfler **çözümde**: şifrede geçen her
+kutunun çözüm girdisinde `letter` (tek harf / rakam) zorunlu, şifresiz planda ya da şifre dışı kutuda yasak (`SlotFillGrader.ValidateDefinition`).
+Kontrol değişmedi (kutu başına); geri bildirim ek olarak `cipher` dizisi taşır — hücre başına **doğru cevaplanmış** kutunun harfi (tr-TR büyük
+harf), diğerleri `null`; yani yalnız öğrencinin bulduğu harfler açılır. Oynatıcı kutuların altında şifre şeridi çizer (hücre altında sorunun
+numarası; örnek soruda istemci işareti, çözüm açıkken bütün kelime). Yazarlık görselsiz editörde **Soru + kısa cevap** formunda: satır başına
+harf + gizli kelime; kelimenin her harfi o harfi taşıyan soruya bağlanır (aynı harf birden çok soruda varsa sırayla). Tuvalde (görselli) şifre
+yazarlığı yok. Migration yok; Aspire'da exam API'yi yeniden başlat.
+
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını
 (`TestInstances` — Questions'a FK'sı yok, CASCADE ulaşmaz, açıkça silinir; aksi halde "boş test yapılmış" gibi kalır),

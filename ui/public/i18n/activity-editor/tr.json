@@ -182,7 +182,14 @@
     "logicDuplicate": "Aynı listede iki kez geçen ad var.",
     "logicClueCount": "En çok {{max}} ipucu eklenebilir.",
     "logicAnswerMissing": "Çözümde her satıra her kategoriden bir seçenek verin.",
-    "logicAnswerDuplicate": "«{{category}}» kategorisinde aynı seçenek iki satıra verilmiş."
+    "logicAnswerDuplicate": "«{{category}}» kategorisinde aynı seçenek iki satıra verilmiş.",
+    "cipherWordMissing": "Harf verdin ama gizli kelimeyi yazmadın.",
+    "cipherTooLong": "Gizli kelime en çok {{max}} karakter olabilir.",
+    "cipherWordChars": "Gizli kelimede yalnız harf, rakam ve boşluk olabilir.",
+    "cipherWordShort": "Gizli kelimede en az {{min}} harf olmalı.",
+    "cipherLetterInvalid": "Soru harfi tek bir harf ya da rakam olmalı.",
+    "cipherLetterMissing": "Gizli kelimedeki \"{{letter}}\" harfini taşıyan bir soru yok.",
+    "cipherLetterUnused": "\"{{letter}}\" harfi gizli kelimede geçmiyor."
   },
   "snackbar": {
     "created": "Madde etkinliğe eklendi.",
@@ -201,7 +208,11 @@
     "hint": "Cevap sayıysa sayı kutusu olur (3/4 ile 0,75 eşdeğer sayılır).",
     "question": "Soru {{n}}",
     "answers": "Cevap (| ile alternatif)",
-    "add": "Soru ekle"
+    "add": "Soru ekle",
+    "letter": "Harf",
+    "cipher": "Şifre (isteğe bağlı)",
+    "cipherHint": "Gizli kelimeyi yaz ve her sorunun harfini gir. Öğrenci soruyu doğru cevaplayınca o harf şifrede açılır.",
+    "cipherWord": "Gizli kelime"
   },
   "table": {
     "cells": "Tablo",

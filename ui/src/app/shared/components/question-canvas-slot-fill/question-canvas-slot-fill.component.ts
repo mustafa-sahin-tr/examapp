@@ -28,6 +28,7 @@ import {
   SlotValues,
   buildSlotFillPayload,
   emptySlotValues,
+  parseSlotFillLetters,
   parseSlotFillPlan,
   parseSlotFillSolution,
   parseSlotFillValues,
@@ -55,6 +56,9 @@ export const SLOT_FILL_SAVE_DEBOUNCE_MS = 600;
  * Issue #590 (dilim b): planda `layout` varsa (görselsiz) kutular görsel üstünde değil düzende çizilir — `list` (soru +
  * kısa cevap satırları), `text` (satır içi boşluklu metin), `table` (boş hücre = cevap kutusu). İsteğe bağlı görsel
  * etkileşimsiz olarak üstte kalır. Giriş alanları ve kontrol aynıdır.
+ *
+ * Issue #586 (dilim d): planda `cipher` varsa kutuların altında gizli kelime şeridi çizilir. Harfler çözümdedir; sunucu
+ * kontrolü (`feedbackCipher`) doğru kutuların harflerini açar, örnek soruda istemci işareti doğru olanları, çözüm açıkken hepsi.
  *
  * Girdi/çıktılar matris / sürükle-bırak oynatıcısıyla aynı: test ekranı ve etkinlik oynatıcısı aynı sözleşmeyle besler.
  * Çözüm (`interactionSolutionJson`) yalnız verilirse kullanılır (#570); puan yok, kontrol kutu başına doğru/yanlış.
@@ -119,6 +123,11 @@ export class QuestionCanvasSlotFillComponent {
     this._feedback.set(value ? new Map(value.map((row) => [row.id, row.correct])) : null);
   }
 
+  /** Issue #586: sunucu kontrolünün açtığı şifre harfleri (hücre başına harf ya da null). */
+  @Input() set feedbackCipher(value: (string | null)[] | null | undefined) {
+    this._feedbackCipher.set(value ?? null);
+  }
+
   /** true iken öğrencinin değerleri yerine kabul edilen değerler gösterilir (salt okunur). */
   @Input() set showSolution(value: boolean) {
     this._showSolution.set(!!value);
@@ -150,6 +159,7 @@ export class QuestionCanvasSlotFillComponent {
   private readonly _solutionJson = signal<string | null>(null);
   private readonly _answerPayloadJson = signal<string | null>(null);
   private readonly _feedback = signal<Map<string, boolean> | null>(null);
+  private readonly _feedbackCipher = signal<(string | null)[] | null>(null);
   private readonly _showSolution = signal(false);
   private readonly _practiceFeedback = signal(false);
   private readonly _activityMode = signal(false);
@@ -214,6 +224,40 @@ export class QuestionCanvasSlotFillComponent {
       return isSlotAnswerCorrect(slot.input.kind, expected, actual) ? 'correct' : 'wrong';
     };
   });
+
+  /**
+   * Issue #586: şifre şeridi — hücre başına `{slot, n, letter}` (boşlukta `slot` null). `n` = kutunun soru numarası (1'den),
+   * öğrenci hangi sorunun harfi olduğunu görür. Harf: çözüm açıkken çözümden, sunucu kontrolünden, örnek soruda istemci
+   * işaretinden; diğer durumda gizli.
+   */
+  readonly cipherCells = computed<{ slot: string | null; n: number; letter: string | null }[]>(() => {
+    const cells = this._plan()?.cipher?.cells;
+    if (!cells) return [];
+    const refs = this.slotRef();
+    const letters = parseSlotFillLetters(this._solutionJson());
+    const feedback = this._feedbackCipher();
+    const showSolution = this._showSolution();
+    const mark = this.slotMark();
+    return cells.map((slotId, i) => {
+      const ref = slotId ? refs.get(slotId) : undefined;
+      if (!slotId || !ref) return { slot: null, n: 0, letter: null };
+      let letter: string | null = null;
+      if (showSolution) letter = letters.get(slotId) ?? null;
+      else if (feedback) letter = feedback[i] ?? null;
+      else if (mark(ref.slot) === 'correct') letter = letters.get(slotId) ?? null;
+      return { slot: slotId, n: ref.index + 1, letter };
+    });
+  });
+
+  readonly cipherSolved = computed(() => {
+    const cells = this.cipherCells();
+    return cells.length > 0 && cells.every((c) => c.slot === null || c.letter !== null);
+  });
+
+  cipherAria(cell: { slot: string | null; n: number; letter: string | null }): string {
+    this.i18nTick();
+    return cell.letter ? this.t('cipherCellOpen', { n: cell.n, letter: cell.letter }) : this.t('cipherCellHidden', { n: cell.n });
+  }
 
   readonly filledCount = computed(() => {
     const values = this.values();

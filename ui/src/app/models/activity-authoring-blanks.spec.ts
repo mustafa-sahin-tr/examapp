@@ -129,4 +129,48 @@ describe('activity-authoring-blanks (#590 dilim b)', () => {
     });
     expect(parseDefinition('slotFill', select, '{"s1":{"optionIds":["o1"]}}')).toBeNull();
   });
+  describe('şifre katmanı (#586 dilim d)', () => {
+    const base: ShortAnswerForm = {
+      kind: 'shortAnswer',
+      rows: [
+        { question: '3 × 4', answers: '12', letter: 'k' },
+        { question: 'Başkent', answers: 'Ankara', letter: 'a' },
+        { question: '5 + 5', answers: '10', letter: 'a' },
+        { question: 'Renk', answers: 'mavi', letter: '' },
+      ],
+      cipher: ' kaa  k ',
+    };
+
+    it('bağlar harfleri sorulara (aynı harf sırayla dağıtılır), boşluk null; harf çözüme gider', () => {
+      expect(validateForm(base)).toEqual([]);
+      const def = buildDefinition(base);
+      const plan = JSON.parse(def.plan);
+      expect(plan.cipher).toEqual({ cells: ['s1', 's2', 's3', null, 's1'] });
+      expect(def.plan).not.toContain('"letter"');
+      const solution = JSON.parse(def.solution);
+      expect(solution.s1.letter).toBe('K');
+      expect(solution.s2.letter).toBe('A');
+      expect(solution.s4.letter).toBeUndefined();
+    });
+
+    it('geri okunur (kelime ve harfler)', () => {
+      const back = roundTrip(base) as ShortAnswerForm;
+      expect(back.cipher).toBe('KAA K');
+      expect(back.rows.map((r) => r.letter)).toEqual(['K', 'A', 'A', '']);
+    });
+
+    it('şifresiz form şifre alanı üretmez', () => {
+      const def = buildDefinition({ ...base, cipher: '', rows: base.rows.map((r) => ({ ...r, letter: '' })) });
+      expect(JSON.parse(def.plan).cipher).toBeUndefined();
+    });
+
+    it('eksik / fazla harf ve kelimesiz harf hata verir', () => {
+      const keys = (form: ShortAnswerForm) => validateForm(form).map((e) => e.key);
+      expect(keys({ ...base, cipher: 'KAR' })).toContain('cipherLetterMissing');
+      expect(keys({ ...base, cipher: 'K K' })).toContain('cipherLetterUnused');
+      expect(keys({ ...base, cipher: '' })).toContain('cipherWordMissing');
+      expect(keys({ ...base, cipher: 'K' })).toContain('cipherWordShort');
+      expect(keys({ ...base, cipher: 'KA!' })).toContain('cipherWordChars');
+    });
+  });
 });

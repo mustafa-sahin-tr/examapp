@@ -97,6 +97,7 @@
                     [interactionSolutionJson]="currentSolution()?.interactionSolution ?? null"
                     [answerPayloadJson]="answerFor(item)?.answerPayload ?? null"
                     [feedbackRows]="revealed() ? null : currentFeedbackRows()"
+                    [feedbackCipher]="currentSlotCipher()"
                     [showSolution]="revealed()"
                     [activityMode]="true"
                     (answerPayloadChange)="onDragDropChange($event, item)"

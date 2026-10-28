@@ -294,7 +294,9 @@
         "match": "Matching",
         "textSelect": "Mark in text",
         "dragDropLabeling": "Labeling",
-        "openText": "Open-ended"
+        "openText": "Open-ended",
+        "mazeTree": "Path game",
+        "crossword": "Crossword"
       }
     },
     "addTextItem": "Add text-only item"

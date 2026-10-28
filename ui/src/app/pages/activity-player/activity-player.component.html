@@ -164,6 +164,21 @@
                     (answerPayloadChange)="onDragDropChange($event, item)"
                   />
                 }
+              } @else if (isCrossword(item)) {
+                @if (currentRegion(); as region) {
+                  <app-question-canvas-crossword
+                    [questionRegion]="region"
+                    [imageRefresh]="imageRefresh"
+                    [interactionPlanJson]="item.question.interactionPlan || null"
+                    [interactionSolutionJson]="currentSolution()?.interactionSolution ?? null"
+                    [answerPayloadJson]="answerFor(item)?.answerPayload ?? null"
+                    [feedback]="currentCrosswordFeedback()"
+                    [showSolution]="revealed()"
+                    [activityMode]="true"
+                    [disabled]="contentLocked()"
+                    (answerPayloadChange)="onDragDropChange($event, item)"
+                  />
+                }
               } @else if (isMazeTree(item)) {
                 @if (currentRegion(); as region) {
                   <app-question-canvas-maze-tree

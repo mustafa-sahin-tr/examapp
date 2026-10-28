@@ -1276,6 +1276,64 @@ describe('ActivityPlayerComponent (#573)', () => {
     });
   });
 
+  describe('crossword (#586)', () => {
+    const CW_PLAN = JSON.stringify({
+      version: 1,
+      type: 'crossword',
+      rows: 3,
+      cols: 4,
+      clues: [
+        { id: 'k1', dir: 'across', row: 0, col: 0, length: 4, number: 1, text: 'Organ' },
+        { id: 'k2', dir: 'down', row: 0, col: 0, length: 3, number: 1, text: 'Kirli' },
+        { id: 'k3', dir: 'across', row: 2, col: 0, length: 3, number: 2, text: 'Raf' },
+      ],
+    });
+    const cwGrid = (...lines: string[]) => JSON.stringify({ version: 1, type: 'crossword', grid: lines });
+    const base = () => instance().testInstanceQuestions[0].question;
+    const typed = (answer: string) =>
+      instance({}, [{ answerPayload: answer, question: { ...base(), interactionType: 'Crossword', interactionPlan: CW_PLAN } }]);
+
+    it('rendersPlayer_EmptyCellsAreIncomplete_ClueRowsAndFeedback', async () => {
+      await create(typed(cwGrid('KALP', 'I   ', 'RA  ')));
+      fixture.componentInstance.goTo(0);
+      await settle();
+
+      expect(el().querySelector('app-question-canvas-crossword')).not.toBeNull();
+      expect(fixture.componentInstance.blankItems()).toContain('a');
+
+      fixture.componentInstance.onDragDropChange(cwGrid('KALP', 'I   ', 'RAF '), fixture.componentInstance.items()[0]);
+      await settle();
+      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 2,
+          totalCount: 4,
+          questions: [
+            {
+              instanceQuestionId: 101,
+              isCorrect: false,
+              correctCount: 2,
+              totalCount: 3,
+              feedback: '{"rows":[{"id":"k1","correct":true},{"id":"k2","correct":false},{"id":"k3","correct":true}]}',
+            },
+            { instanceQuestionId: 102, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+      expect(fixture.componentInstance.currentRows().map((r) => [r.label, r.correct])).toEqual([
+        ['1 → Organ: KALP', true],
+        ['1 ↓ Kirli: KIR', false],
+        ['2 → Raf: RAF', true],
+      ]);
+      expect(fixture.componentInstance.currentCrosswordFeedback()?.rows.length).toBe(3);
+      expect(el().querySelector('[data-clue="k2"]')?.classList).toContain('is-bad');
+    });
+  });
+
   describe('mazeTree (#585)', () => {
     const MZ_PLAN = JSON.stringify({
       version: 1,

@@ -15,7 +15,17 @@ type LoadState = 'idle' | 'loading' | 'loaded' | 'error';
 /** Isı haritası hücresinin tonu: oran ≥ %80 iyi, ≥ %50 orta, altı zayıf; boş / puanlanamaz ayrı. */
 export type HeatTone = 'good' | 'mid' | 'low' | 'empty' | 'none';
 
-const KNOWN_TYPES = new Set(['matrixChoice', 'slotFill', 'dragPlace', 'match', 'textSelect', 'dragDropLabeling', 'openText']);
+const KNOWN_TYPES = new Set([
+  'matrixChoice',
+  'slotFill',
+  'dragPlace',
+  'match',
+  'textSelect',
+  'dragDropLabeling',
+  'openText',
+  'mazeTree',
+  'crossword',
+]);
 
 /**
  * Issue #584: öğretmenin atanmış etkinlik sayfası analizi — öğrenci × madde ısı haritası ve madde başına satır/öğe doğru oranı

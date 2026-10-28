@@ -137,6 +137,29 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(el('[data-testid="preview"] app-question-canvas-match')).not.toBeNull();
   });
 
+  it('çengel bulmaca: otomatik yerleştirir, önizlemede ızgara çizer ve çözümü ayrı kaydeder (#586)', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('crossword');
+    fixture.detectChanges();
+    expect(el('[data-testid="crossword-form"]')).not.toBeNull();
+
+    component.setCrosswordEntry(0, { answer: 'kalp', clue: 'Kanı pompalar' });
+    component.setCrosswordEntry(1, { answer: 'kir', clue: 'Temizliğin zıttı' });
+    component.autoLayoutCrossword();
+    fixture.detectChanges();
+    expect(component.crosswordUnplaced()).toEqual([]);
+    expect(el('[data-testid="preview"] app-question-canvas-crossword')).not.toBeNull();
+    expect(el('[data-testid="cw-auto-result"]')).not.toBeNull();
+
+    component.save(false);
+    const q = questions.saveBulk.mock.calls[0][0].questions[0];
+    expect(q.interactionType).toBe('crossword');
+    const plan = JSON.parse(q.interactionPlan);
+    expect(plan.clues.map((c: { dir: string }) => c.dir).sort()).toEqual(['across', 'down']);
+    expect(q.interactionPlan).not.toContain('KALP');
+    expect(JSON.parse(q.interactionSolution)).toEqual({ answers: { k1: 'KALP', k2: 'KİR' } });
+  });
+
   it('düzenleme: görselsiz maddeyi plandan kurar ve tekli kayıtla aynı kapsama yazar', async () => {
     await setup({ testId: '9', questionId: '31' }, [
       {

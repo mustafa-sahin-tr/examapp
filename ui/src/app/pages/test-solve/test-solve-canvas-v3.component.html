@@ -403,6 +403,18 @@
           (answerPayloadChange)="saveDragDropAnswerForQuestion($event, questionData.index)"
           (answered)="focusOnQuestion(questionData.index)"></app-question-canvas-match>
         }
+        } @else if (interactionKind(questionData.question.question.interactionType) === 'crossword') {
+        <!-- Issue #586: çengel bulmaca (ayrı parça). -->
+        @defer (on immediate) {
+        <app-question-canvas-crossword class="canvas-stage" [questionRegion]="questionData.region"
+          [imageRefresh]="imageRefresh"
+          [interactionPlanJson]="questionData.question.question.interactionPlan || null"
+          [interactionSolutionJson]="questionData.question.question.interactionSolution || null"
+          [answerPayloadJson]="questionData.question.answerPayload || null"
+          [hidePassage]="isPassageFirstActive(questionData.index)"
+          (answerPayloadChange)="saveDragDropAnswerForQuestion($event, questionData.index)"
+          (answered)="focusOnQuestion(questionData.index)"></app-question-canvas-crossword>
+        }
         } @else if (interactionKind(questionData.question.question.interactionType) === 'mazeTree') {
         <!-- Issue #585: yol oyunları (ayrı parça). -->
         @defer (on immediate) {

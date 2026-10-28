@@ -64,6 +64,18 @@ import {
 } from '../../models/drag-place';
 import { MatchPlanV1, isMatchType, openLefts, parseMatchPairs, parseMatchPlan, parseMatchSolution, rightOf } from '../../models/match';
 import {
+  CrosswordFeedback,
+  CrosswordPlanV1,
+  clueNumbers,
+  clueWord,
+  isCrosswordType,
+  isEmptyCrosswordGrid,
+  parseCrosswordAnswer,
+  parseCrosswordFeedback,
+  parseCrosswordPlan,
+  parseCrosswordSolution,
+} from '../../models/crossword';
+import {
   MazeFeedback,
   MazeTreePlanV1,
   edgeOf,
@@ -131,6 +143,7 @@ import { QuestionCanvasDragPlaceComponent } from '../../shared/components/questi
 import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
 import { QuestionCanvasTextSelectComponent } from '../../shared/components/question-canvas-text-select/question-canvas-text-select.component';
 import { QuestionCanvasOpenTextComponent } from '../../shared/components/question-canvas-open-text/question-canvas-open-text.component';
+import { QuestionCanvasCrosswordComponent } from '../../shared/components/question-canvas-crossword/question-canvas-crossword.component';
 import { QuestionCanvasMazeTreeComponent } from '../../shared/components/question-canvas-maze-tree/question-canvas-maze-tree.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 import { ActiveTimeTracker, ACTIVITY_MAX_ACTIVE_SECONDS } from '../../shared/utils/active-time-tracker';
@@ -202,6 +215,7 @@ export type ActivityAction = 'check' | 'reveal' | 'finish';
     QuestionCanvasDragPlaceComponent,
     QuestionCanvasMatchComponent,
     QuestionCanvasMazeTreeComponent,
+    QuestionCanvasCrosswordComponent,
     QuestionCanvasViewComponentv5,
     QuestionLiteViewComponent,
   ],
@@ -340,6 +354,7 @@ export class ActivityPlayerComponent {
   private readonly matchPlans = new Map<number, MatchPlanV1 | null>();
   private readonly textSelectPlans = new Map<number, TextSelectPlanV1 | null>();
   private readonly mazePlans = new Map<number, MazeTreePlanV1 | null>();
+  private readonly crosswordPlans = new Map<number, CrosswordPlanV1 | null>();
 
   readonly title = computed(() => this.instance()?.testName ?? '');
   readonly currentItem = computed(() => this.items()[this.currentIndex()] ?? null);
@@ -410,6 +425,13 @@ export class ActivityPlayerComponent {
     return parseMazeFeedback(this.results()[item.id]?.feedback);
   });
 
+  /** Issue #586: bulmacanın kontrol sonucu (ipucu başına doğru/yanlış); çözüm açıkken ya da kontrol yoksa null. */
+  readonly currentCrosswordFeedback = computed<CrosswordFeedback | null>(() => {
+    const item = this.currentItem();
+    if (!item || this.revealed()) return null;
+    return parseCrosswordFeedback(this.results()[item.id]?.feedback);
+  });
+
   /** Issue #583: geçerli açık uçlu maddenin değerlendirme durumu (yoksa null). */
   readonly currentOpenTextReview = computed<OpenTextStudentReview | null>(() => {
     const item = this.currentItem();
@@ -453,6 +475,7 @@ export class ActivityPlayerComponent {
     if (this.isMatch(item)) return this.matchRows(item, result, solution);
     if (this.isTextSelect(item)) return this.textSelectRows(item, result, solution);
     if (this.isMazeTree(item)) return this.mazeRows(item, result, solution);
+    if (this.isCrossword(item)) return this.crosswordRows(item, result, solution);
     if (this.isOpenText(item)) return this.openTextRows(item, result);
     return this.isDragDrop(item)
       ? this.dragDropRows(item, result, solution)
@@ -613,6 +636,7 @@ export class ActivityPlayerComponent {
     this.matchPlans.clear();
     this.textSelectPlans.clear();
     this.mazePlans.clear();
+    this.crosswordPlans.clear();
   }
 
   // ---------------------------------------------------------------------------
@@ -1225,6 +1249,10 @@ export class ActivityPlayerComponent {
     return isMazeTreeType(item.question?.interactionType);
   }
 
+  isCrossword(item: TestInstanceQuestion): boolean {
+    return isCrosswordType(item.question?.interactionType);
+  }
+
   /** Cevabı `answerPayload` olan (MCQ dışı) madde. */
   private isInteractive(item: TestInstanceQuestion): boolean {
     return (
@@ -1235,7 +1263,8 @@ export class ActivityPlayerComponent {
       this.isMatch(item) ||
       this.isTextSelect(item) ||
       this.isOpenText(item) ||
-      this.isMazeTree(item)
+      this.isMazeTree(item) ||
+      this.isCrossword(item)
     );
   }
 
@@ -1273,6 +1302,13 @@ export class ActivityPlayerComponent {
       this.matchPlans.set(item.id, parseMatchPlan(item.question?.interactionPlan));
     }
     return this.matchPlans.get(item.id) ?? null;
+  }
+
+  private crosswordPlanFor(item: TestInstanceQuestion): CrosswordPlanV1 | null {
+    if (!this.crosswordPlans.has(item.id)) {
+      this.crosswordPlans.set(item.id, parseCrosswordPlan(item.question?.interactionPlan));
+    }
+    return this.crosswordPlans.get(item.id) ?? null;
   }
 
   private mazePlanFor(item: TestInstanceQuestion): MazeTreePlanV1 | null {
@@ -1354,6 +1390,9 @@ export class ActivityPlayerComponent {
     }
     if (this.isOpenText(item)) return !isBlankOpenText(parseOpenTextAnswer(answer?.answerPayload));
     if (this.isMazeTree(item)) return !isEmptyMazeAnswer(parseMazeAnswer(answer?.answerPayload, this.mazePlanFor(item)));
+    if (this.isCrossword(item)) {
+      return !isEmptyCrosswordGrid(parseCrosswordAnswer(answer?.answerPayload, this.crosswordPlanFor(item)));
+    }
     if (this.isDragDrop(item)) return this.placementsOf(answer?.answerPayload).length > 0;
     return !!answer?.selectedAnswerId;
   }
@@ -1394,6 +1433,13 @@ export class ActivityPlayerComponent {
       if (!plan) return false;
       const parsed = parseMazeAnswer(answer?.answerPayload, plan);
       return plan.variant === 'stones' ? parsed.marked.length === 0 : !walkMaze(plan, parsed.path).finished;
+    }
+    // Issue #586: bulmacada boş beyaz hücre kaldı.
+    if (this.isCrossword(item)) {
+      const plan = this.crosswordPlanFor(item);
+      if (!plan) return false;
+      const grid = parseCrosswordAnswer(answer?.answerPayload, plan);
+      return plan.clues.some((clue) => clueWord(grid, clue).includes(' '));
     }
     if (!this.isDragDrop(item)) return !answer?.selectedAnswerId;
     const zones = this.planFor(item)?.dropZones.length ?? 0;
@@ -1592,6 +1638,29 @@ export class ActivityPlayerComponent {
    * Issue #585: yol oyununda kontrol sonrası öğrencinin geçtiği karar düğümleri ("<düğüm>: <seçilen dal>", ilk sapmaya kadar),
    * çözüm açıkken rotanın düğümleri ve doğru dal; taşlarda taş başına işaretli / işaretsiz. Yolu hiç kurulmamışsa tek satır.
    */
+  /** Issue #586: bulmacada ipucu başına satır ("1 → ipucu: KAL·"); çözüm açıkken doğru kelime. */
+  private crosswordRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
+    const plan = this.crosswordPlanFor(item);
+    if (!plan || (!result && !solution)) return [];
+    const grid = parseCrosswordAnswer(this.answers()[item.id]?.answerPayload, plan);
+    const answers = solution ? parseCrosswordSolution(solution.interactionSolution, plan) : null;
+    const marks = new Map((result?.rows ?? []).map((row) => [row.id, row.correct]));
+    const numbers = clueNumbers(plan);
+    return plan.clues.map((clue) => {
+      const word = clueWord(grid, clue);
+      return {
+        label: this.tr('rows.crosswordClue', {
+          num: numbers.get(clue.id),
+          arrow: clue.dir === 'across' ? '→' : '↓',
+          text: clue.text ?? '',
+          word: word.trim() ? word.replace(/ /g, '·') : this.tr('rows.empty'),
+        }),
+        correct: marks.has(clue.id) ? marks.get(clue.id)! : null,
+        solution: answers && Object.hasOwn(answers, clue.id) ? answers[clue.id] : null,
+      };
+    });
+  }
+
   private mazeRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
     const plan = this.mazePlanFor(item);
     if (!plan) return [];

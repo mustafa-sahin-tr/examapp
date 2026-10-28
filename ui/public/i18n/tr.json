@@ -466,6 +466,20 @@
         "exitName": "{{n}}. çıkış",
         "stepOk": "doğru",
         "stoneWrong": "yanlış"
+      },
+      "crossword": {
+        "passageAlt": "Okuma metni görseli",
+        "imageAlt": "Etkinlik görseli",
+        "invalid": "Bu etkinlik açılamadı.",
+        "gridAria": "Bulmaca ızgarası",
+        "across": "Soldan sağa",
+        "down": "Yukarıdan aşağıya",
+        "reset": "Temizle",
+        "clueOk": "doğru",
+        "clueWrong": "yanlış",
+        "resultOk": "Bütün kelimeler doğru!",
+        "resultPartial": "{{total}} kelimeden {{ok}} tanesi doğru; kırmızı kelimelere yeniden bak.",
+        "solutionShown": "Doğru harfler gösteriliyor; kırmızı harfler senin farklı yazdıkların."
       }
     },
     "sharingBadge": {

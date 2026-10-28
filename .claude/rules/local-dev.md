@@ -698,6 +698,19 @@ satırları, R×C oda ızgarası (2–4; etiketsiz kapı = duvar, bir dörtlüde
 varsa etkileşimsiz üstte); Claude yapı çıkarımı yok (G bloğu tipsiz kalır). Testte de çözülebilir (puanlanır). Migration yok; Aspire'da
 exam API'yi yeniden başlat (yeni kontrolcü).
 
+**Issue #586 dilim a — `crossword` (bileşen G, çengel bulmaca).** Plan `{"version":1,"type":"crossword","rows","cols","clues":[{id,dir:"across"|"down",row,col,length,number?,text}]}`
+(ızgara 2–20, 1–80 ipucu, uzunluk ≥ 2, ipucu metni zorunlu düz metin ≤ 300); beyaz hücreler ipuçlarının birleşimi, harfler planda yok.
+Çözüm `{"answers":{"k1":"KALP"}}` (kayıtta tr-TR büyük harfe çevrilir; her ipucunun cevabı, uzunluk tutar, yalnız harf/rakam, kesişen
+hücrede aynı harf). Kayıt kuralları (`CrosswordGrader.ValidateDefinition`): aynı yönde iki ipucu hücre paylaşmaz ve uç uca değmez, aynı
+başlangıçtaki ipuçlarının numarası aynı. Öğrenci payload'u `{"grid":["KA  ",...]}` (satır başına `cols` karakter, boş hücre boşluk, siyah
+hücrede harf yok; harfsiz ızgara = cevap yok). Kontrol ipucu başına (tr-TR büyük harfle karşılaştırma), geri bildirim `{"rows":[{id,correct}]}`
+(harf / yanlış hücre yazılmaz). Analiz (#584): öğe = ipucu, cevap = yazılan kelime (`·` boş hücre). Yazarlık görselsiz editörde
+(`/activity-editor`, tür **Çengel bulmaca**): kelime + ipucu, yön ve başlangıç hücresi; **Otomatik yerleştir** kelimeleri kesiştirir (40
+tohumlu deneme, kesişemeyen kelime ayrı satıra) ve ızgarayı kırpar. Oynatıcı ızgarayı HTML olarak çizer (yazınca ilerler, Backspace, ok
+tuşları, boşluk / aynı hücreye ikinci tık yön değiştirir; görsel varsa etkileşimsiz üstte). Testte de çözülebilir (puanlanır). Claude ızgara
+çıkarımı, kelime avı, sözel mantık tablosu ve şifre katmanı sonraki dilimlerde. Migration yok; Aspire'da exam API'yi yeniden başlat
+(yeni kontrolcü).
+
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını
 (`TestInstances` — Questions'a FK'sı yok, CASCADE ulaşmaz, açıkça silinir; aksi halde "boş test yapılmış" gibi kalır),

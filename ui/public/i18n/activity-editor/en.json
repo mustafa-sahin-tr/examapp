@@ -24,7 +24,8 @@
     "mazeTree": "T/F tree",
     "mazeBoard": "Light board",
     "mazeRooms": "Maze (rooms)",
-    "mazeStones": "River stones"
+    "mazeStones": "River stones",
+    "crossword": "Crossword"
   },
   "kindHints": {
     "matrix": "Mark the correct option for each row. The T/F template sets up two columns; with multiple choice a row can have several correct options.",
@@ -155,7 +156,17 @@
     "mazeNoRoute": "Following the correct doors from the start does not reach the finish; check each room's correct door.",
     "mazeStoneCount": "There must be {{min}}–{{max}} stones.",
     "mazeBlankStone": "Do not leave a stone empty.",
-    "mazeNoMarkedStone": "Mark at least one stone that must not be stepped on."
+    "mazeNoMarkedStone": "Mark at least one stone that must not be stepped on.",
+    "crosswordGridSize": "The grid must have {{min}}–{{max}} rows and columns.",
+    "crosswordEntryCount": "Add {{min}}–{{max}} words.",
+    "crosswordAnswerRequired": "Enter an answer for every word.",
+    "crosswordAnswerLength": "Answers must be {{min}}–{{max}} letters.",
+    "crosswordAnswerChars": "Use only letters and digits in answers.",
+    "crosswordClueRequired": "Enter a clue for every word.",
+    "crosswordOutOfGrid": "Word {{n}} does not fit on the grid.",
+    "crosswordConflict": "Word {{n}} has a different letter where it crosses another word.",
+    "crosswordOverlap": "Word {{n}} overlaps another word in the same direction.",
+    "crosswordTouching": "Word {{n}} touches another word in the same direction; leave an empty cell between them."
   },
   "snackbar": {
     "created": "The item was added to the activity.",
@@ -223,5 +234,22 @@
     "stone": "Stone {{n}}",
     "markStone": "Stone {{n}}: do not step",
     "addStone": "Add stone"
+  },
+  "crossword": {
+    "hint": "Enter the words and their clues. \"Auto layout\" places the words on the grid so that they cross; you can also change the direction and start cell by hand.",
+    "rows": "Rows",
+    "cols": "Columns",
+    "autoLayout": "Auto layout",
+    "placed": "All words were placed crossing each other.",
+    "unplaced": "These words could not cross another word and were placed on their own row: {{list}}",
+    "answer": "Answer",
+    "length": "{{n}} letters",
+    "clue": "Clue",
+    "dir": "Direction",
+    "across": "Across",
+    "down": "Down",
+    "row": "Row",
+    "col": "Column",
+    "addEntry": "Add word"
   }
 }

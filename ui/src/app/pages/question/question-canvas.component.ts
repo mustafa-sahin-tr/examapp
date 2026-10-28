@@ -25,6 +25,8 @@ import { SlotKind, SlotNumberEntry, SlotPalettePreset, SlotUnitMode } from '../.
 import { DragPlaceMode } from '../../models/drag-place';
 import { MatchSide } from '../../models/match';
 import { TEXT_SELECT_MODES, TEXT_SELECT_STYLES, TextSelectMode, TextSelectStyle } from '../../models/text-select';
+import { PaintColor, REGION_PAINT_STYLES, RegionPaintStyle, isPaintColor, paintCss } from '../../models/region-paint';
+import { PaintDrawShape } from '../image-selector/paint-regions-authoring';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { PASSAGE_INSTRUCTION_MAX_LENGTH, PassageKind, WorksheetKind, saveValidationMessage } from '../../models/activity';
 import { Subject } from '../../models/subject';
@@ -1094,6 +1096,69 @@ export class QuestionCanvasComponent implements OnInit {
 
   insTextPalette(event: Event) {
     this.withRegion((name) => this.imageSelector.setTextSelectPalette(name, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  // ---- Issue #587: boyama bölgeleri ----
+
+  readonly paintStyles = REGION_PAINT_STYLES;
+
+  paintCss(color: PaintColor): string {
+    return paintCss(color);
+  }
+
+  insPaintStyle(style: RegionPaintStyle) {
+    this.withRegion((name) => this.imageSelector.setPaintRegionsStyle(name, style));
+  }
+
+  insPaintBrush(id: string | null) {
+    this.withRegion((name) => this.imageSelector.setPaintRegionsBrush(name, id));
+  }
+
+  insPaintAddColor() {
+    this.withRegion((name) => this.imageSelector.addPaintRegionsColor(name));
+  }
+
+  insPaintRemoveColor(id: string) {
+    this.withRegion((name) => this.imageSelector.removePaintRegionsColor(name, id));
+  }
+
+  insPaintColor(id: string, event: Event) {
+    const value = QuestionCanvasComponent.inputValue(event);
+    if (isPaintColor(value)) this.withRegion((name) => this.imageSelector.setPaintRegionsColor(name, id, value));
+  }
+
+  insPaintColorLabel(id: string, event: Event) {
+    this.withRegion((name) => this.imageSelector.setPaintRegionsColorLabel(name, id, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  insPaintDraw(mode: 'paintRegion' | 'paintPolygon', shape?: PaintDrawShape) {
+    const idx = this.insIndex;
+    if (idx != null) this.imageSelector.selectPaintRegionMode(idx, mode, shape);
+  }
+
+  insPaintFinish() {
+    this.withRegion((name) => this.imageSelector.finishPaintPolygon(name));
+  }
+
+  insPaintCancel() {
+    this.withRegion((name) => this.imageSelector.cancelPaintPolygon(name));
+  }
+
+  insPaintRegionLabel(id: string, event: Event) {
+    this.withRegion((name) => this.imageSelector.setPaintRegionLabel(name, id, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  insPaintRegionFill(id: string, event: Event) {
+    const value = QuestionCanvasComponent.inputValue(event);
+    this.withRegion((name) => this.imageSelector.setPaintRegionFill(name, id, value || null));
+  }
+
+  insPaintRemoveRegion(id: string) {
+    this.withRegion((name) => this.imageSelector.removePaintRegion(name, id));
+  }
+
+  insPaintClear() {
+    this.withRegion((name) => this.imageSelector.clearPaintRegions(name));
   }
 
   insTextLineMode() {

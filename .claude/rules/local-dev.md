@@ -765,8 +765,22 @@ CSS rengi alınmaz; renkler ve id'ler tekil, `label` isteğe bağlı düz metin 
 Oynatıcı: palet + silgi, dokun / sürükle boyar, aynı renkli kareden başlayan sürükleme siler, renk başına sayaç canlı (hedef gösterilmez);
 çözüm açıkken hedef sayılar satır öncelikli örnek dolguyla. Yazarlık görselsiz editörde (tür **Boyama (ızgara)**): boyut + renkler, hedef
 kitaptaki gibi kesir (`2/5`), ondalık (`0,35`), yüzde (`%25`) ya da kare sayısı; tam kareye inmeyen hedef reddedilir (kayda yalnız sayı
-gider). Testte de çözülebilir (puanlanır). Sonraki dilimler: b) görsel üzerinde bölgeler, c) MCQ → resim boyama. Migration yok; Aspire'da
+gider). Testte de çözülebilir (puanlanır). Sonraki dilim: c) MCQ → resim boyama. Migration yok; Aspire'da
 exam API'yi yeniden başlat (yeni kontrolcü).
+
+**Issue #587 dilim b — `regionPaint` bölge modu (görsel üzerinde boyama / daire içine alma).** Plan
+`{"version":1,"type":"regionPaint","mode":"regions","style":"fill"|"circle","palette":[...],"regions":[{id,points:[[x,y],...],label?}]}`
+(palet ızgarayla aynı kural; 1–100 bölge, bölge = soru görseline göreli piksel çokgen, 3–64 köşe, koordinat 0..100000, alan ≥ 1; bölge
+ve palet id'leri birlikte tekil; `style` yalnız görünüm, varsayılan `fill`). Çözüm `{"fills":{"r1":"p1"}}` (boyanacak bölge → renk, en az
+bir; yazılmayan bölge boş kalmalı; kullanılmayan palet rengi çeldirici). Öğrenci payload'u `{"fills":{...}}` (boş = cevap yok). Kontrol
+`textSelect` kalıbında: hedef doğru renkle boyalıysa bulundu, hedef dışı boyalı bölge fazla; `CorrectCount` = bulunan, `TotalCount` =
+hedef + fazla. Geri bildirim yalnız **boyalı** bölgeler (`reason`: `extra` | `color`) ve `found`/`missing`/`extra` (boyanmamış hedef
+yazılmaz; fazla > max(3, hedef) ise satırlar gizli, `tooMany`). Analiz: öğe = hedef bölge, cevap = boyandığı renk. Yazarlık **soru
+tuvalinde** (tür **Boyama**, bileşen E): dikdörtgen / elips sürükleyerek ya da köşe köşe tıklayarak (ilk köşe ya da **Bitir** kapatır)
+bölge çizilir; yeni bölge ve tuvalde bölgeye tık fırçadaki rengi çözüm yapar (fırça "Boş bırak" ise hedeften çıkarır); iç içe bölgede
+tık en küçüğüne gider. Oynatıcı görselin üstünde SVG çokgen çizer (tek renkli palette renk seçici gizli; `circle`'da boyalı bölge
+elipsle çevrilir); kontrol sonrası doğru yeşil, fazla kırmızı, yanlış renk turuncu + "Bulunan · Kalan · Fazla". Claude sayfa
+işaretlemesi E bloğuna tip türetmez. Migration yok; Aspire'da exam API'yi yeniden başlat.
 
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını

@@ -93,4 +93,6 @@ export type RegionOrAnswerHit =
   | { type: 'matchItem'; value: { questionIndex: number; side: 'left' | 'right'; itemId: string } }
   // Issue #582: metin token'ı (kelime ya da boşluk).
   | { type: 'textToken'; value: { questionIndex: number; tokenId: string } }
+  // Issue #587: boyama bölgesi (çokgen).
+  | { type: 'paintRegion'; value: { questionIndex: number; regionId: string } }
   | null;

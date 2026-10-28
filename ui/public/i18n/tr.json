@@ -538,6 +538,20 @@
           "brown": "Kahverengi",
           "black": "Siyah",
           "gray": "Gri"
+        },
+        "regions": {
+          "hint": "Bir renk seç ve yönergeye uyan bölgelere dokun. Aynı renkli bölgeye yeniden dokunursan boya kalkar. Kaç bölge olduğu söylenmez.",
+          "hintCircle": "Yönergeye uyanlara dokunarak daire içine al; yeniden dokununca daire kalkar. Kaç tane olduğu söylenmez.",
+          "regionNo": "Bölge {{n}}",
+          "unpainted": "boş",
+          "mark": {
+            "correct": "doğru",
+            "extra": "boyanmamalıydı",
+            "color": "renk yanlış"
+          },
+          "counter": "Bulunan {{found}} · Kalan {{missing}} · Fazla {{extra}}",
+          "tooMany": "Çok fazla bölge işaretledin; işaretler gösterilmiyor. Seçimini azaltıp yeniden kontrol et.",
+          "solutionShown": "Doğru bölgeler gösteriliyor."
         }
       }
     },

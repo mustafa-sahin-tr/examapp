@@ -91,12 +91,16 @@ import {
 import {
   RegionPaintFeedback,
   RegionPaintPlanV1,
+  RegionPaintRegionsPlanV1,
   countPainted,
   isEmptyPaint,
   isRegionPaintType,
   parseRegionPaintAnswer,
   parseRegionPaintFeedback,
+  parseRegionPaintFills,
+  parseRegionPaintFillsSolution,
   parseRegionPaintPlan,
+  parseRegionPaintRegionsPlan,
   parseRegionPaintSolution,
 } from '../../models/region-paint';
 import {
@@ -396,6 +400,7 @@ export class ActivityPlayerComponent {
   private readonly wordSearchPlans = new Map<number, WordSearchPlanV1 | null>();
   private readonly logicGridPlans = new Map<number, LogicGridPlanV1 | null>();
   private readonly regionPaintPlans = new Map<number, RegionPaintPlanV1 | null>();
+  private readonly regionPaintRegionsPlans = new Map<number, RegionPaintRegionsPlanV1 | null>();
 
   readonly title = computed(() => this.instance()?.testName ?? '');
   readonly currentItem = computed(() => this.items()[this.currentIndex()] ?? null);
@@ -712,6 +717,7 @@ export class ActivityPlayerComponent {
     this.wordSearchPlans.clear();
     this.logicGridPlans.clear();
     this.regionPaintPlans.clear();
+    this.regionPaintRegionsPlans.clear();
   }
 
   // ---------------------------------------------------------------------------
@@ -1401,6 +1407,13 @@ export class ActivityPlayerComponent {
     return this.logicGridPlans.get(item.id) ?? null;
   }
 
+  private regionPaintRegionsPlanFor(item: TestInstanceQuestion): RegionPaintRegionsPlanV1 | null {
+    if (!this.regionPaintRegionsPlans.has(item.id)) {
+      this.regionPaintRegionsPlans.set(item.id, parseRegionPaintRegionsPlan(item.question?.interactionPlan));
+    }
+    return this.regionPaintRegionsPlans.get(item.id) ?? null;
+  }
+
   private regionPaintPlanFor(item: TestInstanceQuestion): RegionPaintPlanV1 | null {
     if (!this.regionPaintPlans.has(item.id)) {
       this.regionPaintPlans.set(item.id, parseRegionPaintPlan(item.question?.interactionPlan));
@@ -1549,7 +1562,11 @@ export class ActivityPlayerComponent {
       return plan.variant === 'stones' ? parsed.marked.length === 0 : !walkMaze(plan, parsed.path).finished;
     }
     // Issue #587: boyamada hiç boyanmış kare yok (hedef sayılar öğrenciye gitmez).
-    if (this.isRegionPaint(item)) return isEmptyPaint(parseRegionPaintAnswer(answer?.answerPayload, this.regionPaintPlanFor(item)));
+    if (this.isRegionPaint(item)) {
+      const regionsPlan = this.regionPaintRegionsPlanFor(item);
+      if (regionsPlan) return Object.keys(parseRegionPaintFills(answer?.answerPayload, regionsPlan)).length === 0;
+      return isEmptyPaint(parseRegionPaintAnswer(answer?.answerPayload, this.regionPaintPlanFor(item)));
+    }
     // Issue #586: mantık tablosunda ✓'siz (kişi, kategori) çifti var.
     if (this.isLogicGrid(item)) {
       const plan = this.logicGridPlanFor(item);
@@ -1794,6 +1811,8 @@ export class ActivityPlayerComponent {
 
   /** Issue #587: boyamada renk başına satır ("Mavi: 35 kare"); çözüm açıkken hedef sayı. */
   private regionPaintRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
+    const regionsPlan = this.regionPaintRegionsPlanFor(item);
+    if (regionsPlan) return this.paintRegionRows(item, regionsPlan, result, solution);
     const plan = this.regionPaintPlanFor(item);
     if (!plan || (!result && !solution)) return [];
     const counts = countPainted(parseRegionPaintAnswer(this.answers()[item.id]?.answerPayload, plan), plan.palette.length);
@@ -1806,6 +1825,41 @@ export class ActivityPlayerComponent {
         label: this.tr('rows.paintColor', { color, count: counts[index] }),
         correct: rowMarks.has(entry.id) ? rowMarks.get(entry.id)! : null,
         solution: expected === null ? null : this.tr('rows.paintColor', { color, count: expected }),
+      };
+    });
+  }
+
+  /**
+   * Issue #587 dilim b: bölge modunda çözüm açıkken hedef bölge başına ("Bölge 2: Mavi" → çözüm rengi), değilse boyanan bölge
+   * başına satır (kontrol yalnız boyalıları işaretler; boyanmamış hedef yazılmaz).
+   */
+  private paintRegionRows(
+    item: TestInstanceQuestion,
+    plan: RegionPaintRegionsPlanV1,
+    result: ItemResult | undefined,
+    solution: ActivitySolution | null
+  ): ActivityResultRow[] {
+    const fills = parseRegionPaintFills(this.answers()[item.id]?.answerPayload, plan);
+    const targets = solution ? parseRegionPaintFillsSolution(solution.interactionSolution, plan) : null;
+    const marks = new Map((result?.rows ?? []).map((row) => [row.id, row]));
+    const colorOf = (paintId: string | null) => {
+      const entry = paintId ? plan.palette.find((p) => p.id === paintId) : null;
+      if (!entry) return this.tr('rows.empty');
+      return entry.label || this.transloco.translate<string>(`shared.questionCanvas.regionPaint.colors.${entry.color}`);
+    };
+    const own = (id: string) => (Object.hasOwn(fills, id) ? fills[id] : null);
+    const shown = plan.regions
+      .map((region, index) => ({ region, index }))
+      .filter(({ region }) => (targets ? Object.hasOwn(targets, region.id) || own(region.id) !== null : own(region.id) !== null));
+    if (shown.length === 0) return result ? [{ label: this.tr('rows.paintNone'), correct: false, solution: null }] : [];
+    return shown.map(({ region, index }) => {
+      const name = region.label || this.tr('rows.paintRegionFallback', { n: index + 1 });
+      const row = marks.get(region.id);
+      const expected = targets && Object.hasOwn(targets, region.id) ? targets[region.id] : null;
+      return {
+        label: this.tr(row?.reason === 'extra' ? 'rows.paintRegionExtra' : 'rows.paintRegion', { name, content: colorOf(own(region.id)) }),
+        correct: row ? row.correct : targets && result ? false : null,
+        solution: targets ? colorOf(expected) : null,
       };
     });
   }

@@ -97,6 +97,13 @@
       "linesRange": "Satır sayısı 1–{{maxLines}} arasında bir tam sayı olmalı.",
       "sampleTooLong": "Örnek cevap en çok {{maxLength}} karakter olabilir.",
       "rubricTooLong": "Rubrik en çok {{maxLength}} karakter olabilir."
+    },
+    "paintRegions": {
+      "noRegions": "Boyama: görselde en az bir bölge çizin.",
+      "noTargets": "Boyama: en az bir bölgeye renk verin (boyanması / daire içine alınması gereken).",
+      "tooManyRegions": "Boyama: en çok {{max}} bölge olabilir.",
+      "labelTooLong": "Boyama: renk ve bölge etiketleri en çok {{maxLabel}} karakter olabilir.",
+      "pendingPolygon": "Boyama: çizimi süren çokgeni bitirin ya da iptal edin."
     }
   },
   "menu": {
@@ -162,7 +169,8 @@
     "boxOutsideQuestion": "Kutu soru alanının içinde olmalı.",
     "interactionLimit": "Bu soruda en çok sayıda öğe var.",
     "maskLimit": "Bir soruya en çok {{max}} maske çizilebilir.",
-    "maskOverAnswer": "Maske bir şıkkı/öğeyi kapatıyor; öğrenci o şıkkı göremez. Yalnız basılı cevap yazısını örtün."
+    "maskOverAnswer": "Maske bir şıkkı/öğeyi kapatıyor; öğrenci o şıkkı göremez. Yalnız basılı cevap yazısını örtün.",
+    "paintRegionsFull": "Bir soruda en çok {{max}} boyama bölgesi olabilir."
   },
   "coordinateJson": {
     "activated": "Koordinat JSON'u bulundu: {{pages}} sayfada {{questions}} soru, soru tespiti yerine JSON kullanılıyor.",

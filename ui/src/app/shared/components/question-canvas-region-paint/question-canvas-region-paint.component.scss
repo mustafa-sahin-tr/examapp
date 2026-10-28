@@ -193,3 +193,116 @@
     color: var(--ms-danger-text);
   }
 }
+
+// ---- Bölge modu (dilim b) ----
+
+.rp-stage {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+
+  &__inner {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+  }
+
+  &__image {
+    display: block;
+    max-width: 100%;
+    max-height: 70vh;
+  }
+}
+
+.rp-regions {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.rp-region {
+  &__shape {
+    fill: transparent;
+    stroke: var(--ms-border-strong);
+    stroke-width: 1;
+    stroke-dasharray: 4 3;
+    cursor: pointer;
+    outline: none;
+
+    &:hover {
+      fill: var(--ms-focus-ring);
+      fill-opacity: 0.25;
+    }
+
+    &:focus-visible {
+      stroke: var(--ms-action-border-focus);
+      stroke-width: 3;
+      stroke-dasharray: none;
+    }
+  }
+
+  // Boyama: yarı saydam dolgu (görselin çizgileri görünsün).
+  &.is-painted &__shape {
+    fill: var(--rp-paint);
+    fill-opacity: 0.6;
+    stroke: var(--rp-paint);
+    stroke-dasharray: none;
+  }
+
+  &__ring {
+    fill: none;
+    stroke: var(--rp-paint);
+    stroke-width: 3;
+    vector-effect: non-scaling-stroke;
+    pointer-events: none;
+  }
+
+  &[data-mark='correct'] &__shape {
+    stroke: var(--ms-success-border);
+    stroke-width: 3;
+    stroke-dasharray: none;
+  }
+
+  &[data-mark='extra'] &__shape {
+    stroke: var(--ms-danger-border);
+    stroke-width: 3;
+    stroke-dasharray: none;
+  }
+
+  &[data-mark='color'] &__shape {
+    stroke: var(--ms-warning-border);
+    stroke-width: 3;
+    stroke-dasharray: none;
+  }
+}
+
+// Daire içine alma: bölge boyanmaz, yalnız elips çizilir.
+.rp-regions.is-circle .rp-region.is-painted .rp-region__shape {
+  fill: transparent;
+}
+
+.rp-regions.is-circle .rp-region.is-painted:not([data-mark]) .rp-region__shape {
+  stroke: var(--ms-border-strong);
+  stroke-dasharray: 4 3;
+}
+
+.rp-regions.is-readonly .rp-region__shape {
+  cursor: default;
+
+  &:hover {
+    fill: transparent;
+  }
+}
+
+.rp-regions.is-readonly .rp-region.is-painted .rp-region__shape:hover {
+  fill: var(--rp-paint);
+}
+
+.rp-regions.is-circle.is-readonly .rp-region.is-painted .rp-region__shape:hover {
+  fill: transparent;
+}

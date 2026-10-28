@@ -2651,6 +2651,85 @@ describe('ImageSelectorComponent', () => {
         });
     });
 
+    describe('regionPaint regions authoring (issue #587)', () => {
+        /** Bölge (100,100) 400×300. Çizim koordinatları tuval pikselidir. */
+        function setup() {
+            vi.spyOn(component, 'drawImage').mockReturnValue(undefined);
+            component.regions.set([{ ...region('Soru 1', []), x: 100, y: 100, width: 400, height: 300 }] as any);
+            (component as any).ctx = {};
+        }
+
+        function pointer(x1: number, y1: number, x2 = x1, y2 = y1) {
+            const point = vi.spyOn(component as any, 'toCanvasPoint').mockReturnValue({ x: x1, y: y1 });
+            component.startSelection(new MouseEvent('mousedown'));
+            point.mockReturnValue({ x: x2, y: y2 });
+            component.endSelection(new MouseEvent('mouseup'));
+            point.mockRestore();
+        }
+
+        const state = () => component.ensurePaintRegionsState('Soru 1');
+        const save = () => component.getRegions(null).questions[0];
+        const issues = () => component.validateQuestions({ requireCorrectAnswer: true })[0]?.messages.length ?? 0;
+
+        it('drawRectAndEllipse_ClampedToQuestion_ClickTogglesBrushColor_SavesPlanAndSolution', () => {
+            setup();
+            component.selectPaintRegionMode(0, 'paintRegion', 'rect');
+            expect(component.getInteractionType('Soru 1')).toBe('regionPaint');
+            expect(component.selectionMode()).toBe('paintRegion');
+
+            // Bölge dışına taşan sürükleme soruya kırpılır; yeni bölge fırçadaki rengi (p1) alır.
+            pointer(110, 120, 600, 160);
+            expect(state().regions[0].points).toEqual([[10, 20], [400, 20], [400, 60], [10, 60]]);
+            expect(state().fills).toEqual({ r1: 'p1' });
+
+            component.setPaintRegionsBrush('Soru 1', null);
+            component.selectPaintRegionMode(0, 'paintRegion', 'ellipse');
+            pointer(110, 200, 210, 300);
+            expect(state().regions[1].points.length).toBe(24);
+            expect(state().fills).toEqual({ r1: 'p1' });
+
+            // Bölgeye tık: fırça boş → r1 hedeften çıkar; fırça p2 → r2 kırmızı.
+            pointer(150, 140);
+            expect(state().fills).toEqual({});
+            expect(issues()).toBe(1);
+            component.addPaintRegionsColor('Soru 1');
+            pointer(160, 250);
+            expect(state().fills).toEqual({ r2: 'p2' });
+            expect(issues()).toBe(0);
+
+            const q = save();
+            expect(q.interactionType).toBe('regionPaint');
+            const plan = JSON.parse(q.interactionPlan!);
+            expect(plan).toEqual(expect.objectContaining({ version: 1, type: 'regionPaint', mode: 'regions', style: 'fill' }));
+            expect(plan.palette).toEqual([{ id: 'p1', color: 'blue' }, { id: 'p2', color: 'red' }]);
+            expect(plan.regions.map((r: { id: string }) => r.id)).toEqual(['r1', 'r2']);
+            expect(JSON.parse(q.interactionSolution!)).toEqual({ fills: { r2: 'p2' } });
+        });
+
+        it('polygon_ClicksAddCorners_FirstCornerCloses', () => {
+            setup();
+            component.selectPaintRegionMode(0, 'paintPolygon');
+            pointer(110, 110);
+            pointer(200, 110);
+            pointer(200, 200);
+            expect(state().pending.length).toBe(3);
+            expect(issues()).toBeGreaterThan(0);
+            pointer(112, 111);
+            expect(state().pending).toEqual([]);
+            expect(state().regions[0].points).toEqual([[10, 10], [100, 10], [100, 100]]);
+            expect(component.selectionMode()).toBe('paintPolygon');
+        });
+
+        it('removeRegion_ClearsItsSolution', () => {
+            setup();
+            component.selectPaintRegionMode(0, 'paintRegion');
+            pointer(110, 120, 200, 200);
+            component.removePaintRegion('Soru 1', 'r1');
+            expect(state().regions).toEqual([]);
+            expect(save().interactionSolution).toBeNull();
+        });
+    });
+
     describe('openText (issue #583)', () => {
         it('activityH_BecomesOpenTextWithDefaultPlan_NoDraft_SavesPlanAndSolution', () => {
             component.applyExternalPrediction(component.beginExternalDetection(), {

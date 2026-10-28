@@ -113,7 +113,8 @@ export function slotFillStateFromPlan(plan: SlotFillPlanV1): SlotFillAuthoringSt
 }
 
 function slotFromPlan(slot: SlotFillSlot): SlotAuthoring {
-  const base = newSlot(slot.id, { ...slot.box });
+  // Görselsiz (#590) plan tuvalde düzenlenmez; yine de kutusuz kutu güvenli boyuta düşer.
+  const base = newSlot(slot.id, { ...(slot.box ?? { x: 0, y: 0, width: 0, height: 0 }) });
   const next: SlotAuthoring = { ...base, label: slot.label ?? '', kind: slot.input.kind };
   switch (slot.input.kind) {
     case 'number':

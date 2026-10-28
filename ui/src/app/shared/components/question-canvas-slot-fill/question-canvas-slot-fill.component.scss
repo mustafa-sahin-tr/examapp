@@ -271,3 +271,107 @@
   font-size: 13px;
   color: var(--ms-text-medium);
 }
+
+// #590 (dilim b): görselsiz düzen. Kutular akış içinde (satır içi), dokunma boyutu korunur; telefonda tek sütun.
+.sf-layout {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+  font-size: 16px;
+  line-height: 2.2;
+}
+
+.sf-slot--flow {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+  width: 9em;
+  max-width: 100%;
+  height: 36px;
+  margin: 2px 4px;
+  font-size: 16px;
+
+  &.sf-slot--fraction {
+    width: auto;
+    height: auto;
+    min-height: 60px;
+  }
+}
+
+.sf-root.is-activity .sf-slot--flow {
+  height: 44px;
+}
+
+.sf-flow {
+  margin: 0;
+  overflow-wrap: anywhere;
+
+  // Öğretmenin yazdığı satır sonları korunur (metin ve tablo parçalarında; şablon boşlukları etkilenmez).
+  &__text {
+    white-space: pre-wrap;
+  }
+}
+
+.sf-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--ms-border-weak);
+    line-height: 1.4;
+
+    &:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+  }
+
+  &__label {
+    flex: 1 1 16em;
+    overflow-wrap: anywhere;
+  }
+
+  &__no {
+    font-weight: 700;
+    color: var(--ms-text-medium);
+  }
+}
+
+.sf-table-wrap {
+  overflow-x: auto;
+}
+
+.sf-table {
+  border-collapse: collapse;
+  min-width: 100%;
+  line-height: 1.4;
+
+  th,
+  td {
+    padding: 6px 8px;
+    border: 1px solid var(--ms-border-weak);
+    text-align: left;
+    vertical-align: middle;
+  }
+
+  th {
+    background: var(--ms-surface-weak);
+    font-family: var(--mainFontFamily);
+    font-weight: 700;
+  }
+
+  .sf-slot--flow {
+    width: 7em;
+  }
+}

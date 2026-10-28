@@ -100,6 +100,40 @@
   }
 
   @if (plan()) {
+    <!-- #590 (dilim b): boşluklu metin. Boşluk = tek kartlık hedef; dokun-dokun, sürükle ve klavye kovalarla aynı. -->
+    @if (clozeMode()) {
+      <section class="dp-cloze" data-testid="dp-cloze">
+        <p class="dp-cloze__text">
+          @for (seg of clozeSegments(); track $index) {
+            @if (seg.id) {
+              @if (clozeTarget(seg.id); as target) {
+                @let incomplete = targetIncomplete()(target.id);
+                <span class="dp-blank" [class.is-incomplete]="incomplete" [class.is-pending]="pendingTarget() === target.id"
+                  [class.is-filled]="cardsOf(target.id).length > 0"
+                  cdkDropList [id]="listId(target.id)" [cdkDropListData]="target.id"
+                  [cdkDropListConnectedTo]="targetConnectedTo()" [cdkDropListEnterPredicate]="canEnter"
+                  [cdkDropListSortingDisabled]="true" [cdkDropListDisabled]="locked()"
+                  (cdkDropListDropped)="onDrop($event)" [attr.data-group]="target.id">
+                  @if (cardsOf(target.id).length === 0) {
+                    <button type="button" class="dp-blank__empty" data-target-button [attr.data-for]="target.id" [disabled]="locked()"
+                      [attr.aria-pressed]="pendingTarget() === target.id" [attr.aria-label]="targetAria(target)"
+                      (click)="onTarget(target, $event)" (keydown)="onTargetKeydown($event)">
+                      <span class="dp-blank__no" aria-hidden="true">{{ blankNumber(target) }}</span>
+                      @if (incomplete) { <mat-icon class="dp-blank__warn" aria-hidden="true">priority_high</mat-icon> }
+                    </button>
+                  } @else {
+                    <ng-container *ngTemplateOutlet="placedCards; context: { $implicit: target, compact: true }" />
+                  }
+                </span>
+              }
+            } @else {
+              <span class="dp-cloze__seg">{{ seg.text }}</span>
+            }
+          }
+        </p>
+      </section>
+    }
+
     @if (groupTargets().length > 0) {
       <section class="dp-groups" data-testid="dp-buckets">
         @if (zoneTargets().length > 0) {

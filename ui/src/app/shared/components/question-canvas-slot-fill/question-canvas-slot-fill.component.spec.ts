@@ -319,3 +319,78 @@ describe('QuestionCanvasSlotFillComponent (#575)', () => {
         expect(Array.from(slot('s6').querySelectorAll('input')).map((i) => i.value)).toEqual(['1', '1', '2']);
     });
 });
+
+// Issue #590 (dilim b): görselsiz düzen — kutular metin / liste / tablo içinde, görsel kaplaması yok.
+describe('QuestionCanvasSlotFillComponent görselsiz düzen (#590)', () => {
+    let fixture: ComponentFixture<QuestionCanvasSlotFillComponent>;
+    let emitted: string[];
+    const el = () => fixture.nativeElement as HTMLElement;
+    const field = (slotId: string) => el().querySelector(`[data-slot-input="${slotId}"]`) as HTMLInputElement;
+
+    const slots = [
+        { id: 's1', label: 'Başkent?', input: { kind: 'text' } },
+        { id: 's2', label: 'İl sayısı?', input: { kind: 'number', entry: 'plain' } },
+    ];
+
+    function setup(layout: object, extra: { solution?: object; showSolution?: boolean; feedbackRows?: object[] } = {}): void {
+        TestBed.configureTestingModule({ imports: [QuestionCanvasSlotFillComponent, translocoTestingModule()] });
+        fixture = TestBed.createComponent(QuestionCanvasSlotFillComponent);
+        emitted = [];
+        fixture.componentInstance.answerPayloadChange.subscribe((p) => emitted.push(p));
+        fixture.componentRef.setInput('questionRegion', { imageUrl: '', width: 0, height: 0, passage: null } as unknown as QuestionRegion);
+        fixture.componentRef.setInput('interactionPlanJson', JSON.stringify({ version: 1, type: 'slotFill', layout, slots }));
+        fixture.componentRef.setInput('interactionSolutionJson', extra.solution ? JSON.stringify(extra.solution) : null);
+        if (extra.showSolution) fixture.componentRef.setInput('showSolution', true);
+        if (extra.feedbackRows) fixture.componentRef.setInput('feedbackRows', extra.feedbackRows);
+        fixture.detectChanges();
+    }
+
+    it('text: renders blanks inline between text segments, without image overlay', () => {
+        setup({ kind: 'text', text: 'Başkent [[s1]], il sayısı [[s2]].' });
+
+        expect(el().querySelector('[data-testid="sf-overlay"]')).toBeNull();
+        const flow = el().querySelector('.sf-flow')!;
+        expect(flow.textContent!.replace(/\s+/g, ' ')).toContain('Başkent');
+        expect(flow.querySelectorAll('.sf-slot--flow').length).toBe(2);
+        expect(field('s1').getAttribute('aria-label')).toContain('Başkent?');
+
+        field('s2').value = '81';
+        field('s2').dispatchEvent(new Event('input'));
+        field('s2').dispatchEvent(new Event('change'));
+        expect(JSON.parse(emitted.at(-1)!).values).toEqual({ s2: '81' });
+    });
+
+    it('list: one row per slot with its question label', () => {
+        setup({ kind: 'list' });
+        const rows = el().querySelectorAll('.sf-list__row');
+        expect(rows.length).toBe(2);
+        expect(rows[1].textContent).toContain('İl sayısı?');
+        expect(rows[1].querySelector('[data-slot-input="s2"]')).not.toBeNull();
+    });
+
+    it('table: header cells and blank cells; marks and solution use the same slot', () => {
+        setup(
+            { kind: 'table', header: ['Soru', 'Cevap'], rows: [['Başkent', '[[s1]]'], ['İl', '[[s2]] il']] },
+            { feedbackRows: [{ id: 's1', correct: true }, { id: 's2', correct: false }] }
+        );
+        expect(Array.from(el().querySelectorAll('.sf-table th')).map((th) => th.textContent!.trim())).toEqual(['Soru', 'Cevap']);
+        expect(el().querySelector('[data-slot="s1"]')!.classList).toContain('is-correct');
+        expect(el().querySelector('[data-slot="s2"]')!.classList).toContain('is-wrong');
+        expect(el().querySelectorAll('.sf-table td')[3].textContent).toContain('il');
+    });
+
+    it('showSolution displays accepted values inside the layout', () => {
+        setup(
+            { kind: 'text', text: '[[s1]] / [[s2]]' },
+            {
+                showSolution: true,
+                solution: {
+                    s1: { accept: ['Ankara'], optionalSuffixes: [] },
+                    s2: { value: '81', equivalence: true, requireSimplest: false, units: [], unitMode: 'none' },
+                },
+            }
+        );
+        expect(el().querySelector('[data-solution="s1"]')!.textContent).toContain('Ankara');
+        expect(el().querySelector('[data-solution="s2"]')!.textContent).toContain('81');
+    });
+});

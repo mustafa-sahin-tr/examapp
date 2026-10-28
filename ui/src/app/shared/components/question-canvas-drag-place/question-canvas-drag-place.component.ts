@@ -22,6 +22,7 @@ import { filter, map } from 'rxjs';
 
 import { ActivityFeedbackRow } from '../../../models/activity';
 import { QuestionRegion } from '../../../models/draws';
+import { LayoutSegment, splitPlaceholders } from '../../../models/interaction-layout';
 import {
   DragPlaceCard,
   DragPlaceMap,
@@ -229,7 +230,13 @@ export class QuestionCanvasDragPlaceComponent {
    * Görselin altındaki gruplar: yerleştirme modunda tüm hedefler (kutusuz hedef = kova; kutulu hedefin kartları da burada,
    * "Yerleşimler" tepsisi — görsel üstündeki küçük alan yalnız özet gösterir).
    */
-  readonly groupTargets = computed(() => (this.orderMode() ? [] : this.targets()));
+  readonly groupTargets = computed(() => (this.orderMode() || this.clozeMode() ? [] : this.targets()));
+  /** Issue #590 (dilim b): boşluklu metin — hedefler metnin içindeki boşluklar, kartlar kelime havuzu. */
+  readonly clozeSegments = computed<LayoutSegment[]>(() => {
+    const layout = this._plan()?.layout;
+    return layout?.kind === 'text' && !this.orderMode() ? splitPlaceholders(layout.text) : [];
+  });
+  readonly clozeMode = computed(() => this.clozeSegments().length > 0);
   readonly solution = computed(() => parseDragPlaceSolution(this._solutionJson(), this._plan()));
 
   /** Kart numarası ("Kart n") ekrandaki karışık sıraya göre. */
@@ -281,6 +288,7 @@ export class QuestionCanvasDragPlaceComponent {
   readonly targetListIds = computed(() => [
     ...this.zoneTargets().map((t) => this.listId(t.id)),
     ...this.groupTargets().map((t) => this.groupListId(t)),
+    ...(this.clozeMode() ? this.targets().map((t) => this.listId(t.id)) : []),
   ]);
   readonly poolConnectedTo = computed(() => (this.orderMode() ? [this.sequenceListId] : this.targetListIds()));
   readonly targetConnectedTo = computed(() => [this.poolListId, ...this.targetListIds()]);
@@ -412,12 +420,23 @@ export class QuestionCanvasDragPlaceComponent {
     return entry.card.label?.trim() || this.t('cardFallback', { n: entry.index + 1 });
   }
 
-  /** Hedefin metni: etiket, yoksa "Hedef n" / "n. sıra". */
+  /** Hedefin metni: etiket, yoksa "Hedef n" / "n. sıra" / "n. boşluk". */
   targetText(target: DragPlaceTarget): string {
     this.i18nTick();
     const index = this.targetIndex().get(target.id)?.index ?? 0;
     if (target.label?.trim()) return target.label.trim();
-    return this.t(this.orderMode() ? 'positionFallback' : 'targetFallback', { n: index + 1 });
+    const fallback = this.orderMode() ? 'positionFallback' : this.clozeMode() ? 'blankFallback' : 'targetFallback';
+    return this.t(fallback, { n: index + 1 });
+  }
+
+  /** Boşluklu metinde yer tutucunun hedefi (plan dışı id = null, çizilmez). */
+  clozeTarget(id: string): DragPlaceTarget | null {
+    return this.targetIndex().get(id)?.target ?? null;
+  }
+
+  /** Boşluğun numarası (plan sırası, 1'den). */
+  blankNumber(target: DragPlaceTarget): number {
+    return (this.targetIndex().get(target.id)?.index ?? 0) + 1;
   }
 
   targetAria(target: DragPlaceTarget): string {

@@ -11,7 +11,10 @@ namespace ExamApp.Api.Services.Interactions;
 /// <list type="bullet">
 /// <item>Plan v1: <c>{version:1,type:"slotFill",slots:[{id,label?,box,input}]}</c>; <c>box</c> soru bölgesine göre göreli.
 /// <c>input</c>: <c>{kind:"number",entry:"plain"|"fraction"|"mixed",unit?}</c> | <c>{kind:"text"}</c> |
-/// <c>{kind:"select",options:[{id,label}]}</c> (2..12) | <c>{kind:"palette",symbols:[...]}</c> (1..20, her biri ≤ 8).</item>
+/// <c>{kind:"select",options:[{id,label}]}</c> (2..12) | <c>{kind:"palette",symbols:[...]}</c> (1..20, her biri ≤ 8).
+/// issue #590 (dilim b, görselsiz): <c>layout</c> (<see cref="InteractionLayout"/>: <c>list</c> | <c>text</c> | <c>table</c>)
+/// verilirse kutularda <c>box</c> YOKTUR; <c>list</c>'te her kutunun boş olmayan <c>label</c>'ı (soru) zorunlu, <c>text</c> /
+/// <c>table</c>'da her kutu düzende tam bir kez <c>[[id]]</c> olarak geçer. <c>layout</c> yoksa <c>box</c> zorunlu.</item>
 /// <item>Çözüm (#570, <c>Question.InteractionSolution</c>, öğrenciye gitmez): kutu id → kutu çözümü — number
 /// <c>{value,equivalence?,requireSimplest?,units?,unitMode?}</c> (varsayılan <c>true</c>, <c>false</c>, <c>[]</c>,
 /// <c>"none"</c>), text <c>{accept,optionalSuffixes?}</c>, select <c>{optionIds}</c>, palette <c>{accept}</c>.</item>
@@ -51,7 +54,7 @@ public sealed class SlotFillGrader : IInteractionGrader
 
 
     // Kayıtta planın / çözümün her düzeyinde izinli alanlar (allowlist; #574 M1 ile aynı gerekçe).
-    private static readonly HashSet<string> RootKeys = new(StringComparer.Ordinal) { "version", "type", "slots" };
+    private static readonly HashSet<string> RootKeys = new(StringComparer.Ordinal) { "version", "type", "slots", "layout" };
     private static readonly HashSet<string> SlotKeys = new(StringComparer.Ordinal) { "id", "label", "box", "input" };
     private static readonly HashSet<string> BoxKeys = new(StringComparer.Ordinal) { "x", "y", "width", "height" };
     private static readonly HashSet<string> NumberInputKeys = new(StringComparer.Ordinal) { "kind", "entry", "unit" };
@@ -325,9 +328,10 @@ public sealed class SlotFillGrader : IInteractionGrader
             if (!root.TryGetProperty("slots", out var slots) || slots.ValueKind != JsonValueKind.Array)
                 return false;
 
+            var hasLayout = root.TryGetProperty("layout", out var layout) && layout.ValueKind != JsonValueKind.Null;
             foreach (var slotEl in slots.EnumerateArray())
             {
-                if (!TryReadSlot(slotEl, strict, out var slot))
+                if (!TryReadSlot(slotEl, strict, hasLayout, out var slot))
                 {
                     if (strict) return false;
                     continue;
@@ -338,7 +342,11 @@ public sealed class SlotFillGrader : IInteractionGrader
                     return false;
             }
 
-            return !strict || info.Slots.Count is >= MinSlots and <= MaxSlots;
+            if (!strict)
+                return true;
+            if (info.Slots.Count is < MinSlots or > MaxSlots)
+                return false;
+            return !hasLayout || IsValidLayout(layout, slots, info.Slots.Select(x => x.Id).ToList());
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
@@ -346,7 +354,20 @@ public sealed class SlotFillGrader : IInteractionGrader
         }
     }
 
-    private static bool TryReadSlot(JsonElement slotEl, bool strict, out SlotInfo slot)
+    private static readonly string[] LayoutKinds = { InteractionLayout.KindList, InteractionLayout.KindText, InteractionLayout.KindTable };
+
+    /// <summary>issue #590: düzen geçerli ve <c>list</c>'te her kutunun boş olmayan etiketi (soru metni) var.</summary>
+    private static bool IsValidLayout(JsonElement layout, JsonElement slots, List<string> slotIds)
+    {
+        if (!InteractionLayout.TryValidate(layout, LayoutKinds, slotIds, out var kind))
+            return false;
+        if (kind != InteractionLayout.KindList)
+            return true;
+        return slots.EnumerateArray().All(slot => slot.TryGetProperty("label", out var label)
+            && label.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(label.GetString()));
+    }
+
+    private static bool TryReadSlot(JsonElement slotEl, bool strict, bool hasLayout, out SlotInfo slot)
     {
         slot = null!;
         if (slotEl.ValueKind != JsonValueKind.Object || !slotEl.TryGetProperty("id", out var idProp)
@@ -367,7 +388,9 @@ public sealed class SlotFillGrader : IInteractionGrader
             if (slotEl.TryGetProperty("label", out var label) && label.ValueKind != JsonValueKind.Null
                 && (label.ValueKind != JsonValueKind.String || (label.GetString()?.Length ?? 0) > MaxLabelLength))
                 return false;
-            if (!slotEl.TryGetProperty("box", out var box) || !IsValidBox(box))
+            // issue #590: düzenli (görselsiz) planda kutu koordinatı yok; düzensiz planda zorunlu.
+            var hasBox = slotEl.TryGetProperty("box", out var box) && box.ValueKind != JsonValueKind.Null;
+            if (hasLayout ? hasBox : !hasBox || !IsValidBox(box))
                 return false;
             if (!IsValidInput(kind, input))
                 return false;

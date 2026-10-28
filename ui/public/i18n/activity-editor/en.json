@@ -16,13 +16,21 @@
     "matrix": "True/False · Matrix",
     "classify": "Sort into groups",
     "order": "Ordering",
-    "match": "Matching"
+    "match": "Matching",
+    "fillText": "Fill in the blanks",
+    "shortAnswer": "Short answer",
+    "fillTable": "Table",
+    "wordPool": "Word bank"
   },
   "kindHints": {
     "matrix": "Mark the correct option for each row. The T/F template sets up two columns; with multiple choice a row can have several correct options.",
     "classify": "Sort the cards into groups. A card that belongs to no group is a distractor.",
     "order": "Write the items in the correct order; students get them shuffled.",
-    "match": "Write the pairs; distractor right items are optional. Students get the right side shuffled."
+    "match": "Write the pairs; distractor right items are optional. Students get the right side shuffled.",
+    "fillText": "Write the text and put [[answer]] where the blank goes. Numeric answers (3/4, 2 1/2, 0.75) become number boxes; others are compared as text (case and trailing punctuation ignored).",
+    "shortAnswer": "Write a question and its accepted answer on each row. Separate several answers with |.",
+    "fillTable": "Fill in the table; write [[answer]] in the cells the student completes. Other cells are shown as is.",
+    "wordPool": "Write the text and wrap the missing word in [[word]]. Words appear shuffled in the bank; you can add distractors."
   },
   "instruction": "Instruction (optional)",
   "image": {
@@ -107,12 +115,56 @@
     "rightCount": "The right side (matches + distractors) can have at most {{max}} items.",
     "blankPair": "Fill in both sides of each pair.",
     "blankDistractor": "Do not leave a distractor empty.",
-    "duplicateRight": "Items on the right side must differ from each other."
+    "duplicateRight": "Items on the right side must differ from each other.",
+    "noBlank": "Add at least one [[blank]].",
+    "blankCount": "At most {{max}} blanks.",
+    "blankAnswer": "Write an answer for every blank.",
+    "tooManyAlternatives": "At most {{max}} alternatives per blank.",
+    "answerTooLong": "An answer can be at most {{max}} characters.",
+    "textTooLong": "The text can be at most {{max}} characters.",
+    "questionCount": "Use {{min}}–{{max}} questions.",
+    "blankQuestion": "Do not leave a question empty.",
+    "tableRows": "The table needs {{min}}–{{max}} rows (excluding the header).",
+    "tableColumns": "The table needs {{min}}–{{max}} columns.",
+    "blankInHeader": "The header row cannot contain blanks.",
+    "cellTooLong": "A cell can be at most {{max}} characters.",
+    "poolBlankCount": "At most {{max}} blanks.",
+    "poolAlternatives": "Alternatives (|) are not allowed in a word bank; one word per blank.",
+    "poolCardCount": "At most {{max}} words in the bank.",
+    "distractorIsAnswer": "A distractor cannot match a word used in a blank."
   },
   "snackbar": {
     "created": "The item was added to the activity.",
     "updated": "The item was updated.",
     "saveError": "The item could not be saved.",
     "classificationError": "The item was saved but its subject/topic could not be updated."
+  },
+  "blanks": {
+    "text": "Text with blanks",
+    "textHint": "Example: The capital of France is [[Paris]]. Alternatives: [[twelve|12]].",
+    "makeBlank": "Make selection a blank",
+    "count": "{{n}} blank(s)"
+  },
+  "shortAnswer": {
+    "rows": "Questions and answers",
+    "hint": "Numeric answers become number boxes (3/4 equals 0.75).",
+    "question": "Question {{n}}",
+    "answers": "Answer (| for alternatives)",
+    "add": "Add question"
+  },
+  "table": {
+    "cells": "Table",
+    "hint": "Answer cell: [[answer]]. A cell can mix text and a blank: [[5]] cm.",
+    "header": "First row is a header",
+    "cell": "Row {{row}}, column {{column}}",
+    "removeRow": "Remove row {{n}}",
+    "removeColumn": "Remove column {{n}}",
+    "addRow": "Add row",
+    "addColumn": "Add column"
+  },
+  "wordPool": {
+    "text": "Text with blanks",
+    "textHint": "Example: Water freezes at [[0]] °C and boils at [[100]] °C. The same word may fill several blanks.",
+    "distractors": "Distractor words"
   }
 }

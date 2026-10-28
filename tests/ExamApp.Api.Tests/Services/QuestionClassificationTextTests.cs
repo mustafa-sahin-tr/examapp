@@ -28,6 +28,16 @@ public class QuestionClassificationTextTests
     }
 
     [Fact]
+    public void Build_includes_layout_text_with_blanks_instead_of_placeholders()
+    {
+        const string plan = """{"type":"slotFill","layout":{"kind":"table","header":["Ülke","Başkent"],"rows":[["Türkiye","[[s1]]"]]},"slots":[{"id":"s1","input":{"kind":"text"}}]}""";
+        QuestionClassificationText.Build(null, null, null, null, null, [], plan).ShouldBe("Ülke | Başkent\nTürkiye | ____");
+
+        const string cloze = """{"type":"dragPlace","layout":{"kind":"text","text":"Su [[t1]] derecede donar."},"targets":[{"id":"t1"}],"cards":[{"id":"k1","label":"0"}]}""";
+        QuestionClassificationText.Build(null, null, null, null, null, [], cloze).ShouldBe("Su ____ derecede donar.\n0");
+    }
+
+    [Fact]
     public void Build_tolerates_a_broken_plan_and_caps_the_length()
     {
         QuestionClassificationText.Build(null, null, null, "kök", null, [], "{broken").ShouldBe("kök");

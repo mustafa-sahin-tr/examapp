@@ -184,4 +184,46 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(el('[data-testid="save-error"]')?.textContent).toContain('Sunucu hatası');
     expect(router.navigate).not.toHaveBeenCalledWith(['/test', 9]);
   });
+  it('boşluk doldurma: seçili kelimeyi boşluk yapar, slotFill düzenli plan kaydeder ve önizlemede metin içi kutu çizer', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('fillText');
+    fixture.detectChanges();
+
+    const area = el('[data-testid="fill-text"]') as HTMLTextAreaElement;
+    area.value = 'Başkent Ankara.';
+    area.dispatchEvent(new Event('input'));
+    area.setSelectionRange(8, 14);
+    (el('[data-testid="make-blank"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(component.fillText()?.text).toBe('Başkent [[Ankara]].');
+    expect(el('[data-testid="preview"] .sf-flow [data-slot-input="s1"]')).not.toBeNull();
+
+    component.save(false);
+    const q = questions.saveBulk.mock.calls[0][0].questions[0];
+    expect(q.interactionType).toBe('slotFill');
+    expect(JSON.parse(q.interactionPlan).layout).toEqual({ kind: 'text', text: 'Başkent [[s1]].' });
+    expect(JSON.parse(q.interactionSolution)).toEqual({ s1: { accept: ['Ankara'], optionalSuffixes: [] } });
+  });
+
+  it('kayıtlı kelime havuzu maddesini düzenlemek için forma açar', async () => {
+    const plan = JSON.stringify({
+      version: 1,
+      type: 'dragPlace',
+      mode: 'place',
+      reuse: false,
+      layout: { kind: 'text', text: 'Su [[t1]] derecede donar.' },
+      targets: [{ id: 't1', capacity: 1 }],
+      cards: [
+        { id: 'ab12cd34', label: '50' },
+        { id: 'ef56gh78', label: '0' },
+      ],
+    });
+    await setup({ testId: '9', questionId: '41' }, [
+      { id: 41, interactionType: 'dragPlace', interactionPlan: plan, interactionSolution: '{"t1":["ef56gh78"]}', passage: null },
+    ]);
+
+    expect(component.wordPool()).toEqual({ kind: 'wordPool', text: 'Su [[0]] derecede donar.', distractors: ['50'] });
+    expect(component.items()[0].kind).toBe('wordPool');
+  });
 });

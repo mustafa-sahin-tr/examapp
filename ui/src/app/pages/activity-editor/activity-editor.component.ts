@@ -29,6 +29,14 @@ import {
   parseDefinition,
   validateForm,
 } from '../../models/activity-authoring';
+import {
+  BLANK_TABLE_LIMITS,
+  FillTableForm,
+  FillTextForm,
+  ShortAnswerForm,
+  WordPoolForm,
+  authorBlanks,
+} from '../../models/activity-authoring-blanks';
 import { QuestionRegion } from '../../models/draws';
 import { Question } from '../../models/question';
 import { QuestionService } from '../../services/question.service';
@@ -39,6 +47,7 @@ import {
 import { QuestionCanvasDragPlaceComponent } from '../../shared/components/question-canvas-drag-place/question-canvas-drag-place.component';
 import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
 import { QuestionCanvasMatrixChoiceComponent } from '../../shared/components/question-canvas-matrix-choice/question-canvas-matrix-choice.component';
+import { QuestionCanvasSlotFillComponent } from '../../shared/components/question-canvas-slot-fill/question-canvas-slot-fill.component';
 
 export const ACTIVITY_EDITOR_SCOPE = 'activity-editor';
 
@@ -63,7 +72,8 @@ interface EditableItem {
 
 /**
  * Issue #590: görselsiz etkinlik maddesi editörü — öğretmen kitap görseli olmadan yönerge + içerik yazarak matris seçim
- * (D/Y şablonu), kovaya sınıflandırma, sıralama ve eşleştirme maddesi oluşturur ya da düzenler. Aynı tipler ve kontrolcüler
+ * (D/Y şablonu), kovaya sınıflandırma, sıralama ve eşleştirme maddesi oluşturur ya da düzenler. Dilim b: boşluk doldurma
+ * (`[[cevap]]`), soru + kısa cevap, tablo (`slotFill` düzenli plan) ve kelime havuzu (`dragPlace` boşluklu metin). Aynı tipler ve kontrolcüler
  * (#571), aynı oynatıcılar (önizleme) kullanılır. Yeni madde toplu kayıtla (`questions/save`, görselsiz) etkinlik sayfasına
  * eklenir; düzenleme tekli kayıtla (`questions`, Id > 0). Öğretmenin seçtiği konu kilitlenir (sınıflandırıcı ezmez); seçmezse
  * sınıflandırıcı maddeyi metinle sınıflandırır.
@@ -88,6 +98,7 @@ interface EditableItem {
     QuestionCanvasMatrixChoiceComponent,
     QuestionCanvasDragPlaceComponent,
     QuestionCanvasMatchComponent,
+    QuestionCanvasSlotFillComponent,
   ],
   providers: [provideTranslocoScope(ACTIVITY_EDITOR_SCOPE)],
   templateUrl: './activity-editor.component.html',
@@ -104,6 +115,7 @@ export class ActivityEditorComponent {
   readonly kinds = AUTHORING_KINDS;
   readonly instructionMax = PASSAGE_INSTRUCTION_MAX_LENGTH;
   readonly labelMax = AUTHORING_LABEL_MAX;
+  readonly tableLimits = BLANK_TABLE_LIMITS;
 
   readonly testId = Number(this.route.snapshot.queryParamMap.get('testId')) || null;
   private readonly gradeId = Number(this.route.snapshot.queryParamMap.get('gradeId')) || null;
@@ -138,6 +150,15 @@ export class ActivityEditorComponent {
   readonly classify = computed(() => (this.form().kind === 'classify' ? (this.form() as ClassifyForm) : null));
   readonly order = computed(() => (this.form().kind === 'order' ? (this.form() as OrderForm) : null));
   readonly match = computed(() => (this.form().kind === 'match' ? (this.form() as MatchForm) : null));
+  readonly fillText = computed(() => (this.form().kind === 'fillText' ? (this.form() as FillTextForm) : null));
+  readonly shortAnswer = computed(() => (this.form().kind === 'shortAnswer' ? (this.form() as ShortAnswerForm) : null));
+  readonly fillTable = computed(() => (this.form().kind === 'fillTable' ? (this.form() as FillTableForm) : null));
+  readonly wordPool = computed(() => (this.form().kind === 'wordPool' ? (this.form() as WordPoolForm) : null));
+  /** Metindeki boşluk sayısı (boşluk doldurma / kelime havuzu ipucu). */
+  readonly blankCount = computed(() => {
+    const f = this.form();
+    return f.kind === 'fillText' || f.kind === 'wordPool' ? authorBlanks(f.text).length : 0;
+  });
 
   readonly errors = computed<AuthoringError[]>(() => validateForm(this.form()));
   readonly definition = computed(() => buildDefinition(this.form()));
@@ -402,6 +423,86 @@ export class ActivityEditorComponent {
     this.updateMatch((f) => ({ ...f, distractors: f.distractors.filter((_, i) => i !== index) }));
   }
 
+  // ---- Boşluk doldurma / kelime havuzu (metin) ----
+
+  setBlankText(value: string): void {
+    const f = this.form();
+    if (f.kind === 'fillText' || f.kind === 'wordPool') this.form.set({ ...f, text: value });
+  }
+
+  /** Seçili metni `[[...]]` boşluğuna çevirir (seçim yoksa imlece boş `[[]]` koyar); odak ve imleç boşluğun sonuna. */
+  makeBlank(textarea: HTMLTextAreaElement): void {
+    const value = textarea.value;
+    const start = textarea.selectionStart ?? value.length;
+    const end = textarea.selectionEnd ?? value.length;
+    const selected = value.slice(start, end);
+    // Seçimin kenarındaki boşluklar boşluğa girmesin ("kelime " → "[[kelime]] ").
+    const lead = selected.length - selected.trimStart().length;
+    const trail = selected.length - selected.trimEnd().length;
+    const inner = selected.trim();
+    const next = `${value.slice(0, start + lead)}[[${inner}]]${value.slice(end - trail)}`;
+    this.setBlankText(next);
+    const caret = start + lead + inner.length + (inner ? 4 : 2);
+    textarea.value = next;
+    textarea.focus();
+    textarea.setSelectionRange(caret, caret);
+  }
+
+  setPoolDistractor(index: number, value: string): void {
+    this.updateWordPool((f) => ({ ...f, distractors: f.distractors.map((d, i) => (i === index ? value : d)) }));
+  }
+
+  addPoolDistractor(): void {
+    this.updateWordPool((f) => ({ ...f, distractors: [...f.distractors, ''] }));
+  }
+
+  removePoolDistractor(index: number): void {
+    this.updateWordPool((f) => ({ ...f, distractors: f.distractors.filter((_, i) => i !== index) }));
+  }
+
+  // ---- Soru + kısa cevap ----
+
+  setShortRow(index: number, field: 'question' | 'answers', value: string): void {
+    this.updateShortAnswer((f) => ({ ...f, rows: f.rows.map((r, i) => (i === index ? { ...r, [field]: value } : r)) }));
+  }
+
+  addShortRow(): void {
+    this.updateShortAnswer((f) => ({ ...f, rows: [...f.rows, { question: '', answers: '' }] }));
+  }
+
+  removeShortRow(index: number): void {
+    this.updateShortAnswer((f) => ({ ...f, rows: f.rows.filter((_, i) => i !== index) }));
+  }
+
+  // ---- Tablo ----
+
+  setTableHeader(value: boolean): void {
+    this.updateFillTable((f) => ({ ...f, hasHeader: value }));
+  }
+
+  setCell(row: number, column: number, value: string): void {
+    this.updateFillTable((f) => ({
+      ...f,
+      cells: f.cells.map((r, ri) => (ri === row ? r.map((c, ci) => (ci === column ? value : c)) : r)),
+    }));
+  }
+
+  addTableRow(): void {
+    this.updateFillTable((f) => ({ ...f, cells: [...f.cells, f.cells[0].map(() => '')] }));
+  }
+
+  removeTableRow(row: number): void {
+    this.updateFillTable((f) => ({ ...f, cells: f.cells.filter((_, i) => i !== row) }));
+  }
+
+  addTableColumn(): void {
+    this.updateFillTable((f) => ({ ...f, cells: f.cells.map((r) => [...r, '']) }));
+  }
+
+  removeTableColumn(column: number): void {
+    this.updateFillTable((f) => ({ ...f, cells: f.cells.map((r) => r.filter((_, i) => i !== column)) }));
+  }
+
   // ---- Madde listesi, kayıt ----
 
   edit(item: EditableItem): void {
@@ -593,6 +694,21 @@ export class ActivityEditorComponent {
     if (f) this.form.set(update(f));
   }
 
+  private updateShortAnswer(update: (f: ShortAnswerForm) => ShortAnswerForm): void {
+    const f = this.shortAnswer();
+    if (f) this.form.set(update(f));
+  }
+
+  private updateFillTable(update: (f: FillTableForm) => FillTableForm): void {
+    const f = this.fillTable();
+    if (f) this.form.set(update(f));
+  }
+
+  private updateWordPool(update: (f: WordPoolForm) => WordPoolForm): void {
+    const f = this.wordPool();
+    if (f) this.form.set(update(f));
+  }
+
   /** Kök çeviriden (kapsam yüklenmeden de hazır): yeni form alan başlatılırken çağrılır. */
   private trueFalseLabels(): [string, string] {
     return [
@@ -623,5 +739,12 @@ function itemTitle(form: AuthoringForm, instruction: string | null | undefined):
       return form.items[0] ?? '';
     case 'match':
       return form.pairs[0]?.left ?? '';
+    case 'fillText':
+    case 'wordPool':
+      return form.text.replace(/\[\[[^[\]]*\]\]/g, '___').slice(0, 80);
+    case 'shortAnswer':
+      return form.rows[0]?.question ?? '';
+    case 'fillTable':
+      return form.cells[0]?.join(' / ') ?? '';
   }
 }

@@ -13,73 +13,84 @@
     <div class="sf-stage">
       <div class="sf-image-wrap">
         <img class="sf-image" [src]="url" [alt]="t('questionAlt')" [appStorageImageRetry]="imageRefresh" />
-        @if (plan()) {
+        @if (boxedSlots().length > 0) {
           <div class="sf-overlay" data-testid="sf-overlay">
-            @for (slot of slots(); track slot.id; let i = $index) {
-              @let mark = slotMark()(slot);
+            @for (slot of boxedSlots(); track slot.id; let i = $index) {
               <div class="sf-slot"
                 [class.sf-slot--fraction]="slot.input.kind === 'number' && slot.input.entry !== 'plain'"
-                [class.is-correct]="mark === 'correct'"
-                [class.is-wrong]="mark === 'wrong'"
+                [class.is-correct]="slotMark()(slot) === 'correct'"
+                [class.is-wrong]="slotMark()(slot) === 'wrong'"
                 [ngStyle]="boxStyle(slot.box)"
                 [attr.data-slot]="slot.id">
-                @if (solutionShown()) {
-                  <span class="sf-solution" [attr.aria-label]="slotAria(slot, i)" [attr.data-solution]="slot.id">{{ solutionText(slot) }}</span>
-                } @else {
-                  @switch (slot.input.kind) {
-                    @case ('number') {
-                      @if (slot.input.entry === 'plain') {
-                        <!-- inputmode=text: iOS ondalık klavyesinde / % - ve birim harfleri yok. -->
-                        <input class="sf-input" type="text" inputmode="text" autocomplete="off" spellcheck="false"
-                          [attr.maxlength]="limits.maxValueLength" [value]="valueFor(slot.id)"
-                          [attr.aria-label]="slotAria(slot, i)" [attr.data-slot-input]="slot.id"
-                          (input)="onInput(slot.id, $event)" (change)="onCommit(slot.id, $event)" />
-                      } @else {
-                        <app-fraction-input class="sf-fraction" [mixed]="slot.input.entry === 'mixed'"
-                          [value]="valueFor(slot.id)" [ariaLabel]="slotAria(slot, i)"
-                          [wholeLabel]="t('slotFill.whole')" [numeratorLabel]="t('slotFill.numerator')"
-                          [denominatorLabel]="t('slotFill.denominator')" [attr.data-slot-input]="slot.id"
-                          (valueInput)="onFractionInput(slot.id, $event)" (valueCommit)="onFractionCommit(slot.id, $event)" />
-                      }
-                      @if (slot.input.unit) {
-                        <span class="sf-unit" aria-hidden="true">{{ slot.input.unit }}</span>
-                      }
-                    }
-                    @case ('select') {
-                      <select class="sf-input sf-select" [attr.aria-label]="slotAria(slot, i)" [attr.data-slot-input]="slot.id"
-                        (change)="onCommit(slot.id, $event)">
-                        <option value="" [selected]="!valueFor(slot.id)">{{ t('slotFill.selectPlaceholder') }}</option>
-                        @for (option of slot.input.options; track option.id) {
-                          <option [value]="option.id" [selected]="valueFor(slot.id) === option.id">{{ option.label }}</option>
-                        }
-                      </select>
-                    }
-                    @case ('palette') {
-                      <input class="sf-input" type="text" autocomplete="off" spellcheck="false"
-                        [attr.maxlength]="limits.maxValueLength" [value]="valueFor(slot.id)"
-                        [class.is-palette-target]="paletteSlot()?.slot?.id === slot.id"
-                        [attr.aria-label]="slotAria(slot, i)" [attr.data-slot-input]="slot.id"
-                        (focus)="onPaletteFocus(slot.id)"
-                        (input)="onInput(slot.id, $event)" (change)="onCommit(slot.id, $event)" />
-                    }
-                    @default {
-                      <input class="sf-input" type="text" autocomplete="off"
-                        [attr.maxlength]="limits.maxValueLength" [value]="valueFor(slot.id)"
-                        [attr.aria-label]="slotAria(slot, i)" [attr.data-slot-input]="slot.id"
-                        (input)="onInput(slot.id, $event)" (change)="onCommit(slot.id, $event)" />
-                    }
-                  }
-                }
-                @if (mark) {
-                  <span class="sf-mark" [class.sf-mark--wrong]="mark === 'wrong'" aria-hidden="true" [attr.data-mark]="slot.id">
-                    <mat-icon>{{ mark === 'correct' ? 'check' : 'close' }}</mat-icon>
-                  </span>
-                }
+                <ng-container *ngTemplateOutlet="slotField; context: { $implicit: slot, index: i }" />
               </div>
             }
           </div>
         }
       </div>
+    </div>
+  }
+
+  <!-- #590 (dilim b): görselsiz düzen — kutular metin / liste / tablo içinde. -->
+  @if (layout(); as lay) {
+    <div class="sf-layout" data-testid="sf-layout" [attr.data-layout]="lay.kind">
+      @switch (lay.kind) {
+        @case ('list') {
+          <ol class="sf-list">
+            @for (slot of slots(); track slot.id; let i = $index) {
+              <li class="sf-list__row">
+                <span class="sf-list__label"><span class="sf-list__no">{{ i + 1 }}.</span> {{ slot.label }}</span>
+                <ng-container *ngTemplateOutlet="flowSlot; context: { $implicit: slot.id }" />
+              </li>
+            }
+          </ol>
+        }
+        @case ('text') {
+          <p class="sf-flow">
+            @for (seg of textSegments(); track $index) {
+              @if (seg.id) {
+                <ng-container *ngTemplateOutlet="flowSlot; context: { $implicit: seg.id }" />
+              } @else {
+                <span class="sf-flow__text">{{ seg.text }}</span>
+              }
+            }
+          </p>
+        }
+        @case ('table') {
+          @if (tableCells(); as table) {
+            <div class="sf-table-wrap">
+              <table class="sf-table">
+                @if (table.header) {
+                  <thead>
+                    <tr>
+                      @for (head of table.header; track $index) {
+                        <th scope="col">{{ head }}</th>
+                      }
+                    </tr>
+                  </thead>
+                }
+                <tbody>
+                  @for (row of table.rows; track $index) {
+                    <tr>
+                      @for (cell of row; track $index) {
+                        <td>
+                          @for (seg of cell; track $index) {
+                            @if (seg.id) {
+                              <ng-container *ngTemplateOutlet="flowSlot; context: { $implicit: seg.id }" />
+                            } @else {
+                <span class="sf-flow__text">{{ seg.text }}</span>
+              }
+                          }
+                        </td>
+                      }
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      }
     </div>
   }
 
@@ -108,3 +119,75 @@
     </div>
   }
 </div>
+
+<!-- Düzen içindeki kutu: id plan dışıysa hiçbir şey çizilmez. -->
+<ng-template #flowSlot let-id>
+  @if (slotRef().get(id); as ref) {
+    <span class="sf-slot sf-slot--flow"
+      [class.sf-slot--fraction]="ref.slot.input.kind === 'number' && ref.slot.input.entry !== 'plain'"
+      [class.is-correct]="slotMark()(ref.slot) === 'correct'"
+      [class.is-wrong]="slotMark()(ref.slot) === 'wrong'"
+      [attr.data-slot]="ref.slot.id">
+      <ng-container *ngTemplateOutlet="slotField; context: { $implicit: ref.slot, index: ref.index }" />
+    </span>
+  }
+</ng-template>
+
+<!-- Kutunun giriş alanı (görsel üstü ve düzen aynı). -->
+<ng-template #slotField let-slot let-i="index">
+  <ng-container *transloco="let t; prefix: 'shared.questionCanvas'">
+    @let mark = slotMark()(slot);
+    @if (solutionShown()) {
+      <span class="sf-solution" [attr.aria-label]="slotAria(slot, i)" [attr.data-solution]="slot.id">{{ solutionText(slot) }}</span>
+    } @else {
+      @switch (slot.input.kind) {
+        @case ('number') {
+          @if (slot.input.entry === 'plain') {
+            <!-- inputmode=text: iOS ondalık klavyesinde / % - ve birim harfleri yok. -->
+            <input class="sf-input" type="text" inputmode="text" autocomplete="off" spellcheck="false"
+              [attr.maxlength]="limits.maxValueLength" [value]="valueFor(slot.id)"
+              [attr.aria-label]="slotAria(slot, i)" [attr.data-slot-input]="slot.id"
+              (input)="onInput(slot.id, $event)" (change)="onCommit(slot.id, $event)" />
+          } @else {
+            <app-fraction-input class="sf-fraction" [mixed]="slot.input.entry === 'mixed'"
+              [value]="valueFor(slot.id)" [ariaLabel]="slotAria(slot, i)"
+              [wholeLabel]="t('slotFill.whole')" [numeratorLabel]="t('slotFill.numerator')"
+              [denominatorLabel]="t('slotFill.denominator')" [attr.data-slot-input]="slot.id"
+              (valueInput)="onFractionInput(slot.id, $event)" (valueCommit)="onFractionCommit(slot.id, $event)" />
+          }
+          @if (slot.input.unit) {
+            <span class="sf-unit" aria-hidden="true">{{ slot.input.unit }}</span>
+          }
+        }
+        @case ('select') {
+          <select class="sf-input sf-select" [attr.aria-label]="slotAria(slot, i)" [attr.data-slot-input]="slot.id"
+            (change)="onCommit(slot.id, $event)">
+            <option value="" [selected]="!valueFor(slot.id)">{{ t('slotFill.selectPlaceholder') }}</option>
+            @for (option of slot.input.options; track option.id) {
+              <option [value]="option.id" [selected]="valueFor(slot.id) === option.id">{{ option.label }}</option>
+            }
+          </select>
+        }
+        @case ('palette') {
+          <input class="sf-input" type="text" autocomplete="off" spellcheck="false"
+            [attr.maxlength]="limits.maxValueLength" [value]="valueFor(slot.id)"
+            [class.is-palette-target]="paletteSlot()?.slot?.id === slot.id"
+            [attr.aria-label]="slotAria(slot, i)" [attr.data-slot-input]="slot.id"
+            (focus)="onPaletteFocus(slot.id)"
+            (input)="onInput(slot.id, $event)" (change)="onCommit(slot.id, $event)" />
+        }
+        @default {
+          <input class="sf-input" type="text" autocomplete="off"
+            [attr.maxlength]="limits.maxValueLength" [value]="valueFor(slot.id)"
+            [attr.aria-label]="slotAria(slot, i)" [attr.data-slot-input]="slot.id"
+            (input)="onInput(slot.id, $event)" (change)="onCommit(slot.id, $event)" />
+        }
+      }
+    }
+    @if (mark) {
+      <span class="sf-mark" [class.sf-mark--wrong]="mark === 'wrong'" aria-hidden="true" [attr.data-mark]="slot.id">
+        <mat-icon>{{ mark === 'correct' ? 'check' : 'close' }}</mat-icon>
+      </span>
+    }
+  </ng-container>
+</ng-template>

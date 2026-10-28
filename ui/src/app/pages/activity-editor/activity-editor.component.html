@@ -243,6 +243,116 @@
           </div>
         }
 
+        @if (fillText(); as ft) {
+          <div class="ae__block" data-testid="fill-text-form">
+            <span class="ae__label" id="ae-fill-text-label">{{ t('blanks.text') }}</span>
+            <p class="ae__hint">{{ t('blanks.textHint') }}</p>
+            <textarea #fillTextArea class="ae__textarea" rows="6" data-testid="fill-text" aria-labelledby="ae-fill-text-label"
+              [value]="ft.text" (input)="setBlankText($any($event.target).value)"></textarea>
+            <div class="ae__block-head">
+              <button mat-stroked-button type="button" data-testid="make-blank" (mousedown)="$event.preventDefault()"
+                (click)="makeBlank(fillTextArea)"><mat-icon>space_bar</mat-icon>{{ t('blanks.makeBlank') }}</button>
+              <span class="ae__hint" aria-live="polite">{{ t('blanks.count', { n: blankCount() }) }}</span>
+            </div>
+          </div>
+        }
+
+        @if (shortAnswer(); as sa) {
+          <div class="ae__block" data-testid="short-answer-form">
+            <span class="ae__label">{{ t('shortAnswer.rows') }}</span>
+            <p class="ae__hint">{{ t('shortAnswer.hint') }}</p>
+            @for (row of sa.rows; track $index; let si = $index) {
+              <div class="ae__row ae__row--wrap" [attr.data-row]="si">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('shortAnswer.question', { n: si + 1 }) }}</mat-label>
+                  <input matInput [value]="row.question" [attr.maxlength]="labelMax"
+                    (input)="setShortRow(si, 'question', $any($event.target).value)" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                  <mat-label>{{ t('shortAnswer.answers') }}</mat-label>
+                  <input matInput [value]="row.answers" (input)="setShortRow(si, 'answers', $any($event.target).value)" />
+                </mat-form-field>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="sa.rows.length <= 1"
+                  (click)="removeShortRow(si)"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="sa.rows.length >= 80" (click)="addShortRow()">
+              <mat-icon>add</mat-icon>{{ t('shortAnswer.add') }}
+            </button>
+          </div>
+        }
+
+        @if (fillTable(); as tb) {
+          <div class="ae__block" data-testid="fill-table-form">
+            <span class="ae__label">{{ t('table.cells') }}</span>
+            <p class="ae__hint">{{ t('table.hint') }}</p>
+            <mat-slide-toggle [checked]="tb.hasHeader" (change)="setTableHeader($event.checked)">{{ t('table.header') }}</mat-slide-toggle>
+            <div class="ae__table-wrap">
+              <table class="ae__table">
+                <tbody>
+                  @for (row of tb.cells; track $index; let ri = $index) {
+                    <tr [class.is-header]="tb.hasHeader && ri === 0">
+                      @for (cell of row; track $index; let ci = $index) {
+                        <td>
+                          <input class="ae__cell" [value]="cell" [attr.data-cell]="ri + ':' + ci"
+                            [attr.aria-label]="t('table.cell', { row: ri + 1, column: ci + 1 })"
+                            (input)="setCell(ri, ci, $any($event.target).value)" />
+                        </td>
+                      }
+                      <td class="ae__table-action">
+                        <button mat-icon-button type="button" [attr.aria-label]="t('table.removeRow', { n: ri + 1 })"
+                          [disabled]="tb.cells.length <= (tb.hasHeader ? 2 : 1)" (click)="removeTableRow(ri)"><mat-icon>close</mat-icon></button>
+                      </td>
+                    </tr>
+                  }
+                  <tr>
+                    @for (col of tb.cells[0]; track $index; let ci = $index) {
+                      <td class="ae__table-action">
+                        <button mat-icon-button type="button" [attr.aria-label]="t('table.removeColumn', { n: ci + 1 })"
+                          [disabled]="tb.cells[0].length <= 1" (click)="removeTableColumn(ci)"><mat-icon>close</mat-icon></button>
+                      </td>
+                    }
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="ae__toggles">
+              <button mat-button type="button" [disabled]="tb.cells.length >= tableLimits.maxRows + (tb.hasHeader ? 1 : 0)"
+                (click)="addTableRow()"><mat-icon>add</mat-icon>{{ t('table.addRow') }}</button>
+              <button mat-button type="button" [disabled]="tb.cells[0].length >= tableLimits.maxColumns"
+                (click)="addTableColumn()"><mat-icon>add</mat-icon>{{ t('table.addColumn') }}</button>
+            </div>
+          </div>
+        }
+
+        @if (wordPool(); as wp) {
+          <div class="ae__block" data-testid="word-pool-form">
+            <span class="ae__label" id="ae-pool-text-label">{{ t('wordPool.text') }}</span>
+            <p class="ae__hint">{{ t('wordPool.textHint') }}</p>
+            <textarea #poolTextArea class="ae__textarea" rows="6" data-testid="pool-text" aria-labelledby="ae-pool-text-label"
+              [value]="wp.text" (input)="setBlankText($any($event.target).value)"></textarea>
+            <div class="ae__block-head">
+              <button mat-stroked-button type="button" (mousedown)="$event.preventDefault()"
+                (click)="makeBlank(poolTextArea)"><mat-icon>space_bar</mat-icon>{{ t('blanks.makeBlank') }}</button>
+              <span class="ae__hint" aria-live="polite">{{ t('blanks.count', { n: blankCount() }) }}</span>
+            </div>
+            <span class="ae__label">{{ t('wordPool.distractors') }}</span>
+            @for (d of wp.distractors; track $index; let di = $index) {
+              <div class="ae__row">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('match.distractor', { n: di + 1 }) }}</mat-label>
+                  <input matInput [value]="d" [attr.maxlength]="labelMax" (input)="setPoolDistractor(di, $any($event.target).value)" />
+                </mat-form-field>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" (click)="removePoolDistractor(di)">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            }
+            <button mat-button type="button" (click)="addPoolDistractor()"><mat-icon>add</mat-icon>{{ t('match.addDistractor') }}</button>
+          </div>
+        }
+
         <div class="ae__field">
           <span class="ae__label">{{ t('classification.title') }}</span>
           <p class="ae__hint">{{ t('classification.hint') }}</p>
@@ -287,6 +397,11 @@
               <app-question-canvas-drag-place [questionRegion]="previewRegion()"
                 [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
                 [showSolution]="showSolution()" [activityMode]="true" shuffleSeed="preview" />
+            }
+            @case ('slotFill') {
+              <app-question-canvas-slot-fill [questionRegion]="previewRegion()"
+                [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
+                [showSolution]="showSolution()" [activityMode]="true" />
             }
             @case ('match') {
               <app-question-canvas-match [questionRegion]="previewRegion()"

@@ -33,12 +33,14 @@ import { QuestionCanvasSlotFillComponent } from '../../shared/components/questio
 import { isDragPlaceType } from '../../models/drag-place';
 import { isMatchType } from '../../models/match';
 import { isCrosswordType } from '../../models/crossword';
+import { isWordSearchType } from '../../models/word-search';
 import { isMazeTreeType } from '../../models/maze-tree';
 import { isTextSelectType } from '../../models/text-select';
 import { isOpenTextType } from '../../models/open-text';
 import { QuestionCanvasOpenTextComponent } from '../../shared/components/question-canvas-open-text/question-canvas-open-text.component';
 import { QuestionCanvasDragPlaceComponent } from '../../shared/components/question-canvas-drag-place/question-canvas-drag-place.component';
 import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
+import { QuestionCanvasWordSearchComponent } from '../../shared/components/question-canvas-word-search/question-canvas-word-search.component';
 import { QuestionCanvasCrosswordComponent } from '../../shared/components/question-canvas-crossword/question-canvas-crossword.component';
 import { QuestionCanvasMazeTreeComponent } from '../../shared/components/question-canvas-maze-tree/question-canvas-maze-tree.component';
 import { QuestionCanvasTextSelectComponent } from '../../shared/components/question-canvas-text-select/question-canvas-text-select.component';
@@ -79,6 +81,7 @@ import { StorageImageRetryDirective } from '../../shared/directives/storage-imag
     QuestionCanvasMatchComponent,
     QuestionCanvasMazeTreeComponent,
     QuestionCanvasCrosswordComponent,
+    QuestionCanvasWordSearchComponent,
     QuestionCanvasTextSelectComponent,
     QuestionCanvasOpenTextComponent,
     TranslocoDirective,
@@ -179,7 +182,7 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
    */
   public interactionKind(
     type: string | null | undefined
-  ): 'mcq' | 'dragDropLabeling' | 'matrixChoice' | 'slotFill' | 'dragPlace' | 'match' | 'textSelect' | 'openText' | 'mazeTree' | 'crossword' {
+  ): 'mcq' | 'dragDropLabeling' | 'matrixChoice' | 'slotFill' | 'dragPlace' | 'match' | 'textSelect' | 'openText' | 'mazeTree' | 'crossword' | 'wordSearch' {
     const normalized = (type ?? '').toLowerCase();
     if (normalized === 'dragdroplabeling') return 'dragDropLabeling';
     if (isSlotFillType(type)) return 'slotFill';
@@ -189,6 +192,7 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
     if (isOpenTextType(type)) return 'openText';
     if (isMazeTreeType(type)) return 'mazeTree';
     if (isCrosswordType(type)) return 'crossword';
+    if (isWordSearchType(type)) return 'wordSearch';
     return isMatrixChoiceType(type) ? 'matrixChoice' : 'mcq';
   }
 

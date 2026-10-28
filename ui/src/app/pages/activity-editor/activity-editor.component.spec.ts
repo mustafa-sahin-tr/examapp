@@ -137,6 +137,30 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(el('[data-testid="preview"] app-question-canvas-match')).not.toBeNull();
   });
 
+  it('kelime avı: ızgarayı kelimelerden üretir, önizlemede çizer ve çözümü ayrı kaydeder (#586)', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('wordSearch');
+    fixture.detectChanges();
+    expect(el('[data-testid="word-search-form"]')).not.toBeNull();
+
+    component.setWordSearchEntry(0, { word: 'kalp' });
+    component.setWordSearchEntry(1, { word: 'mide' });
+    component.setWordSearchEntry(2, { word: 'akciğer', label: 'Solunum organı' });
+    fixture.detectChanges();
+    expect(el('[data-testid="preview"] app-question-canvas-word-search')).not.toBeNull();
+    const before = component.definition().plan;
+    component.shuffleWordSearch();
+    expect(component.definition().plan).not.toBe(before);
+
+    component.save(false);
+    const q = questions.saveBulk.mock.calls[0][0].questions[0];
+    expect(q.interactionType).toBe('wordSearch');
+    const plan = JSON.parse(q.interactionPlan);
+    expect(plan.letters.length).toBe(8);
+    expect(plan.words.map((w: { label: string }) => w.label)).toEqual(['KALP', 'MİDE', 'Solunum organı']);
+    expect(Object.keys(JSON.parse(q.interactionSolution).lines)).toEqual(['w1', 'w2', 'w3']);
+  });
+
   it('çengel bulmaca: otomatik yerleştirir, önizlemede ızgara çizer ve çözümü ayrı kaydeder (#586)', async () => {
     await setup({ testId: '9' });
     component.selectKind('crossword');

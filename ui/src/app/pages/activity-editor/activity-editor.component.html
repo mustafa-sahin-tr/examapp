@@ -595,6 +595,54 @@
           </div>
         }
 
+        @if (wordSearch(); as ws) {
+          <div class="ae__block" data-testid="word-search-form">
+            <p class="ae__hint">{{ t('wordSearch.hint') }}</p>
+            <div class="ae__row ae__row--wrap">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__narrow">
+                <mat-label>{{ t('wordSearch.rows') }}</mat-label>
+                <input matInput type="number" [min]="wordSearchLimits.minSize" [max]="wordSearchLimits.maxSize" [value]="ws.rows"
+                  (change)="setWordSearchOption({ rows: +$any($event.target).value })" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__narrow">
+                <mat-label>{{ t('wordSearch.cols') }}</mat-label>
+                <input matInput type="number" [min]="wordSearchLimits.minSize" [max]="wordSearchLimits.maxSize" [value]="ws.cols"
+                  (change)="setWordSearchOption({ cols: +$any($event.target).value })" />
+              </mat-form-field>
+              <mat-checkbox [checked]="ws.diagonal" (change)="setWordSearchOption({ diagonal: $event.checked })">
+                {{ t('wordSearch.diagonal') }}
+              </mat-checkbox>
+              <mat-checkbox [checked]="ws.reverse" (change)="setWordSearchOption({ reverse: $event.checked })">
+                {{ t('wordSearch.reverse') }}
+              </mat-checkbox>
+              <button mat-stroked-button type="button" data-testid="ws-shuffle" (click)="shuffleWordSearch()">
+                <mat-icon>shuffle</mat-icon>{{ t('wordSearch.shuffle') }}
+              </button>
+            </div>
+            @for (entry of ws.words; track $index; let wi = $index) {
+              <div class="ae__row ae__row--wrap" [attr.data-word]="wi">
+                <span class="ae__index">{{ wi + 1 }}.</span>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>{{ t('wordSearch.word') }}</mat-label>
+                  <input matInput [value]="entry.word" [attr.maxlength]="wordSearchLimits.maxSize + 10"
+                    (input)="setWordSearchEntry(wi, { word: $any($event.target).value })" />
+                  <mat-hint>{{ t('crossword.length', { n: wordSearchLength(entry) }) }}</mat-hint>
+                </mat-form-field>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('wordSearch.label') }}</mat-label>
+                  <input matInput [value]="entry.label" [attr.maxlength]="wordSearchLimits.maxLabel"
+                    (input)="setWordSearchEntry(wi, { label: $any($event.target).value })" />
+                </mat-form-field>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="ws.words.length <= 1"
+                  (click)="removeWordSearchEntry(wi)"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="ws.words.length >= wordSearchLimits.maxWords" (click)="addWordSearchEntry()">
+              <mat-icon>add</mat-icon>{{ t('wordSearch.addWord') }}
+            </button>
+          </div>
+        }
+
         <div class="ae__field">
           <span class="ae__label">{{ t('classification.title') }}</span>
           <p class="ae__hint">{{ t('classification.hint') }}</p>
@@ -652,6 +700,11 @@
             }
             @case ('mazeTree') {
               <app-question-canvas-maze-tree [questionRegion]="previewRegion()"
+                [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
+                [showSolution]="showSolution()" [activityMode]="true" />
+            }
+            @case ('wordSearch') {
+              <app-question-canvas-word-search [questionRegion]="previewRegion()"
                 [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
                 [showSolution]="showSolution()" [activityMode]="true" />
             }

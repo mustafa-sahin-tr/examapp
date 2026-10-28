@@ -708,8 +708,19 @@ hücrede harf yok; harfsiz ızgara = cevap yok). Kontrol ipucu başına (tr-TR b
 (`/activity-editor`, tür **Çengel bulmaca**): kelime + ipucu, yön ve başlangıç hücresi; **Otomatik yerleştir** kelimeleri kesiştirir (40
 tohumlu deneme, kesişemeyen kelime ayrı satıra) ve ızgarayı kırpar. Oynatıcı ızgarayı HTML olarak çizer (yazınca ilerler, Backspace, ok
 tuşları, boşluk / aynı hücreye ikinci tık yön değiştirir; görsel varsa etkileşimsiz üstte). Testte de çözülebilir (puanlanır). Claude ızgara
-çıkarımı, kelime avı, sözel mantık tablosu ve şifre katmanı sonraki dilimlerde. Migration yok; Aspire'da exam API'yi yeniden başlat
+çıkarımı, sözel mantık tablosu ve şifre katmanı sonraki dilimlerde. Migration yok; Aspire'da exam API'yi yeniden başlat
 (yeni kontrolcü).
+
+**Issue #586 dilim b — `wordSearch` (bileşen G, kelime avı).** Plan `{"version":1,"type":"wordSearch","rows","cols","letters":["KALPX",...],"words":[{id,label}]}`
+(ızgara 4–20, her hücre harf/rakam, 1–40 kelime, `label` listede görünen metin — kelime ya da ipucu, düz metin ≤ 100). Harf ızgarası
+öğrenciye gider; çözüm `{"lines":{"w1":{"from":[r,c],"to":[r,c]}}}` (düz çizgi: yatay, dikey, 45° çapraz; kelimeler tekil çizgi).
+Öğrenci payload'u `{"lines":[{from,to}]}` (kelimeye bağlı değil, en çok `max(10, 2 × kelime)` çizgi; çizgisiz = cevap yok). Kontrol
+**harflere** bakar: kelime, öğrencinin bir çizgisinden iki yönden biriyle okunuyorsa bulundu (ızgarada başka yerde geçmesi de sayılır,
+tr-TR büyük harf). Geri bildirim `{"rows":[{id,correct}],"lines":[bool]}` (çizgi başına kelime mi; çözüm çizgisi yazılmaz). Analiz: öğe =
+kelime, cevap = bulundu. Yazarlık görselsiz editörde (tür **Kelime avı**): kelimeler + isteğe bağlı ipucu, boyut, çapraz / ters
+seçenekleri; ızgara bunların ve bir tohumun saf fonksiyonu (**Karıştır** tohumu değiştirir, boş hücreler Türk alfabesinden), kayıtlı
+madde içerik değişmedikçe kayıtlı ızgarayla açılır. Oynatıcıda sürükleyerek ya da iki dokunuşla (ilk harf → son harf) seçim. Migration
+yok; Aspire'da exam API'yi yeniden başlat.
 
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını

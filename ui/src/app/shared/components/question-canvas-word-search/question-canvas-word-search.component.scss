@@ -1,0 +1,253 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.ws-root {
+  --ws-cell: 38px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.ws-passage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+
+  &__title {
+    font-weight: 700;
+    font-family: var(--mainFontFamily);
+  }
+
+  &__image {
+    display: block;
+    max-width: 100%;
+    max-height: 35vh;
+    object-fit: contain;
+  }
+}
+
+.ws-image-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+}
+
+.ws-image {
+  display: block;
+  max-width: 100%;
+  max-height: 45vh;
+}
+
+.ws-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+// Geniş ızgara dar ekranda kendi içinde yatay kayar; sayfa kaymaz.
+.ws-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ws-board {
+  position: relative;
+  width: max-content;
+  // Sürüklerken sayfa kaymasın.
+  touch-action: none;
+  user-select: none;
+}
+
+.ws-grid {
+  display: grid;
+  grid-auto-rows: var(--ws-cell);
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 8px;
+  background: var(--ms-surface);
+}
+
+.ws-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ms-text-strong);
+  font-family: var(--mainFontFamily);
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 50%;
+
+  &:disabled {
+    cursor: default;
+    color: var(--ms-text-strong);
+  }
+
+  &.is-preview {
+    background: var(--ms-info-surface);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ms-action-border-focus);
+    outline-offset: -2px;
+  }
+}
+
+.ws-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.ws-line {
+  stroke-width: 0.62;
+  stroke-linecap: round;
+  stroke-opacity: 0.35;
+  stroke: var(--ms-info-border);
+
+  &.is-ok,
+  &.is-solution {
+    stroke: var(--ms-success-border);
+  }
+
+  &.is-bad {
+    stroke: var(--ms-danger-border);
+  }
+
+  &.is-preview {
+    stroke: var(--ms-action-border-focus);
+    stroke-opacity: 0.25;
+  }
+}
+
+.ws-side {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  &__title {
+    margin: 0 0 6px;
+    font-family: var(--mainFontFamily);
+    font-size: 14px;
+  }
+}
+
+.ws-words,
+.ws-picks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ws-word,
+.ws-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  &.is-found,
+  &.is-ok {
+    border-color: var(--ms-success-border);
+    background: var(--ms-success-surface);
+    color: var(--ms-success-text);
+  }
+
+  &.is-missing,
+  &.is-bad {
+    border-color: var(--ms-danger-border);
+    background: var(--ms-danger-surface);
+    color: var(--ms-danger-text);
+  }
+}
+
+.ws-word.is-found {
+  text-decoration: line-through;
+}
+
+.ws-pick {
+  padding-right: 0;
+  font-weight: 700;
+}
+
+.ws-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ws-hint {
+  margin: 0;
+  color: var(--ms-text-medium);
+}
+
+.ws-result {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+
+  &.is-ok {
+    background: var(--ms-success-surface);
+    color: var(--ms-success-text);
+  }
+
+  &.is-bad {
+    background: var(--ms-danger-surface);
+    color: var(--ms-danger-text);
+  }
+}
+
+.ws-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .ws-root {
+    --ws-cell: 30px;
+  }
+
+  .ws-cell {
+    font-size: 15px;
+  }
+}

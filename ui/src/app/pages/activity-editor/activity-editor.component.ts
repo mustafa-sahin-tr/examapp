@@ -46,6 +46,12 @@ import {
   autoLayout,
 } from '../../models/activity-authoring-crossword';
 import {
+  WORD_SEARCH_FORM_LIMITS,
+  WordSearchEntryForm,
+  WordSearchForm,
+  wordLetters,
+} from '../../models/activity-authoring-word-search';
+import {
   MAZE_FORM_LIMITS,
   MazeBoardForm,
   MazeRoomsForm,
@@ -64,6 +70,7 @@ import {
   ClassificationSelectorComponent,
 } from '../../shared/components/classification-selector/classification-selector.component';
 import { QuestionCanvasCrosswordComponent } from '../../shared/components/question-canvas-crossword/question-canvas-crossword.component';
+import { QuestionCanvasWordSearchComponent } from '../../shared/components/question-canvas-word-search/question-canvas-word-search.component';
 import { QuestionCanvasDragPlaceComponent } from '../../shared/components/question-canvas-drag-place/question-canvas-drag-place.component';
 import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
 import { QuestionCanvasMazeTreeComponent } from '../../shared/components/question-canvas-maze-tree/question-canvas-maze-tree.component';
@@ -122,6 +129,7 @@ interface EditableItem {
     QuestionCanvasSlotFillComponent,
     QuestionCanvasMazeTreeComponent,
     QuestionCanvasCrosswordComponent,
+    QuestionCanvasWordSearchComponent,
   ],
   providers: [provideTranslocoScope(ACTIVITY_EDITOR_SCOPE)],
   templateUrl: './activity-editor.component.html',
@@ -144,6 +152,7 @@ export class ActivityEditorComponent {
   readonly treeDepths = [1, 2, 3, 4];
   readonly gridSizes = [2, 3, 4];
   readonly crosswordLimits = CROSSWORD_FORM_LIMITS;
+  readonly wordSearchLimits = WORD_SEARCH_FORM_LIMITS;
   /** Otomatik yerleştirmenin son sonucu: kesiştirilemeyip ayrı satıra konan kelimeler (1 tabanlı). */
   readonly crosswordUnplaced = signal<number[] | null>(null);
 
@@ -189,6 +198,7 @@ export class ActivityEditorComponent {
   readonly mazeRooms = computed(() => (this.form().kind === 'mazeRooms' ? (this.form() as MazeRoomsForm) : null));
   readonly mazeStones = computed(() => (this.form().kind === 'mazeStones' ? (this.form() as MazeStonesForm) : null));
   readonly crossword = computed(() => (this.form().kind === 'crossword' ? (this.form() as CrosswordForm) : null));
+  readonly wordSearch = computed(() => (this.form().kind === 'wordSearch' ? (this.form() as WordSearchForm) : null));
   /** D/Y ağacının düzeyleri: genişlik öncelikli sırada her düzeyin ifade dizinleri. */
   readonly treeLevels = computed(() => {
     const f = this.mazeTree();
@@ -649,6 +659,33 @@ export class ActivityEditorComponent {
     return answerLetters(entry.answer).length;
   }
 
+  // ---- Kelime avı ----
+
+  setWordSearchOption(patch: Partial<Pick<WordSearchForm, 'rows' | 'cols' | 'diagonal' | 'reverse'>>): void {
+    this.updateWordSearch((f) => ({ ...f, ...patch }));
+  }
+
+  setWordSearchEntry(index: number, patch: Partial<WordSearchEntryForm>): void {
+    this.updateWordSearch((f) => ({ ...f, words: f.words.map((w, i) => (i === index ? { ...w, ...patch } : w)) }));
+  }
+
+  addWordSearchEntry(): void {
+    this.updateWordSearch((f) => ({ ...f, words: [...f.words, { word: '', label: '' }] }));
+  }
+
+  removeWordSearchEntry(index: number): void {
+    this.updateWordSearch((f) => ({ ...f, words: f.words.filter((_, i) => i !== index) }));
+  }
+
+  /** Yeni tohumla yeniden yerleştirir (kayıtlı ızgara da bırakılır). */
+  shuffleWordSearch(): void {
+    this.updateWordSearch((f) => ({ ...f, seed: f.seed + 1, fixed: null }));
+  }
+
+  wordSearchLength(entry: WordSearchEntryForm): number {
+    return wordLetters(entry.word).length;
+  }
+
   // ---- Boşluk doldurma / kelime havuzu (metin) ----
 
   setBlankText(value: string): void {
@@ -951,6 +988,11 @@ export class ActivityEditorComponent {
     if (f) this.form.set(update(f));
   }
 
+  private updateWordSearch(update: (f: WordSearchForm) => WordSearchForm): void {
+    const f = this.wordSearch();
+    if (f) this.form.set(update(f));
+  }
+
   private updateCrossword(update: (f: CrosswordForm) => CrosswordForm): void {
     const f = this.crossword();
     if (f) this.form.set(update(f));
@@ -1019,5 +1061,7 @@ function itemTitle(form: AuthoringForm, instruction: string | null | undefined):
       return form.stones[0]?.text ?? '';
     case 'crossword':
       return form.entries[0]?.clue ?? '';
+    case 'wordSearch':
+      return form.words.map((w) => w.label || w.word).filter(Boolean).join(', ').slice(0, 80);
   }
 }

@@ -25,6 +25,7 @@ const KNOWN_TYPES = new Set([
   'openText',
   'mazeTree',
   'crossword',
+  'wordSearch',
 ]);
 
 /**

@@ -34,7 +34,10 @@
     "mazeMarked": "basılmaz",
     "mazeUnmarked": "basılır",
     "mazeNoPath": "Henüz yol seçilmedi",
-    "crosswordClue": "{{num}} {{arrow}} {{text}}: {{word}}"
+    "crosswordClue": "{{num}} {{arrow}} {{text}}: {{word}}",
+    "wordSearchWord": "{{word}}: {{content}}",
+    "wordSearchFound": "bulundu",
+    "wordSearchMissing": "bulunamadı"
   },
   "saveFailed": "Son cevabın kaydedilemedi; kontrol ettiğinde yeniden gönderilecek.",
   "finishCheckRequired": "Bitirmeden önce cevaplarını bir kez kontrol et.",

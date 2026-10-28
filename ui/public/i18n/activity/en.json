@@ -34,7 +34,10 @@
     "mazeMarked": "do not step",
     "mazeUnmarked": "safe",
     "mazeNoPath": "No path chosen yet",
-    "crosswordClue": "{{num}} {{arrow}} {{text}}: {{word}}"
+    "crosswordClue": "{{num}} {{arrow}} {{text}}: {{word}}",
+    "wordSearchWord": "{{word}}: {{content}}",
+    "wordSearchFound": "found",
+    "wordSearchMissing": "not found"
   },
   "saveFailed": "Your last answer could not be saved; it will be sent again when you check.",
   "finishCheckRequired": "Check your answers once before finishing.",

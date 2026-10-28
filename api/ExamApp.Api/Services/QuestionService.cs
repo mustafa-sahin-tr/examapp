@@ -676,6 +676,8 @@ public class QuestionService : IQuestionService
             try
             {
                 var createdQuestions = new List<Question>(); // 🟢 Track created questions for events
+                // Issue #590: öğretmenin kilitlediği taksonomi (sınıflandırıcı ezmez).
+                var taxonomyLockedQuestions = new HashSet<Question>(ReferenceEqualityComparer.Instance);
 
                 var worksheet = _context.Worksheets.FirstOrDefault(worksheet => worksheet.Id == soruDto.Header.TestId);
                 if (worksheet != null)
@@ -798,7 +800,8 @@ public class QuestionService : IQuestionService
                 foreach (var p in soruDto.Passages)
                 {
                     string passageImageUrl = string.Empty;
-                    if (mainImage != null)
+                    // Issue #590: görselsiz etkinlik maddesinin kapsamı yalnız yönerge taşır (kutu 0×0) — kırpılmaz.
+                    if (mainImage != null && p.Width > 0 && p.Height > 0)
                     {
                         using var passageBitmap = _imageHelper.CropBitmap(mainImage, (int)p.X, (int)p.Y, (int)p.Width, (int)p.Height);
                         var croppedPassageImage = _imageHelper.EncodeImage(passageBitmap, mainImageFormat);
@@ -987,6 +990,8 @@ public class QuestionService : IQuestionService
                     await _context.SaveChangesAsync();
 
                     createdQuestions.Add(question); // 🟢 Track for OutboxMessage
+                    if (questionClassification?.Locked == true)
+                        taxonomyLockedQuestions.Add(question);
                     if (questionDto.Masks is { Count: > 0 } savedMasks)
                         _logger.LogInformation("[Questions] bulk save: question {QuestionId} stored with {MaskCount} answer mask(s)",
                             question.Id, savedMasks.Count);
@@ -1088,6 +1093,7 @@ public class QuestionService : IQuestionService
                         ClassificationSource = question.ClassificationSource?.ToString(),
                         // Issue #577: sınıflandırıcı içindekilerden gelen alt konuyu bilsin (Book + alt konu → atla).
                         SubTopicIds = question.QuestionSubTopics?.Select(st => st.SubTopicId).ToList() ?? new List<int>(),
+                        TaxonomyLocked = taxonomyLockedQuestions.Contains(question),
                         CreatedAt = DateTime.UtcNow,
                         Text = question.Text
                     };
@@ -1267,7 +1273,8 @@ public class QuestionService : IQuestionService
             source = parsed;
         }
 
-        return new EffectiveQuestionClassification(subjectId, topicId, subTopicIds, source);
+        return new EffectiveQuestionClassification(subjectId, topicId, subTopicIds, source,
+            Locked: classification.Locked && topicId is > 0);
     }
 
     private static List<int> NormalizeSubTopicIds(IEnumerable<int>? ids) =>
@@ -1434,7 +1441,7 @@ public class QuestionService : IQuestionService
     }
 
     private sealed record EffectiveQuestionClassification(
-        int? SubjectId, int? TopicId, List<int> SubTopicIds, ClassificationSource Source);
+        int? SubjectId, int? TopicId, List<int> SubTopicIds, ClassificationSource Source, bool Locked = false);
 
     private sealed class ClassificationLookupCache
     {

@@ -32,7 +32,7 @@ export interface MatrixChoiceRow {
   id: string;
   /** İsteğe bağlı satır metni (yoksa oynatıcı "Satır n" yazar ve satır kutusunu görselde vurgular). */
   label?: string | null;
-  /** Satır kutusu (soru bölgesine göre). */
+  /** Satır kutusu (soru bölgesine göre). Issue #590: görselsiz yazarlıkta yok (etiket zorunlu). */
   box?: MatrixBox | null;
   /** İsteğe bağlı hücre kutuları: kolon id → kutu. Tüm satırlarda tüm kolonlar varsa oynatıcı görsel üstünde dokundurur. */
   cells?: Record<string, MatrixBox> | null;
@@ -42,6 +42,8 @@ export interface MatrixChoicePlanV1 {
   version: 1;
   type: typeof MATRIX_CHOICE;
   multiPerRow: boolean;
+  /** Issue #590: oynatıcı satırları karışık sırayla gösterir (kontrol sırası plan sırası kalır). */
+  shuffleRows?: boolean;
   columns: MatrixChoiceColumn[];
   rows: MatrixChoiceRow[];
 }
@@ -128,7 +130,14 @@ export function parseMatrixChoicePlan(json: string | null | undefined): MatrixCh
         };
       });
     if (columns.length === 0 || rows.length === 0) return null;
-    return { version: 1, type: MATRIX_CHOICE, multiPerRow: parsed.multiPerRow === true, columns, rows };
+    return {
+      version: 1,
+      type: MATRIX_CHOICE,
+      multiPerRow: parsed.multiPerRow === true,
+      shuffleRows: parsed.shuffleRows === true,
+      columns,
+      rows,
+    };
   } catch {
     return null;
   }

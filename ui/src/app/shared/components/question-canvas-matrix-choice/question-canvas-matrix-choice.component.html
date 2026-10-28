@@ -56,7 +56,7 @@
   @if (plan(); as p) {
     @if (!cellMode()) {
       <ol class="mc-list" data-testid="mc-list">
-        @for (row of rows(); track row.id; let ri = $index) {
+        @for (row of listRows(); track row.id; let ri = $index) {
           <li class="mc-list__row"
             [class.is-correct]="rowMark()(row.id) === 'correct'"
             [class.is-wrong]="rowMark()(row.id) === 'wrong'"

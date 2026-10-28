@@ -358,7 +358,7 @@
         } @else if (interactionKind(questionData.question.question.interactionType) === 'matrixChoice') {
         <!-- Issue #574: matris seçim; cevap aynı payload kayıt yolundan gider. -->
         <app-question-canvas-matrix-choice class="canvas-stage" [questionRegion]="questionData.region"
-          [imageRefresh]="imageRefresh"
+          [imageRefresh]="imageRefresh" [shuffleSeed]="questionData.question.id"
           [interactionPlanJson]="questionData.question.question.interactionPlan || null"
           [interactionSolutionJson]="questionData.question.question.interactionSolution || null"
           [answerPayloadJson]="questionData.question.answerPayload || null"

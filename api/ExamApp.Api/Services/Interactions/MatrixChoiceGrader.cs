@@ -9,8 +9,10 @@ namespace ExamApp.Api.Services.Interactions;
 /// issue #574: <c>matrixChoice</c> kontrolcüsü — "satır × seçenek" (D/Y tabloları, ✓ ile sınıflandırma, çoklu seçim,
 /// &lt; &gt; =). Satır başına doğru/yanlış.
 /// <list type="bullet">
-/// <item>Plan v1: <c>{version:1,type:"matrixChoice",multiPerRow:false,columns:[{id,label?}],rows:[{id,label?,box,cells?}]}</c>;
-/// <c>box</c> ve <c>cells</c> (kolon id → kutu) soru bölgesine göre göreli koordinatlardır (dragDropLabeling hedefleri gibi).</item>
+/// <item>Plan v1: <c>{version:1,type:"matrixChoice",multiPerRow:false,shuffleRows?:false,columns:[{id,label?}],rows:[{id,label?,box?,cells?}]}</c>;
+/// <c>box</c> ve <c>cells</c> (kolon id → kutu) soru bölgesine göre göreli koordinatlardır (dragDropLabeling hedefleri gibi).
+/// issue #590 (görselsiz yazarlık): kutusuz satırın boş olmayan <c>label</c>'ı zorunlu, <c>cells</c> kutusuz satırda yasak;
+/// <c>shuffleRows</c> oynatıcıda satır sırasını karıştırır (kontrol sırası plan sırası kalır).</item>
 /// <item>Çözüm (#570, <c>Question.InteractionSolution</c>): <c>{"rowId":["colId", ...], ...}</c>.</item>
 /// <item>Öğrenci payload'u: <c>{version:1,type:"matrixChoice",selections:{"rowId":["colId"]}}</c>.</item>
 /// </list>
@@ -33,7 +35,7 @@ public sealed class MatrixChoiceGrader : IInteractionGrader
 
 
     // review #574 (M1): kayıtta planın her düzeyinde izinli alanlar; bilinmeyen alan (gizli veri / iç içe "solution") reddedilir.
-    private static readonly HashSet<string> RootKeys = new(StringComparer.Ordinal) { "version", "type", "multiPerRow", "columns", "rows" };
+    private static readonly HashSet<string> RootKeys = new(StringComparer.Ordinal) { "version", "type", "multiPerRow", "shuffleRows", "columns", "rows" };
     private static readonly HashSet<string> ColumnKeys = new(StringComparer.Ordinal) { "id", "label" };
     private static readonly HashSet<string> RowKeys = new(StringComparer.Ordinal) { "id", "label", "box", "cells" };
     private static readonly HashSet<string> BoxKeys = new(StringComparer.Ordinal) { "x", "y", "width", "height" };
@@ -250,6 +252,9 @@ public sealed class MatrixChoiceGrader : IInteractionGrader
                 if (root.TryGetProperty("version", out var version)
                     && (version.ValueKind != JsonValueKind.Number || !version.TryGetInt32(out var v) || v != 1))
                     return false;
+                if (root.TryGetProperty("shuffleRows", out var shuffle)
+                    && shuffle.ValueKind is not (JsonValueKind.True or JsonValueKind.False or JsonValueKind.Null))
+                    return false;
             }
 
             if (!root.TryGetProperty("columns", out var columns) || columns.ValueKind != JsonValueKind.Array
@@ -315,10 +320,20 @@ public sealed class MatrixChoiceGrader : IInteractionGrader
         return true;
     }
 
-    /// <summary>Satır kutusu zorunlu; <c>cells</c> varsa nesne, anahtarlar plan kolonları, değerler kutu.</summary>
+    /// <summary>
+    /// Satır kutusu ya da (issue #590, görselsiz) boş olmayan etiket zorunlu; <c>cells</c> yalnız kutulu satırda, varsa nesne,
+    /// anahtarlar plan kolonları, değerler kutu.
+    /// </summary>
     private static bool IsValidRowGeometry(JsonElement row, HashSet<string> columnIds)
     {
-        if (!row.TryGetProperty("box", out var box) || !IsValidBox(box))
+        if (!row.TryGetProperty("box", out var box) || box.ValueKind == JsonValueKind.Null)
+        {
+            var hasLabel = row.TryGetProperty("label", out var label) && label.ValueKind == JsonValueKind.String
+                && !string.IsNullOrWhiteSpace(label.GetString());
+            var hasCells = row.TryGetProperty("cells", out var bareCells) && bareCells.ValueKind != JsonValueKind.Null;
+            return hasLabel && !hasCells;
+        }
+        if (!IsValidBox(box))
             return false;
         if (!row.TryGetProperty("cells", out var cells) || cells.ValueKind == JsonValueKind.Null)
             return true;

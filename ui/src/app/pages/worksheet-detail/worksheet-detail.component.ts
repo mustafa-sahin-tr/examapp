@@ -492,6 +492,15 @@ export class WorksheetDetailComponent implements OnInit {
     }, 1000);
   }
 
+  /** Issue #590: görselsiz etkinlik maddesi editörü (yeni madde; mevcut görselsiz maddeler editörün listesinden açılır). */
+  protected openActivityEditor(): void {
+    const ws = this.detail()?.worksheet;
+    if (!ws?.id) return;
+    this.router.navigate(['/activity-editor'], {
+      queryParams: { testId: ws.id, ...(ws.gradeId ? { gradeId: ws.gradeId } : {}) },
+    });
+  }
+
   protected createFromMistakes(): void {
     const instanceId = this.completedResult()?.instanceId;
     if (!instanceId || this.fromMistakesLoading()) {

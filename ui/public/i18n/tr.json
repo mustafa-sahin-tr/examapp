@@ -313,7 +313,9 @@
         "announceSelected": "{{row}}: {{column}} seçildi.",
         "announceCleared": "{{row}}: {{column}} seçimi kaldırıldı.",
         "markCorrect": "Doğru",
-        "markWrong": "Yanlış"
+        "markWrong": "Yanlış",
+        "presetTrue": "Doğru",
+        "presetFalse": "Yanlış"
       },
       "slotFill": {
         "hint": "Kutulara cevabını yaz. Kesirde payı üste, paydayı alta yaz. Kutudan çıkınca cevabın kaydedilir.",

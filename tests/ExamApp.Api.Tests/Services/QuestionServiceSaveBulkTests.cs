@@ -658,5 +658,56 @@ public class QuestionServiceSaveBulkTests : IDisposable
         IsValid(new HeaderInfo { Subtopics = fiftyOne }).ShouldBeFalse();
     }
 
+    // ---- Issue #590: öğretmenin kilitlediği taksonomi + görselsiz etkinlik maddesi ----
+
+    [Fact]
+    public async Task Locked_per_question_classification_with_a_topic_is_emitted_as_locked()
+    {
+        var tax = await SeedTaxonomyAsync();
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).SaveBulkQuestion(Dto(
+                new HeaderInfo(),
+                WithClassification(Mcq("S1"), new() { SubjectId = tax.SubjectId, TopicId = tax.TopicId, Locked = true }),
+                WithClassification(Mcq("S2"), new() { Locked = true }), // konu yok → kilit yok
+                Mcq("S3")))).Success.ShouldBeTrue();
+
+        await using var check = _db.NewContext();
+        var ids = await check.Questions.OrderBy(q => q.Id).Select(q => q.Id).ToListAsync();
+        var events = (await ReadEventsAsync()).ToDictionary(e => e.QuestionId);
+        events[ids[0]].TaxonomyLocked.ShouldBeTrue();
+        events[ids[0]].TopicId.ShouldBe(tax.TopicId);
+        events[ids[1]].TaxonomyLocked.ShouldBeFalse();
+        events[ids[2]].TaxonomyLocked.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task A_text_only_activity_item_with_an_empty_passage_box_is_saved_without_images()
+    {
+        const string plan = """{"version":1,"type":"matrixChoice","columns":[{"id":"cD","label":"D"},{"id":"cY","label":"Y"}],"rows":[{"id":"r1","label":"Su 100 derecede kaynar."}]}""";
+        var dto = Dto(new HeaderInfo(), new BulkQuestionDto
+        {
+            Name = "S1",
+            InteractionType = "matrixChoice",
+            InteractionPlan = plan,
+            InteractionSolution = """{"r1":["cD"]}""",
+            PassageId = "p1",
+        });
+        dto.Passages.Add(new BulkPassageDto { Id = "p1", Kind = PassageKind.Activity, Instruction = "Doğru mu, yanlış mı?" });
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).SaveBulkQuestion(dto)).Success.ShouldBeTrue();
+
+        await using var check = _db.NewContext();
+        var q = await check.Questions.Include(x => x.Passage).SingleAsync();
+        q.InteractionType.ShouldBe("matrixChoice");
+        q.InteractionSolution.ShouldBe("""{"r1":["cD"]}""");
+        q.ImageUrl.ShouldBeNullOrEmpty();
+        q.Passage.Kind.ShouldBe(PassageKind.Activity);
+        q.Passage.Instruction.ShouldBe("Doğru mu, yanlış mı?");
+        q.Passage.ImageUrl.ShouldBeNullOrEmpty();
+        await _minio.DidNotReceiveWithAnyArgs().UploadFileAsync(default!, default!, default!, default!);
+    }
+
     public void Dispose() => _db.Dispose();
 }

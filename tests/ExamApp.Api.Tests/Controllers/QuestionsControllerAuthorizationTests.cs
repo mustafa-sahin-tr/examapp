@@ -142,6 +142,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
                 Arg.Any<int[]?>(), Arg.Any<string?>(), Arg.Any<int?>())
             .Returns(new ResponseBaseDto { Success = true });
         classification.RemoveQuestionFromTest(Arg.Any<int>(), Arg.Any<int>()).Returns(new ResponseBaseDto { Success = true });
+        classification.GetClassificationTextAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns("metin");
 
         var query = Substitute.For<IQuestionQueryService>();
         query.GetQuestionById(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(new QuestionDto { Id = 1, ImageUrl = "q/question.jpg" });
@@ -252,6 +253,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         (HttpMethod.Get, "/api/questions/bank", null),
         (HttpMethod.Get, $"/api/questions/bytest/{_worksheet}", null),
         (HttpMethod.Get, $"/api/questions/{_legacyQuestion}/image", null),
+        (HttpMethod.Get, $"/api/questions/{_legacyQuestion}/classification-text", null),
         (HttpMethod.Get, "/api/questions/classifier-cache", null),
         (HttpMethod.Get, "/api/questions/classifier-taxonomy", null),
         (HttpMethod.Post, "/api/questions", new { id = _legacyQuestion, text = "t", categoryName = "c", answers = Array.Empty<object>() }),
@@ -277,6 +279,22 @@ public class QuestionsControllerAuthorizationTests : IDisposable
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         (await response.Content.ReadAsStringAsync()).ShouldContain("mask-invalid-581");
+    }
+
+    // Issue #590: görselsiz etkinlik maddesi — toplu kayıtta imageData, tekli kayıtta text/categoryName yok; model doğrulaması
+    // bunları zorunlu saymamalı (400 değil).
+    [Fact]
+    public async Task Text_only_activity_item_payloads_pass_model_validation()
+    {
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        (await SendAsync(client, Owner, HttpMethod.Post, "/api/questions/save",
+            new { imageData = (string?)null, passages = Array.Empty<object>(), header = new { testId = _worksheet }, questions = Array.Empty<object>() }))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await SendAsync(client, Owner, HttpMethod.Post, "/api/questions",
+            new { id = _legacyQuestion, text = (string?)null, interactionType = "matrixChoice", answers = Array.Empty<object>() }))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
     [Fact]
@@ -416,6 +434,8 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         using var client = host.GetTestClient();
 
         (await SendAsync(client, Service, HttpMethod.Get, $"/api/questions/{_copierQuestion}/image")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        // Issue #590: görseli olmayan sorunun sınıflandırma metni.
+        (await SendAsync(client, Service, HttpMethod.Get, $"/api/questions/{_copierQuestion}/classification-text")).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await SendAsync(client, Service, HttpMethod.Put, $"/api/questions/{_copierQuestion}/classification",
             new { subjectId = 1 })).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await SendAsync(client, Service, HttpMethod.Put, $"/api/questions/{_copierQuestion}/correct-answer",
@@ -435,6 +455,7 @@ public class QuestionsControllerAuthorizationTests : IDisposable
         (await SendAsync(client, Copier, HttpMethod.Get, $"/api/questions/{_legacyQuestion}")).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await SendAsync(client, Owner, HttpMethod.Get, $"/api/questions/{_copierQuestion}")).StatusCode.ShouldBe(HttpStatusCode.NotFound);
         (await SendAsync(client, Owner, HttpMethod.Get, $"/api/questions/{_copierQuestion}/image")).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await SendAsync(client, Owner, HttpMethod.Get, $"/api/questions/{_copierQuestion}/classification-text")).StatusCode.ShouldBe(HttpStatusCode.NotFound);
         (await SendAsync(client, Owner, HttpMethod.Get, "/api/questions/bytest/987654")).StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 

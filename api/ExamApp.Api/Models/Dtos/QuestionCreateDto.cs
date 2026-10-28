@@ -7,7 +7,8 @@ namespace ExamApp.Api.Models.Dtos;
 
 public class BulkQuestionCreateDto
 {
-    public string ImageData { get; set; } // MinIO'ya yüklenecek, EF'e ImageUrl olarak gidecek
+    // MinIO'ya yüklenecek, EF'e ImageUrl olarak gidecek. Issue #590: görselsiz etkinlik maddesinde yok (null).
+    public string? ImageData { get; set; }
     public List<BulkPassageDto> Passages { get; set; }
     public List<BulkQuestionDto> Questions { get; set; }
     public HeaderInfo Header { get; set; }
@@ -116,6 +117,13 @@ public class BulkQuestionClassificationDto
 
     /// <summary>"AI" | "Human" (büyük/küçük harf duyarsız); null/geçersiz → header kaynağı → Human.</summary>
     public string? Source { get; set; }
+
+    /// <summary>
+    /// Issue #590: öğretmen taksonomiyi kendisi seçti, sınıflandırıcı ezmesin. Yalnız etkin konu (<c>TopicId</c>) doluyken
+    /// geçerli; <c>QuestionCreatedEvent.TaxonomyLocked</c> olarak gider (alt konu varsa sınıflandırma yok, yalnız konu varsa
+    /// sınıflandırıcı o konunun içinde kalır).
+    /// </summary>
+    public bool Locked { get; set; }
 }
 
 public class BulkAnswerDto

@@ -10,6 +10,9 @@ public class QuestionCreatedConsumer : IConsumer<QuestionCreatedEvent>
     /// <summary>Issue #577: <c>ClassificationSource</c> of questions whose topic came from a book's table of contents.</summary>
     public const string BookSource = "Book";
 
+    /// <summary>Issue #590: source persisted for a teacher-locked topic (classified within it).</summary>
+    public const string HumanSource = "Human";
+
     private readonly IQuestionClassifier _classifier;
     private readonly ILogger<QuestionCreatedConsumer> _logger;
     private readonly bool _aiActive;
@@ -48,6 +51,21 @@ public class QuestionCreatedConsumer : IConsumer<QuestionCreatedEvent>
 
         try
         {
+            // Issue #590: the teacher picked the taxonomy — never overwrite it. With subtopics nothing is left to classify;
+            // with only a topic, classify subtopic + difficulty inside it and keep the source Human.
+            if (@event.TaxonomyLocked)
+            {
+                if (@event.SubTopicIds is { Count: > 0 } || @event.TopicId is not > 0)
+                {
+                    _logger.LogInformation("⏭️ Skipping question {QuestionId} (taxonomy locked by the teacher)", @event.QuestionId);
+                    return;
+                }
+
+                await _classifier.ClassifyWithinTopicAndPersistAsync(
+                    @event.QuestionId, @event.GradeId, @event.TopicId.Value, HumanSource, context.CancellationToken);
+                return;
+            }
+
             // Issue #577: book table of contents (QuestionAnalyzer:BookTocMode).
             if (string.Equals(@event.ClassificationSource, BookSource, StringComparison.OrdinalIgnoreCase) &&
                 _bookTocMode != BookTocMode.Always)
@@ -63,7 +81,7 @@ public class QuestionCreatedConsumer : IConsumer<QuestionCreatedEvent>
                 if (@event.TopicId is > 0 and var topicId)
                 {
                     await _classifier.ClassifyWithinTopicAndPersistAsync(
-                        @event.QuestionId, @event.GradeId, topicId, context.CancellationToken);
+                        @event.QuestionId, @event.GradeId, topicId, BookSource, context.CancellationToken);
                     return;
                 }
                 // Hybrid without a topic: nothing to constrain to — classify like a human-authored question.

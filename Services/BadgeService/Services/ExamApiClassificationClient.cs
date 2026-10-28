@@ -16,12 +16,18 @@ public sealed class ExamApiClassificationClient(IHttpClientFactory httpClientFac
 
     private readonly string _baseUrl = examApiBaseUrl.TrimEnd('/');
 
-    public async Task<QuestionImage> FetchQuestionImageAsync(int questionId, string token, CancellationToken ct)
+    /// <summary>
+    /// The question image, or <see langword="null"/> when the question has none (404, issue #590 — text-authored
+    /// question; a missing question then fails on <see cref="FetchQuestionTextAsync"/>).
+    /// </summary>
+    public async Task<QuestionImage?> TryFetchQuestionImageAsync(int questionId, string token, CancellationToken ct)
     {
         var client = CreateClient(token);
 
         var url = $"{_baseUrl}/api/questions/{questionId}/image?variant=v1";
         var response = await client.GetAsync(url, ct);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return null;
         if (!response.IsSuccessStatusCode)
         {
             var body = await response.Content.ReadAsStringAsync(ct);
@@ -33,6 +39,29 @@ public sealed class ExamApiClassificationClient(IHttpClientFactory httpClientFac
         return new QuestionImage(
             await response.Content.ReadAsByteArrayAsync(ct),
             mediaType is not null && mediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) ? mediaType : "image/jpeg");
+    }
+
+    /// <summary>
+    /// Issue #590: <c>GET /api/questions/{id}/classification-text</c> — the plain text the classifier reads for a question
+    /// without an image (stem, instruction, options, activity item labels; never the solution). Empty = nothing to read.
+    /// </summary>
+    public async Task<string> FetchQuestionTextAsync(int questionId, string token, CancellationToken ct)
+    {
+        var client = CreateClient(token);
+
+        var url = $"{_baseUrl}/api/questions/{questionId}/classification-text";
+        var response = await client.GetAsync(url, ct);
+        var payload = await response.Content.ReadAsStringAsync(ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Failed to fetch text for question {questionId}: {(int)response.StatusCode} {response.ReasonPhrase}. {Truncate(payload)}");
+        }
+
+        using var doc = JsonDocument.Parse(payload);
+        return doc.RootElement.TryGetProperty("text", out var text) && text.ValueKind == JsonValueKind.String
+            ? text.GetString() ?? string.Empty
+            : string.Empty;
     }
 
     /// <summary>

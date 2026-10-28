@@ -566,7 +566,7 @@ public class ActivityStructureServiceTests : IDisposable
 
         var state = await NewService(ctx).GetPromptsAsync();
 
-        state.Types.Select(t => t.InteractionType).ShouldBe(["matrixChoice", "slotFill", "dragPlace", "match", "textSelect"]);
+        state.Types.Select(t => t.InteractionType).ShouldBe(["matrixChoice", "slotFill", "dragPlace", "match", "textSelect", "crossword"]);
         state.Types.ShouldAllBe(t => t.Active.Version == 0 && t.Defaults.Version == 0 && t.History.Count == 0
                                      && t.Active.Instruction == ActivityStructureSettings.DefaultInstruction(t.InteractionType)
                                      && t.Active.CreatedAt == null && t.Active.CreatedByName == null);

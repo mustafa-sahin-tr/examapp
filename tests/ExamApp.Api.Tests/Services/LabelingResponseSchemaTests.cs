@@ -17,6 +17,7 @@ public class LabelingResponseSchemaTests
         nameof(ActivityDrafts.DragDraft),
         nameof(ActivityDrafts.MatchDraft),
         nameof(ActivityDrafts.TextDraft),
+        nameof(ActivityDrafts.CrosswordDraft),
         nameof(ClaudeLabelDetector.PageBlocks),
         nameof(ClaudeLabelDetector.OptionBoxes),
     };
@@ -32,6 +33,7 @@ public class LabelingResponseSchemaTests
             nameof(ActivityDrafts.DragDraft) => await CaptureAsync<ActivityDrafts.DragDraft>(),
             nameof(ActivityDrafts.MatchDraft) => await CaptureAsync<ActivityDrafts.MatchDraft>(),
             nameof(ActivityDrafts.TextDraft) => await CaptureAsync<ActivityDrafts.TextDraft>(),
+            nameof(ActivityDrafts.CrosswordDraft) => await CaptureAsync<ActivityDrafts.CrosswordDraft>(),
             nameof(ClaudeLabelDetector.PageBlocks) => await CaptureAsync<ClaudeLabelDetector.PageBlocks>(),
             nameof(ClaudeLabelDetector.OptionBoxes) => await CaptureAsync<ClaudeLabelDetector.OptionBoxes>(),
             _ => throw new ArgumentOutOfRangeException(nameof(type)),

@@ -41,6 +41,7 @@ import {
 } from './labeling-pool';
 import {
   DetectionSource,
+  ActivityStructureType,
   LabelingAiModel,
   LabelingBankBox,
   LabelingBankConflict,
@@ -631,7 +632,7 @@ export class LabelingComponent {
   /**
    * Issue #579 / #581: bir tipin talimatı kaydedildi. Taslaklar bu ekranda değil soru tuvalinde çıkarılır; yalnız bildirilir.
    */
-  private onActivityPromptSaved(type: BlockInteractionType, version: number): void {
+  private onActivityPromptSaved(type: ActivityStructureType, version: number): void {
     const typeName = this.tr(`structure.types.${type}`);
     this.snackBar.open(this.tr('structure.promptSaved', { type: typeName, version }), this.tr('ok'), { duration: 4000 });
   }

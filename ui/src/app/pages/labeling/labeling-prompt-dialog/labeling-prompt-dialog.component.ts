@@ -14,12 +14,13 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import {
+  ActivityStructureType,
   LabelingActivityPrompt,
   LabelingActivityPromptType,
   LabelingPrompt,
   LabelingPromptState,
 } from '../../../models/labeling';
-import { BlockInteractionType } from '../../../models/prediction';
+import { CROSSWORD } from '../../../models/crossword';
 import { DRAG_PLACE } from '../../../models/drag-place';
 import { MATCH } from '../../../models/match';
 import { MATRIX_CHOICE } from '../../../models/matrix-choice';
@@ -31,12 +32,19 @@ const MAX_INSTRUCTION = 4000;
 const MAX_PADDING = 50;
 
 /** Issue #579: prompt ekranında sayfa sekmesinden sonra sırayla gösterilen etkinlik tipleri (her biri ayrı sürümlenir). */
-export const ACTIVITY_PROMPT_TYPES: readonly BlockInteractionType[] = [MATRIX_CHOICE, SLOT_FILL, DRAG_PLACE, MATCH, TEXT_SELECT];
+export const ACTIVITY_PROMPT_TYPES: readonly ActivityStructureType[] = [
+  MATRIX_CHOICE,
+  SLOT_FILL,
+  DRAG_PLACE,
+  MATCH,
+  TEXT_SELECT,
+  CROSSWORD, // issue #586 (dilim e): görselsiz editörde görselden çıkarma
+];
 
 /** Bir etkinlik tipinin talimatı kaydedildi (diyalog bununla kapanır). */
 export interface LabelingActivityPromptSaved {
   kind: 'activity';
-  interactionType: BlockInteractionType;
+  interactionType: ActivityStructureType;
   /** Tipin yeni etkin sürümü. */
   prompt: LabelingActivityPrompt;
 }
@@ -62,7 +70,7 @@ export function isPromptUnchanged(result: LabelingPromptDialogResult): result is
 }
 
 /** Sekme anahtarı: `page` ya da etkinlik tipi (çeviri `labeling.prompt.tabs.<anahtar>`). */
-export type PromptTabKey = 'page' | BlockInteractionType;
+export type PromptTabKey = 'page' | ActivityStructureType;
 
 /**
  * Claude ön-etiketleme prompt'u. "Sayfa" sekmesi: iki aşamanın talimatı + kutu payları. Issue #579: etkinlik tipi başına
@@ -120,20 +128,20 @@ export class LabelingPromptDialogComponent {
   readonly activityLoading = signal(true);
   readonly activityLoadFailed = signal(false);
   /** Tip → sunucudaki durum (etkin, varsayılan, geçmiş). */
-  readonly activityStates = signal<Partial<Record<BlockInteractionType, LabelingActivityPromptType>>>({});
-  readonly activityForms: Record<BlockInteractionType, FormControl<string>> = Object.fromEntries(
+  readonly activityStates = signal<Partial<Record<ActivityStructureType, LabelingActivityPromptType>>>({});
+  readonly activityForms: Record<ActivityStructureType, FormControl<string>> = Object.fromEntries(
     ACTIVITY_PROMPT_TYPES.map((type) => [
       type,
       this.fb.control('', [Validators.required, Validators.maxLength(MAX_INSTRUCTION)]),
     ])
-  ) as Record<BlockInteractionType, FormControl<string>>;
+  ) as Record<ActivityStructureType, FormControl<string>>;
   /**
    * Kaydedilecek sekme dışında kaydedilmemiş değişikliği olan sekmeler; doluysa uyarı gösterilir, "Yine de kaydet"
    * onaylar (diyalog kapanınca o değişiklikler kaybolur).
    */
   readonly unsavedOthers = signal<PromptTabKey[]>([]);
   /** Seçili sekmenin etkinlik tipi (Sayfa sekmesinde null). */
-  readonly selectedActivityType = computed<BlockInteractionType | null>(
+  readonly selectedActivityType = computed<ActivityStructureType | null>(
     () => ACTIVITY_PROMPT_TYPES[this.selectedTab() - 1] ?? null
   );
 
@@ -171,7 +179,7 @@ export class LabelingPromptDialogComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (state) => {
-          const byType: Partial<Record<BlockInteractionType, LabelingActivityPromptType>> = {};
+          const byType: Partial<Record<ActivityStructureType, LabelingActivityPromptType>> = {};
           for (const entry of state?.types ?? []) {
             if (ACTIVITY_PROMPT_TYPES.includes(entry.interactionType)) {
               byType[entry.interactionType] = entry;
@@ -189,23 +197,23 @@ export class LabelingPromptDialogComponent {
       });
   }
 
-  activityState(type: BlockInteractionType): LabelingActivityPromptType | null {
+  activityState(type: ActivityStructureType): LabelingActivityPromptType | null {
     return this.activityStates()[type] ?? null;
   }
 
-  fillActivity(type: BlockInteractionType, prompt: LabelingActivityPrompt): void {
+  fillActivity(type: ActivityStructureType, prompt: LabelingActivityPrompt): void {
     this.activityForms[type].setValue(prompt.instruction);
     this.activityForms[type].markAsDirty();
   }
 
-  loadActivityVersion(type: BlockInteractionType, version: number): void {
+  loadActivityVersion(type: ActivityStructureType, version: number): void {
     const prompt = this.activityState(type)?.history.find((p) => p.version === version);
     if (prompt) {
       this.fillActivity(type, prompt);
     }
   }
 
-  resetActivityToDefaults(type: BlockInteractionType): void {
+  resetActivityToDefaults(type: ActivityStructureType): void {
     const defaults = this.activityState(type)?.defaults;
     if (defaults) {
       this.fillActivity(type, defaults);
@@ -267,7 +275,7 @@ export class LabelingPromptDialogComponent {
   }
 
   /** Tipin talimatını yeni sürüm olarak kaydeder; yalnız o tipin önbelleği geçersiz olur. */
-  saveActivity(type: BlockInteractionType): void {
+  saveActivity(type: ActivityStructureType): void {
     const control = this.activityForms[type];
     if (control.invalid || this.saving() || !this.activityState(type)) {
       control.markAsTouched();

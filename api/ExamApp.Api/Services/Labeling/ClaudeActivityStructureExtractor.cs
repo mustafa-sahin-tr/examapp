@@ -134,6 +134,12 @@ public sealed class ClaudeActivityStructureExtractor : IActivityStructureExtract
                 (mapped, usage) = (ActivityDrafts.Map(draft, frame), u);
                 break;
             }
+            case CrosswordGrader.Type: // issue #586 (dilim e): hücre koordinatlı yanıt; piksel kutusu yok
+            {
+                var (draft, u) = await AskAsync<ActivityDrafts.CrosswordDraft>(model, crop, instruction, ct);
+                (mapped, usage) = (ActivityDrafts.Map(draft), u);
+                break;
+            }
             default:
                 throw new ArgumentOutOfRangeException(nameof(prompt), prompt.InteractionType, "Unsupported activity type.");
         }

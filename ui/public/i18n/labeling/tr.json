@@ -192,7 +192,8 @@
       "slotFill": "Cevap kutusu",
       "dragPlace": "Sürükle-yerleştir",
       "match": "Eşleştirme",
-      "textSelect": "Metin işaretleme"
+      "textSelect": "Metin işaretleme",
+      "crossword": "Çengel bulmaca"
     },
     "activity": {
       "loadFailed": "Etkinlik talimatları yüklenemedi.",
@@ -222,7 +223,8 @@
       "slotFill": "Cevap kutusu",
       "dragPlace": "Sürükle-yerleştir",
       "match": "Eşleştirme",
-      "textSelect": "Metin işaretleme"
+      "textSelect": "Metin işaretleme",
+      "crossword": "Çengel bulmaca"
     },
     "promptSaved": "{{type}} talimatı v{{version}} kaydedildi; soru tuvalinde bu tipin taslakları yeni talimatla çıkarılır.",
     "promptUnchanged": "Talimat değişmedi (v{{version}}); yeniden çıkarma gerekmiyor."

@@ -2,8 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { BlockInteractionType } from '../models/prediction';
 import {
+  ActivityStructureType,
   DetectionSource,
   LabelingActivityPrompt,
   LabelingActivityPromptsState,
@@ -74,7 +74,7 @@ export class LabelingService {
 
   /** Tipin talimatını yeni sürüm olarak kaydeder (etkin sürümü döner); yalnız o tipin önbelleği geçersiz olur. */
   saveActivityPrompt(
-    type: BlockInteractionType,
+    type: ActivityStructureType,
     request: LabelingSaveActivityPromptRequest
   ): Observable<LabelingActivityPrompt> {
     return this.http.put<LabelingActivityPrompt>(

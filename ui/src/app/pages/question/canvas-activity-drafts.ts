@@ -180,7 +180,7 @@ export class CanvasActivityDrafts {
   }
 
   /** Tuvaldeki tipli etkinlik blokları (bölge adı + sayfa pikseli kutu + tip). */
-  private typedBlocks(): LabelingActivityBlock[] {
+  private typedBlocks(): LabelingActivityBlock<BlockInteractionType>[] {
     const selector = this.selector();
     if (!selector) {
       return [];
@@ -226,7 +226,7 @@ export class CanvasActivityDrafts {
       }
       return;
     }
-    const missing: LabelingActivityBlock[] = [];
+    const missing: LabelingActivityBlock<BlockInteractionType>[] = [];
     let moved = false;
     for (const block of blocks) {
       const draft = next[block.key];
@@ -283,13 +283,13 @@ export class CanvasActivityDrafts {
    * birbirinin bütçesini tüketirdi). Tümü baştan "yükleniyor" olur; bir istek başarısızsa kalanlar gönderilmez, aynı
    * hatayla işaretlenir.
    */
-  private request(blocks: LabelingActivityBlock[], force: boolean): void {
+  private request(blocks: LabelingActivityBlock<BlockInteractionType>[], force: boolean): void {
     const image = this.selector()?.imageData();
     const model = this.config()?.model() ?? '';
     if (!image || !model || blocks.length === 0) {
       return;
     }
-    const batches: Array<{ blocks: LabelingActivityBlock[]; requestId: number }> = [];
+    const batches: Array<{ blocks: LabelingActivityBlock<BlockInteractionType>[]; requestId: number }> = [];
     for (let i = 0; i < blocks.length; i += MAX_ACTIVITY_BLOCKS_PER_REQUEST) {
       batches.push({ blocks: blocks.slice(i, i + MAX_ACTIVITY_BLOCKS_PER_REQUEST), requestId: ++this.requestSeq });
     }
@@ -337,7 +337,7 @@ export class CanvasActivityDrafts {
   private requestBatch(
     image: string,
     model: string,
-    blocks: LabelingActivityBlock[],
+    blocks: LabelingActivityBlock<BlockInteractionType>[],
     requestId: number,
     force: boolean,
     current: () => boolean,

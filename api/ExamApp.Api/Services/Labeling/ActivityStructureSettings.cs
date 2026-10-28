@@ -48,11 +48,13 @@ public static class ActivityStructureSettings
         [DragPlaceGrader.Type] = 1,
         [MatchGrader.Type] = 1,
         [TextSelectGrader.Type] = 1, // issue #582
+        [CrosswordGrader.Type] = 1, // issue #586 (dilim e)
     };
 
     /// <summary>Desteklenen tipler, ekrandaki sekme sırasıyla.</summary>
     public static IReadOnlyList<string> Types { get; } =
-        [MatrixChoiceGrader.Type, SlotFillGrader.Type, DragPlaceGrader.Type, MatchGrader.Type, TextSelectGrader.Type];
+        [MatrixChoiceGrader.Type, SlotFillGrader.Type, DragPlaceGrader.Type, MatchGrader.Type, TextSelectGrader.Type,
+         CrosswordGrader.Type];
 
     /// <summary>Tipin kanonik adı (büyük/küçük harf duyarsız); desteklenmiyorsa null.</summary>
     public static string? Canonical(string? interactionType)
@@ -73,6 +75,7 @@ public static class ActivityStructureSettings
         DragPlaceGrader.Type => DefaultDragPlaceInstruction,
         MatchGrader.Type => DefaultMatchInstruction,
         TextSelectGrader.Type => DefaultTextSelectInstruction,
+        CrosswordGrader.Type => DefaultCrosswordInstruction,
         _ => throw new ArgumentOutOfRangeException(nameof(interactionType), interactionType, "Unsupported activity type."),
     };
 
@@ -179,4 +182,24 @@ public static class ActivityStructureSettings
         "hyphen at the end of a line where a word is split, and write every empty bracket as \"( )\". Box (x1, y1, " +
         "x2, y2) = the line from its first to its last character.\n" +
         "Return an empty list if the image has no such text.";
+
+    /// <summary>
+    /// issue #586 (dilim e): çengel bulmaca (bileşen G). Claude ızgara boyutunu ve her kelime yerinin (numara, yön, başlangıç
+    /// hücresi, uzunluk) yanında ipucu metnini döner; harfler / cevaplar istenmez (#580: cevabı öğretmen yazar). Hücre koordinatı
+    /// 0 tabanlı satır / sütundur, piksel değil (oynatıcı ızgarayı HTML olarak çizer, görsel etkileşimsiz üstte kalır).
+    /// </summary>
+    public const string DefaultCrosswordInstruction =
+        "This image is a crossword puzzle (çengel bulmaca) cropped from a page of a Turkish school book ({width}x{height} " +
+        "px). Describe its grid and its clues. " + Common +
+        "- rows, cols: the number of cell rows and cell columns of the whole grid (count every cell position, including " +
+        "black or empty positions inside the grid's bounding rectangle).\n" +
+        "- words: every answer slot of the grid (a run of 2 or more white cells that is filled with one word). dir = " +
+        "across for a word read left to right (soldan sağa), down for top to bottom (yukarıdan aşağıya). row, col = the " +
+        "0-based cell row and column of the word's first cell (top-left cell is 0, 0); these are cell indexes, not pixels. " +
+        "length = the number of cells of the word. number = the small number printed in the first cell or next to the " +
+        "slot (0 if none). clue = the clue text that belongs to this slot, copied from the clue list (matched by its " +
+        "number and direction) or printed inside or next to the slot, without its number; an empty string if there is no " +
+        "text clue (for example a picture clue).\n" +
+        "Never write the answers or any letter of them, even if some cells are already filled in. Return empty lists if " +
+        "the image has no crossword grid.";
 }

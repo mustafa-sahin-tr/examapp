@@ -192,7 +192,8 @@
       "slotFill": "Answer box",
       "dragPlace": "Drag and place",
       "match": "Matching",
-      "textSelect": "Text marking"
+      "textSelect": "Text marking",
+      "crossword": "Crossword"
     },
     "activity": {
       "loadFailed": "Activity instructions could not be loaded.",
@@ -222,7 +223,8 @@
       "slotFill": "Answer box",
       "dragPlace": "Drag and place",
       "match": "Matching",
-      "textSelect": "Text marking"
+      "textSelect": "Text marking",
+      "crossword": "Crossword"
     },
     "promptSaved": "{{type}} instruction v{{version}} saved; in the question canvas, drafts of this type are extracted with the new instruction.",
     "promptUnchanged": "Instruction unchanged (v{{version}}); nothing to extract again."

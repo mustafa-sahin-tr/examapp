@@ -57,7 +57,7 @@
       "busy": "The book registry is busy with another operation. Try again."
     },
     "activity": {
-      "unknownType": "Unknown activity type (matrixChoice, slotFill, dragPlace, match or textSelect).",
+      "unknownType": "Unknown activity type (matrixChoice, slotFill, dragPlace, match, textSelect or crossword).",
       "invalidBlocks": "Send 1 to 20 activity blocks.",
       "invalidBlockKey": "Each block needs an id of at most 64 characters.",
       "duplicateBlockKey": "Block ids must be unique.",
@@ -76,7 +76,9 @@
         "noText": "No text was read; add at least one line.",
         "noGaps": "A punctuation activity needs at least one \"( )\" gap.",
         "tooManyGaps": "A block can have at most 100 \"( )\" gaps; split the block.",
-        "gapsNeedPunctuation": "The text has \"( )\" gaps; switch the mode to punctuation or remove the gaps."
+        "gapsNeedPunctuation": "The text has \"( )\" gaps; switch the mode to punctuation or remove the gaps.",
+        "noClues": "No word slot could be read from the crossword; add at least one word.",
+        "clueText": "Every word needs a clue text; fill in the empty clues."
       }
     }
   }

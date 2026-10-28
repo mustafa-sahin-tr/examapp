@@ -558,7 +558,24 @@
               <button mat-stroked-button type="button" data-testid="cw-auto" (click)="autoLayoutCrossword()">
                 <mat-icon>auto_fix_high</mat-icon>{{ t('crossword.autoLayout') }}
               </button>
+              @if (aiModel()) {
+                <button mat-stroked-button type="button" data-testid="cw-extract" [disabled]="!canExtractCrossword()"
+                  (click)="extractCrossword()">
+                  @if (extracting()) {
+                    <mat-progress-spinner mode="indeterminate" diameter="18" />
+                  } @else {
+                    <mat-icon>image_search</mat-icon>
+                  }
+                  {{ t('crossword.extract') }}
+                </button>
+              }
             </div>
+            @if (aiModel()) {
+              <p class="ae__hint">{{ t('crossword.extractHint') }}</p>
+            }
+            @if (extractError(); as err) {
+              <p class="ae__error" role="alert" data-testid="cw-extract-error">{{ err }}</p>
+            }
             @if (crosswordUnplaced(); as unplaced) {
               <p class="ae__hint" role="status" data-testid="cw-auto-result">
                 {{ unplaced.length ? t('crossword.unplaced', { list: unplaced.join(', ') }) : t('crossword.placed') }}
@@ -572,7 +589,11 @@
                     <mat-label>{{ t('crossword.answer') }}</mat-label>
                     <input matInput [value]="entry.answer" [attr.maxlength]="crosswordLimits.maxSize + 10"
                       (input)="setCrosswordEntry(ei, { answer: $any($event.target).value })" />
-                    <mat-hint>{{ t('crossword.length', { n: crosswordLength(entry) }) }}</mat-hint>
+                    @if (crosswordLengthMismatch(entry)) {
+                      <mat-hint class="ae__warn" data-testid="cw-length-mismatch">{{ t('crossword.lengthMismatch', { n: crosswordLength(entry), cells: entry.length }) }}</mat-hint>
+                    } @else {
+                      <mat-hint>{{ t('crossword.length', { n: crosswordLength(entry) }) }}</mat-hint>
+                    }
                   </mat-form-field>
                   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
                     <mat-label>{{ t('crossword.clue') }}</mat-label>

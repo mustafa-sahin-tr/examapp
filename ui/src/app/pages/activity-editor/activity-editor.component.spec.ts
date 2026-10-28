@@ -6,6 +6,8 @@ import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angul
 import { of, throwError } from 'rxjs';
 
 import { ActivityEditorComponent } from './activity-editor.component';
+import { AuthService } from '../../services/auth.service';
+import { LabelingService } from '../../services/labeling.service';
 import { QuestionService } from '../../services/question.service';
 import { StudentService } from '../../services/student.service';
 import { SubjectService } from '../../services/subject.service';
@@ -30,8 +32,15 @@ describe('ActivityEditorComponent (#590)', () => {
   let component: ActivityEditorComponent;
   let questions: { getAll: Mock; saveBulk: Mock; saveQuestion: Mock; updateClassification: Mock };
   let router: Router;
+  let labeling: { getAiModels: Mock; activityStructure: Mock };
 
-  async function setup(query: Record<string, string>, list: unknown[] = []) {
+  async function setup(query: Record<string, string>, list: unknown[] = [], trainer = false) {
+    labeling = {
+      getAiModels: vi.fn().mockReturnValue(
+        of([{ id: 'claude-haiku-5-5', displayName: 'Haiku', inputUsdPerMTok: 1, outputUsdPerMTok: 5, isDefault: true }])
+      ),
+      activityStructure: vi.fn(),
+    };
     questions = {
       getAll: vi.fn().mockReturnValue(of(list)),
       saveBulk: vi.fn().mockReturnValue(of({ success: true })),
@@ -49,6 +58,8 @@ describe('ActivityEditorComponent (#590)', () => {
       providers: [
         provideRouter([]),
         { provide: QuestionService, useValue: questions },
+        { provide: AuthService, useValue: { hasRealmRole: vi.fn((role: string) => trainer && role === 'QuestionTrainer') } },
+        { provide: LabelingService, useValue: labeling },
         { provide: StudentService, useValue: { loadGrades: vi.fn().mockReturnValue(of([])) } },
         {
           provide: SubjectService,
@@ -208,6 +219,77 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(plan.clues.map((c: { dir: string }) => c.dir).sort()).toEqual(['across', 'down']);
     expect(q.interactionPlan).not.toContain('KALP');
     expect(JSON.parse(q.interactionSolution)).toEqual({ answers: { k1: 'KALP', k2: 'KİR' } });
+  });
+
+  it('çengel bulmaca: görselden Claude ile ızgara + ipuçlarını okur, cevaplar öğretmende (#586 dilim e)', async () => {
+    await setup({ testId: '9' }, [], true);
+    component.selectKind('crossword');
+    component.image.set({ dataUrl: 'data:image/png;base64,QUJD', src: 'data:image/png;base64,QUJD', width: 400, height: 300 });
+    fixture.detectChanges();
+    expect(labeling.getAiModels).toHaveBeenCalled();
+    expect(el('[data-testid="cw-extract"]')).not.toBeNull();
+
+    labeling.activityStructure.mockReturnValue(
+      of({
+        results: [
+          {
+            key: 'crossword',
+            interactionType: 'crossword',
+            status: 'ok',
+            origin: 'live',
+            plan: {
+              version: 1,
+              type: 'crossword',
+              rows: 4,
+              cols: 4,
+              clues: [
+                { id: 'k1', dir: 'across', row: 0, col: 0, length: 4, number: 1, text: 'Kanı pompalar' },
+                { id: 'k2', dir: 'down', row: 0, col: 2, length: 3, number: 2, text: 'Temizliğin zıttı' },
+              ],
+            },
+            instruction: 'Bulmacayı çözünüz.',
+            valid: true,
+            validationErrors: [],
+            promptVersion: 0,
+            inputTokens: 1,
+            outputTokens: 1,
+            estimatedCostUsd: 0,
+            error: null,
+          },
+        ],
+      })
+    );
+    component.extractCrossword();
+    fixture.detectChanges();
+
+    const request = labeling.activityStructure.mock.calls[0][0];
+    expect(request.imageBase64).toBe('QUJD');
+    expect(request.model).toBe('claude-haiku-5-5');
+    expect(request.blocks).toEqual([{ key: 'crossword', x: 0, y: 0, width: 400, height: 300, interactionType: 'crossword' }]);
+    const cw = component.crossword()!;
+    expect(cw.rows).toBe(4);
+    expect(cw.entries.map((e) => [e.answer, e.clue, e.dir, e.row, e.col, e.length])).toEqual([
+      ['', 'Kanı pompalar', 'across', 0, 0, 4],
+      ['', 'Temizliğin zıttı', 'down', 0, 2, 3],
+    ]);
+    expect(component.instruction()).toBe('Bulmacayı çözünüz.');
+    expect(component.crosswordLength(cw.entries[0])).toBe(4);
+    expect(component.errors().some((e) => e.key === 'crosswordAnswerRequired')).toBe(true);
+
+    component.setCrosswordEntry(0, { answer: 'kalp' });
+    component.setCrosswordEntry(1, { answer: 'lav' });
+    fixture.detectChanges();
+    expect(component.errors()).toEqual([]);
+    component.setCrosswordEntry(1, { answer: 'lavlar' });
+    expect(component.crosswordLengthMismatch(component.crossword()!.entries[1])).toBe(true);
+  });
+
+  it('çengel bulmaca: Claude yetkisi olmayan öğretmende görselden çıkarma görünmez', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('crossword');
+    fixture.detectChanges();
+    expect(labeling.getAiModels).not.toHaveBeenCalled();
+    expect(el('[data-testid="cw-extract"]')).toBeNull();
   });
 
   it('düzenleme: görselsiz maddeyi plandan kurar ve tekli kayıtla aynı kapsama yazar', async () => {

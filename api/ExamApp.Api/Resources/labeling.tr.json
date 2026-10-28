@@ -57,7 +57,7 @@
       "busy": "Kitap kaydı şu an başka bir işlemde. Tekrar deneyin."
     },
     "activity": {
-      "unknownType": "Bilinmeyen etkinlik tipi (matrixChoice, slotFill, dragPlace, match ya da textSelect).",
+      "unknownType": "Bilinmeyen etkinlik tipi (matrixChoice, slotFill, dragPlace, match, textSelect ya da crossword).",
       "invalidBlocks": "1 ile 20 arasında etkinlik bloğu gönderin.",
       "invalidBlockKey": "Her bloğun en fazla 64 karakterlik bir kimliği olmalı.",
       "duplicateBlockKey": "Blok kimlikleri tekil olmalı.",
@@ -76,7 +76,9 @@
         "noText": "Metin okunamadı; en az bir satır ekleyin.",
         "noGaps": "Noktalama etkinliğinde en az bir \"( )\" boşluğu olmalı.",
         "tooManyGaps": "Bir blokta en fazla 100 \"( )\" boşluğu olabilir; bloğu bölün.",
-        "gapsNeedPunctuation": "Metinde \"( )\" boşlukları var; modu noktalama yapın ya da boşlukları silin."
+        "gapsNeedPunctuation": "Metinde \"( )\" boşlukları var; modu noktalama yapın ya da boşlukları silin.",
+        "noClues": "Bulmacada kelime yeri okunamadı; en az bir kelime ekleyin.",
+        "clueText": "Her kelimenin ipucu metni olmalı; boş ipuçlarını yazın."
       }
     }
   }

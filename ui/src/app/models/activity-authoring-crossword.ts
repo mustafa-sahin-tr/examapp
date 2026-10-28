@@ -15,6 +15,11 @@ export interface CrosswordEntryForm {
   /** 0 tabanlı başlangıç hücresi. */
   row: number;
   col: number;
+  /**
+   * Issue #586 (dilim e): görselden çıkarılan kelime yerinin uzunluğu — cevap yazılana dek ızgarada bu kadar hücre tutar
+   * (cevap yazılınca uzunluk cevaptan gelir).
+   */
+  length?: number;
 }
 
 export interface CrosswordForm {
@@ -64,8 +69,13 @@ export function answerLetters(answer: string): string[] {
   return [...answer.replace(/\s+/gu, '')].map((ch) => ch.toLocaleUpperCase('tr-TR'));
 }
 
+/** Kelimenin hücre sayısı: cevap yazıldıysa cevaptan, yoksa görselden çıkarılan uzunluk (yoksa 0). */
+export function entryLength(entry: CrosswordEntryForm): number {
+  return answerLetters(entry.answer).length || entry.length || 0;
+}
+
 function entryCells(entry: CrosswordEntryForm): [number, number][] {
-  return clueCells({ dir: entry.dir, row: entry.row, col: entry.col, length: answerLetters(entry.answer).length });
+  return clueCells({ dir: entry.dir, row: entry.row, col: entry.col, length: entryLength(entry) });
 }
 
 export function validateCrosswordForm(form: CrosswordForm): CrosswordError[] {
@@ -106,7 +116,7 @@ export function validateCrosswordForm(form: CrosswordForm): CrosswordError[] {
 
   // Aynı yönde uç uca değen kelimeler öğrenciye tek kelime gibi görünür.
   form.entries.forEach((entry, index) => {
-    const length = answerLetters(entry.answer).length;
+    const length = entryLength(entry);
     if (length === 0) return;
     const [br, bc] = entry.dir === 'across' ? [entry.row, entry.col - 1] : [entry.row - 1, entry.col];
     const [ar, ac] = entry.dir === 'across' ? [entry.row, entry.col + length] : [entry.row + length, entry.col];
@@ -128,7 +138,7 @@ export function buildCrosswordDefinition(form: CrosswordForm): CrosswordDefiniti
     dir: entry.dir,
     row: entry.row,
     col: entry.col,
-    length: answerLetters(entry.answer).length,
+    length: entryLength(entry),
     text: entry.clue.trim(),
   }));
   const numbered = parseCrosswordPlan(JSON.stringify({ version: 1, type: CROSSWORD, rows, cols, clues }));
@@ -143,6 +153,29 @@ export function buildCrosswordDefinition(form: CrosswordForm): CrosswordDefiniti
     interactionType: CROSSWORD,
     plan: JSON.stringify({ version: 1, type: CROSSWORD, rows, cols, clues: planClues }),
     solution: JSON.stringify({ answers }),
+  };
+}
+
+/**
+ * Issue #586 (dilim e): Claude'un görselden çıkardığı plan (`activity-structure`, çözümsüz) → form: ızgara boyutu, kelime yerleri
+ * ve ipuçları gelir, cevaplar boş kalır (öğretmen yazar); her kelimenin uzunluğu cevap yazılana dek `length`'te tutulur.
+ * Kelime yeri yoksa null.
+ */
+export function crosswordFormFromDraft(planJson: string | null | undefined): CrosswordForm | null {
+  const plan = parseCrosswordPlan(planJson);
+  if (!plan || plan.clues.length === 0) return null;
+  return {
+    kind: 'crossword',
+    rows: plan.rows,
+    cols: plan.cols,
+    entries: plan.clues.slice(0, CROSSWORD_FORM_LIMITS.maxEntries).map((clue) => ({
+      answer: '',
+      clue: clue.text ?? '',
+      dir: clue.dir,
+      row: clue.row,
+      col: clue.col,
+      length: clue.length,
+    })),
   };
 }
 

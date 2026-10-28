@@ -180,6 +180,62 @@ public sealed class DragPlaceGrader : IInteractionGrader
     }
 
     /// <summary>
+    /// issue #584: öğe = kart (plan sırası; "öğrencilerin %40'ı kemiği kaslara koydu"), cevap = kartın konduğu hedef(ler) (plan
+    /// hedef sırasıyla). Kart doğru ⇔ konduğu hedef kümesi == çözümdeki hedef kümesi. Çözümde yeri olmayan kart çeldiricidir:
+    /// doğru ⇔ hiçbir yere konmamış. Sıralama modunda hedef = konum.
+    /// </summary>
+    public IReadOnlyList<InteractionItemResponse> Analyze(InteractionGradeInput input)
+    {
+        if (!TryReadPlan(input.Plan, ReadOptions, out var plan) || plan.Targets.Count == 0)
+            return [];
+        var expected = ReadSolution(input.Solution, plan);
+        if (expected.Sum(e => e.Cards.Count) == 0)
+            return [];
+
+        var expectedTargets = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        foreach (var (targetId, cards) in expected)
+        {
+            foreach (var cardId in cards)
+            {
+                if (!expectedTargets.TryGetValue(cardId, out var set))
+                    expectedTargets[cardId] = set = new HashSet<string>(StringComparer.Ordinal);
+                set.Add(targetId);
+            }
+        }
+
+        var placedTargets = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        if (input.Payload != null && TryParsePayload(input.Payload, out var placements))
+        {
+            foreach (var (targetId, cardId) in placements)
+            {
+                if (!placedTargets.TryGetValue(cardId, out var set))
+                    placedTargets[cardId] = set = new HashSet<string>(StringComparer.Ordinal);
+                set.Add(targetId);
+            }
+        }
+
+        var targets = InteractionAnalysis.ReadEntries(input.Plan, "targets");
+        var items = new List<InteractionItemResponse>();
+        foreach (var (cardId, cardLabel) in InteractionAnalysis.ReadEntries(input.Plan, "cards"))
+        {
+            if (!plan.CardIds.Contains(cardId))
+                continue;
+            var placed = placedTargets.GetValueOrDefault(cardId);
+            var chosen = placed == null ? [] : targets.Where(t => placed.Contains(t.Id)).ToList();
+            var distractor = !expectedTargets.TryGetValue(cardId, out var want);
+            var correct = distractor ? chosen.Count == 0 : placed != null && placed.SetEquals(want!);
+            items.Add(new InteractionItemResponse(
+                cardId,
+                cardLabel,
+                correct,
+                chosen.Count == 0 ? null : string.Join(',', chosen.Select(t => t.Id)),
+                chosen.Count == 0 ? null : string.Join(", ", chosen.Select(t => t.Label)),
+                distractor));
+        }
+        return items;
+    }
+
+    /// <summary>
     /// Kayıt kuralı (issue #576): plan zorunlu ve şemaya uygun; çözüm boşsa geçerli (taslak, puanlanamaz), doluysa plandaki
     /// her hedef için tam bir anahtar (0..kapasite plan kartı, yinelenen kart yok), <c>reuse</c> kapalıysa kart en çok bir
     /// hedefte, en az bir beklenen yerleşim.

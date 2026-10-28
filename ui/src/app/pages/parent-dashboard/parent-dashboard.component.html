@@ -125,6 +125,33 @@
           </mat-card-content>
         </mat-card>
 
+        @if (s.activities; as a) {
+          <!-- Issue #584: etkinlik özeti (puansız; ortalama = ilk kontrol doğru oranı). -->
+          <mat-card appearance="outlined" class="pdb__card pdb__card--wide" data-test="card-activities">
+            <mat-card-header>
+              <mat-icon mat-card-avatar aria-hidden="true">extension</mat-icon>
+              <mat-card-title>{{ t('cards.activities.title') }}</mat-card-title>
+              <mat-card-subtitle>{{ t('cards.activities.subtitle') }}</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <ul class="pdb__breakdown">
+                <li class="pdb__stat pdb__stat--done" data-test="activities-week">
+                  <span class="pdb__value">{{ a.completedThisWeek }}</span>
+                  <span class="pdb__unit">{{ t('cards.activities.thisWeek') }}</span>
+                </li>
+                <li class="pdb__stat" data-test="activities-total">
+                  <span class="pdb__value">{{ a.completedTotal }}</span>
+                  <span class="pdb__unit">{{ t('cards.activities.total') }}</span>
+                </li>
+                <li class="pdb__stat" data-test="activities-average">
+                  <span class="pdb__value">{{ a.averageFirstCheckPercent === null ? '—' : '%' + a.averageFirstCheckPercent }}</span>
+                  <span class="pdb__unit">{{ t('cards.activities.average') }}</span>
+                </li>
+              </ul>
+            </mat-card-content>
+          </mat-card>
+        }
+
         <mat-card appearance="outlined" class="pdb__card" data-test="card-points">
           <mat-card-header>
             <mat-icon mat-card-avatar aria-hidden="true">military_tech</mat-icon>

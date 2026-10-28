@@ -645,6 +645,19 @@ prompt sürümü yeni varsayılanı ezer). Değerlendirme bildirimi (BadgeServic
 `IX_Questions_InteractionType_OpenText` kısmi, `IX_WorksheetAssignments_CreateUserId_WorksheetId`) exam API açılışında uygulanır
 (Aspire'da exam API'yi yeniden başlat).
 
+**Issue #584 — öğretmen etkinlik analizi ve veli özeti.** Etkinlik sayfası detayında (öğretmen, "Çalışma takibi"nin altında)
+**Analizi göster** → `GET /api/exam/worksheet/{id}/activity-report` (onaylı öğretmen; kapsam takip ekranıyla aynı — kendi atamaları,
+okul, atama penceresi; `GetWorksheetAssignmentsForTeacherAsync`'ten alınır). Analize yalnız tamamlanmış ve şu an yeniden çözülmeyen
+oturumlar girer, cevaplar oturumun **son** hâlidir (ilk kontrol özeti değil) ve sunucuda kontrolcüyle yeniden değerlendirilir. Yanıt:
+öğrenci × madde ısı haritası (doğru satır / toplam satır) ve madde başına öğe dağılımı — doğru oranı, boş oranı, en sık 3 yanlış cevap.
+Öğe tanımı kontrolcünün `IInteractionGrader.Analyze`'ında: dragPlace = kart (cevap = konduğu hedef; "kemik → kaslar"), çeldirici kart
+doğru ⇔ kullanılmamış; matrixChoice = satır → kolon; match = sol → sağ; slotFill = kutu → seçenek / yazılan metin (Türkçe küçük harf,
+boşluk birleşik gruplanır); textSelect = hedef (+ seçilen hedef dışı token çeldirici olur), punctuation = gap → sembol;
+dragDropLabeling = çözümdeki hedef → kart; MCQ = şık etiketi (`Tag`, yoksa A, B…). openText ve çözümsüz madde puanlanamaz (oran yok).
+Analiz öğrenciye gitmez (çözümü ele verir). Takip tablosu (#573) bilerek yüzde göstermez; analiz ayrı ve istenince yüklenir.
+Veli özeti (`/api/exam/parent/children/{id}/summary`) `activities` taşır: bu hafta / toplam tamamlanan etkinlik (`FirstCompletedAt`;
+yeniden çözme ikinci kez saymaz) ve ilk kontrol doğru oranı ortalaması (`FirstCheck*`, kontrol yoksa null). Migration yok.
+
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını
 (`TestInstances` — Questions'a FK'sı yok, CASCADE ulaşmaz, açıkça silinir; aksi halde "boş test yapılmış" gibi kalır),

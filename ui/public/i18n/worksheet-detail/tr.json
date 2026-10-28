@@ -260,6 +260,42 @@
       "notStarted": "Başlamadı",
       "scheduled": "Planlandı",
       "expired": "Süresi doldu"
+    },
+    "report": {
+      "title": "Etkinlik analizi",
+      "show": "Analizi göster",
+      "refresh": "Yenile",
+      "hint": "Madde ve satır başına doğru oranı, en sık yanlış cevaplar ve öğrenci × madde ısı haritası.",
+      "error": "Analiz getirilemedi.",
+      "retry": "Tekrar dene",
+      "coverage": "{{total}} öğrenciden {{analyzed}} tamamlamış öğrencinin son cevapları",
+      "retaking": "{{count}} öğrenci yeniden çözüyor (dahil değil)",
+      "empty": "Henüz etkinliği tamamlayan öğrenci yok.",
+      "heatTitle": "Öğrenci × madde ısı haritası",
+      "colStudent": "Öğrenci",
+      "notGradable": "Otomatik kontrol yok",
+      "unanswered": "Cevapsız",
+      "legend": "Hücre: doğru satır / toplam satır. Yeşil ≥ %80, sarı ≥ %50, kırmızı < %50; — boş, · otomatik kontrol yok.",
+      "questionTitle": "Madde {{number}}",
+      "fullyCorrect": "{{total}} öğrenciden {{count}} tamamen doğru",
+      "answered": "{{total}} öğrenciden {{count}} cevapladı",
+      "openTextNote": "Açık uçlu cevaplar otomatik kontrol edilmez; değerlendirme kuyruğundan inceleyin.",
+      "notGradableNote": "Bu maddenin çözümü girilmediği için otomatik kontrol yapılamıyor.",
+      "distractor": "çeldirici",
+      "correctRate": "%{{percent}} doğru",
+      "wrongAnswer": "%{{percent}} → {{answer}}",
+      "wrongMarked": "%{{percent}} işaretledi",
+      "emptyRate": "%{{percent}} boş",
+      "types": {
+        "mcq": "Çoktan seçmeli",
+        "matrixChoice": "Tablo seçimi",
+        "slotFill": "Boşluk doldurma",
+        "dragPlace": "Sürükle-yerleştir",
+        "match": "Eşleştirme",
+        "textSelect": "Metinde işaretleme",
+        "dragDropLabeling": "Etiketleme",
+        "openText": "Açık uçlu"
+      }
     }
   }
 }

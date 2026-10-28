@@ -37,6 +37,13 @@
       "today": "Bugün, yaklaşık {{time}}",
       "yesterday": "Dün, yaklaşık {{time}}",
       "onDate": "{{date}}, yaklaşık {{time}}"
+    },
+    "activities": {
+      "title": "Etkinlikler",
+      "subtitle": "Etkileşimli etkinlik sayfaları (puansız)",
+      "thisWeek": "Bu hafta tamamlanan",
+      "total": "Toplam tamamlanan",
+      "average": "İlk kontrolde ortalama doğru"
     }
   },
   "assignments": {

@@ -1,0 +1,137 @@
+<section class="ar" *transloco="let t; prefix: 'worksheet-detail.activity.report'" data-testid="activity-report">
+  <header class="ar__head">
+    <h3 class="ar__title"><mat-icon aria-hidden="true">insights</mat-icon>{{ t('title') }}</h3>
+    @switch (state()) {
+      @case ('idle') {
+        <button mat-stroked-button type="button" (click)="load()" data-testid="activity-report-load">
+          <mat-icon>bar_chart</mat-icon>{{ t('show') }}
+        </button>
+      }
+      @case ('loaded') {
+        <button mat-icon-button type="button" (click)="load()" [matTooltip]="t('refresh')" [attr.aria-label]="t('refresh')">
+          <mat-icon>refresh</mat-icon>
+        </button>
+      }
+    }
+  </header>
+
+  @switch (state()) {
+    @case ('idle') {
+      <p class="ar__muted">{{ t('hint') }}</p>
+    }
+    @case ('loading') {
+      <div class="ar__state"><mat-spinner diameter="28" /></div>
+    }
+    @case ('error') {
+      <div class="ar__state">
+        <span class="ar__muted">{{ t('error') }}</span>
+        <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+      </div>
+    }
+    @case ('loaded') {
+      @if (report(); as r) {
+        <p class="ar__muted" data-testid="activity-report-coverage">
+          {{ t('coverage', { analyzed: r.analyzedCount, total: r.studentCount }) }}
+          @if (r.retakingCount > 0) { · {{ t('retaking', { count: r.retakingCount }) }} }
+        </p>
+
+        @if (r.analyzedCount === 0) {
+          <p class="ar__muted" data-testid="activity-report-empty">{{ t('empty') }}</p>
+        } @else {
+          <!-- Öğrenci × madde ısı haritası -->
+          <div class="ar__heat-wrap">
+            <table class="ar__heat" [attr.aria-label]="t('heatTitle')" data-testid="activity-report-heatmap">
+              <thead>
+                <tr>
+                  <th scope="col">{{ t('colStudent') }}</th>
+                  @for (q of r.questions; track q.worksheetQuestionId) {
+                    <th scope="col" [matTooltip]="t('types.' + typeKey(q))">{{ q.number }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (s of r.students; track s.studentId) {
+                  <tr>
+                    <th scope="row">
+                      {{ s.studentNumber }}
+                      @if (s.gradeName) { <span class="ar__muted">· {{ s.gradeName }}</span> }
+                    </th>
+                    @for (cell of s.cells; track $index) {
+                      @let q = r.questions[$index];
+                      @let tn = tone(cell, q);
+                      <td [class]="'ar__cell ar__cell--' + tn" data-testid="heat-cell">
+                        @switch (tn) {
+                          @case ('none') { <span [attr.aria-label]="t('notGradable')">·</span> }
+                          @case ('empty') { <span [attr.aria-label]="t('unanswered')">—</span> }
+                          @default { {{ cell.correctCount }}/{{ cell.totalCount }} }
+                        }
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <p class="ar__legend ar__muted">{{ t('legend') }}</p>
+
+          <!-- Madde başına satır/öğe dağılımı -->
+          <mat-accordion class="ar__questions" multi>
+            @for (q of r.questions; track q.worksheetQuestionId) {
+              <mat-expansion-panel data-testid="activity-report-question">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>{{ t('questionTitle', { number: q.number }) }} · {{ t('types.' + typeKey(q)) }}</mat-panel-title>
+                  <mat-panel-description>
+                    @if (q.gradable) {
+                      {{ t('fullyCorrect', { count: q.fullyCorrectCount, total: r.analyzedCount }) }}
+                    } @else {
+                      {{ t('answered', { count: q.answeredCount, total: r.analyzedCount }) }}
+                    }
+                  </mat-panel-description>
+                </mat-expansion-panel-header>
+
+                @if (!q.gradable) {
+                  <p class="ar__muted">{{ q.interactionType === 'openText' ? t('openTextNote') : t('notGradableNote') }}</p>
+                } @else {
+                  <ul class="ar__items">
+                    @for (item of q.items; track item.itemId) {
+                      <li class="ar__item" data-testid="activity-report-item">
+                        <div class="ar__item-head">
+                          <span class="ar__item-label">
+                            {{ item.label }}
+                            @if (item.distractor) { <span class="ar__tag">{{ t('distractor') }}</span> }
+                          </span>
+                          <span [class]="'ar__rate ar__rate--' + itemTone(item)">
+                            {{ t('correctRate', { percent: itemPercent(item) }) }}
+                          </span>
+                        </div>
+                        <div class="ar__bar" aria-hidden="true">
+                          <span [class]="'ar__bar-fill ar__bar-fill--' + itemTone(item)" [style.width.%]="itemPercent(item)"></span>
+                        </div>
+                        @if (item.wrongAnswers.length || item.emptyCount) {
+                          <p class="ar__wrong" data-testid="activity-report-wrong">
+                            @for (w of item.wrongAnswers; track $index) {
+                              <span class="ar__wrong-entry">
+                                @if (w.label) {
+                                  {{ t('wrongAnswer', { answer: w.label, percent: percent(w.count, item.studentCount) }) }}
+                                } @else {
+                                  {{ t('wrongMarked', { percent: percent(w.count, item.studentCount) }) }}
+                                }
+                              </span>
+                            }
+                            @if (item.emptyCount) {
+                              <span class="ar__wrong-entry">{{ t('emptyRate', { percent: percent(item.emptyCount, item.studentCount) }) }}</span>
+                            }
+                          </p>
+                        }
+                      </li>
+                    }
+                  </ul>
+                }
+              </mat-expansion-panel>
+            }
+          </mat-accordion>
+        }
+      }
+    }
+  }
+</section>

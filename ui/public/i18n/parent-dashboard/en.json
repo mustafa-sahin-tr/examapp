@@ -37,6 +37,13 @@
       "today": "Today, around {{time}}",
       "yesterday": "Yesterday, around {{time}}",
       "onDate": "{{date}}, around {{time}}"
+    },
+    "activities": {
+      "title": "Activities",
+      "subtitle": "Interactive activity pages (not scored)",
+      "thisWeek": "Completed this week",
+      "total": "Completed in total",
+      "average": "Average correct on first check"
     }
   },
   "assignments": {

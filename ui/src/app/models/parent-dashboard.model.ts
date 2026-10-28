@@ -21,6 +21,19 @@ export interface ParentChildSummary {
   totalPoints: number;
   /** ISO-8601 UTC; hiç aktivite yoksa null. */
   lastActivityAt: string | null;
+  /** Issue #584: etkileşimli etkinlik özeti (eski API yanıtında yok). */
+  activities?: ParentChildActivitySummary;
+}
+
+/**
+ * Issue #584: etkinlikler puansızdır; "ortalama" ilk "Cevapları kontrol et"teki doğru satır oranıdır (0–100). Tamamlama = ilk
+ * tamamlanma (yeniden çözme ikinci kez saymaz).
+ */
+export interface ParentChildActivitySummary {
+  completedThisWeek: number;
+  completedTotal: number;
+  /** Kontrol edilmiş etkinlik yoksa null. */
+  averageFirstCheckPercent: number | null;
 }
 
 /** Seçili çocuğu hatırlayan query param (`/parent?child=<studentId>`). */

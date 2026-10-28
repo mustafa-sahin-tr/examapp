@@ -148,6 +148,56 @@ public sealed class SlotFillGrader : IInteractionGrader
     }
 
     /// <summary>
+    /// issue #584: öğe = kutu (plan sırası). Cevap: <c>select</c>'te seçenek (id + etiket), diğerlerinde yazılan metin
+    /// (<see cref="InteractionAnalysis.TextKey"/> ile gruplanır; "3/4" ile "3 / 4" ayrı grup kalabilir — doğruluk yine kontrolcünün).
+    /// </summary>
+    public IReadOnlyList<InteractionItemResponse> Analyze(InteractionGradeInput input)
+    {
+        if (!TryReadPlan(input.Plan, ReadOptions, out var plan) || plan.Slots.Count == 0)
+            return [];
+
+        using var solutionDoc = TryParseObject(input.Solution, ReadOptions);
+        if (solutionDoc == null || !solutionDoc.RootElement.EnumerateObject().Any())
+            return [];
+        var solution = solutionDoc.RootElement;
+
+        var values = new Dictionary<string, string?>(StringComparer.Ordinal);
+        if (input.Payload != null && TryParsePayload(input.Payload, out var parsed))
+        {
+            foreach (var (slotId, value) in parsed)
+                values.TryAdd(slotId, value);
+        }
+
+        var slotLabels = InteractionAnalysis.ToMap(InteractionAnalysis.ReadEntries(input.Plan, "slots"));
+        var options = InteractionAnalysis.ReadSlotOptions(input.Plan);
+        var items = new List<InteractionItemResponse>(plan.Slots.Count);
+        for (var i = 0; i < plan.Slots.Count; i++)
+        {
+            var slot = plan.Slots[i];
+            var value = values.GetValueOrDefault(slot.Id);
+            var blank = SlotAnswerNormalizer.IsBlank(value);
+            var correct = !blank && solution.TryGetProperty(slot.Id, out var slotSolution)
+                && IsSlotCorrect(slot.Kind, slotSolution, value);
+            string? key = null, label = null;
+            if (!blank)
+            {
+                if (slot.Kind == KindSelect)
+                {
+                    key = value!.Trim();
+                    label = options.TryGetValue(slot.Id, out var map) && map.TryGetValue(key, out var optionLabel) ? optionLabel : key;
+                }
+                else
+                {
+                    key = InteractionAnalysis.TextKey(value!);
+                    label = InteractionAnalysis.TextLabel(value!);
+                }
+            }
+            items.Add(new InteractionItemResponse(slot.Id, slotLabels.GetValueOrDefault(slot.Id) ?? "#" + (i + 1), correct, key, label));
+        }
+        return items;
+    }
+
+    /// <summary>
     /// Kayıt kuralı: plan zorunlu ve şemaya uygun; çözüm boşsa geçerli (taslak, puanlanamaz), doluysa plandaki HER kutu için
     /// türüne uygun bir girdi, plan dışı kutu yok, izinli alan listesi dışı alan yok.
     /// </summary>

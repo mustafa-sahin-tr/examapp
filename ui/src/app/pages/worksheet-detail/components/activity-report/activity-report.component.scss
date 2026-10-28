@@ -1,0 +1,173 @@
+:host {
+  display: block;
+  margin-top: 16px;
+  font-family: var(--paragraphFontFamily);
+}
+
+.ar__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ar__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-family: var(--mainFontFamily);
+  font-size: 16px;
+}
+
+.ar__muted {
+  color: var(--ms-text-weak);
+}
+
+.ar__state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+// Isı haritası: dar ekranda yatay kaydırma tablo kutusunda kalır.
+.ar__heat-wrap {
+  overflow-x: auto;
+  margin-top: 8px;
+}
+
+.ar__heat {
+  border-collapse: separate;
+  border-spacing: 3px;
+  font-size: 13px;
+
+  th {
+    font-weight: 600;
+    text-align: center;
+    padding: 4px 6px;
+    white-space: nowrap;
+  }
+
+  th[scope='row'] {
+    text-align: left;
+    position: sticky;
+    left: 0;
+    background: var(--ms-surface);
+  }
+}
+
+.ar__cell {
+  min-width: 44px;
+  padding: 4px 6px;
+  text-align: center;
+  border-radius: 6px;
+  white-space: nowrap;
+
+  &--good {
+    color: var(--ms-success-text);
+    background: var(--ms-success-surface-weak);
+  }
+
+  &--mid {
+    color: var(--ms-warning-text);
+    background: var(--ms-warning-surface-weak);
+  }
+
+  &--low {
+    color: var(--ms-danger-text);
+    background: var(--ms-danger-surface-weak);
+  }
+
+  &--empty,
+  &--none {
+    color: var(--ms-text-weak);
+    background: var(--ms-surface-weak);
+  }
+}
+
+.ar__legend {
+  font-size: 12px;
+  margin: 6px 0 12px;
+}
+
+.ar__items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.ar__item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ar__item-label {
+  overflow-wrap: anywhere;
+}
+
+.ar__tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--ms-text-weak);
+  border: 1px solid var(--ms-border);
+}
+
+.ar__rate {
+  white-space: nowrap;
+  font-weight: 600;
+
+  &--good {
+    color: var(--ms-success-text-medium);
+  }
+
+  &--mid {
+    color: var(--ms-warning-text-medium);
+  }
+
+  &--low {
+    color: var(--ms-danger-text-medium);
+  }
+}
+
+.ar__bar {
+  height: 6px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: var(--ms-surface-medium);
+  overflow: hidden;
+}
+
+.ar__bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+
+  &--good {
+    background: var(--ms-success-border);
+  }
+
+  &--mid {
+    background: var(--ms-warning-border);
+  }
+
+  &--low {
+    background: var(--ms-danger-border);
+  }
+}
+
+.ar__wrong {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ms-text-weak);
+}
+
+.ar__wrong-entry + .ar__wrong-entry::before {
+  content: ' · ';
+}

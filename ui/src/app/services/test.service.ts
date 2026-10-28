@@ -25,6 +25,7 @@ import {
   TeacherWorksheetAssignments,
   WorksheetAssignmentRequest,
 } from '../models/assignment';
+import { ActivityReport } from '../models/activity-report';
 import { StudentAnswer } from '../models/student-answer';
 import { AnswerChoice, QuestionRegion } from '../models/draws';
 import { Answer } from '../models/answer';
@@ -234,6 +235,11 @@ export class TestService {
 
   getWorksheetAssignmentsForTeacher(worksheetId: number): Observable<TeacherWorksheetAssignments> {
     return this.http.get<TeacherWorksheetAssignments>(`${this.baseUrl}/${worksheetId}/assignments/overview`);
+  }
+
+  /** Issue #584: atanmış etkinlik sayfasının analizi (madde/satır doğru oranı, en sık yanlış, ısı haritası). */
+  getActivityReport(worksheetId: number): Observable<ActivityReport> {
+    return this.http.get<ActivityReport>(`${this.baseUrl}/${worksheetId}/activity-report`);
   }
 
   assignWorksheet(request: WorksheetAssignmentRequest): Observable<ApiResponse> {

@@ -260,6 +260,42 @@
       "notStarted": "Not started",
       "scheduled": "Scheduled",
       "expired": "Expired"
+    },
+    "report": {
+      "title": "Activity analysis",
+      "show": "Show analysis",
+      "refresh": "Refresh",
+      "hint": "Correct rate per item and row, most common wrong answers and a student × item heat map.",
+      "error": "Could not load the analysis.",
+      "retry": "Try again",
+      "coverage": "Latest answers of {{analyzed}} of {{total}} students who completed it",
+      "retaking": "{{count}} retaking (not included)",
+      "empty": "No student has completed the activity yet.",
+      "heatTitle": "Student × item heat map",
+      "colStudent": "Student",
+      "notGradable": "No automatic check",
+      "unanswered": "Unanswered",
+      "legend": "Cell: correct rows / total rows. Green ≥ 80%, yellow ≥ 50%, red < 50%; — empty, · no automatic check.",
+      "questionTitle": "Item {{number}}",
+      "fullyCorrect": "{{count}} of {{total}} fully correct",
+      "answered": "{{count}} of {{total}} answered",
+      "openTextNote": "Open-ended answers are not checked automatically; review them in the review queue.",
+      "notGradableNote": "This item has no solution, so it cannot be checked automatically.",
+      "distractor": "distractor",
+      "correctRate": "{{percent}}% correct",
+      "wrongAnswer": "{{percent}}% → {{answer}}",
+      "wrongMarked": "{{percent}}% marked it",
+      "emptyRate": "{{percent}}% empty",
+      "types": {
+        "mcq": "Multiple choice",
+        "matrixChoice": "Table choice",
+        "slotFill": "Fill in the blanks",
+        "dragPlace": "Drag and place",
+        "match": "Matching",
+        "textSelect": "Mark in text",
+        "dragDropLabeling": "Labeling",
+        "openText": "Open-ended"
+      }
     }
   }
 }

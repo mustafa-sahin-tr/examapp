@@ -127,6 +127,45 @@ public sealed class MatrixChoiceGrader : IInteractionGrader
         return InteractionGradeResult.Of(rows.Count(r => r.Correct), rows.Count, WriteFeedback(rows));
     }
 
+    /// <summary>issue #584: öğe = satır (plan sırası), cevap = seçilen kolon(lar) (plan kolon sırasıyla birleştirilmiş).</summary>
+    public IReadOnlyList<InteractionItemResponse> Analyze(InteractionGradeInput input)
+    {
+        if (!TryReadPlan(input.Plan, ReadOptions, out var plan) || plan.Rows.Count == 0)
+            return [];
+        var expected = ReadSolution(input.Solution);
+        if (expected.Count == 0)
+            return [];
+
+        var actual = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        if (input.Payload != null && TryParsePayload(input.Payload, out var selections))
+        {
+            foreach (var (rowId, rowColumns) in selections)
+                actual.TryAdd(rowId, rowColumns.ToHashSet(StringComparer.Ordinal));
+        }
+
+        var rowLabels = InteractionAnalysis.ToMap(InteractionAnalysis.ReadEntries(input.Plan, "rows"));
+        var columns = InteractionAnalysis.ReadEntries(input.Plan, "columns");
+        var items = new List<InteractionItemResponse>(plan.Rows.Count);
+        for (var i = 0; i < plan.Rows.Count; i++)
+        {
+            var rowId = plan.Rows[i];
+            var chosen = actual.TryGetValue(rowId, out var selected)
+                ? columns.Where(c => selected.Contains(c.Id)).ToList()
+                : [];
+            var correct = expected.TryGetValue(rowId, out var solutionColumns)
+                && solutionColumns.Count > 0
+                && selected != null
+                && selected.SetEquals(solutionColumns);
+            items.Add(new InteractionItemResponse(
+                rowId,
+                rowLabels.GetValueOrDefault(rowId) ?? "#" + (i + 1),
+                correct,
+                chosen.Count == 0 ? null : string.Join(',', chosen.Select(c => c.Id)),
+                chosen.Count == 0 ? null : string.Join(", ", chosen.Select(c => c.Label))));
+        }
+        return items;
+    }
+
     /// <summary>
     /// Kayıt kuralı (issue #574): plan zorunlu ve şemaya uygun; çözüm boşsa geçerli (taslak, puanlanamaz), doluysa plandaki
     /// her satır için en az bir (çoklu seçim kapalıysa tam bir) plan kolonu, yinelenen kolon yok, plan dışı satır yok.

@@ -65,6 +65,7 @@ describe('ParentDashboardComponent (issue #420)', () => {
             assignments: { completed: 4, overdue: 1, pending: 2, windowDays: 30 },
             totalPoints: 1250,
             lastActivityAt: '2026-10-07T08:30:00Z',
+            activities: { completedThisWeek: 2, completedTotal: 9, averageFirstCheckPercent: 78 },
             ...overrides,
         };
     }
@@ -239,6 +240,32 @@ describe('ParentDashboardComponent (issue #420)', () => {
         expect(text(el, '[data-test="last-activity-value"]')).not.toBe('');
         // Hafta başı ("yyyy-MM-dd") yerel gün olarak — saat dilimine göre bir önceki güne kaymaz.
         expect(text(el, '[data-test="card-solved"]')).toContain('5 Ekim');
+    });
+
+    it('summary_ActivitiesCard_ShowsCompletionsAndFirstCheckAverage (issue #584)', async () => {
+        const el = await setup([ayse]);
+        expect(text(el, '[data-test="card-activities"]')).toContain(parentDashboardTr.cards.activities.title);
+        expect(text(el, '[data-test="activities-week"]')).toContain('2');
+        expect(text(el, '[data-test="activities-total"]')).toContain('9');
+        expect(text(el, '[data-test="activities-average"]')).toContain('%78');
+        expect(text(el, '[data-test="activities-average"]')).toContain(parentDashboardTr.cards.activities.average);
+    });
+
+    it('summary_ActivitiesWithoutCheck_ShowsDash_AndOldApiHidesCard (issue #584)', async () => {
+        const el = await setup([ayse]);
+        const component = harness.routeDebugElement!.componentInstance as unknown as { retrySummary(): void };
+
+        dashboardService.getChildSummary.mockReturnValue(
+            of(summaryFor(11, { activities: { completedThisWeek: 0, completedTotal: 0, averageFirstCheckPercent: null } })),
+        );
+        component.retrySummary();
+        await settle();
+        expect(text(el, '[data-test="activities-average"]')).toContain('—');
+
+        dashboardService.getChildSummary.mockReturnValue(of(summaryFor(11, { activities: undefined })));
+        component.retrySummary();
+        await settle();
+        expect(el.querySelector('[data-test="card-activities"]')).toBeNull();
     });
 
     it('summary_NoActivity_ShowsNoneText', async () => {

@@ -71,6 +71,7 @@ import { CommentReportListComponent } from '../../shared/components/comment-repo
 import { WorksheetCommentRef, toPositiveId } from '../../models/worksheet-comment.model';
 import { WorksheetKind, activityRoute } from '../../models/activity';
 import { ActivityTrackingTableComponent } from './components/activity-tracking-table/activity-tracking-table.component';
+import { ActivityReportComponent } from './components/activity-report/activity-report.component';
 import { ActivityLauncherService } from '../../services/activity-launcher.service';
 
 interface AssignmentPanelState {
@@ -110,6 +111,7 @@ const WORKSHEET_DETAIL_SCOPE = 'worksheet-detail';
     TranslocoDirective,
     StorageImageRetryDirective,
     ActivityTrackingTableComponent,
+    ActivityReportComponent,
     RouterLink,
   ],
   providers: [provideTranslocoScope(WORKSHEET_DETAIL_SCOPE)],

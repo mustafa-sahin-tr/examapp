@@ -43,6 +43,14 @@ public interface IInteractionGrader
     /// yapamazsa girdiyi aynen döner. Varsayılan: aynen (MCQ, dragDropLabeling, matrixChoice, slotFill, textSelect — token sırası okuma sırasıdır).
     /// </summary>
     (string? Plan, string? Solution) PrepareForStorage(string? plan, string? solution) => (plan, solution);
+
+    /// <summary>
+    /// issue #584: öğretmen etkinlik analizi — cevabı madde öğesi başına (kart, satır, kutu, sol öğe, boşluk) açar: öğe doğru mu ve
+    /// öğrenci ne cevap verdi (ör. "kemik" kartı → "kaslar" hedefi). Öğeler çözüm/plan sırasıyla, öğrenciden bağımsız (cevapsız
+    /// öğe de döner). Çözümü olmayan / puanlanamayan soruda ve otomatik kontrolü olmayan tipte (openText) boş. Yalnız öğretmen
+    /// raporunda kullanılır; öğrenciye gitmez (çözümü ele verir). İstisna atmaz. Varsayılan: boş.
+    /// </summary>
+    IReadOnlyList<InteractionItemResponse> Analyze(InteractionGradeInput input) => [];
 }
 
 /// <summary>review #571: tüm etkileşim tipleri için ortak payload üst sınırı (karakter); save-answer ve kontrol ucu uygular.</summary>

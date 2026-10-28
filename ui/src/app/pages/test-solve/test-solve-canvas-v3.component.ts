@@ -32,11 +32,13 @@ import { QuestionCanvasMatrixChoiceComponent } from '../../shared/components/que
 import { QuestionCanvasSlotFillComponent } from '../../shared/components/question-canvas-slot-fill/question-canvas-slot-fill.component';
 import { isDragPlaceType } from '../../models/drag-place';
 import { isMatchType } from '../../models/match';
+import { isMazeTreeType } from '../../models/maze-tree';
 import { isTextSelectType } from '../../models/text-select';
 import { isOpenTextType } from '../../models/open-text';
 import { QuestionCanvasOpenTextComponent } from '../../shared/components/question-canvas-open-text/question-canvas-open-text.component';
 import { QuestionCanvasDragPlaceComponent } from '../../shared/components/question-canvas-drag-place/question-canvas-drag-place.component';
 import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
+import { QuestionCanvasMazeTreeComponent } from '../../shared/components/question-canvas-maze-tree/question-canvas-maze-tree.component';
 import { QuestionCanvasTextSelectComponent } from '../../shared/components/question-canvas-text-select/question-canvas-text-select.component';
 import { FLUSHABLE_PLAYER } from '../../shared/utils/flushable-player';
 import { StorageImageRetryDirective } from '../../shared/directives/storage-image-retry.directive';
@@ -73,6 +75,7 @@ import { StorageImageRetryDirective } from '../../shared/directives/storage-imag
     QuestionCanvasSlotFillComponent,
     QuestionCanvasDragPlaceComponent,
     QuestionCanvasMatchComponent,
+    QuestionCanvasMazeTreeComponent,
     QuestionCanvasTextSelectComponent,
     QuestionCanvasOpenTextComponent,
     TranslocoDirective,
@@ -173,7 +176,7 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
    */
   public interactionKind(
     type: string | null | undefined
-  ): 'mcq' | 'dragDropLabeling' | 'matrixChoice' | 'slotFill' | 'dragPlace' | 'match' | 'textSelect' | 'openText' {
+  ): 'mcq' | 'dragDropLabeling' | 'matrixChoice' | 'slotFill' | 'dragPlace' | 'match' | 'textSelect' | 'openText' | 'mazeTree' {
     const normalized = (type ?? '').toLowerCase();
     if (normalized === 'dragdroplabeling') return 'dragDropLabeling';
     if (isSlotFillType(type)) return 'slotFill';
@@ -181,6 +184,7 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
     if (isMatchType(type)) return 'match';
     if (isTextSelectType(type)) return 'textSelect';
     if (isOpenTextType(type)) return 'openText';
+    if (isMazeTreeType(type)) return 'mazeTree';
     return isMatrixChoiceType(type) ? 'matrixChoice' : 'mcq';
   }
 

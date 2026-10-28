@@ -1,0 +1,229 @@
+<div class="mz-root" [class.is-solution]="solutionShown()" *transloco="let t; prefix: 'shared.questionCanvas.maze'">
+  @if (!hidePassage && passageImageUrl(); as pUrl) {
+    <div class="mz-passage">
+      @if (passageTitle(); as title) {
+        <div class="mz-passage__title">{{ title }}</div>
+      }
+      <img class="mz-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (imageUrl(); as url) {
+    <div class="mz-image-wrap">
+      <img class="mz-image" [src]="url" [alt]="t('imageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (!plan()) {
+    <p class="mz-hint" data-testid="mz-invalid">{{ t('invalid') }}</p>
+  }
+
+  @switch (variant()) {
+    @case ('tree') {
+      @if (tree(); as tr) {
+        <div class="mz-scroll">
+          <div class="mz-stage mz-stage--tree" data-testid="mz-tree" [style.height.px]="tr.height"
+            [style.min-width.px]="tr.width * 104">
+            <svg class="mz-lines" [attr.viewBox]="'0 0 ' + tr.width + ' ' + tr.levels" preserveAspectRatio="none"
+              aria-hidden="true">
+              @for (e of tr.edges; track e.edge.id) {
+                <line [attr.x1]="e.x1" [attr.y1]="e.y1" [attr.x2]="e.x2" [attr.y2]="e.y2"
+                  [class.is-chosen]="chosenEdges().has(e.edge.id)" [class.is-route]="routeEdges().has(e.edge.id)"
+                  [class.is-wrong]="wrongEdge() === e.edge.id" vector-effect="non-scaling-stroke" />
+              }
+            </svg>
+            @for (n of tr.nodes; track n.node.id) {
+              <div class="mz-node" [attr.data-node]="n.node.id" [class.is-end]="n.node.end"
+                [class.is-visited]="visitedNodes().has(n.node.id)" [class.is-current]="current() === n.node.id"
+                [class.is-ok]="okNodes().has(n.node.id)" [class.is-deviated]="deviatedAt() === n.node.id"
+                [class.is-route]="routeNodes().has(n.node.id)" [style.left.%]="n.left" [style.top.px]="n.top"
+                [style.width]="'calc(' + n.width + '% - 10px)'">
+                <span class="mz-node__text">{{ nodeLabel(n.node) }}</span>
+                @if (deviatedAt() === n.node.id) {
+                  <span class="mz-node__flag" role="status">{{ t('deviatedHere') }}</span>
+                }
+                @if (okNodes().has(n.node.id)) {
+                  <span class="mz-sr">{{ t('stepOk') }}</span>
+                }
+              </div>
+            }
+            @if (token(); as tk) {
+              <span class="mz-token" aria-hidden="true" [style.left]="'calc(' + tk.left + '% + 4px)'" [style.top.px]="tk.top">
+                <mat-icon>directions_walk</mat-icon>
+              </span>
+            }
+            @for (e of tr.edges; track e.edge.id) {
+              <button type="button" class="mz-branch" [attr.data-edge]="e.edge.id" [style.left.%]="e.left"
+                [style.top.px]="e.top" [class.is-chosen]="chosenEdges().has(e.edge.id)"
+                [class.is-route]="routeEdges().has(e.edge.id)" [class.is-wrong]="wrongEdge() === e.edge.id"
+                [class.is-available]="availableEdges().has(e.edge.id)" [disabled]="!availableEdges().has(e.edge.id)"
+                [attr.aria-label]="t('branchAria', { label: e.edge.label, node: nodeLabel(nodeById(e.edge.from)) })"
+                (click)="choose(e.edge.id)">
+                {{ e.edge.label }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+    }
+
+    @case ('rooms') {
+      @if (rooms(); as rm) {
+        <div class="mz-scroll">
+          <div class="mz-stage mz-stage--rooms" data-testid="mz-rooms" [style.height.px]="rm.height"
+            [style.min-width.px]="rm.cols * 150">
+            <svg class="mz-lines" [attr.viewBox]="'0 0 ' + rm.cols + ' ' + rm.rows" preserveAspectRatio="none"
+              aria-hidden="true">
+              @for (e of rm.edges; track e.edge.id) {
+                @if (chosenEdges().has(e.edge.id) || routeEdges().has(e.edge.id)) {
+                  <line [attr.x1]="e.x1" [attr.y1]="e.y1" [attr.x2]="e.x2" [attr.y2]="e.y2"
+                    [class.is-chosen]="chosenEdges().has(e.edge.id)" [class.is-route]="routeEdges().has(e.edge.id)"
+                    [class.is-wrong]="wrongEdge() === e.edge.id" vector-effect="non-scaling-stroke" />
+                }
+              }
+            </svg>
+            @for (n of rm.nodes; track n.node.id) {
+              <div class="mz-room" [attr.data-node]="n.node.id" [class.is-end]="n.node.end"
+                [class.is-start]="plan()?.start === n.node.id" [class.is-visited]="visitedNodes().has(n.node.id)"
+                [class.is-current]="current() === n.node.id" [class.is-ok]="okNodes().has(n.node.id)"
+                [class.is-deviated]="deviatedAt() === n.node.id" [class.is-route]="routeNodes().has(n.node.id)"
+                [style.left.%]="n.left" [style.top.px]="n.top" [style.width]="'calc(' + n.width + '% - 44px)'">
+                @if (plan()?.start === n.node.id) {
+                  <span class="mz-room__badge">{{ t('start') }}</span>
+                } @else if (n.node.end) {
+                  <span class="mz-room__badge mz-room__badge--end">{{ t('finish') }}</span>
+                }
+                <span class="mz-node__text">{{ nodeLabel(n.node) }}</span>
+                @if (deviatedAt() === n.node.id) {
+                  <span class="mz-node__flag" role="status">{{ t('deviatedHere') }}</span>
+                }
+                @if (okNodes().has(n.node.id)) {
+                  <span class="mz-sr">{{ t('stepOk') }}</span>
+                }
+              </div>
+            }
+            @if (token(); as tk) {
+              <span class="mz-token" aria-hidden="true" [style.left]="'calc(' + tk.left + '% + 4px)'" [style.top.px]="tk.top">
+                <mat-icon>directions_walk</mat-icon>
+              </span>
+            }
+            @for (e of rm.edges; track e.edge.id) {
+              <button type="button" class="mz-door" [attr.data-edge]="e.edge.id" [style.left.%]="e.left"
+                [style.top.px]="e.top" [class.is-chosen]="chosenEdges().has(e.edge.id)"
+                [class.is-route]="routeEdges().has(e.edge.id)" [class.is-wrong]="wrongEdge() === e.edge.id"
+                [class.is-available]="availableEdges().has(e.edge.id)" [disabled]="!availableEdges().has(e.edge.id)"
+                [attr.aria-label]="t('doorAria', { label: e.edge.label })" (click)="choose(e.edge.id)">
+                {{ e.edge.label }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+    }
+
+    @case ('board') {
+      @if (board(); as bd) {
+        <div class="mz-board" data-testid="mz-board">
+          <div class="mz-board__end" [class.is-reached]="finished()">
+            <mat-icon aria-hidden="true">flag</mat-icon>{{ bd.finish?.label || t('finish') }}
+          </div>
+          @for (row of bd.rows; track row.node.id) {
+            <div class="mz-board__row" [attr.data-node]="row.node.id" [class.is-active]="row.active"
+              [class.is-deviated]="deviatedAt() === row.node.id">
+              <div class="mz-board__label">{{ row.node.label }}</div>
+              <div class="mz-board__boxes">
+                @for (box of row.boxes; track box.id) {
+                  <button type="button" class="mz-box" [attr.data-edge]="box.id" [class.is-lit]="row.chosen === box.id"
+                    [class.is-wrong]="wrongEdge() === box.id" [class.is-route]="routeEdges().has(box.id)"
+                    [disabled]="!availableEdges().has(box.id)" [attr.aria-pressed]="row.chosen === box.id"
+                    (click)="choose(box.id)">
+                    @if (wrongEdge() === box.id) {
+                      <mat-icon class="mz-box__icon" aria-hidden="true">heart_broken</mat-icon>
+                    } @else if (row.chosen === box.id) {
+                      <mat-icon class="mz-box__icon" aria-hidden="true">lightbulb</mat-icon>
+                    }
+                    <span>{{ box.label }}</span>
+                  </button>
+                }
+              </div>
+              @if (deviatedAt() === row.node.id) {
+                <span class="mz-node__flag" role="status">{{ t('brokenHere') }}</span>
+              }
+            </div>
+          }
+          <div class="mz-board__start"><mat-icon aria-hidden="true">arrow_upward</mat-icon>{{ t('start') }}</div>
+        </div>
+      }
+    }
+
+    @case ('stones') {
+      <div class="mz-river" data-testid="mz-stones">
+        <div class="mz-river__bank mz-river__bank--far"><mat-icon aria-hidden="true">home</mat-icon></div>
+        <div class="mz-river__stones">
+          @for (stone of stones(); track stone.id; let i = $index) {
+            <button type="button" class="mz-stone" [attr.data-node]="stone.id" [class.is-marked]="markedSet().has(stone.id)"
+              [class.is-ok]="stoneMarks().get(stone.id) === true" [class.is-bad]="stoneMarks().get(stone.id) === false"
+              [class.is-first-wrong]="deviatedAt() === stone.id" [class.is-expected]="expectedMarked().has(stone.id)"
+              [class.is-odd]="i % 2 === 1" [disabled]="readOnly()" [attr.aria-pressed]="markedSet().has(stone.id)"
+              (click)="toggleStone(stone.id)">
+              @if (markedSet().has(stone.id)) {
+                <mat-icon class="mz-stone__icon" aria-hidden="true">water_drop</mat-icon>
+              }
+              <span>{{ stone.label }}</span>
+              @if (stoneMarks().get(stone.id) === true) {
+                <mat-icon class="mz-stone__icon" aria-hidden="true">check</mat-icon><span class="mz-sr">{{ t('stepOk') }}</span>
+              } @else if (stoneMarks().get(stone.id) === false) {
+                <mat-icon class="mz-stone__icon" aria-hidden="true">close</mat-icon><span class="mz-sr">{{ t('stoneWrong') }}</span>
+              }
+            </button>
+          }
+        </div>
+        <div class="mz-river__bank"><mat-icon aria-hidden="true">directions_walk</mat-icon></div>
+      </div>
+      <p class="mz-hint">{{ t('stonesHint') }}</p>
+    }
+  }
+
+  @if (plan() && variant() !== 'stones') {
+    <div class="mz-footer">
+      <p class="mz-status" role="status" data-testid="mz-status">
+        @if (finished()) {
+          <mat-icon aria-hidden="true">flag</mat-icon>{{ t('arrived', { label: nodeLabel(currentNode()) }) }}
+        } @else if (currentNode(); as node) {
+          {{ t('next', { label: variant() === 'board' ? (node.label || '') : nodeLabel(node) }) }}
+        }
+      </p>
+      @if (!solutionShown()) {
+        <div class="mz-actions">
+          <button mat-stroked-button type="button" data-testid="mz-undo" [disabled]="!canUndo()" (click)="undo()">
+            <mat-icon>undo</mat-icon>{{ t('undo') }}
+          </button>
+          <button mat-stroked-button type="button" data-testid="mz-reset" [disabled]="!canUndo()" (click)="reset()">
+            <mat-icon>restart_alt</mat-icon>{{ t('reset') }}
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  @if (feedbackState(); as fb) {
+    <p class="mz-result" role="status" data-testid="mz-result" [attr.data-status]="fb.status"
+      [class.is-ok]="fb.status === 'reached'" [class.is-bad]="fb.status === 'deviated'">
+      @switch (fb.status) {
+        @case ('reached') {
+          <mat-icon aria-hidden="true">check_circle</mat-icon>{{ t(variant() === 'stones' ? 'resultStonesOk' : 'resultReached') }}
+        }
+        @case ('deviated') {
+          <mat-icon aria-hidden="true">error</mat-icon>{{ t(variant() === 'stones' ? 'resultStonesWrong' : 'resultDeviated') }}
+        }
+        @default {
+          <mat-icon aria-hidden="true">pending</mat-icon>{{ t('resultIncomplete') }}
+        }
+      }
+    </p>
+  }
+
+  @if (solutionShown() && variant() !== 'stones') {
+    <p class="mz-hint" data-testid="mz-route-hint">{{ t('routeShown') }}</p>
+  }
+</div>

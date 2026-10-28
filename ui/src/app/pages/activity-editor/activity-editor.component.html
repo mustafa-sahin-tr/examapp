@@ -353,6 +353,182 @@
           </div>
         }
 
+        @if (mazeTree(); as mt) {
+          <div class="ae__block" data-testid="maze-tree-form">
+            <div class="ae__row ae__row--wrap">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-label>{{ t('maze.depth') }}</mat-label>
+                <mat-select [value]="mt.depth" (selectionChange)="setTreeDepth($event.value)">
+                  @for (d of treeDepths; track d) {
+                    <mat-option [value]="d">{{ t('maze.depthOption', { n: d, count: 2 ** d - 1 }) }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              @for (b of mt.branches; track $index; let bi = $index) {
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                  <mat-label>{{ t(bi === 0 ? 'maze.branchLeft' : 'maze.branchRight') }}</mat-label>
+                  <input matInput [value]="b" maxlength="20" (input)="setTreeBranch(bi, $any($event.target).value)" />
+                </mat-form-field>
+              }
+            </div>
+            @for (level of treeLevels(); track level.depth) {
+              <span class="ae__label">{{ t('maze.level', { n: level.depth + 1 }) }}</span>
+              @for (ni of level.indices; track ni) {
+                <div class="ae__row ae__row--wrap" [attr.data-node]="ni">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                    <mat-label>{{ t('maze.statement', { path: treePath(ni) }) }}</mat-label>
+                    <input matInput [value]="mt.nodes[ni].text" [attr.maxlength]="mazeLabelMax"
+                      (input)="setTreeNode(ni, $any($event.target).value)" />
+                  </mat-form-field>
+                  <mat-button-toggle-group [value]="mt.nodes[ni].correct" [attr.aria-label]="t('maze.correctBranch')"
+                    (change)="setTreeCorrect(ni, $event.value)">
+                    <mat-button-toggle [value]="0">{{ mt.branches[0] }}</mat-button-toggle>
+                    <mat-button-toggle [value]="1">{{ mt.branches[1] }}</mat-button-toggle>
+                  </mat-button-toggle-group>
+                </div>
+              }
+            }
+            <span class="ae__label">{{ t('maze.exits') }}</span>
+            <div class="ae__maze-grid">
+              @for (x of mt.exits; track $index; let xi = $index) {
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>{{ t('maze.exit', { n: xi + 1 }) }}</mat-label>
+                  <input matInput [value]="x" [attr.maxlength]="mazeLabelMax" (input)="setTreeExit(xi, $any($event.target).value)" />
+                </mat-form-field>
+              }
+            </div>
+          </div>
+        }
+
+        @if (mazeBoard(); as mb) {
+          <div class="ae__block" data-testid="maze-board-form">
+            <p class="ae__hint">{{ t('maze.boardHint') }}</p>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__full">
+              <mat-label>{{ t('maze.finishName') }}</mat-label>
+              <input matInput [value]="mb.finish" [attr.maxlength]="mazeLabelMax" (input)="setBoardFinish($any($event.target).value)" />
+            </mat-form-field>
+            @for (row of mb.rows; track $index; let ri = $index) {
+              <div class="ae__maze-card" [attr.data-row]="ri">
+                <div class="ae__row">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                    <mat-label>{{ t('maze.boardRow', { n: ri + 1 }) }}</mat-label>
+                    <input matInput [value]="row.label" [attr.maxlength]="mazeLabelMax"
+                      (input)="setBoardRowLabel(ri, $any($event.target).value)" />
+                  </mat-form-field>
+                  <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="mb.rows.length <= 1"
+                    (click)="removeBoardRow(ri)"><mat-icon>close</mat-icon></button>
+                </div>
+                @for (box of row.boxes; track $index; let bi = $index) {
+                  <div class="ae__row">
+                    <button mat-icon-button type="button" [attr.aria-pressed]="row.correct === bi"
+                      [attr.aria-label]="t('maze.markCorrectBox', { n: bi + 1 })" (click)="setBoardCorrect(ri, bi)">
+                      <mat-icon>{{ row.correct === bi ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+                    </button>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                      <mat-label>{{ t('maze.box', { n: bi + 1 }) }}</mat-label>
+                      <input matInput [value]="box" [attr.maxlength]="mazeLabelMax"
+                        (input)="setBoardBox(ri, bi, $any($event.target).value)" />
+                    </mat-form-field>
+                    <button mat-icon-button type="button" [attr.aria-label]="t('remove')"
+                      [disabled]="row.boxes.length <= mazeLimits.minBoxes" (click)="removeBoardBox(ri, bi)"><mat-icon>close</mat-icon></button>
+                  </div>
+                }
+                <button mat-button type="button" [disabled]="row.boxes.length >= mazeLimits.maxBoxes" (click)="addBoardBox(ri)">
+                  <mat-icon>add</mat-icon>{{ t('maze.addBox') }}
+                </button>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="mb.rows.length >= mazeLimits.maxBoardRows" (click)="addBoardRow()">
+              <mat-icon>add</mat-icon>{{ t('maze.addBoardRow') }}
+            </button>
+          </div>
+        }
+
+        @if (mazeRooms(); as mr) {
+          <div class="ae__block" data-testid="maze-rooms-form">
+            <div class="ae__row ae__row--wrap">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-label>{{ t('maze.gridRows') }}</mat-label>
+                <mat-select [value]="mr.rows" (selectionChange)="setRoomsSize($event.value, mr.cols)">
+                  @for (n of gridSizes; track n) { <mat-option [value]="n">{{ n }}</mat-option> }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-label>{{ t('maze.gridCols') }}</mat-label>
+                <mat-select [value]="mr.cols" (selectionChange)="setRoomsSize(mr.rows, $event.value)">
+                  @for (n of gridSizes; track n) { <mat-option [value]="n">{{ n }}</mat-option> }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-label>{{ t('maze.startRoom') }}</mat-label>
+                <mat-select [value]="mr.start" (selectionChange)="setRoomsStart($event.value)">
+                  @for (room of mr.rooms; track $index; let oi = $index) { <mat-option [value]="oi">{{ roomName(oi) }}</mat-option> }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-label>{{ t('maze.finishRoom') }}</mat-label>
+                <mat-select [value]="mr.finish" (selectionChange)="setRoomsFinish($event.value)">
+                  @for (room of mr.rooms; track $index; let oi = $index) { <mat-option [value]="oi">{{ roomName(oi) }}</mat-option> }
+                </mat-select>
+              </mat-form-field>
+            </div>
+            <span class="ae__label">{{ t('maze.doors') }}</span>
+            <p class="ae__hint">{{ t('maze.doorsHint') }}</p>
+            <div class="ae__maze-grid">
+              @for (door of mr.doors; track $index; let di = $index) {
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" [attr.data-door]="di">
+                  <mat-label>{{ doorName(di) }}</mat-label>
+                  <input matInput [value]="door.label" [attr.maxlength]="mazeLabelMax" (input)="setDoorLabel(di, $any($event.target).value)" />
+                </mat-form-field>
+              }
+            </div>
+            <span class="ae__label">{{ t('maze.rooms') }}</span>
+            @for (room of mr.rooms; track $index; let oi = $index) {
+              <div class="ae__row ae__row--wrap" [attr.data-room]="oi">
+                <span class="ae__order-no">{{ roomName(oi) }}</span>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ oi === mr.finish ? t('maze.finishRoomText') : t('maze.roomQuestion') }}</mat-label>
+                  <input matInput [value]="room.text" [attr.maxlength]="mazeLabelMax" (input)="setRoomText(oi, $any($event.target).value)" />
+                </mat-form-field>
+                @if (oi !== mr.finish) {
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                    <mat-label>{{ t('maze.roomAnswer') }}</mat-label>
+                    <mat-select [value]="room.answer" (selectionChange)="setRoomAnswer(oi, $event.value)">
+                      <mat-option [value]="null">—</mat-option>
+                      @for (d of roomDoorOptions(oi); track d.index) {
+                        <mat-option [value]="d.index">{{ d.label }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        @if (mazeStones(); as ms) {
+          <div class="ae__block" data-testid="maze-stones-form">
+            <p class="ae__hint">{{ t('maze.stonesHint') }}</p>
+            @for (stone of ms.stones; track $index; let si = $index) {
+              <div class="ae__row" [attr.data-stone]="si">
+                <button mat-icon-button type="button" [attr.aria-pressed]="stone.marked"
+                  [attr.aria-label]="t('maze.markStone', { n: si + 1 })" (click)="toggleStoneMarked(si)">
+                  <mat-icon>{{ stone.marked ? 'water_drop' : 'circle' }}</mat-icon>
+                </button>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('maze.stone', { n: si + 1 }) }}</mat-label>
+                  <input matInput [value]="stone.text" [attr.maxlength]="mazeLabelMax" (input)="setStoneText(si, $any($event.target).value)" />
+                </mat-form-field>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')"
+                  [disabled]="ms.stones.length <= mazeLimits.minStones" (click)="removeStone(si)"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="ms.stones.length >= mazeLimits.maxStones" (click)="addStone()">
+              <mat-icon>add</mat-icon>{{ t('maze.addStone') }}
+            </button>
+          </div>
+        }
+
         <div class="ae__field">
           <span class="ae__label">{{ t('classification.title') }}</span>
           <p class="ae__hint">{{ t('classification.hint') }}</p>
@@ -407,6 +583,11 @@
               <app-question-canvas-match [questionRegion]="previewRegion()"
                 [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
                 [showSolution]="showSolution()" [activityMode]="true" shuffleSeed="preview" />
+            }
+            @case ('mazeTree') {
+              <app-question-canvas-maze-tree [questionRegion]="previewRegion()"
+                [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
+                [showSolution]="showSolution()" [activityMode]="true" />
             }
           }
         </div>

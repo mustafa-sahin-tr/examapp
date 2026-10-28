@@ -20,7 +20,11 @@
     "fillText": "Boşluk doldurma",
     "shortAnswer": "Soru + kısa cevap",
     "fillTable": "Tablo",
-    "wordPool": "Kelime havuzu"
+    "wordPool": "Kelime havuzu",
+    "mazeTree": "D/Y ağacı",
+    "mazeBoard": "Işıklı pano",
+    "mazeRooms": "Labirent (odalı)",
+    "mazeStones": "Irmak taşları"
   },
   "kindHints": {
     "matrix": "Her satır için doğru seçeneği işaretle. D/Y şablonu iki kolon kurar; çoklu seçimde satırda birden çok doğru olabilir.",
@@ -30,7 +34,11 @@
     "fillText": "Metni yaz, cevabın yerine [[cevap]] koy. Sayı cevaplar (3/4, 2 1/2, 0,75) sayı kutusu olur; diğerleri metin olarak karşılaştırılır (büyük/küçük harf ve sondaki noktalama önemsiz).",
     "shortAnswer": "Her satıra bir soru ve kabul edilen cevabı yaz. Birden çok cevap | ile ayrılır.",
     "fillTable": "Tabloyu doldur; öğrencinin yazacağı hücreye [[cevap]] yaz. Diğer hücreler olduğu gibi gösterilir.",
-    "wordPool": "Metni yaz, boşluğa gelecek kelimeyi [[kelime]] içine al. Kelimeler havuza karışık gelir; çeldirici ekleyebilirsin."
+    "wordPool": "Metni yaz, boşluğa gelecek kelimeyi [[kelime]] içine al. Kelimeler havuza karışık gelir; çeldirici ekleyebilirsin.",
+    "mazeTree": "Öğrenci her ifadede D ya da Y'yi seçerek ilerler ve bir çıkışa varır. Her ifadenin doğrusunu işaretle; doğru çıkış bunlardan bulunur.",
+    "mazeBoard": "Her satırda tek doğru kutu var; öğrenci alttan üste kutulara basarak bitişe ulaşır. Yanlış kutu kırılır.",
+    "mazeRooms": "Her oda bir soru; odalar arası kapılar cevaplardır. Öğrenci başlangıç odasından doğru kapıları izleyerek bitişe varır.",
+    "mazeStones": "Öğrenci basılmaması gereken (yanlış) taşları işaretler. Basılmaması gereken taşları damla simgesiyle işaretle."
   },
   "instruction": "Yönerge (isteğe bağlı)",
   "image": {
@@ -131,7 +139,23 @@
     "poolBlankCount": "En çok {{max}} boşluk olabilir.",
     "poolAlternatives": "Kelime havuzunda alternatif (|) kullanılamaz; her boşluğa tek kelime.",
     "poolCardCount": "Havuzda en çok {{max}} kelime olabilir.",
-    "distractorIsAnswer": "Çeldirici, boşluklardaki bir kelimeyle aynı olamaz."
+    "distractorIsAnswer": "Çeldirici, boşluklardaki bir kelimeyle aynı olamaz.",
+    "mazeBlankBranch": "Dal etiketleri boş olamaz.",
+    "mazeDuplicateBranch": "İki dalın etiketi farklı olmalı.",
+    "mazeBlankStatement": "Ağaçtaki bütün ifadeleri yaz.",
+    "mazeRowCount": "Pano {{min}}–{{max}} satır olmalı.",
+    "mazeBoxCount": "Her satırda {{min}}–{{max}} kutu olmalı.",
+    "mazeBlankBox": "Boş kutu bırakma.",
+    "mazeDuplicateBox": "Bir satırda aynı metinli iki kutu olamaz.",
+    "mazeStartIsFinish": "Başlangıç ve bitiş odası farklı olmalı.",
+    "mazeBlankRoom": "Bitiş dışındaki her odaya soru yaz.",
+    "mazeDoubleDiagonal": "Bir dörtlüde iki çapraz kapı olamaz.",
+    "mazeDuplicateDoor": "Bir odanın iki kapısında aynı cevap olamaz.",
+    "mazeUnreachable": "Her odaya başlangıçtan kapılarla varılabilmeli.",
+    "mazeNoRoute": "Başlangıçtan doğru kapılar izlenince bitişe varılmıyor; odaların doğru kapılarını kontrol et.",
+    "mazeStoneCount": "{{min}}–{{max}} taş olmalı.",
+    "mazeBlankStone": "Boş taş bırakma.",
+    "mazeNoMarkedStone": "En az bir taşı basılmaz olarak işaretle."
   },
   "snackbar": {
     "created": "Madde etkinliğe eklendi.",
@@ -166,5 +190,38 @@
     "text": "Boşluklu metin",
     "textHint": "Örnek: Su [[0]] °C'de donar, [[100]] °C'de kaynar. Aynı kelime birden çok boşluğa gelebilir.",
     "distractors": "Çeldirici kelimeler"
+  },
+  "maze": {
+    "depth": "Düzey sayısı",
+    "depthOption": "{{n}} düzey ({{count}} ifade)",
+    "branchLeft": "Sol dal",
+    "branchRight": "Sağ dal",
+    "level": "{{n}}. düzey",
+    "statement": "İfade · {{path}}",
+    "root": "Başlangıç",
+    "correctBranch": "Doğru dal",
+    "exits": "Çıkışlar (soldan sağa)",
+    "exit": "Çıkış {{n}}",
+    "boardHint": "1. satır en altta (başlangıç); öğrenci yukarı doğru ilerler. Her satırda doğru kutuyu işaretle.",
+    "finishName": "Bitiş adı (isteğe bağlı)",
+    "boardRow": "{{n}}. satır adı (ör. Gaz)",
+    "box": "Kutu {{n}}",
+    "markCorrectBox": "Kutu {{n}} doğru",
+    "addBox": "Kutu ekle",
+    "addBoardRow": "Satır ekle",
+    "gridRows": "Satır",
+    "gridCols": "Kolon",
+    "startRoom": "Başlangıç odası",
+    "finishRoom": "Bitiş odası",
+    "doors": "Kapılar",
+    "doorsHint": "Kapının üstündeki cevabı yaz; boş bırakılan yerde kapı yoktur. Bir dörtlüde yalnız bir çapraz kapı olabilir.",
+    "rooms": "Odalar",
+    "roomQuestion": "Odadaki soru",
+    "finishRoomText": "Bitiş odası metni (isteğe bağlı)",
+    "roomAnswer": "Doğru kapı",
+    "stonesHint": "Taşlar öğrenciye bu sırayla (alttan üste, iki sıra) gelir. Basılmaması gereken taşı damla simgesiyle işaretle.",
+    "stone": "Taş {{n}}",
+    "markStone": "Taş {{n}}: basılmaz",
+    "addStone": "Taş ekle"
   }
 }

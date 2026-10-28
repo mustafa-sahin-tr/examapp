@@ -439,6 +439,33 @@
         "submitHint": "Cevabın kaydedildi. Öğretmenine göndermek için “Cevapları kontrol et”e bas.",
         "sampleTitle": "Örnek cevap",
         "noSample": "Bu madde için örnek cevap yok; cevabını öğretmenin değerlendirecek."
+      },
+      "maze": {
+        "passageAlt": "Okuma metni görseli",
+        "imageAlt": "Etkinlik görseli",
+        "invalid": "Bu etkinlik açılamadı.",
+        "start": "Başla",
+        "finish": "Bitiş",
+        "branchAria": "«{{node}}» için {{label}}",
+        "doorAria": "Kapı: {{label}}",
+        "next": "Sıradaki: {{label}}",
+        "arrived": "Vardın: {{label}}",
+        "undo": "Geri al",
+        "reset": "Baştan başla",
+        "deviatedHere": "Burada yanlış yöne saptın",
+        "brokenHere": "Bu kutu kırıldı",
+        "resultReached": "Doğru yoldan bitişe ulaştın.",
+        "resultDeviated": "Yolun bir yerinde yanlış yöne saptın; işaretli yerden yeniden dene.",
+        "resultIncomplete": "Yol yarım kaldı; bitişe kadar ilerle.",
+        "resultStonesOk": "Bütün taşları doğru işaretledin.",
+        "resultStonesWrong": "İşaretli taşa kadar doğru gittin; kırmızı çerçeveli taşa yeniden bak.",
+        "stonesHint": "Basılmaması gereken taşlara dokunarak işaretle.",
+        "routeShown": "Doğru yol yeşil kesik çizgiyle gösteriliyor.",
+        "branchTrue": "D",
+        "branchFalse": "Y",
+        "exitName": "{{n}}. çıkış",
+        "stepOk": "doğru",
+        "stoneWrong": "yanlış"
       }
     },
     "sharingBadge": {

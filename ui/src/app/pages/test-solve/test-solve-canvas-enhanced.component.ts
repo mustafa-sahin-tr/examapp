@@ -2,6 +2,7 @@ import { isBlankMatrixChoicePayload } from '../../models/matrix-choice';
 import { isBlankSlotFillPayload } from '../../models/slot-fill';
 import { isBlankDragPlacePayload } from '../../models/drag-place';
 import { isBlankMatchPayload } from '../../models/match';
+import { isBlankMazePayload } from '../../models/maze-tree';
 import { isBlankTextSelectPayload } from '../../models/text-select';
 import { isBlankOpenTextPayload } from '../../models/open-text';
 import {
@@ -1819,7 +1820,8 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
         !isBlankDragPlacePayload(payload) &&
         !isBlankMatchPayload(payload) &&
         !isBlankTextSelectPayload(payload) &&
-        !isBlankOpenTextPayload(payload))
+        !isBlankOpenTextPayload(payload) &&
+        !isBlankMazePayload(payload))
     );
   }
 

@@ -64,6 +64,20 @@ import {
 } from '../../models/drag-place';
 import { MatchPlanV1, isMatchType, openLefts, parseMatchPairs, parseMatchPlan, parseMatchSolution, rightOf } from '../../models/match';
 import {
+  MazeFeedback,
+  MazeTreePlanV1,
+  edgeOf,
+  edgeTarget,
+  isEmptyMazeAnswer,
+  isMazeTreeType,
+  mazeRoute,
+  parseMazeAnswer,
+  parseMazeFeedback,
+  parseMazeSolution,
+  parseMazeTreePlan,
+  walkMaze,
+} from '../../models/maze-tree';
+import {
   TextSelectFeedback,
   TextSelectPlanV1,
   gapAcceptOf,
@@ -117,6 +131,7 @@ import { QuestionCanvasDragPlaceComponent } from '../../shared/components/questi
 import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
 import { QuestionCanvasTextSelectComponent } from '../../shared/components/question-canvas-text-select/question-canvas-text-select.component';
 import { QuestionCanvasOpenTextComponent } from '../../shared/components/question-canvas-open-text/question-canvas-open-text.component';
+import { QuestionCanvasMazeTreeComponent } from '../../shared/components/question-canvas-maze-tree/question-canvas-maze-tree.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 import { ActiveTimeTracker, ACTIVITY_MAX_ACTIVE_SECONDS } from '../../shared/utils/active-time-tracker';
 import { currentUserId } from '../../shared/utils/current-user-id.util';
@@ -186,6 +201,7 @@ export type ActivityAction = 'check' | 'reveal' | 'finish';
     QuestionCanvasOpenTextComponent,
     QuestionCanvasDragPlaceComponent,
     QuestionCanvasMatchComponent,
+    QuestionCanvasMazeTreeComponent,
     QuestionCanvasViewComponentv5,
     QuestionLiteViewComponent,
   ],
@@ -323,6 +339,7 @@ export class ActivityPlayerComponent {
   private readonly dragPlacePlans = new Map<number, DragPlacePlanV1 | null>();
   private readonly matchPlans = new Map<number, MatchPlanV1 | null>();
   private readonly textSelectPlans = new Map<number, TextSelectPlanV1 | null>();
+  private readonly mazePlans = new Map<number, MazeTreePlanV1 | null>();
 
   readonly title = computed(() => this.instance()?.testName ?? '');
   readonly currentItem = computed(() => this.items()[this.currentIndex()] ?? null);
@@ -386,6 +403,13 @@ export class ActivityPlayerComponent {
     return parseTextSelectFeedback(result.feedback) ?? textSelectFeedbackFromCounts(result.rows, result.correctCount, result.totalCount);
   });
 
+  /** Issue #585: yol oyununun kontrol sonucu (durum + sapma düğümü); çözüm açıkken ya da kontrol yoksa null. */
+  readonly currentMazeFeedback = computed<MazeFeedback | null>(() => {
+    const item = this.currentItem();
+    if (!item || this.revealed()) return null;
+    return parseMazeFeedback(this.results()[item.id]?.feedback);
+  });
+
   /** Issue #583: geçerli açık uçlu maddenin değerlendirme durumu (yoksa null). */
   readonly currentOpenTextReview = computed<OpenTextStudentReview | null>(() => {
     const item = this.currentItem();
@@ -428,6 +452,7 @@ export class ActivityPlayerComponent {
     if (this.isDragPlace(item)) return this.dragPlaceRows(item, result, solution);
     if (this.isMatch(item)) return this.matchRows(item, result, solution);
     if (this.isTextSelect(item)) return this.textSelectRows(item, result, solution);
+    if (this.isMazeTree(item)) return this.mazeRows(item, result, solution);
     if (this.isOpenText(item)) return this.openTextRows(item, result);
     return this.isDragDrop(item)
       ? this.dragDropRows(item, result, solution)
@@ -587,6 +612,7 @@ export class ActivityPlayerComponent {
     this.dragPlacePlans.clear();
     this.matchPlans.clear();
     this.textSelectPlans.clear();
+    this.mazePlans.clear();
   }
 
   // ---------------------------------------------------------------------------
@@ -1195,6 +1221,10 @@ export class ActivityPlayerComponent {
     return isOpenTextType(item.question?.interactionType);
   }
 
+  isMazeTree(item: TestInstanceQuestion): boolean {
+    return isMazeTreeType(item.question?.interactionType);
+  }
+
   /** Cevabı `answerPayload` olan (MCQ dışı) madde. */
   private isInteractive(item: TestInstanceQuestion): boolean {
     return (
@@ -1204,7 +1234,8 @@ export class ActivityPlayerComponent {
       this.isDragPlace(item) ||
       this.isMatch(item) ||
       this.isTextSelect(item) ||
-      this.isOpenText(item)
+      this.isOpenText(item) ||
+      this.isMazeTree(item)
     );
   }
 
@@ -1242,6 +1273,13 @@ export class ActivityPlayerComponent {
       this.matchPlans.set(item.id, parseMatchPlan(item.question?.interactionPlan));
     }
     return this.matchPlans.get(item.id) ?? null;
+  }
+
+  private mazePlanFor(item: TestInstanceQuestion): MazeTreePlanV1 | null {
+    if (!this.mazePlans.has(item.id)) {
+      this.mazePlans.set(item.id, parseMazeTreePlan(item.question?.interactionPlan));
+    }
+    return this.mazePlans.get(item.id) ?? null;
   }
 
   private textSelectPlanFor(item: TestInstanceQuestion): TextSelectPlanV1 | null {
@@ -1315,6 +1353,7 @@ export class ActivityPlayerComponent {
       return !isEmptyTextSelectAnswer(parseTextSelectAnswer(answer?.answerPayload, this.textSelectPlanFor(item)));
     }
     if (this.isOpenText(item)) return !isBlankOpenText(parseOpenTextAnswer(answer?.answerPayload));
+    if (this.isMazeTree(item)) return !isEmptyMazeAnswer(parseMazeAnswer(answer?.answerPayload, this.mazePlanFor(item)));
     if (this.isDragDrop(item)) return this.placementsOf(answer?.answerPayload).length > 0;
     return !!answer?.selectedAnswerId;
   }
@@ -1349,6 +1388,13 @@ export class ActivityPlayerComponent {
     }
     // Issue #583: açık uçlu maddede metin yok = boş (sözcük sınırı uyarısı oynatıcıda).
     if (this.isOpenText(item)) return isBlankOpenText(parseOpenTextAnswer(answer?.answerPayload));
+    // Issue #585: yol bitişe varmadı; taşlarda hiç işaret yok.
+    if (this.isMazeTree(item)) {
+      const plan = this.mazePlanFor(item);
+      if (!plan) return false;
+      const parsed = parseMazeAnswer(answer?.answerPayload, plan);
+      return plan.variant === 'stones' ? parsed.marked.length === 0 : !walkMaze(plan, parsed.path).finished;
+    }
     if (!this.isDragDrop(item)) return !answer?.selectedAnswerId;
     const zones = this.planFor(item)?.dropZones.length ?? 0;
     return this.placementsOf(answer?.answerPayload).length < zones;
@@ -1540,6 +1586,61 @@ export class ActivityPlayerComponent {
             : this.tr('rows.textWord', { word });
       return { label, correct: row ? row.correct : null, solution: null };
     });
+  }
+
+  /**
+   * Issue #585: yol oyununda kontrol sonrası öğrencinin geçtiği karar düğümleri ("<düğüm>: <seçilen dal>", ilk sapmaya kadar),
+   * çözüm açıkken rotanın düğümleri ve doğru dal; taşlarda taş başına işaretli / işaretsiz. Yolu hiç kurulmamışsa tek satır.
+   */
+  private mazeRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
+    const plan = this.mazePlanFor(item);
+    if (!plan) return [];
+    const answer = parseMazeAnswer(this.answers()[item.id]?.answerPayload, plan);
+    const solved = solution ? parseMazeSolution(solution.interactionSolution, plan) : null;
+    const marks = new Map((result?.rows ?? []).map((row) => [row.id, row.correct]));
+    const nodeName = (id: string) => {
+      const index = plan.nodes.findIndex((n) => n.id === id);
+      return plan.nodes[index]?.label || this.tr('rows.mazeNodeFallback', { n: index + 1 });
+    };
+    const edgeName = (id: string | null | undefined) => (id ? edgeOf(plan, id)?.label ?? id : this.tr('rows.empty'));
+
+    if (plan.variant === 'stones') {
+      const marked = new Set(answer.marked);
+      const expected = solved ? new Set(solved.marked) : null;
+      const state = (on: boolean) => this.tr(on ? 'rows.mazeMarked' : 'rows.mazeUnmarked');
+      return plan.nodes.map((stone) => ({
+        label: this.tr('rows.mazeStep', { name: nodeName(stone.id), content: state(marked.has(stone.id)) }),
+        correct: marks.has(stone.id) ? marks.get(stone.id)! : null,
+        solution: expected ? state(expected.has(stone.id)) : null,
+      }));
+    }
+
+    const walk = walkMaze(plan, answer.path);
+    const chosenAt = new Map<string, string>();
+    walk.edges.forEach((edgeId, i) => {
+      if (!chosenAt.has(walk.nodes[i])) chosenAt.set(walk.nodes[i], edgeId);
+    });
+    const route = solved ? mazeRoute(plan, solved.choices) : null;
+    if (route) {
+      let current = plan.start ?? '';
+      return route.map((edgeId) => {
+        const nodeId = current;
+        const edge = edgeOf(plan, edgeId);
+        current = (edge && edgeTarget(plan, edge, nodeId)) || current;
+        return {
+          label: this.tr('rows.mazeStep', { name: nodeName(nodeId), content: edgeName(chosenAt.get(nodeId)) }),
+          correct: marks.has(nodeId) ? marks.get(nodeId)! : null,
+          solution: edgeName(edgeId),
+        };
+      });
+    }
+    if (!result) return [];
+    if (result.rows.length === 0) return [{ label: this.tr('rows.mazeNoPath'), correct: false, solution: null }];
+    return result.rows.map((row, i) => ({
+      label: this.tr('rows.mazeStep', { name: nodeName(row.id), content: edgeName(walk.edges[i]) }),
+      correct: row.correct,
+      solution: null,
+    }));
   }
 
   /**

@@ -681,6 +681,23 @@ değilse metin kutusu (#575 normalleştirmesi). Seçim/palet kutusu, birim ve so
 açılmaz. Oynatıcılar düzeni HTML olarak çizer (görsel varsa etkileşimsiz üstte kalır). Sınıflandırma metnine düzen metni yer
 tutucular `____` olarak girer. Migration yok; Aspire'da exam API'yi yeniden başlat.
 
+**Issue #585 — `mazeTree` (bileşen G, yol oyunları).** Tek motor, dört varyant: `tree` (D/Y dallanan ağaç), `rooms` (odalı
+labirent, kapılar iki yönlü), `board` (ışıklı pano, satır başına bir doğru kutu, alttan üste), `stones` (ırmak taşları, basılmaması
+gerekenleri işaretle; yolsuz). Plan `{"version":1,"type":"mazeTree","variant","start?","nodes":[{id,label?,end?,row?,col?}],"edges":[{id,from,to,label?}]}`;
+düğüm = ifade / oda / pano satırı / taş, kenar = seçenek (dal, kapı, kutu). Çözüm yol varyantlarında `{"choices":{"düğüm":"kenar"}}`
+(rota = başlangıçtan seçimleri izleyip bir `end` düğümüne döngüsüz varan yol; ağaçta rota dışı ifadelerin doğrusu da saklanır),
+taşlarda `{"marked":[...]}`. Öğrenci payload'u `{"path":[kenarlar]}` (kesintisiz, bitişten sonra adım yok, ≤ 128) ya da `{"marked":[...]}`.
+Kayıt kuralları (`MazeTreeGrader.ValidateDefinition`): ağaç gerçek ağaç (2–4 dal, derinlik ≤ 5), pano zinciri (2–6 kutu, ≤ 12 satır,
+satır adı isteğe bağlı, bitişten kenar çıkmaz), odalar tekil `row`/`col` (0–7), yalnız komşu (çapraz dahil) odalar arasında tek kapı ve bir
+dörtlüde tek çapraz kapı, taşlarda en az bir işaretli taş, her düğüm başlangıçtan
+erişilebilir, bir düğümün seçenek etiketleri tekil. Kontrol **ilk sapmada durur**: satırlar öğrencinin geçtiği karar düğümleri, toplam =
+rota uzunluğu, geri bildirim `{"rows","status":"reached|deviated|incomplete","at"}` (rota ve doğru dal yazılmaz); taşlarda da satırlar
+ilk yanlış taşta durur (taş ikili: hepsi çözümü verirdi), boş cevap hepsi yanlış. Oynatıcı yolu 128 adımda keser. Analiz (#584): öğe = rotadaki karar düğümü (cevap = seçilen dal; sapmadan sonrası cevapsız), taşlarda taş.
+Yazarlık görselsiz editörde (`/activity-editor`) dört şablonla: tam ikili D/Y ağacı (1–4 düzey, ifadeler genişlik öncelikli), pano
+satırları, R×C oda ızgarası (2–4; etiketsiz kapı = duvar, bir dörtlüde tek çapraz kapı), taşlar. Oynatıcı oyunu HTML olarak çizer (görsel
+varsa etkileşimsiz üstte); Claude yapı çıkarımı yok (G bloğu tipsiz kalır). Testte de çözülebilir (puanlanır). Migration yok; Aspire'da
+exam API'yi yeniden başlat (yeni kontrolcü).
+
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını
 (`TestInstances` — Questions'a FK'sı yok, CASCADE ulaşmaz, açıkça silinir; aksi halde "boş test yapılmış" gibi kalır),

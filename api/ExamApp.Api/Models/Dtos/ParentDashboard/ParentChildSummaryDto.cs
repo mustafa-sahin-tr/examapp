@@ -25,6 +25,26 @@ public sealed class ParentChildSummaryDto
 
     /// <summary>Son öğrenme aktivitesi (UTC, SAATE kesilmiş): son cevap, test başlatma ya da bitirme. Hiç aktivite yoksa null.</summary>
     public DateTime? LastActivityAt { get; set; }
+
+    /// <summary>issue #584: etkinlik özeti (tamamlama sayısı ve ilk kontrol ortalaması).</summary>
+    public ParentChildActivitySummaryDto Activities { get; set; } = new();
+}
+
+/// <summary>
+/// issue #584: öğrencinin etkileşimli etkinlikleri (<c>Worksheet.Kind = Activity</c>; atanmış ya da kendi açtığı). Tamamlama =
+/// oturumun ilk tamamlanması (<c>FirstCompletedAt</c>; yeniden çözme ikinci kez saymaz, #609). Etkinlikler puansızdır; "skor"
+/// ilk "Cevapları kontrol et"teki doğru satır oranıdır (öğretmen takibindeki ilk kontrol özetiyle aynı kaynak).
+/// </summary>
+public sealed class ParentChildActivitySummaryDto
+{
+    /// <summary>Bu hafta (<see cref="ParentChildSummaryDto.WeekStart"/>'tan) tamamlanan etkinlik.</summary>
+    public int CompletedThisWeek { get; set; }
+
+    /// <summary>Şimdiye dek tamamlanan etkinlik.</summary>
+    public int CompletedTotal { get; set; }
+
+    /// <summary>Tamamlanan etkinliklerin ilk kontrol doğru oranı ortalaması (0–100, yuvarlanmış); kontrol edilmiş etkinlik yoksa null.</summary>
+    public int? AverageFirstCheckPercent { get; set; }
 }
 
 /// <summary>

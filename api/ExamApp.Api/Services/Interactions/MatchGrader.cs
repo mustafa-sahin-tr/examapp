@@ -126,6 +126,40 @@ public sealed class MatchGrader : IInteractionGrader
         return InteractionGradeResult.Of(rows.Count(r => r.Correct), rows.Count, WriteFeedback(rows));
     }
 
+    /// <summary>issue #584: öğe = örnek olmayan sol öğe (plan sırası), cevap = bağlanan sağ öğe.</summary>
+    public IReadOnlyList<InteractionItemResponse> Analyze(InteractionGradeInput input)
+    {
+        if (!TryReadPlan(input.Plan, ReadOptions, out var plan))
+            return [];
+        var expected = ReadSolution(input.Solution);
+        if (expected.Count == 0)
+            return [];
+
+        var actual = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (input.Payload != null && TryParsePayload(input.Payload, out var pairs))
+        {
+            foreach (var (leftId, rightId) in pairs)
+                actual.TryAdd(leftId, rightId);
+        }
+
+        var leftLabels = InteractionAnalysis.ToMap(InteractionAnalysis.ReadEntries(input.Plan, "left"));
+        var rightLabels = InteractionAnalysis.ToMap(InteractionAnalysis.ReadEntries(input.Plan, "right"));
+        var items = new List<InteractionItemResponse>();
+        foreach (var leftId in plan.Left.Where(l => !plan.PrelinkedLeft.Contains(l)))
+        {
+            var chosen = actual.GetValueOrDefault(leftId);
+            var correct = chosen != null && expected.TryGetValue(leftId, out var expectedRight)
+                && string.Equals(chosen, expectedRight, StringComparison.Ordinal);
+            items.Add(new InteractionItemResponse(
+                leftId,
+                leftLabels.GetValueOrDefault(leftId) ?? leftId,
+                correct,
+                chosen,
+                chosen == null ? null : rightLabels.GetValueOrDefault(chosen) ?? chosen));
+        }
+        return items;
+    }
+
     /// <summary>
     /// Kayıt kuralı (issue #576): plan zorunlu ve şemaya uygun (en az bir örnek olmayan sol); çözüm boşsa geçerli (taslak),
     /// doluysa örnek olmayan her sol için tam bir plan sağı, örnek çiftin sağı kullanılamaz, bir sağ en çok bir kez.

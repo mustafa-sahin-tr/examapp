@@ -586,6 +586,8 @@
                       <mat-icon>rate_review</mat-icon>{{ t('teacher.openTextReviews') }}
                     </a>
                     <app-activity-tracking-table [students]="activityTrackingStudents()" [gradeLabel]="gradeLabelFn" />
+                    <!-- Issue #584: madde/satır analizi ve ısı haritası (istenince yüklenir). -->
+                    <app-activity-report [worksheetId]="d.worksheet.id" />
                   } @else {
                   <mat-accordion class="assignment-accordion" multi>
                     @for (assignment of teacherAssignments(); track assignment.assignmentId) {

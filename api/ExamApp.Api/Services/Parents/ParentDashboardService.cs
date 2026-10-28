@@ -80,6 +80,7 @@ public sealed class ParentDashboardService : IParentDashboardService
             .Where(sp => sp.StudentId == grant.StudentId)
             .SumAsync(sp => (int?)sp.XP, ct) ?? 0;
         var lastActivity = await LastActivityAsync(grant.StudentId, ct);
+        var activities = await ActivitySummaryAsync(grant.StudentId, weekStartUtc, weekEndUtc, ct);
 
         return new ParentChildSummaryDto
         {
@@ -88,7 +89,32 @@ public sealed class ParentDashboardService : IParentDashboardService
             QuestionsSolvedThisWeek = solved,
             Assignments = assignments,
             TotalPoints = points,
-            LastActivityAt = lastActivity
+            LastActivityAt = lastActivity,
+            Activities = activities
+        };
+    }
+
+    /// <summary>issue #584: tamamlanan etkinlik sayıları + ilk kontrol ortalaması (tek sorgu).</summary>
+    private async Task<ParentChildActivitySummaryDto> ActivitySummaryAsync(
+        int studentId, DateTime weekStartUtc, DateTime weekEndUtc, CancellationToken ct)
+    {
+        var stats = await _context.TestInstances.AsNoTracking()
+            .Where(ti => ti.StudentId == studentId && ti.FirstCompletedAt != null && ti.Worksheet.Kind == WorksheetKind.Activity)
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                Total = g.Count(),
+                ThisWeek = g.Count(ti => ti.FirstCompletedAt >= weekStartUtc && ti.FirstCompletedAt < weekEndUtc),
+                Average = g.Where(ti => ti.FirstCheckTotalCount > 0)
+                    .Average(ti => (double?)ti.FirstCheckCorrectCount * 100.0 / ti.FirstCheckTotalCount)
+            })
+            .FirstOrDefaultAsync(ct);
+
+        return new ParentChildActivitySummaryDto
+        {
+            CompletedThisWeek = stats?.ThisWeek ?? 0,
+            CompletedTotal = stats?.Total ?? 0,
+            AverageFirstCheckPercent = stats?.Average is { } average ? (int)Math.Round(average, MidpointRounding.AwayFromZero) : null
         };
     }
 

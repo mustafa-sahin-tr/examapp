@@ -101,6 +101,39 @@ public sealed class DragDropLabelingGrader : IInteractionGrader
         return InteractionGradeResult.Of(rows.Count(r => r.Correct), rows.Count, WriteFeedback(rows));
     }
 
+    /// <summary>
+    /// issue #584: öğe = çözümdeki hedef (çözüm sırası; kontrolcünün satırlarıyla aynı), cevap = hedefe konan kart. Çözümde olmayan
+    /// hedefe kart koymak öğe üretmez (kontrolcüde yanlış satırdır, analizde hedef bazlı oran yalnız beklenen hedefler için).
+    /// </summary>
+    public IReadOnlyList<InteractionItemResponse> Analyze(InteractionGradeInput input)
+    {
+        var expected = ReadSolution(input.Solution);
+        if (expected.Count == 0)
+            return [];
+
+        var actual = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (input.Payload != null && TryParsePayload(input.Payload, out var placements))
+        {
+            foreach (var (zoneId, draggableId) in placements)
+                actual.TryAdd(zoneId, draggableId);
+        }
+
+        var zoneLabels = InteractionAnalysis.ToMap(InteractionAnalysis.ReadEntries(input.Plan, "dropZones"));
+        var cardLabels = InteractionAnalysis.ToMap(InteractionAnalysis.ReadEntries(input.Plan, "draggables"));
+        var items = new List<InteractionItemResponse>(expected.Count);
+        foreach (var (zoneId, draggables) in expected)
+        {
+            var placed = actual.GetValueOrDefault(zoneId);
+            items.Add(new InteractionItemResponse(
+                zoneId,
+                zoneLabels.GetValueOrDefault(zoneId) ?? zoneId,
+                placed != null && draggables.Contains(placed),
+                placed,
+                placed == null ? null : cardLabels.GetValueOrDefault(placed) ?? placed));
+        }
+        return items;
+    }
+
     /// <summary>Katı payload ayrıştırma: nesne, <c>type</c> = <see cref="Type"/>, varsa <c>version</c> = 1, <c>placements</c> dizisi.</summary>
     private static bool TryParsePayload(string payload, out List<(string ZoneId, string DraggableId)> placements)
     {

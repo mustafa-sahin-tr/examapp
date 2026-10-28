@@ -330,6 +330,20 @@ public class ExamController : BaseController
         return Ok(overview);
     }
 
+    /// <summary>
+    /// issue #584: atanmış etkinlik sayfasının analizi — madde/satır doğru oranı, en sık yanlış cevap, öğrenci × madde ısı haritası.
+    /// Kapsam öğretmen takibiyle aynı (kendi atamaları, okul kapsamı). Sayfa yok / etkinlik değil / atama yok → 404.
+    /// </summary>
+    [Authorize(Roles = "Teacher")]
+    [HttpGet("{id}/activity-report")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
+    public async Task<IActionResult> GetActivityReport(int id, [FromServices] IActivityReportService reports, CancellationToken ct)
+    {
+        var scope = await GetSchoolScopeAsync(ct);
+        var report = await reports.GetReportAsync(id, scope, ct);
+        return report == null ? NotFound() : Ok(report);
+    }
+
 
     // ── Atama izni akışı (issue #13) ──────────────────────────────────────────
 

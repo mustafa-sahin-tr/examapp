@@ -330,6 +330,53 @@ public class ParentDashboardServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Activity_summary_counts_first_completions_and_averages_first_check()
+    {
+        await SeedAsync();
+
+        async Task ActivityAsync(DateTime? firstCompletedAt, int? correct, int? total,
+            WorksheetKind kind = WorksheetKind.Activity, int? studentId = null, WorksheetInstanceStatus status = WorksheetInstanceStatus.Completed)
+        {
+            await using var ctx = _db.NewContext();
+            var ws = new Worksheet { Name = $"A{++_seq}", Description = "", GradeId = _gradeId, Kind = kind };
+            ctx.Worksheets.Add(ws);
+            await ctx.SaveChangesAsync();
+            ctx.TestInstances.Add(new WorksheetInstance
+            {
+                StudentId = studentId ?? _studentId, WorksheetId = ws.Id, StartTime = Now.AddDays(-20), Status = status,
+                FirstCompletedAt = firstCompletedAt, FirstCheckCorrectCount = correct, FirstCheckTotalCount = total
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await ActivityAsync(WeekStartUtc.AddHours(1), 3, 4);                    // bu hafta, %75
+        await ActivityAsync(WeekStartUtc.AddDays(-3), 1, 2,                      // geçen hafta, %50; şu an yeniden çözüyor
+            status: WorksheetInstanceStatus.Started);
+        await ActivityAsync(WeekStartUtc.AddDays(-5), null, null);              // kontrol edilmeden bitti — ortalamaya girmez
+        await ActivityAsync(null, 2, 2, status: WorksheetInstanceStatus.Started); // tamamlanmadı
+        await ActivityAsync(WeekStartUtc.AddHours(2), 0, 4, kind: WorksheetKind.Test); // test, sayılmaz
+        await ActivityAsync(WeekStartUtc.AddHours(3), 0, 4, studentId: _otherStudentId); // başka öğrenci
+
+        var activities = (await SummaryAsync()).Activities;
+
+        activities.CompletedThisWeek.ShouldBe(1);
+        activities.CompletedTotal.ShouldBe(3);
+        activities.AverageFirstCheckPercent.ShouldBe(63); // (75 + 50) / 2 = 62.5 → 63
+    }
+
+    [Fact]
+    public async Task Activity_summary_is_empty_without_activities()
+    {
+        await SeedAsync();
+
+        var activities = (await SummaryAsync()).Activities;
+
+        activities.CompletedThisWeek.ShouldBe(0);
+        activities.CompletedTotal.ShouldBe(0);
+        activities.AverageFirstCheckPercent.ShouldBeNull();
+    }
+
+    [Fact]
     public void TruncateToHour_drops_minutes_and_marks_utc()
     {
         var truncated = ParentDashboardService.TruncateToHour(new DateTime(2026, 10, 7, 23, 59, 59, 999, DateTimeKind.Unspecified));

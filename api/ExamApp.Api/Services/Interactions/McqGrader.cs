@@ -22,4 +22,19 @@ public sealed class McqGrader : IInteractionGrader
             && input.SelectedAnswerId == input.CorrectAnswerId;
         return InteractionGradeResult.Of(isCorrect ? 1 : 0, 1);
     }
+
+    /// <summary>
+    /// issue #584: tek öğe (<c>q</c>), cevap = seçilen şıkkın id'si. Etiket (A, B, …) şık sırasını bilen rapor servisinde konur;
+    /// burada id. Doğru şıkkı olmayan soru puanlanamaz → boş.
+    /// </summary>
+    public IReadOnlyList<InteractionItemResponse> Analyze(InteractionGradeInput input)
+    {
+        if (input.CorrectAnswerId == null)
+            return [];
+        var key = input.SelectedAnswerId?.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return [new InteractionItemResponse(ItemId, "#1", Grade(input).IsCorrect, key, key)];
+    }
+
+    /// <summary>issue #584: MCQ analizinin tek öğesinin id'si.</summary>
+    public const string ItemId = "q";
 }

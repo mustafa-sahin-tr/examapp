@@ -171,6 +171,91 @@ public sealed class TextSelectGrader : IInteractionGrader
             : GradeTargets(plan, input.Solution, answer, values);
     }
 
+    /// <summary>
+    /// issue #584: <c>punctuation</c> — öğe = gap (plan sırası; ad = önceki sözcük + "( )"), cevap = konan sembol.
+    /// <c>select</c>/<c>correct</c> — öğe = hedef (çözüm sırası; ad = hedefin token metinleri), doğru = bulundu; cevap select'te
+    /// <see cref="AnswerSelected"/>, correct'te yazılan düzeltme (seçilip yazılmadıysa cevapsız). Hiçbir hedefte olmayan seçili
+    /// token ayrıca çeldirici öğe olur (yalnız seçildiğinde; "öğrencilerin %30'u 'gitti'yi yanlış sandı").
+    /// </summary>
+    public IReadOnlyList<InteractionItemResponse> Analyze(InteractionGradeInput input)
+    {
+        if (!TryReadPlan(input.Plan, ReadOptions, out var plan) || plan.Tokens.Count == 0 || Grade(input).TotalCount == 0)
+            return [];
+
+        var answer = input.Payload != null && TryParsePayload(input.Payload, out var parsed) ? parsed : Answer.Empty;
+        var values = new Dictionary<string, string?>(StringComparer.Ordinal);
+        foreach (var (id, value) in answer.Values)
+            values.TryAdd(id, value);
+        var texts = InteractionAnalysis.ToMap(InteractionAnalysis.ReadEntries(input.Plan, "tokens", "text"));
+        var items = new List<InteractionItemResponse>();
+
+        if (plan.Mode == ModePunctuation)
+        {
+            using var doc = TryParseObject(input.Solution, ReadOptions);
+            var gaps = doc!.RootElement.GetProperty("gaps");
+            string? previous = null;
+            foreach (var token in plan.Tokens)
+            {
+                if (!token.Gap)
+                {
+                    previous = texts.GetValueOrDefault(token.Id);
+                    continue;
+                }
+                var value = values.GetValueOrDefault(token.Id);
+                var blank = SlotAnswerNormalizer.IsBlank(value);
+                var correct = !blank && gaps.TryGetProperty(token.Id, out var gapSolution) && gapSolution.ValueKind == JsonValueKind.Object
+                    && ReadStrings(gapSolution, "accept").Any(a => string.Equals(a.Trim(), value!.Trim(), StringComparison.Ordinal));
+                items.Add(new InteractionItemResponse(
+                    token.Id, previous == null ? "( )" : previous + " ( )", correct,
+                    blank ? null : value!.Trim(), blank ? null : value!.Trim()));
+            }
+            return items;
+        }
+
+        var targets = ReadTargets(input.Solution, plan);
+        var selected = answer.Selected.Where(id => plan.ById.TryGetValue(id, out var t) && !t.Gap).ToHashSet(StringComparer.Ordinal);
+        var inTarget = new HashSet<string>(StringComparer.Ordinal);
+        for (var i = 0; i < targets.Count; i++)
+        {
+            var target = targets[i];
+            inTarget.UnionWith(target.TokenIds);
+            var label = InteractionAnalysis.TextLabel(string.Join(' ', target.TokenIds.Select(id => texts.GetValueOrDefault(id) ?? id)));
+            var picked = target.TokenIds.Where(selected.Contains).ToList();
+            string? key = null, answerLabel = null;
+            var correct = false;
+            if (plan.Mode == ModeSelect)
+            {
+                if (picked.Count > 0)
+                {
+                    key = AnswerSelected;
+                    correct = true;
+                }
+            }
+            else
+            {
+                var written = picked.Select(id => values.GetValueOrDefault(id)).FirstOrDefault(v => !SlotAnswerNormalizer.IsBlank(v));
+                if (written != null)
+                {
+                    key = InteractionAnalysis.TextKey(written);
+                    answerLabel = InteractionAnalysis.TextLabel(written);
+                    correct = picked.Any(id => values.TryGetValue(id, out var v) && !SlotAnswerNormalizer.IsBlank(v)
+                        && SlotAnswerNormalizer.TextMatches(target.Accept, target.Suffixes, v));
+                }
+            }
+            items.Add(new InteractionItemResponse("target:" + i, label, correct, key, answerLabel));
+        }
+
+        foreach (var token in plan.Tokens)
+        {
+            if (selected.Contains(token.Id) && !inTarget.Contains(token.Id))
+                items.Add(new InteractionItemResponse(token.Id, texts.GetValueOrDefault(token.Id) ?? token.Id, false, AnswerSelected, null, Distractor: true));
+        }
+        return items;
+    }
+
+    /// <summary>issue #584: select modunda "işaretledi" cevabının anahtarı (çeldirici token'da da).</summary>
+    public const string AnswerSelected = "selected";
+
     private static InteractionGradeResult GradePunctuation(PlanInfo plan, string? solutionJson, Dictionary<string, string?> values)
     {
         using var doc = TryParseObject(solutionJson, ReadOptions);

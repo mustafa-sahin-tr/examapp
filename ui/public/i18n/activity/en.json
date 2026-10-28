@@ -37,7 +37,8 @@
     "crosswordClue": "{{num}} {{arrow}} {{text}}: {{word}}",
     "wordSearchWord": "{{word}}: {{content}}",
     "wordSearchFound": "found",
-    "wordSearchMissing": "not found"
+    "wordSearchMissing": "not found",
+    "logicPair": "{{subject}} – {{category}}: {{content}}"
   },
   "saveFailed": "Your last answer could not be saved; it will be sent again when you check.",
   "finishCheckRequired": "Check your answers once before finishing.",

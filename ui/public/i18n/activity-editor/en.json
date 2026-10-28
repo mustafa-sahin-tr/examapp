@@ -26,7 +26,8 @@
     "mazeRooms": "Maze (rooms)",
     "mazeStones": "River stones",
     "crossword": "Crossword",
-    "wordSearch": "Word search"
+    "wordSearch": "Word search",
+    "logicGrid": "Logic grid"
   },
   "kindHints": {
     "matrix": "Mark the correct option for each row. The T/F template sets up two columns; with multiple choice a row can have several correct options.",
@@ -174,7 +175,14 @@
     "wordSearchWordLength": "Words must have at least {{min}} letters.",
     "wordSearchWordChars": "Use only letters and digits in words.",
     "wordSearchDuplicate": "The same word is entered twice.",
-    "wordSearchUnplaced": "These words did not fit on the grid: {{list}}. Enlarge the grid, allow more directions or try \"Shuffle\"."
+    "wordSearchUnplaced": "These words did not fit on the grid: {{list}}. Enlarge the grid, allow more directions or try \"Shuffle\".",
+    "logicSubjectCount": "Add {{min}}–{{max}} rows.",
+    "logicCategoryCount": "Add 1 to {{max}} categories.",
+    "logicLabelRequired": "The group name, rows, categories and options cannot be empty.",
+    "logicDuplicate": "A name appears twice in the same list.",
+    "logicClueCount": "Add at most {{max}} clues.",
+    "logicAnswerMissing": "In the answer, choose an option from every category for every row.",
+    "logicAnswerDuplicate": "The same option is given to two rows in “{{category}}”."
   },
   "snackbar": {
     "created": "The item was added to the activity.",
@@ -270,5 +278,19 @@
     "word": "Word",
     "label": "Shown in the list (optional clue)",
     "addWord": "Add word"
+  },
+  "logicGrid": {
+    "hint": "Enter the row group (e.g. Child: Ali, Ayşe, Can) and the categories (e.g. Colour); each category has as many options as there are rows. In the answer, give every row a different option from each category, then add the clues.",
+    "subjectLabel": "Row group name (e.g. Child)",
+    "subject": "Row {{n}}",
+    "addSubject": "Add row",
+    "removeSubject": "Remove last row",
+    "category": "Category {{n}}",
+    "option": "Option {{n}}",
+    "addCategory": "Add category",
+    "answer": "Answer",
+    "clues": "Clues",
+    "clue": "Clue {{n}}",
+    "addClue": "Add clue"
   }
 }

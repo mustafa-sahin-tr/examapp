@@ -498,6 +498,19 @@
         "resultOk": "Bütün kelimeleri buldun!",
         "resultPartial": "{{total}} kelimeden {{ok}} tanesini buldun; kırmızı seçimler kelime değil.",
         "solutionShown": "Kelimelerin yerleri yeşil çizgiyle gösteriliyor."
+      },
+      "logicGrid": {
+        "passageAlt": "Okuma metni görseli",
+        "imageAlt": "Etkinlik görseli",
+        "invalid": "Bu etkinlik açılamadı.",
+        "clues": "İpuçları",
+        "conflict": "Kırmızı çerçeveli satır ya da sütunda birden çok ✓ var ya da hiç yer kalmadı.",
+        "autoCross": "✓ koyunca satırı ve sütunu ✗ ile doldur",
+        "reset": "Temizle",
+        "hint": "Hücreye dokun: önce ✓, sonra ✗, sonra boş. Her satır ve sütunda bir kategoride yalnız bir ✓ olur.",
+        "resultOk": "Tablonun tamamı doğru!",
+        "resultPartial": "{{total}} eşleştirmeden {{ok}} tanesi doğru; kırmızı satırlara yeniden bak.",
+        "solutionShown": "Doğru eşleştirmeler ✓ ile gösteriliyor."
       }
     },
     "sharingBadge": {

@@ -1,0 +1,209 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.lg-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.lg-passage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+
+  &__title {
+    font-weight: 700;
+    font-family: var(--mainFontFamily);
+  }
+
+  &__image {
+    display: block;
+    max-width: 100%;
+    max-height: 35vh;
+    object-fit: contain;
+  }
+}
+
+.lg-image-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+}
+
+.lg-image {
+  display: block;
+  max-width: 100%;
+  max-height: 45vh;
+}
+
+.lg-clues {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--ms-info-surface);
+  color: var(--ms-info-text);
+
+  &__title {
+    margin: 0 0 4px;
+    font-family: var(--mainFontFamily);
+    font-size: 14px;
+  }
+
+  &__list {
+    margin: 0;
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
+// Geniş tablo dar ekranda kendi içinde yatay kayar; sayfa kaymaz.
+.lg-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.lg-table {
+  border-collapse: collapse;
+  background: var(--ms-surface);
+
+  th,
+  td {
+    border: 1px solid var(--ms-border-weak);
+  }
+
+  td {
+    padding: 0;
+  }
+
+  .is-block-start {
+    border-left: 2px solid var(--ms-text-medium);
+  }
+}
+
+.lg-corner,
+.lg-cat,
+.lg-subject {
+  padding: 6px 10px;
+  font-family: var(--mainFontFamily);
+  font-weight: 700;
+}
+
+.lg-cat {
+  background: var(--ms-surface-strong);
+}
+
+.lg-subject {
+  text-align: left;
+  white-space: nowrap;
+}
+
+.lg-option {
+  padding: 4px 6px;
+  min-width: 44px;
+  max-width: 96px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  vertical-align: bottom;
+}
+
+.lg-td {
+  &.is-pair-ok {
+    background: var(--ms-success-surface);
+  }
+
+  &.is-pair-bad {
+    background: var(--ms-danger-surface);
+  }
+}
+
+.lg-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  color: var(--ms-text-strong);
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &.is-yes {
+    color: var(--ms-success-text);
+  }
+
+  &.is-no {
+    color: var(--ms-text-medium);
+  }
+
+  &.is-conflict {
+    box-shadow: inset 0 0 0 2px var(--ms-danger-border);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ms-action-border-focus);
+    outline-offset: -2px;
+  }
+}
+
+.lg-root.is-solution .lg-cell.is-yes {
+  color: var(--ms-success-text);
+}
+
+.lg-warning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--ms-warning-text);
+}
+
+.lg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.lg-hint {
+  margin: 0;
+  color: var(--ms-text-medium);
+}
+
+.lg-result {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+
+  &.is-ok {
+    background: var(--ms-success-surface);
+    color: var(--ms-success-text);
+  }
+
+  &.is-bad {
+    background: var(--ms-danger-surface);
+    color: var(--ms-danger-text);
+  }
+}

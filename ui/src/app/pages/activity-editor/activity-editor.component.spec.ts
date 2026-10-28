@@ -137,6 +137,32 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(el('[data-testid="preview"] app-question-canvas-match')).not.toBeNull();
   });
 
+  it('mantık tablosu: satır/kategori/çözümü kaydeder, önizlemede tabloyu çizer (#586)', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('logicGrid');
+    fixture.detectChanges();
+    expect(el('[data-testid="logic-grid-form"]')).not.toBeNull();
+
+    component.resizeLogicSubjects(-1);
+    component.setLogicSubjectLabel('Çocuk');
+    component.setLogicSubject(0, 'Ali');
+    component.setLogicSubject(1, 'Ayşe');
+    component.setLogicCategoryLabel(0, 'Renk');
+    component.setLogicOption(0, 0, 'Mavi');
+    component.setLogicOption(0, 1, 'Kırmızı');
+    component.setLogicAnswer(0, 0, 1);
+    component.setLogicAnswer(1, 0, 0);
+    component.setLogicClue(0, 'Ali maviyi sevmez.');
+    fixture.detectChanges();
+    expect(el('[data-testid="preview"] app-question-canvas-logic-grid')).not.toBeNull();
+
+    component.save(false);
+    const q = questions.saveBulk.mock.calls[0][0].questions[0];
+    expect(q.interactionType).toBe('logicGrid');
+    expect(JSON.parse(q.interactionPlan).categories[0].items.length).toBe(2);
+    expect(JSON.parse(q.interactionSolution)).toEqual({ assign: { p1: { c1: 'o2' }, p2: { c1: 'o1' } } });
+  });
+
   it('kelime avı: ızgarayı kelimelerden üretir, önizlemede çizer ve çözümü ayrı kaydeder (#586)', async () => {
     await setup({ testId: '9' });
     component.selectKind('wordSearch');

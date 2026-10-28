@@ -595,6 +595,86 @@
           </div>
         }
 
+        @if (logicGrid(); as lg) {
+          <div class="ae__block" data-testid="logic-grid-form">
+            <p class="ae__hint">{{ t('logicGrid.hint') }}</p>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__full">
+              <mat-label>{{ t('logicGrid.subjectLabel') }}</mat-label>
+              <input matInput [value]="lg.subjectLabel" [attr.maxlength]="logicLimits.maxLabel"
+                (input)="setLogicSubjectLabel($any($event.target).value)" />
+            </mat-form-field>
+            <div class="ae__row ae__row--wrap">
+              @for (s of lg.subjects; track $index; let si = $index) {
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                  <mat-label>{{ t('logicGrid.subject', { n: si + 1 }) }}</mat-label>
+                  <input matInput [value]="s" [attr.maxlength]="logicLimits.maxLabel" (input)="setLogicSubject(si, $any($event.target).value)" />
+                </mat-form-field>
+              }
+              <button mat-icon-button type="button" [attr.aria-label]="t('logicGrid.addSubject')"
+                [disabled]="lg.subjects.length >= logicLimits.maxItems" (click)="resizeLogicSubjects(1)"><mat-icon>add</mat-icon></button>
+              <button mat-icon-button type="button" [attr.aria-label]="t('logicGrid.removeSubject')"
+                [disabled]="lg.subjects.length <= logicLimits.minItems" (click)="resizeLogicSubjects(-1)"><mat-icon>remove</mat-icon></button>
+            </div>
+
+            @for (category of lg.categories; track $index; let ci = $index) {
+              <div class="ae__entry" [attr.data-category]="ci">
+                <div class="ae__row">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                    <mat-label>{{ t('logicGrid.category', { n: ci + 1 }) }}</mat-label>
+                    <input matInput [value]="category.label" [attr.maxlength]="logicLimits.maxLabel"
+                      (input)="setLogicCategoryLabel(ci, $any($event.target).value)" />
+                  </mat-form-field>
+                  <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="lg.categories.length <= 1"
+                    (click)="removeLogicCategory(ci)"><mat-icon>close</mat-icon></button>
+                </div>
+                <div class="ae__row ae__row--wrap">
+                  @for (o of category.options; track $index; let oi = $index) {
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                      <mat-label>{{ t('logicGrid.option', { n: oi + 1 }) }}</mat-label>
+                      <input matInput [value]="o" [attr.maxlength]="logicLimits.maxLabel"
+                        (input)="setLogicOption(ci, oi, $any($event.target).value)" />
+                    </mat-form-field>
+                  }
+                </div>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="lg.categories.length >= logicLimits.maxCategories" (click)="addLogicCategory()">
+              <mat-icon>add</mat-icon>{{ t('logicGrid.addCategory') }}
+            </button>
+
+            <span class="ae__label">{{ t('logicGrid.answer') }}</span>
+            @for (s of lg.subjects; track $index; let si = $index) {
+              <div class="ae__row ae__row--wrap" [attr.data-answer]="si">
+                <span class="ae__index">{{ s || t('logicGrid.subject', { n: si + 1 }) }}</span>
+                @for (category of lg.categories; track $index; let ci = $index) {
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                    <mat-label>{{ category.label || t('logicGrid.category', { n: ci + 1 }) }}</mat-label>
+                    <mat-select [value]="lg.answer[si][ci]" (selectionChange)="setLogicAnswer(si, ci, $event.value)">
+                      @for (o of category.options; track $index; let oi = $index) {
+                        <mat-option [value]="oi">{{ o || t('logicGrid.option', { n: oi + 1 }) }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                }
+              </div>
+            }
+
+            <span class="ae__label">{{ t('logicGrid.clues') }}</span>
+            @for (clue of lg.clues; track $index; let qi = $index) {
+              <div class="ae__row">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('logicGrid.clue', { n: qi + 1 }) }}</mat-label>
+                  <input matInput [value]="clue" [attr.maxlength]="logicLimits.maxClue" (input)="setLogicClue(qi, $any($event.target).value)" />
+                </mat-form-field>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" (click)="removeLogicClue(qi)"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="lg.clues.length >= logicLimits.maxClues" (click)="addLogicClue()">
+              <mat-icon>add</mat-icon>{{ t('logicGrid.addClue') }}
+            </button>
+          </div>
+        }
+
         @if (wordSearch(); as ws) {
           <div class="ae__block" data-testid="word-search-form">
             <p class="ae__hint">{{ t('wordSearch.hint') }}</p>
@@ -700,6 +780,11 @@
             }
             @case ('mazeTree') {
               <app-question-canvas-maze-tree [questionRegion]="previewRegion()"
+                [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
+                [showSolution]="showSolution()" [activityMode]="true" />
+            }
+            @case ('logicGrid') {
+              <app-question-canvas-logic-grid [questionRegion]="previewRegion()"
                 [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
                 [showSolution]="showSolution()" [activityMode]="true" />
             }

@@ -4,6 +4,7 @@ import { isBlankDragPlacePayload } from '../../models/drag-place';
 import { isBlankMatchPayload } from '../../models/match';
 import { isBlankCrosswordPayload } from '../../models/crossword';
 import { isBlankWordSearchPayload } from '../../models/word-search';
+import { isBlankLogicGridPayload } from '../../models/logic-grid';
 import { isBlankMazePayload } from '../../models/maze-tree';
 import { isBlankTextSelectPayload } from '../../models/text-select';
 import { isBlankOpenTextPayload } from '../../models/open-text';
@@ -1825,7 +1826,8 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
         !isBlankOpenTextPayload(payload) &&
         !isBlankMazePayload(payload) &&
         !isBlankCrosswordPayload(payload) &&
-        !isBlankWordSearchPayload(payload))
+        !isBlankWordSearchPayload(payload) &&
+        !isBlankLogicGridPayload(payload))
     );
   }
 

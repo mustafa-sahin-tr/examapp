@@ -498,6 +498,19 @@
         "resultOk": "You found all the words!",
         "resultPartial": "You found {{ok}} of {{total}} words; red selections are not words.",
         "solutionShown": "The words are marked with green lines."
+      },
+      "logicGrid": {
+        "passageAlt": "Reading passage image",
+        "imageAlt": "Activity image",
+        "invalid": "This activity could not be opened.",
+        "clues": "Clues",
+        "conflict": "A row or column with a red frame has more than one ✓ or no place left.",
+        "autoCross": "Fill the row and column with ✗ when I tick",
+        "reset": "Clear",
+        "hint": "Tap a cell: first ✓, then ✗, then empty. Each row and column of a category has exactly one ✓.",
+        "resultOk": "The whole grid is correct!",
+        "resultPartial": "{{ok}} of {{total}} matches are correct; check the red rows again.",
+        "solutionShown": "The correct matches are shown with ✓."
       }
     },
     "sharingBadge": {

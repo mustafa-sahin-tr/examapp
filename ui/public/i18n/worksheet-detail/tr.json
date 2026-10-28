@@ -297,7 +297,8 @@
         "openText": "Açık uçlu",
         "mazeTree": "Yol oyunu",
         "crossword": "Çengel bulmaca",
-        "wordSearch": "Kelime avı"
+        "wordSearch": "Kelime avı",
+        "logicGrid": "Mantık tablosu"
       }
     },
     "addTextItem": "Görselsiz madde ekle"

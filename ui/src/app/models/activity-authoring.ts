@@ -6,7 +6,7 @@
  * Dilim b: boşluk türleri (boşluk doldurma, soru + kısa cevap, tablo → `slotFill` düzenli plan; kelime havuzu → `dragPlace`
  * boşluklu metin) `activity-authoring-blanks.ts`'te. Issue #585: yol oyunları (`mazeTree` şablonları)
  * `activity-authoring-maze.ts`'te. Issue #586: çengel bulmaca (`crossword`) `activity-authoring-crossword.ts`'te, kelime avı
- * (`wordSearch`) `activity-authoring-word-search.ts`'te.
+ * (`wordSearch`) `activity-authoring-word-search.ts`'te, sözel mantık tablosu (`logicGrid`) `activity-authoring-logic-grid.ts`'te.
  *
  * Kayıtta backend sürükle-yerleştir kartlarını ve eşleştirme sağ öğelerini karışık sıraya dizip opak id verir (#576
  * H1/M1); düzenlemede formu plan + çözümden geri kurarken id'lere değil, plan sırası ve çözüm eşlemesine bakılır.
@@ -37,6 +37,15 @@ import {
   validateWordSearchForm,
 } from './activity-authoring-word-search';
 import {
+  LogicGridForm,
+  buildLogicGridDefinition,
+  emptyLogicGridForm,
+  isLogicGridForm,
+  parseLogicGridDefinition,
+  validateLogicGridForm,
+} from './activity-authoring-logic-grid';
+import { LOGIC_GRID } from './logic-grid';
+import {
   ExitName,
   MAZE_KINDS,
   MazeForm,
@@ -63,7 +72,7 @@ import { MAZE_TREE } from './maze-tree';
 import { SLOT_FILL, parseSlotFillPlan } from './slot-fill';
 import { WORD_SEARCH } from './word-search';
 
-export type AuthoringKind = 'matrix' | 'classify' | 'order' | 'match' | BlankKind | MazeKind | 'crossword' | 'wordSearch';
+export type AuthoringKind = 'matrix' | 'classify' | 'order' | 'match' | BlankKind | MazeKind | 'crossword' | 'wordSearch' | 'logicGrid';
 
 export const AUTHORING_KINDS: readonly AuthoringKind[] = [
   'matrix',
@@ -77,6 +86,7 @@ export const AUTHORING_KINDS: readonly AuthoringKind[] = [
   ...MAZE_KINDS,
   'crossword',
   'wordSearch',
+  'logicGrid',
 ];
 
 export const AUTHORING_LABEL_MAX = MATRIX_CHOICE_LIMITS.maxLabelLength;
@@ -125,7 +135,7 @@ export interface MatchForm {
   distractors: string[];
 }
 
-export type AuthoringForm = MatrixForm | ClassifyForm | OrderForm | MatchForm | BlankForm | MazeForm | CrosswordForm | WordSearchForm;
+export type AuthoringForm = MatrixForm | ClassifyForm | OrderForm | MatchForm | BlankForm | MazeForm | CrosswordForm | WordSearchForm | LogicGridForm;
 
 export interface AuthoringDefinition {
   interactionType:
@@ -135,7 +145,8 @@ export interface AuthoringDefinition {
     | typeof SLOT_FILL
     | typeof MAZE_TREE
     | typeof CROSSWORD
-    | typeof WORD_SEARCH;
+    | typeof WORD_SEARCH
+    | typeof LOGIC_GRID;
   plan: string;
   solution: string;
 }
@@ -162,6 +173,7 @@ export function emptyForm(
   if (isMazeKind(kind)) return emptyMazeForm(kind, maze.branches, maze.exitName);
   if (kind === 'crossword') return emptyCrosswordForm();
   if (kind === 'wordSearch') return emptyWordSearchForm();
+  if (kind === 'logicGrid') return emptyLogicGridForm();
   switch (kind) {
     case 'matrix':
       return {
@@ -191,6 +203,7 @@ export function validateForm(form: AuthoringForm): AuthoringError[] {
   if (isMazeForm(form)) return validateMazeForm(form);
   if (isCrosswordForm(form)) return validateCrosswordForm(form);
   if (isWordSearchForm(form)) return validateWordSearchForm(form);
+  if (isLogicGridForm(form)) return validateLogicGridForm(form);
   const errors: AuthoringError[] = [];
   const blank = (values: string[]) => values.some((v) => !v.trim());
   const tooLong = (values: string[]) => values.some((v) => v.trim().length > AUTHORING_LABEL_MAX);
@@ -265,6 +278,7 @@ export function buildDefinition(form: AuthoringForm): AuthoringDefinition {
   if (isMazeForm(form)) return buildMazeDefinition(form);
   if (isCrosswordForm(form)) return buildCrosswordDefinition(form);
   if (isWordSearchForm(form)) return buildWordSearchDefinition(form);
+  if (isLogicGridForm(form)) return buildLogicGridDefinition(form);
   switch (form.kind) {
     case 'matrix': {
       const columns = form.columns.map((label, i) => ({ id: `c${i + 1}`, label: label.trim() }));
@@ -335,6 +349,7 @@ export function parseDefinition(
   if (type === MAZE_TREE.toLowerCase()) return parseMazeDefinition(planJson, solutionJson);
   if (type === CROSSWORD.toLowerCase()) return parseCrosswordDefinition(planJson, solutionJson);
   if (type === WORD_SEARCH.toLowerCase()) return parseWordSearchDefinition(planJson, solutionJson);
+  if (type === LOGIC_GRID.toLowerCase()) return parseLogicGridDefinition(planJson, solutionJson);
   return null;
 }
 

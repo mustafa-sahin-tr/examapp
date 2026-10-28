@@ -297,7 +297,8 @@
         "openText": "Open-ended",
         "mazeTree": "Path game",
         "crossword": "Crossword",
-        "wordSearch": "Word search"
+        "wordSearch": "Word search",
+        "logicGrid": "Logic grid"
       }
     },
     "addTextItem": "Add text-only item"

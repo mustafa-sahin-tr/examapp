@@ -296,7 +296,8 @@
         "dragDropLabeling": "Etiketleme",
         "openText": "Açık uçlu",
         "mazeTree": "Yol oyunu",
-        "crossword": "Çengel bulmaca"
+        "crossword": "Çengel bulmaca",
+        "wordSearch": "Kelime avı"
       }
     },
     "addTextItem": "Görselsiz madde ekle"

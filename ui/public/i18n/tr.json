@@ -480,6 +480,24 @@
         "resultOk": "Bütün kelimeler doğru!",
         "resultPartial": "{{total}} kelimeden {{ok}} tanesi doğru; kırmızı kelimelere yeniden bak.",
         "solutionShown": "Doğru harfler gösteriliyor; kırmızı harfler senin farklı yazdıkların."
+      },
+      "wordSearch": {
+        "passageAlt": "Okuma metni görseli",
+        "imageAlt": "Etkinlik görseli",
+        "invalid": "Bu etkinlik açılamadı.",
+        "gridAria": "Kelime avı ızgarası",
+        "words": "Kelimeler",
+        "selected": "İşaretlediklerin",
+        "hint": "Kelimenin ilk harfinden son harfine sürükle ya da önce ilk, sonra son harfe dokun.",
+        "remove": "«{{text}}» seçimini kaldır",
+        "limit": "Daha fazla çizgi seçemezsin; yanlış olanları kaldır.",
+        "undo": "Geri al",
+        "reset": "Temizle",
+        "found": "bulundu",
+        "notFound": "bulunamadı",
+        "resultOk": "Bütün kelimeleri buldun!",
+        "resultPartial": "{{total}} kelimeden {{ok}} tanesini buldun; kırmızı seçimler kelime değil.",
+        "solutionShown": "Kelimelerin yerleri yeşil çizgiyle gösteriliyor."
       }
     },
     "sharingBadge": {

@@ -25,7 +25,8 @@
     "mazeBoard": "Işıklı pano",
     "mazeRooms": "Labirent (odalı)",
     "mazeStones": "Irmak taşları",
-    "crossword": "Çengel bulmaca"
+    "crossword": "Çengel bulmaca",
+    "wordSearch": "Kelime avı"
   },
   "kindHints": {
     "matrix": "Her satır için doğru seçeneği işaretle. D/Y şablonu iki kolon kurar; çoklu seçimde satırda birden çok doğru olabilir.",
@@ -166,7 +167,14 @@
     "crosswordOutOfGrid": "{{n}}. kelime ızgaraya sığmıyor.",
     "crosswordConflict": "{{n}}. kelime kesiştiği hücrede başka bir harfle çakışıyor.",
     "crosswordOverlap": "{{n}}. kelime aynı yöndeki başka bir kelimenin üstüne biniyor.",
-    "crosswordTouching": "{{n}}. kelime aynı yöndeki başka bir kelimeye bitişik; araya boş hücre bırakın."
+    "crosswordTouching": "{{n}}. kelime aynı yöndeki başka bir kelimeye bitişik; araya boş hücre bırakın.",
+    "wordSearchGridSize": "Izgara {{min}}–{{max}} satır ve sütun olmalı.",
+    "wordSearchWordCount": "{{min}}–{{max}} kelime olmalı.",
+    "wordSearchWordRequired": "Her satıra bir kelime yazın.",
+    "wordSearchWordLength": "Kelimeler en az {{min}} harf olmalı.",
+    "wordSearchWordChars": "Kelimelerde yalnız harf ve rakam kullanın.",
+    "wordSearchDuplicate": "Aynı kelime iki kez yazılmış.",
+    "wordSearchUnplaced": "Şu kelimeler ızgaraya sığmadı: {{list}}. Izgarayı büyütün, yön ekleyin ya da \"Karıştır\"ı deneyin."
   },
   "snackbar": {
     "created": "Madde etkinliğe eklendi.",
@@ -251,5 +259,16 @@
     "row": "Satır",
     "col": "Sütun",
     "addEntry": "Kelime ekle"
+  },
+  "wordSearch": {
+    "hint": "Kelimeleri yazın; ızgara kelimelerden otomatik oluşur, boş hücreler harfle dolar. Beğenmezseniz \"Karıştır\" ile yeniden yerleştirin. İpucu boşsa listede kelimenin kendisi görünür.",
+    "rows": "Satır",
+    "cols": "Sütun",
+    "diagonal": "Çapraz",
+    "reverse": "Ters yönde",
+    "shuffle": "Karıştır",
+    "word": "Kelime",
+    "label": "Listede görünen (isteğe bağlı ipucu)",
+    "addWord": "Kelime ekle"
   }
 }

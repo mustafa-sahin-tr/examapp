@@ -1,0 +1,111 @@
+<div class="ws-root" [class.is-solution]="solutionShown()" *transloco="let t; prefix: 'shared.questionCanvas.wordSearch'">
+  @if (!hidePassage && passageImageUrl(); as pUrl) {
+    <div class="ws-passage">
+      @if (passageTitle(); as title) {
+        <div class="ws-passage__title">{{ title }}</div>
+      }
+      <img class="ws-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (imageUrl(); as url) {
+    <div class="ws-image-wrap">
+      <img class="ws-image" [src]="url" [alt]="t('imageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (plan(); as p) {
+    <div class="ws-body">
+      <div class="ws-scroll">
+        <div class="ws-board" data-testid="ws-grid" (pointermove)="onPointerMove($event)"
+          (pointerup)="onPointerUp($event)">
+          <div class="ws-grid" role="grid" [attr.aria-label]="t('gridAria')"
+            [style.grid-template-columns]="'repeat(' + p.cols + ', var(--ws-cell))'">
+            @for (r of rowIndexes(); track r) {
+              @for (c of colIndexes(); track c) {
+                <button type="button" class="ws-cell" role="gridcell" [attr.data-cell]="r + ',' + c"
+                  [class.is-selected]="selectedCells().has(r + ',' + c)" [class.is-preview]="previewCells().has(r + ',' + c)"
+                  [disabled]="readOnly()" [attr.aria-label]="cellAria(r, c)" (pointerdown)="onPointerDown($event, r, c)"
+                  (pointerenter)="onCellHover(r, c)" (click)="onCellClick(r, c)">
+                  {{ letter(r, c) }}
+                </button>
+              }
+            }
+          </div>
+          <svg class="ws-lines" [attr.viewBox]="'0 0 ' + p.cols + ' ' + p.rows" preserveAspectRatio="none" aria-hidden="true">
+            @for (l of drawn(); track l.key) {
+              <line [attr.x1]="l.x1" [attr.y1]="l.y1" [attr.x2]="l.x2" [attr.y2]="l.y2" [attr.class]="'ws-line is-' + l.state" />
+            }
+            @if (previewLine(); as pl) {
+              <line [attr.x1]="pl.x1" [attr.y1]="pl.y1" [attr.x2]="pl.x2" [attr.y2]="pl.y2" class="ws-line is-preview" />
+            }
+          </svg>
+        </div>
+      </div>
+
+      <div class="ws-side">
+        <section>
+          <h4 class="ws-side__title">{{ t('words') }}</h4>
+          <ul class="ws-words">
+            @for (w of p.words; track w.id) {
+              <li class="ws-word" [attr.data-word]="w.id" [class.is-found]="foundWords().get(w.id) === true"
+                [class.is-missing]="foundWords().get(w.id) === false">
+                {{ w.label }}
+                @if (foundWords().get(w.id) === true) {
+                  <mat-icon aria-hidden="true">check</mat-icon><span class="ws-sr">{{ t('found') }}</span>
+                } @else if (foundWords().get(w.id) === false) {
+                  <span class="ws-sr">{{ t('notFound') }}</span>
+                }
+              </li>
+            }
+          </ul>
+        </section>
+
+        @if (!solutionShown()) {
+          <section>
+            <h4 class="ws-side__title">{{ t('selected') }}</h4>
+            @if (lines().length === 0) {
+              <p class="ws-hint">{{ t('hint') }}</p>
+            } @else {
+              <ul class="ws-picks" data-testid="ws-picks">
+                @for (text of lineTexts(); track $index; let i = $index) {
+                  <li class="ws-pick" [class.is-ok]="feedbackState()?.lines?.[i] === true"
+                    [class.is-bad]="feedbackState()?.lines?.[i] === false">
+                    <span>{{ text }}</span>
+                    <button mat-icon-button type="button" [disabled]="readOnly()" [attr.aria-label]="t('remove', { text })"
+                      (click)="removeLine(i)"><mat-icon>close</mat-icon></button>
+                  </li>
+                }
+              </ul>
+            }
+            @if (limitReached()) {
+              <p class="ws-hint">{{ t('limit') }}</p>
+            }
+            <div class="ws-actions">
+              <button mat-stroked-button type="button" data-testid="ws-undo" [disabled]="!canUndo()" (click)="undo()">
+                <mat-icon>undo</mat-icon>{{ t('undo') }}
+              </button>
+              <button mat-stroked-button type="button" data-testid="ws-reset" [disabled]="!canUndo()" (click)="reset()">
+                <mat-icon>restart_alt</mat-icon>{{ t('reset') }}
+              </button>
+            </div>
+          </section>
+        }
+      </div>
+    </div>
+  } @else {
+    <p class="ws-hint" data-testid="ws-invalid">{{ t('invalid') }}</p>
+  }
+
+  @if (feedbackState(); as fb) {
+    <p class="ws-result" role="status" data-testid="ws-result" [class.is-ok]="foundCount() === fb.rows.length"
+      [class.is-bad]="foundCount() < fb.rows.length">
+      <mat-icon aria-hidden="true">{{ foundCount() === fb.rows.length ? 'check_circle' : 'error' }}</mat-icon>
+      {{ foundCount() === fb.rows.length ? t('resultOk') : t('resultPartial', { ok: foundCount(), total: fb.rows.length }) }}
+    </p>
+  }
+
+  @if (solutionShown()) {
+    <p class="ws-hint" data-testid="ws-solution-hint">{{ t('solutionShown') }}</p>
+  }
+</div>

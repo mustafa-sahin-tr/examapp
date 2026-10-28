@@ -1276,6 +1276,64 @@ describe('ActivityPlayerComponent (#573)', () => {
     });
   });
 
+  describe('wordSearch (#586)', () => {
+    const WS_PLAN = JSON.stringify({
+      version: 1,
+      type: 'wordSearch',
+      rows: 4,
+      cols: 5,
+      letters: ['KALPX', 'EYZİM', 'DTARU', 'İNOKE'],
+      words: [
+        { id: 'w1', label: 'KALP' },
+        { id: 'w2', label: 'KEDİ' },
+      ],
+    });
+    const wsLines = (...lines: [number, number, number, number][]) =>
+      JSON.stringify({ version: 1, type: 'wordSearch', lines: lines.map(([a, b, c, d]) => ({ from: [a, b], to: [c, d] })) });
+    const base = () => instance().testInstanceQuestions[0].question;
+    const typed = (answer: string) =>
+      instance({}, [{ answerPayload: answer, question: { ...base(), interactionType: 'WordSearch', interactionPlan: WS_PLAN } }]);
+
+    it('rendersPlayer_FewerLinesThanWordsIsIncomplete_WordRowsAndFeedback', async () => {
+      await create(typed(wsLines([0, 0, 0, 3])));
+      fixture.componentInstance.goTo(0);
+      await settle();
+
+      expect(el().querySelector('app-question-canvas-word-search')).not.toBeNull();
+      expect(fixture.componentInstance.blankItems()).toContain('a');
+
+      fixture.componentInstance.onDragDropChange(wsLines([0, 0, 0, 3], [1, 0, 1, 2]), fixture.componentInstance.items()[0]);
+      await settle();
+      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 1,
+          totalCount: 3,
+          questions: [
+            {
+              instanceQuestionId: 101,
+              isCorrect: false,
+              correctCount: 1,
+              totalCount: 2,
+              feedback: '{"rows":[{"id":"w1","correct":true},{"id":"w2","correct":false}],"lines":[true,false]}',
+            },
+            { instanceQuestionId: 102, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+      expect(fixture.componentInstance.currentRows().map((r) => [r.label, r.correct])).toEqual([
+        ['KALP: bulundu', true],
+        ['KEDİ: bulunamadı', false],
+      ]);
+      expect(fixture.componentInstance.currentWordSearchFeedback()?.lines).toEqual([true, false]);
+      expect(el().querySelector('[data-word="w2"]')?.classList).toContain('is-missing');
+    });
+  });
+
   describe('crossword (#586)', () => {
     const CW_PLAN = JSON.stringify({
       version: 1,

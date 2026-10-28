@@ -76,6 +76,14 @@ import {
   parseCrosswordSolution,
 } from '../../models/crossword';
 import {
+  WordSearchFeedback,
+  WordSearchPlanV1,
+  isWordSearchType,
+  parseWordSearchAnswer,
+  parseWordSearchFeedback,
+  parseWordSearchPlan,
+} from '../../models/word-search';
+import {
   MazeFeedback,
   MazeTreePlanV1,
   edgeOf,
@@ -144,6 +152,7 @@ import { QuestionCanvasMatchComponent } from '../../shared/components/question-c
 import { QuestionCanvasTextSelectComponent } from '../../shared/components/question-canvas-text-select/question-canvas-text-select.component';
 import { QuestionCanvasOpenTextComponent } from '../../shared/components/question-canvas-open-text/question-canvas-open-text.component';
 import { QuestionCanvasCrosswordComponent } from '../../shared/components/question-canvas-crossword/question-canvas-crossword.component';
+import { QuestionCanvasWordSearchComponent } from '../../shared/components/question-canvas-word-search/question-canvas-word-search.component';
 import { QuestionCanvasMazeTreeComponent } from '../../shared/components/question-canvas-maze-tree/question-canvas-maze-tree.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 import { ActiveTimeTracker, ACTIVITY_MAX_ACTIVE_SECONDS } from '../../shared/utils/active-time-tracker';
@@ -216,6 +225,7 @@ export type ActivityAction = 'check' | 'reveal' | 'finish';
     QuestionCanvasMatchComponent,
     QuestionCanvasMazeTreeComponent,
     QuestionCanvasCrosswordComponent,
+    QuestionCanvasWordSearchComponent,
     QuestionCanvasViewComponentv5,
     QuestionLiteViewComponent,
   ],
@@ -355,6 +365,7 @@ export class ActivityPlayerComponent {
   private readonly textSelectPlans = new Map<number, TextSelectPlanV1 | null>();
   private readonly mazePlans = new Map<number, MazeTreePlanV1 | null>();
   private readonly crosswordPlans = new Map<number, CrosswordPlanV1 | null>();
+  private readonly wordSearchPlans = new Map<number, WordSearchPlanV1 | null>();
 
   readonly title = computed(() => this.instance()?.testName ?? '');
   readonly currentItem = computed(() => this.items()[this.currentIndex()] ?? null);
@@ -432,6 +443,13 @@ export class ActivityPlayerComponent {
     return parseCrosswordFeedback(this.results()[item.id]?.feedback);
   });
 
+  /** Issue #586: kelime avının kontrol sonucu (kelime başına bulundu mu + çizgi isabetleri); çözüm açıkken ya da kontrol yoksa null. */
+  readonly currentWordSearchFeedback = computed<WordSearchFeedback | null>(() => {
+    const item = this.currentItem();
+    if (!item || this.revealed()) return null;
+    return parseWordSearchFeedback(this.results()[item.id]?.feedback);
+  });
+
   /** Issue #583: geçerli açık uçlu maddenin değerlendirme durumu (yoksa null). */
   readonly currentOpenTextReview = computed<OpenTextStudentReview | null>(() => {
     const item = this.currentItem();
@@ -476,6 +494,7 @@ export class ActivityPlayerComponent {
     if (this.isTextSelect(item)) return this.textSelectRows(item, result, solution);
     if (this.isMazeTree(item)) return this.mazeRows(item, result, solution);
     if (this.isCrossword(item)) return this.crosswordRows(item, result, solution);
+    if (this.isWordSearch(item)) return this.wordSearchRows(item, result);
     if (this.isOpenText(item)) return this.openTextRows(item, result);
     return this.isDragDrop(item)
       ? this.dragDropRows(item, result, solution)
@@ -637,6 +656,7 @@ export class ActivityPlayerComponent {
     this.textSelectPlans.clear();
     this.mazePlans.clear();
     this.crosswordPlans.clear();
+    this.wordSearchPlans.clear();
   }
 
   // ---------------------------------------------------------------------------
@@ -1253,6 +1273,10 @@ export class ActivityPlayerComponent {
     return isCrosswordType(item.question?.interactionType);
   }
 
+  isWordSearch(item: TestInstanceQuestion): boolean {
+    return isWordSearchType(item.question?.interactionType);
+  }
+
   /** Cevabı `answerPayload` olan (MCQ dışı) madde. */
   private isInteractive(item: TestInstanceQuestion): boolean {
     return (
@@ -1264,7 +1288,8 @@ export class ActivityPlayerComponent {
       this.isTextSelect(item) ||
       this.isOpenText(item) ||
       this.isMazeTree(item) ||
-      this.isCrossword(item)
+      this.isCrossword(item) ||
+      this.isWordSearch(item)
     );
   }
 
@@ -1302,6 +1327,13 @@ export class ActivityPlayerComponent {
       this.matchPlans.set(item.id, parseMatchPlan(item.question?.interactionPlan));
     }
     return this.matchPlans.get(item.id) ?? null;
+  }
+
+  private wordSearchPlanFor(item: TestInstanceQuestion): WordSearchPlanV1 | null {
+    if (!this.wordSearchPlans.has(item.id)) {
+      this.wordSearchPlans.set(item.id, parseWordSearchPlan(item.question?.interactionPlan));
+    }
+    return this.wordSearchPlans.get(item.id) ?? null;
   }
 
   private crosswordPlanFor(item: TestInstanceQuestion): CrosswordPlanV1 | null {
@@ -1390,6 +1422,7 @@ export class ActivityPlayerComponent {
     }
     if (this.isOpenText(item)) return !isBlankOpenText(parseOpenTextAnswer(answer?.answerPayload));
     if (this.isMazeTree(item)) return !isEmptyMazeAnswer(parseMazeAnswer(answer?.answerPayload, this.mazePlanFor(item)));
+    if (this.isWordSearch(item)) return parseWordSearchAnswer(answer?.answerPayload, this.wordSearchPlanFor(item)).length > 0;
     if (this.isCrossword(item)) {
       return !isEmptyCrosswordGrid(parseCrosswordAnswer(answer?.answerPayload, this.crosswordPlanFor(item)));
     }
@@ -1433,6 +1466,11 @@ export class ActivityPlayerComponent {
       if (!plan) return false;
       const parsed = parseMazeAnswer(answer?.answerPayload, plan);
       return plan.variant === 'stones' ? parsed.marked.length === 0 : !walkMaze(plan, parsed.path).finished;
+    }
+    // Issue #586: kelime avında kelime sayısından az çizgi var.
+    if (this.isWordSearch(item)) {
+      const plan = this.wordSearchPlanFor(item);
+      return !!plan && parseWordSearchAnswer(answer?.answerPayload, plan).length < plan.words.length;
     }
     // Issue #586: bulmacada boş beyaz hücre kaldı.
     if (this.isCrossword(item)) {
@@ -1638,6 +1676,21 @@ export class ActivityPlayerComponent {
    * Issue #585: yol oyununda kontrol sonrası öğrencinin geçtiği karar düğümleri ("<düğüm>: <seçilen dal>", ilk sapmaya kadar),
    * çözüm açıkken rotanın düğümleri ve doğru dal; taşlarda taş başına işaretli / işaretsiz. Yolu hiç kurulmamışsa tek satır.
    */
+  /** Issue #586: kelime avında kelime başına satır ("KALP: bulundu"); kontrol yoksa satır yok (çözüm ızgarada gösterilir). */
+  private wordSearchRows(item: TestInstanceQuestion, result: ItemResult | undefined): ActivityResultRow[] {
+    const plan = this.wordSearchPlanFor(item);
+    if (!plan || !result) return [];
+    const marks = new Map(result.rows.map((row) => [row.id, row.correct]));
+    return plan.words.map((word, i) => ({
+      label: this.tr('rows.wordSearchWord', {
+        word: word.label || this.tr('rows.mazeNodeFallback', { n: i + 1 }),
+        content: this.tr(marks.get(word.id) ? 'rows.wordSearchFound' : 'rows.wordSearchMissing'),
+      }),
+      correct: marks.has(word.id) ? marks.get(word.id)! : null,
+      solution: null,
+    }));
+  }
+
   /** Issue #586: bulmacada ipucu başına satır ("1 → ipucu: KAL·"); çözüm açıkken doğru kelime. */
   private crosswordRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
     const plan = this.crosswordPlanFor(item);

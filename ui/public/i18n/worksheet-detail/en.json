@@ -296,7 +296,8 @@
         "dragDropLabeling": "Labeling",
         "openText": "Open-ended",
         "mazeTree": "Path game",
-        "crossword": "Crossword"
+        "crossword": "Crossword",
+        "wordSearch": "Word search"
       }
     },
     "addTextItem": "Add text-only item"

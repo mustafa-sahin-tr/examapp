@@ -1276,6 +1276,59 @@ describe('ActivityPlayerComponent (#573)', () => {
     });
   });
 
+  describe('logicGrid (#586)', () => {
+    const LG_PLAN = JSON.stringify({
+      version: 1,
+      type: 'logicGrid',
+      subject: { label: 'Çocuk', items: [{ id: 'p1', label: 'Ali' }, { id: 'p2', label: 'Ayşe' }] },
+      categories: [{ id: 'c1', label: 'Renk', items: [{ id: 'o1', label: 'Mavi' }, { id: 'o2', label: 'Kırmızı' }] }],
+      clues: [],
+    });
+    const lgCells = (...list: [string, string, string][]) =>
+      JSON.stringify({ version: 1, type: 'logicGrid', cells: list.map(([row, col, mark]) => ({ row, col, mark })) });
+    const base = () => instance().testInstanceQuestions[0].question;
+    const typed = (answer: string) =>
+      instance({}, [{ answerPayload: answer, question: { ...base(), interactionType: 'LogicGrid', interactionPlan: LG_PLAN } }]);
+
+    it('rendersPlayer_MissingTickIsIncomplete_PairRowsAndFeedback', async () => {
+      await create(typed(lgCells(['p1', 'o2', 'yes'])));
+      fixture.componentInstance.goTo(0);
+      await settle();
+
+      expect(el().querySelector('app-question-canvas-logic-grid')).not.toBeNull();
+      expect(fixture.componentInstance.blankItems()).toContain('a');
+
+      fixture.componentInstance.onDragDropChange(lgCells(['p1', 'o2', 'yes'], ['p2', 'o2', 'yes']), fixture.componentInstance.items()[0]);
+      await settle();
+      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 1,
+          totalCount: 3,
+          questions: [
+            {
+              instanceQuestionId: 101,
+              isCorrect: false,
+              correctCount: 1,
+              totalCount: 2,
+              feedback: '{"rows":[{"id":"p1:c1","correct":true},{"id":"p2:c1","correct":false}]}',
+            },
+            { instanceQuestionId: 102, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+      expect(fixture.componentInstance.currentRows().map((r) => [r.label, r.correct])).toEqual([
+        ['Ali – Renk: Kırmızı', true],
+        ['Ayşe – Renk: Kırmızı', false],
+      ]);
+      expect(fixture.componentInstance.currentLogicGridFeedback()?.rows.length).toBe(2);
+    });
+  });
+
   describe('wordSearch (#586)', () => {
     const WS_PLAN = JSON.stringify({
       version: 1,

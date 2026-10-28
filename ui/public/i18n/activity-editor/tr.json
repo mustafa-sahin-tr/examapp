@@ -26,7 +26,8 @@
     "mazeRooms": "Labirent (odalı)",
     "mazeStones": "Irmak taşları",
     "crossword": "Çengel bulmaca",
-    "wordSearch": "Kelime avı"
+    "wordSearch": "Kelime avı",
+    "logicGrid": "Mantık tablosu"
   },
   "kindHints": {
     "matrix": "Her satır için doğru seçeneği işaretle. D/Y şablonu iki kolon kurar; çoklu seçimde satırda birden çok doğru olabilir.",
@@ -174,7 +175,14 @@
     "wordSearchWordLength": "Kelimeler en az {{min}} harf olmalı.",
     "wordSearchWordChars": "Kelimelerde yalnız harf ve rakam kullanın.",
     "wordSearchDuplicate": "Aynı kelime iki kez yazılmış.",
-    "wordSearchUnplaced": "Şu kelimeler ızgaraya sığmadı: {{list}}. Izgarayı büyütün, yön ekleyin ya da \"Karıştır\"ı deneyin."
+    "wordSearchUnplaced": "Şu kelimeler ızgaraya sığmadı: {{list}}. Izgarayı büyütün, yön ekleyin ya da \"Karıştır\"ı deneyin.",
+    "logicSubjectCount": "{{min}}–{{max}} satır olmalı.",
+    "logicCategoryCount": "En az 1, en çok {{max}} kategori olmalı.",
+    "logicLabelRequired": "Grup adı, satırlar, kategoriler ve seçenekler boş olamaz.",
+    "logicDuplicate": "Aynı listede iki kez geçen ad var.",
+    "logicClueCount": "En çok {{max}} ipucu eklenebilir.",
+    "logicAnswerMissing": "Çözümde her satıra her kategoriden bir seçenek verin.",
+    "logicAnswerDuplicate": "«{{category}}» kategorisinde aynı seçenek iki satıra verilmiş."
   },
   "snackbar": {
     "created": "Madde etkinliğe eklendi.",
@@ -270,5 +278,19 @@
     "word": "Kelime",
     "label": "Listede görünen (isteğe bağlı ipucu)",
     "addWord": "Kelime ekle"
+  },
+  "logicGrid": {
+    "hint": "Satırlara gelecek grubu (ör. Çocuk: Ali, Ayşe, Can) ve kategorileri (ör. Renk) yazın; her kategoride satır sayısı kadar seçenek olur. Çözümde her satıra her kategoriden farklı bir seçenek verin, ipuçlarını ekleyin.",
+    "subjectLabel": "Satır grubu adı (ör. Çocuk)",
+    "subject": "{{n}}. satır",
+    "addSubject": "Satır ekle",
+    "removeSubject": "Son satırı kaldır",
+    "category": "{{n}}. kategori",
+    "option": "{{n}}. seçenek",
+    "addCategory": "Kategori ekle",
+    "answer": "Çözüm",
+    "clues": "İpuçları",
+    "clue": "{{n}}. ipucu",
+    "addClue": "İpucu ekle"
   }
 }

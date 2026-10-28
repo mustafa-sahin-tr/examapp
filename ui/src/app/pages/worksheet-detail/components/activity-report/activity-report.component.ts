@@ -26,6 +26,7 @@ const KNOWN_TYPES = new Set([
   'mazeTree',
   'crossword',
   'wordSearch',
+  'logicGrid',
 ]);
 
 /**

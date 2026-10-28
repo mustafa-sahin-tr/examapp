@@ -76,6 +76,18 @@ import {
   parseCrosswordSolution,
 } from '../../models/crossword';
 import {
+  LogicGridFeedback,
+  LogicGridPlanV1,
+  countMarks,
+  isLogicGridType,
+  pairKey,
+  parseLogicGridAnswer,
+  parseLogicGridFeedback,
+  parseLogicGridPlan,
+  parseLogicGridSolution,
+  ticks,
+} from '../../models/logic-grid';
+import {
   WordSearchFeedback,
   WordSearchPlanV1,
   isWordSearchType,
@@ -152,6 +164,7 @@ import { QuestionCanvasMatchComponent } from '../../shared/components/question-c
 import { QuestionCanvasTextSelectComponent } from '../../shared/components/question-canvas-text-select/question-canvas-text-select.component';
 import { QuestionCanvasOpenTextComponent } from '../../shared/components/question-canvas-open-text/question-canvas-open-text.component';
 import { QuestionCanvasCrosswordComponent } from '../../shared/components/question-canvas-crossword/question-canvas-crossword.component';
+import { QuestionCanvasLogicGridComponent } from '../../shared/components/question-canvas-logic-grid/question-canvas-logic-grid.component';
 import { QuestionCanvasWordSearchComponent } from '../../shared/components/question-canvas-word-search/question-canvas-word-search.component';
 import { QuestionCanvasMazeTreeComponent } from '../../shared/components/question-canvas-maze-tree/question-canvas-maze-tree.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
@@ -226,6 +239,7 @@ export type ActivityAction = 'check' | 'reveal' | 'finish';
     QuestionCanvasMazeTreeComponent,
     QuestionCanvasCrosswordComponent,
     QuestionCanvasWordSearchComponent,
+    QuestionCanvasLogicGridComponent,
     QuestionCanvasViewComponentv5,
     QuestionLiteViewComponent,
   ],
@@ -366,6 +380,7 @@ export class ActivityPlayerComponent {
   private readonly mazePlans = new Map<number, MazeTreePlanV1 | null>();
   private readonly crosswordPlans = new Map<number, CrosswordPlanV1 | null>();
   private readonly wordSearchPlans = new Map<number, WordSearchPlanV1 | null>();
+  private readonly logicGridPlans = new Map<number, LogicGridPlanV1 | null>();
 
   readonly title = computed(() => this.instance()?.testName ?? '');
   readonly currentItem = computed(() => this.items()[this.currentIndex()] ?? null);
@@ -450,6 +465,13 @@ export class ActivityPlayerComponent {
     return parseWordSearchFeedback(this.results()[item.id]?.feedback);
   });
 
+  /** Issue #586: mantık tablosunun kontrol sonucu ((kişi, kategori) çifti başına); çözüm açıkken ya da kontrol yoksa null. */
+  readonly currentLogicGridFeedback = computed<LogicGridFeedback | null>(() => {
+    const item = this.currentItem();
+    if (!item || this.revealed()) return null;
+    return parseLogicGridFeedback(this.results()[item.id]?.feedback);
+  });
+
   /** Issue #583: geçerli açık uçlu maddenin değerlendirme durumu (yoksa null). */
   readonly currentOpenTextReview = computed<OpenTextStudentReview | null>(() => {
     const item = this.currentItem();
@@ -495,6 +517,7 @@ export class ActivityPlayerComponent {
     if (this.isMazeTree(item)) return this.mazeRows(item, result, solution);
     if (this.isCrossword(item)) return this.crosswordRows(item, result, solution);
     if (this.isWordSearch(item)) return this.wordSearchRows(item, result);
+    if (this.isLogicGrid(item)) return this.logicGridRows(item, result, solution);
     if (this.isOpenText(item)) return this.openTextRows(item, result);
     return this.isDragDrop(item)
       ? this.dragDropRows(item, result, solution)
@@ -657,6 +680,7 @@ export class ActivityPlayerComponent {
     this.mazePlans.clear();
     this.crosswordPlans.clear();
     this.wordSearchPlans.clear();
+    this.logicGridPlans.clear();
   }
 
   // ---------------------------------------------------------------------------
@@ -1273,6 +1297,10 @@ export class ActivityPlayerComponent {
     return isCrosswordType(item.question?.interactionType);
   }
 
+  isLogicGrid(item: TestInstanceQuestion): boolean {
+    return isLogicGridType(item.question?.interactionType);
+  }
+
   isWordSearch(item: TestInstanceQuestion): boolean {
     return isWordSearchType(item.question?.interactionType);
   }
@@ -1289,7 +1317,8 @@ export class ActivityPlayerComponent {
       this.isOpenText(item) ||
       this.isMazeTree(item) ||
       this.isCrossword(item) ||
-      this.isWordSearch(item)
+      this.isWordSearch(item) ||
+      this.isLogicGrid(item)
     );
   }
 
@@ -1327,6 +1356,13 @@ export class ActivityPlayerComponent {
       this.matchPlans.set(item.id, parseMatchPlan(item.question?.interactionPlan));
     }
     return this.matchPlans.get(item.id) ?? null;
+  }
+
+  private logicGridPlanFor(item: TestInstanceQuestion): LogicGridPlanV1 | null {
+    if (!this.logicGridPlans.has(item.id)) {
+      this.logicGridPlans.set(item.id, parseLogicGridPlan(item.question?.interactionPlan));
+    }
+    return this.logicGridPlans.get(item.id) ?? null;
   }
 
   private wordSearchPlanFor(item: TestInstanceQuestion): WordSearchPlanV1 | null {
@@ -1422,6 +1458,7 @@ export class ActivityPlayerComponent {
     }
     if (this.isOpenText(item)) return !isBlankOpenText(parseOpenTextAnswer(answer?.answerPayload));
     if (this.isMazeTree(item)) return !isEmptyMazeAnswer(parseMazeAnswer(answer?.answerPayload, this.mazePlanFor(item)));
+    if (this.isLogicGrid(item)) return countMarks(parseLogicGridAnswer(answer?.answerPayload, this.logicGridPlanFor(item))) > 0;
     if (this.isWordSearch(item)) return parseWordSearchAnswer(answer?.answerPayload, this.wordSearchPlanFor(item)).length > 0;
     if (this.isCrossword(item)) {
       return !isEmptyCrosswordGrid(parseCrosswordAnswer(answer?.answerPayload, this.crosswordPlanFor(item)));
@@ -1466,6 +1503,13 @@ export class ActivityPlayerComponent {
       if (!plan) return false;
       const parsed = parseMazeAnswer(answer?.answerPayload, plan);
       return plan.variant === 'stones' ? parsed.marked.length === 0 : !walkMaze(plan, parsed.path).finished;
+    }
+    // Issue #586: mantık tablosunda ✓'siz (kişi, kategori) çifti var.
+    if (this.isLogicGrid(item)) {
+      const plan = this.logicGridPlanFor(item);
+      if (!plan) return false;
+      const marks = parseLogicGridAnswer(answer?.answerPayload, plan);
+      return plan.subject.items.some((s) => plan.categories.some((c) => ticks(plan, marks, s.id, c.id).length === 0));
     }
     // Issue #586: kelime avında kelime sayısından az çizgi var.
     if (this.isWordSearch(item)) {
@@ -1676,6 +1720,32 @@ export class ActivityPlayerComponent {
    * Issue #585: yol oyununda kontrol sonrası öğrencinin geçtiği karar düğümleri ("<düğüm>: <seçilen dal>", ilk sapmaya kadar),
    * çözüm açıkken rotanın düğümleri ve doğru dal; taşlarda taş başına işaretli / işaretsiz. Yolu hiç kurulmamışsa tek satır.
    */
+  /** Issue #586: mantık tablosunda (kişi, kategori) çifti başına satır ("Ali – Renk: Mavi"); çözüm açıkken doğru seçenek. */
+  private logicGridRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
+    const plan = this.logicGridPlanFor(item);
+    if (!plan || (!result && !solution)) return [];
+    const marks = parseLogicGridAnswer(this.answers()[item.id]?.answerPayload, plan);
+    const assign = solution ? parseLogicGridSolution(solution.interactionSolution, plan) : null;
+    const rowMarks = new Map((result?.rows ?? []).map((row) => [row.id, row.correct]));
+    return plan.subject.items.flatMap((subject) =>
+      plan.categories.map((category) => {
+        const label = (id: string | undefined) => category.items.find((o) => o.id === id)?.label ?? null;
+        const picked = ticks(plan, marks, subject.id, category.id).map((id) => label(id)).join(', ');
+        const expected = assign && Object.hasOwn(assign, subject.id) ? label(assign[subject.id][category.id]) : null;
+        const key = pairKey(subject.id, category.id);
+        return {
+          label: this.tr('rows.logicPair', {
+            subject: subject.label,
+            category: category.label,
+            content: picked || this.tr('rows.empty'),
+          }),
+          correct: rowMarks.has(key) ? rowMarks.get(key)! : null,
+          solution: expected,
+        };
+      })
+    );
+  }
+
   /** Issue #586: kelime avında kelime başına satır ("KALP: bulundu"); kontrol yoksa satır yok (çözüm ızgarada gösterilir). */
   private wordSearchRows(item: TestInstanceQuestion, result: ItemResult | undefined): ActivityResultRow[] {
     const plan = this.wordSearchPlanFor(item);

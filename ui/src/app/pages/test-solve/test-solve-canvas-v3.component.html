@@ -403,6 +403,18 @@
           (answerPayloadChange)="saveDragDropAnswerForQuestion($event, questionData.index)"
           (answered)="focusOnQuestion(questionData.index)"></app-question-canvas-match>
         }
+        } @else if (interactionKind(questionData.question.question.interactionType) === 'logicGrid') {
+        <!-- Issue #586: sözel mantık tablosu (ayrı parça). -->
+        @defer (on immediate) {
+        <app-question-canvas-logic-grid class="canvas-stage" [questionRegion]="questionData.region"
+          [imageRefresh]="imageRefresh"
+          [interactionPlanJson]="questionData.question.question.interactionPlan || null"
+          [interactionSolutionJson]="questionData.question.question.interactionSolution || null"
+          [answerPayloadJson]="questionData.question.answerPayload || null"
+          [hidePassage]="isPassageFirstActive(questionData.index)"
+          (answerPayloadChange)="saveDragDropAnswerForQuestion($event, questionData.index)"
+          (answered)="focusOnQuestion(questionData.index)"></app-question-canvas-logic-grid>
+        }
         } @else if (interactionKind(questionData.question.question.interactionType) === 'wordSearch') {
         <!-- Issue #586: kelime avı (ayrı parça). -->
         @defer (on immediate) {

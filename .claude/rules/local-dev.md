@@ -722,6 +722,16 @@ seçenekleri; ızgara bunların ve bir tohumun saf fonksiyonu (**Karıştır** t
 madde içerik değişmedikçe kayıtlı ızgarayla açılır. Oynatıcıda sürükleyerek ya da iki dokunuşla (ilk harf → son harf) seçim. Migration
 yok; Aspire'da exam API'yi yeniden başlat.
 
+**Issue #586 dilim c — `logicGrid` (bileşen G, sözel mantık tablosu).** Plan
+`{"version":1,"type":"logicGrid","subject":{label,items:[{id,label}]},"categories":[{id,label,items:[{id,label}]}],"clues":[{id,text}]}`
+(2–8 konu öğesi = satırlar, 1–4 kategori, her kategoride konu öğesi kadar seçenek, plan içinde tüm id'ler tekil, etiket ≤ 60, en çok 20
+ipucu ≤ 300). Çözüm `{"assign":{"p1":{"c1":"o2"}}}` (her satıra her kategoriden bir seçenek, kategoride birebir). Öğrenci payload'u
+`{"cells":[{row,col,mark:"yes"|"no"}]}` (✗ öğrencinin notu, kontrolde yalnız ✓ sayılır; işaretsiz = cevap yok). Kontrol (satır, kategori)
+çifti başına (`p1:c1`): o kategoride tek ✓ ve doğru seçenek. Geri bildirim `{"rows":[{id,correct}]}`. Analiz: öğe = çift, cevap = ✓ konan
+seçenek. Oynatıcı: hücre döngüsü boş → ✓ → ✗; "✓ koyunca satırı ve sütunu ✗ ile doldur" (varsayılan açık); satır/sütun tekliği anında
+denetlenir (iki ✓ ya da hepsi ✗ → kırmızı çerçeve). Yazarlık görselsiz editörde (tür **Mantık tablosu**). Migration yok; Aspire'da exam
+API'yi yeniden başlat.
+
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını
 (`TestInstances` — Questions'a FK'sı yok, CASCADE ulaşmaz, açıkça silinir; aksi halde "boş test yapılmış" gibi kalır),

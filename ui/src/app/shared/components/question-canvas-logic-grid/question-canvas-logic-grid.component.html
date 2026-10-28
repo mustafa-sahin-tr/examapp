@@ -1,0 +1,105 @@
+<div class="lg-root" [class.is-solution]="solutionShown()" *transloco="let t; prefix: 'shared.questionCanvas.logicGrid'">
+  @if (!hidePassage && passageImageUrl(); as pUrl) {
+    <div class="lg-passage">
+      @if (passageTitle(); as title) {
+        <div class="lg-passage__title">{{ title }}</div>
+      }
+      <img class="lg-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (imageUrl(); as url) {
+    <div class="lg-image-wrap">
+      <img class="lg-image" [src]="url" [alt]="t('imageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (plan(); as p) {
+    @if (p.clues.length) {
+      <section class="lg-clues">
+        <h4 class="lg-clues__title">{{ t('clues') }}</h4>
+        <ol class="lg-clues__list">
+          @for (clue of p.clues; track clue.id) {
+            <li>{{ clue.text }}</li>
+          }
+        </ol>
+      </section>
+    }
+
+    <div class="lg-scroll">
+      <table class="lg-table" data-testid="lg-table">
+        <thead>
+          <tr>
+            <th class="lg-corner" rowspan="2" scope="col">{{ p.subject.label }}</th>
+            @for (category of p.categories; track category.id) {
+              <th class="lg-cat" scope="colgroup" [attr.colspan]="category.items.length">{{ category.label }}</th>
+            }
+          </tr>
+          <tr>
+            @for (category of p.categories; track category.id) {
+              @for (option of category.items; track option.id; let first = $first) {
+                <th class="lg-option" scope="col" [class.is-block-start]="first">{{ option.label }}</th>
+              }
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (subject of p.subject.items; track subject.id) {
+            <tr>
+              <th class="lg-subject" scope="row">{{ subject.label }}</th>
+              @for (category of p.categories; track category.id) {
+                @for (option of category.items; track option.id; let first = $first) {
+                  @let m = mark(subject.id, category.id, option.id);
+                  <td class="lg-td" [class.is-block-start]="first"
+                    [class.is-pair-ok]="pairState(subject.id, category.id) === 'ok'"
+                    [class.is-pair-bad]="pairState(subject.id, category.id) === 'bad'">
+                    <button type="button" class="lg-cell" [attr.data-cell]="subject.id + ':' + option.id"
+                      [class.is-yes]="m === 'yes'" [class.is-no]="m === 'no'"
+                      [class.is-conflict]="conflictCells().has(subject.id + ':' + option.id)" [disabled]="readOnly()"
+                      [attr.aria-label]="cellAria(subject.label, option.label, m)" (click)="cycle(subject.id, option.id)">
+                      @if (m === 'yes') {
+                        <mat-icon aria-hidden="true">check</mat-icon>
+                      } @else if (m === 'no') {
+                        <mat-icon aria-hidden="true">close</mat-icon>
+                      }
+                    </button>
+                  </td>
+                }
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (conflictCells().size > 0) {
+      <p class="lg-warning" role="status" data-testid="lg-conflict">
+        <mat-icon aria-hidden="true">warning</mat-icon>{{ t('conflict') }}
+      </p>
+    }
+
+    @if (!solutionShown()) {
+      <div class="lg-actions">
+        <mat-slide-toggle [checked]="autoCross()" (change)="autoCross.set($event.checked)">{{ t('autoCross') }}</mat-slide-toggle>
+        <button mat-stroked-button type="button" data-testid="lg-reset" [disabled]="!canReset()" (click)="reset()">
+          <mat-icon>restart_alt</mat-icon>{{ t('reset') }}
+        </button>
+      </div>
+      <p class="lg-hint">{{ t('hint') }}</p>
+    }
+  } @else {
+    <p class="lg-hint" data-testid="lg-invalid">{{ t('invalid') }}</p>
+  }
+
+  @if (feedbackState(); as fb) {
+    <p class="lg-result" role="status" data-testid="lg-result" [class.is-ok]="correctCount() === fb.rows.length"
+      [class.is-bad]="correctCount() < fb.rows.length">
+      <mat-icon aria-hidden="true">{{ correctCount() === fb.rows.length ? 'check_circle' : 'error' }}</mat-icon>
+      {{ correctCount() === fb.rows.length ? t('resultOk') : t('resultPartial', { ok: correctCount(), total: fb.rows.length }) }}
+    </p>
+  }
+
+  @if (solutionShown()) {
+    <p class="lg-hint" data-testid="lg-solution-hint">{{ t('solutionShown') }}</p>
+  }
+</div>

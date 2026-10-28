@@ -1,0 +1,134 @@
+// Issue #587: boyama oynatıcısı — renk seçme, dokunma / sürükleme ile boyama, aynı renkten başlayınca silme, silgi, canlı sayaç,
+// yankı, geri bildirim, çözüm.
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+
+import { QuestionRegion } from '../../../models/draws';
+import { RegionPaintFeedback } from '../../../models/region-paint';
+import { translocoTestingModule } from '../../testing/transloco-testing';
+import { QuestionCanvasRegionPaintComponent } from './question-canvas-region-paint.component';
+
+const PLAN = {
+  version: 1,
+  type: 'regionPaint',
+  mode: 'grid',
+  rows: 2,
+  cols: 3,
+  palette: [
+    { id: 'p1', color: 'blue', label: '1/2' },
+    { id: 'p2', color: 'red' },
+  ],
+};
+
+const SOLUTION = { counts: { p1: 3, p2: 1 } };
+
+function region(): QuestionRegion {
+  return { imageUrl: '', width: 0, height: 0, passage: null } as unknown as QuestionRegion;
+}
+
+const grid = (...rows: string[]) => JSON.stringify({ version: 1, type: 'regionPaint', grid: rows });
+
+describe('QuestionCanvasRegionPaintComponent (#587)', () => {
+  let fixture: ComponentFixture<QuestionCanvasRegionPaintComponent>;
+  let emitted: string[];
+
+  const el = () => fixture.nativeElement as HTMLElement;
+  const cell = (r: number, c: number) => el().querySelector(`[data-r="${r}"][data-c="${c}"]`) as HTMLButtonElement;
+  const swatch = (i: number) => el().querySelector(`[data-paint="${i}"]`) as HTMLButtonElement;
+  const count = (i: number) => el().querySelector(`[data-count="${i}"]`)?.textContent?.trim();
+  const q = (testId: string) => el().querySelector(`[data-testid="${testId}"]`) as HTMLElement | null;
+
+  function setup(inputs: { answer?: string | null; feedback?: RegionPaintFeedback | null; showSolution?: boolean } = {}): void {
+    TestBed.configureTestingModule({ imports: [QuestionCanvasRegionPaintComponent, translocoTestingModule()] });
+    fixture = TestBed.createComponent(QuestionCanvasRegionPaintComponent);
+    emitted = [];
+    fixture.componentInstance.answerPayloadChange.subscribe((p) => emitted.push(p));
+    fixture.componentRef.setInput('questionRegion', region());
+    fixture.componentRef.setInput('interactionPlanJson', JSON.stringify(PLAN));
+    fixture.componentRef.setInput('interactionSolutionJson', JSON.stringify(SOLUTION));
+    fixture.componentRef.setInput('answerPayloadJson', inputs.answer ?? null);
+    fixture.componentRef.setInput('feedback', inputs.feedback ?? null);
+    fixture.componentRef.setInput('showSolution', !!inputs.showSolution);
+    fixture.componentRef.setInput('activityMode', true);
+    fixture.detectChanges();
+  }
+
+  function pointer(type: string, target: Element) {
+    const rect = target.getBoundingClientRect();
+    target.dispatchEvent(
+      new PointerEvent(type, { bubbles: true, cancelable: true, clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 })
+    );
+  }
+
+  function tap(r: number, c: number) {
+    pointer('pointerdown', cell(r, c));
+    pointer('pointerup', cell(r, c));
+    fixture.detectChanges();
+  }
+
+  it('rendersGridAndPalette', () => {
+    setup();
+    expect(el().querySelectorAll('[data-cell]').length).toBe(6);
+    expect(swatch(0).textContent).toContain('1/2');
+    expect(swatch(1).getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('tap_PaintsWithSelectedColor_CountsLive_EmitsOnce', () => {
+    setup();
+    tap(0, 0);
+    expect(cell(0, 0).style.background).toContain('--paint-blue');
+    expect(count(0)).toBe('1');
+    expect(emitted).toEqual([grid('1..', '...')]);
+
+    swatch(1).click();
+    fixture.detectChanges();
+    tap(1, 2);
+    expect(emitted.at(-1)).toBe(grid('1..', '..2'));
+    expect(count(1)).toBe('1');
+  });
+
+  it('drag_PaintsEveryCellUnderPointer', () => {
+    setup();
+    const host = q('rp-grid')!;
+    pointer('pointerdown', cell(0, 0));
+    pointer('pointermove', cell(0, 1));
+    pointer('pointermove', cell(0, 2));
+    pointer('pointerup', host);
+    fixture.detectChanges();
+    expect(emitted).toEqual([grid('111', '...')]);
+  });
+
+  it('tapOnSameColor_Erases_AndEraserErases', () => {
+    setup({ answer: grid('11.', '2..') });
+    tap(0, 0);
+    expect(emitted.at(-1)).toBe(grid('.1.', '2..'));
+    q('rp-eraser')!.click();
+    fixture.detectChanges();
+    tap(1, 0);
+    expect(emitted.at(-1)).toBe(grid('.1.', '...'));
+  });
+
+  it('echoOfOwnPayload_DoesNotResetCells', () => {
+    setup();
+    tap(1, 1);
+    fixture.componentRef.setInput('answerPayloadJson', emitted.at(-1)!);
+    fixture.detectChanges();
+    expect(count(0)).toBe('1');
+  });
+
+  it('feedback_MarksPaletteEntries', () => {
+    setup({ answer: grid('111', '...'), feedback: { rows: [{ id: 'p1', correct: true }, { id: 'p2', correct: false }] } });
+    expect(swatch(0).classList).toContain('is-ok');
+    expect(swatch(1).classList).toContain('is-bad');
+    expect(q('rp-result')?.classList).toContain('is-bad');
+  });
+
+  it('showSolution_SampleFill_ReadOnly', () => {
+    setup({ answer: grid('2..', '...'), showSolution: true });
+    expect(count(0)).toBe('3');
+    expect(count(1)).toBe('1');
+    expect(cell(1, 0).style.background).toContain('--paint-red');
+    expect(cell(0, 0).disabled).toBe(true);
+    expect(q('rp-reset')).toBeNull();
+    expect(q('rp-eraser')).toBeNull();
+  });
+});

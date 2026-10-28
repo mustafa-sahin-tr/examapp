@@ -89,6 +89,17 @@ import {
   ticks,
 } from '../../models/logic-grid';
 import {
+  RegionPaintFeedback,
+  RegionPaintPlanV1,
+  countPainted,
+  isEmptyPaint,
+  isRegionPaintType,
+  parseRegionPaintAnswer,
+  parseRegionPaintFeedback,
+  parseRegionPaintPlan,
+  parseRegionPaintSolution,
+} from '../../models/region-paint';
+import {
   WordSearchFeedback,
   WordSearchPlanV1,
   isWordSearchType,
@@ -166,6 +177,7 @@ import { QuestionCanvasTextSelectComponent } from '../../shared/components/quest
 import { QuestionCanvasOpenTextComponent } from '../../shared/components/question-canvas-open-text/question-canvas-open-text.component';
 import { QuestionCanvasCrosswordComponent } from '../../shared/components/question-canvas-crossword/question-canvas-crossword.component';
 import { QuestionCanvasLogicGridComponent } from '../../shared/components/question-canvas-logic-grid/question-canvas-logic-grid.component';
+import { QuestionCanvasRegionPaintComponent } from '../../shared/components/question-canvas-region-paint/question-canvas-region-paint.component';
 import { QuestionCanvasWordSearchComponent } from '../../shared/components/question-canvas-word-search/question-canvas-word-search.component';
 import { QuestionCanvasMazeTreeComponent } from '../../shared/components/question-canvas-maze-tree/question-canvas-maze-tree.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
@@ -241,6 +253,7 @@ export type ActivityAction = 'check' | 'reveal' | 'finish';
     QuestionCanvasCrosswordComponent,
     QuestionCanvasWordSearchComponent,
     QuestionCanvasLogicGridComponent,
+    QuestionCanvasRegionPaintComponent,
     QuestionCanvasViewComponentv5,
     QuestionLiteViewComponent,
   ],
@@ -382,6 +395,7 @@ export class ActivityPlayerComponent {
   private readonly crosswordPlans = new Map<number, CrosswordPlanV1 | null>();
   private readonly wordSearchPlans = new Map<number, WordSearchPlanV1 | null>();
   private readonly logicGridPlans = new Map<number, LogicGridPlanV1 | null>();
+  private readonly regionPaintPlans = new Map<number, RegionPaintPlanV1 | null>();
 
   readonly title = computed(() => this.instance()?.testName ?? '');
   readonly currentItem = computed(() => this.items()[this.currentIndex()] ?? null);
@@ -480,6 +494,13 @@ export class ActivityPlayerComponent {
     return parseSlotFillCipherFeedback(this.results()[item.id]?.feedback);
   });
 
+  /** Issue #587: boyamanın kontrol sonucu (renk başına); çözüm açıkken ya da kontrol yoksa null. */
+  readonly currentRegionPaintFeedback = computed<RegionPaintFeedback | null>(() => {
+    const item = this.currentItem();
+    if (!item || this.revealed()) return null;
+    return parseRegionPaintFeedback(this.results()[item.id]?.feedback);
+  });
+
   /** Issue #583: geçerli açık uçlu maddenin değerlendirme durumu (yoksa null). */
   readonly currentOpenTextReview = computed<OpenTextStudentReview | null>(() => {
     const item = this.currentItem();
@@ -526,6 +547,7 @@ export class ActivityPlayerComponent {
     if (this.isCrossword(item)) return this.crosswordRows(item, result, solution);
     if (this.isWordSearch(item)) return this.wordSearchRows(item, result);
     if (this.isLogicGrid(item)) return this.logicGridRows(item, result, solution);
+    if (this.isRegionPaint(item)) return this.regionPaintRows(item, result, solution);
     if (this.isOpenText(item)) return this.openTextRows(item, result);
     return this.isDragDrop(item)
       ? this.dragDropRows(item, result, solution)
@@ -689,6 +711,7 @@ export class ActivityPlayerComponent {
     this.crosswordPlans.clear();
     this.wordSearchPlans.clear();
     this.logicGridPlans.clear();
+    this.regionPaintPlans.clear();
   }
 
   // ---------------------------------------------------------------------------
@@ -1309,6 +1332,10 @@ export class ActivityPlayerComponent {
     return isLogicGridType(item.question?.interactionType);
   }
 
+  isRegionPaint(item: TestInstanceQuestion): boolean {
+    return isRegionPaintType(item.question?.interactionType);
+  }
+
   isWordSearch(item: TestInstanceQuestion): boolean {
     return isWordSearchType(item.question?.interactionType);
   }
@@ -1326,7 +1353,8 @@ export class ActivityPlayerComponent {
       this.isMazeTree(item) ||
       this.isCrossword(item) ||
       this.isWordSearch(item) ||
-      this.isLogicGrid(item)
+      this.isLogicGrid(item) ||
+      this.isRegionPaint(item)
     );
   }
 
@@ -1371,6 +1399,13 @@ export class ActivityPlayerComponent {
       this.logicGridPlans.set(item.id, parseLogicGridPlan(item.question?.interactionPlan));
     }
     return this.logicGridPlans.get(item.id) ?? null;
+  }
+
+  private regionPaintPlanFor(item: TestInstanceQuestion): RegionPaintPlanV1 | null {
+    if (!this.regionPaintPlans.has(item.id)) {
+      this.regionPaintPlans.set(item.id, parseRegionPaintPlan(item.question?.interactionPlan));
+    }
+    return this.regionPaintPlans.get(item.id) ?? null;
   }
 
   private wordSearchPlanFor(item: TestInstanceQuestion): WordSearchPlanV1 | null {
@@ -1466,6 +1501,7 @@ export class ActivityPlayerComponent {
     }
     if (this.isOpenText(item)) return !isBlankOpenText(parseOpenTextAnswer(answer?.answerPayload));
     if (this.isMazeTree(item)) return !isEmptyMazeAnswer(parseMazeAnswer(answer?.answerPayload, this.mazePlanFor(item)));
+    if (this.isRegionPaint(item)) return !isEmptyPaint(parseRegionPaintAnswer(answer?.answerPayload, this.regionPaintPlanFor(item)));
     if (this.isLogicGrid(item)) return countMarks(parseLogicGridAnswer(answer?.answerPayload, this.logicGridPlanFor(item))) > 0;
     if (this.isWordSearch(item)) return parseWordSearchAnswer(answer?.answerPayload, this.wordSearchPlanFor(item)).length > 0;
     if (this.isCrossword(item)) {
@@ -1512,6 +1548,8 @@ export class ActivityPlayerComponent {
       const parsed = parseMazeAnswer(answer?.answerPayload, plan);
       return plan.variant === 'stones' ? parsed.marked.length === 0 : !walkMaze(plan, parsed.path).finished;
     }
+    // Issue #587: boyamada hiç boyanmış kare yok (hedef sayılar öğrenciye gitmez).
+    if (this.isRegionPaint(item)) return isEmptyPaint(parseRegionPaintAnswer(answer?.answerPayload, this.regionPaintPlanFor(item)));
     // Issue #586: mantık tablosunda ✓'siz (kişi, kategori) çifti var.
     if (this.isLogicGrid(item)) {
       const plan = this.logicGridPlanFor(item);
@@ -1752,6 +1790,24 @@ export class ActivityPlayerComponent {
         };
       })
     );
+  }
+
+  /** Issue #587: boyamada renk başına satır ("Mavi: 35 kare"); çözüm açıkken hedef sayı. */
+  private regionPaintRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
+    const plan = this.regionPaintPlanFor(item);
+    if (!plan || (!result && !solution)) return [];
+    const counts = countPainted(parseRegionPaintAnswer(this.answers()[item.id]?.answerPayload, plan), plan.palette.length);
+    const target = solution ? parseRegionPaintSolution(solution.interactionSolution, plan) : null;
+    const rowMarks = new Map((result?.rows ?? []).map((row) => [row.id, row.correct]));
+    return plan.palette.map((entry, index) => {
+      const color = entry.label || this.transloco.translate<string>(`shared.questionCanvas.regionPaint.colors.${entry.color}`);
+      const expected = target && Object.hasOwn(target, entry.id) ? target[entry.id] : null;
+      return {
+        label: this.tr('rows.paintColor', { color, count: counts[index] }),
+        correct: rowMarks.has(entry.id) ? rowMarks.get(entry.id)! : null,
+        solution: expected === null ? null : this.tr('rows.paintColor', { color, count: expected }),
+      };
+    });
   }
 
   /** Issue #586: kelime avında kelime başına satır ("KALP: bulundu"); kontrol yoksa satır yok (çözüm ızgarada gösterilir). */

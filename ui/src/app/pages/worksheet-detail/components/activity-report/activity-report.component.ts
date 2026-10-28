@@ -27,6 +27,7 @@ const KNOWN_TYPES = new Set([
   'crossword',
   'wordSearch',
   'logicGrid',
+  'regionPaint',
 ]);
 
 /**

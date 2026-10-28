@@ -27,7 +27,8 @@
     "mazeStones": "Irmak taşları",
     "crossword": "Çengel bulmaca",
     "wordSearch": "Kelime avı",
-    "logicGrid": "Mantık tablosu"
+    "logicGrid": "Mantık tablosu",
+    "regionPaint": "Boyama (ızgara)"
   },
   "kindHints": {
     "matrix": "Her satır için doğru seçeneği işaretle. D/Y şablonu iki kolon kurar; çoklu seçimde satırda birden çok doğru olabilir.",
@@ -41,7 +42,8 @@
     "mazeTree": "Öğrenci her ifadede D ya da Y'yi seçerek ilerler ve bir çıkışa varır. Her ifadenin doğrusunu işaretle; doğru çıkış bunlardan bulunur.",
     "mazeBoard": "Her satırda tek doğru kutu var; öğrenci alttan üste kutulara basarak bitişe ulaşır. Yanlış kutu kırılır.",
     "mazeRooms": "Her oda bir soru; odalar arası kapılar cevaplardır. Öğrenci başlangıç odasından doğru kapıları izleyerek bitişe varır.",
-    "mazeStones": "Öğrenci basılmaması gereken (yanlış) taşları işaretler. Basılmaması gereken taşları damla simgesiyle işaretle."
+    "mazeStones": "Öğrenci basılmaması gereken (yanlış) taşları işaretler. Basılmaması gereken taşları damla simgesiyle işaretle.",
+    "regionPaint": "Öğrenci eş karelere ayrılmış ızgarada her rengi istenen oranda boyar; karelerin yeri serbesttir, renk başına sayı kontrol edilir."
   },
   "instruction": "Yönerge (isteğe bağlı)",
   "image": {
@@ -189,7 +191,13 @@
     "cipherWordShort": "Gizli kelimede en az {{min}} harf olmalı.",
     "cipherLetterInvalid": "Soru harfi tek bir harf ya da rakam olmalı.",
     "cipherLetterMissing": "Gizli kelimedeki \"{{letter}}\" harfini taşıyan bir soru yok.",
-    "cipherLetterUnused": "\"{{letter}}\" harfi gizli kelimede geçmiyor."
+    "cipherLetterUnused": "\"{{letter}}\" harfi gizli kelimede geçmiyor.",
+    "paintGridSize": "Izgara {{min}}–{{max}} satır ve sütun olmalı.",
+    "paintColorCount": "En az 1, en çok {{max}} renk olmalı.",
+    "paintColorDuplicate": "Aynı renk iki kez seçilmiş.",
+    "paintTargetInvalid": "Şu hedefler {{total}} kareye tam bölünmüyor ya da okunamadı: {{list}}. Kesir (2/5), ondalık (0,35), yüzde (%25) ya da kare sayısı yazın.",
+    "paintTargetMissing": "En az bir renge hedef verin.",
+    "paintTargetTooMany": "Hedefler toplam {{sum}} kare; ızgarada {{total}} kare var."
   },
   "snackbar": {
     "created": "Madde etkinliğe eklendi.",
@@ -312,5 +320,29 @@
     "clues": "İpuçları",
     "clue": "{{n}}. ipucu",
     "addClue": "İpucu ekle"
+  },
+  "regionPaint": {
+    "hint": "Izgara boyutunu ve renkleri seçin. Her rengin hedefini kitaptaki gibi yazın: kesir (2/5), ondalık (0,35), yüzde (%25) ya da kare sayısı. Hedefi boş renk çeldiricidir (boyanmamalı). İsterseniz palet düğmesinde görünecek bir etiket verin (ör. \"2/5\").",
+    "rows": "Satır",
+    "cols": "Sütun",
+    "total": "{{total}} kare",
+    "color": "Renk",
+    "target": "Hedef (2/5, 0,35, %25, 40)",
+    "label": "Palette görünen etiket (isteğe bağlı)",
+    "cells": "= {{n}} kare",
+    "cellsInvalid": "tam kareye inmiyor",
+    "addColor": "Renk ekle",
+    "colors": {
+      "red": "Kırmızı",
+      "orange": "Turuncu",
+      "yellow": "Sarı",
+      "green": "Yeşil",
+      "blue": "Mavi",
+      "purple": "Mor",
+      "pink": "Pembe",
+      "brown": "Kahverengi",
+      "black": "Siyah",
+      "gray": "Gri"
+    }
   }
 }

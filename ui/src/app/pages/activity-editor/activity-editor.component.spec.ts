@@ -174,6 +174,29 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(JSON.parse(q.interactionSolution)).toEqual({ assign: { p1: { c1: 'o2' }, p2: { c1: 'o1' } } });
   });
 
+  it('boyama: hedefleri kare sayısına çevirip kaydeder, önizlemede ızgarayı çizer (#587)', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('regionPaint');
+    fixture.detectChanges();
+    expect(el('[data-testid="region-paint-form"]')).not.toBeNull();
+
+    component.setPaintEntry(0, { target: '0,35', label: '0,35' });
+    component.addPaintEntry();
+    component.setPaintEntry(1, { target: '%25' });
+    fixture.detectChanges();
+    expect(el('[data-paint-cells="0"]')?.textContent).toContain('35');
+    expect(el('[data-testid="preview"] app-question-canvas-region-paint')).not.toBeNull();
+
+    component.save(false);
+    const q = questions.saveBulk.mock.calls[0][0].questions[0];
+    expect(q.interactionType).toBe('regionPaint');
+    expect(JSON.parse(q.interactionPlan).palette).toEqual([
+      { id: 'p1', color: 'blue', label: '0,35' },
+      { id: 'p2', color: 'red' },
+    ]);
+    expect(JSON.parse(q.interactionSolution)).toEqual({ counts: { p1: 35, p2: 25 } });
+  });
+
   it('kelime avı: ızgarayı kelimelerden üretir, önizlemede çizer ve çözümü ayrı kaydeder (#586)', async () => {
     await setup({ testId: '9' });
     component.selectKind('wordSearch');

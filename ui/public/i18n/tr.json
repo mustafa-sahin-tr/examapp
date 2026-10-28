@@ -514,6 +514,31 @@
         "resultOk": "Tablonun tamamı doğru!",
         "resultPartial": "{{total}} eşleştirmeden {{ok}} tanesi doğru; kırmızı satırlara yeniden bak.",
         "solutionShown": "Doğru eşleştirmeler ✓ ile gösteriliyor."
+      },
+      "regionPaint": {
+        "passageAlt": "Okuma metni görseli",
+        "imageAlt": "Etkinlik görseli",
+        "invalid": "Bu etkinlik açılamadı.",
+        "palette": "Renkler",
+        "eraser": "Silgi",
+        "total": "Izgarada {{total}} kare var.",
+        "reset": "Temizle",
+        "hint": "Bir renk seç, karelere dokun ya da üzerlerinde sürükle. Aynı renkli kareden başlarsan siler. Renklerin yanındaki sayı o renkte boyadığın kare sayısıdır.",
+        "resultOk": "Bütün renkler doğru sayıda!",
+        "resultPartial": "{{total}} renkten {{ok}} tanesi doğru sayıda; kırmızı renklerin kare sayısına yeniden bak.",
+        "solutionShown": "Her renkten boyanması gereken kare sayısı örnek bir dolguyla gösteriliyor (kareler başka yerde de olabilir).",
+        "colors": {
+          "red": "Kırmızı",
+          "orange": "Turuncu",
+          "yellow": "Sarı",
+          "green": "Yeşil",
+          "blue": "Mavi",
+          "purple": "Mor",
+          "pink": "Pembe",
+          "brown": "Kahverengi",
+          "black": "Siyah",
+          "gray": "Gri"
+        }
       }
     },
     "sharingBadge": {

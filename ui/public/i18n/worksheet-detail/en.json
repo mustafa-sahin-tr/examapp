@@ -298,7 +298,8 @@
         "mazeTree": "Path game",
         "crossword": "Crossword",
         "wordSearch": "Word search",
-        "logicGrid": "Logic grid"
+        "logicGrid": "Logic grid",
+        "regionPaint": "Colouring"
       }
     },
     "addTextItem": "Add text-only item"

@@ -1,0 +1,82 @@
+<div class="rp-root" [class.is-solution]="solutionShown()" *transloco="let t; prefix: 'shared.questionCanvas.regionPaint'">
+  @if (!hidePassage && passageImageUrl(); as pUrl) {
+    <div class="rp-passage">
+      @if (passageTitle(); as title) {
+        <div class="rp-passage__title">{{ title }}</div>
+      }
+      <img class="rp-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (imageUrl(); as url) {
+    <div class="rp-image-wrap">
+      <img class="rp-image" [src]="url" [alt]="t('imageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (plan(); as p) {
+    <div class="rp-palette" role="radiogroup" [attr.aria-label]="t('palette')" data-testid="rp-palette">
+      @for (entry of p.palette; track entry.id; let i = $index) {
+        <button type="button" role="radio" class="rp-swatch" [attr.data-paint]="i" [attr.aria-checked]="selected() === i"
+          [class.is-selected]="selected() === i && !readOnly()" [class.is-ok]="entryState(entry.id) === 'ok'"
+          [class.is-bad]="entryState(entry.id) === 'bad'" [disabled]="readOnly()" (click)="select(i)">
+          <span class="rp-swatch__chip" [style.background]="css(entry.color)" aria-hidden="true"></span>
+          <span class="rp-swatch__label">{{ entry.label || t('colors.' + entry.color) }}</span>
+          <span class="rp-swatch__count" [attr.data-count]="i">{{ counts()[i] }}</span>
+          @if (entryState(entry.id) === 'ok') {
+            <mat-icon class="rp-swatch__mark" aria-hidden="true">check</mat-icon>
+          } @else if (entryState(entry.id) === 'bad') {
+            <mat-icon class="rp-swatch__mark" aria-hidden="true">close</mat-icon>
+          }
+        </button>
+      }
+      @if (!readOnly()) {
+        <button type="button" role="radio" class="rp-swatch rp-swatch--eraser" data-testid="rp-eraser" [attr.aria-checked]="selected() === null"
+          [class.is-selected]="selected() === null" (click)="select(null)">
+          <mat-icon aria-hidden="true">ink_eraser</mat-icon>
+          <span class="rp-swatch__label">{{ t('eraser') }}</span>
+        </button>
+      }
+    </div>
+
+    <p class="rp-total">{{ t('total', { total: total() }) }}</p>
+
+    <div class="rp-scroll">
+      <div class="rp-grid" data-testid="rp-grid" [style.--rp-cell]="cellSize(p.cols)"
+        [style.grid-template-columns]="'repeat(' + p.cols + ', var(--rp-cell))'"
+        (pointermove)="moveStroke($event)" (pointerup)="endStroke()" (pointercancel)="endStroke()" (pointerleave)="endStroke()">
+        @for (row of shown(); track $index; let r = $index) {
+          @for (value of row; track $index; let c = $index) {
+            <button type="button" class="rp-cell" data-cell [attr.data-r]="r" [attr.data-c]="c" [disabled]="readOnly()"
+              [style.background]="cellColor(value)" [attr.aria-label]="cellAria(r, c, value)"
+              (pointerdown)="startStroke($event, r, c)" (keydown.enter)="$event.preventDefault(); toggle(r, c)"
+              (keydown.space)="$event.preventDefault(); toggle(r, c)"></button>
+          }
+        }
+      </div>
+    </div>
+
+    @if (!solutionShown()) {
+      <div class="rp-actions">
+        <button mat-stroked-button type="button" data-testid="rp-reset" [disabled]="!canReset()" (click)="reset()">
+          <mat-icon>restart_alt</mat-icon>{{ t('reset') }}
+        </button>
+      </div>
+      <p class="rp-hint">{{ t('hint') }}</p>
+    }
+  } @else {
+    <p class="rp-hint" data-testid="rp-invalid">{{ t('invalid') }}</p>
+  }
+
+  @if (feedbackState(); as fb) {
+    <p class="rp-result" role="status" data-testid="rp-result" [class.is-ok]="correctCount() === fb.rows.length"
+      [class.is-bad]="correctCount() < fb.rows.length">
+      <mat-icon aria-hidden="true">{{ correctCount() === fb.rows.length ? 'check_circle' : 'error' }}</mat-icon>
+      {{ correctCount() === fb.rows.length ? t('resultOk') : t('resultPartial', { ok: correctCount(), total: fb.rows.length }) }}
+    </p>
+  }
+
+  @if (solutionShown()) {
+    <p class="rp-hint" data-testid="rp-solution-hint">{{ t('solutionShown') }}</p>
+  }
+</div>

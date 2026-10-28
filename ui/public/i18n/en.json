@@ -514,6 +514,31 @@
         "resultOk": "The whole grid is correct!",
         "resultPartial": "{{ok}} of {{total}} matches are correct; check the red rows again.",
         "solutionShown": "The correct matches are shown with ✓."
+      },
+      "regionPaint": {
+        "passageAlt": "Reading passage image",
+        "imageAlt": "Activity image",
+        "invalid": "This activity could not be opened.",
+        "palette": "Colours",
+        "eraser": "Eraser",
+        "total": "The grid has {{total}} squares.",
+        "reset": "Clear",
+        "hint": "Pick a colour, then tap squares or drag across them. Starting on a square of the same colour erases. The number next to each colour is how many squares you painted with it.",
+        "resultOk": "Every colour has the right number of squares!",
+        "resultPartial": "{{ok}} of {{total}} colours have the right number of squares; recount the red ones.",
+        "solutionShown": "The number of squares for each colour is shown with a sample fill (the squares could be elsewhere too).",
+        "colors": {
+          "red": "Red",
+          "orange": "Orange",
+          "yellow": "Yellow",
+          "green": "Green",
+          "blue": "Blue",
+          "purple": "Purple",
+          "pink": "Pink",
+          "brown": "Brown",
+          "black": "Black",
+          "gray": "Gray"
+        }
       }
     },
     "sharingBadge": {

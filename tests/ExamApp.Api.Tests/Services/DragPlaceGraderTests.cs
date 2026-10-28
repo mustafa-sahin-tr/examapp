@@ -258,6 +258,41 @@ public class DragPlaceGraderTests
         Grader.Normalize(payload).ShouldBe(payload);
     }
 
+    // ---------------------------------------------------------------- boşluklu metin + kelime havuzu (#590 dilim b)
+
+    private const string ClozePlan =
+        """{"version":1,"type":"dragPlace","mode":"place","layout":{"kind":"text","text":"Su [[t1]] °C'de donar, [[t2]] °C'de kaynar."},"targets":[{"id":"t1","capacity":1},{"id":"t2","capacity":1}],"cards":[{"id":"k1","label":"0"},{"id":"k2","label":"100"},{"id":"k3","label":"50"}]}""";
+
+    private const string ClozeSolution = """{"t1":["k1"],"t2":["k2"]}""";
+
+    [Fact]
+    public void ValidateDefinition_TextLayout_IsValidAndGrades()
+    {
+        Grader.ValidateDefinition(ClozePlan, ClozeSolution).ShouldBeTrue();
+        Grader.Grade(Input(Payload(("t1", "k1"), ("t2", "k2")), ClozeSolution, ClozePlan)).IsCorrect.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("\"capacity\":1},{\"id\":\"t2\",\"capacity\":1}", "\"capacity\":1},{\"id\":\"t2\",\"capacity\":2}")]           // kapasite > 1
+    [InlineData("\"mode\":\"place\"", "\"mode\":\"order\"")]                                                                     // sıralama
+    [InlineData("[[t2]] °C'de kaynar.", "°C'de kaynar.")]                                                                         // t2 metinde yok
+    [InlineData("{\"id\":\"t1\",\"capacity\":1}", "{\"id\":\"t1\",\"capacity\":1,\"box\":{\"x\":0,\"y\":0,\"width\":1,\"height\":1}}")] // kutulu hedef
+    [InlineData("{\"kind\":\"text\",", "{\"kind\":\"list\",")]                                                                   // desteklenmeyen düzen
+    public void ValidateDefinition_InvalidTextLayout_IsRejected(string from, string to)
+    {
+        ClozePlan.ShouldContain(from);
+        Grader.ValidateDefinition(ClozePlan.Replace(from, to), ClozeSolution).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void PrepareForStorage_KeepsTargetIdsInTheText()
+    {
+        var (plan, _) = Grader.PrepareForStorage(ClozePlan, ClozeSolution);
+        plan!.ShouldContain("[[t1]]");
+        plan.ShouldContain("[[t2]]");
+        plan.ShouldNotContain("\"k1\"");
+    }
+
     // ---------------------------------------------------------------- ValidateDefinition
 
     [Fact]

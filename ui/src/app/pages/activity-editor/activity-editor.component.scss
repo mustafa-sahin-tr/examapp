@@ -334,3 +334,62 @@
     min-height: 44px;
   }
 }
+
+// #590 (dilim b): boşluklu metin alanı ve tablo editörü.
+.ae__textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 120px;
+  padding: 10px 12px;
+  border: 1px solid var(--ms-border-strong);
+  border-radius: 8px;
+  background: var(--ms-surface);
+  color: var(--ms-text);
+  font: inherit;
+  font-family: var(--paragraphFontFamily);
+  line-height: 1.5;
+  resize: vertical;
+
+  &:focus-visible {
+    outline: 3px solid var(--ms-action-border-focus);
+    outline-offset: 1px;
+  }
+}
+
+.ae__table-wrap {
+  overflow-x: auto;
+}
+
+.ae__table {
+  border-collapse: collapse;
+
+  td {
+    padding: 2px;
+    border: 1px solid var(--ms-border-weak);
+  }
+
+  tr.is-header .ae__cell {
+    font-weight: 700;
+    background: var(--ms-surface-weak);
+  }
+}
+
+.ae__table-action {
+  border: none !important;
+  text-align: center;
+}
+
+.ae__cell {
+  box-sizing: border-box;
+  width: 9em;
+  min-height: 36px;
+  padding: 4px 6px;
+  border: none;
+  background: var(--ms-surface);
+  color: var(--ms-text);
+  font: inherit;
+
+  &:focus-visible {
+    outline: 2px solid var(--ms-action-border-focus);
+  }
+}

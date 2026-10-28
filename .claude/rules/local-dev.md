@@ -664,8 +664,22 @@ yeniden çözme ikinci kez saymaz) ve ilk kontrol doğru oranı ortalaması (`Fi
 sayısı — ipucu vermesin), sıralama (`dragPlace` order), eşleştirme (`match`, çeldirici sağ öğeler). Aynı tipler/kontrolcüler;
 matris satırında `box` artık isteğe bağlı (kutusuz satırda boş olmayan `label` zorunlu, `cells` yasak). Yeni madde toplu kayıtla
 (`questions/save`, `imageData` yok ya da tek etkileşimsiz görsel; kapsam kutusu 0×0 kırpılmaz), düzenleme tekli kayıtla. Yönerge düz
-metin (#573). Seçilen konu kilitlenir (bkz. architecture.md); seçilmezse madde metinle sınıflandırılır. Boşluk doldurma ve boşluklu
-metin + kelime havuzu dilim b'de. Migration yok; Aspire'da exam API ve BadgeService'i yeniden başlat.
+metin (#573). Seçilen konu kilitlenir (bkz. architecture.md); seçilmezse madde metinle sınıflandırılır. Migration yok; Aspire'da exam
+API ve BadgeService'i yeniden başlat.
+
+**Issue #590 dilim b — boşluk türleri (görselsiz düzen).** Plana isteğe bağlı `layout` geldi (`InteractionLayout`, TS
+`interaction-layout.ts`): `{kind:"list"}` (her öğe etiketiyle satır), `{kind:"text",text}` (satır içi metin, `[[id]]` öğenin yeri),
+`{kind:"table",header?,rows}` (hücreler düz metin, `[[id]]` içeren hücre cevap kutusu; satırlar eşit genişlikte, başlıkta yer tutucu
+yok). Kayıtta her öğe düzende **tam bir kez** geçer, bilinmeyen id'li yer tutucu yok, düz metin süzgeci (`PlainTextAttribute` kuralı),
+metin ≤ 4000, tablo ≤ 30 satır × 8 kolon, hücre ≤ 200. Düzende çözüm yoktur. `slotFill`: `layout` varsa kutularda `box` **yasak**
+(yoksa eskisi gibi zorunlu), `list`'te her kutunun boş olmayan `label`'ı (soru) zorunlu. `dragPlace`: yalnız `text` düzeni, yalnız
+`place`, hedefler kutusuz ve kapasite 1, kartlar kutusuz (boşluklu metin + kelime havuzu); kayıttaki kart karıştırma hedef id'lerine
+dokunmaz, metin geçerli kalır. Editörde 4 yeni tür: **Boşluk doldurma** (metinde `[[cevap|alternatif]]`; "Seçili metni boşluk yap"),
+**Soru + kısa cevap** (liste), **Tablo** (hücrede `[[cevap]]`), **Kelime havuzu** (`[[kelime]]` + çeldiriciler; aynı kelime birden
+çok boşlukta tek kart + `reuse`). Tek cevap birimsiz sayıysa (`parseTrNumber`) sayı kutusu (kesir / tam sayılı kesir, eşdeğerlik açık),
+değilse metin kutusu (#575 normalleştirmesi). Seçim/palet kutusu, birim ve sonek editörde yok (tuvalde var); öyle bir plan editörde
+açılmaz. Oynatıcılar düzeni HTML olarak çizer (görsel varsa etkileşimsiz üstte kalır). Sınıflandırma metnine düzen metni yer
+tutucular `____` olarak girer. Migration yok; Aspire'da exam API'yi yeniden başlat.
 
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını

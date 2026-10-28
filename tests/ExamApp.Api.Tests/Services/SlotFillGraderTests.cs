@@ -191,6 +191,62 @@ public class SlotFillGraderTests
     public void ValidateDefinition_PlanWithoutSolution_IsDraft()
         => Grader.ValidateDefinition(Plan, null).ShouldBeTrue();
 
+    // ---------------------------------------------------------------- görselsiz düzen (#590 dilim b)
+
+    private const string TextSlots =
+        """[{"id":"s1","input":{"kind":"text"}},{"id":"s2","input":{"kind":"number","entry":"plain"}}]""";
+
+    private const string LayoutSolution = """{"s1":{"accept":["Ankara"]},"s2":{"value":"81"}}""";
+
+    [Theory]
+    [InlineData("""{"kind":"text","text":"Başkent [[s1]], il sayısı [[s2]]."}""")]
+    [InlineData("""{"kind":"table","header":["Soru","Cevap"],"rows":[["Başkent","[[s1]]"],["İl sayısı","[[s2]]"]]}""")]
+    [InlineData("""{"kind":"table","rows":[["[[s1]] ve [[s2]]"]]}""")]
+    public void ValidateDefinition_LayoutWithoutBoxes_IsValid(string layout)
+    {
+        var plan = "{\"version\":1,\"type\":\"slotFill\",\"layout\":" + layout + ",\"slots\":" + TextSlots + "}";
+        Grader.ValidateDefinition(plan, LayoutSolution).ShouldBeTrue();
+        Grader.Grade(Input(Payload("""{"s1":"ankara","s2":"81"}"""), LayoutSolution, plan)).IsCorrect.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void ValidateDefinition_ListLayout_RequiresEverySlotLabel()
+    {
+        const string labelled =
+            """{"version":1,"type":"slotFill","layout":{"kind":"list"},"slots":[{"id":"s1","label":"Başkent?","input":{"kind":"text"}},{"id":"s2","label":"İl sayısı?","input":{"kind":"number","entry":"plain"}}]}""";
+        Grader.ValidateDefinition(labelled, LayoutSolution).ShouldBeTrue();
+        const string unlabelled =
+            """{"version":1,"type":"slotFill","layout":{"kind":"list"},"slots":[{"id":"s1","label":"Başkent?","input":{"kind":"text"}},{"id":"s2","label":" ","input":{"kind":"number","entry":"plain"}}]}""";
+        Grader.ValidateDefinition(unlabelled, LayoutSolution).ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("""{"kind":"text","text":"Yalnız [[s1]]."}""")]                                    // s2 metinde yok
+    [InlineData("""{"kind":"text","text":"[[s1]] [[s2]] [[s1]]"}""")]                              // s1 iki kez
+    [InlineData("""{"kind":"text","text":"[[s1]] [[s2]] [[s9]]"}""")]                              // bilinmeyen yer tutucu
+    [InlineData("""{"kind":"text","text":"[[s1]] [[s2]]","answer":"Ankara"}""")]                   // düzende gizli alan
+    [InlineData("""{"kind":"text","text":"[[s1]] \u0007 [[s2]]"}""")]                              // kontrol karakteri
+    [InlineData("""{"kind":"grid"}""")]                                                            // bilinmeyen tür
+    [InlineData("""{"kind":"table","rows":[["[[s1]]","a"],["[[s2]]"]]}""")]                         // düzensiz satır
+    [InlineData("""{"kind":"table","header":["[[s1]]"],"rows":[["[[s2]]"]]}""")]                    // başlıkta kutu
+    [InlineData("""{"kind":"table","rows":[]}""")]                                                 // boş tablo
+    public void ValidateDefinition_InvalidLayout_IsRejected(string layout)
+    {
+        var plan = "{\"version\":1,\"type\":\"slotFill\",\"layout\":" + layout + ",\"slots\":" + TextSlots + "}";
+        Grader.ValidateDefinition(plan, LayoutSolution).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void ValidateDefinition_LayoutAndBoxesDoNotMix()
+    {
+        // Düzenli planda kutu yasak; düzensiz planda kutu zorunlu.
+        var boxed = "{\"version\":1,\"type\":\"slotFill\",\"layout\":{\"kind\":\"text\",\"text\":\"[[s1]]\"},\"slots\":[{\"id\":\"s1\","
+            + Box + ",\"input\":{\"kind\":\"text\"}}]}";
+        Grader.ValidateDefinition(boxed, null).ShouldBeFalse();
+        Grader.ValidateDefinition("""{"version":1,"type":"slotFill","slots":[{"id":"s1","input":{"kind":"text"}}]}""", null)
+            .ShouldBeFalse();
+    }
+
     [Fact]
     public void ValidateDefinition_RegistryResolvesAndCanonicalizes()
     {

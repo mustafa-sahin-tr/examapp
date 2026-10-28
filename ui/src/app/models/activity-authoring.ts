@@ -3,9 +3,21 @@
  * (kitaptan) etkinliklerle aynı tipler ve kontrolcüler kullanılır; ayrı veri modeli yok. Plan kutusuzdur: matris satırları
  * etiketli liste, sürükle-yerleştir hedefleri kova / sıralı konum, eşleştirme öğeleri metin. Çözüm ayrı alanda gider (#570).
  *
+ * Dilim b: boşluk türleri (boşluk doldurma, soru + kısa cevap, tablo → `slotFill` düzenli plan; kelime havuzu → `dragPlace`
+ * boşluklu metin) `activity-authoring-blanks.ts`'te.
+ *
  * Kayıtta backend sürükle-yerleştir kartlarını ve eşleştirme sağ öğelerini karışık sıraya dizip opak id verir (#576
  * H1/M1); düzenlemede formu plan + çözümden geri kurarken id'lere değil, plan sırası ve çözüm eşlemesine bakılır.
  */
+import {
+  BlankForm,
+  BlankKind,
+  buildBlankDefinition,
+  emptyBlankForm,
+  parseSlotFillBlanks,
+  parseWordPool,
+  validateBlankForm,
+} from './activity-authoring-blanks';
 import { DRAG_PLACE, DRAG_PLACE_LIMITS, DragPlacePlanV1, parseDragPlacePlan, parseDragPlaceSolution, cardsIn } from './drag-place';
 import { MATCH, MATCH_LIMITS, MatchPlanV1, parseMatchPlan, parseMatchSolution, rightOf } from './match';
 import {
@@ -16,10 +28,20 @@ import {
   parseMatrixChoiceSolution,
   selectionOf,
 } from './matrix-choice';
+import { SLOT_FILL, parseSlotFillPlan } from './slot-fill';
 
-export type AuthoringKind = 'matrix' | 'classify' | 'order' | 'match';
+export type AuthoringKind = 'matrix' | 'classify' | 'order' | 'match' | BlankKind;
 
-export const AUTHORING_KINDS: readonly AuthoringKind[] = ['matrix', 'classify', 'order', 'match'];
+export const AUTHORING_KINDS: readonly AuthoringKind[] = [
+  'matrix',
+  'classify',
+  'order',
+  'match',
+  'fillText',
+  'shortAnswer',
+  'fillTable',
+  'wordPool',
+];
 
 export const AUTHORING_LABEL_MAX = MATRIX_CHOICE_LIMITS.maxLabelLength;
 
@@ -67,10 +89,10 @@ export interface MatchForm {
   distractors: string[];
 }
 
-export type AuthoringForm = MatrixForm | ClassifyForm | OrderForm | MatchForm;
+export type AuthoringForm = MatrixForm | ClassifyForm | OrderForm | MatchForm | BlankForm;
 
 export interface AuthoringDefinition {
-  interactionType: typeof MATRIX_CHOICE | typeof DRAG_PLACE | typeof MATCH;
+  interactionType: typeof MATRIX_CHOICE | typeof DRAG_PLACE | typeof MATCH | typeof SLOT_FILL;
   plan: string;
   solution: string;
 }
@@ -97,6 +119,8 @@ export function emptyForm(kind: AuthoringKind, trueFalseLabels: readonly [string
       return { kind, items: ['', '', ''] };
     case 'match':
       return { kind, pairs: [{ left: '', right: '' }, { left: '', right: '' }], distractors: [] };
+    default:
+      return emptyBlankForm(kind);
   }
 }
 
@@ -169,6 +193,8 @@ export function validateForm(form: AuthoringForm): AuthoringError[] {
       if (new Set(normalized).size !== normalized.length) errors.push({ key: 'duplicateRight' });
       break;
     }
+    default:
+      errors.push(...validateBlankForm(form));
   }
   return errors;
 }
@@ -223,6 +249,8 @@ export function buildDefinition(form: AuthoringForm): AuthoringDefinition {
       const plan = { version: 1, type: MATCH, left, right, prelinked: [] };
       return { interactionType: MATCH, plan: JSON.stringify(plan), solution: JSON.stringify(solution) };
     }
+    default:
+      return buildBlankDefinition(form);
   }
 }
 
@@ -239,6 +267,7 @@ export function parseDefinition(
   if (type === MATRIX_CHOICE.toLowerCase()) return parseMatrix(parseMatrixChoicePlan(planJson), solutionJson);
   if (type === DRAG_PLACE.toLowerCase()) return parseDragPlace(parseDragPlacePlan(planJson), solutionJson);
   if (type === MATCH.toLowerCase()) return parseMatch(parseMatchPlan(planJson), solutionJson);
+  if (type === SLOT_FILL.toLowerCase()) return parseSlotFillBlanks(parseSlotFillPlan(planJson), solutionJson);
   return null;
 }
 
@@ -260,7 +289,11 @@ function parseMatrix(plan: MatrixChoicePlanV1 | null, solutionJson: string | nul
   };
 }
 
-function parseDragPlace(plan: DragPlacePlanV1 | null, solutionJson: string | null | undefined): ClassifyForm | OrderForm | null {
+function parseDragPlace(
+  plan: DragPlacePlanV1 | null,
+  solutionJson: string | null | undefined
+): ClassifyForm | OrderForm | BlankForm | null {
+  if (plan?.layout) return parseWordPool(plan, solutionJson);
   if (!plan || plan.reuse) return null;
   if (plan.targets.some((t) => t.box) || plan.cards.some((c) => c.box || !c.label)) return null;
   const solution = parseDragPlaceSolution(solutionJson, plan);

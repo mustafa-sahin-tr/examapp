@@ -584,3 +584,96 @@
 .dp-root.is-locked .dp-card {
   cursor: default;
 }
+
+// #590 (dilim b): boşluklu metin. Boşluk satır içinde bir bırakma alanı; boşken numaralı düğme, doluyken küçük kart.
+.dp-cloze {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+
+  &__text {
+    margin: 0;
+    font-size: 16px;
+    line-height: 2.4;
+    overflow-wrap: anywhere;
+  }
+
+  &__seg {
+    white-space: pre-wrap;
+  }
+}
+
+.dp-blank {
+  display: inline-flex;
+  vertical-align: middle;
+  align-items: center;
+  min-width: 88px;
+  min-height: 36px;
+  margin: 2px 4px;
+  border-radius: 8px;
+  border: 2px dashed var(--ms-action-border);
+  line-height: 1.2;
+  white-space: normal;
+
+  &.is-filled {
+    border-style: solid;
+    border-color: transparent;
+  }
+
+  &.is-pending {
+    border-style: solid;
+    border-color: var(--ms-action-border-focus);
+    box-shadow: 0 0 0 2px var(--ms-focus-ring);
+  }
+
+  &.is-incomplete {
+    border-color: var(--ms-danger-border);
+  }
+
+  &__empty {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: 100%;
+    min-height: 32px;
+    padding: 0 10px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ms-text-medium);
+    font: inherit;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 3px solid var(--ms-action-border-focus);
+      outline-offset: 1px;
+    }
+
+    &:disabled {
+      cursor: default;
+    }
+  }
+
+  &__no {
+    font-family: var(--mainFontFamily);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  &__warn {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    color: var(--ms-danger-text);
+  }
+}
+
+.dp-root.is-activity .dp-blank {
+  min-height: 44px;
+
+  &__empty {
+    min-height: 40px;
+  }
+}

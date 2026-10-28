@@ -16,6 +16,7 @@ import {
   isInteractionType,
   isValidInteractionId,
 } from './interaction-ids';
+import { TextLayout, parseLayout } from './interaction-layout';
 
 export const DRAG_PLACE = 'dragPlace' as const;
 
@@ -54,6 +55,8 @@ export interface DragPlacePlanV1 {
   reuse: boolean;
   targets: DragPlaceTarget[];
   cards: DragPlaceCard[];
+  /** Issue #590 (dilim b): boşluklu metin (`[[hedefId]]` boşluğun yeri) + kelime havuzu; yalnız `place` modunda. */
+  layout?: TextLayout | null;
 }
 
 /** Hedef id → hedefteki kart id'leri (çözüm ve öğrenci yerleşimi aynı biçimde; prototipsiz). */
@@ -136,7 +139,10 @@ export function parseDragPlacePlan(json: string | null | undefined): DragPlacePl
       cards.push({ id, label, box });
     }
     if (targets.length === 0 || cards.length === 0) return null;
-    return { version: 1, type: DRAG_PLACE, mode, reuse: parsed['reuse'] === true, targets, cards };
+    const plan: DragPlacePlanV1 = { version: 1, type: DRAG_PLACE, mode, reuse: parsed['reuse'] === true, targets, cards };
+    const layout = mode === 'place' ? parseLayout(parsed['layout'], ['text']) : null;
+    if (layout?.kind === 'text') plan.layout = layout;
+    return plan;
   } catch {
     return null;
   }

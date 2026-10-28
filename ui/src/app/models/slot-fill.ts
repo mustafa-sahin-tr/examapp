@@ -4,7 +4,12 @@
  * gider, çözüm gitmez (#570): çözüm ayrı alanda (`interactionSolution`) yalnız yetkili/izinli durumda gelir. Kutu
  * koordinatları soru bölgesine göredir (matris / sürükle-bırak ile aynı kural). Puansız: kontrol kutu başına doğru/yanlış.
  */
+import { InteractionLayout, LayoutKind, parseLayout } from './interaction-layout';
+
 export const SLOT_FILL = 'slotFill' as const;
+
+/** Issue #590 (dilim b): görselsiz cevap kutusu düzenleri (soru + kısa cevap, satır içi boşluk, tablo). */
+export const SLOT_FILL_LAYOUTS: readonly LayoutKind[] = ['list', 'text', 'table'];
 
 /** Backend sözleşmesinin sınırları (`SlotFillGrader` plan / çözüm / payload doğrulaması). */
 export const SLOT_FILL_LIMITS = {
@@ -97,13 +102,16 @@ export type SlotInput = SlotNumberInput | SlotTextInput | SlotSelectInput | Slot
 export interface SlotFillSlot {
   id: string;
   label?: string | null;
-  box: SlotBox;
+  /** Görsel üstü konum; görselsiz (düzenli) planda yok. */
+  box?: SlotBox | null;
   input: SlotInput;
 }
 
 export interface SlotFillPlanV1 {
   version: 1;
   type: typeof SLOT_FILL;
+  /** Issue #590: görselsiz düzen; varsa kutular koordinatsızdır. */
+  layout?: InteractionLayout | null;
   slots: SlotFillSlot[];
 }
 
@@ -225,21 +233,25 @@ export function parseSlotFillPlan(json: string | null | undefined): SlotFillPlan
   try {
     const parsed = JSON.parse(json) as Partial<SlotFillPlanV1> | null;
     if (!parsed || !isSlotFillType(parsed.type) || !Array.isArray(parsed.slots)) return null;
+    const layout = parseLayout(parsed.layout, SLOT_FILL_LAYOUTS);
     const seen = new Set<string>();
     const slots: SlotFillSlot[] = [];
     for (const raw of parsed.slots as unknown[]) {
       if (!raw || typeof raw !== 'object') continue;
       const s = raw as Record<string, unknown>;
       const id = s['id'];
-      if (typeof id !== 'string' || !id || RESERVED_SLOT_IDS.has(id) || seen.has(id) || !isBox(s['box'])) continue;
+      if (typeof id !== 'string' || !id || RESERVED_SLOT_IDS.has(id) || seen.has(id)) continue;
+      // Görselli planda kutu zorunlu; düzenli (görselsiz) planda konum düzenden gelir.
+      const box = isBox(s['box']) ? s['box'] : null;
+      if (!layout && !box) continue;
       const input = parseInput(s['input']);
       if (!input) continue;
       seen.add(id);
       const label = typeof s['label'] === 'string' && s['label'].trim() ? s['label'] : null;
-      slots.push({ id, label, box: s['box'], input });
+      slots.push({ id, label, box, input });
     }
     if (slots.length === 0) return null;
-    return { version: 1, type: SLOT_FILL, slots };
+    return layout ? { version: 1, type: SLOT_FILL, layout, slots } : { version: 1, type: SLOT_FILL, slots };
   } catch {
     return null;
   }

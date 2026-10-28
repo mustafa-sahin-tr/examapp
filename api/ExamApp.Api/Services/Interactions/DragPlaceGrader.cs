@@ -13,7 +13,9 @@ namespace ExamApp.Api.Services.Interactions;
 /// <item>Plan v1: <c>{version:1,type:"dragPlace",mode:"place"|"order",reuse:false,targets:[{id,label?,box?,capacity}],
 /// cards:[{id,label?,box?}]}</c>. Kartta <c>label</c> ya da <c>box</c> (soru görselinden kırpma) zorunlu; hedefte <c>box</c>
 /// isteğe bağlı (kutusuz hedef = görselin altında etiketli kova). <c>mode</c> yoksa <c>place</c>, <c>reuse</c> yoksa false,
-/// <c>capacity</c> yoksa 1. <c>order</c> modunda her hedef bir konumdur, kapasite 1 olmalı.</item>
+/// <c>capacity</c> yoksa 1. <c>order</c> modunda her hedef bir konumdur, kapasite 1 olmalı.
+/// issue #590 (dilim b): <c>layout:{kind:"text",text}</c> = boşluklu metin + kelime havuzu — yalnız <c>place</c>, her hedef
+/// kutusuz, kapasite 1 ve metinde tam bir kez <c>[[id]]</c>; kartlar kutusuz metin (havuz; çözümde olmayan = çeldirici).</item>
 /// <item>Çözüm (#570, <c>Question.InteractionSolution</c>): <c>{"t1":["c1","c3"],"t2":[]}</c> — her hedef için 0..kapasite kart;
 /// <c>reuse</c> kapalıysa bir kart en çok bir hedefte. Çözümde olmayan kart = çeldirici.</item>
 /// <item>Öğrenci payload'u: <c>{version:1,type:"dragPlace",placements:[{targetId,cardId}]}</c>.</item>
@@ -48,7 +50,7 @@ public sealed class DragPlaceGrader : IInteractionGrader
     /// <summary>Geri bildirim satır id'sinde hedef ile kart arasındaki ayraç (id deseninde yok).</summary>
     public const char RowSeparator = ':';
 
-    private static readonly HashSet<string> RootKeys = new(StringComparer.Ordinal) { "version", "type", "mode", "reuse", "targets", "cards" };
+    private static readonly HashSet<string> RootKeys = new(StringComparer.Ordinal) { "version", "type", "mode", "reuse", "targets", "cards", "layout" };
     private static readonly HashSet<string> TargetKeys = new(StringComparer.Ordinal) { "id", "label", "box", "capacity" };
     private static readonly HashSet<string> CardKeys = new(StringComparer.Ordinal) { "id", "label", "box" };
     private static readonly HashSet<string> PlacementKeys = new(StringComparer.Ordinal) { "targetId", "cardId" };
@@ -455,6 +457,9 @@ public sealed class DragPlaceGrader : IInteractionGrader
 
             if (strict && (capacity.Count is < MinTargets or > MaxTargets || cardIds.Count is < MinCards or > MaxCards))
                 return false;
+            if (strict && root.TryGetProperty("layout", out var layout) && layout.ValueKind != JsonValueKind.Null
+                && !IsValidTextLayout(layout, mode, targets, cards, capacity, targetOrder))
+                return false;
 
             info = new PlanInfo(targetOrder, capacity, cardIds, reuse, mode == ModeOrder);
             return true;
@@ -463,6 +468,22 @@ public sealed class DragPlaceGrader : IInteractionGrader
         {
             return false;
         }
+    }
+
+    private static readonly string[] LayoutKinds = { InteractionLayout.KindText };
+
+    /// <summary>
+    /// issue #590: boşluklu metin düzeni — yalnız <c>place</c>; hedefler kutusuz, kapasite 1, metinde tam bir kez; kartlar kutusuz.
+    /// </summary>
+    private static bool IsValidTextLayout(JsonElement layout, string mode, JsonElement targets, JsonElement cards,
+        Dictionary<string, int> capacity, List<string> targetOrder)
+    {
+        if (mode != ModePlace || capacity.Values.Any(c => c != 1))
+            return false;
+        static bool HasBox(JsonElement e) => e.TryGetProperty("box", out var box) && box.ValueKind != JsonValueKind.Null;
+        if (targets.EnumerateArray().Any(HasBox) || cards.EnumerateArray().Any(HasBox))
+            return false;
+        return InteractionLayout.TryValidate(layout, LayoutKinds, targetOrder, out _);
     }
 
     /// <summary>Hedef/kart öğesi: nesne, boş olmayan string <c>id</c> (katıda desen), varsa <c>label</c> string (katıda ≤ 200).</summary>

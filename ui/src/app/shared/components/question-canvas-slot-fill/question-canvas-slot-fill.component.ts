@@ -1,4 +1,4 @@
-import { NgStyle } from '@angular/common';
+import { NgStyle, NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -19,6 +19,7 @@ import { filter, map } from 'rxjs';
 
 import { ActivityFeedbackRow } from '../../../models/activity';
 import { QuestionRegion } from '../../../models/draws';
+import { LayoutSegment, splitPlaceholders } from '../../../models/interaction-layout';
 import {
   SLOT_FILL_LIMITS,
   SlotBox,
@@ -51,6 +52,10 @@ export const SLOT_FILL_SAVE_DEBOUNCE_MS = 600;
  * sembol paletli alan. Her değişiklik bir sunucu kaydıdır: yazarken {@link SLOT_FILL_SAVE_DEBOUNCE_MS} bekleyip, alan
  * bırakılınca (`change`) hemen kaydedilir. Kontrol / bitir / otomatik teslim öncesi ebeveyn {@link flush}'ı çağırır.
  *
+ * Issue #590 (dilim b): planda `layout` varsa (görselsiz) kutular görsel üstünde değil düzende çizilir — `list` (soru +
+ * kısa cevap satırları), `text` (satır içi boşluklu metin), `table` (boş hücre = cevap kutusu). İsteğe bağlı görsel
+ * etkileşimsiz olarak üstte kalır. Giriş alanları ve kontrol aynıdır.
+ *
  * Girdi/çıktılar matris / sürükle-bırak oynatıcısıyla aynı: test ekranı ve etkinlik oynatıcısı aynı sözleşmeyle besler.
  * Çözüm (`interactionSolutionJson`) yalnız verilirse kullanılır (#570); puan yok, kontrol kutu başına doğru/yanlış.
  */
@@ -59,6 +64,7 @@ export const SLOT_FILL_SAVE_DEBOUNCE_MS = 600;
   standalone: true,
   imports: [
     NgStyle,
+    NgTemplateOutlet,
     MatButtonModule,
     MatIconModule,
     TranslocoDirective,
@@ -163,6 +169,20 @@ export class QuestionCanvasSlotFillComponent {
   readonly passageImageUrl = computed(() => this._region()?.passage?.imageUrl ?? null);
   readonly passageTitle = computed(() => this._region()?.passage?.title ?? null);
   readonly slots = computed(() => this._plan()?.slots ?? []);
+  readonly layout = computed(() => this._plan()?.layout ?? null);
+  /** Görsel üstündeki kaplama yalnız kutulu (görselli) planda. */
+  readonly boxedSlots = computed(() => (this.layout() ? [] : this.slots()));
+  /** Kutu id → (kutu, plan sırası) — düzendeki yer tutucular bununla çözülür; bilinmeyen id düz metin kalmaz, atlanır. */
+  readonly slotRef = computed(() => new Map(this.slots().map((slot, index) => [slot.id, { slot, index }])));
+  readonly textSegments = computed<LayoutSegment[]>(() => {
+    const layout = this.layout();
+    return layout?.kind === 'text' ? splitPlaceholders(layout.text) : [];
+  });
+  readonly tableCells = computed<{ header: string[] | null; rows: LayoutSegment[][][] } | null>(() => {
+    const layout = this.layout();
+    if (layout?.kind !== 'table') return null;
+    return { header: layout.header ?? null, rows: layout.rows.map((row) => row.map(splitPlaceholders)) };
+  });
   readonly solution = computed(() => parseSlotFillSolution(this._solutionJson(), this._plan()));
 
   /** Palet çubuğunun kutusu: odaklanan palet kutusu, yoksa ilk palet kutusu. */

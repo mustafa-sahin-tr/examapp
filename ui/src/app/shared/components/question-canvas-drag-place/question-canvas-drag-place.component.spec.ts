@@ -427,3 +427,68 @@ describe('QuestionCanvasDragPlaceComponent (#576)', () => {
     });
 });
 
+
+// Issue #590 (dilim b): boşluklu metin + kelime havuzu.
+describe('QuestionCanvasDragPlaceComponent boşluklu metin (#590)', () => {
+    let fixture: ComponentFixture<QuestionCanvasDragPlaceComponent>;
+    let emitted: string[];
+    const el = () => fixture.nativeElement as HTMLElement;
+    const poolCard = (id: string) => el().querySelector(`[data-testid="dp-pool"] [data-card="${id}"]`) as HTMLElement | null;
+    const blank = (id: string) => el().querySelector(`[data-target-button][data-for="${id}"]`) as HTMLButtonElement | null;
+
+    const CLOZE_PLAN = {
+        version: 1,
+        type: 'dragPlace',
+        mode: 'place',
+        reuse: false,
+        layout: { kind: 'text', text: 'Su [[t1]] °C\'de donar, [[t2]] °C\'de kaynar.' },
+        targets: [{ id: 't1', capacity: 1 }, { id: 't2', capacity: 1 }],
+        cards: [{ id: 'k1', label: '0' }, { id: 'k2', label: '100' }, { id: 'k3', label: '50' }],
+    };
+
+    function setup(extra: { feedbackRows?: object[]; answer?: object } = {}): void {
+        TestBed.configureTestingModule({ imports: [QuestionCanvasDragPlaceComponent, translocoTestingModule()] });
+        fixture = TestBed.createComponent(QuestionCanvasDragPlaceComponent);
+        emitted = [];
+        fixture.componentInstance.answerPayloadChange.subscribe((p) => emitted.push(p));
+        fixture.componentRef.setInput('questionRegion', { imageUrl: '', width: 0, height: 0, passage: null } as unknown as QuestionRegion);
+        fixture.componentRef.setInput('interactionPlanJson', JSON.stringify(CLOZE_PLAN));
+        if (extra.answer) fixture.componentRef.setInput('answerPayloadJson', JSON.stringify(extra.answer));
+        if (extra.feedbackRows) fixture.componentRef.setInput('feedbackRows', extra.feedbackRows);
+        fixture.detectChanges();
+    }
+
+    it('renders blanks inside the text instead of buckets', () => {
+        setup();
+        expect(el().querySelector('[data-testid="dp-cloze"]')!.textContent).toContain('°C\'de donar');
+        expect(el().querySelector('[data-testid="dp-buckets"]')).toBeNull();
+        expect(blank('t1')!.textContent).toContain('1');
+        expect(blank('t2')!.getAttribute('aria-label')).toBeTruthy();
+    });
+
+    it('tap card then blank places the word inline; tapping the placed word returns it', () => {
+        setup();
+        poolCard('k2')!.click();
+        fixture.detectChanges();
+        blank('t2')!.click();
+        fixture.detectChanges();
+
+        expect(JSON.parse(emitted.at(-1)!).placements).toEqual([{ targetId: 't2', cardId: 'k2' }]);
+        expect(blank('t2')).toBeNull();
+        const placedWord = el().querySelector('[data-placed="t2:k2"]') as HTMLElement;
+        expect(placedWord.closest('[data-testid="dp-cloze"]')).not.toBeNull();
+        expect(poolCard('k2')).toBeNull();
+
+        placedWord.click();
+        fixture.detectChanges();
+        expect(poolCard('k2')).not.toBeNull();
+    });
+
+    it('feedback marks the inline word', () => {
+        setup({
+            answer: { version: 1, type: 'dragPlace', placements: [{ targetId: 't1', cardId: 'k3' }] },
+            feedbackRows: [{ id: 't1:k3', correct: false }],
+        });
+        expect(el().querySelector('[data-placed="t1:k3"]')!.classList).toContain('is-wrong');
+    });
+});

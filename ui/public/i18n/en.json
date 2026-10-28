@@ -361,6 +361,7 @@
         "sequenceFull": "The order is full; return a card to the pool first.",
         "cardFallback": "Card {{n}}",
         "targetFallback": "Target {{n}}",
+        "blankFallback": "Blank {{n}}",
         "positionFallback": "{{n}}.",
         "markCorrect": "correct",
         "markWrong": "wrong",

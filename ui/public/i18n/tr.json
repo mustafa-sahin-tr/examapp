@@ -361,6 +361,7 @@
         "sequenceFull": "Sıra dolu; önce bir kartı havuza al.",
         "cardFallback": "Kart {{n}}",
         "targetFallback": "Hedef {{n}}",
+        "blankFallback": "{{n}}. boşluk",
         "positionFallback": "{{n}}.",
         "markCorrect": "doğru",
         "markWrong": "yanlış",

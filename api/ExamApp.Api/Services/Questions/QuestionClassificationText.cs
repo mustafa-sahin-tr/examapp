@@ -2,13 +2,15 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using ExamApp.Api.Services.Interactions;
 
 namespace ExamApp.Api.Services.Questions;
 
 /// <summary>
 /// Issue #590: görseli olmayan sorunun (görselsiz etkinlik maddesi, metin MCQ) sınıflandırıcıya giden düz metni — kapsam
 /// başlığı/metni/yönergesi, soru kökü (HTML'siz), şık metinleri ve etkileşim planındaki öğe etiketleri (satır, kolon, kart,
-/// hedef, sol/sağ öğe). Plan çözümsüz saklandığı için (#570) çözüm metne girmez; çözüm alanı hiç okunmaz.
+/// hedef, sol/sağ öğe) ile görselsiz düzenin metni (boşluklu metin, tablo; yer tutucular <c>____</c>). Plan çözümsüz
+/// saklandığı için (#570) çözüm metne girmez; çözüm alanı hiç okunmaz.
 /// </summary>
 public static partial class QuestionClassificationText
 {
@@ -68,7 +70,7 @@ public static partial class QuestionClassificationText
         try
         {
             using var doc = JsonDocument.Parse(plan, ReadOptions);
-            var labels = new List<string>();
+            var labels = new List<string>(InteractionLayout.DisplayLines(doc.RootElement));
             Collect(doc.RootElement, labels);
             return labels;
         }
@@ -85,6 +87,9 @@ public static partial class QuestionClassificationText
             case JsonValueKind.Object:
                 foreach (var property in element.EnumerateObject())
                 {
+                    // Düzen (#590 dilim b) yer tutucusuz biçimde yukarıda eklendi.
+                    if (property.Name == "layout")
+                        continue;
                     if (TextKeys.Contains(property.Name) && property.Value.ValueKind == JsonValueKind.String)
                     {
                         if (property.Value.GetString() is { Length: > 0 } value)

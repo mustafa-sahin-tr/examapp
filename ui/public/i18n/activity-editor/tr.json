@@ -16,13 +16,21 @@
     "matrix": "Doğru/Yanlış · Matris",
     "classify": "Sınıflandırma",
     "order": "Sıralama",
-    "match": "Eşleştirme"
+    "match": "Eşleştirme",
+    "fillText": "Boşluk doldurma",
+    "shortAnswer": "Soru + kısa cevap",
+    "fillTable": "Tablo",
+    "wordPool": "Kelime havuzu"
   },
   "kindHints": {
     "matrix": "Her satır için doğru seçeneği işaretle. D/Y şablonu iki kolon kurar; çoklu seçimde satırda birden çok doğru olabilir.",
     "classify": "Kartları kovalara ayır. Hiçbir kovaya ait olmayan kart çeldiricidir.",
     "order": "Öğeleri doğru sırayla yaz; öğrenciye karışık gelir.",
-    "match": "Çiftleri yaz; çeldirici sağ öğeler isteğe bağlı. Sağ taraf öğrenciye karışık gelir."
+    "match": "Çiftleri yaz; çeldirici sağ öğeler isteğe bağlı. Sağ taraf öğrenciye karışık gelir.",
+    "fillText": "Metni yaz, cevabın yerine [[cevap]] koy. Sayı cevaplar (3/4, 2 1/2, 0,75) sayı kutusu olur; diğerleri metin olarak karşılaştırılır (büyük/küçük harf ve sondaki noktalama önemsiz).",
+    "shortAnswer": "Her satıra bir soru ve kabul edilen cevabı yaz. Birden çok cevap | ile ayrılır.",
+    "fillTable": "Tabloyu doldur; öğrencinin yazacağı hücreye [[cevap]] yaz. Diğer hücreler olduğu gibi gösterilir.",
+    "wordPool": "Metni yaz, boşluğa gelecek kelimeyi [[kelime]] içine al. Kelimeler havuza karışık gelir; çeldirici ekleyebilirsin."
   },
   "instruction": "Yönerge (isteğe bağlı)",
   "image": {
@@ -107,12 +115,56 @@
     "rightCount": "Sağ tarafta (eşler + çeldiriciler) en çok {{max}} öğe olabilir.",
     "blankPair": "Çiftlerin iki tarafını da doldur.",
     "blankDistractor": "Boş çeldirici bırakma.",
-    "duplicateRight": "Sağ taraftaki öğeler birbirinden farklı olmalı."
+    "duplicateRight": "Sağ taraftaki öğeler birbirinden farklı olmalı.",
+    "noBlank": "Metinde en az bir [[boşluk]] olmalı.",
+    "blankCount": "En çok {{max}} boşluk olabilir.",
+    "blankAnswer": "Her boşluğun cevabını yaz.",
+    "tooManyAlternatives": "Bir boşlukta en çok {{max}} alternatif olabilir.",
+    "answerTooLong": "Bir cevap en çok {{max}} karakter olabilir.",
+    "textTooLong": "Metin en çok {{max}} karakter olabilir.",
+    "questionCount": "{{min}}–{{max}} soru olmalı.",
+    "blankQuestion": "Boş soru bırakma.",
+    "tableRows": "Tabloda {{min}}–{{max}} satır olmalı (başlık hariç).",
+    "tableColumns": "Tabloda {{min}}–{{max}} kolon olmalı.",
+    "blankInHeader": "Başlık satırında boşluk olamaz.",
+    "cellTooLong": "Bir hücre en çok {{max}} karakter olabilir.",
+    "poolBlankCount": "En çok {{max}} boşluk olabilir.",
+    "poolAlternatives": "Kelime havuzunda alternatif (|) kullanılamaz; her boşluğa tek kelime.",
+    "poolCardCount": "Havuzda en çok {{max}} kelime olabilir.",
+    "distractorIsAnswer": "Çeldirici, boşluklardaki bir kelimeyle aynı olamaz."
   },
   "snackbar": {
     "created": "Madde etkinliğe eklendi.",
     "updated": "Madde güncellendi.",
     "saveError": "Madde kaydedilemedi.",
     "classificationError": "Madde kaydedildi ama ders/konu güncellenemedi."
+  },
+  "blanks": {
+    "text": "Boşluklu metin",
+    "textHint": "Örnek: Türkiye'nin başkenti [[Ankara]]'dır. Alternatif cevaplar: [[on iki|12]].",
+    "makeBlank": "Seçili metni boşluk yap",
+    "count": "{{n}} boşluk"
+  },
+  "shortAnswer": {
+    "rows": "Sorular ve cevaplar",
+    "hint": "Cevap sayıysa sayı kutusu olur (3/4 ile 0,75 eşdeğer sayılır).",
+    "question": "Soru {{n}}",
+    "answers": "Cevap (| ile alternatif)",
+    "add": "Soru ekle"
+  },
+  "table": {
+    "cells": "Tablo",
+    "hint": "Cevap hücresi: [[cevap]]. Bir hücrede metin ve boşluk birlikte olabilir: [[5]] cm.",
+    "header": "İlk satır başlık",
+    "cell": "Satır {{row}}, kolon {{column}}",
+    "removeRow": "{{n}}. satırı sil",
+    "removeColumn": "{{n}}. kolonu sil",
+    "addRow": "Satır ekle",
+    "addColumn": "Kolon ekle"
+  },
+  "wordPool": {
+    "text": "Boşluklu metin",
+    "textHint": "Örnek: Su [[0]] °C'de donar, [[100]] °C'de kaynar. Aynı kelime birden çok boşluğa gelebilir.",
+    "distractors": "Çeldirici kelimeler"
   }
 }

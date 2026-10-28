@@ -439,6 +439,33 @@
         "submitHint": "Your answer is saved. Press “Check answers” to send it to your teacher.",
         "sampleTitle": "Sample answer",
         "noSample": "There is no sample answer for this item; your teacher will review your answer."
+      },
+      "maze": {
+        "passageAlt": "Reading passage image",
+        "imageAlt": "Activity image",
+        "invalid": "This activity could not be opened.",
+        "start": "Start",
+        "finish": "Finish",
+        "branchAria": "{{label}} for “{{node}}”",
+        "doorAria": "Door: {{label}}",
+        "next": "Next: {{label}}",
+        "arrived": "You reached: {{label}}",
+        "undo": "Undo",
+        "reset": "Start over",
+        "deviatedHere": "You took a wrong turn here",
+        "brokenHere": "This box broke",
+        "resultReached": "You reached the finish on the right path.",
+        "resultDeviated": "You took a wrong turn somewhere; try again from the marked spot.",
+        "resultIncomplete": "The path is unfinished; keep going to the finish.",
+        "resultStonesOk": "You marked every stone correctly.",
+        "resultStonesWrong": "You were right up to the marked stone; look again at the one with a red border.",
+        "stonesHint": "Tap the stones that must not be stepped on to mark them.",
+        "routeShown": "The correct path is shown with a green dashed line.",
+        "branchTrue": "T",
+        "branchFalse": "F",
+        "exitName": "Exit {{n}}",
+        "stepOk": "correct",
+        "stoneWrong": "wrong"
       }
     },
     "sharingBadge": {

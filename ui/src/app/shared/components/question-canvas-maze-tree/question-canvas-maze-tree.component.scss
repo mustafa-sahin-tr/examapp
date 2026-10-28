@@ -1,0 +1,541 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.mz-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.mz-passage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+
+  &__title {
+    font-weight: 700;
+    font-family: var(--mainFontFamily);
+  }
+
+  &__image {
+    display: block;
+    max-width: 100%;
+    max-height: 35vh;
+    object-fit: contain;
+  }
+}
+
+.mz-image-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+}
+
+.mz-image {
+  display: block;
+  max-width: 100%;
+  max-height: 45vh;
+}
+
+// Geniş ağaç / labirent dar ekranda kendi içinde yatay kayar; sayfa kaymaz.
+.mz-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mz-stage {
+  position: relative;
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+}
+
+.mz-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+
+  line {
+    stroke: var(--ms-border-weak);
+    stroke-width: 2;
+
+    &.is-chosen {
+      stroke: var(--ms-action-background);
+      stroke-width: 4;
+    }
+
+    &.is-route {
+      stroke: var(--ms-success-border);
+      stroke-width: 4;
+      stroke-dasharray: 6 4;
+    }
+
+    &.is-wrong {
+      stroke: var(--ms-danger-border);
+    }
+  }
+}
+
+// Ortak kart (ağaç düğümü / oda): merkeze göre yerleşir, yeni düğüme geçiş yumuşak.
+.mz-node,
+.mz-room {
+  position: absolute;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  max-width: 280px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 2px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+  font-size: 0.82rem;
+  line-height: 1.3;
+  text-align: center;
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    background-color 0.25s ease;
+
+  &.is-end {
+    font-weight: 700;
+  }
+
+  &.is-visited {
+    border-color: var(--ms-action-border);
+  }
+
+  &.is-current {
+    border-color: var(--ms-action-background);
+    box-shadow: 0 0 0 4px var(--ms-action-border-focus);
+  }
+
+  &.is-ok {
+    border-color: var(--ms-success-border);
+  }
+
+  &.is-route {
+    border-color: var(--ms-success-border);
+    background: var(--ms-success-surface);
+    color: var(--ms-success-text);
+  }
+
+  &.is-deviated {
+    border-color: var(--ms-danger-border);
+    background: var(--ms-danger-surface);
+    color: var(--ms-danger-text);
+  }
+}
+
+.mz-node__text {
+  overflow-wrap: anywhere;
+}
+
+.mz-node__flag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--ms-danger-border);
+  color: var(--ms-action-text-inverse);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.mz-room {
+  min-height: calc(var(--mz-room-row, 168px) - 56px);
+
+  &__badge {
+    padding: 1px 8px;
+    border-radius: 6px;
+    background: var(--ms-info-surface);
+    border: 1px solid var(--ms-info-border);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+
+    &--end {
+      background: var(--ms-success-surface);
+      border-color: var(--ms-success-border);
+    }
+  }
+}
+
+// Dal (D/Y) ve kapı düğmeleri: çizginin / duvarın ortasında.
+.mz-branch,
+.mz-door {
+  position: absolute;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+  min-width: 36px;
+  min-height: 36px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 2px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+  color: var(--ms-text-medium);
+  font: 700 0.85rem var(--mainFontFamily);
+  cursor: default;
+
+  &.is-available {
+    border-color: var(--ms-action-background);
+    color: var(--ms-action-text);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--ms-action-background-weak-hover);
+    }
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+
+  &.is-chosen {
+    background: var(--ms-action-background);
+    border-color: var(--ms-action-background);
+    color: var(--ms-action-text-inverse);
+  }
+
+  &.is-route {
+    border-color: var(--ms-success-border);
+    box-shadow: 0 0 0 3px var(--ms-success-surface);
+  }
+
+  &.is-wrong {
+    background: var(--ms-danger-surface);
+    border-color: var(--ms-danger-border);
+    color: var(--ms-danger-text);
+  }
+}
+
+.mz-door {
+  border-radius: 6px;
+  font-size: 0.78rem;
+}
+
+// Işıklı pano: bitiş üstte, başlangıç altta.
+.mz-board {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+
+  &__end,
+  &__start {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font: 700 0.95rem var(--mainFontFamily);
+  }
+
+  &__end.is-reached {
+    color: var(--ms-success-text-medium);
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: minmax(64px, 110px) 1fr;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    border-radius: 10px;
+    border: 2px solid transparent;
+
+    &.is-active {
+      border-color: var(--ms-action-border-focus);
+    }
+
+    &.is-deviated {
+      border-color: var(--ms-danger-border);
+    }
+
+    .mz-node__flag {
+      grid-column: 2;
+      justify-self: start;
+    }
+  }
+
+  &__label {
+    font: 700 0.9rem var(--mainFontFamily);
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+
+  &__boxes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 6px;
+  }
+}
+
+.mz-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 56px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 2px dashed var(--ms-border-weak);
+  background: var(--ms-surface);
+  color: var(--ms-text);
+  font: 0.8rem var(--paragraphFontFamily);
+  text-align: center;
+  overflow-wrap: anywhere;
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease;
+
+  &:not(:disabled) {
+    border-style: solid;
+    border-color: var(--ms-action-background);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--ms-action-background-weak-hover);
+    }
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+
+  &.is-lit {
+    border-style: solid;
+    border-color: var(--ms-warning-border);
+    background: var(--ms-warning-surface);
+    color: var(--ms-warning-text);
+  }
+
+  &.is-wrong {
+    border-color: var(--ms-danger-border);
+    background: var(--ms-danger-surface);
+    color: var(--ms-danger-text);
+  }
+
+  &.is-route {
+    border-style: solid;
+    border-color: var(--ms-success-border);
+    box-shadow: 0 0 0 3px var(--ms-success-surface);
+  }
+
+  &__icon {
+    flex: none;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+// Irmak taşları: zikzak dizilen taşlar, karşı kıyı (ev) üstte, başlangıç (yürüyen) altta.
+.mz-river {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-info-border);
+  background: var(--ms-info-surface-weak);
+
+  &__bank {
+    display: flex;
+    justify-content: center;
+    color: var(--ms-info-text);
+
+    mat-icon {
+      font-size: 32px;
+      width: 32px;
+      height: 32px;
+    }
+  }
+
+  &__stones {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 16px;
+  }
+}
+
+.mz-stone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 52px;
+  padding: 8px 12px;
+  border-radius: 24px 18px 26px 16px;
+  border: 2px solid var(--ms-border-weak);
+  background: var(--ms-surface-strong);
+  color: var(--ms-text-strong);
+  font: 600 0.82rem var(--paragraphFontFamily);
+  text-align: center;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+
+  &.is-odd {
+    transform: translateY(18px);
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+
+  &.is-marked {
+    border-color: var(--ms-info-border);
+    background: var(--ms-info-surface);
+    color: var(--ms-info-text);
+  }
+
+  &.is-ok {
+    border-color: var(--ms-success-border);
+  }
+
+  &.is-bad {
+    border-color: var(--ms-danger-border);
+  }
+
+  &.is-first-wrong {
+    box-shadow: 0 0 0 4px var(--ms-danger-surface);
+  }
+
+  &.is-expected {
+    outline: 3px dashed var(--ms-success-border);
+    outline-offset: 2px;
+  }
+
+  &__icon {
+    flex: none;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.mz-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mz-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.mz-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.mz-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ms-warning-border);
+  background: var(--ms-warning-surface);
+  color: var(--ms-warning-text);
+
+  &.is-ok {
+    border-color: var(--ms-success-border);
+    background: var(--ms-success-surface);
+    color: var(--ms-success-text);
+  }
+
+  &.is-bad {
+    border-color: var(--ms-danger-border);
+    background: var(--ms-danger-surface);
+    color: var(--ms-danger-text);
+  }
+}
+
+.mz-hint {
+  margin: 0;
+  color: var(--ms-text-medium);
+  font-size: 0.85rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mz-node,
+  .mz-room,
+  .mz-box {
+    transition: none;
+  }
+}
+
+// Ekran okuyucuya doğru / yanlış bilgisi (renk tek başına yetmez).
+.mz-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.mz-token {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--ms-action-background);
+  color: var(--ms-action-text-inverse);
+  pointer-events: none;
+  transition:
+    left 0.45s ease,
+    top 0.45s ease;
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mz-token {
+    transition: none;
+  }
+}

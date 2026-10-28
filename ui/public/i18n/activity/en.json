@@ -28,7 +28,12 @@
     "textTarget": "Target {{n}}: “{{word}}”",
     "textNone": "No word selected yet",
     "openText": "Your answer: {{count}} words",
-    "openTextEmpty": "Your answer: blank"
+    "openTextEmpty": "Your answer: blank",
+    "mazeStep": "{{name}}: {{content}}",
+    "mazeNodeFallback": "Step {{n}}",
+    "mazeMarked": "do not step",
+    "mazeUnmarked": "safe",
+    "mazeNoPath": "No path chosen yet"
   },
   "saveFailed": "Your last answer could not be saved; it will be sent again when you check.",
   "finishCheckRequired": "Check your answers once before finishing.",

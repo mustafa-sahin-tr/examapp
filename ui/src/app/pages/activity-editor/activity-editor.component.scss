@@ -393,3 +393,19 @@
     outline: 2px solid var(--ms-action-border-focus);
   }
 }
+
+// Issue #585: yol oyunu şablonları — çıkış / kapı alanları sıkı ızgarada, pano satırları kart içinde.
+.ae__maze-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.ae__maze-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--ms-border-weak);
+}

@@ -20,7 +20,11 @@
     "fillText": "Fill in the blanks",
     "shortAnswer": "Short answer",
     "fillTable": "Table",
-    "wordPool": "Word bank"
+    "wordPool": "Word bank",
+    "mazeTree": "T/F tree",
+    "mazeBoard": "Light board",
+    "mazeRooms": "Maze (rooms)",
+    "mazeStones": "River stones"
   },
   "kindHints": {
     "matrix": "Mark the correct option for each row. The T/F template sets up two columns; with multiple choice a row can have several correct options.",
@@ -30,7 +34,11 @@
     "fillText": "Write the text and put [[answer]] where the blank goes. Numeric answers (3/4, 2 1/2, 0.75) become number boxes; others are compared as text (case and trailing punctuation ignored).",
     "shortAnswer": "Write a question and its accepted answer on each row. Separate several answers with |.",
     "fillTable": "Fill in the table; write [[answer]] in the cells the student completes. Other cells are shown as is.",
-    "wordPool": "Write the text and wrap the missing word in [[word]]. Words appear shuffled in the bank; you can add distractors."
+    "wordPool": "Write the text and wrap the missing word in [[word]]. Words appear shuffled in the bank; you can add distractors.",
+    "mazeTree": "The student picks T or F at each statement and reaches an exit. Mark the answer of every statement; the correct exit follows from them.",
+    "mazeBoard": "Each row has one correct box; the student steps on boxes from bottom to top to reach the finish. A wrong box breaks.",
+    "mazeRooms": "Each room is a question and the doors between rooms are answers. The student follows the correct doors from the start room to the finish.",
+    "mazeStones": "The student marks the (wrong) stones that must not be stepped on. Mark those stones with the drop icon."
   },
   "instruction": "Instruction (optional)",
   "image": {
@@ -131,7 +139,23 @@
     "poolBlankCount": "At most {{max}} blanks.",
     "poolAlternatives": "Alternatives (|) are not allowed in a word bank; one word per blank.",
     "poolCardCount": "At most {{max}} words in the bank.",
-    "distractorIsAnswer": "A distractor cannot match a word used in a blank."
+    "distractorIsAnswer": "A distractor cannot match a word used in a blank.",
+    "mazeBlankBranch": "Branch labels cannot be empty.",
+    "mazeDuplicateBranch": "The two branches need different labels.",
+    "mazeBlankStatement": "Fill in every statement of the tree.",
+    "mazeRowCount": "The board needs {{min}}–{{max}} rows.",
+    "mazeBoxCount": "Each row needs {{min}}–{{max}} boxes.",
+    "mazeBlankBox": "Do not leave a box empty.",
+    "mazeDuplicateBox": "A row cannot have two boxes with the same text.",
+    "mazeStartIsFinish": "Start and finish rooms must differ.",
+    "mazeBlankRoom": "Write a question in every room except the finish.",
+    "mazeDoubleDiagonal": "A 2×2 block cannot have two diagonal doors.",
+    "mazeDuplicateDoor": "Two doors of a room cannot have the same answer.",
+    "mazeUnreachable": "Every room must be reachable from the start through doors.",
+    "mazeNoRoute": "Following the correct doors from the start does not reach the finish; check each room's correct door.",
+    "mazeStoneCount": "There must be {{min}}–{{max}} stones.",
+    "mazeBlankStone": "Do not leave a stone empty.",
+    "mazeNoMarkedStone": "Mark at least one stone that must not be stepped on."
   },
   "snackbar": {
     "created": "The item was added to the activity.",
@@ -166,5 +190,38 @@
     "text": "Text with blanks",
     "textHint": "Example: Water freezes at [[0]] °C and boils at [[100]] °C. The same word may fill several blanks.",
     "distractors": "Distractor words"
+  },
+  "maze": {
+    "depth": "Levels",
+    "depthOption": "{{n}} levels ({{count}} statements)",
+    "branchLeft": "Left branch",
+    "branchRight": "Right branch",
+    "level": "Level {{n}}",
+    "statement": "Statement · {{path}}",
+    "root": "Start",
+    "correctBranch": "Correct branch",
+    "exits": "Exits (left to right)",
+    "exit": "Exit {{n}}",
+    "boardHint": "Row 1 is at the bottom (start); the student moves up. Mark the correct box in each row.",
+    "finishName": "Finish name (optional)",
+    "boardRow": "Row {{n}} name (e.g. Gas)",
+    "box": "Box {{n}}",
+    "markCorrectBox": "Box {{n}} is correct",
+    "addBox": "Add box",
+    "addBoardRow": "Add row",
+    "gridRows": "Rows",
+    "gridCols": "Columns",
+    "startRoom": "Start room",
+    "finishRoom": "Finish room",
+    "doors": "Doors",
+    "doorsHint": "Write the answer shown on the door; leave it empty for a wall. A 2×2 block can have only one diagonal door.",
+    "rooms": "Rooms",
+    "roomQuestion": "Question in the room",
+    "finishRoomText": "Finish room text (optional)",
+    "roomAnswer": "Correct door",
+    "stonesHint": "Stones appear in this order (bottom to top, two columns). Mark the stones that must not be stepped on with the drop icon.",
+    "stone": "Stone {{n}}",
+    "markStone": "Stone {{n}}: do not step",
+    "addStone": "Add stone"
   }
 }

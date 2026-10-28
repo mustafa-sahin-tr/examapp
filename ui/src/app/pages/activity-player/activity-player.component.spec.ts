@@ -1276,6 +1276,72 @@ describe('ActivityPlayerComponent (#573)', () => {
     });
   });
 
+  describe('mazeTree (#585)', () => {
+    const MZ_PLAN = JSON.stringify({
+      version: 1,
+      type: 'mazeTree',
+      variant: 'tree',
+      start: 'n1',
+      nodes: [
+        { id: 'n1', label: 'Kök' },
+        { id: 'n2', label: 'Sol' },
+        { id: 'n3', label: 'Sağ' },
+        { id: 'x1', label: '1. çıkış', end: true },
+        { id: 'x2', label: '2. çıkış', end: true },
+        { id: 'x3', label: '3. çıkış', end: true },
+        { id: 'x4', label: '4. çıkış', end: true },
+      ],
+      edges: [
+        { id: 'e1', from: 'n1', to: 'n2', label: 'D' },
+        { id: 'e2', from: 'n1', to: 'n3', label: 'Y' },
+        { id: 'e3', from: 'n2', to: 'x1', label: 'D' },
+        { id: 'e4', from: 'n2', to: 'x2', label: 'Y' },
+        { id: 'e5', from: 'n3', to: 'x3', label: 'D' },
+        { id: 'e6', from: 'n3', to: 'x4', label: 'Y' },
+      ],
+    });
+    const mzPath = (...edges: string[]) => JSON.stringify({ version: 1, type: 'mazeTree', path: edges });
+    const base = () => instance().testInstanceQuestions[0].question;
+    const typed = (answer: string) =>
+      instance({}, [{ answerPayload: answer, question: { ...base(), interactionType: 'MazeTree', interactionPlan: MZ_PLAN } }]);
+
+    it('rendersPlayer_UnfinishedPathIsIncomplete_DeviationRowsAndFeedback', async () => {
+      await create(typed(mzPath('e2')));
+      fixture.componentInstance.goTo(0);
+      await settle();
+
+      expect(el().querySelector('app-question-canvas-maze-tree')).not.toBeNull();
+      expect(fixture.componentInstance.blankItems()).toContain('a');
+
+      fixture.componentInstance.onDragDropChange(mzPath('e2', 'e5'), fixture.componentInstance.items()[0]);
+      await settle();
+      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 0,
+          totalCount: 3,
+          questions: [
+            {
+              instanceQuestionId: 101,
+              isCorrect: false,
+              correctCount: 0,
+              totalCount: 2,
+              feedback: '{"rows":[{"id":"n1","correct":false}],"status":"deviated","at":"n1"}',
+            },
+            { instanceQuestionId: 102, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+      expect(fixture.componentInstance.currentRows().map((r) => [r.label, r.correct])).toEqual([['Kök: Y', false]]);
+      expect(fixture.componentInstance.currentMazeFeedback()?.at).toBe('n1');
+      expect(el().querySelector('[data-node="n1"]')?.classList).toContain('is-deviated');
+    });
+  });
+
   describe('mobile result panel collapse (#576 E2E)', () => {
     const checkResponse = () =>
       of({

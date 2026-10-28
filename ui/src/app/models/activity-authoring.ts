@@ -4,7 +4,8 @@
  * etiketli liste, sürükle-yerleştir hedefleri kova / sıralı konum, eşleştirme öğeleri metin. Çözüm ayrı alanda gider (#570).
  *
  * Dilim b: boşluk türleri (boşluk doldurma, soru + kısa cevap, tablo → `slotFill` düzenli plan; kelime havuzu → `dragPlace`
- * boşluklu metin) `activity-authoring-blanks.ts`'te.
+ * boşluklu metin) `activity-authoring-blanks.ts`'te. Issue #585: yol oyunları (`mazeTree` şablonları)
+ * `activity-authoring-maze.ts`'te.
  *
  * Kayıtta backend sürükle-yerleştir kartlarını ve eşleştirme sağ öğelerini karışık sıraya dizip opak id verir (#576
  * H1/M1); düzenlemede formu plan + çözümden geri kurarken id'lere değil, plan sırası ve çözüm eşlemesine bakılır.
@@ -18,6 +19,18 @@ import {
   parseWordPool,
   validateBlankForm,
 } from './activity-authoring-blanks';
+import {
+  ExitName,
+  MAZE_KINDS,
+  MazeForm,
+  MazeKind,
+  buildMazeDefinition,
+  emptyMazeForm,
+  isMazeForm,
+  isMazeKind,
+  parseMazeDefinition,
+  validateMazeForm,
+} from './activity-authoring-maze';
 import { DRAG_PLACE, DRAG_PLACE_LIMITS, DragPlacePlanV1, parseDragPlacePlan, parseDragPlaceSolution, cardsIn } from './drag-place';
 import { MATCH, MATCH_LIMITS, MatchPlanV1, parseMatchPlan, parseMatchSolution, rightOf } from './match';
 import {
@@ -28,9 +41,10 @@ import {
   parseMatrixChoiceSolution,
   selectionOf,
 } from './matrix-choice';
+import { MAZE_TREE } from './maze-tree';
 import { SLOT_FILL, parseSlotFillPlan } from './slot-fill';
 
-export type AuthoringKind = 'matrix' | 'classify' | 'order' | 'match' | BlankKind;
+export type AuthoringKind = 'matrix' | 'classify' | 'order' | 'match' | BlankKind | MazeKind;
 
 export const AUTHORING_KINDS: readonly AuthoringKind[] = [
   'matrix',
@@ -41,6 +55,7 @@ export const AUTHORING_KINDS: readonly AuthoringKind[] = [
   'shortAnswer',
   'fillTable',
   'wordPool',
+  ...MAZE_KINDS,
 ];
 
 export const AUTHORING_LABEL_MAX = MATRIX_CHOICE_LIMITS.maxLabelLength;
@@ -89,10 +104,10 @@ export interface MatchForm {
   distractors: string[];
 }
 
-export type AuthoringForm = MatrixForm | ClassifyForm | OrderForm | MatchForm | BlankForm;
+export type AuthoringForm = MatrixForm | ClassifyForm | OrderForm | MatchForm | BlankForm | MazeForm;
 
 export interface AuthoringDefinition {
-  interactionType: typeof MATRIX_CHOICE | typeof DRAG_PLACE | typeof MATCH | typeof SLOT_FILL;
+  interactionType: typeof MATRIX_CHOICE | typeof DRAG_PLACE | typeof MATCH | typeof SLOT_FILL | typeof MAZE_TREE;
   plan: string;
   solution: string;
 }
@@ -103,7 +118,20 @@ export interface AuthoringError {
   params?: Record<string, unknown>;
 }
 
-export function emptyForm(kind: AuthoringKind, trueFalseLabels: readonly [string, string]): AuthoringForm {
+/** Yol oyunu şablonlarının çevrilen varsayılanları (dal etiketleri, çıkış adı). */
+export interface MazeDefaults {
+  branches: [string, string];
+  exitName: ExitName;
+}
+
+const DEFAULT_MAZE: MazeDefaults = { branches: ['D', 'Y'], exitName: (n) => `${n}.` };
+
+export function emptyForm(
+  kind: AuthoringKind,
+  trueFalseLabels: readonly [string, string],
+  maze: MazeDefaults = DEFAULT_MAZE
+): AuthoringForm {
+  if (isMazeKind(kind)) return emptyMazeForm(kind, maze.branches, maze.exitName);
   switch (kind) {
     case 'matrix':
       return {
@@ -130,6 +158,7 @@ function bucketCapacity(cardCount: number): number {
 }
 
 export function validateForm(form: AuthoringForm): AuthoringError[] {
+  if (isMazeForm(form)) return validateMazeForm(form);
   const errors: AuthoringError[] = [];
   const blank = (values: string[]) => values.some((v) => !v.trim());
   const tooLong = (values: string[]) => values.some((v) => v.trim().length > AUTHORING_LABEL_MAX);
@@ -201,6 +230,7 @@ export function validateForm(form: AuthoringForm): AuthoringError[] {
 
 /** Form → plan + çözüm (JSON). Önce {@link validateForm} geçmeli. */
 export function buildDefinition(form: AuthoringForm): AuthoringDefinition {
+  if (isMazeForm(form)) return buildMazeDefinition(form);
   switch (form.kind) {
     case 'matrix': {
       const columns = form.columns.map((label, i) => ({ id: `c${i + 1}`, label: label.trim() }));
@@ -268,6 +298,7 @@ export function parseDefinition(
   if (type === DRAG_PLACE.toLowerCase()) return parseDragPlace(parseDragPlacePlan(planJson), solutionJson);
   if (type === MATCH.toLowerCase()) return parseMatch(parseMatchPlan(planJson), solutionJson);
   if (type === SLOT_FILL.toLowerCase()) return parseSlotFillBlanks(parseSlotFillPlan(planJson), solutionJson);
+  if (type === MAZE_TREE.toLowerCase()) return parseMazeDefinition(planJson, solutionJson);
   return null;
 }
 

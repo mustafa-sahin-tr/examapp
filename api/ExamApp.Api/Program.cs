@@ -251,6 +251,7 @@ builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGrad
 builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGrader, ExamApp.Api.Services.Interactions.MatchGrader>(); // issue #576
 builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGrader, ExamApp.Api.Services.Interactions.TextSelectGrader>(); // issue #582
 builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGrader, ExamApp.Api.Services.Interactions.OpenTextGrader>(); // issue #583
+builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGrader, ExamApp.Api.Services.Interactions.MazeTreeGrader>(); // issue #585
 builder.Services.AddSingleton<ExamApp.Api.Services.Interactions.IInteractionGraderRegistry, ExamApp.Api.Services.Interactions.InteractionGraderRegistry>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetAuthoringService, ExamApp.Api.Services.Worksheets.WorksheetAuthoringService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetDetailService, ExamApp.Api.Services.Worksheets.WorksheetDetailService>();

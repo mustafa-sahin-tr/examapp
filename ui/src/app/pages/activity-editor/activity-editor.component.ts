@@ -20,6 +20,7 @@ import {
   AuthoringError,
   AuthoringForm,
   AuthoringKind,
+  MazeDefaults,
   ClassifyForm,
   MatchForm,
   MatrixForm,
@@ -37,6 +38,17 @@ import {
   WordPoolForm,
   authorBlanks,
 } from '../../models/activity-authoring-blanks';
+import {
+  MAZE_FORM_LIMITS,
+  MazeBoardForm,
+  MazeRoomsForm,
+  MazeStonesForm,
+  MazeTreeForm,
+  otherRoom,
+  resizeRooms,
+  resizeTree,
+  roomDoors,
+} from '../../models/activity-authoring-maze';
 import { QuestionRegion } from '../../models/draws';
 import { Question } from '../../models/question';
 import { QuestionService } from '../../services/question.service';
@@ -46,6 +58,7 @@ import {
 } from '../../shared/components/classification-selector/classification-selector.component';
 import { QuestionCanvasDragPlaceComponent } from '../../shared/components/question-canvas-drag-place/question-canvas-drag-place.component';
 import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
+import { QuestionCanvasMazeTreeComponent } from '../../shared/components/question-canvas-maze-tree/question-canvas-maze-tree.component';
 import { QuestionCanvasMatrixChoiceComponent } from '../../shared/components/question-canvas-matrix-choice/question-canvas-matrix-choice.component';
 import { QuestionCanvasSlotFillComponent } from '../../shared/components/question-canvas-slot-fill/question-canvas-slot-fill.component';
 
@@ -99,6 +112,7 @@ interface EditableItem {
     QuestionCanvasDragPlaceComponent,
     QuestionCanvasMatchComponent,
     QuestionCanvasSlotFillComponent,
+    QuestionCanvasMazeTreeComponent,
   ],
   providers: [provideTranslocoScope(ACTIVITY_EDITOR_SCOPE)],
   templateUrl: './activity-editor.component.html',
@@ -116,6 +130,10 @@ export class ActivityEditorComponent {
   readonly instructionMax = PASSAGE_INSTRUCTION_MAX_LENGTH;
   readonly labelMax = AUTHORING_LABEL_MAX;
   readonly tableLimits = BLANK_TABLE_LIMITS;
+  readonly mazeLimits = MAZE_FORM_LIMITS;
+  readonly mazeLabelMax = MAZE_FORM_LIMITS.maxLabel;
+  readonly treeDepths = [1, 2, 3, 4];
+  readonly gridSizes = [2, 3, 4];
 
   readonly testId = Number(this.route.snapshot.queryParamMap.get('testId')) || null;
   private readonly gradeId = Number(this.route.snapshot.queryParamMap.get('gradeId')) || null;
@@ -135,7 +153,7 @@ export class ActivityEditorComponent {
   private initialClassificationKey = '';
 
   readonly items = signal<EditableItem[]>([]);
-  readonly form = signal<AuthoringForm>(emptyForm('matrix', this.trueFalseLabels()));
+  readonly form = signal<AuthoringForm>(emptyForm('matrix', this.trueFalseLabels(), this.mazeDefaults()));
   readonly instruction = signal('');
   readonly image = signal<EditorImage | null>(null);
   readonly imageError = signal<string | null>(null);
@@ -154,6 +172,19 @@ export class ActivityEditorComponent {
   readonly shortAnswer = computed(() => (this.form().kind === 'shortAnswer' ? (this.form() as ShortAnswerForm) : null));
   readonly fillTable = computed(() => (this.form().kind === 'fillTable' ? (this.form() as FillTableForm) : null));
   readonly wordPool = computed(() => (this.form().kind === 'wordPool' ? (this.form() as WordPoolForm) : null));
+  readonly mazeTree = computed(() => (this.form().kind === 'mazeTree' ? (this.form() as MazeTreeForm) : null));
+  readonly mazeBoard = computed(() => (this.form().kind === 'mazeBoard' ? (this.form() as MazeBoardForm) : null));
+  readonly mazeRooms = computed(() => (this.form().kind === 'mazeRooms' ? (this.form() as MazeRoomsForm) : null));
+  readonly mazeStones = computed(() => (this.form().kind === 'mazeStones' ? (this.form() as MazeStonesForm) : null));
+  /** D/Y ağacının düzeyleri: genişlik öncelikli sırada her düzeyin ifade dizinleri. */
+  readonly treeLevels = computed(() => {
+    const f = this.mazeTree();
+    if (!f) return [];
+    return Array.from({ length: f.depth }, (_, depth) => ({
+      depth,
+      indices: Array.from({ length: 2 ** depth }, (_, i) => 2 ** depth - 1 + i),
+    }));
+  });
   /** Metindeki boşluk sayısı (boşluk doldurma / kelime havuzu ipucu). */
   readonly blankCount = computed(() => {
     const f = this.form();
@@ -221,7 +252,7 @@ export class ActivityEditorComponent {
 
   selectKind(kind: AuthoringKind): void {
     if (kind === this.kind() || this.editingId()) return;
-    this.form.set(emptyForm(kind, this.trueFalseLabels()));
+    this.form.set(emptyForm(kind, this.trueFalseLabels(), this.mazeDefaults()));
     this.submitted.set(false);
   }
 
@@ -421,6 +452,150 @@ export class ActivityEditorComponent {
 
   removeDistractor(index: number): void {
     this.updateMatch((f) => ({ ...f, distractors: f.distractors.filter((_, i) => i !== index) }));
+  }
+
+  // ---- D/Y ağacı ----
+
+  setTreeDepth(depth: number): void {
+    this.updateMazeTree((f) => resizeTree(f, depth, this.mazeDefaults().exitName));
+  }
+
+  setTreeBranch(index: number, value: string): void {
+    this.updateMazeTree((f) => ({ ...f, branches: f.branches.map((b, i) => (i === index ? value : b)) as [string, string] }));
+  }
+
+  setTreeNode(index: number, value: string): void {
+    this.updateMazeTree((f) => ({ ...f, nodes: f.nodes.map((n, i) => (i === index ? { ...n, text: value } : n)) }));
+  }
+
+  setTreeCorrect(index: number, side: 0 | 1): void {
+    this.updateMazeTree((f) => ({ ...f, nodes: f.nodes.map((n, i) => (i === index ? { ...n, correct: side } : n)) }));
+  }
+
+  setTreeExit(index: number, value: string): void {
+    this.updateMazeTree((f) => ({ ...f, exits: f.exits.map((x, i) => (i === index ? value : x)) }));
+  }
+
+  /** İfadenin kökten yolu ("D → Y"); kök için "Başlangıç". */
+  treePath(index: number): string {
+    const f = this.mazeTree();
+    if (!f || index === 0) return this.t('maze.root');
+    const steps: string[] = [];
+    let bfs = index + 1;
+    while (bfs > 1) {
+      steps.unshift(f.branches[bfs % 2] || '?');
+      bfs = Math.floor(bfs / 2);
+    }
+    return steps.join(' → ');
+  }
+
+  // ---- Işıklı pano ----
+
+  setBoardFinish(value: string): void {
+    this.updateMazeBoard((f) => ({ ...f, finish: value }));
+  }
+
+  setBoardRowLabel(index: number, value: string): void {
+    this.updateMazeBoard((f) => ({ ...f, rows: f.rows.map((r, i) => (i === index ? { ...r, label: value } : r)) }));
+  }
+
+  setBoardBox(row: number, box: number, value: string): void {
+    this.updateMazeBoard((f) => ({
+      ...f,
+      rows: f.rows.map((r, i) => (i === row ? { ...r, boxes: r.boxes.map((b, j) => (j === box ? value : b)) } : r)),
+    }));
+  }
+
+  setBoardCorrect(row: number, box: number): void {
+    this.updateMazeBoard((f) => ({ ...f, rows: f.rows.map((r, i) => (i === row ? { ...r, correct: box } : r)) }));
+  }
+
+  addBoardBox(row: number): void {
+    this.updateMazeBoard((f) => ({ ...f, rows: f.rows.map((r, i) => (i === row ? { ...r, boxes: [...r.boxes, ''] } : r)) }));
+  }
+
+  removeBoardBox(row: number, box: number): void {
+    this.updateMazeBoard((f) => ({
+      ...f,
+      rows: f.rows.map((r, i) => {
+        if (i !== row) return r;
+        const correct = r.correct === box ? 0 : r.correct > box ? r.correct - 1 : r.correct;
+        return { ...r, boxes: r.boxes.filter((_, j) => j !== box), correct };
+      }),
+    }));
+  }
+
+  addBoardRow(): void {
+    this.updateMazeBoard((f) => ({ ...f, rows: [...f.rows, { label: '', boxes: ['', '', ''], correct: 0 }] }));
+  }
+
+  removeBoardRow(index: number): void {
+    this.updateMazeBoard((f) => ({ ...f, rows: f.rows.filter((_, i) => i !== index) }));
+  }
+
+  // ---- Odalı labirent ----
+
+  setRoomsSize(rows: number, cols: number): void {
+    this.updateMazeRooms((f) => resizeRooms(f, rows, cols));
+  }
+
+  setRoomsStart(index: number): void {
+    this.updateMazeRooms((f) => ({ ...f, start: index }));
+  }
+
+  setRoomsFinish(index: number): void {
+    this.updateMazeRooms((f) => ({ ...f, finish: index }));
+  }
+
+  setRoomText(index: number, value: string): void {
+    this.updateMazeRooms((f) => ({ ...f, rooms: f.rooms.map((r, i) => (i === index ? { ...r, text: value } : r)) }));
+  }
+
+  setRoomAnswer(index: number, door: number | null): void {
+    this.updateMazeRooms((f) => ({ ...f, rooms: f.rooms.map((r, i) => (i === index ? { ...r, answer: door } : r)) }));
+  }
+
+  setDoorLabel(index: number, value: string): void {
+    this.updateMazeRooms((f) => ({ ...f, doors: f.doors.map((d, i) => (i === index ? { ...d, label: value } : d)) }));
+  }
+
+  /** Oda adı: satır harfi + kolon numarası (A1, B3). */
+  roomName(index: number): string {
+    const cols = this.mazeRooms()?.cols ?? 1;
+    return `${String.fromCharCode(65 + Math.floor(index / cols))}${(index % cols) + 1}`;
+  }
+
+  doorName(index: number): string {
+    const door = this.mazeRooms()?.doors[index];
+    return door ? `${this.roomName(door.a)} ↔ ${this.roomName(door.b)}` : '';
+  }
+
+  /** Odanın doğru kapı seçenekleri: "<etiket> → <öbür oda>". */
+  roomDoorOptions(room: number): { index: number; label: string }[] {
+    const f = this.mazeRooms();
+    if (!f) return [];
+    return roomDoors(f, room).map((i) => ({
+      index: i,
+      label: `${f.doors[i].label.trim()} → ${this.roomName(otherRoom(f.doors[i], room))}`,
+    }));
+  }
+
+  // ---- Irmak taşları ----
+
+  setStoneText(index: number, value: string): void {
+    this.updateMazeStones((f) => ({ ...f, stones: f.stones.map((s, i) => (i === index ? { ...s, text: value } : s)) }));
+  }
+
+  toggleStoneMarked(index: number): void {
+    this.updateMazeStones((f) => ({ ...f, stones: f.stones.map((s, i) => (i === index ? { ...s, marked: !s.marked } : s)) }));
+  }
+
+  addStone(): void {
+    this.updateMazeStones((f) => ({ ...f, stones: [...f.stones, { text: '', marked: false }] }));
+  }
+
+  removeStone(index: number): void {
+    this.updateMazeStones((f) => ({ ...f, stones: f.stones.filter((_, i) => i !== index) }));
   }
 
   // ---- Boşluk doldurma / kelime havuzu (metin) ----
@@ -652,7 +827,7 @@ export class ActivityEditorComponent {
     this.editingId.set(null);
     this.editingPassageId = null;
     this.originalImage = null;
-    this.form.set(emptyForm(kind, this.trueFalseLabels()));
+    this.form.set(emptyForm(kind, this.trueFalseLabels(), this.mazeDefaults()));
     this.instruction.set('');
     this.image.set(null);
     this.imageError.set(null);
@@ -709,6 +884,37 @@ export class ActivityEditorComponent {
     if (f) this.form.set(update(f));
   }
 
+  private updateMazeTree(update: (f: MazeTreeForm) => MazeTreeForm): void {
+    const f = this.mazeTree();
+    if (f) this.form.set(update(f));
+  }
+
+  private updateMazeBoard(update: (f: MazeBoardForm) => MazeBoardForm): void {
+    const f = this.mazeBoard();
+    if (f) this.form.set(update(f));
+  }
+
+  private updateMazeRooms(update: (f: MazeRoomsForm) => MazeRoomsForm): void {
+    const f = this.mazeRooms();
+    if (f) this.form.set(update(f));
+  }
+
+  private updateMazeStones(update: (f: MazeStonesForm) => MazeStonesForm): void {
+    const f = this.mazeStones();
+    if (f) this.form.set(update(f));
+  }
+
+  /** Yol oyunu şablonlarının varsayılanları (kök çeviriden): dal etiketleri D / Y, çıkış adı "n. çıkış". */
+  private mazeDefaults(): MazeDefaults {
+    return {
+      branches: [
+        this.transloco.translate<string>('shared.questionCanvas.maze.branchTrue'),
+        this.transloco.translate<string>('shared.questionCanvas.maze.branchFalse'),
+      ],
+      exitName: (n) => this.transloco.translate<string>('shared.questionCanvas.maze.exitName', { n }),
+    };
+  }
+
   /** Kök çeviriden (kapsam yüklenmeden de hazır): yeni form alan başlatılırken çağrılır. */
   private trueFalseLabels(): [string, string] {
     return [
@@ -746,5 +952,13 @@ function itemTitle(form: AuthoringForm, instruction: string | null | undefined):
       return form.rows[0]?.question ?? '';
     case 'fillTable':
       return form.cells[0]?.join(' / ') ?? '';
+    case 'mazeTree':
+      return form.nodes[0]?.text ?? '';
+    case 'mazeBoard':
+      return form.rows.map((r) => r.label).filter(Boolean).join(' / ');
+    case 'mazeRooms':
+      return form.rooms[form.start]?.text ?? '';
+    case 'mazeStones':
+      return form.stones[0]?.text ?? '';
   }
 }

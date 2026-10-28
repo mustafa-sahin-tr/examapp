@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -14,16 +15,21 @@ namespace ExamApp.Api.Services.Interactions;
 /// <c>{kind:"select",options:[{id,label}]}</c> (2..12) | <c>{kind:"palette",symbols:[...]}</c> (1..20, her biri ≤ 8).
 /// issue #590 (dilim b, görselsiz): <c>layout</c> (<see cref="InteractionLayout"/>: <c>list</c> | <c>text</c> | <c>table</c>)
 /// verilirse kutularda <c>box</c> YOKTUR; <c>list</c>'te her kutunun boş olmayan <c>label</c>'ı (soru) zorunlu, <c>text</c> /
-/// <c>table</c>'da her kutu düzende tam bir kez <c>[[id]]</c> olarak geçer. <c>layout</c> yoksa <c>box</c> zorunlu.</item>
+/// <c>table</c>'da her kutu düzende tam bir kez <c>[[id]]</c> olarak geçer. <c>layout</c> yoksa <c>box</c> zorunlu.
+/// issue #586 (dilim d, şifre katmanı): isteğe bağlı <c>cipher:{cells:["s3","s1",null,"s2"]}</c> — gizli kelimenin hücreleri
+/// (kutu id'si ya da <c>null</c> = boşluk; 2..40 hücre, en az 2 harf hücresi, başta / sonda boşluk yok, aynı kutu birden çok
+/// hücrede geçebilir).</item>
 /// <item>Çözüm (#570, <c>Question.InteractionSolution</c>, öğrenciye gitmez): kutu id → kutu çözümü — number
 /// <c>{value,equivalence?,requireSimplest?,units?,unitMode?}</c> (varsayılan <c>true</c>, <c>false</c>, <c>[]</c>,
-/// <c>"none"</c>), text <c>{accept,optionalSuffixes?}</c>, select <c>{optionIds}</c>, palette <c>{accept}</c>.</item>
+/// <c>"none"</c>), text <c>{accept,optionalSuffixes?}</c>, select <c>{optionIds}</c>, palette <c>{accept}</c>. Şifreli planda
+/// şifrede geçen her kutunun çözümünde <c>letter</c> (tek harf / rakam) zorunlu; şifresiz planda <c>letter</c> yasak.</item>
 /// <item>Öğrenci payload'u: <c>{version:1,type:"slotFill",values:{"s1":"3/4"}}</c> (string; boş/boşluk = cevapsız; select
 /// seçenek id'si gönderir).</item>
 /// </list>
 /// Karşılaştırma kuralları <see cref="SlotAnswerNormalizer"/>'da (paylaşılan fixture). Satırlar = plandaki TÜM kutular, plan
 /// sırasıyla (cevapsız kutu yanlış); geri bildirim yalnız kutu id'si + doğru/yanlış, çözüm ASLA yazılmaz. Çözümü olmayan soru
-/// puanlanamaz (0/0).
+/// puanlanamaz (0/0). Şifreli planda geri bildirim ek olarak <c>cipher</c> taşır: hücre başına doğru cevaplanmış kutunun harfi
+/// (tr-TR büyük harf), boşluk ya da açılmamış hücre <c>null</c> — yalnız öğrencinin bulduğu harfler açılır.
 /// </summary>
 public sealed class SlotFillGrader : IInteractionGrader
 {
@@ -48,13 +54,17 @@ public sealed class SlotFillGrader : IInteractionGrader
     public const int MaxSuffixEntries = 10;
     public const int MaxUnits = 10;
     public const int MaxUnitLength = 20;
+    public const int MinCipherLetters = 2;
+    public const int MaxCipherCells = 40;
 
     /// <summary>Öğrencinin tek kutuya yazabileceği en uzun değer (karakter).</summary>
     public const int MaxValueLength = 200;
 
 
     // Kayıtta planın / çözümün her düzeyinde izinli alanlar (allowlist; #574 M1 ile aynı gerekçe).
-    private static readonly HashSet<string> RootKeys = new(StringComparer.Ordinal) { "version", "type", "slots", "layout" };
+    private static readonly HashSet<string> RootKeys = new(StringComparer.Ordinal) { "version", "type", "slots", "layout", "cipher" };
+    private static readonly HashSet<string> CipherKeys = new(StringComparer.Ordinal) { "cells" };
+    private static readonly CultureInfo Turkish = CultureInfo.GetCultureInfo("tr-TR");
     private static readonly HashSet<string> SlotKeys = new(StringComparer.Ordinal) { "id", "label", "box", "input" };
     private static readonly HashSet<string> BoxKeys = new(StringComparer.Ordinal) { "x", "y", "width", "height" };
     private static readonly HashSet<string> NumberInputKeys = new(StringComparer.Ordinal) { "kind", "entry", "unit" };
@@ -63,10 +73,10 @@ public sealed class SlotFillGrader : IInteractionGrader
     private static readonly HashSet<string> PaletteInputKeys = new(StringComparer.Ordinal) { "kind", "symbols" };
     private static readonly HashSet<string> OptionKeys = new(StringComparer.Ordinal) { "id", "label" };
     private static readonly HashSet<string> NumberSolutionKeys = new(StringComparer.Ordinal)
-        { "value", "equivalence", "requireSimplest", "units", "unitMode" };
-    private static readonly HashSet<string> TextSolutionKeys = new(StringComparer.Ordinal) { "accept", "optionalSuffixes" };
-    private static readonly HashSet<string> SelectSolutionKeys = new(StringComparer.Ordinal) { "optionIds" };
-    private static readonly HashSet<string> PaletteSolutionKeys = new(StringComparer.Ordinal) { "accept" };
+        { "value", "equivalence", "requireSimplest", "units", "unitMode", "letter" };
+    private static readonly HashSet<string> TextSolutionKeys = new(StringComparer.Ordinal) { "accept", "optionalSuffixes", "letter" };
+    private static readonly HashSet<string> SelectSolutionKeys = new(StringComparer.Ordinal) { "optionIds", "letter" };
+    private static readonly HashSet<string> PaletteSolutionKeys = new(StringComparer.Ordinal) { "accept", "letter" };
     private static readonly HashSet<string> NumberEntries = new(StringComparer.Ordinal) { "plain", "fraction", "mixed" };
     private static readonly HashSet<string> UnitModes = new(StringComparer.Ordinal)
         { SlotAnswerNormalizer.UnitModeNone, SlotAnswerNormalizer.UnitModeOptional, SlotAnswerNormalizer.UnitModeRequired };
@@ -147,8 +157,28 @@ public sealed class SlotFillGrader : IInteractionGrader
             rows.Add((slot.Id, correct));
         }
 
-        return InteractionGradeResult.Of(rows.Count(r => r.Correct), rows.Count, WriteFeedback(rows));
+        return InteractionGradeResult.Of(rows.Count(r => r.Correct), rows.Count, WriteFeedback(rows, RevealCipher(plan, solution, rows)));
     }
+
+    /// <summary>Şifre hücreleri: doğru cevaplanmış kutunun harfi, diğerleri null. Şifresiz plan → null.</summary>
+    private static List<string?>? RevealCipher(PlanInfo plan, JsonElement solution, List<(string Id, bool Correct)> rows)
+    {
+        if (plan.Cipher == null)
+            return null;
+        var correct = rows.Where(r => r.Correct).Select(r => r.Id).ToHashSet(StringComparer.Ordinal);
+        return plan.Cipher.Select(cell => cell != null && correct.Contains(cell) && solution.TryGetProperty(cell, out var slotSolution)
+            ? ReadLetter(slotSolution)
+            : null).ToList();
+    }
+
+    /// <summary>Kutu çözümünün şifre harfi (tr-TR büyük harf); yoksa / geçersizse null.</summary>
+    private static string? ReadLetter(JsonElement slotSolution)
+        => slotSolution.ValueKind == JsonValueKind.Object && ReadString(slotSolution, "letter") is { } letter && IsValidLetter(letter)
+            ? letter.ToUpper(Turkish)
+            : null;
+
+    /// <summary>Şifre harfi: tek karakter, harf ya da rakam.</summary>
+    private static bool IsValidLetter(string? letter) => letter is { Length: 1 } && char.IsLetterOrDigit(letter[0]);
 
     /// <summary>
     /// issue #584: öğe = kutu (plan sırası). Cevap: <c>select</c>'te seçenek (id + etiket), diğerlerinde yazılan metin
@@ -223,7 +253,7 @@ public sealed class SlotFillGrader : IInteractionGrader
             {
                 if (!IsValidId(property.Name) || !planInfo.ById.TryGetValue(property.Name, out var slot) || !covered.Add(property.Name))
                     return false;
-                if (!IsValidSlotSolution(slot, property.Value))
+                if (!IsValidSlotSolution(slot, property.Value) || !IsValidCipherLetter(planInfo, slot.Id, property.Value))
                     return false;
             }
             return covered.Count == planInfo.Slots.Count;
@@ -298,7 +328,8 @@ public sealed class SlotFillGrader : IInteractionGrader
     /// <param name="Entry">Sayı kutusunun giriş bileşeni (<c>plain</c> | <c>fraction</c> | <c>mixed</c>); yoksa/diğer türlerde <c>plain</c>.</param>
     private sealed record SlotInfo(string Id, string Kind, HashSet<string> OptionIds, string Entry = "plain");
 
-    private sealed record PlanInfo(List<SlotInfo> Slots, Dictionary<string, SlotInfo> ById);
+    /// <param name="Cipher">issue #586: şifre hücreleri (kutu id'si ya da null = boşluk); şifresiz planda null.</param>
+    private sealed record PlanInfo(List<SlotInfo> Slots, Dictionary<string, SlotInfo> ById, List<string?>? Cipher = null);
 
     /// <summary>
     /// Plan okuma. <paramref name="strict"/> false (okuma/kontrol): yalnız kutu id'si, türü ve seçenek id'leri; bozuk kutu
@@ -342,6 +373,16 @@ public sealed class SlotFillGrader : IInteractionGrader
                     return false;
             }
 
+            if (root.TryGetProperty("cipher", out var cipher) && cipher.ValueKind != JsonValueKind.Null)
+            {
+                if (!TryReadCipher(cipher, info.ById, strict, out var cells))
+                {
+                    if (strict) return false;
+                }
+                else
+                    info = info with { Cipher = cells };
+            }
+
             if (!strict)
                 return true;
             if (info.Slots.Count is < MinSlots or > MaxSlots)
@@ -352,6 +393,33 @@ public sealed class SlotFillGrader : IInteractionGrader
         {
             return false;
         }
+    }
+
+    /// <summary>
+    /// issue #586: <c>{cells:[id|null,...]}</c>. Kayıtta 2..<see cref="MaxCipherCells"/> hücre, en az <see cref="MinCipherLetters"/>
+    /// harf hücresi, her id plandaki bir kutu, başta / sonda boşluk yok. Okumada bilinmeyen kutu boşluk sayılır.
+    /// </summary>
+    private static bool TryReadCipher(JsonElement cipher, Dictionary<string, SlotInfo> slots, bool strict, out List<string?> cells)
+    {
+        cells = new List<string?>();
+        if (cipher.ValueKind != JsonValueKind.Object || (strict && !HasOnlyKeys(cipher, CipherKeys))
+            || !cipher.TryGetProperty("cells", out var array) || array.ValueKind != JsonValueKind.Array
+            || array.GetArrayLength() > MaxCipherCells)
+            return false;
+        foreach (var cell in array.EnumerateArray())
+        {
+            if (cell.ValueKind == JsonValueKind.Null)
+                cells.Add(null);
+            else if (cell.ValueKind == JsonValueKind.String && cell.GetString() is { } id && slots.ContainsKey(id))
+                cells.Add(id);
+            else if (strict)
+                return false;
+            else
+                cells.Add(null);
+        }
+        if (!strict)
+            return cells.Any(c => c != null);
+        return cells.Count(c => c != null) >= MinCipherLetters && cells[0] != null && cells[^1] != null;
     }
 
     private static readonly string[] LayoutKinds = { InteractionLayout.KindList, InteractionLayout.KindText, InteractionLayout.KindTable };
@@ -557,6 +625,16 @@ public sealed class SlotFillGrader : IInteractionGrader
         }
     }
 
+    /// <summary>issue #586: şifrede geçen kutuda <c>letter</c> zorunlu ve geçerli; şifresiz planda ya da şifre dışı kutuda yasak.</summary>
+    private static bool IsValidCipherLetter(PlanInfo plan, string slotId, JsonElement solution)
+    {
+        var hasLetter = solution.TryGetProperty("letter", out var letter) && letter.ValueKind != JsonValueKind.Null;
+        var inCipher = plan.Cipher?.Contains(slotId) == true;
+        if (!inCipher)
+            return !hasLetter;
+        return hasLetter && letter.ValueKind == JsonValueKind.String && IsValidLetter(letter.GetString());
+    }
+
     private static bool IsOptionalBool(JsonElement obj, string name)
         => !obj.TryGetProperty(name, out var p) || p.ValueKind is JsonValueKind.True or JsonValueKind.False or JsonValueKind.Null;
 
@@ -654,7 +732,7 @@ public sealed class SlotFillGrader : IInteractionGrader
         }
     }
 
-    private static string WriteFeedback(IReadOnlyList<(string Id, bool Correct)> rows)
+    private static string WriteFeedback(IReadOnlyList<(string Id, bool Correct)> rows, IReadOnlyList<string?>? cipher = null)
     {
         using var buffer = new MemoryStream();
         using (var writer = new Utf8JsonWriter(buffer))
@@ -669,6 +747,18 @@ public sealed class SlotFillGrader : IInteractionGrader
                 writer.WriteEndObject();
             }
             writer.WriteEndArray();
+            if (cipher != null)
+            {
+                writer.WriteStartArray("cipher");
+                foreach (var letter in cipher)
+                {
+                    if (letter == null)
+                        writer.WriteNullValue();
+                    else
+                        writer.WriteStringValue(letter);
+                }
+                writer.WriteEndArray();
+            }
             writer.WriteEndObject();
         }
 

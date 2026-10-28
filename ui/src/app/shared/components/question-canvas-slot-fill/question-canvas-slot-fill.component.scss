@@ -375,3 +375,64 @@
     width: 7em;
   }
 }
+
+// ---- #586 (dilim d): şifre şeridi
+.sf-cipher {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 8px;
+  background: var(--ms-surface);
+
+  &.is-solved {
+    border-color: var(--ms-success-border);
+  }
+}
+
+.sf-cipher__label {
+  font-family: var(--mainFontFamily);
+  font-weight: 600;
+}
+
+.sf-cipher__cells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.sf-cipher__cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.sf-cipher__letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 40px;
+  border: 2px solid var(--ms-action-border);
+  border-radius: 6px;
+  font-family: var(--mainFontFamily);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ms-text-strong);
+
+  .is-open & {
+    border-color: var(--ms-success-border);
+  }
+}
+
+.sf-cipher__no {
+  font-size: 0.75rem;
+  color: var(--ms-text);
+}
+
+.sf-cipher__gap {
+  width: 18px;
+}

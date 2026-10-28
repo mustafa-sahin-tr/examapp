@@ -330,7 +330,10 @@
         "paletteAria": "Symbol palette for box {{n}}",
         "insertSymbol": "Insert {{symbol}}",
         "markCorrect": "correct",
-        "markWrong": "wrong"
+        "markWrong": "wrong",
+        "cipherLabel": "Secret word",
+        "cipherCellOpen": "Letter of question {{n}}: {{letter}}",
+        "cipherCellHidden": "Letter of question {{n}} is hidden"
       },
       "dragPlace": {
         "poolTitle": "Cards",

@@ -330,7 +330,10 @@
         "paletteAria": "Kutu {{n}} sembol paleti",
         "insertSymbol": "{{symbol}} ekle",
         "markCorrect": "doğru",
-        "markWrong": "yanlış"
+        "markWrong": "yanlış",
+        "cipherLabel": "Şifre",
+        "cipherCellOpen": "{{n}}. sorunun harfi: {{letter}}",
+        "cipherCellHidden": "{{n}}. sorunun harfi gizli"
       },
       "dragPlace": {
         "poolTitle": "Kartlar",

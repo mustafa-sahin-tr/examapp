@@ -182,7 +182,14 @@
     "logicDuplicate": "A name appears twice in the same list.",
     "logicClueCount": "Add at most {{max}} clues.",
     "logicAnswerMissing": "In the answer, choose an option from every category for every row.",
-    "logicAnswerDuplicate": "The same option is given to two rows in “{{category}}”."
+    "logicAnswerDuplicate": "The same option is given to two rows in “{{category}}”.",
+    "cipherWordMissing": "You gave letters but no secret word.",
+    "cipherTooLong": "The secret word can be at most {{max}} characters.",
+    "cipherWordChars": "The secret word may contain only letters, digits and spaces.",
+    "cipherWordShort": "The secret word needs at least {{min}} letters.",
+    "cipherLetterInvalid": "A question's letter must be a single letter or digit.",
+    "cipherLetterMissing": "No question carries the letter \"{{letter}}\" of the secret word.",
+    "cipherLetterUnused": "The letter \"{{letter}}\" does not appear in the secret word."
   },
   "snackbar": {
     "created": "The item was added to the activity.",
@@ -201,7 +208,11 @@
     "hint": "Numeric answers become number boxes (3/4 equals 0.75).",
     "question": "Question {{n}}",
     "answers": "Answer (| for alternatives)",
-    "add": "Add question"
+    "add": "Add question",
+    "letter": "Letter",
+    "cipher": "Secret word (optional)",
+    "cipherHint": "Type the secret word and give each question its letter. The letter appears in the word when the student answers that question correctly.",
+    "cipherWord": "Secret word"
   },
   "table": {
     "cells": "Table",

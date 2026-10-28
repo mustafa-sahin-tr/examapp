@@ -30,6 +30,9 @@ export const SLOT_FILL_LIMITS = {
   maxUnitLength: 20,
   /** Öğrencinin tek kutuya yazabileceği en uzun değer. */
   maxValueLength: 200,
+  /** Issue #586 (şifre katmanı): gizli kelimenin hücre sınırı ve en az harf hücresi. */
+  maxCipherCells: 40,
+  minCipherLetters: 2,
 } as const;
 
 /** Plan / seçenek id deseni (backend ile aynı). */
@@ -113,6 +116,16 @@ export interface SlotFillPlanV1 {
   /** Issue #590: görselsiz düzen; varsa kutular koordinatsızdır. */
   layout?: InteractionLayout | null;
   slots: SlotFillSlot[];
+  /** Issue #586: şifre katmanı — gizli kelimenin hücreleri (kutu id'si ya da `null` = boşluk). */
+  cipher?: SlotFillCipher | null;
+}
+
+/**
+ * Issue #586 (dilim d): şifre katmanı. Her hücre bir kutuya bağlıdır (aynı kutu birden çok hücrede olabilir) ya da boşluktur.
+ * Kutunun harfi çözümdedir (`letter`), öğrenciye gitmez; kontrolde doğru cevaplanan kutunun harfi geri bildirimle açılır.
+ */
+export interface SlotFillCipher {
+  cells: (string | null)[];
 }
 
 export interface SlotNumberSolution {
@@ -251,7 +264,52 @@ export function parseSlotFillPlan(json: string | null | undefined): SlotFillPlan
       slots.push({ id, label, box, input });
     }
     if (slots.length === 0) return null;
-    return layout ? { version: 1, type: SLOT_FILL, layout, slots } : { version: 1, type: SLOT_FILL, slots };
+    const plan: SlotFillPlanV1 = layout ? { version: 1, type: SLOT_FILL, layout, slots } : { version: 1, type: SLOT_FILL, slots };
+    const cipher = parseCipher(parsed.cipher, seen);
+    return cipher ? { ...plan, cipher } : plan;
+  } catch {
+    return null;
+  }
+}
+
+/** Şifre hücreleri: bilinmeyen kutu boşluk sayılır; hiç harf hücresi yoksa şifre yok. */
+function parseCipher(value: unknown, slotIds: Set<string>): SlotFillCipher | null {
+  if (!value || typeof value !== 'object' || !Array.isArray((value as SlotFillCipher).cells)) return null;
+  const cells = ((value as SlotFillCipher).cells as unknown[])
+    .slice(0, SLOT_FILL_LIMITS.maxCipherCells)
+    .map((cell) => (typeof cell === 'string' && slotIds.has(cell) ? cell : null));
+  return cells.some((cell) => cell !== null) ? { cells } : null;
+}
+
+/** Şifre harfi: tek harf ya da rakam (sunucu `char.IsLetterOrDigit`). */
+export function isValidCipherLetter(value: string | null | undefined): boolean {
+  return typeof value === 'string' && value.length === 1 && /^[\p{L}\p{Nd}]$/u.test(value);
+}
+
+/** Çözümdeki şifre harfleri (kutu id → tr-TR büyük harf); geçersiz / yoksa atlanır. */
+export function parseSlotFillLetters(json: string | null | undefined): Map<string, string> {
+  const letters = new Map<string, string>();
+  if (!json) return letters;
+  try {
+    const parsed = JSON.parse(json) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return letters;
+    Object.entries(parsed as Record<string, unknown>).forEach(([slotId, entry]) => {
+      const letter = entry && typeof entry === 'object' ? (entry as { letter?: unknown }).letter : null;
+      if (typeof letter === 'string' && isValidCipherLetter(letter)) letters.set(slotId, letter.toLocaleUpperCase('tr-TR'));
+    });
+  } catch {
+    /* bozuk çözüm: harf yok */
+  }
+  return letters;
+}
+
+/** Sunucu geri bildirimindeki açılmış şifre harfleri (hücre başına harf ya da null); şifre yoksa null. */
+export function parseSlotFillCipherFeedback(json: string | null | undefined): (string | null)[] | null {
+  if (!json) return null;
+  try {
+    const parsed = JSON.parse(json) as { cipher?: unknown } | null;
+    if (!parsed || !Array.isArray(parsed.cipher)) return null;
+    return parsed.cipher.map((letter) => (typeof letter === 'string' && isValidCipherLetter(letter) ? letter : null));
   } catch {
     return null;
   }

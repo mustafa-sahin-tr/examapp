@@ -394,3 +394,57 @@ describe('QuestionCanvasSlotFillComponent görselsiz düzen (#590)', () => {
         expect(el().querySelector('[data-solution="s2"]')!.textContent).toContain('81');
     });
 });
+
+describe('QuestionCanvasSlotFillComponent şifre katmanı (#586 dilim d)', () => {
+    let fixture: ComponentFixture<QuestionCanvasSlotFillComponent>;
+    const el = () => fixture.nativeElement as HTMLElement;
+    const letters = () =>
+        Array.from(el().querySelectorAll('[data-cipher-cell] .sf-cipher__letter')).map((c) => c.textContent!.trim());
+
+    const plan = {
+        version: 1,
+        type: 'slotFill',
+        layout: { kind: 'list' },
+        slots: [
+            { id: 's1', label: '3 × 4', input: { kind: 'number', entry: 'plain' } },
+            { id: 's2', label: 'Başkent', input: { kind: 'text' } },
+        ],
+        cipher: { cells: ['s2', null, 's1', 's2'] },
+    };
+    const solution = {
+        s1: { value: '12', equivalence: true, requireSimplest: false, units: [], unitMode: 'none', letter: 'k' },
+        s2: { accept: ['Ankara'], optionalSuffixes: [], letter: 'İ' },
+    };
+
+    function setup(extra: { feedbackCipher?: (string | null)[]; showSolution?: boolean; solution?: object | null } = {}): void {
+        TestBed.configureTestingModule({ imports: [QuestionCanvasSlotFillComponent, translocoTestingModule()] });
+        fixture = TestBed.createComponent(QuestionCanvasSlotFillComponent);
+        fixture.componentRef.setInput('questionRegion', { imageUrl: '', width: 0, height: 0, passage: null } as unknown as QuestionRegion);
+        fixture.componentRef.setInput('interactionPlanJson', JSON.stringify(plan));
+        const sol = extra.solution === undefined ? null : extra.solution;
+        fixture.componentRef.setInput('interactionSolutionJson', sol ? JSON.stringify(sol) : null);
+        if (extra.feedbackCipher) fixture.componentRef.setInput('feedbackCipher', extra.feedbackCipher);
+        if (extra.showSolution) fixture.componentRef.setInput('showSolution', true);
+        fixture.detectChanges();
+    }
+
+    it('draws hidden cells numbered by question, with a gap for spaces', () => {
+        setup();
+        expect(el().querySelector('[data-testid="sf-cipher"]')).not.toBeNull();
+        expect(letters()).toEqual(['', '', '']);
+        expect(Array.from(el().querySelectorAll('.sf-cipher__no')).map((n) => n.textContent!.trim())).toEqual(['2', '1', '2']);
+        expect(el().querySelectorAll('.sf-cipher__gap').length).toBe(1);
+    });
+
+    it('opens only the letters the server revealed', () => {
+        setup({ feedbackCipher: [null, null, 'K', null] });
+        expect(letters()).toEqual(['', 'K', '']);
+        expect(el().querySelector('[data-testid="sf-cipher"]')!.classList).not.toContain('is-solved');
+    });
+
+    it('shows the whole word from the solution when the solution is shown', () => {
+        setup({ showSolution: true, solution });
+        expect(letters()).toEqual(['İ', 'K', 'İ']);
+        expect(el().querySelector('[data-testid="sf-cipher"]')!.classList).toContain('is-solved');
+    });
+});

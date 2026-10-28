@@ -791,12 +791,17 @@ export class ActivityEditorComponent {
 
   // ---- Soru + kısa cevap ----
 
-  setShortRow(index: number, field: 'question' | 'answers', value: string): void {
+  setShortRow(index: number, field: 'question' | 'answers' | 'letter', value: string): void {
     this.updateShortAnswer((f) => ({ ...f, rows: f.rows.map((r, i) => (i === index ? { ...r, [field]: value } : r)) }));
   }
 
   addShortRow(): void {
     this.updateShortAnswer((f) => ({ ...f, rows: [...f.rows, { question: '', answers: '' }] }));
+  }
+
+  /** Issue #586: gizli kelime (boş = şifre yok). */
+  setShortCipher(value: string): void {
+    this.updateShortAnswer((f) => ({ ...f, cipher: value }));
   }
 
   removeShortRow(index: number): void {

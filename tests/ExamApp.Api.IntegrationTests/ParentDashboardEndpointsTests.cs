@@ -123,8 +123,11 @@ public class ParentDashboardEndpointsTests(IntegrationApiFactory factory) : Inte
         // Sözleşme: yalnızca bu alanlar — içerik, cevap anahtarı, ad/e-posta/telefon yok.
         root.EnumerateObject().Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal).ShouldBe(new[]
         {
-            "assignments", "lastActivityAt", "questionsSolvedThisWeek", "studentId", "totalPoints", "weekStart"
+            "activities", "assignments", "lastActivityAt", "questionsSolvedThisWeek", "studentId", "totalPoints", "weekStart"
         });
+        // issue #584: etkinlik özeti yalnız sayılar taşır (Postgres'te tek GROUP BY sorgusu).
+        root.GetProperty("activities").EnumerateObject().Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal)
+            .ShouldBe(new[] { "averageFirstCheckPercent", "completedThisWeek", "completedTotal" });
         root.GetProperty("assignments").EnumerateObject().Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal)
             .ShouldBe(new[] { "completed", "overdue", "pending", "windowDays" });
         (await response.Content.ReadAsStringAsync()).ShouldNotContain("Kesirler");

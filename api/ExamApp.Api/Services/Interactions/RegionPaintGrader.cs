@@ -7,7 +7,8 @@ namespace ExamApp.Api.Services.Interactions;
 
 /// <summary>
 /// issue #587: <c>regionPaint</c> kontrolcüsü — bölge seçme ve boyama (bileşen E). Dilim a: ızgara modu ("eş karelere ayrılmış şeklin
-/// 2/5'ini siyaha, 0,35'ini maviye boyayalım").
+/// 2/5'ini siyaha, 0,35'ini maviye boyayalım"). Dilim b: görsel üzerinde bölgeler (<c>mode:"regions"</c>; "çift sayıları maviye
+/// boyayalım", "doğru olanları daire içine alalım") — aşağıdaki ikinci listeye bakın.
 /// <list type="bullet">
 /// <item>Plan v1: <c>{version:1,type:"regionPaint",mode:"grid",rows,cols,palette:[{id,color,label?}]}</c>. Izgara 2..20 × 2..20;
 /// palet 1..8 renk, <c>color</c> sabit adlı renklerden (<see cref="Colors"/>, istemci CSS token'ına çevirir), palette tekil; <c>label</c>
@@ -19,12 +20,37 @@ namespace ExamApp.Api.Services.Interactions;
 /// </list>
 /// Kontrol: satır = palet rengi (plan sırası); doğru ⇔ o renkte boyanan hücre sayısı çözümdekine eşit. Geri bildirim
 /// <c>{"rows":[{id,correct}]}</c>; beklenen sayı yazılmaz. Çözümü olmayan soru puanlanamaz (0/0).
+/// <para>Bölge modu:</para>
+/// <list type="bullet">
+/// <item>Plan v1: <c>{version:1,type:"regionPaint",mode:"regions",style?,palette,regions:[{id,points:[[x,y],...],label?}]}</c>.
+/// <c>style</c> (<c>fill</c> | <c>circle</c>, varsayılan fill) yalnız görünüm. Bölge = soru görseline göreli piksel çokgen (3..64 köşe,
+/// koordinat 0..100000, alan ≥ 1); 1..100 bölge, id'ler tekil (palet id'leriyle de çakışmaz).</item>
+/// <item>Çözüm: <c>{"fills":{"r1":"p1"}}</c> — boyanması gereken bölge → renk; yazılmayan bölge boş kalmalı (çeldirici). En az bir
+/// bölge; renk palette olmalı (kullanılmayan palet rengi çeldiricidir).</item>
+/// <item>Öğrenci payload'u: <c>{version:1,type:"regionPaint",fills:{"r1":"p1"}}</c>; boş <c>fills</c> = cevap yok.</item>
+/// </list>
+/// Kontrol <see cref="TextSelectGrader"/> gibi: hedef = çözümdeki bölge; bulundu ⇔ doğru renkle boyalı. Fazla = hedef olmayan boyalı
+/// bölge. <c>CorrectCount</c> = bulunan, <c>TotalCount</c> = hedef + fazla. Geri bildirim yalnız BOYALI bölgeler (plan sırası;
+/// <c>reason</c>: <c>extra</c> | <c>color</c>) ve sayılar (<c>found</c>, <c>missing</c>, <c>extra</c>); boyanmamış hedef yazılmaz.
+/// Fazla boya <see cref="TextSelectGrader.TooManyExtraMin"/> eşiğini aşarsa satırlar yazılmaz (<c>tooMany</c>).
 /// </summary>
 public sealed class RegionPaintGrader : IInteractionGrader
 {
     public const string Type = "regionPaint";
 
     public const string GridMode = "grid";
+    public const string RegionsMode = "regions";
+
+    public const string StyleFill = "fill";
+    public const string StyleCircle = "circle";
+
+    public const int MaxRegions = 100;
+    public const int MinPoints = 3;
+    public const int MaxPoints = 64;
+    public const double MaxCoordinate = InteractionBoxes.MaxExtent;
+
+    public const string ReasonExtra = "extra";
+    public const string ReasonColor = "color";
 
     public const int MinSize = 2;
     public const int MaxSize = 20;
@@ -40,6 +66,8 @@ public sealed class RegionPaintGrader : IInteractionGrader
     };
 
     private static readonly HashSet<string> RootKeys = new(StringComparer.Ordinal) { "version", "type", "mode", "rows", "cols", "palette" };
+    private static readonly HashSet<string> RegionsRootKeys = new(StringComparer.Ordinal) { "version", "type", "mode", "style", "palette", "regions" };
+    private static readonly HashSet<string> RegionKeys = new(StringComparer.Ordinal) { "id", "points", "label" };
     private static readonly HashSet<string> PaletteKeys = new(StringComparer.Ordinal) { "id", "color", "label" };
 
     private static readonly JsonDocumentOptions StrictOptions = new() { MaxDepth = 8, AllowDuplicateProperties = false };
@@ -54,50 +82,67 @@ public sealed class RegionPaintGrader : IInteractionGrader
             return true;
         if (payload.Length > InteractionPayload.MaxLength)
             return false;
-        return TryReadPlan(plan, ReadOptions, strict: false, out var grid) && TryParsePayload(payload, grid, out _);
+        if (!TryReadPlan(plan, ReadOptions, strict: false, out var model))
+            return false;
+        return model.IsRegions ? TryParseFills(payload, model, out _) : TryParsePayload(payload, model, out _);
     }
 
-    /// <summary>Boyasız ızgara = cevap yok → null.</summary>
+    /// <summary>Boyasız ızgara / boş <c>fills</c> = cevap yok → null.</summary>
     public string? Normalize(string? payload)
     {
-        if (payload == null || !TryParsePayload(payload, null, out var cells))
-            return payload;
-        return cells.All(row => row.All(c => c == Empty)) ? null : payload;
+        if (payload == null)
+            return null;
+        if (TryParsePayload(payload, null, out var cells))
+            return cells.All(row => row.All(c => c == Empty)) ? null : payload;
+        if (TryParseFills(payload, null, out var fills))
+            return fills.Count == 0 ? null : payload;
+        return payload;
     }
 
     public InteractionGradeResult Grade(InteractionGradeInput input)
     {
-        if (!TryReadPlan(input.Plan, ReadOptions, strict: false, out var grid) || !TryReadSolution(input.Solution, grid, out var counts))
+        if (!TryReadPlan(input.Plan, ReadOptions, strict: false, out var model))
             return InteractionGradeResult.Ungradable;
-        var painted = Painted(grid, input.Payload);
-        var rows = grid.Palette.Where(p => counts.ContainsKey(p.Id))
+        if (model.IsRegions)
+            return GradeRegions(model, input);
+        if (!TryReadSolution(input.Solution, model, out var counts))
+            return InteractionGradeResult.Ungradable;
+        var painted = Painted(model, input.Payload);
+        var rows = model.Palette.Where(p => counts.ContainsKey(p.Id))
             .Select(p => (p.Id, painted.GetValueOrDefault(p.Id) == counts[p.Id])).ToList();
         return InteractionGradeResult.Of(rows.Count(r => r.Item2), rows.Count, WriteFeedback(rows));
     }
 
-    /// <summary>issue #584: öğe = palet rengi, cevap = o renkte boyanan hücre sayısı (0 = cevapsız).</summary>
+    /// <summary>
+    /// issue #584: ızgarada öğe = palet rengi, cevap = o renkte boyanan hücre sayısı (0 = cevapsız). Bölge modunda öğe = hedef bölge,
+    /// cevap = boyandığı renk (etiket, yoksa renk adı).
+    /// </summary>
     public IReadOnlyList<InteractionItemResponse> Analyze(InteractionGradeInput input)
     {
-        if (!TryReadPlan(input.Plan, ReadOptions, strict: false, out var grid) || !TryReadSolution(input.Solution, grid, out var counts))
+        if (!TryReadPlan(input.Plan, ReadOptions, strict: false, out var model))
             return [];
-        var painted = Painted(grid, input.Payload);
-        return grid.Palette.Where(p => counts.ContainsKey(p.Id)).Select(p =>
+        if (model.IsRegions)
+            return AnalyzeRegions(model, input);
+        if (!TryReadSolution(input.Solution, model, out var counts))
+            return [];
+        var painted = Painted(model, input.Payload);
+        return model.Palette.Where(p => counts.ContainsKey(p.Id)).Select(p =>
         {
             var count = painted.GetValueOrDefault(p.Id);
             var answer = count == 0 ? null : count.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            return new InteractionItemResponse(p.Id, InteractionAnalysis.TextLabel(string.IsNullOrWhiteSpace(p.Label) ? p.Color : p.Label),
-                count == counts[p.Id], answer, answer);
+            return new InteractionItemResponse(p.Id, InteractionAnalysis.TextLabel(PaintName(p)), count == counts[p.Id], answer, answer);
         }).ToList();
     }
 
     /// <summary>
-    /// Kayıt kuralı (issue #587): mod <c>grid</c>, ızgara 2..20 × 2..20, palet 1..8 tekil id ve tekil izinli renk, etiket isteğe bağlı
-    /// düz metin (≤ 40). Çözüm boşsa geçerli (taslak); doluysa her palet rengine 0..hücre sayısı tam sayı, toplam ≤ hücre sayısı, en az
-    /// bir renk &gt; 0.
+    /// Kayıt kuralı (issue #587): ızgarada 2..20 × 2..20, palet 1..8 tekil id ve tekil izinli renk, etiket isteğe bağlı düz metin
+    /// (≤ 40); çözüm boşsa geçerli (taslak), doluysa her palet rengine 0..hücre sayısı tam sayı, toplam ≤ hücre sayısı, en az bir renk
+    /// &gt; 0. Bölge modunda 1..100 çokgen bölge (3..64 köşe, alan ≥ 1); çözüm doluysa en az bir bölge, her biri plandaki bir bölgeden
+    /// plandaki bir renge.
     /// </summary>
     public bool ValidateDefinition(string? plan, string? solution)
     {
-        if (!TryReadPlan(plan, DefinitionOptions, strict: true, out var grid))
+        if (!TryReadPlan(plan, DefinitionOptions, strict: true, out var model))
             return false;
         if (string.IsNullOrWhiteSpace(solution))
             return true;
@@ -105,20 +150,37 @@ public sealed class RegionPaintGrader : IInteractionGrader
         {
             using var doc = JsonDocument.Parse(solution, DefinitionOptions);
             var root = doc.RootElement;
-            if (root.ValueKind != JsonValueKind.Object || !HasOnlyKeys(root, ["counts"])
-                || !root.TryGetProperty("counts", out var countsElement) || countsElement.ValueKind != JsonValueKind.Object)
+            if (root.ValueKind != JsonValueKind.Object)
                 return false;
-            var ids = grid.Palette.Select(p => p.Id).ToHashSet(StringComparer.Ordinal);
+            var paletteIds = model.Palette.Select(p => p.Id).ToHashSet(StringComparer.Ordinal);
+            if (model.IsRegions)
+            {
+                if (!HasOnlyKeys(root, ["fills"]) || !root.TryGetProperty("fills", out var fillsElement)
+                    || fillsElement.ValueKind != JsonValueKind.Object)
+                    return false;
+                var regionIds = model.Regions.Select(r => r.Id).ToHashSet(StringComparer.Ordinal);
+                var filled = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var entry in fillsElement.EnumerateObject())
+                {
+                    if (!regionIds.Contains(entry.Name) || !filled.Add(entry.Name) || entry.Value.ValueKind != JsonValueKind.String
+                        || !paletteIds.Contains(entry.Value.GetString() ?? string.Empty))
+                        return false;
+                }
+                return filled.Count > 0;
+            }
+            if (!HasOnlyKeys(root, ["counts"]) || !root.TryGetProperty("counts", out var countsElement)
+                || countsElement.ValueKind != JsonValueKind.Object)
+                return false;
             var seen = new HashSet<string>(StringComparer.Ordinal);
             var total = 0;
             foreach (var entry in countsElement.EnumerateObject())
             {
-                if (!ids.Contains(entry.Name) || !seen.Add(entry.Name) || entry.Value.ValueKind != JsonValueKind.Number
-                    || !entry.Value.TryGetInt32(out var count) || count < 0 || count > grid.Cells)
+                if (!paletteIds.Contains(entry.Name) || !seen.Add(entry.Name) || entry.Value.ValueKind != JsonValueKind.Number
+                    || !entry.Value.TryGetInt32(out var count) || count < 0 || count > model.Cells)
                     return false;
                 total += count;
             }
-            return seen.Count == ids.Count && total > 0 && total <= grid.Cells;
+            return seen.Count == paletteIds.Count && total > 0 && total <= model.Cells;
         }
         catch (Exception ex) when (ex is JsonException or ArgumentException or InvalidOperationException)
         {
@@ -130,13 +192,19 @@ public sealed class RegionPaintGrader : IInteractionGrader
 
     private sealed record Paint(string Id, string Color, string Label);
 
-    private sealed record Grid(int Rows, int Cols, List<Paint> Palette)
+    private sealed record Area(string Id, string Label);
+
+    private sealed record PaintPlan(string Mode, int Rows, int Cols, List<Paint> Palette, List<Area> Regions)
     {
+        public bool IsRegions => Mode == RegionsMode;
+
         public int Cells => Rows * Cols;
     }
 
+    private static string PaintName(Paint paint) => string.IsNullOrWhiteSpace(paint.Label) ? paint.Color : paint.Label;
+
     /// <summary>Palet id'si → boyanan hücre sayısı.</summary>
-    private static Dictionary<string, int> Painted(Grid grid, string? payload)
+    private static Dictionary<string, int> Painted(PaintPlan grid, string? payload)
     {
         var painted = new Dictionary<string, int>(StringComparer.Ordinal);
         if (payload == null || !TryParsePayload(payload, grid, out var cells))
@@ -152,11 +220,170 @@ public sealed class RegionPaintGrader : IInteractionGrader
         return painted;
     }
 
+    // ---- Bölge modu ----
+
+    private static InteractionGradeResult GradeRegions(PaintPlan plan, InteractionGradeInput input)
+    {
+        if (!TryReadFillsSolution(input.Solution, plan, out var targets))
+            return InteractionGradeResult.Ungradable;
+        var fills = StudentFills(plan, input.Payload);
+        var rows = new List<(string Id, bool Correct, string? Reason)>();
+        var found = 0;
+        var extra = 0;
+        foreach (var region in plan.Regions)
+        {
+            if (!fills.TryGetValue(region.Id, out var paint))
+                continue;
+            if (!targets.TryGetValue(region.Id, out var expected))
+            {
+                extra++;
+                rows.Add((region.Id, false, ReasonExtra));
+            }
+            else if (string.Equals(paint, expected, StringComparison.Ordinal))
+            {
+                found++;
+                rows.Add((region.Id, true, null));
+            }
+            else
+            {
+                rows.Add((region.Id, false, ReasonColor));
+            }
+        }
+        var tooMany = extra > Math.Max(TextSelectGrader.TooManyExtraMin, targets.Count);
+        if (tooMany)
+            rows.Clear();
+        return InteractionGradeResult.Of(found, targets.Count + extra,
+            WriteRegionsFeedback(rows, found, targets.Count - found, extra, tooMany));
+    }
+
+    private static IReadOnlyList<InteractionItemResponse> AnalyzeRegions(PaintPlan plan, InteractionGradeInput input)
+    {
+        if (!TryReadFillsSolution(input.Solution, plan, out var targets))
+            return [];
+        var fills = StudentFills(plan, input.Payload);
+        var palette = plan.Palette.ToDictionary(p => p.Id, StringComparer.Ordinal);
+        return plan.Regions.Select((region, index) => (region, index)).Where(x => targets.ContainsKey(x.region.Id)).Select(x =>
+        {
+            var label = InteractionAnalysis.TextLabel(string.IsNullOrWhiteSpace(x.region.Label)
+                ? (x.index + 1).ToString(System.Globalization.CultureInfo.InvariantCulture)
+                : x.region.Label);
+            if (!fills.TryGetValue(x.region.Id, out var paint) || !palette.TryGetValue(paint, out var entry))
+                return new InteractionItemResponse(x.region.Id, label, false, null, null);
+            return new InteractionItemResponse(x.region.Id, label, string.Equals(paint, targets[x.region.Id], StringComparison.Ordinal),
+                paint, InteractionAnalysis.TextLabel(PaintName(entry)));
+        }).ToList();
+    }
+
+    /// <summary>Öğrencinin boyadığı bölgeler (bölge id'si → palet id'si); payload bozuksa boş.</summary>
+    private static Dictionary<string, string> StudentFills(PaintPlan plan, string? payload)
+        => payload != null && TryParseFills(payload, plan, out var fills) ? fills : new Dictionary<string, string>(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Katı bölge payload'u: <c>fills</c> nesnesi; plan verilmişse anahtarlar plandaki bölgeler, değerler plandaki renkler. Plan
+    /// verilmezse (Normalize) yalnız biçim: en çok <see cref="MaxRegions"/> geçerli id → geçerli id.
+    /// </summary>
+    private static bool TryParseFills(string payload, PaintPlan? plan, out Dictionary<string, string> fills)
+    {
+        fills = new Dictionary<string, string>(StringComparer.Ordinal);
+        try
+        {
+            using var doc = JsonDocument.Parse(payload, StrictOptions);
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object || !HasOnlyKeys(root, ["version", "type", "fills"]))
+                return false;
+            if (!root.TryGetProperty("type", out var type) || type.ValueKind != JsonValueKind.String
+                || !string.Equals(type.GetString(), Type, StringComparison.Ordinal))
+                return false;
+            if (root.TryGetProperty("version", out var version)
+                && (version.ValueKind != JsonValueKind.Number || !version.TryGetInt32(out var v) || v != 1))
+                return false;
+            if (!root.TryGetProperty("fills", out var element) || element.ValueKind != JsonValueKind.Object)
+                return false;
+            var regionIds = plan?.Regions.Select(r => r.Id).ToHashSet(StringComparer.Ordinal);
+            var paletteIds = plan?.Palette.Select(p => p.Id).ToHashSet(StringComparer.Ordinal);
+            foreach (var entry in element.EnumerateObject())
+            {
+                if (entry.Value.ValueKind != JsonValueKind.String || entry.Value.GetString() is not { } paint
+                    || !InteractionIds.IsValid(entry.Name) || !InteractionIds.IsValid(paint)
+                    || (regionIds != null && !regionIds.Contains(entry.Name)) || (paletteIds != null && !paletteIds.Contains(paint))
+                    || !fills.TryAdd(entry.Name, paint) || fills.Count > MaxRegions)
+                {
+                    fills.Clear();
+                    return false;
+                }
+            }
+            return true;
+        }
+        catch (Exception ex) when (ex is JsonException or ArgumentException or InvalidOperationException)
+        {
+            fills.Clear();
+            return false;
+        }
+    }
+
+    /// <summary>Çözüm: hedef bölge → renk. Toleranslı: plana uymayan atlanır; okunamaz ya da boşsa false.</summary>
+    private static bool TryReadFillsSolution(string? solution, PaintPlan plan, out Dictionary<string, string> targets)
+    {
+        targets = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (string.IsNullOrWhiteSpace(solution))
+            return false;
+        try
+        {
+            using var doc = JsonDocument.Parse(solution, ReadOptions);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object || !doc.RootElement.TryGetProperty("fills", out var element)
+                || element.ValueKind != JsonValueKind.Object)
+                return false;
+            var regionIds = plan.Regions.Select(r => r.Id).ToHashSet(StringComparer.Ordinal);
+            var paletteIds = plan.Palette.Select(p => p.Id).ToHashSet(StringComparer.Ordinal);
+            foreach (var entry in element.EnumerateObject())
+            {
+                if (regionIds.Contains(entry.Name) && entry.Value.ValueKind == JsonValueKind.String
+                    && entry.Value.GetString() is { } paint && paletteIds.Contains(paint))
+                    targets[entry.Name] = paint;
+            }
+            return targets.Count > 0;
+        }
+        catch (Exception ex) when (ex is JsonException or ArgumentException or InvalidOperationException)
+        {
+            targets.Clear();
+            return false;
+        }
+    }
+
+    /// <summary>Bölge: 3..64 köşe <c>[x,y]</c>, koordinatlar sonlu ve 0..<see cref="MaxCoordinate"/>, çokgen alanı ≥ 1.</summary>
+    private static bool IsValidPolygon(JsonElement points)
+    {
+        if (points.ValueKind != JsonValueKind.Array || points.GetArrayLength() is < MinPoints or > MaxPoints)
+            return false;
+        var xs = new List<double>();
+        var ys = new List<double>();
+        foreach (var point in points.EnumerateArray())
+        {
+            if (point.ValueKind != JsonValueKind.Array || point.GetArrayLength() != 2)
+                return false;
+            var x = point[0];
+            var y = point[1];
+            if (x.ValueKind != JsonValueKind.Number || y.ValueKind != JsonValueKind.Number || !x.TryGetDouble(out var px)
+                || !y.TryGetDouble(out var py) || !double.IsFinite(px) || !double.IsFinite(py)
+                || px is < 0 or > MaxCoordinate || py is < 0 or > MaxCoordinate)
+                return false;
+            xs.Add(px);
+            ys.Add(py);
+        }
+        var twiceArea = 0.0;
+        for (var i = 0; i < xs.Count; i++)
+        {
+            var j = (i + 1) % xs.Count;
+            twiceArea += xs[i] * ys[j] - xs[j] * ys[i];
+        }
+        return Math.Abs(twiceArea) / 2 >= 1;
+    }
+
     // ---- Okuma ----
 
-    private static bool TryReadPlan(string? plan, JsonDocumentOptions options, bool strict, out Grid grid)
+    private static bool TryReadPlan(string? plan, JsonDocumentOptions options, bool strict, out PaintPlan model)
     {
-        grid = new Grid(0, 0, new List<Paint>());
+        model = new PaintPlan(GridMode, 0, 0, new List<Paint>(), new List<Area>());
         if (string.IsNullOrWhiteSpace(plan))
             return false;
         try
@@ -168,18 +395,23 @@ public sealed class RegionPaintGrader : IInteractionGrader
             if (!root.TryGetProperty("type", out var type) || type.ValueKind != JsonValueKind.String
                 || !string.Equals(type.GetString(), Type, StringComparison.Ordinal))
                 return false;
-            if (!TryReadString(root, "mode", out var mode) || mode != GridMode)
+            if (!TryReadString(root, "mode", out var mode) || (mode != GridMode && mode != RegionsMode))
                 return false;
+            var regionsMode = mode == RegionsMode;
             if (strict)
             {
-                if (!HasOnlyKeys(root, RootKeys))
+                if (!HasOnlyKeys(root, regionsMode ? RegionsRootKeys : RootKeys))
                     return false;
                 if (root.TryGetProperty("version", out var version)
                     && (version.ValueKind != JsonValueKind.Number || !version.TryGetInt32(out var v) || v != 1))
                     return false;
             }
-            if (!TryReadInt(root, "rows", out var rows) || !TryReadInt(root, "cols", out var cols)
-                || rows is < MinSize or > MaxSize || cols is < MinSize or > MaxSize)
+            int rows = 0, cols = 0;
+            if (!regionsMode && (!TryReadInt(root, "rows", out rows) || !TryReadInt(root, "cols", out cols)
+                || rows is < MinSize or > MaxSize || cols is < MinSize or > MaxSize))
+                return false;
+            if (regionsMode && strict && root.TryGetProperty("style", out var style)
+                && (style.ValueKind != JsonValueKind.String || (style.GetString() != StyleFill && style.GetString() != StyleCircle)))
                 return false;
 
             if (!root.TryGetProperty("palette", out var paletteElement) || paletteElement.ValueKind != JsonValueKind.Array)
@@ -202,7 +434,28 @@ public sealed class RegionPaintGrader : IInteractionGrader
             // Payload palet sırasını tek karakterle yazar: okumada da en çok 8 renk.
             if (palette.Count is 0 or > MaxPalette)
                 return false;
-            grid = new Grid(rows, cols, palette);
+
+            var regions = new List<Area>();
+            if (regionsMode)
+            {
+                if (!root.TryGetProperty("regions", out var regionsElement) || regionsElement.ValueKind != JsonValueKind.Array)
+                    return false;
+                foreach (var raw in regionsElement.EnumerateArray())
+                {
+                    if (raw.ValueKind != JsonValueKind.Object || (strict && !HasOnlyKeys(raw, RegionKeys))
+                        || !TryReadString(raw, "id", out var id) || !InteractionIds.IsValid(id) || !ids.Add(id)
+                        || !raw.TryGetProperty("points", out var points) || !IsValidPolygon(points)
+                        || !TryReadLabel(raw, strict, out var label))
+                    {
+                        if (strict) return false;
+                        continue;
+                    }
+                    regions.Add(new Area(id, label));
+                }
+                if (regions.Count is 0 or > MaxRegions)
+                    return false;
+            }
+            model = new PaintPlan(mode, rows, cols, palette, regions);
             return true;
         }
         catch (Exception ex) when (ex is JsonException or ArgumentException or InvalidOperationException)
@@ -254,7 +507,7 @@ public sealed class RegionPaintGrader : IInteractionGrader
     /// Katı payload: <c>grid</c> satır dizisi; plan verilmişse satır sayısı / uzunluk planla aynı ve karakterler palet sırasında. Plan
     /// verilmezse (Normalize) yalnız biçim: en çok 20 satır × 20 karakter, <c>.</c> ya da <c>1</c>..<c>8</c>.
     /// </summary>
-    private static bool TryParsePayload(string payload, Grid? grid, out List<string> cells)
+    private static bool TryParsePayload(string payload, PaintPlan? grid, out List<string> cells)
     {
         cells = new List<string>();
         try
@@ -291,7 +544,7 @@ public sealed class RegionPaintGrader : IInteractionGrader
     }
 
     /// <summary>Çözüm: palet id'si → hücre sayısı. Toleranslı: plana uymayan / negatif atlanır; okunamaz ya da boşsa false.</summary>
-    private static bool TryReadSolution(string? solution, Grid grid, out Dictionary<string, int> counts)
+    private static bool TryReadSolution(string? solution, PaintPlan grid, out Dictionary<string, int> counts)
     {
         counts = new Dictionary<string, int>(StringComparer.Ordinal);
         if (string.IsNullOrWhiteSpace(solution))
@@ -333,6 +586,34 @@ public sealed class RegionPaintGrader : IInteractionGrader
                 writer.WriteEndObject();
             }
             writer.WriteEndArray();
+            writer.WriteEndObject();
+        }
+
+        return Encoding.UTF8.GetString(buffer.ToArray());
+    }
+    private static string WriteRegionsFeedback(
+        IReadOnlyList<(string Id, bool Correct, string? Reason)> rows, int found, int missing, int extra, bool tooMany)
+    {
+        using var buffer = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(buffer))
+        {
+            writer.WriteStartObject();
+            writer.WriteStartArray("rows");
+            foreach (var (id, correct, reason) in rows)
+            {
+                writer.WriteStartObject();
+                writer.WriteString("id", id);
+                writer.WriteBoolean("correct", correct);
+                if (reason != null)
+                    writer.WriteString("reason", reason);
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+            writer.WriteNumber("found", found);
+            writer.WriteNumber("missing", missing);
+            writer.WriteNumber("extra", extra);
+            if (tooMany)
+                writer.WriteBoolean("tooMany", true);
             writer.WriteEndObject();
         }
 

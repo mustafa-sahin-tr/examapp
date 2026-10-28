@@ -63,6 +63,36 @@ import { DRAG_PLACE, DragPlaceMode, parseDragPlacePlan } from '../../models/drag
 import { MATCH, MatchSide, parseMatchPlan } from '../../models/match';
 import { TEXT_SELECT, TextSelectMode, TextSelectStyle, parseTextSelectPlan } from '../../models/text-select';
 import { OPEN_TEXT, OPEN_TEXT_LIMITS } from '../../models/open-text';
+import { PaintColor, PaintPoint, REGION_PAINT, REGION_PAINT_LIMITS, RegionPaintStyle } from '../../models/region-paint';
+import {
+  PaintDrawShape,
+  PaintRegionsAuthoringState,
+  PaintRegionsInspector,
+  addPaintColor,
+  addPaintRegion,
+  addPendingPoint,
+  buildPaintRegionsInspector,
+  buildPaintRegionsPlan,
+  buildPaintRegionsSolution,
+  cancelPendingPolygon,
+  clearPaintRegions,
+  createPaintRegionsState,
+  ellipsePoints,
+  finishPendingPolygon,
+  paintRegionAt,
+  paintRegionsIssues,
+  rectPoints,
+  removePaintColor,
+  removePaintRegion,
+  setPaintBrush,
+  setPaintColor,
+  setPaintLabel,
+  setPaintRegionFill,
+  setPaintRegionLabel,
+  setPaintShape,
+  setPaintStyle,
+  togglePaintRegionFill,
+} from './paint-regions-authoring';
 import {
   OpenTextAuthoringState,
   OpenTextInspector,
@@ -216,7 +246,8 @@ export type QuestionInteractionType =
   | typeof DRAG_PLACE
   | typeof MATCH
   | typeof TEXT_SELECT
-  | typeof OPEN_TEXT;
+  | typeof OPEN_TEXT
+  | typeof REGION_PAINT;
 
 /**
  * Tuvalde çizim modu. Issue #574: `matrixRow` satır kutusu, `matrixCell` (isteğe bağlı) hücre kutusu çizer.
@@ -238,11 +269,16 @@ export type CanvasSelectionMode =
   // Issue #581: basılı cevabı öğrenci görselinde örten maske dikdörtgeni.
   | 'mask'
   // Issue #582: metin üzerinde işaretleme — "satır ekle" için satır kutusu.
-  | 'textLine';
+  | 'textLine'
+  // Issue #587: boyama bölgesi — sürükleyerek dikdörtgen / elips, ya da köşe köşe tıklayarak çokgen.
+  | 'paintRegion'
+  | 'paintPolygon';
 
 /** Issue #576: kutu çizimi soru bölgesinde zorunlu olan modlar (boş alanda çizilmez). */
 const BOX_MODES: ReadonlySet<CanvasSelectionMode> = new Set<CanvasSelectionMode>([
   'answer',
+  'paintRegion',
+  'paintPolygon',
   'dropzone',
   'matrixRow',
   'matrixCell',
@@ -397,6 +433,8 @@ export interface ActiveInspector {
   textSelect: TextSelectInspector | null;
   /** Issue #583: yalnız openText sorusunda dolu. */
   openText: OpenTextInspector | null;
+  /** Issue #587: yalnız regionPaint (bölge modu) sorusunda dolu. */
+  paintRegions: PaintRegionsInspector | null;
   /** Issue #581: basılı cevap maskeleri (bölgeye göreli). */
   masks: MaskBox[];
   isExample: boolean;
@@ -604,6 +642,8 @@ export class ImageSelectorComponent {
   public textSelectState = new Map<string, TextSelectAuthoringState>();
   /** Issue #583: açık uçlu cevap planı + örnek cevap / rubrik. */
   public openTextState = new Map<string, OpenTextAuthoringState>();
+  /** Issue #587: görsel üzerinde boyama bölgeleri + çözüm. */
+  public paintRegionsState = new Map<string, PaintRegionsAuthoringState>();
   /** Issue #579: bölge + tip → son uygulanan taslaktan sonraki yazarlık izi (elle düzeltme ayrımı). */
   private draftFingerprints = new Map<string, string>();
   /** Issue #581: bölge adı → basılı cevap maskeleri (bölgeye göreli). */
@@ -977,6 +1017,11 @@ export class ImageSelectorComponent {
         const token = this.ensureTextSelectState(region.name).tokens.find((t) => t.boxes.some((b) => inBox(b)));
         if (token) return { type: 'textToken', value: { questionIndex: qi, tokenId: token.id } };
       }
+      // Issue #587: boyama bölgesi (iç içe bölgelerde en küçüğü).
+      if (this.getInteractionType(region.name) === REGION_PAINT) {
+        const area = paintRegionAt(this.ensurePaintRegionsState(region.name), x - region.x, y - region.y);
+        if (area) return { type: 'paintRegion', value: { questionIndex: qi, regionId: area.id } };
+      }
 
       // Önce answer'ları kontrol edelim
       for (let ai = 0; ai < region.answers.length; ai++) {
@@ -1101,7 +1146,8 @@ export class ImageSelectorComponent {
       this.selectedDropZoneId = null;
       this.selectedPassageId = null;
       this.selectedTextTokenId = hit.value.tokenId;
-    } else if (hit.type === 'question') {
+    } else if (hit.type === 'question' || hit.type === 'paintRegion') {
+      // Issue #587: boyama bölgesinin kendi menüsü yok (müfettişten düzenlenir); soru menüsü açılır.
       this.contextMenuType = 'region';
       this.selectedPassageId = null;
       this.selectedRegion = hit.value.questionIndex;
@@ -1865,6 +1911,8 @@ export class ImageSelectorComponent {
                   ? this.textSelectMessages(region.name)
                   : type === OPEN_TEXT
                     ? this.openTextMessages(region.name)
+                    : type === REGION_PAINT
+                      ? this.paintRegionsMessages(region.name)
                     : this.mcqIssues(region, { requireCorrectAnswer: true });
 
     if (messages.length > 0) {
@@ -1977,7 +2025,7 @@ export class ImageSelectorComponent {
         }
         // Issue #576: sürükle-yerleştir / eşleştirme kuralları da yalnız Kaydet'te.
         if (
-          (type === DRAG_PLACE || type === MATCH || type === TEXT_SELECT || type === OPEN_TEXT) &&
+          (type === DRAG_PLACE || type === MATCH || type === TEXT_SELECT || type === OPEN_TEXT || type === REGION_PAINT) &&
           opts.requireCorrectAnswer &&
           !opts.skipInteractive
         ) {
@@ -1988,7 +2036,9 @@ export class ImageSelectorComponent {
                 ? this.matchMessages(region.name)
                 : type === TEXT_SELECT
                   ? this.textSelectMessages(region.name)
-                  : this.openTextMessages(region.name);
+                  : type === REGION_PAINT
+                    ? this.paintRegionsMessages(region.name)
+                    : this.openTextMessages(region.name);
           if (messages.length > 0) {
             issues.push({ index, no: index + 1, name: region.name, messages });
           }
@@ -2242,6 +2292,7 @@ export class ImageSelectorComponent {
       this.drawDragPlaceOverlays();
       this.drawMatchOverlays();
       this.drawTextSelectOverlays();
+      this.drawPaintRegionOverlays();
       this.drawMaskOverlays();
     }
   }
@@ -2703,7 +2754,8 @@ export class ImageSelectorComponent {
         hit.type === 'placeTarget' ||
         hit.type === 'placeCard' ||
         hit.type === 'matchItem' ||
-        hit.type === 'textToken')
+        hit.type === 'textToken' ||
+        hit.type === 'paintRegion')
     ) {
       // Şık / drop-zone / matris çizimi hangi soruya ait olacak — modu ZORLAMADAN sadece hedef soruyu belirle.
       // Mod artık üstteki segmented kontrolden geliyor.
@@ -2757,6 +2809,14 @@ export class ImageSelectorComponent {
     const isClick = Math.hypot(endX - this.startX, endY - this.startY) < 4;
     const hit = this.pendingHit;
 
+    // Issue #587: çokgen modunda her tık seçili sorunun içinde bir köşe ekler (bölgeye tık köşe sayılır, çözüm değiştirmez).
+    if (isClick && this.selectionMode() === 'paintPolygon' && this.selectedQuestionIndex !== -1) {
+      this.isDrawing = false;
+      this.pendingHit = null;
+      this.addPaintPolygonPoint(this.selectedQuestionIndex, this.startX, this.startY);
+      return;
+    }
+
     // Bir bölgenin gövdesine tık (veya "Soru" modunda bölge içinde sürükleme) → o bölgeyi SEÇ, çizme.
     if (
       hit &&
@@ -2790,6 +2850,11 @@ export class ImageSelectorComponent {
         // Issue #575: kutuya tık = müfettişte o kutuyu düzenle (mod değişmez).
         const regionName = this.regions()[hit.value.questionIndex]?.name;
         if (regionName) this.selectSlot(regionName, hit.value.slotId);
+        this.focusQuestionKeepingMode(hit.value.questionIndex);
+      } else if (hit && hit.type === 'paintRegion') {
+        // Issue #587: boyama bölgesine tık = fırçadaki rengi çözüm olarak ver / kaldır (mod değişmez).
+        const regionName = this.regions()[hit.value.questionIndex]?.name;
+        if (regionName) this.updatePaintRegions(regionName, (s) => togglePaintRegionFill(s, hit.value.regionId));
         this.focusQuestionKeepingMode(hit.value.questionIndex);
       } else if (hit && hit.type === 'textToken') {
         // Issue #582: token'a tık = müfettişte seç; select / correct'te ayrıca hedef işaretle / kaldır (mod değişmez).
@@ -2925,6 +2990,8 @@ export class ImageSelectorComponent {
       this.addSlotFromDrag(this.selectedQuestionIndex, this.startX, this.startY, endX, endY);
     } else if (this.selectionMode() === 'textLine' && this.selectedQuestionIndex !== -1) {
       this.setTextLineFromDrag(this.selectedQuestionIndex, this.startX, this.startY, endX, endY);
+    } else if (this.selectionMode() === 'paintRegion' && this.selectedQuestionIndex !== -1) {
+      this.addPaintRegionFromDrag(this.selectedQuestionIndex, this.startX, this.startY, endX, endY);
     } else if (
       (this.selectionMode() === 'placeTarget' ||
         this.selectionMode() === 'placeCard' ||
@@ -3073,6 +3140,9 @@ export class ImageSelectorComponent {
       const component: ActivityComponent =
         type === MATRIX_CHOICE ? 'A' : type === SLOT_FILL ? 'B' : type === TEXT_SELECT ? 'D' : type === OPEN_TEXT ? 'H' : 'C';
       this.blockKinds.set(name, { kind: 'activity', component });
+    } else if (type === REGION_PAINT) {
+      // Issue #587: boyama bileşen E; Claude sayfa işaretlemesi E'ye tip türetmez (blok tipi değil).
+      this.blockKinds.set(name, { kind: 'activity', component: 'E' });
     }
     this.setInteractionTypeFor(name, type);
     this.regions.set([...this.regions()]);
@@ -3357,6 +3427,8 @@ export class ImageSelectorComponent {
       this.ensureTextSelectState(regionName);
     } else if (type === OPEN_TEXT) {
       this.ensureOpenTextState(regionName);
+    } else if (type === REGION_PAINT) {
+      this.ensurePaintRegionsState(regionName);
     }
   }
 
@@ -3520,6 +3592,9 @@ export class ImageSelectorComponent {
     if (this.getInteractionType(regionName) === TEXT_SELECT) {
       return JSON.stringify(buildTextSelectPlan(this.ensureTextSelectState(regionName)));
     }
+    if (this.getInteractionType(regionName) === REGION_PAINT) {
+      return JSON.stringify(buildPaintRegionsPlan(this.ensurePaintRegionsState(regionName)));
+    }
     if (this.getInteractionType(regionName) === OPEN_TEXT) {
       return JSON.stringify(buildOpenTextPlan(this.ensureOpenTextState(regionName)));
     }
@@ -3553,6 +3628,10 @@ export class ImageSelectorComponent {
       return solution ? JSON.stringify(solution) : null;
     }
     // Issue #583: örnek cevap + rubrik (boş çözüm geçerli: değerlendirme elle).
+    if (this.getInteractionType(regionName) === REGION_PAINT) {
+      const solution = buildPaintRegionsSolution(this.ensurePaintRegionsState(regionName));
+      return solution ? JSON.stringify(solution) : null;
+    }
     if (this.getInteractionType(regionName) === OPEN_TEXT) {
       const solution = buildOpenTextSolution(this.ensureOpenTextState(regionName));
       return solution ? JSON.stringify(solution) : null;
@@ -4519,6 +4598,178 @@ export class ImageSelectorComponent {
   }
 
   /** Kayıt engelleyen metin işaretleme sorunları. */
+  // -------- Issue #587: görsel üzerinde boyama bölgeleri (regionPaint, bölge modu) yazarlığı --------
+
+  public ensurePaintRegionsState(regionName: string): PaintRegionsAuthoringState {
+    const existing = this.paintRegionsState.get(regionName);
+    if (existing) return existing;
+    const created = createPaintRegionsState();
+    this.paintRegionsState.set(regionName, created);
+    return created;
+  }
+
+  private updatePaintRegions(regionName: string, change: (state: PaintRegionsAuthoringState) => PaintRegionsAuthoringState) {
+    this.paintRegionsState.set(regionName, change(this.ensurePaintRegionsState(regionName)));
+    this.regions.set([...this.regions()]);
+    const region = this.regions().find((r) => r.name === regionName);
+    if (region) this.checkRegionWarning(region);
+    this.drawImage();
+  }
+
+  /** Çizim aracı: sürükleyerek dikdörtgen / elips (`paintRegion`) ya da köşe köşe çokgen (`paintPolygon`). */
+  public selectPaintRegionMode(questionIndex: number, mode: 'paintRegion' | 'paintPolygon', shape?: PaintDrawShape) {
+    const region = this.regions()[questionIndex];
+    if (!region) return;
+    this.interactionTypes.set(region.name, REGION_PAINT);
+    if (shape) this.paintRegionsState.set(region.name, setPaintShape(this.ensurePaintRegionsState(region.name), shape));
+    if (mode !== 'paintPolygon') {
+      this.paintRegionsState.set(region.name, cancelPendingPolygon(this.ensurePaintRegionsState(region.name)));
+    }
+    this.selectionMode.set(mode);
+    this.focusQuestionKeepingMode(questionIndex);
+  }
+
+  public setPaintRegionsStyle(regionName: string, style: RegionPaintStyle) {
+    this.updatePaintRegions(regionName, (s) => setPaintStyle(s, style));
+  }
+
+  public setPaintRegionsBrush(regionName: string, brush: string | null) {
+    this.updatePaintRegions(regionName, (s) => setPaintBrush(s, brush));
+  }
+
+  public addPaintRegionsColor(regionName: string, color?: PaintColor) {
+    this.updatePaintRegions(regionName, (s) => addPaintColor(s, color));
+  }
+
+  public removePaintRegionsColor(regionName: string, id: string) {
+    this.updatePaintRegions(regionName, (s) => removePaintColor(s, id));
+  }
+
+  public setPaintRegionsColor(regionName: string, id: string, color: PaintColor) {
+    this.updatePaintRegions(regionName, (s) => setPaintColor(s, id, color));
+  }
+
+  public setPaintRegionsColorLabel(regionName: string, id: string, label: string) {
+    this.updatePaintRegions(regionName, (s) => setPaintLabel(s, id, label));
+  }
+
+  public setPaintRegionLabel(regionName: string, id: string, label: string) {
+    this.updatePaintRegions(regionName, (s) => setPaintRegionLabel(s, id, label));
+  }
+
+  public setPaintRegionFill(regionName: string, id: string, paint: string | null) {
+    this.updatePaintRegions(regionName, (s) => setPaintRegionFill(s, id, paint));
+  }
+
+  public removePaintRegion(regionName: string, id: string) {
+    this.updatePaintRegions(regionName, (s) => removePaintRegion(s, id));
+  }
+
+  public clearPaintRegions(regionName: string) {
+    this.updatePaintRegions(regionName, (s) => clearPaintRegions(s));
+  }
+
+  public finishPaintPolygon(regionName: string) {
+    this.updatePaintRegions(regionName, (s) => finishPendingPolygon(s));
+  }
+
+  public cancelPaintPolygon(regionName: string) {
+    this.updatePaintRegions(regionName, (s) => cancelPendingPolygon(s));
+  }
+
+  /** Sürüklemeyle çizilen bölge (soru bölgesine kırpılır, göreli); biçim durumdaki `shape`. */
+  private addPaintRegionFromDrag(questionIndex: number, x1: number, y1: number, x2: number, y2: number) {
+    const region = this.regions()[questionIndex];
+    if (!region) return;
+    const absX1 = Math.max(Math.min(x1, x2), region.x);
+    const absY1 = Math.max(Math.min(y1, y2), region.y);
+    const absX2 = Math.min(Math.max(x1, x2), region.x + region.width);
+    const absY2 = Math.min(Math.max(y1, y2), region.y + region.height);
+    if (absX2 - absX1 < 6 || absY2 - absY1 < 6) return;
+    const box: InteractionBox = { x: absX1 - region.x, y: absY1 - region.y, width: absX2 - absX1, height: absY2 - absY1 };
+    this.interactionTypes.set(region.name, REGION_PAINT);
+    const state = this.ensurePaintRegionsState(region.name);
+    if (state.regions.length >= REGION_PAINT_LIMITS.maxRegions) {
+      this.snackBar.open(this.tr('messages.paintRegionsFull', { max: REGION_PAINT_LIMITS.maxRegions }), this.tr('common.ok'), {
+        duration: 2500,
+      });
+      return;
+    }
+    this.paintRegionsState.set(region.name, addPaintRegion(state, state.shape === 'ellipse' ? ellipsePoints(box) : rectPoints(box)));
+    this.focusQuestionKeepingMode(questionIndex);
+  }
+
+  /** Çokgen köşesi (soru bölgesinin içine kırpılır). */
+  private addPaintPolygonPoint(questionIndex: number, x: number, y: number) {
+    const region = this.regions()[questionIndex];
+    if (!region) return;
+    const point: PaintPoint = [
+      Math.min(Math.max(x, region.x), region.x + region.width) - region.x,
+      Math.min(Math.max(y, region.y), region.y + region.height) - region.y,
+    ];
+    this.interactionTypes.set(region.name, REGION_PAINT);
+    this.paintRegionsState.set(region.name, addPendingPoint(this.ensurePaintRegionsState(region.name), point));
+    this.focusQuestionKeepingMode(questionIndex);
+  }
+
+  private paintRegionsMessages(regionName: string): string[] {
+    return paintRegionsIssues(this.ensurePaintRegionsState(regionName)).map((code) =>
+      this.tr(`warnings.paintRegions.${code}`, { max: REGION_PAINT_LIMITS.maxRegions, maxLabel: REGION_PAINT_LIMITS.maxLabel })
+    );
+  }
+
+  /** Boyama bölgeleri: hedef bölge kendi renginde yarı saydam, boş kalması gereken kesikli; bekleyen çokgen köşeleriyle. */
+  private drawPaintRegionOverlays() {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const theme = this.getThemeColors();
+    for (const region of this.regions()) {
+      if (this.getInteractionType(region.name) !== REGION_PAINT) continue;
+      const state = this.ensurePaintRegionsState(region.name);
+      const colors = new Map(state.palette.map((p) => [p.id, this.cssVar(`--paint-${p.color}`) || p.color]));
+      state.regions.forEach((area, i) => {
+        const paint = Object.hasOwn(state.fills, area.id) ? state.fills[area.id] : null;
+        const color = paint ? (colors.get(paint) ?? theme.accent) : theme.label;
+        ctx.save();
+        ctx.beginPath();
+        area.points.forEach(([px, py], k) => (k === 0 ? ctx.moveTo(region.x + px, region.y + py) : ctx.lineTo(region.x + px, region.y + py)));
+        ctx.closePath();
+        if (paint) {
+          ctx.globalAlpha = 0.35;
+          ctx.fillStyle = color;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        } else {
+          ctx.setLineDash([5, 4]);
+        }
+        ctx.lineWidth = state.selectedRegionId === area.id ? 3 : 1.5;
+        ctx.strokeStyle = color;
+        ctx.stroke();
+        const [lx, ly] = area.points[0];
+        ctx.setLineDash([]);
+        ctx.font = `bold 12px ${theme.fontFamily}`;
+        ctx.fillStyle = color;
+        ctx.fillText(String(i + 1), region.x + lx + 3, region.y + ly + 13);
+        ctx.restore();
+      });
+      if (state.pending.length > 0) {
+        ctx.save();
+        ctx.strokeStyle = theme.accent;
+        ctx.fillStyle = theme.accent;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        state.pending.forEach(([px, py], k) => (k === 0 ? ctx.moveTo(region.x + px, region.y + py) : ctx.lineTo(region.x + px, region.y + py)));
+        ctx.stroke();
+        state.pending.forEach(([px, py], k) => {
+          ctx.beginPath();
+          ctx.arc(region.x + px, region.y + py, k === 0 ? 6 : 3, 0, 2 * Math.PI);
+          ctx.fill();
+        });
+        ctx.restore();
+      }
+    }
+  }
+
   private textSelectMessages(regionName: string): string[] {
     return textSelectIssues(this.ensureTextSelectState(regionName)).map((issue) =>
       this.tr(`warnings.textSelect.${issue.code}`, { n: issue.no })
@@ -4556,7 +4807,11 @@ export class ImageSelectorComponent {
                 ? current === 'matchLeft' || current === 'matchRight'
                   ? current
                   : 'matchLeft'
-                : 'answer'
+                : interactionType === REGION_PAINT
+                  ? current === 'paintPolygon'
+                    ? current
+                    : 'paintRegion'
+                  : 'answer'
     );
     this.selectedQuestionChange.emit({ index, region: this.regions()[index] ?? null });
     this.drawImage();
@@ -4653,6 +4908,7 @@ export class ImageSelectorComponent {
       match: interactionType === MATCH ? buildMatchInspector(this.ensureMatchState(name)) : null,
       textSelect: interactionType === TEXT_SELECT ? buildTextSelectInspector(this.ensureTextSelectState(name)) : null,
       openText: interactionType === OPEN_TEXT ? buildOpenTextInspector(this.ensureOpenTextState(name)) : null,
+      paintRegions: interactionType === REGION_PAINT ? buildPaintRegionsInspector(this.ensurePaintRegionsState(name)) : null,
       masks: this.getMasks(name),
       isExample: this.isExample(name),
       exampleAnswer: this.getExampleAnswer(name),
@@ -5059,6 +5315,7 @@ export class ImageSelectorComponent {
     this.matchState.clear();
     this.textSelectState.clear();
     this.openTextState.clear();
+    this.paintRegionsState.clear();
     this.draftFingerprints.clear();
     this.masks.clear();
     this.regions.set(
@@ -5265,6 +5522,7 @@ export class ImageSelectorComponent {
     this.matchState.clear();
     this.textSelectState.clear();
     this.openTextState.clear();
+    this.paintRegionsState.clear();
     this.draftFingerprints.clear();
     this.masks.clear();
     this.warningMarkers = [];
@@ -5391,6 +5649,7 @@ export class ImageSelectorComponent {
     this.matchState.delete(regionName);
     this.textSelectState.delete(regionName);
     this.openTextState.delete(regionName);
+    this.paintRegionsState.delete(regionName);
     this.masks.delete(regionName);
     for (const key of [...this.draftFingerprints.keys()]) {
       if (key.startsWith(`${regionName}\u0000`)) this.draftFingerprints.delete(key);

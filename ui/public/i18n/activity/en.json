@@ -39,7 +39,11 @@
     "wordSearchFound": "found",
     "wordSearchMissing": "not found",
     "logicPair": "{{subject}} – {{category}}: {{content}}",
-    "paintColor": "{{color}}: {{count}} squares"
+    "paintColor": "{{color}}: {{count}} squares",
+    "paintRegion": "{{name}}: {{content}}",
+    "paintRegionExtra": "{{name}}: {{content}} (extra)",
+    "paintRegionFallback": "Region {{n}}",
+    "paintNone": "No region painted yet"
   },
   "saveFailed": "Your last answer could not be saved; it will be sent again when you check.",
   "finishCheckRequired": "Check your answers once before finishing.",

@@ -538,6 +538,20 @@
           "brown": "Brown",
           "black": "Black",
           "gray": "Gray"
+        },
+        "regions": {
+          "hint": "Pick a colour and tap the regions that match the instruction. Tap a region of the same colour again to clear it. The number of regions is not given.",
+          "hintCircle": "Tap the items that match the instruction to circle them; tap again to remove the circle. The number of items is not given.",
+          "regionNo": "Region {{n}}",
+          "unpainted": "empty",
+          "mark": {
+            "correct": "correct",
+            "extra": "should not be painted",
+            "color": "wrong colour"
+          },
+          "counter": "Found {{found}} · Left {{missing}} · Extra {{extra}}",
+          "tooMany": "You marked too many regions; marks are hidden. Reduce your selection and check again.",
+          "solutionShown": "The correct regions are shown."
         }
       }
     },

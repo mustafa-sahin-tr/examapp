@@ -446,6 +446,8 @@
                 [attr.aria-pressed]="d.interactionType === 'match'" (click)="insSetInteractionType('match')">{{ t('inspector.match') }}</button>
               <button type="button" [class.is-active]="d.interactionType === 'textSelect'"
                 [attr.aria-pressed]="d.interactionType === 'textSelect'" (click)="insSetInteractionType('textSelect')">{{ t('inspector.textSelect') }}</button>
+              <button type="button" data-testid="type-region-paint" [class.is-active]="d.interactionType === 'regionPaint'"
+                [attr.aria-pressed]="d.interactionType === 'regionPaint'" (click)="insSetInteractionType('regionPaint')">{{ t('inspector.regionPaint') }}</button>
               <!-- Issue #583: açık uçlu yalnız etkinlik sayfasında (testte doğru/yanlış sayılamaz). -->
               @if (activityContext() || d.interactionType === 'openText') {
               <button type="button" data-testid="type-open-text" [class.is-active]="d.interactionType === 'openText'"
@@ -1227,6 +1229,113 @@
               } @empty {
               <span class="qc-hint-sm">{{ t('inspector.textNoTargets') }}</span>
               }
+            </div>
+            }
+          </section>
+          }
+
+          <!-- Boyama / daire içine alma (#587 dilim b): görselde bölgeler, palet, çözüm -->
+          @if (d.interactionType === 'regionPaint' && d.paintRegions; as pr) {
+          <section class="qc-insp-sec qc-paint" data-testid="inspector-region-paint">
+            <div class="qc-lbl">{{ t('inspector.paintStyle') }}</div>
+            <div class="qc-segmented qc-segmented--full" role="group" [attr.aria-label]="t('inspector.paintStyle')">
+              @for (style of paintStyles; track style) {
+              <button type="button" [class.is-active]="pr.style === style" [attr.aria-pressed]="pr.style === style"
+                [attr.data-paint-style]="style" (click)="insPaintStyle(style)">{{ t('inspector.paintStyles.' + style) }}</button>
+              }
+            </div>
+
+            <div class="qc-lbl">{{ t('inspector.paintPalette') }}</div>
+            <div class="qc-paint__palette">
+              @for (entry of pr.palette; track entry.id) {
+              <div class="qc-paint__color" [attr.data-paint-entry]="entry.id">
+                <button type="button" class="qc-paint__brush" [class.is-active]="pr.brush === entry.id"
+                  [attr.aria-pressed]="pr.brush === entry.id" [attr.aria-label]="t('inspector.paintBrushAria', { color: t('inspector.paintColors.' + entry.color) })"
+                  [style.background]="paintCss(entry.color)" (click)="insPaintBrush(entry.id)"></button>
+                <select class="qc-inline-select" [attr.aria-label]="t('inspector.paintColorAria')" (change)="insPaintColor(entry.id, $event)">
+                  <option [value]="entry.color" selected>{{ t('inspector.paintColors.' + entry.color) }}</option>
+                  @for (c of pr.freeColors; track c) {
+                  <option [value]="c">{{ t('inspector.paintColors.' + c) }}</option>
+                  }
+                </select>
+                <input class="control qc-input qc-paint__label" type="text" [value]="entry.label" [attr.maxlength]="pr.limits.maxLabel"
+                  [placeholder]="t('inspector.paintLabelPlaceholder')" [attr.aria-label]="t('inspector.paintLabelAria')"
+                  (change)="insPaintColorLabel(entry.id, $event)" />
+                <span class="qc-hint-sm" [attr.data-paint-targets]="entry.id">{{ t('inspector.paintTargets', { n: entry.targets }) }}</span>
+                @if (pr.palette.length > 1) {
+                <button type="button" class="qc-icon-btn" [attr.aria-label]="t('inspector.paintRemoveColor')" (click)="insPaintRemoveColor(entry.id)">
+                  <mat-icon>close</mat-icon>
+                </button>
+                }
+              </div>
+              }
+            </div>
+            <div class="qc-btn-row">
+              @if (pr.palette.length < pr.limits.maxPalette) {
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" data-testid="paint-add-color" (click)="insPaintAddColor()">
+                <mat-icon>add</mat-icon>{{ t('inspector.paintAddColor') }}
+              </button>
+              }
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [class.is-active]="pr.brush === null"
+                [attr.aria-pressed]="pr.brush === null" data-testid="paint-brush-none" (click)="insPaintBrush(null)">
+                <mat-icon>format_color_reset</mat-icon>{{ t('inspector.paintBrushNone') }}
+              </button>
+            </div>
+
+            <div class="qc-lbl">{{ t('inspector.paintDraw') }}</div>
+            <div class="qc-btn-row">
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" data-testid="paint-draw-rect"
+                [class.is-active]="selectionMode === 'paintRegion' && pr.shape === 'rect'" (click)="insPaintDraw('paintRegion', 'rect')">
+                <mat-icon>crop_square</mat-icon>{{ t('inspector.paintRect') }}
+              </button>
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" data-testid="paint-draw-ellipse"
+                [class.is-active]="selectionMode === 'paintRegion' && pr.shape === 'ellipse'" (click)="insPaintDraw('paintRegion', 'ellipse')">
+                <mat-icon>circle</mat-icon>{{ t('inspector.paintEllipse') }}
+              </button>
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" data-testid="paint-draw-polygon"
+                [class.is-active]="selectionMode === 'paintPolygon'" (click)="insPaintDraw('paintPolygon')">
+                <mat-icon>polyline</mat-icon>{{ t('inspector.paintPolygon') }}
+              </button>
+            </div>
+            <span class="qc-hint-sm">{{ selectionMode === 'paintPolygon' ? t('inspector.paintPolygonHint') : t('inspector.paintDrawHint') }}</span>
+            @if (pr.pendingCount > 0) {
+            <div class="qc-btn-row" data-testid="paint-pending">
+              <span class="qc-hint-sm">{{ t('inspector.paintPending', { n: pr.pendingCount }) }}</span>
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" data-testid="paint-finish" [disabled]="pr.pendingCount < 3"
+                (click)="insPaintFinish()"><mat-icon>check</mat-icon>{{ t('inspector.paintFinish') }}</button>
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" (click)="insPaintCancel()">
+                <mat-icon>close</mat-icon>{{ t('inspector.paintCancel') }}
+              </button>
+            </div>
+            }
+
+            <div class="qc-lbl">{{ t('inspector.paintRegions', { count: pr.regions.length }) }}</div>
+            <div class="qc-solution">
+              @for (area of pr.regions; track area.id) {
+              <div class="qc-row qc-paint__region" [class.is-selected]="pr.selectedRegionId === area.id" [attr.data-paint-region]="area.id">
+                <span class="qc-zone-id">{{ area.no }}</span>
+                <input class="control qc-input qc-paint__label" type="text" [value]="area.label" [attr.maxlength]="pr.limits.maxLabel"
+                  [placeholder]="t('inspector.paintRegionLabelPlaceholder')" [attr.aria-label]="t('inspector.paintRegionLabelAria', { n: area.no })"
+                  (change)="insPaintRegionLabel(area.id, $event)" />
+                <select class="qc-inline-select" [attr.aria-label]="t('inspector.paintRegionFillAria', { n: area.no })"
+                  (change)="insPaintRegionFill(area.id, $event)">
+                  <option value="" [selected]="area.fill === null">{{ t('inspector.paintLeaveEmpty') }}</option>
+                  @for (entry of pr.palette; track entry.id) {
+                  <option [value]="entry.id" [selected]="area.fill === entry.id">{{ entry.label || t('inspector.paintColors.' + entry.color) }}</option>
+                  }
+                </select>
+                <button type="button" class="qc-icon-btn" [attr.aria-label]="t('inspector.paintRemoveRegion', { n: area.no })"
+                  (click)="insPaintRemoveRegion(area.id)"><mat-icon>delete</mat-icon></button>
+              </div>
+              } @empty {
+              <span class="qc-hint-sm">{{ t('inspector.paintNoRegions') }}</span>
+              }
+            </div>
+            @if (pr.regions.length > 0) {
+            <div class="qc-btn-row">
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" (click)="insPaintClear()">
+                <mat-icon>delete_sweep</mat-icon>{{ t('inspector.paintClear') }}
+              </button>
             </div>
             }
           </section>

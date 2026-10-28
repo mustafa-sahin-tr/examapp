@@ -1383,6 +1383,52 @@ describe('ActivityPlayerComponent (#573)', () => {
       expect(rows[0].label).toContain('3');
       expect(fixture.componentInstance.currentRegionPaintFeedback()?.rows.length).toBe(2);
     });
+
+    it('regionsMode_BlankIsIncomplete_RowsOnlyForPaintedRegions', async () => {
+      const plan = JSON.stringify({
+        version: 1,
+        type: 'regionPaint',
+        mode: 'regions',
+        palette: [{ id: 'p1', color: 'blue' }],
+        regions: [
+          { id: 'r1', points: [[0, 0], [9, 0], [9, 9]], label: '12' },
+          { id: 'r2', points: [[20, 0], [29, 0], [29, 9]] },
+        ],
+      });
+      const fills = (f: Record<string, string>) => JSON.stringify({ version: 1, type: 'regionPaint', fills: f });
+      await create(instance({}, [{ answerPayload: fills({}), question: { ...base(), interactionType: 'regionPaint', interactionPlan: plan } }]));
+      fixture.componentInstance.goTo(0);
+      await settle();
+      expect(fixture.componentInstance.blankItems()).toContain('a');
+
+      fixture.componentInstance.onDragDropChange(fills({ r2: 'p1' }), fixture.componentInstance.items()[0]);
+      await settle();
+      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 0,
+          totalCount: 3,
+          questions: [
+            {
+              instanceQuestionId: 101,
+              isCorrect: false,
+              correctCount: 0,
+              totalCount: 2,
+              feedback: '{"rows":[{"id":"r2","correct":false,"reason":"extra"}],"found":0,"missing":1,"extra":1}',
+            },
+            { instanceQuestionId: 102, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+      const rows = fixture.componentInstance.currentRows();
+      expect(rows.length).toBe(1);
+      expect(rows[0].correct).toBe(false);
+      expect(fixture.componentInstance.currentRegionPaintFeedback()?.extra).toBe(1);
+    });
   });
 
   describe('wordSearch (#586)', () => {

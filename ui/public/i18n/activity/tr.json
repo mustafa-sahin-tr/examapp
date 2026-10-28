@@ -39,7 +39,11 @@
     "wordSearchFound": "bulundu",
     "wordSearchMissing": "bulunamadı",
     "logicPair": "{{subject}} – {{category}}: {{content}}",
-    "paintColor": "{{color}}: {{count}} kare"
+    "paintColor": "{{color}}: {{count}} kare",
+    "paintRegion": "{{name}}: {{content}}",
+    "paintRegionExtra": "{{name}}: {{content}} (fazla)",
+    "paintRegionFallback": "Bölge {{n}}",
+    "paintNone": "Henüz bölge boyanmadı"
   },
   "saveFailed": "Son cevabın kaydedilemedi; kontrol ettiğinde yeniden gönderilecek.",
   "finishCheckRequired": "Bitirmeden önce cevaplarını bir kez kontrol et.",

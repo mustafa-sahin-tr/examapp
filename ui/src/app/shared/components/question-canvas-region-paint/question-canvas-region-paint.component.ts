@@ -7,18 +7,38 @@ import { QuestionRegion } from '../../../models/draws';
 import {
   PaintCells,
   PaintColor,
+  PaintFills,
+  PaintRegion,
   RegionPaintFeedback,
   RegionPaintPlanV1,
+  RegionPaintReason,
+  RegionPaintRegionsPlanV1,
+  buildRegionPaintFillsPayload,
   buildRegionPaintPayload,
   countPainted,
   emptyCells,
   isEmptyPaint,
   paintCss,
   parseRegionPaintAnswer,
+  parseRegionPaintFills,
+  parseRegionPaintFillsSolution,
   parseRegionPaintPlan,
+  parseRegionPaintRegionsPlan,
   parseRegionPaintSolution,
+  polygonBounds,
   solutionCells,
 } from '../../../models/region-paint';
+
+/** Bölge modunda çizilen bölge: SVG köşe dizisi, daire stili için elips ve kontrol işareti. */
+export interface PaintRegionView {
+  region: PaintRegion;
+  no: number;
+  points: string;
+  ellipse: { cx: number; cy: number; rx: number; ry: number };
+  /** Gösterilen boya (çözüm açıkken çözüm) — palet dizini ya da null. */
+  paint: number | null;
+  mark: 'correct' | RegionPaintReason | null;
+}
 import { StorageImageRetryDirective } from '../../directives/storage-image-retry.directive';
 import { StorageImageResolver } from '../../utils/storage-image-refresh.util';
 
@@ -27,6 +47,11 @@ import { StorageImageResolver } from '../../utils/storage-image-refresh.util';
  * sürüklemek boyar; seçili renkle boyalı hücreden başlayan sürükleme siler (silgi de var). Renk başına boyanan hücre sayısı canlı
  * gösterilir (öğrenci oranı kendisi hesaplar; hedef sayı gösterilmez). Kontrol sonrası palet satırları yeşil / kırmızı; çözüm açıkken
  * hedef sayılar satır öncelikli örnek dolgu ile çizilir. Sürükleme bitince bir kez emit edilir. OnPush: tüm durum signal.
+ *
+ * Dilim b — bölge modu: görselin üstünde SVG çokgenler; bölgeye dokunmak seçili rengi verir, aynı renkli bölgeye dokunmak (ya da
+ * silgi) boyayı kaldırır. `circle` stilinde boya bölgeyi çevreleyen elips olarak çizilir; tek renkli palette renk seçici gizlidir.
+ * Kontrol sonrası yalnız boyalı bölgeler işaretlenir (doğru yeşil, fazla kırmızı, yanlış renk turuncu) ve "Bulunan · Kalan · Fazla"
+ * sayacı gösterilir; çözüm açıkken hedef bölgeler kendi renkleriyle çizilir.
  */
 @Component({
   selector: 'app-question-canvas-region-paint',
@@ -47,6 +72,7 @@ export class QuestionCanvasRegionPaintComponent {
 
   @Input({ required: true }) set interactionPlanJson(value: string | null | undefined) {
     this._plan.set(parseRegionPaintPlan(value));
+    this._regionsPlan.set(parseRegionPaintRegionsPlan(value));
     this.restore();
   }
 
@@ -89,6 +115,7 @@ export class QuestionCanvasRegionPaintComponent {
 
   private readonly _region = signal<QuestionRegion | null>(null);
   private readonly _plan = signal<RegionPaintPlanV1 | null>(null);
+  private readonly _regionsPlan = signal<RegionPaintRegionsPlanV1 | null>(null);
   private readonly _solutionJson = signal<string | null>(null);
   private readonly _answerPayloadJson = signal<string | null>(null);
   private readonly _feedback = signal<RegionPaintFeedback | null>(null);
@@ -97,10 +124,13 @@ export class QuestionCanvasRegionPaintComponent {
   private readonly _disabled = signal(false);
 
   readonly cells = signal<PaintCells>([]);
+  /** Bölge modunda öğrencinin boyası (bölge id'si → palet id'si). */
+  readonly fills = signal<PaintFills>({});
   /** Seçili palet dizini; null = silgi. */
   readonly selected = signal<number | null>(0);
 
   readonly plan = this._plan.asReadonly();
+  readonly regionsPlan = this._regionsPlan.asReadonly();
   readonly solutionShown = this._showSolution.asReadonly();
   readonly activity = this._activityMode.asReadonly();
   readonly imageUrl = computed(() => this._region()?.imageUrl || null);
@@ -122,7 +152,86 @@ export class QuestionCanvasRegionPaintComponent {
   });
   readonly rowMarks = computed(() => new Map((this._feedback()?.rows ?? []).map((r) => [r.id, r.correct])));
   readonly correctCount = computed(() => [...this.rowMarks().values()].filter(Boolean).length);
-  readonly canReset = computed(() => !this.readOnly() && !isEmptyPaint(this.cells()));
+  readonly canReset = computed(() =>
+    this._regionsPlan() ? !this.readOnly() && Object.keys(this.fills()).length > 0 : !this.readOnly() && !isEmptyPaint(this.cells())
+  );
+
+  // ---- Bölge modu ----
+
+  /** Görselin piksel boyutu (bölge köşeleri soru görseline göreli): SVG viewBox. */
+  readonly viewBox = computed(() => {
+    const region = this._region();
+    return region && region.width > 0 && region.height > 0 ? `0 0 ${region.width} ${region.height}` : null;
+  });
+
+  /** Gösterilen boya: çözüm açıkken çözüm, değilse öğrencinin boyası. */
+  private readonly shownFills = computed<PaintFills>(() => {
+    const plan = this._regionsPlan();
+    if (!plan) return {};
+    return this._showSolution() ? parseRegionPaintFillsSolution(this._solutionJson(), plan) : this.fills();
+  });
+
+  readonly regionViews = computed<PaintRegionView[]>(() => {
+    const plan = this._regionsPlan();
+    if (!plan) return [];
+    const fills = this.shownFills();
+    const index = new Map(plan.palette.map((p, i) => [p.id, i]));
+    const marks = new Map((this._feedback()?.rows ?? []).map((r) => [r.id, r]));
+    return plan.regions.map((region, i) => {
+      const b = polygonBounds(region.points);
+      // Daire: bölgeyi çevreleyen elips (kenarlar biraz dışarıda kalsın).
+      const pad = Math.max(4, Math.min(b.width, b.height) * 0.12);
+      const paintId = Object.hasOwn(fills, region.id) ? fills[region.id] : null;
+      const row = this._showSolution() ? undefined : marks.get(region.id);
+      return {
+        region,
+        no: i + 1,
+        points: region.points.map(([x, y]) => `${x},${y}`).join(' '),
+        ellipse: { cx: b.x + b.width / 2, cy: b.y + b.height / 2, rx: b.width / 2 + pad, ry: b.height / 2 + pad },
+        paint: paintId === null ? null : (index.get(paintId) ?? null),
+        mark: row ? (row.correct ? 'correct' : (row.reason ?? 'extra')) : null,
+      };
+    });
+  });
+
+  /** Renk başına boyalı bölge sayısı. */
+  readonly regionCounts = computed(() => {
+    const plan = this._regionsPlan();
+    const counts = Array.from({ length: plan?.palette.length ?? 0 }, () => 0);
+    for (const view of this.regionViews()) if (view.paint !== null) counts[view.paint]++;
+    return counts;
+  });
+
+  /** Tek renkli palette (ör. yalnız "daire içine al") renk seçici gösterilmez; dokunmak aç / kapat. */
+  readonly showPalette = computed(() => (this._regionsPlan()?.palette.length ?? 0) > 1);
+  readonly regionStyle = computed(() => this._regionsPlan()?.style ?? 'fill');
+
+  regionPaintCss(paint: number | null): string | null {
+    const plan = this._regionsPlan();
+    return paint === null || !plan || !plan.palette[paint] ? null : paintCss(plan.palette[paint].color);
+  }
+
+  /** Bölgeye dokunma: seçili renk verilir; aynı renkle boyalıysa (ya da silgide) boya kalkar. */
+  toggleRegion(regionId: string): void {
+    const plan = this._regionsPlan();
+    if (this.readOnly() || !plan || !plan.regions.some((r) => r.id === regionId)) return;
+    const selected = plan.palette.length === 1 ? 0 : this.selected();
+    const current = this.fills();
+    const paint = selected === null ? null : (plan.palette[selected]?.id ?? null);
+    const next: PaintFills = { ...current };
+    if (paint === null || current[regionId] === paint) delete next[regionId];
+    else next[regionId] = paint;
+    this.fills.set(next);
+    this.emit();
+  }
+
+  regionAria(view: PaintRegionView, t: (key: string, params?: Record<string, unknown>) => string): string {
+    const plan = this._regionsPlan();
+    const name = view.region.label || t('regions.regionNo', { n: view.no });
+    const entry = view.paint === null || !plan ? null : plan.palette[view.paint];
+    const state = entry ? entry.label || t('colors.' + entry.color) : t('regions.unpainted');
+    return view.mark ? `${name}: ${state}, ${t('regions.mark.' + view.mark)}` : `${name}: ${state}`;
+  }
 
   /**
    * Kare boyu: dar ekranda ızgara sayfaya sığsın (sürükleme `touch-action: none` olduğundan ızgara üzerinde kaydırılamaz); 14–32 px.
@@ -190,8 +299,14 @@ export class QuestionCanvasRegionPaintComponent {
   }
 
   reset(): void {
+    if (!this.canReset()) return;
+    if (this._regionsPlan()) {
+      this.fills.set({});
+      this.emit();
+      return;
+    }
     const plan = this._plan();
-    if (!plan || !this.canReset()) return;
+    if (!plan) return;
     this.cells.set(emptyCells(plan));
     this.emit();
   }
@@ -213,8 +328,9 @@ export class QuestionCanvasRegionPaintComponent {
   }
 
   private emit(): void {
-    if (!this._plan()) return;
-    const payload = buildRegionPaintPayload(this.cells());
+    const regionsPlan = this._regionsPlan();
+    if (!this._plan() && !regionsPlan) return;
+    const payload = regionsPlan ? buildRegionPaintFillsPayload(this.fills(), regionsPlan) : buildRegionPaintPayload(this.cells());
     this.lastEmitted = payload;
     this.answerPayloadChange.emit(payload);
     this.answered.emit();
@@ -224,7 +340,10 @@ export class QuestionCanvasRegionPaintComponent {
     const json = this._answerPayloadJson();
     if (this.lastEmitted !== null && json === this.lastEmitted) return;
     const plan = this._plan();
+    const regionsPlan = this._regionsPlan();
     this.cells.set(parseRegionPaintAnswer(json, plan));
-    if (plan && (this.selected() ?? 0) >= plan.palette.length) this.selected.set(0);
+    this.fills.set(parseRegionPaintFills(json, regionsPlan));
+    const paletteSize = plan?.palette.length ?? regionsPlan?.palette.length ?? 0;
+    if (paletteSize > 0 && (this.selected() ?? 0) >= paletteSize) this.selected.set(0);
   }
 }

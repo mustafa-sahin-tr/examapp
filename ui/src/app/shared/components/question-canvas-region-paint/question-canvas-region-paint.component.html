@@ -8,6 +8,79 @@
     </div>
   }
 
+  @if (regionsPlan(); as rp) {
+    <!-- Dilim b: görsel üzerinde bölgeler. -->
+    @if (showPalette()) {
+      <div class="rp-palette" role="radiogroup" [attr.aria-label]="t('palette')" data-testid="rp-palette">
+        @for (entry of rp.palette; track entry.id; let i = $index) {
+          <button type="button" role="radio" class="rp-swatch" [attr.data-paint]="i" [attr.aria-checked]="selected() === i"
+            [class.is-selected]="selected() === i && !readOnly()" [disabled]="readOnly()" (click)="select(i)">
+            <span class="rp-swatch__chip" [style.background]="css(entry.color)" aria-hidden="true"></span>
+            <span class="rp-swatch__label">{{ entry.label || t('colors.' + entry.color) }}</span>
+            <span class="rp-swatch__count" [attr.data-count]="i">{{ regionCounts()[i] }}</span>
+          </button>
+        }
+        @if (!readOnly()) {
+          <button type="button" role="radio" class="rp-swatch rp-swatch--eraser" data-testid="rp-eraser" [attr.aria-checked]="selected() === null"
+            [class.is-selected]="selected() === null" (click)="select(null)">
+            <mat-icon aria-hidden="true">ink_eraser</mat-icon>
+            <span class="rp-swatch__label">{{ t('eraser') }}</span>
+          </button>
+        }
+      </div>
+    }
+
+    @if (imageUrl(); as url) {
+      <div class="rp-stage">
+        <div class="rp-stage__inner">
+          <img class="rp-stage__image" [src]="url" [alt]="t('imageAlt')" [appStorageImageRetry]="imageRefresh" />
+          @if (viewBox(); as vb) {
+            <svg class="rp-regions" data-testid="rp-regions" [attr.viewBox]="vb" preserveAspectRatio="none"
+              [class.is-circle]="regionStyle() === 'circle'" [class.is-readonly]="readOnly()">
+              @for (v of regionViews(); track v.region.id) {
+                <g class="rp-region" [attr.data-region]="v.region.id" [attr.data-mark]="v.mark"
+                  [class.is-painted]="v.paint !== null" [style.--rp-paint]="regionPaintCss(v.paint)">
+                  @if (regionStyle() === 'circle') {
+                    @if (v.paint !== null) {
+                      <ellipse class="rp-region__ring" [attr.cx]="v.ellipse.cx" [attr.cy]="v.ellipse.cy"
+                        [attr.rx]="v.ellipse.rx" [attr.ry]="v.ellipse.ry" />
+                    }
+                  }
+                  <polygon class="rp-region__shape" [attr.points]="v.points" role="button" vector-effect="non-scaling-stroke"
+                    [attr.tabindex]="readOnly() ? -1 : 0" [attr.aria-pressed]="v.paint !== null"
+                    [attr.aria-label]="regionAria(v, t)" [attr.aria-disabled]="readOnly()"
+                    (click)="toggleRegion(v.region.id)" (keydown.enter)="$event.preventDefault(); toggleRegion(v.region.id)"
+                    (keydown.space)="$event.preventDefault(); toggleRegion(v.region.id)" />
+                </g>
+              }
+            </svg>
+          }
+        </div>
+      </div>
+    }
+
+    @if (!solutionShown()) {
+      <div class="rp-actions">
+        <button mat-stroked-button type="button" data-testid="rp-reset" [disabled]="!canReset()" (click)="reset()">
+          <mat-icon>restart_alt</mat-icon>{{ t('reset') }}
+        </button>
+      </div>
+      <p class="rp-hint">{{ regionStyle() === 'circle' ? t('regions.hintCircle') : t('regions.hint') }}</p>
+    }
+
+    @if (feedbackState(); as fb) {
+      @if (fb.found !== undefined) {
+        <p class="rp-result" role="status" data-testid="rp-result"
+          [class.is-ok]="!fb.missing && !fb.extra && !fb.tooMany" [class.is-bad]="!!fb.missing || !!fb.extra || !!fb.tooMany">
+          <mat-icon aria-hidden="true">{{ !fb.missing && !fb.extra && !fb.tooMany ? 'check_circle' : 'error' }}</mat-icon>
+          {{ t('regions.counter', { found: fb.found, missing: fb.missing ?? 0, extra: fb.extra ?? 0 }) }}
+        </p>
+        @if (fb.tooMany) {
+          <p class="rp-hint" data-testid="rp-too-many">{{ t('regions.tooMany') }}</p>
+        }
+      }
+    }
+  } @else {
   @if (imageUrl(); as url) {
     <div class="rp-image-wrap">
       <img class="rp-image" [src]="url" [alt]="t('imageAlt')" [appStorageImageRetry]="imageRefresh" />
@@ -76,7 +149,9 @@
     </p>
   }
 
+  }
+
   @if (solutionShown()) {
-    <p class="rp-hint" data-testid="rp-solution-hint">{{ t('solutionShown') }}</p>
+    <p class="rp-hint" data-testid="rp-solution-hint">{{ regionsPlan() ? t('regions.solutionShown') : t('solutionShown') }}</p>
   }
 </div>

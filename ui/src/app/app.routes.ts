@@ -113,6 +113,13 @@ export const routes: Routes = [
         canActivate: [authGuard, roleGuard('Teacher', 'Admin'), approvedTeacherGuard],
         loadComponent: () => import('./pages/question-bank/question-bank.component').then((m) => m.QuestionBankComponent),
       },
+      {
+        // Issue #590: görselsiz etkinlik maddesi editörü (form tabanlı yazarlık) — backend Teacher/Admin + test sahibi.
+        path: 'activity-editor',
+        canActivate: [authGuard, roleGuard('Teacher', 'Admin'), approvedTeacherGuard],
+        loadComponent: () =>
+          import('./pages/activity-editor/activity-editor.component').then((m) => m.ActivityEditorComponent),
+      },
       { path: 'imageselect', component: ImageSelectorComponent, canActivate: [authGuard] },
       {
         path: 'tests-enhanced',

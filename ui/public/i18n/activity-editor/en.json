@@ -1,0 +1,118 @@
+{
+  "back": "Back to activity",
+  "titleNew": "Text-only activity item",
+  "titleEdit": "Edit text-only item",
+  "subtitle": "Create an item by writing its content, without a book image; students can solve it comfortably on a phone.",
+  "loading": "Loading…",
+  "loadError": "The activity could not be loaded.",
+  "retry": "Retry",
+  "formAria": "Item content",
+  "items": {
+    "title": "Text-only items in this activity",
+    "new": "New item"
+  },
+  "kind": "Item type",
+  "kinds": {
+    "matrix": "True/False · Matrix",
+    "classify": "Sort into groups",
+    "order": "Ordering",
+    "match": "Matching"
+  },
+  "kindHints": {
+    "matrix": "Mark the correct option for each row. The T/F template sets up two columns; with multiple choice a row can have several correct options.",
+    "classify": "Sort the cards into groups. A card that belongs to no group is a distractor.",
+    "order": "Write the items in the correct order; students get them shuffled.",
+    "match": "Write the pairs; distractor right items are optional. Students get the right side shuffled."
+  },
+  "instruction": "Instruction (optional)",
+  "image": {
+    "title": "Image (optional)",
+    "alt": "Item image",
+    "add": "Add image",
+    "replace": "Replace image",
+    "remove": "Remove",
+    "hint": "Shown below the instruction, not interactive. Up to 5 MB.",
+    "invalidType": "Only image files can be selected.",
+    "tooLarge": "The image can be at most {{mb}} MB."
+  },
+  "remove": "Remove",
+  "matrix": {
+    "columns": "Options (columns)",
+    "trueFalsePreset": "T/F template",
+    "column": "Option {{n}}",
+    "addColumn": "Add option",
+    "multi": "Multiple choice per row",
+    "shuffle": "Shuffle rows",
+    "rows": "Statements (rows) and correct answer",
+    "row": "Statement {{n}}",
+    "correctFor": "Correct option for statement {{n}}",
+    "addRow": "Add statement"
+  },
+  "classify": {
+    "buckets": "Groups",
+    "bucket": "Group {{n}}",
+    "addBucket": "Add group",
+    "cards": "Cards",
+    "card": "Card {{n}}",
+    "belongsTo": "Belongs to",
+    "distractor": "Distractor (none)",
+    "addCard": "Add card"
+  },
+  "order": {
+    "items": "Items (in the correct order)",
+    "hint": "Use the arrows to change the order.",
+    "item": "Item {{n}}",
+    "up": "Move up",
+    "down": "Move down",
+    "add": "Add item"
+  },
+  "match": {
+    "pairs": "Pairs",
+    "left": "Left {{n}}",
+    "right": "Match {{n}}",
+    "addPair": "Add pair",
+    "distractors": "Distractor right items",
+    "distractor": "Distractor {{n}}",
+    "addDistractor": "Add distractor"
+  },
+  "classification": {
+    "title": "Subject / topic (optional)",
+    "hint": "If you pick a topic it is kept. Otherwise the item is classified automatically from its text.",
+    "topicRequired": "You picked a subject; pick a topic too."
+  },
+  "save": "Save",
+  "saveAndAnother": "Save and add another",
+  "saveAndNew": "Save and new item",
+  "preview": {
+    "title": "Preview",
+    "showSolution": "Show solution",
+    "hint": "What the student sees. Drag-and-drop cards and the right side of matching are shuffled for the student."
+  },
+  "errors": {
+    "columnCount": "There must be {{min}}–{{max}} options.",
+    "rowCount": "There must be {{min}}–{{max}} statements.",
+    "blankColumn": "Do not leave an option empty.",
+    "blankRow": "Do not leave a statement empty.",
+    "labelTooLong": "Each text can be at most {{max}} characters.",
+    "rowWithoutAnswer": "Mark the correct answer of every statement (exactly one with single choice).",
+    "bucketCount": "There must be {{min}}–{{max}} groups.",
+    "cardCount": "There must be {{min}}–{{max}} cards.",
+    "blankBucket": "Do not leave a group name empty.",
+    "blankCard": "Do not leave a card empty.",
+    "noPlacedCard": "At least one card must belong to a group.",
+    "bucketOverCapacity": "A group can hold at most {{max}} cards.",
+    "orderCount": "There must be {{min}}–{{max}} items.",
+    "blankItem": "Do not leave an item empty.",
+    "pairCount": "There must be {{min}}–{{max}} pairs.",
+    "rightCount": "The right side (matches + distractors) can have at most {{max}} items.",
+    "blankPair": "Fill in both sides of each pair.",
+    "blankDistractor": "Do not leave a distractor empty.",
+    "duplicateRight": "Items on the right side must differ from each other."
+  },
+  "snackbar": {
+    "created": "The item was added to the activity.",
+    "updated": "The item was updated.",
+    "saveError": "The item could not be saved.",
+    "classificationError": "The item was saved but its subject/topic could not be updated."
+  }
+}

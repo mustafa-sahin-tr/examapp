@@ -18,4 +18,10 @@ public interface IQuestionClassificationService
         int? difficulty = null);
 
     Task<ResponseBaseDto> RemoveQuestionFromTest(int testId, int questionId);
+
+    /// <summary>
+    /// Issue #590: sınıflandırıcının görseli olmayan soru için okuduğu düz metin (<see cref="QuestionClassificationText"/>);
+    /// soru yoksa null.
+    /// </summary>
+    Task<string?> GetClassificationTextAsync(int questionId, CancellationToken ct = default);
 }

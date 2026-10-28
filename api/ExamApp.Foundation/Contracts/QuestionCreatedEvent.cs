@@ -23,6 +23,13 @@ public class QuestionCreatedEvent
     /// (treated as empty).
     /// </summary>
     public List<int>? SubTopicIds { get; set; }
+
+    /// <summary>
+    /// Issue #590: the teacher picked the taxonomy and it must not be overwritten (only set with a topic). With subtopics
+    /// the consumer skips classification; with only a topic it classifies within that topic (subtopic + difficulty) and
+    /// keeps the source <c>Human</c>. False/absent from older publishers = not locked.
+    /// </summary>
+    public bool TaxonomyLocked { get; set; }
     public DateTime CreatedAt { get; set; }
     public string? Text { get; set; }
 }

@@ -46,7 +46,7 @@ public class GeminiQuestionClassifierTests
     public async Task Topic_constrained_classification_is_skipped()
     {
         var http = HappyHttp("{}");
-        await NewClassifier(http).ClassifyWithinTopicAndPersistAsync(1, 5, 10, default);
+        await NewClassifier(http).ClassifyWithinTopicAndPersistAsync(1, 5, 10, "Book", default);
         http.Requests.ShouldBeEmpty();
     }
 
@@ -155,8 +155,21 @@ public class GeminiQuestionClassifierTests
     {
         var http = new StubHttp()
             .On("/api/questions/classifier-cache", HttpStatusCode.OK, """{ "cachedContentName": "cachedContents/abc" }""")
-            .On("/image", HttpStatusCode.NotFound, "missing");
+            .On("/image", HttpStatusCode.InternalServerError, "boom");
 
         await Should.ThrowAsync<InvalidOperationException>(() => NewClassifier(http).ClassifyAndPersistAsync(9, null, default));
+    }
+
+    // Issue #590: görseli olmayan (metinle yazılmış) soru Gemini'de atlanır — metin sınıflandırması yalnız Claude'da.
+    [Fact]
+    public async Task Skips_a_question_without_an_image()
+    {
+        var http = new StubHttp()
+            .On("/api/questions/classifier-cache", HttpStatusCode.OK, """{ "cachedContentName": "cachedContents/abc" }""")
+            .On("/image", HttpStatusCode.NotFound, "missing");
+
+        await NewClassifier(http).ClassifyAndPersistAsync(9, null, default);
+
+        http.Requests.ShouldNotContain(r => r.Method == HttpMethod.Put);
     }
 }

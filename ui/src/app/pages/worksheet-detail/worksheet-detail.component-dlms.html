@@ -516,6 +516,11 @@
                 <button class="btn btn-primary" (click)="navigateToQuestionCanvas()">
                   <mat-icon>add_circle</mat-icon>{{ t('teacher.addQuestion') }}
                 </button>
+                @if (isActivity()) {
+                  <button class="btn btn-ghost" data-testid="add-text-activity-btn" (click)="openActivityEditor()">
+                    <mat-icon>edit_note</mat-icon>{{ t('activity.addTextItem') }}
+                  </button>
+                }
                 <button class="btn btn-ghost" data-testid="add-from-bank-btn" (click)="openBankQuestionDialog()">
                   <mat-icon>library_add</mat-icon>{{ t('teacher.addFromBank') }}
                 </button>
@@ -587,7 +592,9 @@
                     </a>
                     <app-activity-tracking-table [students]="activityTrackingStudents()" [gradeLabel]="gradeLabelFn" />
                     <!-- Issue #584: madde/satır analizi ve ısı haritası (istenince yüklenir). -->
-                    <app-activity-report [worksheetId]="d.worksheet.id" />
+                    @if (d.worksheet.id; as worksheetId) {
+                      <app-activity-report [worksheetId]="worksheetId" />
+                    }
                   } @else {
                   <mat-accordion class="assignment-accordion" multi>
                     @for (assignment of teacherAssignments(); track assignment.assignmentId) {

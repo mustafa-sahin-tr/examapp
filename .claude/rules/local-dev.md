@@ -658,6 +658,15 @@ Analiz öğrenciye gitmez (çözümü ele verir). Takip tablosu (#573) bilerek y
 Veli özeti (`/api/exam/parent/children/{id}/summary`) `activities` taşır: bu hafta / toplam tamamlanan etkinlik (`FirstCompletedAt`;
 yeniden çözme ikinci kez saymaz) ve ilk kontrol doğru oranı ortalaması (`FirstCheck*`, kontrol yoksa null). Migration yok.
 
+**Issue #590 — görselsiz etkinlik maddesi (dilim a).** Etkinlik sayfasında (öğretmen) **Görselsiz madde ekle** → `/activity-editor?testId=&gradeId=`
+(`&questionId=` düzenleme; editör o etkinliğin formla düzenlenebilen maddelerini listeler). Türler: matris seçim (D/Y şablonu,
+çoklu seçim, `shuffleRows`), sınıflandırma (`dragPlace` place, kutusuz kovalar; kovasız kart çeldirici, kova kapasitesi kart
+sayısı — ipucu vermesin), sıralama (`dragPlace` order), eşleştirme (`match`, çeldirici sağ öğeler). Aynı tipler/kontrolcüler;
+matris satırında `box` artık isteğe bağlı (kutusuz satırda boş olmayan `label` zorunlu, `cells` yasak). Yeni madde toplu kayıtla
+(`questions/save`, `imageData` yok ya da tek etkileşimsiz görsel; kapsam kutusu 0×0 kırpılmaz), düzenleme tekli kayıtla. Yönerge düz
+metin (#573). Seçilen konu kilitlenir (bkz. architecture.md); seçilmezse madde metinle sınıflandırılır. Boşluk doldurma ve boşluklu
+metin + kelime havuzu dilim b'de. Migration yok; Aspire'da exam API ve BadgeService'i yeniden başlat.
+
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını
 (`TestInstances` — Questions'a FK'sı yok, CASCADE ulaşmaz, açıkça silinir; aksi halde "boş test yapılmış" gibi kalır),

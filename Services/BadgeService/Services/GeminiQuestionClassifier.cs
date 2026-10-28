@@ -100,7 +100,13 @@ public class GeminiQuestionClassifier : IQuestionClassifier
         }
 
         var examApi = new ExamApiClassificationClient(_httpClientFactory, _examApiBaseUrl);
-        var image = await examApi.FetchQuestionImageAsync(questionId, token, cancellationToken);
+        // Issue #590: Gemini classifies images only — a question without one (text-authored) is skipped.
+        var image = await examApi.TryFetchQuestionImageAsync(questionId, token, cancellationToken);
+        if (image is null)
+        {
+            _logger.LogWarning("⏭️ Question {QuestionId} has no image; text classification is Claude-only. Skipping.", questionId);
+            return;
+        }
         var result = await CallGeminiAsync(image.Bytes, cachedContent, model, cancellationToken);
 
         if (result == null)
@@ -123,11 +129,12 @@ public class GeminiQuestionClassifier : IQuestionClassifier
     /// Issue #577: Gemini classifies against one cached whole-taxonomy content and cannot be constrained to a topic, so the
     /// book-TOC hybrid mode is Claude-only here — skipped, the book's topic is kept.
     /// </summary>
-    public Task ClassifyWithinTopicAndPersistAsync(int questionId, int? gradeId, int topicId, CancellationToken cancellationToken)
+    public Task ClassifyWithinTopicAndPersistAsync(
+        int questionId, int? gradeId, int topicId, string classificationSource, CancellationToken cancellationToken)
     {
         _logger.LogWarning(
-            "⏭️ Topic-constrained classification is Claude-only; skipping question {QuestionId} (book topic {TopicId} kept).",
-            questionId, topicId);
+            "⏭️ Topic-constrained classification is Claude-only; skipping question {QuestionId} ({Source} topic {TopicId} kept).",
+            questionId, classificationSource, topicId);
         return Task.CompletedTask;
     }
 

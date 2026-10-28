@@ -81,6 +81,33 @@ describe('QuestionCanvasMatrixChoiceComponent (#574)', () => {
         expect(cell('r1', 'c1').textContent?.trim()).toBe('D');
     });
 
+    it('textOnly_NoImageNoBoxes_RendersListOnly_ShuffleRowsIsSeededAndStable', () => {
+        // Issue #590: görselsiz madde — görsel yok, satırlar kutusuz; shuffleRows tohumla aynı sırayı verir.
+        const rows = Array.from({ length: 6 }, (_, i) => ({ id: `r${i + 1}`, label: `İfade ${i + 1}` }));
+        const plan = { ...LIST_PLAN, shuffleRows: true, rows };
+        const order = (seed: string) => {
+            TestBed.resetTestingModule();
+            TestBed.configureTestingModule({ imports: [QuestionCanvasMatrixChoiceComponent, translocoTestingModule()] });
+            fixture = TestBed.createComponent(QuestionCanvasMatrixChoiceComponent);
+            emitted = [];
+            fixture.componentInstance.answerPayloadChange.subscribe((p) => emitted.push(p));
+            fixture.componentRef.setInput('questionRegion', { imageUrl: '', width: 0, height: 0, passage: null } as unknown as QuestionRegion);
+            fixture.componentRef.setInput('interactionPlanJson', JSON.stringify(plan));
+            fixture.componentRef.setInput('shuffleSeed', seed);
+            fixture.detectChanges();
+            return Array.from(el().querySelectorAll('.mc-list__row')).map((x) => x.getAttribute('data-row'));
+        };
+
+        const first = order('item-7');
+        expect(el().querySelector('.mc-stage')).toBeNull();
+        expect([...first].sort()).toEqual(rows.map((r) => r.id).sort());
+        expect(first).not.toEqual(rows.map((r) => r.id));
+        expect(order('item-7')).toEqual(first);
+
+        cell('r3', 'c1').click();
+        expect(lastPayload().selections).toEqual({ r3: ['c1'] });
+    });
+
     it('cellMode_AllCells_RendersTappableOverlayAndNoList', () => {
         setup({ plan: CELL_PLAN });
 

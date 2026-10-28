@@ -1,0 +1,118 @@
+{
+  "back": "Etkinliğe dön",
+  "titleNew": "Görselsiz etkinlik maddesi",
+  "titleEdit": "Görselsiz maddeyi düzenle",
+  "subtitle": "Kitap görseli olmadan içeriği yazarak madde oluştur; öğrenci telefonda da rahatça çözer.",
+  "loading": "Yükleniyor…",
+  "loadError": "Etkinlik yüklenemedi.",
+  "retry": "Yeniden dene",
+  "formAria": "Madde içeriği",
+  "items": {
+    "title": "Bu etkinlikteki görselsiz maddeler",
+    "new": "Yeni madde"
+  },
+  "kind": "Madde türü",
+  "kinds": {
+    "matrix": "Doğru/Yanlış · Matris",
+    "classify": "Sınıflandırma",
+    "order": "Sıralama",
+    "match": "Eşleştirme"
+  },
+  "kindHints": {
+    "matrix": "Her satır için doğru seçeneği işaretle. D/Y şablonu iki kolon kurar; çoklu seçimde satırda birden çok doğru olabilir.",
+    "classify": "Kartları kovalara ayır. Hiçbir kovaya ait olmayan kart çeldiricidir.",
+    "order": "Öğeleri doğru sırayla yaz; öğrenciye karışık gelir.",
+    "match": "Çiftleri yaz; çeldirici sağ öğeler isteğe bağlı. Sağ taraf öğrenciye karışık gelir."
+  },
+  "instruction": "Yönerge (isteğe bağlı)",
+  "image": {
+    "title": "Görsel (isteğe bağlı)",
+    "alt": "Madde görseli",
+    "add": "Görsel ekle",
+    "replace": "Görseli değiştir",
+    "remove": "Kaldır",
+    "hint": "Yönergenin altında gösterilir, etkileşimsizdir. En çok 5 MB.",
+    "invalidType": "Yalnız görsel dosyası seçilebilir.",
+    "tooLarge": "Görsel en çok {{mb}} MB olabilir."
+  },
+  "remove": "Kaldır",
+  "matrix": {
+    "columns": "Seçenekler (kolonlar)",
+    "trueFalsePreset": "D/Y şablonu",
+    "column": "Seçenek {{n}}",
+    "addColumn": "Seçenek ekle",
+    "multi": "Satırda çoklu seçim",
+    "shuffle": "Satırları karıştır",
+    "rows": "İfadeler (satırlar) ve doğru cevap",
+    "row": "İfade {{n}}",
+    "correctFor": "İfade {{n}} için doğru seçenek",
+    "addRow": "İfade ekle"
+  },
+  "classify": {
+    "buckets": "Kovalar",
+    "bucket": "Kova {{n}}",
+    "addBucket": "Kova ekle",
+    "cards": "Kartlar",
+    "card": "Kart {{n}}",
+    "belongsTo": "Ait olduğu kova",
+    "distractor": "Çeldirici (hiçbiri)",
+    "addCard": "Kart ekle"
+  },
+  "order": {
+    "items": "Öğeler (doğru sırayla)",
+    "hint": "Okla sırayı değiştirebilirsin.",
+    "item": "{{n}}. öğe",
+    "up": "Yukarı taşı",
+    "down": "Aşağı taşı",
+    "add": "Öğe ekle"
+  },
+  "match": {
+    "pairs": "Çiftler",
+    "left": "Sol {{n}}",
+    "right": "Eşi {{n}}",
+    "addPair": "Çift ekle",
+    "distractors": "Çeldirici sağ öğeler",
+    "distractor": "Çeldirici {{n}}",
+    "addDistractor": "Çeldirici ekle"
+  },
+  "classification": {
+    "title": "Ders / konu (isteğe bağlı)",
+    "hint": "Konu seçersen o konu korunur. Seçmezsen madde metninden otomatik sınıflandırılır.",
+    "topicRequired": "Ders seçtiysen konuyu da seç."
+  },
+  "save": "Kaydet",
+  "saveAndAnother": "Kaydet ve yeni ekle",
+  "saveAndNew": "Kaydet ve yeni madde",
+  "preview": {
+    "title": "Önizleme",
+    "showSolution": "Çözümü göster",
+    "hint": "Öğrencinin göreceği hâl. Sürükle-yerleştir kartları ve eşleştirmenin sağ tarafı öğrenciye karışık gelir."
+  },
+  "errors": {
+    "columnCount": "{{min}}–{{max}} seçenek olmalı.",
+    "rowCount": "{{min}}–{{max}} ifade olmalı.",
+    "blankColumn": "Boş seçenek bırakma.",
+    "blankRow": "Boş ifade bırakma.",
+    "labelTooLong": "Her metin en çok {{max}} karakter olabilir.",
+    "rowWithoutAnswer": "Her ifadenin doğru cevabını işaretle (tekli seçimde tam bir tane).",
+    "bucketCount": "{{min}}–{{max}} kova olmalı.",
+    "cardCount": "{{min}}–{{max}} kart olmalı.",
+    "blankBucket": "Boş kova adı bırakma.",
+    "blankCard": "Boş kart bırakma.",
+    "noPlacedCard": "En az bir kart bir kovaya ait olmalı.",
+    "bucketOverCapacity": "Bir kovada en çok {{max}} kart olabilir.",
+    "orderCount": "{{min}}–{{max}} öğe olmalı.",
+    "blankItem": "Boş öğe bırakma.",
+    "pairCount": "{{min}}–{{max}} çift olmalı.",
+    "rightCount": "Sağ tarafta (eşler + çeldiriciler) en çok {{max}} öğe olabilir.",
+    "blankPair": "Çiftlerin iki tarafını da doldur.",
+    "blankDistractor": "Boş çeldirici bırakma.",
+    "duplicateRight": "Sağ taraftaki öğeler birbirinden farklı olmalı."
+  },
+  "snackbar": {
+    "created": "Madde etkinliğe eklendi.",
+    "updated": "Madde güncellendi.",
+    "saveError": "Madde kaydedilemedi.",
+    "classificationError": "Madde kaydedildi ama ders/konu güncellenemedi."
+  }
+}

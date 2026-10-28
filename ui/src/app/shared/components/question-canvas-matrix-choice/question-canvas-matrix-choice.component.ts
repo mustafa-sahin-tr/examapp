@@ -33,6 +33,7 @@ import {
   withSelection,
 } from '../../../models/matrix-choice';
 import { StorageImageRetryDirective } from '../../directives/storage-image-retry.directive';
+import { seededShuffle } from '../../utils/seeded-shuffle';
 import { StorageImageResolver } from '../../utils/storage-image-refresh.util';
 
 export type MatrixRowMark = 'correct' | 'wrong' | null;
@@ -104,6 +105,11 @@ export class QuestionCanvasMatrixChoiceComponent {
     this._activityMode.set(!!value);
   }
 
+  /** Issue #590: `shuffleRows` planında satır sırasının tohumu (oynatıcı madde id'si verir; yoksa satır id'leri). */
+  @Input() set shuffleSeed(value: string | number | null | undefined) {
+    this._shuffleSeed.set(value ?? null);
+  }
+
   @Output() answerPayloadChange = new EventEmitter<string>();
   @Output() answered = new EventEmitter<void>();
 
@@ -124,6 +130,7 @@ export class QuestionCanvasMatrixChoiceComponent {
   private readonly _showSolution = signal(false);
   private readonly _practiceFeedback = signal(false);
   private readonly _activityMode = signal(false);
+  private readonly _shuffleSeed = signal<string | number | null>(null);
 
   /** Öğrencinin seçimleri (satır id → kolon id'leri). */
   readonly selections = signal<MatrixSelections>(emptyMatrixSelections());
@@ -139,6 +146,17 @@ export class QuestionCanvasMatrixChoiceComponent {
   readonly passageImageUrl = computed(() => this._region()?.passage?.imageUrl ?? null);
   readonly passageTitle = computed(() => this._region()?.passage?.title ?? null);
   readonly rows = computed(() => this._plan()?.rows ?? []);
+  /**
+   * Liste modunda gösterim sırası: `shuffleRows` planında tohumlu karışık (aynı madde hep aynı sırada), değilse plan sırası.
+   * Görsel üstü (hücre) modu ve numaralar görsele bağlı olduğundan orada karıştırılmaz. Satır başlığı numarası gösterim sırasıdır.
+   */
+  readonly listRows = computed(() => {
+    const plan = this._plan();
+    const rows = plan?.rows ?? [];
+    if (!plan?.shuffleRows || matrixHasAllCells(plan)) return rows;
+    const seed = this._shuffleSeed() ?? rows.map((r) => r.id).join('|');
+    return seededShuffle(rows, `${seed}`);
+  });
   readonly columns = computed(() => this._plan()?.columns ?? []);
   readonly multi = computed(() => this._plan()?.multiPerRow === true);
   /** Hücre kutuları tam: görsel üstünde dokunma; değilse görselin altında liste. */

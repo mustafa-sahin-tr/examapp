@@ -76,7 +76,40 @@ public class ConsumerTests : IDisposable
     private static async Task AssertNoClassificationAsync(IQuestionClassifier classifier)
     {
         await classifier.DidNotReceive().ClassifyAndPersistAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
-        await classifier.DidNotReceive().ClassifyWithinTopicAndPersistAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await classifier.DidNotReceive().ClassifyWithinTopicAndPersistAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    private static QuestionCreatedEvent LockedEvent(int? topicId, params int[] subTopicIds) => new()
+    {
+        QuestionId = 42, ClassificationSource = "Human", GradeId = 5, SubjectId = 1, TopicId = topicId,
+        SubTopicIds = subTopicIds.ToList(), TaxonomyLocked = true,
+    };
+
+    // Issue #590: öğretmenin kilitlediği taksonomi ezilmez.
+    [Fact]
+    public async Task Locked_taxonomy_with_a_subtopic_is_not_classified()
+    {
+        var classifier = Substitute.For<IQuestionClassifier>();
+        await NewQuestionConsumer(classifier).Consume(Context(LockedEvent(10, 100)));
+        await AssertNoClassificationAsync(classifier);
+    }
+
+    [Fact]
+    public async Task Locked_taxonomy_with_a_topic_only_is_classified_within_the_topic_as_Human()
+    {
+        var classifier = Substitute.For<IQuestionClassifier>();
+        await NewQuestionConsumer(classifier).Consume(Context(LockedEvent(10)));
+
+        await classifier.Received(1).ClassifyWithinTopicAndPersistAsync(42, 5, 10, "Human", Arg.Any<CancellationToken>());
+        await classifier.DidNotReceive().ClassifyAndPersistAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Locked_taxonomy_without_a_topic_is_not_classified()
+    {
+        var classifier = Substitute.For<IQuestionClassifier>();
+        await NewQuestionConsumer(classifier).Consume(Context(LockedEvent(null)));
+        await AssertNoClassificationAsync(classifier);
     }
 
     [Theory]
@@ -96,7 +129,7 @@ public class ConsumerTests : IDisposable
         var classifier = Substitute.For<IQuestionClassifier>();
         await NewBookConsumer(classifier, "Hybrid").Consume(Context(BookEvent(10)));
 
-        await classifier.Received(1).ClassifyWithinTopicAndPersistAsync(42, 5, 10, Arg.Any<CancellationToken>());
+        await classifier.Received(1).ClassifyWithinTopicAndPersistAsync(42, 5, 10, "Book", Arg.Any<CancellationToken>());
         await classifier.DidNotReceive().ClassifyAndPersistAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
     }
 
@@ -108,7 +141,7 @@ public class ConsumerTests : IDisposable
         @event.SubTopicIds = null;
         await NewBookConsumer(classifier, null).Consume(Context(@event));
 
-        await classifier.Received(1).ClassifyWithinTopicAndPersistAsync(42, 5, 10, Arg.Any<CancellationToken>());
+        await classifier.Received(1).ClassifyWithinTopicAndPersistAsync(42, 5, 10, "Book", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -137,7 +170,7 @@ public class ConsumerTests : IDisposable
         await NewBookConsumer(classifier, "Always").Consume(Context(BookEvent(10, 100)));
 
         await classifier.Received(1).ClassifyAndPersistAsync(42, 5, Arg.Any<CancellationToken>());
-        await classifier.DidNotReceive().ClassifyWithinTopicAndPersistAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await classifier.DidNotReceive().ClassifyWithinTopicAndPersistAsync(Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Theory]

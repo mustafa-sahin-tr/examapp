@@ -246,7 +246,10 @@ public class MatrixChoiceGraderTests
     [InlineData("""{"version":1,"type":"matrixChoice","columns":[{"id":"a"},{"id":"b"}],"rows":[{"id":"r","box":{"x":0,"y":0,"width":1,"height":1}},{"id":"r","box":{"x":0,"y":0,"width":1,"height":1}}]}""")] // yinelenen satır
     [InlineData("""{"version":1,"type":"matrixChoice","columns":[{"id":""},{"id":"b"}],"rows":[{"id":"r","box":{"x":0,"y":0,"width":1,"height":1}}]}""")]  // boş id
     [InlineData("""{"version":1,"type":"matrixChoice","columns":[{"id":1},{"id":"b"}],"rows":[{"id":"r","box":{"x":0,"y":0,"width":1,"height":1}}]}""")]   // sayı id
-    [InlineData("""{"version":1,"type":"matrixChoice","columns":[{"id":"a"},{"id":"b"}],"rows":[{"id":"r"}]}""")]                                          // kutu yok
+    [InlineData("""{"version":1,"type":"matrixChoice","columns":[{"id":"a"},{"id":"b"}],"rows":[{"id":"r"}]}""")]                                          // kutu da etiket de yok
+    [InlineData("""{"version":1,"type":"matrixChoice","columns":[{"id":"a"},{"id":"b"}],"rows":[{"id":"r","label":"  "}]}""")]                             // kutusuz, boş etiket
+    [InlineData("""{"version":1,"type":"matrixChoice","columns":[{"id":"a"},{"id":"b"}],"rows":[{"id":"r","label":"x","cells":{"a":{"x":0,"y":0,"width":1,"height":1}}}]}""")] // kutusuz satırda hücre
+    [InlineData("""{"version":1,"type":"matrixChoice","shuffleRows":1,"columns":[{"id":"a"},{"id":"b"}],"rows":[{"id":"r","label":"x"}]}""")]              // shuffleRows bool değil
     [InlineData("""{"version":1,"type":"matrixChoice","columns":[{"id":"a"},{"id":"b"}],"rows":[{"id":"r","box":{"x":0,"y":0,"width":0,"height":1}}]}""")] // genişlik 0
     [InlineData("""{"version":1,"type":"matrixChoice","columns":[{"id":"a"},{"id":"b"}],"rows":[{"id":"r","box":{"x":"0","y":0,"width":1,"height":1}}]}""")] // sayı değil
     [InlineData("""{"version":1,"type":"matrixChoice","columns":[{"id":"a"},{"id":"b"}],"rows":[{"id":"r","box":{"x":0,"y":0,"width":1,"height":1},"cells":{"z":{"x":0,"y":0,"width":1,"height":1}}}]}""")] // plan dışı hücre kolonu
@@ -393,5 +396,19 @@ public class MatrixChoiceGraderTests
     public void Registry_Default_ResolvesMatrixChoice(string type)
     {
         InteractionGraderRegistry.Default.Resolve(type).ShouldBeOfType<MatrixChoiceGrader>();
+    }
+
+    [Fact]
+    public void ValidateDefinition_TextOnlyRowsWithShuffle_AreAcceptedAndGraded()
+    {
+        // issue #590: görselsiz yazarlık — kutusuz, etiketli satırlar; shuffleRows kontrol sırasını değiştirmez.
+        const string plan = """{"version":1,"type":"matrixChoice","shuffleRows":true,"columns":[{"id":"cD","label":"D"},{"id":"cY","label":"Y"}],"rows":[{"id":"r1","label":"Güneş bir yıldızdır."},{"id":"r2","label":"Ay bir gezegendir."}]}""";
+        const string solution = """{"r1":["cD"],"r2":["cY"]}""";
+        Grader.ValidateDefinition(plan, solution).ShouldBeTrue();
+
+        var result = Grader.Grade(new InteractionGradeInput(plan, solution, Payload("""{"r1":["cD"],"r2":["cD"]}"""), null, null));
+        result.CorrectCount.ShouldBe(1);
+        result.TotalCount.ShouldBe(2);
+        Rows(result.Feedback).ShouldBe([("r1", true), ("r2", false)]);
     }
 }

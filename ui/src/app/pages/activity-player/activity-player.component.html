@@ -78,6 +78,7 @@
                   <app-question-canvas-matrix-choice
                     [questionRegion]="region"
                     [imageRefresh]="imageRefresh"
+                    [shuffleSeed]="item.id"
                     [interactionPlanJson]="item.question.interactionPlan || null"
                     [interactionSolutionJson]="currentSolution()?.interactionSolution ?? null"
                     [answerPayloadJson]="answerFor(item)?.answerPayload ?? null"

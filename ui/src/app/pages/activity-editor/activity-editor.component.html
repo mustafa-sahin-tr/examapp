@@ -1,0 +1,302 @@
+<div class="ae" *transloco="let t; prefix: 'activity-editor'">
+  <header class="ae__header">
+    <button mat-stroked-button type="button" (click)="backToActivity()">
+      <mat-icon>arrow_back</mat-icon>{{ t('back') }}
+    </button>
+    <div class="ae__heading">
+      <h1>{{ editingId() ? t('titleEdit') : t('titleNew') }}</h1>
+      <p>{{ t('subtitle') }}</p>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="ae__state" role="status">
+      <mat-spinner diameter="36" aria-hidden="true"></mat-spinner>
+      <span>{{ t('loading') }}</span>
+    </div>
+  } @else if (loadError()) {
+    <div class="ae__state ae__state--error" role="alert">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <span>{{ t('loadError') }}</span>
+      @if (testId) {
+        <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
+      }
+    </div>
+  } @else {
+    <div class="ae__layout">
+      <section class="ae__card ae__form" [attr.aria-label]="t('formAria')">
+        @if (items().length > 0) {
+          <div class="ae__items" data-testid="editable-items">
+            <span class="ae__label">{{ t('items.title') }}</span>
+            <div class="ae__item-list">
+              @for (item of items(); track item.id) {
+                <button type="button" class="ae__item" [class.is-active]="editingId() === item.id"
+                  [attr.aria-pressed]="editingId() === item.id" (click)="edit(item)">
+                  <span class="ae__item-no">{{ item.order }}</span>
+                  <span class="ae__item-text">{{ t('kinds.' + item.kind) }} · {{ item.title }}</span>
+                </button>
+              }
+              @if (editingId()) {
+                <button mat-button type="button" (click)="newItem()"><mat-icon>add</mat-icon>{{ t('items.new') }}</button>
+              }
+            </div>
+          </div>
+        }
+
+        <div class="ae__field">
+          <span class="ae__label" id="ae-kind-label">{{ t('kind') }}</span>
+          <mat-button-toggle-group class="ae__kinds" aria-labelledby="ae-kind-label" [value]="kind()"
+            [disabled]="!!editingId()" (change)="selectKind($event.value)">
+            @for (k of kinds; track k) {
+              <mat-button-toggle [value]="k" [attr.data-kind]="k">{{ t('kinds.' + k) }}</mat-button-toggle>
+            }
+          </mat-button-toggle-group>
+          <p class="ae__hint">{{ t('kindHints.' + kind()) }}</p>
+        </div>
+
+        <mat-form-field appearance="outline" class="ae__full">
+          <mat-label>{{ t('instruction') }}</mat-label>
+          <textarea matInput rows="2" data-testid="instruction" [value]="instruction()"
+            [attr.maxlength]="instructionMax" (input)="setInstruction($any($event.target).value)"></textarea>
+          <mat-hint align="end">{{ instruction().length }} / {{ instructionMax }}</mat-hint>
+        </mat-form-field>
+
+        <div class="ae__field">
+          <span class="ae__label">{{ t('image.title') }}</span>
+          @if (image(); as img) {
+            <div class="ae__image">
+              <img [src]="img.src" [alt]="t('image.alt')" />
+              @if (img.dataUrl || !editingId()) {
+                <button mat-stroked-button type="button" (click)="removeImage()">
+                  <mat-icon>delete</mat-icon>{{ t('image.remove') }}
+                </button>
+              }
+            </div>
+          }
+          <label class="ae__file">
+            <input type="file" accept="image/*" data-testid="image-input" (change)="onImageSelected($event)" />
+            <mat-icon aria-hidden="true">add_photo_alternate</mat-icon>
+            <span>{{ image() ? t('image.replace') : t('image.add') }}</span>
+          </label>
+          <p class="ae__hint">{{ t('image.hint') }}</p>
+          @if (imageError(); as err) { <p class="ae__error" role="alert">{{ err }}</p> }
+        </div>
+
+        <!-- Tipe özel form -->
+        @if (matrix(); as m) {
+          <div class="ae__block" data-testid="matrix-form">
+            <div class="ae__block-head">
+              <span class="ae__label">{{ t('matrix.columns') }}</span>
+              <button mat-stroked-button type="button" data-testid="preset-true-false" (click)="applyTrueFalse()">
+                {{ t('matrix.trueFalsePreset') }}
+              </button>
+            </div>
+            @for (col of m.columns; track $index; let ci = $index) {
+              <div class="ae__row">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('matrix.column', { n: ci + 1 }) }}</mat-label>
+                  <input matInput [value]="col" [attr.maxlength]="labelMax" (input)="setColumn(ci, $any($event.target).value)" />
+                </mat-form-field>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="m.columns.length <= 2"
+                  (click)="removeColumn(ci)"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="m.columns.length >= 10" (click)="addColumn()">
+              <mat-icon>add</mat-icon>{{ t('matrix.addColumn') }}
+            </button>
+            <div class="ae__toggles">
+              <mat-slide-toggle [checked]="m.multiPerRow" (change)="setMultiPerRow($event.checked)">{{ t('matrix.multi') }}</mat-slide-toggle>
+              <mat-slide-toggle [checked]="m.shuffleRows" (change)="setShuffleRows($event.checked)">{{ t('matrix.shuffle') }}</mat-slide-toggle>
+            </div>
+
+            <span class="ae__label">{{ t('matrix.rows') }}</span>
+            @for (row of m.rows; track $index; let ri = $index) {
+              <div class="ae__matrix-row" [attr.data-row]="ri">
+                <div class="ae__row">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                    <mat-label>{{ t('matrix.row', { n: ri + 1 }) }}</mat-label>
+                    <input matInput [value]="row.text" [attr.maxlength]="labelMax" (input)="setRowText(ri, $any($event.target).value)" />
+                  </mat-form-field>
+                  <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="m.rows.length <= 1"
+                    (click)="removeRow(ri)"><mat-icon>close</mat-icon></button>
+                </div>
+                <div class="ae__answers" role="group" [attr.aria-label]="t('matrix.correctFor', { n: ri + 1 })">
+                  @for (col of m.columns; track $index; let ci = $index) {
+                    <button type="button" class="ae__chip" [class.is-on]="isRowCorrect(row, ci)"
+                      [attr.aria-pressed]="isRowCorrect(row, ci)" [attr.data-cell]="ri + ':' + ci" (click)="toggleRowCorrect(ri, ci)">
+                      @if (isRowCorrect(row, ci)) { <mat-icon aria-hidden="true">check</mat-icon> }
+                      {{ col || t('matrix.column', { n: ci + 1 }) }}
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="m.rows.length >= 60" (click)="addRow()">
+              <mat-icon>add</mat-icon>{{ t('matrix.addRow') }}
+            </button>
+          </div>
+        }
+
+        @if (classify(); as c) {
+          <div class="ae__block" data-testid="classify-form">
+            <span class="ae__label">{{ t('classify.buckets') }}</span>
+            @for (bucket of c.buckets; track $index; let bi = $index) {
+              <div class="ae__row">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('classify.bucket', { n: bi + 1 }) }}</mat-label>
+                  <input matInput [value]="bucket" [attr.maxlength]="labelMax" (input)="setBucket(bi, $any($event.target).value)" />
+                </mat-form-field>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="c.buckets.length <= 1"
+                  (click)="removeBucket(bi)"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="c.buckets.length >= 30" (click)="addBucket()">
+              <mat-icon>add</mat-icon>{{ t('classify.addBucket') }}
+            </button>
+
+            <span class="ae__label">{{ t('classify.cards') }}</span>
+            @for (card of c.cards; track $index; let ki = $index) {
+              <div class="ae__row ae__row--wrap">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('classify.card', { n: ki + 1 }) }}</mat-label>
+                  <input matInput [value]="card.text" [attr.maxlength]="labelMax" (input)="setCardText(ki, $any($event.target).value)" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                  <mat-label>{{ t('classify.belongsTo') }}</mat-label>
+                  <mat-select [value]="card.bucket" (selectionChange)="setCardBucket(ki, $event.value)">
+                    @for (bucket of c.buckets; track $index; let bi = $index) {
+                      <mat-option [value]="bi">{{ bucket || t('classify.bucket', { n: bi + 1 }) }}</mat-option>
+                    }
+                    <mat-option [value]="null">{{ t('classify.distractor') }}</mat-option>
+                  </mat-select>
+                </mat-form-field>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="c.cards.length <= 1"
+                  (click)="removeCard(ki)"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="c.cards.length >= 60" (click)="addCard()">
+              <mat-icon>add</mat-icon>{{ t('classify.addCard') }}
+            </button>
+          </div>
+        }
+
+        @if (order(); as o) {
+          <div class="ae__block" data-testid="order-form">
+            <span class="ae__label">{{ t('order.items') }}</span>
+            <p class="ae__hint">{{ t('order.hint') }}</p>
+            @for (item of o.items; track $index; let oi = $index) {
+              <div class="ae__row">
+                <span class="ae__order-no">{{ oi + 1 }}.</span>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('order.item', { n: oi + 1 }) }}</mat-label>
+                  <input matInput [value]="item" [attr.maxlength]="labelMax" (input)="setOrderItem(oi, $any($event.target).value)" />
+                </mat-form-field>
+                <button mat-icon-button type="button" [attr.aria-label]="t('order.up')" [disabled]="oi === 0"
+                  (click)="moveOrderItem(oi, -1)"><mat-icon>arrow_upward</mat-icon></button>
+                <button mat-icon-button type="button" [attr.aria-label]="t('order.down')" [disabled]="oi === o.items.length - 1"
+                  (click)="moveOrderItem(oi, 1)"><mat-icon>arrow_downward</mat-icon></button>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="o.items.length <= 2"
+                  (click)="removeOrderItem(oi)"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="o.items.length >= 30" (click)="addOrderItem()">
+              <mat-icon>add</mat-icon>{{ t('order.add') }}
+            </button>
+          </div>
+        }
+
+        @if (match(); as mt) {
+          <div class="ae__block" data-testid="match-form">
+            <span class="ae__label">{{ t('match.pairs') }}</span>
+            @for (pair of mt.pairs; track $index; let pi = $index) {
+              <div class="ae__row ae__row--wrap">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('match.left', { n: pi + 1 }) }}</mat-label>
+                  <input matInput [value]="pair.left" [attr.maxlength]="labelMax" (input)="setPair(pi, 'left', $any($event.target).value)" />
+                </mat-form-field>
+                <mat-icon class="ae__link" aria-hidden="true">sync_alt</mat-icon>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('match.right', { n: pi + 1 }) }}</mat-label>
+                  <input matInput [value]="pair.right" [attr.maxlength]="labelMax" (input)="setPair(pi, 'right', $any($event.target).value)" />
+                </mat-form-field>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="mt.pairs.length <= 1"
+                  (click)="removePair(pi)"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="mt.pairs.length >= 30" (click)="addPair()">
+              <mat-icon>add</mat-icon>{{ t('match.addPair') }}
+            </button>
+
+            <span class="ae__label">{{ t('match.distractors') }}</span>
+            @for (d of mt.distractors; track $index; let di = $index) {
+              <div class="ae__row">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('match.distractor', { n: di + 1 }) }}</mat-label>
+                  <input matInput [value]="d" [attr.maxlength]="labelMax" (input)="setDistractor(di, $any($event.target).value)" />
+                </mat-form-field>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" (click)="removeDistractor(di)">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            }
+            <button mat-button type="button" (click)="addDistractor()"><mat-icon>add</mat-icon>{{ t('match.addDistractor') }}</button>
+          </div>
+        }
+
+        <div class="ae__field">
+          <span class="ae__label">{{ t('classification.title') }}</span>
+          <p class="ae__hint">{{ t('classification.hint') }}</p>
+          <app-classification-selector layout="selects" [initialSelection]="initialClassification()"
+            (selectionChange)="onClassificationChange($event)" />
+          @if (classificationIncomplete()) { <p class="ae__error">{{ t('classification.topicRequired') }}</p> }
+        </div>
+
+        @if (submitted() && errors().length > 0) {
+          <ul class="ae__errors" role="alert" data-testid="form-errors">
+            @for (e of errors(); track e.key) { <li>{{ errorText(e) }}</li> }
+          </ul>
+        }
+        @if (saveError(); as err) { <p class="ae__error" role="alert" data-testid="save-error">{{ err }}</p> }
+
+        <div class="ae__actions">
+          <button mat-flat-button type="button" data-testid="save" [disabled]="saving()" (click)="save(false)">
+            <mat-icon>save</mat-icon>{{ t('save') }}
+          </button>
+          <button mat-stroked-button type="button" data-testid="save-another" [disabled]="saving()" (click)="save(true)">
+            <mat-icon>playlist_add</mat-icon>{{ editingId() ? t('saveAndNew') : t('saveAndAnother') }}
+          </button>
+        </div>
+      </section>
+
+      <section class="ae__card ae__preview" [attr.aria-label]="t('preview.title')">
+        <div class="ae__block-head">
+          <h2>{{ t('preview.title') }}</h2>
+          <mat-slide-toggle [checked]="showSolution()" (change)="showSolution.set($event.checked)">
+            {{ t('preview.showSolution') }}
+          </mat-slide-toggle>
+        </div>
+        @if (instruction().trim(); as text) { <p class="ae__preview-instruction">{{ text }}</p> }
+        <div class="ae__stage" data-testid="preview">
+          @switch (definition().interactionType) {
+            @case ('matrixChoice') {
+              <app-question-canvas-matrix-choice [questionRegion]="previewRegion()"
+                [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
+                [showSolution]="showSolution()" [activityMode]="true" shuffleSeed="preview" />
+            }
+            @case ('dragPlace') {
+              <app-question-canvas-drag-place [questionRegion]="previewRegion()"
+                [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
+                [showSolution]="showSolution()" [activityMode]="true" shuffleSeed="preview" />
+            }
+            @case ('match') {
+              <app-question-canvas-match [questionRegion]="previewRegion()"
+                [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
+                [showSolution]="showSolution()" [activityMode]="true" shuffleSeed="preview" />
+            }
+          }
+        </div>
+        <p class="ae__hint">{{ t('preview.hint') }}</p>
+      </section>
+    </div>
+  }
+</div>

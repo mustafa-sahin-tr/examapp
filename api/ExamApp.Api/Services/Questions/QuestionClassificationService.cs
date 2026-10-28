@@ -210,6 +210,30 @@ public class QuestionClassificationService : IQuestionClassificationService
             };
         }
     }
+    public async Task<string?> GetClassificationTextAsync(int questionId, CancellationToken ct = default)
+    {
+        var question = await _context.Questions
+            .AsNoTracking()
+            .Where(q => q.Id == questionId)
+            .Select(q => new
+            {
+                q.Text,
+                q.SubText,
+                q.InteractionPlan,
+                // Tuval / toplu kayıt kapsamının Title'ı istemcinin geçici id'sidir (ör. "p1"), metin değil.
+                PassageTitle = q.Passage != null && !q.Passage.IsCanvasQuestion ? q.Passage.Title : null,
+                PassageText = q.Passage != null ? q.Passage.Text : null,
+                Instruction = q.Passage != null ? q.Passage.Instruction : null,
+                Answers = q.Answers.OrderBy(a => a.Order).Select(a => a.Text).ToList(),
+            })
+            .FirstOrDefaultAsync(ct);
+        if (question == null)
+            return null;
+
+        return QuestionClassificationText.Build(question.PassageTitle, question.PassageText, question.Instruction,
+            question.Text, question.SubText, question.Answers, question.InteractionPlan);
+    }
+
     public async Task<ResponseBaseDto> RemoveQuestionFromTest(int testId, int questionId)
     {
         try

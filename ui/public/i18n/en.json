@@ -313,7 +313,9 @@
         "announceSelected": "{{row}}: {{column}} selected.",
         "announceCleared": "{{row}}: {{column}} cleared.",
         "markCorrect": "Correct",
-        "markWrong": "Wrong"
+        "markWrong": "Wrong",
+        "presetTrue": "True",
+        "presetFalse": "False"
       },
       "slotFill": {
         "hint": "Type your answer in the boxes. For fractions, write the numerator on top and the denominator below. Your answer is saved when you leave a box.",

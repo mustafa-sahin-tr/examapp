@@ -6,7 +6,8 @@ using ExamApp.Api.Models.Dtos;
 public class QuestionDto
 {
     public int Id { get; set; }
-    public string Text { get; set; }
+    // Issue #590: görselsiz etkinlik maddesi (etkileşim planı) metin kökü taşımaz — null kabul edilir.
+    public string? Text { get; set; }
     public string? SubText { get; set; }
     [StorageUrl(StorageArea.QuestionImage)]
     public string? ImageUrl { get; set; }
@@ -19,7 +20,7 @@ public class QuestionDto
     public string? ImageUrlV2 => ExamApp.Api.Helpers.QuestionImageVariant.ToV2(ImageUrl);
 
     public string? BookName { get; set; }
-    public string CategoryName { get; set; }
+    public string? CategoryName { get; set; }
 
     public int? SubjectId { get; set; }
 

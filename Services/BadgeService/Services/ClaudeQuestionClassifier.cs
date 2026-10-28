@@ -42,7 +42,9 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
         Sen bir eğitim içeriği sınıflandırma asistanısın. Aşağıda ders → konu → alt konu taksonomisi JSON olarak,
         her öğe kendi "id" değeriyle verildi.
 
-        Sana görsel bir soru verilecek (soru kökü ve cevap şıkları tek görselde). Görevin:
+        Sana bir soru verilecek: ya görsel (soru kökü ve cevap şıkları tek görselde) ya da düz metin (yönerge, soru
+        kökü, şıklar ya da etkinlik öğeleri; ör. doğru/yanlış ifadeleri, sınıflandırılacak kavramlar, eşleştirilecek
+        çiftler). Görevin:
 
         1. Sorunun hangi alt konuya (subTopicIds) ait olduğunu YALNIZCA taksonomideki id'leri kullanarak belirle.
            Birden fazla alt konu uygunsa en olası olan ilk sırada olacak şekilde en fazla 3 tane ver.
@@ -56,8 +58,10 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
 
     internal const string UserInstruction = "Bu soruyu sınıflandır.";
 
+    /// <summary>Issue #590: the text of a question without an image precedes <see cref="UserInstruction"/>.</summary>
+    internal const string TextQuestionPrefix = "Soru (metin):\n";
+
     private const string AiSource = "AI";
-    private const string BookSource = "Book";
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IServiceTokenProvider _tokenProvider;
@@ -98,17 +102,19 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
     }
 
     public Task ClassifyAndPersistAsync(int questionId, int? gradeId, CancellationToken cancellationToken) =>
-        ClassifyCoreAsync(questionId, gradeId, topicId: null, cancellationToken);
+        ClassifyCoreAsync(questionId, gradeId, topicId: null, AiSource, cancellationToken);
 
     /// <summary>
-    /// Issue #577 (book TOC hybrid): taxonomy narrowed to <paramref name="topicId"/> (<c>&amp;topicId=</c>, cached per
-    /// grade + topic). The result keeps the book's topic (subject untouched) and is persisted with source <c>Book</c>;
-    /// an empty topic taxonomy (no subtopics) skips with a warning.
+    /// Issue #577 (book TOC hybrid) / #590 (teacher-locked topic): taxonomy narrowed to <paramref name="topicId"/>
+    /// (<c>&amp;topicId=</c>, cached per grade + topic). The result keeps the given topic (subject untouched) and is persisted
+    /// with <paramref name="classificationSource"/>; an empty topic taxonomy (no subtopics) skips with a warning.
     /// </summary>
-    public Task ClassifyWithinTopicAndPersistAsync(int questionId, int? gradeId, int topicId, CancellationToken cancellationToken) =>
-        ClassifyCoreAsync(questionId, gradeId, topicId, cancellationToken);
+    public Task ClassifyWithinTopicAndPersistAsync(
+        int questionId, int? gradeId, int topicId, string classificationSource, CancellationToken cancellationToken) =>
+        ClassifyCoreAsync(questionId, gradeId, topicId, classificationSource, cancellationToken);
 
-    private async Task ClassifyCoreAsync(int questionId, int? gradeId, int? topicId, CancellationToken cancellationToken)
+    private async Task ClassifyCoreAsync(
+        int questionId, int? gradeId, int? topicId, string classificationSource, CancellationToken cancellationToken)
     {
         if (_chat is null)
         {
@@ -136,8 +142,19 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
             return;
         }
 
-        var image = await examApi.FetchQuestionImageAsync(questionId, token, cancellationToken);
-        var (result, usage) = await CallClaudeAsync(image, taxonomy, cancellationToken);
+        // Issue #590: a question without an image (text-authored activity, text MCQ) is classified from its text.
+        var image = await examApi.TryFetchQuestionImageAsync(questionId, token, cancellationToken);
+        string? text = null;
+        if (image is null)
+        {
+            text = await examApi.FetchQuestionTextAsync(questionId, token, cancellationToken);
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                _logger.LogWarning("⚠️ Question {QuestionId} has neither an image nor text. Skipping classification.", questionId);
+                return;
+            }
+        }
+        var (result, usage) = await CallClaudeAsync(image, text, taxonomy, cancellationToken);
 
         _logger.LogInformation(
             "💰 Question {QuestionId} (grade {GradeId}) — Claude {Model} usage: input={InputTokens}, cacheWrite={CacheWriteTokens}, " +
@@ -159,7 +176,7 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
 
         if (topicId.HasValue)
         {
-            // Book TOC: the topic is the book's — keep it (subject untouched); only subtopic + difficulty are the model's.
+            // Book TOC / teacher-locked topic: keep it (subject untouched); only subtopic + difficulty are the model's.
             // Every subtopic is already inside this topic (filtered taxonomy, FindUnknownId above).
             result.TopicId = topicId;
             result.SubjectId = null;
@@ -169,7 +186,7 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
             "🔎 Question {QuestionId} — Claude result: subTopics=[{SubTopics}], subjectId={SubjectId}, topicId={TopicId}, difficulty={Difficulty}",
             questionId, string.Join(",", result.SubTopicIds), result.SubjectId, result.TopicId, result.DifficultyLevel);
 
-        await examApi.PersistAsync(questionId, result, token, cancellationToken, topicId.HasValue ? BookSource : AiSource);
+        await examApi.PersistAsync(questionId, result, token, cancellationToken, classificationSource);
 
         _logger.LogInformation("✅ Question {QuestionId} classification persisted", questionId);
     }
@@ -197,7 +214,7 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
     }
 
     private async Task<(QuestionClassificationResult Result, ClassificationUsage Usage)> CallClaudeAsync(
-        QuestionImage image, ClassifierTaxonomy taxonomy, CancellationToken ct)
+        QuestionImage? image, string? text, ClassifierTaxonomy taxonomy, CancellationToken ct)
     {
         var chatOptions = new ChatOptions
         {
@@ -214,8 +231,14 @@ public sealed class ClaudeQuestionClassifier : IQuestionClassifier, IDisposable
                 // Cache breakpoint at the end of the taxonomy: instructions + taxonomy are reused across questions.
                 new TextContent("Taksonomi (JSON):\n" + taxonomy.Json).WithCacheControl(ParseTtl(_options.CacheTtl)),
             ]),
-            // Image before text: Claude reads the question first, then the instruction.
-            new(ChatRole.User, [new DataContent(image.Bytes, image.MediaType), new TextContent(UserInstruction)]),
+            // Question (image, or text when there is none) before the instruction: Claude reads the question first.
+            new(ChatRole.User,
+            [
+                image is not null
+                    ? new DataContent(image.Bytes, image.MediaType)
+                    : new TextContent(TextQuestionPrefix + text),
+                new TextContent(UserInstruction),
+            ]),
         ];
 
         var response = await _chat!.GetResponseAsync<ClaudeClassification>(messages, chatOptions, cancellationToken: ct);

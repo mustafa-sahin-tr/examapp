@@ -329,6 +329,25 @@ public class QuestionsController : BaseController
         return File(stream, "image/jpeg");
     }
 
+    // GET /api/questions/{id}/classification-text — issue #590: görseli olmayan sorunun sınıflandırıcıya giden düz metni
+    // (kapsam, yönerge, kök, şıklar, plan etiketleri; çözüm yok). BadgeService sınıflandırıcısı görsel 404 dönünce çağırır.
+    [HttpGet("{id}/classification-text")]
+    [Authorize(Policy = QuestionAccessPolicies.TeacherAdminOrService)]
+    public async Task<IActionResult> GetQuestionClassificationText(int id)
+    {
+        if (!IsServiceAccount)
+        {
+            var user = await GetAuthenticatedUserAsync(HttpContext.RequestAborted);
+            if (await DenyUnlessQuestionViewerAsync(id, user.Id) is { } denied)
+                return denied;
+        }
+
+        var text = await _questionClassification.GetClassificationTextAsync(id, HttpContext.RequestAborted);
+        if (text == null)
+            return NotFound(new { message = _localizer["questions.notFound"].Value });
+        return Ok(new { text });
+    }
+
     [HttpDelete("test/{testId}/question/{questionId}")]
     [Authorize(Roles = AuthoringRoles)]
     public async Task<IActionResult> RemoveQuestionFromTest(int testId, int questionId)

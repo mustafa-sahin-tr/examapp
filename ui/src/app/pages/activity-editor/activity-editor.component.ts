@@ -44,7 +44,11 @@ import {
   CrosswordForm,
   answerLetters,
   autoLayout,
+  crosswordFormFromDraft,
+  entryLength,
 } from '../../models/activity-authoring-crossword';
+import { CROSSWORD } from '../../models/crossword';
+import { LabelingAiModel } from '../../models/labeling';
 import {
   WORD_SEARCH_FORM_LIMITS,
   WordSearchEntryForm,
@@ -71,6 +75,8 @@ import {
 } from '../../models/activity-authoring-maze';
 import { QuestionRegion } from '../../models/draws';
 import { Question } from '../../models/question';
+import { AuthService } from '../../services/auth.service';
+import { LabelingService } from '../../services/labeling.service';
 import { QuestionService } from '../../services/question.service';
 import {
   ClassificationSelection,
@@ -151,6 +157,8 @@ export class ActivityEditorComponent {
   private readonly questionService = inject(QuestionService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
+  private readonly auth = inject(AuthService);
+  private readonly labelingApi = inject(LabelingService);
 
   readonly kinds = AUTHORING_KINDS;
   readonly instructionMax = PASSAGE_INSTRUCTION_MAX_LENGTH;
@@ -165,6 +173,13 @@ export class ActivityEditorComponent {
   readonly logicLimits = LOGIC_GRID_FORM_LIMITS;
   /** Otomatik yerleştirmenin son sonucu: kesiştirilemeyip ayrı satıra konan kelimeler (1 tabanlı). */
   readonly crosswordUnplaced = signal<number[] | null>(null);
+  /**
+   * Issue #586 (dilim e): görselden Claude ile bulmaca çıkarma (`labeling/activity-structure`, yalnız Admin + QuestionTrainer;
+   * izinli model yoksa düğme görünmez). Kayıtlı sonuç (aynı görsel + model) ücretsiz döner.
+   */
+  readonly aiModel = signal<LabelingAiModel | null>(null);
+  readonly extracting = signal(false);
+  readonly extractError = signal<string | null>(null);
 
   readonly testId = Number(this.route.snapshot.queryParamMap.get('testId')) || null;
   private readonly gradeId = Number(this.route.snapshot.queryParamMap.get('gradeId')) || null;
@@ -257,6 +272,7 @@ export class ActivityEditorComponent {
 
   constructor() {
     this.load();
+    this.loadAiModel();
   }
 
   load(): void {
@@ -667,7 +683,83 @@ export class ActivityEditorComponent {
   }
 
   crosswordLength(entry: CrosswordEntryForm): number {
-    return answerLetters(entry.answer).length;
+    return entryLength(entry);
+  }
+
+  /** Cevap görselden çıkarılan kelime yerinden farklı uzunlukta (ızgara cevaba göre değişir). */
+  crosswordLengthMismatch(entry: CrosswordEntryForm): boolean {
+    const letters = answerLetters(entry.answer).length;
+    return !!entry.length && letters > 0 && letters !== entry.length;
+  }
+
+  /** Yeni seçilen görsel var (kayıtlı görselin verisi istemcide yok; Claude'a yalnız yeni seçim gönderilir). */
+  readonly canExtractCrossword = computed(
+    () => !!this.aiModel() && !!this.image()?.dataUrl && !this.extracting() && this.kind() === 'crossword'
+  );
+
+  /**
+   * Görseldeki bulmacanın ızgarası, kelime yerleri ve ipuçları Claude'dan istenir ve forma yüklenir; cevapları öğretmen yazar.
+   * Formda yazılmış içerik varsa önce onay istenir.
+   */
+  extractCrossword(): void {
+    const f = this.crossword();
+    if (!f || !this.canExtractCrossword()) return;
+    const filled = f.entries.some((e) => e.answer.trim() || e.clue.trim());
+    if (!filled) {
+      this.runCrosswordExtraction();
+      return;
+    }
+    this.snackBar
+      .open(this.t('crossword.extractConfirm'), this.t('crossword.extractConfirmAction'), { duration: 8000 })
+      .onAction()
+      .subscribe(() => this.runCrosswordExtraction());
+  }
+
+  private runCrosswordExtraction(): void {
+    const image = this.image();
+    const model = this.aiModel();
+    if (!image?.dataUrl || !model || this.extracting() || this.kind() !== 'crossword') return;
+    this.extracting.set(true);
+    this.extractError.set(null);
+    this.labelingApi
+      .activityStructure({
+        imageBase64: image.dataUrl.slice(image.dataUrl.indexOf(',') + 1),
+        model: model.id,
+        force: false,
+        blocks: [{ key: 'crossword', x: 0, y: 0, width: image.width, height: image.height, interactionType: CROSSWORD }],
+      })
+      .subscribe({
+        next: (response) => {
+          this.extracting.set(false);
+          const result = response.results[0];
+          if (!result || result.status !== 'ok') {
+            this.extractError.set(result?.error || this.t('crossword.extractFailed'));
+            return;
+          }
+          const form = this.kind() === 'crossword' ? crosswordFormFromDraft(JSON.stringify(result.plan)) : null;
+          if (!form) {
+            this.extractError.set(this.t('crossword.extractEmpty'));
+            return;
+          }
+          this.form.set(form);
+          this.crosswordUnplaced.set(null);
+          if (result.instruction && !this.instruction().trim()) this.instruction.set(result.instruction);
+          this.snackBar.open(this.t('crossword.extracted', { n: form.entries.length }), undefined, { duration: 4000 });
+        },
+        error: (error: HttpErrorResponse) => {
+          this.extracting.set(false);
+          const serverMessage = (error.error as { message?: string } | null)?.message;
+          this.extractError.set(serverMessage || this.t(error.status === 503 ? 'crossword.extractUnavailable' : 'crossword.extractFailed'));
+        },
+      });
+  }
+
+  private loadAiModel(): void {
+    if (!this.auth.hasRealmRole('Admin') && !this.auth.hasRealmRole('QuestionTrainer')) return;
+    this.labelingApi.getAiModels().subscribe({
+      next: (models) => this.aiModel.set(models?.find((m) => m.isDefault) ?? models?.[0] ?? null),
+      error: () => this.aiModel.set(null),
+    });
   }
 
   // ---- Sözel mantık tablosu ----

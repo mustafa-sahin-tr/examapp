@@ -277,7 +277,16 @@
     "down": "Yukarıdan aşağıya",
     "row": "Satır",
     "col": "Sütun",
-    "addEntry": "Kelime ekle"
+    "addEntry": "Kelime ekle",
+    "extract": "Görselden çıkar (Claude)",
+    "extractHint": "Bulmacanın görselini yukarıdan ekleyip \"Görselden çıkar\"a basın: ızgara, kelime yerleri ve ipuçları Claude ile okunur, cevapları siz yazarsınız. Okunanı kontrol edip düzeltin; aynı görsel ikinci kez ücretsiz döner.",
+    "extractConfirm": "Formdaki kelimeler görselden okunanlarla değiştirilecek.",
+    "extractConfirmAction": "Değiştir",
+    "extracted": "{{n}} kelime yeri okundu; cevapları yazın ve ızgarayı kontrol edin.",
+    "extractEmpty": "Görselde bulmaca ızgarası okunamadı.",
+    "extractFailed": "Bulmaca görselden okunamadı. Tekrar deneyin ya da elle yazın.",
+    "extractUnavailable": "Claude şu an kullanılamıyor.",
+    "lengthMismatch": "{{n}} harf (ızgarada {{cells}} hücre)"
   },
   "wordSearch": {
     "hint": "Kelimeleri yazın; ızgara kelimelerden otomatik oluşur, boş hücreler harfle dolar. Beğenmezseniz \"Karıştır\" ile yeniden yerleştirin. İpucu boşsa listede kelimenin kendisi görünür.",

@@ -708,7 +708,7 @@ hücrede harf yok; harfsiz ızgara = cevap yok). Kontrol ipucu başına (tr-TR b
 (`/activity-editor`, tür **Çengel bulmaca**): kelime + ipucu, yön ve başlangıç hücresi; **Otomatik yerleştir** kelimeleri kesiştirir (40
 tohumlu deneme, kesişemeyen kelime ayrı satıra) ve ızgarayı kırpar. Oynatıcı ızgarayı HTML olarak çizer (yazınca ilerler, Backspace, ok
 tuşları, boşluk / aynı hücreye ikinci tık yön değiştirir; görsel varsa etkileşimsiz üstte). Testte de çözülebilir (puanlanır). Claude ızgara
-çıkarımı, sözel mantık tablosu ve şifre katmanı sonraki dilimlerde. Migration yok; Aspire'da exam API'yi yeniden başlat
+çıkarımı dilim e'de (aşağıda). Migration yok; Aspire'da exam API'yi yeniden başlat
 (yeni kontrolcü).
 
 **Issue #586 dilim b — `wordSearch` (bileşen G, kelime avı).** Plan `{"version":1,"type":"wordSearch","rows","cols","letters":["KALPX",...],"words":[{id,label}]}`
@@ -741,6 +741,19 @@ harf), diğerleri `null`; yani yalnız öğrencinin bulduğu harfler açılır. 
 numarası; örnek soruda istemci işareti, çözüm açıkken bütün kelime). Yazarlık görselsiz editörde **Soru + kısa cevap** formunda: satır başına
 harf + gizli kelime; kelimenin her harfi o harfi taşıyan soruya bağlanır (aynı harf birden çok soruda varsa sırayla). Tuvalde (görselli) şifre
 yazarlığı yok. Migration yok; Aspire'da exam API'yi yeniden başlat.
+
+**Issue #586 dilim e — Claude ile bulmaca ızgarası çıkarma.** `activity-structure` (#579) yeni tip `crossword` taşır (talimat
+`Prompt` penceresinde **Çengel bulmaca** sekmesinde, tip revizyonu 1). Claude **hücre** uzayında döner (piksel değil): ızgara
+`rows`/`cols` ve kelime yerleri `{dir, row, col, length, number, clue}`; cevap / harf istenmez (#580). Sunucu (`ActivityDrafts.Map(CrosswordDraft)`)
+20×20'ye sığmayan, yönü bilinmeyen, < 2 hücrelik ve aynı yön + başlangıçta yinelenen kelimeyi atar; ızgarayı Claude'un boyutu ile
+kelimelerin bittiği hücrenin büyüğüne (2..20) getirir, aynı hücreden başlayanlara ilk numarayı verir, boş ipucunu `""` bırakır
+(taslak geçersiz: `labeling.activity.invalid.clueText` / `noClues`). Kullanım görselsiz editörde (`/activity-editor`, tür
+**Çengel bulmaca**): görsel eklenince **Görselden çıkar (Claude)** bütün görseli tek blok olarak gönderir, form ızgara + kelime yerleri
++ ipuçlarıyla dolar (cevaplar boş, her kelimenin uzunluğu cevap yazılana dek tutulur; farklı uzunlukta cevap uyarı gösterir), yönerge
+boşsa basılı yönergeyle dolar; formda yazılı içerik varsa önce onay. Düğme yalnız Admin + QuestionTrainer'da ve `ai-models` boş
+değilse görünür (uçların yetkisi, kota ve bütçe #579 ile aynı; kayıtlı sonuç aynı görsel + model için ücretsiz). Düzenlemede kayıtlı
+görsel istemcide olmadığından yalnız yeni seçilen görsel gönderilir. Sayfa işaretlemede G bloğu tipsiz kalır (blok tipi değil).
+Migration yok; Aspire'da exam API'yi yeniden başlat.
 
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını

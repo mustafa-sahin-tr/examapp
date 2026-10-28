@@ -1,5 +1,12 @@
 // Issue #586: çengel bulmaca formu — doğrulama, plan + çözüm üretimi, geri kurma ve otomatik yerleştirme.
-import { CrosswordForm, autoLayout, buildCrosswordDefinition, parseCrosswordDefinition, validateCrosswordForm } from './activity-authoring-crossword';
+import {
+  CrosswordForm,
+  autoLayout,
+  buildCrosswordDefinition,
+  crosswordFormFromDraft,
+  parseCrosswordDefinition,
+  validateCrosswordForm,
+} from './activity-authoring-crossword';
 import { parseDefinition } from './activity-authoring';
 import { clueCells, parseCrosswordPlan, parseCrosswordSolution } from './crossword';
 
@@ -91,5 +98,45 @@ describe('activity-authoring-crossword (#586)', () => {
     expect(unplaced).toEqual([2]);
     expect(laid.entries[1]).toEqual(expect.objectContaining({ dir: 'across', row: 2, col: 0 }));
     expect(validateCrosswordForm(laid)).toEqual([]);
+  });
+
+  describe('görselden çıkarılan taslak (#586 dilim e)', () => {
+    const DRAFT = JSON.stringify({
+      version: 1,
+      type: 'crossword',
+      rows: 3,
+      cols: 4,
+      clues: [
+        { id: 'k1', dir: 'across', row: 0, col: 0, length: 4, number: 1, text: 'Organ' },
+        { id: 'k2', dir: 'down', row: 0, col: 1, length: 3, number: 2, text: '' },
+      ],
+    });
+
+    it('ızgara ve kelime yerleri gelir, cevaplar boş, uzunluk cevap yazılana dek tutulur', () => {
+      const form = crosswordFormFromDraft(DRAFT)!;
+      expect(form.entries.map((e) => [e.answer, e.length])).toEqual([
+        ['', 4],
+        ['', 3],
+      ]);
+      const plan = parseCrosswordPlan(buildCrosswordDefinition(form).plan)!;
+      expect(plan.clues.map((c) => c.length)).toEqual([4, 3]);
+      const keys = validateCrosswordForm(form).map((e) => e.key);
+      expect(keys).toContain('crosswordAnswerRequired');
+      expect(keys).toContain('crosswordClueRequired');
+      expect(keys).not.toContain('crosswordOverlap');
+    });
+
+    it('cevap yazılınca uzunluk cevaptan gelir', () => {
+      const form = crosswordFormFromDraft(DRAFT)!;
+      form.entries[0].answer = 'kalp';
+      form.entries[1] = { ...form.entries[1], answer: 'ana', clue: 'Anne' };
+      expect(validateCrosswordForm(form)).toEqual([]);
+      expect(JSON.parse(buildCrosswordDefinition(form).solution)).toEqual({ answers: { k1: 'KALP', k2: 'ANA' } });
+    });
+
+    it('kelime yeri olmayan ya da bozuk plan null', () => {
+      expect(crosswordFormFromDraft(JSON.stringify({ version: 1, type: 'crossword', rows: 3, cols: 3, clues: [] }))).toBeNull();
+      expect(crosswordFormFromDraft('x')).toBeNull();
+    });
   });
 });

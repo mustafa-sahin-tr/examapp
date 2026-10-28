@@ -100,6 +100,23 @@ internal static class ActivityDrafts
         [property: Description("The line exactly as printed; empty brackets as \"( )\"; a line-end hyphen kept.")] string Text,
         int X1, int Y1, int X2, int Y2);
 
+    /// <summary>
+    /// issue #586 (dilim e): <c>crossword</c> hücre uzayında döner (0 tabanlı satır / sütun, piksel değil); cevap harfleri istenmez.
+    /// </summary>
+    internal sealed record CrosswordDraft(
+        [property: Description("The printed instruction sentence, or an empty string.")] string Instruction,
+        [property: Description("Number of cell rows of the grid.")] int Rows,
+        [property: Description("Number of cell columns of the grid.")] int Cols,
+        [property: Description("Every answer slot of the grid (2 or more cells).")] List<CrosswordDraftWord> Words);
+
+    internal sealed record CrosswordDraftWord(
+        [property: Description("One of: across, down.")] string Dir,
+        [property: Description("0-based cell row of the first cell.")] int Row,
+        [property: Description("0-based cell column of the first cell.")] int Col,
+        [property: Description("Number of cells of the word.")] int Length,
+        [property: Description("Printed number of the slot, or 0.")] int Number,
+        [property: Description("The clue text without its number, or an empty string.")] string Clue);
+
     // ------------------------------------------------------------------ koordinatlar
 
     /// <summary>
@@ -376,6 +393,75 @@ internal static class ActivityDrafts
         return new Mapped(plan, PrintedInstruction(draft.Instruction));
     }
 
+    /// <summary>
+    /// issue #586 (dilim e): kelime yerleri (yönü across/down, uzunluğu ≥ 2, başlangıcı ızgarada; en çok
+    /// <see cref="CrosswordGrader.MaxClues"/>, aynı yön + başlangıç tek) plana; en büyük ızgaraya
+    /// (<see cref="CrosswordGrader.MaxSize"/>) sığmayan kelime atılır; ızgara Claude'un boyutu ile kelimelerin bittiği hücreden
+    /// büyüğüdür, <see cref="CrosswordGrader.MinSize"/>..<see cref="CrosswordGrader.MaxSize"/>'e sıkıştırılır. Numara 1..<see cref="CrosswordGrader.MaxNumber"/> dışındaysa yazılmaz; aynı hücreden başlayanlar ilk
+    /// numarayı alır (kontrolcü kuralı). İpucu metni boşsa <c>""</c> kalır (taslak geçersiz, öğretmen yazar). Cevap yok (#580).
+    /// </summary>
+    public static Mapped Map(CrosswordDraft draft)
+    {
+        var words = new List<(string Dir, int Row, int Col, int Length, int Number, string Text)>();
+        var seen = new HashSet<(string, int, int)>();
+        foreach (var word in draft.Words ?? [])
+        {
+            if (word is null || words.Count >= CrosswordGrader.MaxClues)
+                continue;
+            var dir = word.Dir?.Trim().ToLowerInvariant() switch
+            {
+                CrosswordGrader.Across => CrosswordGrader.Across,
+                CrosswordGrader.Down => CrosswordGrader.Down,
+                _ => null,
+            };
+            var endRow = word.Row + (dir == CrosswordGrader.Down ? word.Length : 1);
+            var endCol = word.Col + (dir == CrosswordGrader.Across ? word.Length : 1);
+            if (dir is null || word.Row < 0 || word.Col < 0 || word.Length < CrosswordGrader.MinLength
+                || endRow > CrosswordGrader.MaxSize || endCol > CrosswordGrader.MaxSize || !seen.Add((dir, word.Row, word.Col)))
+                continue;
+            words.Add((dir, word.Row, word.Col, word.Length, word.Number,
+                Label(word.Clue, CrosswordGrader.MaxClueTextLength) ?? ""));
+        }
+
+        int End(bool rows) => words.Count == 0 ? 0 : words.Max(w =>
+            rows ? w.Row + (w.Dir == CrosswordGrader.Down ? w.Length : 1) : w.Col + (w.Dir == CrosswordGrader.Across ? w.Length : 1));
+        var rowCount = Math.Clamp(Math.Max(draft.Rows, End(rows: true)), CrosswordGrader.MinSize, CrosswordGrader.MaxSize);
+        var colCount = Math.Clamp(Math.Max(draft.Cols, End(rows: false)), CrosswordGrader.MinSize, CrosswordGrader.MaxSize);
+
+        var clues = new JsonArray();
+        var numbers = new Dictionary<(int, int), int?>();
+        foreach (var word in words)
+        {
+            if (!numbers.TryGetValue((word.Row, word.Col), out var number))
+            {
+                number = word.Number is >= 1 and <= CrosswordGrader.MaxNumber ? word.Number : null;
+                numbers[(word.Row, word.Col)] = number;
+            }
+            var clue = new JsonObject
+            {
+                ["id"] = $"k{clues.Count + 1}",
+                ["dir"] = word.Dir,
+                ["row"] = word.Row,
+                ["col"] = word.Col,
+                ["length"] = word.Length,
+            };
+            if (number is { } n)
+                clue["number"] = n;
+            clue["text"] = word.Text;
+            clues.Add(clue);
+        }
+
+        var plan = new JsonObject
+        {
+            ["version"] = 1,
+            ["type"] = CrosswordGrader.Type,
+            ["rows"] = rowCount,
+            ["cols"] = colCount,
+            ["clues"] = clues,
+        };
+        return new Mapped(plan, PrintedInstruction(draft.Instruction));
+    }
+
     /// <summary>Öğeler (etiket ya da kutu zorunlu) ve Claude'un 0 tabanlı sırası → üretilen id (örnek çiftler için).</summary>
     private sealed record MatchItem(string? Label, int X1, int Y1, int X2, int Y2);
 
@@ -523,6 +609,15 @@ internal static class ActivityPlanDiagnostics
                         errors.Add("labeling.activity.invalid.tooManyGaps");
                     else if (!punctuation && gaps > 0)
                         errors.Add("labeling.activity.invalid.gapsNeedPunctuation");
+                    break;
+                }
+                case CrosswordGrader.Type: // issue #586 (dilim e)
+                {
+                    var clues = plan["clues"] as JsonArray ?? [];
+                    if (clues.Count == 0)
+                        errors.Add("labeling.activity.invalid.noClues");
+                    else if (clues.Any(c => string.IsNullOrWhiteSpace((string?)c?["text"])))
+                        errors.Add("labeling.activity.invalid.clueText");
                     break;
                 }
             }

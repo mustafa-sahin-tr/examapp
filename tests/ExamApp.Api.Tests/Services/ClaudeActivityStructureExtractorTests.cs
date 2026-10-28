@@ -106,6 +106,35 @@ public class ClaudeActivityStructureExtractorTests
     }
 
     [Fact]
+    public async Task Crossword_SendsCellSchema_AndMapsWordsToCluesWithoutAnswers()
+    {
+        // issue #586 (dilim e): hücre koordinatı piksel değil; kırpma/blok dönüşümü uygulanmaz.
+        var (result, chat) = await ExtractAsync(CrosswordGrader.Type, new
+        {
+            instruction = "Bulmacayı çözünüz.",
+            rows = 4,
+            cols = 4,
+            words = new[]
+            {
+                new { dir = "across", row = 0, col = 0, length = 4, number = 1, clue = "Kanı pompalar" },
+                new { dir = "down", row = 0, col = 2, length = 3, number = 2, clue = "Görme organı" },
+            },
+        });
+
+        chat.Instruction.ShouldStartWith("This image is a crossword puzzle (çengel bulmaca) cropped from a page of a Turkish school book (132x82 px).");
+        chat.Instruction.ShouldContain("Never write the answers");
+        chat.Schema.ShouldNotBeNull();
+        chat.Schema.ShouldContain("words");
+        result.Instruction.ShouldBe("Bulmacayı çözünüz.");
+        var plan = Plan(result);
+        ((int)plan["rows"]!, (int)plan["cols"]!).ShouldBe((4, 4));
+        var clues = plan["clues"]!.AsArray();
+        clues.Select(c => ((string)c!["dir"]!, (int)c["row"]!, (int)c["col"]!, (int)c["length"]!))
+            .ShouldBe([("across", 0, 0, 4), ("down", 0, 2, 3)]);
+        InteractionGraderRegistry.Default.Resolve(CrosswordGrader.Type).ValidateDefinition(result.PlanJson, null).ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task TextSelect_SendsLineSchema_AndTokenizesLinesIntoBlockRelativeTokens()
     {
         // issue #582: kırpmada (16,16)-(116,26) = blokta (0,0) 100x10; "Kuş dolaş-" (L=10) + "mış." → "dolaşmış." iki kutu.

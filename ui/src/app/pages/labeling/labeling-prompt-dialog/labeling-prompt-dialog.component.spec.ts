@@ -355,6 +355,7 @@ describe('LabelingPromptDialogComponent', () => {
                 labelingTr.prompt.tabs.dragPlace,
                 labelingTr.prompt.tabs.match,
                 labelingTr.prompt.tabs.textSelect,
+                labelingTr.prompt.tabs.crossword,
             ]);
         });
 

@@ -1,3 +1,4 @@
+import { CROSSWORD } from './crossword';
 import { BlockInteractionType, PredictionList } from './prediction';
 
 /** Sunucudaki işaretleme kaynağı (exam API `LabelingSource`). */
@@ -162,15 +163,21 @@ export interface LabelingBankConflict {
 
 // ---------------- Issue #579: etkinlik yapısı (kırpma → taslak InteractionPlan) ----------------
 
+/**
+ * Yapısı Claude ile çıkarılabilen tip: işaretleme bloğu tipleri ve (issue #586 dilim e) görselsiz editörde görselden çıkarılan
+ * çengel bulmaca. `crossword` sayfa işaretlemesinde blok tipi değildir (G bloğu tipsiz kalır).
+ */
+export type ActivityStructureType = BlockInteractionType | typeof CROSSWORD;
+
 /** `POST /api/exam/labeling/activity-structure` isteğindeki tek blok (sayfa pikseli). */
-export interface LabelingActivityBlock {
+export interface LabelingActivityBlock<T extends ActivityStructureType = ActivityStructureType> {
   /** İstemcinin blok anahtarı (yanıtta aynen döner); işaretleme ekranında bölge adı. */
   key: string;
   x: number;
   y: number;
   width: number;
   height: number;
-  interactionType: BlockInteractionType;
+  interactionType: T;
 }
 
 /** 1..20 blok; her blok kendi tipinin talimatı ve şemasıyla ayrı çağrıda çıkarılır. */
@@ -188,7 +195,7 @@ export interface LabelingActivityStructureRequest {
  */
 export interface LabelingActivityStructureResult {
   key: string;
-  interactionType: BlockInteractionType;
+  interactionType: ActivityStructureType;
   status: 'ok' | 'error';
   origin: 'live' | 'cached' | null;
   plan: Record<string, unknown> | null;
@@ -218,7 +225,7 @@ export interface LabelingActivityPrompt {
 
 /** Tip başına etkin sürüm, varsayılan ve son sürümler (yeniden eskiye). */
 export interface LabelingActivityPromptType {
-  interactionType: BlockInteractionType;
+  interactionType: ActivityStructureType;
   active: LabelingActivityPrompt;
   defaults: LabelingActivityPrompt;
   history: LabelingActivityPrompt[];

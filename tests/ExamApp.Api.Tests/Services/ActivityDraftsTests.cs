@@ -342,6 +342,71 @@ public class ActivityDraftsTests
         ActivityDrafts.TruncateText(new string('a', 62) + "\U0001F600" + "b", 64).ShouldBe(new string('a', 62) + "\U0001F600");
     }
 
+    // ---------- crossword (#586 dilim e) ----------
+
+    private static ActivityDrafts.CrosswordDraftWord Word(string dir, int row, int col, int length, int number, string clue) =>
+        new(dir, row, col, length, number, clue);
+
+    [Fact]
+    public void Map_Crossword_BuildsCellPlanWithoutAnswers_AndPassesValidation()
+    {
+        var draft = new ActivityDrafts.CrosswordDraft(" Bulmacayı çözünüz. ", 5, 5,
+        [
+            Word("ACROSS", 0, 0, 4, 1, " Kanı pompalar "),
+            Word("down", 0, 0, 3, 7, "Göz organı"),   // aynı başlangıç: ilk numara (1) kullanılır
+            Word("down", 0, 3, 4, 2, "Akciğer"),
+        ]);
+
+        var mapped = ActivityDrafts.Map(draft);
+        var plan = mapped.Plan;
+
+        mapped.Instruction.ShouldBe("Bulmacayı çözünüz.");
+        ((string)plan["type"]!).ShouldBe(CrosswordGrader.Type);
+        ((int)plan["rows"]!, (int)plan["cols"]!).ShouldBe((5, 5));
+        var clues = plan["clues"]!.AsArray();
+        clues.Select(c => (string)c!["id"]!).ShouldBe(["k1", "k2", "k3"]);
+        clues.Select(c => (int?)c!["number"]).ShouldBe([1, 1, 2]);
+        ((string)clues[0]!["dir"]!).ShouldBe("across");
+        ((string)clues[0]!["text"]!).ShouldBe("Kanı pompalar");
+        plan.ToJsonString().ShouldNotContain("answer");
+        Valid(CrosswordGrader.Type, plan).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Map_Crossword_DropsBadWords_GrowsSmallGrid_AndClampsToMaxSize()
+    {
+        var draft = new ActivityDrafts.CrosswordDraft("", 1, 30,
+        [
+            Word("diagonal", 0, 0, 3, 1, "x"),
+            Word("across", -1, 0, 3, 1, "x"),
+            Word("across", 0, 0, 1, 1, "x"),
+            Word("across", 1, 0, 6, 0, "Uzun"),           // satır 1 → 2'ye büyür; numara 0 yazılmaz
+            Word("across", 1, 0, 6, 0, "Yinelenen"),
+            Word("down", 0, 25, 3, 1000, "Taşan"),       // 20x20'ye sığmaz → atılır; 30 sütun 20'ye sıkışır
+        ]);
+
+        var plan = ActivityDrafts.Map(draft).Plan;
+
+        ((int)plan["rows"]!, (int)plan["cols"]!).ShouldBe((2, CrosswordGrader.MaxSize));
+        var clues = plan["clues"]!.AsArray();
+        clues.Count.ShouldBe(1);
+        ((string)clues[0]!["text"]!).ShouldBe("Uzun");
+        clues[0]!.AsObject().ContainsKey("number").ShouldBeFalse();
+        Valid(CrosswordGrader.Type, plan).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Map_Crossword_EmptyClueAndNoWords_AreExplained()
+    {
+        var noText = ActivityDrafts.Map(new ActivityDrafts.CrosswordDraft("", 4, 4, [Word("across", 0, 0, 3, 1, "  ")])).Plan;
+        Valid(CrosswordGrader.Type, noText).ShouldBeFalse();
+        ActivityPlanDiagnostics.Explain(CrosswordGrader.Type, noText.ToJsonString()).ShouldBe(["labeling.activity.invalid.clueText"]);
+
+        var empty = ActivityDrafts.Map(new ActivityDrafts.CrosswordDraft(null!, 0, 0, null!)).Plan;
+        ((int)empty["rows"]!).ShouldBe(CrosswordGrader.MinSize);
+        ActivityPlanDiagnostics.Explain(CrosswordGrader.Type, empty.ToJsonString()).ShouldBe(["labeling.activity.invalid.noClues"]);
+    }
+
     [Fact]
     public void Explain_GraderRejectsForAnotherReason_ReturnsGenericKey()
     {
@@ -373,6 +438,7 @@ public class ActivityDraftsTests
     [InlineData(" dragPlace ", "dragPlace")]
     [InlineData("match", "match")]
     [InlineData("TEXTSELECT", "textSelect")]
+    [InlineData("Crossword", "crossword")]
     [InlineData("mcq", null)]
     [InlineData("dragDropLabeling", null)]
     [InlineData("", null)]
@@ -385,7 +451,7 @@ public class ActivityDraftsTests
     {
         var instructions = ActivityStructureSettings.Types.Select(ActivityStructureSettings.DefaultInstruction).ToList();
 
-        instructions.Distinct().Count().ShouldBe(5);
+        instructions.Distinct().Count().ShouldBe(6);
         instructions.ShouldAllBe(i => i.Contains("{width}") && i.Contains("{height}")
                                       && i.Length <= ActivityStructureSettings.MaxInstructionLength);
     }

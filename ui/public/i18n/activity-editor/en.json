@@ -277,7 +277,16 @@
     "down": "Down",
     "row": "Row",
     "col": "Column",
-    "addEntry": "Add word"
+    "addEntry": "Add word",
+    "extract": "Read from image (Claude)",
+    "extractHint": "Add the puzzle image above and press \"Read from image\": Claude reads the grid, the word slots and the clues; you type the answers. Check and fix what was read; the same image is free the second time.",
+    "extractConfirm": "The words in the form will be replaced by the ones read from the image.",
+    "extractConfirmAction": "Replace",
+    "extracted": "{{n}} word slots read; type the answers and check the grid.",
+    "extractEmpty": "No crossword grid could be read from the image.",
+    "extractFailed": "The crossword could not be read from the image. Try again or type it in.",
+    "extractUnavailable": "Claude is not available right now.",
+    "lengthMismatch": "{{n}} letters ({{cells}} cells in the grid)"
   },
   "wordSearch": {
     "hint": "Enter the words; the grid is built from them automatically and empty cells are filled with letters. Use \"Shuffle\" to place them again. If the clue is empty, the word itself is listed.",

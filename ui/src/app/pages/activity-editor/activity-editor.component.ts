@@ -56,6 +56,14 @@ import {
   wordLetters,
 } from '../../models/activity-authoring-word-search';
 import {
+  REGION_PAINT_FORM_LIMITS,
+  RegionPaintEntryForm,
+  RegionPaintForm,
+  nextPaintColor,
+  targetCells,
+} from '../../models/activity-authoring-region-paint';
+import { PAINT_COLORS, PaintColor, paintCss } from '../../models/region-paint';
+import {
   LOGIC_GRID_FORM_LIMITS,
   LogicGridForm,
   addLogicCategory,
@@ -84,6 +92,7 @@ import {
 } from '../../shared/components/classification-selector/classification-selector.component';
 import { QuestionCanvasCrosswordComponent } from '../../shared/components/question-canvas-crossword/question-canvas-crossword.component';
 import { QuestionCanvasLogicGridComponent } from '../../shared/components/question-canvas-logic-grid/question-canvas-logic-grid.component';
+import { QuestionCanvasRegionPaintComponent } from '../../shared/components/question-canvas-region-paint/question-canvas-region-paint.component';
 import { QuestionCanvasWordSearchComponent } from '../../shared/components/question-canvas-word-search/question-canvas-word-search.component';
 import { QuestionCanvasDragPlaceComponent } from '../../shared/components/question-canvas-drag-place/question-canvas-drag-place.component';
 import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
@@ -145,6 +154,7 @@ interface EditableItem {
     QuestionCanvasCrosswordComponent,
     QuestionCanvasWordSearchComponent,
     QuestionCanvasLogicGridComponent,
+    QuestionCanvasRegionPaintComponent,
   ],
   providers: [provideTranslocoScope(ACTIVITY_EDITOR_SCOPE)],
   templateUrl: './activity-editor.component.html',
@@ -171,6 +181,8 @@ export class ActivityEditorComponent {
   readonly crosswordLimits = CROSSWORD_FORM_LIMITS;
   readonly wordSearchLimits = WORD_SEARCH_FORM_LIMITS;
   readonly logicLimits = LOGIC_GRID_FORM_LIMITS;
+  readonly paintLimits = REGION_PAINT_FORM_LIMITS;
+  readonly paintColors = PAINT_COLORS;
   /** Otomatik yerleştirmenin son sonucu: kesiştirilemeyip ayrı satıra konan kelimeler (1 tabanlı). */
   readonly crosswordUnplaced = signal<number[] | null>(null);
   /**
@@ -223,6 +235,7 @@ export class ActivityEditorComponent {
   readonly mazeRooms = computed(() => (this.form().kind === 'mazeRooms' ? (this.form() as MazeRoomsForm) : null));
   readonly mazeStones = computed(() => (this.form().kind === 'mazeStones' ? (this.form() as MazeStonesForm) : null));
   readonly crossword = computed(() => (this.form().kind === 'crossword' ? (this.form() as CrosswordForm) : null));
+  readonly regionPaint = computed(() => (this.form().kind === 'regionPaint' ? (this.form() as RegionPaintForm) : null));
   readonly logicGrid = computed(() => (this.form().kind === 'logicGrid' ? (this.form() as LogicGridForm) : null));
   readonly wordSearch = computed(() => (this.form().kind === 'wordSearch' ? (this.form() as WordSearchForm) : null));
   /** D/Y ağacının düzeyleri: genişlik öncelikli sırada her düzeyin ifade dizinleri. */
@@ -817,6 +830,50 @@ export class ActivityEditorComponent {
     this.updateLogicGrid((f) => ({ ...f, clues: f.clues.length > 1 ? f.clues.filter((_, i) => i !== index) : [''] }));
   }
 
+  // ---- Boyama ----
+
+  paintCss(color: PaintColor): string {
+    return paintCss(color);
+  }
+
+  paintColorUsed(color: PaintColor): boolean {
+    return !!this.regionPaint()?.entries.some((e) => e.color === color);
+  }
+
+  canAddPaintColor(): boolean {
+    const f = this.regionPaint();
+    return !!f && nextPaintColor(f) !== null;
+  }
+
+  /** Hedefin kare karşılığı (`{value}`; boş hedef 0); çözülemezse null. */
+  paintCells(target: string, form: RegionPaintForm): { value: number } | null {
+    const value = targetCells(target, form.rows * form.cols);
+    return value === null ? null : { value };
+  }
+
+  setPaintSize(axis: 'rows' | 'cols', value: number): void {
+    if (!Number.isFinite(value)) return;
+    const n = Math.round(value);
+    this.updateRegionPaint((f) => ({ ...f, [axis]: n }));
+  }
+
+  setPaintEntry(index: number, patch: Partial<RegionPaintEntryForm>): void {
+    this.updateRegionPaint((f) => ({ ...f, entries: f.entries.map((e, i) => (i === index ? { ...e, ...patch } : e)) }));
+  }
+
+  addPaintEntry(): void {
+    this.updateRegionPaint((f) => {
+      const color = nextPaintColor(f);
+      return color && f.entries.length < REGION_PAINT_FORM_LIMITS.maxPalette
+        ? { ...f, entries: [...f.entries, { color, label: '', target: '' }] }
+        : f;
+    });
+  }
+
+  removePaintEntry(index: number): void {
+    this.updateRegionPaint((f) => (f.entries.length > 1 ? { ...f, entries: f.entries.filter((_, i) => i !== index) } : f));
+  }
+
   // ---- Kelime avı ----
 
   setWordSearchOption(patch: Partial<Pick<WordSearchForm, 'rows' | 'cols' | 'diagonal' | 'reverse'>>): void {
@@ -1151,6 +1208,11 @@ export class ActivityEditorComponent {
     if (f) this.form.set(update(f));
   }
 
+  private updateRegionPaint(update: (f: RegionPaintForm) => RegionPaintForm): void {
+    const f = this.regionPaint();
+    if (f) this.form.set(update(f));
+  }
+
   private updateLogicGrid(update: (f: LogicGridForm) => LogicGridForm): void {
     const f = this.logicGrid();
     if (f) this.form.set(update(f));
@@ -1229,6 +1291,8 @@ function itemTitle(form: AuthoringForm, instruction: string | null | undefined):
       return form.stones[0]?.text ?? '';
     case 'crossword':
       return form.entries[0]?.clue ?? '';
+    case 'regionPaint':
+      return form.entries.map((e) => e.label || e.target).filter(Boolean).join(', ');
     case 'logicGrid':
       return form.clues.find((c) => c.trim()) ?? form.subjects.join(', ');
     case 'wordSearch':

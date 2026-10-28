@@ -27,7 +27,8 @@
     "mazeStones": "River stones",
     "crossword": "Crossword",
     "wordSearch": "Word search",
-    "logicGrid": "Logic grid"
+    "logicGrid": "Logic grid",
+    "regionPaint": "Colouring (grid)"
   },
   "kindHints": {
     "matrix": "Mark the correct option for each row. The T/F template sets up two columns; with multiple choice a row can have several correct options.",
@@ -41,7 +42,8 @@
     "mazeTree": "The student picks T or F at each statement and reaches an exit. Mark the answer of every statement; the correct exit follows from them.",
     "mazeBoard": "Each row has one correct box; the student steps on boxes from bottom to top to reach the finish. A wrong box breaks.",
     "mazeRooms": "Each room is a question and the doors between rooms are answers. The student follows the correct doors from the start room to the finish.",
-    "mazeStones": "The student marks the (wrong) stones that must not be stepped on. Mark those stones with the drop icon."
+    "mazeStones": "The student marks the (wrong) stones that must not be stepped on. Mark those stones with the drop icon.",
+    "regionPaint": "The student paints each colour in the requested share of an equal-square grid; positions are free, the count per colour is checked."
   },
   "instruction": "Instruction (optional)",
   "image": {
@@ -189,7 +191,13 @@
     "cipherWordShort": "The secret word needs at least {{min}} letters.",
     "cipherLetterInvalid": "A question's letter must be a single letter or digit.",
     "cipherLetterMissing": "No question carries the letter \"{{letter}}\" of the secret word.",
-    "cipherLetterUnused": "The letter \"{{letter}}\" does not appear in the secret word."
+    "cipherLetterUnused": "The letter \"{{letter}}\" does not appear in the secret word.",
+    "paintGridSize": "The grid must have {{min}}–{{max}} rows and columns.",
+    "paintColorCount": "Use 1 to {{max}} colours.",
+    "paintColorDuplicate": "The same colour is chosen twice.",
+    "paintTargetInvalid": "These targets are unreadable or do not give a whole number of the {{total}} squares: {{list}}. Write a fraction (2/5), decimal (0.35), percent (25%) or a square count.",
+    "paintTargetMissing": "Give at least one colour a target.",
+    "paintTargetTooMany": "The targets add up to {{sum}} squares; the grid has {{total}}."
   },
   "snackbar": {
     "created": "The item was added to the activity.",
@@ -312,5 +320,29 @@
     "clues": "Clues",
     "clue": "Clue {{n}}",
     "addClue": "Add clue"
+  },
+  "regionPaint": {
+    "hint": "Choose the grid size and colours. Write each colour's target as in the book: fraction (2/5), decimal (0.35), percent (25%) or a square count. A colour with no target is a distractor (must stay unused). Optionally give the label shown on its palette button (e.g. \"2/5\").",
+    "rows": "Rows",
+    "cols": "Columns",
+    "total": "{{total}} squares",
+    "color": "Colour",
+    "target": "Target (2/5, 0.35, 25%, 40)",
+    "label": "Palette label (optional)",
+    "cells": "= {{n}} squares",
+    "cellsInvalid": "not a whole number of squares",
+    "addColor": "Add colour",
+    "colors": {
+      "red": "Red",
+      "orange": "Orange",
+      "yellow": "Yellow",
+      "green": "Green",
+      "blue": "Blue",
+      "purple": "Purple",
+      "pink": "Pink",
+      "brown": "Brown",
+      "black": "Black",
+      "gray": "Gray"
+    }
   }
 }

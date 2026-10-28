@@ -298,7 +298,8 @@
         "mazeTree": "Yol oyunu",
         "crossword": "Çengel bulmaca",
         "wordSearch": "Kelime avı",
-        "logicGrid": "Mantık tablosu"
+        "logicGrid": "Mantık tablosu",
+        "regionPaint": "Boyama"
       }
     },
     "addTextItem": "Görselsiz madde ekle"

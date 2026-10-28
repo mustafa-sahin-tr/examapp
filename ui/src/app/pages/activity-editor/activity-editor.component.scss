@@ -440,3 +440,14 @@
 .ae__warn {
   color: var(--ms-danger-text-weak);
 }
+
+// Issue #587: boyama formunda renk seçeneğinin yanındaki küçük renk dairesi.
+.ae__swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  vertical-align: middle;
+  border-radius: 50%;
+  border: 1px solid var(--ms-border-strong);
+}

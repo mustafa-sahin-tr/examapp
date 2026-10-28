@@ -22,6 +22,17 @@
   --blackColor: #131F34;
   --mainFontFamily: "Manrope", sans-serif;
   --paragraphFontFamily: "Inter", sans-serif;
+  // Issue #587: boyama etkinliğinin (regionPaint) palet renkleri — içerik rengi, iki temada aynı ("maviye boya" mavidir).
+  --paint-red: #e53935;
+  --paint-orange: #fb8c00;
+  --paint-yellow: #fdd835;
+  --paint-green: #43a047;
+  --paint-blue: #1e88e5;
+  --paint-purple: #8e24aa;
+  --paint-pink: #ec407a;
+  --paint-brown: #795548;
+  --paint-black: #212121;
+  --paint-gray: #9e9e9e;
   // Tema'dan bağımsız türetilen token'lar (var() ile bağlı oldukları için class'a göre otomatik çözülür)
   --sidenav-active-bg: color-mix(in srgb, var(--primaryColor) 16%, transparent);
   --sidenav-active-accent: var(--primaryColor);

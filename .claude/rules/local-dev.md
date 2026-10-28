@@ -755,6 +755,19 @@ değilse görünür (uçların yetkisi, kota ve bütçe #579 ile aynı; kayıtl�
 görsel istemcide olmadığından yalnız yeni seçilen görsel gönderilir. Sayfa işaretlemede G bloğu tipsiz kalır (blok tipi değil).
 Migration yok; Aspire'da exam API'yi yeniden başlat.
 
+**Issue #587 dilim a — `regionPaint` (bileşen E, boyama; ızgara modu).** Plan
+`{"version":1,"type":"regionPaint","mode":"grid","rows","cols","palette":[{id,color,label?}]}` (ızgara 2–20 × 2–20, 1–8 renk; `color`
+sabit adlardan: red, orange, yellow, green, blue, purple, pink, brown, black, gray — istemcide `styles.scss` `--paint-<ad>` token'ı, serbest
+CSS rengi alınmaz; renkler ve id'ler tekil, `label` isteğe bağlı düz metin ≤ 40). Çözüm `{"counts":{"p1":40,"p2":35}}` (her palet rengine
+0..hücre sayısı; 0 = çeldirici renk, kullanılmamalı; toplam ≤ hücre, en az biri > 0); hücrelerin **yeri serbest**. Öğrenci payload'u
+`{"grid":["..1..",...]}` (satır başına `cols` karakter, `.` boş, `1`..`8` palet sırası; boyasız = cevap yok). Kontrol renk başına sayı
+(`RegionPaintGrader`), geri bildirim `{"rows":[{id,correct}]}` (hedef sayı yazılmaz); analiz: öğe = renk, cevap = boyanan kare sayısı.
+Oynatıcı: palet + silgi, dokun / sürükle boyar, aynı renkli kareden başlayan sürükleme siler, renk başına sayaç canlı (hedef gösterilmez);
+çözüm açıkken hedef sayılar satır öncelikli örnek dolguyla. Yazarlık görselsiz editörde (tür **Boyama (ızgara)**): boyut + renkler, hedef
+kitaptaki gibi kesir (`2/5`), ondalık (`0,35`), yüzde (`%25`) ya da kare sayısı; tam kareye inmeyen hedef reddedilir (kayda yalnız sayı
+gider). Testte de çözülebilir (puanlanır). Sonraki dilimler: b) görsel üzerinde bölgeler, c) MCQ → resim boyama. Migration yok; Aspire'da
+exam API'yi yeniden başlat (yeni kontrolcü).
+
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını
 (`TestInstances` — Questions'a FK'sı yok, CASCADE ulaşmaz, açıkça silinir; aksi halde "boş test yapılmış" gibi kalır),

@@ -708,6 +708,62 @@
           </div>
         }
 
+        @if (regionPaint(); as rp) {
+          <div class="ae__block" data-testid="region-paint-form">
+            <p class="ae__hint">{{ t('regionPaint.hint') }}</p>
+            <div class="ae__row ae__row--wrap">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-label>{{ t('regionPaint.rows') }}</mat-label>
+                <input matInput type="number" data-testid="rp-rows" [min]="paintLimits.minSize" [max]="paintLimits.maxSize" [value]="rp.rows"
+                  (input)="setPaintSize('rows', $any($event.target).valueAsNumber)" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-label>{{ t('regionPaint.cols') }}</mat-label>
+                <input matInput type="number" data-testid="rp-cols" [min]="paintLimits.minSize" [max]="paintLimits.maxSize" [value]="rp.cols"
+                  (input)="setPaintSize('cols', $any($event.target).valueAsNumber)" />
+              </mat-form-field>
+              <span class="ae__hint">{{ t('regionPaint.total', { total: rp.rows * rp.cols }) }}</span>
+            </div>
+
+            @for (entry of rp.entries; track $index; let i = $index) {
+              <div class="ae__row ae__row--wrap" [attr.data-paint-entry]="i">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                  <mat-label>{{ t('regionPaint.color') }}</mat-label>
+                  <mat-select [value]="entry.color" (selectionChange)="setPaintEntry(i, { color: $event.value })">
+                    @for (c of paintColors; track c) {
+                      <mat-option [value]="c" [disabled]="c !== entry.color && paintColorUsed(c)">
+                        <span class="ae__swatch" [style.background]="paintCss(c)" aria-hidden="true"></span>
+                        {{ t('regionPaint.colors.' + c) }}
+                      </mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                  <mat-label>{{ t('regionPaint.target') }}</mat-label>
+                  <input matInput [value]="entry.target" [attr.maxlength]="20" (input)="setPaintEntry(i, { target: $any($event.target).value })" />
+                </mat-form-field>
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">
+                  <mat-label>{{ t('regionPaint.label') }}</mat-label>
+                  <input matInput [value]="entry.label" [attr.maxlength]="paintLimits.maxLabel"
+                    (input)="setPaintEntry(i, { label: $any($event.target).value })" />
+                </mat-form-field>
+                <span class="ae__index" [attr.data-paint-cells]="i">
+                  @if (paintCells(entry.target, rp); as n) {
+                    {{ t('regionPaint.cells', { n: n.value }) }}
+                  } @else {
+                    {{ t('regionPaint.cellsInvalid') }}
+                  }
+                </span>
+                <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="rp.entries.length <= 1"
+                  (click)="removePaintEntry(i)"><mat-icon>close</mat-icon></button>
+              </div>
+            }
+            <button mat-button type="button" [disabled]="rp.entries.length >= paintLimits.maxPalette || !canAddPaintColor()" (click)="addPaintEntry()">
+              <mat-icon>add</mat-icon>{{ t('regionPaint.addColor') }}
+            </button>
+          </div>
+        }
+
         @if (wordSearch(); as ws) {
           <div class="ae__block" data-testid="word-search-form">
             <p class="ae__hint">{{ t('wordSearch.hint') }}</p>
@@ -813,6 +869,11 @@
             }
             @case ('mazeTree') {
               <app-question-canvas-maze-tree [questionRegion]="previewRegion()"
+                [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
+                [showSolution]="showSolution()" [activityMode]="true" />
+            }
+            @case ('regionPaint') {
+              <app-question-canvas-region-paint [questionRegion]="previewRegion()"
                 [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
                 [showSolution]="showSolution()" [activityMode]="true" />
             }

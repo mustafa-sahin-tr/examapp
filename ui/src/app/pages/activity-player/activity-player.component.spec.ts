@@ -1329,6 +1329,62 @@ describe('ActivityPlayerComponent (#573)', () => {
     });
   });
 
+  describe('regionPaint (#587)', () => {
+    const RP_PLAN = JSON.stringify({
+      version: 1,
+      type: 'regionPaint',
+      mode: 'grid',
+      rows: 2,
+      cols: 2,
+      palette: [
+        { id: 'p1', color: 'blue', label: '1/2' },
+        { id: 'p2', color: 'red', label: '1/4' },
+      ],
+    });
+    const rpGrid = (...rows: string[]) => JSON.stringify({ version: 1, type: 'regionPaint', grid: rows });
+    const base = () => instance().testInstanceQuestions[0].question;
+    const typed = (answer: string) =>
+      instance({}, [{ answerPayload: answer, question: { ...base(), interactionType: 'RegionPaint', interactionPlan: RP_PLAN } }]);
+
+    it('rendersPlayer_BlankIsIncomplete_ColorRowsAndFeedback', async () => {
+      await create(typed(rpGrid('..', '..')));
+      fixture.componentInstance.goTo(0);
+      await settle();
+
+      expect(el().querySelector('app-question-canvas-region-paint')).not.toBeNull();
+      expect(fixture.componentInstance.blankItems()).toContain('a');
+
+      fixture.componentInstance.onDragDropChange(rpGrid('11', '1.'), fixture.componentInstance.items()[0]);
+      await settle();
+      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 1,
+          totalCount: 3,
+          questions: [
+            {
+              instanceQuestionId: 101,
+              isCorrect: false,
+              correctCount: 0,
+              totalCount: 2,
+              feedback: '{"rows":[{"id":"p1","correct":false},{"id":"p2","correct":false}]}',
+            },
+            { instanceQuestionId: 102, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+      const rows = fixture.componentInstance.currentRows();
+      expect(rows.map((r) => r.correct)).toEqual([false, false]);
+      expect(rows[0].label).toContain('1/2');
+      expect(rows[0].label).toContain('3');
+      expect(fixture.componentInstance.currentRegionPaintFeedback()?.rows.length).toBe(2);
+    });
+  });
+
   describe('wordSearch (#586)', () => {
     const WS_PLAN = JSON.stringify({
       version: 1,

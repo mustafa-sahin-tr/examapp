@@ -55,7 +55,7 @@
     "noResults": "No results",
     "train": "Train",
     "sendingToFix": "Sending…",
-    "testFetchError": "The worksheet was created but could not be loaded; the questions were not saved. Try again.",
+    "selectWorksheetFirst": "First select the worksheet to save to, or create a new one.",
     "excludeFromTraining": "Exclude this page from question training",
     "excludeFromTrainingHint": "Select this if you did not mark every question on the page; option crops are still saved.",
     "saving": "Saving…",

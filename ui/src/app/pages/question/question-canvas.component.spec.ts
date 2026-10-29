@@ -974,6 +974,8 @@ describe('QuestionCanvasComponent', () => {
                 onCreateAsync: vi.fn().mockName('onCreateAsync').mockReturnValue(of({ examId: 7 })),
             };
             localComponent.testCreateEnhancedComponent = tceFake as any;
+            // Varsayılan hedef sayfa (#599: hedefsiz Kaydet test oluşturmaz); hedefsiz testler `id = null` yapar.
+            localComponent.id = 7;
 
             return { fixture: localFixture, component: localComponent, questionServiceLocal, imageSelectorFake, tceFake, saveBulk$ };
         }
@@ -1386,7 +1388,7 @@ describe('QuestionCanvasComponent', () => {
                     component.goToPage('2');
                 };
 
-                for (const lock of [component.saving, component.creating, component.advancing, fake.sendingToFix]) {
+                for (const lock of [component.saving, component.advancing, fake.sendingToFix]) {
                     lock.set(true);
                     tryAll();
                     lock.set(false);
@@ -1418,18 +1420,20 @@ describe('QuestionCanvasComponent', () => {
                 expect(fake.goToPage).toHaveBeenCalledWith('2');
             });
 
+            // Issue #599: hedef sayfa yoksa gizli formdan test oluşturulmaz; sayfa seçmesi istenir, hızlı oluşturma açılır.
             for (const action of ['onSaveAndNew', 'onSaveAndFix', 'onSubmit'] as const) {
-                it(`${action}_DoubleClick_CreatesTestOnce`, async () => {
-                    const { component, tceFake } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
-                    const create$ = new Subject<any>();
-                    tceFake.onCreateAsync.mockReturnValue(create$.asObservable());
+                it(`${action}_NoTarget_AsksForWorksheetAndOpensQuickCreate`, async () => {
+                    const { fixture: f, component, tceFake, questionServiceLocal } = await setup({ isAdmin: false, realmRoles: ['Admin'] });
+                    const snackBarOpen = vi.spyOn(f.debugElement.injector.get(MatSnackBar), 'open').mockReturnValue(undefined as never);
+                    component.id = null as any;
 
                     component[action]();
-                    component[action]();
 
-                    expect(tceFake.onCreateAsync).toHaveBeenCalledTimes(1);
-                    expect(component.creating()).toBe(true);
-                    expect(component.busy()).toBe(true);
+                    expect(tceFake.onCreateAsync).not.toHaveBeenCalled();
+                    expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
+                    expect(component.showQuickCreate()).toBe(true);
+                    expect(component.busy()).toBe(false);
+                    expect(snackBarOpen).toHaveBeenCalledWith(questionTr.canvas.selectWorksheetFirst, expect.any(String), expect.any(Object));
                 });
             }
 
@@ -1465,40 +1469,35 @@ describe('QuestionCanvasComponent', () => {
                 expect(imageSelectorFake.getRegions).toHaveBeenCalledWith(expect.objectContaining({ testId: 12 }));
             });
 
-            it('onSaveAndNew_NoTarget_CreatesTestThenSavesToIt', async () => {
-                const { component, tceFake, imageSelectorFake } = await setup({ isAdmin: false });
+            it('onOptionSelected_LoadsWorksheetIntoEmbeddedForm', async () => {
+                const { component, tceFake } = await setup({ isAdmin: false });
 
-                component.onSaveAndNew();
+                component.onOptionSelected({ id: 5, subtitle: 'S', kind: 1 } as any);
 
-                expect(tceFake.onCreateAsync).toHaveBeenCalledTimes(1);
-                expect(imageSelectorFake.getRegions).toHaveBeenCalledWith(expect.objectContaining({ testId: 7 }));
+                expect(tceFake.reloadComponent).toHaveBeenCalledWith(5);
             });
 
-            it('onSaveAndNew_CreateFails_ClearsCreating', async () => {
-                const { component, tceFake, questionServiceLocal } = await setup({ isAdmin: false });
-                const create$ = new Subject<any>();
-                tceFake.onCreateAsync.mockReturnValue(create$.asObservable());
+            it('onOptionSelected_SameWorksheetAlreadyLoaded_DoesNotReload', async () => {
+                const { component, tceFake } = await setup({ isAdmin: false });
+                (tceFake as any).id = 5;
 
-                component.onSaveAndNew();
-                create$.error(new Error('boom'));
+                component.onOptionSelected({ id: 5, subtitle: 'S', kind: 1 } as any);
 
-                expect(component.creating()).toBe(false);
-                expect(component.busy()).toBe(false);
-                expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
+                expect(tceFake.reloadComponent).not.toHaveBeenCalled();
             });
 
-            it('onSaveAndNew_FetchCreatedTestFails_ClearsCreatingAndNotifies', async () => {
-                const { fixture: f, component, questionServiceLocal } = await setup({ isAdmin: false });
-                const snackBarOpen = vi.spyOn(f.debugElement.injector.get(MatSnackBar), 'open').mockReturnValue(undefined as never);
-                const testServiceLocal = f.debugElement.injector.get(TestService) as MockedObject<TestService>;
-                testServiceLocal.get.mockReturnValue(throwError(() => new Error('fetch')));
+            it('quickCreate_OpenResetsFormAndCloseRestoresTarget', async () => {
+                const { component, tceFake } = await setup({ isAdmin: false });
+                component.questionForm.get('testValue')?.setValue(5 as any, { emitEvent: false });
+                (tceFake as any).id = 5;
+                tceFake.reloadComponent.mockImplementation((id: number) => ((tceFake as any).id = id));
 
-                component.onSaveAndNew();
+                component.openQuickCreate();
+                expect(tceFake.reloadComponent).toHaveBeenLastCalledWith(0);
 
-                expect(component.creating()).toBe(false);
-                expect(component.busy()).toBe(false);
-                expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
-                expect(snackBarOpen).toHaveBeenCalledWith(questionTr.canvas.testFetchError, expect.any(String), expect.any(Object));
+                component.closeQuickCreate();
+                expect(tceFake.reloadComponent).toHaveBeenLastCalledWith(5);
+                expect(component.showQuickCreate()).toBe(false);
             });
 
             it('onSaveAndFix_SaveSucceedsTrainingFails_StillAdvancesAndBusyClears', async () => {
@@ -1840,17 +1839,15 @@ describe('QuestionCanvasComponent', () => {
                     expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
                 });
 
-                it(`${action}_ValidQuestions_CreatesTestAndSaves`, async () => {
-                    const { component, imageSelectorFake, tceFake, questionServiceLocal, saveBulk$ } = await setup({
+                it(`${action}_ValidQuestions_SavesToTarget`, async () => {
+                    const { component, imageSelectorFake, questionServiceLocal, saveBulk$ } = await setup({
                         isAdmin: false,
                         realmRoles: ['Teacher'],
                     });
-
                     component[action]();
                     saveBulk$.next({});
 
                     expect(imageSelectorFake.ensureQuestionsValid).toHaveBeenCalledWith({ requireCorrectAnswer: true });
-                    expect(tceFake.onCreateAsync).toHaveBeenCalledTimes(1);
                     expect(questionServiceLocal.saveBulk).toHaveBeenCalledTimes(1);
                 });
             }

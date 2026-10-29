@@ -397,7 +397,7 @@
         </span>
         <span class="qc-inspector__nav">
           @if (showQuickCreate()) {
-          <button type="button" class="qc-icon-btn" (click)="showQuickCreate.set(false)" [attr.aria-label]="t('inspector.close')">
+          <button type="button" class="qc-icon-btn" (click)="closeQuickCreate()" [attr.aria-label]="t('inspector.close')">
             <mat-icon>close</mat-icon>
           </button>
           } @else {

@@ -160,18 +160,16 @@ export class QuestionCanvasComponent implements OnInit {
   private readonly worksheetContext = new RxSubject<{ id: number | null; kind?: WorksheetKind | null }>();
   /** saveBulk isteği sürerken kaydet butonlarını kilitler. */
   readonly saving = signal(false);
-  /** Kaydet akışında test oluşturuluyor / oluşturulan test okunuyor (onCreateAsync + testService.get). */
-  readonly creating = signal(false);
   /** Kayıt sonrası 2 sn'lik "sonraki sayfaya geçiş" beklemesi sürüyor. */
   readonly advancing = signal(false);
   /** Sayfa eğitim verisi olarak gönderiliyor (Eğit / Sadece Modeli Eğit / Kaydet ve Düzelt'in eğitim adımı). */
   readonly sendingToFix = computed(() => this.imageSelectorRef()?.sendingToFix?.() ?? false);
   /**
-   * Sayfa değiştirmeyi kilitleyen işler: kayıt (test oluşturma dahil), eğitime gönderim ve geçiş beklemesi.
+   * Sayfa değiştirmeyi kilitleyen işler: kayıt, eğitime gönderim ve geçiş beklemesi.
    * Analiz (inProgress/pageLoading) gezinmeyi kilitlemez; eski analiz yanıtı image-selector'da atılır.
    */
   readonly navigationBusy = computed(
-    () => this.saving() || this.creating() || this.advancing() || this.sendingToFix()
+    () => this.saving() || this.advancing() || this.sendingToFix()
   );
   /**
    * Sonraki sayfa hazır olana kadar işlem düğmeleri (Eğit, Kaydet, menü oku ve öğeleri) pasif: kayıt, eğitime
@@ -489,6 +487,20 @@ export class QuestionCanvasComponent implements OnInit {
     // Menü satırı türü taşır: valueChanges'teki tür tazelemesi istek atmadan bunu kullanır.
     this.knownWorksheetKind = { id: Number(worksheet.id), kind: worksheet.kind ?? WorksheetKind.Test };
     this.questionForm.get('testValue')?.setValue(worksheet.id);
+    this.loadWorksheetIntoForm(Number(worksheet.id));
+  }
+
+  /**
+   * Issue #599: gömülü formu hedef sayfayla yükler — müfettişin ders/konu listeleri sayfanın sınıfına göre gelir
+   * (eskiden yalnız ilk kayıttan sonra yükleniyordu). `null` formu boş "yeni sayfa" hâline getirir. Aynı sayfa yüklüyse
+   * istek atılmaz.
+   */
+  private loadWorksheetIntoForm(id: number | null) {
+    const form = this.testCreateEnhancedComponent;
+    if (!form || (Number(form.id) || 0) === (id ?? 0)) {
+      return;
+    }
+    form.reloadComponent(id ?? 0);
   }
 
   /** Son seçilen / oluşturulan sayfanın bilinen türü. */
@@ -595,13 +607,22 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   openQuickCreate() {
+    // Hızlı oluşturma yeni sayfa açar: seçili sayfanın bilgileriyle dolu gelmesin.
+    this.loadWorksheetIntoForm(null);
     this.showQuickCreate.set(true);
     this.showSidePanel.set(true);
+  }
+
+  /** Hızlı oluşturma vazgeçildi: gömülü form yeniden hedef sayfayı taşır. */
+  closeQuickCreate() {
+    this.showQuickCreate.set(false);
+    this.loadWorksheetIntoForm(this.targetWorksheetId);
   }
 
   onQuickCreated(examId: number) {
     this.showQuickCreate.set(false);
     this.id = examId;
+    this.loadWorksheetIntoForm(examId);
     this.testService
       .get(examId)
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -1495,62 +1516,24 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   onSubmit() {
-    this.createTestThenSave(false, (testData) =>
-      this.resetFormWithDefaultValues({
-        subjectId: null,
-        topicId: null,
-        subtopicId: null,
-        testId: testData.subtitle,
-        bookId: testData.bookId,
-        bookTestId: testData.bookTestId,
-        testValue: testData.id,
-      })
-    );
+    this.createTestThenSave(false);
   }
 
   /**
-   * Kaydet akışlarının ortak gövdesi: test oluştur → test bilgisini al → `onSave`. Test oluşturma ve okuma
-   * sürerken `creating` meşgul sayılır (çift tıklama iki test oluşturmasın); hata dallarında kapanır,
-   * başarıda kayıt meşguliyeti `onSave`'in `saving`'ine devredilir.
+   * Kaydet akışlarının ortak gövdesi: hedef sayfaya `onSave`. Issue #599: hedef sayfa (navigasyon state, route, menü,
+   * hızlı oluşturma) yoksa gizli gömülü formdan test oluşturulmaz — alanları görünmediği için alt konu / kitap / sınıf
+   * hataları anlaşılmıyordu; kullanıcıdan sayfa seçmesi istenir ve hızlı oluşturma paneli açılır.
    */
-  private createTestThenSave(sendToFix: boolean, afterFetch?: (testData: Test) => void) {
+  private createTestThenSave(sendToFix: boolean) {
     if (this.busy() || !this.questionsReadyToSave()) {
       return;
     }
-    // Issue #599: hedef sayfa seçiliyse (navigasyon state, route, menü, hızlı oluşturma) doğrudan ona kaydedilir; gömülü
-    // test formundan yeni test oluşturulmaz (alt konu / kitap zorunluluğu mevcut sayfaya kaydı engelliyordu).
-    if (this.targetWorksheetId) {
-      this.onSave(sendToFix);
+    if (!this.targetWorksheetId) {
+      this.notify('canvas.selectWorksheetFirst', 5000);
+      this.openQuickCreate();
       return;
     }
-    this.creating.set(true);
-    this.testCreateEnhancedComponent.onCreateAsync().subscribe({
-      next: (test) => {
-        console.log('Test created:', test);
-        this.id = test.examId;
-        this.testService.get(test.examId).subscribe({
-          next: (testData) => {
-            console.log('Test fetched:', testData);
-            this.creating.set(false);
-            this.questionForm.get('testId')?.setValue(testData.subtitle, { emitEvent: false });
-            afterFetch?.(testData);
-            this.onSave(sendToFix);
-          },
-          error: (error) => {
-            console.error('Error fetching created test:', error);
-            this.creating.set(false);
-            this.notify('canvas.testFetchError', 5000);
-          },
-        });
-      },
-      error: (error) => {
-        console.error('Error creating test:', error);
-        this.creating.set(false);
-        this.snackBar.open(error?.message || this.tr('common.saveError'), this.tr('common.snackbarAction'), {
-          duration: 3000,
-        });
-      },
-    });
+    this.onSave(sendToFix);
   }
 
   /**

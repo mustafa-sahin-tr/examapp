@@ -55,7 +55,7 @@
     "noResults": "Sonuç yok",
     "train": "Eğit",
     "sendingToFix": "Gönderiliyor…",
-    "testFetchError": "Test oluşturuldu ama bilgileri alınamadı; sorular kaydedilmedi. Tekrar deneyin.",
+    "selectWorksheetFirst": "Önce kaydedilecek çalışma sayfasını seçin ya da yenisini oluşturun.",
     "excludeFromTraining": "Bu sayfayı soru eğitimine alma",
     "excludeFromTrainingHint": "Sayfadaki soruların hepsini işaretlemediysen seç; şık kırpmaları yine kaydedilir.",
     "saving": "Kaydediliyor…",

@@ -8,6 +8,7 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Leaderboards;
 using ExamApp.Api.Services.LoginEvents;
 using ExamApp.Api.Services.Parents;
 using ExamApp.Api.Services.Parents.Enforcement;
@@ -50,6 +51,10 @@ namespace ExamApp.Api.Controllers
     // senaryolarda varsayılan dile düşebilmek için opsiyonel.
         private readonly IStringLocalizer<Messages> _localizer;
 
+        // issue #501: profil sayıları (istatistik kuralı) ve sıra. DI her zaman verir; DI'sız kurulan birim testlerde null → 0.
+        private readonly IExamService? _examService;
+        private readonly ILeaderboardService? _leaderboardService;
+
 
         public StudentController(
             IMinIoService minioService,
@@ -60,9 +65,13 @@ namespace ExamApp.Api.Controllers
             IStudentResetScheduler studentResetScheduler,
             ILoginEventService loginEventService,
             ILogger<StudentController> logger,
-            IStringLocalizer<Messages>? localizer = null)
+            IStringLocalizer<Messages>? localizer = null,
+            IExamService? examService = null,
+            ILeaderboardService? leaderboardService = null)
             : base()
         {
+            _examService = examService;
+            _leaderboardService = leaderboardService;
             _minioService = minioService;
             _studentService = studentService;
             _userProfileCacheService = userProfileCacheService;
@@ -374,7 +383,30 @@ namespace ExamApp.Api.Controllers
             {
                 return NotFound(new { message = _localizer["student.notFound"].Value });
             }
+            await FillProfileStatsAsync(student, HttpContext.RequestAborted);
             return Ok(student);
+        }
+
+        /// <summary>
+        /// issue #501: çözülen / doğru / yanlış ve tamamlanan test sayıları istatistik ekranıyla (<c>GET api/exam/statistics</c>)
+        /// AYNI kuraldan gelir (tamamlanmış, etkinlik olmayan oturumlar, açık uçlu hariç — #396/#571); sıra genel liderlik
+        /// tablosundan (#193).
+        /// </summary>
+        private async Task FillProfileStatsAsync(StudentProfileDto student, CancellationToken ct)
+        {
+            if (_examService != null)
+            {
+                var total = (await _examService.GetGroupedStudentStatistics(student.Id)).Total;
+                student.CorrectAnswers = total.TotalCorrectAnswers;
+                student.WrongAnswers = total.TotalWrongAnswers;
+                student.TotalQuestionsSolved = total.TotalCorrectAnswers + total.TotalWrongAnswers;
+                student.TestsCompleted = total.CompletedTests;
+            }
+            if (_leaderboardService != null)
+            {
+                student.LeaderboardRank = (await _leaderboardService.GetRankForXpAsync(
+                    student.Id, student.XP, LeaderboardScope.Global, null, ct)).Rank;
+            }
         }
 
         /// <summary>

@@ -17,7 +17,6 @@
     "correctAnswers": "{{count}} Doğru Cevap",
     "wrongAnswers": "{{count}} Yanlış Cevap",
     "testsCompleted": "{{count}} Tamamlanan Test",
-    "rewards": "{{count}} Kazanılan Ödül",
     "leaderboardRank": "Liderlik Sıralaması: {{rank}}",
     "gradeUpdated": "Sınıf güncellendi!",
     "avatarUpdated": "Avatar güncellendi!"

@@ -1,11 +1,13 @@
 using System.Text.Json;
 using BadgeService;
+using BadgeService.Commands;
 using BadgeService.Entities;
 using BadgeService.Hubs;
 using BadgeService.Tests.Support;
 using ExamApp.Foundation.Contracts;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace BadgeService.Tests;
 
@@ -82,4 +84,59 @@ public class StudentBadgeOutboxTests : IDisposable
         earned.Select(b => b.BadgeDefinitionId).OrderBy(x => x).ShouldBe(byId.Keys.OrderBy(x => x));
         earned.Single(b => b.BadgeDefinitionId == reached.Id).EarnedDate.ShouldBe(byId[reached.Id].EarnedAtUtc, TimeSpan.FromMilliseconds(1));
     }
+
+    [Fact]
+    public async Task Badge_backfill_enqueues_one_event_per_earned_badge_with_the_original_earn_time()
+    {
+        // issue #501: #422'den önce kazanılmış rozetler veli paneline backfill ile taşınır (canlı akışla aynı payload).
+        var first = Badge("İlk 5", "rocket_launch", 5);
+        var second = Badge("Garip ikon", "not-a-real-icon<script>", 3);
+        var earnedAt = new DateTime(2026, 9, 1, 8, 0, 0, DateTimeKind.Utc);
+        await using (var seed = _db.NewContext())
+        {
+            seed.BadgeDefinitions.AddRange(first, second);
+            seed.BadgeEarned.AddRange(
+                new BadgeEarned { Id = Guid.NewGuid(), UserId = 7, BadgeDefinitionId = first.Id, EarnedDate = earnedAt },
+                new BadgeEarned { Id = Guid.NewGuid(), UserId = 7, BadgeDefinitionId = second.Id, EarnedDate = earnedAt.AddDays(1) },
+                new BadgeEarned { Id = Guid.NewGuid(), UserId = 8, BadgeDefinitionId = first.Id, EarnedDate = earnedAt.AddDays(2) });
+            await seed.SaveChangesAsync();
+        }
+
+        await using (var ctx = _db.NewContext())
+            (await StudentBadgeBackfillCommand.RunAsync(ctx, NullLogger.Instance, dryRun: false)).ShouldBe(3);
+
+        var events = (await BadgeEventsAsync()).Select(e => e.Event).ToList();
+        events.Count.ShouldBe(3);
+        var mine = events.Single(e => e.UserId == 7 && e.BadgeDefinitionId == first.Id);
+        mine.Name.ShouldBe("İlk 5");
+        mine.Icon.ShouldBe("rocket_launch");
+        mine.EarnedAtUtc.ShouldBe(earnedAt);
+        events.Single(e => e.BadgeDefinitionId == second.Id).Icon.ShouldBeNull();
+        events.Single(e => e.UserId == 8).EarnedAtUtc.ShouldBe(earnedAt.AddDays(2));
+    }
+
+    [Fact]
+    public async Task Badge_backfill_dry_run_writes_nothing()
+    {
+        var badge = Badge("İlk 5", "star", 5);
+        await using (var seed = _db.NewContext())
+        {
+            seed.BadgeDefinitions.Add(badge);
+            seed.BadgeEarned.Add(new BadgeEarned { Id = Guid.NewGuid(), UserId = 7, BadgeDefinitionId = badge.Id, EarnedDate = DateTime.UtcNow });
+            await seed.SaveChangesAsync();
+        }
+
+        await using (var ctx = _db.NewContext())
+            (await StudentBadgeBackfillCommand.RunAsync(ctx, NullLogger.Instance, dryRun: true)).ShouldBe(1);
+
+        (await BadgeEventsAsync()).ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData(new[] { "backfill-student-badges" }, true)]
+    [InlineData(new[] { "backfill-student-badges", "--dry-run" }, true)]
+    [InlineData(new[] { "backfill-student-points" }, false)]
+    [InlineData(new string[0], false)]
+    public void Badge_backfill_command_is_recognised_only_by_its_name(string[] args, bool requested)
+        => StudentBadgeBackfillCommand.IsRequested(args).ShouldBe(requested);
 }

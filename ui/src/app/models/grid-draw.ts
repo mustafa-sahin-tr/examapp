@@ -197,8 +197,8 @@ export function parseGridDrawFeedback(json: string | null | undefined): GridDraw
 }
 
 /**
- * Çözüm gösterimi için örnek yerleşim: boyutları raf raf (aralarında bir kare boşlukla) yerleştirir, sığmayanı dikey çevirmeyi dener.
- * Sığmayan boyutlar yerleşmez (yalnız listede görünür).
+ * Çözüm gösterimi için örnek yerleşim: boyutları (aralarında bir kare boşlukla) satır öncelikli ilk boş yere koyar; önce yatay yönü
+ * bütün zeminde dener, sığmazsa dikey. Sığmayan boyutlar yerleşmez (yalnız listede görünür).
  */
 export function exampleLayout(plan: Pick<GridDrawPlanV1, 'rows' | 'cols'>, sizes: GridSize[]): GridRect[] {
   const placed: GridRect[] = [];
@@ -209,17 +209,17 @@ export function exampleLayout(plan: Pick<GridDrawPlanV1, 'rows' | 'cols'>, sizes
       { width: size.short, height: size.long },
     ];
     let done = false;
-    for (let row = 0; row < plan.rows && !done; row++) {
-      for (let col = 0; col < plan.cols && !done; col++) {
-        for (const o of options) {
+    for (const o of options) {
+      for (let row = 0; row < plan.rows && !done; row++) {
+        for (let col = 0; col < plan.cols && !done; col++) {
           const rect = { row, col, ...o };
           if (free(rect)) {
             placed.push(rect);
             done = true;
-            break;
           }
         }
       }
+      if (done) break;
     }
   }
   return placed;

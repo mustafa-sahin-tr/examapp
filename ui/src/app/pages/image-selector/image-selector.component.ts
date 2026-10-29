@@ -226,6 +226,7 @@ import {
   parseCoordinateJson,
   selectCoordinateImageFiles,
 } from './coordinate-json';
+import { downscaleOversizedPage } from './page-image-limits';
 
 /**
  * Soru kırpma/yükleme akışının metinleri kendi scope'unda: `public/i18n/image-selector/<lang>.json`
@@ -1566,7 +1567,7 @@ export class ImageSelectorComponent {
       this.img.src = this.imageSrc()!;
 
       this.img.onload = () => {
-        if (load !== this.loadSeq) {
+        if (load !== this.loadSeq || this.downscaleIfOversized()) {
           return;
         }
         this.pageLoading.set(false);
@@ -1601,6 +1602,21 @@ export class ImageSelectorComponent {
       };
     };
     reader.readAsDataURL(file); // 📦 Sadece o anki resmi belleğe yükle
+  }
+
+  /**
+   * Issue #597: sayfa sunucunun piksel sınırını aşıyorsa küçültülmüş görsel yüklenir (`img.onload` yeniden tetiklenir,
+   * küçültülmüş görsel sınıra sığdığı için tekrar girmez); `true` = bu yükleme yerine küçültülmüşü beklenecek.
+   */
+  private downscaleIfOversized(): boolean {
+    const scaled = downscaleOversizedPage(this.img, this.imageSrc()!);
+    if (!scaled) {
+      return false;
+    }
+    this.imageSrc.set(scaled);
+    this.imageData.set(scaled);
+    this.img.src = scaled;
+    return true;
   }
 
   /** Yeni sayfa yüklemesini başlatır; dönen sıra numarası olay işleyicilerinde eski yüklemeyi ayırt eder. */
@@ -1698,7 +1714,7 @@ export class ImageSelectorComponent {
         this.img.onerror = () => this.failPageLoad(load);
         this.img.src = this.imageSrc()!;
         this.img.onload = () => {
-          if (load !== this.loadSeq) {
+          if (load !== this.loadSeq || this.downscaleIfOversized()) {
             return;
           }
           this.pageLoading.set(false);

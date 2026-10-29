@@ -26,6 +26,7 @@
 
     "bulk": {
       "saveFailed": "The question set could not be saved.",
+      "imageTooLarge": "The page image is too large (at most {0} megapixels, longest edge at most {1} px). Shrink the image and try again.",
       "saved": "Questions saved successfully!",
       "saveError": "An error occurred while saving data: {0}",
       "correctAnswerMissing": "No correct answer specified.{0}",

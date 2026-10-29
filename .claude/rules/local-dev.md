@@ -492,6 +492,13 @@ ikinci kez kaydedilmek istenirse 409 `LabelingPageAlreadyInBank` → UI "Yine de
 süren kayıt force ile de aşılmaz). Şık kutuları soru kutusuna kırpılır. Pasaj ve kitap adı (`BookName`) bu ekrandan kaydedilmez (açık soru). **Sınıf zorunlu (#565):** araç çubuğundaki **Sınıf** açılır kutusu (localStorage `labeling.gradeId`) seçilmeden
 Havuza kaydet pasiftir; istek `gradeId` taşır (eksik/bilinmeyen → 400) ve `QuestionCreatedEvent.GradeId` olarak sınıflandırıcıya gider.
 
+**Issue #597 — büyük sayfa görseli.** Sunucu sayfa görselini çözerken 40 MP / uzun kenar 12000 px sınırı uygular
+(`SkiaImaging.MaxPixels`/`MaxEdge`, decompression bomb koruması; yükseltilmez). Soru tuvali ve işaretleme ekranı sınırı aşan sayfayı
+yüklerken sınıra sığacak kadar küçültür (`image-selector/page-image-limits.ts`; PNG → PNG, diğerleri JPEG 0.92); kutular küçültülmüş
+görsele göre çizilir. Sınır içindeki sayfaya dokunulmaz (SHA-256 önbellekleri değişmez). Küçültülen sayfanın eğitim id'si ham dosyanınkiyle
+uyuşmaz: işaretleme havuzu böyle bir sayfayı "işaretlenmiş" saymayıp yeniden gösterebilir. Toplu kayıt yine de sınırı aşan görsel alırsa
+400 `QuestionImageTooLarge` + yerelleştirilmiş mesaj (eskiden genel "Soru seti kaydedilemedi").
+
 **Issue #472 — test ekranında "Havuzdan ekle".** Test detayında (`/test/:id`, düzenleyebilen öğretmen/admin) **Havuzdan Ekle**
 soru bankası panelini seçim modunda açar; seçilenler `POST /api/exam/questions/test/{testId}/bank-questions` `{questionIds}` (en çok 60)
 ile teste **bağlanır** (kopyalanmaz — test kopyalamayla aynı model; soruyu düzenlemek yine yalnız sahibine/admine açık, puan soruda kalır),

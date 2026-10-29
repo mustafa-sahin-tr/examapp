@@ -571,6 +571,19 @@
         "resultOk": "Every card is in the right place!",
         "resultPartial": "{{ok}} of {{total}} cards are right; think again about the red ones.",
         "solutionShown": "The cards are shown in their correct places; the ones left in the pool did not belong on the line."
+      },
+      "barChart": {
+        "passageAlt": "Reading passage image",
+        "imageAlt": "Activity image",
+        "invalid": "This activity could not be opened.",
+        "fixedAria": "{{label}} (given)",
+        "unset": "not drawn",
+        "reset": "Clear",
+        "hint": "To set a bar's height, tap the right level above its category; tapping the same level again removes the bar. You can also use ↑ / ↓ on the keyboard. Grey bars are already drawn.",
+        "hintLine": "To place a point, tap the right level above its category; tapping the same level again removes it. You can also use ↑ / ↓ on the keyboard. Grey points are already drawn.",
+        "resultOk": "The graph is right!",
+        "resultPartial": "{{ok}} of {{total}} bars are right; check the red ones again.",
+        "solutionShown": "The correct graph is shown."
       }
     },
     "sharingBadge": {

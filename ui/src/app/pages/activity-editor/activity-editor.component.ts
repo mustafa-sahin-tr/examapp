@@ -69,6 +69,7 @@ import {
   NumberLineForm,
   targetTick,
 } from '../../models/activity-authoring-number-line';
+import { BAR_CHART_FORM_LIMITS, BarChartCategoryForm, BarChartForm } from '../../models/activity-authoring-bar-chart';
 import {
   LOGIC_GRID_FORM_LIMITS,
   LogicGridForm,
@@ -100,6 +101,7 @@ import { QuestionCanvasCrosswordComponent } from '../../shared/components/questi
 import { QuestionCanvasLogicGridComponent } from '../../shared/components/question-canvas-logic-grid/question-canvas-logic-grid.component';
 import { QuestionCanvasRegionPaintComponent } from '../../shared/components/question-canvas-region-paint/question-canvas-region-paint.component';
 import { QuestionCanvasNumberLineComponent } from '../../shared/components/question-canvas-number-line/question-canvas-number-line.component';
+import { QuestionCanvasBarChartComponent } from '../../shared/components/question-canvas-bar-chart/question-canvas-bar-chart.component';
 import { QuestionCanvasWordSearchComponent } from '../../shared/components/question-canvas-word-search/question-canvas-word-search.component';
 import { QuestionCanvasDragPlaceComponent } from '../../shared/components/question-canvas-drag-place/question-canvas-drag-place.component';
 import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
@@ -163,6 +165,7 @@ interface EditableItem {
     QuestionCanvasLogicGridComponent,
     QuestionCanvasRegionPaintComponent,
     QuestionCanvasNumberLineComponent,
+    QuestionCanvasBarChartComponent,
   ],
   providers: [provideTranslocoScope(ACTIVITY_EDITOR_SCOPE)],
   templateUrl: './activity-editor.component.html',
@@ -192,6 +195,7 @@ export class ActivityEditorComponent {
   readonly paintLimits = REGION_PAINT_FORM_LIMITS;
   readonly paintColors = PAINT_COLORS;
   readonly lineLimits = NUMBER_LINE_FORM_LIMITS;
+  readonly chartLimits = BAR_CHART_FORM_LIMITS;
   /** Otomatik yerleştirmenin son sonucu: kesiştirilemeyip ayrı satıra konan kelimeler (1 tabanlı). */
   readonly crosswordUnplaced = signal<number[] | null>(null);
   /**
@@ -247,6 +251,7 @@ export class ActivityEditorComponent {
   readonly regionPaint = computed(() => (this.form().kind === 'regionPaint' ? (this.form() as RegionPaintForm) : null));
   readonly logicGrid = computed(() => (this.form().kind === 'logicGrid' ? (this.form() as LogicGridForm) : null));
   readonly numberLine = computed(() => (this.form().kind === 'numberLine' ? (this.form() as NumberLineForm) : null));
+  readonly barChart = computed(() => (this.form().kind === 'barChart' ? (this.form() as BarChartForm) : null));
   readonly wordSearch = computed(() => (this.form().kind === 'wordSearch' ? (this.form() as WordSearchForm) : null));
   /** D/Y ağacının düzeyleri: genişlik öncelikli sırada her düzeyin ifade dizinleri. */
   readonly treeLevels = computed(() => {
@@ -935,6 +940,39 @@ export class ActivityEditorComponent {
     this.updateNumberLine((f) => (f.cards.length > 1 ? { ...f, cards: f.cards.filter((_, i) => i !== index) } : f));
   }
 
+  // ---- Grafik kurma ----
+
+  setChartOption(patch: Partial<Pick<BarChartForm, 'style' | 'title' | 'xLabel' | 'yLabel'>>): void {
+    this.updateBarChart((f) => ({ ...f, ...patch }));
+  }
+
+  setChartAxis(patch: Partial<Pick<BarChartForm, 'max' | 'step' | 'unit'>>): void {
+    for (const key of ['max', 'step', 'unit'] as const) {
+      const value = patch[key];
+      if (value !== undefined && !Number.isFinite(value)) return;
+      if (value !== undefined) patch[key] = Math.round(value);
+    }
+    this.updateBarChart((f) => ({ ...f, ...patch }));
+  }
+
+  setChartCategory(index: number, patch: Partial<BarChartCategoryForm>): void {
+    this.updateBarChart((f) => ({ ...f, categories: f.categories.map((c, i) => (i === index ? { ...c, ...patch } : c)) }));
+  }
+
+  addChartCategory(): void {
+    this.updateBarChart((f) =>
+      f.categories.length < BAR_CHART_FORM_LIMITS.maxCategories
+        ? { ...f, categories: [...f.categories, { label: '', value: '', fixed: false }] }
+        : f
+    );
+  }
+
+  removeChartCategory(index: number): void {
+    this.updateBarChart((f) =>
+      f.categories.length > BAR_CHART_FORM_LIMITS.minCategories ? { ...f, categories: f.categories.filter((_, i) => i !== index) } : f
+    );
+  }
+
   // ---- Kelime avı ----
 
   setWordSearchOption(patch: Partial<Pick<WordSearchForm, 'rows' | 'cols' | 'diagonal' | 'reverse'>>): void {
@@ -1279,6 +1317,11 @@ export class ActivityEditorComponent {
     if (f) this.form.set(update(f));
   }
 
+  private updateBarChart(update: (f: BarChartForm) => BarChartForm): void {
+    const f = this.barChart();
+    if (f) this.form.set(update(f));
+  }
+
   private updateLogicGrid(update: (f: LogicGridForm) => LogicGridForm): void {
     const f = this.logicGrid();
     if (f) this.form.set(update(f));
@@ -1361,6 +1404,8 @@ function itemTitle(form: AuthoringForm, instruction: string | null | undefined):
       return form.entries.map((e) => e.label || e.target).filter(Boolean).join(', ');
     case 'numberLine':
       return form.cards.map((c) => c.label).filter(Boolean).join(', ').slice(0, 80);
+    case 'barChart':
+      return form.title || form.categories.map((c) => c.label).filter(Boolean).join(', ').slice(0, 80);
     case 'logicGrid':
       return form.clues.find((c) => c.trim()) ?? form.subjects.join(', ');
     case 'wordSearch':

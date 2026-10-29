@@ -29,7 +29,8 @@
     "wordSearch": "Word search",
     "logicGrid": "Logic grid",
     "regionPaint": "Colouring (grid)",
-    "numberLine": "Number line"
+    "numberLine": "Number line",
+    "barChart": "Graph drawing"
   },
   "kindHints": {
     "matrix": "Mark the correct option for each row. The T/F template sets up two columns; with multiple choice a row can have several correct options.",
@@ -45,7 +46,8 @@
     "mazeRooms": "Each room is a question and the doors between rooms are answers. The student follows the correct doors from the start room to the finish.",
     "mazeStones": "The student marks the (wrong) stones that must not be stepped on. Mark those stones with the drop icon.",
     "regionPaint": "The student paints each colour in the requested share of an equal-square grid; positions are free, the count per colour is checked.",
-    "numberLine": "Students put the cards (fractions, decimals, events…) on the right tick of the number line; distractor cards stay off the line."
+    "numberLine": "Students put the cards (fractions, decimals, events…) on the right tick of the number line; distractor cards stay off the line.",
+    "barChart": "Students draw a bar (or line) graph from the data; each category's value is checked. Put the data in the instruction or the image."
   },
   "instruction": "Instruction (optional)",
   "image": {
@@ -207,7 +209,14 @@
     "lineLabelDuplicate": "A tick can have only one label.",
     "lineCardCount": "There must be 1–{{max}} cards.",
     "lineTargetInvalid": "These targets are not a tick between 0 and {{max}}: {{list}}.",
-    "lineTargetMissing": "At least one card needs a target tick."
+    "lineTargetMissing": "At least one card needs a target tick.",
+    "chartMax": "The largest value must be 1–{{max}}.",
+    "chartStep": "The label interval must divide the largest value, with at most {{steps}} intervals.",
+    "chartUnit": "The step must divide the label interval, with at most {{units}} steps.",
+    "chartCategoryCount": "There must be {{min}}–{{max}} categories.",
+    "chartCategoryBlank": "Do not leave a category name empty.",
+    "chartValueInvalid": "These categories' values are not a multiple of {{unit}} between 0 and {{max}}: {{list}}.",
+    "chartAllFixed": "At least one category must be left to the student (not given)."
   },
   "snackbar": {
     "created": "The item was added to the activity.",
@@ -371,5 +380,22 @@
     "distractor": "distractor",
     "targetInvalid": "not a tick",
     "addCard": "Add card"
+  },
+  "barChart": {
+    "hint": "Students draw the graph from the data. Set the vertical axis: the largest value, the interval of labelled lines and the smallest step students can set (e.g. 0–10, labels every 2, steps of 1). Enter each category's correct value; a category marked \"Given\" is already drawn for the student (complete-the-graph questions). Put the data table in the instruction or the image.",
+    "style": "Style",
+    "styleBar": "Bar graph",
+    "styleLine": "Line graph",
+    "title": "Graph title",
+    "xLabel": "Horizontal axis name",
+    "yLabel": "Vertical axis name",
+    "max": "Largest value",
+    "step": "Label interval",
+    "unit": "Step",
+    "categories": "Categories",
+    "category": "Category {{n}}",
+    "value": "Value",
+    "fixed": "Given",
+    "addCategory": "Add category"
   }
 }

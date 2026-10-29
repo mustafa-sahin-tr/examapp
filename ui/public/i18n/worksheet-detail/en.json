@@ -300,7 +300,8 @@
         "wordSearch": "Word search",
         "logicGrid": "Logic grid",
         "regionPaint": "Colouring",
-        "numberLine": "Number line"
+        "numberLine": "Number line",
+        "barChart": "Graph drawing"
       }
     },
     "addTextItem": "Add text-only item"

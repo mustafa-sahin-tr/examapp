@@ -300,7 +300,8 @@
         "wordSearch": "Kelime avı",
         "logicGrid": "Mantık tablosu",
         "regionPaint": "Boyama",
-        "numberLine": "Sayı doğrusu"
+        "numberLine": "Sayı doğrusu",
+        "barChart": "Grafik kurma"
       }
     },
     "addTextItem": "Görselsiz madde ekle"

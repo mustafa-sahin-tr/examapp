@@ -1388,6 +1388,65 @@ describe('ActivityPlayerComponent (#573)', () => {
     });
   });
 
+  describe('barChart (#588 dilim b)', () => {
+    const BC_PLAN = JSON.stringify({
+      version: 1,
+      type: 'barChart',
+      max: 10,
+      step: 2,
+      unit: 1,
+      categories: [
+        { id: 'c1', label: 'Elma' },
+        { id: 'c2', label: 'Armut' },
+        { id: 'c3', label: 'Muz' },
+      ],
+      fixed: { c1: 6 },
+    });
+    const bcAnswer = (values: Record<string, number>) => JSON.stringify({ version: 1, type: 'barChart', values });
+    const base = () => instance().testInstanceQuestions[0].question;
+    const typed = (answer: string) =>
+      instance({}, [{ answerPayload: answer, question: { ...base(), interactionType: 'BarChart', interactionPlan: BC_PLAN } }]);
+
+    it('rendersPlayer_BlankIsIncomplete_FreeCategoryRowsAndFeedback', async () => {
+      await create(typed(bcAnswer({})));
+      fixture.componentInstance.goTo(0);
+      await settle();
+
+      expect(el().querySelector('app-question-canvas-bar-chart')).not.toBeNull();
+      expect(fixture.componentInstance.blankItems()).toContain('a');
+
+      fixture.componentInstance.onDragDropChange(bcAnswer({ c2: 4 }), fixture.componentInstance.items()[0]);
+      await settle();
+      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 1,
+          totalCount: 3,
+          questions: [
+            {
+              instanceQuestionId: 101,
+              isCorrect: false,
+              correctCount: 1,
+              totalCount: 2,
+              feedback: '{"rows":[{"id":"c2","correct":true},{"id":"c3","correct":false}]}',
+            },
+            { instanceQuestionId: 102, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+      const rows = fixture.componentInstance.currentRows();
+      expect(rows.map((r) => r.correct)).toEqual([true, false]);
+      expect(rows[0].label).toContain('Armut');
+      expect(rows[0].label).toContain('4');
+      expect(rows[1].label).toContain('Muz');
+      expect(fixture.componentInstance.currentBarChartFeedback()?.rows.length).toBe(2);
+    });
+  });
+
   describe('regionPaint (#587)', () => {
     const RP_PLAN = JSON.stringify({
       version: 1,

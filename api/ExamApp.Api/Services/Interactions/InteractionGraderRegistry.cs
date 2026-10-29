@@ -22,7 +22,7 @@ public sealed class InteractionGraderRegistry : IInteractionGraderRegistry
     public static InteractionGraderRegistry Default { get; } =
         new(new IInteractionGrader[] { new McqGrader(), new DragDropLabelingGrader(), new MatrixChoiceGrader(), new SlotFillGrader(),
             new DragPlaceGrader(), new MatchGrader(), new TextSelectGrader(), new OpenTextGrader(), new MazeTreeGrader(), new CrosswordGrader(), new WordSearchGrader(),
-            new LogicGridGrader(), new RegionPaintGrader(), new NumberLineGrader() });
+            new LogicGridGrader(), new RegionPaintGrader(), new NumberLineGrader(), new BarChartGrader() });
 
     public IInteractionGrader Resolve(string? interactionType)
         => !string.IsNullOrWhiteSpace(interactionType) && _graders.TryGetValue(interactionType.Trim(), out var grader)

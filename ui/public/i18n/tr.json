@@ -571,6 +571,19 @@
         "resultOk": "Bütün kartlar doğru yerde!",
         "resultPartial": "{{total}} karttan {{ok}} tanesi doğru; kırmızı kartları yeniden düşün.",
         "solutionShown": "Kartlar doğru yerlerinde gösteriliyor; havuzda kalanlar doğruya konmamalıydı."
+      },
+      "barChart": {
+        "passageAlt": "Okuma metni görseli",
+        "imageAlt": "Etkinlik görseli",
+        "invalid": "Bu etkinlik açılamadı.",
+        "fixedAria": "{{label}} (hazır)",
+        "unset": "çizilmedi",
+        "reset": "Temizle",
+        "hint": "Sütunun yüksekliğini ayarlamak için o kategorinin üstünde ilgili seviyeye dokun; aynı seviyeye yeniden dokunmak sütunu siler. Klavyede ↑ / ↓ ile de ayarlayabilirsin. Gri sütunlar hazır çizilmiştir.",
+        "hintLine": "Noktayı koymak için o kategorinin üstünde ilgili seviyeye dokun; aynı seviyeye yeniden dokunmak noktayı siler. Klavyede ↑ / ↓ ile de ayarlayabilirsin. Gri noktalar hazır çizilmiştir.",
+        "resultOk": "Grafik doğru!",
+        "resultPartial": "{{total}} sütundan {{ok}} tanesi doğru; kırmızıları yeniden kontrol et.",
+        "solutionShown": "Grafiğin doğru hâli gösteriliyor."
       }
     },
     "sharingBadge": {

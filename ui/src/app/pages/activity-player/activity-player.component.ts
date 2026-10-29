@@ -99,6 +99,16 @@ import {
   tickName,
 } from '../../models/number-line';
 import {
+  BarChartFeedback,
+  BarChartPlanV1,
+  isBarChartType,
+  isFreeCategory,
+  parseBarChartAnswer,
+  parseBarChartFeedback,
+  parseBarChartPlan,
+  parseBarChartSolution,
+} from '../../models/bar-chart';
+import {
   RegionPaintFeedback,
   RegionPaintPlanV1,
   RegionPaintRegionsPlanV1,
@@ -193,6 +203,7 @@ import { QuestionCanvasCrosswordComponent } from '../../shared/components/questi
 import { QuestionCanvasLogicGridComponent } from '../../shared/components/question-canvas-logic-grid/question-canvas-logic-grid.component';
 import { QuestionCanvasRegionPaintComponent } from '../../shared/components/question-canvas-region-paint/question-canvas-region-paint.component';
 import { QuestionCanvasNumberLineComponent } from '../../shared/components/question-canvas-number-line/question-canvas-number-line.component';
+import { QuestionCanvasBarChartComponent } from '../../shared/components/question-canvas-bar-chart/question-canvas-bar-chart.component';
 import { QuestionCanvasWordSearchComponent } from '../../shared/components/question-canvas-word-search/question-canvas-word-search.component';
 import { QuestionCanvasMazeTreeComponent } from '../../shared/components/question-canvas-maze-tree/question-canvas-maze-tree.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
@@ -270,6 +281,7 @@ export type ActivityAction = 'check' | 'reveal' | 'finish';
     QuestionCanvasLogicGridComponent,
     QuestionCanvasRegionPaintComponent,
     QuestionCanvasNumberLineComponent,
+    QuestionCanvasBarChartComponent,
     QuestionCanvasViewComponentv5,
     QuestionLiteViewComponent,
   ],
@@ -414,6 +426,7 @@ export class ActivityPlayerComponent {
   private readonly regionPaintPlans = new Map<number, RegionPaintPlanV1 | null>();
   private readonly regionPaintRegionsPlans = new Map<number, RegionPaintRegionsPlanV1 | null>();
   private readonly numberLinePlans = new Map<number, NumberLinePlanV1 | null>();
+  private readonly barChartPlans = new Map<number, BarChartPlanV1 | null>();
 
   readonly title = computed(() => this.instance()?.testName ?? '');
   readonly currentItem = computed(() => this.items()[this.currentIndex()] ?? null);
@@ -520,6 +533,13 @@ export class ActivityPlayerComponent {
     return parseNumberLineFeedback(this.results()[item.id]?.feedback);
   });
 
+  /** Issue #588 (dilim b): grafik kurmanın kontrol sonucu (kategori başına); çözüm açıkken ya da kontrol yoksa null. */
+  readonly currentBarChartFeedback = computed<BarChartFeedback | null>(() => {
+    const item = this.currentItem();
+    if (!item || this.revealed()) return null;
+    return parseBarChartFeedback(this.results()[item.id]?.feedback);
+  });
+
   readonly currentRegionPaintFeedback = computed<RegionPaintFeedback | null>(() => {
     const item = this.currentItem();
     if (!item || this.revealed()) return null;
@@ -574,6 +594,7 @@ export class ActivityPlayerComponent {
     if (this.isLogicGrid(item)) return this.logicGridRows(item, result, solution);
     if (this.isRegionPaint(item)) return this.regionPaintRows(item, result, solution);
     if (this.isNumberLine(item)) return this.numberLineRows(item, result, solution);
+    if (this.isBarChart(item)) return this.barChartRows(item, result, solution);
     if (this.isOpenText(item)) return this.openTextRows(item, result);
     return this.isDragDrop(item)
       ? this.dragDropRows(item, result, solution)
@@ -740,6 +761,7 @@ export class ActivityPlayerComponent {
     this.regionPaintPlans.clear();
     this.regionPaintRegionsPlans.clear();
     this.numberLinePlans.clear();
+    this.barChartPlans.clear();
   }
 
   // ---------------------------------------------------------------------------
@@ -1364,6 +1386,10 @@ export class ActivityPlayerComponent {
     return isNumberLineType(item.question?.interactionType);
   }
 
+  isBarChart(item: TestInstanceQuestion): boolean {
+    return isBarChartType(item.question?.interactionType);
+  }
+
   isRegionPaint(item: TestInstanceQuestion): boolean {
     return isRegionPaintType(item.question?.interactionType);
   }
@@ -1387,7 +1413,8 @@ export class ActivityPlayerComponent {
       this.isWordSearch(item) ||
       this.isLogicGrid(item) ||
       this.isRegionPaint(item) ||
-      this.isNumberLine(item)
+      this.isNumberLine(item) ||
+      this.isBarChart(item)
     );
   }
 
@@ -1446,6 +1473,13 @@ export class ActivityPlayerComponent {
       this.numberLinePlans.set(item.id, parseNumberLinePlan(item.question?.interactionPlan));
     }
     return this.numberLinePlans.get(item.id) ?? null;
+  }
+
+  private barChartPlanFor(item: TestInstanceQuestion): BarChartPlanV1 | null {
+    if (!this.barChartPlans.has(item.id)) {
+      this.barChartPlans.set(item.id, parseBarChartPlan(item.question?.interactionPlan));
+    }
+    return this.barChartPlans.get(item.id) ?? null;
   }
 
   private regionPaintPlanFor(item: TestInstanceQuestion): RegionPaintPlanV1 | null {
@@ -1549,6 +1583,7 @@ export class ActivityPlayerComponent {
     if (this.isOpenText(item)) return !isBlankOpenText(parseOpenTextAnswer(answer?.answerPayload));
     if (this.isMazeTree(item)) return !isEmptyMazeAnswer(parseMazeAnswer(answer?.answerPayload, this.mazePlanFor(item)));
     if (this.isNumberLine(item)) return Object.keys(parseNumberLineAnswer(answer?.answerPayload, this.numberLinePlanFor(item))).length > 0;
+    if (this.isBarChart(item)) return Object.keys(parseBarChartAnswer(answer?.answerPayload, this.barChartPlanFor(item))).length > 0;
     if (this.isRegionPaint(item)) {
       const regionsPlan = this.regionPaintRegionsPlanFor(item);
       if (regionsPlan) return Object.keys(parseRegionPaintFills(answer?.answerPayload, regionsPlan)).length > 0;
@@ -1603,6 +1638,10 @@ export class ActivityPlayerComponent {
     // Issue #588: doğruya hiç kart konmadı (hangi kartın çeldirici olduğu öğrenciye gitmez).
     if (this.isNumberLine(item)) {
       return Object.keys(parseNumberLineAnswer(answer?.answerPayload, this.numberLinePlanFor(item))).length === 0;
+    }
+    // Issue #588 (dilim b): grafikte hiç sütun çizilmedi (0 değerli kategori çizilmeden de doğru olabilir).
+    if (this.isBarChart(item)) {
+      return Object.keys(parseBarChartAnswer(answer?.answerPayload, this.barChartPlanFor(item))).length === 0;
     }
     // Issue #587: boyamada hiç boyanmış kare yok (hedef sayılar öğrenciye gitmez).
     if (this.isRegionPaint(item)) {
@@ -1870,6 +1909,23 @@ export class ActivityPlayerComponent {
       correct: rowMarks.has(card.id) ? rowMarks.get(card.id)! : null,
       solution: targets && Object.hasOwn(targets, card.id) ? this.tr('rows.lineCard', { card: card.label, content: where(targets[card.id]) }) : null,
     }));
+  }
+
+  /** Issue #588 (dilim b): grafikte serbest kategori başına satır ("Armut: 4"); çözüm açıkken hedef değer. */
+  private barChartRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
+    const plan = this.barChartPlanFor(item);
+    if (!plan || (!result && !solution)) return [];
+    const values = parseBarChartAnswer(this.answers()[item.id]?.answerPayload, plan);
+    const targets = solution ? parseBarChartSolution(solution.interactionSolution, plan) : null;
+    const rowMarks = new Map((result?.rows ?? []).map((row) => [row.id, row.correct]));
+    const shown = (v: number | undefined) => (v === undefined ? this.tr('rows.chartUnset') : String(v));
+    return plan.categories
+      .filter((c) => isFreeCategory(plan, c.id))
+      .map((c) => ({
+        label: this.tr('rows.chartValue', { label: c.label, value: shown(values[c.id]) }),
+        correct: rowMarks.has(c.id) ? rowMarks.get(c.id)! : null,
+        solution: targets && Object.hasOwn(targets, c.id) ? this.tr('rows.chartValue', { label: c.label, value: targets[c.id] }) : null,
+      }));
   }
 
   /** Issue #587: boyamada renk başına satır ("Mavi: 35 kare"); çözüm açıkken hedef sayı. */

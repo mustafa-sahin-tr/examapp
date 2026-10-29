@@ -29,7 +29,8 @@
     "wordSearch": "Kelime avı",
     "logicGrid": "Mantık tablosu",
     "regionPaint": "Boyama (ızgara)",
-    "numberLine": "Sayı doğrusu"
+    "numberLine": "Sayı doğrusu",
+    "barChart": "Grafik kurma"
   },
   "kindHints": {
     "matrix": "Her satır için doğru seçeneği işaretle. D/Y şablonu iki kolon kurar; çoklu seçimde satırda birden çok doğru olabilir.",
@@ -45,7 +46,8 @@
     "mazeRooms": "Her oda bir soru; odalar arası kapılar cevaplardır. Öğrenci başlangıç odasından doğru kapıları izleyerek bitişe varır.",
     "mazeStones": "Öğrenci basılmaması gereken (yanlış) taşları işaretler. Basılmaması gereken taşları damla simgesiyle işaretle.",
     "regionPaint": "Öğrenci eş karelere ayrılmış ızgarada her rengi istenen oranda boyar; karelerin yeri serbesttir, renk başına sayı kontrol edilir.",
-    "numberLine": "Öğrenci kartları (kesir, ondalık, olay…) sayı doğrusunda doğru çentiğe koyar; çeldirici kart doğruya konmamalı."
+    "numberLine": "Öğrenci kartları (kesir, ondalık, olay…) sayı doğrusunda doğru çentiğe koyar; çeldirici kart doğruya konmamalı.",
+    "barChart": "Öğrenci verilere göre sütun (ya da çizgi) grafiğini çizer; her kategorinin değeri kontrol edilir. Verileri yönergeye ya da görsele yazın."
   },
   "instruction": "Yönerge (isteğe bağlı)",
   "image": {
@@ -207,7 +209,14 @@
     "lineLabelDuplicate": "Bir çentikte tek etiket olabilir.",
     "lineCardCount": "1–{{max}} kart olmalı.",
     "lineTargetInvalid": "Şu hedefler 0–{{max}} arasında bir çentik değil: {{list}}.",
-    "lineTargetMissing": "En az bir kartın hedef çentiği olmalı."
+    "lineTargetMissing": "En az bir kartın hedef çentiği olmalı.",
+    "chartMax": "En büyük değer 1–{{max}} olmalı.",
+    "chartStep": "Etiket aralığı en büyük değeri tam bölmeli ve en çok {{steps}} aralık olmalı.",
+    "chartUnit": "Adım etiket aralığını tam bölmeli ve en çok {{units}} adım olmalı.",
+    "chartCategoryCount": "{{min}}–{{max}} kategori olmalı.",
+    "chartCategoryBlank": "Boş kategori adı bırakma.",
+    "chartValueInvalid": "Şu kategorilerin değeri 0–{{max}} arasında {{unit}}'in katı değil: {{list}}.",
+    "chartAllFixed": "En az bir kategori öğrenciye bırakılmalı (hazır olmamalı)."
   },
   "snackbar": {
     "created": "Madde etkinliğe eklendi.",
@@ -371,5 +380,22 @@
     "distractor": "çeldirici",
     "targetInvalid": "çentik değil",
     "addCard": "Kart ekle"
+  },
+  "barChart": {
+    "hint": "Öğrenci grafiği verilere göre çizer. Dikey ekseni ayarlayın: en büyük değer, etiketli çizgilerin aralığı ve öğrencinin ayarlayabildiği en küçük adım (ör. 0–10, 2'şer etiket, 1'er adım). Her kategorinin doğru değerini yazın; \"Hazır\" işaretli kategori öğrenciye çizili gelir (grafiği tamamla soruları). Veri tablosunu yönergeye ya da görsele koyun.",
+    "style": "Görünüm",
+    "styleBar": "Sütun grafiği",
+    "styleLine": "Çizgi grafiği",
+    "title": "Grafik başlığı",
+    "xLabel": "Yatay eksen adı",
+    "yLabel": "Dikey eksen adı",
+    "max": "En büyük değer",
+    "step": "Etiket aralığı",
+    "unit": "Adım",
+    "categories": "Kategoriler",
+    "category": "{{n}}. kategori",
+    "value": "Değer",
+    "fixed": "Hazır",
+    "addCategory": "Kategori ekle"
   }
 }

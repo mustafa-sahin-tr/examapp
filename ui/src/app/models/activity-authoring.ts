@@ -8,7 +8,7 @@
  * `activity-authoring-maze.ts`'te. Issue #586: çengel bulmaca (`crossword`) `activity-authoring-crossword.ts`'te, kelime avı
  * (`wordSearch`) `activity-authoring-word-search.ts`'te, sözel mantık tablosu (`logicGrid`) `activity-authoring-logic-grid.ts`'te.
  * Issue #587: boyama (`regionPaint` ızgara modu) `activity-authoring-region-paint.ts`'te. Issue #588: sayı doğrusu (`numberLine`)
- * `activity-authoring-number-line.ts`'te.
+ * `activity-authoring-number-line.ts`'te, grafik kurma (`barChart`) `activity-authoring-bar-chart.ts`'te.
  *
  * Kayıtta backend sürükle-yerleştir kartlarını ve eşleştirme sağ öğelerini karışık sıraya dizip opak id verir (#576
  * H1/M1); düzenlemede formu plan + çözümden geri kurarken id'lere değil, plan sırası ve çözüm eşlemesine bakılır.
@@ -66,6 +66,15 @@ import {
 } from './activity-authoring-number-line';
 import { NUMBER_LINE } from './number-line';
 import {
+  BarChartForm,
+  buildBarChartDefinition,
+  emptyBarChartForm,
+  isBarChartForm,
+  parseBarChartDefinition,
+  validateBarChartForm,
+} from './activity-authoring-bar-chart';
+import { BAR_CHART } from './bar-chart';
+import {
   ExitName,
   MAZE_KINDS,
   MazeForm,
@@ -92,7 +101,7 @@ import { MAZE_TREE } from './maze-tree';
 import { SLOT_FILL, parseSlotFillPlan } from './slot-fill';
 import { WORD_SEARCH } from './word-search';
 
-export type AuthoringKind = 'matrix' | 'classify' | 'order' | 'match' | BlankKind | MazeKind | 'crossword' | 'wordSearch' | 'logicGrid' | 'regionPaint' | 'numberLine';
+export type AuthoringKind = 'matrix' | 'classify' | 'order' | 'match' | BlankKind | MazeKind | 'crossword' | 'wordSearch' | 'logicGrid' | 'regionPaint' | 'numberLine' | 'barChart';
 
 export const AUTHORING_KINDS: readonly AuthoringKind[] = [
   'matrix',
@@ -109,6 +118,7 @@ export const AUTHORING_KINDS: readonly AuthoringKind[] = [
   'logicGrid',
   'regionPaint',
   'numberLine',
+  'barChart',
 ];
 
 export const AUTHORING_LABEL_MAX = MATRIX_CHOICE_LIMITS.maxLabelLength;
@@ -157,7 +167,7 @@ export interface MatchForm {
   distractors: string[];
 }
 
-export type AuthoringForm = MatrixForm | ClassifyForm | OrderForm | MatchForm | BlankForm | MazeForm | CrosswordForm | WordSearchForm | LogicGridForm | RegionPaintForm | NumberLineForm;
+export type AuthoringForm = MatrixForm | ClassifyForm | OrderForm | MatchForm | BlankForm | MazeForm | CrosswordForm | WordSearchForm | LogicGridForm | RegionPaintForm | NumberLineForm | BarChartForm;
 
 export interface AuthoringDefinition {
   interactionType:
@@ -170,7 +180,8 @@ export interface AuthoringDefinition {
     | typeof WORD_SEARCH
     | typeof LOGIC_GRID
     | typeof REGION_PAINT
-    | typeof NUMBER_LINE;
+    | typeof NUMBER_LINE
+    | typeof BAR_CHART;
   plan: string;
   solution: string;
 }
@@ -200,6 +211,7 @@ export function emptyForm(
   if (kind === 'logicGrid') return emptyLogicGridForm();
   if (kind === 'regionPaint') return emptyRegionPaintForm();
   if (kind === 'numberLine') return emptyNumberLineForm();
+  if (kind === 'barChart') return emptyBarChartForm();
   switch (kind) {
     case 'matrix':
       return {
@@ -232,6 +244,7 @@ export function validateForm(form: AuthoringForm): AuthoringError[] {
   if (isLogicGridForm(form)) return validateLogicGridForm(form);
   if (isRegionPaintForm(form)) return validateRegionPaintForm(form);
   if (isNumberLineForm(form)) return validateNumberLineForm(form);
+  if (isBarChartForm(form)) return validateBarChartForm(form);
   const errors: AuthoringError[] = [];
   const blank = (values: string[]) => values.some((v) => !v.trim());
   const tooLong = (values: string[]) => values.some((v) => v.trim().length > AUTHORING_LABEL_MAX);
@@ -309,6 +322,7 @@ export function buildDefinition(form: AuthoringForm): AuthoringDefinition {
   if (isLogicGridForm(form)) return buildLogicGridDefinition(form);
   if (isRegionPaintForm(form)) return buildRegionPaintDefinition(form);
   if (isNumberLineForm(form)) return buildNumberLineDefinition(form);
+  if (isBarChartForm(form)) return buildBarChartDefinition(form);
   switch (form.kind) {
     case 'matrix': {
       const columns = form.columns.map((label, i) => ({ id: `c${i + 1}`, label: label.trim() }));
@@ -382,6 +396,7 @@ export function parseDefinition(
   if (type === LOGIC_GRID.toLowerCase()) return parseLogicGridDefinition(planJson, solutionJson);
   if (type === REGION_PAINT.toLowerCase()) return parseRegionPaintDefinition(planJson, solutionJson);
   if (type === NUMBER_LINE.toLowerCase()) return parseNumberLineDefinition(planJson, solutionJson);
+  if (type === BAR_CHART.toLowerCase()) return parseBarChartDefinition(planJson, solutionJson);
   return null;
 }
 

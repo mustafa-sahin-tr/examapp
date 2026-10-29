@@ -1,0 +1,275 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.bc-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.bc-passage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+
+  &__title {
+    font-weight: 700;
+    font-family: var(--mainFontFamily);
+  }
+
+  &__image {
+    display: block;
+    max-width: 100%;
+    max-height: 35vh;
+    object-fit: contain;
+  }
+}
+
+.bc-image-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+}
+
+.bc-image {
+  display: block;
+  max-width: 100%;
+  max-height: 45vh;
+}
+
+.bc-title {
+  font-family: var(--mainFontFamily);
+  font-weight: 700;
+  text-align: center;
+}
+
+// Çok kategorili grafik dar ekranda kendi içinde yatay kayar; sayfa kaymaz.
+.bc-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.bc-chart {
+  display: grid;
+  grid-template-columns: auto 40px 1fr;
+  grid-template-rows: 260px auto auto;
+  grid-template-areas:
+    'yname yaxis plot'
+    '. . xaxis'
+    '. . xname';
+  padding: 12px 8px 0 0;
+}
+
+.bc-yname {
+  grid-area: yname;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+
+  span {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    white-space: nowrap;
+    font-weight: 600;
+    font-size: 13px;
+  }
+}
+
+.bc-yaxis {
+  grid-area: yaxis;
+  position: relative;
+}
+
+.bc-ytick {
+  position: absolute;
+  right: 6px;
+  transform: translateY(50%);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.bc-plot {
+  grid-area: plot;
+  position: relative;
+  border-left: 2px solid var(--ms-text-strong);
+  border-bottom: 2px solid var(--ms-text-strong);
+}
+
+.bc-grid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px dashed var(--ms-border-weak);
+  pointer-events: none;
+
+  &.is-major {
+    border-top: 1px solid var(--ms-border-strong);
+  }
+}
+
+.bc-line {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+
+  polyline {
+    fill: none;
+    stroke: var(--ms-action-background);
+    stroke-width: 2px;
+    vector-effect: non-scaling-stroke;
+  }
+}
+
+.bc-columns {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+
+.bc-col {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  cursor: pointer;
+  border-radius: 4px 4px 0 0;
+
+  &:hover:not(.is-fixed) {
+    background: color-mix(in srgb, var(--ms-action-background) 6%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ms-action-border-focus);
+    outline-offset: -2px;
+  }
+
+  &.is-fixed,
+  .is-solution & {
+    cursor: default;
+  }
+}
+
+.bc-bar {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 0;
+  border: 2px solid var(--ms-action-background);
+  border-bottom: 0;
+  background: color-mix(in srgb, var(--ms-action-background) 55%, transparent);
+
+  .is-fixed & {
+    border-color: var(--paint-gray);
+    background: color-mix(in srgb, var(--paint-gray) 55%, transparent);
+  }
+
+  .is-ok & {
+    border-color: var(--ms-success-border, var(--ms-success-text));
+    background: var(--ms-success-surface);
+  }
+
+  .is-bad & {
+    border-color: var(--ms-danger-border);
+    background: var(--ms-danger-surface);
+  }
+}
+
+.bc-dot {
+  position: absolute;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ms-action-background);
+  border: 2px solid var(--whiteColor);
+  transform: translate(-50%, 50%);
+  z-index: 2;
+
+  .is-fixed & {
+    background: var(--paint-gray);
+  }
+
+  .is-ok & {
+    background: var(--ms-success-text);
+  }
+
+  .is-bad & {
+    background: var(--ms-danger-text);
+  }
+}
+
+.bc-xaxis {
+  grid-area: xaxis;
+  display: flex;
+}
+
+.bc-xtick {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 4px 2px 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+
+  &.is-fixed {
+    color: var(--ms-text-medium);
+  }
+}
+
+.bc-xname {
+  grid-area: xname;
+  padding-top: 4px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.bc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.bc-hint {
+  margin: 0;
+  color: var(--ms-text-medium);
+}
+
+.bc-result {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+
+  &.is-ok {
+    background: var(--ms-success-surface);
+    color: var(--ms-success-text);
+  }
+
+  &.is-bad {
+    background: var(--ms-danger-surface);
+    color: var(--ms-danger-text);
+  }
+}

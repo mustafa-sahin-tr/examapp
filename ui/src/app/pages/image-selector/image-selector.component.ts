@@ -3037,7 +3037,7 @@ export class ImageSelectorComponent {
       return;
     }
 
-    this.selectionMode.set(mode); // TODO: Seçim modunu ayarla
+    this.selectionMode.set(mode);
 
     if (mode === 'answer' && this.selectedQuestionIndex < 0) {
       alert(this.tr('messages.selectQuestionFirst'));

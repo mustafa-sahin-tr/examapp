@@ -22,7 +22,6 @@ public static class WorksheetAccess
     public static bool CanModify(int? createUserId, int userId, bool isAdmin,
         WorksheetTeacherSharing? sharing = null)
     {
-        // TODO(#11/#12/#13): sharing == PublicAssignable dalı burada ele alınacak.
         return isAdmin || (createUserId.HasValue && createUserId.Value > 0 && createUserId.Value == userId);
     }
 
@@ -60,7 +59,6 @@ public static class WorksheetAccess
         WorksheetStudentVisibility? studentVisibility = null,
         int? requesterSchoolId = null, int? ownerSchoolId = null)
     {
-        // TODO(#13): studentVisibility == Restricted dalı burada ele alınacak.
         if (isAdmin || (createUserId.HasValue && createUserId.Value > 0 && createUserId.Value == userId))
             return true;
 

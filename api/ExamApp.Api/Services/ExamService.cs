@@ -99,7 +99,6 @@ public class ExamService : IExamService
             && requesterUserId.HasValue && w.CreateUserId.Value == requesterUserId.Value;
         dto.IsOwner = isOwner;
         dto.OwnerName = (isAdmin || isOwner || populateOwnerName) ? ownerName : null;
-        // TODO(#13): CanAssign StudentVisibility=Restricted dalını da dikkate alacak.
         dto.CanAssign = isTeacher
             && WorksheetAccess.CanAssign(w.CreateUserId, requesterUserId ?? 0, isAdmin, w.TeacherSharing, hasApprovedGrant,
                 requesterSchoolId, ownerSchoolId);

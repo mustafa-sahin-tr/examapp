@@ -109,6 +109,18 @@ import {
   parseBarChartSolution,
 } from '../../models/bar-chart';
 import {
+  GridDrawFeedback,
+  GridDrawPlanV1,
+  gridDrawTargets,
+  isGridDrawType,
+  parseGridDrawAnswer,
+  parseGridDrawFeedback,
+  parseGridDrawPlan,
+  parseGridDrawSolution,
+  sizeKey,
+  sizeOf,
+} from '../../models/grid-draw';
+import {
   RegionPaintFeedback,
   RegionPaintPlanV1,
   RegionPaintRegionsPlanV1,
@@ -204,6 +216,7 @@ import { QuestionCanvasLogicGridComponent } from '../../shared/components/questi
 import { QuestionCanvasRegionPaintComponent } from '../../shared/components/question-canvas-region-paint/question-canvas-region-paint.component';
 import { QuestionCanvasNumberLineComponent } from '../../shared/components/question-canvas-number-line/question-canvas-number-line.component';
 import { QuestionCanvasBarChartComponent } from '../../shared/components/question-canvas-bar-chart/question-canvas-bar-chart.component';
+import { QuestionCanvasGridDrawComponent } from '../../shared/components/question-canvas-grid-draw/question-canvas-grid-draw.component';
 import { QuestionCanvasWordSearchComponent } from '../../shared/components/question-canvas-word-search/question-canvas-word-search.component';
 import { QuestionCanvasMazeTreeComponent } from '../../shared/components/question-canvas-maze-tree/question-canvas-maze-tree.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
@@ -282,6 +295,7 @@ export type ActivityAction = 'check' | 'reveal' | 'finish';
     QuestionCanvasRegionPaintComponent,
     QuestionCanvasNumberLineComponent,
     QuestionCanvasBarChartComponent,
+    QuestionCanvasGridDrawComponent,
     QuestionCanvasViewComponentv5,
     QuestionLiteViewComponent,
   ],
@@ -427,6 +441,7 @@ export class ActivityPlayerComponent {
   private readonly regionPaintRegionsPlans = new Map<number, RegionPaintRegionsPlanV1 | null>();
   private readonly numberLinePlans = new Map<number, NumberLinePlanV1 | null>();
   private readonly barChartPlans = new Map<number, BarChartPlanV1 | null>();
+  private readonly gridDrawPlans = new Map<number, GridDrawPlanV1 | null>();
 
   readonly title = computed(() => this.instance()?.testName ?? '');
   readonly currentItem = computed(() => this.items()[this.currentIndex()] ?? null);
@@ -540,6 +555,13 @@ export class ActivityPlayerComponent {
     return parseBarChartFeedback(this.results()[item.id]?.feedback);
   });
 
+  /** Issue #588 (dilim c): kareli zeminde çizimin kontrol sonucu (çizim başına + sayılar); çözüm açıkken ya da kontrol yoksa null. */
+  readonly currentGridDrawFeedback = computed<GridDrawFeedback | null>(() => {
+    const item = this.currentItem();
+    if (!item || this.revealed()) return null;
+    return parseGridDrawFeedback(this.results()[item.id]?.feedback);
+  });
+
   readonly currentRegionPaintFeedback = computed<RegionPaintFeedback | null>(() => {
     const item = this.currentItem();
     if (!item || this.revealed()) return null;
@@ -595,6 +617,7 @@ export class ActivityPlayerComponent {
     if (this.isRegionPaint(item)) return this.regionPaintRows(item, result, solution);
     if (this.isNumberLine(item)) return this.numberLineRows(item, result, solution);
     if (this.isBarChart(item)) return this.barChartRows(item, result, solution);
+    if (this.isGridDraw(item)) return this.gridDrawRows(item, result, solution);
     if (this.isOpenText(item)) return this.openTextRows(item, result);
     return this.isDragDrop(item)
       ? this.dragDropRows(item, result, solution)
@@ -762,6 +785,7 @@ export class ActivityPlayerComponent {
     this.regionPaintRegionsPlans.clear();
     this.numberLinePlans.clear();
     this.barChartPlans.clear();
+    this.gridDrawPlans.clear();
   }
 
   // ---------------------------------------------------------------------------
@@ -1390,6 +1414,10 @@ export class ActivityPlayerComponent {
     return isBarChartType(item.question?.interactionType);
   }
 
+  isGridDraw(item: TestInstanceQuestion): boolean {
+    return isGridDrawType(item.question?.interactionType);
+  }
+
   isRegionPaint(item: TestInstanceQuestion): boolean {
     return isRegionPaintType(item.question?.interactionType);
   }
@@ -1414,7 +1442,8 @@ export class ActivityPlayerComponent {
       this.isLogicGrid(item) ||
       this.isRegionPaint(item) ||
       this.isNumberLine(item) ||
-      this.isBarChart(item)
+      this.isBarChart(item) ||
+      this.isGridDraw(item)
     );
   }
 
@@ -1480,6 +1509,13 @@ export class ActivityPlayerComponent {
       this.barChartPlans.set(item.id, parseBarChartPlan(item.question?.interactionPlan));
     }
     return this.barChartPlans.get(item.id) ?? null;
+  }
+
+  private gridDrawPlanFor(item: TestInstanceQuestion): GridDrawPlanV1 | null {
+    if (!this.gridDrawPlans.has(item.id)) {
+      this.gridDrawPlans.set(item.id, parseGridDrawPlan(item.question?.interactionPlan));
+    }
+    return this.gridDrawPlans.get(item.id) ?? null;
   }
 
   private regionPaintPlanFor(item: TestInstanceQuestion): RegionPaintPlanV1 | null {
@@ -1584,6 +1620,7 @@ export class ActivityPlayerComponent {
     if (this.isMazeTree(item)) return !isEmptyMazeAnswer(parseMazeAnswer(answer?.answerPayload, this.mazePlanFor(item)));
     if (this.isNumberLine(item)) return Object.keys(parseNumberLineAnswer(answer?.answerPayload, this.numberLinePlanFor(item))).length > 0;
     if (this.isBarChart(item)) return Object.keys(parseBarChartAnswer(answer?.answerPayload, this.barChartPlanFor(item))).length > 0;
+    if (this.isGridDraw(item)) return parseGridDrawAnswer(answer?.answerPayload, this.gridDrawPlanFor(item)).length > 0;
     if (this.isRegionPaint(item)) {
       const regionsPlan = this.regionPaintRegionsPlanFor(item);
       if (regionsPlan) return Object.keys(parseRegionPaintFills(answer?.answerPayload, regionsPlan)).length > 0;
@@ -1642,6 +1679,10 @@ export class ActivityPlayerComponent {
     // Issue #588 (dilim b): grafikte hiç sütun çizilmedi (0 değerli kategori çizilmeden de doğru olabilir).
     if (this.isBarChart(item)) {
       return Object.keys(parseBarChartAnswer(answer?.answerPayload, this.barChartPlanFor(item))).length === 0;
+    }
+    // Issue #588 (dilim c): zeminde hiç çizim yok.
+    if (this.isGridDraw(item)) {
+      return parseGridDrawAnswer(answer?.answerPayload, this.gridDrawPlanFor(item)).length === 0;
     }
     // Issue #587: boyamada hiç boyanmış kare yok (hedef sayılar öğrenciye gitmez).
     if (this.isRegionPaint(item)) {
@@ -1926,6 +1967,45 @@ export class ActivityPlayerComponent {
         correct: rowMarks.has(c.id) ? rowMarks.get(c.id)! : null,
         solution: targets && Object.hasOwn(targets, c.id) ? this.tr('rows.chartValue', { label: c.label, value: targets[c.id] }) : null,
       }));
+  }
+
+  /**
+   * Issue #588 (dilim c): kareli zeminde çizim. Çözüm açıkken kurala uyan boyut başına satır (çizildiyse doğru); değilse öğrencinin
+   * çizimleri ("2. çizim: 3 × 4"), kontrol sonucuna göre işaretli (aynı boyutun tekrarı işaretsiz).
+   */
+  private gridDrawRows(item: TestInstanceQuestion, result: ItemResult | undefined, solution: ActivitySolution | null): ActivityResultRow[] {
+    const plan = this.gridDrawPlanFor(item);
+    if (!plan || (!result && !solution)) return [];
+    const shapes = parseGridDrawAnswer(this.answers()[item.id]?.answerPayload, plan);
+    const sizeText = (w: number, h: number) => `${w} × ${h}`;
+    const rule = solution ? parseGridDrawSolution(solution.interactionSolution) : null;
+    if (rule) {
+      const targets = gridDrawTargets(plan, rule);
+      const drawn = new Set(shapes.map((s) => sizeKey(sizeOf(s))));
+      if (!rule.all) {
+        const hit = targets.some((t) => drawn.has(sizeKey(t)));
+        return [{
+          label: this.tr('rows.drawAny'),
+          correct: result ? hit : null,
+          solution: targets.map((t) => sizeText(t.short, t.long)).join(', '),
+        }];
+      }
+      return targets.map((t) => ({
+        label: sizeText(t.short, t.long),
+        correct: result ? drawn.has(sizeKey(t)) : null,
+        solution: sizeText(t.short, t.long),
+      }));
+    }
+    if (shapes.length === 0) return [{ label: this.tr('rows.drawNone'), correct: false, solution: null }];
+    const marks = parseGridDrawFeedback(result?.feedback)?.shapes;
+    return shapes.map((s, i) => {
+      const mark = marks && marks.length === shapes.length ? marks[i] : null;
+      return {
+        label: this.tr('rows.drawShape', { n: i + 1, size: sizeText(s.width, s.height) }),
+        correct: mark === 'ok' ? true : mark === 'wrong' ? false : null,
+        solution: null,
+      };
+    });
   }
 
   /** Issue #587: boyamada renk başına satır ("Mavi: 35 kare"); çözüm açıkken hedef sayı. */

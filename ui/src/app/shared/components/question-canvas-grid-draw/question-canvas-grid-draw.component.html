@@ -1,0 +1,110 @@
+<div class="gd-root" [class.is-solution]="solutionShown()" *transloco="let t; prefix: 'shared.questionCanvas.gridDraw'">
+  @if (!hidePassage && passageImageUrl(); as pUrl) {
+    <div class="gd-passage">
+      @if (passageTitle(); as title) {
+        <div class="gd-passage__title">{{ title }}</div>
+      }
+      <img class="gd-passage__image" [src]="pUrl" [alt]="t('passageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (imageUrl(); as url) {
+    <div class="gd-image-wrap">
+      <img class="gd-image" [src]="url" [alt]="t('imageAlt')" [appStorageImageRetry]="imageRefresh" />
+    </div>
+  }
+
+  @if (plan(); as p) {
+    <div class="gd-scroll">
+      <svg class="gd-board" data-testid="gd-board" [class.is-dot]="p.grid === 'dot'" [class.is-readonly]="readOnly()"
+        [attr.viewBox]="'-0.1 -0.1 ' + (p.cols + 0.2) + ' ' + (p.rows + 0.2)" [style.max-width.px]="p.cols * 36"
+        [style.min-width.px]="p.cols * 20" role="application" [attr.tabindex]="readOnly() ? -1 : 0"
+        [attr.aria-label]="t('boardAria', { rows: p.rows, cols: p.cols })"
+        (pointerdown)="onPointerDown($event)" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event)"
+        (pointercancel)="onPointerCancel()" (keydown)="onKeydown($event)" (focus)="focused.set(true)" (blur)="focused.set(false)">
+        <rect class="gd-bg" x="0" y="0" [attr.width]="p.cols" [attr.height]="p.rows" />
+        @if (p.grid === 'dot') {
+          @for (r of gridLines().rows; track r) {
+            @for (c of gridLines().cols; track c) {
+              <circle class="gd-dot" [attr.cx]="c" [attr.cy]="r" r="0.07" />
+            }
+          }
+        } @else {
+          @for (r of gridLines().rows; track r) {
+            <line class="gd-line" x1="0" [attr.x2]="p.cols" [attr.y1]="r" [attr.y2]="r" />
+          }
+          @for (c of gridLines().cols; track c) {
+            <line class="gd-line" y1="0" [attr.y2]="p.rows" [attr.x1]="c" [attr.x2]="c" />
+          }
+        }
+
+        @for (s of drawn(); track $index; let i = $index) {
+          <g class="gd-shape" [attr.data-shape]="i" [class.is-ok]="s.state === 'ok'" [class.is-bad]="s.state === 'wrong'"
+            [class.is-dup]="s.state === 'duplicate'">
+            <rect [attr.x]="s.col" [attr.y]="s.row" [attr.width]="s.width" [attr.height]="s.height" />
+            @if (s.width >= 2 || s.height >= 2) {
+              <text class="gd-size" [attr.x]="s.col + s.width / 2" [attr.y]="s.row + s.height / 2">{{ s.width }} × {{ s.height }}</text>
+            }
+          </g>
+        }
+
+        @if (preview(); as pr) {
+          <g class="gd-preview" [class.is-blocked]="previewBlocked()" data-testid="gd-preview">
+            <rect [attr.x]="pr.col" [attr.y]="pr.row" [attr.width]="pr.width" [attr.height]="pr.height" />
+            <text class="gd-size" [attr.x]="pr.col + pr.width / 2" [attr.y]="pr.row + pr.height / 2">{{ pr.width }} × {{ pr.height }}</text>
+          </g>
+        }
+
+        @if (focused() && !readOnly()) {
+          <rect class="gd-cursor" [attr.x]="cursor().col" [attr.y]="cursor().row" width="1" height="1" />
+        }
+      </svg>
+    </div>
+    @if (!readOnly()) {
+      <span class="gd-sr" aria-live="polite">{{ t('cursorAria', cursorLabel()) }}</span>
+    }
+
+    @if (notice(); as n) {
+      <p class="gd-notice" role="status" data-testid="gd-notice">{{ t('notice.' + n) }}</p>
+    }
+
+    @if (!solutionShown()) {
+      <div class="gd-actions">
+        @if (anchor()) {
+          <button mat-stroked-button type="button" data-testid="gd-cancel" (click)="cancel()">
+            <mat-icon>close</mat-icon>{{ t('cancel') }}
+          </button>
+        }
+        <button mat-stroked-button type="button" data-testid="gd-reset" [disabled]="!canReset()" (click)="reset()">
+          <mat-icon>restart_alt</mat-icon>{{ t('reset') }}
+        </button>
+        <span class="gd-count">{{ t('count', { n: shapes().length }) }}</span>
+      </div>
+      <p class="gd-hint">{{ t('hint') }}</p>
+    }
+  } @else {
+    <p class="gd-hint" data-testid="gd-invalid">{{ t('invalid') }}</p>
+  }
+
+  @if (feedbackState(); as fb) {
+    <p class="gd-result" role="status" data-testid="gd-result" [class.is-ok]="fb.missing === 0 && fb.extra === 0"
+      [class.is-bad]="fb.missing > 0 || fb.extra > 0">
+      <mat-icon aria-hidden="true">{{ fb.missing === 0 && fb.extra === 0 ? 'check_circle' : 'error' }}</mat-icon>
+      @if (fb.missing === 0 && fb.extra === 0) {
+        {{ t('resultOk') }}
+      } @else {
+        {{ t('resultPartial', { found: fb.found, missing: fb.missing, extra: fb.extra }) }}
+      }
+    </p>
+  }
+
+  @if (solutionShown()) {
+    <p class="gd-hint" data-testid="gd-solution-hint">
+      @if (targets().length) {
+        {{ t(rule()?.all ? 'solutionAll' : 'solutionAny', { list: sizeList() }) }}
+      } @else {
+        {{ t('solutionShown') }}
+      }
+    </p>
+  }
+</div>

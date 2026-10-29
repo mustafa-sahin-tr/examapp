@@ -896,6 +896,58 @@
           </div>
         }
 
+        @if (gridDraw(); as gd) {
+          <div class="ae__block" data-testid="grid-draw-form">
+            <p class="ae__hint">{{ t('gridDraw.hint') }}</p>
+            <div class="ae__row ae__row--wrap">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-label>{{ t('gridDraw.rows') }}</mat-label>
+                <input matInput type="number" data-testid="gd-rows" [min]="drawLimits.minSize" [max]="drawLimits.maxSize" [value]="gd.rows"
+                  (input)="setGridDraw({ rows: $any($event.target).valueAsNumber })" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-label>{{ t('gridDraw.cols') }}</mat-label>
+                <input matInput type="number" data-testid="gd-cols" [min]="drawLimits.minSize" [max]="drawLimits.maxSize" [value]="gd.cols"
+                  (input)="setGridDraw({ cols: $any($event.target).valueAsNumber })" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-label>{{ t('gridDraw.grid') }}</mat-label>
+                <mat-select [value]="gd.grid" (selectionChange)="setGridDraw({ grid: $event.value })">
+                  <mat-option value="square">{{ t('gridDraw.gridSquare') }}</mat-option>
+                  <mat-option value="dot">{{ t('gridDraw.gridDot') }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-label>{{ t('gridDraw.shape') }}</mat-label>
+                <mat-select [value]="gd.shape" (selectionChange)="setGridDraw({ shape: $event.value })">
+                  <mat-option value="rectangle">{{ t('gridDraw.shapeRectangle') }}</mat-option>
+                  <mat-option value="square">{{ t('gridDraw.shapeSquare') }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+            <div class="ae__row ae__row--wrap">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__narrow">
+                <mat-label>{{ t('gridDraw.area') }}</mat-label>
+                <input matInput inputmode="numeric" data-testid="gd-area" [value]="gd.area" [attr.maxlength]="4"
+                  (input)="setGridDraw({ area: $any($event.target).value })" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__narrow">
+                <mat-label>{{ t('gridDraw.perimeter') }}</mat-label>
+                <input matInput inputmode="numeric" data-testid="gd-perimeter" [value]="gd.perimeter" [attr.maxlength]="4"
+                  (input)="setGridDraw({ perimeter: $any($event.target).value })" />
+              </mat-form-field>
+              <mat-checkbox [checked]="gd.all" (change)="setGridDraw({ all: $event.checked })">{{ t('gridDraw.all') }}</mat-checkbox>
+            </div>
+            <p class="ae__hint" data-testid="gd-targets">
+              @if (gridDrawTargets().length) {
+                {{ t('gridDraw.targets', { list: gridDrawTargets().join(', ') }) }}
+              } @else {
+                {{ t('gridDraw.noTargets') }}
+              }
+            </p>
+          </div>
+        }
+
         @if (wordSearch(); as ws) {
           <div class="ae__block" data-testid="word-search-form">
             <p class="ae__hint">{{ t('wordSearch.hint') }}</p>
@@ -1016,6 +1068,11 @@
             }
             @case ('barChart') {
               <app-question-canvas-bar-chart [questionRegion]="previewRegion()"
+                [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
+                [showSolution]="showSolution()" [activityMode]="true" />
+            }
+            @case ('gridDraw') {
+              <app-question-canvas-grid-draw [questionRegion]="previewRegion()"
                 [interactionPlanJson]="definition().plan" [interactionSolutionJson]="definition().solution"
                 [showSolution]="showSolution()" [activityMode]="true" />
             }

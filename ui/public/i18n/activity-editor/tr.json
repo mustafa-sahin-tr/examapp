@@ -30,7 +30,8 @@
     "logicGrid": "Mantık tablosu",
     "regionPaint": "Boyama (ızgara)",
     "numberLine": "Sayı doğrusu",
-    "barChart": "Grafik kurma"
+    "barChart": "Grafik kurma",
+    "gridDraw": "Kareli zeminde çizim"
   },
   "kindHints": {
     "matrix": "Her satır için doğru seçeneği işaretle. D/Y şablonu iki kolon kurar; çoklu seçimde satırda birden çok doğru olabilir.",
@@ -47,7 +48,8 @@
     "mazeStones": "Öğrenci basılmaması gereken (yanlış) taşları işaretler. Basılmaması gereken taşları damla simgesiyle işaretle.",
     "regionPaint": "Öğrenci eş karelere ayrılmış ızgarada her rengi istenen oranda boyar; karelerin yeri serbesttir, renk başına sayı kontrol edilir.",
     "numberLine": "Öğrenci kartları (kesir, ondalık, olay…) sayı doğrusunda doğru çentiğe koyar; çeldirici kart doğruya konmamalı.",
-    "barChart": "Öğrenci verilere göre sütun (ya da çizgi) grafiğini çizer; her kategorinin değeri kontrol edilir. Verileri yönergeye ya da görsele yazın."
+    "barChart": "Öğrenci verilere göre sütun (ya da çizgi) grafiğini çizer; her kategorinin değeri kontrol edilir. Verileri yönergeye ya da görsele yazın.",
+    "gridDraw": "Öğrenci kareli (ya da noktalı) zemine kurala uyan dikdörtgenleri çizer; yer ve yön serbest, kurala uyan her boyut doğru sayılır."
   },
   "instruction": "Yönerge (isteğe bağlı)",
   "image": {
@@ -216,7 +218,12 @@
     "chartCategoryCount": "{{min}}–{{max}} kategori olmalı.",
     "chartCategoryBlank": "Boş kategori adı bırakma.",
     "chartValueInvalid": "Şu kategorilerin değeri 0–{{max}} arasında {{unit}}'in katı değil: {{list}}.",
-    "chartAllFixed": "En az bir kategori öğrenciye bırakılmalı (hazır olmamalı)."
+    "chartAllFixed": "En az bir kategori öğrenciye bırakılmalı (hazır olmamalı).",
+    "drawSize": "Zemin {{min}}–{{max}} satır ve kolon olmalı.",
+    "drawRuleMissing": "Alan ya da çevre koşulundan en az birini yaz.",
+    "drawRuleInvalid": "Alan ve çevre zemine uygun pozitif tam sayı olmalı.",
+    "drawNoTarget": "Bu koşullara uyan ve zemine sığan dikdörtgen yok.",
+    "drawTooManyTargets": "\"Hepsi\" seçiliyken kurala uyan en çok {{max}} boyut olabilir; zemini küçült ya da koşulu değiştir."
   },
   "snackbar": {
     "created": "Madde etkinliğe eklendi.",
@@ -397,5 +404,21 @@
     "value": "Değer",
     "fixed": "Hazır",
     "addCategory": "Kategori ekle"
+  },
+  "gridDraw": {
+    "hint": "Öğrenci zemine dikdörtgen çizer; kontrol kurala bakar (alan ve/veya çevre, birim kare cinsinden). \"Hepsi\" seçiliyse kurala uyan bütün boyutlar çizilmeli, değilse biri yeter. Kuralı yönergeye de yazın (ör. \"Çevre uzunluğu 14 cm olan dikdörtgenlerin tamamını çiziniz\").",
+    "rows": "Satır",
+    "cols": "Kolon",
+    "grid": "Zemin",
+    "gridSquare": "Kareli",
+    "gridDot": "Noktalı",
+    "shape": "Şekil",
+    "shapeRectangle": "Dikdörtgen",
+    "shapeSquare": "Kare",
+    "area": "Alan (birim kare)",
+    "perimeter": "Çevre (birim)",
+    "all": "Hepsini çizsin",
+    "targets": "Kurala uyan boyutlar: {{list}}",
+    "noTargets": "Kurala uyan boyut yok."
   }
 }

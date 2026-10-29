@@ -30,6 +30,7 @@ const KNOWN_TYPES = new Set([
   'regionPaint',
   'numberLine',
   'barChart',
+  'gridDraw',
 ]);
 
 /**

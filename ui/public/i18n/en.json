@@ -584,6 +584,26 @@
         "resultOk": "The graph is right!",
         "resultPartial": "{{ok}} of {{total}} bars are right; check the red ones again.",
         "solutionShown": "The correct graph is shown."
+      },
+      "gridDraw": {
+        "passageAlt": "Reading passage image",
+        "imageAlt": "Activity image",
+        "invalid": "This activity could not be opened.",
+        "boardAria": "Drawing grid with {{rows}} rows and {{cols}} columns",
+        "cursorAria": "Row {{row}}, column {{col}}",
+        "cancel": "Cancel",
+        "reset": "Clear",
+        "count": "{{n}} drawings",
+        "hint": "Draw a rectangle by dragging from one corner to the opposite corner, or tap its two corners in turn; tap a drawn rectangle to remove it. You can also use the arrow keys and Enter.",
+        "notice": {
+          "overlap": "Rectangles cannot overlap; draw in an empty area.",
+          "tooMany": "You can draw at most 30 rectangles."
+        },
+        "resultOk": "All rectangles are correct!",
+        "resultPartial": "Found {{found}} · Remaining {{missing}} · Extra {{extra}} — red ones break the rule, orange ones repeat a size.",
+        "solutionAll": "All matching sizes: {{list}}.",
+        "solutionAny": "Matching sizes (one was enough): {{list}}.",
+        "solutionShown": "The matching rectangles are shown."
       }
     },
     "sharingBadge": {

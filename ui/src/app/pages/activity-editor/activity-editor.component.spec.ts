@@ -245,6 +245,24 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(JSON.parse(q.interactionSolution)).toEqual({ values: { c2: 4 } });
   });
 
+  it('kareli zeminde çizim: kuralı çözüme kaydeder, uyan boyutları ve önizlemeyi gösterir (#588)', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('gridDraw');
+    fixture.detectChanges();
+    expect(el('[data-testid="grid-draw-form"]')).not.toBeNull();
+
+    component.setGridDraw({ perimeter: '14' });
+    fixture.detectChanges();
+    expect(el('[data-testid="gd-targets"]')?.textContent).toContain('1 × 6, 2 × 5, 3 × 4');
+    expect(el('[data-testid="preview"] app-question-canvas-grid-draw')).not.toBeNull();
+
+    component.save(false);
+    const q = questions.saveBulk.mock.calls[0][0].questions[0];
+    expect(q.interactionType).toBe('gridDraw');
+    expect(JSON.parse(q.interactionPlan)).toEqual({ version: 1, type: 'gridDraw', rows: 10, cols: 16 });
+    expect(JSON.parse(q.interactionSolution)).toEqual({ perimeter: 14, all: true });
+  });
+
   it('kelime avı: ızgarayı kelimelerden üretir, önizlemede çizer ve çözümü ayrı kaydeder (#586)', async () => {
     await setup({ testId: '9' });
     component.selectKind('wordSearch');

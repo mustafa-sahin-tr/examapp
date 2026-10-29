@@ -8,6 +8,7 @@ import { isBlankLogicGridPayload } from '../../models/logic-grid';
 import { isBlankRegionPaintPayload } from '../../models/region-paint';
 import { isBlankNumberLinePayload } from '../../models/number-line';
 import { isBlankBarChartPayload } from '../../models/bar-chart';
+import { isBlankGridDrawPayload } from '../../models/grid-draw';
 import { isBlankMazePayload } from '../../models/maze-tree';
 import { isBlankTextSelectPayload } from '../../models/text-select';
 import { isBlankOpenTextPayload } from '../../models/open-text';
@@ -1833,7 +1834,8 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
         !isBlankLogicGridPayload(payload) &&
         !isBlankRegionPaintPayload(payload) &&
         !isBlankNumberLinePayload(payload) &&
-        !isBlankBarChartPayload(payload))
+        !isBlankBarChartPayload(payload) &&
+        !isBlankGridDrawPayload(payload))
     );
   }
 

@@ -1388,6 +1388,55 @@ describe('ActivityPlayerComponent (#573)', () => {
     });
   });
 
+  describe('gridDraw (#588 dilim c)', () => {
+    const GD_PLAN = JSON.stringify({ version: 1, type: 'gridDraw', rows: 10, cols: 16 });
+    const gdAnswer = (shapes: object[]) => JSON.stringify({ version: 1, type: 'gridDraw', shapes });
+    const base = () => instance().testInstanceQuestions[0].question;
+    const typed = (answer: string) =>
+      instance({}, [{ answerPayload: answer, question: { ...base(), interactionType: 'GridDraw', interactionPlan: GD_PLAN } }]);
+
+    it('rendersPlayer_BlankIsIncomplete_ShapeRowsAndFeedback', async () => {
+      await create(typed(gdAnswer([])));
+      fixture.componentInstance.goTo(0);
+      await settle();
+
+      expect(el().querySelector('app-question-canvas-grid-draw')).not.toBeNull();
+      expect(fixture.componentInstance.blankItems()).toContain('a');
+
+      const drawn = gdAnswer([
+        { row: 0, col: 0, width: 4, height: 3 },
+        { row: 5, col: 0, width: 3, height: 3 },
+      ]);
+      fixture.componentInstance.onDragDropChange(drawn, fixture.componentInstance.items()[0]);
+      await settle();
+      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 1,
+          totalCount: 5,
+          questions: [
+            {
+              instanceQuestionId: 101,
+              isCorrect: false,
+              correctCount: 1,
+              totalCount: 4,
+              feedback: '{"shapes":["ok","wrong"],"found":1,"missing":2,"extra":1}',
+            },
+            { instanceQuestionId: 102, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+      const rows = fixture.componentInstance.currentRows();
+      expect(rows.map((r) => r.correct)).toEqual([true, false]);
+      expect(rows[0].label).toContain('4 × 3');
+      expect(fixture.componentInstance.currentGridDrawFeedback()?.missing).toBe(2);
+    });
+  });
+
   describe('barChart (#588 dilim b)', () => {
     const BC_PLAN = JSON.stringify({
       version: 1,

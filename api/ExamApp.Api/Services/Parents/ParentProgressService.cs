@@ -30,8 +30,8 @@ public interface IParentProgressService
 /// <item>Toplam puan: <c>StudentPoints.XP</c> (profil ve V2 özetiyle aynı). Seviye: <see cref="StudentLevel.FromXp"/> (#243).</item>
 /// <item>Bu hafta: <c>StudentDailyXps</c> — <c>StudentPointsChangedEvent</c> senkronunun yerel (Europe/Istanbul) gün defteri;
 /// hafta yerel Pazartesi–bugün.</item>
-/// <item>Rozetler: <c>StudentBadgeProjections</c> — <c>StudentBadgeEarnedEvent</c> projeksiyonu. Geriye dönük doldurma yok:
-/// projeksiyondan önce kazanılmış rozetler yeniden kazanılana kadar görünmez.</item>
+/// <item>Rozetler: <c>StudentBadgeProjections</c> — <c>StudentBadgeEarnedEvent</c> projeksiyonu. Projeksiyondan önce kazanılmış
+/// rozetler BadgeService <c>backfill-student-badges</c> komutuyla taşınır (#501; idempotent).</item>
 /// <item>Sıra: <see cref="ILeaderboardService.GetRankForXpAsync"/> (#193 kuralı) — yalnızca çocuğun sırası ve kapsam büyüklüğü.</item>
 /// </list>
 /// </remarks>

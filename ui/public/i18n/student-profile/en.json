@@ -17,7 +17,6 @@
     "correctAnswers": "{{count}} Correct Answers",
     "wrongAnswers": "{{count}} Wrong Answers",
     "testsCompleted": "{{count}} Tests Completed",
-    "rewards": "{{count}} Rewards Earned",
     "leaderboardRank": "Leaderboard Rank: {{rank}}",
     "gradeUpdated": "Grade updated!",
     "avatarUpdated": "Avatar updated!"

@@ -20,7 +20,11 @@ using ExamApp.Foundation.Localization;
 // Komut modu (issue #225/#243): `dotnet run -- backfill-student-points [--dry-run] [--allow-production] [--confirm]`
 // — host kurulur, şema migrate edilir, komut çalışır ve süreç çıkar (Kestrel/MassTransit başlatılmaz).
 // RabbitMQ:* konfigürasyonu bu modda gerekmez (#371): bus hiç başlatılmaz, yalnız BadgeDbContext çözülür.
-var isBackfillCommand = StudentPointsBackfillCommand.IsRequested(args);
+// issue #501: `backfill-student-badges` aynı argüman ve ortam kurallarıyla (veli paneli rozet projeksiyonu).
+var backfillCommandName = StudentPointsBackfillCommand.IsRequested(args) ? StudentPointsBackfillCommand.CommandName
+    : StudentBadgeBackfillCommand.IsRequested(args) ? StudentBadgeBackfillCommand.CommandName
+    : null;
+var isBackfillCommand = backfillCommandName != null;
 var backfillArgs = default(StudentPointsBackfillCommand.ParsedArgs);
 if (isBackfillCommand)
 {
@@ -41,7 +45,7 @@ var builder = WebApplication.CreateBuilder(isBackfillCommand ? [] : args);
 if (isBackfillCommand && !StudentPointsBackfillCommand.IsAllowedEnvironment(builder.Environment, backfillArgs.AllowProduction))
 {
     Console.Error.WriteLine(
-        $"{StudentPointsBackfillCommand.CommandName} yalnızca Development/Staging ortamında (veya Production'da --allow-production ile) çalışır; mevcut ortam: {builder.Environment.EnvironmentName}.");
+        $"{backfillCommandName} yalnızca Development/Staging ortamında (veya Production'da --allow-production ile) çalışır; mevcut ortam: {builder.Environment.EnvironmentName}.");
     return StudentPointsBackfillCommand.ExitEnvironmentRefused;
 }
 
@@ -52,7 +56,7 @@ var backfillDryRun = isBackfillCommand
 if (isBackfillCommand && builder.Environment.IsProduction() && backfillDryRun && !backfillArgs.DryRun)
 {
     Console.WriteLine(
-        $"UYARI: Production'da --confirm verilmedi; {StudentPointsBackfillCommand.CommandName} dry-run olarak çalıştırılıyor. " +
+        $"UYARI: Production'da --confirm verilmedi; {backfillCommandName} dry-run olarak çalıştırılıyor. " +
         "Özeti gördükten sonra gerçek yazım için --allow-production --confirm ile tekrar çalıştırın.");
 }
 
@@ -325,16 +329,19 @@ using (var scope = app.Services.CreateScope())
 if (isBackfillCommand)
 {
     using var scope = app.Services.CreateScope();
-    var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("StudentPointsBackfill");
+    var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(backfillCommandName!);
+    var db = scope.ServiceProvider.GetRequiredService<BadgeDbContext>();
     try
     {
-        await StudentPointsBackfillCommand.RunAsync(
-            scope.ServiceProvider.GetRequiredService<BadgeDbContext>(), logger, backfillDryRun);
+        if (backfillCommandName == StudentBadgeBackfillCommand.CommandName)
+            await StudentBadgeBackfillCommand.RunAsync(db, logger, backfillDryRun);
+        else
+            await StudentPointsBackfillCommand.RunAsync(db, logger, backfillDryRun);
         return StudentPointsBackfillCommand.ExitOk;
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "{Command} başarısız.", StudentPointsBackfillCommand.CommandName);
+        logger.LogError(ex, "{Command} başarısız.", backfillCommandName);
         return StudentPointsBackfillCommand.ExitFailed;
     }
 }

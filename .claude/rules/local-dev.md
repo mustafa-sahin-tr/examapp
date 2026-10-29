@@ -883,6 +883,15 @@ oturur; her el klavyede kaydırıcı (← / → bir adım, PageUp / PageDown yel
 `15:45`) + "Kurulu". Dijital gösterim ve saati okuma `slotFill` ile kalır. Testte de çözülebilir (puanlanır). Migration yok; Aspire'da exam
 API'yi yeniden başlat (yeni kontrolcü).
 
+**Issue #501 — profil sayıları ve veli rozet backfill'i.** Öğrenci profilindeki (`GET api/student/profile`) çözülen / doğru / yanlış
+ve tamamlanan test sayıları artık istatistik ekranıyla aynı kuraldan (`GetGroupedStudentStatistics`: tamamlanmış, etkinlik olmayan
+oturumlar, açık uçlu hariç), sıra genel liderlik tablosundan (#193) gelir; diğer uçların döndüğü `StudentProfileDto`'da bu alanlar 0.
+Kimsenin yazmadığı `StudentPointHistories` / `StudentBadges` / `Leaderboards` / `StudentRewards` okunmuyor (tabloların kaldırılması ayrı
+karar); profildeki "Kazanılan ödül" satırı ve DTO'daki `Badges` / `TotalRewards` kalktı. #422'den önce kazanılmış rozetleri veli paneline
+taşımak için BadgeService dizininde bir kez: `dotnet run -- backfill-student-badges [--dry-run]` (her `BadgeEarned` için outbox'a
+`StudentBadgeEarnedEvent`; exam API consumer'ı (öğrenci, rozet) UNIQUE ile idempotent — ikinci çalıştırma çift kayıt üretmez; Production'da
+`backfill-student-points` gibi `--allow-production --confirm`). Migration yok.
+
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını
 (`TestInstances` — Questions'a FK'sı yok, CASCADE ulaşmaz, açıkça silinir; aksi halde "boş test yapılmış" gibi kalır),

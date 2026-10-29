@@ -10,7 +10,6 @@ export interface StudentProfile {
   correctAnswers: number;
   wrongAnswers: number;
   testsCompleted: number;
-  totalRewards: number;
   leaderboardRank: number;
   recentTests: { name: string; score: number; totalQuestions: number }[];
   themePreference?: string; // User'ın tercih ettiği tema

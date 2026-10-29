@@ -68,19 +68,9 @@ public class StudentService : IStudentService
                 PendingSchoolName = s.SchoolVerifiedAt == null && s.SchoolId != null ? s.School!.Name : null,
                 ParentManaged = s.ParentManaged, // issue #438
                 XP = s.StudentPoints.Sum(sp => sp.XP),
-                TotalQuestionsSolved = _context.StudentPointHistories.Count(p => p.StudentId == s.Id),
-                CorrectAnswers = _context.StudentPointHistories.Count(p => p.StudentId == s.Id && p.Reason == "Doğru Cevap"),
-                WrongAnswers = _context.StudentPointHistories.Count(p => p.StudentId == s.Id && p.Reason == "Yanlış Cevap"),
-                TestsCompleted = _context.TestInstances.Count(t => t.StudentId == s.Id),
-                TotalRewards = _context.StudentRewards.Count(r => r.StudentId == s.Id),
-                Badges = _context.StudentBadges
-                    .Where(sb => sb.StudentId == s.Id)
-                    .ToList(),
-                LeaderboardRank = _context.Leaderboards
-                    .Where(lb => lb.StudentId == s.Id)
-                    .OrderByDescending(lb => lb.RecordedAt)
-                    .Select(lb => lb.Rank)
-                    .FirstOrDefault(),
+                // issue #501: çözülen/doğru/yanlış, tamamlanan test ve sıra burada hesaplanmaz — eskiden kimsenin yazmadığı tablolardan
+                // (StudentPointHistories, StudentBadges, Leaderboards) okunuyordu. Profil ucu (StudentController GET profile)
+                // istatistik kuralıyla (#396/#571) doldurur; bu metodu yalnız öğrenci kimliği için çağıran uçlar ödemez.
                 RecentTests = _context.TestInstances
                     // issue #571: etkinlik puansız — son test skorlarına girmez.
                     .Where(ti => ti.StudentId == s.Id && ti.Worksheet.Kind != WorksheetKind.Activity)

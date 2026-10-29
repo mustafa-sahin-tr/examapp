@@ -48,7 +48,7 @@ namespace ExamApp.Api.Services
                 .ToListAsync();
         }
 
-        public async Task<UserProgramDto> CreateUserProgramAsync(string userId, CreateProgramRequestDto request)
+        public async Task<UserProgramDto> CreateUserProgramAsync(string userId, CreateProgramRequestDto request, int? studentUserId = null)
         {
             // Parse user selections to extract program configuration
             var programConfig = ParseUserSelections(request.UserSelections);
@@ -94,7 +94,7 @@ namespace ExamApp.Api.Services
             await _context.SaveChangesAsync();
 
             // Generate schedule based on program configuration
-            await GenerateProgramScheduleAsync(userProgram);
+            await GenerateProgramScheduleAsync(userProgram, studentUserId);
 
             // Return DTO
             return await GetUserProgramDtoAsync(userProgram.Id);
@@ -376,12 +376,22 @@ namespace ExamApp.Api.Services
             return (studyType, studyDuration, questionsPerDay, subjectsPerDay, restDays, difficultSubjects);
         }
 
-        private async Task GenerateProgramScheduleAsync(UserProgram userProgram)
+        // Zorlandığı ders, takvimde diğer derslerin iki katı sıklıkta yer alır (issue #514).
+        internal const int DifficultSubjectWeight = 2;
+
+        private async Task GenerateProgramScheduleAsync(UserProgram userProgram, int? studentUserId)
         {
             if (userProgram.StartDate == null || userProgram.EndDate == null)
                 return;
 
-            var subjects = await _context.Subjects.Take(4).ToListAsync(); // Get available subjects
+            var subjects = await LoadProgramSubjectsAsync(studentUserId);
+            var difficultNames = await LoadDifficultSubjectNamesAsync(userProgram.DifficultSubjects);
+            var weights = subjects
+                .Select(s => difficultNames.Contains(s.Name.Trim()) ? DifficultSubjectWeight : 1)
+                .ToArray();
+            var plannedCounts = new int[subjects.Count];
+            var subjectsPerDay = Math.Min(Math.Max(userProgram.SubjectsPerDay, 1), subjects.Count);
+
             var restDaysList = !string.IsNullOrEmpty(userProgram.RestDays)
                 ? userProgram.RestDays.Split(',').Select(int.Parse).ToList()
                 : new List<int>();
@@ -399,10 +409,10 @@ namespace ExamApp.Api.Services
                     continue;
                 }
 
-                // Create schedule for each subject per day
-                for (int i = 0; i < userProgram.SubjectsPerDay && i < subjects.Count; i++)
+                foreach (var index in PickDailySubjects(plannedCounts, weights, subjectsPerDay))
                 {
-                    var subject = subjects[i];
+                    plannedCounts[index]++;
+                    var subject = subjects[index];
                     var schedule = new UserProgramSchedule
                     {
                         UserProgramId = userProgram.Id,
@@ -423,7 +433,7 @@ namespace ExamApp.Api.Services
                     }
                     else if (userProgram.StudyType == "question" && userProgram.QuestionsPerDay.HasValue)
                     {
-                        schedule.QuestionCount = userProgram.QuestionsPerDay.Value / userProgram.SubjectsPerDay;
+                        schedule.QuestionCount = userProgram.QuestionsPerDay.Value / subjectsPerDay;
                     }
 
                     schedules.Add(schedule);
@@ -434,6 +444,68 @@ namespace ExamApp.Api.Services
 
             _context.UserProgramSchedules.AddRange(schedules);
             await _context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Öğrencinin sınıfının dersleri (GradeSubjects). Öğrenci ya da sınıfı bilinmiyorsa (veya sınıfa ders
+        /// bağlanmamışsa) bütün dersler — eski "ilk 4 ders" davranışı yerine hiçbir dersi sessizce düşürmez.
+        /// </summary>
+        private async Task<List<Subject>> LoadProgramSubjectsAsync(int? studentUserId)
+        {
+            int? gradeId = studentUserId is int uid
+                ? await _context.Students.Where(s => s.UserId == uid).Select(s => s.GradeId).FirstOrDefaultAsync()
+                : null;
+
+            if (gradeId is int gid)
+            {
+                var gradeSubjects = await _context.GradeSubjects
+                    .Where(gs => gs.GradeId == gid)
+                    .Select(gs => gs.Subject)
+                    .Distinct()
+                    .OrderBy(s => s.Name)
+                    .ToListAsync();
+                if (gradeSubjects.Count > 0)
+                    return gradeSubjects;
+            }
+
+            return await _context.Subjects.OrderBy(s => s.Name).ToListAsync();
+        }
+
+        /// <summary>
+        /// Sihirbazın 7. adımı ders id'si değil seçenek değeri ("3" = Matematik) taşır; seçenek etiketi ders adıyla eşlenir.
+        /// </summary>
+        private async Task<HashSet<string>> LoadDifficultSubjectNamesAsync(string difficultSubjects)
+        {
+            var values = (difficultSubjects ?? string.Empty)
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+            if (values.Count == 0)
+                return new HashSet<string>(SubjectNameComparer);
+
+            var labels = await _context.ProgramStepOptions
+                .Where(o => o.ProgramStepId == DifficultSubjectsStepId && values.Contains(o.Value))
+                .Select(o => o.Label)
+                .ToListAsync();
+            return new HashSet<string>(labels.Select(l => l.Trim()), SubjectNameComparer);
+        }
+
+        private const int DifficultSubjectsStepId = 7;
+        private static readonly StringComparer SubjectNameComparer =
+            StringComparer.Create(new System.Globalization.CultureInfo("tr-TR"), ignoreCase: true);
+
+        /// <summary>
+        /// Günün dersleri: ağırlığına göre en az planlanmış (planlanan / ağırlık en küçük) <paramref name="count"/>
+        /// farklı ders; eşitlikte sıra (ders adı) belirler. Ağırlığı 2 olan ders uzun vadede iki kat sık gelir.
+        /// </summary>
+        internal static IEnumerable<int> PickDailySubjects(int[] plannedCounts, int[] weights, int count)
+        {
+            return Enumerable.Range(0, plannedCounts.Length)
+                .OrderBy(i => (double)plannedCounts[i] / weights[i])
+                .ThenByDescending(i => weights[i])
+                .ThenBy(i => i)
+                .Take(count)
+                .OrderBy(i => i)
+                .ToList();
         }
 
         // ...existing commented methods...

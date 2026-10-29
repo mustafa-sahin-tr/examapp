@@ -8,6 +8,7 @@ Kurallar `.claude/rules/` altında konuya göre ayrılmıştır:
 - [local-dev.md](.claude/rules/local-dev.md) — port referansı ve servislerin başlatılması
 - [project-structure.md](.claude/rules/project-structure.md) — her servisin içindeki dizin yapısı
 - [angular-conventions.md](.claude/rules/angular-conventions.md) — standalone komponent, signal, Material, SCSS token
+- [school-change.md](.claude/rules/school-change.md) — okul değişiminin etki matrisi (liderlik, atama, oturum, DM; #194)
 
 ## Agent ekibi
 

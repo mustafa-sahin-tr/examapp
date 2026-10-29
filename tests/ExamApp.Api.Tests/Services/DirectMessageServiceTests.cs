@@ -409,6 +409,31 @@ public class DirectMessageServiceTests : IDisposable
         (await ListAsync(SA)).Page!.Items.ShouldContain(i => i.TeacherId == _w.TeacherIds[TOtherSchool] && i.Relation == DirectMessageRelations.School);
     }
 
+    /// <summary>
+    /// issue #540 (#194 K8): öğretmen başka okula taşınınca yalnız okul üzerinden kurulan ilişki biter — konuşma silinmez,
+    /// geçmiş iki tarafça okunur, iki taraf da yazamaz (CanSend=false; UI giriş alanını kapatır).
+    /// </summary>
+    [Fact]
+    public async Task Teacher_changing_school_ends_a_school_only_relation_but_keeps_history_for_both_issue540()
+    {
+        await SeedAsync();
+        var conv = Created(await SendToTeacherAsync(SA, TSame));
+        Created(await SendAsync(Teacher(TSame), conv, "cevap"));
+        await using (var ctx = _db.NewContext())
+            await ctx.Teachers.Where(t => t.UserId == TSame).ExecuteUpdateAsync(s => s.SetProperty(x => x.SchoolId, (int?)_w.S2));
+
+        var studentView = (await MessagesAsync(Student(SA), conv)).Conversation!;
+        studentView.Items.Count.ShouldBe(2);
+        studentView.CanSend.ShouldBeFalse();
+        var teacherView = (await MessagesAsync(Teacher(TSame), conv)).Conversation!;
+        teacherView.Items.Count.ShouldBe(2);
+        teacherView.CanSend.ShouldBeFalse();
+
+        ShouldBeForbidden(await SendAsync(Student(SA), conv), DirectMessageErrorCodes.CannotMessageTeacher);
+        ShouldBeForbidden(await SendAsync(Teacher(TSame), conv), DirectMessageErrorCodes.RelationshipEnded);
+        (await ListAsync(SA)).Page!.Items.ShouldNotContain(i => i.TeacherId == _w.TeacherIds[TSame]);
+    }
+
     // ---- IDOR ---------------------------------------------------------------------------------------------
 
     [Fact]

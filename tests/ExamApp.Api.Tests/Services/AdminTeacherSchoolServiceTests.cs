@@ -607,6 +607,70 @@ public class AdminTeacherSchoolServiceTests : IDisposable
         overview.Assignments.ShouldHaveSingleItem().Students.ShouldBeEmpty();
     }
 
+    /// <summary>
+    /// issue #540 (#194 K4): öğretmen transferinden sonra eski okul sınıf ataması otomatik sonlanmaz — eski okulun öğrencisi
+    /// için EndAt'e kadar aktif, sonra değil; öğretmen atamayı kendi listesinde görür ama eski okulun öğrencisini ve SONUCUNU
+    /// görmez (etkinlik analizi de takip ekranının kapsamını kullanır: öğrenci 0, analiz edilen 0).
+    /// </summary>
+    [Fact]
+    public async Task Old_school_assignment_stays_active_until_EndAt_but_the_teacher_no_longer_sees_its_results_issue540()
+    {
+        var s = await SeedAsync();
+        var endAt = DateTime.UtcNow.AddDays(7);
+        int wsId;
+        await using (var setup = _db.NewContext())
+        {
+            setup.SetCurrentUser(TeacherUserId);
+            var st = new Student { UserId = 80, StudentNumber = "a", SchoolId = s.SchoolA, SchoolVerifiedAt = DateTime.UtcNow, GradeId = s.GradeId };
+            var ws = new Worksheet { Name = "E", Description = "", GradeId = s.GradeId, Kind = WorksheetKind.Activity };
+            var q = new Question { Text = "Seç", Point = 0 };
+            setup.AddRange(st, ws, q);
+            await setup.SaveChangesAsync();
+            var wq = new WorksheetQuestion { TestId = ws.Id, QuestionId = q.Id, Order = 1 };
+            setup.Add(wq);
+            setup.WorksheetAssignments.Add(new WorksheetAssignment
+            {
+                WorksheetId = ws.Id, GradeId = s.GradeId, SchoolId = s.SchoolA, StartAt = DateTime.UtcNow.AddDays(-1), EndAt = endAt
+            });
+            var done = new WorksheetInstance
+            {
+                StudentId = st.Id, WorksheetId = ws.Id, Status = WorksheetInstanceStatus.Completed,
+                StartTime = DateTime.UtcNow.AddHours(-2), EndTime = DateTime.UtcNow.AddHours(-1), FirstCompletedAt = DateTime.UtcNow.AddHours(-1)
+            };
+            setup.Add(done);
+            await setup.SaveChangesAsync();
+            setup.TestInstanceQuestions.Add(new WorksheetInstanceQuestion { WorksheetInstanceId = done.Id, WorksheetQuestionId = wq.Id });
+            await setup.SaveChangesAsync();
+            wsId = ws.Id;
+        }
+
+        async Task<ExamApp.Api.Models.Dtos.ActivityReportDto?> ReportAsync(AppDbContext ctx, int schoolId)
+            => await new ActivityReportService(ctx, new WorksheetAssignmentService(ctx, new SchoolAccessPolicy(ctx)),
+                ExamApp.Api.Services.Interactions.InteractionGraderRegistry.Default)
+                .GetReportAsync(wsId, SchoolScope.For(TeacherUserId, schoolId));
+
+        await using (var before = _db.NewContext())
+            (await ReportAsync(before, s.SchoolA)).ShouldNotBeNull().AnalyzedCount.ShouldBe(1);
+
+        (await RunAsync(s.TeacherId, s.SchoolB)).Status.ShouldBe(AdminTeacherSchoolChangeStatus.Success);
+
+        await using var ctx = _db.NewContext();
+        var studentId = await ctx.Students.Where(x => x.UserId == 80).Select(x => x.Id).SingleAsync();
+        (await ctx.ActiveAssignmentsFor(studentId, s.GradeId, s.SchoolA, DateTime.UtcNow).Select(a => a.WorksheetId).ToListAsync())
+            .ShouldBe(new[] { wsId });
+        (await ctx.ActiveAssignmentsFor(studentId, s.GradeId, s.SchoolA, endAt.AddMinutes(1)).AnyAsync()).ShouldBeFalse();
+
+        var scope = SchoolScope.For(TeacherUserId, s.SchoolB);
+        var overview = await new WorksheetAssignmentService(ctx, new SchoolAccessPolicy(ctx)).GetWorksheetAssignmentsForTeacherAsync(wsId, scope);
+        var assignment = overview.Assignments.ShouldHaveSingleItem();
+        assignment.Students.ShouldBeEmpty();
+
+        var report = (await ReportAsync(ctx, s.SchoolB)).ShouldNotBeNull();
+        report.StudentCount.ShouldBe(0);
+        report.AnalyzedCount.ShouldBe(0);
+        report.Students.ShouldBeEmpty();
+    }
+
     // ---- issue #539: transferde SchoolOnly sınavlar Private olur ----
 
     private async Task<int> WorksheetAsync(int ownerUserId, WorksheetTeacherSharing sharing, int gradeId, bool deleted = false)

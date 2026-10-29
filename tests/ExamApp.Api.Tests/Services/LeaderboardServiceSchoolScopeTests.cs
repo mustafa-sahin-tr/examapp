@@ -192,6 +192,36 @@ public class LeaderboardServiceSchoolScopeTests : IDisposable
         dto.TotalCount.ShouldBe(2);
     }
 
+    /// <summary>
+    /// issue #540 (#194 K1): okul sıralaması canlı hesaplanır, snapshot yok — admin A1'i (300 XP) B okuluna taşıyınca
+    /// (Students.SchoolId + SchoolVerifiedAt, AdminStudentSchoolService'in yazdığı iki kolon) A1 B sıralamasına tüm XP'siyle
+    /// girer, A sıralamasından geriye dönük düşer; global sıra değişmez.
+    /// </summary>
+    [Fact]
+    public async Task School_TransferredStudentMovesWithAllXpToNewSchoolRanking_issue540()
+    {
+        await SeedAsync();
+        await using (var write = _db.NewContext())
+            await write.Students.Where(s => s.UserId == 1).ExecuteUpdateAsync(x => x
+                .SetProperty(s => s.SchoolId, (int?)_schoolB)
+                .SetProperty(s => s.SchoolVerifiedAt, DateTime.UtcNow));
+
+        await using var ctx = _db.NewContext();
+        var service = NewService(ctx);
+
+        var b = await service.GetLeaderboardAsync(Req(LeaderboardScope.School, userId: 1, schoolId: _schoolB));
+        Names(b).ShouldBe(new[] { "User 4", "User 1", "User 5" });
+        b.Entries.Single(e => e.IsMe).Xp.ShouldBe(300);
+        b.MyRank.ShouldBe(2);
+
+        var a = await service.GetLeaderboardAsync(Req(LeaderboardScope.School, userId: 2, schoolId: _schoolA));
+        Names(a).ShouldBe(new[] { "User 2", "User 3" });
+        a.MyRank.ShouldBe(1);
+
+        var global = await service.GetLeaderboardAsync(Req(LeaderboardScope.Global, userId: 1, schoolId: _schoolB));
+        global.MyRank.ShouldBe(3);
+    }
+
     [Fact]
     public async Task School_SchoollessRequester_ReturnsNotApplicableWithLocalizedMessage()
     {

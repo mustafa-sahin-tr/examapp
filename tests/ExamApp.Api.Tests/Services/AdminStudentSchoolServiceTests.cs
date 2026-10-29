@@ -4,6 +4,7 @@ using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.AdminUsers;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Worksheets;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -280,6 +281,70 @@ public class AdminStudentSchoolServiceTests : IDisposable
             .Select(a => a.WorksheetId).ToListAsync();
         visible.ShouldBe(new[] { wsB, wsDirect }, ignoreOrder: true);
         visible.ShouldNotContain(wsA);
+    }
+
+    /// <summary>
+    /// issue #540 (#194 K3): eski okulun sınıf atamasıyla transferden ÖNCE başlatılmış oturum transferden sonra bitirilebilir —
+    /// SaveAnswer/EndTest yalnız oturum sahipliğine bakar, atama/okul yeniden denetlenmez; sonuç öğrencinin geçmişine yazılır.
+    /// Normal görünürlükte start-test (UI'ın devam yolu) aynı oturumu döner. Restricted sayfada start-test erişimi önce denetler
+    /// ve transferden sonra reddeder — devam etme boşluğu ayrı issue'da (bkz. school-change.md).
+    /// </summary>
+    [Theory]
+    [InlineData(WorksheetStudentVisibility.Normal)]
+    [InlineData(WorksheetStudentVisibility.Restricted)]
+    public async Task Session_started_before_the_transfer_can_be_finished_after_it_issue540(WorksheetStudentVisibility visibility)
+    {
+        var s = await SeedAsync();
+        int wsId, correctId;
+        await using (var ctx = _db.NewContext())
+        {
+            var question = new Question { Text = "1 + 1 = ?", Point = 10 };
+            var ws = new Worksheet { Name = "A", Description = "", GradeId = s.GradeId, StudentVisibility = visibility };
+            ctx.AddRange(question, ws);
+            await ctx.SaveChangesAsync();
+            var correct = new Answer { QuestionId = question.Id, Text = "2", Tag = "A" };
+            ctx.Answers.Add(correct);
+            ctx.TestQuestions.Add(new WorksheetQuestion { TestId = ws.Id, QuestionId = question.Id, Order = 1 });
+            ctx.WorksheetAssignments.Add(new WorksheetAssignment
+            {
+                WorksheetId = ws.Id, GradeId = s.GradeId, SchoolId = s.SchoolA, StartAt = DateTime.UtcNow.AddDays(-1)
+            });
+            await ctx.SaveChangesAsync();
+            question.CorrectAnswerId = correct.Id;
+            await ctx.SaveChangesAsync();
+            (wsId, correctId) = (ws.Id, correct.Id);
+        }
+
+        StudentProfileDto Profile(int? schoolId) => new() { Id = s.StudentId, GradeId = s.GradeId, SchoolId = schoolId };
+        int instanceId;
+        await using (var ctx = _db.NewContext())
+        {
+            var started = await new TestSessionService(ctx).StartTestAsync(wsId, Profile(s.SchoolA));
+            started.Success.ShouldBeTrue(started.Message);
+            instanceId = started.InstanceId;
+        }
+
+        (await RunAsync(s.StudentId, s.SchoolB)).Status.ShouldBe(AdminStudentSchoolChangeStatus.Success);
+
+        var user = new UserProfileDto { Id = 50, KeycloakId = TargetSub, SchoolId = s.SchoolB };
+        if (visibility == WorksheetStudentVisibility.Normal)
+        {
+            await using var resume = _db.NewContext();
+            (await new TestSessionService(resume).StartTestAsync(wsId, Profile(s.SchoolB))).InstanceId.ShouldBe(instanceId);
+        }
+        await using (var ctx = _db.NewContext())
+        {
+            var tiqId = await ctx.TestInstanceQuestions.Where(q => q.WorksheetInstanceId == instanceId).Select(q => q.Id).SingleAsync();
+            var service = new TestSessionService(ctx);
+            var saved = await service.SaveAnswer(new SaveAnswerDto { TestInstanceId = instanceId, TestQuestionId = tiqId, SelectedAnswerId = correctId }, user);
+            saved.Success.ShouldBeTrue(saved.Message);
+            var ended = await service.EndTest(instanceId, user.Id);
+            ended.Success.ShouldBeTrue(ended.Message);
+        }
+
+        await using var read = _db.NewContext();
+        var done = (await new TestSessionService(read).GetCompletedTestsAsync(Profile(s.SchoolB), 1, 10)).Items.ShouldHaveSingleItem();
+        done.CorrectAnswers.ShouldBe(1);
     }
 
     private sealed class ConcurrentSchoolWriter(int studentId, int schoolId) : DbCommandInterceptor

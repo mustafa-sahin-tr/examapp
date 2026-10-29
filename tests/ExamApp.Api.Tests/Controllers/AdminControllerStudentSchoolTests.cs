@@ -81,6 +81,19 @@ public class AdminControllerStudentSchoolTests
         await _service.Received(1).ChangeSchoolAsync(9, 4, "kc-admin-sub", AdminUserId, Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task Same_school_returns_200_with_changed_false_issue540()
+    {
+        Returns(new AdminStudentSchoolChangeResult(AdminStudentSchoolChangeStatus.Success, 4, 4, Changed: false));
+
+        var result = await NewController().ChangeStudentSchool(9, new AdminStudentSchoolRequestDto { SchoolId = 4 }, default);
+
+        var dto = result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<AdminStudentSchoolResponseDto>();
+        dto.Changed.ShouldBeFalse();
+        dto.PreviousSchoolId.ShouldBe(4);
+        dto.SchoolId.ShouldBe(4);
+    }
+
     [Theory]
     [InlineData(AdminStudentSchoolChangeStatus.TargetNotFound, 404, "admin.studentSchool.studentNotFound")]
     [InlineData(AdminStudentSchoolChangeStatus.SchoolNotFound, 400, "admin.studentSchool.schoolNotFound")]

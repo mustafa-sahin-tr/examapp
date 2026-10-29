@@ -13,8 +13,10 @@ import {
   parseRegionPaintPlan,
   parseRegionPaintRegionsPlan,
   parseRegionPaintSolution,
+  pieSlicePath,
   pointInPolygon,
   polygonArea,
+  serializeRegionPaintPlan,
   solutionCells,
 } from './region-paint';
 
@@ -171,3 +173,23 @@ describe('region-paint numbered painting (#587 dilim c)', () => {
     expect(fillKeys(plan)).toEqual(['r1']);
   });
 });
+
+describe('regionPaint pie (#588)', () => {
+  it('parsesPieAsSingleRowGrid', () => {
+    const plan = parseRegionPaintPlan(JSON.stringify({ version: 1, type: 'regionPaint', mode: 'pie', slices: 12, palette: [{ id: 'p1', color: 'red' }] }));
+    expect(plan).toMatchObject({ mode: 'pie', rows: 1, cols: 12 });
+    expect(serializeRegionPaintPlan(plan!)).toEqual({
+      version: 1,
+      type: 'regionPaint',
+      mode: 'pie',
+      slices: 12,
+      palette: [{ id: 'p1', color: 'red', label: '' }],
+    });
+    expect(parseRegionPaintPlan(JSON.stringify({ version: 1, type: 'regionPaint', mode: 'pie', slices: 37, palette: [{ id: 'p1', color: 'red' }] }))).toBeNull();
+  });
+
+  it('slicePath_StartsAtTopClockwise', () => {
+    expect(pieSlicePath(0, 4, 100)).toBe('M 0 0 L 0 -100 A 100 100 0 0 1 100 0 Z');
+  });
+});
+

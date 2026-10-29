@@ -59,7 +59,9 @@ import {
   REGION_PAINT_FORM_LIMITS,
   RegionPaintEntryForm,
   RegionPaintForm,
+  RegionPaintShape,
   nextPaintColor,
+  regionPaintTotal,
   targetCells,
 } from '../../models/activity-authoring-region-paint';
 import { PAINT_COLORS, PaintColor, paintCss } from '../../models/region-paint';
@@ -872,11 +874,15 @@ export class ActivityEditorComponent {
 
   /** Hedefin kare karşılığı (`{value}`; boş hedef 0); çözülemezse null. */
   paintCells(target: string, form: RegionPaintForm): { value: number } | null {
-    const value = targetCells(target, form.rows * form.cols);
+    const value = targetCells(target, regionPaintTotal(form));
     return value === null ? null : { value };
   }
 
-  setPaintSize(axis: 'rows' | 'cols', value: number): void {
+  setPaintShape(shape: RegionPaintShape): void {
+    this.updateRegionPaint((f) => ({ ...f, shape }));
+  }
+
+  setPaintSize(axis: 'rows' | 'cols' | 'slices', value: number): void {
     if (!Number.isFinite(value)) return;
     const n = Math.round(value);
     this.updateRegionPaint((f) => ({ ...f, [axis]: n }));

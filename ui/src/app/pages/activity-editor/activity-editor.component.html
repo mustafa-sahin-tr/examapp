@@ -710,8 +710,23 @@
 
         @if (regionPaint(); as rp) {
           <div class="ae__block" data-testid="region-paint-form">
-            <p class="ae__hint">{{ t('regionPaint.hint') }}</p>
+            <p class="ae__hint">{{ t(rp.shape === 'pie' ? 'regionPaint.hintPie' : 'regionPaint.hint') }}</p>
             <div class="ae__row ae__row--wrap">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                <mat-label>{{ t('regionPaint.shape') }}</mat-label>
+                <mat-select data-testid="rp-shape" [value]="rp.shape" (selectionChange)="setPaintShape($event.value)">
+                  <mat-option value="grid">{{ t('regionPaint.shapeGrid') }}</mat-option>
+                  <mat-option value="pie">{{ t('regionPaint.shapePie') }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              @if (rp.shape === 'pie') {
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
+                  <mat-label>{{ t('regionPaint.slices') }}</mat-label>
+                  <input matInput type="number" data-testid="rp-slices" [min]="paintLimits.minSlices" [max]="paintLimits.maxSlices"
+                    [value]="rp.slices" (input)="setPaintSize('slices', $any($event.target).valueAsNumber)" />
+                </mat-form-field>
+                <span class="ae__hint">{{ t('regionPaint.totalPie', { total: rp.slices }) }}</span>
+              } @else {
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__select">
                 <mat-label>{{ t('regionPaint.rows') }}</mat-label>
                 <input matInput type="number" data-testid="rp-rows" [min]="paintLimits.minSize" [max]="paintLimits.maxSize" [value]="rp.rows"
@@ -723,6 +738,7 @@
                   (input)="setPaintSize('cols', $any($event.target).valueAsNumber)" />
               </mat-form-field>
               <span class="ae__hint">{{ t('regionPaint.total', { total: rp.rows * rp.cols }) }}</span>
+              }
             </div>
 
             @for (entry of rp.entries; track $index; let i = $index) {
@@ -749,9 +765,9 @@
                 </mat-form-field>
                 <span class="ae__index" [attr.data-paint-cells]="i">
                   @if (paintCells(entry.target, rp); as n) {
-                    {{ t('regionPaint.cells', { n: n.value }) }}
+                    {{ t(rp.shape === 'pie' ? 'regionPaint.cellsPie' : 'regionPaint.cells', { n: n.value }) }}
                   } @else {
-                    {{ t('regionPaint.cellsInvalid') }}
+                    {{ t(rp.shape === 'pie' ? 'regionPaint.cellsPieInvalid' : 'regionPaint.cellsInvalid') }}
                   }
                 </span>
                 <button mat-icon-button type="button" [attr.aria-label]="t('remove')" [disabled]="rp.entries.length <= 1"
@@ -838,6 +854,7 @@
                 <mat-select [value]="bc.style" (selectionChange)="setChartOption({ style: $event.value })">
                   <mat-option value="bar">{{ t('barChart.styleBar') }}</mat-option>
                   <mat-option value="line">{{ t('barChart.styleLine') }}</mat-option>
+                  <mat-option value="dot">{{ t('barChart.styleDot') }}</mat-option>
                 </mat-select>
               </mat-form-field>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="ae__grow">

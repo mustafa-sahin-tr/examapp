@@ -43,6 +43,10 @@ namespace ExamApp.Api.Services.Interactions;
 /// </list>
 /// Kontrol grup başına (MCQ gibi): satır = grup (plan sırası), doğru ⇔ doğru renk; boyanmamış grup yanlış. Geri bildirim
 /// <c>{"rows":[{id,correct}]}</c>; beklenen renk yazılmaz.
+/// <para>Dilim d (issue #588) — daire grafiği (<c>mode:"pie"</c>; "16 eşit dilimin 4'ünü maviye boyayınız"): plan
+/// <c>{version:1,type:"regionPaint",mode:"pie",slices,palette}</c> (2..36 eş dilim). Tek satırlık ızgara gibi okunur: çözüm
+/// <c>counts</c>, payload <c>grid:["..1.2"]</c> (bir satır, <c>slices</c> karakter; dilim 1 tepeden saat yönünde), kontrol ve analiz
+/// ızgarayla aynı.</para>
 /// </summary>
 public sealed class RegionPaintGrader : IInteractionGrader
 {
@@ -50,6 +54,10 @@ public sealed class RegionPaintGrader : IInteractionGrader
 
     public const string GridMode = "grid";
     public const string RegionsMode = "regions";
+    public const string PieMode = "pie";
+
+    public const int MinSlices = 2;
+    public const int MaxSlices = 36;
 
     public const string StyleFill = "fill";
     public const string StyleCircle = "circle";
@@ -77,6 +85,7 @@ public sealed class RegionPaintGrader : IInteractionGrader
     };
 
     private static readonly HashSet<string> RootKeys = new(StringComparer.Ordinal) { "version", "type", "mode", "rows", "cols", "palette" };
+    private static readonly HashSet<string> PieRootKeys = new(StringComparer.Ordinal) { "version", "type", "mode", "slices", "palette" };
     private static readonly HashSet<string> RegionsRootKeys = new(StringComparer.Ordinal) { "version", "type", "mode", "style", "palette", "groups", "regions" };
     private static readonly HashSet<string> RegionKeys = new(StringComparer.Ordinal) { "id", "points", "label", "group" };
     private static readonly HashSet<string> GroupKeys = new(StringComparer.Ordinal) { "id", "label" };
@@ -430,19 +439,27 @@ public sealed class RegionPaintGrader : IInteractionGrader
             if (!root.TryGetProperty("type", out var type) || type.ValueKind != JsonValueKind.String
                 || !string.Equals(type.GetString(), Type, StringComparison.Ordinal))
                 return false;
-            if (!TryReadString(root, "mode", out var mode) || (mode != GridMode && mode != RegionsMode))
+            if (!TryReadString(root, "mode", out var mode) || (mode != GridMode && mode != RegionsMode && mode != PieMode))
                 return false;
             var regionsMode = mode == RegionsMode;
+            var pieMode = mode == PieMode;
             if (strict)
             {
-                if (!HasOnlyKeys(root, regionsMode ? RegionsRootKeys : RootKeys))
+                if (!HasOnlyKeys(root, regionsMode ? RegionsRootKeys : pieMode ? PieRootKeys : RootKeys))
                     return false;
                 if (root.TryGetProperty("version", out var version)
                     && (version.ValueKind != JsonValueKind.Number || !version.TryGetInt32(out var v) || v != 1))
                     return false;
             }
             int rows = 0, cols = 0;
-            if (!regionsMode && (!TryReadInt(root, "rows", out rows) || !TryReadInt(root, "cols", out cols)
+            // Daire grafiği tek satırlık ızgaradır: dilim = hücre (payload tek satır, saat yönünde tepeden).
+            if (pieMode)
+            {
+                if (!TryReadInt(root, "slices", out cols) || cols is < MinSlices or > MaxSlices)
+                    return false;
+                rows = 1;
+            }
+            else if (!regionsMode && (!TryReadInt(root, "rows", out rows) || !TryReadInt(root, "cols", out cols)
                 || rows is < MinSize or > MaxSize || cols is < MinSize or > MaxSize))
                 return false;
             if (regionsMode && strict && root.TryGetProperty("style", out var style)

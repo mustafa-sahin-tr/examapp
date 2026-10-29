@@ -333,3 +333,50 @@ describe('QuestionCanvasRegionPaintComponent numbered (#587 dilim c)', () => {
     expect(emitted).toEqual([]);
   });
 });
+
+// Issue #588 dilim d: daire grafiği — dilimler tek satırlık ızgara gibi boyanır.
+describe('QuestionCanvasRegionPaintComponent pie (#588)', () => {
+  let fixture: ComponentFixture<QuestionCanvasRegionPaintComponent>;
+  let emitted: string[];
+
+  const PIE = { version: 1, type: 'regionPaint', mode: 'pie', slices: 8, palette: [{ id: 'p1', color: 'blue', label: '1/4' }] };
+  const el = () => fixture.nativeElement as HTMLElement;
+  const slice = (c: number) => el().querySelector(`.rp-slice[data-c="${c}"]`) as SVGPathElement;
+
+  function setup(inputs: { answer?: string | null; showSolution?: boolean } = {}): void {
+    TestBed.configureTestingModule({ imports: [QuestionCanvasRegionPaintComponent, translocoTestingModule()] });
+    fixture = TestBed.createComponent(QuestionCanvasRegionPaintComponent);
+    emitted = [];
+    fixture.componentInstance.answerPayloadChange.subscribe((p) => emitted.push(p));
+    fixture.componentRef.setInput('questionRegion', region());
+    fixture.componentRef.setInput('interactionPlanJson', JSON.stringify(PIE));
+    fixture.componentRef.setInput('interactionSolutionJson', JSON.stringify({ counts: { p1: 2 } }));
+    fixture.componentRef.setInput('answerPayloadJson', inputs.answer ?? null);
+    fixture.componentRef.setInput('showSolution', !!inputs.showSolution);
+    fixture.componentRef.setInput('activityMode', true);
+    fixture.detectChanges();
+  }
+
+  it('rendersSlicesInsteadOfGrid', () => {
+    setup();
+    expect(el().querySelector('[data-testid="rp-pie"]')).not.toBeNull();
+    expect(el().querySelector('[data-testid="rp-grid"]')).toBeNull();
+    expect(el().querySelectorAll('.rp-slice').length).toBe(8);
+  });
+
+  it('paintingSlice_EmitsSingleRow', () => {
+    setup();
+    slice(2).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    fixture.detectChanges();
+    expect(JSON.parse(emitted.at(-1)!).grid).toEqual(['..1.....']);
+    expect(slice(2).style.fill).toContain('--paint-blue');
+  });
+
+  it('restoresAnswer_AndShowsSolution', () => {
+    setup({ answer: grid('1......1') });
+    expect(slice(0).style.fill).toContain('--paint-blue');
+    expect(slice(7).style.fill).toContain('--paint-blue');
+    expect(slice(3).style.fill).toBe('');
+  });
+});
+

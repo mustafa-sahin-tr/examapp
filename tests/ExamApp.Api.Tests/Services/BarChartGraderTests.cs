@@ -50,6 +50,22 @@ public class BarChartGraderTests
         Grader.ValidateDefinition(plan, """{"values":{"c1":25,"c2":40}}""").ShouldBeFalse();
     }
 
+    [Fact]
+    public void ValidateDefinition_DotStyle_LimitsDots()
+    {
+        // Nokta grafiği (dilim d): her unit bir nokta, en çok 20.
+        const string plan =
+            """{"version":1,"type":"barChart","style":"dot","max":8,"step":2,"unit":1,"categories":[{"id":"c1","label":"1"},{"id":"c2","label":"2"}]}""";
+        Grader.ValidateDefinition(plan, """{"values":{"c1":3,"c2":5}}""").ShouldBeTrue();
+        Grader.ValidateDefinition(
+            """{"version":1,"type":"barChart","style":"dot","max":30,"step":5,"unit":1,"categories":[{"id":"c1","label":"1"},{"id":"c2","label":"2"}]}""",
+            null).ShouldBeFalse();
+        // Aynı eksen sütun grafiğinde geçerli.
+        Grader.ValidateDefinition(
+            """{"version":1,"type":"barChart","max":30,"step":5,"unit":1,"categories":[{"id":"c1","label":"1"},{"id":"c2","label":"2"}]}""",
+            null).ShouldBeTrue();
+    }
+
     [Theory]
     // Eksen: max sınır dışı, step max'ı bölmüyor, çok aralık, unit step'i bölmüyor, çok adım.
     [InlineData("""{"version":1,"type":"barChart","max":0,"step":1,"categories":[{"id":"c1","label":"a"},{"id":"c2","label":"b"}]}""")]

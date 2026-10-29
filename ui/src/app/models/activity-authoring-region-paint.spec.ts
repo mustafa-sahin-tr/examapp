@@ -11,8 +11,10 @@ import {
 
 const PILOT: RegionPaintForm = {
   kind: 'regionPaint',
+  shape: 'grid',
   rows: 10,
   cols: 10,
+  slices: 8,
   entries: [
     { color: 'black', label: '2/5', target: '2/5' },
     { color: 'blue', label: '', target: '0,35' },
@@ -72,5 +74,45 @@ describe('activity-authoring-region-paint (#587)', () => {
 
   it('nextPaintColor_SkipsUsed', () => {
     expect(nextPaintColor(emptyRegionPaintForm())).toBe('red');
+  });
+
+  it('pie_BuildsSlicesPlan_AndRoundTrips', () => {
+    const form = {
+      ...emptyRegionPaintForm(),
+      shape: 'pie' as const,
+      slices: 16,
+      entries: [
+        { color: 'blue' as const, label: '', target: '1/4' },
+        { color: 'red' as const, label: '', target: '%37,5' },
+      ],
+    };
+    expect(validateRegionPaintForm(form)).toEqual([]);
+    const def = buildRegionPaintDefinition(form);
+    expect(JSON.parse(def.plan)).toEqual({
+      version: 1,
+      type: 'regionPaint',
+      mode: 'pie',
+      slices: 16,
+      palette: [
+        { id: 'p1', color: 'blue' },
+        { id: 'p2', color: 'red' },
+      ],
+    });
+    expect(JSON.parse(def.solution)).toEqual({ counts: { p1: 4, p2: 6 } });
+    const back = parseRegionPaintDefinition(def.plan, def.solution)!;
+    expect(back.shape).toBe('pie');
+    expect(back.slices).toBe(16);
+    expect(back.entries.map((e) => e.target)).toEqual(['4', '6']);
+  });
+
+  it('pie_Validation_UsesSlices', () => {
+    const base = { ...emptyRegionPaintForm(), shape: 'pie' as const };
+    expect(validateRegionPaintForm({ ...base, slices: 1 }).map((e) => e.key)).toContain('paintSliceCount');
+    expect(validateRegionPaintForm({ ...base, slices: 8, entries: [{ color: 'blue', label: '', target: '1/3' }] }).map((e) => e.key)).toContain(
+      'paintTargetInvalidPie'
+    );
+    expect(validateRegionPaintForm({ ...base, slices: 8, entries: [{ color: 'blue', label: '', target: '9' }] }).map((e) => e.key)).toContain(
+      'paintTargetInvalidPie'
+    );
   });
 });

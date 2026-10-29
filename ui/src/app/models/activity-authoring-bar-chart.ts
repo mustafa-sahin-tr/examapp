@@ -71,24 +71,27 @@ export function categoryValue(value: string, form: Pick<BarChartForm, 'max' | 'u
   return isBarValue(n, form) ? n : undefined;
 }
 
-/** Eksen tutarlı mı (max 1..1000, step max'ı böler ≤ 20 aralık, unit step'i böler ≤ 100 adım). */
-export function axisErrors(form: Pick<BarChartForm, 'max' | 'step' | 'unit'>): string[] {
-  const { maxValue, maxSteps, maxUnits } = BAR_CHART_LIMITS;
+/**
+ * Eksen tutarlı mı (max 1..1000, step max'ı böler ≤ 20 aralık, unit step'i böler ≤ 100 adım; nokta grafiğinde ≤ 20 nokta).
+ */
+export function axisErrors(form: Pick<BarChartForm, 'max' | 'step' | 'unit'> & { style?: BarChartStyle }): string[] {
+  const { maxValue, maxSteps, maxUnits, maxDots } = BAR_CHART_LIMITS;
   const { max, step, unit } = form;
   if (!Number.isInteger(max) || max < 1 || max > maxValue) return ['chartMax'];
   if (!Number.isInteger(step) || step < 1 || max % step !== 0 || max / step > maxSteps) return ['chartStep'];
   if (!Number.isInteger(unit) || unit < 1 || step % unit !== 0 || max / unit > maxUnits) return ['chartUnit'];
+  if (form.style === 'dot' && max / unit > maxDots) return ['chartDots'];
   return [];
 }
 
 export function validateBarChartForm(form: BarChartForm): BarChartError[] {
   const errors: BarChartError[] = [];
-  const { maxValue, maxSteps, maxUnits, minCategories, maxCategories, maxCategory, maxTitle, maxAxis } = BAR_CHART_LIMITS;
+  const { maxValue, maxSteps, maxUnits, maxDots, minCategories, maxCategories, maxCategory, maxTitle, maxAxis } = BAR_CHART_LIMITS;
   const push = (key: string, params?: Record<string, unknown>) => {
     if (!errors.some((e) => e.key === key)) errors.push(params ? { key, params } : { key });
   };
   const axis = axisErrors(form);
-  for (const key of axis) push(key, { max: maxValue, steps: maxSteps, units: maxUnits });
+  for (const key of axis) push(key, { max: maxValue, steps: maxSteps, units: maxUnits, dots: maxDots });
 
   if (form.title.trim().length > maxTitle) push('labelTooLong', { max: maxTitle });
   if (form.xLabel.trim().length > maxAxis || form.yLabel.trim().length > maxAxis) push('labelTooLong', { max: maxAxis });
@@ -112,7 +115,7 @@ export function buildBarChartDefinition(form: BarChartForm): BarChartDefinition 
   const values: Record<string, number> = {};
   form.categories.forEach((c, i) => ((c.fixed ? fixed : values)[`c${i + 1}`] = categoryValue(c.value, form) ?? 0));
   const plan: Record<string, unknown> = { version: 1, type: BAR_CHART };
-  if (form.style === 'line') plan['style'] = 'line';
+  if (form.style !== 'bar') plan['style'] = form.style;
   for (const key of ['title', 'xLabel', 'yLabel'] as const) if (form[key].trim()) plan[key] = form[key].trim();
   plan['max'] = form.max;
   plan['step'] = form.step;

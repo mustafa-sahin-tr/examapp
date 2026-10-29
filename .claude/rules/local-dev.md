@@ -835,6 +835,17 @@ zemin, kareli / noktalı, dikdörtgen / kare, alan, çevre, "Hepsini çizsin"; u
 (çevresi 14 cm dikdörtgenler, çevresi 20 cm kare), dosya 93 (alanı 20 m² dikdörtgenler). Testte de çözülebilir (puanlanır). Daire grafiği /
 nokta grafiği ayrı dilim. Migration yok; Aspire'da exam API'yi yeniden başlat (yeni kontrolcü).
 
+**Issue #588 dilim d — veri grafikleri (daire grafiği, nokta grafiği).** Yeni tip yok. **Daire grafiği** `regionPaint`'e
+`mode:"pie"`: plan `{"version":1,"type":"regionPaint","mode":"pie","slices","palette"}` (2–36 eş dilim; palet ızgarayla aynı kural).
+Tek satırlık ızgara gibi okunur: çözüm `{"counts":{"p1":4}}` (renk başına dilim sayısı, yer serbest), payload `{"grid":["..1.2..."]}`
+(bir satır, `slices` karakter; dilim 1 tepeden saat yönünde), kontrol / geri bildirim / analiz ızgarayla aynı (`RegionPaintGrader`).
+Oynatıcı daireyi SVG dilimlerle çizer (dokun / sürükle boyar, aynı renkten başlayan sürükleme siler, klavyede Enter / Space).
+Yazarlık görselsiz editörde **Boyama (ızgara / daire)** → Şekil **Daire grafiği**: dilim sayısı + renk başına hedef (kesir `1/4`,
+yüzde `%37,5`, ondalık ya da dilim sayısı; tam dilime inmeyen hedef reddedilir). **Nokta grafiği** `barChart`'a `style:"dot"`: her
+`unit` bir nokta (birim aralığının ortasında), `max / unit` ≤ 20; dokunulan yüksekliğe kadar nokta, en üstteki noktaya dokunmak bir
+nokta kaldırır (klavye ↑ / ↓ aynı). Kontrol değişmedi. Editörde **Grafik kurma** → Görünüm **Nokta grafiği**. Pilotlar: TT MatLab
+dosya 162 (16 eş dilim), dosya 160 (nokta grafiği). Migration yok; Aspire'da exam API'yi yeniden başlat.
+
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını
 (`TestInstances` — Questions'a FK'sı yok, CASCADE ulaşmaz, açıkça silinir; aksi halde "boş test yapılmış" gibi kalır),

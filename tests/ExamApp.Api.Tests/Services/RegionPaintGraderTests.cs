@@ -396,4 +396,74 @@ public class RegionPaintGraderTests
         items[1].AnswerLabel.ShouldBe("yellow");
         items[1].Correct.ShouldBeFalse();
     }
+
+    // ---- Daire grafiği (issue #588 dilim d) ----
+
+    // TT MatLab dosya 162: 16 eş dilimin 4'ü mavi, 6'sı kırmızı; sarı çeldirici.
+    private const string PiePlan =
+        """{"version":1,"type":"regionPaint","mode":"pie","slices":16,"palette":[{"id":"p1","color":"blue","label":"1/4"},{"id":"p2","color":"red","label":"3/8"},{"id":"p3","color":"yellow"}]}""";
+
+    private const string PieSolution = """{"counts":{"p1":4,"p2":6,"p3":0}}""";
+
+    private static InteractionGradeInput PieInput(string? solution, string? payload)
+        => new(PiePlan, solution, payload, SelectedAnswerId: null, CorrectAnswerId: null);
+
+    private static string Slices(string row) => JsonSerializer.Serialize(new { version = 1, type = "regionPaint", grid = new[] { row } });
+
+    [Fact]
+    public void Pie_ValidateDefinition_Pilot_Accepted()
+    {
+        Grader.ValidateDefinition(PiePlan, PieSolution).ShouldBeTrue();
+        Grader.ValidateDefinition(PiePlan, null).ShouldBeTrue();
+    }
+
+    [Theory]
+    // Dilim sayısı yok / sınır dışı.
+    [InlineData("""{"version":1,"type":"regionPaint","mode":"pie","palette":[{"id":"p1","color":"blue"}]}""")]
+    [InlineData("""{"version":1,"type":"regionPaint","mode":"pie","slices":1,"palette":[{"id":"p1","color":"blue"}]}""")]
+    [InlineData("""{"version":1,"type":"regionPaint","mode":"pie","slices":37,"palette":[{"id":"p1","color":"blue"}]}""")]
+    // Izgara alanları daire planında yasak.
+    [InlineData("""{"version":1,"type":"regionPaint","mode":"pie","slices":8,"rows":1,"palette":[{"id":"p1","color":"blue"}]}""")]
+    public void Pie_ValidateDefinition_BadPlan_Rejected(string plan)
+        => Grader.ValidateDefinition(plan, null).ShouldBeFalse();
+
+    [Theory]
+    [InlineData("""{"counts":{"p1":17,"p2":0,"p3":0}}""")]
+    [InlineData("""{"counts":{"p1":10,"p2":7,"p3":0}}""")]
+    [InlineData("""{"counts":{"p1":4,"p2":6}}""")]
+    public void Pie_ValidateDefinition_BadSolution_Rejected(string solution)
+        => Grader.ValidateDefinition(PiePlan, solution).ShouldBeFalse();
+
+    [Fact]
+    public void Pie_Validate_PayloadMustBeOneRowOfSlices()
+    {
+        Grader.Validate(PiePlan, Slices("1111222222......")).ShouldBeTrue();
+        Grader.Validate(PiePlan, Slices("1111")).ShouldBeFalse();
+        Grader.Validate(PiePlan, JsonSerializer.Serialize(new { version = 1, type = "regionPaint", grid = new[] { "1111222222......", "1111222222......" } }))
+            .ShouldBeFalse();
+        Grader.Validate(PiePlan, Slices("4...............")).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Pie_Grade_CountsPerColor_PositionFree()
+    {
+        var result = Grader.Grade(PieInput(PieSolution, Slices("1.2.1.2.1.2.1222")));
+        result.CorrectCount.ShouldBe(3);
+        result.TotalCount.ShouldBe(3);
+
+        var wrong = Grader.Grade(PieInput(PieSolution, Slices("111223..........")));
+        Rows(wrong.Feedback).ShouldBe([("p1", false), ("p2", false), ("p3", false)]);
+        wrong.Feedback!.ShouldNotContain("6");
+    }
+
+    [Fact]
+    public void Pie_Normalize_Unpainted_IsNoAnswer()
+        => Grader.Normalize(Slices("................")).ShouldBeNull();
+
+    [Fact]
+    public void Pie_Analyze_ItemPerColor()
+    {
+        var items = Grader.Analyze(PieInput(PieSolution, Slices("1111222.........")));
+        items.Select(i => (i.ItemId, i.Correct, i.AnswerLabel)).ShouldBe([("p1", true, "4"), ("p2", false, "3"), ("p3", true, null)]);
+    }
 }

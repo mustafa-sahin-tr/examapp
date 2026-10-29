@@ -6,6 +6,8 @@
  * `step`), kategoriler, `fixed` (önceden çizilmiş, değiştirilemeyen sütunlar), `style` `bar` | `line` (yalnız görünüm). Veriler görselde
  * ya da yönergede durur. Çözüm (`{"values":{"c2":4}}`) öğrenciye gitmez (#570). Öğrenci serbest sütunların değerini ayarlar
  * (`{"values":{"c2":4}}`); çizilmeyen sütun 0 sayılır (backend `BarChartGrader`). Puansız.
+ *
+ * Dilim d: `style: "dot"` nokta grafiği — sütun yerine üst üste noktalar (her `unit` bir nokta, en çok `maxDots`).
  */
 import { isInteractionType, isValidInteractionId } from './interaction-ids';
 
@@ -16,6 +18,7 @@ export const BAR_CHART_LIMITS = {
   maxValue: 1000,
   maxSteps: 20,
   maxUnits: 100,
+  maxDots: 20,
   minCategories: 2,
   maxCategories: 12,
   maxCategory: 30,
@@ -23,7 +26,7 @@ export const BAR_CHART_LIMITS = {
   maxAxis: 40,
 } as const;
 
-export type BarChartStyle = 'bar' | 'line';
+export type BarChartStyle = 'bar' | 'line' | 'dot';
 
 export interface BarChartCategory {
   id: string;
@@ -103,7 +106,7 @@ export function parseBarChartPlan(json: string | null | undefined): BarChartPlan
     return {
       version: 1,
       type: BAR_CHART,
-      style: parsed['style'] === 'line' ? 'line' : 'bar',
+      style: parsed['style'] === 'line' || parsed['style'] === 'dot' ? parsed['style'] : 'bar',
       title: text(parsed['title']),
       xLabel: text(parsed['xLabel']),
       yLabel: text(parsed['yLabel']),

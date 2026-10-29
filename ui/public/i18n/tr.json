@@ -556,6 +556,13 @@
           "hintNumbered": "Bir renk seç ve numaralı bölgeye dokun: o numaralı bütün bölgeler boyanır. Aynı renkle yeniden dokunursan boya kalkar. Aşağıdaki numaralardan da boyayabilirsin.",
           "groupNo": "{{n}} numara",
           "groups": "Soru numaraları"
+        },
+        "pie": {
+          "total": "Daire {{total}} eş dilime ayrılmış.",
+          "label": "Daire grafiği",
+          "slice": "{{n}}. dilim",
+          "hint": "Bir renk seç, dilimlere dokun ya da üzerlerinde sürükle. Aynı renkli dilimden başlarsan siler. Renklerin yanındaki sayı o renkte boyadığın dilim sayısıdır.",
+          "solutionShown": "Her renkten boyanması gereken dilim sayısı örnek bir dolguyla gösteriliyor (dilimler başka yerde de olabilir)."
         }
       },
       "numberLine": {
@@ -583,7 +590,8 @@
         "hintLine": "Noktayı koymak için o kategorinin üstünde ilgili seviyeye dokun; aynı seviyeye yeniden dokunmak noktayı siler. Klavyede ↑ / ↓ ile de ayarlayabilirsin. Gri noktalar hazır çizilmiştir.",
         "resultOk": "Grafik doğru!",
         "resultPartial": "{{total}} sütundan {{ok}} tanesi doğru; kırmızıları yeniden kontrol et.",
-        "solutionShown": "Grafiğin doğru hâli gösteriliyor."
+        "solutionShown": "Grafiğin doğru hâli gösteriliyor.",
+        "hintDot": "Bir sütunda kaç nokta olacaksa o yüksekliğe dokun; en üstteki noktaya dokunursan o nokta kalkar. Klavyede ↑ / ↓ ile bir nokta ekle ya da çıkar. Gri noktalar hazır çizilmiştir."
       },
       "gridDraw": {
         "passageAlt": "Okuma metni görseli",

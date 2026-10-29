@@ -192,6 +192,13 @@
   }
 }
 
+// Nokta grafiği: sütundaki noktalar daha küçük ve gölgesiz üst üste durur.
+.bc-dot--stack {
+  width: 12px;
+  height: 12px;
+  border-width: 1px;
+}
+
 .bc-dot {
   position: absolute;
   left: 50%;

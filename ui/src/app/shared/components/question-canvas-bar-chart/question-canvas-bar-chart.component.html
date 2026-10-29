@@ -50,6 +50,11 @@
                 @if (col.value !== null) {
                   @if (p.style === 'line') {
                     <span class="bc-dot" [style.bottom]="percent(col.value)"></span>
+                  } @else if (p.style === 'dot') {
+                    <!-- #588 dilim d: nokta grafiği — her unit bir nokta, birim aralığının ortasında. -->
+                    @for (level of dotLevels(col.value); track level) {
+                      <span class="bc-dot bc-dot--stack" data-dot [style.bottom]="percent(level)"></span>
+                    }
                   } @else {
                     <span class="bc-bar" [style.height]="percent(col.value)"></span>
                   }
@@ -75,7 +80,7 @@
           <mat-icon>restart_alt</mat-icon>{{ t('reset') }}
         </button>
       </div>
-      <p class="bc-hint">{{ t(p.style === 'line' ? 'hintLine' : 'hint') }}</p>
+      <p class="bc-hint">{{ t(p.style === 'line' ? 'hintLine' : p.style === 'dot' ? 'hintDot' : 'hint') }}</p>
     }
   } @else {
     <p class="bc-hint" data-testid="bc-invalid">{{ t('invalid') }}</p>

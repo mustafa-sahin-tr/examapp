@@ -153,4 +153,19 @@ describe('QuestionCanvasBarChartComponent (#588)', () => {
     setup({ plan: { ...PLAN, step: 3 } });
     expect(q('bc-invalid')).not.toBeNull();
   });
+
+  it('dotStyle_StacksDots_TopDotTapRemovesOne', () => {
+    setup({ plan: { ...PLAN, style: 'dot' } });
+    // Hazır sütun 6 nokta.
+    expect(col('c1').querySelectorAll('[data-dot]').length).toBe(6);
+    expect(bar('c1')).toBeNull();
+    // 0,35 × 10 = 3,5 → 4. birim aralığı: 4 nokta.
+    clickAt('c2', 0.35);
+    expect(last()).toEqual({ c2: 4 });
+    expect(col('c2').querySelectorAll('[data-dot]').length).toBe(4);
+    // En üstteki noktaya (3,5) dokunmak bir nokta kaldırır.
+    clickAt('c2', 0.35);
+    expect(last()).toEqual({ c2: 3 });
+  });
 });
+

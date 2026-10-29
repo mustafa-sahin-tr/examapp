@@ -22,6 +22,8 @@ namespace ExamApp.Api.Services;
 
 public class QuestionService : IQuestionService
 {
+    /// <summary>Issue #597: sayfa görseli piksel sınırını aşınca toplu kayıt bu kodla 400 döner.</summary>
+    public const string ImageTooLargeErrorCode = "QuestionImageTooLarge";
 
     private readonly AppDbContext _context;
 
@@ -1118,6 +1120,19 @@ public class QuestionService : IQuestionService
                     Message = _localizer["questions.bulk.saved"]
                 };
                 // return Ok(new { message = "Sorular başarıyla kaydedildi!" });
+            }
+            catch (ImageTooLargeException)
+            {
+                // issue #597: sayfa görseli SkiaImaging sınırını aşıyor — genel "kaydedilemedi" yerine sebep (400).
+                await transaction.RollbackAsync();
+                return new QuestionSavedDto
+                {
+                    Success = false,
+                    InvalidInput = true,
+                    ErrorCode = ImageTooLargeErrorCode,
+                    Message = _localizer["questions.bulk.imageTooLarge",
+                        SkiaImaging.MaxPixels / 1_000_000, SkiaImaging.MaxEdge]
+                };
             }
             catch (Exception ex)
             {

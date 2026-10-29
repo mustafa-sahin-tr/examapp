@@ -26,6 +26,7 @@
 
     "bulk": {
       "saveFailed": "Soru seti kaydedilemedi.",
+      "imageTooLarge": "Sayfa görseli çok büyük (en çok {0} megapiksel, uzun kenar en çok {1} px). Görseli küçültüp yeniden deneyin.",
       "saved": "Sorular başarıyla kaydedildi!",
       "saveError": "Veri kaydedilirken hata oluştu: {0}",
       "correctAnswerMissing": "Doğru cevap belirtilmemiş.{0}",

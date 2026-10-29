@@ -25,4 +25,12 @@ export interface AdminTeacherSchoolResponse {
    * Eski backend sürümleri alanı göndermeyebilir → yoksa false kabul edilir.
    */
   profileCacheStale?: boolean;
+  /** Issue #539: okul değişince "Okulum" paylaşımından özele alınan sınav sayısı (eski backend göndermeyebilir). */
+  privatizedWorksheetCount?: number;
+}
+
+/** Issue #539 — GET /api/exam/admin/teachers/{id}/school-change-impact. */
+export interface AdminTeacherSchoolChangeImpact {
+  /** Okul değişirse özel yapılacak (silinmemiş) "Okulum" paylaşımlı sınav sayısı. */
+  schoolOnlyWorksheetCount: number;
 }

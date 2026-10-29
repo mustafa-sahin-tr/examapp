@@ -89,7 +89,9 @@ describe('AdminTeachersComponent', () => {
             setAccountStatus: vi.fn().mockName("AdminService.setAccountStatus"),
             suspendTeacher: vi.fn().mockName("AdminService.suspendTeacher"),
             unsuspendTeacher: vi.fn().mockName("AdminService.unsuspendTeacher"),
-            changeTeacherSchool: vi.fn().mockName("AdminService.changeTeacherSchool")
+            changeTeacherSchool: vi.fn().mockName("AdminService.changeTeacherSchool"),
+            getTeacherSchoolChangeImpact: vi.fn().mockName("AdminService.getTeacherSchoolChangeImpact")
+                .mockReturnValue(of({ schoolOnlyWorksheetCount: 0 }))
         } as unknown as MockedObject<AdminService>;
         snackBar = {
             open: vi.fn().mockName("MatSnackBar.open")

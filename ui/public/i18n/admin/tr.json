@@ -486,6 +486,8 @@
     "effectsTitle": "Bu işlemin etkileri",
     "effectNewSchool": "Öğretmen yeni okulun öğrencilerini ve sınıflarını okul kurallarına göre görebilecek.",
     "effectOldSchool": "Eski okulun öğrencilerine ve sonuçlarına erişimi kalmayacak.",
+    "effectSchoolOnly": "{{count}} \"Okulum\" paylaşımlı sınav özel yapılacak; eski ve yeni okulun öğretmenleri bu sınavları göremez. Eski okulun öğrencilerine yapılmış atamalar sürer.",
+    "effectSchoolOnlyUnknown": "Öğretmenin \"Okulum\" paylaşımlı sınavları varsa özel yapılacak; yapılmış atamalar sürer.",
     "effectPendingRequest": "Öğretmenin bekleyen bir okul talebi varsa kapatılır.",
     "effectPendingRequestApproved": "Öğretmenin bekleyen bir okul talebi varsa kapatılır ve başvuru durumu \"Onaylı\" olarak güncellenir.",
     "independentNote": "Bu öğretmen bağımsız öğretmen olarak kayıtlı (başvurusu onaylı değil). Okula bağlamak bağımsız öğretmen bilgilerini ve başvuru durumunu değiştirmez; öğretmenin okul kapsamındaki erişimi bundan sonra seçilen okula göre belirlenir.",

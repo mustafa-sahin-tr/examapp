@@ -46,6 +46,10 @@ namespace ExamApp.Api.Services.AdminUsers;
 /// kapsam dışına çıkar. Sınıf atamaları kendi <c>SchoolId</c>'sini taşır (#236): eski okula yapılmış atamalar eski okulun
 /// öğrencilerinde kalır, yeni okulun aynı sınıfına SIZMAZ; öğretmenin ilerleme görünümü eski okul öğrencilerini göstermez.
 /// </para>
+/// <para>
+/// issue #539: okul gerçekten değişince öğretmenin <c>SchoolOnly</c> sınavları (silinmişler dahil) okul güncellemesiyle aynı
+/// transaction'da <c>Private</c> olur; sayısı audit satırının <c>AffectedCount</c>'una yazılır. Atamalar etkilenmez.
+/// </para>
 /// Event yayınlanmaz (öğrenci ucu da yayınlamaz). Loglar yalnızca öğretmen id'si, okul id'leri ve aktör sub'ını içerir.
 /// </summary>
 public class AdminTeacherSchoolService : IAdminTeacherSchoolService
@@ -91,7 +95,7 @@ public class AdminTeacherSchoolService : IAdminTeacherSchoolService
             .Where(t => t.Id == teacherId)
             .Select(t => new
             {
-                t.SchoolId, t.RequestedSchoolId, t.IsIndependentTutor, t.ApprovalStatus, t.AccountApprovedAt, t.AccountSuspendedAt
+                t.UserId, t.SchoolId, t.RequestedSchoolId, t.IsIndependentTutor, t.ApprovalStatus, t.AccountApprovedAt, t.AccountSuspendedAt
             })
             .FirstOrDefaultAsync(ct);
         if (current is null)
@@ -164,20 +168,50 @@ public class AdminTeacherSchoolService : IAdminTeacherSchoolService
         var previousRequestedSchoolId = current.RequestedSchoolId;
         var previousIndependent = current.IsIndependentTutor;
         var previousStatus = current.ApprovalStatus;
-        var affected = await _context.Teachers
-            .Where(t => t.Id == teacherId
-                && t.SchoolId == previousSchoolId
-                && t.RequestedSchoolId == previousRequestedSchoolId
-                && t.IsIndependentTutor == previousIndependent
-                && t.ApprovalStatus == previousStatus
-                && t.AccountApprovedAt != null
-                && t.AccountSuspendedAt == null)
-            .ExecuteUpdateAsync(set => set
-                .SetProperty(t => t.SchoolId, schoolId)
-                .SetProperty(t => t.RequestedSchoolId, (int?)null)
-                // Bağımsız (Pending/Rejected) öğretmende başvuru durumu korunur; okul öğretmeni onaylı hale gelir.
-                .SetProperty(t => t.ApprovalStatus, t => t.IsIndependentTutor ? t.ApprovalStatus : TeacherApprovalStatus.Approved)
-                .SetProperty(t => t.UpdateTime, now), CancellationToken.None);
+        // issue #539: okul gerçekten değişiyorsa öğretmenin SchoolOnly sınavları aynı transaction'da Private olur — erişim
+        // kuralı sahibin GÜNCEL okuluna baktığı için (WorksheetAccess.IsSchoolOnlyMatch) aksi halde yeni okula açılırlardı.
+        // Öğrenci erişimi (atama) TeacherSharing'e bakmaz; eski okula yapılmış atamalar çözülmeye devam eder.
+        var schoolChanges = previousSchoolId != schoolId;
+        var affected = 0;
+        var privatizedWorksheets = 0;
+        var strategy = _context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            privatizedWorksheets = 0;
+            await using var tx = await _context.Database.BeginTransactionAsync(CancellationToken.None);
+            affected = await _context.Teachers
+                .Where(t => t.Id == teacherId
+                    && t.SchoolId == previousSchoolId
+                    && t.RequestedSchoolId == previousRequestedSchoolId
+                    && t.IsIndependentTutor == previousIndependent
+                    && t.ApprovalStatus == previousStatus
+                    && t.AccountApprovedAt != null
+                    && t.AccountSuspendedAt == null)
+                .ExecuteUpdateAsync(set => set
+                    .SetProperty(t => t.SchoolId, schoolId)
+                    .SetProperty(t => t.RequestedSchoolId, (int?)null)
+                    // Bağımsız (Pending/Rejected) öğretmende başvuru durumu korunur; okul öğretmeni onaylı hale gelir.
+                    .SetProperty(t => t.ApprovalStatus, t => t.IsIndependentTutor ? t.ApprovalStatus : TeacherApprovalStatus.Approved)
+                    .SetProperty(t => t.UpdateTime, now), CancellationToken.None);
+            if (affected == 0)
+                return; // commit yok → dispose'da rollback
+
+            if (schoolChanges)
+            {
+                // Silinmiş sınavlar da (IgnoreQueryFilters): geri alınırsa yeni okula açılmasın.
+                privatizedWorksheets = await _context.Worksheets.IgnoreQueryFilters()
+                    .Where(w => w.CreateUserId == current.UserId && w.TeacherSharing == WorksheetTeacherSharing.SchoolOnly)
+                    .ExecuteUpdateAsync(set => set
+                        .SetProperty(w => w.TeacherSharing, WorksheetTeacherSharing.Private)
+                        .SetProperty(w => w.UpdateTime, now), CancellationToken.None);
+                if (privatizedWorksheets > 0)
+                    await _context.AdminUserActionLogs
+                        .Where(a => a.Id == auditId)
+                        .ExecuteUpdateAsync(set => set.SetProperty(a => a.AffectedCount, privatizedWorksheets), CancellationToken.None);
+            }
+
+            await tx.CommitAsync(CancellationToken.None);
+        });
 
         if (affected == 0)
         {
@@ -191,9 +225,21 @@ public class AdminTeacherSchoolService : IAdminTeacherSchoolService
 
         await _audit.TryUpdateOutcomeAsync(auditId,
             cacheInvalidated ? AdminUserActionOutcome.Succeeded : AdminUserActionOutcome.SucceededCacheStale);
-        _logger.LogInformation("[AdminTeacherSchool] Öğretmen okulu değişti: Teacher#{TeacherId} {PreviousSchoolId} → {SchoolId} actor={Actor} cacheStale={CacheStale}",
-            teacherId, previousSchoolId, schoolId, actorKeycloakId, !cacheInvalidated);
+        _logger.LogInformation("[AdminTeacherSchool] Öğretmen okulu değişti: Teacher#{TeacherId} {PreviousSchoolId} → {SchoolId} actor={Actor} cacheStale={CacheStale} privatizedWorksheets={PrivatizedWorksheets}",
+            teacherId, previousSchoolId, schoolId, actorKeycloakId, !cacheInvalidated, privatizedWorksheets);
         return new(AdminTeacherSchoolChangeStatus.Success, previousSchoolId, schoolId, Changed: true,
-            ProfileCacheStale: !cacheInvalidated);
+            ProfileCacheStale: !cacheInvalidated, PrivatizedWorksheetCount: privatizedWorksheets);
+    }
+
+    public async Task<int?> CountSchoolOnlyWorksheetsAsync(int teacherId, CancellationToken ct = default)
+    {
+        var userId = await _context.Teachers.AsNoTracking()
+            .Where(t => t.Id == teacherId)
+            .Select(t => (int?)t.UserId)
+            .FirstOrDefaultAsync(ct);
+        if (userId is null)
+            return null;
+        return await _context.Worksheets.AsNoTracking()
+            .CountAsync(w => w.CreateUserId == userId && w.TeacherSharing == WorksheetTeacherSharing.SchoolOnly, ct);
     }
 }

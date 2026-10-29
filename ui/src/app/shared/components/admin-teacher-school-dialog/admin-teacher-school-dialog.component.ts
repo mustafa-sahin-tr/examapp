@@ -77,6 +77,12 @@ export class AdminTeacherSchoolDialogComponent {
   /** 409: öğretmenin okulu bu arada değişti — yeniden denemek yerine listeyi yenilemek gerekir. */
   readonly conflict = signal(false);
   readonly canSubmit = computed(() => this.selectedSchoolId() != null && !this.submitting() && !this.conflict());
+  /**
+   * Issue #539 — okul değişince "Okulum" paylaşımlı sınavlar özel olur. Sayı API'den (yüklenene dek null); yüklenemezse
+   * `impactUnknown` → sayısız genel uyarı. Okulsuz öğretmende ("Okula bağla") böyle sınav olmaz, sorulmaz.
+   */
+  readonly schoolOnlyCount = signal<number | null>(null);
+  readonly impactUnknown = signal(false);
 
   private request?: Subscription;
   /** Bu dialog'da en az bir istek hata aldı mı. */
@@ -85,7 +91,15 @@ export class AdminTeacherSchoolDialogComponent {
   constructor() {
     // Hata metinleri şablon dışında senkron `translate()` ile okunur; scope baştan yüklensin.
     this.transloco.load(`${ADMIN_SCOPE}/${this.transloco.getActiveLang()}`).pipe(take(1)).subscribe();
-    inject(DestroyRef).onDestroy(() => this.request?.unsubscribe());
+    const destroyRef = inject(DestroyRef);
+    destroyRef.onDestroy(() => this.request?.unsubscribe());
+    if (this.mode === 'change') {
+      const impact = this.adminService.getTeacherSchoolChangeImpact(this.data.teacherId).subscribe({
+        next: (r) => this.schoolOnlyCount.set(r.schoolOnlyWorksheetCount),
+        error: () => this.impactUnknown.set(true),
+      });
+      destroyRef.onDestroy(() => impact.unsubscribe());
+    }
   }
 
   onSchoolSelected(school: School | null): void {

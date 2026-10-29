@@ -4,7 +4,7 @@ import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { Subject, of, throwError } from 'rxjs';
+import { Observable, Subject, of, throwError } from 'rxjs';
 
 import { AdminTeacherSchoolDialogComponent, AdminTeacherSchoolDialogData, AdminTeacherSchoolDialogResult, } from './admin-teacher-school-dialog.component';
 import { AdminService } from '../../../services/admin.service';
@@ -33,9 +33,10 @@ describe('AdminTeacherSchoolDialogComponent (issue #313)', () => {
     let snackBar: MockedObject<MatSnackBar>;
     let dialogRef: MockedObject<MatDialogRef<AdminTeacherSchoolDialogComponent, AdminTeacherSchoolDialogResult | undefined>>;
 
-    function configure(data: Partial<AdminTeacherSchoolDialogData> = {}): void {
+    function configure(data: Partial<AdminTeacherSchoolDialogData> = {}, impact: Observable<{ schoolOnlyWorksheetCount: number }> = of({ schoolOnlyWorksheetCount: 0 })): void {
         adminService = {
-            changeTeacherSchool: vi.fn().mockName("AdminService.changeTeacherSchool")
+            changeTeacherSchool: vi.fn().mockName("AdminService.changeTeacherSchool"),
+            getTeacherSchoolChangeImpact: vi.fn().mockName("AdminService.getTeacherSchoolChangeImpact").mockReturnValue(impact)
         } as unknown as MockedObject<AdminService>;
         snackBar = {
             open: vi.fn().mockName("MatSnackBar.open")
@@ -133,6 +134,31 @@ describe('AdminTeacherSchoolDialogComponent (issue #313)', () => {
     it('render_NotIndependentAccountNotApproved_GenericPendingRequestEffect', () => {
         configure({ accountApproved: false });
         expect(textOf('effect-pending-request')).not.toContain(texts.effectPendingRequestApproved);
+    });
+
+    // ── Issue #539: "Okulum" paylaşımlı sınavlar özel olur ──────────────────
+
+    it('impact_ChangeMode_ShowsSchoolOnlyCountFromApi', () => {
+        configure({}, of({ schoolOnlyWorksheetCount: 3 }));
+
+        expect(adminService.getTeacherSchoolChangeImpact).toHaveBeenCalledWith(12);
+        expect(textOf('effect-school-only')).toContain(texts.effectSchoolOnly.replace('{{count}}', '3'));
+    });
+
+    it('impact_ZeroCount_HidesWarning', () => {
+        configure();
+        expect(el().querySelector('[data-testid="effect-school-only"]')).toBeNull();
+    });
+
+    it('impact_LoadFails_ShowsGenericWarning', () => {
+        configure({}, throwError(() => new HttpErrorResponse({ status: 500 })));
+        expect(textOf('effect-school-only')).toContain(texts.effectSchoolOnlyUnknown);
+    });
+
+    it('impact_AssignMode_DoesNotAsk', () => {
+        configure({ currentSchoolId: null, currentSchoolName: null });
+        expect(adminService.getTeacherSchoolChangeImpact).not.toHaveBeenCalled();
+        expect(el().querySelector('[data-testid="effect-school-only"]')).toBeNull();
     });
 
     it('pick_ShowsOldToNewTransitionAndEnablesConfirm', () => {

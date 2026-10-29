@@ -451,6 +451,16 @@ describe('AdminService.changeTeacherSchool (issue #313)', () => {
 
     afterEach(() => httpMock.verify());
 
+    it('getTeacherSchoolChangeImpact_GetsImpactEndpoint_issue539', () => {
+        let count: number | undefined;
+        service.getTeacherSchoolChangeImpact(12).subscribe((r) => (count = r.schoolOnlyWorksheetCount));
+
+        const req = httpMock.expectOne('/api/exam/admin/teachers/12/school-change-impact');
+        expect(req.request.method).toBe('GET');
+        req.flush({ schoolOnlyWorksheetCount: 4 });
+        expect(count).toBe(4);
+    });
+
     it('changeTeacherSchool_PutsSchoolIdToTeacherSchoolEndpoint_ReturnsServerResponse', () => {
         let result: AdminTeacherSchoolResponse | undefined;
         service.changeTeacherSchool(12, 8).subscribe((r) => (result = r));

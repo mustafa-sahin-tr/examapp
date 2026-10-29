@@ -892,6 +892,14 @@ taşımak için BadgeService dizininde bir kez: `dotnet run -- backfill-student-
 `StudentBadgeEarnedEvent`; exam API consumer'ı (öğrenci, rozet) UNIQUE ile idempotent — ikinci çalıştırma çift kayıt üretmez; Production'da
 `backfill-student-points` gibi `--allow-production --confirm`). Migration yok.
 
+**Issue #539 — öğretmen transferinde "Okulum" sınavları özel olur.** `PUT api/admin/teachers/{id}/school` okul gerçekten
+değişince (aynı okul / yalnız bekleyen talebin kapanması değil) öğretmenin `TeacherSharing=SchoolOnly` sınavları (silinmişler dahil)
+okul güncellemesiyle **aynı transaction'da** `Private` olur; sayısı yanıtta `privatizedWorksheetCount` ve `AdminUserActionLogs.AffectedCount`'ta.
+Herhangi bir adım başarısızsa ne okul ne görünürlük değişir. Öğrenci erişimi `TeacherSharing`'e bakmaz: eski okula yapılmış atamalar
+çözülmeye devam eder. Admin dialog'u onaydan önce sayıyı `GET api/admin/teachers/{id}/school-change-impact` (`schoolOnlyWorksheetCount`,
+silinmemişler) ile gösterir. Yeniden paylaşım öğretmenin elinde (elle tekrar "Okulum"). Migration `AddAdminUserActionAffectedCount` exam API
+açılışında uygulanır (Aspire'da exam API'yi yeniden başlat).
+
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını
 (`TestInstances` — Questions'a FK'sı yok, CASCADE ulaşmaz, açıkça silinir; aksi halde "boş test yapılmış" gibi kalır),

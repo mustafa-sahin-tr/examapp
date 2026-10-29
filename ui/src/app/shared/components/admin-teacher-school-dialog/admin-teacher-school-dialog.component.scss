@@ -78,6 +78,11 @@
     color: var(--ms-text);
   }
 
+  li.tsd-effects__warn {
+    color: var(--ms-text-strong);
+    font-weight: 600;
+  }
+
   mat-icon {
     flex-shrink: 0;
     font-size: 18px;

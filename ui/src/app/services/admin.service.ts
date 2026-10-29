@@ -25,7 +25,7 @@ import { AdminSchoolPagedQuery } from '../models/admin-paged-query.model';
 import { AdminPasswordResetResponse, AdminPasswordResetTarget } from '../models/admin-password-reset.model';
 import { AdminAccountStatusResponse, AdminAccountTarget } from '../models/admin-account-status.model';
 import { AdminStudentSchoolRequest, AdminStudentSchoolResponse } from '../models/admin-student-school.model';
-import { AdminTeacherSchoolRequest, AdminTeacherSchoolResponse } from '../models/admin-teacher-school.model';
+import { AdminTeacherSchoolRequest, AdminTeacherSchoolResponse, AdminTeacherSchoolChangeImpact } from '../models/admin-teacher-school.model';
 import { AdminTeacherSuspendRequest, AdminTeacherSuspensionResponse } from '../models/admin-teacher-suspension.model';
 import { Paged } from '../models/test-instance';
 
@@ -251,6 +251,11 @@ export class AdminService {
   changeTeacherSchool(teacherId: number, schoolId: number): Observable<AdminTeacherSchoolResponse> {
     const body: AdminTeacherSchoolRequest = { schoolId };
     return this.http.put<AdminTeacherSchoolResponse>(`${this.baseUrl}/teachers/${teacherId}/school`, body);
+  }
+
+  /** Issue #539 — okul değişirse özel yapılacak "Okulum" paylaşımlı sınav sayısı (dialog uyarısı). 404: öğretmen yok. */
+  getTeacherSchoolChangeImpact(teacherId: number): Observable<AdminTeacherSchoolChangeImpact> {
+    return this.http.get<AdminTeacherSchoolChangeImpact>(`${this.baseUrl}/teachers/${teacherId}/school-change-impact`);
   }
 
   // ---- classifier cache ----

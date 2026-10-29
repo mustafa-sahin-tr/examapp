@@ -43,6 +43,12 @@ public class AdminUserActionLog
 
     /// <summary>issue #277 review (security L5): <see cref="AdminUserAction.StudentSchoolChanged"/> (ve #313 <see cref="AdminUserAction.TeacherSchoolChanged"/>) için istenen/yeni okul.</summary>
     public int? ToSchoolId { get; set; }
+
+    /// <summary>
+    /// issue #539: <see cref="AdminUserAction.TeacherSchoolChanged"/>'de <c>SchoolOnly</c>'dan <c>Private</c>'a alınan sınav
+    /// sayısı (okul değişmediyse ya da sınav yoksa null). Diğer aksiyonlarda null.
+    /// </summary>
+    public int? AffectedCount { get; set; }
 }
 
 /// <summary>Audit'lenen admin hesap aksiyonları. Kalıcı değer string'dir; yeniden adlandırma geçmiş kayıtları bozar.</summary>

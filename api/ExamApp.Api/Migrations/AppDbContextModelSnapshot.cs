@@ -106,6 +106,9 @@ namespace ExamApp.Api.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<int?>("AffectedCount")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("FromSchoolId")
                         .HasColumnType("integer");
 

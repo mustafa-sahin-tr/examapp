@@ -66,6 +66,29 @@ public class AdminControllerTeacherSchoolTests
     }
 
     [Fact]
+    public async Task Privatized_worksheet_count_is_returned_issue539()
+    {
+        Returns(new AdminTeacherSchoolChangeResult(AdminTeacherSchoolChangeStatus.Success, 3, 4, Changed: true, PrivatizedWorksheetCount: 5));
+
+        var result = await NewController().ChangeTeacherSchool(9, new AdminTeacherSchoolRequestDto { SchoolId = 4 }, default);
+
+        result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<AdminTeacherSchoolResponseDto>()
+            .PrivatizedWorksheetCount.ShouldBe(5);
+    }
+
+    [Fact]
+    public async Task School_change_impact_returns_the_SchoolOnly_count_or_404_issue539()
+    {
+        _service.CountSchoolOnlyWorksheetsAsync(9, Arg.Any<CancellationToken>()).Returns(3);
+        _service.CountSchoolOnlyWorksheetsAsync(10, Arg.Any<CancellationToken>()).Returns((int?)null);
+
+        (await NewController().GetTeacherSchoolChangeImpact(9, default)).ShouldBeOfType<OkObjectResult>()
+            .Value.ShouldBeOfType<AdminTeacherSchoolChangeImpactDto>().SchoolOnlyWorksheetCount.ShouldBe(3);
+        var missing = (await NewController().GetTeacherSchoolChangeImpact(10, default)).ShouldBeOfType<NotFoundObjectResult>();
+        MessageOf(missing.Value).ShouldBe(Localized("admin.teacherSchool.teacherNotFound"));
+    }
+
+    [Fact]
     public async Task Stale_profile_cache_is_reported_in_the_200_response()
     {
         Returns(new AdminTeacherSchoolChangeResult(AdminTeacherSchoolChangeStatus.Success, 3, 4, Changed: true, ProfileCacheStale: true));

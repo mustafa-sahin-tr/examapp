@@ -607,21 +607,183 @@ public class AdminTeacherSchoolServiceTests : IDisposable
         overview.Assignments.ShouldHaveSingleItem().Students.ShouldBeEmpty();
     }
 
+    // ---- issue #539: transferde SchoolOnly sınavlar Private olur ----
+
+    private async Task<int> WorksheetAsync(int ownerUserId, WorksheetTeacherSharing sharing, int gradeId, bool deleted = false)
+    {
+        await using var ctx = _db.NewContext();
+        ctx.SetCurrentUser(ownerUserId);
+        var ws = new Worksheet { Name = $"W-{sharing}", Description = "", GradeId = gradeId, TeacherSharing = sharing, IsDeleted = deleted };
+        ctx.Worksheets.Add(ws);
+        await ctx.SaveChangesAsync();
+        return ws.Id;
+    }
+
+    private async Task<WorksheetTeacherSharing> SharingAsync(int worksheetId)
+    {
+        await using var ctx = _db.NewContext();
+        return await ctx.Worksheets.IgnoreQueryFilters().AsNoTracking()
+            .Where(w => w.Id == worksheetId).Select(w => w.TeacherSharing).SingleAsync();
+    }
+
+    [Fact]
+    public async Task School_change_makes_the_teachers_SchoolOnly_worksheets_private_and_audits_the_count()
+    {
+        var s = await SeedAsync();
+        var schoolOnly = await WorksheetAsync(TeacherUserId, WorksheetTeacherSharing.SchoolOnly, s.GradeId);
+        var deletedSchoolOnly = await WorksheetAsync(TeacherUserId, WorksheetTeacherSharing.SchoolOnly, s.GradeId, deleted: true);
+        var publicView = await WorksheetAsync(TeacherUserId, WorksheetTeacherSharing.PublicView, s.GradeId);
+        var publicAssignable = await WorksheetAsync(TeacherUserId, WorksheetTeacherSharing.PublicAssignable, s.GradeId);
+        var peerSchoolOnly = await WorksheetAsync(TeacherUserId + 1, WorksheetTeacherSharing.SchoolOnly, s.GradeId);
+
+        await using (var countCtx = _db.NewContext())
+        {
+            var counter = new AdminTeacherSchoolService(countCtx, _targets, new AdminUserActionAuditService(countCtx));
+            // Uyarı sayısı silinmemiş sınavları sayar.
+            (await counter.CountSchoolOnlyWorksheetsAsync(s.TeacherId)).ShouldBe(1);
+            (await counter.CountSchoolOnlyWorksheetsAsync(999999)).ShouldBeNull();
+        }
+
+        var r = await RunAsync(s.TeacherId, s.SchoolB);
+
+        r.Status.ShouldBe(AdminTeacherSchoolChangeStatus.Success);
+        r.PrivatizedWorksheetCount.ShouldBe(2);
+        (await SharingAsync(schoolOnly)).ShouldBe(WorksheetTeacherSharing.Private);
+        (await SharingAsync(deletedSchoolOnly)).ShouldBe(WorksheetTeacherSharing.Private);
+        (await SharingAsync(publicView)).ShouldBe(WorksheetTeacherSharing.PublicView);
+        (await SharingAsync(publicAssignable)).ShouldBe(WorksheetTeacherSharing.PublicAssignable);
+        (await SharingAsync(peerSchoolOnly)).ShouldBe(WorksheetTeacherSharing.SchoolOnly);
+        var log = (await AuditAsync()).ShouldHaveSingleItem();
+        log.Outcome.ShouldBe(AdminUserActionOutcome.Succeeded);
+        log.AffectedCount.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Transferred_SchoolOnly_worksheet_is_hidden_from_old_and_new_school_teachers_but_old_school_assignment_still_starts()
+    {
+        var s = await SeedAsync();
+        const int peerA = TeacherUserId + 1, peerB = TeacherUserId + 2;
+        var wsId = await WorksheetAsync(TeacherUserId, WorksheetTeacherSharing.SchoolOnly, s.GradeId);
+        await using (var setup = _db.NewContext())
+        {
+            setup.SetCurrentUser(TeacherUserId);
+            setup.AddRange(
+                new Teacher { UserId = peerA, SchoolId = s.SchoolA, ApprovalStatus = TeacherApprovalStatus.Approved, AccountApprovedAt = DateTime.UtcNow },
+                new Teacher { UserId = peerB, SchoolId = s.SchoolB, ApprovalStatus = TeacherApprovalStatus.Approved, AccountApprovedAt = DateTime.UtcNow },
+                new Student { UserId = 80, StudentNumber = "a", SchoolId = s.SchoolA, SchoolVerifiedAt = DateTime.UtcNow, GradeId = s.GradeId },
+                new WorksheetAssignment { WorksheetId = wsId, GradeId = s.GradeId, SchoolId = s.SchoolA, StartAt = DateTime.UtcNow.AddDays(-1) });
+            await setup.SaveChangesAsync();
+        }
+
+        // Önce: eski okulun öğretmeni zümre sınavını görür; yeni okulun öğretmeni görmez.
+        await using (var before = _db.NewContext())
+        {
+            (await before.Worksheets.Where(WorksheetAccess.VisibleToTeacherPredicate(before, peerA, s.SchoolA)).Select(w => w.Id).ToListAsync())
+                .ShouldContain(wsId);
+        }
+
+        (await RunAsync(s.TeacherId, s.SchoolB)).Status.ShouldBe(AdminTeacherSchoolChangeStatus.Success);
+
+        await using var ctx = _db.NewContext();
+        foreach (var (peer, school) in new[] { (peerA, s.SchoolA), (peerB, s.SchoolB) })
+        {
+            (await ctx.Worksheets.Where(WorksheetAccess.VisibleToTeacherPredicate(ctx, peer, school)).Select(w => w.Id).ToListAsync())
+                .ShouldNotContain(wsId);
+            var sharing = await SharingAsync(wsId);
+            WorksheetAccess.CanView(TeacherUserId, peer, false, sharing, null, school, s.SchoolB).ShouldBeFalse();
+            WorksheetAccess.CanAssign(TeacherUserId, peer, false, sharing, false, school, s.SchoolB).ShouldBeFalse();
+            WorksheetAccess.CanCopy(TeacherUserId, peer, false, sharing, null, school, s.SchoolB).ShouldBeFalse();
+        }
+        // Sahip kendi sınavını görmeye devam eder.
+        (await ctx.Worksheets.Where(WorksheetAccess.VisibleToTeacherPredicate(ctx, TeacherUserId, s.SchoolB)).Select(w => w.Id).ToListAsync())
+            .ShouldContain(wsId);
+
+        // Eski okulun öğrencisi atama üzerinden başlatır ve çözer.
+        var st = await ctx.Students.AsNoTracking().SingleAsync(x => x.UserId == 80);
+        var profile = new StudentProfileDto { Id = st.Id, GradeId = st.GradeId, SchoolId = st.VerifiedSchoolId };
+        var started = await new TestSessionService(ctx).StartTestAsync(wsId, profile);
+        started.Success.ShouldBeTrue(started.Message);
+    }
+
+    [Fact]
+    public async Task Same_school_changes_do_not_touch_SchoolOnly_worksheets()
+    {
+        var s = await SeedAsync(t => t.RequestedSchoolId = null);
+        var wsId = await WorksheetAsync(TeacherUserId, WorksheetTeacherSharing.SchoolOnly, s.GradeId);
+
+        var r = await RunAsync(s.TeacherId, s.SchoolA);
+
+        r.Changed.ShouldBeFalse();
+        r.PrivatizedWorksheetCount.ShouldBe(0);
+        (await SharingAsync(wsId)).ShouldBe(WorksheetTeacherSharing.SchoolOnly);
+    }
+
+    [Fact]
+    public async Task Same_school_with_a_leftover_request_does_not_touch_SchoolOnly_worksheets()
+    {
+        var s = await SeedAsync();
+        await using (var ctx = _db.NewContext())
+            await ctx.Teachers.Where(t => t.Id == s.TeacherId).ExecuteUpdateAsync(x => x.SetProperty(t => t.RequestedSchoolId, s.SchoolB));
+        var wsId = await WorksheetAsync(TeacherUserId, WorksheetTeacherSharing.SchoolOnly, s.GradeId);
+
+        var r = await RunAsync(s.TeacherId, s.SchoolA);
+
+        r.Changed.ShouldBeTrue();
+        r.PrivatizedWorksheetCount.ShouldBe(0);
+        (await SharingAsync(wsId)).ShouldBe(WorksheetTeacherSharing.SchoolOnly);
+        (await AuditAsync()).ShouldHaveSingleItem().AffectedCount.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Failure_while_privatizing_rolls_back_the_school_change()
+    {
+        var s = await SeedAsync();
+        var wsId = await WorksheetAsync(TeacherUserId, WorksheetTeacherSharing.SchoolOnly, s.GradeId);
+
+        await Should.ThrowAsync<InvalidOperationException>(() => RunAsync(s.TeacherId, s.SchoolB, new FailingWorksheetUpdate()));
+
+        (await TeacherAsync(s.TeacherId)).SchoolId.ShouldBe(s.SchoolA);
+        (await SharingAsync(wsId)).ShouldBe(WorksheetTeacherSharing.SchoolOnly);
+        await _keycloak.DidNotReceiveWithAnyArgs().SetSchoolIdAttributeAsync(default!, default);
+    }
+
+    private sealed class FailingWorksheetUpdate : DbCommandInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            System.Data.Common.DbCommand command, CommandEventData eventData, InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("UPDATE \"Worksheets\"", StringComparison.Ordinal))
+                throw new InvalidOperationException("db down");
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    /// <summary>
+    /// Requested audit satırı yazıldıktan hemen sonra (okuma ile koşullu UPDATE arasında, transaction açılmadan) eşzamanlı
+    /// yazar öğretmeni değiştirir. #539'dan beri koşullu UPDATE transaction içinde; yarış yazımı onun dışında kalmalı ki
+    /// rollback onu da geri almasın.
+    /// </summary>
     private sealed class ConcurrentTeacherWriter(int teacherId) : DbCommandInterceptor
     {
         public bool Fired { get; private set; }
 
-        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
-            System.Data.Common.DbCommand command, CommandEventData eventData, InterceptionResult<int> result,
+        public override async ValueTask<System.Data.Common.DbDataReader> ReaderExecutedAsync(
+            System.Data.Common.DbCommand command, CommandExecutedEventData eventData, System.Data.Common.DbDataReader result,
             CancellationToken cancellationToken = default)
         {
-            if (!Fired && command.CommandText.Contains("UPDATE \"Teachers\"", StringComparison.Ordinal))
+            if (!Fired && command.CommandText.Contains("INSERT INTO \"AdminUserActionLogs\"", StringComparison.Ordinal))
             {
                 Fired = true;
+                // Okuyucu kapanmadan bağlantıda başka komut çalışmaz: satırları belleğe al, sonra yaz.
+                var table = new System.Data.DataTable();
+                table.Load(result);
                 await using var concurrent = command.Connection!.CreateCommand();
+                concurrent.Transaction = command.Transaction;
                 concurrent.CommandText =
                     $"UPDATE \"Teachers\" SET \"SchoolId\" = NULL, \"IsIndependentTutor\" = 1 WHERE \"Id\" = {teacherId}";
                 await concurrent.ExecuteNonQueryAsync(cancellationToken);
+                return table.CreateDataReader();
             }
 
             return result;

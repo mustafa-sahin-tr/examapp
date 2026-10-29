@@ -547,7 +547,8 @@ public class AdminController : BaseController
                 SchoolId = result.SchoolId ?? schoolId,
                 PreviousSchoolId = result.PreviousSchoolId,
                 Changed = result.Changed,
-                ProfileCacheStale = result.ProfileCacheStale
+                ProfileCacheStale = result.ProfileCacheStale,
+                PrivatizedWorksheetCount = result.PrivatizedWorksheetCount
             }),
             AdminTeacherSchoolChangeStatus.TargetNotFound => NotFound(Message("admin.teacherSchool.teacherNotFound")),
             AdminTeacherSchoolChangeStatus.SchoolNotFound => BadRequest(Message("admin.teacherSchool.schoolNotFound")),
@@ -562,6 +563,22 @@ public class AdminController : BaseController
             AdminTeacherSchoolChangeStatus.AccountSuspended => Conflict(Message("admin.teacherSchool.accountSuspended")),
             _ => StatusCode(StatusCodes.Status502BadGateway, Message("admin.teacherSchool.upstreamFailed"))
         };
+    }
+
+    /// <summary>
+    /// GET api/admin/teachers/{id}/school-change-impact → <c>200 { schoolOnlyWorksheetCount }</c> (issue #539): okul değişirse
+    /// <c>Private</c> yapılacak <c>SchoolOnly</c> sınav sayısı — admin okul dialog'u onaydan önce uyarı gösterir. Öğretmen yok → 404.
+    /// </summary>
+    [HttpGet("teachers/{id:int}/school-change-impact")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> GetTeacherSchoolChangeImpact(int id, CancellationToken ct)
+    {
+        var service = _teacherSchool
+            ?? throw new InvalidOperationException("IAdminTeacherSchoolService is not registered.");
+        var count = await service.CountSchoolOnlyWorksheetsAsync(id, ct);
+        return count is int n
+            ? Ok(new AdminTeacherSchoolChangeImpactDto { SchoolOnlyWorksheetCount = n })
+            : NotFound(Message("admin.teacherSchool.teacherNotFound"));
     }
 
     // ---- Öğretmen hesap onayı askıya alma / geri açma (issue #289) ----

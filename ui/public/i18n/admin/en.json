@@ -486,6 +486,8 @@
     "effectsTitle": "What this action does",
     "effectNewSchool": "The teacher will see the new school's students and classes according to school rules.",
     "effectOldSchool": "Access to the old school's students and their results will be removed.",
+    "effectSchoolOnly": "{{count}} \"My school\" shared exam(s) will become private; teachers of the old and the new school will no longer see them. Assignments already given to the old school's students continue.",
+    "effectSchoolOnlyUnknown": "The teacher's \"My school\" shared exams, if any, will become private; existing assignments continue.",
     "effectPendingRequest": "Any pending school request of the teacher is closed.",
     "effectPendingRequestApproved": "Any pending school request of the teacher is closed and the application status is set to \"Approved\".",
     "independentNote": "This teacher is registered as an independent tutor (application not approved). Assigning a school does not change their independent tutor details or application status; from now on their school-scoped access is based on the selected school.",

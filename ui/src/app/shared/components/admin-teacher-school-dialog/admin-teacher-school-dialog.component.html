@@ -43,6 +43,15 @@
           <mat-icon aria-hidden="true">person_off</mat-icon><span>{{ t('effectOldSchool') }}</span>
         </li>
       }
+      @if (schoolOnlyCount(); as count) {
+        <li data-testid="effect-school-only" class="tsd-effects__warn">
+          <mat-icon aria-hidden="true">lock</mat-icon><span>{{ t('effectSchoolOnly', { count: count }) }}</span>
+        </li>
+      } @else if (impactUnknown()) {
+        <li data-testid="effect-school-only" class="tsd-effects__warn">
+          <mat-icon aria-hidden="true">lock</mat-icon><span>{{ t('effectSchoolOnlyUnknown') }}</span>
+        </li>
+      }
       <li data-testid="effect-pending-request">
         <mat-icon aria-hidden="true">pending_actions</mat-icon>
         <span>{{ approvesApplication ? t('effectPendingRequestApproved') : t('effectPendingRequest') }}</span>

@@ -17,10 +17,17 @@ public interface IAdminTeacherSchoolService
     /// aynı-okul kısa devresinden ÖNCE, #313 review D1) → durum kapıları (askı, hesap onayı, aktif bağımsız → 409) → aynı
     /// okul ve bekleyen talep yoksa yan etkisiz başarı → Requested audit (fail-closed, yazımdan önce) → koşullu UPDATE (okunduğu andaki okul/talep/başvuru
     /// durumu hâlâ aynıysa; değilse <see cref="AdminTeacherSchoolChangeStatus.Conflict"/>) → profil önbelleği + Keycloak
-    /// <c>school_id</c> ipucu (best-effort) → sonuç audit'i. Atama/worksheet verisine DOKUNULMAZ (bkz. uygulama notları).
+    /// <c>school_id</c> ipucu (best-effort) → sonuç audit'i. Atamalara DOKUNULMAZ; okul değişince <c>SchoolOnly</c> sınavlar okul
+    /// güncellemesiyle aynı transaction'da <c>Private</c> olur (#539).
     /// </summary>
     Task<AdminTeacherSchoolChangeResult> ChangeSchoolAsync(
         int teacherId, int schoolId, string actorKeycloakId, CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #539: okul değişirse <c>Private</c> yapılacak (silinmemiş) <c>SchoolOnly</c> sınav sayısı — admin dialog'unun
+    /// onay öncesi uyarısı için. Öğretmen yoksa (ya da silinmişse) null.
+    /// </summary>
+    Task<int?> CountSchoolOnlyWorksheetsAsync(int teacherId, CancellationToken ct = default);
 }
 
 public enum AdminTeacherSchoolChangeStatus
@@ -56,6 +63,7 @@ public enum AdminTeacherSchoolChangeStatus
 /// issue #313 review (O1): okul değişti ama profil önbelleği denemelere rağmen düşürülemedi — öğretmen en geç 1 saat eski
 /// okulun kapsamında görünebilir (audit outcome <c>SucceededCacheStale</c>).
 /// </param>
+/// <param name="PrivatizedWorksheetCount">issue #539: okul değişince <c>SchoolOnly</c>'dan <c>Private</c>'a alınan sınav sayısı.</param>
 public sealed record AdminTeacherSchoolChangeResult(
     AdminTeacherSchoolChangeStatus Status, int? PreviousSchoolId = null, int? SchoolId = null, bool Changed = false,
-    bool ProfileCacheStale = false);
+    bool ProfileCacheStale = false, int PrivatizedWorksheetCount = 0);

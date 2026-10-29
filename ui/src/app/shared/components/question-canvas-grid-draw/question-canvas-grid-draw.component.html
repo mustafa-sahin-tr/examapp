@@ -42,8 +42,11 @@
           <g class="gd-shape" [attr.data-shape]="i" [class.is-ok]="s.state === 'ok'" [class.is-bad]="s.state === 'wrong'"
             [class.is-dup]="s.state === 'duplicate'">
             <rect [attr.x]="s.col" [attr.y]="s.row" [attr.width]="s.width" [attr.height]="s.height" />
-            @if (s.width >= 2 || s.height >= 2) {
+            @if (s.width >= 3) {
               <text class="gd-size" [attr.x]="s.col + s.width / 2" [attr.y]="s.row + s.height / 2">{{ s.width }} × {{ s.height }}</text>
+            } @else if (s.height >= 3) {
+              <!-- Dar, uzun şekil: etiket dikey. -->
+              <text class="gd-size" [attr.transform]="'translate(' + (s.col + s.width / 2) + ' ' + (s.row + s.height / 2) + ') rotate(-90)'">{{ s.width }} × {{ s.height }}</text>
             }
           </g>
         }
@@ -51,7 +54,11 @@
         @if (preview(); as pr) {
           <g class="gd-preview" [class.is-blocked]="previewBlocked()" data-testid="gd-preview">
             <rect [attr.x]="pr.col" [attr.y]="pr.row" [attr.width]="pr.width" [attr.height]="pr.height" />
-            <text class="gd-size" [attr.x]="pr.col + pr.width / 2" [attr.y]="pr.row + pr.height / 2">{{ pr.width }} × {{ pr.height }}</text>
+            @if (pr.width >= 3) {
+              <text class="gd-size" [attr.x]="pr.col + pr.width / 2" [attr.y]="pr.row + pr.height / 2">{{ pr.width }} × {{ pr.height }}</text>
+            } @else if (pr.height >= 3) {
+              <text class="gd-size" [attr.transform]="'translate(' + (pr.col + pr.width / 2) + ' ' + (pr.row + pr.height / 2) + ') rotate(-90)'">{{ pr.width }} × {{ pr.height }}</text>
+            }
           </g>
         }
 

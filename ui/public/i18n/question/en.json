@@ -410,7 +410,21 @@
     "paintLeaveEmpty": "Must stay empty",
     "paintRemoveRegion": "Delete region {{n}}",
     "paintNoRegions": "No regions yet.",
-    "paintClear": "Delete all regions"
+    "paintClear": "Delete all regions",
+    "paintNumbered": "Paint by number (colour of the answer)",
+    "paintNumberedHint": "Each region belongs to a question number; when the student taps a region, every region with that number is painted. New regions join the selected number; clicking a region on the image moves it to the selected number.",
+    "paintGroups": "Questions ({{count}})",
+    "paintActiveGroupAria": "Question new regions join",
+    "paintActiveGroup": "Question {{name}}: new regions join it",
+    "paintGroupLabelPlaceholder": "Number",
+    "paintGroupLabelAria": "Question {{n}} number",
+    "paintGroupFillAria": "Question {{name}} correct colour",
+    "paintGroupNoColor": "Pick a colour",
+    "paintGroupRegions": "{{n}} regions",
+    "paintRemoveGroup": "Delete question {{name}}",
+    "paintAddGroup": "Add question",
+    "paintRegionGroupAria": "Region {{n}} question",
+    "paintGroupOption": "Question {{name}}"
   },
   "preview": {
     "headingWithTest": "Preview — {{testName}}",

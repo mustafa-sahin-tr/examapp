@@ -3,6 +3,8 @@ import {
   buildRegionPaintFillsPayload,
   buildRegionPaintPayload,
   countPainted,
+  fillKeys,
+  groupName,
   isBlankRegionPaintPayload,
   parseRegionPaintAnswer,
   parseRegionPaintFeedback,
@@ -126,5 +128,46 @@ describe('region-paint regions mode (#587 dilim b)', () => {
     )!;
     expect(fb.rows).toEqual([{ id: 'r1', correct: false, reason: 'color' }, { id: 'r2', correct: false }]);
     expect([fb.found, fb.missing, fb.extra, fb.tooMany]).toEqual([1, 2, 0, undefined]);
+  });
+});
+
+describe('region-paint numbered painting (#587 dilim c)', () => {
+  const GROUPS = JSON.stringify({
+    version: 1,
+    type: 'regionPaint',
+    mode: 'regions',
+    palette: [{ id: 'p1', color: 'blue' }, { id: 'p2', color: 'red' }],
+    groups: [{ id: 'g1', label: '1' }, { id: 'g2' }, { id: 'g3' }],
+    regions: [
+      { id: 'r1', points: [[0, 0], [10, 0], [10, 10]], group: 'g1' },
+      { id: 'r2', points: [[20, 0], [30, 0], [25, 10]], group: 'g2' },
+      // Grupsuz / bilinmeyen gruplu bölge atlanır; bölgesiz grup (g3) düşer.
+      { id: 'r3', points: [[40, 0], [50, 0], [45, 10]] },
+      { id: 'r4', points: [[40, 0], [50, 0], [45, 10]], group: 'g9' },
+      { id: 'r5', points: [[60, 0], [70, 0], [65, 10]], group: 'g1' },
+    ],
+  });
+
+  it('parsesGroups_FillsKeyedByGroup', () => {
+    const plan = parseRegionPaintRegionsPlan(GROUPS)!;
+    expect(plan.groups.map((g) => g.id)).toEqual(['g1', 'g2']);
+    expect(plan.regions.map((r) => [r.id, r.group])).toEqual([['r1', 'g1'], ['r2', 'g2'], ['r5', 'g1']]);
+    expect(fillKeys(plan)).toEqual(['g1', 'g2']);
+    expect(groupName(plan, 'g1')).toBe('1');
+    expect(groupName(plan, 'g2')).toBe('2');
+    const fills = parseRegionPaintFills(JSON.stringify({ version: 1, type: 'regionPaint', fills: { g2: 'p2', r1: 'p1' } }), plan);
+    expect(fills).toEqual({ g2: 'p2' });
+    expect(buildRegionPaintFillsPayload({ g2: 'p2', g1: 'p1' }, plan)).toBe(
+      JSON.stringify({ version: 1, type: 'regionPaint', fills: { g1: 'p1', g2: 'p2' } })
+    );
+  });
+
+  it('ungroupedPlan_HasNoGroups', () => {
+    const plan = parseRegionPaintRegionsPlan(
+      JSON.stringify({ version: 1, type: 'regionPaint', mode: 'regions', palette: [{ id: 'p1', color: 'red' }], regions: [{ id: 'r1', points: [[0, 0], [9, 0], [9, 9]] }] })
+    )!;
+    expect(plan.groups).toEqual([]);
+    expect(plan.regions[0].group).toBeUndefined();
+    expect(fillKeys(plan)).toEqual(['r1']);
   });
 });

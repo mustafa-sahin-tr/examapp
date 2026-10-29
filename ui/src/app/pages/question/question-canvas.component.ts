@@ -1161,6 +1161,37 @@ export class QuestionCanvasComponent implements OnInit {
     this.withRegion((name) => this.imageSelector.clearPaintRegions(name));
   }
 
+  /** #587 dilim c: numaralı boyama (bölgeler soru numarasına bağlı, çözüm grup başına). */
+  insPaintNumbered(numbered: boolean) {
+    this.withRegion((name) => this.imageSelector.setPaintRegionsNumbered(name, numbered));
+  }
+
+  insPaintAddGroup() {
+    this.withRegion((name) => this.imageSelector.addPaintRegionsGroup(name));
+  }
+
+  insPaintRemoveGroup(id: string) {
+    this.withRegion((name) => this.imageSelector.removePaintRegionsGroup(name, id));
+  }
+
+  insPaintActiveGroup(id: string) {
+    this.withRegion((name) => this.imageSelector.setPaintRegionsActiveGroup(name, id));
+  }
+
+  insPaintGroupLabel(id: string, event: Event) {
+    this.withRegion((name) => this.imageSelector.setPaintRegionsGroupLabel(name, id, QuestionCanvasComponent.inputValue(event)));
+  }
+
+  insPaintGroupFill(id: string, event: Event) {
+    const value = QuestionCanvasComponent.inputValue(event);
+    this.withRegion((name) => this.imageSelector.setPaintRegionsGroupFill(name, id, value || null));
+  }
+
+  insPaintRegionGroup(id: string, event: Event) {
+    const value = QuestionCanvasComponent.inputValue(event);
+    if (value) this.withRegion((name) => this.imageSelector.setPaintRegionsRegionGroup(name, id, value));
+  }
+
   insTextLineMode() {
     const idx = this.insIndex;
     if (idx != null) this.imageSelector.selectTextLineMode(idx);

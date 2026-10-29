@@ -4,6 +4,7 @@ import { parseRegionPaintRegionsPlan } from '../../models/region-paint';
 import {
   ELLIPSE_POINTS,
   addPaintColor,
+  addPaintGroup,
   addPaintRegion,
   addPendingPoint,
   buildPaintRegionsInspector,
@@ -16,9 +17,13 @@ import {
   paintRegionsStateFromPlan,
   rectPoints,
   removePaintColor,
+  removePaintGroup,
   removePaintRegion,
+  setPaintActiveGroup,
   setPaintBrush,
   setPaintColor,
+  setPaintGroupFill,
+  setPaintNumbered,
   togglePaintRegionFill,
 } from './paint-regions-authoring';
 
@@ -112,5 +117,47 @@ describe('paint-regions-authoring (#587)', () => {
     expect(ins.palette[0].targets).toBe(2);
     expect(ins.regions.map((r) => [r.no, r.fill])).toEqual([[1, 'p1'], [2, 'p1']]);
     expect(ins.freeColors).not.toContain('blue');
+  });
+
+  it('numbered_RegionsJoinActiveGroup_SolutionPerGroup', () => {
+    // Var olan bölge numaralı boyamaya geçince 1. soruya girer.
+    let state = setPaintNumbered(addPaintRegion(createPaintRegionsState(), rectPoints(box)), true);
+    expect(state.fills).toEqual({});
+    expect(state.groups).toEqual([{ id: 'g1', label: '1' }]);
+    state = addPaintColor(state, 'red');
+    state = addPaintGroup(state);
+    state = addPaintRegion(state, rectPoints({ x: 60, y: 0, width: 20, height: 20 }));
+    state = addPaintRegion(state, rectPoints({ x: 90, y: 0, width: 20, height: 20 }));
+    // Tuvalde bölgeye tık: etkin soruya taşır (renk vermez).
+    state = togglePaintRegionFill(setPaintActiveGroup(state, 'g1'), 'r3');
+    expect(state.regions.map((r) => [r.id, r.group])).toEqual([['r1', 'g1'], ['r2', 'g2'], ['r3', 'g1']]);
+    expect(paintRegionsIssues(state)).toEqual(['groupWithoutColor']);
+    expect(buildPaintRegionsSolution(state)).toBeNull();
+    state = setPaintGroupFill(setPaintGroupFill(state, 'g1', 'p1'), 'g2', 'p2');
+    expect(paintRegionsIssues(state)).toEqual([]);
+    const plan = buildPaintRegionsPlan(state);
+    expect(plan.groups).toEqual([{ id: 'g1', label: '1' }, { id: 'g2', label: '2' }]);
+    expect(plan.regions.map((r) => r.group)).toEqual(['g1', 'g2', 'g1']);
+    const solution = buildPaintRegionsSolution(state);
+    expect(solution).toEqual({ fills: { g1: 'p1', g2: 'p2' } });
+    const restored = paintRegionsStateFromPlan(parseRegionPaintRegionsPlan(JSON.stringify(plan))!, JSON.stringify(solution));
+    expect(restored.numbered).toBe(true);
+    expect(buildPaintRegionsSolution(restored)).toEqual(solution);
+    const ins = buildPaintRegionsInspector(state);
+    expect(ins.groups.map((g) => [g.name, g.fill, g.regionCount])).toEqual([['1', 'p1', 2], ['2', 'p2', 1]]);
+    expect(ins.palette.map((p) => p.targets)).toEqual([1, 1]);
+  });
+
+  it('numbered_GroupWithRegionsNotRemoved_EmptyGroupFlagged_OffDropsGroups', () => {
+    let state = setPaintNumbered(addPaintRegion(createPaintRegionsState(), rectPoints(box)), true);
+    state = addPaintGroup(state);
+    expect(paintRegionsIssues(state)).toContain('emptyGroup');
+    expect(removePaintGroup(state, 'g1').groups.length).toBe(2);
+    state = removePaintGroup(state, 'g2');
+    expect(state.groups.map((g) => g.id)).toEqual(['g1']);
+    const off = setPaintNumbered(state, false);
+    expect(off.groups).toEqual([]);
+    expect(buildPaintRegionsPlan(off)).not.toHaveProperty('groups');
+    expect(buildPaintRegionsPlan(off).regions[0]).not.toHaveProperty('group');
   });
 });

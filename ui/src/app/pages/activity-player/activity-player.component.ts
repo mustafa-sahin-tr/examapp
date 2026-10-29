@@ -1514,7 +1514,11 @@ export class ActivityPlayerComponent {
     }
     if (this.isOpenText(item)) return !isBlankOpenText(parseOpenTextAnswer(answer?.answerPayload));
     if (this.isMazeTree(item)) return !isEmptyMazeAnswer(parseMazeAnswer(answer?.answerPayload, this.mazePlanFor(item)));
-    if (this.isRegionPaint(item)) return !isEmptyPaint(parseRegionPaintAnswer(answer?.answerPayload, this.regionPaintPlanFor(item)));
+    if (this.isRegionPaint(item)) {
+      const regionsPlan = this.regionPaintRegionsPlanFor(item);
+      if (regionsPlan) return Object.keys(parseRegionPaintFills(answer?.answerPayload, regionsPlan)).length > 0;
+      return !isEmptyPaint(parseRegionPaintAnswer(answer?.answerPayload, this.regionPaintPlanFor(item)));
+    }
     if (this.isLogicGrid(item)) return countMarks(parseLogicGridAnswer(answer?.answerPayload, this.logicGridPlanFor(item))) > 0;
     if (this.isWordSearch(item)) return parseWordSearchAnswer(answer?.answerPayload, this.wordSearchPlanFor(item)).length > 0;
     if (this.isCrossword(item)) {
@@ -1564,7 +1568,12 @@ export class ActivityPlayerComponent {
     // Issue #587: boyamada hiç boyanmış kare yok (hedef sayılar öğrenciye gitmez).
     if (this.isRegionPaint(item)) {
       const regionsPlan = this.regionPaintRegionsPlanFor(item);
-      if (regionsPlan) return Object.keys(parseRegionPaintFills(answer?.answerPayload, regionsPlan)).length === 0;
+      if (regionsPlan) {
+        const fills = parseRegionPaintFills(answer?.answerPayload, regionsPlan);
+        // Numaralı boyamada her sorunun (grubun) cevabı beklenir.
+        if (regionsPlan.groups.length > 0) return regionsPlan.groups.some((g) => !Object.hasOwn(fills, g.id));
+        return Object.keys(fills).length === 0;
+      }
       return isEmptyPaint(parseRegionPaintAnswer(answer?.answerPayload, this.regionPaintPlanFor(item)));
     }
     // Issue #586: mantık tablosunda ✓'siz (kişi, kategori) çifti var.
@@ -1848,6 +1857,17 @@ export class ActivityPlayerComponent {
       return entry.label || this.transloco.translate<string>(`shared.questionCanvas.regionPaint.colors.${entry.color}`);
     };
     const own = (id: string) => (Object.hasOwn(fills, id) ? fills[id] : null);
+    // Dilim c: numaralı boyamada satır = soru numarası (grup), hepsi gösterilir (MCQ gibi).
+    if (plan.groups.length > 0) {
+      return plan.groups.map((group, index) => {
+        const expected = targets && Object.hasOwn(targets, group.id) ? targets[group.id] : null;
+        return {
+          label: this.tr('rows.paintGroup', { name: group.label || index + 1, content: colorOf(own(group.id)) }),
+          correct: marks.has(group.id) ? marks.get(group.id)!.correct : null,
+          solution: targets ? colorOf(expected) : null,
+        };
+      });
+    }
     const shown = plan.regions
       .map((region, index) => ({ region, index }))
       .filter(({ region }) => (targets ? Object.hasOwn(targets, region.id) || own(region.id) !== null : own(region.id) !== null));

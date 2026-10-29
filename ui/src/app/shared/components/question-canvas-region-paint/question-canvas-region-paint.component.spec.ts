@@ -242,3 +242,94 @@ describe('QuestionCanvasRegionPaintComponent regions (#587 dilim b)', () => {
     expect(q('rp-solution-hint')).not.toBeNull();
   });
 });
+
+// Issue #587 dilim c: numaralı boyama — bölgeye dokunmak o numaralı bütün bölgeleri boyar, numara listesi, grup başına işaret, çözüm.
+describe('QuestionCanvasRegionPaintComponent numbered (#587 dilim c)', () => {
+  const GROUPS_PLAN = {
+    version: 1,
+    type: 'regionPaint',
+    mode: 'regions',
+    palette: [
+      { id: 'p1', color: 'blue' },
+      { id: 'p2', color: 'red' },
+    ],
+    groups: [{ id: 'g1', label: '1' }, { id: 'g2', label: '2' }],
+    regions: [
+      { id: 'r1', points: [[0, 0], [30, 0], [30, 50], [0, 50]], group: 'g1' },
+      { id: 'r2', points: [[30, 0], [60, 0], [60, 50], [30, 50]], group: 'g2' },
+      { id: 'r3', points: [[60, 0], [100, 0], [100, 50], [60, 50]], group: 'g1' },
+    ],
+  };
+
+  let fixture: ComponentFixture<QuestionCanvasRegionPaintComponent>;
+  let emitted: string[];
+  const el = () => fixture.nativeElement as HTMLElement;
+  const regionEl = (id: string) => el().querySelector(`[data-region="${id}"]`) as SVGGElement;
+  const groupBtn = (id: string) => el().querySelector(`[data-group="${id}"]`) as HTMLButtonElement;
+  const q = (testId: string) => el().querySelector(`[data-testid="${testId}"]`) as HTMLElement | null;
+  const fills = (f: Record<string, string>) => JSON.stringify({ version: 1, type: 'regionPaint', fills: f });
+
+  function setup(inputs: { answer?: string | null; feedback?: RegionPaintFeedback | null; showSolution?: boolean } = {}): void {
+    TestBed.configureTestingModule({ imports: [QuestionCanvasRegionPaintComponent, translocoTestingModule()] });
+    fixture = TestBed.createComponent(QuestionCanvasRegionPaintComponent);
+    emitted = [];
+    fixture.componentInstance.answerPayloadChange.subscribe((p) => emitted.push(p));
+    fixture.componentRef.setInput('questionRegion', {
+      imageUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=',
+      width: 100,
+      height: 50,
+      passage: null,
+    } as unknown as QuestionRegion);
+    fixture.componentRef.setInput('interactionPlanJson', JSON.stringify(GROUPS_PLAN));
+    fixture.componentRef.setInput('interactionSolutionJson', JSON.stringify({ fills: { g1: 'p1', g2: 'p2' } }));
+    fixture.componentRef.setInput('answerPayloadJson', inputs.answer ?? null);
+    fixture.componentRef.setInput('feedback', inputs.feedback ?? null);
+    fixture.componentRef.setInput('showSolution', !!inputs.showSolution);
+    fixture.detectChanges();
+  }
+
+  function click(id: string) {
+    el().querySelector(`[data-region="${id}"] polygon`)!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    fixture.detectChanges();
+  }
+
+  it('tapRegion_PaintsWholeGroup_SameColorClears', () => {
+    setup();
+    click('r3');
+    expect(emitted.at(-1)).toBe(fills({ g1: 'p1' }));
+    expect(regionEl('r1').classList.contains('is-painted')).toBe(true);
+    expect(regionEl('r3').classList.contains('is-painted')).toBe(true);
+    expect(regionEl('r2').classList.contains('is-painted')).toBe(false);
+    click('r1');
+    expect(emitted.at(-1)).toBe(fills({}));
+    expect(regionEl('r3').classList.contains('is-painted')).toBe(false);
+  });
+
+  it('groupList_PaintsFromKeyboard', () => {
+    setup();
+    expect(el().querySelectorAll('[data-group]').length).toBe(2);
+    (el().querySelector('[data-paint="1"]') as HTMLButtonElement).click();
+    groupBtn('g2').click();
+    fixture.detectChanges();
+    expect(emitted.at(-1)).toBe(fills({ g2: 'p2' }));
+    expect(regionEl('r2').classList.contains('is-painted')).toBe(true);
+  });
+
+  it('feedback_MarksGroups_AndRegions', () => {
+    setup({ answer: fills({ g1: 'p1', g2: 'p1' }), feedback: { rows: [{ id: 'g1', correct: true }, { id: 'g2', correct: false }] } });
+    expect(regionEl('r1').getAttribute('data-mark')).toBe('correct');
+    expect(regionEl('r3').getAttribute('data-mark')).toBe('correct');
+    expect(regionEl('r2').getAttribute('data-mark')).toBe('color');
+    expect(groupBtn('g1').classList.contains('is-ok')).toBe(true);
+    expect(groupBtn('g2').classList.contains('is-bad')).toBe(true);
+    expect(q('rp-result')?.classList.contains('is-bad')).toBe(true);
+  });
+
+  it('solution_PaintsEveryGroup_ReadOnly', () => {
+    setup({ showSolution: true });
+    expect(['r1', 'r2', 'r3'].every((id) => regionEl(id).classList.contains('is-painted'))).toBe(true);
+    expect(groupBtn('g1').disabled).toBe(true);
+    click('r2');
+    expect(emitted).toEqual([]);
+  });
+});

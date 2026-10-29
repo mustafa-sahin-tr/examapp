@@ -103,7 +103,10 @@
       "noTargets": "Painting: give at least one region a colour (one that must be painted / circled).",
       "tooManyRegions": "Painting: at most {{max}} regions.",
       "labelTooLong": "Painting: colour and region labels can be at most {{maxLabel}} characters.",
-      "pendingPolygon": "Painting: finish or cancel the polygon being drawn."
+      "pendingPolygon": "Painting: finish or cancel the polygon being drawn.",
+      "emptyGroup": "Painting: a question has no regions (draw one or delete the question).",
+      "groupWithoutColor": "Painting: pick the colour of each question's correct answer.",
+      "tooManyGroups": "Painting: at most {{max}} questions."
     }
   },
   "menu": {

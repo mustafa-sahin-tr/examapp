@@ -1276,11 +1276,52 @@
                 <mat-icon>add</mat-icon>{{ t('inspector.paintAddColor') }}
               </button>
               }
+              @if (!pr.numbered) {
               <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [class.is-active]="pr.brush === null"
                 [attr.aria-pressed]="pr.brush === null" data-testid="paint-brush-none" (click)="insPaintBrush(null)">
                 <mat-icon>format_color_reset</mat-icon>{{ t('inspector.paintBrushNone') }}
               </button>
+              }
             </div>
+
+            <!-- #587 dilim c: numaralı boyama — bölge soru numarasına bağlı, çözüm = sorunun doğru cevabının rengi -->
+            <mat-checkbox data-testid="paint-numbered" [checked]="pr.numbered" (change)="insPaintNumbered($event.checked)">
+              {{ t('inspector.paintNumbered') }}
+            </mat-checkbox>
+            @if (pr.numbered) {
+            <span class="qc-hint-sm">{{ t('inspector.paintNumberedHint') }}</span>
+            <div class="qc-lbl">{{ t('inspector.paintGroups', { count: pr.groups.length }) }}</div>
+            <div class="qc-solution" role="radiogroup" [attr.aria-label]="t('inspector.paintActiveGroupAria')">
+              @for (group of pr.groups; track group.id) {
+              <div class="qc-row qc-paint__region" [class.is-selected]="pr.activeGroupId === group.id" [attr.data-paint-group]="group.id">
+                <button type="button" role="radio" class="qc-zone-id qc-paint__group-pick" [attr.aria-checked]="pr.activeGroupId === group.id"
+                  [attr.aria-label]="t('inspector.paintActiveGroup', { name: group.name })" (click)="insPaintActiveGroup(group.id)">{{ group.name }}</button>
+                <input class="control qc-input qc-paint__label" type="text" [value]="group.label" [attr.maxlength]="pr.limits.maxLabel"
+                  [placeholder]="t('inspector.paintGroupLabelPlaceholder')" [attr.aria-label]="t('inspector.paintGroupLabelAria', { n: group.no })"
+                  (change)="insPaintGroupLabel(group.id, $event)" />
+                <select class="qc-inline-select" [attr.aria-label]="t('inspector.paintGroupFillAria', { name: group.name })"
+                  (change)="insPaintGroupFill(group.id, $event)">
+                  <option value="" [selected]="group.fill === null">{{ t('inspector.paintGroupNoColor') }}</option>
+                  @for (entry of pr.palette; track entry.id) {
+                  <option [value]="entry.id" [selected]="group.fill === entry.id">{{ entry.label || t('inspector.paintColors.' + entry.color) }}</option>
+                  }
+                </select>
+                <span class="qc-hint-sm" [attr.data-paint-group-count]="group.id">{{ t('inspector.paintGroupRegions', { n: group.regionCount }) }}</span>
+                @if (group.regionCount === 0) {
+                <button type="button" class="qc-icon-btn" [attr.aria-label]="t('inspector.paintRemoveGroup', { name: group.name })"
+                  (click)="insPaintRemoveGroup(group.id)"><mat-icon>close</mat-icon></button>
+                }
+              </div>
+              }
+            </div>
+            @if (pr.groups.length < pr.limits.maxGroups) {
+            <div class="qc-btn-row">
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" data-testid="paint-add-group" (click)="insPaintAddGroup()">
+                <mat-icon>add</mat-icon>{{ t('inspector.paintAddGroup') }}
+              </button>
+            </div>
+            }
+            }
 
             <div class="qc-lbl">{{ t('inspector.paintDraw') }}</div>
             <div class="qc-btn-row">
@@ -1317,6 +1358,14 @@
                 <input class="control qc-input qc-paint__label" type="text" [value]="area.label" [attr.maxlength]="pr.limits.maxLabel"
                   [placeholder]="t('inspector.paintRegionLabelPlaceholder')" [attr.aria-label]="t('inspector.paintRegionLabelAria', { n: area.no })"
                   (change)="insPaintRegionLabel(area.id, $event)" />
+                @if (pr.numbered) {
+                <select class="qc-inline-select" [attr.aria-label]="t('inspector.paintRegionGroupAria', { n: area.no })"
+                  (change)="insPaintRegionGroup(area.id, $event)">
+                  @for (group of pr.groups; track group.id) {
+                  <option [value]="group.id" [selected]="area.group === group.id">{{ t('inspector.paintGroupOption', { name: group.name }) }}</option>
+                  }
+                </select>
+                } @else {
                 <select class="qc-inline-select" [attr.aria-label]="t('inspector.paintRegionFillAria', { n: area.no })"
                   (change)="insPaintRegionFill(area.id, $event)">
                   <option value="" [selected]="area.fill === null">{{ t('inspector.paintLeaveEmpty') }}</option>
@@ -1324,6 +1373,7 @@
                   <option [value]="entry.id" [selected]="area.fill === entry.id">{{ entry.label || t('inspector.paintColors.' + entry.color) }}</option>
                   }
                 </select>
+                }
                 <button type="button" class="qc-icon-btn" [attr.aria-label]="t('inspector.paintRemoveRegion', { n: area.no })"
                   (click)="insPaintRemoveRegion(area.id)"><mat-icon>delete</mat-icon></button>
               </div>

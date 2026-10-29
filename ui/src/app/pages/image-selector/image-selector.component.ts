@@ -69,6 +69,7 @@ import {
   PaintRegionsAuthoringState,
   PaintRegionsInspector,
   addPaintColor,
+  addPaintGroup,
   addPaintRegion,
   addPendingPoint,
   buildPaintRegionsInspector,
@@ -83,11 +84,17 @@ import {
   paintRegionsIssues,
   rectPoints,
   removePaintColor,
+  removePaintGroup,
   removePaintRegion,
+  setPaintActiveGroup,
   setPaintBrush,
   setPaintColor,
+  setPaintGroupFill,
+  setPaintGroupLabel,
   setPaintLabel,
+  setPaintNumbered,
   setPaintRegionFill,
+  setPaintRegionGroup,
   setPaintRegionLabel,
   setPaintShape,
   setPaintStyle,
@@ -4677,6 +4684,34 @@ export class ImageSelectorComponent {
     this.updatePaintRegions(regionName, (s) => cancelPendingPolygon(s));
   }
 
+  public setPaintRegionsNumbered(regionName: string, numbered: boolean) {
+    this.updatePaintRegions(regionName, (s) => setPaintNumbered(s, numbered));
+  }
+
+  public addPaintRegionsGroup(regionName: string) {
+    this.updatePaintRegions(regionName, (s) => addPaintGroup(s));
+  }
+
+  public removePaintRegionsGroup(regionName: string, id: string) {
+    this.updatePaintRegions(regionName, (s) => removePaintGroup(s, id));
+  }
+
+  public setPaintRegionsActiveGroup(regionName: string, id: string) {
+    this.updatePaintRegions(regionName, (s) => setPaintActiveGroup(s, id));
+  }
+
+  public setPaintRegionsGroupLabel(regionName: string, id: string, label: string) {
+    this.updatePaintRegions(regionName, (s) => setPaintGroupLabel(s, id, label));
+  }
+
+  public setPaintRegionsGroupFill(regionName: string, id: string, paint: string | null) {
+    this.updatePaintRegions(regionName, (s) => setPaintGroupFill(s, id, paint));
+  }
+
+  public setPaintRegionsRegionGroup(regionName: string, regionId: string, groupId: string) {
+    this.updatePaintRegions(regionName, (s) => setPaintRegionGroup(s, regionId, groupId));
+  }
+
   /** Sürüklemeyle çizilen bölge (soru bölgesine kırpılır, göreli); biçim durumdaki `shape`. */
   private addPaintRegionFromDrag(questionIndex: number, x1: number, y1: number, x2: number, y2: number) {
     const region = this.regions()[questionIndex];
@@ -4714,7 +4749,10 @@ export class ImageSelectorComponent {
 
   private paintRegionsMessages(regionName: string): string[] {
     return paintRegionsIssues(this.ensurePaintRegionsState(regionName)).map((code) =>
-      this.tr(`warnings.paintRegions.${code}`, { max: REGION_PAINT_LIMITS.maxRegions, maxLabel: REGION_PAINT_LIMITS.maxLabel })
+      this.tr(`warnings.paintRegions.${code}`, {
+        max: code === 'tooManyGroups' ? REGION_PAINT_LIMITS.maxGroups : REGION_PAINT_LIMITS.maxRegions,
+        maxLabel: REGION_PAINT_LIMITS.maxLabel,
+      })
     );
   }
 
@@ -4727,8 +4765,12 @@ export class ImageSelectorComponent {
       if (this.getInteractionType(region.name) !== REGION_PAINT) continue;
       const state = this.ensurePaintRegionsState(region.name);
       const colors = new Map(state.palette.map((p) => [p.id, this.cssVar(`--paint-${p.color}`) || p.color]));
+      // Numaralı boyamada bölge grubunun çözüm rengiyle çizilir ve grup adı (soru no) yazılır.
+      const groupNames = new Map(state.groups.map((g, i) => [g.id, g.label.trim() || String(i + 1)]));
       state.regions.forEach((area, i) => {
-        const paint = Object.hasOwn(state.fills, area.id) ? state.fills[area.id] : null;
+        const fills = state.numbered ? state.groupFills : state.fills;
+        const key = state.numbered ? (area.group ?? '') : area.id;
+        const paint = Object.hasOwn(fills, key) ? fills[key] : null;
         const color = paint ? (colors.get(paint) ?? theme.accent) : theme.label;
         ctx.save();
         ctx.beginPath();
@@ -4749,7 +4791,8 @@ export class ImageSelectorComponent {
         ctx.setLineDash([]);
         ctx.font = `bold 12px ${theme.fontFamily}`;
         ctx.fillStyle = color;
-        ctx.fillText(String(i + 1), region.x + lx + 3, region.y + ly + 13);
+        const text = state.numbered ? `${groupNames.get(area.group ?? '') ?? '?'}` : String(i + 1);
+        ctx.fillText(text, region.x + lx + 3, region.y + ly + 13);
         ctx.restore();
       });
       if (state.pending.length > 0) {

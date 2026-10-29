@@ -1429,6 +1429,54 @@ describe('ActivityPlayerComponent (#573)', () => {
       expect(rows[0].correct).toBe(false);
       expect(fixture.componentInstance.currentRegionPaintFeedback()?.extra).toBe(1);
     });
+
+    it('numbered_UnpaintedGroupIsIncomplete_RowsPerGroup', async () => {
+      const plan = JSON.stringify({
+        version: 1,
+        type: 'regionPaint',
+        mode: 'regions',
+        palette: [{ id: 'p1', color: 'blue' }, { id: 'p2', color: 'red' }],
+        groups: [{ id: 'g1', label: '1' }, { id: 'g2', label: '2' }],
+        regions: [
+          { id: 'r1', points: [[0, 0], [9, 0], [9, 9]], group: 'g1' },
+          { id: 'r2', points: [[20, 0], [29, 0], [29, 9]], group: 'g2' },
+        ],
+      });
+      const fills = (f: Record<string, string>) => JSON.stringify({ version: 1, type: 'regionPaint', fills: f });
+      await create(
+        instance({}, [{ answerPayload: fills({ g1: 'p1' }), question: { ...base(), interactionType: 'regionPaint', interactionPlan: plan } }])
+      );
+      fixture.componentInstance.goTo(0);
+      await settle();
+      expect(fixture.componentInstance.blankItems()).toContain('a');
+
+      fixture.componentInstance.onDragDropChange(fills({ g1: 'p1', g2: 'p1' }), fixture.componentInstance.items()[0]);
+      await settle();
+      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 1,
+          totalCount: 3,
+          questions: [
+            {
+              instanceQuestionId: 101,
+              isCorrect: false,
+              correctCount: 1,
+              totalCount: 2,
+              feedback: '{"rows":[{"id":"g1","correct":true},{"id":"g2","correct":false}]}',
+            },
+            { instanceQuestionId: 102, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+      const rows = fixture.componentInstance.currentRows();
+      expect(rows.map((r) => r.correct)).toEqual([true, false]);
+      expect(rows[1].label).toContain('2');
+    });
   });
 
   describe('wordSearch (#586)', () => {

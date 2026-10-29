@@ -410,7 +410,21 @@
     "paintLeaveEmpty": "Boş kalmalı",
     "paintRemoveRegion": "Bölge {{n}} sil",
     "paintNoRegions": "Henüz bölge yok.",
-    "paintClear": "Bütün bölgeleri sil"
+    "paintClear": "Bütün bölgeleri sil",
+    "paintNumbered": "Numaralı boyama (soru cevabının rengi)",
+    "paintNumberedHint": "Her bölge bir soru numarasına bağlıdır; öğrenci bir bölgeye dokununca o numaralı bütün bölgeler boyanır. Yeni bölge seçili numaraya girer; görselde bölgeye tıklamak onu seçili numaraya taşır.",
+    "paintGroups": "Sorular ({{count}})",
+    "paintActiveGroupAria": "Bölgelerin gireceği soru",
+    "paintActiveGroup": "Soru {{name}}: yeni bölgeler buna girer",
+    "paintGroupLabelPlaceholder": "Numara",
+    "paintGroupLabelAria": "Soru {{n}} numarası",
+    "paintGroupFillAria": "Soru {{name}} doğru rengi",
+    "paintGroupNoColor": "Renk seçin",
+    "paintGroupRegions": "{{n}} bölge",
+    "paintRemoveGroup": "Soru {{name}} sil",
+    "paintAddGroup": "Soru ekle",
+    "paintRegionGroupAria": "Bölge {{n}} sorusu",
+    "paintGroupOption": "Soru {{name}}"
   },
   "preview": {
     "headingWithTest": "Ön İzleme — {{testName}}",

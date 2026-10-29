@@ -17,9 +17,11 @@ public interface IAdminStudentSchoolService
     /// (best-effort) → sonuç audit'i. Atama/test/booking verisine DOKUNULMAZ (bkz. uygulama notları).
     /// issue #361: admin ataması üyeliği hemen DOĞRULAR (<c>SchoolVerifiedAt</c> = şimdi, <c>SchoolVerifiedByUserId</c> =
     /// <paramref name="actorUserId"/>); aynı okulda bekleyen üyelik de bu çağrıyla doğrulanır.
+    /// issue #541: <paramref name="schoolId"/> null → öğrenci okulsuz olur (SchoolId, SchoolVerifiedAt, SchoolVerifiedByUserId
+    /// temizlenir, Keycloak <c>school_id</c> kaldırılır); zaten okulsuzsa yan etkisiz başarı (<c>Changed=false</c>).
     /// </summary>
     Task<AdminStudentSchoolChangeResult> ChangeSchoolAsync(
-        int studentId, int schoolId, string actorKeycloakId, int? actorUserId = null, CancellationToken ct = default);
+        int studentId, int? schoolId, string actorKeycloakId, int? actorUserId = null, CancellationToken ct = default);
 }
 
 public enum AdminStudentSchoolChangeStatus

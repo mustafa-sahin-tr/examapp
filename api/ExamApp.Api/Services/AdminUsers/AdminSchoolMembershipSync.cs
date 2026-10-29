@@ -20,7 +20,7 @@ namespace ExamApp.Api.Services.AdminUsers;
 /// ÖNCE DB'yi okumuş eşzamanlı bir istek, ilk düşürmemizden SONRA eski SchoolId'yi önbelleğe geri yazabilir. Gecikmeli
 /// ikinci düşürme bu pencereyi kapatır; yanıtı bloklamaz ve süreç yeniden başlasa da (Hangfire kalıcı) çalışır. Sürüm
 /// damgası alternatifi tüm profil okuma yolunu (GetOrSet + her SetAsync çağıranı) değiştirmeyi gerektirirdi.</item>
-/// <item>Keycloak <c>school_id</c> attribute'u güncellenir — JWT claim'i yalnızca ipucudur (#189), yetki DB'den çözülür;
+/// <item>Keycloak <c>school_id</c> attribute'u güncellenir (okulsuz yapmada kaldırılır, #541) — JWT claim'i yalnızca ipucudur (#189), yetki DB'den çözülür;
 /// yine de uyuşmazlık uyarısı üretmesin.</item>
 /// </list>
 /// Hepsi best-effort: Redis/Hangfire/Keycloak hatası DB değişikliğini geri almaz, yalnızca loglanır. Loglar yalnızca hedef
@@ -50,7 +50,7 @@ internal sealed class AdminSchoolMembershipSync
 
     /// <returns><c>true</c> → profil önbelleği düşürüldü (ya da önbellek yapılandırılmamış); <c>false</c> → tüm denemeler
     /// başarısız, kullanıcı en geç önbellek süresi (1 saat) boyunca eski okulla görünebilir.</returns>
-    public async Task<bool> ApplyAsync(string sub, int schoolId, AdminUserTargetType targetType, int targetId)
+    public async Task<bool> ApplyAsync(string sub, int? schoolId, AdminUserTargetType targetType, int targetId)
     {
         var invalidated = await TryInvalidateProfileAsync(sub, targetType, targetId);
         TryScheduleSecondInvalidation(sub, targetType, targetId);
@@ -100,7 +100,7 @@ internal sealed class AdminSchoolMembershipSync
         }
     }
 
-    private async Task TrySyncSchoolClaimAsync(string sub, int schoolId, AdminUserTargetType targetType, int targetId)
+    private async Task TrySyncSchoolClaimAsync(string sub, int? schoolId, AdminUserTargetType targetType, int targetId)
     {
         if (_keycloak is null)
             return;

@@ -110,6 +110,43 @@ describe('AdminStudentSchoolDialogComponent (issue #277)', () => {
         expect(dialogRef.close).toHaveBeenCalledWith({ schoolId: 8, schoolName: 'İzmir Lisesi' });
     });
 
+    it('removeMode_NoCurrentSchool_IsNotOffered_issue541', () => {
+        configure({ currentSchoolId: null, currentSchoolName: null });
+        expect(el().querySelector('[data-testid="school-mode"]')).toBeNull();
+    });
+
+    it('removeMode_RequiresConfirmation_ThenSendsNullAndClosesWithNoSchool_issue541', () => {
+        configure();
+        adminService.changeStudentSchool.mockReturnValue(of({ studentId: 7, schoolId: null, previousSchoolId: 5, changed: true }));
+
+        (el().querySelector('[data-testid="mode-remove"] button') as HTMLButtonElement).click();
+        fixture.detectChanges();
+
+        expect(el().querySelector('app-school-select')).toBeNull();
+        expect(el().querySelector('[data-testid="remove-effects"]')?.textContent).toContain(texts.removeEffectLeaderboard);
+        expect(button('confirm')!.textContent).toContain(texts.confirmRemove);
+        expect(button('confirm')!.disabled).toBe(true);
+
+        (el().querySelector('[data-testid="remove-confirm"] input') as HTMLInputElement).click();
+        fixture.detectChanges();
+        expect(button('confirm')!.disabled).toBe(false);
+
+        button('confirm')!.click();
+
+        expect(adminService.changeStudentSchool).toHaveBeenCalledWith(7, null);
+        expect(dialogRef.close).toHaveBeenCalledWith({ schoolId: null, schoolName: null });
+    });
+
+    it('removeMode_SwitchingBack_ResetsConfirmation_issue541', () => {
+        configure();
+        component.setMode('remove');
+        component.removeConfirmed.set(true);
+        component.setMode('move');
+        component.setMode('remove');
+        expect(component.removeConfirmed()).toBe(false);
+        expect(component.canSubmit()).toBe(false);
+    });
+
     it('error400WithoutBody_ShowsInvalidSchoolText', () => {
         configure();
         confirmWithError(400);

@@ -57,7 +57,7 @@ public class AdminStudentSchoolServiceTests : IDisposable
         return new Seed(a.Id, b.Id, g.Id, s.Id);
     }
 
-    private async Task<AdminStudentSchoolChangeResult> RunAsync(int studentId, int schoolId, params IInterceptor[] interceptors)
+    private async Task<AdminStudentSchoolChangeResult> RunAsync(int studentId, int? schoolId, params IInterceptor[] interceptors)
     {
         await using var ctx = interceptors.Length > 0 ? _db.NewContext(interceptors) : _db.NewContext();
         var service = new AdminStudentSchoolService(ctx, _targets, new AdminUserActionAuditService(ctx), _keycloak,
@@ -125,6 +125,104 @@ public class AdminStudentSchoolServiceTests : IDisposable
         r.Status.ShouldBe(AdminStudentSchoolChangeStatus.Success);
         r.PreviousSchoolId.ShouldBeNull();
         (await SchoolOfAsync(s.StudentId)).ShouldBe(s.SchoolB);
+    }
+
+    // ---- issue #541: okulsuz yapma ----
+
+    [Fact]
+    public async Task Null_school_makes_the_student_schoolless_clears_verification_claim_and_audits_issue541()
+    {
+        var s = await SeedAsync();
+        var cache = new UserProfileCacheService(_cache, NullLogger<UserProfileCacheService>.Instance);
+        await cache.SetAsync(TargetSub, new UserProfileDto { Id = 50, KeycloakId = TargetSub, Role = "Student", SchoolId = s.SchoolA });
+
+        var r = await RunAsync(s.StudentId, null);
+
+        r.Status.ShouldBe(AdminStudentSchoolChangeStatus.Success);
+        r.Changed.ShouldBeTrue();
+        r.PreviousSchoolId.ShouldBe(s.SchoolA);
+        r.SchoolId.ShouldBeNull();
+        (await VerificationOfAsync(s.StudentId)).ShouldBe((null, null, null));
+
+        var log = (await AuditAsync()).ShouldHaveSingleItem();
+        log.Outcome.ShouldBe(AdminUserActionOutcome.Succeeded);
+        log.FromSchoolId.ShouldBe(s.SchoolA);
+        log.ToSchoolId.ShouldBeNull();
+        await _keycloak.Received(1).SetSchoolIdAttributeAsync(TargetSub, null);
+        (await cache.GetAsync(TargetSub)).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Null_school_for_an_already_schoolless_student_is_a_no_op_issue541()
+    {
+        var s = await SeedAsync(studentHasSchool: false);
+
+        var r = await RunAsync(s.StudentId, null);
+
+        r.Status.ShouldBe(AdminStudentSchoolChangeStatus.Success);
+        r.Changed.ShouldBeFalse();
+        r.SchoolId.ShouldBeNull();
+        (await AuditAsync()).ShouldBeEmpty();
+        await _targets.DidNotReceiveWithAnyArgs().ResolveAsync(default, default, default!, default);
+        await _keycloak.DidNotReceiveWithAnyArgs().SetSchoolIdAttributeAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task Null_school_clears_a_pending_membership_too_issue541()
+    {
+        var s = await SeedAsync();
+        await using (var ctx = _db.NewContext())
+            await ctx.Students.Where(x => x.Id == s.StudentId).ExecuteUpdateAsync(x => x.SetProperty(st => st.SchoolVerifiedAt, (DateTime?)null));
+
+        var r = await RunAsync(s.StudentId, null);
+
+        r.Changed.ShouldBeTrue();
+        (await VerificationOfAsync(s.StudentId)).ShouldBe((null, null, null));
+    }
+
+    /// <summary>
+    /// Okulsuz yapınca eski okulun kapsamı tamamen kalkar: öğretmen öğrenciyi göremez, eski okulun sınıf ataması kaybolur
+    /// (doğrudan ve platform geneli atama kalır), okul liderliği uygulanamaz (yalnız global).
+    /// </summary>
+    [Fact]
+    public async Task Schoolless_student_is_out_of_every_old_school_scope_issue541()
+    {
+        var s = await SeedAsync();
+        int wsGrade, wsDirect, wsPlatform;
+        await using (var ctx = _db.NewContext())
+        {
+            var a = new Worksheet { Name = "A", Description = "", GradeId = s.GradeId };
+            var d = new Worksheet { Name = "D", Description = "", GradeId = s.GradeId };
+            var p = new Worksheet { Name = "P", Description = "", GradeId = s.GradeId };
+            ctx.Worksheets.AddRange(a, d, p);
+            ctx.Teachers.Add(new Teacher { UserId = 60, SchoolId = s.SchoolA, ApprovalStatus = TeacherApprovalStatus.Approved, AccountApprovedAt = DateTime.UtcNow });
+            await ctx.SaveChangesAsync();
+            var start = DateTime.UtcNow.AddDays(-1);
+            ctx.WorksheetAssignments.AddRange(
+                new WorksheetAssignment { WorksheetId = a.Id, GradeId = s.GradeId, SchoolId = s.SchoolA, StartAt = start },
+                new WorksheetAssignment { WorksheetId = d.Id, StudentId = s.StudentId, StartAt = start },
+                new WorksheetAssignment { WorksheetId = p.Id, GradeId = s.GradeId, IsPlatformWide = true, StartAt = start });
+            ctx.StudentPoints.Add(new StudentPoint { StudentId = s.StudentId, XP = 10 });
+            await ctx.SaveChangesAsync();
+            (wsGrade, wsDirect, wsPlatform) = (a.Id, d.Id, p.Id);
+        }
+
+        (await RunAsync(s.StudentId, null)).Status.ShouldBe(AdminStudentSchoolChangeStatus.Success);
+
+        await using var read = _db.NewContext();
+        var resolved = await UserSchoolResolver.ResolveAsync(read, 50);
+        resolved.ShouldBeNull();
+        var teacherScope = ExamApp.Api.Services.Tenancy.SchoolScope.For(60, s.SchoolA);
+        (await new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy(read).CanAccessStudentAsync(teacherScope, s.StudentId)).ShouldBeFalse();
+        (await read.ActiveAssignmentsFor(s.StudentId, s.GradeId, resolved, DateTime.UtcNow).Select(a => a.WorksheetId).ToListAsync())
+            .ShouldBe(new[] { wsDirect, wsPlatform }, ignoreOrder: true);
+
+        var authApi = Substitute.For<IAuthApiClient>();
+        var board = await new ExamApp.Api.Services.Leaderboards.LeaderboardService(read, authApi,
+                Substitute.For<Microsoft.Extensions.Logging.ILogger<ExamApp.Api.Services.Leaderboards.LeaderboardService>>())
+            .GetLeaderboardAsync(new LeaderboardRequest(
+                LeaderboardScope.School, 50, resolved, 0, 20));
+        board.Success.ShouldBeFalse();
     }
 
     [Fact]

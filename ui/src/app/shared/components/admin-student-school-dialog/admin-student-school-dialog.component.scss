@@ -131,3 +131,13 @@
   margin-right: 6px;
   vertical-align: middle;
 }
+
+// Issue #541: taşı / okulsuz yap kip seçimi ve onay kutusu
+.ssd-mode {
+  margin: 0 0 16px;
+}
+
+.ssd-remove-confirm {
+  display: block;
+  margin-top: 12px;
+}

@@ -23,6 +23,8 @@ namespace ExamApp.Api.Services.AdminUsers;
 /// devam eder. Eski okulun öğretmenleri ise okul kapsamı (<c>ISchoolAccessPolicy</c>) nedeniyle öğrenciyi artık
 /// listelerinde/ilerleme görünümlerinde görmez; yeni okulun öğretmenleri görür.</item>
 /// <item>Bağımsız öğretmen Booking'leri okuldan bağımsızdır, etkilenmez.</item>
+/// <item>issue #541: okulsuz yapma (schoolId null) eski okulun bütün kapsamını kaldırır (öğretmen listeleri, sınıf
+/// atamaları, okul liderliği); yalnız doğrudan ve platform geneli atamalar kalır.</item>
 /// <item>Kullanıcının öğretmen kaydı da varsa (eski çift kayıt) okul kapsamı Teachers.SchoolId'den gelir
 /// (<c>SchoolContextResolver</c>); bu değişiklik o kapsamı değiştirmez.</item>
 /// </list>
@@ -58,7 +60,7 @@ public class AdminStudentSchoolService : IAdminStudentSchoolService
     }
 
     public async Task<AdminStudentSchoolChangeResult> ChangeSchoolAsync(
-        int studentId, int schoolId, string actorKeycloakId, int? actorUserId = null, CancellationToken ct = default)
+        int studentId, int? schoolId, string actorKeycloakId, int? actorUserId = null, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(actorKeycloakId))
             throw new InvalidOperationException("Admin student school change requires the actor's Keycloak subject.");
@@ -82,7 +84,13 @@ public class AdminStudentSchoolService : IAdminStudentSchoolService
         var previousSchoolId = current.SchoolId;
         record = record with { FromSchoolId = previousSchoolId };
 
-        if (!await _context.Schools.AsNoTracking().AnyAsync(s => s.Id == schoolId, ct))
+        // issue #541: okulsuz yapma (schoolId null) okul doğrulaması gerektirmez; zaten okulsuzsa yan etkisiz.
+        if (schoolId is null)
+        {
+            if (previousSchoolId is null)
+                return new(AdminStudentSchoolChangeStatus.Success, null, null, Changed: false);
+        }
+        else if (!await _context.Schools.AsNoTracking().AnyAsync(s => s.Id == schoolId, ct))
         {
             await _audit.TryRecordAsync(record, AdminUserActionOutcome.SchoolNotFound);
             return new(AdminStudentSchoolChangeStatus.SchoolNotFound);
@@ -123,14 +131,16 @@ public class AdminStudentSchoolService : IAdminStudentSchoolService
         // Bu noktadan sonra istemci iptali akışı yarıda bırakmasın (DB değişip önbellek eski okulla kalmasın).
         // Koşullu güncelleme: okunduğu andaki okul hâlâ aynıysa (eşzamanlı admin değişikliği / öğrencinin ilk okul ataması
         // #259 ile yarışta son yazan kazanmasın). ExecuteUpdate SaveChanges audit'ini atlar; UpdateTime açıkça yazılır.
+        // issue #541: okulsuz yapmada üyelik doğrulaması da temizlenir (doğrulanmış okulsuz üyelik anlamsız).
         var now = DateTime.UtcNow;
-        int? verifierUserId = actorUserId is > 0 ? actorUserId : null;
+        DateTime? verifiedAt = schoolId is null ? null : now;
+        int? verifierUserId = schoolId is not null && actorUserId is > 0 ? actorUserId : null;
         var affected = await _context.Students
             // issue #361: okunduğu andaki doğrulama durumu da koşulda — arada bir okul onayı/reddi olduysa Conflict.
             .Where(s => s.Id == studentId && s.SchoolId == previousSchoolId && s.SchoolVerifiedAt == previousVerifiedAt)
             .ExecuteUpdateAsync(set => set
                 .SetProperty(s => s.SchoolId, schoolId)
-                .SetProperty(s => s.SchoolVerifiedAt, now)
+                .SetProperty(s => s.SchoolVerifiedAt, verifiedAt)
                 .SetProperty(s => s.SchoolVerifiedByUserId, verifierUserId)
                 .SetProperty(s => s.UpdateTime, now), CancellationToken.None);
 
@@ -149,7 +159,7 @@ public class AdminStudentSchoolService : IAdminStudentSchoolService
             .ApplyAsync(sub, schoolId, AdminUserTargetType.Student, studentId);
 
         await _audit.TryUpdateOutcomeAsync(auditId, AdminUserActionOutcome.Succeeded);
-        _logger.LogInformation("[AdminStudentSchool] Öğrenci okulu değişti: Student#{StudentId} {PreviousSchoolId} → {SchoolId} actor={Actor}",
+        _logger.LogInformation("[AdminStudentSchool] Öğrenci okulu değişti: Student#{StudentId} {PreviousSchoolId} → {SchoolId} (null = okulsuz) actor={Actor}",
             studentId, previousSchoolId, schoolId, actorKeycloakId);
         return new(AdminStudentSchoolChangeStatus.Success, previousSchoolId, schoolId, Changed: true);
     }

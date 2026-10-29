@@ -20,7 +20,7 @@ güncellenir. Davranış değişikliği yapacaksan bu tabloyu ve testlerini birl
 | DM (K8) | Konuşma silinmez, geçmiş iki tarafça okunur; ilişki (atama zinciri, açıksa aynı okul) bitince iki taraf da yazamaz (`CanSend=false`, öğrenci 403 `CannotMessageTeacher`, öğretmen 403 `RelationshipEnded`), UI giriş alanını kapatır; yeni okulda yeni ilişki doğar | aynı | `DirectMessageServiceTests.Student_changing_school_...`, `Teacher_changing_school_..._issue540`, `dm-conversation.component.spec.ts` |
 | Veli bağı, bağımsız öğretmen randevuları | Okuldan bağımsız, etkilenmez | — | |
 | Yeni okulda onay (K7) | — | Admin kararı yeterli; askıdaki / hesabı onaysız / onaylı bağımsız öğretmen 409 | `AdminTeacherSchoolServiceTests` |
-| Okulsuz yapma (K6) | Henüz yok (`schoolId` zorunlu) → #541 | Yapılmaz (kullanıcı kendi register akışını kullanır) | |
+| Okulsuz yapma (K6, #541) | `{ "schoolId": null }` (alan yoksa 400): `SchoolId`, `SchoolVerifiedAt`, `SchoolVerifiedByUserId` temizlenir, Keycloak `school_id` kaldırılır, audit `ToSchoolId=null`; zaten okulsuzsa `changed=false`. Eski okulun bütün kapsamı kalkar, doğrudan / platform geneli atamalar kalır, okul liderliği uygulanamaz. Admin dialog'unda "Okulsuz yap" kipi + onay kutusu | Yapılmaz: `schoolId: null` → 400 (kullanıcı kendi register akışını kullanır) | `AdminStudentSchoolServiceTests` (#541), `AdminController{Student,Teacher}SchoolTests` |
 | Bildirim (K5) | Henüz yok → #542 | aynı | |
 | Okul geçmişi (K9) | Yalnız `AdminUserActionLogs` (From/To okul, sonuç, #539 `AffectedCount`); kullanıcıya görünür geçmiş ekranı yok | aynı | `Admin{Student,Teacher}SchoolServiceTests` |
 

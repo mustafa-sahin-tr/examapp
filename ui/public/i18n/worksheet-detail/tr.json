@@ -303,7 +303,8 @@
         "numberLine": "Sayı doğrusu",
         "barChart": "Grafik kurma",
         "gridDraw": "Kareli zeminde çizim",
-        "balanceScale": "Terazi dengeleme"
+        "balanceScale": "Terazi dengeleme",
+        "clockSet": "Saat kurma"
       }
     },
     "addTextItem": "Görselsiz madde ekle"

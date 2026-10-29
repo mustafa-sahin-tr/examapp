@@ -640,6 +640,25 @@
         "resultUnused": "The scale is balanced but {{n}} weights are unused; use all of them.",
         "resultEmpty": "Put weights on the pans.",
         "solutionShown": "One balancing arrangement is shown (other arrangements may also be correct)."
+      },
+      "clockSet": {
+        "passageAlt": "Reading passage image",
+        "imageAlt": "Activity image",
+        "invalid": "This activity could not be opened.",
+        "handToggle": "Hand to turn",
+        "hand": {
+          "hour": "Hour hand",
+          "minute": "Minute hand"
+        },
+        "clockAria": "Clock {{n}}",
+        "fixed": "(set)",
+        "hourValue": "Hour hand at {{at}}",
+        "minuteValue": "Minute hand at minute {{m}}",
+        "correct": "Correct",
+        "wrong": "Wrong",
+        "reset": "Clear",
+        "hint": "Pick the hour or minute hand, then tap the dial or drag the hand. With the keyboard, focus a hand and turn it with the arrow keys.",
+        "solutionShown": "The correct times are shown."
       }
     },
     "sharingBadge": {

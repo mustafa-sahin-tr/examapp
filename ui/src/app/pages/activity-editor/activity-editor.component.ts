@@ -114,6 +114,8 @@ import { QuestionCanvasNumberLineComponent } from '../../shared/components/quest
 import { QuestionCanvasBarChartComponent } from '../../shared/components/question-canvas-bar-chart/question-canvas-bar-chart.component';
 import { QuestionCanvasGridDrawComponent } from '../../shared/components/question-canvas-grid-draw/question-canvas-grid-draw.component';
 import { QuestionCanvasBalanceScaleComponent } from '../../shared/components/question-canvas-balance-scale/question-canvas-balance-scale.component';
+import { CLOCK_SET_FORM_LIMITS, ClockForm, ClockSetForm } from '../../models/activity-authoring-clock-set';
+import { QuestionCanvasClockSetComponent } from '../../shared/components/question-canvas-clock-set/question-canvas-clock-set.component';
 import { QuestionCanvasWordSearchComponent } from '../../shared/components/question-canvas-word-search/question-canvas-word-search.component';
 import { QuestionCanvasDragPlaceComponent } from '../../shared/components/question-canvas-drag-place/question-canvas-drag-place.component';
 import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
@@ -180,6 +182,7 @@ interface EditableItem {
     QuestionCanvasBarChartComponent,
     QuestionCanvasGridDrawComponent,
     QuestionCanvasBalanceScaleComponent,
+    QuestionCanvasClockSetComponent,
   ],
   providers: [provideTranslocoScope(ACTIVITY_EDITOR_SCOPE)],
   templateUrl: './activity-editor.component.html',
@@ -212,6 +215,8 @@ export class ActivityEditorComponent {
   readonly chartLimits = BAR_CHART_FORM_LIMITS;
   readonly drawLimits = GRID_DRAW_FORM_LIMITS;
   readonly balanceLimits = BALANCE_SCALE_FORM_LIMITS;
+  readonly clockLimits = CLOCK_SET_FORM_LIMITS;
+  readonly clockSet = computed(() => (this.form().kind === 'clockSet' ? (this.form() as ClockSetForm) : null));
   /** Otomatik yerleştirmenin son sonucu: kesiştirilemeyip ayrı satıra konan kelimeler (1 tabanlı). */
   readonly crosswordUnplaced = signal<number[] | null>(null);
   /**
@@ -1391,6 +1396,31 @@ export class ActivityEditorComponent {
     if (f) this.form.set(update(f));
   }
 
+  // ---- Saat kurma ----
+
+  setClockOption(patch: Partial<Pick<ClockSetForm, 'step' | 'numbers' | 'minuteTicks'>>): void {
+    this.updateClockSet((f) => ({ ...f, ...patch }));
+  }
+
+  setClock(index: number, patch: Partial<ClockForm>): void {
+    this.updateClockSet((f) => ({ ...f, clocks: f.clocks.map((c, i) => (i === index ? { ...c, ...patch } : c)) }));
+  }
+
+  addClock(): void {
+    this.updateClockSet((f) =>
+      f.clocks.length < CLOCK_SET_FORM_LIMITS.maxClocks ? { ...f, clocks: [...f.clocks, { label: '', time: '', fixed: false }] } : f
+    );
+  }
+
+  removeClock(index: number): void {
+    this.updateClockSet((f) => (f.clocks.length <= 1 ? f : { ...f, clocks: f.clocks.filter((_, i) => i !== index) }));
+  }
+
+  private updateClockSet(update: (f: ClockSetForm) => ClockSetForm): void {
+    const f = this.clockSet();
+    if (f) this.form.set(update(f));
+  }
+
   private updateNumberLine(update: (f: NumberLineForm) => NumberLineForm): void {
     const f = this.numberLine();
     if (f) this.form.set(update(f));
@@ -1487,6 +1517,8 @@ function itemTitle(form: AuthoringForm, instruction: string | null | undefined):
       return form.title || form.categories.map((c) => c.label).filter(Boolean).join(', ').slice(0, 80);
     case 'balanceScale':
       return form.cards.map((c) => c.label.trim() || c.value.trim()).filter(Boolean).join(', ').slice(0, 80);
+    case 'clockSet':
+      return form.clocks.map((c) => c.label.trim() || c.time.trim()).filter(Boolean).join(', ').slice(0, 80);
     case 'gridDraw':
       return [form.area && `A=${form.area}`, form.perimeter && `Ç=${form.perimeter}`].filter(Boolean).join(', ');
     case 'logicGrid':

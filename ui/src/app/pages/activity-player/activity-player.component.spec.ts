@@ -1388,6 +1388,56 @@ describe('ActivityPlayerComponent (#573)', () => {
     });
   });
 
+  describe('clockSet (#634)', () => {
+    const CS_PLAN = JSON.stringify({
+      version: 1,
+      type: 'clockSet',
+      clocks: [{ id: 'c0', fixed: '09:20' }, { id: 'c1', label: 'Bitiş' }, { id: 'c2' }],
+    });
+    const csAnswer = (clocks: object) => JSON.stringify({ version: 1, type: 'clockSet', clocks });
+    const base = () => instance().testInstanceQuestions[0].question;
+    const typed = (answer: string) =>
+      instance({}, [{ answerPayload: answer, question: { ...base(), interactionType: 'ClockSet', interactionPlan: CS_PLAN } }]);
+
+    it('rendersPlayer_UnsetClockIsIncomplete_RowsAndFeedback', async () => {
+      await create(typed(csAnswer({ c1: { h: 600, m: 0 } })));
+      fixture.componentInstance.goTo(0);
+      await settle();
+
+      expect(el().querySelector('app-question-canvas-clock-set')).not.toBeNull();
+      expect(fixture.componentInstance.blankItems()).toContain('a'); // c2 kurulmadı
+
+      fixture.componentInstance.onDragDropChange(csAnswer({ c1: { h: 600, m: 0 }, c2: { h: 180, m: 45 } }), fixture.componentInstance.items()[0]);
+      await settle();
+      expect(fixture.componentInstance.blankItems()).not.toContain('a');
+
+      activityService.check.mockReturnValue(
+        of({
+          success: true,
+          correctCount: 1,
+          totalCount: 3,
+          questions: [
+            {
+              instanceQuestionId: 101,
+              isCorrect: false,
+              correctCount: 1,
+              totalCount: 2,
+              feedback: '{"rows":[{"id":"c1","correct":true},{"id":"c2","correct":false}]}',
+            },
+            { instanceQuestionId: 102, isCorrect: false, correctCount: 0, totalCount: 1, feedback: null },
+          ],
+        })
+      );
+      await fixture.componentInstance.runCheck();
+      await settle();
+      const rows = fixture.componentInstance.currentRows();
+      expect(rows.map((r) => r.correct)).toEqual([true, false]);
+      expect(rows[0].label).toContain('10:00');
+      expect(rows[1].label).toContain('2:45'); // akrep 3'te, yelkovan 45 → 2.45 okunur
+      expect(fixture.componentInstance.currentClockSetFeedback()).toEqual({ c1: true, c2: false });
+    });
+  });
+
   describe('balanceScale (#632)', () => {
     const BS_PLAN = JSON.stringify({
       version: 1,

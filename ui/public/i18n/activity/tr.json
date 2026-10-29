@@ -53,7 +53,9 @@
     "drawNone": "Henüz çizim yok",
     "drawShape": "{{n}}. çizim: {{size}}",
     "balance": "Terazi: {{left}} | {{right}}",
-    "balanceEmpty": "Kefeler boş"
+    "balanceEmpty": "Kefeler boş",
+    "clock": "{{name}}: {{time}}",
+    "clockN": "{{n}}. saat"
   },
   "saveFailed": "Son cevabın kaydedilemedi; kontrol ettiğinde yeniden gönderilecek.",
   "finishCheckRequired": "Bitirmeden önce cevaplarını bir kez kontrol et.",

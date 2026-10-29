@@ -463,6 +463,18 @@
           (answerPayloadChange)="saveDragDropAnswerForQuestion($event, questionData.index)"
           (answered)="focusOnQuestion(questionData.index)"></app-question-canvas-grid-draw>
         }
+        } @else if (interactionKind(questionData.question.question.interactionType) === 'clockSet') {
+        <!-- Issue #634: saat kurma (ayrı parça). -->
+        @defer (on immediate) {
+        <app-question-canvas-clock-set class="canvas-stage" [questionRegion]="questionData.region"
+          [imageRefresh]="imageRefresh"
+          [interactionPlanJson]="questionData.question.question.interactionPlan || null"
+          [interactionSolutionJson]="questionData.question.question.interactionSolution || null"
+          [answerPayloadJson]="questionData.question.answerPayload || null"
+          [hidePassage]="isPassageFirstActive(questionData.index)"
+          (answerPayloadChange)="saveDragDropAnswerForQuestion($event, questionData.index)"
+          (answered)="focusOnQuestion(questionData.index)"></app-question-canvas-clock-set>
+        }
         } @else if (interactionKind(questionData.question.question.interactionType) === 'balanceScale') {
         <!-- Issue #632: terazi dengeleme (ayrı parça). -->
         @defer (on immediate) {

@@ -10,7 +10,7 @@
  * Issue #587: boyama (`regionPaint` ızgara modu) `activity-authoring-region-paint.ts`'te. Issue #588: sayı doğrusu (`numberLine`)
  * `activity-authoring-number-line.ts`'te, grafik kurma (`barChart`) `activity-authoring-bar-chart.ts`'te, kareli zeminde çizim
  * (`gridDraw`) `activity-authoring-grid-draw.ts`'te. Issue #632: terazi dengeleme (`balanceScale`)
- * `activity-authoring-balance-scale.ts`'te.
+ * `activity-authoring-balance-scale.ts`'te. Issue #634: saat kurma (`clockSet`) `activity-authoring-clock-set.ts`'te.
  *
  * Kayıtta backend sürükle-yerleştir kartlarını ve eşleştirme sağ öğelerini karışık sıraya dizip opak id verir (#576
  * H1/M1); düzenlemede formu plan + çözümden geri kurarken id'lere değil, plan sırası ve çözüm eşlemesine bakılır.
@@ -95,6 +95,15 @@ import {
 } from './activity-authoring-balance-scale';
 import { BALANCE_SCALE } from './balance-scale';
 import {
+  ClockSetForm,
+  buildClockSetDefinition,
+  emptyClockSetForm,
+  isClockSetForm,
+  parseClockSetDefinition,
+  validateClockSetForm,
+} from './activity-authoring-clock-set';
+import { CLOCK_SET } from './clock-set';
+import {
   ExitName,
   MAZE_KINDS,
   MazeForm,
@@ -121,7 +130,7 @@ import { MAZE_TREE } from './maze-tree';
 import { SLOT_FILL, parseSlotFillPlan } from './slot-fill';
 import { WORD_SEARCH } from './word-search';
 
-export type AuthoringKind = 'matrix' | 'classify' | 'order' | 'match' | BlankKind | MazeKind | 'crossword' | 'wordSearch' | 'logicGrid' | 'regionPaint' | 'numberLine' | 'barChart' | 'gridDraw' | 'balanceScale';
+export type AuthoringKind = 'matrix' | 'classify' | 'order' | 'match' | BlankKind | MazeKind | 'crossword' | 'wordSearch' | 'logicGrid' | 'regionPaint' | 'numberLine' | 'barChart' | 'gridDraw' | 'balanceScale' | 'clockSet';
 
 export const AUTHORING_KINDS: readonly AuthoringKind[] = [
   'matrix',
@@ -141,6 +150,7 @@ export const AUTHORING_KINDS: readonly AuthoringKind[] = [
   'barChart',
   'gridDraw',
   'balanceScale',
+  'clockSet',
 ];
 
 export const AUTHORING_LABEL_MAX = MATRIX_CHOICE_LIMITS.maxLabelLength;
@@ -189,7 +199,7 @@ export interface MatchForm {
   distractors: string[];
 }
 
-export type AuthoringForm = MatrixForm | ClassifyForm | OrderForm | MatchForm | BlankForm | MazeForm | CrosswordForm | WordSearchForm | LogicGridForm | RegionPaintForm | NumberLineForm | BarChartForm | GridDrawForm | BalanceScaleForm;
+export type AuthoringForm = MatrixForm | ClassifyForm | OrderForm | MatchForm | BlankForm | MazeForm | CrosswordForm | WordSearchForm | LogicGridForm | RegionPaintForm | NumberLineForm | BarChartForm | GridDrawForm | BalanceScaleForm | ClockSetForm;
 
 export interface AuthoringDefinition {
   interactionType:
@@ -205,7 +215,8 @@ export interface AuthoringDefinition {
     | typeof NUMBER_LINE
     | typeof BAR_CHART
     | typeof GRID_DRAW
-    | typeof BALANCE_SCALE;
+    | typeof BALANCE_SCALE
+    | typeof CLOCK_SET;
   plan: string;
   solution: string;
 }
@@ -238,6 +249,7 @@ export function emptyForm(
   if (kind === 'barChart') return emptyBarChartForm();
   if (kind === 'gridDraw') return emptyGridDrawForm();
   if (kind === 'balanceScale') return emptyBalanceScaleForm();
+  if (kind === 'clockSet') return emptyClockSetForm();
   switch (kind) {
     case 'matrix':
       return {
@@ -273,6 +285,7 @@ export function validateForm(form: AuthoringForm): AuthoringError[] {
   if (isBarChartForm(form)) return validateBarChartForm(form);
   if (isGridDrawForm(form)) return validateGridDrawForm(form);
   if (isBalanceScaleForm(form)) return validateBalanceScaleForm(form);
+  if (isClockSetForm(form)) return validateClockSetForm(form);
   const errors: AuthoringError[] = [];
   const blank = (values: string[]) => values.some((v) => !v.trim());
   const tooLong = (values: string[]) => values.some((v) => v.trim().length > AUTHORING_LABEL_MAX);
@@ -353,6 +366,7 @@ export function buildDefinition(form: AuthoringForm): AuthoringDefinition {
   if (isBarChartForm(form)) return buildBarChartDefinition(form);
   if (isGridDrawForm(form)) return buildGridDrawDefinition(form);
   if (isBalanceScaleForm(form)) return buildBalanceScaleDefinition(form);
+  if (isClockSetForm(form)) return buildClockSetDefinition(form);
   switch (form.kind) {
     case 'matrix': {
       const columns = form.columns.map((label, i) => ({ id: `c${i + 1}`, label: label.trim() }));
@@ -429,6 +443,7 @@ export function parseDefinition(
   if (type === BAR_CHART.toLowerCase()) return parseBarChartDefinition(planJson, solutionJson);
   if (type === GRID_DRAW.toLowerCase()) return parseGridDrawDefinition(planJson, solutionJson);
   if (type === BALANCE_SCALE.toLowerCase()) return parseBalanceScaleDefinition(planJson, solutionJson);
+  if (type === CLOCK_SET.toLowerCase()) return parseClockSetDefinition(planJson, solutionJson);
   return null;
 }
 

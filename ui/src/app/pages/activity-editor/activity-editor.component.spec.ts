@@ -263,6 +263,35 @@ describe('ActivityEditorComponent (#590)', () => {
     expect(JSON.parse(q.interactionSolution)).toEqual({ perimeter: 14, all: true });
   });
 
+  it('saat kurma: kurulu saat plana, kurulacak saat çözüme kaydedilir; adım dışı dakika reddedilir (#634)', async () => {
+    await setup({ testId: '9' });
+    component.selectKind('clockSet');
+    fixture.detectChanges();
+    expect(el('[data-testid="clock-set-form"]')).not.toBeNull();
+
+    component.setClock(0, { label: 'Başlangıç', time: '9.20', fixed: true });
+    component.addClock();
+    component.setClock(1, { label: 'Bitiş', time: '10.02' });
+    fixture.detectChanges();
+    expect(component.errors().map((e) => e.key)).toContain('clockTimeStep');
+
+    component.setClock(1, { time: '10.00' });
+    fixture.detectChanges();
+    expect(component.errors()).toEqual([]);
+    expect(el('[data-testid="preview"] app-question-canvas-clock-set')).not.toBeNull();
+
+    component.save(false);
+    const q = questions.saveBulk.mock.calls[0][0].questions[0];
+    expect(q.interactionType).toBe('clockSet');
+    expect(JSON.parse(q.interactionPlan)).toEqual({
+      version: 1,
+      type: 'clockSet',
+      step: 5,
+      clocks: [{ id: 'c1', label: 'Başlangıç', fixed: '09:20' }, { id: 'c2', label: 'Bitiş' }],
+    });
+    expect(JSON.parse(q.interactionSolution)).toEqual({ times: { c2: '10:00' } });
+  });
+
   it('terazi: ağırlıkları plana, kuralı çözüme kaydeder; dengelenemeyen formu reddeder (#632)', async () => {
     await setup({ testId: '9' });
     component.selectKind('balanceScale');

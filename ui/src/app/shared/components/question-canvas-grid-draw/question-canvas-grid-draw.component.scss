@@ -1,0 +1,185 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.gd-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.gd-passage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+
+  &__title {
+    font-weight: 700;
+    font-family: var(--mainFontFamily);
+  }
+
+  &__image {
+    display: block;
+    max-width: 100%;
+    max-height: 35vh;
+    object-fit: contain;
+  }
+}
+
+.gd-image-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+}
+
+.gd-image {
+  display: block;
+  max-width: 100%;
+  max-height: 45vh;
+}
+
+// Geniş zemin dar ekranda kendi içinde yatay kayar; sayfa kaymaz.
+.gd-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gd-board {
+  display: block;
+  width: 100%;
+  margin: 0 auto;
+  touch-action: none;
+  user-select: none;
+  cursor: crosshair;
+  border-radius: 6px;
+  outline: none;
+
+  &:focus-visible {
+    box-shadow: 0 0 0 3px var(--ms-action-background);
+  }
+
+  &.is-readonly {
+    cursor: default;
+  }
+}
+
+.gd-bg {
+  fill: var(--ms-surface);
+}
+
+.gd-line {
+  stroke: var(--ms-border-weak);
+  stroke-width: 0.04;
+}
+
+.gd-dot {
+  fill: var(--ms-text-medium);
+}
+
+.gd-shape rect {
+  fill: color-mix(in srgb, var(--ms-action-background) 25%, transparent);
+  stroke: var(--ms-action-background);
+  stroke-width: 0.12;
+}
+
+.gd-shape.is-ok rect {
+  fill: var(--ms-success-surface);
+  stroke: var(--ms-success-text);
+}
+
+.gd-shape.is-bad rect {
+  fill: var(--ms-danger-surface);
+  stroke: var(--ms-danger-text);
+}
+
+.gd-shape.is-dup rect {
+  fill: var(--ms-warning-surface);
+  stroke: var(--ms-warning-border);
+}
+
+.gd-size {
+  font-size: 0.5px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+  fill: var(--ms-text);
+  pointer-events: none;
+}
+
+.gd-preview rect {
+  fill: color-mix(in srgb, var(--ms-action-background) 12%, transparent);
+  stroke: var(--ms-action-background);
+  stroke-width: 0.1;
+  stroke-dasharray: 0.25 0.15;
+}
+
+.gd-preview.is-blocked rect {
+  stroke: var(--ms-danger-text);
+}
+
+.gd-cursor {
+  fill: none;
+  stroke: var(--ms-action-background);
+  stroke-width: 0.1;
+}
+
+.gd-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.gd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.gd-count {
+  color: var(--ms-text-medium);
+}
+
+.gd-hint,
+.gd-notice {
+  margin: 0;
+  color: var(--ms-text-medium);
+}
+
+.gd-notice {
+  color: var(--ms-danger-text);
+}
+
+.gd-result {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+
+  &.is-ok {
+    background: var(--ms-success-surface);
+    color: var(--ms-success-text);
+  }
+
+  &.is-bad {
+    background: var(--ms-danger-surface);
+    color: var(--ms-danger-text);
+  }
+}

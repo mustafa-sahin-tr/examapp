@@ -819,6 +819,22 @@ PageUp/PageDown step, Home/End, Delete); çizgi görünümünde nokta + çizgi; 
 kurma**): görünüm, başlık, eksen adları, eksen, kategori + değer + "Hazır". Daire grafiği ve kareli zeminde çizim sonraki dilimlerde. Testte de
 çözülebilir (puanlanır). Migration yok; Aspire'da exam API'yi yeniden başlat (yeni kontrolcü).
 
+**Issue #588 dilim c — `gridDraw` (bileşen F, kareli zeminde kural tabanlı çizim).** Plan
+`{"version":1,"type":"gridDraw","rows","cols","grid?":"square"|"dot","shape?":"rectangle"|"square"}` (zemin 2–30 × 2–30 birim kare;
+`grid` yalnız görünüm, `shape` `square`'de yalnız kare geçerli). Kural planda yok, **çözümde**: `{"area?","perimeter?","all"}` (alan
+1..rows×cols, çevre 4..2×(rows+cols), en az biri; geçerli boyut = kenarları doğal sayı, koşulları sağlayan ve zemine — döndürülerek de —
+sığan dikdörtgen; en az bir boyut, `all`'da en çok 12). Yönergede de yazılır ("çevresi 14 cm olan dikdörtgenlerin tamamını çiziniz").
+Öğrenci payload'u `{"shapes":[{row,col,width,height}]}` (zemine sığan, ≤ 30; boş = cevap yok). Kontrol (`GridDrawGrader`) `textSelect`
+kalıbında: gereken = `all` ? geçerli boyut sayısı : 1, bulunan = çizilen farklı geçerli boyut (en çok gereken), fazla = kurala uymayan çizim;
+`CorrectCount` = bulunan, `TotalCount` = gereken + fazla; yer ve yön serbest (3×4 = 4×3), aynı boyutun tekrarı ceza değil (`duplicate`).
+Geri bildirim `{"shapes":["ok"|"wrong"|"duplicate"],"found","missing","extra"}` (eksik boyutlar yazılmaz). Analiz: `all`'da öğe = boyut
+("3 × 4"), değilse tek öğe (cevap = ilk geçerli çizimin boyutu). Oynatıcı: sürükleyerek ya da iki dokunuşla (köşe → karşı köşe) çizim,
+çizime dokunmak siler, üst üste binme yok; klavyede ok + Enter / Delete / Escape; kontrol sonrası yeşil / kırmızı / turuncu (tekrar) +
+"Bulunan · Kalan · Fazla"; çözümde kurala uyan boyutlar örnek yerleşimle. Yazarlık görselsiz editörde (tür **Kareli zeminde çizim**):
+zemin, kareli / noktalı, dikdörtgen / kare, alan, çevre, "Hepsini çizsin"; uyan boyutlar formda listelenir. Pilotlar: TT MatLab dosya 87
+(çevresi 14 cm dikdörtgenler, çevresi 20 cm kare), dosya 93 (alanı 20 m² dikdörtgenler). Testte de çözülebilir (puanlanır). Daire grafiği /
+nokta grafiği ayrı dilim. Migration yok; Aspire'da exam API'yi yeniden başlat (yeni kontrolcü).
+
 **Dev sıfırlama — soru bankası.** `deploy/scripts/dev-reset-questions.sh` (dev-only) tüm soruları ve FK ile bağlı
 her şeyi (test-soru bağları, öğrenci cevapları, yorumlar, LabelingPages/Results), öğrencilerin test oturumlarını
 (`TestInstances` — Questions'a FK'sı yok, CASCADE ulaşmaz, açıkça silinir; aksi halde "boş test yapılmış" gibi kalır),

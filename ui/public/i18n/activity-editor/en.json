@@ -30,7 +30,8 @@
     "logicGrid": "Logic grid",
     "regionPaint": "Colouring (grid)",
     "numberLine": "Number line",
-    "barChart": "Graph drawing"
+    "barChart": "Graph drawing",
+    "gridDraw": "Draw on grid"
   },
   "kindHints": {
     "matrix": "Mark the correct option for each row. The T/F template sets up two columns; with multiple choice a row can have several correct options.",
@@ -47,7 +48,8 @@
     "mazeStones": "The student marks the (wrong) stones that must not be stepped on. Mark those stones with the drop icon.",
     "regionPaint": "The student paints each colour in the requested share of an equal-square grid; positions are free, the count per colour is checked.",
     "numberLine": "Students put the cards (fractions, decimals, events…) on the right tick of the number line; distractor cards stay off the line.",
-    "barChart": "Students draw a bar (or line) graph from the data; each category's value is checked. Put the data in the instruction or the image."
+    "barChart": "Students draw a bar (or line) graph from the data; each category's value is checked. Put the data in the instruction or the image.",
+    "gridDraw": "The student draws rectangles that satisfy the rule on square (or dot) paper; position and orientation are free, every size that fits the rule is correct."
   },
   "instruction": "Instruction (optional)",
   "image": {
@@ -216,7 +218,12 @@
     "chartCategoryCount": "There must be {{min}}–{{max}} categories.",
     "chartCategoryBlank": "Do not leave a category name empty.",
     "chartValueInvalid": "These categories' values are not a multiple of {{unit}} between 0 and {{max}}: {{list}}.",
-    "chartAllFixed": "At least one category must be left to the student (not given)."
+    "chartAllFixed": "At least one category must be left to the student (not given).",
+    "drawSize": "The grid must have {{min}}–{{max}} rows and columns.",
+    "drawRuleMissing": "Enter at least one condition: area or perimeter.",
+    "drawRuleInvalid": "Area and perimeter must be positive whole numbers that fit the grid.",
+    "drawNoTarget": "No rectangle that satisfies these conditions fits the grid.",
+    "drawTooManyTargets": "With \"all\" selected at most {{max}} sizes may satisfy the rule; shrink the grid or change the condition."
   },
   "snackbar": {
     "created": "The item was added to the activity.",
@@ -397,5 +404,21 @@
     "value": "Value",
     "fixed": "Given",
     "addCategory": "Add category"
+  },
+  "gridDraw": {
+    "hint": "The student draws rectangles on the grid; checking uses the rule (area and/or perimeter in unit squares). With \"all\", every matching size must be drawn; otherwise one is enough. Also state the rule in the instruction (e.g. \"Draw all rectangles with a perimeter of 14 cm\").",
+    "rows": "Rows",
+    "cols": "Columns",
+    "grid": "Paper",
+    "gridSquare": "Square grid",
+    "gridDot": "Dot grid",
+    "shape": "Shape",
+    "shapeRectangle": "Rectangle",
+    "shapeSquare": "Square",
+    "area": "Area (unit squares)",
+    "perimeter": "Perimeter (units)",
+    "all": "Draw all",
+    "targets": "Matching sizes: {{list}}",
+    "noTargets": "No matching size."
   }
 }

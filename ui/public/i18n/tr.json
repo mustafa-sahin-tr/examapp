@@ -584,6 +584,26 @@
         "resultOk": "Grafik doğru!",
         "resultPartial": "{{total}} sütundan {{ok}} tanesi doğru; kırmızıları yeniden kontrol et.",
         "solutionShown": "Grafiğin doğru hâli gösteriliyor."
+      },
+      "gridDraw": {
+        "passageAlt": "Okuma metni görseli",
+        "imageAlt": "Etkinlik görseli",
+        "invalid": "Bu etkinlik açılamadı.",
+        "boardAria": "{{rows}} satır, {{cols}} kolonluk çizim zemini",
+        "cursorAria": "{{row}}. satır, {{col}}. kolon",
+        "cancel": "Vazgeç",
+        "reset": "Temizle",
+        "count": "{{n}} çizim",
+        "hint": "Dikdörtgeni bir köşeden karşı köşeye sürükleyerek ya da iki köşesine sırayla dokunarak çiz; çizili bir dikdörtgene dokunmak onu siler. Klavyede ok tuşları ve Enter ile de çizebilirsin.",
+        "notice": {
+          "overlap": "Dikdörtgenler üst üste binemez; boş bir yere çiz.",
+          "tooMany": "En çok 30 dikdörtgen çizebilirsin."
+        },
+        "resultOk": "Bütün dikdörtgenler doğru!",
+        "resultPartial": "Bulunan {{found}} · Kalan {{missing}} · Fazla {{extra}} — kırmızılar kurala uymuyor, turuncular aynı boyutun tekrarı.",
+        "solutionAll": "Kurala uyan bütün boyutlar: {{list}}.",
+        "solutionAny": "Kurala uyan boyutlar (biri yeterdi): {{list}}.",
+        "solutionShown": "Kurala uyan dikdörtgenler gösteriliyor."
       }
     },
     "sharingBadge": {

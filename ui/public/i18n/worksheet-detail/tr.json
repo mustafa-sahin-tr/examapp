@@ -301,7 +301,8 @@
         "logicGrid": "Mantık tablosu",
         "regionPaint": "Boyama",
         "numberLine": "Sayı doğrusu",
-        "barChart": "Grafik kurma"
+        "barChart": "Grafik kurma",
+        "gridDraw": "Kareli zeminde çizim"
       }
     },
     "addTextItem": "Görselsiz madde ekle"

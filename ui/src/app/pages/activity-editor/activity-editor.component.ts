@@ -70,6 +70,7 @@ import {
   targetTick,
 } from '../../models/activity-authoring-number-line';
 import { BAR_CHART_FORM_LIMITS, BarChartCategoryForm, BarChartForm } from '../../models/activity-authoring-bar-chart';
+import { GRID_DRAW_FORM_LIMITS, GridDrawForm, gridDrawFormTargets } from '../../models/activity-authoring-grid-draw';
 import {
   LOGIC_GRID_FORM_LIMITS,
   LogicGridForm,
@@ -102,6 +103,7 @@ import { QuestionCanvasLogicGridComponent } from '../../shared/components/questi
 import { QuestionCanvasRegionPaintComponent } from '../../shared/components/question-canvas-region-paint/question-canvas-region-paint.component';
 import { QuestionCanvasNumberLineComponent } from '../../shared/components/question-canvas-number-line/question-canvas-number-line.component';
 import { QuestionCanvasBarChartComponent } from '../../shared/components/question-canvas-bar-chart/question-canvas-bar-chart.component';
+import { QuestionCanvasGridDrawComponent } from '../../shared/components/question-canvas-grid-draw/question-canvas-grid-draw.component';
 import { QuestionCanvasWordSearchComponent } from '../../shared/components/question-canvas-word-search/question-canvas-word-search.component';
 import { QuestionCanvasDragPlaceComponent } from '../../shared/components/question-canvas-drag-place/question-canvas-drag-place.component';
 import { QuestionCanvasMatchComponent } from '../../shared/components/question-canvas-match/question-canvas-match.component';
@@ -166,6 +168,7 @@ interface EditableItem {
     QuestionCanvasRegionPaintComponent,
     QuestionCanvasNumberLineComponent,
     QuestionCanvasBarChartComponent,
+    QuestionCanvasGridDrawComponent,
   ],
   providers: [provideTranslocoScope(ACTIVITY_EDITOR_SCOPE)],
   templateUrl: './activity-editor.component.html',
@@ -196,6 +199,7 @@ export class ActivityEditorComponent {
   readonly paintColors = PAINT_COLORS;
   readonly lineLimits = NUMBER_LINE_FORM_LIMITS;
   readonly chartLimits = BAR_CHART_FORM_LIMITS;
+  readonly drawLimits = GRID_DRAW_FORM_LIMITS;
   /** Otomatik yerleştirmenin son sonucu: kesiştirilemeyip ayrı satıra konan kelimeler (1 tabanlı). */
   readonly crosswordUnplaced = signal<number[] | null>(null);
   /**
@@ -252,6 +256,12 @@ export class ActivityEditorComponent {
   readonly logicGrid = computed(() => (this.form().kind === 'logicGrid' ? (this.form() as LogicGridForm) : null));
   readonly numberLine = computed(() => (this.form().kind === 'numberLine' ? (this.form() as NumberLineForm) : null));
   readonly barChart = computed(() => (this.form().kind === 'barChart' ? (this.form() as BarChartForm) : null));
+  readonly gridDraw = computed(() => (this.form().kind === 'gridDraw' ? (this.form() as GridDrawForm) : null));
+  /** Kareli zeminde çizim: kurala uyan boyutlar ("1 × 6, 2 × 5, 3 × 4"). */
+  readonly gridDrawTargets = computed(() => {
+    const f = this.gridDraw();
+    return f ? gridDrawFormTargets(f).map((t) => `${t.short} × ${t.long}`) : [];
+  });
   readonly wordSearch = computed(() => (this.form().kind === 'wordSearch' ? (this.form() as WordSearchForm) : null));
   /** D/Y ağacının düzeyleri: genişlik öncelikli sırada her düzeyin ifade dizinleri. */
   readonly treeLevels = computed(() => {
@@ -973,6 +983,18 @@ export class ActivityEditorComponent {
     );
   }
 
+  // ---- Kareli zeminde çizim ----
+
+  setGridDraw(patch: Partial<Omit<GridDrawForm, 'kind'>>): void {
+    for (const key of ['rows', 'cols'] as const) {
+      const value = patch[key];
+      if (value !== undefined && !Number.isFinite(value)) return;
+      if (value !== undefined) patch[key] = Math.round(value);
+    }
+    const f = this.gridDraw();
+    if (f) this.form.set({ ...f, ...patch });
+  }
+
   // ---- Kelime avı ----
 
   setWordSearchOption(patch: Partial<Pick<WordSearchForm, 'rows' | 'cols' | 'diagonal' | 'reverse'>>): void {
@@ -1406,6 +1428,8 @@ function itemTitle(form: AuthoringForm, instruction: string | null | undefined):
       return form.cards.map((c) => c.label).filter(Boolean).join(', ').slice(0, 80);
     case 'barChart':
       return form.title || form.categories.map((c) => c.label).filter(Boolean).join(', ').slice(0, 80);
+    case 'gridDraw':
+      return [form.area && `A=${form.area}`, form.perimeter && `Ç=${form.perimeter}`].filter(Boolean).join(', ');
     case 'logicGrid':
       return form.clues.find((c) => c.trim()) ?? form.subjects.join(', ');
     case 'wordSearch':

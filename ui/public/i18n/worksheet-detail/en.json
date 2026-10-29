@@ -301,7 +301,8 @@
         "logicGrid": "Logic grid",
         "regionPaint": "Colouring",
         "numberLine": "Number line",
-        "barChart": "Graph drawing"
+        "barChart": "Graph drawing",
+        "gridDraw": "Draw on grid"
       }
     },
     "addTextItem": "Add text-only item"

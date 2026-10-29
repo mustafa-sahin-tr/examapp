@@ -48,7 +48,10 @@
     "lineCard": "{{card}}: {{content}}",
     "lineUnplaced": "doğruya konmadı",
     "chartValue": "{{label}}: {{value}}",
-    "chartUnset": "çizilmedi"
+    "chartUnset": "çizilmedi",
+    "drawAny": "Kurala uyan bir dikdörtgen",
+    "drawNone": "Henüz çizim yok",
+    "drawShape": "{{n}}. çizim: {{size}}"
   },
   "saveFailed": "Son cevabın kaydedilemedi; kontrol ettiğinde yeniden gönderilecek.",
   "finishCheckRequired": "Bitirmeden önce cevaplarını bir kez kontrol et.",

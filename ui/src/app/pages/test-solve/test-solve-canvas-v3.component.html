@@ -451,6 +451,18 @@
           (answerPayloadChange)="saveDragDropAnswerForQuestion($event, questionData.index)"
           (answered)="focusOnQuestion(questionData.index)"></app-question-canvas-bar-chart>
         }
+        } @else if (interactionKind(questionData.question.question.interactionType) === 'gridDraw') {
+        <!-- Issue #588 (dilim c): kareli zeminde çizim (ayrı parça). -->
+        @defer (on immediate) {
+        <app-question-canvas-grid-draw class="canvas-stage" [questionRegion]="questionData.region"
+          [imageRefresh]="imageRefresh"
+          [interactionPlanJson]="questionData.question.question.interactionPlan || null"
+          [interactionSolutionJson]="questionData.question.question.interactionSolution || null"
+          [answerPayloadJson]="questionData.question.answerPayload || null"
+          [hidePassage]="isPassageFirstActive(questionData.index)"
+          (answerPayloadChange)="saveDragDropAnswerForQuestion($event, questionData.index)"
+          (answered)="focusOnQuestion(questionData.index)"></app-question-canvas-grid-draw>
+        }
         } @else if (interactionKind(questionData.question.question.interactionType) === 'wordSearch') {
         <!-- Issue #586: kelime avı (ayrı parça). -->
         @defer (on immediate) {
